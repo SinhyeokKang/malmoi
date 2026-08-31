@@ -87,6 +87,8 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 1. 트리거: 편집 UI의 수동 버튼 + Vercel Cron 야간 1회 (웹훅 즉시 반영은 비범위)
 2. base 브랜치 head SHA와 트리 조회
 3. **어댑터의 writer로** 로케일별 파일 결정적 생성 (§4) — 읽어온 포맷 그대로
+
+   ⚠️ **수술적 치환 어댑터(`ts-dict`)는 원본 내용을 필요로 한다.** 그 프로젝트에서는 blob SHA만으로 끝나지 않고 로케일 파일의 blob **내용**을 받아야 한다(파일당 API 호출 1회). 재생성 어댑터는 SHA만으로 충분하다.
 4. **로컬 blob SHA 계산 → base 트리와 비교. 전부 같으면 여기서 종료 — GitHub API를 한 번도 더 부르지 않는다.** 변경 없는 날이 대부분이라 이게 기본 경로다
 5. 변경분만: createBlob → createTree(`base_tree`) → createCommit(`parents: [baseHead]`, 메시지에 `[skip-l10n]`) → updateRef(`l10n/sync`, `force: true`)
 6. 열린 PR 있으면 재사용, 없으면 생성
@@ -99,7 +101,20 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 ### 4.1 모든 writer가 지켜야 하는 것
 
-**불변식: 같은 DB 상태 → 언제나 바이트 단위로 같은 파일.** 깨지면 pull의 blob SHA 비교가 매번 "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓는다.
+**불변식: 같은 입력 → 언제나 바이트 단위로 같은 파일.** 깨지면 pull의 blob SHA 비교가 매번 "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓는다.
+
+"입력"이 writer 방식에 따라 다르다:
+
+| 방식 | 입력 | 어댑터 |
+|---|---|---|
+| **재생성** | DB 상태 | `chrome-locales`, `json-catalog` |
+| **수술적 치환** | DB 상태 **+ 원본 파일 내용** | `ts-dict` |
+
+수술적 치환은 문자열 값만 바꾸고 나머지 소스를 보존한다. TS 딕셔너리에 재생성을 쓰면 사람이 의미 단위로 넣은 빈 줄(bugshot-2에 120개)과 주석(23개)이 첫 pull에서 사라진다 — JSON에선 한 번의 재정렬이지만 TS에선 **구조 파괴**이고, 번역 도구가 남의 코드를 훼손하는 것으로 읽힌다.
+
+**대가**: `write`가 원본을 필요로 하므로 pull이 blob SHA만이 아니라 **내용**을 받아야 한다 (§3.3). 이득은 정규화 diff가 아예 없다는 것 — 바뀐 줄만 diff에 뜬다.
+
+아래 규칙은 **재생성 방식에만** 적용된다. 수술적 치환은 원본 순서·공백을 보존하므로 정렬·재조립을 하지 않는다.
 
 - 키 정렬: **`<` 비교** (UTF-16 코드 유닛). `localeCompare`는 Node ICU 빌드에 의존해 불변식이 실행 환경에 묶인다
 - 정렬한 순서로 객체를 **재조립**한다 (`JSON.stringify`는 삽입 순서를 따르고, Postgres는 `ORDER BY` 없는 순서를 보장하지 않는다)
@@ -161,12 +176,13 @@ export type Adapter = {
 
 **어댑터 2개가 조사한 4개 리포를 덮는다:**
 
-| 어댑터 | 덮는 리포 | 규모 |
-|---|---|---|
-| `chrome-locales` | bugshot-2 (`public/_locales/`) | 4키 × ko/en/fr |
-| `json-catalog` | bugshot-web (`src/lib/i18n/`, 중첩), skillflo (`src/shared/i18n/locales/`, flat 점 표기) | 102리프 × 2 / **1446키 × 6** |
+| 어댑터 | write | 덮는 리포 | 규모 |
+|---|---|---|---|
+| `chrome-locales` | 재생성 | bugshot-2 (`public/_locales/`) | 4키 × ko/en/fr — 스토어 메타데이터뿐이다 |
+| `json-catalog` | 재생성 | bugshot-web (`src/lib/i18n/`, 중첩), skillflo (`src/shared/i18n/locales/`) | 102리프 × 2 / **1446키 × 6** |
+| `ts-dict` | **수술적 치환** | bugshot-2 (`src/i18n/namespaces/*.ts`) | **903키 × ko/en/fr** |
 
-덮지 못하는 것: bugshot-2의 `src/i18n/namespaces/*.ts` TS 딕셔너리. 리포마다 형태가 달라 어댑터 하나로 안 끝날 위험이 있어 비범위로 둔다 (§10).
+**`ts-dict`를 범위에 넣은 이유**: bugshot-2의 `_locales` 4키는 스토어 메타데이터일 뿐이고 실제 UI 번역은 903키다 — MVP §9가 왕복 검증 대상으로 지정한 리포를 **0.4%로만 검증**하고 있었다. 8파일 구조가 완전히 규칙적이라(`const ko/en/fr` + `as const`/`satisfies Bundle` + `export const <ns> = { ko, en, fr }`, 값이 전부 문자열 리터럴·표현식 0건) 어댑터 하나로 끝난다 — "리포마다 형태가 달라 안 끝난다"던 앞선 판단이 실물 확인 전의 추측이었다.
 
 **어댑터 설정은 아직 DB에 저장하지 않는다.** `detect`가 순수 함수라 CLI가 매번 찾아내고, `Project`에 컬럼으로 굳히는 건 `/api/push`를 만드는 시점(§8-4)이다.
 
@@ -232,6 +248,5 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
-- **두 번째 적재 어댑터** — TS 딕셔너리(bugshot-2의 `src/i18n/namespaces/*.ts`) 같은 비표준 포맷을 지원할지. 포맷이 리포마다 달라 어댑터 하나로 안 끝날 위험이 있어 실제 요구가 생길 때 판단한다
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다
