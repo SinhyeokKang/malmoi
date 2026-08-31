@@ -2,7 +2,11 @@
 // 여기서만 읽는다(CLAUDE.md 코드 컨벤션). 새 변수를 추가하면 .env.example도 같은 커밋에서 갱신한다.
 
 /** 필수 환경변수. 없으면 즉시 던진다 — 조용한 폴백이 설정 누락을 프로덕션까지 데려간다. */
-export function requireEnv(name: string, source: NodeJS.ProcessEnv = process.env): string {
+/** 테스트에서 주입할 수 있도록 맵을 받는다. NodeJS.ProcessEnv를 쓰면 Next 타입이
+ *  NODE_ENV를 필수로 만들어 테스트가 리터럴을 못 넘긴다. */
+type EnvSource = Record<string, string | undefined>;
+
+export function requireEnv(name: string, source: EnvSource = process.env): string {
   const value = source[name];
   if (value === undefined || value === "") {
     throw new Error(`환경변수 ${name}이(가) 없다. .env.example을 참고해 설정한다.`);

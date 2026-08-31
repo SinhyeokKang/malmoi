@@ -18,3 +18,6 @@ coverage/
 
 # 머신별 권한 허용 목록 — 공유할 값이 아니다.
 .claude/settings.local.json
+
+# 폰트 동적 서브셋 — scripts/copy-fonts.mjs 생성물 (3MB, 92파일)
+public/fonts/

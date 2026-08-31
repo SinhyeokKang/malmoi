@@ -59,14 +59,53 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 ## 스택
 
-- Next.js 16 App Router + React 19 + TypeScript 7, Vercel 배포
-- Supabase Postgres + Prisma 7 — **런타임은 pooler(6543, `DATABASE_URL`), 마이그레이션은 direct(5432, `DIRECT_URL`)**. 이 둘을 섞으면 서버리스에서 커넥션이 고갈되거나 DDL이 실패한다
-- Auth.js v5 (`next-auth@beta`) GitHub provider — **로그인·인가 전용**
-- GitHub App installation token — **리포 쓰기 전용**
-- Tailwind CSS + shadcn/ui (편집 UI) — **아직 설치하지 않았다.** 구현 순서 5단계(편집 UI)에서 추가한다
-- Vitest (순수 함수 단위 테스트)
-- 키 추출: `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`)
-- 인증: `next-auth@beta` (Auth.js v5). GitHub API는 `octokit`
+**버전은 2026-08-31 기준으로 실제 설치·빌드 검증된 조합이다.** 임의로 올리지 않는다 — 특히 `next-auth`는 beta라 마이너 변경에 API가 움직인다.
+
+| 영역 | 선택 | 버전 |
+|---|---|---|
+| 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
+| 배포 | Vercel — main 머지가 곧 프로덕션 | — |
+| DB | Supabase Postgres (`i18n-poc`, ref `xgsyyapzkpbdtkrprlmn`) | — |
+| ORM | Prisma — 런타임 pooler(6543, `DATABASE_URL`) / 마이그레이션 세션 모드(5432, `DIRECT_URL`) | `prisma`·`@prisma/client` 7.10.0 |
+| 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
+| 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
+| 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
+| UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`, baseColor `neutral`) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
+| 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
+| 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
+| 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
+| 키 추출 | `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`) | `ts-morph` 28.0.0 |
+| 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
+
+**린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
+
+### 데이터 변경 경로 — 내부는 Server Action, 외부 진입점만 Route Handler
+
+| 경로 | 형태 | 호출자 |
+|---|---|---|
+| 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
+| `/api/push` | Route Handler | GitHub Actions (Bearer `PUSH_TOKEN`) |
+| `/api/pull` | Route Handler | 편집 UI 버튼 + Vercel Cron (`CRON_SECRET`) |
+
+**내부 쓰기에 Route Handler를 새로 만들지 않는다.** 클라이언트 fetch 배선과 중복 스키마가 생기고, `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
+
+### 세션은 JWT — 권한 회수가 최대 24시간 지연된다
+
+`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. org 멤버십은 **최초 로그인 시 1회** 확인해 토큰에 박는다. 따라서 **org에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 사용자 테이블 4개(`User`·`Account`·`Session`·`VerificationToken`)와 요청마다의 DB 왕복이 사라지고 스키마가 4테이블로 유지된다. 즉시 회수가 필요해지면 `@auth/prisma-adapter`로 DB 세션으로 바꾼다 — 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
+
+### 키 리스트는 가상화하지 않는다
+
+네임스페이스 필터로 자르면 한 화면이 보통 수십~수백 행이다. `@tanstack/react-virtual`·`react-table`을 넣지 않고 순수 렌더로 시작한다. **실제로 느려지는 네임스페이스가 관측되면** 그때 대응한다 — 인라인 편집과 가상 스크롤을 섞으면 스크롤 튐·포커스 유실 함정이 붙는다.
+
+### 폰트 — Pretendard 동적 서브셋 (생성물)
+
+단일 `PretendardVariable.woff2`는 **2.0MB**다. 동적 서브셋은 92개 구간으로 쪼개져 있고 브라우저가 `unicode-range`로 필요한 구간만 받으므로 ko/en/fr 혼용 UI에서 실 전송량이 150~450KB 수준이다.
+
+- `scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사한다. `predev`·`prebuild`가 자동 실행한다
+- **`public/fonts/`는 생성물이라 `.gitignore`에 있다** (3.1MB, 92파일)
+- CSS의 `url()`이 `./woff2-dynamic-subset/...` 상대 경로다. **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**
+- `<link>`로 `app/layout.tsx`가 불러온다 — `globals.css`의 `@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다
+- **`.npmrc`의 `enable-pre-post-scripts=true`가 이 자동 실행을 보장한다.** pnpm 버전에 따라 기본값이 달라지고, 안 돌면 에러도 경고도 없이 폰트만 빠진다. 이 파일을 지우지 않는다
 
 **두 GitHub 자격증명을 섞지 않는다.** OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 로그인은 OAuth, 쓰기는 App — 경계를 넘는 코드가 보이면 리뷰에서 막는다.
 
@@ -84,6 +123,8 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 마이그레이션 상태·드리프트 | `pnpm db:status` |
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
+| shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
+| 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
 **린터 없음** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않는다. 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이고, 린터 추가는 요청 없이 하지 않는다.
@@ -97,18 +138,27 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 ## 디렉터리 구조
 
 ```
-app/                    Next.js App Router
+app/
+  layout.tsx            루트 레이아웃 (Pretendard <link>)
+  globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
   (edit)/               편집 UI (인증 필요)
-  api/push/             CI → DB (Bearer PUSH_TOKEN)
-  api/pull/             DB → PR (수동 버튼 + Vercel Cron)
+    actions.ts          Server Action — 번역 저장·pull 트리거
+  api/push/route.ts     CI → DB (Bearer PUSH_TOKEN)
+  api/pull/route.ts     DB → PR (수동 버튼 + Vercel Cron)
+components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
+  utils.ts              cn() — shadcn 표준 헬퍼
   export.ts             DB 상태 → messages.json 문자열 (결정적, 순수)
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App 토큰)
   scan/                 ts-morph 키 추출기 (CI에서 CLI로도 실행)
 prisma/schema.prisma
-scripts/sync-agents.mjs Claude Code 원본 → Codex 미러 생성기
+public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
+scripts/
+  sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
+  copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
+docs/MVP.md             기본 스펙
 docs/ARCHITECTURE.md    설계 상세·함정
 docs/POSTMORTEM.md      회귀·버그 회고 누적
 ```
