@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { namespaceOf, scanSources, type SourceFileInput } from "../index";
+import { DEFAULT_WRAPPER, namespaceOf, scanSources, type SourceFileInput } from "../index";
 
-const ts = (path: string, code: string): SourceFileInput => ({ path, code, kind: "ts" });
+/** 래퍼를 import한 파일. 이 import가 없으면 스캐너는 그 파일의 t()를 건드리지 않는다. */
+const ts = (path: string, code: string): SourceFileInput => ({
+  path,
+  code: `import { t } from "@/i18n";\n${code}`,
+  kind: "ts",
+});
+/** import 없는 파일 — 남의 t()를 가진 리포를 재현한다. */
+const tsNoImport = (path: string, code: string): SourceFileInput => ({ path, code, kind: "ts" });
 const raw = (path: string, code: string): SourceFileInput => ({ path, code, kind: "raw" });
 
 /** 성공을 기대하는 스캔. 에러가 있으면 메시지를 그대로 노출해 실패시킨다. */
@@ -34,7 +41,7 @@ describe("AST 경로 — t(key, source) 추출", () => {
         key: "popup_title",
         sourceText: "Start recording",
         namespace: "popup",
-        refs: [{ path: "src/popup.ts", line: 1 }],
+        refs: [{ path: "src/popup.ts", line: 2 }],
       },
     ]);
   });
@@ -43,8 +50,8 @@ describe("AST 경로 — t(key, source) 추출", () => {
     const keys = ok(
       ts("src/a.ts", ['const x = 1;', '', 't("a_one", "One");', '', 't("a_two", "Two");'].join("\n")),
     );
-    expect(keys.find((k) => k.key === "a_one")?.refs).toEqual([{ path: "src/a.ts", line: 3 }]);
-    expect(keys.find((k) => k.key === "a_two")?.refs).toEqual([{ path: "src/a.ts", line: 5 }]);
+    expect(keys.find((k) => k.key === "a_one")?.refs).toEqual([{ path: "src/a.ts", line: 4 }]);
+    expect(keys.find((k) => k.key === "a_two")?.refs).toEqual([{ path: "src/a.ts", line: 6 }]);
   });
 
   it("같은 키를 여러 곳에서 부르면 refs가 합쳐진다", () => {
@@ -54,8 +61,8 @@ describe("AST 경로 — t(key, source) 추출", () => {
     );
     expect(keys).toHaveLength(1);
     expect(keys[0]?.refs).toEqual([
-      { path: "src/a.ts", line: 1 },
-      { path: "src/b.ts", line: 1 },
+      { path: "src/a.ts", line: 2 },
+      { path: "src/b.ts", line: 2 },
     ]);
   });
 
@@ -107,7 +114,7 @@ describe("에러 — 비리터럴 인자", () => {
   it("템플릿 리터럴 키는 에러다", () => {
     const r = scanSources([ts("src/a.ts", "t(`status_${state}`, \"Pending\");")]);
     expect(r.errors).toHaveLength(1);
-    expect(r.errors[0]).toMatchObject({ path: "src/a.ts", line: 1 });
+    expect(r.errors[0]).toMatchObject({ path: "src/a.ts", line: 2 });
     expect(r.errors[0]?.message).toMatch(/리터럴/);
   });
 
@@ -210,7 +217,7 @@ describe("정규식 경로 — __MSG_key__", () => {
     // refs는 path 기준 정렬이므로 manifest가 먼저다 ("결과 순서" 블록이 이 규칙을 고정한다).
     expect(keys[0]?.refs).toEqual([
       { path: "manifest.config.ts", line: 1 },
-      { path: "src/a.ts", line: 1 },
+      { path: "src/a.ts", line: 2 },
     ]);
   });
 
@@ -234,6 +241,91 @@ describe("정규식 경로 — __MSG_key__", () => {
       ts("src/a.ts", ['t("a_x", "A");', 't("b_y", "B");'].join("\n")),
     );
     expect(keys.find((k) => k.key === "b_y")?.refs).toContainEqual({ path: "m.html", line: 3 });
+  });
+});
+
+describe("회귀 — 남의 t()를 우리 것으로 착각하지 않는다", () => {
+  // bugshot-2에는 이미 t(key, params?)가 있다. 이름만으로 매칭하면 기존 호출 1391건이
+  // 전부 "인자 부족" 오탐이 된다 — 실전 스캔에서 발견됐다.
+  it("래퍼를 import하지 않은 파일의 t()는 무시한다", () => {
+    const r = scanSources([
+      tsNoImport("src/other.ts", 't("common.ok");'),
+      tsNoImport("src/more.ts", 't("x", someParams);'),
+    ]);
+    expect(r.keys).toEqual([]);
+    expect(r.errors).toEqual([]);
+  });
+
+  it("다른 모듈에서 온 t()도 무시한다", () => {
+    const r = scanSources([
+      tsNoImport("src/o.ts", 'import { t } from "./their-i18n";\nt("common.ok");'),
+    ]);
+    expect(r.keys).toEqual([]);
+    expect(r.errors).toEqual([]);
+  });
+
+  it("래퍼를 import한 파일만 검사한다 (한 리포에 둘이 공존해도)", () => {
+    const keys = ok(
+      tsNoImport("src/their.ts", 't("their.key");'),
+      ts("src/ours.ts", 't("our_key", "Ours");'),
+    );
+    expect(keys.map((k) => k.key)).toEqual(["our_key"]);
+  });
+
+  it("별칭 import도 따라간다", () => {
+    const keys = ok({
+      path: "src/a.ts",
+      code: 'import { t as translate } from "@/i18n";\ntranslate("aliased_key", "Aliased");',
+      kind: "ts",
+    });
+    expect(keys.map((k) => k.key)).toEqual(["aliased_key"]);
+  });
+});
+
+describe("회귀 — 래퍼 식별자는 설정 가능하다", () => {
+  // 기본값(@/i18n#t)이 하필 bugshot-2의 기존 래퍼와 같아서, 하드코딩으로는 그 리포를
+  // 스캔할 수 없었다 — 41개 파일이 같은 경로에서 t를 import한다.
+  it("다른 모듈·다른 export 이름을 지정할 수 있다", () => {
+    const r = scanSources(
+      [{ path: "src/a.ts", code: 'import { tx } from "@/l10n";\ntx("custom_key", "V");', kind: "ts" }],
+      { module: "@/l10n", export: "tx" },
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.keys.map((k) => k.key)).toEqual(["custom_key"]);
+  });
+
+  it("지정한 래퍼가 아닌 호출은 그대로 무시한다", () => {
+    const r = scanSources(
+      [{ path: "src/a.ts", code: 'import { t } from "@/i18n";\nt("theirs");', kind: "ts" }],
+      { module: "@/l10n", export: "tx" },
+    );
+    expect(r.keys).toEqual([]);
+    expect(r.errors).toEqual([]);
+  });
+
+  it("기본값은 @/i18n#t다", () => {
+    expect(DEFAULT_WRAPPER).toEqual({ module: "@/i18n", export: "t" });
+  });
+});
+
+describe("회귀 — .ts 파일의 __MSG_ 토큰도 수집한다", () => {
+  // manifest.config.ts에 __MSG_ 토큰 5개가 있는데 .ts라서 AST 경로로만 갔고,
+  // 문자열 리터럴 안이라 AST가 무시해 전부 누락됐다 — 실전 스캔에서 발견됐다.
+  it("kind가 ts여도 __MSG_ 토큰을 훑는다", () => {
+    const keys = ok(
+      tsNoImport("manifest.config.ts", 'export default { name: "__MSG_ext_name__" };'),
+      ts("src/a.ts", 't("ext_name", "BugShot");'),
+    );
+    expect(keys[0]?.refs).toEqual([
+      { path: "manifest.config.ts", line: 1 },
+      { path: "src/a.ts", line: 2 },
+    ]);
+  });
+
+  it("래퍼 import가 없는 .ts에서도 토큰은 수집한다 (두 경로가 독립이다)", () => {
+    const r = scanSources([tsNoImport("manifest.config.ts", '"__MSG_orphan_tok__"')]);
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0]?.message).toMatch(/원문/);
   });
 });
 

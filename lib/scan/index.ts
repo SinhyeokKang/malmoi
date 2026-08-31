@@ -1,7 +1,13 @@
 import { extractCalls } from "./ast";
-import type { KeyRef, RawCall, ScanError, ScanResult, ScannedKey, SourceFileInput } from "./types";
+import type { KeyRef, RawCall, ScanError, ScanResult, ScannedKey, SourceFileInput, WrapperId } from "./types";
 
-export type { KeyRef, ScanError, ScanResult, ScannedKey, SourceFileInput } from "./types";
+export type { KeyRef, ScanError, ScanResult, ScannedKey, SourceFileInput, WrapperId } from "./types";
+
+/**
+ * 래퍼 식별자 기본값. **대상 리포가 이걸 쓴다고 가정할 수 없다** — bugshot-2의 기존 래퍼가
+ * 하필 이 값과 같아서 실전 스캔이 오탐 1391건을 냈다. CLI의 `--wrapper` 로 덮는다.
+ */
+export const DEFAULT_WRAPPER: WrapperId = { module: "@/i18n", export: "t" };
 
 /**
  * `chrome.i18n`이 허용하는 메시지 이름. 이 밖의 문자가 들어가면 크롬이 그 메시지를 **조용히
@@ -32,7 +38,10 @@ export function namespaceOf(key: string): string {
  * **I/O가 없다** — 호출부가 파일을 읽어 넘긴다. 그래서 테스트가 가상 소스로 자기완결하고,
  * CLI만 파일시스템을 안다.
  */
-export function scanSources(files: readonly SourceFileInput[]): ScanResult {
+export function scanSources(
+  files: readonly SourceFileInput[],
+  wrapper: WrapperId = DEFAULT_WRAPPER,
+): ScanResult {
   const errors: ScanError[] = [];
   const calls: RawCall[] = [];
   const whitelisted = new Set<string>();
@@ -41,12 +50,14 @@ export function scanSources(files: readonly SourceFileInput[]): ScanResult {
 
   for (const file of files) {
     if (file.kind === "ts") {
-      const r = extractCalls(file.path, file.code);
+      const r = extractCalls(file.path, file.code, wrapper);
       calls.push(...r.calls);
       for (const key of r.whitelisted) whitelisted.add(key);
       errors.push(...r.errors);
-      continue;
     }
+    // **두 경로는 독립이다 — kind와 무관하게 토큰을 훑는다.**
+    // manifest.config.ts는 .ts인데 `__MSG_ext_name__`을 문자열 리터럴로 담고 있어서,
+    // AST 경로에만 보내면 AST가 문자열이라 무시하고 토큰이 전부 누락된다(실전 스캔에서 발견).
     for (const [line, text] of file.code.split("\n").entries()) {
       for (const m of text.matchAll(MSG_TOKEN)) {
         const key = m[1];

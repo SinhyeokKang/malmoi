@@ -1,3 +1,12 @@
+/**
+ * 래퍼 식별자 — `import { <export> } from "<module>"`.
+ * 대상 리포마다 다를 수 있고, 잘못 잡으면 남의 함수를 우리 것으로 착각한다.
+ */
+export type WrapperId = {
+  module: string;
+  export: string;
+};
+
 /** 스캔 입력. `ts`는 AST 경로, `raw`는 `__MSG_key__` 정규식 경로다. */
 export type SourceFileInput = {
   path: string;
