@@ -4,6 +4,7 @@ import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { applyPush } from "@/lib/push/apply";
 import { checkBearer, statusFor } from "@/lib/push/auth";
+import { checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 
 /**
@@ -37,11 +38,39 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const prisma = getPrisma();
   const slug = requireEnv("ACTIVE_PROJECT_SLUG");
-  const project = await prisma.project.findUnique({ where: { slug }, select: { id: true } });
+
+  // 오배송 거부 — DB를 조회하기 전에 본다. 대상이 틀렸으면 찾아볼 프로젝트도 아니다.
+  const routing = checkProjectSlug(parsed.data.projectSlug, slug);
+  if (routing !== "ok") {
+    // slug는 비밀이 아니라 라우팅 정보다 — CI 로그에서 진단하려면 둘 다 보여야 한다.
+    return NextResponse.json(
+      { error: "project mismatch", expected: slug, got: parsed.data.projectSlug },
+      { status: guardStatus(routing) },
+    );
+  }
+
+  const prisma = getPrisma();
+  const project = await prisma.project.findUnique({
+    where: { slug },
+    select: { id: true, lastCommitAt: true },
+  });
   if (!project) {
     return NextResponse.json({ error: `project '${slug}' not found` }, { status: 404 });
+  }
+
+  // 역행 거부 — 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는 것을 막는다 (ARCHITECTURE §5.5.5).
+  const commitAt = new Date(parsed.data.commitAt);
+  const order = checkCommitOrder(commitAt, project.lastCommitAt);
+  if (order !== "ok") {
+    return NextResponse.json(
+      {
+        error: "stale commit",
+        commitAt: parsed.data.commitAt,
+        lastCommitAt: project.lastCommitAt?.toISOString() ?? null,
+      },
+      { status: guardStatus(order) },
+    );
   }
 
   const outcome = await applyPush(prisma, project.id, parsed.data);

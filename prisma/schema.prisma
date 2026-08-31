@@ -46,6 +46,11 @@ model Project {
   /// `KeyRef`가 push마다 전체 교체되므로 프로젝트당 값 하나로 충분하다 — ref마다 들 필요가 없다.
   lastCommitSha String?
 
+  /// 마지막 push의 **커밋 시각**. 다음 push가 이보다 과거면 409로 거부한다 (ARCHITECTURE §5.5.5).
+  /// strict라 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는데 복구 경로가 없다.
+  /// SHA로는 순서를 알 수 없어 시각을 따로 든다.
+  lastCommitAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

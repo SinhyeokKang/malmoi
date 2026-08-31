@@ -37,8 +37,18 @@ const IncomingKey = z.object({
 
 export const PushPayload = z
   .object({
+    /**
+     * 대상 프로젝트. **서버의 `ACTIVE_PROJECT_SLUG`와 대조해 다르면 409다** (ARCHITECTURE §5.5.5).
+     * 대상 지정을 서버 env에만 맡기면 리포가 둘 붙는 순간 오배송을 잡을 방법이 없다.
+     */
+    projectSlug: z.string().min(1),
     // 40자 hex — permalink 기준이라 형태가 틀리면 링크가 전부 깨진다.
     commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha는 40자 소문자 hex여야 한다"),
+    /**
+     * 커밋 시각 (`git show -s --format=%cI`). **역행하면 409다** — strict라 오래된 run의
+     * Re-run이 DB를 그 시점으로 되돌린다. offset이 붙은 ISO 8601만 받는다.
+     */
+    commitAt: z.iso.datetime({ offset: true }),
     format: Format,
     locales: z.array(z.string().min(1)).min(1),
     // **키 0개를 거부한다.** 스캔이 조용히 아무것도 못 찾은 경우 전 프로젝트가 orphan된다.

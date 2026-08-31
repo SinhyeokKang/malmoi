@@ -14,6 +14,8 @@ import { join, relative, sep } from "node:path";
 import { config } from "dotenv";
 
 import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
+import { requireEnv } from "../lib/env";
+import type { PushPayloadType } from "../lib/push/plan";
 import { DEFAULT_WRAPPER, scanSources, type SourceFileInput, type WrapperId } from "../lib/scan/index";
 
 config({ path: ".env.local", quiet: true });
@@ -55,7 +57,7 @@ function parseWrapper(raw: string): WrapperId {
 
 const target = process.argv.slice(2).find((a) => !a.startsWith("--"));
 if (!target) {
-  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>]");
+  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>] [--adapter <name>] [--project <slug>]");
   process.exit(2);
 }
 const baseUrl = arg("url", "http://localhost:3000");
@@ -63,6 +65,11 @@ const wrapper = parseWrapper(arg("wrapper", `${DEFAULT_WRAPPER.module}#${DEFAULT
 
 // 커밋 SHA는 대상 리포에서 읽는다 — permalink 기준이라 실제 값이어야 한다.
 const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+// 커밋 **시각**은 역행 판정의 근거다 (ARCHITECTURE §5.5.5). `%cI`가 offset이 붙은 ISO 8601이다.
+const commitAt = execFileSync("git", ["-C", target, "show", "-s", "--format=%cI", "HEAD"], { encoding: "utf8" }).trim();
+// 서버와 같은 `.env.local`을 읽으므로 기본값은 항상 통과한다. `--project`로 덮으면
+// 오배송 거부(409)를 로컬에서 실제로 확인할 수 있다.
+const projectSlug = arg("project", requireEnv("ACTIVE_PROJECT_SLUG"));
 
 const paths: string[] = [];
 const sources: SourceFileInput[] = [];
@@ -133,8 +140,12 @@ const refs = scan.refs
 // 로케일 파일에 없는 키를 코드가 참조하는 것도 경고다 (MVP §3.1 5단계).
 const unknownRefs = scan.refs.filter((r) => !keySet.has(r.key)).length;
 
-const payload = {
+// ⚠️ **타입을 붙여둔다.** 예전엔 리터럴이라 `PushPayload`에 필수 필드가 늘어도 컴파일러가
+// 침묵했고, 이 스크립트만 400을 받는 상태로 남았다 (§4b에서 실제로 밟았다).
+const payload: PushPayloadType = {
+  projectSlug,
   commitSha,
+  commitAt,
   format: {
     adapter: format.adapter,
     pathTemplate: format.pathTemplate,

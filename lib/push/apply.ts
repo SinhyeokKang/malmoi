@@ -178,6 +178,8 @@ export async function applyPush(
         nested: payload.format.nested,
         baseLocale: payload.format.baseLocale,
         lastCommitSha: payload.commitSha,
+        // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
+        lastCommitAt: new Date(payload.commitAt),
       },
     }),
   ];
