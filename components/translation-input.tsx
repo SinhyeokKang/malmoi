@@ -1,0 +1,83 @@
+"use client";
+
+import { useState, useTransition } from "react";
+
+import { saveTranslation } from "@/app/(edit)/actions";
+import { cn } from "@/lib/utils";
+
+/**
+ * 번역 입력 — blur 시 저장 (MVP §3.2).
+ *
+ * **클라이언트 컴포넌트다.** 이 파일이 서버 컴포넌트 그래프에 잘못 들어가면 `tsc`는 통과하고
+ * `next build`만 잡는다 — 그래서 `/push` 1단계에 빌드 게이트가 있다.
+ *
+ * 낙관적 갱신을 쓰지 않는다: 저장 실패를 되돌리는 처리가 붙고, MVP §5가 그 복잡도를
+ * 명시적으로 뺐다. 대신 저장 중 상태와 실패 메시지를 보여준다.
+ */
+export function TranslationInput({
+  keyId,
+  localeCode,
+  initialValue,
+  disabled,
+}: {
+  keyId: string;
+  localeCode: string;
+  initialValue: string;
+  /** orphaned 키는 편집하지 않는다 — 코드에서 사라진 키다. */
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState(initialValue);
+  const [saved, setSaved] = useState(initialValue);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function commit() {
+    // 값이 안 바뀌면 서버를 부르지 않는다 — planSave도 noop을 내지만 왕복 자체를 아낀다.
+    if (value === saved) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await saveTranslation({ keyId, localeCode, value });
+      if (result.ok) {
+        // 서버가 정규화한 값(공백만 → 빈 문자열)을 받아 화면을 맞춘다.
+        setValue(result.value);
+        setSaved(result.value);
+      } else {
+        setError(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-1">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") setValue(saved);
+        }}
+        disabled={disabled || pending}
+        placeholder={disabled ? "orphaned — 편집하지 않는다" : "번역 입력"}
+        className={cn(
+          "border-input bg-background focus-visible:ring-ring w-full rounded-md border px-3 py-1.5 text-sm",
+          "focus-visible:ring-[3px] focus-visible:outline-none",
+          "disabled:text-muted-foreground disabled:cursor-not-allowed",
+          error && "border-destructive",
+        )}
+      />
+      {/* 상태는 한 줄만 차지한다 — 행이 흔들리면 리스트가 읽기 어려워진다 */}
+      {(pending || error || value !== saved) && (
+        <div className="text-xs">
+          {error ? (
+            <span className="text-destructive">저장 실패: {error}</span>
+          ) : pending ? (
+            <span className="text-muted-foreground">저장 중…</span>
+          ) : (
+            <span className="text-muted-foreground">저장되지 않음 (포커스를 벗어나면 저장)</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

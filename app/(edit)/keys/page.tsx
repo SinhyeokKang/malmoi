@@ -4,11 +4,13 @@ import { requireEnv } from "@/lib/env";
 import { loadKeys, loadProject } from "@/lib/keys/query";
 import { buildPermalink, namespaceCounts, translationState } from "@/lib/keys/view";
 import { cn } from "@/lib/utils";
+import { TranslationInput } from "@/components/translation-input";
 
 /**
  * 키 리스트 — 네임스페이스 사이드바 + 키 행.
  *
- * **읽기만 한다.** 인라인 편집·저장은 다음 커밋 경계다 (TASKS §5: auth / UI 골격 / 편집·저장 / 필터).
+ * 인라인 편집은 `TranslationInput`(클라이언트 컴포넌트)이 맡고, 저장은 `actions.ts`의
+ * Server Action 하나뿐이다 — **MVP의 유일한 사용자 mutation** (MVP §3.2).
  * 시각 규칙은 docs/DESIGN.md — 특히 §4.1(키는 mono)·§6.2(배지 3종)·§2.2(muted 표면 대비).
  */
 
@@ -126,16 +128,15 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
                 {row.description && (
                   <div className="text-muted-foreground text-xs">{row.description}</div>
                 )}
-                <div className="text-sm">
-                  {row.value === null || row.value === "" ? (
-                    <span className="text-muted-foreground text-xs">(미번역)</span>
-                  ) : (
-                    row.value
-                  )}
-                  {row.updatedBy && (
-                    <span className="text-muted-foreground ml-2 text-xs">— {row.updatedBy}</span>
-                  )}
-                </div>
+                <TranslationInput
+                  keyId={row.id}
+                  localeCode={active.code}
+                  initialValue={row.value ?? ""}
+                  disabled={row.orphaned}
+                />
+                {row.updatedBy && (
+                  <div className="text-muted-foreground text-xs">— {row.updatedBy}</div>
+                )}
               </li>
             );
           })}
