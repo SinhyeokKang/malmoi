@@ -82,17 +82,45 @@ git status --porcelain prisma/
 
 ### 4. 마이그레이션 생성
 
-DB가 비어 있으면:
+이름은 무엇을 하는지 드러나게 (`add_orphaned_to_string_key`, `backfill_namespace`).
+
+**4a. 기본 경로 — additive 변경**
+
 ```
 pnpm db:migrate --name <snake_case_이름>
 ```
 
-**번역 데이터가 있으면 반드시 `--create-only`** (위 dev==prod 경고):
+**4b. 번역 데이터가 있으면 `--create-only`** (위 dev==prod 경고). 백필 SQL을 손으로 넣어야 할 때도 이 경로다:
+
 ```
 pnpm db:migrate --create-only --name <snake_case_이름>
 ```
 
-이름은 무엇을 하는지 드러나게 (`add_orphaned_to_string_key`, `backfill_namespace`). `--create-only`가 필요한 경우(백필 SQL을 손으로 넣어야 할 때)는 그렇게 하고 SQL을 직접 작성한다.
+**4c. ⚠️ `migrate dev`가 거부하면 — destructive 변경의 우회 경로**
+
+`migrate dev`는 destructive 변경(컬럼 삭제, PK 변경, unique 추가 등)을 감지하면 **대화형 확인을 요구하고, 이 환경에서는 확인을 줄 수 없어 그냥 실패한다:**
+
+```
+Error: Prisma Migrate has detected that the environment is non-interactive, which is not supported.
+```
+
+**`--create-only`로도 벗어나지 못한다** — 확인 프롬프트가 생성 단계에 있다. 이때는 `migrate diff`로 SQL을 만들어 마이그레이션 폴더에 직접 넣고 `db:deploy`로 적용한다:
+
+```bash
+TS=$(date -u +%Y%m%d%H%M%S)
+DIR="prisma/migrations/${TS}_<snake_case_이름>"
+mkdir -p "$DIR"
+npx prisma migrate diff \
+  --from-config-datasource \
+  --to-schema prisma/schema.prisma \
+  --script > "$DIR/migration.sql"
+```
+
+- `--from-config-datasource`는 **살아 있는 DB의 현재 상태**를 기준으로 삼는다. `--from-migrations`는 shadow DB를 요구하므로 쓰지 않는다.
+- 타임스탬프 형식(`YYYYMMDDHHMMSS`)을 Prisma 관례와 맞춰야 순서가 맞는다. **UTC로** 만든다(`date -u`).
+- 출력에 `Loaded Prisma config from...` 같은 로그가 섞이면 SQL이 깨진다. 파일을 열어 **첫 줄이 SQL인지 확인**한다.
+- 적용은 `pnpm db:deploy`다. `db:migrate`를 다시 부르면 같은 프롬프트에 또 걸린다.
+- **이 경로는 Prisma의 안전장치를 우회하는 것이다.** 그래서 5단계 SQL 검토가 선택이 아니라 필수고, destructive 판정(2단계)과 dev==prod 경고를 이미 통과했다는 전제가 있어야 한다. 데이터가 있는 DB에서 이 경로를 쓸 때는 SQL을 읽은 결과를 사용자에게 보여주고 확인받는다.
 
 ### 5. 검증
 
