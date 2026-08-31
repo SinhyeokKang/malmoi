@@ -174,9 +174,9 @@ describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키�
     expect(PushPayload.safeParse(bad).success).toBe(false);
   });
 
-  it("pathTemplate에 {locale}이 없으면 거부한다", () => {
-    const bad = { ...valid, format: { ...valid.format, pathTemplate: "i18n/en.json" } };
-    expect(PushPayload.safeParse(bad).success).toBe(false);
+  it("pathTemplate이 글롭이어도 통과시킨다 — multi-locale 어댑터는 {locale}을 쓰지 않는다", () => {
+    const glob = { ...valid, format: { ...valid.format, adapter: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts" } };
+    expect(PushPayload.safeParse(glob).success).toBe(true);
   });
 
   it("키가 0개면 거부한다 — 실수로 전부 orphan시키는 것을 막는다", () => {

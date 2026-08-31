@@ -125,4 +125,4 @@ export function localeFromPath(pathTemplate: string, path: string): string | und
 
 type AdapterFileLike = { path: string; content: string };
 
-export const chromeLocales: Adapter = { name: "chrome-locales", detect, read, write };
+export const chromeLocales: Adapter = { name: "chrome-locales", layout: "per-locale", detect, read, write };

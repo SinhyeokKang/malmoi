@@ -28,8 +28,8 @@ export type PushOutcome = {
   staleTranslations: number;
   refs: number;
   /**
-   * **실제로 삽입된** 번역 행 수. 후보 수가 아니다 — `ON CONFLICT DO NOTHING`이라
-   * 재전송에서는 0이어야 하고, 후보 수를 보고하면 CI 로그가 매번 거짓을 말한다.
+   * 리포 값으로 갱신된 번역 행 수. strict 정책이라 재전송에서도 전 행이 갱신된다
+   * (`DO UPDATE`) — 후보 수가 아니라 실제 영향 행수를 보고한다.
    */
   translationsFilled: number;
 };
@@ -138,7 +138,10 @@ export async function applyPush(
     .filter((r): r is typeof r & { keyId: string } => r.keyId !== undefined);
 
   const second = [
-    // **insert-if-absent.** 기존 행은 손대지 않는다 — DB가 번역의 진실이다 (MVP §3.1).
+    // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (MVP §3.1) — 변경 감지도 병합도 없다.
+    // ⚠️ 대가: 번역자가 편집한 뒤 pull이 돌기 전에 push가 오면 그 편집이 사라진다.
+    //    pull 주기가 곧 데이터 손실 창이다. 스펙에 감수하는 대가로 명시돼 있다.
+    // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
     ...(translations.length === 0 ? [] : [prisma.$executeRaw`
       INSERT INTO "Translation" ("id", "projectId", "keyId", "localeCode", "value", "needsReview", "updatedAt")
       SELECT * FROM unnest(
@@ -150,7 +153,9 @@ export async function applyPush(
         ${translations.map(() => false)}::boolean[],
         ${translations.map(() => new Date())}::timestamp[]
       )
-      ON CONFLICT ("keyId", "localeCode") DO NOTHING`]),
+      ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
+        "value" = EXCLUDED."value",
+        "updatedAt" = now()`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
     prisma.$executeRaw`

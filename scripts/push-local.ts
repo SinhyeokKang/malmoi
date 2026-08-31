@@ -13,7 +13,7 @@ import { join, relative, sep } from "node:path";
 
 import { config } from "dotenv";
 
-import { adapterFor, detectFormat, namespaceOf, type AdapterFile } from "../lib/adapters/index";
+import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
 import { DEFAULT_WRAPPER, scanSources, type SourceFileInput, type WrapperId } from "../lib/scan/index";
 
 config({ path: ".env.local", quiet: true });
@@ -77,16 +77,38 @@ const probe = (p: string): string | undefined => {
 };
 
 // ── 적재 (키의 진실) ────────────────────────────────────────────────────────
-const format = detectFormat(paths, probe);
+// ⚠️ 한 리포에 포맷이 둘일 수 있다 — bugshot-2는 _locales(4키)와 ts-dict(903키)가 공존하고
+// 탐지 우선순위가 작은 쪽을 고른다. `--adapter <name>`으로 지정하면 그게 이긴다.
+const adapterArg = process.argv.indexOf("--adapter");
+const adapterName = adapterArg === -1 ? undefined : process.argv[adapterArg + 1];
+const format = adapterName === undefined
+  ? detectFormat(paths, probe)
+  : detectFormatWith(adapterName as never, paths, probe);
+if (adapterName !== undefined && !format) {
+  console.error(`--adapter ${adapterName}: 이 리포에서 해당 포맷을 찾지 못했다.`);
+  process.exit(1);
+}
 if (!format) {
   console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일) — 연동 불가.`);
   process.exit(1);
 }
 const adapter = adapterFor(format);
-const files: AdapterFile[] = format.locales
-  .map((l) => format.pathTemplate.replace("{locale}", l))
-  .filter((p) => paths.includes(p))
-  .map((p) => ({ path: p, content: probe(p) ?? "" }));
+
+// ⚠️ 파일 수집이 layout에 따라 갈린다 (lib/adapters/types.ts).
+//   per-locale  — 로케일당 파일 하나: pathTemplate의 {locale}을 치환한다
+//   multi-locale — 한 파일에 로케일 여러 개: 글롭이므로 디렉터리의 파일을 전부 넘긴다
+const files: AdapterFile[] =
+  adapter.layout === "per-locale"
+    ? format.locales
+        .map((l) => format.pathTemplate.replace("{locale}", l))
+        .filter((p) => paths.includes(p))
+        .map((p) => ({ path: p, content: probe(p) ?? "" }))
+    : (() => {
+        const dir = format.pathTemplate.slice(0, format.pathTemplate.lastIndexOf("/") + 1);
+        return paths
+          .filter((p) => p.startsWith(dir) && /\.tsx?$/.test(p) && !p.includes("/__tests__/"))
+          .map((p) => ({ path: p, content: probe(p) ?? "" }));
+      })();
 
 const read = adapter.read(format, files);
 if (read.errors.length) {
@@ -126,9 +148,10 @@ const payload = {
     namespace: namespaceOf(e.key),
     ...(e.description === undefined ? {} : { description: e.description }),
   })),
-  // 리포 파일의 번역값 — 없을 때만 채워진다 (서버가 DO NOTHING).
+  // 리포 파일의 번역값 — 서버가 strict로 덮는다 (MVP §3.1).
+  // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다 (§3.2).
   translations: read.locales.flatMap((l) =>
-    l.locale === baseLocale ? [] : l.entries.map((e) => ({ locale: l.locale, key: e.key, value: e.message })),
+    l.entries.map((e) => ({ locale: l.locale, key: e.key, value: e.message })),
   ),
   refs,
 };

@@ -78,6 +78,16 @@ export type WriteInput = {
 
 export type Adapter = {
   name: AdapterName;
+
+  /**
+   * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
+   *
+   * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
+   *   (`chrome-locales`, `json-catalog`).
+   * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
+   *   (`ts-dict`). write도 파일별로 불러야 한다.
+   */
+  layout: "per-locale" | "multi-locale";
   /**
    * 리포 파일 경로 목록에서 이 포맷을 찾는다. 못 찾으면 undefined.
    *

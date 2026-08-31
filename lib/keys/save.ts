@@ -25,9 +25,9 @@ export type SavePlan = { action: "noop" } | { action: "upsert"; value: string };
  * @param current DB의 현재 값. 행이 없으면 `null`.
  * @param next 사용자가 입력한 값.
  *
- * **`delete`를 만들지 않는다.** push가 `INSERT ... ON CONFLICT DO NOTHING`이라 행이 사라지면
- * 다음 push가 리포 파일의 값으로 **되살린다** — 번역자가 지운 것이 무음으로 되돌아간다.
- * 빈 문자열로 남기면 행이 존재해 DO NOTHING이 건드리지 않는다.
+ * **`delete`를 만들지 않는다.** 행이 사라지면 export에서 그 키가 빠지고, pull이 리포 파일에서
+ * 키를 지운다 — 코드가 참조하는 키가 사라져 런타임에 깨진다. 빈 문자열은 "번역 없음"을
+ * 표현하면서 키를 남긴다.
  */
 export function planSave(current: string | null, next: string): SavePlan {
   // 공백만 입력은 미번역 의도다. 단 값 안의 앞뒤 공백은 보존한다 —

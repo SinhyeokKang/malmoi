@@ -162,4 +162,4 @@ function sortedByKey(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-export const jsonCatalog: Adapter = { name: "json-catalog", detect, read, write };
+export const jsonCatalog: Adapter = { name: "json-catalog", layout: "per-locale", detect, read, write };

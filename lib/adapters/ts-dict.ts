@@ -169,4 +169,4 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   return changed ? sf.getFullText() : file.content;
 }
 
-export const tsDict: Adapter = { name: "ts-dict", detect, read, write };
+export const tsDict: Adapter = { name: "ts-dict", layout: "multi-locale", detect, read, write };

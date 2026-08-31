@@ -9,7 +9,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-import { adapterFor, detectFormat, namespaceOf, type AdapterFile } from "../lib/adapters/index";
+import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
 import { blobSha } from "../lib/githash";
 
 /** 키 순서를 무시하고 내용만 비교하기 위한 정규화. */
@@ -62,17 +62,39 @@ const probe = (p: string): string | undefined => {
     return undefined;
   }
 };
-const format = detectFormat(paths, probe);
+// ⚠️ 한 리포에 포맷이 둘일 수 있다 — bugshot-2는 _locales(4키)와 ts-dict(903키)가 공존하고
+// 탐지 우선순위가 작은 쪽을 고른다. `--adapter <name>`으로 지정하면 그게 이긴다.
+const adapterArg = process.argv.indexOf("--adapter");
+const adapterName = adapterArg === -1 ? undefined : process.argv[adapterArg + 1];
+const format = adapterName === undefined
+  ? detectFormat(paths, probe)
+  : detectFormatWith(adapterName as never, paths, probe);
+if (adapterName !== undefined && !format) {
+  console.error(`--adapter ${adapterName}: 이 리포에서 해당 포맷을 찾지 못했다.`);
+  process.exit(1);
+}
 if (!format) {
   console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일 훑음) — 연동 불가.`);
   process.exit(1);
 }
 
 const adapter = adapterFor(format);
-const files: AdapterFile[] = format.locales
-  .map((locale) => format.pathTemplate.replace("{locale}", locale))
-  .filter((p) => paths.includes(p))
-  .map((p) => ({ path: p, content: readFileSync(join(target, p), "utf8") }));
+
+// ⚠️ 파일 수집이 layout에 따라 갈린다 (lib/adapters/types.ts).
+//   per-locale  — 로케일당 파일 하나: pathTemplate의 {locale}을 치환한다
+//   multi-locale — 한 파일에 로케일 여러 개: 글롭이므로 디렉터리의 파일을 전부 넘긴다
+const files: AdapterFile[] =
+  adapter.layout === "per-locale"
+    ? format.locales
+        .map((l) => format.pathTemplate.replace("{locale}", l))
+        .filter((p) => paths.includes(p))
+        .map((p) => ({ path: p, content: probe(p) ?? "" }))
+    : (() => {
+        const dir = format.pathTemplate.slice(0, format.pathTemplate.lastIndexOf("/") + 1);
+        return paths
+          .filter((p) => p.startsWith(dir) && /\.tsx?$/.test(p) && !p.includes("/__tests__/"))
+          .map((p) => ({ path: p, content: probe(p) ?? "" }));
+      })();
 
 const result = adapter.read(format, files);
 // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어준다.

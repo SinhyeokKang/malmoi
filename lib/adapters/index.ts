@@ -1,7 +1,7 @@
 import { chromeLocales } from "./chrome-locales";
 import { jsonCatalog } from "./json-catalog";
 import { tsDict } from "./ts-dict";
-import type { Adapter, DetectedFormat, FileProbe } from "./types";
+import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "./types";
 
 export { chromeLocales } from "./chrome-locales";
 export { jsonCatalog } from "./json-catalog";
@@ -16,6 +16,21 @@ export * from "./types";
  * 크롬이 읽는 건 `_locales`뿐이다.
  */
 export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, tsDict];
+
+/**
+ * ⚠️ **한 리포에 로케일 포맷이 둘 이상일 수 있다.** bugshot-2가 그렇다 — `_locales`(4키,
+ * manifest·스토어 메타데이터)와 `ts-dict`(903키, 앱 UI)가 공존한다. 위 우선순위는 기본값일
+ * 뿐이고 규모가 큰 쪽을 놓칠 수 있으므로 **명시 지정이 이긴다**(`--adapter`, `Project.adapterName`).
+ *
+ * 두 표면을 동시에 다루는 것은 비범위다 (MVP §10).
+ */
+export function detectFormatWith(
+  name: AdapterName,
+  paths: readonly string[],
+  probe?: FileProbe,
+): DetectedFormat | undefined {
+  return ADAPTERS.find((a) => a.name === name)?.detect(paths, probe);
+}
 
 /** 리포 파일 경로 목록에서 로케일 포맷을 찾는다. 못 찾으면 undefined — 연동 불가다. */
 export function detectFormat(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {

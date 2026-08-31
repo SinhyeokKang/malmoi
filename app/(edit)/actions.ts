@@ -42,13 +42,13 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   });
   if (!key) return { ok: false, error: "key not found in this project" };
 
-  // 로케일도 같은 프로젝트 것이어야 한다. base 로케일은 원문 자체라 편집 대상이 아니다.
+  // 로케일도 같은 프로젝트 것이어야 한다.
+  // base 로케일도 편집 대상이다 — 고정된 것은 키뿐이다 (MVP §3.2).
   const locale = await prisma.locale.findUnique({
     where: { projectId_code: { projectId: project.id, code: localeCode } },
-    select: { isBase: true },
+    select: { code: true },
   });
   if (!locale) return { ok: false, error: "locale not found in this project" };
-  if (locale.isBase) return { ok: false, error: "base locale is not editable" };
 
   // 4) 판정 — 순수 함수가 한다.
   const existing = await prisma.translation.findUnique({

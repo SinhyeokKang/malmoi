@@ -19,10 +19,11 @@ const ADAPTER_NAMES = ADAPTERS.map((a) => a.name);
 
 const Format = z.object({
   adapter: z.enum(ADAPTER_NAMES as [string, ...string[]]),
-  // `{locale}` 없이는 로케일별 경로를 만들 수 없다.
-  pathTemplate: z.string().min(1).refine((v) => v.includes("{locale}"), {
-    message: "pathTemplate에 {locale}이 없다",
-  }),
+  /**
+   * per-locale 어댑터는 `{locale}`을 치환해 경로를 만들고, multi-locale 어댑터(`ts-dict`)는
+   * 한 파일에 로케일이 여러 개라 글롭이다 — 그래서 `{locale}`을 요구하지 않는다.
+   */
+  pathTemplate: z.string().min(1),
   nested: z.boolean(),
   baseLocale: z.string().min(1),
 });
