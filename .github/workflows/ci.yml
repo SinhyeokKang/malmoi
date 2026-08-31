@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Prisma 클라이언트는 gitignore된 생성물이라 typecheck 전에 만들어야 한다.
+      # DB 연결은 하지 않는다 — generate는 schema.prisma만 읽는다.
+      - name: prisma generate
+        run: pnpm db:generate
+        if: hashFiles('prisma/schema.prisma') != ''
+
+      - run: pnpm typecheck
+
+      - run: pnpm test
+
+      # 미러는 CLAUDE.md·.claude/commands/의 순수 생성물이다. 드리프트가 올라오면
+      # Codex 세션이 오래된 지침을 읽게 되므로 여기서 막는다.
+      - name: Codex 미러 드리프트
+        run: pnpm sync:agents:check

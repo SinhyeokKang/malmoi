@@ -1,0 +1,16 @@
+# 공급망 공격 완화. bugshot-2와 같은 정책을 쓴다.
+# minimumReleaseAge: publish된 지 24시간 안 지난 버전은 설치 대상에서 제외(직전 버전 선택).
+#   악성 버전이 발견·삭제되는 위험 창을 회피한다. lockfile에 이미 박힌 버전엔 영향 없고
+#   신규 resolve 시점에만 적용된다. 긴급 보안 패치를 즉시 받아야 하면
+#   minimumReleaseAgeExclude에 패키지명을 추가하거나 값을 임시로 낮춘다.
+minimumReleaseAge: 1440
+
+# 라이프사이클(install/postinstall) 스크립트 실행을 허용할 패키지 화이트리스트.
+# pnpm 10은 빌드 스크립트를 기본 차단한다(악성 postinstall 차단).
+# "Ignored build scripts" 경고가 뜨면 정말 필요한지 확인 후 pnpm approve-builds로 검토해 추가.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - esbuild
+  - sharp

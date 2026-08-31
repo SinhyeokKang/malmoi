@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# 로컬 시크릿 — Vercel env가 정본이고 로컬 파일은 절대 커밋하지 않는다.
+.env
+.env.local
+.env*.local
+
+# GitHub App 개인키. 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
+*.pem
+
+.DS_Store
+*.tsbuildinfo
+.vercel
+
+# 머신별 권한 허용 목록 — 공유할 값이 아니다.
+.claude/settings.local.json
