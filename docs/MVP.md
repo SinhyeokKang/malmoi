@@ -27,15 +27,26 @@
 
 base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main). 번역 값은 어떤 경로로도 건드리지 않는다.
 
+**두 층으로 나뉜다.** 키 집합의 진실은 로케일 파일이고, 코드 스캔은 사용처만 보탠다:
+
+| 층 | 읽는 것 | 주는 것 | 실패 시 |
+|---|---|---|---|
+| **적재 (ingest)** | `_locales/<locale>/messages.json` | 키 집합 + 원문 + `description` | **CI 실패** — 연동이 성립하지 않는다 |
+| **사용처 (scan)** | 코드·HTML·manifest | `refs: [{path, line}]` | **경고** — 컨텍스트가 빠질 뿐 적재는 된다 |
+
 1. Actions 트리거. 커밋 메시지에 `[skip-l10n]`이 있으면 스킵 (pull이 만든 커밋의 재업로드 루프 차단)
-2. AST 스캔 → `{ key, sourceText, namespace, description?, refs: [{path, line}] }` (`pnpm scan <dir>`)
-3. **CI 실패 조건**: 인자 부족, 리터럴이 아닌 키/원문, 같은 키에 서로 다른 원문, 대응 원문 없는 `__MSG_` 토큰, **`[A-Za-z0-9_@]` 밖의 키 이름**(크롬이 조용히 무시한다)
-4. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `commitSha` 포함
-5. 서버 처리:
+2. **적재**: base 로케일의 `messages.json`을 읽어 `{ key, sourceText, description?, namespace }`
+3. **사용처 스캔**: `__MSG_key__` 토큰, `chrome.i18n.getMessage("key")`, (설정됐으면) 래퍼 호출에서 `refs` 수집
+4. **CI 실패 조건**: base 로케일 파일이 없거나 JSON이 깨졌거나 `message` 필드가 없다, 키 이름이 `[A-Za-z0-9_@]` 밖이다(크롬이 조용히 무시한다)
+5. **경고 조건 (실패 아님)**: 코드에서 못 찾은 키(= `refs` 없음), 로케일 파일에 없는 키를 코드가 참조
+6. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `commitSha` 포함
+7. 서버 처리:
    - upsert (키·원문·description)
-   - 스캔에 없는 키 → `orphaned = true`, 다시 나타난 키 → `false`. **삭제하지 않는다**
+   - 적재 결과에 없는 키 → `orphaned = true`, 다시 나타난 키 → `false`. **삭제하지 않는다**
    - `sourceHash`가 바뀐 키 → base 아닌 모든 번역에 `needsReview = true` 전파
    - `KeyRef` 전체 교체 (증분 갱신보다 단순하고, 스캔이 전수라 정확하다)
+
+**왜 이렇게 나눴나** — 사용자 스토리의 시작이 "리포를 연동하면 키가 DB에 적재된다"다. 코드 스캔을 키 집합의 진실로 두면 대상 리포가 **우리 래퍼로 전면 리팩터링을 먼저** 해야 아무것도 안 나온다. 실제로 bugshot-2에 돌려보니 자기 `t(key, params?)`를 이미 갖고 있어 오탐 1391건이 나왔다. 로케일 파일은 크롬 확장이라면 이미 갖고 있는 것이므로 **리팩터링 0으로 오늘 동작한다.**
 
 ### 3.2 편집 UI
 
@@ -54,20 +65,40 @@ base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드
 
 1. 트리거: 편집 UI의 수동 버튼 + Vercel Cron 야간 1회 (웹훅 즉시 반영은 비범위)
 2. base 브랜치 head SHA와 트리 조회
-3. 로케일별 `messages.json` 결정적 생성 (§4)
+3. **어댑터의 writer로** 로케일별 파일 결정적 생성 (§4) — 읽어온 포맷 그대로
 4. **로컬 blob SHA 계산 → base 트리와 비교. 전부 같으면 여기서 종료 — GitHub API를 한 번도 더 부르지 않는다.** 변경 없는 날이 대부분이라 이게 기본 경로다
 5. 변경분만: createBlob → createTree(`base_tree`) → createCommit(`parents: [baseHead]`, 메시지에 `[skip-l10n]`) → updateRef(`l10n/sync`, `force: true`)
 6. 열린 PR 있으면 재사용, 없으면 생성
 
 ## 4. export 규칙 (결정적)
 
-같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고 §3.3-4 최적화 전체가 무너진다.
+**읽어온 포맷 그대로 되돌려준다.** 어댑터가 양방향(read + write)이고, 리포가 이미 쓰는 파일 모양으로 쓴다.
 
-- 키 정렬: **코드포인트 오름차순** 고정
-- 들여쓰기: **2칸**
-- 파일 끝 개행: **정확히 1개**
-- `orphaned` 키는 **제외** (DB엔 남으므로 되돌릴 수 있다)
-- 변경 감지: `sha1("blob <len>\0" + content)` 로컬 계산
+크롬 포맷으로 통일하지 않는 이유는 그게 불가능하기 때문이다 — `chrome.i18n`은 키에 `[A-Za-z0-9_@]`만 허용하는데, 조사한 4개 리포 중 3개가 점 표기 키(`common.viewAll`)를 쓴다. 통일하려면 키를 변형해야 하고, 그러면 코드의 참조가 전부 깨진다.
+
+### 4.1 모든 writer가 지켜야 하는 것
+
+**불변식: 같은 DB 상태 → 언제나 바이트 단위로 같은 파일.** 깨지면 pull의 blob SHA 비교가 매번 "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓는다.
+
+- 키 정렬: **`<` 비교** (UTF-16 코드 유닛). `localeCompare`는 Node ICU 빌드에 의존해 불변식이 실행 환경에 묶인다
+- 정렬한 순서로 객체를 **재조립**한다 (`JSON.stringify`는 삽입 순서를 따르고, Postgres는 `ORDER BY` 없는 순서를 보장하지 않는다)
+- 들여쓰기 **2칸**, 파일 끝 개행 **정확히 1개**
+- `orphaned` 키 **제외** (DB엔 남으므로 되돌릴 수 있다)
+- **미번역 키 제외**, 빈 문자열도 미번역으로 취급
+- **낼 항목이 0개면 파일을 내지 않는다** (`null` 반환) — 빈 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다
+- 변경 감지: `sha1("blob <바이트수>\0" + content)` 로컬 계산
+
+### 4.2 어댑터별로 갈리는 것
+
+| | `chrome-locales` | `json-catalog` |
+|---|---|---|
+| 경로 | `<root>/_locales/{locale}/messages.json` | `<dir>/{locale}.json` |
+| 리프 | `{ "message": "...", "description"?: "..." }` | `"..."` (문자열) |
+| 구조 | flat | flat 또는 **중첩** (읽을 때 `.`로 평탄화, 쓸 때 복원) |
+| `description` | 지원 | **저장할 곳이 없다** — DB엔 남지만 파일로 안 나간다 |
+| 키 제약 | `[A-Za-z0-9_@]` (크롬 강제) | 없음 |
+
+**`description`은 base 로케일에만 넣는다** (지원하는 어댑터에서). 원문에 대한 메타데이터라 번역 파일마다 복제하면 바이트만 늘고 읽는 쪽이 없다.
 
 ## 5. 확정된 기술 선택
 
@@ -78,8 +109,8 @@ base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드
 | DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
 | 로그인 | GitHub OAuth **단독** + org 멤버십 검사 | 리포 기반 도구라 리포 접근 권한이 곧 편집 권한. 화이트리스트 테이블이 불필요해진다 |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
-| 키 추출 | **코드 스캔이 유일한 진실**, ts-morph AST (+ HTML·manifest는 정규식) | 소스 키는 코드가 진실이라는 원칙과 일관. 정규식 단독은 주석 속 호출·동적 조립을 구분 못 해 오탐이 섞인다 |
-| 원문 출처 | **코드에 원문을 인라인하는 래퍼** | 스캔 한 번으로 키+원문+사용처가 같이 나온다. `en/messages.json`은 산출물이 된다 |
+| 키·원문 출처 | **base 로케일의 `messages.json`** (어댑터 구조 — §5.1) | 리포 연동만으로 적재가 되어야 한다. 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 된다 |
+| 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
 | 상태 모델 | `needsReview` 플래그만 | 미번역/번역됨/검토필요 3상태가 공짜로 생기고 필터링이 가능해진다 |
 | 컨텍스트 | 코드 참조 자동 수집 + 네임스페이스 그룹핑 | 자동이라 유지보수가 0에 가깝다 |
 | UI | shadcn/ui (`new-york`, `neutral`) + Tailwind 4 | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다 |
@@ -88,34 +119,43 @@ base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드
 | 세션 | **JWT** (DB 어댑터 없음) | 스키마가 4테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 |
 | 리스트 렌더링 | 네임스페이스 필터 + 순수 렌더 (가상화 없음) | 필터 후 한 화면이 수십~수백 행. 인라인 편집과 가상 스크롤을 섞으면 스크롤 튐·포커스 유실이 붙는다 |
 
-### 5.1 래퍼 계약
+### 5.1 양방향 어댑터
+
+키 집합의 진실은 리포의 로케일 파일이다. 포맷이 리포마다 다르므로 **통합 인터페이스 아래 어댑터**를 두고, **read와 write를 같은 어댑터가 갖는다** — 읽은 포맷으로 되돌려줘야 왕복이 성립한다 (§4).
 
 ```ts
-// src/i18n.ts (대상 리포 쪽)
-export function t(key: string, _source: string, subs?: string[]) {
-  return chrome.i18n.getMessage(key, subs)
-}
+// lib/adapters/types.ts
+export type LocaleEntry = { key: string; message: string; description?: string };
+
+export type Adapter = {
+  name: AdapterName;
+  /** 리포 파일 목록에서 이 포맷을 찾아낸다. 없으면 undefined */
+  detect(paths: readonly string[]): DetectedFormat | undefined;
+  /** 로케일 파일 → 키 목록 (중첩이면 평탄화) */
+  read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
+  /** 키 목록 → 파일 내용. 낼 것이 없으면 null (§4.1) */
+  write(format: DetectedFormat, input: WriteInput): string | null;
+};
 ```
 
-**`description`은 이 시그니처에 자리가 없다.** §3.1이 스캔 결과에 `description?`을 약속하므로, 공급원은 `// @l10n-desc <text>` 주석이다 (§5.2의 `@l10n-keys`와 같은 계열):
+**어댑터 2개가 조사한 4개 리포를 덮는다:**
 
-```ts
-// @l10n-desc Shown on the action button
-t("ext_name", "BugShot")
-```
+| 어댑터 | 덮는 리포 | 규모 |
+|---|---|---|
+| `chrome-locales` | bugshot-2 (`public/_locales/`) | 4키 × ko/en/fr |
+| `json-catalog` | bugshot-web (`src/lib/i18n/`, 중첩), skillflo (`src/shared/i18n/locales/`, flat 점 표기) | 102리프 × 2 / **1446키 × 6** |
 
-`_source`는 런타임에 쓰이지 않고 **스캐너 전용**이다. 번들에 문자열이 남지만 무시할 크기고, 신경 쓰이면 나중에 빌드 타임에 떼는 플러그인을 붙인다. 이 래퍼 도입은 대상 리포에 **일회성 리팩터링**을 요구한다.
+덮지 못하는 것: bugshot-2의 `src/i18n/namespaces/*.ts` TS 딕셔너리. 리포마다 형태가 달라 어댑터 하나로 안 끝날 위험이 있어 비범위로 둔다 (§10).
 
-### 5.2 동적 키 처리
+**어댑터 설정은 아직 DB에 저장하지 않는다.** `detect`가 순수 함수라 CLI가 매번 찾아내고, `Project`에 컬럼으로 굳히는 건 `/api/push`를 만드는 시점(§8-4)이다.
 
-스캐너가 리터럴이 아닌 인자를 만나면 **CI를 실패시킨다.** 명시 등록 탈출구는 주석 하나:
+### 5.2 사용처 스캔은 진실이 아니다
 
-```ts
-// @l10n-keys status_pending, status_running, status_done
-const label = t(`status_${state}`, "...")
-```
+코드 스캔의 출력은 **`refs`뿐**이다. 키가 존재하는지는 적재 층이 이미 정했다.
 
-조용히 누락되어 문자열이 사라지는 경우가 없어야 하므로, 관용적으로 넘기지 않고 실패시킨다.
+- 스캐너가 못 찾은 키는 **경고**다 — 동적으로 조립됐거나(`getMessage(\`k_${x}\`)`) 아직 안 쓰이는 키다. 컨텍스트가 빠질 뿐 적재는 정상이다
+- 코드가 참조하는데 로케일 파일에 없는 키도 **경고**다 — 개발자가 파일에 추가하는 것을 잊었다는 신호지만, 우리가 남의 CI를 실패시킬 근거는 아니다
+- **래퍼 함수 지원은 선택사항이다.** 대상 리포에 `t(key, ...)` 류가 있으면 `--wrapper <module>#<export>`로 알려줄 수 있다. **이름만으로 매칭하지 않는다** — bugshot-2가 하필 `@/i18n#t`를 쓰고 있어 기본값 추측이 오탐 1391건을 냈다
 
 ## 6. 스키마 (5테이블)
 
@@ -172,5 +212,6 @@ MVP 범위를 잡으면서 추가로 뺀 것: 스크린샷 첨부, 번역자 노
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **GitHub org** — 대상이 개인 계정 리포면 org 멤버십 검사가 성립하지 않는다. 그 경우 허용 GitHub 핸들 목록으로 대체해야 하고, `AUTH_ALLOWED_ORG` 하나로는 부족해진다
+- **두 번째 적재 어댑터** — TS 딕셔너리(bugshot-2의 `src/i18n/namespaces/*.ts`) 같은 비표준 포맷을 지원할지. 포맷이 리포마다 달라 어댑터 하나로 안 끝날 위험이 있어 실제 요구가 생길 때 판단한다
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다

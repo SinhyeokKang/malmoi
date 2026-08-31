@@ -30,6 +30,13 @@ export type LocaleEntry = {
   key: string;
   message: string;
   description?: string;
+  /**
+   * 코드에서 사라진 키. **`true`면 어떤 writer도 파일에 내지 않는다** (MVP §4.1).
+   * DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
+   *
+   * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
+   */
+  orphaned?: boolean;
 };
 
 export type ReadLocale = {

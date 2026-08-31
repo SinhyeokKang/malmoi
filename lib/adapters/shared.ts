@@ -25,6 +25,9 @@ export function serialize(value: unknown): string {
  */
 export function usableEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
   return entries
+    // orphaned = 코드에서 사라진 키. DB엔 남기고 파일에서만 뺀다 — 되돌릴 수 있어야 한다.
+    // **모든 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
+    .filter((e) => e.orphaned !== true)
     .filter((e) => e.message !== "")
     .sort((a, b) => compareKeys(a.key, b.key));
 }

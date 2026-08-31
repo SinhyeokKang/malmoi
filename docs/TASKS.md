@@ -50,7 +50,9 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ---
 
-## 2. `lib/export.ts` + `lib/githash.ts` ✅
+## 2. `lib/githash.ts` + 결정적 export ✅
+
+> **2026-08-31**: `lib/export.ts`는 3a의 어댑터 writer로 흡수돼 삭제됐다. 결정성 규칙은 `lib/adapters/shared.ts`가, 테스트는 `lib/adapters/__tests__/adapters.test.ts`가 이어받았다 (커버리지 8건 이관).
 
 **의존성 0의 순수 함수.** 이 둘이 틀리면 3~7단계가 전부 무의미해진다. `/tdd`로 테스트부터 쓴다.
 
@@ -63,7 +65,7 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: 한글(문자 5/바이트 15)·이모지(코드 유닛 2/바이트 4) 케이스 통과. `Buffer.from(content, "utf8").byteLength` 사용
 - 커밋: `4f11488` (test, red) → `dfd13bf` (feat)
 
-### 2b. `lib/export.ts` ✅
+### 2b. 결정적 export ✅ → `lib/adapters/shared.ts` + 어댑터 writer로 이동
 
 - [x] `exportLocale(keys, { isBase }): string | null` — DB 상태 → `messages.json` 문자열
   - 검증: 19 케이스 green (`lib/__tests__/export.test.ts`), 전체 41 tests
@@ -93,37 +95,43 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ---
 
-## 3. 스캐너 (`lib/scan/`) ⬜ ← **현재 단계** (구현 완료 / bugshot-2 실전 확인 남음)
+## 3. 로케일 적재 + 사용처 스캔 ⬜ ← **현재 단계** (적재·스캔 완료 / 나머지 TASKS 갱신 남음)
 
-- [x] AST 경로 (ts-morph) — `t(key, source)` 호출에서 `{ key, sourceText, namespace, refs }` 추출
-  - 검증: 71 tests green (`lib/scan/__tests__/scan.test.ts`)
-- [x] `refs`의 `path`·`line`이 정확
-  - 검증: 여러 줄 픽스처에서 3행·5행을 각각 잡음. 같은 키를 여러 파일에서 부르면 refs 합쳐짐
-- [x] 비리터럴 인자 → **에러**
-  - 검증: 템플릿 리터럴 키·변수 키·비리터럴 원문·인자 부족 4케이스 각각 에러. **치환 없는 템플릿 리터럴도 거부**한다
-- [x] `// @l10n-keys a, b` 화이트리스트로 비리터럴 허용
-  - 검증: 나열된 키가 결과에 들어가고 `sourceText`는 빈 문자열. 같은 파일의 리터럴 호출은 그대로 처리
-- [x] **주석 속 호출을 무시**한다
-  - 검증: 라인 주석·블록 주석·**문자열 리터럴 안의 `t(`** 3케이스 모두 제외. 자기 리포 스캔이 0키인 것으로 실코드 검증됨(테스트 파일이 문자열로 `t(...)`를 잔뜩 담고 있다)
-- [x] 같은 키에 다른 원문 → **에러**
-  - 검증: 충돌 시 에러, 같은 원문이면 통과
-- [x] 정규식 경로 — HTML·`manifest.config.ts`의 `__MSG_key__`
-  - 검증: 키만 수집되고 원문은 AST 경로가 채움. 줄 번호도 각각 잡음
-- [x] 정규식 경로에만 있고 원문이 없는 키 → **에러**
-  - 검증: 대응 없는 `__MSG_orphan_token__`이 에러
-- [x] `namespace` 파생 규칙 확정 + 테스트
-  - 결정: **첫 밑줄 앞부분, 없거나 선행 밑줄만이면 `_root`**. `chrome.i18n`이 점을 허용하지 않아 구분자가 밑줄뿐이다
-- [x] **키 이름 검증** — `[A-Za-z0-9_@]` 밖은 에러 (TASKS 밖 추가)
-  - 근거: 크롬이 조용히 무시해 런타임에 진단 없이 깨진다. `common.ok` 같은 점 표기가 걸린다
-- [x] **`// @l10n-desc <text>`** — description 공급원 (TASKS 밖 추가)
-  - 근거: §3.1이 `description?`을 약속하는데 §5.1 래퍼에 자리가 없던 구멍
-- [x] CLI로 실행 가능
-  - 검증: `pnpm scan <dir> [--json]`, 에러 있으면 exit 1. 자기 리포 스캔 성공(27파일)
-- [ ] **`bugshot-2` 리포에 돌려 결과를 눈으로 확인** (MVP §9)
-  - 대상 리포에 `t()` 래퍼가 아직 없으므로 `__MSG_` 토큰 경로와 오탐 여부부터 본다
-- 커밋: `3931164` (test, red) → `9ad8dbe` (feat)
+> **2026-08-31 범위 전환.** "코드 스캔이 유일한 진실"에서 **"리포의 로케일 파일이 키의 진실, 코드 스캔은 `refs` 전담"** 으로 뒤집혔다 (MVP §3.1·§4·§5.1). 사용자 스토리의 시작이 "리포를 연동하면 키가 적재된다"이고, 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 되기 때문이다.
 
+### 3a. 양방향 어댑터 (`lib/adapters/`) ✅
 
+- [x] 통합 인터페이스 — `detect` / `read` / `write`
+  - 검증: 98 tests green
+- [x] `chrome-locales` — `_locales/{locale}/messages.json`, 리프 `{message, description?}`
+  - 검증: bugshot-2 적재 (4키 × ko/en/fr, description 3건)
+- [x] `json-catalog` — `{dir}/{locale}.json`, flat·중첩 모두
+  - 검증: bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6로케일, 36 네임스페이스**)
+- [x] 중첩 평탄화(`.`) + write에서 복원, 배열은 인덱스 키(`hero.subcopy.0`)
+  - 검증: `0..n` 빈틈없으면 배열로 복원, 빈틈 있으면 객체 유지(구멍이 `null`로 나가는 것을 막는다)
+- [x] 결정성 규칙을 `shared.ts`로 모아 **모든 writer가 지나게** 한다
+  - 검증: 정렬(`<` 비교)·재조립·2칸·끝 개행 1개·orphaned 제외·미번역 제외·0개면 `null`
+- [x] **왕복 검증** — 읽고 쓰면 의미가 같다
+  - 검증: 3개 리포 **11개 로케일 파일 전부 의미 동일**. 바이트 차이는 원본이 정렬돼 있지 않아서이고 첫 pull에서 한 번 정규화된다
+- [x] 포맷 탐지 — 경로 신호 + 로케일 개수 + `probe` 내용 확인
+  - 검증: `public/search/{locale}.json`(검색 인덱스)을 잡던 결함 회귀 테스트 4건
+- [x] `pnpm ingest <dir>` CLI — 탐지·적재·왕복 판정
+- [ ] 🔒 **base 로케일 판정** — 지금은 `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 추정이다 (MVP §10)
+
+### 3b. 사용처 스캔 (`lib/scan/`) ✅ — `refs` 전담으로 격하
+
+- [x] AST 경로 (ts-morph) — 주석·문자열 안의 호출을 구분
+  - 검증: 라인/블록 주석·문자열 리터럴 3케이스. 자기 리포 스캔이 0키(테스트 파일이 문자열로 `t(...)`를 담고 있다)
+- [x] **래퍼를 모듈 경로 + export 이름으로 식별**
+  - 검증: bugshot-2에서 이름만 매칭했을 때 오탐 1391건 → import 기반으로 0건. 별칭(`t as translate`)도 따라간다
+- [x] `--wrapper <module>#<export>`로 설정 가능
+  - 근거: bugshot-2의 래퍼가 하필 기본값 `@/i18n#t`와 같다. 대상 리포 관례를 알 수 없다
+- [x] `__MSG_key__` 정규식 경로가 **파일 종류와 무관하게** 돈다
+  - 검증: `manifest.config.ts`(`.ts`인데 토큰 5개)가 누락되던 결함 회귀 테스트
+- [x] `refs`의 `path`·`line` 정확, 정렬 출력
+- [x] `// @l10n-keys` 화이트리스트, `namespace` 파생, 키 문자셋 검증
+- [ ] **에러 → 경고로 격하** (ARCHITECTURE §4) — 스캔 실패로 적재를 막지 않는다
+- 커밋: `3931164` `9ad8dbe` `7588ba6` `3c04660`
 
 ---
 

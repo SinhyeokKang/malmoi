@@ -56,7 +56,8 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
-| 키 추출 | `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`) | `ts-morph` 28.0.0 |
+| **키·원문 출처** | **리포의 로케일 파일** — 어댑터가 양방향으로 읽고 쓴다 (`lib/adapters/`) | — |
+| 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
 | Node | `.nvmrc` **20** — `@types/node`를 이 메이저에 맞춘다(`^20`) | `@types/node` 20.19.43 |
@@ -122,7 +123,8 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
-| 키 스캔 | `pnpm scan <대상 디렉터리> [--json]` (대상 리포에 돌려 키 추출·검증) |
+| 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
+| 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]` (`refs` 수집) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
@@ -150,13 +152,17 @@ app/
   api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
+  adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
+    index.ts            detectFormat / adapterFor / ADAPTERS(우선순위)
+    shared.ts           모든 writer가 지키는 결정성 규칙 + 후보 순위·검증
+    chrome-locales.ts   _locales/{locale}/messages.json
+    json-catalog.ts     {dir}/{locale}.json (flat|중첩, 배열 인덱스)
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
-  export.ts             (미구현) DB 상태 → messages.json 문자열 (결정적, 순수)
   githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
-  scan/                 ts-morph 키 추출기 — index.ts(합치기·검증) / ast.ts / types.ts
+  scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
   migrations/           _init, _add_project_tenant_boundary
@@ -166,7 +172,8 @@ public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
   copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
-  scan.ts               키 스캐너 CLI (파일시스템을 아는 유일한 층)
+  scan.ts               사용처 스캔 CLI
+  ingest.ts             로케일 적재 CLI (파일시스템을 아는 유일한 층)
 docs/MVP.md             기본 스펙
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/ARCHITECTURE.md    설계 상세·함정
@@ -245,6 +252,8 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
+- **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
+- **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·2칸·끝 개행 1개를 직접 구현하지 않는다 (ARCHITECTURE §1.1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (RLS 없음).
 
 ## 게이트웨이 (알아두면 유용)
