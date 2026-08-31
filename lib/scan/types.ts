@@ -1,51 +1,45 @@
 /**
- * 래퍼 식별자 — `import { <export> } from "<module>"`.
- * 대상 리포마다 다를 수 있고, 잘못 잡으면 남의 함수를 우리 것으로 착각한다.
+ * 사용처 스캔의 타입. **키가 존재하는지는 여기서 정하지 않는다** — 그건 `lib/adapters/`의
+ * 적재 층이 로케일 파일을 읽어 결정한다 (ARCHITECTURE §4).
  */
+
+/** 래퍼 식별자 — `import { <export> } from "<module>"`. */
 export type WrapperId = {
   module: string;
   export: string;
 };
 
-/** 스캔 입력. `ts`는 AST 경로, `raw`는 `__MSG_key__` 정규식 경로다. */
+/** 스캔 입력. `ts`는 AST 경로를 타고, 두 종류 모두 `__MSG_` 토큰 훑기를 탄다. */
 export type SourceFileInput = {
   path: string;
   code: string;
   kind: "ts" | "raw";
 };
 
-/** AST 경로가 뽑아낸 원시 호출 하나. */
-export type RawCall = {
-  key: string;
-  sourceText: string;
-  path: string;
-  line: number;
-  description?: string;
-};
-
-/** 키의 코드 사용처. */
+/** 키의 코드 사용처 하나. */
 export type KeyRef = {
   path: string;
   line: number;
 };
 
-/** 스캔 결과의 키 하나. `KeyRef[]`는 정렬되어 있다. */
-export type ScannedKey = {
+/** 키 하나와 그 사용처들. `refs`는 path·line 기준 정렬돼 있다. */
+export type ScannedRef = {
   key: string;
-  sourceText: string;
-  namespace: string;
   refs: KeyRef[];
-  description?: string;
 };
 
-/** CI를 실패시킬 이유 하나. `path:line`으로 사람이 바로 찾아갈 수 있어야 한다. */
-export type ScanError = {
+/**
+ * 위치를 못 찾은 호출. **경고일 뿐 실패가 아니다** — 컨텍스트가 빠질 뿐 적재는 정상이고,
+ * 남의 리포 CI를 우리 규칙으로 실패시킬 근거가 없다.
+ */
+export type ScanWarning = {
   path: string;
   line: number;
   message: string;
 };
 
+/** `errors`가 없는 것이 이 타입의 요지다. */
 export type ScanResult = {
-  keys: ScannedKey[];
-  errors: ScanError[];
+  refs: ScannedRef[];
+  warnings: ScanWarning[];
 };

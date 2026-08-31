@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { blobSha } from "../../githash";
-import { chromeLocales, detectFormat, jsonCatalog } from "../index";
+import { chromeLocales, detectFormat, jsonCatalog, namespaceOf } from "../index";
 import type { AdapterFile } from "../types";
 
 const f = (path: string, content: string): AdapterFile => ({ path, content });
@@ -358,5 +358,28 @@ describe("writer 결정성 — 모든 어댑터가 공유하는 규칙 (MVP §4.
       const fromGit = execFileSync("git", ["hash-object", "--stdin"], { input: out, encoding: "utf8" }).trim();
       expect(blobSha(out)).toBe(fromGit);
     }
+  });
+});
+
+describe("namespaceOf — 포맷이 둘이라 구분자가 둘이다", () => {
+  it("밑줄 접두사 (chrome — 키에 점을 못 쓴다)", () => {
+    expect(namespaceOf("popup_title")).toBe("popup");
+    expect(namespaceOf("EXT_NAME_SHORT")).toBe("EXT");
+  });
+
+  it("점 표기 (json-catalog)", () => {
+    expect(namespaceOf("common.viewAll")).toBe("common");
+    expect(namespaceOf("hero.subcopy.0")).toBe("hero");
+  });
+
+  it("둘이 섞이면 먼저 나오는 구분자를 쓴다", () => {
+    expect(namespaceOf("a_b.c")).toBe("a");
+    expect(namespaceOf("a.b_c")).toBe("a");
+  });
+
+  it("구분자가 없거나 맨 앞이면 _root (빈 namespace를 만들지 않는다)", () => {
+    expect(namespaceOf("EXTNAME")).toBe("_root");
+    expect(namespaceOf("_private")).toBe("_root");
+    expect(namespaceOf(".leading")).toBe("_root");
   });
 });

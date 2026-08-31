@@ -9,7 +9,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-import { adapterFor, detectFormat, type AdapterFile } from "../lib/adapters/index";
+import { adapterFor, detectFormat, namespaceOf, type AdapterFile } from "../lib/adapters/index";
 import { blobSha } from "../lib/githash";
 
 /** 키 순서를 무시하고 내용만 비교하기 위한 정규화. */
@@ -106,8 +106,7 @@ const baseLocale = result.locales.find((l) => l.locale === base);
 if (baseLocale) {
   const ns = new Map<string, number>();
   for (const e of baseLocale.entries) {
-    const at = e.key.search(/[._]/);
-    const name = at <= 0 ? "_root" : e.key.slice(0, at);
+    const name = namespaceOf(e.key);
     ns.set(name, (ns.get(name) ?? 0) + 1);
   }
   console.log(`\n네임스페이스 ${ns.size}개: ${[...ns].sort().slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" ")}${ns.size > 10 ? " ..." : ""}`);

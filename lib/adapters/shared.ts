@@ -73,3 +73,18 @@ export function looksLikeCatalog(content: string): boolean {
   // 리프가 문자열이거나 객체/배열이어야 한다. 숫자·불린만 있으면 카탈로그가 아니다.
   return values.every((v) => typeof v === "string" || (v !== null && typeof v === "object"));
 }
+
+/**
+ * 키에서 namespace를 파생한다 — **첫 구분자 앞부분**.
+ *
+ * 구분자가 둘인 이유는 포맷이 둘이기 때문이다: chrome은 키에 `[A-Za-z0-9_@]`만 허용해
+ * `popup_title` 같은 밑줄 접두사를 쓰고, json-catalog은 `common.viewAll` 같은 점 표기를 쓴다.
+ * 어느 쪽이 먼저 나오든 그 앞이 namespace다.
+ *
+ * 구분자가 없거나 맨 앞에 있으면 `_root`다 — 빈 문자열 namespace를 만들면 사이드바에
+ * 이름 없는 그룹이 생긴다.
+ */
+export function namespaceOf(key: string): string {
+  const at = key.search(/[._]/);
+  return at <= 0 ? "_root" : key.slice(0, at);
+}

@@ -5,6 +5,7 @@ import type { Adapter, DetectedFormat, FileProbe } from "./types";
 export { chromeLocales } from "./chrome-locales";
 export { jsonCatalog } from "./json-catalog";
 export { localeFromPath } from "./chrome-locales";
+export { namespaceOf } from "./shared";
 export * from "./types";
 
 /**
