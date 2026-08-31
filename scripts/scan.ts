@@ -93,4 +93,5 @@ if (flags.includes("--json")) {
 }
 
 // 스캔은 CI를 실패시키지 않는다. 적재(pnpm ingest)만 실패할 수 있다.
-process.exit(0);
+// process.exit(0)을 쓰지 않는 이유: 파이프 stdout이 비동기라 --json 출력이 잘린다.
+process.exitCode = 0;

@@ -89,8 +89,12 @@ if (base === undefined) {
 
 if (argv.includes("--json")) {
   console.log(JSON.stringify({ format: writeFormat, base, result }, null, 2));
-  process.exit(result.errors.length ? 1 : 0);
-}
+  // ⚠️ process.exit()을 쓰지 않는다 — 파이프로 나가는 stdout은 비동기라 버퍼가 남은 채로
+  // 프로세스가 죽으면 출력이 잘린다(skillflo의 --json이 73KB에서 끊겼다).
+  // 대신 exitCode만 세우므로 **여기서 명시적으로 빠져나가야** 한다 — 안 그러면 아래
+  // 사람용 출력이 이어져 JSON 문서가 두 개 나온다.
+  process.exitCode = result.errors.length ? 1 : 0;
+} else {
 
 console.log(`어댑터: ${format.adapter}${result.nested ? " (중첩)" : " (flat)"}`);
 console.log(`경로:   ${format.pathTemplate}`);
@@ -132,9 +136,10 @@ if (baseLocale) {
   }
 }
 
-if (result.errors.length) {
-  console.error(`\n에러 ${result.errors.length}건:`);
-  for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${e.message}`);
-  if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
+  if (result.errors.length) {
+    console.error(`\n에러 ${result.errors.length}건:`);
+    for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${e.message}`);
+    if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
+  }
+  process.exitCode = result.errors.length ? 1 : 0;
 }
-process.exit(result.errors.length ? 1 : 0);
