@@ -102,8 +102,9 @@ Use this skill when the user asks to run the migrated source command `ship`.
 - **게이트**: 마이그레이션 생성됨, SQL이 의도와 일치, test green. 드리프트 검출 시 **중단+리포트**.
 - **`db:deploy`는 돌리지 않는다** — 11단계 `/push`가 푸시 전에 사용자 확인을 받는다.
 
-### 8. 커밋 #3 (db)
-- 7단계가 스키마·마이그레이션을 바꿨을 때만 (`chore(db):`·`feat(db):`). 코드와 섞지 않는다.
+### 8. 커밋 #3 (db) — 확인만
+- 커밋 자체는 7단계 `/db`가 자기 규약(6단계 — 스키마+마이그레이션만, `chore(db):`/`feat(db):`)대로 이미 만들었다. 하위 스킬 중 `/db`만 커밋 권한이 있다.
+- 이 단계는 그 커밋 해시를 수집하고, 코드 변경이 섞이지 않았는지 확인만 한다. 섞였으면 **중단+리포트**.
 
 ### 9. `/postmortem` [영향 게이팅]
 - **트리거**: 3단계 커밋이 `fix:`이거나, 2단계 "postmortem 후보" 플래그가 있을 때. 둘 다 없으면 스킵(사유 보고).
@@ -111,7 +112,8 @@ Use this skill when the user asks to run the migrated source command `ship`.
 - **소환 회로 완성**: `/ship`은 2·4·5단계에서 하위 스킬을 통해 POSTMORTEM을 grep(읽기)한다. 이 스테이지가 쓰기를 담당해 한 바퀴 안에서 루프가 닫힌다.
 
 ### 10. 커밋 #4 (docs)
-- 9단계가 POSTMORTEM을 바꿨거나 2단계 "문서 영향"으로 문서를 고쳤을 때만 (`docs(...)`).
+- 9단계가 POSTMORTEM을 바꿨을 때만 (`docs(postmortem):`).
+- 2단계 "문서 영향" 플래그는 여기서 소비하지 않는다 — MVP/ARCHITECTURE/CLAUDE 갱신 주체는 11단계 `/push`의 4단계(문서 신선도)다. 플래그를 트라이아지 힌트로 전달만 한다.
 
 ### 11. `/push` = 프로덕션 배포 [Claude Code 전용 — Codex는 10단계에서 종료]
 - `/push`가 로컬 검증 게이트(typecheck+test) → 마이그레이션 순서 확인 → 문서 신선도 → Codex 미러 → 푸시를 순서대로 돈다.

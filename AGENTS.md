@@ -159,19 +159,19 @@ CI가 여전히 있는 이유는 셋: 로컬 환경 의존성을 걷어낸 깨�
 app/
   layout.tsx            루트 레이아웃 (Pretendard <link>)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  (edit)/               편집 UI (인증 필요)
-    actions.ts          Server Action — 번역 저장·pull 트리거
-  api/push/route.ts     CI → DB (Bearer PUSH_TOKEN)
-  api/pull/route.ts     DB → PR (수동 버튼 + Vercel Cron)
+  (edit)/               (미구현) 편집 UI (인증 필요)
+    actions.ts          (미구현) Server Action — 번역 저장·pull 트리거
+  api/push/route.ts     (미구현) CI → DB (Bearer PUSH_TOKEN)
+  api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
   db.ts                 Prisma 클라이언트 단일 인스턴스 (pg adapter, 6543)
   utils.ts              cn() — shadcn 표준 헬퍼
-  export.ts             DB 상태 → messages.json 문자열 (결정적, 순수)
-  githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
-  github.ts             Git Data API 래퍼 (App 토큰)
-  scan/                 ts-morph 키 추출기 (CI에서 CLI로도 실행)
+  export.ts             (미구현) DB 상태 → messages.json 문자열 (결정적, 순수)
+  githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
+  github.ts             (미구현) Git Data API 래퍼 (App 토큰)
+  scan/                 (미구현) ts-morph 키 추출기 (CI에서 CLI로도 실행)
 prisma/
   schema.prisma         4테이블 (접속 URL 없음 — Prisma 7)
   migrations/           20260831012453_init
@@ -211,6 +211,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 서버 측에 막는 장치가 하나도 없다는 뜻이다. **프로덕션 앞에 서 있는 것은 `/push` 1단계의 `pnpm typecheck` + `pnpm test`, 그리고 `/ship`의 단계별 게이트뿐이다.** 이 구조에서:
 
 - **`/push`의 로컬 검증 게이트를 건너뛰면 아무것도 검증되지 않은 채 배포된다.** "CI가 잡아줄 것"은 성립하지 않는다.
+- **로컬 게이트는 `next build`를 포함하지 않는다.** tsc가 못 잡는 빌드 실패(RSC 경계, `"use client"` 누락 등)는 Vercel 빌드 실패로만 드러난다 — 빌드가 실패하면 이전 배포가 유지되므로 프로덕션이 깨지진 않지만, 원인은 Vercel 로그에서 찾아야 한다. 의심되는 변경이면 `pnpm build`를 사용자에게 제안한다.
 - **`/ship`의 게이트는 "다음 단계로 갈 자격"이 아니라 "배포될 자격"이다.** 애매한 통과는 곧 사고다.
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 push하는 것 말고는 롤백 경로가 없다.
 - **`git push --force`는 기본 금지.** main이 유일한 브랜치라 히스토리가 하나뿐이고, 날아가면 복구할 곳이 없다.

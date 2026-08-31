@@ -74,8 +74,10 @@ for (const file of readdirSync(join(ROOT, ".claude/commands")).sort()) {
   );
 }
 
+// 닷파일(.DS_Store 등)은 미러 산출물이 아니므로 orphan으로 잡지 않는다 —
+// 잡으면 check가 false positive 드리프트를 내고, 지워도 커밋할 것이 없어 push 4c가 헛돈다.
 const orphans = existsSync(join(ROOT, ".agents/skills"))
-  ? readdirSync(join(ROOT, ".agents/skills")).filter((d) => !mirrored.has(d))
+  ? readdirSync(join(ROOT, ".agents/skills")).filter((d) => !d.startsWith(".") && !mirrored.has(d))
   : [];
 
 const drift = [];

@@ -3,9 +3,8 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   test: {
-    // 하네스가 코드보다 먼저 서므로 테스트 0개 상태가 정상이다. 첫 테스트가 들어오면
-    // 이 플래그는 무의미해지지만 남겨둔다 — 지우면 새 체크아웃에서 pnpm test가 빨간불이다.
-    passWithNoTests: true,
+    // passWithNoTests를 켜지 않는다 — 테스트가 이미 존재하므로, include glob이 깨져
+    // 0개로 잡히는 사고를 초록불로 숨기면 로컬 게이트(/push 1단계)가 무의미해진다.
     environment: "node",
     include: ["**/__tests__/**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**"],

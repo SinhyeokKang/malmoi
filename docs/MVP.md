@@ -25,7 +25,7 @@
 
 ### 3.1 push (코드 → DB)
 
-main 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다. 번역 값은 어떤 경로로도 건드리지 않는다.
+base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main). 번역 값은 어떤 경로로도 건드리지 않는다.
 
 1. Actions 트리거. 커밋 메시지에 `[skip-l10n]`이 있으면 스킵 (pull이 만든 커밋의 재업로드 루프 차단)
 2. AST 스캔 → `{ key, sourceText, description?, refs: [{path, line}] }`
@@ -117,8 +117,8 @@ Locale       code PK, name, isBase
 StringKey    id, key UNIQUE, namespace, sourceText, sourceHash,
              description, orphaned, updatedAt
 KeyRef       id, keyId FK, path, line              -- push마다 전체 교체
-Translation  id, keyId FK, locale FK, value, needsReview,
-             updatedBy, updatedAt                  -- UNIQUE(keyId, locale)
+Translation  id, keyId FK, localeCode FK, value, needsReview,
+             updatedBy, updatedAt                  -- UNIQUE(keyId, localeCode)
 ```
 
 `namespace`는 키에서 파생되는 값이지만 **컬럼으로 저장하고 인덱스를 건다** — 사이드바 쿼리가 이거 하나로 끝난다.

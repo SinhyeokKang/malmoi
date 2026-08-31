@@ -82,7 +82,7 @@ pnpm db:migrate --name <snake_case_이름>
 
 **번역 데이터가 있으면 반드시 `--create-only`** (위 dev==prod 경고):
 ```
-npx prisma migrate dev --create-only --name <snake_case_이름>
+pnpm db:migrate --create-only --name <snake_case_이름>
 ```
 
 이름은 무엇을 하는지 드러나게 (`add_orphaned_to_string_key`, `backfill_namespace`). `--create-only`가 필요한 경우(백필 SQL을 손으로 넣어야 할 때)는 그렇게 하고 SQL을 직접 작성한다.

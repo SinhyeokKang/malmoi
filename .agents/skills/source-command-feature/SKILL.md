@@ -18,7 +18,7 @@ Use this skill when the user asks to run the migrated source command `feature`.
 
 ## 0. 범위 게이트 (착수 전, 생략 금지)
 
-**[docs/MVP.md](../../docs/MVP.md) §7 비범위와 대조한다.** 요청이 비범위 항목이거나 그것을 요구하면:
+**`docs/MVP.md` §7 비범위와 대조한다** (상대 링크 금지 — 이 파일은 `.agents/skills/`로 미러돼 기준 경로가 둘이다). 요청이 비범위 항목이거나 그것을 요구하면:
 
 - 어떤 항목에 걸리는지, 원래 왜 뺐는지를 한 줄로 제시하고 **되묻는다**.
 - 사용자가 재확인하면 진행하되, **`docs/MVP.md` 갱신을 산출물에 포함**한다 (비범위에서 빼고 본문에 넣는다). 스펙보다 코드가 앞서면 스펙이 거짓이 된다.

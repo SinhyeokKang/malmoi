@@ -17,7 +17,7 @@ Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다.
 
 ## 스택
 
-Next.js 15 App Router · Supabase Postgres + Prisma · Auth.js (GitHub OAuth) · GitHub App · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js (GitHub OAuth) · GitHub App · Vercel
 
 ## 개발
 
