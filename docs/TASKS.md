@@ -28,18 +28,18 @@
 
 ---
 
-## 2. `lib/export.ts` + `lib/githash.ts` ⬜ ← **현재 단계**
+## 2. `lib/export.ts` + `lib/githash.ts` ⬜ ← **현재 단계** (2a 완료 / 2b 남음)
 
 **의존성 0의 순수 함수.** 이 둘이 틀리면 3~7단계가 전부 무의미해진다. `/tdd`로 테스트부터 쓴다.
 
-### 2a. `lib/githash.ts`
+### 2a. `lib/githash.ts` ✅
 
-- [ ] `blobSha(content: string): string` — `sha1("blob <byteLength>\0" + content)`
-  - 검증: **`git hash-object` 실측값을 골든으로 박은 테스트 4건** — 빈 문자열 / ASCII / 한글 / 이모지
-- [ ] 바이트 길이가 `Buffer.byteLength(content, "utf8")`이다
-  - 검증: 한글·이모지 케이스가 통과 (`content.length`면 여기서 깨진다)
-
-—— 커밋: `test: pin blob sha golden values` → `feat: add blobSha`
+- [x] `blobSha(content: string): string` — `sha1("blob <byteLength>\0" + content)`
+  - 검증: 골든 5건 (빈 문자열·ASCII·한글·이모지·실제 `messages.json` 형태) — `lib/__tests__/githash.test.ts`, 22 tests green
+  - 추가: **골든 자체를 `git hash-object --stdin` 실측과 재대조하는 자기검증 앵커** (박제된 상수가 낡는 것을 잡는 유일한 장치)
+- [x] 바이트 길이가 `Buffer.byteLength(content, "utf8")`이다
+  - 검증: 한글(문자 5/바이트 15)·이모지(코드 유닛 2/바이트 4) 케이스 통과. `Buffer.from(content, "utf8").byteLength` 사용
+- 커밋: `4f11488` (test, red) → `dfd13bf` (feat)
 
 ### 2b. `lib/export.ts`
 
