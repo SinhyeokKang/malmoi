@@ -21,7 +21,7 @@
 
 **빈 로케일 처리 미정**: 번역이 하나도 없는 로케일의 파일을 빈 객체(`{}`)로 낼지, 아예 안 낼지. 구현 시 결정하고 여기 적는다.
 
-## 2. blob SHA 로컬 계산 (미구현 — `lib/githash.ts`)
+## 2. blob SHA 로컬 계산 (`lib/githash.ts`)
 
 ```
 sha1("blob " + byteLength + "\0" + content)
@@ -31,7 +31,11 @@ sha1("blob " + byteLength + "\0" + content)
 
 이 함수의 목적은 **API 호출을 건너뛰는 것**이다. base 트리의 blob SHA와 비교해 전부 같으면 GitHub API를 한 번도 더 부르지 않는다. 변경 없는 날이 대부분이라 이게 기본 경로다.
 
-검증: 실제 파일에 `git hash-object <file>`를 돌린 값과 일치해야 한다. 테스트에 골든 값을 박는다 (빈 파일, ASCII, 한글, 이모지 각 1건).
+검증: `lib/__tests__/githash.test.ts`가 골든 5건(빈 문자열·ASCII·한글·이모지·실제 `messages.json` 형태)을 박고 있고, **마지막 블록이 골든 자체를 `git hash-object --stdin` 실측과 매 실행마다 재대조한다.** 박제된 상수는 대조 대상이 바뀌어도 계속 통과하므로, 이 앵커가 없으면 골든이 낡는 것을 아무도 모른다.
+
+한글 `안녕하세요`는 문자 5개·**바이트 15개**, `🎉`는 UTF-16 코드 유닛 2개·**바이트 4개**다. `content.length`를 쓴 구현은 정확히 이 두 케이스에서 깨진다.
+
+앵커는 `git` **바이너리**만 요구하고 저장소는 필요 없다(`git hash-object --stdin`은 리포 밖에서도 동작한다). CI에는 `actions/checkout`이 있으므로 문제없다.
 
 ## 3. GitHub Git Data API 흐름 (미구현 — `lib/github.ts`)
 
