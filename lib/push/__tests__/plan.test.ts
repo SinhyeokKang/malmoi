@@ -146,7 +146,9 @@ describe("planPush — 중복 키", () => {
 
 describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키지 않는다", () => {
   const valid = {
+    projectSlug: "skillflo",
     commitSha: "a".repeat(40),
+    commitAt: "2026-08-31T16:38:15+09:00",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },
     locales: ["en", "ko"],
     keys: [{ key: "a.b", sourceText: "V", namespace: "a" }],
@@ -161,6 +163,29 @@ describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키�
   it("commitSha가 40자 hex가 아니면 거부한다", () => {
     for (const sha of ["", "abc", "z".repeat(40), "a".repeat(41)]) {
       expect(PushPayload.safeParse({ ...valid, commitSha: sha }).success).toBe(false);
+    }
+  });
+
+  it("projectSlug가 없으면 거부한다 — 대상 지정을 서버 env에만 맡기면 오배송을 못 잡는다", () => {
+    const { projectSlug: _omitted, ...without } = valid;
+    expect(PushPayload.safeParse(without).success).toBe(false);
+    expect(PushPayload.safeParse({ ...valid, projectSlug: "" }).success).toBe(false);
+  });
+
+  it("commitAt이 없으면 거부한다 — 역행 판정의 근거다", () => {
+    const { commitAt: _omitted, ...without } = valid;
+    expect(PushPayload.safeParse(without).success).toBe(false);
+  });
+
+  it("commitAt은 offset이 붙은 ISO 8601이다 (`git show -s --format=%cI`)", () => {
+    for (const at of ["2026-08-31T16:38:15+09:00", "2026-08-31T07:38:15Z"]) {
+      expect(PushPayload.safeParse({ ...valid, commitAt: at }).success).toBe(true);
+    }
+  });
+
+  it("날짜만·자유 문자열·빈 값인 commitAt은 거부한다", () => {
+    for (const at of ["2026-08-31", "어제", "", "1756628295"]) {
+      expect(PushPayload.safeParse({ ...valid, commitAt: at }).success).toBe(false);
     }
   });
 
