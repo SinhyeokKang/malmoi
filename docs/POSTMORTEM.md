@@ -32,6 +32,11 @@
   - **규칙**: 서버 모듈에서 환경변수를 읽는 코드는 **모듈 최상위가 아니라 함수 안**에 둔다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻한다.
   - CI에 `.env`가 없다는 전제를 잊지 않는다. CI 스텝이 새로 추가될 때마다 그 스텝이 환경변수를 요구하는지 확인한다.
 
+- **🔁 재발 (2026-08-31, §4b 구현 중)**: `scripts/push-local.ts`가 `arg("project", requireEnv("ACTIVE_PROJECT_SLUG"))`을 썼다. **기본값 인자가 먼저 평가되므로** `--project skillflo`를 명시해도 환경변수가 없으면 죽고, 메시지가 "환경변수가 없다"라서 플래그를 줬는데 왜 죽는지 가리키지 않는다. 위 grep(`requireEnv\(`)이 잡을 수 있는 형태였는데, **이번엔 "함수 안이냐"만 봤고 "인자 위치에서 평가되느냐"는 안 봤다.**
+    - 이 항목을 소환해 `lib/push/guard.ts`는 env를 인자로 받게 설계했으면서 같은 커밋의 스크립트에서 밟았다 — 소환이 설계에는 반영됐지만 배선 코드까지 훑지 않았다.
+    - **grep 보강**: `grep -rn -E '\w+\([^)]*,\s*requireEnv\('` → **기본값·폴백 자리에 있는 `requireEnv`는 전부 의심한다.** 고치는 형태는 `arg("x", "") || requireEnv("X")`처럼 앞을 먼저 읽는 것.
+    - 전수 확인 결과 나머지 호출부(`app/api/push/route.ts`, `app/(edit)/actions.ts`, `app/(edit)/keys/page.tsx`, `lib/db.ts`)는 전부 함수 안의 직접 호출이라 안전하다.
+
 ---
 
 ### 2026-08-31 — process.exit()이 파이프 stdout을 잘라먹고, exitCode로 바꾸니 조기 종료가 사라짐
@@ -65,6 +70,22 @@
   - **새 보호 라우트를 추가하면 `middleware.ts`의 `matcher`에 추가한다.** 빠뜨리면 그 라우트가 무방비다.
   - **검증 방법: 화면이 아니라 응답 본문을 본다.** `curl -s <보호 라우트> | grep <민감 데이터>`로 0건을 확인한다. 크기도 본다 — 1.3MB는 로그인 화면일 수 없다.
   - grep: `grep -rn 'if (!session' app/` → 조건부 렌더로 막고 있는 곳이 있으면 `redirect()`로 바꾼다.
+
+---
+
+### 2026-08-31 — 외부 계약 페이로드를 리터럴로 조립해 필수 필드가 늘어도 컴파일러가 침묵했다
+
+- **영역**: `scripts/push-local.ts`, `lib/push/plan.ts`(`PushPayload`)
+- **증상**: `/api/push` 페이로드에 필수 필드 둘(`projectSlug`·`commitAt`)을 추가했는데 `pnpm typecheck`도 `pnpm test`도 green이었다. `pnpm push:local`을 실제로 돌렸다면 서버가 **400 `invalid payload`** 를 뱉었을 것이다 — 스캔·적재를 다 끝낸 뒤 마지막 POST에서.
+- **근본 원인**: 페이로드 생산자가 `const payload = { ... }` **리터럴**이라 `PushPayloadType`과 아무 관계가 없었다. 스키마(zod)와 소비자(`applyPush`)는 타입으로 이어져 있는데 **생산자만 끊겨 있었고**, 그래서 계약이 넓어져도 컴파일러가 붙잡을 지점이 없다. `JSON.stringify`가 그 경계를 통과시키므로 런타임까지 조용하다.
+- **그물**:
+  - 잡은 것: `/code-review`. diff에서 "필수 필드를 늘렸는데 이걸 만드는 쪽은 어디인가"를 물어 찾았다.
+  - 놓친 것: **`typecheck`·`test` 둘 다.** 테스트가 순수 함수만 덮고 CLI는 안 덮는다는 공백(2026-08-31 `process.exit` 항목과 같은 공백)이 여기서 다시 드러났다.
+- **재발 방지**:
+  - **규칙: zod 스키마의 `z.infer` 타입을 생산자에 붙인다.** 소비자에만 붙이면 계약의 절반만 검사된다. `const payload: PushPayloadType = { ... }` 한 줄이 다음번 필드 추가를 컴파일 에러로 만든다.
+  - grep: `grep -rn "z.infer" lib/` 로 스키마 타입을 나열하고, **각 타입이 생산자에도 붙어 있는지** 본다.
+  - **전수 확인 결과 같은 패턴이 하나 더 열려 있다**: `SaveInputType`(`lib/keys/save.ts`)이 export되지만 아무도 쓰지 않는다. 생산자인 `components/translation-input.tsx`가 `saveTranslation({ keyId, localeCode, value })`를 리터럴로 넘기고 Action 시그니처가 `raw: unknown`이라 타입이 걸리지 않는다. **`SaveInput`에 필수 필드가 늘면 화면이 런타임 `invalid input`으로 조용히 깨진다.** (Action이 `unknown`을 받는 것 자체는 의도된 설계다 — 직렬화 경계라 zod 재검증이 필요하다. 붙일 곳은 호출부다.)
+  - 7단계에서 GitHub Actions 워크플로가 같은 페이로드를 YAML/셸로 조립한다 — **거기엔 컴파일러가 아예 없다.** `push-local.ts`를 그대로 호출하게 만들어 생산자를 하나로 유지하는 편이 낫다.
 
 ---
 
