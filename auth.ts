@@ -22,6 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * 허용 목록이 비면 아무도 통과하지 못한다(fail-closed).
      */
     signIn({ profile }) {
+      // GitHub raw profile의 `login`이 핸들이다 — 실측으로 `profile`에 정상 전달됨을 확인했다.
       const login = typeof profile?.["login"] === "string" ? profile["login"] : null;
       return isLoginAllowed(login, parseAllowedLogins(process.env["AUTH_ALLOWED_LOGINS"]));
     },
