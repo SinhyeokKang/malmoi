@@ -59,7 +59,11 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 3. **사용처 스캔**: `__MSG_key__` 토큰, `chrome.i18n.getMessage("key")`, (설정됐으면) 래퍼 호출에서 `refs` 수집
 4. **CI 실패 조건**: base 로케일 파일이 없거나 JSON이 깨졌거나 `message` 필드가 없다, 키 이름이 `[A-Za-z0-9_@]` 밖이다(크롬이 조용히 무시한다)
 5. **경고 조건 (실패 아님)**: 코드에서 못 찾은 키(= `refs` 없음), 로케일 파일에 없는 키를 코드가 참조
-6. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `commitSha` 포함
+6. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `projectSlug`·`commitSha`·`commitAt` 포함
+
+   **`projectSlug`를 페이로드가 싣고 서버가 대조한다** (2026-08-31 결정). 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 **409**로 거부한다 — 대상 지정을 서버 env에만 맡기면 리포가 둘 붙는 순간 한쪽 페이로드가 남의 프로젝트에 적용되고, `toDelete`가 없고 FK가 `RESTRICT`라 삽입된 이물 키를 지울 수 없다. 프로젝트별 토큰으로 가르는 방법도 있지만 시크릿이 프로젝트 수만큼 늘고 토큰↔프로젝트 매핑을 어딘가 둬야 해서 PoC엔 과하다.
+
+   **`commitAt` 역행을 거부한다** (2026-08-31 결정). Actions가 커밋 시각을 실어 보내고, `Project.lastCommitAt`보다 과거면 **409**다. strict라 오래된 run을 Re-run하면 DB가 그 시점으로 회귀하는데(키 orphan + 번역값 회귀 + permalink가 옛 SHA) 되돌릴 경로가 없다. **같은 커밋의 재전송은 통과시킨다** — strict라 결과가 같고, 스캐너를 고쳐 같은 커밋을 다시 올리는 것은 정당하다. GitHub API로 조상 관계를 확인하는 편이 정확하지만 그러면 지금 GitHub을 전혀 안 부르는 push 라우트에 App 토큰과 네트워크 호출이 들어온다.
 
    **`POST`인 이유**: 전체 키 집합을 보내므로 의미상 `PUT`에 가깝지만, 리소스 교체가 아니라 **부수효과 있는 RPC**다 — `orphaned` 표시·`needsReview` 전파 같은 파생 효과가 있고, 같은 URL에 `GET`하면 그 리소스가 나오지 않는다.
 
@@ -73,7 +77,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
    - 적재 결과에 없는 키 → `orphaned = true`, 다시 나타난 키 → `false`. **삭제하지 않는다**
    - `sourceHash`가 바뀐 키 → base 아닌 모든 번역에 `needsReview = true` 전파
    - `KeyRef` 전체 교체 (증분 갱신보다 단순하고, 스캔이 전수라 정확하다)
-   - `Project`에 `lastCommitSha`와 어댑터 설정(`adapterName`·`pathTemplate`·`nested`·`baseLocale`) 저장 — 포맷을 아는 시점이 push이고, pull이 파일을 쓰려면 필요하다
+   - `Project`에 `lastCommitSha`·`lastCommitAt`와 어댑터 설정(`adapterName`·`pathTemplate`·`nested`·`baseLocale`) 저장 — 포맷을 아는 시점이 push이고, pull이 파일을 쓰려면 필요하다
 
    **구현 제약**: 런타임이 transaction 모드 pooler(6543)라 대화형 `$transaction(async tx => …)`이 세션을 못 잡는다. 배열형 `$transaction([...])`과 `unnest()` 벌크 문장을 쓴다 — 1446키를 키마다 왕복하면 타임아웃이다. 진단·계획은 순수 함수(`lib/push/plan.ts`)로 분리해 테스트한다.
 
@@ -92,7 +96,9 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 **유일한 사용자 mutation은 "번역값 수정"이다.** Server Action 하나(`saveTranslation`)뿐이고, 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
 
-**값 지우기는 행 삭제가 아니라 `value=""`다** (행을 지우면 export가 `sourceText` 폴백·미번역 판정에서 갈린다). 단 **strict 하에서 "지우기"의 수명은 다음 push까지다** — 리포 파일에 값이 남아 있으면 `DO UPDATE`가 그 값으로 되살린다. 빈 문자열을 리포로 되돌릴 방법이 없어서(§4.1이 미번역을 export에서 제외한다) 이 조작은 사실상 손실 창 안에서만 유효하고, 그 의미를 어떻게 정의할지는 미결이다 (TASKS §5c 🔒).
+**값 지우기는 행 삭제가 아니라 `value=""`다** (행을 지우면 export가 `sourceText` 폴백·미번역 판정에서 갈린다).
+
+**"지우기"는 미번역으로 되돌리는 조작이고 수명은 다음 push까지다** (2026-08-31 결정). §4.1이 미번역을 export에서 빼므로 빈 값은 리포에 도달하지 못하고, 리포 파일의 옛 값이 다음 push에서 `DO UPDATE`로 되살아난다. **화면이 그 사실을 보이면 된다** — 빈 값을 리포까지 내보내려면 §4.1의 "미번역 제외"를 뒤집어야 하는데, 그러면 크롬과 TS 딕셔너리 양쪽에서 폴백을 잃고 빈 문자열이 그대로 렌더된다. 오역을 지워 비워두려는 의도까지 막지 않으려면 입력 자체를 거부할 수도 없다.
 
 **화면은 테이블이다** — `| key | en(base) | ko | fr |`. 번역자가 원문과 번역을 나란히 봐야 하고, 로케일마다 화면을 갈아타면 문맥이 끊긴다.
 
@@ -112,6 +118,9 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 고정 브랜치 `l10n/sync` 하나에 커밋을 얹고 열린 PR 하나를 재사용한다. **clone 없이 GitHub Git Data API로만** 구현한다.
 
 1. 트리거: 편집 UI의 수동 버튼 + Vercel Cron 야간 1회 (웹훅 즉시 반영은 비범위)
+1.5 **DB 측 스킵 — 여기서 대부분 끝난다** (2026-08-31 결정). 그 프로젝트의 `Translation.updatedAt` 최대값이 `Project.lastPulledAt` 이후로 움직이지 않았으면 **GitHub을 한 번도 부르지 않고 종료**한다. 편집이 없는 날이 대부분이라 이게 기본 경로이고, 어댑터 방식과 무관하게 성립한다 — `ts-dict`는 write가 원본을 요구해 blob SHA 비교만으로는 호출을 아낄 수 없기 때문에(§4.1) 이 층이 없으면 변경 없는 날도 파일 수만큼 호출이 든다.
+
+   **대가**: 리포의 로케일 파일을 직접 고치고 push를 안 돌린 경우를 놓친다. 정상 흐름에선 push가 그 변경을 DB에 반영하므로(strict) `updatedAt`이 움직인다.
 2. base 브랜치 head SHA와 트리 조회
 3. **어댑터의 writer로** 로케일별 파일 결정적 생성 (§4) — 읽어온 포맷 그대로
 
@@ -141,7 +150,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 **대가**: `write`가 원본을 필요로 하므로 pull이 blob SHA만이 아니라 **내용**을 받아야 한다 (§3.3). 이득은 정규화 diff가 아예 없다는 것 — 바뀐 줄만 diff에 뜬다.
 
-아래 규칙은 **재생성 방식에만** 적용된다. 수술적 치환은 원본 순서·공백을 보존하므로 정렬·재조립을 하지 않는다.
+아래 규칙은 **재생성 방식에만** 적용된다. 수술적 치환은 원본 순서·공백을 보존하므로 정렬·재조립을 하지 않는다. 다만 **"미번역 제외"만은 호출부가 양쪽에 똑같이 적용한다** — `ts-dict`에 빈 값을 넘기면 치환이 일어나 소스에 `""`가 박히고, TS 딕셔너리엔 폴백이 없어 그대로 렌더된다. 빈 값은 아예 넘기지 않아 원본 값이 남게 한다 (§3.2의 "지우기" 결정과 같은 축).
 
 - 키 정렬: **`<` 비교** (UTF-16 코드 유닛). `localeCompare`는 Node ICU 빌드에 의존해 불변식이 실행 환경에 묶인다
 - 정렬한 순서로 객체를 **재조립**한다 (`JSON.stringify`는 삽입 순서를 따르고, Postgres는 `ORDER BY` 없는 순서를 보장하지 않는다)
@@ -234,6 +243,9 @@ export type Adapter = {
 ```
 Project      id PK, slug UNIQUE, name,
              repoOwner, repoName, baseBranch, installationId?   -- 테넌트 경계
+             adapterName?, pathTemplate?, nested?, baseLocale?  -- push가 저장, pull이 읽는다
+             lastCommitSha?, lastCommitAt?                      -- 역행 거부 (§3.1)
+             lastPulledAt?                                      -- DB 측 스킵 (§3.3)
 Locale       (projectId, code) PK, name, isBase
 StringKey    id PK, projectId FK, key, namespace, sourceText, sourceHash,
              description, orphaned, updatedAt
@@ -283,10 +295,6 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 ## 10. 아직 안 정한 것
 
-- **push의 프로젝트 라우팅** — 지금은 서버의 `ACTIVE_PROJECT_SLUG` 하나가 대상을 정한다. 리포가 둘 이상 붙으면 페이로드에 slug를 실어 대조할지, 프로젝트별 `PUSH_TOKEN`으로 가를지 정해야 한다. **7단계 전 필수** — 어긋나면 남의 테넌트에 키가 삽입되고 `toDelete`가 없어 되돌릴 수 없다
-- **과거 커밋 재실행 가드** — `/api/push`가 `commitSha`를 저장만 하고 `lastCommitSha`와 순서를 비교하지 않는다. 오래된 run을 Re-run하면 strict가 DB를 그 시점으로 되돌린다. 순서 검사는 병합이 아니라 거부이므로 §2와 충돌하지 않는다
-- **`ts-dict` 프로젝트의 pull 계약** — 수술적 치환이 원본 내용을 요구하므로 "SHA 비교로 API 호출을 아낀다"(§3.3-4)가 그대로 성립하지 않는다. 파일별 blob 읽기를 감수할지, DB 측 스킵(마지막 pull 이후 `Translation.updatedAt` 최대값이 안 움직이면 API를 아예 안 부른다)을 넣을지 6단계 착수 시 정한다
-- **`ts-dict` write의 빈 문자열 처리** — 재생성 포맷은 미번역 키를 파일에서 빼 폴백을 유도하지만, TS 딕셔너리는 폴백이 없어 `""`가 그대로 렌더된다. 치환을 건너뛰어 원본 값을 남길지 정해야 한다 (TASKS §5c 🔒와 같은 결정)
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
