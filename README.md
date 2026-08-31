@@ -35,4 +35,4 @@ pnpm dev
 | 마이그레이션 | `pnpm db:migrate` / 상태: `pnpm db:status` |
 | Codex 미러 동기화 | `pnpm sync:agents` |
 
-브랜치: `dev`에서 작업, `main` 머지가 곧 Vercel 프로덕션 배포.
+**브랜치는 `main` 단일이다.** PR도 preview 배포도 없고, **main push가 곧 Vercel 프로덕션 배포**다. CI는 push 이후에 돌므로 게이트가 아니라 사후 확인이다 — 프로덕션 앞의 유일한 게이트는 `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test`다.

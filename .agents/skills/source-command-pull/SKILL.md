@@ -16,7 +16,7 @@ Use this skill when the user asks to run the migrated source command `pull`.
 ## 절차
 
 1. **상태 확인** — `git status`. 미커밋 변경이 있으면 pull 전에 알린다 (stash 여부는 사용자 판단).
-2. **`git pull`** — 현재 브랜치. 충돌이면 중단하고 보고.
+2. **`git pull`** — `main`(단일 브랜치). 충돌이면 중단하고 보고 — main 단일이라 충돌은 다른 창구(웹 UI·다른 머신)에서 푸시가 있었다는 뜻이다.
 3. **최근 변경 파악**
    - `git log --oneline -15`
    - `git diff HEAD@{1}..HEAD --stat` (pull로 들어온 것)
@@ -27,7 +27,7 @@ Use this skill when the user asks to run the migrated source command `pull`.
 ## 리포트
 
 ```
-📥 pull: <브랜치>
+📥 pull: main
 받아온 커밋: <n>건 / 없음
    <oneline 목록>
 

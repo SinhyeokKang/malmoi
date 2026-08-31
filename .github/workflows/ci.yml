@@ -1,10 +1,17 @@
 name: CI
 
+# main 단일 브랜치라 PR 이벤트가 발생하지 않는다. 따라서 이 워크플로는 **게이트가 아니라
+# 사후 확인**이다 — push가 곧 Vercel 프로덕션 배포이고 CI는 그 뒤에 돈다.
+# 프로덕션 앞의 유일한 게이트는 /push 1단계의 로컬 typecheck + test다.
+#
+# 그래도 CI를 두는 이유 셋:
+#   1. 로컬 환경 의존성을 걷어낸 깨끗한 체크아웃에서 도는지 확인
+#   2. 다른 창구(웹 UI·Codex·다른 머신)에서 들어온 커밋 검증
+#   3. Codex 미러 드리프트 차단
 on:
   push:
-    branches: [main, dev]
-  pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}

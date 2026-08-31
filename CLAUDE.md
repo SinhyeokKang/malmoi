@@ -112,7 +112,11 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(typecheck + test + Codex 미러 드리프트) 단일이다. main의 required status check도 `verify` 하나. **Vercel이 별도로 preview/production 배포를 붙이므로 빌드 검증은 Vercel이 맡는다** — CI에서 `next build`를 중복 실행하지 않는다(같은 걸 두 번 돌리는 비용).
+`ci.yml` 하나뿐이고 job은 `verify`(typecheck + test + Codex 미러 드리프트) 단일이다. 트리거는 **main push + 수동(`workflow_dispatch`)** 뿐이다 — 브랜치가 하나라 PR 이벤트가 발생하지 않는다.
+
+**⚠️ CI는 게이트가 아니라 사후 확인이다.** main 단일 브랜치라 push가 곧 배포이고, CI는 그 push **이후에** 돈다. required status check로 무언가를 막을 수 있는 지점이 없다. **프로덕션 앞의 유일한 게이트는 `/push` 1단계의 로컬 `pnpm typecheck` + `pnpm test`다** — 이걸 건너뛰면 아무것도 검증되지 않은 채 배포된다.
+
+CI가 여전히 있는 이유는 셋: 로컬 환경 의존성을 걷어낸 깨끗한 체크아웃에서 도는지 확인, 다른 창구(웹 UI·Codex·다른 머신)에서 들어온 커밋 검증, Codex 미러 드리프트 차단. **Vercel이 프로덕션 배포에서 빌드를 검증하므로 CI에서 `next build`를 중복 실행하지 않는다.**
 
 **빌드는 자동 실행하지 않는다.** 타입 확인이 필요하면 `pnpm typecheck`를 쓴다. `pnpm build`는 사용자가 명시 요청할 때만.
 
@@ -156,18 +160,37 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 브랜치 정책 & 배포
 
-- 작업 브랜치: **`dev`** — 자유롭게 push (force push 허용). Vercel preview 배포가 붙는다.
-- 메인 브랜치: **`main`** — 직접 push 금지, PR squash 머지만. **main 머지가 곧 Vercel 프로덕션 배포다** — 별도 배포 명령이 없고, 그래서 `/deploy` 스킬도 없다.
-- **⚠️ GitHub 브랜치 프로텍션은 걸려 있지 않다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`). 따라서 main 직접 push를 막는 건 **하네스뿐이다** — `/push` 0단계 브랜치 가드, `/ship` 브랜치 가드, `/merge`만 main에 반영. **이 가드를 우회하면 아무것도 안 막는다.** 리포를 public으로 바꾸거나 Pro로 올리면 서버 측 보호를 켤 수 있다 (`verify` required check + linear history).
-- **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다. 릴리스 노트도 없다.
-- **DB 마이그레이션은 배포와 순서가 얽힌다**: `pnpm db:deploy`를 **머지 전에** 돌려 스키마를 먼저 넓힌다(additive-first). 컬럼 삭제·타입 변경은 코드 배포가 끝난 다음 별도 마이그레이션으로. 이 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 상세는 `/db` 스킬.
+**`main` 단일 브랜치다.** 작업 브랜치도 PR도 없다.
+
+- **main push = Vercel 프로덕션 배포.** 별도 배포 명령이 없고, 그래서 `/deploy`도 `/merge`도 없다. `/push`가 배포 스킬이다.
+- **preview 배포가 없다.** 브랜치가 하나라 Vercel이 preview를 붙일 대상이 없다. 배포 전에 눈으로 보려면 `pnpm dev`로 로컬에서 확인한다.
+- **PR 전 CI 게이트가 없다.** PR이 없으므로 CI는 배포 후에 돈다 (위 CI 섹션).
+- **GitHub 브랜치 프로텍션도 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`).
+- **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다.
+
+### 그래서 게이트가 전부 로컬에 있다
+
+서버 측에 막는 장치가 하나도 없다는 뜻이다. **프로덕션 앞에 서 있는 것은 `/push` 1단계의 `pnpm typecheck` + `pnpm test`, 그리고 `/ship`의 단계별 게이트뿐이다.** 이 구조에서:
+
+- **`/push`의 로컬 검증 게이트를 건너뛰면 아무것도 검증되지 않은 채 배포된다.** "CI가 잡아줄 것"은 성립하지 않는다.
+- **`/ship`의 게이트는 "다음 단계로 갈 자격"이 아니라 "배포될 자격"이다.** 애매한 통과는 곧 사고다.
+- **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 push하는 것 말고는 롤백 경로가 없다.
+- **`git push --force`는 기본 금지.** main이 유일한 브랜치라 히스토리가 하나뿐이고, 날아가면 복구할 곳이 없다.
+
+### DB 마이그레이션은 배포와 순서가 얽힌다
+
+`pnpm db:deploy`를 **push 전에** 돌려 프로덕션 스키마를 먼저 넓힌다(additive-first). 컬럼 삭제·타입 변경은 코드 배포가 끝난 다음 별도 마이그레이션으로. 이 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다. `/push` 3단계가 마이그레이션을 감지해 확인을 요구하지만 그건 안전망이고, 순서를 아는 건 `/db`의 책임이다.
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 12개의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다.
+스킬 **10개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
 
-권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push` → `/merge`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션한다.
+`/feature` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship`
 
+권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
+
+- **`/merge`·`/sync`는 삭제됐다.** main 단일 브랜치가 되면서 존재 이유가 사라졌다 (dev→main PR도, dev 재동기화도 없다). 이 이름을 부르는 지침이 남아 있으면 오래된 문서다.
+- **배포하지 않고 커밋만 쌓고 싶으면 `/ship`을 쓰지 않고 개별 스킬로 진행한다.**
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다.
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
 - **`/l10n-roundtrip`은 아직 없다.** push→편집→pull 왕복을 실제 리포로 검증하는 스킬인데, 세 흐름이 다 서기 전엔 만들 게 없다. `/api/pull`이 동작하는 시점에 추가한다.

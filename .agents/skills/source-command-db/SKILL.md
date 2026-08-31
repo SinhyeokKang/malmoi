@@ -18,7 +18,7 @@ Use this skill when the user asks to run the migrated source command `db`.
 
 ## 왜 별도 스킬인가
 
-`DATABASE_URL`(pooler 6543)과 `DIRECT_URL`(direct 5432)이 나뉘어 있고, **pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 main 머지가 곧 프로덕션 배포라 스키마 적용 타이밍이 배포와 얽힌다. 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
+`DATABASE_URL`(transaction 모드 pooler 6543)과 `DIRECT_URL`(session 모드 pooler 5432)이 나뉘어 있고, **transaction 모드로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 **main 단일 브랜치라 push가 곧 프로덕션 배포**여서 스키마 적용 타이밍이 배포와 직접 얽힌다. 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
 
 ## 절차
 
@@ -56,7 +56,7 @@ git status --porcelain prisma/
 한 번에 하지 않는다. 순서:
 
 1. **1차 마이그레이션 (additive)**: 새 컬럼을 nullable로 추가. 코드는 양쪽(구·신)을 다 읽게 쓴다
-2. **코드 배포** (`/merge`)
+2. **코드 배포** (`/push` — main 푸시가 곧 배포다)
 3. **백필** — 필요하면 스크립트로
 4. **2차 마이그레이션 (destructive)**: 구 컬럼 삭제 / NOT NULL 승격
 
@@ -82,7 +82,7 @@ pnpm db:migrate --name <snake_case_이름>
 
 ### 7. 배포 순서 안내 (리포트에 필수)
 
-프로덕션 적용은 **`/merge` 전에 `pnpm db:deploy`** 로 한다 (additive-first). 이걸 리포트에 명시한다 — 잊으면 배포 직후 프로덕션이 없는 컬럼을 조회한다.
+프로덕션 적용은 **`/push` 전에 `pnpm db:deploy`** 로 한다 (additive-first). `/push` 3단계가 마이그레이션을 감지해 확인을 요구하지만, 그건 안전망이고 순서를 아는 건 이쪽 책임이다 — 잊으면 배포 직후 프로덕션이 없는 컬럼을 조회한다.
 
 ## 리포트
 
@@ -95,8 +95,8 @@ generate + typecheck: OK / test: <n> passed
 커밋: <해시> (스키마+마이그레이션만)
 
 배포 순서:
-1. pnpm db:deploy   ← /merge **전에** 실행 (프로덕션 스키마 먼저 넓힌다)
-2. /merge           ← 코드 배포
+1. pnpm db:deploy   ← /push **전에** 실행 (프로덕션 스키마 먼저 넓힌다)
+2. /push            ← main 푸시 = 프로덕션 배포
 3. <destructive 2단계가 남았으면: 다음 /db 호출로 구 컬럼 정리>
 ```
 
