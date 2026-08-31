@@ -207,9 +207,10 @@ describe("정규식 경로 — __MSG_key__", () => {
       raw("manifest.config.ts", 'name: "__MSG_ext_name__",'),
     );
     expect(keys).toHaveLength(1);
+    // refs는 path 기준 정렬이므로 manifest가 먼저다 ("결과 순서" 블록이 이 규칙을 고정한다).
     expect(keys[0]?.refs).toEqual([
-      { path: "src/a.ts", line: 1 },
       { path: "manifest.config.ts", line: 1 },
+      { path: "src/a.ts", line: 1 },
     ]);
   });
 
