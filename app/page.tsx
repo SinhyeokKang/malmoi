@@ -1,20 +1,35 @@
-export default function Home() {
+import { redirect } from "next/navigation";
+
+import { auth, signIn } from "@/auth";
+
+/**
+ * 로그인 진입점. 미들웨어가 세션 없는 `/keys` 요청을 여기로 보낸다.
+ *
+ * 이미 로그인돼 있으면 바로 `/keys`로 — 로그인 화면을 두 번 보여줄 이유가 없다.
+ */
+export default async function Home() {
+  const session = await auth();
+  if (session?.user) redirect("/keys");
+
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">i18n-poc</h1>
+    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
+      <h1 className="text-lg font-semibold tracking-tight">i18n-poc</h1>
       <p className="text-muted-foreground text-sm">
-        번역 값은 DB가 진실, 소스 키는 코드가 진실. 편집 UI는 구현 순서 5단계에서.
+        GitHub 계정으로 로그인한다. 허용 목록에 없는 계정은 들어올 수 없다.
       </p>
-      {/* 토큰 검증용 — 5단계에서 실제 UI로 대체된다 */}
-      <div className="border-border space-y-2 rounded-lg border p-4">
-        <div className="text-mono" data-testid="mono-probe">
-          common.viewAll
-        </div>
-        <div className="text-destructive text-xs">orphaned</div>
-        <div className="rounded bg-amber-100/80 px-2 py-0.5 text-xs text-amber-800 inline-block">
-          검토필요
-        </div>
-      </div>
+      <form
+        action={async () => {
+          "use server";
+          await signIn("github", { redirectTo: "/keys" });
+        }}
+      >
+        <button
+          type="submit"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring w-full rounded-md px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
+        >
+          GitHub으로 로그인
+        </button>
+      </form>
     </main>
   );
 }
