@@ -12,7 +12,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - **스킬 호출 매핑** — 본문이 `/<name>`으로 부르는 스킬은 Codex에선 `source-command-<name>` 스킬로 로드한다.
 - **미제공 스킬 (역할 분담)** — `/push`는 미러하지 않는다. **Codex는 작업 → 커밋까지, 원격으로 나가는 건 Claude Code**가 단일 창구로 맡는다 — main 단일 브랜치라 push가 곧 Vercel 프로덕션 배포이고, 두 창구가 경쟁하면 배포가 깨진다. `/push`가 필요해지면 사용자에게 Claude Code 세션에서 실행하라고 안내하고 멈춘다. (`/merge`·`/sync`는 브랜치가 하나가 되면서 아예 삭제됐다 — 존재하지 않는 스킬이다.)
 - **`/ship`은 10단계(마지막 커밋)까지** — `source-command-ship`은 미러돼 있고 커밋 단계까지 전부 돈다. 11단계 push는 **수행하지 않고** "배포 대기 — Claude Code에서 `/push` 실행"을 리포트에 남기고 종료한다. Claude Code에서 `/ship`은 **프로덕션 배포까지 가지만 Codex에서는 절대 배포되지 않는다** — 이 차이를 사용자에게 명확히 알린다. 상세는 스킬 본문의 "push 권한 / 런타임별 종착점".
-- **export 결정성 훅 없음** — Claude Code는 `.claude/settings.json`의 PostToolUse 훅이 `lib/export.ts`·`lib/githash.ts` 편집 시 관련 테스트를 자동 실행해 결정성 붕괴를 차단한다. Codex엔 이 훅이 없으니 그 파일을 건드렸으면 손으로 돌린다: `pnpm test`
+- **결정성 훅 없음** — Claude Code는 `.claude/settings.json`의 PostToolUse 훅이 `lib/adapters/`·`lib/githash.ts`·`lib/push/`·`lib/keys/`·`lib/scan/` 편집 시 관련 테스트를 자동 실행해 결정성·판정 붕괴를 차단한다. Codex엔 이 훅이 없으니 그 파일을 건드렸으면 손으로 돌린다: `pnpm test`
 - **미러 sync 훅 없음** — Claude Code는 `CLAUDE.md`·`.claude/commands/*.md` 편집 시 훅이 `sync:agents`를 자동 실행한다. Codex엔 없다. 애초에 **Codex는 원본을 편집하지 않는 게 규칙**이고, 부득이 고쳤으면 `pnpm sync:agents`를 직접 돌려 미러를 함께 커밋한다.
 - **개인 메모리 없음** — 본문 말미의 `~/.claude/projects/.../memory/`는 Claude Code 전용 저장소다. Codex는 이 경로를 읽지 않는다.
 - **커밋 트레일러** — Codex 세션에서 만든 커밋은 마지막 줄에 `Co-Authored-By: Codex <noreply@openai.com>`를 붙인다(Claude Code의 `Co-Authored-By: Claude ...`와 대칭 — 어느 에이전트가 만든 커밋인지 히스토리에서 구분되게).
@@ -41,11 +41,14 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 **이 프로젝트의 유일한 축이고, 여기서 파생되지 않는 복잡도는 전부 의심 대상이다.** (원문·근거는 [docs/MVP.md](./docs/MVP.md) §2)
 
-두 종류의 데이터에 각각 단일 진실 공급원을 배정한다. 번역 값(어떤 언어로 뭐라고 쓰는가)은 **DB만** 안다. 소스 키(어떤 문자열이 존재하는가)는 **코드만** 안다. 각 축에 소유자가 하나뿐이므로 **머지 로직이 아예 존재하지 않는다** — export는 DB에서 결정적으로 재생성되니, git 브랜치가 갈라져도 base에서 다시 따서 파일을 새로 뽑으면 끝난다. 3-way merge도, 충돌 해소 UI도, "누가 이겼나" 판정도 없다.
+두 종류의 데이터에 각각 소유자를 하나씩 배정한다. 소스 키(어떤 문자열이 존재하는가)는 **코드만** 안다. 각 축에 소유자가 하나뿐이므로 **머지 로직이 아예 존재하지 않는다** — export는 DB에서 결정적으로 재생성되니, git 브랜치가 갈라져도 base에서 다시 따서 파일을 새로 뽑으면 끝난다. 3-way merge도, 충돌 해소 UI도, "누가 이겼나" 판정도 없다.
+
+**번역 값의 진실은 시점에 따라 갈린다** (strict 정책 — MVP §3.1): push 시점엔 리포가 DB를 덮고, 그 사이엔 DB가 진실이며 pull이 리포로 되돌려준다. 어느 순간에도 **두 쪽을 병합하지 않는다** — 이 원칙이 실제로 지키는 것은 "단일 소유자"가 아니라 **"병합 없음"** 이다.
 
 따라서:
 
-- **push는 번역 값을 절대 건드리지 않는다.** 코드에서 사라진 키도 삭제하지 않고 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다. 삭제는 되돌릴 수 없어 이 원칙을 깬다.
+- **push는 리포 값으로 번역을 덮는다** (`ON CONFLICT DO UPDATE`, strict). 변경 감지도 병합도 없다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다 (MVP §3.1). 정책을 느슨하게 하면(변경 감지·병합) 이 원칙이 요구하는 단순성이 무너진다.
+- **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다. 삭제는 되돌릴 수 없어 이 원칙을 깬다.
 - **pull은 파일을 편집하지 않고 생성한다.** 기존 파일 내용을 읽어 병합하는 코드가 생기면 그 순간 DB의 단독 소유권이 깨진다. 읽는 것은 오직 **변경 여부 판정**을 위한 blob SHA뿐이다.
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
 
@@ -66,7 +69,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — main 머지가 곧 프로덕션 | — |
 | DB | Supabase Postgres (`i18n-poc`, ref `xgsyyapzkpbdtkrprlmn`) | — |
-| 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_ORG`), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
+| 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
@@ -111,7 +114,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 ### 세션은 JWT — 권한 회수가 최대 24시간 지연된다
 
-`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. org 멤버십은 **최초 로그인 시 1회** 확인해 토큰에 박는다. 따라서 **org에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 사용자 테이블 4개(`User`·`Account`·`Session`·`VerificationToken`)와 요청마다의 DB 왕복이 사라지고 스키마가 4테이블로 유지된다. 즉시 회수가 필요해지면 `@auth/prisma-adapter`로 DB 세션으로 바꾼다 — 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
+`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. 허용 핸들 목록 검사는 **최초 로그인 시 1회**(`signIn` 콜백) 돌고 핸들을 토큰에 박는다. 따라서 **목록에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 사용자 테이블 4개(`User`·`Account`·`Session`·`VerificationToken`)와 요청마다의 DB 왕복이 사라지고 스키마가 5테이블로 유지된다. 즉시 회수가 필요해지면 `@auth/prisma-adapter`로 DB 세션으로 바꾼다 — 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -168,30 +171,38 @@ CI가 여전히 있는 이유는 셋: 로컬 환경 의존성을 걷어낸 깨�
 app/
   layout.tsx            루트 레이아웃 (Pretendard <link>)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  (edit)/               (미구현) 편집 UI (인증 필요)
-    actions.ts          (미구현) Server Action — 번역 저장·pull 트리거
+  (edit)/               편집 UI (인증 필요 — 차단은 middleware.ts)
+    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다)
+    keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
+    actions.ts          Server Action — saveTranslation (유일한 사용자 mutation)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
-components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
+middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록)
+components/
+  translation-input.tsx 인라인 편집 (client — blur 시 저장)
+  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
     index.ts            detectFormat / adapterFor / ADAPTERS(우선순위)
-    shared.ts           모든 writer가 지키는 결정성 규칙 + 후보 순위·검증
-    chrome-locales.ts   _locales/{locale}/messages.json
-    json-catalog.ts     {dir}/{locale}.json (flat|중첩, 배열 인덱스)
+    shared.ts           재생성 writer의 결정성 규칙 + 후보 순위·검증
+    chrome-locales.ts   _locales/{locale}/messages.json (재생성)
+    json-catalog.ts     {dir}/{locale}.json (flat|중첩, 배열 인덱스 — 재생성)
+    ts-dict.ts          src/i18n/namespaces/*.ts (⚠️ 수술적 치환 — 원본 내용 필요)
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
-  githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
+  githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
   push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
   auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
-  keys/                 view.ts(순수 — 집계·배지·permalink) / query.ts(조회, server-only)
+  keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
+                        / query.ts(조회, server-only)
+types/next-auth.d.ts    session.user.login 타입 확장
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
-  migrations/           _init, _add_project_tenant_boundary
+  migrations/           _init, _add_project_tenant_boundary, _add_project_locale_format
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
@@ -211,10 +222,10 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/export.ts`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`을 건드리기 전에 읽는다. 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`를 건드리기 전에 읽는다. 요약:
 
-- **export 결정성 3규칙**: 키는 코드포인트 오름차순 정렬, 들여쓰기 2칸, 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다).
-- **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다.
+- **export 결정성 3규칙 (재생성 방식)**: 키는 코드포인트 오름차순 정렬, 들여쓰기 2칸, 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
+- **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **`ts-dict`는 write에 원본 내용이 필요해 이 최적화가 그대로 성립하지 않는다** (MVP §3.3 — 파일당 blob 읽기 1회).
 - **커밋 parents는 항상 base의 head, 브랜치는 force update**: `l10n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다. 3-way merge를 피하는 게 코어 원칙이므로 fast-forward를 지키려 하지 않는다.
 - **커밋 메시지에 `[skip-l10n]`**: 이 마커가 없으면 pull이 만든 커밋이 main에 머지될 때 push가 다시 돌아 무한 루프가 된다.
 - **PR은 하나를 재사용**: 열린 PR이 있으면 새로 만들지 않는다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.

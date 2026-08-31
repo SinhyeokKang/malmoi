@@ -145,7 +145,7 @@ MVP §3.2가 정한 화면은 **네임스페이스 사이드바 → 키 리스�
 | 검토필요 (`needsReview`) | **amber** — `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
 | orphaned | **red 계열 글자만** — `text-destructive` | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다 |
 
-**새 raw 색을 늘리지 않는다.** 위 둘(amber·destructive)이 전부다.
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — 배지의 **amber**·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**.
 
 ### 6.3 코드 참조 링크
 

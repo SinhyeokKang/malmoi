@@ -109,10 +109,14 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6로케일, 36 네임스페이스**)
 - [x] 중첩 평탄화(`.`) + write에서 복원, 배열은 인덱스 키(`hero.subcopy.0`)
   - 검증: `0..n` 빈틈없으면 배열로 복원, 빈틈 있으면 객체 유지(구멍이 `null`로 나가는 것을 막는다)
-- [x] 결정성 규칙을 `shared.ts`로 모아 **모든 writer가 지나게** 한다
+- [x] 결정성 규칙을 `shared.ts`로 모아 **모든 재생성 writer가 지나게** 한다
   - 검증: 정렬(`<` 비교)·재조립·2칸·끝 개행 1개·orphaned 제외·미번역 제외·0개면 `null`
+  - ⚠️ **`ts-dict`는 이 관문을 지나지 않는다** — 수술적 치환이라 원본 순서·공백·주석을 보존하고 orphaned 키도 파일에 남긴다 (ARCHITECTURE §1.4). "모든 writer"라는 전칭 서술을 보면 낡은 것이다
+- [x] `ts-dict` — 수술적 치환 writer (`src/i18n/namespaces/*.ts`, `multi-locale`)
+  - 검증: 값만 바뀌고 빈 줄·주석이 보존됨. `JSON.stringify`로 이스케이프(`setLiteralValue`는 백슬래시·개행을 깨뜨린다), export된 묶음 객체를 로케일로 오인하지 않음
+  - 근거: bugshot-2의 실제 UI 번역이 903키다 — `_locales` 4키만 다루면 §9 검증 대상을 0.4%로만 덮는다
 - [x] **왕복 검증** — 읽고 쓰면 의미가 같다
-  - 검증: 3개 리포 **11개 로케일 파일 전부 의미 동일**. 바이트 차이는 원본이 정렬돼 있지 않아서이고 첫 pull에서 한 번 정규화된다
+  - 검증: 3개 리포 **11개 로케일 파일 전부 의미 동일**. 바이트 차이는 원본이 정렬돼 있지 않아서이고 첫 pull에서 한 번 정규화된다(재생성 어댑터에 한함 — `ts-dict`는 바이트도 보존된다)
 - [x] 포맷 탐지 — 경로 신호 + 로케일 개수 + `probe` 내용 확인
   - 검증: `public/search/{locale}.json`(검색 인덱스)을 잡던 결함 회귀 테스트 4건
 - [x] `pnpm ingest <dir>` CLI — 탐지·적재·왕복 판정
@@ -129,6 +133,12 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 > | bugshot-web | `const t = await getTranslations({ namespace: "meta" })` | **0** ❌ (키가 namespace 상대) |
 >
 > `refs`가 컨텍스트 기능의 전부다(MVP §3.2 "성패가 여기 달렸다"). 3개 중 2개가 0건이면 기능이 없는 것과 같다. next-intl·react-i18next가 전부 훅 기반이라 "범용적"이라는 목표와 정면으로 어긋난다.
+>
+> **영향 범위는 컨텍스트 축 하나다.** 층 분리(적재=진실, 스캔=`refs`) 덕분에 **적재·편집·pull은 3개 리포 모두 정상 동작한다** — 죽는 것은 permalink뿐이다. 즉 적재는 4/4, 컨텍스트는 1/3.
+>
+> **6단계를 막지 않는다**: §9 왕복 검증 대상인 bugshot-2는 `refs`가 이미 나온다. 데드라인은 skillflo 실사용 직전이다.
+>
+> **아래 두 항목은 한 세트다.** 훅 지원만 해소하면 skillflo만 살아나고, bugshot-web(next-intl)은 키가 namespace 상대라 `t("title")`을 잡아도 `meta.title`로 잇지 못해 여전히 0이다.
 
 - [ ] 🔴 **훅 기반 호출 지원** — `const { t } = useI18n()` / `const t = useTranslations()`
   - 필요: 훅 import를 찾고 그 반환값의 지역 바인딩 이름(구조분해·직접대입)을 추적해 그 스코프 안의 호출을 매칭
@@ -161,7 +171,8 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [x] Bearer `PUSH_TOKEN` 검증, **fail-closed**
   - 검증: 헤더 없음·틀린 토큰·환경변수 미설정(빈 문자열 포함) 전부 거부. 미설정은 500(서버 설정 문제), 나머지는 401. 어느 쪽이 틀렸는지 응답에 노출하지 않는다
 - [x] Zod로 페이로드 검증
-  - 검증: 40자 hex 아닌 `commitSha`, `locales`에 없는 `baseLocale`, 미등록 어댑터, `{locale}` 없는 `pathTemplate`, 미선언 로케일의 번역, 양의 정수 아닌 `line` 전부 400. **키 0개도 거부** — 스캔이 조용히 실패하면 전 프로젝트가 orphan된다
+  - 검증: 40자 hex 아닌 `commitSha`, `locales`에 없는 `baseLocale`, 미등록 어댑터, 미선언 로케일의 번역, 양의 정수 아닌 `line` 전부 400. **키 0개도 거부** — 스캔이 조용히 실패하면 전 프로젝트가 orphan된다
+  - `pathTemplate`에 `{locale}`을 **요구하지 않는다** — `multi-locale` 어댑터(`ts-dict`)는 글롭이다 (ARCHITECTURE §1.1)
 - [x] upsert — 키·원문·`sourceHash`·description·namespace
   - 검증: 실 DB 1446키 → insert 1446 / 재전송 시 insert 0, update 1446
 - [x] 스캔에 없는 키 → `orphaned = true`, 돌아오면 `false`
@@ -170,10 +181,10 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: 10키 원문 변경 → ko 10건, **en(base) 0건**. 판정은 `sourceHash`로만 — description·namespace 변경은 전파하지 않는다(필터가 노이즈가 된다)
 - [x] `KeyRef` 전체 교체
   - 검증: refs 5건만 보냈을 때 DB 5건 (이전 1446건이 남지 않는다)
-- [x] **`Translation.value`를 어떤 경로로도 쓰지 않는다**
-  - 검증: `INSERT ... ON CONFLICT DO NOTHING`만 존재. DB 값을 고친 뒤 push해도 보존됨을 실 DB로 확인. 네 파일 grep에서 `value` 쓰기 0건
-- [x] **번역값 콜드 스타트** — 리포 파일의 값을 없을 때만 채운다 (MVP §3.1 수정)
-  - 근거: 안 채우면 첫 pull이 대상 리포의 번역을 파괴한다(§3.1의 skillflo 시나리오)
+- [x] **번역값 strict 덮어쓰기** — 리포 값으로 DB를 갱신한다 (`ON CONFLICT DO UPDATE`, MVP §3.1)
+  - 검증: 편집한 값이 변경 없는 리포 값으로 덮이고, 바뀐 리포 값이 전파되는 것을 실 DB로 확인 (커밋 `e7055c7`)
+  - ⚠️ **2026-08-31 두 번 뒤집힌 자리다**: "값을 어떤 경로로도 안 건드림" → `DO NOTHING`(콜드 스타트) → strict. 앞의 둘을 서술한 문서를 보면 낡은 것이다
+  - 대가: 편집 손실 창 (MVP §3.1). 방어는 pull 주기뿐이고 **6단계 전까지는 방어가 0이다**
 - [x] `commitSha` + 어댑터 설정을 `Project`에 저장
   - 검증: `adapterName`·`pathTemplate`·`nested`·`baseLocale`·`lastCommitSha` 저장 확인. 마이그레이션 `20260831050156_add_project_locale_format` (additive)
 - [x] 실제 영향 행수를 보고한다 (후보 수가 아니다)
@@ -181,11 +192,13 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - 성능: 1446키 + 2892번역 + 1446refs → **약 1.6초** (라우트 한도 60초)
 - 구현 제약: transaction 모드 pooler라 대화형 트랜잭션 불가 → 배열형 `$transaction([...])` + `unnest()` 벌크
 - [ ] 🔒 **키 id 형식** — raw SQL이라 `randomUUID()`로 만든다. 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw에는 안 온다. 혼재해도 무해하지만 통일할지 결정 필요
-- 커밋: `dbcfd10` (schema) → `1522544`(spec) → `b9c2e53` (test+feat)
+- [ ] 🔒 **대상 프로젝트 라우팅** — 페이로드에 프로젝트 식별자가 없고 서버의 `ACTIVE_PROJECT_SLUG`가 정한다. 리포가 둘 이상 붙으면 한쪽 페이로드가 남의 프로젝트에 적용되고, `toDelete`가 없고 FK가 `RESTRICT`라 **삽입된 이물 키를 지울 수 없다.** 실 DB에 프로젝트가 이미 둘이다 — **7단계 전 필수** (MVP §10)
+- [ ] 🔒 **과거 커밋 재실행 가드** — `commitSha`를 저장만 하고 `lastCommitSha`와 순서를 비교하지 않는다. 오래된 run을 Re-run하면 strict가 DB를 그 시점으로 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA). 순서 검사는 병합이 아니라 거부라 §2와 충돌하지 않는다
+- 커밋: `dbcfd10` (schema) → `1522544`(spec) → `b9c2e53` (test+feat) → `e7055c7` (strict 전환)
 
 ---
 
-## 5. Auth + 편집 UI ⬜ ← **현재 단계** (5a 완료 / 5b 남음)
+## 5. Auth + 편집 UI ⬜ ← **현재 단계** (5a·5b·5c 완료 / 5d 남음)
 
 ### 5a. Auth ✅
 
@@ -201,7 +214,10 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 근거: `Translation.updatedBy`가 쓰고, 사용자 테이블이 없어 문자열로 박는다
 - [x] 보호된 셸 — 로그인 화면 / 헤더 + 로그아웃
   - 검증: DESIGN.md 체크리스트 8항 전부 통과 (`dark:` 0, `bg-destructive` 0, 임의값 0, 새 raw 색 0, 포커스 링 유지)
-- 미들웨어가 아니라 레이아웃에서 막는 이유: 미들웨어는 Edge라 `lib/db.ts` 같은 Node 전용 모듈을 못 물고, 이 그룹 밖에 보호할 라우트가 없다
+- [x] **차단은 `middleware.ts`가 한다** (레이아웃은 2차 방어로 `redirect()`)
+  - ⚠️ 처음엔 반대로 갔다: "미들웨어는 Edge라 `lib/db.ts`를 못 문다"는 **틀린 근거**로 레이아웃 조건부 렌더에 의존했고, 세션 없는 `/keys` 응답 1.3MB에 1446키가 실렸다. 미들웨어는 DB를 물 필요가 없다(JWT 토큰만 본다) — `docs/POSTMORTEM.md` 2026-08-31
+  - 검증: 응답 **본문**을 본다 — `curl -s <라우트> | grep <민감 데이터>`가 0건. 화면으로는 절대 안 보인다
+  - **새 보호 라우트를 추가하면 `matcher`에 추가한다**
 
 ### 5b. UI — 편집 가능 테이블 ✅
 
@@ -242,28 +258,33 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [x] blur 시 Server Action 저장, `updatedBy`에 GitHub 핸들
   - 검증: **브라우저 UI로 `attachment.download`의 en·ko·fr 3셀을 편집해 확인** — 값·`updatedBy`(GitHub 핸들)·`needsReview=false` 전부 반영. **유일한 사용자 mutation** (MVP §3.2)
   - base(en) 편집도 확인 — `sourceText`는 `"Download"`로 남고 `Translation`만 바뀐다 (§3.2 설계대로)
-- [x] **⚠️ Server Action이 스스로 인증·인가·테넌트 격리를 한다** (5중 검증)
+- [x] **⚠️ Server Action이 스스로 인증·인가·테넌트 격리를 한다** (4중 검증)
   - 근거: Action 호출은 페이지를 막는 레이아웃을 **지나지 않는다** — 공개 엔드포인트다
-  - 검증: 세션 / zod 입력 / keyId의 프로젝트 소속 / localeCode의 프로젝트 소속 / base 로케일 편집 차단
+  - 검증: 세션 / zod 입력 / keyId의 프로젝트 소속 / localeCode의 프로젝트 소속
+  - 5번째였던 **base 로케일 편집 차단은 설계 변경으로 제거됐다** — base도 편집 대상이다 (MVP §3.2)
   - keyId 소속 확인이 빠지면 **남의 테넌트 키를 수정할 수 있다**. RLS가 없고 인가가 단일 테넌트라 이게 유일한 방어선이다
 - [x] **값 지우기는 행 삭제가 아니라 `value=""`**
-  - 근거·검증: 행을 지우면 다음 push가 `DO NOTHING`을 못 타고 **리포 파일 값으로 되살린다**. 실 DB에서 지운 뒤 push를 돌려 `value=""`가 유지되는 것을 확인했다
+  - 근거: 행을 지우면 export의 `sourceText` 폴백·미번역 판정이 갈린다. 빈 문자열은 "번역 없음"을 표현하면서 키를 남긴다
+- [ ] 🔒 **strict 하에서 "지우기"의 의미** — 리포 파일에 값이 남아 있으면 다음 push의 `DO UPDATE`가 **그 값으로 되살린다.** export가 미번역을 파일에서 빼므로(§4.1) 빈 문자열을 리포로 되돌릴 방법도 없다. 즉 이 조작은 손실 창 안에서만 유효하다
+  - ⚠️ 이 항목의 옛 검증("실 DB에서 지운 뒤 push를 돌려 `value=""` 유지 확인")은 **`DO NOTHING` 시절 것이고 지금은 성립하지 않는다**
+  - 얽힌 결정: `ts-dict` write의 빈 문자열 처리 (MVP §10) — 재생성은 키를 빼 폴백을 유도하지만 TS 딕셔너리는 폴백이 없다
 - [x] 저장 시 `needsReview` 해제 — 편집한 사람이 방금 검토했다
 - [x] 같은 값이면 noop — 불필요한 쓰기·`updatedAt` 갱신을 막는다. 클라이언트에서도 왕복 자체를 아낀다
 - [x] 공백만 입력은 빈 문자열로 정규화, **값 안의 앞뒤 공백은 보존**
   - 근거: 번역에 의미 있는 공백이 있을 수 있다
 - [x] 낙관적 갱신을 쓰지 않는다 — 실패 롤백 복잡도를 MVP §5가 뺐다. 저장 중·실패 상태만 보여준다
 - [x] **첫 클라이언트 컴포넌트** — `pnpm build` 게이트가 여기서 처음 일한다
-- [x] push는 여전히 `Translation.value`를 안 쓴다 (grep 0건) — 쓰기 주체가 편집 UI 하나다
-- 커밋: `1184732`(test) → `233a88f`(feat)
+- **`Translation.value`의 쓰기 주체는 둘이다** — 이 Server Action과 push(strict). 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다
+- 커밋: `1184732`(test) → `233a88f`(feat) → `e7055c7`(strict·base 편집)
+
 ### 5d. 필터 ⬜
 
 - [ ] 필터 3개 — 미번역 / 검토필요 / orphaned
-  - 검증: 각 필터가 기대 집합을 반환. 판정은 `translationState`가 이미 한다
-- [ ] 코드 참조 GitHub permalink (스캔 당시 `commitSha` 고정)
-  - 검증: 링크를 눌러 해당 줄로 이동
+  - 검증: 각 필터가 기대 집합을 반환. 판정은 `translationState`가 이미 한다. 기준 로케일(`?focus=`)에 따라 집합이 달라진다
 - [ ] pull 트리거 버튼 (Server Action)
   - 검증: 6단계 완료 후 동작
+- [ ] 손실 창 경고를 화면에 노출 (MVP §3.1)
+  - 근거: 이 위험을 아는 문서는 MVP.md와 코드 주석뿐인데 **번역자는 둘 다 안 읽는다.** 배너 한 줄이라 §7 비범위를 건드리지 않는다
 - [ ] `server-only`가 클라이언트 유입을 막는지
   - 검증: `pnpm build` 통과 (클라이언트 컴포넌트가 처음 생기는 단계다)
 
@@ -273,14 +294,21 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ## 6. GitHub App + `/api/pull` ⬜
 
+> **⚠️ 착수 전 결정 두 개가 필요하다** (아래 🔒). 이 체크리스트는 원래 재생성 어댑터만 전제하고 쓰였는데, **§9 왕복 검증 대상인 bugshot-2의 실제 번역 표면이 `ts-dict`(903키)** 라 그 경로를 빼면 검증이 성립하지 않는다.
+
+- [ ] 🔒 **`ts-dict` 경로의 호출 순서** — 수술적 치환은 write에 원본 내용이 필요해(ARCHITECTURE §1.4) "export → SHA 비교 → 변경분만 fetch" 순서가 성립하지 않는다. 파일별 blob 읽기를 먼저 하는 비용을 감수할지, DB 측 스킵(마지막 pull 이후 `Translation.updatedAt` 최대값 비교)으로 GitHub을 아예 안 부를지 정한다 (MVP §10)
+- [ ] 🔒 **`ts-dict` write의 빈 문자열 처리** — TS 딕셔너리는 폴백이 없어 `""`가 그대로 렌더된다. 치환을 건너뛰어 원본 값을 남길지 (TASKS §5c 🔒와 같은 결정)
 - [ ] GitHub App installation 토큰 (`octokit`의 `App`)
   - 검증: 토큰으로 리포 읽기 성공
 - [ ] PEM 개행 복원 (`parsePrivateKey`, 이미 테스트 있음)
   - 검증: Vercel env의 이스케이프된 값으로 JWT 서명 성공
 - [ ] base head SHA + 트리 조회
-  - 검증: 기존 `_locales/**/messages.json`의 blob SHA 획득
-- [ ] **blob SHA 비교 → 변경 없으면 GitHub API를 한 번도 더 부르지 않음**
+  - 검증: 로케일 파일의 blob SHA 획득. 경로는 `Project.pathTemplate`이 정한다 — `per-locale`은 `{locale}` 치환, **`multi-locale`은 글롭 매칭**
+- [ ] **`multi-locale` 어댑터는 write를 파일별로 부른다**
+  - 검증: bugshot-2의 8개 네임스페이스 파일이 각각 자기 내용으로 치환된다. `write`가 `currentFiles[0]`만 보는 계약이라 호출부가 루프를 돈다
+- [ ] **blob SHA 비교 → 변경 없으면 커밋·PR 경로로 가지 않음**
   - 검증: 호출 카운트를 세는 테스트 (이게 야간 cron의 기본 경로다)
+  - ⚠️ **"API를 한 번도 안 부른다"는 재생성 어댑터에서만 참이다** — `ts-dict`는 위 🔒 결정에 따라 하한이 달라진다
 - [ ] `createTree`에 **`base_tree` 전달**
   - 검증: 페이로드 조립 함수의 순수 테스트 (빼면 리포 나머지 파일이 삭제된 커밋이 된다)
 - [ ] `parents: [baseHead]` — `l10n/sync`의 기존 head를 쓰지 않는다
@@ -302,14 +330,19 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ## 7. Actions 워크플로 + Vercel Cron ⬜
 
+- [ ] 🔒 **대상 프로젝트 라우팅** (§4의 같은 항목) — **이 단계의 선행 조건이다.** 리포가 둘 이상 CI를 붙이는 순간 잘못 라우팅된 페이로드가 남의 테넌트를 오염시키고 되돌릴 수 없다
 - [ ] 🔒 **대상 리포 base 브랜치 결정** — main인지 dev인지 (MVP §10)
-- [ ] 🔒 **로케일 시드 방식 결정** — `_locales/` 스캔 자동 생성인지 수동 등록인지 (MVP §10)
+- [ ] 🔒 **로케일 시드 방식 결정** — 로케일 파일 스캔 자동 생성인지 수동 등록인지 (MVP §10)
 - [ ] 대상 리포에 Actions 워크플로 (스캔 → `/api/push`)
   - 검증: 대상 리포에서 run이 green
+  - ⚠️ **어댑터를 명시 지정한다** — bugshot-2는 `_locales`(4키)와 `ts-dict`(903키)가 공존해 탐지 우선순위가 작은 쪽을 잡는다
 - [ ] 커밋 메시지 `[skip-l10n]`이면 스킵
   - 검증: pull이 만든 커밋이 머지돼도 push가 돌지 않음 (무한 루프 차단)
-- [ ] 비리터럴 인자 발견 시 **CI 실패**
-  - 검증: 일부러 깨뜨린 브랜치에서 run이 red
+- [ ] 워크플로가 **열린 `l10n/sync` PR을 감지하면 경고**
+  - 근거: strict라 그 PR이 머지되기 전의 push가 편집을 지운다 (MVP §3.1). 차단이 아니라 경고 — 병합 로직이 아니고 개발자가 판단할 재료다
+- [ ] **적재 실패만 CI를 red로 만든다** (스캔 실패는 경고)
+  - 근거: 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이다 — 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4). 옛 체크리스트의 "비리터럴 인자 발견 시 CI 실패"는 "코드 스캔이 진실"이던 시절 항목이라 삭제했다
+  - 검증: 로케일 파일을 깨뜨리면 red, 동적 키만 있으면 green
 - [ ] `vercel.json` Cron → `/api/pull` 야간 1회
   - 검증: Vercel 대시보드에서 cron 등록 확인
 - [ ] 대상 리포 왕복 검증 (MVP §9) — push → 편집 → pull → PR 확인

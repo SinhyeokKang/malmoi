@@ -37,13 +37,15 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 ### ⚠️ strict 정책의 대가 — 편집 손실 창
 
-번역자가 편집한 뒤 **pull이 돌기 전에** 개발자가 코드를 푸시하면 **그 편집이 사라진다.** 리포엔 아직 옛 값이 있고 push가 그것으로 DB를 덮기 때문이다.
+번역자가 편집한 뒤 **그 편집이 리포로 돌아가기 전에** 개발자가 코드를 푸시하면 **그 편집이 사라진다.** 리포엔 아직 옛 값이 있고 push가 그것으로 DB를 덮기 때문이다.
 
-즉 **pull 주기가 곧 데이터 손실 창**이다. 지금은 야간 cron 1회 + 수동 버튼이라 최악의 경우 하루치 편집이 날아간다.
+**경계는 pull 실행이 아니라 pull PR의 머지다.** PR이 열려 있어도 리포의 base 브랜치엔 아직 옛 값이 있으므로, 그 상태에서 push가 오면 DB가 덮이고 다음 pull이 `l10n/sync`를 force update하면서 PR에서도 편집이 사라진다. 즉 손실 창은 **마지막으로 머지된 pull 이후의 모든 편집**이다. 야간 cron 1회 기준으로 최악 하루치다.
 
-줄이는 방법은 pull을 자주 돌리는 것뿐이고, 편집 즉시 pull(웹훅)은 §7 비범위다. **PoC에서 감수하는 대가로 명시한다** — 정책을 느슨하게 하면(변경 감지·병합) 코어 원칙이 요구하는 단순성이 무너진다.
+줄이는 방법은 pull을 자주 돌려 머지하는 것뿐이고, 편집 즉시 pull(웹훅)은 §7 비범위다. **PoC에서 감수하는 대가로 명시한다** — 정책을 느슨하게 하면(변경 감지·병합) 코어 원칙이 요구하는 단순성이 무너진다.
 
-**운영 규칙**: 번역 작업을 한 날은 `/api/pull`을 눌러 PR을 만들고 머지한 뒤에 코드를 푸시한다.
+> **⚠️ 지금은 방어가 0이다.** `/api/pull`도 cron도 아직 없는데(§8-6·7 미완) 실 DB엔 이미 편집이 들어 있다. **6단계가 서기 전까지 대상 리포의 push를 다시 돌리면 그 편집은 되돌릴 방법이 없다.** 위 "하루치"는 pull이 동작하기 시작한 뒤의 이야기다.
+
+**운영 규칙**: 번역 작업을 한 날은 `/api/pull`을 눌러 PR을 만들고 **머지한 뒤에** 코드를 푸시한다.
 
 **두 층으로 나뉜다.** 키 집합의 진실은 로케일 파일이고, 코드 스캔은 사용처만 보탠다:
 
@@ -59,7 +61,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 5. **경고 조건 (실패 아님)**: 코드에서 못 찾은 키(= `refs` 없음), 로케일 파일에 없는 키를 코드가 참조
 6. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `commitSha` 포함
 
-   **`POST`인 이유**: 전체 키 집합을 보내므로 의미상 `PUT`에 가깝지만, 리소스 교체가 아니라 **부수효과 있는 RPC**다 — 번역값은 건드리지 않고, `needsReview` 전파 같은 파생 효과가 있고, 같은 URL에 `GET`하면 그 리소스가 나오지 않는다.
+   **`POST`인 이유**: 전체 키 집합을 보내므로 의미상 `PUT`에 가깝지만, 리소스 교체가 아니라 **부수효과 있는 RPC**다 — `orphaned` 표시·`needsReview` 전파 같은 파생 효과가 있고, 같은 URL에 `GET`하면 그 리소스가 나오지 않는다.
 
    **`PATCH`가 불가능한 이유**: 증분 전송으로는 사라진 키를 알 수 없다. `orphaned` 판정이 "페이로드에 없다"에 의존하므로 전체 집합이 필수다. CI가 이전 상태를 알게 만들면 그게 diff 동기화이고 코어 원칙(§2, 머지 로직 없음)과 충돌한다.
 
@@ -67,7 +69,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 7. 서버 처리:
    - `Locale` upsert (발견된 로케일 + `isBase`)
    - `StringKey` upsert (키·원문·`sourceHash`·description·namespace)
-   - `Translation` **덮어쓰기** — 리포 파일의 값으로 DB를 갱신한다(strict). **base 로케일도 포함한다** (§3.2). **base 로케일도 포함한다** (§3.2 — base도 편집 가능하다)
+   - `Translation` **덮어쓰기** — 리포 파일의 값으로 DB를 갱신한다(strict). **base 로케일도 포함한다** (§3.2 — base도 편집 가능하다)
    - 적재 결과에 없는 키 → `orphaned = true`, 다시 나타난 키 → `false`. **삭제하지 않는다**
    - `sourceHash`가 바뀐 키 → base 아닌 모든 번역에 `needsReview = true` 전파
    - `KeyRef` 전체 교체 (증분 갱신보다 단순하고, 스캔이 전수라 정확하다)
@@ -90,6 +92,8 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 **유일한 사용자 mutation은 "번역값 수정"이다.** Server Action 하나(`saveTranslation`)뿐이고, 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
 
+**값 지우기는 행 삭제가 아니라 `value=""`다** (행을 지우면 export가 `sourceText` 폴백·미번역 판정에서 갈린다). 단 **strict 하에서 "지우기"의 수명은 다음 push까지다** — 리포 파일에 값이 남아 있으면 `DO UPDATE`가 그 값으로 되살린다. 빈 문자열을 리포로 되돌릴 방법이 없어서(§4.1이 미번역을 export에서 제외한다) 이 조작은 사실상 손실 창 안에서만 유효하고, 그 의미를 어떻게 정의할지는 미결이다 (TASKS §5c 🔒).
+
 **화면은 테이블이다** — `| key | en(base) | ko | fr |`. 번역자가 원문과 번역을 나란히 봐야 하고, 로케일마다 화면을 갈아타면 문맥이 끊긴다.
 
 **base 로케일도 다른 로케일과 똑같이 수정 가능하다.** 고정된 것은 **키**뿐이다.
@@ -99,15 +103,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 - export할 때 base 파일은 `Translation`(base) 값으로 쓰고, 행이 없으면 `sourceText`로 폴백한다
 - strict 정책이라 개발자가 리포의 base 파일을 고치면 다음 push가 DB의 base 값을 그것으로 덮는다 — 코드 수정이 정상 반영된다
 
-**화면은 테이블이다** — `| key | en(base) | ko | fr |`. 번역자가 원문과 번역을 나란히 봐야 하고, 로케일별로 화면을 갈아타면 문맥이 끊긴다.
-
-**base 로케일도 다른 로케일과 똑같이 수정 가능하다.** 고정된 것은 **키**뿐이다.
-
-- `Translation`이 **base 포함 모든 로케일**의 값을 담는다. push가 base 번역 행도 만든다(`DO NOTHING`이라 기존 값은 안 덮는다)
-- `StringKey.sourceText`는 **`sourceHash` 계산과 stale 판정 전용**으로 남는다 — 리포가 진실이고 push가 매번 덮는다. 화면에 보이는 base 값은 `Translation`이다
-- export할 때 base 파일은 `Translation`(base) 값으로 쓰고, 행이 없으면 `sourceText`로 폴백한다
-
-**대가**: 개발자가 리포의 base 파일을 고치면 `sourceHash`가 바뀌어 `needsReview`는 전파되지만 **DB의 base 번역값은 안 바뀐다** — 그래서 다음 pull이 base 파일을 DB 값으로 되돌린다. "번역 값은 DB가 진실"의 일관된 결과이고, §2의 트레이드오프가 base에도 적용되는 것이다.
+**대가**: base 편집도 다른 로케일과 같은 손실 창에 놓인다 (§3.1). 번역자가 원문 오타를 고쳐도 pull PR이 머지되기 전에 push가 오면 리포의 옛 원문으로 되돌아간다.
 
 `/api/push`가 키를 추가하고 `orphaned`를 세우는 건 여기 해당하지 않는다. 그건 사용자 조작이 아니라 **리포 동기화**다.
 
@@ -180,10 +176,10 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
 | 상태 모델 | `needsReview` 플래그만 | 미번역/번역됨/검토필요 3상태가 공짜로 생기고 필터링이 가능해진다 |
 | 컨텍스트 | 코드 참조 자동 수집 + 네임스페이스 그룹핑 | 자동이라 유지보수가 0에 가깝다 |
-| UI | shadcn/ui (`new-york`, `neutral`) + Tailwind 4 | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다 |
+| UI | shadcn/ui (`new-york`) + Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 **slate** — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이고 값의 진실은 `app/globals.css`다 (DESIGN §2) |
 | 폰트 | Pretendard Variable **동적 서브셋, 자사 호스트** | 단일 파일은 2.0MB. 서브셋은 브라우저가 `unicode-range`로 필요한 구간만 받아 150~450KB. CDN은 렌더 방해 외부 요청이 생긴다 |
 | 내부 쓰기 | **Server Action** | 클라이언트 fetch 배선·중복 스키마·수동 revalidate가 사라진다. 외부 진입점(`/api/push`·`/api/pull`)만 Route Handler |
-| 세션 | **JWT** (DB 어댑터 없음) | 스키마가 4테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 |
+| 세션 | **JWT** (DB 어댑터 없음) | 사용자 테이블 4개가 필요 없어 스키마가 5테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 |
 | 리스트 렌더링 | 네임스페이스 필터 + 순수 렌더 (가상화 없음) | 필터 후 한 화면이 수십~수백 행. 인라인 편집과 가상 스크롤을 섞으면 스크롤 튐·포커스 유실이 붙는다 |
 
 ### 5.1 양방향 어댑터
@@ -192,12 +188,20 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 ```ts
 // lib/adapters/types.ts
-export type LocaleEntry = { key: string; message: string; description?: string };
+// orphaned는 read에선 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
+export type LocaleEntry = { key: string; message: string; description?: string; orphaned?: boolean };
 
 export type Adapter = {
   name: AdapterName;
-  /** 리포 파일 목록에서 이 포맷을 찾아낸다. 없으면 undefined */
-  detect(paths: readonly string[]): DetectedFormat | undefined;
+  /**
+   * 로케일 파일 경로를 만드는 방식.
+   * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
+   * - `"multi-locale"` — 한 파일에 로케일이 여러 개(`ts-dict`). `pathTemplate`이 글롭이고
+   *   치환하지 않는다. write도 파일별로 불러야 한다
+   */
+  layout: "per-locale" | "multi-locale";
+  /** 리포 파일 목록에서 이 포맷을 찾아낸다. `probe`로 후보 내용을 한 번 확인한다 */
+  detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined;
   /** 로케일 파일 → 키 목록 (중첩이면 평탄화) */
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** 키 목록 → 파일 내용. 낼 것이 없으면 null (§4.1) */
@@ -205,7 +209,7 @@ export type Adapter = {
 };
 ```
 
-**어댑터 2개가 조사한 4개 리포를 덮는다:**
+**어댑터 3개가 조사한 4개 리포를 덮는다:**
 
 | 어댑터 | write | 덮는 리포 | 규모 |
 |---|---|---|---|
@@ -215,7 +219,7 @@ export type Adapter = {
 
 **`ts-dict`를 범위에 넣은 이유**: bugshot-2의 `_locales` 4키는 스토어 메타데이터일 뿐이고 실제 UI 번역은 903키다 — MVP §9가 왕복 검증 대상으로 지정한 리포를 **0.4%로만 검증**하고 있었다. 8파일 구조가 완전히 규칙적이라(`const ko/en/fr` + `as const`/`satisfies Bundle` + `export const <ns> = { ko, en, fr }`, 값이 전부 문자열 리터럴·표현식 0건) 어댑터 하나로 끝난다 — "리포마다 형태가 달라 안 끝난다"던 앞선 판단이 실물 확인 전의 추측이었다.
 
-**어댑터 설정은 아직 DB에 저장하지 않는다.** `detect`가 순수 함수라 CLI가 매번 찾아내고, `Project`에 컬럼으로 굳히는 건 `/api/push`를 만드는 시점(§8-4)이다.
+**어댑터 설정은 `Project` 컬럼에 저장한다** (`adapterName`·`pathTemplate`·`nested`·`baseLocale` — 마이그레이션 `_add_project_locale_format`). `detect`는 순수 함수라 CLI가 매번 찾아내지만, pull이 파일을 쓰려면 포맷을 알아야 하고 그것을 아는 시점이 push다. **한 리포에 포맷이 둘 이상이면 탐지 우선순위가 큰 쪽을 놓칠 수 있으므로 명시 지정(`--adapter`)이 이긴다** — bugshot-2가 그렇다(`_locales` 4키 vs `ts-dict` 903키).
 
 ### 5.2 사용처 스캔은 진실이 아니다
 
@@ -253,7 +257,9 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
 
 **다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데(그리고 dev DB가 곧 prod DB다), 나머지 SaaS 요소는 전부 additive로 붙는다.
 
-**여전히 비범위인 것**: 테넌트별 인증·인가(멤버십·역할), 과금, 온보딩, 프로젝트 전환 UI, 테넌트별 GitHub App 설치 플로. 인증은 `AUTH_ALLOWED_ORG` 하나로 단일 테넌트로 남고, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 하나다. **아이디어 검증 후 인증·인가부터 고도화한다.**
+**여전히 비범위인 것**: 테넌트별 인증·인가(멤버십·역할), 과금, 온보딩, 프로젝트 전환 UI, 테넌트별 GitHub App 설치 플로. 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 남고, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 하나다. **아이디어 검증 후 인증·인가부터 고도화한다.**
+
+⚠️ **그 단일 테넌트 가정이 push 라우팅에도 걸려 있다** — `/api/push`는 페이로드에 프로젝트 식별자가 없고 서버의 `ACTIVE_PROJECT_SLUG`로 대상을 정한다. 리포가 둘 이상 CI를 붙이면(§8-7) 한쪽 페이로드가 다른 프로젝트에 적용된다. 실 DB에 이미 프로젝트가 둘이라 7단계 전에 정해야 한다 (§10).
 
 MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제, 로케일 추가·삭제**(리포가 정한다 — §3.2), 스크린샷 첨부, 번역자 노트 필드, draft→reviewed 승인 워크플로(편집자가 한 명이라 오버엔지니어링), push 웹훅 즉시 반영, 번역 메모리·기계번역.
 
@@ -261,11 +267,11 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 **태스크 단위 체크리스트와 완료 조건은 [TASKS.md](./TASKS.md)에 있다.** 이 절은 순서와 그 근거만 담는다 — 단계 구성을 바꾸면 두 문서를 함께 고친다.
 
-1. ~~**Prisma 스키마 + Supabase 연결**~~ ✅ 완료 (`20260831012453_init` — 4테이블, 리전 `ap-northeast-1`)
-2. **`lib/export.ts` + `lib/githash.ts`** — 의존성 0의 순수 함수. 테스트부터 쓴다
-3. **스캐너 CLI (`lib/scan/`)** — 실제 리포에 돌려 결과를 눈으로 확인
-4. **`/api/push`**
-5. **Auth + 편집 UI**
+1. ~~**Prisma 스키마 + Supabase 연결**~~ ✅ 완료 (`20260831012453_init`, 리전 `ap-northeast-1`. `Project` 경계는 뒤이은 `_add_project_tenant_boundary`)
+2. ~~**결정적 export + `lib/githash.ts`**~~ ✅ 완료 — 의존성 0의 순수 함수. export는 3단계에서 `lib/adapters/`의 writer로 흡수됐다(`lib/export.ts`는 삭제)
+3. ~~**적재 어댑터 + 스캐너 CLI (`lib/adapters/`·`lib/scan/`)**~~ ✅ 완료 — 실제 리포에 돌려 결과를 눈으로 확인
+4. ~~**`/api/push`**~~ ✅ 완료
+5. **Auth + 편집 UI** — 5a·5b·5c 완료, 5d(필터) 남음
 6. **GitHub App + `/api/pull`**
 7. **Actions 워크플로 + Vercel Cron**
 
@@ -277,6 +283,10 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 ## 10. 아직 안 정한 것
 
+- **push의 프로젝트 라우팅** — 지금은 서버의 `ACTIVE_PROJECT_SLUG` 하나가 대상을 정한다. 리포가 둘 이상 붙으면 페이로드에 slug를 실어 대조할지, 프로젝트별 `PUSH_TOKEN`으로 가를지 정해야 한다. **7단계 전 필수** — 어긋나면 남의 테넌트에 키가 삽입되고 `toDelete`가 없어 되돌릴 수 없다
+- **과거 커밋 재실행 가드** — `/api/push`가 `commitSha`를 저장만 하고 `lastCommitSha`와 순서를 비교하지 않는다. 오래된 run을 Re-run하면 strict가 DB를 그 시점으로 되돌린다. 순서 검사는 병합이 아니라 거부이므로 §2와 충돌하지 않는다
+- **`ts-dict` 프로젝트의 pull 계약** — 수술적 치환이 원본 내용을 요구하므로 "SHA 비교로 API 호출을 아낀다"(§3.3-4)가 그대로 성립하지 않는다. 파일별 blob 읽기를 감수할지, DB 측 스킵(마지막 pull 이후 `Translation.updatedAt` 최대값이 안 움직이면 API를 아예 안 부른다)을 넣을지 6단계 착수 시 정한다
+- **`ts-dict` write의 빈 문자열 처리** — 재생성 포맷은 미번역 키를 파일에서 빼 폴백을 유도하지만, TS 딕셔너리는 폴백이 없어 `""`가 그대로 렌더된다. 치환을 건너뛰어 원본 값을 남길지 정해야 한다 (TASKS §5c 🔒와 같은 결정)
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
