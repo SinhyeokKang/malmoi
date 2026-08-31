@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "scan": "tsx scripts/scan.ts",
     "ingest": "tsx scripts/ingest.ts",
+    "push:local": "tsx scripts/push-local.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",

@@ -118,7 +118,21 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [x] `pnpm ingest <dir>` CLI — 탐지·적재·왕복 판정
 - [ ] 🔒 **base 로케일 판정** — 지금은 `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 추정이다 (MVP §10)
 
-### 3b. 사용처 스캔 (`lib/scan/`) ✅ — `refs` 전담, 경고만
+### 3b. 사용처 스캔 (`lib/scan/`) ⬜ — `refs` 전담, 경고만 (**훅 기반 미지원**)
+
+> **🔴 2026-08-31 실전에서 발견: 훅 기반 i18n을 못 잡는다.** import 기반 매칭이라 `import { t }` 패턴만 본다. 실측:
+>
+> | 리포 | 호출 형태 | refs |
+> |---|---|---|
+> | bugshot-2 | `import { t } from "@/i18n"` | 115키 / 273건 ✅ |
+> | skillflo | `const { t } = useI18n()` | **0** ❌ |
+> | bugshot-web | `const t = await getTranslations({ namespace: "meta" })` | **0** ❌ (키가 namespace 상대) |
+>
+> `refs`가 컨텍스트 기능의 전부다(MVP §3.2 "성패가 여기 달렸다"). 3개 중 2개가 0건이면 기능이 없는 것과 같다. next-intl·react-i18next가 전부 훅 기반이라 "범용적"이라는 목표와 정면으로 어긋난다.
+
+- [ ] 🔴 **훅 기반 호출 지원** — `const { t } = useI18n()` / `const t = useTranslations()`
+  - 필요: 훅 import를 찾고 그 반환값의 지역 바인딩 이름(구조분해·직접대입)을 추적해 그 스코프 안의 호출을 매칭
+- [ ] 🔒 **namespace 상대 키 지원 여부** — next-intl의 `getTranslations({ namespace: "meta" })` + `t("title")` → 실제 키 `meta.title`. 인자에서 namespace를 해석해야 하고 리터럴 케이스만 지원할지 결정 필요
 
 - [x] AST 경로 (ts-morph) — 주석·문자열 안의 호출을 구분
   - 검증: 라인/블록 주석·문자열 리터럴 3케이스. 자기 리포 스캔이 0키(테스트 파일이 문자열로 `t(...)`를 담고 있다)

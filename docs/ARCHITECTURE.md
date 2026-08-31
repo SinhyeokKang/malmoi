@@ -97,6 +97,15 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 **AST를 쓰는 이유**: 정규식은 주석 속 호출·문자열 리터럴 안의 `t(`·템플릿 조립을 구분하지 못한다. ts-morph는 주석을 AST 노드로 만들지 않으므로 주석 속 호출은 애초에 순회 대상이 아니다. 이 프로젝트에서 리뷰 grep이 두 번 그 오탐을 냈다(주석 속 `content.length`, `echo`의 이스케이프 해석).
 
+### 4.0 ⚠️ 훅 기반 i18n을 아직 못 잡는다
+
+import 기반 매칭이라 **`import { t } from "<module>"` 패턴만** 본다. 실측 3개 리포 중 둘이 훅 기반이고 그쪽 `refs`가 0건이다:
+
+- `const { t } = useI18n()` (skillflo) — `t`가 import가 아니라 훅 반환값의 구조분해다
+- `const t = await getTranslations({ namespace: "meta" })` (bugshot-web, next-intl) — 위와 같고, 게다가 **키가 namespace 상대**라 `t("title")`의 실제 키는 `meta.title`이다
+
+**next-intl·react-i18next가 전부 훅 기반이라 "범용적"이라는 목표와 어긋난다.** 고치려면 훅 import를 찾고 그 반환값의 지역 바인딩을 추적해야 한다(TASKS §3b).
+
 ### 4.1 래퍼 매칭은 이름만으로 하지 않는다
 
 대상 리포에 이미 다른 `t()`가 있을 수 있다. bugshot-2가 정확히 그렇고(`t(key, params?)`), 이름만 보고 매칭했을 때 기존 호출 **1391건이 오탐**으로 잡혔다.
