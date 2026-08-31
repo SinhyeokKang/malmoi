@@ -28,8 +28,8 @@
 base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main). 번역 값은 어떤 경로로도 건드리지 않는다.
 
 1. Actions 트리거. 커밋 메시지에 `[skip-l10n]`이 있으면 스킵 (pull이 만든 커밋의 재업로드 루프 차단)
-2. AST 스캔 → `{ key, sourceText, description?, refs: [{path, line}] }`
-3. **CI 실패 조건**: 리터럴이 아닌 키/원문 인자, 같은 키에 서로 다른 원문
+2. AST 스캔 → `{ key, sourceText, namespace, description?, refs: [{path, line}] }` (`pnpm scan <dir>`)
+3. **CI 실패 조건**: 인자 부족, 리터럴이 아닌 키/원문, 같은 키에 서로 다른 원문, 대응 원문 없는 `__MSG_` 토큰, **`[A-Za-z0-9_@]` 밖의 키 이름**(크롬이 조용히 무시한다)
 4. `POST /api/push` (Bearer `PUSH_TOKEN`), 페이로드에 `commitSha` 포함
 5. 서버 처리:
    - upsert (키·원문·description)
@@ -97,6 +97,13 @@ export function t(key: string, _source: string, subs?: string[]) {
 }
 ```
 
+**`description`은 이 시그니처에 자리가 없다.** §3.1이 스캔 결과에 `description?`을 약속하므로, 공급원은 `// @l10n-desc <text>` 주석이다 (§5.2의 `@l10n-keys`와 같은 계열):
+
+```ts
+// @l10n-desc Shown on the action button
+t("ext_name", "BugShot")
+```
+
 `_source`는 런타임에 쓰이지 않고 **스캐너 전용**이다. 번들에 문자열이 남지만 무시할 크기고, 신경 쓰이면 나중에 빌드 타임에 떼는 플러그인을 붙인다. 이 래퍼 도입은 대상 리포에 **일회성 리팩터링**을 요구한다.
 
 ### 5.2 동적 키 처리
@@ -110,7 +117,7 @@ const label = t(`status_${state}`, "...")
 
 조용히 누락되어 문자열이 사라지는 경우가 없어야 하므로, 관용적으로 넘기지 않고 실패시킨다.
 
-## 6. 스키마 (4테이블)
+## 6. 스키마 (5테이블)
 
 ```
 Project      id PK, slug UNIQUE, name,

@@ -76,6 +76,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | 키 추출 | `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`) | `ts-morph` 28.0.0 |
+| 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
 | Node | `.nvmrc` **20** — `@types/node`를 이 메이저에 맞춘다(`^20`) | `@types/node` 20.19.43 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
@@ -140,6 +141,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
+| 키 스캔 | `pnpm scan <대상 디렉터리> [--json]` (대상 리포에 돌려 키 추출·검증) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
@@ -173,7 +175,7 @@ lib/
   export.ts             (미구현) DB 상태 → messages.json 문자열 (결정적, 순수)
   githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
-  scan/                 (미구현) ts-morph 키 추출기 (CI에서 CLI로도 실행)
+  scan/                 ts-morph 키 추출기 — index.ts(합치기·검증) / ast.ts / types.ts
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
   migrations/           _init, _add_project_tenant_boundary
@@ -183,6 +185,7 @@ public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
   copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
+  scan.ts               키 스캐너 CLI (파일시스템을 아는 유일한 층)
 docs/MVP.md             기본 스펙
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/ARCHITECTURE.md    설계 상세·함정
