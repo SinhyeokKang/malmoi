@@ -128,7 +128,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
 | DB | Supabase Postgres | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다 |
 | DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
-| 로그인 | GitHub OAuth **단독** + org 멤버십 검사 | 리포 기반 도구라 리포 접근 권한이 곧 편집 권한. 화이트리스트 테이블이 불필요해진다 |
+| 로그인 | GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/i18n-poc`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다. 실제 org를 쓰게 되면 org 검사를 OR로 더한다 |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | 키·원문 출처 | **base 로케일의 `messages.json`** (어댑터 구조 — §5.1) | 리포 연동만으로 적재가 되어야 한다. 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 된다 |
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
@@ -232,7 +232,6 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
-- **GitHub org** — 대상이 개인 계정 리포면 org 멤버십 검사가 성립하지 않는다. 그 경우 허용 GitHub 핸들 목록으로 대체해야 하고, `AUTH_ALLOWED_ORG` 하나로는 부족해진다
 - **두 번째 적재 어댑터** — TS 딕셔너리(bugshot-2의 `src/i18n/namespaces/*.ts`) 같은 비표준 포맷을 지원할지. 포맷이 리포마다 달라 어댑터 하나로 안 끝날 위험이 있어 실제 요구가 생길 때 판단한다
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다
