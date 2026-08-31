@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in */lib/export.ts|*/lib/githash.ts|*/lib/__tests__/*) out=$(pnpm test 2>&1) || { echo \"export 결정성/blob SHA 테스트 실패 — 같은 DB 상태가 같은 바이트를 못 내면 blob 비교 전체가 무너진다:\" >&2; printf \"%s\\n\" \"$out\" | tail -25 >&2; exit 2; };; esac",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in */lib/adapters/*|*/lib/githash.ts|*/lib/push/*|*/lib/keys/*|*/lib/scan/*|*/lib/__tests__/*) out=$(pnpm test 2>&1) || { echo \"결정성/blob SHA/판정 테스트 실패 — 같은 DB 상태가 같은 바이트를 못 내면 blob 비교 전체가 무너진다:\" >&2; printf \"%s\\n\" \"$out\" | tail -25 >&2; exit 2; };; esac",
             "timeout": 90,
             "statusMessage": "export 결정성 검사"
           },

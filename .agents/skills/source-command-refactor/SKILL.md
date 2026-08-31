@@ -32,7 +32,7 @@ Use this skill when the user asks to run the migrated source command `refactor`.
 ### 3. 수정
 
 - **한 항목씩.** 여러 개를 한 번에 섞으면 무엇이 무엇을 깼는지 모른다.
-- 코어 로직(`lib/export.ts`·`githash.ts`·`github.ts`·`scan/`)이면 **`docs/ARCHITECTURE.md` 해당 섹션을 먼저 읽는다.**
+- 코어 로직(`lib/adapters/`·`githash.ts`·`github.ts`·`scan/`·`push/`)이면 **`docs/ARCHITECTURE.md` 해당 섹션을 먼저 읽는다.**
 
 ### 4. 회귀 위험 확인 지점 (중단 조건)
 

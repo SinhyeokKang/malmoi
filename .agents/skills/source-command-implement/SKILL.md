@@ -21,7 +21,7 @@ Use this skill when the user asks to run the migrated source command `implement`
 ### 1. 착수 전 (생략 금지)
 
 - **`docs/POSTMORTEM.md` grep** — 건드릴 파일·영역으로 검색. 걸리는 항목이 있으면 그 함정을 피하는 방식으로 설계하고, 무엇을 소환했는지 리포트에 남긴다.
-- **`docs/ARCHITECTURE.md` 확인** — `lib/export.ts`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`을 건드리면 **필수**. 해당 섹션의 불변식을 읽고 시작한다.
+- **`docs/ARCHITECTURE.md` 확인** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`middleware.ts`를 건드리면 **필수**. 해당 섹션의 불변식을 읽고 시작한다.
 - **`docs/TASKS.md` 확인** — 지금 어느 단계이고, 이 작업이 어느 태스크의 완료 조건에 해당하는지 확인한다. **`🔒` 표시가 붙은 항목을 건드리면 중단하고 결정을 받는다.** 목록에 없는 작업이면 왜 필요한지 보고에 적는다(범위 확장일 수 있다).
 - **`docs/MVP.md` 확인** — 구현이 스펙과 어긋나면 코드가 아니라 스펙 먼저 고칠 문제일 수 있다.
 - **테스트 상태 확인** — `pnpm test`로 현재 red 목록을 파악. 무엇을 green으로 만들어야 하는지가 목표다.
