@@ -21,9 +21,8 @@ describe("planSave — 저장 판정", () => {
 });
 
 describe("planSave — 값을 지우는 경우", () => {
-  // ⚠️ 행을 **삭제하지 않는다**. push가 `INSERT ... ON CONFLICT DO NOTHING`이라,
-  // 행이 사라지면 다음 push가 리포 파일의 값으로 **되살린다** — 사용자가 지운 것이 무음으로
-  // 되돌아간다. 빈 문자열로 남기면 행이 존재해 DO NOTHING이 건드리지 않는다.
+  // ⚠️ 행을 **삭제하지 않는다**. 행이 사라지면 export에서 키가 빠져,
+  // pull이 리포 파일에서 그 키를 지운다 — 코드가 참조하는 키가 사라져 런타임에 깨진다. 빈 문자열은 "번역 없음"을 표현하면서 키를 남긴다.
   it("빈 문자열 저장은 행 삭제가 아니라 value=\"\" upsert다", () => {
     expect(planSave("있던값", "")).toEqual({ action: "upsert", value: "" });
   });
