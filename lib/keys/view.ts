@@ -8,17 +8,27 @@ export type KeyRefRow = {
   line: number;
 };
 
-/** 한 로케일 관점에서 본 키 한 행. `value`가 그 로케일의 번역이다. */
+/** 한 로케일의 번역 셀. 테이블의 한 칸이다. */
+export type Cell = {
+  value: string | null;
+  needsReview: boolean;
+  updatedBy: string | null;
+};
+
+/**
+ * 테이블의 한 행. **로케일별 셀을 전부 들고 있다** — 화면이 `| key | en | ko | fr |`이므로
+ * 행 하나가 모든 로케일을 그린다. 로케일마다 화면을 갈아타면 문맥이 끊긴다 (MVP §3.2).
+ */
 export type KeyRow = {
   id: string;
   key: string;
   namespace: string;
+  /** `sourceHash`·stale 판정의 근거. **화면의 base 값은 `cells[base]`다** (MVP §3.2). */
   sourceText: string;
   description?: string | null;
   orphaned: boolean;
-  value: string | null;
-  needsReview: boolean;
-  updatedBy: string | null;
+  /** 로케일 코드 → 셀. 없는 로케일은 미번역이다. */
+  cells: Record<string, Cell | undefined>;
   refs: KeyRefRow[];
 };
 
@@ -28,11 +38,25 @@ export type KeyRow = {
  */
 export type TranslationState = "untranslated" | "translated" | "needsReview" | "orphaned";
 
-export function translationState(row: Pick<KeyRow, "orphaned" | "value" | "needsReview">): TranslationState {
-  if (row.orphaned) return "orphaned";
+export function translationState(input: {
+  orphaned: boolean;
+  value: string | null;
+  needsReview: boolean;
+}): TranslationState {
+  if (input.orphaned) return "orphaned";
   // 빈 문자열도 미번역이다 — 편집 UI에서 값을 지우면 그렇게 들어온다.
-  if (row.value === null || row.value === "") return "untranslated";
-  return row.needsReview ? "needsReview" : "translated";
+  if (input.value === null || input.value === "") return "untranslated";
+  return input.needsReview ? "needsReview" : "translated";
+}
+
+/** 행 + 로케일 → 배지 상태. 셀이 없으면 미번역이다. */
+export function cellState(row: KeyRow, locale: string): TranslationState {
+  const cell = row.cells[locale];
+  return translationState({
+    orphaned: row.orphaned,
+    value: cell?.value ?? null,
+    needsReview: cell?.needsReview ?? false,
+  });
 }
 
 export type NamespaceCount = {
@@ -44,10 +68,10 @@ export type NamespaceCount = {
 };
 
 /**
- * 사이드바 집계. 상태별 개수를 함께 내는 이유는 번역자가 "어디에 일이 남았나"를
- * 네임스페이스 단위로 봐야 하기 때문이다 — 총 개수만으로는 알 수 없다.
+ * 사이드바 집계. **어느 로케일 기준인지 받아야 한다** — 테이블이 로케일을 열로 펼치므로
+ * "일이 얼마나 남았나"가 로케일마다 다르다. 총 개수만으로는 알 수 없다.
  */
-export function namespaceCounts(rows: readonly KeyRow[]): NamespaceCount[] {
+export function namespaceCounts(rows: readonly KeyRow[], locale: string): NamespaceCount[] {
   const byName = new Map<string, NamespaceCount>();
 
   for (const row of rows) {
@@ -59,7 +83,7 @@ export function namespaceCounts(rows: readonly KeyRow[]): NamespaceCount[] {
       orphaned: 0,
     };
     entry.total += 1;
-    const state = translationState(row);
+    const state = cellState(row, locale);
     if (state === "untranslated") entry.untranslated += 1;
     else if (state === "needsReview") entry.needsReview += 1;
     else if (state === "orphaned") entry.orphaned += 1;

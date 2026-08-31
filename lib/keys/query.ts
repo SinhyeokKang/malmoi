@@ -38,35 +38,34 @@ export async function loadProject(prisma: PrismaClient, slug: string): Promise<P
 }
 
 /**
- * 한 로케일 관점의 **전체** 키 목록.
+ * **전 로케일**의 키 목록. 테이블이 로케일을 열로 펼치므로 한 번에 다 읽는다.
  *
  * 네임스페이스 필터를 SQL로 내리지 않는다 — 사이드바가 전 네임스페이스의 집계를 필요로 하므로
- * 어차피 전체를 읽어야 하고, 두 번 읽는 대신 한 번 읽어 메모리에서 나눈다. 1446행 규모에서
- * 이게 더 단순하고 빠르다 (가상화를 안 넣는 것과 같은 판단 — MVP §5).
+ * 어차피 전체를 읽어야 하고, 두 번 읽는 대신 한 번 읽어 메모리에서 나눈다.
  *
- * **번역은 `where`로 좁힌 1:1로 가져온다.** 로케일이 6개인 리포에서 전부 싣고 JS에서 고르면
- * 6배를 읽는다.
+ * ⚠️ **번역을 로케일별로 좁히지 않는다** — 이전엔 `where: { localeCode }`로 1:1이었지만
+ * 테이블은 전 로케일이 필요하다. 로케일 6개면 행 수가 6배지만, `Translation`이 키당 최대
+ * 로케일 수만큼이라 상한이 명확하다(skillflo 8676행). 로케일별로 6번 쿼리하는 것보다 낫다.
  */
 export async function loadKeys(
   prisma: PrismaClient,
   projectId: string,
-  localeCode: string,
 ): Promise<KeyRow[]> {
   const keys = await prisma.stringKey.findMany({
     where: { projectId },
     orderBy: { key: "asc" },
     select: {
       id: true, key: true, namespace: true, sourceText: true, description: true, orphaned: true,
-      translations: {
-        where: { localeCode },
-        select: { value: true, needsReview: true, updatedBy: true },
-      },
+      translations: { select: { localeCode: true, value: true, needsReview: true, updatedBy: true } },
       refs: { select: { path: true, line: true }, orderBy: [{ path: "asc" }, { line: "asc" }] },
     },
   });
 
   return keys.map((k) => {
-    const tr = k.translations[0];
+    const cells: KeyRow["cells"] = {};
+    for (const t of k.translations) {
+      cells[t.localeCode] = { value: t.value, needsReview: t.needsReview, updatedBy: t.updatedBy };
+    }
     return {
       id: k.id,
       key: k.key,
@@ -74,9 +73,7 @@ export async function loadKeys(
       sourceText: k.sourceText,
       description: k.description,
       orphaned: k.orphaned,
-      value: tr?.value ?? null,
-      needsReview: tr?.needsReview ?? false,
-      updatedBy: tr?.updatedBy ?? null,
+      cells,
       refs: k.refs,
     };
   });
