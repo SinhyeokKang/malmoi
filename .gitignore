@@ -21,3 +21,6 @@ coverage/
 
 # 폰트 동적 서브셋 — scripts/copy-fonts.mjs 생성물 (3MB, 92파일)
 public/fonts/
+
+# Prisma 7 생성 클라이언트 — prisma generate 산출물
+generated/

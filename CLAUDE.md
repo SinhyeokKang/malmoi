@@ -47,7 +47,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — main 머지가 곧 프로덕션 | — |
 | DB | Supabase Postgres (`i18n-poc`, ref `xgsyyapzkpbdtkrprlmn`) | — |
-| ORM | Prisma — 런타임 pooler(6543, `DATABASE_URL`) / 마이그레이션 세션 모드(5432, `DIRECT_URL`) | `prisma`·`@prisma/client` 7.10.0 |
+| ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
@@ -57,8 +57,22 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | 키 추출 | `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`) | `ts-morph` 28.0.0 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
+| DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
+
+### Prisma 7 — v6와 배선이 다르다
+
+`url`·`directUrl`이 스키마에서 제거되고 driver adapter가 필수가 됐다. v6 문서·예제를 그대로 적용하면 valid하지 않다.
+
+| 용도 | 위치 | 환경변수 | 포트 |
+|---|---|---|---|
+| 마이그레이션·CLI | `prisma.config.ts` | `DIRECT_URL` | 5432 (session) |
+| 런타임 쿼리 | `lib/db.ts` (`PrismaPg` adapter) | `DATABASE_URL` | 6543 (transaction) |
+
+- 클라이언트는 `generated/prisma/`로 생성된다 (**gitignore된 산출물** — CI가 typecheck 전에 `db:generate`를 돌린다). import는 `@/generated/prisma/client`
+- `prisma.config.ts`가 **`.env.local`을 명시적으로 읽는다.** `dotenv` 기본값은 `.env`라서 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`로 오진하게 된다
+- **⚠️ dev DB와 prod DB가 같다.** Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓인 뒤로는 `--create-only` + `db:deploy`로 쪼개고, **`migrate dev`의 리셋 제안은 절대 승인하지 않는다** (번역이 전부 날아간다). 상세는 `/db`
 
 ### 데이터 변경 경로 — 내부는 Server Action, 외부 진입점만 Route Handler
 
@@ -133,12 +147,17 @@ app/
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
+  db.ts                 Prisma 클라이언트 단일 인스턴스 (pg adapter, 6543)
   utils.ts              cn() — shadcn 표준 헬퍼
   export.ts             DB 상태 → messages.json 문자열 (결정적, 순수)
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App 토큰)
   scan/                 ts-morph 키 추출기 (CI에서 CLI로도 실행)
-prisma/schema.prisma
+prisma/
+  schema.prisma         4테이블 (접속 URL 없음 — Prisma 7)
+  migrations/           20260831012453_init
+prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
+generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기

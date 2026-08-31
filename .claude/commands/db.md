@@ -9,9 +9,25 @@ description: Prisma 마이그레이션 생성·적용·드리프트 확인 + 배
 - `/db` — 현재 `schema.prisma` 변경을 마이그레이션으로.
 - `/db status` — 드리프트·미적용 마이그레이션만 확인 (변경 안 함).
 
+## ⚠️ 이 PoC는 dev DB와 prod DB가 같다
+
+로컬 Postgres가 없고 Supabase 인스턴스 하나(`i18n-poc`)뿐이다. 즉 **`pnpm db:migrate`(= `migrate dev`)가 프로덕션 DB를 직접 바꾼다.** 결과:
+
+- **`migrate dev`가 드리프트를 감지하면 "리셋할까요?"를 제안한다. 절대 승인하지 않는다 — 번역 데이터가 전부 날아간다.** 드리프트가 나오면 중단하고 보고한다(1단계).
+- **번역 데이터가 쌓인 뒤로는 `--create-only`를 기본으로 쓴다.** SQL을 먼저 만들어 눈으로 읽고, 적용은 `pnpm db:deploy`로 한다. `migrate dev`는 스키마를 실험적으로 밀어보는 명령이라 데이터가 있는 DB에 쓸 도구가 아니다.
+- **DB가 비어 있는 초기 단계에서만 `migrate dev`를 그대로 쓴다.** 지금 상태가 그렇다면 그 사실을 리포트에 적는다.
+- 나중에 Supabase 프로젝트를 하나 더 만들어 분리하면 이 제약이 사라진다. 그때 이 섹션을 지운다.
+
 ## 왜 별도 스킬인가
 
-`DATABASE_URL`(transaction 모드 pooler 6543)과 `DIRECT_URL`(session 모드 pooler 5432)이 나뉘어 있고, **transaction 모드로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 **main 단일 브랜치라 push가 곧 프로덕션 배포**여서 스키마 적용 타이밍이 배포와 직접 얽힌다. 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
+**Prisma 7은 접속 URL이 두 파일로 갈려 있다.** v6의 `url`/`directUrl` 쌍이 스키마에서 제거됐다:
+
+| 용도 | 위치 | 환경변수 | 포트 |
+|---|---|---|---|
+| 마이그레이션·CLI | `prisma.config.ts` | `DIRECT_URL` | 5432 (session) |
+| 런타임 쿼리 | `lib/db.ts`의 driver adapter | `DATABASE_URL` | 6543 (transaction) |
+
+**transaction 모드로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 **main 단일 브랜치라 push가 곧 프로덕션 배포**여서 스키마 적용 타이밍이 배포와 직접 얽힌다. 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
 
 ## 절차
 
@@ -21,6 +37,8 @@ description: Prisma 마이그레이션 생성·적용·드리프트 확인 + 배
 pnpm db:status
 git status --porcelain prisma/
 ```
+
+`prisma.config.ts`가 `.env.local`을 읽는다(`dotenv`의 기본은 `.env`라 경로를 명시해뒀다). URL이 `undefined`면 `P1001 Can't reach database server`가 떠서 **네트워크 문제로 오진하게 된다** — 먼저 `.env.local`의 `DIRECT_URL`을 확인한다.
 
 - **드리프트 검출**(DB가 마이그레이션 히스토리와 다름) → **중단하고 보고.** 손으로 DB를 고친 흔적이거나 마이그레이션을 건너뛴 상태다. 임의로 `migrate reset`을 돌리지 않는다 — **번역 데이터가 날아간다.**
 - 미적용 마이그레이션이 있으면 먼저 적용할지 확인.
@@ -57,8 +75,14 @@ git status --porcelain prisma/
 
 ### 4. 마이그레이션 생성
 
+DB가 비어 있으면:
 ```
 pnpm db:migrate --name <snake_case_이름>
+```
+
+**번역 데이터가 있으면 반드시 `--create-only`** (위 dev==prod 경고):
+```
+npx prisma migrate dev --create-only --name <snake_case_이름>
 ```
 
 이름은 무엇을 하는지 드러나게 (`add_orphaned_to_string_key`, `backfill_namespace`). `--create-only`가 필요한 경우(백필 SQL을 손으로 넣어야 할 때)는 그렇게 하고 SQL을 직접 작성한다.
@@ -95,8 +119,9 @@ generate + typecheck: OK / test: <n> passed
 
 ## 금지 사항
 
-- **`prisma migrate reset` 금지.** 번역 데이터가 날아간다. 드리프트는 중단하고 보고한다.
-- **pooler URL로 마이그레이션 금지** — `DIRECT_URL`을 쓴다 (`schema.prisma`의 `directUrl` 설정에 의존).
+- **`prisma migrate reset` 금지, `migrate dev`의 리셋 제안 승인 금지.** dev DB가 곧 prod DB라 번역 데이터가 날아간다. 드리프트는 중단하고 보고한다.
+- **데이터가 있는 DB에 `migrate dev` 금지** — `--create-only` + `db:deploy`로 쪼갠다.
+- **transaction 모드(6543)로 마이그레이션 금지** — `prisma.config.ts`가 `DIRECT_URL`(5432)을 쓴다. 이 파일을 `DATABASE_URL`로 바꾸지 않는다.
 - **destructive를 한 번에 처리 금지** — 2단계로 쪼갠다.
 - **`db:deploy`를 이 스킬에서 자동 실행 금지** — 프로덕션 DB를 바꾸는 일이라 사용자가 명시적으로 돌린다.
 - **마이그레이션 SQL을 읽지 않고 넘어가기 금지.**

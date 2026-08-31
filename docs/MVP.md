@@ -75,7 +75,7 @@ main 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다. �
 |---|---|---|
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
 | DB | Supabase Postgres | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다 |
-| DB 열쇠 | Prisma (런타임 pooler 6543 / 마이그레이션 direct 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전 |
+| DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
 | 로그인 | GitHub OAuth **단독** + org 멤버십 검사 | 리포 기반 도구라 리포 접근 권한이 곧 편집 권한. 화이트리스트 테이블이 불필요해진다 |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | 키 추출 | **코드 스캔이 유일한 진실**, ts-morph AST (+ HTML·manifest는 정규식) | 소스 키는 코드가 진실이라는 원칙과 일관. 정규식 단독은 주석 속 호출·동적 조립을 구분 못 해 오탐이 섞인다 |
@@ -133,7 +133,7 @@ MVP 범위를 잡으면서 추가로 뺀 것: 스크린샷 첨부, 번역자 노
 
 ## 8. 구현 순서
 
-1. **Prisma 스키마 + Supabase 연결**
+1. ~~**Prisma 스키마 + Supabase 연결**~~ ✅ 완료 (`20260831012453_init` — 4테이블, 리전 `ap-northeast-1`)
 2. **`lib/export.ts` + `lib/githash.ts`** — 의존성 0의 순수 함수. 테스트부터 쓴다
 3. **스캐너 CLI (`lib/scan/`)** — 실제 리포에 돌려 결과를 눈으로 확인
 4. **`/api/push`**
@@ -152,4 +152,4 @@ MVP 범위를 잡으면서 추가로 뺀 것: 스크린샷 첨부, 번역자 노
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **GitHub org** — 대상이 개인 계정 리포면 org 멤버십 검사가 성립하지 않는다. 그 경우 허용 GitHub 핸들 목록으로 대체해야 하고, `AUTH_ALLOWED_ORG` 하나로는 부족해진다
-- **Supabase 리전** — 프로젝트(`i18n-poc`, ref `xgsyyapzkpbdtkrprlmn`)는 생성됐지만 pooler 호스트명에 리전이 들어가므로 접속 문자열을 대시보드에서 그대로 가져와야 한다
+- **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다

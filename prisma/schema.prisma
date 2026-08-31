@@ -1,0 +1,82 @@
+// 테이블 정의의 근거는 docs/MVP.md §6, 설계 판단은 docs/ARCHITECTURE.md §5.
+// 접속 URL은 여기 없다 — Prisma 7은 prisma.config.ts에서 읽는다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// 지원 로케일. isBase가 키 집합을 정의하는 기준 로케일이다.
+model Locale {
+  code   String  @id
+  name   String
+  isBase Boolean @default(false)
+
+  translations Translation[]
+}
+
+/// 소스 키. **코드가 진실**이므로 push만 이 테이블을 쓴다.
+model StringKey {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  /// 키에서 파생되는 값이지만 컬럼으로 저장한다 — 사이드바 쿼리가 이 컬럼 하나로 끝나고,
+  /// 매번 파싱하면 인덱스를 못 탄다.
+  namespace   String
+  sourceText  String
+  /// 원문 비교용 해시. 문자열 직접 비교보다 인덱스가 작고 비교가 싸다(긴 원문이 많다).
+  sourceHash  String
+  description String?
+  /// 코드에서 사라진 키. **삭제하지 않는다** — 브랜치를 되돌리거나 기능을 복구하면
+  /// 번역이 그대로 살아 돌아와야 한다. export에서만 빠진다.
+  orphaned    Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  refs         KeyRef[]
+  translations Translation[]
+
+  @@index([namespace])
+  @@index([orphaned])
+}
+
+/// 키의 코드 사용처. push마다 **전체 교체**한다 — 증분 갱신은 삭제 케이스를 놓치기 쉽고,
+/// 스캔이 전수라 교체가 더 정확하고 단순하다.
+model KeyRef {
+  id    String @id @default(cuid())
+  keyId String
+  path  String
+  line  Int
+
+  stringKey StringKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+
+  @@index([keyId])
+}
+
+/// 번역 값. **DB가 진실**이므로 push는 이 테이블의 value를 절대 건드리지 않는다.
+model Translation {
+  id         String @id @default(cuid())
+  keyId      String
+  localeCode String
+  value      String
+  /// 원문(sourceHash)이 바뀌었을 때 push가 세운다. 미번역/번역됨/검토필요 3상태가
+  /// 이 플래그 하나와 행 존재 여부로 표현된다.
+  needsReview Boolean @default(false)
+  /// 편집자 GitHub 핸들. JWT 세션이라 사용자 테이블이 없어 문자열로 박는다.
+  updatedBy   String?
+
+  updatedAt DateTime @updatedAt
+
+  /// onDelete: Restrict — "키를 삭제하지 않고 orphaned로 둔다"는 코어 불변식을 DB가 강제한다.
+  /// Cascade면 실수로 키를 지우는 코드가 번역까지 조용히 날린다.
+  stringKey StringKey @relation(fields: [keyId], references: [id], onDelete: Restrict)
+  locale    Locale    @relation(fields: [localeCode], references: [code], onDelete: Restrict)
+
+  /// 이 제약이 없으면 중복 행이 생겨 export가 비결정적이 된다 — ARCHITECTURE §1 불변식이
+  /// 스키마에 의존하는 지점이다.
+  @@unique([keyId, localeCode])
+  @@index([localeCode, needsReview])
+}
