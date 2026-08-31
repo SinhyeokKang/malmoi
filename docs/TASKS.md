@@ -240,7 +240,8 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 ### 5c. 인라인 편집·저장 ✅
 
 - [x] blur 시 Server Action 저장, `updatedBy`에 GitHub 핸들
-  - 검증: 실 DB에서 저장 → `value`·`updatedBy` 확인. **유일한 사용자 mutation** (MVP §3.2)
+  - 검증: **브라우저 UI로 `attachment.download`의 en·ko·fr 3셀을 편집해 확인** — 값·`updatedBy`(GitHub 핸들)·`needsReview=false` 전부 반영. **유일한 사용자 mutation** (MVP §3.2)
+  - base(en) 편집도 확인 — `sourceText`는 `"Download"`로 남고 `Translation`만 바뀐다 (§3.2 설계대로)
 - [x] **⚠️ Server Action이 스스로 인증·인가·테넌트 격리를 한다** (5중 검증)
   - 근거: Action 호출은 페이지를 막는 레이아웃을 **지나지 않는다** — 공개 엔드포인트다
   - 검증: 세션 / zod 입력 / keyId의 프로젝트 소속 / localeCode의 프로젝트 소속 / base 로케일 편집 차단
