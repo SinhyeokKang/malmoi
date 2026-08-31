@@ -50,7 +50,7 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ---
 
-## 2. `lib/export.ts` + `lib/githash.ts` ⬜ ← **현재 단계** (2a 완료 / 2b 남음)
+## 2. `lib/export.ts` + `lib/githash.ts` ✅
 
 **의존성 0의 순수 함수.** 이 둘이 틀리면 3~7단계가 전부 무의미해진다. `/tdd`로 테스트부터 쓴다.
 
@@ -63,35 +63,37 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: 한글(문자 5/바이트 15)·이모지(코드 유닛 2/바이트 4) 케이스 통과. `Buffer.from(content, "utf8").byteLength` 사용
 - 커밋: `4f11488` (test, red) → `dfd13bf` (feat)
 
-### 2b. `lib/export.ts`
+### 2b. `lib/export.ts` ✅
 
-- [ ] `exportLocale(...): string` — DB 상태 → `messages.json` 문자열
-  - 검증: 아래 결정성 케이스 전부 green
-- [ ] 키 정렬이 **코드포인트 오름차순**이다
-  - 검증: `localeCompare`로는 순서가 달라지는 입력(예: `a`·`A`·`ä`·`_x`)에서 기대 순서 고정
-- [ ] 정렬한 키 배열로 객체를 **재조립**한다 (DB 순서에 의존하지 않는다)
-  - 검증: 입력 배열 순서를 뒤섞어도 출력이 동일
-- [ ] 들여쓰기 2칸, 파일 끝 개행 **정확히 1개**
-  - 검증: 출력이 `\n`으로 끝나고 `\n\n`으로 끝나지 않음
-- [ ] `orphaned` 키 제외
-  - 검증: orphaned 키가 섞인 입력의 출력에 그 키가 없음
-- [ ] **같은 입력 두 번 호출 → 바이트 단위 동일**
-  - 검증: 멱등성 테스트 (이게 불변식 본체다)
-- [ ] `description`이 있으면 포함, 없으면 필드 자체를 생략
-  - 검증: 두 경우의 출력 비교 (`"description": undefined`가 새지 않는다)
-- [ ] **빈 로케일은 파일을 내지 않는다** (2026-08-31 결정 — 🔒 해소)
-  - 근거: export가 "DB 상태의 재현"이라면 번역 없는 로케일은 파일이 없는 게 정확한 재현이고, 빈 `{}`는 크롬이 "이 로케일 지원함"으로 읽어 사용자에게 빈 UI를 보인다
-  - 검증: 번역 0건인 로케일에 대해 `exportLocale`이 `null`을 돌려주고, 호출부가 그 로케일을 트리에서 뺀다
-- [ ] `exportLocale` + `blobSha` 조합이 `git hash-object`와 일치
-  - 검증: 실제 `messages.json`을 파일로 써서 `git hash-object`와 대조 (두 함수의 접점 검증)
+- [x] `exportLocale(keys, { isBase }): string | null` — DB 상태 → `messages.json` 문자열
+  - 검증: 19 케이스 green (`lib/__tests__/export.test.ts`), 전체 41 tests
+- [x] 키 정렬이 **환경에 의존하지 않는다** (`<` 비교 = UTF-16 코드 유닛 순서)
+  - 검증: `a A ä _x B b z Z 1` 입력에서 `1 A B Z _x a b z ä` 고정. localeCompare는 `_x 1 a A ä b B z Z`로 **완전히 다르고** Node ICU 빌드에 의존한다
+- [x] 정렬한 순서로 객체를 **재조립**한다 (DB 순서에 의존하지 않는다)
+  - 검증: 입력 배열을 역순으로 넣어도 출력이 바이트 동일
+- [x] 들여쓰기 2칸, 파일 끝 개행 **정확히 1개**
+  - 검증: 마지막 3바이트가 `10 125 10`(LF·`}`·LF)임을 런타임으로 확인
+- [x] `orphaned` 키 제외
+  - 검증: orphaned가 출력에 없고, 남은 키가 orphaned뿐이면 `null`
+- [x] **같은 입력 두 번 호출 → 바이트 단위 동일**
+  - 검증: `Buffer.equals`로 비교
+- [x] `description`이 있으면 포함, 없으면 필드 자체를 생략 (`null`도 생략)
+  - 검증: 출력에 `undefined`가 새지 않음. **non-base에는 넣지 않는다**(원문 메타데이터)
+- [x] **빈 로케일은 파일을 내지 않는다** (2026-08-31 결정 — 🔒 해소)
+  - 검증: 번역 0건·빈 문자열·키 0개 각각 `null` 반환
+- [x] 미번역 키는 non-base 파일에서 제외 (같은 원칙의 파생 — 크롬이 폴백한다)
+  - 검증: 번역 없는 키가 non-base 출력에 없음
+- [x] `exportLocale` + `blobSha` 조합이 `git hash-object`와 일치
+  - 검증: export 출력을 `git hash-object --stdin`에 넣어 `blobSha`와 대조 (2a·2b 접점)
+- [x] JSON 이스케이프 + 한글·이모지를 그대로 낸다 (`\u` 이스케이프 없음)
+  - 검증: `JSON.parse` 왕복 + `\u` 부재 확인
+- 커밋: `cf3ea2e` (test, red) → `fbccddc` (feat)
 
-—— 커밋: `test: pin export determinism` → `feat: add deterministic locale export`
-
-—— 이후: ARCHITECTURE §1·§2의 `(미구현)` 표시 제거 + 실제 동작으로 갱신
+—— ARCHITECTURE §1·§2의 `(미구현)` 표시 제거 완료
 
 ---
 
-## 3. 스캐너 (`lib/scan/`) ⬜
+## 3. 스캐너 (`lib/scan/`) ⬜ ← **현재 단계**
 
 - [ ] AST 경로 (ts-morph) — `t(key, source)` 호출에서 `{ key, sourceText, refs }` 추출
   - 검증: 정상 리터럴 케이스 green
