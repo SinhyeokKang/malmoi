@@ -47,6 +47,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — main 머지가 곧 프로덕션 | — |
 | DB | Supabase Postgres (`i18n-poc`, ref `xgsyyapzkpbdtkrprlmn`) | — |
+| 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_ORG`), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
@@ -155,8 +156,8 @@ lib/
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
   scan/                 (미구현) ts-morph 키 추출기 (CI에서 CLI로도 실행)
 prisma/
-  schema.prisma         4테이블 (접속 URL 없음 — Prisma 7)
-  migrations/           20260831012453_init
+  schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
+  migrations/           _init, _add_project_tenant_boundary
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
@@ -241,6 +242,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
+- **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (RLS 없음).
 
 ## 게이트웨이 (알아두면 유용)
 

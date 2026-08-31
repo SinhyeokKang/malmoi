@@ -113,21 +113,32 @@ const label = t(`status_${state}`, "...")
 ## 6. 스키마 (4테이블)
 
 ```
-Locale       code PK, name, isBase
-StringKey    id, key UNIQUE, namespace, sourceText, sourceHash,
+Project      id PK, slug UNIQUE, name,
+             repoOwner, repoName, baseBranch, installationId?   -- 테넌트 경계
+Locale       (projectId, code) PK, name, isBase
+StringKey    id PK, projectId FK, key, namespace, sourceText, sourceHash,
              description, orphaned, updatedAt
+             -- UNIQUE(projectId, key) / UNIQUE(projectId, id)
 KeyRef       id, keyId FK, path, line              -- push마다 전체 교체
-Translation  id, keyId FK, localeCode FK, value, needsReview,
+Translation  id PK, projectId, keyId, localeCode, value, needsReview,
              updatedBy, updatedAt                  -- UNIQUE(keyId, localeCode)
+             -- FK (projectId, keyId) → StringKey(projectId, id)
+             -- FK (projectId, localeCode) → Locale(projectId, code)
 ```
 
-`namespace`는 키에서 파생되는 값이지만 **컬럼으로 저장하고 인덱스를 건다** — 사이드바 쿼리가 이거 하나로 끝난다.
+`namespace`는 키에서 파생되는 값이지만 **컬럼으로 저장하고 인덱스를 건다** — 사이드바 쿼리가 이거 하나로 끝난다. 인덱스는 전부 `projectId` 선두 복합이다(모든 조회가 프로젝트로 먼저 좁혀진다).
+
+**`Translation.projectId`는 비정규화가 아니라 테넌트 격리다.** `keyId`·`localeCode`를 독립 FK로 두면 프로젝트 A의 키에 B의 로케일을 붙인 행을 DB가 허용한다. 두 FK가 같은 `projectId` 컬럼을 공유해 그 조합을 불가능하게 만든다.
 
 ## 7. 명시적 비범위
 
 **요청받아도 먼저 이 목록을 근거로 되묻는다.** PoC 범위를 지키는 게 이 프로젝트의 성패다.
 
-원래부터 비범위: ICU 복수형·성별 변화, 동시 편집(락·CRDT), 다중 프로젝트/리포, 세밀한 권한, in-context 편집(오버레이).
+원래부터 비범위: ICU 복수형·성별 변화, 동시 편집(락·CRDT), 세밀한 권한, in-context 편집(오버레이).
+
+**다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데(그리고 dev DB가 곧 prod DB다), 나머지 SaaS 요소는 전부 additive로 붙는다.
+
+**여전히 비범위인 것**: 테넌트별 인증·인가(멤버십·역할), 과금, 온보딩, 프로젝트 전환 UI, 테넌트별 GitHub App 설치 플로. 인증은 `AUTH_ALLOWED_ORG` 하나로 단일 테넌트로 남고, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 하나다. **아이디어 검증 후 인증·인가부터 고도화한다.**
 
 MVP 범위를 잡으면서 추가로 뺀 것: 스크린샷 첨부, 번역자 노트 필드, draft→reviewed 승인 워크플로(편집자가 한 명이라 오버엔지니어링), push 웹훅 즉시 반영, 번역 메모리·기계번역.
 
@@ -154,4 +165,5 @@ MVP 범위를 잡으면서 추가로 뺀 것: 스크린샷 첨부, 번역자 노
 - **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **GitHub org** — 대상이 개인 계정 리포면 org 멤버십 검사가 성립하지 않는다. 그 경우 허용 GitHub 핸들 목록으로 대체해야 하고, `AUTH_ALLOWED_ORG` 하나로는 부족해진다
+- **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다

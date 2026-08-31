@@ -28,6 +28,28 @@
 
 ---
 
+## 1.5 Project 테넌트 경계 ✅ (2026-08-31 범위 추가)
+
+MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** — SaaS 기능은 없다.
+
+- [x] `Project` 테이블 + `projectId` FK
+  - 검증: `20260831033609_add_project_tenant_boundary` 적용, `pnpm db:status` up to date
+- [x] `StringKey` 키 이름이 프로젝트 안에서만 유일
+  - 검증: 두 프로젝트가 같은 `common.ok`를 갖는 것을 실 DB에서 확인
+- [x] `Locale` 복합 PK, `Translation` 복합 FK
+  - 검증: 위와 같은 마이그레이션
+- [x] **테넌트 간 참조를 DB가 거부**
+  - 검증: A의 키 + B의 로케일 insert가 `Foreign key constraint`로 거부되는 것을 실 DB에서 확인
+- [x] 인덱스를 `projectId` 선두 복합으로 교체
+  - 검증: `migration.sql`의 DropIndex 3건 + CreateIndex 3건
+- [x] 리포 설정을 env → `Project` 컬럼으로 이전
+  - 검증: `.env.example`에서 `TARGET_REPO_*`·`GITHUB_APP_INSTALLATION_ID` 제거, `ACTIVE_PROJECT_SLUG` 추가
+- 커밋: `ab4ac2c` (schema+migration)
+
+**여전히 비범위**: 테넌트별 인증·인가, 과금, 온보딩, 프로젝트 전환 UI. 아이디어 검증 후 인증·인가부터.
+
+---
+
 ## 2. `lib/export.ts` + `lib/githash.ts` ⬜ ← **현재 단계** (2a 완료 / 2b 남음)
 
 **의존성 0의 순수 함수.** 이 둘이 틀리면 3~7단계가 전부 무의미해진다. `/tdd`로 테스트부터 쓴다.
@@ -57,8 +79,9 @@
   - 검증: 멱등성 테스트 (이게 불변식 본체다)
 - [ ] `description`이 있으면 포함, 없으면 필드 자체를 생략
   - 검증: 두 경우의 출력 비교 (`"description": undefined`가 새지 않는다)
-- [ ] 🔒 **빈 로케일 처리 결정** — 번역이 0건인 로케일의 파일을 `{}`로 낼지, 아예 안 낼지
-  - ARCHITECTURE §1에 "미정"으로 남아 있다. 결정 후 그 문서와 이 항목을 함께 갱신
+- [ ] **빈 로케일은 파일을 내지 않는다** (2026-08-31 결정 — 🔒 해소)
+  - 근거: export가 "DB 상태의 재현"이라면 번역 없는 로케일은 파일이 없는 게 정확한 재현이고, 빈 `{}`는 크롬이 "이 로케일 지원함"으로 읽어 사용자에게 빈 UI를 보인다
+  - 검증: 번역 0건인 로케일에 대해 `exportLocale`이 `null`을 돌려주고, 호출부가 그 로케일을 트리에서 뺀다
 - [ ] `exportLocale` + `blobSha` 조합이 `git hash-object`와 일치
   - 검증: 실제 `messages.json`을 파일로 써서 `git hash-object`와 대조 (두 함수의 접점 검증)
 
