@@ -113,7 +113,8 @@ Use this skill when the user asks to run the migrated source command `ship`.
 
 ### 10. 커밋 #4 (docs)
 - 9단계가 POSTMORTEM을 바꿨을 때만 (`docs(postmortem):`).
-- 2단계 "문서 영향" 플래그는 여기서 소비하지 않는다 — MVP/ARCHITECTURE/CLAUDE 갱신 주체는 11단계 `/push`의 4단계(문서 신선도)다. 플래그를 트라이아지 힌트로 전달만 한다.
+- 2단계 "문서 영향" 플래그는 여기서 소비하지 않는다 — TASKS/MVP/ARCHITECTURE/CLAUDE 갱신 주체는 11단계 `/push`의 4단계(문서 신선도)다. 플래그를 트라이아지 힌트로 전달만 한다.
+- **`docs/TASKS.md` 체크는 반드시 `/push`가 한다.** 파이프라인이 코드를 바꿨으면 태스크가 진행된 것이므로 11단계에서 무조건 걸린다.
 
 ### 11. `/push` = 프로덕션 배포 [Claude Code 전용 — Codex는 10단계에서 종료]
 - `/push`가 로컬 검증 게이트(typecheck+test) → 마이그레이션 순서 확인 → 문서 신선도 → Codex 미러 → 푸시를 순서대로 돈다.

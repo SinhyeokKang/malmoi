@@ -10,6 +10,7 @@ Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다.
 
 | 문서 | 내용 |
 |---|---|
+| [docs/TASKS.md](./docs/TASKS.md) | **태스크 체크리스트.** 단계별 완료 조건, 결정 필요 항목 |
 | [docs/MVP.md](./docs/MVP.md) | **기본 스펙.** 범위·기술 선택의 근거·세 흐름의 계약·스키마·구현 순서 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 불변식과 함정. 코어 로직 건드리기 전 필독 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회귀·버그 회고 (append-only) |

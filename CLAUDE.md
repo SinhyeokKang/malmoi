@@ -164,6 +164,7 @@ scripts/
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
   copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
 docs/MVP.md             기본 스펙
+docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/ARCHITECTURE.md    설계 상세·함정
 docs/POSTMORTEM.md      회귀·버그 회고 누적
 ```
@@ -210,6 +211,8 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
 
+- **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부른다.
+
 - **`/merge`·`/sync`는 삭제됐다.** main 단일 브랜치가 되면서 존재 이유가 사라졌다 (dev→main PR도, dev 재동기화도 없다). 이 이름을 부르는 지침이 남아 있으면 오래된 문서다.
 - **배포하지 않고 커밋만 쌓고 싶으면 `/ship`을 쓰지 않고 개별 스킬로 진행한다.**
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다.
@@ -218,8 +221,9 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 문서 신선도
 
-문서가 4개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
+문서가 5개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
+- **docs/TASKS.md** — **태스크 체크리스트.** 완료 조건이 붙은 단계별 목록. **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
 - **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
@@ -257,6 +261,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 메모리 & 참고 문서
 
+- **`docs/TASKS.md` — 태스크 체크리스트. 지금 무엇을 해야 하는지의 정본. 착수 전 필독**
 - **`docs/MVP.md` — 기본 스펙. 범위·근거·세 흐름의 계약. 작업 착수 전 필독**
 - `docs/ARCHITECTURE.md` — 설계 상세·함정 (코어 로직 건드리기 전 필독)
 - `docs/POSTMORTEM.md` — 과거 함정 (`/implement`·`/refactor`·`/code-review` 착수 전 grep)

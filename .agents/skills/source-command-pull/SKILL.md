@@ -20,8 +20,8 @@ Use this skill when the user asks to run the migrated source command `pull`.
 3. **최근 변경 파악**
    - `git log --oneline -15`
    - `git diff HEAD@{1}..HEAD --stat` (pull로 들어온 것)
-4. **문서 확인** — `docs/MVP.md` §10 "아직 안 정한 것"과 `docs/POSTMORTEM.md`의 최근 항목을 읽는다. 남은 결정과 최근 함정이 지금 작업의 출발점이다.
-5. **구현 진행도 판정** — `docs/MVP.md` §8 구현 순서 7단계 중 어디까지 됐는지 실제 파일 존재로 확인한다 (문서 주장이 아니라 코드로).
+4. **문서 확인** — `docs/TASKS.md`(현재 단계·미완 태스크·`🔒` 결정 필요), `docs/MVP.md` §10, `docs/POSTMORTEM.md` 최근 항목을 읽는다.
+5. **구현 진행도 판정** — `docs/TASKS.md`가 정본이지만 **그 주장을 검증한다**: `⬜`인 단계의 파일이 이미 존재하거나, `[x]`인 태스크의 파일이 없으면 문서가 낡은 것이다. 어긋난 항목을 리포트에 별도로 적는다 (고치지는 않는다 — 이 스킬은 읽기 전용).
 6. **브리핑.**
 
 ## 리포트
@@ -31,15 +31,13 @@ Use this skill when the user asks to run the migrated source command `pull`.
 받아온 커밋: <n>건 / 없음
    <oneline 목록>
 
-구현 진행도 (MVP.md §8):
-  1. Prisma 스키마 + Supabase 연결      ✅ / ⬜
-  2. lib/export.ts + lib/githash.ts     ✅ / ⬜
-  3. 스캐너 CLI                          ✅ / ⬜
-  4. /api/push                          ✅ / ⬜
-  5. Auth + 편집 UI                      ✅ / ⬜
-  6. GitHub App + /api/pull             ✅ / ⬜
-  7. Actions + Vercel Cron              ✅ / ⬜
+구현 진행도 (docs/TASKS.md):
+  현재 단계: <n. 이름>
+  완료: <완료 단계 목록>
+  이번 단계 미완 태스크: <n>건 — <핵심 2~3개>
+  🔒 결정 필요: <항목 또는 없음>
 
+문서 정합: TASKS.md 주장과 실제 파일 일치 / 어긋남 <목록>
 미결 항목 (MVP.md §10): <목록>
 최근 POSTMORTEM: <최근 1~2건 또는 없음>
 다음 할 일: <구현 순서상 다음 단계>
