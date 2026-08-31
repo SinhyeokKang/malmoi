@@ -69,7 +69,10 @@ const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { enc
 const commitAt = execFileSync("git", ["-C", target, "show", "-s", "--format=%cI", "HEAD"], { encoding: "utf8" }).trim();
 // 서버와 같은 `.env.local`을 읽으므로 기본값은 항상 통과한다. `--project`로 덮으면
 // 오배송 거부(409)를 로컬에서 실제로 확인할 수 있다.
-const projectSlug = arg("project", requireEnv("ACTIVE_PROJECT_SLUG"));
+//
+// ⚠️ `arg("project", requireEnv(...))`로 쓰지 않는다 — **인자가 먼저 평가되므로** 플래그를
+// 명시해도 환경변수가 없으면 죽는다. 없는 이유를 메시지가 가리키지 않아 진단이 오래 걸린다.
+const projectSlug = arg("project", "") || requireEnv("ACTIVE_PROJECT_SLUG");
 
 const paths: string[] = [];
 const sources: SourceFileInput[] = [];
