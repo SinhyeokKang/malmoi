@@ -25,7 +25,13 @@
 
 ### 3.1 push (코드 → DB)
 
-base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드한다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main). 번역 값은 어떤 경로로도 건드리지 않는다.
+base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올린다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main).
+
+**번역 값 규칙: 없을 때만 채우고, 있으면 절대 덮지 않는다** (`INSERT ... ON CONFLICT DO NOTHING`).
+
+원래 스펙은 "번역 값은 어떤 경로로도 건드리지 않는다"였는데 그러면 **첫 pull이 대상 리포의 번역을 파괴한다.** skillflo로 짚으면: 연동 시 base(en) 1446키만 적재되고 `Translation`은 비어 있다 → 번역자가 ko 한 건을 고친다 → pull이 ko 파일을 **키 1개짜리로 덮는다**. 리포에 있던 1445개가 사라진다. DB가 진실이 되기 전에 기존 값을 물려받는 단계가 없었다.
+
+`DO NOTHING`이면 원칙이 그대로 유지된다 — DB에 값이 생긴 뒤로는 push가 못 덮는다. 대가는 "개발자가 리포 파일을 직접 고쳐도 반영되지 않음"이고, 그건 §2의 의도된 트레이드오프다.
 
 **두 층으로 나뉜다.** 키 집합의 진실은 로케일 파일이고, 코드 스캔은 사용처만 보탠다:
 
@@ -47,10 +53,15 @@ base 브랜치 푸시 시 GitHub Actions에서 **소스 문자열만** 업로드
 
    **실측 규모**: skillflo base 1446키 → 페이로드 **144 KB** (Vercel 본문 한도 4.5MB 대비 여유). 전체 로케일 8676행.
 7. 서버 처리:
-   - upsert (키·원문·description)
+   - `Locale` upsert (발견된 로케일 + `isBase`)
+   - `StringKey` upsert (키·원문·`sourceHash`·description·namespace)
+   - `Translation` **insert-if-absent** — 리포 파일의 값으로 채우되 기존 행은 손대지 않는다
    - 적재 결과에 없는 키 → `orphaned = true`, 다시 나타난 키 → `false`. **삭제하지 않는다**
    - `sourceHash`가 바뀐 키 → base 아닌 모든 번역에 `needsReview = true` 전파
    - `KeyRef` 전체 교체 (증분 갱신보다 단순하고, 스캔이 전수라 정확하다)
+   - `Project`에 `lastCommitSha`와 어댑터 설정(`adapterName`·`pathTemplate`·`nested`·`baseLocale`) 저장 — 포맷을 아는 시점이 push이고, pull이 파일을 쓰려면 필요하다
+
+   **구현 제약**: 런타임이 transaction 모드 pooler(6543)라 대화형 `$transaction(async tx => …)`이 세션을 못 잡는다. 배열형 `$transaction([...])`과 `unnest()` 벌크 문장을 쓴다 — 1446키를 키마다 왕복하면 타임아웃이다. 진단·계획은 순수 함수(`lib/push/plan.ts`)로 분리해 테스트한다.
 
 **왜 이렇게 나눴나** — 사용자 스토리의 시작이 "리포를 연동하면 키가 DB에 적재된다"다. 코드 스캔을 키 집합의 진실로 두면 대상 리포가 **우리 래퍼로 전면 리팩터링을 먼저** 해야 아무것도 안 나온다. 실제로 bugshot-2에 돌려보니 자기 `t(key, params?)`를 이미 갖고 있어 오탐 1391건이 나왔다. 로케일 파일은 크롬 확장이라면 이미 갖고 있는 것이므로 **리팩터링 0으로 오늘 동작한다.**
 
