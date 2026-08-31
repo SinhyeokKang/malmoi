@@ -22,7 +22,8 @@ export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, tsDict]
  * manifest·스토어 메타데이터)와 `ts-dict`(903키, 앱 UI)가 공존한다. 위 우선순위는 기본값일
  * 뿐이고 규모가 큰 쪽을 놓칠 수 있으므로 **명시 지정이 이긴다**(`--adapter`, `Project.adapterName`).
  *
- * 두 표면을 동시에 다루는 것은 비범위다 (MVP §10).
+ * 한 프로젝트가 두 표면을 동시에 다루는 것은 비범위다 — `Project`가 어댑터를 하나만 들고,
+ * 필요해지면 표면마다 프로젝트를 나눈다 (MVP §7).
  */
 export function detectFormatWith(
   name: AdapterName,

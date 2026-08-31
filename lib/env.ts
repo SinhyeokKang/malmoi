@@ -23,7 +23,11 @@ export function parsePrivateKey(raw: string): string {
 }
 
 /**
- * org 멤버십 인가는 fail-closed다. AUTH_ALLOWED_ORG가 비어 있으면 아무도 통과하지 못한다 —
+ * ⚠️ **현재 호출부가 없다.** 인가는 org 멤버십이 아니라 허용 핸들 목록(`lib/auth/allow.ts`)으로
+ * 갔다 — 대상이 개인 계정 리포라 멤버십이 존재하지 않는다 (MVP §5). 실제 org를 쓰게 되면
+ * 이 판정을 OR로 더하려고 남겨둔다.
+ *
+ * fail-closed 규칙은 그대로다: 허용 org가 비어 있으면 아무도 통과하지 못한다 —
  * 빈 값을 "제한 없음"으로 읽으면 설정 누락이 곧 전면 공개가 된다(ARCHITECTURE §6).
  */
 export function isOrgAllowed(userOrgs: readonly string[], allowedOrg: string | undefined): boolean {

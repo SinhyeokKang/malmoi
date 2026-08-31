@@ -43,7 +43,10 @@ export const PushPayload = z
     locales: z.array(z.string().min(1)).min(1),
     // **키 0개를 거부한다.** 스캔이 조용히 아무것도 못 찾은 경우 전 프로젝트가 orphan된다.
     keys: z.array(IncomingKey).min(1),
-    /** 리포 파일에 있던 번역값. **없는 것만 채운다** (MVP §3.1) — 기존 행은 덮지 않는다. */
+    /**
+     * 리포 파일에 있던 번역값. **DB를 덮는다** (strict — MVP §3.1). 변경 감지도 병합도 없다.
+     * 대가는 편집 손실 창이다: pull PR이 머지되기 전의 편집은 다음 push가 지운다.
+     */
     translations: z.array(z.object({
       locale: z.string().min(1),
       key: z.string().min(1),

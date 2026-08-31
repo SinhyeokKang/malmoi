@@ -39,8 +39,12 @@ export type LocaleEntry = {
   message: string;
   description?: string;
   /**
-   * 코드에서 사라진 키. **`true`면 어떤 writer도 파일에 내지 않는다** (MVP §4.1).
-   * DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
+   * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
+   *
+   * **처리가 writer 방식마다 다르다** (MVP §4.1):
+   * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`usableEntries`가 거른다).
+   * - 수술적 치환(`ts-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
+   *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
    */
