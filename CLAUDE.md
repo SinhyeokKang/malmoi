@@ -127,6 +127,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]` (`refs` 수집 — **항상 exit 0**) |
+| 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...]` (적재+스캔+POST) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
@@ -151,6 +152,7 @@ app/
   (edit)/               (미구현) 편집 UI (인증 필요)
     actions.ts          (미구현) Server Action — 번역 저장·pull 트리거
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
+  api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
@@ -166,6 +168,8 @@ lib/
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
   push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
+  auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
+  keys/                 view.ts(순수 — 집계·배지·permalink) / query.ts(조회, server-only)
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
   migrations/           _init, _add_project_tenant_boundary
@@ -176,7 +180,9 @@ scripts/
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
   copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
   scan.ts               사용처 스캔 CLI
-  ingest.ts             로케일 적재 CLI (파일시스템을 아는 유일한 층)
+  ingest.ts             로케일 적재 CLI
+  push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
+auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
 docs/MVP.md             기본 스펙
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/DESIGN.md          편집 UI 시각 규칙 (라이트 단일, mono 표면 불변식)
