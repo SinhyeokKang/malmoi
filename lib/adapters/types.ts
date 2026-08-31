@@ -1,5 +1,5 @@
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog";
+export type AdapterName = "chrome-locales" | "json-catalog" | "ts-dict";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -8,6 +8,14 @@ export type DetectedFormat = {
   pathTemplate: string;
   /** 발견된 로케일 코드. 정렬돼 있지 않다 — 호출부가 필요하면 정렬한다. */
   locales: string[];
+  /**
+   * **수술적 치환 어댑터(`ts-dict`)가 write에 필요로 하는 원본 파일들.**
+   *
+   * 값만 바꾸고 나머지 소스를 보존하려면 원본이 있어야 한다. 재생성 어댑터는 무시한다.
+   * pull은 이 어댑터를 쓰는 프로젝트에서 blob SHA만이 아니라 **내용**을 받아야 한다 (MVP §3.3).
+   */
+  currentFiles?: readonly AdapterFile[];
+
   /**
    * json-catalog에서 원본이 중첩 구조였는지. write가 같은 모양으로 복원하는 데 쓴다.
    *

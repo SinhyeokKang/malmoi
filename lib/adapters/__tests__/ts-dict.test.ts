@@ -74,6 +74,29 @@ describe("detectFormat — ts-dict", () => {
   });
 });
 
+describe("회귀 — export된 선언을 로케일로 착각하지 않는다", () => {
+  // bugshot-2의 `export const ai = { ko, en, fr }`·`export const app = ...`이 2~3자 소문자라
+  // looksLikeLocale을 통과해 0키 "로케일"로 잡혔다. 묶음 객체는 항상 export되고
+  // 로케일 객체는 파일 내부용이라 그 한 줄로 갈린다.
+  it("export된 묶음 객체는 로케일이 아니다", () => {
+    const src = `const ko = { "a.b": "확인" } as const;
+const en = { "a.b": "OK" } satisfies Bundle;
+export const ai = { ko, en };
+export const app = { ko, en };
+`;
+    const r = tsDict.read(format, [{ path: "src/i18n/namespaces/ai.ts", content: src }]);
+    expect(r.locales.map((l) => l.locale).sort()).toEqual(["en", "ko"]);
+  });
+
+  it("실제 bugshot-2 형태에서 로케일이 정확히 셋이다", () => {
+    const d = detectFormat(
+      ["src/i18n/namespaces/common.ts", "src/i18n/namespaces/ai.ts"],
+      () => SOURCE + "\nexport const ai = { ko, en, fr };\n",
+    );
+    expect(d?.locales.sort()).toEqual(["en", "fr", "ko"]);
+  });
+});
+
 describe("ts-dict — read", () => {
   it("로케일별로 flat 점 표기 키를 뽑는다", () => {
     const r = tsDict.read(format, file());
@@ -120,7 +143,7 @@ describe("ts-dict — read", () => {
 });
 
 describe("ts-dict — write는 원본을 보존한다 (이 어댑터의 존재 이유)", () => {
-  const write = (entries: Array<{ key: string; message: string }>, locale = "ko") =>
+  const write = (entries: Array<{ key: string; message: string; orphaned?: boolean }>, locale = "ko") =>
     tsDict.write({ ...format, currentFiles: file() }, { locale, isBase: false, entries });
 
   it("값이 하나도 안 바뀌면 원본과 바이트 동일하다", () => {
