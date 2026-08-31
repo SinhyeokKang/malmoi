@@ -194,23 +194,24 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [ ] 🔒 **키 id 형식** — raw SQL이라 `randomUUID()`로 만든다. 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw에는 안 온다. 혼재해도 무해하지만 통일할지 결정 필요
 - 커밋: `dbcfd10` (schema) → `1522544`(spec) → `b9c2e53` (test+feat) → `e7055c7` (strict 전환)
 
-### 4b. 오배송·역행 거부 ⬜ (2026-08-31 결정 — 🔒 해소, **7단계 전 필수**)
+### 4b. 오배송·역행 거부 ✅ (2026-08-31 결정 — 🔒 해소, **7단계 전 필수**)
 
 > 둘 다 **거부이지 병합이 아니다** — 어긋난 요청을 반영하려 들면 diff 동기화가 되어 §2를 깬다. 실 DB에 프로젝트가 이미 둘이라 두 번째 리포를 붙이는 순간이 첫 사고 지점이다.
 
-- [ ] 페이로드에 `projectSlug` — 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 **409**
+- [x] 페이로드에 `projectSlug` — 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 **409**
   - 근거: 대상 지정을 서버 env에만 맡기면 오배송된 페이로드가 남의 프로젝트 키를 전부 orphan시키고 이물 키를 삽입하는데, `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다**
   - 프로젝트별 `PUSH_TOKEN`은 쓰지 않는다 — 토큰↔프로젝트 매핑을 어딘가 둬야 하고 시크릿이 프로젝트 수만큼 는다
-  - 검증: slug 불일치 409, 일치 200. Actions가 slug를 보내는지 7단계에서 확인
-- [ ] 페이로드에 `commitAt` — `Project.lastCommitAt`보다 과거면 **409**
+  - 검증: `checkProjectSlug` 8케이스(`lib/push/__tests__/guard.test.ts`) + **dev 서버 실측** — 불일치 `409 {"error":"project mismatch","expected":"bugshot-2","got":"not-this-project"}`. **미인증 요청은 401이고 프로젝트 정보가 새지 않는다**(가드가 인증 뒤에 있다)
+  - 남은 것: Actions가 slug를 보내는지는 7단계에서 확인
+- [x] 페이로드에 `commitAt` — `Project.lastCommitAt`보다 과거면 **409**
   - 근거: strict라 오래된 run의 Re-run이 DB를 그 시점으로 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA)
   - **같은 커밋 재전송은 통과시킨다** — strict라 결과가 같고 스캐너를 고쳐 다시 올리는 건 정당하다. 그래서 기준이 `commitSha` 동일성이 아니라 시각 역행이다
   - GitHub API 조상 확인은 쓰지 않는다 — 지금 GitHub을 안 부르는 라우트에 App 토큰·왕복이 들어온다. Actions가 `git show -s --format=%cI`로 공짜로 얻는다
-  - 검증: 과거 시각 409, 같은 시각 200, 미래 시각 200 + 저장
-- [ ] 마이그레이션 — `Project.lastCommitAt` (additive, nullable)
-  - ⚠️ `/db`로 만들고 **푸시 전에** `db:deploy` (additive-first)
-
-—— 커밋: schema+migration / 검증 로직으로 쪼갠다
+  - 검증: `checkCommitOrder` 7케이스(과거·1ms 과거·같은 시각·미래·null·타임존·Invalid Date) + 형식 위반이 **400**임을 실측(409와 구분된다 — 형식 오류는 상태 충돌이 아니다)
+  - ⚠️ **역행 409의 라우트 실측은 못 했다.** `lastCommitAt`을 세우려면 200 경로를 한 번 돌려야 하고 strict라 그것이 실 DB의 편집을 리포 값으로 덮는다. 오배송 경로로 배선(같은 `guardStatus`)이 도는 것은 확인했고, **끝단 확인은 7단계 왕복 검증에서 한다**
+- [x] 마이그레이션 — `Project.lastCommitAt` (additive, nullable)
+  - 검증: `20260831080435_add_project_last_commit_at`, SQL은 `ADD COLUMN` 한 줄. `db:deploy` 적용 후 `db:status` up to date
+- 커밋: `dc08503`(test) → `c5488db`(feat) → `ea5a565`(refactor) → `74b4d7d`(db)
 
 ---
 
