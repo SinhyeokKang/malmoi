@@ -167,7 +167,7 @@ app/
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
   (edit)/               (미구현) 편집 UI (인증 필요)
     actions.ts          (미구현) Server Action — 번역 저장·pull 트리거
-  api/push/route.ts     (미구현) CI → DB (Bearer PUSH_TOKEN)
+  api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
@@ -182,6 +182,7 @@ lib/
   githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
+  push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
   migrations/           _init, _add_project_tenant_boundary

@@ -133,6 +133,30 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **`orphaned`는 `StringKey`에, `needsReview`는 `Translation`에.** 키의 존재 여부는 코드가, 번역의 신선도는 값마다 판정되기 때문이다.
 - **인덱스는 전부 `projectId` 선두 복합이다.** 모든 조회가 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스는 쓸 수 없다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
 
+## 5.5 push 적용 (`lib/push/`)
+
+**판정과 I/O를 나눈다.** `plan.ts`가 순수 함수로 계획을 세우고(`toInsert`/`toUpdate`/`toOrphan`/`toUnorphan`/`staleKeyIds`), `apply.ts`가 그것만 실행한다. `PushPlan`에 **`toDelete`가 없는 것이 요지다** — 코드에서 사라진 키는 `orphaned`로 표시만 한다.
+
+### 5.5.1 pooler가 구현을 규정한다
+
+- **대화형 트랜잭션을 쓸 수 없다.** 런타임이 transaction 모드 pooler(6543)라 `$transaction(async tx => …)`은 문장마다 다른 백엔드로 갈 수 있다. **배열형 `$transaction([...])`** 은 한 번에 배치로 보내므로 pgbouncer에서도 원자적이다.
+- **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
+- **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결(TASKS §4).
+
+### 5.5.2 번역값 콜드 스타트
+
+**`INSERT ... ON CONFLICT DO NOTHING`.** 리포 파일의 값을 없을 때만 채우고 기존 행은 손대지 않는다. 안 채우면 첫 pull이 대상 리포의 번역을 파괴한다 (MVP §3.1).
+
+`Translation.value`를 쓰는 경로가 코드에 **하나도 없다** — 이게 §2 코어 원칙이 산문이 아니라 코드로 확인되는 지점이다. `lib/push/`와 라우트를 grep해 `value` 쓰기가 0건임을 확인한다.
+
+### 5.5.3 보고값은 실제 영향 행수다
+
+`$executeRaw`가 돌려주는 영향 행수를 배열형 트랜잭션 결과에서 읽는다. 후보 수를 보고하면 `DO NOTHING`인 재전송에서 "번역 2892건 채움"이라는 거짓이 CI 로그에 매번 남는다.
+
+### 5.5.4 `applyPush`는 클라이언트를 주입받는다
+
+`lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에 스크립트·테스트가 이 모듈을 **열 수조차 없다** — `lib/env.ts`에서 이미 밟은 함정이다. 라우트가 `getPrisma()`를 넘긴다.
+
 ## 6. 인증 경계
 
 **두 GitHub 자격증명을 섞지 않는다.**
@@ -141,7 +165,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 |---|---|---|
 | 편집 UI 로그인·인가 | GitHub OAuth (Auth.js) | 리포 접근 권한이 곧 편집 권한 |
 | `l10n/sync` 쓰기 | GitHub App installation token | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
-| `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다 |
+| `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다. **fail-closed** — 환경변수가 비었으면 500이고, 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부를 탐색할 단서를 주지 않는다) |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다 |
 
 **인가는 fail-closed다.** `AUTH_ALLOWED_ORG`가 비어 있으면 아무도 들어오지 못한다 — 빈 값을 "제한 없음"으로 해석하면 설정 누락이 곧 전면 공개가 된다.

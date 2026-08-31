@@ -142,26 +142,32 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 ---
 
-## 4. `/api/push` ⬜
+## 4. `/api/push` ✅
 
-- [ ] Bearer `PUSH_TOKEN` 검증, **fail-closed**
-  - 검증: 토큰 없음·틀림·환경변수 미설정 3케이스 모두 401/500 (통과하지 않는다)
-- [ ] Zod로 페이로드 검증
-  - 검증: 잘못된 모양이 400, 에러가 조용히 삼켜지지 않음
-- [ ] upsert — 키·원문·`description`
-  - 검증: 신규/기존 각각
-- [ ] 스캔에 없는 키 → `orphaned = true`, 다시 나타나면 `false`
-  - 검증: **삭제되지 않았는지 확인** (`Translation`이 살아 있다)
-- [ ] `sourceHash` 변경 → base 아닌 모든 번역에 `needsReview = true`
-  - 검증: 전파 로직을 순수 함수로 분리해 테스트 + 통합 확인
-- [ ] `KeyRef` 전체 교체
-  - 검증: 사라진 ref가 남아 있지 않음
-- [ ] **`Translation.value`를 어떤 경로로도 쓰지 않는다**
-  - 검증: 코드 리뷰 + 번역이 있는 키를 push해도 값이 불변
-- [ ] `commitSha` 저장 (편집 UI의 permalink 기준)
-  - 검증: 저장 위치 결정 후 조회 가능
-
-—— 커밋: `test: pin push contract` → `feat: add push endpoint`
+- [x] Bearer `PUSH_TOKEN` 검증, **fail-closed**
+  - 검증: 헤더 없음·틀린 토큰·환경변수 미설정(빈 문자열 포함) 전부 거부. 미설정은 500(서버 설정 문제), 나머지는 401. 어느 쪽이 틀렸는지 응답에 노출하지 않는다
+- [x] Zod로 페이로드 검증
+  - 검증: 40자 hex 아닌 `commitSha`, `locales`에 없는 `baseLocale`, 미등록 어댑터, `{locale}` 없는 `pathTemplate`, 미선언 로케일의 번역, 양의 정수 아닌 `line` 전부 400. **키 0개도 거부** — 스캔이 조용히 실패하면 전 프로젝트가 orphan된다
+- [x] upsert — 키·원문·`sourceHash`·description·namespace
+  - 검증: 실 DB 1446키 → insert 1446 / 재전송 시 insert 0, update 1446
+- [x] 스캔에 없는 키 → `orphaned = true`, 돌아오면 `false`
+  - 검증: 절반 제거 시 orphan 723 / **총키 1446 유지(삭제 안 됨)** / 번역 2892 살아있음 → 되돌리면 unorphan 723, 남은 orphaned 0
+- [x] `sourceHash` 변경 → base 아닌 번역에 `needsReview = true`
+  - 검증: 10키 원문 변경 → ko 10건, **en(base) 0건**. 판정은 `sourceHash`로만 — description·namespace 변경은 전파하지 않는다(필터가 노이즈가 된다)
+- [x] `KeyRef` 전체 교체
+  - 검증: refs 5건만 보냈을 때 DB 5건 (이전 1446건이 남지 않는다)
+- [x] **`Translation.value`를 어떤 경로로도 쓰지 않는다**
+  - 검증: `INSERT ... ON CONFLICT DO NOTHING`만 존재. DB 값을 고친 뒤 push해도 보존됨을 실 DB로 확인. 네 파일 grep에서 `value` 쓰기 0건
+- [x] **번역값 콜드 스타트** — 리포 파일의 값을 없을 때만 채운다 (MVP §3.1 수정)
+  - 근거: 안 채우면 첫 pull이 대상 리포의 번역을 파괴한다(§3.1의 skillflo 시나리오)
+- [x] `commitSha` + 어댑터 설정을 `Project`에 저장
+  - 검증: `adapterName`·`pathTemplate`·`nested`·`baseLocale`·`lastCommitSha` 저장 확인. 마이그레이션 `20260831050156_add_project_locale_format` (additive)
+- [x] 실제 영향 행수를 보고한다 (후보 수가 아니다)
+  - 근거: 재전송에서 "번역 2892건 채움"으로 거짓 보고하던 것을 트랜잭션 결과에서 읽어 0으로 고침
+- 성능: 1446키 + 2892번역 + 1446refs → **약 1.6초** (라우트 한도 60초)
+- 구현 제약: transaction 모드 pooler라 대화형 트랜잭션 불가 → 배열형 `$transaction([...])` + `unnest()` 벌크
+- [ ] 🔒 **키 id 형식** — raw SQL이라 `randomUUID()`로 만든다. 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw에는 안 온다. 혼재해도 무해하지만 통일할지 결정 필요
+- 커밋: `dbcfd10` (schema) → `1522544`(spec) → `b9c2e53` (test+feat)
 
 ---
 
