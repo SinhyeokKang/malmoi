@@ -76,6 +76,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | 키 추출 | `ts-morph` AST (JS/TS) + 정규식 (HTML·manifest의 `__MSG_key__`) | `ts-morph` 28.0.0 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
+| Node | `.nvmrc` **20** — `@types/node`를 이 메이저에 맞춘다(`^20`) | `@types/node` 20.19.43 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
@@ -166,7 +167,7 @@ app/
 components/ui/          shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
-  db.ts                 Prisma 클라이언트 단일 인스턴스 (pg adapter, 6543)
+  db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
   export.ts             (미구현) DB 상태 → messages.json 문자열 (결정적, 순수)
   githash.ts            (미구현) sha1("blob <len>\0" + content) — 로컬 blob SHA
@@ -252,6 +253,8 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
 - **환경변수는 한 곳에서 읽는다** — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다.
+- **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
+- **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
 
 ## 게이트웨이 (알아두면 유용)
