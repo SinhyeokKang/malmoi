@@ -108,6 +108,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 - 작업 브랜치: **`dev`** — 자유롭게 push (force push 허용). Vercel preview 배포가 붙는다.
 - 메인 브랜치: **`main`** — 직접 push 금지, PR squash 머지만. **main 머지가 곧 Vercel 프로덕션 배포다** — 별도 배포 명령이 없고, 그래서 `/deploy` 스킬도 없다.
+- **⚠️ GitHub 브랜치 프로텍션은 걸려 있지 않다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`). 따라서 main 직접 push를 막는 건 **하네스뿐이다** — `/push` 0단계 브랜치 가드, `/ship` 브랜치 가드, `/merge`만 main에 반영. **이 가드를 우회하면 아무것도 안 막는다.** 리포를 public으로 바꾸거나 Pro로 올리면 서버 측 보호를 켤 수 있다 (`verify` required check + linear history).
 - **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다. 릴리스 노트도 없다.
 - **DB 마이그레이션은 배포와 순서가 얽힌다**: `pnpm db:deploy`를 **머지 전에** 돌려 스키마를 먼저 넓힌다(additive-first). 컬럼 삭제·타입 변경은 코드 배포가 끝난 다음 별도 마이그레이션으로. 이 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 상세는 `/db` 스킬.
 

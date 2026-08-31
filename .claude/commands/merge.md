@@ -4,6 +4,8 @@ description: dev → main PR 생성 + CI 대기 + squash 머지 + dev 동기화.
 
 `dev`를 `main`에 반영한다. **main 머지가 곧 Vercel 프로덕션 배포이므로 이 스킬이 배포 스킬이다** — 별도 `/deploy`는 없다.
 
+> **⚠️ GitHub 브랜치 프로텍션이 없다** (Free 플랜 + private). 서버가 main 직접 push를 막지 않으므로 **이 스킬의 게이트가 유일한 방어**다. 게이트를 건너뛰면 검증되지 않은 코드가 프로덕션으로 나간다.
+
 ## 절차
 
 ### 0. 사전 게이트
