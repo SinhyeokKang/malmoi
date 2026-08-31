@@ -61,10 +61,12 @@ pnpm db:deploy
 - `package.json` scripts·의존성 변경, 새 디렉터리, 브랜치·배포 방식 변경, 스킬 라인업 변경, 새 컨벤션·게이트웨이 → **CLAUDE.md**
 - **코드에서 새 `process.env.*`를 읽음** → **.env.example** (⚠️ diff에 `process.env`가 보이면 무조건 확인한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다)
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
+- `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
 - 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
 
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
 - **docs/TASKS.md** — **완료 조건이 실제로 통과한 태스크만 `[x]`로 체크**하고 근거(커밋 해시·테스트 이름·산출물)를 한 줄 남긴다. "코드를 썼다"는 완료가 아니다. 반대로 **되돌린 작업은 체크를 해제**한다. `🔒` 항목이 결정됐으면 표시를 떼고 결정 내용을 적은 뒤 MVP.md §10에서도 뺀다. 단계가 끝났으면 헤딩의 `⬜`를 `✅`로, 다음 단계에 `← **현재 단계**`를 옮긴다. prefix `docs(TASKS): ...`
+- **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
 - **docs/MVP.md** — 범위·기술 선택 표·세 흐름의 단계·스키마·구현 순서가 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. **§8 구현 순서와 TASKS.md의 단계 구성이 어긋나면 안 된다.** prefix `docs(MVP): ...`
 - **docs/ARCHITECTURE.md** — 불변식·함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
 - **CLAUDE.md** — 명령어 표, 스택 버전, 디렉터리 구조, 브랜치·배포, 스킬 라인업. prefix `docs(CLAUDE): ...`
