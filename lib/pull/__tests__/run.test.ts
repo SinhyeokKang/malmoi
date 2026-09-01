@@ -4,6 +4,7 @@ import { SKIP_MARKER } from "../payload";
 import { runPull, type PullDeps, type PullState } from "../run";
 import { createFakeGitClient, type FakeCall } from "./fake-client";
 import type { RenderKey } from "../render";
+import type { GitClient } from "../client";
 
 /**
  * 오케스트레이션 테스트. **tasks.md 2단계가 요구한 다섯 가지가 여기 있다** —
@@ -38,17 +39,21 @@ const KEYS: RenderKey[] = [
 ];
 
 /** 기록용 저장소. `lastPulledAt` 쓰기가 실제로 일어났는지 본다. */
-function makeDeps(over: Partial<PullDeps> = {}): {
+function makeDeps(
+  over: Partial<PullDeps> = {},
+  /** 주면 이 fake를 쓴다 — 반환되는 `calls`도 그쪽 것이라 두 fake가 갈리지 않는다. */
+  given?: { client: GitClient; calls: FakeCall[] },
+): {
   deps: PullDeps;
   writes: (Date | null)[];
   calls: FakeCall[];
 } {
   const writes: (Date | null)[] = [];
-  const { client, calls } = createFakeGitClient({
+  const made = createFakeGitClient({
     refSha: { "heads/dev": "basehead" },
     tree: { basehead: [] },
-    ...(over as { refSha?: never }),
   });
+  const { client, calls } = given ?? made;
   const deps: PullDeps = {
     loadState: async (): Promise<PullState> => ({
       project: { ...PROJECT },
@@ -130,7 +135,7 @@ describe("runPull — 2층 blob SHA 스킵", () => {
         ],
       },
     });
-    const { deps } = makeDeps({ createClient: async () => client });
+    const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
 
     expect(calls.map((c) => c.method)).toEqual(["getRefSha", "getTree"]);
@@ -138,7 +143,7 @@ describe("runPull — 2층 blob SHA 스킵", () => {
   });
 
   it("2층 스킵에서도 lastPulledAt을 갱신한다 — 안 하면 값 불변 push 뒤 매일 밤 트리를 다시 읽는다", async () => {
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: {
         basehead: [
@@ -147,14 +152,14 @@ describe("runPull — 2층 blob SHA 스킵", () => {
         ],
       },
     });
-    const { deps, writes } = makeDeps({ createClient: async () => client });
+    const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(writes).toEqual([new Date("2026-09-01T10:00:00Z")]);
   });
 
   it("갱신 값은 now()가 아니라 캡처한 max(updatedAt)이다 — 그 사이 편집이 영영 스킵되면 안 된다", async () => {
     const captured = new Date("2026-09-01T10:00:00Z");
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: {
         basehead: [
@@ -163,7 +168,7 @@ describe("runPull — 2층 blob SHA 스킵", () => {
         ],
       },
     });
-    const { deps, writes } = makeDeps({ createClient: async () => client });
+    const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(writes[0]?.getTime()).toBe(captured.getTime());
   });
@@ -207,23 +212,23 @@ describe("runPull — 커밋·PR 경로", () => {
   });
 
   it("l10n/sync가 없으면 createRef, 있으면 updateRefForce다", async () => {
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead", "heads/l10n/sync": "oldsync" },
       tree: { basehead: [] },
     });
-    const { deps, calls } = makeDeps({ createClient: async () => client });
+    const { deps } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(calls.map((c) => c.method)).toContain("updateRefForce");
     expect(calls.map((c) => c.method)).not.toContain("createRef");
   });
 
   it("열린 PR이 있으면 재사용한다 — 새로 만들지 않는다", async () => {
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
       openPrUrl: "https://github.com/o/r/pull/7",
     });
-    const { deps, calls } = makeDeps({ createClient: async () => client });
+    const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
     expect(calls.map((c) => c.method)).not.toContain("createPr");
     expect(result).toMatchObject({ prUrl: "https://github.com/o/r/pull/7" });
@@ -244,30 +249,30 @@ describe("runPull — 커밋·PR 경로", () => {
 
 describe("runPull — 실패 처리", () => {
   it("커밋이 실패하면 lastPulledAt을 쓰지 않는다 — 쓰면 그 편집이 영영 안 나간다", async () => {
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
       failOn: "createCommit",
     });
-    const { deps, writes } = makeDeps({ createClient: async () => client });
+    const { deps, writes } = makeDeps({}, { client, calls });
     await expect(runPull(deps)).rejects.toThrow(/createCommit/);
     expect(writes).toEqual([]);
   });
 
   it("PR 생성이 실패하면 lastPulledAt을 쓰지 않는다", async () => {
-    const { client } = createFakeGitClient({
+    const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
       failOn: "createPr",
     });
-    const { deps, writes } = makeDeps({ createClient: async () => client });
+    const { deps, writes } = makeDeps({}, { client, calls });
     await expect(runPull(deps)).rejects.toThrow(/createPr/);
     expect(writes).toEqual([]);
   });
 
   it("base 브랜치가 null이면 던진다 — 권한 없음이 브랜치 없음으로 오진되면 안 된다", async () => {
-    const { client } = createFakeGitClient({ refSha: {}, tree: {} });
-    const { deps } = makeDeps({ createClient: async () => client });
+    const { client, calls } = createFakeGitClient({ refSha: {}, tree: {} });
+    const { deps } = makeDeps({}, { client, calls });
     await expect(runPull(deps)).rejects.toThrow(/dev/);
   });
 
