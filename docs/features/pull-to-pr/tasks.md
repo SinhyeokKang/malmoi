@@ -4,16 +4,16 @@
 
 ---
 
-## 0. 선행 — GitHub App (사람이 하는 작업, 코드 아님)
+## 0. 선행 — GitHub App (사람이 하는 작업, 코드 아님) ✅ 2026-09-01
 
 **이게 없으면 1c 스모크부터 아무것도 검증할 수 없다.** 로컬 `.env.local`에서 셋 다 비어 있다. **단 1a·1b(순수 함수)는 0단계 없이 진행 가능하다** — App 생성·설치가 늘어지는 동안 병렬로 간다.
 
-- [ ] GitHub App 생성 — 권한 **Contents: Read & write**, **Pull requests: Read & write**. 그 둘이면 된다
-- [ ] 대상 리포(`SinhyeokKang/bugshot-2`)에 설치
-- [ ] `.env.local`에 `GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`(PEM 전문)·`CRON_SECRET` 채우기
-- [ ] `Project.installationId` 채우기 — 현재 두 행 모두 `null`이다. 설치 후 URL이나 API에서 얻는다
-  - 검증: 아래 1c의 스모크가 통과하면 셋 다 맞은 것이다
-- [ ] **base 브랜치 `dev` 반영** (design.md 마지막 절 — 결정 완료) — `Project.baseBranch`를 `main` → `dev`로 갱신. MVP §10에서 항목을 빼는 것은 문서 갱신 단계에서
+- [x] GitHub App 생성 — 권한 **Contents: Read & write**, **Pull requests: Read & write** (App ID `4787722`, Only on this account)
+- [x] 대상 리포(`SinhyeokKang/bugshot-2`)에 설치 — `installationId = 158107153`, 설치 범위가 그 리포 하나뿐임을 `GET /installation/repositories`로 확인
+- [x] `.env.local`에 `GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`(PEM 전문)·`CRON_SECRET` 채우기 — PEM은 개행을 `\n`으로 접은 한 줄(Vercel env와 같은 형식). ⚠️ `re.sub`류 치환은 `\n`을 실제 개행으로 해석해 파일을 깨뜨린다 — 실제로 한 번 밟았다
+- [x] `Project.installationId` 채우기 — `bugshot-2` 행만. **컬럼 타입이 `String?`이다**(Int로 넣으면 Prisma가 거부한다)
+  - 검증: 임시 스모크로 App JWT → installation 토큰 → `GET /git/ref/heads/dev` = `baf494ee`(DB의 `lastCommitSha`와 일치), `ts-dict` 8파일 blob SHA 획득까지 확인. 정식 스모크는 1c
+- [x] **base 브랜치 `dev` 반영** — `Project.baseBranch` `main` → `dev` (bugshot-2 행만). MVP §10·TASKS §7의 🔒도 해소했다 (`db0158f`·`e0c872f`)
 
 —— 커밋 없음 (환경 설정)
 
