@@ -87,6 +87,12 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
  *
  * **커밋 작성자는 항상 App 토큰이다.** 로그인한 사용자의 OAuth 토큰이 이 경로에 들어오지
  * 않는다 (ARCHITECTURE §6) — `triggerPull`이 `createGitClient`만 쓴다.
+ *
+ * ⚠️ **반환 형태가 `saveTranslation`과 다르다** (`{ok}` vs `{status}`). 의도된 것이다:
+ * pull은 성공·스킵·실패 **3상태**라 `{ok: boolean}`에 담으면 스킵이 `{ok: true, skipped: true}`
+ * 같은 파생 모양이 되고, `runPull`의 반환을 접었다 펴는 매핑이 층마다 생긴다. `PullResult`를
+ * 그대로 흘리면 `pullMessage`의 exhaustive switch가 상태 누락을 컴파일 에러로 잡는다.
+ * **새 Action은 사용자 mutation이면 `saveTranslation` 쪽을 따른다.**
  */
 export async function triggerPullAction(): Promise<PullOutcome> {
   const session = await auth();
