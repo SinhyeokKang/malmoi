@@ -177,6 +177,7 @@ lib/
   github.ts             (미구현) Git Data API 래퍼 (App 토큰)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
   push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
+  pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
   auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
@@ -203,7 +204,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`를 건드리기 전에 읽는다. 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`을 건드리기 전에 읽는다. 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 코드포인트 오름차순 정렬, 들여쓰기 2칸, 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **`ts-dict`는 write에 원본 내용이 필요해 이 최적화가 그대로 성립하지 않는다** (MVP §3.3 — 파일당 blob 읽기 1회).
