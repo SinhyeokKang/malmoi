@@ -27,7 +27,7 @@
 
 ### 3.1 push (코드 → DB)
 
-base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올린다 (base를 main/dev 어느 쪽으로 둘지는 §10 — 현재 가정은 main).
+base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올린다. **base는 `dev`다** (2026-09-01 결정 — 대상 리포 bugshot-2의 실제 작업 브랜치이고, `main`은 보호 브랜치라 PR 머지 흐름이 한 겹 더 생긴다). pull의 base도 같은 브랜치여야 어긋나지 않는다 (§3.3).
 
 **번역 값 규칙 (strict): 리포 값으로 DB를 덮는다** (`INSERT ... ON CONFLICT DO UPDATE`).
 
@@ -295,7 +295,6 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 ## 10. 아직 안 정한 것
 
-- **대상 리포의 base 브랜치 정책** — bugshot-2는 `dev` 작업 / `main` 보호다. push 트리거를 main으로 둘지 dev로 둘지 실전 검증 때 정한다
 - **로케일 목록의 정본** — `Locale` 테이블 시드를 대상 리포의 `_locales/` 스캔으로 자동 생성할지, 수동 등록할지
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다
