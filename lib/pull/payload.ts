@@ -75,15 +75,3 @@ export function buildCommitPayload(
     parents: [parentSha],
   };
 }
-
-/**
- * ref 경로의 슬래시를 인코딩한다. `l10n/sync`를 그대로 URL에 넣으면 404다.
- *
- * `encodeURIComponent`를 쓰지 않는 이유: **이미 인코딩된 값을 두 번 인코딩하면 `%2F`가 `%252F`가
- * 되어 조용히 404다.** 브랜치명이 고정(`l10n/sync`)이라 슬래시만 다루면 충분하다.
- */
-export function encodeRefPath(branch: string): string {
-  if (branch === "") throw new Error("브랜치명이 비어 있다");
-  if (/%2F/i.test(branch)) return branch;
-  return branch.replaceAll("/", "%2F");
-}

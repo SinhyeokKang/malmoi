@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCommitPayload, buildTreePayload, encodeRefPath, SKIP_MARKER } from "../payload";
+import { buildCommitPayload, buildTreePayload, SKIP_MARKER } from "../payload";
 
 describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", () => {
   const changes = [
@@ -70,27 +70,5 @@ describe("buildCommitPayload — parents가 항상 base head다", () => {
 
   it("같은 입력 두 번 → 같은 페이로드 (결정성 — 타임스탬프를 넣지 않는다)", () => {
     expect(buildCommitPayload("t", "b", "x")).toEqual(buildCommitPayload("t", "b", "x"));
-  });
-});
-
-describe("encodeRefPath — 슬래시가 그대로 가면 404다", () => {
-  it("l10n/sync → l10n%2Fsync", () => {
-    expect(encodeRefPath("l10n/sync")).toBe("l10n%2Fsync");
-  });
-
-  it("슬래시가 없는 브랜치는 그대로 둔다", () => {
-    expect(encodeRefPath("dev")).toBe("dev");
-  });
-
-  it("슬래시가 여러 개면 전부 인코딩한다", () => {
-    expect(encodeRefPath("a/b/c")).toBe("a%2Fb%2Fc");
-  });
-
-  it("이미 인코딩된 값을 두 번 인코딩하지 않는다 — %2F가 %252F가 되면 조용히 404다", () => {
-    expect(encodeRefPath("l10n%2Fsync")).toBe("l10n%2Fsync");
-  });
-
-  it("빈 문자열이면 던진다", () => {
-    expect(() => encodeRefPath("")).toThrow(/브랜치/);
   });
 });

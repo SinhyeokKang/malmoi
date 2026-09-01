@@ -18,6 +18,7 @@
     "scan": "tsx scripts/scan.ts",
     "ingest": "tsx scripts/ingest.ts",
     "push:local": "tsx scripts/push-local.ts",
+    "smoke:github": "tsx scripts/smoke-github.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
