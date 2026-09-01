@@ -131,6 +131,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]` (`refs` 수집 — **항상 exit 0**) |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
+| GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
@@ -174,10 +175,11 @@ lib/
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
-  github.ts             (미구현) Git Data API 래퍼 (App 토큰)
+  github.ts             Git Data API 래퍼 (App 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
   push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
+                        / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
   auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
@@ -194,6 +196,7 @@ scripts/
   scan.ts               사용처 스캔 CLI
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
+  smoke-github.ts       GitHub App 설정 검증 (읽기만)
 auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
 docs/MVP.md             기본 스펙
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
