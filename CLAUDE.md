@@ -156,13 +156,15 @@ app/
   (edit)/               편집 UI (인증 필요 — 차단은 middleware.ts)
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다)
     keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
-    actions.ts          Server Action — saveTranslation (유일한 사용자 mutation)
+    actions.ts          Server Action — saveTranslation(유일한 사용자 mutation) / triggerPullAction
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
-  api/pull/route.ts     (미구현) DB → PR (수동 버튼 + Vercel Cron)
+  api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
+                        Server Action이 triggerPull을 직접 부른다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록)
 components/
   translation-input.tsx 인라인 편집 (client — blur 시 저장)
+  pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
@@ -182,6 +184,7 @@ lib/
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
+                        / trigger.ts(진입점 둘이 공유하는 조립 + SYNC_BRANCH) / message.ts(결과→문구)
   auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
