@@ -20,7 +20,13 @@ export type GitClient = {
    * ref의 커밋 SHA. **브랜치가 없으면 `null`** — 404를 던지지 않는 것이 요지다.
    * `l10n/sync`의 부재가 첫 실행 경로(`createRef`)를 태우는 정상 입력이기 때문이다.
    *
-   * @param ref `heads/dev` 형태. 슬래시 인코딩은 구현이 맡는다.
+   * ⚠️ **`null`은 "권한이 없다"일 수도 있다.** GitHub은 접근 권한이 없는 리소스에 존재를 숨기려
+   * 404를 준다 — App 설치가 취소되거나 Contents 권한이 빠지면 base 브랜치도 `null`로 온다.
+   * 그래서 **base 브랜치 조회는 호출부가 `null`이면 즉시 던져야 한다.** 그걸 "브랜치 없음"으로
+   * 읽고 진행하면 `createRef`가 실패할 때까지 오진이 이어진다.
+   *
+   * @param ref `heads/dev` 형태. **슬래시를 인코딩해 넘기지 않는다** — 구현이 쓰는 octokit이
+   *   이미 인코딩하므로 이중 인코딩(`%252F`)이 되어 조용한 404가 된다.
    */
   getRefSha(ref: string): Promise<string | null>;
 
@@ -33,7 +39,10 @@ export type GitClient = {
   /** blob 내용(UTF-8). 수술적 치환 어댑터의 write가 원본을 요구한다 (ARCHITECTURE §1.4). */
   getBlobText(sha: string): Promise<string>;
 
-  createBlob(content: string): Promise<string>;
+  /**
+   * 트리 생성. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지
+   * 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다.
+   */
   createTree(payload: TreePayload): Promise<string>;
   createCommit(payload: CommitPayload): Promise<string>;
 

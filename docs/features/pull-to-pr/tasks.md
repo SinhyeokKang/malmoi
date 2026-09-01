@@ -75,6 +75,9 @@
 - [ ] DB 로딩 — `max(Translation.updatedAt)` 집계(**`projectId`로 좁힌다** — 신규 쿼리, 리포에 선례 없음), `Project` 조회에 pull 필수 컬럼(`adapterName`·`pathTemplate`·`nested`·`baseLocale`·`baseBranch`·`installationId`·`lastPulledAt`) 포함, `Translation` 행 → `LocaleEntry[]` 변환(→ 1a `buildWriteEntries`)
   - 검증: **`installationId`가 `null`이면 명시적 에러** — 조용히 빈 PR을 내지 않는다
 - [ ] 1층 DB 측 스킵 → 2층 blob SHA 비교 → 커밋 → PR
+  - ⚠️ **base 브랜치 조회가 `null`이면 즉시 던진다** — GitHub은 권한 없는 리소스에 404를 주므로
+    `null`이 "브랜치 없음"이 아니라 "권한 없음"일 수 있다. 그걸 진행시키면 `createRef`가 실패할
+    때까지 오진이 이어진다. `l10n/sync`의 `null`만 정상 입력이다 (1c 리뷰 발견)
 - [ ] **write가 원본을 요구하면(수술적 치환) blob 내용을 읽어 `currentFiles`에 싣는다** (재생성 어댑터는 건너뜀)
   - **write는 파일별 호출** — 각 호출의 `currentFiles`에 그 파일 하나만 싣는다. `ts-dict`는 `currentFiles[0]`만 보고 나머지를 조용히 버린다
 - [ ] 브랜치 없으면 `POST /git/refs`, 있으면 `PATCH` + force

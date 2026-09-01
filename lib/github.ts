@@ -105,15 +105,6 @@ export async function createGitClient(
       return Buffer.from(res.data.content, "base64").toString("utf8");
     },
 
-    async createBlob(content) {
-      const res = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
-        ...base,
-        content,
-        encoding: "utf-8",
-      });
-      return res.data.sha;
-    },
-
     async createTree(payload: TreePayload) {
       const res = await octokit.request("POST /repos/{owner}/{repo}/git/trees", {
         ...base,

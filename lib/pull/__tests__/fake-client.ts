@@ -58,10 +58,6 @@ export function createFakeGitClient(opts: FakeGitOptions): {
       if (text === undefined) throw new Error(`fake에 주입되지 않은 blob: ${sha}`);
       return text;
     },
-    async createBlob(content) {
-      record("createBlob", [content]);
-      return fakeSha("blob", content);
-    },
     async createTree(payload: TreePayload) {
       record("createTree", [payload]);
       return fakeSha("tree", JSON.stringify(payload));

@@ -74,13 +74,6 @@ describe("createFakeGitClient — 응답 주입", () => {
 });
 
 describe("createFakeGitClient — 쓰기 경로", () => {
-  it("createBlob이 결정적인 가짜 SHA를 준다 — 같은 내용이면 같은 SHA다", async () => {
-    const { client } = createFakeGitClient({});
-    const a = await client.createBlob("같은 내용");
-    const b = await client.createBlob("같은 내용");
-    expect(a).toBe(b);
-  });
-
   it("createTree가 받은 페이로드를 기록한다 — base_tree 누락을 여기서 잡는다", async () => {
     const { client, calls } = createFakeGitClient({});
     const payload = buildTreePayload([{ path: "i18n/ko.json", content: "x" }], "basetree");
