@@ -126,7 +126,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
    ⚠️ **수술적 치환 어댑터(`ts-dict`)는 원본 내용을 필요로 한다.** 그 프로젝트에서는 blob SHA만으로 끝나지 않고 로케일 파일의 blob **내용**을 받아야 한다(파일당 API 호출 1회). 재생성 어댑터는 SHA만으로 충분하다.
 4. **로컬 blob SHA 계산 → base 트리와 비교. 전부 같으면 여기서 종료 — GitHub API를 한 번도 더 부르지 않는다.** 변경 없는 날이 대부분이라 이게 기본 경로다
-5. 변경분만: createBlob → createTree(`base_tree`) → createCommit(`parents: [baseHead]`, 메시지에 `[skip-l10n]`) → updateRef(`l10n/sync`, `force: true`)
+5. 변경분만: createTree(`base_tree`, 항목에 `content`를 실어 blob을 암묵 생성) → createCommit(`parents: [baseHead]`, 메시지에 `[skip-l10n]`) → updateRef(`l10n/sync`, `force: true`)
 6. 열린 PR 있으면 재사용, 없으면 생성
 
 ## 4. export 규칙 (결정적)
