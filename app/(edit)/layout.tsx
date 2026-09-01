@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
+import { PullButton } from "@/components/pull-button";
 
 /**
  * 편집 UI 셸. **인가는 `auth.ts`의 `signIn` 콜백이, 차단은 `middleware.ts`가 한다** —
@@ -21,10 +22,13 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   const login = session.user.login;
 
   return (
-    <div className="min-h-svh">
-      <header className="border-border flex items-center justify-between border-b px-4 py-2">
+    // flex 컬럼이다 — 페이지가 "헤더를 뺀 나머지 높이"를 calc로 계산하지 않게 한다.
+    // 계산으로 두면 헤더에 버튼 하나만 들어와도 그 값이 조용히 거짓이 된다(실제로 밟았다).
+    <div className="flex min-h-svh flex-col">
+      <header className="border-border flex shrink-0 items-center justify-between border-b px-4 py-2">
         <span className="text-sm font-medium">i18n-poc</span>
         <div className="flex items-center gap-3">
+          <PullButton />
           {/* 핸들은 mono가 아니다 — 식별자지만 사용자 이름이라 산문 쪽에 가깝다 */}
           <span className="text-muted-foreground text-xs">{login ?? "?"}</span>
           <form
@@ -42,7 +46,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
           </form>
         </div>
       </header>
-      {children}
+      {/* 남은 높이를 전부 받는다 — 페이지가 calc로 헤더 높이를 빼지 않아도 된다 */}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

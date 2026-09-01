@@ -55,7 +55,8 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
   const visible = ns === undefined ? rows : rows.filter((r) => r.namespace === ns);
 
   return (
-    <div className="flex min-h-[calc(100svh-2.5rem)]">
+    // 헤더 높이를 계산하지 않는다 — 레이아웃이 flex로 남은 높이를 준다
+    <div className="flex min-h-0 flex-1">
       {/* ── 네임스페이스 사이드바 ─────────────────────────────────────── */}
       <aside className="border-border w-52 shrink-0 overflow-y-auto border-r">
         <div className="text-muted-foreground px-3 py-2 text-xs">

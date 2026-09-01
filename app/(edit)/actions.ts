@@ -6,6 +6,8 @@ import { auth } from "@/auth";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { SaveInput, planSave } from "@/lib/keys/save";
+import type { PullOutcome } from "@/lib/pull/message";
+import { triggerPull } from "@/lib/pull/trigger";
 
 /**
  * 번역값 저장 — **MVP의 유일한 사용자 mutation** (MVP §3.2).
@@ -74,4 +76,27 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
 
   revalidatePath("/keys");
   return { ok: true, value: plan.value };
+}
+
+/**
+ * pull 트리거 — 편집 UI 버튼. **`/api/pull`을 fetch하지 않는다** (MVP §5): 내부 호출에
+ * Route Handler를 끼우면 세션 쿠키·절대 URL 배선이 따라오고, 그 라우트는 cron 전용이다.
+ *
+ * ⚠️ Server Action은 공개 엔드포인트다 — 여기서도 인증을 스스로 한다. 다만 테넌트 격리는
+ * `keyId` 같은 사용자 입력이 없어(대상이 `ACTIVE_PROJECT_SLUG` 하나다) 확인할 대상이 없다.
+ *
+ * **커밋 작성자는 항상 App 토큰이다.** 로그인한 사용자의 OAuth 토큰이 이 경로에 들어오지
+ * 않는다 (ARCHITECTURE §6) — `triggerPull`이 `createGitClient`만 쓴다.
+ */
+export async function triggerPullAction(): Promise<PullOutcome> {
+  const session = await auth();
+  if (!session?.user.login) return { status: "failed", error: "unauthorized" };
+
+  const slug = requireEnv("ACTIVE_PROJECT_SLUG");
+  try {
+    return await triggerPull(getPrisma(), slug);
+  } catch (error) {
+    // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다.
+    return { status: "failed", error: error instanceof Error ? error.message : String(error) };
+  }
 }
