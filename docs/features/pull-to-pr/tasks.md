@@ -21,31 +21,36 @@
 
 ## 1. 순수 함수 (`/tdd interface` → `/implement`)
 
-### 1a. 판정·경로·entries
+### 1a. 판정·경로·entries ✅ (`a62b675`·`251238a`)
 
-- [ ] `shouldSkipPull(maxUpdatedAt: Date | null, lastPulledAt: Date | null): boolean`
+- [x] `shouldSkipPull(maxUpdatedAt: Date | null, lastPulledAt: Date | null): boolean`
   - 검증: 편집 있음→false / 없음→true / **첫 pull(`lastPulledAt=null`)→false** / 편집 0건(`maxUpdatedAt=null`)→true / 같은 시각→true
-- [ ] `formatFromProject(project): DetectedFormat`
+- [x] `formatFromProject(project): DetectedFormat`
   - 검증: `adapterName`·`pathTemplate`·`nested`·`baseLocale` 4컬럼에서 재조립. 컬럼이 `null`이면(push가 아직 안 돌았다) 명시적 에러 — pull 경로엔 `read`가 없어 여기가 유일한 포맷 출처다
-- [ ] `resolveLocalePaths(format, layout, treePaths): {locale?, path}[]`
+- [x] `resolveLocalePaths(format, layout, treePaths): {locale?, path}[]`
   - 검증: `per-locale`은 `{locale}` 치환 (`i18n/{locale}.json` → `i18n/ko.json`). **`multi-locale`은 글롭을 `treePaths`(base 트리 경로 목록)와 매칭** (`src/i18n/namespaces/*.ts` → 8파일). 글롭이 디렉터리를 넘어가지 않는지(`*`가 `/`를 안 먹는지). **글롭이 0파일 매칭이면 명시적 에러**(경로 이동 신호 — 조용히 빈 PR을 내면 안 된다)
-- [ ] `buildWriteEntries(rows): LocaleEntry[]` — **writer에 넘길 entries의 유일한 관문**
+- [x] `buildWriteEntries(rows): LocaleEntry[]` — **writer에 넘길 entries의 유일한 관문**
   - 검증: **빈 문자열 제외(재생성·치환 공통)** — `ts-dict`는 `usableEntries`를 지나지 않아 `""`가 새면 원문이 `""`로 치환된다 (MVP §4.1, ARCHITECTURE §1.4). orphaned는 재생성이면 제외, 치환이면 **entries에서 빼서 값을 안 바꾼다**(파일엔 남는다)
-- [ ] `planPullChanges(local, baseTree): {path, content}[]`
+- [x] `planPullChanges(local, baseTree): {path, content}[]`
   - 검증: SHA 같으면 제외 / 다르면 포함 / **base 트리에 없는 경로는 신규로 포함** / **base에만 있는 경로는 삭제하지 않는다**(pull은 파일을 지우지 않는다) / **write가 `null`(낼 것 0개)인 경로는 스킵** — 기존 파일 유지
 
-### 1b. 페이로드 조립
+### 1b. 페이로드 조립 ✅ (`a62b675`)
 
-- [ ] `buildTreePayload(changes, baseTreeSha)`
+- [x] `buildTreePayload(changes, baseTreeSha)`
   - 검증: **`base_tree`가 들어간다** (빠지면 리포의 나머지 파일이 전부 삭제된 커밋이 된다). mode `100644`, type `blob`
-- [ ] `buildCommitPayload(treeSha, parentSha, summary)`
+- [x] `buildCommitPayload(treeSha, parentSha, summary)`
   - 검증: `parents`가 **base head 하나** (`l10n/sync`의 기존 head가 아니다). 메시지에 **`[skip-l10n]`** 포함
-- [ ] `encodeRefPath(branch): string`
+- [x] `encodeRefPath(branch): string`
   - 검증: `l10n/sync` → `l10n%2Fsync`. 슬래시가 그대로면 404다
-- [ ] 페이로드 함수에 **반환 타입 명시**
+- [x] 페이로드 함수에 **반환 타입 명시**
   - 근거: POSTMORTEM 2026-08-31 — 리터럴로 조립하면 필드가 늘어도 컴파일러가 침묵한다
 
 —— 커밋: `test:` (red) → `feat:` (순수 함수)
+
+**리뷰가 추가로 잡은 것** (`251238a`):
+
+- per-locale인데 `pathTemplate`에 `{locale}`이 없고 로케일이 여럿이면 **던진다** — 안 던지면 모든 로케일이 같은 경로를 받아 마지막 것이 조용히 이긴다. `detect`는 항상 토큰을 넣으므로 DB를 손으로 고쳤을 때만 열리는 구멍이다. multi-locale은 정의상 치환하지 않아 검사 제외 (ARCHITECTURE §1.1)
+- 정렬 비교자를 `compareKeys` 하나로 통일 (`lib/adapters/index.ts`가 re-export) — 세 곳이 각자 다른 표현이었고, 결과는 같지만 결정성 규칙의 주인이 넷이 되면 한 곳이 `localeCompare`로 바뀌어도 게이트가 잡지 못한다
 
 ### 1c. GitHub 껍데기 (`lib/github.ts`)
 
