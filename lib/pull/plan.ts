@@ -1,4 +1,4 @@
-import { ADAPTERS } from "@/lib/adapters";
+import { ADAPTERS, compareKeys } from "@/lib/adapters";
 import type { Adapter, AdapterName, DetectedFormat, LocaleEntry } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 
@@ -103,15 +103,22 @@ export function resolveLocalePaths(
   treePaths: readonly string[],
 ): LocalePath[] {
   if (layout === "per-locale") {
+    // 치환 토큰이 없으면 모든 로케일이 **같은 경로**를 받는다 — 트리에 같은 path가 여러 번 실려
+    // 마지막 로케일 내용이 이기고, 에러도 경고도 없다. `detect`가 만든 템플릿엔 항상 있으므로
+    // 손으로 DB를 고쳤을 때만 열리는 구멍이지만 방어가 한 줄이다.
+    // **multi-locale은 이 검사를 받지 않는다** — 정의상 치환하지 않는다 (ARCHITECTURE §1.1).
+    if (format.locales.length > 1 && !format.pathTemplate.includes("{locale}")) {
+      throw new Error(`per-locale인데 pathTemplate에 {locale}이 없다: ${format.pathTemplate}`);
+    }
     // 파일이 아직 없어도 새로 만든다 — 트리를 보지 않는 것이 이 갈래의 요지다.
     // 정렬하는 이유: 이 순서가 트리 페이로드 순서가 되고, 흔들리면 커밋이 비결정적이 된다.
     return [...format.locales]
-      .sort()
+      .sort(compareKeys)
       .map((locale) => ({ locale, path: format.pathTemplate.replaceAll("{locale}", locale) }));
   }
 
   const pattern = globToRegExp(format.pathTemplate);
-  const matched = treePaths.filter((p) => pattern.test(p)).sort();
+  const matched = treePaths.filter((p) => pattern.test(p)).sort(compareKeys);
   // 0개는 "낼 것이 없다"가 아니라 **경로가 이동했다**는 신호다. 조용히 빈 PR을 내면 안 된다.
   if (matched.length === 0) {
     throw new Error(`글롭이 매칭한 파일이 0개다: ${format.pathTemplate}`);
@@ -187,5 +194,5 @@ export function planPullChanges(
     changes.push({ path: file.path, content: file.content });
   }
   // 트리 페이로드 순서가 결정적이어야 blob SHA 비교가 매번 같은 답을 낸다.
-  return changes.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return changes.sort((a, b) => compareKeys(a.path, b.path));
 }

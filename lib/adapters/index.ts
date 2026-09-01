@@ -7,7 +7,7 @@ export { chromeLocales } from "./chrome-locales";
 export { jsonCatalog } from "./json-catalog";
 export { tsDict } from "./ts-dict";
 export { localeFromPath } from "./chrome-locales";
-export { namespaceOf } from "./shared";
+export { namespaceOf, compareKeys } from "./shared";
 export * from "./types";
 
 /**

@@ -110,6 +110,49 @@ describe("resolveLocalePaths — per-locale", () => {
     expect(paths.map((p) => p.path)).toContain("src/lib/i18n/ko.json");
   });
 
+  it("{locale}이 없는데 로케일이 여럿이면 던진다 — 안 던지면 세 로케일이 같은 경로를 받아 마지막 것이 이긴다", () => {
+    const broken = formatFromProject(
+      {
+        adapterName: "json-catalog",
+        pathTemplate: "src/i18n/messages.json",
+        nested: false,
+        baseLocale: "en",
+      },
+      ["ko", "en", "fr"],
+    );
+    expect(() => resolveLocalePaths(broken, "per-locale", [])).toThrow(/\{locale\}/);
+  });
+
+  it("{locale}이 없고 로케일이 하나면 통과한다 — 경로가 겹칠 수 없다", () => {
+    const single = formatFromProject(
+      {
+        adapterName: "json-catalog",
+        pathTemplate: "src/i18n/messages.json",
+        nested: false,
+        baseLocale: "en",
+      },
+      ["en"],
+    );
+    expect(resolveLocalePaths(single, "per-locale", [])).toEqual([
+      { locale: "en", path: "src/i18n/messages.json" },
+    ]);
+  });
+
+  it("multi-locale은 {locale} 검사를 받지 않는다 — 정의상 치환하지 않는다 (ARCHITECTURE §1.1)", () => {
+    const glob = formatFromProject(
+      {
+        adapterName: "ts-dict",
+        pathTemplate: "src/i18n/namespaces/*.ts",
+        nested: null,
+        baseLocale: "en",
+      },
+      ["ko", "en", "fr"],
+    );
+    expect(resolveLocalePaths(glob, "multi-locale", ["src/i18n/namespaces/a.ts"])).toEqual([
+      { path: "src/i18n/namespaces/a.ts" },
+    ]);
+  });
+
   it("결과가 로케일 코드 순으로 정렬된다 — 순서가 흔들리면 트리 페이로드가 비결정적이 된다", () => {
     const f = formatFromProject(
       {
