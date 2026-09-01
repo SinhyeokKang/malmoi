@@ -316,16 +316,16 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 
 > 이 체크리스트는 원래 재생성 어댑터만 전제하고 쓰였는데, **§9 왕복 검증 대상인 bugshot-2의 실제 번역 표면이 `ts-dict`(903키)** 라 그 경로를 빼면 검증이 성립하지 않는다. 착수 전 필요했던 결정 둘은 2026-08-31에 났다(아래 두 항목).
 
-- [ ] **판정을 두 층으로 — 1층은 DB 측 스킵** (🔒 해소, MVP §3.3)
+- [x] **판정을 두 층으로 — 1층은 DB 측 스킵** (🔒 해소, MVP §3.3) — `lib/pull/run.ts` (`f77bb38`)
   - 그 프로젝트의 `Translation.updatedAt` 최대값이 `Project.lastPulledAt` 이후로 안 움직였으면 **GitHub을 한 번도 부르지 않고 종료**한다. 편집 없는 날이 대부분이라 이게 기본 경로다
   - 근거: `ts-dict`는 write가 원본을 요구해 blob SHA 비교만으로는 호출을 못 아낀다. 이 층은 어댑터 방식과 무관하게 성립하고 재생성 어댑터도 트리 조회를 아낀다
   - 대가: 리포 파일을 직접 고치고 push를 안 돌린 경우를 놓친다(정상 흐름에선 strict push가 DB에 반영해 `updatedAt`이 움직인다)
   - 검증: 편집 없이 두 번 돌려 두 번째가 API 0회. 마이그레이션 `Project.lastPulledAt` (additive)
-  - 진행: 판정 함수 `shouldSkipPull`은 섰다 (`a62b675`). **API 0회 계측과 마이그레이션이 남아 체크하지 않는다**
-- [ ] **빈 값은 `ts-dict` write에 넘기지 않는다** (🔒 해소 — §5c와 같은 결정)
+  - 검증: fake 클라이언트로 **1층 스킵 시 호출 0회**를 확인 ✅ (`lib/pull/__tests__/run.test.ts`). 마이그레이션 `Project.lastPulledAt` 적용 완료 (`36b5245`, `db:deploy`)
+- [x] **빈 값은 `ts-dict` write에 넘기지 않는다** (🔒 해소 — §5c와 같은 결정) — `buildWriteEntries`가 유일한 관문 (`a62b675`)
   - 근거: `write`가 `usableEntries`를 지나지 않으므로 빈 값이 오면 소스에 `""`가 박히는데 TS 딕셔너리엔 폴백이 없다. "미번역 제외"만은 호출부가 두 방식에 똑같이 적용해 원본 값이 남게 한다
   - 검증: `value=""`인 키가 있는 상태로 write를 불러 원본 리터럴이 보존됨
-  - 진행: 걸러내는 관문 `buildWriteEntries`는 섰다 (`a62b675`). **실제로 write를 불러 확인하는 것이 남아 체크하지 않는다**
+  - 검증: `value=""`인 키로 오케스트레이션을 돌려 **원본 리터럴이 보존됨**을 확인 ✅ (`run.test.ts`의 multi-locale 케이스)
 - [x] GitHub App installation 토큰 (`octokit`의 `App`) — `lib/github.ts` (`05e4be6`)
   - 검증: 토큰으로 리포 읽기 성공 ✅ `pnpm smoke:github bugshot-2`. App 클라이언트는 **함수 안에서 지연 생성**한다 (POSTMORTEM 2026-08-31, 재발 1회)
 - [x] PEM 개행 복원 (`parsePrivateKey`) — `lib/github.ts`가 호출 (`05e4be6`)
@@ -333,11 +333,11 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [x] base head SHA + 트리 조회 — `getRefSha`·`getTree` (`05e4be6`)
   - 검증: 로케일 파일의 blob SHA 획득 ✅ 스모크가 `dev` head `baf494ee`(DB `lastCommitSha`와 일치), 트리 1331 blob, **글롭이 `ts-dict` 8파일을 실물에서 매칭**하는 것까지 확인
   - ⚠️ **트리가 잘렸으면(`truncated`) 던진다** — 일부만 보면 base에 있는 파일을 "없다"고 판정해 신규로 올리고 SHA 비교 전체가 틀어진다
-- [ ] **`multi-locale` 어댑터는 write를 파일별로 부른다**
-  - 검증: bugshot-2의 8개 네임스페이스 파일이 각각 자기 내용으로 치환된다. `write`가 `currentFiles[0]`만 보는 계약이라 호출부가 루프를 돈다
-- [ ] **blob SHA 비교 → 변경 없으면 커밋·PR 경로로 가지 않음**
+- [x] **`multi-locale`은 파일 × 로케일 이중 루프다** (2026-09-01 정정 — 문서가 로케일 축을 빠뜨렸다) — `lib/pull/render.ts` (`f77bb38`)
+  - 검증: 두 파일이 각각 자기 원본을 받아 치환되고, 한 파일 안의 로케일 3개가 모두 바뀐다 ✅. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남는다
+- [x] **blob SHA 비교 → 변경 없으면 커밋·PR 경로로 가지 않음** — `planPullChanges` + `run.ts` (`f77bb38`)
   - 검증: 호출 카운트를 세는 테스트 (이게 야간 cron의 기본 경로다)
-  - 진행: 비교 함수 `planPullChanges`는 섰다 (`a62b675`). **호출 카운트 테스트는 클라이언트 주입이 서는 2단계다**
+  - 검증: 2층 전부-동일이면 호출이 `getRefSha`·`getTree` 둘로 끝난다 ✅. **그때도 `lastPulledAt`을 갱신한다** — 안 하면 값 불변 push 뒤 매일 밤 트리를 다시 읽는다
   - ⚠️ **이 층만으로 "API 0회"가 되는 것은 재생성 어댑터뿐이다** — `ts-dict`는 위 DB 측 스킵(1층)이 그 역할을 한다
 - [x] `createTree`에 **`base_tree` 전달** — `buildTreePayload` (`251238a`)
   - 검증: 페이로드 조립 함수의 순수 테스트 ✅ 타입 필수 + 빈 문자열 throw (`lib/pull/__tests__/payload.test.ts`)
@@ -350,10 +350,10 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: `pnpm smoke:github`가 `heads/dev`를 읽어 실제 SHA를 받는다 ✅
 - [x] **GitHub 클라이언트를 인자로 주입받는다** — `lib/pull/client.ts`의 `GitClient` + `__tests__/fake-client.ts` (`05e4be6`)
   - 검증: fake가 호출을 기록해 `calls.length === 0`으로 "API 0회"를 판정할 수 있다 ✅ (17케이스). **이게 없으면 아래 호출 카운트 항목이 검증 불가다**
-- [ ] **브랜치 없을 때 `POST /git/refs`, 있을 때 `PATCH` + `force`**
-  - 검증: 첫 실행 경로를 반드시 다룬다
-- [ ] 열린 PR 재사용, 없으면 생성
-  - 검증: 두 번 돌려 PR이 하나만 남음
+- [x] **브랜치 없을 때 `POST /git/refs`, 있을 때 `PATCH` + `force`** — `run.ts` (`f77bb38`)
+  - 검증: 두 분기를 fake로 각각 태운다 ✅ (실물 첫 실행은 4단계)
+- [x] 열린 PR 재사용, 없으면 생성 — `run.ts` (`f77bb38`)
+  - 검증: `openPrUrl`이 있으면 `createPr`을 부르지 않는다 ✅. **조회 `head`는 `owner:branch` 형식**(브랜치명만 넘기면 필터가 조용히 무시된다). 실물 2회차는 4단계
 - [ ] `CRON_SECRET` 검증, fail-closed
   - 검증: 시크릿 없이 호출하면 거부
 
