@@ -94,18 +94,21 @@
 
 ---
 
-## 3. 진입점
+## 3. 진입점 ✅ (`a5bff4d`·`cf1905f`)
 
-- [ ] `/api/pull` Route Handler — **cron 전용**. `CRON_SECRET` 검증(`lib/push/auth.ts`의 `checkBearer` 재사용 — fail-closed 기존 구현), `maxDuration 60`
-  - 검증: 시크릿 없이 호출하면 거부. 미설정도 거부(빈 문자열 포함)
+- [x] `/api/pull` Route Handler — **cron 전용**. `CRON_SECRET` 검증(`lib/push/auth.ts`의 `checkBearer` 재사용 — fail-closed 기존 구현), `maxDuration 60`
+  - 검증: 시크릿 없이·틀린 시크릿 모두 **401**이고 응답이 구별되지 않는다 ✅ (dev 서버 실측). 미설정은 `checkBearer`가 500 — 기존 테스트가 덮는다
+  - ⚠️ **Vercel Cron은 `GET`으로 부른다** — 부수효과가 있는데도 `GET`인 유일한 이유다
   - ⚠️ `middleware.ts` matcher에 넣지 않는다 — cron은 세션이 없다 (현재 matcher는 `/keys/:path*`뿐이라 기본값이 안전)
-- [ ] 편집 UI의 pull 버튼 — **Server Action이 pull 로직을 직접 부른다**
+- [x] 편집 UI의 pull 버튼 — **Server Action이 pull 로직을 직접 부른다**
   - 근거: 내부 쓰기에 Route Handler를 새로 만들지 않는다 (MVP §5). 어느 경로든 커밋 작성자는 App 토큰이다 (ARCHITECTURE §6)
   - **반환 유니온**: `{ok: true, prUrl} | {ok: true, skipped: true} | {ok: false, error}` — `saveTranslation`의 기존 관용과 동형
   - **상태 표시는 인라인 1줄** (토스트 도입 안 함 — sonner는 설치만 되고 사용처 0, 기존 관용은 `translation-input.tsx`의 인라인): pending은 버튼 `disabled` + `text-muted-foreground`, 실패는 `text-destructive`, **no-op은 "이미 최신 상태예요" 표시**(기본 경로라 무반응이면 고장으로 읽힌다. PR URL 재표시를 위해 스키마를 늘리지 않는다)
   - **레이블은 편집자 어휘** — "PR"이 아니라 예: "변경 내보내기" / 성공: "반영 요청이 만들어졌어요" + 링크
   - ⚠️ 버튼이 놓일 헤더는 `keys/page.tsx`가 높이 2.5rem을 하드코딩하고 있다 — `size="sm"`(h-8) 이하. `<Button>` 첫 사용처가 된다
-  - 검증: 버튼을 눌러 PR URL이 화면에 뜬다 / 직후 한 번 더 누르면 "이미 최신 상태"가 뜬다
+  - 검증(자동): `pullMessage`가 4상태를 exhaustive switch로 덮고 git 어휘를 쓰지 않는다 ✅ (7케이스)
+  - 검증(수동, **남았다**): 버튼을 눌러 링크가 뜨는지 / 직후 한 번 더 눌러 "이미 최신 상태"가 뜨는지 / 헤더 정렬이 깨지지 않았는지 — 로그인이 필요해 눈으로 봐야 한다
+  - **헤더 높이 하드코딩을 제거했다** (CDO 검수가 예고한 함정을 실제로 밟았다): `keys/page.tsx`의 `min-h-[calc(100svh-2.5rem)]`이 "텍스트만 든 헤더"를 전제했고 `h-8` 버튼이 49px로 만들었다. 레이아웃을 flex 컬럼으로 바꿔 계산 자체를 없앴다
 
 —— 커밋: `feat:` (진입점)
 
