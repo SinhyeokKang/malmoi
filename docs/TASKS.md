@@ -326,12 +326,13 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 근거: `write`가 `usableEntries`를 지나지 않으므로 빈 값이 오면 소스에 `""`가 박히는데 TS 딕셔너리엔 폴백이 없다. "미번역 제외"만은 호출부가 두 방식에 똑같이 적용해 원본 값이 남게 한다
   - 검증: `value=""`인 키가 있는 상태로 write를 불러 원본 리터럴이 보존됨
   - 진행: 걸러내는 관문 `buildWriteEntries`는 섰다 (`a62b675`). **실제로 write를 불러 확인하는 것이 남아 체크하지 않는다**
-- [ ] GitHub App installation 토큰 (`octokit`의 `App`)
-  - 검증: 토큰으로 리포 읽기 성공
-- [ ] PEM 개행 복원 (`parsePrivateKey`, 이미 테스트 있음)
-  - 검증: Vercel env의 이스케이프된 값으로 JWT 서명 성공
-- [ ] base head SHA + 트리 조회
-  - 검증: 로케일 파일의 blob SHA 획득. 경로는 `Project.pathTemplate`이 정한다 — `per-locale`은 `{locale}` 치환, **`multi-locale`은 글롭 매칭**
+- [x] GitHub App installation 토큰 (`octokit`의 `App`) — `lib/github.ts` (`05e4be6`)
+  - 검증: 토큰으로 리포 읽기 성공 ✅ `pnpm smoke:github bugshot-2`. App 클라이언트는 **함수 안에서 지연 생성**한다 (POSTMORTEM 2026-08-31, 재발 1회)
+- [x] PEM 개행 복원 (`parsePrivateKey`) — `lib/github.ts`가 호출 (`05e4be6`)
+  - 검증: `\n`으로 접은 `.env.local` 값으로 JWT 서명 성공 ✅ (스모크가 통과하면 서명이 된 것이다)
+- [x] base head SHA + 트리 조회 — `getRefSha`·`getTree` (`05e4be6`)
+  - 검증: 로케일 파일의 blob SHA 획득 ✅ 스모크가 `dev` head `baf494ee`(DB `lastCommitSha`와 일치), 트리 1331 blob, **글롭이 `ts-dict` 8파일을 실물에서 매칭**하는 것까지 확인
+  - ⚠️ **트리가 잘렸으면(`truncated`) 던진다** — 일부만 보면 base에 있는 파일을 "없다"고 판정해 신규로 올리고 SHA 비교 전체가 틀어진다
 - [ ] **`multi-locale` 어댑터는 write를 파일별로 부른다**
   - 검증: bugshot-2의 8개 네임스페이스 파일이 각각 자기 내용으로 치환된다. `write`가 `currentFiles[0]`만 보는 계약이라 호출부가 루프를 돈다
 - [ ] **blob SHA 비교 → 변경 없으면 커밋·PR 경로로 가지 않음**
@@ -344,8 +345,11 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: 페이로드 테스트 ✅ 반환 타입이 `[string]` 튜플이라 둘째 parent가 컴파일 단계에서 막힌다
 - [x] 커밋 메시지에 `[skip-l10n]` — `SKIP_MARKER` 상수 (`251238a`)
   - 검증: 메시지 생성 함수 테스트 ✅ 빈 요약이어도 마커가 남는다
-- [x] ref URL 인코딩 (`l10n%2Fsync`) — `encodeRefPath` (`251238a`)
-  - 검증: 슬래시가 그대로 들어가면 404다 ✅ **이중 인코딩도 막는다**(`%2F`→`%252F`는 조용한 404)
+- [x] **ref 인코딩은 `octokit`이 담당한다 — 직접 하지 않는다** (2026-09-01 정정)
+  - `encodeRefPath`를 만들어 호출부에서 썼다가 `%252F` 조용한 404를 스스로 만들었다. 실측으로 확인하고 함수를 제거했다 (`9c0cd03`, `docs/POSTMORTEM.md` 2026-09-01)
+  - 검증: `pnpm smoke:github`가 `heads/dev`를 읽어 실제 SHA를 받는다 ✅
+- [x] **GitHub 클라이언트를 인자로 주입받는다** — `lib/pull/client.ts`의 `GitClient` + `__tests__/fake-client.ts` (`05e4be6`)
+  - 검증: fake가 호출을 기록해 `calls.length === 0`으로 "API 0회"를 판정할 수 있다 ✅ (17케이스). **이게 없으면 아래 호출 카운트 항목이 검증 불가다**
 - [ ] **브랜치 없을 때 `POST /git/refs`, 있을 때 `PATCH` + `force`**
   - 검증: 첫 실행 경로를 반드시 다룬다
 - [ ] 열린 PR 재사용, 없으면 생성
