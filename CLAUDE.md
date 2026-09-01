@@ -237,13 +237,13 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **10개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
+스킬 **11개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
 
-`/feature` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
 
-- **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부른다.
+- **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
 - **`/merge`·`/sync`는 삭제됐다.** main 단일 브랜치가 되면서 존재 이유가 사라졌다 (dev→main PR도, dev 재동기화도 없다). 이 이름을 부르는 지침이 남아 있으면 오래된 문서다.
 - **배포하지 않고 커밋만 쌓고 싶으면 `/ship`을 쓰지 않고 개별 스킬로 진행한다.**
