@@ -66,25 +66,24 @@
 
 ---
 
-## 2. pull 오케스트레이션
+## 2. pull 오케스트레이션 ✅ (`f77bb38`·`f917612`)
 
 **마이그레이션 커밋이 먼저다** — 오케스트레이션 코드가 `Project.lastPulledAt`을 참조하는 순간 스키마·클라이언트가 없으면 typecheck red라, `chore(db)`가 앞서야 커밋마다 `/push` 게이트를 통과한다.
 
-- [ ] 마이그레이션 — `Project.lastPulledAt` (additive, nullable)
-  - `/db`로 만들고 `/push` **전에** `db:deploy`
-- [ ] DB 로딩 — `max(Translation.updatedAt)` 집계(**`projectId`로 좁힌다** — 신규 쿼리, 리포에 선례 없음), `Project` 조회에 pull 필수 컬럼(`adapterName`·`pathTemplate`·`nested`·`baseLocale`·`baseBranch`·`installationId`·`lastPulledAt`) 포함, `Translation` 행 → `LocaleEntry[]` 변환(→ 1a `buildWriteEntries`)
+- [x] 마이그레이션 — `Project.lastPulledAt` (additive, nullable) — `36b5245`, `db:deploy` 적용 완료
+- [x] DB 로딩 — `max(Translation.updatedAt)` 집계(**`projectId`로 좁힌다** — 신규 쿼리, 리포에 선례 없음), `Project` 조회에 pull 필수 컬럼(`adapterName`·`pathTemplate`·`nested`·`baseLocale`·`baseBranch`·`installationId`·`lastPulledAt`) 포함, `Translation` 행 → `LocaleEntry[]` 변환(→ 1a `buildWriteEntries`)
   - 검증: **`installationId`가 `null`이면 명시적 에러** — 조용히 빈 PR을 내지 않는다
-- [ ] 1층 DB 측 스킵 → 2층 blob SHA 비교 → 커밋 → PR
+- [x] 1층 DB 측 스킵 → 2층 blob SHA 비교 → 커밋 → PR
   - ⚠️ **base 브랜치 조회가 `null`이면 즉시 던진다** — GitHub은 권한 없는 리소스에 404를 주므로
     `null`이 "브랜치 없음"이 아니라 "권한 없음"일 수 있다. 그걸 진행시키면 `createRef`가 실패할
     때까지 오진이 이어진다. `l10n/sync`의 `null`만 정상 입력이다 (1c 리뷰 발견)
-- [ ] **write가 원본을 요구하면(수술적 치환) blob 내용을 읽어 `currentFiles`에 싣는다** (재생성 어댑터는 건너뜀)
-  - **write는 파일별 호출** — 각 호출의 `currentFiles`에 그 파일 하나만 싣는다. `ts-dict`는 `currentFiles[0]`만 보고 나머지를 조용히 버린다
-- [ ] 브랜치 없으면 `POST /git/refs`, 있으면 `PATCH` + force
-- [ ] 열린 PR 재사용 — 조회 `head`는 **`{owner}:l10n/sync` 형식** (브랜치명만 넘기면 필터가 조용히 무시돼 중복 생성된다)
-- [ ] `Project.lastPulledAt` 갱신 — **2층 전부-동일 스킵과 커밋·PR 성공 양쪽에서** 갱신하고, 값은 **1층 판정 시점에 캡처한 `max(updatedAt)`** (design.md 갱신 규칙 표)
+- [x] **write가 원본을 요구하면(수술적 치환) blob 내용을 읽어 `currentFiles`에 싣는다** (재생성 어댑터는 건너뜀)
+  - **파일 × 로케일 이중 루프다** (2026-09-01 정정 — 문서가 로케일 축을 빠뜨렸다). `write`가 `input.locale`로 로케일 객체 하나를 고르므로 파일마다 로케일 수만큼 부르고 **직전 결과를 다음 호출의 원본으로 넘긴다**. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남는다
+- [x] 브랜치 없으면 `POST /git/refs`, 있으면 `PATCH` + force
+- [x] 열린 PR 재사용 — 조회 `head`는 **`{owner}:l10n/sync` 형식** (브랜치명만 넘기면 필터가 조용히 무시돼 중복 생성된다)
+- [x] `Project.lastPulledAt` 갱신 — **2층 전부-동일 스킵과 커밋·PR 성공 양쪽에서** 갱신하고, 값은 **1층 판정 시점에 캡처한 `max(updatedAt)`** (design.md 갱신 규칙 표)
   - ⚠️ **중간 실패 시엔 쓰지 않는다.** 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다
-- [ ] **fake 클라이언트 기반 단위 테스트** (1c의 주입 계약 사용):
+- [x] **fake 클라이언트 기반 단위 테스트** (1c의 주입 계약 사용) — 5건 전부 통과 (`lib/pull/__tests__/run.test.ts`):
   - 검증: 1층 스킵 시 **GitHub 호출 0회** (spec 완료 조건 4의 판정 수단)
   - 검증: 커밋/PR 단계에서 throw하는 fake → **`lastPulledAt` 미갱신**
   - 검증: 2층 전부-동일 종료 → **`lastPulledAt` 갱신** (캡처 값으로)

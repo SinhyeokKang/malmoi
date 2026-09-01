@@ -40,13 +40,12 @@ ARCHITECTURE §3의 순서에 수술적 치환 갈래를 넣은 것이다.
 2. `GET /git/trees/{sha}?recursive=1` → 로케일 파일들의 blob SHA
 3. **write가 원본을 요구하면(수술적 치환 — 현재는 `ts-dict`뿐)** 파일별 `GET /git/blobs/{sha}` *(재생성 어댑터는 건너뜀)*
 4. 로컬 write + blob SHA 계산 → 비교. **전부 같으면 `lastPulledAt` 갱신 후 종료**
-   - **`multi-locale`은 write를 파일별로 부른다** — 각 호출의 `currentFiles`에 그 파일 하나만 싣는다. `ts-dict`는 `currentFiles[0]`만 보고 나머지를 조용히 버리므로(실물 계약), 루프가 빠지면 첫 파일 외 전부 무시된다
+   - **`multi-locale`은 파일 × 로케일 이중 루프다** (2026-09-01 구현이 정정). `ts-dict.write`는 `currentFiles[0]`만 보고 **`input.locale`로 로케일 객체 하나를 고르므로**, 파일 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 PR에 ko만 바뀐 채 나간다 (`lib/pull/render.ts`)
    - write가 `null`(낼 것 0개)을 반환한 경로는 **변경분에서 제외한다** — 기존 파일을 유지한다. pull은 파일을 지우지 않는다
-5. 변경분마다 `POST /git/blobs`
-6. `POST /git/trees` — **`base_tree` 필수**
-7. `POST /git/commits` — `parents: [baseHead]`, 메시지에 `[skip-l10n]`
-8. `PATCH /git/refs/heads/l10n%2Fsync` (`force: true`) — **없으면 `POST /git/refs`**
-9. `GET /pulls?head={owner}:l10n/sync&state=open` → 있으면 재사용, 없으면 `POST /pulls` — **`head`는 `owner:branch` 형식이어야 필터가 걸린다.** 브랜치명만 넘기면 필터가 조용히 무시돼 PR이 중복 생성된다
+5. `POST /git/trees` — **`base_tree` 필수.** 항목의 `content`가 blob을 암묵 생성하므로 **`POST /git/blobs`를 따로 부르지 않는다** (2026-09-01 정정 — 파일 8개면 호출 9회가 1회로 줄었다)
+6. `POST /git/commits` — `parents: [baseHead]`, 메시지에 `[skip-l10n]`
+7. `PATCH /git/refs/heads/l10n/sync` (`force: true`) — **없으면 `POST /git/refs`**. **ref 인코딩은 octokit이 담당한다** (직접 하면 `%252F` 조용한 404 — POSTMORTEM 2026-09-01)
+8. `GET /pulls?head={owner}:l10n/sync&state=open` → 있으면 재사용, 없으면 `POST /pulls` — **`head`는 `owner:branch` 형식이어야 필터가 걸린다.** 브랜치명만 넘기면 필터가 조용히 무시돼 PR이 중복 생성된다
 
 **중간 실패는 다음 실행이 수렴시킨다** — `lastPulledAt`이 성공 후에만 갱신되고 `l10n/sync`가 force update 스냅샷이므로, blob 생성 후 커밋 실패 같은 중간 상태는 다음 pull이 처음부터 다시 돌아 덮는다. 별도 정리·재시도 로직을 두지 않는다. `/api/pull`은 push와 같은 `maxDuration 60`.
 
@@ -59,13 +58,16 @@ ARCHITECTURE §3의 순서에 수술적 치환 갈래를 넣은 것이다.
 | `shouldSkipPull(maxUpdatedAt, lastPulledAt)` | 두 시각 → boolean | 1층 판정. null 조합(첫 pull·편집 0건)이 경계다 |
 | `formatFromProject(project)` | `Project` 4컬럼 → `DetectedFormat` | pull 경로엔 `read`가 없어 `adapterName`·`pathTemplate`·`nested`·`baseLocale`에서 재조립해야 한다 (선례: `scripts/ingest.ts`의 역방향) |
 | `resolveLocalePaths(format, layout, treePaths)` | 포맷 + 어댑터 layout + base 트리 경로 목록 → 경로 목록 | `per-locale`은 `{locale}` 치환, `multi-locale`은 **글롭을 트리 경로와 매칭** — 그래서 트리 경로 목록이 입력이다(`layout`은 `DetectedFormat`이 아니라 `Adapter` 소속). 여기가 틀리면 엉뚱한 파일을 덮는다 |
-| `buildWriteEntries(rows)` | DB 행 → writer에 넘길 entries | **빈 값 제외(재생성·치환 공통)와 orphaned의 방식별 상이 처리**(재생성: 제외 / 치환: 값 유지)를 담는 유일한 관문. `ts-dict`는 `usableEntries`를 지나지 않아 빈 문자열이 새면 원문이 `""`로 치환된다 — 실 DB에 정확히 그 케이스가 있다 (MVP §4.1) |
+| `buildWriteEntries(rows, {isBase})` | DB 행 → writer에 넘길 entries | **빈 값 제외(재생성·치환 공통)와 orphaned의 방식별 상이 처리**(재생성: 제외 / 치환: 값 유지)를 담는 유일한 관문. `ts-dict`는 `usableEntries`를 지나지 않아 빈 문자열이 새면 원문이 `""`로 치환된다 — 실 DB에 정확히 그 케이스가 있다 (MVP §4.1) |
 | `planPullChanges(local, baseTree)` | `{path, content}[]` + `{path, sha}[]` → 변경분 | 2층 판정. **삭제는 내지 않는다** — 파일을 지우는 pull은 없고, write가 `null`인 경로는 스킵(기존 파일 유지)이다 |
 | `buildTreePayload(changes, baseTreeSha)` | 변경분 → 트리 요청 본문 | **`base_tree` 누락이 리포 전체를 지운다.** 순수 테스트로 못 박는 이유가 이것 하나다 |
 | `buildCommitPayload(treeSha, parentSha, summary)` | → 커밋 요청 본문 | `parents: [baseHead]` 고정, 메시지에 `[skip-l10n]` |
-| `encodeRefPath(branch)` | `l10n/sync` → `l10n%2Fsync` | 슬래시가 그대로 가면 404 |
+| `rowsForLocale(keys, locale)` | 전 로케일 키 → 로케일 하나분 행 | 셀 부재(`null`)와 빈 문자열을 구별해야 base 폴백이 성립한다 |
+| `renderLocaleFiles(...)` | DB 상태 + 원본 → 파일 내용 | 어댑터 `write`도 I/O가 없어 **이중 루프 전체가 순수 테스트로 검증된다** |
 
-`lib/github.ts`는 이 함수들이 만든 페이로드를 보내기만 하는 얇은 껍데기로 **새로 만든다** (현재 부재 — stub도 없다).
+`encodeRefPath`는 **만들었다가 제거했다** — octokit이 ref를 이미 인코딩한다 (2026-09-01, POSTMORTEM).
+
+`lib/github.ts`는 이 함수들이 만든 페이로드를 보내기만 하는 얇은 껍데기다. 오케스트레이션(`lib/pull/run.ts`)이 **클라이언트를 인자로 주입받으므로** fake로 호출 수를 셀 수 있다 (`lib/pull/client.ts`).
 
 ## 스키마 변경
 
@@ -77,7 +79,7 @@ nullable이라 기존 2행과 현재 배포된 코드 양쪽에 무해하다. �
 
 **없다.** `GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`·`CRON_SECRET` 셋 다 `.env.example`에 이미 등재돼 있다.
 
-⚠️ **다만 로컬 `.env.local`에서 셋 다 값이 비어 있다.** GitHub App이 아직 존재하지 않는다 — 이건 코드가 아니라 **사람이 GitHub에서 하는 선행 작업**이다 (`tasks.md` 0단계).
+~~⚠️ 다만 로컬 `.env.local`에서 셋 다 값이 비어 있다.~~ **2026-09-01 채웠다** (App `4787722`, 설치 `158107153`). PEM은 개행을 `\n`으로 접은 한 줄이다 — Vercel env와 같은 형식이라 `parsePrivateKey`가 양쪽을 함께 다룬다.
 
 ## 불변식 영향
 
@@ -90,6 +92,8 @@ nullable이라 기존 2행과 현재 배포된 코드 양쪽에 무해하다. �
 **`ts-dict`가 이걸 정면으로 위반한다.** MVP §4.1이 수술적 치환을 승인하면서 "write가 원본을 필요로 한다"를 대가로 명시했는데, CLAUDE.md 코어 원칙 절은 아직 안 고쳐졌다. 2026-08-31 정합 복구에서 push 항목만 고치고 이 항목을 놓쳤다.
 
 **핵심은 "읽지 않는다"가 아니라 "병합하지 않는다"이다.** 원본에서 가져오는 것은 **구조**(빈 줄·주석·키 순서)이지 **값**이 아니다 — 값은 전부 DB에서 온다. 이 구분이 서면 §2의 "병합 없음"은 그대로 지켜진다.
+
+**✅ 2026-09-01 CLAUDE.md를 고쳤다.**
 
 ### 2. blob SHA·export 결정성 (ARCHITECTURE §1.1·§2)
 
