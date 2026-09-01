@@ -321,9 +321,11 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 근거: `ts-dict`는 write가 원본을 요구해 blob SHA 비교만으로는 호출을 못 아낀다. 이 층은 어댑터 방식과 무관하게 성립하고 재생성 어댑터도 트리 조회를 아낀다
   - 대가: 리포 파일을 직접 고치고 push를 안 돌린 경우를 놓친다(정상 흐름에선 strict push가 DB에 반영해 `updatedAt`이 움직인다)
   - 검증: 편집 없이 두 번 돌려 두 번째가 API 0회. 마이그레이션 `Project.lastPulledAt` (additive)
+  - 진행: 판정 함수 `shouldSkipPull`은 섰다 (`a62b675`). **API 0회 계측과 마이그레이션이 남아 체크하지 않는다**
 - [ ] **빈 값은 `ts-dict` write에 넘기지 않는다** (🔒 해소 — §5c와 같은 결정)
   - 근거: `write`가 `usableEntries`를 지나지 않으므로 빈 값이 오면 소스에 `""`가 박히는데 TS 딕셔너리엔 폴백이 없다. "미번역 제외"만은 호출부가 두 방식에 똑같이 적용해 원본 값이 남게 한다
   - 검증: `value=""`인 키가 있는 상태로 write를 불러 원본 리터럴이 보존됨
+  - 진행: 걸러내는 관문 `buildWriteEntries`는 섰다 (`a62b675`). **실제로 write를 불러 확인하는 것이 남아 체크하지 않는다**
 - [ ] GitHub App installation 토큰 (`octokit`의 `App`)
   - 검증: 토큰으로 리포 읽기 성공
 - [ ] PEM 개행 복원 (`parsePrivateKey`, 이미 테스트 있음)
@@ -334,15 +336,16 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 검증: bugshot-2의 8개 네임스페이스 파일이 각각 자기 내용으로 치환된다. `write`가 `currentFiles[0]`만 보는 계약이라 호출부가 루프를 돈다
 - [ ] **blob SHA 비교 → 변경 없으면 커밋·PR 경로로 가지 않음**
   - 검증: 호출 카운트를 세는 테스트 (이게 야간 cron의 기본 경로다)
+  - 진행: 비교 함수 `planPullChanges`는 섰다 (`a62b675`). **호출 카운트 테스트는 클라이언트 주입이 서는 2단계다**
   - ⚠️ **이 층만으로 "API 0회"가 되는 것은 재생성 어댑터뿐이다** — `ts-dict`는 위 DB 측 스킵(1층)이 그 역할을 한다
-- [ ] `createTree`에 **`base_tree` 전달**
-  - 검증: 페이로드 조립 함수의 순수 테스트 (빼면 리포 나머지 파일이 삭제된 커밋이 된다)
-- [ ] `parents: [baseHead]` — `l10n/sync`의 기존 head를 쓰지 않는다
-  - 검증: 페이로드 테스트
-- [ ] 커밋 메시지에 `[skip-l10n]`
-  - 검증: 메시지 생성 함수 테스트
-- [ ] ref URL 인코딩 (`l10n%2Fsync`)
-  - 검증: 슬래시가 그대로 들어가면 404다
+- [x] `createTree`에 **`base_tree` 전달** — `buildTreePayload` (`251238a`)
+  - 검증: 페이로드 조립 함수의 순수 테스트 ✅ 타입 필수 + 빈 문자열 throw (`lib/pull/__tests__/payload.test.ts`)
+- [x] `parents: [baseHead]` — `buildCommitPayload` (`251238a`)
+  - 검증: 페이로드 테스트 ✅ 반환 타입이 `[string]` 튜플이라 둘째 parent가 컴파일 단계에서 막힌다
+- [x] 커밋 메시지에 `[skip-l10n]` — `SKIP_MARKER` 상수 (`251238a`)
+  - 검증: 메시지 생성 함수 테스트 ✅ 빈 요약이어도 마커가 남는다
+- [x] ref URL 인코딩 (`l10n%2Fsync`) — `encodeRefPath` (`251238a`)
+  - 검증: 슬래시가 그대로 들어가면 404다 ✅ **이중 인코딩도 막는다**(`%2F`→`%252F`는 조용한 404)
 - [ ] **브랜치 없을 때 `POST /git/refs`, 있을 때 `PATCH` + `force`**
   - 검증: 첫 실행 경로를 반드시 다룬다
 - [ ] 열린 PR 재사용, 없으면 생성
