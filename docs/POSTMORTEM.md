@@ -89,4 +89,30 @@
 
 ---
 
+### 2026-09-01 — 라이브러리가 이미 하는 인코딩을 또 해서 조용한 404를 만들었다
+
+- **영역**: `lib/github.ts`, `lib/pull/payload.ts`(`encodeRefPath`), `docs/ARCHITECTURE.md` §3
+- **증상**: `pnpm smoke:github bugshot-2`가 `실패: base 브랜치가 없다: dev`로 죽었다. 브랜치는 존재하고, 같은 App 토큰으로 몇 분 전 임시 스크립트가 같은 ref를 성공적으로 읽었다.
+- **근본 원인**: `encodeRefPath("heads/dev")`가 `heads%2Fdev`를 만들어 octokit에 넘겼고, **octokit이 그 값을 다시 인코딩해** `.../git/ref/heads%252Fdev`가 됐다. GitHub은 그걸 리터럴 ref 이름으로 읽어 404를 준다. 실측:
+
+  ```
+  ref="heads/dev"   → OK  (octokit이 만든 URL: .../git/ref/heads%2Fdev)
+  ref="heads%2Fdev" → 404 (.../git/ref/heads%252Fdev)
+  ```
+
+  **문서가 다른 전제로 쓰였다.** ARCHITECTURE §3 함정의 "`l10n/sync`의 `/`는 URL 인코딩이 필요하다"는 raw `fetch` 기준인데, CLAUDE.md 스택 표는 `octokit`을 쓰기로 정했다. 두 문서가 서로 다른 HTTP 층을 가정하고 있었고, 구현이 §3을 성실히 따르다가 **함정을 스스로 만들었다.** 게다가 `encodeRefPath`의 테스트에는 "이미 인코딩된 값을 두 번 인코딩하지 않는다 — `%2F`가 `%252F`가 되면 조용히 404다"라는 케이스가 있었다 — 위험을 정확히 알면서 호출부에서 그 위험을 실현했다.
+
+  **이 프로젝트는 같은 원리를 이미 문서화하고 있었다**: ARCHITECTURE §7의 "이미 인코딩된 값을 두 번 인코딩하면 `%40`이 `%2540`이 되어 조용히 인증 실패한다"(DB 접속 문자열). 원리가 같은데 그 서술이 **Supabase 절에 있어서** GitHub API 절을 작업할 때 소환되지 않았다.
+- **그물**:
+  - 잡은 것: **`scripts/smoke-github.ts`.** 1c에서 이 스모크를 만든 것이 유일한 이유로 즉시 드러났다.
+  - 놓친 것: `pnpm typecheck`·`pnpm test`(284건) 전부 green이었다. `encodeRefPath`의 단위 테스트 5건은 **함수가 올바른지**만 봤고 **그 함수를 불러야 하는지**는 검사 대상이 아니다. 순수 함수 테스트가 원리적으로 못 잡는 부류다.
+  - 더 나쁜 경우를 놓칠 수 있었다: 실패한 ref가 base가 아니라 `l10n/sync`였다면 404 → `null` → "브랜치 없음"이 **정상 입력**이라 아무도 던지지 않고, `createRef`가 실패할 때까지 오진이 이어진다.
+- **재발 방지**:
+  - **규칙: HTTP 클라이언트가 경로 파라미터를 인코딩하는지 확인하기 전에 직접 인코딩하지 않는다.** octokit·fetch·URL 생성자가 각각 다르게 처리한다. 확인 방법은 문서가 아니라 **실측**이다 — 성공/실패 두 값을 모두 넘겨보고 `error.request.url`을 본다.
+  - grep: `grep -rn "encodeURIComponent\|encodeURI(\|%2F" lib/ app/ scripts/` → **라이브러리에 넘기는 값인지, 우리가 문자열로 조립하는 URL인지** 가른다. 전수 확인 결과 남은 사용처는 `lib/keys/view.ts`의 `buildPermalink` 하나이고 **안전하다** — 브라우저용 URL을 문자열로 직접 만들므로 우리가 인코딩해야 맞고, 세그먼트별로 나눠 `/`를 살린다.
+  - **문서의 함정 서술에 전제 층을 적는다.** ARCHITECTURE §3의 인코딩 항목을 "octokit이 담당한다 — 직접 인코딩하면 이중 인코딩된다"로 고쳤다. 같은 이유로 §7의 URL 인코딩 항목은 "접속 문자열(문자열 조립)"이라는 전제가 이미 명시돼 있어 유지한다.
+  - **I/O 껍데기에는 스모크를 만든다.** 단위 테스트가 원리적으로 못 보는 층이고, 이 함정을 잡은 것이 그것뿐이다. `lib/github.ts`가 `server-only`를 붙이지 않은 이유도 이것이다 — 붙이면 스모크가 프로덕션 경로가 아닌 사본을 검증한다.
+
+---
+
 _이 아래에 새 항목을 추가한다._
