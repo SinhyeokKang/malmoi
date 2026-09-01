@@ -55,8 +55,12 @@ export function renderLocaleFiles(
 
   if (layout === "per-locale") {
     return paths.map((p) => {
-      // per-locale은 경로가 로케일을 결정하므로 `locale`이 반드시 있다.
-      const locale = p.locale ?? baseLocale;
+      // per-locale은 경로가 로케일을 결정하므로 `locale`이 반드시 있다. 폴백을 두지 않는다 —
+      // 조용히 다른 로케일로 떨어지면 `i18n/ko.json`에 en 번역이 쓰인다.
+      const { locale } = p;
+      if (locale === undefined) {
+        throw new Error(`per-locale 경로에 locale이 없다: ${p.path} (resolveLocalePaths 버그)`);
+      }
       const content = adapter.write(format, {
         locale,
         isBase: locale === baseLocale,

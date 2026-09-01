@@ -139,7 +139,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
       deps.syncBranch,
       project.baseBranch,
       "l10n: sync translations",
-      `${changes.length}개 파일이 갱신됐습니다.\n\n${changes.map((c) => `- \`${c.path}\``).join("\n")}`,
+      // 영문이다 — 대상 리포에 남는 문자열이고 CLAUDE.md가 PR title/body를 영문으로 못 박았다.
+      `Updated ${summary} from the translation DB.\n\n${changes.map((c) => `- \`${c.path}\``).join("\n")}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`,
     ));
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
