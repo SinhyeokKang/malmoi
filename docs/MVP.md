@@ -269,8 +269,26 @@ export type Adapter = {
 | **`yaml-catalog`** | 수술적 치환 | 오픈소스 **17개** (mastodon 106로케일·decidim 82·directus 69·redmine 50·misskey 42) | — |
 | **`code-dict`** | 수술적 치환 | 오픈소스 **12개** (ant-design 73로케일·element-plus 67·vuetify 43·payload 40) | — |
 
-미지원으로 남는 것: `.po`(gettext), `.arb`, `.strings`, `.properties`, 소스 코드 내장(primevue),
-자체 포맷(darkreader `.config`), 빌드 시 외부 다운로드(home-assistant). 실측에서 각 1~3개였다.
+**경로 모양은 어댑터와 별개 축이다** (2026-09-02 추가). `json-catalog`·`yaml-catalog`이 read·write를
+그대로 쓰고 `pathTemplate`만 다르므로 어댑터를 새로 만들지 않았다 — 홀드아웃 20개 중 9개가 아래
+두 새 모양이었다 (`docs/ADAPTER-COVERAGE.md` §0 3차):
+
+| 모양 | 어댑터 | 예 |
+|---|---|---|
+| `{dir}/{locale}.<ext>` | 전부 | 원래 형태 |
+| `{dir}/{locale}/<name>.json` — 로케일이 디렉터리 | `json-catalog` | grafana `public/locales/{locale}/grafana.json`, zulip `locale/{locale}/translations.json` |
+| `{dir}/<prefix><sep>{locale}.<ext>` — 접두사 붙은 파일명 | `json-catalog`·`yaml-catalog` | discourse `config/locales/client.{locale}.yml`, gitea `options/locale/locale_{locale}.json` |
+
+`chrome-locales`가 애초에 둘째 모양의 특수 사례(`_locales/{locale}/messages.json`)다 — 리프가
+`{ message, description }` 객체라 read·write가 달라서 별 어댑터로 남는다.
+
+**로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 고른다.** `Project`가 포맷을 하나만 들기
+때문이고(§6), 그래서 Ghost의 네임스페이스 5개 중 1개만 덮는다 — 표면을 나누려면 프로젝트를
+나눈다 (§7).
+
+미지원으로 남는 것: `.po`(gettext), `.arb`, `.strings`, `.properties`, Fluent(`.ftl`), 줄 단위 텍스트,
+소스 코드 내장(primevue), 자체 포맷(darkreader `.config`), 빌드 시 외부 다운로드(home-assistant).
+실측 129개(학습 109 + 홀드아웃 20)에서 각 1~3개였다.
 
 **`ts-dict`를 범위에 넣은 이유**: bugshot-2의 `_locales` 4키는 스토어 메타데이터일 뿐이고 실제 UI 번역은 903키다 — MVP §9가 왕복 검증 대상으로 지정한 리포를 **0.4%로만 검증**하고 있었다. 8파일 구조가 완전히 규칙적이라(`const ko/en/fr` + `as const`/`satisfies Bundle` + `export const <ns> = { ko, en, fr }`, 값이 전부 문자열 리터럴·표현식 0건) 어댑터 하나로 끝난다 — "리포마다 형태가 달라 안 끝난다"던 앞선 판단이 실물 확인 전의 추측이었다.
 
