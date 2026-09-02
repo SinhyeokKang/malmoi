@@ -7,14 +7,17 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * 추가하면 결정성 규칙을 하나도 안 지켜도 CI가 green이었다 — 규칙에 주인이 없었다.
  * 여기서 규칙을 한 번 적고 `ADAPTERS`를 순회해 전부에 돌린다.
  *
- * ⚠️ **규칙이 전 어댑터 공통이 아니다.** `layout`으로 갈린다 (ARCHITECTURE §1.1·§1.4):
+ * ⚠️ **규칙이 전 어댑터 공통이 아니다.** `writeStrategy`로 갈린다 (ARCHITECTURE §1.1·§1.4).
+ * `layout`이 아니다 — `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다.
  *
  * | 규칙 | `regenerate` (재생성) | `surgical` (수술적 치환) |
  * |---|---|---|
- * | 정렬·2칸·끝 개행 1개 | 검사 | **비적용** — 원본 보존이 이 방식의 요지다 |
+ * | 2칸·끝 개행 1개 | 검사 | **비적용** — 원본 보존이 이 방식의 요지다 |
+ * | `order`가 있으면 그 순서 | 검사 | **비적용** — 원본이 이미 순서를 갖고 있다 |
+ * | `order`가 없으면 코드 유닛 순 | 검사 | **비적용** |
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
  * | 빈 값 | 어댑터가 뺀다 | **호출부 계약** — 어댑터는 거르지 않는다 |
- * | 입력 순서 무관·재실행 동일 | 검사 | 검사 |
+ * | **배열 위치가 아니라 `order`에만** 의존·재실행 동일 | 검사 | 검사 |
  * | orphaned의 **DB 값**이 출력에 안 나온다 | 검사 | 검사 |
  *
  * 마지막 줄이 두 방식을 잇는 유일한 공통 서술이다 — "뺀다"가 아니라 "DB 값이 새지 않는다"로
@@ -126,6 +129,18 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
 
 const entriesFor = (keys: readonly string[]): LocaleEntry[] => keys.map((k) => ({ key: k, message: val(k) }));
 
+/**
+ * **파일에서의 순서를 흉내 낸 배치** — 코드 유닛 순과 일부러 다르게 골랐다.
+ *
+ * 같으면 `order`를 통째로 무시하는 writer도 정렬 검사를 통과한다. 두 순서가 달라야 그 writer가
+ * 잡힌다 (`contract.test.ts`의 `ignoreOrder` 네거티브).
+ */
+export const CONTRACT_FILE_ORDER = ["z", "1", "ä", "B", "a", "_x", "b", "Z", "A"] as const;
+
+/** `CONTRACT_KEYS`와 같은 키·값에 `order`만 실은 엔트리. 배열 순서는 order와 같게 둔다. */
+const orderedEntriesFor = (): LocaleEntry[] =>
+  CONTRACT_FILE_ORDER.map((k, i) => ({ key: k, message: val(k), order: i }));
+
 /** 출력에서 `"key"` 토큰이 처음 나오는 위치. 없으면 -1. */
 const at = (out: string, key: string) => out.indexOf(JSON.stringify(key));
 
@@ -163,6 +178,11 @@ export function writerContractViolations(adapter: Adapter): string[] {
   if (write(entriesFor([...CONTRACT_KEYS].reverse())) !== plain) {
     bad.push("입력 순서 무관: 순서를 뒤집었더니 출력이 달라졌다 (DB 순서에 의존한다)");
   }
+  // `order`를 실어도 같아야 한다 — 순서는 **배열 위치가 아니라 필드**로 나른다는 계약이다.
+  const ordered = write(orderedEntriesFor());
+  if (ordered !== null && write([...orderedEntriesFor()].reverse()) !== ordered) {
+    bad.push("입력 순서 무관: order를 실은 배열을 뒤집었더니 출력이 달라졌다 (배열 위치에 의존한다)");
+  }
   const withOrphan = write([
     ...entriesFor(CONTRACT_KEYS),
     { key: ORPHAN_KEY, message: ORPHAN_DB_VALUE, orphaned: true },
@@ -181,15 +201,32 @@ export function writerContractViolations(adapter: Adapter): string[] {
       bad.push("orphaned 키의 원본 값을 지웠다 — 수술적 치환은 파일에 남겨야 한다 (§1.4)");
     }
     if (!plain.includes("사람이 넣은 주석")) bad.push("원본 주석을 잃었다 (수술적 치환의 존재 이유다)");
+    // **`order`가 닿으면 회귀다.** 수술적 치환은 원본 순서를 그대로 두므로 order를 줘도 출력이
+    // 같아야 한다 — 달라졌다면 이 방식이 재생성 규칙을 밟기 시작한 것이다.
+    if (ordered !== plain) {
+      bad.push("order를 줬더니 출력이 달라졌다 — 수술적 치환은 원본 순서를 지켜야 한다 (§1.4)");
+    }
     return bad;
   }
 
   // ── per-locale(재생성) 전용 ────────────────────────────────────────
+  // ① 폴백 경로 — `order`가 없으면 지금까지의 규칙 그대로다.
   const positions = CODEPOINT_ORDER.map((k) => at(plain, k));
   if (positions.some((p) => p === -1)) {
     bad.push("정렬: 출력에서 찾을 수 없는 키가 있다");
   } else if (positions.some((p, i) => i > 0 && p < positions[i - 1]!)) {
-    bad.push("정렬: 코드포인트(`<`) 오름차순이 아니다 — localeCompare를 쓰면 ICU 빌드에 묶인다");
+    bad.push("정렬: order가 없을 때 코드 유닛(`<`) 오름차순이 아니다 — localeCompare를 쓰면 ICU 빌드에 묶인다");
+  }
+  // ② order 경로 — 있으면 **그 순서**다. 첫 pull PR이 파일을 재정렬하지 않는다는 것의 정의다.
+  if (ordered === null) {
+    bad.push("order: 정상 입력에 null을 냈다");
+  } else {
+    const orderPos = CONTRACT_FILE_ORDER.map((k) => at(ordered, k));
+    if (orderPos.some((p) => p === -1)) {
+      bad.push("order: 출력에서 찾을 수 없는 키가 있다");
+    } else if (orderPos.some((p, i) => i > 0 && p < orderPos[i - 1]!)) {
+      bad.push("order: LocaleEntry.order 순서를 따르지 않는다 — 원본 키 순서가 보존되지 않는다");
+    }
   }
   const unit = indentUnit(plain);
   if (unit !== 2) bad.push(`들여쓰기: 2칸이어야 하는데 ${unit ?? "없음"}칸이다`);

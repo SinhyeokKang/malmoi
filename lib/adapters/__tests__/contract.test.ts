@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { blobSha } from "../../githash";
 import { ADAPTERS } from "../index";
-import { usableEntries } from "../shared";
+import { orderedEntries } from "../shared";
 import type { Adapter, DetectedFormat, LocaleEntry, WriteInput } from "../types";
 import { CONTRACT_KEYS, formatFor, writerContractViolations } from "./contract";
 
@@ -56,6 +56,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     keepEmpty?: boolean;
     neverNull?: boolean;
     respectInputOrder?: boolean;
+    ignoreOrder?: boolean;
   };
 
   const fakeRegenerating = (b: Break): Adapter => ({
@@ -69,10 +70,21 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
       let list: LocaleEntry[] = [...input.entries];
       if (!b.keepOrphaned) list = list.filter((e) => e.orphaned !== true);
       if (!b.keepEmpty) list = list.filter((e) => e.message !== "");
-      if (!b.respectInputOrder) {
-        list = b.sortWithLocaleCompare
-          ? list.sort((x, y) => x.key.localeCompare(y.key))
-          : list.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
+      const byKey = (x: LocaleEntry, y: LocaleEntry) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
+      if (b.respectInputOrder) {
+        // 정렬하지 않는다 — 배열 위치에 의존한다.
+      } else if (b.sortWithLocaleCompare) {
+        list = list.sort((x, y) => x.key.localeCompare(y.key));
+      } else if (b.ignoreOrder) {
+        // order를 통째로 무시하고 늘 코드 유닛 순 — 고치기 전의 동작이다.
+        list = list.sort(byKey);
+      } else {
+        list = list.sort((x, y) => {
+          if (x.order !== undefined && y.order !== undefined) return x.order - y.order || byKey(x, y);
+          if (x.order !== undefined) return -1;
+          if (y.order !== undefined) return 1;
+          return byKey(x, y);
+        });
       }
       if (list.length === 0 && !b.neverNull) return null;
       const out: Record<string, string> = {};
@@ -89,6 +101,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ["빈 값을 남김", { keepEmpty: true }, /빈 문자열/],
     ["0개인데 null을 안 냄", { neverNull: true }, /null을 내지 않았다/],
     ["입력 순서를 그대로 따름", { respectInputOrder: true }, /입력 순서 무관|정렬/],
+    ["order를 무시하고 늘 코드 유닛 순", { ignoreOrder: true }, /order: LocaleEntry\.order 순서를 따르지 않는다/],
   ];
 
   for (const [name, brk, pattern] of cases) {
@@ -109,7 +122,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
       // 원본을 무시하고 새로 만든다 — 주석·빈 줄이 사라진다.
       write: (_f, input) => {
         const out: Record<string, string> = {};
-        for (const e of usableEntries(input.entries)) out[e.key] = e.message;
+        for (const e of orderedEntries(input.entries)) out[e.key] = e.message;
         return `export const ns = ${JSON.stringify(out, null, 2)};\n`;
       },
     };
