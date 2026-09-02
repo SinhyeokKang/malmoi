@@ -208,6 +208,33 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.literalCount).toBeGreaterThan(s.readKeyCount!);
   });
 
+  it("접두 충돌을 센다 — 왕복이 잡은 손실을 지표 ③도 잡아야 한다", () => {
+    // 실측 2건의 형태 그대로: 키가 다른 키의 **접두**이면 unflatten에서 한쪽이 조용히 사라진다.
+    //   sugarlabs/musicblocks — `"Clear workspace"`와 `"Clear workspace."`가 공존
+    //   siyuan-note/siyuan    — 중첩 객체 안의 키가 점을 품어 `a.b.c`와 `a.b.c.d`가 된다
+    const files = {
+      // `grp`가 객체라 read가 nested=true를 관측한다 → write가 모든 키를 `.`으로 쪼개 복원한다
+      "locales/en.json": JSON.stringify({ "a.b": "X", "a.b.c": "Y", grp: { k: "N" } }, null, 2) + "\n",
+      "locales/ko.json": JSON.stringify({ "a.b": "엑스", "a.b.c": "와이", grp: { k: "엔" } }, null, 2) + "\n",
+    };
+    const s = surveyOne(input("acme/prefix", files));
+    expect(s.chosen?.adapter).toBe("json-catalog");
+    // 로케일 2개 × 접두 쌍 1개
+    expect(s.keyCollisions).toBe(2);
+    // 그리고 그 손실이 왕복에서도 실제로 관측된다
+    expect(s.roundtrip.semantic).toBe("different");
+  });
+
+  it("접두가 아닌 점 포함 키는 충돌이 아니다 (과다 계수하지 않는다)", () => {
+    const files = {
+      "locales/en.json": JSON.stringify({ "a.b": "X", "a.c": "Y", grp: { k: "N" } }, null, 2) + "\n",
+      "locales/ko.json": JSON.stringify({ "a.b": "엑스", "a.c": "와이", grp: { k: "엔" } }, null, 2) + "\n",
+    };
+    const s = surveyOne(input("acme/noclash", files));
+    expect(s.keyCollisions).toBe(0);
+    expect(s.roundtrip.semantic).toBe("same");
+  });
+
   it("clone 실패는 전체를 멈추지 않고 결과에 남는다", () => {
     const s = surveyOne({ repo: "acme/gone", paths: [], files: new Map(), failure: "clone 실패" });
     expect(s.failure).toBe("clone 실패");

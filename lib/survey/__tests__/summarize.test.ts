@@ -71,6 +71,14 @@ const UNSUPPORTED_DETECTED = base({
 /** 미지원 포맷이고 아무것도 못 찾음 — 설계상 실패라 지원 포맷 분모에서 빠진다 */
 const UNSUPPORTED_MISSED = base({ repo: "acme/yaml2" });
 
+/**
+ * 지원 포맷인데 후보를 아예 못 냄 — **탐지 실패**다.
+ *
+ * 지표 ①이 세는 사건이고 **지표 ②(오탐)가 세면 안 된다**: "엉뚱한 걸 잡았다"와 "아무것도 못
+ * 잡았다"는 고쳐야 할 곳이 다르고, 섞으면 오탐률이 탐지율의 그림자가 된다.
+ */
+const SUPPORTED_MISSED = base({ repo: "acme/missed", localeCount: 0 });
+
 /** clone 실패 */
 const FAILED = base({ repo: "acme/gone", failure: "clone 실패" });
 
@@ -79,41 +87,53 @@ const VERDICTS: Verdict[] = [
   { repo: "acme/miss", correctCatalogPath: "src/lib/i18n/{locale}.json", note: "public/search는 검색 인덱스다" },
   { repo: "acme/yaml", correctCatalogPath: null, unsupported: "yaml", note: "locales/{locale}.yml" },
   { repo: "acme/yaml2", correctCatalogPath: null, unsupported: "yaml", note: "config/locales/{locale}.yml" },
+  { repo: "acme/missed", correctCatalogPath: "locales/{locale}.json", note: "지원 포맷인데 probe가 걸렀다" },
   { repo: "acme/gone", correctCatalogPath: null, unsupported: "unknown", note: "클론 실패로 판정 불가" },
 ];
 
-const ALL = [HIT, MISS, UNSUPPORTED_DETECTED, UNSUPPORTED_MISSED, FAILED];
+const ALL = [HIT, MISS, UNSUPPORTED_DETECTED, UNSUPPORTED_MISSED, SUPPORTED_MISSED, FAILED];
 
 describe("summarize — 지표", () => {
   const { metrics } = summarize(ALL, VERDICTS);
 
   it("clone 실패는 분모에서 뺀다 (측정하지 못한 것과 측정해서 실패한 것은 다르다)", () => {
-    expect(metrics.repoCount).toBe(5);
+    expect(metrics.repoCount).toBe(6);
     expect(metrics.failedCount).toBe(1);
-    expect(metrics.measuredCount).toBe(4);
+    expect(metrics.measuredCount).toBe(5);
   });
 
   it("지표 ① detect 성공률: 분모 두 개를 모두 낸다", () => {
-    // 지원 포맷 리포 = hit, miss → 둘 다 후보를 냈다
-    expect(metrics.detect.supported).toMatchObject({ n: 2, of: 2 });
-    // 전체(측정된 것) = hit, miss, yaml, yaml2 → 3개가 후보를 냈다
-    expect(metrics.detect.all).toMatchObject({ n: 3, of: 4 });
+    // 지원 포맷 리포 = hit, miss, missed → 2개가 후보를 냈다
+    expect(metrics.detect.supported).toMatchObject({ n: 2, of: 3 });
+    // 전체(측정된 것) = hit, miss, yaml, yaml2, missed → 3개가 후보를 냈다
+    expect(metrics.detect.all).toMatchObject({ n: 3, of: 5 });
   });
 
-  it("지표 ② 오탐률: 지원 포맷 대상과 후보를 낸 전체 대상을 나눠 낸다", () => {
-    // 지원 포맷 2개 중 1개(miss)가 1순위 오탐
+  it("지표 ② 오탐률: **후보를 낸 리포만** 분모다 — 탐지 실패는 지표 ①이 센다", () => {
+    // 지원 포맷 중 후보를 낸 것 = hit, miss → 그중 miss 1개가 1순위 오탐.
+    // missed(탐지 실패)는 여기 분모에 들어가지 않는다.
     expect(metrics.misdetect.supported).toMatchObject({ n: 1, of: 2 });
     // 후보를 낸 3개 중 miss + yaml(미지원인데 잡음) = 2개가 오탐
     expect(metrics.misdetect.withCandidate).toMatchObject({ n: 2, of: 3 });
   });
 
-  it("정답이 몇 순위였는지 분포를 낸다 — detect 확장이 없으면 잴 수 없던 숫자다", () => {
-    expect(metrics.misdetect.correctRank).toEqual({ "1": 1, "2": 1 });
+  it("정답 순위 분포에는 탐지 실패도 '없음'으로 남는다 (분모에서 뺀 것이 사라지진 않는다)", () => {
+    expect(metrics.misdetect.correctRank).toEqual({ "1": 1, "2": 1, "없음": 1 });
   });
 
   it("지표 ③ read 에러를 유형별로 합산한다", () => {
     expect(metrics.readErrors["json-parse"]).toBe(2);
     expect(metrics.readErrors["leaf-type"]).toBe(0);
+  });
+
+  it("지표 ① 탐지 실패는 지표 ②를 오염시키지 않는다 (섞으면 오탐률이 탐지율의 그림자가 된다)", () => {
+    const onlyMissed = summarize([SUPPORTED_MISSED], [
+      { repo: "acme/missed", correctCatalogPath: "locales/{locale}.json", note: "" },
+    ]);
+    expect(onlyMissed.metrics.detect.supported).toMatchObject({ n: 0, of: 1 });
+    // 후보가 없으니 오탐률은 정의되지 않는다 — 0/0이지 1/1이 아니다
+    expect(onlyMissed.metrics.misdetect.supported).toMatchObject({ n: 0, of: 0 });
+    expect(onlyMissed.metrics.misdetect.withCandidate).toMatchObject({ n: 0, of: 0 });
   });
 
   it("지표 ④ 왕복 2층을 따로 낸다", () => {

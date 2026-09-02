@@ -1,0 +1,692 @@
+[
+  {
+    "repo": "24pullrequests/24pullrequests",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 20로케일 — YAML 어댑터가 없다",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "Afilmory/afilmory",
+    "correctCatalogPath": "locales/app/{locale}.json",
+    "note": "앱 UI 카탈로그. locales/dashboard는 별개 표면이다",
+    "tier": "A"
+  },
+  {
+    "repo": "Alanrk/LazyCat-Bookmark-Cleaner",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "AppFlowy-IO/AppFlowy",
+    "correctCatalogPath": "frontend/resources/translations/{locale}.json",
+    "note": "36로케일, 유일한 카탈로그",
+    "tier": "A"
+  },
+  {
+    "repo": "CitizensFoundation/your-priorities",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 62로케일",
+    "tier": "C",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "DMPRoadmap/roadmap",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml + .po",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "EYHN/Furigana",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "EralChen/vike-vue-content",
+    "correctCatalogPath": null,
+    "note": "locale/lang/{locale}.ts",
+    "tier": "C",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "FirefoxBar/HeaderEditor",
+    "correctCatalogPath": "public/_locales/{locale}/messages.json",
+    "note": "6로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "GSA/search-gov",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 65로케일",
+    "tier": "C",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "GoogleChrome/chromium-dashboard",
+    "correctCatalogPath": "locales/release_notes/{locale}.json",
+    "note": "10로케일, 유일한 카탈로그",
+    "tier": "B"
+  },
+  {
+    "repo": "Growstuff/growstuff",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "Js-Monkey/datepicker",
+    "correctCatalogPath": null,
+    "note": "locale/{locale}.ts 25로케일",
+    "tier": "C",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "Kareadita/Kavita",
+    "correctCatalogPath": "UI/Web/src/assets/langs/{locale}.json",
+    "note": "Kavita.Server/I18N에 백엔드용 42로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "Midnight-Lizard/Midnight-Lizard",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "51로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "NativeMindBrowser/NativeMindExtension",
+    "correctCatalogPath": "public/_locales/{locale}/messages.json",
+    "note": "locales/{locale}.json 13로케일이 앱 UI, _locales 14로케일은 매니페스트 문자열 — 둘 다 진짜다",
+    "tier": "B"
+  },
+  {
+    "repo": "RoderickQiu/wnr",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "6로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "SchizoDuckie/DuckieTV",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "_locales/{locale}.json(20)도 있으나 확장이 읽는 것은 messages.json 27로케일이다",
+    "tier": "B"
+  },
+  {
+    "repo": "Shopify/dawn",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "Shopify 테마 표준 위치, 30로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "Smile4ever/Neat-URL",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "8로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "Tardo/OdooTerminal",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "3로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "Warma10032/VideoAdGuard",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "2로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "WordPress/browser-extension",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "safari 리소스에도 같은 3로케일 사본이 있다",
+    "tier": "B"
+  },
+  {
+    "repo": "YunoHost/yunohost",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "45로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "ZeusLN/zeus",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "34로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "Zimomo333/unreal-ui-next",
+    "correctCatalogPath": null,
+    "note": "로케일 파일이 없다",
+    "tier": "C",
+    "unsupported": "none"
+  },
+  {
+    "repo": "ajayyy/SponsorBlock",
+    "correctCatalogPath": null,
+    "note": "public/_locales가 gitlink(서브모듈)라 depth-1 클론 트리에 내용이 없다",
+    "tier": "A",
+    "unsupported": "submodule"
+  },
+  {
+    "repo": "anatolyzenkov/button-stealer",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치, 22로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "ant-design/ant-design",
+    "correctCatalogPath": null,
+    "note": "components/locale/{locale}.ts 73로케일이 진짜 카탈로그다. 1순위로 잡힌 .dumi/theme/locales는 문서 사이트 테마 2로케일이라 오탐이다",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "arco-design/arco-design-vue",
+    "correctCatalogPath": null,
+    "note": "packages/web-vue/components/locale/lang/{locale}.ts 18로케일",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "arkadiyt/zoom-redirector",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "로케일이 en 하나뿐이라 '2개 이상' 오탐 방지 규칙에 의도적으로 걸린다 — 정책상 미탐지",
+    "tier": "B"
+  },
+  {
+    "repo": "arunelias/session-alive",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "az0/linkgopher",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "badsgahhl/pihole-browser-extension",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "bitwarden/clients",
+    "correctCatalogPath": "apps/browser/src/_locales/{locale}/messages.json",
+    "note": "모노레포에 표면 3개(browser 63 / desktop 66 / web 66). 셋 다 진짜 카탈로그다",
+    "tier": "A"
+  },
+  {
+    "repo": "bluecaret/carettab",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "src/locales/{locale}.json도 15로케일이지만 그건 빌드 입력이고 확장이 읽는 것은 _locales다",
+    "tier": "B"
+  },
+  {
+    "repo": "brandon1024/find",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "chatwoot/chatwoot",
+    "correctCatalogPath": "app/javascript/widget/i18n/locale/{locale}.json",
+    "note": "위젯 카탈로그는 진짜다. 다만 주 표면인 dashboard는 {locale}/<파일>.json 레이아웃(57로케일 × 파일 다수)이라 pathTemplate으로 표현할 수 없다",
+    "tier": "A"
+  },
+  {
+    "repo": "codeforjapan/mapprint",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "13로케일",
+    "tier": "C"
+  },
+  {
+    "repo": "darkreader/darkreader",
+    "correctCatalogPath": null,
+    "note": "src/_locales/{locale}.config — 크롬 레이아웃이 아니고 자체 포맷이다",
+    "tier": "A",
+    "unsupported": "custom"
+  },
+  {
+    "repo": "decidim/decidim",
+    "correctCatalogPath": null,
+    "note": "젬마다 config/locales/{locale}.yml 82로케일",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "dequelabs/axe-core",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "19로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "diaspora/diaspora",
+    "correctCatalogPath": null,
+    "note": "config/locales/diaspora/{locale}.yml 95로케일",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "directus/directus",
+    "correctCatalogPath": null,
+    "note": "app/src/lang/translations/{locale}.yaml 69로케일",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "element-hq/element-web",
+    "correctCatalogPath": "apps/desktop/src/i18n/strings/{locale}.json",
+    "note": "모노레포에 동일 카탈로그 3벌(desktop/web/shared-components) 각 41로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "element-plus/element-plus",
+    "correctCatalogPath": null,
+    "note": "packages/locale/lang/{locale}.ts 67로케일",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "esmBot/esmBot",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "❗지원 포맷인데 탐지 실패. probe가 정렬상 첫 로케일 locales/bg.json을 샘플로 읽는데 그게 빈 `{}` 스텁이라 카탈로그 판정에서 떨어진다 (26로케일)",
+    "tier": "B"
+  },
+  {
+    "repo": "extesy/hoverzoom",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "52로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "fastladder/fastladder",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "forem/forem",
+    "correctCatalogPath": null,
+    "note": "config/locales 아래 YAML 다수",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "g0v/newshelper-extension",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "gildas-lormeau/SingleFile",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "17로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "go-vikunja/vikunja",
+    "correctCatalogPath": "frontend/src/i18n/lang/{locale}.json",
+    "note": "pkg/i18n/lang에 백엔드용 같은 37로케일이 있다",
+    "tier": "A"
+  },
+  {
+    "repo": "gorhill/uBlock",
+    "correctCatalogPath": "platform/mv3/extension/_locales/{locale}/messages.json",
+    "note": "src/_locales(MV2)에도 같은 71로케일 — 둘 다 진짜다",
+    "tier": "A"
+  },
+  {
+    "repo": "hackmdio/codimd",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "24로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "happy-func/next-official",
+    "correctCatalogPath": null,
+    "note": "UI 사전은 locale/{locale}.ts다. 1순위로 잡힌 locale/article/{locale}.json은 기사 본문이라 오탐이다",
+    "tier": "C",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "henices/Chrome-proxy-helper",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "4로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "home-assistant/frontend",
+    "correctCatalogPath": null,
+    "note": "번역을 리포에 두지 않는다 — build-scripts/gulp/download-translations.js가 빌드 때 받아온다",
+    "tier": "A",
+    "unsupported": "build-time"
+  },
+  {
+    "repo": "hoppscotch/hoppscotch",
+    "correctCatalogPath": "packages/hoppscotch-common/locales/{locale}.json",
+    "note": "sh-admin에도 34로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "huginn/huginn",
+    "correctCatalogPath": null,
+    "note": "config/locales에 en.yml·devise.en.yml 둘뿐 — 다국어 카탈로그가 없다",
+    "tier": "A",
+    "unsupported": "none"
+  },
+  {
+    "repo": "immich-app/immich",
+    "correctCatalogPath": "i18n/{locale}.json",
+    "note": "89로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "iv-org/invidious",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "63로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "ixrock/XTranslate",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "20로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "jellyfin/jellyfin-web",
+    "correctCatalogPath": "src/strings/{locale}.json",
+    "note": "107로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "jinliming2/Chrome-Charset",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "47로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "jsxc/jsxc",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "❗지원 포맷인데 탐지 실패. probe 샘플 locales/ar.json의 최상위에 `\"Notifications\": null`이 있어 카탈로그 판정에서 떨어진다 (30로케일)",
+    "tier": "B"
+  },
+  {
+    "repo": "jumodada/better-datepicker",
+    "correctCatalogPath": null,
+    "note": "locale/{locale}.ts 25로케일",
+    "tier": "C",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "kee-org/browser-addon",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "18로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "kkapsner/CanvasBlocker",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "19로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "lokalise/i18n-ally",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "❗1순위가 예제 픽스처(examples/by-frameworks/chrome-extension/_locales)다. 도구 자신의 UI 카탈로그는 locales/{locale}.json 17로케일 — 예제 디렉터리가 진짜를 가린 사례다",
+    "tier": "A"
+  },
+  {
+    "repo": "lyqht/mini-qr",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "50로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "mastodon/joinmastodon",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "54로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "mastodon/mastodon",
+    "correctCatalogPath": "app/javascript/mastodon/locales/{locale}.json",
+    "note": "프런트엔드 106로케일. Rails 쪽 config/locales는 YAML 106로케일이라 미지원이다",
+    "tier": "A"
+  },
+  {
+    "repo": "mcthesw/game-save-manager",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "7로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "mdolr/survol",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "35로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "micz/ThunderAI",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "25로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "mikebryant/ac-nh-turnip-prices",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "21로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "misskey-dev/misskey",
+    "correctCatalogPath": null,
+    "note": "locales/{locale}.yml 42로케일",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "moebooru/moebooru",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "nt1m/livemarks",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "19로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "okisdev/ChatChat",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "13로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "olegcherr/Reedy-for-Chrome",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "크롬 확장 표준 위치",
+    "tier": "B"
+  },
+  {
+    "repo": "payloadcms/payload",
+    "correctCatalogPath": null,
+    "note": "packages/translations/src/languages/{locale}.ts 40로케일이 진짜다. 1순위로 잡힌 examples/localization은 예제라 오탐이다",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "permacommons/lib.reviews",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "40로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "pietervanheijningen/clickbait-remover-for-youtube",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "9로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "primefaces/primevue",
+    "correctCatalogPath": null,
+    "note": "로케일이 소스 코드 안에 있고 파일 카탈로그가 없다",
+    "tier": "A",
+    "unsupported": "in-code"
+  },
+  {
+    "repo": "quasarframework/quasar",
+    "correctCatalogPath": null,
+    "note": "ui/lang/{locale}.js 74로케일 — JS 모듈이라 어댑터가 없다",
+    "tier": "A",
+    "unsupported": "js-per-locale"
+  },
+  {
+    "repo": "raingart/AutoHideDownloadsBar-extension",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "8로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "redmine/redmine",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 50로케일",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "refinery/refinerycms-news",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 21로케일",
+    "tier": "B",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "rtorr/vim-cheat-sheet",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "40로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "samueljun/tomato-clock",
+    "correctCatalogPath": "_locales/{locale}/messages.json",
+    "note": "10로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "scratchblocks/scratchblocks",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "❗지원 포맷인데 탐지 실패. probe 샘플 locales/ab.json 최상위에 메타데이터 `percentTranslated`(숫자)가 있어 카탈로그 판정에서 떨어진다 (78로케일)",
+    "tier": "B"
+  },
+  {
+    "repo": "sitb-software/veigar",
+    "correctCatalogPath": null,
+    "note": "로케일 파일이 없다",
+    "tier": "C",
+    "unsupported": "none"
+  },
+  {
+    "repo": "siyuan-note/siyuan",
+    "correctCatalogPath": "app/appearance/langs/{locale}.json",
+    "note": "21로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "solidusio/solidus_i18n",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 39로케일",
+    "tier": "C",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "strapi/strapi",
+    "correctCatalogPath": "packages/core/admin/admin/src/translations/{locale}.json",
+    "note": "패키지마다 카탈로그가 있어 후보가 17개다. admin이 주 표면이다",
+    "tier": "A"
+  },
+  {
+    "repo": "stringer-rss/stringer",
+    "correctCatalogPath": null,
+    "note": "config/locales/{locale}.yml 17로케일",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "sugarlabs/musicblocks",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "84로케일. po/{locale}.po에서 생성된 산출물이다",
+    "tier": "B"
+  },
+  {
+    "repo": "tusen-ai/naive-ui",
+    "correctCatalogPath": null,
+    "note": "src/locales 아래 TS 모듈",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "tyrasd/overpass-turbo",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "48로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "uppinote20/claude-dashboard",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "2로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "usememos/memos",
+    "correctCatalogPath": "web/src/locales/{locale}.json",
+    "note": "44로케일",
+    "tier": "A"
+  },
+  {
+    "repo": "violentmonkey/violentmonkey",
+    "correctCatalogPath": null,
+    "note": "_locales/{locale}/messages.yml — 크롬 레이아웃인데 확장자가 YAML이다",
+    "tier": "A",
+    "unsupported": "yaml"
+  },
+  {
+    "repo": "vuetifyjs/vuetify",
+    "correctCatalogPath": null,
+    "note": "packages/vuetify/src/locale/{locale}.ts 43로케일",
+    "tier": "A",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "ylater/me-nuxt",
+    "correctCatalogPath": null,
+    "note": "locale/{locale}.ts",
+    "tier": "C",
+    "unsupported": "ts-per-locale"
+  },
+  {
+    "repo": "yui540/comimi",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "6로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "z-------------/CPod",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "16로케일",
+    "tier": "B"
+  },
+  {
+    "repo": "zmh-program/next-whois",
+    "correctCatalogPath": "locales/{locale}.json",
+    "note": "8로케일",
+    "tier": "B"
+  }
+]

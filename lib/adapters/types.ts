@@ -6,7 +6,15 @@ export type DetectedFormat = {
   adapter: AdapterName;
   /** `{locale}`을 치환하면 실제 경로가 된다. */
   pathTemplate: string;
-  /** 발견된 로케일 코드. 정렬돼 있지 않다 — 호출부가 필요하면 정렬한다. */
+  /**
+   * 발견된 로케일 코드. 정렬돼 있지 않다 — 호출부가 필요하면 정렬한다.
+   *
+   * ⚠️ **파일명(또는 디렉터리명) 그대로가 로케일 코드의 진실이다. 정규화하지 않는다.**
+   * `zh_CN` · `zh-CN` · `zh-Hans`가 리포마다 다르게 쓰이는데, `pathTemplate`의 `{locale}` 치환이
+   * 이 문자열을 그대로 도로 끼우는 것으로 경로를 만든다. 어디서든 한 번 정규화하는 순간 write가
+   * 존재하지 않는 경로를 만들어 조용히 빈 커밋이 되거나 새 파일을 만든다.
+   * (`docs/ADAPTER-COVERAGE.md` — 실측 109개 리포 1,888 로케일에서 이 가정이 유지됐다.)
+   */
   locales: string[];
   /**
    * **수술적 치환 어댑터(`ts-dict`)가 write에 필요로 하는 원본 파일들.**

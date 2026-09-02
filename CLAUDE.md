@@ -263,13 +263,14 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 문서 신선도
 
-문서가 6개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
+문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
 - **docs/DESIGN.md** — 편집 UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** 완료 조건이 붙은 단계별 목록. **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
 - **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
+- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(2026-09-02, 오픈소스 109개). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정 4개가 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.** 재실행하면 갱신한다 (`pnpm adapter-survey`)
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
@@ -312,6 +313,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **`docs/DESIGN.md` — 편집 UI 시각 규칙. UI 작업 전 필독**
 - **`docs/MVP.md` — 기본 스펙. 범위·근거·세 흐름의 계약. 작업 착수 전 필독**
 - `docs/ARCHITECTURE.md` — 설계 상세·함정 (코어 로직 건드리기 전 필독)
+- `docs/ADAPTER-COVERAGE.md` — 어댑터가 남의 리포에서 실제로 어떻게 동작하는지의 실측 (어댑터·탐지 규칙 건드리기 전 필독)
 - `docs/POSTMORTEM.md` — 과거 함정 (`/implement`·`/refactor`·`/code-review` 착수 전 grep)
 - `~/code/bugshot-2` — 이 하네스의 원본이자, 셋업 완료 후 push/pull 실전 테스트 대상(ko/en/fr 3개 로케일). **하네스를 참고할 때 그 리포의 i18n 구현을 조사 대상으로 삼지 않는다.**
 - `~/.claude/projects/-Users-sinhyeokkang-code-i18n-poc/memory/` — Claude Code 전용 개인 메모리 (Codex는 읽지 않는다)

@@ -80,7 +80,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
 
   const allKeys = new Set<string>();
   for (const loc of read1.locales) {
-    survey.keyCollisions += duplicateCount(loc);
+    survey.keyCollisions += duplicateCount(loc, read1.nested);
     for (const e of loc.entries) allKeys.add(e.key);
   }
   survey.localeCount = read1.locales.length;
@@ -159,17 +159,37 @@ function classify(message: string): ReadErrorKind {
 }
 
 /**
- * 같은 로케일 안에서 키가 겹친 횟수.
+ * 같은 로케일 안에서 키가 겹친 횟수 — **두 종류를 함께 센다.**
  *
- * `json-catalog`의 `flatten`이 중복을 검사하지 않아 `"a.b": "x"`와 `{"a":{"b":"y"}}`가 같은 키로
- * 둘 다 들어온다 — write에서 하나가 조용히 사라진다. 빈도를 모르는 채로 고치지 않기 위해 센다.
+ * 1. **정확한 중복** — `"a.b": "x"`와 `{"a":{"b":"y"}}`가 같은 평탄화 키를 낸다.
+ *    `json-catalog`의 `flatten`이 중복을 검사하지 않아 둘 다 들어오고, write에서 하나가 사라진다.
+ * 2. **접두 충돌** — 한 키가 다른 키의 **점 경계 접두**인 경우(`a.b`와 `a.b.c`). 평탄화 목록에서는
+ *    서로 다른 키라 1번으로는 안 잡히는데, write의 `setDeep`이 `a.b`의 문자열 자리를 객체로
+ *    조용히 갈아끼워 **한쪽 값이 사라진다.**
+ *
+ * ⚠️ **2번을 뒤늦게 추가했다.** 실측에서 왕복 의미 불일치 2건(siyuan 2636키 중 1개 손실,
+ * musicblocks 84로케일 중 81개에서 각 4키 손실)이 났는데 `errors`도 0, 중복 카운터도 0이었다 —
+ * **왕복이 잡은 손실을 지표 ③이 하나도 세지 못했다.** 뿌리는 하나다: `.`가 우리 조인 구분자이면서
+ * 실제 키에 들어 있는 문자라 flatten/unflatten이 단사가 아니다.
  */
-function duplicateCount(loc: ReadLocale): number {
+function duplicateCount(loc: ReadLocale, nested: boolean): number {
   const seen = new Set<string>();
   let dup = 0;
   for (const e of loc.entries) {
     if (seen.has(e.key)) dup += 1;
     else seen.add(e.key);
+  }
+  // ⚠️ 접두 충돌은 **중첩 복원이 도는 경우에만** 손실이 된다. flat write는 키를 쪼개지 않아
+  // `a.b`와 `a.b.c`가 나란히 살아남는다. nested가 아닐 때 세면 있지도 않은 손실을 보고하게 된다.
+  if (nested) {
+    for (const key of seen) {
+      for (const other of seen) {
+        if (other.length > key.length && other.startsWith(`${key}.`)) {
+          dup += 1;
+          break;
+        }
+      }
+    }
   }
   return dup;
 }

@@ -32,7 +32,7 @@ export type SurveyMetrics = {
 
   /** 지표 ② */
   misdetect: {
-    /** 정답이 있는(우리가 지원하는 포맷) 리포 중 1순위가 틀린 비율. */
+    /** 지원 포맷이면서 **후보를 낸** 리포 중 1순위가 틀린 비율. 탐지 실패는 지표 ①이 센다. */
     supported: Rate;
     /** 후보를 낸 리포 전체 중 틀린 비율. **미지원 포맷에서 뭔가를 잡은 것도 오탐이다.** */
     withCandidate: Rate;
@@ -80,6 +80,10 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   const supported = measured.filter((s) => byRepo.get(s.repo)?.correctCatalogPath != null);
   const withCandidate = measured.filter((s) => s.chosen !== undefined);
 
+  // ⚠️ **탐지 실패는 오탐이 아니다.** 후보를 아예 못 낸 리포를 오탐 분모에 넣으면 오탐률이
+  // 탐지율의 그림자가 되고, "엉뚱한 걸 잡았다"와 "아무것도 못 잡았다"가 한 숫자로 뭉개진다 —
+  // 고쳐야 할 곳이 서로 다른데도. 순위 분포에는 `없음`으로 남겨 사라지지 않게 한다.
+  const supportedWithCandidate = supported.filter((s) => s.chosen !== undefined);
   const correctRank: Record<string, number> = {};
   const misdetectedSupported: RepoSurvey[] = [];
   for (const s of supported) {
@@ -87,7 +91,7 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
     const idx = s.candidates.findIndex((c) => c.pathTemplate === want);
     const label = idx === -1 ? "없음" : String(idx + 1);
     correctRank[label] = (correctRank[label] ?? 0) + 1;
-    if (idx !== 0) misdetectedSupported.push(s);
+    if (s.chosen !== undefined && idx !== 0) misdetectedSupported.push(s);
   }
   // 미지원 포맷 리포에서 후보를 낸 것도 오탐이다 — 우리 어댑터가 맞을 수 있는 정답이 없다.
   const falseOnUnsupported = withCandidate.filter((s) => byRepo.get(s.repo)?.correctCatalogPath == null);
@@ -129,7 +133,7 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
       all: rate(withCandidate.length, measured.length),
     },
     misdetect: {
-      supported: rate(misdetectedSupported.length, supported.length),
+      supported: rate(misdetectedSupported.length, supportedWithCandidate.length),
       withCandidate: rate(misdetectedSupported.length + falseOnUnsupported.length, withCandidate.length),
       correctRank,
     },
@@ -181,11 +185,9 @@ function buildFormatTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<strin
   const lines = [...groups.entries()]
     .sort(([a], [b]) => compareKeys(a, b))
     .map(([name, list]) => {
-      const judged = list.filter((s) => byRepo.has(s.repo));
-      const wrong = judged.filter((s) => {
-        const want = byRepo.get(s.repo)?.correctCatalogPath ?? null;
-        return s.chosen !== undefined && s.chosen.pathTemplate !== want;
-      });
+      // 후보를 낸 행만 오탐 분모다 — `탐지 실패` 그룹의 "0/N (0%)"은 거짓 안심이 된다.
+      const judged = list.filter((s) => byRepo.has(s.repo) && s.chosen !== undefined);
+      const wrong = judged.filter((s) => s.chosen!.pathTemplate !== (byRepo.get(s.repo)?.correctCatalogPath ?? null));
       const rt = list.filter((s) => s.roundtrip.semantic !== "not-run");
       const fx = list.filter((s) => s.roundtrip.byteFixpoint !== "not-run");
       const ratios = list.map((s) => s.diffRatio).filter((r): r is number => r !== undefined);
