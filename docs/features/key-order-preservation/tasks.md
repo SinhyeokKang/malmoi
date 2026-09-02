@@ -16,10 +16,10 @@
 | **완료 조건 게이트 ②의 N** | diff > 0.10인 리포 비율 **≤ 20%** |
 | **표본 상한 병기** | `MAX_PER_SHAPE_GROUP = 12`·`LOCALE_CODE_PER_DIR = 12` 때문에 mastodon(106로케일)·jellyfin-web(107)의 일치율은 **12개 표본 값**이다. 결과 표에 상한을 함께 적는다 |
 
-## 0. 측정 먼저 — 설계 두 갈래를 숫자로 닫는다
+## 0. 측정 먼저 — 설계 두 갈래를 숫자로 닫는다 ✅ (2026-09-02)
 
-**지표는 섰고 실측은 아직이다.** 아래 0-1(지표 구현)은 끝났고, 0-2(129개 실행과 판정)가 남았다 —
-그때까지 A안/대안 E는 미결이고 태스크 1 이후를 시작할 수 없다.
+**끝났다.** 판정 3개가 확정됐고(A안 · 들여쓰기 별기능 · 게이트 분모 축소) **chrome 필드 보존이
+범위로 들어왔다.** 결과 전문은 `docs/ADAPTER-COVERAGE.md` §10에 있다. 태스크 1부터 진행 가능하다.
 
 ### 0-1. 지표 구현 ✅ (2026-09-02)
 
@@ -45,21 +45,24 @@
 
 ⎯ 커밋 ⎯ `feat(survey): measure key order, indentation, and what else moves the diff` (완료)
 
-### 0-2. 실측 실행과 판정 (남음)
+### 0-2. 실측 실행과 판정 ✅ (2026-09-02)
 
-- [ ] `pnpm adapter-survey`를 **학습 109개와 홀드아웃 20개에 따로** 돌린다 (합치지 않는다)
-  - ⚠️ 캐시가 없어(`adapter-survey.ts:110`의 `rmSync`) 매 실행이 리포를 새로 clone한다. 학습
-    109개가 ~3분 26초이고 그중 순수 판정은 20.9초다 — **네트워크·GitHub 가용성에 묶이므로 이
-    실행은 `/push` 1단계 게이트에 넣을 수 없다.** 그래서 태스크 5의 L2가 있다
-- [ ] **A안 / 대안 E 판정** — 일치율 중앙값 ≥ 0.9면 `StringKey.sortIndex` 확정, 미만이면
-      `Translation.sortIndex`로 승격하고 design.md를 고친다
-- [ ] **들여쓰기 별기능 판정** — 2칸 비율 ≥ 0.8이면 순서 보존만으로 진행, 미만이면 별 기능 확정 +
-      완료 조건 1·2의 목표 수치를 그 비율로 재산
-- [ ] **기준선을 `docs/ADAPTER-COVERAGE.md`에 표로 남긴다** — 일치율·들여쓰기 분포·원인 분해·
-      `not-run` 수·`.`-키 리포의 손실 기준선(siyuan·musicblocks). 안 남기면 태스크 6의 "지금과 같은
-      값을 유지하는지"를 대조할 대상이 없다
-  - ⚠️ 표본 상한(`MAX_PER_SHAPE_GROUP` = 12)을 결과에 병기한다 — mastodon(106로케일)의 일치율은
-    12개 표본 값이다
+- [x] `pnpm adapter-survey`를 **학습 109개와 홀드아웃 20개에 따로** 돌렸다 (합치지 않았다)
+  - 결과 전문: `docs/ADAPTER-COVERAGE.md` **§10**
+- [x] **판정 ① A안 확정** — 일치율 중앙값 **1.000**(학습·홀드아웃 둘 다) ≥ 0.9 →
+      `StringKey.sortIndex`. 실질 근거는 **악화 후보 0건**
+  - ⚠️ 한계 기록: 분포가 이중 최빈이라 **31%(22/71)가 일치율 0.5 미만**이다. 나빠지지 않을 뿐
+    좋아지지도 않는다 — 그런 리포가 실제 도입 대상이 되면 대안 E로 승격
+- [x] **판정 ② 들여쓰기 → 별 기능 확정** — 2칸 비율 학습 **69.0%**(49/71) · 홀드아웃 75.0%로
+      경계 0.8 미달. 재생성 리포 71개 중 **30개**가 갖는 최대 잔여 원인이다
+- [x] **판정 ③ 게이트 분모를 좁혔다** — 순서 외 원인이 없는 리포가 **23/71(32%)** 뿐이라 전체
+      코퍼스에 diff 게이트를 걸면 68%가 다른 이유로 초과한다. spec 완료 조건 1·2를 그 부분집합으로
+      다시 썼다
+- [x] **chrome 필드 보존을 범위로 끌어왔다** — `chrome-locales` 33개 중 순서 외 원인이 없는 것이
+      **5개(15%)** 뿐이고, 20개가 비-base `description`을, 12개가 `placeholders`를 잃는다.
+      우리 도입 대상이라 순서만 고치면 첫 PR이 여전히 안 읽힌다
+- [x] **기준선을 `docs/ADAPTER-COVERAGE.md` §10에 표로 남겼다** — 일치율 분포·들여쓰기 분포·
+      원인 분해·`not-run`(학습 9 / 홀드아웃 4)·설정 파일(20 / 6)·손실 기준선·표본 상한 12
 
 ## 1. 순수 함수 — 순서 관측
 
@@ -68,13 +71,18 @@
   - 검증: `pnpm test` — **새 테스트가 red → green.** 중첩 `{b:{y,x},a}`를 읽으면 `b.y=0, b.x=1, a=2`
 - [ ] `chrome-locales.read`도 `order`를 채운다 (flat이라 `Object.entries` 순서 그대로)
   - 검증: `pnpm test` — 키 3개 파일에서 `order`가 `0,1,2`
+- [ ] **`LocaleEntry.placeholders?: Record<string, unknown>`** 추가 + `chrome-locales.read`가
+      원본 블록을 **해석하지 않고 그대로** 싣는다
+  - 검증: `pnpm test` — `placeholders`가 든 픽스처에서 read 결과가 원본과 deep-equal
+  - ⚠️ 구조를 검증하지 않는다. `{ content, example? }` 스키마를 우리가 따라다닐 이유가 없고
+    요구는 "잃지 않는다"뿐이다
 - [ ] **`read`가 배열을 계속 정렬해서 돌려주는지** 확인 — 호출부가 그걸 전제한다
   - 검증: 기존 테스트 전부 green + `pnpm typecheck`
   - ⚠️ **"기존 테스트 green"은 회귀 없음만 말한다.** 이 기능은 끝까지 기존 테스트를 하나도 red로
     만들지 않는다(`order` 없는 픽스처는 전부 폴백 경로다) — `plan.test.ts:120-137`도
     `render.test.ts:66-70`도 green으로 남는다. **"동작함"은 새 테스트만 말한다**
 
-⎯ 커밋 ⎯ `feat(adapters): read observes the key order it used to discard`
+⎯ 커밋 ⎯ `feat(adapters): read observes the key order and the chrome fields it used to discard`
 
 ## 2. 순수 함수 — 순서대로 재조립
 
@@ -91,6 +99,12 @@
       `missing.sort(compareKeys)`(없는 키 삽입 경로)는 `usableEntries`를 안 지나지만 정렬 규칙을
       공유한다
   - 검증: `pnpm test` — 수술적 어댑터 테스트 전부 green, 삽입 순서가 변하지 않는다
+- [ ] **`chrome-locales.write`가 `placeholders`를 되돌리고 `description`을 전 로케일에 낸다**
+  - 지금은 `input.isBase`일 때만 `description`을 내고 `placeholders`는 아예 모른다
+  - 검증: `pnpm test` — `placeholders`+비-base `description`이 든 픽스처의 왕복이 **바이트 동일**
+  - 검증: `placeholders` **객체 안의 키 순서도 원본 그대로**다 — 우리가 만든 구조가 아니다
+  - ⚠️ **왕복 의미 게이트가 이 손실을 원리적으로 못 본다**(`LocaleEntry`에 필드가 없어 read1·read2
+    둘 다 무시했다). 바이트 비교가 유일한 그물이므로 픽스처 왕복으로 잡는다
 - [ ] **계약 테스트를 "추가"가 아니라 "교체"한다** — `__tests__/contract.ts:188-193`이 재생성
       writer에 **코드 유닛 정렬을 assert**하고 있어 이 기능이 반드시 깬다
   - `CONTRACT_KEYS`와 다른 순서의 `order`를 실은 **두 번째 픽스처**를 추가
@@ -102,7 +116,7 @@
     `switch`(`:97-125`)가 새 어댑터를 자동으로 잡는 성질을 깨지 않는다
   - 검증: `pnpm typecheck`
 
-⎯ 커밋 ⎯ `feat(adapters): regenerate writers keep the original key order`
+⎯ 커밋 ⎯ `feat(adapters): regenerate writers keep the original key order and chrome fields`
 
 ## 3. 스키마 — additive (껍데기보다 먼저)
 
@@ -110,13 +124,17 @@
 하고(없으면 `pnpm typecheck`가 즉시 red), 다음 단계의 `pnpm push:local` 실 DB 왕복도 컬럼이
 배포된 뒤에만 된다. additive-first(스키마를 먼저 넓힌다)와도 이 순서가 맞다.
 
-- [ ] `/db`로 진행한다. `StringKey.sortIndex Int?` + 마이그레이션 생성
-  - 검증: `pnpm db:status` 드리프트 없음, 생성된 SQL이 `ADD COLUMN ... NULL` 하나
+- [ ] `/db`로 진행한다. **컬럼 셋을 한 마이그레이션에** — `StringKey.sortIndex Int?` +
+      `Translation.description String?` + `Translation.placeholders Json?`
+  - 검증: `pnpm db:status` 드리프트 없음, 생성된 SQL이 `ADD COLUMN ... NULL` **셋**뿐
+  - ⚠️ `Translation.description`은 `StringKey.description`과 **다른 것이다** — 저쪽은 소스 키
+    메타데이터, 이쪽은 그 로케일 파일이 실제로 갖고 있던 값이다. 합치면 base 값을 비-base에
+    복제하게 되고 그건 병합이다
   - ⚠️ **`migrate dev`의 리셋 제안은 절대 승인하지 않는다** — dev DB가 prod DB다
 - [ ] `pnpm db:deploy`로 프로덕션에 컬럼을 먼저 넓힌다
   - 검증: 프로덕션에 컬럼이 있고 배포 후 기존 조회가 죽지 않는다
 
-⎯ 커밋 ⎯ `feat(db): add StringKey.sortIndex` (`/db`가 자기 규약대로 만든다)
+⎯ 커밋 ⎯ `feat(db): add StringKey.sortIndex and Translation description/placeholders` (`/db`가 자기 규약대로 만든다)
 
 ## 4. 껍데기 — push가 저장, pull이 읽는다
 
@@ -128,6 +146,8 @@
     순위이고, 그걸 박으면 "모름"이 "코드 유닛이 원본 순서다"로 DB에 굳는다(바이트가 같아 조용하다)
 - [ ] `withSortIndex` → `PlannedKey.sortIndex`, `lib/push/apply.ts`의 벌크 upsert에 컬럼 추가
   - 검증: `pnpm test` (순수 판정) + `pnpm typecheck`
+- [ ] **페이로드가 로케일별 `description`·`placeholders`를 나른다** → `Translation` 두 컬럼
+  - 검증: `pnpm test` — 없는 페이로드가 통과하고 컬럼이 null로 남는다
 - [ ] `scripts/push-local.ts`가 `order`를 실어 보낸다 (`baseEntries.map`)
   - 검증: `pnpm push:local <대상>`의 응답 요약에 키 수가 그대로, 실 DB에 `sortIndex`가 채워진다
 
@@ -144,6 +164,8 @@ design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는,
       (writer에 넘길 entries의 **유일한** 관문이고 정렬을 하지 않는다 — `plan.ts:147`)
   - 검증(a~d 공통): 태스크 5의 **L1 진입점 테스트**가 유일한 판정 수단이다. 여기서는
     `pnpm typecheck`만 본다
+- [ ] **같은 경로 넷으로 `description`·`placeholders`도 나른다** — `sortIndex`와 같은 배선이고,
+      하나만 빠져도 chrome 필드가 조용히 사라진다
 - [ ] `lib/pull/load.ts:39`의 `orderBy`를 `[{ sortIndex: "asc" }, { key: "asc" }]`로
   - ⚠️ **`lib/keys/query.ts:56`은 건드리지 않는다.** `grep`하면 `orderBy: { key: "asc" }`가 두 곳
     잡히고, 그쪽은 **편집 UI 행 순서의 유일한 출처**다
@@ -207,14 +229,18 @@ design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는,
 ## 6. 재측정 — 완료 조건 게이트 (1회성, 수동)
 
 - [ ] `pnpm adapter-survey`를 **학습 109개와 홀드아웃 20개에 따로** 돌린다 (합치지 않는다)
-  - 검증: `json-catalog` diff 중앙값 **≤ 0.10** (현재 학습 0.784 / 홀드아웃 0.843)
-  - 검증: `chrome-locales` **≤ 0.10** (현재 학습 0.705 / 홀드아웃 **표본 없음**)
-  - 검증: **diff > 0.10인 리포 비율 ≤ 20%**
+  - 검증: **분모는 "순서 외 원인이 없는 리포"다** (학습 23개 / 홀드아웃 9개). 그 부분집합에서
+    diff 중앙값 **≤ 0.10** — 그 23개의 현재 중앙값이 **0.648**이다
+  - 검증: 같은 부분집합에서 **diff > 0.10인 리포 비율 ≤ 20%**
+  - 검증: **chrome 필드 손실 리포가 0** — `chromePlaceholders` 12 → 0, `chromeNonBaseDescription`
+    20 → 0
+  - 검증(게이트 아님, 보고만): 전체 코퍼스 `json-catalog` 0.784 → ?, `chrome-locales` 0.705 → ?.
+    남는 값은 §10.3의 원인 분해가 설명해야 한다
   - 검증: **hunk 수 / 실제 변경 키 수 ≈ 1**
   - 검증: **비-base 로케일 파일의 diff**도 같은 게이트를 통과한다
   - 검증: **수술적 어댑터 3개가 0.000 유지** — 깨지면 "닿으면 회귀"다
   - 검증: **바이트 고정점 100/100 유지** — 깨지면 즉시 중단, 결정성 결함이다
-  - 검증: 왕복 의미 동일 **98/100 이상 유지** + **`not-run` 수와 분모를 함께 기록**
+  - 검증: 왕복 의미 동일 **98/100 · 16/16 유지** + **`not-run` 수 기준선 유지** (학습 9 / 홀드아웃 4)
   - ⚠️ 목표를 못 맞추면 태스크 0의 **잔여 diff 원인 분해**로 원인을 가른다. **목표를 낮추기 전에
     원인을 숫자로 댄다**
 - [ ] **실물 확인 — 선행 셋업** (수동. `ts-dict`가 일회용 private 리포로 이 방식을 썼다 —
@@ -255,9 +281,10 @@ design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는,
 - [ ] **`docs/TASKS.md`** — §8 후속 2번 체크 + **이 기능의 자기 섹션 등재**(`adapter-generality`
       §8·`pull-to-pr` §6과 같은 형태). 지금은 L430 한 줄뿐이고 `grep "key-order" docs/`가 0건이다.
       §6의 "재생성 어댑터 실물 pull ❌ 범위 밖" 판정도 함께 고친다
-- [ ] **`docs/MVP.md` §7 / `docs/TASKS.md` 후속** — **chrome `placeholders`·비-base `description`
-      손실**을 별 기능으로 등재 (이번 범위 밖이지만 실제 pull이 대상 확장의 placeholder를 날리는
-      경로다)
+- [ ] **`docs/MVP.md` §4.1 chrome 항목** — `write`가 `placeholders`를 되돌리고 `description`을
+      전 로케일에 낸다는 것을 계약에 적는다. `Translation`의 새 컬럼 둘도 §5 스키마에
+- [ ] **`docs/TASKS.md` 후속** — **들여쓰기·공백 보존**을 별 기능으로 등재 (판정 ②).
+      재생성 리포 71개 중 30개가 갖는 최대 잔여 원인이고, `serialize`의 2칸 고정을 손대야 한다
 - [ ] **`docs/POSTMORTEM.md`** — 값 전달 경로를 빼먹어 무효였던 일이 실제로 재발했으면 등재
       (`/postmortem`)
 - [ ] `.env.example` — **변경 없음** (새 환경변수 없다)
@@ -267,8 +294,9 @@ design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는,
 ## 의존 관계
 
 ```
-🔒 임계값 확정 → 0 (측정) ─┬─→ 1 → 2 → 3 → 4 → 5 → 6 → 7
-                          └─→ (E안 승격 판정 → design.md 수정)
+🔒 임계값 확정 → 0 (측정) ✅ → 1 → 2 → 3 → 4 → 5 → 6 → 7
+                            └─ 판정 3개 확정: A안 · 들여쓰기 별기능 · 게이트 분모 축소
+                               + chrome 필드 보존을 범위로 편입
 ```
 
 - **🔒가 0보다 먼저다** — 경계를 모르면 측정 결과로 아무것도 판정할 수 없다.

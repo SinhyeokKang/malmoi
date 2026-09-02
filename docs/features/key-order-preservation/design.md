@@ -8,7 +8,16 @@
 
 **결정성도 유지된다.** 순서를 **DB에 저장**하기 때문이다 — `같은 DB 상태 → 같은 바이트`가 그대로다.
 
-## 채택안 — `StringKey.sortIndex` (순서를 DB에 둔다)
+## 채택안 — `StringKey.sortIndex` (순서를 DB에 둔다) — **실측으로 확정** (2026-09-02)
+
+> **태스크 0-2 판정 ①** (`docs/ADAPTER-COVERAGE.md` §10.7): 로케일 간 순서 일치율 중앙값이
+> 학습·홀드아웃 둘 다 **1.000**으로 경계 0.9를 넘었다. 실질 근거는 **악화 후보 0건**이다 —
+> "비-base가 이미 우리 순서인데 base만 흐트러진" 리포가 두 코퍼스 어디에도 없어서, base 순서를
+> 전 로케일에 전파해도 **어느 리포도 지금보다 나빠지지 않는다.**
+>
+> ⚠️ **알려진 한계**: 분포가 이중 최빈이라 중앙값 1.000이 꼬리를 가린다 — **31%(학습 22/71)는
+> 일치율 0.5 미만**이고, 그 리포들은 A안으로도 비-base 파일이 여전히 재정렬된다. 나빠지지는
+> 않지만 좋아지지도 않는다. 그중 하나가 실제 도입 대상이 되면 그때 대안 E로 승격한다.
 
 ```
 push:   base 로케일 파일의 키 순서를 관측 → StringKey.sortIndex에 저장
@@ -35,7 +44,7 @@ pull:   sortIndex 순으로 재조립 (원본 파일을 읽지 않는다)
 | **B** | 재생성 writer도 `currentFiles`를 입력으로 받는다 | `같은 DB 상태 → 같은 바이트` 불변식의 **뜻**이 바뀐다(리포 상태가 입력에 들어온다). 부수적으로 편집 있는 날 파일당 blob 1회가 는다 — 그건 대가일 뿐 기각 근거가 아니다 |
 | **C** | 원본을 읽되 blob SHA 최적화를 유지 | 2층 한정으로는 성립하지 않는다 — SHA를 만들려면 내용이 필요하고 내용을 만들려면 원본이 필요하다(순환). 1층 스킵은 이와 무관하게 살아 있다 |
 | **D** | 순서를 `Project`에 파일별 JSON으로 | 정규화가 아니라 키 삭제·리네임마다 손으로 정리해야 한다 |
-| **E** | `Translation.sortIndex` — 로케일마다 순서 보존 | **보류다, 기각이 아니다.** 태스크 0이 로케일 간 순서 일치율을 재고 **중앙값 < 0.9면 이걸로 승격한다** |
+| **E** | `Translation.sortIndex` — 로케일마다 순서 보존 | **보류.** 실측 일치율 중앙값 1.000으로 경계를 넘어 A안이 확정됐다. 다만 31%가 0.5 미만이므로 **그런 리포가 실제 도입 대상이 되면 승격한다.** 대가: 순서 행이 키수×로케일수로 늘고(mastodon이면 106배), push가 base 외 로케일 순서도 관측해 실어야 해 페이로드 계약이 커진다 |
 
 ## 영향 받는 흐름
 
@@ -127,6 +136,28 @@ lib/keys/query.ts:56     ← 절대 바꾸지 않는다 (편집 UI 행 순서의
 - 부수로, "값 손실은 `writeErrors`로 보고된다"는 안심이 **pull 경로에서는 거짓**이라는 문제도
   사라진다 (`lib/pull/render.ts`는 `adapter.write`를 부르고 그 갈래는 에러를 버린다)
 
+### chrome 필드 보존 — 두 번째 축
+
+**`placeholders`와 비-base `description`도 DB가 진실이 된다.** 원본에서 읽어 DB에 넣고 DB에서
+되돌린다 — 병합이 아니다 (spec §축이 둘이다).
+
+| 무엇 | 지금 | 바뀔 것 |
+|---|---|---|
+| `description` | `read`는 **전 로케일에서 읽는데** `write`가 `input.isBase`일 때만 낸다 (`chrome-locales.ts`) | 로케일마다 저장하고 로케일마다 낸다 |
+| `placeholders` | `read`가 **아예 안 읽는다**. `LocaleEntry`에 필드가 없다 | `LocaleEntry.placeholders?`로 읽고 그대로 되돌린다 |
+
+- **`LocaleEntry.placeholders?: Record<string, unknown>`** — 구조를 해석하지 않고 **JSON을 그대로**
+  나른다. `{ content, example? }` 스키마를 우리가 검증하기 시작하면 크롬 스펙을 따라다녀야 하고,
+  이 기능이 요구하는 것은 "잃지 않는다"뿐이다.
+- **저장 위치는 `Translation`이다** — `StringKey`가 아니다. 두 필드 모두 **로케일 파일에서 읽은
+  값**이라 그 로케일에 속한다. `StringKey`에 하나만 두면 base 것을 비-base에 복제하게 되고,
+  그건 원본에 없던 값을 만들어내는 것이라 **코어 원칙(병합 없음)을 깬다.**
+  - `StringKey.description`은 **그대로 둔다** — 그건 소스 키의 메타데이터이고 편집 UI가 쓴다.
+    새로 생기는 `Translation.description`은 그 로케일 파일이 실제로 갖고 있던 값이다.
+- **재생성 writer의 결정성은 그대로다.** `serialize`를 계속 쓰고 키 정렬 규칙만 바뀐다.
+  `placeholders` 객체 안의 키 순서는 **읽은 그대로 되돌린다** — 우리가 만든 구조가 아니다.
+- ⚠️ **`json-catalog`은 이 축에 없다.** 리프가 문자열이라 딸린 필드가 존재하지 않는다.
+
 ### 편집 UI — 변경 없음
 
 행 순서는 **`lib/keys/query.ts:56`의 `orderBy: { key: "asc" }`** 하나에서 나온다. `lib/keys/view.ts`
@@ -156,10 +187,21 @@ model StringKey {
   ///    3번째 키가 둘 다 2다 — **파일 경계를 넘어 비교할 수 없다.**
   sortIndex Int?
 }
+
+model Translation {
+  /// 그 **로케일 파일이 실제로 갖고 있던** description. chrome `_locales`에만 있다.
+  /// StringKey.description(소스 키 메타데이터)과 다른 것이다 — 이쪽을 저쪽으로 대체하면
+  /// base 값을 비-base에 복제하게 되고 그건 병합이다.
+  description  String?
+  /// chrome `placeholders` 블록을 **해석하지 않고 그대로** 보관한다. 구조를 검증하기 시작하면
+  /// 크롬 스펙을 따라다녀야 하는데, 이 기능이 요구하는 것은 "잃지 않는다"뿐이다.
+  placeholders Json?
+}
 ```
 
-- **additive다** — nullable 컬럼 하나. `@@unique([projectId, key])`·`@@unique([projectId, id])`·
-  기존 인덱스 둘과 무관한 순수 `ADD COLUMN`이다 (`prisma/schema.prisma:90-124`)
+- **additive다** — nullable 컬럼 셋. 두 테이블의 `@@unique`·인덱스와 무관한 순수 `ADD COLUMN`이다
+  (`prisma/schema.prisma:90-124`, `:143-171`). **한 마이그레이션에 넣는다** — 셋 다 additive라
+  배포를 쪼갤 이유가 없고, 쪼개면 백필 순서만 복잡해진다
 - `pnpm db:deploy`를 push **전에** 돌린다 (CLAUDE.md DB 순서)
 - **인덱스를 추가하지 않는다.** pull이 `projectId`로 좁힌 뒤 정렬하는 것이고, 이 프로젝트 규모에서
   키가 수천 개다. 정렬 인덱스는 필요해지면 그때 (`@@index([projectId, sortIndex])`)
