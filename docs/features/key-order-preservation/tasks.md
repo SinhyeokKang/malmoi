@@ -64,25 +64,33 @@
 - [x] **기준선을 `docs/ADAPTER-COVERAGE.md` §10에 표로 남겼다** — 일치율 분포·들여쓰기 분포·
       원인 분해·`not-run`(학습 9 / 홀드아웃 4)·설정 파일(20 / 6)·손실 기준선·표본 상한 12
 
-## 1. 순수 함수 — 순서 관측
+## 1. 순수 함수 — 순서 관측 ✅ (2026-09-03)
 
-- [ ] `LocaleEntry.order?: number`를 `lib/adapters/types.ts`에 추가 (계약 주석: 평탄화 순서, 첫 등장)
-- [ ] `observeOrder` — `json-catalog.flatten`의 순회에 카운터를 얹어 `order`를 채운다
-  - 검증: `pnpm test` — **새 테스트가 red → green.** 중첩 `{b:{y,x},a}`를 읽으면 `b.y=0, b.x=1, a=2`
-- [ ] `chrome-locales.read`도 `order`를 채운다 (flat이라 `Object.entries` 순서 그대로)
-  - 검증: `pnpm test` — 키 3개 파일에서 `order`가 `0,1,2`
-- [ ] **`LocaleEntry.placeholders?: Record<string, unknown>`** 추가 + `chrome-locales.read`가
-      원본 블록을 **해석하지 않고 그대로** 싣는다
-  - 검증: `pnpm test` — `placeholders`가 든 픽스처에서 read 결과가 원본과 deep-equal
-  - ⚠️ 구조를 검증하지 않는다. `{ content, example? }` 스키마를 우리가 따라다닐 이유가 없고
-    요구는 "잃지 않는다"뿐이다
-- [ ] **`read`가 배열을 계속 정렬해서 돌려주는지** 확인 — 호출부가 그걸 전제한다
-  - 검증: 기존 테스트 전부 green + `pnpm typecheck`
-  - ⚠️ **"기존 테스트 green"은 회귀 없음만 말한다.** 이 기능은 끝까지 기존 테스트를 하나도 red로
-    만들지 않는다(`order` 없는 픽스처는 전부 폴백 경로다) — `plan.test.ts:120-137`도
-    `render.test.ts:66-70`도 green으로 남는다. **"동작함"은 새 테스트만 말한다**
+- [x] `LocaleEntry.order?: number`를 `lib/adapters/types.ts`에 추가 (계약 주석: 평탄화 순서,
+      첫 등장, **파일 스코프**, 수술적 어댑터는 채우지 않는다)
+- [x] `json-catalog.flatten`이 `order`를 채운다 — **별도 순회를 두지 않는다.** `out.length`가
+      곧 평탄화 순서이고, 정렬은 호출부에서 **뒤에** 일어난다
+  - 검증 통과: 중첩 `{b:{y,x},a}` → `b.y=0, b.x=1, a=2`
+- [x] `chrome-locales.read`도 `order`를 채운다 (flat이라 `Object.entries` 순서 그대로)
+  - 검증 통과: 키 3개 파일에서 `order`가 `0,1,2`
+- [x] **`LocaleEntry.placeholders?: unknown`** 추가 + `chrome-locales.read`가 원본 블록을
+      **해석하지 않고 그대로** 싣는다
+  - 검증 통과: `placeholders`가 든 픽스처에서 read 결과가 원본과 deep-equal, 블록 **안의 키
+    순서도 보존**
+  - ⚠️ **모양이 이상해도 버리지 않는다.** 처음엔 객체가 아니면 걸렀는데 그게 이 기능이 없애려는
+    바로 그 손실이었다 — 원본에 있던 것이 우리 PR에서 조용히 사라진다. 에러로 보고하는 것도
+    답이 아니다: read 에러는 `pnpm push:local`을 exit 1로 막아 남의 리포가 우리 규칙으로
+    실패한다 (POSTMORTEM 2026-09-02). `undefined`와 `null`은 `in`으로 가른다
+- [x] **`read`가 배열을 계속 정렬해서 돌려주는지** 확인 — 호출부가 그걸 전제한다
+  - 검증 통과: 기존 테스트 전부 green + `pnpm typecheck`. 순서는 **배열 위치가 아니라 필드로**
+    나르므로 `contract.ts`의 "입력 배열 순서 무관" 불변식이 그대로 산다
+- [x] **`.`-키 공존(`a.b` + `a.b.c`) 특성 테스트** — order가 접두 충돌 판정을 바꾸지 않는다
+      (POSTMORTEM 2026-09-02)
+- [x] **소비 층에 여분 필드가 새지 않는지 확인** — `scripts/push-local.ts`가 페이로드 필드를
+      명시적으로 골라 담고, `survey`의 `sameMeaning`은 key·message만 본다. write는 안 건드려서
+      출력이 바이트 동일하다
 
-⎯ 커밋 ⎯ `feat(adapters): read observes the key order and the chrome fields it used to discard`
+⎯ 커밋 ⎯ `feat(adapters): read observes the key order and chrome fields it used to discard` (완료)
 
 ## 2. 순수 함수 — 순서대로 재조립
 
