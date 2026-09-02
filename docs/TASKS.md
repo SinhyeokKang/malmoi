@@ -459,7 +459,12 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - **chrome 필드 보존을 범위로 편입** — `chrome-locales` 33개 중 깨끗한 것이 5개(15%)뿐이고
     20개가 비-base `description`을, 12개가 `placeholders`를 잃는다. 우리 도입 대상이라 순서만
     고치면 첫 PR이 여전히 안 읽힌다
-- [ ] 태스크 1~2 — `read`가 순서와 chrome 필드를 관측하고, 재생성 writer가 그대로 되돌린다
+- [x] **태스크 1 — `read`가 순서와 chrome 필드를 관측한다** (2026-09-03) —
+      `LocaleEntry.order`(파일 스코프 평탄화 순서) + `LocaleEntry.placeholders`(해석 없이 그대로).
+      write는 안 건드려서 출력이 아직 바이트 동일하다
+  - ⚠️ `placeholders`는 **모양이 이상해도 안 버린다** — 거르면 그게 이 기능이 없애려는 손실이고,
+    에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다
+- [ ] 태스크 2 — 재생성 writer가 `order` 순서로 재조립하고 chrome 필드를 되돌린다
       ⬅️ **다음에 할 일**
 - [ ] 태스크 3~4 — 마이그레이션(additive 컬럼 셋: `StringKey.sortIndex` ·
       `Translation.description` · `Translation.placeholders`) → push·pull 배선 4곳
