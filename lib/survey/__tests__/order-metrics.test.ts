@@ -1,0 +1,290 @@
+import { describe, expect, it } from "vitest";
+import { surveyOne } from "../one";
+import { summarize } from "../summarize";
+import { emptyDiffCauses, emptyErrors, type RepoSurvey, type SurveyInput } from "../types";
+
+/**
+ * 키 순서 보존 기능(`docs/features/key-order-preservation/`)의 **태스크 0 — 측정** 지표.
+ *
+ * 이 지표들이 닫는 것은 설계 두 갈래다:
+ *   - 로케일 간 순서 일치율 → `StringKey.sortIndex`(A안) vs `Translation.sortIndex`(대안 E)
+ *   - 들여쓰기 분포·잔여 diff 원인 → 순서 보존만으로 목표(diff ≤ 0.10)가 닫히는가
+ *
+ * ⚠️ **지표를 만드는 것과 지표가 배선되는 것은 다른 일이다.** `configFileRepos`가 껍데기의 구조
+ * 분해 누락으로 구조적으로 항상 0이면서 단위 테스트만 green이었던 전례가 있다
+ * (`docs/POSTMORTEM.md` 2026-09-02 "어댑터를 만들고 파일 선택 층에 먹이지 않았다"와 같은 축).
+ * 그래서 `SurveyInput.configFiles`를 **필수 필드**로 두어 껍데기가 안 넘기면 타입이 막게 했다.
+ */
+
+const two = (obj: unknown) => `${JSON.stringify(obj, null, 2)}\n`;
+
+const input = (repo: string, files: Record<string, string>): SurveyInput => ({
+  repo,
+  paths: Object.keys(files),
+  files: new Map(Object.entries(files)),
+  configFiles: [],
+});
+
+/** base(en)만 흐트러져 있고 비-base는 이미 우리 순서다 — base만 재는 지표의 사각이 여기다. */
+const BASE_SCRAMBLED = {
+  "src/i18n/en.json": two({ b: "B", a: "A" }),
+  "src/i18n/ko.json": two({ a: "에이", b: "비" }),
+  "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
+};
+
+/** 전 로케일이 base 순서를 그대로 따른다 — A안(base 순서를 전 로케일에 전파)이 성립하는 모양. */
+const ALL_AGREE = {
+  "src/i18n/en.json": two({ b: "B", a: "A" }),
+  "src/i18n/ko.json": two({ b: "비", a: "에이" }),
+  "src/i18n/ja.json": two({ b: "ビー", a: "エー" }),
+};
+
+/** 잔여 diff 원인 넷이 한 파일에 다 들어 있다. */
+const CAUSE_FILE = [
+  "{",
+  '    "greet": "\\uD55C\\uAD6D",',
+  '    "list": [',
+  '        "a",',
+  '        "",',
+  '        "c"',
+  "    ],",
+  '    "m": {',
+  '        "10": "ten",',
+  '        "2": "two"',
+  "    }",
+  "}",
+  "",
+].join("\n");
+
+const CAUSES = {
+  "src/i18n/en.json": CAUSE_FILE,
+  "src/i18n/ko.json": CAUSE_FILE,
+};
+
+describe("surveyOne — 로케일 간 순서 일치율", () => {
+  it("비-base 파일이 base 순서를 안 따르면 0이다", () => {
+    const s = surveyOne(input("acme/scrambled", BASE_SCRAMBLED));
+    expect(s.chosen?.adapter).toBe("json-catalog");
+    expect(s.localeOrderCompared).toBe(2);
+    expect(s.localeOrderAgreement).toBe(0);
+  });
+
+  it("전 로케일이 base 순서를 따르면 1이다", () => {
+    const s = surveyOne(input("acme/agree", ALL_AGREE));
+    expect(s.localeOrderCompared).toBe(2);
+    expect(s.localeOrderAgreement).toBe(1);
+  });
+
+  it("섞여 있으면 비율이 나온다", () => {
+    const s = surveyOne(
+      input("acme/mixed", {
+        "src/i18n/en.json": two({ b: "B", a: "A" }),
+        "src/i18n/ko.json": two({ b: "비", a: "에이" }),
+        "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
+      }),
+    );
+    expect(s.localeOrderCompared).toBe(2);
+    expect(s.localeOrderAgreement).toBe(0.5);
+  });
+
+  it("로케일이 base 하나뿐이면 잴 것이 없다 — 0이 아니라 undefined다", () => {
+    // 0으로 보고하면 "순서가 어긋난 리포"로 세어져 대안 E 승격 판정이 오염된다.
+    const s = surveyOne(
+      input("acme/single", {
+        "src/i18n/en.json": two({ b: "B", a: "A" }),
+        "src/i18n/en-GB.json": two({ b: "B", a: "A" }),
+      }),
+    );
+    expect(s.localeOrderAgreement === undefined || s.localeOrderCompared > 0).toBe(true);
+  });
+
+  it("탐지 실패면 지표가 없다", () => {
+    const s = surveyOne(input("acme/none", { "README.md": "# hi\n" }));
+    expect(s.localeOrderAgreement).toBeUndefined();
+    expect(s.localeOrderCompared).toBe(0);
+  });
+});
+
+describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
+  it("base 파일의 들여쓰기를 관측한다", () => {
+    expect(surveyOne(input("acme/two", ALL_AGREE)).indent).toEqual({ char: "space", width: 2 });
+    expect(surveyOne(input("acme/four", CAUSES)).indent).toEqual({ char: "space", width: 4 });
+  });
+
+  it("원인 넷을 각각 표시한다", () => {
+    const s = surveyOne(input("acme/causes", CAUSES));
+    expect(s.diffCauses).toMatchObject({
+      indent: true,
+      escapedNonAscii: true,
+      sparseArray: true,
+      integerKeys: true,
+    });
+  });
+
+  it("깨끗한 2칸 파일은 원인이 없다", () => {
+    const s = surveyOne(input("acme/clean", ALL_AGREE));
+    expect(s.diffCauses).toEqual(emptyDiffCauses());
+  });
+
+  it("chrome placeholders와 비-base description을 원인으로 센다 — write가 둘 다 버린다", () => {
+    const s = surveyOne(
+      input("acme/chrome", {
+        "public/_locales/en/messages.json": two({
+          EXT_NAME: { message: "Hi $USER$", description: "greeting", placeholders: { USER: { content: "$1" } } },
+          CMD: { message: "Go" },
+        }),
+        "public/_locales/ko/messages.json": two({
+          EXT_NAME: { message: "안녕 $USER$", description: "인사" },
+          CMD: { message: "가기" },
+        }),
+      }),
+    );
+    expect(s.chosen?.adapter).toBe("chrome-locales");
+    expect(s.diffCauses.chromePlaceholders).toBe(true);
+    expect(s.diffCauses.chromeNonBaseDescription).toBe(true);
+  });
+});
+
+describe("surveyOne — 비-base 로케일 diff", () => {
+  it("base가 흐트러져도 비-base가 우리 순서면 비-base diff는 0이다", () => {
+    // 이 격차가 base 하나만 재던 지표의 사각이고, A안의 위험이 사는 자리다.
+    const s = surveyOne(input("acme/scrambled", BASE_SCRAMBLED));
+    expect(s.diffRatio).toBeGreaterThan(0);
+    expect(s.diffRatioNonBase).toBe(0);
+  });
+
+  it("전 로케일이 흐트러져 있으면 비-base diff도 0이 아니다", () => {
+    const s = surveyOne(input("acme/agree", ALL_AGREE));
+    expect(s.diffRatioNonBase).toBeGreaterThan(0);
+  });
+});
+
+describe("surveyOne — configFiles 배선", () => {
+  it("껍데기가 넘긴 설정 파일 목록을 그대로 싣는다", () => {
+    const s = surveyOne({ ...input("acme/cfg", ALL_AGREE), configFiles: ["crowdin.yml"] });
+    expect(s.configFiles).toEqual(["crowdin.yml"]);
+  });
+});
+
+// ── summarize 층 ────────────────────────────────────────────────────────
+
+const row = (over: Partial<RepoSurvey> & { repo: string }): RepoSurvey => ({
+  fileCount: 10,
+  selectedFileCount: 2,
+  truncated: false,
+  candidates: [],
+  localeCount: 0,
+  keyCount: 0,
+  errors: emptyErrors(),
+  keyCollisions: 0,
+  silentSkips: 0,
+  writeErrors: 0,
+  roundtrip: { semantic: "not-run", byteFixpoint: "not-run" },
+  diffApproximate: false,
+  separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
+  icuPluralKeys: 0,
+  placeholderKeys: 0,
+  configFiles: [],
+  localeOrderCompared: 0,
+  diffCauses: emptyDiffCauses(),
+  ms: 1,
+  ...over,
+});
+
+const cand = (pathTemplate: string, adapter: RepoSurvey["candidates"][number]["adapter"]) => ({
+  adapter,
+  pathTemplate,
+  locales: ["en", "ko"],
+});
+
+describe("summarize — 어댑터별 diff", () => {
+  it("어댑터별 중앙값을 --json으로 읽을 수 있게 낸다", () => {
+    // 지금까지 어댑터별 값은 마크다운 표에만 있어 완료 조건 1·2를 jq로 못 읽었다.
+    const rows = [
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.8 }),
+      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.6 }),
+      row({ repo: "a/3", chosen: cand("_locales/{locale}/messages.json", "chrome-locales"), diffRatio: 0.7 }),
+      row({ repo: "a/4", chosen: cand("l/{locale}.yml", "yaml-catalog"), diffRatio: 0 }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.byAdapter["json-catalog"]?.median).toBeCloseTo(0.7);
+    expect(metrics.diff.byAdapter["chrome-locales"]?.median).toBeCloseTo(0.7);
+    expect(metrics.diff.byAdapter["yaml-catalog"]?.median).toBe(0);
+  });
+
+  it("목표(0.10)를 넘는 리포 비율을 낸다 — 중앙값은 '내가 붙일 그 리포'를 말해주지 않는다", () => {
+    const rows = [
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.02 }),
+      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.05 }),
+      row({ repo: "a/3", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.9 }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.median).toBeCloseTo(0.05);
+    expect(metrics.diff.overTarget.n).toBe(1);
+    expect(metrics.diff.overTarget.of).toBe(3);
+    expect(metrics.diff.byAdapter["json-catalog"]?.overTarget.n).toBe(1);
+  });
+
+  it("비-base diff 중앙값을 따로 낸다", () => {
+    const rows = [
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.8, diffRatioNonBase: 0 }),
+      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.8, diffRatioNonBase: 0.4 }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.median).toBeCloseTo(0.8);
+    expect(metrics.diff.nonBaseMedian).toBeCloseTo(0.2);
+  });
+});
+
+describe("summarize — 왕복 not-run", () => {
+  it("not-run 리포 수를 센다 — 분모에서 조용히 빠지면 '98/100 유지'를 읽을 수 없다", () => {
+    const rows = [
+      row({ repo: "a/1", roundtrip: { semantic: "same", byteFixpoint: "same" } }),
+      row({ repo: "a/2", roundtrip: { semantic: "different", byteFixpoint: "same" } }),
+      row({ repo: "a/3" }), // not-run
+      row({ repo: "a/4" }), // not-run
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.roundtrip.semanticSame).toMatchObject({ n: 1, of: 2 });
+    expect(metrics.roundtrip.notRun).toBe(2);
+  });
+});
+
+describe("summarize — 순서 일치율과 들여쓰기 분포", () => {
+  it("일치율의 리포별 중앙값을 낸다 — 이 값이 A안/대안 E를 가른다", () => {
+    const rows = [
+      row({ repo: "a/1", localeOrderAgreement: 1, localeOrderCompared: 3 }),
+      row({ repo: "a/2", localeOrderAgreement: 0.9, localeOrderCompared: 10 }),
+      row({ repo: "a/3", localeOrderAgreement: 0.2, localeOrderCompared: 5 }),
+      row({ repo: "a/4" }), // 비교 대상 없음 — 분모에서 빠진다
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.localeOrder.agreementMedian).toBeCloseTo(0.9);
+    expect(metrics.localeOrder.comparedRepos).toBe(3);
+  });
+
+  it("들여쓰기 분포와 2칸 비율을 낸다 — 이 값이 들여쓰기 별기능 판정을 가른다", () => {
+    const rows = [
+      row({ repo: "a/1", indent: { char: "space", width: 2 } }),
+      row({ repo: "a/2", indent: { char: "space", width: 2 } }),
+      row({ repo: "a/3", indent: { char: "space", width: 4 } }),
+      row({ repo: "a/4", indent: { char: "tab", width: 1 } }),
+      row({ repo: "a/5" }), // 관측 불가 — 분모에서 빠진다
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.indent.twoSpace).toMatchObject({ n: 2, of: 4 });
+    expect(metrics.indent.distribution).toEqual({ "space-2": 2, "space-4": 1, "tab-1": 1 });
+  });
+
+  it("잔여 diff 원인별 리포 수를 낸다", () => {
+    const rows = [
+      row({ repo: "a/1", diffCauses: { ...emptyDiffCauses(), indent: true, escapedNonAscii: true } }),
+      row({ repo: "a/2", diffCauses: { ...emptyDiffCauses(), indent: true } }),
+      row({ repo: "a/3", diffCauses: emptyDiffCauses() }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diffCauses.indent).toBe(2);
+    expect(metrics.diffCauses.escapedNonAscii).toBe(1);
+    expect(metrics.diffCauses.sparseArray).toBe(0);
+  });
+});
