@@ -273,8 +273,8 @@ function buildFormatTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<strin
     (groups.get(key) ?? groups.set(key, []).get(key)!).push(s);
   }
   const header = [
-    "| 1순위 어댑터 | 리포 | 오탐 | 왕복 의미 동일 | 바이트 고정점 | diff 중앙값 | read 에러 | 무증상 skip |",
-    "|---|---|---|---|---|---|---|---|",
+    "| 1순위 어댑터 | 리포 | 오탐 | 왕복 의미 동일 | 바이트 고정점 | diff 중앙값 | 비-base diff | read 에러 | 무증상 skip |",
+    "|---|---|---|---|---|---|---|---|---|",
   ];
   const lines = [...groups.entries()]
     .sort(([a], [b]) => compareKeys(a, b))
@@ -285,14 +285,16 @@ function buildFormatTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<strin
       const rt = list.filter((s) => s.roundtrip.semantic !== "not-run");
       const fx = list.filter((s) => s.roundtrip.byteFixpoint !== "not-run");
       const ratios = list.map((s) => s.diffRatio).filter((r): r is number => r !== undefined);
+      const nonBase = list.map((s) => s.diffRatioNonBase).filter((r): r is number => r !== undefined);
       const errs = list.reduce((n, s) => n + READ_ERROR_KINDS.reduce((m, k) => m + s.errors[k], 0), 0);
       const skips = list.reduce((n, s) => n + s.silentSkips, 0);
       const m = median(ratios);
+      const mn = median(nonBase);
       return `| \`${name}\` | ${list.length} | ${pct(rate(wrong.length, judged.length))} | ${pct(
         rate(rt.filter((s) => s.roundtrip.semantic === "same").length, rt.length),
       )} | ${pct(rate(fx.filter((s) => s.roundtrip.byteFixpoint === "same").length, fx.length))} | ${
         m === undefined ? "–" : m.toFixed(3)
-      } | ${errs} | ${skips} |`;
+      } | ${mn === undefined ? "–" : mn.toFixed(3)} | ${errs} | ${skips} |`;
     });
   return [...header, ...lines].join("\n");
 }
@@ -300,8 +302,8 @@ function buildFormatTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<strin
 /** 2층 — 리포마다 한 행. 실패 유형과 1순위 경로가 있어야 재현이 된다. */
 function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string, Verdict>): string {
   const header = [
-    "| 리포 | 구간 | 1순위 후보 | 판정 | 정답 순위 | 로케일 | 키 | 에러 | skip | 충돌 | 왕복(의미/바이트) | diff | 비고 |",
-    "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "| 리포 | 구간 | 1순위 후보 | 판정 | 정답 순위 | 로케일 | 키 | 에러 | skip | 충돌 | 왕복(의미/바이트) | diff | 순서 일치 | 들여쓰기 | 비고 |",
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
   ];
   const lines = rows.map((s) => {
     const v = byRepo.get(s.repo);
@@ -335,8 +337,8 @@ function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string,
     } | ${mark} | ${rank} | ${s.localeCount} | ${s.keyCount} | ${errs} | ${s.silentSkips} | ${s.keyCollisions} | ${
       s.roundtrip.semantic
     }/${s.roundtrip.byteFixpoint} | ${s.diffRatio === undefined ? "–" : s.diffRatio.toFixed(3)} | ${
-      notes.join(", ") || "–"
-    } |`;
+      s.localeOrderAgreement === undefined ? "–" : `${s.localeOrderAgreement.toFixed(2)} (${s.localeOrderCompared})`
+    } | ${s.indent === undefined ? "–" : `${s.indent.char}-${s.indent.width}`} | ${notes.join(", ") || "–"} |`;
   });
   return [...header, ...lines].join("\n");
 }

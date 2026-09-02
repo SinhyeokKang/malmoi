@@ -236,6 +236,37 @@ describe("summarize — 어댑터별 diff", () => {
   });
 });
 
+describe("summarize — 표에 실린다", () => {
+  it("포맷별 표에 비-base diff 열이 있다", () => {
+    // 태스크 0의 결과는 docs/ADAPTER-COVERAGE.md에 **표로** 기록된다. 표에 없는 숫자는
+    // --json에만 있어도 문서로 못 간다 — 지표를 만드는 것과 읽히는 것은 다른 일이다.
+    const { formatTable } = summarize(
+      [row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.8, diffRatioNonBase: 0.2 })],
+      [],
+    );
+    expect(formatTable).toContain("비-base diff");
+    expect(formatTable).toContain("0.200");
+  });
+
+  it("리포별 표에 순서 일치율과 들여쓰기가 있다", () => {
+    const { repoTable } = summarize(
+      [
+        row({
+          repo: "a/1",
+          chosen: cand("i/{locale}.json", "json-catalog"),
+          localeOrderAgreement: 0.75,
+          localeOrderCompared: 4,
+          indent: { char: "space", width: 4 },
+        }),
+      ],
+      [],
+    );
+    expect(repoTable).toContain("순서 일치");
+    expect(repoTable).toContain("0.75");
+    expect(repoTable).toContain("space-4");
+  });
+});
+
 describe("summarize — 왕복 not-run", () => {
   it("not-run 리포 수를 센다 — 분모에서 조용히 빠지면 '98/100 유지'를 읽을 수 없다", () => {
     const rows = [

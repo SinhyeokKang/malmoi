@@ -45,8 +45,18 @@ export const emptyJsonDiffCauses = (): JsonDiffCauses => ({
   integerKeys: false,
 });
 
-/** `JSON.stringify`가 배열로 되돌리는 조건과 같다 — `normalizeArrays`의 `isDense` 판정. */
-const isCanonicalIndex = (name: string): boolean => String(Number(name)) === name && Number(name) >= 0;
+/**
+ * JS 객체가 **앞으로 끌어올리는** 키인가 — 정규 배열 인덱스(`0` ≤ i < 2³²−1).
+ *
+ * ⚠️ `normalizeArrays`의 `isDense`(`0..n-1`이 빠짐없이 있는가)와 **다른 판정이다.** 여기서 재는
+ * 것은 "이 객체의 삽입 순서가 유지되는가"이고, 그건 정수 키가 **하나만 있어도** 깨진다.
+ * 범위를 넓게 잡으면(`"99999999999999"`까지 세면) JS가 끌어올리지 않는 키까지 원인으로 세어져,
+ * "정수 키는 원리적으로 보존 불가"라는 비목표의 근거가 부풀려진다.
+ */
+const isCanonicalIndex = (name: string): boolean => {
+  const n = Number(name);
+  return String(n) === name && Number.isInteger(n) && n >= 0 && n < 2 ** 32 - 1;
+};
 
 export function jsonShape(text: string): JsonShape {
   const shape: JsonShape = {

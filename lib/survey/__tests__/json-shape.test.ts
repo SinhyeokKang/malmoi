@@ -122,6 +122,20 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(jsonShape(two({ list: ["a", "b"] })).causes.integerKeys).toBe(false);
   });
 
+  it("배열 인덱스 범위를 넘는 숫자 키는 원인이 아니다 — JS가 끌어올리지 않는다", () => {
+    // 2^32-1 이상은 배열 인덱스가 아니라 평범한 문자열 키라 삽입 순서가 유지된다.
+    // 넓게 잡으면 "정수 키는 원리적으로 보존 불가"라는 비목표의 근거가 부풀려진다.
+    expect(jsonShape(two({ "4294967295": "max", z: "Z" })).causes.integerKeys).toBe(false);
+    expect(jsonShape(two({ "99999999999999": "big", z: "Z" })).causes.integerKeys).toBe(false);
+    expect(jsonShape(two({ "4294967294": "in-range", z: "Z" })).causes.integerKeys).toBe(true);
+  });
+
+  it("음수·선행 0·소수는 정수형 키가 아니다", () => {
+    expect(jsonShape(two({ "-1": "neg", z: "Z" })).causes.integerKeys).toBe(false);
+    expect(jsonShape(two({ "01": "pad", z: "Z" })).causes.integerKeys).toBe(false);
+    expect(jsonShape(two({ "1.5": "frac", z: "Z" })).causes.integerKeys).toBe(false);
+  });
+
   it("2칸이 아닌 들여쓰기를 원인으로 표시한다", () => {
     expect(jsonShape(`${JSON.stringify({ a: { b: "B" } }, null, 4)}\n`).causes.indent).toBe(true);
     expect(jsonShape(two({ a: { b: "B" } })).causes.indent).toBe(false);
