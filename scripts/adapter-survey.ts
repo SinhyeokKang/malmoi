@@ -26,7 +26,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { selectSurveyFiles } from "../lib/survey/select";
-import { summarize } from "../lib/survey/summarize";
+import { DIFF_TARGET, summarize } from "../lib/survey/summarize";
 import { surveyOne } from "../lib/survey/one";
 import type { RepoSurvey, SurveyInput, Verdict } from "../lib/survey/types";
 
@@ -74,15 +74,15 @@ function fetchRepo(repo: string): SurveyInput {
     git(dir, ["clone", "--depth", "1", "--filter=blob:none", "--no-checkout", "--quiet", `https://github.com/${repo}.git`, "r"]);
   } catch (cause) {
     rmSync(dir, { recursive: true, force: true });
-    return { repo, paths: [], files: new Map(), failure: `clone 실패: ${short(cause)}` };
+    return { repo, paths: [], files: new Map(), configFiles: [], failure: `clone 실패: ${short(cause)}` };
   }
   const work = join(dir, "r");
   try {
     const paths = git(work, ["ls-tree", "-r", "HEAD", "--name-only"]).split("\n").filter(Boolean);
     if (paths.length === 0) {
-      return { repo, paths: [], files: new Map(), failure: "빈 트리" };
+      return { repo, paths: [], files: new Map(), configFiles: [], failure: "빈 트리" };
     }
-    const { paths: wanted, truncated } = selectSurveyFiles(paths);
+    const { paths: wanted, configFiles, truncated } = selectSurveyFiles(paths);
     const files = new Map<string, string>();
     if (wanted.length > 0) {
       try {
@@ -103,9 +103,9 @@ function fetchRepo(repo: string): SurveyInput {
         }
       }
     }
-    return { repo, paths, files, truncated };
+    return { repo, paths, files, configFiles, truncated };
   } catch (cause) {
-    return { repo, paths: [], files: new Map(), failure: `트리 읽기 실패: ${short(cause)}` };
+    return { repo, paths: [], files: new Map(), configFiles: [], failure: `트리 읽기 실패: ${short(cause)}` };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -156,7 +156,7 @@ if (asJson) {
   // 이어져 JSON 문서가 두 개 나온다(같은 항목의 2차 원인).
   console.log(JSON.stringify({ metrics, surveys }, null, 2));
 } else {
-  const { detect, misdetect, roundtrip, diff } = metrics;
+  const { detect, misdetect, roundtrip, diff, localeOrder } = metrics;
   const pct = (r: { n: number; of: number; pct: number }) =>
     `${r.n}/${r.of} (${r.of === 0 ? "–" : r.pct.toFixed(1)}%)`;
 
@@ -179,6 +179,21 @@ if (asJson) {
   console.log(`   의미 동일:      ${pct(roundtrip.semanticSame)}   (다르면 데이터 손실)`);
   console.log(`   바이트 고정점:  ${pct(roundtrip.byteFixpointSame)}   (다르면 결정성 결함)`);
   console.log(`   첫 write diff:  중앙값 ${diff.median?.toFixed(3) ?? "–"}, 절반 이상 바뀐 리포 ${pct(diff.overHalf)}`);
+  console.log(`   목표(${DIFF_TARGET}) 초과: ${pct(diff.overTarget)}   (도입 판단은 코퍼스가 아니라 한 리포에서 일어난다)`);
+  console.log(`   비-base diff:   중앙값 ${diff.nonBaseMedian?.toFixed(3) ?? "–"}   (base 순서를 전 로케일에 쓰는 설계의 위험이 여기 산다)`);
+  console.log(`   왕복 못 돌림:   ${roundtrip.notRun}개   (분모에서 빠지므로 함께 읽어야 한다)`);
+  for (const [name, d] of Object.entries(diff.byAdapter)) {
+    console.log(`   └ ${name.padEnd(16)} 중앙값 ${d.median?.toFixed(3) ?? "–"}  초과 ${pct(d.overTarget)}`);
+  }
+
+  console.log(`\n⑤ 키 순서 보존의 근거   [docs/features/key-order-preservation/]`);
+  console.log(
+    `   로케일 간 순서 일치율: 중앙값 ${localeOrder.agreementMedian?.toFixed(3) ?? "–"} (리포 ${localeOrder.comparedRepos})` +
+      `   → ≥ 0.9면 StringKey.sortIndex, 미만이면 Translation.sortIndex`,
+  );
+  console.log(`   들여쓰기 2칸:          ${pct(metrics.indent.twoSpace)}   → ≥ 80%면 순서 보존만으로 진행`);
+  console.log(`   들여쓰기 분포:         ${JSON.stringify(metrics.indent.distribution)}`);
+  console.log(`   잔여 diff 원인(리포):  ${JSON.stringify(metrics.diffCauses)}`);
   console.log(`\n부수: ICU 복수형 ${metrics.icuPluralRepos}개 리포, 치환자 ${metrics.placeholderRepos}, 설정 파일 ${metrics.configFileRepos}, 비-점 구분자 ${metrics.nonDotSeparatorRepos.length}`);
   console.log(`\n${formatTable}\n`);
   console.log(repoTable);

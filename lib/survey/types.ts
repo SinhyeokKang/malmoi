@@ -1,4 +1,5 @@
 import type { AdapterName } from "../adapters/types";
+import { emptyJsonDiffCauses, type IndentStyle, type JsonDiffCauses } from "./json-shape";
 
 /**
  * 어댑터 범용성 측정 실험의 결과 타입 (`docs/features/adapter-generality/`).
@@ -54,6 +55,25 @@ export type Roundtrip = {
   byteFixpoint: RoundtripVerdict;
 };
 
+/**
+ * 첫 write diff의 **순서 외** 원인 (`docs/features/key-order-preservation/` 태스크 0).
+ *
+ * 순서 보존만으로 목표(diff ≤ 0.10)가 닫히는지는 여기 남는 것들이 정한다. 안 재면 목표 수치가
+ * 근거 없는 희망값이 된다 — 그래서 원인을 세 두고, 지배 원인이 있으면 **별 기능으로 잘라낸다.**
+ */
+export type DiffCauses = JsonDiffCauses & {
+  /** chrome: `placeholders` 블록이 있다 — `write`가 `{ message, description? }`만 내서 버린다. */
+  chromePlaceholders: boolean;
+  /** chrome: 비-base 로케일에 `description`이 있다 — `write`가 base에서만 낸다. */
+  chromeNonBaseDescription: boolean;
+};
+
+export const emptyDiffCauses = (): DiffCauses => ({
+  ...emptyJsonDiffCauses(),
+  chromePlaceholders: false,
+  chromeNonBaseDescription: false,
+});
+
 export type SurveyCandidate = {
   adapter: AdapterName;
   pathTemplate: string;
@@ -66,6 +86,14 @@ export type SurveyInput = {
   paths: readonly string[];
   /** `selectSurveyFiles`가 고른 파일만 담긴 경로→내용. 나머지는 없다. */
   files: ReadonlyMap<string, string>;
+  /**
+   * `selectSurveyFiles`가 센 설정 파일 — 내용은 안 읽는다.
+   *
+   * ⚠️ **필수 필드다.** 전에는 껍데기가 구조 분해에서 이걸 버려도 타입이 통과해
+   * `metrics.configFileRepos`가 구조적으로 항상 0이었다(단위 테스트만 green). 지표를 만드는 것과
+   * 지표가 배선되는 것은 다른 일이고, 그 차이를 컴파일러가 막게 한다.
+   */
+  configFiles: readonly string[];
   /** 껍데기 단계의 실패(clone 실패 등). 있으면 나머지를 재지 않는다. */
   failure?: string;
   /** 선택이 예산에 걸려 잘렸는가 — 숫자를 읽는 사람이 알아야 한다. */
@@ -111,6 +139,29 @@ export type RepoSurvey = {
   diffRatio?: number;
   /** `roundtripDiffRatio`가 근사 경로로 갔는가. */
   diffApproximate: boolean;
+  /**
+   * **비-base** 로케일 파일들의 1차 write diff 중앙값.
+   *
+   * `diffRatio`는 base 파일 하나만 잰다. 그런데 순서를 base에서 따와 전 로케일에 쓰는 설계
+   * (`StringKey.sortIndex`)에서는 **정작 위험한 파일이 비-base 쪽**이라, base만 보면 그 위험이
+   * 게이트에 안 잡힌다.
+   */
+  diffRatioNonBase?: number;
+
+  /** base 로케일 파일의 들여쓰기. 재생성 어댑터가 아니거나 관측 불가면 `undefined`. */
+  indent?: IndentStyle;
+  /**
+   * 비-base 로케일 파일 중 base와 **공통 키 순서가 완전히 같은** 비율 (0..1).
+   *
+   * 이 값의 리포별 중앙값이 `StringKey.sortIndex`(A안)와 `Translation.sortIndex`(대안 E)를
+   * 가른다. 비교 대상이 없으면 `undefined`다 — 0으로 보고하면 "순서가 어긋난 리포"로 세어져
+   * 판정이 오염된다.
+   */
+  localeOrderAgreement?: number;
+  /** 위 비율의 분모 — 실제로 비교한 비-base 파일 수. */
+  localeOrderCompared: number;
+  /** 순서 외에 무엇이 diff를 만드는가. */
+  diffCauses: DiffCauses;
 
   separators: SeparatorCounts;
   /** ICU 복수형(`{n, plural, …}`)을 쓰는 키 수 — MVP §7 비범위라 **빈도만** 센다. */

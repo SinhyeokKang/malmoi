@@ -60,6 +60,7 @@ const input = (repo: string, files: Record<string, string>, extraPaths: string[]
   repo,
   paths: [...Object.keys(files), ...extraPaths],
   files: new Map(Object.entries(files)),
+  configFiles: [],
 });
 
 describe("mergeCandidates — 어댑터를 가로지르는 순위", () => {
@@ -296,7 +297,7 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
   });
 
   it("clone 실패는 전체를 멈추지 않고 결과에 남는다", () => {
-    const s = surveyOne({ repo: "acme/gone", paths: [], files: new Map(), failure: "clone 실패" });
+    const s = surveyOne({ repo: "acme/gone", paths: [], files: new Map(), configFiles: [], failure: "clone 실패" });
     expect(s.failure).toBe("clone 실패");
     expect(s.candidates).toEqual([]);
     expect(s.roundtrip.semantic).toBe("not-run");
@@ -318,6 +319,7 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
         ["src/i18n/ko.ts", good],
         ["src/i18n/en.ts", good],
       ]),
+      configFiles: [],
     });
     expect(s.chosen?.adapter).toBe("code-dict");
     expect(s.failure).toBeUndefined();

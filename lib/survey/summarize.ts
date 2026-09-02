@@ -1,7 +1,10 @@
 import { compareKeys } from "../adapters/shared";
+import { median } from "./stats";
 import {
   READ_ERROR_KINDS,
+  emptyDiffCauses,
   emptyErrors,
+  type DiffCauses,
   type Rate,
   type ReadErrorKind,
   type RepoSurvey,
@@ -17,6 +20,14 @@ import {
  */
 
 const VERDICT_SOURCE = "사람 판정 — docs/features/adapter-generality/verdicts.json의 정답 경로와 대조";
+
+/**
+ * 완료 조건의 diff 목표 (`docs/features/key-order-preservation/spec.md`).
+ *
+ * 중앙값 하나로는 부족해서 **초과 리포 비율**을 함께 낸다 — 도입 판단은 코퍼스가 아니라 한
+ * 리포에서 일어나고, 중앙값 0.10은 "절반은 0.10 이하"일 뿐이다.
+ */
+export const DIFF_TARGET = 0.1;
 
 const rate = (n: number, of: number): Rate => ({ n, of, pct: of === 0 ? 0 : (n / of) * 100 });
 const pct = (r: Rate) => `${r.n}/${r.of} (${r.of === 0 ? "–" : r.pct.toFixed(1)}%)`;
@@ -48,8 +59,39 @@ export type SurveyMetrics = {
   partialReadRepos: string[];
 
   /** 지표 ④ */
-  roundtrip: { semanticSame: Rate; byteFixpointSame: Rate };
-  diff: { median?: number; overHalf: Rate; approximateRepos: string[] };
+  roundtrip: {
+    semanticSame: Rate;
+    byteFixpointSame: Rate;
+    /**
+     * 왕복을 아예 못 돌린 리포 수.
+     *
+     * ⚠️ **분모에서 조용히 빠진다.** 없으면 "98/100 유지"를 읽을 때 분모가 100에서 줄었는지
+     * 알 수 없다 — 실측 2회차에서 `not-run` 8건이 성공/실패 어느 쪽으로도 안 세어져 표가
+     * 조용했던 전례가 있다 (`docs/POSTMORTEM.md` 2026-09-02).
+     */
+    notRun: number;
+  };
+  diff: {
+    median?: number;
+    overHalf: Rate;
+    /** `DIFF_TARGET`을 넘는 리포 비율 — 완료 조건 게이트 ②. */
+    overTarget: Rate;
+    /** **비-base** 로케일 파일 diff의 리포별 중앙값. base만 재던 지표의 사각을 덮는다. */
+    nonBaseMedian?: number;
+    /** 어댑터별 diff — 전에는 마크다운 표에만 있어 `--json | jq`로 완료 조건을 못 읽었다. */
+    byAdapter: Record<string, AdapterDiff>;
+    approximateRepos: string[];
+  };
+
+  /**
+   * 로케일 간 키 순서 일치율 — `StringKey.sortIndex`(A안)와 `Translation.sortIndex`(대안 E)를
+   * 가르는 값이다 (`docs/features/key-order-preservation/tasks.md` 🔒: 중앙값 ≥ 0.9면 A안).
+   */
+  localeOrder: { agreementMedian?: number; comparedRepos: number };
+  /** 원본 들여쓰기 — 2칸 비율이 0.8 미만이면 들여쓰기 보존이 별 기능이 된다 (같은 🔒 표). */
+  indent: { twoSpace: Rate; distribution: Record<string, number> };
+  /** 잔여 diff 원인별 **리포 수**. 지배 원인이 있으면 목표 수치를 그 근거로 조정한다. */
+  diffCauses: Record<keyof DiffCauses, number>;
 
   /** 부수 관측 — 다음 기능의 우선순위 근거다. */
   icuPluralRepos: number;
@@ -62,6 +104,12 @@ export type SurveyMetrics = {
   verdictSource: string;
 };
 
+export type AdapterDiff = {
+  repos: number;
+  median?: number;
+  overTarget: Rate;
+};
+
 export type SurveySummary = {
   metrics: SurveyMetrics;
   /** 포맷별 요약 — 판정 3·4의 근거를 읽는 층. */
@@ -69,6 +117,11 @@ export type SurveySummary = {
   /** 리포별 상세 — 행 하나가 곧 실패 재현 경로다. */
   repoTable: string;
 };
+
+const CAUSE_KEYS = Object.keys(emptyDiffCauses()) as Array<keyof DiffCauses>;
+
+const emptyCauseCounts = (): Record<keyof DiffCauses, number> =>
+  Object.fromEntries(CAUSE_KEYS.map((k) => [k, 0])) as Record<keyof DiffCauses, number>;
 
 /** 그 리포에서 "맞다"고 인정되는 경로 전부 — 대표 + `alsoValid`. */
 function acceptedPaths(v: Verdict | undefined): string[] {
@@ -133,6 +186,34 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   const ranRoundtrip = rows.filter((s) => s.roundtrip.semantic !== "not-run");
   const ranFixpoint = rows.filter((s) => s.roundtrip.byteFixpoint !== "not-run");
   const ratios = rows.map((s) => s.diffRatio).filter((r): r is number => r !== undefined);
+  const nonBaseRatios = rows.map((s) => s.diffRatioNonBase).filter((r): r is number => r !== undefined);
+
+  const byAdapter: Record<string, AdapterDiff> = {};
+  const perAdapter = new Map<string, number[]>();
+  for (const s of rows) {
+    if (s.chosen === undefined || s.diffRatio === undefined) continue;
+    (perAdapter.get(s.chosen.adapter) ?? perAdapter.set(s.chosen.adapter, []).get(s.chosen.adapter)!).push(s.diffRatio);
+  }
+  for (const [name, list] of [...perAdapter.entries()].sort(([a], [b]) => compareKeys(a, b))) {
+    byAdapter[name] = {
+      repos: list.length,
+      median: median(list),
+      overTarget: rate(list.filter((r) => r > DIFF_TARGET).length, list.length),
+    };
+  }
+
+  const agreements = rows.map((s) => s.localeOrderAgreement).filter((r): r is number => r !== undefined);
+  const indents = rows.map((s) => s.indent).filter((i): i is NonNullable<typeof i> => i !== undefined);
+  const indentDistribution: Record<string, number> = {};
+  for (const i of indents) {
+    const label = `${i.char}-${i.width}`;
+    indentDistribution[label] = (indentDistribution[label] ?? 0) + 1;
+  }
+
+  const causeCounts = emptyCauseCounts();
+  for (const s of rows) {
+    for (const key of CAUSE_KEYS) if (s.diffCauses[key]) causeCounts[key] += 1;
+  }
 
   const metrics: SurveyMetrics = {
     repoCount: rows.length,
@@ -157,12 +238,22 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
         ranFixpoint.filter((s) => s.roundtrip.byteFixpoint === "same").length,
         ranFixpoint.length,
       ),
+      notRun: rows.length - ranRoundtrip.length,
     },
     diff: {
       median: median(ratios),
       overHalf: rate(ratios.filter((r) => r > 0.5).length, ratios.length),
+      overTarget: rate(ratios.filter((r) => r > DIFF_TARGET).length, ratios.length),
+      nonBaseMedian: median(nonBaseRatios),
+      byAdapter,
       approximateRepos,
     },
+    localeOrder: { agreementMedian: median(agreements), comparedRepos: agreements.length },
+    indent: {
+      twoSpace: rate(indents.filter((i) => i.char === "space" && i.width === 2).length, indents.length),
+      distribution: indentDistribution,
+    },
+    diffCauses: causeCounts,
     icuPluralRepos,
     placeholderRepos,
     configFileRepos,
@@ -172,13 +263,6 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   };
 
   return { metrics, formatTable: buildFormatTable(rows, byRepo), repoTable: buildRepoTable(rows, byRepo) };
-}
-
-function median(xs: readonly number[]): number | undefined {
-  if (xs.length === 0) return undefined;
-  const s = [...xs].sort((a, b) => a - b);
-  const mid = s.length >> 1;
-  return s.length % 2 === 1 ? s[mid]! : ((s[mid - 1]! + s[mid]!) / 2);
 }
 
 /** 1층 — 1순위 후보의 어댑터로 묶는다. 탐지 실패도 한 행이다. */

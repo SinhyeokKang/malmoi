@@ -1,9 +1,12 @@
 import { adapterFor, compareKeys } from "../adapters";
 import type { AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { roundtripDiffRatio, usedApproximation } from "./diff";
+import { jsonShape, sameCommonOrder, type JsonDiffCauses } from "./json-shape";
 import { candidatesFor } from "./merge";
+import { median } from "./stats";
 import { tsShape } from "./ts-shape";
 import {
+  emptyDiffCauses,
   emptyErrors,
   type ReadErrorKind,
   type RepoSurvey,
@@ -43,10 +46,12 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     writeErrors: 0,
     roundtrip: { semantic: "not-run", byteFixpoint: "not-run" },
     diffApproximate: false,
+    localeOrderCompared: 0,
+    diffCauses: emptyDiffCauses(),
     separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
     icuPluralKeys: 0,
     placeholderKeys: 0,
-    configFiles: [],
+    configFiles: [...input.configFiles],
     ms: 0,
   };
   if (input.failure !== undefined) {
@@ -88,6 +93,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   survey.keyCount = allKeys.size;
   survey.separators = countSeparators(allKeys);
   countMessages(read1.locales, survey);
+  observeShape(survey, chosen, adapter.name, input, read1.locales.map((l) => l.locale));
 
   // 코드 딕셔너리 계열 — "읽힌 키 수 vs 파일의 문자열 리터럴 수" 격차가 부분 읽기의 그물이다.
   //
@@ -245,6 +251,93 @@ function countMessages(locales: readonly ReadLocale[], survey: RepoSurvey): void
 }
 
 /**
+ * 원본 **텍스트** 관측 — 키 순서 일치율·들여쓰기·잔여 diff 원인
+ * (`docs/features/key-order-preservation/` 태스크 0).
+ *
+ * ⚠️ **`read1`을 쓰지 않고 원본 파일을 다시 훑는다.** `read`가 엔트리를 정렬해 돌려주므로 파일
+ * 순서가 거기서 사라진다 — 이 지표가 재려는 바로 그 값이다.
+ *
+ * JSON 텍스트를 내는 어댑터에서만 돈다. YAML·코드 딕셔너리는 이미 수술적이라 첫 write diff가
+ * 0.000이고, 이 기능이 닿지도 않는다.
+ */
+function observeShape(
+  survey: RepoSurvey,
+  fmt: DetectedFormat,
+  adapterName: string,
+  input: SurveyInput,
+  localeNames: readonly string[],
+): void {
+  if (adapterName !== "json-catalog" && adapterName !== "chrome-locales") return;
+  const base = pickBase(localeNames);
+  if (base === undefined) return;
+  const pathOf = (locale: string) => fmt.pathTemplate.replace("{locale}", locale);
+
+  const baseText = input.files.get(pathOf(base));
+  if (baseText === undefined) return;
+  const baseShape = jsonShape(baseText);
+  survey.indent = baseShape.indent;
+  mergeCauses(survey, baseShape.causes);
+
+  let compared = 0;
+  let agreed = 0;
+  for (const locale of localeNames) {
+    if (locale === base) continue;
+    const text = input.files.get(pathOf(locale));
+    if (text === undefined) continue;
+    const shape = jsonShape(text);
+    // 원인은 **리포 단위 OR**다 — 어느 로케일 파일에서든 나면 그 리포의 PR에 diff로 나타난다.
+    mergeCauses(survey, shape.causes);
+    // 스캔이 실패한 파일은 순서를 신뢰할 수 없다. "다르다"로 세면 일치율이 파싱 실패율에 묶인다.
+    if (shape.failed || baseShape.failed) continue;
+    compared += 1;
+    if (sameCommonOrder(baseShape.keyOrder, shape.keyOrder)) agreed += 1;
+  }
+  survey.localeOrderCompared = compared;
+  if (compared > 0) survey.localeOrderAgreement = agreed / compared;
+
+  if (adapterName === "chrome-locales") observeChrome(survey, input, pathOf, base, localeNames);
+}
+
+function mergeCauses(survey: RepoSurvey, causes: JsonDiffCauses): void {
+  for (const key of Object.keys(causes) as Array<keyof JsonDiffCauses>) {
+    if (causes[key]) survey.diffCauses[key] = true;
+  }
+}
+
+/**
+ * chrome 전용 손실 — `write`가 `{ message, description? }`만 내고 **base에서만 description을 낸다**
+ * (`chrome-locales.ts`). 그래서 원본의 `placeholders`와 비-base `description`이 파일에서 사라진다.
+ *
+ * ⚠️ **왕복 의미 게이트가 이걸 못 본다.** `LocaleEntry`에 그 필드가 없어 read1·read2 둘 다 무시하기
+ * 때문이다 — 손실이 있는데 지표는 "같다"고 말한다. 여기서 세지 않으면 어디에도 안 남는다.
+ */
+function observeChrome(
+  survey: RepoSurvey,
+  input: SurveyInput,
+  pathOf: (locale: string) => string,
+  base: string,
+  localeNames: readonly string[],
+): void {
+  for (const locale of localeNames) {
+    const text = input.files.get(pathOf(locale));
+    if (text === undefined) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      continue;
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+    for (const value of Object.values(parsed as Record<string, unknown>)) {
+      if (value === null || typeof value !== "object") continue;
+      const entry = value as Record<string, unknown>;
+      if (entry["placeholders"] !== undefined) survey.diffCauses.chromePlaceholders = true;
+      if (locale !== base && entry["description"] !== undefined) survey.diffCauses.chromeNonBaseDescription = true;
+    }
+  }
+}
+
+/**
  * 왕복 2층 (spec 완료 조건 ④).
  *
  * - **의미 게이트**: `read → write → read`의 키·값 집합이 1차 read와 같은가. 다르면 데이터 손실.
@@ -306,6 +399,20 @@ function applyRoundtrip(
   if (before !== undefined && after !== undefined) {
     survey.diffRatio = roundtripDiffRatio(before, after);
     survey.diffApproximate = usedApproximation(before, after);
+  }
+
+  // **비-base 파일도 잰다.** base 순서를 전 로케일에 전파하는 설계에서는 위험이 이쪽에 산다 —
+  // base만 보면 "base가 흐트러졌지만 비-base는 이미 우리 순서"인 리포에서 격차가 안 보인다.
+  if (layout === "per-locale") {
+    const others: number[] = [];
+    for (const locale of localeNames) {
+      if (locale === base) continue;
+      const p = fmt.pathTemplate.replace("{locale}", locale);
+      const src = input.files.get(p);
+      const out = write1.get(p);
+      if (src !== undefined && out !== undefined) others.push(roundtripDiffRatio(src, out));
+    }
+    survey.diffRatioNonBase = median(others);
   }
 }
 
