@@ -8,7 +8,7 @@ import {
   type StringLiteral,
 } from "ts-morph";
 
-import { compareKeys, looksLikeLocale, rankCandidates } from "./shared";
+import { compareKeys, hasStrongLocale, looksLikeLocale, rankCandidates } from "./shared";
 import type {
   Adapter,
   AdapterError,
@@ -124,7 +124,8 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
 
   const candidates = rankCandidates(
     [...byDir.entries()]
-      .filter(([, s]) => s.size >= 2)
+      // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
+      .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
       .map(([key, locales]) => ({ dir: key.split(" ")[0] ?? "", ext: key.split(" ")[1] ?? "ts", locales })),
   );
 

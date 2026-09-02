@@ -1,4 +1,12 @@
-import { compareKeys, looksLikeLocale, rankCandidates, serialize, usableEntries, verifySamples } from "./shared";
+import {
+  compareKeys,
+  hasStrongLocale,
+  looksLikeLocale,
+  rankCandidates,
+  serialize,
+  usableEntries,
+  verifySamples,
+} from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult } from "./types";
 
 /**
@@ -26,7 +34,10 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   }
   // 로케일이 2개 이상인 root만 인정한다 — 하나뿐이면 우연일 수 있다.
   const candidates = rankCandidates(
-    [...byRoot.entries()].filter(([, s]) => s.size >= 2).map(([dir, locales]) => ({ dir, locales })),
+    [...byRoot.entries()]
+      // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
+      .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
+      .map(([dir, locales]) => ({ dir, locales })),
   );
 
   const found: DetectedFormat[] = [];

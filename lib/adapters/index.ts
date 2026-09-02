@@ -3,7 +3,7 @@ import { codeDict } from "./code-dict";
 import { jsonCatalog } from "./json-catalog";
 import { tsDict } from "./ts-dict";
 import { yamlCatalog } from "./yaml-catalog";
-import { compareKeys, pathSignals } from "./shared";
+import { compareTemplates, liftAncestors, pathSignals } from "./shared";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "./types";
 
 export { chromeLocales } from "./chrome-locales";
@@ -70,17 +70,27 @@ export function detectCandidatesAcross(paths: readonly string[], probe?: FilePro
   return [...rankTemplates(chromeFirst), ...rankTemplates(rest)];
 }
 
-/** i18n 신호 → 예제 감점 → 로케일 수 → 얕은 경로 → 경로순. 어댑터 내부와 같은 축이다. */
+/**
+ * i18n 신호 → 예제 감점 → 로케일 수 → 경로 모양 → 얕은 경로 → 경로순.
+ *
+ * **어댑터 내부(`rankTemplateCandidates`)와 같은 함수를 쓴다** — 축이 갈리면 어댑터 안에서 1순위인
+ * 후보가 어댑터 간 순위에서 뒤집히고, 그 차이가 어디서 났는지 아무도 못 짚는다.
+ *
+ * ⚠️ **이 함수는 어댑터가 매긴 순서를 전부 버리고 다시 정렬한다.** 그래서 `liftAncestors`를
+ * 어댑터 안에만 두면 무효다 — DMPRoadmap/roadmap이 그 상태로 여전히 오탐이었다. 버킷별로
+ * 적용하므로 크롬 최우선은 그대로다(크롬 후보는 애초에 다른 버킷이다).
+ */
 function rankTemplates(candidates: readonly DetectedFormat[]): DetectedFormat[] {
-  return candidates.slice().sort((a, b) => {
-    const sa = pathSignals(a.pathTemplate);
-    const sb = pathSignals(b.pathTemplate);
-    if (sa.hint !== sb.hint) return sa.hint ? -1 : 1;
-    if (sa.aside !== sb.aside) return sa.aside ? 1 : -1;
-    if (a.locales.length !== b.locales.length) return b.locales.length - a.locales.length;
-    if (sa.depth !== sb.depth) return sa.depth - sb.depth;
-    return compareKeys(a.pathTemplate, b.pathTemplate);
-  });
+  return liftAncestors(
+    candidates
+      .slice()
+      .sort((a, b) =>
+        compareTemplates(
+          { pathTemplate: a.pathTemplate, localeCount: a.locales.length },
+          { pathTemplate: b.pathTemplate, localeCount: b.locales.length },
+        ),
+      ),
+  );
 }
 
 /** 리포 파일 경로 목록에서 로케일 포맷을 찾는다. 못 찾으면 undefined — 연동 불가다. */

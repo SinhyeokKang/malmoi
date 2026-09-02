@@ -1,4 +1,4 @@
-import { compareKeys, looksLikeLocale } from "../adapters/shared";
+import { compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix } from "../adapters/shared";
 
 /**
  * **어떤 파일을 물리화할지 고르는 것 자체가 로직이다.**
@@ -18,6 +18,8 @@ const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
 const YAML_FILE = /^(.*\/)([^/]+)\.ya?ml$/;
 /** ⚠️ `.js`·`.mjs`도 받는다 — quasar가 `ui/lang/{locale}.js`다. */
 const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
+/** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리인 형태 (grafana·open-webui·zulip). */
+const LOCALE_DIR_JSON = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
 /** CI 설정이 `{locale}.yml`처럼 보인다 — `yaml-catalog`의 제외 규칙과 같은 이유다. */
 const NEVER_YAML = /(^|\/)\.github\//;
 
@@ -38,6 +40,17 @@ const CONFIG = [
 
 /** 읽을 파일 수 상한. 넘으면 잘라내고 `truncated`로 알린다. */
 const FILE_BUDGET = 1200;
+/**
+ * 접두사·로케일 디렉터리 후보는 **그룹 수를 먼저 자른다.**
+ *
+ * ⚠️ 맨 로케일 파일 그룹과 달리 이쪽은 그룹이 폭발한다 — discourse 하나가 플러그인마다
+ * `config/locales/{client,server}.{locale}.yml`을 들어 그룹 500개·파일 25,000개다. 전부 담으면
+ * `FILE_BUDGET`이 경로 사전순으로 잘려 **정작 후보가 될 그룹의 내용이 안 온다.**
+ * `rankTemplateCandidates`와 같은 축으로 그룹을 먼저 고른다.
+ */
+const MAX_SHAPE_GROUPS = 8;
+/** 그룹당 읽을 파일 수. probe는 3개만 보고, 왕복 측정도 로케일 몇 개면 판정이 선다. */
+const MAX_PER_SHAPE_GROUP = 12;
 /** ts-dict `detect`가 디렉터리당 최대 4개를 probe한다. read까지 감안해 조금 더 준다. */
 const TS_PER_DIR = 8;
 /** 로케일 이름 소스 파일이 모인 디렉터리(= `code-dict` 후보)는 조금 더 본다 — 로케일 수가 지표다. */
@@ -93,6 +106,36 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     if (files.length >= 2) for (const f of files) wanted.add(f);
   }
 
+  // ── 접두사 붙은 파일명 · 로케일 디렉터리 ─────────────────────────────
+  //
+  // ⚠️ **어댑터가 새 경로 모양을 받으면 이 층도 같은 커밋에서 고친다.** `yaml-catalog`을
+  // 만들고 여기에 `.yml`을 안 넣어 어댑터가 3회차 내내 1순위 0개였다 (POSTMORTEM 2026-09-02).
+  const shaped = new Map<string, Array<{ locale: string; path: string }>>();
+  const push = (key: string, locale: string, path: string): void => {
+    (shaped.get(key) ?? shaped.set(key, []).get(key)!).push({ locale, path });
+  };
+  for (const p of allPaths) {
+    const j = JSON_FILE.exec(p);
+    if (j && !looksLikeLocale(j[2] ?? "")) {
+      const split = splitLocaleSuffix(j[2] ?? "");
+      if (split) push(`${j[1] ?? ""}${split.prefix}.json`, split.locale, p);
+    }
+    const y = YAML_FILE.exec(p);
+    if (y && !NEVER_YAML.test(p) && !looksLikeLocale(y[2] ?? "")) {
+      const split = splitLocaleSuffix(y[2] ?? "");
+      if (split) push(`${y[1] ?? ""}${split.prefix}.${y[3] ?? "yml"}`, split.locale, p);
+    }
+    const d = LOCALE_DIR_JSON.exec(p);
+    if (d && looksLikeLocale(d[2] ?? "")) {
+      // 크롬 `_locales`는 위에서 이미 전부 담았다.
+      const isChrome = d[3] === "messages" && (d[1] ?? "").endsWith("_locales/");
+      if (!isChrome) push(`${d[1] ?? ""}{}/${d[3] ?? ""}.json`, d[2] ?? "", p);
+    }
+  }
+  for (const [, files] of rankShapeGroups(shaped)) {
+    for (const f of enFirst(files).slice(0, MAX_PER_SHAPE_GROUP)) wanted.add(f.path);
+  }
+
   // ── 코드 딕셔너리 — 디렉터리를 좁히지 않으면 리포 전체 소스를 읽게 된다 ──
   //
   // ⚠️ **이 좁힘이 측정의 한계다.** i18n 신호가 없는 디렉터리에 로케일 딕셔너리를 둔 리포는
@@ -124,4 +167,33 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     configFiles,
     truncated: sorted.length > FILE_BUDGET,
   };
+}
+
+/** 후보가 될 만한 그룹부터 — i18n 신호 → 예제 감점 → 로케일 수 → 얕은 경로 → 키순. */
+function rankShapeGroups(
+  groups: ReadonlyMap<string, Array<{ locale: string; path: string }>>,
+): Array<[string, Array<{ locale: string; path: string }>]> {
+  return [...groups.entries()]
+    .filter(([, files]) => files.length >= 2)
+    .sort(([ka, fa], [kb, fb]) => {
+      const sa = pathSignals(ka);
+      const sb = pathSignals(kb);
+      if (sa.hint !== sb.hint) return sa.hint ? -1 : 1;
+      if (sa.aside !== sb.aside) return sa.aside ? 1 : -1;
+      if (fa.length !== fb.length) return fb.length - fa.length;
+      if (sa.depth !== sb.depth) return sa.depth - sb.depth;
+      return compareKeys(ka, kb);
+    })
+    .slice(0, MAX_SHAPE_GROUPS);
+}
+
+/**
+ * `en`을 앞에 두고 나머지는 경로순.
+ *
+ * ⚠️ **상한으로 자를 때 `en`이 밀려나면 probe가 실패한다** — `verifySamples`가 `en`을 먼저 보는데
+ * 경로 사전순으로 자르면 `ar`·`bg` 같은 스텁만 남는다 (ARCHITECTURE §1.3과 같은 함정).
+ */
+function enFirst(files: readonly { locale: string; path: string }[]): Array<{ locale: string; path: string }> {
+  const rest = files.filter((f) => f.locale !== "en").sort((a, b) => compareKeys(a.path, b.path));
+  return [...files.filter((f) => f.locale === "en"), ...rest];
 }

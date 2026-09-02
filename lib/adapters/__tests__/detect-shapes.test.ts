@@ -189,3 +189,66 @@ describe("③ 접두사 붙은 파일명", () => {
     expect(jsonCatalog.detectCandidates(Object.keys(files), probeOf(files))).toEqual([]);
   });
 });
+
+describe("④ 3차 실측이 새로 만든 오탐 둘", () => {
+  const catalogOf = (keys: readonly string[]): string =>
+    `${JSON.stringify(Object.fromEntries(keys.map((k) => [k, `v-${k}`])), null, 2)}\n`;
+
+  it("맨 로케일 파일이 접두사 붙은 것을 이긴다 — 로케일 수·깊이가 같을 때 (rubygems.org)", () => {
+    const files: Record<string, string> = {};
+    for (const l of ["en", "ko", "fr"]) {
+      files[`config/locales/${l}.yml`] = `${l}:\n  a: v\n`;
+      files[`config/locales/avo.${l}.yml`] = `${l}:\n  a: v\n`;
+    }
+    const found = yamlCatalog.detectCandidates(Object.keys(files), probeOf(files));
+    expect(found[0]?.pathTemplate).toBe("config/locales/{locale}.yml");
+    expect(found[1]?.pathTemplate).toBe("config/locales/avo.{locale}.yml");
+  });
+
+  it("로케일 디렉터리 형태는 경로에 i18n 신호를 요구한다 (n8n `packages/@n8n/{ai}/package.json`)", () => {
+    const files = {
+      "packages/@n8n/ai/package.json": catalogOf(["name"]),
+      "packages/@n8n/di/package.json": catalogOf(["name"]),
+      "packages/@n8n/db/package.json": catalogOf(["name"]),
+    };
+    expect(jsonCatalog.detectCandidates(Object.keys(files), probeOf(files))).toEqual([]);
+  });
+
+  it("경로 모양 순위는 로케일 수보다 **뒤**다 — 1키 49로케일이 진짜를 이기면 안 된다", () => {
+    const files: Record<string, string> = {};
+    for (const l of ["ar", "en", "ko"]) files[`themes/foundation/locales/${l}.yml`] = `${l}:\n  a: v\n`;
+    for (const l of ["ar", "en", "ko", "ja"]) files[`config/locales/client.${l}.yml`] = `${l}:\n  a: v\n`;
+    const [top] = yamlCatalog.detectCandidates(Object.keys(files), probeOf(files));
+    expect(top?.pathTemplate).toBe("config/locales/client.{locale}.yml");
+  });
+});
+
+describe("⑤ 조상 디렉터리 승격", () => {
+  it("`config/locales/{locale}.yml`이 `config/locales/contact_us/contact_us.{locale}.yml`을 이긴다", () => {
+    const files: Record<string, string> = {};
+    // 자손 쪽이 로케일이 더 많다 — roadmap 실측 그대로(17 vs 15). 수 신호로는 안 뒤집힌다.
+    for (const l of ["ar", "en", "fr", "ko", "ja"]) files[`config/locales/contact_us/contact_us.${l}.yml`] = `${l}:\n  a: v\n`;
+    for (const l of ["en", "fr", "ko"]) files[`config/locales/${l}.yml`] = `${l}:\n  a: v\n`;
+    const found = yamlCatalog.detectCandidates(Object.keys(files), probeOf(files));
+    expect(found[0]?.pathTemplate).toBe("config/locales/{locale}.yml");
+  });
+
+  it("⚠️ 어댑터 간 재정렬을 지나서도 살아 있어야 한다 — 어댑터 안에만 두면 무효다", () => {
+    const files: Record<string, string> = {};
+    for (const l of ["ar", "en", "fr", "ko", "ja"]) files[`config/locales/contact_us/contact_us.${l}.yml`] = `${l}:\n  a: v\n`;
+    for (const l of ["en", "fr", "ko"]) files[`config/locales/${l}.yml`] = `${l}:\n  a: v\n`;
+    // `detectCandidatesAcross`가 어댑터가 매긴 순서를 버리고 다시 정렬한다.
+    const [top] = detectCandidatesAcross(Object.keys(files), probeOf(files));
+    expect(top?.pathTemplate).toBe("config/locales/{locale}.yml");
+  });
+
+  it("조상 관계가 아니면 끌어올리지 않는다 (musicblocks `lib/voices`)", () => {
+    const files: Record<string, string> = {};
+    for (const l of ["en", "ko"]) {
+      files[`locales/${l}.json`] = catalog(["a", "b", "c"]);
+      files[`lib/voices/${l}.json`] = catalog(["a"]);
+    }
+    const [top] = jsonCatalog.detectCandidates(Object.keys(files), probeOf(files));
+    expect(top?.pathTemplate).toBe("locales/{locale}.json");
+  });
+});

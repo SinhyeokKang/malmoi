@@ -1,5 +1,14 @@
 import { localeFromPath, verify } from "./chrome-locales";
-import { compareKeys, looksLikeLocale, rankCandidates, serialize, usableEntries } from "./shared";
+import {
+  compareKeys,
+  hasStrongLocale,
+  looksLikeLocale,
+  pathSignals,
+  rankTemplateCandidates,
+  serialize,
+  splitLocaleSuffix,
+  usableEntries,
+} from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
 /**
@@ -11,31 +20,110 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  * 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다 (MVP §4).
  *
  * `description`을 담을 곳이 없다 — DB엔 남지만 파일로 나가지 않는다.
+ *
+ * ⚠️ **경로 모양이 셋이다** (2026-09-02 3차 실측으로 둘이 늘었다). read·write는 완전히 같고
+ * `pathTemplate`만 다르므로 어댑터를 새로 만들지 않았다:
+ *   - `<dir>/<locale>.json` — 원래 형태
+ *   - `<dir>/<locale>/<name>.json` — 로케일이 디렉터리 (grafana·open-webui·outline·cal.com·zulip)
+ *   - `<dir>/<prefix><sep><locale>.json` — 접두사 붙은 파일명 (gitea·jitsi)
+ *
+ * **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 후보로 낸다** (`PRIMARY_NAMES`).
+ * `Project`가 포맷을 하나만 들기 때문이고, 그래서 Ghost의 5개 네임스페이스 중 1개만 덮는다 —
+ * 나머지는 프로젝트를 나눠야 한다 (MVP §7).
  */
 
 const SEP = ".";
 const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
+/** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리이고 파일명은 따로다. */
+const LOCALE_DIR_FILE = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
+
+/**
+ * 로케일 디렉터리에 파일이 여럿일 때 고르는 이름 순위. **앞이 이긴다.**
+ *
+ * 알파벳순으로 고르면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을
+ * 집는다 — 둘 다 옆에 `translations.json`·`common.json`이 있다 (2026-09-02 3차 실측).
+ * 여기 없는 이름들만 남으면 알파벳순으로 떨어진다 (Ghost의 5개 네임스페이스가 그렇다).
+ */
+const PRIMARY_NAMES = ["translation", "translations", "common", "messages", "default"];
+
+type Group = { pathTemplate: string; locales: Set<string> };
+
+/** `key` 기준으로 로케일을 모으고, 2개 이상 + 강한 코드 하나 이상인 그룹만 남긴다. */
+function groupsOf(rows: readonly { key: string; locale: string; template: (key: string) => string }[]): Group[] {
+  const byKey = new Map<string, { locales: Set<string>; template: (key: string) => string }>();
+  for (const { key, locale, template } of rows) {
+    const at = byKey.get(key) ?? { locales: new Set<string>(), template };
+    at.locales.add(locale);
+    byKey.set(key, at);
+  }
+  const out: Group[] = [];
+  for (const [key, { locales, template }] of byKey) {
+    // 로케일이 하나뿐이면 `config/en.json` 같은 우연일 수 있다. 강한 코드가 없으면 로케일
+    // 모음이 아니다 — `{add,get}.json`이 후보가 된 경로가 정확히 이 구멍이었다.
+    if (locales.size < 2 || !hasStrongLocale(locales)) continue;
+    out.push({ pathTemplate: template(key), locales });
+  }
+  return out;
+}
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
-  /** 디렉터리 → 로케일 코드 집합 */
-  const byDir = new Map<string, Set<string>>();
+  const plain: { key: string; locale: string; template: (key: string) => string }[] = [];
+  const prefixed: { key: string; locale: string; template: (key: string) => string }[] = [];
+  /** `dir` → 파일 이름 → 로케일 집합. 디렉터리당 이름 하나만 후보로 낸다. */
+  const localeDir = new Map<string, Map<string, Set<string>>>();
+
   for (const path of paths) {
     const m = JSON_FILE.exec(path);
-    if (!m) continue;
-    const [, dir = "", base = ""] = m;
-    if (!looksLikeLocale(base)) continue;
-    const set = byDir.get(dir) ?? new Set();
-    set.add(base);
-    byDir.set(dir, set);
+    if (m) {
+      const [, dir = "", base = ""] = m;
+      if (looksLikeLocale(base)) {
+        plain.push({ key: dir, locale: base, template: (dir) => `${dir}{locale}.json` });
+      } else {
+        const split = splitLocaleSuffix(base);
+        if (split) {
+          prefixed.push({
+            key: `${dir}${split.prefix}`,
+            locale: split.locale,
+            template: (k) => `${k}{locale}.json`,
+          });
+        }
+      }
+    }
+
+    const d = LOCALE_DIR_FILE.exec(path);
+    if (d) {
+      const [, dir = "", locale = "", name = ""] = d;
+      // 크롬 `_locales/{locale}/messages.json`은 자기 어댑터가 있다 — 같은 후보를 두 번 내지 않는다.
+      const isChrome = name === "messages" && dir.endsWith("_locales/");
+      if (looksLikeLocale(locale) && !isChrome) {
+        const byName = localeDir.get(dir) ?? new Map<string, Set<string>>();
+        (byName.get(name) ?? byName.set(name, new Set()).get(name)!).add(locale);
+        localeDir.set(dir, byName);
+      }
+    }
   }
-  // 로케일이 2개 이상인 디렉터리만. 하나뿐이면 `config/en.json` 같은 우연일 수 있다.
-  const candidates = rankCandidates(
-    [...byDir.entries()].filter(([, s]) => s.size >= 2).map(([dir, locales]) => ({ dir, locales })),
-  );
+
+  const groups = [...groupsOf(plain), ...groupsOf(prefixed)];
+  for (const [dir, byName] of localeDir) {
+    // ⚠️ **로케일 디렉터리 형태만 경로에 i18n 신호를 요구한다.** 디렉터리 이름이 로케일처럼
+    // 보이는 일이 파일 이름보다 훨씬 흔하다 — n8n의 `packages/@n8n/{ai,di,…}/package.json`이
+    // 4로케일 후보로 올라와 1순위가 됐다 (2026-09-02 3차). 실측에서 이 형태로 잡히는 진짜
+    // 카탈로그 7개는 **전부** 경로에 `locale(s)`·`i18n`을 갖는다(grafana·open-webui·outline·
+    // Ghost·cal.com·zulip·automa). 편향이 한 방향이다 — 과소 탐지일 뿐 오탐을 만들지 않는다.
+    if (!pathSignals(`${dir}x/y.json`).hint) continue;
+    const usable = [...byName.entries()].filter(([, s]) => s.size >= 2 && hasStrongLocale(s));
+    const best = usable.slice().sort(([na, sa], [nb, sb]) => {
+      const ra = PRIMARY_NAMES.indexOf(na);
+      const rb = PRIMARY_NAMES.indexOf(nb);
+      if (ra !== rb) return (ra === -1 ? PRIMARY_NAMES.length : ra) - (rb === -1 ? PRIMARY_NAMES.length : rb);
+      if (sa.size !== sb.size) return sb.size - sa.size;
+      return compareKeys(na, nb);
+    })[0];
+    if (best) groups.push({ pathTemplate: `${dir}{locale}/${best[0]}.json`, locales: best[1] });
+  }
 
   const found: DetectedFormat[] = [];
-  for (const { dir, locales } of candidates) {
-    const pathTemplate = `${dir}{locale}.json`;
+  for (const { pathTemplate, locales } of rankTemplateCandidates(groups)) {
     // 경로 신호만 믿으면 `public/search/{locale}.json`(검색 인덱스)을 잡는다 — 실제로 발생했다.
     if (probe && !verify(pathTemplate, locales, probe)) continue;
     found.push({ adapter: "json-catalog", pathTemplate, locales: [...locales] });

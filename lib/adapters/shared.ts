@@ -44,6 +44,53 @@ export function looksLikeLocale(name: string): boolean {
 }
 
 /**
+ * **우연히 일치할 여지가 좁은** 로케일 코드인가 — 2글자, 지역 서브태그가 붙은 것, camelCase.
+ *
+ * ⚠️ **맨 3글자는 여기서 빠진다.** `looksLikeLocale`이 `[a-z]{2,3}`을 받는데 3글자 영단어와
+ * 정면으로 충돌한다: 홀드아웃 20개에서 오탐 2건이 정확히 그것이었다 (2026-09-02 3차) —
+ * grafana의 `azuremonitor/dashboards/{adx,arg}.json`(대시보드 정의)과 n8n의
+ * `__schema__/…/issueAttachment/{add,get}.json`(JSON 스키마)이 1순위 후보로 올라왔다. `adx`·`arg`·
+ * `add`·`get`은 전부 `[a-z]{3}`이다.
+ *
+ * 3글자 로케일(`fil`·`ceb`·`haw`)을 버리자는 게 아니다 — `hasStrongLocale`이 **같은 그룹에 강한
+ * 코드가 하나라도 있을 것**만 요구한다. 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인
+ * 3글자 영단어 디렉터리에는 그게 없다.
+ */
+export function strongLocale(name: string): boolean {
+  return (
+    /^[a-z]{2}(?:[-_][A-Za-z]{2,4})?$/.test(name) ||
+    /^[a-z]{2}[A-Z]{2}$/.test(name) ||
+    /^[a-z]{3}[-_][A-Za-z]{2,4}$/.test(name)
+  );
+}
+
+/** 후보 그룹이 로케일 모음인가. **모든 어댑터의 그룹 필터가 이걸 통과해야 한다.** */
+export function hasStrongLocale(locales: Iterable<string>): boolean {
+  for (const name of locales) if (strongLocale(name)) return true;
+  return false;
+}
+
+/**
+ * `client.bs_BA` → `{ prefix: "client.", locale: "bs_BA" }`. 접두사가 없으면 `undefined`.
+ *
+ * 파일명 전체가 로케일인 형태(`en.json`)만 보던 탐지가 홀드아웃 3개를 놓쳤다: discourse
+ * `config/locales/client.ar.yml`, gitea `options/locale/locale_de-DE.json`, jitsi
+ * `lang/main-af.json`. 구분자는 `.`·`-`·`_` 셋이다.
+ *
+ * **오른쪽 구분자부터 시도한다.** `client.bs_BA`는 마지막 `_`에서 자르면 `BA`(대문자라 탈락)이고
+ * 그다음 `.`에서 `bs_BA`가 나온다 — 왼쪽부터 자르면 `bs_BA`를 `_`로 다시 쪼개게 된다.
+ */
+export function splitLocaleSuffix(base: string): { prefix: string; locale: string } | undefined {
+  for (let i = base.length - 1; i > 0; i -= 1) {
+    const ch = base[i];
+    if (ch !== "." && ch !== "-" && ch !== "_") continue;
+    const locale = base.slice(i + 1);
+    if (locale !== "" && looksLikeLocale(locale)) return { prefix: base.slice(0, i + 1), locale };
+  }
+  return undefined;
+}
+
+/**
  * 후보 순위 결정. **경로 사전순으로 고르면 안 된다** — bugshot-web에서 `public/search/{locale}.json`
  * (검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
  *
@@ -85,6 +132,103 @@ export function rankCandidates<T extends { dir: string; locales: Set<string> }>(
     if (b.locales.size !== a.locales.size) return b.locales.size - a.locales.size;
     return compareKeys(a.dir, b.dir);
   });
+}
+
+/**
+ * `{locale}`이 경로에서 어떤 모양으로 들어가는가. **작을수록 앞이다.**
+ *
+ * 다른 신호가 다 같을 때 **맨 로케일 파일이 접두사 붙은 것을 이겨야 한다.** rubygems.org에서
+ * `config/locales/avo.{locale}.yml`(Avo 관리자 UI 9로케일)이 `config/locales/{locale}.yml`
+ * (앱 9로케일)을 이겼다 — 로케일 수·깊이가 같아 마지막 tiebreak인 경로 사전순으로 갔고
+ * `a` < `{`였다 (2026-09-02 3차 실측). 접두사는 "이 카탈로그의 한 조각"을 뜻하므로 맨 형태가
+ * 정본일 가능성이 높다.
+ *
+ * ⚠️ **로케일 수보다 뒤에 둔다.** 앞에 두면 discourse의 `themes/foundation/locales/{locale}.yml`
+ * (49로케일 · **1키**)이 진짜 `config/locales/client.{locale}.yml`을 이긴다.
+ */
+export function templateShapeRank(pathTemplate: string): number {
+  const at = pathTemplate.lastIndexOf("/");
+  const base = at === -1 ? pathTemplate : pathTemplate.slice(at + 1);
+  if (/^\{locale\}\.[^.]+$/.test(base)) return 0;
+  if (pathTemplate.includes("/{locale}/") || pathTemplate.startsWith("{locale}/")) return 1;
+  return 2;
+}
+
+/** 후보 순위 비교 — 어댑터 내부와 어댑터 간이 **같은 함수**를 쓴다. */
+export function compareTemplates(
+  a: { pathTemplate: string; localeCount: number },
+  b: { pathTemplate: string; localeCount: number },
+): number {
+  const sa = pathSignals(a.pathTemplate);
+  const sb = pathSignals(b.pathTemplate);
+  if (sa.hint !== sb.hint) return sa.hint ? -1 : 1;
+  if (sa.aside !== sb.aside) return sa.aside ? 1 : -1;
+  if (a.localeCount !== b.localeCount) return b.localeCount - a.localeCount;
+  const shape = templateShapeRank(a.pathTemplate) - templateShapeRank(b.pathTemplate);
+  if (shape !== 0) return shape;
+  if (sa.depth !== sb.depth) return sa.depth - sb.depth;
+  return compareKeys(a.pathTemplate, b.pathTemplate);
+}
+
+/**
+ * `rankCandidates`와 같은 축인데 **키가 `pathTemplate`이다.**
+ *
+ * 한 디렉터리에서 모양이 다른 후보가 여러 개 나올 수 있게 되면서(맨 로케일 파일 / 접두사 붙은
+ * 파일명 / 로케일 디렉터리) `dir`로는 마지막 tiebreak이 무승부가 되고 순서가 **삽입 순서에**
+ * 달린다 — 결정성이 곧 순위의 전제라 여기서만 갈라 쓴다. `depth`도 이쪽만 본다.
+ */
+export function rankTemplateCandidates<T extends { pathTemplate: string; locales: Set<string> }>(
+  candidates: readonly T[],
+): T[] {
+  return liftAncestors(
+    candidates
+      .slice()
+      .sort((a, b) =>
+        compareTemplates(
+          { pathTemplate: a.pathTemplate, localeCount: a.locales.size },
+          { pathTemplate: b.pathTemplate, localeCount: b.locales.size },
+        ),
+      ),
+  );
+}
+
+/** 템플릿이 든 디렉터리 (끝에 `/` 포함). 최상위면 빈 문자열. */
+function dirOf(pathTemplate: string): string {
+  const at = pathTemplate.lastIndexOf("/");
+  return at === -1 ? "" : pathTemplate.slice(0, at + 1);
+}
+
+/**
+ * 1순위의 **조상 디렉터리**에 있는 후보를 앞으로 끌어올린다.
+ *
+ * 카탈로그가 디렉터리 트리에서 조상에 있으면 그게 정본이고 자손은 그 하위 조각이다 —
+ * DMPRoadmap/roadmap이 `config/locales/contact_us/contact_us.{locale}.yml`(17로케일 · **11키**)로
+ * `config/locales/{locale}.yml`(15로케일)을 눌렀다. 접두사 형태를 받으면서 생긴 회귀고,
+ * 로케일 수가 실제로 더 많아서 그 신호로는 뒤집히지 않는다 (2026-09-02 3차).
+ *
+ * ⚠️ **비교 함수에 넣지 않는다.** "조상이 이긴다"는 추이적이지 않아서(A는 B의 조상, B는 C보다
+ * 로케일이 많음, C는 A의 조상 아님) `sort`에 넣으면 결과가 구현 정의가 된다. 정렬이 끝난 뒤
+ * 안정적으로 끌어올리는 편이 결정적이다. 승격할 때마다 head의 디렉터리가 짧아지므로 끝난다.
+ *
+ * ⚠️ **어댑터 안에서만 쓴다.** 어댑터 간에 적용하면 SchizoDuckie/DuckieTV의
+ * `_locales/{locale}.json`(json-catalog, 조상)이 `_locales/{locale}/messages.json`(정답)을
+ * 끌어내린다 — 크롬 최우선 규칙이 막고 있는 것을 여기서 되살릴 이유가 없다.
+ */
+export function liftAncestors<T extends { pathTemplate: string }>(ranked: readonly T[]): T[] {
+  const out = ranked.slice();
+  for (let i = 1; i < out.length; i += 1) {
+    const head = out[0];
+    const at = out[i];
+    if (head === undefined || at === undefined) continue;
+    const headDir = dirOf(head.pathTemplate);
+    const dir = dirOf(at.pathTemplate);
+    if (dir.length < headDir.length && headDir.startsWith(dir)) {
+      out.splice(i, 1);
+      out.unshift(at);
+      i = 0;
+    }
+  }
+  return out;
 }
 
 /** 샘플 하나의 판정. `unknown`은 "카탈로그 아님"이 아니라 **정보 없음**이다. */
