@@ -108,11 +108,10 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
       // `entries.length`가 곧 파일 순서다 — 정렬은 아래에서 **뒤에** 일어난다.
       const entry: LocaleEntry = { key, message, order: entries.length };
       if (typeof description === "string" && description !== "") entry.description = description;
-      // 객체가 아니면 싣지 않는다 — 그대로 되돌리면 크롬이 깨진다. 우리가 고칠 값이 아니라
-      // 원본이 이미 이상한 것이므로 에러가 아니라 무시다(남의 리포를 우리 규칙으로 막지 않는다).
-      if (placeholders !== null && typeof placeholders === "object" && !Array.isArray(placeholders)) {
-        entry.placeholders = placeholders as Record<string, unknown>;
-      }
+      // **있으면 모양을 안 보고 그대로 싣는다.** 걸러내면 원본에 있던 것이 우리 PR에서 조용히
+      // 사라지고, 그게 이 필드가 없애려는 손실이다. `undefined`(부재)와 `null`(있는데 null)은
+      // 다른 파일이라 `in`으로 가른다.
+      if ("placeholders" in raw) entry.placeholders = placeholders;
       entries.push(entry);
     }
 

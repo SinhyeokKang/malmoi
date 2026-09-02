@@ -124,11 +124,24 @@ describe("chrome-locales.read — placeholders를 그대로 나른다", () => {
     expect(r.locales[0]!.entries[0]).not.toHaveProperty("placeholders");
   });
 
-  it("객체가 아닌 placeholders는 싣지 않는다 — 그대로 되돌리면 크롬이 깨진다", () => {
+  it("객체가 아니어도 그대로 나른다 — 버리면 우리가 손실을 만든다", () => {
+    // 처음엔 객체가 아니면 버리게 짰는데, 그게 **이 태스크가 없애려는 바로 그 손실**이다:
+    // 원본에 있던 값이 우리 PR에서 조용히 사라진다. 에러로 보고하는 것도 답이 아니다 —
+    // read 에러는 `pnpm push:local`을 exit 1로 막아서(POSTMORTEM 2026-09-02) 남의 리포가
+    // 우리 규칙으로 실패한다. 해석하지 않고 그대로 되돌리면 파일이 원본과 같아진다.
     const r = chromeLocales.read(format, [
       f("_locales/en/messages.json", two({ A: { message: "a", placeholders: "nope" } })),
     ]);
-    expect(r.locales[0]!.entries[0]).not.toHaveProperty("placeholders");
+    expect(r.errors).toEqual([]);
+    expect(r.locales[0]!.entries[0]?.placeholders).toBe("nope");
+  });
+
+  it("null도 그대로 나른다 — 없는 것과 있는데 null인 것은 다른 파일이다", () => {
+    const r = chromeLocales.read(format, [
+      f("_locales/en/messages.json", two({ A: { message: "a", placeholders: null } })),
+    ]);
+    expect(r.locales[0]!.entries[0]).toHaveProperty("placeholders");
+    expect(r.locales[0]!.entries[0]?.placeholders).toBeNull();
   });
 
   it("description은 base가 아닌 로케일에서도 읽는다 (기존 동작 — 회귀 감시)", () => {
