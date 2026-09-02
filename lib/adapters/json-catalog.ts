@@ -198,7 +198,9 @@ function flatten(
   for (const [name, value] of pairs) {
     const key = prefix === "" ? name : `${prefix}${SEP}${name}`;
     if (typeof value === "string") {
-      out.push({ key, message: value });
+      // `out.length`가 곧 평탄화 순서다 — 이 순회가 파일 순서 그대로 돌고, 정렬은 호출부에서
+      // **뒤에** 일어난다. 별도 순회를 두면 두 순서가 갈릴 수 있다.
+      out.push({ key, message: value, order: out.length });
       continue;
     }
     if (value !== null && typeof value === "object") {

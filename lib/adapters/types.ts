@@ -64,6 +64,32 @@ export type LocaleEntry = {
   message: string;
   description?: string;
   /**
+   * 그 **파일 안에서의** 키 위치. 중첩이면 **평탄화 순서(첫 등장)** 다.
+   *
+   * `read`가 엔트리를 코드 유닛 순으로 정렬해 돌려주므로 원본 순서는 그 지점에서 사라진다 —
+   * 그게 첫 pull PR이 파일을 통째로 재정렬하는 뿌리다 (`docs/features/key-order-preservation/`).
+   * 순서를 **배열 위치가 아니라 필드로** 나르는 이유는 호출부가 "정렬된 배열"을 전제하기
+   * 때문이다 (`__tests__/contract.ts`의 "입력 배열 순서 무관" 불변식).
+   *
+   * ⚠️ **파일 스코프다.** 파일이 여럿인 레이아웃에서는 `common.json`의 3번째 키와
+   * `settings.json`의 3번째 키가 둘 다 2다 — 파일 경계를 넘어 비교할 수 없다.
+   *
+   * 없으면 "순서를 모른다"는 뜻이고 재생성 writer가 코드 유닛 순으로 뒤에 붙인다.
+   */
+  order?: number;
+  /**
+   * chrome `_locales`의 `placeholders` 블록. **해석하지 않고 원본 JSON을 그대로** 나른다.
+   *
+   * `{ content, example? }` 스키마를 우리가 검증하기 시작하면 크롬 스펙을 따라다녀야 하는데,
+   * 이 필드가 요구하는 것은 "잃지 않는다"뿐이다. 객체 안의 키 순서도 원본 그대로 둔다 —
+   * 우리가 만든 구조가 아니다.
+   *
+   * ⚠️ **왕복 의미 게이트가 이 필드의 손실을 원리적으로 못 본다.** 전에는 `LocaleEntry`에
+   * 없어서 read1·read2가 둘 다 무시했고, 손실이 있는데 지표가 "같다"고 말했다
+   * (`docs/ADAPTER-COVERAGE.md` §10.3 — chrome 33개 중 12개가 이 블록을 갖는다).
+   */
+  placeholders?: Record<string, unknown>;
+  /**
    * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
    *
    * **처리가 writer 방식마다 다르다** (MVP §4.1):

@@ -127,9 +127,10 @@ describe("chrome-locales — read", () => {
     const r = chromeLocales.read(format, [f("public/_locales/en/messages.json", CHROME_EN)]);
     expect(r.errors).toEqual([]);
     expect(r.locales[0]?.locale).toBe("en");
+    // order는 **파일 순서**라 정렬된 배열 위치와 다르다 — EXT_NAME이 파일에서 먼저다.
     expect(r.locales[0]?.entries).toEqual([
-      { key: "CMD_TOGGLE_PANEL", message: "Open BugShot side panel" },
-      { key: "EXT_NAME", message: "BugShot — Bug Reporting in One Shot", description: "Extension name" },
+      { key: "CMD_TOGGLE_PANEL", message: "Open BugShot side panel", order: 1 },
+      { key: "EXT_NAME", message: "BugShot — Bug Reporting in One Shot", description: "Extension name", order: 0 },
     ]);
   });
 
@@ -188,8 +189,8 @@ describe("json-catalog — read", () => {
     const r = jsonCatalog.read(flat, [f("src/shared/i18n/locales/en.json", FLAT_EN)]);
     expect(r.errors).toEqual([]);
     expect(r.locales[0]?.entries).toEqual([
-      { key: "auth.login", message: "Log in" },
-      { key: "common.viewAll", message: "View all" },
+      { key: "auth.login", message: "Log in", order: 1 },
+      { key: "common.viewAll", message: "View all", order: 0 },
     ]);
   });
 
@@ -208,8 +209,8 @@ describe("json-catalog — read", () => {
     const r = jsonCatalog.read(nested, [f("src/lib/i18n/en.json", NESTED_EN)]);
     const sub = r.locales[0]?.entries.filter((e: { key: string }) => e.key.startsWith("hero.subcopy"));
     expect(sub).toEqual([
-      { key: "hero.subcopy.0", message: "a" },
-      { key: "hero.subcopy.1", message: "b" },
+      { key: "hero.subcopy.0", message: "a", order: 2 },
+      { key: "hero.subcopy.1", message: "b", order: 3 },
     ]);
   });
 

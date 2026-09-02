@@ -96,16 +96,24 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
         errors.push({ path: file.path, message: `'${key}'의 값이 { message } 객체가 아니다` });
         continue;
       }
-      const { message, description } = raw as { message?: unknown; description?: unknown };
+      const { message, description, placeholders } = raw as {
+        message?: unknown;
+        description?: unknown;
+        placeholders?: unknown;
+      };
       if (typeof message !== "string") {
         errors.push({ path: file.path, message: `'${key}'에 message 필드가 없다` });
         continue;
       }
-      entries.push(
-        typeof description === "string" && description !== ""
-          ? { key, message, description }
-          : { key, message },
-      );
+      // `entries.length`가 곧 파일 순서다 — 정렬은 아래에서 **뒤에** 일어난다.
+      const entry: LocaleEntry = { key, message, order: entries.length };
+      if (typeof description === "string" && description !== "") entry.description = description;
+      // 객체가 아니면 싣지 않는다 — 그대로 되돌리면 크롬이 깨진다. 우리가 고칠 값이 아니라
+      // 원본이 이미 이상한 것이므로 에러가 아니라 무시다(남의 리포를 우리 규칙으로 막지 않는다).
+      if (placeholders !== null && typeof placeholders === "object" && !Array.isArray(placeholders)) {
+        entry.placeholders = placeholders as Record<string, unknown>;
+      }
+      entries.push(entry);
     }
 
     entries.sort((a, b) => compareKeys(a.key, b.key));

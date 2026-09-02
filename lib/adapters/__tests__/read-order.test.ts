@@ -57,6 +57,14 @@ describe("json-catalog.read — 파일 순서를 order로 관측한다", () => {
     expect(orderOf(r.locales[1]!.entries)).toEqual({ b: 0, a: 1 });
   });
 
+  it("`a.b`와 `a.b.c`가 공존해도 둘 다 order를 갖는다 (POSTMORTEM 2026-09-02)", () => {
+    // `.`가 우리 조인 구분자이면서 실제 키에 든 문자라 flatten/unflatten이 단사가 아니다.
+    // read 단계는 둘을 그대로 내보내고, 어느 쪽을 버릴지는 write의 접두 충돌 처리가 정한다 —
+    // **order가 그 판정을 바꾸지 않는다**는 것을 여기서 고정한다.
+    const r = jsonCatalog.read(nested, [f("i18n/en.json", '{"a":{"b":"shallow"},"a.b.c":"deep"}\n')]);
+    expect(orderOf(r.locales[0]!.entries)).toEqual({ "a.b": 0, "a.b.c": 1 });
+  });
+
   it("flat 파일도 order를 갖는다", () => {
     const r = jsonCatalog.read(nested, [f("i18n/en.json", two({ "b.two": "Two", "a.one": "One" }))]);
     expect(orderOf(r.locales[0]!.entries)).toEqual({ "b.two": 0, "a.one": 1 });
