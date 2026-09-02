@@ -72,7 +72,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 빈 문자열로 폴백하면 base 판정이 전부 false가 되어 base 파일이 조용히 폴백을 잃는다.
   const { baseLocale } = project;
   if (baseLocale === null) throw new Error("도달 불가: formatFromProject를 통과했는데 baseLocale이 null이다");
-  const layout = adapterFor(format).layout;
+  const { layout, writeStrategy } = adapterFor(format);
   const client = await deps.createClient(project);
 
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
@@ -94,8 +94,12 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   // 수술적 치환은 write에 원본이 필요하다 (ARCHITECTURE §1.4). 재생성 어댑터는 건너뛴다 —
   // 파일당 blob 읽기 1회를 아끼는 지점이고, 1층이 이미 대부분을 걸렀다.
+  //
+  // ⚠️ **`layout`이 아니라 `writeStrategy`로 판단한다.** 전에는 `multi-locale`로 갈랐는데
+  // `yaml-catalog`·`code-dict`가 **`per-locale`인데 수술적**이라 그 판단이 성립하지 않는다 —
+  // 원본 없이 write에 들어가면 `null`을 받아 **PR이 조용히 비어 나간다** (ARCHITECTURE §1).
   const current = new Map<string, string>();
-  if (layout === "multi-locale") {
+  if (writeStrategy === "surgical") {
     for (const p of paths) {
       const blob = tree.find((t) => t.path === p.path);
       if (blob) current.set(p.path, await client.getBlobText(blob.sha));
@@ -111,7 +115,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   );
   if (changes.length === 0) {
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
-    // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 ts-dict면 blob 8개)를 다시 읽는다.
+    // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
     await deps.saveLastPulledAt(project.id, captured);
     return { status: "skipped", reason: "no-changes" };
   }

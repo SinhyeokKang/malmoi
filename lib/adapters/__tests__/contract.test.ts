@@ -61,6 +61,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
   const fakeRegenerating = (b: Break): Adapter => ({
     name: "json-catalog",
     layout: "per-locale",
+    writeStrategy: "regenerate",
     detect: () => undefined,
     detectCandidates: () => [],
     read: () => ({ locales: [], errors: [], nested: false }),
@@ -101,6 +102,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     const fakeSurgical: Adapter = {
       name: "ts-dict",
       layout: "multi-locale",
+      writeStrategy: "surgical",
       detect: () => undefined,
       detectCandidates: () => [],
       read: () => ({ locales: [], errors: [], nested: false }),

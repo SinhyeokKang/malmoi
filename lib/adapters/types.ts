@@ -1,5 +1,5 @@
 /** 어댑터 이름. 새 포맷을 지원하면 여기에 추가된다. */
-export type AdapterName = "chrome-locales" | "json-catalog" | "ts-dict";
+export type AdapterName = "chrome-locales" | "json-catalog" | "yaml-catalog" | "code-dict" | "ts-dict";
 
 /** 리포에서 찾아낸 로케일 파일 포맷. `detect`의 산출물이고 read·write 양쪽에 넘긴다. */
 export type DetectedFormat = {
@@ -31,6 +31,23 @@ export type DetectedFormat = {
    * 성질이라 `read`가 관측해서 `ReadResult.nested`로 돌려주고, 호출부가 write 전에 실어준다.
    */
   nested?: boolean;
+
+  /**
+   * 파일 경로 → 그 파일이 중첩이었는지. **`nested`보다 이쪽이 정확하다.**
+   *
+   * `nested`가 포맷 단위 boolean이라, 로케일 파일 하나가 중첩이면 형제 파일까지 중첩으로 취급돼
+   * **평평한 파일의 점 포함 키가 쪼개지고 값이 사라졌다** (musicblocks 84로케일 중 81개 —
+   * ARCHITECTURE §1.35). write는 이 맵을 먼저 보고, 없을 때만 `nested`로 폴백한다.
+   */
+  nestedByPath?: Record<string, boolean>;
+
+  /**
+   * 파일 경로 → 최상위가 로케일 코드 하나로 감싸여 있었는지 (`yaml-catalog` 전용).
+   *
+   * Rails 관례가 그렇다(`ko:` 아래에 내용 — mastodon·redmine·decidim). misskey·directus는 루트에
+   * 바로 키가 온다. `read`가 관측하고 `write`가 같은 모양으로 되돌린다.
+   */
+  rootKeyedByPath?: Record<string, boolean>;
 };
 
 /** 경로 → 내용. 읽을 수 없으면 undefined. */
@@ -77,8 +94,15 @@ export type ReadResult = {
   /**
    * 원본이 중첩 구조였는지 — 읽으면서 관측한 값이다. write가 같은 모양으로 되돌리려면
    * 이 값을 `DetectedFormat.nested`에 실어야 한다. flat 전용 어댑터(chrome)는 항상 false.
+   *
+   * ⚠️ **파일이 여럿이면 이 값은 거칠다** — 하나라도 중첩이면 true다. 정확한 값은
+   * `nestedByPath`에 있고, 그쪽을 써야 평평한 파일이 쪼개지지 않는다 (ARCHITECTURE §1.35).
    */
   nested: boolean;
+  /** 파일별 중첩 여부. 호출부가 `DetectedFormat.nestedByPath`에 그대로 실어준다. */
+  nestedByPath?: Record<string, boolean>;
+  /** 파일별 로케일 루트 키 여부 (`yaml-catalog` 전용). */
+  rootKeyedByPath?: Record<string, boolean>;
 };
 
 export type WriteInput = {
@@ -100,6 +124,19 @@ export type Adapter = {
    *   (`ts-dict`). write도 파일별로 불러야 한다.
    */
   layout: "per-locale" | "multi-locale";
+  /**
+   * write 방식. **`layout`과 별개 축이다** (2026-09-02 분리).
+   *
+   * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `usableEntries`의 결정성 규칙(§1.1)을
+   *   지나야 한다 (`chrome-locales`·`json-catalog`).
+   * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
+   *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`).
+   *
+   * ⚠️ **pull이 "원본 blob 내용을 받아야 하나"를 이 값으로 판단한다.** 전에는 `layout`으로
+   * 갈랐는데 `per-locale` + `surgical` 조합(YAML·코드 딕셔너리)이 생겨 성립하지 않는다 —
+   * `layout`으로 가르면 그 프로젝트가 원본 없이 write에 들어가 **PR이 조용히 비어 나간다.**
+   */
+  writeStrategy: "regenerate" | "surgical";
   /**
    * 리포 파일 경로 목록에서 이 포맷을 찾는다. 못 찾으면 undefined.
    *
@@ -123,4 +160,12 @@ export type Adapter = {
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** @returns 파일 내용. 낼 항목이 0개면 `null` — 호출부가 그 로케일을 트리에서 뺀다 (MVP §4.1). */
   write(format: DetectedFormat, input: WriteInput): string | null;
+  /**
+   * `write`와 같되 **버린 항목을 에러로 함께 돌려준다.** 있는 어댑터만 구현한다.
+   *
+   * 왜 필요한가: `json-catalog`의 중첩 복원에서 키가 다른 키의 점 경계 접두이면 한쪽이 사라지는데
+   * (`a.b`와 `a.b.c`), 전에는 `setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다. 값을 잃더라도
+   * **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다 (ARCHITECTURE §1.35).
+   */
+  writeWithErrors?(format: DetectedFormat, input: WriteInput): { content: string | null; errors: AdapterError[] };
 };

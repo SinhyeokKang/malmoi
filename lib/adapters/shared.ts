@@ -45,33 +45,101 @@ export function looksLikeLocale(name: string): boolean {
  */
 const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|translations)(\/|$)/i;
 
+/**
+ * 예제·픽스처·문서 디렉터리 — **감점 신호다** (2026-09-02 추가).
+ *
+ * 실측 오탐 4건 중 2건이 여기서 나왔다: lokalise/i18n-ally는 `examples/by-frameworks/…/_locales`가
+ * 도구 자신의 `locales/`를 눌렀고, payloadcms/payload는 `examples/localization/…`이 진짜
+ * `packages/translations`를 눌렀다. ant-design은 `.dumi/theme/locales`(문서 사이트 테마 2로케일)가
+ * 잡혔다 (`docs/ADAPTER-COVERAGE.md` §1②).
+ *
+ * **배제가 아니라 감점이다** — 예제 모음 자체가 산출물인 리포에서 그것만 있으면 잡아야 한다.
+ */
+const ASIDE_HINT =
+  /(^|\/)(examples?|fixtures?|__fixtures__|demos?|playground|samples?|tests?|__tests__|spec|docs?|\.dumi|storybook|\.storybook|node_modules|vendor)(\/|$)/i;
+
 export function rankCandidates<T extends { dir: string; locales: Set<string> }>(candidates: readonly T[]): T[] {
   return candidates.slice().sort((a, b) => {
     const hint = Number(I18N_HINT.test(b.dir)) - Number(I18N_HINT.test(a.dir));
     if (hint !== 0) return hint;
+    // 예제·픽스처는 뒤로. 신호가 같을 때만 갈리므로 진짜 카탈로그를 밀어내지 않는다.
+    const aside = Number(ASIDE_HINT.test(a.dir)) - Number(ASIDE_HINT.test(b.dir));
+    if (aside !== 0) return aside;
     if (b.locales.size !== a.locales.size) return b.locales.size - a.locales.size;
     return compareKeys(a.dir, b.dir);
   });
 }
 
+/** 샘플 하나의 판정. `unknown`은 "카탈로그 아님"이 아니라 **정보 없음**이다. */
+export type CatalogVerdict = "yes" | "no" | "unknown";
+
 /**
- * 후보 파일이 메시지 카탈로그 모양인가. 경로 신호만으로는 취약하므로 **내용을 한 번 본다**.
+ * 후보 파일이 메시지 카탈로그 모양인가. 경로 신호만으로는 취약하므로 **내용을 본다**.
  *
- * 호출부가 파일을 읽어줄 수 있을 때만 쓴다(`probe`) — GitHub API에서는 블롭 읽기가 비싸서
- * 경로로 후보를 좁힌 뒤 그 후보 하나만 확인한다.
+ * ⚠️ **판정이 3값이다** (2026-09-02). 전에는 boolean이었고 "최상위 값이 **전부** 문자열·객체"를
+ * 요구했는데, 그 규칙이 지원 포맷 리포 3개를 통째로 버렸다 (`docs/ADAPTER-COVERAGE.md` §3):
+ *
+ * - esmBot — 샘플이 `{}`였다. 빈 스텁 로케일은 "아님"이 아니라 **정보 없음**이다 → `unknown`
+ * - jsxc — 최상위에 `"Notifications": null`
+ * - scratchblocks — 최상위에 `percentTranslated`(숫자)
+ *
+ * 뒤 둘은 **메타데이터가 섞인 정상 카탈로그**다. 그래서 "전부"를 "문자열·객체 리프가 하나 이상이고
+ * 절반 이상"으로 낮췄다. **완화한 것은 탐지 관문뿐이고 `read`는 그대로 엄격하다** — 그 값들은
+ * 여전히 `errors`로 보고된다.
  */
-export function looksLikeCatalog(content: string): boolean {
+export function catalogVerdict(content: string): CatalogVerdict {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch {
-    return false;
+    return "no";
   }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return false;
-  const values = Object.values(parsed as Record<string, unknown>);
-  if (values.length === 0) return false;
-  // 리프가 문자열이거나 객체/배열이어야 한다. 숫자·불린만 있으면 카탈로그가 아니다.
-  return values.every((v) => typeof v === "string" || (v !== null && typeof v === "object"));
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return "no";
+  return verdictFromValues(Object.values(parsed as Record<string, unknown>));
+}
+
+/** 파싱된 최상위 값 목록으로 판정한다 — YAML 어댑터가 같은 규칙을 쓴다. */
+export function verdictFromValues(values: readonly unknown[]): CatalogVerdict {
+  if (values.length === 0) return "unknown";
+  const good = values.filter((v) => typeof v === "string" || (v !== null && typeof v === "object")).length;
+  if (good === 0) return "no";
+  return good * 2 >= values.length ? "yes" : "no";
+}
+
+/** @deprecated `catalogVerdict`를 쓴다. `unknown`을 `false`로 눌러버린다. */
+export function looksLikeCatalog(content: string): boolean {
+  return catalogVerdict(content) === "yes";
+}
+
+/** probe로 읽어볼 샘플 수 상한. GitHub API에서는 블롭 읽기가 요청 비용이다. */
+const MAX_SAMPLES = 3;
+
+/**
+ * 샘플을 **여러 개** 읽어 카탈로그인지 확인한다. 하나라도 `yes`면 통과.
+ *
+ * 순서가 중요하다 — `en`(base 후보)을 먼저 본다. **정렬상 첫 로케일은 체계적으로 가장 덜 관리된
+ * 파일이다**(`ab`·`ar`·`bg`가 앞에 오고 그게 빈 스텁이거나 null을 품는다). 그 하나로 리포 전체를
+ * 버린 것이 위 세 실패의 공통 구조였다.
+ */
+export function verifySamples(
+  pathTemplate: string,
+  locales: ReadonlySet<string>,
+  probe: (path: string) => string | undefined,
+  verdict: (content: string) => CatalogVerdict = catalogVerdict,
+): boolean {
+  for (const locale of sampleOrder(locales)) {
+    const content = probe(pathTemplate.replace("{locale}", locale));
+    if (content === undefined) continue;
+    if (verdict(content) === "yes") return true;
+  }
+  return false;
+}
+
+/** `en`을 먼저, 그다음 코드포인트 순. 상한까지만. */
+export function sampleOrder(locales: ReadonlySet<string>): string[] {
+  const rest = [...locales].filter((l) => l !== "en").sort(compareKeys);
+  const ordered = locales.has("en") ? ["en", ...rest] : rest;
+  return ordered.slice(0, MAX_SAMPLES);
 }
 
 /**

@@ -61,7 +61,15 @@ export function renderLocaleFiles(
       if (locale === undefined) {
         throw new Error(`per-locale 경로에 locale이 없다: ${p.path} (resolveLocalePaths 버그)`);
       }
-      const content = adapter.write(format, {
+      // ⚠️ **`per-locale`이어도 수술적일 수 있다** (`yaml-catalog`·`code-dict`). 그 어댑터는 원본을
+      // 받아야 하고, 원본이 없으면 파일을 새로 만들지 않는다 — 그게 수술적 치환의 전제다.
+      let writeFormat = format;
+      if (adapter.writeStrategy === "surgical") {
+        const original = current.get(p.path);
+        if (original === undefined) return { path: p.path, content: null };
+        writeFormat = { ...format, currentFiles: [{ path: p.path, content: original }] };
+      }
+      const content = adapter.write(writeFormat, {
         locale,
         isBase: locale === baseLocale,
         entries: buildWriteEntries(rowsForLocale(keys, locale), { isBase: locale === baseLocale }),

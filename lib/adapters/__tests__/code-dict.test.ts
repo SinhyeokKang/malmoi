@@ -110,14 +110,18 @@ describe("code-dict — read", () => {
   });
 
   it("명명된 const를 한 단계 따라간다 (ant-design)", () => {
-    const r = codeDict.read(base(), [f("components/locale/ko_KR.ts", NAMED_CONST)]);
+    const r = codeDict.read(base({ pathTemplate: "components/locale/{locale}.ts", locales: ["ko_KR"] }), [
+      f("components/locale/ko_KR.ts", NAMED_CONST),
+    ]);
     const keys = r.locales[0]!.entries.map((e) => e.key);
     expect(keys).toContain("global.placeholder");
     expect(keys).toContain("locale");
   });
 
   it("문자열 리터럴이 아닌 값은 에러로 남긴다 — import 참조·템플릿 리터럴", () => {
-    const r = codeDict.read(base(), [f("components/locale/ko_KR.ts", NAMED_CONST)]);
+    const r = codeDict.read(base({ pathTemplate: "components/locale/{locale}.ts", locales: ["ko_KR"] }), [
+      f("components/locale/ko_KR.ts", NAMED_CONST),
+    ]);
     // Pagination(shorthand) + default: typeTemplate(식별자) = 2건
     expect(r.errors.length).toBeGreaterThanOrEqual(2);
     expect(r.errors.map((e) => e.message).join(" ")).toContain("Pagination");

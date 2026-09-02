@@ -9,7 +9,7 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  *
  * ⚠️ **규칙이 전 어댑터 공통이 아니다.** `layout`으로 갈린다 (ARCHITECTURE §1.1·§1.4):
  *
- * | 규칙 | `per-locale` (재생성) | `multi-locale` (수술적 치환) |
+ * | 규칙 | `regenerate` (재생성) | `surgical` (수술적 치환) |
  * |---|---|---|
  * | 정렬·2칸·끝 개행 1개 | 검사 | **비적용** — 원본 보존이 이 방식의 요지다 |
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
@@ -44,6 +44,28 @@ export const ORPHAN_KEY = "b_gone";
 /** 수술적 치환 어댑터의 원본에 남아 있어야 하는 값. */
 export const ORPHAN_SOURCE_VALUE = "ORPHAN_SOURCE_VALUE_STAYS";
 
+/** 수술적 치환 어댑터가 쓸 원본. 키가 원본에 있어야 치환 경로를 밟는다. */
+function yamlSource(keys: readonly string[]): string {
+  return [
+    "# 사람이 넣은 주석 — 보존돼야 한다",
+    ...keys.map((k) => `${JSON.stringify(k)}: ${JSON.stringify(srcVal(k))}`),
+    `${JSON.stringify(ORPHAN_KEY)}: ${JSON.stringify(ORPHAN_SOURCE_VALUE)}`,
+    "",
+  ].join("\n");
+}
+
+/** `code-dict`(로케일당 파일 하나)의 원본. */
+function codeSource(keys: readonly string[]): string {
+  return [
+    "// 사람이 넣은 주석 — 보존돼야 한다",
+    "export default {",
+    ...keys.map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(srcVal(k))},`),
+    `  ${JSON.stringify(ORPHAN_KEY)}: ${JSON.stringify(ORPHAN_SOURCE_VALUE)},`,
+    "}",
+    "",
+  ].join("\n");
+}
+
 /** `multi-locale` 어댑터의 원본 파일을 만든다 — 치환 대상이 원본에 있어야 한다. */
 function tsSource(keys: readonly string[]): string {
   const body = () =>
@@ -66,24 +88,39 @@ function tsSource(keys: readonly string[]): string {
   ].join("\n");
 }
 
-/** 어댑터마다 유효한 `DetectedFormat`. `multi-locale`은 원본 파일이 필수다 (§1.4). */
+/**
+ * 어댑터마다 유효한 `DetectedFormat`. **수술적 치환 어댑터는 원본 파일이 필수다** (§1.4).
+ *
+ * ⚠️ 원본이 필요한지는 `layout`이 아니라 `writeStrategy`가 정한다 — `yaml-catalog`·`code-dict`가
+ * `per-locale`인데 수술적이다.
+ */
 export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_KEYS): DetectedFormat {
-  switch (adapter.layout) {
-    case "multi-locale":
+  switch (adapter.name) {
+    case "ts-dict":
       return {
         adapter: adapter.name,
         pathTemplate: "src/i18n/ns/*.ts",
         locales: ["ko", "en"],
         currentFiles: [{ path: "src/i18n/ns/a.ts", content: tsSource(keys) }],
       };
-    case "per-locale":
+    case "yaml-catalog":
       return {
         adapter: adapter.name,
-        // 어댑터별 실제 경로 모양 — read를 부르지 않으므로 write에는 영향이 없다.
-        pathTemplate:
-          adapter.name === "chrome-locales" ? "public/_locales/{locale}/messages.json" : "i18n/{locale}.json",
+        pathTemplate: "config/locales/{locale}.yml",
         locales: ["en"],
+        currentFiles: [{ path: "config/locales/en.yml", content: yamlSource(keys) }],
       };
+    case "code-dict":
+      return {
+        adapter: adapter.name,
+        pathTemplate: "src/locale/{locale}.ts",
+        locales: ["en"],
+        currentFiles: [{ path: "src/locale/en.ts", content: codeSource(keys) }],
+      };
+    case "chrome-locales":
+      return { adapter: adapter.name, pathTemplate: "public/_locales/{locale}/messages.json", locales: ["en"] };
+    case "json-catalog":
+      return { adapter: adapter.name, pathTemplate: "i18n/{locale}.json", locales: ["en"] };
   }
 }
 
@@ -110,6 +147,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const bad: string[] = [];
   const fmt = formatFor(adapter);
   const locale = adapter.layout === "multi-locale" ? "ko" : "en";
+  const surgical = adapter.writeStrategy === "surgical";
   const write = (entries: readonly LocaleEntry[], f: DetectedFormat = fmt) =>
     adapter.write(f, { locale, isBase: true, entries });
 
@@ -136,8 +174,9 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const missing = CONTRACT_KEYS.filter((k) => !plain.includes(val(k)));
   if (missing.length > 0) bad.push(`DB 값이 출력에 반영되지 않았다: ${missing.join(", ")}`);
 
-  if (adapter.layout === "multi-locale") {
+  if (surgical) {
     // 수술적 치환은 원본 보존이 요지다 — 정렬·2칸·끝 개행·빈 값 필터를 적용하지 않는다.
+    // **`layout`이 아니라 `writeStrategy`로 갈린다** — yaml-catalog가 per-locale인데 여기로 온다.
     if (withOrphan !== null && !withOrphan.includes(ORPHAN_SOURCE_VALUE)) {
       bad.push("orphaned 키의 원본 값을 지웠다 — 수술적 치환은 파일에 남겨야 한다 (§1.4)");
     }

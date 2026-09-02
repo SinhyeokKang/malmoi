@@ -73,7 +73,22 @@ function pairs(
   return out;
 }
 
-function detectCandidates(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
+/**
+ * ⚠️ **항상 빈 배열이다 — 자동 탐지에서 빠졌다** (2026-09-02, ADAPTER-COVERAGE 판정 ③).
+ *
+ * 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일
+ * 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가
+ * 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
+ *
+ * **`--adapter ts-dict` / `Project.adapterName` 명시 지정은 그대로 동작한다** — bugshot-2가 실전
+ * 검증 대상이고, `read`·`write`는 아무것도 바뀌지 않았다. 탐지 로직은 `detectByContent`에 남아
+ * 있으니 되살릴 때 그것을 부르면 된다.
+ */
+function detectCandidates(_paths: readonly string[], _probe?: (p: string) => string | undefined): DetectedFormat[] {
+  return [];
+}
+
+function detectByContent(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
   const byDir = new Map<string, string[]>();
   for (const path of paths) {
     const m = NS_DIR.exec(path);
@@ -108,6 +123,9 @@ function detectCandidates(paths: readonly string[], probe?: (p: string) => strin
 function detect(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat | undefined {
   return detectCandidates(paths, probe)[0];
 }
+
+/** 자동 탐지에서 빠진 로직의 보관처. 되살리려면 `detectCandidates`가 이걸 부르면 된다. */
+export const tsDictDetectByContent = detectByContent;
 
 function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
   const byLocale = new Map<string, LocaleEntry[]>();
@@ -174,4 +192,12 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   return changed ? sf.getFullText() : file.content;
 }
 
-export const tsDict: Adapter = { name: "ts-dict", layout: "multi-locale", detect, detectCandidates, read, write };
+export const tsDict: Adapter = {
+  name: "ts-dict",
+  layout: "multi-locale",
+  writeStrategy: "surgical",
+  detect,
+  detectCandidates,
+  read,
+  write,
+};

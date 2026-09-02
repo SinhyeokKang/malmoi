@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectFormat, tsDict } from "../index";
+import { tsDictDetectByContent } from "../ts-dict";
 
 /**
  * 픽스처는 bugshot-2 `src/i18n/namespaces/common.ts`의 실제 형태다 —
@@ -47,14 +48,19 @@ const format = {
 };
 const file = (content = SOURCE) => [{ path: "src/i18n/namespaces/common.ts", content }];
 
-describe("detectFormat — ts-dict", () => {
+/**
+ * ⚠️ **`ts-dict`는 자동 탐지에서 빠졌다** (ADAPTER-COVERAGE 판정 ③ — 오픈소스 109개에서 후보에
+ * 0회). 그래서 탐지는 `detectFormat`이 아니라 보관된 `tsDictDetectByContent`로 검사한다.
+ * 명시 지정(`--adapter ts-dict`)이 실제 사용 경로이고, read·write는 아무것도 바뀌지 않았다.
+ */
+describe("detect — ts-dict (자동 탐지 제외, 로직은 보관)", () => {
   it("namespaces 디렉터리의 .ts 파일들을 찾는다", () => {
-    const d = detectFormat([
+    const d = tsDictDetectByContent([
       "src/i18n/namespaces/common.ts",
       "src/i18n/namespaces/editor.ts",
       "src/i18n/index.ts",
       "package.json",
-    ], () => SOURCE);
+    ], () => SOURCE)[0];
     expect(d).toMatchObject({ adapter: "ts-dict" });
     expect(d?.locales.sort()).toEqual(["en", "fr", "ko"]);
   });
@@ -89,10 +95,10 @@ export const app = { ko, en };
   });
 
   it("실제 bugshot-2 형태에서 로케일이 정확히 셋이다", () => {
-    const d = detectFormat(
+    const d = tsDictDetectByContent(
       ["src/i18n/namespaces/common.ts", "src/i18n/namespaces/ai.ts"],
       () => SOURCE + "\nexport const ai = { ko, en, fr };\n",
-    );
+    )[0];
     expect(d?.locales.sort()).toEqual(["en", "fr", "ko"]);
   });
 });

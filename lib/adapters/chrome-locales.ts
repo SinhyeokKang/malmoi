@@ -1,4 +1,4 @@
-import { compareKeys, looksLikeCatalog, looksLikeLocale, rankCandidates, serialize, usableEntries } from "./shared";
+import { compareKeys, looksLikeLocale, rankCandidates, serialize, usableEntries, verifySamples } from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult } from "./types";
 
 /**
@@ -42,12 +42,14 @@ function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | u
   return detectCandidates(paths, probe)[0];
 }
 
-/** 후보 로케일 파일 하나를 읽어 카탈로그 모양인지 확인한다. */
+/**
+ * 후보 로케일 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다.
+ *
+ * 전에는 정렬상 첫 로케일 하나만 봤고, 그게 지원 포맷 리포 3개를 통째로 버렸다 —
+ * 상세는 `verifySamples` (ARCHITECTURE §1.3).
+ */
 export function verify(pathTemplate: string, locales: ReadonlySet<string>, probe: FileProbe): boolean {
-  const sample = [...locales].sort(compareKeys)[0];
-  if (sample === undefined) return false;
-  const content = probe(pathTemplate.replace("{locale}", sample));
-  return content !== undefined && looksLikeCatalog(content);
+  return verifySamples(pathTemplate, locales, probe);
 }
 
 function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadResult {
@@ -130,4 +132,12 @@ export function localeFromPath(pathTemplate: string, path: string): string | und
 
 type AdapterFileLike = { path: string; content: string };
 
-export const chromeLocales: Adapter = { name: "chrome-locales", layout: "per-locale", detect, detectCandidates, read, write };
+export const chromeLocales: Adapter = {
+  name: "chrome-locales",
+  layout: "per-locale",
+  writeStrategy: "regenerate",
+  detect,
+  detectCandidates,
+  read,
+  write,
+};

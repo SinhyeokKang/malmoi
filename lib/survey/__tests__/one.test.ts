@@ -34,30 +34,26 @@ const BROKEN = {
   "locales/zz.json": '{"ok": "OK", "n": 3}\n',
 };
 
-/** 4. 어댑터 간 경합 — chrome `_locales`(2키)가 ts-dict(4키)를 가린다 (bugshot-2) */
-const TS_SOURCE = `// 주석 보존
-const ko = {
+/**
+ * 4. 어댑터 간 경합 — chrome `_locales`(2키)가 `code-dict`(3키)를 가린다.
+ *
+ * ant-design 실측이 이 형태였다: 부속 카탈로그가 진짜 코드 딕셔너리를 1순위에서 눌렀다.
+ * (전에는 `ts-dict`로 이 케이스를 썼는데 자동 탐지에서 빠졌다 — ADAPTER-COVERAGE 판정 ③.)
+ */
+const CODE_SOURCE = `// 주석 보존
+export default {
   "common.ok": "확인",
   "common.close": "닫기",
   ...base,
   "time.now": "방금",
   shorthandKey,
-} as const;
-
-const en = {
-  "common.ok": "OK",
-  "common.close": "Close",
-  ...base,
-  "time.now": "Just now",
-  shorthandKey,
-} satisfies Bundle;
-
-export const app = { ko, en };
+}
 `;
 const CROSS = {
   "public/_locales/en/messages.json": JSON.stringify({ EXT_NAME: { message: "X" }, CMD: { message: "C" } }, null, 2) + "\n",
   "public/_locales/ko/messages.json": JSON.stringify({ EXT_NAME: { message: "엑스" }, CMD: { message: "씨" } }, null, 2) + "\n",
-  "src/i18n/namespaces/app.ts": TS_SOURCE,
+  "src/i18n/ko.ts": CODE_SOURCE,
+  "src/i18n/en.ts": CODE_SOURCE,
 };
 
 const input = (repo: string, files: Record<string, string>, extraPaths: string[] = []): SurveyInput => ({
@@ -102,9 +98,9 @@ describe("candidatesFor — [0]이 항상 detectFormat 결과다", () => {
     const paths = Object.keys(CROSS);
     const probe = (p: string) => (CROSS as Record<string, string>)[p];
     const found = candidatesFor(paths, probe);
-    // 1순위는 chrome(우선순위) — 그런데 실제 번역 표면은 ts-dict다
+    // 1순위는 chrome(우선순위) — 그런데 실제 번역 표면은 코드 딕셔너리다
     expect(found[0]?.adapter).toBe("chrome-locales");
-    expect(found.map((c) => c.adapter)).toContain("ts-dict");
+    expect(found.map((c) => c.adapter)).toContain("code-dict");
   });
 });
 
@@ -189,21 +185,23 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.keyCollisions).toBe(1); // "a.b" 가 flat·중첩 양쪽에서 나온다
   });
 
-  it("어댑터 간 경합: 가려진 ts-dict 후보가 목록에 남는다", () => {
+  it("어댑터 간 경합: 가려진 code-dict 후보가 목록에 남는다", () => {
     const s = surveyOne(input("acme/cross", CROSS));
     expect(s.chosen?.adapter).toBe("chrome-locales");
-    expect(s.candidates.map((c) => c.adapter)).toContain("ts-dict");
+    expect(s.candidates.map((c) => c.adapter)).toContain("code-dict");
     // 1순위가 2키인데 2순위는 그보다 많다 — 오탐 판정의 실제 근거가 된다
     expect(s.keyCount).toBe(2);
   });
 
-  it("코드 어댑터의 무증상 skip을 센다 (에러가 아니라 조용히 건너뛴 것)", () => {
-    const tsOnly = { "src/i18n/namespaces/app.ts": TS_SOURCE };
-    const s = surveyOne(input("acme/ts", tsOnly));
-    expect(s.chosen?.adapter).toBe("ts-dict");
-    // spread(...base) 1개 + shorthand 1개 × 로케일 2개 = 4
-    expect(s.silentSkips).toBe(4);
-    // 읽힌 키(3) < 파일의 문자열 리터럴 수 — 부분 읽기의 유일한 그물이다
+  it("코드 어댑터는 건너뛴 프로퍼티를 **에러로** 보고한다 (무증상 skip이 아니다)", () => {
+    const codeOnly = { "src/i18n/ko.ts": CODE_SOURCE, "src/i18n/en.ts": CODE_SOURCE };
+    const s = surveyOne(input("acme/code", codeOnly));
+    expect(s.chosen?.adapter).toBe("code-dict");
+    // spread(...base)와 shorthand가 조용히 사라지지 않고 유형화된다 — `ts-dict`와의 차이다
+    expect(s.errors["non-literal-value"] + s.errors.other).toBeGreaterThan(0);
+    // 그래서 무증상 skip 카운터는 0이다 (셀 것이 없다)
+    expect(s.silentSkips).toBe(0);
+    // 읽힌 키(3) < 파일의 문자열 리터럴 수 — 부분 읽기의 그물은 그대로 둔다
     expect(s.readKeyCount).toBe(3);
     expect(s.literalCount).toBeGreaterThan(s.readKeyCount!);
   });
@@ -249,18 +247,17 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.roundtrip.semantic).toBe("not-run");
   });
 
-  it("어댑터가 throw해도 유형화해서 담는다 (ts-dict는 파싱 실패를 errors로 주지 않는다)", () => {
-    // 로케일 객체가 둘이라 detect는 통과하지만 read에서 깨지는 소스
-    const good = "const ko = { \"a\": \"1\" };\nconst en = { \"a\": \"2\" };\n";
+  it("어댑터 호출을 감싸므로 던지지 않는다 — 리포 하나가 전체를 멈추지 않는다", () => {
+    const good = 'export default { "a": "1" }\n';
     const s = surveyOne({
       repo: "acme/throws",
-      paths: ["src/i18n/a.ts", "src/i18n/b.ts"],
+      paths: ["src/i18n/ko.ts", "src/i18n/en.ts"],
       files: new Map([
-        ["src/i18n/a.ts", good],
-        ["src/i18n/b.ts", good],
+        ["src/i18n/ko.ts", good],
+        ["src/i18n/en.ts", good],
       ]),
     });
-    expect(s.chosen?.adapter).toBe("ts-dict");
+    expect(s.chosen?.adapter).toBe("code-dict");
     expect(s.failure).toBeUndefined();
   });
 
@@ -277,7 +274,8 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect({ ...a, ms: 0 }).toEqual({ ...b, ms: 0 });
   });
 
-  it("ADAPTERS 전부가 후보 탐색에 참여한다", () => {
-    expect(ADAPTERS).toHaveLength(3);
+  it("ADAPTERS가 5개다 — ts-dict만 자동 탐지에서 빠져 있다", () => {
+    expect(ADAPTERS).toHaveLength(5);
+    expect(ADAPTERS.filter((a) => a.detectCandidates(["a/i18n/x.ts"], () => "").length === 0).length).toBeGreaterThan(0);
   });
 });

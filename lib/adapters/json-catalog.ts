@@ -1,6 +1,6 @@
 import { localeFromPath, verify } from "./chrome-locales";
 import { compareKeys, looksLikeLocale, rankCandidates, serialize, usableEntries } from "./shared";
-import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult } from "./types";
+import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
 /**
  * 범용 JSON 카탈로그 — `<dir>/<locale>.json`. 조사한 리포 중 둘을 덮는다:
@@ -50,8 +50,14 @@ function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | u
 function read(format: DetectedFormat, files: readonly { path: string; content: string }[]): ReadResult {
   const locales: ReadLocale[] = [];
   const errors: AdapterError[] = [];
-  /** 어느 파일에서든 중첩을 봤으면 중첩 포맷이다. */
+  /** 어느 파일에서든 중첩을 봤으면 중첩 포맷이다 — 거친 값이고 하위 호환용이다. */
   let nested = false;
+  /**
+   * ⚠️ **파일별로 따로 관측한다.** 포맷 단위 boolean으로 두면 로케일 파일 하나가 중첩일 때 형제
+   * 파일까지 중첩으로 취급돼 **평평한 파일의 점 포함 키가 쪼개지고 값이 사라진다** — musicblocks
+   * 84로케일 중 81개에서 각 4키가 그렇게 없어졌다 (ARCHITECTURE §1.35).
+   */
+  const nestedByPath: Record<string, boolean> = {};
 
   for (const file of files) {
     const locale = localeFromPath(format.pathTemplate, file.path);
@@ -70,7 +76,9 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
     }
 
     const top = parsed as Record<string, unknown>;
-    if (Object.values(top).some((v) => v !== null && typeof v === "object")) nested = true;
+    const fileNested = Object.values(top).some((v) => v !== null && typeof v === "object");
+    nestedByPath[file.path] = fileNested;
+    if (fileNested) nested = true;
 
     const entries: LocaleEntry[] = [];
     flatten(top, "", entries, errors, file.path);
@@ -79,7 +87,7 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
   }
 
   locales.sort((a, b) => compareKeys(a.locale, b.locale));
-  return { locales, errors, nested };
+  return { locales, errors, nested, nestedByPath };
 }
 
 /**
@@ -113,21 +121,61 @@ function flatten(
   }
 }
 
-function write(format: DetectedFormat, input: { locale: string; isBase: boolean; entries: readonly LocaleEntry[] }): string | null {
-  const usable = usableEntries(input.entries);
-  if (usable.length === 0) return null;
+function write(format: DetectedFormat, input: WriteInput): string | null {
+  return writeWithErrors(format, input).content;
+}
 
-  if (!format.nested) {
-    // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다.
+/**
+ * `write` + 버린 항목 보고.
+ *
+ * ⚠️ **중첩 복원은 키가 `.`을 품으면 값을 삼킬 수 있다** (ARCHITECTURE §1.35). `a.b`(문자열)와
+ * `a.b.c`가 함께 있으면 복원에서 `a.b` 자리가 객체로 덮인다 — 전에는 `setDeep`이 그걸 조용히
+ * 했다. 이제 **얕은 쪽을 건너뛰고 에러로 알린다**: 값을 잃더라도 어느 키에서 잃었는지 알려주는
+ * 것이 최소 조건이다.
+ */
+function writeWithErrors(
+  format: DetectedFormat,
+  input: WriteInput,
+): { content: string | null; errors: AdapterError[] } {
+  const usable = usableEntries(input.entries);
+  const errors: AdapterError[] = [];
+  if (usable.length === 0) return { content: null, errors };
+
+  // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
+  const path = format.pathTemplate.replace("{locale}", input.locale);
+  const nested = format.nestedByPath?.[path] ?? format.nested ?? false;
+
+  if (!nested) {
+    // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.
     const out: Record<string, string> = {};
     for (const e of usable) out[e.key] = e.message;
-    return serialize(out);
+    return { content: serialize(out), errors };
   }
 
-  // 중첩 복원. 숫자만으로 된 세그먼트는 배열 인덱스로 되돌린다.
+  // 접두 충돌을 먼저 걸러낸다. `a.b`가 `a.b.c`의 점 경계 접두이면 `a.b`를 버린다 —
+  // 깊은 쪽을 살리는 것은 임의 선택이 아니다: 얕은 쪽을 살리면 그 아래 전부를 잃는다.
+  const keys = new Set(usable.map((e) => e.key));
+  const shadowed = new Set<string>();
+  for (const key of keys) {
+    for (const other of keys) {
+      if (other.length > key.length && other.startsWith(`${key}${SEP}`)) {
+        shadowed.add(key);
+        break;
+      }
+    }
+  }
   const root: Record<string, unknown> = {};
-  for (const e of usable) setDeep(root, e.key.split(SEP), e.message);
-  return serialize(normalizeArrays(root));
+  for (const e of usable) {
+    if (shadowed.has(e.key)) {
+      errors.push({
+        path,
+        message: `'${e.key}'가 더 깊은 키의 접두라 중첩 복원에서 자리를 잃는다 — 이 값은 파일에 나가지 않는다`,
+      });
+      continue;
+    }
+    setDeep(root, e.key.split(SEP), e.message);
+  }
+  return { content: serialize(normalizeArrays(root)), errors };
 }
 
 function setDeep(node: Record<string, unknown>, segments: readonly string[], value: string): void {
@@ -167,4 +215,13 @@ function sortedByKey(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-export const jsonCatalog: Adapter = { name: "json-catalog", layout: "per-locale", detect, detectCandidates, read, write };
+export const jsonCatalog: Adapter = {
+  name: "json-catalog",
+  layout: "per-locale",
+  writeStrategy: "regenerate",
+  detect,
+  detectCandidates,
+  read,
+  write,
+  writeWithErrors,
+};

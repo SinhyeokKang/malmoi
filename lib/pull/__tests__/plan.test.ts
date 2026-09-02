@@ -77,8 +77,8 @@ describe("formatFromProject — pull 경로엔 read가 없어 여기가 유일�
   });
 
   it("등록되지 않은 어댑터 이름이면 던진다 — 문자열 컬럼이라 DB가 막아주지 않는다", () => {
-    expect(() => formatFromProject(cols({ adapterName: "yaml-catalog" }), ["ko"])).toThrow(
-      /yaml-catalog/,
+    expect(() => formatFromProject(cols({ adapterName: "po-gettext" }), ["ko"])).toThrow(
+      /po-gettext/,
     );
   });
 

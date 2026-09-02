@@ -88,9 +88,14 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   survey.separators = countSeparators(allKeys);
   countMessages(read1.locales, survey);
 
-  if (adapter.name === "ts-dict") {
+  // 코드 딕셔너리 계열 — "읽힌 키 수 vs 파일의 문자열 리터럴 수" 격차가 부분 읽기의 그물이다.
+  //
+  // ⚠️ **`silentSkips`는 `ts-dict`에서만 0이 아니다.** `code-dict`는 shorthand·비리터럴 값을
+  // `read`가 `errors`로 보고하므로(그게 개선점이다) 무증상 skip이 구조적으로 생기지 않는다.
+  // `ts-dict`는 자동 탐지에서 빠졌으니 실측 표본에서 이 카운터는 사실상 항상 0이다.
+  if (adapter.name === "ts-dict" || adapter.name === "code-dict") {
     const shape = tsShape(adapterFiles);
-    survey.silentSkips = shape.silentSkips;
+    if (adapter.name === "ts-dict") survey.silentSkips = shape.silentSkips;
     survey.literalCount = shape.literalCount;
     survey.readKeyCount = allKeys.size;
     survey.errors["adapter-threw"] += shape.parseFailures;

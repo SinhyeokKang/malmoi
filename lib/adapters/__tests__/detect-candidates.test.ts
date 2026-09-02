@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTERS, chromeLocales, detectFormat, jsonCatalog, tsDict } from "../index";
+import { tsDictDetectByContent } from "../ts-dict";
 import type { FileProbe } from "../types";
 
 /**
@@ -51,11 +52,12 @@ describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
     ]);
   });
 
-  it("ts-dict: 디렉터리가 둘이면 둘 다 낸다", () => {
-    const found = tsDict.detectCandidates(
-      ["a/i18n/x.ts", "b/i18n/y.ts"],
-      () => TS_SOURCE,
-    );
+  it("ts-dict: 자동 탐지에서 빠져 있어 항상 빈 배열이다 (ADAPTER-COVERAGE 판정 ③)", () => {
+    expect(tsDict.detectCandidates(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE)).toEqual([]);
+  });
+
+  it("ts-dict: 탐지 로직은 보관돼 있다 — 되살릴 때 이걸 부른다", () => {
+    const found = tsDictDetectByContent(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE);
     expect(found.map((c) => c.pathTemplate)).toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
   });
 

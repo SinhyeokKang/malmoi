@@ -1,21 +1,31 @@
 import { chromeLocales } from "./chrome-locales";
+import { codeDict } from "./code-dict";
 import { jsonCatalog } from "./json-catalog";
 import { tsDict } from "./ts-dict";
+import { yamlCatalog } from "./yaml-catalog";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "./types";
 
 export { chromeLocales } from "./chrome-locales";
 export { jsonCatalog } from "./json-catalog";
+export { yamlCatalog } from "./yaml-catalog";
+export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
 export { localeFromPath } from "./chrome-locales";
-export { namespaceOf, compareKeys } from "./shared";
+export { namespaceOf, compareKeys, catalogVerdict } from "./shared";
 export * from "./types";
 
 /**
  * 등록된 어댑터. **순서가 우선순위다** — 크롬 `_locales`가 있으면 그쪽을 택한다.
  * 크롬 확장 리포는 `_locales`가 실제 배포 산출물이고, 옆에 다른 카탈로그가 있어도
  * 크롬이 읽는 건 `_locales`뿐이다.
+ *
+ * JSON을 YAML·코드보다 앞에 두는 이유: 한 리포에 둘이 공존하면(mastodon이 프런트엔드 JSON +
+ * Rails YAML을 둘 다 갖는다) **재생성 어댑터가 다루기 쉬운 쪽**이고, 실측에서 그쪽이 앱 UI였다.
+ *
+ * ⚠️ **`ts-dict`는 목록에 있지만 자동 탐지에 참여하지 않는다** — `detectCandidates`가 항상 빈
+ * 배열이다. 명시 지정(`--adapter`·`Project.adapterName`)으로만 쓴다 (ADAPTER-COVERAGE 판정 ③).
  */
-export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, tsDict];
+export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict];
 
 /**
  * ⚠️ **한 리포에 로케일 포맷이 둘 이상일 수 있다.** bugshot-2가 그렇다 — `_locales`(4키,
