@@ -294,6 +294,69 @@ describe("runPull — 실패 처리", () => {
   });
 });
 
+/**
+ * ⚠️ **`per-locale` + 수술적 조합** — 이 조합이 없던 시절 pull은 `layout === "multi-locale"`로
+ * "원본 blob을 받아야 하나"를 판단했다. `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이라
+ * 그 판단이 성립하지 않는다: 원본 없이 write에 들어가면 `null`을 받아 **PR이 조용히 비어 나간다**
+ * (ARCHITECTURE §1).
+ */
+describe("runPull — per-locale + surgical (writeStrategy로 갈린다)", () => {
+  const yamlSource = `# 사람이 넣은 주석
+ko:
+  a:
+    one: 하나
+`;
+  const yamlProject = {
+    ...PROJECT,
+    adapterName: "yaml-catalog",
+    pathTemplate: "config/locales/{locale}.yml",
+    nested: null as boolean | null,
+  };
+
+  it("per-locale인데도 blob 내용을 읽는다 — writeStrategy가 surgical이기 때문이다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "config/locales/ko.yml", sha: "sha-ko" }] },
+      blobs: { "sha-ko": yamlSource },
+    });
+    await runPull({
+      loadState: async () => ({
+        project: yamlProject,
+        localeCodes: ["ko"],
+        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async () => {},
+      syncBranch: "l10n/sync",
+    });
+    expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(1);
+  });
+
+  it("주석을 보존한 채 값만 바뀐 커밋이 나간다 (빈 PR이 아니다)", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "config/locales/ko.yml", sha: "sha-ko" }] },
+      blobs: { "sha-ko": yamlSource },
+    });
+    await runPull({
+      loadState: async () => ({
+        project: yamlProject,
+        localeCodes: ["ko"],
+        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async () => {},
+      syncBranch: "l10n/sync",
+    });
+    const created = calls.find((c) => c.method === "createTree");
+    const body = JSON.stringify(created?.args ?? {});
+    expect(body).toContain("사람이 넣은 주석");
+    expect(body).toContain("하나!");
+  });
+});
+
 describe("runPull — multi-locale", () => {
   const source = `const ko = {
   "a.one": "하나",

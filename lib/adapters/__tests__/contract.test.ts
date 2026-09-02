@@ -19,8 +19,23 @@ describe("writer 계약 — ADAPTERS 전수 (MVP §4.1 / ARCHITECTURE §1.1·§1
     });
   }
 
-  it("등록된 어댑터가 3개다 — 늘면 위 목록도 자동으로 는다", () => {
-    expect(ADAPTERS.map((a) => a.name)).toEqual(["chrome-locales", "json-catalog", "ts-dict"]);
+  it("등록된 어댑터가 5개다 — 늘면 위 목록도 자동으로 는다", () => {
+    expect(ADAPTERS.map((a) => a.name)).toEqual([
+      "chrome-locales",
+      "json-catalog",
+      "yaml-catalog",
+      "code-dict",
+      "ts-dict",
+    ]);
+  });
+
+  it("규칙 적용은 layout이 아니라 writeStrategy로 갈린다", () => {
+    // yaml-catalog가 그 증거다 — per-locale인데 재생성 규칙을 지나지 않는다
+    const yaml = ADAPTERS.find((a) => a.name === "yaml-catalog")!;
+    expect(yaml.layout).toBe("per-locale");
+    expect(yaml.writeStrategy).toBe("surgical");
+    const json = ADAPTERS.find((a) => a.name === "json-catalog")!;
+    expect(json.writeStrategy).toBe("regenerate");
   });
 });
 
