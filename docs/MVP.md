@@ -124,7 +124,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 2. base 브랜치 head SHA와 트리 조회
 3. **어댑터의 writer로** 로케일별 파일 결정적 생성 (§4) — 읽어온 포맷 그대로
 
-   ⚠️ **수술적 치환 어댑터(`ts-dict`)는 원본 내용을 필요로 한다.** 그 프로젝트에서는 blob SHA만으로 끝나지 않고 로케일 파일의 blob **내용**을 받아야 한다(파일당 API 호출 1회). 재생성 어댑터는 SHA만으로 충분하다.
+   ⚠️ **수술적 치환 어댑터(`ts-dict`·`yaml-catalog`·`code-dict`)는 원본 내용을 필요로 한다.** 그 프로젝트에서는 blob SHA만으로 끝나지 않고 로케일 파일의 blob **내용**을 받아야 한다(파일당 API 호출 1회). 재생성 어댑터는 SHA만으로 충분하다. **판단 기준은 `Adapter.writeStrategy`다** — `layout`으로 가르면 `per-locale` + 수술적 조합(YAML·코드 딕셔너리)이 원본 없이 write에 들어가 파일을 못 만든다.
 4. **로컬 blob SHA 계산 → base 트리와 비교. 전부 같으면 여기서 종료 — GitHub API를 한 번도 더 부르지 않는다.** 변경 없는 날이 대부분이라 이게 기본 경로다
 5. 변경분만: createTree(`base_tree`, 항목에 `content`를 실어 blob을 암묵 생성) → createCommit(`parents: [baseHead]`, 메시지에 `[skip-l10n]`) → updateRef(`l10n/sync`, `force: true`)
 6. 열린 PR 있으면 재사용, 없으면 생성
@@ -141,12 +141,29 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 "입력"이 writer 방식에 따라 다르다:
 
-| 방식 | 입력 | 어댑터 |
+| 방식 (`Adapter.writeStrategy`) | 입력 | 어댑터 |
 |---|---|---|
-| **재생성** | DB 상태 | `chrome-locales`, `json-catalog` |
-| **수술적 치환** | DB 상태 **+ 원본 파일 내용** | `ts-dict` |
+| **재생성** (`regenerate`) | DB 상태 | `chrome-locales`, `json-catalog` |
+| **수술적 치환** (`surgical`) | DB 상태 **+ 원본 파일 내용** | `ts-dict`, `yaml-catalog`, `code-dict` |
 
-수술적 치환은 문자열 값만 바꾸고 나머지 소스를 보존한다. TS 딕셔너리에 재생성을 쓰면 사람이 의미 단위로 넣은 빈 줄(bugshot-2에 120개)과 주석(23개)이 첫 pull에서 사라진다 — JSON에선 한 번의 재정렬이지만 TS에선 **구조 파괴**이고, 번역 도구가 남의 코드를 훼손하는 것으로 읽힌다.
+**⚠️ `writeStrategy`는 `layout`과 별개 축이다** (2026-09-02 분리). 전에는 `layout`(경로 모양)이
+write 방식까지 겸했는데 — `multi-locale`이면 수술적, `per-locale`이면 재생성 — 새 어댑터 둘이
+**`per-locale` + 수술적**이라 그 겸용이 깨졌다. pull이 "원본 내용을 받아야 하나"를 판단하는 기준은
+이제 `layout`이 아니라 `writeStrategy`다 (§3.3).
+
+수술적 치환은 문자열 값만 바꾸고 나머지 소스를 보존한다. TS 딕셔너리에 재생성을 쓰면 사람이 의미 단위로 넣은 빈 줄(bugshot-2에 120개)과 주석(23개)이 첫 pull에서 사라진다 — JSON에선 한 번의 재정렬이지만 TS에선 **구조 파괴**이고, 번역 도구가 남의 코드를 훼손하는 것으로 읽힌다. YAML도 같다: Rails 로케일 파일은 주석·앵커·블록 리터럴을 담고 있어 재생성이 곧 훼손이다.
+
+### ⚠️ 수술적 치환은 **누락 키를 삽입한다** (2026-09-02 결정)
+
+`ts-dict`는 원본에 있는 문자열 리터럴만 갈아끼웠다. 그것만으로 부족한 경우가 있다: **어떤 로케일
+파일에 아직 없는 키**다. base에 100키가 있고 `ko.yml`에 60키만 있으면, 번역자가 나머지 40키를
+채워도 치환할 대상이 없어 **리포에 도달하지 못한다.** 재생성 어댑터는 그냥 쓰므로 이 격차가
+"수술적이면 번역이 반영되지 않는다"로 읽힌다.
+
+따라서 `yaml-catalog`·`code-dict`는 **없는 키를 그 키가 속할 맵/객체에 추가**한다. 결정성은
+유지된다 — 추가 키를 **코드포인트 정렬 순서로 해당 맵 끝에** 넣으므로 `같은 DB 상태 + 같은 원본`
+→ 같은 바이트다. `ts-dict`는 기존 동작을 유지한다(bugshot-2가 세 로케일을 한 파일에 나란히 두어
+키 격차가 생기지 않는다).
 
 **대가**: `write`가 원본을 필요로 하므로 pull이 blob SHA만이 아니라 **내용**을 받아야 한다 (§3.3). 이득은 정규화 diff가 아예 없다는 것 — 바뀐 줄만 diff에 뜬다.
 
@@ -162,13 +179,26 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 ### 4.2 어댑터별로 갈리는 것
 
-| | `chrome-locales` | `json-catalog` |
-|---|---|---|
-| 경로 | `<root>/_locales/{locale}/messages.json` | `<dir>/{locale}.json` |
-| 리프 | `{ "message": "...", "description"?: "..." }` | `"..."` (문자열) |
-| 구조 | flat | flat 또는 **중첩** (읽을 때 `.`로 평탄화, 쓸 때 복원) |
-| `description` | 지원 | **저장할 곳이 없다** — DB엔 남지만 파일로 안 나간다 |
-| 키 제약 | `[A-Za-z0-9_@]` (크롬 강제) | 없음 |
+| | `chrome-locales` | `json-catalog` | `yaml-catalog` | `code-dict` | `ts-dict` |
+|---|---|---|---|---|---|
+| 경로 | `<root>/_locales/{locale}/messages.json` | `<dir>/{locale}.json` | `<dir>/{locale}.y(a)ml` | `<dir>/{locale}.{ts,tsx,js,mjs}` | `<dir>/*.ts` (글롭) |
+| `layout` | per-locale | per-locale | per-locale | per-locale | **multi-locale** |
+| `writeStrategy` | regenerate | regenerate | **surgical** | **surgical** | **surgical** |
+| 리프 | `{ message, description? }` | `"..."` | 문자열 스칼라 | 문자열 리터럴 | 문자열 리터럴 |
+| 구조 | flat | flat 또는 **중첩** | 중첩 (+ Rails식 **로케일 루트 키**) | 중첩 객체 리터럴 | flat 점 표기 |
+| `description` | 지원 | 담을 곳 없음 | 담을 곳 없음 | 담을 곳 없음 | 담을 곳 없음 |
+| 키 제약 | `[A-Za-z0-9_@]` (크롬 강제) | 없음 | 없음 | 없음 | 없음 |
+| 자동 탐지 | ✅ | ✅ | ✅ | ✅ | **❌ 명시 지정만** |
+
+**`yaml-catalog`의 루트 키 변형**: Rails 관례는 파일 최상위가 로케일 코드 하나(`ko:`)이고 그 아래가
+내용이다(mastodon·redmine·decidim). 반대로 misskey·directus는 루트에 바로 키가 온다. `read`가
+"최상위 키가 하나이고 그것이 로케일처럼 보이면 루트 키"로 관측해 `rootKeyed`로 돌려주고, `write`가
+같은 모양으로 되돌린다 — `nested`와 같은 축의 값이다 (§5.1).
+
+**`ts-dict`를 자동 탐지에서 뺀다** (2026-09-02, `docs/ADAPTER-COVERAGE.md` 판정 ③). 오픈소스 109개에서
+후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(= `code-dict`)였다.
+"한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 지우지는 않는다 —
+bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterName` 명시 지정으로 계속 쓴다.
 
 **`description`은 base 로케일에만 넣는다** (지원하는 어댑터에서). 원문에 대한 메타데이터라 번역 파일마다 복제하면 바이트만 늘고 읽는 쪽이 없다.
 
@@ -203,14 +233,24 @@ export type LocaleEntry = { key: string; message: string; description?: string; 
 export type Adapter = {
   name: AdapterName;
   /**
-   * 로케일 파일 경로를 만드는 방식.
+   * 로케일 파일 **경로**를 만드는 방식. write 방식과는 별개 축이다.
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개(`ts-dict`). `pathTemplate`이 글롭이고
    *   치환하지 않는다. write도 파일별로 불러야 한다
    */
   layout: "per-locale" | "multi-locale";
+  /**
+   * write 방식 (§4.1). **pull이 원본 blob 내용을 받아야 하는지를 이 값이 정한다** — 전에는
+   * `layout`으로 갈랐는데 `per-locale` + `surgical` 조합이 생겨 성립하지 않는다.
+   */
+  writeStrategy: "regenerate" | "surgical";
   /** 리포 파일 목록에서 이 포맷을 찾아낸다. `probe`로 후보 내용을 한 번 확인한다 */
   detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined;
+  /**
+   * `detect`와 같은 판정을 하되 **후보를 전부 순위순으로** 낸다. `detect`가 이 결과의 `[0]`이다.
+   * 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측하는 유일한 수단이다 (ADAPTER-COVERAGE §1②).
+   */
+  detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[];
   /** 로케일 파일 → 키 목록 (중첩이면 평탄화) */
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** 키 목록 → 파일 내용. 낼 것이 없으면 null (§4.1) */
@@ -218,13 +258,19 @@ export type Adapter = {
 };
 ```
 
-**어댑터 3개가 조사한 4개 리포를 덮는다:**
+**어댑터 5개.** 앞의 셋은 자기 리포 4개를 덮으려고 만들었고, 뒤의 둘은 **오픈소스 109개 실측에서
+가장 큰 미지원 덩어리 두 개**를 덮으려고 추가했다 (`docs/ADAPTER-COVERAGE.md` §1①·§7).
 
-| 어댑터 | write | 덮는 리포 | 규모 |
+| 어댑터 | write | 덮는 대상 | 규모 |
 |---|---|---|---|
-| `chrome-locales` | 재생성 | bugshot-2 (`public/_locales/`) | 4키 × ko/en/fr — 스토어 메타데이터뿐이다 |
-| `json-catalog` | 재생성 | bugshot-web (`src/lib/i18n/`, 중첩), skillflo (`src/shared/i18n/locales/`) | 102리프 × 2 / **1446키 × 6** |
-| `ts-dict` | **수술적 치환** | bugshot-2 (`src/i18n/namespaces/*.ts`) | **903키 × ko/en/fr** |
+| `chrome-locales` | 재생성 | bugshot-2 (`public/_locales/`) + 오픈소스 34개 | 4키 × ko/en/fr — 스토어 메타데이터뿐이다 |
+| `json-catalog` | 재생성 | bugshot-web (중첩), skillflo + 오픈소스 38개 | 102리프 × 2 / **1446키 × 6** |
+| `ts-dict` | 수술적 치환 | bugshot-2 (`src/i18n/namespaces/*.ts`) — **명시 지정 전용** | **903키 × ko/en/fr** |
+| **`yaml-catalog`** | 수술적 치환 | 오픈소스 **17개** (mastodon 106로케일·decidim 82·directus 69·redmine 50·misskey 42) | — |
+| **`code-dict`** | 수술적 치환 | 오픈소스 **12개** (ant-design 73로케일·element-plus 67·vuetify 43·payload 40) | — |
+
+미지원으로 남는 것: `.po`(gettext), `.arb`, `.strings`, `.properties`, 소스 코드 내장(primevue),
+자체 포맷(darkreader `.config`), 빌드 시 외부 다운로드(home-assistant). 실측에서 각 1~3개였다.
 
 **`ts-dict`를 범위에 넣은 이유**: bugshot-2의 `_locales` 4키는 스토어 메타데이터일 뿐이고 실제 UI 번역은 903키다 — MVP §9가 왕복 검증 대상으로 지정한 리포를 **0.4%로만 검증**하고 있었다. 8파일 구조가 완전히 규칙적이라(`const ko/en/fr` + `as const`/`satisfies Bundle` + `export const <ns> = { ko, en, fr }`, 값이 전부 문자열 리터럴·표현식 0건) 어댑터 하나로 끝난다 — "리포마다 형태가 달라 안 끝난다"던 앞선 판단이 실물 확인 전의 추측이었다.
 

@@ -78,6 +78,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
+| YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). 주석·앵커·빈 줄을 지켜야 해서 재생성용 파서로 쓰지 않는다 | `yaml` 2.9.0 |
 | **키·원문 출처** | **리포의 로케일 파일** — 어댑터가 양방향으로 읽고 쓴다 (`lib/adapters/`) | — |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
@@ -188,11 +189,14 @@ components/
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
-    index.ts            detectFormat / adapterFor / ADAPTERS(우선순위)
+                        ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
+    index.ts            detectFormat / detectCandidates / adapterFor / ADAPTERS(우선순위)
     shared.ts           재생성 writer의 결정성 규칙 + 후보 순위·검증
-    chrome-locales.ts   _locales/{locale}/messages.json (재생성)
-    json-catalog.ts     {dir}/{locale}.json (flat|중첩, 배열 인덱스 — 재생성)
-    ts-dict.ts          src/i18n/namespaces/*.ts (⚠️ 수술적 치환 — 원본 내용 필요)
+    chrome-locales.ts   _locales/{locale}/messages.json (per-locale, 재생성)
+    json-catalog.ts     {dir}/{locale}.json (per-locale, 재생성 — flat|중첩, 배열 인덱스)
+    yaml-catalog.ts     {dir}/{locale}.y(a)ml (per-locale, ⚠️ 수술적 — 주석·앵커 보존, Rails 루트 키)
+    code-dict.ts        {dir}/{locale}.{ts,js} (per-locale, ⚠️ 수술적 — default export 객체)
+    ts-dict.ts          src/i18n/namespaces/*.ts (multi-locale, ⚠️ 수술적 — **자동 탐지 제외**)
   env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
@@ -306,7 +310,8 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
 - **⚠️ 인증 차단은 `middleware.ts`에만 의존한다.** 레이아웃·페이지의 조건부 렌더는 차단이 아니다 — App Router가 둘을 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
-- **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·2칸·끝 개행 1개를 직접 구현하지 않는다 (ARCHITECTURE §1.1).
+- **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·2칸·끝 개행 1개를 직접 구현하지 않는다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
+- **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (RLS 없음).
 
 ## 게이트웨이 (알아두면 유용)

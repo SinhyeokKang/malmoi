@@ -8,11 +8,24 @@
 
 **어댑터가 양방향이다** — 리포의 로케일 파일을 읽어 키를 적재하고, 편집된 값을 **같은 포맷으로** 되돌려준다. 크롬 `messages.json`으로 통일하지 않는 이유는 그게 불가능하기 때문이다: `chrome.i18n`은 키에 `[A-Za-z0-9_@]`만 허용하는데 조사한 4개 리포 중 3개가 점 표기를 쓴다.
 
-| 어댑터 | 경로 | 리프 | write | 덮는 리포 |
-|---|---|---|---|---|
-| `chrome-locales` | `<root>/_locales/{locale}/messages.json` | `{message, description?}` | 재생성 | bugshot-2 (4키 × ko/en/fr) |
-| `json-catalog` | `<dir>/{locale}.json` (flat 또는 중첩) | `string` | 재생성 | bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6**) |
-| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **수술적 치환** | bugshot-2 (**903키 × ko/en/fr** — 실제 UI 번역) |
+| 어댑터 | 경로 | 리프 | `layout` | `writeStrategy` | 덮는 대상 |
+|---|---|---|---|---|---|
+| `chrome-locales` | `<root>/_locales/{locale}/messages.json` | `{message, description?}` | per-locale | regenerate | bugshot-2 (4키 × ko/en/fr), 오픈소스 34개 |
+| `json-catalog` | `<dir>/{locale}.json` (flat 또는 중첩) | `string` | per-locale | regenerate | bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6**), 오픈소스 38개 |
+| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지 제외 — 명시 지정 전용** |
+| `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
+| `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
+
+### ⚠️ `layout`과 `writeStrategy`는 별개 축이다 (2026-09-02 분리)
+
+전에는 `layout` 하나가 둘을 겸했다 — `multi-locale`이면 수술적, `per-locale`이면 재생성. `yaml-catalog`·`code-dict`가 **`per-locale` + 수술적**이라 그 겸용이 깨졌다.
+
+| 축 | 정하는 것 | 갈리는 지점 |
+|---|---|---|
+| `layout` | **경로 모양** | `resolveLocalePaths`(`{locale}` 치환 vs 글롭 매칭), `renderLocaleFiles`(로케일당 1회 vs 파일 × 로케일 이중 루프) |
+| `writeStrategy` | **write 기계** | `run.ts`가 **blob 내용을 받는지**, 빈 값 필터를 호출부가 지는지, 결정성 규칙(§1.1)을 적용받는지 |
+
+**`layout`으로 "원본이 필요한가"를 판단하는 코드가 남아 있으면 낡은 것이다.** 그렇게 두면 YAML·코드 딕셔너리 프로젝트가 원본 없이 write에 들어가 `null`을 받고 **PR이 조용히 비어 나간다.**
 
 **`layout`이 둘로 갈린다.** `per-locale`은 `pathTemplate`의 `{locale}`을 치환해 로케일당 파일 하나를 만들고, `multi-locale`(`ts-dict`)은 한 파일에 로케일이 여러 개라 `pathTemplate`이 글롭이고 **write를 파일별로 부른다.** 페이로드 검증이 `{locale}` 포함을 요구하지 않는 것은 이 때문이다.
 
@@ -20,7 +33,9 @@
 
 **같은 입력 → 언제나 바이트 단위로 같은 출력.** 깨지면 blob SHA 비교(§2)가 매번 "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓고 PR diff가 노이즈로 덮인다 — 조용히 망가지고 며칠 뒤에 발견되는 종류다.
 
-⚠️ **아래 표는 재생성 방식(`chrome-locales`·`json-catalog`)에만 적용된다.** 수술적 치환(`ts-dict`)은 원본의 순서·빈 줄·주석을 보존하는 것이 요지라 정렬·재조립을 하지 않고 `usableEntries`를 지나지 않는다 — §1.4를 따른다.
+⚠️ **아래 표는 `writeStrategy === "regenerate"`(`chrome-locales`·`json-catalog`)에만 적용된다.** 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본의 순서·빈 줄·주석을 보존하는 것이 요지라 정렬·재조립을 하지 않고 `usableEntries`를 지나지 않는다 — §1.4를 따른다. **`layout`이 아니라 `writeStrategy`로 갈린다** — `yaml-catalog`은 `per-locale`인데도 이 표를 지나지 않는다.
+
+계약 테스트(`lib/adapters/__tests__/contract.ts`)가 `ADAPTERS`를 순회하며 이 매트릭스를 그대로 검사한다. 어댑터를 추가하면 검사가 자동으로 늘고, 규칙을 어기는 가짜 어댑터를 잡는 네거티브 테스트가 검사기 자체를 지킨다.
 
 | 규칙 | 값 | 깨지는 방식 |
 |---|---|---|
@@ -48,14 +63,68 @@
 
 `detect`는 리포 파일 경로 목록에서 포맷을 찾는다. **경로 사전순으로 후보를 고르면 틀린다** — bugshot-web에서 `public/search/{locale}.json`(검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
 
-- 후보를 **i18n 계열 경로 신호 → 로케일 개수 → 경로순**으로 순위 매긴다
+- 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로순**으로 순위 매긴다
 - **로케일이 2개 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
-- `probe` 콜백을 주면 후보 파일 하나를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
+- `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
+- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다
+
+#### ⚠️ 예제·픽스처 디렉터리가 진짜 카탈로그를 가린다 (2026-09-02 실측)
+
+오픈소스 109개에서 오탐 4건 중 **2건이 `examples/` 아래**였다:
+
+| 리포 | 1순위로 잡은 것 | 진짜 |
+|---|---|---|
+| lokalise/i18n-ally | `examples/by-frameworks/chrome-extension/_locales/…` | `locales/{locale}.json` (2순위) |
+| payloadcms/payload | `examples/localization/src/i18n/messages/{locale}.json` | `packages/translations/src/languages/{locale}.ts` |
+
+`examples`·`example`·`fixtures`·`__fixtures__`·`demo`·`playground`·`sample(s)`·`test(s)`·`__tests__`·`docs`·`.dumi`·`storybook`·`node_modules`를 경로에 포함하는 후보는 **뒤로 밀린다.** 배제가 아니라 감점이다 — 진짜로 그 디렉터리에만 카탈로그가 있는 리포(예제 모음 자체가 산출물인 경우)를 못 잡으면 안 된다.
+
+#### ⚠️ `looksLikeCatalog`은 샘플 하나로 리포 전체를 버렸다 (2026-09-02 실측)
+
+지원 포맷인데 탐지 실패한 4건 중 **셋이 같은 구조**에서 나왔다. probe가 **정렬상 첫 로케일 하나**만 읽는데, 그 첫 로케일이 체계적으로 **가장 덜 관리된 파일**이다:
+
+| 리포 | 샘플 | 떨어진 이유 |
+|---|---|---|
+| esmBot/esmBot (26로케일) | `locales/bg.json` | 내용이 `{}` — 빈 스텁 |
+| jsxc/jsxc (30로케일) | `locales/ar.json` | 최상위에 `"Notifications": null` |
+| scratchblocks (78로케일) | `locales/ab.json` | 최상위에 `percentTranslated`(숫자) |
+
+세 규칙으로 완화한다:
+
+1. **샘플을 최대 3개 본다** — base 후보(`en`)를 먼저, 그다음 정렬순. **하나라도** 카탈로그면 통과다. 로케일이 많은 카탈로그에 빈 스텁이 섞이는 건 정상이다.
+2. **빈 객체는 판정 보류**다 — "카탈로그 아님"이 아니라 "정보 없음"이다. 다음 샘플을 본다.
+3. **최상위 비문자열·비객체 값을 소수 허용**한다(`null`·숫자·불린). `percentTranslated`·`Notifications: null` 같은 메타데이터가 섞이는 건 흔하다. **문자열·객체 리프가 하나라도 있고 그것이 과반이면** 카탈로그로 본다.
+
+`read`는 그대로 엄격하다 — 그 값들은 여전히 `errors`(leaf-type)로 보고된다. 완화한 것은 **탐지 관문뿐**이다.
 - **`nested`는 `detect`가 알 수 없다** — 내용의 성질이므로 `read`가 관측해 `ReadResult.nested`로 돌려주고, 호출부가 write 전에 `DetectedFormat.nested`에 실어준다
+
+#### ⚠️ `ts-dict`는 자동 탐지 후보에서 빠져 있다 (2026-09-02)
+
+`ADAPTERS`에는 남아 있지만 `detectCandidates`가 항상 빈 배열을 낸다. 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
+
+**`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — bugshot-2가 실전 검증 대상이므로 이 경로가 그 리포의 공식 온보딩 경로다. `read`·`write`는 아무것도 바뀌지 않았다.
 
 **base 로케일은 아직 추정이다** — `en`이 있으면 `en`, 없으면 사전순 첫 번째. 어느 로케일이 기준인지는 리포의 관례라 미결이다 (MVP §10).
 
-### 1.4 수술적 치환 (`ts-dict`) — 규칙이 반대다
+### 1.35 ⚠️ 키에 `.`이 들어 있으면 중첩 복원이 값을 삼킨다 (2026-09-02 실측)
+
+**`json-catalog`의 유일한 데이터 손실 경로다.** 오픈소스 109개에서 왕복 의미 불일치 2건이 났고, 둘 다 **`read` 에러가 0**이었다 — CI 게이트도, 에러 카운터도 잡지 못하고 값만 사라진다.
+
+| 리포 | 손실 | 형태 |
+|---|---|---|
+| siyuan-note/siyuan | 2,636키 중 1키 | 중첩 객체 안의 키가 점을 품어 `_taskAction.task.database`(문자열)와 `…database.index`가 공존 |
+| sugarlabs/musicblocks | 84로케일 중 **81개**에서 각 4키 | `"Clear workspace"`와 `"Clear workspace."`(끝점)가 나란히 있다 |
+
+**뿌리는 하나다: `.`가 우리 조인 구분자이면서 실제 키에 들어 있는 문자다.** `flatten`/`setDeep` 쌍이 단사가 아니라, 한 키가 다른 키의 점 경계 접두이면 복원에서 문자열 자리가 객체로 덮인다.
+
+증폭 요인 둘을 함께 고쳤다:
+
+- **`ReadResult.nested`가 포맷 단위 boolean이었다.** musicblocks의 `th.json`은 최상위가 전부 문자열인데 **다른 로케일 파일** 하나에 객체가 있어서 포맷 전체가 nested로 판정되고, th.json의 평평한 키까지 `.`으로 쪼개졌다. → **파일 단위로 관측한다** (`ReadResult.nestedByPath`).
+- **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **에러로 보고하고 그 키를 건너뛴다.** 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
+
+**⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
+
+### 1.4 수술적 치환 (`ts-dict`·`yaml-catalog`·`code-dict`) — 규칙이 반대다
 
 **값만 바꾸고 나머지 소스를 그대로 둔다.** TS 딕셔너리를 재생성하면 사람이 의미 단위로 넣은 빈 줄(bugshot-2에 120개)과 주석(23개)이 첫 pull에서 사라진다 — JSON에선 한 번의 재정렬이지만 TS에선 **구조 파괴**이고, 번역 도구가 남의 코드를 훼손하는 것으로 읽힌다.
 
@@ -65,6 +134,29 @@
 | 결정성의 근거 | 정렬·재조립 규칙 | 원본 보존 — 바뀐 값이 없으면 **원본을 그대로 돌려준다** |
 | `orphaned` 키 | 파일에서 뺀다 | **파일에 남긴다**(값을 안 바꾼다). 지우면 코드가 참조하는 키가 사라진다 |
 | 낼 것 0개 | `null` | 원본 그대로(파일을 지우지 않는다). `null`은 원본이 없을 때만 |
+| 원본에 **없는** 키 | 그냥 쓴다 | `yaml-catalog`·`code-dict`는 **삽입한다**. `ts-dict`는 무시한다 (아래) |
+
+#### 없는 키를 삽입한다 (2026-09-02 — `yaml-catalog`·`code-dict`)
+
+값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
+
+- 없는 키는 **그 키가 속할 맵/객체의 끝에** 넣는다. 중간 경로가 없으면 만든다.
+- **결정성**: 추가되는 키를 코드포인트 정렬 순서로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
+- **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
+
+#### `yaml-catalog` 고유
+
+- **`yaml` 패키지의 `parseDocument`로 CST를 들고 스칼라만 갈아끼운다.** 실측으로 주석(독립·줄끝)·빈 줄·앵커·인용 스타일·`---` 문서 마커가 전부 보존된다.
+- **알리아스 노드(`*ref`)는 리프로 세지 않는다.** 편집하면 앵커 관계가 깨지고, 애초에 값의 출처가 앵커 쪽이다.
+- **Rails식 로케일 루트 키**(`ko:` 하나가 최상위)를 `read`가 관측해 `rootKeyed`로 돌려주고 `write`가 되돌린다. mastodon·redmine·decidim이 이쪽이고 misskey·directus는 루트에 바로 키가 온다.
+- 블록 리터럴(`|`)의 값을 바꾸면 인디케이터가 `|-`로 바뀔 수 있다 — 값 의미는 유지되므로 훼손이 아니다.
+
+#### `code-dict` 고유
+
+- **모듈의 default export 객체 리터럴**을 찾는다. `export default { … }`(element-plus·vuetify·quasar)와 `export default <식별자>` → 그 `const`의 초기화식(ant-design `const localeValues: Locale = { … }`) **한 단계까지** 따라간다.
+- 문자열 리터럴이 아닌 프로퍼티(import 참조 shorthand, 템플릿 리터럴, spread)는 **건너뛰고 `errors`에 남긴다** — ant-design의 `Pagination`·`DatePicker`가 그렇다.
+- `.ts`·`.tsx`·`.js`·`.mjs`를 받는다. quasar가 `.js`다.
+- ⚠️ **`ts-dict`와 다른 어댑터다.** 같은 ts-morph를 쓰지만 `ts-dict`는 "한 파일 안의 로케일 객체 여러 개"를, `code-dict`는 "파일 하나 = 로케일 하나"를 전제한다.
 
 **함정 둘:**
 
@@ -83,7 +175,7 @@ sha1("blob " + byteLength + "\0" + content)
 
 이 함수의 목적은 **API 호출을 건너뛰는 것**이다. base 트리의 blob SHA와 비교해 전부 같으면 GitHub API를 한 번도 더 부르지 않는다. 변경 없는 날이 대부분이라 이게 기본 경로다.
 
-⚠️ **`ts-dict` 프로젝트에서는 이 층만으로는 부족하다.** write가 원본 내용을 요구하므로(§1.4) 로컬 SHA를 계산하려면 **먼저 파일별로 blob을 읽어야** 하고, 그러면 변경 없는 날도 파일 수만큼 호출이 든다.
+⚠️ **수술적 치환 프로젝트에서는 이 층만으로는 부족하다.** write가 원본 내용을 요구하므로(§1.4) 로컬 SHA를 계산하려면 **먼저 파일별로 blob을 읽어야** 하고, 그러면 변경 없는 날도 파일 수만큼 호출이 든다. **판단 기준은 `Adapter.writeStrategy === "surgical"`이다** — `layout`으로 가르면 `per-locale` + 수술적인 `yaml-catalog`·`code-dict`가 원본 없이 write에 들어가 조용히 빈 PR을 만든다 (§1).
 
 **그래서 판정이 두 층이다** (2026-08-31 결정 — MVP §3.3):
 
@@ -112,7 +204,7 @@ clone하지 않는다.
 
 1. `GET /repos/{o}/{r}/git/ref/heads/{base}` → base head SHA
 2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `Project.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
-2.5 **`ts-dict`면 여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — write에 원본이 필요하다 (§1.4). 재생성 어댑터는 이 단계를 건너뛴다
+2.5 **`writeStrategy === "surgical"`이면 여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — write에 원본이 필요하다 (§1.4). 재생성 어댑터는 이 단계를 건너뛴다
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
 5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-l10n]`
