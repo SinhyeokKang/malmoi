@@ -84,13 +84,17 @@
 
 ## 6. `scripts/adapter-survey.ts` CLI 껍데기
 
-- [ ] 리포 목록을 읽어 clone → 파일 트리(리포 상대 POSIX 경로로 정규화) → `selectSurveyFiles` → `surveyOne` → `summarize`
-- [ ] **`process.exit()` 금지, `process.exitCode`만 세운다** (POSTMORTEM 2026-08-31 — 파이프 stdout 잘림)
-- [ ] `--json` 분기를 **early return으로 명시**한다 (같은 항목의 2차 원인 — 문서가 둘 나왔다). **`--json`일 때 stdout은 JSON 단독, 사람용 출력은 stderr** (`ingest.ts` 관례)
-- [ ] **exit code 계약: 측정 층이므로 항상 0** (`pnpm scan` 선례 — 남의 리포 상태를 우리 exit code로 판정하지 않는다. 사용법 오류만 2)
-- [ ] `package.json`에 `adapter-survey` 스크립트 + CLAUDE.md 명령어 표 갱신
-  - 검증: 리포 3개로 스모크 통과, `... --json | jq . > /dev/null` 통과 — **단 3개 출력은 64KB를 못 넘을 수 있으므로 이 검증은 태스크 7 전체 실행에서 반복해야 유효하다** (POSTMORTEM: 작은 출력에선 잘림이 재현되지 않는다)
-  - 검증: 실패한 리포 하나가 전체를 멈추지 않는다 — **clone 실패·빈 트리·서브모듈 안 로케일(depth-1이라 미초기화)·비UTF-8/바이너리 read·거대 파일·로케일 100개+ 리포**를 결과에 기록하고 계속한다
+- [x] 리포 목록을 읽어 clone → 파일 트리(git이 주는 리포 상대 POSIX 경로 그대로) → `selectSurveyFiles` → **sparse-checkout 일괄 fetch** → `surveyOne` → `summarize` (2026-09-02)
+  - ⚠️ **개별 `git cat-file`을 쓰지 않는다.** blobless partial clone에서 blob 하나를 읽을 때마다 네트워크 왕복이 일어나 리포 하나에 수 분이 든다. `sparse-checkout set --no-cone <고른 경로들}` + `checkout`이 **한 번에** 받는다(memos 44파일 0.9초 실측)
+- [x] **`process.exit()` 금지, `process.exitCode`만 세운다** (POSTMORTEM 2026-08-31 — 파이프 stdout 잘림). 사용법 오류만 예외로 `exit(2)`
+- [x] `--json` 분기를 **early return(if/else)으로 명시**한다 — 같은 항목의 2차 원인. 사람용 출력·진행 로그는 전부 stderr다
+- [x] **exit code 계약: 측정 층이므로 항상 0** (`pnpm scan` 선례). 사용법 오류만 2
+- [x] `package.json`에 `adapter-survey` + CLAUDE.md 명령어 표 갱신 (+ Codex 미러 동기화)
+  - 검증 통과: 리포 3개 스모크 **8.9초**, 3개 전부 detect 성공
+  - 검증 통과: 사용법 오류 `exit=2`, 없는 리포를 섞어도 **`exit=0`이고 나머지가 계속 돈다**(clone 실패가 결과 행으로 남는다)
+  - 검증 통과: 계속 진행 목록 — clone 실패·빈 트리·**서브모듈(gitlink)**·심볼릭 링크·**바이너리/비UTF-8**(NUL 바이트 검사로 건너뜀)·sparse-checkout 부분 실패를 전부 결과에 기록하고 진행한다
+  - ⚠️ **`--json` 파이프 검증에서 하네스 전체의 결함을 하나 찾았다**: `pnpm x --json | jq`는 **항상** 깨진다 — pnpm이 `> tsx scripts/...` 배너를 **stdout에** 찍기 때문이다. 이 스크립트만이 아니라 **`pnpm ingest --json`도 같다**(실측). 우리 출력 자체는 유효한 JSON 한 문서이고(직접 `tsx` 실행·`pnpm --silent` 둘 다 `jq` 통과), 검증 명령을 **`pnpm --silent adapter-survey ... --json | jq`** 로 고정했다
+  - ⚠️ **3개 스모크의 파이프 통과는 아직 증명이 아니다** — 출력이 9.6KB로 파이프 버퍼(64KB) 아래다. POSTMORTEM 원문이 경고한 그대로이므로 **진짜 검증은 태스크 7 전체 실행**이다
 
 ——
 

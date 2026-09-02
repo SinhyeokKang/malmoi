@@ -150,6 +150,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]` (`refs` 수집 — **항상 exit 0**) |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
+| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
 | GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
