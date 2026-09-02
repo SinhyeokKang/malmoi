@@ -73,7 +73,7 @@ function pairs(
   return out;
 }
 
-function detect(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat | undefined {
+function detectCandidates(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
   const byDir = new Map<string, string[]>();
   for (const path of paths) {
     const m = NS_DIR.exec(path);
@@ -82,9 +82,10 @@ function detect(paths: readonly string[], probe?: (p: string) => string | undefi
   }
 
   // 경로만으로는 판단할 수 없다 — .ts 디렉터리는 어디에나 있다. **내용을 봐야 한다.**
-  if (!probe) return undefined;
+  if (!probe) return [];
 
   const dirs = [...byDir.entries()].sort(([a], [b]) => compareKeys(a, b));
+  const found: DetectedFormat[] = [];
   for (const [dir, files] of dirs) {
     const locales = new Set<string>();
     let matched = 0;
@@ -99,9 +100,13 @@ function detect(paths: readonly string[], probe?: (p: string) => string | undefi
       for (const name of objs.keys()) locales.add(name);
     }
     if (matched === 0 || locales.size < 2) continue;
-    return { adapter: "ts-dict", pathTemplate: `${dir}*.ts`, locales: [...locales] };
+    found.push({ adapter: "ts-dict", pathTemplate: `${dir}*.ts`, locales: [...locales] });
   }
-  return undefined;
+  return found;
+}
+
+function detect(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat | undefined {
+  return detectCandidates(paths, probe)[0];
 }
 
 function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
@@ -169,4 +174,4 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   return changed ? sf.getFullText() : file.content;
 }
 
-export const tsDict: Adapter = { name: "ts-dict", layout: "multi-locale", detect, read, write };
+export const tsDict: Adapter = { name: "ts-dict", layout: "multi-locale", detect, detectCandidates, read, write };

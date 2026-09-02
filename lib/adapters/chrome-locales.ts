@@ -12,7 +12,7 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
 const CHROME_KEY = /^[A-Za-z0-9_@]+$/;
 const LOCALES_PATH = /^(.*)_locales\/([^/]+)\/messages\.json$/;
 
-function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
+function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
   /** root(접두 경로) → 로케일 코드 집합 */
   const byRoot = new Map<string, Set<string>>();
   for (const path of paths) {
@@ -29,12 +29,17 @@ function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | u
     [...byRoot.entries()].filter(([, s]) => s.size >= 2).map(([dir, locales]) => ({ dir, locales })),
   );
 
+  const found: DetectedFormat[] = [];
   for (const { dir, locales } of candidates) {
     const pathTemplate = `${dir}_locales/{locale}/messages.json`;
     if (probe && !verify(pathTemplate, locales, probe)) continue;
-    return { adapter: "chrome-locales", pathTemplate, locales: [...locales] };
+    found.push({ adapter: "chrome-locales", pathTemplate, locales: [...locales] });
   }
-  return undefined;
+  return found;
+}
+
+function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
+  return detectCandidates(paths, probe)[0];
 }
 
 /** 후보 로케일 파일 하나를 읽어 카탈로그 모양인지 확인한다. */
@@ -125,4 +130,4 @@ export function localeFromPath(pathTemplate: string, path: string): string | und
 
 type AdapterFileLike = { path: string; content: string };
 
-export const chromeLocales: Adapter = { name: "chrome-locales", layout: "per-locale", detect, read, write };
+export const chromeLocales: Adapter = { name: "chrome-locales", layout: "per-locale", detect, detectCandidates, read, write };

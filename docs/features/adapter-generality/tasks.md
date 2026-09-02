@@ -20,11 +20,12 @@
 
 **완료 조건 ②(오탐률)를 측정 가능하게 만드는 유일한 프로덕션 변경이다** (+ 태스크 8의 계약 주석 1건 — spec §프로덕션 변경).
 
-- [ ] `/tdd` — 2순위 후보가 노출되는 테스트, 기존 우선순위가 1순위로 유지되는 테스트
-  - 검증: 새 테스트가 red
-- [ ] `Adapter`에 `detectCandidates(paths, probe): DetectedFormat[]`(순위순, 빈 배열 = 못 찾음)를 **병존 추가** — 메서드 교체가 아니다 (2026-09-02 표기 확정). 기존 `detect`는 내부에서 `[0]`을 쓰도록 재구현하고 시그니처 유지
+- [x] `/tdd` — `lib/adapters/__tests__/detect-candidates.test.ts` (2026-09-02)
+  - 검증 통과: 작성 직후 **30건 red** (`detectCandidates is not a function`)
+- [x] `Adapter`에 `detectCandidates(paths, probe): DetectedFormat[]`(순위순, 빈 배열 = 못 찾음)를 **병존 추가**. 기존 `detect`는 `detectCandidates(...)[0]` 한 줄로 재구현 — 두 함수가 같은 관문(순위·probe 검증)을 지나므로 어긋날 수 없다
   - **기존 `detect`·`detectFormat`·`detectFormatWith` 시그니처를 유지한다** — 호출부(`scripts/ingest.ts`·`scripts/push-local.ts`)를 건드리지 않는 additive 변경이어야 한다. `DetectedFormat` 구조체도 불변
-  - 검증: `pnpm test` green (기존 어댑터 테스트 전부 포함), `pnpm typecheck` green
+  - 검증 통과: `pnpm test` **361건 green**(기존 331 + 신규 30), `pnpm typecheck` green
+  - additive 보증을 테스트가 든다: 어댑터 3개 × 입력 8종 = **24건이 `detect === detectCandidates[0]`** 과 "undefined ⇔ 빈 배열"을 매 실행 대조한다
 
 ——
 

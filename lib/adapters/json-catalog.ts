@@ -16,7 +16,7 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
 const SEP = ".";
 const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
 
-function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
+function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
   /** 디렉터리 → 로케일 코드 집합 */
   const byDir = new Map<string, Set<string>>();
   for (const path of paths) {
@@ -33,13 +33,18 @@ function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | u
     [...byDir.entries()].filter(([, s]) => s.size >= 2).map(([dir, locales]) => ({ dir, locales })),
   );
 
+  const found: DetectedFormat[] = [];
   for (const { dir, locales } of candidates) {
     const pathTemplate = `${dir}{locale}.json`;
     // 경로 신호만 믿으면 `public/search/{locale}.json`(검색 인덱스)을 잡는다 — 실제로 발생했다.
     if (probe && !verify(pathTemplate, locales, probe)) continue;
-    return { adapter: "json-catalog", pathTemplate, locales: [...locales] };
+    found.push({ adapter: "json-catalog", pathTemplate, locales: [...locales] });
   }
-  return undefined;
+  return found;
+}
+
+function detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
+  return detectCandidates(paths, probe)[0];
 }
 
 function read(format: DetectedFormat, files: readonly { path: string; content: string }[]): ReadResult {
@@ -162,4 +167,4 @@ function sortedByKey(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-export const jsonCatalog: Adapter = { name: "json-catalog", layout: "per-locale", detect, read, write };
+export const jsonCatalog: Adapter = { name: "json-catalog", layout: "per-locale", detect, detectCandidates, read, write };

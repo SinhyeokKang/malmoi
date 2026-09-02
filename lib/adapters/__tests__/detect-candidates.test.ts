@@ -1,0 +1,121 @@
+import { describe, expect, it } from "vitest";
+import { ADAPTERS, chromeLocales, detectFormat, jsonCatalog, tsDict } from "../index";
+import type { FileProbe } from "../types";
+
+/**
+ * `detectCandidates` — 1순위만이 아니라 **후보 전부를 순위순으로** 돌려준다.
+ *
+ * 왜 필요한가: 오탐률을 재려면 "1순위가 틀렸고 2순위가 정답이었다"를 관측할 수 있어야 하는데,
+ * `detect`는 1순위 하나만 주므로 2순위가 존재했는지조차 알 수 없다
+ * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
+ *
+ * **additive여야 한다** — 기존 `detect`·`detectFormat`·`detectFormatWith`의 시그니처와 결과가
+ * 그대로여야 호출부(`scripts/ingest.ts`·`scripts/push-local.ts`)를 건드리지 않는다.
+ */
+
+/** bugshot-web에서 실제로 발생한 오탐 쌍 — 검색 인덱스가 진짜 카탈로그보다 먼저 잡혔다. */
+const MISDETECT_PAIR = [
+  "public/search/en.json",
+  "public/search/ko.json",
+  "src/lib/i18n/en.json",
+  "src/lib/i18n/ko.json",
+];
+
+const TS_SOURCE = `
+const ko = { "a.b": "확인" } as const;
+const en = { "a.b": "OK" } satisfies Bundle;
+export const ns = { ko, en };
+`;
+
+describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
+  it("json-catalog: 오탐 후보가 2순위로 남아 관측된다", () => {
+    const found = jsonCatalog.detectCandidates(MISDETECT_PAIR);
+    expect(found.map((c) => c.pathTemplate)).toEqual([
+      "src/lib/i18n/{locale}.json",
+      "public/search/{locale}.json",
+    ]);
+  });
+
+  it("chrome-locales: root가 둘이면 둘 다 낸다", () => {
+    const found = chromeLocales.detectCandidates([
+      "extension/_locales/en/messages.json",
+      "extension/_locales/ko/messages.json",
+      "src/i18n/_locales/en/messages.json",
+      "src/i18n/_locales/ko/messages.json",
+      "src/i18n/_locales/ja/messages.json",
+    ]);
+    // i18n 신호가 있는 쪽이 먼저 — 로케일 수도 더 많다
+    expect(found.map((c) => c.pathTemplate)).toEqual([
+      "src/i18n/_locales/{locale}/messages.json",
+      "extension/_locales/{locale}/messages.json",
+    ]);
+  });
+
+  it("ts-dict: 디렉터리가 둘이면 둘 다 낸다", () => {
+    const found = tsDict.detectCandidates(
+      ["a/i18n/x.ts", "b/i18n/y.ts"],
+      () => TS_SOURCE,
+    );
+    expect(found.map((c) => c.pathTemplate)).toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
+  });
+
+  it("못 찾으면 빈 배열이다 (undefined가 아니다)", () => {
+    expect(jsonCatalog.detectCandidates(["src/data/users.json"])).toEqual([]);
+    expect(chromeLocales.detectCandidates(["package.json"])).toEqual([]);
+    expect(tsDict.detectCandidates(["src/lib/a.ts"], () => "export const x = 1;")).toEqual([]);
+  });
+
+  it("probe가 거른 후보는 후보 목록에도 없다 (detect와 같은 관문을 지난다)", () => {
+    // 검색 인덱스만 남기고 내용을 배열로 준다 — 카탈로그가 아니므로 후보가 0이어야 한다.
+    const onlySearch = ["public/search/en.json", "public/search/ko.json"];
+    const probe: FileProbe = () => '[{"id":1},{"id":2}]';
+    expect(jsonCatalog.detectCandidates(onlySearch, probe)).toEqual([]);
+    // probe가 없으면 경로만 보고 잡는다 — 기존 detect와 같은 성질이다.
+    expect(jsonCatalog.detectCandidates(onlySearch)).toHaveLength(1);
+  });
+
+  it("진짜 카탈로그만 probe를 통과하면 그것 하나만 남는다", () => {
+    const probe: FileProbe = (p) =>
+      p.startsWith("src/lib/i18n/") ? '{"a":"A"}' : '[{"id":1}]';
+    const found = jsonCatalog.detectCandidates(MISDETECT_PAIR, probe);
+    expect(found.map((c) => c.pathTemplate)).toEqual(["src/lib/i18n/{locale}.json"]);
+  });
+});
+
+describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
+  /** 어댑터마다 (경로 목록, probe) 조합. `detect`와 `detectCandidates[0]`이 항상 같아야 한다. */
+  const CASES: ReadonlyArray<{ name: string; paths: string[]; probe?: FileProbe }> = [
+    { name: "빈 목록", paths: [] },
+    { name: "관계없는 파일뿐", paths: ["package.json", "src/index.ts"] },
+    { name: "chrome 단일 root", paths: ["public/_locales/en/messages.json", "public/_locales/ko/messages.json"] },
+    { name: "json 오탐 쌍", paths: MISDETECT_PAIR },
+    { name: "json 오탐 쌍 + probe", paths: MISDETECT_PAIR, probe: (p) => (p.startsWith("src/") ? '{"a":"A"}' : "[]") },
+    { name: "로케일 1개뿐", paths: ["config/en.json"] },
+    { name: "ts 디렉터리 둘", paths: ["a/i18n/x.ts", "b/i18n/y.ts"], probe: () => TS_SOURCE },
+    { name: "chrome + json 공존", paths: ["public/_locales/en/messages.json", "public/_locales/ko/messages.json", "src/i18n/en.json", "src/i18n/ko.json"] },
+  ];
+
+  for (const adapter of ADAPTERS) {
+    for (const c of CASES) {
+      it(`${adapter.name} / ${c.name}`, () => {
+        const one = adapter.detect(c.paths, c.probe);
+        const many = adapter.detectCandidates(c.paths, c.probe);
+        expect(one).toEqual(many[0]);
+        // 못 찾음의 두 표현이 어긋나지 않는다
+        expect(one === undefined).toBe(many.length === 0);
+      });
+    }
+  }
+
+  it("detectFormat(어댑터 간 첫 매치)도 그대로다", () => {
+    expect(detectFormat(MISDETECT_PAIR)?.pathTemplate).toBe("src/lib/i18n/{locale}.json");
+    expect(
+      detectFormat([
+        "public/_locales/en/messages.json",
+        "public/_locales/ko/messages.json",
+        "src/lib/i18n/en.json",
+        "src/lib/i18n/ko.json",
+      ])?.adapter,
+    ).toBe("chrome-locales");
+  });
+});

@@ -100,6 +100,18 @@ export type Adapter = {
    * 블롭 읽기가 비싸므로 경로로 좁힌 후보만 확인하도록 콜백으로 받는다.
    */
   detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined;
+  /**
+   * `detect`와 같은 판정을 하되 **후보를 전부 순위순으로** 돌려준다. 못 찾으면 빈 배열.
+   *
+   * `detect`는 이 결과의 `[0]`이다 — 두 함수가 같은 관문(순위·probe 검증)을 지나므로 어긋날 수
+   * 없다. 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
+   * 위해서다: 1순위만 보면 오탐이 났다는 사실은 알아도 탐지가 얼마나 가까웠는지는 알 수 없다
+   * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
+   *
+   * ⚠️ **어댑터 *간* 순위는 여기에 없다.** 이 함수는 자기 어댑터의 후보만 낸다 — 어댑터를
+   * 가로지르는 병합·순위는 지금 소비자가 측정 실험뿐이라 `lib/survey/`의 순수 함수가 맡는다.
+   */
+  detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[];
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** @returns 파일 내용. 낼 항목이 0개면 `null` — 호출부가 그 로케일을 트리에서 뺀다 (MVP §4.1). */
   write(format: DetectedFormat, input: WriteInput): string | null;
