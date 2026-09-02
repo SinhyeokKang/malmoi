@@ -52,17 +52,21 @@
 
 ## 4. `surveyOne` + 보조 순수 함수 (`lib/survey/`)
 
-- [ ] `/tdd` — 픽스처 4개(정상 flat / 오탐 유발 검색 인덱스 / read 에러 포함 / **어댑터 간 경합 — chrome-locales와 ts-dict가 공존하는 bugshot-2 형태**)
-- [ ] `mergeCandidates(perAdapter)` — 어댑터별 후보 목록 → 글로벌 순위(`ADAPTERS` 순서 → 어댑터 내 순위)
-  - 검증: **`[0]`이 현 `detectFormat` 결과와 항상 같다**는 불변식 테스트 (design.md §detect 확장)
-- [ ] `selectSurveyFiles(paths)` — 물리화할 파일 선별(후보 카탈로그 + 설정 파일, `.git`·바이너리·대용량 제외). 껍데기에 로직이 스미는 걸 막는 함수다
-- [ ] `surveyOne({repo, paths, files})` → `RepoSurvey`
+- [x] `/tdd` — 픽스처 4개(정상 flat / 오탐 유발 검색 인덱스 / read 에러 포함 / **어댑터 간 경합 — chrome-locales와 ts-dict가 공존하는 bugshot-2 형태**). 2026-09-02
+  - ⚠️ 픽스처를 쓰면서 알게 된 것: `detect`의 probe는 **정렬상 첫 로케일** 하나만 읽으므로, 에러 유발 값을 `en`에 두면 후보 자체가 걸러져 read 에러를 잴 기회가 사라진다. `zz.json`으로 옮겼다
+- [x] `mergeCandidates(perAdapter)` — 어댑터별 후보 목록 → 글로벌 순위(`ADAPTERS` 순서 → 어댑터 내 순위). `candidatesFor(paths, probe)`가 `ADAPTERS` 전수에 돌린다
+  - 검증 통과: 픽스처 4종 전부에서 **`[0]`이 `detectFormat` 결과와 같다**. 어댑터 간 경합 픽스처에서 가려진 ts-dict 후보가 목록에 남는 것도 확인
+- [x] `selectSurveyFiles(paths)` — 물리화할 파일 선별. 껍데기에 로직이 스미는 걸 막는다
+  - ⚠️ **측정 한계를 코드에 명시했다**: ts 후보를 i18n 신호 디렉터리(또는 로케일 이름 파일 2개 이상)로 좁힌다. 안 좁히면 리포당 수천 파일을 ts-morph로 판다. 이 편향은 **한 방향뿐**이다 — ts-dict 탐지를 과소 보고할 뿐 없는 오탐을 만들지 않는다
+  - 설정 파일은 **존재만** 세므로 물리화하지 않는다. 선택 결과는 정렬돼 있어 입력 순서에 의존하지 않는다
+- [x] `surveyOne({repo, paths, files})` → `RepoSurvey`
   - **파일 내용을 인자로 받는다** — 네트워크·디스크 없음
-  - **어댑터 read/write 호출을 try로 감싼다** — ts-dict의 `createSourceFile` throw가 `ReadResult.errors`로 오지 않으므로(design.md §함정) surveyOne이 "파싱 실패" 유형으로 흡수한다. 실패한 리포 하나가 전체를 멈추지 않는 경계가 여기다
-  - `RepoSurvey`에 담을 것: 후보 목록(글로벌 순위별), 로케일 수, 키 수, `read` 에러 유형별 건수, **키 충돌 건수**, **무증상 skip 건수(spread·shorthand·computed)**, **왕복 2층 판정**(의미 게이트: 2차 read 키·값 집합 = 1차 read / 바이트 고정점: 2차 write = 1차 write — spec 완료 조건 ④), `roundtripDiffRatio`, 구분자가 `.`이 아닌지, 설정 파일 존재 여부, (코드 어댑터일 때) **읽힌 키 수 vs 파일의 문자열 리터럴 수**, 리포당 소요 시간
-  - **`ts-dict`의 왕복은 파일 × 로케일 이중 루프다** (ARCHITECTURE §3 함정) — 직전 write 결과를 다음 로케일 호출의 원본으로 넘긴다. 파일 축만 돌면 나머지 로케일이 원본으로 남아 왕복이 거짓 통과한다
-  - **생산자에 타입을 명시한다** (`const survey: RepoSurvey = ...`) — POSTMORTEM 2026-08-31 리터럴 조립 항목
-  - 검증: `pnpm test` green
+  - **어댑터 read/write 호출을 전부 try로 감쌌다** — ts-dict의 `createSourceFile` throw가 `ReadResult.errors`로 오지 않으므로(design.md §함정) surveyOne이 `adapter-threw` 유형으로 흡수한다. "실패한 리포 하나가 전체를 멈추지 않는다"의 실제 구현 지점이 여기다
+  - `RepoSurvey`가 담는 것: 후보 목록(글로벌 순위별)·1순위, 로케일 수, 키 수, `read` 에러 **7유형**별 건수, **키 충돌 건수**, **무증상 skip 건수**, **왕복 2층 판정**, `diffRatio`+근사 여부, 구분자 분포 5종, **ICU 복수형·치환자 키 수**(MVP §7 비범위라 빈도만 센다), 설정 파일, (코드 어댑터일 때) 읽힌 키 수 vs 문자열 리터럴 수, 잘림 여부, 소요 시간
+  - **무증상 skip을 `errors`에 넣지 않고 별도 카운터로 뺐다** — 어댑터가 에러를 안 만드는 경로이고, `errors`는 `push:local`이 exit 1로 막아 orphaned까지 못 가는 반면 무증상 skip은 **그 게이트를 통과하는 유일한 위험 경로**다. 같은 통에 넣으면 판정 ③의 근거가 섞인다
+  - **`ts-dict`의 왕복은 파일 × 로케일 이중 루프다** (ARCHITECTURE §3 함정) — 직전 write 결과를 다음 로케일 호출의 원본으로 넘긴다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 왕복이 거짓 통과한다
+  - **생산자에 타입을 명시했다** (`const survey: RepoSurvey = ...`) — POSTMORTEM 2026-08-31 리터럴 조립 항목
+  - 검증 통과: `pnpm test` **406건 green**, `pnpm typecheck` green. surveyOne이 **결정적**(같은 입력 두 번 → 소요 시간 빼고 동일)인 것도 테스트가 든다
 
 ——
 
