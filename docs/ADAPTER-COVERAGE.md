@@ -3,11 +3,15 @@
 **오픈소스 리포 109개에 `detect`·`read`·왕복을 돌린 결과와, 그 숫자로 내린 판정이다.**
 실험의 스펙·설계·태스크는 [features/adapter-generality/](./features/adapter-generality/)에 있다.
 
-- 실행: `pnpm adapter-survey docs/features/adapter-generality/repos.txt --verdicts docs/features/adapter-generality/verdicts.json`
+- 실행(학습 코퍼스): `pnpm adapter-survey docs/features/adapter-generality/repos.txt --verdicts docs/features/adapter-generality/verdicts.json`
+- 실행(홀드아웃): `pnpm adapter-survey docs/features/adapter-generality/repos-heldout.txt --verdicts docs/features/adapter-generality/verdicts-heldout.json`
 - 대상 목록: [repos.md](./features/adapter-generality/repos.md) / 정답 경로: [verdicts.json](./features/adapter-generality/verdicts.json)
-- 규모: **109개 리포 · 1,900+ 로케일 · 43,000+ 키**. clone 실패 0건
+- 규모: 학습 **109개 리포 · 1,900+ 로케일 · 43,000+ 키** + 홀드아웃 **20개**. clone 실패 0건
 
-## 0. 두 번의 측정 — 어댑터 3개 → 5개
+> **⚠️ 학습 코퍼스 109개의 숫자(§1~§4)는 어댑터를 그것에 맞춰 고친 뒤의 값이다.** 일반화 여부는
+> 그 숫자가 아니라 **§0의 3차(홀드아웃 20개)** 가 답한다 — 고친 뒤에 처음 본 리포들이다.
+
+## 0. 세 번의 측정 — 어댑터 3개 → 5개 → 홀드아웃 검증
 
 **1차(2026-09-02 오전)는 판정을 위한 측정이었고, 2차(같은 날 오후)는 그 판정대로 만든 뒤의 측정이다.**
 1차 결과로 어댑터 2개(`yaml-catalog`·`code-dict`)를 추가하고 결함 3건을 고쳤으며, 그 뒤 **같은 코퍼스에
@@ -27,7 +31,79 @@
 **이 작업이 실제로 바꾼 것은 "조용한 손실 0"이다.** 남은 왕복 실패 2건(siyuan 21키, musicblocks 324키)은
 값을 잃는 것은 같지만 **어느 키에서 잃었는지 보고한다** — CI가 잡을 수 있는 상태가 됐다.
 
-## 1. 지표 4개 (2차)
+### 3차 — 처음 보는 리포 20개 (홀드아웃)
+
+**1·2차의 숫자는 어댑터를 그 109개에 맞춰 고친 뒤의 값이라 일반화를 증명하지 않는다.** 그래서
+겹치지 않는 리포 20개를 새로 골라, **손대기 전에** 한 번 돌렸다. 결과가 그 우려를 그대로 확인했다:
+
+| 지표 | 홀드아웃 (수정 전) | **홀드아웃 (수정 후)** | 학습 109개 (참고) |
+|---|---|---|---|
+| ① `detect` (지원 포맷) | 0/0 = – | **16/17 = 94.1%** | 100/101 = 99.0% |
+| ① `detect` (전체 20개) | 10/20 = 50.0% | **16/20 = 80.0%** | 100/109 = 91.7% |
+| ② **오탐률** (후보를 낸 리포) | **4/10 = 40.0%** | **1/16 = 6.3%** | 0/100 = 0.0% |
+| ④ 왕복 의미 동일 | 10/10 | **16/16 = 100%** | 98/100 = 98.0% |
+| ④ 바이트 고정점 | 10/10 | **16/16 = 100%** | 100/100 = 100% |
+| 조용한 손실 | 0건 | **0건** | 0건 |
+
+**학습 코퍼스의 오탐 0.0%는 과적합이었다** — 처음 보는 20개에서 40%였다. 다만 실패의 성질이 다르다:
+왕복(결정성·의미 보존)은 홀드아웃에서도 처음부터 100%였고, **무너진 것은 탐지뿐이다.** read/write
+기계는 옮겨 갔고 "어느 파일이 카탈로그인가"의 판단이 옮겨 가지 않았다.
+
+#### 못 보던 경로 모양 둘 — 20개 중 9개가 그 형태였다
+
+| 모양 | 홀드아웃 빈도 | 예 |
+|---|---|---|
+| `{dir}/{locale}/<name>.json` — **로케일이 디렉터리** | 6/20 | grafana `public/locales/{locale}/grafana.json`, open-webui·outline `…/translation.json`, cal.com·Ghost `packages/i18n/locales/{locale}/…`, zulip `locale/{locale}/translations.json` |
+| `{dir}/<prefix><sep>{locale}.<ext>` — **접두사 붙은 파일명** | 3/20 | discourse `config/locales/client.ar.yml`, gitea `options/locale/locale_de-DE.json`, jitsi `lang/main-af.json` |
+
+**어댑터를 새로 만들지 않았다.** 두 모양 다 read·write가 기존 것과 완전히 같고 `pathTemplate`만
+다르다 — `chrome-locales`가 애초에 첫 모양의 특수 사례(`_locales/{locale}/messages.json`)다.
+`json-catalog`·`yaml-catalog`의 **탐지만** 넓혔다.
+
+**로케일 디렉터리 형태는 디렉터리당 후보를 하나만 낸다** (`PRIMARY_NAMES`). `Project`가 포맷을 하나만
+들기 때문이고, 그래서 Ghost의 네임스페이스 5개 중 1개만 덮는다 — 표면을 나누려면 프로젝트를
+나눠야 한다 (MVP §7).
+
+#### 3차가 잡은 결함 4건
+
+| # | 결함 | 어떻게 드러났나 |
+|---|---|---|
+| 1 | **맨 3글자 이름이 로케일로 잡혔다** | `looksLikeLocale`이 `[a-z]{2,3}`을 받아 grafana의 `azuremonitor/dashboards/{adx,arg}.json`(대시보드 정의, read 에러 1,799)과 n8n의 `__schema__/…/{add,get}.json`이 **1순위**가 됐다. `add`·`get`·`adx`·`arg`가 전부 3글자다 |
+| 2 | **로케일 디렉터리에서 파일 이름을 알파벳순으로 골랐다** | zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집었다 — 둘 다 옆에 `translations.json`·`common.json`이 있다 |
+| 3 | **접두사 후보가 맨 로케일 파일을 눌렀다** | rubygems.org의 `config/locales/avo.{locale}.yml`(Avo 관리자 UI)이 앱 카탈로그를 이겼다. 로케일 수·깊이가 같아 마지막 tiebreak인 **경로 사전순**으로 갔고 `a` < `{`였다 |
+| 4 | **하위 카탈로그가 정본을 눌렀다** | DMPRoadmap/roadmap의 `config/locales/contact_us/contact_us.{locale}.yml`(17로케일 · **11키**)이 `config/locales/{locale}.yml`(15로케일)을 이겼다. **접두사 모양을 받으면서 생긴 회귀**이고, 자손 쪽 로케일 수가 실제로 더 많아 수 신호로는 안 뒤집힌다 |
+
+1·2는 홀드아웃이 드러낸 것이고, **3·4는 이 라운드의 수정이 만든 회귀**다 — 4는 학습 코퍼스에서만
+나타났으므로 **홀드아웃과 학습 코퍼스를 매 라운드 둘 다 돌린 것이 그것을 잡은 유일한 이유다.**
+
+3은 `templateShapeRank`(맨 로케일 파일 > 로케일 디렉터리 > 접두사)로, 4는 `liftAncestors`(1순위의
+조상 디렉터리에 있는 후보를 승격)로 고쳤다. **`liftAncestors`는 비교 함수가 아니라 정렬 뒤 후처리다** —
+"조상이 이긴다"가 추이적이지 않아 `sort`에 넣으면 결과가 구현 정의가 된다.
+
+#### 남은 오탐 1건 — 고치지 않고 보고한다
+
+**discourse/discourse** — `plugins/discourse-cakeday/config/locales/client.{locale}.yml`(27키)을 고르고
+정답 `config/locales/client.{locale}.yml`은 5순위다. 플러그인 쪽 로케일 파일이 **하나 더 많고**(50 vs 49)
+다른 서브트리라 로케일 수도 조상 승격도 닿지 않는다. `plugins/` 감점을 넣으면 잡히지만 **관측이
+1건뿐이라 만들지 않았다** — 근거 없는 규칙 추가가 이 프로젝트에서 결함이다. Ghost·payload처럼
+`packages/`에 진짜 카탈로그를 두는 리포가 있어 "하위 디렉터리 감점"은 일반화할 수도 없다.
+
+#### 미지원 3건 — 미탐지가 정답이다
+
+| 리포 | 포맷 |
+|---|---|
+| mozilla/pdf.js | Fluent (`l10n/{locale}/viewer.ftl`) |
+| Stirling-Tools/Stirling-PDF | Java `.properties` + 번들된 pdfjs `.ftl` |
+| obsidianmd/obsidian-translations | `translations/{locale}.txt` — 줄 단위 텍스트 |
+
+**n8n-io/n8n은 지원 포맷인데 미탐지다** — `packages/frontend/@n8n/i18n/src/locales/`에 `en.json`
+하나뿐이라 zoom-redirector와 같은 "2개 이상" 정책에 걸린다. 수정 전에는 이 자리에
+`packages/@n8n/{ai,di,db}/package.json`이 1순위로 올라와 있었다.
+
+**TryGhost/Ghost는 첫 write diff를 못 잰다** — base(`en`)가 빈 스텁이다(영어 원문이 키 자체인 관례).
+write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 리포의 성질이다.
+
+## 1. 지표 4개 (학습 코퍼스 109개, 2차 이후 값 유지)
 
 ### ① `detect` 성공률 — 분모가 둘이다
 
@@ -146,6 +222,19 @@
 단서 하나: **중첩 JSON에서 키가 `.`을 품으면 값이 사라질 수 있다** (§3). 사라지는 것을 **보고**하므로
 조용한 손실은 아니지만, 완전한 해결은 별 기능이다.
 
+**경로 모양 3개** (2026-09-02 3차 추가). `json-catalog`·`yaml-catalog`이 read/write를 공유하고
+`pathTemplate`만 다르다:
+
+| 모양 | 어댑터 | 근거 |
+|---|---|---|
+| `{dir}/{locale}.{json,yml,ts,js}` | 전부 | 원래 형태 |
+| `{dir}/{locale}/<name>.json` | `json-catalog` | 홀드아웃 6/20. **경로에 `locale(s)`·`i18n` 신호를 요구한다** — 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다(n8n `packages/@n8n/{ai}/`) |
+| `{dir}/<prefix><sep>{locale}.<ext>` | `json-catalog`·`yaml-catalog` | 홀드아웃 3/20. 구분자는 `.`·`-`·`_` |
+
+**후보 그룹은 강한 로케일 코드를 하나 이상 요구한다** (`hasStrongLocale`). 맨 3글자(`add`·`get`)는
+약하고, `en`·`zh-CN`·`koKR`·`fil-PH`는 강하다. 3글자 로케일(`fil`·`ceb`)은 강한 것 옆에 있으면 함께
+인정된다 — 실제 카탈로그는 거의 항상 `en` 옆에 있다.
+
 ### 판정 ② MVP §4.1 "키 정렬" — **여전히 개정이 필요하다**
 
 `json-catalog`의 첫 write diff 중앙값이 **0.784**다. 원본이 이미 정렬돼 있는 리포는 소수다.
@@ -163,14 +252,28 @@
 `--adapter ts-dict` 명시 지정은 그대로 동작하고, 탐지 로직은 `tsDictDetectByContent`에 보관돼 있다.
 bugshot-2가 그 경로의 유일한 사용자다.
 
-### 판정 ④ 자동 포맷 탐지의 무인 신뢰 — **가능하다**
+### 판정 ④ 자동 포맷 탐지의 무인 신뢰 — **가능하다, 단 홀드아웃 6.3%가 실제 수치다**
 
-오탐률 **0.0%**(1차 5.6%). 중단 기준 30%(잠정값)와 비교할 필요조차 없어졌다.
+| 코퍼스 | 오탐률 |
+|---|---|
+| 학습 109개 | 0.0% |
+| **홀드아웃 20개 (수정 전)** | **40.0%** |
+| **홀드아웃 20개 (수정 후)** | **6.3%** — 남은 1건은 discourse |
 
-다만 **"사람 확인 한 단계"를 없애자는 뜻은 아니다.** 0%는 **정답을 사람이 적어준 코퍼스**에서 나온
-숫자이고, 처음 보는 리포에서 1순위가 틀렸을 때 **에러가 나지 않는다**는 성질은 그대로다. 연동 시
-후보 목록·로케일 수·키 수를 보여주고 고르게 하는 화면 하나가 여전히 값을 한다 — `detectCandidates`가
-그 데이터를 이미 준다.
+**보고할 숫자는 6.3%다.** 학습 코퍼스의 0.0%는 그 코퍼스에 맞춰 고친 뒤의 값이라 새 리포에서의
+기대값이 아니다 — 홀드아웃이 정확히 그것을 재려고 있다. 중단 기준 30%(잠정값)는 수정 후 기준으로
+통과하고, **수정 전 40%는 그 기준을 넘겼다.**
+
+**"사람 확인 한 단계"는 없애지 않는다.** 3차가 그 근거를 강화했다:
+
+- 오탐 4건 전부 **에러가 아니라 그럴듯한 답**이었다. grafana는 대시보드 정의 디렉터리를 카탈로그로
+  내놓았고 read 에러 1,799건을 내면서도 후보 자격을 유지했다.
+- 실패 모드가 한쪽으로 쏠린다: **read/write는 처음 보는 리포에서도 100%였고 무너진 것은 탐지뿐이다.**
+  즉 위험은 "값을 잘못 쓴다"가 아니라 **"엉뚱한 파일을 대상으로 삼는다"** 이고, 그건 사람이 경로 하나
+  보면 즉시 아는 종류다.
+
+연동 시 후보 목록·로케일 수·키 수를 보여주고 고르게 하는 화면 하나가 여전히 값을 한다 —
+`detectCandidates`가 그 데이터를 이미 준다.
 
 ## 6. 여기서 파생된 후속 작업
 
@@ -180,6 +283,8 @@ bugshot-2가 그 경로의 유일한 사용자다.
 | 2 | **"원본 키 순서 보존" 모드** (재생성 writer에 원본 입력) | 판정 ② — `json-catalog` diff 중앙값 0.784 |
 | 3 | 크롬 레이아웃 + YAML (`_locales/{locale}/messages.yml`) | violentmonkey 1개 |
 | 4 | 단일 로케일 리포 지원 여부 판정 | arkadiyt/zoom-redirector 1개. "2개 이상" 규칙의 대가다 |
+| 5 | **하위 카탈로그가 정본을 누르는 경우** | discourse 1개. `plugins/` 감점은 관측 1건으로는 못 만든다 (§0 3차) |
+| 6 | **로케일 디렉터리의 네임스페이스 여러 개** | Ghost 5개·automa 4개·Folo 10개. 한 프로젝트가 하나만 덮는다 — 프로젝트 분할이 답인지 판정 필요 |
 | — | `.po`·`.arb`·`.strings`·`.properties` 어댑터 | **하지 않는다** — 표본 109개에 0개 |
 | — | 설정 파일 기반 탐지 | **하지 않는다** — 표본 109개에 **0개** |
 | — | ICU 복수형 지원 | **하지 않는다** — 2개 리포뿐, MVP §7 유지 |
@@ -188,7 +293,9 @@ bugshot-2가 그 경로의 유일한 사용자다.
 
 - 첫 pull PR을 개발자가 실제로 머지하는가 (지표 ④는 대리 지표다)
 - 번역자가 `refs` permalink를 클릭하는가
-- **verdicts를 내가 적었다** — 표본을 고른 것도 정답을 적은 것도 같은 주체다. 오탐 0%는 그 전제 위의 숫자다
+- **verdicts를 내가 적었다** — 표본을 고른 것도 정답을 적은 것도 같은 주체다. 오탐률은 그 전제 위의 숫자다
+- **홀드아웃도 내가 골랐다** — "처음 보는 리포"라는 성질은 지켰지만(수정 전에 먼저 돌렸다) 무작위 표집이 아니다. 지원할 만한 포맷을 의도적으로 섞었으므로 전체 오픈소스 분포가 아니다
+- **홀드아웃 20개는 학습 코퍼스가 됐다** — 이 라운드에서 그것에 맞춰 고쳤으므로, 다음 일반화 측정은 또 다른 새 리포가 필요하다
 
 ## 8. 리포별 상세
 
@@ -305,3 +412,30 @@ bugshot-2가 그 경로의 유일한 사용자다.
 | [yui540/comimi](https://github.com/yui540/comimi) | B | `locales/{locale}.json` | ✅ | 1 | 6 | 43 | 0 | 0 | 0 | same/same | 0.652 | – |
 | [z-------------/CPod](https://github.com/z-------------/CPod) | B | `locales/{locale}.json` | ✅ | 1 | 16 | 163 | 0 | 0 | 0 | same/same | 0.799 | – |
 | [zmh-program/next-whois](https://github.com/zmh-program/next-whois) | B | `locales/{locale}.json` | ✅ | 1 | 8 | 138 | 0 | 0 | 0 | same/same | 0.799 | – |
+
+## 9. 홀드아웃 20개 리포별 상세
+
+**어댑터를 고친 뒤의 값이다.** 수정 전 값은 §0 3차의 표에 요약돼 있다.
+
+| 리포 | 구간 | 1순위 후보 | 판정 | 정답 순위 | 로케일 | 키 | 에러 | skip | 충돌 | 왕복(의미/바이트) | diff | 비고 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| [AutomaApp/automa](https://github.com/AutomaApp/automa) | B | `src/locales/{locale}/common.json` | ✅ | 1 | 9 | 67 | 1 | 0 | 0 | same/same | 0.667 | – |
+| [RSSNext/Folo](https://github.com/RSSNext/Folo) | A | `locales/ai/{locale}.json` | ✅ | 1 | 5 | 369 | 0 | 0 | 0 | same/same | 0.001 | 다른 유효 표면 |
+| [Stirling-Tools/Stirling-PDF](https://github.com/Stirling-Tools/Stirling-PDF) | A | – | ➖ | – | 0 | 0 | 0 | 0 | 0 | not-run/not-run | – | 미지원: properties |
+| [TryGhost/Ghost](https://github.com/TryGhost/Ghost) | A | `packages/i18n/locales/{locale}/comments.json` | ✅ | 1 | 12 | 84 | 0 | 0 | 0 | same/same | – | 다른 유효 표면 |
+| [calcom/cal.com](https://github.com/calcom/cal.com) | A | `packages/i18n/locales/{locale}/common.json` | ✅ | 1 | 12 | 4770 | 0 | 0 | 0 | same/same | 0.959 | – |
+| [discourse/discourse](https://github.com/discourse/discourse) | C | `plugins/discourse-cakeday/config/locales/client.{locale}.yml` | ❌ | 5 | 12 | 27 | 0 | 0 | 0 | same/same | 0.000 | – |
+| [excalidraw/excalidraw](https://github.com/excalidraw/excalidraw) | A | `packages/excalidraw/locales/{locale}.json` | ✅ | 1 | 57 | 614 | 0 | 0 | 0 | same/same | 0.843 | – |
+| [go-gitea/gitea](https://github.com/go-gitea/gitea) | A | `options/locale/locale_{locale}.json` | ✅ | 1 | 12 | 3979 | 0 | 0 | 0 | same/same | 0.916 | – |
+| [grafana/grafana](https://github.com/grafana/grafana) | A | `public/locales/{locale}/grafana.json` | ✅ | 1 | 12 | 11733 | 0 | 0 | 0 | same/same | 0.050 | – |
+| [jitsi/jitsi-meet](https://github.com/jitsi/jitsi-meet) | A | `lang/main-{locale}.json` | ✅ | 1 | 12 | 1547 | 0 | 0 | 0 | same/same | 0.981 | – |
+| [mattermost/mattermost](https://github.com/mattermost/mattermost) | A | `webapp/channels/src/i18n/{locale}.json` | ✅ | 1 | 64 | 8342 | 0 | 0 | 0 | same/same | 0.098 | – |
+| [mozilla/pdf.js](https://github.com/mozilla/pdf.js) | A | – | ➖ | – | 0 | 0 | 0 | 0 | 0 | not-run/not-run | – | 미지원: fluent |
+| [n8n-io/n8n](https://github.com/n8n-io/n8n) | A | – | ❌ | 없음 | 0 | 0 | 0 | 0 | 0 | not-run/not-run | – | – |
+| [obsidianmd/obsidian-translations](https://github.com/obsidianmd/obsidian-translations) | B | – | ➖ | – | 0 | 0 | 0 | 0 | 0 | not-run/not-run | – | 미지원: txt |
+| [open-webui/open-webui](https://github.com/open-webui/open-webui) | A | `src/lib/i18n/locales/{locale}/translation.json` | ✅ | 1 | 12 | 3150 | 0 | 0 | 0 | same/same | 0.999 | – |
+| [outline/outline](https://github.com/outline/outline) | A | `shared/i18n/locales/{locale}/translation.json` | ✅ | 1 | 12 | 1906 | 0 | 0 | 0 | same/same | 0.943 | – |
+| [rubygems/rubygems.org](https://github.com/rubygems/rubygems.org) | B | `config/locales/{locale}.yml` | ✅ | 1 | 9 | 838 | 0 | 0 | 0 | same/same | 0.000 | – |
+| [spree/spree_i18n](https://github.com/spree/spree_i18n) | A | `config/locales/{locale}.yml` | ✅ | 1 | 47 | 3562 | 76 | 0 | 0 | same/same | 0.000 | – |
+| [withastro/docs](https://github.com/withastro/docs) | A | `src/content/i18n/{locale}.yml` | ✅ | 1 | 14 | 77 | 0 | 0 | 0 | same/same | 0.000 | – |
+| [zulip/zulip](https://github.com/zulip/zulip) | A | `locale/{locale}/translations.json` | ✅ | 1 | 12 | 2282 | 0 | 0 | 0 | same/same | 0.248 | – |

@@ -180,3 +180,30 @@ tasks.md의 `git clone --depth 1` 결정을 실측으로 한 겹 좁혔다: **`-
 - `correctCatalogPath` — 그 리포에서 **실제로 번역이 사는 곳**의 경로 템플릿. 우리가 지원하지 않는 포맷이면 `null`
 - `note` — 그렇게 판정한 근거. **사후 감사용이다** (spec §실행 방식 — 무인 루프라 판정 주체가 실행 에이전트이고, 근거가 남아야 판정이 검증 가능하다)
 - 1순위 오탐 여부·N순위 정답 여부는 이 경로와 survey의 후보 목록을 `summarize`가 대조해 **자동 계산**한다. detect를 고쳐 재실행해도 판정이 살아남는 이유다
+
+
+---
+
+## 3차 — 홀드아웃 20개 (2026-09-02 저녁)
+
+**목록: [repos-heldout.txt](./repos-heldout.txt) / 정답: [verdicts-heldout.json](./verdicts-heldout.json)**
+
+위 109개와 **겹치지 않는다**(`comm -12`로 확인). 어댑터를 109개에 맞춰 7라운드 고친 뒤라 그
+숫자가 일반화를 증명하지 않으므로, **손대기 전에 먼저 한 번 돌리는 것**이 이 목록의 존재 이유다.
+
+선정 기준: 지원할 만한 포맷과 미지원 포맷을 의도적으로 섞고, **모양이 다를 것 같은 리포를 우선**
+골랐다(로케일 디렉터리·접두사 파일명·Fluent·properties·줄 단위 텍스트). 무작위 표집이 아니므로
+전체 오픈소스 분포가 아니다 — `docs/ADAPTER-COVERAGE.md` §7에 그 한계를 적었다.
+
+| 정답 경로 모양 | 개수 | 리포 |
+|---|---|---|
+| `{dir}/{locale}.{json,yml}` | 5 | rubygems.org, spree_i18n, excalidraw, mattermost, withastro/docs |
+| `{dir}/{locale}/<name>.json` | 6 | grafana, open-webui, outline, Ghost, cal.com, zulip |
+| `{dir}/{ns}/{locale}.json` | 2 | Folo, automa(로케일 디렉터리 안 네임스페이스) |
+| `{dir}/<prefix><sep>{locale}.<ext>` | 3 | discourse, gitea, jitsi-meet |
+| 지원 포맷 + 단일 로케일 | 1 | n8n (정책상 미탐지) |
+| 미지원 | 3 | pdf.js(ftl), Stirling-PDF(properties), obsidian-translations(txt) |
+
+**정답은 어댑터를 고치기 전에, 리포 트리를 직접 읽어 적었다.** 20개 전부 blobless clone으로
+`git ls-tree`를 떠서 로케일 디렉터리와 파일명을 눈으로 확인했다 — 탐지 결과를 정답으로 되쓰면
+오탐률이 정의상 0이 된다.

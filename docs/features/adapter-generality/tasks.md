@@ -175,3 +175,27 @@ ADAPTER-COVERAGE §4. 그중 둘은 검증 층 자체의 결함이었다 — 껍
 - **`nested: boolean` → `tree: {style, separator}`** 계약 확장 + `Project.nested` 마이그레이션(additive)
 - **`mergeCandidates`의 `lib/adapters/` 승격** — 온보딩 UI 등 프로덕션 소비자가 생길 때 (design.md §detect 확장)
 - **`ts-dict.write`의 버려지는 `errors` 배열 수리** (design.md §함정 부수 관측)
+
+
+---
+
+## 3차 실행 — 홀드아웃 검증 (2026-09-02 저녁)
+
+**겹치지 않는 리포 20개를 새로 골라, 어댑터를 손대기 전에 먼저 돌렸다.** 학습 코퍼스 109개의
+숫자가 그 코퍼스에 맞춰 고친 뒤의 값이라 일반화를 증명하지 않기 때문이다.
+
+- [x] 목록 선정 + 겹침 확인 (`comm -12` → 0건) — [repos-heldout.txt](./repos-heldout.txt)
+- [x] **정답을 어댑터 수정 전에 적었다** — 20개 전부 blobless clone으로 `git ls-tree`를 떠서 눈으로 확인. [verdicts-heldout.json](./verdicts-heldout.json)
+  - 검증: 탐지 결과를 정답으로 되쓰면 오탐률이 정의상 0이 된다 — 그 경로를 막았다
+- [x] 수정 전 측정: 탐지 50.0% · **오탐 40.0%** · 왕복 10/10 의미·바이트
+- [x] 경로 모양 2개 추가 (`{dir}/{locale}/<name>.json` · `{dir}/<prefix><sep>{locale}.<ext>`)
+  - 검증: `pnpm test` 582건 green (신규 24건) / `pnpm typecheck` 통과
+  - **어댑터를 새로 만들지 않았다** — read·write가 같고 `pathTemplate`만 다르다
+- [x] 결함 4건 수리 (`hasStrongLocale` · `PRIMARY_NAMES` · `templateShapeRank` · `liftAncestors`)
+- [x] **매 라운드 홀드아웃 + 학습 코퍼스를 둘 다 측정** — 수정 4건 중 2건이 회귀였고 하나는 학습 코퍼스에서만 나타났다
+- [x] 수정 후 측정: 홀드아웃 탐지 80.0%(지원 포맷 16/17) · **오탐 6.3%** · 왕복 16/16 · 학습 코퍼스 **무회귀**(100/101 · 0.0% · 98/100 · 100/100, read 에러 유형별 건수까지 동일)
+- [x] 문서 갱신: ADAPTER-COVERAGE(§0 3차 + 판정 ④ 갱신 + §9) · ARCHITECTURE §1.3 · MVP §5.1 · TASKS §8 · POSTMORTEM 2건 · CLAUDE/AGENTS
+
+**이 라운드의 교훈**: *학습 코퍼스로 잰 숫자는 일반화가 아니다.* 오탐 0.0%가 처음 보는 20개에서
+40%였다. 그리고 *순위 픽스는 파이프라인의 마지막 층에 넣어야 한다* — `liftAncestors`가 자기 단위
+테스트만 통과하고 실제 경로에서 죽어 있었다.

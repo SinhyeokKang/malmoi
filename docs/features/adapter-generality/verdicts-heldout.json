@@ -1,0 +1,22 @@
+[
+  { "repo": "discourse/discourse", "correctCatalogPath": "config/locales/client.{locale}.yml", "alsoValid": ["config/locales/server.{locale}.yml"], "note": "Rails 접두사 관례. client=프런트엔드, server=백엔드로 둘 다 정답이다", "tier": "C" },
+  { "repo": "rubygems/rubygems.org", "correctCatalogPath": "config/locales/{locale}.yml", "note": "9로케일 Rails 표준 위치", "tier": "B" },
+  { "repo": "spree/spree_i18n", "correctCatalogPath": "config/locales/{locale}.yml", "note": "47로케일. 리포 전체가 로케일 모음이다", "tier": "A" },
+  { "repo": "excalidraw/excalidraw", "correctCatalogPath": "packages/excalidraw/locales/{locale}.json", "note": "57로케일 중첩 JSON", "tier": "A" },
+  { "repo": "mattermost/mattermost", "correctCatalogPath": "webapp/channels/src/i18n/{locale}.json", "note": "64로케일 8342키 flat 점 표기", "tier": "A" },
+  { "repo": "obsidianmd/obsidian-translations", "correctCatalogPath": null, "unsupported": "txt", "note": "translations/{locale}.txt — 줄 단위 텍스트 포맷이다. 미탐지가 정답", "tier": "B" },
+  { "repo": "grafana/grafana", "correctCatalogPath": "public/locales/{locale}/grafana.json", "note": "19로케일. 로케일이 디렉터리이고 파일명이 grafana.json이다", "tier": "A" },
+  { "repo": "open-webui/open-webui", "correctCatalogPath": "src/lib/i18n/locales/{locale}/translation.json", "note": "64로케일 로케일 디렉터리", "tier": "A" },
+  { "repo": "outline/outline", "correctCatalogPath": "shared/i18n/locales/{locale}/translation.json", "note": "28로케일 로케일 디렉터리", "tier": "A" },
+  { "repo": "TryGhost/Ghost", "correctCatalogPath": "packages/i18n/locales/{locale}/ghost.json", "alsoValid": ["packages/i18n/locales/{locale}/comments.json", "packages/i18n/locales/{locale}/portal.json", "packages/i18n/locales/{locale}/search.json", "packages/i18n/locales/{locale}/signup-form.json"], "note": "63로케일 × 네임스페이스 5개. 한 프로젝트가 하나만 덮는다 (MVP §7)", "tier": "A" },
+  { "repo": "calcom/cal.com", "correctCatalogPath": "packages/i18n/locales/{locale}/common.json", "note": "44로케일, 로케일당 파일 1개", "tier": "A" },
+  { "repo": "zulip/zulip", "correctCatalogPath": "locale/{locale}/translations.json", "note": "legacy_stream_translations.json이 같은 디렉터리에 있어 이름 우선순위가 필요하다", "tier": "A" },
+  { "repo": "go-gitea/gitea", "correctCatalogPath": "options/locale/locale_{locale}.json", "note": "접두사 locale_ + 지역 서브태그", "tier": "A" },
+  { "repo": "mozilla/pdf.js", "correctCatalogPath": null, "unsupported": "fluent", "note": "l10n/{locale}/viewer.ftl — Fluent(.ftl). 미탐지가 정답", "tier": "A" },
+  { "repo": "Stirling-Tools/Stirling-PDF", "correctCatalogPath": null, "unsupported": "properties", "note": "Java .properties + 번들된 pdfjs .ftl. 미탐지가 정답", "tier": "A" },
+  { "repo": "AutomaApp/automa", "correctCatalogPath": "src/locales/{locale}/common.json", "alsoValid": ["src/locales/{locale}/blocks.json", "src/locales/{locale}/newtab.json", "src/locales/{locale}/popup.json"], "note": "10로케일 × 네임스페이스 4개", "tier": "B" },
+  { "repo": "withastro/docs", "correctCatalogPath": "src/content/i18n/{locale}.yml", "note": "14로케일 YAML", "tier": "A" },
+  { "repo": "n8n-io/n8n", "correctCatalogPath": "packages/frontend/@n8n/i18n/src/locales/{locale}.json", "note": "지원 포맷이지만 리포에 en.json 하나뿐 — zoom-redirector와 같은 '2개 이상' 정책상 미탐지", "tier": "A" },
+  { "repo": "RSSNext/Folo", "correctCatalogPath": "locales/app/{locale}.json", "alsoValid": ["locales/ai/{locale}.json", "locales/common/{locale}.json", "locales/errors/{locale}.json", "locales/settings/{locale}.json", "locales/shortcuts/{locale}.json", "locales/native/{locale}.json", "locales/external/{locale}.json", "locales/lang/{locale}.json"], "note": "네임스페이스별 디렉터리. 어느 쪽을 잡아도 앱 카탈로그다", "tier": "A" },
+  { "repo": "jitsi/jitsi-meet", "correctCatalogPath": "lang/main-{locale}.json", "note": "접두사 main-. lang/languages.json은 로케일 이름 목록이라 카탈로그가 아니다", "tier": "A" }
+]
