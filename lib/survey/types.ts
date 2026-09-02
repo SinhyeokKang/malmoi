@@ -124,3 +124,26 @@ export const emptyErrors = (): Record<ReadErrorKind, number> => ({
   "adapter-threw": 0,
   other: 0,
 });
+
+/**
+ * 오탐 판정의 **유일한 정답 출처** (`docs/features/adapter-generality/verdicts.json`).
+ *
+ * `repos.md`의 "예상 포맷" 라벨을 쓰지 않는 이유: 관측된 오탐 전례(`public/search/{locale}.json`)가
+ * **포맷은 맞고 경로가 틀린** 형태라 포맷 라벨 대조로는 원리적으로 못 잡는다. 판정 단위는 경로다.
+ *
+ * 판정을 코드 밖 파일에 두면 `detect`를 고쳐 재실행해도 판정이 파괴되지 않는다.
+ */
+export type Verdict = {
+  repo: string;
+  /** 그 리포에서 실제로 번역이 사는 경로 템플릿. 우리가 지원하지 않는 포맷이면 `null`. */
+  correctCatalogPath: string | null;
+  /** `correctCatalogPath`가 `null`일 때 왜인지 — `yaml`·`po`·`ts-per-locale`·`unknown` 등. */
+  unsupported?: string;
+  /** 그렇게 판정한 근거. **사후 감사용이다** (무인 루프라 판정 주체가 실행 에이전트다). */
+  note: string;
+  /** 스타 수 구간 — 표에만 쓴다. */
+  tier?: "A" | "B" | "C";
+};
+
+/** `n / of` 와 백분율. 분모가 0이면 `pct`는 0이다. */
+export type Rate = { n: number; of: number; pct: number };
