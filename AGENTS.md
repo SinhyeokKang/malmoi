@@ -204,6 +204,9 @@ lib/
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
+  survey/               어댑터 범용성 실측의 순수 판정층 (I/O는 scripts/adapter-survey.ts만)
+                        select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
+                        비율) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
   push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
