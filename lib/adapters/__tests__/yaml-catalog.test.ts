@@ -262,3 +262,138 @@ describe("yaml-catalog — 왕복", () => {
     });
   }
 });
+
+/**
+ * ⚠️ **중복 키 하나로 62로케일 카탈로그를 버렸다** (CitizensFoundation/your-priorities 실측).
+ *
+ * `yaml`은 `Map keys must be unique`를 **에러**로 보고한다. 그걸 그대로 "카탈로그 아님"으로 읽으면
+ * 데이터 흠 하나가 리포 전체를 탐지에서 지운다 — JSON 쪽에서 이미 고친 것과 같은 부류다
+ * (`catalogVerdict`의 3값 완화). 중복은 **보고하되 막지 않는다.**
+ */
+describe("yaml-catalog — 중복 키는 보고하고 계속한다", () => {
+  const DUP = "ko:\n  a: 첫째\n  b: 둘째\n  a: 셋째\n";
+
+  it("중복 키가 있어도 탐지된다", () => {
+    const found = yamlCatalog.detectCandidates(["config/locales/ko.yml", "config/locales/en.yml"], () => DUP);
+    expect(found).toHaveLength(1);
+  });
+
+  it("중복 키를 에러로 보고한다 — 값 하나가 사라지는 건 사실이다", () => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", DUP)]);
+    expect(r.errors.map((e) => e.message).join(" ")).toContain("중복");
+    // 남은 키는 읽힌다 — 리포 전체를 버리지 않는다
+    expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["a", "b"]);
+  });
+
+  it("진짜 구문 오류는 여전히 막는다 (완화가 관문을 없앤 건 아니다)", () => {
+    const broken = "ko:\n  a: [unclosed\n";
+    expect(yamlCatalog.detectCandidates(["c/ko.yml", "c/en.yml"], () => broken)).toEqual([]);
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", broken)]);
+    expect(r.errors.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * ⚠️ **중복 키에서 read와 write가 다른 항목을 잡으면 결정성이 깨진다** (solidusio/solidus_i18n 실측 —
+ * 중복 23건, 2,513키, 바이트 고정점 실패).
+ *
+ * YAML 로더는 **마지막이 이긴다.** read가 그 규칙을 따르는데 write가 첫 항목을 고치면:
+ * 1. 2차 write가 1차와 달라져 결정성이 깨지고(매일 밤 무의미한 커밋),
+ * 2. 더 나쁘게 **앱이 보는 값과 우리가 고친 값이 달라 번역이 조용히 무효가 된다.**
+ */
+describe("yaml-catalog — 중복 키에서 read와 write가 같은 항목을 잡는다", () => {
+  const DUP = "ko:\n  a: 첫째\n  b: 둘째\n  a: 셋째\n";
+
+  it("read는 마지막 값을 읽는다 (YAML 로더와 같다)", () => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", DUP)]);
+    expect(r.locales[0]?.entries.find((e) => e.key === "a")?.message).toBe("셋째");
+  });
+
+  it("write도 마지막 항목을 고친다 — 첫 항목을 고치면 앱이 보는 값이 안 바뀐다", () => {
+    const out = yamlCatalog.write(withSource(DUP), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "바뀐값" }],
+    })!;
+    // 마지막 `a`가 바뀌어야 한다
+    expect(out).toContain("a: 첫째");
+    expect(out).toContain("a: 바뀐값");
+  });
+
+  it("바이트 고정점이 성립한다 (2차 write = 1차 write)", () => {
+    const path = "config/locales/ko.yml";
+    const r1 = yamlCatalog.read(base(), [f(path, DUP)]);
+    const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: DUP }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: r1.locales[0]!.entries,
+    })!;
+    const r2 = yamlCatalog.read(base(), [f(path, w1)]);
+    const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: r2.locales[0]!.entries,
+    })!;
+    expect(w2).toBe(w1);
+  });
+});
+
+/**
+ * ⚠️ **시퀀스 값을 write가 못 찾으면 키를 하나 더 만들어낸다** (directus/directus 실측 — 70로케일 중
+ * 4개에서 바이트 고정점 실패).
+ *
+ * `read`는 시퀀스를 `key.0`으로 펼친다. write가 그 경로를 맵으로만 걸으면 못 찾고 **없는 키로
+ * 판정해 리터럴 `"key.0"`을 새로 삽입**한다 → 원본 시퀀스와 중복이 되고, 2차 write가 다른 항목을
+ * 잡아 값이 진동한다. 긴 문자열이면 접힘 위치까지 달라져 diff가 매일 밤 새로 뜬다.
+ */
+describe("yaml-catalog — 시퀀스 값도 제자리에서 고친다", () => {
+  const SEQ = "ko:\n  list:\n    - 첫째\n    - 둘째\n  note:\n    - 긴 문장 하나\n";
+
+  it("시퀀스 항목을 치환한다 (새 키를 만들지 않는다)", () => {
+    const out = yamlCatalog.write(withSource(SEQ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "list.1", message: "둘째 바뀜" }],
+    })!;
+    expect(out).toContain("- 둘째 바뀜");
+    // 리터럴 `"list.1"` 키를 새로 만들지 않았다
+    expect(out).not.toContain("list.1:");
+    // 시퀀스 모양이 유지된다
+    expect(out).toContain("  list:");
+  });
+
+  it("왕복 2층이 성립한다", () => {
+    const path = "config/locales/ko.yml";
+    const r1 = yamlCatalog.read(base(), [f(path, SEQ)]);
+    const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: SEQ }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: r1.locales[0]!.entries,
+    })!;
+    const r2 = yamlCatalog.read(base(), [f(path, w1)]);
+    expect(r2.locales[0]!.entries).toEqual(r1.locales[0]!.entries);
+    const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: r2.locales[0]!.entries,
+    })!;
+    expect(w2).toBe(w1);
+  });
+
+  it("긴 문자열을 바꿔도 2차 write가 고정점이다 (접힘 위치가 흔들리지 않는다)", () => {
+    const path = "config/locales/ko.yml";
+    const long = "매우 긴 문장이며 " + "단어 ".repeat(30) + "끝";
+    const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: SEQ }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "note.0", message: long }],
+    })!;
+    const r2 = yamlCatalog.read(base(), [f(path, w1)]);
+    const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
+      locale: "ko",
+      isBase: false,
+      entries: r2.locales[0]!.entries,
+    })!;
+    expect(w2).toBe(w1);
+  });
+});

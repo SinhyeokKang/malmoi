@@ -175,3 +175,106 @@ export const ns = { ko, en };
     expect(out).toContain('"바뀜"');
   });
 });
+
+/**
+ * ⚠️ **어댑터 간 순위도 신호로 정한다** (2026-09-02 실측 발견).
+ *
+ * `detectFormat`이 `ADAPTERS` 고정 순서의 첫 매치였다. 그래서 어댑터 **내** 순위 규칙(i18n 신호·
+ * 예제 감점·로케일 수)이 어댑터 **간**에는 하나도 작동하지 않았다:
+ *
+ * | 리포 | 이긴 것 | 져야 했던 이유 |
+ * |---|---|---|
+ * | GSA/search-gov | `spec/fixtures/json/rtu_dashboard/{locale}.json` (2로케일) | `config/locales/{locale}.yml`이 65로케일이다 |
+ * | ant-design | `.dumi/theme/locales/{locale}.json` (2) | `components/locale/{locale}.ts`가 73이다 |
+ * | vuetify | `packages/docs/src/data/{locale}.json` (2) | `packages/vuetify/src/locale/{locale}.ts`가 43이다 |
+ *
+ * **chrome은 예외로 남는다** — 크롬 확장은 `_locales`가 실제 배포 산출물이고 옆에 뭐가 있어도
+ * 브라우저가 읽는 건 그것뿐이다 (ARCHITECTURE §1).
+ */
+describe("어댑터 간 순위 — 고정 순서가 아니라 신호로 정한다", () => {
+  it("픽스처 JSON이 로케일 많은 YAML을 이기지 않는다 (GSA/search-gov)", () => {
+    const paths = [
+      "spec/fixtures/json/rtu_dashboard/en.json",
+      "spec/fixtures/json/rtu_dashboard/es.json",
+      "config/locales/en.yml",
+      "config/locales/es.yml",
+      "config/locales/ko.yml",
+    ];
+    const d = detectFormat(paths, () => '{"a":"A"}');
+    expect(d?.adapter).toBe("yaml-catalog");
+  });
+
+  it("문서 사이트 JSON이 진짜 코드 딕셔너리를 이기지 않는다 (ant-design·vuetify)", () => {
+    const code = "export default { a: 'A', b: 'B' }\n";
+    const paths = [
+      ".dumi/theme/locales/en-US.json",
+      ".dumi/theme/locales/zh-CN.json",
+      "components/locale/en_US.ts",
+      "components/locale/ko_KR.ts",
+      "components/locale/ja_JP.ts",
+    ];
+    const d = detectFormat(paths, (p) => (p.endsWith(".json") ? '{"a":"A"}' : code));
+    expect(d?.adapter).toBe("code-dict");
+  });
+
+  it("예제 JSON이 진짜 코드 딕셔너리를 이기지 않는다 (payloadcms/payload)", () => {
+    const code = "export default { a: 'A' }\n";
+    const paths = [
+      "examples/localization/src/i18n/messages/en.json",
+      "examples/localization/src/i18n/messages/ko.json",
+      "packages/translations/src/languages/en.ts",
+      "packages/translations/src/languages/ko.ts",
+    ];
+    const d = detectFormat(paths, (p) => (p.endsWith(".json") ? '{"a":"A"}' : code));
+    expect(d?.adapter).toBe("code-dict");
+  });
+
+  it("chrome `_locales`는 여전히 최우선이다 — 브라우저가 읽는 건 그것뿐이다", () => {
+    const d = detectFormat([
+      "public/_locales/en/messages.json",
+      "public/_locales/ko/messages.json",
+      "src/lib/i18n/en.json",
+      "src/lib/i18n/ko.json",
+      "src/lib/i18n/ja.json",
+    ]);
+    expect(d?.adapter).toBe("chrome-locales");
+  });
+
+  it("예제 안의 chrome은 최우선이 아니다 (lokalise/i18n-ally)", () => {
+    const d = detectFormat([
+      "examples/by-frameworks/chrome-extension/_locales/en/messages.json",
+      "examples/by-frameworks/chrome-extension/_locales/ko/messages.json",
+      "locales/en.json",
+      "locales/ko.json",
+    ]);
+    expect(d?.pathTemplate).toBe("locales/{locale}.json");
+  });
+
+  it("동률이면 경로순 — 얕은 쪽이 이긴다 (happy-func/next-official)", () => {
+    const code = "export default { a: 'A' }\n";
+    const paths = ["locale/article/en-US.json", "locale/article/zh-CN.json", "locale/en-US.ts", "locale/zh-CN.ts"];
+    const d = detectFormat(paths, (p) => (p.endsWith(".json") ? '{"a":"A"}' : code));
+    expect(d?.pathTemplate).toBe("locale/{locale}.ts");
+  });
+});
+
+describe("null 리프는 에러가 아니라 미번역이다 (jsxc 5,099건)", () => {
+  it("json-catalog: null 값을 조용히 건너뛴다", () => {
+    const src = JSON.stringify({ translation: { a: "A", b: null, c: null } }, null, 2) + "\n";
+    const r = jsonCatalog.read(
+      { adapter: "json-catalog", pathTemplate: "locales/{locale}.json", locales: ["en"] },
+      [{ path: "locales/en.json", content: src }],
+    );
+    expect(r.errors).toEqual([]);
+    expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["translation.a"]);
+  });
+
+  it("숫자·불린은 여전히 에러다 — 그건 카탈로그에 있을 값이 아니다", () => {
+    const src = JSON.stringify({ n: 3, flag: true, ok: "OK" }, null, 2) + "\n";
+    const r = jsonCatalog.read(
+      { adapter: "json-catalog", pathTemplate: "locales/{locale}.json", locales: ["en"] },
+      [{ path: "locales/en.json", content: src }],
+    );
+    expect(r.errors).toHaveLength(2);
+  });
+});

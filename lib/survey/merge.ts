@@ -1,4 +1,4 @@
-import { ADAPTERS } from "../adapters";
+import { ADAPTERS, detectCandidatesAcross } from "../adapters";
 import type { DetectedFormat, FileProbe } from "../adapters/types";
 
 /**
@@ -27,7 +27,16 @@ export function mergeCandidates(perAdapter: readonly (readonly DetectedFormat[])
   return perAdapter.flatMap((list) => [...list]);
 }
 
-/** `ADAPTERS` 전부에 `detectCandidates`를 돌려 하나의 순위 목록으로 만든다. */
+/**
+ * `ADAPTERS` 전부에 `detectCandidates`를 돌려 하나의 순위 목록으로 만든다.
+ *
+ * **이제 프로덕션(`lib/adapters/detectCandidatesAcross`)에 위임한다** — 실측에서 어댑터 간 순위가
+ * 고정 순서라 오탐 5건을 냈고, 그 순위 규칙이 `detectFormat`의 것이 됐다. 실험이 자기 순위를 따로
+ * 들면 측정 대상과 다른 것을 재게 된다.
+ */
 export function candidatesFor(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
-  return mergeCandidates(ADAPTERS.map((a) => a.detectCandidates(paths, probe)));
+  return detectCandidatesAcross(paths, probe);
 }
+
+/** `ADAPTERS`를 쓰는 소비자가 남아 있는지 확인하는 자리 — 순위는 프로덕션이 정한다. */
+export const REGISTERED_ADAPTERS = ADAPTERS;

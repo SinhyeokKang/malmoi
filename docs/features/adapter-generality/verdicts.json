@@ -1,10 +1,9 @@
 [
   {
     "repo": "24pullrequests/24pullrequests",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 20로케일 — YAML 어댑터가 없다",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "20로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 20로케일 — YAML 어댑터가 없다)",
+    "tier": "B"
   },
   {
     "repo": "Afilmory/afilmory",
@@ -26,17 +25,15 @@
   },
   {
     "repo": "CitizensFoundation/your-priorities",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 62로케일",
-    "tier": "C",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "62로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 62로케일)",
+    "tier": "C"
   },
   {
     "repo": "DMPRoadmap/roadmap",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml + .po",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "15로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml + .po)",
+    "tier": "B"
   },
   {
     "repo": "EYHN/Furigana",
@@ -46,10 +43,9 @@
   },
   {
     "repo": "EralChen/vike-vue-content",
-    "correctCatalogPath": null,
-    "note": "locale/lang/{locale}.ts",
-    "tier": "C",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "locale/lang/{locale}.ts",
+    "note": "2로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: locale/lang/{locale}.ts)",
+    "tier": "C"
   },
   {
     "repo": "FirefoxBar/HeaderEditor",
@@ -59,10 +55,9 @@
   },
   {
     "repo": "GSA/search-gov",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 65로케일",
-    "tier": "C",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "65로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 65로케일)",
+    "tier": "C"
   },
   {
     "repo": "GoogleChrome/chromium-dashboard",
@@ -72,23 +67,24 @@
   },
   {
     "repo": "Growstuff/growstuff",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "2로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml)",
+    "tier": "B"
   },
   {
     "repo": "Js-Monkey/datepicker",
-    "correctCatalogPath": null,
-    "note": "locale/{locale}.ts 25로케일",
-    "tier": "C",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "locale/{locale}.ts",
+    "note": "25로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: locale/{locale}.ts 25로케일)",
+    "tier": "C"
   },
   {
     "repo": "Kareadita/Kavita",
     "correctCatalogPath": "UI/Web/src/assets/langs/{locale}.json",
-    "note": "Kavita.Server/I18N에 백엔드용 42로케일",
-    "tier": "A"
+    "note": "Kavita.Server/I18N에 백엔드용 42로케일 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "Kavita.Server/I18N/{locale}.json"
+    ]
   },
   {
     "repo": "Midnight-Lizard/Midnight-Lizard",
@@ -99,8 +95,11 @@
   {
     "repo": "NativeMindBrowser/NativeMindExtension",
     "correctCatalogPath": "public/_locales/{locale}/messages.json",
-    "note": "locales/{locale}.json 13로케일이 앱 UI, _locales 14로케일은 매니페스트 문자열 — 둘 다 진짜다",
-    "tier": "B"
+    "note": "locales/{locale}.json 13로케일이 앱 UI, _locales 14로케일은 매니페스트 문자열 — 둘 다 진짜다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "B",
+    "alsoValid": [
+      "locales/{locale}.json"
+    ]
   },
   {
     "repo": "RoderickQiu/wnr",
@@ -141,8 +140,11 @@
   {
     "repo": "WordPress/browser-extension",
     "correctCatalogPath": "_locales/{locale}/messages.json",
-    "note": "safari 리소스에도 같은 3로케일 사본이 있다",
-    "tier": "B"
+    "note": "safari 리소스에도 같은 3로케일 사본이 있다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "B",
+    "alsoValid": [
+      "safari/WordPress Browser Extension/WordPress Browser Extension Extension/Resources/_locales/{locale}/messages.json"
+    ]
   },
   {
     "repo": "YunoHost/yunohost",
@@ -178,17 +180,15 @@
   },
   {
     "repo": "ant-design/ant-design",
-    "correctCatalogPath": null,
-    "note": "components/locale/{locale}.ts 73로케일이 진짜 카탈로그다. 1순위로 잡힌 .dumi/theme/locales는 문서 사이트 테마 2로케일이라 오탐이다",
-    "tier": "A",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "components/locale/{locale}.ts",
+    "note": "73로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: components/locale/{locale}.ts 73로케일이 진짜 카탈로그다. 1순위로 잡힌 .dumi/theme/locales는 문서 사이트 테마 2로케일이라 오탐이다)",
+    "tier": "A"
   },
   {
     "repo": "arco-design/arco-design-vue",
-    "correctCatalogPath": null,
-    "note": "packages/web-vue/components/locale/lang/{locale}.ts 18로케일",
-    "tier": "A",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "packages/web-vue/components/locale/lang/{locale}.ts",
+    "note": "18로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: packages/web-vue/components/locale/lang/{locale}.ts 18로케일)",
+    "tier": "A"
   },
   {
     "repo": "arkadiyt/zoom-redirector",
@@ -217,14 +217,21 @@
   {
     "repo": "bitwarden/clients",
     "correctCatalogPath": "apps/browser/src/_locales/{locale}/messages.json",
-    "note": "모노레포에 표면 3개(browser 63 / desktop 66 / web 66). 셋 다 진짜 카탈로그다",
-    "tier": "A"
+    "note": "모노레포에 표면 3개(browser 63 / desktop 66 / web 66). 셋 다 진짜 카탈로그다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "apps/desktop/src/locales/{locale}/messages.json",
+      "apps/web/src/locales/{locale}/messages.json"
+    ]
   },
   {
     "repo": "bluecaret/carettab",
     "correctCatalogPath": "_locales/{locale}/messages.json",
-    "note": "src/locales/{locale}.json도 15로케일이지만 그건 빌드 입력이고 확장이 읽는 것은 _locales다",
-    "tier": "B"
+    "note": "src/locales/{locale}.json도 15로케일이지만 그건 빌드 입력이고 확장이 읽는 것은 _locales다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "B",
+    "alsoValid": [
+      "src/locales/{locale}.json"
+    ]
   },
   {
     "repo": "brandon1024/find",
@@ -235,8 +242,11 @@
   {
     "repo": "chatwoot/chatwoot",
     "correctCatalogPath": "app/javascript/widget/i18n/locale/{locale}.json",
-    "note": "위젯 카탈로그는 진짜다. 다만 주 표면인 dashboard는 {locale}/<파일>.json 레이아웃(57로케일 × 파일 다수)이라 pathTemplate으로 표현할 수 없다",
-    "tier": "A"
+    "note": "위젯 카탈로그는 진짜다. 다만 주 표면인 dashboard는 {locale}/<파일>.json 레이아웃(57로케일 × 파일 다수)이라 pathTemplate으로 표현할 수 없다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "config/locales/{locale}.yml"
+    ]
   },
   {
     "repo": "codeforjapan/mapprint",
@@ -253,10 +263,9 @@
   },
   {
     "repo": "decidim/decidim",
-    "correctCatalogPath": null,
-    "note": "젬마다 config/locales/{locale}.yml 82로케일",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "decidim-accountability/config/locales/{locale}.yml",
+    "note": "82로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: 젬마다 config/locales/{locale}.yml 82로케일)",
+    "tier": "B"
   },
   {
     "repo": "dequelabs/axe-core",
@@ -266,30 +275,31 @@
   },
   {
     "repo": "diaspora/diaspora",
-    "correctCatalogPath": null,
-    "note": "config/locales/diaspora/{locale}.yml 95로케일",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/diaspora/{locale}.yml",
+    "note": "95로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/diaspora/{locale}.yml 95로케일)",
+    "tier": "A"
   },
   {
     "repo": "directus/directus",
-    "correctCatalogPath": null,
-    "note": "app/src/lang/translations/{locale}.yaml 69로케일",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "app/src/lang/translations/{locale}.yaml",
+    "note": "69로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: app/src/lang/translations/{locale}.yaml 69로케일)",
+    "tier": "A"
   },
   {
     "repo": "element-hq/element-web",
     "correctCatalogPath": "apps/desktop/src/i18n/strings/{locale}.json",
-    "note": "모노레포에 동일 카탈로그 3벌(desktop/web/shared-components) 각 41로케일",
-    "tier": "A"
+    "note": "모노레포에 동일 카탈로그 3벌(desktop/web/shared-components) 각 41로케일 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "apps/web/src/i18n/strings/{locale}.json",
+      "packages/shared-components/src/i18n/strings/{locale}.json"
+    ]
   },
   {
     "repo": "element-plus/element-plus",
-    "correctCatalogPath": null,
-    "note": "packages/locale/lang/{locale}.ts 67로케일",
-    "tier": "A",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "packages/locale/lang/{locale}.ts",
+    "note": "67로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: packages/locale/lang/{locale}.ts 67로케일)",
+    "tier": "A"
   },
   {
     "repo": "esmBot/esmBot",
@@ -305,17 +315,15 @@
   },
   {
     "repo": "fastladder/fastladder",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "3로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml)",
+    "tier": "B"
   },
   {
     "repo": "forem/forem",
-    "correctCatalogPath": null,
-    "note": "config/locales 아래 YAML 다수",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "Rails 최상위 로케일. config/locales/concerns 등 하위 디렉터리도 같은 축이지만 대표는 최상위다",
+    "tier": "A"
   },
   {
     "repo": "g0v/newshelper-extension",
@@ -332,14 +340,20 @@
   {
     "repo": "go-vikunja/vikunja",
     "correctCatalogPath": "frontend/src/i18n/lang/{locale}.json",
-    "note": "pkg/i18n/lang에 백엔드용 같은 37로케일이 있다",
-    "tier": "A"
+    "note": "pkg/i18n/lang에 백엔드용 같은 37로케일이 있다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "pkg/i18n/lang/{locale}.json"
+    ]
   },
   {
     "repo": "gorhill/uBlock",
-    "correctCatalogPath": "platform/mv3/extension/_locales/{locale}/messages.json",
-    "note": "src/_locales(MV2)에도 같은 71로케일 — 둘 다 진짜다",
-    "tier": "A"
+    "correctCatalogPath": "src/_locales/{locale}/messages.json",
+    "note": "src/_locales(MV2)가 주 제품이고 platform/mv3도 같은 71로케일을 든다 — 둘 다 진짜다",
+    "tier": "A",
+    "alsoValid": [
+      "platform/mv3/extension/_locales/{locale}/messages.json"
+    ]
   },
   {
     "repo": "hackmdio/codimd",
@@ -349,10 +363,12 @@
   },
   {
     "repo": "happy-func/next-official",
-    "correctCatalogPath": null,
-    "note": "UI 사전은 locale/{locale}.ts다. 1순위로 잡힌 locale/article/{locale}.json은 기사 본문이라 오탐이다",
+    "correctCatalogPath": "locale/article/{locale}.json",
+    "note": "locale/{locale}.ts는 `export default flat({article, blog})`라 문자열이 없다 — 실제 문자열은 article·blog JSON에 있으므로 그쪽이 정답이다 (2026-09-02 정정)",
     "tier": "C",
-    "unsupported": "ts-per-locale"
+    "alsoValid": [
+      "locale/blog/{locale}.json"
+    ]
   },
   {
     "repo": "henices/Chrome-proxy-helper",
@@ -370,8 +386,11 @@
   {
     "repo": "hoppscotch/hoppscotch",
     "correctCatalogPath": "packages/hoppscotch-common/locales/{locale}.json",
-    "note": "sh-admin에도 34로케일",
-    "tier": "A"
+    "note": "sh-admin에도 34로케일 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "packages/hoppscotch-sh-admin/locales/{locale}.json"
+    ]
   },
   {
     "repo": "huginn/huginn",
@@ -418,10 +437,9 @@
   },
   {
     "repo": "jumodada/better-datepicker",
-    "correctCatalogPath": null,
-    "note": "locale/{locale}.ts 25로케일",
-    "tier": "C",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "locale/{locale}.ts",
+    "note": "25로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: locale/{locale}.ts 25로케일)",
+    "tier": "C"
   },
   {
     "repo": "kee-org/browser-addon",
@@ -456,8 +474,11 @@
   {
     "repo": "mastodon/mastodon",
     "correctCatalogPath": "app/javascript/mastodon/locales/{locale}.json",
-    "note": "프런트엔드 106로케일. Rails 쪽 config/locales는 YAML 106로케일이라 미지원이다",
-    "tier": "A"
+    "note": "프런트엔드 106로케일. Rails 쪽 config/locales는 YAML 106로케일이라 미지원이다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "config/locales/{locale}.yml"
+    ]
   },
   {
     "repo": "mcthesw/game-save-manager",
@@ -485,17 +506,15 @@
   },
   {
     "repo": "misskey-dev/misskey",
-    "correctCatalogPath": null,
-    "note": "locales/{locale}.yml 42로케일",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "locales/{locale}.yml",
+    "note": "42로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: locales/{locale}.yml 42로케일)",
+    "tier": "A"
   },
   {
     "repo": "moebooru/moebooru",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "7로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml)",
+    "tier": "B"
   },
   {
     "repo": "nt1m/livemarks",
@@ -517,10 +536,15 @@
   },
   {
     "repo": "payloadcms/payload",
-    "correctCatalogPath": null,
-    "note": "packages/translations/src/languages/{locale}.ts 40로케일이 진짜다. 1순위로 잡힌 examples/localization은 예제라 오탐이다",
+    "correctCatalogPath": "packages/translations/src/languages/{locale}.ts",
+    "note": "코어 translations 패키지가 대표(40로케일). 플러그인마다 같은 형태의 카탈로그가 있다",
     "tier": "A",
-    "unsupported": "ts-per-locale"
+    "alsoValid": [
+      "packages/plugin-form-builder/src/translations/languages/{locale}.ts",
+      "packages/plugin-import-export/src/translations/languages/{locale}.ts",
+      "packages/plugin-multi-tenant/src/translations/languages/{locale}.ts",
+      "packages/payload/src/exports/i18n/{locale}.ts"
+    ]
   },
   {
     "repo": "permacommons/lib.reviews",
@@ -543,10 +567,9 @@
   },
   {
     "repo": "quasarframework/quasar",
-    "correctCatalogPath": null,
-    "note": "ui/lang/{locale}.js 74로케일 — JS 모듈이라 어댑터가 없다",
-    "tier": "A",
-    "unsupported": "js-per-locale"
+    "correctCatalogPath": "ui/lang/{locale}.js",
+    "note": "74로케일. js-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: ui/lang/{locale}.js 74로케일 — JS 모듈이라 어댑터가 없다)",
+    "tier": "A"
   },
   {
     "repo": "raingart/AutoHideDownloadsBar-extension",
@@ -556,17 +579,15 @@
   },
   {
     "repo": "redmine/redmine",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 50로케일",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "50로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 50로케일)",
+    "tier": "A"
   },
   {
     "repo": "refinery/refinerycms-news",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 21로케일",
-    "tier": "B",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "21로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 21로케일)",
+    "tier": "B"
   },
   {
     "repo": "rtorr/vim-cheat-sheet",
@@ -601,23 +622,24 @@
   },
   {
     "repo": "solidusio/solidus_i18n",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 39로케일",
-    "tier": "C",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "39로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 39로케일)",
+    "tier": "C"
   },
   {
     "repo": "strapi/strapi",
     "correctCatalogPath": "packages/core/admin/admin/src/translations/{locale}.json",
-    "note": "패키지마다 카탈로그가 있어 후보가 17개다. admin이 주 표면이다",
-    "tier": "A"
+    "note": "패키지마다 카탈로그가 있어 후보가 17개다. admin이 주 표면이다 (유효 표면이 둘 이상이라 alsoValid로 등재)",
+    "tier": "A",
+    "alsoValid": [
+      "packages/core/content-manager/admin/src/translations/{locale}.json"
+    ]
   },
   {
     "repo": "stringer-rss/stringer",
-    "correctCatalogPath": null,
-    "note": "config/locales/{locale}.yml 17로케일",
-    "tier": "A",
-    "unsupported": "yaml"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "17로케일. yaml → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: config/locales/{locale}.yml 17로케일)",
+    "tier": "A"
   },
   {
     "repo": "sugarlabs/musicblocks",
@@ -627,10 +649,9 @@
   },
   {
     "repo": "tusen-ai/naive-ui",
-    "correctCatalogPath": null,
-    "note": "src/locales 아래 TS 모듈",
-    "tier": "A",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "src/locales/common/{locale}.ts",
+    "note": "78로케일. camelCase 파일명(koKR.ts)이라 처음엔 로케일로 인식되지 않았다. 앞선 자동 생성 note가 src/typography/src/{locale}.tsx를 가리켰던 것은 오류다 (2026-09-02 정정)",
+    "tier": "A"
   },
   {
     "repo": "tyrasd/overpass-turbo",
@@ -653,23 +674,21 @@
   {
     "repo": "violentmonkey/violentmonkey",
     "correctCatalogPath": null,
-    "note": "_locales/{locale}/messages.yml — 크롬 레이아웃인데 확장자가 YAML이다",
+    "note": "_locales/{locale}/messages.yml — 크롬 레이아웃인데 확장자가 YAML이다. yaml-catalog는 `<dir>/{locale}.y(a)ml`만 받으므로 이 조합은 여전히 미지원 (어댑터 5개 추가 후 남은 유일한 YAML 미지원 리포)",
     "tier": "A",
     "unsupported": "yaml"
   },
   {
     "repo": "vuetifyjs/vuetify",
-    "correctCatalogPath": null,
-    "note": "packages/vuetify/src/locale/{locale}.ts 43로케일",
-    "tier": "A",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "packages/vuetify/src/locale/{locale}.ts",
+    "note": "43로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: packages/vuetify/src/locale/{locale}.ts 43로케일)",
+    "tier": "A"
   },
   {
     "repo": "ylater/me-nuxt",
-    "correctCatalogPath": null,
-    "note": "locale/{locale}.ts",
-    "tier": "C",
-    "unsupported": "ts-per-locale"
+    "correctCatalogPath": "locale/{locale}.ts",
+    "note": "2로케일. ts-per-locale → 2026-09-02 어댑터 추가로 지원 포맷이 됐다 (구 note: locale/{locale}.ts)",
+    "tier": "C"
   },
   {
     "repo": "yui540/comimi",

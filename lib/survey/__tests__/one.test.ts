@@ -135,6 +135,39 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
     expect(paths).toEqual(["src/i18n/namespaces/a.ts", "src/i18n/namespaces/b.ts"]);
   });
 
+  /**
+   * ⚠️ **껍데기가 파일을 안 고르면 어댑터는 존재하지 않는 것과 같다.**
+   *
+   * 실측 3회차에서 `yaml-catalog`가 1순위로 잡힌 리포가 **0개**였다. 어댑터 문제가 아니라
+   * `selectSurveyFiles`가 `.yml`을 고르지 않아 probe에 내용이 오지 않았던 것이다 — YAML 어댑터가
+   * 17개 리포를 덮으려고 만들어졌는데 실물 검증을 한 번도 못 받은 상태였다.
+   */
+  it("YAML 로케일 파일을 고른다 (yaml-catalog가 없으면 존재하지 않는 어댑터가 된다)", () => {
+    const { paths } = selectSurveyFiles([
+      "config/locales/ko.yml",
+      "config/locales/en.yml",
+      "config/database.yml",
+      "app/src/lang/translations/ko-KR.yaml",
+      "app/src/lang/translations/en-US.yaml",
+    ]);
+    expect(paths).toEqual([
+      "app/src/lang/translations/en-US.yaml",
+      "app/src/lang/translations/ko-KR.yaml",
+      "config/locales/en.yml",
+      "config/locales/ko.yml",
+    ]);
+  });
+
+  it(".github 아래 YAML은 고르지 않는다 (CI 설정이 로케일처럼 보인다)", () => {
+    const { paths } = selectSurveyFiles([".github/workflows/ko.yml", ".github/workflows/en.yml"]);
+    expect(paths).toEqual([]);
+  });
+
+  it(".js·.mjs 로케일 파일도 고른다 (quasar가 ui/lang/{locale}.js다)", () => {
+    const { paths } = selectSurveyFiles(["ui/lang/ko-KR.js", "ui/lang/en-US.js", "ui/index.js"]);
+    expect(paths).toEqual(["ui/lang/en-US.js", "ui/lang/ko-KR.js"]);
+  });
+
   it("설정 파일을 고른다 (빈도만 센다)", () => {
     const { configFiles } = selectSurveyFiles([
       "i18next-parser.config.js",
@@ -204,6 +237,35 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     // 읽힌 키(3) < 파일의 문자열 리터럴 수 — 부분 읽기의 그물은 그대로 둔다
     expect(s.readKeyCount).toBe(3);
     expect(s.literalCount).toBeGreaterThan(s.readKeyCount!);
+  });
+
+  /**
+   * ⚠️ **수술적 치환 어댑터는 `currentFiles`를 받아야 write가 돈다.**
+   *
+   * 실측 2회차에서 code-dict 리포 8개의 왕복이 전부 `not-run`이었다 — `writePerLocale`이 원본을
+   * 넘기지 않아 write가 매번 `null`을 냈고, 결과가 "측정 안 됨"으로 조용히 빠졌다. pull에서 같은
+   * 부류를 고쳤는데(`writeStrategy` 분기) survey 쪽을 안 고친 것이다.
+   */
+  it("per-locale + surgical 어댑터의 왕복이 실제로 돈다 (not-run이면 조용히 안 재는 것이다)", () => {
+    const codeOnly = { "src/i18n/ko.ts": CODE_SOURCE, "src/i18n/en.ts": CODE_SOURCE };
+    const s = surveyOne(input("acme/code-rt", codeOnly));
+    expect(s.chosen?.adapter).toBe("code-dict");
+    expect(s.roundtrip.semantic).not.toBe("not-run");
+    expect(s.roundtrip.byteFixpoint).not.toBe("not-run");
+    expect(s.roundtrip.byteFixpoint).toBe("same");
+    // 원본이 그대로 나오므로 diff는 0이다 — 수술적 치환의 요지다
+    expect(s.diffRatio).toBe(0);
+  });
+
+  it("yaml-catalog의 왕복도 돈다", () => {
+    const yamlOnly = {
+      "config/locales/ko.yml": "# 주석\nko:\n  a:\n    one: 하나\n",
+      "config/locales/en.yml": "# 주석\nen:\n  a:\n    one: one\n",
+    };
+    const s = surveyOne(input("acme/yaml-rt", yamlOnly));
+    expect(s.chosen?.adapter).toBe("yaml-catalog");
+    expect(s.roundtrip.semantic).toBe("same");
+    expect(s.roundtrip.byteFixpoint).toBe("same");
   });
 
   it("접두 충돌을 센다 — 왕복이 잡은 손실을 지표 ③도 잡아야 한다", () => {

@@ -21,6 +21,7 @@ export type ReadErrorKind =
   | "leaf-type"
   | "chrome-key"
   | "non-literal-value"
+  | "key-collision"
   | "adapter-threw"
   | "other";
 
@@ -30,6 +31,7 @@ export const READ_ERROR_KINDS: readonly ReadErrorKind[] = [
   "leaf-type",
   "chrome-key",
   "non-literal-value",
+  "key-collision",
   "adapter-threw",
   "other",
 ];
@@ -96,6 +98,14 @@ export type RepoSurvey = {
   /** 코드 어댑터일 때: 파일에 있는 문자열 리터럴 수. */
   literalCount?: number;
 
+  /**
+   * write가 **보고한** 버림 건수 (`Adapter.writeWithErrors`).
+   *
+   * 왕복 의미 불일치와 함께 읽어야 한다: `writeErrors > 0`이면 **알려진 손실**이고, 0인데
+   * 의미가 다르면 **조용한 손실**이다 — 후자만이 고쳐야 할 결함이다.
+   */
+  writeErrors: number;
+
   roundtrip: Roundtrip;
   /** 원본 대비 **1차 write**의 변경 줄 비율. base 로케일 파일 기준. */
   diffRatio?: number;
@@ -121,6 +131,7 @@ export const emptyErrors = (): Record<ReadErrorKind, number> => ({
   "leaf-type": 0,
   "chrome-key": 0,
   "non-literal-value": 0,
+  "key-collision": 0,
   "adapter-threw": 0,
   other: 0,
 });
@@ -139,6 +150,15 @@ export type Verdict = {
   correctCatalogPath: string | null;
   /** `correctCatalogPath`가 `null`일 때 왜인지 — `yaml`·`po`·`ts-per-locale`·`unknown` 등. */
   unsupported?: string;
+  /**
+   * **다른 유효한 카탈로그 경로들.** 한 리포에 진짜 번역 표면이 둘 이상일 때 쓴다 — mastodon은
+   * Rails YAML 106로케일과 프런트엔드 JSON 106로케일을 둘 다 갖고, Kavita·vikunja는 백엔드와
+   * UI가 각자 카탈로그를 든다. 어느 쪽을 골라도 맞으므로 **오탐으로 세면 숫자가 과장된다.**
+   *
+   * `correctCatalogPath`가 "대표"이고 이쪽은 "그것도 맞다"는 목록이다. 비워두면 규칙은 그대로
+   * 엄격하다.
+   */
+  alsoValid?: string[];
   /** 그렇게 판정한 근거. **사후 감사용이다** (무인 루프라 판정 주체가 실행 에이전트다). */
   note: string;
   /** 스타 수 구간 — 표에만 쓴다. */

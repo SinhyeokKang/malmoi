@@ -32,9 +32,15 @@ export function usableEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
     .sort((a, b) => compareKeys(a.key, b.key));
 }
 
-/** 로케일 코드로 보이는 파일/디렉터리 이름인가. `zh-CN` 같은 지역 서브태그를 포함한다. */
+/**
+ * 로케일 코드로 보이는 파일/디렉터리 이름인가. `zh-CN` 같은 지역 서브태그를 포함한다.
+ *
+ * ⚠️ **camelCase 형태(`koKR`·`enUS`·`zhCN`)도 받는다** (2026-09-02 추가). naive-ui가 로케일 파일을
+ * `src/locales/common/koKR.ts`로 두는데, 구분자가 없어서 전에는 로케일로 인식되지 않아 리포 전체가
+ * 탐지에서 빠졌다. 정확히 `소문자2 + 대문자2`만 받으므로 일반 식별자와 섞일 여지가 좁다.
+ */
 export function looksLikeLocale(name: string): boolean {
-  return /^[a-z]{2,3}(?:[-_][A-Za-z]{2,4})?$/.test(name);
+  return /^[a-z]{2,3}(?:[-_][A-Za-z]{2,4})?$/.test(name) || /^[a-z]{2}[A-Z]{2}$/.test(name);
 }
 
 /**
@@ -57,6 +63,17 @@ const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|tr
  */
 const ASIDE_HINT =
   /(^|\/)(examples?|fixtures?|__fixtures__|demos?|playground|samples?|tests?|__tests__|spec|docs?|\.dumi|storybook|\.storybook|node_modules|vendor)(\/|$)/i;
+
+/** 경로에서 읽어내는 순위 신호. 어댑터 내부와 어댑터 간 순위가 **같은 신호**를 쓴다. */
+export function pathSignals(path: string): { hint: boolean; aside: boolean; depth: number } {
+  const dir = path.slice(0, Math.max(0, path.lastIndexOf("/")));
+  return {
+    hint: I18N_HINT.test(path),
+    aside: ASIDE_HINT.test(path),
+    // 얕은 쪽이 진짜일 가능성이 높다 — `locale/`이 `locale/article/`보다 앞이다.
+    depth: dir === "" ? 0 : dir.split("/").length,
+  };
+}
 
 export function rankCandidates<T extends { dir: string; locales: Set<string> }>(candidates: readonly T[]): T[] {
   return candidates.slice().sort((a, b) => {

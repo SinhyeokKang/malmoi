@@ -40,6 +40,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     errors: emptyErrors(),
     keyCollisions: 0,
     silentSkips: 0,
+    writeErrors: 0,
     roundtrip: { semantic: "not-run", byteFixpoint: "not-run" },
     diffApproximate: false,
     separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
@@ -149,10 +150,28 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
 }
 
 function classify(message: string): ReadErrorKind {
-  if (message.includes("JSON 파싱 실패")) return "json-parse";
-  if (message.includes("최상위가 객체가 아니다")) return "non-object-root";
+  // 파서가 셋이라(JSON·YAML·TypeScript) 같은 사건이 다른 문구로 온다. 문구를 놓치면 지표 ③이
+  // `other`로 뭉개져 "무슨 값이라 못 읽었는지"가 사라진다 — 실측 4회차에서 272건이 그랬다.
+  if (message.includes("JSON 파싱 실패") || message.includes("YAML 파싱 실패") || message.includes("구문 오류")) {
+    return "json-parse";
+  }
+  if (message.includes("최상위가 객체가 아니다") || message.includes("최상위가 맵이 아니다")) {
+    return "non-object-root";
+  }
+  if (message.includes("default export 객체 리터럴을 찾을 수 없다")) return "other";
+  if (message.includes("값이 문자열이 아니다")) return "leaf-type";
+  // YAML 중복 키 — json-catalog의 접두/중복 충돌과 같은 사건이라 같은 통에 넣는다.
+  if (message.includes("중복 키다")) return "key-collision";
   if (message.includes("chrome.i18n이 허용하지 않는")) return "chrome-key";
-  if (message.includes("문자열 리터럴이 아니다")) return "non-literal-value";
+  if (
+    message.includes("문자열 리터럴이 아니다") ||
+    // code-dict의 shorthand(import 참조)·비프로퍼티도 같은 계열이다 — `other`로 흘리면
+    // 지표 ③에서 "무슨 값이라 못 읽었는지"가 사라진다.
+    message.includes("shorthand라 값을 읽을 수 없다") ||
+    message.includes("프로퍼티 대입이 아니다")
+  ) {
+    return "non-literal-value";
+  }
   if (
     message.includes("문자열이나 객체/배열이 아니다") ||
     message.includes("객체가 아니다") ||
@@ -249,10 +268,13 @@ function applyRoundtrip(
   const entriesOf = (locale: string): readonly LocaleEntry[] =>
     read1.locales.find((l) => l.locale === locale)?.entries ?? [];
 
+  const reported = { count: 0 };
+  const byPath = new Map(originals.map((f) => [f.path, f.content]));
   const write1 =
     layout === "multi-locale"
       ? writeMultiLocale(fmt, originals, localeNames, base, entriesOf)
-      : writePerLocale(fmt, localeNames, base, entriesOf);
+      : writePerLocale(fmt, localeNames, base, entriesOf, byPath, reported);
+  survey.writeErrors = reported.count;
   if (write1.size === 0) return;
 
   const asFiles = (m: ReadonlyMap<string, string>): AdapterFile[] =>
@@ -268,7 +290,8 @@ function applyRoundtrip(
   const write2 =
     layout === "multi-locale"
       ? writeMultiLocale(fmt, asFiles(write1), localeNames, base, entries2)
-      : writePerLocale(fmt, localeNames, base, entries2);
+      // 2차 write의 원본은 **1차 write의 결과**다 — 고정점을 재는 것이므로.
+      : writePerLocale(fmt, localeNames, base, entries2, write1);
   survey.roundtrip.byteFixpoint = sameBytes(write1, write2) ? "same" : "different";
 
   // diff 비율은 **base 로케일 파일** 기준 — 첫 pull PR에서 사람이 제일 먼저 보는 파일이다.
@@ -286,16 +309,44 @@ function applyRoundtrip(
   }
 }
 
+/**
+ * @param originals 경로 → 원본 내용. **수술적 치환 어댑터에 필수다.**
+ *
+ * ⚠️ 안 넘기면 write가 매번 `null`을 내고 결과가 `not-run`으로 조용히 빠진다 — 실측 2회차에서
+ * code-dict 리포 8개가 전부 그 상태였다. pull에서 같은 부류를 고치고(`writeStrategy` 분기)
+ * 여기를 안 고친 것이다.
+ */
 function writePerLocale(
   fmt: DetectedFormat,
   locales: readonly string[],
   base: string | undefined,
   entriesOf: (locale: string) => readonly LocaleEntry[],
+  originals: ReadonlyMap<string, string>,
+  reportedErrors?: { count: number },
 ): Map<string, string> {
+  const adapter = adapterFor(fmt);
   const out = new Map<string, string>();
   for (const locale of locales) {
-    const content = adapterFor(fmt).write(fmt, { locale, isBase: locale === base, entries: entriesOf(locale) });
-    if (content !== null) out.set(fmt.pathTemplate.replace("{locale}", locale), content);
+    const path = fmt.pathTemplate.replace("{locale}", locale);
+    let writeFormat = fmt;
+    if (adapter.writeStrategy === "surgical") {
+      const original = originals.get(path);
+      // 원본이 없으면 파일을 새로 만들지 않는다 — 수술적 치환의 전제다.
+      if (original === undefined) continue;
+      writeFormat = { ...fmt, currentFiles: [{ path, content: original }] };
+    }
+    const input = { locale, isBase: locale === base, entries: entriesOf(locale) };
+    // ⚠️ **`writeWithErrors`가 있으면 그걸 쓴다.** 없으면 write가 버린 항목이 조용히 사라져,
+    // 왕복이 "의미 불일치"만 보이고 **왜 잃었는지가 지표에 남지 않는다** — 실측에서 siyuan·
+    // musicblocks가 정확히 그 상태였다(에러 0, 손실 있음).
+    if (adapter.writeWithErrors !== undefined) {
+      const res = adapter.writeWithErrors(writeFormat, input);
+      if (reportedErrors) reportedErrors.count += res.errors.length;
+      if (res.content !== null) out.set(path, res.content);
+      continue;
+    }
+    const content = adapter.write(writeFormat, input);
+    if (content !== null) out.set(path, content);
   }
   return out;
 }

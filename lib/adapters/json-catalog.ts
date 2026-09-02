@@ -117,6 +117,10 @@ function flatten(
       flatten(value as Record<string, unknown> | unknown[], key, out, errors, path);
       continue;
     }
+    // ⚠️ **`null`은 에러가 아니라 미번역이다.** 실측에서 jsxc 한 리포가 이것만으로 5,099건의
+    // 에러를 냈다 — 그 리포는 번역되지 않은 키를 `null`로 두는 관례다. 빈 문자열과 같은 취급이
+    // 맞고, 에러로 세면 남의 CI를 우리 관례로 실패시키게 된다. 숫자·불린은 그대로 에러다.
+    if (value === null) continue;
     errors.push({ path, message: `'${key}'의 값이 문자열이나 객체/배열이 아니다 (${typeof value})` });
   }
 }

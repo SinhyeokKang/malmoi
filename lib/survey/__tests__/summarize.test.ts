@@ -20,6 +20,7 @@ const base = (over: Partial<RepoSurvey> & { repo: string }): RepoSurvey => ({
   errors: emptyErrors(),
   keyCollisions: 0,
   silentSkips: 0,
+  writeErrors: 0,
   roundtrip: { semantic: "not-run", byteFixpoint: "not-run" },
   diffApproximate: false,
   separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
@@ -154,6 +155,51 @@ describe("summarize — 지표", () => {
     const { metrics: m } = summarize([HIT], []);
     expect(m.misdetect.supported.of).toBe(0);
     expect(m.unjudged).toEqual(["acme/hit"]);
+  });
+});
+
+/**
+ * ⚠️ **한 리포에 유효한 카탈로그가 둘 이상일 수 있다.** 실측에서 mastodon(Rails YAML 106로케일 +
+ * 프런트엔드 JSON 106), chatwoot, Kavita(백엔드+UI), vikunja(백엔드+프런트), uBlock(MV2+MV3)이
+ * 그렇다. 어느 쪽을 골라도 "진짜 번역이 사는 곳"이므로 **오탐으로 세면 숫자가 과장된다.**
+ */
+describe("summarize — 유효한 표면이 둘 이상인 리포", () => {
+  const MULTI = base({
+    repo: "acme/multi",
+    candidates: [cand("backend/i18n/{locale}.json"), cand("frontend/i18n/{locale}.json")],
+    chosen: cand("backend/i18n/{locale}.json"),
+    localeCount: 2,
+    keyCount: 10,
+    roundtrip: { semantic: "same", byteFixpoint: "same" },
+    diffRatio: 0.2,
+  });
+  const V: Verdict[] = [
+    {
+      repo: "acme/multi",
+      correctCatalogPath: "frontend/i18n/{locale}.json",
+      alsoValid: ["backend/i18n/{locale}.json"],
+      note: "모노레포에 표면 둘. 어느 쪽도 진짜다",
+    },
+  ];
+
+  it("alsoValid에 든 경로를 골랐으면 오탐이 아니다", () => {
+    const { metrics } = summarize([MULTI], V);
+    expect(metrics.misdetect.supported).toMatchObject({ n: 0, of: 1 });
+  });
+
+  it("순위 분포에서도 1순위로 센다", () => {
+    const { metrics } = summarize([MULTI], V);
+    expect(metrics.misdetect.correctRank).toEqual({ "1": 1 });
+  });
+
+  it("alsoValid가 없으면 그대로 오탐이다 (규칙이 느슨해진 게 아니다)", () => {
+    const { metrics } = summarize([MULTI], [{ ...V[0]!, alsoValid: undefined }]);
+    expect(metrics.misdetect.supported).toMatchObject({ n: 1, of: 1 });
+  });
+
+  it("표에 다른 유효 표면을 골랐다는 사실이 남는다", () => {
+    const { repoTable } = summarize([MULTI], V);
+    expect(repoTable).toContain("다른 유효 표면");
   });
 });
 

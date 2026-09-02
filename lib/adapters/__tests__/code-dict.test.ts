@@ -270,3 +270,86 @@ describe("code-dict — 왕복", () => {
     });
   }
 });
+
+/**
+ * 실측 4회차에서 code-dict가 놓친 형태들. 원인이 셋 다 달랐다:
+ *
+ * - payloadcms/payload — `export const koTranslations: X = { … }` (**명명된 export**, default 아님)
+ * - tusen-ai/naive-ui — 파일명이 `koKR.ts` (**camelCase 로케일**)
+ * - happy-func/next-official — `export default flat({ article, blog })` (**함수 호출**). 문자열이
+ *   import한 JSON에 있으므로 이 파일은 편집 대상이 아니다 — 잡지 않는 것이 맞다.
+ */
+describe("code-dict — 실측에서 놓친 형태", () => {
+  const NAMED_EXPORT = `import type { X } from '../types.js'
+
+export const koTranslations: X = {
+  authentication: {
+    account: '계정',
+    apiKey: 'API 키',
+  },
+}
+`;
+
+  it("명명된 export const 객체를 잡는다 (payloadcms/payload)", () => {
+    const r = codeDict.read(base({ pathTemplate: "packages/translations/src/languages/{locale}.ts", locales: ["ko"] }), [
+      f("packages/translations/src/languages/ko.ts", NAMED_EXPORT),
+    ]);
+    expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["authentication.account", "authentication.apiKey"]);
+  });
+
+  it("명명된 export도 수술적으로 치환된다", () => {
+    const out = codeDict.write(
+      base({
+        pathTemplate: "packages/translations/src/languages/{locale}.ts",
+        locales: ["ko"],
+        currentFiles: [{ path: "packages/translations/src/languages/ko.ts", content: NAMED_EXPORT }],
+      }),
+      { locale: "ko", isBase: false, entries: [{ key: "authentication.account", message: "어카운트" }] },
+    )!;
+    expect(out).toContain("어카운트");
+    expect(out).toContain("apiKey: 'API 키'");
+  });
+
+  it("camelCase 로케일 파일명을 인식한다 (naive-ui koKR.ts)", () => {
+    const src = "const koKR = { name: 'ko-KR', global: { undo: '실행 취소' } }\nexport default koKR\n";
+    const d = codeDict.detectCandidates(["src/locales/common/koKR.ts", "src/locales/common/enUS.ts"], () => src);
+    expect(d[0]?.pathTemplate).toBe("src/locales/common/{locale}.ts");
+    expect(d[0]?.locales.sort()).toEqual(["enUS", "koKR"]);
+  });
+
+  it("함수 호출로 감싼 default export는 잡지 않는다 — 문자열이 이 파일에 없다", () => {
+    const src = "import article from './article/zh-CN.json'\nexport default flat({ article })\n";
+    expect(codeDict.detectCandidates(["locale/zh-CN.ts", "locale/en-US.ts"], () => src)).toEqual([]);
+  });
+
+  it("객체 리터럴이 여럿이면 프로퍼티가 많은 쪽을 고른다 (결정적이어야 한다)", () => {
+    const src = `export const small = { a: 'A' }
+export const big = { a: 'A', b: 'B', c: 'C' }
+`;
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", src)]);
+    expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["a", "b", "c"]);
+  });
+});
+
+/**
+ * ⚠️ **문자열 값이 하나도 없는 객체는 카탈로그가 아니다** (실측 위양성 2건).
+ *
+ * `looksLikeLocale`이 이름만 보므로 `src/data/{fan,stt,tag,tts,usb}.ts`(home-assistant의 도메인
+ * 모듈)나 `src/background/utils/{locale}.js`(violentmonkey)가 로케일로 잡혔다. 프로퍼티가 있는지만
+ * 봤더니 함수·타입만 든 모듈이 통과해 **키 0개짜리 후보**가 됐다.
+ */
+describe("code-dict — 문자열 값이 없으면 카탈로그가 아니다", () => {
+  it("함수·객체만 든 모듈은 잡지 않는다 (home-assistant src/data)", () => {
+    const src = "export default { fetch: () => null, parse: (x: string) => x }\n";
+    expect(codeDict.detectCandidates(["src/data/fan.ts", "src/data/tts.ts"], () => src)).toEqual([]);
+  });
+
+  it("중첩 안에 문자열이 있으면 잡는다", () => {
+    const src = "export default { group: { ok: '확인' } }\n";
+    expect(codeDict.detectCandidates(["src/locale/ko.ts", "src/locale/en.ts"], () => src)).toHaveLength(1);
+  });
+
+  it("빈 객체만이면 잡지 않는다", () => {
+    expect(codeDict.detectCandidates(["src/locale/ko.ts", "src/locale/en.ts"], () => "export default {}\n")).toEqual([]);
+  });
+});

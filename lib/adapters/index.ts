@@ -3,6 +3,7 @@ import { codeDict } from "./code-dict";
 import { jsonCatalog } from "./json-catalog";
 import { tsDict } from "./ts-dict";
 import { yamlCatalog } from "./yaml-catalog";
+import { compareKeys, pathSignals } from "./shared";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "./types";
 
 export { chromeLocales } from "./chrome-locales";
@@ -11,7 +12,7 @@ export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
 export { localeFromPath } from "./chrome-locales";
-export { namespaceOf, compareKeys, catalogVerdict } from "./shared";
+export { namespaceOf, compareKeys, catalogVerdict, pathSignals } from "./shared";
 export * from "./types";
 
 /**
@@ -43,13 +44,48 @@ export function detectFormatWith(
   return ADAPTERS.find((a) => a.name === name)?.detect(paths, probe);
 }
 
+/**
+ * 모든 어댑터의 후보를 모아 **하나의 순위 목록**으로 만든다.
+ *
+ * ⚠️ **고정 `ADAPTERS` 순서로 고르면 안 된다** (2026-09-02 실측 발견). 전에는 첫 매치 승이라
+ * 어댑터 **내** 순위 규칙(i18n 신호·예제 감점·로케일 수)이 어댑터 **간**에는 전혀 작동하지 않았다:
+ *
+ * - GSA/search-gov — `spec/fixtures/json/…/{locale}.json`(2로케일)이 `config/locales/{locale}.yml`
+ *   (65로케일)을 이겼다. json이 yaml보다 앞이라는 이유만으로.
+ * - ant-design·vuetify·payload — 문서·예제 JSON이 진짜 코드 딕셔너리(73·43·40로케일)를 이겼다.
+ *
+ * **`chrome-locales`만 예외로 최우선이다.** 크롬 확장은 `_locales`가 실제 배포 산출물이고 옆에
+ * 무엇이 있어도 브라우저가 읽는 건 그것뿐이다. 단 **예제 디렉터리 안의 `_locales`는 예외가
+ * 아니다** — lokalise/i18n-ally가 정확히 그 형태로 오탐이 났다.
+ */
+export function detectCandidatesAcross(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
+  const all = ADAPTERS.flatMap((a) => a.detectCandidates(paths, probe));
+  const chromeFirst: DetectedFormat[] = [];
+  const rest: DetectedFormat[] = [];
+  for (const c of all) {
+    const { aside } = pathSignals(c.pathTemplate);
+    if (c.adapter === "chrome-locales" && !aside) chromeFirst.push(c);
+    else rest.push(c);
+  }
+  return [...rankTemplates(chromeFirst), ...rankTemplates(rest)];
+}
+
+/** i18n 신호 → 예제 감점 → 로케일 수 → 얕은 경로 → 경로순. 어댑터 내부와 같은 축이다. */
+function rankTemplates(candidates: readonly DetectedFormat[]): DetectedFormat[] {
+  return candidates.slice().sort((a, b) => {
+    const sa = pathSignals(a.pathTemplate);
+    const sb = pathSignals(b.pathTemplate);
+    if (sa.hint !== sb.hint) return sa.hint ? -1 : 1;
+    if (sa.aside !== sb.aside) return sa.aside ? 1 : -1;
+    if (a.locales.length !== b.locales.length) return b.locales.length - a.locales.length;
+    if (sa.depth !== sb.depth) return sa.depth - sb.depth;
+    return compareKeys(a.pathTemplate, b.pathTemplate);
+  });
+}
+
 /** 리포 파일 경로 목록에서 로케일 포맷을 찾는다. 못 찾으면 undefined — 연동 불가다. */
 export function detectFormat(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
-  for (const adapter of ADAPTERS) {
-    const found = adapter.detect(paths, probe);
-    if (found) return found;
-  }
-  return undefined;
+  return detectCandidatesAcross(paths, probe)[0];
 }
 
 export function adapterFor(format: DetectedFormat): Adapter {

@@ -87,8 +87,22 @@ function defaultExportObject(sf: SourceFile): ObjectLiteralExpression | undefine
       const init = unwrap(decl?.getInitializer());
       if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) return init;
     }
+    // ⚠️ `export default flat({ … })` 같은 **함수 호출은 잡지 않는다.** 문자열이 이 파일에
+    // 없으므로(happy-func/next-official은 import한 JSON을 감싼다) 편집 대상이 아니다.
   }
-  return undefined;
+
+  // default export가 없으면 **명명된 export const 객체**를 본다 — payloadcms/payload가
+  // `export const koTranslations: X = { … }` 형태다. 실측 4회차에서 40로케일 × 여러 패키지가
+  // 이것 때문에 통째로 빠졌다.
+  const exported: ObjectLiteralExpression[] = [];
+  for (const decl of sf.getVariableDeclarations()) {
+    if (!decl.getVariableStatementOrThrow().isExported()) continue;
+    const init = unwrap(decl.getInitializer());
+    if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) exported.push(init);
+  }
+  if (exported.length === 0) return undefined;
+  // 여럿이면 프로퍼티가 많은 쪽. 동수면 소스 순서 — 어느 쪽이든 **결정적이어야** 한다.
+  return exported.reduce((a, b) => (b.getProperties().length > a.getProperties().length ? b : a));
 }
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
@@ -137,11 +151,26 @@ function hasDictionary(pathTemplate: string, locales: ReadonlySet<string>, probe
     try {
       const sf = newProject().createSourceFile(pathTemplate.replace("{locale}", locale), content, { overwrite: true });
       const obj = defaultExportObject(sf);
-      // 프로퍼티가 하나도 없으면 판정 보류다 — 빈 스텁 로케일일 수 있다.
-      if (obj !== undefined && obj.getProperties().length > 0) return true;
+      // ⚠️ **프로퍼티 유무만 보면 안 된다.** `looksLikeLocale`이 이름만 보므로 도메인 모듈이
+      // 로케일로 잡힌다 — home-assistant의 `src/data/{fan,stt,tts}.ts`, violentmonkey의
+      // `src/background/utils/*.js`가 그렇게 **키 0개짜리 후보**가 됐다. 문자열 리프가 하나라도
+      // 있어야 카탈로그다.
+      if (obj !== undefined && hasStringLeaf(obj)) return true;
     } catch {
       continue;
     }
+  }
+  return false;
+}
+
+/** 객체 안에 문자열 리터럴 값이 하나라도 있는가 (중첩 포함). */
+function hasStringLeaf(obj: ObjectLiteralExpression, depth = 0): boolean {
+  if (depth > 6) return false;
+  for (const prop of obj.getProperties()) {
+    if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
+    const init = unwrap(prop.getInitializer());
+    if (init?.isKind(SyntaxKind.StringLiteral)) return true;
+    if (init?.isKind(SyntaxKind.ObjectLiteralExpression) && hasStringLeaf(init, depth + 1)) return true;
   }
   return false;
 }
@@ -253,7 +282,7 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   let changed = false;
   const missing: string[] = [];
   for (const [key, value] of wanted) {
-    const target = findScalar(root, key.split(SEP));
+    const target = findScalar(root, key);
     if (target === undefined) {
       missing.push(key);
       continue;
@@ -270,17 +299,27 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   for (const key of missing.sort(compareKeys)) {
     const value = wanted.get(key);
     if (value === undefined) continue;
-    if (insert(root, key.split(SEP), value)) changed = true;
+    if (insert(root, key, value)) changed = true;
   }
 
   return changed ? sf.getFullText() : file.content;
 }
 
-/** 경로의 문자열 리터럴 노드. 없으면 `undefined`, 문자열이 아닌 자리면 `"not-a-literal"`. */
-function findScalar(
-  obj: ObjectLiteralExpression,
-  segments: readonly string[],
-): StringLiteral | "not-a-literal" | undefined {
+/**
+ * 키가 가리키는 문자열 리터럴 노드. 없으면 `undefined`, 문자열이 아닌 자리면 `"not-a-literal"`.
+ *
+ * ⚠️ **리터럴 전체 키를 먼저 본다.** 코드 딕셔너리가 `{ "common.ok": "확인" }`처럼 점을 품은
+ * 평평한 키를 쓰는 경우가 흔한데(bugshot-2가 그렇다), 곧바로 `.`으로 쪼개면 그 프로퍼티를 못 찾고
+ * **없는 키로 판정해 중첩 객체를 새로 만든다** — 원본 규약을 갈아치우는 셈이다.
+ */
+function findScalar(obj: ObjectLiteralExpression, key: string): StringLiteral | "not-a-literal" | undefined {
+  const direct = propertyNamed(obj, key);
+  if (direct !== undefined) {
+    const init = unwrap(direct.getInitializer());
+    return init?.isKind(SyntaxKind.StringLiteral) ? init : "not-a-literal";
+  }
+
+  const segments = key.split(SEP);
   let cur: ObjectLiteralExpression = obj;
   for (let i = 0; i < segments.length; i += 1) {
     const name = segments[i]!;
@@ -308,26 +347,31 @@ function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssi
   return undefined;
 }
 
-/** 경로를 만들어가며 값을 넣는다. 문자열 자리를 객체로 덮어야 하면 포기한다(구조 변경이다). */
-function insert(obj: ObjectLiteralExpression, segments: readonly string[], value: string): boolean {
+/**
+ * 없는 키를 넣는다. **가장 깊은 기존 접두까지 내려가고, 남은 부분은 리터럴 키 하나로 넣는다.**
+ *
+ * 이 규칙이 원본의 규약을 보존한다:
+ * - 평평한 점 키 파일(`{ "common.ok": … }`) — `common`이 없으므로 루트에 `"common.newKey"`를 넣는다
+ * - 중첩 파일(`{ el: { ok: … } }`) — `el`까지 내려가 `newKey`를 넣는다
+ *
+ * 새 중간 객체를 만들지 않는 이유: 만들면 파일 안에 두 규약이 섞인다.
+ */
+function insert(obj: ObjectLiteralExpression, key: string, value: string): boolean {
+  const segments = key.split(SEP);
   let cur: ObjectLiteralExpression = obj;
-  for (let i = 0; i < segments.length - 1; i += 1) {
-    const name = segments[i]!;
-    const prop = propertyNamed(cur, name);
-    if (prop === undefined) {
-      const added = cur.addPropertyAssignment({ name: quoteName(name), initializer: "{}" });
-      const init = unwrap(added.getInitializer());
-      if (!init?.isKind(SyntaxKind.ObjectLiteralExpression)) return false;
-      cur = init;
-      continue;
-    }
+  let at = 0;
+  while (at < segments.length - 1) {
+    const prop = propertyNamed(cur, segments[at]!);
+    if (prop === undefined) break;
     const init = unwrap(prop.getInitializer());
+    // 문자열 자리를 객체로 덮는 것은 구조 변경이다 — 포기한다.
     if (!init?.isKind(SyntaxKind.ObjectLiteralExpression)) return false;
     cur = init;
+    at += 1;
   }
-  const leaf = segments[segments.length - 1];
-  if (leaf === undefined) return false;
-  cur.addPropertyAssignment({ name: quoteName(leaf), initializer: JSON.stringify(value) });
+  const remaining = segments.slice(at).join(SEP);
+  if (remaining === "") return false;
+  cur.addPropertyAssignment({ name: quoteName(remaining), initializer: JSON.stringify(value) });
   return true;
 }
 

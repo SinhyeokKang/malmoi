@@ -70,6 +70,12 @@ export type SurveySummary = {
   repoTable: string;
 };
 
+/** 그 리포에서 "맞다"고 인정되는 경로 전부 — 대표 + `alsoValid`. */
+function acceptedPaths(v: Verdict | undefined): string[] {
+  if (v?.correctCatalogPath == null) return [];
+  return [v.correctCatalogPath, ...(v.alsoValid ?? [])];
+}
+
 export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Verdict[]): SurveySummary {
   const byRepo = new Map(verdicts.map((v) => [v.repo, v]));
   const rows = [...surveys].sort((a, b) => compareKeys(a.repo, b.repo));
@@ -87,11 +93,15 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   const correctRank: Record<string, number> = {};
   const misdetectedSupported: RepoSurvey[] = [];
   for (const s of supported) {
-    const want = byRepo.get(s.repo)?.correctCatalogPath;
-    const idx = s.candidates.findIndex((c) => c.pathTemplate === want);
+    const accepted = acceptedPaths(byRepo.get(s.repo));
+    // 후보 목록에서 **인정 경로 중 가장 앞선 것**의 순위. 여럿이 맞을 수 있다.
+    const ranks = accepted
+      .map((want) => s.candidates.findIndex((c) => c.pathTemplate === want))
+      .filter((i) => i !== -1);
+    const idx = ranks.length === 0 ? -1 : Math.min(...ranks);
     const label = idx === -1 ? "없음" : String(idx + 1);
     correctRank[label] = (correctRank[label] ?? 0) + 1;
-    if (s.chosen !== undefined && idx !== 0) misdetectedSupported.push(s);
+    if (s.chosen !== undefined && !accepted.includes(s.chosen.pathTemplate)) misdetectedSupported.push(s);
   }
   // 미지원 포맷 리포에서 후보를 낸 것도 오탐이다 — 우리 어댑터가 맞을 수 있는 정답이 없다.
   const falseOnUnsupported = withCandidate.filter((s) => byRepo.get(s.repo)?.correctCatalogPath == null);
@@ -187,7 +197,7 @@ function buildFormatTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<strin
     .map(([name, list]) => {
       // 후보를 낸 행만 오탐 분모다 — `탐지 실패` 그룹의 "0/N (0%)"은 거짓 안심이 된다.
       const judged = list.filter((s) => byRepo.has(s.repo) && s.chosen !== undefined);
-      const wrong = judged.filter((s) => s.chosen!.pathTemplate !== (byRepo.get(s.repo)?.correctCatalogPath ?? null));
+      const wrong = judged.filter((s) => !acceptedPaths(byRepo.get(s.repo)).includes(s.chosen!.pathTemplate));
       const rt = list.filter((s) => s.roundtrip.semantic !== "not-run");
       const fx = list.filter((s) => s.roundtrip.byteFixpoint !== "not-run");
       const ratios = list.map((s) => s.diffRatio).filter((r): r is number => r !== undefined);
@@ -211,8 +221,11 @@ function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string,
   ];
   const lines = rows.map((s) => {
     const v = byRepo.get(s.repo);
+    const accepted = acceptedPaths(v);
     const want = v?.correctCatalogPath ?? null;
-    const idx = want === null ? -1 : s.candidates.findIndex((c) => c.pathTemplate === want);
+    const ranks = accepted.map((w) => s.candidates.findIndex((c) => c.pathTemplate === w)).filter((i) => i !== -1);
+    const idx = ranks.length === 0 ? -1 : Math.min(...ranks);
+    const hit = s.chosen !== undefined && accepted.includes(s.chosen.pathTemplate);
     const mark =
       v === undefined
         ? "❔"
@@ -220,13 +233,14 @@ function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string,
           ? want === null
             ? "➖"
             : "❌"
-          : s.chosen.pathTemplate === want
+          : hit
             ? "✅"
             : "❌";
     const rank = want === null ? "–" : idx === -1 ? "없음" : String(idx + 1);
     const errs = READ_ERROR_KINDS.reduce((m, k) => m + s.errors[k], 0);
     const notes = [
       s.failure,
+      hit && s.chosen !== undefined && s.chosen.pathTemplate !== want ? "다른 유효 표면" : undefined,
       s.truncated ? "선택 잘림" : undefined,
       s.diffApproximate ? "diff 근사" : undefined,
       v?.unsupported ? `미지원: ${v.unsupported}` : undefined,
