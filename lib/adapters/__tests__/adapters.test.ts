@@ -293,47 +293,16 @@ describe("json-catalog — write", () => {
 });
 
 // ── lib/export.ts에서 이관 — 어댑터가 그 역할을 가져갔으므로 케이스도 함께 옮긴다 ──
-describe("writer 결정성 — 모든 어댑터가 공유하는 규칙 (MVP §4.1)", () => {
-  const chrome = { adapter: "chrome-locales" as const, pathTemplate: "public/_locales/{locale}/messages.json", locales: ["en"] };
+/**
+ * ⚠️ **결정성 규칙 자체는 여기 없다.** 정렬·들여쓰기·끝 개행·orphaned·빈 값·입력 순서는
+ * `contract.test.ts`가 **`ADAPTERS`를 순회하며** 검사한다 — 여기서 어댑터를 손으로 열거하던
+ * 시절엔 새 어댑터가 규칙을 하나도 안 지켜도 CI가 green이었다.
+ *
+ * 이 블록에 남은 것은 **일반화되지 않는 내용 인코딩**뿐이다: 어떤 문자가 어떻게 직렬화되는지는
+ * 포맷마다 답이 달라 어댑터를 가로질러 단언할 수 없다.
+ */
+describe("writer 문자 인코딩 — json-catalog (일반 규칙은 contract.test.ts)", () => {
   const flat = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", locales: ["en"] };
-
-  // 코드포인트: 1 A B Z _x a b z ä  /  localeCompare: _x 1 a A ä b B z Z (완전히 다르고 ICU 빌드 의존)
-  const NAMES = ["a", "A", "ä", "_x", "B", "b", "z", "Z", "1"];
-
-  it("정렬이 localeCompare가 아니다 (환경 의존을 없앤다)", () => {
-    const out = jsonCatalog.write(flat, {
-      locale: "en", isBase: true,
-      entries: NAMES.map((k) => ({ key: k, message: k })),
-    })!;
-    expect(Object.keys(JSON.parse(out))).toEqual(["1", "A", "B", "Z", "_x", "a", "b", "z", "ä"]);
-  });
-
-  it("입력 순서를 뒤섞어도 출력이 바이트 동일하다 (DB 순서에 의존하지 않는다)", () => {
-    const w = (ns: string[]) => jsonCatalog.write(flat, {
-      locale: "en", isBase: true, entries: ns.map((k) => ({ key: k, message: k })),
-    })!;
-    const forward = w(NAMES);
-    const reversed = w([...NAMES].reverse());
-    expect(Buffer.from(reversed, "utf8").equals(Buffer.from(forward, "utf8"))).toBe(true);
-  });
-
-  it("orphaned 키는 어떤 writer도 내지 않는다", () => {
-    const entries = [{ key: "a_live", message: "L" }, { key: "b_gone", message: "G", orphaned: true }];
-    expect(chromeLocales.write(chrome, { locale: "en", isBase: true, entries })).not.toContain("b_gone");
-    expect(jsonCatalog.write(flat, { locale: "en", isBase: true, entries })).not.toContain("b_gone");
-  });
-
-  it("남은 키가 orphaned뿐이면 null", () => {
-    const entries = [{ key: "a_gone", message: "G", orphaned: true }];
-    expect(chromeLocales.write(chrome, { locale: "en", isBase: true, entries })).toBeNull();
-    expect(jsonCatalog.write(flat, { locale: "en", isBase: true, entries })).toBeNull();
-  });
-
-  it("빈 문자열은 미번역으로 취급해 제외한다", () => {
-    const entries = [{ key: "a_x", message: "" }, { key: "b_y", message: "V" }];
-    const out = jsonCatalog.write(flat, { locale: "en", isBase: true, entries })!;
-    expect(Object.keys(JSON.parse(out))).toEqual(["b_y"]);
-  });
 
   it("따옴표·개행·역슬래시를 JSON으로 이스케이프한다", () => {
     const out = jsonCatalog.write(flat, {
@@ -348,16 +317,6 @@ describe("writer 결정성 — 모든 어댑터가 공유하는 규칙 (MVP §4.
     })!;
     expect(out).toContain("안녕 🎉");
     expect(out).not.toContain("\\u");
-  });
-
-  it("writer 출력의 blobSha가 git hash-object와 일치한다 (§1·§2 접점)", () => {
-    for (const out of [
-      chromeLocales.write(chrome, { locale: "en", isBase: true, entries: [{ key: "EXT_NAME", message: "안녕 🎉", description: "d" }] })!,
-      jsonCatalog.write(flat, { locale: "en", isBase: true, entries: [{ key: "a.b", message: "안녕 🎉" }] })!,
-    ]) {
-      const fromGit = execFileSync("git", ["hash-object", "--stdin"], { input: out, encoding: "utf8" }).trim();
-      expect(blobSha(out)).toBe(fromGit);
-    }
   });
 });
 
