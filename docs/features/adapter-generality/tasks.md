@@ -8,11 +8,11 @@
 
 ## 0. 대상 리포 선정 (코드 없음)
 
-- [ ] `docs/features/adapter-generality/repos.md`에 **50개 이상** 리포 URL + 예상 포맷 라벨 (2026-09-02 상향 — 자율 루프 목표. 30개는 최소 성립선)
-  - 검증: 포맷 **5종 이상** 분포(chrome `_locales` / flat JSON / 중첩 JSON / YAML / 코드 딕셔너리), 스타 수 구간 **3개**(<100, 100~2k, >2k)에 각각 5개 이상, **스타터·템플릿 리포가 절반 이하**
-- [x] **리포 수집 방식 확정: 로컬 `git clone --depth 1`** (2026-09-02) — 토큰 불요, rate limit 없음, 실제 pull이 보는 것과 같은 파일 트리. tarball로 뒤집으면 design.md §새 환경변수의 조건부 함정 2건(requireEnv 기본값 인자·이중 인코딩)이 소환된다
-- [ ] **verdicts 파일 스키마 확정 기록** — `docs/features/adapter-generality/verdicts.json`: 리포당 `{ repo, correctCatalogPath: string | null, note }`. **판정 단위는 포맷 라벨이 아니라 경로다** (관측된 오탐 전례가 "포맷은 맞고 경로가 틀린" 형태 — `public/search/`). 1순위 오탐·2순위 정답 여부는 이 정답 경로와 후보 목록의 대조로 `summarize`가 **자동 계산**한다 — 판정 입력이 리포당 1건으로 줄고, detect를 고쳐 재실행해도 판정이 살아남는다
-  - 검증: 스키마 예시 3건이 repos.md 또는 verdicts.json에 있다
+- [x] `docs/features/adapter-generality/repos.md`에 **50개 이상** 리포 URL + 예상 포맷 라벨 → **109개** (2026-09-02 완료). 목록은 `repos.txt`(CLI 입력)
+  - 검증 통과: 포맷 **5종**(chrome-locales 34 / json-catalog 39 / yaml 17 / ts-per-locale 12 / 신호 없음 7), 스타 구간 **A(>2k) 43 · B(100~2k) 55 · C(<100) 11**(각 5개 이상), **스타터·템플릿 0개**. 부수 관측: 포맷 2종 이상이 공존하는 리포 **24개** — 어댑터 간 오탐의 실제 표본이다
+- [x] **리포 수집 방식 확정: 로컬 `git clone --depth 1 --filter=blob:none --no-checkout`** (2026-09-02 — 실측으로 `--filter` 추가). 토큰 불요, rate limit 없음. blobless라 리포당 **0.9초 / 200KB**이고 파일 내용은 `git cat-file`로 지연 fetch한다 — 껍데기 계약(경로 먼저 → 고른 것만 물리화)과 git 수준에서 일치한다. 근거는 repos.md §수집 방식. tarball로 뒤집으면 design.md §새 환경변수의 조건부 함정 2건(requireEnv 기본값 인자·이중 인코딩)이 소환된다
+- [x] **verdicts 파일 스키마 확정 기록** — `docs/features/adapter-generality/verdicts.json`: 리포당 `{ repo, correctCatalogPath: string | null, note }`. **판정 단위는 포맷 라벨이 아니라 경로다** (관측된 오탐 전례가 "포맷은 맞고 경로가 틀린" 형태 — `public/search/`). 1순위 오탐·2순위 정답 여부는 이 정답 경로와 후보 목록의 대조로 `summarize`가 **자동 계산**한다 — 판정 입력이 리포당 1건으로 줄고, detect를 고쳐 재실행해도 판정이 살아남는다
+  - 검증 통과: 스키마 예시 3건이 repos.md §verdicts.json에 있다(지원 포맷·어댑터 간 경합·미지원 포맷 각 1건)
 
 ——
 
