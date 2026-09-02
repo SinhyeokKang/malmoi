@@ -63,8 +63,8 @@
 
 `detect`는 리포 파일 경로 목록에서 포맷을 찾는다. **경로 사전순으로 후보를 고르면 틀린다** — bugshot-web에서 `public/search/{locale}.json`(검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
 
-- 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로순**으로 순위 매긴다
-- **로케일이 2개 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
+- 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. 비교 함수는 `shared.compareTemplates` **하나**이고 어댑터 내부와 어댑터 간이 그것을 공유한다
+- **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
 - **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다
 
@@ -105,6 +105,46 @@
 **`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — bugshot-2가 실전 검증 대상이므로 이 경로가 그 리포의 공식 온보딩 경로다. `read`·`write`는 아무것도 바뀌지 않았다.
 
 **base 로케일은 아직 추정이다** — `en`이 있으면 `en`, 없으면 사전순 첫 번째. 어느 로케일이 기준인지는 리포의 관례라 미결이다 (MVP §10).
+
+#### ⚠️ 경로 모양이 셋이고, `layout`·`writeStrategy`와 또 다른 축이다 (2026-09-02 3차 실측)
+
+홀드아웃 20개 중 **9개**가 아래 두 새 모양이었다. **read·write가 완전히 같고 `pathTemplate`만 다르므로 어댑터를 새로 만들지 않았다** — `json-catalog`·`yaml-catalog`의 **탐지만** 넓혔다.
+
+| 모양 | 어댑터 | `localeFromPath` |
+|---|---|---|
+| `{dir}/{locale}.<ext>` | 전부 | 접두 `{dir}/`, 접미 `.<ext>` |
+| `{dir}/{locale}/<name>.json` | `json-catalog` | 접두 `{dir}/`, 접미 `/<name>.json` |
+| `{dir}/<prefix><sep>{locale}.<ext>` | `json-catalog`·`yaml-catalog` | 접두 `{dir}/<prefix><sep>`, 접미 `.<ext>` |
+
+`localeFromPath`가 템플릿의 `{locale}` 앞뒤를 접두·접미로 쪼개는 방식이라 **세 모양 모두 코드 변경 없이 역산된다**(`/`를 품으면 거부하므로 로케일 디렉터리 형태도 안전하다). `chrome-locales`가 애초에 둘째 모양의 특수 사례(`_locales/{locale}/messages.json`)이고, 리프가 `{ message, description }` 객체라 별 어댑터로 남는다.
+
+세 가지 함정:
+
+1. **로케일 디렉터리 형태만 경로에 i18n 신호를 요구한다.** 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다 — n8n의 `packages/@n8n/{ai,di,db}/package.json`이 4로케일 후보로 1순위가 됐다. 실측에서 이 형태의 진짜 카탈로그 7개는 **전부** 경로에 `locale(s)`·`i18n`을 갖는다. 편향이 한 방향이라 과소 탐지일 뿐 오탐을 만들지 않는다.
+2. **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 낸다** (`PRIMARY_NAMES` = `translation`·`translations`·`common`·`messages`·`default`, 그다음 로케일 수, 그다음 알파벳순). 알파벳순만 쓰면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집는다. `Project`가 포맷을 하나만 들기 때문이고, Ghost의 네임스페이스 5개 중 1개만 덮는 것은 그 대가다.
+3. **접두사는 오른쪽 구분자부터 시도한다** (`shared.splitLocaleSuffix`). `client.bs_BA`는 마지막 `_`에서 자르면 `BA`(대문자라 탈락)이고 그다음 `.`에서 `bs_BA`가 나온다 — 왼쪽부터 자르면 `bs_BA`를 `_`로 다시 쪼갠다.
+
+#### ⚠️ 맨 3글자 이름은 로케일 앵커가 되지 못한다 (2026-09-02 3차 실측)
+
+`looksLikeLocale`이 `[a-z]{2,3}`을 받는데 3글자 영단어와 정면으로 충돌한다. 홀드아웃 오탐 4건 중 2건이 이것이었다:
+
+| 리포 | 1순위로 잡은 것 | "로케일" |
+|---|---|---|
+| grafana/grafana | `public/app/plugins/datasource/azuremonitor/dashboards/{locale}.json` (대시보드 정의, read 에러 1,799) | `adx`·`arg` |
+| n8n-io/n8n | `packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/{locale}.json` (JSON 스키마) | `add`·`get` |
+
+**후보 그룹은 `hasStrongLocale`을 통과해야 한다** — 2글자(`en`)·지역 서브태그(`zh-CN`·`fil-PH`)·camelCase(`koKR`) 중 하나가 그룹에 있어야 한다. 3글자 로케일(`fil`·`ceb`)을 버리는 게 아니라 **강한 것 옆에 있을 것**만 요구한다: 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인 3글자 영단어 디렉터리에는 그게 없다. **모든 어댑터의 그룹 필터가 이 규칙을 지난다.**
+
+#### ⚠️ 순위 픽스는 파이프라인의 **마지막** 층에 넣어야 한다 (2026-09-02 3차)
+
+`detectCandidatesAcross`(`lib/adapters/index.ts`)가 어댑터가 낸 순서를 **전부 버리고 다시 정렬한다.** 그래서 어댑터 안(`rankTemplateCandidates`)에만 넣은 픽스는 명시 지정 경로에서만 살아 있고 자동 탐지에서는 죽는다 — `liftAncestors`가 정확히 그 상태로 단위 테스트만 통과했다 (POSTMORTEM 2026-09-02).
+
+두 규칙이 그 파이프라인에 있다:
+
+- **`templateShapeRank`** — 다른 신호가 같으면 맨 로케일 파일 > 로케일 디렉터리 > 접두사. rubygems.org의 `config/locales/avo.{locale}.yml`이 앱 카탈로그를 이긴 것이 근거다(마지막 tiebreak인 경로 사전순에서 `a` < `{`). **로케일 수보다 뒤에 둔다** — 앞에 두면 discourse의 1키 테마 카탈로그가 진짜를 이긴다.
+- **`liftAncestors`** — 1순위의 **조상 디렉터리**에 있는 후보를 앞으로 끌어올린다. DMPRoadmap/roadmap의 `config/locales/contact_us/contact_us.{locale}.yml`(17로케일 · 11키)이 `config/locales/{locale}.yml`(15로케일)을 이겼고, 자손 쪽 로케일 수가 실제로 더 많아 수 신호로는 안 뒤집힌다. **비교 함수가 아니라 정렬 뒤 후처리다** — "조상이 이긴다"가 추이적이지 않아 `sort`에 넣으면 결과가 구현 정의가 된다. 버킷별로 적용하므로 크롬 최우선은 그대로다.
+
+**고치지 못한 것 하나**: discourse의 `plugins/discourse-cakeday/config/locales/client.{locale}.yml`(27키)이 정본을 누른다. 플러그인 쪽 로케일 파일이 하나 더 많고(50 vs 49) 다른 서브트리라 두 규칙 모두 닿지 않는다. `plugins/` 감점을 넣으면 잡히지만 **관측 1건이라 만들지 않았다** — Ghost·payload가 `packages/`에 진짜 카탈로그를 두므로 "하위 디렉터리 감점"으로 일반화할 수도 없다.
 
 ### 1.35 ⚠️ 키에 `.`이 들어 있으면 중첩 복원이 값을 삼킨다 (2026-09-02 실측)
 
