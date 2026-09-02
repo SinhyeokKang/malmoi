@@ -18,46 +18,48 @@
 
 ## 0. 측정 먼저 — 설계 두 갈래를 숫자로 닫는다
 
-**구현 전에 돌린다.** 코퍼스와 실행 스크립트는 있지만 **지표는 없다** — `lib/survey/types.ts`·
-`summarize.ts`에 `indent`·`agree`·`order` 필드가 grep 0건이고, 모든 `read`가 엔트리를 정렬해
-돌려주므로 **원본 텍스트를 직접 파싱하는 새 순수 모듈이 필요하다**(`lib/survey/ts-shape.ts`가
-선례). 즉 이 단계는 프로덕션 코드 변경이다.
+**지표는 섰고 실측은 아직이다.** 아래 0-1(지표 구현)은 끝났고, 0-2(129개 실행과 판정)가 남았다 —
+그때까지 A안/대안 E는 미결이고 태스크 1 이후를 시작할 수 없다.
 
-- [ ] **새 순수 모듈 + 단위 테스트** — 원본 JSON 텍스트에서 키 등장 순서·들여쓰기 문자/칸수를
-      뽑는다. `RepoSurvey`·`SurveyMetrics`에 필드 추가
-  - 검증: `pnpm test` — 픽스처 문자열에서 순서 배열과 들여쓰기가 기대값
-  - ⚠️ CLAUDE.md 테스트 우선 규칙이 그대로 걸린다. 측정 코드라고 예외가 아니다
-- [ ] **로케일 간 키 순서 일치율** (정의는 🔒 표)
-  - 검증: **알려진 리포에서 기대값이 나온다** — `jq '.surveys[] | select(.repo=="excalidraw/excalidraw") | .localeOrderAgreement'`가 0도 null도 아니다
-  - ⚠️ "숫자가 나온다"로는 판정이 안 된다. **지표가 껍데기까지 배선됐는지**를 봐야 한다 —
-    `metrics.configFileRepos`가 `scripts/adapter-survey.ts:85`의 구조 분해 누락으로 **구조적으로
-    항상 0**인데 단위 테스트만 green인 선례가 지금 살아 있다
-  - **판정**: 중앙값 ≥ 0.9면 A안 확정, 미만이면 대안 E 승격 + design.md 수정
-- [ ] **잔여 diff 원인 분해** — 순서 외에 무엇이 diff를 만드는지 리포별 비율로 가른다
-  - 들여쓰기(문자·칸수) / 비ASCII 이스케이프 해제 / 빈 값 낀 배열의 형태 변형(`isDense`) /
-    **chrome `placeholders`·비-base `description` 손실** / 정수형 키 hoisting
-  - 검증: 원인별 비율이 합쳐 1에 가깝고, 리포별로 지배 원인이 하나 나온다
-  - **판정**: 2칸 비율 ≥ 0.8이면 진행. 미만이면 들여쓰기를 별 기능으로 확정하고 목표 재산
-  - ⚠️ **안 재면 "0.10"의 근거가 없다.** spec이 "순서 외 잉여가 들여쓰기와 이스케이프뿐"이라고
-    쓴 전제 자체가 이 측정으로만 확인된다
-- [ ] **비-base 로케일 파일의 diff도 잰다** — `lib/survey/one.ts:297`의 `diffRatio`는 **base 파일
-      하나만** 잰다. 그런데 A안은 base 순서를 전 로케일에 전파하므로 **정작 위험한 파일이 게이트에
-      안 잡힌다**
-  - 검증: base diff와 비-base diff가 두 숫자로 따로 나온다
-- [ ] **`.`이 키에 든 리포의 기준선 기록** (siyuan `writeErrors` 21, musicblocks 324)
-  - 검증: 재측정에서 같은 값을 유지하는지 대조할 표가 `docs/ADAPTER-COVERAGE.md`에 있다
-- [ ] **`not-run` 리포 수를 지표에 올린다** — `summarize.ts:133-134`가 분모에서 조용히 제외한다
-  - 검증: `--json`에 `measuredCount`와 `notRunCount`가 있다
-- [ ] **어댑터별 diff 중앙값을 `--json`으로 읽을 수 있게 한다** — 지금은 `summarize.ts:191-213`의
-      마크다운 표에만 있어 완료 조건 1·2를 `jq`로 못 읽는다
-  - 검증: `jq '.metrics.diffByAdapter["json-catalog"].median'`이 값을 낸다
+### 0-1. 지표 구현 ✅ (2026-09-02)
 
-⎯ 커밋 ⎯ `feat(survey): measure locale-order agreement, indentation, and diff causes`
-(측정 코드는 순수 함수 + 지표 열 추가라 `test(...)`가 아니라 `feat(...)`이다)
+- [x] **새 순수 모듈 + 단위 테스트** — `lib/survey/json-shape.ts`. 원본 JSON 텍스트에서 키 등장
+      순서·들여쓰기·diff 원인을 뽑는다. `RepoSurvey`·`SurveyMetrics`에 필드 추가
+  - 검증 통과: `pnpm test` green (`json-shape.test.ts` 31건, `order-metrics.test.ts` 21건)
+  - ⚠️ `read`도 `JSON.parse`도 못 쓴다 — 전자는 정렬해 돌려주고 후자는 정규 정수 키를 끌어올린다
+- [x] **로케일 간 키 순서 일치율** (정의는 🔒 표) — `localeOrderAgreement` / `localeOrderCompared`
+  - 검증 통과: 실물 2개 리포(excalidraw·siyuan)에서 중앙값 **0.700**이 나온다 — 0도 null도 아니다
+- [x] **잔여 diff 원인 분해** — 들여쓰기 / 비ASCII 이스케이프 / 빈 값 낀 배열 / 정수형 키 /
+      **chrome `placeholders`·비-base `description`**
+  - 검증 통과: 실물 2개 리포에서 `{"indent":1,…,"integerKeys":1,…}`
+- [x] **비-base 로케일 파일의 diff** — `diffRatioNonBase`. `one.ts:297`의 `diffRatio`는 base
+      하나만 잰다
+  - 검증 통과: 실물 중앙값 0.920 (base 0.921과 따로 나온다)
+- [x] **`not-run` 리포 수를 지표에 올린다** — `roundtrip.notRun`
+- [x] **어댑터별 diff 중앙값을 `--json`으로** — `diff.byAdapter`. 목표 초과 비율(`overTarget`)도 함께
+- [x] **표에도 싣는다** — 포맷별 표에 `비-base diff`, 리포별 표에 `순서 일치`·`들여쓰기` 열.
+      태스크 0의 결과는 `docs/ADAPTER-COVERAGE.md`에 **표로** 기록되므로 표에 없으면 문서로 못 간다
+- [x] **`configFiles` 배선 수리** — 껍데기가 구조 분해에서 버려 `configFileRepos`가 구조적으로 항상
+      0이었다. `SurveyInput.configFiles`를 필수로 만들어 컴파일러가 막게 했다
+      (`docs/POSTMORTEM.md` 2026-09-02)
 
-⚠️ **재측정 비용을 인정하고 간다**: 캐시가 없어(`adapter-survey.ts:110`의 `rmSync`) 매 실행이 129개
-리포를 새로 clone한다. 학습 109개가 ~3분 26초이고 그중 순수 판정은 20.9초다. **네트워크·GitHub
-가용성에 묶이므로 이 실행은 `/push` 1단계 게이트에 넣을 수 없다.** 그래서 태스크 5.5의 L2가 있다.
+⎯ 커밋 ⎯ `feat(survey): measure key order, indentation, and what else moves the diff` (완료)
+
+### 0-2. 실측 실행과 판정 (남음)
+
+- [ ] `pnpm adapter-survey`를 **학습 109개와 홀드아웃 20개에 따로** 돌린다 (합치지 않는다)
+  - ⚠️ 캐시가 없어(`adapter-survey.ts:110`의 `rmSync`) 매 실행이 리포를 새로 clone한다. 학습
+    109개가 ~3분 26초이고 그중 순수 판정은 20.9초다 — **네트워크·GitHub 가용성에 묶이므로 이
+    실행은 `/push` 1단계 게이트에 넣을 수 없다.** 그래서 태스크 5의 L2가 있다
+- [ ] **A안 / 대안 E 판정** — 일치율 중앙값 ≥ 0.9면 `StringKey.sortIndex` 확정, 미만이면
+      `Translation.sortIndex`로 승격하고 design.md를 고친다
+- [ ] **들여쓰기 별기능 판정** — 2칸 비율 ≥ 0.8이면 순서 보존만으로 진행, 미만이면 별 기능 확정 +
+      완료 조건 1·2의 목표 수치를 그 비율로 재산
+- [ ] **기준선을 `docs/ADAPTER-COVERAGE.md`에 표로 남긴다** — 일치율·들여쓰기 분포·원인 분해·
+      `not-run` 수·`.`-키 리포의 손실 기준선(siyuan·musicblocks). 안 남기면 태스크 6의 "지금과 같은
+      값을 유지하는지"를 대조할 대상이 없다
+  - ⚠️ 표본 상한(`MAX_PER_SHAPE_GROUP` = 12)을 결과에 병기한다 — mastodon(106로케일)의 일치율은
+    12개 표본 값이다
 
 ## 1. 순수 함수 — 순서 관측
 
