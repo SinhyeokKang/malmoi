@@ -174,7 +174,8 @@ lib/
     index.ts            detectFormat / detectCandidates / adapterFor / ADAPTERS(우선순위)
     shared.ts           재생성 writer의 결정성 규칙 + 후보 순위·검증
     chrome-locales.ts   _locales/{locale}/messages.json (per-locale, 재생성)
-    json-catalog.ts     {dir}/{locale}.json (per-locale, 재생성 — flat|중첩, 배열 인덱스)
+    json-catalog.ts     per-locale, 재생성 — flat|중첩, 배열 인덱스. ⚠️ **경로 모양 3개**:
+                        {dir}/{locale}.json · {dir}/{locale}/<name>.json · {dir}/<prefix>.<locale>.json
     yaml-catalog.ts     {dir}/{locale}.y(a)ml (per-locale, ⚠️ 수술적 — 주석·앵커 보존, Rails 루트 키)
     code-dict.ts        {dir}/{locale}.{ts,js} (per-locale, ⚠️ 수술적 — default export 객체)
     ts-dict.ts          src/i18n/namespaces/*.ts (multi-locale, ⚠️ 수술적 — **자동 탐지 제외**)
@@ -274,7 +275,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
-- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(2026-09-02, 오픈소스 109개). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정 4개가 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.** 재실행하면 갱신한다 (`pnpm adapter-survey`)
+- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(2026-09-02, 오픈소스 109개 + 홀드아웃 20개). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정 4개가 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.** 재실행하면 갱신한다 (`pnpm adapter-survey`)
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
