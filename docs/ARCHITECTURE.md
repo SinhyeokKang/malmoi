@@ -220,6 +220,8 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
     `ProjectFormatColumns.nestedByPath`를 **optional로 두지 않았다** — 껍데기가 `select`에서 빼면 컴파일러가 막는다 (POSTMORTEM 2026-09-02 "공급 계약은 optional로 두지 않는다"). `lib/pull/__tests__/entry-order.test.ts`가 진입점에서 musicblocks 모양을 단언하고 `lib/push/__tests__/flow.test.ts`가 b→c 홉을 SQL 인자로 본다.
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **에러로 보고하고 그 키를 건너뛴다.** 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
+  - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
+  - `lib/adapters/__tests__/contract.ts`가 그 계약을 `ADAPTERS` 순회로 고정한다: 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
   - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI 문구는 건수와 "개발자에게 알려 주세요"만 덧붙이고(`lib/pull/message.ts`), 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
@@ -441,6 +443,49 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **대화형 트랜잭션을 쓸 수 없다.** 런타임이 transaction 모드 pooler(6543)라 `$transaction(async tx => …)`은 문장마다 다른 백엔드로 갈 수 있다. **배열형 `$transaction([...])`** 은 한 번에 배치로 보내므로 pgbouncer에서도 원자적이다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결(TASKS §4).
+
+### 5.5.15 적용은 한 트랜잭션이다 (2026-09-04)
+
+**배열형 `$transaction` 하나가 Locale·StringKey·Translation·KeyRef·Project를 전부 커밋한다.**
+전에는 둘이었다 — 키 id를 확보하려고 중간에 `stringKey.findMany`를 한 번 더 쳤기 때문이다. 두 번째가
+실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`Project.lastCommit*`은 옛 상태인
+혼합 DB**가 남는다.
+
+- **삽입 id를 JS에서 만들어 들고 있으면 그 조회가 없어진다.** 이미 `randomUUID()`로 만들고 있었고
+  (`@default(cuid())`는 Prisma 클라이언트가 적용해 raw SQL엔 오지 않는다) 그 값을 버렸을 뿐이다.
+  `idByKey`는 `existing` + 생성한 id로 조립한다.
+- **문장 순서가 곧 결과 인덱스다.** 보고값(`staleTranslations`·`translationsFilled`·
+  `orphanedLocales`)을 꺼내려면 그 순서를 알아야 하므로 인덱스를 조건별로 세어 계산한다.
+  문장을 끼워 넣으면 그 계산도 같이 고친다.
+- ⚠️ **중복 키가 이 트랜잭션을 거부시킨다.** `json-catalog`의 `flatten`은 중복을 검사하지 않아
+  `{"a.b": …, "a": {"b": …}}`가 같은 평탄화 키를 두 번 낸다(§1.35). 그 쌍이 한 `INSERT … ON CONFLICT
+  DO UPDATE`에 들어가면 Postgres가 `cannot affect row a second time`으로 문장을 거부해 **지원 포맷
+  리포가 push를 아예 못 끝낸다.** 생산자(`buildPushPayload`)와 `applyPush` **양쪽**이 접는다 —
+  와이어 계약이 중복을 허용하므로 옛 CI의 페이로드도 받아야 한다. 규칙은 **마지막이 이긴다**(YAML
+  로더·`read`와 같다)이고 접힌 수를 `duplicateKeys`로 보고한다.
+
+### 5.5.16 사라진 로케일은 `orphaned`다, 삭제가 아니다 (2026-09-04)
+
+**로케일 목록의 정본은 어댑터가 탐지한 파일 목록이다** (MVP §3.1). 사라진 로케일을 표시하지 않으면
+DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자가 지운 `fr.json`이 다음 PR에서 돌아온다.
+행은 남아 있고 번역도 남아 있으므로 write가 내용을 만들어 커밋에 싣기 때문이다.
+
+키의 `orphaned`와 같은 모양으로 푼다. **지우지 않는 이유가 둘이다**: 파일을 되살리면 번역이 그대로
+돌아와야 하고, `Translation`의 FK가 `RESTRICT`라 지우려면 번역을 먼저 지워야 한다.
+
+| 지점 | 무엇 |
+|---|---|
+| `applyPush`의 Locale upsert | 페이로드에 있는 로케일은 `"orphaned" = false`로 **되돌린다** |
+| 같은 트랜잭션의 `UPDATE "Locale"` | 페이로드에 없는 로케일에 `orphaned = true`, **`isBase = false`** |
+| `loadPullState`의 `select` | `where: { orphaned: false }` — pull이 그 경로를 아예 만들지 않는다 |
+| `saveTranslation` | orphaned 로케일 저장을 거부한다 — 받으면 `updatedAt`만 올라 pull이 헛돈다 |
+
+- **`isBase`를 함께 내리는 이유**: base 파일이 삭제되면 push가 남은 파일에서 새 base를 고르는데, 옛
+  행의 `isBase`가 남으면 `true`인 행이 둘이 된다. `app/(edit)/keys/page.tsx`가 그 값으로 열을
+  정렬하고 기본 열을 고르므로 **화면이 사라진 로케일을 base로 세운다.**
+- ⚠️ **목록이 비면 표시 문장을 내지 않는다.** `<> ALL('{}')`은 전 로케일을 orphan시킨다.
+- **편집 UI는 여전히 그 열을 보여준다** — 동결이라(MVP §8.3) 배지·비활성 처리를 새로 만들지 않았고,
+  저장 거부가 실제 손실을 막는다. 그 어긋남은 MVP §10에 있다.
 
 ### 5.5.2 번역값은 strict 덮어쓰기다
 
