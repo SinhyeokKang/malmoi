@@ -472,7 +472,9 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 - [x] **§4b(오배송·역행 거부)가 먼저 서 있어야 한다** ✅ — `lib/push/guard.ts`가 두 판정을 들고 라우트가 409를 낸다. Actions가 `projectSlug`와 `commitAt`을 보낸다 (`push-local.ts`가 `git show -s --format=%cI`로 얻는다)
 - [x] **대상 리포 base 브랜치 — `dev`** (2026-09-01 결정 — 🔒 해소, MVP §3.1). bugshot-2의 실제 작업 브랜치이고 `main`은 보호 브랜치다. 첫 실측(적재 커밋이 `dev`에만 존재)은 머지로 낡았고, 재실측 결과 양쪽 head가 같아 구조적 이유로 판정했다. **DB의 `Project.baseBranch` 갱신은 6단계 0번 태스크에 남아 있다**
-- [ ] 🔒 **로케일 시드 방식 결정** — 로케일 파일 스캔 자동 생성인지 수동 등록인지 (MVP §10)
+- [x] 🔒 **로케일 시드 방식** ✅ **자동 생성으로 결정** (2026-09-03 — MVP §3.1로 올렸다)
+  - 정본은 어댑터가 탐지한 로케일 파일 목록이고 `applyPush`가 `Locale`을 upsert한다. 수동 등록은 손이 늘면서 파일과 DB가 갈라지는 경로만 만든다
+  - 검증: `order-check`에서 `en`·`ja`·`ko`가 CI push 한 번으로 등록됐다
 - [x] 대상 리포에 Actions 워크플로 (스캔 → `/api/push`) ✅ (2026-09-03)
   - **실제 일은 i18n-poc의 composite action이 한다** (`.github/actions/l10n-push`). 대상 리포는 그것을 부르는 20줄만 갖는다 — 페이로드를 셸·YAML로 조립하지 않는 것이 요지다 (POSTMORTEM 2026-08-31). 사용법은 [ACTIONS.md](./ACTIONS.md)
   - 검증: `i18n-order-check`에서 run green — 23키 / 69번역 / `POST → 200` / `translationsFilled: 69`
