@@ -97,7 +97,18 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
     { name: "chrome + json 공존", paths: ["public/_locales/en/messages.json", "public/_locales/ko/messages.json", "src/i18n/en.json", "src/i18n/ko.json"] },
   ];
 
-  for (const adapter of ADAPTERS) {
+  /**
+   * ⚠️ **`ts-dict`는 이 계약의 의도적 예외다.**
+   *
+   * 두 함수의 역할이 다르다: `detectCandidates`는 **자동 탐지에 내놓는 후보**이고, `detect`는
+   * **명시 지정(`--adapter`·`Project.adapterName`)됐을 때 고르는 것**이다. 자동 탐지에 참여하는
+   * 어댑터에서는 둘이 같아야 하지만, `ts-dict`는 후보를 하나도 안 내놓기로 했으므로
+   * (ADAPTER-COVERAGE 판정 ③) 일치 자체가 성립하지 않는다 — 일치를 강요하면 명시 지정이
+   * 불가능해진다. 실제로 그 상태였고 `--adapter ts-dict`가 죽어 있었다 (2026-09-03).
+   */
+  const AUTO_DETECTED = ADAPTERS.filter((a) => a.name !== "ts-dict");
+
+  for (const adapter of AUTO_DETECTED) {
     for (const c of CASES) {
       it(`${adapter.name} / ${c.name}`, () => {
         const one = adapter.detect(c.paths, c.probe);
@@ -108,6 +119,16 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
       });
     }
   }
+
+  it("ts-dict만 예외다 — 후보는 안 내고 명시 지정은 받는다", () => {
+    const paths = ["a/i18n/x.ts", "b/i18n/y.ts"];
+    expect(tsDict.detectCandidates(paths, () => TS_SOURCE)).toEqual([]);
+    expect(tsDict.detect(paths, () => TS_SOURCE)?.pathTemplate).toBe("a/i18n/*.ts");
+  });
+
+  it("예외는 ts-dict 하나뿐이다 — 늘어나면 이 목록이 거짓이 된다", () => {
+    expect(ADAPTERS.length - AUTO_DETECTED.length).toBe(1);
+  });
 
   it("detectFormat(어댑터 간 첫 매치)도 그대로다", () => {
     expect(detectFormat(MISDETECT_PAIR)?.pathTemplate).toBe("src/lib/i18n/{locale}.json");

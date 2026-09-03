@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADAPTERS, detectFormat, jsonCatalog, tsDict } from "../index";
+import { ADAPTERS, detectFormat, detectFormatWith, jsonCatalog, tsDict } from "../index";
 import { catalogVerdict } from "../shared";
 import type { FileProbe } from "../types";
 
@@ -149,17 +149,37 @@ export const ns = { ko, en };
 `;
   const paths = ["src/i18n/namespaces/a.ts", "src/i18n/namespaces/b.ts"];
 
-  it("detectCandidates가 항상 빈 배열이다", () => {
+  it("detectCandidates가 항상 빈 배열이다 — 자동 탐지의 진입점은 이쪽이다", () => {
     expect(tsDict.detectCandidates(paths, () => TS)).toEqual([]);
-    expect(tsDict.detect(paths, () => TS)).toBeUndefined();
   });
 
   it("detectFormat도 ts-dict를 고르지 않는다", () => {
     expect(detectFormat(paths, () => TS)).toBeUndefined();
   });
 
-  it("ADAPTERS에는 남아 있다 — 명시 지정이 계속 동작해야 한다", () => {
+  it("ADAPTERS에는 남아 있다", () => {
     expect(ADAPTERS.map((a) => a.name)).toContain("ts-dict");
+  });
+
+  it("**명시 지정은 실제로 동작한다** — `detectFormatWith`가 포맷을 낸다", () => {
+    // ⚠️ 전에는 이 자리에 "ADAPTERS에 남아 있다"만 있었고 이름만 "명시 지정이 계속 동작해야
+    // 한다"였다. 실제로는 `detect`가 `detectCandidates()[0]`이라 **항상 undefined**였고,
+    // `--adapter ts-dict`가 "이 리포에서 해당 포맷을 찾지 못했다"로 죽었다. 목록에 있는 것과
+    // 불릴 수 있는 것은 다른 일이다 (POSTMORTEM 2026-09-02와 같은 축).
+    const found = detectFormatWith("ts-dict", paths, () => TS);
+    expect(found?.adapter).toBe("ts-dict");
+    expect(found?.pathTemplate).toBe("src/i18n/namespaces/*.ts");
+    expect(found?.locales.slice().sort()).toEqual(["en", "ko"]);
+  });
+
+  it("명시 지정도 내용을 봐야 한다 — probe가 없으면 못 찾는다", () => {
+    // `.ts` 디렉터리는 어디에나 있다. 경로만으로 인정하면 아무 소스 디렉터리나 잡힌다.
+    expect(detectFormatWith("ts-dict", paths)).toBeUndefined();
+  });
+
+  it("명시 지정이라도 로케일 객체가 2개 미만이면 안 잡는다", () => {
+    const one = `const ko = { "a.b": "확인" } as const;\nexport const ns = { ko };\n`;
+    expect(detectFormatWith("ts-dict", paths, () => one)).toBeUndefined();
   });
 
   it("read·write는 아무것도 바뀌지 않았다", () => {

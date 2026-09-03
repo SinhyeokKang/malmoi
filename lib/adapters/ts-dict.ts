@@ -81,8 +81,13 @@ function pairs(
  * 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
  *
  * **`--adapter ts-dict` / `Project.adapterName` 명시 지정은 그대로 동작한다** — bugshot-2가 실전
- * 검증 대상이고, `read`·`write`는 아무것도 바뀌지 않았다. 탐지 로직은 `detectByContent`에 남아
- * 있으니 되살릴 때 그것을 부르면 된다.
+ * 검증 대상이고, `read`·`write`는 아무것도 바뀌지 않았다.
+ *
+ * ⚠️ **그래서 `detect`와 `detectCandidates`가 갈린다.** 자동 탐지는 `detectCandidatesAcross`가
+ * `detectCandidates`를 부르므로 빈 배열이면 참여하지 않고, 명시 지정은 `detectFormatWith`가
+ * `detect`를 부르므로 그쪽은 내용 탐지를 그대로 쓴다. **전에는 `detect`도 빈 배열을 거쳐서
+ * `--adapter ts-dict`가 "해당 포맷을 찾지 못했다"로 죽었다** — 위 문장이 코드와 어긋나 있었고,
+ * "ADAPTERS에 남아 있다"만 검사하는 테스트가 그걸 가렸다 (2026-09-03).
  */
 function detectCandidates(_paths: readonly string[], _probe?: (p: string) => string | undefined): DetectedFormat[] {
   return [];
@@ -120,11 +125,15 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
   return found;
 }
 
+/**
+ * **명시 지정 전용 진입점이다.** `detectCandidates`(자동 탐지)와 달리 내용 탐지를 그대로 쓴다 —
+ * `detectFormatWith("ts-dict", …)`가 이걸 부른다.
+ */
 function detect(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat | undefined {
-  return detectCandidates(paths, probe)[0];
+  return detectByContent(paths, probe)[0];
 }
 
-/** 자동 탐지에서 빠진 로직의 보관처. 되살리려면 `detectCandidates`가 이걸 부르면 된다. */
+/** 자동 탐지에서 빠진 로직. 되살리려면 `detectCandidates`가 이걸 부르면 된다. */
 export const tsDictDetectByContent = detectByContent;
 
 function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
