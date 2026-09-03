@@ -34,13 +34,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Prisma 클라이언트는 gitignore된 생성물이라 typecheck 전에 만들어야 한다.
-      # generate는 DB에 접속하지 않지만, prisma.config.ts의 env("DIRECT_URL")가
-      # config 로드 시점에 변수 존재를 요구한다 — .env.local이 없는 CI에선 더미로 채운다.
+      # **더미 DIRECT_URL을 주지 않는다** — prisma.config.ts가 datasource를 조건부로 넣게
+      # 바뀌어 generate는 URL 없이 돈다. 이 스텝이 그 사실의 상시 검증을 겸한다:
+      # 여기서 죽으면 `.env.local`이 없는 환경(Vercel·새 체크아웃)의 빌드도 죽는다.
       - name: prisma generate
         run: pnpm db:generate
         if: hashFiles('prisma/schema.prisma') != ''
-        env:
-          DIRECT_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 
       - run: pnpm typecheck
 

@@ -37,6 +37,12 @@
     - **grep 보강**: `grep -rn -E '\w+\([^)]*,\s*requireEnv\('` → **기본값·폴백 자리에 있는 `requireEnv`는 전부 의심한다.** 고치는 형태는 `arg("x", "") || requireEnv("X")`처럼 앞을 먼저 읽는 것.
     - 전수 확인 결과 나머지 호출부(`app/api/push/route.ts`, `app/(edit)/actions.ts`, `app/(edit)/keys/page.tsx`, `lib/db.ts`)는 전부 함수 안의 직접 호출이라 안전하다.
 
+- **🔁 재발 (2026-09-03, Vercel 첫 배포)**: `pnpm build`에 `prisma generate`를 넣자 Vercel 빌드가 **`PrismaConfigEnvError: Cannot resolve environment variable: DIRECT_URL`** 로 죽었다. 원 항목에서 CI를 red로 만든 그 파일(`prisma.config.ts`)이고 원인도 같다 — `env("DIRECT_URL")`이 **config 로드 시점에** 던진다.
+    - **당시 고친 것은 우회였다.** CI 스텝에 더미 URL을 주고 주석으로 "config 로드 시점에 변수 존재를 요구한다"를 적어 뒀다. 즉 **원인을 정확히 알고 기록까지 했으면서 그 파일은 그대로 두었고**, 그 우회가 CI에만 있었으니 실행 경로가 하나 늘어난 순간(Vercel) 다시 터졌다.
+    - **근본 수정**: `datasource`를 조건부로 넣는다. `@prisma/config` 타입이 그 필드를 "마이그레이션·introspection 전용"으로 명시하므로 `generate`에는 없어도 된다. URL 없이 마이그레이션 명령을 돌리면 Prisma가 `The datasource.url property is required in your Prisma config file when using prisma migrate status`로 **명령 이름까지 찍어** 알린다 — 필요한 명령에서만 실패한다.
+    - CI의 더미 URL도 걷어냈다. 그 스텝이 이제 "`.env.local` 없이 generate가 도는가"의 상시 검증을 겸한다.
+    - **규칙 보강: 우회로 넘긴 것은 실행 경로가 늘어날 때 다시 터진다.** 환경변수 요구를 우회로 덮었으면 그 우회가 **어느 경로에만 있는지**를 적고, 경로가 추가될 때(배포 대상·새 CI job·새 스크립트) 그 목록을 먼저 본다.
+
 ---
 
 ### 2026-08-31 — process.exit()이 파이프 stdout을 잘라먹고, exitCode로 바꾸니 조기 종료가 사라짐
@@ -261,3 +267,5 @@ _이 아래에 새 항목을 추가한다._
   - grep: `git check-ignore <경로>`가 참인 디렉터리를 import하는 코드를 찾았으면, **그것을 만드는 명령이 빌드 그래프 안에 있는지** 본다. 현재 그런 산출물은 `generated/prisma/`(prisma generate)와 `public/fonts/`(copy-fonts) 둘이다.
   - **검증 방법: 산출물을 지우고 돌린다.** `rm -rf generated/prisma && pnpm build`. 이번에 이 한 줄이 결함과 수정을 둘 다 확인했다.
   - ⚠️ **`prebuild`에 넣지 않았다.** `prebuild`는 `.npmrc`의 `enable-pre-post-scripts=true`가 있어야 돌고, 그 설정이 빠지면 조용히 건너뛴다. 폰트는 없어도 시스템 폰트로 떨어지지만 prisma 클라이언트는 빌드를 죽인다 — 중요도가 다른 둘을 같은 설정 하나에 매달지 않는다.
+- **⚠️ 이 수정이 곧바로 두 번째 실패를 냈다.** `build`에 `prisma generate`를 넣자 Vercel 빌드가 `prisma.config.ts`의 `env("DIRECT_URL")`에서 죽었다 — **그 조건은 `ci.yml` 주석에 이미 적혀 있었는데 읽지 않았다.** 상세는 2026-08-31 "모듈 로드 시점에 환경변수를 요구해 CI가 red" 항목의 🔁 재발.
+  - **여기서 얻을 것**: 어떤 명령을 새 실행 경로(빌드 그래프)에 넣을 때, **그 명령이 이미 어딘가에서 특별 대우를 받고 있는지** 본다. `ci.yml`이 그 명령에 env를 따로 주고 있었다는 사실이 곧 "이 명령엔 조건이 붙어 있다"는 신호였다.

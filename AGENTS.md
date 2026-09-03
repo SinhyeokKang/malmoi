@@ -103,6 +103,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 - 클라이언트는 `generated/prisma/`로 생성된다 (**gitignore된 산출물** — CI가 typecheck 전에 `db:generate`를 돌린다). import는 `@/generated/prisma/client`
 - `prisma.config.ts`가 **`.env.local`을 명시적으로 읽는다.** `dotenv` 기본값은 `.env`라서 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`로 오진하게 된다
+- ⚠️ **`prisma.config.ts`에서 `env("DIRECT_URL")`을 쓰지 않는다.** 그 헬퍼는 config **로드 시점에** 던지고 이 파일은 `prisma generate`에도 로드되므로, `.env.local`이 없는 환경(Vercel·새 체크아웃)의 `pnpm build`가 통째로 죽는다. `datasource`는 마이그레이션·introspection 전용이라 **조건부로 넣는다** — 없으면 그 명령에서만 실패하고, Prisma가 명령 이름까지 찍어 알려준다. 같은 파일이 같은 이유로 두 번 터졌다 (`docs/POSTMORTEM.md` 2026-08-31 + 🔁 재발)
 - **⚠️ dev DB와 prod DB가 같다.** Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓인 뒤로는 `--create-only` + `db:deploy`로 쪼개고, **`migrate dev`의 리셋 제안은 절대 승인하지 않는다** (번역이 전부 날아간다). 상세는 `/db`
 
 ### 데이터 변경 경로 — 내부는 Server Action, 외부 진입점만 Route Handler
