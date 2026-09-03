@@ -13,9 +13,9 @@ import { join, relative, sep } from "node:path";
 
 import { config } from "dotenv";
 
-import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
+import { adapterFor, detectFormat, detectFormatWith } from "../lib/adapters/index";
 import { requireEnv } from "../lib/env";
-import type { PushPayloadType } from "../lib/push/plan";
+import { buildPushPayload, pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
 import {
   DEFAULT_WRAPPERS,
   parseWrapperSpec,
@@ -143,82 +143,34 @@ if (!format) {
 }
 const adapter = adapterFor(format);
 
-// ⚠️ 파일 수집이 layout에 따라 갈린다 (lib/adapters/types.ts).
-//   per-locale  — 로케일당 파일 하나: pathTemplate의 {locale}을 치환한다
-//   multi-locale — 한 파일에 로케일 여러 개: 글롭이므로 디렉터리의 파일을 전부 넘긴다
-const files: AdapterFile[] =
-  adapter.layout === "per-locale"
-    ? format.locales
-        .map((l) => format.pathTemplate.replace("{locale}", l))
-        .filter((p) => paths.includes(p))
-        .map((p) => ({ path: p, content: probe(p) ?? "" }))
-    : (() => {
-        const dir = format.pathTemplate.slice(0, format.pathTemplate.lastIndexOf("/") + 1);
-        return paths
-          .filter((p) => p.startsWith(dir) && /\.tsx?$/.test(p) && !p.includes("/__tests__/"))
-          .map((p) => ({ path: p, content: probe(p) ?? "" }));
-      })();
-
-const read = adapter.read(format, files);
+const read = adapter.read(format, selectLocaleFiles(adapter.layout, format, paths, probe));
 if (read.errors.length) {
   console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
   for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${e.message}`);
   process.exit(1);
 }
 
-const baseLocale = format.locales.includes("en") ? "en" : format.locales.slice().sort()[0];
+const baseLocale = pickBaseLocale(format.locales);
 if (baseLocale === undefined) {
   console.error("로케일이 없다 — 연동 불가.");
   process.exit(1);
 }
-const baseEntries = read.locales.find((l) => l.locale === baseLocale)?.entries ?? [];
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────
 const scan = scanSources(sources, wrappers);
-const keySet = new Set(baseEntries.map((e) => e.key));
-const refs = scan.refs
-  .filter((r) => keySet.has(r.key))
-  .flatMap((r) => r.refs.map((loc) => ({ key: r.key, path: loc.path, line: loc.line })));
-// 로케일 파일에 없는 키를 코드가 참조하는 것도 경고다 (MVP §3.1 5단계).
-const unknownRefs = scan.refs.filter((r) => !keySet.has(r.key)).length;
 
-// ⚠️ **타입을 붙여둔다.** 예전엔 리터럴이라 `PushPayload`에 필수 필드가 늘어도 컴파일러가
-// 침묵했고, 이 스크립트만 400을 받는 상태로 남았다 (§4b에서 실제로 밟았다).
-const payload: PushPayloadType = {
+// **생산자는 `lib/push/payload.ts` 하나다.** 리터럴로 조립하던 시절엔 계약이 넓어져도
+// 컴파일러가 붙잡을 지점이 없었고, 이 스크립트만 400을 받는 상태로 남았다
+// (POSTMORTEM 2026-08-31). 7단계의 Actions 워크플로도 같은 함수를 지나야 한다.
+const { payload, unknownRefs } = buildPushPayload({
   projectSlug,
   commitSha,
   commitAt,
-  format: {
-    adapter: format.adapter,
-    pathTemplate: format.pathTemplate,
-    nested: read.nested,
-    baseLocale,
-  },
-  locales: format.locales,
-  keys: baseEntries.map((e) => ({
-    key: e.key,
-    sourceText: e.message,
-    namespace: namespaceOf(e.key),
-    ...(e.description === undefined ? {} : { description: e.description }),
-    // base 파일에서의 키 위치 → `StringKey.sortIndex`. **`e.order ? …`로 쓰면 0이 falsy라
-    // 파일의 첫 키가 순서를 잃는다.** 없으면 안 싣는다 — 서버가 null로 남긴다.
-    ...(e.order === undefined ? {} : { order: e.order }),
-  })),
-  // 리포 파일의 번역값 — 서버가 strict로 덮는다 (MVP §3.1).
-  // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다 (§3.2).
-  translations: read.locales.flatMap((l) =>
-    l.entries.map((e) => ({
-      locale: l.locale,
-      key: e.key,
-      value: e.message,
-      // **그 로케일 파일이 실제로 갖고 있던** chrome 필드 → `Translation`의 두 컬럼.
-      // 키 단위 `keys[].description`과 다른 것이다 — 합치면 base 값을 비-base에 복제하게 된다.
-      ...(e.description === undefined ? {} : { description: e.description }),
-      ...(e.placeholders === undefined ? {} : { placeholders: e.placeholders }),
-    })),
-  ),
-  refs,
-};
+  format,
+  read,
+  baseLocale,
+  scanRefs: scan.refs,
+});
 
 console.log(`대상:     ${target}`);
 console.log(`커밋:     ${commitSha.slice(0, 8)}`);
