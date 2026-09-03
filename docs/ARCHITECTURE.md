@@ -47,6 +47,21 @@
 | 미번역 | 제외 (빈 문자열 포함) | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다 |
 | 낼 것 0개 | `null` — 파일을 내지 않는다 | 빈 `{}`는 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다 |
 
+**⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
+`LocaleEntry.order`까지 가려면 이 넷을 지나고, **하나만 끊겨도 `orderedEntries`가 코드 유닛
+폴백으로 떨어져 전 계층의 단위 테스트가 green인 채 기능만 멎는다:**
+
+| # | 위치 | 나르는 것 |
+|---|---|---|
+| a | `lib/pull/load.ts`의 `select` | `sortIndex` + `translations`의 `description`·`placeholders` |
+| b | `lib/pull/render.ts`의 `RenderKey` | 같은 셋 (`cells`에 로케일별 두 필드) |
+| c | `lib/pull/plan.ts`의 `PullRow` | 같은 셋 |
+| d | `buildWriteEntries` | `sortIndex → order`. **writer에 넘길 entries의 유일한 관문**이다 |
+
+**`lib/pull/__tests__/entry-order.test.ts`가 이 넷을 한꺼번에 지킨다** — `runPull`이 커밋에 실은
+파일 바이트를 보므로 어느 홉이 끊겨도 red다. 픽스처를 **일부러 코드 유닛 순이 아니게** 둔 것이
+그 판별력의 조건이다: 코드 유닛 순이면 폴백이 정답을 내서 배선이 끊겨도 통과한다.
+
 **⚠️ 순서를 고칠 때 봐야 할 지점이 여섯이다** (2026-09-03, `docs/features/key-order-preservation/`). 한 곳만 고치면 조용히 무효가 된다:
 
 | # | 위치 | 성질 |
