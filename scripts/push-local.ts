@@ -122,7 +122,7 @@ const scan = scanSources(sources, wrappers);
 // **생산자는 `lib/push/payload.ts` 하나다.** 리터럴로 조립하던 시절엔 계약이 넓어져도
 // 컴파일러가 붙잡을 지점이 없었고, 이 스크립트만 400을 받는 상태로 남았다
 // (POSTMORTEM 2026-08-31). 7단계의 Actions 워크플로도 같은 함수를 지나야 한다.
-const { payload, unknownRefs } = buildPushPayload({
+const { payload, unknownRefs, duplicateKeys } = buildPushPayload({
   projectSlug,
   commitSha,
   commitAt,
@@ -137,7 +137,10 @@ console.log(`커밋:     ${commitSha.slice(0, 8)}`);
 console.log(`포맷:     ${format.adapter}${read.nested ? " (중첩)" : " (flat)"}  ${format.pathTemplate}`);
 console.log(`로케일:   ${format.locales.slice().sort().join(", ")}  (base: ${baseLocale})`);
 console.log(`키:       ${payload.keys.length} / 번역: ${payload.translations.length} / refs: ${payload.refs.length}`);
-console.log(`경고:     스캔 ${scan.warnings.length}건 / 로케일 파일에 없는 참조 키 ${unknownRefs}개`);
+console.log(
+  `경고:     스캔 ${scan.warnings.length}건 / 로케일 파일에 없는 참조 키 ${unknownRefs}개` +
+    (duplicateKeys === 0 ? "" : ` / 중복으로 접힌 엔트리 ${duplicateKeys}개 (점 키와 중첩 키가 같은 평탄화 키를 낸다)`),
+);
 console.log(`페이로드: ${(Buffer.byteLength(JSON.stringify(payload)) / 1024).toFixed(0)} KB`);
 
 const res = await fetch(`${baseUrl}/api/push`, {

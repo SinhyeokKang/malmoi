@@ -60,12 +60,15 @@ async function main(): Promise<void> {
 
     const locales = await prisma.locale.findMany({
       where: { projectId: project.id },
-      select: { code: true },
+      select: { code: true, orphaned: true },
     });
 
     console.log(`프로젝트: ${project.slug} → ${project.repoOwner}/${project.repoName}@${project.baseBranch}`);
     console.log(`어댑터: ${project.adapterName} (${project.pathTemplate})`);
-    console.log(`로케일: ${locales.map((l) => l.code).join(", ")} (base ${project.baseLocale})`);
+    // orphaned를 함께 찍는다 — pull이 그 로케일을 건너뛰는 이유가 로그에 없으면 오진한다.
+    console.log(
+      `로케일: ${locales.map((l) => `${l.code}${l.orphaned ? "(orphaned)" : ""}`).join(", ")} (base ${project.baseLocale})`,
+    );
 
     const client = await createGitClient(
       project.repoOwner,

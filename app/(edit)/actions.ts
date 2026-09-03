@@ -48,9 +48,12 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   // base 로케일도 편집 대상이다 — 고정된 것은 키뿐이다 (MVP §3.2).
   const locale = await prisma.locale.findUnique({
     where: { projectId_code: { projectId: project.id, code: localeCode } },
-    select: { code: true },
+    select: { code: true, orphaned: true },
   });
   if (!locale) return { ok: false, error: "locale not found in this project" };
+  // 리포에서 사라진 로케일이면 이 값이 pull로 나갈 길이 없다. 저장을 받으면 `updatedAt`만 올라
+  // pull이 헛돌고, 번역자는 반영될 것이라 믿는다. UI가 아직 그 열을 보여주는 것은 미결이다 (MVP §10).
+  if (locale.orphaned) return { ok: false, error: "locale is no longer in the repo" };
 
   // 4) 판정 — 순수 함수가 한다.
   const existing = await prisma.translation.findUnique({

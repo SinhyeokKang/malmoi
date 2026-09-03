@@ -37,11 +37,17 @@ type Stub = {
   prisma: PrismaClient;
   captured: Captured[];
   projectUpdates: unknown[];
+  /** `$transaction` 호출 수 — 하나여야 한다(원자성). */
+  txCount: () => number;
+  /** `stringKey.findMany` 호출 수 — 하나여야 한다(id를 재사용하므로 재조회가 없다). */
+  keyQueries: () => number;
 };
 
 function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]): Stub {
   const captured: Captured[] = [];
   const projectUpdates: unknown[] = [];
+  let transactions = 0;
+  let keyFindMany = 0;
 
   const prisma = {
     $executeRaw: (strings: TemplateStringsArray, ...values: unknown[]): Captured => {
@@ -50,13 +56,17 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
       return c;
     },
     // 배열형 트랜잭션은 문장 순서대로 영향 행수를 돌려준다.
-    $transaction: async (arr: readonly unknown[]) => arr.map(() => 1),
+    $transaction: async (arr: readonly unknown[]) => {
+      transactions += 1;
+      return arr.map(() => 1);
+    },
     stringKey: {
-      findMany: async (args: { select: Record<string, boolean> }) =>
+      findMany: async (args: { select: Record<string, boolean> }) => (
+        keyFindMany += 1,
         // 첫 호출은 계획용(sourceHash까지), 두 번째는 insert 후 id 조회다.
         args.select["sourceHash"]
           ? existing
-          : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key })),
+          : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key }))),
     },
     project: {
       update: async (args: unknown) => {
@@ -66,7 +76,13 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
     },
   };
 
-  return { prisma: prisma as unknown as PrismaClient, captured, projectUpdates };
+  return {
+    prisma: prisma as unknown as PrismaClient,
+    captured,
+    projectUpdates,
+    txCount: () => transactions,
+    keyQueries: () => keyFindMany,
+  };
 }
 
 /**
@@ -89,6 +105,18 @@ const stmt = (captured: readonly Captured[], needle: string): Captured => {
 
 const has = (captured: readonly Captured[], needle: string): boolean =>
   captured.some((c) => c.sql.includes(needle));
+
+/**
+ * 키 → 삽입에 쓴 id. **`applyPush`가 id를 조회하지 않고 자기가 만든 값을 재사용하므로** 테스트도
+ * 그 관계로 단언한다. 전에는 스텁이 두 번째 조회에 `id-<key>`를 돌려줘 그 합성 값을 박아 뒀는데,
+ * 그러면 id의 출처가 바뀌었을 때 무엇이 깨졌는지가 아니라 스텁의 관례가 깨진다.
+ */
+function keyIdOf(captured: readonly Captured[]): (key: string) => unknown {
+  const cols = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'));
+  const keys = cols["key"] ?? [];
+  const ids = cols["id"] ?? [];
+  return (key: string) => ids[keys.indexOf(key)];
+}
 
 /** 로케일 파일에서 페이로드까지 — `scripts/push-local.ts`가 하는 것과 같은 순서다. */
 function payloadFromFiles(scanRefs: Parameters<typeof buildPushPayload>[0]["scanRefs"] = []) {
@@ -160,13 +188,14 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
       placeholders: cols["placeholders"]?.[i],
     }));
 
+    const idOf = keyIdOf(captured);
     expect(rows).toEqual([
-      { keyId: "id-apple", locale: "en", value: "Apple", description: null, placeholders: '{"u":{"content":"$1"}}' },
+      { keyId: idOf("apple"), locale: "en", value: "Apple", description: null, placeholders: '{"u":{"content":"$1"}}' },
       // base 파일의 description은 **키 메타데이터이면서 그 로케일 파일이 실제로 가진 값**이라
       // 양쪽에 실린다. 합치는 것이 아니다 — 두 축이 우연히 같은 출처를 가질 뿐이다.
-      { keyId: "id-zebra", locale: "en", value: "Zebra", description: "동물", placeholders: null },
-      { keyId: "id-apple", locale: "ko", value: "사과", description: "ko쪽 설명", placeholders: null },
-      { keyId: "id-zebra", locale: "ko", value: "얼룩말", description: null, placeholders: null },
+      { keyId: idOf("zebra"), locale: "en", value: "Zebra", description: "동물", placeholders: null },
+      { keyId: idOf("apple"), locale: "ko", value: "사과", description: "ko쪽 설명", placeholders: null },
+      { keyId: idOf("zebra"), locale: "ko", value: "얼룩말", description: null, placeholders: null },
     ]);
   });
 
@@ -196,7 +225,8 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
       ],
     });
     const cols = columnsOf(stmt(captured, 'INSERT INTO "KeyRef"'));
-    expect(cols["keyId"]).toEqual(["id-apple", "id-apple"]);
+    const apple = keyIdOf(captured)("apple");
+    expect(cols["keyId"]).toEqual([apple, apple]);
     expect(cols["path"]).toEqual(["src/a.ts", "src/b.ts"]);
     expect(cols["line"]).toEqual([3, 7]);
     expect(outcome.refs).toBe(2);
@@ -258,7 +288,8 @@ describe("push 흐름 — 기존 키가 있다", () => {
   it("코드에서 사라진 키는 orphaned로 표시하고 삭제하지 않는다", async () => {
     const gone: ExistingKey = { id: "id-gone", key: "gone", sourceHash: "h", orphaned: false };
     const { captured, outcome } = await runFlow({ existing: [existingZebra, gone] });
-    const orphan = stmt(captured, '"orphaned" = true');
+    // ⚠️ 로케일 orphan 문장도 `"orphaned" = true`를 담으므로 테이블까지 적어 좁힌다.
+    const orphan = stmt(captured, 'UPDATE "StringKey" SET "orphaned" = true');
     expect(orphan.values).toContainEqual(["id-gone"]);
     expect(outcome.orphaned).toBe(1);
     expect(has(captured, "DELETE FROM \"StringKey\"")).toBe(false);
@@ -328,5 +359,78 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
     expect(payload.format.nestedByPath).toEqual({ "i18n/en.json": true, "i18n/th.json": false });
     const data = (projectUpdates[0] as { data: Record<string, unknown> }).data;
     expect(data["nestedByPath"]).toEqual({ "i18n/en.json": true, "i18n/th.json": false });
+  });
+});
+
+/**
+ * **원자성** (2026-09-04 audit #1). 전에는 트랜잭션이 둘이었다 — 키 id를 확보하려고 중간에
+ * `findMany`를 한 번 더 쳤기 때문이다. 두 번째가 실패하면 키·orphaned·needsReview만 새 상태이고
+ * 번역·refs·`Project.lastCommit*`은 옛 상태인 혼합 DB가 남는다. 삽입 id는 이미 JS에서 만들므로
+ * (`randomUUID`) 그 값을 들고 있으면 조회가 필요 없다.
+ */
+describe("push 흐름 — 원자성", () => {
+  it("트랜잭션이 하나다 — 둘로 나누면 두 번째 실패가 혼합 상태를 남긴다", async () => {
+    const { txCount } = await runFlow();
+    expect(txCount()).toBe(1);
+  });
+
+  it("키 조회가 한 번이다 — id는 삽입에 쓴 값을 그대로 재사용한다", async () => {
+    const { keyQueries } = await runFlow();
+    expect(keyQueries()).toBe(1);
+  });
+
+  it("Translation의 keyId가 StringKey INSERT의 id와 같다 — 조회 없이 맞아야 한다", async () => {
+    const { captured } = await runFlow();
+    const inserted = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'))["id"] ?? [];
+    const used = new Set(columnsOf(stmt(captured, 'INSERT INTO "Translation"'))["keyId"] ?? []);
+    expect(used.size).toBeGreaterThan(0);
+    for (const id of used) expect(inserted).toContain(id);
+  });
+});
+
+/**
+ * **중복 평탄화 키** (2026-09-04 audit #1의 재현 경로). `json-catalog`의 `flatten`은 중복을
+ * 검사하지 않아 `{"a.b": …, "a": {"b": …}}`가 같은 키를 두 번 낸다. 그 쌍이 한 INSERT에 들어가면
+ * Postgres가 `ON CONFLICT DO UPDATE cannot affect row a second time`으로 거부한다 —
+ * 지원 포맷 리포가 push를 아예 못 끝낸다.
+ */
+describe("push 흐름 — 중복 키를 페이로드가 접는다", () => {
+  it("같은 로케일에 같은 키가 두 번 오면 한 행만 쓴다", async () => {
+    const payload = payloadFromFiles();
+    const first = payload.translations[0]!;
+    const dup = { ...first, value: "나중 값이 이긴다" };
+    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, { ...payload, translations: [...payload.translations, dup] });
+    const cols = columnsOf(stmt(stub.captured, 'INSERT INTO "Translation"'));
+    const pairs = (cols["keyId"] ?? []).map((id, i) => `${String(id)}|${String((cols["localeCode"] ?? [])[i])}`);
+    expect(new Set(pairs).size).toBe(pairs.length);
+  });
+});
+
+/**
+ * **삭제된 로케일** (2026-09-04 audit #2). 로케일 목록의 정본은 어댑터가 탐지한 파일 목록이다
+ * (MVP §3.1). 사라진 로케일을 표시하지 않으면 DB에 영구 잔존하고, pull이 그 로케일 파일을
+ * **되살린다** — 개발자가 지운 파일이 다음 PR에서 돌아온다.
+ */
+describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () => {
+  it("페이로드에 있는 로케일은 orphaned를 되돌린다 — 파일이 돌아오면 살아난다", async () => {
+    const { captured } = await runFlow();
+    expect(stmt(captured, 'INSERT INTO "Locale"').sql).toMatch(/"orphaned"\s*=\s*false/);
+  });
+
+  it("페이로드에 없는 로케일을 표시하고 isBase를 내린다 — base가 둘이면 편집 UI가 사라진 로케일을 base로 세운다", async () => {
+    const { captured } = await runFlow();
+    const s = stmt(captured, 'UPDATE "Locale"');
+    expect(s.sql).toMatch(/"orphaned"\s*=\s*true/);
+    expect(s.sql).toMatch(/"isBase"\s*=\s*false/);
+    // 남길 로케일 목록이 인자로 간다 — 그 목록 밖이 표시 대상이다.
+    expect(s.values).toContainEqual(["en", "ko"]);
+  });
+
+  it("로케일 목록이 비면 표시 문장을 내지 않는다 — 전체를 orphan시키는 사고가 된다", async () => {
+    const payload = payloadFromFiles();
+    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, { ...payload, locales: [] });
+    expect(has(stub.captured, 'UPDATE "Locale"')).toBe(false);
   });
 });

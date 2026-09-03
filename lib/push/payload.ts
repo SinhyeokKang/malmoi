@@ -60,6 +60,19 @@ export type PushPayloadInput = {
   scanRefs: readonly ScannedRef[];
 };
 
+/**
+ * 같은 키가 여러 번 오면 **마지막이 이긴다** (YAML 로더·`read`와 같은 규칙).
+ *
+ * `json-catalog`의 `flatten`은 중복을 검사하지 않아 `{"a.b": …, "a": {"b": …}}`가 같은 평탄화
+ * 키를 두 번 낸다 (ARCHITECTURE §1.35). 그 쌍이 `ON CONFLICT DO UPDATE` 한 문장에 들어가면
+ * Postgres가 거부하므로(`cannot affect row a second time`) **지원 포맷 리포가 push를 못 끝낸다.**
+ */
+function lastWins<T>(rows: readonly T[], keyOf: (row: T) => string): T[] {
+  const byKey = new Map<string, T>();
+  for (const row of rows) byKey.set(keyOf(row), row);
+  return [...byKey.values()];
+}
+
 export type BuiltPushPayload = {
   payload: PushPayloadType;
   /**
@@ -67,11 +80,21 @@ export type BuiltPushPayload = {
    * 키의 진실은 로케일 파일이고 스캔은 사용처만 안다.
    */
   unknownRefs: number;
+  /**
+   * 중복이라 접힌 엔트리 수. **조용히 버리면 값이 왜 사라졌는지 알 수 없다** — CI 로그에 남는다.
+   * 원인은 거의 항상 리포의 점 키와 중첩 키가 같은 평탄화 키를 내는 것이다 (ARCHITECTURE §1.35).
+   */
+  duplicateKeys: number;
 };
 
 export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
-  const baseEntries = input.read.locales.find((l) => l.locale === input.baseLocale)?.entries ?? [];
+  const rawBase = input.read.locales.find((l) => l.locale === input.baseLocale)?.entries ?? [];
+  const baseEntries = lastWins(rawBase, (e) => e.key);
   const keySet = new Set(baseEntries.map((e) => e.key));
+  const rawTranslations = input.read.locales.flatMap((l) => l.entries.map((e) => ({ locale: l.locale, e })));
+  const uniqueTranslations = lastWins(rawTranslations, (r) => `${r.locale}\u0000${r.e.key}`);
+  const duplicateKeys =
+    rawBase.length - baseEntries.length + (rawTranslations.length - uniqueTranslations.length);
 
   const refs = input.scanRefs
     .filter((r) => keySet.has(r.key))
@@ -102,19 +125,21 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
       ...(e.order === undefined ? {} : { order: e.order }),
     })),
     // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다 (MVP §3.2).
-    translations: input.read.locales.flatMap((l) =>
-      l.entries.map((e) => ({
-        locale: l.locale,
-        key: e.key,
-        value: e.message,
-        // **그 로케일 파일이 실제로 갖고 있던** chrome 필드다. 키 단위 `keys[].description`과
-        // 합치면 base 값을 비-base에 복제하게 되고, 그건 병합이다.
-        ...(e.description === undefined ? {} : { description: e.description }),
-        ...(e.placeholders === undefined ? {} : { placeholders: e.placeholders }),
-      })),
-    ),
+    translations: uniqueTranslations.map(({ locale, e }) => ({
+      locale,
+      key: e.key,
+      value: e.message,
+      // **그 로케일 파일이 실제로 갖고 있던** chrome 필드다. 키 단위 `keys[].description`과
+      // 합치면 base 값을 비-base에 복제하게 되고, 그건 병합이다.
+      ...(e.description === undefined ? {} : { description: e.description }),
+      ...(e.placeholders === undefined ? {} : { placeholders: e.placeholders }),
+    })),
     refs,
   };
 
-  return { payload, unknownRefs: input.scanRefs.filter((r) => !keySet.has(r.key)).length };
+  return {
+    payload,
+    unknownRefs: input.scanRefs.filter((r) => !keySet.has(r.key)).length,
+    duplicateKeys,
+  };
 }

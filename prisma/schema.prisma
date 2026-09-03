@@ -89,6 +89,13 @@ model Locale {
   name      String
   isBase    Boolean @default(false)
 
+  /// 리포에서 사라진 로케일. **행을 지우지 않는다** — 키의 orphaned와 같은 근거다: 파일을 되살리면
+  /// 번역이 그대로 돌아와야 하고, Translation의 FK가 Restrict라 지우려면 번역을 먼저 지워야 한다.
+  ///
+  /// 로케일 목록의 정본은 어댑터가 탐지한 파일 목록이고(MVP §3.1) push가 이 값을 맞춘다. **pull이
+  /// 이 로케일의 파일을 내지 않는다** — 안 그러면 개발자가 지운 fr.json이 다음 PR에서 되살아난다.
+  orphaned  Boolean @default(false)
+
   /// Restrict — 번역이 달린 프로젝트를 지우려 하면 DB가 거부한다. Cascade면 프로젝트 삭제가
   /// 번역을 조용히 날린다. 프로젝트 삭제가 필요해지면 soft delete로 푼다.
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)

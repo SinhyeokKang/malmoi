@@ -63,13 +63,19 @@ type TranslationRow = {
 };
 
 /** 저장이 실제로 남는 최소 Prisma. 조회는 `saveTranslation`·`loadPullState`가 부르는 것만 있다. */
-function memoryDb(seed: { keys?: KeyRow[]; translations?: TranslationRow[]; locales?: string[] } = {}) {
+type LocaleSeed = string | { code: string; orphaned?: boolean };
+
+function memoryDb(seed: { keys?: KeyRow[]; translations?: TranslationRow[]; locales?: LocaleSeed[] } = {}) {
   const keys = seed.keys ?? [
     { id: "k-greet", projectId: "p1", key: "a.greet", sourceText: "Hello", description: null, sortIndex: 0, orphaned: false },
     { id: "k-bye", projectId: "p1", key: "a.bye", sourceText: "Bye", description: null, sortIndex: 1, orphaned: false },
   ];
   const translations = seed.translations ?? [];
-  const localeCodes = seed.locales ?? ["en", "ko"];
+  // 로케일은 code + orphaned다. 사라진 로케일은 행이 남고 표시만 된다 (MVP §3.1).
+  const localeRows = (seed.locales ?? ["en", "ko"]).map((l) =>
+    typeof l === "string" ? { code: l, orphaned: false } : { code: l.code, orphaned: l.orphaned ?? false },
+  );
+  const localeCodes = localeRows.map((l) => l.code);
 
   // 저장마다 시각이 앞으로 간다 — pull의 1층 스킵 판정이 이 값 하나에 걸려 있다.
   let now = new Date("2026-09-03T00:00:00Z");
@@ -80,10 +86,19 @@ function memoryDb(seed: { keys?: KeyRow[]; translations?: TranslationRow[]; loca
 
   const prisma = {
     project: {
-      findUnique: async ({ where }: { where: { slug?: string; id?: string } }) =>
-        where.slug === PROJECT.slug || where.id === PROJECT.id
-          ? { ...PROJECT, locales: localeCodes.map((code) => ({ code })) }
-          : null,
+      findUnique: async (args: {
+        where: { slug?: string; id?: string };
+        select?: { locales?: { where?: { orphaned?: boolean } } };
+      }) => {
+        const { where } = args;
+        if (where.slug !== PROJECT.slug && where.id !== PROJECT.id) return null;
+        // `loadPullState`가 `where: { orphaned: false }`로 좁힌다 — 그 배선이 이 스텁의 검사 대상이다.
+        const onlyLive = args.select?.locales?.where?.orphaned === false;
+        return {
+          ...PROJECT,
+          locales: localeRows.filter((l) => (onlyLive ? !l.orphaned : true)).map((l) => ({ code: l.code })),
+        };
+      },
       update: async () => ({}),
     },
     stringKey: {
@@ -107,10 +122,11 @@ function memoryDb(seed: { keys?: KeyRow[]; translations?: TranslationRow[]; loca
           })),
     },
     locale: {
-      findUnique: async ({ where }: { where: { projectId_code: { projectId: string; code: string } } }) =>
-        where.projectId_code.projectId === PROJECT.id && localeCodes.includes(where.projectId_code.code)
-          ? { code: where.projectId_code.code }
-          : null,
+      findUnique: async ({ where }: { where: { projectId_code: { projectId: string; code: string } } }) => {
+        if (where.projectId_code.projectId !== PROJECT.id) return null;
+        const row = localeRows.find((l) => l.code === where.projectId_code.code);
+        return row === undefined ? null : { code: row.code, orphaned: row.orphaned };
+      },
     },
     translation: {
       findUnique: async ({ where }: { where: { keyId_localeCode: { keyId: string; localeCode: string } } }) =>
@@ -303,5 +319,46 @@ describe("Server Action은 공개 엔드포인트다 — 스스로 막는다", (
     expect(await saveTranslation({ keyId: "", localeCode: "ko", value: "x" })).toMatchObject({ ok: false });
     expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "x".repeat(10_001) })).toMatchObject({ ok: false });
     expect(await saveTranslation(null)).toMatchObject({ ok: false });
+  });
+});
+
+/**
+ * **사라진 로케일** (2026-09-04 audit #2). 로케일 목록의 정본은 어댑터가 탐지한 파일 목록이다.
+ * 표시하지 않으면 DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자가 지운 `fr.json`이
+ * 다음 PR에서 돌아온다. 키의 `orphaned`와 같은 모양으로 푼다: 행은 남기고 pull에서만 뺀다.
+ */
+describe("orphaned 로케일", () => {
+  const seed = {
+    locales: ["en", "ko", { code: "fr", orphaned: true }],
+    translations: [
+      { keyId: "k-greet", localeCode: "en", value: "Hello", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-02T00:00:00Z") },
+      { keyId: "k-greet", localeCode: "fr", value: "Bonjour", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-02T00:00:00Z") },
+    ],
+  };
+
+  let orphanDb: ReturnType<typeof memoryDb>;
+
+  beforeEach(() => {
+    orphanDb = memoryDb(seed);
+    hoisted.prisma = orphanDb.prisma;
+  });
+
+  it("pull이 그 로케일 파일을 내지 않는다 — 지운 파일이 되살아나면 안 된다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    const { byPath } = await pullFiles(orphanDb.prisma);
+    expect(Object.keys(byPath)).not.toContain("i18n/fr.json");
+    expect(Object.keys(byPath)).toContain("i18n/ko.json");
+  });
+
+  it("저장을 거부한다 — 리포에 도달할 수 없는 값을 받으면 pull이 헛돈다", async () => {
+    expect(await saveTranslation({ keyId: "k-greet", localeCode: "fr", value: "Salut" })).toEqual({
+      ok: false,
+      error: "locale is no longer in the repo",
+    });
+  });
+
+  it("번역 행은 남는다 — 로케일이 돌아오면 값이 살아 돌아와야 한다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    expect(orphanDb.translations.find((t) => t.localeCode === "fr")?.value).toBe("Bonjour");
   });
 });

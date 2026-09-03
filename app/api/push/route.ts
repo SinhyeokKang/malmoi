@@ -91,6 +91,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       unorphaned: outcome.unorphaned,
       staleTranslations: outcome.staleTranslations,
       translationsFilled: outcome.translationsFilled,
+      // 사라진 로케일은 CI 로그에 남아야 의도한 삭제인지 실수인지 안다.
+      orphanedLocales: outcome.orphanedLocales,
       refs: outcome.refs,
     });
   } catch (error) {

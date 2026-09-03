@@ -207,3 +207,31 @@ describe("buildPushPayload — nestedByPath", () => {
     expect(payload.format).not.toHaveProperty("nestedByPath");
   });
 });
+
+describe("buildPushPayload — 중복 평탄화 키를 접는다 (2026-09-04 audit #1)", () => {
+  /** `{"a.b": …, "a": {"b": …}}`를 읽으면 read가 같은 키를 두 번 낸다 (ARCHITECTURE §1.35). */
+  const dupRead: ReadResult = {
+    nested: true,
+    errors: [],
+    locales: [
+      { locale: "en", entries: [{ key: "a.b", message: "first" }, { key: "a.b", message: "last" }] },
+      { locale: "ko", entries: [{ key: "a.b", message: "처음" }, { key: "a.b", message: "나중" }] },
+    ],
+  };
+
+  it("마지막이 이긴다 — YAML 로더와 read의 규칙이 그렇다", () => {
+    const { payload } = buildPushPayload({ ...input, read: dupRead });
+    expect(payload.keys.filter((k) => k.key === "a.b")).toHaveLength(1);
+    expect(payload.keys[0]?.sourceText).toBe("last");
+    expect(payload.translations.filter((t) => t.locale === "ko")).toHaveLength(1);
+    expect(payload.translations.find((t) => t.locale === "ko")?.value).toBe("나중");
+  });
+
+  it("접은 수를 돌려준다 — 조용히 버리면 값이 왜 사라졌는지 알 수 없다", () => {
+    expect(buildPushPayload({ ...input, read: dupRead }).duplicateKeys).toBe(3);
+  });
+
+  it("중복이 없으면 0이다", () => {
+    expect(buildPushPayload(input).duplicateKeys).toBe(0);
+  });
+});
