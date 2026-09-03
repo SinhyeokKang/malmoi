@@ -139,23 +139,32 @@
 
 ⎯ 커밋 ⎯ `feat(adapters): regenerate writers rebuild files in the original key order` (완료)
 
-## 3. 스키마 — additive (껍데기보다 먼저)
+## 3. 스키마 — additive (껍데기보다 먼저) ✅ (2026-09-03)
 
-**3이 4보다 앞이다.** `apply.ts`에 `sortIndex` 컬럼을 넣으려면 Prisma 클라이언트에 필드가 있어야
-하고(없으면 `pnpm typecheck`가 즉시 red), 다음 단계의 `pnpm push:local` 실 DB 왕복도 컬럼이
-배포된 뒤에만 된다. additive-first(스키마를 먼저 넓힌다)와도 이 순서가 맞다.
+**3이 4보다 앞이다.** `apply.ts`에 컬럼을 넣으려면 Prisma 클라이언트에 필드가 있어야 하고(없으면
+`pnpm typecheck`가 즉시 red), 다음 단계의 `pnpm push:local` 실 DB 왕복도 컬럼이 배포된 뒤에만
+된다. additive-first와도 이 순서가 맞다.
 
-- [ ] `/db`로 진행한다. **컬럼 셋을 한 마이그레이션에** — `StringKey.sortIndex Int?` +
-      `Translation.description String?` + `Translation.placeholders Json?`
-  - 검증: `pnpm db:status` 드리프트 없음, 생성된 SQL이 `ADD COLUMN ... NULL` **셋**뿐
-  - ⚠️ `Translation.description`은 `StringKey.description`과 **다른 것이다** — 저쪽은 소스 키
-    메타데이터, 이쪽은 그 로케일 파일이 실제로 갖고 있던 값이다. 합치면 base 값을 비-base에
-    복제하게 되고 그건 병합이다
-  - ⚠️ **`migrate dev`의 리셋 제안은 절대 승인하지 않는다** — dev DB가 prod DB다
-- [ ] `pnpm db:deploy`로 프로덕션에 컬럼을 먼저 넓힌다
-  - 검증: 프로덕션에 컬럼이 있고 배포 후 기존 조회가 죽지 않는다
+- [x] `/db`로 진행했다. **컬럼 셋을 한 마이그레이션에** —
+      `20260903001247_add_key_order_and_chrome_fields`
+  - 검증 통과: 착수 전 `pnpm db:status` 드리프트 없음(5개 전부 적용), 생성된 SQL이
+    **`ADD COLUMN` 셋뿐** — `DROP`·`ALTER COLUMN`·NOT NULL 승격 없음
+  - `--create-only`로 만들어 SQL을 먼저 읽었다 — dev DB가 곧 prod DB라 `migrate dev`로 바로
+    밀지 않는다
+  - 검증 통과: `pnpm db:generate` → `pnpm typecheck` → `pnpm test` 681건
+  - ⚠️ **`Translation.description`은 `StringKey.description`과 다른 것이다.** 저쪽은 소스 키
+    메타데이터, 이쪽은 **그 로케일 파일이 실제로 갖고 있던 값**이다. 하나로 합쳐 base 값을
+    비-base에 쓰면 원본에 없던 내용을 만드는 것이라 병합이다 — 태스크 2가 `isBase` 가드를 못 푼
+    이유가 이 컬럼이 없어서였다
+  - `placeholders`는 `Json`이고 **해석하지 않는다** (`LocaleEntry.placeholders`와 같은 계약)
+  - `sortIndex`에 **인덱스를 안 붙였다** — pull이 `projectId`로 좁힌 뒤 정렬하고 이 규모에서 키가
+    수천 개다. 필요해지면 `@@index([projectId, sortIndex])`로 그때
+- [x] `pnpm db:deploy`로 프로덕션에 컬럼을 먼저 넓혔다
+  - 검증 통과: `pnpm db:status`가 6개 마이그레이션 전부 적용, `Database schema is up to date!`
+  - **지금은 순서를 어겨도 안전하다** — 코드가 아직 세 컬럼을 조회하지 않는다. **태스크 4가
+    조회를 넣는 순간부터는 아니다**
 
-⎯ 커밋 ⎯ `feat(db): add StringKey.sortIndex and Translation description/placeholders` (`/db`가 자기 규약대로 만든다)
+⎯ 커밋 ⎯ `feat(db): add StringKey.sortIndex and Translation description/placeholders` (완료)
 
 ## 4. 껍데기 — push가 저장, pull이 읽는다
 
