@@ -67,6 +67,7 @@ pnpm db:deploy
 - `package.json` scripts·의존성 변경, 새 디렉터리, 브랜치·배포 방식 변경, 스킬 라인업 변경, 새 컨벤션·게이트웨이 → **CLAUDE.md**
 - **코드에서 새 `process.env.*`를 읽음** → **.env.example** (⚠️ diff에 `process.env`가 보이면 무조건 확인한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다)
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
+- **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ADAPTER-COVERAGE.md + `pnpm adapter-survey` 재실행** (아래 4d)
 - `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
 - 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
 
@@ -82,6 +83,17 @@ pnpm db:deploy
 발견 시 확인 없이 바로 Edit으로 반영하고 **문서별 별도 커밋**. 변경 불필요하면 건너뜀.
 
 **⚠️ 문서를 고쳤으면 1단계 게이트를 다시 돌린다** — 문서 커밋이 코드에 영향을 줄 일은 없지만, 이 시점의 HEAD가 배포될 HEAD이므로 게이트가 통과한 상태와 배포되는 상태가 같아야 한다.
+
+**4d. 어댑터 실측 재측정 (사람 판단 — 사용자에게 묻는다).**
+
+`lib/adapters/**`·`lib/survey/**`에 실질 변경이 있으면 `docs/ADAPTER-COVERAGE.md`의 숫자가 낡았을 수 있다. **이 판단을 자동으로 내리지 않는다** — 실행이 리포 129개 clone에 ~4분이고 네트워크·GitHub 가용성에 묶여 있어 푸시를 막을 게이트로 쓸 수 없다.
+
+- 변경이 **탐지 규칙·정렬·writer 출력**에 닿으면 재측정을 권하고 사용자 판단을 받는다. 계약 주석·타입만 바꾼 변경은 권하지 않는다.
+- 재측정한다면 **학습(`repos.txt`)과 홀드아웃(`repos-heldout.txt`)을 둘 다** 돌린다. `docs/ADAPTER-COVERAGE.md` §0 3차가 그 근거다: 그 라운드의 수정 4건 중 **2건이 수정이 만든 회귀**였고 그중 하나는 학습 코퍼스에서만 나타났다 — 한쪽만 돌렸으면 못 봤다.
+- 결과는 `docs/ADAPTER-COVERAGE.md`에 회차를 더해 기록한다. **어느 코퍼스의 값인지 지표마다 붙인다** (POSTMORTEM 2026-09-02 — 학습 오탐 0.0%가 홀드아웃에서 40%였다).
+- **재측정하지 않기로 했으면 그 사실을 리포트에 남긴다.** "안 걸렸다"와 "걸렸는데 미뤘다"는 다르다.
+
+⚠️ **상시 방어선은 따로 있다.** `lib/adapters/__tests__/key-order-golden.test.ts`가 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 재므로, 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡는다. 재측정이 답하는 것은 **일반화**(처음 보는 리포에서도 그런가)뿐이다.
 
 **4c. Codex 미러 게이트 (기계 검사).** 트라이아지와 무관하게 항상 `pnpm sync:agents:check`.
 - 통과 → 한 줄 보고.
