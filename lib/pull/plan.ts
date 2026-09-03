@@ -140,7 +140,7 @@ export type PullRow = {
 /**
  * **writer에 넘길 entries의 유일한 관문이다.**
  *
- * `ts-dict`는 `usableEntries`를 지나지 않으므로(ARCHITECTURE §1.4) 빈 값이 여기서 새면 원본
+ * `ts-dict`는 `orderedEntries`를 지나지 않으므로(ARCHITECTURE §1.4) 빈 값이 여기서 새면 원본
  * 리터럴이 `""`로 치환되고, TS 딕셔너리엔 폴백이 없어 그대로 렌더된다. 재생성 어댑터는 내부에서
  * 한 번 더 거르지만, **두 방식에 똑같이 적용되는 지점은 여기뿐**이다 (MVP §4.1).
  *

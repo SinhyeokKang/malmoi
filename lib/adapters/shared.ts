@@ -40,7 +40,7 @@ export function orderedEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
     // **모든 재생성 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
     .filter((e) => e.orphaned !== true)
     .filter((e) => e.message !== "")
-    .slice()
+    // `filter`가 이미 새 배열을 냈으므로 `sort`가 입력을 건드리지 않는다.
     .sort((a, b) => {
       const ao = a.order;
       const bo = b.order;

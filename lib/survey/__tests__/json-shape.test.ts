@@ -107,7 +107,7 @@ describe("jsonShape — 잔여 diff 원인", () => {
   });
 
   it("빈 값이 낀 배열을 관측한다 — write가 객체로 모양을 바꾼다", () => {
-    // usableEntries가 ""를 빼고 null은 flatten이 건너뛰므로, 복원에서 dense가 깨진다.
+    // orderedEntries가 ""를 빼고 null은 flatten이 건너뛰므로, 복원에서 dense가 깨진다.
     expect(jsonShape(two({ list: ["a", "", "c"] })).causes.sparseArray).toBe(true);
     expect(jsonShape(two({ list: ["a", null, "c"] })).causes.sparseArray).toBe(true);
     expect(jsonShape(two({ list: ["a", "b"] })).causes.sparseArray).toBe(false);

@@ -221,7 +221,7 @@ class Scanner {
     let sparse = false;
     for (;;) {
       this.ws();
-      // `null`과 `""`는 write에서 빠져(flatten이 건너뛰고 usableEntries가 거른다) dense가 깨진다.
+      // `null`과 `""`는 write에서 빠져(flatten이 건너뛰고 orderedEntries가 거른다) dense가 깨진다.
       if (this.text.startsWith("null", this.i)) sparse = true;
       else if (this.text.startsWith('""', this.i)) sparse = true;
       this.value(`${path}${SEP}${index}`);

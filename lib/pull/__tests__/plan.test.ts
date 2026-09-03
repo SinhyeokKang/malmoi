@@ -232,7 +232,7 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
     expect(entries).toEqual([{ key: "a.one", message: "val:a.one" }]);
   });
 
-  it("빈 문자열은 제외한다 — ts-dict는 usableEntries를 지나지 않아 원문이 \"\"로 치환된다", () => {
+  it("빈 문자열은 제외한다 — ts-dict는 orderedEntries를 지나지 않아 원문이 \"\"로 치환된다", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: "" })], { isBase: false });
     expect(entries).toEqual([]);
   });
