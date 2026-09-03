@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`)을 건드리기 전에 읽는다.** 무엇을 만드는지는 [MVP.md](./MVP.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/survey/`)을 건드리기 전에 읽는다.** 무엇을 만드는지는 [MVP.md](./MVP.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -91,9 +91,9 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **중첩 구조는 write에서 복원한다.** 평탄화만 하고 복원하지 않으면 읽은 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다. 배열은 인덱스 키(`hero.subcopy.0`)로 펼치고, `0..n`이 빈틈없이 채워진 객체만 배열로 되돌린다 — 빈틈이 있으면 객체로 남긴다(배열로 만들면 구멍이 `null`로 직렬화되어 원본에 없던 값이 파일에 나타난다).
 
-**`description`은 base 로케일에만, 지원하는 어댑터에서만.** 원문 메타데이터라 번역 파일마다 복제하면 바이트만 늘고 읽는 쪽이 없다. `json-catalog`은 담을 곳이 없어 DB엔 남지만 파일로 나가지 않는다.
+**`description`은 로케일마다 그 파일이 실제로 갖고 있던 값을 되돌린다** (2026-09-03 개정 — MVP §4.2. 지원하는 어댑터는 `chrome-locales`뿐이고 `json-catalog`은 담을 곳이 없어 DB엔 남지만 파일로 나가지 않는다). 전엔 base에만 냈고 그건 chrome 리포 33개 중 **20개**에서 손실이었다(비-base `description` 실측).
 
-⚠️ **이 규칙이 chrome에서는 손실이다** (2026-09-02 실측: chrome 리포 33개 중 **20개**가 비-base `description`을 갖는다). `read`는 전 로케일에서 읽는데 `write`가 base에만 내므로 그 값이 PR에서 사라진다. **아직 안 고친 이유는 `buildWriteEntries`가 키 단위 `StringKey.description`을 모든 로케일 엔트리에 싣기 때문**이다 — 지금 가드를 풀면 pull이 비-base 파일에 **원본에 없던** description을 만들어 넣어 잃는 것보다 나빠진다. `Translation.description`이 생길 때 함께 푼다 (`docs/features/key-order-preservation/` 태스크 4).
+두 값은 **다른 것이다**: `StringKey.description`(소스 키 메타데이터, base 파일에서 온다)과 `Translation.description`(그 로케일 파일이 갖고 있던 값). 합치면 base 값을 비-base에 복제하게 되고 그건 병합이다. **base만** `Translation.description`이 없을 때 `StringKey.description`으로 폴백한다 — `value ?? sourceText`와 같은 축이고, 그 판정은 `lib/pull/render.ts`의 `rowsForLocale(keys, locale, { isBase })`에 있다. ⚠️ 그 `isBase`가 `renderLocaleFiles`에서 빠져 있어 폴백이 **테스트에서만 켜지고 프로덕션에서는 죽어 있었다** (2026-09-04 audit #2 — `rowsForLocale` 단위 테스트가 `{ isBase: true }`를 직접 넘겨 이 홉을 못 봤다. 지금은 `render.test.ts`가 `renderLocaleFiles`를 통째로 지난다).
 
 **`placeholders`는 chrome에서 그대로 왕복한다** (2026-09-03). `LocaleEntry.placeholders`가 원본 JSON을 **해석하지 않고** 나르고 write가 그대로 되돌린다. 모양이 이상해도 버리지 않는다 — 거르면 원본에 있던 것이 우리 PR에서 조용히 사라지고, 에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다. ⚠️ **왕복 의미 게이트가 이 필드를 원리적으로 못 본다** — 바이트 비교만이 그물이다.
 
@@ -114,7 +114,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. 비교 함수는 `shared.compareTemplates` **하나**이고 어댑터 내부와 어댑터 간이 그것을 공유한다
 - **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
-- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다
+- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **예외는 `ts-dict` 하나**(아래 — 자동 탐지 제외라 `detectCandidates`는 `[]`, 명시 지정용 `detect`만 내용 탐지를 돈다). 예외가 둘로 늘면 `detect-candidates.test.ts`가 red다
 
 #### ⚠️ 예제·픽스처 디렉터리가 진짜 카탈로그를 가린다 (2026-09-02 실측)
 
@@ -208,7 +208,19 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 증폭 요인 둘을 함께 고쳤다:
 
 - **`ReadResult.nested`가 포맷 단위 boolean이었다.** musicblocks의 `th.json`은 최상위가 전부 문자열인데 **다른 로케일 파일** 하나에 객체가 있어서 포맷 전체가 nested로 판정되고, th.json의 평평한 키까지 `.`으로 쪼개졌다. → **파일 단위로 관측한다** (`ReadResult.nestedByPath`).
+  - ⚠️ **이 수정이 프로덕션 경로에 닿기까지 홉이 넷 더 있었다** (2026-09-04 해소). 고친 직후엔 어댑터·survey만 `nestedByPath`를 썼고 push 페이로드·`Project`·`formatFromProject`는 포맷 단위 boolean만 날라서 **프로덕션 pull이 옛 동작이었다** — `json-catalog.write`가 `nestedByPath` 부재 시 그 boolean으로 폴백하므로 조용했다. 지금은 다섯 지점이 이어져 있고, **하나만 끊겨도 진입점 테스트가 red다**:
+
+| # | 위치 | 나르는 것 |
+|---|---|---|
+| a | `json-catalog.read` | `ReadResult.nestedByPath` (파일별 관측) |
+| b | `buildPushPayload` | `format.nestedByPath` — 없으면 **필드를 만들지 않는다**(빈 객체는 "전부 flat"으로 읽힌다) |
+| c | `applyPush` | `Project.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
+| d | `loadPullState`의 `select` → `formatFromProject` | `DetectedFormat.nestedByPath`. Json 컬럼이라 **boolean이 아닌 값은 버린다** |
+| e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백 |
+
+    `ProjectFormatColumns.nestedByPath`를 **optional로 두지 않았다** — 껍데기가 `select`에서 빼면 컴파일러가 막는다 (POSTMORTEM 2026-09-02 "공급 계약은 optional로 두지 않는다"). `lib/pull/__tests__/entry-order.test.ts`가 진입점에서 musicblocks 모양을 단언하고 `lib/push/__tests__/flow.test.ts`가 b→c 홉을 SQL 인자로 본다.
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **에러로 보고하고 그 키를 건너뛴다.** 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
+  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI 문구는 건수와 "개발자에게 알려 주세요"만 덧붙이고(`lib/pull/message.ts`), 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
 
@@ -246,8 +258,9 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 #### `yaml-catalog` 고유
 
 - **`yaml` 패키지의 `parseDocument`로 CST를 들고 스칼라만 갈아끼운다.** 실측으로 주석(독립·줄끝)·빈 줄·앵커·인용 스타일·`---` 문서 마커가 전부 보존된다.
+- ⚠️ **들여쓰기 폭과 줄 접기는 CST가 보존하지 않는다** (2026-09-04 audit #4). `doc.toString()`은 기본 2칸·`lineWidth: 80`으로 다시 찍으므로, 4칸 리포에서 값 하나를 바꾸면 파일 전체가 재들여쓰기되고 편집하지 않은 80자 넘는 plain 스칼라가 접혀 나갔다. 들여쓰기는 원본 첫 들여쓴 줄에서 관측하고(`indentOf`) 접기는 끈다(`lineWidth: 0`). 픽스처가 전부 2칸·80자 미만이라 보이지 않았던 축이다 — `yaml-catalog.test.ts` "표현은 원본에서"가 양쪽을 고정한다.
 - **알리아스 노드(`*ref`)는 리프로 세지 않는다.** 편집하면 앵커 관계가 깨지고, 애초에 값의 출처가 앵커 쪽이다.
-- **Rails식 로케일 루트 키**(`ko:` 하나가 최상위)를 `read`가 관측해 `rootKeyed`로 돌려주고 `write`가 되돌린다. mastodon·redmine·decidim이 이쪽이고 misskey·directus는 루트에 바로 키가 온다.
+- **Rails식 로케일 루트 키**(`ko:` 하나가 최상위)를 `read`가 관측해 `rootKeyedByPath`(파일별)로 돌려주고 `write`는 **원본에서 다시 관측해** 되돌린다. mastodon·redmine·decidim이 이쪽이고 misskey·directus는 루트에 바로 키가 온다.
 - 블록 리터럴(`|`)의 값을 바꾸면 인디케이터가 `|-`로 바뀔 수 있다 — 값 의미는 유지되므로 훼손이 아니다.
 
 #### `code-dict` 고유
@@ -308,6 +321,8 @@ clone하지 않는다.
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
 5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-l10n]`
 6. `PATCH /git/refs/heads/{l10n/sync}` — `force: true`
+
+결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
 ### 함정
 
@@ -418,7 +433,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 - **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write에 원본이 필요한지를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
 - **`pickBaseLocale`은 추정이다** — `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 정본이 아니고 TASKS §3a의 🔒 항목이 그 자리다.
-- ⚠️ **`lib/survey/select.ts`와 `scripts/ingest.ts`에 같은 층이 따로 있다.** 셋을 합치지 않은 것은 survey가 측정 전용이고 요구가 다르기 때문이다 — 새 어댑터를 추가하면 **셋 다** 고친다.
+- `scripts/ingest.ts`는 이 함수를 그대로 import한다 (2026-09-04 — 전엔 바이트 동일한 복사본이었다). ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
+- **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
 
 ### 5.5.1 pooler가 구현을 규정한다
 
@@ -440,6 +456,10 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 `$executeRaw`가 돌려주는 영향 행수를 배열형 트랜잭션 결과에서 읽는다. 후보 수를 보고하면 실제로 쓰이지 않은 행까지 세어 CI 로그에 거짓이 남는다 — `DO NOTHING`이던 시절 재전송마다 "번역 2892건 채움"이 찍혔다. strict에서는 재전송도 전 행을 갱신하므로 두 수가 대개 같지만, 보고 경로는 그대로 실측을 읽는다.
 
+### 5.5.4 `applyPush`는 클라이언트를 주입받는다
+
+`lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에 스크립트·테스트가 이 모듈을 **열 수조차 없다** — `lib/env.ts`에서 이미 밟은 함정이다. 라우트가 `getPrisma()`를 넘긴다.
+
 ### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
 **두 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 둘 다 **409**로 떨어뜨린다.
@@ -454,10 +474,6 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **프로젝트별 `PUSH_TOKEN`으로 가르지 않는다.** 토큰이 곧 라우팅이면 페이로드가 안 바뀌는 대신 토큰↔프로젝트 매핑을 DB나 env에 둬야 하고 시크릿이 프로젝트 수만큼 는다.
 
 **7단계(Actions 배선) 전에 서 있어야 한다** — 실 DB에 프로젝트가 이미 둘이라 두 번째 리포를 붙이는 순간이 첫 사고 지점이다. `lib/push/guard.ts`가 두 판정을 들고 `app/api/push/route.ts`가 409로 떨어뜨린다.
-
-### 5.5.4 `applyPush`는 클라이언트를 주입받는다
-
-`lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에 스크립트·테스트가 이 모듈을 **열 수조차 없다** — `lib/env.ts`에서 이미 밟은 함정이다. 라우트가 `getPrisma()`를 넘긴다.
 
 ### 5.5.6 흐름 검증은 SQL 인자를 캡처한다 (`__tests__/flow.test.ts`, 2026-09-03)
 
