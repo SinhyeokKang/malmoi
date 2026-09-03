@@ -95,9 +95,9 @@
 
 구 §7 그대로다 — 아래 §7 참조. push는 `order-check`의 CI에서, pull은 Vercel Cron에서 돈다.
 
-**남은 것은 `/l10n-roundtrip` 스킬이다.** multi-locale `ts-dict` 축은 `bugshot-i18n-test`로 닫혔다
-(§7) — 지원 어댑터 5종 중 실물 PR을 지난 것은 `json-catalog`·`ts-dict` 둘이고, **`yaml-catalog`·
-`code-dict`(둘 다 per-locale인데 수술적)는 아직이다.**
+**남은 것은 `/l10n-roundtrip` 스킬이다.** 지원 어댑터 5종 중 **넷이 실물 PR을 지났다** — `json-catalog`
+(order-check) · `ts-dict`(bugshot-i18n-test) · `yaml-catalog`·`code-dict`(i18n-format-check). 남은
+`chrome-locales`는 per-locale·재생성이라 `json-catalog`와 같은 갈래이고, 그 조합은 이미 검증됐다.
 
 ---
 
@@ -510,6 +510,24 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
       PR을 내면 흔적이 남는다 — 한 번 그렇게 냈다가 닫고 되돌렸다(PR #226, `l10n/sync` 삭제, DB 원복)
   - ⬜ **CI 워크플로(push 방향)는 이 리포에 안 붙였다** — 아래 전역 미결의 `ACTIVE_PROJECT_SLUG` 제약 때문에
         붙여도 프로덕션이 409를 낸다. CI 층은 `order-check`에서 green이고 어댑터와 무관해서 우선순위가 낮다
+  - [x] **`yaml-catalog`·`code-dict` 왕복** ✅ (2026-09-03, `i18n-format-check` 9키 en/ja/ko) —
+        **"per-locale인데 수술적"** 축이다. `json-catalog`(per-locale·재생성)도 `ts-dict`(multi-locale·
+        수술적)도 이 조합을 지나지 않아, CLAUDE.md가 경고한 갈림길이 실물에서 검증된 적이 없었다
+    - 픽스처에 보존이 깨지기 쉬운 모양을 일부러 심었다: Rails 루트 키, 앵커 `&common`, **머지 키
+      `<<: *common`**, 접힌 스칼라 `>`, 주석 3종(상단·그룹 사이·매핑 안쪽), 작은따옴표와 큰따옴표 혼용
+    - `yaml-catalog`: 편집 0건에서 **바이트 고정점** → [PR #1](https://github.com/SinhyeokKang/i18n-format-check/pull/1)
+      `+4 -5 / 1파일`. 앵커·머지 키·주석·빈 줄 전부 보존. 편집 안 한 로케일 2개는 무변경
+    - `code-dict`: 바이트 고정점 → [PR #2](https://github.com/SinhyeokKang/i18n-format-check/pull/2)
+      `+3 -3 / 1파일`. 둘 다 머지 후 재pull `no-edits`(1층 스킵)
+    - **머지 키로 상속되는 키는 read가 확장하지 않는다** — 확장하면 `settings.ok` 같은 유령 키가 생기고
+      write가 그걸 실제 키로 삽입해 원본 구조를 깬다
+    - ⚠️ **두 Project가 같은 리포를 가리키면 `l10n/sync`를 force update로 다툰다.** 순차로 검증했다
+  - [x] **인용 부호 손실 수정** ✅ (2026-09-03) — 위 `code-dict` PR에서 **편집한 줄만 큰따옴표**로 나가는
+        것이 관측됐다. `ts-dict`도 같은 결함이었다(픽스처가 큰따옴표라 안 드러났을 뿐)
+    - 검증: `lib/adapters/quote-style.ts` + 테스트 31건(헬퍼 15 / code-dict 11 / ts-dict 5), 875 green.
+      실물 재확인 `'common.ok': '확인했습니다'`. 커밋 `e2585fc`(test) → `481461a`(fix)
+    - 회고: `docs/POSTMORTEM.md` 2026-09-03 — 값이 맞으면 통과하는 검증이 스타일 손실을 못 본다
+    - 계약: ARCHITECTURE §1.4에 "값은 DB에서, 표현은 원본에서"를 명문화했다
 - [ ] `/l10n-roundtrip` 스킬 추가
   - 검증: 스킬이 왕복을 재현
 
