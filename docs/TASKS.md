@@ -502,11 +502,17 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - **순서가 원인인 초과는 학습·홀드아웃 통틀어 0건**이다. 그 과정에서 원인 셋이 새로 이름을
     얻었고(`emptyValues` 21 / `dottedWithNested` 8 / `compactContainer` 4), chrome 두 필드는
     보존되므로 원인 목록에서 뺐다
-- [ ] 태스크 6 남은 것 — **실물 확인**(수동): 사본 리포에 PR을 열어 사람이 diff를 읽는다.
-      선행 셋업이 크고 §6의 ❌ 판정을 되살리는 것이라 별도 판단이 필요하다
+- [x] **실물 확인** (2026-09-03) — [i18n-order-check#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1).
+      23키 × 3로케일 테스트 리포를 새로 만들어(남의 리포 사본을 prod DB에 넣지 않으려고) 돌렸다
+  - **대조군**: 편집 0건 pull → `skipped/no-changes`. **`0 files changed`보다 강하다** — 2층
+    blob SHA가 "리포 파일 = 우리가 낼 파일"로 판정해 커밋을 만들 이유조차 없었다
+  - **본실험**: ko의 키 3개를 흩어지게 편집 → `3 insertions(+), 3 deletions(-)` / **hunk 3**
 - [x] **태스크 7 — 문서** (2026-09-03) — MVP §4.1(키 정렬 + chrome 계약)·§5 스키마,
       ARCHITECTURE §1.1(값 전달 경로 넷 + 정렬 지점 여섯), ADAPTER-COVERAGE §11 + **판정 ② 해소**,
       TASKS §9·§6 각주·후속 재정의, POSTMORTEM 1건
 
-**남은 것은 실물 확인 하나다** — 사본 리포에 PR을 열어 사람이 diff를 읽는 것. 바이트 수준은 L1이
-진입점에서, 코퍼스 수준은 ADAPTER-COVERAGE §11이 이미 답했다.
+**기능이 끝났다.** 세 층이 전부 답했다 — 바이트 수준은 L1이 진입점에서, 코퍼스 수준은
+ADAPTER-COVERAGE §11이, 사람이 읽는 PR은 실물 확인이.
+
+`order-check` 프로젝트 행(23키)과 리포·PR은 다음 실물 확인용으로 남겼다.
+`ACTIVE_PROJECT_SLUG`는 bugshot-2로 복원했다.
