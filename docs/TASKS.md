@@ -25,13 +25,33 @@
 **그 다음이 SaaS화다** — 인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**. 거기서 `main`/`dev`를
 나눈다 (MVP §8.4).
 
+### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
+
+**SaaS화 전 부채 정리로 코드베이스 전수 감사를 돌렸다** (불변식·원칙·경계·부채 4차원, 발견 45건).
+🔴 1건 · 🟡 20건을 반영했고 **코어 원칙·인증·테넌시·환경변수 위반은 0건**이었다. 고친 것 중 프로덕션
+동작이 바뀐 것은 넷이고, 넷 다 **"만든 것이 실제로 호출되는가"** — 이 리포의 반복 실패 유형이다:
+
+- **`Project.nestedByPath`** (마이그레이션 `_add_project_nested_by_path`) — 파일별 중첩 관측이
+  어댑터·survey에만 살아 있어 프로덕션 pull이 옛 동작이었다 (ARCHITECTURE §1.35의 홉 5개 표)
+- **base description 폴백** — `renderLocaleFiles`가 `isBase`를 안 넘겨 단위 테스트에서만 켜졌다
+- **`writeWithErrors`** — survey만 소비했다. pull이 `PullResult.warnings`로 올린다
+- **`matchGlobPaths`** — multi-locale 파일 선택이 push·pull·survey에서 갈려 있었다
+
+⚠️ **`lib/adapters/**` 변경이라 `docs/ADAPTER-COVERAGE.md` 재측정 트리거에 걸렸다** — 학습·홀드아웃
+둘 다 돌려 회차를 더해야 한다 (`/push` 4d). 상시 방어선(`key-order-golden.test.ts`)은 통과 중이고
+재측정이 답하는 것은 일반화뿐이다.
+
+남긴 것: 동결된 편집 UI(MVP §8.3) 관련 ⚪, 테스트가 붙은 데드 코드(`isOrgAllowed`·`merge.ts`),
+미사용 type export. 판단 근거는 그 라운드 리포트에 있다.
+
 ### A. 모듈별 상태
 
 | 모듈 | 소스 | 테스트 | 남은 것 |
 |---|---|---|---|
-| `lib/adapters` | 8 | 13 | 없음 — 어댑터 5종 + 계약 테스트 전수 |
-| `lib/pull` | 8 | 8 | 없음 — 진입점 회귀까지 |
-| `lib/push` | 4 | 4 | 없음 |
+| `lib/adapters` | 9 | 15 | 없음 — 어댑터 5종 + 계약 테스트 전수 (+ quote-style) |
+| `lib/pull` | 8 | 9 | 없음 — 진입점 회귀까지 |
+| `lib/push` | 5 | 6 | 없음 (+ guard·payload) |
+| `lib/cli` | 2 | 1 | 없음 — 세 CLI의 인자 파싱·리포 훑기 (2026-09-04) |
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
 | `lib/keys` | 3 | 2 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 |
 | `lib/auth` | 1 | 1 | 없음 |
