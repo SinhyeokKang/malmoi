@@ -8,6 +8,7 @@ import {
   type StringLiteral,
 } from "ts-morph";
 
+import { dominantQuote, quoteLiteral, quoteOf, type Quote } from "./quote-style";
 import { compareKeys, hasStrongLocale, looksLikeLocale, rankCandidates } from "./shared";
 import type {
   Adapter,
@@ -291,16 +292,20 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     if (target === "not-a-literal") continue;
     if (target.getLiteralValue() === value) continue;
     // ⚠️ `setLiteralValue`는 이스케이프하지 않는다 — 백슬래시·개행·따옴표가 재파싱에서 깨진다.
-    // `JSON.stringify`가 따옴표까지 포함한 유효한 리터럴을 만들고 비ASCII는 그대로 남는다.
-    target.replaceWithText(JSON.stringify(value));
+    // `quoteLiteral`이 `JSON.stringify`로 안전한 리터럴을 만들되 **원본의 인용 부호로** 낸다 —
+    // 큰따옴표로 고정하면 작은따옴표 리포에서 편집한 줄만 튀어 lint를 깨뜨린다 (§1.4).
+    target.replaceWithText(quoteLiteral(value, quoteOf(target.getText())));
     changed = true;
   }
 
   // 없는 키는 삽입한다 — **정렬 순서로 넣어야 결정적이다** (ARCHITECTURE §1.4).
+  // 삽입에는 대응하는 원본 리터럴이 없으므로 **파일의 다수 부호**를 쓴다. 삽입한 줄만 튀면
+  // 편집 줄의 부호를 맞춘 의미가 없어진다.
+  const quote = dominantQuote(sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((n) => n.getText()));
   for (const key of missing.sort(compareKeys)) {
     const value = wanted.get(key);
     if (value === undefined) continue;
-    if (insert(root, key, value)) changed = true;
+    if (insert(root, key, value, quote)) changed = true;
   }
 
   return changed ? sf.getFullText() : file.content;
@@ -357,7 +362,7 @@ function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssi
  *
  * 새 중간 객체를 만들지 않는 이유: 만들면 파일 안에 두 규약이 섞인다.
  */
-function insert(obj: ObjectLiteralExpression, key: string, value: string): boolean {
+function insert(obj: ObjectLiteralExpression, key: string, value: string, quote: Quote): boolean {
   const segments = key.split(SEP);
   let cur: ObjectLiteralExpression = obj;
   let at = 0;
@@ -372,11 +377,13 @@ function insert(obj: ObjectLiteralExpression, key: string, value: string): boole
   }
   const remaining = segments.slice(at).join(SEP);
   if (remaining === "") return false;
-  cur.addPropertyAssignment({ name: quoteName(remaining), initializer: JSON.stringify(value) });
+  cur.addPropertyAssignment({ name: quoteName(remaining, quote), initializer: quoteLiteral(value, quote) });
   return true;
 }
 
-const quoteName = (name: string) => (PLAIN_NAME.test(name) ? name : JSON.stringify(name));
+/** 식별자로 쓸 수 있으면 부호 없이, 아니면 **값과 같은 부호로** 감싼다 — 키만 튀지 않게 한다. */
+const quoteName = (name: string, quote: Quote) =>
+  PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
 
 export const codeDict: Adapter = {
   name: "code-dict",

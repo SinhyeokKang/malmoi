@@ -1,5 +1,6 @@
 import { Project, SyntaxKind, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
 
+import { quoteLiteral, quoteOf } from "./quote-style";
 import { compareKeys, looksLikeLocale } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
@@ -191,9 +192,10 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     const init = assignment.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializerIfKindOrThrow(SyntaxKind.StringLiteral);
     // ⚠️ `setLiteralValue`는 **이스케이프하지 않는다** — 값을 원문 그대로 소스에 써서
     // 백슬래시·개행·따옴표가 재파싱 때 깨진다(실측: `a"b\c\nd`가 `a"bcd`로 읽혔다).
-    // `JSON.stringify`가 따옴표까지 포함한 유효한 JS 문자열 리터럴을 만들고, 비ASCII는
-    // 그대로 두므로 한글이 유니코드 이스케이프로 바뀌지 않는다(파일 스타일 보존).
-    init.replaceWithText(JSON.stringify(next));
+    // `quoteLiteral`이 `JSON.stringify`로 안전한 리터럴을 만들되 **원본의 인용 부호로** 낸다 —
+    // 큰따옴표 고정이면 작은따옴표 리포에서 편집한 줄만 스타일이 튄다 (§1.4).
+    // 비ASCII는 그대로 두므로 한글이 유니코드 이스케이프로 바뀌지 않는다.
+    init.replaceWithText(quoteLiteral(next, quoteOf(init.getText())));
     changed = true;
   }
 
