@@ -10,7 +10,7 @@
 
 ## 2. 대상 리포 쪽 설정
 
-**Secret 하나**: `PUSH_TOKEN` — i18n-poc의 Vercel env와 같은 값.
+**Secret 하나**: `PUSH_TOKEN` — i18n-poc의 Vercel env와 **같은 값이어야 한다**. 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`).
 
 **워크플로** `.github/workflows/l10n.yml`:
 
@@ -27,6 +27,13 @@ on:
 concurrency:
   group: l10n-${{ github.ref }}
   cancel-in-progress: true
+
+# ⚠️ **`pull-requests: read`가 없으면 열린 PR 경고가 뜨지 않는다.**
+# 기본 GITHUB_TOKEN 권한으로는 `gh pr list`가 `Resource not accessible by integration`으로
+# 거부된다. action은 그 실패를 별도 경고로 알리지만, 정작 필요한 경고는 사라진다.
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   push:

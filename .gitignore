@@ -24,3 +24,7 @@ public/fonts/
 
 # Prisma 7 생성 클라이언트 — prisma generate 산출물
 generated/
+
+# 일회성 실험 스크립트. **리포 안이어야 tsconfig·경로 별칭이 잡히고**, gitignore돼야
+# `git add -A`에 딸려가지 않는다 — 2026-09-03에 `.b3-*.ts` 둘이 그렇게 커밋됐다.
+/.scratch/

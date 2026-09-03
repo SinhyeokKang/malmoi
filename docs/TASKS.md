@@ -468,26 +468,31 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 ---
 
-## 7. Actions 워크플로 + Vercel Cron ⬜ (= §0의 **C단계**)
+## 7. Actions 워크플로 + Vercel Cron ⬜ (= §0의 **C단계**) — 실동작 확인됨, cron 등록만 대기
 
-- [ ] **§4b(오배송·역행 거부)가 먼저 서 있어야 한다** — 리포가 둘 이상 CI를 붙이는 순간이 첫 사고 지점이다. Actions가 `projectSlug`와 `commitAt`(`git show -s --format=%cI`)을 보낸다
+- [x] **§4b(오배송·역행 거부)가 먼저 서 있어야 한다** ✅ — `lib/push/guard.ts`가 두 판정을 들고 라우트가 409를 낸다. Actions가 `projectSlug`와 `commitAt`을 보낸다 (`push-local.ts`가 `git show -s --format=%cI`로 얻는다)
 - [x] **대상 리포 base 브랜치 — `dev`** (2026-09-01 결정 — 🔒 해소, MVP §3.1). bugshot-2의 실제 작업 브랜치이고 `main`은 보호 브랜치다. 첫 실측(적재 커밋이 `dev`에만 존재)은 머지로 낡았고, 재실측 결과 양쪽 head가 같아 구조적 이유로 판정했다. **DB의 `Project.baseBranch` 갱신은 6단계 0번 태스크에 남아 있다**
 - [ ] 🔒 **로케일 시드 방식 결정** — 로케일 파일 스캔 자동 생성인지 수동 등록인지 (MVP §10)
-- [ ] 대상 리포에 Actions 워크플로 (스캔 → `/api/push`)
-  - 검증: 대상 리포에서 run이 green
-  - ⚠️ **어댑터를 명시 지정한다** — bugshot-2는 `_locales`(4키)와 `ts-dict`(903키)가 공존해 탐지 우선순위가 작은 쪽을 잡는다
-- [ ] 커밋 메시지 `[skip-l10n]`이면 스킵
-  - 검증: pull이 만든 커밋이 머지돼도 push가 돌지 않음 (무한 루프 차단)
-- [ ] 워크플로가 **열린 `l10n/sync` PR을 감지하면 경고**
+- [x] 대상 리포에 Actions 워크플로 (스캔 → `/api/push`) ✅ (2026-09-03)
+  - **실제 일은 i18n-poc의 composite action이 한다** (`.github/actions/l10n-push`). 대상 리포는 그것을 부르는 20줄만 갖는다 — 페이로드를 셸·YAML로 조립하지 않는 것이 요지다 (POSTMORTEM 2026-08-31). 사용법은 [ACTIONS.md](./ACTIONS.md)
+  - 검증: `i18n-order-check`에서 run green — 23키 / 69번역 / `POST → 200` / `translationsFilled: 69`
+  - 붙이는 과정에서 걸린 것 넷: ① private action 접근이 `none`이라 `unable to resolve action` (API로 `access_level: user`) ② `github.action_path`의 리포 루트가 `../../..`인데 `../..`로 계산 ③ `package_json_file`·`node-version-file`이 **워크스페이스 기준**이라 절대경로가 안 먹혀 버전을 값으로 넘김 ④ 리포 secret과 Vercel의 `PUSH_TOKEN` 불일치(401)
+  - ⚠️ **어댑터를 명시 지정한다** — bugshot-2는 `_locales`(4키)와 `ts-dict`(903키)가 공존해 탐지 우선순위가 작은 쪽을 잡는다. `adapter` input이 그 자리다
+- [x] 커밋 메시지 `[skip-l10n]`이면 스킵 ✅ (2026-09-03)
+  - 검증: PR #2 스쿼시 머지로 트리거된 run이 `skipped` — 무한 루프 차단이 실측됐다
+- [x] 워크플로가 **열린 `l10n/sync` PR을 감지하면 경고** ✅ (2026-09-03)
+  - 검증: PR #2가 열린 상태의 run에 PR URL이 담긴 `::warning`이 붙었다
   - 근거: strict라 그 PR이 머지되기 전의 push가 편집을 지운다 (MVP §3.1). 차단이 아니라 경고 — 병합 로직이 아니고 개발자가 판단할 재료다
-- [ ] **적재 실패만 CI를 red로 만든다** (스캔 실패는 경고)
+  - ⚠️ **대상 리포 워크플로에 `permissions: pull-requests: read`가 필요하다.** 없으면 조회가 거부돼 경고가 뜨지 않는다. 첫 구현은 그 실패를 "PR 없음"으로 삼켰다 (POSTMORTEM 2026-09-03)
+- [x] **적재 실패만 CI를 red로 만든다** (스캔 실패는 경고) ✅ (2026-09-03)
   - 근거: 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이다 — 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4). 옛 체크리스트의 "비리터럴 인자 발견 시 CI 실패"는 "코드 스캔이 진실"이던 시절 항목이라 삭제했다
-  - 검증: 로케일 파일을 깨뜨리면 red, 동적 키만 있으면 green
+  - 검증: `ko.json`을 깨뜨린 커밋 → **failure**(`적재 에러 1건 — CI를 실패시킨다`), revert → **success**. 같은 리포에서 `refs` 0건·스캔 경고 0건인 run이 계속 green이었다
 - [ ] `vercel.json` Cron → `/api/pull` 야간 1회 — **파일은 있다** (`0 18 * * *` UTC = KST 03:00)
   - 검증: Vercel 대시보드에서 cron 등록 확인 ← **대기 중**
   - 라우트 자체는 프로덕션에서 확인됐다(위 전역 미결 항목). 남은 것은 Vercel이 실제로 트리거하는지다
-- [ ] 대상 리포 왕복 검증 (MVP §9) — push → 편집 → pull → PR 확인
-  - 검증: `bugshot-2`의 ko/en/fr 3로케일로 PR이 정상 생성
+- [x] 대상 리포 왕복 검증 — **자동화 경로로 한 바퀴** ✅ (2026-09-03, `order-check`)
+  - CI push(200) → DB 편집 → 프로덕션 `/api/pull`(PR #2 생성) → 워크플로 실행(경고) → PR 머지(스킵) → 수동 실행(DB 수렴). 모든 홉이 **실물 Actions·실물 Vercel**을 지났다
+  - ⬜ **`bugshot-2`(ko/en/fr, ts-dict 903키)는 아직 안 붙였다** — MVP §9의 원래 대상이다. `adapter: ts-dict` 명시가 필수다
 - [ ] `/l10n-roundtrip` 스킬 추가
   - 검증: 스킬이 왕복을 재현
 
