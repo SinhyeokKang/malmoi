@@ -203,7 +203,16 @@ write 방식까지 겸했는데 — `multi-locale`이면 수술적, `per-locale`
 "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 지우지는 않는다 —
 bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterName` 명시 지정으로 계속 쓴다.
 
-**`description`은 base 로케일에만 넣는다** (지원하는 어댑터에서). 원문에 대한 메타데이터라 번역 파일마다 복제하면 바이트만 늘고 읽는 쪽이 없다.
+**`description`은 로케일마다 그 파일이 실제로 갖고 있던 값을 되돌린다** (2026-09-03 개정 — 지원하는 어댑터는 `chrome-locales`뿐이다).
+
+전에는 base에만 넣었다. 그 시점의 근거("원문 메타데이터라 복제하면 바이트만 늘고 읽는 쪽이 없다")는 **DB가 키 단위 값 하나만 들고 있을 때만 참**이었다 — 비-base에 넣으면 base 값을 복제하는 것이 되니까. `Translation.description`이 생기면서 각 로케일의 값이 따로 살아 있으므로, 이제 안 내는 것은 **보존이 아니라 손실**이다: 실측 chrome 리포 33개 중 **20개**가 비-base `description`을 갖는다 (`docs/ADAPTER-COVERAGE.md` §11.4).
+
+- `StringKey.description`(소스 키 메타데이터)과 `Translation.description`(그 파일이 갖고 있던 값)은 **다른 것이다.** 합치면 base 값을 비-base에 쓰게 되고 그건 병합이다.
+- base는 `Translation.description`이 없으면 `StringKey.description`으로 **폴백**한다 — 백필 전에도 base 파일이 description을 잃지 않게 하는 장치이고, `value ?? sourceText`와 같은 축이다.
+
+**chrome `placeholders`는 해석하지 않고 그대로 왕복한다.** `LocaleEntry.placeholders`·`Translation.placeholders`가 원본 JSON을 그대로 나른다 — 요구는 "잃지 않는다"뿐이고, `{ content, example? }` 스키마를 검증하기 시작하면 크롬 스펙을 따라다녀야 한다. **모양이 이상해도 버리지 않는다**(거르면 원본에 있던 것이 우리 PR에서 조용히 사라지고, 에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다). 실측 33개 중 12개가 이 블록을 갖는다.
+
+⚠️ **왕복 의미 게이트가 두 필드를 원리적으로 못 본다** — 비교가 key·message만 본다. 바이트 왕복(`lib/adapters/__tests__/key-order-golden.test.ts`)이 유일한 그물이다.
 
 ## 5. 확정된 기술 선택
 
@@ -315,10 +324,12 @@ Project      id PK, slug UNIQUE, name,
              lastPulledAt?                                      -- DB 측 스킵 (§3.3)
 Locale       (projectId, code) PK, name, isBase
 StringKey    id PK, projectId FK, key, namespace, sourceText, sourceHash,
-             description, orphaned, updatedAt
+             description, sortIndex?, orphaned, updatedAt
+             -- sortIndex = base 파일에서의 키 위치 (§4.1). **파일 스코프다**
              -- UNIQUE(projectId, key) / UNIQUE(projectId, id)
 KeyRef       id, keyId FK, path, line              -- push마다 전체 교체
 Translation  id PK, projectId, keyId, localeCode, value, needsReview,
+             description?, placeholders?,          -- chrome _locales 전용 (§4.1)
              updatedBy, updatedAt                  -- UNIQUE(keyId, localeCode)
              -- FK (projectId, keyId) → StringKey(projectId, id)
              -- FK (projectId, localeCode) → Locale(projectId, code)
