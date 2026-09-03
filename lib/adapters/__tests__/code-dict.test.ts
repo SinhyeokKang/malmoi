@@ -353,3 +353,147 @@ describe("code-dict — 문자열 값이 없으면 카탈로그가 아니다", (
     expect(codeDict.detectCandidates(["src/locale/ko.ts", "src/locale/en.ts"], () => "export default {}\n")).toEqual([]);
   });
 });
+
+/**
+ * 인용 부호 보존 — 2026-09-03 `i18n-format-check` PR #2에서 관측한 회귀.
+ *
+ * `write`가 편집된 값을 `JSON.stringify`로 써서 **작은따옴표 원본에서 편집한 줄만 큰따옴표**가
+ * 됐다. 값은 정확하니 왕복 테스트는 전부 green이었고, 기존 write 테스트도 편집한 값의 **내용만**
+ * 봤지 부호는 안 봤다 (`toContain("OK로 변경")`). Prettier `singleQuote`·ESLint `quotes`가 걸린
+ * 리포에선 pull PR이 lint를 깨뜨린다.
+ */
+describe("code-dict — 원본의 인용 부호를 유지한다", () => {
+  it("작은따옴표 원본에서 편집한 값도 작은따옴표다", () => {
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "확인했습니다" }],
+    })!;
+    expect(out).toContain("ok: '확인했습니다'");
+    expect(out).not.toContain('"확인했습니다"');
+  });
+
+  it("편집하지 않은 줄의 부호는 그대로다", () => {
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "바뀐값" }],
+    })!;
+    expect(out).toContain("close: '닫기'");
+    expect(out).toContain("clear: '초기화'");
+  });
+
+  it("큰따옴표 원본이면 큰따옴표를 쓴다", () => {
+    const src = 'export default {\n  el: {\n    ok: "확인",\n  },\n}\n';
+    const out = codeDict.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "확인했습니다" }],
+    })!;
+    expect(out).toContain('ok: "확인했습니다"');
+  });
+
+  it("작은따옴표 안의 `'`를 이스케이프하고 재파싱이 같은 값을 준다", () => {
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "À l'instant" }],
+    })!;
+    expect(out).toContain("\\'");
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.locales[0]!.entries.find((e) => e.key === "el.ok")?.message).toBe("À l'instant");
+  });
+
+  it("이스케이프 안전성은 그대로다 — 작은따옴표에서도 `\"`·백슬래시·개행이 왕복한다", () => {
+    const value = 'a"b\\c\nd';
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: value }],
+    })!;
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.locales[0]!.entries.find((e) => e.key === "el.ok")?.message).toBe(value);
+  });
+
+  it("새로 삽입되는 키는 파일의 다수 부호를 따른다", () => {
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.brandNew", message: "새 값" }],
+    })!;
+    expect(out).toContain("'새 값'");
+    expect(out).not.toContain('"새 값"');
+  });
+
+  it("삽입해도 값이 왕복한다 — 부호를 바꿔도 이스케이프가 유지된다", () => {
+    const out = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.brandNew", message: "it's \"quoted\"" }],
+    })!;
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.locales[0]!.entries.find((e) => e.key === "el.brandNew")?.message).toBe('it\'s "quoted"');
+  });
+
+  it("부호 유지가 바이트 고정점을 깨지 않는다 — 2차 write가 1차와 같다", () => {
+    const first = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "확인했습니다" }],
+    })!;
+    const second = codeDict.write(withSource(first), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.ok", message: "확인했습니다" }],
+    })!;
+    expect(second).toBe(first);
+  });
+});
+
+/**
+ * 삽입은 부호 판정의 입력을 바꾼다 — `dominantQuote`를 삽입 **전에** 세므로, 삽입된 리터럴이
+ * 다음 호출의 카운트에 들어간다. 진동하면 2차 write가 1차와 달라져 blob 비교가 매번 "변경됨"을
+ * 뱉는다 (ARCHITECTURE §1.1이 재생성 writer에 요구하는 것과 같은 위험).
+ */
+describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", () => {
+  it("삽입 결과에 2차 write를 돌려도 바이트가 같다", () => {
+    const first = codeDict.write(withSource(DEFAULT_OBJ), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.brandNew", message: "새 값" }],
+    })!;
+    const second = codeDict.write(withSource(first), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.brandNew", message: "새 값" }],
+    })!;
+    expect(second).toBe(first);
+  });
+
+  it("부호가 동수인 파일에서도 두 번째 삽입이 첫 번째와 같은 부호를 쓴다", () => {
+    const even = `export default {\n  el: {\n    a: 'x',\n    b: "y",\n  },\n}\n`;
+    const first = codeDict.write(withSource(even), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.c", message: "1" }],
+    })!;
+    const second = codeDict.write(withSource(first), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "el.c", message: "1" }, { key: "el.d", message: "2" }],
+    })!;
+    // 1차가 고른 부호가 2차에서도 유지된다 — 뒤집히면 c의 줄이 함께 바뀐다
+    expect(second).toContain(first.match(/c: (.)1/)![1]! + "1");
+  });
+
+  it("점 키를 삽입할 때 키 이름도 값과 같은 부호를 쓴다", () => {
+    const flat = `export default {\n  'common.ok': '확인',\n}\n`;
+    const out = codeDict.write(withSource(flat), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "common.new", message: "새 값" }],
+    })!;
+    expect(out).toContain("'common.new': '새 값'");
+    expect(out).not.toContain('"common.new"');
+  });
+});

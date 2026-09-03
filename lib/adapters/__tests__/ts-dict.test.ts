@@ -220,3 +220,75 @@ describe("ts-dict — write는 원본을 보존한다 (이 어댑터의 존재 �
     expect(out).toBe(SOURCE);
   });
 });
+
+/**
+ * 인용 부호 보존 — `code-dict`와 같은 결함이다 (`ts-dict.ts:196`도 `JSON.stringify`를 쓴다).
+ *
+ * 위 `SOURCE` 픽스처가 큰따옴표라 이 어댑터에선 드러날 수가 없었다. bugshot-2 실측도 큰따옴표
+ * 리포였다 — **관측되지 않은 것이지 없던 것이 아니다.**
+ */
+const SOURCE_SINGLE = `const ko = {
+  'common.ok': '확인',
+  'common.close': '닫기',
+
+  // 시간 표현
+  'time.justNow': '방금',
+} as const;
+
+const en = {
+  'common.ok': 'OK',
+  'common.close': 'Close',
+
+  // 시간 표현
+  'time.justNow': 'Just now',
+} as const;
+
+export const common = { ko, en };
+`;
+
+describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
+  const fileSingle = () => [{ path: "src/i18n/namespaces/common.ts", content: SOURCE_SINGLE }];
+  const writeSingle = (entries: Array<{ key: string; message: string }>, locale = "ko") =>
+    tsDict.write({ ...format, locales: ["ko", "en"], currentFiles: fileSingle() }, { locale, isBase: false, entries });
+
+  it("작은따옴표 원본에서 편집한 값도 작은따옴표다", () => {
+    const out = writeSingle([{ key: "common.ok", message: "확인했습니다" }]) ?? "";
+    expect(out).toContain("'common.ok': '확인했습니다'");
+    expect(out).not.toContain('"확인했습니다"');
+  });
+
+  it("편집하지 않은 줄과 다른 로케일 블록은 그대로다", () => {
+    const out = writeSingle([{ key: "common.ok", message: "바뀐값" }]) ?? "";
+    expect(out).toContain("'common.close': '닫기'");
+    expect(out).toContain("'common.ok': 'OK'"); // en 블록은 건드리지 않는다
+    expect(out).toContain("// 시간 표현");
+  });
+
+  it("큰따옴표 원본은 큰따옴표를 유지한다 — 기존 동작에 회귀가 없다", () => {
+    const out = tsDict.write({ ...format, currentFiles: file() }, {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "common.ok", message: "확인했습니다" }],
+    }) ?? "";
+    expect(out).toContain('"common.ok": "확인했습니다"');
+  });
+
+  it("작은따옴표 안의 `'`를 이스케이프하고 재파싱이 같은 값을 준다", () => {
+    const out = writeSingle([{ key: "common.ok", message: "À l'instant" }]) ?? "";
+    expect(out).toContain("\\'");
+    const back = tsDict.read({ ...format, locales: ["ko", "en"] }, [
+      { path: "src/i18n/namespaces/common.ts", content: out },
+    ]);
+    const ko = back.locales.find((l) => l.locale === "ko")?.entries ?? [];
+    expect(ko.find((e) => e.key === "common.ok")?.message).toBe("À l'instant");
+  });
+
+  it("부호 유지가 바이트 고정점을 깨지 않는다 — 2차 write가 1차와 같다", () => {
+    const first = writeSingle([{ key: "common.ok", message: "확인했습니다" }]) ?? "";
+    const second = tsDict.write(
+      { ...format, locales: ["ko", "en"], currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: first }] },
+      { locale: "ko", isBase: false, entries: [{ key: "common.ok", message: "확인했습니다" }] },
+    ) ?? "";
+    expect(second).toBe(first);
+  });
+});
