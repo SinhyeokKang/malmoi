@@ -166,42 +166,51 @@
 
 ⎯ 커밋 ⎯ `feat(db): add StringKey.sortIndex and Translation description/placeholders` (완료)
 
-## 4. 껍데기 — push가 저장, pull이 읽는다
+## 4. 껍데기 — push가 저장, pull이 읽는다 ✅ (2026-09-03)
 
 ### 4-1. push 방향
 
-- [ ] 페이로드 `IncomingKey.order?: number` (`lib/push/plan.ts`). **optional이되 폴백은 null**
-  - 검증: `pnpm test` — order 없는 페이로드가 통과하고 `sortIndex`가 **null로 남는다**
-  - ⚠️ **배열 인덱스로 채우지 않는다.** `read`가 이미 정렬해 돌려주므로 구 CI의 인덱스 = 코드 유닛
-    순위이고, 그걸 박으면 "모름"이 "코드 유닛이 원본 순서다"로 DB에 굳는다(바이트가 같아 조용하다)
-- [ ] `withSortIndex` → `PlannedKey.sortIndex`, `lib/push/apply.ts`의 벌크 upsert에 컬럼 추가
-  - 검증: `pnpm test` (순수 판정) + `pnpm typecheck`
-- [ ] **페이로드가 로케일별 `description`·`placeholders`를 나른다** → `Translation` 두 컬럼
-  - 검증: `pnpm test` — 없는 페이로드가 통과하고 컬럼이 null로 남는다
-- [ ] `scripts/push-local.ts`가 `order`를 실어 보낸다 (`baseEntries.map`)
-  - 검증: `pnpm push:local <대상>`의 응답 요약에 키 수가 그대로, 실 DB에 `sortIndex`가 채워진다
+- [x] 페이로드 `IncomingKey.order?: number`. **optional이되 폴백은 null**
+  - 검증 통과: order 없는 페이로드가 통과하고 `sortIndex`가 null로 남는다. 음수는 거부
+  - ⚠️ **배열 인덱스로 채우지 않는다** — `read`가 이미 정렬해 돌려주므로 구 CI의 인덱스 = 코드
+    유닛 순위이고, 박으면 "모름"이 "코드 유닛이 원본 순서다"로 DB에 굳는다(바이트가 같아 조용하다)
+- [x] `translations[]`가 **로케일별** `description`·`placeholders`를 받는다.
+      `placeholders`는 `z.unknown()` — 모양을 검사하지 않는다
+- [x] **`planPush`가 `order` → `sortIndex` 매핑을 한다** — 껍데기가 아니라 순수 함수 안이다.
+      `apply.ts`에서 map하면 이 홉을 테스트가 못 덮는다
+  - 검증 통과: `pnpm test`. order 0을 안 빠뜨리고, order 변경만으로 `needsReview`가 서지 않는다
+- [x] `lib/push/apply.ts`의 벌크 SQL에 컬럼 셋 추가. `Translation` upsert의 `DO UPDATE`가
+      `description`·`placeholders`도 덮는다 (strict — 리포가 이긴다)
+  - ⚠️ **`::jsonb[]`로 바로 못 받는다** — Prisma가 배열을 `text[]`로 보내므로 text로 받아
+    `SELECT v."placeholders"::jsonb`로 행마다 캐스팅한다. 그래서 `SELECT *`가 아니라 컬럼을
+    이름으로 세운다
+- [x] `scripts/push-local.ts`가 세 필드를 실어 보낸다
+- [x] **실 DB 왕복** — `pnpm push:local ~/code/bugshot-2` → `200`.
+      **단위 테스트가 원리적으로 못 보는 층**이고(SQL 문법은 런타임에만 드러난다), CI도 실 DB를
+      안 치고 배포 뒤에 돈다
 
-### 4-2. pull 방향 — **값 전달 경로 넷. 하나만 빠져도 조용히 죽는다**
+### 4-2. pull 방향 — 값 전달 경로 넷
 
-design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는, 이 중 하나가 빠져도
-`orderedEntries`가 `order === undefined`를 보고 폴백으로 떨어지면서 **단위 테스트는 전부 green**
-이기 때문이다 (POSTMORTEM 2026-09-02).
+- [x] a. `lib/pull/load.ts`의 `select`에 `sortIndex` + `translations`에 두 필드
+- [x] b. `lib/pull/render.ts`의 `RenderKey`에 `sortIndex`, `cells`에 두 필드
+- [x] c. `lib/pull/plan.ts`의 `PullRow`에 셋 다
+- [x] d. `buildWriteEntries`가 `sortIndex → order`로 싣는다 (`order` 0을 안 빠뜨린다)
+- [x] `lib/pull/load.ts`의 `orderBy`를 `[{ sortIndex: "asc" }, { key: "asc" }]`로
+  - ⚠️ **가독성·디버깅 목적이다, 결정성의 근거가 아니다** — `orderedEntries`가 전순서를 만든다
+  - ⚠️ `lib/keys/query.ts`의 같은 `orderBy`는 **안 건드렸다** (편집 UI 행 순서의 유일한 출처)
+- [x] **`chrome-locales.write`의 `isBase` 가드를 풀었다** (태스크 2에서 미룬 것).
+      `rowsForLocale`이 **base만** 키 단위 description으로 폴백하므로 비-base가 없던 값을 얻지 않는다
+- [x] **실 DB로 배선 확인** — 읽기 전용 probe로 `load → rowsForLocale → buildWriteEntries` 전 구간:
+      `sortIndex` 0~3이 파일 순서 그대로 나오고, **비-base(ko) 엔트리에 한국어 description이 실렸다**
 
-- [ ] a. `lib/pull/load.ts:40-47`의 `select`에 `sortIndex` 추가
-- [ ] b. `lib/pull/render.ts:13-21`의 `RenderKey`에 필드 추가
-- [ ] c. `lib/pull/plan.ts:131-137`의 `PullRow`에 필드 추가
-- [ ] d. `lib/pull/plan.ts:148-168`의 `buildWriteEntries`가 `LocaleEntry.order`에 싣는다
-      (writer에 넘길 entries의 **유일한** 관문이고 정렬을 하지 않는다 — `plan.ts:147`)
-  - 검증(a~d 공통): 태스크 5의 **L1 진입점 테스트**가 유일한 판정 수단이다. 여기서는
-    `pnpm typecheck`만 본다
-- [ ] **같은 경로 넷으로 `description`·`placeholders`도 나른다** — `sortIndex`와 같은 배선이고,
-      하나만 빠져도 chrome 필드가 조용히 사라진다
-- [ ] `lib/pull/load.ts:39`의 `orderBy`를 `[{ sortIndex: "asc" }, { key: "asc" }]`로
-  - ⚠️ **`lib/keys/query.ts:56`은 건드리지 않는다.** `grep`하면 `orderBy: { key: "asc" }`가 두 곳
-    잡히고, 그쪽은 **편집 UI 행 순서의 유일한 출처**다
-  - 검증: 태스크 5의 L1 orderBy 단언 두 개
+⎯ 커밋 ⎯ `feat(push,pull): carry key order and chrome fields through the payload and back out` (완료)
 
-⎯ 커밋 ⎯ `feat(push,pull): carry key order through the payload and back out`
+### 이 단계가 밟은 별건 — `--adapter ts-dict`가 죽어 있었다
+
+실 DB 검증 push가 chrome-locales를 1순위로 잡아 bugshot-2의 ts-dict 903키를 orphan시켰는데,
+되돌리려니 `--adapter ts-dict`가 **한 번도 동작한 적이 없었다** — `detect`가
+`detectCandidates()[0]`이고 그게 빈 배열이었다. `detect`와 `detectCandidates`를 갈라 고치고
+DB를 원상복구했다 (`fix(adapters)` 커밋 + POSTMORTEM 2026-09-03).
 
 ## 5. 검증 루프 — 1회성 측정을 상시 게이트로 내린다
 
