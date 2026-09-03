@@ -92,39 +92,52 @@
 
 ⎯ 커밋 ⎯ `feat(adapters): read observes the key order and chrome fields it used to discard` (완료)
 
-## 2. 순수 함수 — 순서대로 재조립
+## 2. 순수 함수 — 순서대로 재조립 ✅ (2026-09-03)
 
-- [ ] `orderedEntries`가 `usableEntries`를 대체 — `order` 있는 것 먼저 오름차순, 없는 것은 뒤에
+- [x] `orderedEntries`가 `usableEntries`를 대체 — `order` 있는 것 먼저 오름차순, 없는 것은 뒤에
       코드 유닛 순, **동률은 코드 유닛으로 갈라 결정적**
-  - 검증: `pnpm test` — order 섞임·전부 없음·동률·일부만 있음 네 경우
-- [ ] **`json-catalog.ts:300`의 `sortedByKey(converted)` 호출을 제거**하고 `sortedByKey`를 삭제
-      (호출부 0 = 내 변경이 만든 고아). `normalizeArrays`의 나머지는 안 건드린다
-  - 검증: `pnpm test` — 중첩 파일 왕복이 **바이트 동일**(원본이 우리 순서를 안 따르는 픽스처로)
-  - 검증: `grep -c "sortedByKey" lib/adapters/json-catalog.ts` → 0
-- [ ] `chrome-locales.write`·`json-catalog.write`가 **둘 다** `orderedEntries`를 부르는지 확인
-  - 검증: `grep -n "usableEntries" lib/adapters/*.ts` → 재생성 어댑터에 남아 있지 않다
-- [ ] **수술적 어댑터가 이 변경에 닿지 않는지 확인** — `yaml-catalog.ts:274`·`code-dict.ts:300`의
-      `missing.sort(compareKeys)`(없는 키 삽입 경로)는 `usableEntries`를 안 지나지만 정렬 규칙을
-      공유한다
-  - 검증: `pnpm test` — 수술적 어댑터 테스트 전부 green, 삽입 순서가 변하지 않는다
-- [ ] **`chrome-locales.write`가 `placeholders`를 되돌리고 `description`을 전 로케일에 낸다**
-  - 지금은 `input.isBase`일 때만 `description`을 내고 `placeholders`는 아예 모른다
-  - 검증: `pnpm test` — `placeholders`+비-base `description`이 든 픽스처의 왕복이 **바이트 동일**
-  - 검증: `placeholders` **객체 안의 키 순서도 원본 그대로**다 — 우리가 만든 구조가 아니다
-  - ⚠️ **왕복 의미 게이트가 이 손실을 원리적으로 못 본다**(`LocaleEntry`에 필드가 없어 read1·read2
-    둘 다 무시했다). 바이트 비교가 유일한 그물이므로 픽스처 왕복으로 잡는다
-- [ ] **계약 테스트를 "추가"가 아니라 "교체"한다** — `__tests__/contract.ts:188-193`이 재생성
-      writer에 **코드 유닛 정렬을 assert**하고 있어 이 기능이 반드시 깬다
-  - `CONTRACT_KEYS`와 다른 순서의 `order`를 실은 **두 번째 픽스처**를 추가
-  - 재생성 분기: 그 `order` 순서를 assert. 폴백 경로용 코드 유닛 assert는 **유지**
-  - 수술적 분기: `order`를 줘도 **원본이 보존되는지** assert
-  - `:163`의 "입력 배열 순서 무관"을 **"배열 순서가 아니라 `order` 필드에만 의존"** 으로 재작성
-  - `:10`의 "`layout`으로 갈린다" 주석을 `writeStrategy`로 정정 (코드는 `:150`·`:177`)
-  - 검증: `pnpm test` — 규칙을 어기는 가짜 어댑터가 잡힌다. `formatFor`의 `AdapterName` union 전수
-    `switch`(`:97-125`)가 새 어댑터를 자동으로 잡는 성질을 깨지 않는다
-  - 검증: `pnpm typecheck`
+  - 검증 통과: order 섞임·전부 없음·동률·일부만·음수·order 0 여섯 경우 + 입력 무변형
+  - ⚠️ **`if (e.order)`로 보지 않는다** — 0이 falsy라 파일의 첫 키가 맨 뒤로 밀린다
+- [x] **`json-catalog.ts`의 `sortedByKey(converted)` 호출을 제거**하고 `sortedByKey`를 삭제
+      (호출부 0 = 내 변경이 만든 고아). `normalizeArrays`의 나머지는 안 건드렸다
+  - 검증 통과: 중첩 2·3층 왕복이 **바이트 동일**(원본이 우리 순서를 안 따르는 픽스처로),
+    배열 인덱스 순서 유지, write→read→write 고정점
+  - `setDeep`이 `orderedEntries` 순서로 트리를 만들고 `Object.keys`가 그 삽입 순서를 주므로
+    **각 층은 이미 첫 등장 순**이다 — 계산할 것이 없었다(`levelOrder`를 안 만든 이유)
+- [x] **`chrome-locales.write`가 `placeholders`를 되돌린다**
+  - 검증 통과: 블록 **안의 키 순서까지** 바이트 동일, 객체가 아닌 값도 그대로, 없으면 필드 없음
+- [x] `chrome-locales.write`·`json-catalog.write`가 **둘 다** `orderedEntries`를 부른다
+  - 검증 통과: `grep -n "usableEntries" lib/adapters/*.ts` → **0건**
+- [x] **수술적 어댑터가 이 변경에 닿지 않는다** — `yaml-catalog.ts:274`·`code-dict.ts:300`의
+      `missing.sort(compareKeys)`는 그대로다
+  - 검증 통과: 계약 테스트가 수술적 3개에 **"order를 줘도 출력이 같다"** 를 단언한다
+- [x] **계약 테스트를 교체했다** — `contract.ts`가 코드 유닛 정렬을 단언하던 자리에 order 규칙이
+      들어갔다
+  - `CONTRACT_FILE_ORDER`(코드 유닛 순과 다른 배치)로 두 번째 픽스처를 만들었다.
+    **키 집합은 `CONTRACT_KEYS`와 같게 뒀다** — 수술적 writer는 없는 키를 삽입하므로 집합이
+    다르면 order가 아니라 집합 때문에 출력이 갈린다
+  - 재생성: order 순서 assert + **폴백 경로용 코드 유닛 assert 유지**
+  - 수술적: order를 줘도 원본이 보존되는지 assert
+  - "입력 배열 순서 무관"을 order를 실은 배열에도 적용하도록 확장
+  - 헤더 주석을 `layout` → `writeStrategy`로 정정
+  - `ignoreOrder` 네거티브 추가 — order를 무시하는 가짜 어댑터가 잡힌다
+  - ⚠️ **위치 검사에서 `"1"`을 뺐다.** 정규 배열 인덱스 키는 JS가 앞으로 끌어올려 삽입 순서를
+    지운다 — 통과 불가능한 검사가 된다. spec 비목표 "정수형 키의 순서 보존"이 그 근거다
+  - 검증 통과: `pnpm test` 681건 + `pnpm typecheck`
+- [x] **진입점에서 확인했다** — 어댑터 단위 테스트가 아니라 실물 코퍼스로.
+      **excalidraw 첫 write diff `0.843` → `0.000`** (57로케일 614키). siyuan은 0.999 유지 —
+      tab 들여쓰기 + 정수형 키라 **둘 다 기록된 비목표**다
+  - survey 테스트 3건의 기대값이 뒤집혔다: "정렬 안 된 원본은 diff가 난다"가 이제 거짓이다.
+    지표(`diffRatioNonBase`)가 계속 유효하도록 픽스처를 **순서 외 원인(들여쓰기)** 으로 바꿨다
 
-⎯ 커밋 ⎯ `feat(adapters): regenerate writers keep the original key order and chrome fields`
+### 태스크 4로 미룬 것 — `description`
+
+`chrome-locales.write`는 **아직 base에만 `description`을 낸다.** `buildWriteEntries`가 키 단위
+`StringKey.description`을 **모든 로케일**의 엔트리에 싣기 때문에, 지금 `isBase` 가드를 풀면 pull이
+비-base 파일에 **원본에 없던 description을 만들어 넣는다** — 잃는 것보다 나쁘다.
+`Translation.description`이 생기는 태스크 4에서 함께 푼다. 그 상태를 테스트로 고정해 뒀다.
+
+⎯ 커밋 ⎯ `feat(adapters): regenerate writers rebuild files in the original key order` (완료)
 
 ## 3. 스키마 — additive (껍데기보다 먼저)
 
@@ -273,15 +286,15 @@ design.md §pull (가)의 표 그대로다. 각각이 체크박스인 이유는,
 
 ## 7. 문서 — 코드보다 스펙이 먼저 거짓이 되지 않게
 
-- [ ] **`docs/MVP.md` §4.1** — "키 정렬: `<` 비교"를 "`sortIndex` 순, 없으면 `<` 비교"로. 결정성이
-      왜 유지되는지(순서가 DB에 있다) 한 줄
-  - 검증: 재생성 writer 표와 §4.2 매트릭스가 코드와 일치
-- [ ] **`docs/ARCHITECTURE.md` §1.1** — 불변식 표의 "키 정렬" 행 갱신 + 함정 셋 등재:
-      **값 전달 경로가 넷**, **정렬 지점이 재생성 넷 + 경로 밖 둘**, **`orderBy: { key: "asc" }`가
-      두 곳이고 하나는 편집 UI**
-  - 검증: `grep -c "usableEntries" docs/ARCHITECTURE.md`가 0이고 `orderedEntries`가 잡힌다
-  - 검증: §1.1의 `+N/-N` 실물 검증 서술에 **"수술적 어댑터 한정"** 단서가 붙는다 (재생성에서는
-    대칭이 판별력이 없다)
+- [x] **`docs/MVP.md` §4.1** (2026-09-03 — **태스크 2에서 당겨왔다.** 코드에 없는 함수를 가리키는
+      문서를 배포할 수 없다) — "키 정렬"이 "`order` 오름차순, 없으면 `<` 비교, 동률은 키로"가 됐고,
+      결정성이 왜 유지되는지(순서가 DB에 있다)와 중첩 각 층 규칙을 붙였다
+- [x] **`docs/ARCHITECTURE.md` §1.1** (2026-09-03, 같은 이유로 당겨왔다) — 불변식 표의 "키 정렬"·
+      "재조립" 행 갱신, **정렬 지점 여섯**과 **`orderBy: { key: "asc" }`가 두 곳(하나는 편집 UI)**
+      등재, `+N/-N`에 **"수술적 한정"** 단서, chrome `description` 손실·`placeholders` 왕복 서술
+  - 검증 통과: `grep -c "usableEntries" docs/ARCHITECTURE.md`가 0
+  - [ ] **남음**: **값 전달 경로 넷**(`load.ts` select → `RenderKey` → `PullRow` →
+        `buildWriteEntries`)은 태스크 4에서 생기므로 그때 등재한다
 - [ ] **`docs/ADAPTER-COVERAGE.md`** — 판정 ②를 "해소"로, 재측정 값 기록. **홀드아웃 어댑터별
       집계 표를 추가**한다(지금은 §9에 어댑터별 열이 없어 0.843을 사람이 검증할 수 없다).
       태스크 0의 일치율·들여쓰기·원인 분해·`writeErrors` 기준선·`not-run` 수도 표로 남긴다
