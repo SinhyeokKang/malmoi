@@ -85,7 +85,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
-| Node | `.nvmrc` **20** — `@types/node`를 이 메이저에 맞춘다(`^20`) | `@types/node` 20.19.43 |
+| Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
@@ -163,7 +163,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 **두 대에서 작업한다.** 새 체크아웃은 `node_modules`·`generated/prisma`·`public/fonts`·`.env.local`이 전부 없고, 앞의 셋은 명령으로 복구되지만 **`.env.local`만 사람이 채운다.**
 
-1. **Node를 `.nvmrc`에 맞춘다** (20). 버전 매니저 없이 시스템 Node로 돌리면 `@types/node`가 `^20`이라 로컬 게이트가 Vercel 빌드와 갈린다 — 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 이 불일치는 곧 거짓 green이다
+1. **Node를 `.nvmrc`에 맞춘다** (24). 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 로컬과 Vercel의 메이저가 갈리면 그 게이트가 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
 2. `pnpm install`
 3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
 4. `pnpm db:status`로 접속을 확인한다 (`DIRECT_URL`, 5432)
