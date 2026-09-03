@@ -180,6 +180,7 @@ app/
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다)
     keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
     actions.ts          Server Action — saveTranslation(유일한 사용자 mutation) / triggerPullAction
+    __tests__/          편집 흐름 B단계 검증 — 저장→DB→pull 출력 (메모리 DB 하나를 공유한다)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는

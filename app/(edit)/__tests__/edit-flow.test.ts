@@ -1,0 +1,307 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { PrismaClient } from "@/generated/prisma/client";
+import { loadPullState } from "@/lib/pull/load";
+import type { TreePayload } from "@/lib/pull/payload";
+import { runPull } from "@/lib/pull/run";
+import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
+
+/**
+ * **편집 흐름을 끝에서 끝까지 본다** (TASKS §0 B-2): `saveTranslation` → DB →
+ * `loadPullState` → `runPull`이 커밋에 싣는 **파일 내용**.
+ *
+ * 편집 UI는 동작 확인용으로 동결됐지만(MVP §8.3) **이 경로는 살아 있어야 한다** — 저장이
+ * 실제로 DB에 닿는 유일한 증거이고, pull이 그 값을 실어 나른다는 것이 MVP가 답해야 하는
+ * 질문 그 자체다.
+ *
+ * 메모리 DB를 쓴다. 저장과 조회가 **같은 상태**를 보므로 홉 사이에서 값이 사라지면 red다 —
+ * 두 스텁을 따로 두면 그 손실이 정확히 안 보인다.
+ */
+
+const hoisted = vi.hoisted(() => ({ prisma: undefined as unknown as PrismaClient }));
+
+vi.mock("@/auth", () => ({ auth: async () => ({ user: { login: "translator" } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
+vi.mock("@/lib/env", () => ({ requireEnv: () => "acme" }));
+vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+
+const { saveTranslation } = await import("../actions");
+
+const PROJECT = {
+  id: "p1",
+  slug: "acme",
+  repoOwner: "o",
+  repoName: "r",
+  baseBranch: "main",
+  installationId: "1",
+  adapterName: "json-catalog",
+  pathTemplate: "i18n/{locale}.json",
+  nested: false,
+  baseLocale: "en",
+  lastPulledAt: null as Date | null,
+};
+
+type KeyRow = {
+  id: string;
+  projectId: string;
+  key: string;
+  sourceText: string;
+  description: string | null;
+  sortIndex: number | null;
+  orphaned: boolean;
+};
+
+type TranslationRow = {
+  keyId: string;
+  localeCode: string;
+  value: string;
+  description: string | null;
+  placeholders: unknown;
+  needsReview: boolean;
+  updatedBy: string | null;
+  updatedAt: Date;
+};
+
+/** 저장이 실제로 남는 최소 Prisma. 조회는 `saveTranslation`·`loadPullState`가 부르는 것만 있다. */
+function memoryDb(seed: { keys?: KeyRow[]; translations?: TranslationRow[]; locales?: string[] } = {}) {
+  const keys = seed.keys ?? [
+    { id: "k-greet", projectId: "p1", key: "a.greet", sourceText: "Hello", description: null, sortIndex: 0, orphaned: false },
+    { id: "k-bye", projectId: "p1", key: "a.bye", sourceText: "Bye", description: null, sortIndex: 1, orphaned: false },
+  ];
+  const translations = seed.translations ?? [];
+  const localeCodes = seed.locales ?? ["en", "ko"];
+
+  // 저장마다 시각이 앞으로 간다 — pull의 1층 스킵 판정이 이 값 하나에 걸려 있다.
+  let now = new Date("2026-09-03T00:00:00Z");
+  const tick = () => {
+    now = new Date(now.getTime() + 1000);
+    return now;
+  };
+
+  const prisma = {
+    project: {
+      findUnique: async ({ where }: { where: { slug?: string; id?: string } }) =>
+        where.slug === PROJECT.slug || where.id === PROJECT.id
+          ? { ...PROJECT, locales: localeCodes.map((code) => ({ code })) }
+          : null,
+      update: async () => ({}),
+    },
+    stringKey: {
+      findFirst: async ({ where }: { where: { id: string; projectId: string } }) =>
+        keys.find((k) => k.id === where.id && k.projectId === where.projectId) ?? null,
+      findMany: async ({ where }: { where: { projectId: string } }) =>
+        keys
+          .filter((k) => k.projectId === where.projectId)
+          .slice()
+          .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
+          .map((k) => ({
+            ...k,
+            translations: translations
+              .filter((t) => t.keyId === k.id)
+              .map((t) => ({
+                localeCode: t.localeCode,
+                value: t.value,
+                description: t.description,
+                placeholders: t.placeholders ?? null,
+              })),
+          })),
+    },
+    locale: {
+      findUnique: async ({ where }: { where: { projectId_code: { projectId: string; code: string } } }) =>
+        where.projectId_code.projectId === PROJECT.id && localeCodes.includes(where.projectId_code.code)
+          ? { code: where.projectId_code.code }
+          : null,
+    },
+    translation: {
+      findUnique: async ({ where }: { where: { keyId_localeCode: { keyId: string; localeCode: string } } }) =>
+        translations.find(
+          (t) => t.keyId === where.keyId_localeCode.keyId && t.localeCode === where.keyId_localeCode.localeCode,
+        ) ?? null,
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { keyId_localeCode: { keyId: string; localeCode: string } };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => {
+        const at = tick();
+        const found = translations.find(
+          (t) => t.keyId === where.keyId_localeCode.keyId && t.localeCode === where.keyId_localeCode.localeCode,
+        );
+        if (found) {
+          Object.assign(found, update, { updatedAt: at });
+          return found;
+        }
+        const row: TranslationRow = {
+          keyId: where.keyId_localeCode.keyId,
+          localeCode: where.keyId_localeCode.localeCode,
+          value: "",
+          description: null,
+          placeholders: null,
+          needsReview: false,
+          updatedBy: null,
+          ...create,
+          updatedAt: at,
+        } as TranslationRow;
+        translations.push(row);
+        return row;
+      },
+      aggregate: async ({ where }: { where: { projectId: string } }) => {
+        const rows = where.projectId === PROJECT.id ? translations : [];
+        const max = rows.reduce<Date | null>((m, t) => (m === null || t.updatedAt > m ? t.updatedAt : m), null);
+        return { _max: { updatedAt: max } };
+      },
+    },
+  };
+
+  return { prisma: prisma as unknown as PrismaClient, translations, keys };
+}
+
+/** 저장된 DB 상태로 pull을 한 바퀴 돌리고 커밋에 실린 파일을 돌려준다. */
+async function pullFiles(prisma: PrismaClient, opts: { lastPulledAt?: Date } = {}) {
+  const { client, calls } = createFakeGitClient({
+    refSha: { "heads/main": "basehead" },
+    tree: { basehead: [] },
+  });
+  const result = await runPull({
+    loadState: async () => {
+      const state = await loadPullState(prisma, "acme");
+      return { ...state, project: { ...state.project, lastPulledAt: opts.lastPulledAt ?? null } };
+    },
+    createClient: async () => client,
+    saveLastPulledAt: async () => {},
+    syncBranch: "l10n/sync",
+  });
+  const tree = calls.find((c) => c.method === "createTree")?.args[0] as TreePayload | undefined;
+  const byPath = Object.fromEntries((tree?.tree ?? []).map((e) => [e.path, e.content]));
+  return { result, byPath, calls };
+}
+
+describe("편집 → DB → 다음 pull의 출력", () => {
+  let db: ReturnType<typeof memoryDb>;
+
+  beforeEach(() => {
+    db = memoryDb();
+    hoisted.prisma = db.prisma;
+  });
+
+  it("저장한 값이 pull이 커밋하는 파일에 그대로 나온다", async () => {
+    const saved = await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕하세요" });
+    expect(saved).toEqual({ ok: true, value: "안녕하세요" });
+
+    const { byPath } = await pullFiles(db.prisma);
+    expect(byPath["i18n/ko.json"]).toBe('{\n  "a.greet": "안녕하세요"\n}\n');
+  });
+
+  it("base 로케일 편집도 파일에 반영된다 — 고정된 것은 키뿐이다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "en", value: "Hi there" });
+    const { byPath } = await pullFiles(db.prisma);
+    expect(byPath["i18n/en.json"]).toContain('"a.greet": "Hi there"');
+  });
+
+  it("저장하지 않은 키는 파일에 없다 — 미번역과 빈 값은 다르다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    const { byPath } = await pullFiles(db.prisma);
+    expect(byPath["i18n/ko.json"]).not.toContain("a.bye");
+  });
+
+  it("값을 지우면 그 키가 파일에서 빠진다 — 행은 남고 키는 살아 있다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslation({ keyId: "k-bye", localeCode: "ko", value: "잘가" });
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "" });
+
+    // 행은 남는다 — 지우면 export에서 키가 빠져 코드가 참조하는 키가 사라진다 (lib/keys/save.ts).
+    expect(db.translations.find((t) => t.keyId === "k-greet" && t.localeCode === "ko")?.value).toBe("");
+
+    const { byPath } = await pullFiles(db.prisma);
+    expect(byPath["i18n/ko.json"]).toBe('{\n  "a.bye": "잘가"\n}\n');
+  });
+
+  it("공백만 입력은 미번역이고, 값 안의 앞뒤 공백은 보존한다", async () => {
+    expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "   " })).toEqual({ ok: true, value: "" });
+    await saveTranslation({ keyId: "k-bye", localeCode: "ko", value: " 잘가 " });
+    const { byPath } = await pullFiles(db.prisma);
+    expect(byPath["i18n/ko.json"]).toBe('{\n  "a.bye": " 잘가 "\n}\n');
+  });
+
+  it("저장이 needsReview를 내리고 편집자를 기록한다", async () => {
+    db.translations.push({
+      keyId: "k-greet", localeCode: "ko", value: "옛 번역",
+      description: null, placeholders: null, needsReview: true, updatedBy: null,
+      updatedAt: new Date("2026-09-02T00:00:00Z"),
+    });
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "새 번역" });
+
+    const row = db.translations.find((t) => t.keyId === "k-greet");
+    expect(row).toMatchObject({ value: "새 번역", needsReview: false, updatedBy: "translator" });
+  });
+});
+
+describe("편집이 pull의 1층 스킵을 푼다", () => {
+  let db: ReturnType<typeof memoryDb>;
+
+  beforeEach(() => {
+    db = memoryDb();
+    hoisted.prisma = db.prisma;
+  });
+
+  it("편집이 없으면 GitHub을 한 번도 부르지 않는다", async () => {
+    const { result, calls } = await pullFiles(db.prisma, { lastPulledAt: new Date("2026-09-04T00:00:00Z") });
+    expect(calls).toEqual([]);
+    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+  });
+
+  it("저장이 updatedAt을 올려 그 스킵이 풀린다 — 저장이 DB에 닿았다는 관측 가능한 증거다", async () => {
+    // 메모리 DB의 시계는 이 시각부터 저장마다 1초씩 간다 — 첫 pull은 편집이 없어 스킵이다.
+    const before = new Date("2026-09-03T00:00:00Z");
+    const skipped = await pullFiles(db.prisma, { lastPulledAt: before });
+    expect(skipped.calls).toEqual([]);
+
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+
+    const woken = await pullFiles(db.prisma, { lastPulledAt: before });
+    expect(woken.calls.length).toBeGreaterThan(0);
+    expect(woken.byPath["i18n/ko.json"]).toContain("안녕");
+  });
+
+  it("같은 값 재저장은 DB를 건드리지 않는다 — noop이 pull을 깨우면 빈 PR이 쌓인다", async () => {
+    await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    const stamp = db.translations[0]?.updatedAt;
+
+    expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" })).toEqual({ ok: true, value: "안녕" });
+    expect(db.translations[0]?.updatedAt).toEqual(stamp);
+  });
+});
+
+describe("Server Action은 공개 엔드포인트다 — 스스로 막는다", () => {
+  beforeEach(() => {
+    hoisted.prisma = memoryDb().prisma;
+  });
+
+  it("다른 프로젝트의 키는 거부한다 — 애플리케이션이 유일한 방어선이다 (RLS 없음)", async () => {
+    const other = memoryDb({
+      keys: [{ id: "k-other", projectId: "p2", key: "x", sourceText: "X", description: null, sortIndex: 0, orphaned: false }],
+    });
+    hoisted.prisma = other.prisma;
+    expect(await saveTranslation({ keyId: "k-other", localeCode: "ko", value: "탈취" })).toEqual({
+      ok: false,
+      error: "key not found in this project",
+    });
+    expect(other.translations).toEqual([]);
+  });
+
+  it("프로젝트에 없는 로케일은 거부한다", async () => {
+    expect(await saveTranslation({ keyId: "k-greet", localeCode: "fr", value: "bonjour" })).toEqual({
+      ok: false,
+      error: "locale not found in this project",
+    });
+  });
+
+  it("입력이 계약을 벗어나면 거부한다", async () => {
+    expect(await saveTranslation({ keyId: "", localeCode: "ko", value: "x" })).toMatchObject({ ok: false });
+    expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "x".repeat(10_001) })).toMatchObject({ ok: false });
+    expect(await saveTranslation(null)).toMatchObject({ ok: false });
+  });
+});
