@@ -302,9 +302,9 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **12개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
+스킬 **13개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
 
@@ -316,7 +316,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **배포하지 않고 커밋만 쌓고 싶으면 `/ship`을 쓰지 않고 개별 스킬로 진행한다.**
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다.
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
-- **`/l10n-roundtrip`은 아직 없다.** push→편집→pull 왕복을 실제 리포로 검증하는 스킬인데, 세 흐름이 다 서기 전엔 만들 게 없다. `/api/pull`이 동작하는 시점에 추가한다.
+- **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다.
 
 ## 문서 신선도
 

@@ -528,8 +528,11 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
       실물 재확인 `'common.ok': '확인했습니다'`. 커밋 `e2585fc`(test) → `481461a`(fix)
     - 회고: `docs/POSTMORTEM.md` 2026-09-03 — 값이 맞으면 통과하는 검증이 스타일 손실을 못 본다
     - 계약: ARCHITECTURE §1.4에 "값은 DB에서, 표현은 원본에서"를 명문화했다
-- [ ] `/l10n-roundtrip` 스킬 추가
-  - 검증: 스킬이 왕복을 재현
+- [x] `/l10n-roundtrip` 스킬 추가 ✅ (2026-09-03)
+  - 검증: 오늘 세 리포로 실제로 돌린 순서가 그대로 절차다 — `bugshot-i18n-test`(ts-dict 903키),
+    `i18n-format-check`(yaml-catalog·code-dict 9키). 게이트 셋(바이트 고정점 → hunk 수 = 편집 키 수
+    → 재pull `no-edits`)과 그 과정에서 밟은 함정 넷(어댑터 미명시, `ACTIVE_PROJECT_SLUG` 409,
+    한 리포 두 Project의 `l10n/sync` 충돌, 실물 리포에 낸 PR)이 전부 들어 있다
 
 ---
 
