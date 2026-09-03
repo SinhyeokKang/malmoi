@@ -40,51 +40,62 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const slug = requireEnv("ACTIVE_PROJECT_SLUG");
+  // ⚠️ **여기부터 try 안이다.** 밖에 두면 설정 누락·DB 장애·벌크 쓰기 실패가 전부 **본문 없는
+  // 500**으로 나가고, 이 라우트의 호출자는 사람이 아니라 GitHub Actions라 로그에 원인이 남지
+  // 않으면 진단할 재료가 없다. 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다.
+  // 위쪽 인증·JSON·스키마 검사는 이미 자기 응답을 내므로 감싸지 않는다 — 감싸면 400이 500으로 접힌다.
+  try {
+    const slug = requireEnv("ACTIVE_PROJECT_SLUG");
 
-  // 오배송 거부 — DB를 조회하기 전에 본다. 대상이 틀렸으면 찾아볼 프로젝트도 아니다.
-  const routing = checkProjectSlug(parsed.data.projectSlug, slug);
-  if (routing !== "ok") {
-    // slug는 비밀이 아니라 라우팅 정보다 — CI 로그에서 진단하려면 둘 다 보여야 한다.
-    return NextResponse.json(
-      { error: "project mismatch", expected: slug, got: parsed.data.projectSlug },
-      { status: guardStatus(routing) },
-    );
+    // 오배송 거부 — DB를 조회하기 전에 본다. 대상이 틀렸으면 찾아볼 프로젝트도 아니다.
+    const routing = checkProjectSlug(parsed.data.projectSlug, slug);
+    if (routing !== "ok") {
+      // slug는 비밀이 아니라 라우팅 정보다 — CI 로그에서 진단하려면 둘 다 보여야 한다.
+      return NextResponse.json(
+        { error: "project mismatch", expected: slug, got: parsed.data.projectSlug },
+        { status: guardStatus(routing) },
+      );
+    }
+
+    const prisma = getPrisma();
+    const project = await prisma.project.findUnique({
+      where: { slug },
+      select: { id: true, lastCommitAt: true },
+    });
+    if (!project) {
+      return NextResponse.json({ error: `project '${slug}' not found` }, { status: 404 });
+    }
+
+    // 역행 거부 — 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는 것을 막는다 (ARCHITECTURE §5.5.5).
+    const commitAt = new Date(parsed.data.commitAt);
+    const order = checkCommitOrder(commitAt, project.lastCommitAt);
+    if (order !== "ok") {
+      return NextResponse.json(
+        {
+          error: "stale commit",
+          commitAt: parsed.data.commitAt,
+          lastCommitAt: project.lastCommitAt?.toISOString() ?? null,
+        },
+        { status: guardStatus(order) },
+      );
+    }
+
+    const outcome = await applyPush(prisma, project.id, parsed.data);
+    return NextResponse.json({
+      projectId: project.id,
+      commitSha: parsed.data.commitSha,
+      inserted: outcome.inserted,
+      updated: outcome.updated,
+      orphaned: outcome.orphaned,
+      unorphaned: outcome.unorphaned,
+      staleTranslations: outcome.staleTranslations,
+      translationsFilled: outcome.translationsFilled,
+      refs: outcome.refs,
+    });
+  } catch (error) {
+    // Actions 로그에 원인이 남아야 한다. `requireEnv`의 메시지는 변수 이름만 담는다.
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  const prisma = getPrisma();
-  const project = await prisma.project.findUnique({
-    where: { slug },
-    select: { id: true, lastCommitAt: true },
-  });
-  if (!project) {
-    return NextResponse.json({ error: `project '${slug}' not found` }, { status: 404 });
-  }
-
-  // 역행 거부 — 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는 것을 막는다 (ARCHITECTURE §5.5.5).
-  const commitAt = new Date(parsed.data.commitAt);
-  const order = checkCommitOrder(commitAt, project.lastCommitAt);
-  if (order !== "ok") {
-    return NextResponse.json(
-      {
-        error: "stale commit",
-        commitAt: parsed.data.commitAt,
-        lastCommitAt: project.lastCommitAt?.toISOString() ?? null,
-      },
-      { status: guardStatus(order) },
-    );
-  }
-
-  const outcome = await applyPush(prisma, project.id, parsed.data);
-  return NextResponse.json({
-    projectId: project.id,
-    commitSha: parsed.data.commitSha,
-    inserted: outcome.inserted,
-    updated: outcome.updated,
-    orphaned: outcome.orphaned,
-    unorphaned: outcome.unorphaned,
-    staleTranslations: outcome.staleTranslations,
-    translationsFilled: outcome.translationsFilled,
-    refs: outcome.refs,
-  });
 }
+

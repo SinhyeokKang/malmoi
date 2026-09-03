@@ -33,9 +33,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 
-  const slug = requireEnv("ACTIVE_PROJECT_SLUG");
-
+  // ⚠️ **`requireEnv`도 try 안이다.** 밖에 두면 설정 누락이 **본문 없는 500**으로 나가고
+  // cron 로그에 원인이 남지 않는다 — 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였고,
+  // 무엇이 없는지 추측해야 했다. 이 메시지는 변수 이름만 담으므로 시크릿이 새지 않는다.
   try {
+    const slug = requireEnv("ACTIVE_PROJECT_SLUG");
     const result = await triggerPull(getPrisma(), slug);
     return NextResponse.json(result);
   } catch (error) {
