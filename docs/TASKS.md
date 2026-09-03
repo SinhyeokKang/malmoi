@@ -475,8 +475,14 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
     배포할 수 없어 태스크 7에서 당겨왔다
   - ⚠️ `description`은 아직 base에만 낸다 — `buildWriteEntries`가 키 단위 값을 전 로케일에 실어
     지금 가드를 풀면 pull이 비-base 파일에 **없던 description을 만들어 넣는다**. 태스크 4에서 함께
-- [ ] 태스크 3 — 마이그레이션(additive 컬럼 셋) ⬅️ **다음에 할 일**
+- [x] **태스크 3 — 마이그레이션** (2026-09-03) — `add_key_order_and_chrome_fields`.
+      `StringKey.sortIndex Int?` · `Translation.description String?` · `Translation.placeholders Json?`.
+      **`ADD COLUMN` 셋뿐**이고 `pnpm db:deploy`로 프로덕션에 적용했다
+  - ⚠️ `Translation.description`은 `StringKey.description`과 **다른 컬럼**이다 — 저쪽은 소스 키
+    메타데이터, 이쪽은 그 로케일 파일이 실제로 갖고 있던 값. 합치면 병합이 된다
 - [ ] 태스크 4 — push·pull 배선 4곳(`load.ts` select → `RenderKey` → `PullRow` →
-      `buildWriteEntries`) + `description` 가드 해제
+      `buildWriteEntries`) + `description` 가드 해제 ⬅️ **다음에 할 일**
+  - ⚠️ 넷 중 하나만 빠져도 `orderedEntries`가 폴백으로 조용히 떨어지고 **단위 테스트는 전부
+    green**이다 (POSTMORTEM 2026-09-02). 태스크 5의 L1 진입점 테스트가 유일한 방어선이다
 - [ ] 태스크 5 — **검증 루프** (L1 진입점 회귀 / L2 골든 픽스처 / L3 재측정 트리거 규칙)
 - [ ] 태스크 6~7 — 재측정 게이트, 실물 확인, MVP §4.1 · ARCHITECTURE §1.1 갱신
