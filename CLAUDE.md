@@ -140,6 +140,16 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
+### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
+
+**두 대에서 작업한다.** 새 체크아웃은 `node_modules`·`generated/prisma`·`public/fonts`·`.env.local`이 전부 없고, 앞의 셋은 명령으로 복구되지만 **`.env.local`만 사람이 채운다.**
+
+1. **Node를 `.nvmrc`에 맞춘다** (20). 버전 매니저 없이 시스템 Node로 돌리면 `@types/node`가 `^20`이라 로컬 게이트가 Vercel 빌드와 갈린다 — 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 이 불일치는 곧 거짓 green이다
+2. `pnpm install`
+3. `cp .env.example .env.local` 후 값을 채운다. **프로덕션 값은 Vercel 프로젝트 env에 있다**(`DIRECT_URL`만 없다 — 마이그레이션 전용이라 넣지 않는다). 시크릿을 리포·채팅에 붙여넣지 않는다
+4. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
+5. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
+
 **린터 없음** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않는다. 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이고, 린터 추가는 요청 없이 하지 않는다.
 
 ### CI (GitHub Actions)
@@ -341,4 +351,4 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - `docs/ADAPTER-COVERAGE.md` — 어댑터가 남의 리포에서 실제로 어떻게 동작하는지의 실측 (어댑터·탐지 규칙 건드리기 전 필독)
 - `docs/POSTMORTEM.md` — 과거 함정 (`/implement`·`/refactor`·`/code-review` 착수 전 grep)
 - `~/code/bugshot-2` — 이 하네스의 원본이자, 셋업 완료 후 push/pull 실전 테스트 대상(ko/en/fr 3개 로케일). **하네스를 참고할 때 그 리포의 i18n 구현을 조사 대상으로 삼지 않는다.**
-- `~/.claude/projects/-Users-sinhyeokkang-code-i18n-poc/memory/` — Claude Code 전용 개인 메모리 (Codex는 읽지 않는다)
+- `~/.claude/projects/<이 체크아웃 경로를 슬러그화한 디렉터리>/memory/` — Claude Code 전용 개인 메모리 (Codex는 읽지 않는다). **머신마다 경로가 다르다** — 두 대에서 작업 중이라 홈 디렉터리 이름이 갈린다. 경로를 문서에 박지 않는다
