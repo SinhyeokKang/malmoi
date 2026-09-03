@@ -95,8 +95,9 @@
 
 구 §7 그대로다 — 아래 §7 참조. push는 `order-check`의 CI에서, pull은 Vercel Cron에서 돈다.
 
-**남은 둘은 C의 완료 조건이 아니라 그 다음이다**: `bugshot-2` 연동(multi-locale `ts-dict` 903키 —
-`order-check`가 검증하지 못한 축)과 `/l10n-roundtrip` 스킬.
+**남은 것은 `/l10n-roundtrip` 스킬이다.** multi-locale `ts-dict` 축은 `bugshot-i18n-test`로 닫혔다
+(§7) — 지원 어댑터 5종 중 실물 PR을 지난 것은 `json-catalog`·`ts-dict` 둘이고, **`yaml-catalog`·
+`code-dict`(둘 다 per-locale인데 수술적)는 아직이다.**
 
 ---
 
@@ -497,13 +498,30 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   - ⬜ **실제 야간 트리거는 아직 안 봤다** — 첫 발화가 KST 03:00이다. 다음 날 아침에 로그를 한 번 본다
 - [x] 대상 리포 왕복 검증 — **자동화 경로로 한 바퀴** ✅ (2026-09-03, `order-check`)
   - CI push(200) → DB 편집 → 프로덕션 `/api/pull`(PR #2 생성) → 워크플로 실행(경고) → PR 머지(스킵) → 수동 실행(DB 수렴). 모든 홉이 **실물 Actions·실물 Vercel**을 지났다
-  - ⬜ **`bugshot-2`(ko/en/fr, ts-dict 903키)는 아직 안 붙였다** — MVP §9의 원래 대상이다. `adapter: ts-dict` 명시가 필수다
+  - [x] **`ts-dict` multi-locale 왕복** ✅ (2026-09-03, `bugshot-i18n-test` 903키 ko/en/fr) — `order-check`가
+        검증하지 못한 축이다. **`per-locale` vs `multi-locale` 갈림길의 수술적 쪽이 실물 PR을 처음 지났다**
+    - push 200(903키 / 2709번역 / 267 refs, 로케일 3개 자동 등록) → 편집 0건 pull `no-changes`(2층 blob
+      비교까지 감) → 편집 3건 pull [PR #9](https://github.com/SinhyeokKang/bugshot-i18n-test/pull/9)
+      `+3 -3 / 3파일` `[skip-l10n]` → 머지 → **재pull `no-edits`(1층 스킵, GitHub API 호출 0회)**
+    - diff는 편집한 3줄뿐이다. 키 순서·빈 줄·**여러 줄로 감긴 문자열**(`settings.replay.help`)까지 보존됐다
+    - ⚠️ **`adapter: ts-dict` 명시가 필수인 것이 실측됐다** — 명시 없이 `ingest`하면 `_locales`(4키)를 잡고
+      903키를 통째로 놓친다. 조용히 작은 쪽으로 떨어지므로 에러가 나지 않는다
+    - **대상은 `bugshot-i18n-test`(폐기용 복제본)다, `bugshot-2`가 아니다.** 실물 오픈소스 리포에 검증
+      PR을 내면 흔적이 남는다 — 한 번 그렇게 냈다가 닫고 되돌렸다(PR #226, `l10n/sync` 삭제, DB 원복)
+  - ⬜ **CI 워크플로(push 방향)는 이 리포에 안 붙였다** — 아래 전역 미결의 `ACTIVE_PROJECT_SLUG` 제약 때문에
+        붙여도 프로덕션이 409를 낸다. CI 층은 `order-check`에서 green이고 어댑터와 무관해서 우선순위가 낮다
 - [ ] `/l10n-roundtrip` 스킬 추가
   - 검증: 스킬이 왕복을 재현
 
 ---
 
 ## 전역 미결 (단계에 묶이지 않은 것)
+
+- ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
+  페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
+  다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`
+  왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
+  프로젝트를 결정하면 사라진다
 
 - [ ] 🔒 **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. **번역 데이터가 쌓이기 전에** 두 번째 프로젝트를 만들지 결정한다 (MVP §10, `/db` 경고 섹션)
 - [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — `https://i18n-poc.vercel.app`. main 푸시가 이제 실제 배포다
