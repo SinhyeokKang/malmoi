@@ -25,8 +25,9 @@ Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js (GitHub OAuth) 
 
 ```bash
 pnpm install
-cp .env.example .env.local   # 값을 채운다
-pnpm db:migrate              # 로컬 스키마 적용
+cp .env.example .env.local   # 값을 채운다 — 다른 머신의 것을 옮긴다 (CLAUDE.md "새 머신 셋업")
+pnpm db:generate             # Prisma 클라이언트 생성 (generated/는 gitignore)
+pnpm db:status               # ⚠️ dev DB = prod DB. migrate dev의 리셋 제안은 절대 승인하지 않는다
 pnpm dev
 ```
 
