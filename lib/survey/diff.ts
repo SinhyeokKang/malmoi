@@ -34,6 +34,94 @@ export function roundtripDiffRatio(original: string, written: string): number {
   return ratio <= 0 ? 0 : ratio >= 1 ? 1 : ratio;
 }
 
+/**
+ * 변경이 **몇 군데로 흩어졌나** — `git diff`의 hunk 수와 같은 뜻이다.
+ *
+ * ⚠️ **비율이 못 보는 것을 본다.** 중첩 JSON에서 하위 층만 재정렬되고 값 편집이 3건이면
+ * `roundtripDiffRatio`는 0.083(목표 통과)인데 hunk가 41개다 — 리뷰어는 3건을 찾으려고 41번
+ * 스크롤한다. 구조 줄(`},` · `"name": {`)이 파일 전체에 반복돼 LCS가 그걸 서로 매칭하므로
+ * **비율은 중첩 JSON의 리뷰 고통을 체계적으로 과소평가한다**
+ * (`docs/features/key-order-preservation/spec.md` §왜 diff 비율 하나로는 부족한가).
+ *
+ * 매칭 쌍이 예산을 넘으면 `undefined`다 — 근사로 세면 hunk를 **과소평가**하게 되고, 이 지표는
+ * 작을수록 좋다고 읽히므로 과소평가가 곧 거짓 안심이다. `roundtripDiffRatio`가 그 경우를
+ * `usedApproximation`으로 따로 보고한다.
+ */
+export function changedHunks(original: string, written: string): number | undefined {
+  const { ma, mb } = trimCommon(original.split("\n"), written.split("\n"));
+  if (ma.length === 0 && mb.length === 0) return 0;
+  if (ma.length === 0 || mb.length === 0) return 1;
+
+  const pairs = lcsPairs(ma, mb);
+  if (pairs === undefined) return undefined;
+
+  let hunks = 0;
+  let ai = 0;
+  let bi = 0;
+  for (const [pa, pb] of pairs) {
+    // 매칭 사이에 소비되지 않은 줄이 있으면 그 구간이 하나의 덩어리다.
+    if (pa > ai || pb > bi) hunks += 1;
+    ai = pa + 1;
+    bi = pb + 1;
+  }
+  if (ai < ma.length || bi < mb.length) hunks += 1;
+  return hunks;
+}
+
+/**
+ * LCS를 이루는 `(a 위치, b 위치)` 쌍 — `lcsLength`와 같은 알고리즘에 **역추적을 얹은 것**이다.
+ *
+ * 길이만으로는 hunk를 셀 수 없다: 어디가 매칭됐는지 알아야 "사이가 비었나"를 판정한다.
+ */
+function lcsPairs(a: readonly string[], b: readonly string[]): Array<[number, number]> | undefined {
+  const positions = new Map<string, number[]>();
+  for (let i = 0; i < b.length; i += 1) {
+    const line = b[i]!;
+    const list = positions.get(line);
+    if (list) list.push(i);
+    else positions.set(line, [i]);
+  }
+  let matches = 0;
+  for (const line of a) matches += positions.get(line)?.length ?? 0;
+  if (matches > MATCH_BUDGET) return undefined;
+
+  /** 노드를 병렬 배열로 둔다 — 매칭 수만큼 객체를 만들면 큰 파일에서 메모리가 튄다. */
+  const nodeB: number[] = [];
+  const nodeA: number[] = [];
+  const nodePrev: number[] = [];
+  const tailsValue: number[] = [];
+  const tailsNode: number[] = [];
+
+  for (let ai = 0; ai < a.length; ai += 1) {
+    const list = positions.get(a[ai]!);
+    if (!list) continue;
+    // **내림차순으로 넣어야** 같은 줄의 여러 위치가 한 번의 매칭으로 겹쳐 세어지지 않는다.
+    for (let k = list.length - 1; k >= 0; k -= 1) {
+      const value = list[k]!;
+      const at = lowerBound(tailsValue, value);
+      nodeA.push(ai);
+      nodeB.push(value);
+      nodePrev.push(at > 0 ? tailsNode[at - 1]! : -1);
+      const idx = nodeA.length - 1;
+      if (at === tailsValue.length) {
+        tailsValue.push(value);
+        tailsNode.push(idx);
+      } else {
+        tailsValue[at] = value;
+        tailsNode[at] = idx;
+      }
+    }
+  }
+
+  const out: Array<[number, number]> = [];
+  let cur = tailsNode.length === 0 ? -1 : tailsNode[tailsNode.length - 1]!;
+  while (cur !== -1) {
+    out.push([nodeA[cur]!, nodeB[cur]!]);
+    cur = nodePrev[cur]!;
+  }
+  return out.reverse();
+}
+
 /** 공통 접두·접미를 떼면 "한 줄만 바뀐 파일"이 몇 줄짜리 문제로 줄어든다. */
 function trimCommon(a: readonly string[], b: readonly string[]) {
   let head = 0;
