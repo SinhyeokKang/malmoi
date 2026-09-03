@@ -49,21 +49,22 @@ inputs:
 runs:
   using: composite
   steps:
-    # composite action은 자기 리포를 러너에 clone해 준다. `action_path`가 이 파일의
-    # 디렉터리이므로 `../..`가 i18n-poc 루트다.
+    # composite action은 자기 리포를 러너에 clone해 준다. `action_path`는 이 파일의
+    # 디렉터리(`<clone>/.github/actions/l10n-push`)이므로 **리포 루트는 `../../..`다** —
+    # `../..`는 `.github`를 가리켜 `pnpm/action-setup`이 "No pnpm version is specified"로 죽는다.
     - name: pnpm
       uses: pnpm/action-setup@v4
       with:
-        package_json_file: ${{ github.action_path }}/../../package.json
+        package_json_file: ${{ github.action_path }}/../../../package.json
 
     - name: Node
       uses: actions/setup-node@v4
       with:
-        node-version-file: ${{ github.action_path }}/../../.nvmrc
+        node-version-file: ${{ github.action_path }}/../../../.nvmrc
 
     - name: i18n-poc 의존성
       shell: bash
-      working-directory: ${{ github.action_path }}/../..
+      working-directory: ${{ github.action_path }}/../../..
       run: pnpm install --frozen-lockfile
 
     # ⚠️ **차단이 아니라 경고다.** strict라 이 PR이 머지되기 전의 push는 번역자의 편집을
@@ -87,7 +88,7 @@ runs:
     # 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
     - name: 적재 + 스캔 → /api/push
       shell: bash
-      working-directory: ${{ github.action_path }}/../..
+      working-directory: ${{ github.action_path }}/../../..
       env:
         PUSH_TOKEN: ${{ inputs.push-token }}
       run: |
