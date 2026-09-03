@@ -463,3 +463,66 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
     expect(res.errors).toEqual([]);
   });
 });
+
+describe("yaml-catalog — 시퀀스 들여쓰기도 원본에서 (2026-09-04 7차 측정)", () => {
+  /**
+   * `yaml`의 `indentSeq` 기본값이 true라 `- item`을 부모 키보다 한 단 들여쓴다. Rails 로케일
+   * 파일은 부모와 **같은 열**에 쓰므로, 키 하나를 편집하면 그 파일의 모든 시퀀스 줄이 밀린다.
+   *
+   * 7차 재측정의 새 지표(1키 편집 → hunk 수)가 이걸 잡았다 — yaml 리포 29개 중 9개에서 hunk가
+   * 1이 아니었다(redmine 28 · search-gov 37 · diaspora 21 · your-priorities 20). 들여쓰기 폭과
+   * 줄 접기를 고친 뒤에도 남아 있던 축이다.
+   */
+  const SEQ_FLUSH = "ko:\n  greeting: 안녕\n  items:\n  - 하나\n  - 둘\n";
+  const SEQ_INDENTED = "ko:\n  greeting: 안녕\n  items:\n    - 하나\n    - 둘\n";
+
+  it("부모와 같은 열에 쓴 시퀀스는 그대로 남는다 — 편집한 줄만 바뀐다", () => {
+    const out = yamlCatalog.write(withSource(SEQ_FLUSH), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "greeting", message: "안녕하세요" }],
+    })!;
+    expect(out).toBe("ko:\n  greeting: 안녕하세요\n  items:\n  - 하나\n  - 둘\n");
+  });
+
+  it("들여쓴 시퀀스는 들여쓴 채로 남는다 — 반대 방향으로도 보존한다", () => {
+    const out = yamlCatalog.write(withSource(SEQ_INDENTED), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "greeting", message: "안녕하세요" }],
+    })!;
+    expect(out).toBe("ko:\n  greeting: 안녕하세요\n  items:\n    - 하나\n    - 둘\n");
+  });
+
+  it("시퀀스가 없으면 판정이 출력에 영향을 주지 않는다", () => {
+    const src = "ko:\n  a: 하나\n  b: 둘\n";
+    const out = yamlCatalog.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "일" }],
+    })!;
+    expect(out).toBe("ko:\n  a: 일\n  b: 둘\n");
+  });
+});
+
+describe("yaml-catalog — 플로우 컬렉션 여백도 원본에서 (2026-09-04 7차 측정)", () => {
+  it("여백 없는 플로우 컬렉션은 그대로 남는다 — `yaml` 기본값이 여백을 넣는다", () => {
+    const src = "ko:\n  greeting: 안녕\n  day_names: [일, 월, 화]\n";
+    const out = yamlCatalog.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "greeting", message: "안녕하세요" }],
+    })!;
+    expect(out).toBe("ko:\n  greeting: 안녕하세요\n  day_names: [일, 월, 화]\n");
+  });
+
+  it("여백을 둔 파일은 여백을 유지한다", () => {
+    const src = "ko:\n  greeting: 안녕\n  day_names: [ 일, 월, 화 ]\n";
+    const out = yamlCatalog.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "greeting", message: "안녕하세요" }],
+    })!;
+    expect(out).toBe("ko:\n  greeting: 안녕하세요\n  day_names: [ 일, 월, 화 ]\n");
+  });
+});

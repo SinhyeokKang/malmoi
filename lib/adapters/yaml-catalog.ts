@@ -245,6 +245,40 @@ function indentOf(text: string): number {
 }
 
 /**
+ * 시퀀스를 부모 키보다 들여썼는가.
+ *
+ * ⚠️ **`yaml`의 `indentSeq` 기본값이 `true`라 `- item`을 한 단 들여쓴다.** Rails 로케일 파일은
+ * 부모와 **같은 열**에 쓰므로, 키 하나를 편집하면 그 파일의 시퀀스 줄이 전부 밀린다 — 7차
+ * 재측정의 새 지표(1키 편집 → hunk 수)가 yaml 리포 29개 중 9개에서 이걸 잡았다.
+ *
+ * 판정: `key:`로 끝나는 줄 바로 다음의 `- ` 줄을 찾아 두 들여쓰기를 견준다. 못 찾으면 기본값을
+ * 그대로 쓴다 — 시퀀스가 없으면 이 값이 출력에 영향을 주지 않는다.
+ */
+function indentsSeq(text: string): boolean | undefined {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length - 1; i += 1) {
+    const parent = /^( *)[^\s#-][^:]*:\s*$/.exec(lines[i] ?? "");
+    if (!parent) continue;
+    const item = /^( *)- /.exec(lines[i + 1] ?? "");
+    if (!item) continue;
+    return (item[1] ?? "").length > (parent[1] ?? "").length;
+  }
+  return undefined;
+}
+
+/**
+ * 플로우 컬렉션(`[a, b]`)의 괄호 안에 여백을 두는가.
+ *
+ * ⚠️ **`yaml`의 `flowCollectionPadding` 기본값이 `true`라 `[ a, b ]`로 찍는다.** 손으로 쓴 YAML은
+ * 거의 여백을 두지 않으므로, 키 하나를 편집하면 그 파일의 모든 플로우 컬렉션 줄이 바뀐다 —
+ * redmine의 `day_names`·`month_names` 넷이 그렇게 밀렸다 (7차 측정).
+ */
+function padsFlow(text: string): boolean | undefined {
+  const m = /(?:^|:\s)\[(\s?)\S/m.exec(text);
+  return m === null ? undefined : m[1] === " ";
+}
+
+/**
  * ⚠️ **파싱 실패는 "변경 없음"이 아니다.** 원본을 그대로 돌려주되 에러로 알린다 — `write`만 부르면
  * 호출부가 blob SHA가 같다고 읽어 그 파일이 PR에서 조용히 빠진다.
  */
@@ -321,7 +355,21 @@ function writeWithErrors(
   // 긴 plain 스칼라까지 접혀 나가 "값만 바꾼다"가 깨진다 — 픽스처가 전부 80자 미만이라 보이지
   // 않았다 (POSTMORTEM 2026-09-03 "픽스처가 한 스타일이면 그 축은 검증되지 않은 것").
   if (!changed) return { content: file.content, errors };
-  return { content: doc.toString({ indent: indentOf(file.content), lineWidth: 0 }), errors };
+  // ⚠️ **`doc.toString()`은 문서 전체를 다시 찍는다 — 진짜 수술적 치환이 아니다.** 옵션으로 되돌릴
+  // 수 있는 축(들여쓰기·줄 접기·시퀀스 들여쓰기·플로우 여백)만 원본에서 관측해 맞춘다. 콜론 뒤
+  // 정렬 공백(`one:   "값"`)처럼 AST에 남지 않는 축은 이 방식으로 보존할 수 없다 —
+  // 노드의 `range`로 원본 문자열을 직접 갈아끼우는 방식만이 답이고, 그건 별 기능이다 (§13).
+  const seq = indentsSeq(file.content);
+  const pad = padsFlow(file.content);
+  return {
+    content: doc.toString({
+      indent: indentOf(file.content),
+      lineWidth: 0,
+      ...(seq === undefined ? {} : { indentSeq: seq }),
+      ...(pad === undefined ? {} : { flowCollectionPadding: pad }),
+    }),
+    errors,
+  };
 }
 
 /**
