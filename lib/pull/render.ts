@@ -13,24 +13,48 @@ import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow } from
 export type RenderKey = {
   key: string;
   sourceText: string;
+  /** **키 단위** description (`StringKey.description`). base 파일에서 온 소스 메타데이터다. */
   description?: string | null;
+  /** base 파일에서의 키 위치 (`StringKey.sortIndex`). 없으면 순서를 모르는 키다. */
+  sortIndex?: number | null;
   orphaned: boolean;
-  /** 로케일 코드 → 셀. 없는 로케일은 미번역이다. */
-  cells: Record<string, { value: string } | undefined>;
+  /**
+   * 로케일 코드 → 셀. 없는 로케일은 미번역이다.
+   *
+   * `description`·`placeholders`는 **그 로케일 파일이 실제로 갖고 있던** 값이다 — 위의 키 단위
+   * `description`과 다른 것이고, 섞으면 base 값을 비-base에 복제하게 되어 병합이 된다.
+   */
+  cells: Record<string, { value: string; description?: string; placeholders?: unknown } | undefined>;
 };
 
 /**
  * 로케일 하나분 행으로 접는다. **셀 부재(`null`)와 빈 문자열을 구별해야** base 폴백이 성립한다
  * — 행이 없으면 `sourceText`로 떨어지지만, 값을 지운 것은 미번역으로 남아야 한다 (MVP §3.2).
  */
-export function rowsForLocale(keys: readonly RenderKey[], locale: string): PullRow[] {
-  return keys.map((k) => ({
-    key: k.key,
-    sourceText: k.sourceText,
-    ...(k.description ? { description: k.description } : {}),
-    orphaned: k.orphaned,
-    value: k.cells[locale]?.value ?? null,
-  }));
+export function rowsForLocale(
+  keys: readonly RenderKey[],
+  locale: string,
+  opts: { isBase?: boolean } = {},
+): PullRow[] {
+  return keys.map((k) => {
+    const cell = k.cells[locale];
+    // **base만 키 단위 description으로 폴백한다.** `Translation.description`이 전부 null인
+    // 마이그레이션 직후에도 base 파일이 description을 잃지 않게 하는 장치다 —
+    // `value ?? sourceText`(아래 `buildWriteEntries`)와 같은 축이고, 그 값은 애초에 base
+    // 파일에서 온 것이라 원본 복원이다. **비-base에 쓰면 원본에 없던 값을 만드는 것이라 병합이다.**
+    const description = cell?.description ?? (opts.isBase ? (k.description ?? undefined) : undefined);
+    return {
+      key: k.key,
+      sourceText: k.sourceText,
+      ...(description ? { description } : {}),
+      // ⚠️ `undefined` 검사다 — `?? undefined`로 null을 걷어내되 **0을 falsy로 흘리지 않는다.**
+      ...(k.sortIndex === null || k.sortIndex === undefined ? {} : { sortIndex: k.sortIndex }),
+      // placeholders는 base 폴백이 없다 — `StringKey`에 담을 곳이 없다.
+      ...(cell?.placeholders === undefined ? {} : { placeholders: cell.placeholders }),
+      orphaned: k.orphaned,
+      value: cell?.value ?? null,
+    };
+  });
 }
 
 /**

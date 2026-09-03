@@ -33,6 +33,15 @@ const IncomingKey = z.object({
   sourceText: z.string(),
   namespace: z.string().min(1),
   description: z.string().optional(),
+  /**
+   * base 로케일 **파일 안에서의** 키 위치 (`LocaleEntry.order`).
+   *
+   * **optional이고, 없으면 `sortIndex`가 null로 남는다 — 배열 인덱스로 채우지 않는다.**
+   * `read`가 이미 코드 유닛 순으로 정렬해 돌려주므로 구 CI가 보내는 배열 인덱스는 곧 코드 유닛
+   * 순위다. 그걸 박으면 "순서를 모른다"가 "코드 유닛이 원본 순서다"로 DB에 굳고, 바이트 결과가
+   * 같아서 조용하다.
+   */
+  order: z.number().int().nonnegative().optional(),
 });
 
 export const PushPayload = z
@@ -61,6 +70,16 @@ export const PushPayload = z
       locale: z.string().min(1),
       key: z.string().min(1),
       value: z.string(),
+      /**
+       * **그 로케일 파일이 실제로 갖고 있던** description. `keys[].description`(소스 키 메타데이터)과
+       * 다른 것이다 — 합치면 base 값을 비-base에 복제하게 되고 그건 병합이다.
+       */
+      description: z.string().optional(),
+      /**
+       * chrome `placeholders` 블록. **모양을 검사하지 않는다** — 요구는 "잃지 않는다"뿐이고,
+       * 스키마를 검증하기 시작하면 크롬 스펙을 따라다녀야 한다 (`LocaleEntry.placeholders`와 같은 계약).
+       */
+      placeholders: z.unknown().optional(),
     })),
     refs: z.array(z.object({
       key: z.string().min(1),
@@ -93,6 +112,8 @@ export type PlannedKey = {
   sourceHash: string;
   namespace: string;
   description?: string;
+  /** base 파일에서의 키 위치. 없으면 "순서를 모른다"이고 DB에 null로 간다. */
+  sortIndex?: number;
 };
 
 /**
@@ -110,9 +131,15 @@ export type PushPlan = {
   staleKeyIds: string[];
 };
 
+/**
+ * 페이로드가 주는 키 하나. **`order`(어댑터 어휘)를 `sortIndex`(DB 컬럼)로 옮기는 유일한 지점**이라
+ * 순수 함수 안에 둔다 — 껍데기에서 매핑하면 이 홉을 테스트가 못 덮는다.
+ */
+export type IncomingKeyType = z.infer<typeof IncomingKey>;
+
 export function planPush(
   existingKeys: readonly ExistingKey[],
-  incomingKeys: readonly Omit<PlannedKey, "sourceHash">[],
+  incomingKeys: readonly IncomingKeyType[],
 ): PushPlan {
   // 같은 키가 두 번 오면 뒤가 이긴다 — Map이 그 의미를 그대로 준다.
   const incoming = new Map<string, PlannedKey>();
@@ -123,6 +150,8 @@ export function planPush(
       sourceHash: sourceHash(k.sourceText),
       namespace: k.namespace || namespaceOf(k.key),
       ...(k.description === undefined ? {} : { description: k.description }),
+      // ⚠️ `undefined` 검사다 — `k.order ? …`로 쓰면 **0이 falsy라 파일의 첫 키가 사라진다.**
+      ...(k.order === undefined ? {} : { sortIndex: k.order }),
     });
   }
 

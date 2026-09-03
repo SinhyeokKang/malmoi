@@ -33,12 +33,15 @@ describe("rowsForLocale — KeyRow를 로케일 하나분 PullRow로 접는다",
     expect(rowsForLocale(keys, "fr").every((r) => r.value === null)).toBe(true);
   });
 
-  it("orphaned·description을 그대로 전달한다", () => {
-    const rows = rowsForLocale(
-      [key({ key: "a.gone", orphaned: true, description: "설명" })],
-      "ko",
-    );
-    expect(rows[0]).toMatchObject({ orphaned: true, description: "설명" });
+  it("orphaned를 그대로 전달한다", () => {
+    const rows = rowsForLocale([key({ key: "a.gone", orphaned: true })], "ko");
+    expect(rows[0]).toMatchObject({ orphaned: true });
+  });
+
+  it("키 단위 description은 **base에만** 폴백한다 — 비-base에 실으면 원본에 없던 값을 만든다", () => {
+    const k = [key({ key: "a.gone", orphaned: true, description: "설명" })];
+    expect(rowsForLocale(k, "en", { isBase: true })[0]).toMatchObject({ description: "설명" });
+    expect(rowsForLocale(k, "ko")[0]?.description).toBeUndefined();
   });
 
   it("빈 문자열 셀은 null이 아니라 빈 문자열로 넘긴다 — 지우기와 미번역은 다른 상태다", () => {

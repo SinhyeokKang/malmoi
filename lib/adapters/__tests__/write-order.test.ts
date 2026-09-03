@@ -144,13 +144,12 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
     expect(chromeRoundtrip(src, true)).toBe(src);
   });
 
-  it("⚠️ 비-base의 description은 아직 안 낸다 — Translation.description이 생기기 전엔 base 값을 복제하게 된다", () => {
-    // `buildWriteEntries`가 StringKey.description(키 단위, base에서 온 값)을 **모든 로케일**의
-    // 엔트리에 싣는다. 지금 isBase 가드를 풀면 pull이 비-base 파일에 **원본에 없던 description을
-    // 만들어 넣는다** — 잃는 것보다 나쁘다. 가드는 태스크 4에서 Translation.description과 함께 푼다.
+  it("비-base의 description도 낸다 — 그 파일이 실제로 갖고 있던 값이다", () => {
+    // 태스크 4에서 `Translation.description`이 생기며 `isBase` 가드를 풀었다. 로케일별 값이
+    // 셀에서 오므로 base 값을 복제할 위험이 사라졌고, chrome 리포 33개 중 20개가 잃던 필드다
+    // (`docs/ADAPTER-COVERAGE.md` §10.3).
     const src = '{\n  "A": {\n    "message": "a",\n    "description": "d"\n  }\n}\n';
-    const out = chromeRoundtrip(src, false);
-    expect(out).toBe('{\n  "A": {\n    "message": "a"\n  }\n}\n');
+    expect(chromeRoundtrip(src, false)).toBe(src);
   });
 
   it("결정적이다 — 같은 입력을 두 번 써서 같은 바이트", () => {

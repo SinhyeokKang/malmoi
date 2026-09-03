@@ -70,7 +70,7 @@ export async function applyPush(
     // StringKey insert — id를 JS에서 만든다. cuid() 기본값은 Prisma 클라이언트가 적용하는
     // 것이라 raw SQL에는 오지 않는다.
     ...(plan.toInsert.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "orphaned", "updatedAt")
+      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "updatedAt")
       SELECT * FROM unnest(
         ${plan.toInsert.map(() => randomUUID())}::text[],
         ${plan.toInsert.map(() => projectId)}::text[],
@@ -79,6 +79,7 @@ export async function applyPush(
         ${plan.toInsert.map((k) => k.sourceText)}::text[],
         ${plan.toInsert.map((k) => k.sourceHash)}::text[],
         ${plan.toInsert.map((k) => k.description ?? null)}::text[],
+        ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
         ${plan.toInsert.map(() => new Date())}::timestamp[]
       )`]),
@@ -90,6 +91,9 @@ export async function applyPush(
         "sourceText" = v."sourceText",
         "sourceHash" = v."sourceHash",
         "description" = v."description",
+        -- **매 push마다 전 키의 순서를 새로 박는다.** 코드가 키를 재정렬하거나 추가해도 다음
+        -- push가 덮으므로 DB와 파일이 갈라지지 않는다 (설계의 "drift 없음" 근거).
+        "sortIndex" = v."sortIndex",
         "orphaned" = false,
         "updatedAt" = now()
       FROM unnest(
@@ -97,8 +101,9 @@ export async function applyPush(
         ${plan.toUpdate.map((k) => k.namespace)}::text[],
         ${plan.toUpdate.map((k) => k.sourceText)}::text[],
         ${plan.toUpdate.map((k) => k.sourceHash)}::text[],
-        ${plan.toUpdate.map((k) => k.description ?? null)}::text[]
-      ) AS v("key", "namespace", "sourceText", "sourceHash", "description")
+        ${plan.toUpdate.map((k) => k.description ?? null)}::text[],
+        ${plan.toUpdate.map((k) => k.sortIndex ?? null)}::int[]
+      ) AS v("key", "namespace", "sourceText", "sourceHash", "description", "sortIndex")
       WHERE s."projectId" = ${projectId} AND s."key" = v."key"`]),
 
     // orphaned 표시. **삭제하지 않는다** — 되돌릴 수 있어야 한다 (MVP §2).
@@ -143,18 +148,26 @@ export async function applyPush(
     //    pull 주기가 곧 데이터 손실 창이다. 스펙에 감수하는 대가로 명시돼 있다.
     // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
     ...(translations.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "Translation" ("id", "projectId", "keyId", "localeCode", "value", "needsReview", "updatedAt")
-      SELECT * FROM unnest(
+      INSERT INTO "Translation" ("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
+      SELECT v."id", v."projectId", v."keyId", v."localeCode", v."value", v."description", v."placeholders"::jsonb, v."needsReview", v."updatedAt"
+      FROM unnest(
         ${translations.map(() => randomUUID())}::text[],
         ${translations.map(() => projectId)}::text[],
         ${translations.map((t) => t.keyId)}::text[],
         ${translations.map((t) => t.locale)}::text[],
         ${translations.map((t) => t.value)}::text[],
+        ${translations.map((t) => t.description ?? null)}::text[],
+        -- jsonb[]로 바로 못 받는다: Prisma가 배열을 text[]로 보내므로 text로 받아 SELECT에서
+        -- 행마다 캐스팅한다. 그래서 SELECT * 가 아니라 컬럼을 이름으로 세운다.
+        ${translations.map((t) => (t.placeholders === undefined ? null : JSON.stringify(t.placeholders)))}::text[],
         ${translations.map(() => false)}::boolean[],
         ${translations.map(() => new Date())}::timestamp[]
-      )
+      ) AS v("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
       ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
         "value" = EXCLUDED."value",
+        -- strict라 chrome 필드도 리포 값이 덮는다 (MVP §3.1). 리포에서 사라졌으면 DB에서도 빠진다.
+        "description" = EXCLUDED."description",
+        "placeholders" = EXCLUDED."placeholders",
         "updatedAt" = now()`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.

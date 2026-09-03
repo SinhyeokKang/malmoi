@@ -132,7 +132,12 @@ export function resolveLocalePaths(
 export type PullRow = {
   key: string;
   sourceText: string;
+  /** **그 로케일 파일이 가질** description. base는 키 단위 값으로 폴백돼 들어온다. */
   description?: string;
+  /** chrome `placeholders` 블록. 해석하지 않고 그대로 나른다. */
+  placeholders?: unknown;
+  /** base 파일에서의 키 위치. 없으면 재생성 writer가 코드 유닛 순으로 뒤에 붙인다. */
+  sortIndex?: number;
   orphaned: boolean;
   value: string | null;
 };
@@ -163,6 +168,10 @@ export function buildWriteEntries(
       message,
       // 빈 description은 싣지 않는다 — 없는 것과 같아야 파일이 결정적이다.
       ...(row.description ? { description: row.description } : {}),
+      // ⚠️ **`sortIndex ? …`로 쓰면 0이 falsy라 파일의 첫 키가 순서를 잃는다.**
+      ...(row.sortIndex === undefined ? {} : { order: row.sortIndex }),
+      // 없으면 필드를 만들지 않는다 — 빈 값을 넣으면 write가 없던 블록을 만든다.
+      ...(row.placeholders === undefined ? {} : { placeholders: row.placeholders }),
     });
   }
   return entries;

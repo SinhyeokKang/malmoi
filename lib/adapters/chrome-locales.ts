@@ -133,11 +133,11 @@ function write(_format: DetectedFormat, input: { locale: string; isBase: boolean
   const out: Record<string, { message: string; description?: string; placeholders?: unknown }> = {};
   for (const e of usable) {
     const entry: { message: string; description?: string; placeholders?: unknown } = { message: e.message };
-    // ⚠️ **description은 아직 base에만 넣는다.** `buildWriteEntries`가 `StringKey.description`
-    // (키 단위, base에서 온 값)을 **모든 로케일**의 엔트리에 실으므로, 지금 이 가드를 풀면 pull이
-    // 비-base 파일에 **원본에 없던 description을 만들어 넣는다** — 잃는 것보다 나쁘다.
-    // `Translation.description`이 생기는 태스크 4에서 함께 푼다.
-    if (input.isBase && e.description) entry.description = e.description;
+    // **로케일마다 낸다.** 엔트리의 description은 `Translation.description` — 그 로케일 파일이
+    // 실제로 갖고 있던 값이고, 없으면 `rowsForLocale`이 안 싣는다(base만 키 단위 값으로 폴백).
+    // 전에는 `input.isBase` 가드가 있었는데, 그때는 키 단위 값이 전 로케일에 실려서 가드를 풀면
+    // 원본에 없던 description을 만들어 넣었다 — 실측 chrome 33개 중 20개가 잃던 필드다.
+    if (e.description) entry.description = e.description;
     // placeholders는 그 로케일 파일에서 읽은 것이라 그대로 되돌린다. 모양을 검사하지 않는다.
     if ("placeholders" in e) entry.placeholders = e.placeholders;
     out[e.key] = entry;

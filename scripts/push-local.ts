@@ -161,11 +161,22 @@ const payload: PushPayloadType = {
     sourceText: e.message,
     namespace: namespaceOf(e.key),
     ...(e.description === undefined ? {} : { description: e.description }),
+    // base 파일에서의 키 위치 → `StringKey.sortIndex`. **`e.order ? …`로 쓰면 0이 falsy라
+    // 파일의 첫 키가 순서를 잃는다.** 없으면 안 싣는다 — 서버가 null로 남긴다.
+    ...(e.order === undefined ? {} : { order: e.order }),
   })),
   // 리포 파일의 번역값 — 서버가 strict로 덮는다 (MVP §3.1).
   // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다 (§3.2).
   translations: read.locales.flatMap((l) =>
-    l.entries.map((e) => ({ locale: l.locale, key: e.key, value: e.message })),
+    l.entries.map((e) => ({
+      locale: l.locale,
+      key: e.key,
+      value: e.message,
+      // **그 로케일 파일이 실제로 갖고 있던** chrome 필드 → `Translation`의 두 컬럼.
+      // 키 단위 `keys[].description`과 다른 것이다 — 합치면 base 값을 비-base에 복제하게 된다.
+      ...(e.description === undefined ? {} : { description: e.description }),
+      ...(e.placeholders === undefined ? {} : { placeholders: e.placeholders }),
+    })),
   ),
   refs,
 };

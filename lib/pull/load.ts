@@ -36,13 +36,20 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
 
   const keys = await prisma.stringKey.findMany({
     where: { projectId: project.id },
-    orderBy: { key: "asc" },
+    // ⚠️ **가독성·디버깅 목적이다, 결정성의 근거가 아니다.** `orderedEntries`가 동률을 키로 갈라
+    // 전순서를 만들므로 DB 순서는 바이트에 영향을 줄 수 없다. 조회 결과와 파일 순서가 눈으로
+    // 대응해야 순서 문제를 진단할 수 있어서 맞춰 둔다.
+    // ⚠️ `lib/keys/query.ts`에도 같은 `orderBy`가 있는데 **그쪽은 편집 UI 행 순서의 유일한
+    //    출처라 절대 바꾸지 않는다.** grep하면 둘 다 잡힌다.
+    orderBy: [{ sortIndex: "asc" }, { key: "asc" }],
     select: {
       key: true,
       sourceText: true,
       description: true,
+      sortIndex: true,
       orphaned: true,
-      translations: { select: { localeCode: true, value: true } },
+      // 로케일별 chrome 필드도 여기서 온다 — `StringKey.description`(키 단위)과 다른 값이다.
+      translations: { select: { localeCode: true, value: true, description: true, placeholders: true } },
     },
   });
 
@@ -60,10 +67,21 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       key: k.key,
       sourceText: k.sourceText,
       description: k.description,
+      sortIndex: k.sortIndex,
       orphaned: k.orphaned,
       // 로케일 코드 → 셀. 행이 없는 로케일은 미번역이라 키 자체가 없어야 한다
       // (`undefined`와 `{ value: "" }`가 base 폴백에서 갈린다).
-      cells: Object.fromEntries(k.translations.map((t) => [t.localeCode, { value: t.value }])),
+      cells: Object.fromEntries(
+        k.translations.map((t) => [
+          t.localeCode,
+          {
+            value: t.value,
+            ...(t.description === null ? {} : { description: t.description }),
+            // Prisma의 Json 컬럼은 비어 있으면 `null`을 준다 — 없는 것과 같게 다룬다.
+            ...(t.placeholders === null ? {} : { placeholders: t.placeholders }),
+          },
+        ]),
+      ),
     })),
     maxUpdatedAt: agg._max.updatedAt,
   };

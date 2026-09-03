@@ -171,9 +171,13 @@ describe("chrome-locales — write (기존 lib/export.ts 규칙을 이어받는�
     expect(w(e)).toBe(w(e));
   });
 
-  it("description은 base에만", () => {
+  it("description은 로케일마다 낸다 — 엔트리에 있으면 base가 아니어도 낸다", () => {
+    // 전에는 base에만 냈다. 그때는 `buildWriteEntries`가 **키 단위** description을 전 로케일에
+    // 실어서, 가드를 풀면 원본에 없던 값을 비-base 파일에 만들어 넣었다. 이제 엔트리의
+    // description은 `Translation.description`(그 파일이 실제로 갖고 있던 값)이라 그 위험이 없다.
     expect(w([{ key: "k_a", message: "A", description: "d" }], true)).toContain('"description": "d"');
-    expect(w([{ key: "k_a", message: "A", description: "d" }], false)).not.toContain("description");
+    expect(w([{ key: "k_a", message: "A", description: "d" }], false)).toContain('"description": "d"');
+    expect(w([{ key: "k_a", message: "A" }], false)).not.toContain("description");
   });
 
   it("항목 0개면 null", () => {

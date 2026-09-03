@@ -90,8 +90,8 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
 
   it("신규 키에 sortIndex가 실린다", () => {
     const plan = planPush(existing, [
-      { key: "b", sourceText: "B", namespace: "n", sortIndex: 0 },
-      { key: "a", sourceText: "A", namespace: "n", sortIndex: 1 },
+      { key: "b", sourceText: "B", namespace: "n", order: 0 },
+      { key: "a", sourceText: "A", namespace: "n", order: 1 },
     ]);
     expect(plan.toInsert.map((k) => [k.key, k.sortIndex])).toEqual([
       ["a", 1],
@@ -101,12 +101,12 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
 
   it("기존 키도 매 push마다 sortIndex가 갱신된다 — drift가 생기지 않는 근거다", () => {
     const plan = planPush([{ id: "id-a", key: "a", sourceHash: "h", orphaned: false }], [
-      { key: "a", sourceText: "A", namespace: "n", sortIndex: 7 },
+      { key: "a", sourceText: "A", namespace: "n", order: 7 },
     ]);
     expect(plan.toUpdate[0]?.sortIndex).toBe(7);
   });
 
-  it("sortIndex가 없으면 undefined로 남는다 — 배열 인덱스로 채우지 않는다", () => {
+  it("order가 없으면 sortIndex가 undefined로 남는다 — 배열 인덱스로 채우지 않는다", () => {
     const plan = planPush(existing, [
       { key: "b", sourceText: "B", namespace: "n" },
       { key: "a", sourceText: "A", namespace: "n" },
@@ -114,15 +114,15 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
     expect(plan.toInsert.every((k) => k.sortIndex === undefined)).toBe(true);
   });
 
-  it("sortIndex 0을 빠뜨리지 않는다 — falsy라 조건문으로 거르면 사라진다", () => {
-    const plan = planPush(existing, [{ key: "a", sourceText: "A", namespace: "n", sortIndex: 0 }]);
+  it("order 0을 빠뜨리지 않는다 — falsy라 조건문으로 거르면 사라진다", () => {
+    const plan = planPush(existing, [{ key: "a", sourceText: "A", namespace: "n", order: 0 }]);
     expect(plan.toInsert[0]?.sortIndex).toBe(0);
   });
 
-  it("sortIndex 변경만으로는 needsReview를 세우지 않는다 — 원문 해시만이 그 축이다", () => {
+  it("order 변경만으로는 needsReview를 세우지 않는다 — 원문 해시만이 그 축이다", () => {
     const plan = planPush(
       [{ id: "id-a", key: "a", sourceHash: sourceHash("A"), orphaned: false }],
-      [{ key: "a", sourceText: "A", namespace: "n", sortIndex: 3 }],
+      [{ key: "a", sourceText: "A", namespace: "n", order: 3 }],
     );
     // 원문이 같으면 stale이 아니다. (해시가 다르면 stale인 것은 기존 테스트가 덮는다.)
     expect(plan.staleKeyIds).not.toContain("id-a");
