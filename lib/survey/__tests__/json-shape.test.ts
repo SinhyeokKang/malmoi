@@ -166,6 +166,26 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(jsonShape(two({ a: { b: "x" } })).causes.dottedWithNested).toBe(false);
   });
 
+  it("한 줄에 담은 객체를 원인으로 표시한다 — pretty-print가 펼쳐서 diff가 난다", () => {
+    // chrome `_locales`의 흔한 관례다: `"k": { "message": "..." }`. `serialize`가 2칸으로
+    // 펼치므로 순서가 완벽해도 파일 전체가 diff다 (button-stealer 실측 0.964, 38줄→128줄).
+    expect(jsonShape('{\n  "a": { "message": "A" }\n}\n').causes.compactContainer).toBe(true);
+    expect(jsonShape(two({ a: { message: "A" } })).causes.compactContainer).toBe(false);
+  });
+
+  it("한 줄에 담은 배열도 마찬가지다", () => {
+    expect(jsonShape('{\n  "list": ["a", "b"]\n}\n').causes.compactContainer).toBe(true);
+    expect(jsonShape(two({ list: ["a", "b"] })).causes.compactContainer).toBe(false);
+  });
+
+  it("빈 객체·빈 배열은 원인이 아니다 — 우리도 한 줄로 낸다", () => {
+    expect(jsonShape('{\n  "a": {},\n  "b": [],\n  "c": "C"\n}\n').causes.compactContainer).toBe(false);
+  });
+
+  it("파일 전체가 한 줄이어도 최상위 자체는 세지 않는다 — 들여쓰기 관측 불가와 같은 축이다", () => {
+    expect(jsonShape('{"a":"A"}\n').causes.compactContainer).toBe(false);
+  });
+
   it("2칸이 아닌 들여쓰기를 원인으로 표시한다", () => {
     expect(jsonShape(`${JSON.stringify({ a: { b: "B" } }, null, 4)}\n`).causes.indent).toBe(true);
     expect(jsonShape(two({ a: { b: "B" } })).causes.indent).toBe(false);

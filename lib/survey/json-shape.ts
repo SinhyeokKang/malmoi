@@ -34,6 +34,17 @@ export type JsonDiffCauses = {
    */
   emptyValues: boolean;
   /**
+   * 비어 있지 않은 객체·배열이 **한 줄에 담겨 있다** — `serialize`가 2칸으로 펼쳐서 diff가 난다.
+   *
+   * chrome `_locales`의 흔한 관례다: `"k": { "message": "…" }`. 순서가 완벽해도 파일 전체가
+   * diff이고(button-stealer 실측 0.964, 38줄 → 128줄) **들여쓰기 원인의 사촌**이다 — 둘 다
+   * `serialize`의 결정성 규칙이 만드는 것이라 같은 별 기능이 다뤄야 한다.
+   *
+   * 빈 `{}`·`[]`는 세지 않는다 — `JSON.stringify`도 한 줄로 낸다. 최상위 자체도 세지 않는다:
+   * 파일 전체가 한 줄이면 들여쓰기 관측 불가와 같은 축이라 이중으로 세게 된다.
+   */
+  compactContainer: boolean;
+  /**
    * 점 포함 키가 중첩과 **공존한다** — 복원에서 `"a.b"`가 경로로 쪼개져 구조가 바뀐다.
    *
    * `.`가 우리 조인 구분자이면서 실제 키에 든 문자라 flatten/unflatten이 단사가 아니다
@@ -63,6 +74,7 @@ export const emptyJsonDiffCauses = (): JsonDiffCauses => ({
   integerKeys: false,
   emptyValues: false,
   dottedWithNested: false,
+  compactContainer: false,
 });
 
 /**
@@ -221,6 +233,7 @@ class Scanner {
   }
 
   private object(path: string): void {
+    const open = this.i;
     this.expect("{");
     this.ws();
     const names: string[] = [];
@@ -249,9 +262,11 @@ class Scanner {
     }
     // 정규 정수 키가 **하나라도** 있으면 그 객체의 순서는 JS가 다시 정한다.
     if (names.some(isCanonicalIndex)) this.shape.causes.integerKeys = true;
+    this.markCompact(open, names.length > 0);
   }
 
   private array(path: string): void {
+    const open = this.i;
     this.expect("[");
     this.ws();
     if (this.peek() === "]") {
@@ -279,6 +294,18 @@ class Scanner {
       break;
     }
     if (sparse) this.shape.causes.sparseArray = true;
+    this.markCompact(open, index > 0);
+  }
+
+  /**
+   * 열고 닫는 사이에 개행이 없으면 **한 줄에 담긴 컨테이너**다.
+   *
+   * 최상위(`depth === 0`)는 세지 않는다 — 파일 전체가 한 줄인 경우이고 그건 들여쓰기 관측
+   * 불가와 같은 사건이라 이중으로 세게 된다.
+   */
+  private markCompact(open: number, nonEmpty: boolean): void {
+    if (!nonEmpty || this.depth === 0) return;
+    if (!this.text.slice(open, this.i).includes("\n")) this.shape.causes.compactContainer = true;
   }
 
   /** 문자열 하나를 소비하고 **해석된** 값을 준다 — 키에 `\"`·`\\`가 들어갈 수 있다. */
