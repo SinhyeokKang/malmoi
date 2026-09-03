@@ -103,6 +103,8 @@ export type SurveyMetrics = {
   indent: { twoSpace: Rate; distribution: Record<string, number> };
   /** 잔여 diff 원인별 **리포 수**. 지배 원인이 있으면 목표 수치를 그 근거로 조정한다. */
   diffCauses: Record<keyof DiffCauses, number>;
+  /** chrome이 원본에 들고 있는 필드별 리포 수 — **diff 원인이 아니라 관측치다.** */
+  chromeFields: { placeholders: number; nonBaseDescription: number };
 
   /** 부수 관측 — 다음 기능의 우선순위 근거다. */
   icuPluralRepos: number;
@@ -237,8 +239,11 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   }
 
   const causeCounts = emptyCauseCounts();
+  const chromeFieldCounts = { placeholders: 0, nonBaseDescription: 0 };
   for (const s of rows) {
     for (const key of CAUSE_KEYS) if (s.diffCauses[key]) causeCounts[key] += 1;
+    if (s.chromeFields.placeholders) chromeFieldCounts.placeholders += 1;
+    if (s.chromeFields.nonBaseDescription) chromeFieldCounts.nonBaseDescription += 1;
   }
 
   const cleanRatios = rows
@@ -293,6 +298,7 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
       distribution: indentDistribution,
     },
     diffCauses: causeCounts,
+    chromeFields: chromeFieldCounts,
     icuPluralRepos,
     placeholderRepos,
     configFileRepos,

@@ -61,18 +61,26 @@ export type Roundtrip = {
  * 순서 보존만으로 목표(diff ≤ 0.10)가 닫히는지는 여기 남는 것들이 정한다. 안 재면 목표 수치가
  * 근거 없는 희망값이 된다 — 그래서 원인을 세 두고, 지배 원인이 있으면 **별 기능으로 잘라낸다.**
  */
-export type DiffCauses = JsonDiffCauses & {
-  /** chrome: `placeholders` 블록이 있다 — `write`가 `{ message, description? }`만 내서 버린다. */
-  chromePlaceholders: boolean;
-  /** chrome: 비-base 로케일에 `description`이 있다 — `write`가 base에서만 낸다. */
-  chromeNonBaseDescription: boolean;
+export type DiffCauses = JsonDiffCauses;
+
+export const emptyDiffCauses = (): DiffCauses => emptyJsonDiffCauses();
+
+/**
+ * chrome `_locales`가 **원본에 들고 있는** 필드 — 이제 왕복에서 보존되므로 **diff 원인이 아니다.**
+ *
+ * ⚠️ 전에는 `DiffCauses`에 있었다. 태스크 2·4가 두 필드를 되돌리게 만든 뒤로는 diff를 만들지
+ * 않는데도 원인으로 남아 있어서, **chrome 리포 13개가 `clean` 분모에서 부당하게 빠졌다**
+ * (그 13개의 diff 중앙값은 0.032로 목표 통과였다). 관측 자체는 남길 값이 있다 — 20개 리포가
+ * 잃던 필드라는 사실이 이 기능의 근거였다.
+ */
+export type ChromeFields = {
+  /** `placeholders` 블록이 있다. 학습 코퍼스 33개 중 12개. */
+  placeholders: boolean;
+  /** 비-base 로케일에 `description`이 있다. 33개 중 20개. */
+  nonBaseDescription: boolean;
 };
 
-export const emptyDiffCauses = (): DiffCauses => ({
-  ...emptyJsonDiffCauses(),
-  chromePlaceholders: false,
-  chromeNonBaseDescription: false,
-});
+export const emptyChromeFields = (): ChromeFields => ({ placeholders: false, nonBaseDescription: false });
 
 export type SurveyCandidate = {
   adapter: AdapterName;
@@ -162,6 +170,8 @@ export type RepoSurvey = {
   localeOrderCompared: number;
   /** 순서 외에 무엇이 diff를 만드는가. */
   diffCauses: DiffCauses;
+  /** chrome이 원본에 들고 있는 필드 — 보존되므로 diff 원인은 아니다. 관측만 한다. */
+  chromeFields: ChromeFields;
 
   separators: SeparatorCounts;
   /** ICU 복수형(`{n, plural, …}`)을 쓰는 키 수 — MVP §7 비범위라 **빈도만** 센다. */

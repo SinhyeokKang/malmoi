@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { summarize } from "../summarize";
-import { emptyDiffCauses, emptyErrors, type RepoSurvey, type Verdict } from "../types";
+import { emptyChromeFields, emptyDiffCauses, emptyErrors, type RepoSurvey, type Verdict } from "../types";
 
 /**
  * `summarize` — `RepoSurvey[]` + **정답 경로 목록** → 지표 4개 + 2층 마크다운 표.
@@ -29,6 +29,7 @@ const base = (over: Partial<RepoSurvey> & { repo: string }): RepoSurvey => ({
   configFiles: [],
   localeOrderCompared: 0,
   diffCauses: emptyDiffCauses(),
+  chromeFields: emptyChromeFields(),
   ms: 1,
   ...over,
 });

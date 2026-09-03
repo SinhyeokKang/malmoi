@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { surveyOne } from "../one";
 import { summarize } from "../summarize";
-import { emptyDiffCauses, emptyErrors, type RepoSurvey, type SurveyInput } from "../types";
+import { emptyChromeFields, emptyDiffCauses, emptyErrors, type RepoSurvey, type SurveyInput } from "../types";
 
 /**
  * 키 순서 보존 기능(`docs/features/key-order-preservation/`)의 **태스크 0 — 측정** 지표.
@@ -146,7 +146,7 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
     expect(s.diffCauses).toEqual(emptyDiffCauses());
   });
 
-  it("chrome placeholders와 비-base description을 원인으로 센다 — write가 둘 다 버린다", () => {
+  it("chrome placeholders와 비-base description을 **관측치로** 센다 — 이제 보존되므로 diff 원인이 아니다", () => {
     const s = surveyOne(
       input("acme/chrome", {
         "public/_locales/en/messages.json": two({
@@ -160,8 +160,11 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
       }),
     );
     expect(s.chosen?.adapter).toBe("chrome-locales");
-    expect(s.diffCauses.chromePlaceholders).toBe(true);
-    expect(s.diffCauses.chromeNonBaseDescription).toBe(true);
+    expect(s.chromeFields.placeholders).toBe(true);
+    expect(s.chromeFields.nonBaseDescription).toBe(true);
+    // ⚠️ **`diffCauses`에 있으면 안 된다** — 그러면 chrome 리포가 clean 분모에서 부당하게 빠진다.
+    // 실측에서 13개가 그렇게 빠졌고 그들의 diff 중앙값은 0.032로 목표 통과였다.
+    expect(s.diffCauses).toEqual(emptyDiffCauses());
   });
 });
 
@@ -216,6 +219,7 @@ const row = (over: Partial<RepoSurvey> & { repo: string }): RepoSurvey => ({
   configFiles: [],
   localeOrderCompared: 0,
   diffCauses: emptyDiffCauses(),
+  chromeFields: emptyChromeFields(),
   ms: 1,
   ...over,
 });

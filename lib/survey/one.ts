@@ -6,6 +6,7 @@ import { candidatesFor } from "./merge";
 import { median } from "./stats";
 import { tsShape } from "./ts-shape";
 import {
+  emptyChromeFields,
   emptyDiffCauses,
   emptyErrors,
   type ReadErrorKind,
@@ -48,6 +49,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     diffApproximate: false,
     localeOrderCompared: 0,
     diffCauses: emptyDiffCauses(),
+    chromeFields: emptyChromeFields(),
     separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
     icuPluralKeys: 0,
     placeholderKeys: 0,
@@ -305,11 +307,14 @@ function mergeCauses(survey: RepoSurvey, causes: JsonDiffCauses): void {
 }
 
 /**
- * chrome 전용 손실 — `write`가 `{ message, description? }`만 내고 **base에서만 description을 낸다**
- * (`chrome-locales.ts`). 그래서 원본의 `placeholders`와 비-base `description`이 파일에서 사라진다.
+ * chrome이 원본에 들고 있는 필드를 센다.
  *
- * ⚠️ **왕복 의미 게이트가 이걸 못 본다.** `LocaleEntry`에 그 필드가 없어 read1·read2 둘 다 무시하기
- * 때문이다 — 손실이 있는데 지표는 "같다"고 말한다. 여기서 세지 않으면 어디에도 안 남는다.
+ * **전에는 손실이었다** — `write`가 `{ message, description? }`만 내고 base에서만 description을
+ * 냈다. 태스크 2·4가 둘 다 되돌리게 만든 뒤로는 diff 원인이 아니고 **관측치**로만 남는다:
+ * 33개 중 12개(placeholders)·20개(비-base description)라는 숫자가 이 기능의 근거였다.
+ *
+ * ⚠️ **왕복 의미 게이트는 여전히 이 필드를 못 본다.** `sameMeaning`이 key·message만 비교하므로
+ * 회귀가 나도 그쪽은 조용하다 — 바이트 왕복(L2 골든 픽스처)이 유일한 그물이다.
  */
 function observeChrome(
   survey: RepoSurvey,
@@ -331,8 +336,8 @@ function observeChrome(
     for (const value of Object.values(parsed as Record<string, unknown>)) {
       if (value === null || typeof value !== "object") continue;
       const entry = value as Record<string, unknown>;
-      if (entry["placeholders"] !== undefined) survey.diffCauses.chromePlaceholders = true;
-      if (locale !== base && entry["description"] !== undefined) survey.diffCauses.chromeNonBaseDescription = true;
+      if (entry["placeholders"] !== undefined) survey.chromeFields.placeholders = true;
+      if (locale !== base && entry["description"] !== undefined) survey.chromeFields.nonBaseDescription = true;
     }
   }
 }
