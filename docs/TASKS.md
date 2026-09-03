@@ -20,7 +20,7 @@
 |---|---|---|
 | **A. 모듈 완성** | `lib/` 각 모듈이 자기 입·출력 계약을 닫는다 | 대부분 됨 — 아래 표 |
 | **B. 데이터 플로우 체크** | 세 흐름이 **끝에서 끝까지** 값을 안 잃는다 | ✅ 됨 (2026-09-03) |
-| **C. Actions + Cron** | push가 CI에서, pull이 cron에서 자동으로 돈다 | ⬜ (구 §7) |
+| **C. Actions + Cron** | push가 CI에서, pull이 cron에서 자동으로 돈다 | ✅ 됨 (2026-09-03) — 잔여 둘은 §7 |
 
 **그 다음이 SaaS화다** — 인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**. 거기서 `main`/`dev`를
 나눈다 (MVP §8.4).
@@ -91,10 +91,12 @@
   - 절차: `.env.local`의 `ACTIVE_PROJECT_SLUG`를 임시로 `order-check`로 두고 dev 서버를 띄웠다.
     편집은 Prisma 직접 쓰기다(`saveTranslation` 경로는 B-2가 덮는다). 끝나고 env를 복구했다
 
-### C. Actions + Cron
+### C. Actions + Cron ✅ (2026-09-03)
 
-구 §7 그대로다 — 아래 §7 참조. **B가 닫히기 전에는 시작하지 않는다**: 자동으로 도는 것이
-무엇을 잃는지 모르는 채 돌면 그게 야간에 조용히 쌓인다.
+구 §7 그대로다 — 아래 §7 참조. push는 `order-check`의 CI에서, pull은 Vercel Cron에서 돈다.
+
+**남은 둘은 C의 완료 조건이 아니라 그 다음이다**: `bugshot-2` 연동(multi-locale `ts-dict` 903키 —
+`order-check`가 검증하지 못한 축)과 `/l10n-roundtrip` 스킬.
 
 ---
 
@@ -468,7 +470,7 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 ---
 
-## 7. Actions 워크플로 + Vercel Cron ⬜ (= §0의 **C단계**) — 실동작 확인됨, cron 등록만 대기
+## 7. Actions 워크플로 + Vercel Cron ✅ (= §0의 **C단계**) — 자동화 경로가 선다. 남은 것은 bugshot-2 연동과 `/l10n-roundtrip`
 
 - [x] **§4b(오배송·역행 거부)가 먼저 서 있어야 한다** ✅ — `lib/push/guard.ts`가 두 판정을 들고 라우트가 409를 낸다. Actions가 `projectSlug`와 `commitAt`을 보낸다 (`push-local.ts`가 `git show -s --format=%cI`로 얻는다)
 - [x] **대상 리포 base 브랜치 — `dev`** (2026-09-01 결정 — 🔒 해소, MVP §3.1). bugshot-2의 실제 작업 브랜치이고 `main`은 보호 브랜치다. 첫 실측(적재 커밋이 `dev`에만 존재)은 머지로 낡았고, 재실측 결과 양쪽 head가 같아 구조적 이유로 판정했다. **DB의 `Project.baseBranch` 갱신은 6단계 0번 태스크에 남아 있다**
@@ -489,9 +491,10 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 - [x] **적재 실패만 CI를 red로 만든다** (스캔 실패는 경고) ✅ (2026-09-03)
   - 근거: 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이다 — 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4). 옛 체크리스트의 "비리터럴 인자 발견 시 CI 실패"는 "코드 스캔이 진실"이던 시절 항목이라 삭제했다
   - 검증: `ko.json`을 깨뜨린 커밋 → **failure**(`적재 에러 1건 — CI를 실패시킨다`), revert → **success**. 같은 리포에서 `refs` 0건·스캔 경고 0건인 run이 계속 green이었다
-- [ ] `vercel.json` Cron → `/api/pull` 야간 1회 — **파일은 있다** (`0 18 * * *` UTC = KST 03:00)
-  - 검증: Vercel 대시보드에서 cron 등록 확인 ← **대기 중**
-  - 라우트 자체는 프로덕션에서 확인됐다(위 전역 미결 항목). 남은 것은 Vercel이 실제로 트리거하는지다
+- [x] `vercel.json` Cron → `/api/pull` 야간 1회 ✅ (2026-09-03) — `0 18 * * *` UTC = KST 03:00
+  - 검증: Vercel 대시보드 Settings > Cron Jobs에 `/api/pull` 등록 확인
+  - 라우트는 프로덕션에서 새 `CRON_SECRET`으로 재확인했다 — `{"status":"skipped","reason":"no-changes"}`(200), 인증 없이는 401. `CRON_SECRET` 헤더 주입은 Vercel이 하므로 배선할 것이 없다
+  - ⬜ **실제 야간 트리거는 아직 안 봤다** — 첫 발화가 KST 03:00이다. 다음 날 아침에 로그를 한 번 본다
 - [x] 대상 리포 왕복 검증 — **자동화 경로로 한 바퀴** ✅ (2026-09-03, `order-check`)
   - CI push(200) → DB 편집 → 프로덕션 `/api/pull`(PR #2 생성) → 워크플로 실행(경고) → PR 머지(스킵) → 수동 실행(DB 수렴). 모든 홉이 **실물 Actions·실물 Vercel**을 지났다
   - ⬜ **`bugshot-2`(ko/en/fr, ts-dict 903키)는 아직 안 붙였다** — MVP §9의 원래 대상이다. `adapter: ts-dict` 명시가 필수다
