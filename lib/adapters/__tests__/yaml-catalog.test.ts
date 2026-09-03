@@ -397,3 +397,36 @@ describe("yaml-catalog — 시퀀스 값도 제자리에서 고친다", () => {
     expect(w2).toBe(w1);
   });
 });
+
+describe("yaml-catalog — 표현은 원본에서 (ARCHITECTURE §1.4)", () => {
+  it("편집하지 않은 80자 넘는 plain 스칼라는 접히지 않고 그대로 남는다", () => {
+    const long = "이 문장은 여든 글자를 넘기기 위해 " + "단어 ".repeat(40) + "끝";
+    const src = `ko:\n  short: 짧다\n  long: ${long}\n`;
+    const out = yamlCatalog.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "short", message: "바뀜" }],
+    })!;
+    expect(out.split("\n")).toContain(`  long: ${long}`);
+  });
+
+  it("4칸 들여쓰기 파일은 편집 뒤에도 4칸이다 — 값 하나 바꾸는데 파일 전체가 재들여쓰기되면 안 된다", () => {
+    const src = `ko:\n    common:\n        ok: 확인\n        close: 닫기\n`;
+    const out = yamlCatalog.write(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "common.ok", message: "OK" }],
+    })!;
+    expect(out).toBe(`ko:\n    common:\n        ok: OK\n        close: 닫기\n`);
+  });
+
+  it("writeWithErrors — 원본이 파싱되지 않으면 원본을 돌려주되 에러로 알린다", () => {
+    const res = yamlCatalog.writeWithErrors!(withSource("ko:\n  a: [unclosed\n"), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "x" }],
+    });
+    expect(res.content).toBe("ko:\n  a: [unclosed\n");
+    expect(res.errors).toHaveLength(1);
+  });
+});

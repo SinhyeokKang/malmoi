@@ -497,3 +497,15 @@ describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", (
     expect(out).not.toContain('"common.new"');
   });
 });
+
+describe("code-dict — writeWithErrors", () => {
+  it("default export 객체를 못 찾으면 원본을 돌려주되 에러로 알린다 — 조용히 '변경 없음'이 되면 PR에서 파일이 빠진다", () => {
+    const src = "export const x = 1;\n";
+    const res = codeDict.writeWithErrors!(
+      { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", locales: ["ko"], currentFiles: [{ path: "i18n/ko.ts", content: src }] },
+      { locale: "ko", isBase: false, entries: [{ key: "a", message: "x" }] },
+    );
+    expect(res.content).toBe(src);
+    expect(res.errors).toHaveLength(1);
+  });
+});

@@ -292,3 +292,19 @@ describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
     expect(second).toBe(first);
   });
 });
+
+describe("ts-dict — write의 방어", () => {
+  const SRC = `const ko = { "a": "하나", b: notALiteral } as const;\nconst en = { "a": "one" } as const;\n`;
+  const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["ko", "en"], currentFiles: [{ path: "ns/x.ts", content: SRC }] };
+
+  it("빈 값은 치환하지 않는다 — 어댑터도 스스로 거른다 (code-dict·yaml과 같은 이중 방어)", () => {
+    const out = tsDict.write(fmt, { locale: "ko", isBase: false, entries: [{ key: "a", message: "" }] });
+    expect(out).toBe(SRC);
+  });
+
+  it("writeWithErrors가 비리터럴 프로퍼티를 에러로 돌려준다 — write는 그것을 버렸다", () => {
+    const res = tsDict.writeWithErrors!(fmt, { locale: "ko", isBase: false, entries: [{ key: "a", message: "둘" }] });
+    expect(res.content).toContain('"둘"');
+    expect(res.errors.some((e) => e.message.includes("b"))).toBe(true);
+  });
+});

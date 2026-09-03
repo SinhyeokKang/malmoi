@@ -261,18 +261,31 @@ function collect(
 const PLAIN_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 function write(format: DetectedFormat, input: WriteInput): string | null {
+  return writeWithErrors(format, input).content;
+}
+
+/**
+ * ⚠️ **파싱 실패·default export 부재는 "변경 없음"이 아니다.** 원본을 그대로 돌려주되 에러로 알린다 —
+ * `write`만 부르면 호출부가 blob SHA가 같다고 읽어 그 파일이 PR에서 조용히 빠진다.
+ */
+function writeWithErrors(
+  format: DetectedFormat,
+  input: WriteInput,
+): { content: string | null; errors: AdapterError[] } {
   const file = format.currentFiles?.[0];
-  if (!file) return null;
+  if (!file) return { content: null, errors: [] };
 
   let sf: SourceFile;
   let root: ObjectLiteralExpression | undefined;
   try {
     sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
     root = defaultExportObject(sf);
-  } catch {
-    return file.content;
+  } catch (cause) {
+    return { content: file.content, errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${(cause as Error).message}` }] };
   }
-  if (root === undefined) return file.content;
+  if (root === undefined) {
+    return { content: file.content, errors: [{ path: file.path, message: "default export 객체 리터럴을 찾을 수 없다 — 원본을 그대로 둔다" }] };
+  }
 
   const wanted = new Map<string, string>();
   for (const e of input.entries) {
@@ -308,7 +321,7 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
     if (insert(root, key, value, quote)) changed = true;
   }
 
-  return changed ? sf.getFullText() : file.content;
+  return { content: changed ? sf.getFullText() : file.content, errors: [] };
 }
 
 /**
@@ -393,4 +406,5 @@ export const codeDict: Adapter = {
   detectCandidates,
   read,
   write,
+  writeWithErrors,
 };

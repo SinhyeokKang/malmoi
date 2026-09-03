@@ -167,22 +167,32 @@ function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResul
  *   여러 파일에 걸치므로 **한 파일의 내용**을 돌려주려면 호출부가 파일별로 부른다.
  */
 function write(format: DetectedFormat, input: WriteInput): string | null {
+  return writeWithErrors(format, input).content;
+}
+
+/** `write`와 같되 `pairs`가 건너뛴 비리터럴 프로퍼티를 에러로 돌려준다 — 전에는 모아서 버렸다. */
+function writeWithErrors(
+  format: DetectedFormat,
+  input: WriteInput,
+): { content: string | null; errors: AdapterError[] } {
   const current = format.currentFiles;
-  if (!current || current.length === 0) return null;
+  if (!current || current.length === 0) return { content: null, errors: [] };
   // 한 번에 한 파일만 다룬다. 여러 파일이 오면 첫 번째 — 호출부가 파일별로 부르는 계약이다.
   const file = current[0];
-  if (!file) return null;
+  if (!file) return { content: null, errors: [] };
 
   const wanted = new Map<string, string>();
   for (const e of input.entries) {
     // orphaned 키는 파일에 남긴다 — 값을 바꾸지 않는다. 지우면 코드가 참조하는 키가 사라진다.
-    if (e.orphaned === true) continue;
+    // 빈 값도 남긴다 — 호출부(`buildWriteEntries`)가 이미 거르지만, 이 어댑터만 이중 방어가
+    // 없으면 소스에 `""`가 박히고 TS 딕셔너리엔 폴백이 없다 (`code-dict`·`yaml-catalog`와 같은 규칙).
+    if (e.orphaned === true || e.message === "") continue;
     wanted.set(e.key, e.message);
   }
 
   const sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
   const obj = localeObjects(sf).get(input.locale);
-  if (!obj) return file.content;
+  if (!obj) return { content: file.content, errors: [] };
 
   const errors: AdapterError[] = [];
   let changed = false;
@@ -200,7 +210,7 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   }
 
   // 값이 안 바뀌면 원본을 그대로 돌려준다 — ts-morph의 출력 정규화가 끼어들지 않게 한다.
-  return changed ? sf.getFullText() : file.content;
+  return { content: changed ? sf.getFullText() : file.content, errors };
 }
 
 export const tsDict: Adapter = {
@@ -211,4 +221,5 @@ export const tsDict: Adapter = {
   detectCandidates,
   read,
   write,
+  writeWithErrors,
 };

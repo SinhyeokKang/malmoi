@@ -142,7 +142,12 @@ export type ReadResult = {
 
 export type WriteInput = {
   locale: string;
-  /** base 로케일이면 description을 파일에 넣는다(지원하는 어댑터에서). */
+  /**
+   * base 로케일인가. **어댑터는 읽지 않는다** — 2026-09-03 개정 후 description은 로케일마다 그 파일이
+   * 갖고 있던 값을 되돌리고(`LocaleEntry.description`), base 폴백 판정은 호출부(`buildWriteEntries`·
+   * `rowsForLocale`)가 끝낸 뒤 entries에 실어 넘긴다. 계약에 남겨둔 것은 호출부가 "이 write가 base인가"를
+   * 한 자리에서 넘기게 하려는 것이다.
+   */
   isBase: boolean;
   entries: readonly LocaleEntry[];
 };
@@ -184,7 +189,9 @@ export type Adapter = {
    * `detect`와 같은 판정을 하되 **후보를 전부 순위순으로** 돌려준다. 못 찾으면 빈 배열.
    *
    * `detect`는 이 결과의 `[0]`이다 — 두 함수가 같은 관문(순위·probe 검증)을 지나므로 어긋날 수
-   * 없다. 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
+   * 없다. ⚠️ **예외는 `ts-dict` 하나다**: 자동 탐지에서 빠져 `detectCandidates`는 항상 `[]`이고
+   * `detect`(명시 지정)만 내용 탐지를 돈다 — `detect-candidates.test.ts`가 그 예외를 단언한다
+   * (POSTMORTEM 2026-09-03). 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
    * 위해서다: 1순위만 보면 오탐이 났다는 사실은 알아도 탐지가 얼마나 가까웠는지는 알 수 없다
    * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
    *

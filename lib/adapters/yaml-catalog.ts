@@ -228,17 +228,49 @@ function collect(
 }
 
 function write(format: DetectedFormat, input: WriteInput): string | null {
+  return writeWithErrors(format, input).content;
+}
+
+/**
+ * 원본의 들여쓰기 폭. **`yaml`은 파싱한 문서에서 이 값을 보존하지 않는다** — `toString`이 기본
+ * 2칸으로 다시 찍는다. 4칸 리포에서 값 하나를 바꾸면 파일 전체가 재들여쓰기된 PR이 나가므로
+ * 원본에서 관측한다 (ARCHITECTURE §1.4 "표현은 원본에서"). 들여쓴 첫 줄이 구조의 첫 자식이다.
+ */
+function indentOf(text: string): number {
+  for (const line of text.split("\n")) {
+    const m = /^( +)\S/.exec(line);
+    if (m?.[1]) return m[1].length;
+  }
+  return 2;
+}
+
+/**
+ * ⚠️ **파싱 실패는 "변경 없음"이 아니다.** 원본을 그대로 돌려주되 에러로 알린다 — `write`만 부르면
+ * 호출부가 blob SHA가 같다고 읽어 그 파일이 PR에서 조용히 빠진다.
+ */
+function writeWithErrors(
+  format: DetectedFormat,
+  input: WriteInput,
+): { content: string | null; errors: AdapterError[] } {
   const file = format.currentFiles?.[0];
   // 수술적 치환의 전제 — 원본이 없으면 치환할 대상이 없다. 파일을 새로 만들지 않는다.
-  if (!file) return null;
+  if (!file) return { content: null, errors: [] };
 
   let doc: Document;
   try {
     doc = parseDocument(file.content, PARSE_OPTS);
-  } catch {
-    return file.content;
+  } catch (cause) {
+    return {
+      content: file.content,
+      errors: [{ path: file.path, message: `YAML 파싱 실패로 원본을 그대로 둔다: ${(cause as Error).message}` }],
+    };
   }
-  if (doc.errors.length > 0) return file.content;
+  if (doc.errors.length > 0) {
+    return {
+      content: file.content,
+      errors: [{ path: file.path, message: `YAML 파싱 실패로 원본을 그대로 둔다: ${doc.errors[0]?.message ?? "알 수 없음"}` }],
+    };
+  }
 
   // 루트 키는 **원본에서 다시 관측한다.** `format.rootKeyedByPath`를 믿지 않는 이유: 그 값은 read
   // 시점의 관측이고, write에 들어오는 원본이 그 사이 바뀌었을 수 있다(pull은 base 트리에서 새로
@@ -279,7 +311,11 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   }
 
   // 값이 안 바뀌면 원본을 그대로 돌려준다 — 재직렬화가 스타일을 정규화하지 않게 한다.
-  return changed ? String(doc) : file.content;
+  // 바뀌면: 들여쓰기는 원본에서, **접기는 끈다**(`lineWidth: 0`). 기본 80칸에서 편집하지 않은
+  // 긴 plain 스칼라까지 접혀 나가 "값만 바꾼다"가 깨진다 — 픽스처가 전부 80자 미만이라 보이지
+  // 않았다 (POSTMORTEM 2026-09-03 "픽스처가 한 스타일이면 그 축은 검증되지 않은 것").
+  if (!changed) return { content: file.content, errors: [] };
+  return { content: doc.toString({ indent: indentOf(file.content), lineWidth: 0 }), errors: [] };
 }
 
 /**
@@ -340,4 +376,5 @@ export const yamlCatalog: Adapter = {
   detectCandidates,
   read,
   write,
+  writeWithErrors,
 };
