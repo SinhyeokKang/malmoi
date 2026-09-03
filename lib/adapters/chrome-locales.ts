@@ -4,7 +4,7 @@ import {
   looksLikeLocale,
   rankCandidates,
   serialize,
-  usableEntries,
+  orderedEntries,
   verifySamples,
 } from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult } from "./types";
@@ -125,14 +125,22 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
 }
 
 function write(_format: DetectedFormat, input: { locale: string; isBase: boolean; entries: readonly LocaleEntry[] }): string | null {
-  const usable = usableEntries(input.entries);
+  const usable = orderedEntries(input.entries);
   if (usable.length === 0) return null;
 
-  // 정렬한 순서로 재조립한다 — JSON.stringify는 삽입 순서를 따르고, DB에서 온 순서를 믿을 수 없다.
-  const out: Record<string, { message: string; description?: string }> = {};
+  // `orderedEntries`가 낸 순서로 재조립한다 — `JSON.stringify`는 삽입 순서를 따른다(정규 정수
+  // 키만 예외이고, chrome 키 이름 규칙상 여기선 생기지 않는다).
+  const out: Record<string, { message: string; description?: string; placeholders?: unknown }> = {};
   for (const e of usable) {
-    // description은 원문 메타데이터라 base에만 넣는다 — 번역 파일마다 복제하면 읽는 쪽이 없다.
-    out[e.key] = input.isBase && e.description ? { message: e.message, description: e.description } : { message: e.message };
+    const entry: { message: string; description?: string; placeholders?: unknown } = { message: e.message };
+    // ⚠️ **description은 아직 base에만 넣는다.** `buildWriteEntries`가 `StringKey.description`
+    // (키 단위, base에서 온 값)을 **모든 로케일**의 엔트리에 실으므로, 지금 이 가드를 풀면 pull이
+    // 비-base 파일에 **원본에 없던 description을 만들어 넣는다** — 잃는 것보다 나쁘다.
+    // `Translation.description`이 생기는 태스크 4에서 함께 푼다.
+    if (input.isBase && e.description) entry.description = e.description;
+    // placeholders는 그 로케일 파일에서 읽은 것이라 그대로 되돌린다. 모양을 검사하지 않는다.
+    if ("placeholders" in e) entry.placeholders = e.placeholders;
+    out[e.key] = entry;
   }
   return serialize(out);
 }

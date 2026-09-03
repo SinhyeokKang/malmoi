@@ -25,11 +25,31 @@ const input = (repo: string, files: Record<string, string>): SurveyInput => ({
   configFiles: [],
 });
 
-/** base(en)만 흐트러져 있고 비-base는 이미 우리 순서다 — base만 재는 지표의 사각이 여기다. */
+/** base(en)만 흐트러져 있고 비-base는 이미 우리 순서다 — 순서 일치율이 0이 되는 모양. */
 const BASE_SCRAMBLED = {
   "src/i18n/en.json": two({ b: "B", a: "A" }),
   "src/i18n/ko.json": two({ a: "에이", b: "비" }),
   "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
+};
+
+/**
+ * base만 4칸 들여쓰기 — **순서 외 원인**으로 base diff만 나는 모양.
+ *
+ * ⚠️ 전에는 이 격차를 "base만 정렬이 흐트러짐"으로 만들었는데, 태스크 2가 순서를 보존하면서
+ * 그 방식으로는 diff가 안 난다. 지표(`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면
+ * 안 보이는 격차**이고, 그 격차는 순서가 아닌 원인으로도 똑같이 성립한다.
+ */
+const BASE_INDENT_ONLY = {
+  "src/i18n/en.json": `${JSON.stringify({ a: "A", b: "B" }, null, 4)}\n`,
+  "src/i18n/ko.json": two({ a: "에이", b: "비" }),
+  "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
+};
+
+/** 전 로케일이 4칸 — 비-base도 diff가 난다. */
+const ALL_INDENT = {
+  "src/i18n/en.json": `${JSON.stringify({ a: "A", b: "B" }, null, 4)}\n`,
+  "src/i18n/ko.json": `${JSON.stringify({ a: "에이", b: "비" }, null, 4)}\n`,
+  "src/i18n/ja.json": `${JSON.stringify({ a: "エー", b: "ビー" }, null, 4)}\n`,
 };
 
 /** 전 로케일이 base 순서를 그대로 따른다 — A안(base 순서를 전 로케일에 전파)이 성립하는 모양. */
@@ -146,16 +166,25 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
 });
 
 describe("surveyOne — 비-base 로케일 diff", () => {
-  it("base가 흐트러져도 비-base가 우리 순서면 비-base diff는 0이다", () => {
-    // 이 격차가 base 하나만 재던 지표의 사각이고, A안의 위험이 사는 자리다.
-    const s = surveyOne(input("acme/scrambled", BASE_SCRAMBLED));
+  it("base에만 원인이 있으면 비-base diff는 0이다 — base 하나만 재던 지표의 사각", () => {
+    const s = surveyOne(input("acme/base-indent", BASE_INDENT_ONLY));
     expect(s.diffRatio).toBeGreaterThan(0);
     expect(s.diffRatioNonBase).toBe(0);
   });
 
-  it("전 로케일이 흐트러져 있으면 비-base diff도 0이 아니다", () => {
-    const s = surveyOne(input("acme/agree", ALL_AGREE));
+  it("전 로케일에 원인이 있으면 비-base diff도 0이 아니다", () => {
+    const s = surveyOne(input("acme/all-indent", ALL_INDENT));
     expect(s.diffRatioNonBase).toBeGreaterThan(0);
+  });
+
+  it("순서만 흐트러진 파일은 이제 diff가 0이다 — 태스크 2가 한 일이 이것이다", () => {
+    // 전에는 이 픽스처가 base diff > 0을 냈다. 순서 보존이 실제로 프로덕션 경로에서
+    // 동작하는지를 **어댑터 단위 테스트가 아니라 survey 진입점에서** 확인하는 지점이다.
+    const s = surveyOne(input("acme/scrambled", BASE_SCRAMBLED));
+    expect(s.diffRatio).toBe(0);
+    expect(s.diffRatioNonBase).toBe(0);
+    // 순서 일치율은 원본 텍스트에서 재므로 **여전히 0이다** — write가 고쳐진 것과 무관하다.
+    expect(s.localeOrderAgreement).toBe(0);
   });
 });
 

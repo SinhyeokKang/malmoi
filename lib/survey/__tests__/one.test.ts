@@ -201,8 +201,10 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.keyCount).toBe(2);
     expect(s.roundtrip.semantic).toBe("same");
     expect(s.roundtrip.byteFixpoint).toBe("same");
-    // 원본이 이미 정렬돼 있지 않다 → 첫 write에서 재정렬 diff가 난다
-    expect(s.diffRatio).toBeGreaterThan(0);
+    // 원본이 정렬돼 있지 않아도 **재정렬 diff가 나지 않는다** — 재생성 writer가 `order`로
+    // 원본 순서를 되돌린다 (`docs/features/key-order-preservation/` 태스크 2). 전에는 이 줄이
+    // `toBeGreaterThan(0)`이었고, 그 값(중앙값 0.784)이 이 기능이 존재하는 이유였다.
+    expect(s.diffRatio).toBe(0);
   });
 
   it("오탐 픽스처: 1순위가 진짜 카탈로그이고 검색 인덱스는 probe에서 걸러진다", () => {

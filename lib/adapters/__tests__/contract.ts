@@ -134,8 +134,21 @@ const entriesFor = (keys: readonly string[]): LocaleEntry[] => keys.map((k) => (
  *
  * 같으면 `order`를 통째로 무시하는 writer도 정렬 검사를 통과한다. 두 순서가 달라야 그 writer가
  * 잡힌다 (`contract.test.ts`의 `ignoreOrder` 네거티브).
+ *
+ * **키 집합은 `CONTRACT_KEYS`와 같아야 한다** — 수술적 치환 writer는 원본에 없는 키를 삽입하므로,
+ * 키가 하나라도 다르면 `order` 유무가 아니라 키 집합 때문에 출력이 달라진다.
  */
 export const CONTRACT_FILE_ORDER = ["z", "1", "ä", "B", "a", "_x", "b", "Z", "A"] as const;
+
+/**
+ * 위 배치에서 **순서를 실제로 검사할 수 있는** 키만.
+ *
+ * ⚠️ **`"1"`이 빠진다.** 정규 배열 인덱스 키는 JS 객체가 **숫자 오름차순으로 앞에 끌어올려**
+ * 삽입 순서를 지우고 `JSON.stringify`가 그 순서를 그대로 낸다. 직렬화를 직접 짜지 않는 한 어떤
+ * writer도 못 이기므로, 규칙에 넣으면 통과 불가능한 검사가 된다. 알려진 한계이고 spec 비목표에
+ * 있다: "정수형 키의 순서 보존 — 원리적으로 보존 불가".
+ */
+const ORDER_CHECKABLE = CONTRACT_FILE_ORDER.filter((k) => k !== "1");
 
 /** `CONTRACT_KEYS`와 같은 키·값에 `order`만 실은 엔트리. 배열 순서는 order와 같게 둔다. */
 const orderedEntriesFor = (): LocaleEntry[] =>
@@ -221,7 +234,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
   if (ordered === null) {
     bad.push("order: 정상 입력에 null을 냈다");
   } else {
-    const orderPos = CONTRACT_FILE_ORDER.map((k) => at(ordered, k));
+    const orderPos = ORDER_CHECKABLE.map((k) => at(ordered, k));
     if (orderPos.some((p) => p === -1)) {
       bad.push("order: 출력에서 찾을 수 없는 키가 있다");
     } else if (orderPos.some((p, i) => i > 0 && p < orderPos[i - 1]!)) {

@@ -7,7 +7,7 @@ import {
   rankTemplateCandidates,
   serialize,
   splitLocaleSuffix,
-  usableEntries,
+  orderedEntries,
 } from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
@@ -231,7 +231,7 @@ function writeWithErrors(
   format: DetectedFormat,
   input: WriteInput,
 ): { content: string | null; errors: AdapterError[] } {
-  const usable = usableEntries(input.entries);
+  const usable = orderedEntries(input.entries);
   const errors: AdapterError[] = [];
   if (usable.length === 0) return { content: null, errors };
 
@@ -299,14 +299,11 @@ function normalizeArrays(value: unknown): unknown {
   for (const name of names) converted[name] = normalizeArrays(obj[name]);
 
   const isDense = names.length > 0 && names.every((n, i) => n === String(i));
-  return isDense ? names.map((n) => converted[n]) : sortedByKey(converted);
-}
-
-/** 객체 키를 정렬해 재조립 — 중첩 각 층에서도 순서가 결정적이어야 한다. */
-function sortedByKey(obj: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const name of Object.keys(obj).sort(compareKeys)) out[name] = obj[name];
-  return out;
+  // ⚠️ **여기서 다시 정렬하지 않는다.** `setDeep`이 `orderedEntries`의 순서대로 트리를 만들고
+  // `Object.keys`가 그 삽입 순서를 주므로, **각 층은 이미 파일에서의 첫 등장 순**이다. 전에는
+  // 마지막에 `sortedByKey`로 다시 정렬해서, 최상위를 고쳐도 하위 층이 통째로 재정렬됐다 —
+  // diff 비율은 낮은데 hunk가 수십 개가 되는 모양이다 (spec §왜 diff 비율 하나로는 부족한가).
+  return isDense ? names.map((n) => converted[n]) : converted;
 }
 
 export const jsonCatalog: Adapter = {

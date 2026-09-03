@@ -18,18 +18,38 @@ export function serialize(value: unknown): string {
 }
 
 /**
- * 낼 항목을 고른다 — 미번역 제외, 키 정렬.
+ * 낼 항목을 고르고 **원본 파일 순서로** 늘어놓는다.
  *
  * 빈 문자열도 미번역으로 취급한다(편집 UI에서 값을 지우면 그렇게 들어온다). 미번역 항목을
  * 남기면 그 값이 그대로 렌더되는데, 빼면 폴백한다.
+ *
+ * 정렬은 두 층이다 (`docs/features/key-order-preservation/`):
+ *
+ * 1. `order`가 있는 것 먼저, `order` 오름차순 — 그 파일에서의 위치다.
+ * 2. 없는 것은 뒤에, 코드 유닛 순. 순서를 모르는 키이고 개정 전 규칙이 그대로 폴백이 된다.
+ *
+ * ⚠️ **동률은 키로 갈라 전순서를 만든다.** 배열 위치로 갈리게 두면 DB 조회 순서가 바이트에
+ * 새어 `같은 DB 상태 → 같은 바이트`가 환경(컬레이션·행 순서)에 묶인다 — blob SHA 비교 전체가
+ * 그 불변식 위에 서 있다 (ARCHITECTURE §1.1·§2).
+ *
+ * ⚠️ **`order`를 `if (e.order)`로 보지 않는다.** 0이 falsy라 파일의 첫 키가 맨 뒤로 밀린다.
  */
-export function usableEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
+export function orderedEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
   return entries
     // orphaned = 코드에서 사라진 키. DB엔 남기고 파일에서만 뺀다 — 되돌릴 수 있어야 한다.
-    // **모든 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
+    // **모든 재생성 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
     .filter((e) => e.orphaned !== true)
     .filter((e) => e.message !== "")
-    .sort((a, b) => compareKeys(a.key, b.key));
+    .slice()
+    .sort((a, b) => {
+      const ao = a.order;
+      const bo = b.order;
+      if (ao !== undefined && bo !== undefined) return ao - bo || compareKeys(a.key, b.key);
+      // 있는 쪽이 무조건 앞이다 — 크기 비교가 아니라 두 층이라서 order 999도 order 없음보다 앞이다.
+      if (ao !== undefined) return -1;
+      if (bo !== undefined) return 1;
+      return compareKeys(a.key, b.key);
+    });
 }
 
 /**

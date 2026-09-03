@@ -102,7 +102,7 @@ export type LocaleEntry = {
    * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
    *
    * **처리가 writer 방식마다 다르다** (MVP §4.1):
-   * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`usableEntries`가 거른다).
+   * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
    * - 수술적 치환(`ts-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
@@ -162,7 +162,7 @@ export type Adapter = {
   /**
    * write 방식. **`layout`과 별개 축이다** (2026-09-02 분리).
    *
-   * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `usableEntries`의 결정성 규칙(§1.1)을
+   * - `"regenerate"` — DB 상태만으로 파일을 새로 만든다. `orderedEntries`의 결정성 규칙(§1.1)을
    *   지나야 한다 (`chrome-locales`·`json-catalog`).
    * - `"surgical"` — 원본을 파싱해 값만 갈아끼운다. 정렬·재조립을 하지 않고 주석·빈 줄·앵커를
    *   보존한다 (`yaml-catalog`·`code-dict`·`ts-dict`).
