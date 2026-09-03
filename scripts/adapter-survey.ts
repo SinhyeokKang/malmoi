@@ -188,6 +188,11 @@ if (asJson) {
 
   console.log(`\n⑤ 키 순서 보존의 근거   [docs/features/key-order-preservation/]`);
   console.log(
+    `   ★ 순서 외 원인 없는 재생성 리포: ${diff.clean.repos}개, 중앙값 ` +
+      `${diff.clean.median?.toFixed(3) ?? "–"}, 목표 초과 ${pct(diff.clean.overTarget)}`,
+  );
+  console.log(`     └ **완료 조건의 분모다** — 전체에 걸면 다른 원인이 섞여 어느 기능이 실패했는지 못 가른다`);
+  console.log(
     `   로케일 간 순서 일치율: 중앙값 ${localeOrder.agreementMedian?.toFixed(3) ?? "–"} (리포 ${localeOrder.comparedRepos})` +
       `   → ≥ 0.9면 StringKey.sortIndex, 미만이면 Translation.sortIndex`,
   );

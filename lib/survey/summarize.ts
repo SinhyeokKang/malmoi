@@ -80,6 +80,17 @@ export type SurveyMetrics = {
     nonBaseMedian?: number;
     /** 어댑터별 diff — 전에는 마크다운 표에만 있어 `--json | jq`로 완료 조건을 못 읽었다. */
     byAdapter: Record<string, AdapterDiff>;
+    /**
+     * **순서 외 원인이 하나도 없는 재생성 리포**만의 diff — 키 순서 보존의 완료 조건 분모다.
+     *
+     * 전체 코퍼스에 목표를 걸면 68%가 들여쓰기·chrome 필드·이스케이프 때문에 초과해서
+     * **어느 기능이 실패했는지 못 가른다** (`docs/ADAPTER-COVERAGE.md` §10.3). 순서 보존이
+     * **자기 책임 범위에서** 0에 도달하는지를 재는 것이 정직하다.
+     *
+     * ⚠️ 수술적 어댑터는 분모에서 뺀다 — 이미 0.000이라 넣으면 중앙값을 끌어내려
+     * "순서 보존이 잘 됐다"는 거짓 신호가 된다.
+     */
+    clean: AdapterDiff;
     approximateRepos: string[];
   };
 
@@ -119,6 +130,12 @@ export type SurveySummary = {
 };
 
 const CAUSE_KEYS = Object.keys(emptyDiffCauses()) as Array<keyof DiffCauses>;
+
+/**
+ * 이 기능이 닿는 어댑터. 수술적 3개는 원본을 보존하므로 이미 0.000이고, `orderedEntries`를
+ * 지나지도 않는다 — 분모에 넣으면 순서 보존의 성과를 재는 숫자가 아니게 된다.
+ */
+const REGENERATE_ADAPTERS = new Set(["chrome-locales", "json-catalog"]);
 
 const emptyCauseCounts = (): Record<keyof DiffCauses, number> =>
   Object.fromEntries(CAUSE_KEYS.map((k) => [k, 0])) as Record<keyof DiffCauses, number>;
@@ -215,6 +232,12 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
     for (const key of CAUSE_KEYS) if (s.diffCauses[key]) causeCounts[key] += 1;
   }
 
+  const cleanRatios = rows
+    .filter((s) => s.chosen !== undefined && REGENERATE_ADAPTERS.has(s.chosen.adapter))
+    .filter((s) => CAUSE_KEYS.every((k) => !s.diffCauses[k]))
+    .map((s) => s.diffRatio)
+    .filter((r): r is number => r !== undefined);
+
   const metrics: SurveyMetrics = {
     repoCount: rows.length,
     failedCount: failed.length,
@@ -246,6 +269,11 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
       overTarget: rate(ratios.filter((r) => r > DIFF_TARGET).length, ratios.length),
       nonBaseMedian: median(nonBaseRatios),
       byAdapter,
+      clean: {
+        repos: cleanRatios.length,
+        median: median(cleanRatios),
+        overTarget: rate(cleanRatios.filter((r) => r > DIFF_TARGET).length, cleanRatios.length),
+      },
       approximateRepos,
     },
     localeOrder: { agreementMedian: median(agreements), comparedRepos: agreements.length },
