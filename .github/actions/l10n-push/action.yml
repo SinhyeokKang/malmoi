@@ -83,17 +83,27 @@ runs:
     # ⚠️ **차단이 아니라 경고다.** strict라 이 PR이 머지되기 전의 push는 번역자의 편집을
     # 지운다 (MVP §3.1의 손실 창). 막으면 병합 판정이 되어 코어 원칙을 깨므로, 개발자가
     # 판단할 재료만 남긴다.
+    # ⚠️ **`--repo`를 명시한다.** 이 스텝의 작업 디렉터리는 호출자(대상 리포)지만 `gh`가
+    # 무엇을 컨텍스트로 잡는지에 의존하면 조용히 엉뚱한 리포를 조회한다 — 첫 실행에서 PR이
+    # 열려 있는데 "없음"이 나왔다.
+    # ⚠️ **조회 실패를 "PR 없음"으로 읽지 않는다.** `2>/dev/null || true`가 그렇게 만들어서
+    # 경고가 존재하지 않는 것과 구별되지 않았다. 실패는 실패로 보고한다(단 red는 아니다 —
+    # 이 스텝은 경고 전용이고 적재를 막을 근거가 없다).
     - name: 열린 l10n/sync PR 경고
       if: inputs.github-token != ''
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
       run: |
-        open=$(gh pr list --head l10n/sync --state open --json url --jq '.[0].url' 2>/dev/null || true)
-        if [ -n "$open" ]; then
-          echo "::warning title=머지되지 않은 번역 PR::$open — 이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창). 머지한 뒤 다시 push하는 것을 권한다"
+        if ! out=$(gh pr list --repo "$REPO" --head l10n/sync --state open --json url --jq '.[0].url // ""' 2>&1); then
+          echo "::warning title=번역 PR 조회 실패::$out — 열린 PR이 있는지 확인하지 못했다"
+          exit 0
+        fi
+        if [ -n "$out" ]; then
+          echo "::warning title=머지되지 않은 번역 PR::$out — 이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창). 머지한 뒤 다시 push하는 것을 권한다"
         else
-          echo "열린 l10n/sync PR 없음"
+          echo "열린 l10n/sync PR 없음 (조회 성공)"
         fi
 
     # **적재 실패만 red다.** 스캔 실패는 경고이고 `pnpm scan`은 항상 exit 0이다 —
