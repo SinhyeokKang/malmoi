@@ -509,3 +509,41 @@ describe("code-dict — writeWithErrors", () => {
     expect(res.errors).toHaveLength(1);
   });
 });
+
+describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)", () => {
+  const fmtOf = (content: string): DetectedFormat => ({
+    adapter: "code-dict",
+    pathTemplate: "i18n/{locale}.ts",
+    locales: ["ko"],
+    currentFiles: [{ path: "i18n/ko.ts", content }],
+  });
+
+  it("문자열 리터럴이 아닌 자리는 건너뛰되 에러로 남긴다 — 조용히 버리면 어느 키를 잃었는지 모른다", () => {
+    const res = codeDict.writeWithErrors!(fmtOf("export default {\n  a: someExpr,\n}\n"), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "값" }],
+    });
+    expect(res.content).toBe("export default {\n  a: someExpr,\n}\n");
+    expect(res.errors.some((e) => e.message.includes("a"))).toBe(true);
+  });
+
+  it("문자열 자리를 객체로 덮어야 하는 삽입은 포기하되 에러로 남긴다", () => {
+    const res = codeDict.writeWithErrors!(fmtOf('export default {\n  a: "leaf",\n}\n'), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a.deep", message: "값" }],
+    });
+    expect(res.errors.some((e) => e.message.includes("a.deep"))).toBe(true);
+  });
+
+  it("정상 입력에는 에러가 없다", () => {
+    const res = codeDict.writeWithErrors!(fmtOf('export default {\n  a: "old",\n}\n'), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "새 값" }],
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.content).toContain("새 값");
+  });
+});

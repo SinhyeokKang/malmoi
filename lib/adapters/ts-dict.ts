@@ -191,10 +191,17 @@ function writeWithErrors(
   }
 
   const sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
-  const obj = localeObjects(sf).get(input.locale);
-  if (!obj) return { content: file.content, errors: [] };
-
   const errors: AdapterError[] = [];
+  const obj = localeObjects(sf).get(input.locale);
+  // **로케일 객체가 없는 것을 성공으로 처리하지 않는다.** 그 로케일의 번역이 통째로 반영되지
+  // 않는데 호출부는 "변경 없음"으로 읽어 파일이 PR에서 조용히 빠진다 (ARCHITECTURE §1.35).
+  if (!obj) {
+    return {
+      content: file.content,
+      errors: [{ path: file.path, message: `'${input.locale}' 로케일 객체가 파일에 없어 번역을 반영하지 못했다` }],
+    };
+  }
+
   let changed = false;
   for (const { key, value, assignment } of pairs(obj, file.path, errors)) {
     const next = wanted.get(key);

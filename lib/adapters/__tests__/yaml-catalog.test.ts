@@ -430,3 +430,36 @@ describe("yaml-catalog — 표현은 원본에서 (ARCHITECTURE §1.4)", () => {
     expect(res.errors).toHaveLength(1);
   });
 });
+
+describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #4)", () => {
+  it("알리아스 자리는 건드리지 않되 에러로 남긴다 — 앵커 관계가 깨지므로 건너뛰는 건 맞다", () => {
+    const src = "ko:\n  base: &a 기준\n  ref: *a\n";
+    const res = yamlCatalog.writeWithErrors!(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "ref", message: "새 값" }],
+    });
+    expect(res.content).toBe(src);
+    expect(res.errors.some((e) => e.message.includes("ref"))).toBe(true);
+  });
+
+  it("맵 자리에 스칼라를 쓰려 하면 포기하되 에러로 남긴다", () => {
+    const src = "ko:\n  grp:\n    inner: 값\n";
+    const res = yamlCatalog.writeWithErrors!(withSource(src), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "grp", message: "스칼라로 덮으려 한다" }],
+    });
+    expect(res.content).toBe(src);
+    expect(res.errors.some((e) => e.message.includes("grp"))).toBe(true);
+  });
+
+  it("정상 치환에는 에러가 없다", () => {
+    const res = yamlCatalog.writeWithErrors!(withSource(RAILS), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "common.ok", message: "OK" }],
+    });
+    expect(res.errors).toEqual([]);
+  });
+});

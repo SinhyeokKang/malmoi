@@ -207,6 +207,16 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const missing = CONTRACT_KEYS.filter((k) => !plain.includes(val(k)));
   if (missing.length > 0) bad.push(`DB 값이 출력에 반영되지 않았다: ${missing.join(", ")}`);
 
+  // **`writeWithErrors`를 구현했으면 `write`와 갈라지지 않는다.** 한쪽만 고치면 프로덕션(pull)과
+  // 측정(survey)이 서로 다른 함수를 부르게 되고, 그게 정확히 이 리포가 밟은 함정이다.
+  if (adapter.writeWithErrors !== undefined) {
+    const res = adapter.writeWithErrors(fmt, { locale, isBase: true, entries: entriesFor(CONTRACT_KEYS) });
+    if (res.content !== plain) bad.push("writeWithErrors의 content가 write와 다르다 — 한쪽만 고치면 갈린다");
+    if (res.errors.length > 0) {
+      bad.push(`정상 입력에 write 에러를 냈다: ${res.errors.map((e) => e.message).join(" / ")}`);
+    }
+  }
+
   if (surgical) {
     // 수술적 치환은 원본 보존이 요지다 — 정렬·2칸·끝 개행·빈 값 필터를 적용하지 않는다.
     // **`layout`이 아니라 `writeStrategy`로 갈린다** — yaml-catalog가 per-locale인데 여기로 온다.
@@ -218,6 +228,18 @@ export function writerContractViolations(adapter: Adapter): string[] {
     // 같아야 한다 — 달라졌다면 이 방식이 재생성 규칙을 밟기 시작한 것이다.
     if (ordered !== plain) {
       bad.push("order를 줬더니 출력이 달라졌다 — 수술적 치환은 원본 순서를 지켜야 한다 (§1.4)");
+    }
+    // **값이 안 바뀌면 원본 바이트 그대로다.** 이 검사가 없으면 재직렬화가 들여쓰기·줄 접기를
+    // 바꿔도 계약이 통과한다 — `yaml-catalog`가 정확히 그 상태였다 (2026-09-04 audit #4).
+    const source = fmt.currentFiles?.[0]?.content;
+    const unchanged = write(CONTRACT_KEYS.map((k) => ({ key: k, message: srcVal(k) })));
+    if (source !== undefined && unchanged !== source) {
+      bad.push("값이 안 바뀌었는데 원본 바이트를 그대로 돌려주지 않았다 — 재직렬화가 표현을 바꾼다 (§1.4)");
+    }
+    // **버린 항목을 보고할 통로가 있어야 한다.** 수술적 치환은 키 단위로 건너뛰는 자리가 여럿이다
+    // (비리터럴·알리아스·맵 자리·로케일 객체 부재). 조용히 버리면 어느 키를 잃었는지 모른다 (§1.35).
+    if (adapter.writeWithErrors === undefined) {
+      bad.push("writeWithErrors를 구현하지 않았다 — 버린 항목을 보고할 통로가 없다 (§1.35)");
     }
     return bad;
   }

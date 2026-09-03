@@ -295,6 +295,7 @@ function writeWithErrors(
   }
 
   let changed = false;
+  const errors: AdapterError[] = [];
   const missing: string[] = [];
   for (const [key, value] of wanted) {
     const target = findScalar(root, key);
@@ -302,7 +303,12 @@ function writeWithErrors(
       missing.push(key);
       continue;
     }
-    if (target === "not-a-literal") continue;
+    // 문자열 리터럴이 아닌 자리는 건드리지 않는다. **다만 조용히 버리지 않는다** — 값을 잃더라도
+    // 어느 키에서 잃었는지 알려주는 것이 최소 조건이다 (ARCHITECTURE §1.35).
+    if (target === "not-a-literal") {
+      errors.push({ path: file.path, message: `'${key}'가 문자열 리터럴 자리가 아니라 값을 넣지 못했다` });
+      continue;
+    }
     if (target.getLiteralValue() === value) continue;
     // ⚠️ `setLiteralValue`는 이스케이프하지 않는다 — 백슬래시·개행·따옴표가 재파싱에서 깨진다.
     // `quoteLiteral`이 `JSON.stringify`로 안전한 리터럴을 만들되 **원본의 인용 부호로** 낸다 —
@@ -318,10 +324,15 @@ function writeWithErrors(
   for (const key of missing.sort(compareKeys)) {
     const value = wanted.get(key);
     if (value === undefined) continue;
-    if (insert(root, key, value, quote)) changed = true;
+    if (insert(root, key, value, quote)) {
+      changed = true;
+      continue;
+    }
+    // 문자열 자리를 객체로 덮는 삽입은 구조 변경이라 포기한다 — 그 사실을 보고한다.
+    errors.push({ path: file.path, message: `'${key}'를 넣을 자리를 만들 수 없어 건너뛰었다 (구조 변경)` });
   }
 
-  return { content: changed ? sf.getFullText() : file.content, errors: [] };
+  return { content: changed ? sf.getFullText() : file.content, errors };
 }
 
 /**

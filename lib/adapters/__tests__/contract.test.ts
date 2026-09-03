@@ -129,6 +129,30 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     expect(writerContractViolations(fakeSurgical).join("\n")).toMatch(/주석/);
   });
 
+  it("잡는다: 수술적 치환인데 값 무변경에도 원본 바이트를 안 내고 보고 통로가 없음", () => {
+    const fakeReserializing: Adapter = {
+      name: "yaml-catalog",
+      layout: "per-locale",
+      writeStrategy: "surgical",
+      detect: () => undefined,
+      detectCandidates: () => [],
+      read: () => ({ locales: [], errors: [], nested: true }),
+      // 주석은 남기지만(그 검사를 피한다) 끝에 한 줄을 더해 바이트를 바꾼다.
+      write: (f, input) => {
+        const src = f.currentFiles?.[0]?.content ?? "";
+        let out = src;
+        for (const e of input.entries) {
+          if (e.orphaned === true) continue;
+          out = out.replace(new RegExp(`(${JSON.stringify(e.key)}: ).*`), `$1${JSON.stringify(e.message)}`);
+        }
+        return `${out}# 재직렬화가 남긴 줄\n`;
+      },
+    };
+    const found = writerContractViolations(fakeReserializing).join("\n");
+    expect(found).toMatch(/원본 바이트를 그대로 돌려주지 않았다/);
+    expect(found).toMatch(/writeWithErrors를 구현하지 않았다/);
+  });
+
   it("잡는다: 입력을 통째로 무시하고 상수를 내는 writer", () => {
     const fakeConstant: Adapter = {
       ...fakeRegenerating({}),

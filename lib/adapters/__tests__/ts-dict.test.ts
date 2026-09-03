@@ -308,3 +308,33 @@ describe("ts-dict — write의 방어", () => {
     expect(res.errors.some((e) => e.message.includes("b"))).toBe(true);
   });
 });
+
+describe("ts-dict — 로케일 객체 부재도 보고한다 (2026-09-04 audit #5)", () => {
+  const SRC_KO_ONLY = 'const ko = { "a": "하나" } as const;\nexport const ns = { ko };\n';
+  const fmt = {
+    adapter: "ts-dict" as const,
+    pathTemplate: "ns/*.ts",
+    locales: ["ko", "fr"],
+    currentFiles: [{ path: "ns/x.ts", content: SRC_KO_ONLY }],
+  };
+
+  it("요청한 로케일 객체가 파일에 없으면 에러다 — 로케일 전체 누락을 성공으로 처리하면 안 된다", () => {
+    const res = tsDict.writeWithErrors!(fmt, {
+      locale: "fr",
+      isBase: false,
+      entries: [{ key: "a", message: "un" }],
+    });
+    expect(res.content).toBe(SRC_KO_ONLY);
+    expect(res.errors.some((e) => e.message.includes("fr"))).toBe(true);
+  });
+
+  it("있는 로케일은 에러 없이 치환한다", () => {
+    const res = tsDict.writeWithErrors!(fmt, {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "a", message: "둘" }],
+    });
+    expect(res.errors).toEqual([]);
+    expect(res.content).toContain("둘");
+  });
+});

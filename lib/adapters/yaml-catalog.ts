@@ -285,6 +285,7 @@ function writeWithErrors(
   }
 
   let changed = false;
+  const errors: AdapterError[] = [];
   const missing: string[] = [];
   for (const [key, value] of wanted) {
     // ⚠️ **리터럴 전체 키를 먼저 본다.** `{ "a.b": v }`처럼 점을 품은 평평한 키를 쓰는 파일에서
@@ -297,8 +298,13 @@ function writeWithErrors(
       }
       continue;
     }
-    // 알리아스나 맵 자리는 건드리지 않는다 — 구조를 바꾸는 일이다.
-    if (node !== undefined && node !== null) continue;
+    // 알리아스·맵·시퀀스 자리는 건드리지 않는다 — 구조를 바꾸는 일이다. **다만 조용히 버리지
+    // 않는다**: 알리아스는 값의 출처가 앵커 쪽이라 편집이 원리적으로 무효이고, 맵 자리는 원본
+    // 규약을 갈아치우게 된다. 어느 키를 못 넣었는지는 알려야 한다 (ARCHITECTURE §1.35).
+    if (node !== undefined && node !== null) {
+      errors.push({ path: file.path, message: `'${key}'가 스칼라 자리가 아니라 값을 넣지 못했다 (알리아스·맵·시퀀스)` });
+      continue;
+    }
     missing.push(key);
   }
 
@@ -314,8 +320,8 @@ function writeWithErrors(
   // 바뀌면: 들여쓰기는 원본에서, **접기는 끈다**(`lineWidth: 0`). 기본 80칸에서 편집하지 않은
   // 긴 plain 스칼라까지 접혀 나가 "값만 바꾼다"가 깨진다 — 픽스처가 전부 80자 미만이라 보이지
   // 않았다 (POSTMORTEM 2026-09-03 "픽스처가 한 스타일이면 그 축은 검증되지 않은 것").
-  if (!changed) return { content: file.content, errors: [] };
-  return { content: doc.toString({ indent: indentOf(file.content), lineWidth: 0 }), errors: [] };
+  if (!changed) return { content: file.content, errors };
+  return { content: doc.toString({ indent: indentOf(file.content), lineWidth: 0 }), errors };
 }
 
 /**
