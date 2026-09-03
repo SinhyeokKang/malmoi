@@ -35,13 +35,15 @@
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
 | `lib/keys` | 3 | 2 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 |
 | `lib/auth` | 1 | 1 | 없음 |
-| **`lib/scan`** | **3** | **1** | ⚠️ **가장 얇다** — 아래 A-1 |
+| `lib/scan` | 4 | 3 | 없음 — 훅·namespace까지 (A-1 ✅) |
 | `lib/githash`·`env` | 2 | 2 | 없음 |
 
-- [ ] **A-1. `lib/scan` 계약을 닫는다** — 소스 3개에 테스트 1개다. `refs`는 "진실이 아니고 실패는
-      경고"(ARCHITECTURE §4)라 우선순위가 낮았는데, **그 관용이 곧 미검증 경로**다
-  - 검증: 래퍼 함수(`--wrapper`)·훅 호출·namespace 상대 키에서 무엇을 잡고 무엇을 놓치는지가
-    테스트로 고정된다. `🔴 훅 기반 호출 지원`·`🔒 namespace 상대 키`(§3)가 여기서 판정된다
+- [x] **A-1. `lib/scan` 계약을 닫는다** ✅ (2026-09-03) — `WrapperId.kind`로 호출 형태를 가르고
+      훅 반환 바인딩을 스코프째 추적한다. `🔴 훅 기반 호출 지원`·`🔒 namespace 상대 키` 둘 다
+      **지원으로 판정**됐다 (§3b)
+  - 검증: 단위 26건 추가(훅 구조분해·별칭·스코프·namespace 해석·래퍼 복수·미해결 경고),
+    실측 3개 리포에서 **오탐 0** — skillflo 0→1144키, bugshot-web 0→30키, bugshot-2 변화 없음
+    (ARCHITECTURE §4.0.2)
 
 ### B. 데이터 플로우 체크 — 흐름별로 하나씩
 
@@ -193,27 +195,26 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 - [x] `pnpm ingest <dir>` CLI — 탐지·적재·왕복 판정
 - [ ] 🔒 **base 로케일 판정** — 지금은 `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 추정이다 (MVP §10)
 
-### 3b. 사용처 스캔 (`lib/scan/`) ⬜ — `refs` 전담, 경고만 (**훅 기반 미지원**)
+### 3b. 사용처 스캔 (`lib/scan/`) ✅ — `refs` 전담, 경고만
 
-> **🔴 2026-08-31 실전에서 발견: 훅 기반 i18n을 못 잡는다.** import 기반 매칭이라 `import { t }` 패턴만 본다. 실측:
+> **2026-09-03 해소 (A-1).** 2026-08-31 실전에서 "훅 기반 i18n을 못 잡는다"로 열렸던 항목이다 — import 기반 매칭이라 `import { t }` 패턴만 봤고, 실측 3개 중 2개의 `refs`가 0건이었다. `refs`가 컨텍스트 기능의 전부라(MVP §3.2) 3개 중 2개가 0건이면 기능이 없는 것과 같았다.
 >
-> | 리포 | 호출 형태 | refs |
-> |---|---|---|
-> | bugshot-2 | `import { t } from "@/i18n"` | 115키 / 273건 ✅ |
-> | skillflo | `const { t } = useI18n()` | **0** ❌ |
-> | bugshot-web | `const t = await getTranslations({ namespace: "meta" })` | **0** ❌ (키가 namespace 상대) |
+> | 리포 | 호출 형태 | 전 | 후 |
+> |---|---|---|---|
+> | bugshot-2 | `import { t } from "@/i18n"` | 115키 / 273건 | **변화 없음** |
+> | skillflo | `const { t } = useI18n()` | **0** | 1144키 / 1643건 |
+> | bugshot-web | `const t = await getTranslations({ namespace: "meta" })` | **0** | 30키 / 46건 |
 >
-> `refs`가 컨텍스트 기능의 전부다(MVP §3.2 "성패가 여기 달렸다"). 3개 중 2개가 0건이면 기능이 없는 것과 같다. next-intl·react-i18next가 전부 훅 기반이라 "범용적"이라는 목표와 정면으로 어긋난다.
->
-> **영향 범위는 컨텍스트 축 하나다.** 층 분리(적재=진실, 스캔=`refs`) 덕분에 **적재·편집·pull은 3개 리포 모두 정상 동작한다** — 죽는 것은 permalink뿐이다. 즉 적재는 4/4, 컨텍스트는 1/3.
->
-> **6단계를 막지 않는다**: §9 왕복 검증 대상인 bugshot-2는 `refs`가 이미 나온다. 데드라인은 skillflo 실사용 직전이다.
->
-> **아래 두 항목은 한 세트다.** 훅 지원만 해소하면 skillflo만 살아나고, bugshot-web(next-intl)은 키가 namespace 상대라 `t("title")`을 잡아도 `meta.title`로 잇지 못해 여전히 0이다.
+> 셋 다 오탐 0이다(스캔 키를 로케일 파일 키와 대조). 남은 미검출은 전부 동적 조립·배열 인덱스라 원리적으로 못 잡으며, 그 자리는 경고가 신고하고 답은 대상 리포의 `// @l10n-keys`다. 근거는 ARCHITECTURE §4.0.2.
 
-- [ ] 🔴 **훅 기반 호출 지원** — `const { t } = useI18n()` / `const t = useTranslations()`
-  - 필요: 훅 import를 찾고 그 반환값의 지역 바인딩 이름(구조분해·직접대입)을 추적해 그 스코프 안의 호출을 매칭
-- [ ] 🔒 **namespace 상대 키 지원 여부** — next-intl의 `getTranslations({ namespace: "meta" })` + `t("title")` → 실제 키 `meta.title`. 인자에서 namespace를 해석해야 하고 리터럴 케이스만 지원할지 결정 필요
+- [x] 🔴 **훅 기반 호출 지원** ✅ — `WrapperId.kind: "direct" | "hook"`. 훅 import를 찾아 그 반환의 지역 바인딩(구조분해 `{ t }`·별칭 `{ t: tr }`·직접대입)을 **스코프째** 추적한다
+  - 검증: 한 파일의 컴포넌트 여럿이 같은 이름 `t`를 서로 다른 namespace로 갖는 경우, props로 받은 남의 `t`를 잡지 않는 경우까지 테스트로 고정
+- [x] 🔒 **namespace 상대 키** ✅ **지원한다 (리터럴만)** — `useTranslations("hero")`·`getTranslations({ locale, namespace: "meta" })` 둘 다 읽고 `await`를 벗긴다. `t("title")` → `hero.title`
+  - **비리터럴은 경고를 내고 그 바인딩을 버린다** — 접두사를 모르는 채 잡으면 존재하지 않는 키가 `refs`에 실린다. 0건이 낫다
+  - `// @l10n-keys`의 키는 **절대 키다** — 접두사를 붙이지 않는다. 붙이면 같은 지시자가 파일 위치에 따라 다른 키가 된다
+- [x] **래퍼 여럿** ✅ — `scanSources`가 목록을 받는다. bugshot-web이 한 리포에서 `next-intl#useTranslations()`와 `next-intl/server#getTranslations()`를 함께 쓴다
+- [x] **스펙 파싱을 `lib/scan/wrapper.ts`로 통합** ✅ — CLI 둘이 각자 파싱하던 것. 형식에 `()`가 붙으면서 한쪽만 훅을 못 읽는 상태가 조용히 생긴다
+  - 함께 고친 것: `--wrapper` **값**이 대상 디렉터리로 오인되던 인자 파싱 (`pnpm scan --wrapper @/i18n#t ./dir`)
 
 - [x] AST 경로 (ts-morph) — 주석·문자열 안의 호출을 구분
   - 검증: 라인/블록 주석·문자열 리터럴 3케이스. 자기 리포 스캔이 0키(테스트 파일이 문자열로 `t(...)`를 담고 있다)

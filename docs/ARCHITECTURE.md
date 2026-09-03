@@ -316,27 +316,57 @@ clone하지 않는다.
 
 `pnpm scan`은 **항상 exit 0이다.** CI를 실패시킬 수 있는 건 `pnpm ingest`뿐이다.
 
-bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지금 **115키 / 참조 273건 / 경고 9건 / exit 0**. 경고 9건은 전부 그 리포의 실제 동적 키다.
+bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지금 **115키 / 참조 273건 / 경고 9건 / exit 0**. 경고 9건은 전부 그 리포의 실제 동적 키다. 훅 기반 두 리포의 실측은 §4.0.2.
 
 **따라서 실패가 경고다.** 스캐너가 못 찾은 키는 동적으로 조립됐거나 아직 안 쓰이는 키다 — 컨텍스트가 빠질 뿐 적재는 정상이다. 남의 리포 CI를 우리 규칙으로 실패시킬 근거가 없다.
 
 **AST를 쓰는 이유**: 정규식은 주석 속 호출·문자열 리터럴 안의 `t(`·템플릿 조립을 구분하지 못한다. ts-morph는 주석을 AST 노드로 만들지 않으므로 주석 속 호출은 애초에 순회 대상이 아니다. 이 프로젝트에서 리뷰 grep이 두 번 그 오탐을 냈다(주석 속 `content.length`, `echo`의 이스케이프 해석).
 
-### 4.0 ⚠️ 훅 기반 i18n을 아직 못 잡는다
+### 4.0 호출 형태는 둘이다 — `kind`가 가른다 (2026-09-03)
 
-import 기반 매칭이라 **`import { t } from "<module>"` 패턴만** 본다. 실측 3개 리포 중 둘이 훅 기반이고 그쪽 `refs`가 0건이다:
+`WrapperId.kind`가 **호출 형태**를 가른다. 이 축이 없던 동안 실측 3개 리포 중 둘의 `refs`가 0건이었다.
 
-- `const { t } = useI18n()` (skillflo) — `t`가 import가 아니라 훅 반환값의 구조분해다
-- `const t = await getTranslations({ namespace: "meta" })` (bugshot-web, next-intl) — 위와 같고, 게다가 **키가 namespace 상대**라 `t("title")`의 실제 키는 `meta.title`이다
+| kind | 형태 | 실측 |
+|---|---|---|
+| `direct` | `import { t } from "@/i18n"` → `t("k")` | bugshot-2 |
+| `hook` | export를 부른 **반환값**이 호출자다 | skillflo, bugshot-web |
 
-**next-intl·react-i18next가 전부 훅 기반이라 "범용적"이라는 목표와 어긋난다.** 고치려면 훅 import를 찾고 그 반환값의 지역 바인딩을 추적해야 한다(TASKS §3b).
+`hook`이 인식하는 것:
+
+- **구조분해** `const { t } = useI18n()` — 별칭(`{ t: tr }`)도 따라간다. 찾는 프로퍼티 이름은 `t` 고정이고, 이건 실측 관례다(vue-i18n·react-i18next·skillflo가 전부 그렇다). 다른 이름을 쓰는 리포가 나오면 그때 옵션이 된다
+- **직접 대입** `const t = useTranslations("hero")` / `const t = await getTranslations({ locale, namespace: "meta" })` — `await`를 벗기고, 객체 인자의 `namespace` 프로퍼티를 읽는다
+- **namespace 상대 키를 절대 키로 되돌린다** — `useTranslations("hero")` 스코프의 `t("title")`은 `hero.title`이다. next-intl의 키 체계가 그렇다
+
+⚠️ **바인딩은 스코프를 안다.** 한 파일에 컴포넌트가 여럿이면 같은 이름의 `t`가 서로 다른 namespace를 갖는다(bugshot-web 실측). 호출 위치를 담는 **가장 좁은** 바인딩을 고르고, 스코프 밖의 같은 이름은 남의 것으로 둔다(props로 받은 `t`).
+
+⚠️ **namespace가 리터럴이 아니면 경고를 내고 그 바인딩의 호출을 버린다.** 접두사를 모르는 채 잡으면 **존재하지 않는 키가 `refs`에 실린다** — 0건이 낫다. 훅 반환을 인식할 수 없는 형태(배열 구조분해 등)로 받아도 같다. `lib/scan`이 "실패는 경고"인 층이라 조용한 0건이 가장 나쁜 결과다.
+
+### 4.0.1 래퍼는 여럿이다
+
+`scanSources`는 **wrapper 목록**을 받는다. bugshot-web이 한 리포에서 `next-intl#useTranslations()`(클라이언트)와 `next-intl/server#getTranslations()`(서버)를 함께 쓴다 — 하나만 받으면 절반이 0건이 된다. CLI는 `--wrapper`를 여러 번 받고, 끝의 `()`가 hook을 뜻한다.
+
+**스펙 파싱은 `lib/scan/wrapper.ts` 하나다.** 전에는 `scripts/scan.ts`와 `scripts/push-local.ts`가 각자 파싱했고, 형식이 늘어나면 한쪽만 못 읽는 상태가 조용히 생긴다.
+
+⚠️ **CLI가 `--wrapper` 값 자리를 소비한다.** 값이 `--`로 시작하지 않아, "플래그가 아닌 첫 인자"를 대상 디렉터리로 삼으면 `pnpm scan --wrapper @/i18n#t ./dir`이 래퍼 스펙을 디렉터리로 읽는다.
+
+### 4.0.2 실측 (2026-09-03)
+
+세 리포 모두 **오탐 0**이다. 오탐 판정은 스캔이 낸 키를 그 리포의 로케일 파일 키와 대조한 것이다.
+
+| 리포 | 형태 | 전 | 후 | 로케일 키 대비 | 오탐 |
+|---|---|---|---|---|---|
+| bugshot-2 | direct | 115키 / 273건 | **변화 없음** | 903키 중 111 (12.3%) | 0 |
+| skillflo | hook (구조분해) | **0** | 1144키 / 1643건 | 1446키 중 1144 (**79.1%**) | 0 |
+| bugshot-web | hook + namespace, 래퍼 2개 | **0** | 30키 / 46건 | 104키 중 30 (28.8%) | 0 |
+
+**커버리지가 낮은 쪽은 스캐너 결함이 아니라 그 리포의 키 구성이다.** bugshot-web의 미검출 74건은 전부 동적 조립(`t(\`faq.items.${id}.q\`)`)이거나 배열 인덱스(`hero.subcopy.0`)이고, 경고 13건이 그 자리를 신고한다. 원리적으로 못 잡으며 답은 대상 리포의 `// @l10n-keys`다. bugshot-2의 12.3%도 같은 이유이고, 그 리포는 포맷이 둘이라(`_locales` 4키 + ts-dict 903키) 대조 대상을 잘못 고르면 오탐 96.5%로 보인다.
 
 ### 4.1 래퍼 매칭은 이름만으로 하지 않는다
 
 대상 리포에 이미 다른 `t()`가 있을 수 있다. bugshot-2가 정확히 그렇고(`t(key, params?)`), 이름만 보고 매칭했을 때 기존 호출 **1391건이 오탐**으로 잡혔다.
 
 - **모듈 경로 + export 이름**으로 식별한다. `import { t } from "<module>"`이 있는 파일만 검사하고, 별칭(`t as translate`)도 따라간다
-- **모듈 경로도 충돌한다** — bugshot-2의 래퍼가 하필 `@/i18n#t`다. 그래서 호출부가 값을 넘기고 CLI는 `--wrapper <module>#<export>`로 받는다. 대상 리포의 관례를 스캐너가 알 수 없다
+- **모듈 경로도 충돌한다** — bugshot-2의 래퍼가 하필 `@/i18n#t`다. 그래서 호출부가 값을 넘기고 CLI는 `--wrapper <module>#<export>[()]`로 받는다. 대상 리포의 관례를 스캐너가 알 수 없다
 - **래퍼 지원은 선택사항이다.** 적재가 래퍼에 의존하지 않으므로, 래퍼가 없는 리포도 `__MSG_` 토큰과 `chrome.i18n.getMessage("k")`로 사용처를 얻는다. `getMessage` 직접 호출은 import 게이트를 타지 않는다 — 전역 `chrome` API라 import가 없다
 - **같은 `path:line`이 두 경로에서 잡히면 접는다.** `manifest.config.ts`의 토큰이 AST·정규식 양쪽에 걸릴 수 있다
 

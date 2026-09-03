@@ -151,7 +151,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
-| 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]` (`refs` 수집 — **항상 exit 0**) |
+| 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **항상 exit 0**). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
 | GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
@@ -206,6 +206,9 @@ lib/
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
+                        ⚠️ `WrapperId.kind`가 direct(`t("k")`)와 hook(`const { t } = useI18n()`)을
+                        가른다. hook은 반환 바인딩을 스코프째 추적하고 next-intl의 namespace
+                        상대 키를 절대 키로 되돌린다 (ARCHITECTURE §4.0)
   survey/               어댑터 범용성 실측의 순수 판정층 (I/O는 scripts/adapter-survey.ts만)
                         select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
                         비율) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
