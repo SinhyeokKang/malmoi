@@ -10,7 +10,7 @@
     "predev": "node scripts/copy-fonts.mjs",
     "dev": "next dev",
     "prebuild": "node scripts/copy-fonts.mjs",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

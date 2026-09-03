@@ -140,7 +140,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 용도 | 명령 |
 |---|---|
 | 개발 서버 | `pnpm dev` |
-| 빌드 | `pnpm build` (`next build`) |
+| 빌드 | `pnpm build` (`prisma generate && next build` — **generate가 앞에 붙어 있다**: `generated/`가 gitignore된 산출물이라 깨끗한 체크아웃에서 `next build`만 돌면 `@/generated/prisma/client`를 못 찾는다) |
 | 타입 체크만 | `pnpm typecheck` |
 | 테스트 | `pnpm test` |
 | 테스트 (watch) | `pnpm test:watch` |
@@ -228,6 +228,7 @@ prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
   migrations/           _init, _add_project_tenant_boundary, _add_project_locale_format
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
+vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
@@ -262,6 +263,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 > **⚠️ 이건 원칙이 아니라 PoC 단계의 선택이다.** MVP가 닫히고 SaaS화에 들어가면 `main`/`dev`를 나눈다 (MVP §8.4). 그때 되살릴 것: 작업 브랜치 → dev PR, PR 전 CI 게이트(브랜치가 둘이면 PR 이벤트가 생긴다), 그리고 **삭제했던 `/merge`·`/sync` 스킬**. 지금 그 셋이 없는 이유는 "브랜치가 하나라 대상이 없다"이지 "필요 없다"가 아니다.
 
 - **main push = Vercel 프로덕션 배포.** 별도 배포 명령이 없고, 그래서 `/deploy`도 `/merge`도 없다. `/push`가 배포 스킬이다.
+  - ⚠️ **Vercel 프로젝트가 연결되기 전까지는 push가 배포가 아니다** (TASKS 전역 미결). 커밋에 Vercel 체크가 붙는지로 확인한다 — 안 붙어 있으면 GitHub에만 반영된 것이다.
 - **preview 배포가 없다.** 브랜치가 하나라 Vercel이 preview를 붙일 대상이 없다. 배포 전에 눈으로 보려면 `pnpm dev`로 로컬에서 확인한다.
 - **PR 전 CI 게이트가 없다.** PR이 없으므로 CI는 배포 후에 돈다 (위 CI 섹션).
 - **GitHub 브랜치 프로텍션도 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`).
