@@ -480,9 +480,14 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
       **`ADD COLUMN` 셋뿐**이고 `pnpm db:deploy`로 프로덕션에 적용했다
   - ⚠️ `Translation.description`은 `StringKey.description`과 **다른 컬럼**이다 — 저쪽은 소스 키
     메타데이터, 이쪽은 그 로케일 파일이 실제로 갖고 있던 값. 합치면 병합이 된다
-- [ ] 태스크 4 — push·pull 배선 4곳(`load.ts` select → `RenderKey` → `PullRow` →
-      `buildWriteEntries`) + `description` 가드 해제 ⬅️ **다음에 할 일**
-  - ⚠️ 넷 중 하나만 빠져도 `orderedEntries`가 폴백으로 조용히 떨어지고 **단위 테스트는 전부
-    green**이다 (POSTMORTEM 2026-09-02). 태스크 5의 L1 진입점 테스트가 유일한 방어선이다
+- [x] **태스크 4 — push·pull 배선** (2026-09-03) — 페이로드 `order` + 로케일별
+      `description`·`placeholders`, 벌크 SQL 컬럼 셋, pull 값 전달 4홉, `load.ts` orderBy,
+      chrome `isBase` 가드 해제
+  - **실 DB로 양방향 확인**: `push:local` → 200, 읽기 전용 probe에서 `sortIndex` 0~3이 파일 순서
+    그대로 나오고 **비-base(ko)에 한국어 description이 실렸다**. SQL 문법은 런타임에만 드러나고
+    CI는 실 DB를 안 친다
+  - ⚠️ 이 과정에서 **`--adapter ts-dict`가 한 번도 동작한 적이 없다는 것**을 발견해 고쳤다
+    (`fix(adapters)`, POSTMORTEM 2026-09-03). bugshot-2 DB는 원상복구했다
 - [ ] 태스크 5 — **검증 루프** (L1 진입점 회귀 / L2 골든 픽스처 / L3 재측정 트리거 규칙)
+      ⬅️ **다음에 할 일**
 - [ ] 태스크 6~7 — 재측정 게이트, 실물 확인, MVP §4.1 · ARCHITECTURE §1.1 갱신
