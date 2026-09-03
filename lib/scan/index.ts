@@ -2,12 +2,16 @@ import { extractRefs } from "./ast";
 import type { KeyRef, ScanResult, ScanWarning, ScannedRef, SourceFileInput, WrapperId } from "./types";
 
 export type { KeyRef, ScanResult, ScanWarning, ScannedRef, SourceFileInput, WrapperId } from "./types";
+export { formatWrapperSpec, parseWrapperSpec } from "./wrapper";
 
 /**
  * 래퍼 식별자 기본값. **대상 리포가 이걸 쓴다고 가정할 수 없다** — bugshot-2의 기존 래퍼가
  * 하필 이 값과 같아서 이름 기반 매칭이 오탐 1391건을 냈다. CLI의 `--wrapper`로 덮는다.
+ *
+ * 목록인 이유: 한 리포가 형태를 섞어 쓴다 (bugshot-web은 `next-intl#useTranslations()`와
+ * `next-intl/server#getTranslations()` 둘 다). 기본값은 여전히 하나뿐이다 — 자동 탐지는 하지 않는다.
  */
-export const DEFAULT_WRAPPER: WrapperId = { module: "@/i18n", export: "t" };
+export const DEFAULT_WRAPPERS: readonly WrapperId[] = [{ module: "@/i18n", export: "t", kind: "direct" }];
 
 /** HTML·manifest에 박힌 치환 토큰. */
 const MSG_TOKEN = /__MSG_([A-Za-z0-9_@]+)__/g;
@@ -22,14 +26,14 @@ const MSG_TOKEN = /__MSG_([A-Za-z0-9_@]+)__/g;
  */
 export function scanSources(
   files: readonly SourceFileInput[],
-  wrapper: WrapperId = DEFAULT_WRAPPER,
+  wrappers: readonly WrapperId[] = DEFAULT_WRAPPERS,
 ): ScanResult {
   const refs = new Map<string, KeyRef[]>();
   const warnings: ScanWarning[] = [];
 
   for (const file of files) {
     if (file.kind === "ts") {
-      const r = extractRefs(file.path, file.code, wrapper);
+      const r = extractRefs(file.path, file.code, wrappers);
       for (const { key, ref } of r.found) push(refs, key, ref);
       warnings.push(...r.warnings);
     }

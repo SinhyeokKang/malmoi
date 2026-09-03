@@ -109,7 +109,7 @@ describe("AST — 우리 것이 아닌 호출은 건드리지 않는다", () => 
   it("래퍼 식별자를 지정할 수 있다", () => {
     const r = scanSources(
       [{ path: "src/a.ts", code: 'import { tx } from "@/l10n";\ntx("custom");', kind: "ts" }],
-      { module: "@/l10n", export: "tx" },
+      [{ module: "@/l10n", export: "tx", kind: "direct" }],
     );
     expect(keysOf(r.refs)).toEqual(["custom"]);
   });

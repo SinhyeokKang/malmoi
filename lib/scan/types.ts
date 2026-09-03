@@ -3,10 +3,17 @@
  * 적재 층이 로케일 파일을 읽어 결정한다 (ARCHITECTURE §4).
  */
 
-/** 래퍼 식별자 — `import { <export> } from "<module>"`. */
+/**
+ * 래퍼 식별자 — `import { <export> } from "<module>"`.
+ *
+ * `kind`가 **호출 형태**를 가른다. `direct`는 import한 것을 그대로 부르고(`t("k")`),
+ * `hook`은 그것을 부른 **반환값**이 호출자다(`const { t } = useI18n()` /
+ * `const t = useTranslations("ns")`). 실측 3개 리포 중 둘이 훅이라 이 축이 없으면 refs가 0건이다.
+ */
 export type WrapperId = {
   module: string;
   export: string;
+  kind: "direct" | "hook";
 };
 
 /** 스캔 입력. `ts`는 AST 경로를 타고, 두 종류 모두 `__MSG_` 토큰 훑기를 탄다. */

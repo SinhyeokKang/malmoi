@@ -2,10 +2,12 @@
 /**
  * 사용처 스캔 CLI — 키가 코드의 어디서 쓰이는지(`refs`)만 수집한다.
  *
- *   pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]
+ *   pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...
  *
  * `--wrapper`는 래퍼 식별자다. **기본값을 믿지 말고 대상 리포를 확인한다** — 같은 경로에
  * 다른 `t()`가 있으면 그 호출 전부가 오탐이 된다(bugshot-2가 하필 기본값과 같다).
+ * 끝에 `()`를 붙이면 훅이다(`next-intl#useTranslations()`). **여러 번 줄 수 있다** —
+ * 한 리포가 클라이언트·서버 두 형태를 함께 쓴다(bugshot-web).
  *
  * **파일시스템을 아는 유일한 층이다** — `scanSources`는 순수 함수라 소스 텍스트만 받는다.
  * **항상 exit 0이다.** 사용처를 못 찾은 것은 경고일 뿐이고, 키가 존재하는지는 로케일 파일이
@@ -14,7 +16,14 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-import { DEFAULT_WRAPPER, scanSources, type SourceFileInput, type WrapperId } from "../lib/scan/index";
+import {
+  DEFAULT_WRAPPERS,
+  formatWrapperSpec,
+  parseWrapperSpec,
+  scanSources,
+  type SourceFileInput,
+  type WrapperId,
+} from "../lib/scan/index";
 
 /** AST 경로로 보낼 확장자. */
 const TS_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs"]);
@@ -43,37 +52,57 @@ function collect(root: string, dir: string, acc: SourceFileInput[]): void {
   }
 }
 
-const argv = process.argv.slice(2);
-const target = argv.find((a) => !a.startsWith("--"));
+const USAGE = "사용법: pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...";
+
+/**
+ * **`--wrapper`의 값 자리를 함께 소비한다.** 값이 `--`로 시작하지 않아, 단순히
+ * "플래그가 아닌 첫 인자"를 대상으로 삼으면 `pnpm scan --wrapper @/i18n#t ./dir`이
+ * 래퍼 스펙을 디렉터리로 읽는다.
+ */
+function parseArgv(argv: readonly string[]): { target?: string; json: boolean; specs: string[] } {
+  const specs: string[] = [];
+  let target: string | undefined;
+  let json = false;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--wrapper") {
+      const raw = argv[++i];
+      if (raw) specs.push(raw);
+      continue;
+    }
+    if (a === "--json") {
+      json = true;
+      continue;
+    }
+    if (a === undefined || a.startsWith("--")) continue;
+    target ??= a;
+  }
+  return { target, json, specs };
+}
+
+const { target, json, specs } = parseArgv(process.argv.slice(2));
 if (!target) {
-  console.error("사용법: pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>]");
+  console.error(USAGE);
   process.exit(2);
 }
 
-/** `--wrapper @/l10n#tx` → { module: "@/l10n", export: "tx" } */
-function parseWrapper(argv: readonly string[]): WrapperId {
-  const at = argv.indexOf("--wrapper");
-  if (at === -1) return DEFAULT_WRAPPER;
-  const raw = argv[at + 1];
-  const hash = raw?.lastIndexOf("#") ?? -1;
-  if (!raw || hash <= 0 || hash === raw.length - 1) {
-    console.error("--wrapper 형식: <module>#<export> (예: @/i18n#t)");
+const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : specs.map((raw) => {
+  const parsed = parseWrapperSpec(raw);
+  if (!parsed) {
+    console.error(`--wrapper 형식: <module>#<export> 또는 <module>#<export>() (예: @/i18n#t, next-intl#useTranslations())`);
     process.exit(2);
   }
-  return { module: raw.slice(0, hash), export: raw.slice(hash + 1) };
-}
-
-const wrapper = parseWrapper(argv);
-const flags = argv.filter((a) => a.startsWith("--"));
+  return parsed;
+});
 
 const files: SourceFileInput[] = [];
 collect(target, target, files);
-const { refs, warnings } = scanSources(files, wrapper);
+const { refs, warnings } = scanSources(files, wrappers);
 
-if (flags.includes("--json")) {
-  console.log(JSON.stringify({ wrapper, refs, warnings }, null, 2));
+if (json) {
+  console.log(JSON.stringify({ wrappers, refs, warnings }, null, 2));
 } else {
-  console.log(`래퍼: import { ${wrapper.export} } from "${wrapper.module}"`);
+  console.log(`래퍼: ${wrappers.map(formatWrapperSpec).join(", ")}`);
   console.log(`스캔: ${files.length}파일 (ts ${files.filter((f) => f.kind === "ts").length} / raw ${files.filter((f) => f.kind === "raw").length})`);
   console.log(`사용처를 찾은 키: ${refs.length}개 / 총 참조 ${refs.reduce((n, r) => n + r.refs.length, 0)}건`);
 

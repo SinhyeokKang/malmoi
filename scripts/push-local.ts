@@ -3,7 +3,7 @@
  * 적재 + 사용처 스캔 → `POST /api/push`. **TASK 7의 GitHub Actions가 할 일과 같은 순서다** —
  * 워크플로는 이 스크립트를 부르거나 같은 단계를 재현한다.
  *
- *   pnpm push:local <대상 디렉터리> [--url http://localhost:3000] [--wrapper <module>#<export>]
+ *   pnpm push:local <대상 디렉터리> [--url http://localhost:3000] [--wrapper <module>#<export>[()]]...
  *
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
@@ -16,7 +16,13 @@ import { config } from "dotenv";
 import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
 import { requireEnv } from "../lib/env";
 import type { PushPayloadType } from "../lib/push/plan";
-import { DEFAULT_WRAPPER, scanSources, type SourceFileInput, type WrapperId } from "../lib/scan/index";
+import {
+  DEFAULT_WRAPPERS,
+  parseWrapperSpec,
+  scanSources,
+  type SourceFileInput,
+  type WrapperId,
+} from "../lib/scan/index";
 
 config({ path: ".env.local", quiet: true });
 
@@ -49,19 +55,52 @@ function arg(name: string, fallback: string): string {
   return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
 }
 
-function parseWrapper(raw: string): WrapperId {
-  const hash = raw.lastIndexOf("#");
-  if (hash <= 0 || hash === raw.length - 1) return DEFAULT_WRAPPER;
-  return { module: raw.slice(0, hash), export: raw.slice(hash + 1) };
+/** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다. */
+const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project"]);
+
+/**
+ * 플래그 값은 `--`로 시작하지 않는다. "플래그가 아닌 첫 인자"를 그대로 대상으로 삼으면
+ * `pnpm push:local --wrapper @/i18n#t ./dir`이 래퍼 스펙을 디렉터리로 읽는다.
+ */
+function findTarget(argv: readonly string[]): string | undefined {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === undefined) continue;
+    if (VALUE_FLAGS.has(a)) {
+      i++;
+      continue;
+    }
+    if (!a.startsWith("--")) return a;
+  }
+  return undefined;
 }
 
-const target = process.argv.slice(2).find((a) => !a.startsWith("--"));
+/** `--wrapper`는 여러 번 줄 수 있다 — 한 리포가 클라이언트·서버 두 형태를 함께 쓴다. */
+function wrapperSpecs(argv: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] !== "--wrapper") continue;
+    const raw = argv[++i];
+    if (raw) out.push(raw);
+  }
+  return out;
+}
+
+const target = findTarget(process.argv.slice(2));
 if (!target) {
-  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>] [--adapter <name>] [--project <slug>]");
+  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--project <slug>]");
   process.exit(2);
 }
 const baseUrl = arg("url", "http://localhost:3000");
-const wrapper = parseWrapper(arg("wrapper", `${DEFAULT_WRAPPER.module}#${DEFAULT_WRAPPER.export}`));
+const specs = wrapperSpecs(process.argv.slice(2));
+const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : specs.map((raw) => {
+  const parsed = parseWrapperSpec(raw);
+  if (!parsed) {
+    console.error("--wrapper 형식: <module>#<export> 또는 <module>#<export>() (예: @/i18n#t, next-intl#useTranslations())");
+    process.exit(2);
+  }
+  return parsed;
+});
 
 // 커밋 SHA는 대상 리포에서 읽는다 — permalink 기준이라 실제 값이어야 한다.
 const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -135,7 +174,7 @@ if (baseLocale === undefined) {
 const baseEntries = read.locales.find((l) => l.locale === baseLocale)?.entries ?? [];
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────
-const scan = scanSources(sources, wrapper);
+const scan = scanSources(sources, wrappers);
 const keySet = new Set(baseEntries.map((e) => e.key));
 const refs = scan.refs
   .filter((r) => keySet.has(r.key))
