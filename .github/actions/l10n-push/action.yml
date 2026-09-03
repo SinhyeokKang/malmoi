@@ -50,17 +50,30 @@ runs:
   using: composite
   steps:
     # composite action은 자기 리포를 러너에 clone해 준다. `action_path`는 이 파일의
-    # 디렉터리(`<clone>/.github/actions/l10n-push`)이므로 **리포 루트는 `../../..`다** —
-    # `../..`는 `.github`를 가리켜 `pnpm/action-setup`이 "No pnpm version is specified"로 죽는다.
+    # 디렉터리(`<clone>/.github/actions/l10n-push`)이므로 **리포 루트는 `../../..`다.**
+    #
+    # ⚠️ **버전을 파일에서 읽어 값으로 넘긴다.** `pnpm/action-setup`의 `package_json_file`과
+    # `setup-node`의 `node-version-file`은 **워크스페이스 기준 상대경로**로 해석돼서, 절대경로를
+    # 줘도 action의 clone 경로를 못 본다("No pnpm version is specified"로 죽는다). 값으로
+    # 넘기면 그 문제를 피하면서 버전의 출처는 여전히 i18n-poc의 `.nvmrc`·`packageManager` 하나다.
+    - name: 버전 읽기
+      id: v
+      shell: bash
+      run: |
+        set -euo pipefail
+        root="${{ github.action_path }}/../../.."
+        echo "node=$(tr -d '[:space:]' < "$root/.nvmrc")" >> "$GITHUB_OUTPUT"
+        echo "pnpm=$(node -p "require('$root/package.json').packageManager.split('@')[1]")" >> "$GITHUB_OUTPUT"
+
     - name: pnpm
       uses: pnpm/action-setup@v4
       with:
-        package_json_file: ${{ github.action_path }}/../../../package.json
+        version: ${{ steps.v.outputs.pnpm }}
 
     - name: Node
       uses: actions/setup-node@v4
       with:
-        node-version-file: ${{ github.action_path }}/../../../.nvmrc
+        node-version: ${{ steps.v.outputs.node }}
 
     - name: i18n-poc 의존성
       shell: bash
