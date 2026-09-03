@@ -31,7 +31,9 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 **번역 값 규칙 (strict): 리포 값으로 DB를 덮는다** (`INSERT ... ON CONFLICT DO UPDATE`).
 
-리포가 선언한 값이 push마다 DB에 그대로 반영된다. 변경 감지도, 병합도, 예외도 없다 — **진실의 방향이 한 번에 하나**이고 그게 §2의 "병합 없음"을 가장 단순하게 지키는 형태다.
+리포가 선언한 값이 push마다 DB에 그대로 반영된다. 변경 감지도, 병합도 없다 — **진실의 방향이 한 번에 하나**이고 그게 §2의 "병합 없음"을 가장 단순하게 지키는 형태다.
+
+**유일한 예외는 빈 값이다.** 리포 파일의 `"key": ""`(미번역 자리표시)는 DB를 덮지 않는다 — §4.1이 미번역을 export에서 빼는 것의 대칭이다. 빈 값으로 덮으면 DB의 번역이 "없음"으로 바뀌는데 리포엔 애초에 값이 없었으니 되돌릴 근거가 없다. 값 선택이 아니라 **"값 없음은 값이 아니다"** 라는 판정이고, 손실 창을 좁히는 방향으로만 작용한다 (`lib/push/apply.ts`, `flow.test.ts` "빈 값 번역 제외").
 
 원래 스펙은 "번역 값은 어떤 경로로도 건드리지 않는다"였는데 그러면 **첫 pull이 대상 리포의 번역을 파괴한다.** skillflo로 짚으면: 연동 시 base(en) 1446키만 적재되고 `Translation`은 비어 있다 → 번역자가 ko 한 건을 고친다 → pull이 ko 파일을 **키 1개짜리로 덮는다**. 리포에 있던 1445개가 사라진다. DB가 진실이 되기 전에 기존 값을 물려받는 단계가 없었다.
 
@@ -103,8 +105,8 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 - 네임스페이스 사이드바 → 키 리스트 → 인라인 편집
 - 키마다: 원문, description, **코드 참조 permalink**(스캔 당시 `commitSha` 고정), `needsReview`·`orphaned` 배지
-- 필터 3개: 미번역 / 검토필요 / orphaned
-- blur 시 저장, `updatedBy`에 GitHub 핸들 기록
+- 필터 3개: 미번역 / 검토필요 / orphaned — **동결로 미착수** (§8.3, SaaS 단계에서 새 화면에 만든다)
+- blur 시 저장, `updatedBy`에 GitHub 핸들 기록. **저장은 `needsReview`를 내린다** — 사람이 값을 손댔으면 "원문이 바뀌었으니 봐 달라"는 표시는 소용을 다한 것이다
 
 컨텍스트는 **코드 참조 자동 수집 + 네임스페이스 그룹핑** 두 개까지다. 스크린샷·번역자 노트는 비범위(§7).
 
@@ -165,6 +167,8 @@ write 방식까지 겸했는데 — `multi-locale`이면 수술적, `per-locale`
 **`per-locale` + 수술적**이라 그 겸용이 깨졌다. pull이 "원본 내용을 받아야 하나"를 판단하는 기준은
 이제 `layout`이 아니라 `writeStrategy`다 (§3.3).
 
+**중첩 여부는 파일 단위로 나른다** (`Project.nestedByPath` — 2026-09-04). 포맷 단위 boolean만 두면 로케일 파일 하나가 중첩일 때 형제 파일까지 중첩으로 취급돼 **평평한 파일의 점 포함 키가 쪼개지고 값이 사라진다**(musicblocks 84로케일 중 81개 — ARCHITECTURE §1.35). `nested`는 폴백으로 남는다.
+
 수술적 치환은 문자열 값만 바꾸고 나머지 소스를 보존한다. TS 딕셔너리에 재생성을 쓰면 사람이 의미 단위로 넣은 빈 줄(bugshot-2에 120개)과 주석(23개)이 첫 pull에서 사라진다 — JSON에선 한 번의 재정렬이지만 TS에선 **구조 파괴**이고, 번역 도구가 남의 코드를 훼손하는 것으로 읽힌다. YAML도 같다: Rails 로케일 파일은 주석·앵커·블록 리터럴을 담고 있어 재생성이 곧 훼손이다.
 
 ### ⚠️ 수술적 치환은 **누락 키를 삽입한다** (2026-09-02 결정)
@@ -209,8 +213,8 @@ write 방식까지 겸했는데 — `multi-locale`이면 수술적, `per-locale`
 
 **`yaml-catalog`의 루트 키 변형**: Rails 관례는 파일 최상위가 로케일 코드 하나(`ko:`)이고 그 아래가
 내용이다(mastodon·redmine·decidim). 반대로 misskey·directus는 루트에 바로 키가 온다. `read`가
-"최상위 키가 하나이고 그것이 로케일처럼 보이면 루트 키"로 관측해 `rootKeyed`로 돌려주고, `write`가
-같은 모양으로 되돌린다 — `nested`와 같은 축의 값이다 (§5.1).
+"최상위 키가 하나이고 그것이 로케일처럼 보이면 루트 키"로 관측해 `rootKeyedByPath`(파일별)로 돌려주고,
+`write`는 원본에서 다시 관측해 같은 모양으로 되돌린다 — `nestedByPath`와 같은 축의 값이다 (§5.1).
 
 **`ts-dict`를 자동 탐지에서 뺀다** (2026-09-02, `docs/ADAPTER-COVERAGE.md` 판정 ③). 오픈소스 109개에서
 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(= `code-dict`)였다.
@@ -254,7 +258,11 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 ```ts
 // lib/adapters/types.ts
 // orphaned는 read에선 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
-export type LocaleEntry = { key: string; message: string; description?: string; orphaned?: boolean };
+// order는 그 파일에서의 키 위치(§4.1), placeholders는 chrome 블록을 해석 없이 나른다(§4.2).
+export type LocaleEntry = {
+  key: string; message: string; description?: string;
+  order?: number; placeholders?: unknown; orphaned?: boolean;
+};
 
 export type Adapter = {
   name: AdapterName;
@@ -273,7 +281,8 @@ export type Adapter = {
   /** 리포 파일 목록에서 이 포맷을 찾아낸다. `probe`로 후보 내용을 한 번 확인한다 */
   detect(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined;
   /**
-   * `detect`와 같은 판정을 하되 **후보를 전부 순위순으로** 낸다. `detect`가 이 결과의 `[0]`이다.
+   * `detect`와 같은 판정을 하되 **후보를 전부 순위순으로** 낸다. `detect`가 이 결과의 `[0]`이다 —
+   * 예외는 `ts-dict` 하나(자동 탐지 제외라 `[]`, `detect`만 내용 탐지를 돈다).
    * 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측하는 유일한 수단이다 (ADAPTER-COVERAGE §1②).
    */
   detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[];
@@ -281,6 +290,8 @@ export type Adapter = {
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
   /** 키 목록 → 파일 내용. 낼 것이 없으면 null (§4.1) */
   write(format: DetectedFormat, input: WriteInput): string | null;
+  /** `write` + 버린 항목. pull이 이쪽을 우선 쓰고 `PullResult.warnings`로 올린다 (ARCHITECTURE §1.35) */
+  writeWithErrors?(format: DetectedFormat, input: WriteInput): { content: string | null; errors: AdapterError[] };
 };
 ```
 
@@ -334,6 +345,7 @@ export type Adapter = {
 Project      id PK, slug UNIQUE, name,
              repoOwner, repoName, baseBranch, installationId?   -- 테넌트 경계
              adapterName?, pathTemplate?, nested?, baseLocale?  -- push가 저장, pull이 읽는다
+             nestedByPath?                                      -- 경로 → 중첩 여부 (Json, §4.1)
              lastCommitSha?, lastCommitAt?                      -- 역행 거부 (§3.1)
              lastPulledAt?                                      -- DB 측 스킵 (§3.3)
 Locale       (projectId, code) PK, name, isBase
@@ -365,7 +377,7 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
 
 **여전히 비범위**(SaaS 단계에서도 안 한다): 과금, 온보딩, 테넌트별 GitHub App 설치 플로.
 
-⚠️ **그 단일 테넌트 가정이 push 라우팅에도 걸려 있다** — `/api/push`는 페이로드에 프로젝트 식별자가 없고 서버의 `ACTIVE_PROJECT_SLUG`로 대상을 정한다. 리포가 둘 이상 CI를 붙이면(§8-7) 한쪽 페이로드가 다른 프로젝트에 적용된다. 실 DB에 이미 프로젝트가 둘이라 7단계 전에 정해야 한다 (§10).
+**push 라우팅은 단일 테넌트 가정에서 벗어나 있다** (2026-08-31 해소) — 페이로드가 `projectSlug`를 싣고 서버가 `ACTIVE_PROJECT_SLUG`와 대조해 다르면 409로 거부한다 (§3.1 6단계, ARCHITECTURE §5.5.5). 리포가 둘 이상 CI를 붙여도 남의 프로젝트에 적용되지 않는다. 다만 **서버가 받는 프로젝트는 여전히 하나**다 — 복수 프로젝트 수신은 SaaS 단계다.
 
 MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제, 로케일 추가·삭제**(리포가 정한다 — §3.2), 스크린샷 첨부, 번역자 노트 필드, draft→reviewed 승인 워크플로(편집자가 한 명이라 오버엔지니어링), push 웹훅 즉시 반영, 번역 메모리·기계번역.
 
@@ -427,11 +439,12 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 재생성 어댑터의 실물 pull은 **2026-09-03 해소**됐다 — 키 순서 보존이 전용 테스트 리포로 돌렸다 ([i18n-order-check#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1)).
 
-`/l10n-roundtrip` 스킬은 아직 만들지 않았다 — 위 루프가 임시 스크립트로 돌아갔고, 반복할 일이 생기면 그때 스킬로 굳힌다.
+위 루프는 **`/l10n-roundtrip` 스킬로 굳혔다** (2026-09-03, `.claude/commands/l10n-roundtrip.md`). 어댑터를 새로 만들거나 `write` 경로를 고쳤으면 폐기용 리포(`bugshot-i18n-test`·`i18n-format-check`)에서 한 바퀴 돌린다 — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다 (CLAUDE.md 워크플로우).
 
 ## 10. 아직 안 정한 것
 
 - **덮인 셀의 `updatedBy`** — push가 리포 값으로 덮어도 편집자 이름이 남아 편집 UI가 "이 값은 누가 편집함"으로 보여준다 (§3.1 실증). 지우면 "누가 마지막으로 만졌나"를 잃고, 두면 화면이 거짓을 말한다. 편집 UI를 새로 만드는 SaaS 단계(§8.4)에서 정한다
 
+- **base 로케일 판정** — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지는 TASKS §3a 🔒가 그 자리다
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
 - **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다
