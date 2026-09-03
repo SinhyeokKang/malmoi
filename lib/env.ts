@@ -15,6 +15,19 @@ export function requireEnv(name: string, source: EnvSource = process.env): strin
 }
 
 /**
+ * 선택 환경변수. 없거나 빈 문자열이면 `undefined` — **던지지 않는다.**
+ *
+ * `requireEnv`와 갈라 둔 이유: 인가 판정(`checkBearer`·`parseAllowedLogins`)은 누락을 스스로
+ * fail-closed로 처리해야 응답이 "미설정 500 / 거부 401"로 갈린다. 여기서 던지면 그 판정에
+ * 닿기 전에 본문 없는 500이 된다. 값을 쓰는 쪽이 `process.env`를 직접 읽지 않게 하는 것이
+ * 이 함수의 유일한 역할이다 (CLAUDE.md "환경변수는 한 곳에서 읽는다").
+ */
+export function optionalEnv(name: string, source: EnvSource = process.env): string | undefined {
+  const value = source[name];
+  return value === undefined || value === "" ? undefined : value;
+}
+
+/**
  * GitHub App 개인키 복원. Vercel env에 PEM을 넣으면 개행이 `\n` 두 문자로 이스케이프되고,
  * 그대로 서명에 쓰면 JWT가 **조용히** 실패한다(에러 메시지가 원인을 안 가리킨다).
  */

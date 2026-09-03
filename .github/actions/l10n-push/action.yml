@@ -112,18 +112,25 @@ runs:
     - name: 적재 + 스캔 → /api/push
       shell: bash
       working-directory: ${{ github.action_path }}/../../..
+      # inputs는 env로 넘기고 셸에서 "$VAR"로 읽는다 — `${{ }}`를 스크립트에 직접 보간하면 호출자가
+      # 이벤트 데이터를 input에 연결했을 때 스크립트 인젝션 경로가 된다.
       env:
         PUSH_TOKEN: ${{ inputs.push-token }}
+        L10N_API_URL: ${{ inputs.api-url }}
+        L10N_PROJECT: ${{ inputs.project }}
+        L10N_ADAPTER: ${{ inputs.adapter }}
+        L10N_WRAPPER: ${{ inputs.wrapper }}
+        L10N_TARGET: ${{ inputs.target }}
       run: |
         set -euo pipefail
-        args=(--url "${{ inputs.api-url }}" --project "${{ inputs.project }}")
-        if [ -n "${{ inputs.adapter }}" ]; then
-          args+=(--adapter "${{ inputs.adapter }}")
+        args=(--url "$L10N_API_URL" --project "$L10N_PROJECT")
+        if [ -n "$L10N_ADAPTER" ]; then
+          args+=(--adapter "$L10N_ADAPTER")
         fi
         # 줄바꿈으로 나뉜 wrapper 스펙을 각각 플래그로 전개한다.
         while IFS= read -r spec; do
           spec="$(echo "$spec" | tr -d '[:space:]')"
           [ -n "$spec" ] && args+=(--wrapper "$spec")
-        done <<< "${{ inputs.wrapper }}"
-        echo "pnpm push:local ${{ inputs.target }} ${args[*]}"
-        pnpm push:local "${{ inputs.target }}" "${args[@]}"
+        done <<< "$L10N_WRAPPER"
+        echo "pnpm push:local $L10N_TARGET ${args[*]}"
+        pnpm push:local "$L10N_TARGET" "${args[@]}"

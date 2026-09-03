@@ -1,5 +1,5 @@
 import { adapterFor } from "@/lib/adapters";
-import type { Adapter, DetectedFormat } from "@/lib/adapters";
+import type { Adapter, AdapterError, DetectedFormat, WriteInput } from "@/lib/adapters";
 import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow } from "./plan";
 
 /**
@@ -76,6 +76,13 @@ export function renderLocaleFiles(
   current: ReadonlyMap<string, string>,
 ): LocalFile[] {
   const adapter = adapterFor(format);
+  // **`writeWithErrors`가 있으면 그쪽을 쓴다.** `write`만 부르면 json-catalog가 접두 충돌로 버린
+  // 키가 프로덕션에서 아무 데도 보고되지 않는다 — survey만 그걸 보고 있었다 (ARCHITECTURE §1.35
+  // "어느 키에서 잃었는지 알려주는 것이 최소 조건").
+  const write = (f: DetectedFormat, input: WriteInput): { content: string | null; errors: AdapterError[] } =>
+    adapter.writeWithErrors !== undefined
+      ? adapter.writeWithErrors(f, input)
+      : { content: adapter.write(f, input), errors: [] };
 
   if (layout === "per-locale") {
     return paths.map((p) => {
@@ -93,12 +100,15 @@ export function renderLocaleFiles(
         if (original === undefined) return { path: p.path, content: null };
         writeFormat = { ...format, currentFiles: [{ path: p.path, content: original }] };
       }
-      const content = adapter.write(writeFormat, {
+      const isBase = locale === baseLocale;
+      // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
+      // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
+      const { content, errors } = write(writeFormat, {
         locale,
-        isBase: locale === baseLocale,
-        entries: buildWriteEntries(rowsForLocale(keys, locale), { isBase: locale === baseLocale }),
+        isBase,
+        entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
       });
-      return { path: p.path, content };
+      return { path: p.path, content, ...(errors.length === 0 ? {} : { errors }) };
     });
   }
 
@@ -108,20 +118,22 @@ export function renderLocaleFiles(
     if (original === undefined) return { path: p.path, content: null };
 
     let content = original;
+    const errors: AdapterError[] = [];
     for (const locale of format.locales) {
       const isBase = locale === baseLocale;
-      const next = adapter.write(
+      const next = write(
         // 직전 결과를 원본으로 넘긴다 — 그래야 로케일 치환이 누적된다.
         { ...format, currentFiles: [{ path: p.path, content }] },
         {
           locale,
           isBase,
-          entries: buildWriteEntries(rowsForLocale(keys, locale), { isBase }),
+          entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
         },
       );
+      errors.push(...next.errors);
       // `null`은 원본이 없을 때뿐이고 위에서 걸렀다. 방어적으로 직전 내용을 유지한다.
-      if (next !== null) content = next;
+      if (next.content !== null) content = next.content;
     }
-    return { path: p.path, content };
+    return { path: p.path, content, ...(errors.length === 0 ? {} : { errors }) };
   });
 }

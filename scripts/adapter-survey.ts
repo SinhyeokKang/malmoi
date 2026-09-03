@@ -199,6 +199,7 @@ if (asJson) {
   console.log(`   들여쓰기 2칸:          ${pct(metrics.indent.twoSpace)}   → ≥ 80%면 순서 보존만으로 진행`);
   console.log(`   들여쓰기 분포:         ${JSON.stringify(metrics.indent.distribution)}`);
   console.log(`   잔여 diff 원인(리포):  ${JSON.stringify(metrics.diffCauses)}`);
+  console.log(`   수술적 1키 편집 hunk=1: ${pct(metrics.surgicalEdit.oneHunk)}${metrics.surgicalEdit.multiHunkRepos.length > 0 ? `   초과: ${metrics.surgicalEdit.multiHunkRepos.join(", ")}` : ""}`);
   console.log(`   chrome 원본 필드(관측): ${JSON.stringify(metrics.chromeFields)}   (보존되므로 diff 원인이 아니다)`);
   console.log(`\n부수: ICU 복수형 ${metrics.icuPluralRepos}개 리포, 치환자 ${metrics.placeholderRepos}, 설정 파일 ${metrics.configFileRepos}, 비-점 구분자 ${metrics.nonDotSeparatorRepos.length}`);
   console.log(`\n${formatTable}\n`);

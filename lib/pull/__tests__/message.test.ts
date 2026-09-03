@@ -62,3 +62,21 @@ describe("pullMessage — 편집자가 읽는 문구다", () => {
     expect(pullMessage(r)).toEqual(pullMessage(r));
   });
 });
+
+describe("pullMessage — writer가 버린 항목", () => {
+  it("warnings가 있으면 건수와 '개발자에게 알려 주세요'를 덧붙인다 — 값이 사라진 것을 편집자가 알아야 한다", () => {
+    const m = pullMessage({
+      status: "committed",
+      commitSha: "abc",
+      prUrl: "https://x/pr/1",
+      changed: ["i18n/en.json"],
+      warnings: ["i18n/en.json: 'a.b'가 접두 충돌로 빠졌다"],
+    });
+    expect(m.text).toMatch(/1건.*개발자/);
+  });
+
+  it("warnings가 없으면 문구가 그대로다", () => {
+    const m = pullMessage({ status: "committed", commitSha: "abc", prUrl: "https://x/pr/1", changed: [] });
+    expect(m.text).not.toMatch(/반영되지 못했/);
+  });
+});

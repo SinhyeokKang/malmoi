@@ -48,6 +48,7 @@ async function main(): Promise<void> {
         adapterName: true,
         pathTemplate: true,
         nested: true,
+        nestedByPath: true,
         baseLocale: true,
         lastCommitSha: true,
       },
@@ -87,7 +88,7 @@ async function main(): Promise<void> {
       project,
       locales.map((l) => l.code),
     );
-    const layout = adapterFor(format).layout;
+    const { layout, writeStrategy } = adapterFor(format);
     const paths = resolveLocalePaths(
       format,
       layout,
@@ -100,8 +101,9 @@ async function main(): Promise<void> {
     }
 
     // 수술적 치환 어댑터는 write에 원본이 필요하다. 실제로 읽히는지 첫 파일로 확인한다.
+    // ⚠️ `layout`이 아니라 `writeStrategy`다 — yaml-catalog·code-dict가 per-locale + surgical이다.
     const first = paths[0];
-    if (layout === "multi-locale" && first !== undefined) {
+    if (writeStrategy === "surgical" && first !== undefined) {
       const blob = tree.find((t) => t.path === first.path);
       if (blob) {
         const text = await client.getBlobText(blob.sha);

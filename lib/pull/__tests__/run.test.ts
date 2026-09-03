@@ -22,6 +22,7 @@ const PROJECT = {
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
+  nestedByPath: null,
   baseLocale: "en",
   lastPulledAt: null as Date | null,
 };
@@ -485,5 +486,31 @@ export const ns = { ko, en };
     };
     expect(tree.tree[0]?.content).toContain('"하나"');
     expect(tree.tree[0]?.content).not.toContain('"a.one": ""');
+  });
+});
+
+describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
+  it("json-catalog 접두 충돌로 빠진 키가 warnings로 나온다 — survey만 보던 것을 프로덕션 경로가 본다", async () => {
+    const { deps } = makeDeps({
+      loadState: async (): Promise<PullState> => ({
+        project: { ...PROJECT, nested: true },
+        localeCodes: ["en"],
+        keys: [
+          { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
+          { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
+        ],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+      }),
+    });
+    const result = await runPull(deps);
+    expect(result.status).toBe("committed");
+    expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
+    expect(result.warnings?.[0]).toMatch(/^i18n\/en\.json: /);
+  });
+
+  it("버린 항목이 없으면 warnings 필드 자체가 없다 — 없는 것과 같아야 한다", async () => {
+    const { deps } = makeDeps();
+    const result = await runPull(deps);
+    expect(result).not.toHaveProperty("warnings");
   });
 });

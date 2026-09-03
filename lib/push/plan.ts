@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
+import { compareKeys } from "@/lib/adapters/shared";
+
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
 
 /**
@@ -25,6 +27,13 @@ const Format = z.object({
    */
   pathTemplate: z.string().min(1),
   nested: z.boolean(),
+  /**
+   * 파일 경로 → 그 파일이 중첩이었는지. **`nested`보다 이쪽이 정확하다** (ARCHITECTURE §1.35).
+   *
+   * optional인 것은 이 필드를 내지 않는 어댑터(chrome·ts-dict는 정의상 flat)와 구 CI를 받기
+   * 위해서다 — 없으면 write가 `nested`로 폴백한다.
+   */
+  nestedByPath: z.record(z.string(), z.boolean()).optional(),
   baseLocale: z.string().min(1),
 });
 
@@ -197,7 +206,5 @@ function byKey(a: PlannedKey, b: PlannedKey): number {
   return compare(a.key, b.key);
 }
 
-/** 어댑터 writer와 같은 규칙 — `<` 비교로 환경 의존을 없앤다. */
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
+/** 어댑터 writer와 같은 규칙 — 재구현하지 않고 그 함수를 쓴다 (ARCHITECTURE §1.1). */
+const compare = compareKeys;

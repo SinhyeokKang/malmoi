@@ -29,6 +29,7 @@ const PROJECT = {
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
+  nestedByPath: null as unknown,
   baseLocale: "en",
   lastPulledAt: null as Date | null,
 };
@@ -156,5 +157,59 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
 
   it("그 문자열이 pull 쪽에는 없다 — grep하면 두 곳이 잡히던 함정을 여기서 가른다", () => {
     expect(sourceOf("lib/pull/load.ts")).not.toContain('orderBy: { key: "asc" }');
+  });
+});
+
+/**
+ * **musicblocks 모양** (ARCHITECTURE §1.35). 로케일 84개 중 1개만 중첩인데 포맷 단위 boolean이
+ * 형제 파일까지 중첩으로 만들어 평평한 파일의 점 키가 쪼개지고 값이 사라졌다. 어댑터·survey는
+ * `nestedByPath`로 고쳤지만 **push→DB→pull 배선이 끊겨 프로덕션 pull은 옛 동작이었다** —
+ * 그래서 진입점에서 본다.
+ */
+describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
+  const DOTTED: RenderKey[] = [
+    { key: "Clear workspace", sourceText: "Clear workspace", sortIndex: 0, orphaned: false, cells: { th: { value: "ล้าง" } } },
+    { key: "Clear workspace.", sourceText: "Clear workspace.", sortIndex: 1, orphaned: false, cells: { th: { value: "ล้าง." } } },
+  ];
+
+  function depsWith(nestedByPath: Record<string, boolean> | null): ReturnType<typeof depsFor> {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+    });
+    const trees: TreePayload[] = [];
+    return {
+      deps: {
+        loadState: async (): Promise<PullState> => ({
+          // 포맷 전체는 중첩이다 — 다른 로케일 파일 하나가 객체를 갖고 있었다.
+          project: { ...PROJECT, nested: true, nestedByPath, baseLocale: "th" },
+          localeCodes: ["th"],
+          keys: [...DOTTED],
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        }),
+        createClient: async () => client,
+        saveLastPulledAt: async () => {},
+        syncBranch: "l10n/sync",
+      },
+      get trees() {
+        trees.length = 0;
+        for (const c of calls) if (c.method === "createTree") trees.push(c.args[0] as TreePayload);
+        return trees;
+      },
+    };
+  }
+
+  it("그 파일이 flat이면 점 키를 쪼개지 않는다 — 쪼개면 한쪽 값이 사라진다", async () => {
+    const h = depsWith({ "i18n/th.json": false });
+    await runPull(h.deps);
+    expect(contentOf(h.trees, "i18n/th.json")).toBe(
+      '{\n  "Clear workspace": "ล้าง",\n  "Clear workspace.": "ล้าง."\n}\n',
+    );
+  });
+
+  it("경로별 관측이 없으면 포맷 단위 값으로 폴백한다 (하위 호환 — 접두 충돌이 경고로 남는다)", async () => {
+    const h = depsWith(null);
+    const r = await runPull(h.deps);
+    expect(r.warnings?.length ?? 0).toBeGreaterThan(0);
   });
 });

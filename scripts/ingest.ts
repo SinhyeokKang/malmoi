@@ -6,11 +6,14 @@
  *
  * 파일시스템을 아는 유일한 층이다 — 어댑터의 detect·read·write는 순수 함수다.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-import { adapterFor, detectFormat, detectFormatWith, namespaceOf, type AdapterFile } from "../lib/adapters/index";
+import { adapterFor, detectFormat, detectFormatWith, isAdapterName, namespaceOf } from "../lib/adapters/index";
+import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
+import { walkFiles } from "../lib/cli/walk";
 import { blobSha } from "../lib/githash";
+import { pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
 
 /** 키 순서를 무시하고 내용만 비교하기 위한 정규화. */
 function stableJson(text: string): string {
@@ -25,34 +28,17 @@ function stableJson(text: string): string {
   return JSON.stringify(sort(JSON.parse(text)));
 }
 
-const SKIP_DIR = new Set([
-  "node_modules", ".git", "dist", "dist-e2e", "dist-log-viewer", "build", "out", ".next",
-  "coverage", "generated", ".vercel", "playwright-report", "test-results",
-]);
-
-function walk(root: string, dir: string, acc: string[]): void {
-  for (const name of readdirSync(dir).sort()) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) {
-      if (SKIP_DIR.has(name) || name.startsWith(".")) continue;
-      walk(root, full, acc);
-      continue;
-    }
-    acc.push(relative(root, full).split(sep).join("/"));
-  }
-}
-
 const argv = process.argv.slice(2);
-const target = argv.find((a) => !a.startsWith("--"));
+// 값 플래그의 값 자리를 대상으로 오인하지 않는다 — `pnpm ingest --adapter ts-dict ./repo`가 `ts-dict`를
+// 디렉터리로 읽어 ENOENT로 죽었다 (2026-09-04). `lib/cli/args.ts`가 세 CLI 공통이다.
+const target = findTarget(argv, new Set(["--base", "--adapter"]));
 if (!target) {
-  console.error("사용법: pnpm ingest <대상 디렉터리> [--json] [--base <locale>]");
+  console.error("사용법: pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]");
   process.exit(2);
 }
-const baseArg = argv.indexOf("--base");
-const baseOverride = baseArg === -1 ? undefined : argv[baseArg + 1];
+const baseOverride = flagValue(argv, "--base");
 
-const paths: string[] = [];
-walk(target, target, paths);
+const paths = walkFiles(target);
 
 // probe를 준다 — 경로 신호만으로는 검색 인덱스 같은 무관한 JSON 묶음을 잡는다.
 const probe = (p: string): string | undefined => {
@@ -64,11 +50,15 @@ const probe = (p: string): string | undefined => {
 };
 // ⚠️ 한 리포에 포맷이 둘일 수 있다 — bugshot-2는 _locales(4키)와 ts-dict(903키)가 공존하고
 // 탐지 우선순위가 작은 쪽을 고른다. `--adapter <name>`으로 지정하면 그게 이긴다.
-const adapterArg = process.argv.indexOf("--adapter");
-const adapterName = adapterArg === -1 ? undefined : process.argv[adapterArg + 1];
+const adapterName = flagValue(argv, "--adapter");
+// 이름 오타와 미탐지를 가른다 — 둘이 같은 메시지면 진단이 오래 걸린다.
+if (adapterName !== undefined && !isAdapterName(adapterName)) {
+  console.error(`--adapter ${adapterName}: 등록되지 않은 어댑터다.`);
+  process.exit(2);
+}
 const format = adapterName === undefined
   ? detectFormat(paths, probe)
-  : detectFormatWith(adapterName as never, paths, probe);
+  : detectFormatWith(adapterName, paths, probe);
 if (adapterName !== undefined && !format) {
   console.error(`--adapter ${adapterName}: 이 리포에서 해당 포맷을 찾지 못했다.`);
   process.exit(1);
@@ -80,36 +70,28 @@ if (!format) {
 
 const adapter = adapterFor(format);
 
-// ⚠️ 파일 수집이 layout에 따라 갈린다 (lib/adapters/types.ts).
-//   per-locale  — 로케일당 파일 하나: pathTemplate의 {locale}을 치환한다
-//   multi-locale — 한 파일에 로케일 여러 개: 글롭이므로 디렉터리의 파일을 전부 넘긴다
-const files: AdapterFile[] =
-  adapter.layout === "per-locale"
-    ? format.locales
-        .map((l) => format.pathTemplate.replace("{locale}", l))
-        .filter((p) => paths.includes(p))
-        .map((p) => ({ path: p, content: probe(p) ?? "" }))
-    : (() => {
-        const dir = format.pathTemplate.slice(0, format.pathTemplate.lastIndexOf("/") + 1);
-        return paths
-          .filter((p) => p.startsWith(dir) && /\.tsx?$/.test(p) && !p.includes("/__tests__/"))
-          .map((p) => ({ path: p, content: probe(p) ?? "" }));
-      })();
+// 파일 수집은 push와 **같은 함수**를 쓴다 — 여기만 따로 짜면 새 어댑터를 추가할 때 한쪽만 먹인다
+// (POSTMORTEM 2026-09-02, ARCHITECTURE §5.5.0).
+const files = selectLocaleFiles(adapter.layout, format, paths, probe);
 
 const result = adapter.read(format, files);
 // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어준다.
-const writeFormat = { ...format, nested: result.nested };
+// **파일별 관측값도 함께 넘긴다** — 포맷 단위 boolean만 넘기면 평평한 파일의 점 키가 쪼개진다.
+const writeFormat = {
+  ...format,
+  nested: result.nested,
+  ...(result.nestedByPath === undefined ? {} : { nestedByPath: result.nestedByPath }),
+};
 
-// base 로케일: --base가 없으면 en, 없으면 사전순 첫 번째. detect가 base를 알 수 없다 —
-// 어느 로케일이 기준인지는 리포의 관례이므로 §10의 미결 항목이다.
-const sorted = format.locales.slice().sort();
-const base = baseOverride ?? (format.locales.includes("en") ? "en" : sorted[0]);
+// base 로케일: --base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순).
+// detect가 base를 알 수 없다 — 어느 로케일이 기준인지는 리포의 관례이므로 미결이다 (TASKS §3a 🔒).
+const base = baseOverride ?? pickBaseLocale(format.locales);
 if (base === undefined) {
   console.error("로케일이 하나도 없다 — 연동 불가.");
   process.exit(1);
 }
 
-if (argv.includes("--json")) {
+if (hasFlag(argv, "--json")) {
   console.log(JSON.stringify({ format: writeFormat, base, result }, null, 2));
   // ⚠️ process.exit()을 쓰지 않는다 — 파이프로 나가는 stdout은 비동기라 버퍼가 남은 채로
   // 프로세스가 죽으면 출력이 잘린다(skillflo의 --json이 73KB에서 끊겼다).

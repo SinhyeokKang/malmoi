@@ -106,6 +106,12 @@ export type SurveyMetrics = {
   /** chrome이 원본에 들고 있는 필드별 리포 수 — **diff 원인이 아니라 관측치다.** */
   chromeFields: { placeholders: number; nonBaseDescription: number };
 
+  /**
+   * 수술적 어댑터에서 **키 1개 편집** write의 hunk 수가 1인 리포 비율. 분모는 측정된 수술적 리포다.
+   * `multiHunkRepos`가 재직렬화가 편집 밖 줄을 건드린 리포다 — 왕복·고정점·diff 0.000이 못 보는 축.
+   */
+  surgicalEdit: { oneHunk: Rate; multiHunkRepos: string[] };
+
   /** 부수 관측 — 다음 기능의 우선순위 근거다. */
   icuPluralRepos: number;
   placeholderRepos: number;
@@ -246,6 +252,12 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
     if (s.chromeFields.nonBaseDescription) chromeFieldCounts.nonBaseDescription += 1;
   }
 
+  const edited = rows.filter((s) => s.surgicalEditHunks !== undefined);
+  const surgicalEdit = {
+    oneHunk: rate(edited.filter((s) => s.surgicalEditHunks === 1).length, edited.length),
+    multiHunkRepos: edited.filter((s) => (s.surgicalEditHunks ?? 0) > 1).map((s) => s.repo),
+  };
+
   const cleanRatios = rows
     .filter((s) => s.chosen !== undefined && REGENERATE_ADAPTERS.has(s.chosen.adapter))
     .filter((s) => CAUSE_KEYS.every((k) => !s.diffCauses[k]))
@@ -299,6 +311,7 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
     },
     diffCauses: causeCounts,
     chromeFields: chromeFieldCounts,
+    surgicalEdit,
     icuPluralRepos,
     placeholderRepos,
     configFileRepos,
@@ -374,6 +387,7 @@ function buildRepoTable(rows: readonly RepoSurvey[], byRepo: ReadonlyMap<string,
       hit && s.chosen !== undefined && s.chosen.pathTemplate !== want ? "다른 유효 표면" : undefined,
       s.truncated ? "선택 잘림" : undefined,
       s.diffApproximate ? "diff 근사" : undefined,
+      s.surgicalEditHunks !== undefined && s.surgicalEditHunks !== 1 ? `편집 hunk ${s.surgicalEditHunks}` : undefined,
       v?.unsupported ? `미지원: ${v.unsupported}` : undefined,
       s.configFiles.length > 0 ? `설정 ${s.configFiles.length}` : undefined,
     ].filter(Boolean);

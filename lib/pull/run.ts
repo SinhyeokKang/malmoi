@@ -39,14 +39,22 @@ export type PullState = {
 export type PullDeps = {
   loadState(): Promise<PullState>;
   createClient(project: PullProject): Promise<GitClient>;
-  /** **커밋·PR이 실제로 나간 뒤에만** 부른다 (아래 갱신 규칙 주석). */
+  /**
+   * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
+   * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
+   */
   saveLastPulledAt(projectId: string, at: Date): Promise<void>;
   syncBranch: string;
 };
 
+/**
+ * `warnings`는 writer가 **버린** 항목이다 (`파일: 메시지`). 값을 잃고도 조용하면 안 된다 —
+ * json-catalog 접두 충돌(ARCHITECTURE §1.35)이 대표다. **있을 때만 싣는다** — 빈 배열을 항상
+ * 실으면 결과 모양이 바뀌어 소비자마다 분기가 늘고, 없는 것과 같아야 하는 값이다.
+ */
 export type PullResult =
-  | { status: "skipped"; reason: "no-edits" | "no-changes" }
-  | { status: "committed"; commitSha: string; prUrl: string; changed: string[] };
+  | { status: "skipped"; reason: "no-edits" | "no-changes"; warnings?: string[] }
+  | { status: "committed"; commitSha: string; prUrl: string; changed: string[]; warnings?: string[] };
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
   const { project, localeCodes, keys, maxUpdatedAt } = await deps.loadState();
@@ -107,6 +115,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
 
   const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);
+  const warnings = local.flatMap((f) => (f.errors ?? []).map((e) => `${e.path}: ${e.message}`));
+  const withWarnings = warnings.length === 0 ? {} : { warnings };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
   const changes = planPullChanges(
@@ -117,7 +127,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
     await deps.saveLastPulledAt(project.id, captured);
-    return { status: "skipped", reason: "no-changes" };
+    return { status: "skipped", reason: "no-changes", ...withWarnings };
   }
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
@@ -150,5 +160,5 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
   await deps.saveLastPulledAt(project.id, captured);
 
-  return { status: "committed", commitSha, prUrl, changed: changes.map((c) => c.path) };
+  return { status: "committed", commitSha, prUrl, changed: changes.map((c) => c.path), ...withWarnings };
 }

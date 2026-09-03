@@ -1,5 +1,5 @@
-import { ADAPTERS, compareKeys } from "@/lib/adapters";
-import type { Adapter, AdapterName, DetectedFormat, LocaleEntry } from "@/lib/adapters";
+import { compareKeys, isAdapterName, matchGlobPaths } from "@/lib/adapters";
+import type { Adapter, AdapterError, DetectedFormat, LocaleEntry } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 
 /**
@@ -30,16 +30,34 @@ export function shouldSkipPull(maxUpdatedAt: Date | null, lastPulledAt: Date | n
 
 // ── 포맷 재조립 ─────────────────────────────────────────────────────────────
 
-/** `Project`의 포맷 컬럼 4개. push가 채우고 pull이 읽는다 — 전부 nullable이다. */
+/**
+ * `Project`의 포맷 컬럼. push가 채우고 pull이 읽는다 — 전부 nullable이다.
+ *
+ * ⚠️ **`nestedByPath`를 optional로 두지 않는다.** 껍데기(`load.ts`의 `select`)가 안 넘기면
+ * 컴파일러가 막아야 한다 — 공급 계약을 optional로 뒀다가 지표가 반년째 0이었던 전례가 있다
+ * (POSTMORTEM 2026-09-02). 타입이 `unknown`인 것은 Json 컬럼이라 DB가 모양을 제약하지 않기
+ * 때문이고, 아래에서 boolean 값만 걸러 쓴다.
+ */
 export type ProjectFormatColumns = {
   adapterName: string | null;
   pathTemplate: string | null;
   nested: boolean | null;
+  nestedByPath: unknown;
   baseLocale: string | null;
 };
 
-function isAdapterName(name: string): name is AdapterName {
-  return ADAPTERS.some((a) => a.name === name);
+/**
+ * Json 컬럼 → `Record<string, boolean>`. **boolean이 아닌 값은 버린다** — 손으로 고친 DB나 옛
+ * 페이로드가 다른 모양을 넣었을 때 그것을 그대로 믿으면 write 분기가 진리값 아닌 값으로 갈린다.
+ * 남는 것이 없으면 `undefined`이고 write가 포맷 단위 `nested`로 폴백한다.
+ */
+function nestedByPathOf(raw: unknown): Record<string, boolean> | undefined {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, boolean> = {};
+  for (const [path, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "boolean") out[path] = value;
+  }
+  return Object.keys(out).length === 0 ? undefined : out;
 }
 
 /**
@@ -69,6 +87,8 @@ export function formatFromProject(
     locales: [...locales],
     // flat 전용 어댑터엔 무의미한 값이라 null을 undefined로 접는다.
     ...(cols.nested === null ? {} : { nested: cols.nested }),
+    // 파일별 관측값이 있으면 write가 이걸 먼저 본다 (ARCHITECTURE §1.35).
+    ...((byPath) => (byPath === undefined ? {} : { nestedByPath: byPath }))(nestedByPathOf(cols.nestedByPath)),
   };
 }
 
@@ -79,17 +99,6 @@ export type LocalePath = {
   locale?: string;
   path: string;
 };
-
-/**
- * 글롭 → 정규식. `*`가 `/`를 먹으면 하위 디렉터리의 엉뚱한 파일을 덮는다.
- *
- * **`*`를 뺀 정규식 특수문자를 전부 이스케이프한다** — `?`를 빼먹으면 경로에 그 문자가 있을 때
- * 정규식의 "직전 문자 0~1개"로 해석돼 조용히 다른 파일을 매칭한다. 지원하는 와일드카드는 `*` 하나다.
- */
-function globToRegExp(glob: string): RegExp {
-  const escaped = glob.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[^/]*");
-  return new RegExp(`^${escaped}$`);
-}
 
 /**
  * 쓸 파일 경로를 정한다.
@@ -117,8 +126,8 @@ export function resolveLocalePaths(
       .map((locale) => ({ locale, path: format.pathTemplate.replaceAll("{locale}", locale) }));
   }
 
-  const pattern = globToRegExp(format.pathTemplate);
-  const matched = treePaths.filter((p) => pattern.test(p)).sort(compareKeys);
+  // 글롭 규칙은 `lib/adapters/shared.ts`에 하나만 있다 — push·survey가 같은 함수를 쓴다.
+  const matched = matchGlobPaths(format.pathTemplate, treePaths);
   // 0개는 "낼 것이 없다"가 아니라 **경로가 이동했다**는 신호다. 조용히 빈 PR을 내면 안 된다.
   if (matched.length === 0) {
     throw new Error(`글롭이 매칭한 파일이 0개다: ${format.pathTemplate}`);
@@ -179,8 +188,11 @@ export function buildWriteEntries(
 
 // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
 
-/** writer의 출력. `content`가 `null`이면 낼 항목이 0개라 파일을 만들지 않는다 (MVP §4.1). */
-export type LocalFile = { path: string; content: string | null };
+/**
+ * writer의 출력. `content`가 `null`이면 낼 항목이 0개라 파일을 만들지 않는다 (MVP §4.1).
+ * `errors`는 writer가 **버린** 항목이다 — 값을 잃더라도 어느 키인지는 알려야 한다 (ARCHITECTURE §1.35).
+ */
+export type LocalFile = { path: string; content: string | null; errors?: AdapterError[] };
 export type TreeBlob = { path: string; sha: string };
 export type PullChange = { path: string; content: string };
 

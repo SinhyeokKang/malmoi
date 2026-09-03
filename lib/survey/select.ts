@@ -1,4 +1,4 @@
-import { compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix } from "../adapters/shared";
+import { I18N_HINT, compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix } from "../adapters/shared";
 
 /**
  * **어떤 파일을 물리화할지 고르는 것 자체가 로직이다.**
@@ -9,9 +9,6 @@ import { compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix } from "..
  *
  * 껍데기에 두면 테스트가 안 되므로 순수 함수로 뺐다 (design.md).
  */
-
-/** `lib/adapters/shared.ts`의 것과 같은 신호. i18n 계열 디렉터리 이름. */
-const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|translations)(\/|$)/i;
 
 const CHROME = /^(.*)_locales\/([^/]+)\/messages\.json$/;
 const JSON_FILE = /^(.*\/)([^/]+)\.json$/;

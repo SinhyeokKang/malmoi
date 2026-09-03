@@ -9,19 +9,17 @@ import type { DetectedFormat, FileProbe } from "../adapters/types";
  * - **어댑터 내** — 같은 어댑터의 후보 중 순위가 틀림. `public/search/{locale}.json`이 진짜
  *   카탈로그를 눌렀던 bugshot-web 사례. `Adapter.detectCandidates`가 이미 낸다.
  * - **어댑터 간** — 딴 어댑터의 후보가 정답을 가림. bugshot-2에서 `_locales` 4키가 `ts-dict`
- *   903키를 가린 사례(MVP §5.1). `detectFormat`이 **첫 매치 승**이라 뒤 어댑터는 실행조차
- *   안 되므로, 여기서 전부 돌려 이어붙인다.
+ *   903키를 가린 사례(MVP §5.1).
  *
- * **프로덕션(`lib/adapters/`)에 넣지 않는다.** 지금 소비자가 이 측정 실험뿐이고, 온보딩 UI처럼
- * 사람이 후보를 고르는 화면이 생기면 그때 승격한다 (design.md §detect 확장).
+ * **어댑터 간 순위는 이제 프로덕션이 정한다** (`lib/adapters/index.ts`의 `detectCandidatesAcross` →
+ * `rankTemplates`). 전에 여기 적혀 있던 "`detectFormat`은 첫 매치 승"은 폐기된 규칙이다 — 실험이
+ * 자기 순위를 따로 들면 측정 대상과 다른 것을 재게 되므로 `candidatesFor`는 위임만 한다.
  */
 
 /**
- * 어댑터별 후보 목록(= `ADAPTERS` 순서)을 하나로 잇는다.
- *
- * 순위 규칙이 "`ADAPTERS` 순서 → 어댑터 내 순위"라서 **결과의 `[0]`은 언제나 `detectFormat`이
- * 고르는 것과 같다** — `detectFormat`이 정확히 "`ADAPTERS` 순서의 첫 매치"이기 때문이다.
- * 그 불변식이 이 함수가 additive하다는 유일한 근거이므로 테스트가 매 실행 대조한다.
+ * 어댑터별 후보 목록을 순서대로 잇는다. ⚠️ **프로덕션 소비자가 없다** — `candidatesFor`가
+ * `detectCandidatesAcross`에 위임한 뒤로 테스트만 부른다. "결과의 `[0]` = `detectFormat`"이라는
+ * 옛 불변식은 어댑터 간 재정렬이 생기면서 깨졌고, 그 대조는 `detect-candidates.test.ts`가 진입점에서 한다.
  */
 export function mergeCandidates(perAdapter: readonly (readonly DetectedFormat[])[]): DetectedFormat[] {
   return perAdapter.flatMap((list) => [...list]);

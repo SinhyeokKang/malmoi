@@ -1,7 +1,8 @@
-import { adapterFor, compareKeys } from "../adapters";
+import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
 import type { AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
-import { roundtripDiffRatio, usedApproximation } from "./diff";
+import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses } from "./json-shape";
+import { pickBaseLocale } from "../push/payload";
 import { candidatesFor } from "./merge";
 import { median } from "./stats";
 import { tsShape } from "./ts-shape";
@@ -111,7 +112,12 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   }
 
   // write는 read가 관측한 중첩 여부를 알아야 같은 모양으로 되돌린다 (ARCHITECTURE §1.3).
-  const fmt: DetectedFormat = { ...chosen, nested: read1.nested };
+  // 파일별 관측값도 넘긴다 — 프로덕션(push→Project→pull)이 그것을 나르므로 측정도 같아야 한다.
+  const fmt: DetectedFormat = {
+    ...chosen,
+    nested: read1.nested,
+    ...(read1.nestedByPath === undefined ? {} : { nestedByPath: read1.nestedByPath }),
+  };
   try {
     applyRoundtrip(survey, adapter.layout, fmt, read1, adapterFiles, input);
   } catch (cause) {
@@ -130,10 +136,8 @@ const toCandidate = (f: DetectedFormat): SurveyCandidate => ({
   locales: [...f.locales].sort(compareKeys),
 });
 
-/** `en`이 있으면 `en`, 없으면 사전순 첫 번째 (ARCHITECTURE §1.3 — 아직 추정이다). */
-function pickBase(locales: readonly string[]): string | undefined {
-  return locales.includes("en") ? "en" : [...locales].sort(compareKeys)[0];
-}
+/** push와 **같은 판정**을 쓴다 — 여기서 다르게 고르면 측정이 프로덕션과 다른 base를 잰다. */
+const pickBase = pickBaseLocale;
 
 /** 1순위 후보가 가리키는 파일들을 골라온다. `layout`에 따라 규칙이 다르다. */
 function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
@@ -146,13 +150,11 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
     }
     return out;
   }
-  // `multi-locale` — pathTemplate이 글롭(`<dir>*.ts`)이라 같은 디렉터리의 파일을 모은다.
-  const dir = fmt.pathTemplate.replace(/\*\.tsx?$/, "");
-  for (const path of [...input.files.keys()].sort(compareKeys)) {
-    if (!path.startsWith(dir)) continue;
-    if (path.slice(dir.length).includes("/")) continue;
-    if (!/\.tsx?$/.test(path)) continue;
-    out.push({ path, content: input.files.get(path)! });
+  // `multi-locale` — pathTemplate이 글롭이다. **push·pull과 같은 함수로 매칭한다** (2026-09-04):
+  // 측정 층이 자기 규칙을 들면 프로덕션이 고르지 않는 파일을 재게 된다.
+  for (const path of matchGlobPaths(fmt.pathTemplate, [...input.files.keys()])) {
+    const content = input.files.get(path);
+    if (content !== undefined) out.push({ path, content });
   }
   return out;
 }
@@ -380,7 +382,8 @@ function applyRoundtrip(
 
   const read2 = adapter.read({ ...fmt, currentFiles: asFiles(write1) }, asFiles(write1));
   // 재생성 writer는 미번역(빈 값)을 빼므로, 그 규칙을 1차 read에도 적용해야 공정하다.
-  const dropEmpty = layout === "per-locale";
+  // 축은 `writeStrategy`다 — `layout`으로 가르면 per-locale + surgical(yaml·code-dict)이 잘못 분류된다.
+  const dropEmpty = adapter.writeStrategy === "regenerate";
   survey.roundtrip.semantic = sameMeaning(read1, read2, dropEmpty) ? "same" : "different";
 
   const entries2 = (locale: string): readonly LocaleEntry[] =>
@@ -404,6 +407,21 @@ function applyRoundtrip(
   if (before !== undefined && after !== undefined) {
     survey.diffRatio = roundtripDiffRatio(before, after);
     survey.diffApproximate = usedApproximation(before, after);
+  }
+
+  // **수술적 어댑터는 실제로 치환 경로를 밟게 한다.** 위 왕복은 값이 전부 같아 원본을 그대로
+  // 돌려주므로 재직렬화가 한 줄도 돌지 않는다 — 키 하나를 바꿔 write하고 hunk가 1인지 본다.
+  if (adapter.writeStrategy === "surgical" && before !== undefined && basePath !== undefined && base !== undefined) {
+    const first = [...entriesOf(base)].sort((a, b) => compareKeys(a.key, b.key)).find((e) => e.message !== "");
+    if (first !== undefined) {
+      const edited: LocaleEntry = { ...first, message: `${first.message}·편집` };
+      const editedOf = (locale: string): readonly LocaleEntry[] => (locale === base ? [edited] : []);
+      const written =
+        layout === "multi-locale"
+          ? writeMultiLocale(fmt, originals, localeNames, base, editedOf).get(basePath)
+          : writePerLocale(fmt, [base], base, editedOf, byPath).get(basePath);
+      if (written !== undefined) survey.surgicalEditHunks = changedHunks(before, written);
+    }
   }
 
   // **비-base 파일도 잰다.** base 순서를 전 로케일에 전파하는 설계에서는 위험이 이쪽에 산다 —

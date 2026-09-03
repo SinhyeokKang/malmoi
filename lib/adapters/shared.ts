@@ -12,6 +12,28 @@ export function compareKeys(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+/**
+ * 글롭 `pathTemplate`이 가리키는 파일들 — **`multi-locale` 어댑터(`ts-dict`)의 유일한 경로 규칙이다.**
+ *
+ * ⚠️ **`*`는 `/`를 먹지 않는다.** 먹게 두면 하위 디렉터리의 엉뚱한 파일을 로케일 파일로 읽는다.
+ * `*`를 뺀 정규식 특수문자는 전부 이스케이프한다 — `?`를 빼먹으면 경로에 그 문자가 있을 때
+ * "직전 문자 0~1개"로 해석돼 조용히 다른 파일을 매칭한다. 지원하는 와일드카드는 `*` 하나다.
+ *
+ * ⚠️ **push·pull·survey가 이 함수를 공유한다** (2026-09-04). 셋이 각자 규칙을 들었던 동안 push는
+ * 하위 디렉터리와 `.tsx`를 포함하고 pull의 글롭은 둘 다 뺐다 — 그 차이에 걸린 파일은 **키가 DB에
+ * 적재되고 편집 UI에 뜨는데 pull이 그 파일을 영영 쓰지 않는다.** 에러도 경고도 없다.
+ *
+ * **확장자의 진실은 `pathTemplate`이다.** `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다 —
+ * 선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다.
+ *
+ * 정렬해 돌려준다: 이 순서가 트리 페이로드 순서가 되고, 흔들리면 커밋이 비결정적이 된다.
+ */
+export function matchGlobPaths(pathTemplate: string, paths: readonly string[]): string[] {
+  const escaped = pathTemplate.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[^/]*");
+  const pattern = new RegExp(`^${escaped}$`);
+  return paths.filter((p) => pattern.test(p)).sort(compareKeys);
+}
+
 /** 들여쓰기 2칸 + 파일 끝 개행 정확히 1개. `JSON.stringify`는 개행을 붙이지 않는다. */
 export function serialize(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
@@ -116,7 +138,7 @@ export function splitLocaleSuffix(base: string): { prefix: string; locale: strin
  *
  * 신호 둘을 쓴다: 경로에 i18n 계열 이름이 있는가, 로케일이 몇 개인가.
  */
-const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|translations)(\/|$)/i;
+export const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|translations)(\/|$)/i;
 
 /**
  * 예제·픽스처·문서 디렉터리 — **감점 신호다** (2026-09-02 추가).
@@ -230,9 +252,10 @@ function dirOf(pathTemplate: string): string {
  * 로케일이 많음, C는 A의 조상 아님) `sort`에 넣으면 결과가 구현 정의가 된다. 정렬이 끝난 뒤
  * 안정적으로 끌어올리는 편이 결정적이다. 승격할 때마다 head의 디렉터리가 짧아지므로 끝난다.
  *
- * ⚠️ **어댑터 안에서만 쓴다.** 어댑터 간에 적용하면 SchizoDuckie/DuckieTV의
- * `_locales/{locale}.json`(json-catalog, 조상)이 `_locales/{locale}/messages.json`(정답)을
- * 끌어내린다 — 크롬 최우선 규칙이 막고 있는 것을 여기서 되살릴 이유가 없다.
+ * ⚠️ **버킷 안에서만 쓴다** — 어댑터 안(`rankTemplateCandidates`)과 `index.ts`의 비크롬 버킷(`rest`).
+ * 크롬 버킷을 가로질러 적용하면 SchizoDuckie/DuckieTV의 `_locales/{locale}.json`(json-catalog,
+ * 조상)이 `_locales/{locale}/messages.json`(정답)을 끌어내린다 — 크롬 최우선 규칙이 막고 있는
+ * 것을 여기서 되살릴 이유가 없다 (ARCHITECTURE §1.3 "버킷별로 적용").
  */
 export function liftAncestors<T extends { pathTemplate: string }>(ranked: readonly T[]): T[] {
   const out = ranked.slice();

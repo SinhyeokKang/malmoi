@@ -1,4 +1,4 @@
-import { namespaceOf } from "@/lib/adapters/index";
+import { matchGlobPaths, namespaceOf } from "@/lib/adapters/index";
 import type { Adapter, AdapterFile, DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
 import type { ScannedRef } from "@/lib/scan/index";
 
@@ -44,11 +44,9 @@ export function selectLocaleFiles(
       .filter((p) => paths.includes(p))
       .map((p) => ({ path: p, content: probe(p) ?? "" }));
   }
-  // multi-locale은 pathTemplate이 글롭이라 치환하지 않는다. 디렉터리의 소스를 전부 넘긴다.
-  const dir = format.pathTemplate.slice(0, format.pathTemplate.lastIndexOf("/") + 1);
-  return paths
-    .filter((p) => p.startsWith(dir) && /\.tsx?$/.test(p) && !p.includes("/__tests__/"))
-    .map((p) => ({ path: p, content: probe(p) ?? "" }));
+  // multi-locale은 pathTemplate이 글롭이라 치환하지 않는다. **pull과 같은 함수로 매칭한다** —
+  // 규칙이 갈리면 여기서 적재한 파일을 pull이 안 써서 번역이 리포에 도달하지 않는다 (2026-09-04).
+  return matchGlobPaths(format.pathTemplate, paths).map((p) => ({ path: p, content: probe(p) ?? "" }));
 }
 
 export type PushPayloadInput = {
@@ -88,6 +86,10 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
       pathTemplate: input.format.pathTemplate,
       // detect는 이 값을 채울 수 없다 — 중첩 여부는 내용의 성질이라 read가 관측한다.
       nested: input.read.nested,
+      // ⚠️ **파일별 관측값을 반드시 함께 싣는다.** 이 줄이 없던 동안 `nestedByPath` 수정은
+      // 어댑터·survey에서만 살아 있었고 프로덕션 pull은 포맷 단위 boolean으로 돌았다 (§1.35).
+      // 빈 객체를 만들지 않는다 — 관측하지 못한 것과 "전부 flat"은 다르다.
+      ...(input.read.nestedByPath === undefined ? {} : { nestedByPath: input.read.nestedByPath }),
       baseLocale: input.baseLocale,
     },
     locales: input.format.locales,

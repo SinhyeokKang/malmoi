@@ -83,7 +83,13 @@ describe("selectLocaleFiles — 어댑터에게 무엇을 먹이는가", () => {
     expect(files.map((f) => f.path)).toEqual(["_locales/en/messages.json"]);
   });
 
-  it("multi-locale은 pathTemplate의 디렉터리에서 ts를 모은다 (글롭이라 치환하지 않는다)", () => {
+  /**
+   * ⚠️ **기대값이 바뀌었다** (2026-09-04 audit #3). 전에는 `.tsx`와 하위 디렉터리를 포함했는데
+   * pull의 글롭은 둘 다 뺐다 — 그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이
+   * 그 파일을 영영 쓰지 않았다(에러 없음). 셋을 `matchGlobPaths` 하나로 모으면서 **`pathTemplate`을
+   * 정본으로 삼았다**: `*.ts`는 `.ts`만 잡는다. `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다.
+   */
+  it("multi-locale은 글롭을 그대로 매칭한다 — 확장자·하위 디렉터리의 진실은 pathTemplate이다", () => {
     const tsFormat: DetectedFormat = {
       adapter: "ts-dict",
       pathTemplate: "src/i18n/namespaces/*.ts",
@@ -92,14 +98,12 @@ describe("selectLocaleFiles — 어댑터에게 무엇을 먹이는가", () => {
     const files = selectLocaleFiles("multi-locale", tsFormat, [
       "src/i18n/namespaces/common.ts",
       "src/i18n/namespaces/app.tsx",
+      "src/i18n/namespaces/legacy/old.ts",
       "src/i18n/namespaces/__tests__/common.test.ts",
       "src/i18n/index.ts",
       "src/i18n/namespaces/readme.md",
     ], probe);
-    expect(files.map((f) => f.path)).toEqual([
-      "src/i18n/namespaces/common.ts",
-      "src/i18n/namespaces/app.tsx",
-    ]);
+    expect(files.map((f) => f.path)).toEqual(["src/i18n/namespaces/common.ts"]);
   });
 });
 
@@ -179,5 +183,27 @@ describe("buildPushPayload", () => {
     expect(payload.commitSha).toBe("a".repeat(40));
     expect(payload.commitAt).toBe("2026-09-03T00:00:00+09:00");
     expect(payload.projectSlug).toBe("acme");
+  });
+});
+
+describe("buildPushPayload — nestedByPath", () => {
+  it("read가 관측한 파일별 중첩 여부를 그대로 나른다 — 포맷 단위 boolean은 형제 파일 때문에 거짓이 된다", () => {
+    const withPaths = {
+      ...read,
+      nested: true,
+      nestedByPath: { "_locales/en/messages.json": true, "_locales/ko/messages.json": false },
+    };
+    const { payload } = buildPushPayload({ ...input, read: withPaths });
+    expect(payload.format.nestedByPath).toEqual({
+      "_locales/en/messages.json": true,
+      "_locales/ko/messages.json": false,
+    });
+    // 스키마를 통과해야 서버가 받는다 — 생산자와 계약이 이어져 있다는 유일한 증거다.
+    expect(PushPayload.safeParse(payload).success).toBe(true);
+  });
+
+  it("read가 관측하지 못했으면 필드를 만들지 않는다 — 빈 객체는 '전부 flat'으로 읽힌다", () => {
+    const { payload } = buildPushPayload(input);
+    expect(payload.format).not.toHaveProperty("nestedByPath");
   });
 });

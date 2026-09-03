@@ -25,6 +25,7 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       adapterName: true,
       pathTemplate: true,
       nested: true,
+      nestedByPath: true,
       baseLocale: true,
       lastPulledAt: true,
       locales: { select: { code: true }, orderBy: { code: "asc" } },

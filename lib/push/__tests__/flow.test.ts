@@ -286,3 +286,47 @@ describe("push 흐름 — 기존 키가 있다", () => {
     expect(stmt(captured, 'UPDATE "StringKey" AS s').sql).toContain('"orphaned" = false');
   });
 });
+
+/**
+ * **musicblocks 모양** (ARCHITECTURE §1.35): 로케일 파일 하나만 중첩인데 포맷 단위 boolean이
+ * 형제 파일까지 중첩으로 만들어 평평한 파일의 점 키가 쪼개졌다. 어댑터·survey는 `nestedByPath`로
+ * 고쳤지만 **push→DB 배선이 없어 프로덕션 pull은 옛 동작이었다** — 그 홉을 여기서 본다.
+ *
+ * chrome 픽스처로는 못 본다 — 그 어댑터는 정의상 flat이라 이 필드를 내지 않는다.
+ */
+describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
+  const MIXED: Record<string, string> = {
+    "i18n/en.json": JSON.stringify({ grp: { k: "N" }, "a.b": "X" }, null, 2),
+    "i18n/th.json": JSON.stringify({ "Clear workspace": "ล้าง", "Clear workspace.": "ล้าง." }, null, 2),
+  };
+
+  async function runMixed() {
+    const paths = Object.keys(MIXED);
+    const probe = (p: string) => MIXED[p];
+    const format = detectFormat(paths, probe);
+    expect(format?.adapter, "json-catalog를 탐지해야 한다").toBe("json-catalog");
+    const adapter = adapterFor(format!);
+    const read = adapter.read(format!, selectLocaleFiles(adapter.layout, format!, paths, probe));
+    const payload = buildPushPayload({
+      projectSlug: "acme",
+      commitSha: "b".repeat(40),
+      commitAt: "2026-09-04T00:00:00+09:00",
+      format: format!,
+      read,
+      baseLocale: "en",
+      scanRefs: [],
+    }).payload;
+    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, payload);
+    return { ...stub, payload };
+  }
+
+  it("파일별 관측값이 페이로드와 Project 컬럼까지 간다 — 한 홉만 끊겨도 pull이 옛 동작을 한다", async () => {
+    const { payload, projectUpdates } = await runMixed();
+    // 포맷 단위 값은 여전히 거칠다 — en 하나가 중첩이라 true다.
+    expect(payload.format.nested).toBe(true);
+    expect(payload.format.nestedByPath).toEqual({ "i18n/en.json": true, "i18n/th.json": false });
+    const data = (projectUpdates[0] as { data: Record<string, unknown> }).data;
+    expect(data["nestedByPath"]).toEqual({ "i18n/en.json": true, "i18n/th.json": false });
+  });
+});

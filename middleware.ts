@@ -15,8 +15,8 @@ import { auth } from "@/auth";
 export default auth((request) => {
   if (request.auth?.user) return;
 
-  // 로그인 화면은 `(edit)` 레이아웃이 그린다. 세션이 없으면 페이지를 실행시키지 않고
-  // 루트로 보내 그 레이아웃만 렌더되게 한다.
+  // 로그인 화면은 `app/page.tsx`(루트)가 그린다. 세션이 없으면 보호 페이지를 실행시키지 않고
+  // 루트로 보낸다 — `(edit)` 레이아웃은 2차 방어로 `redirect()`만 던진다.
   const url = new URL("/", request.nextUrl.origin);
   return Response.redirect(url);
 });

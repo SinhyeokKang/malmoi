@@ -13,9 +13,11 @@
  * **항상 exit 0이다.** 사용처를 못 찾은 것은 경고일 뿐이고, 키가 존재하는지는 로케일 파일이
  * 정한다 (`pnpm ingest`). CI를 실패시킬 수 있는 건 적재 층뿐이다 (ARCHITECTURE §4).
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
+import { findTarget, flagValues, hasFlag } from "../lib/cli/args";
+import { sourceKind, walkFiles } from "../lib/cli/walk";
 import {
   DEFAULT_WRAPPERS,
   formatWrapperSpec,
@@ -25,62 +27,14 @@ import {
   type WrapperId,
 } from "../lib/scan/index";
 
-/** AST 경로로 보낼 확장자. */
-const TS_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs"]);
-/** `__MSG_key__` 정규식 경로로 보낼 확장자. */
-const RAW_EXT = new Set([".html", ".htm", ".json"]);
-/** 들어가지 않을 디렉터리. 산출물을 스캔하면 같은 키가 중복 ref로 부풀고 느려진다. */
-const SKIP_DIR = new Set([
-  "node_modules", ".git", "dist", "dist-e2e", "build", "out", ".next",
-  "coverage", "generated", ".vercel", "playwright-report", "test-results",
-]);
-
-function collect(root: string, dir: string, acc: SourceFileInput[]): void {
-  for (const name of readdirSync(dir).sort()) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) {
-      if (SKIP_DIR.has(name) || name.startsWith(".")) continue;
-      collect(root, full, acc);
-      continue;
-    }
-    const dot = name.lastIndexOf(".");
-    const ext = dot === -1 ? "" : name.slice(dot);
-    const kind = TS_EXT.has(ext) ? "ts" : RAW_EXT.has(ext) ? "raw" : undefined;
-    if (!kind) continue;
-    // 경로는 리포 기준 상대경로로 정규화한다 — GitHub permalink가 이 값을 그대로 쓴다.
-    acc.push({ path: relative(root, full).split(sep).join("/"), code: readFileSync(full, "utf8"), kind });
-  }
-}
-
 const USAGE = "사용법: pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...";
 
-/**
- * **`--wrapper`의 값 자리를 함께 소비한다.** 값이 `--`로 시작하지 않아, 단순히
- * "플래그가 아닌 첫 인자"를 대상으로 삼으면 `pnpm scan --wrapper @/i18n#t ./dir`이
- * 래퍼 스펙을 디렉터리로 읽는다.
- */
-function parseArgv(argv: readonly string[]): { target?: string; json: boolean; specs: string[] } {
-  const specs: string[] = [];
-  let target: string | undefined;
-  let json = false;
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--wrapper") {
-      const raw = argv[++i];
-      if (raw) specs.push(raw);
-      continue;
-    }
-    if (a === "--json") {
-      json = true;
-      continue;
-    }
-    if (a === undefined || a.startsWith("--")) continue;
-    target ??= a;
-  }
-  return { target, json, specs };
-}
-
-const { target, json, specs } = parseArgv(process.argv.slice(2));
+// 인자 파싱·리포 훑기는 `lib/cli/`가 세 CLI 공통으로 든다 — `--wrapper`의 값 자리를 대상으로
+// 오인하는 함정을 한 곳에서만 고치면 된다.
+const argv = process.argv.slice(2);
+const target = findTarget(argv, new Set(["--wrapper"]));
+const json = hasFlag(argv, "--json");
+const specs = flagValues(argv, "--wrapper");
 if (!target) {
   console.error(USAGE);
   process.exit(2);
@@ -95,8 +49,11 @@ const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : s
   return parsed;
 });
 
-const files: SourceFileInput[] = [];
-collect(target, target, files);
+// 경로는 리포 기준 상대경로다 — GitHub permalink가 이 값을 그대로 쓴다.
+const files: SourceFileInput[] = walkFiles(target).flatMap((path) => {
+  const kind = sourceKind(path);
+  return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
+});
 const { refs, warnings } = scanSources(files, wrappers);
 
 if (json) {

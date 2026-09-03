@@ -56,6 +56,7 @@ describe("renderLocaleFiles — per-locale", () => {
       adapterName: "json-catalog",
       pathTemplate: "i18n/{locale}.json",
       nested: false,
+      nestedByPath: null,
       baseLocale: "en",
     },
     ["ko", "en"],
@@ -117,6 +118,7 @@ describe("renderLocaleFiles — multi-locale (파일 × 로케일 이중 루프)
       adapterName: "ts-dict",
       pathTemplate: "src/i18n/ns/*.ts",
       nested: null,
+      nestedByPath: null,
       baseLocale: "en",
     },
     ["ko", "en", "fr"],
@@ -220,5 +222,43 @@ export const ns = { ko, en, fr };
     const a = renderLocaleFiles(format, "multi-locale", paths, keys, "en", current);
     const b = renderLocaleFiles(format, "multi-locale", paths, keys, "en", current);
     expect(a).toEqual(b);
+  });
+});
+
+describe("renderLocaleFiles — base description 폴백이 실제 경로에서 켜진다", () => {
+  const format = formatFromProject(
+    { adapterName: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: null, nestedByPath: null, baseLocale: "en" },
+    ["en", "ko"],
+  );
+  const paths = resolveLocalePaths(format, "per-locale", []);
+
+  it("base 셀에 description이 없으면 StringKey.description으로 폴백한다 — rowsForLocale에 isBase가 닿아야 한다", () => {
+    // `Translation.description`이 전부 null인 마이그레이션 직후 상태. `rowsForLocale` 단위 테스트는
+    // `{ isBase: true }`를 직접 넘겨 이 홉을 못 본다 — 여기서 renderLocaleFiles를 통째로 지난다.
+    const keys: RenderKey[] = [
+      key({ key: "hello", description: "인사말", cells: { en: { value: "Hello" }, ko: { value: "안녕" } } }),
+    ];
+    const files = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map());
+    expect(files.find((f) => f.path === "_locales/en/messages.json")?.content).toContain('"description": "인사말"');
+    // 비-base엔 폴백하지 않는다 — 원본에 없던 값을 만드는 것은 병합이다.
+    expect(files.find((f) => f.path === "_locales/ko/messages.json")?.content).not.toContain("인사말");
+  });
+});
+
+describe("renderLocaleFiles — writer가 버린 항목을 errors로 싣는다", () => {
+  it("json-catalog 접두 충돌로 버린 키가 LocalFile.errors에 남는다 — 프로덕션에서 조용히 사라지면 안 된다 (ARCHITECTURE §1.35)", () => {
+    const format = formatFromProject(
+      { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: true, nestedByPath: null, baseLocale: "en" },
+      ["en"],
+    );
+    const paths = resolveLocalePaths(format, "per-locale", []);
+    const keys: RenderKey[] = [
+      key({ key: "a.b", cells: { en: { value: "leaf" } } }),
+      key({ key: "a.b.c", cells: { en: { value: "deeper" } } }),
+    ];
+    const files = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map());
+    const en = files.find((f) => f.path === "i18n/en.json");
+    expect(en?.errors?.length ?? 0).toBeGreaterThan(0);
+    expect(en?.errors?.[0]?.message).toMatch(/a\.b/);
   });
 });

@@ -12,7 +12,7 @@ export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
 export { localeFromPath } from "./chrome-locales";
-export { namespaceOf, compareKeys, catalogVerdict, pathSignals } from "./shared";
+export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals } from "./shared";
 export * from "./types";
 
 /**
@@ -96,6 +96,15 @@ function rankTemplates(candidates: readonly DetectedFormat[]): DetectedFormat[] 
 /** 리포 파일 경로 목록에서 로케일 포맷을 찾는다. 못 찾으면 undefined — 연동 불가다. */
 export function detectFormat(paths: readonly string[], probe?: FileProbe): DetectedFormat | undefined {
   return detectCandidatesAcross(paths, probe)[0];
+}
+
+/**
+ * 문자열이 등록된 어댑터 이름인가. `Project.adapterName`은 문자열 컬럼이고 CLI `--adapter`는 사용자
+ * 입력이라 둘 다 여기를 지나야 `adapterFor`가 나중에 터지지 않는다 — 전에는 CLI가 `as never`로
+ * 우회해 오타가 "해당 포맷을 찾지 못했다"(미탐지)와 같은 메시지로 떨어졌다.
+ */
+export function isAdapterName(name: string): name is AdapterName {
+  return ADAPTERS.some((a) => a.name === name);
 }
 
 export function adapterFor(format: DetectedFormat): Adapter {

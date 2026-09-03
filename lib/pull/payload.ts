@@ -12,7 +12,8 @@ import type { PullChange } from "./plan";
 
 /**
  * 이 마커가 없으면 pull이 만든 커밋이 base에 머지될 때 push가 다시 돌아 무한 루프가 된다
- * (ARCHITECTURE §3). **push 측 스킵 판정도 같은 문자열을 봐야 하므로 상수로 내보낸다.**
+ * (ARCHITECTURE §3). ⚠️ **push 측 스킵 판정은 이 상수를 import하지 못한다** — 대상 리포 워크플로의
+ * YAML `if:`(`docs/ACTIONS.md`)에 리터럴로 박혀 있다. 이 값을 바꾸면 그쪽도 함께 바꾼다.
  */
 export const SKIP_MARKER = "[skip-l10n]";
 

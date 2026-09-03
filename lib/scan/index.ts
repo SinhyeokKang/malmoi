@@ -1,3 +1,5 @@
+import { compareKeys } from "@/lib/adapters/shared";
+
 import { extractRefs } from "./ast";
 import type { KeyRef, ScanResult, ScanWarning, ScannedRef, SourceFileInput, WrapperId } from "./types";
 
@@ -74,10 +76,8 @@ function dedupe(sorted: readonly KeyRef[]): KeyRef[] {
   return out;
 }
 
-/** 어댑터 writer와 같은 규칙 — `<` 비교로 환경 의존을 없앤다 (ARCHITECTURE §1.1). */
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
+/** 어댑터 writer와 같은 규칙 — 재구현하지 않고 그 함수를 쓴다 (ARCHITECTURE §1.1). */
+const compare = compareKeys;
 
 function byLocation(a: KeyRef, b: KeyRef): number {
   return a.path === b.path ? a.line - b.line : compare(a.path, b.path);

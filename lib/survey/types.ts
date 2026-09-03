@@ -155,6 +155,16 @@ export type RepoSurvey = {
    * 게이트에 안 잡힌다.
    */
   diffRatioNonBase?: number;
+  /**
+   * **수술적 어댑터 전용** — base 파일에서 키 **1개**의 값을 바꿔 write했을 때의 변경 hunk 수.
+   * 정상은 1이다. 2 이상이면 편집하지 않은 줄까지 재직렬화가 건드렸다는 뜻이다(들여쓰기·접힘).
+   *
+   * ⚠️ 이 지표가 없던 동안 수술적 왕복·고정점·diff 0.000은 **공허했다** — read 결과를 그대로
+   * write에 넣으면 값이 전부 같아 원본을 바이트 그대로 돌려주므로 치환 경로를 한 줄도 밟지
+   * 않는다. YAML 17개·code-dict 12개에서 재직렬화가 한 번도 측정되지 않았다 (2026-09-04 audit #5).
+   * 재생성 어댑터나 측정 불가면 `undefined`.
+   */
+  surgicalEditHunks?: number;
 
   /** base 로케일 파일의 들여쓰기. 재생성 어댑터가 아니거나 관측 불가면 `undefined`. */
   indent?: IndentStyle;

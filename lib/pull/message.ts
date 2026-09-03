@@ -27,14 +27,17 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
     case "committed":
       return {
         tone: "success",
-        text: "변경 사항을 개발자에게 보냈어요. 검토 후 제품에 반영됩니다.",
+        text: `변경 사항을 개발자에게 보냈어요. 검토 후 제품에 반영됩니다.${dropped(outcome.warnings ?? [])}`,
         href: outcome.prUrl,
         linkLabel: "보낸 내용 보기",
       };
     case "skipped":
       // **두 스킵 이유를 편집자에게 구별해 보이지 않는다.** "편집이 없다"와 "파일이 안 바뀐다"의
       // 차이는 내부 판정 층의 구분이고, 편집자에게는 둘 다 "보낼 것이 없다"다.
-      return { tone: "muted", text: "이미 최신 상태예요 — 보낼 변경이 없어요." };
+      return {
+        tone: "muted",
+        text: `이미 최신 상태예요 — 보낼 변경이 없어요.${dropped(outcome.warnings ?? [])}`,
+      };
     case "failed":
       // 원인을 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고 방법이 없어진다.
       return { tone: "destructive", text: `내보내기에 실패했어요: ${outcome.error}` };
@@ -44,4 +47,12 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
       return exhaustive;
     }
   }
+}
+
+/**
+ * writer가 버린 항목이 있으면 덧붙인다. 편집자가 고칠 수 있는 일이 아니라 **개발자에게 알리라**고만
+ * 말한다 — 어느 키인지는 서버 로그(`warnings`)에 있다. 삼키면 값이 사라진 것을 아무도 모른다.
+ */
+function dropped(warnings: readonly string[]): string {
+  return warnings.length === 0 ? "" : ` 다만 ${warnings.length}건은 반영되지 못했어요 — 개발자에게 알려 주세요.`;
 }

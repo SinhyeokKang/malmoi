@@ -48,6 +48,7 @@ describe("formatFromProject — pull 경로엔 read가 없어 여기가 유일�
     adapterName: "json-catalog",
     pathTemplate: "src/lib/i18n/{locale}.json",
     nested: true,
+    nestedByPath: null,
     baseLocale: "en",
     ...over,
   });
@@ -93,6 +94,7 @@ describe("resolveLocalePaths — per-locale", () => {
       adapterName: "json-catalog",
       pathTemplate: "src/lib/i18n/{locale}.json",
       nested: false,
+      nestedByPath: null,
       baseLocale: "en",
     },
     ["ko", "en"],
@@ -116,6 +118,7 @@ describe("resolveLocalePaths — per-locale", () => {
         adapterName: "json-catalog",
         pathTemplate: "src/i18n/messages.json",
         nested: false,
+        nestedByPath: null,
         baseLocale: "en",
       },
       ["ko", "en", "fr"],
@@ -129,6 +132,7 @@ describe("resolveLocalePaths — per-locale", () => {
         adapterName: "json-catalog",
         pathTemplate: "src/i18n/messages.json",
         nested: false,
+        nestedByPath: null,
         baseLocale: "en",
       },
       ["en"],
@@ -144,6 +148,7 @@ describe("resolveLocalePaths — per-locale", () => {
         adapterName: "ts-dict",
         pathTemplate: "src/i18n/namespaces/*.ts",
         nested: null,
+        nestedByPath: null,
         baseLocale: "en",
       },
       ["ko", "en", "fr"],
@@ -159,6 +164,7 @@ describe("resolveLocalePaths — per-locale", () => {
         adapterName: "chrome-locales",
         pathTemplate: "public/_locales/{locale}/messages.json",
         nested: null,
+        nestedByPath: null,
         baseLocale: "en",
       },
       ["ko", "fr", "en"],
@@ -173,6 +179,7 @@ describe("resolveLocalePaths — multi-locale (글롭)", () => {
       adapterName: "ts-dict",
       pathTemplate: "src/i18n/namespaces/*.ts",
       nested: null,
+      nestedByPath: null,
       baseLocale: "en",
     },
     ["ko", "en", "fr"],
@@ -370,5 +377,30 @@ describe("planPullChanges — 2층 blob SHA 비교", () => {
       { path: "i18n/en.json", content: EN },
     ];
     expect(planPullChanges(local, [])).toEqual(planPullChanges(local, []));
+  });
+});
+
+describe("formatFromProject — nestedByPath (ARCHITECTURE §1.35)", () => {
+  const cols = (over: Partial<ProjectFormatColumns> = {}): ProjectFormatColumns => ({
+    adapterName: "json-catalog",
+    pathTemplate: "i18n/{locale}.json",
+    nested: true,
+    nestedByPath: null,
+    baseLocale: "en",
+    ...over,
+  });
+
+  it("경로별 관측값을 포맷에 실어 준다 — write가 이걸 먼저 본다", () => {
+    const f = formatFromProject(cols({ nestedByPath: { "i18n/th.json": false } }), ["th"]);
+    expect(f.nestedByPath).toEqual({ "i18n/th.json": false });
+  });
+
+  it("컬럼이 비어 있으면 undefined다 — write가 포맷 단위 `nested`로 폴백한다", () => {
+    expect(formatFromProject(cols(), ["th"]).nestedByPath).toBeUndefined();
+  });
+
+  it("boolean이 아닌 값은 버린다 — Json 컬럼이라 DB가 모양을 제약하지 않는다", () => {
+    const f = formatFromProject(cols({ nestedByPath: { "i18n/th.json": "yes", "i18n/en.json": true } }), ["th"]);
+    expect(f.nestedByPath).toEqual({ "i18n/en.json": true });
   });
 });

@@ -7,14 +7,16 @@
  *
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join, relative, sep } from "node:path";
+import { join } from "node:path";
 
 import { config } from "dotenv";
 
-import { adapterFor, detectFormat, detectFormatWith } from "../lib/adapters/index";
-import { requireEnv } from "../lib/env";
+import { adapterFor, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
+import { findTarget, flagValue, flagValues } from "../lib/cli/args";
+import { sourceKind, walkFiles } from "../lib/cli/walk";
+import { optionalEnv, requireEnv } from "../lib/env";
 import { buildPushPayload, pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
 import {
   DEFAULT_WRAPPERS,
@@ -26,73 +28,17 @@ import {
 
 config({ path: ".env.local", quiet: true });
 
-const TS_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs"]);
-const RAW_EXT = new Set([".html", ".htm", ".json"]);
-const SKIP_DIR = new Set([
-  "node_modules", ".git", "dist", "dist-e2e", "dist-log-viewer", "build", "out", ".next",
-  "coverage", "generated", ".vercel", "playwright-report", "test-results",
-]);
-
-function walk(root: string, dir: string, paths: string[], sources: SourceFileInput[]): void {
-  for (const name of readdirSync(dir).sort()) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) {
-      if (SKIP_DIR.has(name) || name.startsWith(".")) continue;
-      walk(root, full, paths, sources);
-      continue;
-    }
-    const rel = relative(root, full).split(sep).join("/");
-    paths.push(rel);
-    const dot = name.lastIndexOf(".");
-    const ext = dot === -1 ? "" : name.slice(dot);
-    const kind = TS_EXT.has(ext) ? "ts" : RAW_EXT.has(ext) ? "raw" : undefined;
-    if (kind) sources.push({ path: rel, code: readFileSync(full, "utf8"), kind });
-  }
-}
-
-function arg(name: string, fallback: string): string {
-  const at = process.argv.indexOf(`--${name}`);
-  return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
-}
-
-/** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다. */
+const argv = process.argv.slice(2);
+/** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
 const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project"]);
 
-/**
- * 플래그 값은 `--`로 시작하지 않는다. "플래그가 아닌 첫 인자"를 그대로 대상으로 삼으면
- * `pnpm push:local --wrapper @/i18n#t ./dir`이 래퍼 스펙을 디렉터리로 읽는다.
- */
-function findTarget(argv: readonly string[]): string | undefined {
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === undefined) continue;
-    if (VALUE_FLAGS.has(a)) {
-      i++;
-      continue;
-    }
-    if (!a.startsWith("--")) return a;
-  }
-  return undefined;
-}
-
-/** `--wrapper`는 여러 번 줄 수 있다 — 한 리포가 클라이언트·서버 두 형태를 함께 쓴다. */
-function wrapperSpecs(argv: readonly string[]): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] !== "--wrapper") continue;
-    const raw = argv[++i];
-    if (raw) out.push(raw);
-  }
-  return out;
-}
-
-const target = findTarget(process.argv.slice(2));
+const target = findTarget(argv, VALUE_FLAGS);
 if (!target) {
   console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--project <slug>]");
   process.exit(2);
 }
-const baseUrl = arg("url", "http://localhost:3000");
-const specs = wrapperSpecs(process.argv.slice(2));
+const baseUrl = flagValue(argv, "--url") ?? "http://localhost:3000";
+const specs = flagValues(argv, "--wrapper");
 const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : specs.map((raw) => {
   const parsed = parseWrapperSpec(raw);
   if (!parsed) {
@@ -102,6 +48,14 @@ const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : s
   return parsed;
 });
 
+// 토큰은 **적재·스캔 전에** 확인한다 — 다 끝낸 뒤 stdout에 결과를 찍고 나서 죽으면 파이프 출력이
+// 잘릴 수 있고(POSTMORTEM 2026-08-31), 애초에 없는 토큰으로 일을 시작할 이유가 없다.
+const token = optionalEnv("PUSH_TOKEN");
+if (token === undefined) {
+  console.error("PUSH_TOKEN이 없다 — .env.local을 확인한다.");
+  process.exit(1);
+}
+
 // 커밋 SHA는 대상 리포에서 읽는다 — permalink 기준이라 실제 값이어야 한다.
 const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 // 커밋 **시각**은 역행 판정의 근거다 (ARCHITECTURE §5.5.5). `%cI`가 offset이 붙은 ISO 8601이다.
@@ -109,13 +63,15 @@ const commitAt = execFileSync("git", ["-C", target, "show", "-s", "--format=%cI"
 // 서버와 같은 `.env.local`을 읽으므로 기본값은 항상 통과한다. `--project`로 덮으면
 // 오배송 거부(409)를 로컬에서 실제로 확인할 수 있다.
 //
-// ⚠️ `arg("project", requireEnv(...))`로 쓰지 않는다 — **인자가 먼저 평가되므로** 플래그를
-// 명시해도 환경변수가 없으면 죽는다. 없는 이유를 메시지가 가리키지 않아 진단이 오래 걸린다.
-const projectSlug = arg("project", "") || requireEnv("ACTIVE_PROJECT_SLUG");
+// ⚠️ `flagValue(...) ?? requireEnv(...)`의 순서가 요지다 — 반대로 두면 **인자가 먼저 평가되므로**
+// 플래그를 명시해도 환경변수가 없으면 죽는다 (POSTMORTEM 2026-08-31 🔁).
+const projectSlug = flagValue(argv, "--project") ?? requireEnv("ACTIVE_PROJECT_SLUG");
 
-const paths: string[] = [];
-const sources: SourceFileInput[] = [];
-walk(target, target, paths, sources);
+const paths = walkFiles(target);
+const sources: SourceFileInput[] = paths.flatMap((path) => {
+  const kind = sourceKind(path);
+  return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
+});
 
 const probe = (p: string): string | undefined => {
   try {
@@ -128,11 +84,15 @@ const probe = (p: string): string | undefined => {
 // ── 적재 (키의 진실) ────────────────────────────────────────────────────────
 // ⚠️ 한 리포에 포맷이 둘일 수 있다 — bugshot-2는 _locales(4키)와 ts-dict(903키)가 공존하고
 // 탐지 우선순위가 작은 쪽을 고른다. `--adapter <name>`으로 지정하면 그게 이긴다.
-const adapterArg = process.argv.indexOf("--adapter");
-const adapterName = adapterArg === -1 ? undefined : process.argv[adapterArg + 1];
+const adapterName = flagValue(argv, "--adapter");
+// 이름 오타와 미탐지를 가른다 — 둘이 같은 메시지면 진단이 오래 걸린다.
+if (adapterName !== undefined && !isAdapterName(adapterName)) {
+  console.error(`--adapter ${adapterName}: 등록되지 않은 어댑터다.`);
+  process.exit(2);
+}
 const format = adapterName === undefined
   ? detectFormat(paths, probe)
-  : detectFormatWith(adapterName as never, paths, probe);
+  : detectFormatWith(adapterName, paths, probe);
 if (adapterName !== undefined && !format) {
   console.error(`--adapter ${adapterName}: 이 리포에서 해당 포맷을 찾지 못했다.`);
   process.exit(1);
@@ -179,12 +139,6 @@ console.log(`로케일:   ${format.locales.slice().sort().join(", ")}  (base: ${
 console.log(`키:       ${payload.keys.length} / 번역: ${payload.translations.length} / refs: ${payload.refs.length}`);
 console.log(`경고:     스캔 ${scan.warnings.length}건 / 로케일 파일에 없는 참조 키 ${unknownRefs}개`);
 console.log(`페이로드: ${(Buffer.byteLength(JSON.stringify(payload)) / 1024).toFixed(0)} KB`);
-
-const token = process.env["PUSH_TOKEN"];
-if (!token) {
-  console.error("PUSH_TOKEN이 없다 — .env.local을 확인한다.");
-  process.exit(1);
-}
 
 const res = await fetch(`${baseUrl}/api/push`, {
   method: "POST",

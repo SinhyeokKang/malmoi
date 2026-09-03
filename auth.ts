@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 
 import { isLoginAllowed, parseAllowedLogins } from "@/lib/auth/allow";
+import { optionalEnv } from "@/lib/env";
 
 /**
  * Auth.js v5. **로그인·인가 전용이다** — 리포 쓰기는 GitHub App installation 토큰이 맡는다.
@@ -24,7 +25,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn({ profile }) {
       // GitHub raw profile의 `login`이 핸들이다 — 실측으로 `profile`에 정상 전달됨을 확인했다.
       const login = typeof profile?.["login"] === "string" ? profile["login"] : null;
-      return isLoginAllowed(login, parseAllowedLogins(process.env["AUTH_ALLOWED_LOGINS"]));
+      // `requireEnv`가 아니다 — 누락은 `parseAllowedLogins`가 fail-closed로 처리한다(빈 목록 = 아무도 못 들어온다).
+      return isLoginAllowed(login, parseAllowedLogins(optionalEnv("AUTH_ALLOWED_LOGINS")));
     },
 
     /**

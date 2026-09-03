@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { saveTranslation } from "@/app/(edit)/actions";
+import type { SaveInputType } from "@/lib/keys/save";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,7 +37,11 @@ export function TranslationInput({
     if (value === saved) return;
     setError(null);
     startTransition(async () => {
-      const result = await saveTranslation({ keyId, localeCode, value });
+      // 생산자에 스키마 타입을 붙인다 — `SaveInput`에 필수 필드가 늘면 여기서 컴파일 에러가 난다.
+      // Action 시그니처는 `unknown`(직렬화 경계라 zod 재검증)이라 이 줄이 없으면 런타임 `invalid input`이
+      // 유일한 신호다 (POSTMORTEM 2026-08-31).
+      const input: SaveInputType = { keyId, localeCode, value };
+      const result = await saveTranslation(input);
       if (result.ok) {
         // 서버가 정규화한 값(공백만 → 빈 문자열)을 받아 화면을 맞춘다.
         setValue(result.value);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
-import { requireEnv } from "@/lib/env";
+import { optionalEnv, requireEnv } from "@/lib/env";
 import { applyPush } from "@/lib/push/apply";
 import { checkBearer, statusFor } from "@/lib/push/auth";
 import { checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
@@ -21,7 +21,8 @@ import { PushPayload } from "@/lib/push/plan";
 export const maxDuration = 60;
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const auth = checkBearer(request.headers.get("authorization"), process.env["PUSH_TOKEN"]);
+  // `requireEnv`가 아니다 — 누락은 `checkBearer`가 `not-configured`(500)로 가른다.
+  const auth = checkBearer(request.headers.get("authorization"), optionalEnv("PUSH_TOKEN"));
   if (auth !== "ok") {
     // 어느 쪽이 틀렸는지 알려주지 않는다 — 토큰 존재 여부를 탐색할 단서를 주지 않는다.
     return NextResponse.json({ error: auth === "not-configured" ? "server misconfigured" : "unauthorized" }, { status: statusFor(auth) });

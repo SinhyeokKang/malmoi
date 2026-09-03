@@ -189,6 +189,9 @@ export async function applyPush(
         adapterName: payload.format.adapter,
         pathTemplate: payload.format.pathTemplate,
         nested: payload.format.nested,
+        // 없으면 컬럼을 건드리지 않는다 — 옛 값이 남아도 경로가 안 맞으면 write가 폴백하므로
+        // 무해하고, `Prisma.DbNull`을 쓰려면 이 모듈이 생성 클라이언트를 값으로 물어야 한다.
+        ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).

@@ -1,3 +1,5 @@
+import { compareKeys } from "@/lib/adapters/shared";
+
 /**
  * 키 리스트 화면의 순수 판정. DB 조회 결과를 받아 사이드바 집계·배지·permalink를 만든다.
  * I/O가 없어 테스트가 자기완결한다.
@@ -90,8 +92,8 @@ export function namespaceCounts(rows: readonly KeyRow[], locale: string): Namesp
     byName.set(row.namespace, entry);
   }
 
-  // 어댑터 writer와 같은 `<` 비교 — 환경 의존을 없앤다.
-  return [...byName.values()].sort((a, b) => (a.namespace < b.namespace ? -1 : a.namespace > b.namespace ? 1 : 0));
+  // 어댑터 writer와 같은 규칙 — 재구현하지 않고 그 함수를 쓴다 (ARCHITECTURE §1.1).
+  return [...byName.values()].sort((a, b) => compareKeys(a.namespace, b.namespace));
 }
 
 export type PermalinkProject = {

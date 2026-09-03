@@ -258,6 +258,9 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.roundtrip.byteFixpoint).toBe("same");
     // 원본이 그대로 나오므로 diff는 0이다 — 수술적 치환의 요지다
     expect(s.diffRatio).toBe(0);
+    // ⚠️ 그 0은 치환 경로를 안 밟은 결과라 공허하다. 키 하나를 바꾼 write가 hunk 1이어야 재직렬화가
+    // 편집 밖 줄을 안 건드린 것이다.
+    expect(s.surgicalEditHunks).toBe(1);
   });
 
   it("yaml-catalog의 왕복도 돈다", () => {
@@ -269,6 +272,11 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.chosen?.adapter).toBe("yaml-catalog");
     expect(s.roundtrip.semantic).toBe("same");
     expect(s.roundtrip.byteFixpoint).toBe("same");
+    expect(s.surgicalEditHunks).toBe(1);
+  });
+
+  it("재생성 어댑터는 편집 hunk를 재지 않는다 — 재직렬화 자체가 그 방식이다", () => {
+    expect(surveyOne(input("acme/flat", FLAT)).surgicalEditHunks).toBeUndefined();
   });
 
   it("접두 충돌을 센다 — 왕복이 잡은 손실을 지표 ③도 잡아야 한다", () => {
