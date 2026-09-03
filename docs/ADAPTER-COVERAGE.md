@@ -665,6 +665,11 @@ carettab(키 2개에 diff 0.889)·next-official(키 1개에 0.143)처럼 줄 하
 이고, 남은 것은 전부 이름이 붙은 다른 축이다. 전체 코퍼스 중앙값이 0.613 → 0.001로 떨어진 것이
 그 부수 효과다.
 
+**실물 PR로도 확인했다** (2026-09-03): 23키 × 3로케일 리포에서 편집 0건 pull은
+`skipped/no-changes`로 끝났고(2층 blob SHA가 "바꿀 것 없음"으로 판정 — 커밋을 만들 이유조차
+없었다), 키 3개를 흩어지게 편집한 pull은 **`3 insertions(+), 3 deletions(-)` / hunk 3**이었다.
+[SinhyeokKang/i18n-order-check#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1)
+
 **남은 최대 원인은 들여쓰기(30) + 한 줄 컨테이너(4) + 이스케이프(2)** — 전부 `serialize`의
 결정성 규칙이 만드는 포맷 차이라 **한 별 기능이 묶어서 다루는 것이 맞다.** 그다음이 미번역
 제외(21)인데 그건 고칠 대상이 아니다.
