@@ -1,0 +1,105 @@
+# 대상 리포가 부르는 진입점. 로케일 파일을 적재하고 사용처를 스캔해 `/api/push`로 보낸다.
+#
+# **`scripts/push-local.ts`를 그대로 부른다.** 페이로드를 셸·YAML로 조립하지 않는 것이 요지다 —
+# 거기엔 컴파일러가 없어서 계약이 넓어져도 아무도 모른다 (docs/POSTMORTEM.md 2026-08-31).
+# 생산자는 `lib/push/payload.ts` 하나이고 이 action은 그 경로를 지난다.
+#
+# ⚠️ **i18n-poc가 private이라 대상 리포에서 이 action을 쓰려면 접근 허용이 필요하다**:
+# i18n-poc > Settings > Actions > General > "Accessible from repositories owned by ...".
+# 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
+#
+# 대상 리포의 워크플로 예시는 docs/ACTIONS.md에 있다.
+name: l10n push
+description: 로케일 파일을 DB로 올린다 (적재 + 사용처 스캔 → /api/push)
+
+inputs:
+  push-token:
+    description: /api/push의 Bearer 토큰. 대상 리포 secret에 둔다
+    required: true
+  project:
+    description: 대상 Project.slug. 서버의 ACTIVE_PROJECT_SLUG와 다르면 409다
+    required: true
+  api-url:
+    description: i18n-poc 배포 URL
+    required: false
+    default: https://i18n-poc.vercel.app
+  target:
+    description: 스캔·적재 대상 디렉터리. 기본은 대상 리포 체크아웃 루트다
+    required: false
+    default: ${{ github.workspace }}
+  adapter:
+    description: |
+      어댑터 명시 지정. **한 리포에 포맷이 둘이면 필수다** — 탐지 우선순위가 작은 쪽을
+      골라 큰 쪽 키가 전부 orphan된다 (bugshot-2: _locales 4키 vs ts-dict 903키).
+    required: false
+    default: ""
+  wrapper:
+    description: |
+      `--wrapper` 스펙. 여러 개면 줄바꿈으로 나눈다.
+      끝에 `()`를 붙이면 훅이다 (예: next-intl#useTranslations()).
+    required: false
+    default: ""
+  github-token:
+    description: |
+      열린 `l10n/sync` PR을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
+      **쓰기에는 쓰지 않는다** — 리포 쓰기는 i18n-poc의 GitHub App이 맡는다.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    # composite action은 자기 리포를 러너에 clone해 준다. `action_path`가 이 파일의
+    # 디렉터리이므로 `../..`가 i18n-poc 루트다.
+    - name: pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        package_json_file: ${{ github.action_path }}/../../package.json
+
+    - name: Node
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: ${{ github.action_path }}/../../.nvmrc
+
+    - name: i18n-poc 의존성
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      run: pnpm install --frozen-lockfile
+
+    # ⚠️ **차단이 아니라 경고다.** strict라 이 PR이 머지되기 전의 push는 번역자의 편집을
+    # 지운다 (MVP §3.1의 손실 창). 막으면 병합 판정이 되어 코어 원칙을 깨므로, 개발자가
+    # 판단할 재료만 남긴다.
+    - name: 열린 l10n/sync PR 경고
+      if: inputs.github-token != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        open=$(gh pr list --head l10n/sync --state open --json url --jq '.[0].url' 2>/dev/null || true)
+        if [ -n "$open" ]; then
+          echo "::warning title=머지되지 않은 번역 PR::$open — 이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창). 머지한 뒤 다시 push하는 것을 권한다"
+        else
+          echo "열린 l10n/sync PR 없음"
+        fi
+
+    # **적재 실패만 red다.** 스캔 실패는 경고이고 `pnpm scan`은 항상 exit 0이다 —
+    # 키의 진실은 로케일 파일이고 스캔은 refs 전담이라, 남의 리포 CI를 우리 스캐너
+    # 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
+    - name: 적재 + 스캔 → /api/push
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      env:
+        PUSH_TOKEN: ${{ inputs.push-token }}
+      run: |
+        set -euo pipefail
+        args=(--url "${{ inputs.api-url }}" --project "${{ inputs.project }}")
+        if [ -n "${{ inputs.adapter }}" ]; then
+          args+=(--adapter "${{ inputs.adapter }}")
+        fi
+        # 줄바꿈으로 나뉜 wrapper 스펙을 각각 플래그로 전개한다.
+        while IFS= read -r spec; do
+          spec="$(echo "$spec" | tr -d '[:space:]')"
+          [ -n "$spec" ] && args+=(--wrapper "$spec")
+        done <<< "${{ inputs.wrapper }}"
+        echo "pnpm push:local ${{ inputs.target }} ${args[*]}"
+        pnpm push:local "${{ inputs.target }}" "${args[@]}"

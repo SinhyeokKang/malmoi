@@ -222,6 +222,7 @@ scripts/
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
 auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
 docs/MVP.md             기본 스펙
+docs/ACTIONS.md         **대상 리포**에 붙이는 워크플로 (composite action 사용법·red 조건)
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/DESIGN.md          편집 UI 시각 규칙 (라이트 단일, mono 표면 불변식)
 docs/ARCHITECTURE.md    설계 상세·함정
@@ -293,6 +294,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, 4차까지). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
   - **⚠️ 재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를 **학습과 홀드아웃 둘 다** 돌리고 이 문서에 회차를 더한다 — §0 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중 하나는 학습 코퍼스에서만 나타났다. 한쪽만 돌리면 못 본다. 판정은 `/push` 4d가 사용자에게 묻는다(네트워크 ~4분이라 게이트가 아니다)
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
+- **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **i18n-poc가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.

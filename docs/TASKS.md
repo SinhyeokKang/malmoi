@@ -483,8 +483,9 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 - [ ] **적재 실패만 CI를 red로 만든다** (스캔 실패는 경고)
   - 근거: 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이다 — 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4). 옛 체크리스트의 "비리터럴 인자 발견 시 CI 실패"는 "코드 스캔이 진실"이던 시절 항목이라 삭제했다
   - 검증: 로케일 파일을 깨뜨리면 red, 동적 키만 있으면 green
-- [ ] `vercel.json` Cron → `/api/pull` 야간 1회
-  - 검증: Vercel 대시보드에서 cron 등록 확인
+- [ ] `vercel.json` Cron → `/api/pull` 야간 1회 — **파일은 있다** (`0 18 * * *` UTC = KST 03:00)
+  - 검증: Vercel 대시보드에서 cron 등록 확인 ← **대기 중**
+  - 라우트 자체는 프로덕션에서 확인됐다(위 전역 미결 항목). 남은 것은 Vercel이 실제로 트리거하는지다
 - [ ] 대상 리포 왕복 검증 (MVP §9) — push → 편집 → pull → PR 확인
   - 검증: `bugshot-2`의 ko/en/fr 3로케일로 PR이 정상 생성
 - [ ] `/l10n-roundtrip` 스킬 추가
@@ -495,7 +496,11 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 ## 전역 미결 (단계에 묶이지 않은 것)
 
 - [ ] 🔒 **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. **번역 데이터가 쌓이기 전에** 두 번째 프로젝트를 만들지 결정한다 (MVP §10, `/db` 경고 섹션)
-- [ ] **Vercel 프로젝트 연결** — 아직 미연결이라 main 푸시가 실제로는 배포하지 않는다. 연결하는 순간부터 `/push`가 진짜 배포가 된다
+- [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — `https://i18n-poc.vercel.app`. main 푸시가 이제 실제 배포다
+  - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
+  - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
+  - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인
+  - `/api/pull`(cron 경로)이 프로덕션에서 `{"status":"skipped","reason":"no-changes"}` — 2층까지 도달했으므로 DB·GitHub App·PEM 개행 복원·blob 비교가 한 번에 검증됐다
 - [x] **`pnpm build`를 로컬 게이트에** (2026-08-31 해소 — CI가 아니라 `/push` 1단계)
   - 근거: `tsc`가 RSC 경계를 못 본다. CI에 넣으면 **배포 후에** 알게 되고, 로컬 게이트가 프로덕션 앞의 유일한 방어선이다. 콜드 5초 / 웜 2초
 
