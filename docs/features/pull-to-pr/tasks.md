@@ -52,14 +52,14 @@
 - per-locale인데 `pathTemplate`에 `{locale}`이 없고 로케일이 여럿이면 **던진다** — 안 던지면 모든 로케일이 같은 경로를 받아 마지막 것이 조용히 이긴다. `detect`는 항상 토큰을 넣으므로 DB를 손으로 고쳤을 때만 열리는 구멍이다. multi-locale은 정의상 치환하지 않아 검사 제외 (ARCHITECTURE §1.1)
 - 정렬 비교자를 `compareKeys` 하나로 통일 (`lib/adapters/index.ts`가 re-export) — 세 곳이 각자 다른 표현이었고, 결과는 같지만 결정성 규칙의 주인이 넷이 되면 한 곳이 `localeCompare`로 바뀌어도 게이트가 잡지 못한다
 
-### 1c. GitHub 껍데기 (`lib/github.ts`)
+### 1c. GitHub 껍데기 (`lib/github.ts`) ✅
 
-- [ ] App installation 토큰 — `octokit`의 `App` (`@octokit/auth-app` 별도 설치 불필요)
+- [x] App installation 토큰 — `octokit`의 `App` (`@octokit/auth-app` 별도 설치 불필요)
   - ⚠️ **지연 생성.** 모듈 최상위·기본값 인자에서 env를 읽지 않는다 (POSTMORTEM 2026-08-31, 재발 1회)
   - ⚠️ `parsePrivateKey`로 PEM 개행 복원 — 안 하면 JWT 서명이 **조용히** 실패한다
-- [ ] Git Data API 래퍼 — ref 조회/생성/갱신, 트리 조회, blob 읽기/쓰기, 커밋, PR 조회/생성
+- [x] Git Data API 래퍼 — ref 조회/생성/갱신, 트리 조회, blob 읽기/쓰기, 커밋, PR 조회/생성
   - **오케스트레이션은 이 래퍼(클라이언트)를 인자로 주입받는다** — `applyPush`가 `getPrisma()`를 주입받는 선례와 동형. 테스트가 fake로 대체해 호출을 기록한다. 이게 없으면 2단계의 테스트 전부와 spec 완료 조건 4가 검증 불가다
-- [ ] **스모크**: `scripts/smoke-github.ts` — 토큰으로 bugshot-2의 base head SHA를 읽는 일회성 tsx 스크립트 (**`pnpm test` 밖** — 실 API를 부른다. 커밋에 포함해 0단계 설정 오류 재진단에 쓴다)
+- [x] **스모크**: `scripts/smoke-github.ts` — 토큰으로 bugshot-2의 base head SHA를 읽는 일회성 tsx 스크립트 (**`pnpm test` 밖** — 실 API를 부른다. 커밋에 포함해 0단계 설정 오류 재진단에 쓴다)
   - 검증: 실제 SHA가 나오면 0단계 설정이 전부 맞은 것이다
 
 —— 커밋: `feat:` (github 래퍼)
@@ -120,15 +120,14 @@
 `Project.repoName`만 바꿔 쓰고 검증 후 되돌리는 방식이라, 실 DB의 편집 4건을 그대로 쓸 수 있고
 남의 리포에 커밋이 남지 않는다. `l10n/sync` 브랜치만 리셋하면 초기 상태가 되므로 매 회차가 1초다.
 
-### ❌ 검증하지 않은 것 — 왕복의 절반
+### ✅ 왕복의 나머지 절반 — 2026-09-03 해소
 
-- [ ] PR 머지 → `pnpm push:local` → **DB가 리포 값과 일치**
-  - **사용자 결정으로 범위 밖이 됐다** (2026-09-01): PR을 머지하지 않고 품질만 보고 닫았다.
-  - **따라서 "편집 손실 창이 닫혔다"는 것은 실증되지 않았다.** 근거는 strict 정책의 논리와
-    단위 테스트뿐이다 — 실제로 머지 후 push가 같은 값을 덮는지는 확인된 바 없다.
-- [ ] **재생성 어댑터(`chrome-locales`·`json-catalog`)의 실물 pull** — bugshot-2의 `Project`가
-  `ts-dict`를 가리키고, 한 프로젝트가 두 표면을 다루는 것은 MVP §7 비범위다. 표면마다 프로젝트를
-  나눠야 검증할 수 있다.
+- [x] PR 머지 → `pnpm push:local` → **DB가 리포 값과 일치** ✅ (2026-09-03, TASKS §0 B-3)
+  - 2026-09-01엔 사용자 결정으로 범위 밖이었다(PR을 머지하지 않고 품질만 보고 닫았다). `order-check`
+    프로젝트(실물 리포 `i18n-order-check`)로 **손실 창의 양쪽을 관측**해 닫았다 — 결과는 MVP §3.1의
+    "실증" 표에 있다: 닫힌 쪽은 값이 바뀐 행 0건, 열린 쪽은 편집 3건이 전부 리포 값으로 되돌아갔다.
+- [x] **재생성 어댑터의 실물 pull** ✅ (2026-09-03) — 표면마다 프로젝트를 나누는 방식으로 풀었다.
+  전용 리포 `i18n-order-check`(json-catalog)에 PR을 냈다 ([#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1)).
 
 ### ✅ 통과한 것
 
@@ -174,9 +173,13 @@ PR 8개 전부 CLOSED, 임시 스크립트 삭제. **검증용 리포 삭제는 
 
 ## 문서 갱신 (구현과 같은 커밋 또는 `/push` 신선도 단계)
 
-- [ ] **CLAUDE.md 코어 원칙의 pull 항목** — "읽는 것은 오직 blob SHA뿐"이 `ts-dict`와 어긋난다. **원본에서 가져오는 것은 구조이지 값이 아니다**로 고친다 (design.md 불변식 §1)
-- [ ] CLAUDE.md 디렉터리 구조 — `api/pull/route.ts`·`lib/github.ts`의 `(미구현)` 표기 제거
-- [ ] ARCHITECTURE §3 — `(미구현)` 표시 제거, 실제 동작으로 갱신 (파일별 write 호출, `lastPulledAt` 갱신 규칙 포함). §1.4의 "빈 값은 호출부가 걸러서" 서술도 정밀화 — 재생성 어댑터는 `usableEntries`가 내부에서 이중으로 거른다
-- [ ] TASKS §6 체크 + 6단계 `⬜` → `✅`, 현재 단계 표시를 7로 이동. **§7의 왕복 검증 항목(6단계로 당겨온 것)과 §5d의 pull 버튼 항목(3단계가 흡수) 중복 정리**
-- [ ] MVP §10 — base 브랜치 항목(**dev로 결정**)을 본문으로 올리고 목록에서 뺀다
-- [ ] `/l10n-roundtrip` 스킬 추가 검토 — MVP §9가 "이 단계에 들어가면 추가한다"고 적었다
+- [x] **CLAUDE.md 코어 원칙의 pull 항목** — "원본에서 가져오는 것은 **구조**이지 **값**이 아니다"로 고쳤다 (2026-09-01 정정 각주가 그 줄에 남아 있다)
+- [x] CLAUDE.md 디렉터리 구조 — `(미구현)` 표기 제거
+- [x] ARCHITECTURE §3 — `(미구현)` 제거, 파일 × 로케일 이중 루프·`lastPulledAt` 갱신 규칙까지 실제 동작으로 갱신. §1.4의 빈 값 서술도 정밀화됐다 (리포 전체에 `(미구현)` 0건)
+- [x] TASKS §6 체크 + 단계 표시 이동
+- [x] MVP §10 — base 브랜치 항목을 본문(§3.1 "base는 `dev`다")으로 올리고 목록에서 뺐다
+- [x] `/l10n-roundtrip` 스킬 추가 ✅ (2026-09-03, `.claude/commands/l10n-roundtrip.md`)
+
+> **2026-09-04**: 이 문서는 완료된 기능의 작업 기록이다. 위 미체크는 실제로는 전부 끝나 있었고
+> `/audit`이 그 드리프트를 잡았다 — `/push` 4단계 트라이아지는 정본 문서 일곱 개만 보므로
+> `docs/features/**`는 그 검사에 걸리지 않는다.
