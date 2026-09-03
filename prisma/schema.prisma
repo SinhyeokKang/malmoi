@@ -99,6 +99,14 @@ model StringKey {
   /// 원문 비교용 해시. 문자열 직접 비교보다 인덱스가 작고 비교가 싸다(긴 원문이 많다).
   sourceHash  String
   description String?
+  /// base 로케일 **파일 안에서의** 키 위치. 파일 순서를 보존해 첫 pull PR을 사람이 읽을 수 있게
+  /// 한다 (MVP §4.1). 없으면 순서를 모르는 키 — 재생성 writer가 코드 유닛 순으로 뒤에 붙인다.
+  ///
+  /// ⚠️ **파일 스코프다.** 파일이 여럿인 레이아웃에서는 common.json의 3번째 키와 settings.json의
+  /// 3번째 키가 둘 다 2다 — 파일 경계를 넘어 비교할 수 없다.
+  ///
+  /// 인덱스를 붙이지 않는다: pull이 projectId로 좁힌 뒤 정렬하고 이 규모에서 키가 수천 개다.
+  sortIndex   Int?
   /// 코드에서 사라진 키. **삭제하지 않는다** — 브랜치를 되돌리거나 기능을 복구하면
   /// 번역이 그대로 살아 돌아와야 한다. export에서만 빠진다.
   orphaned    Boolean @default(false)
@@ -150,6 +158,18 @@ model Translation {
   keyId      String
   localeCode String
   value      String
+
+  /// **그 로케일 파일이 실제로 갖고 있던** description. chrome `_locales`에만 있다.
+  ///
+  /// ⚠️ `StringKey.description`(소스 키 메타데이터)과 **다른 것이다.** 저쪽을 이쪽 대신 쓰면
+  /// base 값을 비-base 파일에 복제하게 되고, 그건 원본에 없던 값을 만드는 것이라 병합이다.
+  description  String?
+  /// chrome `placeholders` 블록을 **해석하지 않고 그대로** 보관한다.
+  ///
+  /// 구조를 검증하기 시작하면 크롬 스펙을 따라다녀야 하는데, 이 컬럼이 요구하는 것은
+  /// "잃지 않는다"뿐이다. 모양이 이상해도 버리지 않는다 — 거르면 원본에 있던 것이 우리 PR에서
+  /// 조용히 사라진다 (`lib/adapters/types.ts`의 `LocaleEntry.placeholders`와 같은 계약).
+  placeholders Json?
 
   /// 원문(sourceHash)이 바뀌었을 때 push가 세운다. 미번역/번역됨/검토필요 3상태가
   /// 이 플래그 하나와 행 존재 여부로 표현된다.
