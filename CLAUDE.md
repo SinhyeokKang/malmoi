@@ -146,9 +146,14 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 1. **Node를 `.nvmrc`에 맞춘다** (20). 버전 매니저 없이 시스템 Node로 돌리면 `@types/node`가 `^20`이라 로컬 게이트가 Vercel 빌드와 갈린다 — 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 이 불일치는 곧 거짓 green이다
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. **프로덕션 값은 Vercel 프로젝트 env에 있다**(`DIRECT_URL`만 없다 — 마이그레이션 전용이라 넣지 않는다). 시크릿을 리포·채팅에 붙여넣지 않는다
-4. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
-5. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
+4. `pnpm db:status`로 접속을 확인한다 (`DIRECT_URL`, 5432)
+5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
+6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
+
+**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(`vercel env add <name> production,preview --force`, 값은 stdin으로 — `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다).
+
+**GitHub App 개인키는 여러 개를 동시에 가질 수 있다.** 새 키를 발급해도 옛 키가 계속 돌아서 무중단으로 갈아탈 수 있다 — **다른 머신이 옛 키를 들고 있으니 폐기는 그쪽을 옮긴 뒤에** 한다.
 
 **린터 없음** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않는다. 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이고, 린터 추가는 요청 없이 하지 않는다.
 
