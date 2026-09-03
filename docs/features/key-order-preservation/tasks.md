@@ -292,19 +292,38 @@ DB를 원상복구했다 (`fix(adapters)` 커밋 + POSTMORTEM 2026-09-03).
 
 ⎯ 커밋 ⎯ `feat(survey): …` 3건 + `docs(ADAPTER-COVERAGE): record the 5th run …`
 
-### 남음 — 실물 확인 (수동)
+### 실물 확인 ✅ (2026-09-03)
 
-- [ ] **선행 셋업**: json-catalog 리포 사본 + GitHub App 설치 + `Project` 행 +
-      `ACTIVE_PROJECT_SLUG` 교체 + 초기 push
-  - ⚠️ **prod DB가 곧 dev DB다.** 남의 리포 키 수천 개를 실 DB에 적재하는 것이 맞는지 먼저 판단
-  - ⚠️ `docs/TASKS.md` §6이 "재생성 어댑터 실물 pull"을 ❌ 범위 밖으로 닫아 놨다 — 되살리는
-    것이므로 §6도 함께 고친다
-- [ ] **대조군**: 편집 0건으로 pull → `0 files changed`
-- [ ] **본실험**: 키 3개만 편집 → pull → `git diff --numstat`이 `3 3`, `grep -c '^@@'`가 3
-  - ⚠️ `+N/-N` 대칭으로 판정하지 않는다 (재생성에서는 판별력이 없다)
+**PR: https://github.com/SinhyeokKang/i18n-order-check/pull/1**
 
-**이 확인이 답하는 것은 "GitHub PR 화면에서 사람이 읽을 수 있는가"뿐이다** — 바이트 수준은 L1이
-진입점에서(`runPull`이 커밋에 실은 내용), 코퍼스 수준은 §11이 이미 답했다.
+- [x] **대상 리포를 새로 만들었다** — `SinhyeokKang/i18n-order-check` (private, 23키 × en/ko/ja).
+      로케일 파일이 **의미 순서**(toolbar → menu → alerts → hints → labels → buttons → appName)로
+      배치돼 있고 코드 유닛 순이 아니다 — 개정 전이면 첫 pull이 파일 전체를 재정렬했을 모양이다
+  - ⚠️ **남의 리포 사본을 쓰지 않았다.** dev DB가 곧 prod DB라 실측 리포를 그대로 넣으면 키
+    수천 개가 실 DB에 들어간다. 확인하려는 것은 **"PR diff가 읽히는가"** 이지 "남의 리포를 다룰
+    수 있는가"가 아니다 — 후자는 코퍼스 측정(§11)이 이미 답했다
+  - GitHub App은 `selection=all`이라 새 리포에 그대로 닿았다. `Project` 행 하나와
+    `ACTIVE_PROJECT_SLUG` 교체가 전부였고, 끝나고 되돌렸다
+- [x] **적재**: `pnpm push:local` → 200, `inserted 23 / translationsFilled 69`
+- [x] **대조군**: 편집 0건으로 pull → **`{"status":"skipped","reason":"no-changes"}`**
+  - ⚠️ **`0 files changed`보다 강한 결과다.** 2층 blob SHA 비교가 "리포 파일 = 우리가 낼 파일"로
+    판정해 **커밋을 만들 이유조차 없었다.** 개정 전이라면 재정렬 때문에 SHA가 달라 매번 커밋이
+    나갔을 자리다 (ARCHITECTURE §2)
+- [x] **본실험**: ko의 키 **3개**를 파일 위·중간·끝에 흩어지게 편집 → pull
+
+```
+git diff --numstat  →  3  3  locales/ko.json
+grep -c '^@@'       →  3
+--stat              →  1 file changed, 3 insertions(+), 3 deletions(-)
+```
+
+  - 세 hunk가 정확히 편집한 세 키 자리다. **`+N/-N` 대칭으로 판정하지 않았다** — 재생성에서는
+    재정렬도 대칭이 나오므로 판별력이 없다 (spec 완료 조건 12)
+  - 편집은 DB를 직접 UPDATE했다. 확인 대상이 **pull이 내는 diff 모양**이고 편집 UI 경로는 Server
+    Action 테스트가 이미 덮는다
+
+**남긴 것**: `order-check` 프로젝트 행(30키 규모, `ACTIVE_PROJECT_SLUG`는 bugshot-2로 복원)과
+리포·PR. 다음 실물 확인 때 재사용한다.
 
 ## 7. 문서 ✅ (2026-09-03)
 

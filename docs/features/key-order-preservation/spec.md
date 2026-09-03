@@ -167,7 +167,9 @@ chrome 필드·이스케이프 때문에 초과한다.
 
 ### 실물 확인 (수동 — e2e 프레임워크가 없다)
 
-13. **json-catalog 리포 사본에서 대조군과 본실험을 본다.**
+13. **json-catalog 리포에서 대조군과 본실험을 본다.** ✅ (2026-09-03,
+    [PR #1](https://github.com/SinhyeokKang/i18n-order-check/pull/1) — 대조군 `no-changes`,
+    본실험 `3 3` / hunk 3)
     - **대조군**: 편집 0건으로 pull → `0 files changed`. 이게 재정렬이 없다는 진짜 증거다.
     - **본실험**: **키 3개만** 편집 → pull → `git diff --numstat`이 `3 3`, `grep -c '^@@'`가 3.
     - ⚠️ **`+N/-N` 대칭은 판별력이 없다.** 재정렬은 줄을 *이동*시킬 뿐이라 JSON에서 대칭이 항상
