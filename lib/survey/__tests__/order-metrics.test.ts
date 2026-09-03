@@ -304,9 +304,9 @@ describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가
     // 완료 조건의 분모다. 전체 코퍼스에 걸면 68%가 들여쓰기·chrome 필드 때문에 초과해서
     // **어느 기능이 실패했는지 못 가른다** (spec §완료 조건, ADAPTER-COVERAGE §10.3).
     const rows = [
-      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.02, diffCauses: clean() }),
-      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.04, diffCauses: clean() }),
-      row({ repo: "a/3", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.9, diffCauses: dirty() }),
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
+      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.04, diffCauses: clean() }),
+      row({ repo: "a/3", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.9, diffCauses: dirty() }),
     ];
     const { metrics } = summarize(rows, []);
     expect(metrics.diff.median).toBeCloseTo(0.04);
@@ -316,9 +316,9 @@ describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가
 
   it("그 부분집합에서 목표 초과 비율을 낸다", () => {
     const rows = [
-      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.02, diffCauses: clean() }),
-      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.5, diffCauses: clean() }),
-      row({ repo: "a/3", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.9, diffCauses: dirty() }),
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
+      row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.5, diffCauses: clean() }),
+      row({ repo: "a/3", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.9, diffCauses: dirty() }),
     ];
     const { metrics } = summarize(rows, []);
     expect(metrics.diff.clean.overTarget).toMatchObject({ n: 1, of: 2 });
@@ -327,17 +327,58 @@ describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가
   it("수술적 어댑터는 분모에서 뺀다 — 이 기능이 닿지 않는 어댑터다", () => {
     // 0.000이라 넣으면 중앙값을 끌어내려 "순서 보존이 잘 됐다"는 거짓 신호가 된다.
     const rows = [
-      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.6, diffCauses: clean() }),
-      row({ repo: "a/2", chosen: cand("l/{locale}.yml", "yaml-catalog"), diffRatio: 0, diffCauses: clean() }),
-      row({ repo: "a/3", chosen: cand("l/{locale}.ts", "code-dict"), diffRatio: 0, diffCauses: clean() }),
+      row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.6, diffCauses: clean() }),
+      row({ repo: "a/2", chosen: cand("l/{locale}.yml", "yaml-catalog"), keyCount: 500, diffRatio: 0, diffCauses: clean() }),
+      row({ repo: "a/3", chosen: cand("l/{locale}.ts", "code-dict"), keyCount: 500, diffRatio: 0, diffCauses: clean() }),
     ];
     const { metrics } = summarize(rows, []);
     expect(metrics.diff.clean.repos).toBe(1);
     expect(metrics.diff.clean.median).toBeCloseTo(0.6);
   });
 
+  it("키가 극히 적은 리포는 분모에서 뺀다 — 비율 자체가 무의미하다", () => {
+    // carettab(키 2개, diff 0.889)·next-official(키 1개, 0.143). 키가 몇 개뿐이면 줄 하나가
+    // 비율을 수십 %씩 움직여서, 그 값이 "순서가 안 지켜졌다"를 뜻하지 않는다.
+    const rows = [
+      row({ repo: "a/tiny", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 2, diffRatio: 0.9, diffCauses: clean() }),
+      row({ repo: "a/big", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.clean.repos).toBe(1);
+    expect(metrics.diff.clean.overTarget).toMatchObject({ n: 0, of: 1 });
+  });
+
+  it("`.`-키가 중첩과 공존하는 리포도 뺀다 — 키 구분자 계약이 담당하는 축이다", () => {
+    const rows = [
+      row({
+        repo: "a/dotted",
+        chosen: cand("i/{locale}.json", "json-catalog"),
+        keyCount: 500,
+        diffRatio: 0.5,
+        diffCauses: { ...emptyDiffCauses(), dottedWithNested: true },
+      }),
+      row({ repo: "a/ok", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.clean.repos).toBe(1);
+  });
+
+  it("미번역 제외로 줄이 사라지는 리포도 원인이 있는 쪽이다", () => {
+    const rows = [
+      row({
+        repo: "a/empty",
+        chosen: cand("i/{locale}.json", "json-catalog"),
+        keyCount: 500,
+        diffRatio: 0.25,
+        diffCauses: { ...emptyDiffCauses(), emptyValues: true },
+      }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.diff.clean.repos).toBe(0);
+  });
+
   it("원인이 없는 리포가 하나도 없으면 중앙값이 undefined다 — 0이 아니다", () => {
-    const rows = [row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.9, diffCauses: dirty() })];
+    const rows = [row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.9, diffCauses: dirty() })];
     const { metrics } = summarize(rows, []);
     expect(metrics.diff.clean.median).toBeUndefined();
     expect(metrics.diff.clean.repos).toBe(0);

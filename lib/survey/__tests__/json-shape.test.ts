@@ -136,6 +136,36 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(jsonShape(two({ "1.5": "frac", z: "Z" })).causes.integerKeys).toBe(false);
   });
 
+  it("미번역(빈 값)을 원인으로 표시한다 — write가 그 줄을 통째로 뺀다", () => {
+    // zulip 실측: base가 `ar`이고 미번역이 `""`라 2285줄이 1378줄이 됐다. 순서 보존과 무관하고
+    // 고쳐서도 안 된다(빈 값을 남기면 크롬이 빈 문자열을 그대로 렌더한다 — MVP §4.1).
+    expect(jsonShape(two({ a: "A", b: "" })).causes.emptyValues).toBe(true);
+    expect(jsonShape(two({ a: "A", b: "B" })).causes.emptyValues).toBe(false);
+  });
+
+  it("null도 미번역이다 — flatten이 건너뛰어 같은 결과가 된다", () => {
+    expect(jsonShape(two({ a: "A", b: null })).causes.emptyValues).toBe(true);
+  });
+
+  it("빈 배열 원소는 sparseArray가 담당한다 — 두 원인이 겹쳐 세어지지 않는다", () => {
+    const c = jsonShape(two({ list: ["a", "", "c"] })).causes;
+    expect(c.sparseArray).toBe(true);
+    expect(c.emptyValues).toBe(false);
+  });
+
+  it("점 포함 키가 중첩과 공존하면 원인으로 표시한다 — 경로로 쪼개져 구조가 바뀐다", () => {
+    // musicblocks·scratchblocks·siyuan이 이 축이다. 키 구분자 계약을 빼는 별 기능이 담당한다.
+    expect(jsonShape(two({ "a.b": "flat", c: { d: "nested" } })).causes.dottedWithNested).toBe(true);
+  });
+
+  it("중첩이 없으면 점 키가 있어도 원인이 아니다 — flat write는 키를 쪼개지 않는다", () => {
+    expect(jsonShape(two({ "a.b": "x", "a.c": "y" })).causes.dottedWithNested).toBe(false);
+  });
+
+  it("점이 없으면 중첩이 있어도 원인이 아니다", () => {
+    expect(jsonShape(two({ a: { b: "x" } })).causes.dottedWithNested).toBe(false);
+  });
+
   it("2칸이 아닌 들여쓰기를 원인으로 표시한다", () => {
     expect(jsonShape(`${JSON.stringify({ a: { b: "B" } }, null, 4)}\n`).causes.indent).toBe(true);
     expect(jsonShape(two({ a: { b: "B" } })).causes.indent).toBe(false);

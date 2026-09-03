@@ -25,11 +25,29 @@ export type JsonDiffCauses = {
   sparseArray: boolean;
   /** 객체 키가 정규 정수 문자열이다 — JS가 앞으로 끌어올려 **순서 보존이 원리적으로 불가능하다.** */
   integerKeys: boolean;
+  /**
+   * 미번역(`""`·`null`) 값이 있다 — 재생성 writer가 그 **줄을 통째로 뺀다**.
+   *
+   * zulip 실측: base가 `ar`이고 미번역이 `""`라 2285줄이 1378줄이 됐다. **의도된 규칙이고 고쳐서도
+   * 안 된다** — 빈 값을 남기면 크롬이 빈 문자열을 그대로 렌더한다 (MVP §4.1). 순서 보존이
+   * 책임질 수 없는 축이라 원인으로 센다.
+   */
+  emptyValues: boolean;
+  /**
+   * 점 포함 키가 중첩과 **공존한다** — 복원에서 `"a.b"`가 경로로 쪼개져 구조가 바뀐다.
+   *
+   * `.`가 우리 조인 구분자이면서 실제 키에 든 문자라 flatten/unflatten이 단사가 아니다
+   * (POSTMORTEM 2026-09-02). musicblocks·scratchblocks·siyuan이 이 축이고, 키 구분자를 계약으로
+   * 빼는 별 기능이 담당한다. **중첩이 없으면 원인이 아니다** — flat write는 키를 쪼개지 않는다.
+   */
+  dottedWithNested: boolean;
 };
 
 export type JsonShape = {
   /** 파일에 쓰인 순서 그대로의 문자열 리프 키. `failed`면 빈 배열이다. */
   keyOrder: string[];
+  /** 최상위 값 중 객체·배열이 하나라도 있는가 — `read`의 `nested` 판정과 같은 규칙이다. */
+  nested: boolean;
   indent: IndentStyle;
   causes: JsonDiffCauses;
   /** 스캔이 끝까지 못 갔다 — 순서를 신뢰하면 안 된다. */
@@ -43,6 +61,8 @@ export const emptyJsonDiffCauses = (): JsonDiffCauses => ({
   escapedNonAscii: false,
   sparseArray: false,
   integerKeys: false,
+  emptyValues: false,
+  dottedWithNested: false,
 });
 
 /**
@@ -61,6 +81,7 @@ const isCanonicalIndex = (name: string): boolean => {
 export function jsonShape(text: string): JsonShape {
   const shape: JsonShape = {
     keyOrder: [],
+    nested: false,
     indent: indentOf(text),
     causes: emptyJsonDiffCauses(),
     failed: false,
@@ -76,6 +97,10 @@ export function jsonShape(text: string): JsonShape {
     shape.failed = true;
   }
   if (shape.failed) shape.keyOrder = [];
+  // 둘이 **공존할 때만** 구조가 바뀐다 — 중첩이 없으면 flat write가 키를 그대로 둔다.
+  // ⚠️ `keyOrder`의 `.`을 세면 안 된다 — 그건 **우리가 만든 조인 구분자**라 중첩이면 늘 있다.
+  // 봐야 하는 것은 **원본 키 이름 자체**에 든 점이다.
+  shape.causes.dottedWithNested = shape.nested && scanner.sawDottedName;
   return shape;
 }
 
@@ -135,6 +160,10 @@ function indentOf(text: string): IndentStyle {
  */
 class Scanner {
   private i = 0;
+  /** 중첩 깊이. `1`이 최상위 값들이라 `read`의 `nested` 판정과 같은 지점을 본다. */
+  private depth = 0;
+  /** **원본 키 이름 자체**에 `.`이 든 것을 봤는가 — 평탄화 경로의 구분자와 구별해야 한다. */
+  sawDottedName = false;
 
   constructor(
     private readonly text: string,
@@ -166,20 +195,29 @@ class Scanner {
     this.i += 1;
   }
 
-  /** 값 하나를 소비한다. 문자열 리프면 `path`를 순서에 기록한다. */
-  private value(path: string): void {
+  /**
+   * 값 하나를 소비한다. 문자열 리프면 `path`를 순서에 기록한다.
+   *
+   * @param inArray 배열 원소인가 — 빈 값의 결과가 다르다. 배열 안에서는 `sparseArray`(모양이
+   *   객체로 바뀐다)이고 밖에서는 `emptyValues`(줄이 통째로 빠진다)라 **겹쳐 세면 안 된다.**
+   */
+  private value(path: string, inArray = false): void {
     this.ws();
     const ch = this.peek();
     if (ch === undefined) throw new Error("입력이 끝났다");
+    // 최상위 값이 객체·배열이면 중첩이다 — `json-catalog.read`의 `nested` 판정과 같은 규칙.
+    if ((ch === "{" || ch === "[") && this.depth === 1) this.shape.nested = true;
     if (ch === "{") return this.object(path);
     if (ch === "[") return this.array(path);
     if (ch === '"') {
-      this.string();
+      const text = this.string();
       // ⚠️ 최상위 값(`path === ""`)은 키가 없다 — 최상위는 객체라야 하므로 여기 오지 않는다.
       if (path !== "") this.shape.keyOrder.push(path);
+      if (text === "" && !inArray) this.shape.causes.emptyValues = true;
       return;
     }
-    this.literal();
+    // `null`은 미번역이다 — `flatten`이 건너뛰어 빈 문자열과 같은 결과가 된다.
+    if (this.literal() === "null" && !inArray) this.shape.causes.emptyValues = true;
   }
 
   private object(path: string): void {
@@ -193,10 +231,13 @@ class Scanner {
     for (;;) {
       this.ws();
       const name = this.string();
+      if (name.includes(SEP)) this.sawDottedName = true;
       names.push(name);
       this.ws();
       this.expect(":");
+      this.depth += 1;
       this.value(path === "" ? name : `${path}${SEP}${name}`);
+      this.depth -= 1;
       this.ws();
       const next = this.peek();
       if (next === ",") {
@@ -224,7 +265,9 @@ class Scanner {
       // `null`과 `""`는 write에서 빠져(flatten이 건너뛰고 orderedEntries가 거른다) dense가 깨진다.
       if (this.text.startsWith("null", this.i)) sparse = true;
       else if (this.text.startsWith('""', this.i)) sparse = true;
-      this.value(`${path}${SEP}${index}`);
+      this.depth += 1;
+      this.value(`${path}${SEP}${index}`, true);
+      this.depth -= 1;
       index += 1;
       this.ws();
       const next = this.peek();
@@ -259,9 +302,10 @@ class Scanner {
   }
 
   /** `true`·`false`·`null`·숫자 — 문자열이 아니므로 키를 만들지 않는다. */
-  private literal(): void {
+  private literal(): string {
     const start = this.i;
     while (this.i < this.text.length && /[^,}\]\s]/.test(this.text[this.i]!)) this.i += 1;
     if (this.i === start) throw new Error("빈 리터럴");
+    return this.text.slice(start, this.i);
   }
 }

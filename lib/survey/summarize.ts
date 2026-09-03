@@ -137,6 +137,15 @@ const CAUSE_KEYS = Object.keys(emptyDiffCauses()) as Array<keyof DiffCauses>;
  */
 const REGENERATE_ADAPTERS = new Set(["chrome-locales", "json-catalog"]);
 
+/**
+ * `clean` 분모의 최소 키 수.
+ *
+ * 키가 몇 개뿐이면 줄 하나가 diff 비율을 수십 %씩 움직인다 — carettab은 키 2개에 0.889,
+ * next-official은 키 1개에 0.143이었다. 그 값은 "순서가 안 지켜졌다"를 뜻하지 않으므로
+ * **지표가 재려는 것과 재는 것이 어긋난다.** 20은 "한 줄이 5%를 넘게 움직이지 않는" 선이다.
+ */
+const CLEAN_MIN_KEYS = 20;
+
 const emptyCauseCounts = (): Record<keyof DiffCauses, number> =>
   Object.fromEntries(CAUSE_KEYS.map((k) => [k, 0])) as Record<keyof DiffCauses, number>;
 
@@ -235,6 +244,8 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   const cleanRatios = rows
     .filter((s) => s.chosen !== undefined && REGENERATE_ADAPTERS.has(s.chosen.adapter))
     .filter((s) => CAUSE_KEYS.every((k) => !s.diffCauses[k]))
+    // 비율이 의미를 갖는 크기여야 한다 — 위 상수 참조.
+    .filter((s) => s.keyCount >= CLEAN_MIN_KEYS)
     .map((s) => s.diffRatio)
     .filter((r): r is number => r !== undefined);
 
