@@ -60,6 +60,20 @@
 
 **그리고 `orderBy: { key: "asc" }`가 리포에 두 곳이다** — `lib/pull/load.ts`(바꾼다)와 `lib/keys/query.ts`(**편집 UI 행 순서의 유일한 출처, 절대 바꾸지 않는다**). grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
 
+```
+grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys/*.ts
+```
+
+**이 여섯을 지키는 테스트가 셋이다** (`docs/features/key-order-preservation/` 태스크 5). 순서를 고칠 때 셋 다 red가 아니면 **고친 층이 프로덕션 경로가 아니었을 가능성**을 먼저 의심한다:
+
+| 층 | 파일 | 잡는 것 |
+|---|---|---|
+| **L1 진입점** | `lib/pull/__tests__/entry-order.test.ts` | `runPull`이 **커밋에 실은 파일 내용**. 값 전달 4홉 중 하나만 끊겨도 red다 — 어댑터·render 단위 테스트는 전부 green인 채 기능만 멎는 층이다. `orderBy` 두 곳도 여기서 갈린다 |
+| **L2 골든 픽스처** | `lib/adapters/__tests__/key-order-golden.test.ts` | 실측 리포 모양에서 첫 write가 **바이트 동일**인지. `lib/survey/diff.ts`의 **프로덕션 함수**로 재므로 코퍼스 지표와 같은 자다 |
+| **L3 재측정** | 규칙 (CLAUDE.md 문서 신선도 + `/push` 4d) | 일반화 — 처음 보는 리포에서도 그런가. 네트워크 ~4분이라 게이트가 아니라 판단 지점이다 |
+
+⚠️ **L2가 없으면 완료 조건의 diff 수치가 한 번 재고 끝난다.** `pnpm adapter-survey`는 캐시가 없어 `pnpm test`에도 CI에도 못 들어가므로, 그 수치를 오프라인 단언으로 내리지 않으면 다음 날 `orderedEntries`를 되돌려도 아무 게이트도 안 빨개진다.
+
 **중첩 구조는 write에서 복원한다.** 평탄화만 하고 복원하지 않으면 읽은 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다. 배열은 인덱스 키(`hero.subcopy.0`)로 펼치고, `0..n`이 빈틈없이 채워진 객체만 배열로 되돌린다 — 빈틈이 있으면 객체로 남긴다(배열로 만들면 구멍이 `null`로 직렬화되어 원본에 없던 값이 파일에 나타난다).
 
 **`description`은 base 로케일에만, 지원하는 어댑터에서만.** 원문 메타데이터라 번역 파일마다 복제하면 바이트만 늘고 읽는 쪽이 없다. `json-catalog`은 담을 곳이 없어 DB엔 남지만 파일로 나가지 않는다.
