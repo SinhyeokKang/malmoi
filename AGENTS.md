@@ -212,7 +212,8 @@ lib/
   survey/               어댑터 범용성 실측의 순수 판정층 (I/O는 scripts/adapter-survey.ts만)
                         select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
                         비율) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
-  push/                 plan.ts(순수 판정) / apply.ts(벌크 I/O) / auth.ts(fail-closed)
+  push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / plan.ts(순수 판정)
+                        / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)

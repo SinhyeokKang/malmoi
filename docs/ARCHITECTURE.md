@@ -399,7 +399,15 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 ## 5.5 push 적용 (`lib/push/`)
 
-**판정과 I/O를 나눈다.** `plan.ts`가 순수 함수로 계획을 세우고(`toInsert`/`toUpdate`/`toOrphan`/`toUnorphan`/`staleKeyIds`), `apply.ts`가 그것만 실행한다. `PushPlan`에 **`toDelete`가 없는 것이 요지다** — 코드에서 사라진 키는 `orphaned`로 표시만 한다.
+**판정과 I/O를 나눈다.** `payload.ts`가 로케일 파일에서 페이로드를 조립하고, `plan.ts`가 순수 함수로 계획을 세우고(`toInsert`/`toUpdate`/`toOrphan`/`toUnorphan`/`staleKeyIds`), `apply.ts`가 그것만 실행한다. `PushPlan`에 **`toDelete`가 없는 것이 요지다** — 코드에서 사라진 키는 `orphaned`로 표시만 한다.
+
+### 5.5.0 페이로드 생산자는 하나다 (`payload.ts`, 2026-09-03)
+
+`buildPushPayload`·`selectLocaleFiles`·`pickBaseLocale`이 **호출부가 아니라 `lib/`에 있다.** 전에는 `scripts/push-local.ts`의 리터럴이라 계약이 넓어져도 컴파일러가 붙잡을 지점이 없었고, 필수 필드 둘이 늘었는데 typecheck·test가 전부 green이었다 (POSTMORTEM 2026-08-31). **스키마(zod)와 소비자(`applyPush`)는 타입으로 이어져 있었는데 생산자만 끊겨 있었다.**
+
+- **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write에 원본이 필요한지를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
+- **`pickBaseLocale`은 추정이다** — `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 정본이 아니고 TASKS §3a의 🔒 항목이 그 자리다.
+- ⚠️ **`lib/survey/select.ts`와 `scripts/ingest.ts`에 같은 층이 따로 있다.** 셋을 합치지 않은 것은 survey가 측정 전용이고 요구가 다르기 때문이다 — 새 어댑터를 추가하면 **셋 다** 고친다.
 
 ### 5.5.1 pooler가 구현을 규정한다
 
@@ -421,7 +429,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 `$executeRaw`가 돌려주는 영향 행수를 배열형 트랜잭션 결과에서 읽는다. 후보 수를 보고하면 실제로 쓰이지 않은 행까지 세어 CI 로그에 거짓이 남는다 — `DO NOTHING`이던 시절 재전송마다 "번역 2892건 채움"이 찍혔다. strict에서는 재전송도 전 행을 갱신하므로 두 수가 대개 같지만, 보고 경로는 그대로 실측을 읽는다.
 
-### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 미구현)
+### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
 **두 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 둘 다 **409**로 떨어뜨린다.
 
@@ -434,11 +442,19 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **GitHub API로 조상 관계를 확인하지 않는다.** 더 정확하지만 지금 GitHub을 전혀 부르지 않는 push 라우트에 App 토큰과 네트워크 왕복이 들어온다. 커밋 시각은 Actions가 `git show -s --format=%cI`로 공짜로 얻는다.
 - **프로젝트별 `PUSH_TOKEN`으로 가르지 않는다.** 토큰이 곧 라우팅이면 페이로드가 안 바뀌는 대신 토큰↔프로젝트 매핑을 DB나 env에 둬야 하고 시크릿이 프로젝트 수만큼 는다.
 
-**7단계(Actions 배선) 전에 서 있어야 한다** — 실 DB에 프로젝트가 이미 둘이라 두 번째 리포를 붙이는 순간이 첫 사고 지점이다.
+**7단계(Actions 배선) 전에 서 있어야 한다** — 실 DB에 프로젝트가 이미 둘이라 두 번째 리포를 붙이는 순간이 첫 사고 지점이다. `lib/push/guard.ts`가 두 판정을 들고 `app/api/push/route.ts`가 409로 떨어뜨린다.
 
 ### 5.5.4 `applyPush`는 클라이언트를 주입받는다
 
 `lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에 스크립트·테스트가 이 모듈을 **열 수조차 없다** — `lib/env.ts`에서 이미 밟은 함정이다. 라우트가 `getPrisma()`를 넘긴다.
+
+### 5.5.6 흐름 검증은 SQL 인자를 캡처한다 (`__tests__/flow.test.ts`, 2026-09-03)
+
+**홉마다 단위 테스트가 있어도 이어 붙인 것을 보는 테스트가 없으면 값이 홉 사이에서 사라진다** — 이 리포의 반복 실패 유형이다 (MVP §8.1의 B단계). `lib/push/__tests__/flow.test.ts`가 로케일 파일 → `detect` → `read` → `buildPushPayload` → `planPush` → **`$executeRaw`가 받은 값**까지를 한 테스트에서 단언한다.
+
+- **실 DB를 치지 않는다.** prisma 스텁이 태그드 템플릿 인자를 캡처한다 — 실 DB 왕복은 재현 가능한 게이트가 아니고, 이 리포는 dev DB가 곧 prod DB다.
+- **컬럼 이름 개수 = 값 배열 개수를 매번 검사한다.** `unnest` 인자 순서가 컬럼 목록과 어긋나면 값이 옆 컬럼으로 들어가는데, 타입이 같으면(`text[]`끼리) 런타임도 조용하다.
+- 덮는 손실 지점: `sortIndex`의 0(falsy), 키 description과 로케일 description의 분리, `placeholders`의 JSON 직렬화, `refs`의 keyId 연결, 빈 값 번역 제외, orphan·unorphan·`needsReview` 전파.
 
 ## 6. 인증 경계
 

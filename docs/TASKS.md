@@ -54,12 +54,18 @@
 - [x] **pull 흐름** ✅ (2026-09-03, 키 순서 보존 §5-1) — `runPull` 진입점에서 **커밋에 실린 파일
       바이트**를 단언한다. 값 전달 4홉 중 하나만 끊겨도 red다
   - 실물 PR로도 확인 ([i18n-order-check#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1))
-- [ ] **B-1. push 흐름** — 로케일 파일 → `read` → 페이로드 → `planPush` → DB에서 값이 안 사라지는지
-      **진입점(`applyPush`)에서** 단언한다
-  - ⚠️ 지금은 홉마다 단위 테스트가 있고 **이어 붙인 것을 보는 테스트가 없다.** 태스크 4에서 실 DB
-    왕복으로 한 번 확인했지만 그건 재현 가능한 게이트가 아니다
-  - 검증: prisma 스텁으로 `applyPush`가 낸 SQL 인자를 캡처해 `sortIndex`·`description`·
-    `placeholders`·`refs`가 전부 실렸는지 본다
+- [x] **B-1. push 흐름** ✅ (2026-09-03) — `lib/push/__tests__/flow.test.ts`가 로케일 파일 →
+      `detect` → `read` → `buildPushPayload` → `planPush` → **`$executeRaw`가 받은 값**까지를
+      한 테스트에서 단언한다 (ARCHITECTURE §5.5.6)
+  - 검증: prisma 스텁이 태그드 템플릿 인자를 캡처한다. `sortIndex`의 0(falsy)·키 description과
+    로케일 description의 분리·`placeholders` JSON 직렬화·`refs`의 keyId 연결·빈 값 제외·
+    orphan/unorphan/`needsReview` 전파까지 20건. **컬럼 이름 수 = 값 배열 수**를 매번 검사해
+    `unnest` 인자 순서가 어긋나는 것도 잡는다
+  - **함께 닫은 구멍**: 페이로드 생산자가 `scripts/push-local.ts`의 리터럴이라 테스트가 닿지
+    않았다 (POSTMORTEM 2026-08-31이 지적하고 "생산자를 하나로 유지하라"고 적어둔 자리).
+    `lib/push/payload.ts`로 올렸고 CLI가 그것을 쓴다 — C단계의 Actions도 같은 함수를 지난다
+  - 실측 스모크: bugshot-2 chrome-locales 4키 / bugshot-2 ts-dict 903키(multi-locale) /
+    skillflo json-catalog 1446키 — 세 경로 모두 조립이 정상
 - [ ] **B-2. 편집 흐름** — `saveTranslation` → DB → 다음 pull의 출력에 그 값이 나타나는지
   - ⚠️ **편집 UI를 동결했어도 이 경로는 살아 있어야 한다** (MVP §8.3). 저장이 DB에 닿는 유일한
     증거이고, 손실 창(§3.1)이 실제로 어떻게 닫히는지도 여기서 관측된다
