@@ -464,9 +464,19 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
       write는 안 건드려서 출력이 아직 바이트 동일하다
   - ⚠️ `placeholders`는 **모양이 이상해도 안 버린다** — 거르면 그게 이 기능이 없애려는 손실이고,
     에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다
-- [ ] 태스크 2 — 재생성 writer가 `order` 순서로 재조립하고 chrome 필드를 되돌린다
-      ⬅️ **다음에 할 일**
-- [ ] 태스크 3~4 — 마이그레이션(additive 컬럼 셋: `StringKey.sortIndex` ·
-      `Translation.description` · `Translation.placeholders`) → push·pull 배선 4곳
+- [x] **태스크 2 — 재생성 writer가 원본 순서로 재조립한다** (2026-09-03) —
+      `orderedEntries`가 `usableEntries`를 대체하고, `json-catalog`이 중첩 각 층을 다시 정렬하던
+      `sortedByKey` 호출을 걷어냈다. `chrome-locales`는 `placeholders`를 그대로 되돌린다
+  - **진입점에서 확인**: excalidraw 첫 write diff **0.843 → 0.000** (실물 코퍼스). siyuan은
+    0.999 유지 — tab 들여쓰기 + 정수형 키라 둘 다 기록된 비목표다
+  - 계약 테스트를 **교체**했다(코드 유닛 정렬 assert → order assert + 폴백 유지), 수술적 3개에
+    "order를 줘도 출력이 같다"를 단언하고 `ignoreOrder` 네거티브를 넣었다
+  - MVP §4.1 · ARCHITECTURE §1.1을 **여기서 갱신**했다 — 코드에 없는 함수를 가리키는 문서를
+    배포할 수 없어 태스크 7에서 당겨왔다
+  - ⚠️ `description`은 아직 base에만 낸다 — `buildWriteEntries`가 키 단위 값을 전 로케일에 실어
+    지금 가드를 풀면 pull이 비-base 파일에 **없던 description을 만들어 넣는다**. 태스크 4에서 함께
+- [ ] 태스크 3 — 마이그레이션(additive 컬럼 셋) ⬅️ **다음에 할 일**
+- [ ] 태스크 4 — push·pull 배선 4곳(`load.ts` select → `RenderKey` → `PullRow` →
+      `buildWriteEntries`) + `description` 가드 해제
 - [ ] 태스크 5 — **검증 루프** (L1 진입점 회귀 / L2 골든 픽스처 / L3 재측정 트리거 규칙)
 - [ ] 태스크 6~7 — 재측정 게이트, 실물 확인, MVP §4.1 · ARCHITECTURE §1.1 갱신
