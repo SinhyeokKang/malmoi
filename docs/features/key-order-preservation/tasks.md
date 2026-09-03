@@ -212,58 +212,58 @@
 `detectCandidates()[0]`이고 그게 빈 배열이었다. `detect`와 `detectCandidates`를 갈라 고치고
 DB를 원상복구했다 (`fix(adapters)` 커밋 + POSTMORTEM 2026-09-03).
 
-## 5. 검증 루프 — 1회성 측정을 상시 게이트로 내린다
+## 5. 검증 루프 — 1회성 측정을 상시 게이트로 내린다 ✅ (2026-09-03)
 
 **이 단계가 없으면 이 기능이 끝난 다음 날 누가 `orderedEntries`를 되돌려도 아무것도 안 빨개진다.**
-`pnpm adapter-survey`는 네트워크 필수라 `pnpm test`에도 CI에도 못 들어간다.
+`pnpm adapter-survey`는 캐시가 없어 리포 129개를 매번 clone하고(~4분) 네트워크 필수라 `pnpm test`
+에도 CI에도 못 들어간다.
 
-### 5-1. L1 — 진입점 회귀 (`pnpm test`)
+### 5-1. L1 — 진입점 회귀 ✅ (`lib/pull/__tests__/entry-order.test.ts`)
 
-- [ ] `runPull`(`lib/pull/run.ts:51`, deps 주입)에 **순서 섞인 DB 상태**를 넣어 출력 파일 바이트를
-      단언한다. `lib/pull/__tests__/fake-client.ts` 경로를 쓴다
-  - 검증: `pnpm test` — `sortIndex` 순서대로 파일이 나온다. **값 전달 경로 a~d 중 하나를 일부러
-    빼면 이 테스트가 red가 된다**(구현 중 한 번 확인)
-  - ⚠️ `renderFiles` 단위 테스트로 끝내지 않는다 — POSTMORTEM 2026-09-02가 요구하는 "진입점"은
-    어댑터도 render도 아니고 여기다
-- [ ] prisma 스텁으로 `findMany`가 받은 인자를 캡처해 `orderBy`를 단언하는 테스트 2개
-  - `loadPullState`(`lib/pull/load.ts`) → `[{ sortIndex: "asc" }, { key: "asc" }]`
-  - `loadKeys`(`lib/keys/query.ts`) → `{ key: "asc" }` **그대로** (편집 UI 무변경 자동 가드)
-  - 검증: `pnpm test`. 둘 다 prisma를 주입받으므로 I/O·DB 0이다
+- [x] `runPull`(deps 주입)에 **순서 섞인 DB 상태**를 넣어 **커밋에 실린 파일 바이트**를 단언
+  - 검증 통과: base·비-base 둘 다 `sortIndex` 순. `sortIndex`를 지운 입력은 코드 유닛 순으로
+    떨어지고, **두 출력이 다르다는 것**을 별도 케이스가 단언한다 — 픽스처가 코드 유닛 순이면
+    배선이 끊겨도 green이 되므로 그게 이 테스트의 판별력 증명이다
+  - ⚠️ 어댑터·`renderFiles` 단위 테스트로는 **원리적으로 못 보는 층**이다
+- [x] `orderBy` 두 곳을 갈라 고정
+  - `loadPullState` → prisma 스텁으로 `[{ sortIndex: "asc" }, { key: "asc" }]` + **세 컬럼 select**
+  - `lib/keys/query.ts` → **소스를 읽어** `orderBy: { key: "asc" }`가 그대로인지. `server-only`라
+    테스트가 import할 수 없고, **보호를 떼서 검사를 강하게 만드는 것은 거꾸로다**
+  - `lib/pull/load.ts`에 그 문자열이 **없는지**도 단언 — grep하면 둘 다 잡히던 함정을 여기서 가른다
 
-### 5-2. L2 — 골든 픽스처 (`pnpm test`, 네트워크 0)
+### 5-2. L2 — 골든 픽스처 ✅ (`lib/adapters/__tests__/key-order-golden.test.ts`, 네트워크 0)
 
-- [ ] `lib/survey/diff.ts`에 `changedHunks(a, b)` 추가 — 이미 도는 LCS 순회에 비매칭 구간 카운터를
-      얹는 순수 함수
-  - 검증: `pnpm test` — 알려진 두 문자열에서 hunk 수가 기대값
-- [ ] `lib/adapters/__tests__/key-order.test.ts` 신설. 실측 리포 모양 4개를 **인라인 템플릿
-      리터럴**로 박는다 (리포에 fixture 디렉터리가 없고 `yaml-catalog.test.ts:14-33`이 그 관례다.
-      남의 파일을 통째로 커밋하지 않아 라이선스 문제도 피한다)
-  - ① 정렬 안 된 flat JSON ② 중첩 + 배열(excalidraw·open-webui 모양) ③ 점 포함 키가 중첩과 공존
-    (siyuan·musicblocks 모양) ④ chrome `_locales`
-- [ ] 픽스처마다 단언 셋:
-  - ① 값을 안 바꾼 write 출력이 **원본 바이트와 동일**(2칸 픽스처에 한해)
-  - ② `lib/survey/diff.ts`의 **프로덕션 함수를 그대로 import**해 `diffRatio === 0` — 코퍼스 지표와
-    단위 테스트가 같은 자를 쓰게 한다
-  - ③ write → read → write **바이트 고정점**
-  - 검증: `pnpm test`
-- [ ] 엣지 케이스를 픽스처에 명시: **`sortIndex` 전부 null**(현 동작과 바이트 동일이어야 한다),
-      orphaned 키가 order에 구멍을 낼 때, 배열이 든 중첩 파일, 빈 엔트리 목록(`null` 반환),
-      로케일마다 키 집합이 다를 때, base에 없고 다른 로케일에만 있는 키
-  - 검증: `pnpm test`
+- [x] `lib/survey/diff.ts`에 **`changedHunks`** 추가 — 같은 Hunt–Szymanski 순회에 역추적을 얹었다
+      (알고리즘을 하나 더 들이지 않는다)
+  - 검증 통과: `lib/survey/__tests__/hunks.test.ts` 10건
+  - 예산 초과 시 **`undefined`** — 근사로 세면 과소평가인데 이 지표는 "작을수록 좋다"로 읽혀서
+    과소평가가 곧 거짓 안심이다
+- [x] 실측 리포 모양 **3개**를 인라인 픽스처로: 정렬 안 된 flat(gitea·zulip) / 중첩+배열
+      (excalidraw·open-webui) / chrome `_locales`(placeholders + description)
+  - 형태만 옮기고 문자열은 우리 것으로 바꿨다 — 재는 것은 **구조**이지 남의 문구가 아니다
+- [x] 픽스처마다 단언 넷: **바이트 동일** / **`roundtripDiffRatio === 0`**(프로덕션 함수를 그대로
+      import) / **`changedHunks === 0`** / write→read→write **고정점**
+  - ⚠️ 다른 구현으로 재면 **여기가 green인데 실측이 red**인 상태가 가능하다
+- [x] "값 하나를 바꾸면 hunk가 1이다" — 재정렬이면 여러 군데로 흩어진다
+- [x] 엣지 케이스: order 전부 없음(개정 전과 바이트 동일) / orphaned·빈 값이 order에 구멍 /
+      낼 것 0개면 `null` / 로케일마다 키 집합이 다름
+- [x] **알려진 한계를 기준선으로 박았다** — 점 포함 키가 중첩과 공존하면 `"menu.open"`이 경로로
+      쪼개진다. **순서 보존과 다른 축**(`.`가 조인 구분자)이고, 키 구분자 계약을 빼는 별 기능이
+      고치면 이 테스트가 red가 된다
 
-### 5-3. L3 — 재측정 트리거를 규칙으로 등재
+### 5-3. L3 — 재측정 트리거를 규칙으로 등재 ✅
 
-- [ ] **`lib/adapters/**`·`lib/survey/**`를 바꾼 커밋은 `pnpm adapter-survey`를 학습·홀드아웃 둘 다
-      돌리고 `docs/ADAPTER-COVERAGE.md`를 갱신한다**를 CLAUDE.md 문서 신선도 절과
-      `.claude/commands/push.md` 4단계에 등재
-  - 검증: 두 파일에 그 문장이 있고, 지금의 수동태("재실행하면 갱신한다")가 트리거 문장으로 바뀐다
-  - ⚠️ `docs/ADAPTER-COVERAGE.md` §0 3차가 "한 라운드에서 둘 다 돌린 것이 회귀를 잡은 유일한
-    이유"라고 이미 적어 놨는데 **그 규칙이 어디에도 강제돼 있지 않다**
-- [ ] 정렬 지점 재확인 grep을 규칙에 포함:
-      `grep -n "orderBy\|compareKeys\|sortedByKey\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys/*.ts`
-  - 검증: 정렬 지점이 **재생성 경로 넷 + 경로 밖 둘**임을 매번 재확인한다
+- [x] **`lib/adapters/**`·`lib/survey/**` 변경 → `docs/ADAPTER-COVERAGE.md` + 재측정**을
+      `.claude/commands/push.md` 4a 트리거 목록과 **새 4d 절**에, 그리고 CLAUDE.md 문서 신선도에 등재
+  - **학습·홀드아웃 둘 다** 돌린다 — §0 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중
+    하나는 학습 코퍼스에서만 나타났다
+  - **게이트가 아니라 판단 지점이다** — 네트워크 ~4분이라 푸시를 막는 데 쓸 수 없다.
+    "안 걸렸다"와 "걸렸는데 미뤘다"를 리포트에서 구분한다
+- [x] **정렬 지점 grep과 세 층의 대응표를 `docs/ARCHITECTURE.md` §1.1에 등재**
+  - 순서를 고칠 때 셋 다 red가 아니면 **고친 층이 프로덕션 경로가 아니었을 가능성**을 먼저 의심한다
 
-⎯ 커밋 ⎯ `test(adapters,pull): lock key order at the entry point and in golden fixtures`
+⎯ 커밋 ⎯ `test(pull,adapters): lock key order at the entry point and in golden fixtures` +
+문서 3건 (완료)
 
 ## 6. 재측정 — 완료 조건 게이트 (1회성, 수동)
 
