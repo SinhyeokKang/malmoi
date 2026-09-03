@@ -51,7 +51,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 - **push는 리포 값으로 번역을 덮는다** (`ON CONFLICT DO UPDATE`, strict). 변경 감지도 병합도 없다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다 (MVP §3.1). 정책을 느슨하게 하면(변경 감지·병합) 이 원칙이 요구하는 단순성이 무너진다.
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다. 삭제는 되돌릴 수 없어 이 원칙을 깬다.
-- **pull은 값을 병합하지 않는다.** 재생성 어댑터는 DB만 읽어 파일을 새로 뽑고, **수술적 치환(`ts-dict`)은 원본 파일 내용을 읽는다** — 다만 원본에서 가져오는 것은 **구조**(빈 줄·주석·키 순서)이지 **값**이 아니다. 값은 전부 DB에서 온다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다. *(2026-09-01 정정: 이전 서술은 "읽는 것은 blob SHA뿐"이었는데 MVP §4.1이 승인한 수술적 치환과 어긋났다 — 지키는 것은 "안 읽는다"가 아니라 "병합하지 않는다"다.)*
+- **pull은 값을 병합하지 않는다.** 재생성 어댑터는 DB만 읽어 파일을 새로 뽑고, **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본 파일 내용을 읽는다** — 다만 원본에서 가져오는 것은 **구조**(빈 줄·주석·키 순서)이지 **값**이 아니다. 값은 전부 DB에서 온다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다. *(2026-09-01 정정: 이전 서술은 "읽는 것은 blob SHA뿐"이었는데 MVP §4.1이 승인한 수술적 치환과 어긋났다 — 지키는 것은 "안 읽는다"가 아니라 "병합하지 않는다"다.)*
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
 
 ## 작업 원칙
@@ -112,7 +112,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 |---|---|---|
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
 | `/api/push` | Route Handler | GitHub Actions (Bearer `PUSH_TOKEN`) |
-| `/api/pull` | Route Handler | 편집 UI 버튼 + Vercel Cron (`CRON_SECRET`) |
+| `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) — 편집 UI 버튼은 Server Action이 `triggerPull`을 직접 부른다 |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다.** 클라이언트 fetch 배선과 중복 스키마가 생기고, `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
@@ -151,7 +151,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
-| 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>]` (포맷 탐지 → 키 적재 → 왕복 검증) |
+| 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). 인자 파싱·리포 훑기는 세 CLI가 `lib/cli/`를 공유한다 |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **항상 exit 0**). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
@@ -190,6 +190,7 @@ CI가 여전히 있는 이유는 셋: 로컬 환경 의존성을 걷어낸 깨�
 
 ```
 app/
+  page.tsx              루트 — 로그인 화면. 세션이 있으면 /keys로 redirect
   layout.tsx            루트 레이아웃 (Pretendard <link>)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
   (edit)/               편집 UI (인증 필요 — 차단은 middleware.ts)
@@ -197,6 +198,7 @@ app/
     keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
     actions.ts          Server Action — saveTranslation(유일한 사용자 mutation) / triggerPullAction
     __tests__/          편집 흐름 B단계 검증 — 저장→DB→pull 출력 (메모리 DB 하나를 공유한다)
+  api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
@@ -205,19 +207,24 @@ middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher�
 components/
   translation-input.tsx 인라인 편집 (client — blur 시 저장)
   pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
-  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다)
+  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 현재 import 0곳 —
+                        UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner·radix-ui도 같은 상태
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
                         ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
-    index.ts            detectFormat / detectCandidates / adapterFor / ADAPTERS(우선순위)
-    shared.ts           재생성 writer의 결정성 규칙 + 후보 순위·검증
+    index.ts            detectFormat / detectCandidatesAcross / adapterFor / isAdapterName / ADAPTERS
+    types.ts            Adapter·DetectedFormat·LocaleEntry 계약 (writeWithErrors는 선택 구현)
+    shared.ts           재생성 writer의 결정성 규칙(orderedEntries·compareKeys) + 후보 순위·검증
+                        + matchGlobPaths(multi-locale 경로 — push·pull·survey가 공유하는 유일한 규칙)
+    quote-style.ts      수술적 어댑터의 인용 부호 보존 (quoteLiteral·dominantQuote)
     chrome-locales.ts   _locales/{locale}/messages.json (per-locale, 재생성)
     json-catalog.ts     per-locale, 재생성 — flat|중첩, 배열 인덱스. ⚠️ **경로 모양 3개**:
                         {dir}/{locale}.json · {dir}/{locale}/<name>.json · {dir}/<prefix>.<locale>.json
     yaml-catalog.ts     {dir}/{locale}.y(a)ml (per-locale, ⚠️ 수술적 — 주석·앵커 보존, Rails 루트 키)
     code-dict.ts        {dir}/{locale}.{ts,js} (per-locale, ⚠️ 수술적 — default export 객체)
     ts-dict.ts          src/i18n/namespaces/*.ts (multi-locale, ⚠️ 수술적 — **자동 탐지 제외**)
-  env.ts                환경변수 단일 접근점 (fail-closed, PEM 개행 복원)
+  env.ts                환경변수 단일 접근점 — requireEnv(던진다) / optionalEnv(인가 판정용, 던지지 않는다) / PEM 개행 복원
+  cli/                  세 CLI 공통 — args.ts(순수 인자 파싱: 값 플래그 자리 건너뛰기) / walk.ts(SKIP_DIR + 리포 훑기, fs)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
@@ -228,7 +235,8 @@ lib/
                         상대 키를 절대 키로 되돌린다 (ARCHITECTURE §4.0)
   survey/               어댑터 범용성 실측의 순수 판정층 (I/O는 scripts/adapter-survey.ts만)
                         select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
-                        비율) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
+                        비율·hunk) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
+                        / merge(detectCandidatesAcross 위임 — 흔적) / types
   push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
@@ -242,12 +250,15 @@ lib/
 types/next-auth.d.ts    session.user.login 타입 확장
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
-  migrations/           _init, _add_project_tenant_boundary, _add_project_locale_format
+  migrations/           7개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+                        _add_project_last_commit_at, _add_project_last_pulled_at,
+                        _add_key_order_and_chrome_fields, _add_project_nested_by_path
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
+  adapter-survey.ts     어댑터 범용성 실측 CLI (네트워크 — 판정은 lib/survey/)
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기
   copy-fonts.mjs        Pretendard 동적 서브셋 복사 (predev·prebuild)
   scan.ts               사용처 스캔 CLI
@@ -267,8 +278,8 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 
 설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`을 건드리기 전에 읽는다. 요약:
 
-- **export 결정성 3규칙 (재생성 방식)**: 키는 코드포인트 오름차순 정렬, 들여쓰기 2칸, 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
-- **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **`ts-dict`는 write에 원본 내용이 필요해 이 최적화가 그대로 성립하지 않는다** (MVP §3.3 — 파일당 blob 읽기 1회).
+- **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), 들여쓰기 2칸, 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
+- **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **수술적 어댑터 셋은 write에 원본 내용이 필요해 이 최적화가 그대로 성립하지 않는다** (MVP §3.3 — 파일당 blob 읽기 1회. 판단 축은 `writeStrategy`다).
 - **커밋 parents는 항상 base의 head, 브랜치는 force update**: `l10n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다. 3-way merge를 피하는 게 코어 원칙이므로 fast-forward를 지키려 하지 않는다.
 - **커밋 메시지에 `[skip-l10n]`**: 이 마커가 없으면 pull이 만든 커밋이 main에 머지될 때 push가 다시 돌아 무한 루프가 된다.
 - **PR은 하나를 재사용**: 열린 PR이 있으면 새로 만들지 않는다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
@@ -327,7 +338,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
-- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, 4차까지). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
+- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, 6차까지). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
   - **⚠️ 재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를 **학습과 홀드아웃 둘 다** 돌리고 이 문서에 회차를 더한다 — §0 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중 하나는 학습 코퍼스에서만 나타났다. 한쪽만 돌리면 못 본다. 판정은 `/push` 4d가 사용자에게 묻는다(네트워크 ~4분이라 게이트가 아니다)
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **i18n-poc가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
@@ -341,7 +352,7 @@ docs/POSTMORTEM.md      회귀·버그 회고 누적
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
-- **환경변수는 한 곳에서 읽는다** — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다.
+- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`·`AUTH_ALLOWED_LOGINS`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
