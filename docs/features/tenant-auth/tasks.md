@@ -9,32 +9,37 @@
 
 커밋 경계는 `──`로 표시한다.
 
-## 1. 순수 판정 — `/tdd interface`
+## 1. 순수 판정 — `/tdd interface` ✅ (2026-09-05, `5b38a0f` → `ef7895c` → `2e0f7f4`)
 
-- [ ] `normalizeEmail` (`lib/auth/email.ts`) — trim + 소문자. **그 이상 하지 않는다**
+**67케이스 green.** 구현 중 확정된 것 둘: `planMemberRemoval` → **`planMemberChange`**(제거와 강등이
+같은 판정을 지나야 하므로 `nextRole`을 받는다), `planOwnerBackfill`의 `owner` → **`ownerUserId`**.
+
+- [x] `normalizeEmail` (`lib/auth/email.ts`) — trim + 소문자. **그 이상 하지 않는다**
   - 검증 `[auto]`: `" A@B.com "` → `"a@b.com"` / `"a.b+c@Gmail.com"` → `"a.b+c@gmail.com"`(점·`+` 유지) /
     유니코드 로컬파트 유지 / 원문 인자는 안 바뀐다
-- [ ] `canPerform(role, permission)` (`lib/auth/permission.ts`) — SAAS.md §3 권한표. permission 셋
+- [x] `canPerform(role, permission)` (`lib/auth/permission.ts`) — SAAS.md §3 권한표. permission 셋
   - 검증 `[auto]`: **6칸 전부** — OWNER×3 통과 / EDITOR: `translation:write` 통과(Publish 포함),
     `project:settings`·`member:manage` 거부
-- [ ] `hashInviteToken` (`lib/auth/invitation.ts`) — sha256 hex
+- [x] `hashInviteToken` (`lib/auth/invitation.ts`) — sha256 hex
   - 검증 `[auto]`: 같은 입력 → 같은 해시 / 다른 입력 → 다른 해시 / 출력에 원문이 없다
-- [ ] `planInvitationAccept({ invitation, verifiedEmail, now })`
+- [x] `planInvitationAccept({ invitation, verifiedEmail, now })`
   - 검증 `[auto]`: `ok` / `expired`(만료 1ms 뒤) / `already-accepted` / `email-mismatch`(대소문자 차이는
     **일치**로) / `not-found`(invitation이 null) 다섯 분기
-- [ ] `planProjectAccess({ member, permission })` (`lib/auth/access.ts`)
+- [x] `planProjectAccess({ member, permission })` (`lib/auth/access.ts`)
   - 검증 `[auto]`: member null → `not-found` / EDITOR + `member:manage` → `forbidden` /
     EDITOR + `translation:write` → `ok` / OWNER + 셋 → `ok`. **반환의 `projectId`가 member 행의 것**
-- [ ] `planMemberChange({ members, targetUserId, nextRole })` (`lib/auth/membership.ts`)
+- [x] `planMemberChange({ members, targetUserId, nextRole })` (`lib/auth/membership.ts`)
   - 검증 `[auto]`: OWNER 둘 중 하나 제거 → `ok` / **마지막 OWNER 제거 → `last-owner`** /
     **마지막 OWNER를 EDITOR로 강등 → `last-owner`** / EDITOR 제거 → `ok` / EDITOR→OWNER → `ok` /
     대상이 멤버가 아님 → `not-member`
-- [ ] `planOwnerBackfill({ projects, members, owner })` (`lib/auth/backfill.ts`)
+- [x] `planOwnerBackfill({ projects, members, ownerUserId })` (`lib/auth/backfill.ts`)
   - 검증 `[auto]`: OWNER 없는 프로젝트만 행을 낸다 / 이미 있으면 0건 / **결과를 members에 합쳐 다시
-    돌리면 0건**(멱등)
-- [ ] `hasSessionCookie(names)` (`lib/auth/cookie.ts`)
+    돌리면 0건**(멱등) / **빈 `ownerUserId`는 던진다**(code-review 🟡 — 빈 배열을 내면 스크립트가
+    "채울 것 없음"으로 읽고, 그 스크립트가 `User`까지 upsert하므로 빈 id의 User가 전 프로젝트의
+    OWNER가 된다. `syncBranchFor`가 같은 이유로 던진다)
+- [x] `hasSessionCookie(names)` (`lib/auth/cookie.ts`)
   - 검증 `[auto]`: `authjs.session-token` / `__Secure-authjs.session-token` 어느 하나면 true, 둘 다 없으면 false
-- [ ] `accessErrorMessage(error)` (`lib/auth/message.ts`) — Action 거부 문자열 → 한국어 (`pullMessage` 형태)
+- [x] `accessErrorMessage(error)` (`lib/auth/message.ts`) — Action 거부 문자열 → 한국어 (`pullMessage` 형태)
   - 검증 `[auto]`: `unauthorized`·`forbidden`·`not-found` 셋이 서로 다른 문구. exhaustive switch
 
 `──` 커밋: `test(auth): pure decisions for access, membership, invitations and backfill` → `feat(auth): …`
@@ -101,6 +106,13 @@
     안 하면 `profile` 콜백에서 직접 조회한다
   - 검증 `[auto]`: 판정을 `isVerifiedEmail(profile, provider)` 순수 함수로 빼서 provider별 케이스 /
     `[manual]`: 비공개 이메일 GitHub 계정으로 로그인 → `/`에 거부 문구
+- [ ] **`User.email`이 정규화를 지나게 한다** (code-review 🟡, 2026-09-05) — `@auth/prisma-adapter`의
+      `createUser`는 우리 코드를 지나지 않으므로 provider 원문이 그대로 저장된다. design §2·§5의
+      "`User.email`은 정규화 값을 저장한다"가 조치 없이는 **거짓이 된다.** 초대 수락은
+      `planInvitationAccept`가 양쪽을 정규화해 안 깨지지만, §5의 "이미 멤버인 이메일 초대" 검사처럼
+      `User.email`을 직접 대조하는 조회가 대소문자로 갈린다
+  - 검증 `[auto]`: `signIn`/`profile` 콜백이 `normalizeEmail`을 부르는 것을 테스트가 고정 /
+    `[manual]`: 대문자 섞인 이메일로 로그인 후 `User.email`이 소문자
 - [ ] `session` 콜백이 `user.id`만 싣는다. `types/next-auth.d.ts`의 `login` → `id`
   - 검증 `[auto]`: `pnpm typecheck` — `session.user.login` 참조 0건(`grep -rn 'user.login'`)
 - [ ] `requireUser()` · `requireProjectAccess({ userId, slug, permission })`(페이지용, redirect) ·
@@ -168,7 +180,10 @@
     사용자가 링크 → 수락 → `/projects/<slug>/translations`에서 저장 → Publish 성공** (spec 완료 조건 3)
 - [ ] 멤버 Action — `changeMember({ slug, targetUserId, nextRole })`(OWNER, `planMemberChange`). 화면은 6단계,
       호출자는 테스트 + 헤더의 임시 초대 폼과 같은 자리
-  - 검증 `[auto]`: 5a 마지막 OWNER 케이스 green
+  - ⚠️ **`accessErrorMessage`에 `last-owner`·`not-member` 문구를 더한다** (code-review 🟡, 2026-09-05).
+    §1이 판정만 만들고 문구를 안 만들어서, 안 더하면 화면이 즉흥으로 정한다. 초대 4분기는 design §4.1이
+    표로 갖고 있지만 멤버 쪽은 어디에도 없다
+  - 검증 `[auto]`: 5a 마지막 OWNER 케이스 green / `AccessError` 다섯이 서로 다른 문구
 - [ ] 최소 화면 — `/`에 Google 버튼 + 문구 교체("허용 목록…" 삭제) + `?error=` 한 줄, 헤더 `user.name ?? user.email`,
       `translation-input.tsx`의 실패 문구를 `accessErrorMessage`로(입력값 유지), 토큰 원문 표시는
       `font-mono` + 복사
