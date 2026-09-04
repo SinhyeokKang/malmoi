@@ -249,7 +249,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | 항목 | 선택 | 근거 |
 |---|---|---|
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
-| DB | Supabase Postgres | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다 |
+| DB | Supabase Postgres **둘** — prod(`malmoi`) / dev(`malmoi-dev`) | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다. **2026-09-04에 인스턴스를 갈랐다** — 그전에는 하나여서 `migrate dev`가 프로덕션을 직접 바꿨고, 번역 데이터가 쌓이기 전에 끊는 것이 조건이었다. 대가로 **잊으면 깨지는 실패 모드**가 생겼다: dev에만 적용하고 `db:deploy`를 빠뜨리면 배포 순간 프로덕션이 없는 컬럼을 조회한다 (CLAUDE.md `/push` 3단계가 `db:status:prod`를 보는 이유) |
 | DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
 | 로그인 | GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다. 실제 org를 쓰게 되면 org 검사를 OR로 더한다 |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
@@ -384,7 +384,7 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
 
 원래부터 비범위: ICU 복수형·성별 변화, 동시 편집(락·CRDT), 세밀한 권한, in-context 편집(오버레이).
 
-**다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데(그리고 dev DB가 곧 prod DB다), 나머지 SaaS 요소는 전부 additive로 붙는다.
+**다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데, 나머지 SaaS 요소는 전부 additive로 붙는다.
 
 **MVP에서 비범위, SaaS 단계에서 착수**(2026-09-03 로드맵으로 승격 — §8.4): 테넌트별 인증·인가(멤버십·역할), 프로젝트 생성, 프로젝트당 복수 멤버, 프로젝트 전환 UI. MVP 동안 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 남고, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 하나다.
 
@@ -464,4 +464,3 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 - **base 로케일 판정** — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지는 TASKS §3a 🔒가 그 자리다
 - **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
-- **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓이기 전에 두 번째 프로젝트를 만들어 분리할지 결정해야 한다

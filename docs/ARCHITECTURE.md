@@ -535,7 +535,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 **홉마다 단위 테스트가 있어도 이어 붙인 것을 보는 테스트가 없으면 값이 홉 사이에서 사라진다** — 이 리포의 반복 실패 유형이다 (MVP §8.1의 B단계). `lib/push/__tests__/flow.test.ts`가 로케일 파일 → `detect` → `read` → `buildPushPayload` → `planPush` → **`$executeRaw`가 받은 값**까지를 한 테스트에서 단언한다.
 
-- **실 DB를 치지 않는다.** prisma 스텁이 태그드 템플릿 인자를 캡처한다 — 실 DB 왕복은 재현 가능한 게이트가 아니고, 이 리포는 dev DB가 곧 prod DB다.
+- **실 DB를 치지 않는다.** prisma 스텁이 태그드 템플릿 인자를 캡처한다 — 실 DB 왕복은 재현 가능한 게이트가 아니다 — 붙는 DB가 머신·환경마다 갈리므로(로컬·Preview는 dev, 프로덕션은 prod) 테스트가 어느 쪽을 쳤는지가 결과를 바꾼다.
 - **컬럼 이름 개수 = 값 배열 개수를 매번 검사한다.** `unnest` 인자 순서가 컬럼 목록과 어긋나면 값이 옆 컬럼으로 들어가는데, 타입이 같으면(`text[]`끼리) 런타임도 조용하다.
 - 덮는 손실 지점: `sortIndex`의 0(falsy), 키 description과 로케일 description의 분리, `placeholders`의 JSON 직렬화, `refs`의 keyId 연결, 빈 값 번역 제외, orphan·unorphan·`needsReview` 전파.
 

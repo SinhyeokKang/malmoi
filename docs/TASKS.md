@@ -37,9 +37,9 @@
 - **`writeWithErrors`** — survey만 소비했다. pull이 `PullResult.warnings`로 올린다
 - **`matchGlobPaths`** — multi-locale 파일 선택이 push·pull·survey에서 갈려 있었다
 
-⚠️ **`lib/adapters/**` 변경이라 `docs/ADAPTER-COVERAGE.md` 재측정 트리거에 걸렸다** — 학습·홀드아웃
-둘 다 돌려 회차를 더해야 한다 (`/push` 4d). 상시 방어선(`key-order-golden.test.ts`)은 통과 중이고
-재측정이 답하는 것은 일반화뿐이다.
+✅ **재측정 트리거는 해소됐다** — `lib/adapters/**` 변경이라 걸렸던 것을 **13차**(`0bcbd57`,
+ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지표가 12차와 같아 회귀 0이다.
+이후 `lib/adapters/**`·`lib/survey/**`에 실질 변경이 없으므로 지금 시점의 재측정 부채도 없다.
 
 남긴 것: 동결된 편집 UI(MVP §8.3) 관련 ⚪, 테스트가 붙은 데드 코드(`isOrgAllowed`·`merge.ts`),
 미사용 type export. 판단 근거는 그 라운드 리포트에 있다.
@@ -580,7 +580,9 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
   프로젝트를 결정하면 사라진다
 
-- [ ] 🔒 **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. **번역 데이터가 쌓이기 전에** 두 번째 프로젝트를 만들지 결정한다 (MVP §10, `/db` 경고 섹션)
+- [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
+  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** (`db:status`는 dev를 본다)
+  - 대가로 얻은 것: dev에서 리셋을 승인해도 된다 (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다)
 - [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — 처음엔 `https://i18n-poc.vercel.app`이었고 2026-09-04 개명 뒤 **`https://mal-moi.com`**(apex)이 정본이다. main 푸시가 곧 배포다
   - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
   - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다

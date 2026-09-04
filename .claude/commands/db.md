@@ -9,18 +9,16 @@ description: Prisma 마이그레이션 생성·적용·드리프트 확인 + 배
 - `/db` — 현재 `schema.prisma` 변경을 마이그레이션으로.
 - `/db status` — 드리프트·미적용 마이그레이션만 확인 (변경 안 함).
 
-## ⚠️ 이 PoC는 dev DB와 prod DB가 같다
+## ⚠️ dev DB와 prod DB가 갈렸다 (2026-09-04)
 
 **2026-09-04부터 Supabase 프로젝트가 둘이다** — prod(`malmoi`) / dev(`malmoi-dev`). `pnpm db:migrate`는 **dev**를 치고 프로덕션에 닿을 수 없다. `pnpm db:deploy`·`pnpm db:status:prod`만 prod를 겨눈다(`PRISMA_TARGET=prod`).
 
 ⚠️ **분리가 만든 새 실패 모드**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 그래서 `/push` 3단계 확인은 `db:status:prod`다 — `db:status`는 dev를 본다.
 
-아래는 분리 전 기록이다 (인스턴스가 하나여서 `migrate dev`가 프로덕션을 직접 바꿨다):
+**dev에서는 리셋을 승인해도 된다** — 그 DB에 번역 데이터가 없다(폐기용 리포 적재분뿐이고 `pnpm push:local`로 복구된다). 분리 전에는 같은 제안이 프로덕션 데이터를 날리는 것이었다.
 
-- **`migrate dev`가 드리프트를 감지하면 "리셋할까요?"를 제안한다. 절대 승인하지 않는다 — 번역 데이터가 전부 날아간다.** 드리프트가 나오면 중단하고 보고한다(1단계).
-- **번역 데이터가 쌓인 뒤로는 `--create-only`를 기본으로 쓴다.** SQL을 먼저 만들어 눈으로 읽고, 적용은 `pnpm db:deploy`로 한다. `migrate dev`는 스키마를 실험적으로 밀어보는 명령이라 데이터가 있는 DB에 쓸 도구가 아니다.
-- **DB가 비어 있는 초기 단계에서만 `migrate dev`를 그대로 쓴다.** 지금 상태가 그렇다면 그 사실을 리포트에 적는다.
-- 나중에 Supabase 프로젝트를 하나 더 만들어 분리하면 이 제약이 사라진다. 그때 이 섹션을 지운다.
+- **`--create-only` + `db:deploy`로 쪼개는 습관은 유지한다.** 생성한 SQL을 프로덕션에 보내기 전에 눈으로 본다 — `db:deploy`에는 리셋 개념이 없으므로 잘못된 SQL을 되돌릴 경로가 다음 마이그레이션뿐이다.
+- **prod에 데이터가 쌓인 뒤의 destructive는 여전히 2단계다** (아래 4c·6단계). dev가 비어 있다는 사실이 prod에도 적용되는 것이 아니다.
 
 ## 왜 별도 스킬인가
 
@@ -87,7 +85,7 @@ git status --porcelain prisma/
 pnpm db:migrate --name <snake_case_이름>
 ```
 
-**4b. 번역 데이터가 있으면 `--create-only`** (위 dev==prod 경고). 백필 SQL을 손으로 넣어야 할 때도 이 경로다:
+**4b. prod에 번역 데이터가 있으면 `--create-only`** (위 dev/prod 분리 섹션). 백필 SQL을 손으로 넣어야 할 때도 이 경로다:
 
 ```
 pnpm db:migrate --create-only --name <snake_case_이름>
@@ -117,7 +115,7 @@ npx prisma migrate diff \
 - 타임스탬프 형식(`YYYYMMDDHHMMSS`)을 Prisma 관례와 맞춰야 순서가 맞는다. **UTC로** 만든다(`date -u`).
 - 출력에 `Loaded Prisma config from...` 같은 로그가 섞이면 SQL이 깨진다. 파일을 열어 **첫 줄이 SQL인지 확인**한다.
 - 적용은 `pnpm db:deploy`다. `db:migrate`를 다시 부르면 같은 프롬프트에 또 걸린다.
-- **이 경로는 Prisma의 안전장치를 우회하는 것이다.** 그래서 5단계 SQL 검토가 선택이 아니라 필수고, destructive 판정(2단계)과 dev==prod 경고를 이미 통과했다는 전제가 있어야 한다. 데이터가 있는 DB에서 이 경로를 쓸 때는 SQL을 읽은 결과를 사용자에게 보여주고 확인받는다.
+- **이 경로는 Prisma의 안전장치를 우회하는 것이다.** 그래서 5단계 SQL 검토가 선택이 아니라 필수고, destructive 판정(2단계)과 dev/prod 분리 섹션의 제약을 이미 통과했다는 전제가 있어야 한다. 데이터가 있는 DB에서 이 경로를 쓸 때는 SQL을 읽은 결과를 사용자에게 보여주고 확인받는다.
 
 ### 5. 검증
 
@@ -151,7 +149,7 @@ generate + typecheck: OK / test: <n> passed
 
 ## 금지 사항
 
-- **`prisma migrate reset` 금지, `migrate dev`의 리셋 제안 승인 금지.** dev DB가 곧 prod DB라 번역 데이터가 날아간다. 드리프트는 중단하고 보고한다.
+- **prod를 겨눈 리셋 금지.** dev(`db:migrate`)의 리셋 제안은 승인해도 되지만(데이터 없음), `prisma migrate reset`을 `DIRECT_URL_PROD`로 돌리는 경로는 없어야 한다. dev 드리프트도 원인을 보고한 뒤 리셋한다 — 조용히 지우면 무엇이 갈렸는지 잃는다.
 - **데이터가 있는 DB에 `migrate dev` 금지** — `--create-only` + `db:deploy`로 쪼갠다.
 - **transaction 모드(6543)로 마이그레이션 금지** — `prisma.config.ts`가 `DIRECT_URL`(5432)을 쓴다. 이 파일을 `DATABASE_URL`로 바꾸지 않는다.
 - **destructive를 한 번에 처리 금지** — 2단계로 쪼갠다.
