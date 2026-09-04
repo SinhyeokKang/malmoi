@@ -348,7 +348,7 @@ active → archived (편집·sync 중단, 목록에서 숨김)
 > 당겼다 — 인증만 만들고 화면이 없으면 3~5단계를 검증할 방법이 API 테스트뿐인데, preview 배포를
 > 만든 이유가 정확히 "눈으로 확인할 곳"이었다.
 
-### 0단계 — 선행 정리 ⬜ ← **현재 단계**
+### 0단계 — 선행 정리 ✅ (2026-09-05)
 
 SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**을 먼저 막는다.
 
@@ -386,12 +386,19 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 ✅ /
 `ACTIVE_PROJECT_SLUG` 없이 대상 프로젝트가 결정된다 — **설계로는 ✅(§7.8), 구현은 2단계 이후다**
 
-### 2단계 — 인증·인가 토대 ⬜ → `features/tenant-auth/`
+### 2단계 — 인증·인가 토대 🚧 ← **현재 단계** → `features/tenant-auth/`
 
 - [ ] `User`·`Account`·`Session`·`ProjectMember`·`ProjectInvitation` (§6)
 - [ ] Auth.js **DB 세션** 전환 (§5.3), GitHub + Google provider
 - [ ] `requireUser` · `requireProjectAccess` (§5.2)
-- [ ] 이메일 정규화·초대 수락·계정 연결의 **순수 판정 함수**
+- [x] 이메일 정규화·초대 수락·**멤버 변경**의 **순수 판정 함수** ✅ (2026-09-05, `2e0f7f4`) —
+      `lib/auth/`에 9개(`normalizeEmail`·`canPerform`·`hashInviteToken`·`planInvitationAccept`·
+      `planProjectAccess`·`planMemberChange`·`planOwnerBackfill`·`hasSessionCookie`·
+      `accessErrorMessage`), 검증 67케이스. **호출부는 아직 없다** — 껍데기가 위 두 항목이다
+  - ⚠️ **"계정 연결"이 빠졌다.** `planAccountLink`는 4단계(`github-connect`)로 옮겼다 — Auth.js
+    어댑터가 기본으로 교차 provider 자동 연결을 거부하므로(`allowDangerousEmailAccountLinking`
+    미설정) 이 단계의 방어선은 **그 옵션을 켜지 않는 것**이고, 명시적 연결 흐름은 4단계다.
+    호출부 없는 판정 함수를 미리 만드는 것은 이 프로젝트에서 결함이다
 - [ ] 기존 `Project`에 소유자 backfill (additive-first)
 
 완료 게이트: §5.7의 공격 시나리오가 **전부 거부** / 멤버 제거가 기존 세션에 **즉시** 반영 /
