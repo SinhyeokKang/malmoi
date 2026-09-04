@@ -1,0 +1,53 @@
+# docs/features — 기능 문서 인덱스
+
+`/feature`가 만든 산출물이 사는 곳이다. 디렉터리 하나가 기능 하나이고 안에 `spec.md`(무엇을 왜) ·
+`design.md`(어떻게) · `tasks.md`(순서와 검증)가 있다.
+
+**여기 있는 문서는 스펙이 아니다.** 정본은 `docs/MVP.md`(무엇을 만드는가)와
+`docs/ARCHITECTURE.md`(불변식·함정)이고, 이 디렉터리는 **그 결론에 도달한 과정**을 남긴다.
+기능이 끝나면 결론은 위 두 문서로 올라가고 여기는 근거로 남는다 — 그래서 **완료된 문서도 지우지
+않는다.** 되살릴 때 재작성 비용을 없애고, 왜 그 선택을 했는지 묻는 사람에게 답한다.
+
+## 상태
+
+| 기능 | 상태 | 결과가 사는 곳 | 남은 것 |
+|---|---|---|---|
+| [pull-to-pr](./pull-to-pr/) | ✅ 완료 (2026-09-01) | MVP §3.3 · ARCHITECTURE §2·§3 · TASKS §6 | 없음 |
+| [adapter-generality](./adapter-generality/) | ✅ 완료 (2026-09-02) | **ADAPTER-COVERAGE.md** · TASKS §8 | 없음 — **단 코퍼스 파일은 살아 있는 입력이다**(아래) |
+| [key-order-preservation](./key-order-preservation/) | ✅ 완료 (2026-09-03) | ADAPTER-COVERAGE §10·§11 · MVP §4.1 · ARCHITECTURE §1.1 | 없음 |
+| [format-preservation](./format-preservation/) | ✅ 완료 (2026-09-04) | ADAPTER-COVERAGE §14·§15·§16 · MVP §4.1 · ARCHITECTURE §1.1 | 완료 조건 ③ **판정 불가**(계측 없음) |
+| [key-separator-contract](./key-separator-contract/) | ⏸️ **보류 — SaaS화 이후** | — | 문서 전체. 검수 미반영 항목부터 본다 |
+
+## 살아 있는 백로그 (아직 문서가 없다)
+
+`docs/TASKS.md` §8 후속에 있는 항목들이다. **셋 다 `lib/adapters/**`를 쳐서 재측정 트리거가
+각각 붙는다** (`/push` 4d).
+
+| 항목 | 근거 | 왜 아직 안 했나 |
+|---|---|---|
+| **`yaml-catalog` 범위 기반 치환** | ADAPTER-COVERAGE §13.3 — `doc.toString()`이 1키 편집에 redmine 1,585줄 중 816줄을 바꾼다 | 옵션으로 닫을 수 있는 축은 닫았고, 나머지는 스칼라 `range`로 원본 문자열을 직접 갈아끼워야 한다. 완료 조건은 **1키 편집 → 1 hunk** |
+| **키 구분자 계약** | 손실 2건 중 siyuan 하나로 줄었다 (§13.1) | 문서는 [key-separator-contract](./key-separator-contract/)에 있고 **보류 판정**이 났다 — 도입 대상 bugshot-2가 `ts-dict`라 효과 0이다 |
+| **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
+
+## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다
+
+```
+repos.txt            학습 코퍼스 109개 — pnpm adapter-survey의 인자
+repos-heldout.txt    홀드아웃 20개 — 일반화 판정 전용
+verdicts.json        학습 정답 경로 — 오탐률의 분자를 사람이 정한 기록
+verdicts-heldout.json 홀드아웃 정답 경로
+```
+
+**기능이 끝났어도 이 넷은 계속 쓰인다.** `lib/adapters/**`·`lib/survey/**`를 고치면 두 코퍼스를
+**둘 다** 돌린다 — 8차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중 하나는 학습에서만
+나타났다 (ADAPTER-COVERAGE §0 3차). 한쪽만 돌리면 못 본다.
+
+`repos.md`는 대상 리포의 선정 근거와 구간 분류이고, 코퍼스를 늘릴 때 여기부터 읽는다.
+
+## 문서를 새로 만들 때
+
+`/feature`가 만들고 `/feature-review`가 4관점(CPO·CDO·CTO·QA)으로 크로스체크한다. **TASKS의 한
+단계가 설계 문서를 요구할 만큼 클 때만** 부른다 — 작은 변경은 `/tdd` → `/implement`가 낫다.
+
+기능이 끝나면 이 파일의 표에 한 줄을 옮기고, **결론을 MVP·ARCHITECTURE로 올린다.** 올리지 않으면
+정본이 낡고, 이 디렉터리가 스펙처럼 읽히기 시작한다.

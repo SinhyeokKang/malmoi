@@ -1,5 +1,15 @@
 # 키 순서 보존 — spec
 
+> ## ✅ 완료 — 2026-09-03
+>
+> 결론은 [ADAPTER-COVERAGE §10·§11](../../ADAPTER-COVERAGE.md) · [MVP §4.1](../../MVP.md) ·
+> [ARCHITECTURE §1.1](../../ARCHITECTURE.md) · [TASKS §9](../../TASKS.md)로 올라갔다.
+>
+> 이 기능이 남긴 것 둘: 판정 ①로 `StringKey.sortIndex`(A안)가 확정됐고, **잔여 diff 원인에
+> 이름이 붙었다** — 그 이름들이 후속 기능([format-preservation](../format-preservation/))의
+> 게이트 분모를 정의한다. 이름 없는 원인은 "원인 없음"으로 분류돼 순서 보존의 실패처럼 보인다
+> (POSTMORTEM 2026-09-03).
+
 ## 사용자
 
 **개발자(나)다.** 첫 pull PR을 열어 보고 머지할지 정하는 사람이고, 번역 편집자는 이 기능의 존재를
