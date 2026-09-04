@@ -127,9 +127,13 @@
 
 구 §7 그대로다 — 아래 §7 참조. push는 `order-check`의 CI에서, pull은 Vercel Cron에서 돈다.
 
-**남은 것은 `/l10n-roundtrip` 스킬이다.** 지원 어댑터 5종 중 **넷이 실물 PR을 지났다** — `json-catalog`
-(order-check) · `ts-dict`(bugshot-i18n-test) · `yaml-catalog`·`code-dict`(i18n-format-check). 남은
-`chrome-locales`는 per-locale·재생성이라 `json-catalog`와 같은 갈래이고, 그 조합은 이미 검증됐다.
+**지원 어댑터 5종 중 넷이 실물 PR을 지났다** — `json-catalog`(order-check) · `ts-dict`(bugshot-i18n-test) ·
+`yaml-catalog`·`code-dict`(i18n-format-check). 남은 `chrome-locales`는 per-locale·재생성이라
+`json-catalog`와 같은 갈래이고, 그 조합은 이미 검증됐다. ⚠️ **"같은 갈래"는 근거이지 검증이 아니다** —
+chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건으로만 덮여 있다.
+
+`/l10n-roundtrip` 스킬은 2026-09-03에 만들고 **2026-09-04에 원본 포맷 보존 기능으로 한 바퀴 돌렸다**
+(§9 후속 항목의 태스크 8). 결과는 MVP §9에 있다.
 
 ---
 
@@ -503,7 +507,7 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 ---
 
-## 7. Actions 워크플로 + Vercel Cron ✅ (= §0의 **C단계**) — 자동화 경로가 선다. 남은 것은 bugshot-2 연동과 `/l10n-roundtrip`
+## 7. Actions 워크플로 + Vercel Cron ✅ (= §0의 **C단계**) — 자동화 경로가 선다. 남은 것은 bugshot-2 연동뿐이다
 
 - [x] **§4b(오배송·역행 거부)가 먼저 서 있어야 한다** ✅ — `lib/push/guard.ts`가 두 판정을 들고 라우트가 409를 낸다. Actions가 `projectSlug`와 `commitAt`을 보낸다 (`push-local.ts`가 `git show -s --format=%cI`로 얻는다)
 - [x] **대상 리포 base 브랜치 — `dev`** (2026-09-01 결정 — 🔒 해소, MVP §3.1). bugshot-2의 실제 작업 브랜치이고 `main`은 보호 브랜치다. 첫 실측(적재 커밋이 `dev`에만 존재)은 머지로 낡았고, 재실측 결과 양쪽 head가 같아 구조적 이유로 판정했다. **DB의 `Project.baseBranch` 갱신은 6단계 0번 태스크에 남아 있다**
@@ -616,7 +620,12 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
     `RepoSurvey`에 안 실린다. L2 골든이 대체 근거다 (§16.3)
   - ⚠️ **범위 밖으로 기록한 것**: minify된 파일(HeaderEditor 1.000 — 루트 제외 + 한 줄 여백
     미관측이 겹친 자리, §15.3). 미번역 제외·정수형 키·점 키는 원래 비목표다
-  - 미실행: 태스크 8(실물 `/l10n-roundtrip`) — 폐기용 리포에서 한 바퀴 돌리는 것이 남았다
+  - **태스크 8(실물 `/l10n-roundtrip`) 완료** (2026-09-04, `i18n-order-check`) — 편집 0건 `no-changes`
+    → 편집 3건 [PR #3](https://github.com/SinhyeokKang/i18n-order-check/pull/3) `+3 -3 / 2파일`
+    → 머지 → 재pull `no-edits`(API 0회) → 재push 뒤 다시 `no-changes`. 표현 5축이 실물 diff에서
+    전부 살아 있었다. 상세는 MVP §9
+    - 그 회차에서 **`ja.json`(안 건드린 로케일)이 PR에 안 나갔다** — 파일 단위 변경 감지의 실물 확인이다
+    - ⚠️ **`chrome-locales`는 실물 PR 이력이 여전히 0이다** — 태스크 8이 그 사실을 기록하기로 한 그대로다
 - [ ] **`yaml-catalog` 범위 기반 치환** (2026-09-04 7차 측정에서 발견) — `doc.toString()`이 문서를
       다시 찍어 **편집 하나가 파일 절반을 바꾼다**(redmine 1,585줄 중 816줄). 옵션으로 닫을 수 있는
       축은 닫았고(들여쓰기·줄 접기·시퀀스 들여쓰기·플로우 여백) 나머지는 스칼라 `range`로 원본
@@ -628,7 +637,7 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 ---
 
-## 9. 키 순서 보존 (진행 중)
+## 9. 키 순서 보존 ✅ (2026-09-03 완료)
 
 **스펙·설계·태스크는 [features/key-order-preservation/](./features/key-order-preservation/)에 있다.**
 재생성 어댑터가 첫 pull에서 파일을 통째로 재정렬해 **사람이 첫 PR을 리뷰할 수 없다** — 그 PR이
@@ -705,5 +714,11 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 **기능이 끝났다.** 세 층이 전부 답했다 — 바이트 수준은 L1이 진입점에서, 코퍼스 수준은
 ADAPTER-COVERAGE §11이, 사람이 읽는 PR은 실물 확인이.
 
-`order-check` 프로젝트 행(23키)과 리포·PR은 다음 실물 확인용으로 남겼다.
-`ACTIVE_PROJECT_SLUG`는 bugshot-2로 복원했다.
+`order-check` 프로젝트 행(23키)과 리포·PR은 다음 실물 확인용으로 남겼다 — **그 판단이 회수됐다**:
+2026-09-04 원본 포맷 보존이 같은 리포로 왕복을 돌렸고, 그때 리포를 **표현 5축이 섞이도록 재포맷**했다
+(en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터의 실물 확인은
+이제 이 리포가 정본이다.
+
+⚠️ **`ACTIVE_PROJECT_SLUG`는 현재 `order-check`다** (로컬 `.env.local`). 재생성 어댑터를 계속
+검증하는 동안 그대로 두고, 다른 프로젝트로 push할 일이 생기면 그때 바꾼다 — 프로덕션 env는
+건드리지 않았다.
