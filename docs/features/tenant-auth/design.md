@@ -24,7 +24,7 @@
 | `planInvitationAccept({ invitation, verifiedEmail, now })` | `lib/auth/invitation.ts` | `ok` / `expired` / `already-accepted` / `email-mismatch` / `not-found`. `invitation`은 **토큰 해시로 찾은 행 하나**(없으면 null) |
 | `planProjectAccess({ member, permission })` | `lib/auth/access.ts` | `member`(`ProjectMember` 행 또는 null) → `not-found` / `forbidden` / `{ ok, projectId, role }`. **`requireProjectAccess`의 판정은 전부 여기다** — 껍데기는 조회와 redirect만 한다 |
 | `planMemberChange({ members, targetUserId, nextRole })` | `lib/auth/membership.ts` | `nextRole: Role \| null`(null = 제거). `ok` / `last-owner` / `not-member`. **제거와 강등이 같은 판정을 지난다** — 유일 OWNER의 OWNER→EDITOR도 `last-owner` |
-| `planOwnerBackfill({ projects, members, owner })` | `lib/auth/backfill.ts` | 기존 `Project` 전 행에 대해 **없는 OWNER 행만** 낸다. 멱등성이 여기서 결정되므로 "두 번 돌려본다"가 아니라 `pnpm test`로 판정한다 |
+| `planOwnerBackfill({ projects, members, ownerUserId })` | `lib/auth/backfill.ts` | 기존 `Project` 전 행에 대해 **없는 OWNER 행만** 낸다. 멱등성이 여기서 결정되므로 "두 번 돌려본다"가 아니라 `pnpm test`로 판정한다. **빈 `ownerUserId`는 던진다** — 빈 결과로 접으면 스크립트가 "채울 것 없음"으로 읽는다 |
 
 **`planAccountLink`는 없다** (검수 2026-09-05). Auth.js 어댑터가 기본으로 교차 provider 자동 연결을
 거부하고(`allowDangerousEmailAccountLinking` 미설정 — `@auth/core/lib/actions/callback/handle-login.js`),
@@ -148,12 +148,12 @@ spec 완료 조건 3은 화면 없이 손으로도 검증할 수 없다. **재�
 
 ```prisma
 User               id · email(unique — 정규화 저장, §2.1이 검증을 보장) · emailVerified? · name? · image? · createdAt
-Account            Auth.js 표준 — @@id([provider, providerAccountId]) · type · userId …
-Session            Auth.js 표준 — sessionToken @unique · userId · expires
-VerificationToken  Auth.js 어댑터가 요구 — 이메일 provider를 안 쓰므로 비어 있다
+Account            @@id([provider, providerAccountId]) · userId · type · OAuth 응답 7컬럼(snake_case)
+Session            sessionToken @unique · userId · expires        ← PK 없음 (unique가 식별자다)
+VerificationToken  identifier · token · expires · @@unique        ← 항상 비어 있다 (이메일 provider 미사용)
 ProjectMember      projectId · userId · role(OWNER|EDITOR) · createdAt · updatedAt
-                   @@unique([projectId, userId])
-ProjectInvitation  projectId · email(정규화) · role · tokenHash(unique) · expiresAt · acceptedAt? · invitedBy
+                   @@unique([projectId, userId])                  ← PK 없음
+ProjectInvitation  id · projectId · email(정규화) · role · tokenHash @unique · expiresAt · acceptedAt? · invitedBy
                    @@index([projectId, email])   ← unique가 아니다 (아래)
 ```
 
@@ -161,8 +161,16 @@ ProjectInvitation  projectId · email(정규화) · role · tokenHash(unique) ·
   수락·만료된 행이 이메일을 점유해 **재초대가 unique 위반**이 된다(멤버를 뺐다가 다시 부르는 정상 경로).
   행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가르므로 판정은 성립한다.
   생성 Action은 **같은 이메일의 미수락 행이 있으면 토큰을 회전**한다(새 행 + 옛 행 만료).
-- **`onDelete`는 전부 `Restrict`** — 기존 스키마가 `Project` 관계 전부를 `Restrict`로 둔 것(ARCHITECTURE §5)과
-  같은 이유: 삭제가 조용히 번져 나가지 않게. `User` 삭제는 이 단계에 경로가 없다.
+- **`onDelete`가 둘로 갈린다** (2026-09-05 구현 중 정정 — 처음엔 "전부 Restrict"로 적었다):
+  - **`Account`·`Session` → `User`는 `Cascade`.** 어댑터의 `deleteUser`가 `p.user.delete` 하나만 부르므로
+    (`node_modules/@auth/prisma-adapter/index.js` 실측) `Restrict`면 그 메서드가 **항상 실패**한다.
+  - **`ProjectMember`·`ProjectInvitation`은 `Restrict`.** 기존 `Project` 관계 전부가 그렇고(ARCHITECTURE §5)
+    근거도 같다 — 삭제가 조용히 번지면 **마지막 OWNER가 사라진 프로젝트를 되살릴 수 없다.**
+    `planMemberChange`가 애플리케이션에서 막는 것을 DB도 막는다.
+- ⚠️ **타입 검사가 이 스키마를 검증하지 못한다.** 어댑터가 인자를 `@prisma/client`의 `PrismaClient`로
+  받는데 그 패키지는 `.prisma/client/default`를 re-export하고 Prisma 7의 생성기는 그 경로를 만들지
+  않는다. `skipLibCheck`가 해결 실패를 삼켜 파라미터가 사실상 `any`다 — `PrismaAdapter({ nope: true })`도
+  컴파일된다(실측). **`prisma/__tests__/schema-contract.test.ts`가 유일한 자동 방어선이다.**
 - **`ProjectMember.updatedAt`** — SAAS §6이 `AuditEvent` 유예의 근거로 이 컬럼을 든다.
 - Auth.js 어댑터 모델 필드명은 `@auth/core/adapters.d.ts`(`AdapterUser`·`AdapterAccount`·`AdapterSession`·
   `VerificationToken`)를 따른다. **`@auth/prisma-adapter` 버전은 번들된 `@auth/core@0.41.3`과 Prisma 7

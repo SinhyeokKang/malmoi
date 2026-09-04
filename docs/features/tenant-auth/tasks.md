@@ -44,20 +44,35 @@
 
 `──` 커밋: `test(auth): pure decisions for access, membership, invitations and backfill` → `feat(auth): …`
 
-## 2. 스키마 (additive) — `/db`
+## 2. 스키마 (additive) — `/db` ✅ (2026-09-05, `2e998d4` — `20260904182548_add_tenant_auth_tables`)
 
-- [ ] `User` · `Account` · `Session` · `VerificationToken` · `ProjectMember` · `ProjectInvitation` (design §5)
+**⚠️ 착수 중 뒤집힌 판정 하나: `onDelete`가 전부 Restrict가 아니다.** 어댑터의 `deleteUser`가
+`p.user.delete` 하나만 부르므로(`node_modules/@auth/prisma-adapter/index.js` 실측) `Account`·`Session`이
+`Restrict`면 그 메서드가 **항상 실패**한다. 그 둘만 `Cascade`이고 우리 데이터(`ProjectMember`·
+`ProjectInvitation`)는 `Restrict` 그대로다 — 마지막 OWNER가 조용히 사라지면 안 된다.
+
+**⚠️ 타입 검사가 이 스키마를 검증하지 못한다** (2026-09-05 실측). 어댑터가 인자를 `@prisma/client`의
+`PrismaClient`로 받는데 그 패키지는 `.prisma/client/default`를 re-export하고, Prisma 7의
+`prisma-client` 생성기는 그 경로를 만들지 않는다(우리 산출물은 `generated/prisma`다). `skipLibCheck`가
+해결 실패를 삼켜 파라미터가 사실상 `any`가 된다 — **`PrismaAdapter({ nope: true })`도 컴파일된다.**
+그래서 `prisma/__tests__/schema-contract.test.ts`(20케이스)가 **유일한 자동 방어선**이고, 어댑터 소스의
+`where` 키·델리게이트 목록을 스키마와 직접 대조한다.
+
+- [x] `User` · `Account` · `Session` · `VerificationToken` · `ProjectMember` · `ProjectInvitation` (design §5)
   - 검증 `[manual]`: `pnpm db:migrate`로 **dev에만** 적용 후 `pnpm db:status` up to date. `pnpm db:generate`
     후 `pnpm typecheck` 통과
   - 검증 `[auto]`(SQL 읽기): 생성된 SQL에 **기존 테이블(`Project`·`Locale`·`StringKey`·`KeyRef`·`Translation`)
     대상 `ALTER`가 없다.** 새 테이블의 FK `ALTER TABLE "ProjectMember" ADD CONSTRAINT`는 정상이다
-- [ ] `ProjectMember @@unique([projectId, userId])`, `ProjectInvitation tokenHash @unique` +
+- [x] `ProjectMember @@unique([projectId, userId])`, `ProjectInvitation tokenHash @unique` +
       `@@index([projectId, email])`(**unique 아님** — design §5), `Session.sessionToken @unique`,
       `Account @@id([provider, providerAccountId])`
   - 검증 `[auto]`(SQL 읽기): unique 인덱스 3건 + 일반 인덱스 1건. `projectId`가 선두
-- [ ] `onDelete: Restrict` 전부, `ProjectMember.updatedAt` 있음
-  - 검증 `[auto]`(SQL 읽기): `ON DELETE RESTRICT` 외 없음
-- [ ] `Translation.updatedBy` 주석을 "GitHub 핸들" → "`User.id`"로 (컬럼 변경 없음)
+- [x] `onDelete` — **`Account`·`Session` → `User`는 `Cascade`**(위 ⚠️), 우리 두 모델은 `Restrict`.
+      `ProjectMember.updatedAt` 있음
+  - 검증 `[auto]`(SQL 읽기): `CASCADE` 2건 · `RESTRICT` 4건. 기존 5테이블 대상 `ALTER` 0건 · `DROP` 0건
+- [x] `Translation.updatedBy` 주석 (컬럼 변경 없음) — **현재형으로 적었다**: 지금 들어가는 값은
+      여전히 GitHub 핸들이고 `User.id`가 되는 것은 §5 인가 전환 시점이다. FK를 안 거는 이유도
+      "사용자 테이블이 없어서"가 아니라 "전환 뒤에도 두 종류 값이 섞여 참조 무결성을 주장할 수 없어서"다
 
 `──` 커밋: `feat(db): tables for users, sessions, membership and invitations`
 
@@ -88,8 +103,9 @@
 
 ## 4. 껍데기 — Auth.js DB 세션 + 인가
 
-- [ ] `@auth/prisma-adapter` 도입 — **버전을 `@auth/core@0.41.3`(next-auth beta.32 번들)과 Prisma 7
-      `prisma-client` 생성기에 맞는 것으로 확인해 정확 고정**. `session: { strategy: "database" }`
+- [x] `@auth/prisma-adapter` **설치** ✅ (2026-09-05, `7546907`) — `2.11.3`. `@auth/core@0.41.3`을 정확히
+      고정하고 있어 `next-auth` 5.0.0-beta.32와 인스턴스를 공유한다(`.pnpm`에 `@auth+core@0.41.3` 하나)
+- [ ] `session: { strategy: "database" }`로 전환하고 어댑터를 배선한다
   - ⚠️ **`NextAuth(async () => config)` 지연 형태** — `PrismaAdapter(getPrisma())`가 인자에 그대로 있으면
     `requireEnv("DATABASE_URL")`이 import 시점에 던진다 (design §8)
   - 검증 `[auto]`: `.env.local`을 치운 셸에서 `pnpm build` 통과 /
