@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { blobSha } from "../../githash";
 import { ADAPTERS } from "../index";
+import { observeJsonStyle } from "../json-style";
 import { orderedEntries } from "../shared";
 import type { Adapter, DetectedFormat, LocaleEntry, WriteInput } from "../types";
 import { CONTRACT_KEYS, formatFor, writerContractViolations } from "./contract";
@@ -89,7 +90,11 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
       if (list.length === 0 && !b.neverNull) return null;
       const out: Record<string, string> = {};
       for (const e of list) out[e.key] = e.message;
-      return JSON.stringify(out, null, b.indent ?? 2) + (b.noTrailingNewline ? "" : "\n");
+      // **규칙을 다 지키는 fake는 표현도 원본에서 읽는다** — 계약이 그만큼 넓어졌다
+      // (원본 포맷 보존, 2026-09-04). `b.indent`를 준 위반 케이스만 그 관측을 무시한다.
+      const observed = observeJsonStyle(_f.currentFiles?.[0]?.content).indent;
+      const space = b.indent === undefined ? observed : b.indent;
+      return JSON.stringify(out, null, space) + (b.noTrailingNewline ? "" : "\n");
     },
   });
 

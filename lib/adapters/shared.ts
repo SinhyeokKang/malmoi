@@ -1,3 +1,4 @@
+import { serializeJson } from "./json-style";
 import type { LocaleEntry } from "./types";
 
 /**
@@ -34,9 +35,15 @@ export function matchGlobPaths(pathTemplate: string, paths: readonly string[]): 
   return paths.filter((p) => pattern.test(p)).sort(compareKeys);
 }
 
-/** 들여쓰기 2칸 + 파일 끝 개행 정확히 1개. `JSON.stringify`는 개행을 붙이지 않는다. */
+/**
+ * 들여쓰기 2칸 + 파일 끝 개행 정확히 1개.
+ *
+ * ⚠️ **원본을 아는 호출부는 `serializeJson(value, style)`을 직접 부른다** — 이 함수는 원본이
+ * 없을 때의 기본 경로다(신규 로케일 파일). 시그니처를 그대로 두는 것은 호출부 diff를 줄이려는
+ * 것이고, 판정은 `lib/adapters/json-style.ts` 한 곳에 있다.
+ */
 export function serialize(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`;
+  return serializeJson(value);
 }
 
 /**

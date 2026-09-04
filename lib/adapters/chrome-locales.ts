@@ -1,9 +1,9 @@
+import { observeJsonStyle, serializeJson } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
   looksLikeLocale,
   rankCandidates,
-  serialize,
   orderedEntries,
   verifySamples,
 } from "./shared";
@@ -124,9 +124,13 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
   return { locales, errors, nested: false };
 }
 
-function write(_format: DetectedFormat, input: { locale: string; isBase: boolean; entries: readonly LocaleEntry[] }): string | null {
+function write(format: DetectedFormat, input: { locale: string; isBase: boolean; entries: readonly LocaleEntry[] }): string | null {
   const usable = orderedEntries(input.entries);
   if (usable.length === 0) return null;
+
+  // **표현은 원본에서** — 없으면 기본값(2칸)이다. 경로로 조회하는 이유는 json-catalog와 같다.
+  const path = format.pathTemplate.replace("{locale}", input.locale);
+  const style = observeJsonStyle(format.currentFiles?.find((c) => c.path === path)?.content);
 
   // `orderedEntries`가 낸 순서로 재조립한다 — `JSON.stringify`는 삽입 순서를 따른다(정규 정수
   // 키만 예외이고, chrome 키 이름 규칙상 여기선 생기지 않는다).
@@ -142,7 +146,7 @@ function write(_format: DetectedFormat, input: { locale: string; isBase: boolean
     if ("placeholders" in e) entry.placeholders = e.placeholders;
     out[e.key] = entry;
   }
-  return serialize(out);
+  return serializeJson(out, style);
 }
 
 /** 템플릿의 `{locale}` 자리에 무엇이 들어갔는지 역산한다. 매치 안 되면 undefined. */

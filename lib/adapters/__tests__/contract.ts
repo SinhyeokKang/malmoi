@@ -154,6 +154,23 @@ const ORDER_CHECKABLE = CONTRACT_FILE_ORDER.filter((k) => k !== "1");
 const orderedEntriesFor = (): LocaleEntry[] =>
   CONTRACT_FILE_ORDER.map((k, i) => ({ key: k, message: val(k), order: i }));
 
+/**
+ * 재생성 어댑터에 줄 **4칸 스타일 기증자**. 표현만 읽고 값은 절대 안 읽는다는 것을 검사하려고
+ * 원본에 센티넬 값을 심는다. 수술적 어댑터는 자기 원본이 이미 있으므로 `undefined`다.
+ */
+export const STYLE_DONOR_VALUE = "STYLE_DONOR_VALUE_MUST_NOT_LEAK";
+
+function fourSpaceDonor(adapter: Adapter): DetectedFormat | undefined {
+  if (adapter.writeStrategy !== "regenerate") return undefined;
+  const fmt = formatFor(adapter);
+  const path = fmt.pathTemplate.replace("{locale}", "en");
+  const body =
+    adapter.name === "chrome-locales"
+      ? `{\n    "donor": {\n        "message": ${JSON.stringify(STYLE_DONOR_VALUE)}\n    }\n}\n`
+      : `{\n    "donor": ${JSON.stringify(STYLE_DONOR_VALUE)}\n}\n`;
+  return { ...fmt, currentFiles: [{ path, content: body }] };
+}
+
 /** 출력에서 `"key"` 토큰이 처음 나오는 위치. 없으면 -1. */
 const at = (out: string, key: string) => out.indexOf(JSON.stringify(key));
 
@@ -263,8 +280,32 @@ export function writerContractViolations(adapter: Adapter): string[] {
       bad.push("order: LocaleEntry.order 순서를 따르지 않는다 — 원본 키 순서가 보존되지 않는다");
     }
   }
+  // ⚠️ **"원본을 안 주면 2칸"이다.** 이 기능(원본 포맷 보존) 뒤로 재생성 writer는 원본이 있으면
+  // 그 폭을 따르므로, 조건 없이 2칸을 단언하면 개선 자체가 위반으로 잡힌다. 단언을 **지우지 않고
+  // 조건으로 좁히는 것**이 요지다 — 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일 파일).
   const unit = indentUnit(plain);
-  if (unit !== 2) bad.push(`들여쓰기: 2칸이어야 하는데 ${unit ?? "없음"}칸이다`);
+  if (unit !== 2) bad.push(`들여쓰기: 원본이 없으면 2칸이어야 하는데 ${unit ?? "없음"}칸이다`);
+
+  // **원본을 주면 그 폭을 따른다.** 값은 절대 읽지 않는다 — 아래 센티넬이 그것을 강제한다.
+  const donor = fourSpaceDonor(adapter);
+  if (donor !== undefined) {
+    const styled = adapter.write(donor, {
+      locale,
+      isBase: true,
+      entries: entriesFor(CONTRACT_KEYS),
+    });
+    if (styled === null) {
+      bad.push("원본을 줬더니 null을 냈다 — 재생성은 원본과 무관하게 파일을 만들어야 한다");
+    } else {
+      const styledUnit = indentUnit(styled);
+      if (styledUnit !== 4) {
+        bad.push(`들여쓰기: 4칸 원본을 줬는데 ${styledUnit ?? "없음"}칸이 나왔다 (표현을 원본에서 안 읽는다)`);
+      }
+      if (styled.includes(STYLE_DONOR_VALUE)) {
+        bad.push("원본의 **값**이 출력에 새어 나왔다 — 원본에서 읽는 것은 표현뿐이다 (병합 없음)");
+      }
+    }
+  }
   if (!plain.endsWith("\n")) bad.push("파일 끝 개행이 없다");
   if (plain.endsWith("\n\n")) bad.push("파일 끝 개행이 2개 이상이다");
 

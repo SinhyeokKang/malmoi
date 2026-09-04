@@ -27,12 +27,18 @@ const chromeFmt: DetectedFormat = {
   locales: ["en"],
 };
 
-/** read → write 한 바퀴. 원본이 그대로 나오는지가 이 기능의 정의다. */
+/**
+ * read → write 한 바퀴. 원본이 그대로 나오는지가 이 기능의 정의다.
+ *
+ * ⚠️ **`currentFiles`를 반드시 싣는다.** 화이트리스트 스프레드라 여기서 빠뜨리면 writer가
+ * 원본을 못 받아 **전부 기본값 경로로 흐른다** — 표현 축 픽스처를 아무리 늘려도 그 축은
+ * 검증되지 않고 "픽스처만 는다" (`/feature-review` 2026-09-04).
+ */
 function roundtrip(adapter: Adapter, fmt: DetectedFormat, path: string, content: string): string {
   const r = adapter.read(fmt, [f(path, content)]);
   expect(r.errors).toEqual([]);
   const out = adapter.write(
-    { ...fmt, nested: r.nested, nestedByPath: r.nestedByPath },
+    { ...fmt, nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f(path, content)] },
     { locale: "en", isBase: true, entries: r.locales[0]!.entries },
   );
   expect(out).not.toBeNull();
@@ -234,5 +240,73 @@ describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모�
   it("고정점은 그래도 성립한다 — 한 번 바뀐 모양이 계속 흔들리지는 않는다", () => {
     const once = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", DOTTED_AND_NESTED);
     expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", once)).toBe(once);
+  });
+});
+
+// ── 표현 축 픽스처 (원본 포맷 보존 태스크 6) ──────────────────────────────
+// 실측: 재생성 리포 71개 중 **30개**가 2칸이 아니다 (`ADAPTER-COVERAGE.md` §11.3).
+// 4칸 파일에 2칸을 쓰면 값 편집이 0건이어도 **모든 줄이 바뀐다.**
+
+/**
+ * ⑤ 4칸 들여쓰기 — jellyfin-web·vikunja 형태. 학습 코퍼스에서 12개가 이 폭이다.
+ *
+ * ⚠️ **점 키와 중첩을 섞지 않는다.** 섞으면 `read`가 nested를 관측해 점 키를 쪼개고, 그건
+ * 들여쓰기 축이 아니라 `dottedWithNested`(키 구분자 계약의 몫)를 재게 된다.
+ */
+const FOUR_SPACE = [
+  "{",
+  '    "nav": {',
+  '        "home": "Home",',
+  '        "about": "About"',
+  "    },",
+  '    "footer": {',
+  '        "terms": "Terms"',
+  "    }",
+  "}",
+  "",
+].join("\n");
+
+/** ⑥ 탭 들여쓰기 — siyuan 형태. 학습 7개. */
+const TAB_INDENT = ["{", '\t"a.one": "One",', '\t"a.two": "Two"', "}", ""].join("\n");
+
+describe("L2 — 표현: 들여쓰기가 원본대로 나온다", () => {
+  for (const [name, src] of [
+    ["4칸", FOUR_SPACE],
+    ["탭", TAB_INDENT],
+  ] as const) {
+    it(`${name}: 값이 안 바뀌면 원본과 바이트 동일이다`, () => {
+      const out = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", src);
+      expect(out).toBe(src);
+      expect(roundtripDiffRatio(src, out)).toBe(0);
+      expect(changedHunks(src, out) ?? -1).toBe(0);
+    });
+
+    it(`${name}: 2차 write가 1차와 같다 (바이트 고정점)`, () => {
+      const first = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", src);
+      const second = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", first);
+      expect(second).toBe(first);
+    });
+  }
+
+  it("chrome도 원본 들여쓰기를 따른다", () => {
+    const src = [
+      "{",
+      '    "hello": {',
+      '        "message": "Hello"',
+      "    }",
+      "}",
+      "",
+    ].join("\n");
+    const out = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", src);
+    expect(out).toBe(src);
+  });
+
+  it("원본을 안 주면 2칸이다 — 재생성은 원본 없이도 파일을 만든다 (신규 로케일)", () => {
+    const out = jsonCatalog.write(jsonFmt, {
+      locale: "en",
+      isBase: true,
+      entries: [{ key: "a", message: "하나" }],
+    });
+    expect(out).toBe('{\n  "a": "하나"\n}\n');
   });
 });

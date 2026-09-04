@@ -1,11 +1,11 @@
 import { localeFromPath, verify } from "./chrome-locales";
+import { observeJsonStyle, serializeJson } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
   looksLikeLocale,
   pathSignals,
   rankTemplateCandidates,
-  serialize,
   splitLocaleSuffix,
   orderedEntries,
 } from "./shared";
@@ -238,12 +238,16 @@ function writeWithErrors(
   // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
   const path = format.pathTemplate.replace("{locale}", input.locale);
   const nested = format.nestedByPath?.[path] ?? format.nested ?? false;
+  // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
+  // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
+  // **경로로 조회한다**: 호출부가 여러 파일을 실으면 다른 로케일의 스타일을 읽게 된다.
+  const style = observeJsonStyle(format.currentFiles?.find((c) => c.path === path)?.content);
 
   if (!nested) {
     // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.
     const out: Record<string, string> = {};
     for (const e of usable) out[e.key] = e.message;
-    return { content: serialize(out), errors };
+    return { content: serializeJson(out, style), errors };
   }
 
   // 접두 충돌을 먼저 걸러낸다. `a.b`가 `a.b.c`의 점 경계 접두이면 `a.b`를 버린다 —
@@ -269,7 +273,7 @@ function writeWithErrors(
     }
     setDeep(root, e.key.split(SEP), e.message);
   }
-  return { content: serialize(normalizeArrays(root)), errors };
+  return { content: serializeJson(normalizeArrays(root), style), errors };
 }
 
 function setDeep(node: Record<string, unknown>, segments: readonly string[], value: string): void {
