@@ -28,7 +28,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 
 import { PrismaClient } from "../generated/prisma/client";
-import { planOwnerBackfill, resolveBackfillOptions } from "../lib/auth/backfill";
+import { backfillReport, planOwnerBackfill, resolveBackfillOptions } from "../lib/auth/backfill";
 import { requireEnv } from "../lib/env";
 
 // .env.local을 명시적으로 읽는다 — dotenv 기본값은 `.env`다 (`scripts/smoke-github.ts`와 같은 이유).
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
       // dry-run은 **User를 만들지 않으므로** 아직 userId가 없다. 계획을 세우는 데 필요한 것은
       // "OWNER가 없는 프로젝트가 어느 것인가"뿐이라 자리표시자를 넣는다.
       const planned = planOwnerBackfill({ projects, members, ownerUserId: "<dry-run>" });
-      report(projects, planned.map((r) => r.projectId));
+      report(false, projects, planned.map((r) => r.projectId));
       return;
     }
 
@@ -104,18 +104,25 @@ async function main(): Promise<void> {
       return rows.map((r) => r.projectId);
     });
 
-    report(projects, plannedIds);
+    report(true, projects, plannedIds);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-function report(projects: readonly { id: string; slug: string }[], changed: readonly string[]): void {
+/** 문구 판정은 `backfillReport`가 한다(테스트가 고정) — 여기는 찍기만 한다. */
+function report(
+  apply: boolean,
+  projects: readonly { id: string; slug: string }[],
+  changed: readonly string[],
+): void {
   const bySlug = new Map(projects.map((p) => [p.id, p.slug]));
-  console.log(`[backfill] 프로젝트 ${projects.length}개 / OWNER를 채울 것 ${changed.length}개`);
-  for (const id of changed) console.log(`  + ${bySlug.get(id) ?? id}`);
-  // **"0개"를 성공과 구별해 적는다** — 조회가 성공했고 채울 것이 없는 상태다 (POSTMORTEM 2026-09-03).
-  if (changed.length === 0) console.log("  (없음 — 조회 성공, 전 프로젝트에 이미 OWNER가 있다)");
+  const lines = backfillReport({
+    apply,
+    projectCount: projects.length,
+    changedSlugs: changed.map((id) => bySlug.get(id) ?? id),
+  });
+  for (const line of lines) console.log(`[backfill] ${line}`);
 }
 
 // 실패를 삼키지 않는다 — 종료 코드로 드러낸다.

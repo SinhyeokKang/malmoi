@@ -97,3 +97,36 @@ export function resolveBackfillOptions(argv: readonly string[]): BackfillOptions
     owner: { email, githubId, name },
   };
 }
+
+/**
+ * 실행 결과 → 사람이 읽는 줄들.
+ *
+ * ⚠️ **모드가 결과 줄에 드러나야 한다.** `--apply`를 붙였다고 믿었는데 안 붙은 채 출력이 같아
+ * 보이면 "채웠다"로 오독하고, 그대로 인가 전환을 배포하면 **아무도 어느 프로젝트에도 못
+ * 들어간다.** 헤더 한 줄에만 모드를 적는 것으로는 부족하다 — 결과를 읽는 눈이 거기까지 안 간다.
+ *
+ * ⚠️ **0건도 두 모드를 접지 않고, 그것이 조회 성공의 결과임을 함께 적는다**
+ * (POSTMORTEM 2026-09-03 — "로그만 보고 두 상태를 가릴 수 있어야 한다").
+ */
+export function backfillReport(input: {
+  apply: boolean;
+  projectCount: number;
+  changedSlugs: readonly string[];
+}): string[] {
+  const { apply, projectCount, changedSlugs } = input;
+  const n = changedSlugs.length;
+
+  const head = apply
+    ? `프로젝트 ${projectCount}개 / OWNER를 채웠다 ${n}개`
+    : `프로젝트 ${projectCount}개 / OWNER를 채울 것 ${n}개 (dry-run — 아직 쓰지 않았다)`;
+
+  const lines = [head, ...changedSlugs.map((slug) => `  + ${slug}`)];
+  if (n === 0) {
+    lines.push(
+      apply
+        ? "  (없음 — 조회 성공, 전 프로젝트에 이미 OWNER가 있다)"
+        : "  (없음 — 조회 성공, 전 프로젝트에 이미 OWNER가 있다. dry-run이라 쓴 것도 없다)",
+    );
+  }
+  return lines;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planOwnerBackfill, resolveBackfillOptions } from "../backfill";
+import { backfillReport, planOwnerBackfill, resolveBackfillOptions } from "../backfill";
 
 /**
  * 기존 `Project`에 OWNER를 채우는 일회성 판정 (design §5 배포 순서 2).
@@ -177,5 +177,55 @@ describe("resolveBackfillOptions — 소유자 인자", () => {
     expect(() =>
       resolveBackfillOptions(["--owner-email", "a@b.com", "--owner-github-id", "SinhyeokKang"]),
     ).toThrow();
+  });
+});
+
+/**
+ * ⚠️ **출력만 보고 "썼는가"를 가릴 수 있어야 한다.** `--apply`를 붙였다고 믿었는데 안 붙은 채
+ * 결과가 같아 보이면, 그대로 인가 전환을 배포해 **아무도 어느 프로젝트에도 못 들어간다.**
+ * POSTMORTEM 2026-09-03이 남긴 규칙과 같은 축이다 — "'없음'을 출력할 때 그것이 조회 성공의
+ * 결과임을 함께 적는다. 로그만 보고 두 상태를 가릴 수 있어야 한다."
+ */
+describe("backfillReport — dry-run과 apply가 구별된다", () => {
+  const base = { projectCount: 3, changedSlugs: ["a", "b"] };
+
+  it("같은 입력이라도 모드가 다르면 출력이 다르다", () => {
+    const dry = backfillReport({ ...base, apply: false });
+    const applied = backfillReport({ ...base, apply: true });
+    expect(dry).not.toEqual(applied);
+  });
+
+  it("dry-run은 아직 쓰지 않았다고 말한다", () => {
+    const text = backfillReport({ ...base, apply: false }).join("\n");
+    expect(text).toContain("dry-run");
+    expect(text).not.toContain("채웠다");
+  });
+
+  it("apply는 썼다고 말한다", () => {
+    const text = backfillReport({ ...base, apply: true }).join("\n");
+    expect(text).toContain("채웠다");
+  });
+
+  it("채울 것이 없어도 모드가 드러난다 — 둘을 같은 문장으로 접지 않는다", () => {
+    const dry = backfillReport({ projectCount: 3, changedSlugs: [], apply: false });
+    const applied = backfillReport({ projectCount: 3, changedSlugs: [], apply: true });
+    expect(dry).not.toEqual(applied);
+  });
+
+  it("0건일 때 그것이 조회 성공의 결과임을 함께 적는다 (POSTMORTEM 2026-09-03)", () => {
+    const text = backfillReport({ projectCount: 3, changedSlugs: [], apply: true }).join("\n");
+    expect(text).toContain("조회 성공");
+  });
+
+  it("대상 slug를 전부 나열한다 — 무엇이 바뀌는지 눈으로 확인하는 것이 dry-run의 요지다", () => {
+    const text = backfillReport({ projectCount: 3, changedSlugs: ["a", "b"], apply: false }).join("\n");
+    expect(text).toContain("a");
+    expect(text).toContain("b");
+  });
+
+  it("프로젝트 수와 대상 수를 함께 보인다", () => {
+    const text = backfillReport({ projectCount: 3, changedSlugs: ["a"], apply: false }).join("\n");
+    expect(text).toContain("3");
+    expect(text).toContain("1");
   });
 });
