@@ -451,7 +451,9 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 재생성 어댑터의 실물 pull은 **2026-09-03 해소**됐다 — 키 순서 보존이 전용 테스트 리포로 돌렸다 ([i18n-order-check#1](https://github.com/SinhyeokKang/i18n-order-check/pull/1)).
 
-위 루프는 **`/l10n-roundtrip` 스킬로 굳혔다** (2026-09-03, `.claude/commands/l10n-roundtrip.md`). 어댑터를 새로 만들거나 `write` 경로를 고쳤으면 폐기용 리포(`bugshot-i18n-test`·`i18n-format-check`)에서 한 바퀴 돌린다 — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다 (CLAUDE.md 워크플로우).
+위 루프는 **`/l10n-roundtrip` 스킬로 굳혔다** (2026-09-03, `.claude/commands/l10n-roundtrip.md`). 어댑터를 새로 만들거나 `write` 경로를 고쳤으면 폐기용 리포에서 한 바퀴 돌린다 — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다 (CLAUDE.md 워크플로우). **어댑터 방식마다 리포가 다르다**: 수술적은 `bugshot-i18n-test`(ts-dict)·`i18n-format-check`(yaml-catalog·code-dict), 재생성은 `i18n-order-check`(json-catalog — 표현 5축이 섞이도록 재포맷돼 있다).
+
+**2026-09-04 실행 (원본 포맷 보존 기능 뒤)**: `i18n-order-check`로 한 바퀴 — 편집 0건에서 `no-changes`(2층 blob 전 파일 동일), 편집 3건 → [PR #3](https://github.com/SinhyeokKang/i18n-order-check/pull/3) `+3 -3 / 2파일`(안 건드린 `ja.json`은 안 나갔다), 머지 → 재pull `no-edits`(GitHub API 0회) → 재push 뒤 다시 `no-changes`. **표현 5축이 실물 PR diff에서 전부 살아 있었다** — 한 줄 컨테이너가 편집을 받고도 한 줄로 남고, 새로 넣은 한글 값이 그 파일의 `\uXXXX` 관례를 따라 나갔다. ⚠️ **`chrome-locales`는 여전히 실물 PR 이력 0이다** — 같은 갈래(per-locale·재생성)가 검증됐다는 것이 근거이지 그 어댑터가 검증된 것은 아니다.
 
 ## 10. 아직 안 정한 것
 

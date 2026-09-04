@@ -26,7 +26,7 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 ## 전제 조건 (착수 전 확인 — 하나라도 어긋나면 중단)
 
-1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `l10n/sync` 삭제, DB 원복). 현재 폐기용 리포 둘: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict).
+1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `l10n/sync` 삭제, DB 원복). 현재 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
 2. **`Project` 행이 있고 `installationId`가 채워져 있다.** GitHub App이 계정 전체(`all`)에 설치돼 있어도 설치 id는 컬럼에 있어야 한다.
 3. **그 리포를 가리키는 `Project`가 하나뿐이다.** 둘이면 `l10n/sync`를 force update로 다툰다 — 한 리포에 두 포맷이 있으면 **순차로** 검증한다.
 4. **워킹 트리가 clean하고 `pnpm test`가 green이다.** 깨진 코드로 실물 PR을 내지 않는다.
