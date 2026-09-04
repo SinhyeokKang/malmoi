@@ -414,7 +414,10 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
     어댑터가 기본으로 교차 provider 자동 연결을 거부하므로(`allowDangerousEmailAccountLinking`
     미설정) 이 단계의 방어선은 **그 옵션을 켜지 않는 것**이고, 명시적 연결 흐름은 4단계다.
     호출부 없는 판정 함수를 미리 만드는 것은 이 프로젝트에서 결함이다
-- [ ] 기존 `Project`에 소유자 backfill (additive-first)
+- [x] 기존 `Project`에 소유자 backfill **스크립트** ✅ (2026-09-05, `bdd254b`) — `scripts/backfill-owners.ts`.
+      ⚠️ **아직 실행하지 않았다** — dev·prod 양쪽의 `--apply`는 인가 전환 직전이 적기다.
+      `User` + `Account(github)` + `ProjectMember`를 **한 트랜잭션**으로 만든다: `User`만 만들면
+      첫 GitHub 로그인이 `OAuthAccountNotLinked`로 거부되고, 그게 이 스크립트가 존재하는 이유의 절반이다
 
 완료 게이트: §5.7의 공격 시나리오가 **전부 거부** / 멤버 제거가 기존 세션에 **즉시** 반영 /
 프로젝트 인가 없이 실행되는 Server Action·Route Handler가 0 / Google 사용자가 GitHub 계정 없이
