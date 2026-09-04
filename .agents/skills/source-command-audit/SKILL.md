@@ -43,7 +43,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 
 `CLAUDE.md` · `docs/MVP.md` · `docs/ARCHITECTURE.md`를 읽어 감사 기준을 확립한다. **이 셋이 ground truth다.**
 
-**`docs/POSTMORTEM.md`도 읽는다 — 이 스킬에서는 선택이 아니다.** 17개 항목이 각각 "이 코드베이스가 실제로 밟은 함정"이고, 그 항목들의 **재발 방지 grep을 전수로 돌리는 것**이 audit의 가장 큰 값이다. `/code-review`는 변경분에 걸린 항목만 소환하므로, 손대지 않은 코드에 남아 있는 같은 패턴은 이 스킬만 잡는다.
+**`docs/POSTMORTEM.md`도 읽는다 — 이 스킬에서는 선택이 아니다.** **전 항목**(2026-09-04 기준 19개 — 숫자를 믿지 말고 `grep -c '^### '`로 센다)이 각각 "이 코드베이스가 실제로 밟은 함정"이고, 그 항목들의 **재발 방지 grep을 전수로 돌리는 것**이 audit의 가장 큰 값이다. `/code-review`는 변경분에 걸린 항목만 소환하므로, 손대지 않은 코드에 남아 있는 같은 패턴은 이 스킬만 잡는다.
 
 에이전트 인자가 있으면 해당 에이전트만 활성화. 없으면 전체 4개.
 
@@ -185,7 +185,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 감사 범위: 전체 / <agent> [+ <agent>]
 활성 에이전트: N개
 검사 파일: N개
-POSTMORTEM 전수 재검: 17항목 중 재발 <n>건
+POSTMORTEM 전수 재검: <전체>항목 중 재발 <n>건
 발견: 🔴 X · 🟡 Y · ⚪ Z (합계 N)
 ```
 
