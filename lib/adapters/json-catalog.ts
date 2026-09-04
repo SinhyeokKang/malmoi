@@ -1,5 +1,5 @@
 import { localeFromPath, verify } from "./chrome-locales";
-import { observeJsonStyle, serializeJson } from "./json-style";
+import { observeJsonStyle, serializeJson, KEY_SEP } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -32,7 +32,7 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  * 나머지는 프로젝트를 나눠야 한다 (MVP §7).
  */
 
-const SEP = ".";
+const SEP = KEY_SEP;
 const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
 /** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리이고 파일명은 따로다. */
 const LOCALE_DIR_FILE = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
@@ -236,7 +236,7 @@ function writeWithErrors(
   if (usable.length === 0) return { content: null, errors };
 
   // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
-  const path = format.pathTemplate.replace("{locale}", input.locale);
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
   const nested = format.nestedByPath?.[path] ?? format.nested ?? false;
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라

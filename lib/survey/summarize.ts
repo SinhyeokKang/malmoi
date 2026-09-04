@@ -1,3 +1,4 @@
+import { ADAPTERS } from "../adapters/index";
 import { compareKeys } from "../adapters/shared";
 import { median } from "./stats";
 import {
@@ -145,7 +146,9 @@ const CAUSE_KEYS = Object.keys(emptyDiffCauses()) as Array<keyof DiffCauses>;
  * 이 기능이 닿는 어댑터. 수술적 3개는 원본을 보존하므로 이미 0.000이고, `orderedEntries`를
  * 지나지도 않는다 — 분모에 넣으면 순서 보존의 성과를 재는 숫자가 아니게 된다.
  */
-const REGENERATE_ADAPTERS = new Set(["chrome-locales", "json-catalog"]);
+// ⚠️ 이름을 박지 않는다 — `writeStrategy`에서 파생한다. 재생성 어댑터가 추가되면 이 집합이
+// 자동으로 넓어져야 `clean` 분모에서 조용히 빠지지 않는다 (2026-09-04 audit #19).
+const REGENERATE_ADAPTERS = new Set(ADAPTERS.filter((a) => a.writeStrategy === "regenerate").map((a) => a.name));
 
 /**
  * `clean` 분모의 최소 키 수.

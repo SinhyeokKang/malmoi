@@ -1,5 +1,6 @@
 import { isAlias, isMap, isScalar, isSeq, parseDocument, type Document, type Node } from "yaml";
 
+import { KEY_SEP } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -37,7 +38,7 @@ import { localeFromPath } from "./chrome-locales";
  * misskey·directus는 루트에 바로 키가 온다. `read`가 관측해 `rootKeyedByPath`로 돌려준다.
  */
 
-const SEP = ".";
+const SEP = KEY_SEP;
 const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
 
 /**

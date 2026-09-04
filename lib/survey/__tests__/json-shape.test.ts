@@ -65,6 +65,14 @@ describe("jsonShape — 키 등장 순서", () => {
     expect(s.keyOrder).toEqual([]);
   });
 
+  it("failed면 표현 관측(이스케이프·한 줄 컨테이너)도 버린다 — 프로덕션 `observeJsonStyle`과 같은 판정이다 (2026-09-04 audit #21)", () => {
+    // 트레일링 콤마 파일: 스캔이 중간에 죽는다. 부분 관측을 세면 지표만 "축 덮임"으로 과대 계상한다.
+    const s = jsonShape('{\n  "a": { "message": "\\ud55c" },\n}\n');
+    expect(s.failed).toBe(true);
+    expect(s.escapedNonAscii).toBe(false);
+    expect(s.compactContainer).toBe(false);
+  });
+
   it("최상위가 객체가 아니면 failed다", () => {
     expect(jsonShape("[1,2,3]\n").failed).toBe(true);
   });

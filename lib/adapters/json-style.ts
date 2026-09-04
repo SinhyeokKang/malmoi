@@ -170,8 +170,13 @@ function render(value: unknown, style: JsonStyle, path: readonly string[], pad: 
 
 // ── 스캐너 ─────────────────────────────────────────────────────────────────
 
-/** 평탄화 경로의 조인 구분자. `json-catalog`의 `flatten`과 맞춘다. */
-const SEP = ".";
+/**
+ * 평탄화 경로의 조인 구분자. **네 곳이 각자 `const SEP = "."`를 들고 있었다** — json-catalog·
+ * yaml-catalog·code-dict의 flatten/unflatten과 이 스캐너. 한 곳이 바뀌면 나머지가 조용히 어긋난다
+ * (2026-09-04 audit #22, POSTMORTEM 2026-09-02 재발). 이 모듈이 leaf라 여기 둔다.
+ */
+export const KEY_SEP = ".";
+const SEP = KEY_SEP;
 
 /**
  * 텍스트 한 번 훑기의 산출물. **표현(어댑터)과 원인(지표)이 같은 훑기에서 나온다.**

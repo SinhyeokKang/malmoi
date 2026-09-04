@@ -89,9 +89,11 @@ export function jsonShape(text: string): JsonShape {
     keyOrder: scan.keyOrder,
     nested: scan.nested,
     indent: scan.indent,
-    escapedNonAscii: scan.escapeNonAscii,
-    compactContainer: scan.compactPaths.size > 0,
-    escapedSlash: scan.escapeSlash,
+    // 스캔이 끝까지 못 갔으면 수집 축은 부분값이다 — `observeJsonStyle`이 버리는 것과 같은 판정으로
+    // 버린다. 지표만 세면 그 리포가 "축 덮임"으로 과대 계상된다 (2026-09-04 audit #21).
+    escapedNonAscii: !scan.failed && scan.escapeNonAscii,
+    compactContainer: !scan.failed && scan.compactPaths.size > 0,
+    escapedSlash: !scan.failed && scan.escapeSlash,
     causes: {
       sparseArray: scan.sparseArray,
       integerKeys: scan.integerKeys,

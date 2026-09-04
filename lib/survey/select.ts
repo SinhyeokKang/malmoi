@@ -12,7 +12,9 @@ import { I18N_HINT, compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix
 
 const CHROME = /^(.*)_locales\/([^/]+)\/messages\.json$/;
 const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
-const YAML_FILE = /^(.*\/)([^/]+)\.ya?ml$/;
+// ⚠️ `yaml-catalog.ts`의 정규식과 그룹 수를 맞춘다 — 전에는 그룹이 둘이라 아래 `y[3]`이 항상
+// `undefined`였고 `?? "yml"` 폴백이 그것을 가렸다 (2026-09-04 audit #11).
+const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
 /** ⚠️ `.js`·`.mjs`도 받는다 — quasar가 `ui/lang/{locale}.js`다. */
 const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
 /** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리인 형태 (grafana·open-webui·zulip). */

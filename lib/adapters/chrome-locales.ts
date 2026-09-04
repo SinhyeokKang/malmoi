@@ -188,7 +188,7 @@ function write(format: DetectedFormat, input: { locale: string; isBase: boolean;
   if (usable.length === 0) return null;
 
   // **표현은 원본에서** — 없으면 기본값(2칸)이다. 경로로 조회하는 이유는 json-catalog와 같다.
-  const path = format.pathTemplate.replace("{locale}", input.locale);
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
   const original = format.currentFiles?.find((c) => c.path === path)?.content;
   const style = observeJsonStyle(original);
 

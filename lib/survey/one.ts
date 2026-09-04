@@ -1,4 +1,6 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
+import { dominantFieldOrder } from "../adapters/chrome-locales";
+import { sameMeaning } from "../adapters/shared";
 import type { AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
@@ -144,9 +146,11 @@ const pickBase = pickBaseLocale;
 /** 1순위 후보가 가리키는 파일들을 골라온다. `layout`에 따라 규칙이 다르다. */
 function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] {
   const out: AdapterFile[] = [];
-  if (fmt.pathTemplate.includes("{locale}")) {
+  // 축은 `layout`이다 — 프로덕션(`push/payload.ts`·`pull/plan.ts`)과 같은 판정. 템플릿 문자열을
+  // 보고 갈랐던 것은 그 축의 복제였다 (2026-09-04 audit #19).
+  if (adapterFor(fmt).layout === "per-locale") {
     for (const locale of [...fmt.locales].sort(compareKeys)) {
-      const path = fmt.pathTemplate.replace("{locale}", locale);
+      const path = fmt.pathTemplate.replaceAll("{locale}", locale);
       const content = input.files.get(path);
       if (content !== undefined) out.push({ path, content });
     }
@@ -273,10 +277,12 @@ function observeShape(
   input: SurveyInput,
   localeNames: readonly string[],
 ): void {
-  if (adapterName !== "json-catalog" && adapterName !== "chrome-locales") return;
+  // 재생성 writer가 내는 JSON만 재는 지표다. 이름 목록이 아니라 `writeStrategy`로 가른다 —
+  // 재생성 어댑터가 늘면 이름 목록은 조용히 낡는다 (2026-09-04 audit #19).
+  if (adapterFor(fmt).writeStrategy !== "regenerate") return;
   const base = pickBase(localeNames);
   if (base === undefined) return;
-  const pathOf = (locale: string) => fmt.pathTemplate.replace("{locale}", locale);
+  const pathOf = (locale: string) => fmt.pathTemplate.replaceAll("{locale}", locale);
 
   const baseText = input.files.get(pathOf(base));
   if (baseText === undefined) return;
@@ -337,6 +343,7 @@ function observeChrome(
     try {
       parsed = JSON.parse(text);
     } catch {
+      // 관측 전용 카운터다 — 깨진 파일은 read 에러로 이미 세었고 여기서 다시 세면 이중이다.
       continue;
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) continue;
@@ -345,12 +352,10 @@ function observeChrome(
       const entry = value as Record<string, unknown>;
       if (entry["placeholders"] !== undefined) survey.chromeFields.placeholders = true;
       if (locale !== base && entry["description"] !== undefined) survey.chromeFields.nonBaseDescription = true;
-      // 삽입 순서가 곧 원본 순서다 — 필드 이름 셋이 비-정수라 JS가 끌어올리지 않는다.
-      const fields = Object.keys(entry);
-      const d = fields.indexOf("description");
-      const m = fields.indexOf("message");
-      if (d !== -1 && m !== -1 && d < m) survey.chromeFields.descriptionFirst = true;
     }
+    // **프로덕션과 같은 판정**(파일 단위 다수결)으로 센다. "한 엔트리라도"로 세면 100개 중 1개만
+    // 뒤집힌 리포를 축 적용으로 세는데 writer는 message를 먼저 낸다 (2026-09-04 audit #20).
+    if (dominantFieldOrder(text)[0] === "description") survey.chromeFields.descriptionFirst = true;
   }
 }
 
@@ -411,7 +416,7 @@ function applyRoundtrip(
       ? originals[0]?.path
       : base === undefined
         ? undefined
-        : fmt.pathTemplate.replace("{locale}", base);
+        : fmt.pathTemplate.replaceAll("{locale}", base);
   const before = basePath === undefined ? undefined : input.files.get(basePath);
   const after = basePath === undefined ? undefined : write1.get(basePath);
   if (before !== undefined && after !== undefined) {
@@ -440,7 +445,7 @@ function applyRoundtrip(
     const others: number[] = [];
     for (const locale of localeNames) {
       if (locale === base) continue;
-      const p = fmt.pathTemplate.replace("{locale}", locale);
+      const p = fmt.pathTemplate.replaceAll("{locale}", locale);
       const src = input.files.get(p);
       const out = write1.get(p);
       if (src !== undefined && out !== undefined) others.push(roundtripDiffRatio(src, out));
@@ -467,7 +472,7 @@ function writePerLocale(
   const adapter = adapterFor(fmt);
   const out = new Map<string, string>();
   for (const locale of locales) {
-    const path = fmt.pathTemplate.replace("{locale}", locale);
+    const path = fmt.pathTemplate.replaceAll("{locale}", locale);
     // **원본을 어댑터 종류와 무관하게 넘긴다** — 수술적은 write에 필수이고, 재생성은 표현
     // (들여쓰기)을 거기서 읽는다. ⚠️ 이 홉이 빠지면 2차 write가 **1차 결과를 원본으로 받으면서**
     // 기본값으로 떨어져 **바이트 고정점 지표가 구조적 거짓 음성**이 된다 — "측정이 개선을 못 본다"
@@ -523,29 +528,6 @@ function writeMultiLocale(
   return out;
 }
 
-function sameMeaning(a: ReadResult, b: ReadResult, dropEmpty: boolean): boolean {
-  const shape = (r: ReadResult) => {
-    const m = new Map<string, Map<string, string>>();
-    for (const loc of r.locales) {
-      const inner = new Map<string, string>();
-      for (const e of loc.entries) {
-        if (dropEmpty && e.message === "") continue;
-        inner.set(e.key, e.message);
-      }
-      if (inner.size > 0) m.set(loc.locale, inner);
-    }
-    return m;
-  };
-  const x = shape(a);
-  const y = shape(b);
-  if (x.size !== y.size) return false;
-  for (const [locale, inner] of x) {
-    const other = y.get(locale);
-    if (other === undefined || other.size !== inner.size) return false;
-    for (const [key, value] of inner) if (other.get(key) !== value) return false;
-  }
-  return true;
-}
 
 function sameBytes(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string>): boolean {
   if (a.size !== b.size) return false;
