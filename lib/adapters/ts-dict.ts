@@ -137,13 +137,27 @@ function detect(paths: readonly string[], probe?: (p: string) => string | undefi
 /** 자동 탐지에서 빠진 로직. 되살리려면 `detectCandidates`가 이걸 부르면 된다. */
 export const tsDictDetectByContent = detectByContent;
 
+/** 첫 구문 진단 메시지. 타입 진단은 lib 로드가 필요하고 여기선 의미가 없다 — 구문만 본다. */
+function syntaxError(project: Project, sf: SourceFile): string | undefined {
+  const first = project.getProgram().getSyntacticDiagnostics(sf)[0];
+  return first === undefined ? undefined : (first.getMessageText()?.toString() ?? "알 수 없음");
+}
+
 function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
   const byLocale = new Map<string, LocaleEntry[]>();
   const errors: AdapterError[] = [];
 
   for (const file of files) {
     if (!/\.tsx?$/.test(file.path)) continue;
-    const sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
+    const project = newProject();
+    const sf = project.createSourceFile(file.path, file.content, { overwrite: true });
+    // ⚠️ TS 파서는 던지지 않고 복구한다 — 진단을 안 보면 깨진 파일에서 부분 적재가 `errors: 0`으로
+    // 통과하고 나머지 키가 orphaned로 떨어진다. `code-dict.read`와 같은 계약 (§1.35).
+    const syntax = syntaxError(project, sf);
+    if (syntax !== undefined) {
+      errors.push({ path: file.path, message: `구문 오류: ${syntax}` });
+      continue;
+    }
     for (const [locale, obj] of localeObjects(sf)) {
       const list = byLocale.get(locale) ?? [];
       // description을 담을 곳이 없다 — 이 포맷엔 필드가 없다.
@@ -190,8 +204,14 @@ function writeWithErrors(
     wanted.set(e.key, e.message);
   }
 
-  const sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
+  const project = newProject();
+  const sf = project.createSourceFile(file.path, file.content, { overwrite: true });
   const errors: AdapterError[] = [];
+  // write도 read와 같은 진단을 본다 — 깨진 원본에 치환하면 복구된 AST를 다시 찍어 파일이 바뀐다.
+  const syntax = syntaxError(project, sf);
+  if (syntax !== undefined) {
+    return { content: file.content, errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${syntax}` }] };
+  }
   const obj = localeObjects(sf).get(input.locale);
   // **로케일 객체가 없는 것을 성공으로 처리하지 않는다.** 그 로케일의 번역이 통째로 반영되지
   // 않는데 호출부는 "변경 없음"으로 읽어 파일이 PR에서 조용히 빠진다 (ARCHITECTURE §1.35).

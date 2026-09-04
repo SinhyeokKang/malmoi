@@ -285,9 +285,13 @@ describe("편집이 pull의 1층 스킵을 푼다", () => {
   it("같은 값 재저장은 DB를 건드리지 않는다 — noop이 pull을 깨우면 빈 PR이 쌓인다", async () => {
     await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
     const stamp = db.translations[0]?.updatedAt;
+    // "DB를 건드리지 않는다"를 **쓰기 미발행**으로 관측한다 — updatedAt 동일성만으로는 같은 값을
+    // 다시 쓴 경우와 구별되지 않는다 (2026-09-04 audit #24).
+    const upsert = vi.spyOn(db.prisma.translation, "upsert");
 
     expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" })).toEqual({ ok: true, value: "안녕" });
     expect(db.translations[0]?.updatedAt).toEqual(stamp);
+    expect(upsert).not.toHaveBeenCalled();
   });
 });
 
@@ -360,5 +364,32 @@ describe("orphaned 로케일", () => {
   it("번역 행은 남는다 — 로케일이 돌아오면 값이 살아 돌아와야 한다", async () => {
     await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" });
     expect(orphanDb.translations.find((t) => t.localeCode === "fr")?.value).toBe("Bonjour");
+  });
+});
+
+/**
+ * orphaned **키**도 로케일과 같은 이유로 거부한다 — export가 그 키를 빼므로 저장이 `updatedAt`만
+ * 올려 1층을 깨우고 2층 diff 0으로 끝난다. 번역자는 반영됐다고 믿는다. 전에는 UI의
+ * `disabled`만이 방어선이었다 (2026-09-04 audit #10).
+ */
+describe("orphaned 키", () => {
+  beforeEach(() => {
+    hoisted.prisma = memoryDb({
+      keys: [
+        { id: "k-greet", projectId: "p1", key: "a.greet", sourceText: "Hello", description: null, sortIndex: 0, orphaned: false },
+        { id: "k-gone", projectId: "p1", key: "a.gone", sourceText: "Gone", description: null, sortIndex: 1, orphaned: true },
+      ],
+    }).prisma;
+  });
+
+  it("저장을 거부한다 — UI 방어에 의존하지 않는다", async () => {
+    expect(await saveTranslation({ keyId: "k-gone", localeCode: "ko", value: "사라진" })).toEqual({
+      ok: false,
+      error: "key is no longer in the code",
+    });
+  });
+
+  it("살아 있는 키는 그대로 받는다", async () => {
+    expect((await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "안녕" })).ok).toBe(true);
   });
 });

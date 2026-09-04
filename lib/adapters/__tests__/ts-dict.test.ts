@@ -136,6 +136,14 @@ describe("ts-dict — read", () => {
     expect(tsDict.read(format, file(bad)).errors.length).toBeGreaterThan(0);
   });
 
+  it("구문이 깨진 파일은 에러다 — TS 파서는 던지지 않고 복구해서 진단을 안 보면 부분 적재가 `errors: 0`으로 통과한다", () => {
+    // `code-dict.read`는 이미 그렇게 한다(같은 이유를 주석으로 든다). 이 어댑터만 빠져 있었다
+    // (2026-09-04 audit #9). 깨진 namespace 파일이면 나머지 키가 orphaned로 떨어졌다.
+    const broken = SOURCE.replace('"common.close": "닫기",', '"common.close": "닫기');
+    const r = tsDict.read(format, file(broken));
+    expect(r.errors.some((e) => e.message.includes("구문"))).toBe(true);
+  });
+
   it("여러 파일의 키가 합쳐진다", () => {
     const second = SOURCE.replace(/common\./g, "editor.").replace("export const common", "export const editor");
     const r = tsDict.read(format, [
@@ -306,6 +314,18 @@ describe("ts-dict — write의 방어", () => {
     const res = tsDict.writeWithErrors!(fmt, { locale: "ko", isBase: false, entries: [{ key: "a", message: "둘" }] });
     expect(res.content).toContain('"둘"');
     expect(res.errors.some((e) => e.message.includes("b"))).toBe(true);
+  });
+});
+
+describe("ts-dict — write도 구문 진단을 본다", () => {
+  it("깨진 원본에는 치환하지 않고 원본 그대로 + 에러다", () => {
+    const broken = SOURCE.replace('"common.close": "닫기",', '"common.close": "닫기');
+    const res = tsDict.writeWithErrors!(
+      { ...format, currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: broken }] },
+      { locale: "ko", isBase: false, entries: [{ key: "common.ok", message: "확인!" }] },
+    );
+    expect(res.content).toBe(broken);
+    expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
   });
 });
 

@@ -8,6 +8,7 @@ import {
   type StringLiteral,
 } from "ts-morph";
 
+import { KEY_SEP } from "./json-style";
 import { dominantQuote, quoteLiteral, quoteOf, type Quote } from "./quote-style";
 import { compareKeys, hasStrongLocale, looksLikeLocale, rankCandidates } from "./shared";
 import type {
@@ -38,7 +39,7 @@ import { localeFromPath } from "./chrome-locales";
  * 같은 줄 끝 주석이 재생성에서 전부 사라진다 (ARCHITECTURE §1.4).
  */
 
-const SEP = ".";
+const SEP = KEY_SEP;
 const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
 
 function newProject(): Project {
@@ -114,7 +115,8 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     if (!m) continue;
     const [, dir = "", base = "", ext = "ts"] = m;
     if (!looksLikeLocale(base)) continue;
-    const key = `${dir} ${ext}`;
+    // 경로에 없는 문자로 잇는다 — 공백으로 이으면 `my app/locale/`가 쪼개진다 (2026-09-04 audit #12).
+    const key = `${dir}\u0000${ext}`;
     const set = byDir.get(key) ?? new Set();
     set.add(base);
     byDir.set(key, set);
@@ -127,7 +129,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     [...byDir.entries()]
       // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
       .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
-      .map(([key, locales]) => ({ dir: key.split(" ")[0] ?? "", ext: key.split(" ")[1] ?? "ts", locales })),
+      .map(([key, locales]) => ({ dir: key.split("\u0000")[0] ?? "", ext: key.split("\u0000")[1] ?? "ts", locales })),
   );
 
   const found: DetectedFormat[] = [];
@@ -159,6 +161,7 @@ function hasDictionary(pathTemplate: string, locales: ReadonlySet<string>, probe
       // 있어야 카탈로그다.
       if (obj !== undefined && hasStringLeaf(obj)) return true;
     } catch {
+      // 탐지 단계다 — 파싱이 던지는 파일은 "카탈로그 아님"으로 셈한다. 사유는 read가 다시 만나 에러로 낸다.
       continue;
     }
   }
@@ -278,7 +281,17 @@ function writeWithErrors(
   let sf: SourceFile;
   let root: ObjectLiteralExpression | undefined;
   try {
-    sf = newProject().createSourceFile(file.path, file.content, { overwrite: true });
+    const project = newProject();
+    sf = project.createSourceFile(file.path, file.content, { overwrite: true });
+    // read와 같은 진단이다 — write만 빠져 있어 깨진 원본에 치환하면 복구된 AST가 찍혀 나갔다
+    // (2026-09-04 audit #9).
+    const syntax = project.getProgram().getSyntacticDiagnostics(sf)[0];
+    if (syntax !== undefined) {
+      return {
+        content: file.content,
+        errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${syntax.getMessageText()?.toString() ?? "알 수 없음"}` }],
+      };
+    }
     root = defaultExportObject(sf);
   } catch (cause) {
     return { content: file.content, errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${(cause as Error).message}` }] };

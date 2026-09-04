@@ -143,8 +143,11 @@ function payloadFromFiles(scanRefs: Parameters<typeof buildPushPayload>[0]["scan
 async function runFlow(options: {
   existing?: readonly ExistingKey[];
   scanRefs?: Parameters<typeof buildPushPayload>[0]["scanRefs"];
+  /** 페이로드의 로케일 목록을 덮는다 — 생산자가 안 내는 모양(중복)을 `applyPush`에 먹여 볼 때. */
+  locales?: string[];
 } = {}) {
-  const payload = payloadFromFiles(options.scanRefs ?? []);
+  const built = payloadFromFiles(options.scanRefs ?? []);
+  const payload = options.locales === undefined ? built : { ...built, locales: options.locales };
   const stub = stubPrisma(options.existing ?? [], payload.keys.map((k) => k.key));
   const outcome = await applyPush(stub.prisma, PROJECT_ID, payload);
   return { ...stub, payload, outcome };
@@ -208,6 +211,12 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
   it("base 로케일도 Translation 행을 갖는다 — base도 편집 대상이다", async () => {
     const { captured } = await runFlow();
     expect(columnsOf(stmt(captured, 'INSERT INTO "Translation"'))["localeCode"]).toContain("en");
+  });
+
+  it("중복 로케일은 한 행으로 접는다 — 같은 문장이 같은 행을 두 번 치면 트랜잭션 전체가 거부된다 (2026-09-04 audit #13)", async () => {
+    const { captured } = await runFlow({ locales: ["en", "ko", "ko"] });
+    const cols = columnsOf(stmt(captured, 'INSERT INTO "Locale"'));
+    expect(cols["code"]).toEqual(["en", "ko"]);
   });
 
   it("Locale upsert에서 base만 isBase=true다", async () => {

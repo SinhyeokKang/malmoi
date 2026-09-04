@@ -112,6 +112,24 @@ describe("renderLocaleFiles — per-locale", () => {
   });
 });
 
+describe("renderLocaleFiles — per-locale 수술적 어댑터가 원본 없이 파일을 안 낼 때", () => {
+  const format = formatFromProject(
+    { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en" },
+    ["en", "ko"],
+  );
+  const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"]);
+  const keys: RenderKey[] = [key({ key: "a", cells: { en: { value: "one" }, ko: { value: "하나" } } })];
+
+  it("content는 null이고 errors에 그 경로가 실린다 — 재생성과 다른 계약의 갈림이 보고된다", () => {
+    const out = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map([["i18n/en.ts", "export default { a: 'x' };\n"]]));
+    const ko = out.find((f) => f.path === "i18n/ko.ts");
+    expect(ko?.content).toBeNull();
+    expect(ko?.errors?.[0]?.path).toBe("i18n/ko.ts");
+    // 원본이 있는 파일은 정상이고 에러가 없다.
+    expect(out.find((f) => f.path === "i18n/en.ts")?.errors).toBeUndefined();
+  });
+});
+
 describe("renderLocaleFiles — multi-locale (파일 × 로케일 이중 루프)", () => {
   const format = formatFromProject(
     {
@@ -209,6 +227,14 @@ export const ns = { ko, en, fr };
     const keys: RenderKey[] = [key({ key: "a.one", cells: { ko: { value: "하나!" } } })];
     const out = renderLocaleFiles(format, "multi-locale", paths, keys, "en", new Map());
     expect(out[0]?.content).toBeNull();
+  });
+
+  it("원본이 없어 파일을 안 내는 것도 **보고한다** — 조용히 빠지면 그 로케일이 흔적 없이 PR에서 사라진다", () => {
+    // ts-dict의 로케일 객체 부재는 에러로 내는데(§1.35) 파일 부재만 예외였다 (2026-09-04 audit #7).
+    const keys: RenderKey[] = [key({ key: "a.one", cells: { ko: { value: "하나!" } } })];
+    const out = renderLocaleFiles(format, "multi-locale", paths, keys, "en", new Map());
+    expect(out[0]?.errors?.length ?? 0).toBeGreaterThan(0);
+    expect(out[0]?.errors?.[0]?.path).toBe(paths[0]?.path);
   });
 
   it("이스케이프가 필요한 값이 재파싱을 견딘다 (setLiteralValue 함정)", () => {

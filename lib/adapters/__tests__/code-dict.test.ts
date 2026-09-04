@@ -77,6 +77,11 @@ describe("code-dict — detect", () => {
     expect(d[0]?.pathTemplate).toBe("ui/lang/{locale}.js");
   });
 
+  it("디렉터리 경로에 공백이 있어도 템플릿이 그대로다 — 내부 키를 공백으로 쪼개면 오분해된다 (2026-09-04 audit #12)", () => {
+    const d = codeDict.detectCandidates(["my app/locale/ko.ts", "my app/locale/en.ts"], () => DEFAULT_OBJ);
+    expect(d[0]?.pathTemplate).toBe("my app/locale/{locale}.ts");
+  });
+
   it("probe 없이는 잡지 않는다 — .ts 디렉터리는 어디에나 있다", () => {
     expect(codeDict.detectCandidates(["src/locale/ko.ts", "src/locale/en.ts"])).toEqual([]);
   });
@@ -153,6 +158,8 @@ describe("code-dict — write는 수술적이다", () => {
     expect(out).toContain("OK로 변경");
     expect(out).not.toContain("'확인'");
     expect(out).toContain("close: '닫기'");
+    // 이름이 "빈 줄이 보존된다"인데 빈 줄을 안 보고 있었다 (2026-09-04 audit #24).
+    expect(out.split("\n").filter((l) => l.trim() === "").length).toBe(DEFAULT_OBJ.split("\n").filter((l) => l.trim() === "").length);
   });
 
   it("이스케이프가 깨지지 않는다 — setLiteralValue를 쓰면 안 되는 이유", () => {
@@ -495,6 +502,18 @@ describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", (
     })!;
     expect(out).toContain("'common.new': '새 값'");
     expect(out).not.toContain('"common.new"');
+  });
+});
+
+describe("code-dict — write도 read와 같은 구문 진단을 본다", () => {
+  it("깨진 원본에는 치환하지 않고 원본 그대로 + 에러다 — read만 보던 진단이 write에 빠져 있었다 (2026-09-04 audit #9)", () => {
+    const broken = "export default {\n  ok: '확인,\n  clear: '초기화',\n};\n";
+    const res = codeDict.writeWithErrors!(
+      { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", locales: ["ko"], currentFiles: [{ path: "i18n/ko.ts", content: broken }] },
+      { locale: "ko", isBase: false, entries: [{ key: "clear", message: "지우기" }] },
+    );
+    expect(res.content).toBe(broken);
+    expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
   });
 });
 

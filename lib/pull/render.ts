@@ -67,6 +67,12 @@ export function rowsForLocale(
  *
  * @param current 경로 → 원본 내용. 수술적 치환 어댑터만 쓴다 (재생성은 빈 맵이어도 된다).
  */
+/** 수술적 어댑터가 원본 없이 파일을 안 낼 때의 보고. 값을 잃은 것은 아니지만 **빠졌다는 사실**은 알려야 한다. */
+const missingOriginal = (path: string): AdapterError => ({
+  path,
+  message: "원본 파일이 base 트리에 없어 수술적 치환을 건너뛰었다 — 이 로케일은 PR에 나가지 않는다",
+});
+
 export function renderLocaleFiles(
   format: DetectedFormat,
   layout: Adapter["layout"],
@@ -98,7 +104,10 @@ export function renderLocaleFiles(
       // 이 줄이 뒤섞이면 새 로케일이 PR에서 조용히 빠지거나, 수술적 어댑터가 없던 파일을 만든다.
       const original = current.get(p.path);
       if (original === undefined && adapter.writeStrategy === "surgical") {
-        return { path: p.path, content: null };
+        // ⚠️ **안 내는 것도 보고한다.** `null`만 돌려주면 `planPullChanges`가 건너뛰고 warnings에도
+        // 안 실려 그 로케일이 흔적 없이 PR에서 빠진다 — ts-dict의 로케일 객체 부재는 에러로
+        // 내는데 파일 부재만 예외였다 (2026-09-04 audit #7).
+        return { path: p.path, content: null, errors: [missingOriginal(p.path)] };
       }
       const writeFormat =
         original === undefined ? format : { ...format, currentFiles: [{ path: p.path, content: original }] };
@@ -117,7 +126,7 @@ export function renderLocaleFiles(
   return paths.map((p) => {
     const original = current.get(p.path);
     // 원본이 없으면 치환할 대상이 없다. 파일을 새로 만들지 않는다 — 수술적 치환의 전제다.
-    if (original === undefined) return { path: p.path, content: null };
+    if (original === undefined) return { path: p.path, content: null, errors: [missingOriginal(p.path)] };
 
     let content = original;
     const errors: AdapterError[] = [];

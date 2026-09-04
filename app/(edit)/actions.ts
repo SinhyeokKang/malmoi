@@ -40,9 +40,12 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   //    RLS가 없고 인가가 단일 테넌트라 이 확인이 빠지면 막는 것이 아무것도 없다.
   const key = await prisma.stringKey.findFirst({
     where: { id: keyId, projectId: project.id },
-    select: { id: true },
+    select: { id: true, orphaned: true },
   });
   if (!key) return { ok: false, error: "key not found in this project" };
+  // 코드에서 사라진 키는 export가 빼므로 이 값이 리포에 도달할 길이 없다 — 로케일과 같은 이유로
+  // 거부한다. 전에는 UI의 `disabled`만이 방어선이었다 (2026-09-04 audit #10).
+  if (key.orphaned) return { ok: false, error: "key is no longer in the code" };
 
   // 로케일도 같은 프로젝트 것이어야 한다.
   // base 로케일도 편집 대상이다 — 고정된 것은 키뿐이다 (MVP §3.2).

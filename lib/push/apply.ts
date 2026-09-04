@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { compareKeys } from "@/lib/adapters/shared";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { PushPayloadType } from "./plan";
@@ -71,6 +72,10 @@ export async function applyPush(
   // **삽입 id를 여기서 만들어 들고 있는다.** 문장 안에서 만들어 버리면 키 id를 다시 조회해야 하고,
   // 그 조회 때문에 트랜잭션이 둘로 갈렸다.
   const insertIds = plan.toInsert.map(() => randomUUID());
+  // **시계는 하나다.** 전에는 INSERT 배열이 JS `new Date()`, UPDATE가 pg `now()`였다 — 컬럼이
+  // `timestamp without time zone`이라 세션 TZ가 갈리면 `Translation.updatedAt`이 1층 스킵 판정에
+  // 미래 시각으로 들어가 1층이 영구 무력화된다 (2026-09-04 audit #14).
+  const now = new Date();
   const idByKey = new Map<string, string>([
     ...existing.map((e) => [e.key, e.id] as const),
     ...plan.toInsert.map((k, i) => [k.key, insertIds[i]!] as const),
@@ -79,7 +84,9 @@ export async function applyPush(
   // 2) Locale upsert — Translation의 FK 대상이라 먼저 있어야 한다.
   //    isBase는 payload의 baseLocale 하나만 true다.
   // 정렬은 결정성용이다 — 이 배열이 SQL 인자로 가고 순서가 흔들리면 문장이 매번 달라진다.
-  const liveLocales = [...payload.locales].sort();
+  // 중복도 접는다 — 같은 문장이 같은 행을 두 번 치면 `cannot affect row a second time`으로
+  // 트랜잭션 전체가 거부된다. keys·translations와 같은 규칙 (2026-09-04 audit #13).
+  const liveLocales = [...new Set(payload.locales)].sort(compareKeys);
   const localeRows = liveLocales.map((code) => ({
     projectId,
     code,
@@ -129,7 +136,7 @@ export async function applyPush(
         ${plan.toInsert.map((k) => k.description ?? null)}::text[],
         ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
-        ${plan.toInsert.map(() => new Date())}::timestamp[]
+        ${plan.toInsert.map(() => now)}::timestamp[]
       )`]),
 
     // StringKey update — orphaned는 여기서 false로 되돌린다(돌아온 키).
@@ -143,7 +150,7 @@ export async function applyPush(
         -- push가 덮으므로 DB와 파일이 갈라지지 않는다 (설계의 "drift 없음" 근거).
         "sortIndex" = v."sortIndex",
         "orphaned" = false,
-        "updatedAt" = now()
+        "updatedAt" = ${now}
       FROM unnest(
         ${plan.toUpdate.map((k) => k.key)}::text[],
         ${plan.toUpdate.map((k) => k.namespace)}::text[],
@@ -156,13 +163,13 @@ export async function applyPush(
 
     // orphaned 표시. **삭제하지 않는다** — 되돌릴 수 있어야 한다 (MVP §2).
     ...(plan.toOrphan.length === 0 ? [] : [prisma.$executeRaw`
-      UPDATE "StringKey" SET "orphaned" = true, "updatedAt" = now()
+      UPDATE "StringKey" SET "orphaned" = true, "updatedAt" = ${now}
       WHERE "projectId" = ${projectId} AND "id" = ANY(${plan.toOrphan}::text[])`]),
 
     // 원문이 바뀐 키 → base 아닌 번역에 needsReview 전파.
     // base 로케일 번역은 제외한다 — 원문 자체라 검토 대상이 아니다.
     ...(plan.staleKeyIds.length === 0 ? [] : [prisma.$executeRaw`
-      UPDATE "Translation" SET "needsReview" = true, "updatedAt" = now()
+      UPDATE "Translation" SET "needsReview" = true, "updatedAt" = ${now}
       WHERE "projectId" = ${projectId}
         AND "keyId" = ANY(${plan.staleKeyIds}::text[])
         AND "localeCode" <> ${payload.format.baseLocale}`]),
@@ -197,14 +204,14 @@ export async function applyPush(
         -- 행마다 캐스팅한다. 그래서 SELECT * 가 아니라 컬럼을 이름으로 세운다.
         ${uniqueTranslations.map((t) => (t.placeholders === undefined ? null : JSON.stringify(t.placeholders)))}::text[],
         ${uniqueTranslations.map(() => false)}::boolean[],
-        ${uniqueTranslations.map(() => new Date())}::timestamp[]
+        ${uniqueTranslations.map(() => now)}::timestamp[]
       ) AS v("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
       ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
         "value" = EXCLUDED."value",
         -- strict라 chrome 필드도 리포 값이 덮는다 (MVP §3.1). 리포에서 사라졌으면 DB에서도 빠진다.
         "description" = EXCLUDED."description",
         "placeholders" = EXCLUDED."placeholders",
-        "updatedAt" = now()`]),
+        "updatedAt" = ${now}`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
     prisma.$executeRaw`
