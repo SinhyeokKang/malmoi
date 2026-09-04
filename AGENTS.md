@@ -217,11 +217,12 @@ lib/
     shared.ts           재생성 writer의 결정성 규칙(orderedEntries·compareKeys) + 후보 순위·검증
                         + matchGlobPaths(multi-locale 경로 — push·pull·survey가 공유하는 유일한 규칙)
     quote-style.ts      수술적 어댑터의 인용 부호 보존 (quoteLiteral·dominantQuote)
-    json-style.ts       재생성 어댑터의 표현 보존 (들여쓰기·한 줄 컨테이너·비ASCII 이스케이프)
+    json-style.ts       재생성 어댑터의 표현 보존 (들여쓰기·한 줄 컨테이너·비ASCII/슬래시 이스케이프)
                         observeJsonStyle·serializeJson·pathKey + 텍스트 스캐너(scanJson)
                         ⚠️ lib/survey/json-shape.ts가 scanJson을 여기서 import한다 — 스캐너가
                         두 벌이면 지표와 프로덕션이 서로 다른 판정을 한다
     chrome-locales.ts   _locales/{locale}/messages.json (per-locale, 재생성)
+                        + dominantFieldOrder(엔트리 안 message·description·placeholders 순서 다수결)
     json-catalog.ts     per-locale, 재생성 — flat|중첩, 배열 인덱스. ⚠️ **경로 모양 3개**:
                         {dir}/{locale}.json · {dir}/{locale}/<name>.json · {dir}/<prefix>.<locale>.json
     yaml-catalog.ts     {dir}/{locale}.y(a)ml (per-locale, ⚠️ 수술적 — 주석·앵커 보존, Rails 루트 키)
