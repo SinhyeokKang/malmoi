@@ -291,6 +291,57 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 결과 상태가 서로 달라야 한다: 배포할 변경 없음 / 새 PR 생성 / 기존 PR 갱신 / **일부 값을 파일에
 기록하지 못함**(`PullResult.warnings` — 이미 있다) / 실패.
 
+### 7.7 URL — `/projects/:slug`, slug는 전역 unique
+
+```
+/projects                      목록
+/projects/new                  생성
+/projects/:slug/translations   번역
+/projects/:slug/publish        Publish
+/projects/:slug/settings       설정
+```
+
+**account 단계를 두지 않는다** (`/:account/:project`가 아니다). 조직 계층이 §4.2 비범위이므로 그 단계를
+지금 만들면 **쓰이지 않는 계층을 미리 만드는 것**이고, `Account` 테이블과 개인/조직 판정이 따라온다.
+
+대가는 **slug 선점**이다 — 전역 unique라 먼저 만든 사람이 이름을 갖는다. 포트폴리오 규모에서는 무해하고,
+조직이 실제로 필요해지면 `/:account/:project`로 옮기며 옛 URL에 redirect를 둔다.
+
+⚠️ **URL을 안다는 사실은 접근 권한이 아니다.** slug는 사람이 읽는 주소일 뿐이고, 인가는 항상 내부
+`projectId`와 `ProjectMember`로 판정한다 (§5.2).
+
+### 7.8 push 인증 — `Project.pushTokenHash`
+
+`ACTIVE_PROJECT_SLUG`(서버 env 하나)를 대체한다. 프로젝트마다 토큰을 발급해 **sha256 해시만 저장**하고,
+페이로드의 `projectSlug`로 행을 찾아 대조한다.
+
+- **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(§5.6) 해시 저장 규칙이 한 곳에 모인다.
+- 대상 리포의 composite action은 **이미 `project`·`push-token` input을 갖는다**(`docs/ACTIONS.md`) —
+  **서버 쪽만 바꾸면 되고 대상 리포는 secret 값만 교체**한다.
+- GitHub OIDC는 쓰지 않는다. 공유 시크릿이 사라지는 것은 매력적이지만 JWKS 검증 + claim 대조
+  (`repository`가 그 Project의 리포인가) 구현이 늘고, 대상 리포 워크플로에 `id-token: write` 권한이
+  필요해진다. **토큰 유출이 실제 문제가 되면** 그때 옮긴다.
+
+⚠️ **`ACTIVE_PROJECT_SLUG`가 사라지는 순간 `lib/push/guard.ts`의 오배송 판정 근거가 바뀐다.** 지금은
+"서버가 아는 프로젝트와 다른가"인데, 그때는 **"이 토큰이 그 프로젝트의 것인가"** 가 된다. 역행 거부
+(`commitAt`)는 그대로다.
+
+### 7.9 프로젝트 수명주기 — 보관까지만 만든다
+
+```
+active → archived (편집·sync 중단, 목록에서 숨김)
+       → 영구 삭제는 손으로
+```
+
+**자동 영구 삭제를 구현하지 않는다** — 유예 기간을 세려면 스케줄러가 필요하고, 포트폴리오 단계에서
+그것이 답하는 질문이 없다. 보관 상태와 정책만 둔다.
+
+- 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
+- **열린 `l10n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
+  가정하지 않는다. 보관 화면에 "열린 PR이 있습니다"만 알린다.
+- **GitHub App을 제거해도 프로젝트를 지우지 않는다** — `needs_reconnect`로 두고 재설치로 되돌린다
+  (§8 4단계).
+
 ## 8. 구현 순서
 
 > **Codex 검토의 9단계와 다르다.** 사전 단계와 0단계(무결성 부채)는 이미 닫혔고, UI 이관을 앞으로
@@ -318,18 +369,22 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
   - 나머지 컬럼(`adapterName`·`pathTemplate`·`nested`·`baseLocale`)은 push가 채웠다 —
     `json-catalog` / `locales/{locale}.json` / 중첩 / base `en`
 
-### 1단계 — SaaS 경계 확정 ⬜
+### 1단계 — SaaS 경계 확정 ✅ (2026-09-05)
 
-**화면보다 도메인과 주소를 먼저 확정한다.** 문서 작업이고 `/feature`를 부르지 않는다.
+**화면보다 도메인과 주소를 먼저 확정했다.** 문서 작업이라 `/feature`를 부르지 않았고, 결정은 전부
+§7로 올라갔다 — 아래는 그 목록이다.
 
-- [ ] URL 구조 — `/projects` · `/projects/new` · `/projects/:slug/translations` · `/publish` · `/settings`
-- [ ] slug의 소유 범위 (전역 unique인지 account 안에서만인지), 개인/조직 account 표현
-- [ ] **`/api/push` 인증을 프로젝트별로** (§4.3 ②) — `ACTIVE_PROJECT_SLUG` 제거의 실제 내용이다.
-      ⚠️ **대상 리포의 Actions secret이 바뀐다**
-- [ ] 프로젝트 생성·보관·삭제 정책, GitHub App 제거 시 상태
+- [x] **URL 구조와 slug 소유 범위** → §7.7. `/projects/:slug`, slug **전역 unique**. account 단계를
+      두지 않는다 (조직 계층이 §4.2 비범위라 쓰이지 않는 계층을 미리 만드는 것이 된다)
+- [x] **`/api/push` 인증** → §7.8. `Project.pushTokenHash`(sha256). **대상 리포는 secret 값만 교체**한다 —
+      composite action이 이미 `project`·`push-token` input을 갖고 있어 워크플로는 안 바뀐다
+- [x] **프로젝트 수명주기** → §7.9. 보관까지만 만들고 자동 영구 삭제는 안 만든다. App 제거는
+      `needs_reconnect`이고 데이터를 지우지 않는다
+- [x] **UI 레퍼런스 — Supabase 대시보드** → `docs/DESIGN.md` §9. 레이아웃·밀도·정보구조를 참조하고
+      **색은 우리 토큰을 유지한다** (라이트 단일 강제가 그대로다)
 
-완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 /
-`ACTIVE_PROJECT_SLUG` 없이 대상 프로젝트가 결정된다.
+완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 ✅ /
+`ACTIVE_PROJECT_SLUG` 없이 대상 프로젝트가 결정된다 — **설계로는 ✅(§7.8), 구현은 2단계 이후다**
 
 ### 2단계 — 인증·인가 토대 ⬜ → `features/tenant-auth/`
 
@@ -426,10 +481,6 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 
 ## 10. 아직 안 정한 것
 
-- **account 개념을 두는가** — `/:accountSlug/:projectSlug`가 조직 지원의 자리인데, 개인 계정만으로
-  시작하면 나중에 URL이 바뀐다. 1단계에서 정한다
 - **Workflows 권한을 요구할 것인가** (§5.4) — 연동 PR을 자동으로 내려면 필요하지만, 설치 화면에서
   "워크플로 파일을 수정합니다"는 신뢰 비용이 크다. 5단계에서 실제 설치 화면을 보고 정한다
-- **프로젝트 삭제 정책** — 보관 후 유예인지 즉시인지, 열린 `l10n/sync` PR과 브랜치를 닫을지.
-  1단계에서 정책만 정하고 자동 영구 삭제는 구현하지 않는다
 - **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때

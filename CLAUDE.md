@@ -385,7 +385,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
-- **docs/DESIGN.md** — 편집 UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. 커밋 prefix `docs(DESIGN): ...`
+- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(Supabase 대시보드)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
   - 완료 기록은 **압축하지 않는다.** 체크리스트로 보이지만 실제 내용은 "그 결정이 언제 왜 뒤집혔나"이고, ARCHITECTURE·POSTMORTEM과 겹쳐 보여도 그쪽은 현재 불변식이라 시간축이 없다. 순수 검증 목록이었던 §1·§2와 대체된 §5b-old만 접었다
 - **docs/SAAS.md** — **현재 단계의 정본.** SaaS 범위·비범위·설계 결정·단계별 체크리스트·불변식 9개. **SaaS 기능을 추가/삭제했거나 단계를 끝냈거나 §10 "아직 안 정한 것"이 결정됐으면 여기부터** 갱신한다. `lib/auth/`·`app/(edit)/`·`prisma/schema.prisma`에 SaaS 관련 변경이 있으면 거의 항상 걸린다. 커밋 prefix `docs(SAAS): ...`
