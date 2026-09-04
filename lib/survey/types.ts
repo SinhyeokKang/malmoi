@@ -78,9 +78,21 @@ export type ChromeFields = {
   placeholders: boolean;
   /** 비-base 로케일에 `description`이 있다. 33개 중 20개. */
   nonBaseDescription: boolean;
+  /**
+   * 엔트리 안에서 `description`이 `message`보다 **먼저** 나온다 (Midnight-Lizard).
+   *
+   * ⚠️ **관측치로 태어났다** — `dominantFieldOrder`가 되돌리므로 diff 원인이 아니다. 지표를
+   * 넣고 배선을 안 하는 것이 이 리포에서 세 번 반복된 실패라(POSTMORTEM 2026-09-02) 같은
+   * 커밋에서 센다. 0이면 이 축의 근거가 코퍼스에 없다는 뜻이다.
+   */
+  descriptionFirst: boolean;
 };
 
-export const emptyChromeFields = (): ChromeFields => ({ placeholders: false, nonBaseDescription: false });
+export const emptyChromeFields = (): ChromeFields => ({
+  placeholders: false,
+  nonBaseDescription: false,
+  descriptionFirst: false,
+});
 
 /**
  * 원본 JSON이 들고 있던 **표현** — 이제 재생성 writer가 되돌리므로 **diff 원인이 아니다.**

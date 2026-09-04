@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { blobSha } from "../../githash";
+import { dominantFieldOrder } from "../chrome-locales";
 import { chromeLocales, detectFormat, jsonCatalog, namespaceOf } from "../index";
 import type { AdapterFile } from "../types";
 
@@ -182,6 +183,92 @@ describe("chrome-locales — write (기존 lib/export.ts 규칙을 이어받는�
 
   it("항목 0개면 null", () => {
     expect(w([])).toBeNull();
+  });
+});
+
+// ── 엔트리 필드 순서 다수결 (원본 포맷 보존, 마지막 축) ──────────────────────
+// Midnight-Lizard 실측: 전 엔트리가 `description` → `message` 순이라 우리가 반대로 내면
+// **값 편집이 0건이어도 diff 0.456**이다 (ADAPTER-COVERAGE §11.5·§15.3).
+
+describe("dominantFieldOrder — 원본 엔트리에서 필드 순서를 센다", () => {
+  it("description 선행이 다수면 그 순서다", () => {
+    const src = [
+      "{",
+      '  "a": { "description": "d1", "message": "A" },',
+      '  "b": { "description": "d2", "message": "B" }',
+      "}",
+      "",
+    ].join("\n");
+    expect(dominantFieldOrder(src)).toEqual(["description", "message", "placeholders"]);
+  });
+
+  it("다수결이다 — 소수 엔트리가 반대여도 다수를 따른다", () => {
+    const src = JSON.stringify({
+      a: { description: "d", message: "A" },
+      b: { description: "d", message: "B" },
+      c: { message: "C", description: "d" },
+    });
+    expect(dominantFieldOrder(src)).toEqual(["description", "message", "placeholders"]);
+  });
+
+  it("동률·관측 불가·깨진 JSON은 기본값이다 — 던지지 않는다", () => {
+    const tie = JSON.stringify({ a: { description: "d", message: "A" }, b: { message: "B", description: "d" } });
+    expect(dominantFieldOrder(tie)).toEqual(["message", "description", "placeholders"]);
+    expect(dominantFieldOrder(undefined)).toEqual(["message", "description", "placeholders"]);
+    expect(() => dominantFieldOrder("{ not json")).not.toThrow();
+    expect(dominantFieldOrder("{ not json")).toEqual(["message", "description", "placeholders"]);
+  });
+
+  it("필드가 하나뿐인 엔트리는 표를 안 준다 — 순서를 말하지 않는다", () => {
+    const src = JSON.stringify({
+      a: { message: "A" },
+      b: { message: "B" },
+      c: { description: "d", message: "C" },
+    });
+    expect(dominantFieldOrder(src)).toEqual(["description", "message", "placeholders"]);
+  });
+
+  it("관측된 순서에 없는 필드는 기본 위치로 채운다", () => {
+    const src = JSON.stringify({ a: { placeholders: {}, message: "A" }, b: { placeholders: {}, message: "B" } });
+    expect(dominantFieldOrder(src)).toEqual(["placeholders", "message", "description"]);
+  });
+});
+
+describe("chrome-locales — write가 원본 필드 순서를 따른다", () => {
+  const format = { adapter: "chrome-locales" as const, pathTemplate: "_locales/{locale}/messages.json", locales: ["en"] };
+  const src = [
+    "{",
+    '  "a_one": {',
+    '    "description": "설명",',
+    '    "message": "A"',
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+
+  const write = (content: string | undefined) =>
+    chromeLocales.write(
+      content === undefined ? format : { ...format, currentFiles: [{ path: "_locales/en/messages.json", content }] },
+      { locale: "en", isBase: true, entries: [{ key: "a_one", message: "A", description: "설명" }] },
+    );
+
+  it("description 선행 원본이면 바이트 동일이다", () => {
+    expect(write(src)).toBe(src);
+  });
+
+  it("원본이 없으면 지금까지의 순서(message 먼저)다", () => {
+    const out = write(undefined)!;
+    expect(out.indexOf('"message"')).toBeLessThan(out.indexOf('"description"'));
+  });
+
+  it("2차 write가 1차와 같다 (바이트 고정점)", () => {
+    const first = write(src)!;
+    expect(write(first)).toBe(first);
+  });
+
+  it("원본에서 값을 가져오지 않는다 — 순서만 읽는다", () => {
+    const donor = src.replace('"message": "A"', '"message": "FIELD_ORDER_DONOR_MUST_NOT_LEAK"');
+    expect(write(donor)).not.toContain("FIELD_ORDER_DONOR_MUST_NOT_LEAK");
   });
 });
 

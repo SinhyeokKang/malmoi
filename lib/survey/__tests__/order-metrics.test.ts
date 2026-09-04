@@ -165,9 +165,30 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
     expect(s.chosen?.adapter).toBe("chrome-locales");
     expect(s.chromeFields.placeholders).toBe(true);
     expect(s.chromeFields.nonBaseDescription).toBe(true);
+    // 이 픽스처는 message가 먼저다 — 뒤집힌 파일만 true여야 한다.
+    expect(s.chromeFields.descriptionFirst).toBe(false);
     // ⚠️ **`diffCauses`에 있으면 안 된다** — 그러면 chrome 리포가 clean 분모에서 부당하게 빠진다.
     // 실측에서 13개가 그렇게 빠졌고 그들의 diff 중앙값은 0.032로 목표 통과였다.
     expect(s.diffCauses).toEqual(emptyDiffCauses());
+  });
+
+  it("엔트리 안에서 description이 message보다 먼저면 `descriptionFirst`가 선다 (Midnight-Lizard)", () => {
+    const s = surveyOne(
+      input("acme/desc-first", {
+        "public/_locales/en/messages.json": two({
+          EXT_NAME: { description: "greeting", message: "Hi" },
+          CMD: { description: "cmd", message: "Go" },
+        }),
+        "public/_locales/ko/messages.json": two({
+          EXT_NAME: { description: "인사", message: "안녕" },
+          CMD: { description: "명령", message: "가기" },
+        }),
+      }),
+    );
+    expect(s.chromeFields.descriptionFirst).toBe(true);
+    // 되돌리므로 원인이 아니다 — 지표를 넣고 배선을 안 하는 실패를 여기서 막는다.
+    expect(s.diffCauses).toEqual(emptyDiffCauses());
+    expect(s.diffRatio).toBe(0);
   });
 });
 

@@ -16,6 +16,65 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  * 번역자 컨텍스트를 파일에서 그대로 얻는다.
  */
 
+/**
+ * 엔트리 안의 필드 순서. 기본값은 이 어댑터가 처음부터 내던 순서다.
+ *
+ * ⚠️ **파일 전체에 하나만 둔다.** 키마다 따로 두면 300키짜리 맵을 나르게 되는데, 새 키에는
+ * 어차피 기본값이 필요하다. 실측 1건(Midnight-Lizard)이 파일 전체에서 균일한지는 §11.5에 적혀
+ * 있지 않고, **다수결이 균일하지 않은 경우에도 안전하다는 것**이 근거다.
+ */
+const FIELDS = ["message", "description", "placeholders"] as const;
+type EntryField = (typeof FIELDS)[number];
+const DEFAULT_FIELD_ORDER: readonly EntryField[] = FIELDS;
+
+/**
+ * 원본 엔트리들의 필드 등장 순서 **다수결**. 동률·관측 불가면 기본값이다 — **던지지 않는다**.
+ *
+ * Midnight-Lizard 실측: 전 엔트리가 `description` → `message`라, 우리가 반대로 내면 값 편집이
+ * 0건이어도 diff **0.456**이다 (ADAPTER-COVERAGE §11.5·§15.3).
+ *
+ * **결정성**: 다수결은 원본 텍스트의 함수이고 우리가 낸 파일은 그 순서로 **균일**해지므로 2차
+ * 관측이 같은 답을 낸다. `dominantQuote`와 같은 논증이다 (ARCHITECTURE §1.4).
+ *
+ * ⚠️ **`JSON.parse`로 충분하다.** 필드 이름 셋이 전부 비-정수라 JS가 삽입 순서를 유지한다 —
+ * `json-shape`의 스캐너가 필요했던 이유(정규 정수 키 hoisting)가 여기선 성립하지 않는다.
+ */
+export function dominantFieldOrder(text: string | undefined): readonly EntryField[] {
+  if (text === undefined || text === "") return DEFAULT_FIELD_ORDER;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return DEFAULT_FIELD_ORDER;
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return DEFAULT_FIELD_ORDER;
+
+  const votes = new Map<string, { order: EntryField[]; n: number }>();
+  for (const raw of Object.values(parsed as Record<string, unknown>)) {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const order = Object.keys(raw).filter((k): k is EntryField => (FIELDS as readonly string[]).includes(k));
+    // 필드가 하나면 순서를 말하지 않는다 — 표를 주면 다수가 "message 하나뿐인 엔트리"로 정해진다.
+    if (order.length < 2) continue;
+    const id = order.join(",");
+    const seen = votes.get(id);
+    if (seen === undefined) votes.set(id, { order, n: 1 });
+    else seen.n += 1;
+  }
+
+  let best: { order: EntryField[]; n: number } | undefined;
+  let tied = false;
+  for (const v of votes.values()) {
+    if (best === undefined || v.n > best.n) {
+      best = v;
+      tied = false;
+    } else if (v.n === best.n) tied = true;
+  }
+  if (best === undefined || tied) return DEFAULT_FIELD_ORDER;
+  // 관측되지 않은 필드는 기본 순서대로 뒤에 붙인다 — 그 필드를 쓰는 엔트리가 원본에 없었다는 뜻이라
+  // 관측이 아무 말도 안 한 자리다. 우리가 낸 파일에는 생기므로 2차 관측이 이 완성형을 그대로 낸다.
+  return [...best.order, ...DEFAULT_FIELD_ORDER.filter((f) => !best!.order.includes(f))];
+}
+
 /** `chrome.i18n`이 허용하는 메시지 이름. 밖의 문자는 크롬이 **조용히 무시**한다. */
 const CHROME_KEY = /^[A-Za-z0-9_@]+$/;
 const LOCALES_PATH = /^(.*)_locales\/([^/]+)\/messages\.json$/;
@@ -130,20 +189,27 @@ function write(format: DetectedFormat, input: { locale: string; isBase: boolean;
 
   // **표현은 원본에서** — 없으면 기본값(2칸)이다. 경로로 조회하는 이유는 json-catalog와 같다.
   const path = format.pathTemplate.replace("{locale}", input.locale);
-  const style = observeJsonStyle(format.currentFiles?.find((c) => c.path === path)?.content);
+  const original = format.currentFiles?.find((c) => c.path === path)?.content;
+  const style = observeJsonStyle(original);
 
   // `orderedEntries`가 낸 순서로 재조립한다 — `JSON.stringify`는 삽입 순서를 따른다(정규 정수
   // 키만 예외이고, chrome 키 이름 규칙상 여기선 생기지 않는다).
-  const out: Record<string, { message: string; description?: string; placeholders?: unknown }> = {};
+  const fieldOrder = dominantFieldOrder(original);
+
+  const out: Record<string, Record<string, unknown>> = {};
   for (const e of usable) {
-    const entry: { message: string; description?: string; placeholders?: unknown } = { message: e.message };
-    // **로케일마다 낸다.** 엔트리의 description은 `Translation.description` — 그 로케일 파일이
-    // 실제로 갖고 있던 값이고, 없으면 `rowsForLocale`이 안 싣는다(base만 키 단위 값으로 폴백).
-    // 전에는 `input.isBase` 가드가 있었는데, 그때는 키 단위 값이 전 로케일에 실려서 가드를 풀면
-    // 원본에 없던 description을 만들어 넣었다 — 실측 chrome 33개 중 20개가 잃던 필드다.
-    if (e.description) entry.description = e.description;
-    // placeholders는 그 로케일 파일에서 읽은 것이라 그대로 되돌린다. 모양을 검사하지 않는다.
-    if ("placeholders" in e) entry.placeholders = e.placeholders;
+    const entry: Record<string, unknown> = {};
+    // 삽입 순서가 곧 출력 순서다 — 원본이 `description`을 먼저 썼으면 우리도 먼저 넣는다.
+    for (const field of fieldOrder) {
+      if (field === "message") entry["message"] = e.message;
+      // **로케일마다 낸다.** 엔트리의 description은 `Translation.description` — 그 로케일 파일이
+      // 실제로 갖고 있던 값이고, 없으면 `rowsForLocale`이 안 싣는다(base만 키 단위 값으로 폴백).
+      // 전에는 `input.isBase` 가드가 있었는데, 그때는 키 단위 값이 전 로케일에 실려서 가드를 풀면
+      // 원본에 없던 description을 만들어 넣었다 — 실측 chrome 33개 중 20개가 잃던 필드다.
+      else if (field === "description" && e.description) entry["description"] = e.description;
+      // placeholders는 그 로케일 파일에서 읽은 것이라 그대로 되돌린다. 모양을 검사하지 않는다.
+      else if (field === "placeholders" && "placeholders" in e) entry["placeholders"] = e.placeholders;
+    }
     out[e.key] = entry;
   }
   return serializeJson(out, style);

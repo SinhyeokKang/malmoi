@@ -354,3 +354,35 @@ describe("L2 — 표현: 한 줄 컨테이너와 비ASCII 이스케이프가 원
     expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", first)).toBe(first);
   });
 });
+
+/**
+ * ⑨ `description`이 `message`보다 먼저인 chrome — Midnight-Lizard 형태. 우리가 반대로 내면
+ * 값 편집이 0건이어도 diff **0.456**이었다 (ADAPTER-COVERAGE §11.5·§15.3).
+ */
+const DESCRIPTION_FIRST = [
+  "{",
+  '  "appDesc": {',
+  '    "description": "store listing",',
+  '    "message": "Custom color schemes"',
+  "  },",
+  '  "short_locale": {',
+  '    "description": "two letters of the current locale",',
+  '    "message": "en"',
+  "  }",
+  "}",
+  "",
+].join("\n");
+
+describe("L2 — 표현: 엔트리 필드 순서가 원본대로 나온다", () => {
+  it("description 선행 원본은 바이트 동일이다", () => {
+    const out = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", DESCRIPTION_FIRST);
+    expect(out).toBe(DESCRIPTION_FIRST);
+    expect(changedHunks(DESCRIPTION_FIRST, out) ?? -1).toBe(0);
+  });
+
+  it("2차 write가 1차와 같다 (바이트 고정점)", () => {
+    const first = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", DESCRIPTION_FIRST);
+    expect(roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", first)).toBe(first);
+  });
+});
+

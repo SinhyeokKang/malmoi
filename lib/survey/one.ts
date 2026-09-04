@@ -344,6 +344,11 @@ function observeChrome(
       const entry = value as Record<string, unknown>;
       if (entry["placeholders"] !== undefined) survey.chromeFields.placeholders = true;
       if (locale !== base && entry["description"] !== undefined) survey.chromeFields.nonBaseDescription = true;
+      // 삽입 순서가 곧 원본 순서다 — 필드 이름 셋이 비-정수라 JS가 끌어올리지 않는다.
+      const fields = Object.keys(entry);
+      const d = fields.indexOf("description");
+      const m = fields.indexOf("message");
+      if (d !== -1 && m !== -1 && d < m) survey.chromeFields.descriptionFirst = true;
     }
   }
 }

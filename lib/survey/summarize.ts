@@ -104,7 +104,7 @@ export type SurveyMetrics = {
   /** 잔여 diff 원인별 **리포 수**. 지배 원인이 있으면 목표 수치를 그 근거로 조정한다. */
   diffCauses: Record<keyof DiffCauses, number>;
   /** chrome이 원본에 들고 있는 필드별 리포 수 — **diff 원인이 아니라 관측치다.** */
-  chromeFields: { placeholders: number; nonBaseDescription: number };
+  chromeFields: { placeholders: number; nonBaseDescription: number; descriptionFirst: number };
   /** 원본 표현 관측 — 보존되므로 원인이 아니다. 몇 개 리포가 그 표현을 쓰는지. */
   presentation: { escapedNonAscii: number; compactContainer: number };
 
@@ -247,12 +247,13 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
   }
 
   const causeCounts = emptyCauseCounts();
-  const chromeFieldCounts = { placeholders: 0, nonBaseDescription: 0 };
+  const chromeFieldCounts = { placeholders: 0, nonBaseDescription: 0, descriptionFirst: 0 };
   const presentationCounts = { escapedNonAscii: 0, compactContainer: 0 };
   for (const s of rows) {
     for (const key of CAUSE_KEYS) if (s.diffCauses[key]) causeCounts[key] += 1;
     if (s.chromeFields.placeholders) chromeFieldCounts.placeholders += 1;
     if (s.chromeFields.nonBaseDescription) chromeFieldCounts.nonBaseDescription += 1;
+    if (s.chromeFields.descriptionFirst) chromeFieldCounts.descriptionFirst += 1;
     if (s.presentation.escapedNonAscii) presentationCounts.escapedNonAscii += 1;
     if (s.presentation.compactContainer) presentationCounts.compactContainer += 1;
   }
