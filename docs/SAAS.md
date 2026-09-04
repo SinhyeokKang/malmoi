@@ -301,9 +301,14 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**을 먼저 막는다.
 
-- [ ] **`SYNC_BRANCH`를 프로젝트별로 가른다** (§7.1) — `l10n/sync` 상수 → `l10n/sync-<slug>` 또는
-      `Project` 컬럼. 같은 리포 두 Project가 브랜치를 다투는 것이 실측된 함정이다
-  - 검증: 같은 리포를 가리키는 Project 둘이 각자의 브랜치에 PR을 내는 것을 폐기용 리포로 확인
+- [x] **`SYNC_BRANCH`를 프로젝트별로 갈랐다** ✅ (2026-09-05) — 상수 `l10n/sync` → `syncBranchFor(slug)`가
+      내는 `l10n/sync-<slug>`. **`Project` 컬럼으로 두지 않았다** — 마이그레이션이 필요하고, 사용자가
+      브랜치 이름을 정하고 싶어하는 요구는 아직 없다. 필요해지면 그때 컬럼으로 승격한다
+  - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **이 함수가 유일한 방어선이다** — git이
+    거부할 이름을 화이트리스트로 막고 던진다. 안 막으면 `createRef` 422가 "GitHub이 거절함"으로만 보인다
+  - 검증: 18케이스(`lib/pull/__tests__/trigger.test.ts`) — 다른 slug는 다른 브랜치, 같은 slug는 같은
+    브랜치, git이 거부할 15가지 slug를 던진다. 폐기용 리포 셋에 열린 `l10n/sync` PR이 없어(전부 머지됨)
+    이름이 바뀌어도 고아 PR이 생기지 않는다
 - [ ] **dev DB 적재** — 지금 `Project` 0행이라 preview가 로그인 뒤 "프로젝트를 찾을 수 없다"에서 멈춘다.
       prod의 `Project` 행 복제 → `pnpm push:local` (TASKS 전역 미결)
   - 검증: preview에서 `/keys`가 실제 키를 렌더한다

@@ -282,7 +282,9 @@ lib/
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
-                        / trigger.ts(진입점 둘이 공유하는 조립 + SYNC_BRANCH) / message.ts(결과→문구)
+                        / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
+                          l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
+                        / message.ts(결과→문구)
   auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)

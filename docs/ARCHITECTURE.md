@@ -331,7 +331,7 @@ clone하지 않는다.
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
 5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-l10n]`
-6. `PATCH /git/refs/heads/{l10n/sync}` — `force: true`
+6. `PATCH /git/refs/heads/{l10n/sync-<slug>}` — `force: true`
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
@@ -340,6 +340,9 @@ clone하지 않는다.
 ### 함정
 
 - **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
+- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (2026-09-05, `syncBranchFor`). 상수 `l10n/sync` 하나였을 때는 **같은 리포를 가리키는 Project 둘이 서로를 force update로 덮었다.** 한 리포에 번역 표면이 둘이면 Project가 둘이 되는 것이 정책이고(SAAS.md §7.1) bugshot-2가 정확히 그 모양이라(`_locales` 4키 + `ts-dict` 903키), 이 이름이 갈리지 않으면 첫 다중 프로젝트에서 터진다. TASKS §7의 실물 검증은 순차 실행으로 피해 갔다.
+  - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
+  - 아래 서술의 `l10n/sync`는 전부 이 이름을 가리킨다.
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
 - **parents는 항상 base head다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
 - **force update는 의도된 것이다.** `l10n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.

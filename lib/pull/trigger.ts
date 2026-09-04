@@ -16,10 +16,33 @@ import { runPull, type PullResult } from "./run";
  */
 
 /**
- * 고정 브랜치. **누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다** — 매 pull마다
- * force update된다 (ARCHITECTURE §3). 여러 개를 쓰지 않으므로 설정이 아니라 상수다.
+ * git이 ref 이름으로 받아주는 slug인가. **화이트리스트다** — `git check-ref-format`의 금지
+ * 목록을 흉내 내면 빠뜨린 하나가 그대로 통과한다.
+ *
+ * `/`도 막는 것은 git이 거부해서가 아니라 **브랜치 계층을 갈라 남의 ref를 덮을 수 있어서**다
+ * (`a/b`라는 slug는 `l10n/sync-a/b`가 되고, `l10n/sync-a`가 이미 있으면 git이 둘 중 하나를
+ * 만들지 못한다).
  */
-export const SYNC_BRANCH = "l10n/sync";
+const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * 프로젝트의 sync 브랜치 이름. **누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이라**
+ * 매 pull마다 force update된다 (ARCHITECTURE §3).
+ *
+ * ⚠️ **slug가 이름에 들어가는 것이 요지다.** 예전에는 상수 `l10n/sync` 하나였는데, 한 리포에
+ * 번역 표면이 둘이면 Project가 둘이 되고(SAAS.md §7.1) **그 둘이 같은 브랜치를 force update로
+ * 서로 덮는다.** TASKS §7의 실물 검증에서 순차 실행으로 피해 갔던 자리이고, bugshot-2가 정확히
+ * 그 모양이다 (`_locales` 4키 + `ts-dict` 903키).
+ *
+ * `Project.slug`에는 형식 제약이 없으므로(`slug String @unique`) **여기가 유일한 방어선이다.**
+ * 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
+ */
+export function syncBranchFor(slug: string): string {
+  if (!REF_SAFE_SLUG.test(slug) || slug.includes("..") || slug.endsWith(".")) {
+    fail(`git 브랜치 이름으로 쓸 수 없는 프로젝트 slug다: ${JSON.stringify(slug)}`);
+  }
+  return `l10n/sync-${slug}`;
+}
 
 export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {
   const result = await runPull({
@@ -30,7 +53,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
       return createGitClient(project.repoOwner, project.repoName, project.installationId);
     },
     saveLastPulledAt: (projectId, at) => saveLastPulledAt(prisma, projectId, at),
-    syncBranch: SYNC_BRANCH,
+    syncBranch: syncBranchFor(slug),
   });
 
   // ⚠️ **warnings는 실행별 진단이고 큐가 아니다** (2026-09-04 audit #35). 2층까지 통과하면
