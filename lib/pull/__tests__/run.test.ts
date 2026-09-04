@@ -135,11 +135,14 @@ describe("runPull — 2층 blob SHA 스킵", () => {
           { path: "i18n/en.json", sha: blobSha(EN_CONTENT) },
         ],
       },
+      // 재생성 어댑터도 원본을 읽는다 — 표현(들여쓰기)을 관측하려면 내용이 필요하다.
+      blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
     });
     const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
 
-    expect(calls.map((c) => c.method)).toEqual(["getRefSha", "getTree"]);
+    // 원본을 읽는 것까지가 2층 판정 전의 정상 경로다. 커밋·PR 경로로는 가지 않는다.
+    expect(calls.map((c) => c.method)).toEqual(["getRefSha", "getTree", "getBlobText", "getBlobText"]);
     expect(result).toEqual({ status: "skipped", reason: "no-changes" });
   });
 
@@ -152,6 +155,8 @@ describe("runPull — 2층 blob SHA 스킵", () => {
           { path: "i18n/en.json", sha: blobSha(EN_CONTENT) },
         ],
       },
+      // 재생성 어댑터도 원본을 읽는다 — 표현(들여쓰기)을 관측하려면 내용이 필요하다.
+      blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
     });
     const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
@@ -168,6 +173,8 @@ describe("runPull — 2층 blob SHA 스킵", () => {
           { path: "i18n/en.json", sha: blobSha(EN_CONTENT) },
         ],
       },
+      // 재생성 어댑터도 원본을 읽는다 — 표현(들여쓰기)을 관측하려면 내용이 필요하다.
+      blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
     });
     const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
@@ -314,7 +321,10 @@ ko:
     nested: null as boolean | null,
   };
 
-  it("per-locale인데도 blob 내용을 읽는다 — writeStrategy가 surgical이기 때문이다", async () => {
+  // ⚠️ 이름이 한 번 낡았다: 전에는 "writeStrategy가 surgical이기 때문"이었는데, 원본 포맷 보존
+  // 뒤로는 **어댑터 종류와 무관하게** 읽는다. 이 블록이 여전히 지키는 것은 그 내용이 write까지
+  // 도달해 주석이 보존되는가다 (POSTMORTEM 2026-09-03 "테스트의 이름만 정확했다").
+  it("per-locale 수술적 어댑터가 원본 내용을 받아 값만 갈아끼운다", async () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [{ path: "config/locales/ko.yml", sha: "sha-ko" }] },

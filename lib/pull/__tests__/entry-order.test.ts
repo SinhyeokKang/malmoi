@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPullState } from "../load";
 import type { TreePayload } from "../payload";
+import type { GitTreeBlob } from "../client";
 import { runPull, type PullDeps, type PullState } from "../run";
 import type { RenderKey } from "../render";
 import { createFakeGitClient } from "./fake-client";
@@ -211,5 +212,73 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
     const h = depsWith(null);
     const r = await runPull(h.deps);
     expect(r.warnings?.length ?? 0).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * **L1 — 표현 보존이 진입점까지 닿는가** (`docs/features/format-preservation/` 태스크 3).
+ *
+ * 어댑터 단위 테스트는 원본이 write까지 도달하는 **배선이 끊겨도 전부 green이다** — 그게 이
+ * 리포가 다섯 번 밟은 실패 유형이고, `nestedByPath`가 정확히 그 상태로 있었다. 여기서는
+ * `runPull`이 **커밋에 실은 파일 바이트**를 본다.
+ */
+describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
+  const FOUR = '{\n    "a.one": "one",\n    "a.two": "two"\n}\n';
+
+  function depsWithSource(opts: { blobs?: Record<string, string>; tree?: GitTreeBlob[] } = {}) {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: opts.tree ?? [{ path: "i18n/en.json", sha: "blob-en" }] },
+      blobs: opts.blobs ?? { "blob-en": FOUR },
+    });
+    const trees: TreePayload[] = [];
+    return {
+      deps: {
+        loadState: async (): Promise<PullState> => ({
+          project: { ...PROJECT, baseLocale: "en" },
+          localeCodes: ["en", "ko"],
+          keys: [
+            { key: "a.one", sourceText: "one", sortIndex: 0, orphaned: false, cells: { en: { value: "one" }, ko: { value: "하나" } } },
+            { key: "a.two", sourceText: "two", sortIndex: 1, orphaned: false, cells: { en: { value: "two" }, ko: { value: "둘" } } },
+          ],
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        }),
+        createClient: async () => client,
+        saveLastPulledAt: async () => {},
+        syncBranch: "l10n/sync",
+      },
+      get trees() {
+        trees.length = 0;
+        for (const c of calls) if (c.method === "createTree") trees.push(c.args[0] as TreePayload);
+        return trees;
+      },
+      calls,
+    };
+  }
+
+  it("base 트리의 4칸 원본을 읽어 그 폭으로 커밋한다 — 홉이 하나만 끊겨도 red다", async () => {
+    const h = depsWithSource();
+    const r = await runPull(h.deps);
+    expect(r.status).toBe("committed");
+    expect(contentOf(h.trees, "i18n/en.json")).toBe(FOUR);
+  });
+
+  it("원본이 없는 로케일도 파일이 나온다 — 재생성은 원본 없이도 만든다 (신규 로케일, 2칸)", async () => {
+    const h = depsWithSource();
+    await runPull(h.deps);
+    expect(contentOf(h.trees, "i18n/ko.json")).toBe('{\n  "a.one": "하나",\n  "a.two": "둘"\n}\n');
+  });
+
+  it("재생성 어댑터에도 blob을 읽는다 — 전에는 surgical일 때만 읽었다", async () => {
+    const h = depsWithSource();
+    await runPull(h.deps);
+    expect(h.calls.filter((c) => c.method === "getBlobText").map((c) => c.args[0])).toEqual(["blob-en"]);
+  });
+
+  it("트리에 없는 경로는 blob을 안 읽는다 — 없는 SHA를 요구하면 fake가 던진다", async () => {
+    const h = depsWithSource({ tree: [], blobs: {} });
+    const r = await runPull(h.deps);
+    expect(r.status).toBe("committed");
+    expect(h.calls.some((c) => c.method === "getBlobText")).toBe(false);
   });
 });

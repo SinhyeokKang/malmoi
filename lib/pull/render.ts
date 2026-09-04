@@ -92,14 +92,16 @@ export function renderLocaleFiles(
       if (locale === undefined) {
         throw new Error(`per-locale 경로에 locale이 없다: ${p.path} (resolveLocalePaths 버그)`);
       }
-      // ⚠️ **`per-locale`이어도 수술적일 수 있다** (`yaml-catalog`·`code-dict`). 그 어댑터는 원본을
-      // 받아야 하고, 원본이 없으면 파일을 새로 만들지 않는다 — 그게 수술적 치환의 전제다.
-      let writeFormat = format;
-      if (adapter.writeStrategy === "surgical") {
-        const original = current.get(p.path);
-        if (original === undefined) return { path: p.path, content: null };
-        writeFormat = { ...format, currentFiles: [{ path: p.path, content: original }] };
+      // ⚠️ **원본이 없을 때의 처리가 두 방식의 계약 차이다.**
+      //   - 수술적 — 파일을 **안 만든다**. 치환할 대상이 없다 (§1.4)
+      //   - 재생성 — **계속 만든다**. 원본은 표현(들여쓰기)만 주고, 없으면 기본값이다
+      // 이 줄이 뒤섞이면 새 로케일이 PR에서 조용히 빠지거나, 수술적 어댑터가 없던 파일을 만든다.
+      const original = current.get(p.path);
+      if (original === undefined && adapter.writeStrategy === "surgical") {
+        return { path: p.path, content: null };
       }
+      const writeFormat =
+        original === undefined ? format : { ...format, currentFiles: [{ path: p.path, content: original }] };
       const isBase = locale === baseLocale;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).

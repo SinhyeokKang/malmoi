@@ -100,18 +100,18 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     tree.map((t) => t.path),
   );
 
-  // 수술적 치환은 write에 원본이 필요하다 (ARCHITECTURE §1.4). 재생성 어댑터는 건너뛴다 —
-  // 파일당 blob 읽기 1회를 아끼는 지점이고, 1층이 이미 대부분을 걸렀다.
+  // **어댑터 종류와 무관하게 원본을 읽는다.** 두 방식이 원본을 쓰는 이유가 다르다:
+  //   - 수술적 치환 — write에 **필수**다. 없으면 치환할 대상이 없어 파일을 안 낸다 (§1.4)
+  //   - 재생성 — **표현**(들여쓰기)만 읽는다. 없으면 기본값으로 떨어지고 파일은 그대로 낸다
   //
-  // ⚠️ **`layout`이 아니라 `writeStrategy`로 판단한다.** 전에는 `multi-locale`로 갈랐는데
-  // `yaml-catalog`·`code-dict`가 **`per-locale`인데 수술적**이라 그 판단이 성립하지 않는다 —
-  // 원본 없이 write에 들어가면 `null`을 받아 **PR이 조용히 비어 나간다** (ARCHITECTURE §1).
+  // ⚠️ 전에는 `writeStrategy === "surgical"`일 때만 읽어 파일당 blob 1회를 아꼈다. 그 최적화의
+  // 대가가 재생성 리포 71개 중 **30개**에서 "값 편집 0건인데 모든 줄이 바뀌는" diff였다
+  // (`ADAPTER-COVERAGE.md` §11.3). 1층(DB 측 스킵)이 편집 없는 날을 이미 걸러내므로, 늘어나는
+  // 것은 **편집이 있었던 날**의 비용뿐이다.
   const current = new Map<string, string>();
-  if (writeStrategy === "surgical") {
-    for (const p of paths) {
-      const blob = tree.find((t) => t.path === p.path);
-      if (blob) current.set(p.path, await client.getBlobText(blob.sha));
-    }
+  for (const p of paths) {
+    const blob = tree.find((t) => t.path === p.path);
+    if (blob) current.set(p.path, await client.getBlobText(blob.sha));
   }
 
   const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);
