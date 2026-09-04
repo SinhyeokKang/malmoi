@@ -223,10 +223,25 @@ provider마다 다르다.
 
 | 테이블 | 언제 | 왜 |
 |---|---|---|
-| `User` · `Account` · `Session` | 2단계 | Auth.js DB 어댑터. `VerificationToken`은 이메일 provider를 안 쓰므로 비어 있다 |
-| `ProjectMember` | 2단계 | 권한의 유일한 정본 |
-| `ProjectInvitation` | 2단계 | 수락 전 상태. `tokenHash` unique |
+| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider를 안 쓰므로 **항상 비어 있다** — 어댑터가 그 델리게이트를 부르므로 테이블은 있어야 한다 |
+| `ProjectMember` | 2단계 ✅ | 권한의 유일한 정본 |
+| `ProjectInvitation` | 2단계 ✅ | 수락 전 상태. `tokenHash` unique |
 | `SyncRun` | 7단계 | 실행 이력·idempotency·동시 실행 차단 |
+
+**✅ 여섯 테이블이 dev에 섰다** (2026-09-05, `20260904182548_add_tenant_auth_tables`). **prod는 아직이다** —
+`/merge` 1단계의 `pnpm db:deploy`가 반영한다. `Authenticator`(WebAuthn)는 만들지 않는다 — 그 provider를
+쓰지 않으므로 어댑터의 네 메서드가 호출될 경로가 없고, 위 11테이블 셈도 그것을 빼고 있다.
+
+⚠️ **`onDelete`가 둘로 갈렸다.** `Account`·`Session` → `User`는 **Cascade**여야 한다 — 어댑터의
+`deleteUser`가 `p.user.delete` 하나만 부르므로 `Restrict`면 그 메서드가 항상 실패한다. `ProjectMember`·
+`ProjectInvitation`은 **Restrict**다: 마지막 OWNER가 조용히 사라진 프로젝트는 되살릴 수 없다.
+
+⚠️ **타입 검사가 어댑터 계약을 검증하지 못한다** (2026-09-05 실측). 어댑터가 인자를 `@prisma/client`의
+`PrismaClient`로 받는데 그 패키지는 `.prisma/client/default`를 re-export하고, Prisma 7의 `prisma-client`
+생성기는 그 경로를 만들지 않는다(우리 산출물은 `generated/prisma`다). `skipLibCheck`가 해결 실패를
+삼켜 파라미터가 사실상 `any`가 된다 — `PrismaAdapter({ nope: true })`도 컴파일된다.
+**`prisma/__tests__/schema-contract.test.ts`가 유일한 자동 방어선이고**, 어댑터 소스의 `where` 키와
+델리게이트 목록을 스키마와 직접 대조한다. 어댑터 버전을 올리면 그 테스트가 먼저 답한다.
 
 **`AuditEvent`는 1차에서 만들지 않는다.** 근거: 멤버 변경·리포 재연결·Publish 결과는 `SyncRun`과
 `ProjectMember.updatedAt`으로 대부분 추적되고, 감사 로그를 제대로 하려면 보존 기간·개인정보 마스킹
