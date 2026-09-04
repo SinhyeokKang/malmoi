@@ -1,4 +1,6 @@
+import { flagValue, hasFlag } from "../cli/args";
 import { fail } from "../failure";
+import { normalizeEmail } from "./email";
 import type { Role } from "./permission";
 
 /**
@@ -42,4 +44,56 @@ export function planOwnerBackfill(input: {
   return projects
     .filter((p) => !owned.has(p.id))
     .map((p) => ({ projectId: p.id, userId: ownerUserId, role: "OWNER" as const }));
+}
+
+/** 어느 DB를 겨누는가. **기본은 dev이고, prod는 명시해야 간다.** */
+export type BackfillTarget = "dev" | "prod";
+
+export type BackfillOptions = {
+  target: BackfillTarget;
+  /** 접속 URL이 들어 있는 환경변수 이름. 값은 껍데기가 읽는다(모듈 최상위 평가 금지). */
+  envVar: "DIRECT_URL" | "DIRECT_URL_PROD";
+  /** false면 만들 행을 출력만 한다. */
+  apply: boolean;
+  owner: { email: string; githubId: string; name: string | undefined };
+};
+
+/**
+ * 스크립트 인자 → 실행 계획. **이 판정이 틀리면 프로덕션 DB에 쓴다.**
+ *
+ * ⚠️ **위험한 쪽은 전부 명시를 요구한다**: 기본이 dev이고 기본이 dry-run이다. 모르는 `--target`은
+ * **던진다** — 조용히 dev로 떨어뜨리면 "prod에 돌렸다고 믿었는데 안 돌아간" 상태가 되고, 그건
+ * 실패를 "해당 없음"으로 읽는 것과 같다 (POSTMORTEM 2026-09-03).
+ *
+ * ⚠️ **prod는 `DIRECT_URL_PROD`(5432 session)다.** 런타임 URL(`DATABASE_URL_PROD`)은 **존재하지
+ * 않는다** — 로컬 코드가 프로덕션을 가리킬 길을 열지 않는 규칙이고(CLAUDE.md), backfill은 런타임이
+ * 아니라 마이그레이션과 같은 성질의 일회성 DML이라 이 예외가 성립한다.
+ *
+ * @param argv `process.argv.slice(2)`.
+ */
+export function resolveBackfillOptions(argv: readonly string[]): BackfillOptions {
+  const rawTarget = hasFlag(argv, "--target") ? flagValue(argv, "--target") : "dev";
+  if (rawTarget !== "dev" && rawTarget !== "prod") {
+    fail(`--target은 dev 또는 prod다: ${JSON.stringify(rawTarget)}`);
+  }
+
+  const email = normalizeEmail(flagValue(argv, "--owner-email") ?? "");
+  // 빈 값으로 User를 만들면 그 행이 전 프로젝트의 OWNER가 되고 되돌리는 경로가 SQL뿐이다.
+  if (email === "") fail("--owner-email이 필요하다 (gh api user의 검증된 이메일)");
+
+  const githubId = (flagValue(argv, "--owner-github-id") ?? "").trim();
+  // 숫자만 받는다 — 핸들(`SinhyeokKang`)을 넘기는 실수가 흔하고, 그러면 Account가 엉뚱한
+  // providerAccountId로 만들어져 첫 로그인이 OAuthAccountNotLinked가 된다.
+  if (!/^[0-9]+$/.test(githubId)) {
+    fail(`--owner-github-id는 GitHub 숫자 id다 (핸들이 아니다): ${JSON.stringify(githubId)}`);
+  }
+
+  const name = flagValue(argv, "--owner-name");
+
+  return {
+    target: rawTarget,
+    envVar: rawTarget === "prod" ? "DIRECT_URL_PROD" : "DIRECT_URL",
+    apply: hasFlag(argv, "--apply"),
+    owner: { email, githubId, name },
+  };
 }

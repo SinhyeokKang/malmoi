@@ -27,7 +27,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "sync:agents": "node scripts/sync-agents.mjs",
-    "sync:agents:check": "node scripts/sync-agents.mjs --check"
+    "sync:agents:check": "node scripts/sync-agents.mjs --check",
+    "backfill:owners": "tsx scripts/backfill-owners.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
