@@ -174,6 +174,15 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 1. **Node를 `.nvmrc`에 맞춘다** (24). 로컬 게이트와 CI가 `.nvmrc`를 따르므로(위 브랜치·배포 섹션), 로컬과 Vercel의 메이저가 갈리면 두 게이트가 함께 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
 2. `pnpm install`
 3. `cp .env.example .env.local` 후 값을 채운다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 (2026-09-04에 실제로 그렇게 유출돼 전면 재발급했다). 구조가 필요하면 에이전트가 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. 값을 꺼낼 때도 `| pbcopy`로 클립보드에만 보낸다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
+   - ⚠️ **GitHub OAuth 앱이 셋인데 `.env.local`이 갖는 건 하나뿐이다** (2026-09-04 브랜치 분리 뒤). callback URL을 앱당 하나만 등록할 수 있어서 갈렸다:
+
+     | 앱 | callback | 자격증명이 사는 곳 |
+     |---|---|---|
+     | 프로덕션 | `https://mal-moi.com/api/auth/callback/github` | Vercel **Production** 스코프 |
+     | preview | `<dev 브랜치 고정 URL>/api/auth/callback/github` | Vercel **Preview** 스코프 |
+     | 로컬 | `http://localhost:3000/api/auth/callback/github` | **`.env.local` — 두 머신이 이 앱 하나를 공유한다** |
+
+     **새 머신에 채우는 `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 로컬 앱 것이다.** 앞의 둘은 어느 `.env.local`에도 들어가지 않으므로 머신을 옮길 때 따라다닐 필요가 없고, 잃어버려도 GitHub에서 secret을 재발급해 Vercel의 해당 스코프만 갱신하면 된다(전면 재발급이 아니다). Vercel의 **Development 스코프는 쓰지 않는다** — `vercel env pull`을 안 쓰고 이 파일을 손으로 관리하므로 그 스코프를 읽는 곳이 없다
 4. `pnpm db:status`로 **dev** 접속을, `pnpm db:status:prod`로 **prod** 접속을 확인한다 (둘 다 5432). ⚠️ 두 명령의 출력이 **같아 보인다** — pooler 호스트가 두 프로젝트에서 동일하고 ref는 사용자명에 있다. 구별 신호는 **적용된 마이그레이션 개수**이고, 새 dev 프로젝트라면 전부 미적용으로 나온다
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
 6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
@@ -330,7 +339,9 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 - **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. **대상 리포의 composite action 참조(`…/l10n-push@main`)는 default branch와 무관하므로 그대로 동작한다** — 오히려 action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓰는 것이 안전한 성질이다 (docs/ACTIONS.md).
 - **`main`에 직접 커밋·푸시하지 않는다.** 프로덕션 앞의 게이트(PR CI)를 통째로 건너뛴다.
 - **preview는 dev DB를 본다.** 프로덕션 데이터에 닿지 않는 것이 preview를 쓰는 이유의 절반이다 — Vercel env의 Preview 스코프가 그렇게 갈려 있어야 성립한다.
+  - **dev 브랜치 고정 URL**: `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app` (배포별 URL과 별개로 dev의 최신 preview를 항상 가리킨다)
   - ⚠️ **preview에서 GitHub 로그인은 dev 브랜치 고정 URL에서만 된다.** OAuth App은 callback URL을 하나만 갖는데 preview URL은 배포마다 바뀌므로, **preview 전용 OAuth 앱**을 따로 두고 그 callback을 dev 고정 URL에 박았다. 다른 브랜치의 preview가 로그인 화면에서 멈추는 것은 정상이다. 모든 preview에서 로그인이 필요해지면 Auth.js v5의 `redirectProxyUrl`을 넣는다 — 그때가 SaaS UI를 만드는 시점이다.
+  - ⚠️ **preview는 Vercel SSO(Deployment Protection) 뒤에 있다.** 프로덕션은 자동화를 위해 껐지만 preview는 켠 채로 뒀다 — preview URL이 새어나가도 Vercel 계정 없이는 못 열고, 열 이유도 없다. **그래서 `curl`로 preview를 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다** — 앱이 깨진 것으로 오진하기 쉽다. 브라우저는 Vercel 세션 쿠키로 그냥 통과하므로 사람이 보는 데는 지장이 없고, 자동화가 필요하면 `vercel curl`이나 protection bypass 토큰을 쓴다.
 - **GitHub 브랜치 프로텍션은 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`). **그래서 PR CI가 게이트인 것은 `/merge`가 그것을 보기 때문이지 서버가 강제해서가 아니다.**
 - **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다.
 

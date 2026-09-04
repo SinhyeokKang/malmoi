@@ -580,6 +580,11 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   - 삭제했던 `/merge`·`/sync` 복원 (스킬 13 → 15개, 셋 다 Codex 미러 제외). `/ship`의 종착점이 프로덕션 → dev로 내려왔다
   - CI 트리거: `push [main, dev]` + `pull_request [main]`. **`/push`의 `db:deploy`가 `/merge` 1단계로 돌아갔다** — dev push는 프로덕션에 아무것도 배포하지 않는다
   - ⚠️ **preview 로그인은 dev 브랜치 고정 URL에서만 된다** — OAuth App callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 전 preview 로그인이 필요해지면 `redirectProxyUrl`(Auth.js v5)이고, 그 시점은 SaaS UI 착수다
+  - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
+  - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
+- [x] **preview 전용 GitHub OAuth 앱** ✅ (2026-09-04) — callback `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`, Preview 스코프에 등록. **preview 로그인 실측 통과.** ⚠️ **env를 바꾸면 재배포해야 반영된다** — 등록만 하고 재배포를 빠뜨려 GitHub이 빈 `client_id`에 404를 줬고, 앱·ID·secret을 차례로 의심하다 시간을 썼다
+- [ ] **dev DB가 비어 있다** (`Project` 0행). preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈춘다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
+  - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
 
 - ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
   페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
