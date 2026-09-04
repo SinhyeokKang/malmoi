@@ -13,20 +13,10 @@ import { adapterFor, detectFormat, detectFormatWith, isAdapterName, namespaceOf 
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
 import { blobSha } from "../lib/githash";
+import { matchGlobPaths } from "../lib/adapters/index";
+import { sameMeaning } from "../lib/adapters/shared";
 import { pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
 
-/** 키 순서를 무시하고 내용만 비교하기 위한 정규화. */
-function stableJson(text: string): string {
-  const sort = (v: unknown): unknown => {
-    if (Array.isArray(v)) return v.map(sort);
-    if (v === null || typeof v !== "object") return v;
-    const obj = v as Record<string, unknown>;
-    const out: Record<string, unknown> = {};
-    for (const k of Object.keys(obj).sort()) out[k] = sort(obj[k]);
-    return out;
-  };
-  return JSON.stringify(sort(JSON.parse(text)));
-}
 
 const argv = process.argv.slice(2);
 // 값 플래그의 값 자리를 대상으로 오인하지 않는다 — `pnpm ingest --adapter ts-dict ./repo`가 `ts-dict`를
@@ -80,11 +70,13 @@ const result = adapter.read(format, files);
 // **원본 내용도 넘긴다** — 수술적 어댑터는 write에 필수이고, 재생성은 표현(들여쓰기)을 거기서
 // 읽는다. 안 넘기면 4칸 리포의 왕복 검증이 계속 `⚠️ 정렬 정규화`를 찍는데 그건 이제 거짓 경고다
 // (POSTMORTEM 2026-09-02 — 원본이 필요한 층은 pull·survey·CLI 셋이다).
+// ⚠️ `currentFiles`는 **파일별로** 싣는다(아래 왕복 루프). 전 로케일을 한 번에 실으면 yaml·code-dict가
+// `currentFiles[0]`을 원본으로 잡아 `ar.yml` 본문에 en 값을 치환한 결과를 `en.yml`과 비교한다 —
+// 그래서 CLI 왕복 게이트만 거짓 "❌ 데이터 손실"을 내고 있었다 (2026-09-04 audit #8).
 const writeFormat = {
   ...format,
   nested: result.nested,
   ...(result.nestedByPath === undefined ? {} : { nestedByPath: result.nestedByPath }),
-  currentFiles: files,
 };
 
 // base 로케일: --base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순).
@@ -96,7 +88,7 @@ if (base === undefined) {
 }
 
 if (hasFlag(argv, "--json")) {
-  console.log(JSON.stringify({ format: writeFormat, base, result }, null, 2));
+  console.log(JSON.stringify({ format: { ...writeFormat, currentFiles: files }, base, result }, null, 2));
   // ⚠️ process.exit()을 쓰지 않는다 — 파이프로 나가는 stdout은 비동기라 버퍼가 남은 채로
   // 프로세스가 죽으면 출력이 잘린다(skillflo의 --json이 73KB에서 끊겼다).
   // 대신 exitCode만 세우므로 **여기서 명시적으로 빠져나가야** 한다 — 안 그러면 아래
@@ -127,19 +119,42 @@ if (baseLocale) {
     console.log(`  ${e.key}  =  ${JSON.stringify(e.message).slice(0, 60)}${e.description ? `  [${e.description}]` : ""}`);
   }
 
-  // 왕복 검증: 읽은 내용을 그대로 되돌려 원본 파일과 바이트 비교한다.
-  const originalPath = format.pathTemplate.replace("{locale}", base);
-  const original = files.find((f) => f.path === originalPath);
-  const rewritten = adapter.write(writeFormat, { locale: base, isBase: true, entries: baseLocale.entries });
-  if (original && rewritten !== null) {
+  // 왕복 검증: 읽은 내용을 그대로 되돌려 **어댑터의 read로 다시 읽어** 의미를 비교한다.
+  // survey의 게이트와 같은 함수(`sameMeaning`)다 — 자체 JSON 비교는 YAML·code-dict에서 죽고
+  // ts-dict(글롭)는 `{locale}` 치환 경로가 없어 검증을 조용히 건너뛰었다 (2026-09-04 audit #8).
+  // 재생성 writer는 미번역을 빼므로 그 규칙을 양쪽에 적용한다 — 축은 `writeStrategy`다.
+  const dropEmpty = adapter.writeStrategy === "regenerate";
+  const targets =
+    adapter.layout === "per-locale"
+      ? [format.pathTemplate.replaceAll("{locale}", base)]
+      : matchGlobPaths(format.pathTemplate, files.map((f) => f.path));
+  for (const path of targets) {
+    const original = files.find((f) => f.path === path);
+    if (!original) continue;
+    // multi-locale은 한 파일에 로케일이 여럿이라 로케일마다 write하고 결과를 다음 원본으로 넘긴다
+    // (`lib/pull/render.ts`의 이중 루프와 같다). per-locale은 base 한 번이다.
+    const localesInFile = adapter.layout === "per-locale" ? [base] : result.locales.map((l) => l.locale);
+    let rewritten: string | null = original.content;
+    for (const locale of localesInFile) {
+      const entries = result.locales.find((l) => l.locale === locale)?.entries ?? [];
+      const out = adapter.write(
+        { ...writeFormat, currentFiles: [{ path, content: rewritten ?? original.content }] },
+        { locale, isBase: locale === base, entries },
+      );
+      if (out === null) break;
+      rewritten = out;
+    }
+    if (rewritten === null) continue;
+
+    // **파일 단위로 비교한다** — 전체 read(`result`)는 multi-locale에서 namespace 파일 전부의 키를
+    // 담고 있어 한 파일의 재읽기와 크기부터 다르다. 원본 한 파일을 다시 읽은 것이 비교 기준이다.
+    const before = adapter.read(writeFormat, [original]);
+    const back = adapter.read(writeFormat, [{ path, content: rewritten }]);
+    const semanticSame = sameMeaning(before, back, dropEmpty);
     const byteSame = blobSha(original.content) === blobSha(rewritten);
-    // **의미 동일이 진짜 게이트다.** 바이트 차이는 원본이 정렬돼 있지 않을 때 항상 나고,
-    // 우리 결정성 규칙(키 정렬)의 의도된 결과다 — 첫 pull에서 한 번 정규화되고 이후 안정된다.
-    // 의미가 다르면 그건 데이터 손실이므로 실패다.
-    const semanticSame = stableJson(original.content) === stableJson(rewritten);
-    console.log(`\n왕복(${originalPath})`);
+    console.log(`\n왕복(${path})`);
     console.log(`  의미 동일:  ${semanticSame ? "✅" : "❌ 데이터 손실"}`);
-    console.log(`  바이트 동일: ${byteSame ? "✅" : "⚠️ 정렬 정규화 (원본이 정렬돼 있지 않다 — 첫 pull에서 한 번 발생)"}`);
+    console.log(`  바이트 동일: ${byteSame ? "✅" : "⚠️ 표현 정규화 (첫 pull에서 한 번 발생)"}`);
     if (!semanticSame) process.exitCode = 1;
   }
 }

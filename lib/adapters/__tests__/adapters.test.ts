@@ -3,7 +3,8 @@ import { execFileSync } from "node:child_process";
 import { blobSha } from "../../githash";
 import { dominantFieldOrder } from "../chrome-locales";
 import { chromeLocales, detectFormat, jsonCatalog, namespaceOf } from "../index";
-import type { AdapterFile } from "../types";
+import { sameMeaning } from "../shared";
+import type { AdapterFile, ReadResult } from "../types";
 
 const f = (path: string, content: string): AdapterFile => ({ path, content });
 
@@ -432,5 +433,37 @@ describe("namespaceOf — 포맷이 둘이라 구분자가 둘이다", () => {
     expect(namespaceOf("EXTNAME")).toBe("_root");
     expect(namespaceOf("_private")).toBe("_root");
     expect(namespaceOf(".leading")).toBe("_root");
+  });
+});
+
+// ── 왕복 의미 비교 — survey와 ingest가 같은 함수를 쓴다 ──────────────────────
+// ingest는 자체 `stableJson`(JSON.parse 고정)을 들고 있어 YAML·code-dict에서 SyntaxError로 죽고
+// ts-dict는 검증을 조용히 건너뛰었다 (2026-09-04 audit #8).
+
+describe("sameMeaning — 로케일×키→값이 같은가", () => {
+  const rr = (locales: Record<string, Record<string, string>>): ReadResult => ({
+    locales: Object.entries(locales).map(([locale, kv]) => ({
+      locale,
+      entries: Object.entries(kv).map(([key, message]) => ({ key, message })),
+    })),
+    errors: [],
+    nested: false,
+  });
+
+  it("순서가 달라도 값이 같으면 같다", () => {
+    expect(sameMeaning(rr({ ko: { a: "1", b: "2" } }), rr({ ko: { b: "2", a: "1" } }), false)).toBe(true);
+  });
+
+  it("값 하나가 다르면 다르다 — 데이터 손실이다", () => {
+    expect(sameMeaning(rr({ ko: { a: "1" } }), rr({ ko: { a: "2" } }), false)).toBe(false);
+  });
+
+  it("로케일이 빠지면 다르다", () => {
+    expect(sameMeaning(rr({ ko: { a: "1" }, en: { a: "1" } }), rr({ ko: { a: "1" } }), false)).toBe(false);
+  });
+
+  it("dropEmpty면 빈 값은 양쪽에서 무시한다 — 재생성 writer가 미번역을 빼는 규칙과 맞춘다", () => {
+    expect(sameMeaning(rr({ ko: { a: "1", b: "" } }), rr({ ko: { a: "1" } }), true)).toBe(true);
+    expect(sameMeaning(rr({ ko: { a: "1", b: "" } }), rr({ ko: { a: "1" } }), false)).toBe(false);
   });
 });

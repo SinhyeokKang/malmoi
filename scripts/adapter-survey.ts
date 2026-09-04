@@ -25,13 +25,17 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { selectSurveyFiles } from "../lib/survey/select";
 import { DIFF_TARGET, summarize } from "../lib/survey/summarize";
 import { surveyOne } from "../lib/survey/one";
 import type { RepoSurvey, SurveyInput, Verdict } from "../lib/survey/types";
 
 const argv = process.argv.slice(2);
-const listPath = argv.find((a) => !a.startsWith("--"));
+// 값 플래그의 값 자리를 대상으로 오인하지 않는다 — `--limit 5 repos.txt`에서 `5`를 목록 파일로 읽었다.
+// 세 CLI가 공유하는 `lib/cli/args.ts`가 정확히 이 함정으로 통합됐는데 이 스크립트만 빠져 있었다
+// (2026-09-04 audit #17).
+const listPath = findTarget(argv, new Set(["--verdicts", "--out", "--limit", "--jobs"]));
 if (!listPath) {
   console.error(
     "사용법: pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]",
@@ -40,11 +44,8 @@ if (!listPath) {
   process.exit(2);
 }
 
-const flag = (name: string): string | undefined => {
-  const at = argv.indexOf(`--${name}`);
-  return at === -1 ? undefined : argv[at + 1];
-};
-const asJson = argv.includes("--json");
+const flag = (name: string): string | undefined => flagValue(argv, `--${name}`);
+const asJson = hasFlag(argv, "--json");
 const limit = Number(flag("limit") ?? "0") || undefined;
 const jobs = Math.max(1, Number(flag("jobs") ?? "6") || 6);
 const outPath = flag("out");

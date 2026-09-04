@@ -1,5 +1,5 @@
 import { serializeJson } from "./json-style";
-import type { LocaleEntry } from "./types";
+import type { LocaleEntry, ReadResult } from "./types";
 
 /**
  * 모든 writer가 공유하는 결정성 규칙 (MVP §4.1).
@@ -139,12 +139,7 @@ export function splitLocaleSuffix(base: string): { prefix: string; locale: strin
   return undefined;
 }
 
-/**
- * 후보 순위 결정. **경로 사전순으로 고르면 안 된다** — bugshot-web에서 `public/search/{locale}.json`
- * (검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
- *
- * 신호 둘을 쓴다: 경로에 i18n 계열 이름이 있는가, 로케일이 몇 개인가.
- */
+/** 경로에 i18n 계열 이름이 있는가 — `rankCandidates`의 신호 하나. */
 export const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|translation|translations)(\/|$)/i;
 
 /**
@@ -171,6 +166,12 @@ export function pathSignals(path: string): { hint: boolean; aside: boolean; dept
   };
 }
 
+/**
+ * 후보 순위 결정. **경로 사전순으로 고르면 안 된다** — bugshot-web에서 `public/search/{locale}.json`
+ * (검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
+ *
+ * 신호 둘을 쓴다: 경로에 i18n 계열 이름이 있는가(`I18N_HINT`), 로케일이 몇 개인가.
+ */
 export function rankCandidates<T extends { dir: string; locales: Set<string> }>(candidates: readonly T[]): T[] {
   return candidates.slice().sort((a, b) => {
     const hint = Number(I18N_HINT.test(b.dir)) - Number(I18N_HINT.test(a.dir));
@@ -366,4 +367,38 @@ export function sampleOrder(locales: ReadonlySet<string>): string[] {
 export function namespaceOf(key: string): string {
   const at = key.search(/[._]/);
   return at <= 0 ? "_root" : key.slice(0, at);
+}
+
+/**
+ * 두 `read` 결과의 **의미**(로케일 × 키 → 값)가 같은가. 순서·표현은 보지 않는다.
+ *
+ * survey의 왕복 게이트와 `pnpm ingest`의 왕복 게이트가 **같은 함수**를 쓴다 — ingest가 자체
+ * `stableJson`(JSON.parse 고정)을 들고 있어 YAML·code-dict에서 SyntaxError로 죽고 ts-dict는
+ * 검증을 조용히 건너뛰었다 (2026-09-04 audit #8).
+ *
+ * @param dropEmpty 재생성 writer는 미번역(빈 값)을 빼므로 그 규칙을 양쪽에 적용해야 공정하다.
+ *   축은 `writeStrategy`다.
+ */
+export function sameMeaning(a: ReadResult, b: ReadResult, dropEmpty: boolean): boolean {
+  const shape = (r: ReadResult) => {
+    const m = new Map<string, Map<string, string>>();
+    for (const loc of r.locales) {
+      const inner = new Map<string, string>();
+      for (const e of loc.entries) {
+        if (dropEmpty && e.message === "") continue;
+        inner.set(e.key, e.message);
+      }
+      if (inner.size > 0) m.set(loc.locale, inner);
+    }
+    return m;
+  };
+  const x = shape(a);
+  const y = shape(b);
+  if (x.size !== y.size) return false;
+  for (const [locale, inner] of x) {
+    const other = y.get(locale);
+    if (other === undefined || other.size !== inner.size) return false;
+    for (const [key, value] of inner) if (other.get(key) !== value) return false;
+  }
+  return true;
 }
