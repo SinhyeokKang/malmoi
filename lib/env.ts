@@ -1,3 +1,5 @@
+import { MissingEnvError } from "./failure";
+
 // 환경변수 단일 접근점. 흩어진 process.env 접근은 누락된 변수를 런타임까지 숨기므로
 // 여기서만 읽는다(CLAUDE.md 코드 컨벤션). 새 변수를 추가하면 .env.example도 같은 커밋에서 갱신한다.
 
@@ -9,7 +11,8 @@ type EnvSource = Record<string, string | undefined>;
 export function requireEnv(name: string, source: EnvSource = process.env): string {
   const value = source[name];
   if (value === undefined || value === "") {
-    throw new Error(`환경변수 ${name}이(가) 없다. .env.example을 참고해 설정한다.`);
+    // 전용 타입이다 — 라우트가 이 오류만 500 본문에 그대로 싣는다 (`lib/failure.ts`).
+    throw new MissingEnvError(`환경변수 ${name}이(가) 없다. .env.example을 참고해 설정한다.`);
   }
   return value;
 }

@@ -66,11 +66,20 @@ describe("/api/pull — 실패가 본문을 갖는다", () => {
     await expect(res.json()).resolves.toMatchObject({ error: expect.stringContaining("ACTIVE_PROJECT_SLUG") });
   });
 
-  it("triggerPull이 던지면 그 메시지가 담긴 500이다", async () => {
+  it("triggerPull이 던지면 ref가 담긴 500이고 메시지는 본문에 없다 — 전문은 서버 로그로 간다", async () => {
+    // 2026-09-04 audit #15: 이 본문이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
     hoisted.triggerPull.mockRejectedValue(new Error("GitHub App 토큰 발급 실패"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: "GitHub App 토큰 발급 실패" });
+    const body = await res.json();
+    expect(body.error).toBe("internal");
+    expect(body.ref).toMatch(/^[0-9a-f]{8}$/);
+    expect(JSON.stringify(body)).not.toContain("GitHub App");
+    // 버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다.
+    expect(spy.mock.calls[0]?.[0]).toContain("GitHub App 토큰 발급 실패");
+    expect(spy.mock.calls[0]?.[0]).toContain(body.ref);
+    spy.mockRestore();
   });
 
   it("정상 경로는 결과를 그대로 흘린다", async () => {
@@ -89,19 +98,28 @@ describe("/api/push — 실패가 본문을 갖는다", () => {
     await expect(res.json()).resolves.toMatchObject({ error: expect.stringContaining("ACTIVE_PROJECT_SLUG") });
   });
 
-  it("DB 조회가 던지면 그 메시지가 담긴 500이다 — CI 로그에 원인이 남아야 한다", async () => {
-    hoisted.prisma.project.findUnique.mockRejectedValue(new Error("Can't reach database server"));
+  it("DB 접속 오류의 호스트·유저가 본문에 없다 — 대상 리포가 public이면 그 로그를 누구나 읽는다", async () => {
+    hoisted.prisma.project.findUnique.mockRejectedValue(
+      new Error("Can't reach database server at `aws-0-ap-northeast-1.pooler.supabase.com:5432`"),
+    );
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: "Can't reach database server" });
+    const body = await res.json();
+    expect(body).toMatchObject({ error: "internal" });
+    expect(JSON.stringify(body)).not.toContain("pooler.supabase.com");
+    expect(spy.mock.calls[0]?.[0]).toContain("pooler.supabase.com");
+    spy.mockRestore();
   });
 
-  it("applyPush가 던지면 그 메시지가 담긴 500이다", async () => {
+  it("applyPush가 던지면 ref가 담긴 500이다", async () => {
     hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", lastCommitAt: null });
     hoisted.applyPush.mockRejectedValue(new Error("unnest 인자 개수 불일치"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: "unnest 인자 개수 불일치" });
+    await expect(res.json()).resolves.toMatchObject({ error: "internal" });
+    spy.mockRestore();
   });
 
   it("기존 판정 응답은 500으로 삼켜지지 않는다 — 오배송은 409다", async () => {
