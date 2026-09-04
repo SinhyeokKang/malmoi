@@ -373,6 +373,22 @@ const DESCRIPTION_FIRST = [
   "",
 ].join("\n");
 
+/** ⑩ `/`를 `\\/`로 쓴 원본 — Midnight-Lizard의 마지막 잔여였다 (ADAPTER-COVERAGE §16). */
+const ESCAPED_SLASH = ["{", '  "hint": "tooltip\\/hint",', '  "plain": "no slash"', "}", ""].join("\n");
+
+describe("L2 — 표현: 슬래시 이스케이프가 원본대로 나온다", () => {
+  it("값이 안 바뀌면 원본과 바이트 동일이다", () => {
+    const out = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", ESCAPED_SLASH);
+    expect(out).toBe(ESCAPED_SLASH);
+    expect(changedHunks(ESCAPED_SLASH, out) ?? -1).toBe(0);
+  });
+
+  it("2차 write가 1차와 같다 (바이트 고정점)", () => {
+    const first = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", ESCAPED_SLASH);
+    expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", first)).toBe(first);
+  });
+});
+
 describe("L2 — 표현: 엔트리 필드 순서가 원본대로 나온다", () => {
   it("description 선행 원본은 바이트 동일이다", () => {
     const out = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", DESCRIPTION_FIRST);

@@ -481,11 +481,11 @@ describe("summarize — 순서 일치율과 들여쓰기 분포", () => {
 
   it("표현 관측(이스케이프·한 줄 컨테이너)은 원인과 **다른 칸**에 센다 — clean 분모를 좁히지 않는다", () => {
     const rows = [
-      row({ repo: "a/1", presentation: { escapedNonAscii: true, compactContainer: true } }),
-      row({ repo: "a/2", presentation: { escapedNonAscii: false, compactContainer: true } }),
+      row({ repo: "a/1", presentation: { escapedNonAscii: true, compactContainer: true, escapedSlash: true } }),
+      row({ repo: "a/2", presentation: { escapedNonAscii: false, compactContainer: true, escapedSlash: false } }),
       row({ repo: "a/3" }),
     ];
     const { metrics } = summarize(rows, []);
-    expect(metrics.presentation).toEqual({ escapedNonAscii: 1, compactContainer: 2 });
+    expect(metrics.presentation).toEqual({ escapedNonAscii: 1, compactContainer: 2, escapedSlash: 1 });
   });
 });

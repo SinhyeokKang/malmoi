@@ -66,6 +66,11 @@ export type JsonShape = {
    * 파일 전체가 한 줄이면 들여쓰기 관측 불가와 같은 축이라 이중으로 세게 된다.
    */
   compactContainer: boolean;
+  /**
+   * 원본이 `/`를 `\/`로 적었는가. **관측치다** — `JsonStyle.escapeSlash`가 되돌린다
+   * (2026-09-04, 10차가 드러낸 네 번째 표현 축).
+   */
+  escapedSlash: boolean;
   causes: JsonDiffCauses;
   /** 스캔이 끝까지 못 갔다 — 순서를 신뢰하면 안 된다. */
   failed: boolean;
@@ -86,6 +91,7 @@ export function jsonShape(text: string): JsonShape {
     indent: scan.indent,
     escapedNonAscii: scan.escapeNonAscii,
     compactContainer: scan.compactPaths.size > 0,
+    escapedSlash: scan.escapeSlash,
     causes: {
       sparseArray: scan.sparseArray,
       integerKeys: scan.integerKeys,

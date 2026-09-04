@@ -183,7 +183,7 @@ describe("observeJsonStyle — 비ASCII 이스케이프", () => {
 });
 
 describe("serializeJson — 이스케이프를 되돌린다", () => {
-  const escaped = { indent: "  ", escapeNonAscii: true, compactPaths: new Set<string>() };
+  const escaped = { ...DEFAULT_JSON_STYLE, escapeNonAscii: true };
 
   it("비ASCII를 `\\uXXXX`로 낸다", () => {
     expect(serializeJson({ a: "한" }, escaped)).toBe('{\n  "a": "\\ud55c"\n}\n');
@@ -230,5 +230,49 @@ describe("고정점 — 1b의 두 축", () => {
     const s2 = observeJsonStyle(first);
     expect(s2).toEqual(s);
     expect(serializeJson({ a: "한", b: "글" }, s2)).toBe(first);
+  });
+});
+
+// ── 슬래시 이스케이프 (10차 측정이 드러낸 네 번째 축) ────────────────────────
+// Midnight-Lizard 실측: 필드 순서를 고친 뒤에도 0.109가 남았고 전부 `\/`였다.
+// 합법이지만 선택적인 JSON 이스케이프라 `JSON.stringify`는 절대 내지 않는다.
+
+describe("observeJsonStyle — 슬래시 이스케이프", () => {
+  it("문자열 안의 `\\/`를 관측한다", () => {
+    expect(observeJsonStyle('{\n  "a": "tooltip\\/hint"\n}\n').escapeSlash).toBe(true);
+  });
+
+  it("맨 슬래시는 세지 않는다", () => {
+    expect(observeJsonStyle('{\n  "a": "tooltip/hint"\n}\n').escapeSlash).toBe(false);
+  });
+
+  it("**값이 리터럴 백슬래시-슬래시를 담고 있으면 세지 않는다** — 이스케이프 축과 같은 함정이다", () => {
+    expect(observeJsonStyle('{\n  "a": "\\\\/x"\n}\n').escapeSlash).toBe(false);
+  });
+});
+
+describe("serializeJson — 슬래시를 되돌린다", () => {
+  const slash = { ...DEFAULT_JSON_STYLE, escapeSlash: true };
+
+  it("모든 `/`를 `\\/`로 낸다", () => {
+    expect(serializeJson({ a: "a/b" }, slash)).toBe('{\n  "a": "a\\/b"\n}\n');
+  });
+
+  it("리터럴 백슬래시가 앞에 있어도 값이 보존된다", () => {
+    const v = { a: "x\\/y" };
+    expect(JSON.parse(serializeJson(v, slash))).toEqual(v);
+  });
+
+  it("기본값은 그대로다 — `JSON.stringify`는 슬래시를 이스케이프하지 않는다", () => {
+    expect(serializeJson({ a: "a/b" })).toBe('{\n  "a": "a/b"\n}\n');
+  });
+
+  it("고정점: observe(write(v, s)) === s", () => {
+    const s = observeJsonStyle('{\n  "a": "x\\/y",\n  "b": "plain"\n}\n');
+    expect(s.escapeSlash).toBe(true);
+    const first = serializeJson({ a: "x/y", b: "plain" }, s);
+    const s2 = observeJsonStyle(first);
+    expect(s2).toEqual(s);
+    expect(serializeJson({ a: "x/y", b: "plain" }, s2)).toBe(first);
   });
 });

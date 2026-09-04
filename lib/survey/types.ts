@@ -107,11 +107,14 @@ export type JsonPresentation = {
   escapedNonAscii: boolean;
   /** 비어 있지 않은 컨테이너가 한 줄에 담겨 있다 (`"k": { "message": … }`). */
   compactContainer: boolean;
+  /** `/`를 `\/`로 적었다 — 선택적 이스케이프라 `JSON.stringify`가 절대 안 낸다. */
+  escapedSlash: boolean;
 };
 
 export const emptyJsonPresentation = (): JsonPresentation => ({
   escapedNonAscii: false,
   compactContainer: false,
+  escapedSlash: false,
 });
 
 export type SurveyCandidate = {

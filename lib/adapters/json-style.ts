@@ -27,6 +27,14 @@ export type JsonStyle = {
   /** 원본이 비ASCII를 `\uXXXX`로 적었는가. */
   escapeNonAscii: boolean;
   /**
+   * 원본이 `/`를 `\/`로 적었는가 — 합법이지만 **선택적인** JSON 이스케이프라
+   * `JSON.stringify`는 절대 내지 않는다.
+   *
+   * 10차 측정이 드러냈다: Midnight-Lizard가 필드 순서를 고친 뒤에도 0.109가 남았고 그 잔여가
+   * 전부 `\/`였다 (ADAPTER-COVERAGE §16).
+   */
+  escapeSlash: boolean;
+  /**
    * 원본에서 **한 줄에 담겨 있던** 컨테이너의 경로. 키는 `pathKey`가 만든다.
    *
    * ⚠️ **`.` 조인 문자열이 아니다.** 점 든 키가 있는 리포에서 `{"a.b": [...]}`(단일 키)와
@@ -42,6 +50,7 @@ const NO_COMPACT: ReadonlySet<string> = new Set<string>();
 export const DEFAULT_JSON_STYLE: JsonStyle = {
   indent: "  ",
   escapeNonAscii: false,
+  escapeSlash: false,
   compactPaths: NO_COMPACT,
 };
 
@@ -79,8 +88,13 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
       : (scan.indent.char === "tab" ? "\t" : " ").repeat(scan.indent.width);
   // 스캔이 끝까지 못 갔으면 수집한 두 축은 부분값이라 못 믿는다. 들여쓰기는 스캐너와 무관하게
   // 정규식으로 관측하므로 그대로 산다.
-  if (scan.failed) return { indent, escapeNonAscii: false, compactPaths: NO_COMPACT };
-  return { indent, escapeNonAscii: scan.escapeNonAscii, compactPaths: scan.compactPaths };
+  if (scan.failed) return { indent, escapeNonAscii: false, escapeSlash: false, compactPaths: NO_COMPACT };
+  return {
+    indent,
+    escapeNonAscii: scan.escapeNonAscii,
+    escapeSlash: scan.escapeSlash,
+    compactPaths: scan.compactPaths,
+  };
 }
 
 /**
@@ -93,7 +107,7 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
  * 쓰인다 — `replacer`·`space`로는 컨테이너마다 다른 펼침과 비ASCII 이스케이프를 낼 수 없다.
  */
 export function serializeJson(value: unknown, style: JsonStyle = DEFAULT_JSON_STYLE): string {
-  if (!style.escapeNonAscii && style.compactPaths.size === 0) {
+  if (!style.escapeNonAscii && !style.escapeSlash && style.compactPaths.size === 0) {
     return `${JSON.stringify(value, null, style.indent)}\n`;
   }
   return `${render(value, style, [], "")}\n`;
@@ -109,10 +123,14 @@ const NON_ASCII_UNIT = /[-￿]/g;
  * `escapeNonAscii`면 그 결과에서 코드 유닛 > `0x7f`만 한 번 더 치환한다. 코드 **유닛**이라 이모지
  * 하나가 `\uXXXX` 둘로 나가고, 그게 정확히 원본이 하던 일이다.
  */
-function quote(s: string, escapeNonAscii: boolean): string {
-  const base = JSON.stringify(s);
-  if (!escapeNonAscii) return base;
-  return base.replace(NON_ASCII_UNIT, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+function quote(s: string, style: JsonStyle): string {
+  let out = JSON.stringify(s);
+  if (style.escapeNonAscii) {
+    out = out.replace(NON_ASCII_UNIT, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  }
+  // `JSON.stringify`가 이미 리터럴 백슬래시를 `\\`로 냈으므로 남은 `/`는 전부 맨 슬래시다.
+  if (style.escapeSlash) out = out.replaceAll("/", "\\/");
+  return out;
 }
 
 /**
@@ -124,7 +142,7 @@ function quote(s: string, escapeNonAscii: boolean): string {
  * 여백까지 축으로 세면 관측 상태가 늘어나는데, 어긋나도 diff 노이즈일 뿐 고정점은 성립한다.
  */
 function render(value: unknown, style: JsonStyle, path: readonly string[], pad: string): string {
-  if (typeof value === "string") return quote(value, style.escapeNonAscii);
+  if (typeof value === "string") return quote(value, style);
   if (value === null || typeof value === "number" || typeof value === "boolean") {
     return JSON.stringify(value) ?? "null";
   }
@@ -141,7 +159,7 @@ function render(value: unknown, style: JsonStyle, path: readonly string[], pad: 
     if (entries.length === 0) return "{}";
     const compact = style.compactPaths.has(pathKey(path));
     const parts = entries.map(
-      ([k, v]) => `${quote(k, style.escapeNonAscii)}: ${render(v, style, [...path, k], compact ? pad : inner)}`,
+      ([k, v]) => `${quote(k, style)}: ${render(v, style, [...path, k], compact ? pad : inner)}`,
     );
     if (compact) return `{ ${parts.join(", ")} }`;
     return `{\n${parts.map((s) => inner + s).join(",\n")}\n${pad}}`;
@@ -171,6 +189,8 @@ export type JsonScan = {
   compactPaths: Set<string>;
   /** 문자열 리터럴 **안에서** 코드포인트 > `0x7f`인 `\uXXXX`를 봤는가. */
   escapeNonAscii: boolean;
+  /** 문자열 리터럴 **안에서** `\/`를 봤는가 — 선택적 이스케이프다. */
+  escapeSlash: boolean;
   /** **원본 키 이름 자체**에 `.`이 든 것을 봤는가 — 평탄화 경로의 구분자와 구별해야 한다. */
   sawDottedName: boolean;
   /** 정규 정수 키를 가진 객체가 있는가 — JS가 앞으로 끌어올려 순서 보존이 원리적으로 불가능하다. */
@@ -202,6 +222,7 @@ export function scanJson(text: string): JsonScan {
     indent: indentOf(text),
     compactPaths: new Set<string>(),
     escapeNonAscii: false,
+    escapeSlash: false,
     sawDottedName: false,
     integerKeys: false,
     sparseArray: false,
@@ -371,6 +392,7 @@ class Scanner {
         // ⚠️ 이스케이프 관측이 **여기** 있어야 한다. 문자열 문맥을 안 보는 전역 정규식이면 값이
         // 담은 리터럴 백슬래시-u 여섯 글자를 이스케이프로 오독하고, 재관측이 false → true로
         // 뒤집혀 2차 write가 1차와 달라진다 (바이트 고정점이 깨진다).
+        if (this.text[this.i + 1] === "/") this.out.escapeSlash = true;
         if (this.text[this.i + 1] === "u") {
           const hex = this.text.slice(this.i + 2, this.i + 6);
           // ASCII 범위(`A` = A)까지 세면 거짓 양성이다 — `JSON.stringify`가 ASCII를
