@@ -266,7 +266,19 @@ lib/
                         / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
                         / message.ts(결과→문구)
-  auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
+  auth/                 인증·인가의 순수 판정 (I/O 없음 — 껍데기는 SAAS 2단계 §4가 만든다)
+    permission.ts       Role·Permission + canPerform (SAAS §3 권한표 6칸). ⚠️ Publish는 별도
+                        permission이 아니라 translation:write에 들어 있다
+    access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
+                        (프로젝트 존재를 노출하지 않는다). forbidden은 멤버인데 권한이 모자란 경우만
+    invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
+                        ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
+    membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
+    email.ts            normalizeEmail — trim+소문자까지만. gmail 점·+ 태그를 접지 않는다
+    cookie.ts           hasSessionCookie — 미들웨어 1차 차단용. __Secure- 접두 유무 둘 다 본다
+    message.ts          accessErrorMessage — 거부 사유 → 한국어 (pullMessage와 같은 never 검사)
+    backfill.ts         planOwnerBackfill — ⚠️ **일회성**. 인가 전환이 끝나면 지운다
+    allow.ts            허용 핸들 목록 판정 (fail-closed). ⚠️ SAAS 2단계 §5에서 제거된다
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
 types/next-auth.d.ts    session.user.login 타입 확장
