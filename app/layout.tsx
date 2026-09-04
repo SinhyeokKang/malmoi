@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "i18n-poc",
+  title: "말모이",
   description: "사내 로컬라이제이션 관리 도구",
 };
 

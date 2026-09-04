@@ -1,16 +1,16 @@
 # 대상 리포에 붙이는 워크플로
 
-**이 문서는 *대상 리포*(번역할 리포)에 무엇을 넣는지 다룬다.** i18n-poc 자신의 CI는 CLAUDE.md의 CI 섹션에 있다.
+**이 문서는 *대상 리포*(번역할 리포)에 무엇을 넣는지 다룬다.** 말모이 자신의 CI는 CLAUDE.md의 CI 섹션에 있다.
 
-대상 리포는 워크플로 하나만 갖고, 실제 일은 i18n-poc의 composite action(`.github/actions/l10n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
+대상 리포는 워크플로 하나만 갖고, 실제 일은 말모이의 composite action(`.github/actions/l10n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
 
-## 1. i18n-poc 쪽 설정 (한 번만)
+## 1. 말모이 쪽 설정 (한 번만)
 
-⚠️ **i18n-poc가 private이라 접근을 열어야 한다.** i18n-poc > Settings > Actions > General > Access > **"Accessible from repositories owned by the user"**. 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
+⚠️ **말모이 리포가 private이라 접근을 열어야 한다.** `malmoi` > Settings > Actions > General > Access > **"Accessible from repositories owned by the user"**. 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
 
 ## 2. 대상 리포 쪽 설정
 
-**Secret 하나**: `PUSH_TOKEN` — i18n-poc의 Vercel env와 **같은 값이어야 한다**. 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`).
+**Secret 하나**: `PUSH_TOKEN` — 말모이의 Vercel env와 **같은 값이어야 한다**. 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`).
 
 **워크플로** `.github/workflows/l10n.yml`:
 
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: SinhyeokKang/i18n-poc/.github/actions/l10n-push@main
+      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@main
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -59,7 +59,7 @@ jobs:
 | `adapter` | **한 리포에 포맷이 둘이면 필수.** 탐지 우선순위가 작은 쪽을 골라 큰 쪽 키가 전부 orphan된다. bugshot-2가 그렇다: `_locales` 4키 vs `ts-dict` 903키 → `adapter: ts-dict` |
 | `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04) |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
-| `api-url` | 기본값이 `https://i18n-poc.vercel.app`이라 보통 생략 |
+| `api-url` | 기본값이 `https://mal-moi.com`이라 보통 생략. ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측) |
 
 훅 기반 리포의 예 (실측 형태 — ARCHITECTURE §4.0):
 
@@ -100,4 +100,4 @@ jobs:
 
 ## 4. 야간 pull은 대상 리포와 무관하다
 
-`/api/pull`은 **i18n-poc의 Vercel Cron**이 부른다 (`vercel.json`, UTC 18:00 = KST 03:00). 대상 리포에 pull용 워크플로를 넣지 않는다 — 리포 쓰기는 i18n-poc의 GitHub App이 하고, 대상 리포의 `GITHUB_TOKEN`은 이 경로에 들어오지 않는다 (ARCHITECTURE §6).
+`/api/pull`은 **말모이의 Vercel Cron**이 부른다 (`vercel.json`, UTC 18:00 = KST 03:00). 대상 리포에 pull용 워크플로를 넣지 않는다 — 리포 쓰기는 말모이의 GitHub App이 하고, 대상 리포의 `GITHUB_TOKEN`은 이 경로에 들어오지 않는다 (ARCHITECTURE §6).

@@ -11,7 +11,11 @@ description: Prisma 마이그레이션 생성·적용·드리프트 확인 + 배
 
 ## ⚠️ 이 PoC는 dev DB와 prod DB가 같다
 
-로컬 Postgres가 없고 Supabase 인스턴스 하나(`i18n-poc`)뿐이다. 즉 **`pnpm db:migrate`(= `migrate dev`)가 프로덕션 DB를 직접 바꾼다.** 결과:
+**2026-09-04부터 Supabase 프로젝트가 둘이다** — prod(`malmoi`) / dev(`malmoi-dev`). `pnpm db:migrate`는 **dev**를 치고 프로덕션에 닿을 수 없다. `pnpm db:deploy`·`pnpm db:status:prod`만 prod를 겨눈다(`PRISMA_TARGET=prod`).
+
+⚠️ **분리가 만든 새 실패 모드**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 그래서 `/push` 3단계 확인은 `db:status:prod`다 — `db:status`는 dev를 본다.
+
+아래는 분리 전 기록이다 (인스턴스가 하나여서 `migrate dev`가 프로덕션을 직접 바꿨다):
 
 - **`migrate dev`가 드리프트를 감지하면 "리셋할까요?"를 제안한다. 절대 승인하지 않는다 — 번역 데이터가 전부 날아간다.** 드리프트가 나오면 중단하고 보고한다(1단계).
 - **번역 데이터가 쌓인 뒤로는 `--create-only`를 기본으로 쓴다.** SQL을 먼저 만들어 눈으로 읽고, 적용은 `pnpm db:deploy`로 한다. `migrate dev`는 스키마를 실험적으로 밀어보는 명령이라 데이터가 있는 DB에 쓸 도구가 아니다.

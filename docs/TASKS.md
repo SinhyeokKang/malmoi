@@ -345,7 +345,7 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
 ### 5a. Auth ✅
 
 - [x] **인가 모델 결정 — 허용 핸들 목록** (🔒 해소, 2026-08-31)
-  - 근거: 대상이 개인 계정 리포(`SinhyeokKang/i18n-poc`)라 org 멤버십이 존재하지 않는다. 핸들 목록은 개인·org 양쪽에서 동작하고 org API 호출이 사라진다. 실제 org를 쓰면 OR로 더한다
+  - 근거: 대상이 개인 계정 리포(`SinhyeokKang/malmoi`)라 org 멤버십이 존재하지 않는다. 핸들 목록은 개인·org 양쪽에서 동작하고 org API 호출이 사라진다. 실제 org를 쓰면 OR로 더한다
 - [x] Auth.js v5 GitHub provider, JWT 세션 `maxAge` 24h
   - 검증: `pnpm build`에 `/api/auth/[...nextauth]`·`/keys` 라우트 등록
 - [x] `isLoginAllowed` — **`AUTH_ALLOWED_LOGINS`가 비면 전원 거부**
@@ -515,7 +515,7 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   - 정본은 어댑터가 탐지한 로케일 파일 목록이고 `applyPush`가 `Locale`을 upsert한다. 수동 등록은 손이 늘면서 파일과 DB가 갈라지는 경로만 만든다
   - 검증: `order-check`에서 `en`·`ja`·`ko`가 CI push 한 번으로 등록됐다
 - [x] 대상 리포에 Actions 워크플로 (스캔 → `/api/push`) ✅ (2026-09-03)
-  - **실제 일은 i18n-poc의 composite action이 한다** (`.github/actions/l10n-push`). 대상 리포는 그것을 부르는 20줄만 갖는다 — 페이로드를 셸·YAML로 조립하지 않는 것이 요지다 (POSTMORTEM 2026-08-31). 사용법은 [ACTIONS.md](./ACTIONS.md)
+  - **실제 일은 말모이의 composite action이 한다** (`.github/actions/l10n-push`). 대상 리포는 그것을 부르는 20줄만 갖는다 — 페이로드를 셸·YAML로 조립하지 않는 것이 요지다 (POSTMORTEM 2026-08-31). 사용법은 [ACTIONS.md](./ACTIONS.md)
   - 검증: `i18n-order-check`에서 run green — 23키 / 69번역 / `POST → 200` / `translationsFilled: 69`
   - 붙이는 과정에서 걸린 것 넷: ① private action 접근이 `none`이라 `unable to resolve action` (API로 `access_level: user`) ② `github.action_path`의 리포 루트가 `../../..`인데 `../..`로 계산 ③ `package_json_file`·`node-version-file`이 **워크스페이스 기준**이라 절대경로가 안 먹혀 버전을 값으로 넘김 ④ 리포 secret과 Vercel의 `PUSH_TOKEN` 불일치(401)
   - ⚠️ **어댑터를 명시 지정한다** — bugshot-2는 `_locales`(4키)와 `ts-dict`(903키)가 공존해 탐지 우선순위가 작은 쪽을 잡는다. `adapter` input이 그 자리다
@@ -581,7 +581,7 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   프로젝트를 결정하면 사라진다
 
 - [ ] 🔒 **dev/prod DB 분리** — Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. **번역 데이터가 쌓이기 전에** 두 번째 프로젝트를 만들지 결정한다 (MVP §10, `/db` 경고 섹션)
-- [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — `https://i18n-poc.vercel.app`. main 푸시가 이제 실제 배포다
+- [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — 처음엔 `https://i18n-poc.vercel.app`이었고 2026-09-04 개명 뒤 **`https://mal-moi.com`**(apex)이 정본이다. main 푸시가 곧 배포다
   - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
   - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
   - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인

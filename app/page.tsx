@@ -13,7 +13,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
-      <h1 className="text-lg font-semibold tracking-tight">i18n-poc</h1>
+      <h1 className="text-lg font-semibold tracking-tight">말모이</h1>
       <p className="text-muted-foreground text-sm">
         GitHub 계정으로 로그인한다. 허용 목록에 없는 계정은 들어올 수 없다.
       </p>

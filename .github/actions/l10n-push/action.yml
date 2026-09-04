@@ -4,8 +4,8 @@
 # 거기엔 컴파일러가 없어서 계약이 넓어져도 아무도 모른다 (docs/POSTMORTEM.md 2026-08-31).
 # 생산자는 `lib/push/payload.ts` 하나이고 이 action은 그 경로를 지난다.
 #
-# ⚠️ **i18n-poc가 private이라 대상 리포에서 이 action을 쓰려면 접근 허용이 필요하다**:
-# i18n-poc > Settings > Actions > General > "Accessible from repositories owned by ...".
+# ⚠️ **말모이 리포가 private이라 대상 리포에서 이 action을 쓰려면 접근 허용이 필요하다**:
+# malmoi > Settings > Actions > General > "Accessible from repositories owned by ...".
 # 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
 #
 # 대상 리포의 워크플로 예시는 docs/ACTIONS.md에 있다.
@@ -20,9 +20,12 @@ inputs:
     description: 대상 Project.slug. 서버의 ACTIVE_PROJECT_SLUG와 다르면 409다
     required: true
   api-url:
-    description: i18n-poc 배포 URL
+    description: |
+      말모이 배포 URL. ⚠️ **`.vercel.app`을 쓰지 않는다** — Vercel 프로젝트 이름을 바꾸면 그
+      주소가 404가 되고, Deployment Protection이 그 도메인에만 걸려 Bearer를 무시하고 302로
+      튕긴다(2026-09-04 실측). 커스텀 도메인이 유일하게 안정된 주소다.
     required: false
-    default: https://i18n-poc.vercel.app
+    default: https://mal-moi.com
   target:
     description: 스캔·적재 대상 디렉터리. 기본은 대상 리포 체크아웃 루트다
     required: false
@@ -49,7 +52,7 @@ inputs:
   github-token:
     description: |
       열린 `l10n/sync` PR을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
-      **쓰기에는 쓰지 않는다** — 리포 쓰기는 i18n-poc의 GitHub App이 맡는다.
+      **쓰기에는 쓰지 않는다** — 리포 쓰기는 말모이의 GitHub App이 맡는다.
     required: false
     default: ""
 
@@ -79,7 +82,7 @@ runs:
     # ⚠️ **버전을 파일에서 읽어 값으로 넘긴다.** `pnpm/action-setup`의 `package_json_file`과
     # `setup-node`의 `node-version-file`은 **워크스페이스 기준 상대경로**로 해석돼서, 절대경로를
     # 줘도 action의 clone 경로를 못 본다("No pnpm version is specified"로 죽는다). 값으로
-    # 넘기면 그 문제를 피하면서 버전의 출처는 여전히 i18n-poc의 `.nvmrc`·`packageManager` 하나다.
+    # 넘기면 그 문제를 피하면서 버전의 출처는 여전히 말모이의 `.nvmrc`·`packageManager` 하나다.
     - name: 버전 읽기
       if: steps.guard.outputs.skip != 'true'
       id: v
@@ -102,7 +105,7 @@ runs:
       with:
         node-version: ${{ steps.v.outputs.node }}
 
-    - name: i18n-poc 의존성
+    - name: 말모이 의존성
       if: steps.guard.outputs.skip != 'true'
       shell: bash
       working-directory: ${{ github.action_path }}/../../..

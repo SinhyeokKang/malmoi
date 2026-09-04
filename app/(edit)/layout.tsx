@@ -26,7 +26,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
     // 계산으로 두면 헤더에 버튼 하나만 들어와도 그 값이 조용히 거짓이 된다(실제로 밟았다).
     <div className="flex min-h-svh flex-col">
       <header className="border-border flex shrink-0 items-center justify-between border-b px-4 py-2">
-        <span className="text-sm font-medium">i18n-poc</span>
+        <span className="text-sm font-medium">말모이</span>
         <div className="flex items-center gap-3">
           <PullButton />
           {/* 핸들은 mono가 아니다 — 식별자지만 사용자 이름이라 산문 쪽에 가깝다 */}
