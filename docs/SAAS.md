@@ -309,9 +309,14 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
   - 검증: 18케이스(`lib/pull/__tests__/trigger.test.ts`) — 다른 slug는 다른 브랜치, 같은 slug는 같은
     브랜치, git이 거부할 15가지 slug를 던진다. 폐기용 리포 셋에 열린 `l10n/sync` PR이 없어(전부 머지됨)
     이름이 바뀌어도 고아 PR이 생기지 않는다
-- [ ] **dev DB 적재** — 지금 `Project` 0행이라 preview가 로그인 뒤 "프로젝트를 찾을 수 없다"에서 멈춘다.
-      prod의 `Project` 행 복제 → `pnpm push:local` (TASKS 전역 미결)
-  - 검증: preview에서 `/keys`가 실제 키를 렌더한다
+- [x] **dev DB 적재** ✅ (2026-09-05) — `order-check` 프로젝트(`SinhyeokKang/i18n-order-check`) 23키 ·
+      로케일 en/ja/ko · 번역 69건. **prod에서 복제하지 않았다** — `DATABASE_URL_PROD`를 두지 않는
+      규칙(CLAUDE.md) 때문에 로컬이 prod 런타임을 가리킬 길을 열지 않고, 대신 **GitHub App API로
+      `installationId`를 조회**해(`GET /app/installations` → `158107153`) dev에 행을 새로 만들었다
+  - `Project` 행은 여전히 **손으로 만든다** — `applyPush`는 `project.update`만 하고 생성 경로가 없다.
+    프로젝트 생성이 §8 5단계의 내용이다
+  - 나머지 컬럼(`adapterName`·`pathTemplate`·`nested`·`baseLocale`)은 push가 채웠다 —
+    `json-catalog` / `locales/{locale}.json` / 중첩 / base `en`
 
 ### 1단계 — SaaS 경계 확정 ⬜
 
