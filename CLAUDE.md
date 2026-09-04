@@ -32,7 +32,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 - **push는 리포 값으로 번역을 덮는다** (`ON CONFLICT DO UPDATE`, strict). 변경 감지도 병합도 없다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다 (MVP §3.1). 정책을 느슨하게 하면(변경 감지·병합) 이 원칙이 요구하는 단순성이 무너진다.
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다. 삭제는 되돌릴 수 없어 이 원칙을 깬다.
-- **pull은 값을 병합하지 않는다.** 재생성 어댑터는 DB만 읽어 파일을 새로 뽑고, **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본 파일 내용을 읽는다** — 다만 원본에서 가져오는 것은 **구조**(빈 줄·주석·키 순서)이지 **값**이 아니다. 값은 전부 DB에서 온다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다. *(2026-09-01 정정: 이전 서술은 "읽는 것은 blob SHA뿐"이었는데 MVP §4.1이 승인한 수술적 치환과 어긋났다 — 지키는 것은 "안 읽는다"가 아니라 "병합하지 않는다"다.)*
+- **pull은 값을 병합하지 않는다.** **모든 어댑터가 원본 파일 내용을 읽는다** (2026-09-04) — 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 **구조**(빈 줄·주석·키 순서)를, 재생성(`chrome-locales`·`json-catalog`)은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)을 가져온다. 어느 쪽도 **값**은 아니다. 값은 전부 DB에서 온다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다. *(2026-09-01 정정: 이전 서술은 "읽는 것은 blob SHA뿐"이었는데 MVP §4.1이 승인한 수술적 치환과 어긋났다 — 지키는 것은 "안 읽는다"가 아니라 "병합하지 않는다"다.)*
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
 
 ## 작업 원칙
@@ -122,6 +122,7 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 용도 | 명령 |
 |---|---|
 | 개발 서버 | `pnpm dev` |
+| 프로덕션 서버 (로컬) | `pnpm start` (`next start` — 빌드 산출물 확인용. Vercel이 배포에서 쓰는 명령이라 로컬에선 거의 안 쓴다) |
 | 빌드 | `pnpm build` (`prisma generate && next build` — **generate가 앞에 붙어 있다**: `generated/`가 gitignore된 산출물이라 깨끗한 체크아웃에서 `next build`만 돌면 `@/generated/prisma/client`를 못 찾는다) |
 | 타입 체크만 | `pnpm typecheck` |
 | 테스트 | `pnpm test` |
@@ -258,6 +259,7 @@ docs/ACTIONS.md         **대상 리포**에 붙이는 워크플로 (composite a
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/DESIGN.md          편집 UI 시각 규칙 (라이트 단일, mono 표면 불변식)
 docs/ARCHITECTURE.md    설계 상세·함정
+docs/ADAPTER-COVERAGE.md 어댑터 범용성 실측 (11차) — 어댑터·탐지 규칙 손대기 전 필독
 docs/POSTMORTEM.md      회귀·버그 회고 누적
 docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스펙이 아니다** — 결론은 MVP·
                         ARCHITECTURE로 올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
@@ -267,10 +269,10 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`을 건드리기 전에 읽는다. 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`db`·`env`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
-- **변경 감지는 API 호출 전에 끝낸다**: blob SHA를 로컬에서 계산해 base 트리와 비교하고, 전부 같으면 GitHub API를 **한 번도** 부르지 않는다. 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **수술적 어댑터 셋은 write에 원본 내용이 필요해 이 최적화가 그대로 성립하지 않는다** (MVP §3.3 — 파일당 blob 읽기 1회. 판단 축은 `writeStrategy`다).
+- **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
 - **커밋 parents는 항상 base의 head, 브랜치는 force update**: `l10n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다. 3-way merge를 피하는 게 코어 원칙이므로 fast-forward를 지키려 하지 않는다.
 - **커밋 메시지에 `[skip-l10n]`**: 이 마커가 없으면 pull이 만든 커밋이 main에 머지될 때 push가 다시 돌아 무한 루프가 된다.
 - **PR은 하나를 재사용**: 열린 PR이 있으면 새로 만들지 않는다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
@@ -310,7 +312,7 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(현재 19개)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-04 기준 18개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 

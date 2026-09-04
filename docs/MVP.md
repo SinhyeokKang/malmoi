@@ -360,7 +360,8 @@ Project      id PK, slug UNIQUE, name,
              nestedByPath?                                      -- 경로 → 중첩 여부 (Json, §4.1)
              lastCommitSha?, lastCommitAt?                      -- 역행 거부 (§3.1)
              lastPulledAt?                                      -- DB 측 스킵 (§3.3)
-Locale       (projectId, code) PK, name, isBase
+Locale       (projectId, code) PK, name, isBase, orphaned
+             -- orphaned = 리포에서 사라진 로케일 (§3.1). pull이 그 파일을 내지 않고 저장을 거부한다
 StringKey    id PK, projectId FK, key, namespace, sourceText, sourceHash,
              description, sortIndex?, orphaned, updatedAt
              -- sortIndex = base 파일에서의 키 위치 (§4.1). **파일 스코프다**

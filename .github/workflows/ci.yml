@@ -37,9 +37,10 @@ jobs:
       # **더미 DIRECT_URL을 주지 않는다** — prisma.config.ts가 datasource를 조건부로 넣게
       # 바뀌어 generate는 URL 없이 돈다. 이 스텝이 그 사실의 상시 검증을 겸한다:
       # 여기서 죽으면 `.env.local`이 없는 환경(Vercel·새 체크아웃)의 빌드도 죽는다.
+      # 조건 없이 돈다 — 전에 붙어 있던 `if: hashFiles('prisma/schema.prisma') != ''`는 항상 참이라
+      # 무의미했고, 경로가 바뀌면 generate가 조용히 skip돼 typecheck가 원인 불명으로 죽었다.
       - name: prisma generate
         run: pnpm db:generate
-        if: hashFiles('prisma/schema.prisma') != ''
 
       - run: pnpm typecheck
 
