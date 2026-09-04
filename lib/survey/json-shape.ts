@@ -1,3 +1,5 @@
+import { indentOf, type IndentStyle } from "../adapters/json-style";
+
 /**
  * 원본 JSON **텍스트**에서 키 등장 순서·들여쓰기·잔여 diff 원인을 뽑는다.
  *
@@ -13,7 +15,11 @@
  */
 
 /** 관측된 들여쓰기. `none`은 "들여쓴 줄이 없다"이지 "들여쓰기가 0칸"이 아니다. */
-export type IndentStyle = { char: "space" | "tab" | "none"; width: number };
+/**
+ * ⚠️ **판정은 `lib/adapters/json-style.ts`가 든다.** 지표가 자기 사본을 들면 프로덕션이 내는
+ * 파일과 지표가 재는 대상이 갈린다 — 그때 개선이 게이트에 안 나타난다.
+ */
+export type { IndentStyle } from "../adapters/json-style";
 
 /** 순서 외에 첫 write diff를 만드는 원인들 — 텍스트에서 관측되는 것만. */
 export type JsonDiffCauses = {
@@ -146,22 +152,6 @@ function hasEscapedNonAscii(text: string): boolean {
     if (Number.parseInt(m[1]!, 16) > 0x7f) return true;
   }
   return false;
-}
-
-/**
- * 첫 **들여쓴 줄**의 선행 공백을 본다.
- *
- * 깊은 층의 배수(4칸 파일의 2층은 8칸)에 흔들리지 않으려면 첫 층만 봐야 한다. 들여쓴 줄이
- * 없으면(한 줄 파일) `none`이다 — 0칸이라고 보고하면 "2칸이 아니다"가 되어 없는 원인이 선다.
- */
-function indentOf(text: string): IndentStyle {
-  for (const line of text.split("\n")) {
-    const m = /^([ \t]+)\S/.exec(line);
-    if (!m) continue;
-    const lead = m[1]!;
-    return lead[0] === "\t" ? { char: "tab", width: lead.length } : { char: "space", width: lead.length };
-  }
-  return { char: "none", width: 0 };
 }
 
 /**
