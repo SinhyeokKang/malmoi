@@ -374,7 +374,7 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
              -- FK (projectId, localeCode) → Locale(projectId, code)
 ```
 
-`namespace`는 키에서 파생되는 값이지만 **컬럼으로 저장하고 인덱스를 건다** — 사이드바 쿼리가 이거 하나로 끝난다. 인덱스는 전부 `projectId` 선두 복합이다(모든 조회가 프로젝트로 먼저 좁혀진다).
+`namespace`는 키에서 파생되는 값이지만 **컬럼으로 저장하고 인덱스를 건다** — 사이드바 쿼리가 이거 하나로 끝난다. 인덱스는 전부 `projectId` 선두 복합이다(모든 조회가 프로젝트로 먼저 좁혀진다). `Translation`엔 `(projectId, updatedAt)`이 하나 더 있다 — pull 1층의 `max(updatedAt)` 전용이고, 없으면 야간 cron이 매일 그 프로젝트의 번역 전체를 훑는다 (ARCHITECTURE §2).
 
 **`Translation.projectId`는 비정규화가 아니라 테넌트 격리다.** `keyId`·`localeCode`를 독립 FK로 두면 프로젝트 A의 키에 B의 로케일을 붙인 행을 DB가 허용한다. 두 FK가 같은 `projectId` 컬럼을 공유해 그 조합을 불가능하게 만든다.
 

@@ -208,4 +208,10 @@ model Translation {
   /// 스키마에 의존하는 지점이다. projectId는 keyId에 함수 종속이라 키에 넣지 않는다.
   @@unique([keyId, localeCode])
   @@index([projectId, localeCode, needsReview])
+
+  /// **pull 1층 판정 전용.** `aggregate({ where: { projectId }, _max: { updatedAt } })`가 이 인덱스를
+  /// 역방향으로 타 첫 행에서 멈춘다. 없으면 그 프로젝트의 Translation 전체를 훑는데, 야간 cron이
+  /// **매일** 부르는 쿼리라 조용히 느려지고 어느 게이트에도 안 나타난다 (2026-09-04 audit #45).
+  /// 위 인덱스로는 대체되지 않는다 — `localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다.
+  @@index([projectId, updatedAt])
 }

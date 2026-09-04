@@ -156,6 +156,17 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
     expect(sourceOf("lib/keys/query.ts")).toContain('orderBy: { key: "asc" }');
   });
 
+  /**
+   * **1층 판정의 기준값을 내는 쿼리와 그것을 태울 인덱스가 짝이다** (2026-09-04 audit #45).
+   * `aggregate({ where: { projectId }, _max: { updatedAt } })`는 `(projectId, updatedAt)` 인덱스가
+   * 있으면 역방향 스캔 첫 행에서 멈추고, 없으면 그 프로젝트 파티션 전체를 훑는다. 야간 cron이
+   * **매일** 부르는 쿼리라 인덱스가 사라지면 조용히 느려지고 게이트에는 안 나타난다.
+   */
+  it("1층 aggregate가 탈 인덱스가 스키마에 있다 — 쿼리와 인덱스가 함께 움직여야 한다", () => {
+    expect(sourceOf("lib/pull/load.ts")).toContain("_max: { updatedAt: true }");
+    expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, updatedAt])");
+  });
+
   it("그 문자열이 pull 쪽에는 없다 — grep하면 두 곳이 잡히던 함정을 여기서 가른다", () => {
     expect(sourceOf("lib/pull/load.ts")).not.toContain('orderBy: { key: "asc" }');
   });

@@ -237,10 +237,10 @@ lib/
 types/next-auth.d.ts    session.user.login 타입 확장
 prisma/
   schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
-  migrations/           8개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  migrations/           9개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
-                        _add_locale_orphaned
+                        _add_locale_orphaned, _add_translation_updated_at_index
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate

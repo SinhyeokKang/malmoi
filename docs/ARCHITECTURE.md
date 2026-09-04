@@ -303,6 +303,8 @@ sha1("blob " + byteLength + "\0" + content)
 | 층 | 무엇을 보는가 | 통과 못 하면 |
 |---|---|---|
 | **1. DB 측 스킵** | `Translation.updatedAt` 최대값 vs `Project.lastPulledAt` | **GitHub을 한 번도 부르지 않고 종료** |
+
+⚠️ **1층의 최대값 쿼리는 인덱스와 짝이다** (2026-09-04). `@@index([projectId, updatedAt])`이 있어야 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
 
 ⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `l10n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
