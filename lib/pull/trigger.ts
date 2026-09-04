@@ -1,5 +1,6 @@
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
+import { fail } from "@/lib/failure";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
 import { loadPullState, saveLastPulledAt } from "./load";
@@ -25,7 +26,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
       // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
-      if (project.installationId === null) throw new Error("installationId가 없다");
+      if (project.installationId === null) fail("installationId가 없다");
       return createGitClient(project.repoOwner, project.repoName, project.installationId);
     },
     saveLastPulledAt: (projectId, at) => saveLastPulledAt(prisma, projectId, at),

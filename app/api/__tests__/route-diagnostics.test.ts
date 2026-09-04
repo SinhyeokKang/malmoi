@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppError } from "@/lib/failure";
 
 /**
  * **외부 진입점의 실패가 진단 가능한 응답을 내야 한다.**
@@ -7,7 +8,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * HTTP 응답뿐이다. 설정 누락이 **본문 없는 500**으로 나가면 로그에 원인이 없어 추측만 남는다 —
  * 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다(`ACTIVE_PROJECT_SLUG`가 `try` 밖이었다).
  *
- * ⚠️ 시크릿을 응답에 싣지 않는다. `requireEnv`의 메시지는 **변수 이름만** 담는다.
+ * ⚠️ 시크릿을 응답에 싣지 않는다. **우리가 문구를 정한 오류만**(`AppError`·`MissingEnvError`)
+ * 본문에 실리고 남의 라이브러리 메시지는 `ref`로만 나간다 — 이 응답이 임의의 대상 리포
+ * Actions 로그로 흘러가고 그 리포가 public일 수 있다 (ARCHITECTURE §6.0).
  */
 
 const hoisted = vi.hoisted(() => ({
@@ -80,6 +83,16 @@ describe("/api/pull — 실패가 본문을 갖는다", () => {
     expect(spy.mock.calls[0]?.[0]).toContain("GitHub App 토큰 발급 실패");
     expect(spy.mock.calls[0]?.[0]).toContain(body.ref);
     spy.mockRestore();
+  });
+
+  it("우리 도메인 오류(AppError)는 메시지가 본문에 실린다 — 실물 500 진단에 Vercel 로그가 필요했다", async () => {
+    // 2026-09-04 실측: 프로덕션이 `프로젝트를 찾을 수 없다: order-check`로 죽었는데 본문이
+    // `{error:"internal",ref}`뿐이라 원인을 로그에서 찾아야 했다. slug는 시크릿이 아니고 CI가
+    // 이미 입력으로 아는 값이다 (#15 후속).
+    hoisted.triggerPull.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
+    const res = await pullGet(pullRequest());
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: "프로젝트를 찾을 수 없다: order-check" });
   });
 
   it("정상 경로는 결과를 그대로 흘린다", async () => {

@@ -557,8 +557,14 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 | 오류 | 본문 | 전문 |
 |---|---|---|
-| `MissingEnvError`(`requireEnv`) | 메시지 그대로 — 변수 이름만 담는다 | — |
+| `AppError`(`fail()`) · `MissingEnvError`(`requireEnv`) | 메시지 그대로 | — |
 | 그 밖(Prisma·octokit·unknown) | `{ error: "internal", ref }` | `console.error`로 서버 로그(Vercel) |
+
+⚠️ **첫 구현은 `MissingEnvError` 하나만 안전으로 봤고 그게 진단을 한 단계 늦췄다** (2026-09-04 실측). 프로덕션이 `프로젝트를 찾을 수 없다: order-check`로 죽었을 때 본문이 `{error:"internal",ref}`뿐이어서 Vercel 로그를 뒤져야 원인(Production `DATABASE_URL`이 dev를 가리킴)을 알았다. 우리가 문구를 정한 오류는 slug·경로 템플릿·어댑터 이름만 담고 그건 CI가 이미 입력으로 아는 값이다 — `lib/pull/**`의 `throw`를 전부 `fail()`로 바꿔 그 18곳이 본문에 남는다.
+
+⚠️ **`fail(String(err))`로 남의 오류를 감싸지 않는다.** 감싸면 그 순간 이 방어가 무의미해진다 — 판정이 막을 수 없고 규율로만 지켜진다.
+
+⚠️ **`/api/push`는 같은 사건을 404 + 본문으로 낸다** (`project '<slug>' not found`). 비대칭이 의도된 것이다: push는 **호출자가 보낸** slug를 검증하므로 4xx이고, pull은 **자기 설정**을 읽으므로 5xx다.
 
 전에는 전부 그대로 실었고, 근거는 POSTMORTEM 2026-09-03의 **"본문 없는 500이 원인을 지웠다"** 였다.
 그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/l10n-push`는 임의의 대상

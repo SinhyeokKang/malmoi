@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { requireEnv } from "../env";
-import { MissingEnvError, classifyFailure } from "../failure";
+import { AppError, MissingEnvError, classifyFailure, fail } from "../failure";
 
 /**
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
@@ -53,3 +53,53 @@ describe("classifyFailure — 우리 메시지와 남의 메시지를 가른다"
     expect(classifyFailure(new Error("환경변수 ACTIVE_PROJECT_SLUG이(가) 없다")).safe).toBe(false);
   });
 });
+
+/**
+ * **우리 도메인 오류도 안전하다** (2026-09-04, #15 후속). 첫 구현은 `MissingEnvError`만 안전으로
+ * 봤고, 그래서 `프로젝트를 찾을 수 없다: order-check`가 `internal`로 접혔다 — 프로덕션 500의
+ * 원인을 Vercel 로그에서 찾아야 했다. slug·경로 템플릿·어댑터 이름은 시크릿이 아니고 CI가 이미
+ * 입력으로 아는 값이다. 회고가 요구한 "원인이 남는 500"이 여기서 회수된다.
+ */
+describe("AppError — 우리 도메인 오류는 본문에 실린다", () => {
+  it("fail()이 던진 것은 안전하다", () => {
+    let thrown: unknown;
+    try {
+      fail("프로젝트를 찾을 수 없다: order-check");
+    } catch (e) {
+      thrown = e;
+    }
+    const c = classifyFailure(thrown);
+    expect(c.safe).toBe(true);
+    expect(c.safe && c.message).toContain("order-check");
+  });
+
+  it("fail()의 반환형이 never다 — throw와 같게 좁혀진다", () => {
+    const narrow = (v: string | null): string => {
+      if (v === null) fail("null이다");
+      return v;
+    };
+    expect(narrow("x")).toBe("x");
+  });
+
+  it("AppError·MissingEnvError 둘 다 안전이고, 남의 Error는 아니다", () => {
+    expect(classifyFailure(new AppError("우리 것")).safe).toBe(true);
+    expect(classifyFailure(new MissingEnvError("환경변수 X이(가) 없다")).safe).toBe(true);
+    expect(classifyFailure(new Error("우리 것")).safe).toBe(false);
+    expect(classifyFailure(new TypeError("남의 것")).safe).toBe(false);
+  });
+
+  it("⚠️ 시크릿을 담은 메시지는 `fail`로 던지지 않는다 — 판정이 아니라 규율이다", () => {
+    // 이 테스트는 코드가 아니라 규칙을 고정한다: `fail`은 **우리가 문구를 정한** 오류에만 쓴다.
+    // 라이브러리 메시지를 감싸 `fail(String(e))`로 넘기면 그 순간 이 방어가 무의미해진다.
+    expect(classifyFailure(fail_wrapped()).safe).toBe(false);
+  });
+});
+
+/** 남의 오류를 그대로 다시 던지면 안전이 아니다 — 감싸지 않는 것이 규칙이다. */
+function fail_wrapped(): unknown {
+  try {
+    throw new Error("Can't reach database server at `pooler.supabase.com`");
+  } catch (e) {
+    return e;
+  }
+}

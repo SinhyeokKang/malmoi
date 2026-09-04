@@ -1,16 +1,42 @@
 // 500 본문에 무엇을 실을지의 판정. I/O가 없는 순수 함수라 두 라우트가 같은 규칙을 쓴다.
 
 /**
- * `requireEnv`가 던지는 오류. **이름으로 판정한다** — `instanceof`는 모듈 인스턴스가 둘이 되면
- * (번들 경계·테스트 mock) 조용히 false가 되고, 그러면 설정 누락이 `internal`로 접혀 회고가
- * 요구한 "원인이 남는 500"을 잃는다.
+ * **우리가 문구를 정한 오류.** 500 본문에 그대로 실린다.
+ *
+ * 담아도 되는 것: slug·경로 템플릿·어댑터 이름·로케일·설정 컬럼 이름 — 전부 CI가 이미 입력으로
+ * 아는 값이다. ⚠️ **담으면 안 되는 것**: 라이브러리 메시지. `fail(String(err))`로 감싸 넘기는
+ * 순간 이 방어가 무의미해진다 — 그건 판정이 막을 수 없는 규율의 문제다.
+ *
+ * **이름으로 판정한다** — `instanceof`는 모듈 인스턴스가 둘이 되면(번들 경계·테스트 mock) 조용히
+ * false가 되고, 그러면 설정 누락이 `internal`로 접혀 회고가 요구한 "원인이 남는 500"을 잃는다.
  */
-export class MissingEnvError extends Error {
+export class AppError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+
+/**
+ * `AppError`를 던진다. 반환형이 `never`라 `throw`와 같게 타입이 좁혀진다.
+ *
+ * `throw new AppError(...)`보다 이걸 쓰는 이유는 호출부가 `if (!x) fail(...)` 한 줄로 끝나서다 —
+ * 18곳을 바꾸면서 줄이 늘지 않는다.
+ */
+export function fail(message: string): never {
+  throw new AppError(message);
+}
+
+/** `requireEnv`가 던지는 오류. `AppError`와 같은 이유로 안전하다 — 변수 **이름**만 담는다. */
+export class MissingEnvError extends AppError {
   constructor(message: string) {
     super(message);
     this.name = "MissingEnvError";
   }
 }
+
+/** 본문에 실어도 되는 오류의 이름. 우리가 만든 클래스만 들어온다. */
+const SAFE_ERROR_NAMES: ReadonlySet<string> = new Set([AppError.name, MissingEnvError.name]);
 
 export type Failure =
   /** 우리가 만든 메시지다 — 본문에 그대로 실어도 된다. */
@@ -31,7 +57,7 @@ export type Failure =
  */
 export function classifyFailure(error: unknown): Failure {
   if (error instanceof Error) {
-    if (error.name === MissingEnvError.name) return { safe: true, message: error.message };
+    if (SAFE_ERROR_NAMES.has(error.name)) return { safe: true, message: error.message };
     return { safe: false, detail: `${error.name}: ${error.message}` };
   }
   return { safe: false, detail: String(error) };

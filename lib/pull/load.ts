@@ -1,3 +1,4 @@
+import { fail } from "@/lib/failure";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { PullState } from "./run";
 
@@ -33,7 +34,7 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
     },
   });
-  if (!project) throw new Error(`프로젝트를 찾을 수 없다: ${slug}`);
+  if (!project) fail(`프로젝트를 찾을 수 없다: ${slug}`);
 
   const { locales, ...rest } = project;
 

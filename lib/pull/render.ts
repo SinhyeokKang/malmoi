@@ -1,3 +1,4 @@
+import { fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { Adapter, AdapterError, DetectedFormat, WriteInput } from "@/lib/adapters";
 import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow } from "./plan";
@@ -96,7 +97,7 @@ export function renderLocaleFiles(
       // 조용히 다른 로케일로 떨어지면 `i18n/ko.json`에 en 번역이 쓰인다.
       const { locale } = p;
       if (locale === undefined) {
-        throw new Error(`per-locale 경로에 locale이 없다: ${p.path} (resolveLocalePaths 버그)`);
+        fail(`per-locale 경로에 locale이 없다: ${p.path} (resolveLocalePaths 버그)`);
       }
       // ⚠️ **원본이 없을 때의 처리가 두 방식의 계약 차이다.**
       //   - 수술적 — 파일을 **안 만든다**. 치환할 대상이 없다 (§1.4)
