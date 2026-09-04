@@ -25,7 +25,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 | 키워드 | 역할 | 검수 대상 | 관점 |
 |---|---|---|---|
-| `cpo` | **CPO** (Chief Product Officer) | `spec.md` | PoC 스코프 적절성(MVP §7 비범위 대조), 두 사용자(개발자/번역 편집자)의 상충 해소, 완료 조건의 검증 가능성, 비목표 명확성 |
+| `cpo` | **CPO** (Chief Product Officer) | `spec.md` | 스코프 적절성(MVP §7 + SAAS §4.2 비범위 대조), 두 사용자(개발자/번역 편집자)의 상충 해소, 완료 조건의 검증 가능성, 비목표 명확성 |
 | `cdo` | **CDO** (Chief Design Officer) | `spec.md` + `design.md` | 편집 UI 플로우, `docs/DESIGN.md` 시각 규칙 준수, 기존 컴포넌트 패턴 일관성, 빈/로딩/에러 상태, 접근성 |
 | `cto` | **CTO** (Chief Technology Officer) | `design.md` | 코어 원칙(병합 없음) 정합성, 불변식(export 결정성·blob SHA·인증 경계) 보존, 오버엔지니어링, 데이터 변경 경로 경계, 성능·보안 |
 | `qa` | **QA Lead** | `tasks.md` | 태스크별 "검증:" 줄이 실제로 판정 가능한가, 순수 함수 분리 여부, 엣지 케이스 누락, 태스크 의존 관계, 회귀 리스크, 마이그레이션 배포 순서 |

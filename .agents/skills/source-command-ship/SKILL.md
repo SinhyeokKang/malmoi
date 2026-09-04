@@ -28,7 +28,7 @@ Use this skill when the user asks to run the migrated source command `ship`.
 **작은·외과적 변경 전용.** 아래 중 하나라도 해당하면 **중단하고 수동 흐름(`/feature`부터)을 권한다**:
 
 - 여러 서브시스템에 걸친 기능 (세 흐름 중 둘 이상을 동시에 건드림)
-- **`docs/MVP.md` §7 비범위 항목**을 요구 — 범위 결정은 사용자 몫이다
+- **비범위 항목**을 요구 — `docs/MVP.md` §7(PoC) 또는 `docs/SAAS.md` §4.2(SaaS). 범위 결정은 사용자 몫이다
 - **코어 불변식 변경** — export 결정성 규칙, blob SHA 계약, 커밋·PR 전략, 인증 경계 (ARCHITECTURE §1·2·3·6)
 - **destructive 스키마 변경** — 2단계 배포가 필요해 한 파이프라인에 안 들어간다
 - `docs/features/<slug>/`가 필요한 신규 기능
