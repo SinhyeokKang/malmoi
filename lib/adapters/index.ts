@@ -16,9 +16,9 @@ export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals }
 export * from "./types";
 
 /**
- * 등록된 어댑터. **순서가 우선순위다** — 크롬 `_locales`가 있으면 그쪽을 택한다.
- * 크롬 확장 리포는 `_locales`가 실제 배포 산출물이고, 옆에 다른 카탈로그가 있어도
- * 크롬이 읽는 건 `_locales`뿐이다.
+ * 등록된 어댑터. ⚠️ **배열 순서는 우선순위가 아니다** — 후보 순위는 `detectCandidatesAcross`가
+ * 어댑터를 가로질러 정한다(아래). 전에는 첫 매치 승이라 이 순서가 곧 우선순위였고, 그 서술이
+ * 2026-09-02 이후로도 남아 있었다 (2026-09-04 audit #39).
  *
  * JSON을 YAML·코드보다 앞에 두는 이유: 한 리포에 둘이 공존하면(mastodon이 프런트엔드 JSON +
  * Rails YAML을 둘 다 갖는다) **재생성 어댑터가 다루기 쉬운 쪽**이고, 실측에서 그쪽이 앱 UI였다.

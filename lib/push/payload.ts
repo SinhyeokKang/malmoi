@@ -1,4 +1,5 @@
 import { matchGlobPaths, namespaceOf } from "@/lib/adapters/index";
+import { compareKeys } from "@/lib/adapters/shared";
 import type { Adapter, AdapterFile, DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
 import type { ScannedRef } from "@/lib/scan/index";
 
@@ -20,7 +21,7 @@ import type { PushPayloadType } from "./plan";
  */
 export function pickBaseLocale(locales: readonly string[]): string | undefined {
   if (locales.includes("en")) return "en";
-  return locales.slice().sort()[0];
+  return locales.slice().sort(compareKeys)[0];
 }
 
 /**
@@ -39,7 +40,7 @@ export function selectLocaleFiles(
 ): AdapterFile[] {
   if (layout === "per-locale") {
     return format.locales
-      .map((l) => format.pathTemplate.replace("{locale}", l))
+      .map((l) => format.pathTemplate.replaceAll("{locale}", l))
       // 리포에 없는 경로는 뺀다 — 빈 내용을 먹이면 어댑터가 그 로케일의 키를 통째로 잃는다.
       .filter((p) => paths.includes(p))
       .map((p) => ({ path: p, content: probe(p) ?? "" }));

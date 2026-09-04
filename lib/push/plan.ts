@@ -4,6 +4,7 @@ import { z } from "zod";
 import { compareKeys } from "@/lib/adapters/shared";
 
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
+import type { AdapterName } from "@/lib/adapters/types";
 
 /**
  * `/api/push`의 **판정 로직**. I/O가 없는 순수 함수라 테스트가 자기완결한다 —
@@ -17,10 +18,13 @@ export function sourceHash(sourceText: string): string {
 
 // ── 페이로드 계약 ──────────────────────────────────────────────────────────
 
-const ADAPTER_NAMES = ADAPTERS.map((a) => a.name);
+// `AdapterName` 리터럴 유니온을 유지한다 — `string`으로 지우면 `isAdapterName`이 막은 오타 구멍이
+// 계약 타입 쪽에 다시 열린다 (2026-09-04 audit #27). 튜플 단언은 `ADAPTERS`가 비어 있지 않다는
+// 사실만 덧붙인다.
+const ADAPTER_NAMES = ADAPTERS.map((a) => a.name) as [AdapterName, ...AdapterName[]];
 
 const Format = z.object({
-  adapter: z.enum(ADAPTER_NAMES as [string, ...string[]]),
+  adapter: z.enum(ADAPTER_NAMES),
   /**
    * per-locale 어댑터는 `{locale}`을 치환해 경로를 만들고, multi-locale 어댑터(`ts-dict`)는
    * 한 파일에 로케일이 여러 개라 글롭이다 — 그래서 `{locale}`을 요구하지 않는다.

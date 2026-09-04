@@ -36,15 +36,16 @@ export type TreePayload = {
 
 export function buildTreePayload(
   changes: readonly PullChange[],
-  baseTreeSha: string,
+  /** base **커밋** SHA다 — GitHub이 `base_tree`에 커밋 SHA를 받으면 그 트리로 역참조한다. */
+  baseSha: string,
 ): TreePayload {
   // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다.
   if (changes.length === 0) throw new Error("변경분이 0개다 (트리를 만들 이유가 없다)");
   // 빈 문자열은 필드 누락과 구별되지 않는다 — GitHub이 조용히 base 없는 트리로 처리한다.
-  if (baseTreeSha === "") throw new Error("base_tree가 비어 있다");
+  if (baseSha === "") throw new Error("base_tree가 비어 있다");
 
   return {
-    base_tree: baseTreeSha,
+    base_tree: baseSha,
     tree: changes.map((c) => ({ path: c.path, mode: "100644", type: "blob", content: c.content })),
   };
 }

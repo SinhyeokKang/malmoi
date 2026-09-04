@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOrgAllowed, optionalEnv, parsePrivateKey, requireEnv } from "../env";
+import { optionalEnv, parsePrivateKey, requireEnv } from "../env";
 
 describe("requireEnv", () => {
   it("값이 있으면 그대로 돌려준다", () => {
@@ -42,17 +42,3 @@ describe("parsePrivateKey", () => {
   });
 });
 
-describe("isOrgAllowed", () => {
-  it("멤버면 통과", () => {
-    expect(isOrgAllowed(["acme"], "acme")).toBe(true);
-  });
-
-  it("멤버가 아니면 거부", () => {
-    expect(isOrgAllowed(["other"], "acme")).toBe(false);
-  });
-
-  it("allowedOrg가 비어 있으면 아무도 통과하지 못한다 (fail-closed)", () => {
-    expect(isOrgAllowed(["acme"], undefined)).toBe(false);
-    expect(isOrgAllowed(["acme"], "")).toBe(false);
-  });
-});

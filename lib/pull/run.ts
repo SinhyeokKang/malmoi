@@ -56,6 +56,9 @@ export type PullResult =
   | { status: "skipped"; reason: "no-edits" | "no-changes"; warnings?: string[] }
   | { status: "committed"; commitSha: string; prUrl: string; changed: string[]; warnings?: string[] };
 
+/** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
+const BLOB_CONCURRENCY = 8;
+
 export async function runPull(deps: PullDeps): Promise<PullResult> {
   const { project, localeCodes, keys, maxUpdatedAt } = await deps.loadState();
 
@@ -80,7 +83,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 빈 문자열로 폴백하면 base 판정이 전부 false가 되어 base 파일이 조용히 폴백을 잃는다.
   const { baseLocale } = project;
   if (baseLocale === null) throw new Error("도달 불가: formatFromProject를 통과했는데 baseLocale이 null이다");
-  const { layout, writeStrategy } = adapterFor(format);
+  const { layout } = adapterFor(format);
   const client = await deps.createClient(project);
 
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
@@ -108,10 +111,15 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 대가가 재생성 리포 71개 중 **30개**에서 "값 편집 0건인데 모든 줄이 바뀌는" diff였다
   // (`ADAPTER-COVERAGE.md` §11.3). 1층(DB 측 스킵)이 편집 없는 날을 이미 걸러내므로, 늘어나는
   // 것은 **편집이 있었던 날**의 비용뿐이다.
+  // 파일 수만큼의 왕복이라 **제한 병렬**로 읽는다 — 실측 최대 106로케일이고 라우트의
+  // `maxDuration`이 60초다. 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18).
+  const shaByPath = new Map(tree.map((t) => [t.path, t.sha]));
   const current = new Map<string, string>();
-  for (const p of paths) {
-    const blob = tree.find((t) => t.path === p.path);
-    if (blob) current.set(p.path, await client.getBlobText(blob.sha));
+  const targets = paths.filter((p) => shaByPath.has(p.path));
+  for (let i = 0; i < targets.length; i += BLOB_CONCURRENCY) {
+    const chunk = targets.slice(i, i + BLOB_CONCURRENCY);
+    const texts = await Promise.all(chunk.map((p) => client.getBlobText(shaByPath.get(p.path)!)));
+    chunk.forEach((p, j) => current.set(p.path, texts[j]!));
   }
 
   const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);

@@ -17,10 +17,12 @@ export type DetectedFormat = {
    */
   locales: string[];
   /**
-   * **수술적 치환 어댑터(`ts-dict`)가 write에 필요로 하는 원본 파일들.**
-   *
-   * 값만 바꾸고 나머지 소스를 보존하려면 원본이 있어야 한다. 재생성 어댑터는 무시한다.
-   * pull은 이 어댑터를 쓰는 프로젝트에서 blob SHA만이 아니라 **내용**을 받아야 한다 (MVP §3.3).
+   * **write가 받는 원본 파일들.** 두 방식이 다른 이유로 쓴다 (2026-09-04):
+   * - 수술적(`ts-dict`·`yaml-catalog`·`code-dict`) — **필수.** 값만 바꾸고 나머지 소스를 보존한다.
+   *   없으면 치환할 대상이 없어 파일을 안 낸다.
+   * - 재생성(`chrome-locales`·`json-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
+   *   읽는다. 없으면 기본값으로 계속 만든다.
+   * 그래서 pull은 어댑터 종류와 무관하게 blob **내용**을 받는다 (MVP §3.3). 값은 어느 쪽도 안 읽는다.
    */
   currentFiles?: readonly AdapterFile[];
 
@@ -103,7 +105,7 @@ export type LocaleEntry = {
    *
    * **처리가 writer 방식마다 다르다** (MVP §4.1):
    * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
-   * - 수술적 치환(`ts-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
+   * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
    *
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
@@ -159,7 +161,8 @@ export type Adapter = {
    * 로케일 파일 경로를 만드는 방식. 어댑터마다 구조가 다르다:
    *
    * - `"per-locale"` — 로케일당 파일 하나. `pathTemplate`의 `{locale}`을 치환한다
-   *   (`chrome-locales`, `json-catalog`).
+   *   (`chrome-locales`, `json-catalog`, `yaml-catalog`, `code-dict` — ⚠️ 뒤 둘은 per-locale인데
+   *   **수술적**이다. 경로 모양과 write 기계는 별개 축이다).
    * - `"multi-locale"` — 한 파일에 로케일이 여러 개. `pathTemplate`이 글롭이고 치환하지 않는다
    *   (`ts-dict`). write도 파일별로 불러야 한다.
    */
@@ -196,7 +199,8 @@ export type Adapter = {
    * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
    *
    * ⚠️ **어댑터 *간* 순위는 여기에 없다.** 이 함수는 자기 어댑터의 후보만 낸다 — 어댑터를
-   * 가로지르는 병합·순위는 지금 소비자가 측정 실험뿐이라 `lib/survey/`의 순수 함수가 맡는다.
+   * 가로지르는 순위는 `index.ts`의 `detectCandidatesAcross`가 맡는다 (2026-09-02부터 프로덕션
+   * 탐지 경로다. 전에는 측정 실험 전용이었다).
    */
   detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[];
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
