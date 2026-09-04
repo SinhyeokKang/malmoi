@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planOwnerBackfill } from "../backfill";
+import { planOwnerBackfill, resolveBackfillOptions } from "../backfill";
 
 /**
  * 기존 `Project`에 OWNER를 채우는 일회성 판정 (design §5 배포 순서 2).
@@ -94,5 +94,88 @@ describe("planOwnerBackfill — 멱등", () => {
 
     const applied = first.map((r) => ({ projectId: r.projectId, role: r.role }));
     expect(planOwnerBackfill({ projects, members: applied, ownerUserId: "u-owner" })).toEqual([]);
+  });
+});
+
+/**
+ * ⚠️ **이 판정이 틀리면 프로덕션 DB에 쓴다.** 스크립트가 dev/prod 양쪽을 겨눌 수 있는 유일한
+ * 코드라, 대상 결정과 쓰기 여부를 순수 함수로 빼서 테스트가 고정한다. I/O는 껍데기가 한다.
+ *
+ * **기본이 dev이고 기본이 dry-run이다** — 둘 다 명시해야 위험한 쪽으로 간다.
+ */
+describe("resolveBackfillOptions — 어느 DB에 쓰는가", () => {
+  const owner = ["--owner-email", "a@b.com", "--owner-github-id", "12345"];
+
+  it("플래그가 없으면 dev이고 dry-run이다", () => {
+    const o = resolveBackfillOptions(owner);
+    expect(o.target).toBe("dev");
+    expect(o.envVar).toBe("DIRECT_URL");
+    expect(o.apply).toBe(false);
+  });
+
+  it("--apply만 주면 dev에 쓴다", () => {
+    const o = resolveBackfillOptions([...owner, "--apply"]);
+    expect(o.target).toBe("dev");
+    expect(o.apply).toBe(true);
+  });
+
+  it("--target prod는 DIRECT_URL_PROD를 고른다 — 런타임 URL(DATABASE_URL_PROD)은 존재하지 않는다", () => {
+    const o = resolveBackfillOptions([...owner, "--target", "prod"]);
+    expect(o.target).toBe("prod");
+    expect(o.envVar).toBe("DIRECT_URL_PROD");
+  });
+
+  it("--target prod만으로는 쓰지 않는다 — --apply가 따로 필요하다", () => {
+    expect(resolveBackfillOptions([...owner, "--target", "prod"]).apply).toBe(false);
+    expect(resolveBackfillOptions([...owner, "--target", "prod", "--apply"]).apply).toBe(true);
+  });
+
+  it("--target dev를 명시해도 dev다", () => {
+    expect(resolveBackfillOptions([...owner, "--target", "dev"]).envVar).toBe("DIRECT_URL");
+  });
+
+  it("모르는 --target은 던진다 — 조용히 dev로 떨어뜨리지 않는다", () => {
+    expect(() => resolveBackfillOptions([...owner, "--target", "staging"])).toThrow();
+    expect(() => resolveBackfillOptions([...owner, "--target", "PROD"])).toThrow();
+  });
+
+  it("--target에 값이 없으면 던진다", () => {
+    expect(() => resolveBackfillOptions([...owner, "--target"])).toThrow();
+  });
+});
+
+describe("resolveBackfillOptions — 소유자 인자", () => {
+  it("이메일과 GitHub 숫자 id를 받는다", () => {
+    const o = resolveBackfillOptions(["--owner-email", "a@b.com", "--owner-github-id", "12345"]);
+    expect(o.owner).toEqual({ email: "a@b.com", githubId: "12345", name: undefined });
+  });
+
+  it("이메일을 정규화한다 — User.email과 같은 규칙이어야 대조가 갈리지 않는다", () => {
+    const o = resolveBackfillOptions(["--owner-email", " A@B.com ", "--owner-github-id", "1"]);
+    expect(o.owner.email).toBe("a@b.com");
+  });
+
+  it("--owner-name은 선택이다", () => {
+    const o = resolveBackfillOptions([
+      "--owner-email", "a@b.com", "--owner-github-id", "1", "--owner-name", "Sinhyeok",
+    ]);
+    expect(o.owner.name).toBe("Sinhyeok");
+  });
+
+  it("이메일이 없으면 던진다 — 빈 값으로 User를 만들면 되돌릴 수 없다", () => {
+    expect(() => resolveBackfillOptions(["--owner-github-id", "1"])).toThrow();
+    expect(() => resolveBackfillOptions(["--owner-email", "", "--owner-github-id", "1"])).toThrow();
+    expect(() => resolveBackfillOptions(["--owner-email", "   ", "--owner-github-id", "1"])).toThrow();
+  });
+
+  it("GitHub id가 없으면 던진다 — Account 없이 User만 만들면 첫 로그인이 OAuthAccountNotLinked다", () => {
+    expect(() => resolveBackfillOptions(["--owner-email", "a@b.com"])).toThrow();
+    expect(() => resolveBackfillOptions(["--owner-email", "a@b.com", "--owner-github-id", ""])).toThrow();
+  });
+
+  it("GitHub id가 숫자가 아니면 던진다 — 핸들을 잘못 넘기는 실수를 막는다", () => {
+    expect(() =>
+      resolveBackfillOptions(["--owner-email", "a@b.com", "--owner-github-id", "SinhyeokKang"]),
+    ).toThrow();
   });
 });
