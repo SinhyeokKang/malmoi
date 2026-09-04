@@ -137,87 +137,69 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
 
 ---
 
-## 1. Prisma 스키마 + Supabase 연결 ✅
 
-- [x] `prisma/schema.prisma` 4테이블 — `Locale`·`StringKey`·`KeyRef`·`Translation`
-  - 검증: `npx prisma validate` 통과
-- [x] 마이그레이션 생성·적용 — `20260831012453_init`
-  - 검증: `pnpm db:status` → `Database schema is up to date!`
-- [x] `Translation` 외래키 `ON DELETE RESTRICT`
-  - 검증: `migration.sql`에 `ON DELETE RESTRICT` 2건 (키 삭제를 DB가 거부한다)
-- [x] `UNIQUE(keyId, localeCode)`
-  - 검증: `migration.sql`에 `Translation_keyId_localeCode_key`
-- [x] 런타임 접속 (`lib/db.ts`, transaction pooler 6543)
-  - 검증: 4테이블 `count()` 조회 성공
-- [x] 마이그레이션 접속 (`prisma.config.ts`, session pooler 5432)
-  - 검증: 위 `db:status`
+## 전역 미결 (단계에 묶이지 않은 것)
 
----
+- [x] **`main`/`dev` 브랜치 분리 + Vercel Preview 배포** ✅ (2026-09-04 — MVP §8.4에서 앞당겼다)
+  - 앞당긴 이유: SaaS 기능이 UI·인증을 건드리는데 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 된다.** preview가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다
+  - `dev` push = preview 배포(dev DB) / `dev`→`main` squash PR = 프로덕션 배포. 작업 브랜치 층은 두지 않는다
+  - 삭제했던 `/merge`·`/sync` 복원 (스킬 13 → 15개, 셋 다 Codex 미러 제외). `/ship`의 종착점이 프로덕션 → dev로 내려왔다
+  - CI 트리거: `push [main, dev]` + `pull_request [main]`. **`/push`의 `db:deploy`가 `/merge` 1단계로 돌아갔다** — dev push는 프로덕션에 아무것도 배포하지 않는다
+  - ⚠️ **preview 로그인은 dev 브랜치 고정 URL에서만 된다** — OAuth App callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 전 preview 로그인이 필요해지면 `redirectProxyUrl`(Auth.js v5)이고, 그 시점은 SaaS UI 착수다
+  - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
+  - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
+- [x] **preview 전용 GitHub OAuth 앱** ✅ (2026-09-04) — callback `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`, Preview 스코프에 등록. **preview 로그인 실측 통과.** ⚠️ **env를 바꾸면 재배포해야 반영된다** — 등록만 하고 재배포를 빠뜨려 GitHub이 빈 `client_id`에 404를 줬고, 앱·ID·secret을 차례로 의심하다 시간을 썼다
+- [ ] **dev DB가 비어 있다** (`Project` 0행). preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈춘다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
+  - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
 
-## 1.5 Project 테넌트 경계 ✅ (2026-08-31 범위 추가)
+- ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
+  페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
+  다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`
+  왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
+  프로젝트를 결정하면 사라진다
 
-MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** — SaaS 기능은 없다.
+- [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
+  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** (`db:status`는 dev를 본다)
+  - 대가로 얻은 것: dev에서 리셋을 승인해도 된다 (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다)
+- [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — 처음엔 `https://i18n-poc.vercel.app`이었고 2026-09-04 개명 뒤 **`https://mal-moi.com`**(apex)이 정본이다. main 푸시가 곧 배포다
+  - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
+  - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
+  - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인
+  - `/api/pull`(cron 경로)이 프로덕션에서 `{"status":"skipped","reason":"no-changes"}` — 2층까지 도달했으므로 DB·GitHub App·PEM 개행 복원·blob 비교가 한 번에 검증됐다
+- [x] **`pnpm build`를 로컬 게이트에** (2026-08-31 해소 — CI가 아니라 `/push` 1단계)
+  - 근거: `tsc`가 RSC 경계를 못 본다. CI에 넣으면 **배포 후에** 알게 되고, 로컬 게이트가 프로덕션 앞의 유일한 방어선이다. 콜드 5초 / 웜 2초
 
-- [x] `Project` 테이블 + `projectId` FK
-  - 검증: `20260831033609_add_project_tenant_boundary` 적용, `pnpm db:status` up to date
-- [x] `StringKey` 키 이름이 프로젝트 안에서만 유일
-  - 검증: 두 프로젝트가 같은 `common.ok`를 갖는 것을 실 DB에서 확인
-- [x] `Locale` 복합 PK, `Translation` 복합 FK
-  - 검증: 위와 같은 마이그레이션
-- [x] **테넌트 간 참조를 DB가 거부**
-  - 검증: A의 키 + B의 로케일 insert가 `Foreign key constraint`로 거부되는 것을 실 DB에서 확인
-- [x] 인덱스를 `projectId` 선두 복합으로 교체
-  - 검증: `migration.sql`의 DropIndex 3건 + CreateIndex 3건
-- [x] 리포 설정을 env → `Project` 컬럼으로 이전
-  - 검증: `.env.example`에서 `TARGET_REPO_*`·`GITHUB_APP_INSTALLATION_ID` 제거, `ACTIVE_PROJECT_SLUG` 추가
-- 커밋: `ab4ac2c` (schema+migration)
-
-**여전히 비범위**: 테넌트별 인증·인가, 과금, 온보딩, 프로젝트 전환 UI. 아이디어 검증 후 인증·인가부터.
 
 ---
 
-## 2. `lib/githash.ts` + 결정적 export ✅
+# 완료 기록 (§1~§9)
 
-> **2026-08-31**: `lib/export.ts`는 3a의 어댑터 writer로 흡수돼 삭제됐다. 결정성 규칙은 `lib/adapters/shared.ts`가, 테스트는 `lib/adapters/__tests__/adapters.test.ts`가 이어받았다 (커버리지 8건 이관).
+**여기부터는 닫힌 단계다.** 지금 무엇을 해야 하는지는 위의 §0과 "전역 미결"이 답한다. 아래를 읽는 경우는
+둘뿐이다 — **어떤 결정이 언제 왜 뒤집혔는지** 확인할 때, 그리고 되살릴 작업의 근거를 찾을 때. 불변식·계약의
+정본은 여기가 아니라 `MVP.md`·`ARCHITECTURE.md`·`ADAPTER-COVERAGE.md`다.
 
-**의존성 0의 순수 함수.** 이 둘이 틀리면 3~7단계가 전부 무의미해진다. `/tdd`로 테스트부터 쓴다.
 
-### 2a. `lib/githash.ts` ✅
+## 1~2. 스키마 · 접속 · 순수 함수 ✅ (2026-08-31)
 
-- [x] `blobSha(content: string): string` — `sha1("blob <byteLength>\0" + content)`
-  - 검증: 골든 5건 (빈 문자열·ASCII·한글·이모지·실제 `messages.json` 형태) — `lib/__tests__/githash.test.ts`, 22 tests green
-  - 추가: **골든 자체를 `git hash-object --stdin` 실측과 재대조하는 자기검증 앵커** (박제된 상수가 낡는 것을 잡는 유일한 장치)
-- [x] 바이트 길이가 `Buffer.byteLength(content, "utf8")`이다
-  - 검증: 한글(문자 5/바이트 15)·이모지(코드 유닛 2/바이트 4) 케이스 통과. `Buffer.from(content, "utf8").byteLength` 사용
-- 커밋: `4f11488` (test, red) → `dfd13bf` (feat)
+**`prisma/schema.prisma` + Supabase 접속 + `lib/githash.ts` + 결정적 export.** 체크리스트를 2026-09-05에
+접었다 — 결론이 전부 정본으로 올라갔고 검증은 테스트가 상시로 든다.
 
-### 2b. 결정적 export ✅ → `lib/adapters/shared.ts` + 어댑터 writer로 이동
-
-- [x] `exportLocale(keys, { isBase }): string | null` — DB 상태 → `messages.json` 문자열
-  - 검증: 19 케이스 green (`lib/__tests__/export.test.ts`), 전체 41 tests
-- [x] 키 정렬이 **환경에 의존하지 않는다** (`<` 비교 = UTF-16 코드 유닛 순서)
-  - 검증: `a A ä _x B b z Z 1` 입력에서 `1 A B Z _x a b z ä` 고정. localeCompare는 `_x 1 a A ä b B z Z`로 **완전히 다르고** Node ICU 빌드에 의존한다
-- [x] 정렬한 순서로 객체를 **재조립**한다 (DB 순서에 의존하지 않는다)
-  - 검증: 입력 배열을 역순으로 넣어도 출력이 바이트 동일
-- [x] 들여쓰기 2칸, 파일 끝 개행 **정확히 1개**
-  - 검증: 마지막 3바이트가 `10 125 10`(LF·`}`·LF)임을 런타임으로 확인
-- [x] `orphaned` 키 제외
-  - 검증: orphaned가 출력에 없고, 남은 키가 orphaned뿐이면 `null`
-- [x] **같은 입력 두 번 호출 → 바이트 단위 동일**
-  - 검증: `Buffer.equals`로 비교
-- [x] `description`이 있으면 포함, 없으면 필드 자체를 생략 (`null`도 생략)
-  - 검증: 출력에 `undefined`가 새지 않음. **non-base에는 넣지 않는다**(원문 메타데이터)
-- [x] **빈 로케일은 파일을 내지 않는다** (2026-08-31 결정 — 🔒 해소)
-  - 검증: 번역 0건·빈 문자열·키 0개 각각 `null` 반환
-- [x] 미번역 키는 non-base 파일에서 제외 (같은 원칙의 파생 — 크롬이 폴백한다)
-  - 검증: 번역 없는 키가 non-base 출력에 없음
-- [x] `exportLocale` + `blobSha` 조합이 `git hash-object`와 일치
-  - 검증: export 출력을 `git hash-object --stdin`에 넣어 `blobSha`와 대조 (2a·2b 접점)
-- [x] JSON 이스케이프 + 한글·이모지를 그대로 낸다 (`\u` 이스케이프 없음)
-  - 검증: `JSON.parse` 왕복 + `\u` 부재 확인
-- 커밋: `cf3ea2e` (test, red) → `fbccddc` (feat)
-
-—— ARCHITECTURE §1·§2의 `(미구현)` 표시 제거 완료
+- **§1 스키마·접속** — 4테이블(`Locale`·`StringKey`·`KeyRef`·`Translation`), `_init`. `Translation` FK가
+  `ON DELETE RESTRICT`(키 삭제를 DB가 거부한다), `UNIQUE(keyId, localeCode)`. 런타임 6543 / 마이그레이션 5432
+- **§1.5 `Project` 테넌트 경계** (2026-08-31 범위 추가, `ab4ac2c`) — MVP §7 "다중 프로젝트"의 **스키마만**
+  해제했다. `projectId` FK + 복합 PK·복합 unique, 인덱스를 `projectId` 선두로 교체, 리포 설정을 env →
+  `Project` 컬럼으로 이전. **테넌트 간 참조를 DB가 거부하는 것을 실 DB로 확인**했다. 여전히 비범위:
+  테넌트별 인증·인가, 과금, 온보딩, 프로젝트 전환 UI
+- **§2a `blobSha`** (`4f11488` → `dfd13bf`) — `sha1("blob <byteLength>\0" + content)`. 골든 5건에 더해
+  **골든 자체를 `git hash-object --stdin` 실측과 재대조하는 자기검증 앵커**를 뒀다 — 박제된 상수가 낡는 것을
+  잡는 유일한 장치다. 길이는 `Buffer.byteLength`(한글·이모지)
+- **§2b 결정적 export** (`cf3ea2e` → `fbccddc`) — `lib/export.ts`로 시작했다가 3a의 어댑터 writer로 흡수돼
+  삭제됐고, 규칙은 `lib/adapters/shared.ts`가 이어받았다. 정렬이 **`<` 비교(UTF-16 코드 유닛)** 인 이유는
+  `localeCompare`가 Node ICU 빌드에 의존해 환경마다 다른 파일을 내기 때문이다 — 같은 입력에서 두 정렬의
+  결과가 완전히 달랐다. 🔒 **빈 로케일은 파일을 내지 않는다**(2026-08-31 해소), 미번역 키는 non-base에서
+  제외(크롬이 폴백한다), `orphaned` 제외
+  - ⚠️ 이 규칙들의 현재 정본은 **ARCHITECTURE §1.1**이고, 들여쓰기는 그 뒤 "원본 파일의 폭"으로 바뀌었다
+    (2026-09-04, §8 원본 포맷 보존). 위 서술은 당시 기록이다
 
 ---
 
@@ -373,27 +355,6 @@ MVP §7의 "다중 프로젝트/리포" 부분 해제. **스키마 경계만** �
   - 근거: 로케일이 열이면 "남은 일"이 로케일마다 다르다. base는 대개 채워져 있어 기본값은 base가 아닌 첫 로케일
 - [x] 헤더 글자를 `text-foreground/60`으로 (§2.2 — muted 표면 위 `text-muted-foreground`는 4.34:1 미달)
 - [x] 넓은 표는 자기 컨테이너에서만 스크롤 (`overflow-x-auto`)
-
-### 5b-old. UI 골격 (테이블로 대체됨)
-
-- [x] shadcn 컴포넌트 추가 (`badge`·`select`·`button`·`input`)
-  - 검증: `pnpm build` 통과, `/keys` 라우트 등록
-- [x] 네임스페이스 사이드바 — 상태별 개수 포함
-  - 검증: 실 데이터 **36 네임스페이스**. 총 개수만으로는 "어디에 일이 남았나"를 알 수 없어 미번역·검토필요 개수를 함께 낸다
-- [x] 키 리스트 — 키(mono)·원문·description·번역값·작성자
-  - 검증: **1446키 / 쿼리 1회 692ms**. 가상화·테이블 라이브러리 없이 순수 렌더
-- [x] 배지 4상태 판정 + 우선순위
-  - 검증: 실 DB에서 각 상태를 유도해 확인 — 행 삭제·`needsReview`·**빈 문자열**·`orphaned`. 빈 문자열은 미번역이고 `orphaned`가 전부를 이긴다
-- [x] 코드 참조 GitHub permalink
-  - 검증: `blob/<40자 SHA>/<path>#L<line>`. **SHA가 없으면 `null`** — 브랜치로 대체하면 코드가 움직여 줄 번호가 어긋난다
-- [x] 로케일 전환 — base 로케일은 편집 대상에서 제외 (원문 자체다)
-  - 검증: skillflo 6로케일 중 편집 가능 5개
-- [x] 네임스페이스 필터를 SQL이 아니라 메모리에서
-  - 근거: 사이드바가 전 네임스페이스 집계를 필요로 해 어차피 전체를 읽는다. 두 번 읽는 대신 한 번 읽고 나눈다
-- [x] 번역을 `where`로 좁힌 1:1로 조회
-  - 근거: 6로케일을 전부 싣고 JS에서 고르면 6배를 읽는다
-- [x] DESIGN.md 체크리스트 8항 통과
-  - 검증: `dark:` 0 / `bg-destructive` 0 / 임의값 0 / 새 raw 색 0 / muted 표면 대비 위반 0 / 키에 `text-mono`
 
 ### 5c. 인라인 편집·저장 ✅
 
@@ -571,37 +532,6 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
     한 리포 두 Project의 `l10n/sync` 충돌, 실물 리포에 낸 PR)이 전부 들어 있다
 
 ---
-
-## 전역 미결 (단계에 묶이지 않은 것)
-
-- [x] **`main`/`dev` 브랜치 분리 + Vercel Preview 배포** ✅ (2026-09-04 — MVP §8.4에서 앞당겼다)
-  - 앞당긴 이유: SaaS 기능이 UI·인증을 건드리는데 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 된다.** preview가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다
-  - `dev` push = preview 배포(dev DB) / `dev`→`main` squash PR = 프로덕션 배포. 작업 브랜치 층은 두지 않는다
-  - 삭제했던 `/merge`·`/sync` 복원 (스킬 13 → 15개, 셋 다 Codex 미러 제외). `/ship`의 종착점이 프로덕션 → dev로 내려왔다
-  - CI 트리거: `push [main, dev]` + `pull_request [main]`. **`/push`의 `db:deploy`가 `/merge` 1단계로 돌아갔다** — dev push는 프로덕션에 아무것도 배포하지 않는다
-  - ⚠️ **preview 로그인은 dev 브랜치 고정 URL에서만 된다** — OAuth App callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 전 preview 로그인이 필요해지면 `redirectProxyUrl`(Auth.js v5)이고, 그 시점은 SaaS UI 착수다
-  - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
-  - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
-- [x] **preview 전용 GitHub OAuth 앱** ✅ (2026-09-04) — callback `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`, Preview 스코프에 등록. **preview 로그인 실측 통과.** ⚠️ **env를 바꾸면 재배포해야 반영된다** — 등록만 하고 재배포를 빠뜨려 GitHub이 빈 `client_id`에 404를 줬고, 앱·ID·secret을 차례로 의심하다 시간을 썼다
-- [ ] **dev DB가 비어 있다** (`Project` 0행). preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈춘다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
-  - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
-
-- ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
-  페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
-  다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`
-  왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
-  프로젝트를 결정하면 사라진다
-
-- [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
-  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** (`db:status`는 dev를 본다)
-  - 대가로 얻은 것: dev에서 리셋을 승인해도 된다 (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다)
-- [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — 처음엔 `https://i18n-poc.vercel.app`이었고 2026-09-04 개명 뒤 **`https://mal-moi.com`**(apex)이 정본이다. main 푸시가 곧 배포다
-  - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
-  - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
-  - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인
-  - `/api/pull`(cron 경로)이 프로덕션에서 `{"status":"skipped","reason":"no-changes"}` — 2층까지 도달했으므로 DB·GitHub App·PEM 개행 복원·blob 비교가 한 번에 검증됐다
-- [x] **`pnpm build`를 로컬 게이트에** (2026-08-31 해소 — CI가 아니라 `/push` 1단계)
-  - 근거: `tsc`가 RSC 경계를 못 본다. CI에 넣으면 **배포 후에** 알게 되고, 로컬 게이트가 프로덕션 앞의 유일한 방어선이다. 콜드 5초 / 웜 2초
 
 ## 8. 어댑터 범용성 측정 ✅ + 어댑터 5종 완성 ✅ + 홀드아웃 검증 ✅ (2026-09-02)
 

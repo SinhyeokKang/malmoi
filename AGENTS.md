@@ -311,8 +311,12 @@ docs/DESIGN.md          편집 UI 시각 규칙 (라이트 단일, mono 표면 �
 docs/ARCHITECTURE.md    설계 상세·함정
 docs/ADAPTER-COVERAGE.md 어댑터 범용성 실측 (13차) — 어댑터·탐지 규칙 손대기 전 필독
 docs/POSTMORTEM.md      회귀·버그 회고 누적
-docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스펙이 아니다** — 결론은 MVP·
-                        ARCHITECTURE로 올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
+docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — 결론은 MVP·ARCHITECTURE로
+                        올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
+                        ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
+                        했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로,
+                        pull-to-pr/tasks.md §4가 실물 검증 7시나리오라 남아 있다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
@@ -395,7 +399,8 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
 - **docs/DESIGN.md** — 편집 UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. 커밋 prefix `docs(DESIGN): ...`
-- **docs/TASKS.md** — **태스크 체크리스트.** 완료 조건이 붙은 단계별 목록. **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
+- **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
+  - 완료 기록은 **압축하지 않는다.** 체크리스트로 보이지만 실제 내용은 "그 결정이 언제 왜 뒤집혔나"이고, ARCHITECTURE·POSTMORTEM과 겹쳐 보여도 그쪽은 현재 불변식이라 시간축이 없다. 순수 검증 목록이었던 §1·§2와 대체된 §5b-old만 접었다
 - **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
