@@ -60,7 +60,7 @@ pnpm db:deploy
 트리거:
 - **`lib/`·`app/`·`prisma/`에 실질 변경이 있음 = 태스크가 진행됐다는 뜻 → docs/TASKS.md** (⚠️ 이 트리거는 거의 항상 걸린다. 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다)
 - 기능 추가/삭제, 세 흐름(push·편집 UI·pull)의 단계 변경, 기술 선택·버전 변경, 비범위 항목을 범위로 끌어들임, 스키마 변경 → **docs/MVP.md** + **docs/TASKS.md**(단계 구성 변경 시)
-- **`lib/` 아래 코어 모듈 변경** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/db.ts`·`lib/env.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`, `prisma/schema.prisma`, `middleware.ts` (2026-09-04 감사에서 `cli`·`survey`·`db`가 빠져 있었다 — 아래 경고가 실제로 일어난 사례) — 또는 새 불변식·함정 발견, 인증 경로 변경 → **docs/ARCHITECTURE.md**
+- **`lib/` 아래 코어 모듈 변경** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`, `prisma/schema.prisma`, `middleware.ts` (2026-09-04 감사에서 `cli`·`survey`·`db`가 빠져 있었다 — 아래 경고가 실제로 일어난 사례) — 또는 새 불변식·함정 발견, 인증 경로 변경 → **docs/ARCHITECTURE.md**
   - ⚠️ **이 목록은 실제 디렉터리와 어긋나기 쉽다.** `lib/export.ts`가 어댑터로 흡수된 뒤에도 트리거가 그 이름을 가리키고 있어서, `lib/push/`의 정책 반전(strict)이 ARCHITECTURE §5.5를 낡은 채로 통과시켰다. **`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다.**
 - **코어 원칙·정책이 뒤집힘** (번역값 소유권, export 결정성, 인증 경계, 병합 없음의 해석) → **CLAUDE.md 코어 원칙 절 + docs/MVP.md + docs/ARCHITECTURE.md 셋 다**
   - 정책 반전은 한 문서만 고치면 나머지가 **반대 불변식을 가르친다.** 뒤집기 전 서술을 grep해 전수로 찾는다 (예: strict 전환 때 `DO NOTHING`·"절대 건드리지 않는다")

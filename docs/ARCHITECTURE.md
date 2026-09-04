@@ -335,6 +335,8 @@ clone하지 않는다.
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
+⚠️ **`warnings`는 실행별 진단이고 큐가 아니다** (2026-09-04). 2층까지 통과하면 `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 같은 경고가 다시 나오지 않는다. **경고가 있으면 `lastPulledAt`을 안 쓰는 쪽은 택하지 않았다** — `missingOriginal`(리포에 그 로케일 파일이 없다)처럼 **지속 상태**인 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다. 대신 `lib/pull/trigger.ts`가 `console.warn`으로도 낸다 — 진입점 둘이 공유하는 조립층이라 한 곳이면 되고, cron 응답 JSON을 놓쳐도 Vercel 로그에 남는다.
+
 ### 함정
 
 - **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
@@ -547,6 +549,26 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | `l10n/sync` 쓰기 | GitHub App installation token | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다. **fail-closed** — 환경변수가 비었으면 500이고, 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부를 탐색할 단서를 주지 않는다) |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
+
+### 6.0 ⚠️ 500 본문은 우리 메시지만 담는다
+
+**두 라우트의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04). `lib/failure.ts`의
+`classifyFailure`가 가른다:
+
+| 오류 | 본문 | 전문 |
+|---|---|---|
+| `MissingEnvError`(`requireEnv`) | 메시지 그대로 — 변수 이름만 담는다 | — |
+| 그 밖(Prisma·octokit·unknown) | `{ error: "internal", ref }` | `console.error`로 서버 로그(Vercel) |
+
+전에는 전부 그대로 실었고, 근거는 POSTMORTEM 2026-09-03의 **"본문 없는 500이 원인을 지웠다"** 였다.
+그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/l10n-push`는 임의의 대상
+리포에서 돌고** `scripts/push-local.ts`가 응답 본문을 stdout에 찍는다 — 대상이 public이면 Prisma
+접속 오류 한 번이 pooler 호스트와 DB 유저를 **공개 Actions 로그**에 박는다(`bugshot-2`가 public이다).
+회고의 요구("원인이 남는다")는 `ref`로 지킨다: 운영자가 그 값으로 Vercel 로그를 찾는다.
+
+⚠️ **판정은 문구가 아니라 타입이다.** 남의 오류가 우리 문구를 담아도 안전이 아니고, 우리 문구가
+바뀌어도 판정이 흔들리지 않는다. `instanceof`가 아니라 `name` 비교인 이유는 모듈 인스턴스가 둘이
+되면(번들 경계·mock) 조용히 false가 되어 설정 누락이 `internal`로 접히기 때문이다.
 
 ### 6.1 ⚠️ 차단은 미들웨어에만 의존한다
 
