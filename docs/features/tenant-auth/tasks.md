@@ -39,6 +39,10 @@
     OWNER가 된다. `syncBranchFor`가 같은 이유로 던진다)
 - [x] `hasSessionCookie(names)` (`lib/auth/cookie.ts`)
   - 검증 `[auto]`: `authjs.session-token` / `__Secure-authjs.session-token` 어느 하나면 true, 둘 다 없으면 false
+- [x] `resolveBackfillOptions(argv)` · `backfillReport(...)` (`lib/auth/backfill.ts`) — §3에서 추가.
+      **이 판정이 틀리면 프로덕션 DB에 쓴다**
+  - 검증 `[auto]`: 기본이 dev·dry-run / 모르는 `--target`은 던진다 / GitHub id가 숫자가 아니면 던진다 /
+    **dry-run과 apply의 출력이 다르다**(같으면 `--apply`를 잊은 것을 "채웠다"로 오독한다)
 - [x] `accessErrorMessage(error)` (`lib/auth/message.ts`) — Action 거부 문자열 → 한국어 (`pullMessage` 형태)
   - 검증 `[auto]`: `unauthorized`·`forbidden`·`not-found` 셋이 서로 다른 문구. exhaustive switch
 
@@ -76,9 +80,12 @@
 
 `──` 커밋: `feat(db): tables for users, sessions, membership and invitations`
 
-## 3. ⚠️ OWNER backfill — **전환(§5) 앞에 반드시**
+## 3. ⚠️ OWNER backfill — **전환(§5) 앞에 반드시** ✅ (2026-09-05, `fa2bbf4` → `e4b56ee` → `bdd254b`)
 
-- [ ] `scripts/backfill-owners.ts` — **`User` + `Account(github, providerAccountId=<숫자 id>, type="oauth")` +
+**dev dry-run이 `order-check` 1건을 낸다.** ⚠️ **`--apply`는 아직 안 돌렸다** — dev·prod 양쪽의
+실제 실행은 §5 전환 직전이 적기다(그 사이에 소유자가 로그인하면 어댑터가 만든 `User`와 합쳐야 한다).
+
+- [x] `scripts/backfill-owners.ts` — **`User` + `Account(github, providerAccountId=<숫자 id>, type="oauth")` +
       `ProjectMember(OWNER)`를 함께 upsert**한다. 판정은 `planOwnerBackfill`, 스크립트는 I/O만.
       소유자 `SinhyeokKang`의 id·이메일은 `gh api user`로 얻어 인자로 넘긴다(스크립트가 GitHub을 부르지 않는다)
   - ⚠️ **`User`만 만들면 첫 GitHub 로그인이 `OAuthAccountNotLinked`로 거부된다**(design §5). Account까지가
@@ -86,11 +93,11 @@
   - 검증 `[auto]`: `planOwnerBackfill` 테스트(§1). 스크립트 자체는 `pnpm test` 밖(DB)
   - 검증 `[manual]`: **기본은 dry-run** — 만들 행을 출력만. `--apply`로 dev에 적용 → `order-check`에
     OWNER 1행 + `User`·`Account` 1행씩. 다시 `--apply` → "0건" 출력
-- [ ] `--target prod`일 때만 `DIRECT_URL_PROD`(5432)로 붙는다 (design §5 예외). 없으면 `DIRECT_URL`(dev)
+- [x] `--target prod`일 때만 `DIRECT_URL_PROD`(5432)로 붙는다 (design §5 예외). 없으면 `DIRECT_URL`(dev)
   - 검증 `[manual]`: 플래그 없이 돌리면 출력에 dev ref가 찍힌다
   - ⚠️ `lib/db.ts`는 `server-only`라 tsx가 못 쓴다 — `scripts/smoke-github.ts`처럼 `.env.local` 로드 +
     자체 `PrismaPg`
-- [ ] 스크립트 수명: **일회성.** prod 적용 뒤 삭제 커밋(§7 뒤)
+- [x] 스크립트 수명: **일회성.** prod 적용 뒤 삭제 커밋(§8) — 주석과 CLAUDE.md 양쪽에 적었다
 
 ⚠️ **마이그레이션 안에 넣지 않는다** — dev와 prod의 `Project` 행이 다르고, 소유자를 사람이 확인해야
 한다. 빠뜨린 채 §5를 배포하면 **아무도 어느 프로젝트에도 못 들어간다**(fail-closed라 옳지만 복구가 SQL이다).
@@ -127,6 +134,10 @@
       "`User.email`은 정규화 값을 저장한다"가 조치 없이는 **거짓이 된다.** 초대 수락은
       `planInvitationAccept`가 양쪽을 정규화해 안 깨지지만, §5의 "이미 멤버인 이메일 초대" 검사처럼
       `User.email`을 직접 대조하는 조회가 대소문자로 갈린다
+  - ⚠️ **또 하나의 실패 경로**(code-review 2026-09-05): `scripts/backfill-owners.ts`는 **정규화된**
+    이메일로 `user.upsert`한다. 소유자가 이 배선 전에 `Sinhyeok.Kang@…` 원문으로 로그인해 그 행이
+    생기면, backfill 재실행이 `findUnique({email})`로 못 찾고 create로 가서 **`User_email_key`를
+    위반하며 죽는다.** 멱등해야 한다는 §3의 요구가 그 지점에서 깨진다
   - 검증 `[auto]`: `signIn`/`profile` 콜백이 `normalizeEmail`을 부르는 것을 테스트가 고정 /
     `[manual]`: 대문자 섞인 이메일로 로그인 후 `User.email`이 소문자
 - [ ] `session` 콜백이 `user.id`만 싣는다. `types/next-auth.d.ts`의 `login` → `id`
