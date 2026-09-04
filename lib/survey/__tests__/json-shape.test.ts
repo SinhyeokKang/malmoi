@@ -186,14 +186,20 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(jsonShape('{"a":"A"}\n').causes.compactContainer).toBe(false);
   });
 
-  it("2칸이 아닌 들여쓰기를 원인으로 표시한다", () => {
-    expect(jsonShape(`${JSON.stringify({ a: { b: "B" } }, null, 4)}\n`).causes.indent).toBe(true);
-    expect(jsonShape(two({ a: { b: "B" } })).causes.indent).toBe(false);
+  /**
+   * ⚠️ **들여쓰기는 더 이상 diff 원인이 아니다** (2026-09-04, 원본 포맷 보존). 재생성 writer가
+   * 원본 폭을 따르므로 diff를 만들지 않고, **관측치로만 남는다.** 원인으로 남겨 두면 그 리포들이
+   * `diff.clean` 분모에서 계속 빠져 개선이 게이트에 안 나타난다 (POSTMORTEM 2026-09-03).
+   */
+  it("들여쓰기는 관측치이지 원인이 아니다", () => {
+    expect(jsonShape(`${JSON.stringify({ a: { b: "B" } }, null, 4)}\n`).indent).toEqual({ char: "space", width: 4 });
+    expect(jsonShape(two({ a: { b: "B" } })).indent).toEqual({ char: "space", width: 2 });
+    expect("indent" in jsonShape(two({ a: "A" })).causes).toBe(false);
   });
 
-  it("들여쓰기를 관측할 수 없으면(한 줄) 원인으로 세지 않는다", () => {
-    // 없는 근거로 "원인 있음"을 보고하면 원인 분해의 합이 부풀어 목표 수치가 거짓이 된다.
-    expect(jsonShape('{"a":"A"}\n').causes.indent).toBe(false);
+  it("들여쓰기를 관측할 수 없으면(한 줄) none이다", () => {
+    // 0칸이라고 보고하면 "2칸이 아니다"가 되어 없는 사실이 선다.
+    expect(jsonShape('{"a":"A"}\n').indent).toEqual({ char: "none", width: 0 });
   });
 });
 

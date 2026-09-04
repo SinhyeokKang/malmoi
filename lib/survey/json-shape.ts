@@ -21,10 +21,16 @@ import { indentOf, type IndentStyle } from "../adapters/json-style";
  */
 export type { IndentStyle } from "../adapters/json-style";
 
-/** 순서 외에 첫 write diff를 만드는 원인들 — 텍스트에서 관측되는 것만. */
+/**
+ * 순서 외에 첫 write diff를 만드는 원인들 — 텍스트에서 관측되는 것만.
+ *
+ * ⚠️ **고쳐진 축은 여기서 뺀다.** 원인이 아닌데 남겨 두면 그 리포들이 `diff.clean` 분모에서
+ * 계속 빠져 **개선이 게이트에 나타나지 않는다** — chrome 필드에서 정확히 그 일이 있었고 리포
+ * 13개가 부당하게 빠졌다 (POSTMORTEM 2026-09-03). `indent`가 2026-09-04에 그렇게 빠졌다:
+ * 재생성 writer가 원본 폭을 따르므로 더 이상 diff를 만들지 않고, **관측치 `JsonShape.indent`로만
+ * 남는다.** `escapedNonAscii`·`compactContainer`는 아직 안 고쳐서 여전히 원인이다.
+ */
 export type JsonDiffCauses = {
-  /** 들여쓰기가 2칸 스페이스가 아니다 (`serialize`가 항상 2칸으로 낸다). */
-  indent: boolean;
   /** 원본이 비ASCII를 `\uXXXX`로 이스케이프했다 — `JSON.stringify`가 풀어 그 줄 전부가 diff다. */
   escapedNonAscii: boolean;
   /** 빈 값(`null`·`""`)이 낀 배열이 있다 — 복원에서 dense가 깨져 **모양이 객체로 바뀐다.** */
@@ -74,7 +80,6 @@ export type JsonShape = {
 const SEP = ".";
 
 export const emptyJsonDiffCauses = (): JsonDiffCauses => ({
-  indent: false,
   escapedNonAscii: false,
   sparseArray: false,
   integerKeys: false,
@@ -104,7 +109,6 @@ export function jsonShape(text: string): JsonShape {
     causes: emptyJsonDiffCauses(),
     failed: false,
   };
-  shape.causes.indent = shape.indent.char !== "none" && !(shape.indent.char === "space" && shape.indent.width === 2);
   shape.causes.escapedNonAscii = hasEscapedNonAscii(text);
 
   const scanner = new Scanner(text, shape);

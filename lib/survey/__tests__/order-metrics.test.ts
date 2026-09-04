@@ -133,14 +133,15 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
     expect(surveyOne(input("acme/four", CAUSES)).indent).toEqual({ char: "space", width: 4 });
   });
 
-  it("원인 넷을 각각 표시한다", () => {
+  it("원인 셋을 각각 표시한다 — 들여쓰기는 고쳐져서 원인 목록에서 빠졌다", () => {
     const s = surveyOne(input("acme/causes", CAUSES));
     expect(s.diffCauses).toMatchObject({
-      indent: true,
       escapedNonAscii: true,
       sparseArray: true,
       integerKeys: true,
     });
+    // 관측치로는 남는다 — 사실이 사라진 것이 아니라 **원인이 아닌 것**이다.
+    expect(s.indent).toEqual({ char: "space", width: 4 });
   });
 
   it("깨끗한 2칸 파일은 원인이 없다", () => {
@@ -317,7 +318,7 @@ describe("summarize — 표에 실린다", () => {
 
 describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가", () => {
   const clean = () => emptyDiffCauses();
-  const dirty = () => ({ ...emptyDiffCauses(), indent: true });
+  const dirty = () => ({ ...emptyDiffCauses(), escapedNonAscii: true });
 
   it("**순서 외 원인이 없는 리포만**의 중앙값을 따로 낸다", () => {
     // 완료 조건의 분모다. 전체 코퍼스에 걸면 68%가 들여쓰기·chrome 필드 때문에 초과해서
@@ -446,12 +447,12 @@ describe("summarize — 순서 일치율과 들여쓰기 분포", () => {
 
   it("잔여 diff 원인별 리포 수를 낸다", () => {
     const rows = [
-      row({ repo: "a/1", diffCauses: { ...emptyDiffCauses(), indent: true, escapedNonAscii: true } }),
-      row({ repo: "a/2", diffCauses: { ...emptyDiffCauses(), indent: true } }),
+      row({ repo: "a/1", diffCauses: { ...emptyDiffCauses(), compactContainer: true, escapedNonAscii: true } }),
+      row({ repo: "a/2", diffCauses: { ...emptyDiffCauses(), compactContainer: true } }),
       row({ repo: "a/3", diffCauses: emptyDiffCauses() }),
     ];
     const { metrics } = summarize(rows, []);
-    expect(metrics.diffCauses.indent).toBe(2);
+    expect(metrics.diffCauses.compactContainer).toBe(2);
     expect(metrics.diffCauses.escapedNonAscii).toBe(1);
     expect(metrics.diffCauses.sparseArray).toBe(0);
   });
