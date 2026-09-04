@@ -77,10 +77,14 @@ const files = selectLocaleFiles(adapter.layout, format, paths, probe);
 const result = adapter.read(format, files);
 // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어준다.
 // **파일별 관측값도 함께 넘긴다** — 포맷 단위 boolean만 넘기면 평평한 파일의 점 키가 쪼개진다.
+// **원본 내용도 넘긴다** — 수술적 어댑터는 write에 필수이고, 재생성은 표현(들여쓰기)을 거기서
+// 읽는다. 안 넘기면 4칸 리포의 왕복 검증이 계속 `⚠️ 정렬 정규화`를 찍는데 그건 이제 거짓 경고다
+// (POSTMORTEM 2026-09-02 — 원본이 필요한 층은 pull·survey·CLI 셋이다).
 const writeFormat = {
   ...format,
   nested: result.nested,
   ...(result.nestedByPath === undefined ? {} : { nestedByPath: result.nestedByPath }),
+  currentFiles: files,
 };
 
 // base 로케일: --base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순).

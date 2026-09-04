@@ -458,13 +458,15 @@ function writePerLocale(
   const out = new Map<string, string>();
   for (const locale of locales) {
     const path = fmt.pathTemplate.replace("{locale}", locale);
-    let writeFormat = fmt;
-    if (adapter.writeStrategy === "surgical") {
-      const original = originals.get(path);
-      // 원본이 없으면 파일을 새로 만들지 않는다 — 수술적 치환의 전제다.
-      if (original === undefined) continue;
-      writeFormat = { ...fmt, currentFiles: [{ path, content: original }] };
-    }
+    // **원본을 어댑터 종류와 무관하게 넘긴다** — 수술적은 write에 필수이고, 재생성은 표현
+    // (들여쓰기)을 거기서 읽는다. ⚠️ 이 홉이 빠지면 2차 write가 **1차 결과를 원본으로 받으면서**
+    // 기본값으로 떨어져 **바이트 고정점 지표가 구조적 거짓 음성**이 된다 — "측정이 개선을 못 본다"
+    // 보다 나쁘다 (POSTMORTEM 2026-09-02).
+    const original = originals.get(path);
+    // 원본이 없으면 수술적 치환은 파일을 안 만든다. 재생성은 기본값으로 계속 만든다.
+    if (original === undefined && adapter.writeStrategy === "surgical") continue;
+    const writeFormat =
+      original === undefined ? fmt : { ...fmt, currentFiles: [{ path, content: original }] };
     const input = { locale, isBase: locale === base, entries: entriesOf(locale) };
     // ⚠️ **`writeWithErrors`가 있으면 그걸 쓴다.** 없으면 write가 버린 항목이 조용히 사라져,
     // 왕복이 "의미 불일치"만 보이고 **왜 잃었는지가 지표에 남지 않는다** — 실측에서 siyuan·

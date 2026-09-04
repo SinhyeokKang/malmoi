@@ -33,23 +33,25 @@ const BASE_SCRAMBLED = {
 };
 
 /**
- * base만 4칸 들여쓰기 — **순서 외 원인**으로 base diff만 나는 모양.
+ * base에만 **빈 값**이 있어 base diff만 나는 모양.
  *
- * ⚠️ 전에는 이 격차를 "base만 정렬이 흐트러짐"으로 만들었는데, 태스크 2가 순서를 보존하면서
- * 그 방식으로는 diff가 안 난다. 지표(`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면
- * 안 보이는 격차**이고, 그 격차는 순서가 아닌 원인으로도 똑같이 성립한다.
+ * ⚠️ **픽스처를 두 번 갈았다.** 처음엔 "base만 정렬이 흐트러짐"이었는데 키 순서 보존이 그 diff를
+ * 없앴고, 다음엔 4칸 들여쓰기였는데 **원본 포맷 보존이 그것도 없앴다** (2026-09-04). 지표
+ * (`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면 안 보이는 격차**이고, 그 격차를 만드는
+ * 원인은 시간이 지나며 하나씩 고쳐진다 — 그래서 **이 기능들이 고치지 않는 원인**으로 만들어야
+ * 판별력이 남는다. 미번역 제외는 의도된 규칙이라 앞으로도 안 고친다 (MVP §4.1).
  */
-const BASE_INDENT_ONLY = {
-  "src/i18n/en.json": `${JSON.stringify({ a: "A", b: "B" }, null, 4)}\n`,
+const BASE_EMPTY_ONLY = {
+  "src/i18n/en.json": two({ a: "A", b: "B", gone: "" }),
   "src/i18n/ko.json": two({ a: "에이", b: "비" }),
   "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
 };
 
-/** 전 로케일이 4칸 — 비-base도 diff가 난다. */
-const ALL_INDENT = {
-  "src/i18n/en.json": `${JSON.stringify({ a: "A", b: "B" }, null, 4)}\n`,
-  "src/i18n/ko.json": `${JSON.stringify({ a: "에이", b: "비" }, null, 4)}\n`,
-  "src/i18n/ja.json": `${JSON.stringify({ a: "エー", b: "ビー" }, null, 4)}\n`,
+/** 전 로케일에 빈 값 — 비-base도 diff가 난다. */
+const ALL_EMPTY = {
+  "src/i18n/en.json": two({ a: "A", b: "B", gone: "" }),
+  "src/i18n/ko.json": two({ a: "에이", b: "비", gone: "" }),
+  "src/i18n/ja.json": two({ a: "エー", b: "ビー", gone: "" }),
 };
 
 /** 전 로케일이 base 순서를 그대로 따른다 — A안(base 순서를 전 로케일에 전파)이 성립하는 모양. */
@@ -170,14 +172,27 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
 
 describe("surveyOne — 비-base 로케일 diff", () => {
   it("base에만 원인이 있으면 비-base diff는 0이다 — base 하나만 재던 지표의 사각", () => {
-    const s = surveyOne(input("acme/base-indent", BASE_INDENT_ONLY));
+    const s = surveyOne(input("acme/base-empty", BASE_EMPTY_ONLY));
     expect(s.diffRatio).toBeGreaterThan(0);
     expect(s.diffRatioNonBase).toBe(0);
   });
 
   it("전 로케일에 원인이 있으면 비-base diff도 0이 아니다", () => {
-    const s = surveyOne(input("acme/all-indent", ALL_INDENT));
+    const s = surveyOne(input("acme/all-empty", ALL_EMPTY));
     expect(s.diffRatioNonBase).toBeGreaterThan(0);
+  });
+
+  it("4칸 들여쓰기만 다른 파일은 이제 diff가 0이다 — 원본 포맷 보존이 한 일이 이것이다", () => {
+    const fourSpace = {
+      "src/i18n/en.json": `${JSON.stringify({ a: "A", b: "B" }, null, 4)}\n`,
+      "src/i18n/ko.json": `${JSON.stringify({ a: "에이", b: "비" }, null, 4)}\n`,
+      "src/i18n/ja.json": `${JSON.stringify({ a: "エー", b: "ビー" }, null, 4)}\n`,
+    };
+    const s = surveyOne(input("acme/four-space", fourSpace));
+    expect(s.diffRatio).toBe(0);
+    expect(s.diffRatioNonBase).toBe(0);
+    // 들여쓰기 **관측치**는 그대로 4칸이다 — 원인이 아니라 사실이다.
+    expect(s.indent).toEqual({ char: "space", width: 4 });
   });
 
   it("순서만 흐트러진 파일은 이제 diff가 0이다 — 태스크 2가 한 일이 이것이다", () => {

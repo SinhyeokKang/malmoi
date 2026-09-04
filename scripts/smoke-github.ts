@@ -91,7 +91,7 @@ async function main(): Promise<void> {
       project,
       locales.map((l) => l.code),
     );
-    const { layout, writeStrategy } = adapterFor(format);
+    const { layout } = adapterFor(format);
     const paths = resolveLocalePaths(
       format,
       layout,
@@ -103,10 +103,10 @@ async function main(): Promise<void> {
       console.log(`  ${p.path} ${blob ? blob.sha.slice(0, 8) : "(base에 없음 — 신규)"}`);
     }
 
-    // 수술적 치환 어댑터는 write에 원본이 필요하다. 실제로 읽히는지 첫 파일로 확인한다.
-    // ⚠️ `layout`이 아니라 `writeStrategy`다 — yaml-catalog·code-dict가 per-locale + surgical이다.
+    // **어댑터 종류와 무관하게 원본을 읽는다** — 수술적은 write에 필수이고, 재생성은 표현
+    // (들여쓰기)을 거기서 읽는다. 실제로 읽히는지 첫 파일로 확인한다.
     const first = paths[0];
-    if (writeStrategy === "surgical" && first !== undefined) {
+    if (first !== undefined) {
       const blob = tree.find((t) => t.path === first.path);
       if (blob) {
         const text = await client.getBlobText(blob.sha);
