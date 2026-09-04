@@ -35,7 +35,11 @@ pnpm dev
 |---|---|
 | 타입 체크 | `pnpm typecheck` |
 | 테스트 | `pnpm test` |
-| 마이그레이션 | `pnpm db:migrate` / 상태: `pnpm db:status` |
+| 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` |
 | Codex 미러 동기화 | `pnpm sync:agents` |
 
-**브랜치는 `main` 단일이다.** PR도 preview 배포도 없고, **main push가 곧 Vercel 프로덕션 배포**다. CI는 push 이후에 돌므로 게이트가 아니라 사후 확인이다 — 프로덕션 앞의 유일한 게이트는 `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test`다.
+**브랜치는 `main` / `dev` 둘이다** (2026-09-04 분리). 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
+
+게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). GitHub 브랜치 프로텍션은 Free 플랜 + private 조합이라 없으므로, PR CI가 게이트인 것은 `/merge`가 그것을 확인하기 때문이지 서버가 강제해서가 아니다.
+
+preview는 **dev DB**를 본다. preview에서 GitHub 로그인은 dev 브랜치 고정 URL에서만 된다 — OAuth App의 callback URL이 하나뿐이라 preview 전용 앱을 따로 두고 그 URL에 박았다.

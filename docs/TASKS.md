@@ -574,6 +574,13 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
 
 ## 전역 미결 (단계에 묶이지 않은 것)
 
+- [x] **`main`/`dev` 브랜치 분리 + Vercel Preview 배포** ✅ (2026-09-04 — MVP §8.4에서 앞당겼다)
+  - 앞당긴 이유: SaaS 기능이 UI·인증을 건드리는데 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 된다.** preview가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다
+  - `dev` push = preview 배포(dev DB) / `dev`→`main` squash PR = 프로덕션 배포. 작업 브랜치 층은 두지 않는다
+  - 삭제했던 `/merge`·`/sync` 복원 (스킬 13 → 15개, 셋 다 Codex 미러 제외). `/ship`의 종착점이 프로덕션 → dev로 내려왔다
+  - CI 트리거: `push [main, dev]` + `pull_request [main]`. **`/push`의 `db:deploy`가 `/merge` 1단계로 돌아갔다** — dev push는 프로덕션에 아무것도 배포하지 않는다
+  - ⚠️ **preview 로그인은 dev 브랜치 고정 URL에서만 된다** — OAuth App callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 전 preview 로그인이 필요해지면 `redirectProxyUrl`(Auth.js v5)이고, 그 시점은 SaaS UI 착수다
+
 - ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
   페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
   다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`

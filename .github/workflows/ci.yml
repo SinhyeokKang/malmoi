@@ -1,15 +1,20 @@
 name: CI
 
-# main 단일 브랜치라 PR 이벤트가 발생하지 않는다. 따라서 이 워크플로는 **게이트가 아니라
-# 사후 확인**이다 — push가 곧 Vercel 프로덕션 배포이고 CI는 그 뒤에 돈다.
-# 프로덕션 앞의 유일한 게이트는 /push 1단계의 로컬 typecheck + test다.
+# 브랜치가 둘이 되면서(2026-09-04) 이 워크플로는 **프로덕션 앞의 게이트**가 됐다 —
+# dev→main PR에 붙는 run이 그것이다. 그전에는 main 단일이라 PR 이벤트가 없었고,
+# CI는 배포가 끝난 뒤에 도는 사후 확인이었다.
 #
-# 그래도 CI를 두는 이유 셋:
-#   1. 로컬 환경 의존성을 걷어낸 깨끗한 체크아웃에서 도는지 확인
-#   2. 다른 창구(웹 UI·Codex·다른 머신)에서 들어온 커밋 검증
-#   3. Codex 미러 드리프트 차단
+# 트리거가 셋인 이유가 각각 다르다:
+#   - push [dev]  : dev에 깨진 것이 쌓이지 않게 한다. preview 배포와 같은 커밋을 검증한다
+#   - pull_request [main] : **머지 게이트.** 이 체크가 green이어야 /merge가 프로덕션으로 보낸다
+#   - push [main] : 머지 뒤 확인 + 다른 창구(웹 UI·Codex·다른 머신)가 main을 직접 친 경우
+#
+# dev push와 PR이 같은 SHA에 두 번 도는 것은 의도된 중복이다 — PR 체크로 표시돼야
+# 머지 게이트가 되고, dev push run은 PR을 열기 전에도 결론을 준다.
 on:
   push:
+    branches: [main, dev]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 

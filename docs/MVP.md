@@ -431,9 +431,14 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 ### 8.4 MVP 다음 — SaaS화
 
-**MVP가 닫히면 `main`/`dev`를 나누고 SaaS 기능을 얹는다.** 지금 단일 브랜치인 것은 PoC라서이지 원칙이 아니다 (CLAUDE.md 브랜치 정책).
+~~**MVP가 닫히면 `main`/`dev`를 나누고 SaaS 기능을 얹는다.**~~ **브랜치 분리는 2026-09-04에 먼저 했다** — SaaS 기능보다 앞선 이유는 그 기능들이 UI·인증을 건드려서 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 되기 때문**이다. preview 배포가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다 (CLAUDE.md 브랜치 정책 & 배포).
 
-붙일 것:
+- `dev` push = Vercel preview 배포(dev DB) / `dev`→`main` squash PR 머지 = 프로덕션 배포
+- 그 아래 작업 브랜치는 두지 않는다 — 혼자 작업이라 층을 하나 더 얹으면 스스로 연 PR을 스스로 머지하는 형식만 남는다
+- 삭제했던 `/merge`·`/sync` 스킬을 복원했다. GitHub default branch는 `dev`
+- ⚠️ **preview 로그인은 dev 고정 URL에서만 된다** — OAuth App의 callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 모든 preview에서 로그인이 필요해지면 Auth.js v5의 `redirectProxyUrl`을 넣는다. **아래 "UI를 여기서 시작한다"가 그 시점이다**
+
+남은 것 — 붙일 것:
 
 - **인증·인가** — 테넌트별 멤버십·역할. `AUTH_ALLOWED_LOGINS` 단일 목록을 대체한다
 - **프로젝트 생성** — 리포 하나가 프로젝트 하나. 지금은 `Project` 행을 손으로 만든다

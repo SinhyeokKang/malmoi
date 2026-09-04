@@ -10,8 +10,8 @@
 Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래는 **직접** 챙긴다.
 
 - **스킬 호출 매핑** — 본문이 `/<name>`으로 부르는 스킬은 Codex에선 `source-command-<name>` 스킬로 로드한다.
-- **미제공 스킬 (역할 분담)** — `/push`는 미러하지 않는다. **Codex는 작업 → 커밋까지, 원격으로 나가는 건 Claude Code**가 단일 창구로 맡는다 — main 단일 브랜치라 push가 곧 Vercel 프로덕션 배포이고, 두 창구가 경쟁하면 배포가 깨진다. `/push`가 필요해지면 사용자에게 Claude Code 세션에서 실행하라고 안내하고 멈춘다. (`/merge`·`/sync`는 브랜치가 하나가 되면서 아예 삭제됐다 — 존재하지 않는 스킬이다.)
-- **`/ship`은 10단계(마지막 커밋)까지** — `source-command-ship`은 미러돼 있고 커밋 단계까지 전부 돈다. 11단계 push는 **수행하지 않고** "배포 대기 — Claude Code에서 `/push` 실행"을 리포트에 남기고 종료한다. Claude Code에서 `/ship`은 **프로덕션 배포까지 가지만 Codex에서는 절대 배포되지 않는다** — 이 차이를 사용자에게 명확히 알린다. 상세는 스킬 본문의 "push 권한 / 런타임별 종착점".
+- **미제공 스킬 (역할 분담)** — `/push`·`/merge`·`/sync` 셋은 미러하지 않는다. **Codex는 작업 → 커밋까지, 원격으로 나가는 건 Claude Code**가 단일 창구로 맡는다 — 두 창구가 경쟁하면 원격 상태가 깨진다. `/push`는 dev를 움직이고(preview 배포), `/merge`는 main 머지(= Vercel 프로덕션 배포)이며, `/sync`는 dev를 force update한다. 셋 중 하나가 필요해지면 사용자에게 Claude Code 세션에서 실행하라고 안내하고 멈춘다.
+- **`/ship`은 10단계(마지막 커밋)까지** — `source-command-ship`은 미러돼 있고 커밋 단계까지 전부 돈다. 11단계 push는 **수행하지 않고** "dev 푸시 대기 — Claude Code에서 `/push` 실행"을 리포트에 남기고 종료한다. **Claude Code의 `/ship`도 dev까지다** (2026-09-04 브랜치 분리 — preview 배포). 프로덕션은 어느 런타임에서도 `/ship`이 하지 않고 `/merge`가 받는다. 상세는 스킬 본문의 "push 권한 / 런타임별 종착점".
 - **결정성 훅 없음** — Claude Code는 `.claude/settings.json`의 PostToolUse 훅이 `lib/adapters/`·`lib/githash.ts`·`lib/push/`·`lib/keys/`·`lib/scan/` 편집 시 관련 테스트를 자동 실행해 결정성·판정 붕괴를 차단한다. Codex엔 이 훅이 없으니 그 파일을 건드렸으면 손으로 돌린다: `pnpm test`
 - **미러 sync 훅 없음** — Claude Code는 `CLAUDE.md`·`.claude/commands/*.md` 편집 시 훅이 `sync:agents`를 자동 실행한다. Codex엔 없다. 애초에 **Codex는 원본을 편집하지 않는 게 규칙**이고, 부득이 고쳤으면 `pnpm sync:agents`를 직접 돌려 미러를 함께 커밋한다.
 - **개인 메모리 없음** — 본문 말미의 `~/.claude/projects/.../memory/`는 Claude Code 전용 저장소다. Codex는 이 경로를 읽지 않는다.
@@ -69,7 +69,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 영역 | 선택 | 버전 |
 |---|---|---|
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
-| 배포 | Vercel — main 머지가 곧 프로덕션 | — |
+| 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) | — |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
 | 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
@@ -171,14 +171,14 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 **두 대에서 작업한다.** 새 체크아웃은 `node_modules`·`generated/prisma`·`public/fonts`·`.env.local`이 전부 없고, 앞의 셋은 명령으로 복구되지만 **`.env.local`만 사람이 채운다.**
 
-1. **Node를 `.nvmrc`에 맞춘다** (24). 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 로컬과 Vercel의 메이저가 갈리면 그 게이트가 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
+1. **Node를 `.nvmrc`에 맞춘다** (24). 로컬 게이트와 CI가 `.nvmrc`를 따르므로(위 브랜치·배포 섹션), 로컬과 Vercel의 메이저가 갈리면 두 게이트가 함께 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
 2. `pnpm install`
 3. `cp .env.example .env.local` 후 값을 채운다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 (2026-09-04에 실제로 그렇게 유출돼 전면 재발급했다). 구조가 필요하면 에이전트가 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. 값을 꺼낼 때도 `| pbcopy`로 클립보드에만 보낸다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
 4. `pnpm db:status`로 **dev** 접속을, `pnpm db:status:prod`로 **prod** 접속을 확인한다 (둘 다 5432). ⚠️ 두 명령의 출력이 **같아 보인다** — pooler 호스트가 두 프로젝트에서 동일하고 ref는 사용자명에 있다. 구별 신호는 **적용된 마이그레이션 개수**이고, 새 dev 프로젝트라면 전부 미적용으로 나온다
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
 6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
 
-**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(`vercel env add <name> production,preview --force`, 값은 stdin으로 — `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다).
+**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(`vercel env add <name> production,preview --force`, 값은 stdin으로 — `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다). ⚠️ **`AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 Production과 Preview가 서로 다른 OAuth 앱이다** — `--force`로 갱신할 때 스코프를 뭉뚱그리면 preview 로그인이 조용히 깨진다.
 
 **GitHub App 개인키는 여러 개를 동시에 가질 수 있다.** 새 키를 발급해도 옛 키가 계속 돌아서 무중단으로 갈아탈 수 있다 — **다른 머신이 옛 키를 들고 있으니 폐기는 그쪽을 옮긴 뒤에** 한다.
 
@@ -186,11 +186,23 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(typecheck + test + Codex 미러 드리프트) 단일이다. 트리거는 **main push + 수동(`workflow_dispatch`)** 뿐이다 — 브랜치가 하나라 PR 이벤트가 발생하지 않는다.
+`ci.yml` 하나뿐이고 job은 `verify`(typecheck + test + Codex 미러 드리프트) 단일이다. 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
 
-**⚠️ CI는 게이트가 아니라 사후 확인이다.** main 단일 브랜치라 push가 곧 배포이고, CI는 그 push **이후에** 돈다. required status check로 무언가를 막을 수 있는 지점이 없다. **프로덕션 앞의 유일한 게이트는 `/push` 1단계의 로컬 `pnpm typecheck` + `pnpm test`다** — 이걸 건너뛰면 아무것도 검증되지 않은 채 배포된다.
+**✅ CI가 프로덕션 앞의 게이트다** (2026-09-04 브랜치 분리로 되살아났다). `dev→main` PR에 붙는 run이 그것이고, `/merge`는 그 체크가 green이어야 머지한다. 브랜치가 하나였던 동안에는 PR 이벤트 자체가 없어 CI가 배포 **뒤에** 돌았다 — 그때의 유일한 방어선은 `/push`의 로컬 게이트였다.
 
-CI가 여전히 있는 이유는 셋: 로컬 환경 의존성을 걷어낸 깨끗한 체크아웃에서 도는지 확인, 다른 창구(웹 UI·Codex·다른 머신)에서 들어온 커밋 검증, Codex 미러 드리프트 차단. **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트(`/push` 1단계)가 이미 돌고 Vercel이 배포에서 다시 돈다. CI에 넣으면 같은 걸 세 번 돌리면서 정작 **배포 후에** 알려주는 층만 늘어난다.
+트리거 셋의 이유가 각각 다르다:
+
+| 트리거 | 무엇을 막나 |
+|---|---|
+| push `[dev]` | dev에 red가 쌓이는 것. preview 배포와 같은 커밋을 검증한다 |
+| pull_request `[main]` | **프로덕션 머지 게이트.** `/merge`가 이 결론을 본다 |
+| push `[main]` | 머지 뒤 확인 + 다른 창구(웹 UI·Codex·다른 머신)가 main을 직접 친 경우 |
+
+dev push와 PR이 같은 SHA에 두 번 도는 것은 **의도된 중복**이다 — PR 체크로 표시돼야 머지 게이트가 되고, dev push run은 PR을 열기 전에도 결론을 준다.
+
+⚠️ **GitHub 브랜치 프로텍션은 여전히 없다** (Free 플랜 + private). PR CI가 게이트인 것은 **`/merge`가 그것을 보기 때문**이지 서버가 강제해서가 아니다 — main에 직접 푸시하는 경로를 서버가 막지 않는다.
+
+**CI에서 `next build`를 돌리지 않는다** — 로컬 게이트(`/push` 1단계)가 이미 돌고 Vercel이 preview·프로덕션 배포에서 다시 돈다. CI에 넣으면 같은 걸 네 번 돌리게 된다.
 
 **빌드는 `/push` 1단계 게이트에서만 자동 실행한다.** 개별 작업 중에는 `pnpm typecheck`를 쓴다 — `/implement`가 `pnpm build`를 돌리지 않는 것은 그 때문이고, 게이트가 `/push`에 있어서다.
 
@@ -308,46 +320,62 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 ## 브랜치 정책 & 배포
 
-**`main` 단일 브랜치다.** 작업 브랜치도 PR도 없다.
+**`main` / `dev` 두 브랜치다** (2026-09-04 분리 — MVP §8.4). 그 아래 작업 브랜치는 두지 않는다: 혼자 작업이라 층을 하나 더 얹으면 스스로 연 PR을 스스로 머지하는 형식만 남는다.
 
-> **⚠️ 이건 원칙이 아니라 PoC 단계의 선택이다.** MVP가 닫히고 SaaS화에 들어가면 `main`/`dev`를 나눈다 (MVP §8.4). 그때 되살릴 것: 작업 브랜치 → dev PR, PR 전 CI 게이트(브랜치가 둘이면 PR 이벤트가 생긴다), 그리고 **삭제했던 `/merge`·`/sync` 스킬**. 지금 그 셋이 없는 이유는 "브랜치가 하나라 대상이 없다"이지 "필요 없다"가 아니다.
+| 브랜치 | 무엇 | 어떻게 들어가나 |
+|---|---|---|
+| `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
+| `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
 
-- **main push = Vercel 프로덕션 배포.** 별도 배포 명령이 없고, 그래서 `/deploy`도 `/merge`도 없다. `/push`가 배포 스킬이다.
-  - ⚠️ **Vercel 프로젝트가 연결되기 전까지는 push가 배포가 아니다** (TASKS 전역 미결). 커밋에 Vercel 체크가 붙는지로 확인한다 — 안 붙어 있으면 GitHub에만 반영된 것이다.
-- **preview 배포가 없다.** 브랜치가 하나라 Vercel이 preview를 붙일 대상이 없다. 배포 전에 눈으로 보려면 `pnpm dev`로 로컬에서 확인한다.
-- **PR 전 CI 게이트가 없다.** PR이 없으므로 CI는 배포 후에 돈다 (위 CI 섹션).
-- **GitHub 브랜치 프로텍션도 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`).
+- **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. **대상 리포의 composite action 참조(`…/l10n-push@main`)는 default branch와 무관하므로 그대로 동작한다** — 오히려 action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓰는 것이 안전한 성질이다 (docs/ACTIONS.md).
+- **`main`에 직접 커밋·푸시하지 않는다.** 프로덕션 앞의 게이트(PR CI)를 통째로 건너뛴다.
+- **preview는 dev DB를 본다.** 프로덕션 데이터에 닿지 않는 것이 preview를 쓰는 이유의 절반이다 — Vercel env의 Preview 스코프가 그렇게 갈려 있어야 성립한다.
+  - ⚠️ **preview에서 GitHub 로그인은 dev 브랜치 고정 URL에서만 된다.** OAuth App은 callback URL을 하나만 갖는데 preview URL은 배포마다 바뀌므로, **preview 전용 OAuth 앱**을 따로 두고 그 callback을 dev 고정 URL에 박았다. 다른 브랜치의 preview가 로그인 화면에서 멈추는 것은 정상이다. 모든 preview에서 로그인이 필요해지면 Auth.js v5의 `redirectProxyUrl`을 넣는다 — 그때가 SaaS UI를 만드는 시점이다.
+- **GitHub 브랜치 프로텍션은 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`). **그래서 PR CI가 게이트인 것은 `/merge`가 그것을 보기 때문이지 서버가 강제해서가 아니다.**
 - **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다.
 
-### 그래서 게이트가 전부 로컬에 있다
+### 게이트가 어디에 서 있나
 
-서버 측에 막는 장치가 하나도 없다는 뜻이다. **프로덕션 앞에 서 있는 것은 `/push` 1단계의 `pnpm typecheck` + `pnpm test`, 그리고 `/ship`의 단계별 게이트뿐이다.** 이 구조에서:
+분리 전에는 전부 로컬에 있었다. 지금은 **둘로 갈렸고, 둘 다 필요하다**:
 
-- **`/push`의 로컬 검증 게이트를 건너뛰면 아무것도 검증되지 않은 채 배포된다.** "CI가 잡아줄 것"은 성립하지 않는다.
-- **로컬 게이트가 `pnpm build`를 포함한다** (2026-08-31 추가). `tsc`는 RSC 경계를 못 본다 — `"use client"` 누락, 서버 컴포넌트의 클라이언트 훅, Server Action 직렬화 위반은 `next build`만 잡는다. 콜드 5초 / 웜 2초라 게이트 비용이 무시할 수준이고, **CI에 넣으면 배포 후에 알게 되므로 로컬에 둔다.**
-- **`/ship`의 게이트는 "다음 단계로 갈 자격"이 아니라 "배포될 자격"이다.** 애매한 통과는 곧 사고다.
-- **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 push하는 것 말고는 롤백 경로가 없다.
-- **`git push --force`는 기본 금지.** main이 유일한 브랜치라 히스토리가 하나뿐이고, 날아가면 복구할 곳이 없다.
+| 게이트 | 어디 | 무엇을 막나 |
+|---|---|---|
+| `pnpm typecheck` + `test` + `build` | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
+| PR `verify` 체크 | `/merge` 4단계 (GitHub) | **프로덕션에 red가 나가는 것** |
+
+- **로컬 게이트를 "PR CI가 잡아줄 것"이라며 건너뛰지 않는다.** 그 CI는 커밋 여러 개가 쌓인 뒤에 돌아서, red가 나오면 무엇이 깼는지 특정하는 비용이 지금의 3분보다 크다.
+- **로컬 게이트가 `pnpm build`를 포함한다** (2026-08-31 추가). `tsc`는 RSC 경계를 못 본다 — `"use client"` 누락, 서버 컴포넌트의 클라이언트 훅, Server Action 직렬화 위반은 `next build`만 잡는다. 콜드 5초 / 웜 2초다.
+- **`/ship`은 dev까지다.** `/merge`를 부르지 않는다 — 브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로, 그 판단을 파이프라인이 대신하면 나눈 의미가 없다.
+- **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 다시 보낸다.
+- **`git push --force`는 main에 금지.** dev는 `/sync`가 머지 후 정기적으로 force update하지만(squash가 해시를 바꾸므로), 그 스킬의 안전 검사 3개를 지나야 한다.
 
 ### DB 마이그레이션은 배포와 순서가 얽힌다
 
-`pnpm db:deploy`를 **push 전에** 돌려 프로덕션 스키마를 먼저 넓힌다(additive-first). 컬럼 삭제·타입 변경은 코드 배포가 끝난 다음 별도 마이그레이션으로. 이 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다. `/push` 3단계가 마이그레이션을 감지해 확인을 요구하지만 그건 안전망이고, 순서를 아는 건 `/db`의 책임이다.
+**dev DB는 `/push` 전에, prod DB는 `/merge` 전에** 넓힌다 — 각 배포 직전이다 (additive-first).
+
+| 언제 | 명령 | 무엇을 위해 |
+|---|---|---|
+| `/push`(dev 푸시) 전 | `pnpm db:migrate` (보통 `/db`가 이미 했다) | preview가 없는 컬럼을 조회하지 않게 |
+| `/merge`(프로덕션 배포) 전 | `pnpm db:deploy` + `pnpm db:status:prod` 확인 | 프로덕션이 없는 컬럼을 조회하지 않게 |
+
+컬럼 삭제·타입 변경은 코드 배포가 끝난 다음 별도 마이그레이션으로. **`db:deploy`를 `/push` 시점으로 당기지 않는다** — 프로덕션이 코드보다 앞서 있는 창을 필요 이상으로 길게 연다. `/merge` 1단계가 확인을 요구하지만 그건 안전망이고, 순서를 아는 건 `/db`의 책임이다.
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **13개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (`/push`만 미러 제외).
+스킬 **15개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync` 셋은 미러 제외** — 원격 상태를 바꾸는 창구는 Claude Code 하나로 둔다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip`
 
-권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`. 작은 변경은 `/ship` 하나로 전 단계를 오케스트레이션하며, **`/ship`은 프로덕션 배포까지 간다.**
+권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
 **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-04 기준 18개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
-- **`/merge`·`/sync`는 삭제됐다.** main 단일 브랜치가 되면서 존재 이유가 사라졌다 (dev→main PR도, dev 재동기화도 없다). 이 이름을 부르는 지침이 남아 있으면 오래된 문서다. **SaaS 단계에서 dev를 나누면 되살린다** (MVP §8.4).
-- **배포하지 않고 커밋만 쌓고 싶으면 `/ship`을 쓰지 않고 개별 스킬로 진행한다.**
-- **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다.
+- **`/merge`·`/sync`는 2026-09-04에 되살렸다** — 브랜치 분리로 대상이 다시 생겼다(dev→main PR, 머지 후 dev 재동기화). 2026-08-31에 삭제했던 것을 그대로 복원하고 dev/prod DB 분리만 반영했다. **`/merge`가 배포 스킬이고 `/deploy`는 없다.**
+- **`/sync`는 파괴적이다** — dev를 `origin/main`으로 hard reset + force push한다. 미커밋·미푸시·미머지 세 검사를 전부 통과해야 실행한다. `/merge`가 6단계에서 자동으로 하므로, 손으로 부르는 것은 그게 실패했거나 **다른 머신·창구가 머지한 뒤**다.
+- **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
+- **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
@@ -389,7 +417,7 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** 2026-08 시점 `latest`가 `8.0.0-rc.12`고 stable은 `prev` 태그의 `7.10.0`이다. `pnpm add prisma`로 무심코 깔면 RC가 들어오고 `alchemy`·`cloudflare-runtime` 같은 무관한 의존성이 딸려온다. **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
-- **Vercel Cron은 Hobby 플랜에서 하루 1회**다. 야간 pull 1회가 요구사항이라 지금은 맞지만, 주기를 늘리려면 플랜을 봐야 한다.
+- **Vercel Cron은 Hobby 플랜에서 하루 1회**다. 야간 pull 1회가 요구사항이라 지금은 맞지만, 주기를 늘리려면 플랜을 봐야 한다. **cron은 프로덕션 배포에서만 돈다** — preview 배포가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다는 뜻이고, 브랜치 분리(2026-09-04)가 안전한 이유의 하나다.
 - **GitHub App 개인키는 개행이 들어간 PEM**이다. Vercel env에 넣을 때 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다.
 - **`.pem`은 `.gitignore`에 있다.** 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — 리포에서 사라진 로케일도 지우지 않고 표시만 하며, pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.

@@ -16,11 +16,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CHECK = process.argv.includes("--check");
 
 // 원격·배포 상태를 바꾸는 스킬은 Codex 런타임에서 쓰지 않으므로 미러하지 않는다.
-// main 단일 브랜치라 push가 곧 Vercel 프로덕션 배포이고, 창구가 둘이면 배포가 경쟁한다 —
-// Claude Code 단독으로 둔다.
+// 창구가 둘이면 원격 상태가 경쟁한다 — Claude Code 단독으로 둔다. 셋의 이유가 각각 다르다:
+//   push  : dev를 움직인다 (preview 배포)
+//   merge : main 머지 = Vercel 프로덕션 배포
+//   sync  : dev를 force update한다 — 두 창구가 겹치면 한쪽 작업이 사라진다
 // (`ship`은 미러한다 — push 이전 단계가 전부 로컬이고, Codex는 10단계 커밋에서 멈춘다는
 //  규칙이 스킬 본문과 PREAMBLE에 박혀 있다.)
-const EXCLUDE = new Set(["push"]);
+const EXCLUDE = new Set(["push", "merge", "sync"]);
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
