@@ -77,6 +77,10 @@ model Project {
 
   locales Locale[]
   keys    StringKey[]
+
+  // 역관계는 가상 필드다 — 컬럼이 생기지 않으므로 이 추가는 additive를 깨지 않는다.
+  members     ProjectMember[]
+  invitations ProjectInvitation[]
 }
 
 /// 프로젝트별 지원 로케일. isBase가 키 집합을 정의하는 기준 로케일이다.
@@ -194,7 +198,13 @@ model Translation {
   /// 원문(sourceHash)이 바뀌었을 때 push가 세운다. 미번역/번역됨/검토필요 3상태가
   /// 이 플래그 하나와 행 존재 여부로 표현된다.
   needsReview Boolean @default(false)
-  /// 편집자 GitHub 핸들. 인증이 아직 단일 테넌트라 사용자 테이블이 없어 문자열로 박는다.
+  /// 편집자 식별자. **⚠️ 지금 들어가는 값은 GitHub 핸들이다** (`app/(edit)/actions.ts`) —
+  /// 이 테이블들이 생겼다고 바뀌지 않는다. `User.id`로 바뀌는 것은 SaaS 2단계의 **인가 전환**
+  /// 시점이고(`docs/features/tenant-auth/tasks.md` §5), 그때도 컬럼 타입은 그대로다.
+  ///
+  /// **FK를 걸지 않는다.** 전환 뒤에도 옛 행은 핸들을 그대로 들고 있어 `User`에 join하면 한 행도
+  /// 못 찾는다 — 두 종류의 값이 섞인 컬럼이라 참조 무결성을 주장할 수 없다. `User.id`를 쓰는 이유는
+  /// 이메일이 재할당될 수 있어서다 (SAAS §5.6).
   updatedBy   String?
 
   updatedAt DateTime @updatedAt
@@ -214,4 +224,145 @@ model Translation {
   /// **매일** 부르는 쿼리라 조용히 느려지고 어느 게이트에도 안 나타난다 (2026-09-04 audit #45).
   /// 위 인덱스로는 대체되지 않는다 — `localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다.
   @@index([projectId, updatedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SaaS 2단계 — 인증·인가 (docs/SAAS.md §6, docs/features/tenant-auth/design.md §5)
+//
+// ⚠️ **아래 네 모델의 모양은 우리가 정한 것이 아니라 `@auth/prisma-adapter`가 요구하는 것이다.**
+// 타입 검사가 그 계약을 못 본다(어댑터 파라미터가 사실상 `any`다 — 근거는
+// `prisma/__tests__/schema-contract.test.ts` 헤더). **그 테스트가 유일한 자동 방어선이므로
+// 여기를 고치면 그쪽이 red가 되는지 확인한다.**
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// 프로젝트 역할. **둘뿐이다** — MVP §7의 "세밀한 권한" 비범위가 SaaS에서도 유지된다 (SAAS §3).
+/// Publish는 별도 역할·권한이 아니라 EDITOR가 할 수 있는 일에 포함된다(`lib/auth/permission.ts`).
+enum Role {
+  OWNER
+  EDITOR
+}
+
+/// 로그인 사용자. **`email`이 unique인 것은 어댑터의 `getUserByEmail`이 `findUnique`이기 때문이다.**
+///
+/// ⚠️ **`emailVerified`는 OAuth 로그인에서 채워지지 않는다** — 어댑터가 그 값을 이메일 provider
+/// 전용으로 쓴다. 우리의 이메일 검증은 `signIn` 콜백이 provider claim을 보고 판정한다
+/// (design §2.1) — 이 컬럼을 그 판정의 근거로 읽으면 안 된다.
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  /// 정규화된 주소를 저장한다(`normalizeEmail` — trim + 소문자). 원문을 저장하면 대조가 갈린다.
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts        Account[]
+  sessions        Session[]
+  memberships     ProjectMember[]
+  invitationsSent ProjectInvitation[]
+}
+
+/// OAuth provider 연결. **컬럼 이름이 snake_case인 것은 OAuth 응답 필드를 그대로 받기 때문이다** —
+/// 어댑터의 `linkAccount`가 `AdapterAccount`를 통째로 `create({ data })`에 넘기므로 **하나라도
+/// 없으면 Prisma가 `Unknown argument`로 던진다.** 안 쓰는 값이라고 빼면 로그인이 깨진다.
+///
+/// ⚠️ **자동 계정 병합을 하지 않는다** (SAAS §5.5). 어댑터 기본값이 이미 그렇고
+/// (`allowDangerousEmailAccountLinking` 미설정), 같은 이메일의 다른 provider는
+/// `OAuthAccountNotLinked`로 거부된다. **그 옵션을 어느 provider에도 켜지 않는 것**이 방어선이다.
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  /// Cascade다 — 어댑터의 `deleteUser`가 `user.delete` 하나만 부르므로 Restrict면 그 메서드가
+  /// 항상 실패한다. **우리 데이터(`ProjectMember`)는 반대로 Restrict다** — 아래.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 어댑터가 `where: { provider_providerAccountId }`로 조회한다. 별도 `id` 컬럼을 두지 않는다 —
+  /// 어댑터가 그 값을 읽는 곳이 없다.
+  @@id([provider, providerAccountId])
+}
+
+/// DB 세션. **JWT에서 여기로 옮긴 이유는 권한 회수 지연이다** — JWT는 목록에서 뺀 사람이 최대
+/// 24시간 편집할 수 있었다 (MVP §5 → SAAS §5.3). 대가는 요청마다의 DB 왕복이다.
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  /// Cascade — Account와 같은 이유.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// 어댑터가 요구하는 테이블. **이메일 provider를 쓰지 않으므로 항상 비어 있다** (SAAS §4.3 ①) —
+/// 매직링크는 메일 인프라 운영을 끌고 와서 1차에서 뺐다. 어댑터의 두 메서드가 이 델리게이트를
+/// 부르므로 테이블 자체는 있어야 한다.
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// **권한의 유일한 정본** (SAAS §9 불변식 7 — 로그인 provider가 아니라 이 행이 권한을 정한다).
+///
+/// ⚠️ 이 행이 없는 `Project`는 **아무도 접근할 수 없다.** 기존 프로젝트에 OWNER를 채우는 것이
+/// 인가 전환 앞의 필수 단계다 (design §5 배포 순서 2).
+model ProjectMember {
+  projectId String
+  userId    String
+  role      Role
+
+  createdAt DateTime @default(now())
+  /// SAAS §6이 `AuditEvent`를 미룬 근거가 이 컬럼이다 — 역할 변경 시각이 여기 남는다.
+  updatedAt DateTime @updatedAt
+
+  /// Restrict 둘. 기존 `Project` 관계 전부가 Restrict인 것과 같은 근거다 (ARCHITECTURE §5):
+  /// Cascade면 프로젝트·사용자 삭제가 소유권을 조용히 날린다. 특히 **마지막 OWNER가 사라지면
+  /// 그 프로젝트는 되살릴 수 없다** — `planMemberChange`가 애플리케이션에서 막는 것을 DB도 막는다.
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  /// 한 프로젝트에 사용자당 한 행. 이 제약이 `planMemberChange`의 "멤버 목록"을 유일하게 만든다.
+  ///
+  /// ⚠️ **`userId` 단독 인덱스를 두지 않는다.** `/projects` 목록이 userId로 조회하지만, SAAS §8
+  /// 7단계의 고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
+  /// 실제로 느려지는 것이 관측되면 그때 넣는다.
+  @@unique([projectId, userId])
+}
+
+/// 수락 전 초대. **토큰 원문을 저장하지 않는다** — 발급 시 한 번 보여주고 sha256 해시만 남긴다
+/// (SAAS §5.6, `lib/auth/invitation.ts`).
+model ProjectInvitation {
+  id        String @id @default(cuid())
+  projectId String
+  /// 정규화된 주소. 수락 시 **provider가 검증한 이메일**과 대조한다 (design §2.1).
+  email     String
+  role      Role
+  /// 링크로 행을 찾는 유일한 키다. 원문은 발급 시 한 번만 보이고 저장하지 않는다.
+  tokenHash String   @unique
+  expiresAt DateTime
+  /// 수락 시각. **행을 지우지 않는다** — 재사용 시도를 `already-accepted`로 구별해야 한다
+  /// (`planInvitationAccept`). 지우면 그 시도가 `not-found`가 되어 만료·오배송과 뭉개진다.
+  acceptedAt DateTime?
+  /// 초대한 사람의 `User.id`.
+  invitedBy  String
+  createdAt  DateTime @default(now())
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  invitedByUser User  @relation(fields: [invitedBy], references: [id], onDelete: Restrict)
+
+  /// ⚠️ **unique가 아니라 index다.** `acceptedAt`을 남기는 설계라 수락·만료된 행이 이메일을
+  /// 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이 된다.
+  /// 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가르므로 판정은 선다.
+  @@index([projectId, email])
 }
