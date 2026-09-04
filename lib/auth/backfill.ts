@@ -1,3 +1,4 @@
+import { fail } from "../failure";
 import type { Role } from "./permission";
 
 /**
@@ -27,6 +28,13 @@ export function planOwnerBackfill(input: {
   ownerUserId: string;
 }): BackfillRow[] {
   const { projects, members, ownerUserId } = input;
+
+  // ⚠️ **빈 결과로 접지 않고 던진다.** 빈 배열을 내면 스크립트가 "채울 프로젝트가 없다"로 읽고
+  // 성공을 보고한다 — POSTMORTEM 2026-09-03의 "실패한 조회를 없음으로 읽었다"와 같은 모양이다.
+  // 더 나쁜 것은 스크립트가 `User`까지 upsert한다는 것이다: 빈 id가 통과하면 **빈 id의 User가
+  // 모든 프로젝트의 OWNER가 된다.** `gh api user`가 실패한 채 넘어오는 경로가 실재한다.
+  // `syncBranchFor`(lib/pull/trigger.ts)가 같은 이유로 값 대신 던진다.
+  if (ownerUserId.trim() === "") fail("backfill 소유자의 User id가 비어 있다");
 
   const owned = new Set(members.filter((m) => m.role === "OWNER").map((m) => m.projectId));
 

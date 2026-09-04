@@ -64,6 +64,28 @@ describe("planOwnerBackfill — OWNER가 없는 프로젝트만", () => {
   });
 });
 
+describe("planOwnerBackfill — 소유자 id가 비면 던진다 (fail-closed)", () => {
+  // ⚠️ 빈 목록을 내면 스크립트가 그것을 "채울 프로젝트가 없다"로 읽고 **성공을 보고한다** —
+  // POSTMORTEM 2026-09-03이 정확히 그 형태였다(실패한 조회를 "없음"으로 읽었다). 그리고 스크립트는
+  // `User`까지 upsert하므로 빈 id가 통과하면 **빈 id의 User가 모든 프로젝트의 OWNER가 된다.**
+  // `syncBranchFor`(lib/pull/trigger.ts)가 같은 이유로 값 대신 던진다.
+  it("빈 문자열이면 던진다", () => {
+    expect(() =>
+      planOwnerBackfill({ projects: [{ id: "p1" }], members: [], ownerUserId: "" }),
+    ).toThrow();
+  });
+
+  it("공백만이어도 던진다", () => {
+    expect(() =>
+      planOwnerBackfill({ projects: [{ id: "p1" }], members: [], ownerUserId: "   " }),
+    ).toThrow();
+  });
+
+  it("채울 프로젝트가 없어도 던진다 — 빈 결과와 잘못된 입력을 구별한다", () => {
+    expect(() => planOwnerBackfill({ projects: [], members: [], ownerUserId: "" })).toThrow();
+  });
+});
+
 describe("planOwnerBackfill — 멱등", () => {
   it("결과를 멤버 목록에 합쳐 다시 돌리면 0건이다", () => {
     const projects = [{ id: "p1" }, { id: "p2" }];

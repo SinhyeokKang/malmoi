@@ -23,6 +23,11 @@ export type InvitationAccept =
   | "email-mismatch"
   | "not-found";
 
+/**
+ * ⚠️ **`timingSafeEqual`이 없는 것이 누락이 아니다.** `checkBearer`(`lib/push/auth.ts`)는 평문
+ * 토큰을 직접 비교하므로 타이밍이 정보를 준다. 여기는 비교 자체를 하지 않는다 — 수락은
+ * **해시로 행을 조회**하고(`tokenHash @unique`), 조회 시간이 새어도 sha256 원문을 역산할 수 없다.
+ */
 export function hashInviteToken(raw: string): string {
   return createHash("sha256").update(raw, "utf8").digest("hex");
 }
