@@ -435,9 +435,43 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **`Translation`에 `UNIQUE(keyId, localeCode)`.** 이게 없으면 중복 행이 생겨 export가 비결정적이 된다 — §1 불변식이 스키마에 의존한다. **위생이 아니라 하중 부담 제약이라 지우면 안 된다.**
 - **`Translation`의 외래키는 둘 다 `ON DELETE RESTRICT`.** "키를 삭제하지 않고 `orphaned`로 둔다"는 코어 불변식을 **DB가 강제**한다 — 번역이 달린 `StringKey`를 지우려 하면 Postgres가 거부한다. `Cascade`면 실수로 키를 지우는 코드가 번역까지 조용히 날린다. `Locale` 쪽도 같은 이유로 `Restrict`다(로케일을 지워 번역이 사라지는 걸 막는다).
 - **`KeyRef`만 `ON DELETE Cascade`.** refs는 push마다 전체 교체되는 파생 데이터라 보존할 이유가 없다 — 여기서 `Restrict`를 쓰면 교체 자체가 막힌다.
-- **`updatedBy`는 GitHub 핸들 문자열이다.** JWT 세션이라 사용자 테이블이 없어 외래키를 걸 대상이 없다 (§6).
+- **`updatedBy`는 지금도 GitHub 핸들 문자열이다.** 처음 이유는 "JWT 세션이라 사용자 테이블이 없다"였고,
+  **그 이유는 2026-09-05에 사라졌다**(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: SaaS 2단계의
+  인가 전환 뒤 새 행은 `User.id`를 담고 옛 행은 핸들을 그대로 들고 있어 **한 컬럼에 두 종류 값이 섞인다.**
+  참조 무결성을 주장할 수 없고, `User`에 join하는 화면은 못 찾는 경우를 다뤄야 한다. `User.id`를 쓰는
+  이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
 - **`orphaned`는 `StringKey`에, `needsReview`는 `Translation`에.** 키의 존재 여부는 코드가, 번역의 신선도는 값마다 판정되기 때문이다.
 - **인덱스는 전부 `projectId` 선두 복합이다.** 모든 조회가 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스는 쓸 수 없다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+
+### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
+
+**여섯이 additive로 붙었다** — `User`·`Account`·`Session`·`VerificationToken`(Auth.js 어댑터가 요구하는
+모양) + `ProjectMember`·`ProjectInvitation`(우리 것). 기존 다섯 테이블의 컬럼·제약은 한 줄도 바뀌지
+않았다(마이그레이션 SQL에 그 다섯을 대상으로 하는 `ALTER`·`DROP` 0건).
+
+- ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
+  `where` 키가 그것을 정한다 — `user.findUnique({where:{email}})`가 `email @unique`를, `account`의
+  `where:{provider_providerAccountId}`가 복합 키를 요구하는 식이다. `Account`의 snake_case 컬럼 일곱은
+  OAuth 응답을 그대로 받는 자리라 **하나라도 빠지면 `linkAccount`가 `Unknown argument`로 던진다.**
+- ⚠️ **그 계약을 타입 검사가 못 본다.** 어댑터 시그니처의 `PrismaClient`는 `@prisma/client`에서 오고, 그
+  패키지는 `.prisma/client/default`를 re-export하는데 Prisma 7의 `prisma-client` 생성기는 그 경로를 만들지
+  않는다(우리 산출물은 `generated/prisma`다). `skipLibCheck: true`가 해결 실패를 삼켜 **파라미터가 사실상
+  `any`가 된다** — `PrismaAdapter({ nope: true })`도 컴파일되는 것을 실측했다. 이건 2026-08-31
+  「외부 계약 페이로드를 리터럴로 조립해…」와 같은 형태다(계약의 한쪽만 타입으로 이어져 있다). 거기서
+  얻은 규칙(`z.infer`를 생산자에 붙인다)은 남의 패키지라 쓸 수 없어 **`prisma/__tests__/schema-contract.test.ts`가
+  대신 선다** — 어댑터 소스를 읽어 델리게이트·`where` 키를 스키마와 대조하므로 어댑터 버전을 올리면 red가 된다.
+- **`onDelete`가 둘로 갈린다.** `Account`·`Session` → `User`는 **Cascade**다 — 어댑터의 `deleteUser`가
+  `p.user.delete` 하나만 부르므로 `Restrict`면 그 메서드가 항상 실패한다. `ProjectMember`·`ProjectInvitation`은
+  기존 `Project` 관계와 같은 **Restrict**다: 삭제가 조용히 번지면 **마지막 OWNER가 사라진 프로젝트를
+  되살릴 수 없다.**
+- **`Session`·`VerificationToken`·`ProjectMember`에 PRIMARY KEY가 없다.** 각자의 unique 제약이 Prisma의
+  식별자 역할을 하고, 어댑터와 우리 쿼리 모두 그 unique로만 접근한다.
+- **`ProjectInvitation`의 `(projectId, email)`은 index이지 unique가 아니다.** `acceptedAt`을 남기는 설계라
+  수락·만료된 행이 이메일을 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이
+  된다. 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가른다.
+- **`ProjectMember`에 `userId` 단독 인덱스를 두지 않는다.** `/projects` 목록이 그 컬럼으로 조회하지만
+  SAAS §8 7단계의 고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
+  "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
 ## 5.5 push 적용 (`lib/push/`)
 
