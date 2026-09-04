@@ -582,7 +582,8 @@ B단계의 "편집 흐름" 체크가 그 경로를 지난다.
   - ⚠️ **preview 로그인은 dev 브랜치 고정 URL에서만 된다** — OAuth App callback이 하나뿐이라 preview 전용 앱을 따로 뒀다. 전 preview 로그인이 필요해지면 `redirectProxyUrl`(Auth.js v5)이고, 그 시점은 SaaS UI 착수다
   - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
   - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
-- [ ] **preview 전용 GitHub OAuth 앱** — `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`이 아직 Production 전용이라 **preview에서 로그인이 불가능**하다(변수 자체가 없다). 앱을 만들어 callback을 dev 고정 URL로 박고 Preview 스코프에 등록한다. 편집 UI가 동결이라 급하지 않지만, 그 상태로 두면 preview에서 `/keys`를 볼 수 없다
+- [ ] **preview 전용 GitHub OAuth 앱** — `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`이 아직 Production 전용이라 **preview에서 로그인이 불가능**하다(변수 자체가 없다). callback을 `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`로 박고 Preview 스코프에 등록한다. 편집 UI가 동결이라 급하지 않지만, 그 상태로 두면 preview에서 `/keys`를 볼 수 없다
+  - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
 
 - ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
   페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.

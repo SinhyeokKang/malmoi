@@ -330,7 +330,9 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 - **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. **대상 리포의 composite action 참조(`…/l10n-push@main`)는 default branch와 무관하므로 그대로 동작한다** — 오히려 action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓰는 것이 안전한 성질이다 (docs/ACTIONS.md).
 - **`main`에 직접 커밋·푸시하지 않는다.** 프로덕션 앞의 게이트(PR CI)를 통째로 건너뛴다.
 - **preview는 dev DB를 본다.** 프로덕션 데이터에 닿지 않는 것이 preview를 쓰는 이유의 절반이다 — Vercel env의 Preview 스코프가 그렇게 갈려 있어야 성립한다.
+  - **dev 브랜치 고정 URL**: `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app` (배포별 URL과 별개로 dev의 최신 preview를 항상 가리킨다)
   - ⚠️ **preview에서 GitHub 로그인은 dev 브랜치 고정 URL에서만 된다.** OAuth App은 callback URL을 하나만 갖는데 preview URL은 배포마다 바뀌므로, **preview 전용 OAuth 앱**을 따로 두고 그 callback을 dev 고정 URL에 박았다. 다른 브랜치의 preview가 로그인 화면에서 멈추는 것은 정상이다. 모든 preview에서 로그인이 필요해지면 Auth.js v5의 `redirectProxyUrl`을 넣는다 — 그때가 SaaS UI를 만드는 시점이다.
+  - ⚠️ **preview는 Vercel SSO(Deployment Protection) 뒤에 있다.** 프로덕션은 자동화를 위해 껐지만 preview는 켠 채로 뒀다 — preview URL이 새어나가도 Vercel 계정 없이는 못 열고, 열 이유도 없다. **그래서 `curl`로 preview를 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다** — 앱이 깨진 것으로 오진하기 쉽다. 브라우저는 Vercel 세션 쿠키로 그냥 통과하므로 사람이 보는 데는 지장이 없고, 자동화가 필요하면 `vercel curl`이나 protection bypass 토큰을 쓴다.
 - **GitHub 브랜치 프로텍션은 없다.** Free 플랜 + private 리포 조합에서 GitHub이 거부한다 (`403: Upgrade to GitHub Pro or make this repository public`). **그래서 PR CI가 게이트인 것은 `/merge`가 그것을 보기 때문이지 서버가 강제해서가 아니다.**
 - **버전·tag 없음.** 웹앱이라 semver가 소비자에게 의미를 주지 않는다.
 
