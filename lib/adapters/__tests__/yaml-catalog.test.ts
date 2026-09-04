@@ -143,6 +143,8 @@ describe("yaml-catalog — write는 수술적이다", () => {
     expect(out).not.toContain('"확인"');
     // 손 안 댄 줄은 그대로다
     expect(out).toContain("minutes_ago: \"%{n}분 전\"");
+    // 이름이 "빈 줄이 보존된다"인데 빈 줄을 안 보고 있었다 (2026-09-04 audit #24).
+    expect(out.split("\n").filter((l) => l.trim() === "").length).toBe(RAILS.split("\n").filter((l) => l.trim() === "").length);
   });
 
   it("앵커·알리아스를 보존한다", () => {
@@ -524,5 +526,28 @@ describe("yaml-catalog — 플로우 컬렉션 여백도 원본에서 (2026-09-0
       entries: [{ key: "greeting", message: "안녕하세요" }],
     })!;
     expect(out).toBe("ko:\n  greeting: 안녕하세요\n  day_names: [ 일, 월, 화 ]\n");
+  });
+});
+
+
+describe("yaml-catalog — 원본의 인용 부호를 유지한다", () => {
+  // 픽스처가 큰따옴표뿐이라 이 축이 검증되지 않았다 (2026-09-04 audit #25). code-dict·ts-dict는
+  // 양쪽 픽스처가 있는데 YAML만 빠져 있었다 — POSTMORTEM 2026-09-03이 "yaml은 CST 노드가 부호를
+  // 든다"고 근거를 댔는데 그것을 단언하는 테스트가 없었다.
+  const SINGLE = `ko:
+  common:
+    ok: '확인'
+    close: '닫기'
+`;
+
+  it("작은따옴표 원본에서 값을 바꿔도 작은따옴표다", () => {
+    const out = yamlCatalog.write(withSource(SINGLE), {
+      locale: "ko",
+      isBase: false,
+      entries: [{ key: "common.ok", message: "확인!" }],
+    })!;
+    expect(out).toContain("ok: '확인!'");
+    expect(out).toContain("close: '닫기'");
+    expect(out).not.toContain('"확인!"');
   });
 });

@@ -365,6 +365,15 @@ ko:
     const body = JSON.stringify(created?.args ?? {});
     expect(body).toContain("사람이 넣은 주석");
     expect(body).toContain("하나!");
+    // "값만 바뀐" — 편집한 줄 외에는 원본과 같아야 한다. 전에는 포함 여부만 봐서 통짜 재작성이
+    // 통과했다 (2026-09-04 audit #24). yaml `doc.toString()` 결함(TASKS)이 정확히 이 경로다.
+    const payload = created?.args[0] as { tree: Array<{ path: string; content: string }> };
+    const written = payload.tree.find((t) => t.path === "config/locales/ko.yml")?.content ?? "";
+    const before = yamlSource.split("\n");
+    const after = written.split("\n");
+    const changed = after.filter((line, i) => line !== before[i]);
+    expect(changed.length).toBeLessThanOrEqual(1);
+    expect(after.length).toBe(before.length);
   });
 });
 

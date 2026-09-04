@@ -1,3 +1,5 @@
+// `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
+// 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
 import { loadPullState, saveLastPulledAt } from "./load";

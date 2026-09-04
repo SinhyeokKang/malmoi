@@ -276,3 +276,17 @@ describe("serializeJson — 슬래시를 되돌린다", () => {
     expect(serializeJson({ a: "x/y", b: "plain" }, s2)).toBe(first);
   });
 });
+
+
+describe("원본 끝 개행이 없어도 출력은 정확히 1개다 — 원본과 무관한 불변식", () => {
+  // Midnight-Lizard 실측(ADAPTER-COVERAGE §16.1): 그 파일의 유일한 잔여 diff가 이 줄이었다.
+  // 픽스처는 전부 개행이 있어서 이 축이 한 번도 검증되지 않았다 (2026-09-04 audit #25).
+  it("한 번 정규화되고 그다음이 고정점이다", () => {
+    const noNewline = '{\n  "a": "하나"\n}';
+    const s = observeJsonStyle(noNewline);
+    const first = serializeJson({ a: "하나" }, s);
+    expect(first.endsWith("}\n")).toBe(true);
+    expect(first.endsWith("\n\n")).toBe(false);
+    expect(serializeJson({ a: "하나" }, observeJsonStyle(first))).toBe(first);
+  });
+});

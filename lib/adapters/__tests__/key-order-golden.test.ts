@@ -301,6 +301,13 @@ describe("L2 — 표현: 들여쓰기가 원본대로 나온다", () => {
     expect(out).toBe(src);
   });
 
+  it("chrome도 탭 들여쓰기를 따른다 — 4칸 하나만 있던 축이다 (2026-09-04 audit #25)", () => {
+    const src = ["{", '\t"hello": {', '\t\t"message": "Hello"', "\t}", "}", ""].join("\n");
+    const out = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", src);
+    expect(out).toBe(src);
+    expect(roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", out)).toBe(out);
+  });
+
   it("원본을 안 주면 2칸이다 — 재생성은 원본 없이도 파일을 만든다 (신규 로케일)", () => {
     const out = jsonCatalog.write(jsonFmt, {
       locale: "en",

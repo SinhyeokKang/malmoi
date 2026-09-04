@@ -205,6 +205,39 @@ export function writerContractViolations(adapter: Adapter): string[] {
   if (write(entriesFor(CONTRACT_KEYS)) !== plain) {
     bad.push("결정성: 같은 입력을 두 번 써서 다른 바이트가 나왔다");
   }
+  // **write∘write 고정점.** 1차 출력을 원본으로 다시 쓰면 바이트가 같아야 한다 — 깨지면 야간 cron이
+  // 매일 "변경됨"을 뱉어 빈 커밋을 쌓는다. 결정성(같은 입력 → 같은 출력)과 다른 성질이다:
+  // 여기서는 **입력의 원본이 바뀐다** (2026-09-04 audit #23).
+  {
+    const path = fmt.currentFiles?.[0]?.path ?? fmt.pathTemplate.replaceAll("{locale}", locale);
+    const second = write(entriesFor(CONTRACT_KEYS), { ...fmt, currentFiles: [{ path, content: plain }] });
+    if (second !== plain) bad.push("고정점: 1차 출력을 원본으로 다시 썼더니 바이트가 달라졌다");
+  }
+  // **원본이 없을 때의 계약.** 수술적은 치환할 대상이 없어 null, 재생성은 기본값으로 계속 만든다 —
+  // 이 갈림이 뒤섞이면 새 로케일이 PR에서 조용히 빠지거나 수술적 어댑터가 없던 파일을 만든다.
+  {
+    const bare = { ...fmt, currentFiles: undefined };
+    const without = write(entriesFor(CONTRACT_KEYS), bare);
+    if (surgical && without !== null) bad.push("원본 없이 파일을 만들었다 — 수술적 치환은 치환할 대상이 없으면 null이어야 한다 (§1.4)");
+    if (!surgical && without === null) bad.push("원본이 없다고 null을 냈다 — 재생성은 원본 없이도 파일을 만들어야 한다 (신규 로케일)");
+  }
+  // **삽입 경로.** 픽스처 원본이 계약 키를 전부 담고 있어 지금까지 "없는 키를 넣는" 자리(§1.1의 여섯
+  // 지점 #5)를 어느 어댑터도 밟지 않았다. 원본을 한 키 빼고 만들어 그 키가 출력에 나타나는지 본다.
+  {
+    const [insertKey, ...restKeys] = CONTRACT_KEYS;
+    if (insertKey !== undefined) {
+      const narrow = formatFor(adapter, restKeys);
+      const inserted = write(entriesFor(CONTRACT_KEYS), narrow);
+      // ⚠️ `ts-dict`는 **문서화된 예외**다 — 삽입 지점을 고르는 규칙이 파일 형태에 의존해 이득 없이
+      // 위험만 늘고, bugshot-2는 세 로케일이 한 파일에 나란히 있어 키 격차가 구조적으로 안 생긴다
+      // (ARCHITECTURE §1.4 "없는 키를 삽입한다 — ts-dict는 예외다"). 그 예외를 양방향으로 고정한다:
+      // 삽입하기 시작하면 그것도 계약 변경이라 여기서 빨개져야 한다.
+      const inserts = adapter.name !== "ts-dict";
+      const appeared = inserted !== null && inserted.includes(val(insertKey));
+      if (inserts && !appeared) bad.push(`삽입: 원본에 없던 키 ${insertKey}가 출력에 나타나지 않았다 (§1.1 여섯 지점 #5)`);
+      if (!inserts && appeared) bad.push(`삽입: ${adapter.name}는 삽입하지 않는 것이 계약인데 원본에 없던 키가 나타났다 (§1.4)`);
+    }
+  }
   if (write(entriesFor([...CONTRACT_KEYS].reverse())) !== plain) {
     bad.push("입력 순서 무관: 순서를 뒤집었더니 출력이 달라졌다 (DB 순서에 의존한다)");
   }

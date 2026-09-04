@@ -128,9 +128,26 @@ describe("② 로케일 디렉터리 + 이름 있는 파일", () => {
     const result = jsonCatalog.read(format, Object.entries(files).map(([path, c]) => ({ path, content: c })));
     expect(result.errors).toEqual([]);
     expect(result.locales.map((l) => l.locale)).toEqual(["en-US", "ko-KR"]);
-    const written = jsonCatalog.write(
-      { ...format, nested: result.nested, nestedByPath: result.nestedByPath },
+    const writeFormat = { ...format, nested: result.nested, nestedByPath: result.nestedByPath };
+    const written = jsonCatalog.write(writeFormat, { locale: "en-US", isBase: true, entries: result.locales[0]?.entries ?? [] });
+    expect(written).toBe(content);
+    // "고정점"이라면 2차 write까지 봐야 한다 — 1차 `toBe` 하나는 결정성이지 고정점이 아니다
+    // (2026-09-04 audit #24). `key-order-golden.test.ts`가 정본이고 여기는 그 모양의 반복이다.
+    const again = jsonCatalog.write(
+      { ...writeFormat, currentFiles: [{ path: "public/locales/en-US/grafana.json", content: written! }] },
       { locale: "en-US", isBase: true, entries: result.locales[0]?.entries ?? [] },
+    );
+    expect(again).toBe(written);
+  });
+
+  it("접두사 파일명(`locale_{locale}.json`)도 write 왕복이 바이트 동일이다 — 세 경로 모양 중 유일하게 write가 없었다", () => {
+    const content = `${JSON.stringify({ a: "A", b: { c: "C" } }, null, 2)}\n`;
+    const files = { "options/locale/locale_de-DE.json": content, "options/locale/locale_ko-KR.json": content };
+    const format = jsonCatalog.detectCandidates(Object.keys(files), probeOf(files))[0]!;
+    const result = jsonCatalog.read(format, Object.entries(files).map(([path, c]) => ({ path, content: c })));
+    const written = jsonCatalog.write(
+      { ...format, nested: result.nested, nestedByPath: result.nestedByPath, currentFiles: [{ path: "options/locale/locale_de-DE.json", content }] },
+      { locale: "de-DE", isBase: true, entries: result.locales[0]?.entries ?? [] },
     );
     expect(written).toBe(content);
   });

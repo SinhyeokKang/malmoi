@@ -200,6 +200,15 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
     };
   }
 
+  it("그 파일이 중첩이면 점 키를 경로로 펼친다 — 진입점에서 `true` 쪽도 본다 (2026-09-04 audit #25)", async () => {
+    const h = depsWith({ "i18n/th.json": true });
+    await runPull(h.deps);
+    const out = contentOf(h.trees, "i18n/th.json");
+    // 두 키가 같은 접두 `Clear workspace`를 가지므로 중첩으로 펼치면 하나가 객체가 돼 충돌한다 —
+    // 그 경우 writer가 한쪽을 버리고 경고를 낸다. 여기서는 **flat과 다른 출력**이라는 것만 고정한다.
+    expect(out).not.toBe('{\n  "Clear workspace": "ล้าง",\n  "Clear workspace.": "ล้าง."\n}\n');
+  });
+
   it("그 파일이 flat이면 점 키를 쪼개지 않는다 — 쪼개면 한쪽 값이 사라진다", async () => {
     const h = depsWith({ "i18n/th.json": false });
     await runPull(h.deps);
@@ -261,6 +270,13 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
     const r = await runPull(h.deps);
     expect(r.status).toBe("committed");
     expect(contentOf(h.trees, "i18n/en.json")).toBe(FOUR);
+  });
+
+  it("탭 원본도 진입점까지 그대로다 — 4칸만 있던 축이다 (2026-09-04 audit #25)", async () => {
+    const TAB = '{\n\t"a.one": "one",\n\t"a.two": "two"\n}\n';
+    const h = depsWithSource({ blobs: { "blob-en": TAB } });
+    await runPull(h.deps);
+    expect(contentOf(h.trees, "i18n/en.json")).toBe(TAB);
   });
 
   it("원본이 없는 로케일도 파일이 나온다 — 재생성은 원본 없이도 만든다 (신규 로케일, 2칸)", async () => {
