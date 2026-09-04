@@ -21,7 +21,7 @@ import { runPull, type PullResult } from "./run";
 export const SYNC_BRANCH = "l10n/sync";
 
 export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {
-  return runPull({
+  const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
       // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
@@ -31,4 +31,14 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
     saveLastPulledAt: (projectId, at) => saveLastPulledAt(prisma, projectId, at),
     syncBranch: SYNC_BRANCH,
   });
+
+  // ⚠️ **warnings는 실행별 진단이고 큐가 아니다** (2026-09-04 audit #35). 2층까지 통과하면
+  // `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 이 경고가 다시 나오지 않는다. 그
+  // 갱신을 막는 쪽(경고가 있으면 안 쓰기)은 `missingOriginal`처럼 **지속 상태**인 경고에서
+  // 매일 밤 트리·blob 전량 읽기를 영구화한다. 그래서 스킵 판정은 그대로 두고 **로그에 남긴다** —
+  // cron 응답 JSON을 놓쳐도 Vercel 로그에서 찾을 수 있어야 한다.
+  if (result.warnings !== undefined) {
+    for (const w of result.warnings) console.warn(`[pull:${slug}] ${w}`);
+  }
+  return result;
 }
