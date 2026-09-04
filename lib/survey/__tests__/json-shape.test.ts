@@ -96,14 +96,14 @@ describe("jsonShape — 들여쓰기", () => {
 });
 
 describe("jsonShape — 잔여 diff 원인", () => {
-  it("비ASCII 이스케이프를 관측한다 — write가 풀어버려 그 줄 전부가 diff다", () => {
+  it("비ASCII 이스케이프를 관측한다 — 이제 원인이 아니라 관측치다 (태스크 1b)", () => {
     const escaped = '{\n  "a": "\\uD55C\\uAD6D"\n}\n';
-    expect(jsonShape(escaped).causes.escapedNonAscii).toBe(true);
-    expect(jsonShape(two({ a: "한국" })).causes.escapedNonAscii).toBe(false);
+    expect(jsonShape(escaped).escapedNonAscii).toBe(true);
+    expect(jsonShape(two({ a: "한국" })).escapedNonAscii).toBe(false);
   });
 
   it("ASCII 이스케이프(\\n·\\\")는 원인이 아니다 — write도 같게 낸다", () => {
-    expect(jsonShape('{\n  "a": "line\\nbreak"\n}\n').causes.escapedNonAscii).toBe(false);
+    expect(jsonShape('{\n  "a": "line\\nbreak"\n}\n').escapedNonAscii).toBe(false);
   });
 
   it("빈 값이 낀 배열을 관측한다 — write가 객체로 모양을 바꾼다", () => {
@@ -166,24 +166,24 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(jsonShape(two({ a: { b: "x" } })).causes.dottedWithNested).toBe(false);
   });
 
-  it("한 줄에 담은 객체를 원인으로 표시한다 — pretty-print가 펼쳐서 diff가 난다", () => {
-    // chrome `_locales`의 흔한 관례다: `"k": { "message": "..." }`. `serialize`가 2칸으로
-    // 펼치므로 순서가 완벽해도 파일 전체가 diff다 (button-stealer 실측 0.964, 38줄→128줄).
-    expect(jsonShape('{\n  "a": { "message": "A" }\n}\n').causes.compactContainer).toBe(true);
-    expect(jsonShape(two({ a: { message: "A" } })).causes.compactContainer).toBe(false);
+  it("한 줄에 담은 객체를 관측한다 — 이제 원인이 아니라 관측치다 (태스크 1b)", () => {
+    // chrome `_locales`의 흔한 관례다: `"k": { "message": "..." }`. 전에는 `serialize`가 2칸으로
+    // 펼쳐 파일 전체가 diff였다(button-stealer 실측 0.964, 38줄→128줄). 이제 되돌린다.
+    expect(jsonShape('{\n  "a": { "message": "A" }\n}\n').compactContainer).toBe(true);
+    expect(jsonShape(two({ a: { message: "A" } })).compactContainer).toBe(false);
   });
 
   it("한 줄에 담은 배열도 마찬가지다", () => {
-    expect(jsonShape('{\n  "list": ["a", "b"]\n}\n').causes.compactContainer).toBe(true);
-    expect(jsonShape(two({ list: ["a", "b"] })).causes.compactContainer).toBe(false);
+    expect(jsonShape('{\n  "list": ["a", "b"]\n}\n').compactContainer).toBe(true);
+    expect(jsonShape(two({ list: ["a", "b"] })).compactContainer).toBe(false);
   });
 
-  it("빈 객체·빈 배열은 원인이 아니다 — 우리도 한 줄로 낸다", () => {
-    expect(jsonShape('{\n  "a": {},\n  "b": [],\n  "c": "C"\n}\n').causes.compactContainer).toBe(false);
+  it("빈 객체·빈 배열은 세지 않는다 — 우리도 한 줄로 낸다", () => {
+    expect(jsonShape('{\n  "a": {},\n  "b": [],\n  "c": "C"\n}\n').compactContainer).toBe(false);
   });
 
   it("파일 전체가 한 줄이어도 최상위 자체는 세지 않는다 — 들여쓰기 관측 불가와 같은 축이다", () => {
-    expect(jsonShape('{"a":"A"}\n').causes.compactContainer).toBe(false);
+    expect(jsonShape('{"a":"A"}\n').compactContainer).toBe(false);
   });
 
   /**

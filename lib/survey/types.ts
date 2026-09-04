@@ -82,6 +82,26 @@ export type ChromeFields = {
 
 export const emptyChromeFields = (): ChromeFields => ({ placeholders: false, nonBaseDescription: false });
 
+/**
+ * 원본 JSON이 들고 있던 **표현** — 이제 재생성 writer가 되돌리므로 **diff 원인이 아니다.**
+ *
+ * ⚠️ 둘 다 전에는 `DiffCauses`였다. 태스크 1b가 되돌리게 만든 뒤로 원인으로 남겨 두면 그 리포들이
+ * `clean` 분모에서 계속 빠져 **개선이 게이트에 나타나지 않는다** — chrome 필드에서 정확히 그 일이
+ * 있었고 리포 13개가 부당하게 빠졌다 (POSTMORTEM 2026-09-03). 관측은 남긴다: 몇 개 리포가 그
+ * 표현을 쓰는지가 이 기능의 근거다.
+ */
+export type JsonPresentation = {
+  /** 원본이 비ASCII를 `\uXXXX`로 적었다. */
+  escapedNonAscii: boolean;
+  /** 비어 있지 않은 컨테이너가 한 줄에 담겨 있다 (`"k": { "message": … }`). */
+  compactContainer: boolean;
+};
+
+export const emptyJsonPresentation = (): JsonPresentation => ({
+  escapedNonAscii: false,
+  compactContainer: false,
+});
+
 export type SurveyCandidate = {
   adapter: AdapterName;
   pathTemplate: string;
@@ -182,6 +202,8 @@ export type RepoSurvey = {
   diffCauses: DiffCauses;
   /** chrome이 원본에 들고 있는 필드 — 보존되므로 diff 원인은 아니다. 관측만 한다. */
   chromeFields: ChromeFields;
+  /** 원본 JSON의 표현 — 보존되므로 diff 원인은 아니다. 관측만 한다. **리포 단위 OR**. */
+  presentation: JsonPresentation;
 
   separators: SeparatorCounts;
   /** ICU 복수형(`{n, plural, …}`)을 쓰는 키 수 — MVP §7 비범위라 **빈도만** 센다. */

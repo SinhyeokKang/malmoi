@@ -201,6 +201,7 @@ if (asJson) {
   console.log(`   잔여 diff 원인(리포):  ${JSON.stringify(metrics.diffCauses)}`);
   console.log(`   수술적 1키 편집 hunk=1: ${pct(metrics.surgicalEdit.oneHunk)}${metrics.surgicalEdit.multiHunkRepos.length > 0 ? `   초과: ${metrics.surgicalEdit.multiHunkRepos.join(", ")}` : ""}`);
   console.log(`   chrome 원본 필드(관측): ${JSON.stringify(metrics.chromeFields)}   (보존되므로 diff 원인이 아니다)`);
+  console.log(`   JSON 표현(관측): ${JSON.stringify(metrics.presentation)}   (보존되므로 diff 원인이 아니다)`);
   console.log(`\n부수: ICU 복수형 ${metrics.icuPluralRepos}개 리포, 치환자 ${metrics.placeholderRepos}, 설정 파일 ${metrics.configFileRepos}, 비-점 구분자 ${metrics.nonDotSeparatorRepos.length}`);
   console.log(`\n${formatTable}\n`);
   console.log(repoTable);

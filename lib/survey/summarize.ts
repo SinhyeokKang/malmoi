@@ -105,6 +105,8 @@ export type SurveyMetrics = {
   diffCauses: Record<keyof DiffCauses, number>;
   /** chrome이 원본에 들고 있는 필드별 리포 수 — **diff 원인이 아니라 관측치다.** */
   chromeFields: { placeholders: number; nonBaseDescription: number };
+  /** 원본 표현 관측 — 보존되므로 원인이 아니다. 몇 개 리포가 그 표현을 쓰는지. */
+  presentation: { escapedNonAscii: number; compactContainer: number };
 
   /**
    * 수술적 어댑터에서 **키 1개 편집** write의 hunk 수가 1인 리포 비율. 분모는 측정된 수술적 리포다.
@@ -246,10 +248,13 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
 
   const causeCounts = emptyCauseCounts();
   const chromeFieldCounts = { placeholders: 0, nonBaseDescription: 0 };
+  const presentationCounts = { escapedNonAscii: 0, compactContainer: 0 };
   for (const s of rows) {
     for (const key of CAUSE_KEYS) if (s.diffCauses[key]) causeCounts[key] += 1;
     if (s.chromeFields.placeholders) chromeFieldCounts.placeholders += 1;
     if (s.chromeFields.nonBaseDescription) chromeFieldCounts.nonBaseDescription += 1;
+    if (s.presentation.escapedNonAscii) presentationCounts.escapedNonAscii += 1;
+    if (s.presentation.compactContainer) presentationCounts.compactContainer += 1;
   }
 
   const edited = rows.filter((s) => s.surgicalEditHunks !== undefined);
@@ -311,6 +316,7 @@ export function summarize(surveys: readonly RepoSurvey[], verdicts: readonly Ver
     },
     diffCauses: causeCounts,
     chromeFields: chromeFieldCounts,
+    presentation: presentationCounts,
     surgicalEdit,
     icuPluralRepos,
     placeholderRepos,

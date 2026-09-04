@@ -1,13 +1,14 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
 import type { AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
-import { jsonShape, sameCommonOrder, type JsonDiffCauses } from "./json-shape";
+import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
 import { pickBaseLocale } from "../push/payload";
 import { candidatesFor } from "./merge";
 import { median } from "./stats";
 import { tsShape } from "./ts-shape";
 import {
   emptyChromeFields,
+  emptyJsonPresentation,
   emptyDiffCauses,
   emptyErrors,
   type ReadErrorKind,
@@ -51,6 +52,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     localeOrderCompared: 0,
     diffCauses: emptyDiffCauses(),
     chromeFields: emptyChromeFields(),
+    presentation: emptyJsonPresentation(),
     separators: { dot: 0, underscore: 0, colon: 0, slash: 0, none: 0 },
     icuPluralKeys: 0,
     placeholderKeys: 0,
@@ -280,7 +282,7 @@ function observeShape(
   if (baseText === undefined) return;
   const baseShape = jsonShape(baseText);
   survey.indent = baseShape.indent;
-  mergeCauses(survey, baseShape.causes);
+  mergeShape(survey, baseShape);
 
   let compared = 0;
   let agreed = 0;
@@ -289,8 +291,8 @@ function observeShape(
     const text = input.files.get(pathOf(locale));
     if (text === undefined) continue;
     const shape = jsonShape(text);
-    // 원인은 **리포 단위 OR**다 — 어느 로케일 파일에서든 나면 그 리포의 PR에 diff로 나타난다.
-    mergeCauses(survey, shape.causes);
+    // 원인·관측 둘 다 **리포 단위 OR**다 — 어느 로케일 파일에서든 나면 그 리포의 PR에 나타난다.
+    mergeShape(survey, shape);
     // 스캔이 실패한 파일은 순서를 신뢰할 수 없다. "다르다"로 세면 일치율이 파싱 실패율에 묶인다.
     if (shape.failed || baseShape.failed) continue;
     compared += 1;
@@ -302,10 +304,12 @@ function observeShape(
   if (adapterName === "chrome-locales") observeChrome(survey, input, pathOf, base, localeNames);
 }
 
-function mergeCauses(survey: RepoSurvey, causes: JsonDiffCauses): void {
-  for (const key of Object.keys(causes) as Array<keyof JsonDiffCauses>) {
-    if (causes[key]) survey.diffCauses[key] = true;
+function mergeShape(survey: RepoSurvey, shape: JsonShape): void {
+  for (const key of Object.keys(shape.causes) as Array<keyof JsonDiffCauses>) {
+    if (shape.causes[key]) survey.diffCauses[key] = true;
   }
+  if (shape.escapedNonAscii) survey.presentation.escapedNonAscii = true;
+  if (shape.compactContainer) survey.presentation.compactContainer = true;
 }
 
 /**

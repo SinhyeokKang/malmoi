@@ -310,3 +310,47 @@ describe("L2 — 표현: 들여쓰기가 원본대로 나온다", () => {
     expect(out).toBe('{\n  "a": "하나"\n}\n');
   });
 });
+
+/**
+ * ⑦ 한 줄 엔트리 chrome — button-stealer 형태. `"k": { "message": "…" }`가 흔한 관례라
+ * 펼치면 **순서가 완벽해도 파일 전체가 diff**였다 (실측 0.964, 38줄 → 128줄).
+ */
+const COMPACT_CHROME = [
+  "{",
+  '  "extName": { "message": "Button Stealer" },',
+  '  "extDesc": { "message": "Steal every button", "description": "store listing" },',
+  '  "wide": {',
+  '    "message": "Wide"',
+  "  }",
+  "}",
+  "",
+].join("\n");
+
+/** ⑧ 비ASCII를 `\uXXXX`로 쓴 원본 — 풀어 쓰면 그 줄 전부가 diff다. */
+const ESCAPED = ["{", '  "hi": "\\ud55c\\uae00",', '  "plain": "Plain"', "}", ""].join("\n");
+
+describe("L2 — 표현: 한 줄 컨테이너와 비ASCII 이스케이프가 원본대로 나온다", () => {
+  it("한 줄 엔트리는 한 줄로, 펼쳐진 엔트리는 펼친 채로 나온다", () => {
+    const out = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", COMPACT_CHROME);
+    expect(out).toBe(COMPACT_CHROME);
+    expect(changedHunks(COMPACT_CHROME, out) ?? -1).toBe(0);
+  });
+
+  it("한 줄 엔트리: 2차 write가 1차와 같다 (바이트 고정점)", () => {
+    const first = roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", COMPACT_CHROME);
+    expect(roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", first)).toBe(first);
+  });
+
+  it("`\\uXXXX` 원본은 이스케이프된 채로 나온다", () => {
+    const out = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", ESCAPED);
+    expect(out).toBe(ESCAPED);
+    expect(roundtripDiffRatio(ESCAPED, out)).toBe(0);
+  });
+
+  it("대문자 헥사는 소문자로 **한 번** 정규화되고 그다음이 고정점이다 (알려진 근사)", () => {
+    const upper = ["{", '  "hi": "\\uD55C\\uAD6D"', "}", ""].join("\n");
+    const first = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", upper);
+    expect(first).toBe(["{", '  "hi": "\\ud55c\\uad6d"', "}", ""].join("\n"));
+    expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", first)).toBe(first);
+  });
+});

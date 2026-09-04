@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_JSON_STYLE, indentOf, observeJsonStyle, serializeJson } from "../json-style";
+import { DEFAULT_JSON_STYLE, indentOf, observeJsonStyle, pathKey, serializeJson } from "../json-style";
 import { serialize } from "../shared";
 
 /**
@@ -27,7 +27,7 @@ describe("serializeJson — 기본 경로가 지금과 바이트 동일하다", 
   });
 
   it("끝 개행이 정확히 1개다 — 원본과 무관한 불변식이다", () => {
-    const out = serializeJson(V, { indent: "    " });
+    const out = serializeJson(V, { ...DEFAULT_JSON_STYLE, indent: "    " });
     expect(out.endsWith("}\n")).toBe(true);
     expect(out.endsWith("\n\n")).toBe(false);
   });
@@ -104,5 +104,131 @@ describe("indentOf — survey와 같은 함수를 쓴다", () => {
     expect(indentOf('{\n    "a": 1\n}')).toEqual({ char: "space", width: 4 });
     expect(indentOf('{\n\t"a": 1\n}')).toEqual({ char: "tab", width: 1 });
     expect(indentOf('{"a":1}')).toEqual({ char: "none", width: 0 });
+  });
+});
+
+// ── 태스크 1b: 한 줄 컨테이너 + 비ASCII 이스케이프 ──────────────────────────
+
+describe("observeJsonStyle — 한 줄 컨테이너", () => {
+  const src = [
+    "{",
+    '  "hero": {',
+    '    "subcopy": ["하나", "둘"],',
+    '    "cta": "시작"',
+    "  },",
+    '  "wide": {',
+    '    "a": "에이"',
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+
+  it("한 줄에 담긴 컨테이너의 경로만 모은다", () => {
+    const s = observeJsonStyle(src);
+    expect(s.compactPaths.has(pathKey(["hero", "subcopy"]))).toBe(true);
+    expect(s.compactPaths.has(pathKey(["hero"]))).toBe(false);
+    expect(s.compactPaths.has(pathKey(["wide"]))).toBe(false);
+  });
+
+  it("루트는 담지 않는다 — 담으면 우리가 한 줄짜리 파일을 낸다", () => {
+    expect(observeJsonStyle('{"a": "하나", "b": "둘"}\n').compactPaths.has(pathKey([]))).toBe(false);
+  });
+
+  it("빈 컨테이너는 담지 않는다", () => {
+    const s = observeJsonStyle('{\n  "empty": {},\n  "none": []\n}\n');
+    expect(s.compactPaths.has(pathKey(["empty"]))).toBe(false);
+    expect(s.compactPaths.has(pathKey(["none"]))).toBe(false);
+  });
+
+  it("경로 키가 세그먼트 배열이다 — `.` 조인이면 점 든 키와 중첩이 구별되지 않는다", () => {
+    // `{"a.b": [...]}`(단일 키)와 `{"a": {"b": [...]}}`(중첩)가 같은 경로 문자열이 되면
+    // 엉뚱한 컨테이너가 한 줄로 나간다 (ARCHITECTURE §1.35의 별칭 버그를 표현 축에서 재현).
+    const dotted = observeJsonStyle('{\n  "a.b": ["x"]\n}\n');
+    expect(dotted.compactPaths.has(pathKey(["a.b"]))).toBe(true);
+    expect(dotted.compactPaths.has(pathKey(["a", "b"]))).toBe(false);
+  });
+});
+
+describe("serializeJson — 한 줄 컨테이너를 되돌린다", () => {
+  it("집합에 있는 경로만 한 줄로 낸다", () => {
+    const style = observeJsonStyle('{\n  "hero": {\n    "list": ["하나", "둘"]\n  }\n}\n');
+    const out = serializeJson({ hero: { list: ["하나", "둘"], cta: "시작" } }, style);
+    expect(out).toBe('{\n  "hero": {\n    "list": ["하나", "둘"],\n    "cta": "시작"\n  }\n}\n');
+  });
+
+  it("집합에 없으면 펼친다", () => {
+    expect(serializeJson({ a: ["하나"] })).toBe('{\n  "a": [\n    "하나"\n  ]\n}\n');
+  });
+
+  it("집합에 있는 경로가 출력에 없으면 그냥 안 쓰인다 — 진동하지 않는다", () => {
+    const style = observeJsonStyle('{\n  "gone": ["x"]\n}\n');
+    expect(serializeJson({ a: "하나" }, style)).toBe('{\n  "a": "하나"\n}\n');
+  });
+});
+
+describe("observeJsonStyle — 비ASCII 이스케이프", () => {
+  it("문자열 안의 `\\uXXXX`가 ASCII 밖이면 true다", () => {
+    expect(observeJsonStyle('{\n  "a": "\\ud55c"\n}\n').escapeNonAscii).toBe(true);
+  });
+
+  it("`\\u0041`(A)는 세지 않는다 — ASCII라 write가 풀어도 diff가 아니다", () => {
+    expect(observeJsonStyle('{\n  "a": "\\u0041"\n}\n').escapeNonAscii).toBe(false);
+  });
+
+  it("**값이 리터럴 백슬래시-u를 담고 있으면 세지 않는다** — 고정점이 여기서 깨졌다", () => {
+    // 문자열 문맥을 안 보는 전역 정규식이면 `"\\u00e9"`(값이 6글자)를 이스케이프로 오독하고,
+    // 재관측이 false → true로 뒤집혀 2차 write가 1차와 달라진다.
+    expect(observeJsonStyle('{\n  "a": "\\\\u00e9"\n}\n').escapeNonAscii).toBe(false);
+  });
+});
+
+describe("serializeJson — 이스케이프를 되돌린다", () => {
+  const escaped = { indent: "  ", escapeNonAscii: true, compactPaths: new Set<string>() };
+
+  it("비ASCII를 `\\uXXXX`로 낸다", () => {
+    expect(serializeJson({ a: "한" }, escaped)).toBe('{\n  "a": "\\ud55c"\n}\n');
+  });
+
+  it("ASCII는 그대로 둔다", () => {
+    expect(serializeJson({ a: "AB" }, escaped)).toBe('{\n  "a": "AB"\n}\n');
+  });
+
+  it("서로게이트 쌍(이모지)이 두 개로 나가고 JSON.parse가 원값을 되돌린다", () => {
+    const out = serializeJson({ a: "🎉" }, escaped);
+    expect(out).toBe('{\n  "a": "\\ud83c\\udf89"\n}\n');
+    expect(JSON.parse(out)).toEqual({ a: "🎉" });
+  });
+
+  it("이스케이프가 필요한 제어문자·따옴표는 JSON.stringify가 맡는다", () => {
+    const v = { a: 'q"b\\c\nd\te' };
+    expect(JSON.parse(serializeJson(v, escaped))).toEqual(v);
+    expect(JSON.parse(serializeJson(v))).toEqual(v);
+  });
+});
+
+describe("serializeJson — placeholders는 임의 JSON이다", () => {
+  it("객체·배열·숫자·불린·null을 다루고 키 순서를 원본대로 둔다", () => {
+    const v = { k: { message: "M", placeholders: { u: { content: "$1", example: 3 }, z: [true, null] } } };
+    const out = serializeJson(v);
+    expect(JSON.parse(out)).toEqual(v);
+    expect(out.indexOf('"content"')).toBeLessThan(out.indexOf('"example"'));
+    expect(out).toBe(`${JSON.stringify(v, null, 2)}\n`);
+  });
+});
+
+describe("고정점 — 1b의 두 축", () => {
+  it("한 줄 컨테이너: observe(write(v, s)) === s", () => {
+    const s = observeJsonStyle('{\n  "hero": {\n    "list": ["하나", "둘"]\n  }\n}\n');
+    const v = { hero: { list: ["하나", "둘"], cta: "시작" } };
+    expect(observeJsonStyle(serializeJson(v, s))).toEqual(s);
+  });
+
+  it("이스케이프: 부분 이스케이프 원본은 한 번 정규화되고 그다음이 고정점이다", () => {
+    const s = observeJsonStyle('{\n  "a": "\\ud55c",\n  "b": "글"\n}\n');
+    expect(s.escapeNonAscii).toBe(true);
+    const first = serializeJson({ a: "한", b: "글" }, s);
+    const s2 = observeJsonStyle(first);
+    expect(s2).toEqual(s);
+    expect(serializeJson({ a: "한", b: "글" }, s2)).toBe(first);
   });
 });

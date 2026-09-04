@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { surveyOne } from "../one";
 import { summarize } from "../summarize";
-import { emptyChromeFields, emptyDiffCauses, emptyErrors, type RepoSurvey, type SurveyInput } from "../types";
+import { emptyChromeFields, emptyDiffCauses, emptyErrors, emptyJsonPresentation, type RepoSurvey, type SurveyInput } from "../types";
 
 /**
  * 키 순서 보존 기능(`docs/features/key-order-preservation/`)의 **태스크 0 — 측정** 지표.
@@ -133,15 +133,15 @@ describe("surveyOne — 들여쓰기와 잔여 diff 원인", () => {
     expect(surveyOne(input("acme/four", CAUSES)).indent).toEqual({ char: "space", width: 4 });
   });
 
-  it("원인 셋을 각각 표시한다 — 들여쓰기는 고쳐져서 원인 목록에서 빠졌다", () => {
+  it("원인을 각각 표시한다 — 들여쓰기·이스케이프·한 줄 컨테이너는 고쳐져서 목록에서 빠졌다", () => {
     const s = surveyOne(input("acme/causes", CAUSES));
     expect(s.diffCauses).toMatchObject({
-      escapedNonAscii: true,
       sparseArray: true,
       integerKeys: true,
     });
     // 관측치로는 남는다 — 사실이 사라진 것이 아니라 **원인이 아닌 것**이다.
     expect(s.indent).toEqual({ char: "space", width: 4 });
+    expect(s.presentation.escapedNonAscii).toBe(true);
   });
 
   it("깨끗한 2칸 파일은 원인이 없다", () => {
@@ -236,6 +236,7 @@ const row = (over: Partial<RepoSurvey> & { repo: string }): RepoSurvey => ({
   localeOrderCompared: 0,
   diffCauses: emptyDiffCauses(),
   chromeFields: emptyChromeFields(),
+  presentation: emptyJsonPresentation(),
   ms: 1,
   ...over,
 });
@@ -318,7 +319,7 @@ describe("summarize — 표에 실린다", () => {
 
 describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가", () => {
   const clean = () => emptyDiffCauses();
-  const dirty = () => ({ ...emptyDiffCauses(), escapedNonAscii: true });
+  const dirty = () => ({ ...emptyDiffCauses(), sparseArray: true });
 
   it("**순서 외 원인이 없는 리포만**의 중앙값을 따로 낸다", () => {
     // 완료 조건의 분모다. 전체 코퍼스에 걸면 68%가 들여쓰기·chrome 필드 때문에 초과해서
@@ -447,13 +448,23 @@ describe("summarize — 순서 일치율과 들여쓰기 분포", () => {
 
   it("잔여 diff 원인별 리포 수를 낸다", () => {
     const rows = [
-      row({ repo: "a/1", diffCauses: { ...emptyDiffCauses(), compactContainer: true, escapedNonAscii: true } }),
-      row({ repo: "a/2", diffCauses: { ...emptyDiffCauses(), compactContainer: true } }),
+      row({ repo: "a/1", diffCauses: { ...emptyDiffCauses(), emptyValues: true, sparseArray: true } }),
+      row({ repo: "a/2", diffCauses: { ...emptyDiffCauses(), emptyValues: true } }),
       row({ repo: "a/3", diffCauses: emptyDiffCauses() }),
     ];
     const { metrics } = summarize(rows, []);
-    expect(metrics.diffCauses.compactContainer).toBe(2);
-    expect(metrics.diffCauses.escapedNonAscii).toBe(1);
-    expect(metrics.diffCauses.sparseArray).toBe(0);
+    expect(metrics.diffCauses.emptyValues).toBe(2);
+    expect(metrics.diffCauses.sparseArray).toBe(1);
+    expect(metrics.diffCauses.integerKeys).toBe(0);
+  });
+
+  it("표현 관측(이스케이프·한 줄 컨테이너)은 원인과 **다른 칸**에 센다 — clean 분모를 좁히지 않는다", () => {
+    const rows = [
+      row({ repo: "a/1", presentation: { escapedNonAscii: true, compactContainer: true } }),
+      row({ repo: "a/2", presentation: { escapedNonAscii: false, compactContainer: true } }),
+      row({ repo: "a/3" }),
+    ];
+    const { metrics } = summarize(rows, []);
+    expect(metrics.presentation).toEqual({ escapedNonAscii: 1, compactContainer: 2 });
   });
 });
