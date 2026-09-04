@@ -96,15 +96,21 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 `url`·`directUrl`이 스키마에서 제거되고 driver adapter가 필수가 됐다. v6 문서·예제를 그대로 적용하면 valid하지 않다.
 
-| 용도 | 위치 | 환경변수 | 포트 |
-|---|---|---|---|
-| 마이그레이션·CLI | `prisma.config.ts` | `DIRECT_URL` | 5432 (session) |
-| 런타임 쿼리 | `lib/db.ts` (`PrismaPg` adapter) | `DATABASE_URL` | 6543 (transaction) |
+| 용도 | 위치 | 환경변수 | 포트 | 어느 DB |
+|---|---|---|---|---|
+| 마이그레이션 생성·상태 | `prisma.config.ts` | `DIRECT_URL` | 5432 (session) | **dev** |
+| 마이그레이션 **프로덕션 반영** | `prisma.config.ts` (`PRISMA_TARGET=prod`) | `DIRECT_URL_PROD` | 5432 (session) | **prod** |
+| 런타임 쿼리 | `lib/db.ts` (`PrismaPg` adapter) | `DATABASE_URL` | 6543 (transaction) | 로컬·Preview는 dev / 프로덕션은 prod |
+
+**`PRISMA_TARGET`을 사람이 넘기지 않는다** — `package.json`의 `db:deploy`·`db:status:prod`가 세운다. 없으면 dev(안전한 쪽)로 떨어지고, `.env.example`에도 넣지 않는다(사람이 채우는 값이 아니다).
 
 - 클라이언트는 `generated/prisma/`로 생성된다 (**gitignore된 산출물** — CI가 typecheck 전에 `db:generate`를 돌린다). import는 `@/generated/prisma/client`
 - `prisma.config.ts`가 **`.env.local`을 명시적으로 읽는다.** `dotenv` 기본값은 `.env`라서 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`로 오진하게 된다
 - ⚠️ **`prisma.config.ts`에서 `env("DIRECT_URL")`을 쓰지 않는다.** 그 헬퍼는 config **로드 시점에** 던지고 이 파일은 `prisma generate`에도 로드되므로, `.env.local`이 없는 환경(Vercel·새 체크아웃)의 `pnpm build`가 통째로 죽는다. `datasource`는 마이그레이션·introspection 전용이라 **조건부로 넣는다** — 없으면 그 명령에서만 실패하고, Prisma가 명령 이름까지 찍어 알려준다. 같은 파일이 같은 이유로 두 번 터졌다 (`docs/POSTMORTEM.md` 2026-08-31 + 🔁 재발)
-- **⚠️ dev DB와 prod DB가 같다.** Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓인 뒤로는 `--create-only` + `db:deploy`로 쪼개고, **`migrate dev`의 리셋 제안은 절대 승인하지 않는다** (번역이 전부 날아간다). 상세는 `/db`
+- **✅ dev DB와 prod DB가 갈렸다** (2026-09-04). Supabase 프로젝트 둘 — `malmoi-dev`(로컬·Preview) / prod(프로덕션 배포). `pnpm db:migrate`가 프로덕션에 **닿을 수 없다.**
+  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다. 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** — `db:status`는 dev를 본다
+  - `--create-only` + `db:deploy`로 쪼개는 습관은 유지한다: 생성한 SQL을 프로덕션에 보내기 전에 눈으로 본다
+  - **dev에서는 리셋을 승인해도 된다** (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다). ⚠️ 단 `db:deploy`는 prod를 겨누므로 그 명령에 리셋 개념이 없다는 것을 전제로 한다. 상세는 `/db`
 
 ### 데이터 변경 경로 — 내부는 Server Action, 외부 진입점만 Route Handler
 
@@ -146,9 +152,10 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 | 타입 체크만 | `pnpm typecheck` |
 | 테스트 | `pnpm test` |
 | 테스트 (watch) | `pnpm test:watch` |
-| 마이그레이션 생성·적용 (로컬) | `pnpm db:migrate` (`DIRECT_URL` 사용) |
-| 마이그레이션 적용 (배포) | `pnpm db:deploy` |
-| 마이그레이션 상태·드리프트 | `pnpm db:status` |
+| 마이그레이션 생성·적용 (**dev**) | `pnpm db:migrate` (`DIRECT_URL`) |
+| 마이그레이션 프로덕션 반영 | `pnpm db:deploy` (`DIRECT_URL_PROD` — 이름 그대로 **prod 전용**이다) |
+| 마이그레이션 상태 (**dev**) | `pnpm db:status` |
+| 마이그레이션 상태 (**prod**) | `pnpm db:status:prod` — `/push` 3단계가 이걸 본다 |
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
@@ -166,8 +173,8 @@ i18n-poc: 사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 
 
 1. **Node를 `.nvmrc`에 맞춘다** (24). 게이트가 로컬에만 있는 구조(위 브랜치·배포 섹션)라 로컬과 Vercel의 메이저가 갈리면 그 게이트가 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
-4. `pnpm db:status`로 접속을 확인한다 (`DIRECT_URL`, 5432)
+3. `cp .env.example .env.local` 후 값을 채운다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 (2026-09-04에 실제로 그렇게 유출돼 전면 재발급했다). 구조가 필요하면 에이전트가 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. 값을 꺼낼 때도 `| pbcopy`로 클립보드에만 보낸다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
+4. `pnpm db:status`로 **dev** 접속을, `pnpm db:status:prod`로 **prod** 접속을 확인한다 (둘 다 5432). ⚠️ 두 명령의 출력이 **같아 보인다** — pooler 호스트가 두 프로젝트에서 동일하고 ref는 사용자명에 있다. 구별 신호는 **적용된 마이그레이션 개수**이고, 새 dev 프로젝트라면 전부 미적용으로 나온다
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
 6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
 

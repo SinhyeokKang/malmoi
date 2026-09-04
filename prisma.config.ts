@@ -25,8 +25,24 @@ config({ path: ".env.local" });
  * `datasource`는 **마이그레이션·introspection 전용**이라(@prisma/config 타입 주석) 없으면
  * 생략한다. 마이그레이션 명령을 URL 없이 돌리면 Prisma가 그 시점에 datasource 부재를 알린다 —
  * 필요한 명령에서만 실패하는 것이 요지다.
+ *
+ * ── **어느 DB를 겨누는가** ── dev와 prod가 별 Supabase 프로젝트로 갈린 뒤(2026-09-04) 이 파일이
+ * 두 URL 중 하나를 골라야 한다. 고르는 주체는 `package.json`의 스크립트다:
+ *
+ * | 스크립트 | `PRISMA_TARGET` | 읽는 변수 |
+ * |---|---|---|
+ * | `db:migrate` · `db:status` · `db:studio` | (없음) | `DIRECT_URL` (dev) |
+ * | `db:deploy` · `db:status:prod` | `prod` | `DIRECT_URL_PROD` |
+ *
+ * ⚠️ **`db:deploy`가 이름 그대로 prod 전용이다.** 사람이 플래그를 기억해야 하는 구조로 두지
+ * 않는다 — 분리의 목적이 "실수로 프로덕션을 바꾸지 않는다"인데 기본값이 prod면 그 목적이
+ * 무너지고, 플래그를 잊으면 dev에 배포한 것을 프로덕션 반영으로 착각한다.
+ *
+ * ⚠️ `PRISMA_TARGET`은 `.env.example`에 넣지 않는다 — 사람이 채우는 값이 아니라 스크립트가
+ * 세우는 것이고, 없으면 dev(안전한 쪽)로 떨어진다.
  */
-const directUrl = process.env["DIRECT_URL"];
+const target = process.env["PRISMA_TARGET"] === "prod" ? "DIRECT_URL_PROD" : "DIRECT_URL";
+const directUrl = process.env[target];
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
