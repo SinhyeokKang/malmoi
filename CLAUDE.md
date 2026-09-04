@@ -56,7 +56,7 @@
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
 | 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
-| 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
+| 로그인 | Auth.js v5 GitHub provider, **JWT 세션** — DB 세션 전환은 SaaS 2단계 §4다. 어댑터는 **설치만 됐고 아직 배선 전** | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
@@ -107,7 +107,9 @@
 
 ### 세션은 JWT — 권한 회수가 최대 24시간 지연된다
 
-`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. 허용 핸들 목록 검사는 **최초 로그인 시 1회**(`signIn` 콜백) 돌고 핸들을 토큰에 박는다. 따라서 **목록에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 사용자 테이블 4개(`User`·`Account`·`Session`·`VerificationToken`)와 요청마다의 DB 왕복이 사라지고 스키마가 5테이블로 유지된다. 즉시 회수가 필요해지면 `@auth/prisma-adapter`로 DB 세션으로 바꾼다 — 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
+`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. 허용 핸들 목록 검사는 **최초 로그인 시 1회**(`signIn` 콜백) 돌고 핸들을 토큰에 박는다. 따라서 **목록에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 요청마다의 DB 왕복이 사라졌다.
+
+⚠️ **이 절은 2026-09-05부터 절반만 참이다.** 사용자 테이블 4개와 `ProjectMember`·`ProjectInvitation`이 **이미 스키마에 있고**(`20260904182548_add_tenant_auth_tables`, dev 적용 완료) 어댑터도 설치됐다. **아직 안 바뀐 것은 배선뿐이다** — `auth.ts`는 여전히 `strategy: "jwt"`이고 인가는 `AUTH_ALLOWED_LOGINS`다. DB 세션 전환은 `docs/features/tenant-auth/tasks.md` §4·§5이고, 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -283,11 +285,15 @@ lib/
                         / query.ts(조회, server-only)
 types/next-auth.d.ts    session.user.login 타입 확장
 prisma/
-  schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
-  migrations/           9개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+                        ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
+                        linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
+  __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
+  migrations/           10개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
-                        _add_locale_orphaned, _add_translation_updated_at_index
+                        _add_locale_orphaned, _add_translation_updated_at_index,
+                        _add_tenant_auth_tables
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
