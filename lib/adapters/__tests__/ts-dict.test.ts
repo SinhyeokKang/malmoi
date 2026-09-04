@@ -158,7 +158,7 @@ describe("ts-dict — read", () => {
 
 describe("ts-dict — write는 원본을 보존한다 (이 어댑터의 존재 이유)", () => {
   const write = (entries: Array<{ key: string; message: string; orphaned?: boolean }>, locale = "ko") =>
-    tsDict.write({ ...format, currentFiles: file() }, { locale, isBase: false, entries });
+    tsDict.write({ ...format, currentFiles: file() }, { locale, entries });
 
   it("값이 하나도 안 바뀌면 원본과 바이트 동일하다", () => {
     const r = tsDict.read(format, file());
@@ -220,7 +220,7 @@ describe("ts-dict — write는 원본을 보존한다 (이 어댑터의 존재 �
   });
 
   it("원본이 없으면 null — 수술적 치환은 원본을 필요로 한다", () => {
-    expect(tsDict.write(format, { locale: "ko", isBase: false, entries: [{ key: "common.ok", message: "v" }] })).toBeNull();
+    expect(tsDict.write(format, { locale: "ko", entries: [{ key: "common.ok", message: "v" }] })).toBeNull();
   });
 
   it("orphaned 키는 값을 바꾸지 않는다 (파일에 남긴다)", () => {
@@ -257,7 +257,7 @@ export const common = { ko, en };
 describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
   const fileSingle = () => [{ path: "src/i18n/namespaces/common.ts", content: SOURCE_SINGLE }];
   const writeSingle = (entries: Array<{ key: string; message: string }>, locale = "ko") =>
-    tsDict.write({ ...format, locales: ["ko", "en"], currentFiles: fileSingle() }, { locale, isBase: false, entries });
+    tsDict.write({ ...format, locales: ["ko", "en"], currentFiles: fileSingle() }, { locale, entries });
 
   it("작은따옴표 원본에서 편집한 값도 작은따옴표다", () => {
     const out = writeSingle([{ key: "common.ok", message: "확인했습니다" }]) ?? "";
@@ -275,7 +275,6 @@ describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
   it("큰따옴표 원본은 큰따옴표를 유지한다 — 기존 동작에 회귀가 없다", () => {
     const out = tsDict.write({ ...format, currentFiles: file() }, {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "확인했습니다" }],
     }) ?? "";
     expect(out).toContain('"common.ok": "확인했습니다"');
@@ -295,7 +294,7 @@ describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
     const first = writeSingle([{ key: "common.ok", message: "확인했습니다" }]) ?? "";
     const second = tsDict.write(
       { ...format, locales: ["ko", "en"], currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: first }] },
-      { locale: "ko", isBase: false, entries: [{ key: "common.ok", message: "확인했습니다" }] },
+      { locale: "ko", entries: [{ key: "common.ok", message: "확인했습니다" }] },
     ) ?? "";
     expect(second).toBe(first);
   });
@@ -306,12 +305,12 @@ describe("ts-dict — write의 방어", () => {
   const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["ko", "en"], currentFiles: [{ path: "ns/x.ts", content: SRC }] };
 
   it("빈 값은 치환하지 않는다 — 어댑터도 스스로 거른다 (code-dict·yaml과 같은 이중 방어)", () => {
-    const out = tsDict.write(fmt, { locale: "ko", isBase: false, entries: [{ key: "a", message: "" }] });
+    const out = tsDict.write(fmt, { locale: "ko", entries: [{ key: "a", message: "" }] });
     expect(out).toBe(SRC);
   });
 
   it("writeWithErrors가 비리터럴 프로퍼티를 에러로 돌려준다 — write는 그것을 버렸다", () => {
-    const res = tsDict.writeWithErrors!(fmt, { locale: "ko", isBase: false, entries: [{ key: "a", message: "둘" }] });
+    const res = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "둘" }] });
     expect(res.content).toContain('"둘"');
     expect(res.errors.some((e) => e.message.includes("b"))).toBe(true);
   });
@@ -322,7 +321,7 @@ describe("ts-dict — write도 구문 진단을 본다", () => {
     const broken = SOURCE.replace('"common.close": "닫기",', '"common.close": "닫기');
     const res = tsDict.writeWithErrors!(
       { ...format, currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: broken }] },
-      { locale: "ko", isBase: false, entries: [{ key: "common.ok", message: "확인!" }] },
+      { locale: "ko", entries: [{ key: "common.ok", message: "확인!" }] },
     );
     expect(res.content).toBe(broken);
     expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
@@ -341,7 +340,6 @@ describe("ts-dict — 로케일 객체 부재도 보고한다 (2026-09-04 audit 
   it("요청한 로케일 객체가 파일에 없으면 에러다 — 로케일 전체 누락을 성공으로 처리하면 안 된다", () => {
     const res = tsDict.writeWithErrors!(fmt, {
       locale: "fr",
-      isBase: false,
       entries: [{ key: "a", message: "un" }],
     });
     expect(res.content).toBe(SRC_KO_ONLY);
@@ -351,7 +349,6 @@ describe("ts-dict — 로케일 객체 부재도 보고한다 (2026-09-04 audit 
   it("있는 로케일은 에러 없이 치환한다", () => {
     const res = tsDict.writeWithErrors!(fmt, {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "둘" }],
     });
     expect(res.errors).toEqual([]);

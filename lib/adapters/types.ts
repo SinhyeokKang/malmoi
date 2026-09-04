@@ -43,13 +43,6 @@ export type DetectedFormat = {
    */
   nestedByPath?: Record<string, boolean>;
 
-  /**
-   * 파일 경로 → 최상위가 로케일 코드 하나로 감싸여 있었는지 (`yaml-catalog` 전용).
-   *
-   * Rails 관례가 그렇다(`ko:` 아래에 내용 — mastodon·redmine·decidim). misskey·directus는 루트에
-   * 바로 키가 온다. `read`가 관측하고 `write`가 같은 모양으로 되돌린다.
-   */
-  rootKeyedByPath?: Record<string, boolean>;
 };
 
 /** 경로 → 내용. 읽을 수 없으면 undefined. */
@@ -138,19 +131,10 @@ export type ReadResult = {
   nested: boolean;
   /** 파일별 중첩 여부. 호출부가 `DetectedFormat.nestedByPath`에 그대로 실어준다. */
   nestedByPath?: Record<string, boolean>;
-  /** 파일별 로케일 루트 키 여부 (`yaml-catalog` 전용). */
-  rootKeyedByPath?: Record<string, boolean>;
 };
 
 export type WriteInput = {
   locale: string;
-  /**
-   * base 로케일인가. **어댑터는 읽지 않는다** — 2026-09-03 개정 후 description은 로케일마다 그 파일이
-   * 갖고 있던 값을 되돌리고(`LocaleEntry.description`), base 폴백 판정은 호출부(`buildWriteEntries`·
-   * `rowsForLocale`)가 끝낸 뒤 entries에 실어 넘긴다. 계약에 남겨둔 것은 호출부가 "이 write가 base인가"를
-   * 한 자리에서 넘기게 하려는 것이다.
-   */
-  isBase: boolean;
   entries: readonly LocaleEntry[];
 };
 

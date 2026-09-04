@@ -194,7 +194,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const locale = adapter.layout === "multi-locale" ? "ko" : "en";
   const surgical = adapter.writeStrategy === "surgical";
   const write = (entries: readonly LocaleEntry[], f: DetectedFormat = fmt) =>
-    adapter.write(f, { locale, isBase: true, entries });
+    adapter.write(f, { locale, entries });
 
   const plain = write(entriesFor(CONTRACT_KEYS));
   if (plain === null) {
@@ -260,7 +260,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
   // **`writeWithErrors`를 구현했으면 `write`와 갈라지지 않는다.** 한쪽만 고치면 프로덕션(pull)과
   // 측정(survey)이 서로 다른 함수를 부르게 되고, 그게 정확히 이 리포가 밟은 함정이다.
   if (adapter.writeWithErrors !== undefined) {
-    const res = adapter.writeWithErrors(fmt, { locale, isBase: true, entries: entriesFor(CONTRACT_KEYS) });
+    const res = adapter.writeWithErrors(fmt, { locale, entries: entriesFor(CONTRACT_KEYS) });
     if (res.content !== plain) bad.push("writeWithErrors의 content가 write와 다르다 — 한쪽만 고치면 갈린다");
     if (res.errors.length > 0) {
       bad.push(`정상 입력에 write 에러를 냈다: ${res.errors.map((e) => e.message).join(" / ")}`);
@@ -324,7 +324,6 @@ export function writerContractViolations(adapter: Adapter): string[] {
   if (donor !== undefined) {
     const styled = adapter.write(donor, {
       locale,
-      isBase: true,
       entries: entriesFor(CONTRACT_KEYS),
     });
     if (styled === null) {

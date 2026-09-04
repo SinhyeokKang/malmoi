@@ -51,7 +51,7 @@ describe("nested는 파일 단위로 관측한다 (musicblocks 손실의 증폭 
     const koEntries = r.locales.find((l) => l.locale === "ko")!.entries;
     const out = jsonCatalog.write(
       fmt({ nested: true, nestedByPath: r.nestedByPath, locales: ["en", "ko"] }),
-      { locale: "ko", isBase: false, entries: koEntries },
+      { locale: "ko", entries: koEntries },
     )!;
     const back = JSON.parse(out) as Record<string, unknown>;
     // 두 키가 **둘 다** 살아 있어야 한다
@@ -75,7 +75,6 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
     const r = jsonCatalog.read(fmt(), [f("locales/en.json", CLASH)]);
     const res = jsonCatalog.writeWithErrors!(fmt({ nested: true }), {
       locale: "en",
-      isBase: true,
       entries: r.locales[0]!.entries,
     });
     expect(res.errors.length).toBeGreaterThan(0);
@@ -86,7 +85,6 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
     const r = jsonCatalog.read(fmt(), [f("locales/en.json", CLASH)]);
     const out = jsonCatalog.write(fmt({ nested: true }), {
       locale: "en",
-      isBase: true,
       entries: r.locales[0]!.entries,
     })!;
     const back = JSON.parse(out) as { grp: { task: { database: { index: string } } } };
@@ -98,7 +96,6 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
     const r = jsonCatalog.read(fmt(), [f("locales/en.json", ok)]);
     const res = jsonCatalog.writeWithErrors!(fmt({ nested: true }), {
       locale: "en",
-      isBase: true,
       entries: r.locales[0]!.entries,
     });
     expect(res.errors).toEqual([]);
@@ -108,13 +105,11 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
     const r1 = jsonCatalog.read(fmt(), [f("locales/en.json", CLASH)]);
     const w = jsonCatalog.write(fmt({ nested: true }), {
       locale: "en",
-      isBase: true,
       entries: r1.locales[0]!.entries,
     })!;
     const r2 = jsonCatalog.read(fmt({ nested: true }), [f("locales/en.json", w)]);
     const w2 = jsonCatalog.write(fmt({ nested: true }), {
       locale: "en",
-      isBase: true,
       entries: r2.locales[0]!.entries,
     })!;
     // 바이트 고정점 — 2차 write가 1차와 같다

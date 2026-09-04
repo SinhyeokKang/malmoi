@@ -139,7 +139,7 @@ if (baseLocale) {
       const entries = result.locales.find((l) => l.locale === locale)?.entries ?? [];
       const out = adapter.write(
         { ...writeFormat, currentFiles: [{ path, content: rewritten ?? original.content }] },
-        { locale, isBase: locale === base, entries },
+        { locale, entries },
       );
       if (out === null) break;
       rewritten = out;

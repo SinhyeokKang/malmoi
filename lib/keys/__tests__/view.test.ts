@@ -4,7 +4,6 @@ import { buildPermalink, namespaceCounts, translationState, type KeyRow } from "
 const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
   id: `id-${over.key}`,
   namespace: over.key.split(/[._]/)[0] ?? "_root",
-  sourceText: "src",
   orphaned: false,
   /** 로케일 코드 → 값. 테이블이 로케일을 열로 펼치므로 행이 전부 들고 있어야 한다. */
   cells: {},

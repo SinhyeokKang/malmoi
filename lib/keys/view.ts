@@ -25,8 +25,7 @@ export type KeyRow = {
   id: string;
   key: string;
   namespace: string;
-  /** `sourceHash`·stale 판정의 근거. **화면의 base 값은 `cells[base]`다** (MVP §3.2). */
-  sourceText: string;
+
   description?: string | null;
   orphaned: boolean;
   /** 로케일 코드 → 셀. 없는 로케일은 미번역이다. */

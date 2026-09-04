@@ -92,7 +92,8 @@ describe("yaml-catalog — read", () => {
   it("Rails식 로케일 루트 키를 벗기고 rootKeyed로 알린다", () => {
     const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", RAILS)]);
     expect(r.errors).toEqual([]);
-    expect(r.rootKeyedByPath).toEqual({ "config/locales/ko.yml": true });
+    // 루트 키 관측은 계약에 실리지 않는다 — write가 원본에서 직접 본다 (2026-09-04 audit #47).
+    expect(r.locales[0]?.entries.some((e) => e.key.startsWith("common."))).toBe(true);
     const keys = r.locales[0]!.entries.map((e) => e.key);
     expect(keys).toEqual(["common.close", "common.ok", "direction", "time.just_now", "time.minutes_ago"]);
     expect(r.locales[0]!.entries.find((e) => e.key === "common.ok")?.message).toBe("확인");
@@ -100,7 +101,7 @@ describe("yaml-catalog — read", () => {
 
   it("루트 키가 없는 형태도 읽는다", () => {
     const r = yamlCatalog.read(base({ locales: ["ko"] }), [f("config/locales/ko.yml", FLAT_ROOT)]);
-    expect(r.rootKeyedByPath).toEqual({ "config/locales/ko.yml": false });
+    expect(r.locales[0]?.entries.some((e) => e.key === "headline")).toBe(true);
     expect(r.locales[0]!.entries.map((e) => e.key)).toEqual(["_lang_", "headline", "nested.deep"]);
   });
 
@@ -133,7 +134,6 @@ describe("yaml-catalog — write는 수술적이다", () => {
   it("값만 바뀌고 주석·빈 줄이 보존된다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "OK로 변경" }],
     })!;
     expect(out).toContain("# Korean translations for Ruby on Rails");
@@ -151,7 +151,6 @@ describe("yaml-catalog — write는 수술적이다", () => {
     const src = "ko:\n  a: &anc 앵커값\n  b: *anc\n  c: 셋\n";
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "c", message: "삼" }],
     })!;
     expect(out).toContain("&anc");
@@ -162,20 +161,18 @@ describe("yaml-catalog — write는 수술적이다", () => {
   it("바뀐 값이 없으면 원본을 바이트 그대로 돌려준다 (결정성의 근거)", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "확인" }],
     });
     expect(out).toBe(RAILS);
   });
 
   it("원본이 없으면 null — 파일을 새로 만들지 않는다", () => {
-    expect(yamlCatalog.write(base(), { locale: "ko", isBase: false, entries: [{ key: "a", message: "A" }] })).toBeNull();
+    expect(yamlCatalog.write(base(), { locale: "ko", entries: [{ key: "a", message: "A" }] })).toBeNull();
   });
 
   it("orphaned 키는 원본 값을 남긴다 (지우지 않는다)", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "새 DB 값", orphaned: true }],
     })!;
     expect(out).toContain('"확인"');
@@ -185,7 +182,6 @@ describe("yaml-catalog — write는 수술적이다", () => {
   it("빈 값은 치환하지 않는다 — 소스에 빈 문자열이 박히면 폴백이 없다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "" }],
     })!;
     expect(out).toContain('"확인"');
@@ -194,7 +190,6 @@ describe("yaml-catalog — write는 수술적이다", () => {
   it("루트 키가 있는 파일에서 키 경로가 루트 아래로 들어간다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "time.just_now", message: "지금" }],
     })!;
     expect(out).toContain("just_now: 지금");
@@ -207,7 +202,6 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
   it("같은 맵에 없는 키를 추가한다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.newKey", message: "새 값" }],
     })!;
     expect(out).toContain("newKey: 새 값");
@@ -218,7 +212,6 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
   it("중간 경로가 없으면 만든다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "brand.new.deep", message: "깊은 새 값" }],
     })!;
     expect(out).toContain("깊은 새 값");
@@ -229,8 +222,8 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
       { key: "common.zeta", message: "Z" },
       { key: "common.alpha", message: "A" },
     ];
-    const a = yamlCatalog.write(withSource(RAILS), { locale: "ko", isBase: false, entries })!;
-    const b = yamlCatalog.write(withSource(RAILS), { locale: "ko", isBase: false, entries: [...entries].reverse() })!;
+    const a = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries })!;
+    const b = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries: [...entries].reverse() })!;
     expect(b).toBe(a);
     // 코드포인트 순서로 들어간다
     expect(a.indexOf("alpha")).toBeLessThan(a.indexOf("zeta"));
@@ -239,7 +232,6 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
   it("루트 키가 없는 파일에도 삽입한다", () => {
     const out = yamlCatalog.write(withSource(FLAT_ROOT), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "nested.added", message: "추가" }],
     })!;
     expect(out).toContain("added: 추가");
@@ -252,13 +244,13 @@ describe("yaml-catalog — 왕복", () => {
     it(`${name}: read→write→read가 의미 동일하고 2차 write가 바이트 고정점이다`, () => {
       const path = "config/locales/ko.yml";
       const r1 = yamlCatalog.read(base(), [f(path, src)]);
-      const fmt1 = base({ currentFiles: [{ path, content: src }], rootKeyedByPath: r1.rootKeyedByPath });
-      const w1 = yamlCatalog.write(fmt1, { locale: "ko", isBase: false, entries: r1.locales[0]!.entries })!;
+      const fmt1 = base({ currentFiles: [{ path, content: src }] });
+      const w1 = yamlCatalog.write(fmt1, { locale: "ko", entries: r1.locales[0]!.entries })!;
       const r2 = yamlCatalog.read(base(), [f(path, w1)]);
       expect(r2.locales[0]!.entries).toEqual(r1.locales[0]!.entries);
       const w2 = yamlCatalog.write(
-        base({ currentFiles: [{ path, content: w1 }], rootKeyedByPath: r2.rootKeyedByPath }),
-        { locale: "ko", isBase: false, entries: r2.locales[0]!.entries },
+        base({ currentFiles: [{ path, content: w1 }] }),
+        { locale: "ko", entries: r2.locales[0]!.entries },
       )!;
       expect(w2).toBe(w1);
     });
@@ -314,7 +306,6 @@ describe("yaml-catalog — 중복 키에서 read와 write가 같은 항목을 �
   it("write도 마지막 항목을 고친다 — 첫 항목을 고치면 앱이 보는 값이 안 바뀐다", () => {
     const out = yamlCatalog.write(withSource(DUP), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "바뀐값" }],
     })!;
     // 마지막 `a`가 바뀌어야 한다
@@ -327,13 +318,11 @@ describe("yaml-catalog — 중복 키에서 read와 write가 같은 항목을 �
     const r1 = yamlCatalog.read(base(), [f(path, DUP)]);
     const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: DUP }] }), {
       locale: "ko",
-      isBase: false,
       entries: r1.locales[0]!.entries,
     })!;
     const r2 = yamlCatalog.read(base(), [f(path, w1)]);
     const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
       locale: "ko",
-      isBase: false,
       entries: r2.locales[0]!.entries,
     })!;
     expect(w2).toBe(w1);
@@ -354,7 +343,6 @@ describe("yaml-catalog — 시퀀스 값도 제자리에서 고친다", () => {
   it("시퀀스 항목을 치환한다 (새 키를 만들지 않는다)", () => {
     const out = yamlCatalog.write(withSource(SEQ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "list.1", message: "둘째 바뀜" }],
     })!;
     expect(out).toContain("- 둘째 바뀜");
@@ -369,14 +357,12 @@ describe("yaml-catalog — 시퀀스 값도 제자리에서 고친다", () => {
     const r1 = yamlCatalog.read(base(), [f(path, SEQ)]);
     const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: SEQ }] }), {
       locale: "ko",
-      isBase: false,
       entries: r1.locales[0]!.entries,
     })!;
     const r2 = yamlCatalog.read(base(), [f(path, w1)]);
     expect(r2.locales[0]!.entries).toEqual(r1.locales[0]!.entries);
     const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
       locale: "ko",
-      isBase: false,
       entries: r2.locales[0]!.entries,
     })!;
     expect(w2).toBe(w1);
@@ -387,13 +373,11 @@ describe("yaml-catalog — 시퀀스 값도 제자리에서 고친다", () => {
     const long = "매우 긴 문장이며 " + "단어 ".repeat(30) + "끝";
     const w1 = yamlCatalog.write(base({ currentFiles: [{ path, content: SEQ }] }), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "note.0", message: long }],
     })!;
     const r2 = yamlCatalog.read(base(), [f(path, w1)]);
     const w2 = yamlCatalog.write(base({ currentFiles: [{ path, content: w1 }] }), {
       locale: "ko",
-      isBase: false,
       entries: r2.locales[0]!.entries,
     })!;
     expect(w2).toBe(w1);
@@ -406,7 +390,6 @@ describe("yaml-catalog — 표현은 원본에서 (ARCHITECTURE §1.4)", () => {
     const src = `ko:\n  short: 짧다\n  long: ${long}\n`;
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "short", message: "바뀜" }],
     })!;
     expect(out.split("\n")).toContain(`  long: ${long}`);
@@ -416,7 +399,6 @@ describe("yaml-catalog — 표현은 원본에서 (ARCHITECTURE §1.4)", () => {
     const src = `ko:\n    common:\n        ok: 확인\n        close: 닫기\n`;
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "OK" }],
     })!;
     expect(out).toBe(`ko:\n    common:\n        ok: OK\n        close: 닫기\n`);
@@ -425,7 +407,6 @@ describe("yaml-catalog — 표현은 원본에서 (ARCHITECTURE §1.4)", () => {
   it("writeWithErrors — 원본이 파싱되지 않으면 원본을 돌려주되 에러로 알린다", () => {
     const res = yamlCatalog.writeWithErrors!(withSource("ko:\n  a: [unclosed\n"), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "x" }],
     });
     expect(res.content).toBe("ko:\n  a: [unclosed\n");
@@ -438,7 +419,6 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
     const src = "ko:\n  base: &a 기준\n  ref: *a\n";
     const res = yamlCatalog.writeWithErrors!(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "ref", message: "새 값" }],
     });
     expect(res.content).toBe(src);
@@ -449,7 +429,6 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
     const src = "ko:\n  grp:\n    inner: 값\n";
     const res = yamlCatalog.writeWithErrors!(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "grp", message: "스칼라로 덮으려 한다" }],
     });
     expect(res.content).toBe(src);
@@ -459,7 +438,6 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
   it("정상 치환에는 에러가 없다", () => {
     const res = yamlCatalog.writeWithErrors!(withSource(RAILS), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "OK" }],
     });
     expect(res.errors).toEqual([]);
@@ -481,7 +459,6 @@ describe("yaml-catalog — 시퀀스 들여쓰기도 원본에서 (2026-09-04 7�
   it("부모와 같은 열에 쓴 시퀀스는 그대로 남는다 — 편집한 줄만 바뀐다", () => {
     const out = yamlCatalog.write(withSource(SEQ_FLUSH), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "greeting", message: "안녕하세요" }],
     })!;
     expect(out).toBe("ko:\n  greeting: 안녕하세요\n  items:\n  - 하나\n  - 둘\n");
@@ -490,7 +467,6 @@ describe("yaml-catalog — 시퀀스 들여쓰기도 원본에서 (2026-09-04 7�
   it("들여쓴 시퀀스는 들여쓴 채로 남는다 — 반대 방향으로도 보존한다", () => {
     const out = yamlCatalog.write(withSource(SEQ_INDENTED), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "greeting", message: "안녕하세요" }],
     })!;
     expect(out).toBe("ko:\n  greeting: 안녕하세요\n  items:\n    - 하나\n    - 둘\n");
@@ -500,7 +476,6 @@ describe("yaml-catalog — 시퀀스 들여쓰기도 원본에서 (2026-09-04 7�
     const src = "ko:\n  a: 하나\n  b: 둘\n";
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "일" }],
     })!;
     expect(out).toBe("ko:\n  a: 일\n  b: 둘\n");
@@ -512,7 +487,6 @@ describe("yaml-catalog — 플로우 컬렉션 여백도 원본에서 (2026-09-0
     const src = "ko:\n  greeting: 안녕\n  day_names: [일, 월, 화]\n";
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "greeting", message: "안녕하세요" }],
     })!;
     expect(out).toBe("ko:\n  greeting: 안녕하세요\n  day_names: [일, 월, 화]\n");
@@ -522,7 +496,6 @@ describe("yaml-catalog — 플로우 컬렉션 여백도 원본에서 (2026-09-0
     const src = "ko:\n  greeting: 안녕\n  day_names: [ 일, 월, 화 ]\n";
     const out = yamlCatalog.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "greeting", message: "안녕하세요" }],
     })!;
     expect(out).toBe("ko:\n  greeting: 안녕하세요\n  day_names: [ 일, 월, 화 ]\n");
@@ -543,7 +516,6 @@ describe("yaml-catalog — 원본의 인용 부호를 유지한다", () => {
   it("작은따옴표 원본에서 값을 바꿔도 작은따옴표다", () => {
     const out = yamlCatalog.write(withSource(SINGLE), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.ok", message: "확인!" }],
     })!;
     expect(out).toContain("ok: '확인!'");

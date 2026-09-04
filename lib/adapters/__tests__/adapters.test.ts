@@ -160,8 +160,8 @@ describe("chrome-locales — read", () => {
 
 describe("chrome-locales — write (기존 lib/export.ts 규칙을 이어받는다)", () => {
   const format = { adapter: "chrome-locales" as const, pathTemplate: "public/_locales/{locale}/messages.json", locales: ["en"] };
-  const w = (entries: Array<{ key: string; message: string; description?: string }>, isBase = true) =>
-    chromeLocales.write(format, { locale: "en", isBase, entries });
+  const w = (entries: Array<{ key: string; message: string; description?: string }>) =>
+    chromeLocales.write(format, { locale: "en", entries });
 
   it("정렬·2칸·끝 개행 1개", () => {
     const out = w([{ key: "b_two", message: "B" }, { key: "a_one", message: "A" }])!;
@@ -173,13 +173,13 @@ describe("chrome-locales — write (기존 lib/export.ts 규칙을 이어받는�
     expect(w(e)).toBe(w(e));
   });
 
-  it("description은 로케일마다 낸다 — 엔트리에 있으면 base가 아니어도 낸다", () => {
-    // 전에는 base에만 냈다. 그때는 `buildWriteEntries`가 **키 단위** description을 전 로케일에
-    // 실어서, 가드를 풀면 원본에 없던 값을 비-base 파일에 만들어 넣었다. 이제 엔트리의
-    // description은 `Translation.description`(그 파일이 실제로 갖고 있던 값)이라 그 위험이 없다.
-    expect(w([{ key: "k_a", message: "A", description: "d" }], true)).toContain('"description": "d"');
-    expect(w([{ key: "k_a", message: "A", description: "d" }], false)).toContain('"description": "d"');
-    expect(w([{ key: "k_a", message: "A" }], false)).not.toContain("description");
+  it("description은 엔트리에 있으면 낸다 — base 여부를 어댑터가 보지 않는다", () => {
+    // 전에는 base에만 냈고 `WriteInput.isBase`가 그 가드였다. `buildWriteEntries`가 **키 단위**
+    // description을 전 로케일에 싣던 시절의 방어였는데, 지금 엔트리의 description은
+    // `Translation.description`(그 파일이 실제로 갖고 있던 값)이라 위험이 없다. 그래서
+    // 마지막 독자가 사라졌고 계약에서 필드를 뺐다 (2026-09-04 audit #47).
+    expect(w([{ key: "k_a", message: "A", description: "d" }])).toContain('"description": "d"');
+    expect(w([{ key: "k_a", message: "A" }])).not.toContain("description");
   });
 
   it("항목 0개면 null", () => {
@@ -250,7 +250,7 @@ describe("chrome-locales — write가 원본 필드 순서를 따른다", () => 
   const write = (content: string | undefined) =>
     chromeLocales.write(
       content === undefined ? format : { ...format, currentFiles: [{ path: "_locales/en/messages.json", content }] },
-      { locale: "en", isBase: true, entries: [{ key: "a_one", message: "A", description: "설명" }] },
+      { locale: "en", entries: [{ key: "a_one", message: "A", description: "설명" }] },
     );
 
   it("description 선행 원본이면 바이트 동일이다", () => {
@@ -324,7 +324,6 @@ describe("json-catalog — write", () => {
   it("flat 포맷은 flat으로 되돌린다", () => {
     const out = jsonCatalog.write(flat, {
       locale: "en",
-      isBase: true,
       entries: [{ key: "common.viewAll", message: "View all" }, { key: "auth.login", message: "Log in" }],
     })!;
     expect(out).toBe('{\n  "auth.login": "Log in",\n  "common.viewAll": "View all"\n}\n');
@@ -333,7 +332,6 @@ describe("json-catalog — write", () => {
   it("중첩 포맷은 중첩으로 복원한다 (배열 인덱스 포함)", () => {
     const out = jsonCatalog.write(nested, {
       locale: "en",
-      isBase: true,
       entries: [
         { key: "hero.subcopy.0", message: "a" },
         { key: "hero.subcopy.1", message: "b" },
@@ -348,7 +346,6 @@ describe("json-catalog — write", () => {
   it("description은 버린다 (저장할 곳이 없다)", () => {
     const out = jsonCatalog.write(flat, {
       locale: "en",
-      isBase: true,
       entries: [{ key: "a.b", message: "V", description: "설명" }],
     })!;
     expect(out).not.toContain("설명");
@@ -366,7 +363,6 @@ describe("json-catalog — write", () => {
       // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어야 한다.
       const out = jsonCatalog.write({ ...c.base, nested: r.nested }, {
         locale: "en",
-        isBase: true,
         entries: r.locales[0]?.entries ?? [],
       })!;
       expect(JSON.parse(out)).toEqual(JSON.parse(c.content));
@@ -376,12 +372,12 @@ describe("json-catalog — write", () => {
   it("nested를 안 실으면 flat으로 나간다 (왕복이 깨지는 경로를 명시적으로 고정)", () => {
     const base = { adapter: "json-catalog" as const, pathTemplate: "src/lib/i18n/{locale}.json", locales: ["en"] };
     const r = jsonCatalog.read(base, [f("src/lib/i18n/en.json", NESTED_EN)]);
-    const out = jsonCatalog.write(base, { locale: "en", isBase: true, entries: r.locales[0]?.entries ?? [] })!;
+    const out = jsonCatalog.write(base, { locale: "en", entries: r.locales[0]?.entries ?? [] })!;
     expect(JSON.parse(out)).toHaveProperty(["meta.title"]);
   });
 
   it("항목 0개면 null", () => {
-    expect(jsonCatalog.write(flat, { locale: "en", isBase: true, entries: [] })).toBeNull();
+    expect(jsonCatalog.write(flat, { locale: "en", entries: [] })).toBeNull();
   });
 });
 
@@ -399,14 +395,14 @@ describe("writer 문자 인코딩 — json-catalog (일반 규칙은 contract.te
 
   it("따옴표·개행·역슬래시를 JSON으로 이스케이프한다", () => {
     const out = jsonCatalog.write(flat, {
-      locale: "en", isBase: true, entries: [{ key: "k", message: 'a"b\\c\nd' }],
+      locale: "en", entries: [{ key: "k", message: 'a"b\\c\nd' }],
     })!;
     expect(JSON.parse(out)).toEqual({ k: 'a"b\\c\nd' });
   });
 
   it("한글·이모지를 \\u 이스케이프 없이 그대로 낸다", () => {
     const out = jsonCatalog.write(flat, {
-      locale: "en", isBase: true, entries: [{ key: "k", message: "안녕 🎉" }],
+      locale: "en", entries: [{ key: "k", message: "안녕 🎉" }],
     })!;
     expect(out).toContain("안녕 🎉");
     expect(out).not.toContain("\\u");

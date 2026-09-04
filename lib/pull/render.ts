@@ -116,7 +116,6 @@ export function renderLocaleFiles(
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
       const { content, errors } = write(writeFormat, {
         locale,
-        isBase,
         entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
       });
       return { path: p.path, content, ...(errors.length === 0 ? {} : { errors }) };
@@ -137,7 +136,6 @@ export function renderLocaleFiles(
         { ...format, currentFiles: [{ path: p.path, content }] },
         {
           locale,
-          isBase,
           entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
         },
       );

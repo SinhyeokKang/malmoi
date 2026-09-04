@@ -8,8 +8,10 @@ import { TranslationInput } from "@/components/translation-input";
 /**
  * 키 테이블 — `| key | en(base) | ko | fr |`. 원문과 번역을 나란히 본다 (MVP §3.2).
  *
- * **base 로케일도 편집 가능하다** — 고정된 것은 키뿐이다. 화면의 base 값은 `sourceText`가
- * 아니라 `cells[base]`이고, `sourceText`는 stale 판정 전용이다.
+ * **base 로케일도 편집 가능하다** — 고정된 것은 키뿐이다. 화면의 base 값은 `StringKey.sourceText`가
+ * 아니라 `cells[base]`다. ⚠️ **`sourceText`는 이 화면에 실리지 않는다** (2026-09-04 audit #47):
+ * 행마다 나르면서 읽는 코드가 없었고, stale은 push가 세우는 `needsReview`가 든다. 원문 대조를
+ * 화면에 넣으려면 그때 다시 싣는다.
  *
  * 시각 규칙은 docs/DESIGN.md — 키는 mono(§4.1), 배지 3종(§6.2), muted 표면 대비(§2.2).
  */

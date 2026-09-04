@@ -191,7 +191,7 @@ export const ns = { ko, en };
     };
     const r = tsDict.read(fmt, [{ path: "src/i18n/namespaces/a.ts", content: TS }]);
     expect(r.locales.map((l) => l.locale).sort()).toEqual(["en", "ko"]);
-    const out = tsDict.write(fmt, { locale: "ko", isBase: false, entries: [{ key: "a.b", message: "바뀜" }] });
+    const out = tsDict.write(fmt, { locale: "ko", entries: [{ key: "a.b", message: "바뀜" }] });
     expect(out).toContain('"바뀜"');
   });
 });

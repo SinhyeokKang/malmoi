@@ -176,7 +176,6 @@ describe("writer 출력의 blobSha가 git hash-object와 일치한다 (§1·§2 
     it(adapter.name, () => {
       const out = adapter.write(formatFor(adapter), {
         locale: adapter.layout === "multi-locale" ? "ko" : "en",
-        isBase: true,
         entries: CONTRACT_KEYS.map((k) => ({ key: k, message: "안녕 🎉", description: "d" })),
       });
       expect(out).not.toBeNull();

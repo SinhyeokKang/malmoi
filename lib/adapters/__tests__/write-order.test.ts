@@ -36,14 +36,14 @@ function roundtrip(content: string, nested: boolean): string | null {
   expect(r.errors).toEqual([]);
   return jsonCatalog.write(
     { ...fmt, nested: r.nested, nestedByPath: r.nestedByPath },
-    { locale: "en", isBase: true, entries: r.locales[0]!.entries },
+    { locale: "en", entries: r.locales[0]!.entries },
   );
 }
 
-function chromeRoundtrip(content: string, isBase = true): string | null {
+function chromeRoundtrip(content: string): string | null {
   const r = chromeLocales.read(chromeFmt, [f("_locales/en/messages.json", content)]);
   expect(r.errors).toEqual([]);
-  return chromeLocales.write(chromeFmt, { locale: "en", isBase, entries: r.locales[0]!.entries });
+  return chromeLocales.write(chromeFmt, { locale: "en", entries: r.locales[0]!.entries });
 }
 
 describe("json-catalog.write — 원본 순서로 재조립한다", () => {
@@ -70,7 +70,6 @@ describe("json-catalog.write — 원본 순서로 재조립한다", () => {
   it("order가 없으면 코드 유닛 순 — 기존 동작이 폴백으로 남는다", () => {
     const out = jsonCatalog.write(jsonFmt(false), {
       locale: "en",
-      isBase: true,
       entries: [
         { key: "b", message: "B" },
         { key: "a", message: "A" },
@@ -82,7 +81,6 @@ describe("json-catalog.write — 원본 순서로 재조립한다", () => {
   it("order가 섞여 있으면 있는 것이 먼저다", () => {
     const out = jsonCatalog.write(jsonFmt(false), {
       locale: "en",
-      isBase: true,
       entries: [
         { key: "aaa", message: "A" },
         { key: "zzz", message: "Z", order: 0 },
@@ -141,7 +139,7 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
 
   it("base의 description은 그대로 낸다 (기존 동작)", () => {
     const src = '{\n  "A": {\n    "message": "a",\n    "description": "d"\n  }\n}\n';
-    expect(chromeRoundtrip(src, true)).toBe(src);
+    expect(chromeRoundtrip(src)).toBe(src);
   });
 
   it("비-base의 description도 낸다 — 그 파일이 실제로 갖고 있던 값이다", () => {
@@ -149,7 +147,7 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
     // 셀에서 오므로 base 값을 복제할 위험이 사라졌고, chrome 리포 33개 중 20개가 잃던 필드다
     // (`docs/ADAPTER-COVERAGE.md` §10.3).
     const src = '{\n  "A": {\n    "message": "a",\n    "description": "d"\n  }\n}\n';
-    expect(chromeRoundtrip(src, false)).toBe(src);
+    expect(chromeRoundtrip(src)).toBe(src);
   });
 
   it("결정적이다 — 같은 입력을 두 번 써서 같은 바이트", () => {
@@ -157,7 +155,7 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
       { key: "C", message: "c", order: 0 },
       { key: "A", message: "a", order: 1, placeholders: { u: { content: "$1" } } },
     ];
-    const w = () => chromeLocales.write(chromeFmt, { locale: "en", isBase: true, entries });
+    const w = () => chromeLocales.write(chromeFmt, { locale: "en", entries });
     expect(w()).toBe(w());
   });
 
@@ -166,7 +164,7 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
       { key: "C", message: "c", order: 0 },
       { key: "A", message: "a", order: 1 },
     ];
-    const w = (list: LocaleEntry[]) => chromeLocales.write(chromeFmt, { locale: "en", isBase: true, entries: list });
+    const w = (list: LocaleEntry[]) => chromeLocales.write(chromeFmt, { locale: "en", entries: list });
     expect(w([...entries].reverse())).toBe(w(entries));
   });
 });

@@ -55,7 +55,7 @@ export async function loadKeys(
     where: { projectId },
     orderBy: { key: "asc" },
     select: {
-      id: true, key: true, namespace: true, sourceText: true, description: true, orphaned: true,
+      id: true, key: true, namespace: true, description: true, orphaned: true,
       translations: { select: { localeCode: true, value: true, needsReview: true, updatedBy: true } },
       refs: { select: { path: true, line: true }, orderBy: [{ path: "asc" }, { line: "asc" }] },
     },
@@ -70,7 +70,6 @@ export async function loadKeys(
       id: k.id,
       key: k.key,
       namespace: k.namespace,
-      sourceText: k.sourceText,
       description: k.description,
       orphaned: k.orphaned,
       cells,

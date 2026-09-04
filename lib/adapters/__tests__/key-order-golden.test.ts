@@ -39,7 +39,7 @@ function roundtrip(adapter: Adapter, fmt: DetectedFormat, path: string, content:
   expect(r.errors).toEqual([]);
   const out = adapter.write(
     { ...fmt, nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f(path, content)] },
-    { locale: "en", isBase: true, entries: r.locales[0]!.entries },
+    { locale: "en", entries: r.locales[0]!.entries },
   );
   expect(out).not.toBeNull();
   return out!;
@@ -162,7 +162,7 @@ describe("L2 — 값을 편집하면 그 줄만 움직인다", () => {
     );
     const out = jsonCatalog.write(
       { ...jsonFmt, nested: r.nested, nestedByPath: r.nestedByPath },
-      { locale: "en", isBase: true, entries },
+      { locale: "en", entries },
     )!;
     expect(changedHunks(NESTED_WITH_ARRAY, out)).toBe(1);
     // "몇 줄 바뀌었나"도 함께 본다 — 한 줄 변경이 파일 전체 diff로 번지지 않는다.
@@ -172,7 +172,7 @@ describe("L2 — 값을 편집하면 그 줄만 움직인다", () => {
 
 describe("L2 — 엣지 케이스", () => {
   const write = (entries: Parameters<Adapter["write"]>[1]["entries"]) =>
-    jsonCatalog.write(jsonFmt, { locale: "en", isBase: true, entries });
+    jsonCatalog.write(jsonFmt, { locale: "en", entries });
 
   it("order가 전부 없으면 코드 유닛 순 — 마이그레이션 직후 상태가 개정 전과 바이트 동일이다", () => {
     expect(write([{ key: "b", message: "B" }, { key: "a", message: "A" }])).toBe('{\n  "a": "A",\n  "b": "B"\n}\n');
@@ -206,7 +206,7 @@ describe("L2 — 엣지 케이스", () => {
     const en = jsonCatalog.read(jsonFmt, [f("i18n/en.json", FLAT_UNSORTED)]);
     // ko에는 두 키가 빠져 있다 — 번역이 덜 된 정상 상태다.
     const partial = en.locales[0]!.entries.filter((e) => !e.key.startsWith("admin."));
-    const out = jsonCatalog.write(jsonFmt, { locale: "ko", isBase: false, entries: partial })!;
+    const out = jsonCatalog.write(jsonFmt, { locale: "ko", entries: partial })!;
     expect(out).toBe(
       '{\n  "repo.settings": "Settings",\n  "auth.sign_in": "Sign In",\n  "repo.branches": "Branches",\n  "auth.sign_out": "Sign Out"\n}\n',
     );
@@ -311,7 +311,6 @@ describe("L2 — 표현: 들여쓰기가 원본대로 나온다", () => {
   it("원본을 안 주면 2칸이다 — 재생성은 원본 없이도 파일을 만든다 (신규 로케일)", () => {
     const out = jsonCatalog.write(jsonFmt, {
       locale: "en",
-      isBase: true,
       entries: [{ key: "a", message: "하나" }],
     });
     expect(out).toBe('{\n  "a": "하나"\n}\n');

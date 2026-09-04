@@ -35,7 +35,8 @@ import { localeFromPath } from "./chrome-locales";
  * `parseDocument`가 CST를 들고 있어 스칼라만 갈아끼울 수 있다 (ARCHITECTURE §1.4).
  *
  * **루트 키 변형이 둘이다.** Rails는 최상위가 로케일 코드 하나(`ko:`)이고 그 아래가 내용인데,
- * misskey·directus는 루트에 바로 키가 온다. `read`가 관측해 `rootKeyedByPath`로 돌려준다.
+ * misskey·directus는 루트에 바로 키가 온다. **`write`가 원본에서 직접 관측한다** — read가 돌려준
+ * 값을 계약에 실어 나르지 않는다(전엔 `rootKeyedByPath`가 있었는데 write가 그걸 안 믿었다).
  */
 
 const SEP = KEY_SEP;
@@ -140,7 +141,6 @@ function rootKeyOf(doc: Document): string | undefined {
 function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
   const locales: ReadLocale[] = [];
   const errors: AdapterError[] = [];
-  const rootKeyedByPath: Record<string, boolean> = {};
 
   for (const file of files) {
     const locale = localeFromPath(format.pathTemplate, file.path);
@@ -159,7 +159,6 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
     }
 
     const rootKey = rootKeyOf(doc);
-    rootKeyedByPath[file.path] = rootKey !== undefined;
     const root = rootKey === undefined ? doc.contents : (doc.getIn([rootKey], true) as Node | undefined);
     if (root === undefined || root === null) {
       errors.push({ path: file.path, message: "최상위가 맵이 아니다" });
@@ -182,7 +181,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
 
   locales.sort((a, b) => compareKeys(a.locale, b.locale));
   // YAML은 중첩이 기본이라 이 값이 write 분기에 쓰이지 않는다 — 수술적 치환이므로 원본이 모양을 정한다.
-  return { locales, errors, nested: true, rootKeyedByPath };
+  return { locales, errors, nested: true };
 }
 
 /**

@@ -150,7 +150,6 @@ describe("code-dict — write는 수술적이다", () => {
   it("값만 바뀌고 주석·빈 줄이 보존된다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "OK로 변경" }],
     })!;
     expect(out).toContain("// 사람이 넣은 주석");
@@ -165,7 +164,6 @@ describe("code-dict — write는 수술적이다", () => {
   it("이스케이프가 깨지지 않는다 — setLiteralValue를 쓰면 안 되는 이유", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: 'a"b\\c\nd' }],
     })!;
     // 재파싱해서 같은 값이 나와야 한다
@@ -176,7 +174,6 @@ describe("code-dict — write는 수술적이다", () => {
   it("한글이 유니코드 이스케이프로 바뀌지 않는다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "안녕 🎉" }],
     })!;
     expect(out).toContain("안녕 🎉");
@@ -186,20 +183,18 @@ describe("code-dict — write는 수술적이다", () => {
   it("바뀐 값이 없으면 원본을 바이트 그대로 돌려준다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "확인" }],
     });
     expect(out).toBe(DEFAULT_OBJ);
   });
 
   it("원본이 없으면 null", () => {
-    expect(codeDict.write(base(), { locale: "ko", isBase: false, entries: [{ key: "a", message: "A" }] })).toBeNull();
+    expect(codeDict.write(base(), { locale: "ko", entries: [{ key: "a", message: "A" }] })).toBeNull();
   });
 
   it("orphaned·빈 값은 원본 값을 남긴다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [
         { key: "el.ok", message: "덮지 말 것", orphaned: true },
         { key: "el.close", message: "" },
@@ -213,7 +208,6 @@ describe("code-dict — write는 수술적이다", () => {
   it("문자열 리터럴이 아닌 프로퍼티는 건드리지 않는다", () => {
     const out = codeDict.write(withSource(NAMED_CONST), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "global.close", message: "종료" }],
     })!;
     expect(out).toContain("Pagination,");
@@ -226,7 +220,6 @@ describe("code-dict — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () => 
   it("같은 객체에 없는 키를 추가한다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.newKey", message: "새 값" }],
     })!;
     const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
@@ -237,7 +230,6 @@ describe("code-dict — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () => 
   it("중간 경로가 없으면 만든다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "brand.new.deep", message: "깊은 새 값" }],
     })!;
     const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
@@ -249,8 +241,8 @@ describe("code-dict — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () => 
       { key: "el.zeta", message: "Z" },
       { key: "el.alpha", message: "A" },
     ];
-    const a = codeDict.write(withSource(DEFAULT_OBJ), { locale: "ko", isBase: false, entries })!;
-    const b = codeDict.write(withSource(DEFAULT_OBJ), { locale: "ko", isBase: false, entries: [...entries].reverse() })!;
+    const a = codeDict.write(withSource(DEFAULT_OBJ), { locale: "ko", entries })!;
+    const b = codeDict.write(withSource(DEFAULT_OBJ), { locale: "ko", entries: [...entries].reverse() })!;
     expect(b).toBe(a);
     expect(a.indexOf("alpha")).toBeLessThan(a.indexOf("zeta"));
   });
@@ -263,14 +255,12 @@ describe("code-dict — 왕복", () => {
       const r1 = codeDict.read(base(), [f(path, src)]);
       const w1 = codeDict.write(base({ currentFiles: [{ path, content: src }] }), {
         locale: "ko",
-        isBase: false,
         entries: r1.locales[0]!.entries,
       })!;
       const r2 = codeDict.read(base(), [f(path, w1)]);
       expect(r2.locales[0]!.entries).toEqual(r1.locales[0]!.entries);
       const w2 = codeDict.write(base({ currentFiles: [{ path, content: w1 }] }), {
         locale: "ko",
-        isBase: false,
         entries: r2.locales[0]!.entries,
       })!;
       expect(w2).toBe(w1);
@@ -311,7 +301,7 @@ export const koTranslations: X = {
         locales: ["ko"],
         currentFiles: [{ path: "packages/translations/src/languages/ko.ts", content: NAMED_EXPORT }],
       }),
-      { locale: "ko", isBase: false, entries: [{ key: "authentication.account", message: "어카운트" }] },
+      { locale: "ko", entries: [{ key: "authentication.account", message: "어카운트" }] },
     )!;
     expect(out).toContain("어카운트");
     expect(out).toContain("apiKey: 'API 키'");
@@ -373,7 +363,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("작은따옴표 원본에서 편집한 값도 작은따옴표다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "확인했습니다" }],
     })!;
     expect(out).toContain("ok: '확인했습니다'");
@@ -383,7 +372,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("편집하지 않은 줄의 부호는 그대로다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "바뀐값" }],
     })!;
     expect(out).toContain("close: '닫기'");
@@ -394,7 +382,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
     const src = 'export default {\n  el: {\n    ok: "확인",\n  },\n}\n';
     const out = codeDict.write(withSource(src), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "확인했습니다" }],
     })!;
     expect(out).toContain('ok: "확인했습니다"');
@@ -403,7 +390,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("작은따옴표 안의 `'`를 이스케이프하고 재파싱이 같은 값을 준다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "À l'instant" }],
     })!;
     expect(out).toContain("\\'");
@@ -415,7 +401,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
     const value = 'a"b\\c\nd';
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: value }],
     })!;
     const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
@@ -425,7 +410,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("새로 삽입되는 키는 파일의 다수 부호를 따른다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.brandNew", message: "새 값" }],
     })!;
     expect(out).toContain("'새 값'");
@@ -435,7 +419,6 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("삽입해도 값이 왕복한다 — 부호를 바꿔도 이스케이프가 유지된다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.brandNew", message: "it's \"quoted\"" }],
     })!;
     const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
@@ -445,12 +428,10 @@ describe("code-dict — 원본의 인용 부호를 유지한다", () => {
   it("부호 유지가 바이트 고정점을 깨지 않는다 — 2차 write가 1차와 같다", () => {
     const first = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "확인했습니다" }],
     })!;
     const second = codeDict.write(withSource(first), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.ok", message: "확인했습니다" }],
     })!;
     expect(second).toBe(first);
@@ -466,12 +447,10 @@ describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", (
   it("삽입 결과에 2차 write를 돌려도 바이트가 같다", () => {
     const first = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.brandNew", message: "새 값" }],
     })!;
     const second = codeDict.write(withSource(first), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.brandNew", message: "새 값" }],
     })!;
     expect(second).toBe(first);
@@ -481,12 +460,10 @@ describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", (
     const even = `export default {\n  el: {\n    a: 'x',\n    b: "y",\n  },\n}\n`;
     const first = codeDict.write(withSource(even), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.c", message: "1" }],
     })!;
     const second = codeDict.write(withSource(first), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "el.c", message: "1" }, { key: "el.d", message: "2" }],
     })!;
     // 1차가 고른 부호가 2차에서도 유지된다 — 뒤집히면 c의 줄이 함께 바뀐다
@@ -497,7 +474,6 @@ describe("code-dict — 삽입해도 부호 판정이 진동하지 않는다", (
     const flat = `export default {\n  'common.ok': '확인',\n}\n`;
     const out = codeDict.write(withSource(flat), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "common.new", message: "새 값" }],
     })!;
     expect(out).toContain("'common.new': '새 값'");
@@ -510,7 +486,7 @@ describe("code-dict — write도 read와 같은 구문 진단을 본다", () => 
     const broken = "export default {\n  ok: '확인,\n  clear: '초기화',\n};\n";
     const res = codeDict.writeWithErrors!(
       { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", locales: ["ko"], currentFiles: [{ path: "i18n/ko.ts", content: broken }] },
-      { locale: "ko", isBase: false, entries: [{ key: "clear", message: "지우기" }] },
+      { locale: "ko", entries: [{ key: "clear", message: "지우기" }] },
     );
     expect(res.content).toBe(broken);
     expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
@@ -522,7 +498,7 @@ describe("code-dict — writeWithErrors", () => {
     const src = "export const x = 1;\n";
     const res = codeDict.writeWithErrors!(
       { adapter: "code-dict", pathTemplate: "i18n/{locale}.ts", locales: ["ko"], currentFiles: [{ path: "i18n/ko.ts", content: src }] },
-      { locale: "ko", isBase: false, entries: [{ key: "a", message: "x" }] },
+      { locale: "ko", entries: [{ key: "a", message: "x" }] },
     );
     expect(res.content).toBe(src);
     expect(res.errors).toHaveLength(1);
@@ -540,7 +516,6 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
   it("문자열 리터럴이 아닌 자리는 건너뛰되 에러로 남긴다 — 조용히 버리면 어느 키를 잃었는지 모른다", () => {
     const res = codeDict.writeWithErrors!(fmtOf("export default {\n  a: someExpr,\n}\n"), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "값" }],
     });
     expect(res.content).toBe("export default {\n  a: someExpr,\n}\n");
@@ -550,7 +525,6 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
   it("문자열 자리를 객체로 덮어야 하는 삽입은 포기하되 에러로 남긴다", () => {
     const res = codeDict.writeWithErrors!(fmtOf('export default {\n  a: "leaf",\n}\n'), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a.deep", message: "값" }],
     });
     expect(res.errors.some((e) => e.message.includes("a.deep"))).toBe(true);
@@ -559,7 +533,6 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
   it("정상 입력에는 에러가 없다", () => {
     const res = codeDict.writeWithErrors!(fmtOf('export default {\n  a: "old",\n}\n'), {
       locale: "ko",
-      isBase: false,
       entries: [{ key: "a", message: "새 값" }],
     });
     expect(res.errors).toEqual([]);

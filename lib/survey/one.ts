@@ -519,7 +519,7 @@ function writeMultiLocale(
     for (const locale of locales) {
       const next = adapter.write(
         { ...fmt, currentFiles: [{ path: file.path, content }] },
-        { locale, isBase: locale === base, entries: entriesOf(locale) },
+        { locale, entries: entriesOf(locale) },
       );
       if (next !== null) content = next;
     }
