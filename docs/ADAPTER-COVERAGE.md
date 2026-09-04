@@ -1050,3 +1050,36 @@ livemarks)가 나왔다 — 지표를 넣고 배선을 안 하는 것이 이 리
    것이 정상이고, 그 사실을 회차마다 명시했다.
 4. ⚠️ **완료 조건 ③이 판정 불가로 남는다.** 게이트를 쓸 때 잴 수단이 있는지 먼저 확인하지
    않은 결과다.
+
+## 17. 12차 측정 — 감사 3라운드(50건 리팩터) 뒤 (2026-09-04)
+
+- 실행(학습): `pnpm adapter-survey docs/features/adapter-generality/repos.txt --verdicts docs/features/adapter-generality/verdicts.json`
+- 실행(홀드아웃): `pnpm adapter-survey docs/features/adapter-generality/repos-heldout.txt --verdicts docs/features/adapter-generality/verdicts-heldout.json`
+
+**리팩터가 writer 출력을 바꾸지 않았다는 확인이다.** `/audit` 3라운드(Claude 4관점 + Codex)의
+50건 중 `lib/adapters/**`·`lib/survey/**`에 닿은 것: ts-dict·code-dict의 구문 진단, code-dict 탐지
+키 구분자, `KEY_SEP` 단일화, `replaceAll`, 그리고 **지표 정의 셋** — `descriptionFirst`가 "한 엔트리
+라도"에서 프로덕션과 같은 **파일 단위 다수결**로, failed 파일의 표현 관측 제외, yaml 확장자 그룹.
+
+| 지표 | 11차 학습 | **12차 학습** | 11차 홀드아웃 | **12차 홀드아웃** |
+|---|---|---|---|---|
+| 탐지 · 오탐 · 왕복 의미 · **바이트 고정점** · `not-run` | 99.0% · 0.0% · 99/100 · 100/100 · 9 | **전부 동일** | 94.1% · 6.3% · 16/16 · 16/16 · 4 | **전부 동일** |
+| 목표(0.10) 초과 | 12/99 | 동일 | 3/15 | 동일 |
+| `chrome-locales` 중앙값 · `clean` 초과 | 0.0250 · 1/38 | 동일 | — · 0/4 | 동일 |
+| `surgicalEditHunks` | 20/29 | 동일 | 2/4 | 동일 |
+| **`descriptionFirst`(관측)** | **2** | **1** | 0 | 0 |
+
+### 17.1 `descriptionFirst` 2 → 1 — 지표가 프로덕션을 따라간 결과다
+
+11차의 2는 Midnight-Lizard + livemarks였다. livemarks는 **엔트리 몇 개만** description을 먼저 쓰고
+파일 다수는 message가 먼저다 — 옛 지표("한 엔트리라도")는 축 적용으로 셌지만 writer(`dominantFieldOrder`
+다수결)는 message를 먼저 낸다. 지표와 프로덕션이 다른 판정을 했던 것이고(감사 #20), 이제 같은
+함수를 쓰므로 **1이 맞는 수**다. livemarks의 diff(0.0386)는 그대로다 — 그 리포에서 필드 순서는
+원래 원인이 아니었다.
+
+### 17.2 판정
+
+1. **회귀 0.** writer 출력·탐지·고정점·왕복 전부 11차와 같다. 구문 진단 추가가 유효 파일에 닿지
+   않았다는 확인이다 (깨진 파일은 코퍼스에 없다 — `json-parse 1`은 홀드아웃의 기존 값).
+2. **지표 정의 변경이 낸 차이는 `descriptionFirst` 하나**이고 그 방향이 옳다.
+3. 홀드아웃은 이 회차에도 회귀 표본이었고 통과했다.
