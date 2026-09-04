@@ -167,6 +167,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **항상 exit 0**). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
+| **OWNER backfill** (일회성) | `pnpm backfill:owners --owner-email <검증된 이메일> --owner-github-id <숫자 id> [--owner-name <이름>] [--target dev\|prod] [--apply]` — 기존 `Project`에 OWNER `ProjectMember`를 채운다. **기본은 dev이고 기본은 dry-run.** `--target prod`는 `DIRECT_URL_PROD`(5432)로 간다. ⚠️ SaaS 2단계 §8에서 이 스크립트와 `lib/auth/backfill.ts`를 지운다 |
 | GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
@@ -325,6 +326,9 @@ scripts/
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
+  backfill-owners.ts    ⚠️ **일회성** — 기존 Project에 OWNER를 채운다. User+Account(github)+
+                        ProjectMember를 **한 트랜잭션**으로 upsert한다: User만 만들면 첫 GitHub
+                        로그인이 OAuthAccountNotLinked로 거부된다. 인가 전환 뒤 삭제한다
 auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
 docs/MVP.md             PoC 스펙 (닫힘 — §8.4가 SAAS.md를 가리킨다)
 docs/SAAS.md            **SaaS화 스펙 — 현재 단계의 정본.** 범위·비범위·설계 결정·단계별
