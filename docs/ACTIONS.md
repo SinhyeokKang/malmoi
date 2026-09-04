@@ -57,6 +57,7 @@ jobs:
 |---|---|
 | `project` | **항상.** 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5) |
 | `adapter` | **한 리포에 포맷이 둘이면 필수.** 탐지 우선순위가 작은 쪽을 골라 큰 쪽 키가 전부 orphan된다. bugshot-2가 그렇다: `_locales` 4키 vs `ts-dict` 903키 → `adapter: ts-dict` |
+| `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04) |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
 | `api-url` | 기본값이 `https://i18n-poc.vercel.app`이라 보통 생략 |
 

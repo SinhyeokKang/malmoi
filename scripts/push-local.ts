@@ -30,11 +30,11 @@ config({ path: ".env.local", quiet: true });
 
 const argv = process.argv.slice(2);
 /** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
-const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project"]);
+const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base"]);
 
 const target = findTarget(argv, VALUE_FLAGS);
 if (!target) {
-  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--project <slug>]");
+  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--project <slug>] [--base <locale>]");
   process.exit(2);
 }
 const baseUrl = flagValue(argv, "--url") ?? "http://localhost:3000";
@@ -110,7 +110,15 @@ if (read.errors.length) {
   process.exit(1);
 }
 
-const baseLocale = pickBaseLocale(format.locales);
+// ⚠️ **base가 키 집합의 진실이다** — `keySet`은 base 엔트리로만 만들어진다. 추정(`en` 우선 → 사전순)이
+// 틀리면 진짜 base에만 있는 키가 적재에서 빠지고 orphaned로 떨어진다. `ingest`엔 `--base`가 있었는데
+// 실제 적재 경로엔 없었다 (2026-09-04 audit #1). 명시가 있으면 로케일 목록에 있어야 한다.
+const baseOverride = flagValue(argv, "--base");
+if (baseOverride !== undefined && !format.locales.includes(baseOverride)) {
+  console.error(`--base ${baseOverride}: 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다.`);
+  process.exit(1);
+}
+const baseLocale = baseOverride ?? pickBaseLocale(format.locales);
 if (baseLocale === undefined) {
   console.error("로케일이 없다 — 연동 불가.");
   process.exit(1);

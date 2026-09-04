@@ -33,6 +33,13 @@ inputs:
       골라 큰 쪽 키가 전부 orphan된다 (bugshot-2: _locales 4키 vs ts-dict 903키).
     required: false
     default: ""
+  base-locale:
+    description: |
+      기준 로케일 명시. **`en`이 없는 리포는 필수다** — 없으면 사전순 첫 로케일을 base로 추정하고,
+      추정이 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 (키 집합은 base
+      파일이 정한다).
+    required: false
+    default: ""
   wrapper:
     description: |
       `--wrapper` 스펙. 여러 개면 줄바꿈으로 나눈다.
@@ -49,6 +56,23 @@ inputs:
 runs:
   using: composite
   steps:
+    # ⚠️ **무한 루프 차단을 action 안에도 둔다.** 대상 리포 워크플로의 `if:`가 1차 방어지만 그건
+    # 복붙 스니펫(docs/ACTIONS.md)이라 빠뜨릴 수 있다. pull이 만든 `[skip-l10n]` 커밋이 머지될 때
+    # push가 다시 돌면 DB를 리포 값으로 덮고 다음 pull이 또 PR을 만든다 (2026-09-04 audit #16).
+    # composite action은 job-level if가 없어 스텝마다 `steps.guard.outputs.skip`으로 건너뛴다.
+    - name: "[skip-l10n] 가드"
+      id: guard
+      shell: bash
+      env:
+        HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+      run: |
+        if [[ "$HEAD_MESSAGE" == *"[skip-l10n]"* ]]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::[skip-l10n] 커밋 — pull이 만든 변경이라 push하지 않는다"
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
+
     # composite action은 자기 리포를 러너에 clone해 준다. `action_path`는 이 파일의
     # 디렉터리(`<clone>/.github/actions/l10n-push`)이므로 **리포 루트는 `../../..`다.**
     #
@@ -57,6 +81,7 @@ runs:
     # 줘도 action의 clone 경로를 못 본다("No pnpm version is specified"로 죽는다). 값으로
     # 넘기면 그 문제를 피하면서 버전의 출처는 여전히 i18n-poc의 `.nvmrc`·`packageManager` 하나다.
     - name: 버전 읽기
+      if: steps.guard.outputs.skip != 'true'
       id: v
       shell: bash
       run: |
@@ -66,16 +91,19 @@ runs:
         echo "pnpm=$(node -p "require('$root/package.json').packageManager.split('@')[1]")" >> "$GITHUB_OUTPUT"
 
     - name: pnpm
+      if: steps.guard.outputs.skip != 'true'
       uses: pnpm/action-setup@v4
       with:
         version: ${{ steps.v.outputs.pnpm }}
 
     - name: Node
+      if: steps.guard.outputs.skip != 'true'
       uses: actions/setup-node@v4
       with:
         node-version: ${{ steps.v.outputs.node }}
 
     - name: i18n-poc 의존성
+      if: steps.guard.outputs.skip != 'true'
       shell: bash
       working-directory: ${{ github.action_path }}/../../..
       run: pnpm install --frozen-lockfile
@@ -90,7 +118,7 @@ runs:
     # 경고가 존재하지 않는 것과 구별되지 않았다. 실패는 실패로 보고한다(단 red는 아니다 —
     # 이 스텝은 경고 전용이고 적재를 막을 근거가 없다).
     - name: 열린 l10n/sync PR 경고
-      if: inputs.github-token != ''
+      if: steps.guard.outputs.skip != 'true' && inputs.github-token != ''
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -110,6 +138,7 @@ runs:
     # 키의 진실은 로케일 파일이고 스캔은 refs 전담이라, 남의 리포 CI를 우리 스캐너
     # 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
     - name: 적재 + 스캔 → /api/push
+      if: steps.guard.outputs.skip != 'true'
       shell: bash
       working-directory: ${{ github.action_path }}/../../..
       # inputs는 env로 넘기고 셸에서 "$VAR"로 읽는다 — `${{ }}`를 스크립트에 직접 보간하면 호출자가
@@ -119,6 +148,7 @@ runs:
         L10N_API_URL: ${{ inputs.api-url }}
         L10N_PROJECT: ${{ inputs.project }}
         L10N_ADAPTER: ${{ inputs.adapter }}
+        L10N_BASE: ${{ inputs.base-locale }}
         L10N_WRAPPER: ${{ inputs.wrapper }}
         L10N_TARGET: ${{ inputs.target }}
       run: |
@@ -126,6 +156,9 @@ runs:
         args=(--url "$L10N_API_URL" --project "$L10N_PROJECT")
         if [ -n "$L10N_ADAPTER" ]; then
           args+=(--adapter "$L10N_ADAPTER")
+        fi
+        if [ -n "$L10N_BASE" ]; then
+          args+=(--base "$L10N_BASE")
         fi
         # 줄바꿈으로 나뉜 wrapper 스펙을 각각 플래그로 전개한다.
         while IFS= read -r spec; do
