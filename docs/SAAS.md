@@ -411,8 +411,8 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
     **아래 두 항목이 같은 커밋에서 끝날 때 열린다.**
   - **이메일 검증이 provider의 `profile` 구성 자리로 올라갔다** — `signIn`에서 검사만 하면 검증한
     주소와 저장되는 `User.email`이 갈린다 (ARCHITECTURE §6.2, POSTMORTEM 2026-09-05)
-- [x] `requireUser` · `requireProjectAccess` (§5.2) ✅ (2026-09-05, `bb94651`) —
-      **호출부는 아직 0이다.** 편집 경로에 붙이는 것이 3단계와 합쳐진 §5다
+- [x] `requireUser` · `requireProjectAccess` (§5.2) ✅ (2026-09-05, `bb94651` → `6ed4ecb`) —
+      편집 경로 전 진입점이 이것을 지난다. **`app/__tests__/entry-points.test.ts`가 상시로 센다**
 - [x] 이메일 정규화·초대 수락·**멤버 변경**의 **순수 판정 함수** ✅ (2026-09-05, `2e0f7f4`) —
       `lib/auth/`에 9개(`normalizeEmail`·`canPerform`·`hashInviteToken`·`planInvitationAccept`·
       `planProjectAccess`·`planMemberChange`·`planOwnerBackfill`·`hasSessionCookie`·
@@ -426,18 +426,28 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       `User` + `Account(github)` + `ProjectMember`를 **한 트랜잭션**으로 만든다: `User`만 만들면
       첫 GitHub 로그인이 `OAuthAccountNotLinked`로 거부되고, 그게 이 스크립트가 존재하는 이유의 절반이다
 
-완료 게이트: §5.7의 공격 시나리오가 **전부 거부** / 멤버 제거가 기존 세션에 **즉시** 반영 /
-프로젝트 인가 없이 실행되는 Server Action·Route Handler가 0 / Google 사용자가 GitHub 계정 없이
-초대 수락과 편집이 가능.
+완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(자동 가능한 것 — `authorization.test.ts`·
+`membership.test.ts` 65케이스) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이
+실행되는 Server Action·Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고정) /
+Google 사용자가 GitHub 계정 없이 초대 수락과 편집이 가능 — **⬜ 수동 검증 대기.**
 
-### 3단계 — 최소 UI 이관 ⬜
+⚠️ **남은 것은 `[manual]` 넷이다** (e2e가 없어 자동화할 수 없다): Google 로그인, 초대 링크 왕복,
+세션 회수(`Session` 행 삭제) 뒤 blur 저장, `curl`로 비로그인 응답 본문 0바이트 확인. preview에서
+밟는다. **그리고 OWNER backfill을 dev·prod 양쪽에서 아직 `--apply` 하지 않았다** — 안 하면
+기존 프로젝트에 멤버가 없어 아무도 못 들어간다.
+
+### 3단계 — 최소 UI 이관 ✅ **2단계 §5에 흡수됐다** (2026-09-05)
 
 **전면 재작성이 아니다.** 동결된 `/keys`를 프로젝트 URL과 인가 경계 위로 옮기기만 한다 —
 판정 로직(`lib/keys/view.ts`·`translationState`)이 이미 있어 이관 비용이 작고, 이게 있어야
 4·5단계를 preview에서 화면으로 확인한다.
 
-- [ ] `/keys` → `/projects/:slug/translations`, 프로젝트 전환
-- [ ] 모든 조회·저장이 `requireProjectAccess`를 지난다
+- [x] `/keys` → `/projects/:slug/translations`, `/projects` 목록, `/invite/[token]` ✅
+- [x] 모든 조회·저장이 `requireProjectAccess`/`getProjectAccess`를 지난다 ✅
+
+**따로 둘 수 없었다.** 인가를 붙이는 것과 라우트를 옮기는 것이 같은 일이다 — 프로젝트를 URL이
+정하지 않으면 `requireProjectAccess`에 넘길 slug가 없고, 허용 목록을 남긴 채 멤버십을 붙이면 두
+인가가 AND로 걸려 초대받은 비개발자가 로그인 단계에서 막힌다. 그래서 셋이 한 커밋이다.
 
 완료 게이트: 다른 프로젝트 ID를 주입해도 노출·수정되지 않는다 / 기존 push→편집→pull 값 전달
 테스트가 새 경로에서도 통과한다.
