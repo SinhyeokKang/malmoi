@@ -613,17 +613,36 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 바뀌어도 판정이 흔들리지 않는다. `instanceof`가 아니라 `name` 비교인 이유는 모듈 인스턴스가 둘이
 되면(번들 경계·mock) 조용히 false가 되어 설정 누락이 `internal`로 접히기 때문이다.
 
-### 6.1 ⚠️ 차단은 미들웨어에만 의존한다
+### 6.1 ⚠️ 차단은 미들웨어, **인가는 진입점** (2026-09-05 갈렸다)
 
 **레이아웃의 조건부 렌더는 차단이 아니다.** App Router는 레이아웃과 페이지를 병렬로 렌더하므로, 레이아웃이 `children`을 쓰지 않아도 페이지는 이미 실행돼 DB를 조회하고 RSC 페이로드를 응답에 싣는다. 실측으로 세션 없는 `/keys` 응답 **1.3MB에 1446키가 노출**됐다 — 화면엔 로그인 버튼만 보이므로 눈으로는 안 보인다 (`docs/POSTMORTEM.md` 2026-08-31).
 
-- **1차: `middleware.ts`** — 렌더 전에 막는다. JWT 세션이라 DB 없이 토큰만 확인하면 되므로 Edge 제약을 타지 않는다. **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다.
-- **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다.
+⚠️ **DB 세션으로 바뀌면서 층이 둘로 갈렸다.** 전에는 미들웨어가 JWT를 검증해 **완전한 판정**을 했지만, 지금 미들웨어가 하는 일은 **쿠키가 있는지 보는 것**뿐이다. SaaS에서 같은 실수의 형태는 **"middleware가 로그인을 확인했으니 프로젝트 접근도 됐겠지"** 다 (SAAS §5.1).
+
+| 층 | 무엇을 하나 | 무엇을 못 하나 |
+|---|---|---|
+| **1차 `middleware.ts`** | `hasSessionCookie`로 쿠키 이름만 본다 — `authjs.session-token`(http) / `__Secure-authjs.session-token`(https). **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
+| **본판정: 페이지·Server Action** | `requireProjectAccess`(redirect) / `getProjectAccess`(union 반환) → `planProjectAccess` | — |
+
+- ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
+- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다.
+- ⚠️ **라우트가 살아 있는 동안 matcher에서 빼지 않는다.** 빼는 순간 그 페이지의 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 위 회고가 배운 부류다. `/keys`는 `/projects/[slug]/translations`로 옮겨질 때 함께 빠진다.
+- **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
 
-**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`).
+**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다.
 
-**인가는 fail-closed다.** `AUTH_ALLOWED_LOGINS`가 비어 있으면 **아무도 들어오지 못한다** — 빈 값을 "제한 없음"으로 해석하면 설정 누락이 곧 전면 공개가 된다.
+### 6.2 이메일 검증 — **저장되는 값을 만드는 자리에서** 한다 (2026-09-05)
+
+로그인은 provider가 **검증한** 이메일이 있을 때만 통과한다. 초대 대조(SAAS §5.6)가 그 값 위에 서기 때문이다.
+
+⚠️ **`signIn` 콜백에서 검사만 하면 안 된다.** 그 콜백이 받는 `user`는 기존 사용자일 때 **DB 행**이고, 어댑터가 쓰는 것은 `userFromProvider`다(`@auth/core`의 callback 라우트). 검사와 저장이 다른 값을 보게 되고, GitHub은 공개 이메일이 있으면 그걸 쓰므로 **검증한 주소와 저장되는 주소가 갈린다.** 그래서 판정을 **provider의 `profile`/`userinfo.request`** 로 올렸다 — 거기서 나온 값이 곧 `User.email`이다. `signIn`은 그 결과가 비어 있는지만 본다 (POSTMORTEM 2026-09-05).
+
+⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
+
+⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **그 기본 동작이 이 단계의 계정 병합 방어선 전부다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
+
+**인가는 fail-closed다.** `AUTH_ALLOWED_LOGINS`가 비어 있으면 **아무도 들어오지 못한다** — 빈 값을 "제한 없음"으로 해석하면 설정 누락이 곧 전면 공개가 된다. ⚠️ **그 검사를 provider별로 나누지 않는다**: Google 사용자는 핸들이 없어 지금은 거부되는데, 목록을 GitHub에만 걸면 그 순간 Google이 무인가 통로가 된다. 목록은 SaaS 2단계 §5가 `ProjectMember`로 대체하면서 걷어낸다.
 
 핸들 비교는 **대소문자를 무시한다** (GitHub 핸들이 그렇다). 앞뒤 공백을 제거하고 빈 항목은 버린다 — `"a, ,b"` 같은 값이 빈 문자열을 허용 목록에 넣어 **빈 login을 통과시키는 구멍**이 되면 안 된다.
 
