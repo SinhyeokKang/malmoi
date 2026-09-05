@@ -25,9 +25,15 @@ export type ProjectContext = {
   locales: LocaleRow[];
 };
 
-export async function loadProject(prisma: PrismaClient, slug: string): Promise<ProjectContext | null> {
+/**
+ * ⚠️ **slug가 아니라 `projectId`를 받는다** (2026-09-05). 호출부는 `requireProjectAccess`가
+ * **멤버십 행에서 꺼낸** id를 갖고 있다 — 그것을 버리고 slug로 다시 찾으면 클라이언트가 준
+ * 식별자를 두 번 믿는 것이 되고, "인가가 판정한 projectId로 좁힌다"는 규칙(SAAS §5.2)이
+ * 이 화면에서만 깨진다. 왕복도 하나 준다.
+ */
+export async function loadProject(prisma: PrismaClient, projectId: string): Promise<ProjectContext | null> {
   const project = await prisma.project.findUnique({
-    where: { slug },
+    where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true,
       lastCommitSha: true, baseLocale: true,

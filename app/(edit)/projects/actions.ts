@@ -119,12 +119,18 @@ export async function changeMember(input: {
   const plan = planMemberChange({ members, targetUserId: input.targetUserId, nextRole: input.nextRole });
   if (plan !== "ok") return { ok: false, error: plan };
 
-  const where = { projectId_userId: { projectId, userId: input.targetUserId } };
-  if (input.nextRole === null) {
-    await prisma.projectMember.delete({ where });
-  } else {
-    await prisma.projectMember.update({ where, data: { role: input.nextRole } });
-  }
+  // ⚠️ **조건부 쓰기의 count를 읽는다.** `delete`/`update`는 행이 사라졌을 때 P2025로 던지는데,
+  // 그건 OWNER 둘이 같은 멤버를 동시에 건드리면 실제로 일어난다 — Server Action에서 처리되지 않은
+  // throw는 사용자에게 digest만 있는 일반 오류가 되고, `planMemberChange`가 만들어 둔 사유가
+  // 무시된다. `acceptInvitation`의 단일 사용과 같은 형태다.
+  const where = { projectId, userId: input.targetUserId };
+  const written =
+    input.nextRole === null
+      ? await prisma.projectMember.deleteMany({ where })
+      : await prisma.projectMember.updateMany({ where, data: { role: input.nextRole } });
+
+  // 판정과 쓰기 사이에 사라졌다 — 다른 요청이 먼저 처리한 것이고, 결과는 그쪽이 옳다.
+  if (written.count === 0) return { ok: false, error: "not-member" };
 
   revalidatePath(`/projects/${input.slug}/translations`);
   return { ok: true };

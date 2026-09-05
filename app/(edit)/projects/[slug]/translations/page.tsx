@@ -34,12 +34,13 @@ export default async function TranslationsPage({
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
   // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
-  const { role } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
 
   const prisma = getPrisma();
-  // 인가를 지났으므로 이 slug는 이 사용자의 프로젝트다. `loadProject`가 null을 내는 것은
-  // 인가와 조회 사이에 프로젝트가 사라진 경우뿐이라 남겨 둔다.
-  const project = await loadProject(prisma, slug);
+  // ⚠️ **인가가 준 id로 읽는다 — URL의 slug로 다시 찾지 않는다.** 클라이언트가 준 식별자를 두 번
+  // 믿지 않는 것이 이 규칙의 요지다 (SAAS §5.2). null은 인가와 조회 사이에 프로젝트가 사라진
+  // 경우뿐이라 남겨 둔다.
+  const project = await loadProject(prisma, projectId);
   if (!project) redirect("/projects");
   if (project.locales.length === 0) {
     return (

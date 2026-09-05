@@ -50,6 +50,15 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
   });
   if (project === null) return { ok: false, error: "not-found" };
 
+  // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitation`이 그 조합을 막지만 **막혀 있다는 것이 코드가
+  // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
+  // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
+  const already = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId: invitation.projectId, userId } },
+    select: { userId: true },
+  });
+  if (already !== null) return { ok: false, error: "already-member" };
+
   const accepted = await prisma.$transaction(async (tx) => {
     // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
     // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.

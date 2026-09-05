@@ -137,6 +137,12 @@ export function createHarness(seed: Seed = {}) {
   );
 
   const createMember = vi.fn(async (args: { data: MemberSeed }) => {
+    // 스키마의 `@@unique([projectId, userId])`를 흉내낸다 — 안 하면 가짜가 실제보다 관대해지고,
+    // 그 차이가 곧 "테스트는 통과하는데 프로덕션은 던진다"가 된다.
+    const clash = members.some(
+      (m) => m.projectId === args.data.projectId && m.userId === args.data.userId,
+    );
+    if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
     members.push(args.data);
     return args.data;
   });
@@ -151,6 +157,29 @@ export function createHarness(seed: Seed = {}) {
       if (row === undefined) throw new Error("member not found");
       row.role = args.data.role;
       return row;
+    },
+  );
+
+  const deleteManyMembers = vi.fn(
+    async (args: { where: { projectId: string; userId: string } }) => {
+      const before = members.length;
+      for (let i = members.length - 1; i >= 0; i -= 1) {
+        const m = members[i];
+        if (m !== undefined && m.projectId === args.where.projectId && m.userId === args.where.userId) {
+          members.splice(i, 1);
+        }
+      }
+      return { count: before - members.length };
+    },
+  );
+
+  const updateManyMembers = vi.fn(
+    async (args: { where: { projectId: string; userId: string }; data: { role: Role } }) => {
+      const matched = members.filter(
+        (m) => m.projectId === args.where.projectId && m.userId === args.where.userId,
+      );
+      for (const m of matched) m.role = args.data.role;
+      return { count: matched.length };
     },
   );
 
@@ -211,6 +240,8 @@ export function createHarness(seed: Seed = {}) {
       create: createMember,
       update: updateMember,
       delete: deleteMember,
+      deleteMany: deleteManyMembers,
+      updateMany: updateManyMembers,
     },
     projectInvitation: {
       findUnique: findInvitation,
@@ -323,6 +354,8 @@ export function createHarness(seed: Seed = {}) {
       createMember,
       updateMember,
       deleteMember,
+      deleteManyMembers,
+      updateManyMembers,
       findInvitation,
       createInvitationRow,
       updateManyInvitations,

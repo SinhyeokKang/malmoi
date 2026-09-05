@@ -256,3 +256,46 @@ describe("changeMember — 마지막 OWNER 보호", () => {
     );
   });
 });
+
+/**
+ * **거부는 응답으로 흘러야 한다 — 예외로 죽으면 안 된다.**
+ *
+ * Server Action에서 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가
+ * 만들어 둔 사유(`not-member`·`already-member`)가 무시된다. `saveTranslation`·`triggerPullAction`이
+ * 구조화된 거부를 내는데 이쪽만 다르면 화면이 두 계약을 상대하게 된다.
+ */
+describe("경합에서도 거부가 응답으로 온다", () => {
+  it("판정 뒤 행이 사라져도 not-member다 — OWNER 둘이 같은 멤버를 동시에 제거하는 경우", async () => {
+    // 목록에는 있지만 실제 행은 없다 = 다른 요청이 먼저 지운 뒤다.
+    db.spies.findManyMembers.mockImplementationOnce(async () => [
+      { projectId: "pA", userId: "u-owner", role: "OWNER" },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+    ]);
+    const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: null });
+    expect(result).toEqual({ ok: false, error: "not-member" });
+  });
+
+  it("역할 변경도 같다", async () => {
+    db.spies.findManyMembers.mockImplementationOnce(async () => [
+      { projectId: "pA", userId: "u-owner", role: "OWNER" },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+    ]);
+    const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: "OWNER" });
+    expect(result).toEqual({ ok: false, error: "not-member" });
+  });
+
+  it("이미 멤버인 사람이 옛 초대를 수락하면 already-member다 — unique 위반으로 죽지 않는다", async () => {
+    // 초대가 만들어진 뒤 다른 경로로 멤버가 된 상태. `createInvitation`이 그 조합을 막지만
+    // **막혀 있다는 것이 코드가 아니라 추론에 있으면** 다음 변경에서 열린다.
+    db.invitations.push({
+      id: "inv-1", projectId: "pA", email: "editor@a.com", role: "EDITOR",
+      tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null,
+      invitedBy: "u-owner",
+    });
+    hoisted.session = sessionFor("u-editor"); // 이미 pA의 EDITOR다
+
+    const result = await acceptInvitation({ token: "tok" });
+    expect(result).toEqual({ ok: false, error: "already-member" });
+    expect(db.members.filter((m) => m.userId === "u-editor" && m.projectId === "pA")).toHaveLength(1);
+  });
+});
