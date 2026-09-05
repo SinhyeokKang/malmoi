@@ -51,7 +51,8 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             >
               <span className="text-sm">{m.project.name}</span>
               {/* slug는 주소라 mono다 (docs/DESIGN.md §4.1) — 역할 이름은 산문 쪽이다 */}
-              <span className="text-mono text-muted-foreground text-xs">{m.project.slug}</span>
+              {/* text-xs를 겹치지 않는다 — 정적 문자열은 twMerge를 안 지나 text-xs가 이긴다 (DESIGN §4.2) */}
+              <span className="text-mono text-muted-foreground">{m.project.slug}</span>
               <span className="text-muted-foreground ml-auto text-xs">
                 {m.role === "OWNER" ? "소유자" : "편집자"}
               </span>

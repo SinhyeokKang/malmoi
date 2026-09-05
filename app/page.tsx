@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
+import { cn } from "@/lib/utils";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -26,7 +27,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         초대받은 프로젝트의 번역을 보고 고칠 수 있어요.
       </p>
       {shown !== undefined && (
-        <p className="text-destructive text-xs">{signInErrorMessage(shown)}</p>
+        <p className="text-destructive text-sm">{signInErrorMessage(shown)}</p>
       )}
       <div className="flex flex-col gap-2">
         <ProviderButton provider="github" label="GitHub으로 로그인" primary />
@@ -54,11 +55,12 @@ function ProviderButton({
     >
       <button
         type="submit"
-        className={
+        className={cn(
+          "focus-visible:ring-ring w-full rounded-md px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none",
           primary
-            ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring w-full rounded-md px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
-            : "border-input hover:bg-accent focus-visible:ring-ring w-full rounded-md border px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
-        }
+            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "border-input hover:bg-accent border",
+        )}
       >
         {label}
       </button>

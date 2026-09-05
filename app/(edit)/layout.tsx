@@ -48,7 +48,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
           >
             <button
               type="submit"
-              className="text-muted-foreground hover:text-foreground text-xs underline"
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded text-xs underline focus-visible:ring-[3px] focus-visible:outline-none"
             >
               로그아웃
             </button>

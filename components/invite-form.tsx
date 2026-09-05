@@ -58,6 +58,7 @@ export function InviteForm({ slug }: { slug: string }) {
           disabled={pending}
           className={cn(
             "border-input hover:bg-accent h-8 shrink-0 rounded-md border px-3 text-xs",
+            "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
             "disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent",
           )}
         >
@@ -74,13 +75,13 @@ export function InviteForm({ slug }: { slug: string }) {
           </p>
           {/* 링크는 식별자라 mono다 (docs/DESIGN.md §4.1) */}
           <div className="flex items-center gap-2">
-            <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-xs">
+            <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1">
               {link}
             </code>
             <button
               type="button"
               onClick={() => void navigator.clipboard.writeText(link)}
-              className="border-input hover:bg-accent h-7 shrink-0 rounded-md border px-2 text-xs"
+              className="border-input hover:bg-accent focus-visible:ring-ring h-8 shrink-0 rounded-md border px-3 text-xs focus-visible:ring-[3px] focus-visible:outline-none"
             >
               복사
             </button>

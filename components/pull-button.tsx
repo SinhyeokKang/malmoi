@@ -67,6 +67,7 @@ export function PullButton({ slug }: { slug: string }) {
         disabled={pending}
         className={cn(
           "border-input hover:bg-accent h-8 shrink-0 rounded-md border px-3 text-xs",
+          "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
           "disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent",
         )}
       >
