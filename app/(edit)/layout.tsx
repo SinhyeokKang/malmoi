@@ -19,7 +19,9 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   // 병렬로 렌더된 페이지의 페이로드가 나가지 않는다. 미들웨어 matcher에서 라우트가 빠지는
   // 경우의 안전망이다.
   if (!session?.user) redirect("/");
-  const login = session.user.login;
+  // GitHub 핸들이 사라진 자리다 — Google로 로그인한 사용자에게는 핸들이 없다.
+  // `User.id`는 사람이 읽을 값이 아니므로 이름·이메일 순으로 떨어진다.
+  const label = session.user.name ?? session.user.email ?? "?";
 
   return (
     // flex 컬럼이다 — 페이지가 "헤더를 뺀 나머지 높이"를 calc로 계산하지 않게 한다.
@@ -29,8 +31,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
         <span className="text-sm font-medium">말모이</span>
         <div className="flex items-center gap-3">
           <PullButton />
-          {/* 핸들은 mono가 아니다 — 식별자지만 사용자 이름이라 산문 쪽에 가깝다 */}
-          <span className="text-muted-foreground text-xs">{login ?? "?"}</span>
+          {/* 이름은 mono가 아니다 — 식별자가 아니라 산문 쪽이다 (docs/DESIGN.md §4.1) */}
+          <span className="text-muted-foreground text-xs">{label}</span>
           <form
             action={async () => {
               "use server";

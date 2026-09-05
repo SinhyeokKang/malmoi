@@ -20,7 +20,7 @@ import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 
 const hoisted = vi.hoisted(() => ({ prisma: undefined as unknown as PrismaClient }));
 
-vi.mock("@/auth", () => ({ auth: async () => ({ user: { login: "translator" } }) }));
+vi.mock("@/auth", () => ({ auth: async () => ({ user: { id: "u-translator" } }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("@/lib/env", () => ({ requireEnv: () => "acme" }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
@@ -251,7 +251,10 @@ describe("편집 → DB → 다음 pull의 출력", () => {
     await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "새 번역" });
 
     const row = db.translations.find((t) => t.keyId === "k-greet");
-    expect(row).toMatchObject({ value: "새 번역", needsReview: false, updatedBy: "translator" });
+    // ⚠️ **핸들이 아니라 `User.id`다** (SaaS 2단계 §4). 컬럼 타입은 그대로이고 담기는 값만 바뀌었다 —
+    // 그 전에 저장된 행은 GitHub 핸들을 그대로 들고 있으므로 `User`에 join하는 화면은 못 찾는
+    // 경우를 다뤄야 한다 (prisma/schema.prisma의 updatedBy 주석).
+    expect(row).toMatchObject({ value: "새 번역", needsReview: false, updatedBy: "u-translator" });
   });
 });
 

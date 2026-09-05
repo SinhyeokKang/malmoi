@@ -21,9 +21,12 @@ export type SaveResult = { ok: true; value: string } | { ok: false; error: strin
 
 export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   // 1) 인증. 세션이 있다는 것은 허용 목록을 통과했다는 뜻이다 (auth.ts의 signIn 콜백).
+  //
+  // ⚠️ **아직 인가가 아니다.** SaaS 2단계 §5가 여기에 `getProjectAccess`를 붙이면 "로그인했다"가
+  // "이 프로젝트를 편집할 자격이 있다"로 바뀐다. 그때까지 대상은 `ACTIVE_PROJECT_SLUG` 하나다.
   const session = await auth();
-  const login = session?.user.login;
-  if (!login) return { ok: false, error: "unauthorized" };
+  const userId = session?.user.id;
+  if (!userId) return { ok: false, error: "unauthorized" };
 
   // 2) 입력 검증.
   const parsed = SaveInput.safeParse(raw);
@@ -75,9 +78,9 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
       localeCode,
       value: plan.value,
       needsReview: false,
-      updatedBy: login,
+      updatedBy: userId,
     },
-    update: { value: plan.value, needsReview: false, updatedBy: login },
+    update: { value: plan.value, needsReview: false, updatedBy: userId },
   });
 
   revalidatePath("/keys");
@@ -102,7 +105,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
  */
 export async function triggerPullAction(): Promise<PullOutcome> {
   const session = await auth();
-  if (!session?.user.login) return { status: "failed", error: "unauthorized" };
+  if (!session?.user.id) return { status: "failed", error: "unauthorized" };
 
   const slug = requireEnv("ACTIVE_PROJECT_SLUG");
   try {

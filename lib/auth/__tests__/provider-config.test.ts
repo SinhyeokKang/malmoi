@@ -21,8 +21,14 @@ const AUTH_TS = readFileSync(
 );
 
 describe("auth.ts — 자동 계정 병합을 켜지 않는다", () => {
-  it("allowDangerousEmailAccountLinking이 어디에도 없다", () => {
-    expect(AUTH_TS).not.toContain("allowDangerousEmailAccountLinking");
+  it("allowDangerousEmailAccountLinking에 값을 대입하지 않는다", () => {
+    // ⚠️ 단어 자체를 금지하지 않는다 — **왜 켜지 않는지** 적은 주석이 그 단어를 담아야
+    // 다음 사람이 그것을 grep으로 찾는다. 위험한 것은 대입이다.
+    expect(AUTH_TS).not.toMatch(/allowDangerousEmailAccountLinking\s*:/);
+  });
+
+  it("그 옵션을 켜지 않는 이유가 파일에 적혀 있다", () => {
+    expect(AUTH_TS).toContain("allowDangerousEmailAccountLinking");
   });
 });
 
