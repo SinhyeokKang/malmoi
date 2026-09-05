@@ -4,30 +4,34 @@
 
 **코어 설계 원칙: 번역 값은 DB가 진실, 소스 키는 코드가 진실.** 각 축에 소유자가 하나뿐이므로 머지 로직이 아예 존재하지 않는다 — export가 DB에서 결정적으로 재생성되므로, git 브랜치가 갈라져도 base에서 다시 따서 파일을 새로 뽑으면 끝난다.
 
-Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다.
+Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는 2026-09-05에 닫혔고 지금은 SaaS화 단계다** — 인증·인가(2단계, 2026-09-06 프로덕션 반영), 프로젝트 생성, 복수 멤버. 정본은 [docs/SAAS.md](./docs/SAAS.md).
 
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
-| [docs/TASKS.md](./docs/TASKS.md) | **태스크 체크리스트.** 단계별 완료 조건, 결정 필요 항목 |
-| [docs/DESIGN.md](./docs/DESIGN.md) | 편집 UI 시각 규칙 (라이트 단일, 토큰, 대비 함정) |
-| [docs/MVP.md](./docs/MVP.md) | **기본 스펙.** 범위·기술 선택의 근거·세 흐름의 계약·스키마·구현 순서 |
+| [docs/SAAS.md](./docs/SAAS.md) | **현재 단계 정본(SaaS화).** 범위·보안 모델·단계별 체크리스트·불변식 9개 |
+| [docs/MVP.md](./docs/MVP.md) | PoC 스펙 (닫힘). 코어 원칙의 원문·세 흐름의 계약 |
+| [docs/TASKS.md](./docs/TASKS.md) | PoC 태스크 기록 (닫힘) + 전역 미결. 지금 할 일은 SAAS.md §8 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 불변식과 함정. 코어 로직 건드리기 전 필독 |
+| [docs/DESIGN.md](./docs/DESIGN.md) | 편집 UI 시각 규칙 (라이트 단일, 토큰, 대비 함정) |
+| [docs/ACTIONS.md](./docs/ACTIONS.md) | 대상 리포에 붙이는 워크플로 |
+| [docs/ADAPTER-COVERAGE.md](./docs/ADAPTER-COVERAGE.md) | 어댑터 범용성 실측 — 어댑터·탐지 규칙 손대기 전 필독 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회귀·버그 회고 (append-only) |
 | [CLAUDE.md](./CLAUDE.md) | 작업 규칙·명령어·컨벤션 (Codex는 `AGENTS.md` 미러) |
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js (GitHub OAuth) · GitHub App · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · GitHub App · Vercel
 
 ## 개발
 
 ```bash
+nvm use                      # .nvmrc = 24
 pnpm install
-cp .env.example .env.local   # 값을 채운다 — 다른 머신의 것을 옮긴다 (CLAUDE.md "새 머신 셋업")
+cp .env.example .env.local   # 값을 채운다 — 다른 머신의 것을 옮긴다. 에이전트가 편집하지 않는다 (CLAUDE.md "새 머신 셋업")
 pnpm db:generate             # Prisma 클라이언트 생성 (generated/는 gitignore)
-pnpm db:status               # ⚠️ dev DB = prod DB. migrate dev의 리셋 제안은 절대 승인하지 않는다
+pnpm db:status && pnpm db:status:prod   # dev·prod가 별 Supabase 프로젝트다 — migrate는 dev만, prod 반영은 db:deploy(/merge 1단계)
 pnpm dev
 ```
 
