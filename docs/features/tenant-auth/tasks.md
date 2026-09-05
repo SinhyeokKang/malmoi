@@ -173,20 +173,20 @@
 
 `──` 커밋: `feat(auth): database sessions, Google provider, project-scoped authorization`
 
-## 5. 전환 — red 테스트 먼저, 편집 경로가 인가를 지나고, **같은 커밋에서 옛 인가를 걷어낸다**
+## 5. 전환 ✅ (2026-09-05) — red 테스트 먼저, 편집 경로가 인가를 지나고, **같은 커밋에서 옛 인가를 걷어낸다**
 
 ⚠️ **쪼개지 않는다.** `AUTH_ALLOWED_LOGINS` 검사는 `signIn` 콜백에 있어 **로그인 자체를 거부**하므로,
 남겨둔 채 `requireProjectAccess`만 붙이면 두 인가가 **AND로 걸려 좁은 쪽이 이긴다** — 초대받아
 `ProjectMember` 행이 있는 비개발자가 목록에 핸들이 없어 로그인 단계에서 막힌다. spec 완료 조건 3이
 그 구간 동안 성립하지 않는다 (design §5).
 
-### 5a. red 테스트 — `/tdd` (SAAS §5.7을 여기서 케이스로 박는다, §6이 대조한다)
+### 5a. red 테스트 — `/tdd` ✅ (2026-09-05, `f62be81`) — 52케이스
 
-- [ ] `app/(edit)/__tests__/edit-flow.test.ts` **하네스 갱신** — `@/auth` mock을 `vi.hoisted` 핸들로(per-test
+- [x] `app/(edit)/__tests__/edit-flow.test.ts` **하네스 갱신** — `@/auth` mock을 `vi.hoisted` 핸들로(per-test
       null / 다른 `userId`), `@/lib/env` mock에서 `requireEnv("ACTIVE_PROJECT_SLUG")` 의존 제거,
       `memoryDb()`에 `projectMember`·`projectInvitation`·`user` 델리게이트 추가. 기존 "다른 프로젝트 `keyId`
       거부"(`:298-303`)는 **slug 경로로 재배선**(신규 아님)
-- [ ] 거부 케이스 `[auto]` — 전부 red로 시작:
+- [x] 거부 케이스 `[auto]` — 전부 red로 시작:
   - 세션 null → `saveTranslation`·`triggerPullAction`·`createInvitation`·`changeMember` 전부 `unauthorized`
   - 세션 유효 + `ProjectMember` 없음 → 전부 `not-found` (**spec 완료 조건 2의 자동 절반**)
   - A 멤버가 B의 slug / B의 `keyId`+A slug / B의 `localeCode`+A slug → 거부
@@ -197,7 +197,7 @@
   - 마지막 OWNER 제거·강등 → `last-owner`; `changeMember` 응답에 `planMemberChange` 결과가 그대로
   - 토큰 원문이 `createInvitation` 응답에 **한 번만**, DB에는 해시만
   - `grep -rn 'if (!session' app/` 0건 (POSTMORTEM 2026-08-31 grep)
-- [ ] **진입점 소스 스캔 테스트** (spec 완료 조건 6) — `app/**/actions.ts`의 `"use server"` export와
+- [x] **진입점 소스 스캔 테스트** (spec 완료 조건 6) — `app/**/actions.ts`의 `"use server"` export와
       `app/**/page.tsx`를 fs로 열어 `getProjectAccess`/`requireProjectAccess`/`requireUser` 중 하나를 부르는지,
       예외 목록(`/api/push`·`/api/pull`·`[...nextauth]`·`signIn`/`signOut` 폼·`/`·`/invite/[token]`)은
       **이름으로 고정**. `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하는 것과 같은 상시 방어선
@@ -205,9 +205,9 @@
 
 `──` 커밋: `test(auth): the cross-tenant access attempts that must fail`
 
-### 5b. 구현
+### 5b. 구현 ✅ (2026-09-05, `6ed4ecb` → `d5f0cd5`)
 
-- [ ] 라우트 이관 — `app/(edit)/keys/` → `app/(edit)/projects/[slug]/translations/page.tsx`(판정 로직·
+- [x] 라우트 이관 — `app/(edit)/keys/` → `app/(edit)/projects/[slug]/translations/page.tsx`(판정 로직·
       `lib/keys/view.ts` 그대로, 최상단 `requireProjectAccess`, `loadProject(prisma, slug)`는 인가가 준
       `projectId`로). `app/(edit)/projects/page.tsx`(멤버십 목록) 신설. `/keys` 삭제, `app/page.tsx`
       redirect → `/projects`, `revalidatePath` 경로 갱신
@@ -215,32 +215,45 @@
     살아 있는 동안 빼면 그 페이지가 무방비다)
   - 검증 `[auto]`: `grep -rn ACTIVE_PROJECT_SLUG app/\(edit\) lib/keys lib/auth components` 0건 /
     `[manual]`: 로그인 → `/projects` → 프로젝트 클릭 → 표가 보인다. 멤버 아닌 slug 직접 입력 → `/projects`로 튄다
-- [ ] `saveTranslation(raw)`·`triggerPullAction(slug)` — `raw`에 `slug` 포함(Zod), **기본값 자리 `requireEnv`
+- [x] `saveTranslation(raw)`·`triggerPullAction(slug)` — `raw`에 `slug` 포함(Zod), **기본값 자리 `requireEnv`
       금지**(design §8). `getProjectAccess` → 인가된 `projectId`로 기존 격리 검사. `updatedBy: userId`.
       `TranslationInput`·`PullButton`이 slug를 props로 받는다
   - 검증 `[auto]`: 5a 케이스 green + 기존 값 전달 테스트(저장→DB→pull 파일 내용) 새 경로에서 green
-- [ ] 초대 Action — `createInvitation({ slug, email, role })`(OWNER, 토큰 원문 1회 반환, 7일 만료, 같은
+- [x] 초대 Action — `createInvitation({ slug, email, role })`(OWNER, 토큰 원문 1회 반환, 7일 만료, 같은
       이메일 미수락 행 회전) · `acceptInvitation({ token })`(**`requireUser`만**, `planInvitationAccept`,
       `updateMany … acceptedAt: null` 단일 사용). `/invite/[token]/page.tsx`(matcher 밖, design §4.1 표대로
       네 실패 분기를 각자 한 줄로, 이메일 마스킹)
   - 검증 `[auto]`: 5a 초대 케이스 green / `[manual]`: **Google로 로그인한(허용 목록에 있을 수 없는)
     사용자가 링크 → 수락 → `/projects/<slug>/translations`에서 저장 → Publish 성공** (spec 완료 조건 3)
-- [ ] 멤버 Action — `changeMember({ slug, targetUserId, nextRole })`(OWNER, `planMemberChange`). 화면은 6단계,
+- [x] 멤버 Action — `changeMember({ slug, targetUserId, nextRole })`(OWNER, `planMemberChange`). 화면은 6단계,
       호출자는 테스트 + 헤더의 임시 초대 폼과 같은 자리
   - ⚠️ **`accessErrorMessage`에 `last-owner`·`not-member` 문구를 더한다** (code-review 🟡, 2026-09-05).
     §1이 판정만 만들고 문구를 안 만들어서, 안 더하면 화면이 즉흥으로 정한다. 초대 4분기는 design §4.1이
     표로 갖고 있지만 멤버 쪽은 어디에도 없다
   - 검증 `[auto]`: 5a 마지막 OWNER 케이스 green / `AccessError` 다섯이 서로 다른 문구
-- [ ] 최소 화면 — `/`에 Google 버튼 + 문구 교체("허용 목록…" 삭제) + `?error=` 한 줄, 헤더 `user.name ?? user.email`,
+- [x] 최소 화면 — `/`에 Google 버튼 + 문구 교체("허용 목록…" 삭제) + `?error=` 한 줄, 헤더 `user.name ?? user.email`,
       `translation-input.tsx`의 실패 문구를 `accessErrorMessage`로(입력값 유지), 토큰 원문 표시는
       `font-mono` + 복사
   - 검증 `[manual]`: 세션 회수(Session 행 삭제) 뒤 blur 저장 → "로그인이 만료됐다" 한 줄, 입력값 남음
-- [ ] **같은 커밋에서** `AUTH_ALLOWED_LOGINS`·`lib/auth/allow.ts`·**`lib/auth/__tests__/allow.test.ts`** 제거,
+- [x] **같은 커밋에서** `AUTH_ALLOWED_LOGINS`·`lib/auth/allow.ts`·**`lib/auth/__tests__/allow.test.ts`** 제거,
       `signIn` 콜백은 §4의 이메일 검증만 남긴다. `middleware.ts:13`·`layout.tsx:7-13` 주석 갱신
   - 검증 `[auto]`: `grep -r AUTH_ALLOWED_LOGINS`가 `.env.example` 포함 0건. `pnpm test` green.
     `pnpm typecheck` green
 
 `──` 커밋: `feat(auth): project membership replaces the login allowlist`
+
+**구현 중 더한 것 둘.**
+- **임시 초대 폼** (`components/invite-form.tsx`) — 없으면 `createInvitation`에 호출부가 테스트뿐이고
+  **spec 완료 조건 3을 손으로도 밟을 수 없다**(OWNER가 링크를 만들 방법이 없다). 화면은 6단계이지만
+  이 폼은 그때까지의 유일한 통로다.
+- **조건부 쓰기** — `changeMember`가 `deleteMany`/`updateMany`의 count를 읽는다. `delete`/`update`는
+  행이 사라졌을 때 던지고, 그건 OWNER 둘이 같은 멤버를 동시에 건드리는 실제 경로다
+  (POSTMORTEM 2026-09-05). `acceptInvitation`은 이미 그 형태였다.
+- **하네스가 `@@unique([projectId, userId])`를 흉내내게 했다** — 안 그러면 가짜가 실제보다 관대해
+  그 결함을 **재현할 수조차 없다**(같은 회고).
+
+⬜ **남은 `[manual]` 넷**: Google 로그인 / 초대 링크 왕복(spec 완료 조건 3) / 세션 회수 뒤 blur 저장 /
+`curl`로 비로그인 응답 본문 0바이트. preview에서 밟는다.
 
 ## 6. 보안 게이트 대조 — 이걸 통과해야 2단계가 닫힌다
 
