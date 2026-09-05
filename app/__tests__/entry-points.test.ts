@@ -131,3 +131,43 @@ describe("차단 규칙", () => {
     }
   });
 });
+
+/**
+ * **삭제된 라우트를 가리키는 링크가 없다.**
+ *
+ * 2026-09-05 preview 실측에서 잡힌 부류다: `/keys`를 `/projects/[slug]/translations`로 옮기면서
+ * 페이지 **안의 링크 생성기**(`qs()`)가 `/keys`를 하드코딩한 채 남아, 사이드바의 네임스페이스·기준
+ * 로케일 링크가 전부 404로 갔다. **타입도 테스트도 못 본다** — 문자열이고, 이 리포엔 페이지를
+ * 렌더하는 테스트가 없다.
+ *
+ * ⚠️ 주석 속 인용은 잡지 않는다 — 회고가 그 경로를 근거로 들고 있고, 그건 지우면 안 되는 기록이다.
+ */
+describe("죽은 라우트 링크", () => {
+  const ROUTES = new Set(ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) =>
+    "/" + e.path.replace(/\/page\.tsx$/, "").replace(/^page\.tsx$/, ""),
+  ));
+
+  it("app/ 아래 라우트 목록을 읽었다", () => {
+    expect(ROUTES.size).toBeGreaterThan(2);
+  });
+
+  it("코드가 만드는 경로 리터럴이 실재하는 라우트를 가리킨다", () => {
+    const dead: string[] = [];
+    for (const entry of ENTRY_POINTS) {
+      // 주석 줄은 뺀다 — POSTMORTEM 인용이 옛 경로를 들고 있다.
+      const code = entry.source
+        .split("\n")
+        .filter((l) => !/^\s*(\*|\/\/)/.test(l))
+        .join("\n");
+      for (const m of code.matchAll(/["'`](\/[a-z][a-z0-9-]*)(?:[?"'`])/g)) {
+        const path = m[1] ?? "";
+        // API·인증 경로와 루트는 이 검사의 대상이 아니다.
+        if (path === "/" || path.startsWith("/api")) continue;
+        const known = [...ROUTES].some((r) => r === path || r.startsWith(path + "/"));
+        if (!known) dead.push(`${entry.path}: ${path}`);
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+});
+

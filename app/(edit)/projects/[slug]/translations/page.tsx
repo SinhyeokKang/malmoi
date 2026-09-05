@@ -63,6 +63,8 @@ export default async function TranslationsPage({
     ?? columns.find((l) => !l.isBase)?.code
     ?? columns[0]!.code;
 
+  // 사이드바 링크의 base — 같은 화면 안에서 필터만 바꾼다.
+  const base = `/projects/${slug}/translations`;
   const counts = namespaceCounts(rows, focusLocale);
   const visible = ns === undefined ? rows : rows.filter((r) => r.namespace === ns);
 
@@ -79,7 +81,7 @@ export default async function TranslationsPage({
           {columns.map((l) => (
             <a
               key={l.code}
-              href={qs({ ns, focus: l.code })}
+              href={qs(base, { ns, focus: l.code })}
               className={cn("rounded px-1", l.code === focusLocale ? "text-foreground font-medium" : "hover:text-foreground")}
             >
               {l.code}
@@ -87,10 +89,10 @@ export default async function TranslationsPage({
           ))}
         </div>
         <nav className="pb-4">
-          <NsLink href={qs({ focus })} active={ns === undefined} label="전체" total={rows.length}
+          <NsLink href={qs(base, { focus })} active={ns === undefined} label="전체" total={rows.length}
             pending={counts.reduce((n, c) => n + c.untranslated + c.needsReview, 0)} />
           {counts.map((c) => (
-            <NsLink key={c.namespace} href={qs({ ns: c.namespace, focus })} active={ns === c.namespace}
+            <NsLink key={c.namespace} href={qs(base, { ns: c.namespace, focus })} active={ns === c.namespace}
               label={c.namespace} total={c.total} pending={c.untranslated + c.needsReview} />
           ))}
         </nav>
@@ -169,11 +171,17 @@ export default async function TranslationsPage({
 }
 
 /** 쿼리스트링 조립 — undefined는 빼서 URL이 깔끔하게 유지된다. */
-function qs(params: Record<string, string | undefined>): string {
+/**
+ * 사이드바 링크. **base 경로를 인자로 받는다** — 하드코딩하면 라우트를 옮길 때 여기만 남는다.
+ * 2026-09-05에 `/keys` → `/projects/[slug]/translations` 이관에서 실제로 그렇게 남아 사이드바가
+ * 전부 404로 갔고, **타입도 테스트도 그걸 못 봤다**(문자열이고 페이지 렌더 테스트가 없다).
+ * `app/__tests__/entry-points.test.ts`의 "죽은 라우트 링크"가 그 자리를 지금은 지킨다.
+ */
+function qs(base: string, params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined) search.set(k, v);
   const s = search.toString();
-  return s === "" ? "/keys" : `/keys?${s}`;
+  return s === "" ? base : `${base}?${s}`;
 }
 
 function CodeRef({ row, project }: { row: KeyRow; project: Parameters<typeof buildPermalink>[0] }) {
