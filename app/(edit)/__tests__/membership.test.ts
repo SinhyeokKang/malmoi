@@ -189,6 +189,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
   it("**단일 사용을 조건부 갱신으로 강제한다** — 메모리 DB는 경합을 못 보므로 인자를 고정한다", () => {
     // 두 요청이 동시에 들어와도 `acceptedAt: null` 조건이 한쪽만 통과시킨다. count를 읽지 않고
     // 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다 (ARCHITECTURE §5.5.6의 인자 캡처 선례).
+    invite();
     return acceptInvitation({ token: "tok" }).then(() => {
       const calls = db.spies.updateManyInvitations.mock.calls;
       expect(calls.length).toBeGreaterThan(0);

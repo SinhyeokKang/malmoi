@@ -33,12 +33,8 @@ export const config = {
    *
    * **새 보호 라우트를 추가하면 여기도 추가한다** — 빠뜨리면 그 라우트가 무방비다.
    *
-   * ⚠️ **`/keys`는 아직 남아 있다.** SaaS 2단계 §5가 `/projects/[slug]/translations`로 옮기면서
-   * 뺀다 — 라우트가 살아 있는 동안 matcher에서 빼면 그 페이지의 방어가 레이아웃 `redirect()`
-   * 하나로 줄고, 그게 정확히 위 회고가 배운 부류다.
-   *
    * ⚠️ **`/invite/:path*`는 넣지 않는다** (design §4.1). 비로그인으로 열려야 초대 링크의 토큰이
    * 보존된다 — 여기서 `/`로 302하면 토큰이 사라진다.
    */
-  matcher: ["/keys/:path*", "/projects/:path*"],
+  matcher: ["/projects/:path*"],
 };

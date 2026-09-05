@@ -57,7 +57,7 @@ export function planInvitationAccept(input: {
 
   const verified = normalizeEmail(verifiedEmail);
   // 빈 이메일을 일치로 읽지 않는다. 초대 쪽도 비어 있으면 둘 다 ""가 되어 통과하는 구멍이 생긴다 —
-  // `isLoginAllowed`가 빈 핸들을 이중으로 막는 것과 같은 이유다 (ARCHITECTURE §6).
+  // 부재를 통과로 읽으면 이메일 소유권 증명이 사라진다 (ARCHITECTURE §6의 fail-closed).
   if (verified === "") return "email-mismatch";
 
   return verified === normalizeEmail(invitation.email) ? "ok" : "email-mismatch";

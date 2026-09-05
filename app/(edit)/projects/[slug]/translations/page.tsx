@@ -1,8 +1,12 @@
+import { requireProjectAccess } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+
 import { getPrisma } from "@/lib/db";
-import { requireEnv } from "@/lib/env";
 import { loadKeys, loadProject } from "@/lib/keys/query";
 import { buildPermalink, cellState, namespaceCounts, type KeyRow, type TranslationState } from "@/lib/keys/view";
 import { cn } from "@/lib/utils";
+import { InviteForm } from "@/components/invite-form";
+import { PullButton } from "@/components/pull-button";
 import { TranslationInput } from "@/components/translation-input";
 
 /**
@@ -18,20 +22,25 @@ import { TranslationInput } from "@/components/translation-input";
 
 type Search = { ns?: string; focus?: string };
 
-export default async function KeysPage({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function TranslationsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Search>;
+}) {
+  const { slug } = await params;
   const { ns, focus } = await searchParams;
-  const prisma = getPrisma();
 
-  const project = await loadProject(prisma, requireEnv("ACTIVE_PROJECT_SLUG"));
-  if (!project) {
-    return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-destructive text-sm">
-          프로젝트를 찾을 수 없다 — `ACTIVE_PROJECT_SLUG`를 확인한다.
-        </p>
-      </main>
-    );
-  }
+  // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
+  // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
+  const { role } = await requireProjectAccess({ slug, permission: "translation:write" });
+
+  const prisma = getPrisma();
+  // 인가를 지났으므로 이 slug는 이 사용자의 프로젝트다. `loadProject`가 null을 내는 것은
+  // 인가와 조회 사이에 프로젝트가 사라진 경우뿐이라 남겨 둔다.
+  const project = await loadProject(prisma, slug);
+  if (!project) redirect("/projects");
   if (project.locales.length === 0) {
     return (
       <main className="mx-auto max-w-2xl space-y-2 p-8">
@@ -91,6 +100,18 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
         <div className="border-border flex items-center gap-3 border-b px-4 py-2">
           <span className="text-sm font-medium">{ns ?? "전체"}</span>
           <span className="text-muted-foreground text-xs">{visible.length}키</span>
+          {/* Publish는 프로젝트에 속한 조작이라 레이아웃이 아니라 이 화면이 든다 — 레이아웃엔
+              slug가 없다(`/projects` 목록도 같은 레이아웃을 쓴다). */}
+          {/* 초대는 OWNER만 — 화면에서 감추는 것은 편의이고, 실제 방어는 `createInvitation`의
+              `member:manage` 판정이다 (SAAS §5.2 — 클라이언트가 보낸 것을 믿지 않는다). */}
+          {role === "OWNER" && (
+            <div className="ml-auto">
+              <InviteForm slug={slug} />
+            </div>
+          )}
+          <div className={role === "OWNER" ? "" : "ml-auto"}>
+            <PullButton slug={slug} />
+          </div>
         </div>
 
         {/* 넓은 표는 자기 컨테이너 안에서만 스크롤한다 */}
@@ -123,6 +144,7 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
                   {columns.map((l) => (
                     <td key={l.code} className="px-3 py-2">
                       <TranslationInput
+                        slug={slug}
                         keyId={row.id}
                         localeCode={l.code}
                         initialValue={row.cells[l.code]?.value ?? ""}

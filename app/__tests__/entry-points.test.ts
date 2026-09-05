@@ -108,8 +108,13 @@ describe("차단 규칙", () => {
   it("조건부 렌더로 인증을 막지 않는다 (POSTMORTEM 2026-08-31)", () => {
     // App Router는 레이아웃과 페이지를 병렬로 렌더한다 — `if (!session) return <Denied/>`는
     // 표시를 막을 뿐이고 페이지는 이미 실행돼 RSC 페이로드에 데이터가 실린다(실측 1.3MB).
-    for (const entry of ENTRY_POINTS) {
-      expect(entry.source).not.toMatch(/if \(!session\)\s*return\s*</);
+    // `?.user`·중괄호·괄호를 낀 형태까지 잡는다 — 좁은 패턴은 안 잡고도 잡은 척한다.
+    const CONDITIONAL_RENDER = /if \(!session[^)]*\)\s*\{?\s*return\s*\(?\s*</;
+
+    // ⚠️ **`/invite/[token]`만 예외다.** 비로그인에게 **마스킹한 이메일·프로젝트 이름·역할**만
+    // 보이고 번역 데이터는 조회조차 하지 않는다 — 새는 것이 그것이 전부라 허용한다 (design §4.1).
+    for (const entry of ENTRY_POINTS.filter((e) => e.path !== "invite/[token]/page.tsx")) {
+      expect(entry.source).not.toMatch(CONDITIONAL_RENDER);
     }
   });
 

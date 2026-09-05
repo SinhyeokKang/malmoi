@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { saveTranslation } from "@/app/(edit)/actions";
+import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
 import type { SaveInputType } from "@/lib/keys/save";
 import { cn } from "@/lib/utils";
 
@@ -16,11 +17,14 @@ import { cn } from "@/lib/utils";
  * 명시적으로 뺐다. 대신 저장 중 상태와 실패 메시지를 보여준다.
  */
 export function TranslationInput({
+  slug,
   keyId,
   localeCode,
   initialValue,
   disabled,
 }: {
+  /** 어느 프로젝트인가. **서버는 이 값을 믿지 않는다** — 인가가 멤버십 행에서 다시 꺼낸다. */
+  slug: string;
   keyId: string;
   localeCode: string;
   initialValue: string;
@@ -40,7 +44,7 @@ export function TranslationInput({
       // 생산자에 스키마 타입을 붙인다 — `SaveInput`에 필수 필드가 늘면 여기서 컴파일 에러가 난다.
       // Action 시그니처는 `unknown`(직렬화 경계라 zod 재검증)이라 이 줄이 없으면 런타임 `invalid input`이
       // 유일한 신호다 (POSTMORTEM 2026-08-31).
-      const input: SaveInputType = { keyId, localeCode, value };
+      const input: SaveInputType = { slug, keyId, localeCode, value };
       const result = await saveTranslation(input);
       if (result.ok) {
         // 서버가 정규화한 값(공백만 → 빈 문자열)을 받아 화면을 맞춘다.
@@ -75,7 +79,7 @@ export function TranslationInput({
       {(pending || error || value !== saved) && (
         <div className="text-xs">
           {error ? (
-            <span className="text-destructive">저장 실패: {error}</span>
+            <span className="text-destructive">{failureText(error)}</span>
           ) : pending ? (
             <span className="text-muted-foreground">저장 중…</span>
           ) : (
@@ -85,4 +89,19 @@ export function TranslationInput({
       )}
     </div>
   );
+}
+
+/**
+ * 서버가 준 거부 사유를 사람 말로. **읽는 사람은 비개발자 동료다** (SAAS §3) — 그 자리에
+ * `unauthorized` 같은 영어 토큰이 뜨면 무슨 일이 일어났는지 알 수 없다.
+ *
+ * ⚠️ **DB 세션에서 "권한 회수가 즉시 반영된다"는 성질이 사용자에게는 이 한 줄로만 드러난다.**
+ * 그래서 입력값을 지우지 않는다 — 다시 로그인하면 그대로 저장할 수 있어야 한다.
+ */
+const ACCESS_ERRORS = new Set<string>(["unauthorized", "forbidden", "not-found", "last-owner", "not-member"]);
+
+function failureText(error: string): string {
+  if (ACCESS_ERRORS.has(error)) return accessErrorMessage(error as AccessError);
+  // 인가 밖의 사유(입력 검증·orphaned)는 원문을 남긴다 — 개발자가 보는 신호다.
+  return `저장 실패: ${error}`;
 }
