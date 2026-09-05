@@ -423,11 +423,12 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 ✅ /
 `ACTIVE_PROJECT_SLUG` 없이 대상 프로젝트가 결정된다 — **설계로는 ✅(§7.8), 구현은 2단계 이후다**
 
-### 2단계 — 인증·인가 토대 ✅ (2026-09-05) → `features/tenant-auth/`
+### 2단계 — 인증·인가 토대 ✅ (2026-09-06 프로덕션 반영 완료) → `features/tenant-auth/`
 
-⚠️ **코드와 dev는 닫혔고 프로덕션 반영만 `/merge`에 남았다** — `pnpm db:deploy`와 prod OWNER backfill 둘이다 (아래 완료 게이트).
+**프로덕션까지 갔다** (`62edf2a`). `pnpm db:deploy` → 6개 프로젝트 OWNER backfill → 머지 순서로 나갔고,
+`https://mal-moi.com`에서 GitHub 로그인 → 6개가 **소유자**로 보이는 것까지 실물로 확인했다.
 
-- [x] `User`·`Account`·`Session`·`VerificationToken`·`ProjectMember`·`ProjectInvitation` (§6) ✅ (2026-09-05, `2e998d4` — `20260904182548_add_tenant_auth_tables`). **dev에만 적용됐다** — prod는 `/merge` 1단계의 `pnpm db:deploy`다
+- [x] `User`·`Account`·`Session`·`VerificationToken`·`ProjectMember`·`ProjectInvitation` (§6) ✅ (2026-09-05, `2e998d4` — `20260904182548_add_tenant_auth_tables`). dev는 `db:migrate`, **prod는 2026-09-06 `db:deploy`** 로 반영했다 (`db:status:prod` up to date)
 - [x] Auth.js **DB 세션** 전환 (§5.3), GitHub + Google provider ✅ (2026-09-05, `0d80e5a`)
   - ✅ **Google 로그인이 열렸다** (`6ed4ecb` — 허용 목록 제거와 같은 커밋). 그 전까지 거부됐던 이유는
     목록이 GitHub 핸들을 요구했기 때문이고, 목록을 GitHub에만 걸어 먼저 열면 그 순간 Google이 **무인가
@@ -447,10 +448,13 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
     어댑터가 기본으로 교차 provider 자동 연결을 거부하므로(`allowDangerousEmailAccountLinking`
     미설정) 이 단계의 방어선은 **그 옵션을 켜지 않는 것**이고, 명시적 연결 흐름은 4단계다.
     호출부 없는 판정 함수를 미리 만드는 것은 이 프로젝트에서 결함이다
-- [x] 기존 `Project`에 소유자 backfill **스크립트** ✅ (2026-09-05, `bdd254b`) — `scripts/backfill-owners.ts`.
-      ⚠️ **아직 실행하지 않았다** — dev·prod 양쪽의 `--apply`는 인가 전환 직전이 적기다.
-      `User` + `Account(github)` + `ProjectMember`를 **한 트랜잭션**으로 만든다: `User`만 만들면
-      첫 GitHub 로그인이 `OAuthAccountNotLinked`로 거부되고, 그게 이 스크립트가 존재하는 이유의 절반이다
+- [x] 기존 `Project`에 소유자 backfill ✅ **실행하고 스크립트를 지웠다** (2026-09-06) — dev 1건 ·
+      **prod 6건**(`bugshot-2`·`bugshot-i18n-test`·`format-check-yaml`·`skillflo`·`format-check-code`·
+      `order-check`), 재실행 0건으로 멱등 확인. `User` + `Account(github)` + `ProjectMember`를
+      **한 트랜잭션**으로 만들었다 — `User`만 만들면 첫 GitHub 로그인이 `OAuthAccountNotLinked`로
+      거부되고, 그게 이 스크립트가 존재한 이유의 절반이다.
+      ⚠️ **일회성 코드라 `scripts/backfill-owners.ts`·`lib/auth/backfill.ts`를 함께 삭제했다** —
+      남겨두면 "이걸 또 돌려야 하나"를 다음 사람이 매번 판단해야 한다. 되살릴 일이 생기면 git 히스토리에 있다
 
 완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts` 65케이스
 + preview 실측) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이 실행되는 Server Action·
@@ -466,11 +470,21 @@ preview `DATABASE_URL`의 pooler 포트). 넷 다 **"값은 맞는데 사용자�
 이 단계가 남긴 상시 방어선도 그 모양이다 — `entry-points.test.ts`의 "죽은 라우트 링크"와
 "쿼리 파라미터의 수신자".
 
-⚠️ **프로덕션에는 아직 아무것도 안 갔다.** `/merge` 순서가 이렇다: ① `pnpm db:deploy` →
-② `pnpm db:status:prod` 확인 → ③ `pnpm tsx scripts/backfill-owners.ts --target prod`(dry-run 뒤 `--apply`)
-→ ④ `/merge`. **③을 빠뜨리면 기존 프로젝트에 멤버가 없어 아무도 못 들어간다**(fail-closed라 옳지만
-복구가 SQL이다). ⓪으로 **프로덕션 `DATABASE_URL`이 transaction 모드(6543)인지 확인한다** — Preview가
-session 모드(5432)로 들어가 있었고, 인가가 요청마다 DB를 치는 지금은 그 오배선이 커넥션 고갈로 드러난다.
+**프로덕션 반영 순서는 이랬다** (2026-09-06, 다음에 같은 모양의 단계를 낼 때 그대로 쓴다):
+⓪ `DATABASE_URL`이 transaction 모드(6543)인지 **원본에서 다시 복사해 덮어** 확인 →
+① `pnpm db:deploy` → ② `pnpm db:status:prod` → ③ 소유자 backfill(dry-run 뒤 `--apply`) → ④ `/merge`.
+**③이 ①보다 앞설 수 없고**(`ProjectMember` 테이블이 있어야 한다), ③을 빠뜨리면 기존 프로젝트에
+멤버가 없어 아무도 못 들어간다(fail-closed라 옳지만 복구가 SQL이다).
+
+⚠️ **⓪이 실제로 값을 했다** — Preview가 session 모드(5432)로 들어가 있어 커넥션 고갈로 터진 전례가
+있었고(POSTMORTEM 2026-09-05), 프로덕션도 같은 시기 같은 방식으로 넣은 값이었다. Vercel의 Sensitive
+변수는 되읽을 수 없으므로 **덮어쓰는 것이 유일한 확인법**이다.
+
+⚠️ **환경변수 하나가 더 틀려 있었다**: 프로덕션 `AUTH_GITHUB_ID`에 OAuth **Client ID**(`Ov23li…`) 대신
+GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이 404였다. 그 앱의 client secret이
+"Never used"였던 것이 증거다 — **프로덕션 GitHub 로그인은 그때까지 한 번도 성공한 적이 없었고**,
+허용 목록이 로그인을 막고 있던 동안에는 그 사실이 드러날 경로가 없었다. GitHub OAuth 앱은
+프로덕션·preview·로컬 셋이고 **client_id가 전부 달라야 한다** (2026-09-06에 셋 다 실물 확인했다).
 
 ### 3단계 — 최소 UI 이관 ✅ **2단계 §5에 흡수됐다** (2026-09-05)
 
