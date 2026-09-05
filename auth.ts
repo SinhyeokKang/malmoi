@@ -5,29 +5,10 @@ import Google from "next-auth/providers/google";
 
 import { isLoginAllowed, parseAllowedLogins } from "@/lib/auth/allow";
 import { verifiedEmailFrom } from "@/lib/auth/email";
+import { githubUserinfo } from "@/lib/auth/profile";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 
-/**
- * Auth.js v5. **로그인·인가 전용이다** — 리포 쓰기는 GitHub App installation 토큰이 맡는다.
- * OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 떠나면 파이프라인이
- * 깨진다 (ARCHITECTURE §6).
- *
- * **DB 세션이다** (SaaS 2단계, SAAS §5.3). JWT의 대가였던 "권한 회수가 최대 24시간 지연"을
- * 없앤다 — 세션에 담는 것은 `userId`뿐이고 권한은 매 요청 `ProjectMember`에서 읽는다. 토큰에
- * role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다.
- *
- * ⚠️ **config가 함수다.** `PrismaAdapter(getPrisma())`를 인자 자리에 그대로 두면
- * `requireEnv("DATABASE_URL")`이 **import 시점에** 던져 `.env` 없는 빌드가 통째로 죽는다 —
- * `prisma.config.ts`가 같은 모양으로 CI와 Vercel을 두 번 red로 만들었다
- * (POSTMORTEM 2026-08-31 + 🔁 재발 2건).
- *
- * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
- * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 그게 이
- * 단계의 계정 병합 방어선 전부다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
- * SAAS §5.5는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
- * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
- */
 /**
  * ⚠️ **검증을 `profile`을 만드는 자리에서 한다.** 여기서 거른 값이 그대로 `User.email`이 되기
  * 때문이다 — `signIn` 콜백에서 검사만 하고 통과시키면 **검증한 주소와 저장되는 주소가 갈린다.**
@@ -42,15 +23,14 @@ const github = GitHub({
     url: "https://api.github.com/user",
     async request({ tokens }: { tokens: { access_token?: unknown } }) {
       const token = typeof tokens.access_token === "string" ? tokens.access_token : "";
-      const [profile, addresses] = await Promise.all([
+      const [user, addresses] = await Promise.all([
         githubApi("/user", token),
         // ⚠️ **provider 기본 동작을 대체하는 이유**: 그쪽은 공개 이메일이 없을 때만 이걸 조회하고,
         // 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**
         // (2026-09-05 실측). 공개 이메일이 있으면 그 값이 primary가 아닐 수도 있다.
         githubApi("/user/emails", token),
       ]);
-      const email = verifiedEmailFrom({ provider: "github", addresses });
-      return { ...asRecord(profile), email: email ?? "" };
+      return githubUserinfo({ user, addresses });
     },
   },
 });
@@ -94,11 +74,26 @@ async function githubApi(path: string, token: string): Promise<unknown> {
   return await response.json();
 }
 
-/** unknown 응답을 스프레드 가능한 모양으로. 실패하면 빈 객체라 `email`만 남는다. */
-function asRecord(value: unknown): Record<string, unknown> {
-  return typeof value === "object" && value !== null ? { ...value } : {};
-}
-
+/**
+ * Auth.js v5. **로그인·인가 전용이다** — 리포 쓰기는 GitHub App installation 토큰이 맡는다.
+ * OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 떠나면 파이프라인이
+ * 깨진다 (ARCHITECTURE §6).
+ *
+ * **DB 세션이다** (SaaS 2단계, SAAS §5.3). JWT의 대가였던 "권한 회수가 최대 24시간 지연"을
+ * 없앤다 — 세션에 담는 것은 `userId`뿐이고 권한은 매 요청 `ProjectMember`에서 읽는다. 토큰에
+ * role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다.
+ *
+ * ⚠️ **config가 함수다.** `PrismaAdapter(getPrisma())`를 인자 자리에 그대로 두면
+ * `requireEnv("DATABASE_URL")`이 **import 시점에** 던져 `.env` 없는 빌드가 통째로 죽는다 —
+ * `prisma.config.ts`가 같은 모양으로 CI와 Vercel을 두 번 red로 만들었다
+ * (POSTMORTEM 2026-08-31 + 🔁 재발 2건).
+ *
+ * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
+ * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 그게 이
+ * 단계의 계정 병합 방어선 전부다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
+ * SAAS §5.5는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
+ * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
   adapter: PrismaAdapter(getPrisma()),
   providers: [github, google],
@@ -115,8 +110,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
      * 남기지 않는다.
      *
      * 두 검사를 **AND로** 건다:
-     * 1. **검증된 이메일이 있는가** — 판정은 위 provider 설정이 이미 했다. 여기서는 그 결과가
-     *    비어 있는지만 본다. 초대 대조(SAAS §5.6)가 이 값 위에 선다.
+     * 1. **이메일이 비어 있지 않은가.** 판정 자체는 위 provider 설정이 했다.
+     *    ⚠️ **매 로그인 재검증이 아니다**: `@auth/core`는 `handleAuthorized`에
+     *    `userByAccount ?? userFromProvider`를 넘기므로 **기존 사용자면 여기 오는 `user`가 DB
+     *    행**이고, 그 `email`은 예전에 검증돼 저장된 값이라 항상 비어 있지 않다. 즉 이 검사가
+     *    실제로 막는 것은 **처음 들어오는 계정**이다. 재로그인에서 검증이 실패해도 통과하지만,
+     *    OAuth 경로는 `updateUser`를 부르지 않으므로(`handle-login.js`) 저장된 값이 오염되지는
+     *    않는다.
      * 2. **허용 핸들 목록** — SaaS 2단계 §5에서 걷어낸다. 그때까지는 이것이 좁은 쪽이다.
      *
      * ⚠️ **2번을 provider별로 나누지 않는다.** Google 사용자는 `login`이 없어 `isLoginAllowed`가
@@ -125,7 +125,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
      * `requireProjectAccess`가 편집 경로에 붙기 전이라 그 통로로 들어온 사람이 번역을 고칠 수 있다.
      */
     signIn({ user, profile }) {
-      // provider 설정이 검증에 실패하면 email을 비워 보낸다.
+      // provider 설정이 검증에 실패하면 email을 비워 보낸다 (`githubUserinfo`).
       if (typeof user.email !== "string" || user.email === "") return false;
 
       // `requireEnv`가 아니다 — 누락은 `parseAllowedLogins`가 fail-closed로 처리한다.
