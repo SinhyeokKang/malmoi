@@ -404,8 +404,15 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 ### 2단계 — 인증·인가 토대 🚧 ← **현재 단계** → `features/tenant-auth/`
 
 - [ ] `User`·`Account`·`Session`·`ProjectMember`·`ProjectInvitation` (§6)
-- [ ] Auth.js **DB 세션** 전환 (§5.3), GitHub + Google provider
-- [ ] `requireUser` · `requireProjectAccess` (§5.2)
+- [x] Auth.js **DB 세션** 전환 (§5.3), GitHub + Google provider ✅ (2026-09-05, `0d80e5a`)
+  - ⚠️ **Google은 아직 로그인이 거부된다** — 허용 목록이 GitHub 핸들을 요구하고 Google 사용자에겐
+    핸들이 없다(의도된 fail-closed). 목록을 GitHub에만 걸면 그 순간 Google이 무인가 통로가 되는데,
+    `requireProjectAccess`가 아직 편집 경로에 붙기 전이라 그 통로로 들어온 사람이 번역을 고칠 수 있다.
+    **아래 두 항목이 같은 커밋에서 끝날 때 열린다.**
+  - **이메일 검증이 provider의 `profile` 구성 자리로 올라갔다** — `signIn`에서 검사만 하면 검증한
+    주소와 저장되는 `User.email`이 갈린다 (ARCHITECTURE §6.2, POSTMORTEM 2026-09-05)
+- [x] `requireUser` · `requireProjectAccess` (§5.2) ✅ (2026-09-05, `bb94651`) —
+      **호출부는 아직 0이다.** 편집 경로에 붙이는 것이 3단계와 합쳐진 §5다
 - [x] 이메일 정규화·초대 수락·**멤버 변경**의 **순수 판정 함수** ✅ (2026-09-05, `2e0f7f4`) —
       `lib/auth/`에 9개(`normalizeEmail`·`canPerform`·`hashInviteToken`·`planInvitationAccept`·
       `planProjectAccess`·`planMemberChange`·`planOwnerBackfill`·`hasSessionCookie`·
