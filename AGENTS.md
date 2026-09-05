@@ -75,7 +75,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
 | 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
-| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. ⚠️ **Google은 아직 거부된다** (허용 목록이 GitHub 핸들을 요구한다 — SaaS 2단계 §5가 걷어낸다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
+| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google **둘 다 열려 있다** (2026-09-05, 허용 목록 제거와 같은 커밋). 로그인은 **검증된 이메일만** 요구하고, 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
@@ -194,6 +194,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
      | 프로덕션 | `https://mal-moi.com/api/auth/callback/github` | Vercel **Production** 스코프 |
      | preview | `<dev 브랜치 고정 URL>/api/auth/callback/github` | Vercel **Preview** 스코프 |
      | 로컬 | `http://localhost:3000/api/auth/callback/github` | **`.env.local` — 두 머신이 이 앱 하나를 공유한다** |
+
+     ⚠️ **Google은 반대다 — 클라이언트가 하나다.** Google Cloud의 웹 클라이언트는 redirect URI를 **여러 개** 등록할 수 있어서 로컬·preview·프로덕션 셋(`…/api/auth/callback/google`)을 한 클라이언트에 넣고, `AUTH_GOOGLE_ID`·`AUTH_GOOGLE_SECRET`은 `.env.local`과 Vercel의 Production·Preview 스코프에 **같은 값**이 들어간다. ⚠️ **동의 화면은 External + 테스트**여야 한다: Internal이면 조직 밖 계정이 `403 org_internal`로 막히는데, 비개발자 동료를 초대하는 것이 이 provider를 넣은 이유 전부다.
 
      **새 머신에 채우는 `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 로컬 앱 것이다.** 앞의 둘은 어느 `.env.local`에도 들어가지 않으므로 머신을 옮길 때 따라다닐 필요가 없고, 잃어버려도 GitHub에서 secret을 재발급해 Vercel의 해당 스코프만 갱신하면 된다(전면 재발급이 아니다). Vercel의 **Development 스코프는 쓰지 않는다** — `vercel env pull`을 안 쓰고 이 파일을 손으로 관리하므로 그 스코프를 읽는 곳이 없다
 4. `pnpm db:status`로 **dev** 접속을, `pnpm db:status:prod`로 **prod** 접속을 확인한다 (둘 다 5432). ⚠️ 두 명령의 출력이 **같아 보인다** — pooler 호스트가 두 프로젝트에서 동일하고 ref는 사용자명에 있다. 구별 신호는 **적용된 마이그레이션 개수**이고, 새 dev 프로젝트라면 전부 미적용으로 나온다
@@ -477,7 +479,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
-- **⚠️ 인증 차단은 `middleware.ts`에만 의존한다.** 레이아웃·페이지의 조건부 렌더는 차단이 아니다 — App Router가 둘을 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
+- **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다** (2026-09-05 갈렸다). **1차 `middleware.ts`** 는 쿠키 이름만 보는 값싼 차단이고(DB 세션이라 그 이상 못 한다), **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. 레이아웃·페이지의 조건부 렌더는 차단이 아니다: App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).

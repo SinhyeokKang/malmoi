@@ -154,7 +154,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
   - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
 - [x] **preview 전용 GitHub OAuth 앱** ✅ (2026-09-04) — callback `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`, Preview 스코프에 등록. **preview 로그인 실측 통과.** ⚠️ **env를 바꾸면 재배포해야 반영된다** — 등록만 하고 재배포를 빠뜨려 GitHub이 빈 `client_id`에 404를 줬고, 앱·ID·secret을 차례로 의심하다 시간을 썼다
-- [ ] **dev DB가 비어 있다** (`Project` 0행). preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈춘다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
+- [x] **dev DB가 비어 있다** ✅ 해소 (2026-09-05, SAAS §8 0단계 — `order-check` 23키·3로케일·번역 69건을 `push:local`로 적재했다. prod에서 복제하지 않았다). 아래는 그때의 관측이다: preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈췄다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
   - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
 
 - ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
@@ -162,6 +162,10 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`
   왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
   프로젝트를 결정하면 사라진다
+  - **절반이 사라졌다** (2026-09-05, tenant-auth): **편집 경로는 더 이상 이 값을 읽지 않는다** — 프로젝트를
+    URL의 slug와 `ProjectMember`가 정하고, `app/__tests__/entry-points.test.ts`가 그 부재를 상시로 센다.
+    남은 소비자는 `/api/push`(오배송 409 판정)와 `/api/pull`(cron이 도는 프로젝트) 둘이고, 그쪽은
+    **SaaS 5단계**가 `Project.pushTokenHash`와 전 프로젝트 순회로 대체한다 (SAAS §7.8·§4.3②)
 
 - [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
   - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** (`db:status`는 dev를 본다)

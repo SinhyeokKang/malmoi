@@ -627,7 +627,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
 - **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다.
-- ⚠️ **라우트가 살아 있는 동안 matcher에서 빼지 않는다.** 빼는 순간 그 페이지의 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 위 회고가 배운 부류다. `/keys`는 `/projects/[slug]/translations`로 옮겨질 때 함께 빠진다.
+- ⚠️ **라우트가 살아 있는 동안 matcher에서 빼지 않는다.** 빼는 순간 그 페이지의 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 위 회고가 배운 부류다. `/keys`는 `/projects/[slug]/translations`로 **옮겨지는 같은 커밋에서** 함께 빠졌다 — 라우트가 사라진 뒤의 matcher 항목은 방어가 아니라 낡은 이름이다.
 - **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
 
@@ -659,12 +659,13 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
 
-**⚠️ dev DB와 prod DB가 같다.** Supabase 인스턴스가 하나뿐이라 `migrate dev`가 프로덕션을 직접 바꾼다. 번역 데이터가 쌓인 뒤로는 `--create-only` + `db:deploy`로 쪼개고, `migrate dev`의 리셋 제안은 절대 승인하지 않는다. 상세는 `/db` 스킬.
+**⚠️ dev DB와 prod DB가 갈렸다** (2026-09-04). Supabase 프로젝트가 둘이다 — `malmoi-dev`(로컬·Preview) / `malmoi`(프로덕션). `pnpm db:migrate`는 dev만 치고 **프로덕션에 닿을 수 없다**; prod를 겨누는 것은 `pnpm db:deploy`·`pnpm db:status:prod`(`PRISMA_TARGET=prod`)뿐이다. 분리가 만든 새 실패 모드는 **dev에만 적용하고 `db:deploy`를 잊는 것**이고(배포 순간 프로덕션이 없는 컬럼을 조회한다), 그래서 `/push` 3단계 확인이 `db:status:prod`다. 얻은 것은 dev에서 리셋을 승인해도 된다는 것이다 — 그 DB엔 폐기용 리포 적재분밖에 없다. 상세는 `/db` 스킬. *(2026-09-05 정정: 이 문단이 분리 뒤로도 "인스턴스가 하나뿐"이라고 가르치고 있었다.)*
 
 **`prisma.config.ts`는 `.env.local`을 명시적으로 읽는다.** `dotenv`의 기본은 `.env`인데 이 프로젝트의 시크릿은 Next.js 관례에 따라 `.env.local`에 있다. 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`가 떠서 네트워크 문제로 오진하게 된다.
 
 - **⚠️ 비밀번호의 특수문자는 URL 인코딩해야 한다.** 접속 문자열은 URI라서 비밀번호에 `@`가 들어가면 호스트 구분자와 충돌해 파서가 userinfo/host 경계를 잘못 잡는다 (`:pw@@host`가 된다). `@`→`%40`, `!`→`%21`, `#`→`%23`, `/`→`%2F`, `?`→`%3F`, `%`→`%25`. **이미 인코딩된 값을 두 번 인코딩하면 `%40`이 `%2540`이 되어 조용히 인증 실패한다** — 증상이 "비밀번호가 틀렸다"로만 나와 진단이 오래 걸린다. 애초에 **특수문자 없는 영숫자 비밀번호를 발급받는 게 이 함정을 없애는 방법이다.**
 - **런타임 `DATABASE_URL`은 pooler(6543) + `?pgbouncer=true`.** 이 쿼리 파라미터가 없으면 prepared statement 충돌로 **간헐** 실패한다 — "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
+  - ⚠️ **포트를 바꿔 넣으면 부하가 붙을 때까지 안 드러난다** (2026-09-05 실측). Preview 스코프의 `DATABASE_URL`이 session 모드(5432)를 가리키고 있었고, 요청이 적은 동안은 멀쩡히 돌다가 인가가 요청마다 DB를 치기 시작한 순간 `EMAXCONNSESSION max clients reached in session mode - pool_size: 15`로 전면 실패했다. **환경변수 값은 문서가 아니라 배선이므로, 경고를 문서에 적는 것으로 지켜지지 않는다** (POSTMORTEM 2026-09-05). Vercel의 Sensitive 변수는 값을 되읽을 수 없어 **의심되면 원본에서 다시 복사해 덮는 것이 유일한 확인법**이다.
 - **마이그레이션 `DIRECT_URL`은 session 모드 pooler(5432).** transaction 모드 pooler(6543)는 advisory lock·DDL 세션을 못 잡아 마이그레이션이 실패한다. 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 쓰지 않는다 (CLAUDE.md 스택 표).
 - **배포 순서는 additive-first.** 스키마를 먼저 넓히고(`db:deploy`) 코드를 배포한다. 컬럼 삭제·타입 변경은 코드 배포 후 별도 마이그레이션. 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다.
 

@@ -255,54 +255,97 @@
 ⬜ **남은 `[manual]` 넷**: Google 로그인 / 초대 링크 왕복(spec 완료 조건 3) / 세션 회수 뒤 blur 저장 /
 `curl`로 비로그인 응답 본문 0바이트. preview에서 밟는다.
 
-## 6. 보안 게이트 대조 — 이걸 통과해야 2단계가 닫힌다
+## 6. 보안 게이트 대조 ✅ (2026-09-05) — 이걸 통과해야 2단계가 닫힌다
 
-SAAS.md §5.7 11항목 ↔ 5a 테스트 이름 대조표. **테스트는 5a에서 이미 green이다** — 여기는 빠진 항목이
-없는지 세는 자리다.
+SAAS.md §5.7 11항목 ↔ 테스트 이름 대조표. **테스트는 5a에서 이미 green이다** — 여기는 빠진 항목이
+없는지 세는 자리다. `[manual]` 넷은 preview(dev 브랜치 고정 URL)에서 밟았고 실측 기록은 아래 §6.1이다.
 
-| SAAS §5.7 | 이 단계 | 근거 |
+| SAAS §5.7 | 근거 |
+|---|---|
+| 비로그인 사용자의 조회·수정·Publish | `authorization` "저장이 거부된다" · "Publish가 거부된다" · "거부가 DB에 닿기 전에 일어난다 — 인가 조회조차 하지 않는다" / 조회는 `[manual]` ①(307 + 본문 0바이트) |
+| A 멤버가 B의 URL·ID 직접 전송 | `authorization` "B의 slug를 직접 보내면 거부된다" · "B의 slug로 Publish를 걸 수 없다" |
+| 다른 프로젝트의 `keyId`·`localeCode` | `authorization` "자기 slug에 B의 keyId를 실으면 거부된다 — 인가된 projectId로 다시 확인한다" · "자기 slug에 B의 localeCode를 실으면 거부된다". **`translationId`는 해당 없음** — Action이 그 인자를 받지 않는다 |
+| EDITOR의 멤버·리포 설정 변경 | `membership` "EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다" · "EDITOR는 부를 수 없다" / 리포 설정 Action이 아직 없어 `permission` "EDITOR는 프로젝트 설정을 바꾸지 못한다"가 대신 든다 |
+| 설치되지 않은 리포 등록 | ⏭ **4단계** (`github-connect`) — Project 생성 경로가 없다 |
+| 설치에 접근할 수 없는 사용자의 생성 | ⏭ **4단계** (같은 이유) |
+| 제거된 멤버가 기존 세션으로 재접근 | `authorization` "세션이 살아 있어도 ProjectMember 행이 사라지면 거부된다" / `[manual]` ④ |
+| 같은 이메일 provider 자동 병합 | `provider-config` "allowDangerousEmailAccountLinking에 값을 대입하지 않는다" / `[manual]` ③ — **실물에서 실제로 거부됐다** |
+| 초대받은 이메일과 다른 계정으로 수락 | `membership` "다른 이메일 계정으로는 수락되지 않는다" |
+| 초대 토큰 재사용·만료 후 사용 | `membership` "재사용은 already-accepted다" · "만료된 토큰은 expired다" · "단일 사용을 조건부 갱신으로 강제한다" · "이미 멤버인 사람이 옛 초대를 수락하면 already-member다" |
+| 로그·응답에 토큰·PEM·DB URL 노출 | 기존 `lib/failure.ts`(ARCHITECTURE §6.0) + `membership` "원문이 응답에 한 번 실리고 DB에는 해시만 있다". 초대 토큰의 URL 경로 노출은 **단일 사용·7일로 수용**한다 (design §4.1) |
+
+- [x] 표의 근거 칸이 전부 실재하는 테스트 이름이고 `pnpm test` green (1259건)
+- [x] `[manual]` 넷을 preview에서 한 번씩 밟았다 — 아래 §6.1
+
+### 6.1 실물 검증 기록 (2026-09-05, preview) — ⚠️ 체크리스트 밖의 기록이라 이 파일이 닫혀도 남긴다
+
+**어디서**: `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app` (dev DB / preview 전용 OAuth 앱 /
+ego-browser 실브라우저). **로컬에서 하지 않은 이유**: 로컬 `.env.local`의 `AUTH_GITHUB_ID`가 OAuth
+client id가 아니라 7자리 App ID라 GitHub이 404를 준다(미해결, 로컬 앱을 새로 만들어야 한다).
+
+| # | 항목 | 결과 |
 |---|---|---|
-| 비로그인 사용자의 조회·수정·Publish | ✅ 수정·Publish `[auto]` / 조회(RSC 페이지) `[manual]` curl 302 | 5a·§4 |
-| A 멤버가 B의 URL·ID 직접 전송 | ✅ `[auto]` | 5a |
-| 다른 프로젝트의 `keyId`·`localeCode` | ✅ `[auto]` — `translationId`는 **해당 없음**(Action이 받지 않는다) | 5a |
-| EDITOR의 멤버·리포 설정 변경 | ✅ `[auto]` — 리포 설정 Action은 없어 `canPerform` 케이스로 | 5a·§1 |
-| 설치되지 않은 리포 등록 | ⏭ **4단계** | spec |
-| 설치에 접근할 수 없는 사용자의 생성 | ⏭ **4단계** | spec |
-| 제거된 멤버가 기존 세션으로 재접근 | ✅ `[auto]`(행 없음 → 거부) + `[manual]`(Session 삭제) | 5a·§4 |
-| 같은 이메일 provider 자동 병합 | ✅ `[auto]`(옵션 부재 검사) + `[manual]` | §4 |
-| 초대받은 이메일과 다른 계정으로 수락 | ✅ `[auto]` | 5a |
-| 초대 토큰 재사용·만료 후 사용 | ✅ `[auto]` | 5a |
-| 로그·응답에 토큰·PEM·DB URL 노출 | ✅ 기존 `lib/failure.ts` + 초대 토큰은 URL 경로 노출을 **단일 사용·7일로 수용**(design §4.1) | — |
+| ① | 비로그인 응답 본문 | `/projects/order-check/translations` → **307, 본문 0바이트**, 번역 키 0건 |
+| ② | Google 로그인 | 통과. ⚠️ Google 동의 화면이 **External + 테스트**여야 한다 — Internal이면 `403 org_internal`로 조직 밖 계정이 막히고, 그게 곧 **초대 경로가 막히는 것**이다 |
+| ③ | 초대 왕복 (spec 완료 조건 3) | OWNER가 발급 → 비로그인으로 링크 열람(마스킹된 이메일만) → **다른 Google 계정**으로 수락 → `/projects/order-check/translations`로 리다이렉트 → EDITOR로 저장 성공. 옛 초대 행은 만료로 회전, DB엔 해시만 |
+| ④ | 세션 회수 | `Session` 행 삭제 후 blur 저장 → 한국어 거부 문구 + 입력값 유지 + **DB 미기록** |
+| ⑤ | 같은 이메일 자동 병합 거부 (§5.7) | GitHub(`ox501501@gmail.com`)로 OWNER가 된 뒤 **같은 주소의 Google**로 로그인 → `?error=OAuthAccountNotLinked`, `User`·`Account`에 고아 행 0건 |
 
-- [ ] 표의 ✅ 전부에 5a 테스트 이름이 붙어 있고 `pnpm test` green
-- [ ] `[manual]` 넷을 preview(dev 고정 URL)에서 한 번씩 밟았다
+**실물 검증이 잡은 것 셋 — 타입 검사도 1259건도 원리적으로 못 보는 부류다.**
+
+1. 🔴 **사이드바가 삭제된 `/keys`를 가리켰다** (`89e76d0`). `qs()`가 경로를 하드코딩한 채 남아 네임스페이스·
+   기준 로케일 링크가 전부 404였다. 문자열이고 페이지를 렌더하는 테스트가 없다 → `app/__tests__/entry-points.test.ts`의
+   **"죽은 라우트 링크"** 가 상시 방어선으로 섰다.
+2. 🟡 **거부가 일시적 장애처럼 읽혔다** (`8d0224f`). `OAuthAccountNotLinked`에 "잠시 뒤 다시 시도"를 보이면
+   사용자가 같은 버튼을 반복해 누른다 → `signInErrorMessage(code)`가 사유별 문구를 낸다.
+3. 🔴 **preview 런타임이 session 모드(5432) pooler를 쓰고 있었다** — `EMAXCONNSESSION max clients reached
+   in session mode - pool_size: 15`. Preview 스코프의 `DATABASE_URL`을 transaction(6543, `?pgbouncer=true`)로
+   교체하고 재배포해 해소. 경고는 `.env.example`·ARCHITECTURE §7에 있었지만 **배선에서 지켜지지 않았고,
+   부하가 낮아 오래 안 드러났다** (POSTMORTEM 2026-09-05).
+
+**데이터 오류 하나**: backfill의 소유자 이메일을 에이전트가 `sinhyeok.kang@day1company.co.kr`로 추측했는데
+실제 GitHub 계정 `SinhyeokKang`의 주소는 `ox501501@gmail.com`이었다. 그 오류가 ⑤(같은 이메일 병합)를
+**우연히 검증 불가로 만들고 있었다** — 두 provider의 이메일이 애초에 달랐기 때문이다. 인증 테이블을 비우고
+올바른 값으로 다시 채운 뒤에야 ⑤가 실제 판정이 됐다.
 
 `──` 커밋 없음 (문서 §7에 합친다)
 
-## 7. 문서
+## 7. 문서 ✅ (2026-09-05)
 
-- [ ] **`docs/ARCHITECTURE.md` §6·§6.1 갱신** — 차단이 미들웨어 단독에서 **미들웨어(쿠키 존재, 1차) +
-      진입점(본판정)** 으로 갈렸다는 것, **조건부 렌더 금지는 유지**, `auth` 래퍼가 DB 세션에서 DB를 친다는 함정
-- [ ] **`docs/SAAS.md`** — §8 2단계 체크 + **3단계를 2단계에 흡수했다고 접기** / §8 0단계 헤더 "← 현재 단계"
-      제거 / §5.2 시그니처 `slug`(내부 `projectId`) / §5.6에 토큰 URL 노출 수용·`@@index` 판정·`updatedBy=User.id` /
-      §5.7에 단계 표기(4단계 2건) / **§4.3 ②·§8 5단계에 `pushTokenHash`·`/api/pull` 순회 구현을 배정**
-      (검수 결정 — "1단계 필수" 표기 삭제) / §6 스키마 표 갱신 / 멤버 관리 **화면**을 6단계에 추가
-- [ ] **`CLAUDE.md`** — "세션은 JWT" 절 재작성 / "인증 차단은 `middleware.ts`에만 의존" → §4대로 /
-      새 머신 셋업 OAuth 앱 표에 Google 1행(클라이언트 1개) / 디렉터리 구조(`lib/auth/*`·`app/(edit)/projects`·
-      `/invite`·`scripts/backfill-owners.ts`) / 명령어 표에 backfill / 테넌시 행
-- [ ] `.env.example` — `AUTH_ALLOWED_LOGINS` 제거, "OAuth 앱이 둘" → 셋(+Google 1), `ACTIVE_PROJECT_SLUG`
-      주석을 "push·pull 전용 — 5단계에서 사라진다"로
-- [ ] `docs/features/README.md` — tenant-auth 상태 갱신 + 백로그에 "`translation-input` 저장 상태 `role=status`·
-      실패 시 포커스 복귀"(6단계) 한 줄
-- [ ] `docs/TASKS.md` 전역 미결의 `ACTIVE_PROJECT_SLUG` 항목에 "편집 경로는 tenant-auth에서 제거됨, push·pull은
-      SAAS 5단계" 한 줄 — PoC 기록이라 그 이상 손대지 않는다
+- [x] **`docs/ARCHITECTURE.md` §6·§6.1 갱신** — 차단이 미들웨어 단독에서 **미들웨어(쿠키 존재, 1차) +
+      진입점(본판정)** 으로 갈렸다는 것, **조건부 렌더 금지는 유지**, `auth` 래퍼가 DB 세션에서 DB를 친다는 함정.
+      §6.2(검증된 이메일을 만드는 자리)·§6.3(거부는 값으로 흐른다)이 함께 섰다. §7의 "dev DB와 prod DB가
+      같다"가 **2026-09-04 분리 뒤로 거짓이었던 것**을 여기서 고쳤다
+- [x] **`docs/SAAS.md`** — §8 2단계 완료 게이트에 `[manual]` 실측 결과 / 3단계를 2단계에 흡수했다고 접기 /
+      §5.2 시그니처 `slug`(내부 `projectId`) / §5.5에 실측 확인 / §5.6에 토큰 URL 노출 수용·`@@index` 판정·
+      `updatedBy=User.id` / §5.7에 단계 표기(4단계 2건) / 멤버 관리 **화면**을 6단계에 추가
+- [x] **`CLAUDE.md`** — "인증 차단은 `middleware.ts`에만 의존" → 두 층으로 / 새 머신 셋업 OAuth 앱 표에
+      Google 1행(클라이언트 하나에 URI 셋) + 동의 화면 External 제약. "세션은 DB에 있다" 절과 디렉터리
+      구조·명령어 표·테넌시 행은 §5 마감에서 이미 갱신됐다
+- [x] `.env.example` — `AUTH_ALLOWED_LOGINS` 제거·Google 블록·`ACTIVE_PROJECT_SLUG` 주석은 §4·§5에서 반영됐고,
+      여기서는 "OAuth 앱이 둘" → **셋**(본문이 이미 셋을 나열하고 있었다)과 pooler 포트 경고를 고쳤다
+- [x] `docs/features/README.md` — tenant-auth 상태 갱신 + `tasks.md`를 남기는 이유(§6.1) + 백로그에
+      "`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀"(6단계) 한 줄
+- [x] `docs/TASKS.md` 전역 미결 — `ACTIVE_PROJECT_SLUG` 항목에 "편집 경로는 tenant-auth에서 제거됨,
+      push·pull은 SAAS 5단계" 한 줄, "dev DB가 비어 있다"는 SAAS 0단계에서 해소돼 체크. PoC 기록이라 그 이상 손대지 않는다
+- [x] `docs/POSTMORTEM.md` — preview `DATABASE_URL`이 session 모드였던 건(위 §6.1 3)
   - 검증 `[auto]`: `pnpm sync:agents:check` 통과 / `[manual]`: 각 문서의 서술이 코드와 일치
 
 `──` 커밋: `docs: authorization moves from an allowlist to project membership`
 
-## 8. 뒷정리 (prod 적용 뒤)
+## 8. 뒷정리 (prod 적용 뒤) ⛔ **아직 할 수 없다**
 
 - [ ] `scripts/backfill-owners.ts`·`lib/auth/backfill.ts`(+테스트) 삭제 — 일회성이다. prod `ProjectMember`
       행을 눈으로 확인한 뒤
+
+⚠️ **이 단계의 전제가 아직 성립하지 않는다.** prod에는 마이그레이션도 backfill도 들어가지 않았고(§3의
+prod 시퀀스가 `/merge` 1단계에 묶여 있다), 지금 스크립트를 지우면 **그 시퀀스의 ③이 사라진다** — 즉
+프로덕션의 기존 `Project`에 OWNER를 채울 수단이 없어지고, 배포 순간 아무도 어느 프로젝트에도 못 들어간다.
+**순서는 `pnpm db:deploy` → `db:status:prod` → backfill dry-run → `--apply` → `/merge` → 그다음 이 삭제**다.
+
+⚠️ **`/merge` 전에 프로덕션 `DATABASE_URL`을 확인한다.** Preview가 session 모드(5432)를 가리키고 있었으므로
+(§6.1 3) 같은 시기 같은 방식으로 넣은 Production 값도 의심 대상이다. 인가가 요청마다 DB를 치게 된 지금은
+부하가 preview보다 높고, 값이 Sensitive라 읽을 수 없으므로 **Supabase에서 prod의 transaction(6543,
+`?pgbouncer=true`) 문자열을 복사해 덮는 것이 유일한 확인법**이다.
 
 `──` 커밋: `chore: drop the one-off owner backfill`

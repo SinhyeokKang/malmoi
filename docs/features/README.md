@@ -15,7 +15,9 @@
   결론은 정본으로 올라갔고 "왜"는 앞의 둘에 있다. 실제로 완료된 셋(adapter-generality ·
   key-order-preservation · format-preservation, 841줄)을 밖에서 참조하는 문서가 하나도 없었다.
 - **예외는 체크리스트 밖의 기록이 붙은 경우다.** `pull-to-pr/tasks.md`는 §4에 실물 검증 7시나리오가
-  있고 MVP §9와 TASKS가 그것을 직접 참조하므로 남긴다.
+  있고 MVP §9와 TASKS가 그것을 직접 참조하므로 남긴다. **`tenant-auth/tasks.md`도 같은 이유로
+  남긴다** — §6.1이 preview 실물 검증 5항목과 **거기서만 잡힌 결함 셋**을 들고 있고, 그건 체크박스가
+  아니라 "자동 검증이 원리적으로 못 보는 것이 무엇인가"의 기록이다.
 
 ## 상태
 
@@ -26,7 +28,7 @@
 | [key-order-preservation](./key-order-preservation/) | ✅ 완료 (2026-09-03) | ADAPTER-COVERAGE §10·§11 · MVP §4.1 · ARCHITECTURE §1.1 | 없음 · `tasks.md` 삭제 |
 | [format-preservation](./format-preservation/) | ✅ 완료 (2026-09-04) | ADAPTER-COVERAGE §14·§15·§16 · MVP §4.1 · ARCHITECTURE §1.1 | 완료 조건 ③ **판정 불가**(계측 없음) · `tasks.md` 삭제 |
 | [key-separator-contract](./key-separator-contract/) | ⏸️ **보류 — SaaS화 이후** | — | 문서 전체. 검수 미반영 항목부터 본다 |
-| [tenant-auth](./tenant-auth/) | 🚧 **설계 완료 — 구현 전** (2026-09-05) | SAAS.md §8 2단계 | 전부. `/tdd interface`부터 |
+| [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-05) | **SAAS.md §8 2단계** · ARCHITECTURE §6·§6.1·§6.2·§6.3 · CLAUDE.md(차단 두 층·세션) | prod 반영이 `/merge`에 남았다(`db:deploy` + OWNER backfill) · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
@@ -43,6 +45,7 @@
 | **`yaml-catalog` 범위 기반 치환** | ADAPTER-COVERAGE §13.3 — `doc.toString()`이 1키 편집에 redmine 1,585줄 중 816줄을 바꾼다 | 옵션으로 닫을 수 있는 축은 닫았고, 나머지는 스칼라 `range`로 원본 문자열을 직접 갈아끼워야 한다. 완료 조건은 **1키 편집 → 1 hunk** |
 | **키 구분자 계약** | 손실 2건 중 siyuan 하나로 줄었다 (§13.1) | 문서는 [key-separator-contract](./key-separator-contract/)에 있고 **보류 판정**이 났다 — 도입 대상 bugshot-2가 `ts-dict`라 효과 0이다 |
 | **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
+| **`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀** | tenant-auth 검수(CDO) | 저장 실패 문구가 스크린리더에 안 읽히고, blur로 포커스가 떠난 뒤라 재시도 지점이 없다. **6단계(번역 UI 재작성)에서 화면과 함께** 고친다 — 동결된 UI를 지금 다듬으면 버려진다(MVP §8.3) |
 
 ## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다
 

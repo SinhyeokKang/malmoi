@@ -118,8 +118,10 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 하나인데, 서명 검증·delivery 중복 방지·이벤트 allowlist·재시도 원자성이 통째로 딸려온다.
 
 ⚠️ **대신 `/api/push`의 인증을 프로젝트별로 바꿔야 한다** — 지금은 `ACTIVE_PROJECT_SLUG` 하나에
-묶여 있어 두 리포의 CI를 동시에 받을 수 없다(TASKS 전역 미결). 이건 §8 1단계의 필수 항목이고,
-**대상 리포의 Actions secret이 바뀐다는 뜻**이다.
+묶여 있어 두 리포의 CI를 동시에 받을 수 없다(TASKS 전역 미결). **설계는 1단계에서 §7.8로 닫혔고
+구현은 §8 5단계에 배정했다** — `Project.pushTokenHash`와 `/api/pull`의 전 프로젝트 순회가 같은
+항목이고, 프로젝트 생성 경로가 선 뒤라야 발급할 자리가 생긴다. **대상 리포의 Actions secret이
+바뀐다는 뜻**이다.
 
 2차에 열 조건: 워크플로 파일을 못 넣는 리포가 실제 도입 대상이 될 때.
 
@@ -139,8 +141,13 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 ### 5.2 인가 판정의 주인은 하나다
 
 ```ts
-requireProjectAccess({ userId, projectId, permission: "translation:write" })
+requireProjectAccess({ slug, permission: "translation:write" })   // 페이지 — 실패하면 redirect
+getProjectAccess(prisma, { userId, slug, permission })            // Server Action — union 반환
 ```
+
+⚠️ **인자가 `projectId`가 아니라 `slug`다** (2026-09-05 구현에서 확정). 프로젝트를 정하는 것이 URL이므로
+호출부가 아는 것은 slug뿐이고, `projectId`는 **판정이 돌려주는 값**이다 — 그 뒤의 모든 쿼리가 그
+`projectId`로 좁혀지고, 클라이언트가 보낸 id는 어디에서도 신뢰 경로에 들어가지 않는다.
 
 모든 서버 진입점이 이것을 지난다. **클라이언트가 보낸 role·owner 여부·projectId의 정당성을 믿지
 않는다.** ID 기반 mutation도 반드시 프로젝트를 조건에 함께 넣는다 — 이건 이미 코드 컨벤션이다
@@ -192,6 +199,11 @@ Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 �
 잘못된 자동 병합은 불편이 아니라 **계정 탈취**다 — provider가 반환하는 이메일이 검증됐다는 보장이
 provider마다 다르다.
 
+**방어선은 `allowDangerousEmailAccountLinking`을 켜지 않는 것 하나이고, 실물에서 확인했다**
+(2026-09-05, preview): GitHub으로 OWNER가 된 계정과 **같은 주소**의 Google로 로그인하면
+`?error=OAuthAccountNotLinked`로 거부되고 `User`·`Account`에 고아 행이 남지 않는다. 명시적 연결
+흐름(기존 세션에서 "GitHub 연결")은 §8 4단계다.
+
 ### 5.6 초대 — 토큰은 해시만 저장한다
 
 - 초대 토큰 **원문을 DB에 저장하지 않는다**(해시만). 안전한 난수 · 단일 사용 · 만료형.
@@ -199,17 +211,27 @@ provider마다 다르다.
 - 초대 대상 이메일과 **provider가 검증한 이메일이 일치**해야 수락된다.
 - Project에는 **항상 OWNER가 한 명 이상** 있어야 한다 — 마지막 OWNER는 탈퇴·자기 제거 불가.
 - membership은 이메일이 아니라 **`User.id`를 참조**한다 (이메일 주소는 재할당될 수 있다).
+  같은 이유로 `Translation.updatedBy`도 2026-09-05부터 **`User.id`**다 (전에는 GitHub 핸들이었다).
+
+⚠️ **`(projectId, email)`은 unique가 아니라 index다.** unique로 걸면 수락·만료된 행이 이메일을
+점유해 **재초대가 막힌다.** 대신 `createInvitation`이 미수락 행을 먼저 만료시켜 **토큰을 회전**시킨다.
+
+⚠️ **토큰이 URL 경로에 실린다** — 브라우저 히스토리·리퍼러·전달된 링크에 남는다. **단일 사용과 7일
+만료로 수용한 위험**이고, 없애려면 수락 폼에 토큰을 POST해야 하는데 그러면 비로그인 열람 화면이
+성립하지 않는다 (`features/tenant-auth/design.md` §4.1).
 
 ### 5.7 보안 테스트 완료 조건
 
-아래가 **전부 거부**돼야 §8 2단계가 닫힌다.
+아래가 **전부 거부**돼야 §8 2단계가 닫힌다. ✅ **2026-09-05에 닫혔다** — 항목별 근거(테스트 이름과
+preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 항목만 4단계로 넘겼고, 그건
+프로젝트 생성 경로가 아직 없어 **공격 표면 자체가 존재하지 않기** 때문이다.
 
 - 비로그인 사용자의 프로젝트 조회·수정·Publish
 - 프로젝트 A 멤버가 프로젝트 B의 URL·ID를 직접 전송
 - 다른 프로젝트의 `keyId`·`localeCode`·`translationId` 조합
 - EDITOR의 멤버·리포 설정 변경
-- 설치되지 않은 리포를 Project로 등록
-- 설치에 접근할 수 없는 사용자의 프로젝트 생성
+- 설치되지 않은 리포를 Project로 등록 — ⏭ **4단계** (생성 경로가 아직 없다)
+- 설치에 접근할 수 없는 사용자의 프로젝트 생성 — ⏭ **4단계** (같은 이유)
 - **제거된 멤버가 기존 세션으로 재접근**
 - 같은 이메일이라는 이유만의 provider 계정 자동 병합
 - 초대받은 이메일과 다른 계정으로 초대 수락
@@ -401,14 +423,18 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 ✅ /
 `ACTIVE_PROJECT_SLUG` 없이 대상 프로젝트가 결정된다 — **설계로는 ✅(§7.8), 구현은 2단계 이후다**
 
-### 2단계 — 인증·인가 토대 🚧 ← **현재 단계** → `features/tenant-auth/`
+### 2단계 — 인증·인가 토대 ✅ (2026-09-05) → `features/tenant-auth/`
 
-- [ ] `User`·`Account`·`Session`·`ProjectMember`·`ProjectInvitation` (§6)
+⚠️ **코드와 dev는 닫혔고 프로덕션 반영만 `/merge`에 남았다** — `pnpm db:deploy`와 prod OWNER backfill 둘이다 (아래 완료 게이트).
+
+- [x] `User`·`Account`·`Session`·`VerificationToken`·`ProjectMember`·`ProjectInvitation` (§6) ✅ (2026-09-05, `2e998d4` — `20260904182548_add_tenant_auth_tables`). **dev에만 적용됐다** — prod는 `/merge` 1단계의 `pnpm db:deploy`다
 - [x] Auth.js **DB 세션** 전환 (§5.3), GitHub + Google provider ✅ (2026-09-05, `0d80e5a`)
-  - ⚠️ **Google은 아직 로그인이 거부된다** — 허용 목록이 GitHub 핸들을 요구하고 Google 사용자에겐
-    핸들이 없다(의도된 fail-closed). 목록을 GitHub에만 걸면 그 순간 Google이 무인가 통로가 되는데,
-    `requireProjectAccess`가 아직 편집 경로에 붙기 전이라 그 통로로 들어온 사람이 번역을 고칠 수 있다.
-    **아래 두 항목이 같은 커밋에서 끝날 때 열린다.**
+  - ✅ **Google 로그인이 열렸다** (`6ed4ecb` — 허용 목록 제거와 같은 커밋). 그 전까지 거부됐던 이유는
+    목록이 GitHub 핸들을 요구했기 때문이고, 목록을 GitHub에만 걸어 먼저 열면 그 순간 Google이 **무인가
+    통로**가 됐을 것이다 — `requireProjectAccess`가 편집 경로에 붙기 전이라 들어온 사람이 번역을 고칠
+    수 있었다. 그래서 셋이 한 커밋이다. preview에서 실측 통과했다
+  - ⚠️ **Google 동의 화면은 External + 테스트여야 한다.** Internal로 두면 조직 밖 계정이 `403 org_internal`로
+    막히는데, **비개발자 동료를 초대하는 것이 이 provider를 넣은 이유 전부**라 그러면 경로가 통째로 죽는다
   - **이메일 검증이 provider의 `profile` 구성 자리로 올라갔다** — `signIn`에서 검사만 하면 검증한
     주소와 저장되는 `User.email`이 갈린다 (ARCHITECTURE §6.2, POSTMORTEM 2026-09-05)
 - [x] `requireUser` · `requireProjectAccess` (§5.2) ✅ (2026-09-05, `bb94651` → `6ed4ecb`) —
@@ -426,15 +452,22 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       `User` + `Account(github)` + `ProjectMember`를 **한 트랜잭션**으로 만든다: `User`만 만들면
       첫 GitHub 로그인이 `OAuthAccountNotLinked`로 거부되고, 그게 이 스크립트가 존재하는 이유의 절반이다
 
-완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(자동 가능한 것 — `authorization.test.ts`·
-`membership.test.ts` 65케이스) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이
-실행되는 Server Action·Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고정) /
-Google 사용자가 GitHub 계정 없이 초대 수락과 편집이 가능 — **⬜ 수동 검증 대기.**
+완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts` 65케이스
++ preview 실측) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이 실행되는 Server Action·
+Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고정) / Google 사용자가 GitHub 계정
+없이 초대 수락과 편집이 가능 ✅ **실물로 밟았다**.
 
-⚠️ **남은 것은 `[manual]` 넷이다** (e2e가 없어 자동화할 수 없다): Google 로그인, 초대 링크 왕복,
-세션 회수(`Session` 행 삭제) 뒤 blur 저장, `curl`로 비로그인 응답 본문 0바이트 확인. preview에서
-밟는다. **그리고 OWNER backfill을 dev·prod 양쪽에서 아직 `--apply` 하지 않았다** — 안 하면
-기존 프로젝트에 멤버가 없어 아무도 못 들어간다.
+**`[manual]` 넷을 preview에서 밟았다** (2026-09-05 — e2e가 없어 자동화할 수 없다): 비로그인 응답
+본문 0바이트 · Google 로그인 · 초대 링크 왕복(발급→비로그인 열람→다른 Google 계정 수락→EDITOR 저장) ·
+세션 회수 뒤 blur 저장. **같은 이메일의 provider 자동 병합 거부**(§5.5)도 함께 확인했다. 기록은
+`features/tenant-auth/tasks.md` §6.1이고, **거기서만 잡힌 결함이 셋이다** — 타입 검사도 1259건도
+원리적으로 못 보는 부류다(죽은 라우트 링크 · 거부 문구 · preview `DATABASE_URL`의 pooler 포트).
+
+⚠️ **프로덕션에는 아직 아무것도 안 갔다.** `/merge` 순서가 이렇다: ① `pnpm db:deploy` →
+② `pnpm db:status:prod` 확인 → ③ `pnpm tsx scripts/backfill-owners.ts --target prod`(dry-run 뒤 `--apply`)
+→ ④ `/merge`. **③을 빠뜨리면 기존 프로젝트에 멤버가 없어 아무도 못 들어간다**(fail-closed라 옳지만
+복구가 SQL이다). ⓪으로 **프로덕션 `DATABASE_URL`이 transaction 모드(6543)인지 확인한다** — Preview가
+session 모드(5432)로 들어가 있었고, 인가가 요청마다 DB를 치는 지금은 그 오배선이 커넥션 고갈로 드러난다.
 
 ### 3단계 — 최소 UI 이관 ✅ **2단계 §5에 흡수됐다** (2026-09-05)
 
@@ -452,7 +485,7 @@ Google 사용자가 GitHub 계정 없이 초대 수락과 편집이 가능 — *
 완료 게이트: 다른 프로젝트 ID를 주입해도 노출·수정되지 않는다 / 기존 push→편집→pull 값 전달
 테스트가 새 경로에서도 통과한다.
 
-### 4단계 — GitHub 설치 연결 ⬜ → `features/github-connect/`
+### 4단계 — GitHub 설치 연결 ⬜ ← **현재 단계** → `features/github-connect/`
 
 - [ ] 기존 User에 GitHub Account **명시적 연결** (§5.5)
 - [ ] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4)
@@ -477,6 +510,9 @@ Google 사용자가 GitHub 계정 없이 초대 수락과 편집이 가능 — *
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
 
 - [ ] 원문 + 전 로케일, 저장 상태, `needsReview`·`orphaned` 배지, 코드 permalink
+- [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
+      번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
+      테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
 - [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리, 덮인 셀의 `updatedBy`
 - [ ] **편집 손실 창 배너** (MVP §3.1·§8.3이 SaaS로 이관한 항목)
 - [ ] 미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)
