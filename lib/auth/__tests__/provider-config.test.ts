@@ -1,0 +1,54 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+/**
+ * `auth.ts`를 **텍스트로** 검사한다. 그 파일을 import하면 `NextAuth()`가 평가돼 테스트가 환경변수와
+ * 프레임워크 배선을 끌고 오므로, 여기서 확인할 성질(보안 플래그의 **부재**)에는 텍스트가 맞다 —
+ * `prisma/__tests__/schema-contract.test.ts`와 같은 형태다.
+ *
+ * ⚠️ **`allowDangerousEmailAccountLinking`의 부재가 이 단계의 계정 병합 방어선 전부다.**
+ * Auth.js 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 기본으로
+ * `OAuthAccountNotLinked`를 던진다(`@auth/core`의 handle-login). 그 옵션을 켜는 순간 **같은
+ * 이메일이라는 이유만으로 계정이 합쳐지고**, SAAS §5.5가 그걸 "불편이 아니라 계정 탈취"라 부른다.
+ * 명시적 연결은 4단계(`github-connect`)다.
+ */
+
+const AUTH_TS = readFileSync(
+  fileURLToPath(new URL("../../../auth.ts", import.meta.url)),
+  "utf8",
+);
+
+describe("auth.ts — 자동 계정 병합을 켜지 않는다", () => {
+  it("allowDangerousEmailAccountLinking이 어디에도 없다", () => {
+    expect(AUTH_TS).not.toContain("allowDangerousEmailAccountLinking");
+  });
+});
+
+describe("auth.ts — DB 세션과 provider 둘", () => {
+  it("세션 전략이 database다 — JWT는 권한 회수가 최대 24시간 지연됐다 (SAAS §5.3)", () => {
+    expect(AUTH_TS).toMatch(/strategy:\s*"database"/);
+    expect(AUTH_TS).not.toMatch(/strategy:\s*"jwt"/);
+  });
+
+  it("어댑터가 배선돼 있다", () => {
+    expect(AUTH_TS).toContain("PrismaAdapter");
+  });
+
+  it("GitHub과 Google 둘 다 등록돼 있다 — Google 없이는 spec 완료 조건 3을 검증할 수 없다", () => {
+    expect(AUTH_TS).toContain("GitHub");
+    expect(AUTH_TS).toContain("Google");
+  });
+
+  it("검증된 이메일 판정을 지난다", () => {
+    expect(AUTH_TS).toContain("verifiedEmailFrom");
+  });
+
+  it("세션에 실리는 것은 user.id다 — GitHub 핸들(login)이 아니다", () => {
+    // DB 세션에서는 session 콜백에 `token`이 오지 않고 `user`가 온다. 핸들을 실어 나르던
+    // jwt 콜백이 사라지므로 `session.user.login`을 읽는 코드가 전부 거짓이 된다.
+    expect(AUTH_TS).not.toContain("token[\"login\"]");
+    expect(AUTH_TS).not.toContain("session.user.login");
+  });
+});
