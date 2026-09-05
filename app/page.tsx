@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
+import { signInErrorMessage } from "@/lib/auth/message";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -22,11 +23,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         초대받은 프로젝트의 번역을 보고 고칠 수 있어요.
       </p>
       {error !== undefined && (
-        <p className="text-destructive text-xs">
-          {error === "AccessDenied"
-            ? "이 계정으로는 들어올 수 없어요 — 이메일이 검증되지 않았거나, 같은 이메일로 다른 방식으로 가입한 계정이 있어요."
-            : "로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요."}
-        </p>
+        <p className="text-destructive text-xs">{signInErrorMessage(error)}</p>
       )}
       <div className="flex flex-col gap-2">
         <ProviderButton provider="github" label="GitHub으로 로그인" primary />

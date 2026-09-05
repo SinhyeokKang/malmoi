@@ -38,3 +38,27 @@ export function accessErrorMessage(error: AccessError): string {
     }
   }
 }
+
+/**
+ * Auth.js가 `pages.error`로 넘기는 `?error=` 코드 → 사용자 문구.
+ *
+ * ⚠️ **거부와 장애를 가른다.** 몇 번을 다시 눌러도 결과가 같은 실패에 "잠시 뒤 다시"를 보이면
+ * 사용자가 같은 버튼을 반복해서 누른다 — 2026-09-05 preview 실측에서 `OAuthAccountNotLinked`가
+ * 정확히 그 모양이었다. 원인이 고정된 거부는 **무엇을 하면 되는지**를 말해야 한다.
+ *
+ * ⚠️ **코드를 그대로 노출하지 않는다.** 읽는 사람은 비개발자 동료다 (SAAS §3).
+ */
+export function signInErrorMessage(code: string): string {
+  switch (code) {
+    case "OAuthAccountNotLinked":
+      // SAAS §5.5 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은
+      // 불편이 아니라 계정 탈취다. 명시적 연결은 SaaS 4단계가 만든다.
+      return "그 이메일은 이미 다른 로그인 방식으로 가입돼 있어요. 처음 쓰신 방식으로 로그인해 주세요.";
+    case "AccessDenied":
+      return "이 계정으로는 들어올 수 없어요. 이메일이 검증되지 않았을 수 있어요.";
+    default:
+      // 나머지는 우리가 원인을 모른다 — 재시도가 유효한 유일한 경우다.
+      return "로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요.";
+  }
+}
+
