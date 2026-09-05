@@ -2,11 +2,11 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
 import { getPrisma } from "@/lib/db";
 
 import type { Permission } from "./permission";
 import { getProjectAccess } from "./query";
+import { readSession } from "./read-session";
 
 /**
  * 세션을 읽는 얇은 껍데기 둘. **판정은 하지 않는다** — 조회는 `getProjectAccess`가, 판정은
@@ -20,10 +20,12 @@ import { getProjectAccess } from "./query";
  * Action은 `getProjectAccess`를 직접 부르고 결과를 union으로 돌려준다 (design §3).
  */
 export async function requireUser(): Promise<{ userId: string }> {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (typeof userId !== "string" || userId === "") redirect("/");
-  return { userId };
+  const session = await readSession();
+  // ⚠️ 장애는 `/`가 아니라 `/?error=Unavailable`로 — 그냥 `/`로 보내면 정당한 비로그인과 **바이트 단위로 같은
+  // 응답**이 되어 전면 장애가 "리다이렉트 100% = 정상"으로 읽혔다 (POSTMORTEM 2026-09-06).
+  if (session.status === "unavailable") redirect("/?error=Unavailable");
+  if (session.status === "none") redirect("/");
+  return { userId: session.userId };
 }
 
 export async function requireProjectAccess(input: {
@@ -32,7 +34,9 @@ export async function requireProjectAccess(input: {
 }): Promise<{ projectId: string; role: "OWNER" | "EDITOR" }> {
   const { userId } = await requireUser();
   const access = await getProjectAccess(getPrisma(), { userId, ...input });
-  // not-found와 forbidden을 같은 곳으로 보낸다 — 목적지 차이로 존재 여부를 알려주지 않는다.
-  if (access.status !== "ok") redirect("/projects");
+  // not-found와 forbidden을 같은 곳으로 보낸다 — 목적지 차이로 존재 여부를 알려주지 않는다. 사유는 `?e=`로
+  // 실어 목록 화면이 한 줄 보인다 — 버리면 사용자는 왜 목록으로 왔는지 모른다 (code-review 2026-09-06 🟡12).
+  // 문구 자체가 둘을 같게 말하므로(`accessErrorMessage`) 존재 노출은 없다.
+  if (access.status !== "ok") redirect(`/projects?e=${access.status}`);
   return { projectId: access.projectId, role: access.role };
 }

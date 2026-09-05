@@ -197,12 +197,68 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     });
   });
 
+  /**
+   * **소비 조건에 만료가 있어야 한다** (Codex 감사 2026-09-06 #3). 사전 판정은 `expiresAt`을 보지만 실제
+   * `updateMany`가 `{ id, acceptedAt: null }`만 보면, 판정을 지난 뒤 OWNER가 재초대로 옛 행을 만료시켜도
+   * 진행 중인 요청이 옛 행을 소비해 **옛 role**로 멤버가 된다.
+   */
+  it("판정 뒤 만료된(회전된) 초대는 소비되지 않는다 — expired", async () => {
+    invite({ expiresAt: EARLIER });
+    // 판정 시점엔 살아 있었다 — 그 직후 다른 요청이 회전시켰다.
+    db.spies.findInvitation.mockImplementationOnce(async () => ({
+      id: "inv-1", projectId: "pA", email: "guest@a.com", role: "EDITOR",
+      tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
+    }));
+
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "expired" });
+    expect(db.members.some((m) => m.userId === "u-guest")).toBe(false);
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+  });
+
+  it("소비 조건에 만료 시각이 들어간다", async () => {
+    invite();
+    await acceptInvitation({ token: "tok" });
+    const claim = db.spies.updateManyInvitations.mock.calls.find((c) => c[0]?.where?.acceptedAt === null);
+    expect(claim?.[0]?.where?.expiresAt?.gt).toBeInstanceOf(Date);
+  });
+
   it("토큰 원문이 아니라 해시로 조회한다", async () => {
     invite();
     await acceptInvitation({ token: "tok" });
     expect(db.spies.findInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ where: { tokenHash: hashInviteToken("tok") } }),
     );
+  });
+});
+
+/**
+ * **Server Action 입력을 타입만 믿지 않는다.** `saveTranslation`만 zod를 지나고 나머지는 `role: Role`을 그대로
+ * DB에 넣었다 — 조작된 `"ADMIN"`은 Prisma enum 검증에서 던져 digest 오류가 된다 (code-review 2026-09-06 🟡13).
+ * 인가는 그 앞에서 끝나므로 권한 구멍은 아니지만, 거부가 예외로 죽지 않는다는 규칙(ARCHITECTURE §6.3)이 깨진다.
+ */
+describe("입력 검증 — 거부가 예외로 죽지 않는다", () => {
+  it("createInvitation: 모르는 role은 invalid input", async () => {
+    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "ADMIN" as never });
+    expect(result).toEqual({ ok: false, error: "invalid input" });
+    expect(db.invitations).toHaveLength(0);
+  });
+
+  it("changeMember: 모르는 role·비문자열 대상은 invalid input", async () => {
+    expect(await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "ADMIN" as never }))
+      .toEqual({ ok: false, error: "invalid input" });
+    expect(await changeMember({ slug: "alpha", targetUserId: 42 as never, nextRole: null }))
+      .toEqual({ ok: false, error: "invalid input" });
+    expect(db.members.find((m) => m.userId === "u-editor")?.role).toBe("EDITOR");
+  });
+
+  it("acceptInvitation: 토큰이 문자열이 아니면 not-found — 해시 함수에 닿기 전에 거른다", async () => {
+    hoisted.session = sessionFor("u-guest");
+    expect(await acceptInvitation({ token: 123 as never })).toEqual({ ok: false, error: "not-found" });
+  });
+
+  it("검증이 인가보다 앞이다 — slug가 없으면 무엇을 인가할지 정할 수 없다", async () => {
+    const result = await createInvitation({ slug: "", email: "new@a.com", role: "EDITOR" });
+    expect(result).toEqual({ ok: false, error: "invalid input" });
   });
 });
 
@@ -282,6 +338,55 @@ describe("경합에서도 거부가 응답으로 온다", () => {
     ]);
     const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: "OWNER" });
     expect(result).toEqual({ ok: false, error: "not-member" });
+  });
+
+  /**
+   * **OWNER 둘이 동시에 각자를 줄이면 OWNER 0명이 된다** (Codex 감사 2026-09-06 #2). 둘 다 OWNER 2명인
+   * 목록을 읽어 판정을 통과하고 **서로 다른 행**을 쓰므로 `count`도 각각 1이다 — 같은 대상의 경합만 막는
+   * count 검사로는 못 본다. FK Restrict는 멤버 행 변경을 막지 않는다(스키마 주석이 그렇게 주장했었다).
+   *
+   * 메모리 DB는 잠금을 흉내낼 수 없으므로 **잠금이 없었을 때 일어날 상태**를 주입한다: 판정에 쓴 목록은
+   * OWNER 둘인데 실제 행은 하나만 OWNER다(다른 요청이 먼저 강등했다). 쓰기 뒤 재집계가 0을 보고 되돌려야 한다.
+   */
+  it("판정 뒤 다른 OWNER가 이미 줄었으면 last-owner로 되돌린다 — 쓰기 뒤 OWNER를 다시 센다", async () => {
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    // 판정은 둘 다 OWNER로 본다.
+    db.spies.findManyMembers.mockImplementationOnce(async () => [
+      { projectId: "pA", userId: "u-owner", role: "OWNER" },
+      { projectId: "pA", userId: "u-second", role: "OWNER" },
+      { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+    ]);
+    // 실제로는 다른 요청이 u-second를 이미 강등했다.
+    const second = db.members.find((m) => m.userId === "u-second");
+    if (second) second.role = "EDITOR";
+
+    const result = await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: "EDITOR" });
+    expect(result).toEqual({ ok: false, error: "last-owner" });
+    // 되돌려졌다 — u-owner는 그대로 OWNER다.
+    expect(db.members.find((m) => m.userId === "u-owner")?.role).toBe("OWNER");
+  });
+
+  it("자기 제거도 같은 재집계를 지난다", async () => {
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.spies.findManyMembers.mockImplementationOnce(async () => [
+      { projectId: "pA", userId: "u-owner", role: "OWNER" },
+      { projectId: "pA", userId: "u-second", role: "OWNER" },
+    ]);
+    db.members.splice(db.members.findIndex((m) => m.userId === "u-second"), 1);
+
+    const result = await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: null });
+    expect(result).toEqual({ ok: false, error: "last-owner" });
+    expect(db.members.some((m) => m.userId === "u-owner" && m.role === "OWNER")).toBe(true);
+  });
+
+  it("프로젝트 행을 잠근 뒤 목록을 읽는다 — 재집계는 잠금이 새는 경우의 그물이다", async () => {
+    await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: null });
+    const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?")).join("\n");
+    expect(sql).toMatch(/"Project"[\s\S]*FOR UPDATE/);
+    // 잠금이 목록 조회보다 먼저다.
+    expect(db.spies.executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      db.spies.findManyMembers.mock.invocationCallOrder[0] ?? Infinity,
+    );
   });
 
   it("이미 멤버인 사람이 옛 초대를 수락하면 already-member다 — unique 위반으로 죽지 않는다", async () => {

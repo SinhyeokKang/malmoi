@@ -12,10 +12,10 @@
  */
 
 /**
- * ⚠️ **§2에서 Prisma가 `enum Role`을 생성하면 이 타입을 그것의 별칭으로 바꾼다** —
- * 두 벌로 두면 한쪽만 늘어났을 때 컴파일러가 침묵하고, 스키마와 판정이 서로 다른 역할 집합을
- * 본다. 지금 별칭이 아닌 이유는 하나뿐이다: 그 enum이 아직 없고, 이 모듈은 생성물
- * (`generated/prisma/client`)에 의존하지 않아야 테스트가 `db:generate` 없이 돈다.
+ * ⚠️ **Prisma의 `enum Role`과 두 벌이다 — 의도된 것이다.** 이 모듈은 생성물(`generated/prisma/client`)에
+ * 의존하지 않아야 순수 판정 테스트가 `db:generate` 없이 돈다. 두 벌의 대가(한쪽만 늘어나면 컴파일러가
+ * 침묵한다)는 `prisma/__tests__/schema-contract.test.ts`가 enum 값 목록을 `["EDITOR","OWNER"]`로 고정해 진다 —
+ * 역할을 늘리면 그쪽이 먼저 red가 된다.
  */
 export type Role = "OWNER" | "EDITOR";
 

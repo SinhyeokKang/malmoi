@@ -1,7 +1,7 @@
 # 어댑터 범용성 측정 결과
 
 **오픈소스 리포 109개에 `detect`·`read`·왕복을 돌린 결과와, 그 숫자로 내린 판정이다.**
-실험의 스펙·설계·태스크는 [features/adapter-generality/](./features/adapter-generality/)에 있다.
+실험의 스펙·설계는 [features/adapter-generality/](./features/adapter-generality/)에 있다(태스크는 전부 닫혀 삭제됐다 — 후속은 TASKS §8과 `features/README.md` 백로그).
 
 - 실행(학습 코퍼스): `pnpm adapter-survey docs/features/adapter-generality/repos.txt --verdicts docs/features/adapter-generality/verdicts.json`
 - 실행(홀드아웃): `pnpm adapter-survey docs/features/adapter-generality/repos-heldout.txt --verdicts docs/features/adapter-generality/verdicts-heldout.json`
@@ -234,8 +234,8 @@ write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 �
 
 | 모양 | 어댑터 | 근거 |
 |---|---|---|
-| `{dir}/{locale}.{json,yml,ts,js}` | 전부 | 원래 형태 |
-| `{dir}/{locale}/<name>.json` | `json-catalog` | 홀드아웃 6/20. **경로에 `locale(s)`·`i18n` 신호를 요구한다** — 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다(n8n `packages/@n8n/{ai}/`) |
+| `{dir}/{locale}.<ext>` — 확장자는 어댑터별 정규식(`json` / `ya?ml` / `tsx?`·`m?js`) | 전부 | 원래 형태 |
+| `{dir}/{locale}/<name>.json` | `json-catalog` | 홀드아웃 6/20. **경로에 i18n 계열 디렉터리 이름(`I18N_HINT` — `locale(s)`·`i18n`·`lang(s)`·`messages`·`translation(s)`)을 요구한다** — 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다(n8n `packages/@n8n/{ai}/`). 크롬 경로(`_locales/…/messages.json`)는 이 모양의 후보에서 제외해 같은 후보를 두 번 안 낸다 |
 | `{dir}/<prefix><sep>{locale}.<ext>` | `json-catalog`·`yaml-catalog` | 홀드아웃 3/20. 구분자는 `.`·`-`·`_` |
 
 **후보 그룹은 강한 로케일 코드를 하나 이상 요구한다** (`hasStrongLocale`). 맨 3글자(`add`·`get`)는
@@ -289,8 +289,8 @@ bugshot-2가 그 경로의 유일한 사용자다.
   즉 위험은 "값을 잘못 쓴다"가 아니라 **"엉뚱한 파일을 대상으로 삼는다"** 이고, 그건 사람이 경로 하나
   보면 즉시 아는 종류다.
 
-연동 시 후보 목록·로케일 수·키 수를 보여주고 고르게 하는 화면 하나가 여전히 값을 한다 —
-`detectCandidates`가 그 데이터를 이미 준다.
+연동 시 후보 목록·로케일 수를 보여주고 고르게 하는 화면 하나가 여전히 값을 한다 —
+`detectCandidatesAcross`가 그 데이터를 이미 준다(키 수는 `read`가 필요하다). 어댑터를 가로지르는 순위는 `chrome-locales` 최우선(예제 디렉터리 안은 예외) → i18n 신호 → 예제 감점 → 로케일 수 → 경로 모양 → 얕은 경로 → 경로순, 그 뒤 `liftAncestors`다. 배제 규칙 둘: yaml은 `.github/` 아래를 후보에서 빼고(워크플로 오탐), `code-dict`는 probe 없이는 후보를 내지 않는다.
 
 ## 6. 여기서 파생된 후속 작업
 
@@ -300,7 +300,7 @@ bugshot-2가 그 경로의 유일한 사용자다.
 
 | 순위 | 항목 | 근거 |
 |---|---|---|
-| 1 | **키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {style, separator}`) | §3의 손실 2건이 남아 있다. i18next의 `:` namespace 구분자도 같은 축 (비-점 구분자 8개 리포) |
+| 1 | **키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {style, separator}`) | §3의 손실은 siyuan 1건이 남아 있다(musicblocks는 `nestedByPath`로 해소 — §13.1). i18next의 `:` namespace 구분자도 같은 축 (비-점 구분자 8개 리포) |
 | 2 | ~~**"원본 키 순서 보존" 모드**~~ → **완료** (2026-09-03, §11) | 판정 ② 해소 — 0.784 → 0.022 |
 | 3 | 크롬 레이아웃 + YAML (`_locales/{locale}/messages.yml`) | violentmonkey 1개 |
 | 4 | 단일 로케일 리포 지원 여부 판정 | arkadiyt/zoom-redirector 1개. "2개 이상" 규칙의 대가다 |

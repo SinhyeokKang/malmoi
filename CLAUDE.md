@@ -91,7 +91,7 @@
 - `prisma.config.ts`가 **`.env.local`을 명시적으로 읽는다.** `dotenv` 기본값은 `.env`라서 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`로 오진하게 된다
 - ⚠️ **`prisma.config.ts`에서 `env("DIRECT_URL")`을 쓰지 않는다.** 그 헬퍼는 config **로드 시점에** 던지고 이 파일은 `prisma generate`에도 로드되므로, `.env.local`이 없는 환경(Vercel·새 체크아웃)의 `pnpm build`가 통째로 죽는다. `datasource`는 마이그레이션·introspection 전용이라 **조건부로 넣는다** — 없으면 그 명령에서만 실패하고, Prisma가 명령 이름까지 찍어 알려준다. 같은 파일이 같은 이유로 두 번 터졌다 (`docs/POSTMORTEM.md` 2026-08-31 + 🔁 재발)
 - **✅ dev DB와 prod DB가 갈렸다** (2026-09-04). Supabase 프로젝트 둘 — `malmoi-dev`(로컬·Preview) / prod(프로덕션 배포). `pnpm db:migrate`가 프로덕션에 **닿을 수 없다.**
-  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다. 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** — `db:status`는 dev를 본다
+  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다. 그래서 **`/merge` 1단계가 `pnpm db:status:prod`를 확인한다** — `/push` 3단계와 `db:status`는 dev만 본다
   - `--create-only` + `db:deploy`로 쪼개는 습관은 유지한다: 생성한 SQL을 프로덕션에 보내기 전에 눈으로 본다
   - **dev에서는 리셋을 승인해도 된다** (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다). ⚠️ 단 `db:deploy`는 prod를 겨누므로 그 명령에 리셋 개념이 없다는 것을 전제로 한다. 상세는 `/db`
 
@@ -109,15 +109,17 @@
 
 ### 세션은 DB에 있다 — 권한 회수가 다음 요청부터 반영된다 (2026-09-05 전환)
 
-`session: { strategy: "database", maxAge: 60 * 60 * 24 }` + `@auth/prisma-adapter`. **세션에 담는 것은 `userId` 하나**이고 권한은 매 요청 `ProjectMember`에서 읽는다 — 토큰에 role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다 (SAAS §5.3).
+`session: { strategy: "database", maxAge: 60 * 60 * 24, updateAge: 60 * 60 }` + `@auth/prisma-adapter`. **세션에 담는 것은 `userId` 하나**이고 권한은 매 요청 `ProjectMember`에서 읽는다 — 토큰에 role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다 (SAAS §5.3).
 
 **JWT를 고른 원래 이유는 "사용자 테이블 4개가 사라진다"였고, 그 대가가 "허용 목록에서 뺀 사람이 최대 하루 편집할 수 있다"였다** (MVP §5). SaaS는 그 절제를 되돌린다 — 멤버 제거와 역할 변경이 즉시 반영돼야 하기 때문이다. 지불하는 대가는 **요청마다의 DB 왕복**이다.
 
 **인가도 함께 바뀌었다** (2026-09-05, §5) — 편집 경로의 모든 진입점이 `getProjectAccess`를 지나고 프로젝트는 URL의 slug가 정한다. **로그인은 이제 누구에게나 열려 있고, 그것이 아무것도 열지 않는다** — 멤버십이 없으면 어떤 slug를 쳐도 `not-found`다.
 
-⚠️ `maxAge`가 24시간인 것은 JWT 때 값 그대로다 — **그 근거(회수 지연 상한)는 사라졌지만** 세션 길이 자체를 바꾸는 것은 별개 결정이라 남겨 뒀다.
+⚠️ **`maxAge` 24시간은 "마지막 활동 뒤 24시간"이다** (2026-09-06 결정 — `updateAge` 1h). 그 전엔 `updateAge`를 안 줘서 기본값(24h)이 `maxAge`와 같았고, 그러면 Auth.js의 갱신 조건이 `expires`와 일치해 **세션이 한 번도 연장되지 않았다** — 로그인 정각 24시간 뒤 편집 도중 끊기고 쿠키까지 사라졌다. 활동 중인 세션은 시간당 한 번 DB 쓰기로 연장된다 (ARCHITECTURE §6.1.1).
 
-⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. 쿠키 이름만 보는 것으로 갈랐고, 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
+⚠️ **`auth()`를 직접 부르지 않는다 — `readSession()`을 쓴다** (`lib/auth/read-session.ts`, 2026-09-06). `auth()`는 어댑터 예외를 삼키고 `null`을 돌려주므로 **DB 장애와 비로그인이 반환값으로 구별되지 않는다** — 장애를 `/`로 보내면 정상 로그아웃과 바이트 단위로 같은 응답이 되어 프로덕션 전면 장애를 "정상"으로 읽었다 (POSTMORTEM 2026-09-06). `readSession`은 `logger.error` + AsyncLocalStorage로 `unavailable`을 가르고, 그때 `/?error=Unavailable`·"일시적인 오류" 문구로 간다 (ARCHITECTURE §6.1.2).
+
+⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. **렌더 요청(GET·HEAD)에** 쿠키 이름만 보는 것으로 갈랐고, **Server Action POST는 통과시킨다**(307이면 `fetch`가 POST를 `/`로 재전송해 페이지 오류가 된다 — Action은 스스로 인증한다). 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -148,7 +150,7 @@
 | 마이그레이션 생성·적용 (**dev**) | `pnpm db:migrate` (`DIRECT_URL`) |
 | 마이그레이션 프로덕션 반영 | `pnpm db:deploy` (`DIRECT_URL_PROD` — 이름 그대로 **prod 전용**이다) |
 | 마이그레이션 상태 (**dev**) | `pnpm db:status` |
-| 마이그레이션 상태 (**prod**) | `pnpm db:status:prod` — `/push` 3단계가 이걸 본다 |
+| 마이그레이션 상태 (**prod**) | `pnpm db:status:prod` — `/merge` 1단계가 이걸 본다 |
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
@@ -221,27 +223,30 @@ app/
   __tests__/            ⚠️ **진입점 소스 스캔** — app/ 아래 모든 page·route·actions가 인가를
                         지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
                         본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선
-  (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사)
+  (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사 — GET·HEAD만, Action POST는 통과)
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지난다
-    projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지
+    projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
+                        `?e=`로 받아 isAccessError로 걸러 한 줄 보인다
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
     __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
-    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 4분기를 각자 한 줄로
+    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
+                        email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
   api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
                         Server Action이 triggerPull을 직접 부른다
-middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록)
+middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록). 렌더 요청만 막는다
 components/
   translation-input.tsx 인라인 편집 (client — blur 시 저장)
   pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
+  invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 현재 import 0곳 —
                         UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner·radix-ui도 같은 상태
 lib/
@@ -293,9 +298,16 @@ lib/
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-05에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
-    session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only)
-    profile.ts          githubUserinfo — /user + /user/emails를 합친다. ⚠️ 조회 실패는 **던지고**
-                        이메일 미검증은 email:""로 정상 거부 경로에 남긴다 (ARCHITECTURE §6.2)
+    session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only).
+                        장애는 /?error=Unavailable, 거부는 /projects?e=<status>
+    read-session.ts     readSession — auth()를 장애 표시와 함께 읽는 **유일한 진입점** (ok|none|unavailable).
+                        ⚠️ server-only 없음 — Action 테스트가 @/auth만 mock한다
+    outage.ts           AsyncLocalStorage + noteAuthError — SessionTokenError만 장애로 표시.
+                        auth.ts의 logger.error가 부른다 (POSTMORTEM 2026-09-06)
+    public-session.ts   publicSession — session 콜백 반환을 허용 목록으로 새로 만든다. 입력은 Session
+                        **행**이라 그대로 돌려주면 sessionToken이 /api/auth/session에 실린다
+    profile.ts          githubUserinfo + githubApi — /user + /user/emails를 합친다. ⚠️ HTTP 실패는 **둘 다
+                        던지고**(장애 → "잠시 뒤"), 이메일 미검증만 email:""로 정상 거부 경로에 남긴다
     permission.ts       Role·Permission + canPerform (SAAS §3 권한표 6칸). ⚠️ Publish는 별도
                         permission이 아니라 translation:write에 들어 있다
     access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
@@ -305,13 +317,16 @@ lib/
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
     email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
                         + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
-    cookie.ts           hasSessionCookie — 미들웨어 1차 차단용. __Secure- 접두 유무 둘 다 본다
+                        + freshVerifiedEmail·planEmailRefresh — 재로그인마다 User.email을 현재 검증 주소로
+                        갱신(keep|update|conflict). 다른 User가 쓰면 병합 없이 건너뛴다
+    cookie.ts           hasSessionCookie + shouldRedirectToLogin — 미들웨어 1차 차단용. __Secure- 접두 유무
+                        둘 다 보고, GET·HEAD만 돌려보낸다 (Action POST는 통과)
     message.ts          accessErrorMessage · inviteErrorMessage · signInErrorMessage — 거부 사유 →
                         한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
-types/next-auth.d.ts    session.user.login 타입 확장
+types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환으로 제거 — Google 사용자엔 핸들이 없다)
 prisma/
   schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
                         ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
@@ -334,7 +349,8 @@ scripts/
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
-auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
+auth.ts                 Auth.js v5 설정 — signIn 콜백은 검증 이메일 확인·갱신만, 인가는 ProjectMember.
+                        logger.error가 outage.ts에 장애를 알린다
 docs/MVP.md             PoC 스펙 (닫힘 — §8.4가 SAAS.md를 가리킨다)
 docs/SAAS.md            **SaaS화 스펙 — 현재 단계의 정본.** 범위·비범위·설계 결정·단계별
                         체크리스트·불변식 9개. 착수 전 필독
@@ -410,9 +426,9 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **16개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
+스킬 **17개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
@@ -425,12 +441,13 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
+- **`/doc-check`은 문서 전수 대조다** (2026-09-06 추가 — bugshot-2에서 가져와 이 리포의 문서 12개에 맞췄다). `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 문서별 에이전트가 양방향(틀린 단언 + 누락)으로 대조한다. 같은 날 tenant-auth 리뷰가 잡은 "전환 전 상태를 서술하는" 여덟 곳이 정확히 `/push`가 못 보는 부류였다. 리포트 후 사용자 확인을 거쳐 문서별 커밋까지 한다 — `POSTMORTEM.md`(append-only)와 `docs/features/*`(근거 기록)는 대상이 아니다.
 - **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** (2026-09-06 추가). ego-browser 태스크 스페이스에서 로컬 dev를 훑고, 결함을 BugShot 확장으로 `SinhyeokKang/malmoi` 이슈로 낸다. **`pnpm test`가 값은 보지만 화면은 못 보는 축**이 대상이다 — 라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다. **리포트+이슈 전용이라 코드를 고치지 않고**, preview가 아니라 **로컬**을 쓴다(preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다).
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
 ## 문서 신선도
 
-문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
+두 층이다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지하고(대상·트리거는 `.claude/commands/push.md` 4단계), **`/doc-check`이 diff와 무관하게 전수 대조한다** (2026-09-06 추가 — "문서가 일곱 개뿐"이라 두지 않던 것을 열두 개가 되면서 되살렸다. 최근 커밋이 안 건드린 문서에 쌓인 stale은 `/push`가 원리적으로 못 본다). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
 - **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(Supabase 대시보드)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
@@ -444,7 +461,8 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
-- **docs/features/README.md** — 기능 문서 5개의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 MVP·ARCHITECTURE로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **docs/features/README.md** — 기능 문서 6개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **README.md** — CLAUDE.md의 요약 미러. 스택·명령·브랜치·현 단계 선언이 바뀌면 같이 갱신한다 — 신규 진입자가 처음 여는 파일이라 여기가 낡으면 닫힌 스펙으로 안내한다. 커밋 prefix `docs(README): ...`
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
 
@@ -458,11 +476,11 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
-- **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다** (2026-09-05 갈렸다). **1차 `middleware.ts`** 는 쿠키 이름만 보는 값싼 차단이고(DB 세션이라 그 이상 못 한다), **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. 레이아웃·페이지의 조건부 렌더는 차단이 아니다: App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
+- **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다** (2026-09-05 갈렸다). **1차 `middleware.ts`** 는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고(DB 세션이라 그 이상 못 한다 — Action POST는 지나가 스스로 거부한다), **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. 레이아웃·페이지의 조건부 렌더는 차단이 아니다: App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
-- **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (RLS 없음).
+- **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** RLS가 없어 애플리케이션이 유일한 방어선이다 — 멤버십 판정을 지났더라도 쿼리가 `projectId`를 빠뜨리면 다른 테넌트의 행이 나온다.
 
 ## 게이트웨이 (알아두면 유용)
 

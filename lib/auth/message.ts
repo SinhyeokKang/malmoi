@@ -14,7 +14,27 @@ export type AccessError =
   /** 마지막 OWNER를 제거·강등하려 했다 (`planMemberChange`). */
   | "last-owner"
   /** 대상이 그 프로젝트의 멤버가 아니다 — "성공"으로 접지 않는다. */
-  | "not-member";
+  | "not-member"
+  /** 세션을 **못 읽었다** — 거부가 아니라 장애다 (`lib/auth/outage.ts`). 로그인을 시키면 헛로그인이다. */
+  | "unavailable";
+
+const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
+  "unauthorized",
+  "forbidden",
+  "not-found",
+  "last-owner",
+  "not-member",
+  "unavailable",
+]);
+
+/**
+ * 화면이 `error: string`을 받아 문구를 고를 때의 판정. 전에는 화면 셋이 각자 `Set`을 들고 `as AccessError`로
+ * 단언했다 — 사유가 늘면 셋 중 하나가 빠진다. `satisfies` 검사로 union과 목록이 같은 크기임을 강제하지는
+ * 못하므로, 아래 `accessErrorMessage`의 `never` 검사와 `lib/auth/__tests__/message.test.ts`가 함께 본다.
+ */
+export function isAccessError(value: unknown): value is AccessError {
+  return typeof value === "string" && ACCESS_ERRORS.has(value);
+}
 
 export function accessErrorMessage(error: AccessError): string {
   switch (error) {
@@ -31,6 +51,9 @@ export function accessErrorMessage(error: AccessError): string {
       return "프로젝트에는 소유자가 한 명 이상 있어야 해요. 다른 사람을 소유자로 만든 뒤에 다시 시도해 주세요.";
     case "not-member":
       return "그 사람은 이 프로젝트의 멤버가 아니에요.";
+    case "unavailable":
+      // 유일하게 재시도가 맞는 사유다 — 입력값은 남아 있으니 그것을 말한다.
+      return "일시적인 오류가 났어요. 잠시 뒤 다시 저장해 주세요. 입력한 값은 그대로 있어요.";
     default: {
       // 사유를 추가하면 여기서 컴파일 에러가 난다.
       const exhaustive: never = error;
@@ -56,7 +79,9 @@ export type InviteError =
   /** provider가 검증한 이메일이 초대 대상과 다르다 (SAAS §5.6). */
   | "email-mismatch"
   /** 이미 그 프로젝트의 멤버다 — 실패지만 원하는 상태는 이미 이뤄져 있다. */
-  | "already-member";
+  | "already-member"
+  /** 세션을 못 읽었다 — 거부가 아니다. */
+  | "unavailable";
 
 /**
  * ⚠️ **여섯 중 셋은 여기서만 사용자에게 보인다.** `not-found`·`already-accepted`·`expired`는 페이지가
@@ -84,6 +109,8 @@ export function inviteErrorMessage(error: InviteError): string {
     case "already-member":
       // 실패로 읽히지 않게 쓴다 — 원하는 상태는 이미 이뤄져 있다.
       return "이미 이 프로젝트의 멤버예요. 프로젝트 목록에서 바로 열 수 있어요.";
+    case "unavailable":
+      return "일시적인 오류가 났어요. 잠시 뒤 다시 눌러 주세요.";
     default:
       // 사유를 추가하면 여기서 컴파일 에러가 난다. 실행 시점의 모르는 값은 접는다(위 ⚠️).
       error satisfies never;
@@ -108,6 +135,10 @@ export function signInErrorMessage(code: string): string {
       return "그 이메일은 이미 다른 로그인 방식으로 가입돼 있어요. 처음 쓰신 방식으로 로그인해 주세요.";
     case "AccessDenied":
       return "이 계정으로는 들어올 수 없어요. 이메일이 검증되지 않았을 수 있어요.";
+    case "Unavailable":
+      // Auth.js 코드가 아니라 우리 것이다 — `requireUser`가 세션을 못 읽었을 때 보낸다 (`lib/auth/outage.ts`).
+      // "로그인에 실패"라고 말하지 않는다: 사용자는 로그인하려던 것이 아니라 편집 중이었다.
+      return "일시적인 오류가 났어요. 잠시 뒤 다시 열어 주세요.";
     default:
       // 나머지는 우리가 원인을 모른다 — 재시도가 유효한 유일한 경우다.
       return "로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요.";

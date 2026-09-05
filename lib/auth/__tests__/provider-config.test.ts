@@ -38,6 +38,20 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
     expect(AUTH_TS).not.toMatch(/strategy:\s*"jwt"/);
   });
 
+  it("세션이 슬라이딩한다 — updateAge를 명시한다 (maxAge와 같으면 한 번도 연장되지 않는다)", () => {
+    expect(AUTH_TS).toMatch(/updateAge:\s*60 \* 60\b/);
+  });
+
+  it("session 콜백이 허용 목록(publicSession)으로 새 객체를 만든다 — 입력 행에는 sessionToken이 있다", () => {
+    expect(AUTH_TS).toContain("publicSession(");
+    expect(AUTH_TS).not.toMatch(/session\.user\.id\s*=/);
+  });
+
+  it("signIn이 기존 사용자의 이메일을 현재 검증 주소로 맞춘다 — 판정은 planEmailRefresh다", () => {
+    expect(AUTH_TS).toContain("planEmailRefresh(");
+    expect(AUTH_TS).toContain("freshVerifiedEmail(");
+  });
+
   it("어댑터가 배선돼 있다", () => {
     expect(AUTH_TS).toContain("PrismaAdapter");
   });

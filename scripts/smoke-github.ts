@@ -15,6 +15,7 @@ import { adapterFor } from "../lib/adapters/index";
 import { requireEnv } from "../lib/env";
 import { createGitClient } from "../lib/github";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
+import { syncBranchFor } from "../lib/pull/trigger";
 
 // .env.local을 명시적으로 읽는다 — dotenv 기본값은 `.env`이고 이 프로젝트의 시크릿은
 // Next.js 관례에 따라 `.env.local`에 있다. 경로를 안 주면 값이 undefined가 되고 원인을 오진한다.
@@ -114,9 +115,11 @@ async function main(): Promise<void> {
       }
     }
 
-    // `l10n/sync`의 부재는 정상이다 — 첫 실행 경로(createRef)를 태운다.
-    const syncSha = await client.getRefSha("heads/l10n/sync");
-    console.log(`\nl10n/sync: ${syncSha ?? "없음 (첫 실행 경로)"}`);
+    // sync 브랜치의 부재는 정상이다 — 첫 실행 경로(createRef)를 태운다. 이름은 프로젝트별이라 생성 함수로
+    // 만든다 — 옛 상수 `l10n/sync`를 읽으면 항상 "없음"이다 (Codex 감사 2026-09-06 #8).
+    const syncBranch = syncBranchFor(project.slug);
+    const syncSha = await client.getRefSha(`heads/${syncBranch}`);
+    console.log(`\n${syncBranch}: ${syncSha ?? "없음 (첫 실행 경로)"}`);
   } finally {
     await prisma.$disconnect();
   }

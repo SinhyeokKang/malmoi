@@ -21,7 +21,7 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
   const given = payloadSlug.trim();
   const active = activeSlug.trim();
   // fail-closed: 빈 값끼리의 일치를 통과로 읽으면 설정 누락이 곧 무제한 라우팅이 된다.
-  // `lib/auth/allow.ts`가 빈 항목을 이중으로 막는 것과 같은 원리다.
+  // `verifiedEmailFrom`(`lib/auth/email.ts`)이 빈 이메일을 막는 것과 같은 원리다.
   if (given === "" || active === "") return "wrong-project";
   return given === active ? "ok" : "wrong-project";
 }

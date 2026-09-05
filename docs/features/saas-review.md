@@ -10,10 +10,10 @@
 > `writeWithErrors` → `PullResult.warnings` · `contract.ts`의 `ADAPTERS` 순회.
 > §10.4가 요구한 `lastPulledAt` 계약도 `lib/pull/run.ts:73`이 이미 그렇게 한다.
 >
-> **② 이 문서가 놓친 결함이 하나 있다** — `SYNC_BRANCH`가 상수 `"l10n/sync"`다
-> (`lib/pull/trigger.ts:22`). §8이 권하는 "한 리포에 표면이 둘이면 Project를 둘로"가 성립하면
-> **그 둘이 같은 브랜치를 force update로 다툰다.** TASKS §7에 실측 기록이 있고, SAAS.md가 이것을
-> 0단계로 들고 있다.
+> **② 이 문서가 놓친 결함이 하나 있었다** — `SYNC_BRANCH`가 상수 `"l10n/sync"`였다
+> (`lib/pull/trigger.ts`). §8이 권하는 "한 리포에 표면이 둘이면 Project를 둘로"가 성립하면
+> **그 둘이 같은 브랜치를 force update로 다툰다.** TASKS §7에 실측 기록이 있다. → SAAS 0단계가
+> `syncBranchFor(slug)`로 닫았고(2026-09-05), 소비자(action.yml·스모크·ACTIONS.md)는 `289ec22`(09-06)가 맞췼다.
 >
 > **③ SAAS.md가 갈라선 판정 셋**: 이메일 매직링크 로그인을 1차에서 뺐고(메일 인프라 운영이
 > 포트폴리오 대비 면적이 넓다 — 초대는 OAuth가 검증한 이메일로 성립한다), push 웹훅도 뺐으며

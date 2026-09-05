@@ -1,3 +1,5 @@
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+
 import type { PullResult } from "./run";
 
 /**
@@ -39,7 +41,10 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
         text: `이미 최신 상태예요 — 보낼 변경이 없어요.${dropped(outcome.warnings ?? [])}`,
       };
     case "failed":
-      // 원인을 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고 방법이 없어진다.
+      // 인가 거부·장애는 `accessErrorMessage`가 한국어로 — 이 자리만 `not-found`를 영어로 흘렸다
+      // (code-review 2026-09-06 🟡9). 그 밖의 원인은 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고
+      // 방법이 없어진다. 남의 라이브러리 메시지는 Action이 이미 `ref`로 접었다.
+      if (isAccessError(outcome.error)) return { tone: "destructive", text: accessErrorMessage(outcome.error) };
       return { tone: "destructive", text: `내보내기에 실패했어요: ${outcome.error}` };
     default: {
       // 상태를 추가하면 여기서 컴파일 에러가 난다.

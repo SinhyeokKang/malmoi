@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { githubUserinfo } from "../profile";
+import { githubApi, githubUserinfo } from "../profile";
 
 /**
  * GitHub 두 응답(`/user` + `/user/emails`)을 provider가 쓸 profile 하나로 합친다.
@@ -67,5 +67,48 @@ describe("githubUserinfo — /user 조회 실패는 시스템 오류다", () => 
 
   it("던지는 메시지가 GitHub 조회를 가리킨다 — 이메일 미검증과 헷갈리지 않게", () => {
     expect(() => githubUserinfo({ user: null, addresses: verified })).toThrow(/github/i);
+  });
+});
+
+/**
+ * **HTTP 실패는 장애다, 거부가 아니다.** `/user`는 `githubUserinfo`가 던지는데 `/user/emails`는 `null`로
+ * 접혀 "이메일이 검증되지 않았을 수 있어요"가 됐다 — GitHub 부분 장애 중 **처음 로그인하는 사람만** 막히고
+ * 기존 사용자는 재현이 안 된다 (code-review 2026-09-06 🔴5). 두 조회가 같은 함수를 지나 같은 방식으로 던진다.
+ */
+describe("githubApi — 조회 실패는 던진다", () => {
+  const ok = (body: unknown) =>
+    (async () => new Response(JSON.stringify(body), { status: 200 })) as unknown as typeof fetch;
+  const status = (code: number) =>
+    (async () => new Response("nope", { status: code })) as unknown as typeof fetch;
+
+  it("200이면 본문 JSON을 돌려준다", async () => {
+    await expect(githubApi("/user", "tok", ok({ id: 1 }))).resolves.toEqual({ id: 1 });
+  });
+
+  it("403·500은 우리 문구(AppError)로 던진다 — Configuration 화면으로 가서 '잠시 뒤 다시'가 뜬다", async () => {
+    await expect(githubApi("/user/emails", "tok", status(403))).rejects.toMatchObject({ name: "AppError" });
+    await expect(githubApi("/user/emails", "tok", status(500))).rejects.toMatchObject({ name: "AppError" });
+  });
+
+  it("던지는 메시지에 토큰이 없다", async () => {
+    await expect(githubApi("/user", "secret-token", status(500))).rejects.not.toMatchObject({
+      message: expect.stringContaining("secret-token"),
+    });
+  });
+
+  it("access_token이 비어 있으면 조회하지 않고 던진다 — 설정 문제라 거부가 아니다", async () => {
+    const spy = vi.fn();
+    await expect(githubApi("/user", "", spy as unknown as typeof fetch)).rejects.toMatchObject({ name: "AppError" });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("Bearer 헤더와 GitHub Accept를 보낸다", async () => {
+    let seen: RequestInit | undefined;
+    const spy = (async (_: unknown, init?: RequestInit) => {
+      seen = init;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    await githubApi("/user", "tok", spy);
+    expect(seen?.headers).toMatchObject({ Authorization: "Bearer tok", Accept: "application/vnd.github+json" });
   });
 });

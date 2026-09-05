@@ -31,3 +31,30 @@ export function githubUserinfo(input: { user: unknown; addresses: unknown }): Re
 
   return { ...record, email: verifiedEmailFrom({ provider: "github", addresses }) ?? "" };
 }
+
+/**
+ * GitHub REST 조회. **HTTP 실패는 던진다 — 거부로 접지 않는다.**
+ *
+ * 전에는 non-OK를 `null`로 돌려 `/user/emails` 실패가 "검증된 이메일 없음"이 되고, 사용자는
+ * "이메일이 검증되지 않았을 수 있어요"를 봤다 — GitHub 부분 장애 중 **처음 로그인하는 사람만** 막히고
+ * 기존 사용자(`signIn`의 `user`가 DB 행)는 재현이 안 되는 형태다 (code-review 2026-09-06 🔴5).
+ * `fail()`로 던지면 Auth.js가 `Configuration`으로 접어 로그인 화면이 "잠시 뒤 다시"를 보인다 — 그게 맞다.
+ *
+ * `fetchImpl`을 받는 것은 테스트용이다. 메시지에 토큰을 담지 않는다.
+ */
+export async function githubApi(
+  path: string,
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<unknown> {
+  if (token === "") fail("github: access_token이 없어 이메일 검증을 할 수 없다");
+  const response = await fetchImpl(`https://api.github.com${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "User-Agent": "malmoi",
+    },
+  });
+  if (!response.ok) fail(`github: ${path} 조회 실패 (${response.status})`);
+  return await response.json();
+}

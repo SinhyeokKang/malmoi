@@ -2,7 +2,7 @@
 
 편집 UI의 시각 규칙. **`~/code/bugshot-2`의 `docs/DESIGN.md`를 원본으로 이식했고**, 두 축이 다르다: Tailwind **v4**(그쪽은 v3)이고 **라이트 단일**(그쪽은 라이트/다크 양쪽)이다. 그 차이가 만드는 함정을 §1·§3에 적었다.
 
-무엇을 만드는지는 [MVP.md](./MVP.md), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
+무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재)와 [MVP.md](./MVP.md)(PoC — 닫힘), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## 1. 기반 스택
 
@@ -66,11 +66,11 @@
 @custom-variant dark (&:is(.dark *));
 ```
 
-`app/globals.css` 4행이다. **이 줄이 라이트 고정의 유일한 장치다.**
+`app/globals.css`의 `@import` 직후에 있다(행 번호는 주석이 늘면 밀린다). **이 줄이 라이트 고정의 유일한 장치다.**
 
 Tailwind v4는 `dark:`의 기본 동작이 **`prefers-color-scheme`** 이다. 이 줄이 그걸 클래스 기반으로 덮어쓰고, `.dark` 클래스를 **DOM에 어디에도 붙이지 않으므로** `dark:` 유틸이 컴파일돼도 절대 매치되지 않는다.
 
-**이 줄을 지우면** shadcn 생성 컴포넌트에 이미 들어 있는 `dark:` 클래스 6개(`button.tsx` 4 · `input.tsx` 2 — `dark:bg-input/30`, `dark:aria-invalid:ring-destructive/40` 등)가 **OS 다크 설정에서 살아나** 의도치 않게 적용된다. 라이트 단일이 조용히 깨지는 경로다.
+**이 줄을 지우면** shadcn 생성 컴포넌트 넷(`badge`·`button`·`input`·`select`)에 이미 들어 있는 `dark:` 클래스 전부(`dark:bg-input/30`, `dark:aria-invalid:ring-destructive/40` 등 — 파일이 늘면 개수도 늘어 세지 않는다)가 **OS 다크 설정에서 살아나** 의도치 않게 적용된다. 라이트 단일이 조용히 깨지는 경로다.
 
 `shadcn add`가 만드는 `dark:` 클래스는 **그대로 둔다** — 위 장치로 죽어 있고, 지우면 CLI 재실행 때 되살아나 diff만 늘어난다.
 
@@ -86,7 +86,7 @@ Tailwind v4는 `dark:`의 기본 동작이 **`prefers-color-scheme`** 이다. �
 
 ### 4.1 mono 표면 불변식 — 13px / 18px
 
-**번역 키는 mono 표면이다.** `common.viewAll`·`popup_title`은 식별자고 산문이 아니다 — sans로 깔면 `l`/`1`/`I`와 `_`/`.`이 구분되지 않아 번역자가 키를 잘못 읽는다.
+**식별자는 mono 표면이다** — 번역 키, 프로젝트 slug, 초대 링크 URL, 파일 경로. `common.viewAll`·`popup_title`은 식별자고 산문이 아니다 — sans로 깔면 `l`/`1`/`I`와 `_`/`.`이 구분되지 않아 번역자가 키를 잘못 읽는다.
 
 값은 `:root`의 **단일 출처**에서 나온다:
 
@@ -95,7 +95,7 @@ Tailwind v4는 `dark:`의 기본 동작이 **`prefers-color-scheme`** 이다. �
 --mono-leading: 18px;
 ```
 
-소비 경로는 **`text-mono` 유틸 하나**다 (`@theme inline`의 `--text-mono`). bugshot-2는 소비 경로가 넷이라 "하나만 놓치면 조용히 갈라진다"는 경고가 붙었지만, 우리는 CodeMirror·Tiptap·별도 번들이 없어 경로가 하나다. **그 상태를 유지한다** — 두 번째 경로가 생기면 그 경고가 우리에게도 적용된다.
+소비 경로는 **`text-mono` 유틸 하나**다 — `@utility text-mono`가 **font-family·font-size·line-height 셋**을 함께 싣는다. ⚠️ 2026-09-06까지는 `@theme inline`의 `--text-mono`(font-size 토큰)뿐이어서 **글꼴이 안 실렸고**, 키·slug·링크가 전부 13px sans로 렌더됐다 — 이름이 mono라 아무도 의심하지 않았다(`/doc-check` 1회차가 잡았다). bugshot-2는 소비 경로가 넷이라 "하나만 놓치면 조용히 갈라진다"는 경고가 붙었지만, 우리는 CodeMirror·Tiptap·별도 번들이 없어 경로가 하나다. **그 상태를 유지한다** — 두 번째 경로가 생기면 그 경고가 우리에게도 적용된다.
 
 - **13px인 이유**: 12px이 작고, 14px는 mono 자폭이 sans의 1.2배라 트렁케이션·가로 스크롤이 함께 늘어난다.
 - **`text-[13px]`가 아니라 `text-mono`를 쓴다.** 임의값은 행간이 따라오지 않아 표면마다 갈린다.
@@ -106,6 +106,8 @@ Tailwind v4는 `dark:`의 기본 동작이 **`prefers-color-scheme`** 이다. �
 
 **안 하면 twMerge가 커스텀 `text-*`를 text-color로 오분류한다.** `cn("text-mono", "text-foreground")`에서 `text-mono`가 조용히 제거되고, base `text-xs`와도 dedupe되지 않는다. bugshot-2가 액션 로그 값 칩에서 정확히 이 함정을 밟았다.
 
+⚠️ **twMerge는 `cn()` 안에서만 일한다.** 정적 문자열 `"text-mono text-xs"`는 dedupe되지 않고 Tailwind v4가 알파벳순으로 정렬해 `text-xs`가 이긴다 → 12px sans. 같은 font-size 그룹을 한 문자열에 두 번 쓰지 않는다 (2026-09-06 slug·초대 링크 두 곳에서 실제로 그랬다).
+
 ### 4.3 mono 리거처
 
 mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mono 같은 리거처 폰트를 도입하면 `font-variant-ligatures: none`을 켠다** — Geist Mono는 `--`를 2셀에서 1셀로 붕괴시키고, 우리 키에 `_`·`.`이 흔해 같은 계열 문제가 난다. `font-feature-settings`가 아니라 `font-variant-ligatures`를 쓴다(전자는 가산이 아니라 통째로 덮어쓴다).
@@ -113,22 +115,23 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 ## 5. 간격 & Radius
 
 - `--radius: 0.625rem`. shadcn 관용대로 `--radius-sm/md/lg/xl`이 `calc()`로 파생된다.
-- 간격은 Tailwind 기본 스케일. **카드 안 패딩은 `p-4`, 섹션 간격은 `space-y-4`** 를 기본으로 둔다.
+- 간격은 Tailwind 기본 스케일. **페이지 셸은 `p-8`, 셸 안 섹션은 `space-y-4`, 컨트롤 묶음은 `space-y-2`** — 실사용을 따랐다(2026-09-06 실측).
+- 페이지 셸은 둘이다: **인증 카드** `mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8`(로그인·초대) / **목록** `mx-auto max-w-2xl space-y-4 p-8`(프로젝트 목록). 새 화면은 둘 중 하나를 쓴다.
 
 ## 6. 편집 UI 특화 규칙
 
-MVP §3.2가 정한 화면은 **네임스페이스 사이드바 → 키 리스트 → 인라인 편집** 하나다.
+화면은 넷이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`). MVP §3.2가 정한 것은 번역 테이블 하나였고, 나머지 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였다(`features/tenant-auth/design.md` §4.1). 공통 패턴은 §6.4.
 
 ### 6.1 키 테이블
 
-화면은 `| key | en(base) | ko | fr |`이고 **모든 셀이 편집 가능**하다 (base 포함 — 고정된 것은 키뿐이다).
+화면은 `| key | en(base) | ko | fr |`이고 **모든 셀이 편집 가능**하다 (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다 — 키든 로케일이든 어느 축이 orphaned면 그 셀은 `disabled` + placeholder "orphaned — 편집하지 않는다".
 
 | 요소 | 규칙 |
 |---|---|
 | 키 이름 | **`text-mono`** (§4.1) |
 | `description` | `text-xs text-muted-foreground` — **`background` 표면 위일 때만** (§2.2) |
 | 번역 입력 | 셀마다 `TranslationInput`, `text-sm` |
-| 헤더 | `bg-muted/50` + `sticky top-0`. 글자는 `text-foreground/60` — **`text-muted-foreground`가 아니다** (§2.2: muted 표면 위에서 4.34:1로 미달) |
+| 헤더 | `bg-muted/50` + `sticky top-0`. 글자는 `text-foreground/60` — **`text-muted-foreground`가 아니다** (§2.2: muted 표면 위에서 4.34:1로 미달). **`(base)` 표기도 같은 규칙이다** — 2026-09-06까지 muted였다 |
 | 열 순서 | **base가 맨 앞**, 나머지는 코드순. 번역자가 왼쪽의 원문을 보고 채운다 |
 
 **넓은 표는 자기 컨테이너에서만 스크롤한다** (`overflow-x-auto`). 로케일이 6개면 표가 화면을 넘고, 페이지 본문이 좌우로 흔들리면 사이드바까지 밀린다.
@@ -143,7 +146,7 @@ MVP §3.2가 정한 화면은 **네임스페이스 사이드바 → 키 리스�
 |---|---|---|
 | 미번역 | 무색 — `text-muted-foreground` | 없음은 상태가 아니라 부재다. 색을 주면 셋 중 가장 흔한 것이 가장 시끄러워진다 |
 | 검토필요 (`needsReview`) | **amber** — `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
-| orphaned | **red 계열 글자만** — `text-destructive` | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다 |
+| orphaned | **red 계열 글자만** — `text-destructive` | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기**(2026-09-06) — 편집 차단은 disabled + placeholder 문구 |
 
 **새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — 배지의 **amber**·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**.
 
@@ -151,15 +154,34 @@ MVP §3.2가 정한 화면은 **네임스페이스 사이드바 → 키 리스�
 
 GitHub permalink는 `text-xs` + `text-blue-600 underline`. 외부 링크임이 보여야 하므로 밑줄을 뺀 관용을 쓰지 않는다.
 
+### 6.4 공통 패턴 — 버튼·상태줄·칩 (2026-09-06 실측 정리)
+
+SaaS 화면 셋이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는 import 0곳 — UI 동결). 형이 갈리지 않게 여기 고정한다.
+
+| 패턴 | 클래스 | 사용처 |
+|---|---|---|
+| **primary 버튼** | `bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 GitHub, 초대 수락 |
+| **bordered 버튼(페이지)** | `border-input hover:bg-accent rounded-md border px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 Google, "다른 계정으로 로그인" |
+| **bordered 버튼(툴바)** | 같은 색에 `h-8 px-3 text-xs` | Publish, 초대 링크 만들기, 복사 |
+| **텍스트 버튼** | `text-muted-foreground hover:text-foreground text-xs underline` | 로그아웃 |
+| **disabled** | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent` | 툴바 버튼 전부 |
+| **pending** | 버튼 라벨 교체("만드는 중…") — 옆 문구가 아니다(헤더 폭을 흔든다). `pull-button`의 옆 문구는 예외로 남았다 | |
+| **인라인 상태줄**(컨트롤 옆) | `text-xs`. 오류 `text-destructive`, 진행·정보 `text-muted-foreground` | 번역 셀, Publish, 초대 폼 |
+| **페이지 수준 거부 문구** | `text-destructive text-sm` | `/projects?e=`, 초대 페이지, 로그인 화면 |
+| **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2) | 초대 링크 |
+
+**포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7.
+빈 상태(로케일 없음·키 없음·멤버십 없음)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
+
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다.
-- **포커스 링을 지우지 않는다.** shadcn 기본 `focus-visible:ring-[3px]`을 유지한다.
+- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다).
 - `--ring` == `--border`라서 **`muted`·`secondary` 표면 위에선 포커스 링이 약하다.** 그런 자리엔 `ring-offset`을 주거나 배경을 `background`로 되돌린다.
 
 ## 8. className & 변형
 
-- 조건부 클래스는 **항상 `cn()`** 을 지난다 (§4.2의 twMerge 등록 때문에 특히).
+- 조건부 클래스는 **항상 `cn()`** 을 지난다 (§4.2의 twMerge 등록 때문에 특히). 삼항으로 문자열을 고르는 것도 조건부 클래스다.
 - 변형이 셋 이상이면 `class-variance-authority`로 뽑는다. 둘 이하면 인라인 삼항이 낫다.
 
 ## 9. SaaS UI 레퍼런스 — Supabase 대시보드 (2026-09-05 결정)
@@ -197,7 +219,8 @@ GitHub permalink는 `text-xs` + `text-blue-600 underline`. 외부 링크임이 �
 ## 빠른 체크리스트 (새 UI 만들 때)
 
 - [ ] `dark:`를 새로 쓰지 않았나 (§3)
-- [ ] 키 이름에 `text-mono`를 썼나 (§4.1)
+- [ ] 식별자(키·slug·URL)에 `text-mono`를 썼고 `text-xs`를 겹치지 않았나 (§4.1·§4.2)
+- [ ] 버튼·상태줄이 §6.4의 형 중 하나인가, 포커스 링 셋이 있나 (§6.4·§7)
 - [ ] `muted` 표면 위에 `text-muted-foreground`를 쓰지 않았나 (§2.2)
 - [ ] `muted` 표면 위 컨트롤에 `hover:bg-accent`를 쓰지 않았나 (§2.1)
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)

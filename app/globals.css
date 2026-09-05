@@ -4,8 +4,8 @@
 /* ⚠️ 이 줄이 **라이트 고정의 유일한 장치다** — 지우지 말 것 (docs/DESIGN.md §3.1).
    Tailwind v4는 `dark:`의 기본 동작이 prefers-color-scheme이다. 이 줄이 그걸 클래스
    기반으로 덮어쓰고, `.dark`를 DOM에 붙이지 않으므로 `dark:` 유틸이 컴파일돼도 절대
-   매치되지 않는다. 지우면 shadcn 생성 컴포넌트의 dark: 클래스 6개가 OS 다크에서
-   살아나 라이트 단일이 조용히 깨진다. */
+   매치되지 않는다. 지우면 shadcn 생성 컴포넌트 넷(badge·button·input·select)의 dark:
+   클래스가 OS 다크에서 살아나 라이트 단일이 조용히 깨진다. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -15,11 +15,6 @@
   --font-sans: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui,
     "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-
-  /* text-mono 유틸 — 13px/18px을 토큰 하나로 싣는다. text-[13px] 임의값을 쓰면
-     행간이 따라오지 않아 표면마다 갈린다 (DESIGN.md §4.1). */
-  --text-mono: var(--mono-size);
-  --text-mono--line-height: var(--mono-leading);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -88,6 +83,17 @@
      두 번째 경로가 생기면 "하나만 놓치면 갈라진다"는 경고가 적용된다 (DESIGN.md §4.1). */
   --mono-size: 13px;
   --mono-leading: 18px;
+}
+
+/* text-mono 유틸 — 글꼴·13px·18px 셋을 한 클래스로 싣는다. text-[13px] 임의값을 쓰면 행간이
+   따라오지 않아 표면마다 갈린다 (DESIGN.md §4.1).
+   ⚠️ 2026-09-06까지는 @theme의 --text-mono(font-size 토큰)만 있어 **글꼴이 안 실렸다** — 키·slug·
+   링크가 13px sans로 렌더됐다. font-size 토큰으로 두면 font-family를 실을 곳이 없어 @utility로 바꿨다.
+   lib/utils.ts의 twMerge 등록(font-size 그룹)은 그대로다 — text-xs와 같은 그룹이어야 dedupe된다. */
+@utility text-mono {
+  font-family: var(--font-mono);
+  font-size: var(--mono-size);
+  line-height: var(--mono-leading);
 }
 
 

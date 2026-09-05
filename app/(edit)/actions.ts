@@ -1,10 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/auth";
 import { getProjectAccess } from "@/lib/auth/query";
+import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { classifyFailure } from "@/lib/failure";
 import { SaveInput, planSave } from "@/lib/keys/save";
 import type { PullOutcome } from "@/lib/pull/message";
 import { triggerPull } from "@/lib/pull/trigger";
@@ -24,9 +27,11 @@ import { triggerPull } from "@/lib/pull/trigger";
 export type SaveResult = { ok: true; value: string } | { ok: false; error: string };
 
 export async function saveTranslation(raw: unknown): Promise<SaveResult> {
-  const session = await auth();
-  const userId = session?.user.id;
-  if (!userId) return { ok: false, error: "unauthorized" };
+  // `auth()`를 직접 부르지 않는다 — DB 장애가 "비로그인"으로 접힌다 (`lib/auth/read-session.ts`).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   // 입력 검증이 인가보다 먼저다 — slug가 없으면 무엇을 인가할지 정할 수 없다.
   const parsed = SaveInput.safeParse(raw);
@@ -91,9 +96,13 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
  * `pullMessage`의 exhaustive switch가 상태 누락을 컴파일 에러로 잡는 장치를 잃는다.
  */
 export async function triggerPullAction(slug: string): Promise<PullOutcome> {
-  const session = await auth();
-  const userId = session?.user.id;
-  if (!userId) return { status: "failed", error: "unauthorized" };
+  // 타입은 클라이언트를 구속하지 않는다 — 비문자열이 Prisma까지 가면 digest 오류가 된다 (ARCHITECTURE §6.3).
+  if (typeof slug !== "string" || slug === "") return { status: "failed", error: "invalid input" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { status: "failed", error: "unavailable" };
+  if (session.status === "none") return { status: "failed", error: "unauthorized" };
+  const { userId } = session;
 
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
@@ -103,6 +112,12 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
     return await triggerPull(prisma, slug);
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다.
-    return { status: "failed", error: error instanceof Error ? error.message : String(error) };
+    // ⚠️ **남의 라이브러리 메시지는 싣지 않는다** — `/api/pull`과 같은 규칙이다 (ARCHITECTURE §6.0). 읽는 사람이
+    // 외부 초대자이고, Prisma 접속 오류 한 줄이 pooler 호스트와 DB 유저를 담는다 (Codex 감사 2026-09-06 #7).
+    const failure = classifyFailure(error);
+    if (failure.safe) return { status: "failed", error: failure.message };
+    const ref = randomUUID().slice(0, 8);
+    console.error(`[pull:action] ${ref} ${failure.detail}`);
+    return { status: "failed", error: `internal (ref ${ref})` };
   }
 }

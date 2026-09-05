@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { createInvitation } from "@/app/(edit)/projects/actions";
-import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { cn } from "@/lib/utils";
 
 /**
@@ -58,6 +58,7 @@ export function InviteForm({ slug }: { slug: string }) {
           disabled={pending}
           className={cn(
             "border-input hover:bg-accent h-8 shrink-0 rounded-md border px-3 text-xs",
+            "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
             "disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent",
           )}
         >
@@ -74,13 +75,13 @@ export function InviteForm({ slug }: { slug: string }) {
           </p>
           {/* 링크는 식별자라 mono다 (docs/DESIGN.md §4.1) */}
           <div className="flex items-center gap-2">
-            <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-xs">
+            <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1">
               {link}
             </code>
             <button
               type="button"
               onClick={() => void navigator.clipboard.writeText(link)}
-              className="border-input hover:bg-accent h-7 shrink-0 rounded-md border px-2 text-xs"
+              className="border-input hover:bg-accent focus-visible:ring-ring h-8 shrink-0 rounded-md border px-3 text-xs focus-visible:ring-[3px] focus-visible:outline-none"
             >
               복사
             </button>
@@ -91,16 +92,8 @@ export function InviteForm({ slug }: { slug: string }) {
   );
 }
 
-const ACCESS_ERRORS = new Set<string>([
-  "unauthorized",
-  "forbidden",
-  "not-found",
-  "last-owner",
-  "not-member",
-]);
-
 function inviteFailureText(error: string): string {
-  if (ACCESS_ERRORS.has(error)) return accessErrorMessage(error as AccessError);
+  if (isAccessError(error)) return accessErrorMessage(error);
   if (error === "already-member") return "그 이메일은 이미 이 프로젝트의 멤버예요.";
   return `초대를 만들지 못했어요: ${error}`;
 }

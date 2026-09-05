@@ -112,7 +112,7 @@ export default async function TranslationsPage({
               <InviteForm slug={slug} />
             </div>
           )}
-          <div className={role === "OWNER" ? "" : "ml-auto"}>
+          <div className={cn(role !== "OWNER" && "ml-auto")}>
             <PullButton slug={slug} />
           </div>
         </div>
@@ -126,7 +126,10 @@ export default async function TranslationsPage({
                 {columns.map((l) => (
                   <th key={l.code} className="text-foreground/60 px-3 py-2 text-xs font-medium">
                     {l.code}
-                    {l.isBase && <span className="text-muted-foreground ml-1 font-normal">(base)</span>}
+                    {/* muted 표면 위라 text-muted-foreground가 아니다 (DESIGN §2.2·§6.1) */}
+                    {l.isBase && <span className="text-foreground/60 ml-1 font-normal">(base)</span>}
+                    {/* 키의 orphaned 배지와 같은 어휘 — 이 열은 편집이 막힌다. 저장을 받아도 pull이 파일을 내지 않는다. */}
+                    {l.orphaned && <span className="text-destructive ml-1 font-normal">orphaned</span>}
                   </th>
                 ))}
               </tr>
@@ -151,7 +154,7 @@ export default async function TranslationsPage({
                         keyId={row.id}
                         localeCode={l.code}
                         initialValue={row.cells[l.code]?.value ?? ""}
-                        disabled={row.orphaned}
+                        disabled={row.orphaned || l.orphaned}
                       />
                       <CellMeta state={cellState(row, l.code)} updatedBy={row.cells[l.code]?.updatedBy ?? null} />
                     </td>

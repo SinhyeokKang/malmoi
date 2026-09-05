@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeEmail } from "../email";
+import { freshVerifiedEmail, normalizeEmail, planEmailRefresh } from "../email";
 
 /**
  * 이메일 정규화 — **trim + 소문자, 그 이상은 하지 않는다** (design §2).
@@ -43,5 +43,52 @@ describe("normalizeEmail — 정규화 범위", () => {
     const raw = " A@B.com ";
     normalizeEmail(raw);
     expect(raw).toBe(" A@B.com ");
+  });
+});
+
+/**
+ * **기존 사용자의 `User.email`은 첫 로그인 값으로 굳는다** — OAuth 재로그인은 `updateUser`를 부르지 않는다
+ * (`@auth/core/lib/actions/callback/handle-login.js`). primary를 A→B로 바꾼 사람은 B로 온 초대를 영영
+ * `email-mismatch`로 받고, A를 버린 뒤에도 A로 온 초대를 수락한다 (Codex 감사 2026-09-06 #5 / code-review 🟡8).
+ * 재로그인 때 provider의 현재 검증 이메일로 갱신한다. **새 주소가 다른 User의 것이면 건너뛴다** —
+ * 로그인을 막지 않고, 자동 병합도 하지 않는다 (2026-09-06 결정).
+ */
+describe("planEmailRefresh — 재로그인 시 저장 이메일 갱신 판정", () => {
+  it("같으면 keep", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "a@x.com", takenByOther: false })).toBe("keep");
+  });
+
+  it("대소문자·공백만 다르면 keep — 정규화 뒤 같다", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: " A@X.com ", takenByOther: false })).toBe("keep");
+  });
+
+  it("다르고 비어 있지 않으면 update", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false })).toBe("update");
+  });
+
+  it("다른 User가 쓰는 주소면 conflict — 갱신도 병합도 하지 않는다", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: true })).toBe("conflict");
+  });
+
+  it("검증 이메일이 없으면(빈 값·null) keep — 부재를 갱신으로 읽지 않는다", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "", takenByOther: false })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: null, takenByOther: false })).toBe("keep");
+  });
+});
+
+describe("freshVerifiedEmail — signIn 콜백의 profile에서 현재 검증 이메일을 꺼낸다", () => {
+  it("github: 우리 userinfo가 만든 profile.email을 그대로 쓴다 (검증 실패면 빈 문자열이다)", () => {
+    expect(freshVerifiedEmail("github", { email: "A@x.com" })).toBe("a@x.com");
+    expect(freshVerifiedEmail("github", { email: "" })).toBeNull();
+  });
+
+  it("google: email_verified가 참일 때만", () => {
+    expect(freshVerifiedEmail("google", { email: "g@x.com", email_verified: true })).toBe("g@x.com");
+    expect(freshVerifiedEmail("google", { email: "g@x.com", email_verified: false })).toBeNull();
+  });
+
+  it("모르는 provider·비객체 profile은 null", () => {
+    expect(freshVerifiedEmail("apple", { email: "x@y.com" })).toBeNull();
+    expect(freshVerifiedEmail("github", undefined)).toBeNull();
   });
 });

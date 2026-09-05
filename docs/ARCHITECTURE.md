@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/survey/`)을 건드리기 전에 읽는다.** 무엇을 만드는지는 [MVP.md](./MVP.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -77,7 +77,7 @@
 | 5 | `yaml-catalog.ts` · `code-dict.ts`의 `missing.sort(compareKeys)` | 수술적 어댑터가 **없는 키를 삽입할 때**. `orderedEntries`를 안 지나지만 정렬 규칙을 공유한다 — **닿으면 회귀다** |
 | 6 | 정수형 키 hoisting | `"0"`·`"10"`은 JS 객체가 앞으로 끌어올린다. `.sort(`로 grep해도 안 나오고 **직렬화를 직접 짜지 않는 한 보존 불가**다 |
 
-**그리고 `orderBy: { key: "asc" }`가 리포에 두 곳이다** — `lib/pull/load.ts`(바꾼다)와 `lib/keys/query.ts`(**편집 UI 행 순서의 유일한 출처, 절대 바꾸지 않는다**). grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
+**`orderBy: { key: "asc" }`는 이제 `lib/keys/query.ts` 한 곳이다** (**편집 UI 행 순서의 유일한 출처, 절대 바꾸지 않는다**). `lib/pull/load.ts`는 `[{ sortIndex: "asc" }, { key: "asc" }]`로 바뀌었고 `entry-order.test.ts`가 옛 형태의 부재를 단언한다. grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
 
 ```
 grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys/*.ts
@@ -342,6 +342,7 @@ clone하지 않는다.
 - **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
 - **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (2026-09-05, `syncBranchFor`). 상수 `l10n/sync` 하나였을 때는 **같은 리포를 가리키는 Project 둘이 서로를 force update로 덮었다.** 한 리포에 번역 표면이 둘이면 Project가 둘이 되는 것이 정책이고(SAAS.md §7.1) bugshot-2가 정확히 그 모양이라(`_locales` 4키 + `ts-dict` 903키), 이 이름이 갈리지 않으면 첫 다중 프로젝트에서 터진다. TASKS §7의 실물 검증은 순차 실행으로 피해 갔다.
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
+  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: l10n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
   - 아래 서술의 `l10n/sync`는 전부 이 이름을 가리킨다.
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
 - **parents는 항상 base head다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
@@ -435,9 +436,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **`Translation`에 `UNIQUE(keyId, localeCode)`.** 이게 없으면 중복 행이 생겨 export가 비결정적이 된다 — §1 불변식이 스키마에 의존한다. **위생이 아니라 하중 부담 제약이라 지우면 안 된다.**
 - **`Translation`의 외래키는 둘 다 `ON DELETE RESTRICT`.** "키를 삭제하지 않고 `orphaned`로 둔다"는 코어 불변식을 **DB가 강제**한다 — 번역이 달린 `StringKey`를 지우려 하면 Postgres가 거부한다. `Cascade`면 실수로 키를 지우는 코드가 번역까지 조용히 날린다. `Locale` 쪽도 같은 이유로 `Restrict`다(로케일을 지워 번역이 사라지는 걸 막는다).
 - **`KeyRef`만 `ON DELETE Cascade`.** refs는 push마다 전체 교체되는 파생 데이터라 보존할 이유가 없다 — 여기서 `Restrict`를 쓰면 교체 자체가 막힌다.
-- **`updatedBy`는 지금도 GitHub 핸들 문자열이다.** 처음 이유는 "JWT 세션이라 사용자 테이블이 없다"였고,
-  **그 이유는 2026-09-05에 사라졌다**(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: SaaS 2단계의
-  인가 전환 뒤 새 행은 `User.id`를 담고 옛 행은 핸들을 그대로 들고 있어 **한 컬럼에 두 종류 값이 섞인다.**
+- **`updatedBy`는 2026-09-05부터 `User.id`를 담고, 그 전 행은 GitHub 핸들을 그대로 들고 있다.** 처음 핸들을 쓴 이유는 "JWT 세션이라 사용자 테이블이 없다"였고 그 이유는 사라졌다(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: **한 컬럼에 두 종류 값이 섞여 있다.**
   참조 무결성을 주장할 수 없고, `User`에 join하는 화면은 못 찾는 경우를 다뤄야 한다. `User.id`를 쓰는
   이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
 - **`orphaned`는 `StringKey`에, `needsReview`는 `Translation`에.** 키의 존재 여부는 코드가, 번역의 신선도는 값마다 판정되기 때문이다.
@@ -488,7 +487,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 ### 5.5.1 pooler가 구현을 규정한다
 
-- **대화형 트랜잭션을 쓸 수 없다.** 런타임이 transaction 모드 pooler(6543)라 `$transaction(async tx => …)`은 문장마다 다른 백엔드로 갈 수 있다. **배열형 `$transaction([...])`** 은 한 번에 배치로 보내므로 pgbouncer에서도 원자적이다.
+- **push는 배열형 `$transaction([...])`을 쓴다 — 왕복 수 때문이다.** 한 번에 배치로 보내 문장 수만큼의 왕복이 없다. ⚠️ **"대화형 `$transaction(async tx => …)`은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. `changeMember`(`SELECT … FOR UPDATE` + 재집계)와 `acceptInvitation`(조건부 소비 + 멤버 생성)이 대화형을 쓴다 — 잠금과 롤백이 필요한 자리다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결(TASKS §4).
 
@@ -529,11 +528,10 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | `saveTranslation` | orphaned 로케일 저장을 거부한다 — 받으면 `updatedAt`만 올라 pull이 헛돈다 |
 
 - **`isBase`를 함께 내리는 이유**: base 파일이 삭제되면 push가 남은 파일에서 새 base를 고르는데, 옛
-  행의 `isBase`가 남으면 `true`인 행이 둘이 된다. `app/(edit)/keys/page.tsx`가 그 값으로 열을
+  행의 `isBase`가 남으면 `true`인 행이 둘이 된다. `app/(edit)/projects/[slug]/translations/page.tsx`가 그 값으로 열을
   정렬하고 기본 열을 고르므로 **화면이 사라진 로케일을 base로 세운다.**
 - ⚠️ **목록이 비면 표시 문장을 내지 않는다.** `<> ALL('{}')`은 전 로케일을 orphan시킨다.
-- **편집 UI는 여전히 그 열을 보여준다** — 동결이라(MVP §8.3) 배지·비활성 처리를 새로 만들지 않았고,
-  저장 거부가 실제 손실을 막는다. 그 어긋남은 MVP §10에 있다.
+- **편집 UI는 그 열을 보이되 편집을 막는다** (2026-09-06) — 헤더에 키와 같은 어휘의 `orphaned` 배지, 그 열의 입력은 `disabled`. `loadProject`가 `orphaned`를 함께 싣는다. 셋(저장 거부 + 배지 + 비활성)이 한 축이다 — 전에는 저장 거부만 있어 편집자가 영어 거부 문구를 봤다.
 
 ### 5.5.2 번역값은 strict 덮어쓰기다
 
@@ -590,7 +588,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 6.0 ⚠️ 500 본문은 우리 메시지만 담는다
 
-**두 라우트의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04). `lib/failure.ts`의
+**두 라우트와 Publish Server Action(`triggerPullAction`)의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04, Action은 2026-09-06). `lib/failure.ts`의
 `classifyFailure`가 가른다:
 
 | 오류 | 본문 | 전문 |
@@ -610,6 +608,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 접속 오류 한 번이 pooler 호스트와 DB 유저를 **공개 Actions 로그**에 박는다(`bugshot-2`가 public이다).
 회고의 요구("원인이 남는다")는 `ref`로 지킨다: 운영자가 그 값으로 Vercel 로그를 찾는다.
 
+⚠️ **Server Action도 같은 규칙이다** (2026-09-06 Codex 감사 #7). 같은 `triggerPull`을 부르는 `triggerPullAction`이 `error.message`를 그대로 직렬화해 **외부 초대자의 화면**에 Prisma 접속 오류가 갈 수 있었다 — 읽는 사람이 우리가 아닌 것은 Actions 로그와 같다. `app/(edit)/__tests__/publish-failure.test.ts`가 원문 부재와 `ref` 존재를 검사한다.
+
 ⚠️ **판정은 문구가 아니라 타입이다.** 남의 오류가 우리 문구를 담아도 안전이 아니고, 우리 문구가
 바뀌어도 판정이 흔들리지 않는다. `instanceof`가 아니라 `name` 비교인 이유는 모듈 인스턴스가 둘이
 되면(번들 경계·mock) 조용히 false가 되어 설정 누락이 `internal`로 접히기 때문이다.
@@ -622,7 +622,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 | 층 | 무엇을 하나 | 무엇을 못 하나 |
 |---|---|---|
-| **1차 `middleware.ts`** | `hasSessionCookie`로 쿠키 이름만 본다 — `authjs.session-token`(http) / `__Secure-authjs.session-token`(https). **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
+| **1차 `middleware.ts`** | `shouldRedirectToLogin` — **렌더 요청(GET·HEAD)에** 세션 쿠키가 없을 때만 `/`로 돌린다. 쿠키 이름은 `authjs.session-token`(http) / `__Secure-authjs.session-token`(https) **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다. ⚠️ **Server Action POST는 통과시킨다** (2026-09-06) — 307을 내면 `fetch`가 POST를 `/`로 재전송해 action id를 못 찾고 **페이지 오류**가 된다. Action은 스스로 `readSession`으로 `unauthorized`를 내므로 여기서 막아 얻는 것이 없고, 세션이 만료되면 브라우저가 쿠키를 지우므로 "쿠키 없는 POST"는 매일 일어나는 경로다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(redirect) / `getProjectAccess`(union 반환) → `planProjectAccess` | — |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
@@ -631,13 +631,30 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 - **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
 
-**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다.
+**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
+
+#### 6.1.1 세션 정책 — 마지막 활동 뒤 24시간 (2026-09-06)
+
+`session: { strategy: "database", maxAge: 24h, updateAge: 1h }`. ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 리터럴을 고정한다.
+
+**`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
+
+#### 6.1.2 ⚠️ "세션 없음"과 "세션을 못 읽었다"는 다르다 (POSTMORTEM 2026-09-06)
+
+`auth()`는 어댑터 예외를 `logger.error(new SessionTokenError(e))`로 삼키고 `null`을 돌려준다(`@auth/core/lib/actions/session.js:123`). `next-auth`의 `parseSessionResponse`도 non-OK를 `null`로 접는다. **반환값으로는 DB 장애와 비로그인을 원리적으로 구별할 수 없다** — 프로덕션 전면 장애가 "리다이렉트 100% = 정상"으로 읽혔다.
+
+- **모든 서버 진입점은 `auth()` 대신 `readSession()`을 쓴다** (`lib/auth/read-session.ts`) — `ok | none | unavailable`.
+- 통로는 `logger`다. `auth.ts`의 `logger.error`가 `noteAuthError`를 부르고, `withOutageFlag`가 **AsyncLocalStorage**로 요청 스코프에 표시를 남긴다 (`lib/auth/outage.ts`). 모듈 변수 하나면 다른 요청의 장애가 이 요청의 거부로 둔갑한다.
+- `unavailable`이면 `requireUser`·레이아웃은 `/?error=Unavailable`로(비로그인의 `/`와 **다른 응답**), Action은 `error: "unavailable"`로, 로그인 화면은 "일시적인 오류 — 잠시 뒤 다시"를 보인다. **로그인을 시키지 않는다** — 장애 중 "다시 로그인하라"는 틀린 지시다.
+- 같은 모양이 하나 더 있었다: GitHub `/user/emails` HTTP 실패가 "미검증 이메일"로 접혀 처음 로그인하는 사람만 거부됐다. 지금은 `githubApi`가 non-OK를 `fail()`로 던져 `Configuration`("잠시 뒤 다시")으로 간다.
 
 ### 6.2 이메일 검증 — **저장되는 값을 만드는 자리에서** 한다 (2026-09-05)
 
 로그인은 provider가 **검증한** 이메일이 있을 때만 통과한다. 초대 대조(SAAS §5.6)가 그 값 위에 서기 때문이다.
 
-⚠️ **`signIn` 콜백에서 검사만 하면 안 된다.** 그 콜백이 받는 `user`는 기존 사용자일 때 **DB 행**이고, 어댑터가 쓰는 것은 `userFromProvider`다(`@auth/core`의 callback 라우트). 검사와 저장이 다른 값을 보게 되고, GitHub은 공개 이메일이 있으면 그걸 쓰므로 **검증한 주소와 저장되는 주소가 갈린다.** 그래서 판정을 **provider의 `profile`/`userinfo.request`** 로 올렸다 — 거기서 나온 값이 곧 `User.email`이다. `signIn`은 그 결과가 비어 있는지만 본다 (POSTMORTEM 2026-09-05).
+⚠️ **`signIn` 콜백에서 검사만 하면 안 된다.** 그 콜백이 받는 `user`는 기존 사용자일 때 **DB 행**이고, 어댑터가 쓰는 것은 `userFromProvider`다(`@auth/core`의 callback 라우트). 검사와 저장이 다른 값을 보게 되고, GitHub은 공개 이메일이 있으면 그걸 쓰므로 **검증한 주소와 저장되는 주소가 갈린다.** 그래서 판정을 **provider의 `profile`/`userinfo.request`** 로 올렸다 — 거기서 나온 값이 곧 `User.email`이다. `signIn`은 그 결과가 비어 있는지 보고, **기존 사용자면 저장된 `User.email`을 지금 검증된 주소로 맞춘다** (POSTMORTEM 2026-09-05, 갱신은 2026-09-06).
+
+⚠️ **OAuth 재로그인은 `updateUser`를 부르지 않는다** (`@auth/core` handle-login — email provider 분기만 갱신한다). 그래서 `User.email`이 첫 로그인 값으로 굳고, primary를 바꾼 사람은 새 주소로 온 초대를 영영 `email-mismatch`로 받고 옛 주소로 온 초대는 수락한다(Codex 감사 #5). `signIn`이 `Account` 행으로 기존 사용자를 판정하고(`user.id`는 새 사용자일 때 provider의 id라 못 믿는다) `planEmailRefresh`로 `keep | update | conflict`를 가른다 — **새 주소를 다른 User가 쓰면 갱신도 병합도 하지 않고 로그인은 허용한다**(2026-09-06 결정). 여기서 합치면 `allowDangerousEmailAccountLinking`을 우회한 자동 병합이 된다.
 
 ⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
 
@@ -649,9 +666,11 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 6.3 거부는 값으로 흐른다 — 예외로 죽지 않는다
 
-Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·초대 4분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
+Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). 문구가 not-found와 forbidden을 같게 말하므로 존재 노출은 없다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
-⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `changeMember`는 목록으로 판정한 뒤 `deleteMany`/`updateMany`의 **count를 읽고**, `acceptInvitation`은 `updateMany({ acceptedAt: null })`의 count로 단일 사용을 강제한다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, OWNER 둘이 같은 멤버를 동시에 건드리는 것은 실제 경로다.
+⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany({ acceptedAt: null, expiresAt: { gt: now } })`의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
+
+⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다.
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
 
@@ -659,13 +678,14 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
 
-**⚠️ dev DB와 prod DB가 갈렸다** (2026-09-04). Supabase 프로젝트가 둘이다 — `malmoi-dev`(로컬·Preview) / `malmoi`(프로덕션). `pnpm db:migrate`는 dev만 치고 **프로덕션에 닿을 수 없다**; prod를 겨누는 것은 `pnpm db:deploy`·`pnpm db:status:prod`(`PRISMA_TARGET=prod`)뿐이다. 분리가 만든 새 실패 모드는 **dev에만 적용하고 `db:deploy`를 잊는 것**이고(배포 순간 프로덕션이 없는 컬럼을 조회한다), 그래서 `/push` 3단계 확인이 `db:status:prod`다. 얻은 것은 dev에서 리셋을 승인해도 된다는 것이다 — 그 DB엔 폐기용 리포 적재분밖에 없다. 상세는 `/db` 스킬. *(2026-09-05 정정: 이 문단이 분리 뒤로도 "인스턴스가 하나뿐"이라고 가르치고 있었다.)*
+**⚠️ dev DB와 prod DB가 갈렸다** (2026-09-04). Supabase 프로젝트가 둘이다 — `malmoi-dev`(로컬·Preview) / `malmoi`(프로덕션). `pnpm db:migrate`는 dev만 치고 **프로덕션에 닿을 수 없다**; prod를 겨누는 것은 `pnpm db:deploy`·`pnpm db:status:prod`(`PRISMA_TARGET=prod`)뿐이다. 분리가 만든 새 실패 모드는 **dev에만 적용하고 `db:deploy`를 잊는 것**이고(배포 순간 프로덕션이 없는 컬럼을 조회한다), 그래서 `/merge` 1단계가 `db:status:prod`를 확인한다(`/push` 3단계는 dev만 본다). 얻은 것은 dev에서 리셋을 승인해도 된다는 것이다 — 그 DB엔 폐기용 리포 적재분밖에 없다. 상세는 `/db` 스킬. *(2026-09-05 정정: 이 문단이 분리 뒤로도 "인스턴스가 하나뿐"이라고 가르치고 있었다.)*
 
 **`prisma.config.ts`는 `.env.local`을 명시적으로 읽는다.** `dotenv`의 기본은 `.env`인데 이 프로젝트의 시크릿은 Next.js 관례에 따라 `.env.local`에 있다. 경로를 안 주면 URL이 `undefined`가 되고 `P1001 Can't reach database server`가 떠서 네트워크 문제로 오진하게 된다.
 
 - **⚠️ 비밀번호의 특수문자는 URL 인코딩해야 한다.** 접속 문자열은 URI라서 비밀번호에 `@`가 들어가면 호스트 구분자와 충돌해 파서가 userinfo/host 경계를 잘못 잡는다 (`:pw@@host`가 된다). `@`→`%40`, `!`→`%21`, `#`→`%23`, `/`→`%2F`, `?`→`%3F`, `%`→`%25`. **이미 인코딩된 값을 두 번 인코딩하면 `%40`이 `%2540`이 되어 조용히 인증 실패한다** — 증상이 "비밀번호가 틀렸다"로만 나와 진단이 오래 걸린다. 애초에 **특수문자 없는 영숫자 비밀번호를 발급받는 게 이 함정을 없애는 방법이다.**
 - **런타임 `DATABASE_URL`은 pooler(6543) + `?pgbouncer=true`.** 이 쿼리 파라미터가 없으면 prepared statement 충돌로 **간헐** 실패한다 — "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
   - ⚠️ **포트를 바꿔 넣으면 부하가 붙을 때까지 안 드러난다** (2026-09-05 실측). Preview 스코프의 `DATABASE_URL`이 session 모드(5432)를 가리키고 있었고, 요청이 적은 동안은 멀쩡히 돌다가 인가가 요청마다 DB를 치기 시작한 순간 `EMAXCONNSESSION max clients reached in session mode - pool_size: 15`로 전면 실패했다. **환경변수 값은 문서가 아니라 배선이므로, 경고를 문서에 적는 것으로 지켜지지 않는다** (POSTMORTEM 2026-09-05). Vercel의 Sensitive 변수는 값을 되읽을 수 없어 **의심되면 원본에서 다시 복사해 덮는 것이 유일한 확인법**이다.
+- **`getPrisma()`의 전역 캐시는 환경으로 가르지 않는다** (2026-09-06). 전에는 `NODE_ENV !== "production"`일 때만 저장해 **프로덕션이 호출마다 새 `PrismaClient`와 `pg.Pool`을 만들었다** — 번역 화면 한 번에 `auth()` 둘 + 인가 + 조회로 풀 4개, 핸드셰이크 4회이고 dev는 캐시가 있어 로컬에서는 보이지 않았다(Codex 감사 #9). "dev에서만 전역에 붙인다"는 Prisma 관용구는 모듈 최상위 `const`가 프로덕션의 단일 인스턴스를 보장할 때의 것이고, 지연 생성에는 그 보장이 없다. `lib/__tests__/db.test.ts`가 두 환경 모두 동일성을 본다.
 - **마이그레이션 `DIRECT_URL`은 session 모드 pooler(5432).** transaction 모드 pooler(6543)는 advisory lock·DDL 세션을 못 잡아 마이그레이션이 실패한다. 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 쓰지 않는다 (CLAUDE.md 스택 표).
 - **배포 순서는 additive-first.** 스키마를 먼저 넓히고(`db:deploy`) 코드를 배포한다. 컬럼 삭제·타입 변경은 코드 배포 후 별도 마이그레이션. 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다.
 

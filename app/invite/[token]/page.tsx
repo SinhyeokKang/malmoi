@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { auth, signIn } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { inviteErrorMessage, type InviteError } from "@/lib/auth/message";
+import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 
 import { acceptInvitation } from "../actions";
@@ -40,7 +41,11 @@ export default async function InvitePage({
 }) {
   const { token } = await params;
   const { e } = await searchParams;
-  const session = await auth();
+  const session = await readSession();
+  // 세션을 못 읽었으면 초대 행도 못 읽는다(같은 DB) — 비로그인 화면으로 접지 않고 장애라고 말한다.
+  if (session.status === "unavailable") {
+    return <Notice title="일시적인 오류가 났어요." detail="잠시 뒤 이 링크를 다시 열어 주세요." />;
+  }
 
   const invitation = await getPrisma().projectInvitation.findUnique({
     where: { tokenHash: hashInviteToken(token) },
@@ -70,7 +75,7 @@ export default async function InvitePage({
   // 그 사유의 문구가 도달할 수 없다.
   const failure = e === undefined ? null : <p className="text-destructive text-sm">{inviteErrorMessage(e as InviteError)}</p>;
 
-  if (!session?.user) {
+  if (session.status === "none") {
     return (
       <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
         <h1 className="text-lg font-semibold tracking-tight">말모이</h1>
@@ -94,6 +99,23 @@ export default async function InvitePage({
       <p className="text-sm">{label}로 초대받았어요.</p>
       {/* 수락 버튼을 눌러서 나는 실패는 이 줄이 유일한 통로다 — 없으면 아무 일도 안 일어난 것으로 보인다. */}
       {failure}
+      {/* "초대받은 주소의 계정으로 로그인해 주세요"라고 말해 놓고 로그아웃할 곳이 없으면 갇힌다 — 이 페이지는
+          `(edit)` 레이아웃 밖이라 헤더의 로그아웃이 없다 (code-review 2026-09-06 🟡11). 로그아웃 뒤 같은 링크로 돌아온다. */}
+      {e === "email-mismatch" && (
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: `/invite/${token}` });
+          }}
+        >
+          <button
+            type="submit"
+            className="border-input hover:bg-accent focus-visible:ring-ring w-full rounded-md border px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
+          >
+            다른 계정으로 로그인
+          </button>
+        </form>
+      )}
       <form
         action={async () => {
           "use server";

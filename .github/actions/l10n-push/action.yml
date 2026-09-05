@@ -51,7 +51,7 @@ inputs:
     default: ""
   github-token:
     description: |
-      열린 `l10n/sync` PR을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
+      열린 번역 PR(`l10n/sync-<project>`)을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
       **쓰기에는 쓰지 않는다** — 리포 쓰기는 말모이의 GitHub App이 맡는다.
     required: false
     default: ""
@@ -120,21 +120,26 @@ runs:
     # ⚠️ **조회 실패를 "PR 없음"으로 읽지 않는다.** `2>/dev/null || true`가 그렇게 만들어서
     # 경고가 존재하지 않는 것과 구별되지 않았다. 실패는 실패로 보고한다(단 red는 아니다 —
     # 이 스텝은 경고 전용이고 적재를 막을 근거가 없다).
-    - name: 열린 l10n/sync PR 경고
+    # ⚠️ 브랜치는 **프로젝트별**이다 — `lib/pull/trigger.ts`의 `syncBranchFor`가 `l10n/sync-<slug>`를 낸다
+    # (한 리포에 Project가 둘이면 서로 덮지 않게). 옛 상수 `l10n/sync`를 조회하면 이 경고가 항상 "없음"을
+    # 찍어 손실 창의 유일한 신호가 죽는다 (Codex 감사 2026-09-06 #8). 이름 규칙은
+    # `lib/pull/__tests__/sync-branch-consumers.test.ts`가 대조한다.
+    - name: 열린 번역 PR 경고
       if: steps.guard.outputs.skip != 'true' && inputs.github-token != ''
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ github.repository }}
+        SYNC_BRANCH: l10n/sync-${{ inputs.project }}
       run: |
-        if ! out=$(gh pr list --repo "$REPO" --head l10n/sync --state open --json url --jq '.[0].url // ""' 2>&1); then
+        if ! out=$(gh pr list --repo "$REPO" --head "$SYNC_BRANCH" --state open --json url --jq '.[0].url // ""' 2>&1); then
           echo "::warning title=번역 PR 조회 실패::$out — 열린 PR이 있는지 확인하지 못했다"
           exit 0
         fi
         if [ -n "$out" ]; then
           echo "::warning title=머지되지 않은 번역 PR::$out — 이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창). 머지한 뒤 다시 push하는 것을 권한다"
         else
-          echo "열린 l10n/sync PR 없음 (조회 성공)"
+          echo "열린 $SYNC_BRANCH PR 없음 (조회 성공)"
         fi
 
     # **적재 실패만 red다.** 스캔 실패는 경고이고 `pnpm scan`은 항상 exit 0이다 —

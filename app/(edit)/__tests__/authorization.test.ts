@@ -16,9 +16,22 @@ import { createHarness, sessionFor } from "./harness";
 const hoisted = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
   prisma: undefined as unknown,
+  /** true면 `auth()`가 실제 장애처럼 동작한다 — logger에 SessionTokenError를 남기고 null을 돌려준다. */
+  outage: false,
 }));
 
-vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
+vi.mock("@/auth", async () => {
+  const { noteAuthError } = await import("@/lib/auth/outage");
+  return {
+    auth: async () => {
+      if (hoisted.outage) {
+        noteAuthError({ type: "SessionTokenError" });
+        return null;
+      }
+      return hoisted.session;
+    },
+  };
+});
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
@@ -60,6 +73,32 @@ beforeEach(() => {
   db = twoProjects();
   hoisted.prisma = db.prisma;
   hoisted.session = sessionFor("u-editor");
+  hoisted.outage = false;
+});
+
+/**
+ * **DB 장애는 비로그인이 아니다** (POSTMORTEM 2026-09-06). `auth()`는 어댑터 예외를 삼키고 null을 내므로
+ * 값으로는 같다 — logger 경로로 가른다. 접으면 편집자가 "로그인이 만료됐어요"를 보고 헛로그인한다.
+ */
+describe("세션을 못 읽은 경우 — 거부가 아니라 장애다", () => {
+  beforeEach(() => {
+    hoisted.outage = true;
+  });
+
+  it("저장이 unauthorized가 아니라 unavailable이다", async () => {
+    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    expect(result).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("Publish도 unavailable이다", async () => {
+    const result = await triggerPullAction("alpha");
+    expect(result).toMatchObject({ status: "failed", error: "unavailable" });
+  });
+
+  it("값이 저장되지 않는다", async () => {
+    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    expect(db.translations).toHaveLength(0);
+  });
 });
 
 describe("비로그인 사용자", () => {
@@ -193,6 +232,12 @@ describe("입력 검증", () => {
     hoisted.session = sessionFor("u-editor");
     const result = await saveTranslation({ keyId: "kA", localeCode: "ko", value: "x" });
     expect(result).toEqual({ ok: false, error: "invalid input" });
+  });
+
+  it("triggerPullAction: slug가 문자열이 아니면 invalid input — Prisma에 닿기 전에 거른다", async () => {
+    hoisted.session = sessionFor("u-editor");
+    const result = await triggerPullAction({} as never);
+    expect(result).toMatchObject({ status: "failed", error: "invalid input" });
   });
 
   it("slug가 빈 문자열이어도 거부한다", async () => {
