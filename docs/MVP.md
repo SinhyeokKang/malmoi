@@ -1,6 +1,8 @@
 # MVP 스펙
 
-**이 문서가 말모이(`malmoi`)의 기본 스펙이다.** 무엇을 만들고 무엇을 안 만드는지, 그리고 각 선택의 근거가 여기 있다. 설계 결정이 바뀌면 코드보다 먼저 이 문서를 고친다.
+> **PoC 스펙 — 닫힘 (2026-09-05). 현재 단계의 정본은 [SAAS.md](./SAAS.md)다.** 아래는 PoC가 무엇이었는지의 기록이고, SaaS가 뒤집은 결정(세션·로그인·브랜치 이름·스키마 규모)은 본문에 취소선과 포인터로 표시했다. 코어 원칙과 세 흐름의 계약은 여전히 유효하다.
+
+**이 문서가 말모이(`malmoi`) PoC의 기본 스펙이었다.** 무엇을 만들고 무엇을 안 만드는지, 그리고 각 선택의 근거가 여기 있다.
 
 - 설계 상세·함정·불변식 → [ARCHITECTURE.md](./ARCHITECTURE.md)
 - 작업 규칙·명령어·컨벤션 → [../CLAUDE.md](../CLAUDE.md)
@@ -41,11 +43,11 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 번역자가 편집한 뒤 **그 편집이 리포로 돌아가기 전에** 개발자가 코드를 푸시하면 **그 편집이 사라진다.** 리포엔 아직 옛 값이 있고 push가 그것으로 DB를 덮기 때문이다.
 
-**경계는 pull 실행이 아니라 pull PR의 머지다.** PR이 열려 있어도 리포의 base 브랜치엔 아직 옛 값이 있으므로, 그 상태에서 push가 오면 DB가 덮이고 다음 pull이 `l10n/sync`를 force update하면서 PR에서도 편집이 사라진다. 즉 손실 창은 **마지막으로 머지된 pull 이후의 모든 편집**이다. 야간 cron 1회 기준으로 최악 하루치다.
+**경계는 pull 실행이 아니라 pull PR의 머지다.** PR이 열려 있어도 리포의 base 브랜치엔 아직 옛 값이 있으므로, 그 상태에서 push가 오면 DB가 덮이고 다음 pull이 `l10n/sync`(2026-09-05부터 프로젝트별 `l10n/sync-<slug>` — SAAS §7.1)를 force update하면서 PR에서도 편집이 사라진다. 즉 손실 창은 **마지막으로 머지된 pull 이후의 모든 편집**이다. 야간 cron 1회 기준으로 최악 하루치다.
 
 줄이는 방법은 pull을 자주 돌려 머지하는 것뿐이고, 편집 즉시 pull(웹훅)은 §7 비범위다. **PoC에서 감수하는 대가로 명시한다** — 정책을 느슨하게 하면(변경 감지·병합) 코어 원칙이 요구하는 단순성이 무너진다.
 
-**운영 규칙**: 번역 작업을 한 날은 `/api/pull`을 눌러 PR을 만들고 **머지한 뒤에** 코드를 푸시한다.
+**운영 규칙**: 번역 작업을 한 날은 편집 UI의 Publish 버튼(Server Action — `/api/pull`은 cron 전용이다)으로 PR을 만들고 **머지한 뒤에** 코드를 푸시한다.
 
 #### 실증 (2026-09-03, TASKS §0 B-3)
 
@@ -58,7 +60,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 닫힌 쪽에서도 strict는 여전히 전 행을 덮는다(`translationsFilled: 69`). 다만 그때는 리포 값이 곧 편집 값이라 결과가 같다 — **"덮지 않았다"가 아니라 "덮어도 같다"** 이고, 그게 §2가 병합을 두지 않고도 성립하는 이유다.
 
-> **⚠️ 되돌아간 값에 편집자 이름이 남는다.** push의 `DO UPDATE`가 `updatedBy`를 건드리지 않아, B-3b 직후 편집 UI는 그 셀을 "리포 값 — 편집자 이름"으로 보여준다 (`app/(edit)/keys/page.tsx`의 `CellMeta`). **그 사람의 편집은 이미 사라졌는데 화면은 남아 있다고 말한다.** 편집 UI가 동결이라(§8.3) 지금 고치지 않고 §10에 남긴다.
+> **⚠️ 되돌아간 값에 편집자 이름이 남는다.** push의 `DO UPDATE`가 `updatedBy`를 건드리지 않아, B-3b 직후 편집 UI는 그 셀을 "리포 값 — 편집자 이름"으로 보여준다 (`CellMeta` — 구 `app/(edit)/keys/page.tsx`, 현 `app/(edit)/projects/[slug]/translations/page.tsx`). **그 사람의 편집은 이미 사라졌는데 화면은 남아 있다고 말한다.** 편집 UI가 동결이라(§8.3) 지금 고치지 않고 §10에 남긴다.
 
 **두 층으로 나뉜다.** 키 집합의 진실은 로케일 파일이고, 코드 스캔은 사용처만 보탠다:
 
@@ -108,11 +110,11 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 - 네임스페이스 사이드바 → 키 리스트 → 인라인 편집
 - 키마다: 원문, description, **코드 참조 permalink**(스캔 당시 `commitSha` 고정), `needsReview`·`orphaned` 배지
 - 필터 3개: 미번역 / 검토필요 / orphaned — **동결로 미착수** (§8.3, SaaS 단계에서 새 화면에 만든다)
-- blur 시 저장, `updatedBy`에 GitHub 핸들 기록. **저장은 `needsReview`를 내린다** — 사람이 값을 손댔으면 "원문이 바뀌었으니 봐 달라"는 표시는 소용을 다한 것이다
+- blur 시 저장, `updatedBy`에 GitHub 핸들 기록 (2026-09-05부터 `User.id` — SAAS §5.6). **저장은 `needsReview`를 내린다** — 사람이 값을 손댔으면 "원문이 바뀌었으니 봐 달라"는 표시는 소용을 다한 것이다
 
 컨텍스트는 **코드 참조 자동 수집 + 네임스페이스 그룹핑** 두 개까지다. 스크린샷·번역자 노트는 비범위(§7).
 
-**유일한 사용자 mutation은 "번역값 수정"이다.** Server Action 하나(`saveTranslation`)뿐이고, 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
+**MVP 동안 유일한 사용자 mutation은 "번역값 수정"이었다.** Server Action 하나(`saveTranslation`)뿐이었고(SaaS 2단계가 초대·멤버 mutation 셋을 더했다 — SAAS §5.6), 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
 
 **값 지우기는 행 삭제가 아니라 `value=""`다** (행을 지우면 export가 `sourceText` 폴백·미번역 판정에서 갈린다).
 
@@ -133,7 +135,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 ### 3.3 pull (DB → PR)
 
-고정 브랜치 `l10n/sync` 하나에 커밋을 얹고 열린 PR 하나를 재사용한다. **clone 없이 GitHub Git Data API로만** 구현한다.
+고정 브랜치 `l10n/sync` 하나(2026-09-05부터 프로젝트별 `l10n/sync-<slug>` — SAAS §7.1)에 커밋을 얹고 열린 PR 하나를 재사용한다. **clone 없이 GitHub Git Data API로만** 구현한다.
 
 1. 트리거: 편집 UI의 수동 버튼 + Vercel Cron 야간 1회 (웹훅 즉시 반영은 비범위)
 1.5 **DB 측 스킵 — 여기서 대부분 끝난다** (2026-08-31 결정). 그 프로젝트의 `Translation.updatedAt` 최대값이 `Project.lastPulledAt` 이후로 움직이지 않았으면 **GitHub을 한 번도 부르지 않고 종료**한다. 편집이 없는 날이 대부분이라 이게 기본 경로이고, 어댑터 방식과 무관하게 성립한다 — `ts-dict`는 write가 원본을 요구해 blob SHA 비교만으로는 호출을 아낄 수 없기 때문에(§4.1) 이 층이 없으면 변경 없는 날도 파일 수만큼 호출이 든다.
@@ -251,7 +253,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
 | DB | Supabase Postgres **둘** — prod(`malmoi`) / dev(`malmoi-dev`) | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다. **2026-09-04에 인스턴스를 갈랐다** — 그전에는 하나여서 `migrate dev`가 프로덕션을 직접 바꿨고, 번역 데이터가 쌓이기 전에 끊는 것이 조건이었다. 대가로 **잊으면 깨지는 실패 모드**가 생겼다: dev에만 적용하고 `db:deploy`를 빠뜨리면 배포 순간 프로덕션이 없는 컬럼을 조회한다 (CLAUDE.md `/push` 3단계가 `db:status:prod`를 보는 이유) |
 | DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
-| 로그인 | GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다. 실제 org를 쓰게 되면 org 검사를 OR로 더한다 |
+| 로그인 | ~~GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`)~~ → 2026-09-05 GitHub + Google, 인가는 `ProjectMember` (SAAS §5) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다. 실제 org를 쓰게 되면 org 검사를 OR로 더한다 |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | 키·원문 출처 | **base 로케일의 `messages.json`** (어댑터 구조 — §5.1) | 리포 연동만으로 적재가 되어야 한다. 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 된다 |
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
@@ -260,7 +262,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | UI | shadcn/ui (`new-york`) + Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 **slate** — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이고 값의 진실은 `app/globals.css`다 (DESIGN §2) |
 | 폰트 | Pretendard Variable **동적 서브셋, 자사 호스트** | 단일 파일은 2.0MB. 서브셋은 브라우저가 `unicode-range`로 필요한 구간만 받아 150~450KB. CDN은 렌더 방해 외부 요청이 생긴다 |
 | 내부 쓰기 | **Server Action** | 클라이언트 fetch 배선·중복 스키마·수동 revalidate가 사라진다. 외부 진입점(`/api/push`·`/api/pull`)만 Route Handler |
-| 세션 | **JWT** (DB 어댑터 없음) | 사용자 테이블 4개가 필요 없어 스키마가 5테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 |
+| 세션 | ~~**JWT** (DB 어댑터 없음)~~ → 2026-09-05 DB 세션 (SAAS §5.3) | PoC 근거: 사용자 테이블 4개가 필요 없어 스키마가 5테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 — SaaS가 그 대가를 되돌렸다 |
 | 리스트 렌더링 | 네임스페이스 필터 + 순수 렌더 (가상화 없음) | 필터 후 한 화면이 수십~수백 행. 인라인 편집과 가상 스크롤을 섞으면 스크롤 튐·포커스 유실이 붙는다 |
 
 ### 5.1 양방향 어댑터
@@ -351,7 +353,7 @@ export type Adapter = {
 - 코드가 참조하는데 로케일 파일에 없는 키도 **경고**다 — 개발자가 파일에 추가하는 것을 잊었다는 신호지만, 우리가 남의 CI를 실패시킬 근거는 아니다
 - **래퍼 함수 지원은 선택사항이다.** 대상 리포에 `t(key, ...)` 류가 있으면 `--wrapper <module>#<export>`로 알려줄 수 있다. **이름만으로 매칭하지 않는다** — bugshot-2가 하필 `@/i18n#t`를 쓰고 있어 기본값 추측이 오탐 1391건을 냈다
 
-## 6. 스키마 (5테이블)
+## 6. 스키마 (PoC 시점 5테이블 — SaaS 2단계에서 11로, SAAS §6)
 
 ```
 Project      id PK, slug UNIQUE, name,
@@ -417,13 +419,13 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 5. **Auth + 편집 UI** — 5a·5b·5c 완료. **5d는 SaaS로 미뤘다** (§8.4)
 6. ~~**GitHub App + `/api/pull`**~~ ✅ (2026-09-01 실물 7회차)
 7. ~~**키 순서 보존**~~ ✅ (2026-09-03 — §4.1 개정, 실물 PR 확인)
-8. **Actions 워크플로 + Vercel Cron** ← **위 C단계**
+8. ~~**Actions 워크플로 + Vercel Cron**~~ ✅ (2026-09-03, TASKS §7 — 위 C단계)
 
 2번을 먼저 한 이유: 결정적 export와 blob SHA가 틀리면 나머지가 전부 무의미해지는데, 이 둘만은 순수 함수로 완전히 검증할 수 있다.
 
 ### 8.3 편집 UI는 동작 확인용으로 **동결**한다
 
-`app/(edit)/keys`는 **저장이 돌고 pull이 그 값을 실어 나가는 것까지만** 확인하는 용도다. 필터·손실 창 경고·"다음 push까지" 표시(구 5d)는 만들지 않는다.
+`app/(edit)/keys`(현 `app/(edit)/projects/[slug]/translations`)는 **저장이 돌고 pull이 그 값을 실어 나가는 것까지만** 확인하는 용도다. 필터·손실 창 경고·"다음 push까지" 표시(구 5d)는 만들지 않는다.
 
 근거는 **버려질 작업이기 때문**이다 — SaaS 단계에서 UI를 새로 시작하므로(§8.4) 지금 다듬는 화면은 그때 갈린다. MVP가 답해야 하는 질문은 "번역 값이 코드 → DB → PR로 손실 없이 도는가"이고, 그건 화면의 완성도와 무관하다.
 
@@ -473,4 +475,4 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 - **덮인 셀의 `updatedBy`** — push가 리포 값으로 덮어도 편집자 이름이 남아 편집 UI가 "이 값은 누가 편집함"으로 보여준다 (§3.1 실증). 지우면 "누가 마지막으로 만졌나"를 잃고, 두면 화면이 거짓을 말한다. 편집 UI를 새로 만드는 SaaS 단계(§8.4)에서 정한다
 
 - **base 로케일 판정** — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지는 TASKS §3a 🔒가 그 자리다
-- **테넌트별 인가로 넘어가는 시점** — 스키마 경계는 있지만 인증은 단일 테넌트다. 실제 고객이 둘 이상 되는 시점에 `Member`·`Role` 테이블과 DB 세션(`@auth/prisma-adapter`)이 필요해진다. JWT 세션 결정(§5)이 그때 뒤집힌다
+- ~~**테넌트별 인가로 넘어가는 시점**~~ ✅ 해소 (2026-09-05 — SAAS §5.3·§6: `ProjectMember`·`Role`·DB 세션. JWT 결정이 뒤집혔다)
