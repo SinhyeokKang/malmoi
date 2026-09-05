@@ -582,7 +582,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 | 용도 | 자격증명 | 이유 |
 |---|---|---|
-| 편집 UI 로그인·인가 | GitHub OAuth (Auth.js) + 허용 핸들 목록 | GitHub 계정이 곧 신원. org 멤버십은 개인 계정 리포에서 성립하지 않는다 |
+| 편집 UI **로그인** | GitHub·Google OAuth (Auth.js, DB 세션) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
+| 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (SAAS §9 불변식 7). 허용 핸들 목록은 2026-09-05에 사라졌다 |
 | `l10n/sync` 쓰기 | GitHub App installation token | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다. **fail-closed** — 환경변수가 비었으면 500이고, 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부를 탐색할 단서를 주지 않는다) |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
@@ -642,9 +643,15 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **그 기본 동작이 이 단계의 계정 병합 방어선 전부다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
 
-**인가는 fail-closed다.** `AUTH_ALLOWED_LOGINS`가 비어 있으면 **아무도 들어오지 못한다** — 빈 값을 "제한 없음"으로 해석하면 설정 누락이 곧 전면 공개가 된다. ⚠️ **그 검사를 provider별로 나누지 않는다**: Google 사용자는 핸들이 없어 지금은 거부되는데, 목록을 GitHub에만 걸면 그 순간 Google이 무인가 통로가 된다. 목록은 SaaS 2단계 §5가 `ProjectMember`로 대체하면서 걷어낸다.
+**인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
-핸들 비교는 **대소문자를 무시한다** (GitHub 핸들이 그렇다). 앞뒤 공백을 제거하고 빈 항목은 버린다 — `"a, ,b"` 같은 값이 빈 문자열을 허용 목록에 넣어 **빈 login을 통과시키는 구멍**이 되면 안 된다.
+⚠️ **허용 핸들 목록(`AUTH_ALLOWED_LOGINS`)이 2026-09-05에 사라졌다.** 전환과 제거가 **같은 커밋**이었던 이유: 목록을 남긴 채 멤버십을 붙이면 두 인가가 AND로 걸려 좁은 쪽이 이기고, **초대받은 비개발자가 핸들이 없어 로그인 단계에서 막힌다** — 이 단계가 존재하는 이유가 그 구간 동안 성립하지 않는다.
+
+### 6.3 거부는 값으로 흐른다 — 예외로 죽지 않는다
+
+Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·초대 4분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
+
+⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `changeMember`는 목록으로 판정한 뒤 `deleteMany`/`updateMany`의 **count를 읽고**, `acceptInvitation`은 `updateMany({ acceptedAt: null })`의 count로 단일 사용을 강제한다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, OWNER 둘이 같은 멤버를 동시에 건드리는 것은 실제 경로다.
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
 
