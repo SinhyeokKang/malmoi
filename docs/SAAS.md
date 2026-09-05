@@ -460,8 +460,11 @@ Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고
 **`[manual]` 넷을 preview에서 밟았다** (2026-09-05 — e2e가 없어 자동화할 수 없다): 비로그인 응답
 본문 0바이트 · Google 로그인 · 초대 링크 왕복(발급→비로그인 열람→다른 Google 계정 수락→EDITOR 저장) ·
 세션 회수 뒤 blur 저장. **같은 이메일의 provider 자동 병합 거부**(§5.5)도 함께 확인했다. 기록은
-`features/tenant-auth/tasks.md` §6.1이고, **거기서만 잡힌 결함이 셋이다** — 타입 검사도 1259건도
-원리적으로 못 보는 부류다(죽은 라우트 링크 · 거부 문구 · preview `DATABASE_URL`의 pooler 포트).
+`features/tenant-auth/tasks.md` §6.1이고, **거기서만 잡힌 결함이 넷이다** — 타입 검사도 테스트도
+원리적으로 못 보는 부류다(죽은 라우트 링크 · 로그인 거부 문구 · **초대 거부가 화면에 안 닿음** ·
+preview `DATABASE_URL`의 pooler 포트). 넷 다 **"값은 맞는데 사용자에게 도달하지 않는다"** 는 한 부류이고,
+이 단계가 남긴 상시 방어선도 그 모양이다 — `entry-points.test.ts`의 "죽은 라우트 링크"와
+"쿼리 파라미터의 수신자".
 
 ⚠️ **프로덕션에는 아직 아무것도 안 갔다.** `/merge` 순서가 이렇다: ① `pnpm db:deploy` →
 ② `pnpm db:status:prod` 확인 → ③ `pnpm tsx scripts/backfill-owners.ts --target prod`(dry-run 뒤 `--apply`)

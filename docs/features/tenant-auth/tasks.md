@@ -291,14 +291,20 @@ client id가 아니라 7자리 App ID라 GitHub이 404를 준다(미해결, 로�
 | ④ | 세션 회수 | `Session` 행 삭제 후 blur 저장 → 한국어 거부 문구 + 입력값 유지 + **DB 미기록** |
 | ⑤ | 같은 이메일 자동 병합 거부 (§5.7) | GitHub(`ox501501@gmail.com`)로 OWNER가 된 뒤 **같은 주소의 Google**로 로그인 → `?error=OAuthAccountNotLinked`, `User`·`Account`에 고아 행 0건 |
 
-**실물 검증이 잡은 것 셋 — 타입 검사도 1259건도 원리적으로 못 보는 부류다.**
+**실물 검증이 잡은 것 넷 — 타입 검사도 1259건도 원리적으로 못 보는 부류다.** 셋은 §5 마감 직후,
+하나는 2026-09-06 `/bugshot-qa` 전수 회귀에서 나왔다.
 
 1. 🔴 **사이드바가 삭제된 `/keys`를 가리켰다** (`89e76d0`). `qs()`가 경로를 하드코딩한 채 남아 네임스페이스·
    기준 로케일 링크가 전부 404였다. 문자열이고 페이지를 렌더하는 테스트가 없다 → `app/__tests__/entry-points.test.ts`의
    **"죽은 라우트 링크"** 가 상시 방어선으로 섰다.
 2. 🟡 **거부가 일시적 장애처럼 읽혔다** (`8d0224f`). `OAuthAccountNotLinked`에 "잠시 뒤 다시 시도"를 보이면
    사용자가 같은 버튼을 반복해 누른다 → `signInErrorMessage(code)`가 사유별 문구를 낸다.
-3. 🔴 **preview 런타임이 session 모드(5432) pooler를 쓰고 있었다** — `EMAXCONNSESSION max clients reached
+3. 🔴 **초대 수락 거부가 화면에 아무 문구도 남기지 않았다** (issue #2 → `37541c2`). Action이 사유를
+   `?e=`로 넘기는데 **페이지가 `searchParams`를 받지도 읽지도 않았다.** 무음인 것은 **버튼을 눌러서
+   나는 셋**(`email-mismatch`·`already-member`·`unauthorized`)뿐이고, 행을 읽자마자 갈리는 셋은 화면이
+   있어서 **초대 화면이 실패를 잘 보여주는 것처럼 보였다** → `inviteErrorMessage` 6분기 + 진입점 소스
+   스캔 **"쿼리 파라미터의 수신자"** (POSTMORTEM 2026-09-06).
+4. 🔴 **preview 런타임이 session 모드(5432) pooler를 쓰고 있었다** — `EMAXCONNSESSION max clients reached
    in session mode - pool_size: 15`. Preview 스코프의 `DATABASE_URL`을 transaction(6543, `?pgbouncer=true`)로
    교체하고 재배포해 해소. 경고는 `.env.example`·ARCHITECTURE §7에 있었지만 **배선에서 지켜지지 않았고,
    부하가 낮아 오래 안 드러났다** (POSTMORTEM 2026-09-05).
