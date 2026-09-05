@@ -9,8 +9,10 @@
 
 > **근거 문서**: 2026-09-04에 Codex가 낸 종합 검토가 [features/saas-review.md](./features/saas-review.md)에
 > 있다. 보안 모델과 운영 경계는 상당 부분 거기서 왔다. **스펙이 아니라 근거다** — 그 문서가 요구한
-> 사전 단계·0단계는 작성 시점 이후에 이미 닫혔고, 그 문서가 놓친 결함 하나(`SYNC_BRANCH`)를 §8이
-> 0단계로 들고 있다.
+> 사전 단계·0단계는 작성 시점 이후에 이미 닫혔고, 그 문서가 놓친 결함 하나(`SYNC_BRANCH`)는 §8
+> 0단계가 닫았다. 2단계 배포 뒤의 정적 감사는
+> [features/tenant-auth/audit-2026-09-06-codex.md](./features/tenant-auth/audit-2026-09-06-codex.md)에 있다 —
+> §5.3·§5.6의 세션 토큰 허용 목록·이메일 갱신·OWNER 잠금·초대 만료 소비가 거기서 왔다.
 
 ## 1. 완료 조건
 
@@ -131,8 +133,13 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 
 > **모든 서버 요청에서 사용자·프로젝트·GitHub 설치의 관계를 다시 확인하고, 일치하지 않으면 거부한다.**
 
-`middleware.ts`는 **로그인하지 않은 사용자의 페이지 렌더를 막는 1차 방어**이고, 프로젝트 인가를
-대신하지 않는다. Page·Server Action·Route Handler가 **각각 자기 경계에서** 확인한다.
+`middleware.ts`는 **로그인하지 않은 사용자의 페이지 렌더(GET·HEAD)를 막는 1차 방어**이고, 프로젝트 인가를
+대신하지 않는다. Server Action POST는 통과시킨다 — Action이 스스로 인증한다(307이면 클라이언트가 페이지
+오류를 낸다). Page·Server Action·Route Handler가 **각각 자기 경계에서** 확인한다.
+
+⚠️ **장애는 거부가 아니다** (POSTMORTEM 2026-09-06). `auth()`는 DB 예외를 삼키고 `null`을 돌려주므로 모든
+진입점은 `readSession`을 쓴다 — `unavailable`이면 "일시적인 오류"를 보이고 **로그인을 시키지 않는다**.
+DB 장애를 비로그인과 같은 화면으로 보내면 전면 장애가 "정상"으로 관측된다 (ARCHITECTURE §6.1.2).
 
 이건 새 규칙이 아니라 이미 밟은 지뢰의 확장이다 — MVP에서 "레이아웃 조건부 렌더는 차단이 아니다"를
 1.3MB RSC 페이로드 노출로 배웠다(POSTMORTEM 2026-08-31). SaaS에서 같은 실수의 형태는
@@ -161,7 +168,12 @@ getProjectAccess(prisma, { userId, slug, permission })            // Server Acti
 - 세션에는 **안정적인 `userId`만** 담는다.
 - 프로젝트 목록과 role은 **매 요청 DB에서 조회**한다.
 - 토큰에 `projectIds`나 role 전체를 넣지 않는다 — 넣는 순간 JWT의 지연 문제가 그대로 돌아온다.
-- `@auth/prisma-adapter`로 전환한다.
+- `@auth/prisma-adapter`로 전환했다 (2026-09-05).
+- **`maxAge` 24h는 "마지막 활동 뒤 24h"다** — `updateAge` 1h (2026-09-06). 명시하지 않으면 기본값이
+  `maxAge`와 같아 세션이 한 번도 연장되지 않고 로그인 정각 24h 뒤 편집 중 끊긴다.
+- **`session` 콜백은 입력을 돌려주지 않는다** — DB 세션에서 그 입력은 `sessionToken`을 든 **행**이고
+  반환값이 `/api/auth/session` 본문이다. `publicSession`이 허용 목록으로 새 객체를 만든다 (2026-09-06까지
+  토큰이 JSON에 실려 있었다 — Codex 감사 #1).
 
 대가는 요청마다의 DB 왕복이고, 그것이 MVP에서 JWT를 고른 이유였다. **그 대가를 지금 지불한다.**
 
@@ -208,8 +220,16 @@ provider마다 다르다.
 
 - 초대 토큰 **원문을 DB에 저장하지 않는다**(해시만). 안전한 난수 · 단일 사용 · 만료형.
 - 수락 성공과 동시에 무효화한다.
-- 초대 대상 이메일과 **provider가 검증한 이메일이 일치**해야 수락된다.
+- 초대 대상 이메일과 **provider가 검증한 이메일이 일치**해야 수락된다. 대조 기준인 `User.email`은
+  **재로그인마다 provider의 현재 검증 주소로 갱신한다** (2026-09-06) — OAuth 재로그인은 Auth.js가
+  `updateUser`를 부르지 않아 첫 로그인 값으로 굳고, primary를 바꾼 사람이 새 주소로 온 초대를 영영 못
+  받았다. 새 주소를 **다른 User가 쓰면 갱신도 병합도 하지 않고 로그인은 허용한다**(§5.5 우회 금지).
+- 단일 사용은 `updateMany({ acceptedAt: null, expiresAt > now })`의 count로 강제한다 — 만료가 소비
+  조건에 들어 있어 판정~소비 사이에 재초대로 회전된 옛 행이 옛 role로 멤버를 만들지 않는다.
 - Project에는 **항상 OWNER가 한 명 이상** 있어야 한다 — 마지막 OWNER는 탈퇴·자기 제거 불가.
+  **강제 수단은 `changeMember`의 대화형 트랜잭션이다**: `Project` 행 `FOR UPDATE` 잠금 → 판정 → 쓰기 →
+  OWNER 재집계 → 0이면 롤백. FK Restrict는 멤버 행 **변경**을 막지 않는다 — OWNER 둘이 동시에 각자를
+  강등하면 count 검사만으로는 0명이 된다 (Codex 감사 #2).
 - membership은 이메일이 아니라 **`User.id`를 참조**한다 (이메일 주소는 재할당될 수 있다).
   같은 이유로 `Translation.updatedBy`도 2026-09-05부터 **`User.id`**다 (전에는 GitHub 핸들이었다).
 
@@ -250,13 +270,14 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 | `ProjectInvitation` | 2단계 ✅ | 수락 전 상태. `tokenHash` unique |
 | `SyncRun` | 7단계 | 실행 이력·idempotency·동시 실행 차단 |
 
-**✅ 여섯 테이블이 dev에 섰다** (2026-09-05, `20260904182548_add_tenant_auth_tables`). **prod는 아직이다** —
-`/merge` 1단계의 `pnpm db:deploy`가 반영한다. `Authenticator`(WebAuthn)는 만들지 않는다 — 그 provider를
+**✅ 여섯 테이블이 dev·prod에 섰다** (dev 2026-09-05 `db:migrate`, prod 2026-09-06 `db:deploy` —
+`20260904182548_add_tenant_auth_tables`). `Authenticator`(WebAuthn)는 만들지 않는다 — 그 provider를
 쓰지 않으므로 어댑터의 네 메서드가 호출될 경로가 없고, 위 11테이블 셈도 그것을 빼고 있다.
 
 ⚠️ **`onDelete`가 둘로 갈렸다.** `Account`·`Session` → `User`는 **Cascade**여야 한다 — 어댑터의
 `deleteUser`가 `p.user.delete` 하나만 부르므로 `Restrict`면 그 메서드가 항상 실패한다. `ProjectMember`·
-`ProjectInvitation`은 **Restrict**다: 마지막 OWNER가 조용히 사라진 프로젝트는 되살릴 수 없다.
+`ProjectInvitation`은 **Restrict**다: User 삭제가 멤버 행을 딸려 지우면 마지막 OWNER가 조용히 사라진
+프로젝트가 된다. (멤버 행의 제거·강등 자체는 FK가 막지 않는다 — §5.6의 트랜잭션이 막는다.)
 
 ⚠️ **타입 검사가 어댑터 계약을 검증하지 못한다** (2026-09-05 실측). 어댑터가 인자를 `@prisma/client`의
 `PrismaClient`로 받는데 그 패키지는 `.prisma/client/default`를 re-export하고, Prisma 7의 `prisma-client`
@@ -280,10 +301,11 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 한 리포에 번역 표면이 둘이면 **Project를 둘로** 만든다. 하나의 Project가 여러 어댑터·여러 브랜치를
 관리하면 단일 소유자·결정성·고정 PR 모델이 빠르게 무너진다.
 
-⚠️ **그래서 `SYNC_BRANCH`를 프로젝트별로 갈라야 한다** — §8 0단계. 지금은 `lib/pull/trigger.ts`의
-상수 `"l10n/sync"` 하나라, 같은 리포를 가리키는 두 Project가 **force update로 서로를 덮는다.**
-TASKS §7에 실측 기록이 있다(순차로 돌려 피했다). bugshot-2가 정확히 그 모양이라
-(`_locales` 4키 + `ts-dict` 903키) 첫 실사용에서 터진다.
+⚠️ **그래서 sync 브랜치가 프로젝트별이다** — `syncBranchFor(slug)` → `l10n/sync-<slug>` (§8 0단계,
+2026-09-05). 그 전엔 `lib/pull/trigger.ts`의 상수 `"l10n/sync"` 하나라 같은 리포를 가리키는 두 Project가
+**force update로 서로를 덮었다.** TASKS §7에 실측 기록이 있다(순차로 돌려 피했다). bugshot-2가 정확히 그
+모양이다(`_locales` 4키 + `ts-dict` 903키). 소비자(composite action·스모크·ACTIONS.md)는 2026-09-06에
+따라왔다 — 하루 동안 action의 PR 경고가 옛 이름을 조회해 항상 "없음"이었다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
@@ -394,8 +416,8 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       브랜치 이름을 정하고 싶어하는 요구는 아직 없다. 필요해지면 그때 컬럼으로 승격한다
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **이 함수가 유일한 방어선이다** — git이
     거부할 이름을 화이트리스트로 막고 던진다. 안 막으면 `createRef` 422가 "GitHub이 거절함"으로만 보인다
-  - 검증: 18케이스(`lib/pull/__tests__/trigger.test.ts`) — 다른 slug는 다른 브랜치, 같은 slug는 같은
-    브랜치, git이 거부할 15가지 slug를 던진다. 폐기용 리포 셋에 열린 `l10n/sync` PR이 없어(전부 머지됨)
+  - 검증: `lib/pull/__tests__/trigger.test.ts` — 다른 slug는 다른 브랜치, 같은 slug는 같은
+    브랜치, git이 거부할 15가지 slug를 던진다. 소비자 셋은 `sync-branch-consumers.test.ts`(2026-09-06). 폐기용 리포 셋에 열린 `l10n/sync` PR이 없어(전부 머지됨)
     이름이 바뀌어도 고아 PR이 생기지 않는다
 - [x] **dev DB 적재** ✅ (2026-09-05) — `order-check` 프로젝트(`SinhyeokKang/i18n-order-check`) 23키 ·
       로케일 en/ja/ko · 번역 69건. **prod에서 복제하지 않았다** — `DATABASE_URL_PROD`를 두지 않는
@@ -444,6 +466,9 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       `lib/auth/`에 9개(`normalizeEmail`·`canPerform`·`hashInviteToken`·`planInvitationAccept`·
       `planProjectAccess`·`planMemberChange`·`planOwnerBackfill`·`hasSessionCookie`·
       `accessErrorMessage`), 검증 67케이스. **호출부는 아직 없다** — 껍데기가 위 두 항목이다
+      *(2026-09-05 시점 스냅샷 — `planOwnerBackfill`은 06에 삭제됐고, 호출부는 §5 전환에서 생겼다.
+      06 감사 뒤 `planEmailRefresh`·`shouldRedirectToLogin`·`publicSession`·`outage`가 더해져 지금은 그
+      수가 다르다)*
   - ⚠️ **"계정 연결"이 빠졌다.** `planAccountLink`는 4단계(`github-connect`)로 옮겼다 — Auth.js
     어댑터가 기본으로 교차 provider 자동 연결을 거부하므로(`allowDangerousEmailAccountLinking`
     미설정) 이 단계의 방어선은 **그 옵션을 켜지 않는 것**이고, 명시적 연결 흐름은 4단계다.
@@ -456,7 +481,7 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       ⚠️ **일회성 코드라 `scripts/backfill-owners.ts`·`lib/auth/backfill.ts`를 함께 삭제했다** —
       남겨두면 "이걸 또 돌려야 하나"를 다음 사람이 매번 판단해야 한다. 되살릴 일이 생기면 git 히스토리에 있다
 
-완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts` 65케이스
+완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts`·`edit-flow.test.ts`
 + preview 실측) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이 실행되는 Server Action·
 Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고정) / Google 사용자가 GitHub 계정
 없이 초대 수락과 편집이 가능 ✅ **실물로 밟았다**.
@@ -518,6 +543,8 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 - [ ] **워크플로 없이 첫 적재** (§7.4)
 - [ ] 연동 PR 생성 또는 복사 가능한 워크플로 — Workflows 권한 판정 (§5.4)
 - [ ] `ready` 판정과 실패 진단 (실패 단계 · 사람이 읽는 원인 · Actions 링크 · 다시 검사)
+- [ ] **`Project.pushTokenHash` 발급·대조 + `/api/pull` 전 프로젝트 순회** (§7.8·§4.3 ②) — `ACTIVE_PROJECT_SLUG`
+      제거. 대상 리포는 Actions secret 값만 바꾼다. `push:local`·`smoke:github`의 인자 생략 폴백도 같이 사라진다
 
 완료 게이트: 새 사용자가 **문서나 터미널 없이** 첫 적재를 완료한다 / 작은 후보가 큰 표면을 조용히
 가리지 않는다 / 확정하지 않은 추정값으로 `ready`가 되지 않는다.
@@ -530,7 +557,9 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 - [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
-- [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리, 덮인 셀의 `updatedBy`
+- [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
+      배지 + 편집 비활성으로 닫았다 — 여기서 확정), 덮인 셀의 `updatedBy`(+ 셀 메타가 `User.id` cuid를
+      원문으로 찍는 것 — 이름으로 바꾸려면 `User` join)
 - [ ] **편집 손실 창 배너** (MVP §3.1·§8.3이 SaaS로 이관한 항목)
 - [ ] 미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)
 
