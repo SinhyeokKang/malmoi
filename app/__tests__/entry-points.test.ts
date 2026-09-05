@@ -171,3 +171,55 @@ describe("죽은 라우트 링크", () => {
   });
 });
 
+
+/**
+ * **쿼리로 넘긴 실패 사유를 읽는 쪽이 있다.**
+ *
+ * 2026-09-06 preview 실측에서 잡힌 부류다(issue #2): `app/invite/[token]/page.tsx`의 Server Action이
+ * 실패를 `redirect(\`/invite/${token}?e=${error}\`)`로 넘기는데 **그 페이지가 `searchParams`를 받지도
+ * 읽지도 않았다.** 주소창만 바뀌고 화면은 그대로라, 사용자에게는 버튼이 안 눌린 것으로 보인다.
+ *
+ * ⚠️ **타입도 테스트도 원리적으로 못 본다** — 보내는 쪽과 받는 쪽 사이에 계약이 없다. 문자열이
+ * 한쪽에서 만들어지고 다른 쪽에서 **안 읽히는 것이 정상적인 코드**이기 때문이다. 그래서 "죽은
+ * 라우트 링크"와 같은 층의 소스 대조로 센다.
+ */
+describe("쿼리 파라미터의 수신자", () => {
+  /** `/invite/${token}` · `/projects/[slug]` → `/invite/*` · `/projects/*`. 두 표기를 같은 모양으로 만든다. */
+  function shape(path: string): string {
+    return path.replace(/\$\{[^}]*\}/g, "*").replace(/\[[^\]]*\]/g, "*");
+  }
+
+  const PAGES = ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) => ({
+    shape: shape("/" + e.path.replace(/\/?page\.tsx$/, "")),
+    source: e.source,
+    path: e.path,
+  }));
+
+  /** 진입점 소스가 만드는 "경로 + 쿼리" 리터럴. 주석 줄은 뺀다. */
+  const EMITTED = ENTRY_POINTS.flatMap((e) => {
+    const code = e.source
+      .split("\n")
+      .filter((l) => !/^\s*(\*|\/\/)/.test(l))
+      .join("\n");
+    return [...code.matchAll(/["'`](\/[a-z][A-Za-z0-9/[\]$_{}.-]*)\?([A-Za-z_][A-Za-z0-9_]*)=/g)].map(
+      (m) => ({ from: e.path, target: shape(m[1] ?? ""), key: m[2] ?? "" }),
+    );
+  });
+
+  it("쿼리를 실어 보내는 자리를 하나 이상 찾았다 — 스캐너가 조용히 0건이 되지 않는다", () => {
+    expect(EMITTED.length).toBeGreaterThan(0);
+  });
+
+  it("보낸 쿼리를 대상 페이지가 읽는다", () => {
+    const unread: string[] = [];
+    for (const emit of EMITTED) {
+      const page = PAGES.find((p) => p.shape === emit.target);
+      // 대상이 이 앱의 페이지가 아니면(외부 URL·API) 이 검사의 대상이 아니다.
+      if (page === undefined) continue;
+      if (!page.source.includes("searchParams")) {
+        unread.push(`${emit.from} → ${emit.target}?${emit.key}= (${page.path}가 searchParams를 안 읽는다)`);
+      }
+    }
+    expect(unread).toEqual([]);
+  });
+});

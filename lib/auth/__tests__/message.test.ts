@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { accessErrorMessage, signInErrorMessage, type AccessError } from "../message";
+import {
+  accessErrorMessage,
+  inviteErrorMessage,
+  signInErrorMessage,
+  type AccessError,
+  type InviteError,
+} from "../message";
 
 /**
  * 인가 거부 → 사용자 문구 (design §4.1). `pullMessage`(`lib/pull/message.ts`)와 같은 형태다 —
@@ -77,3 +83,60 @@ describe("signInErrorMessage — 거부와 장애를 가른다", () => {
   });
 });
 
+
+/**
+ * 초대 수락 실패 → 사용자 문구 (issue #2, 2026-09-06 preview 실측).
+ *
+ * ⚠️ **이 함수가 없어서 거부가 통째로 무음이었다.** `acceptInvitation`이 사유를 돌려주고 페이지가
+ * `?e=`로 그것을 받는데, **읽는 쪽이 없어** 사용자에게는 버튼이 안 눌린 것으로 보였다. 서버 렌더
+ * 단계에서 갈리는 셋(not-found·already-accepted·expired)만 문구가 있었고, **버튼을 눌러서 나는
+ * 실패 셋**(email-mismatch·already-member·unauthorized)은 어디에도 문구가 없었다.
+ *
+ * 그래서 여기서 세는 것은 "여섯이 다르다"가 아니라 **여섯이 전부 존재한다**는 쪽이다.
+ */
+const INVITE_ERRORS: readonly InviteError[] = [
+  "unauthorized",
+  "not-found",
+  "expired",
+  "already-accepted",
+  "email-mismatch",
+  "already-member",
+];
+
+describe("inviteErrorMessage — 여섯 사유가 각자 다른 문구다", () => {
+  it("여섯이 서로 다른 문장을 낸다", () => {
+    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(6);
+  });
+
+  it("빈 문구를 내지 않는다", () => {
+    for (const error of INVITE_ERRORS) {
+      expect(inviteErrorMessage(error).trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("영어 토큰을 그대로 흘리지 않는다 — 초대 링크를 여는 사람은 외부인이다", () => {
+    for (const error of INVITE_ERRORS) {
+      expect(inviteErrorMessage(error)).not.toContain(error);
+    }
+  });
+
+  it("email-mismatch는 **어느 계정으로 로그인해야 하는지**를 말한다", () => {
+    // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 알려주면 갇힌다.
+    expect(inviteErrorMessage("email-mismatch")).toContain("로그인");
+  });
+
+  it("already-member는 실패처럼 읽히지 않는다 — 이미 원하는 상태다", () => {
+    expect(inviteErrorMessage("already-member")).toContain("멤버");
+  });
+
+  it("아무 사유에도 '잠시 뒤'를 붙이지 않는다 — 여섯 다 재시도로 바뀌지 않는다", () => {
+    for (const error of INVITE_ERRORS) {
+      expect(inviteErrorMessage(error)).not.toContain("잠시");
+    }
+  });
+
+  it("모르는 코드는 일반 문구로 접는다 — URL은 사용자가 손댈 수 있다", () => {
+    // `?e=`는 주소창에 있으므로 우리가 안 만든 값이 들어온다. 던지면 초대 화면이 통째로 죽는다.
+    expect(inviteErrorMessage("무엇이든" as InviteError).trim().length).toBeGreaterThan(0);
+  });
+});
