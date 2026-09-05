@@ -73,7 +73,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) | — |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
-| 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
+| 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. ⚠️ **Google은 아직 거부된다** (허용 목록이 GitHub 핸들을 요구한다 — SaaS 2단계 §5가 걷어낸다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
@@ -119,6 +119,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 경로 | 형태 | 호출자 |
 |---|---|---|
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
+| 초대 발급·멤버 변경 | **Server Action** (`app/(edit)/projects/actions.ts`) | 편집 UI (OWNER) |
+| 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | `/api/push` | Route Handler | GitHub Actions (Bearer `PUSH_TOKEN`) |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) — 편집 UI 버튼은 Server Action이 `triggerPull`을 직접 부른다 |
 
@@ -130,7 +132,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 **JWT를 고른 원래 이유는 "사용자 테이블 4개가 사라진다"였고, 그 대가가 "허용 목록에서 뺀 사람이 최대 하루 편집할 수 있다"였다** (MVP §5). SaaS는 그 절제를 되돌린다 — 멤버 제거와 역할 변경이 즉시 반영돼야 하기 때문이다. 지불하는 대가는 **요청마다의 DB 왕복**이다.
 
-⚠️ **아직 인가가 바뀐 것은 아니다.** 편집 경로는 여전히 `AUTH_ALLOWED_LOGINS`와 `ACTIVE_PROJECT_SLUG`를 본다 — `requireProjectAccess`는 만들어졌지만 호출부가 SaaS 2단계 §5에 있다. `maxAge`가 24시간인 것도 JWT 때 값 그대로다(그 근거였던 회수 지연 상한은 사라졌다).
+**인가도 함께 바뀌었다** (2026-09-05, §5) — 편집 경로의 모든 진입점이 `getProjectAccess`를 지나고 프로젝트는 URL의 slug가 정한다. **로그인은 이제 누구에게나 열려 있고, 그것이 아무것도 열지 않는다** — 멤버십이 없으면 어떤 slug를 쳐도 `not-found`다.
+
+⚠️ `maxAge`가 24시간인 것은 JWT 때 값 그대로다 — **그 근거(회수 지연 상한)는 사라졌지만** 세션 길이 자체를 바꾸는 것은 별개 결정이라 남겨 뒀다.
 
 ⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. 쿠키 이름만 보는 것으로 갈랐고, 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
 
@@ -228,14 +232,25 @@ dev push와 PR이 같은 SHA에 두 번 도는 것은 **의도된 중복**이다
 
 ```
 app/
-  page.tsx              루트 — 로그인 화면. 세션이 있으면 /keys로 redirect
+  page.tsx              루트 — 로그인 화면(GitHub·Google). 세션이 있으면 /projects로 redirect.
+                        Auth.js의 `pages.error`가 여기라 거부 사유를 `?error=`로 보인다
   layout.tsx            루트 레이아웃 (Pretendard <link>)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  (edit)/               편집 UI (인증 필요 — 차단은 middleware.ts)
-    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다)
-    keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
-    actions.ts          Server Action — saveTranslation(유일한 사용자 mutation) / triggerPullAction
-    __tests__/          편집 흐름 B단계 검증 — 저장→DB→pull 출력 (메모리 DB 하나를 공유한다)
+  __tests__/            ⚠️ **진입점 소스 스캔** — app/ 아래 모든 page·route·actions가 인가를
+                        지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
+                        본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선
+  (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사)
+    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
+                        ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
+    actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지난다
+    projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지
+    projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/[slug]/translations/page.tsx
+                        키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
+    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
+  invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
+    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 4분기를 각자 한 줄로
+    actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
   api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
@@ -293,6 +308,7 @@ lib/
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
                         / message.ts(결과→문구)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
+                        ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-05에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
     session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only)
@@ -310,7 +326,6 @@ lib/
     cookie.ts           hasSessionCookie — 미들웨어 1차 차단용. __Secure- 접두 유무 둘 다 본다
     message.ts          accessErrorMessage — 거부 사유 → 한국어 (pullMessage와 같은 never 검사)
     backfill.ts         planOwnerBackfill — ⚠️ **일회성**. 인가 전환이 끝나면 지운다
-    allow.ts            허용 핸들 목록 판정 (fail-closed). ⚠️ SAAS 2단계 §5에서 제거된다
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
 types/next-auth.d.ts    session.user.login 타입 확장
@@ -458,7 +473,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
-- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`·`AUTH_ALLOWED_LOGINS`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
+- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
