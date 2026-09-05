@@ -28,7 +28,7 @@
 | [key-order-preservation](./key-order-preservation/) | ✅ 완료 (2026-09-03) | ADAPTER-COVERAGE §10·§11 · MVP §4.1 · ARCHITECTURE §1.1 | 없음 · `tasks.md` 삭제 |
 | [format-preservation](./format-preservation/) | ✅ 완료 (2026-09-04) | ADAPTER-COVERAGE §14·§15·§16 · MVP §4.1 · ARCHITECTURE §1.1 | 완료 조건 ③ **판정 불가**(계측 없음) · `tasks.md` 삭제 |
 | [key-separator-contract](./key-separator-contract/) | ⏸️ **보류 — SaaS화 이후** | — | 문서 전체. 검수 미반영 항목부터 본다 |
-| [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-05) | **SAAS.md §8 2단계** · ARCHITECTURE §6·§6.1·§6.2·§6.3 · CLAUDE.md(차단 두 층·세션) | prod 반영이 `/merge`에 남았다(`db:deploy` + OWNER backfill) · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) |
+| [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-06, 프로덕션 반영까지) | **SAAS.md §8 2단계** · ARCHITECTURE §6·§6.1·§6.2·§6.3 · CLAUDE.md(차단 두 층·세션) | 없음 · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸

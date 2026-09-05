@@ -339,19 +339,15 @@ client id가 아니라 7자리 App ID라 GitHub이 404를 준다(미해결, 로�
 
 `──` 커밋: `docs: authorization moves from an allowlist to project membership`
 
-## 8. 뒷정리 (prod 적용 뒤) ⛔ **아직 할 수 없다**
+## 8. 뒷정리 ✅ (2026-09-06 — prod 적용 뒤)
 
-- [ ] `scripts/backfill-owners.ts`·`lib/auth/backfill.ts`(+테스트) 삭제 — 일회성이다. prod `ProjectMember`
-      행을 눈으로 확인한 뒤
+- [x] `scripts/backfill-owners.ts`·`lib/auth/backfill.ts`(+테스트 30케이스) 삭제 — 일회성이다.
+      **prod `ProjectMember` 6행을 `https://mal-moi.com/projects` 화면에서 눈으로 확인한 뒤** 지웠다
+      (`bugshot-2`·`bugshot-i18n-test`·`format-check-yaml`·`skillflo`·`format-check-code`·`order-check`).
+      `package.json`의 `backfill:owners`와 CLAUDE.md의 명령어 표·디렉터리 구조 항목도 함께 뺐다
 
-⚠️ **이 단계의 전제가 아직 성립하지 않는다.** prod에는 마이그레이션도 backfill도 들어가지 않았고(§3의
-prod 시퀀스가 `/merge` 1단계에 묶여 있다), 지금 스크립트를 지우면 **그 시퀀스의 ③이 사라진다** — 즉
-프로덕션의 기존 `Project`에 OWNER를 채울 수단이 없어지고, 배포 순간 아무도 어느 프로젝트에도 못 들어간다.
-**순서는 `pnpm db:deploy` → `db:status:prod` → backfill dry-run → `--apply` → `/merge` → 그다음 이 삭제**다.
-
-⚠️ **`/merge` 전에 프로덕션 `DATABASE_URL`을 확인한다.** Preview가 session 모드(5432)를 가리키고 있었으므로
-(§6.1 3) 같은 시기 같은 방식으로 넣은 Production 값도 의심 대상이다. 인가가 요청마다 DB를 치게 된 지금은
-부하가 preview보다 높고, 값이 Sensitive라 읽을 수 없으므로 **Supabase에서 prod의 transaction(6543,
-`?pgbouncer=true`) 문자열을 복사해 덮는 것이 유일한 확인법**이다.
+⚠️ **왜 남기지 않았나**: 남겨두면 다음 사람이 "이걸 또 돌려야 하나"를 매번 판단해야 하고, 그 판단에
+필요한 맥락(누가 소유자인가·이미 돌았나)은 코드에 없다. 되살릴 일이 생기면 git 히스토리에 있고,
+그때는 **어차피 그 시점의 소유자 정보로 다시 써야 한다.**
 
 `──` 커밋: `chore: drop the one-off owner backfill`
