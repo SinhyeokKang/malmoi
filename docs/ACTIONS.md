@@ -48,7 +48,7 @@ jobs:
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
-          github-token: ${{ secrets.GITHUB_TOKEN }}   # 열린 l10n/sync PR 경고용 (읽기만)
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # 열린 번역 PR 경고용 (읽기만)
 ```
 
 ### 리포마다 달라지는 것
@@ -90,11 +90,11 @@ jobs:
 | `/api/push`가 4xx·5xx | **red** — 오배송(409)·역행(409)·스키마 위반(400)이 여기 걸린다 |
 | 동적 키만 있어 `refs`가 0건 | green + 경고 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 경고 |
-| 열린 `l10n/sync` PR이 있다 | green + **경고** (아래) |
+| 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **경고** (아래) |
 
 ### 열린 PR 경고는 차단이 아니다
 
-번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (MVP §3.1의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 `l10n/sync` PR이 있으면 run 요약에 경고가 붙는다.
+번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (MVP §3.1의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `l10n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
 
 **막지 않는 이유**: 막으면 "어느 쪽이 이기는지"를 CI가 판정하게 되고, 그건 병합 로직이라 코어 원칙을 깬다. 개발자가 볼 재료만 남기고 판단은 사람이 한다.
 
