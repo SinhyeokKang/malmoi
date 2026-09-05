@@ -22,7 +22,7 @@ const CHECK = process.argv.includes("--check");
 //   sync  : dev를 force update한다 — 두 창구가 겹치면 한쪽 작업이 사라진다
 // (`ship`은 미러한다 — push 이전 단계가 전부 로컬이고, Codex는 10단계 커밋에서 멈춘다는
 //  규칙이 스킬 본문과 PREAMBLE에 박혀 있다.)
-const EXCLUDE = new Set(["push", "merge", "sync"]);
+const EXCLUDE = new Set(["push", "merge", "sync", "bugshot-qa"]);
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 

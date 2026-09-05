@@ -413,9 +413,9 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **15개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync` 셋은 미러 제외** — 원격 상태를 바꾸는 창구는 Claude Code 하나로 둔다).
+스킬 **16개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
@@ -428,6 +428,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
+- **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** (2026-09-06 추가). ego-browser 태스크 스페이스에서 로컬 dev를 훑고, 결함을 BugShot 확장으로 `SinhyeokKang/malmoi` 이슈로 낸다. **`pnpm test`가 값은 보지만 화면은 못 보는 축**이 대상이다 — 라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다. **리포트+이슈 전용이라 코드를 고치지 않고**, preview가 아니라 **로컬**을 쓴다(preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다).
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
 ## 문서 신선도
