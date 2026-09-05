@@ -56,7 +56,7 @@
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
 | 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
-| 로그인 | Auth.js v5 GitHub provider, **JWT 세션** — DB 세션 전환은 SaaS 2단계 §4다. 어댑터는 **설치만 됐고 아직 배선 전** | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
+| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. ⚠️ **Google은 아직 거부된다** (허용 목록이 GitHub 핸들을 요구한다 — SaaS 2단계 §5가 걷어낸다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
@@ -105,11 +105,15 @@
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다.** 클라이언트 fetch 배선과 중복 스키마가 생기고, `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
-### 세션은 JWT — 권한 회수가 최대 24시간 지연된다
+### 세션은 DB에 있다 — 권한 회수가 다음 요청부터 반영된다 (2026-09-05 전환)
 
-`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. 허용 핸들 목록 검사는 **최초 로그인 시 1회**(`signIn` 콜백) 돌고 핸들을 토큰에 박는다. 따라서 **목록에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 요청마다의 DB 왕복이 사라졌다.
+`session: { strategy: "database", maxAge: 60 * 60 * 24 }` + `@auth/prisma-adapter`. **세션에 담는 것은 `userId` 하나**이고 권한은 매 요청 `ProjectMember`에서 읽는다 — 토큰에 role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다 (SAAS §5.3).
 
-⚠️ **이 절은 2026-09-05부터 절반만 참이다.** 사용자 테이블 4개와 `ProjectMember`·`ProjectInvitation`이 **이미 스키마에 있고**(`20260904182548_add_tenant_auth_tables`, dev 적용 완료) 어댑터도 설치됐다. **아직 안 바뀐 것은 배선뿐이다** — `auth.ts`는 여전히 `strategy: "jwt"`이고 인가는 `AUTH_ALLOWED_LOGINS`다. DB 세션 전환은 `docs/features/tenant-auth/tasks.md` §4·§5이고, 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
+**JWT를 고른 원래 이유는 "사용자 테이블 4개가 사라진다"였고, 그 대가가 "허용 목록에서 뺀 사람이 최대 하루 편집할 수 있다"였다** (MVP §5). SaaS는 그 절제를 되돌린다 — 멤버 제거와 역할 변경이 즉시 반영돼야 하기 때문이다. 지불하는 대가는 **요청마다의 DB 왕복**이다.
+
+⚠️ **아직 인가가 바뀐 것은 아니다.** 편집 경로는 여전히 `AUTH_ALLOWED_LOGINS`와 `ACTIVE_PROJECT_SLUG`를 본다 — `requireProjectAccess`는 만들어졌지만 호출부가 SaaS 2단계 §5에 있다. `maxAge`가 24시간인 것도 JWT 때 값 그대로다(그 근거였던 회수 지연 상한은 사라졌다).
+
+⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. 쿠키 이름만 보는 것으로 갈랐고, 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -269,7 +273,12 @@ lib/
                         / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
                         / message.ts(결과→문구)
-  auth/                 인증·인가의 순수 판정 (I/O 없음 — 껍데기는 SAAS 2단계 §4가 만든다)
+  auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
+    query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
+                        ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
+    session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only)
+    profile.ts          githubUserinfo — /user + /user/emails를 합친다. ⚠️ 조회 실패는 **던지고**
+                        이메일 미검증은 email:""로 정상 거부 경로에 남긴다 (ARCHITECTURE §6.2)
     permission.ts       Role·Permission + canPerform (SAAS §3 권한표 6칸). ⚠️ Publish는 별도
                         permission이 아니라 translation:write에 들어 있다
     access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
@@ -277,7 +286,8 @@ lib/
     invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
-    email.ts            normalizeEmail — trim+소문자까지만. gmail 점·+ 태그를 접지 않는다
+    email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
+                        + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
     cookie.ts           hasSessionCookie — 미들웨어 1차 차단용. __Secure- 접두 유무 둘 다 본다
     message.ts          accessErrorMessage — 거부 사유 → 한국어 (pullMessage와 같은 never 검사)
     backfill.ts         planOwnerBackfill — ⚠️ **일회성**. 인가 전환이 끝나면 지운다
