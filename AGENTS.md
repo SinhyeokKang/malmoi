@@ -429,9 +429,9 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **16개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
+스킬 **17개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
@@ -444,12 +444,13 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
+- **`/doc-check`은 문서 전수 대조다** (2026-09-06 추가 — bugshot-2에서 가져와 이 리포의 문서 12개에 맞췄다). `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 문서별 에이전트가 양방향(틀린 단언 + 누락)으로 대조한다. 같은 날 tenant-auth 리뷰가 잡은 "전환 전 상태를 서술하는" 여덟 곳이 정확히 `/push`가 못 보는 부류였다. 리포트 후 사용자 확인을 거쳐 문서별 커밋까지 한다 — `POSTMORTEM.md`(append-only)와 `docs/features/*`(근거 기록)는 대상이 아니다.
 - **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** (2026-09-06 추가). ego-browser 태스크 스페이스에서 로컬 dev를 훑고, 결함을 BugShot 확장으로 `SinhyeokKang/malmoi` 이슈로 낸다. **`pnpm test`가 값은 보지만 화면은 못 보는 축**이 대상이다 — 라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다. **리포트+이슈 전용이라 코드를 고치지 않고**, preview가 아니라 **로컬**을 쓴다(preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다).
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
 ## 문서 신선도
 
-문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
+두 층이다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지하고(대상·트리거는 `.claude/commands/push.md` 4단계), **`/doc-check`이 diff와 무관하게 전수 대조한다** (2026-09-06 추가 — "문서가 일곱 개뿐"이라 두지 않던 것을 열두 개가 되면서 되살렸다. 최근 커밋이 안 건드린 문서에 쌓인 stale은 `/push`가 원리적으로 못 본다). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
 - **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(Supabase 대시보드)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
