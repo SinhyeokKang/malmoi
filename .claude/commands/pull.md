@@ -9,18 +9,21 @@ description: git pull 후 최근 변경 파악 + 문서 확인 + 작업 맥락 �
 ## 절차
 
 1. **상태 확인** — `git status`. 미커밋 변경이 있으면 pull 전에 알린다 (stash 여부는 사용자 판단).
-2. **`git pull`** — `main`(단일 브랜치). 충돌이면 중단하고 보고 — main 단일이라 충돌은 다른 창구(웹 UI·다른 머신)에서 푸시가 있었다는 뜻이다.
+2. **브랜치 확인 후 `git pull`** — 작업 브랜치는 `dev`다. `main`에 있으면 왜인지 확인하고 `dev`로 옮긴다(작업은 dev에서만 한다).
+   - 충돌이면 중단하고 보고 — 다른 창구(웹 UI·Codex·다른 머신)에서 푸시가 있었다는 뜻이다.
+   - **`git log origin/main..origin/dev`가 비어 있는데 dev가 뒤처져 보이면 `/merge`가 다른 곳에서 돌았다는 신호다** — squash 머지가 해시를 바꾸므로 `/sync`로 dev를 `origin/main`에 맞춘다. 이 상태를 모르고 작업하면 다음 PR diff에 이미 머지된 변경이 다시 나타난다.
 3. **최근 변경 파악**
    - `git log --oneline -15`
    - `git diff HEAD@{1}..HEAD --stat` (pull로 들어온 것)
-4. **문서 확인** — `docs/TASKS.md`(현재 단계·미완 태스크·`🔒` 결정 필요), `docs/MVP.md` §10, `docs/POSTMORTEM.md` 최근 항목을 읽는다.
+4. **문서 확인** — **`docs/SAAS.md`(현재 단계의 정본 — §8 단계별 체크리스트와 §10 미결)**, `docs/TASKS.md`(PoC 기록 — 전역 미결에 살아 있는 항목이 남아 있다), `docs/MVP.md` §10, `docs/POSTMORTEM.md` 최근 항목을 읽는다.
 5. **구현 진행도 판정** — `docs/TASKS.md`가 정본이지만 **그 주장을 검증한다**: `⬜`인 단계의 파일이 이미 존재하거나, `[x]`인 태스크의 파일이 없으면 문서가 낡은 것이다. 어긋난 항목을 리포트에 별도로 적는다 (고치지는 않는다 — 이 스킬은 읽기 전용).
 6. **브리핑.**
 
 ## 리포트
 
 ```
-📥 pull: main
+📥 pull: dev
+브랜치 관계: dev == origin/main / dev가 <n>커밋 앞섬 / ⚠️ /sync 필요
 받아온 커밋: <n>건 / 없음
    <oneline 목록>
 
@@ -31,7 +34,7 @@ description: git pull 후 최근 변경 파악 + 문서 확인 + 작업 맥락 �
   🔒 결정 필요: <항목 또는 없음>
 
 문서 정합: TASKS.md 주장과 실제 파일 일치 / 어긋남 <목록>
-미결 항목 (MVP.md §10): <목록>
+미결 항목 (SAAS.md §10 / MVP.md §10): <목록>
 최근 POSTMORTEM: <최근 1~2건 또는 없음>
 다음 할 일: <구현 순서상 다음 단계>
 ```

@@ -53,7 +53,9 @@ describe("planSave — 값을 지우는 경우", () => {
 });
 
 describe("SaveInput 검증 — Server Action은 공개 엔드포인트다", () => {
-  const valid = { keyId: "c".repeat(25), localeCode: "ko", value: "값" };
+  const valid = {
+    // slug는 "무엇을 열려고 하는가"다 — 서버는 이 값을 믿지 않고 멤버십 행에서 projectId를 꺼낸다.
+    slug: "acme", keyId: "c".repeat(25), localeCode: "ko", value: "값" };
 
   it("정상 입력을 통과시킨다", () => {
     expect(SaveInput.safeParse(valid).success).toBe(true);
@@ -65,6 +67,12 @@ describe("SaveInput 검증 — Server Action은 공개 엔드포인트다", () =
 
   it("keyId가 비면 거부", () => {
     expect(SaveInput.safeParse({ ...valid, keyId: "" }).success).toBe(false);
+  });
+
+  it("slug가 비거나 없으면 거부 — 편집 경로에 env 폴백이 없다", () => {
+    expect(SaveInput.safeParse({ ...valid, slug: "" }).success).toBe(false);
+    const { slug: _omitted, ...withoutSlug } = valid;
+    expect(SaveInput.safeParse(withoutSlug).success).toBe(false);
   });
 
   it("localeCode가 비면 거부", () => {

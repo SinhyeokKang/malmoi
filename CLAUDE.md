@@ -14,11 +14,13 @@
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 같은 규칙 요약을 컨텍스트에 재주입하는 것(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**MVP 범위는 셋이다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+
+**MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
 말모이(`malmoi`): 사내 로컬라이제이션 관리 도구(TMS) PoC. **이름은 1910년대 조선어사전 편찬 사업에서 왔다** — 흩어진 말을 여러 사람이 모아 하나로 만드는 일이 이 도구가 하는 일이다. 표기는 문서 본문 `말모이`, 코드·리포명·slug·도메인 `malmoi`(2026-09-04 개명, 옛 이름 `i18n-poc`). 크롬 확장의 `_locales/<locale>/messages.json`을 대상으로, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자 동료가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이고, 사내에서 실제로 한 번 써볼 수 있는 수준이 목표다.
 
-**기본 스펙 문서는 [docs/MVP.md](./docs/MVP.md)다.** 무엇을 만들고 무엇을 안 만드는지, 각 기술 선택의 근거, 세 흐름(push·편집 UI·pull)의 단계별 계약, 스키마, 구현 순서가 전부 거기 있다. **작업을 시작하기 전에 읽고, 설계 결정이 바뀌면 코드보다 먼저 그 문서를 고친다.** 이 문서(CLAUDE.md)는 *어떻게 작업하는가*를 다루고, MVP.md는 *무엇을 만드는가*를 다룬다.
+**PoC 스펙 문서는 [docs/MVP.md](./docs/MVP.md)다** (닫힘 — 현재 단계 스펙은 [docs/SAAS.md](./docs/SAAS.md)). 무엇을 만들고 무엇을 안 만드는지, 각 기술 선택의 근거, 세 흐름(push·편집 UI·pull)의 단계별 계약, 스키마, 구현 순서가 전부 거기 있다. **작업을 시작하기 전에 읽고, 설계 결정이 바뀌면 코드보다 먼저 그 문서를 고친다.** 이 문서(CLAUDE.md)는 *어떻게 작업하는가*를 다루고, MVP.md는 *무엇을 만드는가*를 다룬다.
 
 ## 코어 설계 원칙: 번역 값은 DB가 진실, 소스 키는 코드가 진실
 
@@ -52,9 +54,9 @@
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) | — |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
-| 테넌시 | **스키마에 `Project` 테넌트 경계가 있고 SaaS 기능은 없다.** 인증은 단일 테넌트(`AUTH_ALLOWED_LOGINS` — 허용 GitHub 핸들 목록), 운영 대상은 `ACTIVE_PROJECT_SLUG` 하나 | — |
+| 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
-| 로그인 | Auth.js v5 GitHub provider, **JWT 세션** (DB 어댑터 없음) | `next-auth` 5.0.0-beta.32 |
+| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google **둘 다 열려 있다** (2026-09-05, 허용 목록 제거와 같은 커밋). 로그인은 **검증된 이메일만** 요구하고, 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
@@ -98,14 +100,24 @@
 | 경로 | 형태 | 호출자 |
 |---|---|---|
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
+| 초대 발급·멤버 변경 | **Server Action** (`app/(edit)/projects/actions.ts`) | 편집 UI (OWNER) |
+| 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | `/api/push` | Route Handler | GitHub Actions (Bearer `PUSH_TOKEN`) |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) — 편집 UI 버튼은 Server Action이 `triggerPull`을 직접 부른다 |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다.** 클라이언트 fetch 배선과 중복 스키마가 생기고, `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
-### 세션은 JWT — 권한 회수가 최대 24시간 지연된다
+### 세션은 DB에 있다 — 권한 회수가 다음 요청부터 반영된다 (2026-09-05 전환)
 
-`session: { strategy: "jwt", maxAge: 60 * 60 * 24 }`. 허용 핸들 목록 검사는 **최초 로그인 시 1회**(`signIn` 콜백) 돌고 핸들을 토큰에 박는다. 따라서 **목록에서 빠진 사람이 최대 하루 동안 편집할 수 있다.** 이걸 받아들이는 대가로 사용자 테이블 4개(`User`·`Account`·`Session`·`VerificationToken`)와 요청마다의 DB 왕복이 사라지고 스키마가 5테이블로 유지된다. 즉시 회수가 필요해지면 `@auth/prisma-adapter`로 DB 세션으로 바꾼다 — 그때 `maxAge`를 줄이는 것으로 때우지 않는다.
+`session: { strategy: "database", maxAge: 60 * 60 * 24 }` + `@auth/prisma-adapter`. **세션에 담는 것은 `userId` 하나**이고 권한은 매 요청 `ProjectMember`에서 읽는다 — 토큰에 role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다 (SAAS §5.3).
+
+**JWT를 고른 원래 이유는 "사용자 테이블 4개가 사라진다"였고, 그 대가가 "허용 목록에서 뺀 사람이 최대 하루 편집할 수 있다"였다** (MVP §5). SaaS는 그 절제를 되돌린다 — 멤버 제거와 역할 변경이 즉시 반영돼야 하기 때문이다. 지불하는 대가는 **요청마다의 DB 왕복**이다.
+
+**인가도 함께 바뀌었다** (2026-09-05, §5) — 편집 경로의 모든 진입점이 `getProjectAccess`를 지나고 프로젝트는 URL의 slug가 정한다. **로그인은 이제 누구에게나 열려 있고, 그것이 아무것도 열지 않는다** — 멤버십이 없으면 어떤 slug를 쳐도 `not-found`다.
+
+⚠️ `maxAge`가 24시간인 것은 JWT 때 값 그대로다 — **그 근거(회수 지연 상한)는 사라졌지만** 세션 길이 자체를 바꾸는 것은 별개 결정이라 남겨 뒀다.
+
+⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. 쿠키 이름만 보는 것으로 갈랐고, 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -144,6 +156,7 @@
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **항상 exit 0**). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
+| **OWNER backfill** (일회성) | `pnpm backfill:owners --owner-email <검증된 이메일> --owner-github-id <숫자 id> [--owner-name <이름>] [--target dev\|prod] [--apply]` — 기존 `Project`에 OWNER `ProjectMember`를 채운다. **기본은 dev이고 기본은 dry-run.** `--target prod`는 `DIRECT_URL_PROD`(5432)로 간다. ⚠️ SaaS 2단계 §8에서 이 스크립트와 `lib/auth/backfill.ts`를 지운다 |
 | GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
@@ -162,6 +175,8 @@
      | 프로덕션 | `https://mal-moi.com/api/auth/callback/github` | Vercel **Production** 스코프 |
      | preview | `<dev 브랜치 고정 URL>/api/auth/callback/github` | Vercel **Preview** 스코프 |
      | 로컬 | `http://localhost:3000/api/auth/callback/github` | **`.env.local` — 두 머신이 이 앱 하나를 공유한다** |
+
+     ⚠️ **Google은 반대다 — 클라이언트가 하나다.** Google Cloud의 웹 클라이언트는 redirect URI를 **여러 개** 등록할 수 있어서 로컬·preview·프로덕션 셋(`…/api/auth/callback/google`)을 한 클라이언트에 넣고, `AUTH_GOOGLE_ID`·`AUTH_GOOGLE_SECRET`은 `.env.local`과 Vercel의 Production·Preview 스코프에 **같은 값**이 들어간다. ⚠️ **동의 화면은 External + 테스트**여야 한다: Internal이면 조직 밖 계정이 `403 org_internal`로 막히는데, 비개발자 동료를 초대하는 것이 이 provider를 넣은 이유 전부다.
 
      **새 머신에 채우는 `AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 로컬 앱 것이다.** 앞의 둘은 어느 `.env.local`에도 들어가지 않으므로 머신을 옮길 때 따라다닐 필요가 없고, 잃어버려도 GitHub에서 secret을 재발급해 Vercel의 해당 스코프만 갱신하면 된다(전면 재발급이 아니다). Vercel의 **Development 스코프는 쓰지 않는다** — `vercel env pull`을 안 쓰고 이 파일을 손으로 관리하므로 그 스코프를 읽는 곳이 없다
 4. `pnpm db:status`로 **dev** 접속을, `pnpm db:status:prod`로 **prod** 접속을 확인한다 (둘 다 5432). ⚠️ 두 명령의 출력이 **같아 보인다** — pooler 호스트가 두 프로젝트에서 동일하고 ref는 사용자명에 있다. 구별 신호는 **적용된 마이그레이션 개수**이고, 새 dev 프로젝트라면 전부 미적용으로 나온다
@@ -200,14 +215,25 @@ dev push와 PR이 같은 SHA에 두 번 도는 것은 **의도된 중복**이다
 
 ```
 app/
-  page.tsx              루트 — 로그인 화면. 세션이 있으면 /keys로 redirect
+  page.tsx              루트 — 로그인 화면(GitHub·Google). 세션이 있으면 /projects로 redirect.
+                        Auth.js의 `pages.error`가 여기라 거부 사유를 `?error=`로 보인다
   layout.tsx            루트 레이아웃 (Pretendard <link>)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  (edit)/               편집 UI (인증 필요 — 차단은 middleware.ts)
-    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다)
-    keys/page.tsx       키 테이블 — 로케일이 열, 모든 셀 편집 가능
-    actions.ts          Server Action — saveTranslation(유일한 사용자 mutation) / triggerPullAction
-    __tests__/          편집 흐름 B단계 검증 — 저장→DB→pull 출력 (메모리 DB 하나를 공유한다)
+  __tests__/            ⚠️ **진입점 소스 스캔** — app/ 아래 모든 page·route·actions가 인가를
+                        지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
+                        본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선
+  (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사)
+    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
+                        ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
+    actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지난다
+    projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지
+    projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/[slug]/translations/page.tsx
+                        키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
+    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
+  invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
+    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 4분기를 각자 한 줄로
+    actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
   api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
@@ -261,17 +287,41 @@ lib/
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
-                        / trigger.ts(진입점 둘이 공유하는 조립 + SYNC_BRANCH) / message.ts(결과→문구)
-  auth/allow.ts         허용 핸들 목록 판정 (fail-closed)
+                        / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
+                          l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
+                        / message.ts(결과→문구)
+  auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
+                        ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-05에 삭제됐다 — 인가는 ProjectMember다
+    query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
+                        ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
+    session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only)
+    profile.ts          githubUserinfo — /user + /user/emails를 합친다. ⚠️ 조회 실패는 **던지고**
+                        이메일 미검증은 email:""로 정상 거부 경로에 남긴다 (ARCHITECTURE §6.2)
+    permission.ts       Role·Permission + canPerform (SAAS §3 권한표 6칸). ⚠️ Publish는 별도
+                        permission이 아니라 translation:write에 들어 있다
+    access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
+                        (프로젝트 존재를 노출하지 않는다). forbidden은 멤버인데 권한이 모자란 경우만
+    invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
+                        ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
+    membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
+    email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
+                        + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
+    cookie.ts           hasSessionCookie — 미들웨어 1차 차단용. __Secure- 접두 유무 둘 다 본다
+    message.ts          accessErrorMessage — 거부 사유 → 한국어 (pullMessage와 같은 never 검사)
+    backfill.ts         planOwnerBackfill — ⚠️ **일회성**. 인가 전환이 끝나면 지운다
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
 types/next-auth.d.ts    session.user.login 타입 확장
 prisma/
-  schema.prisma         5테이블 (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7)
-  migrations/           9개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+                        ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
+                        linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
+  __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
+  migrations/           10개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
-                        _add_locale_orphaned, _add_translation_updated_at_index
+                        _add_locale_orphaned, _add_translation_updated_at_index,
+                        _add_tenant_auth_tables
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
@@ -284,16 +334,25 @@ scripts/
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
+  backfill-owners.ts    ⚠️ **일회성** — 기존 Project에 OWNER를 채운다. User+Account(github)+
+                        ProjectMember를 **한 트랜잭션**으로 upsert한다: User만 만들면 첫 GitHub
+                        로그인이 OAuthAccountNotLinked로 거부된다. 인가 전환 뒤 삭제한다
 auth.ts                 Auth.js v5 설정 (인가는 signIn 콜백)
-docs/MVP.md             기본 스펙
+docs/MVP.md             PoC 스펙 (닫힘 — §8.4가 SAAS.md를 가리킨다)
+docs/SAAS.md            **SaaS화 스펙 — 현재 단계의 정본.** 범위·비범위·설계 결정·단계별
+                        체크리스트·불변식 9개. 착수 전 필독
 docs/ACTIONS.md         **대상 리포**에 붙이는 워크플로 (composite action 사용법·red 조건)
 docs/TASKS.md           태스크 체크리스트 (완료 조건 + 🔒 결정 필요)
 docs/DESIGN.md          편집 UI 시각 규칙 (라이트 단일, mono 표면 불변식)
 docs/ARCHITECTURE.md    설계 상세·함정
 docs/ADAPTER-COVERAGE.md 어댑터 범용성 실측 (13차) — 어댑터·탐지 규칙 손대기 전 필독
 docs/POSTMORTEM.md      회귀·버그 회고 누적
-docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스펙이 아니다** — 결론은 MVP·
-                        ARCHITECTURE로 올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
+docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — 결론은 MVP·ARCHITECTURE로
+                        올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
+                        ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
+                        했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로,
+                        pull-to-pr/tasks.md §4가 실물 검증 7시나리오라 남아 있다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
@@ -354,9 +413,9 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **15개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync` 셋은 미러 제외** — 원격 상태를 바꾸는 창구는 Claude Code 하나로 둔다).
+스킬 **16개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 정의돼 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없어 실행 자체가 불가능하다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
@@ -369,15 +428,18 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 - **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
+- **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** (2026-09-06 추가). ego-browser 태스크 스페이스에서 로컬 dev를 훑고, 결함을 BugShot 확장으로 `SinhyeokKang/malmoi` 이슈로 낸다. **`pnpm test`가 값은 보지만 화면은 못 보는 축**이 대상이다 — 라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다. **리포트+이슈 전용이라 코드를 고치지 않고**, preview가 아니라 **로컬**을 쓴다(preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다).
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
 ## 문서 신선도
 
 문서가 일곱 개뿐이라 `/doc-check` 같은 전수 대조 스킬을 두지 않는다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지한다 (대상·트리거는 `.claude/commands/push.md` 4단계). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
-- **docs/DESIGN.md** — 편집 UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. 커밋 prefix `docs(DESIGN): ...`
-- **docs/TASKS.md** — **태스크 체크리스트.** 완료 조건이 붙은 단계별 목록. **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
-- **docs/MVP.md** — **기본 스펙.** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
+- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(Supabase 대시보드)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
+- **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
+  - 완료 기록은 **압축하지 않는다.** 체크리스트로 보이지만 실제 내용은 "그 결정이 언제 왜 뒤집혔나"이고, ARCHITECTURE·POSTMORTEM과 겹쳐 보여도 그쪽은 현재 불변식이라 시간축이 없다. 순수 검증 목록이었던 §1·§2와 대체된 §5b-old만 접었다
+- **docs/SAAS.md** — **현재 단계의 정본.** SaaS 범위·비범위·설계 결정·단계별 체크리스트·불변식 9개. **SaaS 기능을 추가/삭제했거나 단계를 끝냈거나 §10 "아직 안 정한 것"이 결정됐으면 여기부터** 갱신한다. `lib/auth/`·`app/(edit)/`·`prisma/schema.prisma`에 SaaS 관련 변경이 있으면 거의 항상 걸린다. 커밋 prefix `docs(SAAS): ...`
+- **docs/MVP.md** — **PoC 스펙 (닫힘).** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
 - **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, **13차까지**). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
@@ -395,11 +457,11 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
-- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`·`AUTH_ALLOWED_LOGINS`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
+- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
-- **⚠️ 인증 차단은 `middleware.ts`에만 의존한다.** 레이아웃·페이지의 조건부 렌더는 차단이 아니다 — App Router가 둘을 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
+- **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다** (2026-09-05 갈렸다). **1차 `middleware.ts`** 는 쿠키 이름만 보는 값싼 차단이고(DB 세션이라 그 이상 못 한다), **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. 레이아웃·페이지의 조건부 렌더는 차단이 아니다: App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
@@ -416,7 +478,9 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 ## 명시적 비범위
 
-**정본은 [docs/MVP.md](./docs/MVP.md) §7이다.** 요청받아도 먼저 그 목록을 근거로 되묻는다 — PoC 범위를 지키는 게 이 프로젝트의 성패다.
+**비범위 정본이 둘이다**: PoC는 [docs/MVP.md](./docs/MVP.md) §7, SaaS는 [docs/SAAS.md](./docs/SAAS.md) §4.2다. 요청받아도 먼저 그 목록을 근거로 되묻는다 — 범위를 지키는 게 이 프로젝트의 성패다.
+
+⚠️ **SaaS §4.3은 "1차에서 빼되 2차에 열어두는 것"이라 성격이 다르다** — 이메일 매직링크 로그인과 push 웹훅 둘이고, "필요 없다"가 아니라 "지금 넣으면 면적 대비 얻는 게 작다"는 판정이다. 각자 2차에 열 조건이 적혀 있다.
 
 큰 축만: ICU 복수형, 동시 편집, 다중 프로젝트, 세밀한 권한, in-context 편집, 스크린샷 첨부, 번역자 노트, 승인 워크플로, push 웹훅.
 
@@ -426,7 +490,8 @@ docs/features/          /feature 산출물 (spec·design·tasks). ⚠️ **스�
 
 - **`docs/TASKS.md` — 태스크 체크리스트. 지금 무엇을 해야 하는지의 정본. 착수 전 필독**
 - **`docs/DESIGN.md` — 편집 UI 시각 규칙. UI 작업 전 필독**
-- **`docs/MVP.md` — 기본 스펙. 범위·근거·세 흐름의 계약. 작업 착수 전 필독**
+- **`docs/SAAS.md` — SaaS화 스펙. 현재 단계의 정본. 착수 전 필독**
+- **`docs/MVP.md` — PoC 스펙 (닫힘). 범위·근거·세 흐름의 계약 — 코어 원칙의 원문이 여기다**
 - `docs/ARCHITECTURE.md` — 설계 상세·함정 (코어 로직 건드리기 전 필독)
 - `docs/ADAPTER-COVERAGE.md` — 어댑터가 남의 리포에서 실제로 어떻게 동작하는지의 실측 (어댑터·탐지 규칙 건드리기 전 필독)
 - `docs/POSTMORTEM.md` — 과거 함정 (`/implement`·`/refactor`·`/code-review` 착수 전 grep)

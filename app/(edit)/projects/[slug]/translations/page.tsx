@@ -1,8 +1,12 @@
+import { requireProjectAccess } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+
 import { getPrisma } from "@/lib/db";
-import { requireEnv } from "@/lib/env";
 import { loadKeys, loadProject } from "@/lib/keys/query";
 import { buildPermalink, cellState, namespaceCounts, type KeyRow, type TranslationState } from "@/lib/keys/view";
 import { cn } from "@/lib/utils";
+import { InviteForm } from "@/components/invite-form";
+import { PullButton } from "@/components/pull-button";
 import { TranslationInput } from "@/components/translation-input";
 
 /**
@@ -18,20 +22,26 @@ import { TranslationInput } from "@/components/translation-input";
 
 type Search = { ns?: string; focus?: string };
 
-export default async function KeysPage({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function TranslationsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Search>;
+}) {
+  const { slug } = await params;
   const { ns, focus } = await searchParams;
-  const prisma = getPrisma();
 
-  const project = await loadProject(prisma, requireEnv("ACTIVE_PROJECT_SLUG"));
-  if (!project) {
-    return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-destructive text-sm">
-          프로젝트를 찾을 수 없다 — `ACTIVE_PROJECT_SLUG`를 확인한다.
-        </p>
-      </main>
-    );
-  }
+  // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
+  // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
+  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
+
+  const prisma = getPrisma();
+  // ⚠️ **인가가 준 id로 읽는다 — URL의 slug로 다시 찾지 않는다.** 클라이언트가 준 식별자를 두 번
+  // 믿지 않는 것이 이 규칙의 요지다 (SAAS §5.2). null은 인가와 조회 사이에 프로젝트가 사라진
+  // 경우뿐이라 남겨 둔다.
+  const project = await loadProject(prisma, projectId);
+  if (!project) redirect("/projects");
   if (project.locales.length === 0) {
     return (
       <main className="mx-auto max-w-2xl space-y-2 p-8">
@@ -53,6 +63,8 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
     ?? columns.find((l) => !l.isBase)?.code
     ?? columns[0]!.code;
 
+  // 사이드바 링크의 base — 같은 화면 안에서 필터만 바꾼다.
+  const base = `/projects/${slug}/translations`;
   const counts = namespaceCounts(rows, focusLocale);
   const visible = ns === undefined ? rows : rows.filter((r) => r.namespace === ns);
 
@@ -69,7 +81,7 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
           {columns.map((l) => (
             <a
               key={l.code}
-              href={qs({ ns, focus: l.code })}
+              href={qs(base, { ns, focus: l.code })}
               className={cn("rounded px-1", l.code === focusLocale ? "text-foreground font-medium" : "hover:text-foreground")}
             >
               {l.code}
@@ -77,10 +89,10 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
           ))}
         </div>
         <nav className="pb-4">
-          <NsLink href={qs({ focus })} active={ns === undefined} label="전체" total={rows.length}
+          <NsLink href={qs(base, { focus })} active={ns === undefined} label="전체" total={rows.length}
             pending={counts.reduce((n, c) => n + c.untranslated + c.needsReview, 0)} />
           {counts.map((c) => (
-            <NsLink key={c.namespace} href={qs({ ns: c.namespace, focus })} active={ns === c.namespace}
+            <NsLink key={c.namespace} href={qs(base, { ns: c.namespace, focus })} active={ns === c.namespace}
               label={c.namespace} total={c.total} pending={c.untranslated + c.needsReview} />
           ))}
         </nav>
@@ -91,6 +103,18 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
         <div className="border-border flex items-center gap-3 border-b px-4 py-2">
           <span className="text-sm font-medium">{ns ?? "전체"}</span>
           <span className="text-muted-foreground text-xs">{visible.length}키</span>
+          {/* Publish는 프로젝트에 속한 조작이라 레이아웃이 아니라 이 화면이 든다 — 레이아웃엔
+              slug가 없다(`/projects` 목록도 같은 레이아웃을 쓴다). */}
+          {/* 초대는 OWNER만 — 화면에서 감추는 것은 편의이고, 실제 방어는 `createInvitation`의
+              `member:manage` 판정이다 (SAAS §5.2 — 클라이언트가 보낸 것을 믿지 않는다). */}
+          {role === "OWNER" && (
+            <div className="ml-auto">
+              <InviteForm slug={slug} />
+            </div>
+          )}
+          <div className={role === "OWNER" ? "" : "ml-auto"}>
+            <PullButton slug={slug} />
+          </div>
         </div>
 
         {/* 넓은 표는 자기 컨테이너 안에서만 스크롤한다 */}
@@ -123,6 +147,7 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
                   {columns.map((l) => (
                     <td key={l.code} className="px-3 py-2">
                       <TranslationInput
+                        slug={slug}
                         keyId={row.id}
                         localeCode={l.code}
                         initialValue={row.cells[l.code]?.value ?? ""}
@@ -146,11 +171,17 @@ export default async function KeysPage({ searchParams }: { searchParams: Promise
 }
 
 /** 쿼리스트링 조립 — undefined는 빼서 URL이 깔끔하게 유지된다. */
-function qs(params: Record<string, string | undefined>): string {
+/**
+ * 사이드바 링크. **base 경로를 인자로 받는다** — 하드코딩하면 라우트를 옮길 때 여기만 남는다.
+ * 2026-09-05에 `/keys` → `/projects/[slug]/translations` 이관에서 실제로 그렇게 남아 사이드바가
+ * 전부 404로 갔고, **타입도 테스트도 그걸 못 봤다**(문자열이고 페이지 렌더 테스트가 없다).
+ * `app/__tests__/entry-points.test.ts`의 "죽은 라우트 링크"가 그 자리를 지금은 지킨다.
+ */
+function qs(base: string, params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined) search.set(k, v);
   const s = search.toString();
-  return s === "" ? "/keys" : `/keys?${s}`;
+  return s === "" ? base : `${base}?${s}`;
 }
 
 function CodeRef({ row, project }: { row: KeyRow; project: Parameters<typeof buildPermalink>[0] }) {

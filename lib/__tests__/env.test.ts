@@ -20,7 +20,7 @@ describe("optionalEnv", () => {
     expect(optionalEnv("FOO", { FOO: "bar" })).toBe("bar");
   });
 
-  it("없으면 undefined — 던지지 않는다. 호출부가 fail-closed 판정(checkBearer·parseAllowedLogins)에 넘긴다", () => {
+  it("없으면 undefined — 던지지 않는다. 호출부가 fail-closed 판정(checkBearer)에 넘긴다", () => {
     expect(optionalEnv("FOO", {})).toBeUndefined();
   });
 

@@ -16,14 +16,14 @@ import { cn } from "@/lib/utils";
  * 더 누르면 반드시 그 경로이고, 무반응이면 편집자가 고장으로 읽는다. 문구는 `pullMessage`가
  * 정한다 — 케이스 누락이 컴파일 에러가 되는 곳이 거기 하나다.
  */
-export function PullButton() {
+export function PullButton({ slug }: { slug: string }) {
   const [message, setMessage] = useState<PullMessage | null>(null);
   const [pending, startTransition] = useTransition();
 
   function trigger() {
     setMessage(null);
     startTransition(async () => {
-      setMessage(pullMessage(await triggerPullAction()));
+      setMessage(pullMessage(await triggerPullAction(slug)));
     });
   }
 

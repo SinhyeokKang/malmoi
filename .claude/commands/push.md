@@ -63,7 +63,8 @@ pnpm db:status     # dev를 본다
 
 트리거:
 - **`lib/`·`app/`·`prisma/`에 실질 변경이 있음 = 태스크가 진행됐다는 뜻 → docs/TASKS.md** (⚠️ 이 트리거는 거의 항상 걸린다. 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다)
-- 기능 추가/삭제, 세 흐름(push·편집 UI·pull)의 단계 변경, 기술 선택·버전 변경, 비범위 항목을 범위로 끌어들임, 스키마 변경 → **docs/MVP.md** + **docs/TASKS.md**(단계 구성 변경 시)
+- **SaaS 단계를 끝냈거나 SaaS 범위·설계 결정이 바뀜, `docs/SAAS.md` §10이 결정됨 → docs/SAAS.md** (현재 단계의 정본이다 — `lib/auth/`·`app/`·`prisma/schema.prisma`의 SaaS 관련 변경이면 거의 항상 걸린다)
+- 기능 추가/삭제, 세 흐름(push·편집 UI·pull)의 단계 변경, 기술 선택·버전 변경, 비범위 항목을 범위로 끌어들임, 스키마 변경 → **docs/MVP.md**(PoC 계약이 실제로 바뀐 경우만 — 대개는 SAAS.md다) + **docs/TASKS.md**(PoC 기록이라 이제 거의 안 걸린다)
 - **`lib/` 아래 코어 모듈 변경** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`, `prisma/schema.prisma`, `middleware.ts` (2026-09-04 감사에서 `cli`·`survey`·`db`가 빠져 있었다 — 아래 경고가 실제로 일어난 사례) — 또는 새 불변식·함정 발견, 인증 경로 변경 → **docs/ARCHITECTURE.md**
   - ⚠️ **이 목록은 실제 디렉터리와 어긋나기 쉽다.** `lib/export.ts`가 어댑터로 흡수된 뒤에도 트리거가 그 이름을 가리키고 있어서, `lib/push/`의 정책 반전(strict)이 ARCHITECTURE §5.5를 낡은 채로 통과시켰다. **`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다.**
 - **코어 원칙·정책이 뒤집힘** (번역값 소유권, export 결정성, 인증 경계, 병합 없음의 해석) → **CLAUDE.md 코어 원칙 절 + docs/MVP.md + docs/ARCHITECTURE.md 셋 다**
@@ -78,7 +79,8 @@ pnpm db:status     # dev를 본다
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
 - **docs/TASKS.md** — **완료 조건이 실제로 통과한 태스크만 `[x]`로 체크**하고 근거(커밋 해시·테스트 이름·산출물)를 한 줄 남긴다. "코드를 썼다"는 완료가 아니다. 반대로 **되돌린 작업은 체크를 해제**한다. `🔒` 항목이 결정됐으면 표시를 떼고 결정 내용을 적은 뒤 MVP.md §10에서도 뺀다. 단계가 끝났으면 헤딩의 `⬜`를 `✅`로, 다음 단계에 `← **현재 단계**`를 옮긴다. prefix `docs(TASKS): ...`
 - **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
-- **docs/MVP.md** — 범위·기술 선택 표·세 흐름의 단계·스키마·구현 순서가 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. **§8 구현 순서와 TASKS.md의 단계 구성이 어긋나면 안 된다.** prefix `docs(MVP): ...`
+- **docs/SAAS.md** — 단계별 체크리스트가 실제 진행과 맞는지, 불변식 9개가 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(SAAS): ...`
+- **docs/MVP.md** (PoC 스펙 — 닫힘) — 코어 원칙·strict 정책·세 흐름의 계약이 코드와 맞는지. §10에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. **§8 구현 순서와 TASKS.md의 단계 구성이 어긋나면 안 된다.** prefix `docs(MVP): ...`
 - **docs/ARCHITECTURE.md** — 불변식·함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
 - **CLAUDE.md** — 명령어 표, 스택 버전, 디렉터리 구조, 브랜치·배포, 스킬 라인업. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`

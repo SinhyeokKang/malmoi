@@ -20,7 +20,7 @@ export function requireEnv(name: string, source: EnvSource = process.env): strin
 /**
  * 선택 환경변수. 없거나 빈 문자열이면 `undefined` — **던지지 않는다.**
  *
- * `requireEnv`와 갈라 둔 이유: 인가 판정(`checkBearer`·`parseAllowedLogins`)은 누락을 스스로
+ * `requireEnv`와 갈라 둔 이유: 인가 판정(`checkBearer` 등)은 누락을 스스로
  * fail-closed로 처리해야 응답이 "미설정 500 / 거부 401"로 갈린다. 여기서 던지면 그 판정에
  * 닿기 전에 본문 없는 500이 된다. 값을 쓰는 쪽이 `process.env`를 직접 읽지 않게 하는 것이
  * 이 함수의 유일한 역할이다 (CLAUDE.md "환경변수는 한 곳에서 읽는다").

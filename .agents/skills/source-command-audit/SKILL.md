@@ -41,7 +41,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 
 ### 1. 기준 로드
 
-`CLAUDE.md` · `docs/MVP.md` · `docs/ARCHITECTURE.md`를 읽어 감사 기준을 확립한다. **이 셋이 ground truth다.**
+`CLAUDE.md` · **`docs/SAAS.md`(현재 단계)** · `docs/MVP.md`(코어 원칙·PoC 계약) · `docs/ARCHITECTURE.md`를 읽어 감사 기준을 확립한다. **이 넷이 ground truth다.**
 
 **`docs/POSTMORTEM.md`도 읽는다 — 이 스킬에서는 선택이 아니다.** **전 항목**(2026-09-04 기준 18개 — 숫자를 믿지 말고 `grep -c '^### 20'`로 센다; `^### `만 세면 템플릿 헤딩이 끼어 하나 많다)이 각각 "이 코드베이스가 실제로 밟은 함정"이고, 그 항목들의 **재발 방지 grep을 전수로 돌리는 것**이 audit의 가장 큰 값이다. `/code-review`는 변경분에 걸린 항목만 소환하므로, 손대지 않은 코드에 남아 있는 같은 패턴은 이 스킬만 잡는다.
 
@@ -110,7 +110,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 |---|---|---|
 | merge-free | `lib/push/**`, `lib/pull/**` | **머지 로직·3-way·충돌 해소·"누가 이겼나" 판정이 슬며시 들어왔는가** / push가 `ON CONFLICT DO UPDATE`(strict)를 유지하는가 / pull이 기존 파일 값과 DB 값을 견줘 고르는 코드가 있는가 / **키 삭제(`DELETE`) 대신 `orphaned`인가** |
 | write-owners | `app/(edit)/**`, `lib/keys/**` | **`Translation.value` 쓰기 주체가 둘인가**(편집 UI `saveTranslation` + push strict). 셋째가 생겼으면 판정이 필요해진 것 / 저장이 `updatedAt`을 올려 pull 1층 스킵을 푸는가 / 같은 값 재저장이 noop인가(빈 PR 방지) |
-| scope | `prisma/**`, `scripts/**`, 전역 | **MVP §7 비범위가 유입됐는가** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / 스키마가 5테이블을 넘었는가 |
+| scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — MVP §7 + SAAS §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / 스키마가 5테이블을 넘었는가 |
 
 **전문가 통합 점검**
 - **"병합 없음"이 실제로 지켜지는 경로 전수** — 값을 고르는 분기가 어디에도 없어야 한다

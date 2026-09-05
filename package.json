@@ -27,7 +27,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "sync:agents": "node scripts/sync-agents.mjs",
-    "sync:agents:check": "node scripts/sync-agents.mjs --check"
+    "sync:agents:check": "node scripts/sync-agents.mjs --check",
+    "backfill:owners": "tsx scripts/backfill-owners.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
@@ -41,6 +42,7 @@
     "vitest": "^4.1.11"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "2.11.3",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/postcss": "^4.3.3",
