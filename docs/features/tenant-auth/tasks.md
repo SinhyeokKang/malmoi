@@ -108,11 +108,24 @@
 
 `──` 커밋: `chore(db): backfill project owners`
 
-## 4. 껍데기 — Auth.js DB 세션 + 인가
+## 4. 껍데기 — Auth.js DB 세션 + 인가 ✅ (2026-09-05, `65d6c3f` → `bb94651` → `0d80e5a`)
+
+**구현 중 뒤집힌 판정 셋. 셋 다 근거가 실측이다.**
+
+1. **matcher에서 `/keys`를 빼지 않았다.** 아래 항목은 "제거"라고 적었지만 그 라우트는 §5까지 살아
+   있다 — 지금 빼면 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 POSTMORTEM 2026-08-31이
+   1.3MB 노출로 배운 부류다. **`/projects/:path*`를 더하기만 했고 제거는 §5b가 라우트와 함께** 한다.
+2. **이메일 검증을 `signIn`이 아니라 provider의 `profile` 구성 자리에서 한다.** `signIn`이 받는
+   `user`는 기존 사용자일 때 DB 행이고 어댑터가 쓰는 것은 `userFromProvider`라(`@auth/core` 실측),
+   콜백에서 검사만 하면 **검증한 주소와 저장되는 `User.email`이 갈린다.** 그러면 "`User.email`이
+   정규화를 지나게 한다"는 아래 항목도 함께 무의미해진다 (POSTMORTEM 2026-09-05).
+3. **GitHub provider의 `userinfo.request`를 대체했다.** 기본 동작은 공개 이메일이 없을 때만
+   `/user/emails`를 조회하고, 조회해도 `verified`를 버린 채 `emails[0]`로 떨어질 수 있다 —
+   §4가 "구현 전 확인"으로 남긴 질문의 답이 **"조회는 하지만 검증 여부를 안 준다"** 였다.
 
 - [x] `@auth/prisma-adapter` **설치** ✅ (2026-09-05, `7546907`) — `2.11.3`. `@auth/core@0.41.3`을 정확히
       고정하고 있어 `next-auth` 5.0.0-beta.32와 인스턴스를 공유한다(`.pnpm`에 `@auth+core@0.41.3` 하나)
-- [ ] `session: { strategy: "database" }`로 전환하고 어댑터를 배선한다
+- [x] `session: { strategy: "database" }`로 전환하고 어댑터를 배선한다
   - ⚠️ **`NextAuth(async () => config)` 지연 형태** — `PrismaAdapter(getPrisma())`가 인자에 그대로 있으면
     `requireEnv("DATABASE_URL")`이 import 시점에 던진다 (design §8)
   - 검증 `[auto]`: `.env.local`을 치운 셸에서 `pnpm build` 통과 /
@@ -120,16 +133,20 @@
     최상위 `const` 호출 0건 / `grep -rn -E '\w+\([^)]*,\s*requireEnv\('` 0건
   - 검증 `[manual]`: 로그인 후 `Session` 행이 생기고, **그 행을 지우면 다음 요청이 `/`로 튄다** —
     spec 완료 조건 2의 수동 절반
-- [ ] Google provider 추가. **`allowDangerousEmailAccountLinking`을 어느 provider에도 두지 않는다**
+- [x] Google provider 추가. **`allowDangerousEmailAccountLinking`을 어느 provider에도 두지 않는다**
+      — ⚠️ **Google 로그인은 §5가 허용 목록을 걷어낼 때까지 거부된다** (핸들이 없어 목록을 못 지난다).
+      의도된 fail-closed이고, 로그인 화면에 Google 버튼이 없어 그 거부에 도달할 경로도 아직 없다
   - 검증 `[auto]`: provider 설정을 읽어 그 옵션이 없음을 단언(spec 완료 조건 4)
   - 검증 `[manual]`: 로컬에서 Google 로그인 성공(Google 클라이언트 1개에 URI 셋 등록 — design §6)
-- [ ] `signIn` 콜백 — **검증된 이메일 없으면 거부**(design §2.1). Google `email_verified`, GitHub `/user/emails`
-      primary+verified. `pages.error`를 `/`로
+- [x] **검증된 이메일 없으면 거부** — 판정은 `verifiedEmailFrom`(순수), 재료 수집은 provider 설정,
+      `signIn`은 결과가 비어 있는지만 본다. ⚠️ **`pages.error`는 §5b가 로그인 화면과 함께** 한다 —
+      지금은 거부 경로에 도달할 UI가 없다
   - ⚠️ **구현 전 확인**: GitHub provider가 공개 이메일 없을 때 `/user/emails`를 조회하는가(`@auth/core/providers/github`).
     안 하면 `profile` 콜백에서 직접 조회한다
   - 검증 `[auto]`: 판정을 `isVerifiedEmail(profile, provider)` 순수 함수로 빼서 provider별 케이스 /
     `[manual]`: 비공개 이메일 GitHub 계정으로 로그인 → `/`에 거부 문구
-- [ ] **`User.email`이 정규화를 지나게 한다** (code-review 🟡, 2026-09-05) — `@auth/prisma-adapter`의
+- [x] **`User.email`이 정규화를 지나게 한다** ✅ — 위 판정 2로 함께 닫혔다. `verifiedEmailFrom`이
+      `normalizeEmail`을 지난 값을 내고 그 값이 곧 `User.email`이다. 원래 우려는 이랬다: — `@auth/prisma-adapter`의
       `createUser`는 우리 코드를 지나지 않으므로 provider 원문이 그대로 저장된다. design §2·§5의
       "`User.email`은 정규화 값을 저장한다"가 조치 없이는 **거짓이 된다.** 초대 수락은
       `planInvitationAccept`가 양쪽을 정규화해 안 깨지지만, §5의 "이미 멤버인 이메일 초대" 검사처럼
@@ -140,18 +157,19 @@
     위반하며 죽는다.** 멱등해야 한다는 §3의 요구가 그 지점에서 깨진다
   - 검증 `[auto]`: `signIn`/`profile` 콜백이 `normalizeEmail`을 부르는 것을 테스트가 고정 /
     `[manual]`: 대문자 섞인 이메일로 로그인 후 `User.email`이 소문자
-- [ ] `session` 콜백이 `user.id`만 싣는다. `types/next-auth.d.ts`의 `login` → `id`
+- [x] `session` 콜백이 `user.id`만 싣는다. `types/next-auth.d.ts`의 `login` → `id`
   - 검증 `[auto]`: `pnpm typecheck` — `session.user.login` 참조 0건(`grep -rn 'user.login'`)
-- [ ] `requireUser()` · `requireProjectAccess({ userId, slug, permission })`(페이지용, redirect) ·
+- [x] `requireUser()` · `requireProjectAccess({ slug, permission })`(페이지용, redirect) ·
       `getProjectAccess(...)`(Action용, union 반환). 판정은 전부 `planProjectAccess`
   - 검증 `[auto]`: 메모리 DB로 — 다른 프로젝트 slug → `not-found` / EDITOR + `member:manage` → `forbidden` /
     `planProjectAccess`를 지나는 것을 스파이가 고정
-- [ ] `middleware.ts` — **`auth` 래퍼 제거**, `hasSessionCookie(request.cookies)`만. `matcher`에
-      `/projects/:path*` 추가, `/keys/:path*` 제거. **`/invite/:path*`는 넣지 않는다**(design §4.1)
+- [x] `middleware.ts` — **`auth` 래퍼 제거**, `hasSessionCookie(request.cookies)`만. `matcher`에
+      `/projects/:path*` **추가**. **`/keys/:path*`는 남긴다**(위 판정 1 — 제거는 §5b).
+      **`/invite/:path*`는 넣지 않는다**(design §4.1)
   - 검증 `[auto]`: `grep -n '@/auth' middleware.ts` 0건 /
     `[manual]`: 쿠키 없이 `curl -si localhost:3000/projects/x/translations` → 302 + `wc -c` 본문 0 /
     `curl -si localhost:3000/invite/abc` → 200(로그인 버튼 페이지)
-- [ ] `.env.example` — `AUTH_GOOGLE_ID`·`AUTH_GOOGLE_SECRET` 추가(주석: 클라이언트 1개·URI 셋)
+- [x] `.env.example` — `AUTH_GOOGLE_ID`·`AUTH_GOOGLE_SECRET` 추가 (클라이언트 1개·URI 셋)(주석: 클라이언트 1개·URI 셋)
 
 `──` 커밋: `feat(auth): database sessions, Google provider, project-scoped authorization`
 
@@ -193,6 +211,8 @@
       `lib/keys/view.ts` 그대로, 최상단 `requireProjectAccess`, `loadProject(prisma, slug)`는 인가가 준
       `projectId`로). `app/(edit)/projects/page.tsx`(멤버십 목록) 신설. `/keys` 삭제, `app/page.tsx`
       redirect → `/projects`, `revalidatePath` 경로 갱신
+  - ⚠️ **`middleware.ts`의 matcher에서 `/keys/:path*`를 여기서 뺀다** (§4가 남겨 뒀다 — 라우트가
+    살아 있는 동안 빼면 그 페이지가 무방비다)
   - 검증 `[auto]`: `grep -rn ACTIVE_PROJECT_SLUG app/\(edit\) lib/keys lib/auth components` 0건 /
     `[manual]`: 로그인 → `/projects` → 프로젝트 클릭 → 표가 보인다. 멤버 아닌 slug 직접 입력 → `/projects`로 튄다
 - [ ] `saveTranslation(raw)`·`triggerPullAction(slug)` — `raw`에 `slug` 포함(Zod), **기본값 자리 `requireEnv`
