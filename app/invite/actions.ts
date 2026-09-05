@@ -1,8 +1,8 @@
 "use server";
 
-import { auth } from "@/auth";
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
 import type { InviteError } from "@/lib/auth/message";
+import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 
 /**
@@ -24,9 +24,13 @@ import { getPrisma } from "@/lib/db";
 export type AcceptResult = { ok: true; slug: string } | { ok: false; error: InviteError };
 
 export async function acceptInvitation(input: { token: string }): Promise<AcceptResult> {
-  const session = await auth();
-  const userId = session?.user.id;
-  if (!userId) return { ok: false, error: "unauthorized" };
+  // 타입은 클라이언트를 구속하지 않는다 — 문자열이 아니면 해시 함수에 닿기 전에 "그런 초대 없음"이다.
+  if (typeof input?.token !== "string" || input.token === "") return { ok: false, error: "not-found" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   const prisma = getPrisma();
 
@@ -40,10 +44,11 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     select: { id: true, projectId: true, email: true, role: true, expiresAt: true, acceptedAt: true },
   });
 
+  const now = new Date();
   const plan = planInvitationAccept({
     invitation,
     verifiedEmail: user.email,
-    now: new Date(),
+    now,
   });
   if (plan !== "ok") return { ok: false, error: plan };
   // `plan === "ok"`는 행이 있었다는 뜻이다 — `not-found`가 그 앞에서 걸린다.
@@ -67,9 +72,11 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
   const accepted = await prisma.$transaction(async (tx) => {
     // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
     // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.
+    // ⚠️ **만료도 소비 조건에 넣는다.** 위 판정은 조회 시점의 행을 봤다 — 그 뒤 OWNER가 재초대로 이 행을
+    // 만료시켰으면(`createInvitation`의 회전) 옛 role로 멤버가 되면 안 된다 (Codex 감사 2026-09-06 #3).
     const claimed = await tx.projectInvitation.updateMany({
-      where: { id: invitation.id, acceptedAt: null },
-      data: { acceptedAt: new Date() },
+      where: { id: invitation.id, acceptedAt: null, expiresAt: { gt: now } },
+      data: { acceptedAt: now },
     });
     if (claimed.count === 0) return false;
 
@@ -79,7 +86,13 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     return true;
   });
 
-  // 경합에서 진 쪽은 이미 수락된 것을 본다 — "성공"으로 접지 않는다.
-  if (!accepted) return { ok: false, error: "already-accepted" };
+  if (!accepted) {
+    // 경합에서 진 쪽 — 왜 졌는지는 행을 다시 봐야 안다. 수락됨이 만료보다 앞이다 (`planInvitationAccept`와 같은 순서).
+    const after = await prisma.projectInvitation.findUnique({
+      where: { id: invitation.id },
+      select: { acceptedAt: true },
+    });
+    return { ok: false, error: after?.acceptedAt != null ? "already-accepted" : "expired" };
+  }
   return { ok: true, slug: project.slug };
 }

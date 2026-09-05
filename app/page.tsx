@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 
-import { auth, signIn } from "@/auth";
+import { signIn } from "@/auth";
 import { signInErrorMessage } from "@/lib/auth/message";
+import { readSession } from "@/lib/auth/read-session";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -13,8 +14,10 @@ import { signInErrorMessage } from "@/lib/auth/message";
  */
 export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  const session = await auth();
-  if (session?.user) redirect("/projects");
+  const session = await readSession();
+  if (session.status === "ok") redirect("/projects");
+  // 세션을 못 읽었으면 `?error=`가 없어도 장애 문구를 보인다 — 로그인 버튼만 보이면 사용자가 헛로그인한다.
+  const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
     <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
@@ -22,8 +25,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
       <p className="text-muted-foreground text-sm">
         초대받은 프로젝트의 번역을 보고 고칠 수 있어요.
       </p>
-      {error !== undefined && (
-        <p className="text-destructive text-xs">{signInErrorMessage(error)}</p>
+      {shown !== undefined && (
+        <p className="text-destructive text-xs">{signInErrorMessage(shown)}</p>
       )}
       <div className="flex flex-col gap-2">
         <ProviderButton provider="github" label="GitHub으로 로그인" primary />

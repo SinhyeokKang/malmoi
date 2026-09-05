@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   accessErrorMessage,
   inviteErrorMessage,
+  isAccessError,
   signInErrorMessage,
   type AccessError,
   type InviteError,
@@ -17,12 +18,21 @@ import {
  * 번역 편집자는 무슨 일이 일어났는지 알 수 없다.
  */
 
-const ERRORS: readonly AccessError[] = ["unauthorized", "forbidden", "not-found"];
+const ERRORS: readonly AccessError[] = ["unauthorized", "forbidden", "not-found", "unavailable"];
 
-describe("accessErrorMessage — 셋이 서로 다른 문구다", () => {
-  it("세 거부 사유가 각자 다른 문장을 낸다", () => {
+describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
+  it("네 사유가 각자 다른 문장을 낸다", () => {
     const texts = ERRORS.map(accessErrorMessage);
-    expect(new Set(texts).size).toBe(3);
+    expect(new Set(texts).size).toBe(4);
+  });
+
+  it("unavailable만 재시도를 권하고 로그인을 시키지 않는다 — 장애를 거부처럼 말하면 사용자가 헛로그인한다", () => {
+    const text = accessErrorMessage("unavailable");
+    expect(text).toContain("잠시");
+    expect(text).not.toContain("로그인");
+    for (const error of ["unauthorized", "forbidden", "not-found"] as const) {
+      expect(accessErrorMessage(error)).not.toContain("잠시");
+    }
   });
 
   it("빈 문구를 내지 않는다", () => {
@@ -69,6 +79,13 @@ describe("signInErrorMessage — 거부와 장애를 가른다", () => {
 
   it("두 거부가 서로 다른 문구다 — 원인이 다르면 안내도 달라야 한다", () => {
     expect(signInErrorMessage("OAuthAccountNotLinked")).not.toBe(signInErrorMessage("AccessDenied"));
+  });
+
+  it("Unavailable은 로그인 실패가 아니라 일시적 오류라고 말한다 — requireUser가 DB 장애를 이 코드로 보낸다", () => {
+    const text = signInErrorMessage("Unavailable");
+    expect(text).toContain("잠시");
+    expect(text).not.toContain("로그인에 실패");
+    expect(text).not.toBe(signInErrorMessage("Configuration"));
   });
 
   it("모르는 코드는 재시도를 권한다 — 그때만 '잠시 뒤'가 맞다", () => {
@@ -135,8 +152,30 @@ describe("inviteErrorMessage — 여섯 사유가 각자 다른 문구다", () =
     }
   });
 
+  it("unavailable만 재시도를 권한다 — 세션을 못 읽은 것은 거부가 아니다", () => {
+    expect(inviteErrorMessage("unavailable")).toContain("잠시");
+  });
+
   it("모르는 코드는 일반 문구로 접는다 — URL은 사용자가 손댈 수 있다", () => {
     // `?e=`는 주소창에 있으므로 우리가 안 만든 값이 들어온다. 던지면 초대 화면이 통째로 죽는다.
     expect(inviteErrorMessage("무엇이든" as InviteError).trim().length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * 화면 셋(`translation-input`·`invite-form`·`pull-button`)이 각자 `Set`을 들고 `as AccessError`로 단언하던 자리다.
+ * 사유가 늘면 셋 중 하나가 빠진다 — 판정을 한 곳에 둔다.
+ */
+describe("isAccessError — 문자열이 AccessError인가", () => {
+  it("다섯 사유 + unavailable을 전부 인식한다", () => {
+    for (const e of ["unauthorized", "forbidden", "not-found", "last-owner", "not-member", "unavailable"]) {
+      expect(isAccessError(e)).toBe(true);
+    }
+  });
+
+  it("그 밖은 아니다 — 입력 검증·orphaned 사유는 원문으로 남아야 한다", () => {
+    expect(isAccessError("invalid input")).toBe(false);
+    expect(isAccessError("")).toBe(false);
+    expect(isAccessError(undefined)).toBe(false);
   });
 });

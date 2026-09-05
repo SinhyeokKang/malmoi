@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { accessErrorMessage } from "@/lib/auth/message";
 import { pullMessage } from "../message";
 
 /**
@@ -78,5 +79,29 @@ describe("pullMessage — writer가 버린 항목", () => {
   it("warnings가 없으면 문구가 그대로다", () => {
     const m = pullMessage({ status: "committed", commitSha: "abc", prUrl: "https://x/pr/1", changed: [] });
     expect(m.text).not.toMatch(/반영되지 못했/);
+  });
+});
+
+/**
+ * **인가 거부가 영어 토큰으로 뜨지 않는다.** `triggerPullAction`은 `error: access.status`를 내는데 이 함수가
+ * `내보내기에 실패했어요: not-found`로 그렸다 — `accessErrorMessage`가 정확히 그 토큰들을 위해 만들어졌는데
+ * Publish 버튼만 안 지났다 (code-review 2026-09-06 🟡9). 멤버 제거된 편집자가 열어 둔 화면에서 누르면 그 줄이 뜬다.
+ */
+describe("pullMessage — failed의 인가 사유는 accessErrorMessage를 지난다", () => {
+  it("not-found·unauthorized·forbidden·unavailable이 한국어 문구다", () => {
+    for (const error of ["not-found", "unauthorized", "forbidden", "unavailable"] as const) {
+      const m = pullMessage({ status: "failed", error });
+      expect(m.tone).toBe("destructive");
+      expect(m.text).toBe(accessErrorMessage(error));
+      expect(m.text).not.toContain(error);
+    }
+  });
+
+  it("unavailable은 재시도를 권한다 — 장애를 거부처럼 말하지 않는다", () => {
+    expect(pullMessage({ status: "failed", error: "unavailable" }).text).toContain("잠시");
+  });
+
+  it("인가 밖의 사유는 원문을 남긴다 — 개발자가 보는 신호다", () => {
+    expect(pullMessage({ status: "failed", error: "internal (ref abc)" }).text).toContain("internal (ref abc)");
   });
 });

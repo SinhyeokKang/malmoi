@@ -30,7 +30,7 @@ export type EmailProof =
  * 검증된 이메일을 **정규화해서** 내거나 `null`.
  *
  * **fail-closed**: 모르는 모양·빠진 값·미검증은 전부 `null`이고, 호출부(`signIn`)는 그때 로그인을
- * 거부한다. `lib/auth/allow.ts`가 빈 핸들을 이중으로 막는 것과 같은 계보다 — 부재를 통과로 읽으면
+ * 거부한다. `checkProjectSlug`(`lib/push/guard.ts`)가 빈 slug를 막는 것과 같은 계보다 — 부재를 통과로 읽으면
  * 이메일 소유권 증명이 사라지고, 그 위에 선 초대 대조(SAAS §5.6)가 통째로 무의미해진다.
  */
 export function verifiedEmailFrom(proof: EmailProof): string | null {
@@ -61,4 +61,43 @@ function normalizedOrNull(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const email = normalizeEmail(value);
   return email === "" ? null : email;
+}
+
+/**
+ * `signIn` 콜백의 `profile`에서 **지금** provider가 검증한 이메일을 꺼낸다.
+ *
+ * GitHub은 `auth.ts`의 `userinfo.request`가 만든 객체라 `email`이 이미 검증 결과다(실패면 `""`).
+ * Google은 raw OIDC profile이라 `email_verified`를 봐야 한다. 모르는 provider는 `null` — 부재는 갱신이 아니다.
+ */
+export function freshVerifiedEmail(provider: string | undefined, profile: unknown): string | null {
+  if (typeof profile !== "object" || profile === null) return null;
+  const record = profile as Record<string, unknown>;
+  if (provider === "github") return normalizedOrNull(record["email"]);
+  if (provider === "google") {
+    return verifiedEmailFrom({ provider: "google", email: record["email"], emailVerified: record["email_verified"] });
+  }
+  return null;
+}
+
+export type EmailRefresh = "keep" | "update" | "conflict";
+
+/**
+ * 기존 사용자가 재로그인할 때 `User.email`을 갱신할지.
+ *
+ * ⚠️ **OAuth 재로그인은 `updateUser`를 부르지 않는다** (`@auth/core` handle-login — email provider 분기만
+ * 갱신한다). 그래서 저장된 이메일은 첫 로그인 값으로 굳고, primary를 바꾼 사람은 새 주소로 온 초대를 영영
+ * 수락하지 못하며 옛 주소로 온 초대는 수락한다 (Codex 감사 2026-09-06 #5). 초대 대조가 `User.email` 위에 서므로
+ * 그 값이 **지금** 검증된 주소여야 한다.
+ *
+ * `conflict`는 새 주소를 다른 User가 쓰는 경우다 — **갱신도 병합도 하지 않고 로그인은 허용한다**
+ * (2026-09-06 결정). 여기서 합치면 `allowDangerousEmailAccountLinking`을 우회한 자동 병합이 된다.
+ */
+export function planEmailRefresh(input: {
+  stored: string;
+  fresh: string | null;
+  takenByOther: boolean;
+}): EmailRefresh {
+  const fresh = input.fresh === null ? "" : normalizeEmail(input.fresh);
+  if (fresh === "" || fresh === normalizeEmail(input.stored)) return "keep";
+  return input.takenByOther ? "conflict" : "update";
 }

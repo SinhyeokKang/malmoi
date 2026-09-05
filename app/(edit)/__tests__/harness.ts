@@ -116,7 +116,7 @@ export function createHarness(seed: Seed = {}) {
         name: found.name ?? found.slug,
         locales: locales
           .filter((l) => l.projectId === found.id && (onlyLive ? l.orphaned !== true : true))
-          .map((l) => ({ code: l.code, isBase: l.isBase ?? false })),
+          .map((l) => ({ code: l.code, name: l.code, isBase: l.isBase ?? false, orphaned: l.orphaned ?? false })),
       };
     },
   );
@@ -194,8 +194,12 @@ export function createHarness(seed: Seed = {}) {
   );
 
   const findInvitation = vi.fn(
-    async (args: { where: { tokenHash: string } }) =>
-      invitations.find((i) => i.tokenHash === args.where.tokenHash) ?? null,
+    async (args: { where: { tokenHash?: string; id?: string } }) =>
+      invitations.find(
+        (i) =>
+          (args.where.tokenHash !== undefined && i.tokenHash === args.where.tokenHash) ||
+          (args.where.id !== undefined && i.id === args.where.id),
+      ) ?? null,
   );
 
   const createInvitationRow = vi.fn(async (args: { data: Omit<InvitationSeed, "id"> }) => {
@@ -207,7 +211,7 @@ export function createHarness(seed: Seed = {}) {
   /** 단일 사용의 근거다 — 두 번째 수락은 `acceptedAt: null` 조건에 걸려 count 0이 된다. */
   const updateManyInvitations = vi.fn(
     async (args: {
-      where: { id?: string; projectId?: string; email?: string; acceptedAt?: null };
+      where: { id?: string; projectId?: string; email?: string; acceptedAt?: null; expiresAt?: { gt: Date } };
       data: { acceptedAt?: Date; expiresAt?: Date };
     }) => {
       const matched = invitations.filter(
@@ -215,12 +219,22 @@ export function createHarness(seed: Seed = {}) {
           (args.where.id === undefined || i.id === args.where.id) &&
           (args.where.projectId === undefined || i.projectId === args.where.projectId) &&
           (args.where.email === undefined || i.email === args.where.email) &&
-          (args.where.acceptedAt === undefined || i.acceptedAt === null),
+          (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
+          (args.where.expiresAt === undefined || i.expiresAt.getTime() > args.where.expiresAt.gt.getTime()),
       );
       for (const row of matched) Object.assign(row, args.data);
       return { count: matched.length };
     },
   );
+
+  const countMembers = vi.fn(async (args: { where: { projectId: string; role?: Role } }) =>
+    members.filter(
+      (m) => m.projectId === args.where.projectId && (args.where.role === undefined || m.role === args.where.role),
+    ).length,
+  );
+
+  /** `SELECT … FOR UPDATE` 같은 잠금 SQL. 메모리 DB는 잠글 것이 없다 — 호출 인자만 남긴다. */
+  const executeRaw = vi.fn(async (_strings: TemplateStringsArray, ..._values: unknown[]) => 0);
 
   const findUser = vi.fn(
     async (args: { where: { id?: string; email?: string } }) =>
@@ -231,12 +245,33 @@ export function createHarness(seed: Seed = {}) {
       ) ?? null,
   );
 
+  /**
+   * 트랜잭션 — **콜백이 던지면 되돌린다.** 실 DB는 롤백하는데 가짜가 안 하면 "판정 뒤 되돌린다"는
+   * 코드(`changeMember`의 OWNER 재집계)를 재현할 수 없다 (POSTMORTEM 2026-09-05 — 가짜가 실제보다
+   * 관대하면 결함을 볼 수조차 없다). 배열을 제자리에서 되돌린다 — 테스트가 같은 참조를 들고 있다.
+   */
+  const snapshot = <T extends object>(rows: T[]) => rows.map((r) => ({ ...r }));
+  const restore = <T extends object>(rows: T[], snap: T[]) => rows.splice(0, rows.length, ...snap);
+  const $transaction = async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
+    const saved = { members: snapshot(members), invitations: snapshot(invitations), translations: snapshot(translations) };
+    try {
+      return await fn(prisma);
+    } catch (error) {
+      restore(members, saved.members);
+      restore(invitations, saved.invitations);
+      restore(translations, saved.translations);
+      throw error;
+    }
+  };
+
   const prisma = {
-    $transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn(prisma),
+    $transaction,
+    $executeRaw: executeRaw,
     project: { findUnique: findProject, update: async () => ({}) },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
+      count: countMembers,
       create: createMember,
       update: updateMember,
       delete: deleteMember,
@@ -356,6 +391,8 @@ export function createHarness(seed: Seed = {}) {
       deleteMember,
       deleteManyMembers,
       updateManyMembers,
+      countMembers,
+      executeRaw,
       findInvitation,
       createInvitationRow,
       updateManyInvitations,

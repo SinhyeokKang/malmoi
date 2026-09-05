@@ -3,8 +3,10 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-import { verifiedEmailFrom } from "@/lib/auth/email";
-import { githubUserinfo } from "@/lib/auth/profile";
+import { freshVerifiedEmail, planEmailRefresh, verifiedEmailFrom } from "@/lib/auth/email";
+import { noteAuthError } from "@/lib/auth/outage";
+import { githubApi, githubUserinfo } from "@/lib/auth/profile";
+import { publicSession } from "@/lib/auth/public-session";
 import { getPrisma } from "@/lib/db";
 
 /**
@@ -50,29 +52,6 @@ const google = Google({
 });
 
 /**
- * 조회 실패는 `null`이고 그러면 검증이 실패해 로그인이 거부된다 — **fail-closed 쪽으로 접는다.**
- * 다만 원인이 사라지지 않게 로그에 남긴다: 일시적 장애와 미검증 계정이 사용자에게는 같은 거부로 보인다.
- */
-async function githubApi(path: string, token: string): Promise<unknown> {
-  if (token === "") {
-    console.warn("[auth] github: access_token이 없어 이메일 검증을 할 수 없다");
-    return null;
-  }
-  const response = await fetch(`https://api.github.com${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "malmoi",
-    },
-  });
-  if (!response.ok) {
-    console.warn(`[auth] github: ${path} 조회 실패 (${response.status})`);
-    return null;
-  }
-  return await response.json();
-}
-
-/**
  * Auth.js v5. **로그인·인가 전용이다** — 리포 쓰기는 GitHub App installation 토큰이 맡는다.
  * OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 떠나면 파이프라인이
  * 깨진다 (ARCHITECTURE §6).
@@ -96,13 +75,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
   adapter: PrismaAdapter(getPrisma()),
   providers: [github, google],
   /**
-   * `maxAge`는 JWT 때 값 그대로다. **그 24시간의 근거(권한 회수 지연 상한)는 사라졌지만**
-   * — 이제 `ProjectMember` 행이 없어지면 다음 요청에서 막힌다 — 세션 길이 자체를 바꾸는 것은
-   * 이 단계가 요청받은 일이 아니다.
+   * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
+   * 안 줘서 Auth.js 기본값(24h)이 `maxAge`와 같았고, 그러면 `session.js:81-87`의 갱신 시점이 `expires`와
+   * 일치해 **세션이 한 번도 연장되지 않았다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를
+   * 지워 blur 저장이 미들웨어에 걸렸다 (Codex 감사 2026-09-06 #6). `updateAge` 1시간이면 활동 중인 세션은
+   * 한 시간에 한 번만 DB 쓰기로 연장된다.
    */
-  session: { strategy: "database", maxAge: 60 * 60 * 24 },
+  session: { strategy: "database", maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
   // 거부는 우리 로그인 화면에서 보인다 — 기본 `/api/auth/error`는 디자인 밖의 무스타일 페이지다.
   pages: { signIn: "/", error: "/" },
+  /**
+   * ⚠️ **세션 읽기 실패를 밖으로 알리는 유일한 통로다.** `auth()`는 어댑터 예외를 여기로 보내고 `null`을
+   * 돌려주므로(`session.js:123`) 반환값으로는 비로그인과 구별할 수 없다 — 프로덕션 전면 장애를
+   * "정상"으로 읽었다 (POSTMORTEM 2026-09-06). `noteAuthError`가 요청 스코프에 표시를 남기고
+   * `readSession`이 그것을 `unavailable`로 돌려준다. `warn`·`debug`는 기본 logger가 그대로 맡는다.
+   */
+  logger: {
+    error(error) {
+      console.error("[auth]", error);
+      noteAuthError(error);
+    },
+  },
   callbacks: {
     /**
      * 인가 지점. **`handleLoginOrRegister`보다 먼저 돈다**(`@auth/core`의 callback 라우트) —
@@ -127,18 +120,53 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
      * **처음 들어오는 계정**이다. OAuth 경로는 `updateUser`를 부르지 않으므로(`handle-login.js`)
      * 저장된 값이 오염되지는 않는다.
      */
-    signIn({ user }) {
+    async signIn({ user, account, profile }) {
       // provider 설정이 검증에 실패하면 email을 비워 보낸다 (`githubUserinfo`).
-      return typeof user.email === "string" && user.email !== "";
+      if (typeof user.email !== "string" || user.email === "") return false;
+
+      /**
+       * ⚠️ **기존 사용자의 `User.email`을 지금 검증된 주소로 맞춘다.** OAuth 재로그인은 `updateUser`를 부르지
+       * 않아 저장값이 첫 로그인 때로 굳는다 — primary를 바꾼 사람은 새 주소로 온 초대를 영영 수락하지 못한다
+       * (Codex 감사 2026-09-06 #5). "기존 사용자"는 `Account` 행으로 판정한다 — `user.id`는 새 사용자일 때
+       * provider의 id라 믿을 수 없다. 새 주소를 다른 User가 쓰면 **건너뛴다**(병합 금지, 로그인은 허용).
+       */
+      const provider = account?.provider;
+      const providerAccountId = account?.providerAccountId;
+      if (provider === undefined || providerAccountId === undefined) return true;
+      const prisma = getPrisma();
+      const linked = await prisma.account.findUnique({
+        where: { provider_providerAccountId: { provider, providerAccountId } },
+        select: { userId: true, user: { select: { email: true } } },
+      });
+      if (linked === null) return true;
+
+      const fresh = freshVerifiedEmail(provider, profile);
+      const taken =
+        fresh === null ? null : await prisma.user.findUnique({ where: { email: fresh }, select: { id: true } });
+      const plan = planEmailRefresh({
+        stored: linked.user.email,
+        fresh,
+        takenByOther: taken !== null && taken.id !== linked.userId,
+      });
+      if (plan === "update" && fresh !== null) {
+        await prisma.user.update({ where: { id: linked.userId }, data: { email: fresh } });
+      } else if (plan === "conflict") {
+        // 주소는 로그에 남기지 않는다 — 어느 사용자인지는 id로 충분하다.
+        console.warn(`[auth] user ${linked.userId}: 검증 이메일이 바뀌었지만 다른 사용자가 쓰는 주소라 갱신하지 않았다`);
+      }
+      return true;
     },
 
     /**
      * DB 세션에서는 `token`이 오지 않고 **`user`(어댑터가 읽은 행)** 가 온다. 세션에 싣는 것은
      * `id` 하나다 — role·projectIds를 실으면 JWT의 회수 지연이 그대로 돌아온다 (SAAS §5.3).
+     *
+     * ⚠️ **입력 `session`을 돌려주지 않는다.** 그 객체는 `Session` **행**이라 `sessionToken`이 들어
+     * 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 그대로 돌려주면 HttpOnly 쿠키의 값이 JSON으로
+     * 샌다 (Codex 감사 2026-09-06 #1). `publicSession`이 허용 목록으로 새 객체를 만든다.
      */
     session({ session, user }) {
-      session.user.id = user.id;
-      return session;
+      return publicSession({ session, user });
     },
   },
 }));

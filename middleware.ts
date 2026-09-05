@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { hasSessionCookie } from "@/lib/auth/cookie";
+import { shouldRedirectToLogin } from "@/lib/auth/cookie";
 
 /**
  * **1차 차단 — 세션 쿠키가 있는지만 본다.**
@@ -9,6 +9,8 @@ import { hasSessionCookie } from "@/lib/auth/cookie";
  * `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다
  * (`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`). 미들웨어가 Prisma·pg를 물게 되고
  * "값싼 1차 차단"이 거짓이 된다.
+ *
+ * ⚠️ **렌더 요청만 막는다.** Server Action POST는 지나가고 Action이 스스로 인증한다 — 아래 주석.
  *
  * ⚠️ **이건 차단이지 인가가 아니다.** 쿠키가 위조·만료됐는지 모르고 **프로젝트 접근 권한은 전혀
  * 모른다.** 진짜 판정은 페이지·Server Action이 `requireProjectAccess`/`getProjectAccess`로 한다
@@ -20,7 +22,13 @@ import { hasSessionCookie } from "@/lib/auth/cookie";
  * 싣는다. 실측: 세션 없이 `/keys`를 요청했을 때 응답 1.3MB에 1446키 (POSTMORTEM 2026-08-31).
  */
 export default function middleware(request: NextRequest): NextResponse | undefined {
-  if (hasSessionCookie(request.cookies.getAll().map((cookie) => cookie.name))) return undefined;
+  // ⚠️ Server Action POST는 통과시킨다 — 307로 돌리면 `fetch`가 POST를 `/`로 재전송해 action id를 못 찾고
+  // 페이지 오류가 된다. Action은 스스로 `auth()`를 지나 `unauthorized`를 낸다 (`lib/auth/cookie.ts`).
+  const redirectToLogin = shouldRedirectToLogin({
+    method: request.method,
+    cookieNames: request.cookies.getAll().map((cookie) => cookie.name),
+  });
+  if (!redirectToLogin) return undefined;
 
   // 로그인 화면은 `app/page.tsx`(루트)가 그린다.
   return NextResponse.redirect(new URL("/", request.nextUrl.origin));

@@ -10,7 +10,7 @@ import type { PullState } from "./run";
  * Server Action이 주입한다.
  *
  * ⚠️ **모든 쿼리를 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이고, 더 중요하게는
- * 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (CLAUDE.md).
+ * RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다 (CLAUDE.md).
  */
 
 export async function loadPullState(prisma: PrismaClient, slug: string): Promise<PullState> {

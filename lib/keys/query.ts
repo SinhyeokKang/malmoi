@@ -5,13 +5,15 @@ import type { KeyRow } from "./view";
 
 /**
  * 키 리스트 데이터 조회. **`projectId`로 좁힌다** — 인덱스가 전부 `projectId` 선두 복합이고,
- * 더 중요하게는 인가가 아직 단일 테넌트라 애플리케이션이 유일한 방어선이다 (CLAUDE.md).
+ * 더 중요하게는 RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다 (CLAUDE.md). 받는 id는 인가가 준 것이다.
  */
 
 export type LocaleRow = {
   code: string;
   name: string;
   isBase: boolean;
+  /** 리포에서 사라진 로케일 — 열은 보이되 편집은 막는다. 저장해도 pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). */
+  orphaned: boolean;
 };
 
 export type ProjectContext = {
@@ -37,7 +39,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string): Prom
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true,
       lastCommitSha: true, baseLocale: true,
-      locales: { select: { code: true, name: true, isBase: true }, orderBy: { code: "asc" } },
+      locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
     },
   });
   return project;

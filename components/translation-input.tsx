@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { saveTranslation } from "@/app/(edit)/actions";
-import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { SaveInputType } from "@/lib/keys/save";
 import { cn } from "@/lib/utils";
 
@@ -98,10 +98,8 @@ export function TranslationInput({
  * ⚠️ **DB 세션에서 "권한 회수가 즉시 반영된다"는 성질이 사용자에게는 이 한 줄로만 드러난다.**
  * 그래서 입력값을 지우지 않는다 — 다시 로그인하면 그대로 저장할 수 있어야 한다.
  */
-const ACCESS_ERRORS = new Set<string>(["unauthorized", "forbidden", "not-found", "last-owner", "not-member"]);
-
 function failureText(error: string): string {
-  if (ACCESS_ERRORS.has(error)) return accessErrorMessage(error as AccessError);
+  if (isAccessError(error)) return accessErrorMessage(error);
   // 인가 밖의 사유(입력 검증·orphaned)는 원문을 남긴다 — 개발자가 보는 신호다.
   return `저장 실패: ${error}`;
 }

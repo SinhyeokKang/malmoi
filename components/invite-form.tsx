@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { createInvitation } from "@/app/(edit)/projects/actions";
-import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,16 +91,8 @@ export function InviteForm({ slug }: { slug: string }) {
   );
 }
 
-const ACCESS_ERRORS = new Set<string>([
-  "unauthorized",
-  "forbidden",
-  "not-found",
-  "last-owner",
-  "not-member",
-]);
-
 function inviteFailureText(error: string): string {
-  if (ACCESS_ERRORS.has(error)) return accessErrorMessage(error as AccessError);
+  if (isAccessError(error)) return accessErrorMessage(error);
   if (error === "already-member") return "그 이메일은 이미 이 프로젝트의 멤버예요.";
   return `초대를 만들지 못했어요: ${error}`;
 }

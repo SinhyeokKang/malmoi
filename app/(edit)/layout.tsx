@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 
 import Link from "next/link";
 
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { readSession } from "@/lib/auth/read-session";
 
 /**
  * 편집 UI 셸. **차단은 `middleware.ts`(쿠키 1차)가, 인가는 각 페이지의 `requireProjectAccess`가
@@ -17,15 +18,16 @@ import { auth, signOut } from "@/auth";
  * `docs/POSTMORTEM.md` 2026-08-31 항목. 렌더 전 차단은 미들웨어가 한다.
  */
 export default async function EditLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = await readSession();
 
   // 2차 방어. 차단의 1차는 미들웨어다(위 주석) — 여기서 `redirect`를 던지면 응답이 중단되므로
   // 병렬로 렌더된 페이지의 페이로드가 나가지 않는다. 미들웨어 matcher에서 라우트가 빠지는
-  // 경우의 안전망이다.
-  if (!session?.user) redirect("/");
+  // 경우의 안전망이다. 장애는 `requireUser`와 같은 목적지로 — 비로그인과 같은 응답을 내지 않는다.
+  if (session.status === "unavailable") redirect("/?error=Unavailable");
+  if (session.status === "none") redirect("/");
   // GitHub 핸들이 사라진 자리다 — Google로 로그인한 사용자에게는 핸들이 없다.
   // `User.id`는 사람이 읽을 값이 아니므로 이름·이메일 순으로 떨어진다.
-  const label = session.user.name ?? session.user.email ?? "?";
+  const label = session.name ?? session.email ?? "?";
 
   return (
     // flex 컬럼이다 — 페이지가 "헤더를 뺀 나머지 높이"를 calc로 계산하지 않게 한다.
