@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { auth, signIn } from "@/auth";
 import { hashInviteToken } from "@/lib/auth/invitation";
+import { inviteErrorMessage, type InviteError } from "@/lib/auth/message";
 import { getPrisma } from "@/lib/db";
 
 import { acceptInvitation } from "../actions";
@@ -25,8 +26,17 @@ function maskEmail(email: string): string {
   return `${email.slice(0, 1)}***${email.slice(at)}`;
 }
 
-export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+export default async function InvitePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  // ⚠️ **이 인자를 빠뜨리면 아래 `redirect`가 넘기는 사유가 통째로 사라진다** — 주소창만 바뀌고
+  // 화면은 그대로라, 사용자에게는 버튼이 안 눌린 것으로 보인다 (issue #2, POSTMORTEM 2026-09-06).
+  searchParams: Promise<{ e?: string }>;
+}) {
   const { token } = await params;
+  const { e } = await searchParams;
   const session = await auth();
 
   const invitation = await getPrisma().projectInvitation.findUnique({
@@ -52,11 +62,17 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
   const label = `${invitation.project.name} · ${invitation.role === "OWNER" ? "소유자" : "편집자"}`;
 
+  // ⚠️ **두 분기가 함께 쓴다.** `unauthorized`는 세션이 끊긴 뒤에 오므로 아래 로그인 화면에서만
+  // 보이고, `email-mismatch`·`already-member`는 로그인한 화면에서만 온다 — 한쪽에만 두면
+  // 그 사유의 문구가 도달할 수 없다.
+  const failure = e === undefined ? null : <p className="text-destructive text-sm">{inviteErrorMessage(e as InviteError)}</p>;
+
   if (!session?.user) {
     return (
       <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
         <h1 className="text-lg font-semibold tracking-tight">말모이</h1>
         <p className="text-sm">{label}로 초대받았어요.</p>
+        {failure}
         <p className="text-muted-foreground text-xs">
           {maskEmail(invitation.email)} 주소의 계정으로 로그인하면 수락할 수 있어요.
         </p>
@@ -73,11 +89,13 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
       <h1 className="text-lg font-semibold tracking-tight">말모이</h1>
       <p className="text-sm">{label}로 초대받았어요.</p>
+      {/* 수락 버튼을 눌러서 나는 실패는 이 줄이 유일한 통로다 — 없으면 아무 일도 안 일어난 것으로 보인다. */}
+      {failure}
       <form
         action={async () => {
           "use server";
           const result = await acceptInvitation({ token });
-          // 실패 사유를 쿼리로 넘긴다 — 이 페이지가 다시 그리며 아래 문구를 고른다.
+          // 실패 사유를 쿼리로 넘긴다 — 이 페이지가 다시 그리며 위 문구를 고른다.
           redirect(result.ok ? `/projects/${result.slug}/translations` : `/invite/${token}?e=${result.error}`);
         }}
       >

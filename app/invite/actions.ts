@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
+import type { InviteError } from "@/lib/auth/message";
 import { getPrisma } from "@/lib/db";
 
 /**
@@ -16,7 +17,11 @@ import { getPrisma } from "@/lib/db";
  * 세션 없는 요청을 `/`로 돌리는데, 그러면 초대 링크의 토큰이 사라진다 (design §4.1).
  */
 
-export type AcceptResult = { ok: true; slug: string } | { ok: false; error: string };
+/**
+ * ⚠️ **`error`가 `string`이 아니라 union이다.** 화면이 `inviteErrorMessage`로 문구를 고르는데,
+ * `string`이면 사유를 늘려도 그 switch가 조용히 기본값으로 떨어진다.
+ */
+export type AcceptResult = { ok: true; slug: string } | { ok: false; error: InviteError };
 
 export async function acceptInvitation(input: { token: string }): Promise<AcceptResult> {
   const session = await auth();
