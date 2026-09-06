@@ -59,6 +59,7 @@
 | **단일 로케일 리포 지원 여부** | ADAPTER-COVERAGE §6 순위 4 — arkadiyt/zoom-redirector 1개 | "로케일 2개 이상" 규칙의 대가다. 온보딩 실패 진단에 직결되므로 5단계에서 다시 본다 |
 | **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4, **관측 1리포**) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
 | **`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀** | tenant-auth 검수(CDO) | 저장 실패 문구가 스크린리더에 안 읽히고, blur로 포커스가 떠난 뒤라 재시도 지점이 없다. **6단계(번역 UI 재작성)에서 화면과 함께** 고친다 — 동결된 UI를 지금 다듬으면 버려진다(MVP §8.3) |
+| **GitHub 계정 연결·해제가 `project:settings` 뒤에 있다** | github-connect code-review 🟡3 (2026-09-07) · design §3.4 | OWNER에서 강등되면 자기 연결을 풀 화면이 없어 `taken-by-other`가 영구 잠금이 된다. `Account`는 사용자 소유라 섹션이 사용자 수준 화면으로 가야 하고, 그건 화면 변경이다 — **6단계**(SAAS §8)에 얹었다. 강등 경로가 실사용에 아직 없다 |
 | **셀 메타의 `updatedBy`가 `User.id` cuid 원문** ([malmoi#3](https://github.com/SinhyeokKang/malmoi/issues/3)) | SAAS §5.6 (2026-09-05 `User.id` 전환) | `CellMeta`가 문자열을 그대로 찍는다 — 이름으로 보이려면 `User` join이 필요하다. 6단계 "덮인 셀의 `updatedBy`"와 **다른 축**이라 따로 적는다 |
 
 ## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다
