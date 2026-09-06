@@ -116,11 +116,11 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 - `--radius: 0.625rem`. shadcn 관용대로 `--radius-sm/md/lg/xl`이 `calc()`로 파생된다.
 - 간격은 Tailwind 기본 스케일. **페이지 셸은 `p-8`, 셸 안 섹션은 `space-y-4`, 컨트롤 묶음은 `space-y-2`** — 실사용을 따랐다(2026-09-06 실측).
-- 페이지 셸은 둘이다: **인증 카드** `mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8`(로그인·초대) / **목록** `mx-auto max-w-2xl space-y-4 p-8`(프로젝트 목록). 새 화면은 둘 중 하나를 쓴다.
+- 페이지 셸은 둘이다: **인증 카드** `mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8`(로그인·초대) / **목록** `mx-auto max-w-2xl space-y-4 p-8`(프로젝트 목록·설정). 새 화면은 둘 중 하나를 쓴다. 빈 상태 블록만 `space-y-2` 변종이다.
 
 ## 6. 편집 UI 특화 규칙
 
-화면은 넷이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`). MVP §3.2가 정한 것은 번역 테이블 하나였고, 나머지 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였다(`features/tenant-auth/design.md` §4.1). 공통 패턴은 §6.4.
+화면은 다섯이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`) · **설정**(`/projects/[slug]/settings` — 리포 연결 + GitHub 계정, §6.5). MVP §3.2가 정한 것은 번역 테이블 하나였고, 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였으며(`features/tenant-auth/design.md` §4.1), 설정은 SaaS **4단계**가 같은 방식으로 붙였다. 공통 패턴은 §6.4.
 
 ### 6.1 키 테이블
 
@@ -138,9 +138,9 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 **"번역됨"에는 배지를 붙이지 않는다** — 가장 흔한 상태가 가장 조용해야 한다 (§6.2와 같은 원리).
 
-### 6.2 상태 배지 3종
+### 6.2 상태 색 — 번역 배지 3종 + 연결 건강성 6종
 
-필터가 셋(미번역 / 검토필요 / orphaned)이므로 배지도 셋이다. **semantic 토큰으로 표현 못 하는 상태 색**이라 raw 색을 쓰되, 라이트 단일이므로 `dark:` 짝을 두지 않는다.
+**축이 둘이고 색 체계는 하나다.** 번역 테이블의 배지는 필터가 셋(미번역 / 검토필요 / orphaned)이라 셋이고, 설정 화면의 연결 건강성은 `planConnectionHealth`가 여섯 갈래라 여섯이다 — 아래 표의 색 규칙을 **그대로 재사용**한다. 그래서 amber가 "검토필요" 전용이 아니고 destructive가 "orphaned" 전용이 아니다: amber는 **경고**, destructive는 **글자색 전용 오류**가 근거다. **semantic 토큰으로 표현 못 하는 상태 색**이라 raw 색을 쓰되, 라이트 단일이므로 `dark:` 짝을 두지 않는다.
 
 | 상태 | 색 | 근거 |
 |---|---|---|
@@ -148,27 +148,39 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 검토필요 (`needsReview`) | **amber** — `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
 | orphaned | **red 계열 글자만** — `text-destructive` | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기**(2026-09-06) — 편집 차단은 disabled + placeholder 문구 |
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — 배지의 **amber**·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**.
+**연결 건강성 6종** (`app/(edit)/projects/[slug]/settings/page.tsx`):
 
-### 6.3 코드 참조 링크
+| 상태 | 색 | 근거 |
+|---|---|---|
+| `ok`(연결됨) · `not-connected` · `unknown` | 무색 — `text-muted-foreground` | `ok`는 가장 흔한 상태라 조용해야 하고, 나머지 둘은 **아직 모르는 것**이지 오류가 아니다 |
+| `repo-moved` | **amber** 칩 | 경고 — 동작은 하는데 이름이 달라졌다 |
+| `app-uninstalled` · `installation-changed` | **`text-destructive` 글자만** | 사람이 손을 대야 풀린다. 배경을 주지 않는 이유는 orphaned와 같다 |
 
-GitHub permalink는 `text-xs` + `text-blue-600 underline`. 외부 링크임이 보여야 하므로 밑줄을 뺀 관용을 쓰지 않는다.
+⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
+
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`bg-amber-100/80 text-amber-800`)·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**.
+
+### 6.3 외부 링크
+
+**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline`이다** — 코드 참조 permalink(`text-xs`, 번역 테이블) · pull 결과의 PR 링크(`components/pull-button.tsx`) · App 설치 링크(설정 화면). 외부 링크임이 보여야 하므로 밑줄을 뺀 관용을 쓰지 않는다.
 
 ### 6.4 공통 패턴 — 버튼·상태줄·칩 (2026-09-06 실측 정리)
 
-SaaS 화면 셋이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는 import 0곳 — UI 동결). 형이 갈리지 않게 여기 고정한다.
+SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는 import 0곳 — UI 동결). 형이 갈리지 않게 여기 고정한다.
 
 | 패턴 | 클래스 | 사용처 |
 |---|---|---|
-| **primary 버튼** | `bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 GitHub, 초대 수락 |
+| **primary 버튼** | `bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 GitHub, 초대 수락, **GitHub 연결/다시 연결** |
 | **bordered 버튼(페이지)** | `border-input hover:bg-accent rounded-md border px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 Google, "다른 계정으로 로그인" |
-| **bordered 버튼(툴바)** | 같은 색에 `h-8 px-3 text-xs` | Publish, 초대 링크 만들기, 복사 |
-| **텍스트 버튼** | `text-muted-foreground hover:text-foreground text-xs underline` | 로그아웃 |
+| **bordered 버튼(툴바)** | 같은 색에 `h-8 px-3 text-xs font-medium` | Publish, 초대 링크 만들기, 복사, **리포 다시 연결** |
+| **텍스트 버튼** | `text-muted-foreground hover:text-foreground text-xs underline` + 포커스 링 셋 | 로그아웃, **연결 해제**, **설정**, **← 번역** |
 | **disabled** | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent` | 툴바 버튼 전부 |
 | **pending** | 버튼 라벨 교체("만드는 중…") — 옆 문구가 아니다(헤더 폭을 흔든다). `pull-button`의 옆 문구는 예외로 남았다 | |
-| **인라인 상태줄**(컨트롤 옆) | `text-xs`. 오류 `text-destructive`, 진행·정보 `text-muted-foreground` | 번역 셀, Publish, 초대 폼 |
-| **페이지 수준 거부 문구** | `text-destructive text-sm` | `/projects?e=`, 초대 페이지, 로그인 화면 |
-| **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2) | 초대 링크 |
+| **인라인 상태줄**(컨트롤 옆) | `text-xs`. 오류 `text-destructive`, 진행·정보 `text-muted-foreground` | 번역 셀, Publish, 초대 폼, **재연결·연결·해제 오류** |
+| **페이지 수준 거부 문구** | `text-destructive text-sm` | `/projects?e=`, 초대 페이지, 로그인 화면, **설정 화면의 `?e=`** |
+| **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). **블록 요소(`<p>`)면 `inline-block`을 더 단다** | 초대 링크, 리포 `owner/name`, `@handle` |
+
+⚠️ **툴바형의 `font-medium`은 현재 코드가 갈려 있다** — `reconnect-button`에는 있고 `pull-button`·`invite-form`에는 없다. 표가 정본이므로 **있는 쪽으로 맞춘다**(다음에 그 파일을 만질 때).
 
 **포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7.
 빈 상태(로케일 없음·키 없음·멤버십 없음)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
@@ -176,7 +188,7 @@ SaaS 화면 셋이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다.
-- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다).
+- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다). ⚠️ **화면이 늘 때마다 다시 샌다** — 2026-09-07 검사에서 설정 화면의 "연결 해제"(`components/github-account.tsx`)가 또 빠져 있었다. 새 컨트롤을 만들 때 §6.4 표에서 클래스를 복사하면 이 셋이 딸려온다.
 - `--ring` == `--border`라서 **`muted`·`secondary` 표면 위에선 포커스 링이 약하다.** 그런 자리엔 `ring-offset`을 주거나 배경을 `background`로 되돌린다.
 
 ## 8. className & 변형
@@ -194,7 +206,7 @@ SaaS 화면 셋이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 
 | 축 | 무엇을 따르나 |
 |---|---|
-| **좌측 고정 사이드바** | 최상단이 **프로젝트 전환**, 그 아래가 섹션 네비게이션. 우리 구조가 `translations` · `publish` · `settings` 셋이라 그대로 맞는다 |
+| **좌측 고정 사이드바** | 최상단이 **프로젝트 전환**, 그 아래가 섹션 네비게이션. 우리 라우트는 지금 `translations`·`settings` 둘이고 Publish는 화면이 아니라 번역 화면 툴바의 버튼이다 — 사이드바를 만들면 그 둘이 섹션이 된다. (현재 사이드바 자리는 네임스페이스 목록이다) |
 | **높은 밀도** | 테이블 행 높이와 패딩을 작게. 번역 테이블이 수백 행이고 **한 화면에 많이 보이는 것이 이 도구의 값**이다 (가상화를 안 쓰는 이유와 같은 판단 — CLAUDE.md) |
 | **중성이 지배하고 강조는 한 곳** | 회색조가 화면을 채우고 brand 색은 CTA·활성 탭·선택 행에만. 상태 색을 늘리지 않는다 |
 | **식별자는 mono** | 키 이름·SHA·경로·slug. 우리 §4.1 mono 표면 불변식이 이미 그 규칙이다 |
