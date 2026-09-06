@@ -169,22 +169,22 @@ design §4의 원칙이다.
 
 ---
 
-## T4 — 설정 화면 + 재연결·해제 Server Action ⎇ `feat:`
+## T4 — 설정 화면 + 재연결·해제 Server Action ✅ (2026-09-06, `90a159a` test → `e870b21` feat → `de29be7`·`d9255a0` fix)
 
-- [ ] `app/(edit)/projects/[slug]/settings/page.tsx` — 최상단에서
+- [x] `app/(edit)/projects/[slug]/settings/page.tsx` — 최상단에서
       `requireProjectAccess({ slug, permission: "project:settings" })`를 **던진다**. `searchParams.e`를
       `isConnectError`로 걸러 한 줄(`text-destructive text-sm`). 섹션 둘은 독립 실패(design §8)
-- [ ] 같은 `actions.ts`에 `connectRepository({ slug })` — Zod → `getProjectAccess` → `ensureUserToken` →
+- [x] 같은 `actions.ts`에 `connectRepository({ slug })` — Zod → `getProjectAccess` → `ensureUserToken` →
       `probeRepo` → **설치·리포 목록 조회(전 페이지)** → `planRepoConnect` → `project.update({ where: { id:
       projectId } })`. `{ ok } | { error: ConnectError | AccessError }` 반환, redirect 없음
-- [ ] 같은 파일에 `disconnectGithub({ slug })` — `getProjectAccess` → 세션 User의 `github-app` 행 `delete`
-- [ ] `components/reconnect-button.tsx` (client — pending "연결하는 중…", 인라인 `text-destructive text-xs`,
+- [x] 같은 파일에 `disconnectGithub({ slug })` — `getProjectAccess` → 세션 User의 `github-app` 행 `delete`
+- [x] `components/reconnect-button.tsx` (client — pending "연결하는 중…", 인라인 `text-destructive text-xs`,
       성공 시 `revalidatePath`) · `components/github-account.tsx` (client — 연결 해제 pending, "GitHub 다시 연결")
-- [ ] 번역 화면 툴바 `role === "OWNER"` 블록에 "설정" Link (`translations/page.tsx:103-118`) + 설정 화면에
+- [x] 번역 화면 툴바 `role === "OWNER"` 블록에 "설정" Link (`translations/page.tsx:103-118`) + 설정 화면에
       "← 번역" 링크. ⚠️ 헤더/레이아웃에는 slug가 없다 — 거기 달지 않는다
-- [ ] 건강성 배지 6종 — `ok`·`not-connected`·`unknown` muted, `repo-moved` amber, `app-uninstalled`·
+- [x] 건강성 배지 6종 — `ok`·`not-connected`·`unknown` muted, `repo-moved` amber, `app-uninstalled`·
       `installation-changed` `text-destructive` 글자만. **DESIGN §6.2 밖의 raw 색 없음**
-- [ ] **하네스 갱신** (`app/(edit)/__tests__/harness.ts`): `account` 모델 `{ findUnique, findFirst, create,
+- [x] **하네스 갱신** (`app/(edit)/__tests__/harness.ts`): `account` 모델 `{ findUnique, findFirst, create,
       update, updateMany, delete }` + `@@id([provider, providerAccountId])` 위반 시 P2002 throw(`createMember`
       `:139-148` 형) · **`project.update`가 상태를 실제로 바꾸고 인자·횟수를 spy로 남긴다**(지금은
       `async () => ({})`) · `$transaction` 롤백 스냅샷(`:256`)에 accounts·projects 추가
@@ -198,6 +198,25 @@ design §4의 원칙이다.
 OWNER → update 1회, 인자 `{ where: { id: <인가된 projectId> }, data: { installationId: <probe 값> } }`, 다른
 Project 불변** ⑥ `repo-moved` → data에 새 `repoOwner`·`repoName` ⑦ `disconnectGithub` → 내 행만 delete,
 Project 불변. **거부만 검증하면 항상 거부하는 Action도 통과한다** — ⑤가 필수다 (POSTMORTEM 2026-09-06).
+
+**결과:** 26건 추가, `pnpm test` 1466 green · `pnpm typecheck` OK · `pnpm build`가 `/projects/[slug]/settings`를
+라우트로 등록(RSC 경계 통과). 하네스의 `project.update`를 상태 반영형으로 바꿨는데 **기존 83건이 그대로
+통과했다** — 경고했던 회귀 지점을 지났다.
+
+⚠️ **구현 중 자체 검증이 잡은 것 하나**: `loadAccount`가 `account.findFirst({ where: { provider } })`로 조회해
+**아무 사용자의 행이나** 집었다 — OWNER가 둘이면 남의 GitHub 핸들이 뜬다. `requireProjectAccess`가 `userId`도
+돌려주게 고쳤다(`e870b21`). POSTMORTEM 2026-09-06에 항목으로 남겼다 — CLAUDE.md의 "`projectId`로 좁힌다"가
+**테넌트 축만** 말해서 `Account` 같은 사용자별 테이블이 사각지대였다.
+
+⚠️ **`/code-review`가 잡은 것 셋**(`de29be7`): ① 사용자 토큰 GET의 401을 `unavailable`로 접어 `reauthorize`를
+놓쳤다 — 인가 철회가 "잠시 뒤 다시"로 안내돼 사용자가 갇힌다 ② `installationId`가 null인데 `probeRepo`를
+불러 GitHub 호출 2회가 헛돌았다(프로덕션 `skillflo`가 그 상태다) ③ 설치 포함 판정이 껍데기와 순수 함수에
+중복 — 조건은 정당하므로(404를 `unavailable`로 접으면 거부가 장애로 위장) 근거를 주석으로 묶었다.
+
+⚠️ **T6 확인 중 `smoke:github`가 잡은 것**(`d9255a0`): **401을 `not-installed`로 분류하던 것을 `error`로
+옮겼다.** 로컬 App JWT가 깨진 상태에서 `probeRepo`가 `not-installed`를 줬고, 화면이었다면 "App이 제거됐어요 +
+설치 링크"를 보여 사용자를 헛되게 재설치시켰을 것이다. **404가 설치 부재이고 401은 우리 자격증명 실패다.**
+design §3.3과 T1 테스트 기대값을 함께 고쳤다.
 
 ---
 
