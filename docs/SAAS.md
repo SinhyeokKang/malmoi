@@ -678,6 +678,12 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 - [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
+- [ ] **"GitHub 계정" 섹션을 사용자 수준 화면으로** (4단계 code-review 🟡3, 2026-09-07 이관). 지금은
+      `/projects/:slug/settings` 안에 있어 **연결도 해제도 `project:settings`(OWNER) 뒤**다 — OWNER에서
+      강등된 사람은 자기 연결을 풀 화면이 없고, 그 계정으로 연결하려는 다른 User는 `taken-by-other`에
+      영구히 막힌다(design §3.4가 막으려던 것). `Account` 행은 사용자 소유라 게이트는 `requireUser`면
+      된다 — 섹션을 `/projects`(또는 계정 화면)로 옮기고 `disconnectGithub`의 인가를 그에 맞춘다.
+      OWNER 강등 경로가 실사용에 아직 없어 6단계로 미뤘다
 - [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
       배지 + 편집 비활성으로 닫았다 — 여기서 확정), 덮인 셀의 `updatedBy`(+ 셀 메타가 `User.id` cuid를
       원문으로 찍는 것 — 이름으로 바꾸려면 `User` join)
