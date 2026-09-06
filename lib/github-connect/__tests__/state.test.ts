@@ -138,3 +138,38 @@ describe("verifyState — state-expired / wrong-user", () => {
     });
   });
 });
+
+describe("빈 secret을 거부한다 — 설정 오류를 거부로 위장하지 않는다", () => {
+  /**
+   * `createHmac("sha256", "")`는 던지지 않고 동작한다. 빈 키로 만든 서명은 **누구나 재현할 수 있어**
+   * `verifyState`가 위조 쿠키를 통과시키고, 공격자가 `slug`와 `userId`를 정한 state로 callback에
+   * 들어온다. `requireEnv`가 빈 문자열을 던져 정상 경로는 막혀 있지만, 이 층이 그것에 의존하면서
+   * 스스로 검사하지 않으면 호출부의 실수 하나로 방어가 통째로 사라진다 — `checkBearer`가
+   * `expected === ""`를 `not-configured`로 가른 것과 같은 판단이다 (`lib/push/auth.ts`).
+   *
+   * ⚠️ **`state-mismatch`로 접지 않고 던진다.** 접으면 설정 오류가 "다시 눌러 주세요"로 위장돼
+   * 사용자가 같은 버튼을 무한히 누른다 — POSTMORTEM 2026-09-06("장애를 정상으로 읽었다")과 같은 축이다.
+   */
+  it("signState가 빈 secret에 던진다 — 위조 가능한 쿠키를 내보내지 않는다", () => {
+    expect(() => sign({ secret: "" })).toThrow();
+  });
+
+  it("verifyState가 빈 secret에 던진다 — 위조 쿠키를 통과시키지 않는다", () => {
+    expect(() => verify({ secret: "" })).toThrow();
+  });
+
+  it("빈 secret으로 서명한 쿠키가 빈 secret 검증을 통과하지 못한다 — 두 쪽 다 막혀야 한다", () => {
+    // 한쪽만 막으면 다른 쪽이 그 구멍을 그대로 연다.
+    expect(() => verifyState({
+      cookie: "any.thing",
+      query: "nonce-1",
+      userId: "user-1",
+      now: NOW,
+      secret: "",
+    })).toThrow();
+  });
+
+  it("공백 한 칸짜리 secret은 유효한 키다 — 빈 문자열만 거른다 (`requireEnv`와 같은 기준)", () => {
+    expect(() => sign({ secret: " " })).not.toThrow();
+  });
+});

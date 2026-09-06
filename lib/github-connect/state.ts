@@ -36,6 +36,8 @@ export function signState(input: {
   expiresAt: Date;
   secret: string;
 }): string {
+  requireSecret(input.secret);
+
   const payload: StatePayload = {
     userId: input.userId,
     slug: input.slug,
@@ -53,6 +55,8 @@ export function verifyState(input: {
   now: Date;
   secret: string;
 }): StateCheck {
+  requireSecret(input.secret);
+
   // 서명 검사가 가장 앞이다 — 위조된 쿠키의 내용은 읽을 가치가 없다.
   const payload = readSigned(input.cookie, input.secret);
   if (payload === null) return { status: "state-mismatch" };
@@ -68,6 +72,21 @@ export function verifyState(input: {
   if (payload.userId !== input.userId) return { status: "wrong-user" };
 
   return { status: "ok", slug: payload.slug };
+}
+
+/**
+ * ⚠️ **빈 키를 거부한다.** `createHmac("sha256", "")`는 던지지 않고 동작하므로, 빈 secret으로 만든
+ * 서명은 **누구나 재현할 수 있다** — `verifyState`가 위조 쿠키를 통과시키고 공격자가 `slug`와
+ * `userId`를 정한 state로 callback에 들어온다. `requireEnv`가 빈 문자열을 던져 정상 경로는 막혀
+ * 있지만, 그것에 의존만 하면 호출부의 실수 하나로 방어가 통째로 사라진다 — `checkBearer`가
+ * `expected === ""`를 `not-configured`로 가른 것과 같은 판단이다 (`lib/push/auth.ts`).
+ *
+ * **`state-mismatch`로 접지 않고 던지는 이유**: 접으면 설정 오류가 "다시 눌러 주세요"로 위장돼
+ * 사용자가 같은 버튼을 무한히 누른다 (POSTMORTEM 2026-09-06 — 장애를 정상으로 읽었다). 이건
+ * 사용자가 할 수 있는 일이 없는 프로그래밍 오류라 500이 정직하다.
+ */
+function requireSecret(secret: string): void {
+  if (secret === "") throw new Error("state 서명 키가 비어 있다 — AUTH_SECRET을 확인한다.");
 }
 
 function sign(encoded: string, secret: string): string {
