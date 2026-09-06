@@ -223,3 +223,51 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(unread).toEqual([]);
   });
 });
+
+/**
+ * **`auth()`는 `lib/auth/read-session.ts`만 직접 부른다.** 그 래퍼는 어댑터 예외를 삼키고 `null`을 돌려주므로
+ * 직접 부르는 진입점은 DB 장애를 "비로그인"으로 접는다 (POSTMORTEM 2026-09-06). `readSession`이 logger 경로로
+ * `unavailable`을 가르는 유일한 자리라, 그 밖의 호출은 방어선을 우회한 것이다. 2026-09-06까지는 grep 규율로만
+ * 지켰다 — 여기서 상시로 센다. `GUARDS`에는 넣지 않는다: `readSession`은 인증이지 프로젝트 인가가 아니다.
+ */
+describe("세션 읽기 단일 진입점", () => {
+  const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+  const DIRECT_AUTH_CALL = /\bawait\s+auth\(\)|[^.\w]auth\(\)\s*\.then/;
+  const IMPORTS_AUTH = /import\s*\{[^}]*\bauth\b[^}]*\}\s*from\s*["']@\/auth["']/;
+
+  function walkAll(dir: string, base = ""): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      if (entry === "__tests__" || entry === "node_modules" || entry.startsWith(".")) continue;
+      const full = join(dir, entry);
+      const rel = base === "" ? entry : `${base}/${entry}`;
+      if (statSync(full).isDirectory()) out.push(...walkAll(full, rel));
+      else if (/\.tsx?$/.test(entry)) out.push(rel);
+    }
+    return out;
+  }
+
+  const SOURCES = [...walkAll(join(ROOT, "app"), "app"), ...walkAll(join(ROOT, "lib"), "lib"), "middleware.ts"]
+    .map((rel) => ({ rel, source: readFileSync(join(ROOT, rel), "utf8") }));
+
+  it("검사식이 직접 호출을 실제로 잡는다 — 스캐너가 공허하게 통과하지 않는다", () => {
+    expect(DIRECT_AUTH_CALL.test("const session = await auth();")).toBe(true);
+    expect(IMPORTS_AUTH.test('import { auth, signIn } from "@/auth";')).toBe(true);
+    // signIn·signOut만 가져오는 것은 허용이다 — 세션을 읽지 않는다.
+    expect(IMPORTS_AUTH.test('import { signIn, signOut } from "@/auth";')).toBe(false);
+  });
+
+  it("read-session.ts 밖에서 auth()를 직접 부르지 않는다", () => {
+    const offenders = SOURCES
+      .filter((f) => f.rel !== "lib/auth/read-session.ts")
+      .filter((f) => DIRECT_AUTH_CALL.test(f.source) || IMPORTS_AUTH.test(f.source))
+      .map((f) => f.rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("read-session.ts는 여전히 @/auth의 auth를 가져온다 — 진입점이 사라지면 이 검사가 공허해진다", () => {
+    // 호출 형태는 `withOutageFlag(() => auth())`라 `await auth()` 패턴엔 안 걸린다 — import로 본다.
+    const rs = SOURCES.find((f) => f.rel === "lib/auth/read-session.ts");
+    expect(rs && IMPORTS_AUTH.test(rs.source)).toBe(true);
+  });
+});

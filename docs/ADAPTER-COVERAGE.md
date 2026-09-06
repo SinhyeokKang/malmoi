@@ -134,7 +134,10 @@ write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 �
 
 **판정 주체는 `detect` 밖이다.** 리포별 정답 경로를 verdicts.json에 적고 후보 목록과 대조했다.
 한 리포에 유효한 표면이 둘 이상이면(mastodon의 Rails YAML + 프런트 JSON, Kavita의 백엔드 + UI 등
-11개) `alsoValid`로 등재했다 — 어느 쪽을 골라도 맞으므로 오탐으로 세면 숫자가 과장된다.
+**학습 14개 · 홀드아웃 4개**) `alsoValid`로 등재했다 — 어느 쪽을 골라도 맞으므로 오탐으로 세면
+숫자가 과장된다. ⚠️ **§8 리포별 표의 비고 열은 그중 4개에만 "다른 유효 표면"을 단다** — 1순위가
+정답과 다를 때만 달았기 때문이고, 등재 수 자체는 `verdicts.json`에서 센다(재측정 없이 셀 수 있는
+값이라 2026-09-07에 11 → 14로 정정했다).
 
 **정답 순위 분포**: `1순위 100 · 목록에 없음 1`. 1차의 `1순위 68 · 2순위 1 · 없음 4`에서 왔다.
 
@@ -147,6 +150,7 @@ write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 �
 | `non-literal-value` | 621 | 코드 딕셔너리의 import 참조·템플릿 리터럴 (ant-design의 `Pagination` 등) |
 | `key-collision` | 107 | YAML 중복 키 — **값 하나가 사라진다** |
 | `non-object-root` | 4 | 최상위가 맵/객체가 아니다 |
+| `json-parse` | — | JSON 자체가 안 읽힌다. **12차(§17)에서 유형으로 추가됐다** — 위 건수는 그 이전 라운드 값이라 이 행에 분모가 없다 |
 | 무증상 skip | **0** | `ts-dict`가 자동 탐지에서 빠져 이 경로가 닫혔다 |
 
 **`null` 리프는 에러가 아니다** (2차에서 정정). jsxc 한 리포가 이것만으로 5,099건을 냈는데, 그 리포는
@@ -229,8 +233,11 @@ write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 �
 단서 하나: **중첩 JSON에서 키가 `.`을 품으면 값이 사라질 수 있다** (§3). 사라지는 것을 **보고**하므로
 조용한 손실은 아니지만, 완전한 해결은 별 기능이다.
 
-**경로 모양 3개** (2026-09-02 3차 추가). `json-catalog`·`yaml-catalog`이 read/write를 공유하고
-`pathTemplate`만 다르다:
+**경로 모양 3개** (2026-09-02 3차 추가). 각 어댑터가 **자기** read/write를 그대로 쓰고 `pathTemplate`만
+늘렸다 — 공유하는 것은 경로 후보 생성 헬퍼(`splitLocaleSuffix`·`hasStrongLocale`·`pathSignals`,
+`lib/adapters/shared.ts`)뿐이다. ⚠️ **두 어댑터가 read/write를 공유한다는 뜻이 아니다**: `json-catalog`은
+`regenerate`, `yaml-catalog`은 `surgical`이라 write 기계가 아예 다르다 (CLAUDE.md "layout과
+writeStrategy는 별개 축"):
 
 | 모양 | 어댑터 | 근거 |
 |---|---|---|
@@ -300,7 +307,7 @@ bugshot-2가 그 경로의 유일한 사용자다.
 
 | 순위 | 항목 | 근거 |
 |---|---|---|
-| 1 | **키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {style, separator}`) | §3의 손실은 siyuan 1건이 남아 있다(musicblocks는 `nestedByPath`로 해소 — §13.1). i18next의 `:` namespace 구분자도 같은 축 (비-점 구분자 8개 리포) |
+| 1 | **키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {style, separator}`) — 문서는 [`features/key-separator-contract/`](./features/key-separator-contract/)에 있고 **⏸️ 보류 판정**이다(도입 대상 bugshot-2가 `ts-dict`라 효과 0) | §3의 손실은 siyuan 1건이 남아 있다(musicblocks는 `nestedByPath`로 해소 — §13.1). i18next의 `:` namespace 구분자도 같은 축 (비-점 구분자 8개 리포) |
 | 2 | ~~**"원본 키 순서 보존" 모드**~~ → **완료** (2026-09-03, §11) | 판정 ② 해소 — 0.784 → 0.022 |
 | 3 | 크롬 레이아웃 + YAML (`_locales/{locale}/messages.yml`) | violentmonkey 1개 |
 | 4 | 단일 로케일 리포 지원 여부 판정 | arkadiyt/zoom-redirector 1개. "2개 이상" 규칙의 대가다 |
@@ -551,9 +558,18 @@ musicblocks — 이번 학습 라운드 합계 `키 충돌` **346**, `read` 에�
 
 ### 10.6 표본 상한 — 이 숫자들의 한계
 
-`lib/survey/select.ts`의 `MAX_PER_SHAPE_GROUP` = `LOCALE_CODE_PER_DIR` = **12**. 로케일이 12개를
-넘는 리포(mastodon 106, jellyfin-web 107)에서 일치율·비-base diff는 **12개 표본 값**이다.
-전 로케일을 물리화하면 리포당 수백 파일을 받아야 해서 그대로 둔다.
+`lib/survey/select.ts`가 세우는 상한은 **다섯**이다:
+
+| 상수 | 값 | 무엇을 자르나 |
+|---|---|---|
+| `FILE_BUDGET` | 1200 | **리포당 파일 총량.** 키 수가 만 단위인 리포(grafana 11,733키)의 지표가 어디까지 표본인지를 이것이 정한다 |
+| `MAX_SHAPE_GROUPS` | 8 | 경로 모양 그룹의 수 |
+| `MAX_PER_SHAPE_GROUP` | 12 | 모양 그룹 하나에서 고르는 파일 수 |
+| `LOCALE_CODE_PER_DIR` | 12 | 로케일 디렉터리 하나에서 고르는 로케일 수 |
+| `TS_PER_DIR` | 8 | TS/JS 딕셔너리 디렉터리 하나에서 고르는 파일 수 |
+
+로케일이 12개를 넘는 리포(mastodon 106, jellyfin-web 107)에서 일치율·비-base diff는 **12개 표본
+값**이다. 전 로케일을 물리화하면 리포당 수백 파일을 받아야 해서 그대로 둔다.
 
 ### 10.7 판정 3개
 

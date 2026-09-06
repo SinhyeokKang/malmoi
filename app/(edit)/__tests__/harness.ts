@@ -50,6 +50,16 @@ export type TranslationSeed = {
 
 export type LocaleSeed = { projectId: string; code: string; isBase?: boolean; orphaned?: boolean };
 
+/** `Account(provider: "github-app")`. 로그인용 `github` 행과 같은 테이블이라 provider로 갈린다. */
+export type AccountSeed = {
+  userId: string;
+  provider: string;
+  providerAccountId: string;
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expires_at?: number | null;
+};
+
 /** `loadPullState`가 읽는 포맷 컬럼들. 프로젝트마다 같아도 되는 값이다. */
 const FORMAT = {
   repoOwner: "o",
@@ -67,6 +77,7 @@ const FORMAT = {
 
 export type Seed = {
   projects?: ProjectSeed[];
+  accounts?: AccountSeed[];
   members?: MemberSeed[];
   users?: UserSeed[];
   invitations?: InvitationSeed[];
@@ -76,7 +87,17 @@ export type Seed = {
 };
 
 export function createHarness(seed: Seed = {}) {
-  const projects = seed.projects ?? [{ id: "p1", slug: "acme", name: "Acme" }];
+  const seededProjects = seed.projects ?? [{ id: "p1", slug: "acme", name: "Acme" }];
+  /**
+   * ⚠️ **프로젝트 행이 가변이다** (2026-09-06). 전에는 `project.update`가 `async () => ({})`라
+   * 아무것도 바꾸지 않았고, 그러면 "인가된 projectId에만 저장한다"를 검사하는 테스트가 **항상 거부하는
+   * Action에도 통과한다** — 거부만 보는 검증의 함정이다 (POSTMORTEM 2026-09-06). `FORMAT`을 행마다
+   * 복제해 두고 update가 그것을 갱신한다.
+   */
+  const projects = seededProjects.map((p) => ({ ...FORMAT, ...p }));
+  const accounts = (seed.accounts ?? []).map((a) => ({
+    access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
+  }));
   const members = seed.members ?? [];
   const users = seed.users ?? [];
   const invitations = seed.invitations ?? [];
@@ -110,7 +131,7 @@ export function createHarness(seed: Seed = {}) {
       if (found === undefined) return null;
       const onlyLive = args.select?.locales?.where?.orphaned === false;
       return {
-        ...FORMAT,
+        ...found,
         id: found.id,
         slug: found.slug,
         name: found.name ?? found.slug,
@@ -233,6 +254,81 @@ export function createHarness(seed: Seed = {}) {
     ).length,
   );
 
+  const updateProject = vi.fn(
+    async (args: { where: { id?: string; slug?: string }; data: Record<string, unknown> }) => {
+      const row = projects.find(
+        (p) =>
+          (args.where.id !== undefined && p.id === args.where.id) ||
+          (args.where.slug !== undefined && p.slug === args.where.slug),
+      );
+      // 없는 행을 조용히 통과시키지 않는다 — 실 Prisma는 P2025로 던진다.
+      if (row === undefined) throw Object.assign(new Error("Record to update not found"), { code: "P2025" });
+      Object.assign(row, args.data);
+      return row;
+    },
+  );
+
+  /** `Account`의 unique는 `@@id([provider, providerAccountId])` 하나뿐 — userId로는 findFirst다. */
+  const findAccountUnique = vi.fn(
+    async (args: { where: { provider_providerAccountId: { provider: string; providerAccountId: string } } }) => {
+      const { provider, providerAccountId } = args.where.provider_providerAccountId;
+      return accounts.find((a) => a.provider === provider && a.providerAccountId === providerAccountId) ?? null;
+    },
+  );
+
+  const findAccountFirst = vi.fn(
+    async (args: { where: { userId?: string; provider?: string } }) =>
+      accounts.find(
+        (a) =>
+          (args.where.userId === undefined || a.userId === args.where.userId) &&
+          (args.where.provider === undefined || a.provider === args.where.provider),
+      ) ?? null,
+  );
+
+  const createAccount = vi.fn(async (args: { data: AccountSeed }) => {
+    // 스키마의 복합 PK를 흉내낸다 — 안 하면 가짜가 실제보다 관대해 P2002 경로를 볼 수 없다.
+    const clash = accounts.some(
+      (a) => a.provider === args.data.provider && a.providerAccountId === args.data.providerAccountId,
+    );
+    if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    const row = { access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...args.data };
+    accounts.push(row);
+    return row;
+  });
+
+  const updateAccount = vi.fn(
+    async (args: {
+      where: { provider_providerAccountId: { provider: string; providerAccountId: string } };
+      data: Record<string, unknown>;
+    }) => {
+      const { provider, providerAccountId } = args.where.provider_providerAccountId;
+      const row = accounts.find((a) => a.provider === provider && a.providerAccountId === providerAccountId);
+      if (row === undefined) throw Object.assign(new Error("Record to update not found"), { code: "P2025" });
+      Object.assign(row, args.data);
+      return row;
+    },
+  );
+
+  const updateManyAccounts = vi.fn(
+    async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+      const matched = accounts.filter((a) =>
+        Object.entries(args.where).every(([k, v]) => (a as Record<string, unknown>)[k] === v),
+      );
+      for (const row of matched) Object.assign(row, args.data);
+      return { count: matched.length };
+    },
+  );
+
+  const deleteAccount = vi.fn(
+    async (args: { where: { provider_providerAccountId: { provider: string; providerAccountId: string } } }) => {
+      const { provider, providerAccountId } = args.where.provider_providerAccountId;
+      const at = accounts.findIndex((a) => a.provider === provider && a.providerAccountId === providerAccountId);
+      if (at === -1) throw Object.assign(new Error("Record to delete does not exist"), { code: "P2025" });
+      const [removed] = accounts.splice(at, 1);
+      return removed;
+    },
+  );
+
   /** `SELECT … FOR UPDATE` 같은 잠금 SQL. 메모리 DB는 잠글 것이 없다 — 호출 인자만 남긴다. */
   const executeRaw = vi.fn(async (_strings: TemplateStringsArray, ..._values: unknown[]) => 0);
 
@@ -253,13 +349,21 @@ export function createHarness(seed: Seed = {}) {
   const snapshot = <T extends object>(rows: T[]) => rows.map((r) => ({ ...r }));
   const restore = <T extends object>(rows: T[], snap: T[]) => rows.splice(0, rows.length, ...snap);
   const $transaction = async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => {
-    const saved = { members: snapshot(members), invitations: snapshot(invitations), translations: snapshot(translations) };
+    const saved = {
+      members: snapshot(members),
+      invitations: snapshot(invitations),
+      translations: snapshot(translations),
+      projects: snapshot(projects),
+      accounts: snapshot(accounts),
+    };
     try {
       return await fn(prisma);
     } catch (error) {
       restore(members, saved.members);
       restore(invitations, saved.invitations);
       restore(translations, saved.translations);
+      restore(projects, saved.projects);
+      restore(accounts, saved.accounts);
       throw error;
     }
   };
@@ -267,7 +371,7 @@ export function createHarness(seed: Seed = {}) {
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
-    project: { findUnique: findProject, update: async () => ({}) },
+    project: { findUnique: findProject, update: updateProject },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -284,6 +388,14 @@ export function createHarness(seed: Seed = {}) {
       updateMany: updateManyInvitations,
     },
     user: { findUnique: findUser },
+    account: {
+      findUnique: findAccountUnique,
+      findFirst: findAccountFirst,
+      create: createAccount,
+      update: updateAccount,
+      updateMany: updateManyAccounts,
+      delete: deleteAccount,
+    },
     stringKey: {
       findFirst: async ({ where }: { where: { id: string; projectId: string } }) =>
         keys.find((k) => k.id === where.id && k.projectId === where.projectId) ?? null,
@@ -382,8 +494,16 @@ export function createHarness(seed: Seed = {}) {
     keys,
     locales,
     translations,
+    accounts,
     spies: {
       findProject,
+      updateProject,
+      findAccountUnique,
+      findAccountFirst,
+      createAccount,
+      updateAccount,
+      updateManyAccounts,
+      deleteAccount,
       findMember,
       findManyMembers,
       createMember,

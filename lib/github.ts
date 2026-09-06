@@ -6,6 +6,8 @@
 import { App } from "octokit";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
+import { httpStatus, probeFromError, type ProbeResult } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
 import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
 
@@ -35,8 +37,52 @@ function createApp(): App {
 }
 
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
-function isNotFound(error: unknown): boolean {
+export function isNotFound(error: unknown): boolean {
   return typeof error === "object" && error !== null && "status" in error && error.status === 404;
+}
+
+/**
+ * 연결 건강성의 근거를 읽는다 (design §3.3). **판정은 `planConnectionHealth`가 한다** — 여기서
+ * 돌려주는 것은 "우리 App이 이 리포에 설치돼 있는가"와 "지금 이름이 무엇인가"뿐이다.
+ *
+ * ⚠️ **`GET /repos/{o}/{r}`만으로는 판정할 수 없다.** installation 토큰으로도 **public 리포는 접근을
+ * 철회한 뒤에 200을 주므로** 그것만 보면 `ok`로 오판한다. App JWT의 `/installation`이 "설치돼 있는가"를
+ * 결정적으로 답하고, 두 번째 호출은 **이름 감지 전용**이다(리네임이면 octokit이 301을 따라가 새
+ * `full_name`을 준다).
+ *
+ * ⚠️ **try가 토큰 발급까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
+ * `getInstallationOctokit`의 토큰 발급이 404로 죽는다 — 밖에 두면 그 경로가 처리되지 않은 예외가 된다.
+ *
+ * ⚠️ **`createApp()`은 try 밖이다.** 환경변수 누락(`MissingEnvError`)은 GitHub 실패가 아니라 우리 설정
+ * 오류고, 값으로 접으면 화면이 "확인할 수 없어요 — 잠시 뒤 다시"를 **영원히** 보인다 — 2026-09-06 개인키
+ * 사고가 그 화면이었다(POSTMORTEM). 사용자가 할 수 있는 일이 없는 오류는 500이 정직하다
+ * (`state.ts`의 `requireSecret`과 같은 판단). 호출부(설정 화면·재연결 Action)도 이것을 잡지 않는다.
+ *
+ * ⚠️ **예외를 삼켜 `not-installed`로 접지 않는다.** 분류는 `probeFromError`가 하고 그 함수가 5xx·네트워크를
+ * `error`로 남긴다 — 장애를 "제거됨"으로 읽으면 사용자가 멀쩡한 설치를 다시 만든다
+ * (POSTMORTEM 2026-09-03). **여기서 직접 상태 코드를 분기하면 판정이 두 벌이 된다.** `error`로 접는
+ * 쪽은 로그를 남긴다 — 화면에는 갈래 이름만 가고 원인은 여기서만 볼 수 있다.
+ */
+export async function probeRepo(owner: string, repo: string): Promise<ProbeResult> {
+  const app = createApp();
+  try {
+    const installation = await app.octokit.request("GET /repos/{owner}/{repo}/installation", {
+      owner,
+      repo,
+    });
+    const octokit = await app.getInstallationOctokit(installation.data.id);
+    const res = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
+    return {
+      status: "ok",
+      // `Project.installationId`가 문자열이라 여기서 좁힌다 (`createGitClient`의 `Number()`와 대칭).
+      installationId: String(installation.data.id),
+      fullName: res.data.full_name,
+    };
+  } catch (error) {
+    if (probeFromError(httpStatus(error)) === "not-installed") return { status: "not-installed" };
+    logFailure("probe", error);
+    return { status: "error" };
+  }
 }
 
 /**

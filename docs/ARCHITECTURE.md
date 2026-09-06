@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -321,9 +321,9 @@ sha1("blob " + byteLength + "\0" + content)
 
 clone하지 않는다.
 
-**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기만** 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
+**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5)만 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
 
-순서:
+순서 — ⚠️ **0단계가 GitHub 앞에 있다**: `Project.installationId`가 `null`이면 부르기 전에 던진다(`lib/pull/run.ts`·`trigger.ts`). App이 설치되지 않은 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 값이 `createGitClient`의 인자다.
 
 1. `GET /repos/{o}/{r}/git/ref/heads/{base}` → base head SHA
 2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `Project.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
@@ -423,24 +423,24 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 **출력은 정렬한다** (키·refs 모두, §1과 같은 `<` 비교). 스캔 결과가 push 페이로드라 결정적이지 않으면 서버 쪽 diff가 노이즈가 된다.
 
-## 5. 스키마 결정 (`prisma/schema.prisma` — `20260831012453_init`)
+## 5. 스키마 결정 (`prisma/schema.prisma` — 테넌트 경계는 `20260831033609_add_project_tenant_boundary`)
 
 테이블 정의는 [MVP.md](./MVP.md) §6. 여기엔 *왜* 그렇게 했는지만.
 
 - **`Project`는 경계이지 기능이 아니다.** 테넌트별 인증·권한·과금은 없다 — 그건 나중에 additive로 붙는다. 지금 넣은 이유는 `StringKey.key`의 복합 unique와 `Locale`의 복합 PK가 **나중에 바꾸면 실데이터 이관**이 되기 때문이다. 마이그레이션 시점의 행 수는 0이었다.
 - **`Translation.projectId`는 테넌트 격리 장치다.** `keyId`·`localeCode`를 독립 FK로 두면 프로젝트 A의 키 + B의 로케일 조합을 DB가 허용한다. 두 FK가 같은 `projectId`를 공유하게 만들어 막았고(`StringKey`의 `@@unique([projectId, id])`가 그 복합 FK의 대상이다), 실제로 insert가 FK 위반으로 거부되는 것을 확인했다.
 - **`KeyRef`엔 `projectId`가 없다.** FK가 하나뿐이라 테넌트 간 참조가 성립할 수 없고, 프로젝트 단위 삭제는 관계를 타면 된다. 쓰지 않을 비정규화는 하지 않는다.
-- **`Project` 관계는 `onDelete: Restrict`.** Cascade면 프로젝트 삭제가 번역을 조용히 날린다. 프로젝트 삭제가 필요해지면 soft delete로 푼다.
+- **`Project` 관계는 `onDelete: Restrict`.** Cascade면 프로젝트 삭제가 키·로케일을 타고 번역까지 조용히 날린다(`Project`에 `translations` 역관계가 없어 경로가 그렇다). 프로젝트 삭제가 필요해지면 soft delete로 푼다.
 - **`namespace`는 파생값인데도 컬럼으로 저장한다.** 사이드바 쿼리가 이 컬럼 하나로 끝나고, 키에서 매번 파싱하면 인덱스를 못 탄다.
 - **`sourceHash`를 따로 둔다.** 원문 문자열 비교로도 stale을 감지할 수 있지만, 해시면 인덱스가 작고 비교가 싸다. 긴 원문이 많다.
 - **`Translation`에 `UNIQUE(keyId, localeCode)`.** 이게 없으면 중복 행이 생겨 export가 비결정적이 된다 — §1 불변식이 스키마에 의존한다. **위생이 아니라 하중 부담 제약이라 지우면 안 된다.**
 - **`Translation`의 외래키는 둘 다 `ON DELETE RESTRICT`.** "키를 삭제하지 않고 `orphaned`로 둔다"는 코어 불변식을 **DB가 강제**한다 — 번역이 달린 `StringKey`를 지우려 하면 Postgres가 거부한다. `Cascade`면 실수로 키를 지우는 코드가 번역까지 조용히 날린다. `Locale` 쪽도 같은 이유로 `Restrict`다(로케일을 지워 번역이 사라지는 걸 막는다).
-- **`KeyRef`만 `ON DELETE Cascade`.** refs는 push마다 전체 교체되는 파생 데이터라 보존할 이유가 없다 — 여기서 `Restrict`를 쓰면 교체 자체가 막힌다.
+- **코어 5테이블 중에서는 `KeyRef`만 `ON DELETE Cascade`다** (Auth.js 쪽 `Account.user`·`Session.user`도 Cascade다 — §5.1). refs는 push마다 전체 교체되는 파생 데이터라 보존할 이유가 없다 — 여기서 `Restrict`를 쓰면 교체 자체가 막힌다.
 - **`updatedBy`는 2026-09-05부터 `User.id`를 담고, 그 전 행은 GitHub 핸들을 그대로 들고 있다.** 처음 핸들을 쓴 이유는 "JWT 세션이라 사용자 테이블이 없다"였고 그 이유는 사라졌다(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: **한 컬럼에 두 종류 값이 섞여 있다.**
   참조 무결성을 주장할 수 없고, `User`에 join하는 화면은 못 찾는 경우를 다뤄야 한다. `User.id`를 쓰는
   이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
-- **`orphaned`는 `StringKey`에, `needsReview`는 `Translation`에.** 키의 존재 여부는 코드가, 번역의 신선도는 값마다 판정되기 때문이다.
-- **인덱스는 전부 `projectId` 선두 복합이다.** 모든 조회가 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스는 쓸 수 없다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+- **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
+- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`User.email`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
 
 ### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
 
@@ -576,15 +576,21 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ## 6. 인증 경계
 
-**두 GitHub 자격증명을 섞지 않는다.**
+**세 GitHub 자격증명을 섞지 않는다** (2026-09-06에 둘에서 셋이 됐다 — 4단계가 "이 사람이 어느 설치를 볼 수 있는가"를 묻기 시작했다).
 
 | 용도 | 자격증명 | 이유 |
 |---|---|---|
-| 편집 UI **로그인** | GitHub·Google OAuth (Auth.js, DB 세션) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
-| 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (SAAS §9 불변식 7). 허용 핸들 목록은 2026-09-05에 사라졌다 |
-| `l10n/sync` 쓰기 | GitHub App installation token | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
+| 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
+| 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (SAAS §9 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
+| GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
+| `l10n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
+| `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
 | `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다. **fail-closed** — 환경변수가 비었으면 500이고, 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부를 탐색할 단서를 주지 않는다) |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
+
+⚠️ **경계를 소스에서 상시로 센다** — `lib/github-connect/__tests__/credential-separation.test.ts`가 양방향으로 본다(개인키가 연결 경로로 / 사용자 토큰이 커밋 경로로) + 연결 경로의 POST·PATCH·PUT·DELETE 금지 + **스캐너 자신이 red를 낼 수 있는지**까지 검사한다. `lib/adapters/__tests__/contract.ts`·`app/__tests__/entry-points.test.ts`와 같은 계열이다.
+
+⚠️ **막는 것은 디렉터리가 아니라 토큰을 쥔 모듈이다**(`user.ts`·`token-store.ts`). `lib/github.ts`가 `lib/github-connect/health.ts`의 `probeFromError`를 import하는 것은 **필수**다 — 금지하면 403·404 분류가 두 벌이 되어 설치 일시중지가 한쪽에서만 `app-uninstalled`가 된다.
 
 ### 6.0 ⚠️ 500 본문은 우리 메시지만 담는다
 
@@ -626,16 +632,16 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(redirect) / `getProjectAccess`(union 반환) → `planProjectAccess` | — |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
-- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다.
+- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — `/`로 302되면 쿼리의 `code`가 사라져 연결이 성립하지 않는다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **라우트가 살아 있는 동안 matcher에서 빼지 않는다.** 빼는 순간 그 페이지의 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 위 회고가 배운 부류다. `/keys`는 `/projects/[slug]/translations`로 **옮겨지는 같은 커밋에서** 함께 빠졌다 — 라우트가 사라진 뒤의 matcher 항목은 방어가 아니라 낡은 이름이다.
 - **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
 
-**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
+**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **예외가 하나다**: `app/invite/actions.ts`는 프로젝트 인가를 지나지 않고 **토큰이 그것을 대신한다**(단일 사용). `app/__tests__/entry-points.test.ts`의 `EXEMPT`에 이름으로 고정돼 있고, 같은 테스트의 `GUARDS`가 `requireUser`도 인정하므로 **세션만 확인하는 진입점**(현재 `/api/github/callback` 하나)도 자동 검사를 통과한다. ⚠️ **편집 중 저장 Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. **나가는 OAuth 시작은 예외다** — `startGithubConnect`는 성공 시 GitHub으로 `redirect`하고 실패만 값으로 돌아온다(목적지가 우리 화면이 아니라 남의 사이트라 값으로 돌려줄 것이 없다). `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
 
 #### 6.1.1 세션 정책 — 마지막 활동 뒤 24시간 (2026-09-06)
 
-`session: { strategy: "database", maxAge: 24h, updateAge: 1h }`. ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 리터럴을 고정한다.
+`session: { strategy: "database", maxAge: 24h, updateAge: 1h }`. ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
@@ -643,7 +649,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 `auth()`는 어댑터 예외를 `logger.error(new SessionTokenError(e))`로 삼키고 `null`을 돌려준다(`@auth/core/lib/actions/session.js:123`). `next-auth`의 `parseSessionResponse`도 non-OK를 `null`로 접는다. **반환값으로는 DB 장애와 비로그인을 원리적으로 구별할 수 없다** — 프로덕션 전면 장애가 "리다이렉트 100% = 정상"으로 읽혔다.
 
-- **모든 서버 진입점은 `auth()` 대신 `readSession()`을 쓴다** (`lib/auth/read-session.ts`) — `ok | none | unavailable`.
+- **모든 서버 진입점은 `auth()` 대신 `readSession()`을 쓴다** (`lib/auth/read-session.ts`) — `ok | none | unavailable`. `app/__tests__/entry-points.test.ts`의 "세션 읽기 단일 진입점"이 `app/`·`lib/`·`middleware.ts`를 스캔해 그 밖의 `auth()` import·호출을 red로 만든다.
 - 통로는 `logger`다. `auth.ts`의 `logger.error`가 `noteAuthError`를 부르고, `withOutageFlag`가 **AsyncLocalStorage**로 요청 스코프에 표시를 남긴다 (`lib/auth/outage.ts`). 모듈 변수 하나면 다른 요청의 장애가 이 요청의 거부로 둔갑한다.
 - `unavailable`이면 `requireUser`·레이아웃은 `/?error=Unavailable`로(비로그인의 `/`와 **다른 응답**), Action은 `error: "unavailable"`로, 로그인 화면은 "일시적인 오류 — 잠시 뒤 다시"를 보인다. **로그인을 시키지 않는다** — 장애 중 "다시 로그인하라"는 틀린 지시다.
 - 같은 모양이 하나 더 있었다: GitHub `/user/emails` HTTP 실패가 "미검증 이메일"로 접혀 처음 로그인하는 사람만 거부됐다. 지금은 `githubApi`가 non-OK를 `fail()`로 던져 `Configuration`("잠시 뒤 다시")으로 간다.
@@ -664,13 +670,106 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **허용 핸들 목록(`AUTH_ALLOWED_LOGINS`)이 2026-09-05에 사라졌다.** 전환과 제거가 **같은 커밋**이었던 이유: 목록을 남긴 채 멤버십을 붙이면 두 인가가 AND로 걸려 좁은 쪽이 이기고, **초대받은 비개발자가 핸들이 없어 로그인 단계에서 막힌다** — 이 단계가 존재하는 이유가 그 구간 동안 성립하지 않는다.
 
+### 6.2.1 계정 병합 방어선은 경로마다 다르다 (2026-09-06, SaaS 4단계)
+
+`allowDangerousEmailAccountLinking`을 켜지 않는 것은 **Auth.js를 지나는 로그인 경로**의 방어선이고,
+`provider:"github-app"` 연결은 그 경로를 지나지 않으므로 **그 설정이 아무 역할도 하지 않는다.**
+
+- **`planAccountLink`의 `taken-by-other`가 `replace`보다 앞이다.** 뒤였으면 옛 행을 지운 다음 거부해
+  "실패했는데 연결까지 풀렸다"가 된다 — 판정 순서 자체가 방어다.
+- **Account 쓰기는 `upsert`가 아니라 `create` + P2002 재조회다.** `upsert`는 동시 요청이 `userId`를
+  덮어써 **소유권이 이동**할 수 있다. 어떤 update도 `userId`를 인자에 넣지 않는다.
+
 ### 6.3 거부는 값으로 흐른다 — 예외로 죽지 않는다
 
 Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). 문구가 not-found와 forbidden을 같게 말하므로 존재 노출은 없다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
+⚠️ **`/projects`는 두 union을 함께 읽는다** (2026-09-06, SaaS 4단계). GitHub 연결 실패도 그 화면에 착지한다 —
+state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
+열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
+겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
+
+⚠️ **`requireProjectAccess`는 `userId`도 돌려준다** (2026-09-06). `{ projectId, role }`만 주면 그 반환값이
+"이 요청에 대해 아는 전부"처럼 보이고, 호출부가 세션 주체를 조건에서 빼 버린다 — 설정 화면이
+`account.findFirst({ provider })`로 **남의 GitHub 계정을 집을 뻔했다**(POSTMORTEM 2026-09-06).
+**규칙은 두 축이다: 프로젝트에 속한 행은 `projectId`로, 사용자에 속한 행(`Account`·`Session`)은 `userId`로
+좁힌다.** 둘 다 인가가 돌려준 값이어야 하고 클라이언트가 보낸 값이면 안 된다.
+
 ⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany({ acceptedAt: null, expiresAt: { gt: now } })`의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
 
-⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다.
+⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
+
+### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
+
+연결은 **브라우저가 남의 사이트를 다녀오는 유일한 흐름**이다. 그래서 초대 토큰(§6.2)과 같은 급의 서명
+축이 필요하고, 실패 모드도 초대와 닮았다 — 다만 실패가 "쿠키가 없다"로 보여 서명을 의심하게 만든다.
+
+- **⚠️ `redirect_uri`를 반드시 싣는다** (`origin.ts`, malmoi#7). 생략하면 GitHub이 App에 등록된 **첫**
+  callback URL로 돌려보낸다. 우리는 셋을 등록했으므로(localhost·preview·프로덕션) **로컬에서 시작한
+  연결이 프로덕션에 착지하고**, state 쿠키는 시작한 origin에 있으니 그 왕복은 **영원히**
+  `state-mismatch`다. **origin과 쿠키의 `secure`가 한 판정에서 나오는 것**이 그 파일의 요지다 — 따로
+  읽으면 한쪽만 바뀌어도 심은 이름과 찾는 이름이 갈린다.
+- **state는 HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨. ⚠️ 세션 서명과 **키를 공유**하므로 회전하면
+  진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · `timingSafeEqual`(길이 선검사).
+- **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
+  것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
+- **목적지 slug를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+- **⚠️ 빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
+  않으므로, 이 층이 `requireEnv`에만 기대면 호출부의 실수 하나로 **누구나 재현 가능한 서명**이 통과한다
+  (`checkBearer`가 `expected === ""`를 `not-configured`로 가른 것과 같은 판단). 설정 오류를 "다시 눌러
+  주세요"로 위장하지 않는다.
+- **쿠키 이름은 읽는 쪽이 둘 다 본다** (`stateCookieNames()`). 쓰는 쪽은 `x-forwarded-proto`, 읽는 쪽은
+  요청 URL로 프로토콜을 판정해 **갈릴 수 있고**, 갈리면 연결이 100% `state-mismatch`가 된다.
+  `__Host-` 접두를 https에서만 붙이는 이유는 **Safari가 `http://localhost`에서 Secure 쿠키를 버리기**
+  때문이다 — `lib/auth/cookie.ts`의 `__Secure-` 이중 검사와 같은 계열이다.
+- **착지는 둘로 갈린다**: state가 유효하면 `/projects/<slug>/settings?e=`, **무효면 `/projects?e=`**다 —
+  slug를 서명에서 얻으므로 무효한 state의 slug를 믿을 수 없다.
+
+### 6.5 `probeRepo`가 두 번 부르는 이유 — 200이 접근을 증명하지 않는다
+
+**installation 토큰으로도 public 리포는 접근을 철회한 뒤에 200을 준다.** `GET /repos/{o}/{r}`만 보면
+`ok`로 오판하므로, **App JWT의 `GET /repos/{o}/{r}/installation`이 "설치돼 있는가"를 결정적으로 답하고**
+두 번째 호출은 **이름 감지 전용**이다(리네임이면 octokit이 301을 따라가 새 `full_name`을 준다).
+2026-09-07에 실물로 확인했다 — 설치의 선택 목록에서 리포를 빼자 `probeRepo`가 `not-installed`로 바뀌었다.
+
+- **`try`가 토큰 발급까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
+  `getInstallationOctokit`의 **토큰 발급**이 404로 죽는다.
+- **⚠️ `createApp()`은 `try` 밖이다** (2026-09-07). 환경변수 누락(`MissingEnvError`)은 GitHub 실패가 아니라
+  우리 설정 오류인데, 값으로 접으면 화면이 "확인할 수 없어요 — 잠시 뒤 다시"를 **영원히** 보이고 로그도
+  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면 `loadHealth`·
+  `connectRepository`)도 그것을 잡지 않는다** — Server Action에서는 digest만 있는 일반 오류가 되지만
+  사용자가 할 수 있는 일이 없는 오류라 §6.3("거부는 값으로")의 예외다. `state.ts`의 `requireSecret`이
+  빈 키를 `state-mismatch`로 접지 않고 던지는 것과 같은 판단이다.
+- **⚠️ 예외를 삼켜 `not-installed`로 접지 않는다.** 분류는 `probeFromError` **한 곳**이고, **403·404만
+  `not-installed`, 401·429·5xx는 `error`**다. 401을 접었더니 로컬 App JWT가 깨진 상태에서 화면이
+  "App이 제거됐어요 + 설치 링크"를 보여 **재설치해도 안 고쳐지는** 안내가 됐다(2026-09-06, `d9255a0`).
+  **404가 설치 부재이고 401은 우리 자격증명 실패다.**
+- **403(설치 일시중지)은 `error`가 아니라 `not-installed`다** — 영구 상태이고 사람이 GitHub에서 풀어야
+  한다.
+
+#### 6.5.1 장애를 거부로 접지 않는다 — §6.1.2와 같은 축
+
+연결 경로 전체가 §6.1.2("세션 없음 ≠ 못 읽었다")와 **같은 규칙 위에 서 있다**: 모르는 것을 거부로
+말하면 사용자가 고칠 수 없는 일을 하게 된다.
+
+| 신호 | 판정 | 왜 |
+|---|---|---|
+| probe `error` | `unknown` (≠`app-uninstalled`) | 조회 실패를 "제거됨"으로 보여주면 멀쩡한 설치를 다시 만든다 |
+| 사용자 토큰 401 | `reauthorize` | 인가 철회다. "잠시 뒤 다시"로 안내하면 사용자가 갇힌다 |
+| 사용자 토큰 **429** | `unavailable` | **4xx인데 장애다** — 재시도하면 풀린다 |
+| DB 장애 | `unavailable` | 토큰을 못 읽은 것이지 없는 것이 아니다 |
+
+**`unavailable`만 재시도를 권한다.** `connectErrorMessage`가 12갈래를 `satisfies never`로 덮으므로
+갈래를 늘리면 컴파일이 red다.
+
+⚠️ **`unavailable`·`error`로 접는 자리는 전부 `logFailure`를 부른다** (`lib/github-connect/log.ts`,
+2026-09-07). 화면에는 갈래 이름만 가므로 GitHub 5xx·네트워크·Prisma가 사용자 제보에서 구별되지 않는다 —
+callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던 것을 한 곳으로 모았다. `reauthorize`는
+남기지 않는다(화면이 다음 행동을 말한다). `token-store.test.ts`·`github-connect.test.ts`가 `console.error`
+호출을 단언한다.
+
+⚠️ **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다.** 리네임·소유자 이전을 서버가
+조용히 받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
 

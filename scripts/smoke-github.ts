@@ -13,7 +13,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { adapterFor } from "../lib/adapters/index";
 import { requireEnv } from "../lib/env";
-import { createGitClient } from "../lib/github";
+import { createGitClient, probeRepo } from "../lib/github";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/trigger";
 
@@ -70,6 +70,21 @@ async function main(): Promise<void> {
     console.log(
       `로케일: ${locales.map((l) => `${l.code}${l.orphaned ? "(orphaned)" : ""}`).join(", ")} (base ${project.baseLocale})`,
     );
+
+    // ⚠️ **I/O 껍데기에는 스모크를 만든다** (POSTMORTEM 2026-09-01 — 이중 인코딩의 조용한 404를
+    // 잡은 것이 이것뿐이었다). `probeRepo`는 App JWT 조회 하나가 더 있어 단위 테스트가 원리적으로
+    // 못 보는 층이고, 여기서 저장된 `installationId`와 실제 설치가 갈렸는지도 함께 드러난다.
+    const probe = await probeRepo(project.repoOwner, project.repoName);
+    if (probe.status === "ok") {
+      const same = probe.installationId === project.installationId;
+      console.log(
+        `probeRepo: ok — ${probe.fullName} / installation ${probe.installationId}` +
+          (same ? "" : ` ⚠️ DB=${project.installationId} (재연결 필요)`),
+      );
+    } else {
+      // `not-installed`와 `error`를 가려 찍는다 — 접으면 장애가 "제거됨"으로 읽힌다 (design §3.3).
+      console.log(`probeRepo: ${probe.status}`);
+    }
 
     const client = await createGitClient(
       project.repoOwner,

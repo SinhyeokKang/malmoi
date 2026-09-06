@@ -31,9 +31,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - **선택지 나열 금지**: 추천 하나를 고르고 그 이유 한 줄. 사용자 결정이 필요한 지점(작업 원칙의 "가정을 명시")만 예외.
 - **예외**: 코드·커밋 메시지·PR title/body는 영문.
 
-강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 같은 규칙 요약을 컨텍스트에 재주입하는 것(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
+강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 지금은 5단계(탐지 온보딩)다** — 2단계(인증·인가)는 2026-09-06에 프로덕션까지, 4단계(GitHub 설치 연결)는 2026-09-07에 **dev까지** 갔다(프로덕션 반영은 `/merge`가 남았다). **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -76,7 +76,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google **둘 다 열려 있다** (2026-09-05, 허용 목록 제거와 같은 커밋). 로그인은 **검증된 이메일만** 요구하고, 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
-| 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
+| 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
+| 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
 | 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
@@ -154,7 +155,17 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - `<link>`로 `app/layout.tsx`가 불러온다 — `globals.css`의 `@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다
 - **`.npmrc`의 `enable-pre-post-scripts=true`가 이 자동 실행을 보장한다.** pnpm 버전에 따라 기본값이 달라지고, 안 돌면 에러도 경고도 없이 폰트만 빠진다. 이 파일을 지우지 않는다
 
-**두 GitHub 자격증명을 섞지 않는다.** OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 로그인은 OAuth, 쓰기는 App — 경계를 넘는 코드가 보이면 리뷰에서 막는다.
+**GitHub 자격증명이 셋이고, 섞지 않는다** (2026-09-06에 둘에서 셋이 됐다).
+
+| 무엇 | 어디서 | 무엇을 하나 |
+|---|---|---|
+| OAuth App 토큰 | Auth.js provider (`AUTH_GITHUB_*`) | **로그인** — 이 사람이 누구인가 |
+| GitHub App **user-to-server** 토큰 | `lib/github-connect/user.ts` (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 우리 App의 어느 설치를 볼 수 있는가. **GET만** |
+| GitHub App **installation** 토큰 | `lib/github.ts` (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 커밋·PR |
+
+여기에 `GITHUB_APP_SLUG` 하나가 더 붙는데 자격증명이 아니다 — 설치 링크(`https://github.com/apps/<slug>/installations/new`) 조립용이고 `optionalEnv`라 **없으면 그 링크만 조용히 사라진다**.
+
+OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다 — 개인키가 연결 경로로, 사용자 토큰이 커밋 경로로 가는 것을 양방향으로 막는다.
 
 ## 명령어
 
@@ -174,9 +185,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | DB 브라우저 | `pnpm db:studio` |
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). 인자 파싱·리포 훑기는 세 CLI가 `lib/cli/`를 공유한다 |
-| 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **항상 exit 0**). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
-| 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>]` (적재+스캔+POST) |
-| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 항상 exit 0**. 파이프엔 `pnpm --silent`) |
+| 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **결과가 어떻든 exit 0**, 사용법 오류만 2). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
+| 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>] [--base <locale>]` (적재+스캔+POST). ⚠️ `--base`는 2026-09-04 감사가 더했다 — 키 집합의 진실이 base 파일이라 틀리면 진짜 base에만 있는 키가 orphaned로 떨어진다 |
+| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 결과가 어떻든 exit 0** — 사용법 오류만 2. 파이프엔 `pnpm --silent`) |
 | GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
@@ -203,15 +214,24 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
 6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
 
-**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(`vercel env add <name> production,preview --force`, 값은 stdin으로 — `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다). ⚠️ **`AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 Production과 Preview가 서로 다른 OAuth 앱이다** — `--force`로 갱신할 때 스코프를 뭉뚱그리면 preview 로그인이 조용히 깨진다.
+**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(아래 ⚠️ — 환경을 **하나씩**, 값은 stdin으로. `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다). ⚠️ **`AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 Production과 Preview가 서로 다른 OAuth 앱이다** — `--force`로 갱신할 때 스코프를 뭉뚱그리면 preview 로그인이 조용히 깨진다.
+
+⚠️ **`vercel env add`는 환경을 하나씩만 받고, `--force`를 믿지 말고 목록으로 확인한다** (2026-09-06 실측). CLI 59.11이 `production,preview` 같은 묶음을 받지 않아 환경마다 한 번씩 돌려야 하고, **Preview에서 `--force`가 `✓ Overrode`를 출력하고도 값이 그대로였다**(Production은 같은 명령이 먹었다). 갱신 뒤 `vercel env ls <environment>`의 시각 열을 보고, 안 바뀌었으면 `vercel env rm … --yes` 후 다시 넣는다. 성공 메시지가 근거가 아니다.
+
+```bash
+# 파일에서 곧바로 파이프 — 값이 셸 히스토리·프로세스 목록·터미널 어디에도 남지 않는다
+awk '{printf "%s\n", $0}' key.pem | sed 's/\\n$//' | vercel env add GITHUB_APP_PRIVATE_KEY production --sensitive --force
+```
 
 **GitHub App 개인키는 여러 개를 동시에 가질 수 있다.** 새 키를 발급해도 옛 키가 계속 돌아서 무중단으로 갈아탈 수 있다 — **다른 머신이 옛 키를 들고 있으니 폐기는 그쪽을 옮긴 뒤에** 한다.
+
+⚠️ **그 무중단은 "추가"에만 해당한다. 지우면 그 키를 쓰던 네 곳이 동시에 끊긴다** — 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가 전부 죽었고, **증상이 "App이 설치돼 있지 않다"로 보였다**(`probeRepo`가 401을 `not-installed`로 접던 시절 — POSTMORTEM 2026-09-06). 지우기 전에 **그 키를 누가 들고 있는지 세고**, 넷을 전부 옮긴 뒤에 지운다.
 
 **린터 없음** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않는다. 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이고, 린터 추가는 요청 없이 하지 않는다.
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(typecheck + test + Codex 미러 드리프트) 단일이다. 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
+`ci.yml` 하나뿐이고 job은 `verify`(**`db:generate`** + typecheck + test + Codex 미러 드리프트) 단일이다. 앞의 스텝은 게이트가 아니라 선행 조건이지만, `.env.local`이 없는 환경에서 `prisma generate`가 도는지의 **상시 검증을 겸한다**(POSTMORTEM 2026-08-31 🔁). 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
 
 **✅ CI가 프로덕션 앞의 게이트다** (2026-09-04 브랜치 분리로 되살아났다). `dev→main` PR에 붙는 run이 그것이고, `/merge`는 그 체크가 green이어야 머지한다. 브랜치가 하나였던 동안에는 PR 이벤트 자체가 없어 CI가 배포 **뒤에** 돌았다 — 그때의 유일한 방어선은 `/push`의 로컬 게이트였다.
 
@@ -247,31 +267,54 @@ app/
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지난다
     projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
-                        `?e=`로 받아 isAccessError로 걸러 한 줄 보인다
+                        `?e=`로 받아 **isAccessError·isConnectError 둘로** 걸러 한 줄 보인다.
+                        ⚠️ 앞의 것만 보면 GitHub 연결 실패 사유가 통째로 무음이다 (POSTMORTEM 2026-09-06)
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/[slug]/settings/page.tsx
+                        리포 연결 + GitHub 계정 (SaaS 4단계). 최상단에서 requireProjectAccess를 던진다.
+                        ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
+                        묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다
+    projects/[slug]/settings/actions.ts
+                        startGithubConnect · connectRepository · disconnectGithub.
+                        ⚠️ **나가는 쪽은 Server Action이다** — Route Handler는 돌아오는 callback 하나뿐.
+                        ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
+                        installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
-    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
+    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십·연결·게시실패 테스트 다섯
+                        (github-connect·publish-failure는 mock 범위가 달라 일부러 갈랐다)
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
     [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
                         email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
-  api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
+  api/__tests__/        route-diagnostics(인증·JSON·스키마 실패가 각자 응답을 내는지)
+                        + github-callback(state 검증 **전에** code 교환·Account 쓰기가 0회인지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
+  api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
+                        `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
+                        무효면 slug를 못 믿어 `/projects?e=`로 간다
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
                         Server Action이 triggerPull을 직접 부른다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록). 렌더 요청만 막는다
 components/
   translation-input.tsx 인라인 편집 (client — blur 시 저장)
   pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
+  reconnect-button.tsx  리포 재연결 (client — pending 라벨 교체, 인라인 오류)
+  github-account.tsx    GitHub 계정 연결·해제 (client). ⚠️ reauthorize는 **자동 redirect가 아니라
+                        버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
   invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
-  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 현재 import 0곳 —
-                        UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner·radix-ui도 같은 상태
+  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 앱에서 import 0곳 —
+                        UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner도 import 0곳이고,
+                        radix-ui·lucide-react는 **동결된 ui/ 안에서만** 쓰인다
+  __tests__/            focus-ring — app/·components/의 button·input이 포커스 링 셋을 드는지 **소스로**
+                        센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
+                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
                         ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
-    index.ts            detectFormat / detectCandidatesAcross / adapterFor / isAdapterName / ADAPTERS
+    index.ts            detectFormat / detectFormatWith(명시 지정의 유일한 입구 — ts-dict를 쓰는 길이다)
+                        / detectCandidatesAcross / adapterFor / isAdapterName / ADAPTERS
     types.ts            Adapter·DetectedFormat·LocaleEntry 계약 (writeWithErrors는 선택 구현)
     shared.ts           재생성 writer의 결정성 규칙(orderedEntries·compareKeys) + 후보 순위·검증
                         + matchGlobPaths(multi-locale 경로 — push·pull·survey가 공유하는 유일한 규칙)
@@ -291,11 +334,34 @@ lib/
   cli/                  세 CLI 공통 — args.ts(순수 인자 파싱: 값 플래그 자리 건너뛰기) / walk.ts(SKIP_DIR + 리포 훑기, fs)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
+  __tests__/            db·env·failure·githash·utils + ⚠️ globals-css — 마지막 것은 lib/ 아래 어느
+                        모듈에도 대응하지 않는다 (app/globals.css의 라이트 고정 상시 방어선, DESIGN §3.1)
   failure.ts            500 본문 판정 (classifyFailure·MissingEnvError) — 우리 메시지는 그대로,
                         남의 라이브러리 메시지는 ref만. 응답이 **대상 리포 Actions 로그**로 흘러가고
                         그 리포가 public일 수 있다
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
-  github.ts             Git Data API 래퍼 (App 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
+  github.ts             Git Data API 래퍼 (App installation 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
+                        + probeRepo(App JWT `/installation` → 설치 토큰 `/repos`) — 설치 토큰만으로는
+                        public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다.
+                        ⚠️ **createApp()은 try 밖** — 환경변수 누락은 값(error)으로 접지 않고 던진다
+  github-connect/       GitHub 계정 연결 (SaaS 4단계). **사용자 토큰 전담 — App 개인키를 모른다**
+    origin.ts           requestOrigin·callbackUrl — ⚠️ **redirect_uri와 쿠키 secure가 한 판정에서 나온다.**
+                        redirect_uri를 안 보내면 GitHub이 App의 **첫** callback URL(프로덕션)로 되돌려
+                        보내 로컬·preview 연결이 원리적으로 불가능했다 (malmoi#7)
+    state.ts            OAuth state 서명·검증 (HMAC over AUTH_SECRET, secret은 인자라 순수)
+                        + stateCookieName(secure)·stateCookieNames() — ⚠️ 읽는 쪽은 **두 이름을 다 본다**
+                        (쓰는 쪽은 x-forwarded-proto, 읽는 쪽은 요청 URL로 판정해 갈릴 수 있다)
+    account-link.ts     planAccountLink 4갈래 — taken-by-other가 replace보다 앞이다
+    connect-plan.ts     planRepoConnect — SAAS §5.4 3중 검증의 판정 자리 (5단계가 재사용)
+    health.ts           planConnectionHealth 6갈래 + probeFromError·httpStatus
+                        ⚠️ 403(설치 일시중지)은 error가 아니라 not-installed다 — 영구 상태다
+    token.ts            planTokenUse 3갈래 + refreshFailure (⚠️ 429는 4xx인데 unavailable이다)
+    token-store.ts      ensureUserToken — 회전 결과를 조건부 updateMany로 즉시 쓴다
+    log.ts              logFailure — unavailable로 접는 자리마다 부른다 (route·Action·토큰·probe·viewer).
+                        화면엔 갈래 이름만 가므로 원인은 여기서만 볼 수 있다
+    message.ts          ConnectError 12갈래 + isConnectError·connectErrorMessage (inviteErrorMessage 형)
+    user.ts             OAuthApp·Octokit 호출 — ⚠️ authentication에 clientSecret이 섞여 오므로
+                        token·expiresAt·refreshToken 셋만 뽑는다. 목록은 paginate로 전 페이지
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
                         ⚠️ `WrapperId.kind`가 direct(`t("k")`)와 hook(`const { t } = useI18n()`)을
                         가른다. hook은 반환 바인딩을 스코프째 추적하고 next-intl의 namespace
@@ -314,7 +380,7 @@ lib/
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
                         / message.ts(결과→문구)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
-                        ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-05에 삭제됐다 — 인가는 ProjectMember다
+                        ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
     session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only).
@@ -358,6 +424,10 @@ prisma/
                         _add_tenant_auth_tables
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
+next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
+                        그 파일은 sync-agents.mjs가 소유하는 생성물이라, 켜져 있으면 next dev를 돌릴
+                        때마다 미러 게이트가 드리프트로 잡고 지우면 Next가 다시 만든다
+pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼다** — 아래 게이트웨이 절
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 scripts/
@@ -383,15 +453,17 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
                         올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
                         ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
                         했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
-                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로,
-                        pull-to-pr/tasks.md §4가 실물 검증 7시나리오라 남아 있다
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **셋이
+                        남아 있다**: pull-to-pr §4(실물 7시나리오) · tenant-auth §6.1(preview 실물 +
+                        거기서만 잡힌 결함 넷) · github-connect T5(실물 10시나리오 + **못 밟은 둘의
+                        이유**). key-separator-contract는 보류라 애초에 대상이 아니다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
@@ -451,7 +523,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-04 기준 18개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-07 기준 26개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -480,7 +552,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
-- **docs/features/README.md** — 기능 문서 6개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **docs/features/README.md** — 기능 문서 7개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
 - **README.md** — CLAUDE.md의 요약 미러. 스택·명령·브랜치·현 단계 선언이 바뀌면 같이 갱신한다 — 신규 진입자가 처음 여는 파일이라 여기가 낡으면 닫힌 스펙으로 안내한다. 커밋 prefix `docs(README): ...`
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
@@ -495,6 +567,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
+- **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다 — 2026-09-03에 `.b3-*.ts` 둘이 그렇게 커밋됐다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다** (2026-09-05 갈렸다). **1차 `middleware.ts`** 는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고(DB 세션이라 그 이상 못 한다 — Action POST는 지나가 스스로 거부한다), **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. 레이아웃·페이지의 조건부 렌더는 차단이 아니다: App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). 레이아웃에서는 `redirect()`를 던진다. **새 보호 라우트는 `matcher`에 추가한다** (ARCHITECTURE §6.1).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
@@ -506,8 +579,10 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** 2026-08 시점 `latest`가 `8.0.0-rc.12`고 stable은 `prev` 태그의 `7.10.0`이다. `pnpm add prisma`로 무심코 깔면 RC가 들어오고 `alchemy`·`cloudflare-runtime` 같은 무관한 의존성이 딸려온다. **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
 - **Vercel Cron은 Hobby 플랜에서 하루 1회**다. 야간 pull 1회가 요구사항이라 지금은 맞지만, 주기를 늘리려면 플랜을 봐야 한다. **cron은 프로덕션 배포에서만 돈다** — preview 배포가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다는 뜻이고, 브랜치 분리(2026-09-04)가 안전한 이유의 하나다.
+- ⚠️ **App 설치가 `Only select repositories`다** (2026-09-07 전환 — 그 전엔 `all`이었다). **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 화면은 "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요"를, 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 넷**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`. `skillflo-web`은 일부러 빠져 있다(`Project.installationId`가 `null`이라 pull이 애초에 안 돈다). 전환한 이유는 T5의 접근 철회 시나리오가 `all`에서 재현 불가였기 때문이다.
 - **GitHub App 개인키는 개행이 들어간 PEM**이다. Vercel env에 넣을 때 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다.
 - **`.pem`은 `.gitignore`에 있다.** 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
+- ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 설치 대상에서 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다(긴급 패치가 필요하면 `minimumReleaseAgeExclude`). `onlyBuiltDependencies`는 pnpm 10이 빌드 스크립트를 기본 차단하는 것의 화이트리스트라, 여기 없는 패키지는 `Ignored build scripts` 경고만 남기고 postinstall이 안 돈다. **둘 다 증상이 원인을 안 가리킨다.**
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — 리포에서 사라진 로케일도 지우지 않고 표시만 하며, pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.
 
 ## 명시적 비범위

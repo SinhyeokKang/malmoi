@@ -80,26 +80,37 @@ export async function createInvitation(raw: {
     if (member !== null) return { ok: false, error: "already-member" };
   }
 
-  // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, email)`이 unique가 아니라
-  // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
-  const now = new Date();
-  await prisma.projectInvitation.updateMany({
-    where: { projectId, email, acceptedAt: null },
-    data: { expiresAt: now },
-  });
-
   // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (SAAS §5.6).
   const token = randomBytes(32).toString("base64url");
-  await prisma.projectInvitation.create({
-    data: {
-      projectId,
-      email,
-      role: input.role,
-      tokenHash: hashInviteToken(token),
-      expiresAt: new Date(now.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000),
-      acceptedAt: null,
-      invitedBy: userId,
-    },
+  const now = new Date();
+
+  /**
+   * ⚠️ **회전과 생성이 한 트랜잭션이고, 프로젝트 행을 먼저 잠근다** (Codex 감사 2026-09-06 #4). 갈라 두면
+   * 두 OWNER가 같은 이메일을 동시에 초대할 때 각자 회전을 끝내고 각자 만들어 **유효 링크가 둘** 남는다 —
+   * role이 다르면 둘 다 수락된다. `changeMember`와 같은 잠금이다. 잠금 없이 트랜잭션만 걸면 "기존 행이 없는
+   * 동시 발급"은 막지 못한다 — 두 요청 모두 회전할 행이 없어 충돌이 안 난다.
+   */
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+
+    // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, email)`이 unique가 아니라
+    // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
+    await tx.projectInvitation.updateMany({
+      where: { projectId, email, acceptedAt: null },
+      data: { expiresAt: now },
+    });
+
+    await tx.projectInvitation.create({
+      data: {
+        projectId,
+        email,
+        role: input.role,
+        tokenHash: hashInviteToken(token),
+        expiresAt: new Date(now.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000),
+        acceptedAt: null,
+        invitedBy: userId,
+      },
+    });
   });
 
   revalidatePath(`/projects/${input.slug}/translations`);

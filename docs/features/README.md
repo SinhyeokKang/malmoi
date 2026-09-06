@@ -4,6 +4,11 @@
 `design.md`(어떻게) · `tasks.md`(순서와 검증)가 있다. 넷째 종류로 **외부 검토·감사 원문**이 있다
 (`saas-review.md`, `tenant-auth/audit-2026-09-06-codex.md`) — 근거로 보관하고 실행 계획으로 읽지 않는다.
 
+⚠️ **다음 단계 셋은 이름이 이미 정해졌고 디렉터리만 없다** (SAAS §8): 5단계 `project-onboarding/`
+(탐지 온보딩 — **현재 단계**) · 6단계 `translation-ui/` · 7단계 `sync-runs/`. CLAUDE.md가 이 파일을
+"`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이 없으면 5단계를 시작하는 사람이 지정된
+필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와 완료 게이트는 SAAS §8에 있다.
+
 **여기 있는 문서는 스펙이 아니다.** 정본은 셋 — `docs/SAAS.md`(현재 단계 — 무엇을 만드는가),
 `docs/MVP.md`(PoC — 닫힘), `docs/ARCHITECTURE.md`(불변식·함정) — 이고, 이 디렉터리는 **그 결론에
 도달한 과정**을 남긴다. 기능이 끝나면 결론은 정본으로 올라가고 여기는 근거로 남는다.
@@ -18,7 +23,11 @@
 - **예외는 체크리스트 밖의 기록이 붙은 경우다.** `pull-to-pr/tasks.md`는 §4에 실물 검증 7시나리오가
   있고 MVP §9와 TASKS가 그것을 직접 참조하므로 남긴다. **`tenant-auth/tasks.md`도 같은 이유로
   남긴다** — §6.1이 preview 실물 검증 5항목과 **거기서만 잡힌 결함 넷**을 들고 있고, 그건 체크박스가
-  아니라 "자동 검증이 원리적으로 못 보는 것이 무엇인가"의 기록이다.
+  아니라 "자동 검증이 원리적으로 못 보는 것이 무엇인가"의 기록이다. **보류 중인 문서(`key-separator-contract`)의
+  `tasks.md`는 애초에 이 규칙의 대상이 아니다** — 닫히지 않았고, 되살릴 때 볼 검수 미반영 항목이 거기
+  §후속에 있다. **`github-connect/tasks.md`도
+  같다** — T5가 실물 10시나리오와 거기서만 잡힌 결함(malmoi#7)을, 그리고 **못 밟은 둘이 왜 못
+  밟혔는지**를 든다. 뒤쪽이 특히 지워지면 안 된다: 다음 사람이 같은 벽에 다시 부딪힌다.
 
 ## 상태
 
@@ -29,7 +38,8 @@
 | [key-order-preservation](./key-order-preservation/) | ✅ 완료 (2026-09-03) | ADAPTER-COVERAGE §10·§11 · MVP §4.1 · ARCHITECTURE §1.1 | 없음 · `tasks.md` 삭제 |
 | [format-preservation](./format-preservation/) | ✅ 완료 (2026-09-04) | ADAPTER-COVERAGE §14·§15·§16 · MVP §4.1 · ARCHITECTURE §1.1 | 완료 조건 ③ **판정 불가**(계측 없음) · `tasks.md` 삭제 |
 | [key-separator-contract](./key-separator-contract/) | ⏸️ **보류 — SaaS화 이후** | — | 문서 전체. 검수 미반영 항목부터 본다 |
-| [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-06, 프로덕션 반영까지) | **SAAS.md §5·§6·§8 2단계** · ARCHITECTURE §5.1·§6~§6.3 · CLAUDE.md(차단 두 층·세션) | 없음 · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) · `audit-2026-09-06-codex.md`는 배포 뒤 Codex 정적 감사 9건 — 7건은 `1da8d8b`가 닫았고(세션 토큰 노출·`getPrisma` 캐시·마지막 OWNER 경합 등), #4(동시 초대 발급)는 아래 백로그 |
+| [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-06, 프로덕션 반영까지) | **SAAS.md §5·§6·§8 2단계** · ARCHITECTURE §5.1·§6~§6.3 · CLAUDE.md(차단 두 층·세션) | 없음 · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) · `audit-2026-09-06-codex.md`는 배포 뒤 Codex 정적 감사 9건 — **9/9 전부 닫혔다**: 7건은 `194fb91`(PR #6 squash)이, #4(동시 초대 발급)와 #8(CI 경고가 프로젝트별 sync 브랜치를 안 봤다 — `289ec22`)이 같은 날 |
+| [github-connect](./github-connect/) | ✅ 완료 (2026-09-07, 실물 검증까지) | **SAAS.md §5.4·§5.7·§8 4단계** · CLAUDE.md(자격증명 셋·`lib/github-connect/`) · MVP §7(비범위 정정) | 없음 · `tasks.md` **남긴다**(T5가 실물 검증 10시나리오와 **거기서만 잡힌 결함 하나**를 들고 있다 — malmoi#7, `redirect_uri` 누락) · **둘은 끝내 못 밟았다**: App 제거(폐기용과 프로덕션이 같은 설치를 공유) · 다른 User의 GitHub 계정으로 연결 시도(세션 둘 필요) |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
@@ -38,17 +48,19 @@
 
 ## 살아 있는 백로그 (아직 문서가 없다)
 
-앞의 셋은 `docs/TASKS.md` §8 후속이고 **`lib/adapters/**`를 쳐서 재측정 트리거가 각각 붙는다**
+앞의 넷은 `docs/ADAPTER-COVERAGE.md` §6 후속 표에서 왔고 **`lib/adapters/**`를 쳐서 재측정 트리거가 각각 붙는다**
 (`/push` 4d). 그 아래는 tenant-auth 검수와 2026-09-06 리뷰의 이월이다.
 
 | 항목 | 근거 | 왜 아직 안 했나 |
 |---|---|---|
 | **`yaml-catalog` 범위 기반 치환** | ADAPTER-COVERAGE §13.3 — `doc.toString()`이 1키 편집에 redmine 1,585줄 중 816줄을 바꾼다 | 옵션으로 닫을 수 있는 축은 닫았고, 나머지는 스칼라 `range`로 원본 문자열을 직접 갈아끼워야 한다. 완료 조건은 **1키 편집 → 1 hunk** |
 | **키 구분자 계약** | 손실 2건 중 siyuan 하나로 줄었다 (§13.1) | 문서는 [key-separator-contract](./key-separator-contract/)에 있고 **보류 판정**이 났다 — 도입 대상 bugshot-2가 `ts-dict`라 효과 0이다 |
-| **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
+| **로케일 디렉터리의 네임스페이스 여러 개** | ADAPTER-COVERAGE §6 순위 6 — Ghost 5개·automa 4개·Folo 10개 (**관측 19리포**) | 한 프로젝트가 하나만 덮는다. **프로젝트 분할이 답인지 판정이 필요**하고, 그 판정이 5단계 온보딩의 후보 확정(SAAS §7.3)과 같은 자리다 |
+| **단일 로케일 리포 지원 여부** | ADAPTER-COVERAGE §6 순위 4 — arkadiyt/zoom-redirector 1개 | "로케일 2개 이상" 규칙의 대가다. 온보딩 실패 진단에 직결되므로 5단계에서 다시 본다 |
+| **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4, **관측 1리포**) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
 | **`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀** | tenant-auth 검수(CDO) | 저장 실패 문구가 스크린리더에 안 읽히고, blur로 포커스가 떠난 뒤라 재시도 지점이 없다. **6단계(번역 UI 재작성)에서 화면과 함께** 고친다 — 동결된 UI를 지금 다듬으면 버려진다(MVP §8.3) |
-| **동시 초대 발급이 유효 토큰을 둘 남긴다** | Codex 감사 2026-09-06 #4 | `createInvitation`의 회전(`updateMany`)과 `create`가 잠금 없이 갈라져 있다 — `changeMember`처럼 `FOR UPDATE`로 직렬화하면 닫힌다. 둘 다 OWNER가 발급한 토큰이고 수락 뒤엔 `already-member`가 막아 ⚪로 미뤘다. 6단계 멤버 화면과 함께 |
-| **셀 메타의 `updatedBy`가 `User.id` cuid 원문** | SAAS §5.6 (2026-09-05 `User.id` 전환) | `CellMeta`가 문자열을 그대로 찍는다 — 이름으로 보이려면 `User` join이 필요하다. 6단계 "덮인 셀의 `updatedBy`"와 **다른 축**이라 따로 적는다 |
+| **GitHub 계정 연결·해제가 `project:settings` 뒤에 있다** | github-connect code-review 🟡3 (2026-09-07) · design §3.4 | OWNER에서 강등되면 자기 연결을 풀 화면이 없어 `taken-by-other`가 영구 잠금이 된다. `Account`는 사용자 소유라 섹션이 사용자 수준 화면으로 가야 하고, 그건 화면 변경이다 — **6단계**(SAAS §8)에 얹었다. 강등 경로가 실사용에 아직 없다 |
+| **셀 메타의 `updatedBy`가 `User.id` cuid 원문** ([malmoi#3](https://github.com/SinhyeokKang/malmoi/issues/3)) | SAAS §5.6 (2026-09-05 `User.id` 전환) | `CellMeta`가 문자열을 그대로 찍는다 — 이름으로 보이려면 `User` join이 필요하다. 6단계 "덮인 셀의 `updatedBy`"와 **다른 축**이라 따로 적는다 |
 
 ## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다
 

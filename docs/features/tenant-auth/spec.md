@@ -85,7 +85,9 @@ GitHub 계정이 없으면 아예 못 들어온다.
   **5단계**다. 같은 커밋에 넣으면 인가 전환과 대상 리포 CI 전환이 한 배포에 섞인다.
 - **화면 재작성** — 이 단계의 화면은 **최소 신설 셋**(로그인 Google 버튼 · `/invite/[token]` ·
   `/projects` 목록)과 **`/keys`의 이관**(`/projects/[slug]/translations`, 판정 로직 그대로)이다.
-  멤버 관리·설정 **화면**과 Supabase 레퍼런스(DESIGN §9) 적용은 6단계다.
+  **멤버 관리 섹션**과 Supabase 레퍼런스(DESIGN §9) 적용은 6단계다 — ⚠️ **설정 화면 자체는 4단계가
+  만들었다**(`/projects/[slug]/settings`, 리포 연결 + GitHub 계정 두 섹션). 여기서 "설정 화면은
+  6단계"라고 읽으면 4단계가 라우트를 새로 낸 것이 규칙 위반으로 보인다.
 - **`AuditEvent`** — SAAS.md §6이 미룬 그대로.
 - **역할 추가** — OWNER·EDITOR 둘뿐이다 (MVP §7 "세밀한 권한"이 유지된다). Publish는 별도
   permission이 아니라 `translation:write`에 포함된다 (SAAS §3 "필요해지면 그때 좁힌다").
