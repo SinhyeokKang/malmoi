@@ -4,10 +4,10 @@
 `design.md`(어떻게) · `tasks.md`(순서와 검증)가 있다. 넷째 종류로 **외부 검토·감사 원문**이 있다
 (`saas-review.md`, `tenant-auth/audit-2026-09-06-codex.md`) — 근거로 보관하고 실행 계획으로 읽지 않는다.
 
-⚠️ **다음 단계 셋은 이름이 이미 정해졌고 디렉터리만 없다** (SAAS §8): 5단계 `project-onboarding/`
-(탐지 온보딩 — **현재 단계**) · 6단계 `translation-ui/` · 7단계 `sync-runs/`. CLAUDE.md가 이 파일을
-"`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이 없으면 5단계를 시작하는 사람이 지정된
-필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와 완료 게이트는 SAAS §8에 있다.
+⚠️ **다음 단계 둘은 이름이 이미 정해졌고 디렉터리만 없다** (SAAS §8): 6단계 `translation-ui/` ·
+7단계 `sync-runs/`. CLAUDE.md가 이 파일을 "`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이
+없으면 그 단계를 시작하는 사람이 지정된 필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와
+완료 게이트는 SAAS §8에 있다. (5단계 `project-onboarding/`은 2026-09-07에 디렉터리가 생겼다 — 아래 표.)
 
 **여기 있는 문서는 스펙이 아니다.** 정본은 셋 — `docs/SAAS.md`(현재 단계 — 무엇을 만드는가),
 `docs/MVP.md`(PoC — 닫힘), `docs/ARCHITECTURE.md`(불변식·함정) — 이고, 이 디렉터리는 **그 결론에
@@ -40,6 +40,7 @@
 | [key-separator-contract](./key-separator-contract/) | ⏸️ **보류 — SaaS화 이후** | — | 문서 전체. 검수 미반영 항목부터 본다 |
 | [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-06, 프로덕션 반영까지) | **SAAS.md §5·§6·§8 2단계** · ARCHITECTURE §5.1·§6~§6.3 · CLAUDE.md(차단 두 층·세션) | 없음 · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) · `audit-2026-09-06-codex.md`는 배포 뒤 Codex 정적 감사 9건 — **9/9 전부 닫혔다**: 7건은 `194fb91`(PR #6 squash)이, #4(동시 초대 발급)와 #8(CI 경고가 프로젝트별 sync 브랜치를 안 봤다 — `289ec22`)이 같은 날 |
 | [github-connect](./github-connect/) | ✅ 완료 (2026-09-07, 실물 검증까지) | **SAAS.md §5.4·§5.7·§8 4단계** · CLAUDE.md(자격증명 셋·`lib/github-connect/`) · MVP §7(비범위 정정) | 없음 · `tasks.md` **남긴다**(T5가 실물 검증 10시나리오와 **거기서만 잡힌 결함 하나**를 들고 있다 — malmoi#7, `redirect_uri` 누락) · **둘은 끝내 못 밟았다**: App 제거(폐기용과 프로덕션이 같은 설치를 공유) · 다른 User의 GitHub 계정으로 연결 시도(세션 둘 필요) |
+| [project-onboarding](./project-onboarding/) | 🔨 **진행 중 — 문서만** (2026-09-07) | 결론이 아직 정본으로 안 올라갔다 → **SAAS.md §7.3~§7.5·§7.8·§8 5단계** | 구현 전부(`tasks.md` T1~T8). ⚠️ **결정 셋이 여기에만 있다**: 워크플로는 복사용 YAML(App 권한을 안 늘린다 — 재승인이 기존 설치 넷을 멈춘다, SAAS §10의 미결이 여기서 닫혔다) · push 토큰은 과도기 없이 즉시 교체 · `/projects/new`는 자율 가입 + 사용자당 3개 |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
