@@ -24,6 +24,10 @@ const hoisted = vi.hoisted(() => ({
   probeRepo: vi.fn(),
   listUserInstallations: vi.fn(),
   listInstallationRepos: vi.fn(),
+  authorizeUrl: vi.fn(),
+  cookieSet: vi.fn(),
+  headerGet: vi.fn(),
+  redirect: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -35,10 +39,22 @@ vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: hoisted.en
 vi.mock("@/lib/github-connect/user", () => ({
   listUserInstallations: hoisted.listUserInstallations,
   listInstallationRepos: hoisted.listInstallationRepos,
-  authorizeUrl: () => "https://github.com/login/oauth/authorize?client_id=x",
+  authorizeUrl: hoisted.authorizeUrl,
+}));
+// `startGithubConnect`가 쿠키를 심고 외부로 `redirect`한다 — 둘 다 요청 스코프 밖에선 던지므로 기록만 남긴다.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ set: hoisted.cookieSet }),
+  headers: async () => ({ get: hoisted.headerGet }),
+}));
+vi.mock("next/navigation", () => ({
+  redirect: (url: string) => {
+    hoisted.redirect(url);
+    // Next의 redirect는 던진다 — 아래 코드가 실행되지 않는 성질까지 흉내 낸다.
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  },
 }));
 
-const { connectRepository, disconnectGithub } = await import(
+const { connectRepository, disconnectGithub, startGithubConnect } = await import(
   "../projects/[slug]/settings/actions"
 );
 
@@ -65,6 +81,12 @@ beforeEach(() => {
   hoisted.probeRepo.mockResolvedValue(PROBE_OK);
   hoisted.listUserInstallations.mockResolvedValue(["1"]);
   hoisted.listInstallationRepos.mockResolvedValue(["o/r"]);
+  hoisted.authorizeUrl.mockReturnValue("https://github.com/login/oauth/authorize?client_id=x");
+  hoisted.headerGet.mockImplementation((name: string) =>
+    name.toLowerCase() === "host" ? "localhost:3000" : null,
+  );
+  vi.unstubAllEnvs();
+  vi.stubEnv("AUTH_SECRET", "test-secret-0123456789abcdef");
 });
 
 describe("connectRepository — 인가", () => {
@@ -201,6 +223,29 @@ describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가�
 
     expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
   });
+
+  it("unavailable은 서버 로그를 남긴다 — 제보를 받았을 때 재현 말고 길이 있어야 한다", async () => {
+    // route.ts만 로그를 남기고 Action은 안 남겼다 (code-review 2026-09-07 🟡2). "일시적인 오류" 제보가
+    // GitHub 5xx인지 네트워크인지 Prisma인지 이 한 줄이 가른다.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    hoisted.listUserInstallations.mockRejectedValue(new Error("fetch failed"));
+
+    await connectRepository({ slug: "acme" });
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]?.[0]).toContain("fetch failed");
+    error.mockRestore();
+  });
+
+  it("probeRepo가 설정 오류로 던지면 unavailable로 접지 않고 그대로 던진다", async () => {
+    // GITHUB_APP_ID 누락·PEM 손상은 사용자가 할 수 있는 일이 없다 — "잠시 뒤 다시"로 위장하면 같은
+    // 버튼을 무한히 누른다 (code-review 2026-09-07 🟡1, state.ts requireSecret과 같은 판단).
+    const { MissingEnvError } = await import("@/lib/failure");
+    hoisted.probeRepo.mockRejectedValue(new MissingEnvError("환경변수 GITHUB_APP_ID이(가) 없다."));
+
+    await expect(connectRepository({ slug: "acme" })).rejects.toBeInstanceOf(MissingEnvError);
+    expect(db.spies.updateProject).not.toHaveBeenCalled();
+  });
 });
 
 describe("connectRepository — 저장", () => {
@@ -313,5 +358,66 @@ describe("disconnectGithub", () => {
     hoisted.prisma = db.prisma;
 
     expect(await disconnectGithub({ slug: "acme" })).toEqual({ ok: true });
+  });
+});
+
+describe("startGithubConnect — 나가는 쪽 (malmoi#7)", () => {
+  /**
+   * `authorizeUrl`이 mock이라 이 Action은 지금까지 테스트가 없었고, `redirect_uri` 누락(malmoi#7)은 T5의
+   * 실물 왕복만 잡았다. 여기서 고정하는 것은 셋 — **callback URL이 요청 origin에서 나온다**, 쿠키 이름·
+   * `secure`가 그 판정과 짝이다, 인가 실패면 쿠키를 심지 않는다.
+   */
+  function cookieCall(): { name: string; options: { secure?: boolean } } {
+    const call = hoisted.cookieSet.mock.calls[0];
+    if (call === undefined) throw new Error("쿠키를 심지 않았다");
+    return { name: call[0] as string, options: call[2] as { secure?: boolean } };
+  }
+
+  it("authorizeUrl에 요청 origin의 callback URL을 넘긴다 — 안 넘기면 GitHub이 첫 등록 URL(프로덕션)로 보낸다", async () => {
+    await expect(startGithubConnect({ slug: "acme" })).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const [nonce, redirectUrl] = hoisted.authorizeUrl.mock.calls[0] ?? [];
+    expect(redirectUrl).toBe("http://localhost:3000/api/github/callback");
+    expect(typeof nonce).toBe("string");
+    expect(hoisted.redirect).toHaveBeenCalledWith("https://github.com/login/oauth/authorize?client_id=x");
+  });
+
+  it("http면 접두 없는 쿠키 + secure false — Safari가 localhost에서 Secure 쿠키를 버린다", async () => {
+    await expect(startGithubConnect({ slug: "acme" })).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const { name, options } = cookieCall();
+    expect(name).toBe("malmoi-gh-state");
+    expect(options.secure).toBe(false);
+  });
+
+  it("x-forwarded-proto가 https면 __Host- 쿠키 + secure + https callback — 셋이 한 판정에서 나온다", async () => {
+    hoisted.headerGet.mockImplementation((name: string) => {
+      const key = name.toLowerCase();
+      if (key === "host") return "mal-moi.com";
+      if (key === "x-forwarded-proto") return "https";
+      return null;
+    });
+
+    await expect(startGithubConnect({ slug: "acme" })).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const { name, options } = cookieCall();
+    expect(name).toBe("__Host-malmoi-gh-state");
+    expect(options.secure).toBe(true);
+    expect(hoisted.authorizeUrl.mock.calls[0]?.[1]).toBe("https://mal-moi.com/api/github/callback");
+  });
+
+  it("EDITOR는 forbidden이고 쿠키도 redirect도 없다", async () => {
+    hoisted.session = sessionFor("u-editor");
+
+    expect(await startGithubConnect({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+    expect(hoisted.redirect).not.toHaveBeenCalled();
+  });
+
+  it("Host 헤더가 없으면 unavailable — 추측한 origin으로 사용자를 보내지 않는다", async () => {
+    hoisted.headerGet.mockReturnValue(null);
+
+    expect(await startGithubConnect({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
   });
 });

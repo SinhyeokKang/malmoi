@@ -225,4 +225,17 @@ describe("ensureUserToken — 갱신 실패를 거부와 장애로 가른다", (
     hoisted.findFirst.mockRejectedValue(new Error("connection lost"));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "unavailable" });
   });
+
+  it("unavailable은 서버 로그를 남긴다 — 접힌 원인을 나중에 볼 수 있어야 한다", async () => {
+    // code-review 2026-09-07 🟡2: route.ts만 로그가 있었다. 여기서 접힌 예외는 화면에 "일시적인 오류"로만
+    // 보이므로 이 한 줄이 없으면 Prisma 장애와 GitHub 5xx가 구별되지 않는다.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    hoisted.findFirst.mockRejectedValue(new Error("connection lost"));
+
+    await ensureUserToken(prisma, "u1", NOW);
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]?.[0]).toContain("connection lost");
+    error.mockRestore();
+  });
 });

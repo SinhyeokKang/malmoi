@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -7,6 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planAccountLink } from "@/lib/github-connect/account-link";
+import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { stateCookieNames, verifyState } from "@/lib/github-connect/state";
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
@@ -84,21 +83,6 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   return landing(request, slug, outcome);
-}
-
-/**
- * 실패를 **서버 로그에만** 남긴다 (`/api/pull`과 같은 형).
- *
- * ⚠️ 사용자에게는 `?e=`로 사유가 이미 가지만, 그것은 갈래 이름일 뿐 원인이 아니다. 로그가 없으면
- * "GitHub과 연결을 마치지 못했어요"라는 제보에 재현 말고는 길이 없다 — 2026-09-03 Vercel 첫 배포가
- * 정확히 그 상태였다(무엇이 없는지 추측해야 했다).
- *
- * **응답 본문에는 싣지 않는다.** 이 응답은 사용자 브라우저로 가고, 사유는 화면 문구가 이미 말한다.
- */
-function logFailure(stage: string, error: unknown): void {
-  const ref = randomUUID().slice(0, 8);
-  const detail = error instanceof Error ? error.message : String(error);
-  console.error(`[github-connect] ${ref} ${stage}: ${detail}`);
 }
 
 /**

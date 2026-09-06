@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { probeRepo } from "@/lib/github";
 import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { getViewer } from "@/lib/github-connect/user";
@@ -43,7 +45,9 @@ export default async function SettingsPage({
     where: { id: projectId },
     select: { repoOwner: true, repoName: true, installationId: true },
   });
-  if (project === null) return null;
+  // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 빈 화면 대신 `requireProjectAccess`의 not-found와
+  // 같은 곳으로 보낸다 (문구가 존재 여부를 말하지 않는다).
+  if (project === null) redirect("/projects?e=not-found");
 
   const [health, account] = await Promise.all([
     loadHealth(project),
@@ -93,12 +97,11 @@ async function loadHealth(project: {
   // `skillflo`가 그 상태다.
   if (project.installationId === null) return { status: "not-connected" };
 
-  try {
-    const probe = await probeRepo(project.repoOwner, project.repoName);
-    return planConnectionHealth({ project, probe });
-  } catch {
-    return { status: "unknown" };
-  }
+  // ⚠️ try로 감싸지 않는다. `probeRepo`는 GitHub 실패를 값(`error` → `unknown`)으로 주고, 던지는 것은
+  // 환경변수 누락뿐이다 — 그것까지 `unknown`("잠시 뒤 다시")으로 접으면 설정 오류가 영원히 일시 장애로
+  // 보인다 (code-review 2026-09-07 🟡1). "섹션 둘의 독립 실패"는 GitHub 장애에 대한 것이지 설정 오류가 아니다.
+  const probe = await probeRepo(project.repoOwner, project.repoName);
+  return planConnectionHealth({ project, probe });
 }
 
 /** 사용자 토큰 쪽. 실패해도 건강성 섹션을 막지 않는다. */
@@ -116,8 +119,9 @@ async function loadAccount(
   try {
     const viewer = await getViewer(token.accessToken);
     return { status: "ok", login: viewer.login };
-  } catch {
+  } catch (error) {
     // 401이면 인가가 철회된 것이고, 그 밖은 일시 장애다 — 둘을 가르는 것은 다음 호출이 한다.
+    logFailure("viewer", error);
     return { status: "unavailable" };
   }
 }

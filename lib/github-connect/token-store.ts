@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { httpStatus } from "./health";
+import { logFailure } from "./log";
 import { planTokenUse, refreshFailure } from "./token";
 import { refreshUserToken } from "./user";
 
@@ -61,7 +62,11 @@ export async function ensureUserToken(
       // 갱신이 실패해도 **한 번 다시 읽는다** — 다른 요청이 이미 회전시켜 놓았을 수 있고,
       // 그때 사용자에게 재인가를 시키면 멀쩡한 연결을 지우게 만든다.
       const settled = await afterRace(prisma, userId, now);
-      return settled ?? { status: refreshFailure(httpStatus(error)) };
+      if (settled !== null) return settled;
+      const failure = refreshFailure(httpStatus(error));
+      // 거부(reauthorize)는 화면이 다음 행동을 말해 준다 — 로그가 필요한 것은 접힌 장애 쪽이다.
+      if (failure === "unavailable") logFailure("refresh", error);
+      return { status: failure };
     }
 
     const written = await prisma.account.updateMany({
@@ -77,9 +82,10 @@ export async function ensureUserToken(
 
     // 졌다 — 우리가 방금 받은 토큰은 이긴 쪽의 회전으로 이미 무효일 수 있다. 행을 믿는다.
     return (await afterRace(prisma, userId, now)) ?? { status: "reauthorize" };
-  } catch {
+  } catch (error) {
     // 조회·쓰기 자체가 죽은 경우다. `not-connected`로 접으면 장애가 "연결 안 됨"으로 읽혀
     // 사용자가 멀쩡한 연결을 다시 만든다 (POSTMORTEM 2026-09-03과 같은 축).
+    logFailure("token-store", error);
     return { status: "unavailable" };
   }
 }

@@ -15,6 +15,7 @@ import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { httpStatus } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
@@ -142,12 +143,13 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   });
   if (project === null) return { ok: false, error: "not-found" };
 
-  let probe;
+  // ⚠️ **try 밖이다.** `probeRepo`는 GitHub 실패를 값으로 주고, 던지는 것은 환경변수 누락(설정 오류)뿐이다 —
+  // 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다 (code-review 2026-09-07 🟡1).
+  const probe = await probeRepo(project.repoOwner, project.repoName);
+
   let userInstallationIds: readonly string[];
   let userRepoFullNames: readonly string[];
   try {
-    // `probeRepo`는 던지지 않고 값으로 준다 — 아래 catch가 실제로 잡는 것은 사용자 토큰 호출 둘이다.
-    probe = await probeRepo(project.repoOwner, project.repoName);
     userInstallationIds = await listUserInstallations(token.accessToken);
     /**
      * ⚠️ **접근 불가 설치의 리포 목록을 부르지 않는다.** 부르면 404가 나고 아래 catch가 그것을
@@ -169,7 +171,8 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
      * 필요한 것은 "GitHub 다시 연결" 버튼이고 그것은 `reauthorize`에만 나온다.
      */
     if (httpStatus(error) === 401) return { ok: false, error: "reauthorize" };
-    // 나머지는 재시도가 유효한 실패다 (POSTMORTEM 2026-09-03).
+    // 나머지는 재시도가 유효한 실패다 (POSTMORTEM 2026-09-03). 화면에는 갈래 이름만 가므로 원인은 여기서 남긴다.
+    logFailure("connect", error);
     return { ok: false, error: "unavailable" };
   }
 
