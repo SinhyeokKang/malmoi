@@ -10,7 +10,7 @@
 
 ## 2. 대상 리포 쪽 설정
 
-**Secret 하나**: `PUSH_TOKEN` — 말모이의 Vercel env와 **같은 값이어야 한다**. 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`).
+**Secret 하나**: `PUSH_TOKEN` — 말모이의 Vercel env와 **같은 값이어야 한다**. 값이 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`). ⚠️ **서버 쪽이 비어 있으면 401이 아니라 500이다** — `checkBearer`가 `not-configured`를 내고 본문이 `{"error":"server misconfigured"}`다. 대조에 실패한 것이 아니라 대조할 값이 없다는 뜻이라 대상 리포에서 고칠 수 없다.
 
 **워크플로** `.github/workflows/l10n.yml`:
 
@@ -63,7 +63,7 @@ jobs:
 | `project` | **항상.** 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5) |
 | `target` | 로케일·소스가 **하위 디렉터리**에만 있을 때(모노레포). 기본은 `github.workspace`. `git rev-parse`도 이 경로에서 돈다 |
 | `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히 |
-| `adapter` | **한 리포에 포맷이 둘이면 필수.** 탐지 우선순위가 작은 쪽을 골라 큰 쪽 키가 전부 orphan된다. bugshot-2가 그렇다: `_locales` 4키 vs `ts-dict` 903키 → `adapter: ts-dict` |
+| `adapter` | **한 리포에 포맷이 둘이면 필수.** `ts-dict`는 **자동 탐지에 아예 참여하지 않으므로**(`detectCandidates`가 항상 빈 배열) 명시 지정이 유일한 경로다 — bugshot-2가 그렇다: `_locales` 4키가 탐지되고 `ts-dict` 903키는 후보에 오르지도 않는다 → `adapter: ts-dict`. 그 밖의 공존은 `detectCandidatesAcross`의 후보 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
 | `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04) |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
 | `api-url` | 기본값이 `https://mal-moi.com`이라 보통 생략. ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측) |
@@ -99,8 +99,9 @@ jobs:
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
+| 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
-**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues`, 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`. **500은 `{"error":"internal","ref":"…"}`만 온다** — 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues`, 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **404는 `project '<slug>' not found`**(`ACTIVE_PROJECT_SLUG`는 맞는데 DB에 그 `Project` 행이 없다 — 오배송 409와 원인이 전혀 다른 설정 실수다). **500은 두 종류다**: 서버에 `PUSH_TOKEN`이 없으면 `{"error":"server misconfigured"}`이고, 그 밖에는 `{"error":"internal","ref":"…"}`만 온다 — — 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 
