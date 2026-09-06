@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planTokenUse } from "../token";
+import { planTokenUse, refreshFailure } from "../token";
 
 /**
  * GitHub App user 토큰의 사용·갱신 판정 (design §2.4·§4). 토큰은 기본 8시간이고 refresh 토큰은
@@ -56,5 +56,28 @@ describe("planTokenUse — 갱신할 수단이 없으면 reauthorize", () => {
 
   it("만료 임박 + refresh 토큰 없음도 reauthorize다", () => {
     expect(planTokenUse({ expiresAt: at(30), now: NOW, hasRefreshToken: false })).toBe("reauthorize");
+  });
+});
+
+describe("refreshFailure — 갱신 실패를 거부와 장애로 가른다", () => {
+  /**
+   * ⚠️ `Account`에 `refresh_token_expires_in` 컬럼이 없어(design §5) refresh 만료를 미리 볼 수 없다 —
+   * **갱신 호출의 실패가 유일한 신호**다. 그 신호를 한 갈래로 접으면 일시 장애가 "다시 인가하세요"로
+   * 위장돼 사용자가 멀쩡한 연결을 지우고 다시 만든다 (POSTMORTEM 2026-09-03·2026-09-06과 같은 축).
+   */
+  it("4xx는 reauthorize다 — refresh 토큰이 만료됐거나 인가가 철회됐다", () => {
+    for (const status of [400, 401, 403, 404, 422]) {
+      expect(refreshFailure(status)).toBe("reauthorize");
+    }
+  });
+
+  it("5xx·429는 unavailable이다 — 재시도가 유효한 실패다", () => {
+    for (const status of [429, 500, 502, 503]) {
+      expect(refreshFailure(status)).toBe("unavailable");
+    }
+  });
+
+  it("status를 모르면(네트워크) unavailable이다 — 부재를 거부로 읽지 않는다", () => {
+    expect(refreshFailure(undefined)).toBe("unavailable");
   });
 });

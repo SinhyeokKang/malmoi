@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { signState, verifyState } from "../state";
+import { signState, stateCookieName, verifyState } from "../state";
 
 /**
  * OAuth state 서명·검증 (design §3.1·§4). **I/O가 없다** — nonce 생성과 쿠키 쓰기는 껍데기가 하고,
@@ -171,5 +171,30 @@ describe("빈 secret을 거부한다 — 설정 오류를 거부로 위장하지
 
   it("공백 한 칸짜리 secret은 유효한 키다 — 빈 문자열만 거른다 (`requireEnv`와 같은 기준)", () => {
     expect(() => sign({ secret: " " })).not.toThrow();
+  });
+});
+
+describe("stateCookieName — __Host- 접두는 https에서만", () => {
+  /**
+   * ⚠️ **`__Host-` 접두는 `Secure` 속성을 요구한다.** Chromium·Firefox는 localhost를 예외로 허용하지만
+   * **Safari는 http에서 Secure 쿠키를 저장하지 않아** 로컬 callback이 항상 `state-mismatch`가 된다 —
+   * 원인이 "쿠키가 없다"로 보여 서명·nonce를 의심하게 만드는 부류의 함정이다.
+   *
+   * `lib/auth/cookie.ts`가 `authjs.session-token`과 `__Secure-` 접두 둘을 프로토콜로 가르는 것과 같다.
+   */
+  it("https에서는 __Host- 접두가 붙는다 — 하위 도메인·경로 고정이 공짜로 따라온다", () => {
+    expect(stateCookieName(true).startsWith("__Host-")).toBe(true);
+  });
+
+  it("http에서는 접두가 없다 — Safari가 로컬에서 쿠키를 버리지 않게", () => {
+    expect(stateCookieName(false).startsWith("__Host-")).toBe(false);
+  });
+
+  it("접두를 뺀 이름은 둘이 같다 — 프로토콜이 바뀌어도 같은 쿠키를 가리킨다", () => {
+    expect(stateCookieName(true).replace("__Host-", "")).toBe(stateCookieName(false));
+  });
+
+  it("이름이 비어 있지 않다", () => {
+    expect(stateCookieName(false).length).toBeGreaterThan(0);
   });
 });
