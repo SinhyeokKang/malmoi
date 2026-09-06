@@ -527,7 +527,13 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 완료 게이트: 다른 프로젝트 ID를 주입해도 노출·수정되지 않는다 / 기존 push→편집→pull 값 전달
 테스트가 새 경로에서도 통과한다.
 
-### 4단계 — GitHub 설치 연결 ⬜ ← **현재 단계** → `features/github-connect/`
+### 4단계 — GitHub 설치 연결 🔶 **코드 완료 / 실물 검증 대기** ← **현재 단계** → `features/github-connect/`
+
+> 2026-09-06: T0~T4가 끝났다(App 설정 · 순수 판정 · 껍데기 · callback 라우트 · 설정 화면).
+> **아래 셋을 체크하지 않는 이유는 완료 게이트가 실물 왕복을 요구하기 때문이다** — code 교환,
+> `paginate`의 응답 정규화, state 쿠키 왕복은 단위 테스트가 원리적으로 못 본다. `features/github-connect/
+> tasks.md` T5가 그것을 받고, 그중 GitHub UI 조작이 필요한 넷은 **설치가 `all`이라 지금 모양에서 밟을 수
+> 없다**(접근 철회에 `Only select repositories`가 필요하다).
 
 - [ ] 기존 User에 GitHub Account **명시적 연결** (§5.5)
 - [ ] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4)
