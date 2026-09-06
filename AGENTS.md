@@ -342,7 +342,8 @@ lib/
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App installation 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
                         + probeRepo(App JWT `/installation` → 설치 토큰 `/repos`) — 설치 토큰만으로는
-                        public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다
+                        public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다.
+                        ⚠️ **createApp()은 try 밖** — 환경변수 누락은 값(error)으로 접지 않고 던진다
   github-connect/       GitHub 계정 연결 (SaaS 4단계). **사용자 토큰 전담 — App 개인키를 모른다**
     origin.ts           requestOrigin·callbackUrl — ⚠️ **redirect_uri와 쿠키 secure가 한 판정에서 나온다.**
                         redirect_uri를 안 보내면 GitHub이 App의 **첫** callback URL(프로덕션)로 되돌려
@@ -356,6 +357,8 @@ lib/
                         ⚠️ 403(설치 일시중지)은 error가 아니라 not-installed다 — 영구 상태다
     token.ts            planTokenUse 3갈래 + refreshFailure (⚠️ 429는 4xx인데 unavailable이다)
     token-store.ts      ensureUserToken — 회전 결과를 조건부 updateMany로 즉시 쓴다
+    log.ts              logFailure — unavailable로 접는 자리마다 부른다 (route·Action·토큰·probe·viewer).
+                        화면엔 갈래 이름만 가므로 원인은 여기서만 볼 수 있다
     message.ts          ConnectError 12갈래 + isConnectError·connectErrorMessage (inviteErrorMessage 형)
     user.ts             OAuthApp·Octokit 호출 — ⚠️ authentication에 clientSecret이 섞여 오므로
                         token·expiresAt·refreshToken 셋만 뽑는다. 목록은 paginate로 전 페이지
