@@ -13,6 +13,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
+import { httpStatus } from "@/lib/github-connect/health";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
@@ -133,15 +134,30 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   let userInstallationIds: readonly string[];
   let userRepoFullNames: readonly string[];
   try {
+    // `probeRepo`는 던지지 않고 값으로 준다 — 아래 catch가 실제로 잡는 것은 사용자 토큰 호출 둘이다.
     probe = await probeRepo(project.repoOwner, project.repoName);
-    // 설치를 모르면 그 안의 리포를 물을 수 없다 — 판정은 `planRepoConnect`가 하므로 여기선 빈 목록.
     userInstallationIds = await listUserInstallations(token.accessToken);
+    /**
+     * ⚠️ **접근 불가 설치의 리포 목록을 부르지 않는다.** 부르면 404가 나고 아래 catch가 그것을
+     * `unavailable`로 접어 **거부가 장애로 위장된다.** 빈 목록으로 두면 `planRepoConnect`가 리포
+     * 검사보다 **먼저** 설치를 보므로 `installation-forbidden`이 정확히 나온다.
+     *
+     * ⚠️ 이 `includes`는 `planRepoConnect`의 같은 검사와 **비교 방식이 같아야 한다** — 갈리면
+     * 정당한 설치인데 리포 목록을 안 불러 `repo-forbidden`이 난다.
+     */
     userRepoFullNames =
       probe.status === "ok" && userInstallationIds.includes(probe.installationId)
         ? await listInstallationRepos(token.accessToken, probe.installationId)
         : [];
-  } catch {
-    // 조회 실패를 거부로 접지 않는다 (POSTMORTEM 2026-09-03).
+  } catch (error) {
+    /**
+     * ⚠️ **401은 거부가 아니라 재인가 신호다** (design §2.4). 사용자가 GitHub에서 App 인가를
+     * 철회하면 DB 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고, **이 GET이 유일한 신호**다.
+     * `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 사용자가 같은 버튼을 무한히 누른다 —
+     * 필요한 것은 "GitHub 다시 연결" 버튼이고 그것은 `reauthorize`에만 나온다.
+     */
+    if (httpStatus(error) === 401) return { ok: false, error: "reauthorize" };
+    // 나머지는 재시도가 유효한 실패다 (POSTMORTEM 2026-09-03).
     return { ok: false, error: "unavailable" };
   }
 

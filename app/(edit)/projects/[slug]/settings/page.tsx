@@ -88,6 +88,11 @@ async function loadHealth(project: {
   repoName: string;
   installationId: string | null;
 }): Promise<ConnectionHealth> {
+  // ⚠️ 저장된 설치가 없으면 probe 결과가 판정을 바꾸지 못한다(`planConnectionHealth`가 그때
+  // `not-connected`를 준다) — 부르면 App JWT 조회와 토큰 발급 두 번이 헛돈다. 지금 프로덕션의
+  // `skillflo`가 그 상태다.
+  if (project.installationId === null) return { status: "not-connected" };
+
   try {
     const probe = await probeRepo(project.repoOwner, project.repoName);
     return planConnectionHealth({ project, probe });

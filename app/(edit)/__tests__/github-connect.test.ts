@@ -164,6 +164,45 @@ describe("connectRepository — 3중 검증 (SAAS §5.4)", () => {
   });
 });
 
+describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가른다", () => {
+  /**
+   * ⚠️ **사용자 토큰 GET의 401은 `reauthorize`다** (design §2.4). 사용자가 GitHub 설정에서 App 인가를
+   * 철회하면 DB의 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고, 그 직후 GET이 401을 뱉는다 —
+   * `expires_at`으로는 볼 수 없어 **이 자리가 유일한 신호**다.
+   *
+   * `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 **사용자가 같은 버튼을 무한히 누른다** —
+   * 필요한 것은 "GitHub 다시 연결"이고 그 버튼은 `reauthorize`일 때만 나온다.
+   */
+  function httpError(status: number): Error {
+    return Object.assign(new Error(`HTTP ${status}`), { status });
+  }
+
+  it("설치 목록 조회가 401이면 reauthorize다 — 인가가 철회됐다", async () => {
+    hoisted.listUserInstallations.mockRejectedValue(httpError(401));
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "reauthorize" });
+    expect(db.spies.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("리포 목록 조회가 401이어도 reauthorize다", async () => {
+    hoisted.listInstallationRepos.mockRejectedValue(httpError(401));
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "reauthorize" });
+  });
+
+  it("5xx는 unavailable이다 — 재시도가 유효한 실패다", async () => {
+    hoisted.listUserInstallations.mockRejectedValue(httpError(503));
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("status가 없는 실패(네트워크)도 unavailable이다", async () => {
+    hoisted.listUserInstallations.mockRejectedValue(new Error("fetch failed"));
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
+  });
+});
+
 describe("connectRepository — 저장", () => {
   it("정상 OWNER면 update 1회이고 **인가된 projectId**에만 쓴다", async () => {
     const result = await connectRepository({ slug: "acme" });
