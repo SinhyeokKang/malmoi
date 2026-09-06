@@ -307,6 +307,9 @@ components/
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 앱에서 import 0곳 —
                         UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner도 import 0곳이고,
                         radix-ui·lucide-react는 **동결된 ui/ 안에서만** 쓰인다
+  __tests__/            focus-ring — app/·components/의 button·input이 포커스 링 셋을 드는지 **소스로**
+                        센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
+                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
                         ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
