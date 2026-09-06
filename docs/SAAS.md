@@ -631,7 +631,7 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 > T0~T4가 코드를, T5가 실물 왕복을 받았다(App 설정 · 순수 판정 · 껍데기 · callback 라우트 · 설정 화면).
 > **실물 왕복이 게이트였던 이유**: code 교환, `paginate`의 응답 정규화, state 쿠키 왕복은 단위 테스트가
 > 원리적으로 못 본다. **거기서만 잡힌 결함이 하나**(malmoi#7 — `redirect_uri` 누락으로 로컬·preview
-> 연결이 원리적으로 불가능했다). T5는 **8/10**이다.
+> 연결이 원리적으로 불가능했다). T5는 **9/11**이다 — 마지막 하나가 배포 뒤 **프로덕션 왕복**(계정 연결 · 3중 검증 거부 · 재연결 성공, 2026-09-07).
 
 - [x] 기존 User에 GitHub Account **명시적 연결** (§5.5) — T5 실물 왕복, `Account(provider:"github-app")` 행 확인
 - [x] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4) — `planRepoConnect`
