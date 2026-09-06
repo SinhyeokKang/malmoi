@@ -127,6 +127,20 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 
 2차에 열 조건: 워크플로 파일을 못 넣는 리포가 실제 도입 대상이 될 때.
 
+#### ③ 로그인 provider를 GitHub App으로 교체 → 뺀다 (2026-09-06 판정, 4단계)
+
+**1차는 로그인 OAuth App과 연결 GitHub App을 따로 둔다** — 같은 사람이 GitHub 왕복을 두 번 한다
+(로그인 한 번, 연결 한 번). 합치면 OAuth App 셋(프로덕션·preview·로컬)과 그 secret이 사라지고
+왕복도 한 번이 된다.
+
+근거는 **가용성이다**(`features/github-connect/design.md` §2.2). 프로덕션 GitHub 로그인이 실물로 처음
+성공한 것이 2026-09-06이고(그전엔 `AUTH_GITHUB_ID`에 레코드 번호가 들어가 있었다 — §8 2단계), 로그인을
+연결과 같은 App에 묶으면 **연결 기능의 실패가 로그인 실패가 된다.** 이 기능이 깨져도 로그인은 살아
+있어야 한다.
+
+2차에 열 조건: **연결 화면의 두 번째 인가 클릭이 실제로 이탈을 만들 때.** 그때는 왕복 하나를 줄이는
+값이 가용성 리스크를 넘는다.
+
 ## 5. 보안 모델
 
 ### 5.1 가장 중요한 규칙
@@ -140,6 +154,17 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 ⚠️ **장애는 거부가 아니다** (POSTMORTEM 2026-09-06). `auth()`는 DB 예외를 삼키고 `null`을 돌려주므로 모든
 진입점은 `readSession`을 쓴다 — `unavailable`이면 "일시적인 오류"를 보이고 **로그인을 시키지 않는다**.
 DB 장애를 비로그인과 같은 화면으로 보내면 전면 장애가 "정상"으로 관측된다 (ARCHITECTURE §6.1.2).
+
+⚠️ **장애 표시가 어디서 오는지가 이 설계의 약한 고리다.** 반환값으로는 원리적으로 구별할 수 없으므로
+남은 통로가 로거뿐이다 — `auth.ts`의 `logger.error`가 `noteAuthError`를 부르고 호출부가
+`withOutageFlag(() => auth())`로 감싼다(`lib/auth/outage.ts`). **`auth.ts`의 logger 설정을 지우면
+`readSession`은 그대로 컴파일되면서 장애를 조용히 비로그인으로 보고한다** — 타입이 못 잡는 원격
+결합이다. `AsyncLocalStorage`를 쓴 이유는 모듈 변수 하나면 **다른 요청의 장애가 이 요청의 거부로
+둔갑**하기 때문이다.
+
+**같은 축이 4단계에도 있다** — 연결 경로는 `probe error → unknown`(≠`app-uninstalled`), 토큰 429 →
+`unavailable`, DB 장애 → `unavailable`이고, **`unavailable`만 재시도를 권한다.** "모르는 것을 거부로
+말하지 않는다"가 두 층에서 같은 규칙이다.
 
 이건 새 규칙이 아니라 이미 밟은 지뢰의 확장이다 — MVP에서 "레이아웃 조건부 렌더는 차단이 아니다"를
 1.3MB RSC 페이로드 노출로 배웠다(POSTMORTEM 2026-08-31). SaaS에서 같은 실수의 형태는
@@ -196,6 +221,45 @@ MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘�
 **OAuth 토큰이 커밋 경로에 들어가면 안 된다** — 커밋이 개인 명의가 되고 그 사람이 떠나면 파이프라인이
 깨진다. 이건 MVP부터의 규칙이다.
 
+**가운데 토큰은 수명이 짧고 회전한다** (`lib/github-connect/token.ts`·`token-store.ts`). 8시간 만료 +
+refresh **1회용**이고, 원문이 `Account` 행에 눕는다. `planTokenUse`가 `use | refresh | reauthorize`를
+가르되 만료 판정에 **60초 여유**를 둔다(경계에서 발급받아 곧바로 죽는 토큰을 쓰지 않으려고). 회전 결과는
+**읽었던 `refresh_token`을 `where`에 넣은 조건부 `updateMany`**로 즉시 쓰고, count 0이면 다른 요청이
+먼저 돌린 것이므로 재조회한다 — 초대 토큰의 단일 사용(§5.6)과 같은 형태다.
+
+⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없어 refresh 만료·인가 철회를 미리 볼 수 없다** —
+갱신 호출의 실패가 유일한 신호다. 그래서 `refreshFailure`가 거부(`reauthorize`)와 장애(`unavailable`)를
+가르고, **429는 4xx인데 `unavailable`이다**(재시도하면 풀린다).
+
+⚠️ **`Account` 테이블은 소유자가 둘이다.** 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)
+행이 같은 테이블을 쓰고, GitHub으로 로그인한 사람은 행을 둘 갖는다. 4단계는 **마이그레이션을 하나도
+추가하지 않았다** — 사용자 토큰을 기존 `access_token`·`refresh_token`·`expires_at`(초 단위 epoch)에
+얹었다. unique가 `[provider, providerAccountId]`뿐이라 `userId`로는 `findUnique`가 성립하지 않고
+`findFirst`를 쓴다 — **"User당 App 연결 하나"는 우리 정책이지 DB 제약이 아니다.** `Account`→`User`가
+Cascade라 **User 삭제가 연결 토큰까지 지운다**(§6이 어댑터 이유로 정당화한 Cascade에 이제 다른 데이터가
+딸려 간다).
+
+### 5.4.1 연결 왕복의 state — CSRF와 착지 지점
+
+연결은 브라우저가 GitHub을 다녀오는 왕복이라 **초대 토큰(§5.6)과 같은 급의 서명 축**이 필요하다
+(`lib/github-connect/state.ts`).
+
+- **HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨(`"malmoi-github-state"`). ⚠️ 세션 서명과 **키를
+  공유**하므로 회전하면 진행 중인 연결이 전부 죽는다.
+- **10분 만료 · nonce 대조 · `timingSafeEqual`**(길이 선검사). 판정 순서는 서명 → nonce → 만료 →
+  사용자로, **만료를 사용자보다 앞에 둬** 만료된 state가 누구 것이었는지 말하지 않는다.
+- **목적지 slug를 서명 payload에 싣는다** — 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+- **빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** 설정 오류를 "다시 눌러 주세요"로 위장하면
+  누구나 재현 가능한 서명이 통과한다.
+- **쿠키 이름을 읽는 쪽이 두 개 다 본다**(`stateCookieNames()`). 쓰는 쪽은 `x-forwarded-proto`, 읽는
+  쪽은 요청 URL로 프로토콜을 판정해 갈릴 수 있고, 갈리면 연결이 100% `state-mismatch`가 된다.
+  `__Host-` 접두를 https에서만 붙이는 이유는 **Safari가 `http://localhost`에서 Secure 쿠키를 버리기**
+  때문이다 — `lib/auth/cookie.ts`의 `__Secure-` 이중 검사와 같은 계열이다.
+- ⚠️ **`redirect_uri`를 반드시 싣는다** (`lib/github-connect/origin.ts`, malmoi#7). 생략하면 GitHub이
+  App에 등록된 **첫** callback으로 보내 로컬에서 시작한 연결이 프로덕션에 착지하고, state 쿠키는
+  시작한 origin에 있으니 그 왕복은 **영원히** `state-mismatch`다. origin과 쿠키 `secure`가 **한
+  판정에서** 나오는 것이 그 파일의 요지다.
+
 **프로젝트 생성 조건 — 셋 다 서버가 확인한다**:
 
 ```
@@ -223,10 +287,15 @@ Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 �
 잘못된 자동 병합은 불편이 아니라 **계정 탈취**다 — provider가 반환하는 이메일이 검증됐다는 보장이
 provider마다 다르다.
 
-**방어선은 `allowDangerousEmailAccountLinking`을 켜지 않는 것 하나이고, 실물에서 확인했다**
+**로그인 경로의 방어선은 `allowDangerousEmailAccountLinking`을 켜지 않는 것이고, 실물에서 확인했다**
 (2026-09-05, preview): GitHub으로 OWNER가 된 계정과 **같은 주소**의 Google로 로그인하면
-`?error=OAuthAccountNotLinked`로 거부되고 `User`·`Account`에 고아 행이 남지 않는다. 명시적 연결
-흐름(기존 세션에서 "GitHub 연결")은 §8 4단계다.
+`?error=OAuthAccountNotLinked`로 거부되고 `User`·`Account`에 고아 행이 남지 않는다.
+
+⚠️ **그 옵션은 연결 경로를 지키지 않는다** (4단계, 2026-09-06). `provider:"github-app"` 행은 Auth.js를
+지나지 않으므로 어댑터 설정이 **아무 역할을 하지 않는다.** 연결 경로의 방어선은 따로 둘이다:
+`planAccountLink`의 **`taken-by-other`가 `replace`보다 앞이고**(뒤였으면 옛 행을 지운 다음 거부해
+"실패했는데 연결까지 풀렸다"가 된다), Account 쓰기가 `upsert`가 아니라 **`create` + P2002 재조회**다
+(동시 요청이 `userId`를 덮으면 소유권이 이동한다).
 
 ### 5.6 초대 — 토큰은 해시만 저장한다
 
@@ -266,14 +335,15 @@ Project로 등록"할 입력 자체가 없다. 판정층을 먼저 세운 것은
 - 비로그인 사용자의 프로젝트 조회·수정·Publish
 - 프로젝트 A 멤버가 프로젝트 B의 URL·ID를 직접 전송
 - 다른 프로젝트의 `keyId`·`localeCode`·`translationId` 조합
-- EDITOR의 멤버·리포 설정 변경
+- EDITOR의 멤버·리포 설정 변경 — 멤버는 2단계, **리포 설정 절반은 4단계**가 닫았다(`app/(edit)/__tests__/github-connect.test.ts`, permission은 `project:settings`)
 - 설치되지 않은 리포를 Project로 등록 — 판정 **4단계** ✅ / 종결 **5단계**(생성 경로가 아직 없다)
 - 설치에 접근할 수 없는 사용자의 프로젝트 생성 — 판정 **4단계** ✅ / 종결 **5단계**(같은 이유)
 - **제거된 멤버가 기존 세션으로 재접근**
 - 같은 이메일이라는 이유만의 provider 계정 자동 병합
 - 초대받은 이메일과 다른 계정으로 초대 수락
 - 초대 토큰 재사용·만료 후 사용
-- 로그·클라이언트 응답에 토큰·PEM·DB URL 노출 (이미 `lib/failure.ts`가 든다)
+- **state 없이·위조한 state로 연결 callback 도착** (§5.4.1) — code 교환과 `Account` 쓰기가 **0회**여야 한다
+- 로그·클라이언트 응답에 토큰·PEM·DB URL 노출 (`lib/failure.ts` + **Server Action 경로의 회귀 테스트 `app/(edit)/__tests__/publish-failure.test.ts`** — 같은 `triggerPull`을 부르면서 `error.message`를 직렬화해 Prisma 접속 오류가 pooler 호스트·DB 유저를 담은 적이 있다)
 
 ## 6. 스키마 변화 — 5테이블에서 11테이블로
 
@@ -282,7 +352,7 @@ Project로 등록"할 입력 자체가 없다. 판정층을 먼저 세운 것은
 
 | 테이블 | 언제 | 왜 |
 |---|---|---|
-| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider를 안 쓰므로 **항상 비어 있다** — 어댑터가 그 델리게이트를 부르므로 테이블은 있어야 한다 |
+| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider를 안 쓰므로 **항상 비어 있다** — 어댑터가 그 델리게이트를 부르므로 테이블은 있어야 한다. ⚠️ **`Account`는 4단계부터 소유자가 둘이다** — 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)이 provider 값으로 갈린 같은 테이블이고, **4단계의 스키마 변화는 0이다**(§5.4) |
 | `ProjectMember` | 2단계 ✅ | 권한의 유일한 정본 |
 | `ProjectInvitation` | 2단계 ✅ | 수락 전 상태. `tokenHash` unique |
 | `SyncRun` | 7단계 | 실행 이력·idempotency·동시 실행 차단 |
@@ -359,6 +429,17 @@ setup → awaiting_first_sync → ready
 **별도 상태 컬럼을 즉시 만들지 않는다** — 초기에는 기존 nullable 필드와 최근 `SyncRun` 결과로 계산할
 수 있다. 다만 `ready` 전 프로젝트가 번역 화면에 들어가는 것은 막는다.
 
+⚠️ **연결 건강성은 이것과 별개 축이고, 4단계가 먼저 세웠다.** 이 절이 묻는 것은 "편집 가능한가"이고,
+건강성이 묻는 것은 "리포·설치가 지금 어떤 상태인가"다. 후자는 **상태 컬럼 없이 매 렌더 계산**하며
+(`planConnectionHealth` 6갈래 — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
+`repo-moved`·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다(설계 어휘로만
+남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 둘:
+
+- **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
+  멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
+- **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
+  받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
+
 ### 7.6 Publish — PR 생성은 완료가 아니다
 
 사용자 용어는 `pull`이 아니라 **Publish**다. 다만 **Publish 완료와 리포 반영 완료를 구분한다** —
@@ -373,9 +454,10 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 /projects                      목록
 /projects/new                  생성
 /projects/:slug/translations   번역
-/projects/:slug/publish        Publish
 /projects/:slug/settings       설정
 ```
+
+⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼이다(`components/pull-button.tsx`). 한때 `/projects/:slug/publish`로 적혀 있었는데 그런 라우트는 만들지 않았고 §8 6단계도 요구하지 않는다.
 
 **account 단계를 두지 않는다** (`/:account/:project`가 아니다). 조직 계층이 §4.2 비범위이므로 그 단계를
 지금 만들면 **쓰이지 않는 계층을 미리 만드는 것**이고, `Account` 테이블과 개인/조직 판정이 따라온다.
@@ -549,24 +631,30 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 > T0~T4가 코드를, T5가 실물 왕복을 받았다(App 설정 · 순수 판정 · 껍데기 · callback 라우트 · 설정 화면).
 > **실물 왕복이 게이트였던 이유**: code 교환, `paginate`의 응답 정규화, state 쿠키 왕복은 단위 테스트가
 > 원리적으로 못 본다. **거기서만 잡힌 결함이 하나**(malmoi#7 — `redirect_uri` 누락으로 로컬·preview
-> 연결이 원리적으로 불가능했다).
+> 연결이 원리적으로 불가능했다). T5는 **8/10**이다.
 
 - [x] 기존 User에 GitHub Account **명시적 연결** (§5.5) — T5 실물 왕복, `Account(provider:"github-app")` 행 확인
 - [x] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4) — `planRepoConnect`
-- [x] 리포 접근 철회 → `needs_reconnect` (데이터는 보존) — **2026-09-07 실물**: 설치를 `Only select
+- [x] 리포 접근 철회 → `app-uninstalled`(설계 어휘의 `needs_reconnect` — §7.5) · 데이터는 보존 — **2026-09-07 실물**: 설치를 `Only select
       repositories`로 바꾸고 리포 하나를 뺐다 넣었다. `probeRepo`가 `not-installed`로 바뀌고 화면이
       "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요" + 설치 링크 + "다시 연결"을 보이며,
       되돌리면 "연결됨"으로 복귀한다. `Project` 행은 두 방향 모두에서 그대로다
 
-⚠️ **셋째 항목의 넷 중 하나만 실물로 밟았다.** 밟은 것은 **접근 철회**이고, **App 제거·리네임·소유자
-이전은 안 밟았다** — 제거는 폐기용 리포와 프로덕션 리포가 **같은 설치를 공유**해 프로덕션 연결까지
-끊기고, 뒤의 둘은 리포를 실제로 옮겨야 한다. 셋 다 `probeRepo`의 같은 분기(404 → `not-installed`,
+⚠️ **T5에서 못 밟은 것이 둘이고, 셋째 체크박스에만 걸린 것이 아니다.**
+
+- **셋째 항목** — 넷 중 **접근 철회 하나만** 밟았다. **App 제거·리네임·소유자 이전은 안 밟았다**:
+  제거는 폐기용 리포와 프로덕션 리포가 **같은 설치를 공유**해 프로덕션 연결까지 끊기고, 뒤의 둘은
+  리포를 실제로 옮겨야 한다.
+- **첫째 항목** — "다른 User가 연결한 GitHub 계정으로 연결 시도"(`planAccountLink`의 `taken-by-other`)를
+  못 밟았다. 계정 둘과 세션 둘이 필요해 브라우저 자동화로 재현할 수 없다. 단위 테스트가 덮는다. 셋 다 `probeRepo`의 같은 분기(404 → `not-installed`,
 `full_name` 불일치 → `repo-moved`)로 들어가고 그 분기는 단위 테스트가 덮는다. **철회를 고른 것은
 그것이 "200을 주는데도 접근이 없는" 유일한 경우이기 때문이다** — public 리포는 철회 뒤에도
 `GET /repos`가 200이라, App JWT의 `/installation`을 판정 근거로 삼은 설계가 여기서만 검증된다.
 
 완료 게이트: 접근할 수 없는 `installationId`를 직접 보내도 생성되지 않는다 ✅(애초에 클라이언트가
-보내지 않는다 — §5.4) / OAuth 토큰이 커밋 경로에 들어가지 않는다 ✅(`credential-separation.test.ts`) /
+보내지 않는다 — §5.4. 인가·3중 검증 거부는 `app/(edit)/__tests__/github-connect.test.ts`, state 위조는
+`app/api/__tests__/github-callback.test.ts`) / OAuth 토큰이 커밋 경로에 들어가지 않는다
+✅(`credential-separation.test.ts`) /
 접근을 철회해도 번역 데이터가 보존되고 재부여로 재연결된다 ✅(2026-09-07 실물).
 
 ### 5단계 — 탐지 온보딩 ⬜ ← **현재 단계** → `features/project-onboarding/`
@@ -641,8 +729,3 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 - **Workflows 권한을 요구할 것인가** (§5.4) — 연동 PR을 자동으로 내려면 필요하지만, 설치 화면에서
   "워크플로 파일을 수정합니다"는 신뢰 비용이 크다. 5단계에서 실제 설치 화면을 보고 정한다
 - **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
-- **로그인 provider를 GitHub App으로 교체할 것인가** (§5.4, 2026-09-06에 생긴 질문) — 4단계가 App의
-  user-to-server 흐름을 세우면서 **같은 사람이 GitHub 왕복을 두 번** 한다(로그인 한 번, 연결 한 번).
-  App 하나로 합치면 OAuth App과 그 secret 셋(프로덕션·preview·로컬)이 사라지고 왕복도 한 번이 된다.
-  **미루는 이유는 비개발자 동료다** — 그들은 Google로 들어오고 GitHub 계정이 없어도 번역할 수 있어야
-  하므로, 교체가 아니라 "개발자에게만 왕복 하나를 줄이는" 일이 된다. 얻는 것이 면적 대비 작다
