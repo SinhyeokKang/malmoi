@@ -32,18 +32,18 @@
 
 ---
 
-## T1 — 순수 판정 함수 ⎇ `test:` → `feat:`
+## T1 — 순수 판정 함수 ✅ (2026-09-06, `4b3d614` test → `69f8682` feat → `3048a3f` fix)
 
 `/tdd interface`로 테스트를 먼저 박고 구현한다. **전부 I/O 없음.** 디렉터리는 `lib/github-connect/`.
 
-- [ ] `state.ts` — `signState` · `verifyState({ cookie, query, userId, now, secret })` (`createHmac` +
+- [x] `state.ts` — `signState` · `verifyState({ cookie, query, userId, now, secret })` (`createHmac` +
       `timingSafeEqual` 길이 선검사, 라벨 `"malmoi-github-state"`). ⚠️ `safeNext` 없음 — 목적지는 slug다
-- [ ] `account-link.ts` — `planAccountLink({ sessionUserId, existing, current })` 4갈래
-- [ ] `connect-plan.ts` — `planRepoConnect({ probe, userInstallationIds, userRepoFullNames })`
+- [x] `account-link.ts` — `planAccountLink({ sessionUserId, existing, current })` 4갈래
+- [x] `connect-plan.ts` — `planRepoConnect({ probe, userInstallationIds, userRepoFullNames })`
       (**3중 검증의 판정 자리** — 5단계가 재사용)
-- [ ] `health.ts` — `planConnectionHealth` (6갈래, `unknown` 포함) + `probeFromError(status)`
-- [ ] `token.ts` — `planTokenUse`
-- [ ] `message.ts` — `ConnectError` union · `isConnectError` · `connectErrorMessage` (**`satisfies never` +
+- [x] `health.ts` — `planConnectionHealth` (6갈래, `unknown` 포함) + `probeFromError(status)`
+- [x] `token.ts` — `planTokenUse`
+- [x] `message.ts` — `ConnectError` union · `isConnectError` · `connectErrorMessage` (**`satisfies never` +
       폴백**, `inviteErrorMessage` 형)
 
 **검증:** `pnpm test` green. 케이스가 최소 이만큼 있다 —
@@ -54,6 +54,25 @@ owner/name / `planConnectionHealth`의 **`error` → `unknown`**(≠`app-uninsta
 `repo-moved` / `probeFromError`의 403 → `not-installed` / `planTokenUse`의 60초 여유·refresh 없음 →
 `reauthorize` / `connectErrorMessage`가 union **전 갈래를 값 배열로** 덮는다(갈래를 늘리면 컴파일 red) +
 모르는 문자열은 폴백.
+
+**결과:** 69건 + 리뷰 회귀 4건 = 73건, `pnpm test` 1383 green · `pnpm typecheck` OK. 설계가 시그니처만
+적어 두어 **테스트가 결정한 것 셋**: ① `verifyState` 판정 순서는 서명 → nonce → 만료 → 사용자(만료를
+사용자보다 앞에 둬 만료된 state가 누구 것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축)
+② `full_name` 비교는 대소문자 무시(거짓 `repo-forbidden`·거짓 `repo-moved`가 정당한 재연결을 막는 쪽이
+더 나쁘다) ③ `owner/name` 모양이 아닌 `full_name`은 `unavailable`(모르는 것을 "권한 없음"으로 말하지
+않는다).
+
+⚠️ **`/code-review`가 잡은 것 하나**(`3048a3f`): `createHmac("sha256", "")`가 던지지 않아 **빈 secret으로
+서명한 state를 누구나 재현할 수 있었다.** `requireEnv`가 빈 문자열을 던져 정상 경로는 막혀 있었지만,
+이 층이 그것에 의존만 하면 호출부의 실수 하나로 방어가 사라진다 — `checkBearer`가 `expected === ""`를
+`not-configured`로 가른 것과 같은 판단으로 두 진입점이 스스로 거부한다. `state-mismatch`로 접지 않고
+던지는 이유는 설정 오류를 "다시 눌러 주세요"로 위장하지 않기 위해서다.
+
+⚠️ **T2 착수 시 확인할 것 둘** — 이 판정층을 **껍데기가 실제로 부르는가**. 이 리포의 반복 실패
+유형이 정확히 그것이다(`/audit` 1회차가 고친 넷이 전부 "만든 것이 호출되지 않았다"). `probeRepo`가
+`probeFromError`를 우회해 자체 분류하면 403이 `error`로 떨어져 설치 일시중지가 "잠시 뒤 다시"로 영원히
+뜨고, `ensureUserToken`이 `planTokenUse`를 우회해 만료를 직접 비교하면 60초 여유가 사라진다.
+`credential-separation.test.ts`는 import 방향만 보므로 **호출 여부는 자동으로 잡히지 않는다.**
 
 ---
 
