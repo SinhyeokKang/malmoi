@@ -177,14 +177,21 @@ getProjectAccess(prisma, { userId, slug, permission })            // Server Acti
 
 대가는 요청마다의 DB 왕복이고, 그것이 MVP에서 JWT를 고른 이유였다. **그 대가를 지금 지불한다.**
 
-### 5.4 두 GitHub 자격증명 — 경계는 그대로다
+### 5.4 세 GitHub 자격증명 — 경계는 그대로다
 
-MVP에서 세운 경계가 SaaS에서 더 중요해진다.
+MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘에서 셋이 됐다** — 4단계가 "이 사람이
+어느 설치를 볼 수 있는가"를 묻기 시작하면서 그 질문 전용 토큰이 생겼다.
 
-| 자격증명 | 용도 |
-|---|---|
-| GitHub **OAuth Account** | 사용자가 **어떤 설치와 리포를 선택할 자격**이 있는지 확인 |
-| GitHub App **installation token** | 트리 조회 · 브랜치 갱신 · PR 생성 |
+| 자격증명 | 발급자 | 용도 |
+|---|---|---|
+| **OAuth App 토큰** | Auth.js provider (`AUTH_GITHUB_*`) | **로그인** — 이 사람이 누구인가 |
+| GitHub App **user-to-server 토큰** | **같은 GitHub App**이 발급한다 (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 어느 설치·리포를 볼 수 있는가. **GET만** 부른다 |
+| GitHub App **installation token** | GitHub App 개인키 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 트리 조회 · 브랜치 갱신 · PR 생성 |
+
+⚠️ **가운데 것이 "OAuth"라는 이름을 공유하지만 로그인 토큰이 아니다.** 로그인은 별도 OAuth App이고,
+연결은 App의 user-to-server 흐름이다 — client id가 서로 다르고, 섞으면 로그인은 되는데 설치 목록이
+비어 보인다. `lib/github-connect/`가 개인키를 모르고 `lib/github.ts`가 그 디렉터리를 import하지 않는
+것을 `credential-separation.test.ts`가 소스에서 상시로 센다.
 
 **OAuth 토큰이 커밋 경로에 들어가면 안 된다** — 커밋이 개인 명의가 되고 그 사람이 떠나면 파이프라인이
 깨진다. 이건 MVP부터의 규칙이다.
@@ -199,6 +206,11 @@ User에 GitHub Account가 연결됨
 
 ⚠️ **브라우저가 보낸 `installationId`·`owner`·`repo`를 그대로 저장하지 않는다.** 그러면 접근 권한이
 없는 설치를 자기 프로젝트로 등록할 수 있다.
+
+✅ **4단계는 그 위험을 더 좁게 닫았다 — `installationId`가 아예 클라이언트에서 오지 않는다.** 리포는
+`Project`에 고정이고(연결 화면에 셀렉트가 없다), 서버가 `GET /repos/{owner}/{repo}/installation`으로
+설치 id를 **직접 얻는다**(`probeRepo`). 그래서 사용자 입력은 slug 하나이고, 3중 검증은 "보낸 값이
+맞는가"가 아니라 "서버가 얻은 값을 이 사람이 볼 수 있는가"를 묻는다. 판정 자리는 `planRepoConnect`다.
 
 **GitHub App 권한은 최소로**: Metadata read · Contents read/write · Pull requests read/write.
 Workflows 권한은 **연동 PR이 워크플로 파일을 쓸 때만** 필요하고, §8 5단계에서 판정한다.
@@ -243,15 +255,20 @@ provider마다 다르다.
 ### 5.7 보안 테스트 완료 조건
 
 아래가 **전부 거부**돼야 §8 2단계가 닫힌다. ✅ **2026-09-05에 닫혔다** — 항목별 근거(테스트 이름과
-preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 항목만 4단계로 넘겼고, 그건
+preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 항목만 뒤로 넘겼고, 그건
 프로젝트 생성 경로가 아직 없어 **공격 표면 자체가 존재하지 않기** 때문이다.
+
+⚠️ **그 둘은 판정과 종결이 갈린다** (2026-09-06). 판정 함수(`planRepoConnect`)는 **4단계**가 만들어
+단위 테스트로 덮었고(`installation-forbidden`·`repo-forbidden`·`repo-not-installed`), 시나리오가
+**닫히는 것은 생성 표면이 생기는 5단계**다 — 지금은 리포가 `Project`에 고정이라 "설치되지 않은 리포를
+Project로 등록"할 입력 자체가 없다. 판정층을 먼저 세운 것은 5단계가 그것을 재사용하기 때문이다.
 
 - 비로그인 사용자의 프로젝트 조회·수정·Publish
 - 프로젝트 A 멤버가 프로젝트 B의 URL·ID를 직접 전송
 - 다른 프로젝트의 `keyId`·`localeCode`·`translationId` 조합
 - EDITOR의 멤버·리포 설정 변경
-- 설치되지 않은 리포를 Project로 등록 — ⏭ **4단계** (생성 경로가 아직 없다)
-- 설치에 접근할 수 없는 사용자의 프로젝트 생성 — ⏭ **4단계** (같은 이유)
+- 설치되지 않은 리포를 Project로 등록 — 판정 **4단계** ✅ / 종결 **5단계**(생성 경로가 아직 없다)
+- 설치에 접근할 수 없는 사용자의 프로젝트 생성 — 판정 **4단계** ✅ / 종결 **5단계**(같은 이유)
 - **제거된 멤버가 기존 세션으로 재접근**
 - 같은 이메일이라는 이유만의 provider 계정 자동 병합
 - 초대받은 이메일과 다른 계정으로 초대 수락
@@ -527,22 +544,32 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 완료 게이트: 다른 프로젝트 ID를 주입해도 노출·수정되지 않는다 / 기존 push→편집→pull 값 전달
 테스트가 새 경로에서도 통과한다.
 
-### 4단계 — GitHub 설치 연결 🔶 **코드 완료 / 실물 검증 대기** ← **현재 단계** → `features/github-connect/`
+### 4단계 — GitHub 설치 연결 ✅ **완료 (2026-09-07, 실물 검증까지)** → `features/github-connect/`
 
-> 2026-09-06: T0~T4가 끝났다(App 설정 · 순수 판정 · 껍데기 · callback 라우트 · 설정 화면).
-> **아래 셋을 체크하지 않는 이유는 완료 게이트가 실물 왕복을 요구하기 때문이다** — code 교환,
-> `paginate`의 응답 정규화, state 쿠키 왕복은 단위 테스트가 원리적으로 못 본다. `features/github-connect/
-> tasks.md` T5가 그것을 받고, 그중 GitHub UI 조작이 필요한 넷은 **설치가 `all`이라 지금 모양에서 밟을 수
-> 없다**(접근 철회에 `Only select repositories`가 필요하다).
+> T0~T4가 코드를, T5가 실물 왕복을 받았다(App 설정 · 순수 판정 · 껍데기 · callback 라우트 · 설정 화면).
+> **실물 왕복이 게이트였던 이유**: code 교환, `paginate`의 응답 정규화, state 쿠키 왕복은 단위 테스트가
+> 원리적으로 못 본다. **거기서만 잡힌 결함이 하나**(malmoi#7 — `redirect_uri` 누락으로 로컬·preview
+> 연결이 원리적으로 불가능했다).
 
-- [ ] 기존 User에 GitHub Account **명시적 연결** (§5.5)
-- [ ] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4)
-- [ ] App 제거·리포 접근 철회·이름 변경·소유자 이전 → `needs_reconnect` (데이터는 보존)
+- [x] 기존 User에 GitHub Account **명시적 연결** (§5.5) — T5 실물 왕복, `Account(provider:"github-app")` 행 확인
+- [x] installation 조회 · repository 조회 · **3중 검증** 후 Project 연결 (§5.4) — `planRepoConnect`
+- [x] 리포 접근 철회 → `needs_reconnect` (데이터는 보존) — **2026-09-07 실물**: 설치를 `Only select
+      repositories`로 바꾸고 리포 하나를 뺐다 넣었다. `probeRepo`가 `not-installed`로 바뀌고 화면이
+      "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요" + 설치 링크 + "다시 연결"을 보이며,
+      되돌리면 "연결됨"으로 복귀한다. `Project` 행은 두 방향 모두에서 그대로다
 
-완료 게이트: 접근할 수 없는 `installationId`를 직접 보내도 생성되지 않는다 / OAuth 토큰이 커밋
-경로에 들어가지 않는다 / App을 제거해도 번역 데이터가 보존되고 재설치로 재연결된다.
+⚠️ **셋째 항목의 넷 중 하나만 실물로 밟았다.** 밟은 것은 **접근 철회**이고, **App 제거·리네임·소유자
+이전은 안 밟았다** — 제거는 폐기용 리포와 프로덕션 리포가 **같은 설치를 공유**해 프로덕션 연결까지
+끊기고, 뒤의 둘은 리포를 실제로 옮겨야 한다. 셋 다 `probeRepo`의 같은 분기(404 → `not-installed`,
+`full_name` 불일치 → `repo-moved`)로 들어가고 그 분기는 단위 테스트가 덮는다. **철회를 고른 것은
+그것이 "200을 주는데도 접근이 없는" 유일한 경우이기 때문이다** — public 리포는 철회 뒤에도
+`GET /repos`가 200이라, App JWT의 `/installation`을 판정 근거로 삼은 설계가 여기서만 검증된다.
 
-### 5단계 — 탐지 온보딩 ⬜ → `features/project-onboarding/`
+완료 게이트: 접근할 수 없는 `installationId`를 직접 보내도 생성되지 않는다 ✅(애초에 클라이언트가
+보내지 않는다 — §5.4) / OAuth 토큰이 커밋 경로에 들어가지 않는다 ✅(`credential-separation.test.ts`) /
+접근을 철회해도 번역 데이터가 보존되고 재부여로 재연결된다 ✅(2026-09-07 실물).
+
+### 5단계 — 탐지 온보딩 ⬜ ← **현재 단계** → `features/project-onboarding/`
 
 - [ ] 탐지 후보를 **사용자 언어로** 요약 (경로·언어·기준 언어·키 수·형식), 내부 이름은 숨김 (§3)
 - [ ] 후보 추천 순위와 **사용자 확정** (§7.3)
@@ -614,3 +641,8 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 - **Workflows 권한을 요구할 것인가** (§5.4) — 연동 PR을 자동으로 내려면 필요하지만, 설치 화면에서
   "워크플로 파일을 수정합니다"는 신뢰 비용이 크다. 5단계에서 실제 설치 화면을 보고 정한다
 - **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
+- **로그인 provider를 GitHub App으로 교체할 것인가** (§5.4, 2026-09-06에 생긴 질문) — 4단계가 App의
+  user-to-server 흐름을 세우면서 **같은 사람이 GitHub 왕복을 두 번** 한다(로그인 한 번, 연결 한 번).
+  App 하나로 합치면 OAuth App과 그 secret 셋(프로덕션·preview·로컬)이 사라지고 왕복도 한 번이 된다.
+  **미루는 이유는 비개발자 동료다** — 그들은 Google로 들어오고 GitHub 계정이 없어도 번역할 수 있어야
+  하므로, 교체가 아니라 "개발자에게만 왕복 하나를 줄이는" 일이 된다. 얻는 것이 면적 대비 작다
