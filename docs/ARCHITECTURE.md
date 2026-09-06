@@ -668,6 +668,17 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). 문구가 not-found와 forbidden을 같게 말하므로 존재 노출은 없다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
+⚠️ **`/projects`는 두 union을 함께 읽는다** (2026-09-06, SaaS 4단계). GitHub 연결 실패도 그 화면에 착지한다 —
+state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
+열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
+겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다.
+
+⚠️ **`requireProjectAccess`는 `userId`도 돌려준다** (2026-09-06). `{ projectId, role }`만 주면 그 반환값이
+"이 요청에 대해 아는 전부"처럼 보이고, 호출부가 세션 주체를 조건에서 빼 버린다 — 설정 화면이
+`account.findFirst({ provider })`로 **남의 GitHub 계정을 집을 뻔했다**(POSTMORTEM 2026-09-06).
+**규칙은 두 축이다: 프로젝트에 속한 행은 `projectId`로, 사용자에 속한 행(`Account`·`Session`)은 `userId`로
+좁힌다.** 둘 다 인가가 돌려준 값이어야 하고 클라이언트가 보낸 값이면 안 된다.
+
 ⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany({ acceptedAt: null, expiresAt: { gt: now } })`의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
 
 ⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
