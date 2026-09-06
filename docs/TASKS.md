@@ -147,7 +147,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
 
 ## 전역 미결 (단계에 묶이지 않은 것)
 
-- [ ] **tenant-auth 검수 이월 (2026-09-06 code-review ⚪)** — 코드 후속: `createInvitation`의 동시 발급이 유효 토큰을 둘 남긴다(Codex 감사 #4 — `changeMember`처럼 잠그지 않았다, 둘 다 OWNER 발급이라 ⚪) · `entry-points.test.ts` GUARDS에 `readSession` 추가 + `auth()` 직접 호출 금지 검사 · 하네스 `$transaction` 격리·`Role` enum·복합 FK 미흉내 · `schema-contract.test.ts`가 타입·nullable을 안 본다 · 키 id 형식 혼재(`randomUUID` vs `cuid()`, §4 🔒 — 어느 미결 목록에도 없다)
+- [ ] **tenant-auth 검수 이월 (2026-09-06 code-review ⚪)** — 코드 후속: 하네스 `Role` enum·복합 FK 미흉내(`$transaction` 롤백은 흉내낸다) · `schema-contract.test.ts`가 타입·nullable을 안 본다 · 키 id 형식 혼재(`randomUUID` vs `cuid()`, §4 🔒 — 어느 미결 목록에도 없다). ✅ 닫힌 것(같은 날): `createInvitation` 동시 발급 잠금 · `auth()` 직접 호출 금지 스캔(`entry-points.test.ts`)
 - [x] **`main`/`dev` 브랜치 분리 + Vercel Preview 배포** ✅ (2026-09-04 — MVP §8.4에서 앞당겼다)
   - 앞당긴 이유: SaaS 기능이 UI·인증을 건드리는데 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 된다.** preview가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다
   - `dev` push = preview 배포(dev DB) / `dev`→`main` squash PR = 프로덕션 배포. 작업 브랜치 층은 두지 않는다
