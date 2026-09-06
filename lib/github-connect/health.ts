@@ -36,6 +36,16 @@ export type ConnectionHealth =
  * @param status 예외에 상태가 없으면(네트워크 오류) `undefined`가 온다 — 부재를 `not-installed`로
  *   읽지 않는다.
  */
+/**
+ * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
+ * 채우지 않는다.** 부재는 "모른다"이고 아래 분류가 그것을 `error`로 남긴다.
+ */
+export function httpStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
+  const status = (error as { status: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+}
+
 export function probeFromError(status: number | undefined): "not-installed" | "error" {
   return status === 401 || status === 403 || status === 404 ? "not-installed" : "error";
 }

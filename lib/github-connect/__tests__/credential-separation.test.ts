@@ -32,8 +32,16 @@ const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const APP_CREDENTIAL =
   /import\s*\{[^}]*\bApp\b[^}]*\}\s*from\s*["']octokit["']|new App\s*\(|parsePrivateKey|GITHUB_APP_PRIVATE_KEY|getInstallationOctokit/;
 
-/** 연결 경로를 가리키는 import. `lib/github.ts`가 이걸 물면 안 된다. */
-const CONNECT_IMPORT = /from\s+["'](@\/lib\/github-connect|\.\/github-connect)/;
+/**
+ * **사용자 토큰을 다루는 모듈.** `lib/github.ts`가 이걸 물면 커밋 경로에 사용자 토큰이 들어온다.
+ *
+ * ⚠️ **`lib/github-connect/` 전체를 막지 않는다.** 그 디렉터리에는 순수 판정(`health.ts`의
+ * `probeFromError`·`ProbeResult`)도 있고, `probeRepo`가 실패를 분류하려면 그것을 **불러야 한다** —
+ * 안 부르고 자체 분기를 두면 판정이 두 벌이 되어 403이 한쪽에서만 `not-installed`가 된다
+ * (`/code-review` 2026-09-06이 T2 위험으로 지목한 자리). 막아야 하는 것은 디렉터리가 아니라
+ * **토큰을 쥔 모듈**이다.
+ */
+const USER_TOKEN_IMPORT = /from\s+["'](@\/lib\/github-connect\/(user|token-store)|\.\/github-connect\/(user|token-store))/;
 
 function sourcesIn(dir: string, base: string): { rel: string; source: string }[] {
   const out: { rel: string; source: string }[] = [];
@@ -71,13 +79,15 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
     expect(APP_CREDENTIAL.test("return new App({ appId })")).toBe(true);
     expect(APP_CREDENTIAL.test('parsePrivateKey(requireEnv("GITHUB_APP_PRIVATE_KEY"))')).toBe(true);
     expect(APP_CREDENTIAL.test("await app.getInstallationOctokit(1)")).toBe(true);
-    expect(CONNECT_IMPORT.test('import { exchangeCode } from "@/lib/github-connect/user";')).toBe(true);
+    expect(USER_TOKEN_IMPORT.test('import { exchangeCode } from "@/lib/github-connect/user";')).toBe(true);
   });
 
   it("정상 소스는 걸리지 않는다 — 과잉 매칭으로 항상 red가 되지 않는다", () => {
     expect(APP_CREDENTIAL.test('import { OAuthApp } from "octokit";')).toBe(false);
     expect(APP_CREDENTIAL.test('requireEnv("GITHUB_APP_CLIENT_ID")')).toBe(false);
-    expect(CONNECT_IMPORT.test('import { createGitClient } from "@/lib/github";')).toBe(false);
+    expect(USER_TOKEN_IMPORT.test('import { createGitClient } from "@/lib/github";')).toBe(false);
+    // 순수 판정 import는 허용이다 — 토큰을 쥐지 않는다.
+    expect(USER_TOKEN_IMPORT.test('import { probeFromError } from "@/lib/github-connect/health";')).toBe(false);
     // 사용자 문구가 "App"을 말한다 — 이걸 잡으면 방어선이 항상 red라 버려진다.
     expect(APP_CREDENTIAL.test('return "이 리포에 App이 설치돼 있지 않아요.";')).toBe(false);
   });
@@ -107,8 +117,8 @@ describe("사용자 토큰 경로가 App 개인키를 모른다", () => {
 });
 
 describe("커밋 경로가 사용자 토큰을 모른다", () => {
-  it("lib/github.ts가 lib/github-connect/를 import하지 않는다", () => {
-    expect(CONNECT_IMPORT.test(codeOnly(GITHUB_TS))).toBe(false);
+  it("lib/github.ts가 사용자 토큰 모듈을 import하지 않는다", () => {
+    expect(USER_TOKEN_IMPORT.test(codeOnly(GITHUB_TS))).toBe(false);
   });
 
   it("lib/github.ts는 여전히 App 자격증명을 문다 — 경계가 반대로 무너지지 않았다", () => {

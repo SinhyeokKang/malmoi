@@ -27,3 +27,17 @@ export function planTokenUse(input: {
   // 갱신할 수단이 없으면 재인가다. 이미 인가한 App이면 GitHub이 화면 없이 즉시 되돌려보낸다.
   return hasRefreshToken ? "refresh" : "reauthorize";
 }
+
+/**
+ * 갱신 호출의 실패 → 거부인가 장애인가 (design §2.4).
+ *
+ * ⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없어**(design §5) refresh 토큰의 만료를 미리 볼
+ * 수 없다 — **이 호출의 실패가 유일한 신호**다. 한 갈래로 접으면 일시 장애가 "다시 인가하세요"로
+ * 위장돼 사용자가 멀쩡한 연결을 지우고 다시 만든다.
+ *
+ * **429가 4xx인데 `unavailable`인 것이 요지다** — 속도 제한은 거부가 아니라 "나중에 다시"다.
+ */
+export function refreshFailure(status: number | undefined): "reauthorize" | "unavailable" {
+  if (status === undefined || status === 429) return "unavailable";
+  return status >= 400 && status < 500 ? "reauthorize" : "unavailable";
+}

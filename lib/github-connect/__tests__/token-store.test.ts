@@ -13,11 +13,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * 이긴 쪽의 토큰을 쓴다 — `acceptInvitation`의 단일 사용과 같은 형태다 (ARCHITECTURE §6.3).
  *
  * ⚠️ **`userId`를 어떤 update에도 넣지 않는다.** 넣으면 경합 상황에서 소유권이 이동한다.
+ *
+ * ⚠️ 행 조회가 `findFirst`인 것은 취향이 아니다 — `Account`의 unique는 `@@id([provider,
+ * providerAccountId])` 하나뿐이라 **`userId`로는 `findUnique`가 성립하지 않는다**.
  */
 
 const hoisted = vi.hoisted(() => ({
   refreshUserToken: vi.fn(),
-  findUnique: vi.fn(),
+  findFirst: vi.fn(),
   updateMany: vi.fn(),
 }));
 
@@ -39,7 +42,7 @@ function row(over: Partial<{ access_token: string; refresh_token: string | null;
 }
 
 const prisma = {
-  account: { findUnique: hoisted.findUnique, updateMany: hoisted.updateMany },
+  account: { findFirst: hoisted.findFirst, updateMany: hoisted.updateMany },
 } as unknown as Parameters<typeof ensureUserToken>[0];
 
 beforeEach(() => {
@@ -49,7 +52,7 @@ beforeEach(() => {
 
 describe("ensureUserToken — 연결이 없거나 아직 유효한 경우", () => {
   it("Account 행이 없으면 not-connected다 — 갱신도 쓰기도 하지 않는다", () => {
-    hoisted.findUnique.mockResolvedValue(null);
+    hoisted.findFirst.mockResolvedValue(null);
     return ensureUserToken(prisma, "u1", NOW).then((result) => {
       expect(result).toEqual({ status: "not-connected" });
       expect(hoisted.refreshUserToken).not.toHaveBeenCalled();
@@ -58,7 +61,7 @@ describe("ensureUserToken — 연결이 없거나 아직 유효한 경우", () =
   });
 
   it("만료가 남았으면 저장된 토큰을 그대로 준다 — 헛된 갱신을 하지 않는다", async () => {
-    hoisted.findUnique.mockResolvedValue(row());
+    hoisted.findFirst.mockResolvedValue(row());
     const result = await ensureUserToken(prisma, "u1", NOW);
     expect(result).toEqual({ status: "ok", accessToken: "live-token" });
     expect(hoisted.refreshUserToken).not.toHaveBeenCalled();
@@ -66,7 +69,7 @@ describe("ensureUserToken — 연결이 없거나 아직 유효한 경우", () =
   });
 
   it("expires_at이 null이면 그대로 쓴다 — 만료를 모르면 401이 판정한다", async () => {
-    hoisted.findUnique.mockResolvedValue(row({ expires_at: null }));
+    hoisted.findFirst.mockResolvedValue(row({ expires_at: null }));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({
       status: "ok",
       accessToken: "live-token",
@@ -74,7 +77,7 @@ describe("ensureUserToken — 연결이 없거나 아직 유효한 경우", () =
   });
 
   it("만료됐는데 refresh 토큰이 없으면 reauthorize다 — 쓰기 0회", async () => {
-    hoisted.findUnique.mockResolvedValue(row({ expires_at: 0, refresh_token: null }));
+    hoisted.findFirst.mockResolvedValue(row({ expires_at: 0, refresh_token: null }));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "reauthorize" });
     expect(hoisted.refreshUserToken).not.toHaveBeenCalled();
     expect(hoisted.updateMany).not.toHaveBeenCalled();
@@ -90,7 +93,7 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
   };
 
   it("만료됐고 refresh 토큰이 있으면 갱신하고 새 토큰을 준다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockResolvedValue(refreshed);
 
     const result = await ensureUserToken(prisma, "u1", NOW);
@@ -100,7 +103,7 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
   });
 
   it("세 컬럼을 함께 쓴다 — 하나라도 빠지면 다음 요청이 옛 값을 읽는다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockResolvedValue(refreshed);
 
     await ensureUserToken(prisma, "u1", NOW);
@@ -114,7 +117,7 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
   });
 
   it("where에 **읽었던 refresh_token**을 넣는다 — 경합에서 진 쪽이 덮어쓰지 않는다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockResolvedValue(refreshed);
 
     await ensureUserToken(prisma, "u1", NOW);
@@ -124,7 +127,7 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
   });
 
   it("update 데이터에 userId가 없다 — 경합에서 소유권이 이동하지 않는다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockResolvedValue(refreshed);
 
     await ensureUserToken(prisma, "u1", NOW);
@@ -139,7 +142,7 @@ describe("ensureUserToken — 경합에서 졌을 때", () => {
   const expired = () => row({ expires_at: Math.floor(NOW.getTime() / 1000) });
 
   it("count가 0이면 행을 다시 읽어 이긴 쪽의 토큰을 쓴다", async () => {
-    hoisted.findUnique
+    hoisted.findFirst
       .mockResolvedValueOnce(expired())
       .mockResolvedValueOnce(row({ access_token: "winner-token", refresh_token: "refresh-9" }));
     hoisted.refreshUserToken.mockResolvedValue({
@@ -151,12 +154,12 @@ describe("ensureUserToken — 경합에서 졌을 때", () => {
 
     const result = await ensureUserToken(prisma, "u1", NOW);
 
-    expect(hoisted.findUnique).toHaveBeenCalledTimes(2);
+    expect(hoisted.findFirst).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ status: "ok", accessToken: "winner-token" });
   });
 
   it("재조회한 행도 만료돼 있으면 reauthorize다 — 갱신을 무한히 되풀이하지 않는다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockResolvedValue({
       accessToken: "x",
       refreshToken: "y",
@@ -169,7 +172,7 @@ describe("ensureUserToken — 경합에서 졌을 때", () => {
   });
 
   it("재조회 중 행이 사라지면 not-connected다 — 해제와 겹친 경우", async () => {
-    hoisted.findUnique.mockResolvedValueOnce(expired()).mockResolvedValueOnce(null);
+    hoisted.findFirst.mockResolvedValueOnce(expired()).mockResolvedValueOnce(null);
     hoisted.refreshUserToken.mockResolvedValue({
       accessToken: "x",
       refreshToken: "y",
@@ -189,25 +192,25 @@ describe("ensureUserToken — 갱신 실패를 거부와 장애로 가른다", (
   }
 
   it("refresh가 4xx로 실패하면 reauthorize다 — refresh 만료·인가 철회", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockRejectedValue(httpError(401));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "reauthorize" });
   });
 
   it("refresh가 5xx로 실패하면 unavailable이다 — 거부가 아니라 장애다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockRejectedValue(httpError(503));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "unavailable" });
   });
 
   it("status가 없는 실패(네트워크)도 unavailable이다", async () => {
-    hoisted.findUnique.mockResolvedValue(expired());
+    hoisted.findFirst.mockResolvedValue(expired());
     hoisted.refreshUserToken.mockRejectedValue(new Error("fetch failed"));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "unavailable" });
   });
 
   it("실패해도 행을 한 번 다시 읽는다 — 다른 요청이 이미 갱신했을 수 있다", async () => {
-    hoisted.findUnique
+    hoisted.findFirst
       .mockResolvedValueOnce(expired())
       .mockResolvedValueOnce(row({ access_token: "winner-token" }));
     hoisted.refreshUserToken.mockRejectedValue(httpError(401));
@@ -219,7 +222,7 @@ describe("ensureUserToken — 갱신 실패를 거부와 장애로 가른다", (
   });
 
   it("DB 조회가 던지면 unavailable이다 — 장애를 not-connected로 접지 않는다", async () => {
-    hoisted.findUnique.mockRejectedValue(new Error("connection lost"));
+    hoisted.findFirst.mockRejectedValue(new Error("connection lost"));
     expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "unavailable" });
   });
 });
