@@ -332,6 +332,9 @@ lib/
                         + probeRepo(App JWT `/installation` → 설치 토큰 `/repos`) — 설치 토큰만으로는
                         public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다
   github-connect/       GitHub 계정 연결 (SaaS 4단계). **사용자 토큰 전담 — App 개인키를 모른다**
+    origin.ts           requestOrigin·callbackUrl — ⚠️ **redirect_uri와 쿠키 secure가 한 판정에서 나온다.**
+                        redirect_uri를 안 보내면 GitHub이 App의 **첫** callback URL(프로덕션)로 되돌려
+                        보내 로컬·preview 연결이 원리적으로 불가능했다 (malmoi#7)
     state.ts            OAuth state 서명·검증 (HMAC over AUTH_SECRET, secret은 인자라 순수)
                         + stateCookieName(secure)·stateCookieNames() — ⚠️ 읽는 쪽은 **두 이름을 다 본다**
                         (쓰는 쪽은 x-forwarded-proto, 읽는 쪽은 요청 URL로 판정해 갈릴 수 있다)
@@ -554,6 +557,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** 2026-08 시점 `latest`가 `8.0.0-rc.12`고 stable은 `prev` 태그의 `7.10.0`이다. `pnpm add prisma`로 무심코 깔면 RC가 들어오고 `alchemy`·`cloudflare-runtime` 같은 무관한 의존성이 딸려온다. **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
 - **Vercel Cron은 Hobby 플랜에서 하루 1회**다. 야간 pull 1회가 요구사항이라 지금은 맞지만, 주기를 늘리려면 플랜을 봐야 한다. **cron은 프로덕션 배포에서만 돈다** — preview 배포가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다는 뜻이고, 브랜치 분리(2026-09-04)가 안전한 이유의 하나다.
+- ⚠️ **App 설치가 `Only select repositories`다** (2026-09-07 전환 — 그 전엔 `all`이었다). **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 화면은 "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요"를, 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 넷**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`. `skillflo-web`은 일부러 빠져 있다(`Project.installationId`가 `null`이라 pull이 애초에 안 돈다). 전환한 이유는 T5의 접근 철회 시나리오가 `all`에서 재현 불가였기 때문이다.
 - **GitHub App 개인키는 개행이 들어간 PEM**이다. Vercel env에 넣을 때 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다.
 - **`.pem`은 `.gitignore`에 있다.** 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — 리포에서 사라진 로케일도 지우지 않고 표시만 하며, pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.
