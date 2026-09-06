@@ -264,7 +264,8 @@ probeRepo(owner, repo)                          ← lib/github.ts, App 쪽 두 �
 
 ⚠️ **1의 실패 지점은 `GET /repos`가 아니라 토큰 발급일 수 있다** — 설치가 삭제되면
 `getInstallationOctokit`의 `POST /app/installations/{id}/access_tokens`가 404를 던진다. **try가 클라이언트
-생성까지 감싼다.** 오류 분류는 순수 `probeFromError(status)`(401/404 → `not-installed`, **403 → `not-installed`**
+생성까지 감싼다.** 오류 분류는 순수 `probeFromError(status)`(**404 → `not-installed`**, **401 → `error`**(JWT 무효 — 2026-09-06
+실측 정정), **403 → `not-installed`**
 (설치 suspended — 영구 상태를 `unknown`으로 두면 "잠시 뒤"가 영원히 뜬다), 그 외 → `error`)가 하고
 `probeRepo`는 그것을 부른다. **예외를 삼켜 `not-installed`로 접지 않는다.** `lib/github.ts:41-43`의
 `isNotFound`는 비공개라 export한다.
@@ -343,7 +344,7 @@ never` + 폴백)이다 — `?e=`는 주소창 입력이라 던지는 `never`(`ac
 | `signState` / `verifyState({ cookie, query, userId, now, secret })` | `lib/github-connect/state.ts` | HMAC-SHA256(`secret`) over `{userId, nonce, slug, exp}` → `{ ok, slug }` / `state-mismatch` / `state-expired` / `wrong-user`. **`secret`도 인자다** — 함수 안에서 `requireEnv`를 부르면 순수가 아니고 테스트가 env를 요구한다. Node `crypto`의 `createHmac`, 비교는 `timingSafeEqual`(길이 선검사 — `lib/push/auth.ts:16-21` 형), 키 도메인 라벨 `"malmoi-github-state"` |
 | `planRepoConnect({ probe, userInstallationIds, userRepoFullNames })` | `lib/github-connect/connect-plan.ts` | **3중 검증의 판정 자리** → `ok { installationId, repoOwner, repoName }` / `repo-not-installed` / `installation-forbidden` / `repo-forbidden` / `unavailable`. **5단계 생성 경로가 그대로 재사용한다** (spec §2) |
 | `planConnectionHealth({ project, probe })` | `lib/github-connect/health.ts` | §3.3 표 그대로 6갈래. `probe`는 `{ status: "ok", installationId, fullName } \| { status: "not-installed" } \| { status: "error" }` |
-| `probeFromError(status)` | `lib/github-connect/health.ts` | HTTP status → `not-installed`(401·403·404) / `error`. `probeRepo`가 부른다 |
+| `probeFromError(status)` | `lib/github-connect/health.ts` | HTTP status → `not-installed`(**403·404**) / `error`. ⚠️ **401은 `error`다** — 설치 부재가 아니라 App JWT가 무효라는 뜻이고, `not-installed`로 접으면 사용자가 헛되게 재설치한다 (2026-09-06 실측) |
 | `planTokenUse({ expiresAt, now, hasRefreshToken })` | `lib/github-connect/token.ts` | `use` / `refresh` / `reauthorize`. 만료 60초 전을 만료로 본다 |
 | `refreshFailure(status)` | `lib/github-connect/token.ts` | 갱신 호출의 실패 → `reauthorize` / `unavailable`. `Account`에 `refresh_token_expires_in`이 없어 **이 실패가 refresh 만료의 유일한 신호**다. ⚠️ **429는 4xx인데 `unavailable`이다** — 속도 제한은 거부가 아니다 |
 | `stateCookieName(secure)` · `stateCookieNames()` | `lib/github-connect/state.ts` | 쓰는 쪽은 하나를 고르고 **읽는 쪽은 둘 다 본다** (§3.1) |

@@ -27,16 +27,6 @@ export type ConnectionHealth =
   | { status: "unknown" };
 
 /**
- * HTTP 상태 → probe 분류. `probeRepo`가 부른다.
- *
- * ⚠️ **403이 `error`가 아니라 `not-installed`다.** 설치 일시중지(suspended)는 **영구 상태**라
- * `unknown`("잠시 뒤 다시")으로 두면 그 안내가 영원히 뜬다. 401·404는 설치 부재이고, 설치가 삭제되면
- * `GET /repos`가 아니라 **토큰 발급**이 그 상태로 죽으므로 껍데기의 try가 클라이언트 생성까지 감싼다.
- *
- * @param status 예외에 상태가 없으면(네트워크 오류) `undefined`가 온다 — 부재를 `not-installed`로
- *   읽지 않는다.
- */
-/**
  * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
  * 채우지 않는다.** 부재는 "모른다"이고 아래 분류가 그것을 `error`로 남긴다.
  */
@@ -46,8 +36,23 @@ export function httpStatus(error: unknown): number | undefined {
   return typeof status === "number" ? status : undefined;
 }
 
+/**
+ * HTTP 상태 → probe 분류. `probeRepo`가 부른다.
+ *
+ * ⚠️ **404가 설치 부재이고, 401은 아니다** (2026-09-06 실측으로 정정). App JWT가 유효한데 그 리포에
+ * 설치가 없으면 GitHub은 **404**를 준다. **401은 JWT 자체가 무효**라는 뜻이다 — 개인키 손상·재발급·
+ * appId 불일치. 그것을 `not-installed`로 접으면 화면이 "App이 제거됐어요 + 설치 링크"를 보이고,
+ * 사용자는 GitHub에 가서 재설치한 뒤 **아무것도 고쳐지지 않은 것을 발견한다**(원인이 우리 서버의
+ * 자격증명이므로). 개인키가 깨진 상태에서 실제로 그 응답을 봤다.
+ *
+ * ⚠️ **403은 `not-installed`다.** 설치 일시중지(suspended)는 **영구 상태**라 `unknown`("잠시 뒤 다시")로
+ * 두면 그 안내가 영원히 뜬다.
+ *
+ * @param status 예외에 상태가 없으면(네트워크 오류) `undefined`가 온다 — 부재를 `not-installed`로
+ *   읽지 않는다.
+ */
 export function probeFromError(status: number | undefined): "not-installed" | "error" {
-  return status === 401 || status === 403 || status === 404 ? "not-installed" : "error";
+  return status === 403 || status === 404 ? "not-installed" : "error";
 }
 
 export function planConnectionHealth(input: {

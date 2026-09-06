@@ -18,12 +18,23 @@ const project = { installationId: "158107153", repoOwner: "acme", repoName: "web
 const okProbe: ProbeResult = { status: "ok", installationId: "158107153", fullName: "acme/web" };
 
 describe("probeFromError — 실패를 '설치 없음'과 '모름'으로 가른다", () => {
-  it("401·403·404는 not-installed다", () => {
-    // 403은 설치 일시중지(suspended)다 — **영구 상태**라 `unknown`("잠시 뒤 다시")으로 두면
-    // 그 안내가 영원히 뜬다. 토큰 발급 자체가 401/404로 죽는 경우도 여기 들어온다.
-    expect(probeFromError(401)).toBe("not-installed");
-    expect(probeFromError(403)).toBe("not-installed");
+  it("404는 not-installed다 — App JWT는 유효하고 그 리포에 설치가 없다", () => {
     expect(probeFromError(404)).toBe("not-installed");
+  });
+
+  it("403도 not-installed다 — 설치 일시중지(suspended)는 **영구 상태**다", () => {
+    // `unknown`("잠시 뒤 다시")으로 두면 그 안내가 영원히 뜬다.
+    expect(probeFromError(403)).toBe("not-installed");
+  });
+
+  it("⚠️ **401은 error다** — 설치 부재가 아니라 **우리 JWT가 무효**다", () => {
+    // 2026-09-06 실측: 개인키가 깨진 상태에서 `GET /repos/{o}/{r}/installation`이 401
+    // (`A JSON web token could not be decoded`)을 줬고, 이걸 `not-installed`로 접으면 화면이
+    // "App이 제거됐어요 + 설치 링크"를 보인다. 사용자는 GitHub에 가서 재설치하고 **그것은
+    // 아무것도 고치지 못한다** — 원인이 우리 서버의 자격증명이기 때문이다.
+    //
+    // 설치가 유효한데 리포에 없으면 GitHub은 **404**를 준다. 401은 인증 층의 실패다.
+    expect(probeFromError(401)).toBe("error");
   });
 
   it("5xx·429는 error다 — 일시 장애를 '제거됨'으로 접지 않는다", () => {
