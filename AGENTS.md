@@ -212,9 +212,18 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다 (`pnpm build`는 자동으로 한다)
 6. `pnpm typecheck && pnpm test`로 셋업을 확인한다. 폰트는 `pnpm dev`의 `predev`가 복사한다
 
-**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(`vercel env add <name> production,preview --force`, 값은 stdin으로 — `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다). ⚠️ **`AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 Production과 Preview가 서로 다른 OAuth 앱이다** — `--force`로 갱신할 때 스코프를 뭉뚱그리면 preview 로그인이 조용히 깨진다.
+**전면 재발급을 하게 되면 순서가 있다** (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → **Vercel env(아래 ⚠️ — 환경을 **하나씩**, 값은 stdin으로. `--value`는 `ps`에 노출된다)** → **대상 리포의 Actions secret `PUSH_TOKEN`** → 재배포(`vercel redeploy <최근 prod URL>`). 세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나뿐이고(로컬·Vercel·Actions), 이걸 빠뜨리면 대상 리포 CI가 401로 죽는다. `CRON_SECRET`은 Vercel만, `AUTH_SECRET`은 로컬과 프로덕션이 달라도 된다(세션이 갈릴 뿐이다). ⚠️ **`AUTH_GITHUB_ID`·`AUTH_GITHUB_SECRET`은 Production과 Preview가 서로 다른 OAuth 앱이다** — `--force`로 갱신할 때 스코프를 뭉뚱그리면 preview 로그인이 조용히 깨진다.
+
+⚠️ **`vercel env add`는 환경을 하나씩만 받고, `--force`를 믿지 말고 목록으로 확인한다** (2026-09-06 실측). CLI 59.11이 `production,preview` 같은 묶음을 받지 않아 환경마다 한 번씩 돌려야 하고, **Preview에서 `--force`가 `✓ Overrode`를 출력하고도 값이 그대로였다**(Production은 같은 명령이 먹었다). 갱신 뒤 `vercel env ls <environment>`의 시각 열을 보고, 안 바뀌었으면 `vercel env rm … --yes` 후 다시 넣는다. 성공 메시지가 근거가 아니다.
+
+```bash
+# 파일에서 곧바로 파이프 — 값이 셸 히스토리·프로세스 목록·터미널 어디에도 남지 않는다
+awk '{printf "%s\n", $0}' key.pem | sed 's/\\n$//' | vercel env add GITHUB_APP_PRIVATE_KEY production --sensitive --force
+```
 
 **GitHub App 개인키는 여러 개를 동시에 가질 수 있다.** 새 키를 발급해도 옛 키가 계속 돌아서 무중단으로 갈아탈 수 있다 — **다른 머신이 옛 키를 들고 있으니 폐기는 그쪽을 옮긴 뒤에** 한다.
+
+⚠️ **그 무중단은 "추가"에만 해당한다. 지우면 그 키를 쓰던 네 곳이 동시에 끊긴다** — 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가 전부 죽었고, **증상이 "App이 설치돼 있지 않다"로 보였다**(`probeRepo`가 401을 `not-installed`로 접던 시절 — POSTMORTEM 2026-09-06). 지우기 전에 **그 키를 누가 들고 있는지 세고**, 넷을 전부 옮긴 뒤에 지운다.
 
 **린터 없음** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않는다. 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이고, 린터 추가는 요청 없이 하지 않는다.
 
