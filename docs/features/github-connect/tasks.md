@@ -220,7 +220,7 @@ design §3.3과 T1 테스트 기대값을 함께 고쳤다.
 
 ---
 
-## T5 — 실물 확인 🔶 **7/10 통과** (2026-09-06, 로컬. 셋은 설치 모양 때문에 불가)
+## T5 — 실물 확인 ✅ **8/10 통과** (2026-09-06 일곱 · 2026-09-07 철회 하나. 둘은 설치 모양 때문에 불가)
 
 **e2e가 없어 자동화할 수 없다.** tenant-auth의 `tasks.md` §6.1과 같은 부류이고,
 **거기서만 잡힌 결함이 넷이었다** — 전부 "값은 맞는데 사용자에게 도달하지 않는다"였다.
@@ -241,7 +241,11 @@ design §3.3과 T1 테스트 기대값을 함께 고쳤다.
       계산하므로 계정 해제와 무관 — design §8의 "섹션 둘이 독립적으로 실패한다"가 성립)
 - [x] 비로그인 GET → **307 + 본문 1바이트** (RSC 페이로드 노출 없음). EDITOR는 `getProjectAccess`가
       `forbidden`을 돌려주는 것으로 확인 — 브라우저 세션을 갈아끼울 수 없어 판정층으로 갈음했다
-- [ ] ❌ **접근 철회** — 설치가 `repository_selection: all`이라 개별 리포를 뺄 수 없다 (아래 "확인 필요" 2번)
+- [x] **접근 철회 → 복구** (2026-09-07). 설치를 `Only select repositories`로 바꾸고 리포 넷을 명시
+      선택한 뒤 `i18n-order-check` 하나를 뺐다 넣었다. **뺀 직후**: `probeRepo: not-installed`,
+      화면이 "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요" + `App 설치하기` 링크 +
+      "다시 연결"(`text-destructive`, DESIGN §6.2 등재 색). **되돌린 뒤**: `probeRepo: ok`,
+      배지 "연결됨". `Project` 행은 두 방향 모두에서 그대로다
 - [ ] ❌ **App 제거 → 재설치** — 폐기용 리포와 프로덕션 리포가 같은 설치를 공유한다
 - [ ] ❌ **다른 User가 연결한 GitHub 계정으로 연결 시도** — 계정 둘과 세션 둘이 필요해 브라우저
       자동화로 못 밟았다. `planAccountLink`의 `taken-by-other`는 단위 테스트가 덮는다
@@ -261,31 +265,31 @@ design §3.3과 T1 테스트 기대값을 함께 고쳤다.
 
 ---
 
-## T6 — 회귀 방어선 확인 ⎇ (없으면 커밋 없음)
+## T6 — 회귀 방어선 확인 ✅ (2026-09-07, 커밋 없음 — 고칠 것이 없었다)
 
-- [ ] `pnpm test` · `pnpm typecheck` · `pnpm build` (`/push` 1단계 게이트가 돌린다)
-- [ ] `pnpm smoke:github`가 통과하고 `probeRepo` 결과를 찍는다 — `lib/github.ts`에 함수를 더했다
-- [ ] `lib/pull/__tests__/trigger.test.ts:14`의 `@/lib/github` factory mock이 여전히 green (`probeRepo`를
-      `trigger.ts`가 쓰지 않으므로 손댈 일이 없어야 한다)
-- [ ] `middleware.ts` · `prisma/schema.prisma` · `lib/pull/**` · `lib/adapters/**` diff **0**
+- [x] `pnpm test` 1477 green · `pnpm typecheck` · `pnpm build` (`/push` 1단계 게이트가 돌린다)
+- [x] `pnpm smoke:github order-check`가 `probeRepo: ok`를 찍는다 — `lib/github.ts`에 함수를 더했다
+- [x] `lib/pull/__tests__/trigger.test.ts:14`의 `@/lib/github` factory mock이 여전히 green (22건)
+- [x] `middleware.ts` · `prisma/schema.prisma` · `lib/pull/**` · `lib/adapters/**` diff **0**
+      (`git diff 4b3d614^..HEAD --stat -- …`이 빈 출력)
 
 ---
 
 ## T7~T9 — 문서 ⎇ 문서별 커밋
 
-- [ ] **T7** `docs/SAAS.md` — §8 4단계 체크박스 셋(`:530-537`)을 닫고, §5.4 표에 "user-to-server 토큰은 GitHub
+- [x] **T7** `docs/SAAS.md` (`18a3b0b`) — §8 4단계 체크박스 셋(`:530-537`)을 닫고, §5.4 표에 "user-to-server 토큰은 GitHub
       App이 발급한다 · `installationId`는 클라이언트에서 오지 않는다(서버가 `/repos/{o}/{r}/installation`으로
       얻는다)"를 적는다. **§5.7 공격 시나리오 둘**을 "판정 함수(`planRepoConnect`)는 4단계, 종결은 생성
       표면이 생기는 5단계"로 고친다. §10에 "로그인 provider를 GitHub App으로 교체할 것인가"를 2차 후보로
       더한다. `features/tenant-auth/spec.md:86-87`의 "설정 화면은 6단계"를 "멤버 관리 섹션은 6단계 —
       라우트는 4단계가 만들었다"로 좁힌다. 커밋 `docs(SAAS): ...`
-- [ ] **T8** `CLAUDE.md` — 스택 표의 "리포 쓰기" 줄 옆에 **자격증명 셋**(로그인 OAuth App / 연결
+- [x] **T8** `CLAUDE.md` (`2bfe91b`) — 스택 표의 "리포 쓰기" 줄 옆에 **자격증명 셋**(로그인 OAuth App / 연결
       GitHub App user token / 쓰기 App installation token)과 디렉터리 구조에 `lib/github-connect/`·
       callback 라우트·설정 페이지·`components/reconnect-button.tsx`·`github-account.tsx`. 커밋 `docs(CLAUDE): ...`
-- [ ] **T9** `docs/MVP.md` §7 — **"SaaS 단계에서도 안 한다: … 온보딩, 테넌트별 GitHub App 설치 플로"
+- [x] **T9** `docs/MVP.md` §7 (`4cacbba`) — **"SaaS 단계에서도 안 한다: … 온보딩, 테넌트별 GitHub App 설치 플로"
       (`:391`)가 거짓이 됐다** (`spec.md` §0). 그 줄을 "온보딩 → SAAS §8 5단계 / GitHub 설치 **연결** → 4단계"로
       승격된 것으로 고친다 — "설치 플로"가 아니라 "연결"이다. 커밋 `docs(MVP): ...`
-- [ ] `docs/features/README.md` 표에 이 기능 한 줄 (`docs(feature): ...`)
+- [x] `docs/features/README.md` 표에 이 기능 한 줄 (`docs(feature): ...`)
 
 ⚠️ **T9를 빠뜨리면 닫힌 스펙이 현재 구현을 부정한다.** `/doc-check`이 잡겠지만, 그건 안전망이지
 순서가 아니다.
@@ -301,9 +305,14 @@ design §3.3과 T1 테스트 기대값을 함께 고쳤다.
 **T0은 2026-09-06에 끝났다** (callback URL 셋 · OAuth-during-installation 해제 확인 · client id/secret →
 `.env.local` + Vercel Production·Preview · slug `malmoi-prod`).
 
-남은 것 하나:
+**남은 것 없다.** 마지막 미결(2번, "T5를 어떤 설치 모양에서 밟을 것인가")은 2026-09-07에 ①로
+결정돼 실행됐다 — 설치를 `Only select repositories`로 바꾸고 폐기용 셋 + `bugshot-2`를 명시 선택한 뒤
+`i18n-order-check` 하나를 뺐다 넣었다.
 
-2. **T5를 어떤 설치 모양에서 밟을 것인가** — 지금은 설치 하나가 `all`이라 접근 철회를 재현할 수 없다.
-   ① 설치를 `Only select repositories`로 바꾸고 폐기용 + 프로덕션 리포를 명시 선택한 뒤 폐기용 하나를
-   뺐다 넣는다 ② 폐기용 리포만 있는 **별도 org**에 App을 따로 설치한다. ①이 준비가 가볍지만
-   **선택 목록에서 프로덕션 리포를 빠뜨리면 그 순간 야간 pull이 죽는다** — T5 착수 시 결정한다.
+⚠️ **선택 목록은 넷이고 `skillflo-web`이 빠져 있다** (사용자 판정). 뺄 수 있었던 근거는
+`Project.installationId`가 이미 `null`이라 `lib/pull/trigger.ts:52`가 GitHub을 부르기 전에 던진다는
+것 — **그 프로젝트의 야간 pull은 이 변경 전에도 돌지 않았다.** 나머지 넷 중 하나라도 목록에서 빠지면
+그때는 실제로 죽는다.
+
+⚠️ **설치가 이제 `selected`다.** 새 리포를 대상에 추가하면 **DB에 `Project`를 만드는 것만으로는
+부족하고** 이 설치의 선택 목록에도 넣어야 한다. `all`이던 시절에는 그 단계가 없었다.
