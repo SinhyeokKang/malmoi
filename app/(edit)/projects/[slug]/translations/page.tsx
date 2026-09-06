@@ -1,5 +1,7 @@
-import { requireProjectAccess } from "@/lib/auth/session";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+
+import { requireProjectAccess } from "@/lib/auth/session";
 
 import { getPrisma } from "@/lib/db";
 import { loadKeys, loadProject } from "@/lib/keys/query";
@@ -108,7 +110,16 @@ export default async function TranslationsPage({
           {/* 초대는 OWNER만 — 화면에서 감추는 것은 편의이고, 실제 방어는 `createInvitation`의
               `member:manage` 판정이다 (SAAS §5.2 — 클라이언트가 보낸 것을 믿지 않는다). */}
           {role === "OWNER" && (
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              {/* 설정은 프로젝트에 속한 화면이라 레이아웃이 아니라 여기가 든다 — 레이아웃엔 slug가 없다.
+                  ⚠️ `entry-points.test.ts`의 "죽은 라우트 링크" 검사는 단일 세그먼트 리터럴만 잡아
+                  이 템플릿 리터럴을 못 본다 — 실제 클릭은 T5가 확인한다. */}
+              <Link
+                href={`/projects/${slug}/settings`}
+                className="text-muted-foreground hover:text-foreground text-xs underline"
+              >
+                설정
+              </Link>
               <InviteForm slug={slug} />
             </div>
           )}

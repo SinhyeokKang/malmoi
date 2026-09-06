@@ -48,6 +48,9 @@ const PROBE_OK = { status: "ok" as const, installationId: "1", fullName: "o/r" }
 let db: ReturnType<typeof createHarness>;
 
 beforeEach(() => {
+  // 호출 카운터를 리셋한다 — 안 하면 "제출 시점에 한 번 부른다" 같은 횟수 단언이 누적으로 깨진다.
+  // `clearAllMocks`는 기록만 지우고 아래 `mockResolvedValue`는 남긴다.
+  vi.clearAllMocks();
   db = createHarness({
     members: [
       { projectId: "p1", userId: "u-owner", role: "OWNER" },
