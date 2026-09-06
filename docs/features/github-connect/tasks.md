@@ -220,28 +220,44 @@ design §3.3과 T1 테스트 기대값을 함께 고쳤다.
 
 ---
 
-## T5 — 실물 확인 (preview) — `[manual]`
+## T5 — 실물 확인 🔶 **7/10 통과** (2026-09-06, 로컬. 셋은 설치 모양 때문에 불가)
 
 **e2e가 없어 자동화할 수 없다.** tenant-auth의 `tasks.md` §6.1과 같은 부류이고,
 **거기서만 잡힌 결함이 넷이었다** — 전부 "값은 맞는데 사용자에게 도달하지 않는다"였다.
+이번에도 **자동 검증이 원리적으로 못 보는 결함 하나**가 여기서만 나왔다 (malmoi#7).
 
-- [ ] Google로만 로그인한 계정에서 "GitHub 연결" → 성공 → `Account` 행 하나, 화면에 `@login`
-- [ ] **다른 User가 이미 연결한 GitHub 계정**으로 연결 시도 → 거부되고 **설정 화면에 문구가 보인다**
-- [ ] 설정 화면에서 10분 넘게 두고(또는 쿠키를 지우고) callback 도착 → **`/projects`에 문구가 보인다**
-      (state 무효 착지 — design §3.5)
-- [ ] GitHub 인가 화면에서 취소 → `denied` 문구
-- [ ] **접근 철회**: 설치의 selected repositories에서 폐기용 리포 하나 제외 → 설정 화면 `app-uninstalled` →
-      다시 포함 → "다시 연결" → `ok` → **번역 1건 편집 → Publish → 원래 리포에 PR**, 번역 값 전후 비교 동일
-- [ ] **App 제거 → 재설치**: T0 격리 확인에서 **별도 installation일 때만**. 재설치 뒤 `installation-changed`
-      → "다시 연결" → 새 `installationId` 저장 → `ok`
-- [ ] 리포 이름 변경 → `repo-moved`가 새 이름을 보인다(자동으로 안 따라간다) → "다시 연결" → `repoOwner`·
-      `repoName` 갱신. **여기서 301 추종을 실측한다** (design §3.3)
-- [ ] "연결 해제" → 계정 섹션이 "GitHub 연결"로 돌아가고 리포 섹션 건강성은 그대로 → 다시 연결 왕복
-- [ ] 번역 화면 툴바 "설정" 링크 클릭 → 설정 화면, "← 번역" → 복귀 (죽은 라우트 검사가 템플릿 리터럴을
-      못 본다 — design §8)
-- [ ] EDITOR 계정으로 `/projects/<slug>/settings` 직접 접근 → `/projects?e=forbidden` 문구
+⚠️ **preview가 아니라 로컬에서 밟았다.** preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다.
+
+- [x] 번역 툴바 "설정" 링크 클릭 → `/projects/order-check/settings` — **죽은 라우트 검사가 템플릿
+      리터럴을 못 보므로 여기서만 확인된다** (design §8)
+- [x] 건강성 배지 `ok` — **무색 "연결됨"**, 리포는 mono 칩 (DESIGN §6.2 밖의 색 없음)
+- [x] GitHub 인가 화면에서 **취소** → callback이 `?error=access_denied`를 싣는다
+- [x] **"GitHub 연결" → GitHub 왕복 → `Account(provider:"github-app")` 행 하나** + 화면에 `@SinhyeokKang`.
+      `providerAccountId`가 로그인 `github` 행과 같다 — design §2.3이 말한 "의미가 다른 두 인가"가
+      실물로 확인됐다
+- [x] **state 쿠키 없이 callback 도착 → `/projects?e=state-mismatch`이고 문구가 화면에 보인다**
+      ("연결 요청을 확인하지 못했어요"). POSTMORTEM 2026-09-06의 무음 재발이 아니다
+- [x] **연결 해제** → "GitHub 연결"로 돌아가고 **리포 섹션의 "연결됨"은 그대로다**(App 토큰으로
+      계산하므로 계정 해제와 무관 — design §8의 "섹션 둘이 독립적으로 실패한다"가 성립)
+- [x] 비로그인 GET → **307 + 본문 1바이트** (RSC 페이로드 노출 없음). EDITOR는 `getProjectAccess`가
+      `forbidden`을 돌려주는 것으로 확인 — 브라우저 세션을 갈아끼울 수 없어 판정층으로 갈음했다
+- [ ] ❌ **접근 철회** — 설치가 `repository_selection: all`이라 개별 리포를 뺄 수 없다 (아래 "확인 필요" 2번)
+- [ ] ❌ **App 제거 → 재설치** — 폐기용 리포와 프로덕션 리포가 같은 설치를 공유한다
+- [ ] ❌ **다른 User가 연결한 GitHub 계정으로 연결 시도** — 계정 둘과 세션 둘이 필요해 브라우저
+      자동화로 못 밟았다. `planAccountLink`의 `taken-by-other`는 단위 테스트가 덮는다
 
 **대상 리포는 폐기용만** — `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`.
+
+**잡은 결함 하나 — [malmoi#7](https://github.com/SinhyeokKang/malmoi/issues/7), `a0361e1`로 닫음.**
+`authorizeUrl`이 `redirect_uri`를 안 보내 GitHub이 App에 등록된 **첫 callback URL**(프로덕션)로
+돌려보냈다. 로컬·preview에서 연결이 **원리적으로 불가능**했고, state 쿠키가 시작한 origin에 있으니
+그 왕복은 영원히 `state-mismatch`다. 증상이 "쿠키가 없다"라 서명을 의심하게 만든다.
+**단위 테스트가 못 보는 층이다** — `authorizeUrl`은 Action 테스트에서 mock되고 callback 테스트는
+요청을 직접 만든다. 고친 뒤 origin과 쿠키 `secure`를 `requestOrigin` 한 곳에서 얻는다.
+
+✅ **T0의 미결이 답을 얻었다: 만료가 켜져 있다.** 연결 직후 `Account.expires_at`에 값이 있고
+`refresh_token`도 있다 — `refreshUserToken`·`refreshFailure`·`ensureUserToken`의 갱신 분기는
+**살아 있는 코드**다. 지울지 정하는 문제가 사라졌다.
 
 ---
 
