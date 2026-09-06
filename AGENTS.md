@@ -258,10 +258,15 @@ app/
     projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
                         `?e=`로 받아 isAccessError로 걸러 한 줄 보인다
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/[slug]/settings/page.tsx
+                        리포 연결 + GitHub 계정 (SaaS 4단계). 최상단에서 requireProjectAccess를 던진다.
+                        ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
+                        묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다
     projects/[slug]/settings/actions.ts
-                        startGithubConnect — state 쿠키를 심고 GitHub authorize로 redirect.
+                        startGithubConnect · connectRepository · disconnectGithub.
                         ⚠️ **나가는 쪽은 Server Action이다** — Route Handler는 돌아오는 callback 하나뿐.
-                        ⚠️ page.tsx는 아직 없다(T4) — 그래서 이 경로는 현재 404다
+                        ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
+                        installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
     __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
@@ -281,6 +286,9 @@ middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher�
 components/
   translation-input.tsx 인라인 편집 (client — blur 시 저장)
   pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
+  reconnect-button.tsx  리포 재연결 (client — pending 라벨 교체, 인라인 오류)
+  github-account.tsx    GitHub 계정 연결·해제 (client). ⚠️ reauthorize는 **자동 redirect가 아니라
+                        버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
   invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 현재 import 0곳 —
                         UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner·radix-ui도 같은 상태
