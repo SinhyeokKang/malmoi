@@ -72,7 +72,7 @@ function DisconnectButton({ slug }: { slug: string }) {
             }
           });
         }}
-        className="text-muted-foreground hover:text-foreground text-xs underline disabled:cursor-not-allowed"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded text-xs underline focus-visible:ring-[3px] focus-visible:outline-none disabled:cursor-not-allowed"
       >
         {pending ? "해제하는 중…" : "연결 해제"}
       </button>
