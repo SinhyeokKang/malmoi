@@ -29,6 +29,20 @@ export type StateCheck =
  */
 const LABEL = "malmoi-github-state";
 
+/**
+ * state 쿠키 이름. **`__Host-` 접두는 https에서만** 붙인다.
+ *
+ * ⚠️ 그 접두는 `Secure` 속성을 요구하고, **Safari는 `http://localhost`에서 Secure 쿠키를 저장하지
+ * 않는다** — 로컬 callback이 항상 `state-mismatch`가 되고, 증상이 "쿠키가 없다"라서 서명이나 nonce를
+ * 의심하게 만든다. `lib/auth/cookie.ts`가 `authjs.session-token`과 `__Secure-` 접두 둘을 프로토콜로
+ * 가르는 것과 같은 처리다.
+ */
+export function stateCookieName(secure: boolean): string {
+  return secure ? `__Host-${BASE_COOKIE}` : BASE_COOKIE;
+}
+
+const BASE_COOKIE = "malmoi-gh-state";
+
 export function signState(input: {
   userId: string;
   slug: string;

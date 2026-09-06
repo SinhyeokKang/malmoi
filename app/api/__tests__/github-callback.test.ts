@@ -24,10 +24,13 @@ const hoisted = vi.hoisted(() => ({
   exchangeCode: vi.fn(),
   getViewer: vi.fn(),
   cookieGet: vi.fn(),
-  account: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  account: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
   transaction: vi.fn(),
 }));
 
+// `requireUser`가 사는 `lib/auth/session.ts`가 `server-only`를 문다 — vitest에서 그 패키지는
+// `react-server` 조건 밖이라 던진다. `lib/__tests__/db.test.ts`와 같은 스텁이다.
+vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: hoisted.auth }));
 vi.mock("@/lib/db", () => ({
   getPrisma: () => ({ account: hoisted.account, $transaction: hoisted.transaction }),
@@ -83,6 +86,7 @@ beforeEach(() => {
   });
   hoisted.getViewer.mockResolvedValue({ id: "gh-1", login: "octocat" });
   hoisted.account.findUnique.mockResolvedValue(null);
+  hoisted.account.findFirst.mockResolvedValue(null);
   hoisted.account.create.mockResolvedValue({});
   hoisted.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
     typeof fn === "function" ? fn({ account: hoisted.account }) : undefined,
@@ -203,10 +207,8 @@ describe("정상 연결", () => {
 
 describe("이미 연결된 계정", () => {
   it("그 행이 내 것이면 토큰만 갱신하고 create하지 않는다", async () => {
-    hoisted.account.findUnique.mockResolvedValue({
-      userId: SESSION_USER,
-      providerAccountId: "gh-1",
-    });
+    hoisted.account.findUnique.mockResolvedValue({ userId: SESSION_USER });
+    hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-1" });
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
 
@@ -216,10 +218,8 @@ describe("이미 연결된 계정", () => {
   });
 
   it("갱신 데이터에 userId가 없다 — 소유권을 옮기지 않는다", async () => {
-    hoisted.account.findUnique.mockResolvedValue({
-      userId: SESSION_USER,
-      providerAccountId: "gh-1",
-    });
+    hoisted.account.findUnique.mockResolvedValue({ userId: SESSION_USER });
+    hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-1" });
 
     await GET(request({ code: "abc", state: "nonce-1" }));
 
@@ -228,10 +228,7 @@ describe("이미 연결된 계정", () => {
   });
 
   it("남의 것이면 taken-by-other이고 **아무것도 쓰지 않는다** (SAAS §5.5)", async () => {
-    hoisted.account.findUnique.mockResolvedValue({
-      userId: "someone-else",
-      providerAccountId: "gh-1",
-    });
+    hoisted.account.findUnique.mockResolvedValue({ userId: "someone-else" });
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
 
@@ -250,7 +247,7 @@ describe("동시 연결 — create가 P2002로 진 경우", () => {
   it("먼저 만든 것이 내 행이면 성공으로 읽는다 — 같은 사람의 중복 클릭이다", async () => {
     hoisted.account.findUnique
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ userId: SESSION_USER, providerAccountId: "gh-1" });
+      .mockResolvedValueOnce({ userId: SESSION_USER });
     hoisted.account.create.mockRejectedValue(uniqueViolation());
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
@@ -261,7 +258,7 @@ describe("동시 연결 — create가 P2002로 진 경우", () => {
   it("먼저 만든 것이 남의 행이면 taken-by-other다 — 덮어쓰지 않는다", async () => {
     hoisted.account.findUnique
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ userId: "someone-else", providerAccountId: "gh-1" });
+      .mockResolvedValueOnce({ userId: "someone-else" });
     hoisted.account.create.mockRejectedValue(uniqueViolation());
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
@@ -273,11 +270,11 @@ describe("동시 연결 — create가 P2002로 진 경우", () => {
 
 describe("다른 GitHub 계정으로 갈아타기", () => {
   it("내 행이 다른 계정이면 옛 행을 지우고 새로 만든다 — 한 트랜잭션이다", async () => {
-    hoisted.account.findUnique.mockImplementation(async (args: { where: Record<string, unknown> }) => {
-      // providerAccountId로 찾는 조회는 없음, userId+provider로 찾는 조회는 옛 계정.
-      const where = JSON.stringify(args.where);
-      return where.includes("gh-1") ? null : { userId: SESSION_USER, providerAccountId: "gh-old" };
-    });
+    // 새 계정(gh-1)으로 찾으면 없고, 세션 사용자의 기존 행은 다른 계정(gh-old)이다.
+    // ⚠️ 조회가 둘로 갈리는 이유: `Account`의 unique가 `[provider, providerAccountId]`뿐이라
+    // userId로 찾는 쪽은 `findFirst`여야 한다.
+    hoisted.account.findUnique.mockResolvedValue(null);
+    hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-old" });
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
 
