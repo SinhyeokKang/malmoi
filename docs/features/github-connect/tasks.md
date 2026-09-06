@@ -76,25 +76,28 @@ owner/name / `planConnectionHealth`의 **`error` → `unknown`**(≠`app-uninsta
 
 ---
 
-## T2 — 껍데기 ⎇ `feat:`
+## T2 — 껍데기 ✅ (2026-09-06, `af83bde` test → `78a42d1` feat → `bfd460f` fix)
 
-- [ ] `lib/github-connect/user.ts` — `octokit`의 `OAuthApp({ clientType: "github-app" })`으로
+- [x] `lib/github-connect/user.ts` — **`@octokit/oauth-app`의** `OAuthApp({ clientType: "github-app" })`으로
+      ⚠️ **`octokit`이 재수출하는 것으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라
+      타입이 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 이미 전이 의존성이던 `8.0.4`를 직접
+      의존성으로 승격했다.
       `exchangeCode`·`refreshUserToken`(`bad_verification_code`·`bad_refresh_token`은 200 body라 라이브러리가
       던지는 것을 그대로 쓴다 — `res.ok` 직접 판정 금지) · `getViewer`(id·login) · `listUserInstallations` ·
       `listInstallationRepos` — **둘 다 `octokit.paginate`로 전 페이지**. GET만 부른다(교환·갱신 제외).
       401은 `reauthorize` 신호로 던진다
-- [ ] `lib/github-connect/token-store.ts` — `ensureUserToken(prisma, userId, now)`: Account 읽기 → `planTokenUse`
+- [x] `lib/github-connect/token-store.ts` — `ensureUserToken(prisma, userId, now)`: Account 읽기 → `planTokenUse`
       → `refresh`면 갱신 후 **조건부 `updateMany`(where에 읽었던 `refresh_token`)** → count 0이면 재조회 →
       실패 분류 `reauthorize | unavailable` (design §2.4). `userId`는 어떤 update에도 넣지 않는다
-- [ ] `lib/github.ts`에 `probeRepo(owner, repo)` — App JWT `GET /repos/{o}/{r}/installation` → 설치 토큰
+- [x] `lib/github.ts`에 `probeRepo(owner, repo)` — App JWT `GET /repos/{o}/{r}/installation` → 설치 토큰
       `GET /repos/{o}/{r}` → `{ status: "ok", installationId: string, fullName } | { status: "not-installed" } |
       { status: "error" }`. **try가 토큰 발급까지 감싼다**, 분류는 `probeFromError`. `isNotFound` export.
       ⚠️ **예외를 삼켜 `not-installed`로 접지 않는다** (design §3.3)
-- [ ] `requireEnv`를 **함수 안에서** 부른다 (POSTMORTEM 2026-08-31 🔁)
-- [ ] `lib/github-connect/__tests__/credential-separation.test.ts` — 소스 스캔:
+- [x] `requireEnv`를 **함수 안에서** 부른다 (POSTMORTEM 2026-08-31 🔁)
+- [x] `lib/github-connect/__tests__/credential-separation.test.ts` — 소스 스캔:
       `lib/github-connect/user.ts`가 `octokit`의 `App`·`parsePrivateKey`·`GITHUB_APP_PRIVATE_KEY`를 참조하지
       않고, `lib/github.ts`가 `lib/github-connect/`를 import하지 않는다
-- [ ] `scripts/smoke-github.ts`에 `probeRepo` 호출·결과 출력 한 줄 (읽기 전용 성질 유지 — "I/O 껍데기엔
+- [x] `scripts/smoke-github.ts`에 `probeRepo` 호출·결과 출력 한 줄 (읽기 전용 성질 유지 — "I/O 껍데기엔
       스모크", POSTMORTEM 2026-09-01). 사용자 토큰 쪽은 실물 계정이 필요해 스모크 없음 — T3 `[manual]`이 대신한다
 
 *(2026-09-06 삭제: `prisma/__tests__/schema-contract.test.ts` "한 줄" — 정적 대조 형식으로 표현 불가, 근거는
@@ -104,21 +107,31 @@ owner/name / `planConnectionHealth`의 **`error` → `unknown`**(≠`app-uninsta
 넣어 red가 되는지** 확인하고 되돌린다 (POSTMORTEM 2026-09-03 — 테스트 이름만 그랬던 전례).
 `pnpm smoke:github <slug>`가 `probeRepo` 결과를 찍는다 `[manual]`.
 
+**결과:** `pnpm test` 1438 green · `pnpm typecheck` OK. `credential-separation`은 검사식을 **자격증명
+축으로 좁혔다** — 원안("`lib/github-connect/`를 통째로 import 금지")이 `probeRepo`가 `probeFromError`를
+부르는 것을 막았고, 안 부르면 403 분류가 두 벌이 되어 설치 일시중지가 한쪽에서만 `app-uninstalled`가
+된다. 막을 것은 디렉터리가 아니라 **토큰을 쥔 모듈**(`user.ts`·`token-store.ts`)이다. 첫 초안의
+`\bApp\b`가 사용자 문구("이 리포에 App이 설치돼 있지 않아요")까지 잡아 항상 red였던 것도 같은 라운드에
+고쳤다 — 넓은 패턴은 방어선을 통째로 버리게 만든다.
+
+⚠️ **`Account`를 `userId`로 `findUnique`할 수 없다.** unique가 `@@id([provider, providerAccountId])`
+하나뿐이라 `readAccount`는 `findFirst`다. "User당 하나"는 우리 정책이지 DB 제약이 아니다.
+
 ---
 
-## T3 — 연결 시작 Action + callback 라우트 ⎇ `feat:`
+## T3 — 연결 시작 Action + callback 라우트 ✅ (2026-09-06, 같은 커밋 셋)
 
-- [ ] `app/(edit)/projects/[slug]/settings/actions.ts`에 `startGithubConnect({ slug })` — `getProjectAccess
+- [x] `app/(edit)/projects/[slug]/settings/actions.ts`에 `startGithubConnect({ slug })` — `getProjectAccess
       (project:settings)` → state 쿠키(`HttpOnly`·`SameSite=Lax`·`Path=/`·10분, **`Secure`·`__Host-`는 https에서만**)
       → `redirect(authorize URL)`
-- [ ] `app/api/github/callback/route.ts` — GET. **`requireUser()`**(GUARD — `readSession` 아님) →
+- [x] `app/api/github/callback/route.ts` — GET. **`requireUser()`**(GUARD — `readSession` 아님) →
       `?error=access_denied` → `denied` → `verifyState` → `exchangeCode` → `getViewer` → `planAccountLink` →
       쓰기 규칙 표(design §3.1: `create`+P2002 재조회 / 토큰만 update / 트랜잭션 replace / 거부는 무쓰기)
       → state 쿠키 삭제 → 302
-- [ ] 착지: state 유효 → `/projects/<slug>/settings[?e=]`, **state 무효 → `/projects?e=<status>`** (design §3.5)
-- [ ] `middleware.ts`의 `matcher`에 **넣지 않는다** (design §7.1 — `code` 유실)
-- [ ] `.env.example`에 셋 추가 + `GITHUB_APP_ID`와의 구별 주석
-- [ ] `app/api/__tests__/github-callback.test.ts` — `vi.mock("@/lib/github-connect/user")` + 가짜 prisma:
+- [x] 착지: state 유효 → `/projects/<slug>/settings[?e=]`, **state 무효 → `/projects?e=<status>`** (design §3.5)
+- [x] `middleware.ts`의 `matcher`에 **넣지 않는다** (design §7.1 — `code` 유실)
+- [x] `.env.example`에 셋 추가 + `GITHUB_APP_ID`와의 구별 주석
+- [x] `app/api/__tests__/github-callback.test.ts` — `vi.mock("@/lib/github-connect/user")` + 가짜 prisma:
       ① state 쿠키 없음/서명 변조/`wrong-user` → **`exchangeCode` 0회·Account 쓰기 0회**·`/projects?e=` ②
       `taken-by-other` → 쓰기 0회·`?e=taken-by-other` ③ `create`가 P2002를 던지면 재조회 후 판정 ④ 정상 →
       `create` 1회·`userId`가 세션 사용자·쿠키 삭제 헤더
@@ -126,6 +139,19 @@ owner/name / `planConnectionHealth`의 **`error` → `unknown`**(≠`app-uninsta
 **검증:** `pnpm test`의 `entry-points.test.ts`가 **예외 목록을 늘리지 않고** green(callback이 `requireUser`로
 `GUARDS`에 걸린다) + 위 테스트 파일 green. `[manual]` 로컬에서 "GitHub 연결" → GitHub → callback →
 `Account(provider:"github-app")` 행이 `pnpm db:studio`에 보인다. **Safari에서도** 한 번(쿠키 접두 — design §3.1).
+
+**결과:** 자동 검증은 전부 green(entry-points 14건 포함). `[manual]` 왕복은 **T0이 선행이라 아직 못 밟았다** —
+GitHub App에 callback URL 셋과 client id/secret이 있어야 한다. T5가 그것을 받는다.
+
+⚠️ **`/code-review`가 잡은 것 둘**(`bfd460f`): ① **쿠키 이름 판정이 쓰는 쪽과 읽는 쪽에서 갈렸다** —
+Action은 `x-forwarded-proto`, callback은 요청 URL을 보므로 어긋나면 쓴 이름과 찾는 이름이 달라져 연결이
+100% `state-mismatch`가 되고, 증상이 Safari 접두 함정과 구별되지 않는다. `lib/auth/cookie.ts`처럼 **읽는
+쪽이 두 이름을 다 보게** 고쳤다(`stateCookieNames`). ② callback 실패에 서버 로그가 없어 제보를 받아도
+재현 말고는 길이 없었다 — `/api/pull` 형의 `ref` + `console.error`를 넣었다.
+
+⚠️ **`/projects/page.tsx`의 `isConnectError` 분기를 여기서 넣었다** (T4 목록에서 옮겼다). callback이
+state 무효 시 그 화면으로 보내기 시작하는 순간 필요하고, **보내는 커밋과 읽는 커밋을 나누지 않는 것**이
+design §4의 원칙이다.
 
 ---
 
@@ -140,7 +166,6 @@ owner/name / `planConnectionHealth`의 **`error` → `unknown`**(≠`app-uninsta
 - [ ] 같은 파일에 `disconnectGithub({ slug })` — `getProjectAccess` → 세션 User의 `github-app` 행 `delete`
 - [ ] `components/reconnect-button.tsx` (client — pending "연결하는 중…", 인라인 `text-destructive text-xs`,
       성공 시 `revalidatePath`) · `components/github-account.tsx` (client — 연결 해제 pending, "GitHub 다시 연결")
-- [ ] `/projects/page.tsx`에 **`isConnectError` 분기 추가** (state 무효 착지 — design §3.5)
 - [ ] 번역 화면 툴바 `role === "OWNER"` 블록에 "설정" Link (`translations/page.tsx:103-118`) + 설정 화면에
       "← 번역" 링크. ⚠️ 헤더/레이아웃에는 slug가 없다 — 거기 달지 않는다
 - [ ] 건강성 배지 6종 — `ok`·`not-connected`·`unknown` muted, `repo-moved` amber, `app-uninstalled`·
