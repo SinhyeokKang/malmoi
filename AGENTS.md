@@ -76,7 +76,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google **둘 다 열려 있다** (2026-09-05, 허용 목록 제거와 같은 커밋). 로그인은 **검증된 이메일만** 요구하고, 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
-| 리포 쓰기 | GitHub App — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
+| 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
+| 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
 | 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
@@ -154,7 +155,15 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - `<link>`로 `app/layout.tsx`가 불러온다 — `globals.css`의 `@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다
 - **`.npmrc`의 `enable-pre-post-scripts=true`가 이 자동 실행을 보장한다.** pnpm 버전에 따라 기본값이 달라지고, 안 돌면 에러도 경고도 없이 폰트만 빠진다. 이 파일을 지우지 않는다
 
-**두 GitHub 자격증명을 섞지 않는다.** OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 로그인은 OAuth, 쓰기는 App — 경계를 넘는 코드가 보이면 리뷰에서 막는다.
+**GitHub 자격증명이 셋이고, 섞지 않는다** (2026-09-06에 둘에서 셋이 됐다).
+
+| 무엇 | 어디서 | 무엇을 하나 |
+|---|---|---|
+| OAuth App 토큰 | Auth.js provider (`AUTH_GITHUB_*`) | **로그인** — 이 사람이 누구인가 |
+| GitHub App **user-to-server** 토큰 | `lib/github-connect/user.ts` (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 우리 App의 어느 설치를 볼 수 있는가. **GET만** |
+| GitHub App **installation** 토큰 | `lib/github.ts` (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 커밋·PR |
+
+OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다 — 개인키가 연결 경로로, 사용자 토큰이 커밋 경로로 가는 것을 양방향으로 막는다.
 
 ## 명령어
 
@@ -249,6 +258,10 @@ app/
     projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
                         `?e=`로 받아 isAccessError로 걸러 한 줄 보인다
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/[slug]/settings/actions.ts
+                        startGithubConnect — state 쿠키를 심고 GitHub authorize로 redirect.
+                        ⚠️ **나가는 쪽은 Server Action이다** — Route Handler는 돌아오는 callback 하나뿐.
+                        ⚠️ page.tsx는 아직 없다(T4) — 그래서 이 경로는 현재 404다
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
     __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십 테스트 셋
@@ -259,6 +272,9 @@ app/
   api/__tests__/        라우트 진단 응답 (인증·JSON·스키마 실패가 각자 응답을 내는지)
   api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
+  api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
+                        `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
+                        무효면 slug를 못 믿어 `/projects?e=`로 간다
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
                         Server Action이 triggerPull을 직접 부른다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록). 렌더 요청만 막는다
@@ -295,7 +311,22 @@ lib/
                         남의 라이브러리 메시지는 ref만. 응답이 **대상 리포 Actions 로그**로 흘러가고
                         그 리포가 public일 수 있다
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
-  github.ts             Git Data API 래퍼 (App 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
+  github.ts             Git Data API 래퍼 (App installation 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
+                        + probeRepo(App JWT `/installation` → 설치 토큰 `/repos`) — 설치 토큰만으로는
+                        public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다
+  github-connect/       GitHub 계정 연결 (SaaS 4단계). **사용자 토큰 전담 — App 개인키를 모른다**
+    state.ts            OAuth state 서명·검증 (HMAC over AUTH_SECRET, secret은 인자라 순수)
+                        + stateCookieName(secure)·stateCookieNames() — ⚠️ 읽는 쪽은 **두 이름을 다 본다**
+                        (쓰는 쪽은 x-forwarded-proto, 읽는 쪽은 요청 URL로 판정해 갈릴 수 있다)
+    account-link.ts     planAccountLink 4갈래 — taken-by-other가 replace보다 앞이다
+    connect-plan.ts     planRepoConnect — SAAS §5.4 3중 검증의 판정 자리 (5단계가 재사용)
+    health.ts           planConnectionHealth 6갈래 + probeFromError·httpStatus
+                        ⚠️ 403(설치 일시중지)은 error가 아니라 not-installed다 — 영구 상태다
+    token.ts            planTokenUse 3갈래 + refreshFailure (⚠️ 429는 4xx인데 unavailable이다)
+    token-store.ts      ensureUserToken — 회전 결과를 조건부 updateMany로 즉시 쓴다
+    message.ts          ConnectError 12갈래 + isConnectError·connectErrorMessage (inviteErrorMessage 형)
+    user.ts             OAuthApp·Octokit 호출 — ⚠️ authentication에 clientSecret이 섞여 오므로
+                        token·expiresAt·refreshToken 셋만 뽑는다. 목록은 paginate로 전 페이지
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
                         ⚠️ `WrapperId.kind`가 direct(`t("k")`)와 hook(`const { t } = useI18n()`)을
                         가른다. hook은 반환 바인딩을 스코프째 추적하고 next-intl의 namespace
