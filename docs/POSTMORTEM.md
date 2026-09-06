@@ -493,3 +493,20 @@ _이 아래에 새 항목을 추가한다._
   - `requireProjectAccess`가 `userId`를 함께 돌려준다(`e870b21`) — 호출부가 세션을 다시 읽을 이유가 없어지고, 빼먹는 형태 자체가 어려워진다.
   - grep: `grep -rn --include='*.ts' --include='*.tsx' 'prisma\.\(account\|session\|user\)\.' app lib auth.ts | grep -v __tests__` → **각 조회의 `where`에 `userId`가 있는지 눈으로 본다.** 없어도 되는 경우는 둘뿐이다: `Account`를 PK(`provider_providerAccountId`)로 찾아 **남의 것인지 판정하는** 자리(`taken-by-other`)와 초대 대상을 이메일로 찾는 자리. 2026-09-06 전수 결과 그 둘 외에는 전부 좁혀져 있었다.
   - **테스트 시드에 주체를 둘 이상 넣는다.** 하나뿐이면 "아무거나 집기"와 "올바로 집기"가 같은 결과를 낸다 — `github-connect.test.ts`의 해제 케이스가 계정 둘을 두는 이유다.
+
+### 2026-09-06 — GitHub App 개인키를 하나 지웠더니 네 곳이 동시에 끊겼고, 증상은 "App이 설치돼 있지 않다"였다
+
+- **영역**: GitHub App `malmoi-prod`의 Private keys · `.env.local` · Vercel Production·Preview · `lib/github-connect/health.ts`
+- **증상**: T0(App 설정)을 마친 뒤 `pnpm smoke:github`가 `probeRepo: not-installed`를 찍고 이어서 `A JSON web token could not be decoded`로 죽었다. **같은 키로 몇 시간 전에 `GET /app`이 성공했었다** — App slug·권한·설치 목록까지 읽었다.
+- **근본 원인**: 둘이 겹쳤다.
+  1. **개인키 삭제가 무중단이 아니다.** CLAUDE.md는 "새 키를 발급해도 옛 키가 계속 돌아서 무중단으로 갈아탈 수 있다"고 적고 있었는데 그건 **추가**의 성질이다. 지우면 **그 키를 들고 있던 네 곳이 동시에 끊긴다** — 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 문서가 "폐기는 다른 머신을 옮긴 뒤에"라고만 말해 Vercel 두 스코프가 세어지지 않았다.
+  2. **401이 `not-installed`로 접혀 있었다.** GitHub은 JWT를 검증할 수 없을 때 401을 주는데 `probeFromError`가 그것을 설치 부재로 분류했다. 설정 화면이었다면 **"App이 제거됐어요 + 설치 링크"** 를 보였을 것이고, 사용자는 GitHub에 가서 재설치한 뒤 아무것도 고쳐지지 않은 것을 발견한다 — 원인이 우리 서버의 자격증명이기 때문이다.
+- **그물**:
+  - 잡은 것: **`pnpm smoke:github`.** T6 확인 항목으로 돌린 것이 유일한 발견 경로였다 — 단위 테스트는 이 층을 원리적으로 못 본다(POSTMORTEM 2026-09-01이 든 "I/O 껍데기엔 스모크"가 다시 값을 했다).
+  - 놓친 것: `pnpm test`·`typecheck`·`build` 전부 green. **화면을 열었어도 "App이 제거됨"으로 보여 오진했을 것이다.**
+  - 진단이 오래 걸린 이유: 키가 **유효한 RSA 2048 PEM이고** appId도 7자리 숫자이며 JWT 구조·`iat`/`exp`·시계까지 전부 정상이었다. 로컬에서 볼 수 있는 모든 값이 맞아 GitHub 쪽 상태 변화를 의심하기까지 시간이 걸렸다.
+- **재발 방지**:
+  - **401과 404를 가른다** (`d9255a0`). 404가 "설치 없음", 401은 "우리 JWT가 무효", 403은 "설치 일시중지"다. `lib/github-connect/__tests__/health.test.ts`가 셋을 각각 값으로 고정한다.
+  - **키를 지우기 전에 그 키를 든 곳을 센다.** 지금은 넷이다 — `grep -rn 'GITHUB_APP_PRIVATE_KEY' .env.example CLAUDE.md`로 목록을 확인하고, `vercel env ls production`·`preview` 둘을 각각 본다.
+  - ⚠️ **`vercel env add --force`의 성공 메시지를 믿지 않는다** (같은 라운드에서 실측). Preview에서 `✓ Overrode`를 출력하고도 값이 3일 전 그대로였고, Production은 같은 명령이 먹었다. **갱신 뒤 `vercel env ls <environment>`의 시각 열로 확인**하고, 안 바뀌었으면 `rm` 후 다시 넣는다.
+  - **환경변수를 바꿔도 이미 떠 있는 배포는 옛 값을 쓴다.** 프로덕션 복구는 재배포까지가 한 단위다.
