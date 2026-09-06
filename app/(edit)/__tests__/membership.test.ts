@@ -137,6 +137,36 @@ describe("createInvitation — 이미 있는 관계", () => {
   });
 });
 
+/**
+ * **동시 발급이 유효 토큰을 둘 남긴다** (Codex 감사 2026-09-06 #4). 회전(`updateMany` 만료)과 `create`가
+ * 잠금 없이 갈라져 있어 두 OWNER가 같은 이메일을 동시에 초대하면 각자 회전을 끝내고 각자 만든다 — 링크 둘이
+ * 살아 있고 role이 다르면 둘 다 유효하다. `changeMember`와 같은 형태로 `Project` 행을 잠근 트랜잭션에 넣는다.
+ * 메모리 DB는 잠금을 못 흉내내므로 **잠금이 회전보다 먼저인 것**과 **create가 실패하면 회전이 되돌아가는 것**을 본다.
+ */
+describe("createInvitation — 회전과 생성이 한 트랜잭션이다", () => {
+  it("프로젝트 행을 잠근 뒤 회전한다", async () => {
+    await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?")).join("\n");
+    expect(sql).toMatch(/"Project"[\s\S]*FOR UPDATE/);
+    expect(db.spies.executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      db.spies.updateManyInvitations.mock.invocationCallOrder[0] ?? Infinity,
+    );
+  });
+
+  it("생성이 실패하면 옛 초대의 만료가 되돌아간다 — 회전만 남으면 유효 링크가 0개가 된다", async () => {
+    db.invitations.push({
+      id: "inv-old", projectId: "pA", email: "new@a.com", role: "EDITOR",
+      tokenHash: "old-hash", expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
+    });
+    db.spies.createInvitationRow.mockImplementationOnce(async () => {
+      throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    });
+    await expect(createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).rejects.toThrow();
+    expect(db.invitations).toHaveLength(1);
+    expect(db.invitations[0]?.expiresAt).toEqual(LATER);
+  });
+});
+
 describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
   function invite(over: Partial<{ email: string; expiresAt: Date; acceptedAt: Date | null }> = {}) {
     db.invitations.push({
