@@ -11,24 +11,38 @@
 
 ---
 
-## T0 — GitHub App 설정 (코드 아님, 선행)
+## T0 — GitHub App 설정 ✅ (2026-09-06, 사람이 실행)
 
 사람이 GitHub에서 한다. **T3 전에 끝나 있어야** 실물 확인이 가능하다. T1·T2는 T0 없이 진행된다.
 
-- [ ] App 설정에 **Callback URL 셋** 등록 — `http://localhost:3000/api/github/callback` ·
+- [x] App 설정에 **Callback URL 셋** 등록 — `http://localhost:3000/api/github/callback` ·
       `https://malmoi-git-dev-…vercel.app/api/github/callback` · `https://mal-moi.com/api/github/callback`
-- [ ] "Expire user authorization tokens" **켠 채로 둔다** (design §2.4 — refresh를 감당한다)
-- [ ] Client ID·secret 발급 → `.env.local` + Vercel Production·Preview
-      (⚠️ 값은 stdin으로: `vercel env add <name> production,preview --force`)
-- [ ] App slug 확인 → `GITHUB_APP_SLUG`
-- [ ] **T5 격리 확인**: 폐기용 리포 셋(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`)과 프로덕션
-      프로젝트 리포가 **같은 installation인지** `Project.installationId`로 본다. 같으면 T5의 "App 제거"
-      시나리오는 밟지 않는다(접근 철회만) — 설치는 계정 단위라 uninstall이 운영 연결까지 끊는다
+- [x] "Expire user authorization tokens" **켠 채로 둔다** (design §2.4 — refresh를 감당한다)
+      ⚠️ **UI에 토글이 없었다.** 2022년 이후 만든 App은 만료가 고정이라 Optional Features에서 항목이
+      사라진다. **차단 요소가 아니다** — `planTokenUse`가 `expiresAt: null`이면 `use`를 주므로 꺼져
+      있어도 동작한다. **T3 왕복의 `Account.expires_at`이 실측 답이다**: 값이 있으면 refresh 경로가
+      살아 있고, `null`이면 `refreshUserToken`·`refreshFailure`·갱신 분기가 죽은 코드다(그때 지울지 정한다).
+- [x] Client ID·secret 발급 → `.env.local` + Vercel Production·Preview
+      (⚠️ 값은 stdin으로. **CLI는 환경을 하나씩 받는다** — `vercel env add <name> production --sensitive --force`를
+      환경마다 한 번씩. 셋 다 Production·Preview에 Secret으로 들어갔다)
+- [x] App slug 확인 → `GITHUB_APP_SLUG` = `malmoi-prod`
+- [x] **T5 격리 확인** — 실측 결과 **설치가 하나뿐이고 `repository_selection: all`이다**
+      (id `158107153`, account `SinhyeokKang`, App `malmoi-prod`). 폐기용 리포 셋과 프로덕션 리포가
+      **같은 설치를 공유한다.** 따라서:
+      - ❌ **"App 제거 → 재설치"는 밟지 않는다** — 프로덕션 연결까지 끊긴다
+      - ⚠️ **"접근 철회"도 지금 모양에서는 못 밟는다** — `all`에서는 개별 리포를 뺄 수 없다. 아래
+        "확인 필요" 2번이 그 결정이다
 
 **검증:** `.env.local`은 셸에 export되지 않으므로 값을 직접 읽어 넣는다 —
 `curl -s -o /dev/null -w '%{http_code}' "https://github.com/login/oauth/authorize?client_id=$(grep ^GITHUB_APP_CLIENT_ID .env.local | cut -d= -f2 | tr -d '"')"`
-가 **302**다(404면 `GITHUB_APP_ID` 숫자를 넣은 것 — design §6). ⚠️ 이 검증은 "존재하는 client_id"만
-증명한다 — **우리 App인지는 T3 실물이 증명한다.**
+가 **302**다(404면 `GITHUB_APP_ID` 숫자를 넣은 것 — design §6). ✅ 2026-09-06 302 확인.
+
+⚠️ **이 curl이 증명하는 것은 "client_id가 존재한다" 하나뿐이다.** `redirect_uri`를 붙여도 판정에 쓸 수
+없다 — **등록하지 않은 주소(`https://evil.example.com/x`)도 302를 준다**(실측). GitHub이 비로그인 요청을
+로그인 페이지로 먼저 보내고 `redirect_uri` 검증은 그 뒤에 하기 때문이다. **302를 성공 신호로 읽으면
+POSTMORTEM 2026-09-06("리다이렉트 횟수로 검증해서 전면 장애를 정상으로 읽었다")과 같은 오독이 된다** —
+대조군을 넣지 않았으면 "callback 셋이 등록됐다"를 근거 없이 단언할 뻔했다. **Callback URL 등록과 App
+일치는 T3 실물 왕복에서만 확인된다.**
 
 ---
 
@@ -249,7 +263,12 @@ Project 불변. **거부만 검증하면 항상 거부하는 Action도 통과한
 계정 유일성은 `github-app` 내 + User당 1 · `ok` 무색 · 연결 해제 포함 · `lib/github-connect/` · probe는
 `/installation` 엔드포인트 · T5는 접근 철회 중심.
 
+**T0은 2026-09-06에 끝났다** (callback URL 셋 · OAuth-during-installation 해제 확인 · client id/secret →
+`.env.local` + Vercel Production·Preview · slug `malmoi-prod`).
+
 남은 것 하나:
 
-1. **T0의 격리 확인 결과** — 폐기용 리포 셋과 프로덕션 리포가 같은 installation이면 T5 "App 제거"
-   시나리오를 건너뛴다(접근 철회만). 다른 installation을 만들지는 그때 정한다.
+2. **T5를 어떤 설치 모양에서 밟을 것인가** — 지금은 설치 하나가 `all`이라 접근 철회를 재현할 수 없다.
+   ① 설치를 `Only select repositories`로 바꾸고 폐기용 + 프로덕션 리포를 명시 선택한 뒤 폐기용 하나를
+   뺐다 넣는다 ② 폐기용 리포만 있는 **별도 org**에 App을 따로 설치한다. ①이 준비가 가볍지만
+   **선택 목록에서 프로덕션 리포를 빠뜨리면 그 순간 야간 pull이 죽는다** — T5 착수 시 결정한다.
