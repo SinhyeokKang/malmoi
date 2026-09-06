@@ -68,13 +68,14 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
 | 모듈 | 소스 | 테스트 | 남은 것 |
 |---|---|---|---|
 | `lib/adapters` | 10 | 16 | 없음 — 어댑터 5종 + 계약 테스트 전수 (+ quote-style·json-style) |
-| `lib/pull` | 8 | 9 | 없음 — 진입점 회귀 + 조립층(`trigger`)까지 (2026-09-04) |
+| `lib/pull` | 8 | 10 | 없음 — 진입점 회귀 + 조립층(`trigger`) + 브랜치 이름 소비자(`sync-branch-consumers`)까지 (2026-09-04) |
 | `lib/push` | 5 | 6 | 없음 (+ guard·payload) |
 | `lib/cli` | 2 | 2 | 없음 — 세 CLI의 인자 파싱·리포 훑기 (2026-09-04, `walk` 테스트 추가) |
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
 | `lib/keys` | 3 | 2 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 |
 | `lib/auth` | 13 | 13 | 없음 — tenant-auth(2026-09-05~06)로 늘었다. 표의 나머지 행은 2026-09-04 스냅샷 |
 | `lib/scan` | 4 | 3 | 없음 — 훅·namespace까지 (A-1 ✅) |
+| `lib/github-connect` | 9 | 9 | 없음 — 사용자 토큰·`probeRepo` 근거·연결 판정 (SaaS 4단계, 2026-09-07). `credential-separation`이 자격증명 경계를 소스에서 상시로 센다 |
 | `lib/githash`·`env` | 2 | 2 | 없음 |
 
 - [x] **A-1. `lib/scan` 계약을 닫는다** ✅ (2026-09-03) — `WrapperId.kind`로 호출 형태를 가르고
@@ -171,7 +172,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
     **SaaS 5단계**가 `Project.pushTokenHash`와 전 프로젝트 순회로 대체한다 (SAAS §7.8·§4.3②)
 
 - [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
-  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **`/push` 3단계 확인은 `pnpm db:status:prod`다** (`db:status`는 dev를 본다)
+  - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **그 확인은 `/merge` 1단계의 `pnpm db:status:prod`다** (`/push` 3단계의 `db:status`는 dev를 본다 — 게이트가 프로덕션 배포 직전에 서야 프로덕션이 코드보다 앞서는 창이 짧다)
   - 대가로 얻은 것: dev에서 리셋을 승인해도 된다 (번역 데이터가 없다 — 폐기용 리포 적재분뿐이고 `push:local`로 복구된다)
 - [x] **Vercel 프로젝트 연결** ✅ (2026-09-03) — 처음엔 `https://i18n-poc.vercel.app`이었고 2026-09-04 개명 뒤 **`https://mal-moi.com`**(apex)이 정본이다. main 푸시가 곧 배포다
   - 연결 과정에서 걸린 것 셋: ① `pnpm build`가 `prisma generate`를 안 해서 첫 배포가 실패(POSTMORTEM 2026-09-03) ② `prisma.config.ts`의 `env("DIRECT_URL")`이 로드 시점에 던져 generate까지 죽음(같은 항목의 🔁 재발) ③ Hobby 기본값인 **Deployment Protection**이 모든 요청을 SSO로 튕겨 자동화가 불가능 — 해제했다(애플리케이션 방어가 이미 전부 서 있다: `middleware.ts` + 두 라우트의 fail-closed Bearer)
