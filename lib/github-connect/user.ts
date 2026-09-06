@@ -68,9 +68,15 @@ function pickTokens(authentication: {
   };
 }
 
-/** 인가 화면 URL. `state`는 nonce이고 목적지 slug는 쿠키의 서명 안에 있다 (design §3.1). */
-export function authorizeUrl(state: string): string {
-  return createOAuthApp().getWebFlowAuthorizationUrl({ state }).url;
+/**
+ * 인가 화면 URL. `state`는 nonce이고 목적지 slug는 쿠키의 서명 안에 있다 (design §3.1).
+ *
+ * ⚠️ **`redirectUrl`은 선택이 아니다** (malmoi#7). App에 callback URL이 여러 개 등록돼 있으면 GitHub은
+ * 명시하지 않은 요청을 **첫 번째**로 보낸다 — 로컬에서 시작한 연결이 프로덕션으로 돌아가고, state
+ * 쿠키가 그쪽에 없으니 영원히 `state-mismatch`다. 호출부가 요청 origin에서 만들어 넘긴다.
+ */
+export function authorizeUrl(state: string, redirectUrl: string): string {
+  return createOAuthApp().getWebFlowAuthorizationUrl({ state, redirectUrl }).url;
 }
 
 /**

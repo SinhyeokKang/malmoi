@@ -13,6 +13,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
+import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { httpStatus } from "@/lib/github-connect/health";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { signState, stateCookieName } from "@/lib/github-connect/state";
@@ -61,8 +62,19 @@ export async function startGithubConnect(raw: { slug: string }): Promise<StartCo
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
-  // 프로토콜 판정을 프록시 헤더에서 한다 — Vercel 뒤에서는 요청 URL이 http로 보인다.
-  const secure = (await headers()).get("x-forwarded-proto") === "https";
+  /**
+   * ⚠️ **origin과 쿠키 `secure`를 한 판정에서 얻는다** (malmoi#7). 따로 읽으면 쿠키를 심은 이름과
+   * GitHub이 돌려보내는 origin이 갈릴 수 있고, 그때 증상은 "쿠키가 없다"라 원인을 서명에서 찾게 된다.
+   * Vercel 뒤에서는 요청 URL이 http로 보이므로 프록시 헤더를 본다.
+   */
+  const head = await headers();
+  const origin = requestOrigin({
+    host: head.get("host"),
+    forwardedProto: head.get("x-forwarded-proto"),
+  });
+  // Host를 못 믿으면 authorize URL을 만들지 않는다 — 추측한 origin으로 사용자를 보내지 않는다.
+  if (origin === null) return { ok: false, error: "unavailable" };
+  const { secure } = origin;
   const nonce = randomBytes(32).toString("base64url");
 
   // ⚠️ **목적지 slug는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
@@ -87,8 +99,8 @@ export async function startGithubConnect(raw: { slug: string }): Promise<StartCo
     },
   );
 
-  // 쿼리에는 nonce만 간다. `redirect`는 던지므로 이 아래는 실행되지 않는다.
-  redirect(authorizeUrl(nonce));
+  // 쿼리에는 nonce와 redirect_uri만 간다. `redirect`는 던지므로 이 아래는 실행되지 않는다.
+  redirect(authorizeUrl(nonce, callbackUrl(origin.origin)));
 }
 
 
