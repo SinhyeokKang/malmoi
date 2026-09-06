@@ -251,9 +251,9 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | 항목 | 선택 | 근거 |
 |---|---|---|
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
-| DB | Supabase Postgres **둘** — prod(`malmoi`) / dev(`malmoi-dev`) | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다. **2026-09-04에 인스턴스를 갈랐다** — 그전에는 하나여서 `migrate dev`가 프로덕션을 직접 바꿨고, 번역 데이터가 쌓이기 전에 끊는 것이 조건이었다. 대가로 **잊으면 깨지는 실패 모드**가 생겼다: dev에만 적용하고 `db:deploy`를 빠뜨리면 배포 순간 프로덕션이 없는 컬럼을 조회한다 (CLAUDE.md `/push` 3단계가 `db:status:prod`를 보는 이유) |
+| DB | Supabase Postgres **둘** — prod(`malmoi`) / dev(`malmoi-dev`) | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다. **2026-09-04에 인스턴스를 갈랐다** — 그전에는 하나여서 `migrate dev`가 프로덕션을 직접 바꿨고, 번역 데이터가 쌓이기 전에 끊는 것이 조건이었다. 대가로 **잊으면 깨지는 실패 모드**가 생겼다: dev에만 적용하고 `db:deploy`를 빠뜨리면 배포 순간 프로덕션이 없는 컬럼을 조회한다 (`/merge` 1단계가 `db:status:prod`를 보는 이유 — `/push` 3단계는 dev만 본다) |
 | DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
-| 로그인 | ~~GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`)~~ → 2026-09-05 GitHub + Google, 인가는 `ProjectMember` (SAAS §5) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다. 실제 org를 쓰게 되면 org 검사를 OR로 더한다 |
+| 로그인 | ~~GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`)~~ → 2026-09-05 GitHub + Google, 인가는 `ProjectMember` (SAAS §5) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다**였다** — 그 메커니즘 자체가 지금은 없다(인가는 `ProjectMember`, `lib/auth/query.ts`) |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | 키·원문 출처 | **base 로케일의 `messages.json`** (어댑터 구조 — §5.1) | 리포 연동만으로 적재가 되어야 한다. 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 된다 |
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
@@ -388,9 +388,9 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
 
 **다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데, 나머지 SaaS 요소는 전부 additive로 붙는다.
 
-**MVP에서 비범위, SaaS 단계에서 착수**(2026-09-03 로드맵으로 승격 — §8.4): 테넌트별 인증·인가(멤버십·역할), 프로젝트 생성, 프로젝트당 복수 멤버, 프로젝트 전환 UI. MVP 동안 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 남고, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 하나다.
+**MVP에서 비범위, SaaS 단계에서 착수**(2026-09-03 로드맵으로 승격 — §8.4): 테넌트별 인증·인가(멤버십·역할), 프로젝트 생성, 프로젝트당 복수 멤버, 프로젝트 전환 UI. MVP 동안 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 **남았고**, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 **하나였다.** ⚠️ **둘 다 지났다** — 허용 목록은 2026-09-06에 삭제됐고(인가는 `ProjectMember`), 편집 경로는 URL slug 멀티테넌트다. `ACTIVE_PROJECT_SLUG`가 남은 곳은 `/api/push`·`/api/pull` 둘뿐이고 SAAS §7.8·§8 5단계가 대체한다.
 
-**여전히 비범위**(SaaS 단계에서도 안 한다): 과금.
+**여전히 비범위**(SaaS 단계에서도 안 한다): 과금. **SaaS가 이어받는 비범위 전체는 SAAS §4.2**다 — 이 줄에 과금만 남은 것은 나머지가 그리로 옮겨간 것이지 승격된 것이 아니다.
 
 ⚠️ **2026-09-06 정정 — 이 줄은 원래 "과금, 온보딩, 테넌트별 GitHub App 설치 플로" 셋이었고, 뒤의 둘이
 SaaS 로드맵으로 승격되면서 거짓이 됐다.** 온보딩은 SAAS §8 **5단계**(탐지 온보딩)이고, GitHub은
@@ -476,9 +476,9 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 ## 10. 아직 안 정한 것
 
-- **orphaned 로케일이 편집 UI에 남는 것** — 리포에서 사라진 로케일도 키 테이블의 열로 보인다. 저장은 서버가 거부하지만(ARCHITECTURE §5.5.16) 화면은 편집할 수 있는 것처럼 보인다. orphaned 키처럼 배지+비활성으로 보이는 게 맞고, 편집 UI를 새로 만드는 SaaS 단계(§8.4)에서 정한다
+- ~~**orphaned 로케일이 편집 UI에 남는 것**~~ — 리포에서 사라진 로케일도 키 테이블의 열로 보였고, 저장은 서버가 거부하는데(ARCHITECTURE §5.5.16) **화면은 편집할 수 있는 것처럼 보였다.** ✅ **2026-09-06에 배지+비활성으로 닫았다**(`194fb91` — 헤더 배지 + `disabled`). 열을 지울지까지의 **확정은 SAAS §8 6단계**(번역 UI 재작성)다
 
-- **덮인 셀의 `updatedBy`** — push가 리포 값으로 덮어도 편집자 이름이 남아 편집 UI가 "이 값은 누가 편집함"으로 보여준다 (§3.1 실증). 지우면 "누가 마지막으로 만졌나"를 잃고, 두면 화면이 거짓을 말한다. 편집 UI를 새로 만드는 SaaS 단계(§8.4)에서 정한다
+- **덮인 셀의 `updatedBy`** — push가 리포 값으로 덮어도 편집자 이름이 남아 편집 UI가 "이 값은 누가 편집함"으로 보여준다 (§3.1 실증). 지우면 "누가 마지막으로 만졌나"를 잃고, 두면 화면이 거짓을 말한다. **여전히 미결이고 담당은 SAAS §8 6단계**다 — 거기서 파생 항목 하나가 더 붙었다(셀 메타가 `User.id` cuid를 원문으로 찍는다, malmoi#3)
 
-- **base 로케일 판정** — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지는 TASKS §3a 🔒가 그 자리다
+- **base 로케일 판정** — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지가 물음이었다. **방향은 정해졌다 — SAAS §7.3·§8 5단계에서 사용자가 후보를 보고 확정한다**("자동 탐지는 추천이지 진실이 아니다"). 코드는 아직 `pickBaseLocale` 그대로다
 - ~~**테넌트별 인가로 넘어가는 시점**~~ ✅ 해소 (2026-09-05 — SAAS §5.3·§6: `ProjectMember`·`Role`·DB 세션. JWT 결정이 뒤집혔다)
