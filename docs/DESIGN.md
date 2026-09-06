@@ -188,7 +188,7 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다.
-- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다). ⚠️ **화면이 늘 때마다 다시 샌다** — 2026-09-07 검사에서 설정 화면의 "연결 해제"(`components/github-account.tsx`)가 또 빠져 있었다. 새 컨트롤을 만들 때 §6.4 표에서 클래스를 복사하면 이 셋이 딸려온다.
+- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다). ⚠️ **화면이 늘 때마다 다시 샜다** — 2026-09-07 검사에서 설정 화면의 "연결 해제"(`components/github-account.tsx`)가 또 빠져 있었다. **그래서 상시 방어선을 뒀다**: `components/__tests__/focus-ring.test.ts`가 `app/`·`components/`(생성물 `ui/` 제외)의 모든 `<button>`·`<input>`을 소스에서 훑어 셋을 다 드는지 센다. 눈으로는 두 번 다 놓쳤다 — 탭으로 지나가야 보이는 결함이다. 새 컨트롤을 만들 때 §6.4 표에서 클래스를 복사하면 이 셋이 딸려온다.
 - `--ring` == `--border`라서 **`muted`·`secondary` 표면 위에선 포커스 링이 약하다.** 그런 자리엔 `ring-offset`을 주거나 배경을 `background`로 되돌린다.
 
 ## 8. className & 변형
