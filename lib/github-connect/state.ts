@@ -41,6 +41,20 @@ export function stateCookieName(secure: boolean): string {
   return secure ? `__Host-${BASE_COOKIE}` : BASE_COOKIE;
 }
 
+/**
+ * **읽는 쪽이 볼 이름 전부.** 쓰는 쪽(Server Action)은 `x-forwarded-proto`로, 읽는 쪽(callback)은
+ * 요청 URL로 프로토콜을 판정한다 — 둘은 다른 신호라 갈릴 수 있고, 갈리면 **쓴 쿠키와 찾는 쿠키의
+ * 이름이 달라져** 연결이 100% `state-mismatch`가 된다. 증상이 "쿠키가 없다"라서 위의 Safari 함정과
+ * 구별되지 않는다.
+ *
+ * `lib/auth/cookie.ts`가 `authjs.session-token`과 `__Secure-` 접두 둘을 다 보는 것과 같은 해법이다:
+ * **쓰는 쪽만 정확하면 되고, 읽는 쪽은 관대해도 안전하다** — 어느 이름으로 왔든 서명이 진짜인지는
+ * `verifyState`가 따로 판정한다.
+ */
+export function stateCookieNames(): readonly string[] {
+  return [stateCookieName(true), stateCookieName(false)];
+}
+
 const BASE_COOKIE = "malmoi-gh-state";
 
 export function signState(input: {

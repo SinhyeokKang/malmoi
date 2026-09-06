@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -6,7 +8,7 @@ import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planAccountLink } from "@/lib/github-connect/account-link";
 import type { ConnectError } from "@/lib/github-connect/message";
-import { stateCookieName, verifyState } from "@/lib/github-connect/state";
+import { stateCookieNames, verifyState } from "@/lib/github-connect/state";
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -31,9 +33,12 @@ export async function GET(request: Request): Promise<NextResponse> {
   const { userId } = await requireUser();
 
   const url = new URL(request.url);
-  const secure = url.protocol === "https:";
-  const cookieName = stateCookieName(secure);
-  const cookie = (await cookies()).get(cookieName)?.value;
+  // ⚠️ **두 이름을 다 본다.** 쿠키를 심는 Action은 `x-forwarded-proto`로 프로토콜을 판정하고 여기는
+  // 요청 URL을 본다 — 다른 신호라 갈릴 수 있고, 하나만 찾으면 그때 연결이 통째로 죽는다.
+  const cookieStore = await cookies();
+  const cookie = stateCookieNames()
+    .map((name) => cookieStore.get(name)?.value)
+    .find((value) => value !== undefined);
 
   const state = verifyState({
     cookie,
@@ -48,35 +53,52 @@ export async function GET(request: Request): Promise<NextResponse> {
   // 않는다: 어디로 돌아가야 하는지 모르는 것이 먼저다.
   const denied = url.searchParams.get("error") !== null;
   if (state.status !== "ok") {
-    return landing(request, null, denied ? "denied" : state.status, cookieName);
+    return landing(request, null, denied ? "denied" : state.status);
   }
   const slug = state.slug;
 
-  if (denied) return landing(request, slug, "denied", cookieName);
+  if (denied) return landing(request, slug, "denied");
 
   const code = url.searchParams.get("code");
   // code도 error도 없는 요청을 성공으로 읽지 않는다.
-  if (code === null || code === "") return landing(request, slug, "exchange-failed", cookieName);
+  if (code === null || code === "") return landing(request, slug, "exchange-failed");
 
   let tokens: UserTokens;
   let viewer: { id: string; login: string };
   try {
     tokens = await exchangeCode(code);
     viewer = await getViewer(tokens.accessToken);
-  } catch {
+  } catch (error) {
     // 재사용·만료된 code가 여기로 온다 — GitHub은 그것도 HTTP 200 본문으로 주고 라이브러리가 던진다.
-    return landing(request, slug, "exchange-failed", cookieName);
+    logFailure("exchange", error);
+    return landing(request, slug, "exchange-failed");
   }
 
   let outcome: ConnectError | null;
   try {
     outcome = await linkAccount(getPrisma(), { userId, providerAccountId: viewer.id, tokens });
-  } catch {
+  } catch (error) {
     // DB 장애를 거부로 위장하지 않는다 (POSTMORTEM 2026-09-06).
-    return landing(request, slug, "unavailable", cookieName);
+    logFailure("link", error);
+    return landing(request, slug, "unavailable");
   }
 
-  return landing(request, slug, outcome, cookieName);
+  return landing(request, slug, outcome);
+}
+
+/**
+ * 실패를 **서버 로그에만** 남긴다 (`/api/pull`과 같은 형).
+ *
+ * ⚠️ 사용자에게는 `?e=`로 사유가 이미 가지만, 그것은 갈래 이름일 뿐 원인이 아니다. 로그가 없으면
+ * "GitHub과 연결을 마치지 못했어요"라는 제보에 재현 말고는 길이 없다 — 2026-09-03 Vercel 첫 배포가
+ * 정확히 그 상태였다(무엇이 없는지 추측해야 했다).
+ *
+ * **응답 본문에는 싣지 않는다.** 이 응답은 사용자 브라우저로 가고, 사유는 화면 문구가 이미 말한다.
+ */
+function logFailure(stage: string, error: unknown): void {
+  const ref = randomUUID().slice(0, 8);
+  const detail = error instanceof Error ? error.message : String(error);
+  console.error(`[github-connect] ${ref} ${stage}: ${detail}`);
 }
 
 /**
@@ -168,13 +190,15 @@ function landing(
   request: Request,
   slug: string | null,
   error: ConnectError | null,
-  cookieName: string,
 ): NextResponse {
   const path = slug === null ? "/projects" : `/projects/${slug}/settings`;
   const target = error === null ? path : `${path}?e=${error}`;
   const res = NextResponse.redirect(new URL(target, request.url));
   // 같은 state로 두 번 들어오지 못하게 한다. 실패 경로에서도 지운다 — 남겨 두면 다음 시도가
-  // 옛 nonce와 대조된다.
-  res.cookies.set(cookieName, "", { maxAge: 0, path: "/" });
+  // 옛 nonce와 대조된다. **읽을 때와 같이 두 이름을 다 지운다.**
+  for (const name of stateCookieNames()) {
+    // `__Host-` 쿠키는 `Secure` 없이 보내면 브라우저가 접두 규칙 위반으로 무시해 지워지지 않는다.
+    res.cookies.set(name, "", { maxAge: 0, path: "/", secure: name.startsWith("__Host-") });
+  }
   return res;
 }

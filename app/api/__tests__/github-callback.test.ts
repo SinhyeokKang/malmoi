@@ -141,6 +141,39 @@ describe("state를 믿을 수 없으면 아무것도 하지 않는다", () => {
   });
 });
 
+describe("쿠키 이름 판정이 쓰는 쪽과 갈려도 읽어낸다", () => {
+  /**
+   * ⚠️ **`startGithubConnect`는 `x-forwarded-proto`로, 이 라우트는 요청 URL로 프로토콜을 판정한다.**
+   * 둘이 갈리면 쓴 이름과 찾는 이름이 달라져 쿠키를 못 읽고 **연결이 100% `state-mismatch`**가 된다.
+   * 증상이 "쿠키가 없다"라서 Safari 접두 함정과 구별되지 않는다 — 읽는 쪽이 두 이름을 다 보게 해
+   * 판정 차이를 무해하게 만든다 (`lib/auth/cookie.ts`와 같은 해법).
+   */
+  it("__Host- 접두로 심은 쿠키를 http 요청에서도 찾는다", () => {
+    hoisted.cookieGet.mockImplementation((name: string) =>
+      name === "__Host-malmoi-gh-state" ? { value: validState() } : undefined,
+    );
+    // 프록시 뒤에서 요청 URL이 http로 보이는 경우다.
+    const url = new URL("http://mal-moi.com/api/github/callback");
+    url.searchParams.set("code", "abc");
+    url.searchParams.set("state", "nonce-1");
+
+    return GET(new Request(url)).then((res) => {
+      expect(location(res)).toBe("/projects/acme/settings");
+      expect(hoisted.account.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("접두 없이 심은 쿠키를 https 요청에서도 찾는다 — 반대 방향도 같다", async () => {
+    hoisted.cookieGet.mockImplementation((name: string) =>
+      name === "malmoi-gh-state" ? { value: validState() } : undefined,
+    );
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/acme/settings");
+  });
+});
+
 describe("사용자가 GitHub에서 취소한 경우", () => {
   it("state가 유효하면 설정 화면으로 denied를 실어 보낸다", async () => {
     const res = await GET(request({ error: "access_denied", state: "nonce-1" }));

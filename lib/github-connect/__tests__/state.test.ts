@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { signState, stateCookieName, verifyState } from "../state";
+import { signState, stateCookieName, stateCookieNames, verifyState } from "../state";
 
 /**
  * OAuth state 서명·검증 (design §3.1·§4). **I/O가 없다** — nonce 생성과 쿠키 쓰기는 껍데기가 하고,
@@ -196,5 +196,28 @@ describe("stateCookieName — __Host- 접두는 https에서만", () => {
 
   it("이름이 비어 있지 않다", () => {
     expect(stateCookieName(false).length).toBeGreaterThan(0);
+  });
+});
+
+describe("stateCookieNames — 읽는 쪽은 두 이름을 다 본다", () => {
+  /**
+   * ⚠️ **쓰는 쪽과 읽는 쪽이 프로토콜을 다른 신호로 판정한다.** Action은 `x-forwarded-proto`를,
+   * callback은 요청 URL을 본다 — 갈리면 **쓴 쿠키와 찾는 쿠키의 이름이 달라져** 연결이 100%
+   * `state-mismatch`가 되고, 증상이 Safari 접두 함정과 바이트 단위로 같아 서명·nonce를 의심하게
+   * 만든다. `lib/auth/cookie.ts`가 `authjs.session-token`과 `__Secure-` 접두 둘을 다 보는 것과 같은
+   * 해법이다: **읽는 쪽이 관대하면 판정이 갈려도 동작한다.**
+   */
+  it("접두 있는 이름과 없는 이름 둘을 준다", () => {
+    expect([...stateCookieNames()].sort()).toEqual(
+      [stateCookieName(true), stateCookieName(false)].sort(),
+    );
+  });
+
+  it("접두 붙은 쪽이 먼저다 — https에서 심은 것을 먼저 찾는다", () => {
+    expect(stateCookieNames()[0]).toBe(stateCookieName(true));
+  });
+
+  it("두 이름이 서로 다르다 — 목록이 사실상 하나가 되지 않는다", () => {
+    expect(new Set(stateCookieNames()).size).toBe(2);
   });
 });
