@@ -182,13 +182,22 @@ https에서만** 붙인다 — `__Host-`는 `Secure`를 요구하고 Safari는 `
 않아 로컬 callback이 항상 `state-mismatch`가 된다. `lib/auth/cookie.ts`가 `__Secure-` 접두 유무를 프로토콜로
 가르는 것과 같은 방식이다.
 
+⚠️ **읽는 쪽은 두 이름을 다 본다** (`stateCookieNames`, 2026-09-06 `/code-review`). 쿠키를 심는 Action은
+`x-forwarded-proto`를, callback은 요청 URL을 보는데 **둘은 다른 신호라 갈릴 수 있다** — 갈리면 쓴 이름과
+찾는 이름이 달라져 연결이 100% `state-mismatch`가 되고, 증상이 바로 위 Safari 함정과 바이트 단위로 같아
+서명·nonce를 의심하게 만든다. 쓰는 쪽만 정확하면 되고, 어느 이름으로 왔든 서명 검증은 따로 한다.
+지울 때도 둘 다 지운다 — `__Host-` 쿠키는 `Secure` 없이 보내면 접두 규칙 위반으로 **무시돼 안 지워진다**.
+
 ⚠️ **callback의 엣지 셋**:
 - `?error=access_denied`(사용자가 GitHub에서 취소) — `code`가 없다. state가 유효하면 설정 화면으로
   `?e=denied`, 아니면 `/projects?e=denied`.
 - **code 재사용·만료 — GitHub 토큰 엔드포인트는 HTTP 200에 body `error: "bad_verification_code"`를 준다.**
-  `res.ok`만 보면 `undefined` 토큰을 성공으로 읽는다. `octokit`이 재수출하는 `OAuthApp`(`clientType:
-  "github-app"`, `createToken`·`refreshToken`·`getWebFlowAuthorizationUrl`)을 쓴다 — 이미 설치돼 있고
-  (`@octokit/oauth-app@8`) 그 오류를 던져 준다. 손으로 토큰 엔드포인트를 파싱하지 않는다. → `exchange-failed`.
+  `res.ok`만 보면 `undefined` 토큰을 성공으로 읽는다. **`@octokit/oauth-app`의** `OAuthApp`(`clientType:
+  "github-app"`, `createToken`·`refreshToken`·`getWebFlowAuthorizationUrl`)이 그 오류를 던져 주므로 손으로
+  토큰 엔드포인트를 파싱하지 않는다. → `exchange-failed`.
+  ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** (2026-09-06 실측): `defaults({ clientType:
+  "oauth-app" })`로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다.
+  이미 전이 의존성이던 `8.0.4`를 **직접 의존성으로 승격**했다 — pnpm strict에서는 명시해야 import된다.
 - 세션이 왕복 중 만료 — `requireUser()`가 `/`로 보낸다. `code`는 잃지만 재시도로 복구되고, 로그인 화면이
   맞는 목적지다.
 
@@ -336,7 +345,13 @@ never` + 폴백)이다 — `?e=`는 주소창 입력이라 던지는 `never`(`ac
 | `planConnectionHealth({ project, probe })` | `lib/github-connect/health.ts` | §3.3 표 그대로 6갈래. `probe`는 `{ status: "ok", installationId, fullName } \| { status: "not-installed" } \| { status: "error" }` |
 | `probeFromError(status)` | `lib/github-connect/health.ts` | HTTP status → `not-installed`(401·403·404) / `error`. `probeRepo`가 부른다 |
 | `planTokenUse({ expiresAt, now, hasRefreshToken })` | `lib/github-connect/token.ts` | `use` / `refresh` / `reauthorize`. 만료 60초 전을 만료로 본다 |
+| `refreshFailure(status)` | `lib/github-connect/token.ts` | 갱신 호출의 실패 → `reauthorize` / `unavailable`. `Account`에 `refresh_token_expires_in`이 없어 **이 실패가 refresh 만료의 유일한 신호**다. ⚠️ **429는 4xx인데 `unavailable`이다** — 속도 제한은 거부가 아니다 |
+| `stateCookieName(secure)` · `stateCookieNames()` | `lib/github-connect/state.ts` | 쓰는 쪽은 하나를 고르고 **읽는 쪽은 둘 다 본다** (§3.1) |
 | `connectErrorMessage(status)` · `isConnectError(v)` | `lib/github-connect/message.ts` | §3.5 union 전부 → 한국어 한 줄("-요"). **`satisfies never` + 폴백**으로 갈래를 늘리면 컴파일 에러 (`inviteErrorMessage`와 같은 형) |
+
+**DB 제약 하나**: `Account`를 `userId`로 `findUnique`할 수 없다 — unique가 `@@id([provider,
+providerAccountId])` 하나뿐이라 `readAccount`와 "내 행 조회"는 **`findFirst`**다. "User당 App 연결 하나"는
+우리 정책이지 DB가 강제하는 것이 아니다.
 
 **타입 경계 하나**: `Project.installationId`는 **String**(`schema.prisma:29`)이고 GitHub API는 number다.
 껍데기가 API 응답을 `String(id)`로 좁혀 `{ userInstallationIds: string[], userRepoFullNames: string[] }`로
