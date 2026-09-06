@@ -732,8 +732,14 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 두 번째 호출은 **이름 감지 전용**이다(리네임이면 octokit이 301을 따라가 새 `full_name`을 준다).
 2026-09-07에 실물로 확인했다 — 설치의 선택 목록에서 리포를 빼자 `probeRepo`가 `not-installed`로 바뀌었다.
 
-- **`try`가 클라이언트 생성까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
+- **`try`가 토큰 발급까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
   `getInstallationOctokit`의 **토큰 발급**이 404로 죽는다.
+- **⚠️ `createApp()`은 `try` 밖이다** (2026-09-07). 환경변수 누락(`MissingEnvError`)은 GitHub 실패가 아니라
+  우리 설정 오류인데, 값으로 접으면 화면이 "확인할 수 없어요 — 잠시 뒤 다시"를 **영원히** 보이고 로그도
+  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면 `loadHealth`·
+  `connectRepository`)도 그것을 잡지 않는다** — Server Action에서는 digest만 있는 일반 오류가 되지만
+  사용자가 할 수 있는 일이 없는 오류라 §6.3("거부는 값으로")의 예외다. `state.ts`의 `requireSecret`이
+  빈 키를 `state-mismatch`로 접지 않고 던지는 것과 같은 판단이다.
 - **⚠️ 예외를 삼켜 `not-installed`로 접지 않는다.** 분류는 `probeFromError` **한 곳**이고, **403·404만
   `not-installed`, 401·429·5xx는 `error`**다. 401을 접었더니 로컬 App JWT가 깨진 상태에서 화면이
   "App이 제거됐어요 + 설치 링크"를 보여 **재설치해도 안 고쳐지는** 안내가 됐다(2026-09-06, `d9255a0`).
@@ -755,6 +761,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 **`unavailable`만 재시도를 권한다.** `connectErrorMessage`가 12갈래를 `satisfies never`로 덮으므로
 갈래를 늘리면 컴파일이 red다.
+
+⚠️ **`unavailable`·`error`로 접는 자리는 전부 `logFailure`를 부른다** (`lib/github-connect/log.ts`,
+2026-09-07). 화면에는 갈래 이름만 가므로 GitHub 5xx·네트워크·Prisma가 사용자 제보에서 구별되지 않는다 —
+callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던 것을 한 곳으로 모았다. `reauthorize`는
+남기지 않는다(화면이 다음 행동을 말한다). `token-store.test.ts`·`github-connect.test.ts`가 `console.error`
+호출을 단언한다.
 
 ⚠️ **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다.** 리네임·소유자 이전을 서버가
 조용히 받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
