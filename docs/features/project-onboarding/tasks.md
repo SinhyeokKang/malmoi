@@ -223,17 +223,17 @@ design §3.1의 예산이 실제로는 42회, §4의 50로케일 첫 적재는 1
 
 ## T6. Server Action — 연결·탐지·생성·적재
 
-- [ ] `lib/github-connect/state.ts` — `StatePayload.slug` → `dest: { kind:"settings", slug } | { kind:"new" }`,
+- [x] `lib/github-connect/state.ts` — `StatePayload.slug` → `dest: { kind:"settings", slug } | { kind:"new" }`,
       `parsePayload` 필드 검사, `StateCheck.ok`가 `dest`를 돌려준다
   - ⚠️ **쿼리로 빼지 않는다** — 서명 안에 있어야 open redirect 판정이 필요 없다 (design §3.6)
   - 기존 셋 갱신: `lib/github-connect/__tests__/state.test.ts` · `app/api/__tests__/github-callback.test.ts` ·
     `github-connect.test.ts:364`. `settings/actions.ts`의 `startGithubConnect`가 `{kind:"settings"}`로 서명
   - 검증: 옛 모양(`{slug}`)의 state가 `state-mismatch`로 거부된다(배포 직후 10분의 창을 의도한다)
-- [ ] `app/api/github/callback/route.ts` — `dest`에 따라 `/projects/new` 또는 설정 화면으로. 실패는
+- [x] `app/api/github/callback/route.ts` — `dest`에 따라 `/projects/new` 또는 설정 화면으로. 실패는
       `/projects/new?e=<ConnectError>` (state 무효면 지금처럼 `/projects?e=`)
-- [ ] `app/(edit)/projects/new/page.tsx` 자리에 `export const maxDuration = 60` (Action은 페이지 세그먼트 config를 쓴다 — design §2).
+- [x] `app/(edit)/projects/new/page.tsx` 자리에 `export const maxDuration = 60` (Action은 페이지 세그먼트 config를 쓴다 — design §2).
       `[slug]/settings/page.tsx`도
-- [ ] `app/(edit)/projects/actions.ts`
+- [x] `app/(edit)/projects/actions.ts`
   - `startGithubConnectForUser()` — 인가는 `requireUser`뿐 (design §3.6)
   - `listConnectableRepos()` — 사용자 토큰으로 설치·리포 목록 (**전 페이지**, `paginate`). 0개면 `no-installations`/`no-repos`
   - `detectRepoFormats({ owner, repo })` — 3중 검증 → `readRepoSnapshot` → 2패스(design §3.1) → `summarizeCandidates`
@@ -245,10 +245,10 @@ design §3.1의 예산이 실제로는 42회, §4의 50로케일 첫 적재는 1
   - `rotatePushToken({ slug })` — `project:settings`
   - ⚠️ 모든 export가 스스로 인가를 부른다 (`entry-points.test.ts`가 export 단위로 센다)
   - ⚠️ **인가가 GitHub 조회보다 먼저다** (거부될 요청이 남의 레이트 리밋을 태우지 않는다)
-- [ ] `app/(edit)/actions.ts` — `saveTranslation`·`triggerPullAction`에 `planProjectReadiness` → `not-ready` 거부
-- [ ] `app/__tests__/entry-points.test.ts:161` — 링크 검사 정규식을 **다중 세그먼트 정적 경로**까지 넓힌다
+- [x] `app/(edit)/actions.ts` — `saveTranslation`·`triggerPullAction`에 `planProjectReadiness` → `not-ready` 거부
+- [x] `app/__tests__/entry-points.test.ts:161` — 링크 검사 정규식을 **다중 세그먼트 정적 경로**까지 넓힌다
       (`/projects/new` 가 검사에 들어온다). 템플릿 리터럴은 여전히 밖 — T7 `[manual]`
-- [ ] `app/(edit)/__tests__/onboarding.test.ts` — **별도 파일 + mock 목록 명시** (`github-connect.test.ts`·
+- [x] `app/(edit)/__tests__/onboarding.test.ts` — **별도 파일 + mock 목록 명시** (`github-connect.test.ts`·
       `publish-failure.test.ts` 전례): `vi.mock("@/lib/onboarding/ingest")`, `@/lib/github`(`probeRepo`·`readRepoSnapshot`·
       `readBlob`), `@/lib/github-connect/user`
   - 케이스: 비로그인 거부 / 3중 검증 거부 3갈래 + `unavailable` 통과 / OWNER 3개 제한 초과(EDITOR 3개는 통과) /
@@ -259,6 +259,29 @@ design §3.1의 예산이 실제로는 42회, §4의 50로케일 첫 적재는 1
     `rotatePushToken`: EDITOR forbidden · 회전 후 옛 해시 `findUnique` null · 반환은 원문 한 번
 
 검증: `pnpm test` green · `entry-points.test.ts` green · `credential-separation.test.ts` green
+
+✅ 2026-09-07 — `fe65ab2`(test) → `b1fed55`(actions) → `032644e`(refactor: code-review 🟡 4건).
+test 1743 green · typecheck · build green. 실물 검증은 T7의 `[manual]`이 받는다 (화면이 없다).
+
+**T6이 더한 것 하나** — `OnboardError`에 **`not-ready`**. design §3.7이 두 번역 Action의 거부를 그
+이름으로 적었는데 T1의 17갈래에 없었고, 문구가 없으면 번역자 화면에 `저장 실패: not-ready`가 뜬다
+(POSTMORTEM 2026-09-06과 같은 형태). `pullMessage`·`translation-input`이 `isOnboardError`를 함께 읽는다.
+
+**설계와 다르게 한 것 하나** — 프로젝트가 없는 Action 넷(`startGithubConnectForUser`·
+`listConnectableRepos`·`detectRepoFormats`·`createProject`)의 세션 만료는 **값이 아니라 `/`로의
+redirect**다. design §3.6이 그 넷의 인가를 `requireUser`로 지정했고 그 함수가 redirect를 던진다 —
+중간 상태 무저장(§3.4)이라 "처음부터"가 정확한 안내이고, blur 저장처럼 잃을 입력이 없다.
+`OnboardError.unauthorized`는 `?e=`로 오는 경로에 남는다.
+
+**하네스 기본값이 바뀌었다** — 시드 프로젝트의 `lastCommitSha`가 "적재 완료"다. `planProjectReadiness`
+게이트가 붙으면서 `null` 시드로는 편집 흐름 테스트 28건이 전부 `not-ready`로 거부됐다. `project.create`는
+그대로 `null`을 낸다(스키마 기본값과 같다) — 그래서 온보딩이 만든 행은 `awaiting_first_sync`로 태어난다.
+
+⚠️ **code-review가 잡은 🟡 4건을 반영했고 1건은 남겼다.** 남긴 것은 **multi-locale 확정의 blob 예산**:
+`templatePaths`가 `matchGlobPaths`라 `ts-dict` 리포의 네임스페이스 파일 전부를 확정 클릭 한 번에
+내려받는다(탐지의 ≤21과 달리 상한이 없다). 상한을 두면 `detectFormatWith`가 보는 파일이 줄어
+`format.locales`가 불완전해질 수 있고, 그러면 기준 로케일 검사와 첫 적재가 조용히 로케일을 잃는다 —
+`ts-dict`는 수동 지정 전용이고 실측 리포의 네임스페이스가 10개대라 여기서 바꾸지 않았다.
 
 —— `feat(onboarding): server actions for connect, detect, create and ingest`
 
