@@ -25,8 +25,10 @@ export const maxDuration = 60;
  * 있는데도 `GET`인 유일한 이유다.
  */
 export async function GET(request: Request): Promise<NextResponse> {
-  // `PUSH_TOKEN`과 같은 fail-closed 검사를 재사용한다 — 환경변수가 비어 있으면 아무도 통과하지
-  // 못한다. 빈 값을 "인증 없음"으로 읽으면 아무나 커밋을 유발할 수 있다 (ARCHITECTURE §6).
+  // fail-closed — 환경변수가 비어 있으면 아무도 통과하지 못한다. 빈 값을 "인증 없음"으로 읽으면
+  // 아무나 커밋을 유발할 수 있다 (ARCHITECTURE §6).
+  // ⚠️ **`checkBearer`의 유일한 소비자가 됐다** (2026-09-07) — `/api/push`는 공유 시크릿 비교를 버리고
+  // `Project.pushTokenHash` 조회로 옮겨갔다. 여기 남는 이유는 cron 시크릿이 프로젝트와 무관해서다.
   const auth = checkBearer(request.headers.get("authorization"), optionalEnv("CRON_SECRET"));
   if (auth !== "ok") {
     // 어느 쪽이 틀렸는지 알려주지 않는다.
