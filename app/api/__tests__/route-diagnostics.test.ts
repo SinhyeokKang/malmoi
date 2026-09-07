@@ -24,7 +24,8 @@ const hoisted = vi.hoisted(() => ({
   triggerPull: vi.fn(),
   applyPush: vi.fn(),
   prisma: {
-    project: { findUnique: vi.fn() },
+    // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
+    project: { findUnique: vi.fn(), findMany: vi.fn() },
   },
 }));
 
@@ -72,47 +73,116 @@ beforeEach(() => {
   // 인증을 공짜로 통과하고, 그게 이 리포가 두 번 밟은 "가짜가 실제보다 관대하다"의 형태다
   // (POSTMORTEM 2026-09-05·2026-09-06). 인증이 필요한 케이스가 **명시적으로** 행을 준다.
   hoisted.prisma.project.findUnique.mockResolvedValue(null);
+  // pull 순회의 기본값도 fail-closed다 — 대상을 안 준 케이스가 남의 프로젝트를 돌리지 않는다.
+  hoisted.prisma.project.findMany.mockResolvedValue([]);
 });
 
-describe("/api/pull — 실패가 본문을 갖는다", () => {
-  it("ACTIVE_PROJECT_SLUG가 없으면 변수 이름이 담긴 500이다", async () => {
-    vi.stubEnv("ACTIVE_PROJECT_SLUG", "");
+/** 순회 대상이 되는 행 모양. `selectPullTargets`가 보는 세 컬럼만 있으면 된다. */
+const ready = (slug: string) => ({ slug, installationId: "1", lastCommitSha: "a".repeat(40) });
+
+describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => {
+  it("대상이 0개면 빈 배열 200이다 — 오류가 아니다", async () => {
     const res = await pullGet(pullRequest());
-    expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toMatchObject({ error: expect.stringContaining("ACTIVE_PROJECT_SLUG") });
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual([]);
+    expect(hoisted.triggerPull).not.toHaveBeenCalled();
   });
 
-  it("triggerPull이 던지면 ref가 담긴 500이고 메시지는 본문에 없다 — 전문은 서버 로그로 간다", async () => {
-    // 2026-09-04 audit #15: 이 본문이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
-    hoisted.triggerPull.mockRejectedValue(new Error("GitHub App 토큰 발급 실패"));
+  it("준비된 프로젝트마다 한 번씩, `slug` 오름차순으로 부른다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("zulu"), ready("alpha")]);
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    const res = await pullGet(pullRequest());
+    expect(res.status).toBe(200);
+    expect(hoisted.triggerPull.mock.calls.map((c) => c[1])).toEqual(["alpha", "zulu"]);
+    await expect(res.json()).resolves.toEqual([
+      { slug: "alpha", status: "skipped", reason: "no-edits" },
+      { slug: "zulu", status: "skipped", reason: "no-edits" },
+    ]);
+  });
+
+  it("준비 안 된 프로젝트는 부르지 않는다 — 돌리면 `runPull`이 던져 매일 밤 로그를 채운다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([
+      { slug: "skillflo-web", installationId: null, lastCommitSha: "deadbeef" },
+      ready("order-check"),
+    ]);
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    await pullGet(pullRequest());
+    expect(hoisted.triggerPull.mock.calls.map((c) => c[1])).toEqual(["order-check"]);
+  });
+
+  it("한 프로젝트가 던져도 나머지가 돈다 — 그 항목만 `failed` + `ref`다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b"), ready("c")]);
+    hoisted.triggerPull
+      .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" })
+      .mockRejectedValueOnce(new Error("GitHub App 토큰 발급 실패"))
+      .mockResolvedValueOnce({ status: "committed", commitSha: "abc", prUrl: "u", changed: [] });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await pullGet(pullRequest());
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveLength(3);
+    expect(body[0]).toMatchObject({ slug: "a", status: "skipped" });
+    expect(body[2]).toMatchObject({ slug: "c", status: "committed" });
+    // 실패 항목: 전문은 본문에 없고 `ref`만 있다 (2026-09-04 audit #15).
+    expect(body[1]).toMatchObject({ slug: "b", status: "failed" });
+    expect(body[1].ref).toMatch(/^[0-9a-f]{8}$/);
+    expect(JSON.stringify(body)).not.toContain("GitHub App");
+    // 버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다.
+    const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toContain("GitHub App 토큰 발급 실패");
+    expect(logged).toContain(body[1].ref);
+    expect(logged).toContain("b");
+    spy.mockRestore();
+  });
+
+  it("우리 도메인 오류(AppError)는 그 항목의 메시지로 실린다 — slug·경로는 시크릿이 아니다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("order-check")]);
+    hoisted.triggerPull.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
+    const res = await pullGet(pullRequest());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual([
+      { slug: "order-check", status: "failed", error: "프로젝트를 찾을 수 없다: order-check" },
+    ]);
+  });
+
+  it("`triggerPull`이 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-changes", warnings: ["w"] });
+    await expect((await pullGet(pullRequest())).json()).resolves.toEqual([
+      { slug: "a", status: "skipped", reason: "no-changes", warnings: ["w"] },
+    ]);
+  });
+
+  it("조회 자체가 실패하면 500이다 — 순회 전이라 배열을 만들 수 없다", async () => {
+    hoisted.prisma.project.findMany.mockRejectedValue(new Error("Can't reach database server at `pooler.supabase.com`"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("internal");
-    expect(body.ref).toMatch(/^[0-9a-f]{8}$/);
-    expect(JSON.stringify(body)).not.toContain("GitHub App");
-    // 버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다.
-    expect(spy.mock.calls[0]?.[0]).toContain("GitHub App 토큰 발급 실패");
-    expect(spy.mock.calls[0]?.[0]).toContain(body.ref);
+    expect(body).toMatchObject({ error: "internal" });
+    expect(JSON.stringify(body)).not.toContain("pooler.supabase.com");
     spy.mockRestore();
   });
 
-  it("우리 도메인 오류(AppError)는 메시지가 본문에 실린다 — 실물 500 진단에 Vercel 로그가 필요했다", async () => {
-    // 2026-09-04 실측: 프로덕션이 `프로젝트를 찾을 수 없다: order-check`로 죽었는데 본문이
-    // `{error:"internal",ref}`뿐이라 원인을 로그에서 찾아야 했다. slug는 시크릿이 아니고 CI가
-    // 이미 입력으로 아는 값이다 (#15 후속).
-    hoisted.triggerPull.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
-    const res = await pullGet(pullRequest());
-    expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: "프로젝트를 찾을 수 없다: order-check" });
+  it("인증 실패는 그대로다 — 순회에 들어가지 않는다", async () => {
+    const res = await pullGet(pullRequest("wrong"));
+    expect(res.status).toBe(401);
+    expect(hoisted.prisma.project.findMany).not.toHaveBeenCalled();
   });
 
-  it("정상 경로는 결과를 그대로 흘린다", async () => {
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+  it("`CRON_SECRET`이 비어 있으면 500이고 순회하지 않는다 — fail-closed", async () => {
+    vi.stubEnv("CRON_SECRET", "");
     const res = await pullGet(pullRequest());
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ status: "skipped", reason: "no-edits" });
+    expect(res.status).toBe(500);
+    expect(hoisted.prisma.project.findMany).not.toHaveBeenCalled();
+  });
+
+  it("서버 env `ACTIVE_PROJECT_SLUG`가 없어도 돈다 — cron이 그 값을 더 읽지 않는다", async () => {
+    vi.stubEnv("ACTIVE_PROJECT_SLUG", "");
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    expect((await pullGet(pullRequest())).status).toBe(200);
   });
 });
 
