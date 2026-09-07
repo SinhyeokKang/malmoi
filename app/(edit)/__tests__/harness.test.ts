@@ -22,7 +22,7 @@ const row = (over: Partial<{ id: string; slug: string; name: string; pushTokenHa
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
-  nestedByPath: null,
+  // `nestedByPath`는 넣지 않는다 — Prisma의 nullable Json은 `null`이 아니라 `Prisma.DbNull`을 받는다.
   baseLocale: "en",
   pushTokenHash: null as string | null,
   ...over,

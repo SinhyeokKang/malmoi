@@ -13,7 +13,15 @@ import type { Role } from "@/lib/auth/permission";
  * 저장과 조회가 **같은 상태**를 본다 — 홉 사이에서 값이 사라지면 red다.
  */
 
-export type ProjectSeed = { id: string; slug: string; name?: string };
+export type ProjectSeed = {
+  id: string;
+  slug: string;
+  name?: string;
+  installationId?: string | null;
+  lastCommitSha?: string | null;
+  /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
+  pushTokenHash?: string | null;
+};
 export type MemberSeed = { projectId: string; userId: string; role: Role };
 export type UserSeed = { id: string; email: string; name?: string | null };
 export type InvitationSeed = {
@@ -72,7 +80,9 @@ const FORMAT = {
   nestedByPath: null,
   baseLocale: "en",
   lastCommitSha: null as string | null,
+  lastCommitAt: null as Date | null,
   lastPulledAt: null as Date | null,
+  pushTokenHash: null as string | null,
 };
 
 export type Seed = {
@@ -120,13 +130,15 @@ export function createHarness(seed: Seed = {}) {
 
   const findProject = vi.fn(
     async (args: {
-      where: { slug?: string; id?: string };
+      where: { slug?: string; id?: string; pushTokenHash?: string | null };
       select?: { locales?: { where?: { orphaned?: boolean } } };
     }) => {
+      // `pushTokenHash`는 null을 매치하지 않는다 — 미발급 프로젝트가 인증에 걸리면 fail-open이다 (design §3.8).
       const found = projects.find(
         (p) =>
           (args.where.slug !== undefined && p.slug === args.where.slug) ||
-          (args.where.id !== undefined && p.id === args.where.id),
+          (args.where.id !== undefined && p.id === args.where.id) ||
+          (typeof args.where.pushTokenHash === "string" && p.pushTokenHash === args.where.pushTokenHash),
       );
       if (found === undefined) return null;
       const onlyLive = args.select?.locales?.where?.orphaned === false;
@@ -248,9 +260,13 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
-  const countMembers = vi.fn(async (args: { where: { projectId: string; role?: Role } }) =>
+  // `projectId`(마지막 OWNER 보호)와 `userId`(사용자당 프로젝트 3개 제한 — OWNER 행만 센다) 둘 다 받는다.
+  const countMembers = vi.fn(async (args: { where: { projectId?: string; userId?: string; role?: Role } }) =>
     members.filter(
-      (m) => m.projectId === args.where.projectId && (args.where.role === undefined || m.role === args.where.role),
+      (m) =>
+        (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
+        (args.where.userId === undefined || m.userId === args.where.userId) &&
+        (args.where.role === undefined || m.role === args.where.role),
     ).length,
   );
 
@@ -266,6 +282,32 @@ export function createHarness(seed: Seed = {}) {
       Object.assign(row, args.data);
       return row;
     },
+  );
+
+  /**
+   * 온보딩의 `createProject`가 부른다. 스키마의 `slug @unique`·`pushTokenHash @unique`를 흉내낸다 — 안 하면
+   * slug 충돌·토큰 조회 경로를 **재현할 수조차 없다** (POSTMORTEM 2026-09-05). NULL은 unique에 걸리지 않는다.
+   */
+  const createProject = vi.fn(async (args: { data: ProjectSeed & Record<string, unknown> }) => {
+    const hash = args.data.pushTokenHash ?? null;
+    const clash = projects.some(
+      (p) => p.slug === args.data.slug || p.id === args.data.id || (hash !== null && p.pushTokenHash === hash),
+    );
+    if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    const row = { ...FORMAT, ...args.data, pushTokenHash: hash };
+    projects.push(row);
+    return row;
+  });
+
+  /** pull 순회용. `where`는 `installationId: { not: null }`·`lastCommitSha: { not: null }` 모양만 받는다. */
+  const findManyProjects = vi.fn(
+    async (args: { where?: Record<string, { not: null } | string | null>; orderBy?: unknown } = {}) =>
+      projects.filter((p) =>
+        Object.entries(args.where ?? {}).every(([k, v]) => {
+          const value = (p as Record<string, unknown>)[k];
+          return v !== null && typeof v === "object" && "not" in v ? value !== v.not : value === v;
+        }),
+      ),
   );
 
   /** `Account`의 unique는 `@@id([provider, providerAccountId])` 하나뿐 — userId로는 findFirst다. */
@@ -371,7 +413,7 @@ export function createHarness(seed: Seed = {}) {
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
-    project: { findUnique: findProject, update: updateProject },
+    project: { findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -497,6 +539,8 @@ export function createHarness(seed: Seed = {}) {
     accounts,
     spies: {
       findProject,
+      findManyProjects,
+      createProject,
       updateProject,
       findAccountUnique,
       findAccountFirst,
