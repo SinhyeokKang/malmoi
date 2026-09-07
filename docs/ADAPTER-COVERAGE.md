@@ -1114,3 +1114,12 @@ livemarks)가 나왔다 — 지표를 넣고 배선을 안 하는 것이 이 리
 
 **판정**: 제거한 둘이 실제로 흐르지 않았다는 실측 확인이다. 필드가 소비되고 있었다면
 `yaml-catalog`의 루트 키 판정이 흔들려 그 18개 중 하나라도 diff나 왕복에 나타났을 것이다.
+
+## 19. 회차를 더하지 않은 변경 — `codeDictCandidatePaths` 분리 (2026-09-07)
+
+`lib/adapters/code-dict.ts`의 `detectCandidates` 앞부분(경로 → 그룹, probe 이전)을 `codeDictCandidatePaths(paths)`로
+분리해 export했다 (온보딩 design §3.1 2b — 서버는 동기 probe가 없어 내려받을 파일을 고를 그룹이 먼저 필요하다).
+**판정은 한 줄도 바뀌지 않았다** — `detectCandidates`가 그 함수를 그대로 부르고 `hasDictionary` 검증만 얹는다.
+`lib/adapters/__tests__/code-dict-paths.test.ts`가 부분집합·순서 보존·로케일 집합 동일을 단언하고, `detect-candidates`·
+`key-order-golden`이 그대로 green이다. `lib/adapters/**` 변경이지만 **재측정 트리거로 보지 않고 회차를 더하지 않는다** —
+같은 입력에 같은 후보를 내는 코드 이동이라 잴 것이 없다.
