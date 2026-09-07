@@ -18,13 +18,13 @@ describe("classifyFailure — 우리 메시지와 남의 메시지를 가른다"
   it("requireEnv가 던진 것은 안전하다 — 변수 이름뿐이고 그게 회고가 요구한 것이다", () => {
     let thrown: unknown;
     try {
-      requireEnv("ACTIVE_PROJECT_SLUG", {});
+      requireEnv("EXAMPLE_MISSING_VAR", {});
     } catch (e) {
       thrown = e;
     }
     const c = classifyFailure(thrown);
     expect(c.safe).toBe(true);
-    expect(c.safe && c.message).toContain("ACTIVE_PROJECT_SLUG");
+    expect(c.safe && c.message).toContain("EXAMPLE_MISSING_VAR");
   });
 
   it("Prisma 접속 오류는 안전하지 않다 — 호스트·유저가 본문으로 나가면 안 된다", () => {
@@ -50,7 +50,7 @@ describe("classifyFailure — 우리 메시지와 남의 메시지를 가른다"
 
   it("메시지 문자열이 아니라 **타입**으로 가른다 — 남의 오류가 우리 문구를 담아도 안전이 아니다", () => {
     // 문구로 갈랐다면 여기서 통과했을 것이다. 그게 이 함수가 클래스를 쓰는 이유다.
-    expect(classifyFailure(new Error("환경변수 ACTIVE_PROJECT_SLUG이(가) 없다")).safe).toBe(false);
+    expect(classifyFailure(new Error("환경변수 EXAMPLE_MISSING_VAR이(가) 없다")).safe).toBe(false);
   });
 });
 
