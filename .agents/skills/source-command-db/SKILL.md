@@ -121,7 +121,9 @@ npx prisma migrate diff \
 - `--from-config-datasource`는 **살아 있는 DB의 현재 상태**를 기준으로 삼는다. `--from-migrations`는 shadow DB를 요구하므로 쓰지 않는다.
 - 타임스탬프 형식(`YYYYMMDDHHMMSS`)을 Prisma 관례와 맞춰야 순서가 맞는다. **UTC로** 만든다(`date -u`).
 - 출력에 `Loaded Prisma config from...` 같은 로그가 섞이면 SQL이 깨진다. 파일을 열어 **첫 줄이 SQL인지 확인**한다.
-- 적용은 `pnpm db:deploy`다. `db:migrate`를 다시 부르면 같은 프롬프트에 또 걸린다.
+- 적용은 **`pnpm exec prisma migrate deploy`**(`PRISMA_TARGET` 없음 → `DIRECT_URL` = dev)다. ⚠️ `pnpm db:deploy`가 **아니다** — 그 스크립트는 `PRISMA_TARGET=prod`라 프로덕션을 겨눈다(dev/prod 분리 전 문장이 남아 있었다 — 2026-09-07 T2에서 잡았다). `db:migrate`를 다시 부르면 같은 프롬프트에 또 걸린다.
+- ⚠️ **비대화형 판정은 destructive와 무관하게 걸릴 수 있다** — 2026-09-07 nullable 컬럼 + unique 인덱스(additive)에도 `--create-only`가 같은 메시지로 거부됐다. 이 우회 경로가 사실상 에이전트의 기본 경로다.
+- `--script` 출력 **첫 줄에 dotenv 로그(`◇ injected env (N) from .env.local …`)가 섞인다** (실측). `sed -i '' '/^◇ injected env/d'`로 지운 뒤 첫 줄이 `-- AlterTable`류 SQL인지 본다.
 - **이 경로는 Prisma의 안전장치를 우회하는 것이다.** 그래서 5단계 SQL 검토가 선택이 아니라 필수고, destructive 판정(2단계)과 dev/prod 분리 섹션의 제약을 이미 통과했다는 전제가 있어야 한다. 데이터가 있는 DB에서 이 경로를 쓸 때는 SQL을 읽은 결과를 사용자에게 보여주고 확인받는다.
 
 ### 5. 검증
