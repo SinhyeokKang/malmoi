@@ -86,20 +86,38 @@
 
 ## T3. `/api/push` 인증 전환 + 스크립트 인자 필수화
 
-- [ ] `app/api/push/route.ts` — bearer → `hashPushToken` → `Project.findUnique({pushTokenHash})` → slug 대조 → 역행 검사
+- [x] `app/api/push/route.ts` — bearer → `hashPushToken` → `Project.findUnique({pushTokenHash})` → slug 대조 → 역행 검사
   - 401(토큰 무효·미발급) / 409(오배송) / 409(역행) / 404 제거 — 프로젝트 존재를 노출하지 않는다
   - `requireEnv("ACTIVE_PROJECT_SLUG")`·`PUSH_TOKEN` 읽기 제거 (`checkBearer`는 `/api/pull`의 `CRON_SECRET`용으로 남는다)
   - ⚠️ 인증·JSON·스키마 실패는 **try 밖에 그대로 둔다** (감싸면 400이 500으로 접힌다 —
     `route-diagnostics.test.ts`가 그것을 센다)
-- [ ] `app/api/__tests__/route-diagnostics.test.ts` — push 쪽: `ACTIVE_PROJECT_SLUG` 500 케이스(`:107`)를
+- [x] `app/api/__tests__/route-diagnostics.test.ts` — push 쪽: `ACTIVE_PROJECT_SLUG` 500 케이스(`:107`)를
       **토큰 미발급 401**로. mock prisma에 `findUnique({pushTokenHash})` 분기
-- [ ] `lib/push/guard.ts` 주석 갱신 — 대조 대상이 "서버 env"에서 "토큰의 프로젝트"로 바뀐 이유. `lib/push/plan.ts:63` 주석도
-- [ ] `scripts/push-local.ts:68` · `scripts/smoke-github.ts:36` — `?? requireEnv("ACTIVE_PROJECT_SLUG")` 폴백 제거,
+- [x] `lib/push/guard.ts` 주석 갱신 — 대조 대상이 "서버 env"에서 "토큰의 프로젝트"로 바뀐 이유. `lib/push/plan.ts:63` 주석도
+- [x] `scripts/push-local.ts:68` · `scripts/smoke-github.ts:36` — `?? requireEnv("ACTIVE_PROJECT_SLUG")` 폴백 제거,
       **인자 필수**(없으면 usage + exit 2). `push-local`의 `PUSH_TOKEN`은 "그 프로젝트의 토큰 원문"이 된다
   - 검증: `pnpm push:local <dir>`(--project 없이) exit 2 · `lib/cli/__tests__` 인자 파싱 테스트 갱신
 
 검증: `pnpm test` green · 새 테스트 4건(무헤더 401 / 잘못된 토큰 401 / 미발급 프로젝트 401 /
-오배송 409)이 각자 다른 응답을 낸다 · `grep -n ACTIVE_PROJECT_SLUG app/ scripts/ lib/` 0건
+오배송 409)이 각자 다른 응답을 낸다 · ~~`grep -n ACTIVE_PROJECT_SLUG app/ scripts/ lib/` 0건~~ →
+**`app/api/push`·`scripts/`에서 0건** (전역 0건은 T3 단독으로 불가능하다 — `/api/pull`이 T4까지,
+`lib/__tests__/failure.test.ts`의 예시 변수명이 T8까지 남는다. code-review 2026-09-07이 잡았다)
+
+✅ 2026-09-07 — `f44e4a1`(test) → `47fb4de`(feat) → `3a3d5e8`(refactor: code-review 🟡1·2·3) + 문서 7커밋.
+test 1630 green · typecheck · build green.
+
+**실물 검증** (로컬 dev 서버 + dev DB, `order-check`에 토큰을 임시 발급했다가 회수):
+헤더 없음 401 / 빈 `Bearer ` 401(DB 왕복 없음) / 틀린 토큰 401 / 미발급 프로젝트 401 / 오배송 409
+(`expected/got`) / 역행 409 (`commitAt/lastCommitAt`) / 정상 200. `push:local`이 새 인증 경로로 실제
+리포를 적재해 200(`updated 23`)을 받았고, 두 CLI의 인자 누락은 exit 2 + usage였다.
+⚠️ 그 과정에서 dev DB의 `order-check`에 스모크 키 하나(`smoke.t3`)가 orphaned로 남았다 — 되돌릴 수
+있는 상태이고 export에는 안 나간다.
+
+**code-review가 바꾼 것 셋**: ① 인증이 JSON 파싱·스키마 검증보다 **앞으로** 갔다 — `maxDuration=60`
+공개 엔드포인트에서 무효 토큰 하나로 대용량 페이로드를 파싱시키고 zod `issues`까지 받아 가는 면적을
+막는다(둘 다 `return`이라 400이 500으로 접히지 않는다). ② 빈 `Bearer `를 조회 전에 거른다(전엔 헤더
+트림이라는 우연에 기대고 있었다). ③ 라우트 테스트의 기본 stub이 `null`(fail-closed)이 됐고, "미발급
+401"은 **NULL 행이 실재하는** 하네스로 검사한다 — 전엔 "틀린 토큰"과 바이트 단위로 같았다.
 
 —— `feat(push): per-project token auth replaces the shared secret`
 
