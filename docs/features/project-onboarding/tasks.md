@@ -432,9 +432,30 @@ DESIGN §7에 그 사실을 등재했다.
 ⚠️ **`/bugshot-qa`의 이슈 제출은 하지 않았다** — 결함이 없었고, 사용자 지시가 "문제가 있으면
 `/refactor` 후 `/push`"였다.
 
-- [ ] `/l10n-roundtrip` 재검증 (push 인증 경로가 바뀌었다 — 스킬 문서의 `PUSH_TOKEN`·`ACTIVE_PROJECT_SLUG` 절차와
-      pull 응답 기대(`:54`, 배열)를 먼저 고친다)
-- [ ] 문서 (각자 별도 커밋)
+- [x] `/l10n-roundtrip` 재검증 ✅ 2026-09-07 — **스킬 문서는 이미 새 절차로 갱신돼 있었다**(토큰=프로젝트,
+      배열 응답, `--project` 필수, `smoke:github <slug>`). 대상은 `order-check`(json-catalog — 재생성 경로이고
+      표현 5축이 섞여 있다), dev DB + 로컬 dev 서버.
+  - **0 발급**: dev DB의 `order-check`는 `pushTokenHash`가 `null`이었다(T8 판정대로). `generatePushToken`+
+    `hashPushToken`으로 발급하고 원문은 셸 env로만 넘겼다 — **`.env.local`은 건드리지 않았다**(dotenv가
+    이미 export된 값을 덮지 않는다). 검증 뒤 `null`로 회수했다
+  - **1 push**: `200` / `updated: 23` · `translationsFilled: 69` · `orphaned: 0` — **Bearer가 프로젝트를 정하는
+    경로가 실물에서 닫혔다**(서버 env 없이)
+  - **2 바이트 고정점**: 응답이 **배열**이고 `{"slug":"order-check","status":"skipped","reason":"no-changes"}` —
+    2층 blob 비교까지 가서 전 파일 동일. 재생성 writer가 표현 5축을 바이트로 재현한다는 증거다
+  - **3 편집 3건 → PR**: 파일 3개 × 네임스페이스 3개, 취약점을 일부러 겨눴다 — `en/buttons.retry`(한 줄
+    컨테이너 + `\/` + 값에 `"`·`\`) · `ja/alerts.unsavedChanges`(탭 + 비ASCII 리터럴) ·
+    `ko/menu.exportImage`(전 비ASCII `\uXXXX`). 결과: `+1 -1` × 3파일, **hunk 3 = 편집 키 3**, 파일별 규칙이
+    각자 지켜졌다(같은 `ko` 파일의 `saveAs`는 `/`가 이스케이프 없이 유지 — en과 규칙이 다르다).
+    **PR은 새로 만들지 않고 기존 #4를 재사용**했고 브랜치는 `l10n/sync-order-check`다. orphaned 키
+    `smoke.t3`은 export에서 빠졌다
+  - **4 머지 → 수렴**: main head가 `[skip-l10n]`을 들고, `l10n/sync-order-check`가 삭제되고, 재pull이
+    `no-edits`(1층 스킵 — `lastPulledAt == max(updatedAt)`)
+  - **5 CI**: 머지 커밋 `e22d9c84`의 run이 **skipped** — `[skip-l10n]`이 무한 루프를 막는다
+  - ⚠️ **부수 확인**: 편집의 `updatedBy`를 일부러 cuid가 아닌 값으로 넣었더니 같은 날 고친 `actorLabel`이
+    원문 그대로 냈다 — malmoi#3의 폴백 갈래가 실물에서 밟혔다
+  - ⚠️ **같은 리포를 prod `Project`도 가리킨다** — 야간 cron이 prod DB 상태로 그 브랜치를 다시 만들 수
+    있다. 폐기용 리포라 무해하지만 검증 대상을 고를 때 알고 있어야 한다
+- [x] 문서 (각자 별도 커밋) ✅ 2026-09-07
   - [x] `docs/SAAS.md` — §8 5단계 체크 · **§7.8 조회 방향**(해시가 프로젝트를 정한다) · §5.4.1(`StateDest`) ·
     §7.3("키 수가 큰 쪽을 추천" → "키 수를 보인다, 기준 로케일은 사용자가 고른다") · §8 5단계 "Actions 링크"는
     6단계 이후로 · §8 6단계에 "GitHub 계정 연결 — 연결은 5단계에서 사용자 수준으로 갔다" · §8 7단계 고정 제한에
