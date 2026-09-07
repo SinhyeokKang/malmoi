@@ -80,7 +80,7 @@
     기존 테스트 전부 green
 
 검증: `pnpm db:status`가 적용을 보인다 · `pnpm test` green
-✅ 2026-09-07 — `9d7634d`(test) → `c35e940`(feat(push): token.ts + 하네스) → `480ea1b`(feat(db): 스키마 + 마이그레이션 `20260907011650_add_project_push_token`, dev 적용·`db:status` 11개 up to date). test 1612 green · typecheck · build green. ⚠️ `migrate dev --create-only`가 additive인데도 비대화형을 거부해 `migrate diff` 우회 경로로 만들었다 — 그 레시피의 "적용은 `db:deploy`"가 prod를 겨누는 문장이어서 `/db` 4c를 고쳤다(`d18307b`). 하네스 검증 파일은 `app/(edit)/__tests__/harness.test.ts`(11건). **prod 미적용** — `/merge` 1단계.
+✅ 2026-09-07 — `9d7634d`(test) → `c35e940`(feat(push): token.ts + 하네스) → `480ea1b`(feat(db): 스키마 + 마이그레이션 `20260907011650_add_project_push_token`, dev 적용·`db:status` 11개 up to date). test 1612 green · typecheck · build green. ⚠️ `migrate dev --create-only`가 additive인데도 비대화형을 거부해 `migrate diff` 우회 경로로 만들었다 — 그 레시피의 "적용은 `db:deploy`"가 prod를 겨누는 문장이어서 `/db` 4c를 고쳤다(`d18307b`). 하네스 검증 파일은 `app/(edit)/__tests__/harness.test.ts`(14건 — code-review 🟡1 반영 `2554df2`: create가 id를 채우고, null 해시 조회·미지원 where 연산자는 던진다). **prod 미적용** — `/merge` 1단계.
 
 —— `feat(db): add Project.pushTokenHash` (스키마 + 마이그레이션 + 토큰 순수 함수 + 하네스)
 
