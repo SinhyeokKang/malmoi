@@ -56,6 +56,11 @@ describe("actorLabel — User.id를 사람으로, 옛 핸들은 그대로", () =
     expect(actorLabel("u2", actors)).toBe("n***@example.com");
   });
 
+  it("⚠️ 이름이 빈 문자열이면 이메일로 내려간다 — `??`는 그것을 이름으로 읽어 셀 메타가 통째로 사라진다", () => {
+    const blank = new Map<string, Actor>([["u3", { id: "u3", name: "  ", email: "blank@example.com" }]]);
+    expect(actorLabel("u3", blank)).toBe("b***@example.com");
+  });
+
   it("⚠️ 찾지 못한 값은 원문 그대로다 — 2026-09-05 이전 행의 GitHub 핸들이다", () => {
     expect(actorLabel("sinhyeokkang", actors)).toBe("sinhyeokkang");
   });
@@ -85,7 +90,8 @@ describe("번역 화면이 원문 대신 해석한 라벨을 넘긴다", () => {
   );
 
   it("`loadActors`를 부른다 — 이름의 출처가 화면에 배선돼 있다", () => {
-    expect(source).toContain("loadActors");
+    // ⚠️ 이름만 찾으면 주석에 적어 놓은 것도 통과한다 — 호출 형태로 좁힌다.
+    expect(source).toMatch(/loadActors\(/);
   });
 
   it("셀의 `updatedBy`를 CellMeta로 곧바로 넘기지 않는다", () => {

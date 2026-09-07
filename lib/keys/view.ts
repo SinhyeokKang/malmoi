@@ -55,12 +55,17 @@ export function collectActorIds(rows: KeyRow[]): string[] {
  *
  * 이름이 없으면 **마스킹한** 이메일이다 — 이 표는 프로젝트 멤버 전원이 보므로 남의 주소를
  * 그대로 싣지 않는다 (초대 화면과 같은 규칙).
+ *
+ * ⚠️ **`??`가 아니라 공백 판정이다.** provider가 이름을 빈 문자열로 주면 `??`는 그것을 이름으로
+ * 읽고, 호출부의 `{actor && …}`가 빈 문자열을 falsy로 접어 **셀 메타가 통째로 사라진다** —
+ * 배지까지 함께 없어지는데 화면엔 오류가 없다.
  */
 export function actorLabel(updatedBy: string | null, actors: Map<string, Actor>): string | null {
   if (!updatedBy) return null;
   const actor = actors.get(updatedBy);
   if (!actor) return updatedBy;
-  return actor.name ?? maskEmail(actor.email);
+  const name = actor.name?.trim();
+  return name ? name : maskEmail(actor.email);
 }
 
 /**
