@@ -15,8 +15,20 @@ const SCHEMA = readFileSync(fileURLToPath(new URL("../schema.prisma", import.met
 function projectBlock(): string {
   const lines = SCHEMA.split("\n");
   const start = lines.findIndex((l) => l.startsWith("model Project {"));
+  if (start === -1) throw new Error("model Project 블록이 schema.prisma에 없다");
   const end = lines.findIndex((l, i) => i > start && l.startsWith("}"));
+  if (end === -1) throw new Error("model Project 블록이 닫히지 않았다");
   return lines.slice(start + 1, end).join("\n");
+}
+
+/** 필드 줄 **바로 위**의 연속 `///` 주석만. 블록 어디에 있어도 통과하는 검사는 검사가 아니다. */
+function docCommentAbove(block: string, field: RegExp): string {
+  const lines = block.split("\n");
+  const at = lines.findIndex((l) => field.test(l));
+  if (at === -1) throw new Error(`필드 ${field}가 Project 블록에 없다`);
+  const out: string[] = [];
+  for (let i = at - 1; i >= 0 && lines[i]?.trimStart().startsWith("///"); i -= 1) out.unshift(lines[i] ?? "");
+  return out.join("\n");
 }
 
 describe("schema.prisma — Project.pushTokenHash", () => {
@@ -29,9 +41,8 @@ describe("schema.prisma — Project.pushTokenHash", () => {
   });
 
   it("주석이 fail-closed 근거를 든다 — null이면 어떤 push도 통과하지 못한다", () => {
-    const block = projectBlock();
-    const at = block.indexOf("pushTokenHash");
-    const above = block.slice(0, at);
+    const above = docCommentAbove(projectBlock(), /^\s*pushTokenHash\s+String\?/);
     expect(above).toMatch(/fail-closed/);
+    expect(above).toMatch(/401/);
   });
 });

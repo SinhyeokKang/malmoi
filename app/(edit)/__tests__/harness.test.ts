@@ -59,6 +59,17 @@ describe("harness — project.create", () => {
     expect(h.projects.filter((p) => p.pushTokenHash === null).length).toBeGreaterThanOrEqual(3);
   });
 
+  it("id를 생략하면 하네스가 채운다 — 실 Prisma의 `@default(cuid())`와 같은 호출 모양이다 (code-review 2026-09-07 🟡1)", async () => {
+    const h = createHarness();
+    const { id: _dropped, ...noId } = row();
+    void _dropped;
+    const created = await h.prisma.project.create({ data: noId });
+    expect(typeof created.id).toBe("string");
+    expect(created.id.length).toBeGreaterThan(0);
+    // 이어지는 멤버 행이 그 id로 이어져야 한다 — undefined면 `getProjectAccess`의 projectId 대조가 항상 참이 된다.
+    expect(await h.prisma.project.findUnique({ where: { id: created.id } })).toMatchObject({ slug: "fresh" });
+  });
+
   it("새 행은 `pushTokenHash`·`lastCommitAt`·`lastCommitSha` 컬럼을 갖는다 — 없으면 readiness·역행 판정을 재현할 수 없다", async () => {
     const h = createHarness();
     const created = await h.prisma.project.create({ data: row() });
@@ -73,9 +84,9 @@ describe("harness — project.findUnique({ pushTokenHash })", () => {
     expect(await h.prisma.project.findUnique({ where: { pushTokenHash: "nope" } })).toBeNull();
   });
 
-  it("null 해시로는 아무 행도 돌려주지 않는다 — 미발급 프로젝트가 인증에 걸리면 fail-open이다", async () => {
+  it("null 해시 조회는 던진다 — 실 Prisma도 unique where에 null을 거부한다(PrismaClientValidationError). 미발급 행이 걸리면 fail-open이다", async () => {
     const h = createHarness();
-    expect(await h.prisma.project.findUnique({ where: { pushTokenHash: null as unknown as string } })).toBeNull();
+    await expect(h.prisma.project.findUnique({ where: { pushTokenHash: null as unknown as string } })).rejects.toThrow();
   });
 });
 
@@ -90,6 +101,11 @@ describe("harness — project.findMany", () => {
     const h = createHarness({ projects: [{ id: "a", slug: "a", installationId: null }, { id: "b", slug: "b" }] });
     const got = await h.prisma.project.findMany({ where: { installationId: { not: null } } });
     expect(got.map((p) => p.slug)).toEqual(["b"]);
+  });
+
+  it("지원하지 않는 where 연산자는 던진다 — 조용히 빈 배열을 내면 순회 테스트가 '프로젝트 0개'로 통과한다", async () => {
+    const h = createHarness();
+    await expect(h.prisma.project.findMany({ where: { slug: { in: ["acme"] } } })).rejects.toThrow();
   });
 });
 

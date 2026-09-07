@@ -19,6 +19,8 @@ export type ProjectSeed = {
   name?: string;
   installationId?: string | null;
   lastCommitSha?: string | null;
+  /** 역행 409 판정의 비교 대상 — T3 테스트가 시드로 넣는다. */
+  lastCommitAt?: Date | null;
   /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
   pushTokenHash?: string | null;
 };
@@ -133,7 +135,11 @@ export function createHarness(seed: Seed = {}) {
       where: { slug?: string; id?: string; pushTokenHash?: string | null };
       select?: { locales?: { where?: { orphaned?: boolean } } };
     }) => {
-      // `pushTokenHash`는 null을 매치하지 않는다 — 미발급 프로젝트가 인증에 걸리면 fail-open이다 (design §3.8).
+      // 실 Prisma는 unique where의 null을 PrismaClientValidationError로 거부한다 — 가짜도 던진다. 조용히 null을
+      // 돌려주면 "미발급 프로젝트가 인증에 걸리는" fail-open을 테스트가 못 본다 (design §3.8).
+      if ("pushTokenHash" in args.where && typeof args.where.pushTokenHash !== "string") {
+        throw new Error("Argument `pushTokenHash` must not be null");
+      }
       const found = projects.find(
         (p) =>
           (args.where.slug !== undefined && p.slug === args.where.slug) ||
@@ -288,24 +294,33 @@ export function createHarness(seed: Seed = {}) {
    * 온보딩의 `createProject`가 부른다. 스키마의 `slug @unique`·`pushTokenHash @unique`를 흉내낸다 — 안 하면
    * slug 충돌·토큰 조회 경로를 **재현할 수조차 없다** (POSTMORTEM 2026-09-05). NULL은 unique에 걸리지 않는다.
    */
-  const createProject = vi.fn(async (args: { data: ProjectSeed & Record<string, unknown> }) => {
+  const createProject = vi.fn(async (args: { data: Omit<ProjectSeed, "id"> & { id?: string } & Record<string, unknown> }) => {
+    // `id @default(cuid())` — 실 호출은 id를 생략한다. 가짜가 undefined를 저장하면 이어지는 `projectMember.create({ projectId })`도
+    // undefined가 되고 `findMember`의 대조가 `undefined === undefined`로 항상 참이다 (code-review 2026-09-07 🟡1).
+    const id = args.data.id ?? `p-${projects.length + 1}`;
     const hash = args.data.pushTokenHash ?? null;
     const clash = projects.some(
-      (p) => p.slug === args.data.slug || p.id === args.data.id || (hash !== null && p.pushTokenHash === hash),
+      (p) => p.slug === args.data.slug || p.id === id || (hash !== null && p.pushTokenHash === hash),
     );
     if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
-    const row = { ...FORMAT, ...args.data, pushTokenHash: hash };
+    const row = { ...FORMAT, ...args.data, id, pushTokenHash: hash };
     projects.push(row);
     return row;
   });
 
-  /** pull 순회용. `where`는 `installationId: { not: null }`·`lastCommitSha: { not: null }` 모양만 받는다. */
+  /**
+   * pull 순회용. `where`는 등호와 `{ not: X }`만 받는다 — 다른 연산자는 **던진다.** 조용히 빈 배열을 내면 순회
+   * 테스트가 "프로젝트 0개"로 통과한다 (fake-client의 "주입 안 된 요청엔 던진다"와 같은 방침).
+   */
   const findManyProjects = vi.fn(
-    async (args: { where?: Record<string, { not: null } | string | null>; orderBy?: unknown } = {}) =>
+    async (args: { where?: Record<string, unknown>; orderBy?: unknown } = {}) =>
       projects.filter((p) =>
         Object.entries(args.where ?? {}).every(([k, v]) => {
           const value = (p as Record<string, unknown>)[k];
-          return v !== null && typeof v === "object" && "not" in v ? value !== v.not : value === v;
+          if (v === null || typeof v !== "object") return value === v;
+          const keys = Object.keys(v);
+          if (keys.length === 1 && keys[0] === "not") return value !== (v as { not: unknown }).not;
+          throw new Error(`harness findMany: 지원하지 않는 where 연산자 ${k}: ${JSON.stringify(v)}`);
         }),
       ),
   );
