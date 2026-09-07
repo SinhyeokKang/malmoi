@@ -4,11 +4,10 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
-import { optionalEnv, requireEnv } from "@/lib/env";
 import { applyPush } from "@/lib/push/apply";
-import { checkBearer, statusFor } from "@/lib/push/auth";
 import { checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
+import { hashPushToken } from "@/lib/push/token";
 
 /**
  * CI → DB. **외부 진입점이라 Server Action이 아니라 Route Handler다** (MVP §5) — Actions는
@@ -18,18 +17,24 @@ import { PushPayload } from "@/lib/push/plan";
  * `orphaned`를 판정할 수 있고, 리소스 교체가 아니라 부수효과 있는 RPC다.
  *
  * **번역값은 리포 값으로 덮는다** (strict — MVP §3.1). 대가인 편집 손실 창도 거기 있다.
+ *
+ * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, design §3.8). `sha256(원문)`으로
+ * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을
+ * 먼저 찾으면 **오배송된 페이로드가 인증 대상을 고르게 된다.** 서버 env 둘(공유 토큰·활성 프로젝트 slug)은
+ * 이 라우트에서 사라졌다 — `checkBearer`는 `/api/pull`의 `CRON_SECRET` 전용으로 남는다.
  */
 
 // 1446키 벌크 쓰기가 기본 10초 안에 안 끝날 수 있다.
 export const maxDuration = 60;
 
 export async function POST(request: Request): Promise<NextResponse> {
-  // `requireEnv`가 아니다 — 누락은 `checkBearer`가 `not-configured`(500)로 가른다.
-  const auth = checkBearer(request.headers.get("authorization"), optionalEnv("PUSH_TOKEN"));
-  if (auth !== "ok") {
+  // 헤더 형식만 여기서 본다 — 대조는 DB 조회이고, 그건 아래 `try` 안이다(장애가 401로 접히면 안 된다).
+  const header = request.headers.get("authorization");
+  if (header === null || !header.startsWith("Bearer ")) {
     // 어느 쪽이 틀렸는지 알려주지 않는다 — 토큰 존재 여부를 탐색할 단서를 주지 않는다.
-    return NextResponse.json({ error: auth === "not-configured" ? "server misconfigured" : "unauthorized" }, { status: statusFor(auth) });
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const rawToken = header.slice("Bearer ".length);
 
   let body: unknown;
   try {
@@ -49,25 +54,28 @@ export async function POST(request: Request): Promise<NextResponse> {
   // 않으면 진단할 재료가 없다. 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다.
   // 위쪽 인증·JSON·스키마 검사는 이미 자기 응답을 내므로 감싸지 않는다 — 감싸면 400이 500으로 접힌다.
   try {
-    const slug = requireEnv("ACTIVE_PROJECT_SLUG");
-
-    // 오배송 거부 — DB를 조회하기 전에 본다. 대상이 틀렸으면 찾아볼 프로젝트도 아니다.
-    const routing = checkProjectSlug(parsed.data.projectSlug, slug);
-    if (routing !== "ok") {
-      // slug는 비밀이 아니라 라우팅 정보다 — CI 로그에서 진단하려면 둘 다 보여야 한다.
-      return NextResponse.json(
-        { error: "project mismatch", expected: slug, got: parsed.data.projectSlug },
-        { status: guardStatus(routing) },
-      );
+    const prisma = getPrisma();
+    // **토큰이 프로젝트를 정한다.** 원문은 쿼리에 실리지 않고, 발급받지 않은 프로젝트(`pushTokenHash`가 null)는
+    // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (design §3.8).
+    const project = await prisma.project.findUnique({
+      where: { pushTokenHash: hashPushToken(rawToken) },
+      select: { id: true, slug: true, lastCommitAt: true },
+    });
+    // ⚠️ **404를 내지 않는다** — 토큰이 유효하지 않은 것과 그런 프로젝트가 없는 것을 가르면 프로젝트 존재가
+    // 샌다. 미발급·오타·폐기 토큰이 전부 같은 401이다.
+    if (!project) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const prisma = getPrisma();
-    const project = await prisma.project.findUnique({
-      where: { slug },
-      select: { id: true, lastCommitAt: true },
-    });
-    if (!project) {
-      return NextResponse.json({ error: `project '${slug}' not found` }, { status: 404 });
+    // 오배송 거부 — 대조 대상이 **토큰이 정한 프로젝트**다 (전에는 서버 env였다).
+    const routing = checkProjectSlug(parsed.data.projectSlug, project.slug);
+    if (routing !== "ok") {
+      // slug는 비밀이 아니라 라우팅 정보다 — CI 로그에서 진단하려면 둘 다 보여야 한다. 토큰이 이미 그
+      // 프로젝트의 것으로 확인됐으므로 `expected`를 보여도 새로 새는 정보가 없다.
+      return NextResponse.json(
+        { error: "project mismatch", expected: project.slug, got: parsed.data.projectSlug },
+        { status: guardStatus(routing) },
+      );
     }
 
     // 역행 거부 — 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는 것을 막는다 (ARCHITECTURE §5.5.5).

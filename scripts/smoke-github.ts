@@ -5,7 +5,7 @@
  * 테스트 스위트가 판정할 성질이 아니다. 대신 0단계(App 생성·설치·env·`Project` 컬럼) 설정이
  * 틀렸을 때 **어느 값이 틀렸는지**를 알려준다.
  *
- * 사용: `pnpm smoke:github [<project-slug>]`
+ * 사용: `pnpm smoke:github <project-slug>` — **인자가 필수다** (2026-09-07, 서버 env 폴백 제거).
  */
 import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -33,7 +33,11 @@ function createPrisma(): PrismaClient {
 }
 
 async function main(): Promise<void> {
-  const slug = process.argv[2] ?? requireEnv("ACTIVE_PROJECT_SLUG");
+  const slug = process.argv[2];
+  if (slug === undefined) {
+    console.error("사용법: pnpm smoke:github <project-slug>");
+    process.exit(2);
+  }
   const prisma = createPrisma();
 
   try {

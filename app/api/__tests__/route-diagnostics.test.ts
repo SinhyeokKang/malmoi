@@ -216,9 +216,11 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     expect(Array.isArray(body.issues)).toBe(true);
   });
 
-  it("인증 실패는 그대로 401이다", async () => {
+  it("틀린 토큰은 401이고 적재까지 가지 않는다", async () => {
+    hoisted.prisma.project.findUnique.mockResolvedValue(null);
     const res = await pushPost(pushRequest(payload(), "wrong"));
     expect(res.status).toBe(401);
+    expect(hoisted.applyPush).not.toHaveBeenCalled();
   });
 
   it("정상 경로는 결과를 낸다", async () => {

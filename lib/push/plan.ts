@@ -60,8 +60,8 @@ const IncomingKey = z.object({
 export const PushPayload = z
   .object({
     /**
-     * 대상 프로젝트. **서버의 `ACTIVE_PROJECT_SLUG`와 대조해 다르면 409다** (ARCHITECTURE §5.5.5).
-     * 대상 지정을 서버 env에만 맡기면 리포가 둘 붙는 순간 오배송을 잡을 방법이 없다.
+     * 대상 프로젝트. **Bearer 토큰이 정한 프로젝트의 slug와 대조해 다르면 409다** (ARCHITECTURE §5.5.5).
+     * 이 필드로 행을 찾지 않는다 — 그러면 오배송 페이로드가 인증 대상을 고르게 된다 (design §3.8).
      */
     projectSlug: z.string().min(1),
     // 40자 hex — permalink 기준이라 형태가 틀리면 링크가 전부 깨진다.
