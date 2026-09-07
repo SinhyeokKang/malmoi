@@ -314,10 +314,19 @@ for (const slug of targets) {
 `credential-separation.test.ts`가 `lib/github-connect/`·`lib/github.ts` 두 경로만 하드코딩이라 자동으로
 안 덮인다). 그래서:
 
-- `lib/github.ts`에 **값을 돌려주는** 읽기를 둔다 — `readRepoSnapshot(owner, repo, installationId, baseBranch)`
-  → `{ status: "ok", headSha, headCommittedAt, paths } | { status: "truncated" } | { status: "base-branch-missing" } | { status: "unavailable" }`
-  와 `readBlob(installationId, owner, repo, sha)`. `createApp()`은 `probeRepo`와 같이 **try 밖** — 환경변수
-  누락은 값으로 접지 않고 던진다.
+- `lib/github.ts`에 **값을 돌려주는** 읽기를 둔다 — `openRepoReader(owner, repo, installationId)`가
+  `{ snapshot(baseBranch), blob(sha) }`를 돌려주고, `snapshot`이
+  `{ status: "ok", headSha, headCommittedAt, files: { path, sha }[] } | { status: "truncated" } |
+  { status: "base-branch-missing" } | { status: "unavailable" }`다. `createApp()`은 `probeRepo`와 같이
+  **try 밖** — 환경변수 누락은 값으로 접지 않고 던진다.
+  - ⚠️ **읽기마다 여는 함수가 아니라 리더다** (2026-09-07 구현에서 정정. 초안은 `readRepoSnapshot`·`readBlob`
+    두 함수였다). `@octokit/auth-app`의 설치 토큰 캐시가 **App 인스턴스마다** 새로 생겨서, 호출마다
+    `createApp()`을 하면 읽기 하나에 `POST /app/installations/{id}/access_tokens`가 하나씩 더 붙는다 —
+    아래 상한(`ref 1 + tree 1 + blob ≤21`)이 실제로는 2배가 되고, §4의 50로케일 첫 적재는 100회가 되어
+    `maxDuration=60`을 넘긴다. `createGitClient`가 클로저를 돌려주는 것과 같은 이유다.
+  - ⚠️ **스냅샷이 `sha`를 든다.** 경로만 들면 blob을 contents API로 읽어야 하는데 그쪽은 **1MB에서 잘려
+    `encoding: "none"`을 준다**(200이라 로그도 안 남는다) — 큰 카탈로그 하나가 조용히 사라진다. git blobs
+    API는 100MB까지이고 `sha`는 트리 응답에 이미 있어 비용이 0이다.
 - `lib/pull/client.ts`의 계약은 그대로다 — `GitClient.getTree` 구현이 `readRepoSnapshot`을 감싸
   `truncated`면 던진다. 그쪽에서 잘린 트리는 진단이 아니라 **중단 사유**다.
 - **`lib/onboarding/`은 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고 GitHub을 모른다** — `lib/github.ts`도
