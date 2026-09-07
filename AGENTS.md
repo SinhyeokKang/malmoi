@@ -341,6 +341,9 @@ lib/
                         그 리포가 public일 수 있다
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App installation 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
+                        + openRepoReader(스냅샷·blob — **설치 토큰을 한 번만 발급한다.** 읽기마다 App을 만들면
+                          토큰 캐시가 매번 미스라 호출이 2배다). 스냅샷은 트리 항목의 `sha`를 든다 —
+                          contents API는 1MB에서 잘려 조용히 빈 내용을 준다
                         + probeRepo(App JWT `/installation` → 설치 토큰 `/repos`) — 설치 토큰만으로는
                         public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다.
                         ⚠️ **createApp()은 try 밖** — 환경변수 누락은 값(error)으로 접지 않고 던진다
@@ -370,7 +373,8 @@ lib/
                         select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
                         비율·hunk) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
                         / merge(detectCandidatesAcross 위임 — 흔적) / types
-  push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / plan.ts(순수 판정)
+  push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / assemble.ts(select→read→base —
+                        **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
@@ -412,13 +416,16 @@ lib/
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
-  onboarding/           탐지 온보딩의 순수 판정층 (SaaS 5단계 T1, 2026-09-07 — I/O 껍데기는 T5·T6이 붙인다)
+  onboarding/           탐지 온보딩 (SaaS 5단계, 2026-09-07). 순수 판정 + DB 껍데기 하나 — **GitHub을 모른다**
                         slug.ts(planSlug·normalizeProjectSlug — 형식은 pull/trigger의 isRefSafeSlug를 **그대로 부른다**)
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
                         · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
                         / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
                         / message.ts(OnboardError 17갈래 · ingestHeadline) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
-                        ⚠️ `@/lib/github`을 import하지 않는다 — 두 토큰은 Server Action 하나에서만 만난다 (T5가 테스트로 고정)
+                        / ingest.ts(서버측 첫 적재 — assemblePushInput→buildPushPayload→applyPush를 **우회하지 않는다**.
+                          스냅샷·blob은 값으로 받고, 내려받지 못한 파일을 실패로 센다)
+                        ⚠️ `@/lib/github`을 import하지 않는다 — 두 토큰은 Server Action 하나에서만 만난다
+                        (`credential-separation.test.ts`가 세 검사로 상시 고정한다)
 types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환으로 제거 — Google 사용자엔 핸들이 없다)
 prisma/
   schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
