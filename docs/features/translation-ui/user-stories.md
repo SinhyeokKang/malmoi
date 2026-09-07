@@ -5,35 +5,37 @@
 > 시각 값(색·간격·컴포넌트)은 [DESIGN.md](../../DESIGN.md)이고 여기엔 **무엇이 어디에 있는가**만 적는다.
 >
 > 역할은 둘이다 — **OWNER**(개발자) · **EDITOR**(번역 편집자). 로그인 provider는 역할을 정하지 않는다 (SAAS §3).
+>
+> **2026-09-08 `/feature-review`** — §5(멤버)·§7(계정)과 §6의 base 필드는 **6b**다(spec §3.10). 6a의 라우트는 §1·§2·§3·§4·§6·§8 여섯.
 
 ## 0. 앱 셸 — 모든 `(edit)` 라우트가 공유한다
 
 ```
 ┌──────────────┬────────────────────────────────────────────────────────────────┐
-│ ◆ Malmoi     │ Projects / bugshot-2 / Translations              ● 강신혁 ▾   │  ← top bar: breadcrumb + user menu
+│ ◆ Malmoi     │                                                  ● 강신혁 ▾   │  ← top bar: user menu만
 │              ├────────────────────────────────────────────────────────────────┤
-│ ▣ bugshot-2 ▾│                                                                │  ← project switcher (현 프로젝트 안에서만)
+│ ▣ bugshot-2 ▾│ Projects / bugshot-2 / Translations                            │  ← breadcrumb은 페이지 콘텐츠 첫 줄
 │              │                                                                │
 │  Translations│                    <page content>                              │
-│  Members     │                                                                │
 │  Settings    │                                                                │
+│  (6b Members)│                                                                │
 │              │                                                                │
 │ ─────────────│                                                                │
 │  All projects│                                                                │
-│  Account     │                                                                │
 │  Sign out    │                                                                │
 │ ⟨ Collapse   │                                                                │
 └──────────────┴────────────────────────────────────────────────────────────────┘
 ```
 
 - **좌측 사이드바** (GitLab super sidebar 형): 최상단 브랜드, 그 아래 **프로젝트 컨텍스트**(현 프로젝트 이름 + 전환
-  메뉴 — 내 멤버십 목록), 그 아래 섹션 셋. 하단은 전역 항목(All projects · Account · Sign out) + Collapse.
-- **프로젝트 밖 라우트**(`/projects`·`/projects/new`·`/account`)에서는 프로젝트 컨텍스트 블록이 없고 전역 항목만 있다.
-- **Members·Settings는 OWNER에게만 렌더**한다. 감추는 것은 편의이고 방어는 각 페이지의 `requireProjectAccess`다.
+  메뉴 — 내 멤버십 목록), 그 아래 섹션 **둘**(6a — Translations · Settings). 하단은 전역 항목(All projects · Sign out) + Collapse.
+- **프로젝트 밖 라우트**(`/projects`·`/projects/new`)에서는 프로젝트 컨텍스트 블록이 없고 전역 항목만 있다.
+- **Settings는 OWNER에게만 렌더**한다. 6b의 Members는 **전원**에게 렌더한다(EDITOR도 목록을 본다 — §5 스토리). 감추는 것은 편의이고 방어는 각 페이지의
+  `requireProjectAccess`다.
 - **Publish 버튼은 셸에 없다** — 번역 화면 툴바다 (SAAS §7.7). 셸은 `/projects` 목록도 감싸므로 slug를 모른다.
-- **top bar**는 breadcrumb + 사용자 메뉴(이름/이메일 → Account · Sign out)만이다. GitLab의 검색·`+`·카운터는 우리에게
-  대응물이 없어 **넣지 않는다** — 기능 밀도를 가져오지 않는다.
-- 사이드바는 `xl` 이상에서만 아이콘 레일로 접히고(Collapse), `xl` 미만에서는 햄버거로 여는 오버레이다 (DESIGN §6.5).
+- **top bar**는 사용자 메뉴(이름/이메일 → Sign out · 6b: Account)만이다. **breadcrumb은 페이지 콘텐츠의 첫 줄**이다 — RSC 레이아웃이 페이지 props를
+  못 받는다(design §2). GitLab의 검색·`+`·카운터는 우리에게 대응물이 없어 **넣지 않는다** — 기능 밀도를 가져오지 않는다.
+- 사이드바는 `xl` 이상에서만 아이콘 레일로 접히고(Collapse — 접힌 항목은 `aria-label` + Tooltip), `xl` 미만에서는 햄버거로 여는 오버레이다 (DESIGN §6.5).
   Collapse 상태는 `localStorage`에만 남는다(서버 저장 없음).
 
 스토리:
@@ -59,8 +61,9 @@
 ```
 
 - 좌: 브랜드 + 제목 + 한 줄 설명 + provider 버튼 둘(`default` variant, 아이콘 좌측) + 거부/장애 문구 자리.
-- 우: 장식 패널(CSS dot-grid + 연보라 그라디언트 — 스크린샷 2의 GitLab 가입 화면 형). 안에는 **정적** 모형 카드
-  하나(PR로 돌아가는 로케일 파일). 이미지 파일을 두지 않는다 — 전부 CSS/SVG 인라인.
+- 우: 장식 패널(CSS dot-grid `--border` + 그라디언트 `from-primary/5 to-muted` — **raw 색 0**, design §3.12 — 스크린샷 2의 GitLab 가입 화면 형). 안에는
+  **정적** 모형 카드 하나(리포로 돌아가는 로케일 파일). 이미지 파일을 두지 않는다 — 전부 CSS/SVG 인라인. 모형 카드의 문구도 편집자 어휘다("Ship as a pull request" 대신
+  "Sent back to your code").
 - `lg` 미만: 우측 패널이 사라지고 좌측이 가운데 정렬 카드가 된다 (로그인은 셸 밖이라 사이드바 기준과 무관하다).
 - **세션이 있으면 `/projects`로 redirect** (지금과 같다). `?error=Unavailable`은 "Temporary problem — try again in a
   moment"이고 **재로그인을 시키지 않는다** (ARCHITECTURE §6.1.2).
@@ -87,7 +90,8 @@ Projects                                                        [ + New project 
 - 행 = 프로젝트. 아바타(이니셜) · 이름(→ `/projects/:slug/translations`) · 리포 `owner/name`(mono) · 내 역할 배지 ·
   둘째 줄에 요약 또는 **readiness 라벨**(`ready`면 표시 없음 — 가장 흔한 상태가 조용하다).
 - **빈 상태**: EmptyState("No projects yet" + "Connect a repository to start translating." + [New project]).
-- `?e=` 거부 사유는 목록 위 Alert 한 줄 (`isAccessError`·`isConnectError` 둘 다 읽는다 — POSTMORTEM 2026-09-06).
+- `?e=` 거부 사유는 **global Alert**(top bar 아래 전폭 — DESIGN §6.4 배치 셋 중 하나. `isAccessError`·`isConnectError` 둘 다 읽는다 — POSTMORTEM 2026-09-06).
+- **GitHub 계정 섹션은 6a에서 그대로 여기 남는다**(해제 버튼 포함) — 6b가 `/account`를 만들지 말지 판정한다.
 - 정렬은 이름순. 검색·페이지네이션은 없다 (사용자당 프로젝트 3개 제한 — SAAS §8 7단계).
 
 스토리:
@@ -151,10 +155,10 @@ Projects / bugshot-2 / Translations
 
 ┌ namespaces ─┬────────────────────────────────────────────────────────────────────────┐
 │ Progress: ko▾│ common                   [ Filter keys… ]  ● Needs review ● Untranslated│
-│              │ 42 keys · 3 need work                       Last published 2d ago ↗   │
-│ All keys  903│                                                        [ Publish (3) ] │
-│ ▸ common  3/42│ ⚠ 3 unpublished changes. A code push before you publish will overwrite│
-│   header  0/12│   them.                                                          [×]  │
+│              │ 42 keys · 3 need work      Last sent 2d ago ↗   [Invite] [Send changes (3)]│
+│ All keys 11/903│ ✓ Sent for review. Your developers need to accept it … [View what was sent]│
+│ ▸ common  3/42│ ⚠ 3 changes not yet sent. They can be lost if your developers push code│
+│   header  0/12│   first — send them when you're done.                           [×]  │
 │   settings 8/60│──────────────────────────────────────────────────────────────────────│
 │   …          │ Key                    │ en (base)         │ ko                │ fr     │
 │              │────────────────────────┼───────────────────┼───────────────────┼────────│
@@ -166,24 +170,29 @@ Projects / bugshot-2 / Translations
 └──────────────┴────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **네임스페이스 패널**(좌, 접을 수 있음): 상단에 집계 기준 로케일 선택(`?focus=`), 그 아래 "All keys" + 네임스페이스
+- **네임스페이스 패널**(좌, 접을 수 있음): 상단에 집계 기준 로케일 선택(`?focus=`), 그 아래 "All keys"(**이 행에도 `pending/total`**) + 네임스페이스
   목록. 각 행은 `pending/total`(pending = untranslated + needsReview). 선택 행은 GitLab nav 선택 스타일.
-- **기본 착지는 첫 네임스페이스다.** `?ns=` 없음 = 첫 네임스페이스. "All keys"는 `?ns=*`처럼 **명시적** 값이다.
-  (903키 12.7초의 답 — SAAS §8 6단계.)
+- **기본 착지는 기준 로케일에서 남은 일이 있는 첫 네임스페이스다.** `?ns=` 없음 = pending>0인 첫 ns(전부 0이면 첫 ns). "All keys"는 `?ns=*`처럼
+  **명시적** 값이다. (903키 12.7초의 답 — SAAS §8 6단계. design §3.3.)
 - **툴바**: 제목(네임스페이스) · 키 수 · 남은 일 수 · 텍스트 필터(`?q=`, 키/값 부분 일치) · 상태 필터 토글 둘(`?state=`) ·
-  마지막 Publish 링크·시각 · [Publish (N)] — N은 미배포 변경 수.
-- **편집 손실 배너**: N > 0일 때만. 닫으면 그 세션 동안만 닫힌다(`sessionStorage`).
-- **Publish 결과 Alert**: 툴바 아래 같은 자리에 다섯 갈래 중 하나 — success("Sent for review" + [View pull request]) /
-  info("Nothing to publish") / success + 갱신("Updated the open pull request") / **warning**("Sent, but 2 values could not
-  be written — tell your developers") / danger("Publish failed: …"). 새로고침하면 Alert는 사라지고 툴바의 마지막 Publish
-  링크가 남는다.
+  마지막으로 보낸 링크·시각("Last sent 2d ago · View what was sent") · [Invite](OWNER만, `ghost` → `Dialog` — 6a 임시, 6b 멤버 화면이 대체) ·
+  [Send changes (N)] — N은 아직 보내지 않은 변경 수.
+- **Publish 결과 Alert**와 **편집 손실 배너**는 툴바 아래 같은 자리이고 **결과 위·배너 아래** 고정이다.
+  - 결과 Alert — 문구 다섯·tone 넷(design §3.4, **편집자 어휘**): success("Sent for review. Your developers need to accept it before their next code push." +
+    [View what was sent]) / success("Updated what you sent earlier …") / info("Nothing to send — everything is up to date.") / **warning**("Sent, but 2 values
+    could not be written — tell your developers" + `<details>` 파일 목록 — `skipped`여도 warnings가 있으면 이것) / danger("Couldn't send: …"). 새로고침하면
+    Alert는 사라지고 툴바의 마지막 링크가 남는다.
+  - 배너 — N > 0일 때만. "{n} changes not yet sent. They can be lost if your developers push code first — send them when you're done."(단수형 별도).
+    닫기 키는 `lastPulledAt`(`sessionStorage`) — 다음 Publish 뒤 다시 보인다. 클라이언트 마운트 뒤에만 렌더(플래시 방지).
 - **표**: 키 열(mono + Orphaned 배지 + description + 코드 참조 링크) · 로케일 열(**base 맨 앞**). 셀 = 입력(1행,
-  내용에 따라 늘어나는 textarea) + 메타 한 줄(배지: Needs review / Untranslated · 편집자: "Edited by X" —
-  `updatedBy`가 없으면 편집자 표기 없음 — push가 덮은 셀이 그 상태다, design §3.6). 저장 상태는 셀 안 `role="status"` 한 줄("Saving…" / "Saved" / "Couldn't save: …")이고 실패 시
-  포커스가 그 입력으로 돌아온다.
+  내용에 따라 늘어나는 textarea — **Enter=저장·Shift+Enter=개행·Esc=되돌리기**) + 메타 한 줄(배지: Needs review / Untranslated · 편집자: "Edited by X" —
+  `updatedBy`가 없으면 편집자 표기 없음 — push가 덮은 셀이 그 상태다, design §3.6 · "Not yet sent" 점). 저장 상태는 셀 안 **시각 전용** 한 줄("Saving…" /
+  "Saved" / "Couldn't save: … [Retry]")이고, 스크린리더용은 **표 하나에 숨긴 `aria-live` 영역 하나**가 결과만 읽는다. 실패 시 포커스는 **사용자가 다른 셀로 가지
+  않았을 때만** 그 입력으로 돌아간다(design §3.8) — 갔으면 [Retry]가 재시도 지점이다.
+- **세션 만료 중 저장**: "Your session ended — sign in again. Your text is kept." + 로그인 링크. 장애: "Temporary problem — try again".
 - **비활성 셀**: 키 orphaned 또는 로케일 orphaned → `disabled` + placeholder "Not editable — removed from the code".
   로케일 orphaned는 열 헤더에도 Orphaned 배지.
-- **빈 상태 셋**: 준비 전(EDITOR) "The owner is still setting this project up." / 로케일 없음 / 필터 결과 없음.
+- **빈 상태 넷**: 준비 전(EDITOR) "The owner is still setting this project up." / 로케일 없음 / 필터 결과 없음 "No keys match" / **키 없음 "No keys yet"**(첫 적재가 0키).
   OWNER의 준비 전은 설정으로 redirect (지금과 같다).
 - **넓은 표는 자기 컨테이너에서만 가로 스크롤**한다.
 
@@ -193,16 +202,21 @@ Projects / bugshot-2 / Translations
 - As an **EDITOR**, I want to type into a cell and have it saved when I leave it, and to be told if that failed *where I
   was typing*, so that I do not lose work silently.
 - As an **EDITOR**, I want to see which cells need review because the source changed, so that I fix those first.
-- As an **EDITOR**, I want to know how many of my changes are not yet published and that a code push could overwrite
-  them, so that I publish before the developers push.
-- As an **EDITOR**, I want [Publish] to tell me clearly whether it sent something, updated what it sent before, sent
-  nothing, dropped some values, or failed — so that I do not press it again guessing.
+- As an **EDITOR**, I want to know how many of my changes are not yet sent and that a code push could lose
+  them, so that I send them before the developers push.
+- As an **EDITOR**, I want [Send changes] to tell me clearly whether it sent something, updated what it sent before, sent
+  nothing, dropped some values (and which files), or failed — so that I do not press it again guessing.
+- As an **EDITOR who moved on to the next cell**, I want a failed save to tell me without stealing my cursor, so that my
+  typing does not land in the wrong cell.
 - As an **EDITOR**, I want the link to what I sent to survive a refresh, so that I can show my developer.
 - As **any member**, I want to jump to the line of code that uses a key, so that I understand where it appears.
 - As **any member**, I want a cell overwritten by the repository to stop showing a colleague's name, so that the table
   does not lie about who wrote a value.
 
-## 5. `/projects/:slug/members` — Members (신설)
+## 5. `/projects/:slug/members` — Members (**6b** — design §3.9 머리의 ⚠️를 반영해 다시 그린다)
+
+> 6b 착수 때 반영할 것: 별도 라우트의 근거를 spec에 적는다(`github-connect/spec.md`는 settings 섹션으로 결정했다) · 사이드바 항목은 전원에게 · [Revoke]는
+> `expiresAt = now`(행 삭제 금지) · 대기 초대 0건 빈 상태 · `?e=` global Alert 슬롯 · 역할 변경은 native Select.
 
 ```
 Projects / bugshot-2 / Members
@@ -245,10 +259,10 @@ Projects / bugshot-2 / Settings
 Repository
   owner/bugshot-2                                     ● Connected      [ Reconnect ]
   The GitHub App reads this repository and opens pull requests on l10n/sync-bugshot-2.
-  Base branch    [ main        ]
-  Base language  ● en  ○ ko  ○ fr        Defines which keys exist. Changing it changes the key set on the next import.
+  (6b) Base branch    [ main        ]
+  (6b) Base language  ● en  ○ ko  ○ fr   Defines which keys exist. Changing it changes the key set on the next import.
                                                                         [ Save ]
-  ⚠ Update .github/workflows/l10n.yml with the new values — until then CI pushes are rejected.   (저장 뒤에만)
+  (6b) ⚠ Update .github/workflows/l10n.yml with the new values — until then CI pushes are rejected.   (저장 뒤에만)
 
 Import status
   Last import: commit a1b2c3d · 2 days ago · 903 keys
@@ -264,18 +278,17 @@ Workflow
   ┌ yaml ───────────────────────────────────────────┐
 
 GitHub account
-  Connected as @handle · Manage in Account →
+  (6a: 지금 섹션 그대로 — 연결 상태 + [Disconnect])   (6b: Connected as @handle · Manage in Account → — /account를 만든다면)
 ```
 
 - 섹션 넷이 **settings-block** 형(제목 + 한 줄 설명 + 본문)이고, 각자 **독립적으로 실패**한다 (건강성은 App 토큰,
   계정은 사용자 토큰 — 묶으면 한쪽 장애에 화면이 통째로 빈다).
 - 연결 건강성 6갈래의 색 규칙은 DESIGN §6(상태 배지)을 따른다 — `unknown`을 `app-uninstalled`로 접지 않는다.
 - [Run first import]의 결과 컴포넌트는 **readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
-- 페이지 수준 거부(`?e=`)는 상단 Alert, 컨트롤 실패는 인라인 — 두 층을 섞지 않는다.
-- **GitHub 계정 섹션은 상태 한 줄 + `/account` 링크로 줄어든다** (해제는 §7로 이관).
-- **Base branch·Base language**는 Repository 블록 안 폼 하나다(Action 하나 `updateRepositorySettings`). 기준 로케일은 orphaned 아닌 기존
-  로케일만 고를 수 있다. 저장 성공 시 재생성된 YAML이 Workflow 블록에 반영되고, **CI push가 409로 거부된다는 경고**가 이 블록 안에 남는다
-  (design §3.13 — `checkFormat`이 DB와 CI의 base 불일치를 막는다).
+- 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤 실패는 인라인(in-block) — 두 층을 섞지 않는다.
+- **Base branch·Base language는 6b다** — 🔴 design §3.13 머리의 ⚠️(UI가 base를 바꾸면 야간 pull이 깨진 파일을 낸다 · 재적재는 CI뿐)를 풀고 나서 그린다.
+  기준 로케일은 orphaned 아닌 기존 로케일만 고를 수 있고, 저장 성공 시 재생성된 YAML이 Workflow 블록에 반영되며 **CI push가 409로 거부된다는 경고**가 이 블록 안에
+  남는다(`checkFormat`이 adapter·pathTemplate·baseLocale 셋을 대조한다).
 
 스토리:
 - As an **OWNER**, I want to see at a glance whether the app can still read my repository and, if not, what exactly
@@ -288,7 +301,10 @@ GitHub account
 - As an **OWNER whose first import failed partially**, I want the list of files that could not be read to stay on
   screen, so that dropped values are never hidden as success (SAAS 불변식 9).
 
-## 7. `/account` — Account (신설, 사용자 수준)
+## 7. `/account` — Account (**6b** — 만들지 말지부터, design §3.10)
+
+> 추천은 "만들지 않는다": 계정 섹션은 이미 `/projects`에 있고 `disconnectGithub()`은 사용자 수준이다. 사용자 메뉴의 "GitHub account" 항목이 거기로 간다.
+> 만든다면 아래 와이어 — `startGithubConnectForUser`는 무인자라 `dest` 인자 추가가 시그니처 변경이고, `landing`은 callback route의 지역 함수다.
 
 ```
 Account
@@ -335,16 +351,17 @@ GitHub
 
 ## 9. 라우트 요약과 게이트
 
-| 라우트 | 셸 | 인가 | matcher | 신설 |
+| 라우트 | 셸 | 인가 | matcher | 단계 |
 |---|---|---|---|---|
-| `/` | 밖 | 세션 있으면 `/projects` | — | |
-| `/projects` | 안 (컨텍스트 없음) | `requireUser` | ✓ | |
-| `/projects/new` | 안 (컨텍스트 없음) | `requireUser` | ✓ | |
-| `/projects/:slug/translations` | 안 | `requireProjectAccess(translation:write)` | ✓ | |
-| `/projects/:slug/members` | 안 | `requireProjectAccess(translation:write)` — 컨트롤은 `member:manage` | ✓ | **신설** |
-| `/projects/:slug/settings` | 안 | `requireProjectAccess(project:settings)` | ✓ | |
-| `/account` | 안 (컨텍스트 없음) | `requireUser` | **추가** | **신설** |
-| `/invite/:token` | 밖 | 토큰 (인가 예외) | ✗ (의도) | |
-| `/api/github/callback` | — | `requireUser` | ✗ (의도) | `dest` 갈래 `account` 추가 |
+| `/` | 밖 | 세션 있으면 `/projects` | — | 6a |
+| `/projects` | 안 (컨텍스트 없음) | `requireUser` | ✓ | 6a |
+| `/projects/new` | 안 (컨텍스트 없음) | `requireUser` | ✓ | 6a |
+| `/projects/:slug/translations` | 안 | `requireProjectAccess(translation:write)` | ✓ | 6a |
+| `/projects/:slug/settings` | 안 | `requireProjectAccess(project:settings)` | ✓ | 6a (base 필드는 6b) |
+| `/invite/:token` | 밖 | 토큰 (인가 예외) | ✗ (의도) | 6a |
+| `/projects/:slug/members` | 안 | `requireProjectAccess(translation:write)` — 컨트롤은 `member:manage` | ✓ | **6b 신설** |
+| `/account` | 안 (컨텍스트 없음) | `requireUser` | 추가 | **6b — 만들지 말지부터** |
+| `/api/github/callback` | — | `requireUser` | ✗ (의도) | 6b (`dest` 갈래 `account` — 만든다면) |
 
-`app/__tests__/entry-points.test.ts`가 신설 둘을 자동으로 센다 — `page.tsx`가 `GUARDS` 중 하나를 부르지 않으면 red다.
+`app/__tests__/entry-points.test.ts`가 신설 라우트를 자동으로 센다 — `page.tsx`가 `GUARDS` 중 하나를 부르지 않으면 red이고, `(edit)/**/page.tsx`가 matcher에 없으면
+"보호 라우트가 미들웨어 matcher에 있다"(`:333`)가 red다.
