@@ -68,7 +68,8 @@ beforeEach(() => {
   vi.unstubAllEnvs();
   // `PUSH_TOKEN`은 이제 push 라우트가 읽지 않는다 — `/api/pull`의 `CRON_SECRET`만 env다.
   vi.stubEnv("CRON_SECRET", SECRET);
-  vi.stubEnv("ACTIVE_PROJECT_SLUG", "acme");
+  // `ACTIVE_PROJECT_SLUG`는 stub하지 않는다 — 두 라우트 모두 그 값을 읽지 않게 됐다(T3·T4).
+  // 죽은 stub을 남기면 "설정이 필요하다"는 인상이 테스트에 남는다.
   // ⚠️ **기본 stub은 fail-closed다** — "아무 토큰이나 인증 성공"을 기본값으로 두면 앞으로 추가되는 케이스가
   // 인증을 공짜로 통과하고, 그게 이 리포가 두 번 밟은 "가짜가 실제보다 관대하다"의 형태다
   // (POSTMORTEM 2026-09-05·2026-09-06). 인증이 필요한 케이스가 **명시적으로** 행을 준다.
@@ -132,18 +133,69 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
     expect(logged).toContain("GitHub App 토큰 발급 실패");
     expect(logged).toContain(body[1].ref);
-    expect(logged).toContain("b");
+    expect(logged).toContain("[pull:b]");
     spy.mockRestore();
   });
 
   it("우리 도메인 오류(AppError)는 그 항목의 메시지로 실린다 — slug·경로는 시크릿이 아니다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("order-check")]);
     hoisted.triggerPull.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual([
       { slug: "order-check", status: "failed", error: "프로젝트를 찾을 수 없다: order-check" },
     ]);
+    spy.mockRestore();
+  });
+
+  it("⚠️ **안전한 실패도 로그를 남긴다** — cron은 본문을 버리므로 로그가 유일한 신호다", async () => {
+    // 응답이 200 배열이라 cron 실행은 성공으로 표시된다. `AppError` 갈래가 로그를 안 남기면
+    // **전 프로젝트가 매일 밤 실패해도 관측값이 성공과 동일하다** (code-review 2026-09-07 🔴1 ·
+    // POSTMORTEM 2026-09-06 "리다이렉트 횟수로 검증해 전면 장애를 정상으로 읽었다"와 같은 형태).
+    // 2026-09-06 개인키 사고의 증상이 정확히 이 갈래였다: "base 브랜치를 읽을 수 없다".
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("order-check")]);
+    hoisted.triggerPull.mockRejectedValue(new AppError("base 브랜치를 읽을 수 없다: main"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await pullGet(pullRequest());
+    const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toContain("[pull:order-check]");
+    expect(logged).toContain("base 브랜치를 읽을 수 없다");
+    spy.mockRestore();
+  });
+
+  it("순회 요약을 한 줄 남긴다 — '전 프로젝트 실패'가 로그 grep 하나로 잡혀야 한다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b")]);
+    hoisted.triggerPull
+      .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" })
+      .mockRejectedValueOnce(new AppError("base 브랜치를 읽을 수 없다: main"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    await pullGet(pullRequest());
+    const all = [...errSpy.mock.calls, ...logSpy.mock.calls].map((c) => String(c[0])).join("\n");
+    expect(all).toMatch(/\[pull\].*2.*1/s);
+    errSpy.mockRestore();
+    logSpy.mockRestore();
+  });
+
+  it("Error가 아닌 값을 던져도 루프가 멈추지 않는다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b")]);
+    hoisted.triggerPull
+      .mockRejectedValueOnce("문자열 throw")
+      .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const body = await (await pullGet(pullRequest())).json();
+    expect(body).toHaveLength(2);
+    expect(body[0]).toMatchObject({ slug: "a", status: "failed" });
+    expect(body[1]).toMatchObject({ slug: "b", status: "skipped" });
+    spy.mockRestore();
+  });
+
+  it("`triggerPull`에 라우트가 만든 prisma 인스턴스를 넘긴다 — 두 클라이언트를 만들지 않는다", async () => {
+    hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    await pullGet(pullRequest());
+    expect(hoisted.triggerPull.mock.calls[0]?.[0]).toBe(hoisted.prisma);
   });
 
   it("`triggerPull`이 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {

@@ -6,7 +6,7 @@ import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
-import { selectPullTargets } from "@/lib/pull/targets";
+import { selectPullTargets, type PullItem } from "@/lib/pull/targets";
 import { triggerPull } from "@/lib/pull/trigger";
 
 /**
@@ -52,16 +52,27 @@ export async function GET(request: Request): Promise<NextResponse> {
       select: { slug: true, installationId: true, lastCommitSha: true },
     });
 
-    const results: unknown[] = [];
-    for (const slug of selectPullTargets(projects)) {
+    const targets = selectPullTargets(projects);
+    const results: PullItem[] = [];
+    for (const slug of targets) {
       // ⚠️ **프로젝트마다 잡는다.** 한 프로젝트의 GitHub 장애가 나머지의 편집을 다음 밤까지 묶어두면
       // 안 된다. `lastPulledAt`은 성공한 프로젝트에만 쓰이므로 실패가 편집을 잃지 않는다.
+      //
+      // ⚠️ 격리의 실제 경계는 루프 본문이 **아니라 이 catch 본문까지**다 — 여기서 무엇이든 던지면
+      // 바깥 catch가 받아 이미 모은 결과가 통째로 버려지고 500이 된다. `failureItem`은 순수 판정과
+      // 로그뿐이라 던질 것이 없다.
       try {
         results.push({ slug, ...(await triggerPull(prisma, slug)) });
       } catch (error) {
-        results.push({ slug, ...failureItem(slug, error) });
+        results.push(failureItem(slug, error));
       }
     }
+
+    // ⚠️ **요약을 한 줄 남긴다.** 응답이 항상 200 배열이라 cron 실행은 성공으로 표시되고, cron은 본문을
+    // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
+    // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
+    const failed = results.filter((r) => r.status === "failed").length;
+    console.log(`[pull] targets=${targets.length} failed=${failed}`);
     return NextResponse.json(results);
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
@@ -81,12 +92,21 @@ export async function GET(request: Request): Promise<NextResponse> {
 /**
  * 프로젝트 하나의 실패를 응답 항목으로. **전문을 싣지 않는다** — 우리가 문구를 정한 오류
  * (`AppError`·`MissingEnvError`)만 본문에 남고 남의 라이브러리 메시지는 `ref`로만 나간다
- * (ARCHITECTURE §6.0). 로그에는 slug를 함께 남긴다 — 배열 응답을 놓쳐도 어느 프로젝트였는지 알아야 한다.
+ * (ARCHITECTURE §6.0).
+ *
+ * ⚠️ **두 갈래 모두 로그한다** (2026-09-07 code-review 🔴1). 전에는 safe 갈래가 조용히 반환했는데,
+ * `lib/pull/**`의 실패 **대부분이 safe다** — "base 브랜치를 읽을 수 없다"(App 제거·설치 일시중지·접근
+ * 철회), 포맷 컬럼 누락, 로케일 0개가 전부 `fail()`이다. 응답은 200 배열이고 cron은 본문을 버리므로
+ * 그 상태면 **전면 장애가 성공과 구별되지 않는다.** 2026-09-06 개인키 사고의 증상이 정확히 그 문구였다.
+ * `trigger.ts`가 warnings를 `console.warn`으로 남기는 것과 같은 이유이고, 실패는 경고보다 무겁다.
  */
-function failureItem(slug: string, error: unknown): { status: "failed"; error?: string; ref?: string } {
+function failureItem(slug: string, error: unknown): PullItem {
   const failure = classifyFailure(error);
-  if (failure.safe) return { status: "failed", error: failure.message };
+  if (failure.safe) {
+    console.error(`[pull:${slug}] ${failure.message}`);
+    return { slug, status: "failed", error: failure.message };
+  }
   const ref = randomUUID().slice(0, 8);
   console.error(`[pull:${slug}] ${ref} ${failure.detail}`);
-  return { status: "failed", ref };
+  return { slug, status: "failed", ref };
 }

@@ -1,5 +1,7 @@
 import { compareKeys } from "@/lib/adapters/shared";
 
+import type { PullResult } from "./run";
+
 /**
  * 야간 cron이 돌 프로젝트 고르기 (design §3.9). **순수 판정이다** — 조회는 라우트가 한다.
  *
@@ -22,3 +24,15 @@ export function selectPullTargets(
     .map((p) => p.slug)
     .sort(compareKeys);
 }
+
+/**
+ * cron 응답의 항목 하나. **계약을 타입으로 든다** — `unknown[]`이면 `slug`가 스프레드에 덮이거나
+ * 실패 항목의 모양이 바뀌어도 컴파일러가 침묵한다 (POSTMORTEM 2026-08-31: 외부 계약을 리터럴로
+ * 조립했다가 필수 필드가 늘어도 조용했다).
+ *
+ * `PullResult`에 `slug`가 없으므로 `{ slug, ...result }`가 slug를 덮을 수 없다 — 그 사실이 여기서
+ * 타입으로 강제된다(생기면 교차 타입이 충돌한다).
+ */
+export type PullItem =
+  | ({ slug: string } & PullResult)
+  | { slug: string; status: "failed"; error?: string; ref?: string };
