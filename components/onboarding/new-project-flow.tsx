@@ -70,13 +70,20 @@ export function NewProjectFlow({ repos, adapters }: { repos: RepoOption[]; adapt
     setError(null);
     startTransition(async () => {
       const result = await detectRepoFormats({ owner: repo.owner, repo: repo.repo });
-      // 후보가 0개여도 화면을 넘긴다 — 수동 지정이 유일한 길이고 그것을 펼쳐 보여야 한다 (design §3.5).
-      if (!result.ok && result.error !== "no-candidates") {
-        setError(result.error);
+      /**
+       * 후보가 0개여도 화면을 넘긴다 — 수동 지정이 유일한 길이고 그것을 펼쳐 보여야 한다 (design §3.5).
+       * ⚠️ **그때 `setError`를 하지 않는다**: 다음 화면이 같은 사실을 이유 문구와 함께 말하므로
+       * 페이지 배너까지 세우면 사용자가 오류 둘로 읽는다 (code-review 2026-09-07 🟡1).
+       */
+      if (result.ok) {
+        setStage({ name: "chosen", repo, candidates: result.candidates });
         return;
       }
-      setStage({ name: "chosen", repo, candidates: result.ok ? result.candidates : [] });
-      if (!result.ok) setError(result.error);
+      if (result.error === "no-candidates") {
+        setStage({ name: "chosen", repo, candidates: [] });
+        return;
+      }
+      setError(result.error);
     });
   }
 
@@ -177,6 +184,12 @@ function RepoPicker({
   onPick: (repo: RepoOption) => void;
 }) {
   const [query, setQuery] = useState("");
+  /**
+   * ⚠️ **어느 행을 눌렀는지 기억한다.** `pending` 하나로 모든 행의 라벨을 교체하면 12개가 동시에
+   * "탐지하는 중…"이 되어 사용자가 자기 선택을 화면에서 확인할 수 없다 (code-review 2026-09-07 🟡2).
+   * DESIGN §6.4의 "라벨 교체"는 누른 버튼 하나를 가리킨다.
+   */
+  const [picking, setPicking] = useState<string | null>(null);
   const needle = query.trim().toLowerCase();
   const shown = needle === "" ? repos : repos.filter((r) => r.fullName.toLowerCase().includes(needle));
 
@@ -201,10 +214,13 @@ function RepoPicker({
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => onPick(repo)}
+                onClick={() => {
+                  setPicking(repo.fullName);
+                  onPick(repo);
+                }}
                 className={cn(TOOLBAR, "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none")}
               >
-                {pending ? "탐지하는 중…" : "고르기"}
+                {pending && picking === repo.fullName ? "탐지하는 중…" : "고르기"}
               </button>
             </li>
           ))}
@@ -496,8 +512,9 @@ function Result({
           <div className="space-y-2">
             {/* 불변식 9 — 0건이 아니면 성공 문구를 그대로 쓰지 않는다 */}
             <p className="text-sm">{ingestHeadline(ingest.count, ingest.failed)}</p>
-            {ingest.errors.slice(0, 5).map((e) => (
-              <p key={e.path} className="text-muted-foreground text-xs">
+            {/* 같은 파일에 에러가 둘 나올 수 있어 index를 섞는다 — 표시 전용 목록이다 */}
+            {ingest.errors.slice(0, 5).map((e, index) => (
+              <p key={`${e.path}\u0000${index}`} className="text-muted-foreground text-xs">
                 <span className="text-mono">{e.path}</span> — {e.message}
               </p>
             ))}

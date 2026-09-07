@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth/session";
 import { optionalEnv } from "@/lib/env";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { formatLabel } from "@/lib/onboarding/detect";
-import { isOnboardError, onboardErrorMessage, type OnboardError } from "@/lib/onboarding/message";
+import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { normalizeProjectSlug } from "@/lib/onboarding/slug";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { NewProjectFlow, type AdapterChoice, type RepoOption } from "@/components/onboarding/new-project-flow";
@@ -104,10 +104,11 @@ function EmptyState({ error }: { error: string }) {
     );
   }
 
-  if (error === "no-installations" || error === "no-repos") {
+  if (isOnboardError(error) && (error === "no-installations" || error === "no-repos")) {
     return (
       <section className="space-y-2">
-        <p className="text-sm">{onboardErrorMessage(error as OnboardError)}</p>
+        {/* 가드를 지난 값이라 단언하지 않는다 — 분기에 새 문자열을 더해도 컴파일러가 잡는다 */}
+        <p className="text-sm">{onboardErrorMessage(error)}</p>
         {installUrl === null ? (
           <p className="text-muted-foreground text-xs">
             리포 관리자에게 말모이 App 설치를 요청해 주세요.
