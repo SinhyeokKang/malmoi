@@ -35,6 +35,8 @@ const ERRORS = [
   // 다시 시도 · 첫 적재
   "not-awaiting",
   "ingest-failed",
+  // 번역 Action — 첫 적재 전
+  "not-ready",
   // 전부
   "unavailable",
   "unauthorized",
@@ -57,7 +59,7 @@ describe("isOnboardError — union과 판정 Set이 갈리지 않는다", () => 
 });
 
 describe("onboardErrorMessage — 갈래마다 다른 한국어 문구", () => {
-  it("열일곱 사유가 각자 다른 문장을 낸다", () => {
+  it("열여덟 사유가 각자 다른 문장을 낸다", () => {
     expect(new Set(ERRORS.map(onboardErrorMessage)).size).toBe(ERRORS.length);
   });
 
@@ -96,6 +98,14 @@ describe("onboardErrorMessage — 갈래마다 다른 한국어 문구", () => {
 
   it("`limit-reached`는 개수를 말한다", () => {
     expect(onboardErrorMessage("limit-reached")).toContain("3개");
+  });
+
+  it("`not-ready`는 번역자에게 무엇을 기다리는지 말한다 — 내부 이름을 쓰지 않는다", () => {
+    // 이 문구는 **번역 화면의 저장 실패 줄**에 뜬다 (design §3.7). "not-ready"를 그대로 흘리면
+    // 비개발자 동료는 무슨 일이 일어났는지 알 수 없다 (POSTMORTEM 2026-09-06).
+    const text = onboardErrorMessage("not-ready");
+    expect(text).toContain("설정");
+    expect(text).not.toContain("ready");
   });
 });
 

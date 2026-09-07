@@ -151,6 +151,20 @@ describe("죽은 라우트 링크", () => {
     expect(ROUTES.size).toBeGreaterThan(2);
   });
 
+  /**
+   * ⚠️ **정적 경로는 세그먼트 수와 무관하게 잡는다** (2026-09-07, T6). 전에는 한 세그먼트
+   * (`/projects`·`/invite`)만 봤고, 그래서 `/projects/new`처럼 **여러 세그먼트가 전부 정적인**
+   * 링크가 검사 밖이었다 — callback이 `/projects/new?e=`로 보내는데 그 라우트가 없으면 사용자는
+   * 404를 만난다. 템플릿 리터럴(`/projects/${slug}/…`)은 여전히 밖이다: `${`를 문자 클래스에
+   * 넣으면 어느 라우트와 대조할지 정할 수 없다 (T7의 `[manual]`이 그것을 본다).
+   */
+  const STATIC_PATH = /["'`](\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*)(?:[?"'`])/g;
+
+  it("검사식이 여러 세그먼트의 정적 경로를 잡는다 — 좁은 패턴은 안 잡고도 잡은 척한다", () => {
+    const found = [...'const to = "/projects/new";'.matchAll(STATIC_PATH)].map((m) => m[1]);
+    expect(found).toEqual(["/projects/new"]);
+  });
+
   it("코드가 만드는 경로 리터럴이 실재하는 라우트를 가리킨다", () => {
     const dead: string[] = [];
     for (const entry of ENTRY_POINTS) {
@@ -159,7 +173,7 @@ describe("죽은 라우트 링크", () => {
         .split("\n")
         .filter((l) => !/^\s*(\*|\/\/)/.test(l))
         .join("\n");
-      for (const m of code.matchAll(/["'`](\/[a-z][a-z0-9-]*)(?:[?"'`])/g)) {
+      for (const m of code.matchAll(STATIC_PATH)) {
         const path = m[1] ?? "";
         // API·인증 경로와 루트는 이 검사의 대상이 아니다.
         if (path === "/" || path.startsWith("/api")) continue;

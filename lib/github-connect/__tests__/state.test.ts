@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
 import { signState, stateCookieName, stateCookieNames, verifyState } from "../state";
@@ -10,7 +12,11 @@ import { signState, stateCookieName, stateCookieNames, verifyState } from "../st
  * ⚠️ **state는 쿠키와 쿼리 양쪽에 있어야 한다.** 쿼리만 보면 CSRF이고, 쿠키만 보면 GitHub이
  * 돌려주는 값과 대조할 것이 없다. 그래서 쿠키가 서명된 payload를 들고 쿼리가 nonce만 든다.
  *
- * ⚠️ **목적지 slug는 쿠키에서 온다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를 정한다.
+ * ⚠️ **목적지는 쿠키에서 온다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를 정한다.
+ *
+ * ⚠️ **`dest`가 갈래 둘이다** (design §3.6): 설정 화면(`{kind:"settings", slug}`)과 생성 화면(`{kind:"new"}`).
+ * 생성 경로에는 프로젝트가 없어 slug가 그 역할을 겸할 수 없다. 갈래를 **서명 안에** 두는 이유는
+ * 쿼리로 실으면 공격자가 착지를 정해 open redirect 판정이 필요해지기 때문이다.
  */
 
 const SECRET = "test-secret-0123456789abcdef";
@@ -20,7 +26,7 @@ const EXPIRES = new Date("2026-09-06T00:10:00.000Z");
 function sign(over: Partial<Parameters<typeof signState>[0]> = {}): string {
   return signState({
     userId: "user-1",
-    slug: "acme",
+    dest: { kind: "settings", slug: "acme" },
     nonce: "nonce-1",
     expiresAt: EXPIRES,
     secret: SECRET,
@@ -44,8 +50,14 @@ describe("signState — 결정적이고 payload를 그대로 들고 있다", () 
     expect(sign()).toBe(sign());
   });
 
-  it("slug가 다르면 다른 서명이다", () => {
-    expect(sign({ slug: "acme" })).not.toBe(sign({ slug: "other" }));
+  it("dest의 slug가 다르면 다른 서명이다", () => {
+    expect(sign({ dest: { kind: "settings", slug: "acme" } })).not.toBe(
+      sign({ dest: { kind: "settings", slug: "other" } }),
+    );
+  });
+
+  it("갈래가 다르면 다른 서명이다 — settings와 new가 같은 쿠키로 통하지 않는다", () => {
+    expect(sign({ dest: { kind: "settings", slug: "acme" } })).not.toBe(sign({ dest: { kind: "new" } }));
   });
 
   it("secret이 다르면 다른 서명이다 — 서명이 실제로 secret을 쓴다", () => {
@@ -54,13 +66,21 @@ describe("signState — 결정적이고 payload를 그대로 들고 있다", () 
 });
 
 describe("verifyState — 정상 왕복", () => {
-  it("쿠키와 쿼리의 nonce가 같고 서명·만료·사용자가 맞으면 ok이고 slug를 준다", () => {
-    expect(verify()).toEqual({ status: "ok", slug: "acme" });
+  it("쿠키와 쿼리의 nonce가 같고 서명·만료·사용자가 맞으면 ok이고 dest를 준다", () => {
+    expect(verify()).toEqual({ status: "ok", dest: { kind: "settings", slug: "acme" } });
   });
 
-  it("slug는 **쿠키에서** 온다 — 쿼리에 무엇이 오든 목적지는 서명된 값이다", () => {
-    const cookie = sign({ slug: "signed-slug" });
-    expect(verify({ cookie, query: "nonce-1" })).toEqual({ status: "ok", slug: "signed-slug" });
+  it("dest는 **쿠키에서** 온다 — 쿼리에 무엇이 오든 목적지는 서명된 값이다", () => {
+    const cookie = sign({ dest: { kind: "settings", slug: "signed-slug" } });
+    expect(verify({ cookie, query: "nonce-1" })).toEqual({
+      status: "ok",
+      dest: { kind: "settings", slug: "signed-slug" },
+    });
+  });
+
+  it("생성 경로의 dest는 slug가 없다 — 프로젝트 없이 연결이 성립한다 (design §3.6)", () => {
+    const cookie = sign({ dest: { kind: "new" } });
+    expect(verify({ cookie, query: "nonce-1" })).toEqual({ status: "ok", dest: { kind: "new" } });
   });
 });
 
@@ -98,15 +118,19 @@ describe("verifyState — state-mismatch (대조할 것이 없거나 서명이 �
   it("payload를 바꾸고 서명을 그대로 두면 state-mismatch다 — 서명 대상이 payload 전체다", () => {
     // ⚠️ 이 케이스만 인코딩 형태(`<base64url(JSON)>.<서명>`)에 의존한다. 그 결합을 감수하는 이유는
     // "서명을 재사용한 payload 교체"가 이 함수가 막아야 하는 유일한 실제 공격이기 때문이다.
-    const cookie = sign({ slug: "acme" });
+    const cookie = sign({ dest: { kind: "settings", slug: "acme" } });
     const dot = cookie.lastIndexOf(".");
     const payload = cookie.slice(0, dot);
     const signature = cookie.slice(dot + 1);
     const decoded: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    expect(decoded).toMatchObject({ userId: "user-1", slug: "acme", nonce: "nonce-1" });
+    expect(decoded).toMatchObject({
+      userId: "user-1",
+      dest: { kind: "settings", slug: "acme" },
+      nonce: "nonce-1",
+    });
 
     const forged = Buffer.from(
-      JSON.stringify({ ...(decoded as Record<string, unknown>), slug: "victim" }),
+      JSON.stringify({ ...(decoded as Record<string, unknown>), dest: { kind: "settings", slug: "victim" } }),
       "utf8",
     ).toString("base64url");
     expect(verify({ cookie: `${forged}.${signature}` })).toEqual({ status: "state-mismatch" });
@@ -119,7 +143,10 @@ describe("verifyState — state-expired / wrong-user", () => {
   });
 
   it("만료 1ms 전은 통과한다", () => {
-    expect(verify({ now: new Date(EXPIRES.getTime() - 1) })).toEqual({ status: "ok", slug: "acme" });
+    expect(verify({ now: new Date(EXPIRES.getTime() - 1) })).toEqual({
+      status: "ok",
+      dest: { kind: "settings", slug: "acme" },
+    });
   });
 
   it("세션이 바뀐 채 돌아온 callback은 wrong-user다 — 같은 브라우저에서 계정을 갈아탄 경우", () => {
@@ -171,6 +198,71 @@ describe("빈 secret을 거부한다 — 설정 오류를 거부로 위장하지
 
   it("공백 한 칸짜리 secret은 유효한 키다 — 빈 문자열만 거른다 (`requireEnv`와 같은 기준)", () => {
     expect(() => sign({ secret: " " })).not.toThrow();
+  });
+});
+
+describe("옛 payload 모양은 거부된다 — 배포 직후 10분의 창을 의도한다", () => {
+  /**
+   * T6이 `StatePayload.slug`를 `dest`로 바꿨다 (design §3.6). **진행 중인 연결 왕복은 전부
+   * `state-mismatch`가 된다** — 10분 만료라 그 창의 사용자는 버튼을 다시 누르면 되고, 관대하게
+   * 받아 주면 갈래가 둘인 착지 판정에 "slug가 있으면 설정"이라는 세 번째 규칙이 영구히 남는다.
+   *
+   * ⚠️ **이 케이스만 서명 규칙(라벨·인코딩)을 복제한다.** 유효하게 서명된 **옛 모양** 쿠키를
+   * 만들어야 하고, 그것은 `signState`로는 만들 수 없다 — 위의 "payload 교체" 케이스가 인코딩에
+   * 의존하는 것과 같은 이유로 감수한다. 라벨이 바뀌면 이 테스트가 먼저 red가 된다.
+   */
+  function signRaw(payload: unknown): string {
+    const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    const mac = createHmac("sha256", SECRET)
+      .update(`malmoi-github-state.${encoded}`, "utf8")
+      .digest("base64url");
+    return `${encoded}.${mac}`;
+  }
+
+  it("서명 규칙 복제가 실제로 맞다 — 틀리면 아래 케이스가 공허하게 통과한다", () => {
+    // 새 모양을 이 함수로 서명하면 `signState`와 바이트 단위로 같아야 한다.
+    expect(
+      signRaw({
+        userId: "user-1",
+        dest: { kind: "settings", slug: "acme" },
+        nonce: "nonce-1",
+        exp: EXPIRES.getTime(),
+      }),
+    ).toBe(sign());
+  });
+
+  it("`{slug}` 모양은 서명이 맞아도 state-mismatch다", () => {
+    const cookie = signRaw({ userId: "user-1", slug: "acme", nonce: "nonce-1", exp: EXPIRES.getTime() });
+    expect(verify({ cookie })).toEqual({ status: "state-mismatch" });
+  });
+
+  it("dest가 객체가 아니면 state-mismatch다", () => {
+    for (const dest of ["acme", 1, null, [], true]) {
+      const cookie = signRaw({ userId: "user-1", dest, nonce: "nonce-1", exp: EXPIRES.getTime() });
+      expect(verify({ cookie })).toEqual({ status: "state-mismatch" });
+    }
+  });
+
+  it("모르는 kind는 state-mismatch다 — 갈래를 늘리면 옛 쿠키가 아니라 새 코드가 답한다", () => {
+    const cookie = signRaw({
+      userId: "user-1",
+      dest: { kind: "elsewhere", slug: "acme" },
+      nonce: "nonce-1",
+      exp: EXPIRES.getTime(),
+    });
+    expect(verify({ cookie })).toEqual({ status: "state-mismatch" });
+  });
+
+  it("settings인데 slug가 없으면 state-mismatch다 — 착지 경로가 `/projects/undefined/settings`가 되지 않게", () => {
+    for (const slug of [undefined, "", 1, null]) {
+      const cookie = signRaw({
+        userId: "user-1",
+        dest: { kind: "settings", slug },
+        nonce: "nonce-1",
+        exp: EXPIRES.getTime(),
+      });
+      expect(verify({ cookie })).toEqual({ status: "state-mismatch" });
+    }
   });
 });
 

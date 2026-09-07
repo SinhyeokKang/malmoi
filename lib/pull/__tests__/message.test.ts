@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accessErrorMessage } from "@/lib/auth/message";
+import { onboardErrorMessage } from "@/lib/onboarding/message";
 import { pullMessage } from "../message";
 
 /**
@@ -103,5 +104,16 @@ describe("pullMessage — failed의 인가 사유는 accessErrorMessage를 지�
 
   it("인가 밖의 사유는 원문을 남긴다 — 개발자가 보는 신호다", () => {
     expect(pullMessage({ status: "failed", error: "internal (ref abc)" }).text).toContain("internal (ref abc)");
+  });
+
+  /**
+   * ⚠️ **온보딩 갈래도 읽는다** (2026-09-07, T6). `triggerPullAction`이 첫 적재 전 프로젝트를
+   * `not-ready`로 거부하는데, 이 함수가 `isAccessError`만 보면 그 사유가 `내보내기에 실패했어요:
+   * not-ready`로 나간다 — 정확히 🟡9와 같은 형태다.
+   */
+  it("not-ready는 onboardErrorMessage를 지난다 — 영어 토큰이 아니다", () => {
+    const m = pullMessage({ status: "failed", error: "not-ready" });
+    expect(m.text).toBe(onboardErrorMessage("not-ready"));
+    expect(m.text).not.toContain("not-ready");
   });
 });
