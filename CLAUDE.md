@@ -353,6 +353,7 @@ lib/
                         / merge(detectCandidatesAcross 위임 — 흔적) / types
   push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
+                        / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
   pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
@@ -405,11 +406,13 @@ prisma/
                         ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
                         linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
   __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
-  migrations/           10개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  migrations/           11개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
                         _add_locale_orphaned, _add_translation_updated_at_index,
-                        _add_tenant_auth_tables
+                        _add_tenant_auth_tables, _add_project_push_token
+                        ⚠️ 마지막 것은 dev에만 적용됐다 (2026-09-07) — 프로덕션은 `/merge` 1단계의 `db:deploy`가 넓힌다.
+                        `migrate dev`가 비대화형을 거부해 `migrate diff`로 만들었다 (`/db` 4c)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
