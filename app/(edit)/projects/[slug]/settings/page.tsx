@@ -24,6 +24,13 @@ import { ReconnectButton } from "@/components/reconnect-button";
  * ⚠️ **섹션 둘이 독립적으로 실패한다.** 건강성은 App 토큰, 계정은 사용자 토큰이라 한쪽 API가 죽어도
  * 다른 쪽은 그려야 한다 — 하나로 묶으면 GitHub 장애에 화면이 통째로 빈다.
  */
+
+/**
+ * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (`app/api/*`의 값이 아니다 —
+ * design §2). 이 화면의 [다시 시도]가 `runFirstIngest`를 부르고 그것은 로케일 파일 수만큼 blob을
+ * 받으므로, 기본 제한으로는 큰 리포에서 응답 도중 잘린다.
+ */
+export const maxDuration = 60;
 export default async function SettingsPage({
   params,
   searchParams,

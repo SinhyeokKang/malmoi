@@ -18,6 +18,12 @@ export type ProjectSeed = {
   slug: string;
   name?: string;
   installationId?: string | null;
+  /**
+   * ⚠️ **시드 프로젝트는 기본이 "적재 완료"다** (2026-09-07, T6). 번역 Action이 `planProjectReadiness`를
+   * 지나므로 `null`이면 `not-ready`로 거부된다 — 편집 흐름 테스트가 보려는 것은 그것이 아니다.
+   * 첫 적재 전 상태를 보려면 **명시적으로 `null`을 준다**. `project.create`는 반대다: 스키마의 기본값이
+   * `null`이라 새 행은 `awaiting_first_sync`로 태어난다.
+   */
   lastCommitSha?: string | null;
   /** 역행 409 판정의 비교 대상 — T3 테스트가 시드로 넣는다. */
   lastCommitAt?: Date | null;
@@ -98,6 +104,9 @@ export type Seed = {
   translations?: TranslationSeed[];
 };
 
+/** 시드 프로젝트의 기본 `lastCommitSha` — "첫 적재가 끝났다"의 증거다 (`ProjectSeed` 주석). */
+const SEEDED_SHA = "a".repeat(40);
+
 export function createHarness(seed: Seed = {}) {
   const seededProjects = seed.projects ?? [{ id: "p1", slug: "acme", name: "Acme" }];
   /**
@@ -106,7 +115,7 @@ export function createHarness(seed: Seed = {}) {
    * Action에도 통과한다** — 거부만 보는 검증의 함정이다 (POSTMORTEM 2026-09-06). `FORMAT`을 행마다
    * 복제해 두고 update가 그것을 갱신한다.
    */
-  const projects = seededProjects.map((p) => ({ ...FORMAT, ...p }));
+  const projects = seededProjects.map((p) => ({ ...FORMAT, lastCommitSha: SEEDED_SHA, ...p }));
   const accounts = (seed.accounts ?? []).map((a) => ({
     access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
   }));

@@ -17,6 +17,9 @@ const hoisted = vi.hoisted(() => ({
   prisma: undefined as unknown,
 }));
 
+// `projects/actions.ts`가 `requireUser`(=`lib/auth/session.ts`)를 물면서 `server-only`가 딸려 온다 —
+// vitest는 `react-server` 조건 밖이라 그 패키지가 던진다 (`lib/__tests__/db.test.ts`와 같은 스텁).
+vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));

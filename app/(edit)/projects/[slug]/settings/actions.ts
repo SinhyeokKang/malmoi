@@ -78,14 +78,15 @@ export async function startGithubConnect(raw: { slug: string }): Promise<StartCo
   const { secure } = origin;
   const nonce = randomBytes(32).toString("base64url");
 
-  // ⚠️ **목적지 slug는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
+  // ⚠️ **목적지는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
   // 그 값을 정할 수 있다 — 서명 대상에 넣으면 open redirect 판정 자체가 필요 없다 (design §3.1).
   const cookieStore = await cookies();
   cookieStore.set(
     stateCookieName(secure),
     signState({
       userId,
-      slug,
+      // 이 Action은 설정 화면 전용이다 — 생성 경로는 `{kind:"new"}`로 서명한다 (design §3.6).
+      dest: { kind: "settings", slug },
       nonce,
       expiresAt: new Date(Date.now() + STATE_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),

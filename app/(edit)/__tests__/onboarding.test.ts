@@ -57,7 +57,12 @@ vi.mock("@/lib/github-connect/user", () => ({
   authorizeUrl: hoisted.authorizeUrl,
 }));
 vi.mock("@/lib/onboarding/ingest", () => ({ ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
-vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+// ⚠️ **부분 mock이다.** 통째로 가리면 `isRefSafeSlug`가 사라지고 `planSlug`가 그것을 부른다 —
+// slug 형식 규칙이 pull과 **같은 함수**여야 한다는 것이 T1의 판정이었다 (design §5).
+vi.mock("@/lib/pull/trigger", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/pull/trigger")>()),
+  triggerPull: hoisted.triggerPull,
+}));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ set: hoisted.cookieSet }),
   headers: async () => ({ get: hoisted.headerGet }),
@@ -513,7 +518,9 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
 
 describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)", () => {
   beforeEach(() => {
-    // 하네스 기본 프로젝트는 포맷이 json-catalog이고 `lastCommitSha`가 null이다.
+    // 하네스 기본 프로젝트는 포맷이 json-catalog이고, 시드는 "적재 완료"가 기본이다 —
+    // 첫 적재 전 상태를 보려면 명시적으로 되돌린다 (`harness.ts`의 `ProjectSeed` 주석).
+    db.projects[0]!.lastCommitSha = null;
     db.projects[0]!.repoOwner = "acme";
     db.projects[0]!.repoName = "web";
     db.projects[0]!.baseBranch = "develop";
@@ -641,6 +648,10 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
    * 재방문을 막는다. 거부가 화면에 닿아야 하므로 사유는 문구를 가진 갈래로 돌려준다
    * (POSTMORTEM 2026-09-06).
    */
+  beforeEach(() => {
+    db.projects[0]!.lastCommitSha = null;
+  });
+
   it("saveTranslation이 거부하고 아무것도 쓰지 않는다", async () => {
     expect(
       await saveTranslation({ slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
@@ -656,6 +667,7 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
   it("ready면 둘 다 지나간다 — 판정이 항상 거부하지 않는다", async () => {
     db.projects[0]!.lastCommitSha = "deadbeef";
     hoisted.triggerPull.mockResolvedValue({ status: "skipped" });
+
 
     expect(
       await saveTranslation({ slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),

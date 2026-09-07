@@ -8,6 +8,12 @@ import { PROJECT_SLUG_MAX } from "./slug";
  * 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가
  * 손댈 수 있다.
  *
+ * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`translation-input`·`pull-button` — 2026-09-07).
+ * 그래서 여기서 **값**으로 끌어오는 것에 주의한다: `./slug`가 `lib/pull/trigger`의 `isRefSafeSlug`를
+ * 부르고 그 모듈은 `lib/github`(octokit·App 개인키)를 문다. 지금은 트리 셰이킹이 그것을 떼어내
+ * 클라이언트 청크에 octokit이 **없다**(빌드 산출물 확인). 그 성질은 **최상위 부수효과가 없다는 전제**에
+ * 달려 있다 — CLAUDE.md의 "환경변수를 모듈 최상위에서 평가하지 않는다"가 그것을 지킨다.
+ *
  * ⚠️ **판정 union을 만드는 커밋과 문구를 만드는 커밋을 나누지 않는다.** "거부는 옳게 판정됐는데 화면에
  * 닿지 않아 버튼이 안 눌린 것으로 보였다"가 이 리포에서 두 번 밟은 지뢰다 (POSTMORTEM 2026-09-06).
  * `/projects/new`는 이 판정과 `isConnectError`를 **둘 다** 읽는다 (callback이 `ConnectError`를 실어 보낸다).
@@ -42,6 +48,12 @@ export type OnboardError =
   /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (design §3.7). */
   | "not-awaiting"
   | "ingest-failed"
+  /**
+   * 첫 적재가 끝나기 전에 번역 Action이 불렸다 (design §3.7). 화면으로는 도달하지 않고 **URL 직접
+   * 호출**과 적재 실패 후의 재방문이 여기로 온다 — 그래도 문구를 두는 이유는 번역자가 저장 실패
+   * 한 줄로 그것을 만나기 때문이다 (POSTMORTEM 2026-09-06).
+   */
+  | "not-ready"
   // ── 전부 ─────────────────────────────────────────────────────────────────
   /** 조회·네트워크 실패. **거부가 아니다** — 유일하게 재시도가 맞는 사유다. */
   | "unavailable"
@@ -64,6 +76,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "invalid-slug",
   "not-awaiting",
   "ingest-failed",
+  "not-ready",
   "unavailable",
   "unauthorized",
 ]);
@@ -105,6 +118,9 @@ export function onboardErrorMessage(error: OnboardError): string {
       return "이미 적재가 끝났어요. 다시 적재하면 편집한 번역이 리포 값으로 덮이므로 여기서는 하지 않아요.";
     case "ingest-failed":
       return "첫 적재에 실패했어요. 설정 화면에서 다시 시도할 수 있어요.";
+    case "not-ready":
+      // 번역자가 읽는다 — 무엇을 기다리는지와 누가 끝낼 수 있는지를 말한다.
+      return "아직 준비 중인 프로젝트예요. 소유자가 설정을 마치면 편집할 수 있어요.";
     case "unauthorized":
       // "입력한 값은 그대로 있어요"를 쓰지 않는다 — 중간 상태를 저장하지 않으므로 거짓이다.
       return "로그인이 만료됐어요. 다시 로그인한 뒤 처음부터 진행해 주세요.";

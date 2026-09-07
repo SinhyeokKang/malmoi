@@ -3,15 +3,47 @@
 import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
+import type { AdapterFile, AdapterName } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
+import type { AccessError } from "@/lib/auth/message";
 import { planMemberChange } from "@/lib/auth/membership";
 import type { Role } from "@/lib/auth/permission";
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
+import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { requireEnv } from "@/lib/env";
+import { openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
+import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
+import { httpStatus } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
+import type { ConnectError } from "@/lib/github-connect/message";
+import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
+import { signState, stateCookieName } from "@/lib/github-connect/state";
+import { ensureUserToken } from "@/lib/github-connect/token-store";
+import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
+import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
+import {
+  ingestTargets,
+  makeProbe,
+  probeTargets,
+  summarizeCandidates,
+  type CandidateSummary,
+} from "@/lib/onboarding/detect";
+import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
+import type { OnboardError } from "@/lib/onboarding/message";
+import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { planSlug } from "@/lib/onboarding/slug";
+import { generatePushToken, hashPushToken } from "@/lib/push/token";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 /**
  * 멤버와 초대 (SAAS.md §5.6). **둘 다 OWNER 전용**이라 permission이 `member:manage`다.
@@ -198,4 +230,518 @@ export async function changeMember(raw: {
 
   revalidatePath(`/projects/${input.slug}/translations`);
   return { ok: true };
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 온보딩 (SaaS 5단계 — design §3.6·§3.11). **두 GitHub 자격증명이 만나는 유일한 자리다**:
+ * 리포 읽기는 App installation 토큰(`openRepoReader`·`probeRepo`), "이 사람이 그 설치를 볼 수
+ * 있는가"는 사용자 토큰(`listUserInstallations`·`listInstallationRepos`).
+ * `lib/onboarding/`은 둘 다 모르고 스냅샷·blob을 **값으로** 받는다
+ * (`credential-separation.test.ts`가 상시로 센다).
+ *
+ * ⚠️ **인가가 GitHub 조회보다 먼저다** — 거부될 요청이 남의 레이트 리밋을 태우지 않는다.
+ *
+ * ⚠️ **프로젝트가 없는 넷은 `requireUser`다** (design §3.6 — `Account` 행은 사용자 소유이고,
+ * 생성 경로에는 인가할 프로젝트가 없다). 세션이 끊기면 로그인 화면으로 보낸다: 중간 상태를
+ * 저장하지 않으므로(§3.4) "처음부터"가 정확한 안내이고, blur 저장처럼 잃을 입력이 없다.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/** 온보딩의 실패는 두 union에서 온다 — `/projects/new`가 `isOnboardError`·`isConnectError` 둘로 읽는다 (§3.6). */
+type OnboardFailure = OnboardError | ConnectError | "invalid input";
+
+const RepoInput = z.object({ owner: z.string().min(1), repo: z.string().min(1) });
+const SlugOnlyInput = z.object({ slug: z.string().min(1) });
+const CreateProjectInput = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  adapter: z.string().min(1),
+  pathTemplate: z.string().min(1),
+  baseLocale: z.string().min(1),
+  slug: z.string().min(1),
+  name: z.string().min(1),
+});
+
+/** 인가 화면까지 왕복하기에 충분하고, 방치된 탭이 오래 열려 있지 않을 만큼 짧다 (설정 화면과 같은 값). */
+const STATE_MINUTES = 10;
+
+export type StartUserConnectResult = { ok: false; error: OnboardFailure };
+
+/**
+ * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
+ * `Account` 행은 사용자 소유이므로 프로젝트 권한을 요구할 근거가 없다.
+ *
+ * ⚠️ **설정 화면의 `startGithubConnect`와 다른 것은 인가와 `dest` 둘뿐이다.** 쿠키 이름·`secure`·
+ * origin 판정은 `requestOrigin`·`callbackUrl`·`stateCookieName`이 한 곳에서 든다 — 그 규칙을
+ * 여기서 다시 구현하지 않는다 (malmoi#7이 그 판정이 갈려서 났다).
+ *
+ * 성공하면 GitHub으로 `redirect`하므로 **반환하지 않는다.**
+ */
+export async function startGithubConnectForUser(): Promise<StartUserConnectResult> {
+  const { userId } = await requireUser();
+
+  const head = await headers();
+  const origin = requestOrigin({
+    host: head.get("host"),
+    forwardedProto: head.get("x-forwarded-proto"),
+  });
+  // Host를 못 믿으면 authorize URL을 만들지 않는다 — 추측한 origin으로 사용자를 보내지 않는다.
+  if (origin === null) return { ok: false, error: "unavailable" };
+  const nonce = randomBytes(32).toString("base64url");
+
+  const cookieStore = await cookies();
+  cookieStore.set(
+    stateCookieName(origin.secure),
+    signState({
+      userId,
+      // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
+      dest: { kind: "new" },
+      nonce,
+      expiresAt: new Date(Date.now() + STATE_MINUTES * 60 * 1000),
+      secret: requireEnv("AUTH_SECRET"),
+    }),
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: STATE_MINUTES * 60,
+      // `__Host-` 접두와 짝이어야 한다 — 접두만 붙이고 Secure를 빼면 브라우저가 쿠키를 버린다.
+      secure: origin.secure,
+    },
+  );
+
+  // `redirect`는 던지므로 이 아래는 실행되지 않는다.
+  redirect(authorizeUrl(nonce, callbackUrl(origin.origin)));
+}
+
+export type ConnectableRepo = { owner: string; repo: string; fullName: string };
+export type ConnectableReposResult =
+  | { ok: true; repos: ConnectableRepo[] }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * 내 설치가 덮는 리포 목록 (화면 ②). **표시용이지만 인가 근거와 같은 목록이다** — `createProject`가
+ * 제출 시점에 이것을 다시 부르고, 여기서 본 것을 믿지 않는다 (SAAS §5.2).
+ *
+ * ⚠️ **빈 상태 둘을 가른다** (§3.12): 설치가 0개(`no-installations`)와 설치에 선택된 리포가
+ * 0개(`no-repos`)는 사용자가 할 일이 다르다 — App 설치 대 설치 설정에서 리포 추가.
+ */
+export async function listConnectableRepos(): Promise<ConnectableReposResult> {
+  const { userId } = await requireUser();
+
+  const prisma = getPrisma();
+  const token = await ensureUserToken(prisma, userId, new Date());
+  if (token.status !== "ok") return { ok: false, error: token.status };
+
+  let fullNames: string[];
+  try {
+    // ⚠️ **전 페이지를 읽는다** — 31번째 설치가 빠지면 정당한 리포가 목록에 없다 (`user.ts`).
+    const installations = await listUserInstallations(token.accessToken);
+    if (installations.length === 0) return { ok: false, error: "no-installations" };
+
+    const lists = await Promise.all(
+      installations.map((id) => listInstallationRepos(token.accessToken, id)),
+    );
+    // 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
+    fullNames = [...new Set(lists.flat())].sort();
+  } catch (error) {
+    // ⚠️ **401은 거부가 아니라 재인가 신호다** — `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로
+    // 안내해 사용자가 같은 버튼을 무한히 누른다 (`connectRepository`와 같은 판단).
+    if (httpStatus(error) === 401) return { ok: false, error: "reauthorize" };
+    logFailure("onboard-repos", error);
+    return { ok: false, error: "unavailable" };
+  }
+
+  if (fullNames.length === 0) return { ok: false, error: "no-repos" };
+
+  return {
+    ok: true,
+    repos: fullNames.flatMap((fullName) => {
+      const [owner, repo] = fullName.split("/");
+      // `owner/name`이 아닌 응답은 이해하지 못한 것이다 — 화면에 반쪽 값을 보내지 않는다.
+      return owner === undefined || repo === undefined || owner === "" || repo === ""
+        ? []
+        : [{ owner, repo, fullName }];
+    }),
+  };
+}
+
+export type DetectResult =
+  | { ok: true; candidates: CandidateSummary[] }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * 탐지 (화면 ③) — **2패스다** (design §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
+ * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤21), 내용을 들고 다시 돈다.
+ *
+ * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
+ * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
+ */
+export async function detectRepoFormats(raw: { owner: string; repo: string }): Promise<DetectResult> {
+  const parsed = RepoInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { owner, repo } = parsed.data;
+
+  const { userId } = await requireUser();
+
+  const prisma = getPrisma();
+  const access = await checkRepoAccess(prisma, userId, owner, repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const snapshot = await reader.snapshot(access.defaultBranch);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+
+  const paths = snapshot.files.map((f) => f.path);
+  // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
+  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths));
+  const files = await readFiles(reader, snapshot, targets);
+  const blobs = new Map(files.map((f) => [f.path, f.content]));
+
+  // 2패스: 내려받은 내용으로 검증된 후보만 남는다.
+  const summaries = summarizeCandidates(detectCandidatesAcross(paths, makeProbe(blobs)), blobs);
+  if (summaries.length === 0) return { ok: false, error: "no-candidates" };
+
+  return { ok: true, candidates: summaries };
+}
+
+export type CreateProjectResult =
+  | { ok: true; slug: string; pushToken: string }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * 확정 (화면 ④) — 행 + OWNER 멤버십 + push 토큰 해시를 **한 트랜잭션**으로 만들고 **원문을 한 번**
+ * 돌려준다 (design §3.11). 첫 적재는 하지 않는다: 60초를 넘기면 행은 커밋됐는데 응답이 사라져
+ * 토큰 원문을 아무도 못 본다.
+ *
+ * ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 그대로 저장하지 않는다** (design §3.4). 임의의
+ * 템플릿을 저장할 수 있으면 pull이 그 리포의 아무 파일이나 덮어쓰는 커밋을 만든다 — 파일을 다시
+ * 읽어 `detectFormatWith`를 돌리고 **그 반환값을** 저장한다 (POSTMORTEM 2026-09-05: 검증한 값을
+ * 저장하지 않으면 검증이 장식이다).
+ */
+export async function createProject(raw: {
+  owner: string;
+  repo: string;
+  adapter: string;
+  pathTemplate: string;
+  baseLocale: string;
+  slug: string;
+  name: string;
+}): Promise<CreateProjectResult> {
+  const parsed = CreateProjectInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+
+  const { userId } = await requireUser();
+
+  // ⚠️ **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`와 같은 정규식이다** — 갈리면 온보딩이
+  // 만든 slug가 pull에서 `fail()`로 죽는다. 형식이 틀리면 GitHub을 부를 이유가 없다.
+  if (planSlug(input.slug) !== "ok") return { ok: false, error: "invalid-slug" };
+  // 모르는 어댑터는 아무 파일도 가리키지 못한다 — 조작된 입력이라 리포를 읽지 않는다.
+  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
+  const adapterName: AdapterName = input.adapter;
+
+  const prisma = getPrisma();
+  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo);
+  if (access.status === "rejected") return { ok: false, error: access.error };
+
+  const [ownerCount, existing] = await Promise.all([
+    // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (spec §4).
+    prisma.projectMember.count({ where: { userId, role: "OWNER" } }),
+    prisma.project.findUnique({ where: { slug: input.slug }, select: { id: true } }),
+  ]);
+
+  const plan = planProjectCreate({
+    repoConnect: access.connect,
+    ownerCount,
+    slugTaken: existing !== null,
+    limit: PROJECT_LIMIT,
+  });
+  if (plan.status !== "ok") return { ok: false, error: plan.status };
+
+  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
+  const snapshot = await reader.snapshot(access.defaultBranch);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+
+  const paths = snapshot.files.map((f) => f.path);
+  const files = await readFiles(reader, snapshot, templatePaths(adapterName, input.pathTemplate, paths));
+  const confirmed = planConfirmedFormat(
+    { adapter: adapterName, pathTemplate: input.pathTemplate, baseLocale: input.baseLocale },
+    files,
+  );
+  // 갈래 넷을 한 문구로 접는다 — 사용자가 할 일이 같다(다른 후보를 고르거나 경로를 고친다).
+  if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+
+  // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (초대 토큰과 같은 모델 — SAAS §7.8).
+  const pushToken = generatePushToken();
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          slug: input.slug,
+          name: input.name,
+          // 이름은 **probe가 준 현재 값**이다 — 리네임된 리포도 지금 이름으로 붙는다.
+          repoOwner: plan.repoOwner,
+          repoName: plan.repoName,
+          // ⚠️ default가 `"main"`이라 **반드시 채운다** — default branch가 `develop`인 리포의
+          // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (design §4).
+          baseBranch: access.defaultBranch,
+          installationId: plan.installationId,
+          // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
+          adapterName: confirmed.format.adapter,
+          pathTemplate: confirmed.format.pathTemplate,
+          baseLocale: confirmed.baseLocale,
+          pushTokenHash: hashPushToken(pushToken),
+        },
+        select: { id: true },
+      });
+      await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
+    });
+  } catch (error) {
+    // ⚠️ **선조회를 지난 뒤의 경합이다** — 둘이 같은 slug로 동시에 들어오면 여기서 P2002가 난다.
+    // 처리하지 않으면 digest만 있는 일반 오류가 되고 `planProjectCreate`가 만들어 둔 사유가 사라진다.
+    if (isUniqueViolation(error)) return { ok: false, error: "slug-taken" };
+    throw error;
+  }
+
+  revalidatePath("/projects");
+  return { ok: true, slug: input.slug, pushToken };
+}
+
+export type FirstIngestResultView =
+  | { ok: true; count: number; failed: number; errors: { path: string; message: string }[] }
+  | { ok: false; error: OnboardError | AccessError | "invalid input" };
+
+/**
+ * 첫 적재 (화면 ⑤⑥) — **`awaiting_first_sync`에서만 돈다** (design §3.7). 설정 화면의 [다시 시도]가
+ * 같은 Action이고, `retryFirstIngest`는 따로 없다.
+ *
+ * ⚠️ **`ready`에서 돌리면 strict push라 번역자 편집을 버튼 하나로 덮는다.** 그래서 `not-awaiting`이다.
+ *
+ * ⚠️ **포맷의 `locales`는 컬럼에 없다** — 첫 적재가 `Locale` 행을 만들기 때문이다. 그래서 저장된
+ * 템플릿으로 파일을 다시 읽어 `planConfirmedFormat`을 지난다: 확정과 같은 경로이고, 그 사이에
+ * 파일이 옮겨졌으면 여기서 잡힌다.
+ */
+export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngestResultView> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug } = parsed.data;
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const { projectId } = access;
+
+  // ⚠️ **인가가 준 projectId로 좁힌다** — 클라이언트가 보낸 slug는 판정 입력일 뿐이다.
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      repoOwner: true,
+      repoName: true,
+      baseBranch: true,
+      installationId: true,
+      adapterName: true,
+      pathTemplate: true,
+      baseLocale: true,
+      lastCommitSha: true,
+    },
+  });
+  if (project === null) return { ok: false, error: "not-found" };
+
+  if (planProjectReadiness(project) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
+  const { installationId, adapterName, pathTemplate, baseLocale } = project;
+  // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
+  // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다.
+  if (installationId === null || adapterName === null || pathTemplate === null || baseLocale === null) {
+    logFailure("onboard-ingest", new Error(`포맷이 저장되지 않은 프로젝트다: ${slug}`));
+    return { ok: false, error: "ingest-failed" };
+  }
+  if (!isAdapterName(adapterName)) {
+    logFailure("onboard-ingest", new Error(`모르는 어댑터 이름이 저장돼 있다: ${adapterName}`));
+    return { ok: false, error: "ingest-failed" };
+  }
+
+  const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
+  const snapshot = await reader.snapshot(project.baseBranch);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+
+  const paths = snapshot.files.map((f) => f.path);
+  const files = await readFiles(reader, snapshot, templatePaths(adapterName, pathTemplate, paths));
+  const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
+  if (confirmed.status !== "ok") {
+    logFailure("onboard-ingest", new Error(`저장된 포맷이 더 이상 성립하지 않는다: ${confirmed.reason}`));
+    return { ok: false, error: "ingest-failed" };
+  }
+
+  const adapter = adapterFor(confirmed.format);
+  // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
+  // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `targets`가 그 함수를 지난 경로 목록이다.
+  const targets = ingestTargets(confirmed.format, adapter.layout, paths);
+  const blobs = new Map(files.map((f) => [f.path, f.content]));
+  // 재검증이 이미 받은 것은 다시 받지 않는다. multi-locale은 두 목록이 갈릴 수 있어 그물을 둔다.
+  for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
+    blobs.set(extra.path, extra.content);
+  }
+
+  try {
+    const result = await ingestFirstSnapshot(prisma, {
+      projectId,
+      projectSlug: slug,
+      format: confirmed.format,
+      baseLocale: confirmed.baseLocale,
+      headSha: snapshot.headSha,
+      // ⚠️ **base head 커밋의 시각이다.** `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4).
+      headCommittedAt: snapshot.headCommittedAt,
+      paths,
+      // 내려받기를 **시도한** 목록이다 — `blobs`에 없는 것을 실패로 센다 (불변식 9).
+      targets,
+      blobs,
+    });
+
+    revalidatePath(`/projects/${slug}/settings`);
+    revalidatePath("/projects");
+    return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
+  } catch (error) {
+    // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
+    // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
+    logFailure("onboard-ingest", error);
+    return { ok: false, error: "ingest-failed" };
+  }
+}
+
+export type RotateTokenResult =
+  | { ok: true; pushToken: string }
+  | { ok: false; error: OnboardError | AccessError | "invalid input" };
+
+/**
+ * push 토큰 재발급 (설정 화면). **원문은 이 반환값에만 있다** — 잃으면 다시 재발급이다.
+ *
+ * ⚠️ **회전하면 옛 토큰이 즉시 무효다.** 대상 리포의 `PUSH_TOKEN` secret을 바꾸기 전까지 그 리포의
+ * CI는 401이고, 화면이 버튼 **위에** 그 사실을 상시 캡션으로 둔다 (design §3.13).
+ */
+export async function rotatePushToken(raw: { slug: string }): Promise<RotateTokenResult> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug } = parsed.data;
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  const pushToken = generatePushToken();
+  // ⚠️ `where`가 **인가가 돌려준 projectId**다.
+  await prisma.project.update({
+    where: { id: access.projectId },
+    data: { pushTokenHash: hashPushToken(pushToken) },
+  });
+
+  revalidatePath(`/projects/${slug}/settings`);
+  return { ok: true, pushToken };
+}
+
+/**
+ * SAAS §5.4의 3중 검증 — **App 토큰으로 리포를 열기 전에** 이 사람이 그 설치를 볼 수 있는지 묻는다.
+ * 이것이 없으면 로그인한 누구나 우리 App이 설치된 남의 리포를 우리 토큰으로 읽을 수 있다.
+ *
+ * 판정은 `planRepoConnect`가 한다 — `connectRepository`와 같은 함수이고, 그래서 §5.7의 공격
+ * 시나리오 둘이 두 경로에서 같은 답을 낸다.
+ */
+async function checkRepoAccess(
+  prisma: PrismaClient,
+  userId: string,
+  owner: string,
+  repo: string,
+): Promise<
+  | { status: "ok"; connect: RepoConnect; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "rejected"; error: OnboardFailure }
+> {
+  const token = await ensureUserToken(prisma, userId, new Date());
+  if (token.status !== "ok") return { status: "rejected", error: token.status };
+
+  // ⚠️ **try 밖이다.** `probeRepo`는 GitHub 실패를 값으로 주고, 던지는 것은 환경변수 누락(설정
+  // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
+  const probe = await probeRepo(owner, repo);
+
+  let userInstallationIds: readonly string[];
+  let userRepoFullNames: readonly string[];
+  try {
+    userInstallationIds = await listUserInstallations(token.accessToken);
+    // ⚠️ **접근 불가 설치의 리포 목록을 부르지 않는다** — 404가 나고 catch가 그것을 `unavailable`로
+    // 접어 거부가 장애로 위장된다. 빈 목록이면 `planRepoConnect`가 `installation-forbidden`을 낸다.
+    userRepoFullNames =
+      probe.status === "ok" && userInstallationIds.includes(probe.installationId)
+        ? await listInstallationRepos(token.accessToken, probe.installationId)
+        : [];
+  } catch (error) {
+    if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
+    logFailure("onboard-access", error);
+    return { status: "rejected", error: "unavailable" };
+  }
+
+  const connect = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
+  // ⚠️ **`unavailable`을 거부로 접지 않는다** — `planProjectCreate`가 그것을 그대로 흘리도록
+  // 설계됐고, 여기서 접으면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
+  if (connect.status !== "ok" || probe.status !== "ok") {
+    return connect.status === "ok"
+      ? { status: "rejected", error: "unavailable" }
+      : { status: "rejected", error: connect.status };
+  }
+
+  return {
+    status: "ok",
+    connect,
+    installationId: connect.installationId,
+    repoOwner: connect.repoOwner,
+    repoName: connect.repoName,
+    // `GET /repos` 응답에 이미 있다 — pull이 이 값을 읽는다 (design §4).
+    defaultBranch: probe.defaultBranch,
+  };
+}
+
+/**
+ * 트리 항목의 `sha`로 내려받는다 — contents API는 1MB에서 잘려 조용히 빈 내용을 준다.
+ *
+ * 못 읽은 파일은 **빠진다.** 탐지에서는 그 후보가 "키 수 확인 실패"로 남고(ARCHITECTURE §4의 연장),
+ * 첫 적재에서는 `targets`와 대조해 **실패로 센다** — 조용히 빼면 성공 문구가 나간다 (불변식 9).
+ */
+async function readFiles(
+  reader: RepoReader,
+  snapshot: Extract<RepoSnapshot, { status: "ok" }>,
+  paths: readonly string[],
+): Promise<AdapterFile[]> {
+  const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
+  const out: AdapterFile[] = [];
+  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤21개(탐지) 또는
+  // 로케일 파일 수(첫 적재)라 `maxDuration=60` 안에 든다 (design §3.1·§4).
+  for (const path of paths) {
+    const sha = shaByPath.get(path);
+    if (sha === undefined) continue;
+    const content = await reader.blob(sha);
+    if (content === undefined) continue;
+    out.push({ path, content });
+  }
+  return out;
+}
+
+/** 스냅샷의 비-ok 갈래 → 화면 문구가 있는 사유. `truncated`는 수동 지정으로 가는 길이 남아 있다. */
+function snapshotError(snapshot: Exclude<RepoSnapshot, { status: "ok" }>): OnboardError {
+  if (snapshot.status === "truncated") return "tree-truncated";
+  if (snapshot.status === "base-branch-missing") return "base-branch-missing";
+  return "unavailable";
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }

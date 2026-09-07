@@ -9,6 +9,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { SaveInput, planSave } from "@/lib/keys/save";
+import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
 import { triggerPull } from "@/lib/pull/trigger";
 
@@ -42,6 +43,11 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   const { projectId } = access;
+
+  // 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**을 막는다
+  // (design §3.7). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
+  // `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
+  if (!(await isReady(prisma, projectId))) return { ok: false, error: "not-ready" };
 
   // ⚠️ **인가가 준 projectId로 다시 좁힌다** (CLAUDE.md 테넌트 규칙). 멤버십을 확인했다는 것은
   // "이 프로젝트에 들어올 자격"이지 "이 keyId가 그 프로젝트 것"이 아니다 — RLS가 없어
@@ -108,6 +114,10 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
   if (access.status !== "ok") return { status: "failed", error: access.status };
 
+  // 첫 적재 전에는 내보낼 것이 없다 — `triggerPull`이 저장되지 않은 포맷으로 `fail()`하는 대신
+  // 여기서 문구가 있는 사유로 거부한다 (design §3.7).
+  if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready" };
+
   try {
     return await triggerPull(prisma, slug);
   } catch (error) {
@@ -120,4 +130,22 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
     console.error(`[pull:action] ${ref} ${failure.detail}`);
     return { status: "failed", error: `internal (ref ${ref})` };
   }
+}
+
+/**
+ * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 본다 (`planProjectReadiness`, design §3.7).
+ * **`lastCommitSha`가 "첫 적재가 성공했다"의 유일한 증거다** — `applyPush`가 그것을 키·번역·refs와
+ * 한 배열형 트랜잭션에서 쓰므로 부분 성공 상태가 없다.
+ *
+ * ⚠️ **`projectId`로 좁힌다** — 인가가 돌려준 값이고, slug로 다시 찾으면 클라이언트 입력이 조회
+ * 조건이 된다.
+ */
+async function isReady(prisma: ReturnType<typeof getPrisma>, projectId: string): Promise<boolean> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { installationId: true, lastCommitSha: true },
+  });
+  // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 준비된 것으로 읽지 않는다.
+  if (project === null) return false;
+  return planProjectReadiness(project) === "ready";
 }

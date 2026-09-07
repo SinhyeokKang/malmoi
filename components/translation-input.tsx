@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { saveTranslation } from "@/app/(edit)/actions";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import type { SaveInputType } from "@/lib/keys/save";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,9 @@ export function TranslationInput({
  */
 function failureText(error: string): string {
   if (isAccessError(error)) return accessErrorMessage(error);
+  // ⚠️ **온보딩 갈래도 읽는다** — 첫 적재 전 프로젝트의 `not-ready`가 여기로 온다 (2026-09-07, T6).
+  // 위 판정만 보면 `저장 실패: not-ready`가 뜨고, 읽는 사람은 비개발자 동료다.
+  if (isOnboardError(error)) return onboardErrorMessage(error);
   // 인가 밖의 사유(입력 검증·orphaned)는 원문을 남긴다 — 개발자가 보는 신호다.
   return `저장 실패: ${error}`;
 }

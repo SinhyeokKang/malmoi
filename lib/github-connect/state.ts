@@ -10,15 +10,21 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * ⚠️ **state는 쿠키와 쿼리 양쪽에 있어야 한다.** 쿼리만 보면 CSRF이고, 쿠키만 보면 GitHub이
  * 돌려주는 값과 대조할 것이 없다. 쿠키가 서명된 payload를 들고 쿼리가 nonce만 든다.
  *
- * ⚠️ **목적지 slug는 서명 대상에 들어 있다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를
- * 정한다. slug만 싣고 경로를 싣지 않으므로 open redirect 판정 자체가 필요 없다.
+ * ⚠️ **목적지는 서명 대상에 들어 있다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를
+ * 정한다. 갈래와 slug만 싣고 경로를 싣지 않으므로 open redirect 판정 자체가 필요 없다.
  */
 
+/**
+ * 연결 왕복이 끝난 뒤 착지할 곳 (design §3.6). **갈래가 둘이다**: 설정 화면은 프로젝트가 있고,
+ * 생성 화면(`/projects/new`)은 아직 없다 — 그래서 slug가 착지를 겸할 수 없다.
+ */
+export type StateDest = { kind: "settings"; slug: string } | { kind: "new" };
+
 /** 서명 대상. 키를 늘리면 옛 쿠키가 통째로 `state-mismatch`가 된다 — 10분 만료라 감수한다. */
-type StatePayload = { userId: string; slug: string; nonce: string; exp: number };
+type StatePayload = { userId: string; dest: StateDest; nonce: string; exp: number };
 
 export type StateCheck =
-  | { status: "ok"; slug: string }
+  | { status: "ok"; dest: StateDest }
   | { status: "state-mismatch" }
   | { status: "state-expired" }
   | { status: "wrong-user" };
@@ -59,7 +65,7 @@ const BASE_COOKIE = "malmoi-gh-state";
 
 export function signState(input: {
   userId: string;
-  slug: string;
+  dest: StateDest;
   nonce: string;
   expiresAt: Date;
   secret: string;
@@ -68,7 +74,7 @@ export function signState(input: {
 
   const payload: StatePayload = {
     userId: input.userId,
-    slug: input.slug,
+    dest: input.dest,
     nonce: input.nonce,
     exp: input.expiresAt.getTime(),
   };
@@ -99,7 +105,7 @@ export function verifyState(input: {
   // 같은 브라우저에서 계정을 갈아탄 채 돌아온 callback을 거부한다.
   if (payload.userId !== input.userId) return { status: "wrong-user" };
 
-  return { status: "ok", slug: payload.slug };
+  return { status: "ok", dest: payload.dest };
 }
 
 /**
@@ -148,11 +154,31 @@ function parsePayload(encoded: string): StatePayload | null {
   }
   if (typeof raw !== "object" || raw === null) return null;
 
-  const { userId, slug, nonce, exp } = raw as Record<string, unknown>;
-  if (typeof userId !== "string" || typeof slug !== "string") return null;
+  const { userId, dest, nonce, exp } = raw as Record<string, unknown>;
+  if (typeof userId !== "string") return null;
   if (typeof nonce !== "string" || typeof exp !== "number") return null;
 
-  return { userId, slug, nonce, exp };
+  const parsedDest = parseDest(dest);
+  if (parsedDest === null) return null;
+
+  return { userId, dest: parsedDest, nonce, exp };
+}
+
+/**
+ * ⚠️ **옛 모양(`{slug}`)은 여기서 `null`이 되어 `state-mismatch`가 된다.** 관대하게 받아 주면
+ * "slug가 있으면 설정 화면"이라는 세 번째 규칙이 착지 판정에 영구히 남는다 — 10분 만료라 배포 직후
+ * 그 창의 사용자는 버튼을 다시 누르면 된다 (design §3.6).
+ *
+ * ⚠️ **`settings`인데 slug가 비면 거부한다.** 통과시키면 착지가 `/projects//settings`가 되고, 그건
+ * 라우트가 아니라 404다 — 사용자에게는 "연결을 눌렀는데 아무 일도 안 났다"로 보인다.
+ */
+function parseDest(dest: unknown): StateDest | null {
+  if (typeof dest !== "object" || dest === null || Array.isArray(dest)) return null;
+  const { kind, slug } = dest as Record<string, unknown>;
+  if (kind === "new") return { kind: "new" };
+  if (kind !== "settings") return null;
+  if (typeof slug !== "string" || slug === "") return null;
+  return { kind: "settings", slug };
 }
 
 function equalConstantTime(a: string, b: string): boolean {
