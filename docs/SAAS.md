@@ -669,8 +669,13 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 - [ ] **워크플로 없이 첫 적재** (§7.4)
 - [ ] 연동 PR 생성 또는 복사 가능한 워크플로 — Workflows 권한 판정 (§5.4)
 - [ ] `ready` 판정과 실패 진단 (실패 단계 · 사람이 읽는 원인 · Actions 링크 · 다시 검사)
-- [ ] **`Project.pushTokenHash` 발급·대조 + `/api/pull` 전 프로젝트 순회** (§7.8·§4.3 ②) — `ACTIVE_PROJECT_SLUG`
+- [x] **`Project.pushTokenHash` 발급·대조 + `/api/pull` 전 프로젝트 순회** (§7.8·§4.3 ②) — `ACTIVE_PROJECT_SLUG`
       제거. 대상 리포는 Actions secret 값만 바꾼다. `push:local`·`smoke:github`의 인자 생략 폴백도 같이 사라진다
+  - ✅ 2026-09-07 — 대조는 `47fb4de`(T3, `sha256(Bearer)` → `pushTokenHash` → slug 대조), 순회는
+    `597b545`(T4, `lib/pull/targets.ts` + 프로젝트별 try/catch), **발급**은 `b1fed55`(T6,
+    `createProject`가 한 트랜잭션에서 심고 `rotatePushToken`이 회전한다 — 원문은 반환값에만 있다).
+    ⚠️ **프로덕션 반영은 남아 있다** — 마이그레이션 `_add_project_push_token`이 dev에만 적용됐고
+    `/merge` 1단계의 `db:deploy`가 넓힌다. 기존 프로젝트 넷의 토큰 발급 화면은 T7이다
 
 완료 게이트: 새 사용자가 **문서나 터미널 없이** 첫 적재를 완료한다 / 작은 후보가 큰 표면을 조용히
 가리지 않는다 / 확정하지 않은 추정값으로 `ready`가 되지 않는다.
