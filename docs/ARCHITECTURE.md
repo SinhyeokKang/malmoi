@@ -687,10 +687,19 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). 문구가 not-found와 forbidden을 같게 말하므로 존재 노출은 없다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
+⚠️ **`ready`가 아닌 프로젝트의 번역 Action은 `not-ready`다** (2026-09-07, SaaS 5단계). 첫 적재 전에는
+저장할 키가 없어 화면으로 도달하지 않으므로 이것이 막는 것은 **URL 직접 호출**과 적재 실패 후의
+재방문이다. 판정은 `planProjectReadiness`(`lib/onboarding/readiness.ts`)이고 **`ProjectAccess` union에
+넣지 않았다** — 넣으면 `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
+그래서 문구는 `onboardErrorMessage`가 들고, `pullMessage`·`translation-input`이 `isAccessError` 다음에
+`isOnboardError`를 본다 — 한쪽만 보면 번역자 화면에 `저장 실패: not-ready`가 뜬다.
+
 ⚠️ **`/projects`는 두 union을 함께 읽는다** (2026-09-06, SaaS 4단계). GitHub 연결 실패도 그 화면에 착지한다 —
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
+**`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
+실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
 
 ⚠️ **`requireProjectAccess`는 `userId`도 돌려준다** (2026-09-06). `{ projectId, role }`만 주면 그 반환값이
 "이 요청에 대해 아는 전부"처럼 보이고, 호출부가 세션 주체를 조건에서 빼 버린다 — 설정 화면이
@@ -716,7 +725,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · `timingSafeEqual`(길이 선검사).
 - **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
   것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
-- **목적지 slug를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+- **목적지를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+  ⚠️ **2026-09-07에 slug 하나에서 `dest` 갈래 둘로 넓어졌다** (SaaS 5단계): `{kind:"settings", slug}`와
+  `{kind:"new"}`. 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
+  공격자가 착지를 정한다. **옛 `{slug}` payload는 `state-mismatch`로 거부된다** — 관대하게 받으면
+  "slug가 있으면 설정 화면"이라는 세 번째 규칙이 영구히 남는다. 10분 만료라 배포 직후 그 창의
+  사용자는 버튼을 다시 누르면 된다.
 - **⚠️ 빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
   않으므로, 이 층이 `requireEnv`에만 기대면 호출부의 실수 하나로 **누구나 재현 가능한 서명**이 통과한다
   (`checkBearer`가 `expected === ""`를 `not-configured`로 가른 것과 같은 판단). 설정 오류를 "다시 눌러
@@ -725,8 +739,9 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   요청 URL로 프로토콜을 판정해 **갈릴 수 있고**, 갈리면 연결이 100% `state-mismatch`가 된다.
   `__Host-` 접두를 https에서만 붙이는 이유는 **Safari가 `http://localhost`에서 Secure 쿠키를 버리기**
   때문이다 — `lib/auth/cookie.ts`의 `__Secure-` 이중 검사와 같은 계열이다.
-- **착지는 둘로 갈린다**: state가 유효하면 `/projects/<slug>/settings?e=`, **무효면 `/projects?e=`**다 —
-  slug를 서명에서 얻으므로 무효한 state의 slug를 믿을 수 없다.
+- **착지는 셋으로 갈린다** (2026-09-07): `dest`가 `settings`면 `/projects/<slug>/settings?e=`,
+  `new`면 `/projects/new?e=`, **state가 무효면 `/projects?e=`**다 — 목적지를 서명에서 얻으므로
+  무효한 state의 목적지는 믿을 수 없다. **셋 다 `?e=`를 읽는 쪽이 있다**(§6.3).
 
 ### 6.5 `probeRepo`가 두 번 부르는 이유 — 200이 접근을 증명하지 않는다
 
