@@ -253,9 +253,12 @@ app/
                         `?e=`로 받아 **isAccessError·isConnectError 둘로** 걸러 한 줄 보인다.
                         ⚠️ 앞의 것만 보면 GitHub 연결 실패 사유가 통째로 무음이다 (POSTMORTEM 2026-09-06)
     projects/new/page.tsx
-                        온보딩 라우트 (SaaS 5단계 — 화면은 T7). ⚠️ **maxDuration=60이 여기 있어야 한다** —
-                        Server Action은 자기를 부른 페이지 세그먼트의 config를 쓴다. `?e=`를
-                        **isOnboardError·isConnectError 둘로** 읽는다 (callback이 착지시킨다)
+                        온보딩 (SaaS 5단계). 서버가 ①①'(계정 미연결·설치 0·리포 0)를 그리고 ②~⑥은
+                        클라이언트 상태다. ⚠️ **maxDuration=60이 여기 있어야 한다** — Server Action은
+                        자기를 부른 페이지 세그먼트의 config를 쓴다. `?e=`를 **isOnboardError·
+                        isConnectError 둘로** 읽는다 (callback이 착지시킨다).
+                        ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
+                        모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
                         + 온보딩 다섯 (2026-09-07): startGithubConnectForUser · listConnectableRepos ·
                         detectRepoFormats · createProject · runFirstIngest · rotatePushToken
@@ -266,7 +269,10 @@ app/
                         ⚠️ createProject는 **클라이언트가 보낸 pathTemplate을 저장하지 않는다** — 파일을
                         다시 읽어 detectFormatWith를 돌리고 그 반환값을 저장한다 (design §3.4)
     projects/[slug]/settings/page.tsx
-                        리포 연결 + GitHub 계정 (SaaS 4단계). 최상단에서 requireProjectAccess를 던진다.
+                        리포 연결 + **상태 + push 토큰 + 워크플로** + GitHub 계정 (4·5단계).
+                        최상단에서 requireProjectAccess를 던진다. maxDuration=60 (Action이 첫 적재를 돈다).
+                        ⚠️ 상태 섹션의 [다시 시도] 컴포넌트는 **readiness 분기 밖**에 있다 — 안에 두면
+                        revalidate가 성공 직후 그것을 언마운트해 결과 문구가 사라진다 (POSTMORTEM 2026-09-07)
                         ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
                         묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다
     projects/[slug]/settings/actions.ts
@@ -275,7 +281,8 @@ app/
                         ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
-                        키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
+                        키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
+                        그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 한 줄
     __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십·연결·게시실패·온보딩 테스트 여섯
                         (github-connect·publish-failure·onboarding은 mock 범위가 달라 일부러 갈랐다)
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
@@ -301,12 +308,20 @@ components/
   github-account.tsx    GitHub 계정 연결·해제 (client). ⚠️ reauthorize는 **자동 redirect가 아니라
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
   invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
+  onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
+                        후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
+                        first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
+                        ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
+                        소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
   ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 앱에서 import 0곳 —
                         UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner도 import 0곳이고,
                         radix-ui·lucide-react는 **동결된 ui/ 안에서만** 쓰인다
   __tests__/            focus-ring — app/·components/의 button·input이 포커스 링 셋을 드는지 **소스로**
                         센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
                         눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
+                        + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
+                        octokit·@prisma/client가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
+                        (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
                         ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
@@ -378,12 +393,15 @@ lib/
                         **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
-  pull/                 plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
+  pull/                 ref-slug.ts(⚠️ **import 0인 잎 모듈** — REF_SAFE_SLUG·isRefSafeSlug. trigger.ts에
+                          있던 것을 내렸다: 온보딩이 판정을 공유하면서 그 파일의 그래프(octokit·ts-morph)를
+                          클라이언트로 끌고 갔다 — POSTMORTEM 2026-09-07)
+                        / plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
                         / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
-                          l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게)
+                          l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
@@ -422,7 +440,8 @@ lib/
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
                         · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
                         / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
-                        / message.ts(OnboardError 18갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸 import한다) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
+                        / message.ts(OnboardError 18갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸
+                          import한다. 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
                         / ingest.ts(서버측 첫 적재 — assemblePushInput→buildPushPayload→applyPush를 **우회하지 않는다**.
                           스냅샷·blob은 값으로 받고, 내려받지 못한 파일을 실패로 센다)
                         ⚠️ `@/lib/github`을 import하지 않는다 — 두 토큰은 Server Action 하나에서만 만난다
