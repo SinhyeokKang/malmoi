@@ -33,6 +33,17 @@ const APP_CREDENTIAL =
   /import\s*\{[^}]*\bApp\b[^}]*\}\s*from\s*["']octokit["']|new App\s*\(|parsePrivateKey|GITHUB_APP_PRIVATE_KEY|getInstallationOctokit/;
 
 /**
+ * **쓰기 호출.** 사용자 토큰으로 GitHub에 쓰면 커밋이 개인 명의가 되고 권한 면적이 넓어진다.
+ *
+ * ⚠️ **octokit의 입구가 셋이라 셋을 다 본다**: `request("POST …")` 리터럴 · `rest.*`의 이름 붙은
+ * 쓰기 메서드 · `paginate`에 넘긴 쓰기 메서드. 앞의 하나만 보던 시절엔 뒤의 둘이 조용히 통과했다.
+ * 동사로 판정하는 이유는 `rest` 아래 메서드 이름이 안정된 규약이기 때문이다(`create*`·`update*`·
+ * `delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`).
+ */
+const WRITE_CALL =
+  /request\(\s*["'`](POST|PATCH|PUT|DELETE)\s|\brest\.[A-Za-z]+\.(create|update|delete|replace|add|remove|merge|set)[A-Za-z]*\s*[(,]/;
+
+/**
  * **사용자 토큰을 다루는 모듈.** `lib/github.ts`가 이걸 물면 커밋 경로에 사용자 토큰이 들어온다.
  *
  * ⚠️ **`lib/github-connect/` 전체를 막지 않는다.** 그 디렉터리에는 순수 판정(`health.ts`의
@@ -144,13 +155,42 @@ describe("사용자 토큰 경로가 App 개인키를 모른다", () => {
   });
 
   it("lib/github-connect/ 전체가 쓰기 메서드를 부르지 않는다 — GET만 부른다", () => {
-    // 교환·갱신은 OAuthApp이 대신 POST한다. 우리 코드가 직접 POST/PATCH/PUT/DELETE를 조립하면
-    // 사용자 토큰이 쓰기 경로로 들어간 것이다.
-    const WRITE_REQUEST = /request\(\s*["'`](POST|PATCH|PUT|DELETE)\s/;
-    const offenders = CONNECT_SOURCES.filter((f) => WRITE_REQUEST.test(codeOnly(f.source))).map(
+    const offenders = CONNECT_SOURCES.filter((f) => WRITE_CALL.test(codeOnly(f.source))).map(
       (f) => f.rel,
     );
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **가드가 자기 눈으로 못 보는 형태가 있었다** (2026-09-07 `/doc-check`). 전 패턴은 리터럴
+   * `request("POST"…)`만 봐서 **octokit이 제공하는 다른 두 입구가 통째로 열려 있었다** — `rest.*`의
+   * 이름 붙은 메서드와 `paginate`다. 지금 코드는 실제로 GET뿐이라 red가 아니었고, 그래서
+   * "GET만 부른다"는 문서 단언이 근거 없이 서 있었다.
+   *
+   * 아래가 그 세 입구를 각각 먹여 **스캐너가 red를 낼 수 있는지** 검사한다. 이게 없으면 패턴을
+   * 넓혀도 넓혀졌는지 알 방법이 없다 (`focus-ring`의 "red를 낼 수 있는지"와 같은 계보).
+   */
+  it("가드가 세 입구를 다 잡는다 — request 리터럴·rest.* 쓰기·paginate 쓰기", () => {
+    const writes = [
+      'await octokit.request("POST /repos/{o}/{r}/git/blobs", {});',
+      'await octokit.request(`PATCH /repos/x`, {});',
+      "await octokit.rest.git.createBlob({ owner, repo });",
+      "await octokit.rest.pulls.create({ owner, repo });",
+      "await octokit.rest.repos.update({ owner, repo });",
+      "await octokit.paginate(octokit.rest.issues.create, {});",
+    ];
+    for (const line of writes) expect(WRITE_CALL.test(line), line).toBe(true);
+  });
+
+  it("가드가 읽기를 오탐하지 않는다", () => {
+    const reads = [
+      'await octokit.request("GET /user/installations");',
+      "await octokit.rest.apps.listInstallationsForAuthenticatedUser();",
+      "await octokit.paginate(octokit.rest.apps.listInstallationReposForAuthenticatedUser, {});",
+      "const created = row.createdAt;",
+      "// createBlob은 커밋 경로의 일이다",
+    ];
+    for (const line of reads) expect(WRITE_CALL.test(codeOnly(line)), line).toBe(false);
   });
 });
 
