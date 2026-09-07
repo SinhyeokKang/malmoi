@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { signIn, signOut } from "@/auth";
+import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { inviteErrorMessage, type InviteError } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
@@ -22,13 +23,6 @@ import { acceptInvitation } from "../actions";
  * `unauthorized`)은 `?e=`로 돌아와 `inviteErrorMessage`가 낸다. 여섯을 각자 다른 한 줄로 보이는 것이
  * 이 화면의 요지다 — 판정을 갈라놓고 화면을 안 갈라놓으면 사용자가 왜 실패했는지 모른다.
  */
-
-/** `sinhyeok@day1company.co.kr` → `s***@day1company.co.kr`. 제3자에게 남의 주소를 그대로 보이지 않는다. */
-function maskEmail(email: string): string {
-  const at = email.indexOf("@");
-  if (at <= 0) return "***";
-  return `${email.slice(0, 1)}***${email.slice(at)}`;
-}
 
 export default async function InvitePage({
   params,

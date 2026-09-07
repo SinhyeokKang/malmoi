@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { KeyRow } from "./view";
+import type { Actor, KeyRow } from "./view";
 
 /**
  * 키 리스트 데이터 조회. **`projectId`로 좁힌다** — 인덱스가 전부 `projectId` 선두 복합이고,
@@ -84,4 +84,23 @@ export async function loadKeys(
       refs: k.refs,
     };
   });
+}
+
+/**
+ * 편집자 이름의 출처. **`Translation.updatedBy`를 Prisma join으로 풀 수 없다** — 그 컬럼은 FK가 없고
+ * `User.id`와 옛 GitHub 핸들이 섞여 있어(스키마 주석) join하면 옛 행이 통째로 떨어진다. 그래서
+ * `collectActorIds`가 모은 id로 **한 번 더** 읽고, 못 찾은 값은 `actorLabel`이 원문으로 낸다.
+ *
+ * ⚠️ **`projectId`로 좁히지 않는다 — `User`는 프로젝트에 속한 테이블이 아니다** (POSTMORTEM
+ * 2026-09-06이 넓힌 규칙). 대신 받는 `ids`가 **인가를 지난 그 프로젝트의 번역 행에서만** 나오므로
+ * 여기서 다른 테넌트의 사람이 조회되지 않는다. 호출부가 그 출처를 바꾸면 이 성질이 깨진다.
+ */
+export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<Map<string, Actor>> {
+  // 편집 이력이 없는 프로젝트가 흔하다 — 빈 `in`으로 왕복을 만들지 않는다.
+  if (ids.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, email: true },
+  });
+  return new Map(users.map((u) => [u.id, u]));
 }

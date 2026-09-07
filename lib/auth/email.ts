@@ -10,6 +10,21 @@
  * `toLocaleLowerCase`가 아니라 `toLowerCase`다 — 터키어 로케일에서 `I`가 `ı`로 내려가면
  * 서버 로케일에 따라 같은 주소가 다른 값이 된다.
  */
+/**
+ * 표시용 마스킹 — `sinhyeok@day1company.co.kr` → `s***@day1company.co.kr`.
+ *
+ * ⚠️ **정규화가 아니다.** 되돌릴 수 없으므로 저장·대조에 쓰지 않는다 — `normalizeEmail`과 같은 파일에
+ * 있는 이유는 둘 다 이메일 문자열을 다루기 때문이고, 소비자가 둘(초대 화면·번역 셀 메타)이라
+ * 구현이 갈리면 같은 주소가 화면마다 다르게 보인다.
+ *
+ * `@`가 없거나 맨 앞이면 자를 지점을 못 믿으므로 통째로 가린다.
+ */
+export function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  return `${email.slice(0, 1)}***${email.slice(at)}`;
+}
+
 export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }

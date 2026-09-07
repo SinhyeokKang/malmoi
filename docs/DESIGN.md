@@ -120,11 +120,13 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ## 6. 편집 UI 특화 규칙
 
-화면은 여섯이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`) · **설정**(`/projects/[slug]/settings` — 리포 연결 + 상태 + push 토큰 + 워크플로 + GitHub 계정, §6.5) · **새 프로젝트**(`/projects/new` — SaaS 5단계, §6.6). MVP §3.2가 정한 것은 번역 테이블 하나였고, 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였으며(`features/tenant-auth/design.md` §4.1), 설정은 SaaS **4단계**가, 온보딩은 **5단계**가 같은 방식으로 붙였다. 공통 패턴은 §6.4.
+화면은 여섯이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`) · **설정**(`/projects/[slug]/settings` — 리포 연결 + 상태 + push 토큰 + 워크플로 + GitHub 계정 **5섹션**, §6.5) · **새 프로젝트**(`/projects/new` — SaaS 5단계, §6.6). MVP §3.2가 정한 것은 번역 테이블 하나였고, 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였으며(`features/tenant-auth/design.md` §4.1), 설정은 SaaS **4단계**가, 온보딩은 **5단계**가 같은 방식으로 붙였다. 공통 패턴은 §6.4.
 
 ### 6.1 키 테이블
 
 화면은 `| key | en(base) | ko | fr |`이고 **모든 셀이 편집 가능**하다 (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다 — 키든 로케일이든 어느 축이 orphaned면 그 셀은 `disabled` + placeholder "orphaned — 편집하지 않는다".
+
+**셀 메타는 배지 + 편집자**다 (`CellMeta`): `— <편집자>`를 `text-muted-foreground text-xs`로 붙이고, **이름이 없으면 마스킹한 이메일**이다(`s***@example.com` — 이 표는 멤버 전원이 본다). ⚠️ `Translation.updatedBy`에 `User.id`와 옛 GitHub 핸들이 섞여 있어 **못 찾은 값은 원문이 그대로 보인다** — 그게 정상 폴백이다 (malmoi#3).
 
 | 요소 | 규칙 |
 |---|---|
@@ -172,11 +174,11 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ### 6.3 외부 링크
 
-**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline`이다** — 코드 참조 permalink(`text-xs`, 번역 테이블) · pull 결과의 PR 링크(`components/pull-button.tsx`) · App 설치 링크(설정 화면). 외부 링크임이 보여야 하므로 밑줄을 뺀 관용을 쓰지 않는다.
+**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline`이다** — 코드 참조 permalink(`text-xs`, 번역 테이블) · pull 결과의 PR 링크(`components/pull-button.tsx`) · App 설치 링크(**설정 화면과 `/projects/new`의 빈 상태 둘 다** — 후자에는 "설치에 리포 추가하기"도 있다). 외부 링크임이 보여야 하므로 밑줄을 뺀 관용을 쓰지 않는다.
 
 ### 6.4 공통 패턴 — 버튼·상태줄·칩 (2026-09-06 실측 정리)
 
-SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는 import 0곳 — UI 동결). 형이 갈리지 않게 여기 고정한다.
+SaaS 화면 다섯이 hand-rolled 컨트롤을 쓴다(로그인·목록·초대·설정·새 프로젝트)(`components/ui/button.tsx`는 import 0곳 — UI 동결). 형이 갈리지 않게 여기 고정한다.
 
 | 패턴 | 클래스 | 사용처 |
 |---|---|---|
@@ -184,20 +186,38 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 | **bordered 버튼(페이지)** | `border-input hover:bg-accent rounded-md border px-4 py-2 text-sm font-medium` + 포커스 링 셋 | 로그인 Google, "다른 계정으로 로그인" |
 | **bordered 버튼(툴바)** | 같은 색에 `h-8 px-3 text-xs font-medium` | Publish, 초대 링크 만들기, 복사, **리포 다시 연결** |
 | **텍스트 버튼** | `text-muted-foreground hover:text-foreground text-xs underline` + 포커스 링 셋 | 로그아웃, **연결 해제**, **설정**, **← 번역** |
-| **disabled** | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent` | 툴바 버튼 전부 |
+| **disabled — 툴바** | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent` | 툴바 버튼 전부 |
+| **disabled — primary** | `disabled:cursor-not-allowed disabled:opacity-70` | 온보딩 primary(`new-project-flow`·`connect-github`) — 색을 죽이지 않고 투명도로 낮춘다 |
+| **disabled — 텍스트** | `disabled:cursor-not-allowed`만 | `github-account`의 해제 |
 | **pending** | 버튼 라벨 교체("만드는 중…") — 옆 문구가 아니다(헤더 폭을 흔든다). `pull-button`의 옆 문구는 예외로 남았다 | |
 | **pending — 목록 안** | ⚠️ **누른 버튼 하나만** 교체한다. 목록이 하나의 `pending` 플래그를 공유하면 12행이 동시에 "탐지하는 중…"이 되어 사용자가 자기 선택을 화면에서 확인할 수 없다 (2026-09-07 리포 목록에서 실제로 그랬다) | 리포 고르기 |
 | **인라인 상태줄**(컨트롤 옆) | `text-xs`. 오류 `text-destructive`, 진행·정보 `text-muted-foreground` | 번역 셀, Publish, 초대 폼, **재연결·연결·해제 오류** |
 | **페이지 수준 거부 문구** | `text-destructive text-sm` | `/projects?e=`, 초대 페이지, 로그인 화면, **설정 화면의 `?e=`** |
 | **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). **블록 요소(`<p>`)면 `inline-block`을 더 단다** | 초대 링크, 리포 `owner/name`, `@handle`, push 토큰 |
+| **섹션 카드** | `border-border space-y-2 rounded-md border p-4` + 제목은 `h2 text-sm font-medium` | 설정 5섹션, 새 프로젝트의 후보·경로·결과 블록. `<details>`도 같은 형 |
+| **입력·셀렉트(페이지)** | `border-input bg-background rounded-md border px-2 py-1 text-sm` (`new-project-flow`의 `FIELD` 상수가 그것이다) | 이름·주소·경로·어댑터 셀렉트 |
+| **입력(툴바)** | 같은 색에 `h-8 px-2 text-xs` | 초대 폼 |
 | **코드 블록**(여러 줄) | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + 옆에 툴바형 [복사] | 워크플로 YAML (`components/onboarding/workflow-block.tsx`) |
 
 ⚠️ **툴바형의 `font-medium`은 현재 코드가 갈려 있다** — `reconnect-button`에는 있고 `pull-button`·`invite-form`에는 없다. 표가 정본이므로 **있는 쪽으로 맞춘다**(다음에 그 파일을 만질 때).
 
 ⚠️ **코드 블록은 자기 컨테이너에서만 스크롤한다** (`overflow-x-auto`가 `<pre>` 자신에 붙는다). 없으면 긴 줄이 페이지 본문을 좌우로 흔든다 — 넓은 표와 같은 규칙이다 (§6.1).
 
-**포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7.
-빈 상태(로케일 없음·키 없음·멤버십 없음)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
+**포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7. 상시 검사는 `<button>`·`<input>`·`<select>`·`<textarea>` **넷을 훑는다** (2026-09-07에 뒤의 둘이 들어왔다 — 그 전엔 온보딩의 셀렉트가 방어선 밖이었고, 링을 들고 있던 것은 운이었다). ⚠️ **포커스를 받는 태그를 새로 쓰면 그 목록에 더한다** — `focus-ring.test.ts`의 메타 테스트가 네 태그를 하나씩 먹여 목록을 고정한다.
+빈 상태(로케일 없음·키 없음·멤버십 없음·**첫 적재 대기**)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
+
+### 6.5 설정 (`/projects/[slug]/settings`) — SaaS 4·5단계
+
+**섹션 다섯이 위에서 아래로**: 리포 연결 · 연결 건강성 · push 토큰 · 워크플로 YAML · GitHub 계정.
+각자 §6.4의 **섹션 카드**(`border-border space-y-2 rounded-md border p-4` + `h2 text-sm font-medium`)다.
+
+- ⚠️ **섹션이 독립적으로 실패한다.** 건강성은 App 토큰, GitHub 계정은 사용자 토큰이라 **묶으면 한쪽
+  GitHub 장애에 화면이 통째로 빈다.** 각 섹션이 자기 오류를 인라인 상태줄로 낸다.
+- **push 토큰은 발급 응답에만 원문이 있다** — 값 칩으로 한 번 보이고 [복사]가 붙는다. 다시 볼 방법이
+  없다는 것을 그 자리에서 말한다(회전은 옛 토큰을 즉시 무효로 만든다).
+- **워크플로 YAML은 `<pre>` 코드 블록**(§6.4)이고 옆에 툴바형 [복사]다.
+- **거부 문구는 페이지 수준**(`?e=` → `text-destructive text-sm`)이고, 재시도·해제 같은 컨트롤의 실패는
+  인라인이다 — 두 층을 섞지 않는다.
 
 ### 6.6 새 프로젝트 (`/projects/new`) — SaaS 5단계
 
@@ -205,12 +225,14 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 
 | 요소 | 규칙 |
 |---|---|
+| ①①' **빈 상태 3갈래** | 요구하는 일이 달라 문구도 컨트롤도 갈린다: 계정 미연결 → **primary 버튼**([GitHub 연결]) / 설치 없음 → **App 설치 링크**(`text-blue-600`) / 리포 없음 → "설치에 리포 추가하기" 링크. 각자 `text-sm` + `text-muted-foreground text-xs` 원인 한 줄. ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "관리자에게 요청해 주세요"로 떨어진다 — **그 사용자는 화면 안에서 온보딩을 끝낼 수 없다** |
 | 리포 목록 | `divide-y` 목록 + 텍스트 필터. `owner/name`은 **mono**(§4.1) |
 | 후보 목록 | `<fieldset>`+`<legend>`, 라디오. **선택 행은 `bg-muted font-medium`** (`cn()`을 지난다) |
 | 경로 템플릿 | **mono.** `{locale}` 자리를 "언어 자리"라고 한 줄 붙인다 — 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 |
 | 기준 언어 | 라디오, 기본 선택은 `pickBaseLocale`. 로케일 코드는 mono |
 | 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동**이다 |
 | 토큰·YAML | 값 칩 / 코드 블록(§6.4) + [복사] **라벨 교체 "복사됨"** — 잃으면 CI가 죽는 값이라 확인이 필요하다 |
+| ⑥ **부분 실패 목록** | 적재가 일부 파일을 못 읽으면 `path — message`를 **mono + `text-xs`**로 열거한다. 성공 문구만 내면 SAAS 불변식 9(버린 값을 숨기지 않는다)가 화면에서 깨진다 |
 
 ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨·경로 예시는 서버가 `formatLabel`로 만들어 내려준다 — 그 표를 클라이언트에 복사하면 두 벌이 되고, 그 모듈을 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
 
@@ -235,8 +257,8 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 
 | 축 | 무엇을 따르나 |
 |---|---|
-| **좌측 고정 사이드바** | 최상단이 **프로젝트 전환**, 그 아래가 섹션 네비게이션. 우리 라우트는 지금 `translations`·`settings` 둘이고 Publish는 화면이 아니라 번역 화면 툴바의 버튼이다 — 사이드바를 만들면 그 둘이 섹션이 된다. (현재 사이드바 자리는 네임스페이스 목록이다) |
-| **높은 밀도** | 테이블 행 높이와 패딩을 작게. 번역 테이블이 수백 행이고 **한 화면에 많이 보이는 것이 이 도구의 값**이다 (가상화를 안 쓰는 이유와 같은 판단 — CLAUDE.md) |
+| **좌측 고정 사이드바** | 최상단이 **프로젝트 전환**, 그 아래가 섹션 네비게이션. 사이드바를 만들면 섹션이 되는 것은 `translations`·`settings`·**멤버**(6단계)이고 Publish는 화면이 아니라 번역 화면 툴바의 버튼이다. **§6 도입부가 세는 "화면 여섯"과 축이 다르다** — 이쪽은 프로젝트 안의 섹션이고 저쪽은 라우트 전체다. (현재 사이드바 자리는 네임스페이스 목록이다) |
+| **높은 밀도** | 테이블 행 높이와 패딩을 작게. 번역 테이블이 수백 행이고 **한 화면에 많이 보이는 것이 이 도구의 값**이다 (가상화를 안 쓰는 이유와 같은 판단 — CLAUDE.md). ⚠️ **무필터 첫 착지는 이 밀도의 예외다** — 903키 화면이 12.7초(`<input>` 2,711개)로 실측됐고, 답은 가상화가 아니라 **기본 착지를 첫 네임스페이스로 두는 것**이다(SAAS §8 6단계) |
 | **중성이 지배하고 강조는 한 곳** | 회색조가 화면을 채우고 brand 색은 CTA·활성 탭·선택 행에만. 상태 색을 늘리지 않는다 |
 | **식별자는 mono** | 키 이름·SHA·경로·slug. 우리 §4.1 mono 표면 불변식이 이미 그 규칙이다 |
 | **인라인 편집** | 셀을 직접 고치고 blur에 저장. 이미 그렇게 만들어져 있다 |
@@ -250,7 +272,7 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
   생성 컴포넌트의 `dark:`가 OS 다크에서 전부 살아난다 (§3.1).
 - **색 팔레트 자체.** Supabase의 초록 brand를 가져오지 않는다. 토큰의 진실은 `app/globals.css`이고,
   새 raw 색을 늘리면 §6.2에 등재해야 한다.
-- **기능 밀도.** 그쪽 사이드바는 항목이 십수 개다. 우리는 셋이고, 늘리는 것은 SAAS.md §4.2가 막는다.
+- **기능 밀도.** 그쪽 사이드바는 항목이 십수 개다. 우리는 그보다 훨씬 적고(§9.1의 섹션 셋), 늘리는 것은 SAAS.md §4.2가 막는다.
 
 ### 9.3 판정 기준
 

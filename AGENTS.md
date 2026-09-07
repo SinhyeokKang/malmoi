@@ -31,9 +31,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - **선택지 나열 금지**: 추천 하나를 고르고 그 이유 한 줄. 사용자 결정이 필요한 지점(작업 원칙의 "가정을 명시")만 예외.
 - **예외**: 코드·커밋 메시지·PR title/body는 영문.
 
-강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
+강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 지금은 5단계(탐지 온보딩)다** — 2단계(인증·인가)는 2026-09-06에 프로덕션까지, 4단계(GitHub 설치 연결)는 2026-09-07에 **dev까지** 갔다(프로덕션 반영은 `/merge`가 남았다). **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계 잔여는 **Vercel 세 스코프의 옛 env 삭제 하나이고 롤백 창 때문에 의도적 보류**다. **다음은 6단계(번역 UI 재작성 + Publish)다.** **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -145,6 +145,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 ### 키 리스트는 가상화하지 않는다
 
 네임스페이스 필터로 자르면 한 화면이 보통 수십~수백 행이다. `@tanstack/react-virtual`·`react-table`을 넣지 않고 순수 렌더로 시작한다. **실제로 느려지는 네임스페이스가 관측되면** 그때 대응한다 — 인라인 편집과 가상 스크롤을 섞으면 스크롤 튐·포커스 유실 함정이 붙는다.
+
+⚠️ **관측됐다** (2026-09-07 실측, `/bugshot-qa`): `ts-dict` 903키 프로젝트의 **필터 없는** 번역 화면이 **12.7초**다 — 903행 · `<input>` 2,711개 · 네임스페이스 52개. 필터를 걸면 위 전제대로 수십 행이다. **그래도 지금 가상화를 넣지 않는다**: 그 화면은 동결분이고(MVP §8.3) SAAS §8 6단계가 재작성하므로, 거기서 "기본 착지를 첫 네임스페이스로" 같은 값싼 수단을 먼저 본다.
 
 ### 폰트 — Pretendard 동적 서브셋 (생성물)
 
@@ -281,7 +283,7 @@ app/
                         ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
                         모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
-                        + 온보딩 다섯 (2026-09-07): startGithubConnectForUser · listConnectableRepos ·
+                        + 온보딩 여섯 (2026-09-07): startGithubConnectForUser · listConnectableRepos ·
                         detectRepoFormats · createProject · runFirstIngest · rotatePushToken
                         ⚠️ **앞의 넷은 requireUser뿐이다** — 생성 경로에는 인가할 프로젝트가 없다
                         (design §3.6). 뒤의 둘은 getProjectAccess(project:settings)다
@@ -304,7 +306,9 @@ app/
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
                         그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 한 줄
-    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십·연결·게시실패·온보딩 테스트 여섯
+    __tests__/          harness.ts(메모리 DB 한 벌) + harness.test.ts(**하네스 자기검사** — 페이크가 실제
+                        스키마보다 느슨하면 아무 행이나 집어도 정답이 나온다, POSTMORTEM 2026-09-06)
+                        + 흐름·인가·멤버십·연결·게시실패·온보딩 테스트 여섯
                         (github-connect·publish-failure·onboarding은 mock 범위가 달라 일부러 갈랐다)
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
                         게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
@@ -314,7 +318,8 @@ app/
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
   api/__tests__/        route-diagnostics(인증·JSON·스키마 실패가 각자 응답을 내는지)
                         + github-callback(state 검증 **전에** code 교환·Account 쓰기가 0회인지)
-  api/push/route.ts     CI → DB (Bearer PUSH_TOKEN, maxDuration 60)
+  api/push/route.ts     CI → DB (maxDuration 60). ⚠️ Bearer는 **그 프로젝트의 push 토큰 원문**이고
+                        서버 env가 아니다 — sha256으로 Project.pushTokenHash를 **조회**해 프로젝트를 정한다
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
                         `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
@@ -341,7 +346,7 @@ components/
                         센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
                         눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
-                        octokit·@prisma/client가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
+                        octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
 lib/
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
@@ -359,16 +364,18 @@ lib/
     chrome-locales.ts   _locales/{locale}/messages.json (per-locale, 재생성)
                         + dominantFieldOrder(엔트리 안 message·description·placeholders 순서 다수결)
     json-catalog.ts     per-locale, 재생성 — flat|중첩, 배열 인덱스. ⚠️ **경로 모양 3개**:
-                        {dir}/{locale}.json · {dir}/{locale}/<name>.json · {dir}/<prefix>.<locale>.json
+                        {dir}/{locale}.json · {dir}/{locale}/<name>.json · {dir}/<prefix><.|-|_><locale>.json
     yaml-catalog.ts     {dir}/{locale}.y(a)ml (per-locale, ⚠️ 수술적 — 주석·앵커 보존, Rails 루트 키)
     code-dict.ts        {dir}/{locale}.{ts,js} (per-locale, ⚠️ 수술적 — default export 객체)
     ts-dict.ts          src/i18n/namespaces/*.ts (multi-locale, ⚠️ 수술적 — **자동 탐지 제외**)
   env.ts                환경변수 단일 접근점 — requireEnv(던진다) / optionalEnv(인가 판정용, 던지지 않는다) / PEM 개행 복원
-  cli/                  세 CLI 공통 — args.ts(순수 인자 파싱: 값 플래그 자리 건너뛰기) / walk.ts(SKIP_DIR + 리포 훑기, fs)
+  cli/                  CLI 공통 — args.ts(순수 인자 파싱: 값 플래그 자리 건너뛰기 — **네 CLI**가 쓴다)
+                        / walk.ts(SKIP_DIR + 리포 훑기, fs — **세 CLI**)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
-  __tests__/            db·env·failure·githash·utils + ⚠️ globals-css — 마지막 것은 lib/ 아래 어느
-                        모듈에도 대응하지 않는다 (app/globals.css의 라이트 고정 상시 방어선, DESIGN §3.1)
+  __tests__/            db·env·failure·githash·utils·github-probe(환경변수 누락이 MissingEnvError로 던져지는지)
+                        + ⚠️ globals-css·no-nul-bytes — 뒤의 둘은 lib/ 아래 어느 모듈에도 대응하지 않는다
+                        (앞은 app/globals.css의 라이트 고정 상시 방어선(DESIGN §3.1), 뒤는 소스에 리터럴 NUL 금지)
   failure.ts            500 본문 판정 (classifyFailure·MissingEnvError) — 우리 메시지는 그대로,
                         남의 라이브러리 메시지는 ref만. 응답이 **대상 리포 Actions 로그**로 흘러가고
                         그 리포가 public일 수 있다
@@ -421,7 +428,11 @@ lib/
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
                         / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
-                        / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
+                        / targets.ts(selectPullTargets — cron이 순회할 프로젝트 선별: installationId·lastCommitSha가
+                          없으면 제외, slug 결정적 정렬. 한 프로젝트의 실패가 나머지를 막지 않고 응답은 **배열**이다)
+                / ref-slug.ts(isRefSafeSlug — **import 0인 잎 모듈**. trigger.ts가 재수출한다: 판정을
+                          오케스트레이션 파일에 두면 클라이언트가 그 그래프를 통째로 문다, POSTMORTEM 2026-09-07)
+                / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
@@ -449,13 +460,17 @@ lib/
                         + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
                         + freshVerifiedEmail·planEmailRefresh — 재로그인마다 User.email을 현재 검증 주소로
                         갱신(keep|update|conflict). 다른 User가 쓰면 병합 없이 건너뛴다
+                        + maskEmail — 표시용, 되돌릴 수 없어 대조에 쓰지 않는다. 소비자가 둘이라(초대 화면·
+                        셀 메타) 지역 사본을 두면 같은 주소가 화면마다 다르게 보인다
     cookie.ts           hasSessionCookie + shouldRedirectToLogin — 미들웨어 1차 차단용. __Secure- 접두 유무
                         둘 다 보고, GET·HEAD만 돌려보낸다 (Action POST는 통과)
     message.ts          accessErrorMessage · inviteErrorMessage · signInErrorMessage — 거부 사유 →
                         한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
-  keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
-                        / query.ts(조회, server-only)
+  keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel) / save.ts(순수 — 저장 판정)
+                        / query.ts(조회, server-only — loadProject·loadKeys·loadActors)
+                        ⚠️ **updatedBy는 join으로 못 푼다** — FK가 없고 User.id와 옛 GitHub 핸들이 섞여 있어
+                        loadActors가 따로 읽고 actorLabel이 못 찾은 값을 원문으로 낸다 (malmoi#3)
   onboarding/           탐지 온보딩 (SaaS 5단계, 2026-09-07). 순수 판정 + DB 껍데기 하나 — **GitHub을 모른다**
                         slug.ts(planSlug·normalizeProjectSlug — 형식은 pull/trigger의 isRefSafeSlug를 **그대로 부른다**)
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
@@ -473,13 +488,14 @@ prisma/
                         ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
                         linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
   __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
+                        + push-token-column.test.ts(pushTokenHash가 nullable·unique이고 **원문 컬럼이 없는지**)
   migrations/           11개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
                         _add_locale_orphaned, _add_translation_updated_at_index,
                         _add_tenant_auth_tables, _add_project_push_token
-                        ⚠️ 마지막 것은 dev에만 적용됐다 (2026-09-07) — 프로덕션은 `/merge` 1단계의 `db:deploy`가 넓힌다.
-                        `migrate dev`가 비대화형을 거부해 `migrate diff`로 만들었다 (`/db` 4c)
+                        ⚠️ 마지막 것은 `migrate dev`가 비대화형을 거부해 `migrate diff`로 만들었다 (`/db` 4c).
+                        prod 반영 완료 (2026-09-07, `db:status:prod` 11개 up to date)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
@@ -496,6 +512,8 @@ scripts/
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
+  __tests__/            required-args.test.ts — push:local·smoke:github의 인자 필수와 **옛 공유 slug env의
+                        소비자 0건**을 소스로 고정한다. ⚠️ 그 이름이 테스트에 남아 있어야 방어선이 산다
 auth.ts                 Auth.js v5 설정 — signIn 콜백은 검증 이메일 확인·갱신만, 인가는 ProjectMember.
                         logger.error가 outage.ts에 장애를 알린다
 docs/MVP.md             PoC 스펙 (닫힘 — §8.4가 SAAS.md를 가리킨다)
@@ -511,10 +529,10 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
                         올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
                         ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
                         했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
-                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **셋이
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **넷이
                         남아 있다**: pull-to-pr §4(실물 7시나리오) · tenant-auth §6.1(preview 실물 +
                         거기서만 잡힌 결함 넷) · github-connect T5(실물 10시나리오 + **못 밟은 둘의
-                        이유**). key-separator-contract는 보류라 애초에 대상이 아니다
+                        이유**) · project-onboarding T8(실물 14행 표 + **전제 둘이 틀렸다는 실측**). key-separator-contract는 보류라 애초에 대상이 아니다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
@@ -581,7 +599,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-07 기준 26개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-07 기준 29개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -610,7 +628,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
-- **docs/features/README.md** — 기능 문서 7개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **docs/features/README.md** — 기능 문서 8개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
 - **README.md** — CLAUDE.md의 요약 미러. 스택·명령·브랜치·현 단계 선언이 바뀌면 같이 갱신한다 — 신규 진입자가 처음 여는 파일이라 여기가 낡으면 닫힌 스펙으로 안내한다. 커밋 prefix `docs(README): ...`
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
@@ -621,7 +639,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
-- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`PUSH_TOKEN`·`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
+- **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다. ⚠️ **`PUSH_TOKEN`은 이 부류가 아니다** — 서버의 인가 판정에 안 들어가고 `scripts/push-local.ts`가 **보낼** 값이다(2026-09-07부터 push 인증은 `Project.pushTokenHash` 조회다).
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
 - **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.

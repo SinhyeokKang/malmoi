@@ -59,10 +59,15 @@ function openingTag(src: string, start: number): string {
   return src.slice(start);
 }
 
-/** 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다. */
+/**
+ * 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다.
+ *
+ * ⚠️ **네 태그를 본다.** `button|input`만 보던 시절 온보딩의 `<select>`가 방어선 밖이었다
+ * (2026-09-07). 포커스를 받는 태그가 늘면 여기에 더한다 — 아래 메타 테스트가 목록을 고정한다.
+ */
 function controls(src: string): string[] {
   const found: string[] = [];
-  for (const m of src.matchAll(/<(?:button|input)[\s>]/g)) {
+  for (const m of src.matchAll(/<(?:button|input|select|textarea)[\s>]/g)) {
     const tag = openingTag(src, m.index);
     if (!tag.includes('type="hidden"')) found.push(tag);
   }
@@ -103,5 +108,24 @@ describe("hand-rolled 컨트롤의 포커스 링 (DESIGN §7)", () => {
     const fake = `<button onClick={() => setX(1)} className="focus-visible:outline-none">x</button>`;
     const [tag] = controls(fake);
     expect(tag).toContain("focus-visible:outline-none");
+  });
+
+  /**
+   * ⚠️ **`<select>`가 방어선 밖이었다** (2026-09-07 `/doc-check`). 온보딩이 셀렉트를 도입했는데
+   * 스캐너는 `button|input`만 봤다 — 그 셀렉트는 마침 링을 들고 있었지만 **그건 운이고 검사가
+   * 아니었다.** `<textarea>`도 같은 부류다(아직 코드에 없지만 번역 UI 재작성이 쓸 수 있다).
+   *
+   * 포커스를 받는 컨트롤이 늘 때마다 이 목록이 낡으므로, 아래가 **네 태그를 각각 먹여** 스캐너가
+   * 실제로 집는지 본다.
+   */
+  it("포커스를 받는 네 태그를 다 집는다 — button·input·select·textarea", () => {
+    const fake = [
+      `<button className="a">x</button>`,
+      `<input className="b" />`,
+      `<select className="c"><option>1</option></select>`,
+      `<textarea className="d" />`,
+    ].join("\n");
+    const labels = controls(fake).map((t) => /className="([^"]*)"/.exec(t)?.[1]);
+    expect(labels).toEqual(["a", "b", "c", "d"]);
   });
 });

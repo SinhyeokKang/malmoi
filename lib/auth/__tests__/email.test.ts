@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { freshVerifiedEmail, normalizeEmail, planEmailRefresh } from "../email";
+import { freshVerifiedEmail, maskEmail, normalizeEmail, planEmailRefresh } from "../email";
 
 /**
  * 이메일 정규화 — **trim + 소문자, 그 이상은 하지 않는다** (design §2).
@@ -90,5 +90,20 @@ describe("freshVerifiedEmail — signIn 콜백의 profile에서 현재 검증 �
   it("모르는 provider·비객체 profile은 null", () => {
     expect(freshVerifiedEmail("apple", { email: "x@y.com" })).toBeNull();
     expect(freshVerifiedEmail("github", undefined)).toBeNull();
+  });
+});
+
+/**
+ * 표시용 마스킹 (malmoi#3). 초대 화면이 갖고 있던 지역 함수를 `lib/auth/email.ts`로 옮겼다 —
+ * 번역 셀 메타가 두 번째 소비자가 되면서 구현이 둘로 갈리면 같은 주소가 화면마다 다르게 보인다.
+ */
+describe("maskEmail — 남의 주소를 그대로 보이지 않는다", () => {
+  it("첫 글자와 도메인만 남긴다", () => {
+    expect(maskEmail("sinhyeok@day1company.co.kr")).toBe("s***@day1company.co.kr");
+  });
+
+  it("`@`가 없거나 맨 앞이면 통째로 가린다 — 자를 지점을 못 믿는다", () => {
+    expect(maskEmail("nope")).toBe("***");
+    expect(maskEmail("@example.com")).toBe("***");
   });
 });

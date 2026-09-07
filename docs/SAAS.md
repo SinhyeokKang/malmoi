@@ -52,7 +52,8 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 |---|:---:|:---:|
 | 번역 조회·수정 | O | O |
 | Publish (PR 생성·갱신) | O | O |
-| 리포·기준 로케일·base branch 변경 | O | X |
+| 리포 재연결 | O | X |
+| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 §8 6단계다 |
 | 멤버 관리·프로젝트 삭제 | O | X |
 
 **EDITOR에게 Publish를 허용한다.** Publish는 base branch 직접 쓰기가 아니라 **검토 가능한 PR 생성**이다.
@@ -122,8 +123,8 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 ✅ **대신 `/api/push`의 인증을 프로젝트별로 바꿨다** (2026-09-07). 전에는 서버 env 하나가 대상
 프로젝트를 정해 두 리포의 CI를 동시에 받을 수 없었다. 설계는 1단계에서 §7.8로 닫히고 구현은 §8
 5단계가 받았다 — `Project.pushTokenHash`와 `/api/pull`의 전 프로젝트 순회가 같은 항목이고, 프로젝트
-생성 경로가 선 뒤라야 발급할 자리가 생겼다. **대상 리포의 Actions secret을 교체해야 한다** — 그
-전환은 5단계 T8이다.
+생성 경로가 선 뒤라야 발급할 자리가 생겼다. **대상 리포의 Actions secret을 교체했다** (2026-09-07, T8 —
+`order-check` 하나다: l10n 워크플로가 붙은 리포가 그것뿐이었다).
 
 2차에 열 조건: 워크플로 파일을 못 넣는 리포가 실제 도입 대상이 될 때.
 
@@ -210,7 +211,7 @@ MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘�
 | 자격증명 | 발급자 | 용도 |
 |---|---|---|
 | **OAuth App 토큰** | Auth.js provider (`AUTH_GITHUB_*`) | **로그인** — 이 사람이 누구인가 |
-| GitHub App **user-to-server 토큰** | **같은 GitHub App**이 발급한다 (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 어느 설치·리포를 볼 수 있는가. **GET만** 부른다 |
+| GitHub App **user-to-server 토큰** | **같은 GitHub App**이 발급한다 (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 어느 설치·리포를 볼 수 있는가. **GET만** 부른다 (상시 검사가 **자격증명 분리와 쓰기 메서드 둘 다** 센다 — 후자는 octokit의 네 입구를 본다: `request`·`paginate`의 문자열 route·`rest.*`의 이름 붙은 쓰기·`graphql` mutation. ⚠️ 2026-09-07까지는 첫째만 봤고, **실제 코드가 쓰는 형태는 둘째다** — 가장 그럴듯한 회귀 경로가 정확히 사각이었다) |
 | GitHub App **installation token** | GitHub App 개인키 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 트리 조회 · 브랜치 갱신 · PR 생성 |
 
 ⚠️ **가운데 것이 "OAuth"라는 이름을 공유하지만 로그인 토큰이 아니다.** 로그인은 별도 OAuth App이고,
@@ -246,7 +247,7 @@ Cascade라 **User 삭제가 연결 토큰까지 지운다**(§6이 어댑터 이
 
 - **HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨(`"malmoi-github-state"`). ⚠️ 세션 서명과 **키를
   공유**하므로 회전하면 진행 중인 연결이 전부 죽는다.
-- **10분 만료 · nonce 대조 · `timingSafeEqual`**(길이 선검사). 판정 순서는 서명 → nonce → 만료 →
+- **10분 만료 · 서명은 `timingSafeEqual`**(길이 선검사) **· nonce는 단순 대조**(서명이 이미 검증됐다). 판정 순서는 서명 → nonce → 만료 →
   사용자로, **만료를 사용자보다 앞에 둬** 만료된 state가 누구 것이었는지 말하지 않는다.
 - **목적지를 서명 payload에 싣는다** — 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
   ⚠️ **2026-09-07에 slug 하나에서 `StateDest` 갈래 둘로 넓어졌다**: `{kind:"settings", slug}`와
@@ -277,7 +278,7 @@ User에 GitHub Account가 연결됨
 
 ✅ **4단계는 그 위험을 더 좁게 닫았다 — `installationId`가 아예 클라이언트에서 오지 않는다.** 리포는
 `Project`에 고정이고(연결 화면에 셀렉트가 없다), 서버가 `GET /repos/{owner}/{repo}/installation`으로
-설치 id를 **직접 얻는다**(`probeRepo`). 그래서 사용자 입력은 slug 하나이고, 3중 검증은 "보낸 값이
+설치 id를 **직접 얻는다**(`probeRepo`). **4단계 연결 화면에서는** 그래서 사용자 입력이 slug 하나였다 — ⚠️ **5단계 생성 경로는 `{ owner, repo, adapter, pathTemplate, baseLocale, slug, name }`을 받는다.** 살아남은 불변식은 좁다: `installationId`는 여전히 서버가 `probeRepo`로 얻고, `adapter`·`pathTemplate`은 **파일을 다시 읽어** `planConfirmedFormat`의 반환값을 저장한다(클라이언트가 보낸 값을 그대로 믿지 않는다 — pull이 임의 경로를 겨누는 것을 막는 보안 통제다). 3중 검증은 "보낸 값이
 맞는가"가 아니라 "서버가 얻은 값을 이 사람이 볼 수 있는가"를 묻는다. 판정 자리는 `planRepoConnect`다.
 
 **GitHub App 권한은 최소로**: Metadata read · Contents read/write · Pull requests read/write.
@@ -333,8 +334,11 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 
 ⚠️ **그 둘은 판정과 종결이 갈린다** (2026-09-06). 판정 함수(`planRepoConnect`)는 **4단계**가 만들어
 단위 테스트로 덮었고(`installation-forbidden`·`repo-forbidden`·`repo-not-installed`), 시나리오가
-**닫히는 것은 생성 표면이 생기는 5단계**다 — 지금은 리포가 `Project`에 고정이라 "설치되지 않은 리포를
-Project로 등록"할 입력 자체가 없다. 판정층을 먼저 세운 것은 5단계가 그것을 재사용하기 때문이다.
+**닫힌 것은 생성 표면이 생긴 5단계**다 (2026-09-07). 4단계 연결 화면에서는 리포가 `Project`에 고정이라
+"설치되지 않은 리포를 Project로 등록"할 입력 자체가 없었고, **5단계가 그 입력을 만들었다** —
+`createProject`가 `{ owner, repo, … }`를 받으므로 방어선이 `checkRepoAccess`→`planRepoConnect`의 3중
+검증으로 옮겨졌다. 판정층을 먼저 세운 것은 5단계가 그것을 재사용하기 때문이고, 상시 방어선은
+`app/(edit)/__tests__/onboarding.test.ts`의 "3중 검증 거부 셋"과 `lib/onboarding/__tests__/create-plan.test.ts`다.
 
 - 비로그인 사용자의 프로젝트 조회·수정·Publish
 - 프로젝트 A 멤버가 프로젝트 B의 URL·ID를 직접 전송
@@ -342,8 +346,9 @@ Project로 등록"할 입력 자체가 없다. 판정층을 먼저 세운 것은
 - EDITOR의 멤버·리포 설정 변경 — 멤버는 2단계, **리포 설정 절반은 4단계**가 닫았다(`app/(edit)/__tests__/github-connect.test.ts`, permission은 `project:settings`)
 - 설치되지 않은 리포를 Project로 등록 — 판정 4단계 / **종결 5단계** ✅ (2026-09-07). `createProject`가
   `planRepoConnect`의 3중 검증을 지나고, `probeRepo`가 `not-installed`를 주면 행을 만들지 않는다
+  (`app/(edit)/__tests__/onboarding.test.ts`의 "3중 검증 거부 셋" · `lib/onboarding/__tests__/create-plan.test.ts`)
 - 설치에 접근할 수 없는 사용자의 프로젝트 생성 — 판정 4단계 / **종결 5단계** ✅ (같은 함수, 같은 커밋).
-  사용자 쪽 목록 둘을 **제출 시점에 다시 부른다** — 렌더 때 본 것을 인가 근거로 쓰지 않는다
+  사용자 쪽 목록 둘을 **제출 시점에 다시 부른다** — 렌더 때 본 것을 인가 근거로 쓰지 않는다 (같은 테스트)
 - **제거된 멤버가 기존 세션으로 재접근**
 - 같은 이메일이라는 이유만의 provider 계정 자동 병합
 - 초대받은 이메일과 다른 계정으로 초대 수락
@@ -460,6 +465,11 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 ### 7.7 URL — `/projects/:slug`, slug는 전역 unique
 
+⚠️ **slug에 규칙이 넷 있다** (5단계 `lib/onboarding/slug.ts`의 `planSlug`가 생성 시점에 거른다):
+git ref-safe(`isRefSafeSlug` — 브랜치 이름 `l10n/sync-<slug>`에 그대로 들어간다) · 소문자만 ·
+`PROJECT_SLUG_MAX = 40` · **`new` 예약**. 마지막 것은 아래 URL 모양의 직접 파생이다 — `/projects/new`가
+라우트라서 그 이름의 프로젝트는 자기 설정 화면에 도달할 수 없다.
+
 ```
 /projects                      목록
 /projects/new                  생성
@@ -487,7 +497,7 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 `sha256(Bearer)`로 **행을 찾고**, 페이로드의 `projectSlug`는 그 행의 slug와 **나중에** 대조한다. 페이로드
 slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을 스스로 고르는 순환이라 아무것도 막지 못한다.
 `pushTokenHash`가 `null`인 프로젝트는 어떤 해시로도 조회되지 않으므로 fail-closed가 컬럼의 성질로 성립하고,
-무효 토큰·미발급·없는 프로젝트가 전부 **401 하나**다(404 없음 — 프로젝트 존재를 노출하지 않는다).
+무효 토큰·미발급·없는 프로젝트가 전부 **401 하나**다 (⚠️ 인증을 통과한 뒤의 slug 오배송은 **409이고 본문에 `expected` slug가 실린다** — 그 시점엔 이미 그 프로젝트의 토큰을 든 호출자이므로 새로 새는 정보가 없다)(404 없음 — 프로젝트 존재를 노출하지 않는다).
 
 - **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(§5.6) 해시 저장 규칙이 한 곳에 모인다.
 - 대상 리포의 composite action은 **이미 `project`·`push-token` input을 갖는다**(`docs/ACTIONS.md`) —
@@ -510,6 +520,11 @@ active → archived (편집·sync 중단, 목록에서 숨김)
 **자동 영구 삭제를 구현하지 않는다** — 유예 기간을 세려면 스케줄러가 필요하고, 포트폴리오 단계에서
 그것이 답하는 질문이 없다. 보관 상태와 정책만 둔다.
 
+⚠️ **아직 구현 0이고 담당은 §8 7단계다** (2026-09-07 배정). `archiv`가 코드·스키마에 한 건도 없다 —
+`features/github-connect/spec.md`가 "상태 축이 5단계에서 선 다음"으로 미뤘고 그 5단계가 끝났으므로,
+`SyncRun`·고정 제한·오류 분류와 같은 단계에서 상태 축을 함께 세운다(sync를 멈춘다는 것이 곧 운영
+안전성의 항목이다).
+
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `l10n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
   가정하지 않는다. 보관 화면에 "열린 PR이 있습니다"만 알린다.
@@ -529,7 +544,7 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 - [x] **`SYNC_BRANCH`를 프로젝트별로 갈랐다** ✅ (2026-09-05) — 상수 `l10n/sync` → `syncBranchFor(slug)`가
       내는 `l10n/sync-<slug>`. **`Project` 컬럼으로 두지 않았다** — 마이그레이션이 필요하고, 사용자가
       브랜치 이름을 정하고 싶어하는 요구는 아직 없다. 필요해지면 그때 컬럼으로 승격한다
-  - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **이 함수가 유일한 방어선이다** — git이
+  - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **이 함수가 유일한 방어선이었다** — 5단계가 `planSlug`(`lib/onboarding/slug.ts`)로 실패를 **생성 시점으로 당겼고**, 판정 정규식은 `lib/pull/ref-slug.ts` 한 벌을 둘이 공유한다 — git이
     거부할 이름을 화이트리스트로 막고 던진다. 안 막으면 `createRef` 422가 "GitHub이 거절함"으로만 보인다
   - 검증: `lib/pull/__tests__/trigger.test.ts` — 다른 slug는 다른 브랜치, 같은 slug는 같은
     브랜치, git이 거부할 15가지 slug를 던진다. 소비자 셋은 `sync-branch-consumers.test.ts`(2026-09-06). 폐기용 리포 셋에 열린 `l10n/sync` PR이 없어(전부 머지됨)
@@ -673,7 +688,7 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 ✅(`credential-separation.test.ts`) /
 접근을 철회해도 번역 데이터가 보존되고 재부여로 재연결된다 ✅(2026-09-07 실물).
 
-### 5단계 — 탐지 온보딩 ⬜ ← **현재 단계** → `features/project-onboarding/`
+### 5단계 — 탐지 온보딩 ✅ **완료 (2026-09-07, 프로덕션 반영까지)** → `features/project-onboarding/`
 
 - [x] 탐지 후보를 **사용자 언어로** 요약 (경로·언어·기준 언어·키 수·형식), 내부 이름은 숨김 (§3)
 - [x] 후보 추천 순위와 **사용자 확정** (§7.3) — 순위는 탐지기 순위 그대로, 확정은 파일을 다시 읽어 재검증한다
@@ -688,24 +703,39 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
   - ✅ 2026-09-07 — 대조는 `47fb4de`(T3, `sha256(Bearer)` → `pushTokenHash` → slug 대조), 순회는
     `597b545`(T4, `lib/pull/targets.ts` + 프로젝트별 try/catch), **발급**은 `b1fed55`(T6,
     `createProject`가 한 트랜잭션에서 심고 `rotatePushToken`이 회전한다 — 원문은 반환값에만 있다).
-    ⚠️ **프로덕션 반영은 남아 있다** — 마이그레이션 `_add_project_push_token`이 dev에만 적용됐고
-    `/merge` 1단계의 `db:deploy`가 넓힌다. 기존 프로젝트 넷의 토큰 발급 화면은 T7이다
+    ✅ **프로덕션 반영 완료** (2026-09-07) — `db:deploy`로 `_add_project_push_token`이 prod에 갔고
+    (`db:status:prod` 11개 up to date) PR #9가 코드를 실었다. 발급 화면은 T7 산출물로 서 있다
+    (`components/onboarding/push-token-panel.tsx` → 설정 화면 3섹션, 회전은 `rotatePushToken`)
 
 완료 게이트: 새 사용자가 **문서나 터미널 없이** 첫 적재를 완료한다 / 작은 후보가 큰 표면을 조용히
 가리지 않는다 / 확정하지 않은 추정값으로 `ready`가 되지 않는다.
 
-✅ 2026-09-07 — **T1~T7이 끝났다** (`features/project-onboarding/tasks.md`). 게이트 셋 중 첫째와 셋째는
+✅ 2026-09-07 — **T1~T8이 끝났다** (`features/project-onboarding/tasks.md`). 게이트 셋 중 첫째와 셋째는
 실물로 확인했다: 로그인부터 첫 적재까지 터미널 없이 한 바퀴 돌았고(dev DB에 검증용 프로젝트를 만들었다
 지웠다), `lastCommitSha`가 서지 않으면 `ready`가 아니다. **둘째는 부분적이다** — 후보 목록이 키 수를
 보이지만 `ts-dict`가 자동 탐지에 참여하지 않아 `bugshot-2`의 903키 표면은 수동 지정으로만 붙는다
-(ADAPTER-COVERAGE 판정 ③). **남은 것은 T8**: 프로덕션 전환(`db:deploy` + 기존 프로젝트 넷의 토큰 재발급)과
-문서 반영이다 — 그때까지 `/merge`를 하지 않는다.
+(ADAPTER-COVERAGE 판정 ③).
+
+**T8(프로덕션 전환)이 끝났다** — `db:deploy`(prod 11개) → `/merge`(PR #9 → squash `f595cc3`, CI verify green,
+Vercel 프로덕션 배포 success) → 대상 리포 토큰·secret 교체 → CI green(`updated: 23`) → 실물 왕복 14시나리오
+(로컬 + dev DB, **결함 0**) → `/l10n-roundtrip` 재검증(`no-changes` → 편집 3건 PR 재사용 → 머지 → `no-edits`
+→ `[skip-l10n]`으로 CI skipped). ⚠️ **전환 계획의 전제 둘이 실측에서 뒤집혔다**: ① l10n 워크플로가 붙은
+리포는 `i18n-order-check` **하나**여서 나머지 셋에는 토큰을 발급하지 않았다(`pushTokenHash`가 `null`인 것이
+fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**이고 `i18n-format-check` 하나에 프로젝트가
+둘이다(§7.1의 "한 리포에 표면이 둘"이 실재한다 — §10의 secret 배선 미결이 여기서 나왔다).
+
+**남은 것은 Vercel 세 스코프의 옛 env(`ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN`) 삭제 하나이고, 롤백 창을 닫는
+시점까지 의도적 보류다** — 코드는 그 값을 읽지 않지만(`scripts/__tests__/required-args.test.ts`가 상시로
+센다) 지우면 T3 이전 배포로 롤백할 때 그 배포가 그 값을 요구한다.
 
 ### 6단계 — 번역 UI 재작성 + Publish ⬜ → `features/translation-ui/`
 
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
 
 - [ ] 원문 + 전 로케일, 저장 상태, `needsReview`·`orphaned` 배지, 코드 permalink
+  - ⚠️ **큰 프로젝트의 첫 착지가 느리다** (2026-09-07 실측): `ts-dict` 903키의 필터 없는 화면이 12.7초 ·
+    `<input>` 2,711개 · 네임스페이스 52개. **가상화가 첫 수단이 아니다** — 인라인 편집과 섞으면 스크롤
+    튐·포커스 유실이 붙는다(CLAUDE.md). 기본 착지를 첫 네임스페이스로 두는 것이 더 값싸다
 - [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
@@ -718,8 +748,11 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
       된다 — 섹션을 `/projects`(또는 계정 화면)로 옮기고 `disconnectGithub`의 인가를 그에 맞춘다.
       OWNER 강등 경로가 실사용에 아직 없어 6단계로 미뤘다
 - [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
-      배지 + 편집 비활성으로 닫았다 — 여기서 확정), 덮인 셀의 `updatedBy`(+ 셀 메타가 `User.id` cuid를
-      원문으로 찍는 것 — 이름으로 바꾸려면 `User` join)
+      배지 + 편집 비활성으로 닫았다 — 여기서 확정), 덮인 셀의 `updatedBy`.
+      ⚠️ **파생 항목 하나는 먼저 닫혔다** (2026-09-07, malmoi#3): 셀 메타가 `User.id` cuid를 원문으로
+      찍던 것은 `loadActors`+`actorLabel`이 이름으로 바꿨다 — **화면 재작성과 독립적인 데이터층이라
+      6단계를 기다리지 않았다.** 여기 남은 것은 **"덮인 값에 편집자 이름이 남아 화면이 거짓을 말한다"**
+      쪽이고, 이름이 사람으로 보이게 된 만큼 그 거짓이 더 잘 읽힌다
 - [ ] **편집 손실 창 배너** (MVP §3.1·§8.3이 SaaS로 이관한 항목)
 - [ ] 미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)
 
@@ -737,6 +770,9 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
   - ⚠️ **사용자당 3개는 5단계에서 먼저 걸었다** (`lib/onboarding/create-plan.ts`의 `PROJECT_LIMIT`,
     자율 가입을 여는 대가다). **분자는 OWNER 행이다** — 멤버십 전체를 세면 EDITOR로 초대만 받은
     사람이 하나도 못 만든다. 나머지 셋이 여기 남는다
+- [ ] **프로젝트 보관 (`active → archived`)** — §7.9의 상태 축. 편집·sync 중단 + 목록에서 숨김,
+      영구 삭제는 손으로. 지금 `archiv`가 코드·스키마에 0건이다 (2026-09-07에 이 단계로 배정 —
+      "sync를 멈춘다"가 곧 운영 안전성의 항목이라서다)
 - [ ] 오류 분류 — 안정적 내부 code + 사용자용 설명 + 재시도 가능 여부 (`lib/failure.ts` 확장)
 
 완료 게이트: Publish 연속 클릭이 커밋·PR을 한 번만 만든다 / 실패한 sync가 마지막 성공 상태를 덮지
@@ -765,6 +801,15 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 7. 로그인 provider가 아니라 **`ProjectMember`가 권한을 결정**한다.
 8. **`ready`는 설정 저장이 아니라 최초 적재 성공**으로 판정한다.
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
+   ⚠️ **화면에 닿는 것까지가 이 불변식이다** (2026-09-07 추가, POSTMORTEM 2026-09-07): Server Action의
+   결과를 인라인으로 보이는 컴포넌트는 **그 Action의 `revalidatePath`가 바꾸는 조건부 분기 안에 있어서는
+   안 된다.** 실제로 `revalidatePath`가 readiness를 `ready`로 바꾸자 재시도 컴포넌트를 감싼 분기가 거짓이
+   되어 "M건을 읽지 못했어요"가 한 프레임도 남지 않았다 — 판정은 옳았고 전달이 사라졌다.
+
+**판정을 어디에 두는가도 불변식에 붙는다** (§5.2의 연장, 2026-09-07): 판정은 순수 함수여야 하고,
+**클라이언트가 읽는 판정은 잎 모듈이어야 한다.** `lib/onboarding/message.ts`를 클라이언트 컴포넌트가
+읽으면서 `slug` → `lib/pull/trigger` → `lib/adapters` → `ts-morph`로 **7.2MB 청크**가 붙었고, 판정을
+`lib/pull/ref-slug.ts`로 내려 끊었다. 상시 검사는 `components/__tests__/client-graph.test.ts`다.
 
 ## 10. 아직 안 정한 것
 
@@ -774,3 +819,8 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
   ⚠️ **"권한을 더하면 재승인 대기 중 기존 설치의 pull이 죽는다"는 미실측이라 근거로 쓰지 않았다** —
   GitHub은 승인 전까지 옛 권한으로 계속 동작하는 것으로 알려져 있다
 - **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
+- **한 리포에 프로젝트가 둘일 때 Actions secret 배선** (2026-09-07, 5단계 T8이 남겼다) — 토큰이
+  프로젝트를 정하므로 `PUSH_TOKEN` secret 하나로 둘을 먹일 수 없다. 워크플로에 **스텝 둘 + secret 둘**이
+  필요하고, prod에 그 모양이 실재한다(`i18n-format-check` → `format-check-code`·`format-check-yaml` —
+  §7.1의 "한 리포에 표면이 둘"이다). **그 리포에 워크플로를 붙이는 시점에 결정한다** — 지금 정하면
+  실제 필요 없는 이름 규칙을 먼저 박는다

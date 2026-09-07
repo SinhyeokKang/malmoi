@@ -364,22 +364,98 @@ DESIGN §7에 그 사실을 등재했다.
 
 **프로덕션 배포 순서 — 이 태스크가 전환 절차 자체다** (design §6 · spec §5 "전환 다운타임"):
 
-- [ ] `pnpm db:deploy` → `pnpm db:status:prod`로 `_add_project_push_token` 적용 확인
-- [ ] `/merge` (T1~T7이 전부 dev에 있고 CI green인 상태에서 **한 번**)
-- [ ] 프로덕션 설정 화면에서 넷(`bugshot-2`·`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) 토큰 발급 →
-      **대상 리포 Actions secret `PUSH_TOKEN` 교체** → 넷 CI 수동 트리거 green
-- [ ] dev DB 넷 — 로컬 `pnpm dev` 설정 화면에서 발급 → 사람이 `.env.local`의 `PUSH_TOKEN`에 (에이전트는 편집하지 않는다)
+- [x] `pnpm db:deploy` → `pnpm db:status:prod`로 `_add_project_push_token` 적용 확인 ✅ 2026-09-07 (11개 up to date)
+- [x] `/merge` ✅ 2026-09-07 — PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) squash `f595cc3` (93파일 +7959/-336). PR CI `verify` green, Vercel 프로덕션 배포 success
+- [x] ~~넷~~ **`order-check` 하나** 토큰 발급 → 대상 리포 secret 교체 → CI green ✅ 2026-09-07
+  - ⚠️ **이 항목의 전제가 둘 틀렸다** (실측):
+    ① **l10n 워크플로가 붙은 리포는 `i18n-order-check` 하나다.** `bugshot-2`·`bugshot-i18n-test`의
+    `ci.yml`은 그 리포들의 자체 CI이고 `l10n-push` 스텝이 없으며, `i18n-format-check`는 워크플로가
+    0개다 (TASKS §5의 "CI 워크플로는 이 리포에 안 붙였다"가 그 이유다). **쓰는 곳이 없는 토큰은
+    발급하지 않았다** — `pushTokenHash`가 `null`인 상태가 fail-closed의 올바른 기본값이고, 발급하면
+    관리할 자격증명만 늘어난다.
+    ② **prod `Project` 행은 여섯이고 `i18n-format-check` 하나에 프로젝트가 둘이다**
+    (`format-check-code`·`format-check-yaml` — SAAS §7.1의 "한 리포에 표면이 둘"이 실제로 있다).
+    ⚠️ **그 리포는 `PUSH_TOKEN` secret 하나로 두 프로젝트를 먹일 수 없다** — 토큰이 프로젝트를
+    정하므로 워크플로에 스텝 둘 + secret 둘이 필요하다. 워크플로를 붙일 때 결정할 자리다
+  - 실측: `updated: 23 / translationsFilled: 69 / orphaned: 0`,
+    [run 34100271260](https://github.com/SinhyeokKang/i18n-order-check/actions/runs/34100271260).
+    ⚠️ **토큰 원문을 화면에 찍지 않았다** — 스크립트가 해시를 prod에 쓰고 원문을 `gh secret set`의
+    stdin으로 바로 넘겼다(`--body`는 `ps`에 노출된다). 해시를 **먼저** 쓰고 secret을 나중에 넣는다:
+    순서가 반대면 옛 해시로 도는 창이 생긴다
+- [x] ~~dev DB 넷 토큰 → `.env.local`~~ → **안 한다** (2026-09-07 결정). 그 값의 소비자는 `pnpm push:local`
+      하나이고 지금 그것을 돌릴 일이 없다. 필요해지면 로컬 dev 서버의 설정 화면에서 **그 dev 프로젝트의**
+      토큰을 발급해 사람이 채운다 — prod 토큰을 넣으면 401이다(로컬 `DATABASE_URL`이 dev를 가리킨다)
 - [ ] Vercel 세 스코프에서 `ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN` 삭제 (코드가 안 읽는 것을 grep으로 확인한 뒤.
       `vercel env ls`로 확인 — 성공 메시지가 근거가 아니다)
-- [ ] 실물 왕복 — 폐기용 리포 하나를 **처음부터** 온보딩으로 붙인다
+  - ⏸ **보류 중** (2026-09-07). 코드가 안 읽는 것은 확인됐지만(위 검증 grep), **지우면 T3 이전 배포로
+    롤백할 때 그 배포가 그 값을 요구한다.** 롤백 창을 닫기로 결정하는 시점에 지운다 — 남아 있어도
+    무해하고, 남겨 두는 비용은 "다음 사람이 설정해야 하는 값으로 읽는다" 하나다
+- [x] 실물 왕복 — 폐기용 리포 하나를 **처음부터** 온보딩으로 붙인다 ✅ 2026-09-07 (`/bugshot-qa`, 로컬)
+  - ⚠️ **야간 pull 순회는 프로덕션 cron이 스스로 확인한다** (KST 03:00). `CRON_SECRET`은 Vercel 스코프에만
+    있어 손으로 부를 수 없고, 부르면 대상 리포에 PR이 열린다
   - 시나리오: 계정 미연결 상태에서 시작 / 설치 선택 목록에 없는 리포 → `repo-not-installed` / 후보 둘 이상인 리포 /
     `ts-dict` 리포(수동 지정 → 903키) / code-dict 리포 자동 후보 / 남의 리포 owner/repo 직접 전송 → 거부 /
     첫 적재 실패 후 "다시 시도" / `ready`에서 "다시 시도" → `not-awaiting` / 워크플로 붙인 뒤 CI push 200 /
     야간 pull 순회(응답 배열에 둘 이상)
   - ⚠️ **preview가 아니라 로컬·프로덕션이다** — preview는 Vercel SSO 뒤라 자동화가 302를 받는다
-- [ ] `/l10n-roundtrip` 재검증 (push 인증 경로가 바뀌었다 — 스킬 문서의 `PUSH_TOKEN`·`ACTIVE_PROJECT_SLUG` 절차와
-      pull 응답 기대(`:54`, 배열)를 먼저 고친다)
-- [ ] 문서 (각자 별도 커밋)
+  - **로컬로 돈다** (2026-09-07 결정). prod에서 하면 **프로젝트 삭제 UI가 비범위라 검증용 행이 영구히
+    쌓이고 OWNER 3개 제한을 먹는다** — 로컬은 dev DB라 만들었다 지울 수 있다. prod가 답해야 했던
+    축(마이그레이션·머지·토큰 인증)은 `order-check` push 200으로 이미 닫혔다. `/bugshot-qa`도 같은
+    이유로 로컬을 쓴다
+**실물 검증 기록** (2026-09-07, 로컬 + dev DB. 검증용 프로젝트 둘을 만들었다 지웠다):
+
+| 시나리오 | 결과 |
+|---|---|
+| 리포 텍스트 필터 | ✅ `format` → 1건으로 좁혀진다 |
+| **후보 둘 이상** (`i18n-format-check`) | ✅ YAML 카탈로그 `locales/{locale}.yml` 9키 + **코드 딕셔너리** `src/i18n/{locale}.ts` 9키 — code-dict 자동 후보도 여기서 닫힌다 |
+| 2번째 후보 선택 | ✅ 선택 행이 `bg-muted`로 옮겨가고 기준 언어가 그 후보 것으로 갱신된다 |
+| **저장값이 고른 후보다** | ✅ `adapterName: code-dict`(1순위 YAML이 아니다) · `pathTemplate: src/i18n/{locale}.ts` · keys 9 · `en*,ja,ko` |
+| **`baseBranch`가 default branch다** | ✅ 그 리포가 `dev`라 YAML이 `branches: [dev]`로 나왔다 — `main` 고정이면 CI가 영영 안 돈다 |
+| **`ts-dict` 수동 지정 → 903키** | ✅ 셀렉트 5갈래 중 "코드 딕셔너리 (여러 언어가 한 파일)" + `src/i18n/namespaces/*.ts` + `en` → **903개 키를 적재했어요**. 후보 선택이 자동 해제됐다(`onFocus`) |
+| 수동 지정 YAML 고정 | ✅ 결과 화면과 **설정 화면 둘 다** `adapter: ts-dict`·`base-locale: en`을 싣는다. 자동 후보(`qa-code`)는 `project:`만 — 규칙이 두 코드 경로에서 같다 |
+| **OWNER 3개 제한** | ✅ 네 번째 생성이 "프로젝트는 3개까지 만들 수 있어요."로 거부된다 |
+| `/projects` 상태 텍스트 | ✅ ready 셋이 "소유자"만 (표시 없음) |
+| 설정 5섹션 | ✅ 리포 연결·상태·push 토큰·워크플로·GitHub 계정 |
+| 계정 미연결 → [GitHub 연결] → 왕복 | ✅ **T7이 관측했다** (같은 코드). 이 라운드는 이미 연결된 상태라 재현하지 않았다 |
+| 첫 적재 실패 후 [다시 시도] | ✅ **T7이 관측했다** (`lastCommitSha`를 null로 되돌려 재적재) |
+| `ready`에서 [다시 시도] → `not-awaiting` | ⏭ **UI로 도달 불가** — 성공하면 `revalidatePath`가 버튼을 없앤다. 그것이 설계다 |
+| 설치 목록 밖 리포 → `repo-not-installed` | ⏭ **UI로 도달 불가** — 목록이 설치된 리포만 보인다. `onboarding.test.ts`의 "3중 검증 거부 셋"이 덮는다 |
+| 남의 리포 owner/repo 직접 전송 → 거부 | ⏭ 같은 이유(Server Action id가 필요하다). 같은 테스트가 덮는다 |
+| 워크플로 붙인 뒤 CI push 200 | ✅ **프로덕션에서** `order-check` 200 (`updated: 23`) |
+| 야간 pull 순회 | ⏳ 프로덕션 cron (KST 03:00) — `CRON_SECRET`이 Vercel에만 있다 |
+
+⚠️ **결함 0건.** 관측 하나는 남긴다: **903키 프로젝트의 번역 화면이 12.7초**(903행 · input 2711개 ·
+네임스페이스 52개)다. CLAUDE.md "키 리스트는 가상화하지 않는다"가 요구한 **관측 조건이 여기서
+충족됐다** — 다만 그 화면은 동결분이고 SAAS §8 6단계가 재작성하므로 지금 가상화를 넣지 않는다
+(인라인 편집 + 가상 스크롤의 스크롤 튐·포커스 유실을 동결된 화면에 얹으면 버려진다).
+
+⚠️ **`/bugshot-qa`의 이슈 제출은 하지 않았다** — 결함이 없었고, 사용자 지시가 "문제가 있으면
+`/refactor` 후 `/push`"였다.
+
+- [x] `/l10n-roundtrip` 재검증 ✅ 2026-09-07 — **스킬 문서는 이미 새 절차로 갱신돼 있었다**(토큰=프로젝트,
+      배열 응답, `--project` 필수, `smoke:github <slug>`). 대상은 `order-check`(json-catalog — 재생성 경로이고
+      표현 5축이 섞여 있다), dev DB + 로컬 dev 서버.
+  - **0 발급**: dev DB의 `order-check`는 `pushTokenHash`가 `null`이었다(T8 판정대로). `generatePushToken`+
+    `hashPushToken`으로 발급하고 원문은 셸 env로만 넘겼다 — **`.env.local`은 건드리지 않았다**(dotenv가
+    이미 export된 값을 덮지 않는다). 검증 뒤 `null`로 회수했다
+  - **1 push**: `200` / `updated: 23` · `translationsFilled: 69` · `orphaned: 0` — **Bearer가 프로젝트를 정하는
+    경로가 실물에서 닫혔다**(서버 env 없이)
+  - **2 바이트 고정점**: 응답이 **배열**이고 `{"slug":"order-check","status":"skipped","reason":"no-changes"}` —
+    2층 blob 비교까지 가서 전 파일 동일. 재생성 writer가 표현 5축을 바이트로 재현한다는 증거다
+  - **3 편집 3건 → PR**: 파일 3개 × 네임스페이스 3개, 취약점을 일부러 겨눴다 — `en/buttons.retry`(한 줄
+    컨테이너 + `\/` + 값에 `"`·`\`) · `ja/alerts.unsavedChanges`(탭 + 비ASCII 리터럴) ·
+    `ko/menu.exportImage`(전 비ASCII `\uXXXX`). 결과: `+1 -1` × 3파일, **hunk 3 = 편집 키 3**, 파일별 규칙이
+    각자 지켜졌다(같은 `ko` 파일의 `saveAs`는 `/`가 이스케이프 없이 유지 — en과 규칙이 다르다).
+    **PR은 새로 만들지 않고 기존 #4를 재사용**했고 브랜치는 `l10n/sync-order-check`다. orphaned 키
+    `smoke.t3`은 export에서 빠졌다
+  - **4 머지 → 수렴**: main head가 `[skip-l10n]`을 들고, `l10n/sync-order-check`가 삭제되고, 재pull이
+    `no-edits`(1층 스킵 — `lastPulledAt == max(updatedAt)`)
+  - **5 CI**: 머지 커밋 `e22d9c84`의 run이 **skipped** — `[skip-l10n]`이 무한 루프를 막는다
+  - ⚠️ **부수 확인**: 편집의 `updatedBy`를 일부러 cuid가 아닌 값으로 넣었더니 같은 날 고친 `actorLabel`이
+    원문 그대로 냈다 — malmoi#3의 폴백 갈래가 실물에서 밟혔다
+  - ⚠️ **같은 리포를 prod `Project`도 가리킨다** — 야간 cron이 prod DB 상태로 그 브랜치를 다시 만들 수
+    있다. 폐기용 리포라 무해하지만 검증 대상을 고를 때 알고 있어야 한다
+- [x] 문서 (각자 별도 커밋) ✅ 2026-09-07
   - [x] `docs/SAAS.md` — §8 5단계 체크 · **§7.8 조회 방향**(해시가 프로젝트를 정한다) · §5.4.1(`StateDest`) ·
     §7.3("키 수가 큰 쪽을 추천" → "키 수를 보인다, 기준 로케일은 사용자가 고른다") · §8 5단계 "Actions 링크"는
     6단계 이후로 · §8 6단계에 "GitHub 계정 연결 — 연결은 5단계에서 사용자 수준으로 갔다" · §8 7단계 고정 제한에

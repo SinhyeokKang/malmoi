@@ -25,16 +25,19 @@
 |---|---|---|
 | **A. 모듈 완성** | `lib/` 각 모듈이 자기 입·출력 계약을 닫는다 | 대부분 됨 — 아래 표 |
 | **B. 데이터 플로우 체크** | 세 흐름이 **끝에서 끝까지** 값을 안 잃는다 | ✅ 됨 (2026-09-03) |
-| **C. Actions + Cron** | push가 CI에서, pull이 cron에서 자동으로 돈다 | ✅ 됨 (2026-09-03) — 잔여였던 bugshot-2 실리포 연동은 SaaS 5단계(프로젝트 생성·push 토큰)가 받는다 |
+| **C. Actions + Cron** | push가 CI에서, pull이 cron에서 자동으로 돈다 | ✅ 됨 (2026-09-03) — 잔여였던 bugshot-2 실리포 연동은 5단계가 **"안 붙인다"로 닫았다** — 워크플로가 붙은 리포는 `order-check` 하나이고 나머지는 토큰 미발급이 정상 상태다 |
 
 **그 다음이 SaaS화다** — 인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**. `main`/`dev`는 거기서
 나누기로 했다가 2026-09-04에 앞당겨 나눴다 (MVP §8.4, 아래 전역 미결). SaaS 2단계(tenant-auth)는
 2026-09-06에 프로덕션에 나갔다 — 진행은 SAAS §8이 정본이다.
 
-**2026-09-07 현재**: 4단계(GitHub 설치 연결)와 5단계(탐지 온보딩)의 **코드가 dev에 있다.** 5단계는
-T1~T7이 끝났고 **T8(프로덕션 전환)이 남았다** — `db:deploy` → `/merge` → 기존 프로젝트 넷의 토큰
-재발급 → 대상 리포 Actions secret 교체가 한 세션에 붙어 있어서 사람이 밟는다. **그때까지 `/merge`를
-하지 않는다**: T3가 프로덕션에 가는 순간 넷의 CI가 401이고 발급 화면이 프로덕션에 있어야 복구된다.
+**2026-09-07 현재**: 4단계(GitHub 설치 연결)와 5단계(탐지 온보딩)가 **프로덕션까지 갔다** — T8까지
+끝났다(`db:deploy` → prod 마이그레이션 11개 → `/merge` PR #9 → squash `f595cc3` → 대상 리포 토큰·secret
+교체 → CI green `updated: 23`). **남은 것은 Vercel 세 스코프의 옛 env(`ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN`)
+삭제 하나이고, 롤백 창을 닫는 시점까지 의도적으로 보류 중이다** (코드는 그 값을 읽지 않는다).
+⚠️ **전환 계획의 "기존 프로젝트 넷의 토큰 재발급"은 전제가 틀렸다** — l10n 워크플로가 붙은 리포는
+`i18n-order-check` **하나**이고, 쓰는 곳이 없는 토큰은 발급하지 않았다(`pushTokenHash`가 `null`인 것이
+fail-closed의 올바른 기본값이다). **다음은 6단계(번역 UI 재작성 + Publish)다.**
 
 ### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
 
@@ -50,7 +53,8 @@ T1~T7이 끝났고 **T8(프로덕션 전환)이 남았다** — `db:deploy` → 
 
 ✅ **재측정 트리거는 해소됐다** — `lib/adapters/**` 변경이라 걸렸던 것을 **13차**(`0bcbd57`,
 ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지표가 12차와 같아 회귀 0이다.
-이후 `lib/adapters/**`·`lib/survey/**`에 실질 변경이 없으므로 지금 시점의 재측정 부채도 없다.
+이후 변경은 하나뿐이고(2026-09-07 `code-dict.ts`의 `codeDictCandidatePaths` 분리 — 온보딩 2패스 탐지용)
+**필터·순위 로직이 0줄 바뀌어 회차를 더하지 않았다**(ADAPTER-COVERAGE §19). 재측정 부채 없음.
 
 남긴 것: 동결된 편집 UI(MVP §8.3) 관련 ⚪, 미사용 type export. (당시 데드 코드로 든 `isOrgAllowed`는
 2026-09-05 tenant-auth가 `allow.ts`째 삭제했고, `lib/survey/merge.ts`는 `one.ts`가 import하는 위임 흔적이라
@@ -72,15 +76,16 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
 
 | 모듈 | 소스 | 테스트 | 남은 것 |
 |---|---|---|---|
-| `lib/adapters` | 10 | 16 | 없음 — 어댑터 5종 + 계약 테스트 전수 (+ quote-style·json-style) |
-| `lib/pull` | 8 | 10 | 없음 — 진입점 회귀 + 조립층(`trigger`) + 브랜치 이름 소비자(`sync-branch-consumers`)까지 (2026-09-04) |
-| `lib/push` | 5 | 6 | 없음 (+ guard·payload) |
+| `lib/adapters` | 10 | 18 | 없음 — 어댑터 5종 + 계약 테스트 전수 (+ quote-style·json-style) |
+| `lib/pull` | 10 | 12 | 없음 — 진입점 회귀 + 조립층(`trigger`) + 브랜치 이름 소비자 + `targets`·`ref-slug`(2026-09-07) |
+| `lib/push` | 7 | 8 | 없음 (+ guard·payload·assemble·token) |
+| `lib/onboarding` | 8 | 8 | 없음 — 탐지·확정·첫 적재·slug·readiness·워크플로 YAML (SaaS 5단계, 2026-09-07) |
 | `lib/cli` | 2 | 2 | 없음 — 세 CLI의 인자 파싱·리포 훑기 (2026-09-04, `walk` 테스트 추가) |
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
-| `lib/keys` | 3 | 2 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 |
+| `lib/keys` | 3 | 3 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 (`actor.test.ts`가 그 형태다 — malmoi#3) |
 | `lib/auth` | 13 | 13 | 없음 — tenant-auth(2026-09-05~06)로 늘었다. 표의 나머지 행은 2026-09-04 스냅샷 |
 | `lib/scan` | 4 | 3 | 없음 — 훅·namespace까지 (A-1 ✅) |
-| `lib/github-connect` | 9 | 9 | 없음 — 사용자 토큰·`probeRepo` 근거·연결 판정 (SaaS 4단계, 2026-09-07). `credential-separation`이 자격증명 경계를 소스에서 상시로 센다 |
+| `lib/github-connect` | 10 | 9 | 없음 — 사용자 토큰·`probeRepo` 근거·연결 판정 (SaaS 4단계, 2026-09-07). `credential-separation`이 자격증명 경계를 소스에서 상시로 센다 |
 | `lib/githash`·`env` | 2 | 2 | 없음 |
 
 - [x] **A-1. `lib/scan` 계약을 닫는다** ✅ (2026-09-03) — `WrapperId.kind`로 호출 형태를 가르고
@@ -154,7 +159,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
 
 ## 전역 미결 (단계에 묶이지 않은 것)
 
-- [ ] **tenant-auth 검수 이월 (2026-09-06 code-review ⚪)** — 코드 후속: 하네스 `Role` enum·복합 FK 미흉내(`$transaction` 롤백은 흉내낸다) · `schema-contract.test.ts`가 타입·nullable을 안 본다 · 키 id 형식 혼재(`randomUUID` vs `cuid()`, §4 🔒 — 어느 미결 목록에도 없다). ✅ 닫힌 것(같은 날): `createInvitation` 동시 발급 잠금 · `auth()` 직접 호출 금지 스캔(`entry-points.test.ts`)
+- [ ] **tenant-auth 검수 이월 (2026-09-06 code-review ⚪)** — 코드 후속: 하네스 `Role` enum·복합 FK 미흉내(`$transaction` 롤백은 흉내낸다) · `schema-contract.test.ts`가 **Auth.js 4테이블 컬럼의** 타입·nullable을 안 본다 (`Translation.updatedBy`는 2026-09-07에 그 검사가 붙었다) · 키 id 형식 혼재(`randomUUID` vs `cuid()`, §4 🔒 — 어느 미결 목록에도 없다). ✅ 닫힌 것(같은 날): `createInvitation` 동시 발급 잠금 · `auth()` 직접 호출 금지 스캔(`entry-points.test.ts`)
 - [x] **`main`/`dev` 브랜치 분리 + Vercel Preview 배포** ✅ (2026-09-04 — MVP §8.4에서 앞당겼다)
   - 앞당긴 이유: SaaS 기능이 UI·인증을 건드리는데 **눈으로 확인할 배포처가 프로덕션밖에 없으면 안 된다.** preview가 생기면서 프로덕션 앞에 PR CI 게이트도 함께 섰다
   - `dev` push = preview 배포(dev DB) / `dev`→`main` squash PR = 프로덕션 배포. 작업 브랜치 층은 두지 않는다
@@ -178,8 +183,10 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
     `scripts/__tests__/required-args.test.ts`(CLI·라우트·targets) · `app/api/__tests__/route-diagnostics.test.ts`
     (그 값이 없어도 두 라우트가 돈다). ⚠️ **그래서 그 이름은 테스트에 남아 있어야 한다** — 지우면 방어선이
     함께 사라진다.
-  - ⚠️ **Vercel 세 스코프의 env 항목 삭제와 대상 리포 secret 교체가 남았다** (5단계 T8) — 코드는 그 값을
-    읽지 않으므로 남아 있어도 무해하지만, 남겨 두면 다음 사람이 그것을 설정해야 하는 값으로 읽는다
+  - ⚠️ **Vercel 세 스코프의 env 항목 삭제만 남았다** (대상 리포 secret 교체는 2026-09-07에 끝났다 —
+    `order-check` CI green). 코드는 그 값을 읽지 않으므로 남아 있어도 무해하고, **롤백 창을 닫는 시점까지
+    의도적으로 보류**다(지우면 T3 이전 배포로 롤백할 때 그 배포가 그 값을 요구한다). 남겨 두는 비용은
+    "다음 사람이 설정해야 하는 값으로 읽는다" 하나다
 
 - [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
   - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **그 확인은 `/merge` 1단계의 `pnpm db:status:prod`다** (`/push` 3단계의 `db:status`는 dev를 본다 — 게이트가 프로덕션 배포 직전에 서야 프로덕션이 코드보다 앞서는 창이 짧다)
@@ -189,6 +196,11 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
   - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인
   - `/api/pull`(cron 경로)이 프로덕션에서 `{"status":"skipped","reason":"no-changes"}` — 2층까지 도달했으므로 DB·GitHub App·PEM 개행 복원·blob 비교가 한 번에 검증됐다
+- [ ] **키 리스트 가상화의 관측 조건이 충족됐다** (2026-09-07) — CLAUDE.md "실제로 느려지는 네임스페이스가
+  관측되면 그때 대응한다"의 그 관측이다: `ts-dict` 903키 프로젝트의 **필터 없는 번역 화면이 12.7초**
+  (903행 · `<input>` 2,711개 · 네임스페이스 52개). **지금 가상화를 넣지 않는다** — 그 화면은 동결분이고
+  SAAS §8 6단계가 재작성하므로, 인라인 편집 + 가상 스크롤의 스크롤 튐·포커스 유실을 동결된 화면에 얹으면
+  버려진다. 더 값싼 답은 **기본 착지를 첫 네임스페이스로 두는 것**이고 그 판정도 6단계다
 - [x] **`pnpm build`를 로컬 게이트에** (2026-08-31 해소 — CI가 아니라 `/push` 1단계)
   - 근거: `tsc`가 RSC 경계를 못 본다. CI에 넣으면 **배포 후에** 알게 되고, 로컬 게이트가 프로덕션 앞의 유일한 방어선이다. 콜드 5초 / 웜 2초
 
@@ -251,7 +263,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
 - [x] 포맷 탐지 — 경로 신호 + 로케일 개수 + `probe` 내용 확인
   - 검증: `public/search/{locale}.json`(검색 인덱스)을 잡던 결함 회귀 테스트 4건
 - [x] `pnpm ingest <dir>` CLI — 탐지·적재·왕복 판정
-- [ ] 🔒 **base 로케일 판정** — 지금은 `en` 우선, 없으면 사전순 첫 번째. 리포 관례라 추정이다 (MVP §10). **방향은 정해졌다** — SAAS §7.3·5단계 온보딩에서 사용자가 후보를 보고 확정한다. 코드는 그때 바뀐다
+- [x] ✅ **base 로케일 판정** (2026-09-07, SaaS 5단계 — 🔒 해소) — 온보딩이 후보와 키 수를 보이고 **사용자가 확정한다**(`lib/onboarding/confirm.ts`가 `base-locale-missing`으로 거부, 확정값이 `Project.baseLocale`에 들어가고 생성된 워크플로가 `base-locale:`을 싣는다). `pickBaseLocale`은 **추천 기본값으로만** 남았다 — 정본이 아니다
 
 ### 3b. 사용처 스캔 (`lib/scan/`) ✅ — `refs` 전담, 경고만
 

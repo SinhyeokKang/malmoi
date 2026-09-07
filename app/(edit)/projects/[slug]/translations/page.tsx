@@ -4,9 +4,12 @@ import { redirect } from "next/navigation";
 import { requireProjectAccess } from "@/lib/auth/session";
 
 import { getPrisma } from "@/lib/db";
-import { loadKeys, loadProject } from "@/lib/keys/query";
+import { loadActors, loadKeys, loadProject } from "@/lib/keys/query";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { buildPermalink, cellState, namespaceCounts, type KeyRow, type TranslationState } from "@/lib/keys/view";
+import {
+  actorLabel, buildPermalink, cellState, collectActorIds, namespaceCounts,
+  type KeyRow, type TranslationState,
+} from "@/lib/keys/view";
 import { cn } from "@/lib/utils";
 import { InviteForm } from "@/components/invite-form";
 import { PullButton } from "@/components/pull-button";
@@ -76,6 +79,9 @@ export default async function TranslationsPage({
     a.isBase === b.isBase ? (a.code < b.code ? -1 : 1) : a.isBase ? -1 : 1,
   );
   const rows = await loadKeys(prisma, project.id);
+  // 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
+  // `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3).
+  const actors = await loadActors(prisma, collectActorIds(rows));
 
   // 사이드바 집계 기준 로케일. base는 대개 채워져 있어 "남은 일"이 안 보이므로 base가 아닌
   // 첫 로케일을 기본으로 쓴다. `?focus=`로 바꾼다.
@@ -185,7 +191,10 @@ export default async function TranslationsPage({
                         initialValue={row.cells[l.code]?.value ?? ""}
                         disabled={row.orphaned || l.orphaned}
                       />
-                      <CellMeta state={cellState(row, l.code)} updatedBy={row.cells[l.code]?.updatedBy ?? null} />
+                      <CellMeta
+                        state={cellState(row, l.code)}
+                        actor={actorLabel(row.cells[l.code]?.updatedBy ?? null, actors)}
+                      />
                     </td>
                   ))}
                 </tr>
@@ -230,7 +239,7 @@ function CodeRef({ row, project }: { row: KeyRow; project: Parameters<typeof bui
 }
 
 /** DESIGN.md §6.2 — 배지 3종. 번역됨은 표시하지 않는다(가장 흔한 상태가 조용해야 한다). */
-function CellMeta({ state, updatedBy }: { state: TranslationState; updatedBy: string | null }) {
+function CellMeta({ state, actor }: { state: TranslationState; actor: string | null }) {
   if (state === "orphaned") return null; // 키 열에 이미 표시했다
   return (
     <div className="mt-0.5 flex items-baseline gap-1.5 text-xs">
@@ -238,7 +247,7 @@ function CellMeta({ state, updatedBy }: { state: TranslationState; updatedBy: st
         <span className="rounded bg-amber-100/80 px-1.5 py-0.5 text-amber-800">검토필요</span>
       )}
       {state === "untranslated" && <span className="text-muted-foreground">미번역</span>}
-      {updatedBy && <span className="text-muted-foreground">— {updatedBy}</span>}
+      {actor && <span className="text-muted-foreground">— {actor}</span>}
     </div>
   );
 }

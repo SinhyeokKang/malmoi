@@ -571,3 +571,38 @@ _이 아래에 새 항목을 추가한다._
     결과를 인라인으로 보이는 호출부는 `invite-form`(같은 자리에 남는다) · `reconnect-button`(**성공 문구를 일부러
     두지 않는다** — 건강성 배지가 대신 말한다) · `push-token-panel`(토큰 섹션은 readiness와 무관해 분기가 없다) ·
     `first-ingest-retry`(이번에 고친 것)뿐이고 나머지는 안전하다.
+
+### 2026-09-07 — 컬럼의 **의미**가 바뀌었는데 렌더는 그대로여서 번역자에게 cuid가 보였다 ([malmoi#3](https://github.com/SinhyeokKang/malmoi/issues/3))
+
+- **영역**: `app/(edit)/projects/[slug]/translations/page.tsx`(`CellMeta`) · `lib/keys/query.ts` · `Translation.updatedBy`
+- **증상**: 편집한 셀 밑에 `— cmf8k2p9q0000...`이 붙었다. 오류도 경고도 없고 화면은 정상으로 보인다 — **읽는 사람만** 그것이 사람 이름이 아니라는 것을 안다. `/bugshot-qa`가 눈으로 잡아 이슈로 냈고, 그 사이 두 라운드의 `/code-review`와 1,755건의 테스트가 전부 green이었다.
+- **근본 원인**: 2026-09-05 tenant-auth가 `updatedBy`에 넣는 값을 **GitHub 핸들 → `User.id`로 바꿨다**(이메일이 재할당될 수 있어서 — SAAS §5.6). 컬럼 타입은 `String?`으로 그대로였고, **쓰는 쪽만 바꾸고 읽는 쪽을 찾지 않았다.**
+  - 이 부류가 조용한 이유가 따로 있다: **타입이 같으면 의미 변경은 어떤 게이트에도 신호를 주지 않는다.** `tsc`는 `string`이 `string`으로 흐르는 것을 본다. 하네스도 그렇다 — `authorization.test.ts:223`이 `updatedBy: "u-editor"`를 **단언하고 있었고 그것은 맞는 단언이다.** 저장이 옳은지만 묻고 **그 값이 화면에서 무엇이 되는지는 묻지 않는다.**
+  - 스키마가 이미 답을 갖고 있었다. `updatedBy`에 **FK를 걸지 않는다**는 주석이 "두 종류의 값이 섞인 컬럼"이라고 적어 뒀다 — 즉 join으로 못 푼다는 사실이 문서화돼 있었는데, 그 문장이 요구하는 **렌더 쪽 대응**은 아무도 하지 않았다.
+- **그물**:
+  - 잡은 것: **`/bugshot-qa`(사람 눈) 하나뿐.** `pnpm test`가 값은 보지만 화면은 못 보는 축이 정확히 이것이다(CLAUDE.md의 그 스킬 설명).
+  - 놓친 것: `pnpm typecheck`(양쪽이 `string`) · `pnpm test` 1,755건(저장값 단언은 통과가 정답이었다) · `entry-points.test.ts`(인가를 지나는지만 본다) · tenant-auth 라운드의 `/code-review`(쓰는 쪽 diff만 봤다 — **읽는 쪽은 그 diff에 없었다**).
+  - ⚠️ **`/code-review`가 구조적으로 못 보는 자리다**: 변경분 리뷰는 "바뀐 줄"을 보고, 의미 변경의 피해자는 **한 줄도 바뀌지 않은 파일**에 있다. `/audit`·`/doc-check`이 전수를 도는 이유와 같은 축이다.
+- **재발 방지**:
+  - **컬럼에 담는 값의 종류를 바꾸면 그 컬럼을 읽는 곳을 전수로 센다.** grep: `grep -rn --include='*.ts' --include='*.tsx' '<컬럼명>' app lib components | grep -v __tests__` → 쓰는 자리와 **읽는 자리**를 갈라 세고, 읽는 자리가 새 의미를 견디는지 하나씩 본다. 이번 대상은 3곳(저장 1·조회 1·렌더 1)이었고 고쳐야 했던 것은 뒤의 둘이다.
+  - **"FK를 안 건다"는 주석은 렌더 쪽 숙제를 함께 뜻한다.** 참조 무결성을 주장할 수 없는 컬럼은 join으로 못 풀고, 따라서 **못 찾은 값을 견디는 폴백이 어딘가에 있어야 한다.** 없으면 그 컬럼은 화면에서 원문으로 새어나온다.
+  - `lib/keys/__tests__/actor.test.ts`가 두 갈래를 상시로 고정한다 — 찾은 값은 사람 이름, **못 찾은 값은 원문 그대로**(옛 핸들·지워진 `User`). cuid 모양으로 갈라내려 하면 후자가 함께 사라진다.
+  - **소스 스캔이 배선을 센다.** `query.ts`가 `server-only`라 렌더 테스트가 없으므로, 같은 파일의 마지막 두 케이스가 페이지가 `loadActors(`를 부르고 `updatedBy`를 `CellMeta`로 곧바로 넘기지 않는지를 소스로 본다 — 이 리포의 "만든 것이 실제로 호출되는가" 계보다.
+
+### 2026-09-07 — 방어선 셋이 "검사한다"고 주장한 것을 검사하지 못했고, 전부 green이었다
+
+- **영역**: `lib/adapters/chrome-locales.ts`(`write` 시그니처) · `lib/github-connect/__tests__/credential-separation.test.ts`(GET-only 가드) · `components/__tests__/focus-ring.test.ts`(`controls()`)
+- **증상**: 없다 — 그게 이 항목의 요지다. `pnpm typecheck`·`pnpm test` 1,769건이 전부 green이고 프로덕션 동작에도 결함이 없었다. 셋 다 **`/doc-check`이 문서 단언을 코드와 대조하다가** 나왔다: 문서가 "GET만 부른다"·"모든 `<button>`·`<input>`을 훑는다"·"`WriteInput`은 `{ locale, entries }`다"라고 적었고, 그 단언을 뒷받침한다고 지목된 코드가 각자 그것보다 좁았다.
+- **근본 원인**: 셋의 원인이 다르지만 **실패 모드가 하나다 — 검사가 자기 대상의 일부만 보는데, 그 사실이 통과로 보인다.**
+  - **`write`의 `isBase`**: 메서드 파라미터는 TypeScript에서 **양변성(bivariant)** 이라, 구현이 계약보다 **더 많은** 필드를 요구해도 `Adapter`에 할당된다. 그래서 계약(`WriteInput`)에 없는 필수 파라미터가 컴파일러의 침묵 속에 살았고, 호출부가 갈렸다(`render.ts` 미전달 / `survey/one.ts` 전달). **본문이 그 값을 안 써서 우연히 무해했다** — 읽기 시작하는 순간 지표와 프로덕션이 다른 바이트를 냈을 것이다.
+  - **GET-only 가드**: octokit의 쓰기 입구가 넷(`request`·`paginate`의 문자열 route·`rest.*`의 이름 붙은 메서드·`graphql` mutation)인데 정규식이 **첫째만** 봤다. ⚠️ **실제 코드가 쓰는 형태는 둘째다**(`user.ts`의 `paginate("GET /user/installations")`) — 즉 **가장 그럴듯한 회귀 경로가 정확히 사각이었다.**
+  - **포커스 링 스캐너**: `button|input`만 훑는데 온보딩이 `<select>`를 도입했다. 그 셀렉트는 마침 링을 들고 있었고, **그건 운이지 검사가 아니다.**
+- **그물**:
+  - 잡은 것: **`/doc-check` 하나뿐.** 문서에서 출발해 "이 단언을 뒷받침한다는 코드가 정말 그러는가"를 물으니 셋이 같이 나왔다.
+  - 놓친 것: `typecheck`(양변성·정규식은 타입이 아니다) · `test` 1,769건(**세 검사 자신이 통과를 보고한다**) · `/code-review`(변경분 리뷰이고 이 셋은 **한 줄도 바뀌지 않은 파일**에 있었다) · `/audit` 2회차(원칙 위반을 찾았고 "검사의 범위"는 그 차원에 없었다).
+  - ⚠️ **좁은 검사는 red를 못 내므로 자기 좁음을 신고할 수 없다.** 넓은 검사가 오탐으로 시끄러운 것과 달리, 좁은 검사는 **영원히 조용하다** — 그래서 방치 기간이 길어진다.
+- **재방지**:
+  - **스캐너에 "red를 낼 수 있는지" 메타 테스트를 붙인다.** 이미 `focus-ring`·`credential-separation`이 그 관용구를 갖고 있었는데(`셋 중 하나만 빠져도 잡는다`), **덮는 대상 목록 자체**는 검사하지 않았다. 지금은 **입구·태그를 하나씩 먹여** 스캐너가 각각을 집는지 센다 — 목록이 낡으면 그 테스트가 red다.
+  - **계약 타입은 이름으로 참조한다.** 파라미터 타입을 인라인 객체로 적으면 양변성이 드리프트를 숨긴다. `lib/adapters/__tests__/write-contract.test.ts`가 다섯 어댑터의 `write`·`writeWithErrors`가 `WriteInput`을 **이름으로** 받는지 소스로 센다.
+  - grep: `grep -rn 'matchAll(/\|test(\|\.exec(' --include='*.test.ts' lib app components | grep -v __tests__/harness` → **각 정규식이 덮는 목록을 눈으로 세고, 그 목록을 고정하는 메타 테스트가 있는지 본다.** 없으면 그 방어선은 "지금 코드에서만" 유효하다.
+  - **"이 검사가 그 단언을 뒷받침한다"는 문장을 문서에 쓸 때, 검사의 범위를 같이 적는다.** `docs/SAAS.md` §5.4의 GET-only 항목이 그렇게 고쳐졌다 — 범위를 적으면 좁아진 것이 문서 대조에서 드러난다.

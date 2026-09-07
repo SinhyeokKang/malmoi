@@ -1,4 +1,5 @@
 import { compareKeys } from "@/lib/adapters/shared";
+import { maskEmail } from "@/lib/auth/email";
 
 /**
  * 키 리스트 화면의 순수 판정. DB 조회 결과를 받아 사이드바 집계·배지·permalink를 만든다.
@@ -16,6 +17,56 @@ export type Cell = {
   needsReview: boolean;
   updatedBy: string | null;
 };
+
+/**
+ * 셀을 편집한 사람. `User` 행에서 온다 — **프로젝트가 아니라 사용자에 속한 테이블**이므로
+ * 조회를 좁히는 축이 `projectId`가 아니다 (POSTMORTEM 2026-09-06). 조회할 id는
+ * `collectActorIds`가 **이 프로젝트의 번역 행에서만** 모으므로 다른 테넌트의 사람이 들어오지 않는다.
+ */
+export type Actor = {
+  id: string;
+  name: string | null;
+  email: string;
+};
+
+/**
+ * 조회할 편집자 식별자 — 중복을 접고 빈 값을 버린다.
+ *
+ * 행마다 조회하면 키 수만큼 왕복이 된다(903키 리포가 실재한다). 빈 배열이면 호출부가 조회를
+ * 아예 건너뛴다 — 편집 이력이 없는 프로젝트가 흔하다.
+ */
+export function collectActorIds(rows: KeyRow[]): string[] {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    for (const cell of Object.values(row.cells)) {
+      if (cell?.updatedBy) ids.add(cell.updatedBy);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * `Translation.updatedBy` → 화면에 찍을 라벨. 없으면 `null`(셀에 아무것도 붙지 않는다).
+ *
+ * ⚠️ **찾지 못한 값을 버리지 않고 원문 그대로 낸다.** 이 컬럼은 두 종류가 섞여 있다 —
+ * 2026-09-05부터 `User.id`이고 그 전 행은 GitHub 핸들이다(`prisma/schema.prisma`가 FK를 안 거는
+ * 이유). 못 찾은 것을 지우면 옛 행의 편집자가 화면에서 사라지고, cuid 모양으로 갈라내려 하면
+ * 지워진 `User`의 id가 그 판정에 걸려 함께 사라진다.
+ *
+ * 이름이 없으면 **마스킹한** 이메일이다 — 이 표는 프로젝트 멤버 전원이 보므로 남의 주소를
+ * 그대로 싣지 않는다 (초대 화면과 같은 규칙).
+ *
+ * ⚠️ **`??`가 아니라 공백 판정이다.** provider가 이름을 빈 문자열로 주면 `??`는 그것을 이름으로
+ * 읽고, 호출부의 `{actor && …}`가 빈 문자열을 falsy로 접어 **셀 메타가 통째로 사라진다** —
+ * 배지까지 함께 없어지는데 화면엔 오류가 없다.
+ */
+export function actorLabel(updatedBy: string | null, actors: Map<string, Actor>): string | null {
+  if (!updatedBy) return null;
+  const actor = actors.get(updatedBy);
+  if (!actor) return updatedBy;
+  const name = actor.name?.trim();
+  return name ? name : maskEmail(actor.email);
+}
 
 /**
  * 테이블의 한 행. **로케일별 셀을 전부 들고 있다** — 화면이 `| key | en | ko | fr |`이므로

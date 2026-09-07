@@ -388,7 +388,7 @@ function applyRoundtrip(
   const write1 =
     layout === "multi-locale"
       ? writeMultiLocale(fmt, originals, localeNames, base, entriesOf)
-      : writePerLocale(fmt, localeNames, base, entriesOf, byPath, reported);
+      : writePerLocale(fmt, localeNames, entriesOf, byPath, reported);
   survey.writeErrors = reported.count;
   if (write1.size === 0) return;
 
@@ -407,7 +407,7 @@ function applyRoundtrip(
     layout === "multi-locale"
       ? writeMultiLocale(fmt, asFiles(write1), localeNames, base, entries2)
       // 2차 write의 원본은 **1차 write의 결과**다 — 고정점을 재는 것이므로.
-      : writePerLocale(fmt, localeNames, base, entries2, write1);
+      : writePerLocale(fmt, localeNames, entries2, write1);
   survey.roundtrip.byteFixpoint = sameBytes(write1, write2) ? "same" : "different";
 
   // diff 비율은 **base 로케일 파일** 기준 — 첫 pull PR에서 사람이 제일 먼저 보는 파일이다.
@@ -434,7 +434,7 @@ function applyRoundtrip(
       const written =
         layout === "multi-locale"
           ? writeMultiLocale(fmt, originals, localeNames, base, editedOf).get(basePath)
-          : writePerLocale(fmt, [base], base, editedOf, byPath).get(basePath);
+          : writePerLocale(fmt, [base], editedOf, byPath).get(basePath);
       if (written !== undefined) survey.surgicalEditHunks = changedHunks(before, written);
     }
   }
@@ -464,7 +464,6 @@ function applyRoundtrip(
 function writePerLocale(
   fmt: DetectedFormat,
   locales: readonly string[],
-  base: string | undefined,
   entriesOf: (locale: string) => readonly LocaleEntry[],
   originals: ReadonlyMap<string, string>,
   reportedErrors?: { count: number },
@@ -482,7 +481,9 @@ function writePerLocale(
     if (original === undefined && adapter.writeStrategy === "surgical") continue;
     const writeFormat =
       original === undefined ? fmt : { ...fmt, currentFiles: [{ path, content: original }] };
-    const input = { locale, isBase: locale === base, entries: entriesOf(locale) };
+    // ⚠️ `isBase`를 넘기지 않는다 — `WriteInput` 계약에 없고, base description 폴백은 프로덕션에서
+    // `lib/pull/render.ts`가 든다. 여기서만 넘기면 지표와 프로덕션이 다른 입력으로 write를 부른다.
+    const input = { locale, entries: entriesOf(locale) };
     // ⚠️ **`writeWithErrors`가 있으면 그걸 쓴다.** 없으면 write가 버린 항목이 조용히 사라져,
     // 왕복이 "의미 불일치"만 보이고 **왜 잃었는지가 지표에 남지 않는다** — 실측에서 siyuan·
     // musicblocks가 정확히 그 상태였다(에러 0, 손실 있음).

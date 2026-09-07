@@ -7,7 +7,9 @@ import {
   orderedEntries,
   verifySamples,
 } from "./shared";
-import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult } from "./types";
+import type {
+  Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput,
+} from "./types";
 
 /**
  * 크롬 확장 표준 포맷 — `<root>/_locales/<locale>/messages.json`.
@@ -183,7 +185,7 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
   return { locales, errors, nested: false };
 }
 
-function write(format: DetectedFormat, input: { locale: string; isBase: boolean; entries: readonly LocaleEntry[] }): string | null {
+function write(format: DetectedFormat, input: WriteInput): string | null {
   const usable = orderedEntries(input.entries);
   if (usable.length === 0) return null;
 
@@ -204,8 +206,10 @@ function write(format: DetectedFormat, input: { locale: string; isBase: boolean;
       if (field === "message") entry["message"] = e.message;
       // **로케일마다 낸다.** 엔트리의 description은 `Translation.description` — 그 로케일 파일이
       // 실제로 갖고 있던 값이고, 없으면 `rowsForLocale`이 안 싣는다(base만 키 단위 값으로 폴백).
-      // 전에는 `input.isBase` 가드가 있었는데, 그때는 키 단위 값이 전 로케일에 실려서 가드를 풀면
-      // 원본에 없던 description을 만들어 넣었다 — 실측 chrome 33개 중 20개가 잃던 필드다.
+      // 전에는 이 자리에 `isBase` 가드가 있었는데, 그때는 키 단위 값이 전 로케일에 실려서 가드를
+      // 풀면 원본에 없던 description을 만들어 넣었다 — 실측 chrome 33개 중 20개가 잃던 필드다.
+      // **base 폴백은 그 뒤 `lib/pull/render.ts`로 올라갔고**(그쪽이 `isBase`를 안다), 그래서 이
+      // 어댑터는 그 값을 알 필요가 없다 — 파라미터도 계약(`WriteInput`)대로 돌렸다.
       else if (field === "description" && e.description) entry["description"] = e.description;
       // placeholders는 그 로케일 파일에서 읽은 것이라 그대로 되돌린다. 모양을 검사하지 않는다.
       else if (field === "placeholders" && "placeholders" in e) entry["placeholders"] = e.placeholders;
