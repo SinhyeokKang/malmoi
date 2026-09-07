@@ -78,7 +78,7 @@ describe("assemblePushInput — read", () => {
   });
 
   it("read 에러를 삼키지 않고 그대로 돌려준다 — 호출부가 CI를 실패시킬지 정한다", () => {
-    const broken = { ...TREE, "src/locales/ko.json": "{ not json" };
+    const broken: Record<string, string> = { ...TREE, "src/locales/ko.json": "{ not json" };
     const { read } = assemblePushInput({ paths, probe: (p) => broken[p], format: format() });
     expect(read.errors.length).toBeGreaterThan(0);
     expect(read.errors[0]?.path).toBe("src/locales/ko.json");

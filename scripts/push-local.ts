@@ -17,11 +17,12 @@ import { join } from "node:path";
 
 import { config } from "dotenv";
 
-import { adapterFor, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
+import { detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
-import { buildPushPayload, pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
+import { assemblePushInput } from "../lib/push/assemble";
+import { buildPushPayload } from "../lib/push/payload";
 import {
   DEFAULT_WRAPPERS,
   parseWrapperSpec,
@@ -112,26 +113,26 @@ if (!format) {
   console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일) — 연동 불가.`);
   process.exit(1);
 }
-const adapter = adapterFor(format);
+// ⚠️ **select → read → base 판정은 `lib/push/assemble.ts`가 든다** (2026-09-07). 서버의 첫 적재가 같은
+// 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (design §4).
+// base가 키 집합의 진실이라 명시가 탐지 목록에 없으면 그 함수가 던진다 (2026-09-04 audit #1).
+let read;
+let baseLocale;
+try {
+  ({ read, baseLocale } = assemblePushInput({
+    paths,
+    probe,
+    format,
+    baseLocale: flagValue(argv, "--base"),
+  }));
+} catch (error) {
+  console.error((error as Error).message);
+  process.exit(1);
+}
 
-const read = adapter.read(format, selectLocaleFiles(adapter.layout, format, paths, probe));
 if (read.errors.length) {
   console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
   for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${e.message}`);
-  process.exit(1);
-}
-
-// ⚠️ **base가 키 집합의 진실이다** — `keySet`은 base 엔트리로만 만들어진다. 추정(`en` 우선 → 사전순)이
-// 틀리면 진짜 base에만 있는 키가 적재에서 빠지고 orphaned로 떨어진다. `ingest`엔 `--base`가 있었는데
-// 실제 적재 경로엔 없었다 (2026-09-04 audit #1). 명시가 있으면 로케일 목록에 있어야 한다.
-const baseOverride = flagValue(argv, "--base");
-if (baseOverride !== undefined && !format.locales.includes(baseOverride)) {
-  console.error(`--base ${baseOverride}: 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다.`);
-  process.exit(1);
-}
-const baseLocale = baseOverride ?? pickBaseLocale(format.locales);
-if (baseLocale === undefined) {
-  console.error("로케일이 없다 — 연동 불가.");
   process.exit(1);
 }
 
