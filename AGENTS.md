@@ -73,7 +73,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 앱 | Next.js App Router (React 19, TypeScript) | `next` 16.3.3 / `react` 19.2.8 / `typescript` 7.0.2 |
 | 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) | — |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
-| 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ⚠️ `/api/push`·`/api/pull`은 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `Project.pushTokenHash`로 대체) | — |
+| 테넌시 | **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`가 정하고 모든 진입점이 `getProjectAccess`를 지난다. ✅ `/api/push`는 **토큰이 프로젝트를 정한다** (2026-09-07 — `sha256(Bearer)` → `Project.pushTokenHash` 조회 → slug 대조). ⚠️ `/api/pull`만 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계 T4가 전 프로젝트 순회로 대체) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google **둘 다 열려 있다** (2026-09-05, 허용 목록 제거와 같은 커밋). 로그인은 **검증된 이메일만** 요구하고, 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3`을 정확히 고정해 인스턴스를 공유한다) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
@@ -186,9 +186,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). 인자 파싱·리포 훑기는 세 CLI가 `lib/cli/`를 공유한다 |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **결과가 어떻든 exit 0**, 사용법 오류만 2). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
-| 로컬 push | `pnpm push:local <대상 디렉터리> [--url ...] [--wrapper ...] [--adapter ...] [--project <slug>] [--base <locale>]` (적재+스캔+POST). ⚠️ `--base`는 2026-09-04 감사가 더했다 — 키 집합의 진실이 base 파일이라 틀리면 진짜 base에만 있는 키가 orphaned로 떨어진다 |
+| 로컬 push | `pnpm push:local <대상 디렉터리> --project <slug> [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` (적재+스캔+POST). ⚠️ `--base`는 2026-09-04 감사가 더했다 — 키 집합의 진실이 base 파일이라 틀리면 진짜 base에만 있는 키가 orphaned로 떨어진다 |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 결과가 어떻든 exit 0** — 사용법 오류만 2. 파이프엔 `pnpm --silent`) |
-| GitHub App 스모크 | `pnpm smoke:github [<project-slug>]` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
+| GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 
