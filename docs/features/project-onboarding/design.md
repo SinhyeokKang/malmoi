@@ -75,7 +75,7 @@ disabled. pull-button의 옆 문구 방식은 예외로 남은 형이라 새 화
 ```
 1) readTree(baseHeadSha)                         → 경로 전부 (lib/github.ts, §3.10)
 2a) detectCandidatesAcross(paths)                → JSON·YAML·chrome 후보 (probe 없음 — 상위집합)
-2b) codeDictCandidatePaths(paths)                → code-dict 경로 그룹 (dir, ext, locales) — probe 없이 나오는 부분
+2b) codeDictCandidatePaths(paths)                → code-dict 경로 그룹 { pathTemplate, locales } — probe 없이 나오는 부분
 3) probeTargets(2a, 2b, limits)                  → 내려받을 blob 경로 (순수, 상한)
 4) readBlob × N                                  → Map<path, content>
 5) detectCandidatesAcross(paths, makeProbe(map)) → 최종 후보 = "내려받은 상위 N개 중 검증을 통과한 것"
@@ -418,7 +418,7 @@ pull이 그대로 읽는다 — `load.ts:24`). 안 채우면 default branch가 `
 
 | 모듈 | 함수 | 무엇을 판정하나 |
 |---|---|---|
-| `lib/adapters/code-dict.ts` | `codeDictCandidatePaths(paths)` (분리·export — 판정 불변) | 경로 → code-dict 후보 그룹 `{ dir, ext, locales }` |
+| `lib/adapters/code-dict.ts` | `codeDictCandidatePaths(paths)` (분리·export — 판정 불변) | 경로 → code-dict 후보 그룹 `{ pathTemplate, locales }` (순위순 — T1에서 `{ dir, ext }`를 템플릿으로 합쳤다. `probeTargets`가 `DetectedFormat`과 같은 모양으로 받는다) |
 | `lib/onboarding/detect.ts` | `probeTargets(jsonLike, codeDict, limits)` | 후보 → 내려받을 경로 (`sampleOrder`와 같은 파일, 상한) |
 | | `makeProbe(map)` | `Map<path, content>` → `FileProbe` |
 | | `summarizeCandidates(candidates, reads)` | 후보 + read 결과 → **사용자 언어 요약**(형식 이름·경로·언어 목록·기준 언어 기본값(`pickBaseLocale`)·키 수) |
@@ -429,7 +429,7 @@ pull이 그대로 읽는다 — `load.ts:24`). 안 채우면 default branch가 `
 | `lib/onboarding/create-plan.ts` | `planProjectCreate({ repoConnect, ownerCount, slugTaken, limit })` | 생성 가부 한 자리 — 3중 검증 결과(`unavailable`은 그대로 통과) + OWNER 개수 제한 + slug 충돌 |
 | `lib/onboarding/readiness.ts` | `planProjectReadiness(project)` | `setup` / `awaiting_first_sync` / `ready` (§3.7) |
 | `lib/onboarding/message.ts` | `OnboardError` · `isOnboardError` · `onboardErrorMessage` · `ingestHeadline(count, failed)` | 갈래 → 한국어 한 줄 (§3.12) / 불변식 9 헤드라인 |
-| `lib/onboarding/workflow.ts` | `renderWorkflowYaml({ slug, adapter?, baseLocale? })` | 복사용 YAML 문자열 (§7) |
+| `lib/onboarding/workflow.ts` | `renderWorkflowYaml({ slug, baseBranch, adapter?, baseLocale? })` | 복사용 YAML 문자열 (§7). `baseBranch`는 T1 구현이 더했다 — `on.push.branches`를 `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다. 값은 `Project.baseBranch`(= `ProbeResult.defaultBranch`, §4) |
 | `lib/push/token.ts` | `generatePushToken()` · `hashPushToken(raw)` | 난수 발급 + sha256 (초대 토큰과 같은 규칙) |
 | `lib/push/assemble.ts` | `assemblePushInput({ paths, probe, format, baseLocale? })` | select→read→base 판정 — push-local과 서버가 공유 (§4) |
 | `lib/pull/targets.ts` | `selectPullTargets(projects)` | 순회 대상 필터·정렬 (§3.9) |
@@ -479,8 +479,9 @@ model Project {
 
 결과 화면이 내는 것 셋:
 
-1. `.github/workflows/l10n.yml` 전문 — `project: <slug>`가 박혀 있고, 수동 지정한 경우
-   `adapter:`·`base-locale:`도 함께 박힌다 (docs/ACTIONS.md의 input 표 그대로). `wrapper`는 넣지 않는다 —
+1. `.github/workflows/l10n.yml` 전문 — `project: <slug>`와 **`branches: [<Project.baseBranch>]`**가 박혀 있고, 수동 지정한 경우
+   `adapter:`·`base-locale:`도 함께 박힌다 (docs/ACTIONS.md의 input 표 그대로 — `__tests__/workflow.test.ts`가 그 예시와
+   주석·빈 줄을 뺀 채 줄 단위로 대조한다). `wrapper`는 넣지 않는다 —
    "훅 기반 리포면 `docs/ACTIONS.md`의 `wrapper`를 보라" 한 줄.
 2. **push 토큰 원문** — 한 번만 보인다. "리포 Settings → Secrets → `PUSH_TOKEN`" 안내와 함께 (§3.13).
 3. "이걸 안 붙여도 지금 적재된 것은 편집할 수 있어요" — §7.4의 요지가 그것이다. 워크플로는
