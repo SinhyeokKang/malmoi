@@ -203,7 +203,7 @@ SaaS 화면 다섯이 hand-rolled 컨트롤을 쓴다(로그인·목록·초대�
 
 ⚠️ **코드 블록은 자기 컨테이너에서만 스크롤한다** (`overflow-x-auto`가 `<pre>` 자신에 붙는다). 없으면 긴 줄이 페이지 본문을 좌우로 흔든다 — 넓은 표와 같은 규칙이다 (§6.1).
 
-**포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7. ⚠️ 상시 검사는 `<button>`·`<input>`만 훑으므로 온보딩이 도입한 `<select>`·`<textarea>`는 **방어선 밖이고 손으로 확인한다**(지금 그 셀렉트는 링을 들고 있다).
+**포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7. 상시 검사는 `<button>`·`<input>`·`<select>`·`<textarea>` **넷을 훑는다** (2026-09-07에 뒤의 둘이 들어왔다 — 그 전엔 온보딩의 셀렉트가 방어선 밖이었고, 링을 들고 있던 것은 운이었다). ⚠️ **포커스를 받는 태그를 새로 쓰면 그 목록에 더한다** — `focus-ring.test.ts`의 메타 테스트가 네 태그를 하나씩 먹여 목록을 고정한다.
 빈 상태(로케일 없음·키 없음·멤버십 없음·**첫 적재 대기**)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
 
 ### 6.5 설정 (`/projects/[slug]/settings`) — SaaS 4·5단계
