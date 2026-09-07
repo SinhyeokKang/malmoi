@@ -211,7 +211,7 @@ MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘�
 | 자격증명 | 발급자 | 용도 |
 |---|---|---|
 | **OAuth App 토큰** | Auth.js provider (`AUTH_GITHUB_*`) | **로그인** — 이 사람이 누구인가 |
-| GitHub App **user-to-server 토큰** | **같은 GitHub App**이 발급한다 (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 어느 설치·리포를 볼 수 있는가. **GET만** 부른다 (⚠️ 상시로 세는 것은 **자격증명 분리**이고, 메서드 가드는 리터럴 `request("POST"…)` 형태만 본다 — `octokit.rest.*`·`paginate` 경유 쓰기는 통과하므로 리뷰가 든다) |
+| GitHub App **user-to-server 토큰** | **같은 GitHub App**이 발급한다 (`GITHUB_APP_CLIENT_*`) | **연결** — 이 사람이 어느 설치·리포를 볼 수 있는가. **GET만** 부른다 (상시 검사가 **자격증명 분리와 쓰기 메서드 둘 다** 센다 — 후자는 octokit의 네 입구를 본다: `request`·`paginate`의 문자열 route·`rest.*`의 이름 붙은 쓰기·`graphql` mutation. ⚠️ 2026-09-07까지는 첫째만 봤고, **실제 코드가 쓰는 형태는 둘째다** — 가장 그럴듯한 회귀 경로가 정확히 사각이었다) |
 | GitHub App **installation token** | GitHub App 개인키 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 트리 조회 · 브랜치 갱신 · PR 생성 |
 
 ⚠️ **가운데 것이 "OAuth"라는 이름을 공유하지만 로그인 토큰이 아니다.** 로그인은 별도 OAuth App이고,
