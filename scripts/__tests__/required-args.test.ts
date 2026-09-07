@@ -19,22 +19,24 @@ import { describe, expect, it } from "vitest";
 const root = new URL("../../", import.meta.url);
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, root)), "utf8");
 
-describe("scripts — ACTIVE_PROJECT_SLUG 폴백이 없다", () => {
+describe("ACTIVE_PROJECT_SLUG — 코드에 소비자가 없다", () => {
   it.each(["scripts/push-local.ts", "scripts/smoke-github.ts"])("%s", (path) => {
     expect(read(path)).not.toContain("ACTIVE_PROJECT_SLUG");
   });
 
-  it("push 경로가 그 변수를 읽지 않는다 — ⚠️ `/api/pull`은 아직 읽는다 (T4가 순회로 대체한다)", () => {
+  it("두 라우트와 두 스크립트가 그 변수를 읽지 않는다 — 코드에 소비자가 없다", () => {
+    // `/api/pull`은 2026-09-07 T4가 전 프로젝트 순회로 대체했다. 그때 이 목록에 들어왔다 —
+    // T3에서 "아직 읽는다"를 단언해 두었더니 T4 구현이 그 줄을 red로 만들어 완료를 알렸다.
     for (const path of [
       "app/api/push/route.ts",
+      "app/api/pull/route.ts",
       "scripts/push-local.ts",
       "scripts/smoke-github.ts",
       "lib/push/guard.ts",
+      "lib/pull/targets.ts",
     ]) {
       expect(read(path)).not.toContain("ACTIVE_PROJECT_SLUG");
     }
-    // 남은 하나를 **여기서 고정한다** — 사라지면 이 단언이 red가 되어 T4 완료를 알린다.
-    expect(read("app/api/pull/route.ts")).toContain("ACTIVE_PROJECT_SLUG");
   });
 });
 
