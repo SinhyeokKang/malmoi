@@ -63,14 +63,14 @@
 
 ## T2. push 토큰 — 스키마 + 순수 판정 + 하네스
 
-- [ ] `prisma/schema.prisma` — `Project.pushTokenHash String? @unique` (주석에 fail-closed 근거)
-- [ ] `/db` — `pnpm db:migrate --create-only` → SQL 확인 → 적용. `_add_project_push_token` (**additive** —
+- [x] `prisma/schema.prisma` — `Project.pushTokenHash String? @unique` (주석에 fail-closed 근거)
+- [x] `/db` — `pnpm db:migrate --create-only` → SQL 확인 → 적용. `_add_project_push_token` (**additive** —
       nullable + unique, Postgres는 NULL 여럿을 허용하므로 기존 5행에 무해)
-- [ ] `lib/push/token.ts` — `generatePushToken()` · `hashPushToken(raw)`
+- [x] `lib/push/token.ts` — `generatePushToken()` · `hashPushToken(raw)`
   - ⚠️ 해시 규칙을 `lib/auth/invitation.ts`의 `hashInviteToken`과 **같은 sha256 hex**로 둔다.
     두 곳이 갈리면 "해시 저장 규칙이 한 곳에 모인다"(SAAS §7.8)가 거짓이 된다
   - 검증: 같은 입력 → 같은 해시 / 원문이 어디에도 저장되지 않는다(반환만 한다) / 32바이트 난수
-- [ ] `app/(edit)/__tests__/harness.ts` — **`project`에 지금 `findUnique(slug|id)`·`update`만 있다.** 새로 만든다:
+- [x] `app/(edit)/__tests__/harness.ts` — **`project`에 지금 `findUnique(slug|id)`·`update`만 있다.** 새로 만든다:
   - `project.create` — `slug`·`pushTokenHash` 중복에 P2002 / `findUnique`에 `where.pushTokenHash` 분기 /
     `project.findMany`(T4 순회·목록용) / `projectMember.count`에 `userId`·`role` 조건 /
     `lastCommitAt`·`pushTokenHash` 컬럼 / `$transaction` 스냅샷에 반영
@@ -80,6 +80,7 @@
     기존 테스트 전부 green
 
 검증: `pnpm db:status`가 적용을 보인다 · `pnpm test` green
+✅ 2026-09-07 — `9d7634d`(test) → `c35e940`(feat(push): token.ts + 하네스) → `480ea1b`(feat(db): 스키마 + 마이그레이션 `20260907011650_add_project_push_token`, dev 적용·`db:status` 11개 up to date). test 1612 green · typecheck · build green. ⚠️ `migrate dev --create-only`가 additive인데도 비대화형을 거부해 `migrate diff` 우회 경로로 만들었다 — 그 레시피의 "적용은 `db:deploy`"가 prod를 겨누는 문장이어서 `/db` 4c를 고쳤다(`d18307b`). 하네스 검증 파일은 `app/(edit)/__tests__/harness.test.ts`(11건). **prod 미적용** — `/merge` 1단계.
 
 —— `feat(db): add Project.pushTokenHash` (스키마 + 마이그레이션 + 토큰 순수 함수 + 하네스)
 
