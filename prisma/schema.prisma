@@ -11,7 +11,8 @@ datasource db {
 }
 
 /// 테넌트 경계. **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`.
-/// ⚠️ `/api/push`·`/api/pull`만 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `pushTokenHash`로 대체).
+/// ✅ **두 라우트도 단일 프로젝트 가정을 벗어났다** (2026-09-07): push는 `pushTokenHash`가 프로젝트를 정하고,
+/// cron은 준비된 전 프로젝트를 순회한다. 공유 slug env를 읽는 코드가 남아 있지 않다.
 /// 이 경계를 PoC 때 미리 넣은 이유는 나중에 넣으면 복합 unique·복합 PK가 실데이터 이관을 요구하기
 /// 때문이었다(아래 각 모델 주석). 나머지는 전부 additive로 붙었다.
 model Project {

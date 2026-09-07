@@ -35,7 +35,7 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 ### 0. 환경 전환
 
-**서버 env를 바꿀 일이 없다** (2026-09-07부터). `/api/push`는 **Bearer 토큰이 프로젝트를 정하고**(`sha256` → `Project.pushTokenHash`), `/api/pull`은 준비된 **전 프로젝트를 순회**한다 — `ACTIVE_PROJECT_SLUG`는 사라졌다.
+**서버 env를 바꿀 일이 없다** (2026-09-07부터). `/api/push`는 **Bearer 토큰이 프로젝트를 정하고**(`sha256` → `Project.pushTokenHash`), `/api/pull`은 준비된 **전 프로젝트를 순회**한다 — 공유 slug env는 사라졌다.
 
 - `.env.local`의 `PUSH_TOKEN`을 **대상 프로젝트의 토큰 원문**으로 둔다(프로젝트 설정 화면에서 발급). 페이로드 slug가 그 토큰의 프로젝트와 다르면 409다.
 - **프로덕션 env를 검증 때문에 바꾸지 않는다** — 애초에 바꿀 변수가 없다.
