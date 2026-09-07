@@ -19,44 +19,45 @@
 
 ## T1. 순수 판정층 — 온보딩
 
-- [ ] `/tdd interface`로 테스트 먼저 박는다 (아래 함수 전부)
-- [ ] `lib/pull/trigger.ts` — `REF_SAFE_SLUG` **export** (판정 불변, 공유만)
-- [ ] `lib/onboarding/slug.ts` — `normalizeProjectSlug` · `planSlug`
+- [x] `/tdd interface`로 테스트 먼저 박는다 (아래 함수 전부)
+- [x] `lib/pull/trigger.ts` — `REF_SAFE_SLUG` **export** (판정 불변, 공유만)
+- [x] `lib/onboarding/slug.ts` — `normalizeProjectSlug` · `planSlug`
   - ⚠️ 형식 규칙은 `REF_SAFE_SLUG`를 import한다. 복사하면 갈리고, 갈리면 온보딩이 만든 slug가
     pull에서 `fail()`로 죽는다 (design §5)
   - 검증: `..`·후행 `.`·빈 문자열·`/` 포함·대문자·리포명 그대로·**예약어 `new`** 가 각각 기대한 판정을 낸다
-- [ ] `lib/adapters/code-dict.ts` — `detectCandidates` 앞부분을 `codeDictCandidatePaths(paths)`로 분리·export
+- [x] `lib/adapters/code-dict.ts` — `detectCandidates` 앞부분을 `codeDictCandidatePaths(paths)`로 분리·export
   - ⚠️ **판정 불변** — `detectCandidates`가 그 함수를 그대로 부른다. `lib/adapters/**` 변경이지만
     재측정 트리거가 아니고, 커밋 메시지에 그 이유를 적는다 (design §3.1)
   - 검증: `detect-candidates.test.ts`·`key-order-golden` 그대로 green / 새 테스트: 분리한 함수가
     `detectCandidates(paths, probe)`의 후보 dir 집합의 상위집합을 낸다
-- [ ] `lib/onboarding/detect.ts` — `probeTargets` · `makeProbe` · `formatLabel` · `summarizeCandidates` · `ingestTargets`
+- [x] `lib/onboarding/detect.ts` — `probeTargets` · `makeProbe` · `formatLabel` · `summarizeCandidates` · `ingestTargets`
   - 검증: 내려받을 경로가 **`sampleOrder(locales)`와 같은 파일**이다(다른 3개를 받으면 후보가 미검증
     탈락 — design §3.1) / JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = 21 상한 / 키 수가 read 결과에서
     온다 / read 실패가 후보를 떨어뜨리지 않고 `key-count-failed`다 / 기준 언어 기본값이
     `pickBaseLocale`과 같다 / `ingestTargets`가 per-locale은 `{locale}` 치환·multi-locale은
     `matchGlobPaths`로 로케일 파일 **전부**를 낸다
-- [ ] `lib/onboarding/confirm.ts` — `templatePaths` · `planConfirmedFormat`
+- [x] `lib/onboarding/confirm.ts` — `templatePaths` · `planConfirmedFormat`
   - 검증: 템플릿이 가리키는 파일이 0개면 `manual-no-match` / `detectFormatWith` 반환이 없으면 거부 /
     반환된 `pathTemplate`이 입력과 다르면 거부 / `baseLocale`이 **반환된** `locales`에 없으면 거부 /
     **통과 시 반환값이 `detectFormatWith` 결과 그 자체다**(클라이언트 입력이 아니다 — POSTMORTEM 2026-09-05) /
     `ts-dict` 인라인 픽스처(디렉터리 `.ts` 4개)로 수동 지정이 통과한다 (design §3.4·§3.5)
-- [ ] `lib/onboarding/create-plan.ts` — `planProjectCreate`
+- [x] `lib/onboarding/create-plan.ts` — `planProjectCreate`
   - 검증: `installation-forbidden`·`repo-forbidden`·`repo-not-installed`가 그대로 흘러나온다 /
     **`unavailable`은 `unavailable`로 그대로** (거부 갈래로 접지 않는다 — POSTMORTEM 2026-09-03) /
     OWNER 3개면 `limit-reached`(EDITOR 멤버십은 세지 않는다) / slug 중복이면 `slug-taken`
-- [ ] `lib/onboarding/readiness.ts` — `planProjectReadiness`
+- [x] `lib/onboarding/readiness.ts` — `planProjectReadiness`
   - 검증: `lastCommitSha`가 있어야만 `ready`다 — **설정만 저장된 프로젝트는 `ready`가 아니다**
     (SAAS 불변식 8) / `installationId` null이면 `setup`
-- [ ] `lib/onboarding/message.ts` — `OnboardError` union(design §3.12 목록) · `isOnboardError` ·
+- [x] `lib/onboarding/message.ts` — `OnboardError` union(design §3.12 목록) · `isOnboardError` ·
       `onboardErrorMessage` · `ingestHeadline`
   - 검증: `never` 검사로 갈래 누락이 컴파일 에러다 (`pullMessage`·`accessErrorMessage`와 같은 형) /
     `ingestHeadline(n, 0)`은 성공 문구, `ingestHeadline(n, m>0)`은 "읽지 못했어요"가 들어간다 (불변식 9)
-- [ ] `lib/onboarding/workflow.ts` — `renderWorkflowYaml`
+- [x] `lib/onboarding/workflow.ts` — `renderWorkflowYaml`
   - 검증: slug가 박힌다 / 수동 지정이면 `adapter:`·`base-locale:`이 붙고 아니면 안 붙는다 /
     `wrapper`는 없다 / 출력이 `docs/ACTIONS.md`의 예시와 같은 모양이다
 
 검증(커밋 전): `pnpm test` green · `pnpm typecheck` green
+✅ 2026-09-07 — `3caeb2e`(test) → `17a84be`(refactor(adapters)) → `77c8ddb`(feat) → `c473b60`(refactor: code-review 🟡2 반영). test 1591 green(신규 99+2) · typecheck · build green. 코드 리뷰가 더한 것: `isRefSafeSlug`(trigger.ts)가 `syncBranchFor`·`planSlug`의 **단일 판정**이 됐고 `.lock` 접미를 막는다 — 정규식만 공유하고 조건을 복사했을 때 양쪽에서 빠져 있던 구멍이다. `renderWorkflowYaml`은 `baseBranch`를 받는다(design §5·§7 갱신 — `main` 고정이면 base가 `develop`인 리포에서 CI가 안 돈다). `codeDictCandidatePaths`는 `{ pathTemplate, locales }`를 낸다(design §3.1·§5 갱신).
 
 —— `test: onboarding decision functions` + `feat(onboarding): pure planners` + `refactor(adapters): export code-dict path grouping`
 
