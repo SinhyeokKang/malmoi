@@ -160,11 +160,11 @@ typecheck · build green. **`ACTIVE_PROJECT_SLUG`를 읽는 코드가 남지 않
 
 ## T5. GitHub 읽기 — `lib/github.ts`가 든다
 
-- [ ] `lib/github-connect/health.ts:16` — `ProbeResult.ok`에 `defaultBranch` (`GET /repos` 응답에 이미 있다)
+- [x] `lib/github-connect/health.ts:16` — `ProbeResult.ok`에 `defaultBranch` (`GET /repos` 응답에 이미 있다)
   - ⚠️ 필수 필드라 **리터럴 14곳**이 typecheck red다: `lib/github-connect/__tests__/connect-plan.test.ts:24,99,125` ·
     `health.test.ts:18,63,90,99,108,117,132` · `app/(edit)/__tests__/github-connect.test.ts:62,262,272,292`
   - 검증: `pnpm typecheck` green(14곳 갱신 포함) · `health.test.ts` **판정** 불변
-- [ ] `lib/github.ts` — `readRepoSnapshot(owner, repo, installationId, baseBranch)` · `readBlob(...)`
+- [x] `lib/github.ts` — `readRepoSnapshot(owner, repo, installationId, baseBranch)` · `readBlob(...)`
   - `{ status: "ok", headSha, headCommittedAt, paths } | { status: "truncated" } |
     { status: "base-branch-missing" } | { status: "unavailable" }`
   - ⚠️ **트리 잘림을 값으로 준다.** `GitClient.getTree` 구현이 이 함수를 감싸 `truncated`면 던진다 —
@@ -175,26 +175,49 @@ typecheck · build green. **`ACTIVE_PROJECT_SLUG`를 읽는 코드가 남지 않
     "잠시 뒤 다시"가 된다 — `probeRepo`와 같은 판단)
   - ⚠️ `headCommittedAt`은 `GET /git/commits/{sha}` 1회 — `new Date()`면 CI 첫 push가 409다
   - 검증: `lib/__tests__/github*.test.ts`(있으면) green · `pull/__tests__`의 `getTree` throw 계약 그대로 green
-- [ ] `lib/github-connect/__tests__/credential-separation.test.ts` — **`lib/onboarding` 루트 추가**: `APP_CREDENTIAL`
+- [x] `lib/github-connect/__tests__/credential-separation.test.ts` — **`lib/onboarding` 루트 추가**: `APP_CREDENTIAL`
       패턴 금지 + `github-connect/user|token-store` import 금지 + **`@/lib/github` import 금지**(두 토큰은 Server Action
       하나에서만 만난다 — design §3.10)
   - 검증: 일부러 `lib/onboarding/`에 `import "@/lib/github"`를 넣어 red 확인 후 되돌린다 (github-connect T2 전례)
-- [ ] `lib/push/assemble.ts` — `assemblePushInput({ paths, probe, format, baseLocale? })` (`scripts/push-local.ts:76-110`의
+- [x] `lib/push/assemble.ts` — `assemblePushInput({ paths, probe, format, baseLocale? })` (`scripts/push-local.ts:76-110`의
       select→read→base 판정을 **이동**) + `push-local`이 그 함수를 부른다
   - 검증: `lib/push/__tests__/assemble.test.ts` — 같은 인메모리 트리(`lib/adapters/__tests__` 픽스처 재사용)를
     fs probe와 `makeProbe(map)`로 각각 먹여 `commitSha·commitAt·refs` 제외 페이로드 deep-equal /
     `grep -n assemblePushInput scripts/push-local.ts lib/onboarding/ingest.ts` 둘 다 1건 이상 ("만든 것이 호출되는가")
-- [ ] `lib/onboarding/ingest.ts` — 스냅샷·blob(값으로 받는다) → `assemblePushInput` → `buildPushPayload`(`scanRefs: []`,
+- [x] `lib/onboarding/ingest.ts` — 스냅샷·blob(값으로 받는다) → `assemblePushInput` → `buildPushPayload`(`scanRefs: []`,
       `commitAt: headCommittedAt`) → `applyPush`
   - ⚠️ 세 함수를 **우회하지 않는다** (design §4 · POSTMORTEM 2026-08-31·2026-09-02). GitHub을 import하지 않는다
   - 검증: `lib/onboarding/__tests__/ingest.test.ts` — `lib/push/__tests__/flow.test.ts:45-80`의 `stubPrisma`(배열형 tx
     지원)로: `commitAt === headCommittedAt` / refs 0건 / base 키 N개가 `$executeRaw`에 실린다 / `read.errors`·
     `duplicateKeys`가 반환값에 실린다
-- [ ] `scripts/smoke-github.ts`에 스냅샷 읽기 + **2패스 탐지를 진입점(`detectCandidatesAcross`)으로** 한 줄 (실 API라 `pnpm test` 밖)
+- [x] `scripts/smoke-github.ts`에 스냅샷 읽기 + **2패스 탐지를 진입점(`detectCandidatesAcross`)으로** 한 줄 (실 API라 `pnpm test` 밖)
   - 검증: `pnpm smoke:github <slug>`가 bugshot-2에서 `_locales` 후보 + 키 수 4를, code-dict 리포(`i18n-format-check`
     또는 코퍼스 하나)에서 code-dict 후보를 찍는다 — 어댑터 API가 아니라 진입점이다 (POSTMORTEM 2026-09-02 순위 픽스)
 
 검증: `pnpm typecheck` green · `pnpm test` green · `pnpm smoke:github` 위 두 리포
+
+✅ 2026-09-07 — `3ca20c3`(test) → `b17b3d0`(snapshot) → `61b0c5c`(assemble) → `b3879e3`(ingest) →
+`3dc1be9`(refactor: code-review 🔴 2건 + 🟡 5건). test 1674 green · typecheck · build green.
+
+**실물 검증** (실 GitHub API, dev DB에 검증용 행을 만들었다 지웠다):
+`order-check` 23키 · **`bugshot-2`에서 `_locales` 후보 + 키 수 4** · **`i18n-format-check`에서 code-dict 후보**
+(YAML 카탈로그와 함께 2후보). `base-branch-missing`도 실제로 밟았다(그 리포의 default branch가 `dev`인데
+`main`으로 조회했다). 자격증명 스캐너는 일부러 `lib/onboarding/`에 `import "@/lib/github"`를 넣어 red를
+확인하고 되돌렸다.
+
+⚠️ **code-review가 🔴 2건을 잡았고 둘 다 실물 검증이 못 본 부류다** — 작은 리포에서 전부 성공하는 경로만
+밟았기 때문이다:
+① **내려받지 못한 로케일 파일이 실패로 안 잡혔다.** "다운로드 실패"와 "리포에 없음"을 같게 접어서, 로케일
+12개 중 3개가 5xx면 DB엔 9개만 들어가는데 화면은 "N개 키를 적재했어요"를 쓴다. base 파일이 빠지면
+`count: 0 / failed: 0`이라 "0개 적재"가 성공으로 읽힌다. 이제 `targets`를 함께 받아 `blobs`에 없는 것을
+실패로 센다.
+② **blob 하나마다 설치 토큰을 새로 발급했다.** 토큰 캐시가 App 인스턴스에 붙어 있어서 호출이 2배였다 —
+design §3.1의 예산이 실제로는 42회, §4의 50로케일 첫 적재는 100회라 `maxDuration=60`에서 잘린다. 같은
+수정으로 contents API의 1MB 상한도 사라졌다(스냅샷이 `sha`를 들고 git blobs API를 쓴다).
+
+**남긴 것**: `buildPushPayload`의 `duplicateKeys`가 base 키 중복을 키·번역 두 번 센다(🟡1). 한 소스 줄이
+두 테이블에서 접히는 것이라 이중 계수로 단정하기 어렵고, CI 로그에 쓰이는 공유 함수라 이 단계에서
+바꾸지 않았다. 화면 판정은 0 vs 0 아님이라 영향이 없다.
 
 —— `feat(github): repo snapshot reads with the installation token` + `refactor(push): share payload assembly with the CLI` + `feat(onboarding): server-side first ingest`
 
