@@ -510,6 +510,13 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 "서버가 아는 프로젝트와 다른가"였고 지금은 **"이 토큰이 그 프로젝트의 것인가"** 다. 역행 거부
 (`commitAt`)는 그대로다.
 
+⚠️ **거부가 셋으로 늘었다 — `checkFormat`** (2026-09-07). 같은 프로젝트인데 **다른 번역 표면**을 보내는
+push도 409다. `applyPush`가 페이로드 포맷으로 포맷 컬럼 셋을 덮으므로, 자동 후보의 YAML(=`adapter:`를
+박지 않는다)로 도는 CI가 1순위 표면을 보내면 **2순위를 확정한 프로젝트의 키가 전부 orphan된다.** 전제
+"자동 후보면 탐지가 같은 답을 낸다"는 1순위에만 참이고, 한 리포에 표면이 둘인 `i18n-format-check`가
+실물이다(§7.1). 상세와 대가는 ARCHITECTURE §5.5.5에 있다 — **정당한 이전도 409가 되고, 그 재설정 UI는
+§8 7단계다.**
+
 ### 7.9 프로젝트 수명주기 — 보관까지만 만든다
 
 ```
@@ -724,9 +731,10 @@ Vercel 프로덕션 배포 success) → 대상 리포 토큰·secret 교체 → 
 fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**이고 `i18n-format-check` 하나에 프로젝트가
 둘이다(§7.1의 "한 리포에 표면이 둘"이 실재한다 — §10의 secret 배선 미결이 여기서 나왔다).
 
-**남은 것은 Vercel 세 스코프의 옛 env(`ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN`) 삭제 하나이고, 롤백 창을 닫는
-시점까지 의도적 보류다** — 코드는 그 값을 읽지 않지만(`scripts/__tests__/required-args.test.ts`가 상시로
-센다) 지우면 T3 이전 배포로 롤백할 때 그 배포가 그 값을 요구한다.
+✅ **옛 env 삭제까지 끝났다** (2026-09-07 리뷰 ⚪16). 롤백 창 때문에 보류였는데 `main`에 #9 위로 #10이
+이미 얹혀 그 창이 사실상 닫혀 있었다. 코드가 그 값을 읽지 않는 것은 `scripts/__tests__/required-args.test.ts`가
+상시로 센다. ⚠️ **"세 스코프"가 아니었다** — 둘 다 **Production+Preview**만 갖고 있었고 Development에는
+없었다. 삭제는 `vercel env ls`로 확인했다(CLI의 성공 메시지가 근거가 아니다 — CLAUDE.md).
 
 ### 6단계 — 번역 UI 재작성 + Publish ⬜ → `features/translation-ui/`
 
@@ -739,14 +747,15 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 - [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
-- [ ] **"GitHub 계정" 섹션을 사용자 수준 화면으로** (4단계 code-review 🟡3, 2026-09-07 이관).
-      ⚠️ **연결은 5단계에서 먼저 사용자 수준으로 갔다** — 생성 경로에 프로젝트가 없어 불가피했다
-      (`startGithubConnectForUser`, 인가는 `requireUser`뿐). **해제만 남았다.** 지금은
-      `/projects/:slug/settings` 안에 있어 **연결도 해제도 `project:settings`(OWNER) 뒤**다 — OWNER에서
-      강등된 사람은 자기 연결을 풀 화면이 없고, 그 계정으로 연결하려는 다른 User는 `taken-by-other`에
-      영구히 막힌다(design §3.4가 막으려던 것). `Account` 행은 사용자 소유라 게이트는 `requireUser`면
-      된다 — 섹션을 `/projects`(또는 계정 화면)로 옮기고 `disconnectGithub`의 인가를 그에 맞춘다.
-      OWNER 강등 경로가 실사용에 아직 없어 6단계로 미뤘다
+- [x] ~~**"GitHub 계정" 섹션을 사용자 수준 화면으로**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9 — 4단계
+      code-review 🟡3이 6단계로 미뤘던 것을 앞당겼다). 연결은 5단계가 이미 사용자 수준으로 옮겼고
+      (`startGithubConnectForUser`), **해제도 `projects/actions.ts`의 `disconnectGithub`(인가
+      `requireUser`, 인자 없음)로 갔다.** `/projects`에 계정 섹션이 붙어 프로젝트가 없는 사용자도
+      도달한다 — 핸들을 위해 GitHub을 부르지는 않는다(행의 존재만 읽는다).
+      ⚠️ **미룬 사유가 낡아 있었다**: "OWNER 강등 경로가 실사용에 없다"였는데, 5단계가 연결을 사용자
+      수준으로 열면서 **프로젝트를 하나도 안 만든 사용자**가 같은 잠금에 걸리는 경로가 새로 생겼다 —
+      그 사람에게는 설정 화면이 아예 없다. `Account`는 사용자 소유라 게이트가 `requireUser`인 것이
+      원래 맞았다
 - [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
       배지 + 편집 비활성으로 닫았다 — 여기서 확정), 덮인 셀의 `updatedBy`.
       ⚠️ **파생 항목 하나는 먼저 닫혔다** (2026-09-07, malmoi#3): 셀 메타가 `User.id` cuid를 원문으로
@@ -824,3 +833,7 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
   필요하고, prod에 그 모양이 실재한다(`i18n-format-check` → `format-check-code`·`format-check-yaml` —
   §7.1의 "한 리포에 표면이 둘"이다). **그 리포에 워크플로를 붙이는 시점에 결정한다** — 지금 정하면
   실제 필요 없는 이름 규칙을 먼저 박는다
+  - ✅ **그 모양에서 이미 닫은 것 둘** (2026-09-07 리뷰): ① `concurrency.group`에 slug가 들어간다 —
+    `github.ref`만 쓰면 같은 커밋의 두 스텝이 같은 그룹에서 `cancel-in-progress`로 서로를 죽이고
+    **그 표면은 영영 적재되지 않는데 취소는 실패로 보이지 않는다.** ② 스텝 둘이 서로의 포맷을 보내는
+    오설정은 `checkFormat`이 409로 막는다(§7.8) — 전에는 조용히 키를 전부 orphan시켰다
