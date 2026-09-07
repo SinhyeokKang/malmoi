@@ -14,7 +14,7 @@
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계 잔여는 **Vercel 세 스코프의 옛 env 삭제 하나이고 롤백 창 때문에 의도적 보류**다. **다음은 6단계(번역 UI 재작성 + Publish)다.** **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **다음은 6단계(번역 UI 재작성 + Publish)다.** **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -256,6 +256,9 @@ app/
     projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
                         `?e=`로 받아 **isAccessError·isConnectError 둘로** 걸러 한 줄 보인다.
                         ⚠️ 앞의 것만 보면 GitHub 연결 실패 사유가 통째로 무음이다 (POSTMORTEM 2026-09-06)
+                        ⚠️ **GitHub 계정 섹션이 여기 있다** (2026-09-07) — 프로젝트가 없는 사용자도 해제에
+                        도달해야 한다. **핸들을 위해 GitHub을 부르지 않는다**(행의 존재만 읽는다 —
+                        착지점에 매 렌더 왕복을 붙이지 않는다)
     projects/new/page.tsx
                         온보딩 (SaaS 5단계). 서버가 ①①'(계정 미연결·설치 0·리포 0)를 그리고 ②~⑥은
                         클라이언트 상태다. ⚠️ **maxDuration=60이 여기 있어야 한다** — Server Action은
@@ -264,10 +267,15 @@ app/
                         ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
                         모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
-                        + 온보딩 여섯 (2026-09-07): startGithubConnectForUser · listConnectableRepos ·
-                        detectRepoFormats · createProject · runFirstIngest · rotatePushToken
-                        ⚠️ **앞의 넷은 requireUser뿐이다** — 생성 경로에는 인가할 프로젝트가 없다
-                        (design §3.6). 뒤의 둘은 getProjectAccess(project:settings)다
+                        + 온보딩 일곱 (2026-09-07): startGithubConnectForUser · disconnectGithub ·
+                        listConnectableRepos · detectRepoFormats · createProject · runFirstIngest ·
+                        rotatePushToken
+                        ⚠️ **앞의 다섯은 requireUser뿐이다** — 생성 경로에는 인가할 프로젝트가 없고
+                        `Account` 행은 **사용자 소유**다 (design §3.6). 뒤의 둘은
+                        getProjectAccess(project:settings)다
+                        ⚠️ **해제가 여기 있는 이유**: 연결이 사용자 수준으로 열려 프로젝트를 하나도 안
+                        만든 사용자가 생길 수 있고, 그 사람에게는 설정 화면이 없어 해제에 도달할 길이
+                        없었다 — taken-by-other가 영구 잠금이 된다 (2026-09-07 리뷰)
                         ⚠️ **두 GitHub 자격증명이 만나는 유일한 자리다** — 리포 읽기는 App 설치 토큰,
                         "이 사람이 그 설치를 볼 수 있는가"는 사용자 토큰. lib/onboarding/은 둘 다 모른다
                         ⚠️ createProject는 **클라이언트가 보낸 pathTemplate을 저장하지 않는다** — 파일을
@@ -280,7 +288,8 @@ app/
                         ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
                         묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다
     projects/[slug]/settings/actions.ts
-                        startGithubConnect · connectRepository · disconnectGithub.
+                        startGithubConnect · connectRepository (둘뿐이다 — **해제는 2026-09-07에
+                        사용자 수준으로 갔다**: `projects/actions.ts`의 disconnectGithub, 인가는 requireUser)
                         ⚠️ **나가는 쪽은 Server Action이다** — Route Handler는 돌아오는 callback 하나뿐.
                         ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
@@ -314,6 +323,8 @@ components/
   reconnect-button.tsx  리포 재연결 (client — pending 라벨 교체, 인라인 오류)
   github-account.tsx    GitHub 계정 연결·해제 (client). ⚠️ reauthorize는 **자동 redirect가 아니라
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
+                        ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
+                        사용자 수준이라 slug를 안 받고 `/projects` 계정 섹션이 같은 버튼을 쓴다
   invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
                         후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
