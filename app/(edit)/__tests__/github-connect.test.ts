@@ -55,9 +55,9 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { connectRepository, disconnectGithub, startGithubConnect } = await import(
-  "../projects/[slug]/settings/actions"
-);
+// ⚠️ **`disconnectGithub`는 여기 없다** — 2026-09-07에 **사용자 수준**으로 옮겼고(`projects/actions.ts`,
+// 인가는 `requireUser`), 테스트도 그 파일의 mock 범위를 쓰는 `onboarding.test.ts`로 함께 갔다.
+const { connectRepository, startGithubConnect } = await import("../projects/[slug]/settings/actions");
 
 /** 하네스의 기본 프로젝트는 `o/r`이고 설치 id가 `"1"`이다 (`FORMAT`). */
 // ⚠️ **`satisfies ProbeResult`가 계약을 붙든다.** mock이 `vi.fn()`이라 인자 타입이 `any`이고, 주석이 없으면
@@ -311,63 +311,6 @@ describe("connectRepository — 저장", () => {
   it("Zod가 빈 slug를 거른다 — 인가 이전이다", async () => {
     expect(await connectRepository({ slug: "" })).toEqual({ ok: false, error: "invalid input" });
     expect(hoisted.probeRepo).not.toHaveBeenCalled();
-  });
-});
-
-describe("disconnectGithub", () => {
-  it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
-    expect(await disconnectGithub({ slug: "acme" })).toEqual({ ok: true });
-    expect(db.accounts.find((a) => a.userId === "u-owner")).toBeUndefined();
-    expect(db.spies.updateProject).not.toHaveBeenCalled();
-  });
-
-  it("남의 행은 남는다 — 해제는 자기 연결만 끊는다", async () => {
-    db = createHarness({
-      members: [{ projectId: "p1", userId: "u-owner", role: "OWNER" }],
-      users: [{ id: "u-owner", email: "o@a.com" }],
-      accounts: [
-        { userId: "u-owner", provider: "github-app", providerAccountId: "gh-1" },
-        { userId: "u-other", provider: "github-app", providerAccountId: "gh-2" },
-      ],
-    });
-    hoisted.prisma = db.prisma;
-
-    await disconnectGithub({ slug: "acme" });
-
-    expect(db.accounts.map((a) => a.userId)).toEqual(["u-other"]);
-  });
-
-  it("로그인용 github 행은 건드리지 않는다 — provider가 다른 별개 인가다", async () => {
-    db = createHarness({
-      members: [{ projectId: "p1", userId: "u-owner", role: "OWNER" }],
-      users: [{ id: "u-owner", email: "o@a.com" }],
-      accounts: [
-        { userId: "u-owner", provider: "github", providerAccountId: "gh-1" },
-        { userId: "u-owner", provider: "github-app", providerAccountId: "gh-1" },
-      ],
-    });
-    hoisted.prisma = db.prisma;
-
-    await disconnectGithub({ slug: "acme" });
-
-    expect(db.accounts.map((a) => a.provider)).toEqual(["github"]);
-  });
-
-  it("EDITOR는 forbidden이고 아무 행도 지워지지 않는다", async () => {
-    hoisted.session = sessionFor("u-editor");
-
-    expect(await disconnectGithub({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
-    expect(db.accounts.length).toBe(1);
-  });
-
-  it("연결이 없어도 성공으로 읽는다 — 원하는 상태가 이미 이뤄져 있다", async () => {
-    db = createHarness({
-      members: [{ projectId: "p1", userId: "u-owner", role: "OWNER" }],
-      users: [{ id: "u-owner", email: "o@a.com" }],
-    });
-    hoisted.prisma = db.prisma;
-
-    expect(await disconnectGithub({ slug: "acme" })).toEqual({ ok: true });
   });
 });
 

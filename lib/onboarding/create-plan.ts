@@ -22,6 +22,9 @@ export type ProjectCreate =
 /**
  * @param ownerCount 호출부가 **OWNER 행만** 센 값이다 (`projectMember.count({ userId, role: OWNER })`).
  *   멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (spec §4).
+ *   ⚠️ **이 값은 트랜잭션 밖의 선조회다** — 거부될 요청이 GitHub을 읽지 않게 하는 것이 그 목적이고,
+ *   **제한의 실제 방어선은 `createProject`의 트랜잭션 안 재집계**다(`User` 행을 잠그고 다시 센다,
+ *   2026-09-07 리뷰 🟡7). 여기만 믿으면 두 탭의 동시 생성이 슬롯을 하나 더 만든다.
  * @param limit 사용자당 프로젝트 상한 — 보통 `PROJECT_LIMIT`이다. 인자로 받는 것은 테스트가 상수를 바꾸지 않고
  *   경계를 밟기 위해서다.
  */

@@ -4,11 +4,16 @@ import { useState, useTransition } from "react";
 
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 
-import { disconnectGithub, startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
+import { disconnectGithub } from "@/app/(edit)/projects/actions";
+import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
 
 /**
  * GitHub 계정 연결·해제 (design §8 섹션 2). 연결은 **폼 제출**이다 — `startGithubConnect`가 성공하면
  * `redirect`로 GitHub에 나가므로 `useTransition`으로 감싸면 응답이 돌아오지 않는다.
+ *
+ * ⚠️ **두 Action이 서로 다른 파일에서 온다** (2026-09-07 리뷰 🟡9): 해제는 **사용자 수준**
+ * (`projects/actions.ts`, 인가는 `requireUser`)이고 이 화면의 연결은 설정 화면 전용이다
+ * (착지 지점이 그 프로젝트라 slug가 필요하다). 사용자 수준 연결은 `ConnectGithubButton`이 따로 있다.
  */
 export function GithubAccount({ slug, login }: { slug: string; login: string | null }) {
   if (login === null) return <ConnectForm slug={slug} label="GitHub 연결" />;
@@ -16,7 +21,7 @@ export function GithubAccount({ slug, login }: { slug: string; login: string | n
   return (
     <div className="flex items-center gap-3">
       <span className="text-mono bg-muted rounded px-2 py-1">@{login}</span>
-      <DisconnectButton slug={slug} />
+      <DisconnectGithubButton />
     </div>
   );
 }
@@ -54,7 +59,13 @@ function ConnectForm({ slug, label }: { slug: string; label: string }) {
   );
 }
 
-function DisconnectButton({ slug }: { slug: string }) {
+/**
+ * 연결 해제 — **사용자 수준이라 slug를 받지 않는다** (2026-09-07 리뷰 🟡9).
+ *
+ * 설정 화면과 `/projects`의 계정 섹션이 **같은 버튼**을 쓴다: 연결이 사용자 수준으로 열린 뒤로
+ * **프로젝트를 하나도 안 만든 사용자**가 생길 수 있고, 그 사람에게는 설정 화면이 없다.
+ */
+export function DisconnectGithubButton() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +77,7 @@ function DisconnectButton({ slug }: { slug: string }) {
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const result = await disconnectGithub({ slug });
+            const result = await disconnectGithub();
             if (!result.ok) {
               setError(isAccessError(result.error) ? accessErrorMessage(result.error) : "해제하지 못했어요.");
             }

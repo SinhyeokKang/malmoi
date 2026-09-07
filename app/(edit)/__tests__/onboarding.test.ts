@@ -78,6 +78,7 @@ vi.mock("next/navigation", () => ({
 const {
   createProject,
   detectRepoFormats,
+  disconnectGithub,
   listConnectableRepos,
   rotatePushToken,
   runFirstIngest,
@@ -162,18 +163,20 @@ beforeEach(() => {
 
 describe("비로그인은 어느 Action도 지나지 못한다", () => {
   /**
-   * 프로젝트가 없는 셋은 `requireUser`라 `/`로 redirect하고(design §3.6 — 중간 상태 무저장이라
+   * 프로젝트가 없는 다섯은 `requireUser`라 `/`로 redirect하고(design §3.6 — 중간 상태 무저장이라
    * "처음부터"가 맞는 안내다), 프로젝트가 있는 둘은 값으로 거부한다.
    */
   beforeEach(() => {
     hoisted.session = sessionFor(null);
   });
 
-  it("사용자 수준 Action 넷은 로그인 화면으로 보낸다", async () => {
+  it("사용자 수준 Action 다섯은 로그인 화면으로 보낸다", async () => {
     await expect(startGithubConnectForUser()).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(listConnectableRepos()).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(detectRepoFormats({ owner: "acme", repo: "web" })).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(createProject(createInput())).rejects.toThrow(/NEXT_REDIRECT/);
+    // 2026-09-07에 다섯이 됐다 — 해제가 설정 화면에서 사용자 수준으로 옮겨왔다 (리뷰 🟡9).
+    await expect(disconnectGithub()).rejects.toThrow(/NEXT_REDIRECT/);
     expect(hoisted.redirect).toHaveBeenCalledWith("/");
   });
 
@@ -313,7 +316,6 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
         {
           adapter: "json-catalog",
           label: "JSON 카탈로그",
-          example: "src/locales/{locale}.json",
           pathTemplate: "i18n/{locale}.json",
           locales: ["en", "fr", "ko"],
           baseLocale: "en",
@@ -457,6 +459,19 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
+  /**
+   * ⚠️ **재검증 파일을 못 받은 것은 GitHub 장애다** (2026-09-07 리뷰 🟡4). `readFiles`가 실패한 blob을
+   * 조용히 빼므로 `planConfirmedFormat`이 `manual-no-match`를 내는데, 그 문구는 "경로와 형식을 다시
+   * 확인해 주세요"다 — 사용자는 자기 입력이 틀렸다고 믿고 맞는 경로를 고치려 든다
+   * (POSTMORTEM 2026-09-03: 실패한 조회를 "없음"으로 읽었다).
+   */
+  it("재검증할 파일을 내려받지 못하면 unavailable이다 — 장애를 입력 오류로 말하지 않는다", async () => {
+    hoisted.openRepoReader.mockImplementation(async () => reader({ blobs: new Map() }));
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
+  });
+
   it("기준 로케일이 재탐지된 로케일에 없으면 거부한다 — 진짜 base의 키가 orphaned로 떨어진다", async () => {
     expect(await createProject(createInput({ baseLocale: "de" }))).toEqual({
       ok: false,
@@ -517,6 +532,31 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     hoisted.prisma = db.prisma;
 
     expect(await createProject(createInput())).toEqual({ ok: false, error: "limit-reached" });
+  });
+
+  /**
+   * ⚠️ **선조회만으로는 제한이 우회된다** (2026-09-07 리뷰 🟡7). OWNER 카운트가 트랜잭션 밖이라
+   * 두 탭이 동시에 들어오면 둘 다 "슬롯 있음"을 보고 각자 만든다 — 결과는 프로젝트 넷이고
+   * 삭제가 비범위라 사용자가 슬롯을 되찾을 수 없다. `createInvitation`·`changeMember`가 프로젝트
+   * 행을 잠그는 것과 같은 형태이고, **생성 경로에는 잠글 프로젝트가 없으므로 대상이 `User`다.**
+   *
+   * 메모리 DB는 잠금을 흉내내지 못하므로 ① 잠금이 생성보다 먼저인 것 ② 트랜잭션 안에서 **다시
+   * 세는** 것 ③ 그때 넘치면 쓰기가 되돌아가는 것을 본다.
+   */
+  it("트랜잭션 안에서 다시 세서 동시 생성을 막는다 — 선조회를 지난 뒤 남이 슬롯을 채운 경우다", async () => {
+    // 선조회는 2를 보고 통과하고, 트랜잭션 안의 재집계는 3을 본다.
+    db.spies.countMembers.mockResolvedValueOnce(2).mockResolvedValueOnce(3);
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "limit-reached" });
+    // 행도 멤버십도 남지 않는다 — 판정이 쓰기 뒤라도 롤백이 그것을 되돌린다.
+    expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
+    expect(db.members.some((m) => m.userId === OWNER && m.projectId.startsWith("p-"))).toBe(false);
+
+    const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?")).join("\n");
+    expect(sql).toMatch(/"User"[\s\S]*FOR UPDATE/);
+    expect(db.spies.executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      db.spies.createProject.mock.invocationCallOrder[0] ?? Infinity,
+    );
   });
 
   it("EDITOR 셋은 제한에 들지 않는다 — 초대만 받은 사람이 하나도 못 만들면 안 된다", async () => {
@@ -618,6 +658,31 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
     expect([...input.blobs.keys()].sort()).toEqual(["i18n/en.json", "i18n/fr.json", "i18n/ko.json"]);
   });
 
+  /**
+   * ⚠️ **내려받지 못한 로케일 파일이 `targets`에 남아야 한다** (불변식 9 · 2026-09-07 리뷰 🔴2).
+   *
+   * `ingestTargets`는 `confirmed.format.locales`를 순회하는데 그 locales는 **성공한 blob에서 나온
+   * 값**이다 — 재검증이 실패한 다운로드를 조용히 뺐으므로, 그 목록으로 `targets`를 만들면 사라진
+   * 로케일이 함께 사라져 `ingest.ts`의 `missing`이 0이 된다. 그러면 화면은 "N개 키를 적재했어요"를
+   * 쓰고 `lastCommitSha`가 서서 `ready`가 되며, [다시 시도]는 `not-awaiting`이라 되돌릴 수도 없다.
+   *
+   * T5의 code-review 🔴①이 `ingest.ts`에 세운 방어선을 이 Action이 무력화하고 있었다.
+   */
+  it("⚠️ 내려받지 못한 로케일 파일도 `targets`에 실린다 — 실패로 세지 않으면 값이 조용히 빠진다", async () => {
+    // `i18n/fr.json`의 blob만 준비하지 않는다 — 5xx·권한 실패가 그 모양이다.
+    hoisted.openRepoReader.mockImplementation(async () =>
+      reader({ blobs: new Map([["sha-en", CATALOG], ["sha-ko", CATALOG]]) }),
+    );
+
+    await runFirstIngest({ slug: "acme" });
+
+    const [, input] = hoisted.ingestFirstSnapshot.mock.calls[0] ?? [];
+    // 시도한 목록에는 셋이 다 있고,
+    expect([...input.targets].sort()).toEqual(["i18n/en.json", "i18n/fr.json", "i18n/ko.json"]);
+    // 받아온 것은 둘뿐이다 — 그 차이가 `ingest.ts`에서 `failed`가 된다.
+    expect([...input.blobs.keys()].sort()).toEqual(["i18n/en.json", "i18n/ko.json"]);
+  });
+
   it("적재 결과의 실패 수가 그대로 나온다 — 0이 아니면 화면이 성공 문구를 못 쓴다 (불변식 9)", async () => {
     hoisted.ingestFirstSnapshot.mockResolvedValue({
       count: 2,
@@ -708,6 +773,90 @@ describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
 
     expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
     expect(db.projects[0]!.pushTokenHash).toBe(before);
+  });
+});
+
+/**
+ * **연결 해제 — 사용자 수준** (2026-09-07 리뷰 🟡9. `github-connect.test.ts`에서 옮겼다).
+ *
+ * ⚠️ **인가가 `project:settings`에서 `requireUser`로 넓어졌다.** 연결이 사용자 수준으로 열린 뒤
+ * (`startGithubConnectForUser`) **프로젝트를 하나도 안 만든 사용자**가 생길 수 있고, 그 사람에게는
+ * 설정 화면이 없어 해제에 도달할 길이 없었다 — `taken-by-other`가 영구 잠금이 된다(SAAS §5.5는
+ * 자동 병합을 금지하므로 다른 계정으로 옮길 길도 없다). `Account` 행은 사용자 소유라 프로젝트
+ * 권한을 요구할 근거가 애초에 없었다.
+ */
+describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절반)", () => {
+  it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.accounts.find((a) => a.userId === OWNER)).toBeUndefined();
+    expect(db.spies.updateProject).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ⚠️ **이 케이스가 뒤집혔다.** 전에는 "EDITOR는 forbidden"이었는데, 그 판정이 곧 위 잠금의 원인이다 —
+   * 멤버십은 남의 프로젝트에 대한 권한이고 자기 GitHub 계정과 아무 관계가 없다.
+   */
+  it("멤버십과 무관하게 자기 행을 지운다 — 프로젝트가 없는 사용자도 도달해야 한다", async () => {
+    db = createHarness({
+      projects: [],
+      members: [],
+      users: [{ id: OWNER, email: "o@a.com" }],
+      accounts: [{ userId: OWNER, provider: "github-app", providerAccountId: "gh-1" }],
+    });
+    hoisted.prisma = db.prisma;
+
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.accounts).toEqual([]);
+  });
+
+  it("비로그인은 로그인 화면으로 보낸다 — 값이 아니라 redirect다", async () => {
+    hoisted.session = sessionFor(null);
+
+    await expect(disconnectGithub()).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(db.accounts.length).toBe(1);
+  });
+
+  it("남의 행은 남는다 — 해제는 자기 연결만 끊는다", async () => {
+    db = createHarness({
+      users: [{ id: OWNER, email: "o@a.com" }],
+      accounts: [
+        { userId: OWNER, provider: "github-app", providerAccountId: "gh-1" },
+        { userId: "u-other", provider: "github-app", providerAccountId: "gh-2" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+
+    await disconnectGithub();
+
+    expect(db.accounts.map((a) => a.userId)).toEqual(["u-other"]);
+  });
+
+  it("로그인용 github 행은 건드리지 않는다 — provider가 다른 별개 인가다", async () => {
+    db = createHarness({
+      users: [{ id: OWNER, email: "o@a.com" }],
+      accounts: [
+        { userId: OWNER, provider: "github", providerAccountId: "gh-1" },
+        { userId: OWNER, provider: "github-app", providerAccountId: "gh-1" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+
+    await disconnectGithub();
+
+    expect(db.accounts.map((a) => a.provider)).toEqual(["github"]);
+  });
+
+  it("연결이 없어도 성공으로 읽는다 — 원하는 상태가 이미 이뤄져 있다", async () => {
+    db = createHarness({ users: [{ id: OWNER, email: "o@a.com" }] });
+    hoisted.prisma = db.prisma;
+
+    expect(await disconnectGithub()).toEqual({ ok: true });
+  });
+
+  it("삭제가 던지면 unavailable이다 — digest만 있는 오류를 사용자에게 보내지 않는다", async () => {
+    db.spies.deleteAccount.mockRejectedValueOnce(new Error("Can't reach database server"));
+
+    expect(await disconnectGithub()).toEqual({ ok: false, error: "unavailable" });
   });
 });
 

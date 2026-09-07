@@ -35,7 +35,6 @@ import { probeRepo } from "@/lib/github";
 
 const Input = z.object({ slug: z.string().min(1) });
 
-const PROVIDER = "github-app";
 
 export type StartConnectResult = { ok: false; error: string };
 
@@ -186,45 +185,6 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
       repoName: plan.repoName,
     },
   });
-
-  revalidatePath(`/projects/${slug}/settings`);
-  return { ok: true };
-}
-
-export type DisconnectResult = { ok: true } | { ok: false; error: AccessError | "invalid input" };
-
-/**
- * GitHub 계정 연결 해제 (design §3.4). **Project와 번역 데이터는 건드리지 않는다** — 건강성은 App
- * 토큰으로 계산되므로 해제 뒤에도 그대로 보인다.
- *
- * ⚠️ **자기 행만 지운다.** `taken-by-other`가 영구 잠금이 되지 않게 하는 경로이고, 남의 연결을
- * 끊는 수단이 아니다. 로그인용 `provider: "github"` 행도 건드리지 않는다 — 의미가 다른 인가다.
- */
-export async function disconnectGithub(raw: { slug: string }): Promise<DisconnectResult> {
-  const parsed = Input.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug } = parsed.data;
-
-  const session = await readSession();
-  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
-  if (session.status === "none") return { ok: false, error: "unauthorized" };
-  const { userId } = session;
-
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-
-  // 없는 행을 지우려 하면 P2025로 던진다 — `deleteMany`가 없어도 되게 조회 후 지운다.
-  // 연결이 이미 없는 것은 실패가 아니다: 원하는 상태가 이미 이뤄져 있다.
-  const row = await prisma.account.findFirst({
-    where: { userId, provider: PROVIDER },
-    select: { providerAccountId: true },
-  });
-  if (row !== null) {
-    await prisma.account.delete({
-      where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: row.providerAccountId } },
-    });
-  }
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true };
