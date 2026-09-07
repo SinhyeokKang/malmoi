@@ -60,6 +60,24 @@ describe("renderWorkflowYaml", () => {
     );
   });
 
+  /**
+   * ⚠️ **`concurrency.group`에 slug가 들어가야 한다** (2026-09-07 리뷰 🟡8). `github.ref`만 쓰면 한 리포에
+   * 프로젝트가 둘일 때(SAAS §7.1 — prod의 `i18n-format-check`가 실물이다) 같은 커밋에서 두 워크플로가
+   * 같은 그룹에 들어가고 `cancel-in-progress`가 **한쪽을 죽인다.** 그러면 그 표면은 영영 적재되지 않는데
+   * 취소는 실패로 보이지 않는다. `syncBranchFor`가 브랜치 이름에 slug를 넣은 것과 같은 이유다.
+   */
+  it("concurrency group이 프로젝트마다 다르다 — 한 리포의 두 프로젝트가 서로를 취소하지 않는다", () => {
+    const groupOf = (yml: string) => /^\s*group:\s*(.+)$/m.exec(yml)?.[1];
+    const a = groupOf(renderWorkflowYaml({ slug: "format-check-code", baseBranch: "main" }));
+    const b = groupOf(renderWorkflowYaml({ slug: "format-check-yaml", baseBranch: "main" }));
+
+    expect(a).toContain("format-check-code");
+    expect(b).toContain("format-check-yaml");
+    expect(a).not.toBe(b);
+    // ref도 남아 있어야 한다 — 브랜치가 다른 두 push는 서로를 취소하지 않는 것이 원래 의도다.
+    expect(a).toContain("github.ref");
+  });
+
   it("무한 루프 가드 `[skip-l10n]`과 `PUSH_TOKEN` secret 참조가 있다", () => {
     const yml = renderWorkflowYaml({ slug: "x", baseBranch: "main" });
     expect(yml).toContain("[skip-l10n]");

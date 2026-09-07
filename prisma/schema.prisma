@@ -29,9 +29,12 @@ model Project {
   /// 설치는 고객이 각자 하므로 여기 둔다. 미설치 상태를 표현해야 해서 nullable이다.
   installationId String?
 
-  // ── 로케일 포맷 (push가 채우고 pull이 읽는다) ────────────────────────────
-  // 포맷을 아는 시점이 push다(CI가 리포를 탐지한다). pull이 파일을 쓰려면 이 값이 필요하다.
-  // 아직 push를 받지 않은 프로젝트를 표현해야 해서 전부 nullable이다.
+  // ── 로케일 포맷 (온보딩이 확정하고 pull이 읽는다) ─────────────────────────
+  // 원래는 push가 채우는 값이었다(CI가 리포를 탐지한다). 2026-09-07 온보딩이 **사용자에게 확정받아**
+  // 재검증한 값을 생성 시점에 심으므로, 그 뒤의 push는 **같은 표면일 때만** 통과한다
+  // (`lib/push/guard.ts`의 `checkFormat` — 409). 셋이 다 null인 행에는 첫 push가 그대로 채운다.
+  // ⚠️ **셋은 항상 함께 쓰인다** — 일부만 채워진 상태를 만드는 코드 경로가 없고, 그런 행은
+  // fail-closed로 거부된다. 아직 아무 push도 받지 않은 프로젝트를 표현해야 해서 전부 nullable이다.
 
   /// 어댑터 이름 — `lib/adapters/types.ts`의 `AdapterName` 5종(`chrome-locales`·`json-catalog`·`yaml-catalog`·`code-dict`·`ts-dict`).
   /// 문자열 컬럼이라 DB가 제약하지 않는다 — pull이 `isAdapterName`으로 거른다.

@@ -76,7 +76,11 @@ export type CandidateSummary = {
   /** 확정 시 되돌려 보내는 값이다 — 화면에 쓰지 않는다. */
   adapter: AdapterName;
   label: string;
-  example: string;
+  /**
+   * ⚠️ **`formatLabel`의 `example`은 여기 없다** (2026-09-07 리뷰 ⚪11). 후보는 **자기 실제
+   * `pathTemplate`** 을 보이므로 형식 예시가 중복이고, 계산해서 아무도 안 쓰면 "만든 것이 실제로
+   * 호출되는가"를 흐린다. 예시는 수동 지정 셀렉트(`AdapterChoice`)에서만 쓰인다.
+   */
   pathTemplate: string;
   /** 정렬돼 있다 — 탐지 결과는 정렬돼 있지 않다. */
   locales: string[];
@@ -103,11 +107,10 @@ export function summarizeCandidates(
     const baseLocale = pickBaseLocale(c.locales);
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);
-    const { label, example } = formatLabel(c.adapter);
+    const { label } = formatLabel(c.adapter);
     out.push({
       adapter: c.adapter,
       label,
-      example,
       pathTemplate: c.pathTemplate,
       locales: c.locales.slice().sort(compareKeys),
       baseLocale,

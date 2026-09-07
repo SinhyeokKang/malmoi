@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { applyPush } from "@/lib/push/apply";
-import { checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
+import { checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
 
@@ -55,7 +55,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (design §3.8).
     const project = await prisma.project.findUnique({
       where: { pushTokenHash: hashPushToken(rawToken) },
-      select: { id: true, slug: true, lastCommitAt: true },
+      // 포맷 셋은 `checkFormat`의 비교 대상이다 — 온보딩이 확정한 표면을 CI가 갈아치우지 못하게 한다.
+      select: {
+        id: true,
+        slug: true,
+        lastCommitAt: true,
+        adapterName: true,
+        pathTemplate: true,
+        baseLocale: true,
+      },
     });
     // ⚠️ **404를 내지 않는다** — 토큰이 유효하지 않은 것과 그런 프로젝트가 없는 것을 가르면 프로젝트 존재가
     // 샌다. 미발급·오타·폐기 토큰이 전부 같은 401이다.
@@ -84,6 +92,33 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json(
         { error: "project mismatch", expected: project.slug, got: parsed.data.projectSlug },
         { status: guardStatus(routing) },
+      );
+    }
+
+    /**
+     * 표면 교체 거부 — 온보딩이 확정한 포맷을 CI가 다른 것으로 덮지 못하게 한다 (ARCHITECTURE §5.5.5).
+     * `applyPush`가 페이로드 포맷으로 그 컬럼들을 덮으므로, 자동 후보의 YAML로 도는 CI가 1순위 표면을
+     * 보내면 확정이 조용히 뒤집히고 그 프로젝트의 키가 전부 orphan된다.
+     */
+    const surface = checkFormat(parsed.data.format, project);
+    if (surface !== "ok") {
+      // 무엇을 고쳐야 하는지 보여준다 — `expected`는 이미 그 프로젝트의 토큰을 든 호출자에게만 간다.
+      // 고치는 방법은 워크플로에 `adapter:`·`base-locale:`을 박는 것이고 화면이 그 YAML을 낸다.
+      return NextResponse.json(
+        {
+          error: "format mismatch",
+          expected: {
+            adapter: project.adapterName,
+            pathTemplate: project.pathTemplate,
+            baseLocale: project.baseLocale,
+          },
+          got: {
+            adapter: parsed.data.format.adapter,
+            pathTemplate: parsed.data.format.pathTemplate,
+            baseLocale: parsed.data.format.baseLocale,
+          },
+        },
+        { status: guardStatus(surface) },
       );
     }
 

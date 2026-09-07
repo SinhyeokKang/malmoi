@@ -11,6 +11,15 @@
  * 생성을 한 트랜잭션으로, `taken-by-other`는 **아무것도 쓰지 않는다**.
  */
 
+/**
+ * `Account.provider` 값 — 로그인용 `github` 행과 **같은 테이블에서 이것으로 갈린다.**
+ *
+ * ⚠️ 이 상수를 여기 두는 이유는 이 파일이 "그 행이 무엇인가"를 판정하는 자리라서다. 리터럴을 아직
+ * 들고 있는 곳이 둘 있다(`app/api/github/callback/route.ts`·`lib/github-connect/token-store.ts`) —
+ * 새로 읽는 코드는 이것을 import한다.
+ */
+export const APP_ACCOUNT_PROVIDER = "github-app";
+
 export type AccountLink = "link" | "already-linked" | "replace" | "taken-by-other";
 
 /**

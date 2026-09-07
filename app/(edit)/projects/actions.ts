@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterFile, AdapterName } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
@@ -21,6 +22,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
+import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
@@ -262,8 +264,21 @@ const CreateProjectInput = z.object({
   slug: z.string().min(1),
   // ⚠️ 상한이 있는 이유는 **저장되는 유일한 자유 입력**이기 때문이다 — slug는 `planSlug`가 40자로
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
-  name: z.string().min(1).max(200),
+  // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
+  // (2026-09-07 리뷰 ⚪15).
+  name: z.string().trim().min(1).max(200),
 });
+
+/**
+ * 트랜잭션 안에서 던져 쓰기를 되돌리는 신호. 밖에서 잡아 `limit-reached`로 바꾼다 —
+ * `LastOwnerRollback`과 같은 관용구다(사용자에게 예외를 보내지 않는다).
+ */
+class ProjectLimitRollback extends Error {
+  constructor() {
+    super("owner project limit reached");
+    this.name = "ProjectLimitRollback";
+  }
+}
 
 export type StartUserConnectResult = { ok: false; error: OnboardFailure };
 
@@ -312,6 +327,56 @@ export async function startGithubConnectForUser(): Promise<StartUserConnectResul
 
   // `redirect`는 던지므로 이 아래는 실행되지 않는다.
   redirect(authorizeUrl(nonce, callbackUrl(origin.origin)));
+}
+
+export type DisconnectResult = { ok: true } | { ok: false; error: "unavailable" };
+
+/**
+ * GitHub 계정 연결 **해제 — 사용자 수준** (2026-09-07 리뷰 🟡9. 설정 화면에서 여기로 옮겼다).
+ *
+ * ⚠️ **인가가 `project:settings`면 도달할 수 없는 사람이 생긴다.** 연결은 5단계에서 사용자 수준으로
+ * 열렸으므로(`startGithubConnectForUser`) **프로젝트를 하나도 안 만든 사용자**가 연결만 하고 남을 수
+ * 있고, 그 사람에게는 설정 화면이 없다 — `taken-by-other`가 영구 잠금이 된다(SAAS §5.5는 자동 병합을
+ * 금지하므로 다른 로그인 계정으로 옮길 길도 없다). `Account` 행은 **사용자 소유**라 프로젝트 권한을
+ * 요구할 근거가 애초에 없었다.
+ *
+ * ⚠️ **자기 행만 지운다.** 남의 연결을 끊는 수단이 아니고, 로그인용 `provider: "github"` 행도
+ * 건드리지 않는다 — 의미가 다른 인가다. `Project`와 번역 데이터도 그대로다(건강성은 App 토큰으로
+ * 계산되므로 해제 뒤에도 보인다).
+ */
+export async function disconnectGithub(): Promise<DisconnectResult> {
+  const { userId } = await requireUser();
+
+  const prisma = getPrisma();
+  try {
+    // 없는 행을 지우려 하면 P2025로 던진다 — 조회 후 지운다. 연결이 이미 없는 것은 실패가 아니다:
+    // 원하는 상태가 이미 이뤄져 있다.
+    const row = await prisma.account.findFirst({
+      where: { userId, provider: APP_ACCOUNT_PROVIDER },
+      select: { providerAccountId: true },
+    });
+    if (row !== null) {
+      await prisma.account.delete({
+        where: {
+          provider_providerAccountId: {
+            provider: APP_ACCOUNT_PROVIDER,
+            providerAccountId: row.providerAccountId,
+          },
+        },
+      });
+    }
+  } catch (error) {
+    // 처리하지 않으면 digest만 있는 일반 오류가 된다 — 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3).
+    logFailure("disconnect", error);
+    return { ok: false, error: "unavailable" };
+  }
+
+  /**
+   * ⚠️ **`"layout"`이다.** 이 연결을 보이는 화면이 둘이고(`/projects`의 계정 섹션 · 각 프로젝트의
+   * 설정 화면) 여기서는 slug를 모른다 — 경로 하나만 무효화하면 설정 화면이 연결된 상태를 계속 보인다.
+   */
+  revalidatePath("/projects", "layout");
+  return { ok: true };
 }
 
 export type ConnectableRepo = { owner: string; repo: string; fullName: string };
@@ -465,6 +530,9 @@ export async function createProject(raw: {
   const [ownerCount, existing] = await Promise.all([
     // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (spec §4).
     prisma.projectMember.count({ where: { userId, role: "OWNER" } }),
+    // ⚠️ **전역 조회다** — slug는 `@unique`이고 "이미 쓰는 주소인가"는 테넌트 안에서 답할 수 없는
+    // 질문이다 (§7.7의 대가). 돌려주는 것은 존재 여부뿐이고 화면에는 `slug-taken` 한 줄만 간다 —
+    // 남의 프로젝트 이름·리포는 새지 않는다.
     prisma.project.findUnique({ where: { slug: input.slug }, select: { id: true } }),
   ]);
 
@@ -487,19 +555,45 @@ export async function createProject(raw: {
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
-  const files = await readFiles(reader, snapshot, templatePaths(adapterName, input.pathTemplate, paths));
+  const attempted = templatePaths(adapterName, input.pathTemplate, paths);
+  const files = await readFiles(reader, snapshot, attempted);
   const confirmed = planConfirmedFormat(
     { adapter: adapterName, pathTemplate: input.pathTemplate, baseLocale: input.baseLocale },
     files,
   );
-  // 갈래 넷을 한 문구로 접는다 — 사용자가 할 일이 같다(다른 후보를 고르거나 경로를 고친다).
-  if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+  if (confirmed.status !== "ok") {
+    /**
+     * ⚠️ **못 받은 파일이 있으면 장애다** (2026-09-07 리뷰 🟡4). `readFiles`가 실패한 blob을 조용히
+     * 빼므로 그 상태가 "템플릿이 아무 파일도 가리키지 않는다"와 구별되지 않는데, 문구는 "경로와
+     * 형식을 다시 확인해 주세요"라 **사용자가 맞는 입력을 고치려 든다** (POSTMORTEM 2026-09-03).
+     */
+    if (files.length < attempted.length) {
+      logFailure(
+        "onboard-confirm",
+        new Error(`재검증 파일을 내려받지 못했다: ${attempted.length - files.length}/${attempted.length}`),
+      );
+      return { ok: false, error: "unavailable" };
+    }
+    // 나머지 갈래 넷은 한 문구로 접는다 — 사용자가 할 일이 같다(다른 후보를 고르거나 경로를 고친다).
+    return { ok: false, error: "manual-no-match" };
+  }
 
   // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (초대 토큰과 같은 모델 — SAAS §7.8).
   const pushToken = generatePushToken();
 
   try {
     await prisma.$transaction(async (tx) => {
+      /**
+       * ⚠️ **같은 사용자의 동시 생성을 직렬화한다** (2026-09-07 리뷰 🟡7). 위 `ownerCount` 선조회는
+       * 트랜잭션 밖이라 두 탭이 동시에 통과하면 슬롯이 셋인데 넷이 생기고, 삭제가 비범위라
+       * 사용자가 그 슬롯을 되찾을 수 없다. `createInvitation`·`changeMember`가 프로젝트 행을
+       * 잠그는 것과 같은 이유이고 — **생성 경로에는 잠글 프로젝트가 없으므로 대상이 `User`다.**
+       * 선조회를 남겨 두는 것은 거부될 요청이 GitHub을 읽지 않게 하기 위해서다.
+       */
+      await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const owned = await tx.projectMember.count({ where: { userId, role: "OWNER" } });
+      if (owned >= PROJECT_LIMIT) throw new ProjectLimitRollback();
+
       const project = await tx.project.create({
         data: {
           slug: input.slug,
@@ -522,6 +616,8 @@ export async function createProject(raw: {
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
     });
   } catch (error) {
+    // 잠금 안에서 센 결과가 넘쳤다 — 쓰기는 되돌아갔고 사용자에게는 선조회와 같은 사유가 간다.
+    if (error instanceof ProjectLimitRollback) return { ok: false, error: "limit-reached" };
     // ⚠️ **선조회를 지난 뒤의 경합이다** — 둘이 같은 slug로 동시에 들어오면 여기서 P2002가 난다.
     // 처리하지 않으면 digest만 있는 일반 오류가 되고 `planProjectCreate`가 만들어 둔 사유가 사라진다.
     if (isUniqueViolation(error)) return { ok: false, error: "slug-taken" };
@@ -595,7 +691,15 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
-  const files = await readFiles(reader, snapshot, templatePaths(adapterName, pathTemplate, paths));
+  /**
+   * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
+   * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
+   * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
+   * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
+   * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
+   */
+  const attempted = templatePaths(adapterName, pathTemplate, paths);
+  const files = await readFiles(reader, snapshot, attempted);
   const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
   if (confirmed.status !== "ok") {
     logFailure("onboard-ingest", new Error(`저장된 포맷이 더 이상 성립하지 않는다: ${confirmed.reason}`));
@@ -604,10 +708,14 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
 
   const adapter = adapterFor(confirmed.format);
   // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
-  // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `targets`가 그 함수를 지난 경로 목록이다.
-  const targets = ingestTargets(confirmed.format, adapter.layout, paths);
+  // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
+  // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
+  // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
+  const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
+    compareKeys,
+  );
   const blobs = new Map(files.map((f) => [f.path, f.content]));
-  // 재검증이 이미 받은 것은 다시 받지 않는다. multi-locale은 두 목록이 갈릴 수 있어 그물을 둔다.
+  // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
   for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
     blobs.set(extra.path, extra.content);
   }
@@ -770,7 +878,13 @@ async function readFiles(
   return out;
 }
 
-/** 스냅샷의 비-ok 갈래 → 화면 문구가 있는 사유. `truncated`는 수동 지정으로 가는 길이 남아 있다. */
+/**
+ * 스냅샷의 비-ok 갈래 → 화면 문구가 있는 사유.
+ *
+ * ⚠️ **`truncated`에는 수동 지정으로 가는 길이 없다** (2026-09-07 정정 — 전 주석은 반대로 적혀 있었다).
+ * 확정의 재검증(`planConfirmedFormat`)이 **같은 잘린 스냅샷**을 읽으므로 같은 갈래를 다시 낸다.
+ * 문구도 그렇게 말한다 (`onboardErrorMessage`).
+ */
 function snapshotError(snapshot: Exclude<RepoSnapshot, { status: "ok" }>): OnboardError {
   if (snapshot.status === "truncated") return "tree-truncated";
   if (snapshot.status === "base-branch-missing") return "base-branch-missing";

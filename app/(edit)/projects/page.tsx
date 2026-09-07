@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { planProjectReadiness, readinessLabel } from "@/lib/onboarding/readiness";
+import { DisconnectGithubButton } from "@/components/github-account";
 
 /**
  * 내 프로젝트 목록. **로그인 후 착지점**이고, 인가 거부의 redirect 목적지다.
@@ -32,15 +34,36 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       : null;
   const notice = message === null ? null : <p className="text-destructive text-sm">{message}</p>;
 
-  const memberships = await getPrisma().projectMember.findMany({
-    where: { userId },
-    // 상태 텍스트의 재료 둘 — `planProjectReadiness`가 컬럼을 만들지 않고 이것으로 판정한다 (design §3.7).
-    select: {
-      role: true,
-      project: { select: { slug: true, name: true, installationId: true, lastCommitSha: true } },
-    },
-    orderBy: { project: { name: "asc" } },
-  });
+  const prisma = getPrisma();
+  /**
+   * ⚠️ **GitHub 계정 섹션이 여기 있는 이유** (2026-09-07 리뷰 🟡9): 연결은 사용자 수준으로 열려 있어
+   * **프로젝트를 하나도 안 만든 사용자**가 연결만 하고 남을 수 있는데, 그 사람에게는 설정 화면이
+   * 없어 해제에 도달할 길이 없었다 — `taken-by-other`가 영구 잠금이 된다 (SAAS §5.5).
+   *
+   * **핸들을 위해 GitHub을 부르지 않는다.** 이 화면은 로그인 후 착지점이라 매 렌더에 왕복을 붙일
+   * 자리가 아니고, `@login`이 필요하면 설정 화면이 보인다. 여기서는 **행의 존재만** 읽는다.
+   *
+   * 조회는 `userId`로 좁힌다 — `Account`는 프로젝트가 아니라 사용자에 속한 테이블이다
+   * (POSTMORTEM 2026-09-06이 넓힌 규칙).
+   */
+  const [memberships, connection] = await Promise.all([
+    loadMemberships(prisma, userId),
+    prisma.account.findFirst({
+      where: { userId, provider: APP_ACCOUNT_PROVIDER },
+      select: { providerAccountId: true },
+    }),
+  ]);
+
+  const account =
+    connection === null ? null : (
+      <section className="border-border space-y-2 rounded-md border p-4">
+        <h2 className="text-sm font-medium">GitHub 계정</h2>
+        <div className="flex items-center gap-3">
+          <p className="text-muted-foreground text-xs">연결돼 있어요.</p>
+          <DisconnectGithubButton />
+        </div>
+      </section>
+    );
 
   if (memberships.length === 0) {
     return (
@@ -54,6 +77,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <p className="pt-2">
           <NewProjectLink />
         </p>
+        {account !== null && <div className="pt-4">{account}</div>}
       </main>
     );
   }
@@ -86,8 +110,21 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </li>
         ))}
       </ul>
+      {account}
     </main>
   );
+}
+
+function loadMemberships(prisma: ReturnType<typeof getPrisma>, userId: string) {
+  return prisma.projectMember.findMany({
+    where: { userId },
+    // 상태 텍스트의 재료 둘 — `planProjectReadiness`가 컬럼을 만들지 않고 이것으로 판정한다 (design §3.7).
+    select: {
+      role: true,
+      project: { select: { slug: true, name: true, installationId: true, lastCommitSha: true } },
+    },
+    orderBy: { project: { name: "asc" } },
+  });
 }
 
 /** DESIGN §6.4 primary 버튼. 링크지만 주 행동이라 버튼 모양이다. */

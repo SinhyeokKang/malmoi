@@ -307,7 +307,8 @@ function ConfirmStep({
 
       {candidates.length === 0 ? (
         <p className="text-destructive text-sm">
-          로케일 파일을 찾지 못했어요 — 언어가 2개 이상인 로케일 파일이 필요해요. 아래에서 직접 지정해 주세요.
+          {/* 사유는 판정층 문구를 쓴다 — 두 벌이면 같은 상태가 화면마다 다르게 읽힌다 (리뷰 ⚪10) */}
+          {onboardErrorMessage("no-candidates")} 아래에서 직접 지정해 주세요.
         </p>
       ) : (
         <fieldset className="space-y-2">
@@ -337,7 +338,9 @@ function ConfirmStep({
                     <span className="text-mono text-muted-foreground block truncate">{c.pathTemplate}</span>
                     <span className="text-muted-foreground block text-xs">
                       언어 {c.locales.length}개 ({c.locales.join(", ")}) ·{" "}
-                      {c.keys.status === "counted" ? `키 ${c.keys.count}개` : "키 수 확인 실패"}
+                      {c.keys.status === "counted"
+                        ? `키 ${c.keys.count}개`
+                        : onboardErrorMessage("key-count-failed")}
                     </span>
                   </span>
                 </label>

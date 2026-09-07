@@ -34,7 +34,8 @@ export function renderWorkflowYaml(input: {
     "  workflow_dispatch:",
     "",
     "concurrency:",
-    "  group: l10n-${{ github.ref }}",
+    // ⚠️ slug가 들어가는 것이 요지다 — 한 리포에 프로젝트가 둘이면 같은 그룹에서 서로를 취소한다.
+    `  group: l10n-${slug}-\${{ github.ref }}`,
     "  cancel-in-progress: true",
     "",
     "permissions:",

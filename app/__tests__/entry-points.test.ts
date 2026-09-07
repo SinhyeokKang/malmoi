@@ -36,6 +36,16 @@ const EXEMPT = new Set([
 /** 인가를 지났다고 인정하는 호출. 셋 다 결국 `planProjectAccess`로 간다. */
 const GUARDS = ["requireProjectAccess", "getProjectAccess", "requireUser"];
 
+/**
+ * `"use server"` 파일이 내보내는 **공개 엔드포인트**의 선언 위치. 형태가 둘이라 둘을 다 본다 —
+ * `export async function f()`와 `export const f = async () => {}`. 값 export(`= 7`)와
+ * `export type`은 엔드포인트가 아니라 대상이 아니다.
+ */
+function actionExports(source: string): { name: string; at: number }[] {
+  const re = /export\s+(?:async\s+function\s+(\w+)|const\s+(\w+)\s*(?::[^=;]+)?=\s*async\b)/g;
+  return [...source.matchAll(re)].map((m) => ({ name: m[1] ?? m[2] ?? "", at: m.index }));
+}
+
 function walk(dir: string, base = ""): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -93,14 +103,35 @@ describe("서버 진입점", () => {
     );
     expect(actionFiles.length).toBeGreaterThan(0);
 
+    const unguarded: string[] = [];
     for (const file of actionFiles) {
-      const exported = [...file.source.matchAll(/export async function (\w+)/g)].map((m) => m[1]);
-      expect(exported.length).toBeGreaterThan(0);
-      const bodies = file.source.split(/export async function /).slice(1);
-      for (const body of bodies) {
-        expect(GUARDS.some((g) => body.includes(g))).toBe(true);
+      const marks = actionExports(file.source);
+      expect(marks.length, file.path).toBeGreaterThan(0);
+      for (const [i, mark] of marks.entries()) {
+        // 다음 export 선언까지가 그 함수의 범위다 — 파일 어딘가에 호출이 있다는 것으로는 부족하다.
+        const body = file.source.slice(mark.at, marks[i + 1]?.at ?? file.source.length);
+        if (!GUARDS.some((g) => body.includes(g))) unguarded.push(`${file.path}#${mark.name}`);
       }
     }
+    expect(unguarded).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **`export async function`만 보던 시절이 있었다** (2026-09-07 리뷰 🟡6). Server Action은
+   * `export const x = async () => {}`로도 선언되고 그 형태는 **인가 없이 통째로 검사 밖**이었다 —
+   * 지금 그런 export가 0건이라 조용했을 뿐이다. 아래가 두 형태를 각각 먹여 스캐너가 집는지 센다
+   * (`credential-separation`·`focus-ring`의 메타 테스트와 같은 계보 — POSTMORTEM 2026-09-07).
+   */
+  it("두 선언 형태를 다 집는다 — `export async function`과 `export const … = async`", () => {
+    const fake = [
+      "export async function a() { await requireUser(); }",
+      "export const b = async () => { await requireUser(); };",
+      "export const c: Handler = async (x) => { return x; };",
+      // 값 export는 엔드포인트가 아니다 — 잡으면 방어선이 항상 red다.
+      "export const NOT_AN_ACTION = 7;",
+      'export type Result = { ok: true };',
+    ].join("\n");
+    expect(actionExports(fake).map((m) => m.name)).toEqual(["a", "b", "c"]);
   });
 });
 

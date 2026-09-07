@@ -98,6 +98,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
    - `sourceHash`가 바뀐 키 → base 아닌 모든 번역에 `needsReview = true` 전파
    - `KeyRef` 전체 교체 (증분 갱신보다 단순하고, 스캔이 전수라 정확하다)
    - `Project`에 `lastCommitSha`·`lastCommitAt`와 어댑터 설정(`adapterName`·`pathTemplate`·`nested`·`baseLocale`) 저장 — 포맷을 아는 시점이 push이고, pull이 파일을 쓰려면 필요하다
+     - ⚠️ **PoC 시절의 서술이다** (2026-09-07 정정): SaaS 5단계부터 **온보딩이 사용자에게 확정받은 값을 생성 시점에 심고**, 그 뒤의 push는 **같은 표면일 때만** 통과한다(`checkFormat` — 409). 컬럼 셋이 다 비어 있는 행에만 첫 push가 그대로 채운다 (SAAS §7.8 · ARCHITECTURE §5.5.5)
 
    **구현 제약**: 런타임이 transaction 모드 pooler(6543)라 대화형 `$transaction(async tx => …)`이 세션을 못 잡는다. 배열형 `$transaction([...])`과 `unnest()` 벌크 문장을 쓴다. **전부 한 트랜잭션이다** — 둘로 나누면 뒤쪽 실패가 혼합 DB를 남긴다 (ARCHITECTURE §5.5.15) — 1446키를 키마다 왕복하면 타임아웃이다. 진단·계획은 순수 함수(`lib/push/plan.ts`)로 분리해 테스트한다.
 
@@ -343,7 +344,7 @@ export type Adapter = {
 
 **`ts-dict`를 범위에 넣은 이유**: bugshot-2의 `_locales` 4키는 스토어 메타데이터일 뿐이고 실제 UI 번역은 903키다 — MVP §9가 왕복 검증 대상으로 지정한 리포를 **0.4%로만 검증**하고 있었다. 8파일 구조가 완전히 규칙적이라(`const ko/en/fr` + `as const`/`satisfies Bundle` + `export const <ns> = { ko, en, fr }`, 값이 전부 문자열 리터럴·표현식 0건) 어댑터 하나로 끝난다 — "리포마다 형태가 달라 안 끝난다"던 앞선 판단이 실물 확인 전의 추측이었다.
 
-**어댑터 설정은 `Project` 컬럼에 저장한다** (`adapterName`·`pathTemplate`·`nested`·`baseLocale` — 마이그레이션 `_add_project_locale_format`). `detect`는 순수 함수라 CLI가 매번 찾아내지만, pull이 파일을 쓰려면 포맷을 알아야 하고 그것을 아는 시점이 push다. **한 리포에 포맷이 둘 이상이면 탐지 우선순위가 큰 쪽을 놓칠 수 있으므로 명시 지정(`--adapter`)이 이긴다** — bugshot-2가 그렇다(`_locales` 4키 vs `ts-dict` 903키).
+**어댑터 설정은 `Project` 컬럼에 저장한다** (`adapterName`·`pathTemplate`·`nested`·`baseLocale` — 마이그레이션 `_add_project_locale_format`). `detect`는 순수 함수라 CLI가 매번 찾아내지만, pull이 파일을 쓰려면 포맷을 알아야 하고 **PoC에서는** 그것을 아는 시점이 push였다 (⚠️ SaaS 5단계부터는 온보딩이 확정해 심고 push는 대조만 한다 — 위 §3.1 주석). **한 리포에 포맷이 둘 이상이면 탐지 우선순위가 큰 쪽을 놓칠 수 있으므로 명시 지정(`--adapter`)이 이긴다** — bugshot-2가 그렇다(`_locales` 4키 vs `ts-dict` 903키).
 
 ### 5.2 사용처 스캔은 진실이 아니다
 
@@ -358,7 +359,8 @@ export type Adapter = {
 ```
 Project      id PK, slug UNIQUE, name,
              repoOwner, repoName, baseBranch, installationId?   -- 테넌트 경계
-             adapterName?, pathTemplate?, nested?, baseLocale?  -- push가 저장, pull이 읽는다
+             adapterName?, pathTemplate?, nested?, baseLocale?  -- 온보딩이 확정해 심고 pull이 읽는다
+                                                                -- (PoC에선 push가 저장했다 — §3.1)
              nestedByPath?                                      -- 경로 → 중첩 여부 (Json, §4.1)
              lastCommitSha?, lastCommitAt?                      -- 역행 거부 (§3.1)
              lastPulledAt?                                      -- DB 측 스킵 (§3.3)

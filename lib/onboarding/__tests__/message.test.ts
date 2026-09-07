@@ -96,6 +96,19 @@ describe("onboardErrorMessage — 갈래마다 다른 한국어 문구", () => {
     expect(onboardErrorMessage("no-candidates")).toContain("2개");
   });
 
+  /**
+   * ⚠️ **`tree-truncated`는 수동 지정을 해결책으로 권하지 않는다** (2026-09-07 리뷰 🟡3). 전 문구는
+   * "아래에서 경로를 직접 지정해 주세요"였는데 둘 다 거짓이었다: ① 탐지 실패면 화면이 리포 선택
+   * 단계에 남아 그 "아래"가 존재하지 않고 ② 확정의 재검증이 **같은 잘린 스냅샷**을 읽어 같은 갈래를
+   * 다시 낸다. 없는 길로 안내하는 것이 사유를 숨기는 것보다 나쁘다.
+   */
+  it("`tree-truncated`는 없는 길로 안내하지 않는다 — 수동 지정도 같은 스냅샷에서 막힌다", () => {
+    const text = onboardErrorMessage("tree-truncated");
+    expect(text).not.toContain("지정해 주세요");
+    // 왜 막히는지를 말한다 — 사용자가 수동 지정을 시도하고 같은 벽을 만나지 않게 한다.
+    expect(text).toContain("같은 이유");
+  });
+
   it("`limit-reached`는 개수를 말한다", () => {
     expect(onboardErrorMessage("limit-reached")).toContain("3개");
   });

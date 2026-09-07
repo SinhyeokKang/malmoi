@@ -32,8 +32,13 @@ on:
 
 # 같은 프로젝트에 두 push가 동시에 들어오면 뒤가 이기는 것이 맞다 —
 # strict라 마지막 상태가 진실이고, 중간 결과를 남길 이유가 없다.
+#
+# ⚠️ **그룹 이름에 프로젝트 slug가 들어간다.** 한 리포에 번역 표면이 둘이면 Project도 둘이고
+# (SAAS.md §7.1) 워크플로 스텝도 둘인데, `github.ref`만 쓰면 그 둘이 같은 그룹에 들어가
+# `cancel-in-progress`가 한쪽을 죽인다 — 그 표면은 영영 적재되지 않고 취소는 실패로 보이지 않는다.
+# `l10n/sync-<slug>` 브랜치 이름에 slug를 넣은 것과 같은 이유다.
 concurrency:
-  group: l10n-${{ github.ref }}
+  group: l10n-order-check-${{ github.ref }}
   cancel-in-progress: true
 
 # ⚠️ **`pull-requests: read`가 없으면 열린 PR 경고가 뜨지 않는다.**
