@@ -408,7 +408,8 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
 describe("createProject — 재검증한 값만 저장한다 (design §3.4)", () => {
   it("행·OWNER 멤버십·토큰 해시가 한 번에 생기고 원문이 반환된다", async () => {
     const result = await createProject(createInput());
-    expect(result).toMatchObject({ ok: true, slug: "acme-web" });
+    // `baseBranch`는 결과 화면의 워크플로 YAML이 `on.push.branches`에 박는 값이다 (T7).
+    expect(result).toMatchObject({ ok: true, slug: "acme-web", baseBranch: "develop" });
 
     const token = (result as { pushToken: string }).pushToken;
     expect(token.length).toBeGreaterThan(20);

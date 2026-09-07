@@ -8,11 +8,13 @@ import { PROJECT_SLUG_MAX } from "./slug";
  * 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가
  * 손댈 수 있다.
  *
- * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`translation-input`·`pull-button` — 2026-09-07).
- * 그래서 여기서 **값**으로 끌어오는 것에 주의한다: `./slug`가 `lib/pull/trigger`의 `isRefSafeSlug`를
- * 부르고 그 모듈은 `lib/github`(octokit·App 개인키)를 문다. 지금은 트리 셰이킹이 그것을 떼어내
- * 클라이언트 청크에 octokit이 **없다**(빌드 산출물 확인). 그 성질은 **최상위 부수효과가 없다는 전제**에
- * 달려 있다 — CLAUDE.md의 "환경변수를 모듈 최상위에서 평가하지 않는다"가 그것을 지킨다.
+ * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`translation-input`·`pull-button`·온보딩 화면).
+ * 그래서 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다. 2026-09-07에 실제로 새어 나갔다:
+ * `./slug`가 `lib/pull/trigger`를 import했고 그 그래프가 `lib/adapters` → `ts-dict` → **ts-morph
+ * (TypeScript 컴파일러 전체)** 로 이어져 **7.2MB 청크**가 세 페이지에 붙었다. 트리 셰이킹은 그것을
+ * 떼어내지 못했다 — 당시 확인이 `@octokit`만 grep한 것이어서 "떼어냈다"고 잘못 읽었다.
+ * 판정은 잎 모듈 `lib/pull/ref-slug.ts`로 내려갔고, **경계는 `components/__tests__/client-graph.test.ts`가
+ * 상시로 센다** (grep 한 번이 아니다).
  *
  * ⚠️ **판정 union을 만드는 커밋과 문구를 만드는 커밋을 나누지 않는다.** "거부는 옳게 판정됐는데 화면에
  * 닿지 않아 버튼이 안 눌린 것으로 보였다"가 이 리포에서 두 번 밟은 지뢰다 (POSTMORTEM 2026-09-06).

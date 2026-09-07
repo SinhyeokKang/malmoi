@@ -5,6 +5,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 
 import { getPrisma } from "@/lib/db";
 import { loadKeys, loadProject } from "@/lib/keys/query";
+import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { buildPermalink, cellState, namespaceCounts, type KeyRow, type TranslationState } from "@/lib/keys/view";
 import { cn } from "@/lib/utils";
 import { InviteForm } from "@/components/invite-form";
@@ -44,6 +45,23 @@ export default async function TranslationsPage({
   // 경우뿐이라 남겨 둔다.
   const project = await loadProject(prisma, projectId);
   if (!project) redirect("/projects");
+
+  /**
+   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **OWNER는 설정 화면으로 보낸다** — 거기에 [다시 시도]와
+   * 워크플로 YAML이 있어 스스로 끝낼 수 있다. EDITOR·VIEWER는 그 화면에 들어갈 수 없으므로
+   * 보낼 곳이 없고, 한 줄로 무엇을 기다리는지 말한다.
+   */
+  const readiness = planProjectReadiness(await loadReadiness(prisma, projectId));
+  if (readiness !== "ready") {
+    if (role === "OWNER") redirect(`/projects/${slug}/settings`);
+    return (
+      <main className="mx-auto max-w-2xl space-y-2 p-8">
+        <p className="text-sm">소유자가 설정을 마치는 중이에요.</p>
+        <p className="text-muted-foreground text-xs">준비되면 이 화면에서 번역을 편집할 수 있어요.</p>
+      </main>
+    );
+  }
+
   if (project.locales.length === 0) {
     return (
       <main className="mx-auto max-w-2xl space-y-2 p-8">
@@ -243,4 +261,23 @@ function NsLink({ href, active, label, total, pending }: {
       </span>
     </a>
   );
+}
+
+/**
+ * readiness 판정의 재료 둘. `loadProject`(`lib/keys/query.ts`)는 편집 화면이 쓰는 컬럼만 골라 읽으므로
+ * 여기에 두 컬럼을 더하지 않고 따로 읽는다 — 그 함수는 pull·push와 무관한 화면 전용 조회다.
+ *
+ * ⚠️ **`projectId`로 좁힌다** — 인가가 돌려준 값이고, slug로 다시 찾으면 클라이언트 입력이 조회
+ * 조건이 된다.
+ */
+async function loadReadiness(
+  prisma: ReturnType<typeof getPrisma>,
+  projectId: string,
+): Promise<{ installationId: string | null; lastCommitSha: string | null }> {
+  const row = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { installationId: true, lastCommitSha: true },
+  });
+  // 인가는 지났는데 행이 없다 — 준비된 것으로 읽지 않는다.
+  return row ?? { installationId: null, lastCommitSha: null };
 }

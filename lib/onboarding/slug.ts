@@ -1,9 +1,9 @@
-import { isRefSafeSlug } from "@/lib/pull/trigger";
+import { isRefSafeSlug } from "@/lib/pull/ref-slug";
 
 /**
  * 프로젝트 slug 판정 (design §5). `Project.slug`에는 DB 제약이 없어 **`syncBranchFor`가 유일한 방어선**이었고
  * 위반은 pull 시점에 `fail()`로 터졌다 — 온보딩이 그것을 통과하는 slug만 만들게 해서 실패를 생성 시점으로
- * 당긴다. 형식 판정은 그쪽의 `isRefSafeSlug`를 **그대로 부른다**: 복사하면 갈리고, 갈리면 온보딩이 만든 slug가
+ * 당긴다. 형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug`를 **그대로 부른다**: 복사하면 갈리고, 갈리면 온보딩이 만든 slug가
  * pull에서 죽는다 (`__tests__/slug.test.ts`가 두 함수를 교차 검증한다).
  *
  * `checkProjectSlug`는 `lib/push/guard.ts`에 이미 있는 이름이라 여기서는 `planSlug`다.

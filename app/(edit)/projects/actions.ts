@@ -419,7 +419,11 @@ export async function detectRepoFormats(raw: { owner: string; repo: string }): P
 }
 
 export type CreateProjectResult =
-  | { ok: true; slug: string; pushToken: string }
+  /**
+   * `baseBranch`는 **결과 화면의 워크플로 YAML용**이다 (T7). `on.push.branches`를 `main`으로 고정하면
+   * base가 `develop`인 리포에서 CI가 영영 안 돌고, 그 값을 아는 것은 probe를 부른 서버뿐이다.
+   */
+  | { ok: true; slug: string; pushToken: string; baseBranch: string }
   | { ok: false; error: OnboardFailure };
 
 /**
@@ -525,7 +529,7 @@ export async function createProject(raw: {
   }
 
   revalidatePath("/projects");
-  return { ok: true, slug: input.slug, pushToken };
+  return { ok: true, slug: input.slug, pushToken, baseBranch: access.defaultBranch };
 }
 
 export type FirstIngestResultView =

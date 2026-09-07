@@ -4,6 +4,7 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { planProjectReadiness, readinessLabel } from "@/lib/onboarding/readiness";
 
 /**
  * 내 프로젝트 목록. **로그인 후 착지점**이고, 인가 거부의 redirect 목적지다.
@@ -33,7 +34,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
   const memberships = await getPrisma().projectMember.findMany({
     where: { userId },
-    select: { role: true, project: { select: { slug: true, name: true } } },
+    // 상태 텍스트의 재료 둘 — `planProjectReadiness`가 컬럼을 만들지 않고 이것으로 판정한다 (design §3.7).
+    select: {
+      role: true,
+      project: { select: { slug: true, name: true, installationId: true, lastCommitSha: true } },
+    },
     orderBy: { project: { name: "asc" } },
   });
 
@@ -41,9 +46,13 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
     return (
       <main className="mx-auto max-w-2xl space-y-2 p-8">
         {notice}
-        <p className="text-sm">어느 프로젝트의 멤버도 아니에요.</p>
+        <p className="text-sm">아직 프로젝트가 없어요.</p>
         <p className="text-muted-foreground text-xs">
-          초대 링크를 받으면 그 링크를 열어 수락해 주세요.
+          리포를 붙여 만들거나, 초대 링크를 받으면 그 링크를 열어 수락해 주세요.
+        </p>
+        {/* 빈 상태에도 primary 버튼을 둔다 — 여기가 유일한 다음 행동이다 */}
+        <p className="pt-2">
+          <NewProjectLink />
         </p>
       </main>
     );
@@ -52,7 +61,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-8">
       {notice}
-      <h1 className="text-sm font-medium">내 프로젝트</h1>
+      <div className="flex items-baseline justify-between gap-2">
+        <h1 className="text-sm font-medium">내 프로젝트</h1>
+        <NewProjectLink />
+      </div>
       <ul className="divide-border border-border divide-y rounded-md border">
         {memberships.map((m) => (
           <li key={m.project.slug}>
@@ -64,13 +76,28 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               {/* slug는 주소라 mono다 (docs/DESIGN.md §4.1) — 역할 이름은 산문 쪽이다 */}
               {/* text-xs를 겹치지 않는다 — 정적 문자열은 twMerge를 안 지나 text-xs가 이긴다 (DESIGN §4.2) */}
               <span className="text-mono text-muted-foreground">{m.project.slug}</span>
+              {/* 상태는 오류가 아니라 진행 중이므로 raw 색을 늘리지 않는다 (DESIGN §6.2) */}
               <span className="text-muted-foreground ml-auto text-xs">
-                {m.role === "OWNER" ? "소유자" : "편집자"}
+                {[readinessLabel(planProjectReadiness(m.project)), m.role === "OWNER" ? "소유자" : "편집자"]
+                  .filter((part) => part !== null)
+                  .join(" · ")}
               </span>
             </Link>
           </li>
         ))}
       </ul>
     </main>
+  );
+}
+
+/** DESIGN §6.4 primary 버튼. 링크지만 주 행동이라 버튼 모양이다. */
+function NewProjectLink() {
+  return (
+    <Link
+      href="/projects/new"
+      className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring inline-block rounded-md px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
+    >
+      새 프로젝트
+    </Link>
   );
 }

@@ -24,3 +24,30 @@ export function planProjectReadiness(project: {
   if (project.lastCommitSha === null) return "awaiting_first_sync";
   return "ready";
 }
+
+/**
+ * 목록 화면의 상태 텍스트 (design §3.7). **raw 색을 늘리지 않는다** — `ready`가 아닌 것은 오류가
+ * 아니라 진행 중이므로 `text-muted-foreground` 텍스트로만 보인다 (DESIGN §6.2의 `not-connected`·
+ * `unknown` 전례).
+ *
+ * ⚠️ **`ready`는 `null`이다.** 가장 흔한 상태가 가장 조용해야 한다 — "번역됨"에 배지를 안 붙이고
+ * "연결됨"에 초록을 안 쓰는 것과 같은 원리다 (DESIGN §6.1).
+ *
+ * ⚠️ **내부 이름을 화면에 쓰지 않는다** (SAAS §3). 번역자도 이 목록을 보고, `awaiting_first_sync`는
+ * 그에게 아무것도 알려주지 않는다.
+ */
+export function readinessLabel(readiness: ProjectReadiness): string | null {
+  switch (readiness) {
+    case "ready":
+      return null;
+    case "awaiting_first_sync":
+      return "첫 적재 대기";
+    case "setup":
+      return "준비 중";
+    default: {
+      // 갈래를 추가하면 여기서 컴파일 에러가 난다.
+      const exhaustive: never = readiness;
+      return exhaustive;
+    }
+  }
+}

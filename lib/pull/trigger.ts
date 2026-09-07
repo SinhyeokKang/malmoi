@@ -1,6 +1,7 @@
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
 import { fail } from "@/lib/failure";
+import { isRefSafeSlug } from "./ref-slug";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
 import { loadPullState, saveLastPulledAt } from "./load";
@@ -16,18 +17,11 @@ import { runPull, type PullResult } from "./run";
  */
 
 /**
- * git이 ref 이름으로 받아주는 slug인가. **화이트리스트다** — `git check-ref-format`의 금지
- * 목록을 흉내 내면 빠뜨린 하나가 그대로 통과한다.
- *
- * `/`도 막는 것은 git이 거부해서가 아니라 **브랜치 계층을 갈라 남의 ref를 덮을 수 있어서**다
- * (`a/b`라는 slug는 `l10n/sync-a/b`가 되고, `l10n/sync-a`가 이미 있으면 git이 둘 중 하나를
- * 만들지 못한다).
- *
- * **export하는 이유는 공유다** (2026-09-07, 온보딩 T1). `lib/onboarding/slug.ts`의 `planSlug`가 이 정규식을
- * import해 생성 시점에 같은 판정을 내린다 — 복사하면 갈리고, 갈리면 온보딩이 만든 slug가 여기 `fail()`로
- * 죽는다. 판정은 바뀌지 않았다.
+ * ⚠️ **형식 판정은 `./ref-slug`가 든다.** 여기서 정의하면 `lib/onboarding/slug.ts`가 그것을 import하면서
+ * 이 파일의 그래프(octokit·ts-morph)를 함께 끌어오고, 그 그래프가 클라이언트 번들에 7.2MB 청크로
+ * 들어간다 (2026-09-07). **호출부를 위해 그대로 재수출한다** — 기존 import 경로가 갈리지 않게.
  */
-export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
 
 /**
  * 프로젝트의 sync 브랜치 이름. **누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이라**
@@ -46,17 +40,6 @@ export function syncBranchFor(slug: string): string {
     fail(`git 브랜치 이름으로 쓸 수 없는 프로젝트 slug다: ${JSON.stringify(slug)}`);
   }
   return `l10n/sync-${slug}`;
-}
-
-/**
- * `syncBranchFor`가 받아주는 slug인가 — **판정의 단일 출처**다. `lib/onboarding/slug.ts`의 `planSlug`가 이 함수를
- * 그대로 부르므로 여기에 조건을 더하면 생성 시점 판정이 자동으로 따라온다 (정규식만 공유하고 나머지 조건을
- * 복사했을 때 `.lock`이 양쪽에서 빠져 있었다 — code-review 2026-09-07).
- *
- * `.lock` 접미는 `git check-ref-format`이 컴포넌트 끝에서 거부한다 — 통과시키면 야간 pull의 `createRef`가 422다.
- */
-export function isRefSafeSlug(slug: string): boolean {
-  return REF_SAFE_SLUG.test(slug) && !slug.includes("..") && !slug.endsWith(".") && !slug.endsWith(".lock");
 }
 
 export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {
