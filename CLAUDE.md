@@ -392,6 +392,13 @@ lib/
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only)
+  onboarding/           탐지 온보딩의 순수 판정층 (SaaS 5단계 T1, 2026-09-07 — I/O 껍데기는 T5·T6이 붙인다)
+                        slug.ts(planSlug·normalizeProjectSlug — 형식은 pull/trigger의 isRefSafeSlug를 **그대로 부른다**)
+                        / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
+                        · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
+                        / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
+                        / message.ts(OnboardError 17갈래 · ingestHeadline) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
+                        ⚠️ `@/lib/github`을 import하지 않는다 — 두 토큰은 Server Action 하나에서만 만난다 (T5가 테스트로 고정)
 types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환으로 제거 — Google 사용자엔 핸들이 없다)
 prisma/
   schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
@@ -444,7 +451,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
