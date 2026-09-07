@@ -14,10 +14,14 @@ description: 로케일 파일을 DB로 올린다 (적재 + 사용처 스캔 → 
 
 inputs:
   push-token:
-    description: /api/push의 Bearer 토큰. 대상 리포 secret에 둔다
+    description: |
+      /api/push의 Bearer 토큰 — **그 프로젝트의 토큰 원문**이다(말모이 설정 화면에서 발급).
+      서버는 sha256 해시로 프로젝트를 찾으므로 토큰이 곧 대상이다. 대상 리포 secret에 둔다.
     required: true
   project:
-    description: 대상 Project.slug. 서버의 ACTIVE_PROJECT_SLUG와 다르면 409다
+    description: |
+      대상 Project.slug. **push-token이 정한 프로젝트와 다르면 409다** — 토큰이 먼저 프로젝트를
+      정하고 이 값은 그 뒤에 대조된다(오배송 거부).
     required: true
   api-url:
     description: |
