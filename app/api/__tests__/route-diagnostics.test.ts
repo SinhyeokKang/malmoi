@@ -53,6 +53,30 @@ const payload = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+/**
+ * 토큰 조회가 돌려주는 행. **포맷 컬럼 셋을 null로 든다** — Prisma는 `select`한 컬럼을 값이 없어도
+ * null로 주고, 그 상태가 "아직 push가 채우지 않았다"다(`checkFormat`이 통과시키는 유일한 경우).
+ * 가짜가 그 컬럼을 아예 빼면 실제보다 관대해져 **표면 교체 거부를 볼 수 없다**
+ * (POSTMORTEM 2026-09-05 — 가짜가 실제 제약보다 관대하면 결함을 볼 수조차 없다).
+ */
+const project = (over: Record<string, unknown> = {}) => ({
+  id: "p1",
+  slug: "acme",
+  lastCommitAt: null,
+  adapterName: null,
+  pathTemplate: null,
+  baseLocale: null,
+  ...over,
+});
+
+/** `createHarness`의 시드 포맷 (`harness.ts`의 `FORMAT`). 그 행에 보내는 페이로드는 이 표면이어야 한다. */
+const HARNESS_FORMAT = {
+  adapter: "json-catalog",
+  pathTemplate: "i18n/{locale}.json",
+  nested: false,
+  baseLocale: "en",
+};
+
 const pushRequest = (body: unknown, token = TOKEN) =>
   new Request("https://x/api/push", {
     method: "POST",
@@ -305,15 +329,17 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
       inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
       staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},
     });
-    expect((await pushPost(pushRequest(payload(), TOKEN))).status).toBe(200);
+    // ⚠️ **하네스 프로젝트는 포맷이 채워진 행이다**(`json-catalog`·`i18n/{locale}.json`·`en`) — 그래서
+    // 페이로드도 그 표면이어야 통과한다. 다른 것을 보내면 `checkFormat`이 409다(아래 describe).
+    expect((await pushPost(pushRequest(payload({ format: HARNESS_FORMAT }), TOKEN))).status).toBe(200);
     // 다른 토큰은 같은 행을 못 찾는다.
-    expect((await pushPost(pushRequest(payload(), "another-token"))).status).toBe(401);
+    expect((await pushPost(pushRequest(payload({ format: HARNESS_FORMAT }), "another-token"))).status).toBe(401);
   });
 
   it("서버 env `PUSH_TOKEN`·`ACTIVE_PROJECT_SLUG`가 없어도 정상 동작한다 — 인증 근거가 DB로 옮겨갔다", async () => {
     vi.stubEnv("PUSH_TOKEN", "");
     vi.stubEnv("ACTIVE_PROJECT_SLUG", "");
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     hoisted.applyPush.mockResolvedValue({
       inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
       staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},
@@ -337,7 +363,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   });
 
   it("applyPush가 던지면 ref가 담긴 500이다", async () => {
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     hoisted.applyPush.mockRejectedValue(new Error("unnest 인자 개수 불일치"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pushPost(pushRequest(payload()));
@@ -347,7 +373,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   });
 
   it("오배송은 409다 — 기준이 서버 env가 아니라 **토큰의 프로젝트**다", async () => {
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     const res = await pushPost(pushRequest(payload({ projectSlug: "other" })));
     expect(res.status).toBe(409);
     await expect(res.json()).resolves.toMatchObject({ error: "project mismatch", expected: "acme", got: "other" });
@@ -356,9 +382,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   });
 
   it("역행은 409다 — 판정은 그대로다", async () => {
-    hoisted.prisma.project.findUnique.mockResolvedValue({
-      id: "p1", slug: "acme", lastCommitAt: new Date("2026-09-05T00:00:00Z"),
-    });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project({ lastCommitAt: new Date("2026-09-05T00:00:00Z") }));
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(409);
     await expect(res.json()).resolves.toMatchObject({ error: "stale commit" });
@@ -369,13 +393,13 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     // 무헤더·잘못된 토큰은 위에서 각각 401을 냈고, 여기서는 그 넷이 서로 접히지 않는지만 본다.
     hoisted.prisma.project.findUnique.mockResolvedValue(null);
     const noToken = await pushPost(pushRequest(payload(), "zzz"));
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     const misrouted = await pushPost(pushRequest(payload({ projectSlug: "other" })));
     expect([noToken.status, misrouted.status]).toEqual([401, 409]);
   });
 
   it("스키마 위반은 400이고 issues가 남는다 — 인증을 통과한 뒤의 400이다", async () => {
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     const res = await pushPost(pushRequest(payload({ keys: [] })));
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -390,8 +414,76 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     expect(hoisted.applyPush).not.toHaveBeenCalled();
   });
 
+  /**
+   * **확정한 번역 표면을 CI가 갈아치우지 못한다** (2026-09-07). `applyPush`가 페이로드 포맷으로
+   * `Project`의 컬럼 셋을 덮으므로, 자동 후보의 YAML(=`adapter:` 없음)로 도는 CI가 1순위 표면을
+   * 보내면 2순위를 확정한 프로젝트의 키가 **전부 orphan된다.** 되돌릴 수 없어 409다.
+   */
+  describe("포맷 교체 거부 (checkFormat)", () => {
+    const STORED = { adapterName: "code-dict", pathTemplate: "src/i18n/{locale}.ts", baseLocale: "en" };
+    const stored = (over: Record<string, unknown> = {}) => project({ ...STORED, ...over });
+
+    it("저장된 표면과 다른 어댑터는 409이고 적재까지 가지 않는다", async () => {
+      hoisted.prisma.project.findUnique.mockResolvedValue(stored());
+      const res = await pushPost(pushRequest(payload({ format: HARNESS_FORMAT })));
+      expect(res.status).toBe(409);
+      // CI 로그에서 무엇을 고쳐야 하는지 보여야 한다 — 이미 그 프로젝트의 토큰을 든 호출자다.
+      await expect(res.json()).resolves.toMatchObject({
+        error: "format mismatch",
+        expected: { adapter: "code-dict", pathTemplate: "src/i18n/{locale}.ts", baseLocale: "en" },
+        got: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
+      });
+      expect(hoisted.applyPush).not.toHaveBeenCalled();
+    });
+
+    it("기준 로케일만 달라도 409다 — 키 집합이 바뀌어 진짜 base의 키가 빠진다", async () => {
+      hoisted.prisma.project.findUnique.mockResolvedValue(stored({ baseLocale: "ko" }));
+      const res = await pushPost(
+        pushRequest(
+          payload({
+            format: { adapter: "code-dict", pathTemplate: "src/i18n/{locale}.ts", nested: false, baseLocale: "en" },
+          }),
+        ),
+      );
+      expect(res.status).toBe(409);
+      expect(hoisted.applyPush).not.toHaveBeenCalled();
+    });
+
+    it("같은 표면이면 통과한다 — 판정이 항상 거부하지 않는다", async () => {
+      hoisted.prisma.project.findUnique.mockResolvedValue(stored());
+      hoisted.applyPush.mockResolvedValue({
+        inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
+        staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},
+      });
+      const res = await pushPost(
+        pushRequest(
+          payload({
+            format: { adapter: "code-dict", pathTemplate: "src/i18n/{locale}.ts", nested: false, baseLocale: "en" },
+          }),
+        ),
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it("포맷 컬럼이 비어 있으면 통과한다 — 첫 push가 그 값을 채우는 것이 옛 계약이다", async () => {
+      hoisted.prisma.project.findUnique.mockResolvedValue(project());
+      hoisted.applyPush.mockResolvedValue({
+        inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
+        staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},
+      });
+      expect((await pushPost(pushRequest(payload()))).status).toBe(200);
+    });
+
+    it("오배송(slug)이 포맷보다 먼저 판정된다 — 토큰과 slug가 어긋난 것이 더 근본적이다", async () => {
+      hoisted.prisma.project.findUnique.mockResolvedValue(stored());
+      const res = await pushPost(pushRequest(payload({ projectSlug: "other", format: HARNESS_FORMAT })));
+      expect(res.status).toBe(409);
+      await expect(res.json()).resolves.toMatchObject({ error: "project mismatch" });
+    });
+  });
+
   it("정상 경로는 결과를 낸다", async () => {
-    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
     hoisted.applyPush.mockResolvedValue({
       inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
       staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},

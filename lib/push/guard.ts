@@ -8,7 +8,7 @@
  * 읽기만 해도 죽는다"를 뜻해 CI를 red로 만든 전례가 있다 (POSTMORTEM 2026-08-31).
  * `lib/push/auth.ts`가 `expected`를 인자로 받는 것과 같은 이유다.
  */
-export type GuardResult = "ok" | "wrong-project" | "stale-commit";
+export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format";
 
 /**
  * 페이로드가 **이 토큰이 정한 프로젝트**를 향하는가.
@@ -29,6 +29,52 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
   // `verifiedEmailFrom`(`lib/auth/email.ts`)이 빈 이메일을 막는 것과 같은 원리다.
   if (given === "" || active === "") return "wrong-project";
   return given === active ? "ok" : "wrong-project";
+}
+
+/**
+ * 이 페이로드가 **그 프로젝트가 확정한 번역 표면**을 향하는가 (2026-09-07).
+ *
+ * 온보딩은 후보를 사용자에게 확정받아 재검증한 값을 저장하는데(`planConfirmedFormat`), `applyPush`는
+ * 페이로드의 포맷으로 그 컬럼 셋을 **덮어쓴다**. 그래서 CI가 다른 표면을 보내면 확정이 조용히 뒤집힌다:
+ *
+ * - 자동 후보의 워크플로 YAML은 `adapter:`·`base-locale:`을 박지 않고(`renderWorkflowYaml`),
+ *   `push:local`은 그때 `detectFormat`으로 **1순위**를 고른다 — 2순위를 확정한 프로젝트가 정확히
+ *   그 경로로 덮인다 (한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 — SAAS §7.1).
+ * - 결과는 strict 덮어쓰기라 **그 프로젝트의 키가 전부 orphan되고 이물 키가 삽입된다.** `PushPlan`에
+ *   `toDelete`가 없고 `Translation`의 FK가 `RESTRICT`라 되돌릴 수 없다 — `checkProjectSlug`가 막는
+ *   것과 같은 피해다.
+ *
+ * ⚠️ **`baseLocale`도 본다.** 그 값이 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜
+ * base에만 있는 키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1).
+ *
+ * ⚠️ **아직 비어 있으면 통과시킨다** — "포맷은 push가 채운다"가 원래 계약이고(`schema.prisma`),
+ * 온보딩 밖에서 만들어진 행은 첫 push가 그 값을 심는다. 좁아지는 것은 "한 번 채워진 뒤"부터다.
+ *
+ * ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 여기서 409가 된다.** 서버는 GitHub을 부르지 않아
+ * (§5.5.5) 그것을 오배송과 구별할 수 없고, 재설정 UI는 7단계(`needs_configuration`)다. 조용히 덮는
+ * 것보다 시끄럽게 멈추는 쪽을 고른다 — 손실이 되돌릴 수 없는 방향이다.
+ *
+ * ⚠️ **`nested`·`nestedByPath`는 비교하지 않는다.** 그 둘은 "같은 파일이 지금 어떤 모양인가"의
+ * 관측값이라 리포가 정당하게 바꿀 수 있다(평평했던 파일을 중첩으로 정리한다) — 비교에 넣으면 그
+ * 편집이 CI 409가 된다. 여기서 묻는 것은 **어느 표면인가**이고 그것을 정하는 것은 이 셋이다.
+ *
+ * 트림하지 않는다: 이 셋은 셸 치환이 아니라 **탐지 결과**에서 오고, `--adapter`·`--base`로 들어온
+ * 값은 `isAdapterName`·`assemblePushInput`이 CLI에서 먼저 거부한다.
+ */
+export function checkFormat(
+  payload: { adapter: string; pathTemplate: string; baseLocale: string },
+  stored: { adapterName: string | null; pathTemplate: string | null; baseLocale: string | null },
+): GuardResult {
+  // 셋은 항상 함께 쓰인다(`applyPush`·`createProject`) — 전부 비어 있는 것만 "아직 없다"다.
+  if (stored.adapterName === null && stored.pathTemplate === null && stored.baseLocale === null) {
+    return "ok";
+  }
+  // 일부만 있는 상태는 이해할 수 없다 — 그걸 통과시키면 절반이 비어 있는 행이 무제한 표면 교체를 받는다.
+  return payload.adapter === stored.adapterName &&
+    payload.pathTemplate === stored.pathTemplate &&
+    payload.baseLocale === stored.baseLocale
+    ? "ok"
+    : "wrong-format";
 }
 
 /**

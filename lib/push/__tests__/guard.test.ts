@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCommitOrder, checkProjectSlug, guardStatus } from "../guard";
+import { checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "../guard";
 
 const at = (iso: string) => new Date(iso);
 
@@ -77,10 +77,63 @@ describe("checkCommitOrder — 역행 거부", () => {
   });
 });
 
+describe("checkFormat — 확정한 번역 표면을 CI가 다른 것으로 갈아치우지 못한다", () => {
+  const stored = {
+    adapterName: "code-dict",
+    pathTemplate: "src/i18n/{locale}.ts",
+    baseLocale: "en",
+  };
+  const payload = { adapter: "code-dict", pathTemplate: "src/i18n/{locale}.ts", baseLocale: "en" };
+
+  it("셋이 다 같으면 통과한다", () => {
+    expect(checkFormat(payload, stored)).toBe("ok");
+  });
+
+  it("아직 아무것도 저장돼 있지 않으면 통과한다 — push가 채우는 것이 옛 계약이다", () => {
+    expect(
+      checkFormat(payload, { adapterName: null, pathTemplate: null, baseLocale: null }),
+    ).toBe("ok");
+  });
+
+  /**
+   * ⚠️ **이것이 이 판정을 만든 이유다.** 온보딩이 2순위 후보(code-dict)로 확정했는데 자동 후보의
+   * 워크플로 YAML은 `adapter:`를 박지 않고, `push:local`은 그때 `detectFormat`으로 **1순위**(yaml-catalog)를
+   * 고른다. 막지 않으면 strict push가 그 프로젝트의 키를 전부 orphan시키고 이물 키를 넣는데
+   * `PushPlan`에 `toDelete`가 없어 되돌릴 수 없다.
+   */
+  it("어댑터가 다르면 거부한다 — 1순위 탐지가 확정한 표면을 덮는 경로다", () => {
+    expect(checkFormat({ ...payload, adapter: "yaml-catalog" }, stored)).toBe("wrong-format");
+  });
+
+  it("같은 어댑터라도 경로 템플릿이 다르면 거부한다 — 한 리포에 표면이 둘이면 어댑터로는 안 갈린다", () => {
+    expect(checkFormat({ ...payload, pathTemplate: "locales/{locale}.ts" }, stored)).toBe("wrong-format");
+  });
+
+  /**
+   * 기준 로케일은 **키 집합의 진실**이다. 온보딩이 라디오로 `ko`를 확정했는데 CI가 `--base` 없이
+   * 돌면 `pickBaseLocale`이 `en`을 고르고, 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다
+   * (2026-09-04 audit #1과 같은 손실).
+   */
+  it("기준 로케일이 다르면 거부한다 — 키 집합이 바뀌어 진짜 base의 키가 orphan된다", () => {
+    expect(checkFormat({ ...payload, baseLocale: "ko" }, stored)).toBe("wrong-format");
+  });
+
+  it("일부만 저장돼 있으면 거부한다 (fail-closed) — 셋은 항상 함께 쓰이므로 그 상태는 이해할 수 없다", () => {
+    expect(checkFormat(payload, { ...stored, baseLocale: null })).toBe("wrong-format");
+    expect(checkFormat(payload, { ...stored, adapterName: null })).toBe("wrong-format");
+    expect(checkFormat(payload, { ...stored, pathTemplate: null })).toBe("wrong-format");
+  });
+
+  it("공백을 관용하지 않는다 — 이 값들은 셸 치환이 아니라 탐지 결과에서 온다", () => {
+    expect(checkFormat({ ...payload, pathTemplate: " src/i18n/{locale}.ts" }, stored)).toBe("wrong-format");
+  });
+});
+
 describe("guardStatus", () => {
   it("거부는 409다 — 페이로드 형식이 아니라 상태 충돌이라 400이 아니다", () => {
     expect(guardStatus("wrong-project")).toBe(409);
     expect(guardStatus("stale-commit")).toBe(409);
+    expect(guardStatus("wrong-format")).toBe(409);
   });
 
   it("통과는 200", () => {
