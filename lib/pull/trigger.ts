@@ -42,10 +42,21 @@ export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
  * 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
  */
 export function syncBranchFor(slug: string): string {
-  if (!REF_SAFE_SLUG.test(slug) || slug.includes("..") || slug.endsWith(".")) {
+  if (!isRefSafeSlug(slug)) {
     fail(`git 브랜치 이름으로 쓸 수 없는 프로젝트 slug다: ${JSON.stringify(slug)}`);
   }
   return `l10n/sync-${slug}`;
+}
+
+/**
+ * `syncBranchFor`가 받아주는 slug인가 — **판정의 단일 출처**다. `lib/onboarding/slug.ts`의 `planSlug`가 이 함수를
+ * 그대로 부르므로 여기에 조건을 더하면 생성 시점 판정이 자동으로 따라온다 (정규식만 공유하고 나머지 조건을
+ * 복사했을 때 `.lock`이 양쪽에서 빠져 있었다 — code-review 2026-09-07).
+ *
+ * `.lock` 접미는 `git check-ref-format`이 컴포넌트 끝에서 거부한다 — 통과시키면 야간 pull의 `createRef`가 422다.
+ */
+export function isRefSafeSlug(slug: string): boolean {
+  return REF_SAFE_SLUG.test(slug) && !slug.includes("..") && !slug.endsWith(".") && !slug.endsWith(".lock");
 }
 
 export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {

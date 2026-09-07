@@ -21,6 +21,8 @@ import { makeProbe } from "./detect";
  */
 export function templatePaths(adapter: AdapterName, pathTemplate: string, paths: readonly string[]): string[] {
   const layout = ADAPTERS.find((a) => a.name === adapter)?.layout;
+  // 모르는 어댑터는 어느 파일도 가리키지 못한다 — `planConfirmedFormat`의 `unknown-adapter` 검사에 의존하지 않는다.
+  if (layout === undefined) return [];
   if (layout === "multi-locale") return matchGlobPaths(pathTemplate, paths);
 
   const parts = pathTemplate.split("{locale}");

@@ -29,8 +29,9 @@ describe("planSlug — 형식·예약어·길이", () => {
     expect(planSlug("")).toBe("empty");
   });
 
-  it("`..`·후행 `.`·`/`·공백·선행 `-`는 `format`이다 (syncBranchFor가 같은 이유로 던진다)", () => {
-    for (const slug of ["a..b", "foo.", "a/b", "foo bar", "-foo", ".foo"]) {
+  it("`..`·후행 `.`·`.lock` 접미·`/`·공백·선행 `-`는 `format`이다 (syncBranchFor가 같은 이유로 던진다)", () => {
+    // `.lock`은 git ref 컴포넌트 끝에 올 수 없다 — 야간 pull의 createRef가 422로 죽는 자리다 (code-review 2026-09-07 🟡2).
+    for (const slug of ["a..b", "foo.", "foo.lock", "a/b", "foo bar", "-foo", ".foo"]) {
       expect(planSlug(slug)).toBe("format");
     }
   });
@@ -63,6 +64,7 @@ describe("planSlug ↔ syncBranchFor — 교차 검증 (갈리면 pull이 죽는
     "",
     "a..b",
     "foo.",
+    "foo.lock",
     "a/b",
     "foo bar",
     "-foo",

@@ -65,6 +65,10 @@ describe("templatePaths — 템플릿이 가리키는 파일 경로", () => {
     expect(templatePaths("json-catalog", "src/locales/en.json", TREE)).toEqual([]);
   });
 
+  it("모르는 어댑터 이름은 빈 배열이다 — per-locale 분기에 떨어지지 않는다", () => {
+    expect(templatePaths("nope" as never, "src/locales/{locale}.json", TREE)).toEqual([]);
+  });
+
   it("정규식 특수문자가 들어간 경로도 리터럴로 다룬다", () => {
     expect(templatePaths("json-catalog", "a+b/{locale}.json", ["a+b/en.json", "aab/en.json", "a+b/ko.json"])).toEqual([
       "a+b/en.json",

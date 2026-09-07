@@ -1,10 +1,10 @@
-import { REF_SAFE_SLUG } from "@/lib/pull/trigger";
+import { isRefSafeSlug } from "@/lib/pull/trigger";
 
 /**
  * 프로젝트 slug 판정 (design §5). `Project.slug`에는 DB 제약이 없어 **`syncBranchFor`가 유일한 방어선**이었고
  * 위반은 pull 시점에 `fail()`로 터졌다 — 온보딩이 그것을 통과하는 slug만 만들게 해서 실패를 생성 시점으로
- * 당긴다. 형식 규칙은 `REF_SAFE_SLUG`를 **import**한다: 복사하면 갈리고, 갈리면 온보딩이 만든 slug가 pull에서
- * 죽는다 (`__tests__/slug.test.ts`가 두 함수를 교차 검증한다).
+ * 당긴다. 형식 판정은 그쪽의 `isRefSafeSlug`를 **그대로 부른다**: 복사하면 갈리고, 갈리면 온보딩이 만든 slug가
+ * pull에서 죽는다 (`__tests__/slug.test.ts`가 두 함수를 교차 검증한다).
  *
  * `checkProjectSlug`는 `lib/push/guard.ts`에 이미 있는 이름이라 여기서는 `planSlug`다.
  */
@@ -20,8 +20,8 @@ export type SlugCheck = "ok" | "empty" | "format" | "too-long" | "reserved";
 export function planSlug(slug: string): SlugCheck {
   if (slug === "") return "empty";
   if (slug.length > PROJECT_SLUG_MAX) return "too-long";
-  // `syncBranchFor`의 세 조건과 같다 — `..`·후행 `.`는 정규식이 못 막아 따로 본다.
-  if (!REF_SAFE_SLUG.test(slug) || slug.includes("..") || slug.endsWith(".")) return "format";
+  // `syncBranchFor`와 **같은 함수**다 — 조건을 복사하면 하나가 빠진다 (`.lock`이 그랬다).
+  if (!isRefSafeSlug(slug)) return "format";
   // git은 대문자를 받지만 URL 경로라 대소문자만 다른 두 프로젝트를 만들지 않는다. `normalizeProjectSlug`가
   // 소문자로 접으므로 여기에 걸리는 것은 사용자가 손으로 친 값이다.
   if (slug !== slug.toLowerCase()) return "format";

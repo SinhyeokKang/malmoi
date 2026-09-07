@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { ADAPTERS, matchGlobPaths } from "@/lib/adapters";
 import { sampleOrder } from "@/lib/adapters/shared";
-import type { AdapterName, DetectedFormat } from "@/lib/adapters/types";
+import type { DetectedFormat } from "@/lib/adapters/types";
 import { pickBaseLocale } from "@/lib/push/payload";
 
 import { PROBE_LIMITS, formatLabel, ingestTargets, makeProbe, probeTargets, summarizeCandidates } from "../detect";
@@ -197,7 +197,3 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
     expect(ingestTargets(format, "per-locale", paths)).toHaveLength(50);
   });
 });
-
-// 타입 수준 고정: 라벨 함수는 union 전체를 받는다 (새 어댑터가 생기면 여기서 컴파일 에러).
-const _names: AdapterName[] = ADAPTERS.map((a) => a.name);
-void _names;
