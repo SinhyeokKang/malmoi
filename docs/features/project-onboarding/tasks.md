@@ -364,14 +364,30 @@ DESIGN §7에 그 사실을 등재했다.
 
 **프로덕션 배포 순서 — 이 태스크가 전환 절차 자체다** (design §6 · spec §5 "전환 다운타임"):
 
-- [ ] `pnpm db:deploy` → `pnpm db:status:prod`로 `_add_project_push_token` 적용 확인
-- [ ] `/merge` (T1~T7이 전부 dev에 있고 CI green인 상태에서 **한 번**)
-- [ ] 프로덕션 설정 화면에서 넷(`bugshot-2`·`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) 토큰 발급 →
-      **대상 리포 Actions secret `PUSH_TOKEN` 교체** → 넷 CI 수동 트리거 green
+- [x] `pnpm db:deploy` → `pnpm db:status:prod`로 `_add_project_push_token` 적용 확인 ✅ 2026-09-07 (11개 up to date)
+- [x] `/merge` ✅ 2026-09-07 — PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) squash `f595cc3` (93파일 +7959/-336). PR CI `verify` green, Vercel 프로덕션 배포 success
+- [x] ~~넷~~ **`order-check` 하나** 토큰 발급 → 대상 리포 secret 교체 → CI green ✅ 2026-09-07
+  - ⚠️ **이 항목의 전제가 둘 틀렸다** (실측):
+    ① **l10n 워크플로가 붙은 리포는 `i18n-order-check` 하나다.** `bugshot-2`·`bugshot-i18n-test`의
+    `ci.yml`은 그 리포들의 자체 CI이고 `l10n-push` 스텝이 없으며, `i18n-format-check`는 워크플로가
+    0개다 (TASKS §5의 "CI 워크플로는 이 리포에 안 붙였다"가 그 이유다). **쓰는 곳이 없는 토큰은
+    발급하지 않았다** — `pushTokenHash`가 `null`인 상태가 fail-closed의 올바른 기본값이고, 발급하면
+    관리할 자격증명만 늘어난다.
+    ② **prod `Project` 행은 여섯이고 `i18n-format-check` 하나에 프로젝트가 둘이다**
+    (`format-check-code`·`format-check-yaml` — SAAS §7.1의 "한 리포에 표면이 둘"이 실제로 있다).
+    ⚠️ **그 리포는 `PUSH_TOKEN` secret 하나로 두 프로젝트를 먹일 수 없다** — 토큰이 프로젝트를
+    정하므로 워크플로에 스텝 둘 + secret 둘이 필요하다. 워크플로를 붙일 때 결정할 자리다
+  - 실측: `updated: 23 / translationsFilled: 69 / orphaned: 0`,
+    [run 34100271260](https://github.com/SinhyeokKang/i18n-order-check/actions/runs/34100271260).
+    ⚠️ **토큰 원문을 화면에 찍지 않았다** — 스크립트가 해시를 prod에 쓰고 원문을 `gh secret set`의
+    stdin으로 바로 넘겼다(`--body`는 `ps`에 노출된다). 해시를 **먼저** 쓰고 secret을 나중에 넣는다:
+    순서가 반대면 옛 해시로 도는 창이 생긴다
 - [ ] dev DB 넷 — 로컬 `pnpm dev` 설정 화면에서 발급 → 사람이 `.env.local`의 `PUSH_TOKEN`에 (에이전트는 편집하지 않는다)
 - [ ] Vercel 세 스코프에서 `ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN` 삭제 (코드가 안 읽는 것을 grep으로 확인한 뒤.
       `vercel env ls`로 확인 — 성공 메시지가 근거가 아니다)
 - [ ] 실물 왕복 — 폐기용 리포 하나를 **처음부터** 온보딩으로 붙인다
+  - ⚠️ **야간 pull 순회는 프로덕션 cron이 스스로 확인한다** (KST 03:00). `CRON_SECRET`은 Vercel 스코프에만
+    있어 손으로 부를 수 없고, 부르면 대상 리포에 PR이 열린다
   - 시나리오: 계정 미연결 상태에서 시작 / 설치 선택 목록에 없는 리포 → `repo-not-installed` / 후보 둘 이상인 리포 /
     `ts-dict` 리포(수동 지정 → 903키) / code-dict 리포 자동 후보 / 남의 리포 owner/repo 직접 전송 → 거부 /
     첫 적재 실패 후 "다시 시도" / `ready`에서 "다시 시도" → `not-awaiting` / 워크플로 붙인 뒤 CI push 200 /

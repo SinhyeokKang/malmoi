@@ -136,7 +136,10 @@ private이라 복사용 YAML의 `uses: SinhyeokKang/malmoi/.github/actions/l10n-
 - **전환 다운타임.** T3(push 인증 전환)가 프로덕션에 가는 순간 기존 프로젝트의 CI가 401이다 —
   이중 수용을 두지 않기로 했으므로(design §3.8) 설정 화면에서 토큰을 발급해 대상 리포 secret을
   같은 세션에 바꾼다 (tasks T8). 그 사이 push는 거부되지만 **편집은 잃지 않는다**(pull은 무관).
-- **`Project` 행은 넷이 아니라 다섯이다** — `skillflo-web`은 `installationId null`·`lastCommitSha`가
+- **`Project` 행은 넷이 아니라 여섯이다** (2026-09-07 prod 실측 정정 — 전엔 다섯으로 적었다):
+  `bugshot-2` · `bugshot-i18n-test` · **`format-check-code`·`format-check-yaml`(같은 리포 둘!)** ·
+  `order-check` · `skillflo`. ⚠️ **같은 리포에 프로젝트가 둘이면 `PUSH_TOKEN` secret 하나로 먹일 수
+  없다** — 토큰이 프로젝트를 정하므로 워크플로에 스텝 둘 + secret 둘이 필요하다. `skillflo`는 `installationId null`·`lastCommitSha`가
   더미다. design §3.9의 pull 대상 필터가 그것을 **의도적으로** 제외하고(`installationId != null`),
   3개 제한의 분자에는 OWNER 행으로 들어간다.
 - **`awaiting_first_sync`는 좀비가 될 수 있다.** 첫 적재가 계속 실패하는 프로젝트는 3개 슬롯 하나를
