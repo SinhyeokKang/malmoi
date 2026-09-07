@@ -711,6 +711,27 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 ⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
 
+### 6.35 ⚠️ 판정을 오케스트레이션 파일에 두지 않는다 — 클라이언트 번들이 그 그래프를 따라온다 (2026-09-07)
+
+거부 사유가 화면에 닿아야 하므로(§6.3) **문구 모듈은 클라이언트 컴포넌트가 import한다** —
+`accessErrorMessage`·`connectErrorMessage`·`onboardErrorMessage`·`pullMessage` 넷이다. 그래서 그 모듈들이
+**값으로 끌어오는 것이 곧 클라이언트 번들**이 된다.
+
+`lib/onboarding/message.ts`가 문구의 숫자를 맞추려고 `./slug`의 `PROJECT_SLUG_MAX`를 읽고, `slug.ts`가
+형식 판정을 **한 벌로 두려고** `lib/pull/trigger.ts`의 `isRefSafeSlug`를 불렀다. 둘 다 옳은 결정인데,
+`trigger.ts`가 **판정과 I/O를 같은 파일에** 들고 있어서 그 한 줄이 `lib/github`(octokit)과
+`lib/adapters`(→ `ts-dict` → **ts-morph = TypeScript 컴파일러**)를 클라이언트로 데려왔다 — 실측 **7.2MB
+청크**가 세 페이지에 붙었다 (POSTMORTEM 2026-09-07).
+
+- **판정은 잎 모듈에 둔다.** `lib/pull/ref-slug.ts`는 **import이 0**이고 `trigger.ts`가 재수출한다 —
+  규칙은 한 벌이고 무게는 따라오지 않는다.
+- **`pnpm build`는 이것을 오류로 보지 않는다.** 라우트 표에 청크 크기가 없고 typecheck·test도 침묵한다.
+  **`components/__tests__/client-graph.test.ts`가 상시로 센다** — `"use client"`에서 시작해 값 import만
+  따라가고(`import type`은 지운다) `"use server"` 파일에서 멈춘다(Action은 스텁으로 대체된다).
+- ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
+  봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
+  grep은 자신이 고른 패턴만 답한다.
+
 ### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
 
 연결은 **브라우저가 남의 사이트를 다녀오는 유일한 흐름**이다. 그래서 초대 토큰(§6.2)과 같은 급의 서명
