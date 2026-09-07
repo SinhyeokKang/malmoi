@@ -419,6 +419,10 @@ snapshot → ingestTargets(순수) → readBlob × M
 - ⚠️ **내려받지 못한 파일을 실패로 센다.** "다운로드 실패"와 "리포에 없음"을 같게 접으면 로케일 12개 중 3개가
   5xx일 때 DB엔 9개만 들어가는데 화면은 "N개 키를 적재했어요"를 쓴다 — 그래서 `targets`(시도한 경로)를 함께
   받아 `blobs`에 없는 것을 센다 (SAAS 불변식 9 · code-review 2026-09-07 🔴).
+  - ⚠️ **그 "시도한 경로"는 `templatePaths`에서 나온다, `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
+    후자는 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라, 못 받은
+    로케일이 목록에서 함께 사라져 `missing`이 0이 된다 — 방어선이 자기 입력에서 무력화되는 모양이었다.
+    Action은 둘의 **합집합**을 넘긴다.
 - **`Project.baseBranch`는 `ProbeResult.defaultBranch`로 채운다.** 스키마 기본값이 `"main"`이라 안 채우면
   default branch가 `develop`인 리포의 pull이 `main`을 찾아 죽는다.
 
@@ -430,6 +434,11 @@ snapshot → ingestTargets(순수) → readBlob × M
   순서다. 제한을 나중에 보면 접근 없는 리포로도 카운터를 소진시킬 수 있고, slug를 먼저 보면 남의 slug
   존재 여부를 탐색할 수 있다. ⚠️ **분자는 OWNER 행이다** — 멤버십 전체를 세면 EDITOR로 초대만 받은
   사람이 하나도 못 만든다.
+  - ⚠️ **그 카운트는 선조회이고 방어선이 아니다** (2026-09-07 리뷰 🟡7). 트랜잭션 밖이라 두 탭이 동시에
+    통과하면 슬롯이 셋인데 넷이 생기고, 삭제가 비범위라 사용자가 되찾을 수 없다. 그래서 `createProject`의
+    트랜잭션이 **`User` 행을 잠그고 다시 센다** — 생성 경로에는 잠글 프로젝트가 없으므로 대상이 User다
+    (`createInvitation`·`changeMember`가 프로젝트 행을 잠그는 것과 같은 이유). 선조회를 남기는 이유는
+    거부될 요청이 GitHub을 읽지 않게 하는 것이다.
 - **`slug.ts`의 `planSlug`** — 형식·길이(`PROJECT_SLUG_MAX = 40`)·예약어(`RESERVED = {"new"}`)를 거른다.
   형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug` **한 벌**을 쓴다(브랜치 이름에 그대로 들어가므로).
 - **`confirm.ts`의 `planConfirmedFormat`** — ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 파일 재조회로
@@ -657,7 +666,24 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
+| `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가) |
 | `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
+
+⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
+`Project.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
+후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
+`adapter:`·`base-locale:`을 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
+그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
+strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
+이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (SAAS §7.1).
+
+- **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
+  키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
+- **셋이 다 null이면 통과시킨다** — "포맷은 push가 채운다"가 원래 계약이고 온보딩 밖에서 만들어진 행은
+  첫 push가 심는다. 좁아지는 것은 한 번 채워진 뒤부터다.
+- ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 이 라우트는 GitHub을 부르지 않으므로
+  오배송과 구별할 수 없고, 재설정 UI는 **7단계**(`needs_configuration`)다. 조용히 덮는 것보다 시끄럽게
+  멈추는 쪽을 고른다 — 손실이 되돌릴 수 없는 방향이다. 지금 그 상태의 복구는 손으로 컬럼을 고치는 것이다.
 
 - **같은 커밋의 재전송은 통과시킨다.** strict라 결과가 같고, 스캐너를 고쳐 같은 커밋을 다시 올리는 것은 정당한 조작이다. 그래서 판정 기준이 `commitSha` 동일성이 아니라 **`commitAt` 역행**이다.
 - **GitHub API로 조상 관계를 확인하지 않는다.** 더 정확하지만 지금 GitHub을 전혀 부르지 않는 push 라우트에 App 토큰과 네트워크 왕복이 들어온다. 커밋 시각은 Actions가 `git show -s --format=%cI`로 공짜로 얻는다.
