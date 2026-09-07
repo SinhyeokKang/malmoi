@@ -59,10 +59,15 @@ function openingTag(src: string, start: number): string {
   return src.slice(start);
 }
 
-/** 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다. */
+/**
+ * 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다.
+ *
+ * ⚠️ **네 태그를 본다.** `button|input`만 보던 시절 온보딩의 `<select>`가 방어선 밖이었다
+ * (2026-09-07). 포커스를 받는 태그가 늘면 여기에 더한다 — 아래 메타 테스트가 목록을 고정한다.
+ */
 function controls(src: string): string[] {
   const found: string[] = [];
-  for (const m of src.matchAll(/<(?:button|input)[\s>]/g)) {
+  for (const m of src.matchAll(/<(?:button|input|select|textarea)[\s>]/g)) {
     const tag = openingTag(src, m.index);
     if (!tag.includes('type="hidden"')) found.push(tag);
   }
