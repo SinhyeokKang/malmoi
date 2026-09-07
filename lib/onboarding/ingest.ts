@@ -44,12 +44,21 @@ export async function ingestFirstSnapshot(
     headCommittedAt: string;
     /** 스냅샷의 트리 경로 전부. `selectLocaleFiles`가 여기서 실재하는 파일만 고른다. */
     paths: readonly string[];
-    /** 로케일 파일의 내용. 없는 경로는 `selectLocaleFiles`가 걸러낸다. */
+    /**
+     * **내려받기를 시도한 로케일 파일 경로**(`ingestTargets`의 결과). 여기 있는데 `blobs`에 없으면
+     * 다운로드가 실패한 것이고, 그것은 "리포에 없음"과 **다르다** — 접으면 12개 중 3개가 5xx로 빠져도
+     * 화면이 "N개 키를 적재했어요"를 쓴다 (code-review 2026-09-07 🔴1 · 불변식 9).
+     */
+    targets: readonly string[];
+    /** 내려받은 로케일 파일의 내용. */
     blobs: ReadonlyMap<string, string>;
   },
 ): Promise<FirstIngestResult> {
+  // 내려받지 못한 파일은 **실패로 센다.** 빈 내용을 먹이면 그 로케일의 키를 통째로 잃고, 조용히 빼면
+  // 성공 문구가 나간다 — 둘 다 값이 사라진 것을 사용자가 모른다.
+  const missing = input.targets.filter((p) => !input.blobs.has(p));
+
   const { read, baseLocale } = assemblePushInput({
-    // 내려받지 못한 파일을 "빈 내용"으로 먹이면 그 로케일의 키를 통째로 잃는다 — 실재하는 blob만 넘긴다.
     paths: input.paths.filter((p) => input.blobs.has(p)),
     probe: makeProbe(input.blobs),
     format: input.format,
@@ -70,9 +79,15 @@ export async function ingestFirstSnapshot(
 
   await applyPush(prisma, input.projectId, payload);
 
+  const errors = [
+    ...read.errors,
+    ...missing.map((path) => ({ path, message: "파일을 내려받지 못했다" })),
+  ];
   return {
     count: payload.keys.length,
-    failed: read.errors.length + duplicateKeys,
-    errors: read.errors,
+    // **단위가 셋이라 각각 센다** — 파일(read 실패·다운로드 실패)과 엔트리(중복). 한 숫자로 합치는 것은
+    // 화면 문구가 "M건을 읽지 못했어요" 하나라서다.
+    failed: errors.length + duplicateKeys,
+    errors,
   };
 }

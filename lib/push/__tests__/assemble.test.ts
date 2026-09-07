@@ -60,6 +60,9 @@ describe("assemblePushInput — fs probe와 메모리 probe가 같은 결과를 
   it("두 경로의 반환값이 deep-equal이다 — 서버 첫 적재와 CLI push가 같은 DB 상태를 만든다", () => {
     const viaFs = assemblePushInput({ paths, probe: fsProbe, format: format() });
     const viaMemory = assemblePushInput({ paths, probe: memProbe, format: format() });
+    // 둘 다 비어 있으면 deep-equal이 공허하게 통과한다 — 실제로 읽었다는 것을 먼저 단언한다.
+    expect(viaFs.read.locales).toHaveLength(3);
+    expect(viaFs.read.locales[0]?.entries.length).toBeGreaterThan(0);
     expect(viaMemory).toEqual(viaFs);
   });
 });

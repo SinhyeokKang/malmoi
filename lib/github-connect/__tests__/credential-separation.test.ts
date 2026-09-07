@@ -41,7 +41,7 @@ const APP_CREDENTIAL =
  * (`/code-review` 2026-09-06이 T2 위험으로 지목한 자리). 막아야 하는 것은 디렉터리가 아니라
  * **토큰을 쥔 모듈**이다.
  */
-const USER_TOKEN_IMPORT = /from\s+["'](@\/lib\/github-connect\/(user|token-store)|\.\/github-connect\/(user|token-store))/;
+const USER_TOKEN_IMPORT = /from\s+["'](@\/lib\/github-connect\/(user|token-store)|(\.\.?\/)+github-connect\/(user|token-store))/;
 
 function sourcesIn(dir: string, base: string): { rel: string; source: string }[] {
   const out: { rel: string; source: string }[] = [];
@@ -88,6 +88,10 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
     expect(APP_CREDENTIAL.test('parsePrivateKey(requireEnv("GITHUB_APP_PRIVATE_KEY"))')).toBe(true);
     expect(APP_CREDENTIAL.test("await app.getInstallationOctokit(1)")).toBe(true);
     expect(USER_TOKEN_IMPORT.test('import { exchangeCode } from "@/lib/github-connect/user";')).toBe(true);
+    // ⚠️ **상대 경로 깊이가 하나가 아니다** — `lib/onboarding/`에서는 `../github-connect/…`다. 전에는
+    // `./github-connect/…`만 잡아 그 깊이가 통째로 새어 있었다 (code-review 2026-09-07 🟡4).
+    expect(USER_TOKEN_IMPORT.test('import { ensureUserToken } from "../github-connect/token-store";')).toBe(true);
+    expect(USER_TOKEN_IMPORT.test('import { x } from "./github-connect/user";')).toBe(true);
   });
 
   it("정상 소스는 걸리지 않는다 — 과잉 매칭으로 항상 red가 되지 않는다", () => {

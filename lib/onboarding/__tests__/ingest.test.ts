@@ -71,6 +71,8 @@ const run = (over: Partial<Parameters<typeof ingestFirstSnapshot>[1]> = {}) => {
     result: ingestFirstSnapshot(stub.prisma, {
       projectId: "p1",
       projectSlug: "acme",
+      // 내려받기를 시도한 경로. 여기 있는데 `blobs`에 없으면 **실패**다 — "리포에 없음"과 구별한다.
+      targets: PATHS.filter((p) => p.startsWith("src/locales/")),
       format: format(),
       baseLocale: "en",
       headSha: HEAD_SHA,
@@ -157,11 +159,28 @@ describe("ingestFirstSnapshot — 반환값", () => {
 describe("ingestFirstSnapshot — 경계", () => {
   it("blob이 없는 로케일 파일은 넘기지 않는다 — 빈 내용을 먹이면 그 로케일의 키를 잃는다", async () => {
     const partial = new Map([["src/locales/en.json", TREE["src/locales/en.json"]!]]);
-    const { stub, result } = run({ blobs: partial });
+    const { stub, result } = run({ blobs: partial, targets: ["src/locales/en.json"] });
     await result;
     const insert = stub.captured.find((c) => c.sql.includes('"Translation"'));
     const locales = new Set(columnsOf(insert!)["localeCode"] ?? []);
     expect([...locales]).toEqual(["en"]);
+  });
+
+  it("⚠️ **내려받지 못한 로케일 파일이 `failed`에 잡힌다** — 성공 문구로 나가면 안 된다 (불변식 9)", async () => {
+    // code-review 2026-09-07 🔴1: "다운로드 실패"와 "리포에 없음"을 같게 접으면 화면이 "N개 키를
+    // 적재했어요"를 쓴다. 로케일 12개 중 3개가 5xx면 DB엔 9개만 들어가는데 사용자는 성공으로 읽고
+    // [다시 시도]를 누르지 않는다.
+    const partial = new Map([["src/locales/en.json", TREE["src/locales/en.json"]!]]);
+    const out = await run({ blobs: partial }).result;
+    expect(out.failed).toBeGreaterThan(0);
+    expect(out.errors.some((e) => e.path === "src/locales/ko.json")).toBe(true);
+  });
+
+  it("base 파일 자체를 못 받으면 `count: 0`이 성공으로 읽히지 않는다", async () => {
+    const onlyKo = new Map([["src/locales/ko.json", TREE["src/locales/ko.json"]!]]);
+    const out = await run({ blobs: onlyKo }).result;
+    expect(out.count).toBe(0);
+    expect(out.failed).toBeGreaterThan(0);
   });
 
   it("GitHub을 부르지 않는다 — 스냅샷·blob은 값으로 받는다", async () => {

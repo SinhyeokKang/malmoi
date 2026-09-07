@@ -21,6 +21,7 @@ import { detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/i
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
+import { AppError } from "../lib/failure";
 import { assemblePushInput } from "../lib/push/assemble";
 import { buildPushPayload } from "../lib/push/payload";
 import {
@@ -116,19 +117,23 @@ if (!format) {
 // ⚠️ **select → read → base 판정은 `lib/push/assemble.ts`가 든다** (2026-09-07). 서버의 첫 적재가 같은
 // 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (design §4).
 // base가 키 집합의 진실이라 명시가 탐지 목록에 없으면 그 함수가 던진다 (2026-09-04 audit #1).
-let read;
-let baseLocale;
-try {
-  ({ read, baseLocale } = assemblePushInput({
-    paths,
-    probe,
-    format,
-    baseLocale: flagValue(argv, "--base"),
-  }));
-} catch (error) {
-  console.error((error as Error).message);
+// `--base`가 탐지 목록에 없으면 `assemblePushInput`이 던진다. **플래그 이름을 먼저 찍는다** — 사용자가
+// 고쳐야 하는 것은 인자이고, composite action에서는 그 입력 이름이 `base-locale`이다.
+const baseOverride = flagValue(argv, "--base");
+if (baseOverride !== undefined && !format.locales.includes(baseOverride)) {
+  console.error(`--base ${baseOverride}: 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다.`);
   process.exit(1);
 }
+let assembled: ReturnType<typeof assemblePushInput>;
+try {
+  assembled = assemblePushInput({ paths, probe, format, baseLocale: baseOverride });
+} catch (error) {
+  // 어댑터가 던지는 예기치 못한 오류까지 삼키지 않는다 — 우리 판정만 한 줄로 접고 나머지는 스택을 남긴다.
+  if (!(error instanceof AppError)) throw error;
+  console.error(error.message);
+  process.exit(1);
+}
+const { read, baseLocale } = assembled;
 
 if (read.errors.length) {
   console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
