@@ -35,13 +35,19 @@ const APP_CREDENTIAL =
 /**
  * **쓰기 호출.** 사용자 토큰으로 GitHub에 쓰면 커밋이 개인 명의가 되고 권한 면적이 넓어진다.
  *
- * ⚠️ **octokit의 입구가 셋이라 셋을 다 본다**: `request("POST …")` 리터럴 · `rest.*`의 이름 붙은
- * 쓰기 메서드 · `paginate`에 넘긴 쓰기 메서드. 앞의 하나만 보던 시절엔 뒤의 둘이 조용히 통과했다.
- * 동사로 판정하는 이유는 `rest` 아래 메서드 이름이 안정된 규약이기 때문이다(`create*`·`update*`·
- * `delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`).
+ * ⚠️ **octokit의 입구가 넷이라 넷을 다 본다**:
+ *
+ * 1. `request("POST …")` — 리터럴 route
+ * 2. `paginate("POST …")` — **실제 코드가 쓰는 형태다**(`user.ts`가 `paginate("GET /user/installations")`),
+ *    그래서 가장 그럴듯한 회귀는 그 자리의 동사가 바뀌는 것이다. `request`만 보면 통째로 새는 자리다
+ * 3. `rest.*`의 이름 붙은 쓰기 메서드 — 동사로 판정한다(`rest` 아래 메서드 이름은 안정된 규약이다:
+ *    `create*`·`update*`·`delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`)
+ * 4. `graphql`의 `mutation` — REST만 겨누면 이 입구가 남는다
+ *
+ * 1번만 보던 시절엔 나머지 셋이 조용히 통과했고, 그 상태로 문서가 "GET만 부른다"고 단언했다.
  */
 const WRITE_CALL =
-  /request\(\s*["'`](POST|PATCH|PUT|DELETE)\s|\brest\.[A-Za-z]+\.(create|update|delete|replace|add|remove|merge|set)[A-Za-z]*\s*[(,]/;
+  /(?:request|paginate)\(\s*["'`](POST|PATCH|PUT|DELETE)\s|\brest\.[A-Za-z]+\.(create|update|delete|replace|add|remove|merge|set)[A-Za-z]*\s*[(,]|graphql\(\s*["'`][\s\S]{0,40}?\bmutation\b/;
 
 /**
  * **사용자 토큰을 다루는 모듈.** `lib/github.ts`가 이걸 물면 커밋 경로에 사용자 토큰이 들어온다.
@@ -163,14 +169,14 @@ describe("사용자 토큰 경로가 App 개인키를 모른다", () => {
 
   /**
    * ⚠️ **가드가 자기 눈으로 못 보는 형태가 있었다** (2026-09-07 `/doc-check`). 전 패턴은 리터럴
-   * `request("POST"…)`만 봐서 **octokit이 제공하는 다른 두 입구가 통째로 열려 있었다** — `rest.*`의
-   * 이름 붙은 메서드와 `paginate`다. 지금 코드는 실제로 GET뿐이라 red가 아니었고, 그래서
+   * `request("POST"…)`만 봐서 **octokit이 제공하는 다른 세 입구가 통째로 열려 있었다** — `paginate`의 문자열 route,
+   * `rest.*`의 이름 붙은 메서드, `graphql` mutation이다. 지금 코드는 실제로 GET뿐이라 red가 아니었고, 그래서
    * "GET만 부른다"는 문서 단언이 근거 없이 서 있었다.
    *
-   * 아래가 그 세 입구를 각각 먹여 **스캐너가 red를 낼 수 있는지** 검사한다. 이게 없으면 패턴을
+   * 아래가 그 네 입구를 각각 먹여 **스캐너가 red를 낼 수 있는지** 검사한다. 이게 없으면 패턴을
    * 넓혀도 넓혀졌는지 알 방법이 없다 (`focus-ring`의 "red를 낼 수 있는지"와 같은 계보).
    */
-  it("가드가 세 입구를 다 잡는다 — request 리터럴·rest.* 쓰기·paginate 쓰기", () => {
+  it("가드가 네 입구를 다 잡는다 — request·paginate·rest.* 쓰기·graphql mutation", () => {
     const writes = [
       'await octokit.request("POST /repos/{o}/{r}/git/blobs", {});',
       'await octokit.request(`PATCH /repos/x`, {});',
@@ -178,6 +184,12 @@ describe("사용자 토큰 경로가 App 개인키를 모른다", () => {
       "await octokit.rest.pulls.create({ owner, repo });",
       "await octokit.rest.repos.update({ owner, repo });",
       "await octokit.paginate(octokit.rest.issues.create, {});",
+      // ⚠️ **실제 코드가 쓰는 형태다** — `user.ts`가 `paginate("GET /user/installations")`처럼 route를
+      // 문자열로 넘긴다. 그러므로 가장 그럴듯한 회귀는 그 자리의 동사가 바뀌는 것이다.
+      'await octokit.paginate("POST /repos/{o}/{r}/issues");',
+      'await octokit.paginate(`DELETE /repos/x`, {});',
+      // graphql mutation도 쓰기다 — REST만 겨누면 이 입구가 남는다.
+      'await octokit.graphql(`mutation { addComment(input: {}) { id } }`);',
     ];
     for (const line of writes) expect(WRITE_CALL.test(line), line).toBe(true);
   });
