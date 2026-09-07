@@ -15,7 +15,7 @@ import { planConnectionHealth, probeFromError, type ProbeResult } from "../healt
  */
 
 const project = { installationId: "158107153", repoOwner: "acme", repoName: "web" };
-const okProbe: ProbeResult = { status: "ok", installationId: "158107153", fullName: "acme/web" };
+const okProbe: ProbeResult = { status: "ok", installationId: "158107153", fullName: "acme/web", defaultBranch: "main" };
 
 describe("probeFromError — 실패를 '설치 없음'과 '모름'으로 가른다", () => {
   it("404는 not-installed다 — App JWT는 유효하고 그 리포에 설치가 없다", () => {
@@ -87,7 +87,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "999", fullName: "acme/web" },
+        probe: { status: "ok", installationId: "999", fullName: "acme/web", defaultBranch: "main" },
       }),
     ).toEqual({ status: "installation-changed", installationId: "999" });
   });
@@ -96,7 +96,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "acme/website" },
+        probe: { status: "ok", installationId: "158107153", fullName: "acme/website", defaultBranch: "main" },
       }),
     ).toEqual({ status: "repo-moved", fullName: "acme/website" });
   });
@@ -105,7 +105,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "newco/web" },
+        probe: { status: "ok", installationId: "158107153", fullName: "newco/web", defaultBranch: "main" },
       }),
     ).toEqual({ status: "repo-moved", fullName: "newco/web" });
   });
@@ -114,7 +114,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "999", fullName: "newco/web" },
+        probe: { status: "ok", installationId: "999", fullName: "newco/web", defaultBranch: "main" },
       }),
     ).toEqual({ status: "installation-changed", installationId: "999" });
   });
@@ -129,7 +129,7 @@ describe("planConnectionHealth — 정상", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "Acme/Web" },
+        probe: { status: "ok", installationId: "158107153", fullName: "Acme/Web", defaultBranch: "main" },
       }),
     ).toEqual({ status: "ok" });
   });

@@ -7,7 +7,7 @@ import { requireEnv } from "@/lib/env";
 import { planAccountLink } from "@/lib/github-connect/account-link";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
-import { stateCookieNames, verifyState } from "@/lib/github-connect/state";
+import { stateCookieNames, verifyState, type StateDest } from "@/lib/github-connect/state";
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -47,20 +47,20 @@ export async function GET(request: Request): Promise<NextResponse> {
     secret: requireEnv("AUTH_SECRET"),
   });
 
-  // ⚠️ **state를 믿을 수 없으면 `slug`도 믿을 수 없다** — 목적지가 `/projects`이고, 그 화면이
+  // ⚠️ **state를 믿을 수 없으면 `dest`도 믿을 수 없다** — 목적지가 `/projects`이고, 그 화면이
   // `isConnectError`로 사유를 읽는다 (design §3.5). 사용자가 취소한 경우도 여기서는 갈래를 바꾸지
   // 않는다: 어디로 돌아가야 하는지 모르는 것이 먼저다.
   const denied = url.searchParams.get("error") !== null;
   if (state.status !== "ok") {
     return landing(request, null, denied ? "denied" : state.status);
   }
-  const slug = state.slug;
+  const dest = state.dest;
 
-  if (denied) return landing(request, slug, "denied");
+  if (denied) return landing(request, dest, "denied");
 
   const code = url.searchParams.get("code");
   // code도 error도 없는 요청을 성공으로 읽지 않는다.
-  if (code === null || code === "") return landing(request, slug, "exchange-failed");
+  if (code === null || code === "") return landing(request, dest, "exchange-failed");
 
   let tokens: UserTokens;
   let viewer: { id: string; login: string };
@@ -70,7 +70,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   } catch (error) {
     // 재사용·만료된 code가 여기로 온다 — GitHub은 그것도 HTTP 200 본문으로 주고 라이브러리가 던진다.
     logFailure("exchange", error);
-    return landing(request, slug, "exchange-failed");
+    return landing(request, dest, "exchange-failed");
   }
 
   let outcome: ConnectError | null;
@@ -79,10 +79,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   } catch (error) {
     // DB 장애를 거부로 위장하지 않는다 (POSTMORTEM 2026-09-06).
     logFailure("link", error);
-    return landing(request, slug, "unavailable");
+    return landing(request, dest, "unavailable");
   }
 
-  return landing(request, slug, outcome);
+  return landing(request, dest, outcome);
 }
 
 /**
@@ -168,14 +168,19 @@ function isUniqueViolation(error: unknown): boolean {
 
 /**
  * 착지 + state 쿠키 소거. **사유는 항상 `?e=`로 실린다** — 넘겨놓고 읽는 쪽을 안 만들면 거부가
- * 통째로 무음이다 (POSTMORTEM 2026-09-06). 읽는 쪽은 설정 화면과 `/projects` 둘이다.
+ * 통째로 무음이다 (POSTMORTEM 2026-09-06). 읽는 쪽은 셋이다: 설정 화면 · `/projects/new` ·
+ * `/projects`(state를 못 믿어 돌아갈 곳을 모르는 경우).
+ *
+ * ⚠️ **경로는 서명된 `dest`가 정한다.** 쿼리에서 읽으면 공격자가 착지를 고르고, 그러면 open
+ * redirect 판정이 필요해진다 (design §3.6).
  */
 function landing(
   request: Request,
-  slug: string | null,
+  dest: StateDest | null,
   error: ConnectError | null,
 ): NextResponse {
-  const path = slug === null ? "/projects" : `/projects/${slug}/settings`;
+  const path =
+    dest === null ? "/projects" : dest.kind === "new" ? "/projects/new" : `/projects/${dest.slug}/settings`;
   const target = error === null ? path : `${path}?e=${error}`;
   const res = NextResponse.redirect(new URL(target, request.url));
   // 같은 state로 두 번 들어오지 못하게 한다. 실패 경로에서도 지운다 — 남겨 두면 다음 시도가

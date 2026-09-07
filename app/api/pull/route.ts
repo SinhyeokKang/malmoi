@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
-import { optionalEnv, requireEnv } from "@/lib/env";
+import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
+import { selectPullTargets, type PullItem } from "@/lib/pull/targets";
 import { triggerPull } from "@/lib/pull/trigger";
 
 /**
@@ -13,8 +14,12 @@ import { triggerPull } from "@/lib/pull/trigger";
  * 직접 부른다 (MVP §5, 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
  * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 현재 matcher는
- * `/keys/:path*`뿐이라 기본값이 안전하지만, 보호 라우트를 넓힐 때 이 경로를 함께 넣으면
+ * `/projects/:path*`뿐이라 기본값이 안전하지만, 보호 라우트를 넓힐 때 이 경로를 함께 넣으면
  * 야간 pull이 조용히 리다이렉트된다.
+ *
+ * ⚠️ **준비된 프로젝트 전부를 순회한다** (2026-09-07, design §3.9). 전에는 서버 env 하나가 대상을
+ * 정해서 프로젝트가 둘 이상이면 나머지가 영영 안 돌았다. **한 프로젝트의 실패가 나머지를 막지 않는다** —
+ * 실패는 그 항목에만 남고 응답은 항상 배열이다.
  */
 
 // 로케일 파일마다 blob을 읽고 트리·커밋·PR을 만든다. 기본 10초 안에 안 끝날 수 있다.
@@ -25,8 +30,10 @@ export const maxDuration = 60;
  * 있는데도 `GET`인 유일한 이유다.
  */
 export async function GET(request: Request): Promise<NextResponse> {
-  // `PUSH_TOKEN`과 같은 fail-closed 검사를 재사용한다 — 환경변수가 비어 있으면 아무도 통과하지
-  // 못한다. 빈 값을 "인증 없음"으로 읽으면 아무나 커밋을 유발할 수 있다 (ARCHITECTURE §6).
+  // fail-closed — 환경변수가 비어 있으면 아무도 통과하지 못한다. 빈 값을 "인증 없음"으로 읽으면
+  // 아무나 커밋을 유발할 수 있다 (ARCHITECTURE §6).
+  // ⚠️ **`checkBearer`의 유일한 소비자가 됐다** (2026-09-07) — `/api/push`는 공유 시크릿 비교를 버리고
+  // `Project.pushTokenHash` 조회로 옮겨갔다. 여기 남는 이유는 cron 시크릿이 프로젝트와 무관해서다.
   const auth = checkBearer(request.headers.get("authorization"), optionalEnv("CRON_SECRET"));
   if (auth !== "ok") {
     // 어느 쪽이 틀렸는지 알려주지 않는다.
@@ -36,13 +43,37 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 
-  // ⚠️ **`requireEnv`도 try 안이다.** 밖에 두면 설정 누락이 **본문 없는 500**으로 나가고
-  // cron 로그에 원인이 남지 않는다 — 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였고,
-  // 무엇이 없는지 추측해야 했다. 이 메시지는 변수 이름만 담으므로 시크릿이 새지 않는다.
+  // ⚠️ **조회도 try 안이다.** 밖에 두면 DB 장애가 **본문 없는 500**으로 나가고 cron 로그에 원인이
+  // 남지 않는다 — 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였고, 무엇이 없는지 추측해야 했다.
   try {
-    const slug = requireEnv("ACTIVE_PROJECT_SLUG");
-    const result = await triggerPull(getPrisma(), slug);
-    return NextResponse.json(result);
+    const prisma = getPrisma();
+    // 순회 대상은 판정층이 고른다 (`lib/pull/targets.ts`) — 준비 안 된 프로젝트를 돌리면 던진다.
+    const projects = await prisma.project.findMany({
+      select: { slug: true, installationId: true, lastCommitSha: true },
+    });
+
+    const targets = selectPullTargets(projects);
+    const results: PullItem[] = [];
+    for (const slug of targets) {
+      // ⚠️ **프로젝트마다 잡는다.** 한 프로젝트의 GitHub 장애가 나머지의 편집을 다음 밤까지 묶어두면
+      // 안 된다. `lastPulledAt`은 성공한 프로젝트에만 쓰이므로 실패가 편집을 잃지 않는다.
+      //
+      // ⚠️ 격리의 실제 경계는 루프 본문이 **아니라 이 catch 본문까지**다 — 여기서 무엇이든 던지면
+      // 바깥 catch가 받아 이미 모은 결과가 통째로 버려지고 500이 된다. `failureItem`은 순수 판정과
+      // 로그뿐이라 던질 것이 없다.
+      try {
+        results.push({ slug, ...(await triggerPull(prisma, slug)) });
+      } catch (error) {
+        results.push(failureItem(slug, error));
+      }
+    }
+
+    // ⚠️ **요약을 한 줄 남긴다.** 응답이 항상 200 배열이라 cron 실행은 성공으로 표시되고, cron은 본문을
+    // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
+    // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
+    const failed = results.filter((r) => r.status === "failed").length;
+    console.log(`[pull] targets=${targets.length} failed=${failed}`);
+    return NextResponse.json(results);
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
     // (`MissingEnvError` — 변수 이름만 담는다)는 본문에 남긴다: 그게 POSTMORTEM 2026-09-03이
@@ -56,4 +87,26 @@ export async function GET(request: Request): Promise<NextResponse> {
     console.error(`[pull] ${ref} ${failure.detail}`);
     return NextResponse.json({ error: "internal", ref }, { status: 500 });
   }
+}
+
+/**
+ * 프로젝트 하나의 실패를 응답 항목으로. **전문을 싣지 않는다** — 우리가 문구를 정한 오류
+ * (`AppError`·`MissingEnvError`)만 본문에 남고 남의 라이브러리 메시지는 `ref`로만 나간다
+ * (ARCHITECTURE §6.0).
+ *
+ * ⚠️ **두 갈래 모두 로그한다** (2026-09-07 code-review 🔴1). 전에는 safe 갈래가 조용히 반환했는데,
+ * `lib/pull/**`의 실패 **대부분이 safe다** — "base 브랜치를 읽을 수 없다"(App 제거·설치 일시중지·접근
+ * 철회), 포맷 컬럼 누락, 로케일 0개가 전부 `fail()`이다. 응답은 200 배열이고 cron은 본문을 버리므로
+ * 그 상태면 **전면 장애가 성공과 구별되지 않는다.** 2026-09-06 개인키 사고의 증상이 정확히 그 문구였다.
+ * `trigger.ts`가 warnings를 `console.warn`으로 남기는 것과 같은 이유이고, 실패는 경고보다 무겁다.
+ */
+function failureItem(slug: string, error: unknown): PullItem {
+  const failure = classifyFailure(error);
+  if (failure.safe) {
+    console.error(`[pull:${slug}] ${failure.message}`);
+    return { slug, status: "failed", error: failure.message };
+  }
+  const ref = randomUUID().slice(0, 8);
+  console.error(`[pull:${slug}] ${ref} ${failure.detail}`);
+  return { slug, status: "failed", ref };
 }

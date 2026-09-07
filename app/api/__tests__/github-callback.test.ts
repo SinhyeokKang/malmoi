@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { signState } from "@/lib/github-connect/state";
+import { signState, type StateDest } from "@/lib/github-connect/state";
 
 /**
  * **GitHub이 브라우저를 되돌리는 유일한 진입점** (design §3.1·§7.1). Route Handler인 이유는 호출자가
@@ -46,10 +46,11 @@ vi.mock("next/headers", () => ({
 const { GET } = await import("../github/callback/route");
 
 /** 유효한 state 쿠키 + 그 nonce. 껍데기가 심는 것과 같은 값이다. */
-function validState(over: { userId?: string; slug?: string; expiresAt?: Date } = {}) {
+function validState(over: { userId?: string; dest?: StateDest; expiresAt?: Date } = {}) {
   return signState({
     userId: over.userId ?? SESSION_USER,
-    slug: over.slug ?? "acme",
+    // 기본은 설정 화면이다 — 생성 경로(`{kind:"new"}`)는 그 갈래를 검사하는 describe만 쓴다.
+    dest: over.dest ?? { kind: "settings", slug: "acme" },
     nonce: "nonce-1",
     expiresAt: over.expiresAt ?? new Date(NOW.getTime() + 600_000),
     secret: SECRET,
@@ -195,6 +196,47 @@ describe("사용자가 GitHub에서 취소한 경우", () => {
 
     expect(location(res)).toBe("/projects/acme/settings?e=exchange-failed");
     expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+  });
+});
+
+describe("착지 갈래는 서명된 dest가 정한다 (design §3.6)", () => {
+  /**
+   * 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없다. **갈래가 서명 안에 있어야** 공격자가
+   * 착지를 정할 수 없고, 그래서 open redirect 판정이 아예 필요 없다.
+   */
+  it("dest가 new면 /projects/new로 돌아간다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "new" } }) });
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/new");
+    expect(hoisted.account.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("dest가 new인데 실패하면 /projects/new?e=로 사유가 실린다 — 그 화면이 읽는다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "new" } }) });
+
+    const res = await GET(request({ error: "access_denied", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/new?e=denied");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+  });
+
+  it("dest가 new이고 code 교환이 실패해도 /projects/new로 간다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "new" } }) });
+    hoisted.exchangeCode.mockRejectedValue(new Error("bad code"));
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/new?e=exchange-failed");
+  });
+
+  it("state가 무효면 dest를 못 믿어 /projects다 — new로 보내지 않는다", async () => {
+    hoisted.cookieGet.mockReturnValue(undefined);
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects?e=state-mismatch");
   });
 });
 

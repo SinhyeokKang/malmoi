@@ -41,7 +41,7 @@ const APP_CREDENTIAL =
  * (`/code-review` 2026-09-06이 T2 위험으로 지목한 자리). 막아야 하는 것은 디렉터리가 아니라
  * **토큰을 쥔 모듈**이다.
  */
-const USER_TOKEN_IMPORT = /from\s+["'](@\/lib\/github-connect\/(user|token-store)|\.\/github-connect\/(user|token-store))/;
+const USER_TOKEN_IMPORT = /from\s+["'](@\/lib\/github-connect\/(user|token-store)|(\.\.?\/)+github-connect\/(user|token-store))/;
 
 function sourcesIn(dir: string, base: string): { rel: string; source: string }[] {
   const out: { rel: string; source: string }[] = [];
@@ -57,6 +57,14 @@ function sourcesIn(dir: string, base: string): { rel: string; source: string }[]
 
 const CONNECT_SOURCES = sourcesIn(join(ROOT, "lib/github-connect"), "lib/github-connect");
 const GITHUB_TS = readFileSync(join(ROOT, "lib/github.ts"), "utf8");
+/**
+ * **온보딩은 GitHub을 아예 모른다** (2026-09-07, design §3.10). 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고,
+ * App 개인키도 사용자 토큰도 **그리고 `lib/github.ts`도** import하지 않는다 — 두 토큰이 만나는 자리는
+ * Server Action 하나여야 한다. 여기에 루트를 더하지 않으면 이 방어선이 새 디렉터리를 자동으로 덮지 않는다.
+ */
+const ONBOARDING_SOURCES = sourcesIn(join(ROOT, "lib/onboarding"), "lib/onboarding");
+/** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
+const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
 
 /**
  * 주석은 뺀다 — 경계를 설명하는 문장이 그 이름을 인용한다. 블록 주석은 **통째로** 지운다:
@@ -80,6 +88,10 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
     expect(APP_CREDENTIAL.test('parsePrivateKey(requireEnv("GITHUB_APP_PRIVATE_KEY"))')).toBe(true);
     expect(APP_CREDENTIAL.test("await app.getInstallationOctokit(1)")).toBe(true);
     expect(USER_TOKEN_IMPORT.test('import { exchangeCode } from "@/lib/github-connect/user";')).toBe(true);
+    // ⚠️ **상대 경로 깊이가 하나가 아니다** — `lib/onboarding/`에서는 `../github-connect/…`다. 전에는
+    // `./github-connect/…`만 잡아 그 깊이가 통째로 새어 있었다 (code-review 2026-09-07 🟡4).
+    expect(USER_TOKEN_IMPORT.test('import { ensureUserToken } from "../github-connect/token-store";')).toBe(true);
+    expect(USER_TOKEN_IMPORT.test('import { x } from "./github-connect/user";')).toBe(true);
   });
 
   it("정상 소스는 걸리지 않는다 — 과잉 매칭으로 항상 red가 되지 않는다", () => {
@@ -94,6 +106,32 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
 
   it("스캔 대상을 실제로 찾았다", () => {
     expect(CONNECT_SOURCES.length).toBeGreaterThan(3);
+    expect(ONBOARDING_SOURCES.length).toBeGreaterThan(3);
+  });
+
+  it("커밋 경로 import 검사식이 실제로 잡는다", () => {
+    expect(COMMIT_PATH_IMPORT.test('import { readRepoSnapshot } from "@/lib/github";')).toBe(true);
+    expect(COMMIT_PATH_IMPORT.test('import { probeRepo } from "../github";')).toBe(true);
+    // 이웃 디렉터리는 다른 모듈이다 — 넓게 잡으면 방어선이 항상 red가 된다.
+    expect(COMMIT_PATH_IMPORT.test('import { probeFromError } from "@/lib/github-connect/health";')).toBe(false);
+    expect(COMMIT_PATH_IMPORT.test('import { logFailure } from "@/lib/github-connect/log";')).toBe(false);
+  });
+});
+
+describe("온보딩은 두 자격증명을 모른다 (design §3.10)", () => {
+  it("lib/onboarding/이 App 자격증명을 참조하지 않는다", () => {
+    const offenders = ONBOARDING_SOURCES.filter((f) => APP_CREDENTIAL.test(codeOnly(f.source))).map((f) => f.rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("lib/onboarding/이 사용자 토큰 모듈을 import하지 않는다", () => {
+    const offenders = ONBOARDING_SOURCES.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("lib/onboarding/이 `@/lib/github`을 import하지 않는다 — 스냅샷·blob은 Server Action이 값으로 넘긴다", () => {
+    const offenders = ONBOARDING_SOURCES.filter((f) => COMMIT_PATH_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
+    expect(offenders).toEqual([]);
   });
 });
 

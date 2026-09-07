@@ -77,12 +77,132 @@ export async function probeRepo(owner: string, repo: string): Promise<ProbeResul
       // `Project.installationId`가 문자열이라 여기서 좁힌다 (`createGitClient`의 `Number()`와 대칭).
       installationId: String(installation.data.id),
       fullName: res.data.full_name,
+      // 같은 응답에 이미 있다 — 온보딩이 `Project.baseBranch`를 이 값으로 채운다 (design §4).
+      defaultBranch: res.data.default_branch,
     };
   } catch (error) {
     if (probeFromError(httpStatus(error)) === "not-installed") return { status: "not-installed" };
     logFailure("probe", error);
     return { status: "error" };
   }
+}
+
+/**
+ * 리포를 여러 번 읽는 동안 **설치 토큰을 한 번만 발급**하는 리더. 온보딩의 탐지·첫 적재가 이것을 쓴다.
+ *
+ * ⚠️ **읽기마다 새로 열지 않는다** — 토큰 캐시가 App 인스턴스에 붙어 있어 매번 열면 호출이 2배다
+ * (code-review 2026-09-07 🔴2).
+ *
+ * `blob`은 못 읽으면 `undefined`다. 후보를 떨어뜨리는 대신 "키 수 확인 실패"로 표시하는 것이 호출부의
+ * 규칙이라(ARCHITECTURE §4의 연장) 여기서 던지지 않는다 — 대신 실패는 **로그에 남는다**.
+ */
+export type RepoReader = {
+  snapshot(baseBranch: string): Promise<RepoSnapshot>;
+  /** 트리 항목의 `sha`로 읽는다 — contents API의 1MB 상한이 없다. */
+  blob(sha: string): Promise<string | undefined>;
+};
+
+/**
+ * 온보딩이 보는 리포 스냅샷 (design §3.10). **잘림·브랜치 부재·장애를 값으로 준다** — 온보딩은 그것을
+ * "파일이 너무 많아 자동 탐지를 할 수 없어요"처럼 **말해야** 하고, pull은 같은 상황에서 **던져야** 한다
+ * (부분 트리로 blob SHA를 비교하면 전부 틀어진다). 그래서 판정이 아니라 값이고, `GitClient.getTree`가
+ * 이 위에서 던진다 — `lib/pull/client.ts`의 계약은 그대로다.
+ */
+export type RepoSnapshot =
+  | { status: "ok"; headSha: string; headCommittedAt: string; files: GitTreeBlob[] }
+  | { status: "truncated" }
+  | { status: "base-branch-missing" }
+  | { status: "unavailable" };
+
+/**
+ * base 브랜치 head의 트리 전체.
+ *
+ * ⚠️ **`headCommittedAt`을 위해 `GET /git/commits/{sha}`를 한 번 더 부른다.** ref·tree 응답에 커밋 시각이
+ * 없고, 첫 적재가 `new Date()`를 쓰면 그 시각이 커밋보다 미래라 **CI의 첫 push가 `stale-commit` 409로
+ * 거부된다** (`checkCommitOrder`는 동일 시각만 통과시킨다 — design §4).
+ *
+ * ⚠️ **ref가 404여도 "브랜치 없음"으로 단정하지 않는다** — GitHub은 권한 없는 리소스에도 404를 준다
+ * (`client.ts` 주석, POSTMORTEM 2026-09-03). 호출부가 `probeRepo`로 설치를 먼저 확인한 뒤에만 이 값을
+ * "브랜치가 없다"로 읽는다.
+ *
+ * ⚠️ **`createApp()`은 try 밖이다** — 환경변수 누락은 값으로 접지 않고 던진다. 값으로 접으면 설정 오류가
+ * 화면에서 영원히 "잠시 뒤 다시"가 된다 (`probeRepo`와 같은 판단, POSTMORTEM 2026-09-06).
+ */
+export async function openRepoReader(
+  owner: string,
+  repo: string,
+  installationId: string,
+): Promise<RepoReader> {
+  // ⚠️ **App을 한 번만 만든다.** `@octokit/auth-app`의 설치 토큰 캐시는 인스턴스마다 새로 생기므로,
+  // 읽기마다 `createApp()`을 부르면 **매 호출에 `POST /app/installations/{id}/access_tokens`가 하나씩
+  // 더 붙는다** — design §3.1의 예산(`ref 1 + tree 1 + blob ≤21`)이 2배가 되고, 50로케일 리포의 첫
+  // 적재는 100회가 되어 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴2). `createGitClient`가
+  // 클로저를 돌려주는 것과 같은 이유다.
+  const app = createApp();
+  const octokit = await app.getInstallationOctokit(Number(installationId));
+  const base = { owner, repo };
+
+  return {
+    async snapshot(baseBranch: string): Promise<RepoSnapshot> {
+      try {
+        let headSha: string;
+        try {
+          const ref = await octokit.request("GET /repos/{owner}/{repo}/git/ref/{ref}", {
+            ...base,
+            // 인코딩하지 않는다 — octokit이 담당한다 (`createGitClient.getRefSha`와 같은 함정).
+            ref: `heads/${baseBranch}`,
+          });
+          headSha = ref.data.object.sha;
+        } catch (error) {
+          if (isNotFound(error)) return { status: "base-branch-missing" };
+          throw error;
+        }
+
+        const commit = await octokit.request("GET /repos/{owner}/{repo}/git/commits/{commit_sha}", {
+          ...base,
+          commit_sha: headSha,
+        });
+
+        const tree = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
+          ...base,
+          tree_sha: headSha,
+          recursive: "1",
+        });
+        // 잘린 트리로 탐지하면 "그 리포에 로케일 파일이 없다"고 잘못 말한다 — 값으로 알리고 화면이 수동 지정을 권한다.
+        if (tree.data.truncated) return { status: "truncated" };
+
+        // ⚠️ **`sha`를 함께 든다.** 경로만 들면 blob을 contents API로 읽어야 하고 그쪽은 **1MB에서
+        // 잘려 `encoding: "none"`을 준다** — 큰 카탈로그 하나가 조용히 사라진다 (code-review 🟡2).
+        // git blobs API는 100MB까지이고 sha는 이 응답에 이미 있다(비용 0).
+        const files: GitTreeBlob[] = [];
+        for (const entry of tree.data.tree) {
+          if (entry.type !== "blob") continue;
+          if (entry.path === undefined || entry.sha === undefined) continue;
+          files.push({ path: entry.path, sha: entry.sha });
+        }
+        return { status: "ok", headSha, headCommittedAt: commit.data.committer.date, files };
+      } catch (error) {
+        // 장애를 거부로 접지 않는다 — 화면이 "잠시 뒤 다시"를 말할 수 있는 유일한 갈래다.
+        logFailure("snapshot", error);
+        return { status: "unavailable" };
+      }
+    },
+
+    async blob(sha: string): Promise<string | undefined> {
+      try {
+        const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
+          ...base,
+          file_sha: sha,
+        });
+        if (res.data.encoding !== "base64") return undefined;
+        // 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다 (`getBlobText`와 같은 이유).
+        return Buffer.from(res.data.content, "base64").toString("utf8");
+      } catch (error) {
+        logFailure("blob", error);
+        return undefined;
+      }
+    },
+  };
 }
 
 /**

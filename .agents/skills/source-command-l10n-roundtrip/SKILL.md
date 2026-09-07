@@ -35,11 +35,11 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 ### 0. 환경 전환
 
-`/api/push`·`/api/pull`은 `ACTIVE_PROJECT_SLUG`를 보고 **다른 프로젝트 페이로드를 409로 거부한다**(`lib/push/guard.ts`). 프로덕션은 운영 대상 하나를 가리키므로:
+**서버 env를 바꿀 일이 없다** (2026-09-07부터). `/api/push`는 **Bearer 토큰이 프로젝트를 정하고**(`sha256` → `Project.pushTokenHash`), `/api/pull`은 준비된 **전 프로젝트를 순회**한다 — 공유 slug env는 사라졌다.
 
-- `.env.local`의 `ACTIVE_PROJECT_SLUG`를 대상 slug로 **임시 변경**하고 `pnpm dev`를 띄운다.
-- **프로덕션 env를 검증 때문에 바꾸지 않는다** — 재배포가 필요하고 그 사이 운영 대상 CI가 409를 맞는다.
-- ⚠️ **끝나면 반드시 원복한다.** 6단계가 그 일이다.
+- `.env.local`의 `PUSH_TOKEN`을 **대상 프로젝트의 토큰 원문**으로 둔다(프로젝트 설정 화면에서 발급). 페이로드 slug가 그 토큰의 프로젝트와 다르면 409다.
+- **프로덕션 env를 검증 때문에 바꾸지 않는다** — 애초에 바꿀 변수가 없다.
+- `pnpm push:local`은 `--project <slug>`가 **필수**다.
 
 `pnpm smoke:github <slug>`로 App 토큰 → base head → 트리 → 글롭 매칭을 먼저 확인한다. 여기서 실패하면 나머지가 무의미하다.
 
@@ -61,7 +61,7 @@ pnpm push:local <리포 경로> --adapter <name> --project <slug>
 curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 ```
 
-**게이트**: `{"status":"skipped","reason":"no-changes"}`.
+**게이트**: 응답이 **배열**이고 그 안에서 대상 프로젝트 항목이 `{"slug":"<slug>","status":"skipped","reason":"no-changes"}`다. 다른 프로젝트 항목이 함께 오는 것은 정상이다 — cron이 준비된 전 프로젝트를 돈다.
 
 - `no-changes`는 **2층(blob 비교)까지 가서 전 파일이 동일했다**는 뜻이다. DB 상태와 리포가 일치하고 writer가 결정적이라는 증거다.
 - **`committed`가 나오면 중단한다.** write가 원본을 정규화하고 있다 — 그 상태로 진행하면 PR이 전 파일 재작성으로 나온다.
@@ -101,11 +101,13 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 
 `docs/ACTIONS.md`를 따라 붙인다. `[skip-l10n]` 커밋이 스킵되는지, 열린 `l10n/sync` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
 
-⚠️ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다.** 프로덕션이 운영 대상을 가리키는 동안 다른 리포의 CI는 409를 맞는다 (MVP §7 "다중 프로젝트" 비범위의 비용). CI 층 자체는 어댑터와 무관하므로, 어댑터 검증이 목적이면 이 단계를 건너뛴다.
+✅ **두 리포의 CI를 동시에 받을 수 있다** (2026-09-07 — 토큰이 프로젝트를 정한다). 각 대상 리포의 secret `PUSH_TOKEN`이 **그 프로젝트의 토큰**이면 된다. CI 층 자체는 어댑터와 무관하므로, 어댑터 검증이 목적이면 이 단계를 건너뛴다.
 
 ### 6. 정리 — **생략 금지**
 
-- `.env.local`의 `ACTIVE_PROJECT_SLUG`를 **원래 값으로 되돌린다**
+- `.env.local`의 `PUSH_TOKEN`을 **원래 값으로 되돌린다**(검증용으로 다른 프로젝트 토큰을 넣었다면)
+- 검증용으로 발급한 토큰을 **회수한다** — 설정 화면에서 재발급하면 옛 토큰이 즉시 무효다
+- 검증용으로 만든 `Project` 행·키·번역을 지운다
 - dev 서버 종료
 - 편집을 되돌릴지 판단: PR을 머지했으면 DB와 리포가 일치하므로 그대로 둔다. **머지하지 않았으면 원복한다**
 - 실물 리포에 실수로 낸 PR이 있으면 닫고 `l10n/sync`를 삭제한다
@@ -123,15 +125,15 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
    보존:      주석 · 빈 줄 · 키 순서 · 인용 부호 · <포맷별 항목>
 4 머지 후:    dev head [skip-l10n] ✅ / 재pull no-edits ✅
 5 CI:         스킵(사유) / green
-6 정리:       ACTIVE_PROJECT_SLUG 원복 ✅ / dev 종료 ✅ / <기타>
+6 정리:       PUSH_TOKEN 원복 ✅ / 검증용 행 삭제 ✅ / dev 종료 ✅ / <기타>
 ```
 
 ## 금지 사항
 
 - **실물 오픈소스 리포를 대상으로 삼지 않는다.** 폐기용 복제본만.
 - **PR 머지를 대신 하지 않는다** — 사용자에게 명령을 주고 대기한다.
-- **프로덕션 `ACTIVE_PROJECT_SLUG`를 바꾸지 않는다** — 로컬 dev 서버로 돌린다.
+- **프로덕션 env·프로덕션 DB를 검증 때문에 바꾸지 않는다** — 로컬 dev 서버 + dev DB로 돌린다.
 - **2단계 게이트를 건너뛰지 않는다.** 바이트 고정점이 깨진 채 3단계로 가면 PR이 전 파일 재작성으로 나오고, 그걸 "diff가 크네"로 넘기면 결정성 붕괴를 놓친다.
-- **정리(6단계) 생략 금지** — `ACTIVE_PROJECT_SLUG`가 남아 있으면 다음 push가 엉뚱한 프로젝트로 간다.
+- **정리(6단계) 생략 금지** — 검증용 `Project` 행이 남으면 **야간 pull이 그것까지 순회한다**(준비된 행이면 매일 밤 실패 로그를 남기고, `[pull] failed=N`이 상시 1 이상이 되어 진짜 장애가 묻힌다).
 - **`pnpm adapter-survey` 실행 금지** — 이 스킬은 리포 하나를 깊게 보고, 실측은 129개를 얕게 본다. 재측정 판단은 `/push` 4d.
 - **커밋·배포 안 함** — 검증 스킬이다. 코드를 고쳐야 하면 `/tdd` → `/implement`로 나간다.

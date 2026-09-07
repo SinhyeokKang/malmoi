@@ -510,3 +510,64 @@ _이 아래에 새 항목을 추가한다._
   - **키를 지우기 전에 그 키를 든 곳을 센다.** 지금은 넷이다 — `grep -rn 'GITHUB_APP_PRIVATE_KEY' .env.example CLAUDE.md`로 목록을 확인하고, `vercel env ls production`·`preview` 둘을 각각 본다.
   - ⚠️ **`vercel env add --force`의 성공 메시지를 믿지 않는다** (같은 라운드에서 실측). Preview에서 `✓ Overrode`를 출력하고도 값이 3일 전 그대로였고, Production은 같은 명령이 먹었다. **갱신 뒤 `vercel env ls <environment>`의 시각 열로 확인**하고, 안 바뀌었으면 `rm` 후 다시 넣는다.
   - **환경변수를 바꿔도 이미 떠 있는 배포는 옛 값을 쓴다.** 프로덕션 복구는 재배포까지가 한 단위다.
+
+### 2026-09-07 — 클라이언트 번들에 7.2MB가 들어갔고, 확인이 잘못된 패턴을 grep해서 "안전"으로 읽었다
+
+- **영역**: `components/translation-input.tsx` → `lib/onboarding/message.ts` → `lib/onboarding/slug.ts` → `lib/pull/trigger.ts` → `lib/adapters/index.ts` → `lib/adapters/ts-dict.ts` → `ts-morph`
+- **증상**: 프로덕션에 나가지 않았다 — T7 작업 중 빌드 산출물을 세어 보다 잡았다. `.next/static/chunks`에
+  **7.2MB 청크 하나**가 있고 `/projects/new`·`/projects/[slug]/settings`·`.../translations` **세 페이지의
+  client-reference-manifest**가 그것을 참조했다. 내용은 TypeScript 컴파일러(`SyntaxKind`·`createSourceFile`)였고,
+  `ts-morph`가 그것을 통째로 물고 온다.
+- **근본 원인**: T6이 `not-ready` 문구를 화면에 닿게 하려고 **클라이언트 컴포넌트에서 `lib/onboarding/message.ts`를
+  import했다.** 그 모듈은 문구 상수를 위해 `./slug`의 `PROJECT_SLUG_MAX`를 값으로 읽고, `slug.ts`는 형식 판정을
+  **한 벌로 두려고** `lib/pull/trigger.ts`의 `isRefSafeSlug`를 부른다 — T1의 옳은 결정이다. 문제는 `trigger.ts`가
+  **판정과 I/O를 같은 파일에 들고 있었다**는 것이다: 그 파일 하나가 `lib/github`(octokit)과 `lib/pull/run`→`lib/adapters`
+  (어댑터 전부, ts-dict 포함)를 함께 문다. **"판정을 공유한다"가 "그 파일의 그래프를 전부 가져온다"와 같은 뜻이 되는
+  구조**였고, 잎 모듈이 아니라 오케스트레이션 파일에 판정을 둔 것이 그것을 만들었다.
+  - **확인이 틀린 이유가 따로 있다.** T6에서 이 경계를 의심해 실제로 빌드 산출물을 grep했는데 **`@octokit`·
+    `getInstallationOctokit`만** 봤다. 그 둘은 정말로 없었다(그쪽은 셰이킹됐다) — 그래서 "트리 셰이킹이 떼어낸다"는
+    결론을 내리고 **주석으로 그렇게 단언했다.** 한 번의 grep은 **자신이 고른 패턴만** 답하고, 무게가 어디서 오는지는
+    묻지 않는다. `pnpm build`도 침묵한다: 청크 크기를 라우트 표에 찍지 않는다.
+- **그물**: 놓친 것 — `pnpm typecheck`(타입이 맞다) · `pnpm test` 1755건(번들을 안 본다) · `pnpm build`(성공한다) ·
+  `credential-separation.test.ts`(`lib/onboarding/`이 `@/lib/github`을 **직접** import하지 않는지만 본다 — 2홉
+  건너서는 안 본다) · T6 code-review(같은 잘못된 전제를 읽었다). 잡은 것 — **T7에서 빌드 산출물의 청크 크기를
+  눈으로 센 것 하나뿐**이다.
+- **재발 방지**:
+  - `lib/pull/ref-slug.ts`로 판정을 내렸다 — **import이 0인 잎 모듈**이고 `trigger.ts`가 재수출한다. 규칙은 한 벌,
+    무게는 따라오지 않는다.
+  - **`components/__tests__/client-graph.test.ts`가 상시로 센다**: `"use client"` 파일에서 시작해 `@/lib/**`·상대
+    경로의 **값 import만** 따라가고(`import type`은 지운다, `"use server"` 파일에서 멈춘다), `ts-morph`·`octokit`·
+    `@prisma/client`·`node:fs`·`server-only`가 그래프에 나타나면 red다. 스캐너가 red를 낼 수 있는지도 함께 검사한다.
+  - grep: `for f in $(grep -rl 'use client' components app --include='*.tsx'); do grep -o 'from "@/lib/[a-z-]*' $f; done`
+    → 현재 11개 파일이 `@/lib/*`를 읽고, 그중 값 import는 `auth/message`·`github-connect/message`·`onboarding/message`·
+    `pull/message`·`utils`뿐이다(`keys/save`·`adapters/types`는 `import type`). 전수 통과.
+  - **판정 함수를 오케스트레이션 파일에 두지 않는다.** `syncBranchFor`처럼 I/O를 부르는 함수와 `isRefSafeSlug`처럼
+    순수한 판정이 같은 파일에 있으면, 후자를 공유하는 순간 전자의 그래프가 함께 간다.
+
+### 2026-09-07 — `revalidatePath`가 방금 받은 적재 결과 문구를 씻어냈다 (불변식 9가 사용자에게 안 닿았다)
+
+- **영역**: `app/(edit)/projects/[slug]/settings/page.tsx`(상태 섹션) · `components/onboarding/first-ingest-retry.tsx`
+- **증상**: 실물 검증에서 잡았다. 설정 화면의 [다시 시도]를 누르면 적재는 성공하는데 **결과 문구가 나타나지
+  않는다.** 상태 텍스트만 "첫 적재 대기"에서 "첫 적재가 끝났어요"로 바뀌고, `ingestHeadline`이 만든
+  "4개 키를 적재했어요"는 화면에 한 프레임도 남지 않았다.
+- **근본 원인**: `runFirstIngest`가 `revalidatePath`를 부르고 → 서버가 상태 섹션을 다시 렌더하고 → readiness가
+  `awaiting_first_sync`에서 `ready`로 바뀌면서 **`{readiness === "awaiting_first_sync" && <FirstIngestRetry/>}`의
+  분기가 거짓이 된다.** 컴포넌트가 언마운트되면 그 안에 있던 결과도 함께 사라진다. **성공이 곧 자기 표시기를
+  지우는 구조**였고, `revalidatePath`가 클라이언트 상태를 보존한다는 성질(같은 자리·같은 타입이면 넘어간다)에
+  **의존하는 코드가 그 자리를 잃어버리게** 짜여 있었다.
+  - **왜 심각한가**: `failed > 0`인 부분 적재에서 "M건을 읽지 못했어요"(SAAS 불변식 9)가 **아무에게도 닿지
+    않는다.** 그 순간 `lastCommitSha`는 이미 세워져 행은 `ready`이고, 사유는 그 호출의 반환값에만 있었다
+    (중간 상태 무저장 — design §3.4). 조용히 값이 빠진 채 "끝났어요"만 남는다.
+- **그물**: 놓친 것 — `pnpm test`(렌더 테스트가 없다) · typecheck · build · `/code-review`(정적 리뷰라 언마운트
+  타이밍을 안 본다). 잡은 것 — **ego-browser로 실제 버튼을 누른 것**. 성공 경로였고, 값도 맞았고, 화면만 비어
+  있었다 — `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일과 같은 부류다.
+- **재발 방지**:
+  - 컴포넌트를 분기 **밖으로** 옮기고 `canRun` prop으로 버튼만 감췄다. 같은 자리에 남으므로 클라이언트 상태가
+    서버 재렌더를 넘어간다.
+  - **규칙: Server Action이 `revalidatePath`를 부르고 그 결과를 인라인으로 보이는 컴포넌트는, 그 revalidate가
+    바꾸는 조건부 분기 안에 있어서는 안 된다.**
+  - grep: `grep -rn 'revalidatePath(' app/ lib/ | grep -v import` → **호출 아홉**(저장 1 · 초대·멤버 2 ·
+    생성·적재·회전 4 · 재연결·해제 2). 그중
+    결과를 인라인으로 보이는 호출부는 `invite-form`(같은 자리에 남는다) · `reconnect-button`(**성공 문구를 일부러
+    두지 않는다** — 건강성 배지가 대신 말한다) · `push-token-panel`(토큰 섹션은 readiness와 무관해 분기가 없다) ·
+    `first-ingest-retry`(이번에 고친 것)뿐이고 나머지는 안전하다.

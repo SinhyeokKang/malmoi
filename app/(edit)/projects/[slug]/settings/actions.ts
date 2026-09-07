@@ -17,7 +17,7 @@ import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { httpStatus } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
-import { signState, stateCookieName } from "@/lib/github-connect/state";
+import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
@@ -36,9 +36,6 @@ import { probeRepo } from "@/lib/github";
 const Input = z.object({ slug: z.string().min(1) });
 
 const PROVIDER = "github-app";
-
-/** 인가 화면까지 왕복하기에 충분하고, 방치된 탭이 오래 열려 있지 않을 만큼 짧다. */
-const STATE_MINUTES = 10;
 
 export type StartConnectResult = { ok: false; error: string };
 
@@ -78,23 +75,24 @@ export async function startGithubConnect(raw: { slug: string }): Promise<StartCo
   const { secure } = origin;
   const nonce = randomBytes(32).toString("base64url");
 
-  // ⚠️ **목적지 slug는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
+  // ⚠️ **목적지는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
   // 그 값을 정할 수 있다 — 서명 대상에 넣으면 open redirect 판정 자체가 필요 없다 (design §3.1).
   const cookieStore = await cookies();
   cookieStore.set(
     stateCookieName(secure),
     signState({
       userId,
-      slug,
+      // 이 Action은 설정 화면 전용이다 — 생성 경로는 `{kind:"new"}`로 서명한다 (design §3.6).
+      dest: { kind: "settings", slug },
       nonce,
-      expiresAt: new Date(Date.now() + STATE_MINUTES * 60 * 1000),
+      expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),
     }),
     {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      maxAge: STATE_MINUTES * 60,
+      maxAge: STATE_TTL_MINUTES * 60,
       // `__Host-` 접두와 짝이어야 한다 — 접두만 붙이고 Secure를 빼면 브라우저가 쿠키를 버린다.
       secure,
     },

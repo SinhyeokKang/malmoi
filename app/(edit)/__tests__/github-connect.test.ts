@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ProbeResult } from "@/lib/github-connect/health";
 
 import { createHarness, sessionFor } from "./harness";
 
@@ -59,7 +60,16 @@ const { connectRepository, disconnectGithub, startGithubConnect } = await import
 );
 
 /** 하네스의 기본 프로젝트는 `o/r`이고 설치 id가 `"1"`이다 (`FORMAT`). */
-const PROBE_OK = { status: "ok" as const, installationId: "1", fullName: "o/r" };
+// ⚠️ **`satisfies ProbeResult`가 계약을 붙든다.** mock이 `vi.fn()`이라 인자 타입이 `any`이고, 주석이 없으면
+// `ProbeResult`에 필수 필드가 늘어도 이 리터럴이 red가 되지 않는다 — T6이 `probe.defaultBranch`를
+// `Project.baseBranch`에 넣는 순간 `undefined`를 저장하는 경로가 green으로 통과한다
+// (code-review 2026-09-07 🟡3 · 이 리포가 이미 밟은 "타입 검사가 계약을 못 본다").
+const PROBE_OK = {
+  status: "ok",
+  installationId: "1",
+  fullName: "o/r",
+  defaultBranch: "main",
+} satisfies ProbeResult;
 
 let db: ReturnType<typeof createHarness>;
 
@@ -259,7 +269,7 @@ describe("connectRepository — 저장", () => {
   });
 
   it("저장하는 installationId는 **probe가 준 값**이다 — 클라이언트가 보낸 것이 아니다", async () => {
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r" });
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main" } satisfies ProbeResult);
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
 
     await connectRepository({ slug: "acme" });
@@ -269,7 +279,7 @@ describe("connectRepository — 저장", () => {
   });
 
   it("리네임된 리포면 새 owner/name도 함께 저장한다 — 이름이 갱신되는 유일한 경로다", async () => {
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website" });
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website", defaultBranch: "main" } satisfies ProbeResult);
     hoisted.listInstallationRepos.mockResolvedValue(["newco/website"]);
 
     await connectRepository({ slug: "acme" });
@@ -289,7 +299,7 @@ describe("connectRepository — 저장", () => {
       accounts: [{ userId: "u-owner", provider: "github-app", providerAccountId: "gh-1" }],
     });
     hoisted.prisma = db.prisma;
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r" });
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main" } satisfies ProbeResult);
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
 
     await connectRepository({ slug: "acme" });

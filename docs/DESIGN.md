@@ -120,7 +120,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ## 6. 편집 UI 특화 규칙
 
-화면은 다섯이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`) · **설정**(`/projects/[slug]/settings` — 리포 연결 + GitHub 계정, §6.5). MVP §3.2가 정한 것은 번역 테이블 하나였고, 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였으며(`features/tenant-auth/design.md` §4.1), 설정은 SaaS **4단계**가 같은 방식으로 붙였다. 공통 패턴은 §6.4.
+화면은 여섯이다 — 로그인(`app/page.tsx`) · 프로젝트 목록(`/projects`) · **번역 테이블**(이 절) · 초대 수락(`/invite/[token]`) · **설정**(`/projects/[slug]/settings` — 리포 연결 + 상태 + push 토큰 + 워크플로 + GitHub 계정, §6.5) · **새 프로젝트**(`/projects/new` — SaaS 5단계, §6.6). MVP §3.2가 정한 것은 번역 테이블 하나였고, 셋은 SaaS 2단계가 "기존 관용구 그대로" 붙였으며(`features/tenant-auth/design.md` §4.1), 설정은 SaaS **4단계**가, 온보딩은 **5단계**가 같은 방식으로 붙였다. 공통 패턴은 §6.4.
 
 ### 6.1 키 테이블
 
@@ -158,7 +158,17 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`bg-amber-100/80 text-amber-800`)·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**.
+**첫 적재 상태 3종** (`planProjectReadiness` — `/projects` 목록 · 설정 화면의 상태 섹션):
+
+| 상태 | 색 | 근거 |
+|---|---|---|
+| `ready` | **표시 없음** (목록) / 무색 `text-muted-foreground`(설정) | 가장 흔한 상태가 가장 조용해야 한다 — "번역됨"·"연결됨"과 같은 원리다. 그래서 `readinessLabel("ready")`가 **`null`을 돌려준다** |
+| `awaiting_first_sync` → "첫 적재 대기" | 무색 — `text-muted-foreground` | **오류가 아니라 진행 중이다.** destructive를 주면 사용자가 프로젝트가 깨진 것으로 읽는다 |
+| `setup` → "준비 중" | 무색 — `text-muted-foreground` | 같은 이유. `not-connected`·`unknown`을 무색으로 둔 것의 연장이다 |
+
+⚠️ **내부 이름을 화면에 쓰지 않는다** — 번역자도 이 목록을 보고 `awaiting_first_sync`는 그에게 아무것도 알려주지 않는다 (SAAS §3). 문구는 `readinessLabel`이 한 곳에서 만든다.
+
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`bg-amber-100/80 text-amber-800`)·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**. 상태 축 셋은 **색을 하나도 쓰지 않는다.**
 
 ### 6.3 외부 링크
 
@@ -176,19 +186,38 @@ SaaS 화면 넷이 hand-rolled 컨트롤을 쓴다(`components/ui/button.tsx`는
 | **텍스트 버튼** | `text-muted-foreground hover:text-foreground text-xs underline` + 포커스 링 셋 | 로그아웃, **연결 해제**, **설정**, **← 번역** |
 | **disabled** | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent` | 툴바 버튼 전부 |
 | **pending** | 버튼 라벨 교체("만드는 중…") — 옆 문구가 아니다(헤더 폭을 흔든다). `pull-button`의 옆 문구는 예외로 남았다 | |
+| **pending — 목록 안** | ⚠️ **누른 버튼 하나만** 교체한다. 목록이 하나의 `pending` 플래그를 공유하면 12행이 동시에 "탐지하는 중…"이 되어 사용자가 자기 선택을 화면에서 확인할 수 없다 (2026-09-07 리포 목록에서 실제로 그랬다) | 리포 고르기 |
 | **인라인 상태줄**(컨트롤 옆) | `text-xs`. 오류 `text-destructive`, 진행·정보 `text-muted-foreground` | 번역 셀, Publish, 초대 폼, **재연결·연결·해제 오류** |
 | **페이지 수준 거부 문구** | `text-destructive text-sm` | `/projects?e=`, 초대 페이지, 로그인 화면, **설정 화면의 `?e=`** |
-| **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). **블록 요소(`<p>`)면 `inline-block`을 더 단다** | 초대 링크, 리포 `owner/name`, `@handle` |
+| **값 칩**(링크·slug) | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). **블록 요소(`<p>`)면 `inline-block`을 더 단다** | 초대 링크, 리포 `owner/name`, `@handle`, push 토큰 |
+| **코드 블록**(여러 줄) | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + 옆에 툴바형 [복사] | 워크플로 YAML (`components/onboarding/workflow-block.tsx`) |
 
 ⚠️ **툴바형의 `font-medium`은 현재 코드가 갈려 있다** — `reconnect-button`에는 있고 `pull-button`·`invite-form`에는 없다. 표가 정본이므로 **있는 쪽으로 맞춘다**(다음에 그 파일을 만질 때).
+
+⚠️ **코드 블록은 자기 컨테이너에서만 스크롤한다** (`overflow-x-auto`가 `<pre>` 자신에 붙는다). 없으면 긴 줄이 페이지 본문을 좌우로 흔든다 — 넓은 표와 같은 규칙이다 (§6.1).
 
 **포커스 링 셋**은 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`이다 — §7.
 빈 상태(로케일 없음·키 없음·멤버십 없음)는 `text-sm` 한 줄 + `text-muted-foreground text-xs` 원인 한 줄이고 문체는 **"-요"** 로 통일한다(번역 화면의 "-다" 둘은 낡은 쪽이다).
 
+### 6.6 새 프로젝트 (`/projects/new`) — SaaS 5단계
+
+**②~⑥이 한 라우트의 클라이언트 상태다** (`features/project-onboarding/design.md` §2). 단계를 URL로 쪼개지 않는다 — 중간 상태를 서버에 저장하지 않으므로 새로고침하면 처음부터인데, 라우트를 쪼개면 그것이 "깨진 것"으로 보인다.
+
+| 요소 | 규칙 |
+|---|---|
+| 리포 목록 | `divide-y` 목록 + 텍스트 필터. `owner/name`은 **mono**(§4.1) |
+| 후보 목록 | `<fieldset>`+`<legend>`, 라디오. **선택 행은 `bg-muted font-medium`** (`cn()`을 지난다) |
+| 경로 템플릿 | **mono.** `{locale}` 자리를 "언어 자리"라고 한 줄 붙인다 — 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 |
+| 기준 언어 | 라디오, 기본 선택은 `pickBaseLocale`. 로케일 코드는 mono |
+| 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동**이다 |
+| 토큰·YAML | 값 칩 / 코드 블록(§6.4) + [복사] **라벨 교체 "복사됨"** — 잃으면 CI가 죽는 값이라 확인이 필요하다 |
+
+⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨·경로 예시는 서버가 `formatLabel`로 만들어 내려준다 — 그 표를 클라이언트에 복사하면 두 벌이 되고, 그 모듈을 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
+
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다.
-- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다). ⚠️ **화면이 늘 때마다 다시 샜다** — 2026-09-07 검사에서 설정 화면의 "연결 해제"(`components/github-account.tsx`)가 또 빠져 있었다. **그래서 상시 방어선을 뒀다**: `components/__tests__/focus-ring.test.ts`가 `app/`·`components/`(생성물 `ui/` 제외)의 모든 `<button>`·`<input>`을 소스에서 훑어 셋을 다 드는지 센다. 눈으로는 두 번 다 놓쳤다 — 탭으로 지나가야 보이는 결함이다. 새 컨트롤을 만들 때 §6.4 표에서 클래스를 복사하면 이 셋이 딸려온다.
+- **포커스 링을 지우지 않는다.** hand-rolled 컨트롤에도 `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none` 셋을 붙인다 — shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않는다 (2026-09-06까지 버튼 4곳에 없었다). ⚠️ **화면이 늘 때마다 다시 샜다** — 2026-09-07 검사에서 설정 화면의 "연결 해제"(`components/github-account.tsx`)가 또 빠져 있었다. **그래서 상시 방어선을 뒀다**: `components/__tests__/focus-ring.test.ts`가 `app/`·`components/`(생성물 `ui/` 제외)의 모든 `<button>`·`<input>`을 소스에서 훑어 셋을 다 드는지 센다. ⚠️ **그 검사는 여는 태그의 소스를 읽으므로 링 셋을 공유 상수에 숨기면 안 된다** — `const TOOLBAR = "… focus-visible:ring-ring …"`처럼 묶으면 태그에 그 문자열이 없어 방어선이 그 파일을 통째로 못 본다. 컨트롤마다 리터럴로 적는 것이 **의도된 중복**이다 (2026-09-07 온보딩 화면에서 11개가 그렇게 새려 했다). 눈으로는 두 번 다 놓쳤다 — 탭으로 지나가야 보이는 결함이다. 새 컨트롤을 만들 때 §6.4 표에서 클래스를 복사하면 이 셋이 딸려온다.
 - `--ring` == `--border`라서 **`muted`·`secondary` 표면 위에선 포커스 링이 약하다.** 그런 자리엔 `ring-offset`을 주거나 배경을 `background`로 되돌린다.
 
 ## 8. className & 변형

@@ -14,7 +14,12 @@
 
 /** `probeRepo`(`lib/github.ts`, App 쪽 호출)의 결과. 이 판정층이 아는 유일한 외부 모양이다. */
 export type ProbeResult =
-  | { status: "ok"; installationId: string; fullName: string }
+  /**
+   * @param defaultBranch `GET /repos` 응답에 이미 있다 — 호출을 늘리지 않는다. `Project.baseBranch`를
+   *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (design §4).
+   *   `planConnectionHealth`는 이 필드를 보지 않는다 — 판정은 그대로다.
+   */
+  | { status: "ok"; installationId: string; fullName: string; defaultBranch: string }
   | { status: "not-installed" }
   | { status: "error" };
 

@@ -3,7 +3,11 @@
  * 적재 + 사용처 스캔 → `POST /api/push`. **TASK 7의 GitHub Actions가 할 일과 같은 순서다** —
  * 워크플로는 이 스크립트를 부르거나 같은 단계를 재현한다.
  *
- *   pnpm push:local <대상 디렉터리> [--url http://localhost:3000] [--wrapper <module>#<export>[()]]...
+ *   pnpm push:local <대상 디렉터리> --project <slug> [--url http://localhost:3000] [--wrapper <module>#<export>[()]]...
+ *
+ * ⚠️ **`--project`가 필수다** (2026-09-07). 서버 env 폴백이 사라졌다 — 서버는 프로젝트를 env가 아니라
+ * **토큰**으로 정하므로 폴백은 "로컬에서만 성립하는 값"이 되고, `PUSH_TOKEN`이 **그 프로젝트의 토큰 원문**이라
+ * slug와 어긋나면 409다.
  *
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
@@ -13,11 +17,13 @@ import { join } from "node:path";
 
 import { config } from "dotenv";
 
-import { adapterFor, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
+import { detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
-import { optionalEnv, requireEnv } from "../lib/env";
-import { buildPushPayload, pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
+import { optionalEnv } from "../lib/env";
+import { AppError } from "../lib/failure";
+import { assemblePushInput } from "../lib/push/assemble";
+import { buildPushPayload } from "../lib/push/payload";
 import {
   DEFAULT_WRAPPERS,
   parseWrapperSpec,
@@ -32,9 +38,12 @@ const argv = process.argv.slice(2);
 /** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
 const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base"]);
 
+const USAGE =
+  "사용법: pnpm push:local <대상 디렉터리> --project <slug> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--base <locale>]";
+
 const target = findTarget(argv, VALUE_FLAGS);
 if (!target) {
-  console.error("사용법: pnpm push:local <대상 디렉터리> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--project <slug>] [--base <locale>]");
+  console.error(USAGE);
   process.exit(2);
 }
 const baseUrl = flagValue(argv, "--url") ?? "http://localhost:3000";
@@ -48,11 +57,22 @@ const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : s
   return parsed;
 });
 
+// **대상 프로젝트는 인자로만 온다.** 폴백을 두면 값이 어디서 왔는지 진단할 수 없고, 기본값 인자 위치의
+// 평가가 "플래그를 줬는데 환경변수가 없어 죽는" 실패를 만든 전례가 있다 (POSTMORTEM 2026-08-31 🔁).
+const projectSlug = flagValue(argv, "--project");
+if (projectSlug === undefined) {
+  console.error("--project <slug>가 필요하다 — 서버는 이 slug를 토큰이 정한 프로젝트와 대조한다(다르면 409).");
+  console.error(USAGE);
+  process.exit(2);
+}
+
 // 토큰은 **적재·스캔 전에** 확인한다 — 다 끝낸 뒤 stdout에 결과를 찍고 나서 죽으면 파이프 출력이
 // 잘릴 수 있고(POSTMORTEM 2026-08-31), 애초에 없는 토큰으로 일을 시작할 이유가 없다.
+// ⚠️ **`PUSH_TOKEN`은 그 프로젝트의 토큰 원문이다** — 서버 env와 같은 값이 아니다(그런 변수는 더 없다).
+// 프로젝트 설정 화면에서 발급한 값을 로컬 `.env.local`에 둔다.
 const token = optionalEnv("PUSH_TOKEN");
 if (token === undefined) {
-  console.error("PUSH_TOKEN이 없다 — .env.local을 확인한다.");
+  console.error("PUSH_TOKEN이 없다 — 그 프로젝트의 토큰 원문을 .env.local에 넣는다(설정 화면에서 발급).");
   process.exit(1);
 }
 
@@ -60,13 +80,6 @@ if (token === undefined) {
 const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 // 커밋 **시각**은 역행 판정의 근거다 (ARCHITECTURE §5.5.5). `%cI`가 offset이 붙은 ISO 8601이다.
 const commitAt = execFileSync("git", ["-C", target, "show", "-s", "--format=%cI", "HEAD"], { encoding: "utf8" }).trim();
-// 서버와 같은 `.env.local`을 읽으므로 기본값은 항상 통과한다. `--project`로 덮으면
-// 오배송 거부(409)를 로컬에서 실제로 확인할 수 있다.
-//
-// ⚠️ `flagValue(...) ?? requireEnv(...)`의 순서가 요지다 — 반대로 두면 **인자가 먼저 평가되므로**
-// 플래그를 명시해도 환경변수가 없으면 죽는다 (POSTMORTEM 2026-08-31 🔁).
-const projectSlug = flagValue(argv, "--project") ?? requireEnv("ACTIVE_PROJECT_SLUG");
-
 const paths = walkFiles(target);
 const sources: SourceFileInput[] = paths.flatMap((path) => {
   const kind = sourceKind(path);
@@ -101,26 +114,30 @@ if (!format) {
   console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일) — 연동 불가.`);
   process.exit(1);
 }
-const adapter = adapterFor(format);
-
-const read = adapter.read(format, selectLocaleFiles(adapter.layout, format, paths, probe));
-if (read.errors.length) {
-  console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
-  for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${e.message}`);
-  process.exit(1);
-}
-
-// ⚠️ **base가 키 집합의 진실이다** — `keySet`은 base 엔트리로만 만들어진다. 추정(`en` 우선 → 사전순)이
-// 틀리면 진짜 base에만 있는 키가 적재에서 빠지고 orphaned로 떨어진다. `ingest`엔 `--base`가 있었는데
-// 실제 적재 경로엔 없었다 (2026-09-04 audit #1). 명시가 있으면 로케일 목록에 있어야 한다.
+// ⚠️ **select → read → base 판정은 `lib/push/assemble.ts`가 든다** (2026-09-07). 서버의 첫 적재가 같은
+// 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (design §4).
+// base가 키 집합의 진실이라 명시가 탐지 목록에 없으면 그 함수가 던진다 (2026-09-04 audit #1).
+// `--base`가 탐지 목록에 없으면 `assemblePushInput`이 던진다. **플래그 이름을 먼저 찍는다** — 사용자가
+// 고쳐야 하는 것은 인자이고, composite action에서는 그 입력 이름이 `base-locale`이다.
 const baseOverride = flagValue(argv, "--base");
 if (baseOverride !== undefined && !format.locales.includes(baseOverride)) {
   console.error(`--base ${baseOverride}: 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다.`);
   process.exit(1);
 }
-const baseLocale = baseOverride ?? pickBaseLocale(format.locales);
-if (baseLocale === undefined) {
-  console.error("로케일이 없다 — 연동 불가.");
+let assembled: ReturnType<typeof assemblePushInput>;
+try {
+  assembled = assemblePushInput({ paths, probe, format, baseLocale: baseOverride });
+} catch (error) {
+  // 어댑터가 던지는 예기치 못한 오류까지 삼키지 않는다 — 우리 판정만 한 줄로 접고 나머지는 스택을 남긴다.
+  if (!(error instanceof AppError)) throw error;
+  console.error(error.message);
+  process.exit(1);
+}
+const { read, baseLocale } = assembled;
+
+if (read.errors.length) {
+  console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
+  for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${e.message}`);
   process.exit(1);
 }
 

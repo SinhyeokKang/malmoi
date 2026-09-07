@@ -11,10 +11,15 @@
 export type GuardResult = "ok" | "wrong-project" | "stale-commit";
 
 /**
- * 페이로드가 지금 운영 중인 프로젝트를 향하는가.
+ * 페이로드가 **이 토큰이 정한 프로젝트**를 향하는가.
  *
  * 어긋난 페이로드가 적용되면 그 프로젝트의 키가 전부 orphan되고 이물 키가 삽입되는데,
  * `PushPlan`에 `toDelete`가 없고 `Translation`의 FK가 `RESTRICT`라 **지울 수 없다.**
+ *
+ * ⚠️ **두 번째 인자가 2026-09-07에 바뀌었다** — 서버 env의 활성 프로젝트 slug 하나에서
+ * `project.slug`(토큰으로 조회한 행)로. 순수 함수라 판정은 그대로이고 바뀐 것은 "무엇과 대조하는가"다.
+ * 페이로드 slug로 행을 찾아 대조하면 순환이라 아무것도 막지 못한다 — 조회가 먼저, 대조가 나중이다
+ * (design §3.8).
  */
 export function checkProjectSlug(payloadSlug: string, activeSlug: string): GuardResult {
   // Actions가 셸 치환으로 값을 만들면 개행이 딸려올 수 있다.

@@ -31,6 +31,11 @@
 나누기로 했다가 2026-09-04에 앞당겨 나눴다 (MVP §8.4, 아래 전역 미결). SaaS 2단계(tenant-auth)는
 2026-09-06에 프로덕션에 나갔다 — 진행은 SAAS §8이 정본이다.
 
+**2026-09-07 현재**: 4단계(GitHub 설치 연결)와 5단계(탐지 온보딩)의 **코드가 dev에 있다.** 5단계는
+T1~T7이 끝났고 **T8(프로덕션 전환)이 남았다** — `db:deploy` → `/merge` → 기존 프로젝트 넷의 토큰
+재발급 → 대상 리포 Actions secret 교체가 한 세션에 붙어 있어서 사람이 밟는다. **그때까지 `/merge`를
+하지 않는다**: T3가 프로덕션에 가는 순간 넷의 CI가 401이고 발급 화면이 프로덕션에 있어야 복구된다.
+
 ### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
 
 **SaaS화 전 부채 정리로 코드베이스 전수 감사를 돌렸다** (불변식·원칙·경계·부채 4차원, 발견 45건).
@@ -128,8 +133,9 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
       결과가 같은 것이고, **"덮지 않았다"가 아니라 "덮어도 같다"** 이다
   - **발견**: 되돌아간 셀에 `updatedBy`가 남아 편집 UI가 "리포 값 — 편집자 이름"으로 보여준다.
     편집은 사라졌는데 화면은 남아 있다고 말한다. UI 동결이라 고치지 않고 MVP §10에 올렸다
-  - 절차: `.env.local`의 `ACTIVE_PROJECT_SLUG`를 임시로 `order-check`로 두고 dev 서버를 띄웠다.
-    편집은 Prisma 직접 쓰기다(`saveTranslation` 경로는 B-2가 덮는다). 끝나고 env를 복구했다
+  - 절차: 그때는 서버 env 하나가 대상 프로젝트를 정했으므로 그 값을 임시로 `order-check`로 두고 dev
+    서버를 띄웠다(그 변수는 2026-09-07에 사라졌다). 편집은 Prisma 직접 쓰기다(`saveTranslation` 경로는
+    B-2가 덮는다). 끝나고 env를 복구했다
 
 ### C. Actions + Cron ✅ (2026-09-03)
 
@@ -158,18 +164,22 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   - **Vercel 실측 (2026-09-04)**: Production Branch `main` 확인 / `DATABASE_URL`을 Production(prod DB)·Preview(dev DB) 두 항목으로 분리 / 나머지 9개는 공유 유지 — cron은 프로덕션 배포에서만 돌고, `PUSH_TOKEN`으로 preview에 push가 들어와도 dev DB를 친다
   - ⚠️ **같은 SHA에는 preview가 따로 생기지 않는다.** dev를 main과 같은 커밋에서 딴 직후 preview 배포가 0건이었다 — Vercel이 이미 배포한 SHA를 다시 배포하지 않기 때문이고, 설정 문제가 아니다. dev에 커밋이 하나 얹히면 뜬다
 - [x] **preview 전용 GitHub OAuth 앱** ✅ (2026-09-04) — callback `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app/api/auth/callback/github`, Preview 스코프에 등록. **preview 로그인 실측 통과.** ⚠️ **env를 바꾸면 재배포해야 반영된다** — 등록만 하고 재배포를 빠뜨려 GitHub이 빈 `client_id`에 404를 줬고, 앱·ID·secret을 차례로 의심하다 시간을 썼다
-- [x] **dev DB가 비어 있다** ✅ 해소 (2026-09-05, SAAS §8 0단계 — `order-check` 23키·3로케일·번역 69건을 `push:local`로 적재했다. prod에서 복제하지 않았다). 아래는 그때의 관측이다: preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈췄다 — `ACTIVE_PROJECT_SLUG`는 Production과 공유라 값이 맞지만 그 slug의 행이 dev 쪽에 없다. **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
+- [x] **dev DB가 비어 있다** ✅ 해소 (2026-09-05, SAAS §8 0단계 — `order-check` 23키·3로케일·번역 69건을 `push:local`로 적재했다. prod에서 복제하지 않았다). 아래는 그때의 관측이다: preview가 로그인 뒤 "프로젝트를 찾을 수 없다"로 멈췄다 — 대상 프로젝트를 정하던 서버 env가 Production과 공유라 값은 맞지만 그 slug의 행이 dev 쪽에 없었다(그 변수는 2026-09-07에 사라졌다). **편집 UI가 동결이라 지금 채우지 않는다** (2026-09-04 판단). 필요해지는 시점은 SaaS UI 착수이고, 그때 경로는 셋이다: prod의 `Project` 행 복제 → `pnpm push:local`로 적재 → preview에서 확인
   - ⚠️ **preview는 Vercel SSO 뒤에 있다** (프로덕션만 Deployment Protection을 껐다). 실측: preview의 `/`·`/keys`·`/api/pull`이 전부 `vercel.com/sso-api`로 가는 302다 — 앱 응답이 아니다. 브라우저는 Vercel 세션으로 통과하므로 사람 확인에는 지장이 없고, **자동 검증을 하려면 `vercel curl`이나 bypass 토큰이 필요하다**
 
-- ⬜ **`ACTIVE_PROJECT_SLUG`가 하나라 두 리포의 CI를 동시에 받을 수 없다** (2026-09-03 관측). 다른 프로젝트
-  페이로드는 `lib/push/guard.ts`가 409 `project mismatch`로 거부한다 — 설계대로 동작한 것이고 버그가 아니다.
-  다만 **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야 한다**는 비용이 실제로 발생했다(`bugshot-i18n-test`
-  왕복은 그래서 로컬 dev 서버로 돌렸다). MVP §7 "다중 프로젝트"가 비범위인 대가이고, SaaS화에서 세션이
-  프로젝트를 결정하면 사라진다
-  - **절반이 사라졌다** (2026-09-05, tenant-auth): **편집 경로는 더 이상 이 값을 읽지 않는다** — 프로젝트를
-    URL의 slug와 `ProjectMember`가 정하고, `app/__tests__/entry-points.test.ts`가 그 부재를 상시로 센다.
-    남은 소비자는 `/api/push`(오배송 409 판정)와 `/api/pull`(cron이 도는 프로젝트) 둘이고, 그쪽은
-    **SaaS 5단계**가 `Project.pushTokenHash`와 전 프로젝트 순회로 대체한다 (SAAS §7.8·§4.3②)
+- [x] ✅ **"서버 env 하나가 대상 프로젝트를 정한다"가 사라졌다** (2026-09-07, SaaS 5단계 T3·T4). 원래 관측
+  (2026-09-03)은 **두 리포의 CI를 동시에 받을 수 없다**였다 — 다른 프로젝트 페이로드는 `lib/push/guard.ts`가
+  409 `project mismatch`로 거부했고 그건 설계대로였지만, **검증 대상을 늘릴 때마다 프로덕션 env를 갈아야
+  했다**(`bugshot-i18n-test` 왕복을 로컬 dev 서버로 돌린 이유다).
+  - 세 단계로 사라졌다: **편집 경로**는 2026-09-05(tenant-auth — URL slug + `ProjectMember`),
+    **`/api/push`·CLI 둘**은 T3(`sha256(Bearer)` → `Project.pushTokenHash` 조회 + CLI 인자 필수),
+    **`/api/pull`** 은 T4(`lib/pull/targets.ts`가 고른 전 프로젝트 순회 + 배열 응답).
+  - **그 부재를 상시로 센다**: `app/__tests__/entry-points.test.ts`(편집 경로) ·
+    `scripts/__tests__/required-args.test.ts`(CLI·라우트·targets) · `app/api/__tests__/route-diagnostics.test.ts`
+    (그 값이 없어도 두 라우트가 돈다). ⚠️ **그래서 그 이름은 테스트에 남아 있어야 한다** — 지우면 방어선이
+    함께 사라진다.
+  - ⚠️ **Vercel 세 스코프의 env 항목 삭제와 대상 리포 secret 교체가 남았다** (5단계 T8) — 코드는 그 값을
+    읽지 않으므로 남아 있어도 무해하지만, 남겨 두면 다음 사람이 그것을 설정해야 하는 값으로 읽는다
 
 - [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
   - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **그 확인은 `/merge` 1단계의 `pnpm db:status:prod`다** (`/push` 3단계의 `db:status`는 dev를 본다 — 게이트가 프로덕션 배포 직전에 서야 프로덕션이 코드보다 앞서는 창이 짧다)
@@ -677,6 +687,6 @@ ADAPTER-COVERAGE §11이, 사람이 읽는 PR은 실물 확인이.
 (en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터의 실물 확인은
 이제 이 리포가 정본이다.
 
-⚠️ **`ACTIVE_PROJECT_SLUG`는 현재 `order-check`다** (로컬 `.env.local`). 재생성 어댑터를 계속
-검증하는 동안 그대로 두고, 다른 프로젝트로 push할 일이 생기면 그때 바꾼다 — 프로덕션 env는
-건드리지 않았다.
+⚠️ **당시 대상 프로젝트 env는 `order-check`였다** (로컬 `.env.local`). 재생성 어댑터를 계속 검증하는
+동안 그대로 뒀고 프로덕션 env는 건드리지 않았다. **그 변수는 2026-09-07에 사라졌다** — 지금은
+`push:local`이 `--project`를 필수로 받고 `PUSH_TOKEN`이 그 프로젝트의 토큰 원문이다.

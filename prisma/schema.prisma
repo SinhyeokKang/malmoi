@@ -11,7 +11,8 @@ datasource db {
 }
 
 /// 테넌트 경계. **편집 경로는 멀티테넌트다** (2026-09-05) — 프로젝트는 URL의 slug, 권한은 `ProjectMember`.
-/// ⚠️ `/api/push`·`/api/pull`만 아직 `ACTIVE_PROJECT_SLUG` 하나를 본다 (SaaS 5단계가 `pushTokenHash`로 대체).
+/// ✅ **두 라우트도 단일 프로젝트 가정을 벗어났다** (2026-09-07): push는 `pushTokenHash`가 프로젝트를 정하고,
+/// cron은 준비된 전 프로젝트를 순회한다. 공유 slug env를 읽는 코드가 남아 있지 않다.
 /// 이 경계를 PoC 때 미리 넣은 이유는 나중에 넣으면 복합 unique·복합 PK가 실데이터 이관을 요구하기
 /// 때문이었다(아래 각 모델 주석). 나머지는 전부 additive로 붙었다.
 model Project {
@@ -61,6 +62,14 @@ model Project {
   /// strict라 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는데 복구 경로가 없다.
   /// SHA로는 순서를 알 수 없어 시각을 따로 든다.
   lastCommitAt DateTime?
+
+  /// CI가 `/api/push`를 부를 때 쓰는 토큰의 sha256. **원문은 저장하지 않는다** (SAAS §7.8 —
+  /// `ProjectInvitation.tokenHash`와 같은 모델, 같은 해시 규칙 `lib/push/token.ts`). 인증은 이 값으로 행을
+  /// **조회**한다 — 토큰이 프로젝트를 정하고 slug는 그 뒤에 대조된다. 페이로드 slug로 행을 찾으면 오배송
+  /// 페이로드가 인증 대상을 고른다 (design §3.8).
+  /// null이면 아직 발급 전이고 **어떤 push도 통과하지 못한다** (fail-closed — 서버 설정이 아니라 그 프로젝트의
+  /// 상태라 500이 아니라 401이다). Postgres unique는 NULL 여럿을 허용하므로 기존 행에 무해하다.
+  pushTokenHash String? @unique
 
   /// 마지막으로 성공한 pull의 기준 시각 — **1층 DB 측 스킵**의 비교 대상이다 (ARCHITECTURE §2).
   /// `Translation.updatedAt`의 최대값이 이 값을 넘지 않았으면 GitHub을 한 번도 부르지 않고 끝낸다.

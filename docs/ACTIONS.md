@@ -10,7 +10,9 @@
 
 ## 2. 대상 리포 쪽 설정
 
-**Secret 하나**: `PUSH_TOKEN` — 말모이의 Vercel env와 **같은 값이어야 한다**. 값이 다르면 `/api/push`가 401이고, 어느 쪽이 틀렸는지는 알려주지 않는다(의도된 것 — `lib/push/auth.ts`). ⚠️ **서버 쪽이 비어 있으면 401이 아니라 500이다** — `checkBearer`가 `not-configured`를 내고 본문이 `{"error":"server misconfigured"}`다. 대조에 실패한 것이 아니라 대조할 값이 없다는 뜻이라 대상 리포에서 고칠 수 없다.
+**Secret 하나**: `PUSH_TOKEN` — **그 프로젝트의 토큰 원문**이다 (2026-09-07부터. 말모이 설정 화면에서 발급하고, 서버는 해시만 갖는다). 값이 틀리거나 그 프로젝트가 아직 토큰을 발급받지 않았으면 `/api/push`가 **401**이고 어느 쪽이 틀렸는지는 알려주지 않는다 — **프로젝트 존재를 노출하지 않으려고** 무효 토큰과 없는 프로젝트를 같은 응답으로 접는다.
+
+⚠️ **말모이 서버의 공유 env와 같은 값이 아니다.** 전에는 배포 전체가 토큰 하나를 들었고 그 값이 비면 500(`server misconfigured`)이었는데, 지금은 토큰이 곧 프로젝트라 서버에 그런 변수가 없다.
 
 **워크플로** `.github/workflows/l10n.yml`:
 
@@ -52,7 +54,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # 열린 번역 PR 경고용 (읽기만)
 ```
 
-⚠️ **지금은 배포 하나가 프로젝트 하나만 받는다** (`ACTIVE_PROJECT_SLUG` — SaaS 5단계의 `Project.pushTokenHash`까지). 아래 예시들은 `wrapper` 형태 참고용이고 **동시에 붙일 수 없다.**
+✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된 전 프로젝트를 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
+
+⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
 대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다).
 
@@ -60,7 +64,7 @@ jobs:
 
 | input | 언제 주는가 |
 |---|---|
-| `project` | **항상.** 서버의 `ACTIVE_PROJECT_SLUG`와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5) |
+| `project` | **항상.** `push-token`이 정한 프로젝트의 slug와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5). 토큰이 먼저 프로젝트를 정하고 이 값은 그 뒤에 대조된다 |
 | `target` | 로케일·소스가 **하위 디렉터리**에만 있을 때(모노레포). 기본은 `github.workspace`. `git rev-parse`도 이 경로에서 돈다 |
 | `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히 |
 | `adapter` | **한 리포에 포맷이 둘이면 필수.** `ts-dict`는 **자동 탐지에 아예 참여하지 않으므로**(`detectCandidates`가 항상 빈 배열) 명시 지정이 유일한 경로다 — bugshot-2가 그렇다: `_locales` 4키가 탐지되고 `ts-dict` 903키는 후보에 오르지도 않는다 → `adapter: ts-dict`. 그 밖의 공존은 `detectCandidatesAcross`의 후보 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
@@ -101,7 +105,7 @@ jobs:
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
-**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues`, 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **404는 `project '<slug>' not found`**(`ACTIVE_PROJECT_SLUG`는 맞는데 DB에 그 `Project` 행이 없다 — 오배송 409와 원인이 전혀 다른 설정 실수다). **500은 두 종류다**: 서버에 `PUSH_TOKEN`이 없으면 `{"error":"server misconfigured"}`이고, 그 밖에는 `{"error":"internal","ref":"…"}`만 온다 — — 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues`, 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 

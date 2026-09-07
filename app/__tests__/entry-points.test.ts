@@ -151,6 +151,20 @@ describe("죽은 라우트 링크", () => {
     expect(ROUTES.size).toBeGreaterThan(2);
   });
 
+  /**
+   * ⚠️ **정적 경로는 세그먼트 수와 무관하게 잡는다** (2026-09-07, T6). 전에는 한 세그먼트
+   * (`/projects`·`/invite`)만 봤고, 그래서 `/projects/new`처럼 **여러 세그먼트가 전부 정적인**
+   * 링크가 검사 밖이었다 — callback이 `/projects/new?e=`로 보내는데 그 라우트가 없으면 사용자는
+   * 404를 만난다. 템플릿 리터럴(`/projects/${slug}/…`)은 여전히 밖이다: `${`를 문자 클래스에
+   * 넣으면 어느 라우트와 대조할지 정할 수 없다 (T7의 `[manual]`이 그것을 본다).
+   */
+  const STATIC_PATH = /["'`](\/[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*)(?:[?"'`])/g;
+
+  it("검사식이 여러 세그먼트의 정적 경로를 잡는다 — 좁은 패턴은 안 잡고도 잡은 척한다", () => {
+    const found = [...'const to = "/projects/new";'.matchAll(STATIC_PATH)].map((m) => m[1]);
+    expect(found).toEqual(["/projects/new"]);
+  });
+
   it("코드가 만드는 경로 리터럴이 실재하는 라우트를 가리킨다", () => {
     const dead: string[] = [];
     for (const entry of ENTRY_POINTS) {
@@ -159,7 +173,7 @@ describe("죽은 라우트 링크", () => {
         .split("\n")
         .filter((l) => !/^\s*(\*|\/\/)/.test(l))
         .join("\n");
-      for (const m of code.matchAll(/["'`](\/[a-z][a-z0-9-]*)(?:[?"'`])/g)) {
+      for (const m of code.matchAll(STATIC_PATH)) {
         const path = m[1] ?? "";
         // API·인증 경로와 루트는 이 검사의 대상이 아니다.
         if (path === "/" || path.startsWith("/api")) continue;
@@ -269,5 +283,68 @@ describe("세션 읽기 단일 진입점", () => {
     // 호출 형태는 `withOutageFlag(() => auth())`라 `await auth()` 패턴엔 안 걸린다 — import로 본다.
     const rs = SOURCES.find((f) => f.rel === "lib/auth/read-session.ts");
     expect(rs && IMPORTS_AUTH.test(rs.source)).toBe(true);
+  });
+});
+
+
+/**
+ * **`(edit)` 아래 새 페이지가 `middleware.ts`의 `matcher`에 덮인다.**
+ *
+ * 1차 차단은 미들웨어 하나이고(ARCHITECTURE §6.1), matcher에 없는 라우트는 **쿠키 검사를 아예
+ * 지나지 않는다.** 본판정이 진입점에 있으니 데이터가 새지는 않지만, 비로그인 사용자가 로그인
+ * 화면 대신 `requireUser`의 redirect에 도달하는 경로가 하나 더 늘고 그 차이는 눈에 안 보인다 —
+ * CLAUDE.md·middleware.ts 주석이 **"새 보호 라우트를 추가하면 여기도 추가한다"**를 규칙으로만
+ * 두고 있었다 (2026-09-07, T7이 `/projects/new`를 더하면서 자동 검사가 없다는 것이 드러났다).
+ *
+ * ⚠️ **`(edit)` 밖은 대상이 아니다** — `/`(로그인)와 `/invite/[token]`은 **일부러** matcher 밖이고,
+ * 후자는 넣으면 초대 토큰이 `/`로 302되며 사라진다 (design §4.1).
+ */
+describe("보호 라우트가 미들웨어 matcher에 있다", () => {
+  const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+  const MIDDLEWARE = readFileSync(join(ROOT, "middleware.ts"), "utf8");
+
+  /** `matcher: [...]` 안의 문자열 리터럴. 배열이 사라지면 아래 "하나 이상" 검사가 잡는다. */
+  const PATTERNS = (() => {
+    const at = MIDDLEWARE.indexOf("matcher:");
+    if (at === -1) return [];
+    const open = MIDDLEWARE.indexOf("[", at);
+    const close = MIDDLEWARE.indexOf("]", open);
+    if (open === -1 || close === -1) return [];
+    return [...MIDDLEWARE.slice(open, close).matchAll(/["'`]([^"'`]+)["'`]/g)].map((m) => m[1] ?? "");
+  })();
+
+  /**
+   * Next matcher 문법 → 정규식. `:path*`는 **세그먼트 0개 이상**이라 `/projects` 자신도 덮고,
+   * `:param`은 한 세그먼트다. 이 변환이 틀리면 아래 자기검사가 red가 된다.
+   */
+  function covers(pattern: string, path: string): boolean {
+    const source = pattern
+      .replace(/\/:[A-Za-z]+\*/g, "(?:/[^]*)?")
+      .replace(/\/:[A-Za-z]+/g, "/[^/]+");
+    return new RegExp(`^${source}$`).test(path);
+  }
+
+  /** `[slug]` 같은 동적 세그먼트는 구체 값으로 바꿔 대조한다 — 패턴 대 패턴은 비교할 수 없다. */
+  const PROTECTED = ENTRY_POINTS.filter((e) => e.rel.startsWith("(edit)/") && e.rel.endsWith("page.tsx")).map(
+    (e) => "/" + e.path.replace(/\/?page\.tsx$/, "").replace(/\[[^\]]*\]/g, "sample"),
+  );
+
+  it("matcher 패턴과 보호 페이지를 실제로 읽었다 — 파싱이 조용히 0건이 되지 않는다", () => {
+    expect(PATTERNS.length).toBeGreaterThan(0);
+    expect(PROTECTED.length).toBeGreaterThan(1);
+  });
+
+  it("변환이 실제로 판정한다 — 공허하게 통과하지 않는다", () => {
+    expect(covers("/projects/:path*", "/projects")).toBe(true);
+    expect(covers("/projects/:path*", "/projects/new")).toBe(true);
+    expect(covers("/projects/:path*", "/projects/sample/settings")).toBe(true);
+    // 좁은 패턴은 하위 라우트를 덮지 못한다 — 이 줄이 위 셋을 의미 있게 만든다.
+    expect(covers("/projects", "/projects/new")).toBe(false);
+    expect(covers("/projects/:path*", "/invite/sample")).toBe(false);
+  });
+
+  it("(edit) 아래 모든 페이지가 어느 패턴에든 걸린다", () => {
+    const uncovered = PROTECTED.filter((path) => !PATTERNS.some((pattern) => covers(pattern, path)));
+    expect(uncovered).toEqual([]);
   });
 });

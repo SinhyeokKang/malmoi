@@ -10,7 +10,12 @@ import { logFailure } from "@/lib/github-connect/log";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { getViewer } from "@/lib/github-connect/user";
+import { planProjectReadiness, readinessLabel } from "@/lib/onboarding/readiness";
+import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import { GithubAccount, ReauthorizePrompt } from "@/components/github-account";
+import { FirstIngestRetry } from "@/components/onboarding/first-ingest-retry";
+import { PushTokenPanel } from "@/components/onboarding/push-token-panel";
+import { WorkflowBlock } from "@/components/onboarding/workflow-block";
 import { ReconnectButton } from "@/components/reconnect-button";
 
 /**
@@ -24,6 +29,13 @@ import { ReconnectButton } from "@/components/reconnect-button";
  * ⚠️ **섹션 둘이 독립적으로 실패한다.** 건강성은 App 토큰, 계정은 사용자 토큰이라 한쪽 API가 죽어도
  * 다른 쪽은 그려야 한다 — 하나로 묶으면 GitHub 장애에 화면이 통째로 빈다.
  */
+
+/**
+ * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (`app/api/*`의 값이 아니다 —
+ * design §2). 이 화면의 [다시 시도]가 `runFirstIngest`를 부르고 그것은 로케일 파일 수만큼 blob을
+ * 받으므로, 기본 제한으로는 큰 리포에서 응답 도중 잘린다.
+ */
+export const maxDuration = 60;
 export default async function SettingsPage({
   params,
   searchParams,
@@ -43,7 +55,16 @@ export default async function SettingsPage({
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { repoOwner: true, repoName: true, installationId: true },
+    select: {
+      repoOwner: true,
+      repoName: true,
+      installationId: true,
+      // 상태 섹션과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
+      lastCommitSha: true,
+      baseBranch: true,
+      adapterName: true,
+      baseLocale: true,
+    },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 빈 화면 대신 `requireProjectAccess`의 not-found와
   // 같은 곳으로 보낸다 (문구가 존재 여부를 말하지 않는다).
@@ -70,6 +91,21 @@ export default async function SettingsPage({
           {project.repoOwner}/{project.repoName}
         </p>
         <HealthRow health={health} slug={slug} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
+      </section>
+
+      <section className="border-border space-y-2 rounded-md border p-4">
+        <h2 className="text-sm font-medium">상태</h2>
+        <StatusRow slug={slug} project={project} />
+      </section>
+
+      <section className="border-border space-y-2 rounded-md border p-4">
+        <h2 className="text-sm font-medium">push 토큰</h2>
+        <PushTokenPanel slug={slug} />
+      </section>
+
+      <section className="border-border space-y-2 rounded-md border p-4">
+        <h2 className="text-sm font-medium">워크플로</h2>
+        <WorkflowBlock yaml={workflowYaml(slug, project)} />
       </section>
 
       <section className="border-border space-y-2 rounded-md border p-4">
@@ -186,4 +222,64 @@ function HealthRow({
       // 조회 실패를 "제거됨"으로 접지 않는다 (design §3.3).
       return <p className="text-muted-foreground text-xs">확인할 수 없어요 — 잠시 뒤 다시 열어 주세요.</p>;
   }
+}
+
+/**
+ * 첫 적재 상태 (design §3.7). **재방문·`not-ready` 착지의 얼굴이 여기다** — 온보딩 결과 화면은
+ * 클라이언트 상태라 새로고침하면 사라진다.
+ *
+ * ⚠️ **실패 사유는 여기에 없다.** 중간 상태를 저장하지 않으므로(design §3.4) 이 화면은 "적재가
+ * 끝나지 않았다"만 알고, 원인은 [다시 시도]의 인라인 결과로 돌아온다.
+ */
+function StatusRow({
+  slug,
+  project,
+}: {
+  slug: string;
+  project: { installationId: string | null; lastCommitSha: string | null };
+}) {
+  const readiness = planProjectReadiness(project);
+
+  /**
+   * ⚠️ **`FirstIngestRetry`를 분기 밖에 둔다.** 성공하면 `revalidatePath`가 이 섹션을 다시 렌더하고
+   * readiness가 `ready`로 바뀌는데, 그때 컴포넌트가 분기와 함께 사라지면 방금 받은 결과 문구도
+   * 사라진다 — 부분 실패의 "M건을 읽지 못했어요"가 아무에게도 닿지 않는다 (불변식 9). 같은 자리에
+   * 남겨 두면 클라이언트 상태가 서버 재렌더를 넘어간다.
+   */
+  return (
+    <div className="space-y-2">
+      {/* 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1) — 초록을 늘리지 않는다. */}
+      <p className="text-muted-foreground text-xs">
+        {readiness === "ready"
+          ? "첫 적재가 끝났어요."
+          : `${readinessLabel(readiness) ?? ""} — ${
+              readiness === "setup"
+                ? "리포 연결을 먼저 마쳐 주세요."
+                : "리포의 번역 파일을 아직 읽어오지 못했어요."
+            }`}
+      </p>
+      <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
+    </div>
+  );
+}
+
+/**
+ * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다** — 그 포맷은 자동 탐지에 참여하지 않으므로
+ * (ADAPTER-COVERAGE 판정 ③) 고정하지 않으면 CI가 "로케일 파일을 못 찾았다"로 끝난다. 나머지는
+ * 탐지가 같은 답을 내므로 고정할 이유가 없다 (design §7).
+ */
+function workflowYaml(
+  slug: string,
+  project: { baseBranch: string; adapterName: string | null; baseLocale: string | null },
+): string {
+  // 두 호출로 가른다 — 스프레드로 합치면 `adapter`가 `string`으로 넓어져 인자 타입과 어긋난다.
+  if (project.adapterName !== "ts-dict" || project.baseLocale === null) {
+    return renderWorkflowYaml({ slug, baseBranch: project.baseBranch });
+  }
+  return renderWorkflowYaml({
+    slug,
+    baseBranch: project.baseBranch,
+    adapter: "ts-dict",
+    baseLocale: project.baseLocale,
+  });
 }

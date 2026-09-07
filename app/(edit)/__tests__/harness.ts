@@ -13,7 +13,23 @@ import type { Role } from "@/lib/auth/permission";
  * 저장과 조회가 **같은 상태**를 본다 — 홉 사이에서 값이 사라지면 red다.
  */
 
-export type ProjectSeed = { id: string; slug: string; name?: string };
+export type ProjectSeed = {
+  id: string;
+  slug: string;
+  name?: string;
+  installationId?: string | null;
+  /**
+   * ⚠️ **시드 프로젝트는 기본이 "적재 완료"다** (2026-09-07, T6). 번역 Action이 `planProjectReadiness`를
+   * 지나므로 `null`이면 `not-ready`로 거부된다 — 편집 흐름 테스트가 보려는 것은 그것이 아니다.
+   * 첫 적재 전 상태를 보려면 **명시적으로 `null`을 준다**. `project.create`는 반대다: 스키마의 기본값이
+   * `null`이라 새 행은 `awaiting_first_sync`로 태어난다.
+   */
+  lastCommitSha?: string | null;
+  /** 역행 409 판정의 비교 대상 — T3 테스트가 시드로 넣는다. */
+  lastCommitAt?: Date | null;
+  /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
+  pushTokenHash?: string | null;
+};
 export type MemberSeed = { projectId: string; userId: string; role: Role };
 export type UserSeed = { id: string; email: string; name?: string | null };
 export type InvitationSeed = {
@@ -72,7 +88,9 @@ const FORMAT = {
   nestedByPath: null,
   baseLocale: "en",
   lastCommitSha: null as string | null,
+  lastCommitAt: null as Date | null,
   lastPulledAt: null as Date | null,
+  pushTokenHash: null as string | null,
 };
 
 export type Seed = {
@@ -86,6 +104,9 @@ export type Seed = {
   translations?: TranslationSeed[];
 };
 
+/** 시드 프로젝트의 기본 `lastCommitSha` — "첫 적재가 끝났다"의 증거다 (`ProjectSeed` 주석). */
+const SEEDED_SHA = "a".repeat(40);
+
 export function createHarness(seed: Seed = {}) {
   const seededProjects = seed.projects ?? [{ id: "p1", slug: "acme", name: "Acme" }];
   /**
@@ -94,7 +115,7 @@ export function createHarness(seed: Seed = {}) {
    * Action에도 통과한다** — 거부만 보는 검증의 함정이다 (POSTMORTEM 2026-09-06). `FORMAT`을 행마다
    * 복제해 두고 update가 그것을 갱신한다.
    */
-  const projects = seededProjects.map((p) => ({ ...FORMAT, ...p }));
+  const projects = seededProjects.map((p) => ({ ...FORMAT, lastCommitSha: SEEDED_SHA, ...p }));
   const accounts = (seed.accounts ?? []).map((a) => ({
     access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
   }));
@@ -120,13 +141,19 @@ export function createHarness(seed: Seed = {}) {
 
   const findProject = vi.fn(
     async (args: {
-      where: { slug?: string; id?: string };
+      where: { slug?: string; id?: string; pushTokenHash?: string | null };
       select?: { locales?: { where?: { orphaned?: boolean } } };
     }) => {
+      // 실 Prisma는 unique where의 null을 PrismaClientValidationError로 거부한다 — 가짜도 던진다. 조용히 null을
+      // 돌려주면 "미발급 프로젝트가 인증에 걸리는" fail-open을 테스트가 못 본다 (design §3.8).
+      if ("pushTokenHash" in args.where && typeof args.where.pushTokenHash !== "string") {
+        throw new Error("Argument `pushTokenHash` must not be null");
+      }
       const found = projects.find(
         (p) =>
           (args.where.slug !== undefined && p.slug === args.where.slug) ||
-          (args.where.id !== undefined && p.id === args.where.id),
+          (args.where.id !== undefined && p.id === args.where.id) ||
+          (typeof args.where.pushTokenHash === "string" && p.pushTokenHash === args.where.pushTokenHash),
       );
       if (found === undefined) return null;
       const onlyLive = args.select?.locales?.where?.orphaned === false;
@@ -248,9 +275,13 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
-  const countMembers = vi.fn(async (args: { where: { projectId: string; role?: Role } }) =>
+  // `projectId`(마지막 OWNER 보호)와 `userId`(사용자당 프로젝트 3개 제한 — OWNER 행만 센다) 둘 다 받는다.
+  const countMembers = vi.fn(async (args: { where: { projectId?: string; userId?: string; role?: Role } }) =>
     members.filter(
-      (m) => m.projectId === args.where.projectId && (args.where.role === undefined || m.role === args.where.role),
+      (m) =>
+        (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
+        (args.where.userId === undefined || m.userId === args.where.userId) &&
+        (args.where.role === undefined || m.role === args.where.role),
     ).length,
   );
 
@@ -266,6 +297,41 @@ export function createHarness(seed: Seed = {}) {
       Object.assign(row, args.data);
       return row;
     },
+  );
+
+  /**
+   * 온보딩의 `createProject`가 부른다. 스키마의 `slug @unique`·`pushTokenHash @unique`를 흉내낸다 — 안 하면
+   * slug 충돌·토큰 조회 경로를 **재현할 수조차 없다** (POSTMORTEM 2026-09-05). NULL은 unique에 걸리지 않는다.
+   */
+  const createProject = vi.fn(async (args: { data: Omit<ProjectSeed, "id"> & { id?: string } & Record<string, unknown> }) => {
+    // `id @default(cuid())` — 실 호출은 id를 생략한다. 가짜가 undefined를 저장하면 이어지는 `projectMember.create({ projectId })`도
+    // undefined가 되고 `findMember`의 대조가 `undefined === undefined`로 항상 참이다 (code-review 2026-09-07 🟡1).
+    const id = args.data.id ?? `p-${projects.length + 1}`;
+    const hash = args.data.pushTokenHash ?? null;
+    const clash = projects.some(
+      (p) => p.slug === args.data.slug || p.id === id || (hash !== null && p.pushTokenHash === hash),
+    );
+    if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    const row = { ...FORMAT, ...args.data, id, pushTokenHash: hash };
+    projects.push(row);
+    return row;
+  });
+
+  /**
+   * pull 순회용. `where`는 등호와 `{ not: X }`만 받는다 — 다른 연산자는 **던진다.** 조용히 빈 배열을 내면 순회
+   * 테스트가 "프로젝트 0개"로 통과한다 (fake-client의 "주입 안 된 요청엔 던진다"와 같은 방침).
+   */
+  const findManyProjects = vi.fn(
+    async (args: { where?: Record<string, unknown>; orderBy?: unknown } = {}) =>
+      projects.filter((p) =>
+        Object.entries(args.where ?? {}).every(([k, v]) => {
+          const value = (p as Record<string, unknown>)[k];
+          if (v === null || typeof v !== "object") return value === v;
+          const keys = Object.keys(v);
+          if (keys.length === 1 && keys[0] === "not") return value !== (v as { not: unknown }).not;
+          throw new Error(`harness findMany: 지원하지 않는 where 연산자 ${k}: ${JSON.stringify(v)}`);
+        }),
+      ),
   );
 
   /** `Account`의 unique는 `@@id([provider, providerAccountId])` 하나뿐 — userId로는 findFirst다. */
@@ -371,7 +437,7 @@ export function createHarness(seed: Seed = {}) {
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
-    project: { findUnique: findProject, update: updateProject },
+    project: { findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -497,6 +563,8 @@ export function createHarness(seed: Seed = {}) {
     accounts,
     spies: {
       findProject,
+      findManyProjects,
+      createProject,
       updateProject,
       findAccountUnique,
       findAccountFirst,

@@ -1,4 +1,5 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 import type { PullResult } from "./run";
 
@@ -45,6 +46,9 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
       // (code-review 2026-09-06 🟡9). 그 밖의 원인은 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고
       // 방법이 없어진다. 남의 라이브러리 메시지는 Action이 이미 `ref`로 접었다.
       if (isAccessError(outcome.error)) return { tone: "destructive", text: accessErrorMessage(outcome.error) };
+      // ⚠️ **온보딩 갈래도 읽는다** — `not-ready`가 여기로 오는데 위 판정만 보면 영어 토큰이 그대로
+      // 나간다 (2026-09-07, T6). 두 union이 겹치는 것은 `unavailable`·`unauthorized`뿐이고 뜻이 같다.
+      if (isOnboardError(outcome.error)) return { tone: "destructive", text: onboardErrorMessage(outcome.error) };
       return { tone: "destructive", text: `내보내기에 실패했어요: ${outcome.error}` };
     default: {
       // 상태를 추가하면 여기서 컴파일 에러가 난다.

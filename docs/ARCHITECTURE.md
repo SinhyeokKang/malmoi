@@ -353,6 +353,60 @@ clone하지 않는다.
 - **⚠️ `l10n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
 - **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `l10n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
 
+### 3.1 온보딩의 읽기 — 2패스 탐지와 첫 적재 (SaaS 5단계, `lib/onboarding/`)
+
+pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전용) 그리고 **판정층이 GitHub을 모른다** —
+`lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 Server Action 하나다
+(`credential-separation.test.ts`가 상시로 센다).
+
+**리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
+인스턴스마다 새로 생겨 **`POST /app/installations/{id}/access_tokens`가 호출마다 하나씩 더 붙는다** — 예산이
+2배가 되고 50로케일 첫 적재는 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴). 스냅샷은 트리 항목의
+**`sha`를 함께 든다** — 경로만 들면 blob을 contents API로 읽어야 하고 그쪽은 **1MB에서 잘려 조용히 빈 내용**을
+준다.
+
+**탐지가 두 번 도는 이유는 `FileProbe`가 동기 함수이기 때문이다.** CLI는 `readFileSync`라 문제가 없지만
+서버는 GitHub API라 그럴 수 없다 — 경로만으로 1차 후보를 얻고, 내려받을 파일을 고른 뒤, 내용을 들고 다시 돈다.
+
+⚠️ **"probe 없는 후보 ⊇ probe 있는 후보"는 거짓이다.** probe의 역할이 어댑터마다 다르다:
+
+| 어댑터 | probe 없이 | probe의 역할 |
+|---|---|---|
+| `chrome-locales` · `json-catalog` · `yaml-catalog` | 경로 모양으로 후보를 낸다 | **필터** — `verifySamples`가 샘플이 카탈로그 모양이 아니면 떨어뜨린다. 단 probe가 전부 `undefined`면 `false`라 **미검증 = 탈락**이다 |
+| `code-dict` | **후보 0개** (`if (!probe) return []`) | **생성** — `hasDictionary`가 default export 객체를 실제로 봐야 후보가 된다 |
+| `ts-dict` | 후보 0개 (자동 탐지 불참 — ADAPTER-COVERAGE 판정 ③) | 수동 지정만 |
+
+- **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON 묶음일 수 있다
+  (bugshot-web 실측) — 후보를 고르기 위한 중간값이지 화면에 쓰는 값이 아니다.
+- **내려받는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
+  `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
+  다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
+- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = **blob ≤ 21**.
+  온보딩 한 번의 호출은 `ref 1 + commit 1 + tree 1 + blob ≤21`이다.
+
+**첫 적재는 기존 push 경로를 그대로 지난다** (`lib/onboarding/ingest.ts`):
+
+```
+snapshot → ingestTargets(순수) → readBlob × M
+  → assemblePushInput   (selectLocaleFiles + adapter.read + base 판정 — push-local과 **같은 함수**)
+  → buildPushPayload    (페이로드의 **유일한 생산자**)
+  → applyPush           (키·번역·refs·lastCommit* 를 한 배열형 트랜잭션으로)
+```
+
+- ⚠️ **셋을 우회하지 않는다.** 리터럴로 조립했다가 필수 필드가 늘어도 컴파일러가 침묵한 전례(POSTMORTEM
+  2026-08-31)와 껍데기가 파일을 안 골라 어댑터가 "존재하지 않았던" 전례(2026-09-02)가 각각 있다.
+- ⚠️ **`commitAt`은 base head 커밋의 시각이다.** `new Date()`면 그 시각이 커밋보다 미래라 **CI의 첫 push가
+  `stale-commit` 409로 거부된다**(`checkCommitOrder`는 동일 시각만 통과시킨다). 그래서 스냅샷이
+  `headCommittedAt`을 함께 읽는다 — `GET /git/commits/{sha}` 한 번이 더 든다.
+- ⚠️ **`refs`는 빈 배열이다.** 서버가 리포를 체크아웃하지 않아 ts-morph를 돌릴 수 없다. `applyPush`가 refs를
+  전체 교체하므로 "참조 없음"으로 저장되고 CI 첫 push가 채운다 — **화면이 그 사실을 한 줄로 알린다**(조용히
+  비어 있으면 "코드 참조 기능이 고장났다"로 읽힌다).
+- ⚠️ **내려받지 못한 파일을 실패로 센다.** "다운로드 실패"와 "리포에 없음"을 같게 접으면 로케일 12개 중 3개가
+  5xx일 때 DB엔 9개만 들어가는데 화면은 "N개 키를 적재했어요"를 쓴다 — 그래서 `targets`(시도한 경로)를 함께
+  받아 `blobs`에 없는 것을 센다 (SAAS 불변식 9 · code-review 2026-09-07 🔴).
+- **`Project.baseBranch`는 `ProbeResult.defaultBranch`로 채운다.** 스키마 기본값이 `"main"`이라 안 채우면
+  default branch가 `develop`인 리포의 pull이 `main`을 찾아 죽는다.
+
 ## 4. 사용처 스캔 (`lib/scan/`) — 진실이 아니다
 
 **출력은 `refs`뿐이다.** `ScanResult`에 `errors` 필드가 **없는 것이 이 층의 요지다** — 키의 존재·원문·키 이름 합법성은 전부 §1의 적재 층이 로케일 파일을 읽어 정한다. 이 층은 편집 UI의 컨텍스트("이 문자열이 어디 나오는지")만 만든다.
@@ -557,12 +611,15 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
-| `projectSlug` ≠ `ACTIVE_PROJECT_SLUG` | 서버 env | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
+| `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
 | `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
 - **같은 커밋의 재전송은 통과시킨다.** strict라 결과가 같고, 스캐너를 고쳐 같은 커밋을 다시 올리는 것은 정당한 조작이다. 그래서 판정 기준이 `commitSha` 동일성이 아니라 **`commitAt` 역행**이다.
 - **GitHub API로 조상 관계를 확인하지 않는다.** 더 정확하지만 지금 GitHub을 전혀 부르지 않는 push 라우트에 App 토큰과 네트워크 왕복이 들어온다. 커밋 시각은 Actions가 `git show -s --format=%cI`로 공짜로 얻는다.
-- **프로젝트별 `PUSH_TOKEN`으로 가르지 않는다.** 토큰이 곧 라우팅이면 페이로드가 안 바뀌는 대신 토큰↔프로젝트 매핑을 DB나 env에 둬야 하고 시크릿이 프로젝트 수만큼 는다.
+- ⚠️ **프로젝트별 토큰으로 바뀌었다** (2026-09-07, SaaS 5단계). 원래는 "토큰↔프로젝트 매핑을 DB에 둬야 하고 시크릿이 프로젝트 수만큼 는다"는 이유로 거부했는데, SaaS가 프로젝트를 여러 개 받는 순간 서버 env 하나로는 대상을 가릴 수 없어 그 대가를 치르기로 했다. 매핑은 `Project.pushTokenHash`(sha256, `@unique`)다.
+  - **조회 순서가 판정의 요지다**: `sha256(Bearer)` → 행 조회 → 그 행의 slug와 페이로드 대조. **페이로드 slug로 행을 찾으면 안 된다** — 오배송된 페이로드가 인증 대상을 스스로 고르게 되어 검사가 순환이 된다.
+  - **`pushTokenHash`가 `null`인 프로젝트는 어떤 해시로도 조회되지 않는다** — fail-closed가 컬럼의 성질로 성립한다. 무효 토큰·미발급 프로젝트·없는 프로젝트가 전부 **401 하나**이고 404는 없다(프로젝트 존재를 노출하지 않는다).
+  - `timingSafeEqual`이 사라진 것은 누락이 아니다 — 비교가 아니라 **조회**이고, 토큰은 32바이트 난수라 해시 역산이 불가능하다 (`lib/auth/invitation.ts`와 같은 판단).
 
 **7단계(Actions 배선) 전에 서 있어야 한다** — 실 DB에 프로젝트가 이미 둘이라 두 번째 리포를 붙이는 순간이 첫 사고 지점이다. `lib/push/guard.ts`가 두 판정을 들고 `app/api/push/route.ts`가 409로 떨어뜨린다.
 
@@ -585,7 +642,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `l10n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
-| `/api/push` 호출 | Bearer `PUSH_TOKEN` | Actions는 사람이 아니다. **fail-closed** — 환경변수가 비었으면 500이고, 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부를 탐색할 단서를 주지 않는다) |
+| `/api/push` 호출 | Bearer **프로젝트별 토큰** (`Project.pushTokenHash` 조회, `lib/push/token.ts`) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
 
 ⚠️ **경계를 소스에서 상시로 센다** — `lib/github-connect/__tests__/credential-separation.test.ts`가 양방향으로 본다(개인키가 연결 경로로 / 사용자 토큰이 커밋 경로로) + 연결 경로의 POST·PATCH·PUT·DELETE 금지 + **스캐너 자신이 red를 낼 수 있는지**까지 검사한다. `lib/adapters/__tests__/contract.ts`·`app/__tests__/entry-points.test.ts`와 같은 계열이다.
@@ -606,7 +663,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **`fail(String(err))`로 남의 오류를 감싸지 않는다.** 감싸면 그 순간 이 방어가 무의미해진다 — 판정이 막을 수 없고 규율로만 지켜진다.
 
-⚠️ **`/api/push`는 같은 사건을 404 + 본문으로 낸다** (`project '<slug>' not found`). 비대칭이 의도된 것이다: push는 **호출자가 보낸** slug를 검증하므로 4xx이고, pull은 **자기 설정**을 읽으므로 5xx다.
+⚠️ **`/api/push`에는 대응하는 사건이 없다** (2026-09-07). 전에는 같은 사건("그 slug의 `Project` 행이 없다")을 404 + 본문(`project '<slug>' not found`)으로 냈는데, 프로젝트를 **토큰이 정하게** 되면서 그 갈래가 사라졌다 — 조회되지 않으면 무효 토큰과 구별하지 않고 **401 하나**다(프로젝트 존재를 노출하지 않는다, §5.5.5). pull이 5xx인 것은 그대로다: 그쪽은 **자기 설정**을 읽는다.
 
 전에는 전부 그대로 실었고, 근거는 POSTMORTEM 2026-09-03의 **"본문 없는 500이 원인을 지웠다"** 였다.
 그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/l10n-push`는 임의의 대상
@@ -684,10 +741,19 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). 문구가 not-found와 forbidden을 같게 말하므로 존재 노출은 없다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
+⚠️ **`ready`가 아닌 프로젝트의 번역 Action은 `not-ready`다** (2026-09-07, SaaS 5단계). 첫 적재 전에는
+저장할 키가 없어 화면으로 도달하지 않으므로 이것이 막는 것은 **URL 직접 호출**과 적재 실패 후의
+재방문이다. 판정은 `planProjectReadiness`(`lib/onboarding/readiness.ts`)이고 **`ProjectAccess` union에
+넣지 않았다** — 넣으면 `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
+그래서 문구는 `onboardErrorMessage`가 들고, `pullMessage`·`translation-input`이 `isAccessError` 다음에
+`isOnboardError`를 본다 — 한쪽만 보면 번역자 화면에 `저장 실패: not-ready`가 뜬다.
+
 ⚠️ **`/projects`는 두 union을 함께 읽는다** (2026-09-06, SaaS 4단계). GitHub 연결 실패도 그 화면에 착지한다 —
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
+**`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
+실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
 
 ⚠️ **`requireProjectAccess`는 `userId`도 돌려준다** (2026-09-06). `{ projectId, role }`만 주면 그 반환값이
 "이 요청에 대해 아는 전부"처럼 보이고, 호출부가 세션 주체를 조건에서 빼 버린다 — 설정 화면이
@@ -698,6 +764,27 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 ⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany({ acceptedAt: null, expiresAt: { gt: now } })`의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
 
 ⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
+
+### 6.35 ⚠️ 판정을 오케스트레이션 파일에 두지 않는다 — 클라이언트 번들이 그 그래프를 따라온다 (2026-09-07)
+
+거부 사유가 화면에 닿아야 하므로(§6.3) **문구 모듈은 클라이언트 컴포넌트가 import한다** —
+`accessErrorMessage`·`connectErrorMessage`·`onboardErrorMessage`·`pullMessage` 넷이다. 그래서 그 모듈들이
+**값으로 끌어오는 것이 곧 클라이언트 번들**이 된다.
+
+`lib/onboarding/message.ts`가 문구의 숫자를 맞추려고 `./slug`의 `PROJECT_SLUG_MAX`를 읽고, `slug.ts`가
+형식 판정을 **한 벌로 두려고** `lib/pull/trigger.ts`의 `isRefSafeSlug`를 불렀다. 둘 다 옳은 결정인데,
+`trigger.ts`가 **판정과 I/O를 같은 파일에** 들고 있어서 그 한 줄이 `lib/github`(octokit)과
+`lib/adapters`(→ `ts-dict` → **ts-morph = TypeScript 컴파일러**)를 클라이언트로 데려왔다 — 실측 **7.2MB
+청크**가 세 페이지에 붙었다 (POSTMORTEM 2026-09-07).
+
+- **판정은 잎 모듈에 둔다.** `lib/pull/ref-slug.ts`는 **import이 0**이고 `trigger.ts`가 재수출한다 —
+  규칙은 한 벌이고 무게는 따라오지 않는다.
+- **`pnpm build`는 이것을 오류로 보지 않는다.** 라우트 표에 청크 크기가 없고 typecheck·test도 침묵한다.
+  **`components/__tests__/client-graph.test.ts`가 상시로 센다** — `"use client"`에서 시작해 값 import만
+  따라가고(`import type`은 지운다) `"use server"` 파일에서 멈춘다(Action은 스텁으로 대체된다).
+- ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
+  봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
+  grep은 자신이 고른 패턴만 답한다.
 
 ### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
 
@@ -713,7 +800,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · `timingSafeEqual`(길이 선검사).
 - **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
   것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
-- **목적지 slug를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+- **목적지를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
+  ⚠️ **2026-09-07에 slug 하나에서 `dest` 갈래 둘로 넓어졌다** (SaaS 5단계): `{kind:"settings", slug}`와
+  `{kind:"new"}`. 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
+  공격자가 착지를 정한다. **옛 `{slug}` payload는 `state-mismatch`로 거부된다** — 관대하게 받으면
+  "slug가 있으면 설정 화면"이라는 세 번째 규칙이 영구히 남는다. 10분 만료라 배포 직후 그 창의
+  사용자는 버튼을 다시 누르면 된다.
 - **⚠️ 빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
   않으므로, 이 층이 `requireEnv`에만 기대면 호출부의 실수 하나로 **누구나 재현 가능한 서명**이 통과한다
   (`checkBearer`가 `expected === ""`를 `not-configured`로 가른 것과 같은 판단). 설정 오류를 "다시 눌러
@@ -722,8 +814,9 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   요청 URL로 프로토콜을 판정해 **갈릴 수 있고**, 갈리면 연결이 100% `state-mismatch`가 된다.
   `__Host-` 접두를 https에서만 붙이는 이유는 **Safari가 `http://localhost`에서 Secure 쿠키를 버리기**
   때문이다 — `lib/auth/cookie.ts`의 `__Secure-` 이중 검사와 같은 계열이다.
-- **착지는 둘로 갈린다**: state가 유효하면 `/projects/<slug>/settings?e=`, **무효면 `/projects?e=`**다 —
-  slug를 서명에서 얻으므로 무효한 state의 slug를 믿을 수 없다.
+- **착지는 셋으로 갈린다** (2026-09-07): `dest`가 `settings`면 `/projects/<slug>/settings?e=`,
+  `new`면 `/projects/new?e=`, **state가 무효면 `/projects?e=`**다 — 목적지를 서명에서 얻으므로
+  무효한 state의 목적지는 믿을 수 없다. **셋 다 `?e=`를 읽는 쪽이 있다**(§6.3).
 
 ### 6.5 `probeRepo`가 두 번 부르는 이유 — 200이 접근을 증명하지 않는다
 
