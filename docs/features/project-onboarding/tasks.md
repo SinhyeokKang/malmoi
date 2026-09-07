@@ -380,35 +380,59 @@ DESIGN §7에 그 사실을 등재했다.
 - [ ] `/l10n-roundtrip` 재검증 (push 인증 경로가 바뀌었다 — 스킬 문서의 `PUSH_TOKEN`·`ACTIVE_PROJECT_SLUG` 절차와
       pull 응답 기대(`:54`, 배열)를 먼저 고친다)
 - [ ] 문서 (각자 별도 커밋)
-  - `docs/SAAS.md` — §8 5단계 체크 · **§7.8 조회 방향**(해시가 프로젝트를 정한다) · §5.4.1(`StateDest`) ·
+  - [x] `docs/SAAS.md` — §8 5단계 체크 · **§7.8 조회 방향**(해시가 프로젝트를 정한다) · §5.4.1(`StateDest`) ·
     §7.3("키 수가 큰 쪽을 추천" → "키 수를 보인다, 기준 로케일은 사용자가 고른다") · §8 5단계 "Actions 링크"는
     6단계 이후로 · §8 6단계에 "GitHub 계정 연결 — 연결은 5단계에서 사용자 수준으로 갔다" · §8 7단계 고정 제한에
     "3개 제한은 5단계에서" · §10 "Workflows 권한" 결정(미실측 표기 유지) · §5.7 미종결 둘 종결 · `:122,473,483,545,667`의
     `ACTIVE_PROJECT_SLUG`
-  - `CLAUDE.md`·`AGENTS.md`(`pnpm sync:agents`) — 테넌시 행의 `ACTIVE_PROJECT_SLUG` 경고 제거 · 디렉터리 구조에
+  - [x] `CLAUDE.md`·`AGENTS.md`(`pnpm sync:agents`) — 테넌시 행의 `ACTIVE_PROJECT_SLUG` 경고 제거 · 디렉터리 구조에
     `lib/onboarding/`·`lib/push/token.ts`·`lib/push/assemble.ts`·`lib/pull/targets.ts`·`/projects/new` 추가 · 명령어 표의
     `push:local`·`smoke:github` 인자 필수화 · **재발급 절차**의 "세 곳이 같은 값을 들어야 하는 것은 `PUSH_TOKEN` 하나"
     → "대상 리포 secret ↔ 그 프로젝트의 `pushTokenHash`" · `:106`·`:273` · 아키텍처 원칙 코어 모듈 목록에 `onboarding`
-  - `.claude/commands/push.md:68` — ARCHITECTURE 트리거 목록에 `lib/onboarding/` (CLAUDE.md 목록과 같아야 한다)
-  - `docs/ACTIONS.md` — `project` input 설명(409의 기준) · `:13` "`PUSH_TOKEN`은 Vercel env와 같은 값" → "프로젝트
+  - [x] `.claude/commands/push.md:68` — ARCHITECTURE 트리거 목록에 `lib/onboarding/` — **T5가 이미 넣었다**
+  - [x] `docs/ACTIONS.md` — `project` input 설명(409의 기준) · `:13` "`PUSH_TOKEN`은 Vercel env와 같은 값" → "프로젝트
     설정 화면에서 발급" · `:104` 500 `server misconfigured` 진단 줄 제거 · "배포 하나가 프로젝트 하나만 받는다" 경고 제거 ·
     404 진단 줄 제거 · `.github/actions/l10n-push/action.yml:20` input 설명
-  - `docs/ARCHITECTURE.md` — §5.5.5(오배송 판정 근거 — 토큰이 프로젝트를 정한다) · 첫 적재 경로(§4) · §6.3에
+  - [x] `docs/ARCHITECTURE.md` — §5.5.5(오배송 판정 근거 — 토큰이 프로젝트를 정한다) · 첫 적재 경로(§4) · §6.3에
     `/projects/new`의 이중 `?e=` 읽기 · `:560,565` · 2패스 탐지의 probe 역할 표(§3.1)
-  - `docs/ADAPTER-COVERAGE.md` — `codeDictCandidatePaths` 분리는 판정 불변이라 회차를 더하지 않는다는 한 줄
-  - `docs/TASKS.md` — §0 "지금 어디에 있나"를 5단계 완료로 · 전역 미결의 `ACTIVE_PROJECT_SLUG` 항목 해소
-  - `docs/MVP.md` §7 — "`ACTIVE_PROJECT_SLUG`가 남은 곳은 둘뿐"·"서버가 받는 프로젝트는 여전히 하나" 두 문장을 과거형으로
+  - [x] `docs/ADAPTER-COVERAGE.md` — §19가 그 한 줄이다 (T1이 넣었다)
+  - [x] `docs/TASKS.md` — §0에 "T1~T7 dev / T8 남음"을 적었다(**"5단계 완료"라고 쓰지 않았다** — 전환이 남았다) ·
+        전역 미결 항목 해소
+  - [x] `docs/MVP.md` §7 — "`ACTIVE_PROJECT_SLUG`가 남은 곳은 둘뿐"·"서버가 받는 프로젝트는 여전히 하나" 두 문장을 과거형으로
     (닫힌 스펙이지만 github-connect가 고친 선례)
-  - `.env.example` — `ACTIVE_PROJECT_SLUG` 블록 제거 · `PUSH_TOKEN` 설명을 "push:local이 보낼 그 프로젝트의 토큰
+  - [x] `.env.example` — 블록 제거 · `PUSH_TOKEN` 설명을 "push:local이 보낼 그 프로젝트의 토큰
     원문(로컬 전용)"으로
-  - `lib/__tests__/failure.test.ts:21,27,53` — 예시 변수명 교체 (아무 이름이든 된다)
-  - `.claude/commands/l10n-roundtrip.md` + `.agents/skills/` 미러 — `ACTIVE_PROJECT_SLUG` 절차 제거 · pull 응답 배열
+  - [x] `lib/__tests__/failure.test.ts:21,27,53` — 예시 변수명 교체 (`EXAMPLE_MISSING_VAR`)
+  - [x] `.claude/commands/l10n-roundtrip.md` + `.agents/skills/` 미러 — `ACTIVE_PROJECT_SLUG` 절차 제거 · pull 응답 배열
     (`pnpm sync:agents`, 게이트 `pnpm sync:agents:check`)
-  - `docs/features/README.md` — 표에 한 줄 · `:43` "결정 셋이 여기에만 있다"를 SAAS로 올렸다고 · 백로그 3·4행 이월 사유
-  - `docs/POSTMORTEM.md`는 건드리지 않는다 (append-only)
+  - [x] `docs/features/README.md` — 표에 한 줄 · `:43` "결정 셋이 여기에만 있다"를 SAAS로 올렸다고 · 백로그 3·4행 이월 사유
+  - `docs/POSTMORTEM.md`는 건드리지 않는다 (append-only). ⚠️ 단 T7이 항목 둘을 **추가**했다 —
+        7.2MB 클라이언트 청크와 revalidate가 지운 결과 문구. 그건 `/postmortem`이 한 것이고 이 목록 밖이다
+  - [x] `prisma/schema.prisma:14` — 목록에 없었지만 **"두 라우트만 아직 그 값을 본다"가 거짓이 돼 있었다**
 
-검증: `grep -rn ACTIVE_PROJECT_SLUG --exclude-dir=features --exclude=POSTMORTEM.md --exclude=MVP.md .` 0건
-(`docs/TASKS.md`는 `# 완료 기록` 아래만) · `docs/features/*`·MVP의 언급이 과거형 · 대상 리포 CI 4개가 전부 green ·
-야간 pull 응답에 프로젝트가 여럿 나온다 · `pnpm sync:agents:check` green
+검증: `grep -rn ACTIVE_PROJECT_SLUG --exclude-dir=features --exclude=POSTMORTEM.md --exclude=MVP.md .`가
+**방어선 테스트 셋만** 남긴다 (`docs/TASKS.md`는 `# 완료 기록` 아래만) · `docs/features/*`·MVP의 언급이 과거형 ·
+대상 리포 CI 4개가 전부 green · 야간 pull 응답에 프로젝트가 여럿 나온다 · `pnpm sync:agents:check` green
+
+⚠️ **"0건"을 못 쓴다** (2026-09-07 정정 — T3가 같은 것을 이미 한 번 겪었다). 그 이름을 **들고 있어야 하는**
+테스트가 셋이다: `app/__tests__/entry-points.test.ts`(편집 경로가 그것을 안 읽는지) ·
+`scripts/__tests__/required-args.test.ts`(CLI·라우트·targets에 소비자가 없는지) ·
+`app/api/__tests__/route-diagnostics.test.ts`(그 값이 없어도 두 라우트가 도는지). **지우면 방어선이 함께
+사라진다** — 죽은 이름을 검사하는 것이 이 테스트들의 일이다. `lib/__tests__/failure.test.ts`의 예시 이름만
+바꿨다(`EXAMPLE_MISSING_VAR` — 아무 이름이든 되는 자리라 grep이 그것을 살아 있는 참조로 세지 않게).
+
+🔨 **2026-09-07 — 문서·설정 정리는 끝났고 전환이 남았다.** 위 문서 블록(체크된 항목)과 `.env.example`·
+`prisma/schema.prisma`·`lib/__tests__/failure.test.ts`를 문서별 커밋으로 넣었다. **T8의 앞 여섯 항목과
+`/l10n-roundtrip`은 밟지 않았다** — `/ship`이 구조적으로 못 하는 일이다:
+
+| 남은 것 | 왜 파이프라인 밖인가 |
+|---|---|
+| `pnpm db:deploy` + `db:status:prod` | 프로덕션 DB를 바꾼다 (`/ship` 금지, `/merge` 1단계) |
+| `/merge` | 프로덕션 배포 — 브랜치를 나눈 목적이 그 앞에 사람 판단을 두는 것이다 |
+| 프로덕션 넷 토큰 발급 + 대상 리포 secret 교체 + CI 트리거 | 외부 리포의 상태를 바꾼다. **전환 중 넷의 CI가 401**이라 한 세션에 붙어 있어야 한다 |
+| dev DB 넷 토큰 → `.env.local` | 에이전트가 그 파일을 편집하지 않는다 (CLAUDE.md — 하네스가 전문을 컨텍스트에 넣는다) |
+| Vercel 세 스코프 env 삭제 | 프로덕션 설정. 코드가 안 읽으므로 남아 있어도 무해하지만 다음 사람을 오도한다 |
+| 실물 왕복 10시나리오 | 프로덕션이 필요하다(preview는 Vercel SSO 뒤다). ⚠️ T7이 **로컬로 그 절반을 이미 밟았다** — 남은 것은 설치 목록 밖 리포·`ts-dict` 수동 지정 903키·남의 리포 직접 전송 거부·CI push 200·야간 pull 순회다 |
+| `/l10n-roundtrip` | 폐기용 리포에 실제 PR을 낸다 |
 
 —— `docs(...): ...` (문서별)
