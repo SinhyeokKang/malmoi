@@ -470,8 +470,13 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 ### 7.8 push 인증 — `Project.pushTokenHash`
 
-`ACTIVE_PROJECT_SLUG`(서버 env 하나)를 대체한다. 프로젝트마다 토큰을 발급해 **sha256 해시만 저장**하고,
-페이로드의 `projectSlug`로 행을 찾아 대조한다.
+`ACTIVE_PROJECT_SLUG`(서버 env 하나)를 대체한다. 프로젝트마다 토큰을 발급해 **sha256 해시만 저장**한다.
+
+⚠️ **조회 방향이 중요하다** (2026-09-07 구현에서 확정 — `features/project-onboarding/design.md` §3.8):
+`sha256(Bearer)`로 **행을 찾고**, 페이로드의 `projectSlug`는 그 행의 slug와 **나중에** 대조한다. 페이로드
+slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을 스스로 고르는 순환이라 아무것도 막지 못한다.
+`pushTokenHash`가 `null`인 프로젝트는 어떤 해시로도 조회되지 않으므로 fail-closed가 컬럼의 성질로 성립하고,
+무효 토큰·미발급·없는 프로젝트가 전부 **401 하나**다(404 없음 — 프로젝트 존재를 노출하지 않는다).
 
 - **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(§5.6) 해시 저장 규칙이 한 곳에 모인다.
 - 대상 리포의 composite action은 **이미 `project`·`push-token` input을 갖는다**(`docs/ACTIONS.md`) —
