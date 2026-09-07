@@ -14,13 +14,19 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **실패 사유는 이 호출의 반환값에만 있다.** 중간 상태를 저장하지 않으므로(design §3.4) 화면을
  * 다시 열면 사유를 모른다 — 그래서 인라인으로 남기고 `revalidatePath`가 상태 텍스트를 갱신한다.
+ *
+ * ⚠️ **`canRun`이 false여도 이 컴포넌트는 마운트된 채 있어야 한다.** 성공하면 `revalidatePath`가
+ * 서버를 다시 렌더해 상태가 `ready`로 바뀌는데, 그때 컴포넌트가 사라지면 **방금 받은 결과 문구가
+ * 함께 사라진다** — 부분 실패(`failed > 0`)에서 "M건을 읽지 못했어요"가 아무에게도 닿지 않는다
+ * (불변식 9 · 실물 검증 2026-09-07). 같은 자리에 남아 있으면 클라이언트 상태가 재렌더를 넘어간다.
  */
-export function FirstIngestRetry({ slug }: { slug: string }) {
+export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boolean }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: true; text: string } | { ok: false; error: string } | null>(null);
 
   return (
     <div className="space-y-2">
+      {canRun && (
       <button
         type="button"
         disabled={pending}
@@ -44,6 +50,7 @@ export function FirstIngestRetry({ slug }: { slug: string }) {
       >
         {pending ? "적재하는 중…" : "다시 시도"}
       </button>
+      )}
       {result !== null &&
         (result.ok ? (
           <p className="text-xs">{result.text}</p>

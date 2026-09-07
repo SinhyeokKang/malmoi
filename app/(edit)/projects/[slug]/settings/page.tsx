@@ -239,19 +239,26 @@ function StatusRow({
   project: { installationId: string | null; lastCommitSha: string | null };
 }) {
   const readiness = planProjectReadiness(project);
-  if (readiness === "ready") {
-    // 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1) — 초록을 늘리지 않는다.
-    return <p className="text-muted-foreground text-xs">첫 적재가 끝났어요.</p>;
-  }
 
+  /**
+   * ⚠️ **`FirstIngestRetry`를 분기 밖에 둔다.** 성공하면 `revalidatePath`가 이 섹션을 다시 렌더하고
+   * readiness가 `ready`로 바뀌는데, 그때 컴포넌트가 분기와 함께 사라지면 방금 받은 결과 문구도
+   * 사라진다 — 부분 실패의 "M건을 읽지 못했어요"가 아무에게도 닿지 않는다 (불변식 9). 같은 자리에
+   * 남겨 두면 클라이언트 상태가 서버 재렌더를 넘어간다.
+   */
   return (
     <div className="space-y-2">
+      {/* 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1) — 초록을 늘리지 않는다. */}
       <p className="text-muted-foreground text-xs">
-        {readinessLabel(readiness)} — {readiness === "setup"
-          ? "리포 연결을 먼저 마쳐 주세요."
-          : "리포의 번역 파일을 아직 읽어오지 못했어요."}
+        {readiness === "ready"
+          ? "첫 적재가 끝났어요."
+          : `${readinessLabel(readiness) ?? ""} — ${
+              readiness === "setup"
+                ? "리포 연결을 먼저 마쳐 주세요."
+                : "리포의 번역 파일을 아직 읽어오지 못했어요."
+            }`}
       </p>
-      {readiness === "awaiting_first_sync" && <FirstIngestRetry slug={slug} />}
+      <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
     </div>
   );
 }
