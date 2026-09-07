@@ -107,7 +107,22 @@ function defaultExportObject(sf: SourceFile): ObjectLiteralExpression | undefine
   return exported.reduce((a, b) => (b.getProperties().length > a.getProperties().length ? b : a));
 }
 
-function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
+/** probe 없이 나오는 후보 그룹 — `<dir>{locale}.<ext>` 템플릿과 그 로케일 집합. 순위순이다. */
+export type CodeDictGroup = { pathTemplate: string; locales: ReadonlySet<string> };
+
+/**
+ * `detectCandidates`의 **probe 이전 부분** — 경로만으로 만들 수 있는 후보 그룹을 순위순으로 낸다.
+ *
+ * 분리해 export한 이유 (2026-09-07, 온보딩 design §3.1): 서버는 GitHub API라 동기 probe가 없고, code-dict는
+ * probe 없이 후보 0개라 **내려받을 파일을 고를 근거가 없다.** 이 함수로 그룹을 먼저 얻어 상위 몇 개의 샘플을
+ * 내려받고, 그 내용을 probe로 만들어 `detectCandidates`를 다시 돈다. 정규식을 `lib/onboarding/`에 복사하지
+ * 않는다 — 공급층이 두 벌이면 POSTMORTEM 2026-09-02의 형태다.
+ *
+ * ⚠️ **판정 불변.** `detectCandidates`가 이 함수를 그대로 부르고 probe 검증만 얹는다 —
+ * `__tests__/code-dict-paths.test.ts`가 부분집합·순서 보존을 단언한다. `lib/adapters/**` 변경이지만 재측정
+ * 트리거가 아니다.
+ */
+export function codeDictCandidatePaths(paths: readonly string[]): CodeDictGroup[] {
   /** `dir\0ext` → 로케일 집합 */
   const byDir = new Map<string, Set<string>>();
   for (const path of paths) {
@@ -122,19 +137,20 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     byDir.set(key, set);
   }
 
-  // 경로만으로는 판단할 수 없다 — 로케일 이름 소스 파일은 어디에나 있다. **내용을 봐야 한다.**
-  if (!probe) return [];
-
-  const candidates = rankCandidates(
+  return rankCandidates(
     [...byDir.entries()]
       // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
       .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
       .map(([key, locales]) => ({ dir: key.split("\u0000")[0] ?? "", ext: key.split("\u0000")[1] ?? "ts", locales })),
-  );
+  ).map(({ dir, ext, locales }) => ({ pathTemplate: `${dir}{locale}.${ext}`, locales }));
+}
+
+function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
+  // 경로만으로는 판단할 수 없다 — 로케일 이름 소스 파일은 어디에나 있다. **내용을 봐야 한다.**
+  if (!probe) return [];
 
   const found: DetectedFormat[] = [];
-  for (const { dir, ext, locales } of candidates) {
-    const pathTemplate = `${dir}{locale}.${ext}`;
+  for (const { pathTemplate, locales } of codeDictCandidatePaths(paths)) {
     if (!hasDictionary(pathTemplate, locales, probe)) continue;
     found.push({ adapter: "code-dict", pathTemplate, locales: [...locales] });
   }
