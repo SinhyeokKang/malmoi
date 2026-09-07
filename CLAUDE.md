@@ -432,13 +432,17 @@ lib/
                         + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
                         + freshVerifiedEmail·planEmailRefresh — 재로그인마다 User.email을 현재 검증 주소로
                         갱신(keep|update|conflict). 다른 User가 쓰면 병합 없이 건너뛴다
+                        + maskEmail — 표시용, 되돌릴 수 없어 대조에 쓰지 않는다. 소비자가 둘이라(초대 화면·
+                        셀 메타) 지역 사본을 두면 같은 주소가 화면마다 다르게 보인다
     cookie.ts           hasSessionCookie + shouldRedirectToLogin — 미들웨어 1차 차단용. __Secure- 접두 유무
                         둘 다 보고, GET·HEAD만 돌려보낸다 (Action POST는 통과)
     message.ts          accessErrorMessage · inviteErrorMessage · signInErrorMessage — 거부 사유 →
                         한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
-  keys/                 view.ts(순수 — 집계·배지·permalink) / save.ts(순수 — 저장 판정)
-                        / query.ts(조회, server-only)
+  keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel) / save.ts(순수 — 저장 판정)
+                        / query.ts(조회, server-only — loadProject·loadKeys·loadActors)
+                        ⚠️ **updatedBy는 join으로 못 푼다** — FK가 없고 User.id와 옛 GitHub 핸들이 섞여 있어
+                        loadActors가 따로 읽고 actorLabel이 못 찾은 값을 원문으로 낸다 (malmoi#3)
   onboarding/           탐지 온보딩 (SaaS 5단계, 2026-09-07). 순수 판정 + DB 껍데기 하나 — **GitHub을 모른다**
                         slug.ts(planSlug·normalizeProjectSlug — 형식은 pull/trigger의 isRefSafeSlug를 **그대로 부른다**)
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
