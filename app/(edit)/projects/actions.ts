@@ -26,7 +26,7 @@ import { httpStatus } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
-import { signState, stateCookieName } from "@/lib/github-connect/state";
+import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
@@ -260,11 +260,10 @@ const CreateProjectInput = z.object({
   pathTemplate: z.string().min(1),
   baseLocale: z.string().min(1),
   slug: z.string().min(1),
-  name: z.string().min(1),
+  // ⚠️ 상한이 있는 이유는 **저장되는 유일한 자유 입력**이기 때문이다 — slug는 `planSlug`가 40자로
+  // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
+  name: z.string().min(1).max(200),
 });
-
-/** 인가 화면까지 왕복하기에 충분하고, 방치된 탭이 오래 열려 있지 않을 만큼 짧다 (설정 화면과 같은 값). */
-const STATE_MINUTES = 10;
 
 export type StartUserConnectResult = { ok: false; error: OnboardFailure };
 
@@ -298,14 +297,14 @@ export async function startGithubConnectForUser(): Promise<StartUserConnectResul
       // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
       dest: { kind: "new" },
       nonce,
-      expiresAt: new Date(Date.now() + STATE_MINUTES * 60 * 1000),
+      expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),
     }),
     {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      maxAge: STATE_MINUTES * 60,
+      maxAge: STATE_TTL_MINUTES * 60,
       // `__Host-` 접두와 짝이어야 한다 — 접두만 붙이고 Secure를 빼면 브라우저가 쿠키를 버린다.
       secure: origin.secure,
     },
@@ -334,24 +333,37 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { ok: false, error: token.status };
 
-  let fullNames: string[];
+  let installations: readonly string[];
   try {
     // ⚠️ **전 페이지를 읽는다** — 31번째 설치가 빠지면 정당한 리포가 목록에 없다 (`user.ts`).
-    const installations = await listUserInstallations(token.accessToken);
-    if (installations.length === 0) return { ok: false, error: "no-installations" };
-
-    const lists = await Promise.all(
-      installations.map((id) => listInstallationRepos(token.accessToken, id)),
-    );
-    // 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
-    fullNames = [...new Set(lists.flat())].sort();
+    installations = await listUserInstallations(token.accessToken);
   } catch (error) {
-    // ⚠️ **401은 거부가 아니라 재인가 신호다** — `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로
-    // 안내해 사용자가 같은 버튼을 무한히 누른다 (`connectRepository`와 같은 판단).
-    if (httpStatus(error) === 401) return { ok: false, error: "reauthorize" };
-    logFailure("onboard-repos", error);
-    return { ok: false, error: "unavailable" };
+    return listFailure([error]);
   }
+  if (installations.length === 0) return { ok: false, error: "no-installations" };
+
+  /**
+   * ⚠️ **설치 하나의 실패가 나머지를 막지 않는다** (code-review 2026-09-07 🟡2). 일시중지된 설치는
+   * 403을 주고 그건 영구 상태다 — `Promise.all`로 묶어 통째로 `unavailable`로 접으면 정상 설치의
+   * 리포도 못 고르고 화면은 "잠시 뒤 다시"를 말한다. `/api/pull`이 프로젝트별로 감싸 한 실패가
+   * 순회를 멈추지 않게 한 것과 같은 판단이다 (design §3.9).
+   */
+  const settled = await Promise.all(
+    installations.map((id) =>
+      listInstallationRepos(token.accessToken, id).then(
+        (repos): { repos: readonly string[] } => ({ repos }),
+        (error: unknown): { error: unknown } => ({ error }),
+      ),
+    ),
+  );
+  const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
+  // 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
+  const fullNames = [...new Set(settled.flatMap((r) => ("repos" in r ? r.repos : [])))].sort();
+
+  // 하나도 못 읽었는데 실패가 있었다면 빈 목록은 "리포가 없다"가 아니다 — 장애를 거부로 위장하지 않는다.
+  if (fullNames.length === 0 && failures.length > 0) return listFailure(failures);
+  // 일부만 실패했으면 원인은 로그에만 남는다 — 화면은 읽어낸 목록으로 진행한다.
+  for (const error of failures) logFailure("onboard-repos", error);
 
   if (fullNames.length === 0) return { ok: false, error: "no-repos" };
 
@@ -452,6 +464,12 @@ export async function createProject(raw: {
     prisma.project.findUnique({ where: { slug: input.slug }, select: { id: true } }),
   ]);
 
+  /**
+   * ⚠️ **연결 거부는 `checkRepoAccess`가 이미 값으로 돌려줬다** — 여기 오는 `connect`는 항상 ok다
+   * (code-review 2026-09-07 🟡1). 그래도 `planProjectCreate`에 그것을 넘기는 이유는 **순서가 그
+   * 함수에 문서화돼 있기** 때문이다: 연결 거부 → 제한 → 충돌. 두 층의 매핑이 같은지는
+   * "슬롯이 없고 리포 접근도 없으면 연결 거부가 먼저" 테스트가 고정한다.
+   */
   const plan = planProjectCreate({
     repoConnect: access.connect,
     ownerCount,
@@ -649,6 +667,19 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true, pushToken };
+}
+
+/**
+ * 목록 조회 실패 → 사유. **401이 있으면 그것이 이긴다** (design §2.4): 사용자가 GitHub에서 App
+ * 인가를 철회하면 DB 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고 **이 GET이 유일한
+ * 신호**다. `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 사용자가 같은 버튼을 무한히
+ * 누른다 — 필요한 것은 "GitHub 다시 연결" 버튼이다.
+ */
+function listFailure(errors: readonly unknown[]): { ok: false; error: OnboardFailure } {
+  for (const error of errors) logFailure("onboard-repos", error);
+  return errors.some((error) => httpStatus(error) === 401)
+    ? { ok: false, error: "reauthorize" }
+    : { ok: false, error: "unavailable" };
 }
 
 /**

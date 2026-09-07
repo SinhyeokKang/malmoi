@@ -63,6 +63,16 @@ export function stateCookieNames(): readonly string[] {
 
 const BASE_COOKIE = "malmoi-gh-state";
 
+/**
+ * state의 수명(분). **쿠키 `maxAge`와 서명 `exp`를 함께 정하므로 한 곳에 둔다** — 연결을 시작하는
+ * Action이 둘(설정 화면·생성 화면)이고, 각자 상수를 들면 한쪽만 늘렸을 때 "어느 화면에서
+ * 시작했는지에 따라 state-mismatch가 난다"가 되고 증상이 쿠키 부재와 구별되지 않는다
+ * (code-review 2026-09-07 🟡4 · malmoi#7과 같은 진단 함정).
+ *
+ * 인가 화면까지 왕복하기에 충분하고, 방치된 탭이 오래 열려 있지 않을 만큼 짧다.
+ */
+export const STATE_TTL_MINUTES = 10;
+
 export function signState(input: {
   userId: string;
   dest: StateDest;

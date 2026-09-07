@@ -266,6 +266,41 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
   });
+
+  /**
+   * ⚠️ **설치 하나의 실패가 나머지를 막지 않는다** (code-review 2026-09-07 🟡2). 일시중지된 설치는
+   * 403을 주고 그건 **영구 상태**다(`health.ts`가 `not-installed`로 분류하는 것과 같은 축) — 전체를
+   * `unavailable`로 접으면 정상 설치의 리포도 못 고르고, 화면은 "잠시 뒤 다시"를 말해 사용자가 같은
+   * 버튼을 무한히 누른다. `/api/pull`의 프로젝트별 try/catch와 같은 판단이다 (design §3.9).
+   */
+  it("설치 하나가 실패해도 나머지 설치의 리포는 보인다", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) => {
+      if (id === "88") throw Object.assign(new Error("suspended"), { status: 403 });
+      return ["acme/web"];
+    });
+
+    expect(await listConnectableRepos()).toEqual({
+      ok: true,
+      repos: [{ owner: "acme", repo: "web", fullName: "acme/web" }],
+    });
+  });
+
+  it("설치가 전부 실패하면 unavailable이다 — 빈 목록을 \"리포가 없다\"로 말하지 않는다", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listInstallationRepos.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("전부 실패했는데 하나가 401이면 reauthorize다 — 재인가 신호가 장애에 묻히지 않는다", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) => {
+      throw Object.assign(new Error("nope"), { status: id === "88" ? 401 : 500 });
+    });
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "reauthorize" });
+  });
 });
 
 describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한다", () => {
@@ -500,6 +535,39 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     hoisted.prisma = db.prisma;
 
     expect(await createProject(createInput())).toMatchObject({ ok: true });
+  });
+
+  /**
+   * ⚠️ **연결 거부가 제한 초과보다 앞이다** (`planProjectCreate`의 문서화된 순서). 판정이 어느 층에서
+   * 나오든 Action의 관측 순서는 이것이어야 한다 — 거부될 요청에 다른 사유를 덧붙이지 않는다.
+   * 이 케이스가 그 순서를 고정한다 (code-review 2026-09-07 🟡1: 같은 매핑이 두 층에 있다).
+   */
+  it("슬롯이 없고 리포 접근도 없으면 연결 거부가 먼저 나온다", async () => {
+    db = createHarness({
+      projects: [
+        { id: "p1", slug: "a1", name: "A1" },
+        { id: "p2", slug: "a2", name: "A2" },
+        { id: "p3", slug: "a3", name: "A3" },
+      ],
+      members: [
+        { projectId: "p1", userId: OWNER, role: "OWNER" },
+        { projectId: "p2", userId: OWNER, role: "OWNER" },
+        { projectId: "p3", userId: OWNER, role: "OWNER" },
+      ],
+      users: [{ id: OWNER, email: "o@a.com" }],
+    });
+    hoisted.prisma = db.prisma;
+    hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-forbidden" });
+  });
+
+  it("이름이 지나치게 길면 입력 오류다 — 상한 없는 사용자 입력을 저장하지 않는다", async () => {
+    expect(await createProject(createInput({ name: "가".repeat(201) }))).toEqual({
+      ok: false,
+      error: "invalid input",
+    });
+    expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
   it("3중 검증 거부는 행을 만들지 않는다", async () => {
