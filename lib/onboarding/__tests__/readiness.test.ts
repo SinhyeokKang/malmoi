@@ -24,15 +24,15 @@ describe("planProjectReadiness", () => {
   });
 
   it("설정만 저장된 프로젝트는 `ready`가 아니다 (불변식 8) — 어댑터·경로가 있어도 적재 증거가 없다", () => {
-    expect(
-      planProjectReadiness({
-        installationId: "123",
-        lastCommitSha: null,
-        adapterName: "json-catalog",
-        pathTemplate: "src/locales/{locale}.json",
-        baseLocale: "en",
-      }),
-    ).toBe("awaiting_first_sync");
+    // Project 행 모양 — 판정 함수는 두 컬럼만 보지만, 행 전체를 넘겨도 된다는 것을 고정한다.
+    const configured = {
+      installationId: "123",
+      lastCommitSha: null,
+      adapterName: "json-catalog",
+      pathTemplate: "src/locales/{locale}.json",
+      baseLocale: "en",
+    };
+    expect(planProjectReadiness(configured)).toBe("awaiting_first_sync");
   });
 
   it("lastCommitSha가 있어야만 `ready`다", () => {

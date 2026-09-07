@@ -22,8 +22,12 @@ import { runPull, type PullResult } from "./run";
  * `/`도 막는 것은 git이 거부해서가 아니라 **브랜치 계층을 갈라 남의 ref를 덮을 수 있어서**다
  * (`a/b`라는 slug는 `l10n/sync-a/b`가 되고, `l10n/sync-a`가 이미 있으면 git이 둘 중 하나를
  * 만들지 못한다).
+ *
+ * **export하는 이유는 공유다** (2026-09-07, 온보딩 T1). `lib/onboarding/slug.ts`의 `planSlug`가 이 정규식을
+ * import해 생성 시점에 같은 판정을 내린다 — 복사하면 갈리고, 갈리면 온보딩이 만든 slug가 여기 `fail()`로
+ * 죽는다. 판정은 바뀌지 않았다.
  */
-const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**
  * 프로젝트의 sync 브랜치 이름. **누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이라**
