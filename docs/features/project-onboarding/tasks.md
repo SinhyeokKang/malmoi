@@ -287,9 +287,9 @@ redirect**다. design §3.6이 그 넷의 인가를 `requireUser`로 지정했�
 
 ## T7. UI
 
-- [ ] `app/(edit)/projects/new/page.tsx` — 최상단 `requireUser`. 조건부 렌더 금지. `?e=`를 **`isConnectError`·
+- [x] `app/(edit)/projects/new/page.tsx` — 최상단 `requireUser`. 조건부 렌더 금지. `?e=`를 **`isConnectError`·
       `isOnboardError` 둘로** 읽는다 (POSTMORTEM 2026-09-06 · design §3.6) — 같은 커밋에
-- [ ] `components/onboarding/*` — 리포 선택(텍스트 필터) · 후보 목록(형식·경로·언어·**키 수** + "더 있을 수 있어요") ·
+- [x] `components/onboarding/*` — 리포 선택(텍스트 필터) · 후보 목록(형식·경로·언어·**키 수** + "더 있을 수 있어요") ·
       기준 로케일 라디오(기본 `pickBaseLocale`) · 수동 지정(`<details>`, `no-candidates`면 펼침 + 이유 문구) ·
       확정 폼(slug 미리보기 `mal-moi.com/projects/<slug>` · 브랜치 `l10n/sync-<slug>` · "나중에 바꿀 수 없어요") ·
       결과(토큰 칩 + "복사됨" 라벨 + "잃어버리면 설정에서 재발급" 캡션 + YAML `<pre>` 코드 블록 + [복사] +
@@ -301,14 +301,14 @@ redirect**다. design §3.6이 그 넷의 인가를 `requireUser`로 지정했�
   - ⚠️ 포커스 링 셋을 단다 (`components/__tests__/focus-ring`가 소스로 센다 — 눈으로 두 번 놓쳤다)
   - ⚠️ raw 색을 늘리지 않는다 — 상태 표시는 `text-muted-foreground`. `docs/DESIGN.md` §6.4에 **"코드 블록"
     `<pre>` 패턴 등재**, §6.2에 "상태 축 셋 — 색 없음" 표 등재 (`docs(DESIGN)` 별도 커밋)
-- [ ] `app/(edit)/projects/page.tsx` — "새 프로젝트" 진입(빈 상태에도 primary 버튼, "-요" 문체) + 상태 텍스트
+- [x] `app/(edit)/projects/page.tsx` — "새 프로젝트" 진입(빈 상태에도 primary 버튼, "-요" 문체) + 상태 텍스트
       (`awaiting_first_sync`→"첫 적재 대기", `setup`→"준비 중", `ready`→없음)
-- [ ] `app/(edit)/projects/[slug]/translations/page.tsx` — `requireProjectAccess` **뒤** `planProjectReadiness`:
+- [x] `app/(edit)/projects/[slug]/translations/page.tsx` — `requireProjectAccess` **뒤** `planProjectReadiness`:
       OWNER → `redirect(/projects/<slug>/settings)`, 그 외 → 한 줄 "소유자가 설정을 마치는 중이에요"
-- [ ] `app/(edit)/projects/[slug]/settings/page.tsx` — **상태 섹션**("첫 적재 대기" + [다시 시도] 인라인 결과 + YAML) +
+- [x] `app/(edit)/projects/[slug]/settings/page.tsx` — **상태 섹션**("첫 적재 대기" + [다시 시도] 인라인 결과 + YAML) +
       push 토큰 섹션(상시 캡션 "재발급하면 기존 토큰은 즉시 무효…" + [재발급] → invite-form 형 인라인)
   - ⚠️ 섹션이 독립적으로 실패한다 — 기존 둘(건강성·계정)과 같은 판단
-- [ ] `middleware.ts` — `matcher`는 이미 `/projects/:path*`라 `new`가 덮인다. **테스트로 고정한다**
+- [x] `middleware.ts` — `matcher`는 이미 `/projects/:path*`라 `new`가 덮인다. **테스트로 고정한다**
       (`lib/auth/__tests__/cookie*.test.ts` 또는 `middleware` 매처 테스트에 `/projects/new` 케이스)
 
 검증: `pnpm build` green (RSC 경계는 `tsc`가 못 본다) · `pnpm test` green · **`[manual]` — `/bugshot-qa`로**:
@@ -318,6 +318,45 @@ redirect**다. design §3.6이 그 넷의 인가를 `requireUser`로 지정했�
 텍스트 / `ready` 아닌 slug의 `translations` → OWNER는 설정, EDITOR는 한 줄 / 설정 [다시 시도] → `not-awaiting` 문구 /
 세션 만료 뒤 Action → `?e=` 문구 / **결과 화면 링크 클릭 → 번역 화면 200**(템플릿 리터럴은 자동 검사 밖) / 탭으로
 전체 흐름 통과(포커스 링)
+
+
+✅ 2026-09-07 — `67d6746`(test) → `3195e9e`(UI) → `6717672`(refactor: code-review 🟡 4건) →
+`43b74d6`(fix: 실물 검증이 잡은 것) → `docs(DESIGN)`. test 1755 green · typecheck · build green.
+최종 청크 최대 229KB(아래 🔴 참조).
+
+**실물 검증** (로컬 dev + dev DB, `t7-verify` 프로젝트를 만들었다 지웠다 — ego-browser):
+로그인 → `/projects` 빈 목록 아님·[새 프로젝트] → `/projects/new`가 **not-connected 빈 상태 + [GitHub 연결]** →
+왕복(`redirect_uri`가 localhost로 나갔다 — malmoi#7 픽스 생존) → **착지가 `/projects/new`**(`dest:{kind:"new"}`가
+실제로 동작한다) → 리포 4개(설치 목록과 일치) → `bugshot-2` 탐지: **크롬 확장 메시지 ·
+`public/_locales/{locale}/messages.json` · 언어 3(en,fr,ko) · 키 4개**(T5 실물값과 일치) + "더 있을 수 있어요" +
+기준 언어 라디오(기본 en) + 수동 지정 접힘 → 확정(`t7-verify`) → **토큰 원문 + YAML(`branches: [main]`) +
+"적재하는 중…" → "4개 키를 적재했어요"** → [번역 시작하기] → 번역 화면 200(4키, CMD 1·EXT 3) →
+설정 5섹션(리포 연결·상태·push 토큰·워크플로·GitHub 계정) → **토큰 재발급**(원문 + 경고 + [복사]→"복사됨") →
+`lastCommitSha`를 null로 되돌려: `/projects`가 "첫 적재 대기 · 소유자", **번역 화면이 OWNER를 설정으로 redirect**,
+설정 상태 섹션이 "첫 적재 대기 — …" + [다시 시도] → 재적재 성공.
+
+⚠️ **못 밟은 것 둘**: ① `not-awaiting` 문구 — 재적재가 성공하면 `revalidatePath`가 [다시 시도]를 없애므로
+UI로는 도달할 수 없다(그것이 설계다 — 버튼이 사라지는 것이 답이고, URL 직접 호출만 그 갈래를 본다).
+② `no-candidates`·`no-installations`·`tree-truncated` 빈 상태 — 그 상태를 만들 리포가 없다(설치 넷이 전부
+로케일 파일을 갖는다). `GITHUB_APP_SLUG` 없는 대체 문구도 같은 이유로 밟지 않았다.
+
+🔴 **실물 검증이 잡은 결함 둘** (둘 다 단위 테스트가 원리적으로 못 보는 층):
+① **클라이언트 번들에 7.2MB 청크.** T6이 `not-ready` 문구를 화면에 닿게 하려고 클라이언트에서
+`lib/onboarding/message`를 import했고, 그 그래프가 `slug` → `pull/trigger` → `lib/adapters` → `ts-dict` →
+**ts-morph(TypeScript 컴파일러)** 로 이어졌다. **T6의 확인이 `@octokit`만 grep해서 "트리 셰이킹이 떼어냈다"는
+틀린 결론을 주석으로 남겼다.** 판정을 잎 모듈 `lib/pull/ref-slug.ts`로 내리고
+`components/__tests__/client-graph.test.ts`가 상시로 센다 (POSTMORTEM 2026-09-07).
+② **[다시 시도] 성공이 자기 결과 문구를 지웠다.** `revalidatePath` → readiness가 `ready`로 → 그 분기 안의
+컴포넌트가 언마운트 → 방금 받은 `ingestHeadline`이 사라진다. 부분 적재면 "M건을 읽지 못했어요"(불변식 9)가
+아무에게도 닿지 않는다. 컴포넌트를 분기 밖으로 내고 `canRun`으로 버튼만 감췄다 (POSTMORTEM 2026-09-07).
+
+**code-review가 바꾼 것 넷**: `no-candidates`에서 같은 문구가 두 번 뜨던 것 · 목록 전체 버튼이 동시에
+"탐지하는 중…"이 되던 것 · `error as OnboardError` 단언 · 적재 오류 목록의 중복 key. 그리고 `tree-truncated`
+주석이 "수동 지정은 된다"고 적혀 있었는데 **거짓이다** — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 낸다.
+
+**설계에 없던 판단 하나**: 포커스 링 셋을 공유 상수에 넣지 않고 컨트롤 11곳에 리터럴로 적었다 —
+`focus-ring.test.ts`가 여는 태그의 **소스**를 읽으므로 상수에 숨기면 그 방어선이 이 파일을 못 본다.
+DESIGN §7에 그 사실을 등재했다.
 
 —— `feat(onboarding): the /projects/new flow` + `docs(DESIGN): code block surface and colorless status axis`
 
