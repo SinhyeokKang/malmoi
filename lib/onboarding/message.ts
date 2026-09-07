@@ -100,11 +100,14 @@ export function onboardErrorMessage(error: OnboardError): string {
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (spec §5: 로케일이 하나뿐인 리포는 붙일 수 없다).
       return "로케일 파일을 찾지 못했어요. 언어가 2개 이상인 로케일 파일이 필요해요.";
     case "tree-truncated":
-      return "파일이 너무 많아 자동으로 찾을 수 없어요. 아래에서 경로를 직접 지정해 주세요.";
+      // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
+      return "이 리포는 파일이 너무 많아 번역 파일을 찾을 수 없어요. 직접 지정해도 같은 이유로 막혀요.";
     case "base-branch-missing":
       return "기본 브랜치를 읽을 수 없어요. 리포에 커밋이 있는지 확인해 주세요.";
     case "key-count-failed":
-      return "키 수를 확인하지 못했어요.";
+      // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "언어 3개 · 키 4개" 자리에 그대로 들어간다
+      // (2026-09-07 리뷰 ⚪10: 화면이 자기 문구를 따로 들고 있었다).
+      return "키 수 확인 실패";
     case "manual-no-match":
       return "그 경로에서 이 형식의 파일을 찾지 못했어요. 경로와 형식을 다시 확인해 주세요.";
     case "installation-forbidden":
