@@ -1124,6 +1124,11 @@ livemarks)가 나왔다 — 지표를 넣고 배선을 안 하는 것이 이 리
 `lib/adapters/code-dict.ts`의 `detectCandidates` 앞부분(경로 → 그룹, probe 이전)을 `codeDictCandidatePaths(paths)`로
 분리해 export했다 (온보딩 design §3.1 2b — 서버는 동기 probe가 없어 내려받을 파일을 고를 그룹이 먼저 필요하다).
 **판정은 한 줄도 바뀌지 않았다** — `detectCandidates`가 그 함수를 그대로 부르고 `hasDictionary` 검증만 얹는다.
+
+**같은 날 둘째 변경**: `chrome-locales.write`에서 계약에 없던 `isBase` 파라미터를 뺐다(`lib/adapters/types.ts`의
+`WriteInput`대로). **본문은 그 값을 읽지 않았으므로 출력 바이트가 동일하다** — writer 로직 0줄이다. 다만
+`lib/survey/one.ts`가 그 필드를 넘기고 있었으므로 **측정 경로의 입력이 프로덕션과 같아진 것이 이 변경의
+값이다**(전에는 갈려 있었다). 지표에 영향이 없어 회차를 더하지 않는다.
 `lib/adapters/__tests__/code-dict-paths.test.ts`가 부분집합·순서 보존·로케일 집합 동일을 단언하고, `detect-candidates`·
 `key-order-golden`이 그대로 green이다. `lib/adapters/**` 변경이지만 **재측정 트리거로 보지 않고 회차를 더하지 않는다** —
 같은 입력에 같은 후보를 내는 코드 이동이라 잴 것이 없다.
