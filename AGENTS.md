@@ -121,6 +121,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 |---|---|---|
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
 | 초대 발급·멤버 변경 | **Server Action** (`app/(edit)/projects/actions.ts`) | 편집 UI (OWNER) |
+| 프로젝트 생성·탐지·첫 적재·토큰 재발급 | **Server Action** (같은 파일, 2026-09-07 SaaS 5단계) | 온보딩 UI — 프로젝트가 없는 넷은 `requireUser`뿐이다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | `/api/push` | Route Handler | GitHub Actions (Bearer `PUSH_TOKEN`) |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) — 편집 UI 버튼은 Server Action이 `triggerPull`을 직접 부른다 |
@@ -265,11 +266,24 @@ app/
   (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사 — GET·HEAD만, Action POST는 통과)
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
-    actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지난다
+    actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지나고,
+                        그 뒤 planProjectReadiness로 첫 적재 전 프로젝트를 not-ready로 거부한다
     projects/page.tsx   내 멤버십 목록. **로그인 후 착지점**이자 인가 거부의 redirect 목적지 — 사유는
                         `?e=`로 받아 **isAccessError·isConnectError 둘로** 걸러 한 줄 보인다.
                         ⚠️ 앞의 것만 보면 GitHub 연결 실패 사유가 통째로 무음이다 (POSTMORTEM 2026-09-06)
+    projects/new/page.tsx
+                        온보딩 라우트 (SaaS 5단계 — 화면은 T7). ⚠️ **maxDuration=60이 여기 있어야 한다** —
+                        Server Action은 자기를 부른 페이지 세그먼트의 config를 쓴다. `?e=`를
+                        **isOnboardError·isConnectError 둘로** 읽는다 (callback이 착지시킨다)
     projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+                        + 온보딩 다섯 (2026-09-07): startGithubConnectForUser · listConnectableRepos ·
+                        detectRepoFormats · createProject · runFirstIngest · rotatePushToken
+                        ⚠️ **앞의 넷은 requireUser뿐이다** — 생성 경로에는 인가할 프로젝트가 없다
+                        (design §3.6). 뒤의 둘은 getProjectAccess(project:settings)다
+                        ⚠️ **두 GitHub 자격증명이 만나는 유일한 자리다** — 리포 읽기는 App 설치 토큰,
+                        "이 사람이 그 설치를 볼 수 있는가"는 사용자 토큰. lib/onboarding/은 둘 다 모른다
+                        ⚠️ createProject는 **클라이언트가 보낸 pathTemplate을 저장하지 않는다** — 파일을
+                        다시 읽어 detectFormatWith를 돌리고 그 반환값을 저장한다 (design §3.4)
     projects/[slug]/settings/page.tsx
                         리포 연결 + GitHub 계정 (SaaS 4단계). 최상단에서 requireProjectAccess를 던진다.
                         ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
@@ -281,8 +295,10 @@ app/
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**
-    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십·연결·게시실패 테스트 다섯
-                        (github-connect·publish-failure는 mock 범위가 달라 일부러 갈랐다)
+    __tests__/          harness.ts(메모리 DB 한 벌) + 흐름·인가·멤버십·연결·게시실패·온보딩 테스트 여섯
+                        (github-connect·publish-failure·onboarding은 mock 범위가 달라 일부러 갈랐다)
+                        ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
+                        게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
     [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
                         email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
@@ -354,6 +370,10 @@ lib/
     state.ts            OAuth state 서명·검증 (HMAC over AUTH_SECRET, secret은 인자라 순수)
                         + stateCookieName(secure)·stateCookieNames() — ⚠️ 읽는 쪽은 **두 이름을 다 본다**
                         (쓰는 쪽은 x-forwarded-proto, 읽는 쪽은 요청 URL로 판정해 갈릴 수 있다)
+                        + STATE_TTL_MINUTES — 쿠키 maxAge와 서명 exp를 함께 정하므로 한 곳에 둔다
+                        ⚠️ **payload가 `dest`를 든다** (2026-09-07): `{kind:"settings", slug}` |
+                        `{kind:"new"}`. 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없다.
+                        옛 `{slug}` 모양은 `state-mismatch`로 거부된다 (10분 만료라 배포 직후 창)
     account-link.ts     planAccountLink 4갈래 — taken-by-other가 replace보다 앞이다
     connect-plan.ts     planRepoConnect — SAAS §5.4 3중 검증의 판정 자리 (5단계가 재사용)
     health.ts           planConnectionHealth 6갈래 + probeFromError·httpStatus
@@ -421,7 +441,7 @@ lib/
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
                         · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
                         / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
-                        / message.ts(OnboardError 17갈래 · ingestHeadline) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
+                        / message.ts(OnboardError 18갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸 import한다) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
                         / ingest.ts(서버측 첫 적재 — assemblePushInput→buildPushPayload→applyPush를 **우회하지 않는다**.
                           스냅샷·blob은 값으로 받고, 내려받지 못한 파일을 실패로 센다)
                         ⚠️ `@/lib/github`을 import하지 않는다 — 두 토큰은 Server Action 하나에서만 만난다
