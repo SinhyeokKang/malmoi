@@ -8,13 +8,19 @@
 
 ⚠️ **말모이 리포가 private이라 접근을 열어야 한다.** `malmoi` > Settings > Actions > General > Access > **"Accessible from repositories owned by the user"**. 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
 
+⚠️ **그 설정은 소유자가 같은 리포만 열어준다** — **다른 계정이 소유한 리포는 이 경로가 원리적으로 없다.** 그 프로젝트는 편집과 야간 pull은 정상이고 **자동 수집(push)만 안 돈다**: 소스 키가 갱신되지 않으므로 리포에 새 문자열이 생겨도 화면에 나타나지 않는다. 온보딩이 이것을 알려진 한계로 등재한다.
+
 ## 2. 대상 리포 쪽 설정
 
 **Secret 하나**: `PUSH_TOKEN` — **그 프로젝트의 토큰 원문**이다 (2026-09-07부터. 말모이 설정 화면에서 발급하고, 서버는 해시만 갖는다). 값이 틀리거나 그 프로젝트가 아직 토큰을 발급받지 않았으면 `/api/push`가 **401**이고 어느 쪽이 틀렸는지는 알려주지 않는다 — **프로젝트 존재를 노출하지 않으려고** 무효 토큰과 없는 프로젝트를 같은 응답으로 접는다.
 
 ⚠️ **말모이 서버의 공유 env와 같은 값이 아니다.** 전에는 배포 전체가 토큰 하나를 들었고 그 값이 비면 500(`server misconfigured`)이었는데, 지금은 토큰이 곧 프로젝트라 서버에 그런 변수가 없다.
 
+⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **이름 규칙은 아직 안 정했다** (SAAS §10).
+
 **워크플로** `.github/workflows/l10n.yml`:
+
+⚠️ **아래 블록이 정본이다.** 말모이의 온보딩 결과 화면이 같은 스니펫을 slug만 바꿔 복사용으로 내고(`lib/onboarding/workflow.ts`의 `renderWorkflowYaml`), **`lib/onboarding/__tests__/workflow.test.ts`가 이 문서의 첫 YAML 코드 블록을 읽어 줄 단위로 대조한다**(그 스캐너가 여는 펜스를 정규식으로 찾으므로 이 문서의 산문에 그 펜스 문자열을 쓰지 않는다) — 한쪽만 고치면 `pnpm test`가 red이고, 통과시키면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
 
 ```yaml
 name: l10n
@@ -102,10 +108,11 @@ jobs:
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
+| **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales`에 그 로케일 — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
-**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues`, 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues` 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 
