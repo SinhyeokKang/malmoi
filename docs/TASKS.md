@@ -33,8 +33,10 @@
 
 **2026-09-07 현재**: 4단계(GitHub 설치 연결)와 5단계(탐지 온보딩)가 **프로덕션까지 갔다** — T8까지
 끝났다(`db:deploy` → prod 마이그레이션 11개 → `/merge` PR #9 → squash `f595cc3` → 대상 리포 토큰·secret
-교체 → CI green `updated: 23`). **남은 것은 Vercel 세 스코프의 옛 env(`ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN`)
-삭제 하나이고, 롤백 창을 닫는 시점까지 의도적으로 보류 중이다** (코드는 그 값을 읽지 않는다).
+교체 → CI green `updated: 23`). ✅ **옛 env 삭제까지 끝났다** (2026-09-07 리뷰 ⚪16 — `main`에 #9 위로
+#10이 이미 얹혀 롤백 창이 사실상 닫혀 있었다). ⚠️ **"세 스코프"가 아니었다**: `ACTIVE_PROJECT_SLUG`·
+`PUSH_TOKEN` 둘 다 **Production+Preview 두 스코프만** 갖고 있었고 Development에는 없었다 —
+`vercel env ls`로 삭제를 확인했다(성공 메시지가 근거가 아니다).
 ⚠️ **전환 계획의 "기존 프로젝트 넷의 토큰 재발급"은 전제가 틀렸다** — l10n 워크플로가 붙은 리포는
 `i18n-order-check` **하나**이고, 쓰는 곳이 없는 토큰은 발급하지 않았다(`pushTokenHash`가 `null`인 것이
 fail-closed의 올바른 기본값이다). **다음은 6단계(번역 UI 재작성 + Publish)다.**
