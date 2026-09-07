@@ -353,6 +353,60 @@ clone하지 않는다.
 - **⚠️ `l10n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
 - **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `l10n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
 
+### 3.1 온보딩의 읽기 — 2패스 탐지와 첫 적재 (SaaS 5단계, `lib/onboarding/`)
+
+pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전용) 그리고 **판정층이 GitHub을 모른다** —
+`lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 Server Action 하나다
+(`credential-separation.test.ts`가 상시로 센다).
+
+**리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
+인스턴스마다 새로 생겨 **`POST /app/installations/{id}/access_tokens`가 호출마다 하나씩 더 붙는다** — 예산이
+2배가 되고 50로케일 첫 적재는 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴). 스냅샷은 트리 항목의
+**`sha`를 함께 든다** — 경로만 들면 blob을 contents API로 읽어야 하고 그쪽은 **1MB에서 잘려 조용히 빈 내용**을
+준다.
+
+**탐지가 두 번 도는 이유는 `FileProbe`가 동기 함수이기 때문이다.** CLI는 `readFileSync`라 문제가 없지만
+서버는 GitHub API라 그럴 수 없다 — 경로만으로 1차 후보를 얻고, 내려받을 파일을 고른 뒤, 내용을 들고 다시 돈다.
+
+⚠️ **"probe 없는 후보 ⊇ probe 있는 후보"는 거짓이다.** probe의 역할이 어댑터마다 다르다:
+
+| 어댑터 | probe 없이 | probe의 역할 |
+|---|---|---|
+| `chrome-locales` · `json-catalog` · `yaml-catalog` | 경로 모양으로 후보를 낸다 | **필터** — `verifySamples`가 샘플이 카탈로그 모양이 아니면 떨어뜨린다. 단 probe가 전부 `undefined`면 `false`라 **미검증 = 탈락**이다 |
+| `code-dict` | **후보 0개** (`if (!probe) return []`) | **생성** — `hasDictionary`가 default export 객체를 실제로 봐야 후보가 된다 |
+| `ts-dict` | 후보 0개 (자동 탐지 불참 — ADAPTER-COVERAGE 판정 ③) | 수동 지정만 |
+
+- **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON 묶음일 수 있다
+  (bugshot-web 실측) — 후보를 고르기 위한 중간값이지 화면에 쓰는 값이 아니다.
+- **내려받는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
+  `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
+  다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
+- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = **blob ≤ 21**.
+  온보딩 한 번의 호출은 `ref 1 + commit 1 + tree 1 + blob ≤21`이다.
+
+**첫 적재는 기존 push 경로를 그대로 지난다** (`lib/onboarding/ingest.ts`):
+
+```
+snapshot → ingestTargets(순수) → readBlob × M
+  → assemblePushInput   (selectLocaleFiles + adapter.read + base 판정 — push-local과 **같은 함수**)
+  → buildPushPayload    (페이로드의 **유일한 생산자**)
+  → applyPush           (키·번역·refs·lastCommit* 를 한 배열형 트랜잭션으로)
+```
+
+- ⚠️ **셋을 우회하지 않는다.** 리터럴로 조립했다가 필수 필드가 늘어도 컴파일러가 침묵한 전례(POSTMORTEM
+  2026-08-31)와 껍데기가 파일을 안 골라 어댑터가 "존재하지 않았던" 전례(2026-09-02)가 각각 있다.
+- ⚠️ **`commitAt`은 base head 커밋의 시각이다.** `new Date()`면 그 시각이 커밋보다 미래라 **CI의 첫 push가
+  `stale-commit` 409로 거부된다**(`checkCommitOrder`는 동일 시각만 통과시킨다). 그래서 스냅샷이
+  `headCommittedAt`을 함께 읽는다 — `GET /git/commits/{sha}` 한 번이 더 든다.
+- ⚠️ **`refs`는 빈 배열이다.** 서버가 리포를 체크아웃하지 않아 ts-morph를 돌릴 수 없다. `applyPush`가 refs를
+  전체 교체하므로 "참조 없음"으로 저장되고 CI 첫 push가 채운다 — **화면이 그 사실을 한 줄로 알린다**(조용히
+  비어 있으면 "코드 참조 기능이 고장났다"로 읽힌다).
+- ⚠️ **내려받지 못한 파일을 실패로 센다.** "다운로드 실패"와 "리포에 없음"을 같게 접으면 로케일 12개 중 3개가
+  5xx일 때 DB엔 9개만 들어가는데 화면은 "N개 키를 적재했어요"를 쓴다 — 그래서 `targets`(시도한 경로)를 함께
+  받아 `blobs`에 없는 것을 센다 (SAAS 불변식 9 · code-review 2026-09-07 🔴).
+- **`Project.baseBranch`는 `ProbeResult.defaultBranch`로 채운다.** 스키마 기본값이 `"main"`이라 안 채우면
+  default branch가 `develop`인 리포의 pull이 `main`을 찾아 죽는다.
+
 ## 4. 사용처 스캔 (`lib/scan/`) — 진실이 아니다
 
 **출력은 `refs`뿐이다.** `ScanResult`에 `errors` 필드가 **없는 것이 이 층의 요지다** — 키의 존재·원문·키 이름 합법성은 전부 §1의 적재 층이 로케일 파일을 읽어 정한다. 이 층은 편집 UI의 컨텍스트("이 문자열이 어디 나오는지")만 만든다.
