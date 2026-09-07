@@ -123,19 +123,38 @@ test 1630 green · typecheck · build green.
 
 ## T4. `/api/pull` 전 프로젝트 순회
 
-- [ ] `lib/pull/targets.ts` — `selectPullTargets(projects)` (순수: `installationId != null AND
+- [x] `lib/pull/targets.ts` — `selectPullTargets(projects)` (순수: `installationId != null AND
       lastCommitSha != null`, `slug` 오름차순)
-- [ ] `app/api/pull/route.ts` — 순회 + **프로젝트별 try/catch** + 결과 **배열**. `requireEnv("ACTIVE_PROJECT_SLUG")` 제거.
+- [x] `app/api/pull/route.ts` — 순회 + **프로젝트별 try/catch** + 결과 **배열**. `requireEnv("ACTIVE_PROJECT_SLUG")` 제거.
       `:16` 주석의 옛 matcher(`/keys/:path*`)도 고친다
   - ⚠️ 실패 전문은 응답에 싣지 않는다 — `ref`만 내고 서버 로그로 (`classifyFailure`, ARCHITECTURE §6.0)
-- [ ] `app/api/__tests__/route-diagnostics.test.ts` — **pull 케이스 4개 전부 재작성** (`:65-98`): 500 케이스 →
+- [x] `app/api/__tests__/route-diagnostics.test.ts` — **pull 케이스 4개 전부 재작성** (`:65-98`): 500 케이스 →
       대상 0개 `[]` 200 / `triggerPull` throw → 200 + 그 항목만 `{status:"failed", ref}`, 전문은 `console.error`에만 /
       AppError → 같은 형 / 정상 경로 → 배열. mock prisma에 `project.findMany` (없으면 라우트가 TypeError)
-- [ ] `lib/pull/__tests__/targets.test.ts` — 준비 안 된 프로젝트(`installationId` null·`lastCommitSha` null·
+- [x] `lib/pull/__tests__/targets.test.ts` — 준비 안 된 프로젝트(`installationId` null·`lastCommitSha` null·
       `skillflo-web` 모양)는 대상에서 빠진다 / 순서가 결정적이다 / `triggerPull`이 실패 **값**을 돌려주는
       경우와 throw 둘 다 배열에 남는다
 
 검증: `pnpm test` green
+
+✅ 2026-09-07 — `802833f`(test) → `597b545`(feat) → `089e139`(refactor: code-review 🔴1). test 1649 green ·
+typecheck · build green. **`ACTIVE_PROJECT_SLUG`를 읽는 코드가 남지 않았다** — T3가 심어둔 "pull은 아직
+읽는다" 단언이 이 구현으로 red가 되어 완료를 알렸고, 그 자리를 "코드에 소비자가 없다"로 바꿨다.
+
+**실물 검증** (로컬 dev 서버 + dev DB, 검증용 `Project` 행을 만들었다 지웠다):
+준비된 둘 순회(`order-check`는 2층까지 가서 `no-changes` — 바이트 고정점 유지, probe는 1층 `no-edits`) /
+미준비 행 제외 / probe에 편집을 심어 GitHub을 부르게 하니 **그 항목만 `failed`이고 나머지는 정상 결과** /
+인증 실패 401은 순회 전 / 대상 0개 `[]` 200.
+
+⚠️ **code-review가 🔴을 하나 잡았고 그것이 실물 검증의 구멍이기도 했다.** 안전한 실패(`AppError`)가
+로그를 안 남겨서, 응답이 항상 200 배열인 이 라우트에서 **전 프로젝트가 매일 밤 실패해도 성공과 관측값이
+같았다**(POSTMORTEM 2026-09-06의 형태). 내가 실물로 본 `base 브랜치를 읽을 수 없다`가 정확히 그 갈래였는데
+서버 로그 grep이 비어 있는 것을 그냥 넘겼다. 지금은 두 갈래 모두 `[pull:<slug>]`로 남고 순회 끝에
+`[pull] targets=N failed=M` 한 줄이 붙는다 — 재검증에서 그 두 줄을 실물로 확인했다.
+
+⚠️ **design §3.9의 "넘치면 나머지가 다음 밤에 돈다"가 거짓이라 문서를 고쳤다.** 순서가 `slug` 고정이라
+선두가 예산을 독점하면 뒤쪽은 결정적으로 아사한다. 정렬 변경은 이 단계가 요청받지 않은 동작이라
+제약을 명시하고 7단계 `SyncRun`에 넘겼다.
 
 —— `feat(pull): cron iterates every ready project`
 
