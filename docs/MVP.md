@@ -388,7 +388,7 @@ Translation  id PK, projectId, keyId, localeCode, value, needsReview,
 
 **다중 프로젝트/리포 — 2026-08-31 부분 해제.** SaaS를 염두에 두고 **스키마의 테넌트 경계만** 들였다 (`Project` 테이블 + `projectId` FK + 복합 unique·복합 PK). 근거는 비용 비대칭이다: 이 두 제약은 나중에 바꾸면 실데이터 이관이 되는데, 나머지 SaaS 요소는 전부 additive로 붙는다.
 
-**MVP에서 비범위, SaaS 단계에서 착수**(2026-09-03 로드맵으로 승격 — §8.4): 테넌트별 인증·인가(멤버십·역할), 프로젝트 생성, 프로젝트당 복수 멤버, 프로젝트 전환 UI. MVP 동안 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 **남았고**, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 **하나였다.** ⚠️ **둘 다 지났다** — 허용 목록은 2026-09-06에 삭제됐고(인가는 `ProjectMember`), 편집 경로는 URL slug 멀티테넌트다. `ACTIVE_PROJECT_SLUG`가 남은 곳은 **`/api/pull` 하나**다 — `/api/push`는 2026-09-07에 프로젝트별 토큰(`Project.pushTokenHash`)으로 옮겨갔고, 나머지 하나는 SAAS §8 5단계 T4의 전 프로젝트 순회가 지운다.
+**MVP에서 비범위, SaaS 단계에서 착수**(2026-09-03 로드맵으로 승격 — §8.4): 테넌트별 인증·인가(멤버십·역할), 프로젝트 생성, 프로젝트당 복수 멤버, 프로젝트 전환 UI. MVP 동안 인증은 `AUTH_ALLOWED_LOGINS`(허용 GitHub 핸들 목록) 하나로 단일 테넌트로 **남았고**, 운영 대상은 `ACTIVE_PROJECT_SLUG`가 가리키는 프로젝트 **하나였다.** ⚠️ **둘 다 지났다** — 허용 목록은 2026-09-06에 삭제됐고(인가는 `ProjectMember`), 편집 경로는 URL slug 멀티테넌트다. **`ACTIVE_PROJECT_SLUG`를 읽는 코드가 더 없다** (2026-09-07) — `/api/push`는 프로젝트별 토큰(`Project.pushTokenHash`)으로, `/api/pull`은 준비된 전 프로젝트 순회로 옮겨갔다 (SAAS §7.8·§8 5단계).
 
 **여전히 비범위**(SaaS 단계에서도 안 한다): 과금. **SaaS가 이어받는 비범위 전체는 SAAS §4.2**다 — 이 줄에 과금만 남은 것은 나머지가 그리로 옮겨간 것이지 승격된 것이 아니다.
 
