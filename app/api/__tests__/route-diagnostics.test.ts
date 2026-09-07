@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/failure";
 import { hashPushToken } from "@/lib/push/token";
 
+import { createHarness } from "../../(edit)/__tests__/harness";
+
 /**
  * **외부 진입점의 실패가 진단 가능한 응답을 내야 한다.**
  *
@@ -50,7 +52,7 @@ const payload = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const pushRequest = (body: unknown, token = SECRET) =>
+const pushRequest = (body: unknown, token = TOKEN) =>
   new Request("https://x/api/push", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
@@ -66,8 +68,10 @@ beforeEach(() => {
   // `PUSH_TOKEN`은 이제 push 라우트가 읽지 않는다 — `/api/pull`의 `CRON_SECRET`만 env다.
   vi.stubEnv("CRON_SECRET", SECRET);
   vi.stubEnv("ACTIVE_PROJECT_SLUG", "acme");
-  // 기본 stub: 어떤 해시로 조회하든 그 프로젝트를 돌려준다. 케이스마다 덮어쓴다.
-  hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
+  // ⚠️ **기본 stub은 fail-closed다** — "아무 토큰이나 인증 성공"을 기본값으로 두면 앞으로 추가되는 케이스가
+  // 인증을 공짜로 통과하고, 그게 이 리포가 두 번 밟은 "가짜가 실제보다 관대하다"의 형태다
+  // (POSTMORTEM 2026-09-05·2026-09-06). 인증이 필요한 케이스가 **명시적으로** 행을 준다.
+  hoisted.prisma.project.findUnique.mockResolvedValue(null);
 });
 
 describe("/api/pull — 실패가 본문을 갖는다", () => {
@@ -113,6 +117,26 @@ describe("/api/pull — 실패가 본문을 갖는다", () => {
 });
 
 describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () => {
+  it("빈 토큰(`Bearer `)은 DB를 조회하지 않고 401이다 — 공짜 왕복을 내주지 않는다", async () => {
+    const res = await pushPost(pushRequest(payload(), ""));
+    expect(res.status).toBe(401);
+    expect(hoisted.prisma.project.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("인증이 JSON 파싱보다 **먼저**다 — 무효 토큰 하나로 대용량 페이로드를 파싱시키지 않는다", async () => {
+    // `maxDuration = 60`인 공개 엔드포인트다. 본문이 아예 JSON이 아니어도 인증 실패가 먼저 나와야 한다
+    // (code-review 2026-09-07 🟡3 · design §3.8의 순서 그림).
+    const res = await pushPost(
+      new Request("https://x/api/push", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer bogus" },
+        body: "{ this is not json",
+      }),
+    );
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: "unauthorized" });
+  });
+
   it("헤더가 없으면 401이고 DB를 조회하지 않는다", async () => {
     const res = await pushPost(
       new Request("https://x/api/push", {
@@ -137,11 +161,31 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     );
   });
 
-  it("토큰을 발급받지 않은 프로젝트는 통과하지 못한다 — fail-closed (401이지 500이 아니다)", async () => {
-    // `pushTokenHash`가 null인 행은 어떤 해시로도 조회되지 않는다 — 그 결과가 이 401이다.
-    hoisted.prisma.project.findUnique.mockResolvedValue(null);
+  it("토큰을 발급받지 않은 프로젝트는 통과하지 못한다 — 행이 **있는데도** 401이다 (fail-closed)", async () => {
+    // ⚠️ 이 케이스만 메모리 DB를 쓴다. `mockResolvedValue(null)`로는 "틀린 토큰"과 바이트 단위로 같은 것을
+    // 검사하게 되어 이름만 미발급이다 (code-review 2026-09-07 🟡2 · POSTMORTEM 2026-09-03 "테스트의 이름만").
+    // 하네스는 `pushTokenHash`가 NULL인 행을 어떤 해시로도 돌려주지 않는다 — Postgres unique의 성질이다.
+    const { prisma } = createHarness({ projects: [{ id: "p1", slug: "acme", pushTokenHash: null }] });
+    hoisted.prisma.project.findUnique.mockImplementation(prisma.project.findUnique);
     const res = await pushPost(pushRequest(payload(), TOKEN));
     expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: "unauthorized" });
+    // 그 행은 실재한다 — slug로는 찾힌다. 그런데도 401인 것이 이 테스트의 요지다.
+    await expect(prisma.project.findUnique({ where: { slug: "acme" } })).resolves.toMatchObject({ id: "p1" });
+  });
+
+  it("발급된 토큰은 그 행을 찾는다 — 하네스가 해시로 조회한다", async () => {
+    const { prisma } = createHarness({
+      projects: [{ id: "p1", slug: "acme", pushTokenHash: hashPushToken(TOKEN) }],
+    });
+    hoisted.prisma.project.findUnique.mockImplementation(prisma.project.findUnique);
+    hoisted.applyPush.mockResolvedValue({
+      inserted: 1, updated: 0, orphaned: 0, unorphaned: 0,
+      staleTranslations: 0, translationsFilled: 0, refs: 0, plan: {},
+    });
+    expect((await pushPost(pushRequest(payload(), TOKEN))).status).toBe(200);
+    // 다른 토큰은 같은 행을 못 찾는다.
+    expect((await pushPost(pushRequest(payload(), "another-token"))).status).toBe(401);
   });
 
   it("서버 env `PUSH_TOKEN`·`ACTIVE_PROJECT_SLUG`가 없어도 정상 동작한다 — 인증 근거가 DB로 옮겨갔다", async () => {
@@ -208,7 +252,8 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     expect([noToken.status, misrouted.status]).toEqual([401, 409]);
   });
 
-  it("스키마 위반은 400이고 issues가 남는다", async () => {
+  it("스키마 위반은 400이고 issues가 남는다 — 인증을 통과한 뒤의 400이다", async () => {
+    hoisted.prisma.project.findUnique.mockResolvedValue({ id: "p1", slug: "acme", lastCommitAt: null });
     const res = await pushPost(pushRequest(payload({ keys: [] })));
     expect(res.status).toBe(400);
     const body = await res.json();

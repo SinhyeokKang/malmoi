@@ -34,25 +34,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     // 어느 쪽이 틀렸는지 알려주지 않는다 — 토큰 존재 여부를 탐색할 단서를 주지 않는다.
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const rawToken = header.slice("Bearer ".length);
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
-  }
-
-  const parsed = PushPayload.safeParse(body);
-  if (!parsed.success) {
-    // 검증 실패를 조용히 삼키지 않는다 — CI 로그에서 무엇이 틀렸는지 보여야 한다.
-    return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
+  // 값을 트림한다 — HTTP 헤더 값의 앞뒤 공백은 전송 계층에서 이미 사라질 수 있어(`Bearer `가 `Bearer`가 된다)
+  // 그 우연에 기대지 않는다. 빈 토큰으로 DB 왕복을 내주지도 않는다.
+  const rawToken = header.slice("Bearer ".length).trim();
+  if (rawToken === "") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
   // ⚠️ **여기부터 try 안이다.** 밖에 두면 설정 누락·DB 장애·벌크 쓰기 실패가 전부 **본문 없는
   // 500**으로 나가고, 이 라우트의 호출자는 사람이 아니라 GitHub Actions라 로그에 원인이 남지
   // 않으면 진단할 재료가 없다. 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다.
-  // 위쪽 인증·JSON·스키마 검사는 이미 자기 응답을 내므로 감싸지 않는다 — 감싸면 400이 500으로 접힌다.
+  //
+  // ⚠️ **JSON·스키마 검사가 인증 뒤로 왔다** (2026-09-07 code-review). `maxDuration = 60`인 공개
+  // 엔드포인트라, 무효 토큰 하나로 1446키 페이로드를 파싱·검증시키고 zod `issues`(스키마 구조)까지
+  // 받아 갈 수 있으면 안 된다. **둘 다 `return`이라 이 `try`가 400을 500으로 접지 않는다** — 접히는 것은
+  // `throw`뿐이고 JSON 파싱의 throw는 자기 `catch`가 400으로 받는다.
   try {
     const prisma = getPrisma();
     // **토큰이 프로젝트를 정한다.** 원문은 쿼리에 실리지 않고, 발급받지 않은 프로젝트(`pushTokenHash`가 null)는
@@ -65,6 +61,19 @@ export async function POST(request: Request): Promise<NextResponse> {
     // 샌다. 미발급·오타·폐기 토큰이 전부 같은 401이다.
     if (!project) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    }
+
+    const parsed = PushPayload.safeParse(body);
+    if (!parsed.success) {
+      // 검증 실패를 조용히 삼키지 않는다 — CI 로그에서 무엇이 틀렸는지 보여야 한다.
+      return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
     }
 
     // 오배송 거부 — 대조 대상이 **토큰이 정한 프로젝트**다 (전에는 서버 env였다).

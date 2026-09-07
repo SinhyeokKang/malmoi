@@ -24,7 +24,7 @@ describe("scripts — ACTIVE_PROJECT_SLUG 폴백이 없다", () => {
     expect(read(path)).not.toContain("ACTIVE_PROJECT_SLUG");
   });
 
-  it("코드·설정 어디에서도 그 변수를 읽지 않는다 — 서버 라우트 둘도 포함이다", () => {
+  it("push 경로가 그 변수를 읽지 않는다 — ⚠️ `/api/pull`은 아직 읽는다 (T4가 순회로 대체한다)", () => {
     for (const path of [
       "app/api/push/route.ts",
       "scripts/push-local.ts",
@@ -33,6 +33,8 @@ describe("scripts — ACTIVE_PROJECT_SLUG 폴백이 없다", () => {
     ]) {
       expect(read(path)).not.toContain("ACTIVE_PROJECT_SLUG");
     }
+    // 남은 하나를 **여기서 고정한다** — 사라지면 이 단언이 red가 되어 T4 완료를 알린다.
+    expect(read("app/api/pull/route.ts")).toContain("ACTIVE_PROJECT_SLUG");
   });
 });
 
@@ -42,20 +44,31 @@ describe("scripts/push-local.ts — --project가 필수다", () => {
   it("`--project`가 없으면 usage + exit 2다 — 사용법 오류는 실행 실패(1)와 구별한다", () => {
     // 값 플래그 파싱은 `lib/cli/args.ts`가 하고, 여기서는 "없으면 죽는가"만 본다.
     expect(source).toMatch(/flagValue\(argv, "--project"\)/);
+    // 폴백이 아니라 **분기**여야 한다 — `?? requireEnv(...)` 형태가 돌아오면 이 정규식이 red다.
+    expect(source).toMatch(/flagValue\(argv, "--project"\);/);
     expect(source).toMatch(/projectSlug === undefined[\s\S]{0,400}process\.exit\(2\)/);
   });
 
-  it("`PUSH_TOKEN` 설명이 '그 프로젝트의 토큰'이다 — 서버 env와 같은 값이 아니다", () => {
-    expect(source).toMatch(/그 프로젝트의|프로젝트 토큰|프로젝트별/);
+  it("`PUSH_TOKEN`을 못 찾았을 때의 문구가 '그 프로젝트의 토큰'을 말한다 — 서버 env와 같은 값이 아니다", () => {
+    // 파일 어디의 주석이 아니라 **사용자가 보는 그 줄**을 본다.
+    const line = source.split("\n").find((l) => l.includes("PUSH_TOKEN이 없다"));
+    expect(line).toBeDefined();
+    expect(line).toContain("그 프로젝트의 토큰 원문");
   });
 });
 
 describe("scripts/smoke-github.ts — slug 인자가 필수다", () => {
   const source = read("scripts/smoke-github.ts");
 
-  it("인자가 없으면 usage + exit 2다", () => {
-    expect(source).toMatch(/process\.argv\[2\]/);
-    expect(source).toMatch(/process\.exit\(2\)/);
+  it("인자가 없으면 usage + exit 2이고, 그 판정이 DB 커넥션보다 앞이다", () => {
+    // 둘의 **공존**이 아니라 순서를 본다 — `createPrisma()`가 먼저면 usage 오류에도 커넥션이 열린다.
+    expect(source).toMatch(/const slug = process\.argv\[2\];[\s\S]{0,300}process\.exit\(2\)/);
+    // `createPrisma()`의 **호출**을 찾는다 — 정의는 파일 앞쪽이라 그걸 잡으면 검사가 뒤집힌다.
+    const exitAt = source.indexOf("process.exit(2)");
+    const callAt = source.indexOf("= createPrisma()");
+    expect(exitAt).toBeGreaterThan(0);
+    expect(callAt).toBeGreaterThan(0);
+    expect(exitAt).toBeLessThan(callAt);
   });
 
   it("사용법 주석에서 slug가 선택이 아니다 — `[<project-slug>]`가 아니라 `<project-slug>`", () => {
@@ -64,7 +77,7 @@ describe("scripts/smoke-github.ts — slug 인자가 필수다", () => {
   });
 });
 
-describe("package.json·문서의 사용법이 인자 필수를 반영한다", () => {
+describe("문서의 사용법이 인자 필수를 반영한다", () => {
   it("CLAUDE.md 명령어 표의 `smoke:github`가 slug를 선택으로 적지 않는다", () => {
     const claude = read("CLAUDE.md");
     expect(claude).not.toContain("pnpm smoke:github [<project-slug>]");
