@@ -164,3 +164,96 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
   const path = ref.path.split("/").map(encodeURIComponent).join("/");
   return `https://github.com/${project.repoOwner}/${project.repoName}/blob/${project.lastCommitSha}/${path}#L${ref.line}`;
 }
+
+/**
+ * 착지할 네임스페이스 — **"남은 일이 있는" 첫 번째다** (design §3.3).
+ *
+ * `compareKeys` 첫 항목(알파벳순)으로 착지하면 이미 다 번역된 사소한 네임스페이스일 수 있고,
+ * 그러면 편집자가 열 때마다 직접 찾아야 한다. 903키 프로젝트에서 그 비용이 매번 든다.
+ *
+ * ⚠️ **로케일을 인자로 받지 않는다** — `counts`가 이미 focus 로케일 기준으로 만들어져 있다
+ * (`namespaceCounts(rows, locale)`). 여기서 또 받으면 두 값이 갈릴 자리만 생긴다.
+ *
+ * @returns 키가 없거나 전부 orphaned면 `null` — 화면이 빈 상태로 간다.
+ */
+export function defaultNamespace(counts: readonly NamespaceCount[]): string | null {
+  // 정렬은 `namespaceCounts`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
+  const pending = counts.find((c) => c.untranslated + c.needsReview > 0);
+  if (pending) return pending.namespace;
+  // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
+  return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
+}
+
+/**
+ * `?ns=`의 해석. **`"*"`가 전체다** — 어댑터가 만들 수 없는 이름이라 실제 키 접두와 충돌하지 않는다
+ * (`all`은 진짜 접두일 수 있다).
+ *
+ * ⚠️ **없는 이름을 404로 만들지 않는다.** 필터가 URL에 있고 링크는 오래 산다 — 네임스페이스가
+ * 사라진 뒤 옛 링크를 열면 화면이 죽는 대신 기본 착지로 간다.
+ */
+export type NamespaceSelection =
+  | { kind: "all" }
+  | { kind: "one"; namespace: string }
+  /** 착지할 곳이 없다 — 키가 없거나 전부 orphaned다. */
+  | { kind: "none" };
+
+export function resolveNamespace(
+  param: string | undefined,
+  counts: readonly NamespaceCount[],
+): NamespaceSelection {
+  if (param === ALL_NAMESPACES) return { kind: "all" };
+  if (param !== undefined && counts.some((c) => c.namespace === param)) {
+    return { kind: "one", namespace: param };
+  }
+  const fallback = defaultNamespace(counts);
+  return fallback === null ? { kind: "none" } : { kind: "one", namespace: fallback };
+}
+
+/** "전체" 네임스페이스의 URL 값. `lib/routes.ts`의 `ns`와 이 판정이 같은 값을 봐야 한다. */
+export const ALL_NAMESPACES = "*";
+
+export type RowFilter = {
+  /** 상태 필터가 보는 로케일. 표가 로케일을 열로 펼치므로 "남은 일"이 로케일마다 다르다. */
+  locale: string;
+  /** 키·**모든 로케일 값**의 부분 일치(대소문자 무시). 편집자는 자기 언어로 찾는다. */
+  q?: string;
+  state?: "needs-review" | "untranslated";
+};
+
+/**
+ * 툴바의 두 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
+ *
+ * 0행은 정상 결과다(화면이 "No keys match" 빈 상태를 낸다) — 여기서 폴백하지 않는다.
+ */
+export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[] {
+  const needle = filter.q?.trim().toLowerCase() ?? "";
+  return rows.filter((row) => {
+    if (needle !== "") {
+      const haystack = [row.key, ...Object.values(row.cells).map((cell) => cell?.value ?? "")];
+      if (!haystack.some((text) => text.toLowerCase().includes(needle))) return false;
+    }
+    if (filter.state === undefined) return true;
+    const state = cellState(row, filter.locale);
+    return filter.state === "untranslated" ? state === "untranslated" : state === "needsReview";
+  });
+}
+
+/**
+ * 아직 안 보낸 편집인가 (design §3.5).
+ *
+ * ⚠️ **`updatedAt > lastPulledAt`만으로는 안 된다.** push가 전 행의 `updatedAt`을 올리므로 push
+ * 직후 야간 pull 전까지 903키 전부가 "안 보낸 편집"으로 나온다. push가 쓴 행은 `updatedBy`가
+ * 비어 있고(design §3.6) 사람이 저장한 행만 `User.id`를 든다.
+ *
+ * 기준이 `lastPublishedAt`이 아니라 `lastPulledAt`인 이유: 후자는 벽시계가 아니라 캡처된
+ * `max(updatedAt)`이고 `no-changes` 스킵에도 전진한다 — "사람이 만졌고 마지막 판정 뒤 바뀐 행"을
+ * 정확히 센다.
+ */
+export function isUnpublished(
+  cell: { updatedBy: string | null; updatedAt: Date },
+  lastPulledAt: Date | null,
+): boolean {
+  if (cell.updatedBy === null) return false;
+  // 경계는 배타적이다 — 판정 시각과 같은 행은 그 판정에 이미 들어갔다.
+  return lastPulledAt === null || cell.updatedAt > lastPulledAt;
+}

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildPermalink, namespaceCounts, translationState, type KeyRow } from "../view";
+import {
+  buildPermalink,
+  defaultNamespace,
+  filterRows,
+  isUnpublished,
+  namespaceCounts,
+  resolveNamespace,
+  translationState,
+  type KeyRow,
+  type NamespaceCount,
+} from "../view";
 
 const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
   id: `id-${over.key}`,
@@ -126,5 +136,169 @@ describe("buildPermalink — GitHub 코드 참조", () => {
     const url = buildPermalink(project, { path: "src/[locale]/page.tsx", line: 3 });
     expect(url).toContain("%5Blocale%5D");
     expect(url).not.toContain("[locale]");
+  });
+});
+
+/**
+ * **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (design §3.3). `compareKeys` 첫 항목은
+ * 알파벳순이라 이미 다 번역된 사소한 네임스페이스일 수 있고, 그러면 편집자가 매번 직접 찾아야 한다.
+ *
+ * ⚠️ **`focus` 인자를 받지 않는다** — 집계(`namespaceCounts(rows, locale)`)가 이미 그 로케일 기준으로
+ * 만들어진다. 여기서 로케일을 또 받으면 두 값이 갈릴 수 있는 자리만 생긴다.
+ */
+describe("defaultNamespace — 착지할 네임스페이스", () => {
+  const counts = (...items: [string, Partial<NamespaceCount>][]): NamespaceCount[] =>
+    items.map(([namespace, over]) => ({
+      namespace,
+      total: 1,
+      untranslated: 0,
+      needsReview: 0,
+      orphaned: 0,
+      ...over,
+    }));
+
+  it("빈 프로젝트는 null이다 — 화면이 '키 없음' 빈 상태로 간다", () => {
+    expect(defaultNamespace([])).toBeNull();
+  });
+
+  it("미번역이 있는 첫 네임스페이스로 간다 — 알파벳 첫 항목이 아니다", () => {
+    expect(defaultNamespace(counts(["auth", {}], ["common", { untranslated: 1 }]))).toBe("common");
+  });
+
+  it("검토 필요도 '남은 일'이다", () => {
+    expect(defaultNamespace(counts(["auth", {}], ["common", { needsReview: 1 }]))).toBe("common");
+  });
+
+  it("남은 일이 하나도 없으면 첫 네임스페이스다", () => {
+    expect(defaultNamespace(counts(["auth", {}], ["common", {}]))).toBe("auth");
+  });
+
+  it("orphaned만 있는 네임스페이스는 건너뛴다 — 편집할 수 없는 화면에 착지시키지 않는다", () => {
+    expect(defaultNamespace(counts(["auth", { total: 2, orphaned: 2 }], ["common", {}]))).toBe("common");
+  });
+
+  it("전부 orphaned면 null이다", () => {
+    expect(defaultNamespace(counts(["auth", { total: 2, orphaned: 2 }]))).toBeNull();
+  });
+
+  it("집계 순서를 따른다 — 정렬은 namespaceCounts가 이미 했다", () => {
+    expect(defaultNamespace(counts(["z", { untranslated: 1 }], ["a", { untranslated: 1 }]))).toBe("z");
+  });
+});
+
+/**
+ * ⚠️ **없는 이름을 404로 만들지 않는다.** 필터는 URL에 있고 링크는 오래 산다 — 네임스페이스가
+ * 사라진 뒤 옛 링크를 열면 화면이 죽는 대신 기본 착지로 간다.
+ */
+describe("resolveNamespace — `?ns=`의 해석", () => {
+  const counts: NamespaceCount[] = [
+    { namespace: "auth", total: 1, untranslated: 0, needsReview: 0, orphaned: 0 },
+    { namespace: "common", total: 1, untranslated: 1, needsReview: 0, orphaned: 0 },
+  ];
+
+  it("없으면 기본 착지다", () => {
+    expect(resolveNamespace(undefined, counts)).toEqual({ kind: "one", namespace: "common" });
+  });
+
+  it("`*`는 전체다 — 어댑터가 만들 수 없는 이름이라 실제 접두와 충돌하지 않는다", () => {
+    expect(resolveNamespace("*", counts)).toEqual({ kind: "all" });
+  });
+
+  it("아는 이름은 그대로다", () => {
+    expect(resolveNamespace("auth", counts)).toEqual({ kind: "one", namespace: "auth" });
+  });
+
+  it("없는 이름은 기본 착지로 떨어진다 — 낡은 링크가 404가 되지 않는다", () => {
+    expect(resolveNamespace("gone", counts)).toEqual({ kind: "one", namespace: "common" });
+  });
+
+  it("대소문자를 구별한다 — 네임스페이스는 키 접두라 파일이 정한다", () => {
+    expect(resolveNamespace("Auth", counts)).toEqual({ kind: "one", namespace: "common" });
+  });
+
+  it("키가 하나도 없으면 아무 데도 착지하지 않는다", () => {
+    expect(resolveNamespace("auth", [])).toEqual({ kind: "none" });
+    expect(resolveNamespace("*", [])).toEqual({ kind: "all" });
+  });
+});
+
+describe("filterRows — 툴바의 두 필터", () => {
+  const rows = [
+    row({ key: "common.save", cells: { ko: { value: "저장", needsReview: false, updatedBy: null } } }),
+    row({ key: "common.cancel", cells: { ko: { value: null, needsReview: false, updatedBy: null } } }),
+    row({ key: "auth.login", cells: { ko: { value: "로그인", needsReview: true, updatedBy: null } } }),
+  ];
+
+  it("필터가 없으면 그대로다", () => {
+    expect(filterRows(rows, { locale: "ko" })).toHaveLength(3);
+  });
+
+  it("공백만인 `q`는 무필터다 — 지운 필터가 0행을 내면 안 된다", () => {
+    expect(filterRows(rows, { locale: "ko", q: "   " })).toHaveLength(3);
+  });
+
+  it("키를 부분 일치로 찾는다", () => {
+    expect(filterRows(rows, { locale: "ko", q: "common." }).map((r) => r.key)).toEqual([
+      "common.save",
+      "common.cancel",
+    ]);
+  });
+
+  it("대소문자를 무시한다", () => {
+    expect(filterRows(rows, { locale: "ko", q: "COMMON" })).toHaveLength(2);
+  });
+
+  it("값도 본다 — 어느 로케일이든 (편집자는 자기 언어로 찾는다)", () => {
+    expect(filterRows(rows, { locale: "ko", q: "로그인" }).map((r) => r.key)).toEqual(["auth.login"]);
+  });
+
+  it("미번역 필터", () => {
+    expect(filterRows(rows, { locale: "ko", state: "untranslated" }).map((r) => r.key)).toEqual([
+      "common.cancel",
+    ]);
+  });
+
+  it("검토 필요 필터", () => {
+    expect(filterRows(rows, { locale: "ko", state: "needs-review" }).map((r) => r.key)).toEqual([
+      "auth.login",
+    ]);
+  });
+
+  it("상태는 focus 로케일 기준이다 — 다른 로케일에선 결과가 다르다", () => {
+    expect(filterRows(rows, { locale: "fr", state: "untranslated" })).toHaveLength(3);
+  });
+
+  it("둘을 겹치면 교집합이다 — 0행이 정상 결과다", () => {
+    expect(filterRows(rows, { locale: "ko", q: "common", state: "needs-review" })).toEqual([]);
+  });
+});
+
+/**
+ * **미배포 판정** (design §3.5). `updatedAt > lastPulledAt`만으로는 안 된다 — push가 전 행의
+ * `updatedAt`을 올리므로 push 직후 903키 전부가 "안 보낸 편집"이 된다. 사람이 저장한 행만
+ * `updatedBy`를 든다(push는 그것을 비운다 — design §3.6).
+ */
+describe("isUnpublished — 아직 안 보낸 편집인가", () => {
+  const pulled = new Date("2026-09-08T00:00:00Z");
+
+  it("사람이 만졌고 마지막 판정 뒤에 바뀌었다", () => {
+    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2026-09-08T01:00:00Z") }, pulled)).toBe(true);
+  });
+
+  it("push가 쓴 행은 세지 않는다 — updatedBy가 없다", () => {
+    expect(isUnpublished({ updatedBy: null, updatedAt: new Date("2026-09-08T01:00:00Z") }, pulled)).toBe(false);
+  });
+
+  it("이미 보낸 편집은 세지 않는다", () => {
+    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2026-09-07T23:00:00Z") }, pulled)).toBe(false);
+  });
+
+  it("경계는 배타적이다 — 판정 시각과 같은 행은 그 판정에 이미 들어갔다", () => {
+    expect(isUnpublished({ updatedBy: "u1", updatedAt: pulled }, pulled)).toBe(false);
+  });
+
+  it("한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다", () => {
+    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2020-01-01") }, null)).toBe(true);
+    expect(isUnpublished({ updatedBy: null, updatedAt: new Date("2020-01-01") }, null)).toBe(false);
   });
 });
