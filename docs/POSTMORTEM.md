@@ -643,3 +643,45 @@ _이 아래에 새 항목을 추가한다._
   - grep: `grep -rn 'from "radix-ui"' components/ui/` → 쓰는 프리미티브를 세고, 각각에 대해 그 패키지의 `dist/index.mjs`에서 `createXContext(PROVIDER_NAME)`를 찾아 **Root가 자기 context를 만드는지 / 조상을 요구하는지** 본다.
     - 이 라운드 실행 결과: `Dialog`·`DropdownMenu`는 **Root가 자기 context를 만든다**(각 3·2건) — 조상 provider를 요구하지 않으므로 같은 결함이 없다. 요구하는 것은 `Tooltip` 하나였다. **Radix 컴포넌트를 새로 들일 때 이 확인을 한 번 한다.**
   - **조건부로만 렌더되는 컴포넌트를 의심한다.** 크래시가 `collapsed`·`mobileOpen`처럼 **기본값이 false인 상태 뒤에** 있으면 어떤 자동 게이트도 그 가지를 밟지 않는다. `/bugshot-qa`의 시나리오에 **상태를 토글하는 단계**를 넣는다(접기 → 새로고침 → 다시 접힌 상태로 뜨는지).
+
+### 2026-09-08 — 제출 버튼이 없는 `<form>`이라 검색창의 Enter가 조용히 무효였다
+
+- **영역**: `components/translations/filters.tsx` (SaaS 6a T7 번역 화면 툴바)
+- **증상**: 툴바의 검색창에 낱말을 치고 Enter를 눌러도 아무 일도 안 일어난다. URL에 `?q=`가 안 붙고 표도
+  그대로다. **오류도 콘솔 경고도 없다** — 사용자에게는 "검색이 작동하지 않는 앱"으로 보인다.
+- **근본 원인**: 필터 바에 [Search] 버튼을 두지 않는 형(GitLab 필터 바)을 따르면서 `<form onSubmit>` +
+  **암시적 submit**에 기댔다. HTML의 암시적 제출은 제출 버튼이 없는 폼에서 성립하지 않는 경우가 있고,
+  실측(Chrome + CDP `Input.dispatchKeyEvent`의 rawKeyDown/char/keyUp 전 시퀀스)에서 `submit` 이벤트가
+  **한 번도 발생하지 않았다.** `onSubmit` 핸들러 자체는 맞게 짜여 있어서 코드를 읽어서는 결함이 안 보인다.
+- **그물**: 놓친 것 — `pnpm typecheck`(핸들러 타입이 맞다) · `pnpm test`(렌더 테스트가 없다) ·
+  `pnpm build`(RSC 경계만 본다) · `/code-review`(정적 리뷰라 브라우저의 제출 규칙을 모른다).
+  잡은 것 — **ego-browser로 실제로 Enter를 눌러 본 것.** 2026-09-07의 `revalidatePath` 건과 같은 부류다:
+  값도 맞고 코드도 맞는데 브라우저에서만 안 된다.
+- **재발 방지**:
+  - 그 폼을 지우고 입력의 `onKeyDown`에서 Enter를 직접 받는다. 경로가 하나뿐이라 브라우저의 암시적 제출
+    규칙에 의존하지 않는다.
+  - **규칙: `<form>`은 그 안에 `type="submit"` 컨트롤이 있을 때만 쓴다.** 제출 버튼을 두지 않을 화면이면
+    폼을 만들지 말고 키 핸들러로 간다.
+  - grep: `grep -rn "<form" app components | grep -v __tests__` → **여덟**(로그인 2 · 초대 수락 3 ·
+    GitHub 연결 1 · sign out 2 · 초대 발급 1). **전부 `type="submit"` 버튼을 자기 안에 갖고 있어** 같은
+    함정에 걸린 곳은 없었다 — 이 화면만 버튼 없는 폼이었다.
+
+### 2026-09-08 — 실패한 Publish 뒤의 `router.refresh()`가 방금 만든 오류 문구를 씻고 로그인 화면으로 데려갔다
+
+- **영역**: `components/translations/header.tsx` (Publish 결과 `Alert`)
+- **증상**: 세션이 끊긴 채 [Send changes]를 누르면 danger `Alert`("세션이 끝났어요")가 **한 프레임도 안 보이고**
+  화면이 로그인으로 바뀐다. 편집자에게는 "버튼을 눌렀더니 로그아웃됐다"로 보이고, 왜 실패했는지는 어디에도 없다.
+- **근본 원인**: 결과를 받은 뒤 무조건 `router.refresh()`를 불렀다. 성공에는 필요하다(툴바의 "Last sent"와
+  미배포 건수를 서버가 만든다). 그런데 **실패에는 갱신할 서버 상태가 없고**, 사유가 `unauthorized`면 그
+  refresh가 미들웨어의 렌더 차단에 걸려 **네비게이션**이 된다 — 언마운트가 아니라 페이지가 통째로 바뀐다.
+  2026-09-07의 `revalidatePath` 건이 만든 규칙("결과를 든 컴포넌트가 revalidate로 바뀌는 분기 안에 있으면
+  안 된다")은 이것을 **덮지 못한다**: 이 Alert는 어떤 분기 안에도 없었다.
+- **그물**: 놓친 것 — 앞 건과 같은 넷(정적 게이트 셋 + 정적 리뷰). `pullMessage`의 다섯 갈래 단위 테스트는
+  green이었고, tone→variant 배선을 소스로 세는 검사도 green이었다 — **문구는 맞게 만들어졌고 화면에 닿지
+  않았을 뿐이다.** 잡은 것 — 세션 쿠키를 지우고 실제로 버튼을 누른 것.
+- **재발 방지**:
+  - `if (next.status !== "failed") router.refresh()` — 실패에는 갱신하지 않는다.
+  - **규칙(2026-09-07 규칙의 확장): 인라인 결과를 보이는 컴포넌트는 그 결과를 만든 요청이 실패했을 때
+    라우터 갱신을 부르지 않는다.** 인증이 걸린 화면에서 갱신은 언제든 리다이렉트가 될 수 있다.
+  - grep: `grep -rn 'router.refresh()' app components lib | grep -v __tests__` → **한 곳**(이 파일)뿐이다.
+    `revalidatePath` 아홉 곳은 전부 Server Action의 **성공 경로**에 있어 같은 형태가 아니다.
