@@ -315,7 +315,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
       candidates: [
         {
           adapter: "json-catalog",
-          label: "JSON 카탈로그",
+          label: "JSON catalog",
           pathTemplate: "i18n/{locale}.json",
           locales: ["en", "fr", "ko"],
           baseLocale: "en",

@@ -1,6 +1,7 @@
 import { adapterFor } from "@/lib/adapters";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "@/lib/adapters/types";
+import { m } from "@/lib/i18n";
 import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
 
 /**
@@ -51,24 +52,11 @@ export function makeProbe(blobs: ReadonlyMap<string, string>): FileProbe {
  * "코드 딕셔너리"가 둘이라 경로 예시가 구별자다.
  */
 export function formatLabel(adapter: AdapterName): { label: string; example: string } {
-  switch (adapter) {
-    case "chrome-locales":
-      return { label: "크롬 확장 메시지", example: "_locales/{locale}/messages.json" };
-    case "json-catalog":
-      return { label: "JSON 카탈로그", example: "src/locales/{locale}.json" };
-    case "yaml-catalog":
-      return { label: "YAML 카탈로그", example: "config/locales/{locale}.yml" };
-    case "code-dict":
-      return { label: "코드 딕셔너리 (언어마다 파일 하나)", example: "src/locales/{locale}.ts" };
-    case "ts-dict":
-      return { label: "코드 딕셔너리 (여러 언어가 한 파일)", example: "src/i18n/namespaces/*.ts" };
-    default: {
-      // 어댑터를 추가하면 여기서 컴파일 에러가 난다.
-      const exhaustive: never = adapter;
-      return exhaustive;
-    }
-  }
+  // 어댑터를 추가하면 사전에 키가 없어 여기서 컴파일 에러가 난다 — 전 `never` 검사와 같은 힘이다.
+  return FORMATS[adapter];
 }
+
+const FORMATS = m.newProject.formats satisfies Record<AdapterName, { label: string; example: string }>;
 
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
 

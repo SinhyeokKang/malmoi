@@ -58,12 +58,12 @@ describe("readinessLabel — raw 색 없이 텍스트만 (DESIGN §6.2)", () => 
     expect(readinessLabel("ready")).toBeNull();
   });
 
-  it("첫 적재를 기다리는 중이면 그 사실을 한국어로 말한다", () => {
-    expect(readinessLabel("awaiting_first_sync")).toBe("첫 적재 대기");
+  it("첫 적재를 기다리는 중이면 그 사실을 말한다", () => {
+    expect(readinessLabel("awaiting_first_sync")).toBe("Waiting for first import");
   });
 
   it("연결 전이면 준비 중이다", () => {
-    expect(readinessLabel("setup")).toBe("준비 중");
+    expect(readinessLabel("setup")).toBe("Setting up");
   });
 
   it("내부 이름을 흘리지 않는다 — 읽는 사람은 비개발자 동료다", () => {
@@ -71,7 +71,8 @@ describe("readinessLabel — raw 색 없이 텍스트만 (DESIGN §6.2)", () => 
       const label = readinessLabel(readiness);
       if (label === null) continue;
       expect(label).not.toContain(readiness);
-      expect(label).not.toMatch(/[a-z_]{4,}/);
+      // snake_case는 우리 내부 이름의 모양이다 — en 라벨의 보통 낱말과 갈린다.
+      expect(label).not.toMatch(/[a-z]+_[a-z]+/);
     }
   });
 

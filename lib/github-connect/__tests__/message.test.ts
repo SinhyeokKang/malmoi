@@ -88,9 +88,9 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
   it("`unavailable`만 '잠시'를 권한다", () => {
     // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다 —
     // 2026-09-05 preview 실측에서 `OAuthAccountNotLinked`가 정확히 그 모양이었다.
-    expect(connectErrorMessage("unavailable")).toContain("잠시");
+    expect(connectErrorMessage("unavailable")).toMatch(/in a moment/i);
     for (const error of ERRORS.filter((e) => e !== "unavailable")) {
-      expect(connectErrorMessage(error)).not.toContain("잠시");
+      expect(connectErrorMessage(error)).not.toMatch(/in a moment/i);
     }
   });
 

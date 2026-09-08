@@ -28,10 +28,10 @@ describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
 
   it("unavailable만 재시도를 권하고 로그인을 시키지 않는다 — 장애를 거부처럼 말하면 사용자가 헛로그인한다", () => {
     const text = accessErrorMessage("unavailable");
-    expect(text).toContain("잠시");
-    expect(text).not.toContain("로그인");
+    expect(text).toMatch(/in a moment/i);
+    expect(text).not.toMatch(/sign in/i);
     for (const error of ["unauthorized", "forbidden", "not-found"] as const) {
-      expect(accessErrorMessage(error)).not.toContain("잠시");
+      expect(accessErrorMessage(error)).not.toMatch(/in a moment/i);
     }
   });
 
@@ -41,19 +41,19 @@ describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
     }
   });
 
-  it("영어 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자다", () => {
+  it("내부 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자다", () => {
     for (const error of ERRORS) {
       expect(accessErrorMessage(error)).not.toContain(error);
     }
   });
 
   it("unauthorized는 다시 로그인하라고 말한다 — 세션 만료가 이 경로로 온다", () => {
-    expect(accessErrorMessage("unauthorized")).toContain("로그인");
+    expect(accessErrorMessage("unauthorized")).toMatch(/sign in/i);
   });
 
   it("forbidden은 권한 부족을 말한다 — 없는 프로젝트라고 말하지 않는다", () => {
     const text = accessErrorMessage("forbidden");
-    expect(text).toContain("권한");
+    expect(text).toMatch(/permission/i);
     expect(text).not.toBe(accessErrorMessage("not-found"));
   });
 });
@@ -69,12 +69,12 @@ describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
 describe("signInErrorMessage — 거부와 장애를 가른다", () => {
   it("OAuthAccountNotLinked는 같은 이메일의 다른 로그인 방식을 가리킨다", () => {
     const text = signInErrorMessage("OAuthAccountNotLinked");
-    expect(text).toContain("이메일");
-    expect(text).not.toContain("잠시");
+    expect(text).toMatch(/email/i);
+    expect(text).not.toMatch(/in a moment/i);
   });
 
   it("AccessDenied는 이 계정으로 못 들어온다고 말한다", () => {
-    expect(signInErrorMessage("AccessDenied")).not.toContain("잠시");
+    expect(signInErrorMessage("AccessDenied")).not.toMatch(/in a moment/i);
   });
 
   it("두 거부가 서로 다른 문구다 — 원인이 다르면 안내도 달라야 한다", () => {
@@ -83,14 +83,14 @@ describe("signInErrorMessage — 거부와 장애를 가른다", () => {
 
   it("Unavailable은 로그인 실패가 아니라 일시적 오류라고 말한다 — requireUser가 DB 장애를 이 코드로 보낸다", () => {
     const text = signInErrorMessage("Unavailable");
-    expect(text).toContain("잠시");
-    expect(text).not.toContain("로그인에 실패");
+    expect(text).toMatch(/in a moment/i);
+    expect(text).not.toMatch(/sign-in failed/i);
     expect(text).not.toBe(signInErrorMessage("Configuration"));
   });
 
   it("모르는 코드는 재시도를 권한다 — 그때만 '잠시 뒤'가 맞다", () => {
-    expect(signInErrorMessage("Configuration")).toContain("잠시");
-    expect(signInErrorMessage("무엇이든")).toContain("잠시");
+    expect(signInErrorMessage("Configuration")).toMatch(/in a moment/i);
+    expect(signInErrorMessage("anything-at-all")).toMatch(/in a moment/i);
   });
 
   it("코드를 그대로 노출하지 않는다 — 읽는 사람은 비개발자다", () => {
@@ -131,29 +131,33 @@ describe("inviteErrorMessage — 여섯 사유가 각자 다른 문구다", () =
     }
   });
 
-  it("영어 토큰을 그대로 흘리지 않는다 — 초대 링크를 여는 사람은 외부인이다", () => {
+  it("내부 토큰을 그대로 흘리지 않는다 — 초대 링크를 여는 사람은 외부인이다", () => {
     for (const error of INVITE_ERRORS) {
-      expect(inviteErrorMessage(error)).not.toContain(error);
+      const text = inviteErrorMessage(error);
+      expect(text).not.toBe(error);
+      // 하이픈 토큰이 우리 내부 이름의 모양이다 — en 문장에 자연스럽게 들어가는 낱말("expired")과
+      // 갈라야 이 검사가 영어에서도 뜻을 갖는다.
+      if (error.includes("-")) expect(text).not.toContain(error);
     }
   });
 
   it("email-mismatch는 **어느 계정으로 로그인해야 하는지**를 말한다", () => {
     // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 알려주면 갇힌다.
-    expect(inviteErrorMessage("email-mismatch")).toContain("로그인");
+    expect(inviteErrorMessage("email-mismatch")).toMatch(/sign in/i);
   });
 
   it("already-member는 실패처럼 읽히지 않는다 — 이미 원하는 상태다", () => {
-    expect(inviteErrorMessage("already-member")).toContain("멤버");
+    expect(inviteErrorMessage("already-member")).toMatch(/member/i);
   });
 
   it("아무 사유에도 '잠시 뒤'를 붙이지 않는다 — 여섯 다 재시도로 바뀌지 않는다", () => {
     for (const error of INVITE_ERRORS) {
-      expect(inviteErrorMessage(error)).not.toContain("잠시");
+      expect(inviteErrorMessage(error)).not.toMatch(/in a moment/i);
     }
   });
 
   it("unavailable만 재시도를 권한다 — 세션을 못 읽은 것은 거부가 아니다", () => {
-    expect(inviteErrorMessage("unavailable")).toContain("잠시");
+    expect(inviteErrorMessage("unavailable")).toMatch(/in a moment/i);
   });
 
   it("모르는 코드는 일반 문구로 접는다 — URL은 사용자가 손댈 수 있다", () => {
