@@ -229,7 +229,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **에러로 보고하고 그 키를 건너뛴다.** 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.ts`가 그 계약을 `ADAPTERS` 순회로 고정한다: 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
-  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI 문구는 건수와 "개발자에게 알려 주세요"만 덧붙이고(`lib/pull/message.ts`), 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
+  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI에서는 **결과 자체가 갈린다** (2026-09-08): `pullMessage`가 warnings ≥ 1이면 tone을 `warning`으로 내리고 "N values couldn't be written — tell your developers." 문장을 낸다 — 성공 문구에 덧붙이는 것이 아니다(그러면 버린 값이 success 안에 숨는다, SAAS 불변식 9). **2층 스킵에 warnings가 붙어도 같다** — 다만 그때는 "Sent"라고 쓰지 않는다(아무것도 안 갔다). 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
 
@@ -852,6 +852,15 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 - **판정은 잎 모듈에 둔다.** `lib/pull/ref-slug.ts`는 **import이 0**이고 `trigger.ts`가 재수출한다 —
   규칙은 한 벌이고 무게는 따라오지 않는다.
+- ⚠️ **잎이 둘 늘었다** (2026-09-08, SaaS 6a): **`lib/i18n/`**(→ `messages/en.tsx`)와 **`lib/routes.ts`**.
+  앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
+  지난다 — 사전이 `@/lib/**`를 하나라도 물면 그 무게가 세 화면에 붙는다. 그래서 `messages/en.tsx`의
+  import는 `react`의 `ReactNode` **타입 하나**이고, `client-graph.test.ts`가 그 잎 성질을 직접 건다
+  (실 소비자가 생기기 전에도 공허하지 않도록 `lib/i18n/index.ts`에서 출발하는 케이스를 따로 둔다).
+- ⚠️ **사전 조회는 `Object.hasOwn`을 지난다** (`lib/i18n`의 `pick`). `DICT[key] ?? fallback`은
+  프로토타입 키(`constructor`·`toString`…)에서 값이 찾아져 폴백을 우회하고, **문자열 자리에 함수가
+  돌아간다** — 그 값이 JSX 자식이 되면 화면이 죽고, `?e=`를 그대로 넘기는 초대 화면(외부인이 연다)에서
+  주소창으로 도달 가능하다.
 - **`pnpm build`는 이것을 오류로 보지 않는다.** 라우트 표에 청크 크기가 없고 typecheck·test도 침묵한다.
   **`components/__tests__/client-graph.test.ts`가 상시로 센다** — `"use client"`에서 시작해 값 import만
   따라가고(`import type`은 지운다) `"use server"` 파일에서 멈춘다(Action은 스텁으로 대체된다).
