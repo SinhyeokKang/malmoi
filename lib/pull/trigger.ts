@@ -50,7 +50,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
       if (project.installationId === null) fail("installationId가 없다");
       return createGitClient(project.repoOwner, project.repoName, project.installationId);
     },
-    saveLastPulledAt: (projectId, at) => saveLastPulledAt(prisma, projectId, at),
+    saveLastPulledAt: (projectId, at, published) => saveLastPulledAt(prisma, projectId, at, published),
     syncBranch: syncBranchFor(slug),
   });
 

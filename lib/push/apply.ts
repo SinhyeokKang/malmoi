@@ -211,6 +211,9 @@ export async function applyPush(
         -- strict라 chrome 필드도 리포 값이 덮는다 (MVP §3.1). 리포에서 사라졌으면 DB에서도 빠진다.
         "description" = EXCLUDED."description",
         "placeholders" = EXCLUDED."placeholders",
+        -- **덮인 값의 저자는 리포다** (translation-ui design §3.6). 사람 이름을 남기면 거짓이고,
+        -- 미배포 집계(isUnpublished)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
+        "updatedBy" = NULL,
         "updatedAt" = ${now}`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.

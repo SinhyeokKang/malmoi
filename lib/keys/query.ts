@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient, Role } from "@/generated/prisma/client";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -64,7 +64,9 @@ export async function loadKeys(
     orderBy: { key: "asc" },
     select: {
       id: true, key: true, namespace: true, description: true, orphaned: true,
-      translations: { select: { localeCode: true, value: true, needsReview: true, updatedBy: true } },
+      translations: {
+        select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true },
+      },
       refs: { select: { path: true, line: true }, orderBy: [{ path: "asc" }, { line: "asc" }] },
     },
   });
@@ -72,7 +74,12 @@ export async function loadKeys(
   return keys.map((k) => {
     const cells: KeyRow["cells"] = {};
     for (const t of k.translations) {
-      cells[t.localeCode] = { value: t.value, needsReview: t.needsReview, updatedBy: t.updatedBy };
+      cells[t.localeCode] = {
+        value: t.value,
+        needsReview: t.needsReview,
+        updatedBy: t.updatedBy,
+        updatedAt: t.updatedAt,
+      };
     }
     return {
       id: k.id,
@@ -103,4 +110,48 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
     select: { id: true, name: true, email: true },
   });
   return new Map(users.map((u) => [u.id, u]));
+}
+
+/**
+ * 아직 안 보낸 편집의 **수**. `isUnpublished`(`./view`)의 집계 형태다 — 술어가 두 벌이 되지 않게
+ * 조건을 같은 문장으로 적는다.
+ *
+ * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push가 전 행의 `updatedAt`을 올리므로 그 조건이
+ * 없으면 push 직후 야간 pull 전까지 903키 전부가 "안 보낸 편집"으로 나오고, 편집 손실 배너가 매번 뜬다
+ * (translation-ui design §3.5). push가 쓴 행은 `updatedBy`를 비운다(§3.6).
+ *
+ * ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
+ */
+export async function countUnpublished(
+  prisma: PrismaClient,
+  projectId: string,
+  lastPulledAt: Date | null,
+): Promise<number> {
+  return prisma.translation.count({
+    where: {
+      projectId,
+      updatedBy: { not: null },
+      // 한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다 — 비교 대상이 없다.
+      ...(lastPulledAt === null ? {} : { updatedAt: { gt: lastPulledAt } }),
+    },
+  });
+}
+
+/** 사이드바의 프로젝트 전환 목록. 역할이 항목 노출을 정한다(방어는 페이지다). */
+export type MembershipRow = { slug: string; name: string; role: Role };
+
+/**
+ * 내 멤버십 목록 — 셸 레이아웃이 읽는다. **새 조회다**(지금 레이아웃은 Prisma를 안 부른다).
+ *
+ * ⚠️ **`userId`로 좁힌다.** 2026-09-06에 이 규칙을 어긴 조회가 남의 행을 냈다 — 사용자당 멤버십이
+ * 세 개뿐이라 페이지네이션은 없지만, 좁힘이 빠지면 전 테넌트가 사이드바에 뜬다.
+ */
+export async function loadMemberships(prisma: PrismaClient, userId: string): Promise<MembershipRow[]> {
+  const rows = await prisma.projectMember.findMany({
+    where: { userId },
+    select: { role: true, project: { select: { slug: true, name: true } } },
+    // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
+    orderBy: { project: { slug: "asc" } },
+  });
+  return rows.map((r) => ({ slug: r.project.slug, name: r.project.name, role: r.role }));
 }

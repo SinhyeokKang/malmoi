@@ -16,6 +16,8 @@ export type Cell = {
   value: string | null;
   needsReview: boolean;
   updatedBy: string | null;
+  /** `isUnpublished`가 읽는다 — 셀의 "아직 안 보냄" 표시가 이 값과 `lastPulledAt`의 비교다. */
+  updatedAt: Date;
 };
 
 /**

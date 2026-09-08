@@ -44,7 +44,7 @@ export type PullDeps = {
    * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
    * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
    */
-  saveLastPulledAt(projectId: string, at: Date): Promise<void>;
+  saveLastPulledAt(projectId: string, at: Date, published?: { prUrl: string }): Promise<void>;
   syncBranch: string;
 };
 
@@ -178,7 +178,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     ));
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
-  await deps.saveLastPulledAt(project.id, captured);
+  // **보낸 것의 링크가 새로고침을 넘어야 한다** — cron 경로도 여기를 지나므로 야간 pull이 만든 PR도 남는다.
+  await deps.saveLastPulledAt(project.id, captured, { prUrl });
 
   return {
     status: "committed",

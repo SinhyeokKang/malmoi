@@ -11,6 +11,9 @@ import {
   type NamespaceCount,
 } from "../view";
 
+/** 셀 픽스처의 시각 — `isUnpublished` 테스트 말고는 이 값을 보지 않는다. */
+const EPOCH = new Date("2026-09-01T00:00:00Z");
+
 const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
   id: `id-${over.key}`,
   namespace: over.key.split(/[._]/)[0] ?? "_root",
@@ -23,7 +26,7 @@ const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
 
 /** 단일 로케일 관점 헬퍼 — 배지 판정 테스트는 셀 하나만 본다. */
 const cell = (over: Partial<KeyRow["cells"][string]> = {}) => ({
-  value: null, needsReview: false, updatedBy: null, ...over,
+  value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH, ...over,
 });
 
 describe("namespaceCounts — 사이드바", () => {
@@ -224,9 +227,9 @@ describe("resolveNamespace — `?ns=`의 해석", () => {
 
 describe("filterRows — 툴바의 두 필터", () => {
   const rows = [
-    row({ key: "common.save", cells: { ko: { value: "저장", needsReview: false, updatedBy: null } } }),
-    row({ key: "common.cancel", cells: { ko: { value: null, needsReview: false, updatedBy: null } } }),
-    row({ key: "auth.login", cells: { ko: { value: "로그인", needsReview: true, updatedBy: null } } }),
+    row({ key: "common.save", cells: { ko: { value: "저장", needsReview: false, updatedBy: null, updatedAt: EPOCH } } }),
+    row({ key: "common.cancel", cells: { ko: { value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH } } }),
+    row({ key: "auth.login", cells: { ko: { value: "로그인", needsReview: true, updatedBy: null, updatedAt: EPOCH } } }),
   ];
 
   it("필터가 없으면 그대로다", () => {

@@ -176,12 +176,35 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
-  const findManyMembers = vi.fn(async (args: { where: { projectId?: string; userId?: string } }) =>
-    members.filter(
-      (m) =>
-        (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
-        (args.where.userId === undefined || m.userId === args.where.userId),
-    ),
+  /**
+   * ⚠️ **`select`에 `project` 관계가 오면 그것을 붙여 준다** (`loadMemberships`). 안 붙이면 호출부가
+   * `r.project.slug`에서 터지는데, 그건 가짜가 실제보다 **좁아서** 나는 실패라 프로덕션 신호가 아니다.
+   * 반대로 아무 때나 붙이면 가짜가 실제보다 **관대**해진다 — 그래서 요청했을 때만 붙인다.
+   */
+  const findManyMembers = vi.fn(
+    async (args: {
+      where: { projectId?: string; userId?: string };
+      select?: { project?: unknown };
+      orderBy?: { project?: { slug?: "asc" | "desc" } };
+    }) => {
+      const rows = members.filter(
+        (m) =>
+          (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
+          (args.where.userId === undefined || m.userId === args.where.userId),
+      );
+      const withProject = rows.map((m) => {
+        if (args.select?.project === undefined) return m;
+        const project = projects.find((p) => p.id === m.projectId);
+        return { ...m, project: { slug: project?.slug ?? "", name: project?.name ?? project?.slug ?? "" } };
+      });
+      const direction = args.orderBy?.project?.slug;
+      if (direction === undefined) return withProject;
+      return withProject.slice().sort((a, b) => {
+        const av = projects.find((p) => p.id === a.projectId)?.slug ?? "";
+        const bv = projects.find((p) => p.id === b.projectId)?.slug ?? "";
+        return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+    },
   );
 
   const createMember = vi.fn(async (args: { data: MemberSeed }) => {
@@ -538,6 +561,28 @@ export function createHarness(seed: Seed = {}) {
         } as TranslationSeed;
         translations.push(row);
         return row;
+      },
+      /**
+       * ⚠️ **`projectId`로 좁힌다.** 시드의 번역 행은 `keyId`만 들지만 실제 테이블에는 `projectId`
+       * 컬럼이 있다 — 키를 통해 되짚어 **같은 좁힘**을 흉내 낸다. 안 하면 `countUnpublished`의
+       * 테넌트 좁힘을 이 하네스로는 판정할 수 없다 (POSTMORTEM 2026-09-06 하네스 자기검사).
+       */
+      count: async ({
+        where,
+      }: {
+        where: {
+          projectId: string;
+          updatedBy?: { not: null };
+          updatedAt?: { gt: Date };
+        };
+      }) => {
+        const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));
+        return translations.filter((t) => {
+          if (!ids.has(t.keyId)) return false;
+          if (where.updatedBy !== undefined && t.updatedBy === null) return false;
+          if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
+          return true;
+        }).length;
       },
       aggregate: async ({ where }: { where: { projectId: string } }) => {
         const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));
