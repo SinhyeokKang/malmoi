@@ -333,6 +333,11 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
                         소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
+  shell/                앱 셸 (SaaS 6a T6, 전부 client) — sidebar.tsx(usePathname으로 프로젝트 컨텍스트·
+                        역할별 항목·접힘 localStorage) / top-bar.tsx / user-menu.tsx.
+                        ⚠️ **breadcrumb은 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아 페이지
+                        콘텐츠의 첫 줄이 든다. ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의
+                        requireProjectAccess) — 판정은 lib/shell/nav.ts의 순수 함수 둘이 한다
   ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI를 다시 돌리지 않는다). Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
@@ -358,6 +363,8 @@ lib/
   i18n/index.ts         사전의 유일한 입구(`m`) + `pick(dict, key, fallback)`. ⚠️ **`DICT[key] ?? fallback`을
                         쓰지 않는다** — 프로토타입 키에서 값이 찾아져 폴백을 우회하고 문자열 자리에 함수가 온다
                         (초대 화면이 `?e=`를 가드 없이 넘긴다). ko를 더할 때 바뀌는 파일이 여기 하나다
+  shell/nav.ts          사이드바의 순수 판정 둘 — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
+                        없으면 컨텍스트 없음) / projectSections(canPerform이 항목을 정한다 — 권한표가 한 벌)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
                         `entry-points.test.ts`가 이 파일의 경로·쿼리 키를 실재 라우트와 대조한다
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
