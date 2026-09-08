@@ -324,7 +324,7 @@ sha1("blob " + byteLength + "\0" + content)
 
 clone하지 않는다.
 
-**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5)만 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
+**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5) + **온보딩 스냅샷 읽기**(`openRepoReader` — §3.1)를 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
 
 순서 — ⚠️ **0단계가 GitHub 앞에 있다**: `Project.installationId`가 `null`이면 부르기 전에 던진다(`lib/pull/run.ts`·`trigger.ts`). App이 설치되지 않은 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 값이 `createGitClient`의 인자다.
 
@@ -631,7 +631,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   DO UPDATE`에 들어가면 Postgres가 `cannot affect row a second time`으로 문장을 거부해 **지원 포맷
   리포가 push를 아예 못 끝낸다.** 생산자(`buildPushPayload`)와 `applyPush` **양쪽**이 접는다 —
   와이어 계약이 중복을 허용하므로 옛 CI의 페이로드도 받아야 한다. 규칙은 **마지막이 이긴다**(YAML
-  로더·`read`와 같다). ⚠️ **접는 것은 양쪽이지만 보고는 생산자 쪽뿐이다** — `duplicateKeys`는 `buildPushPayload`의 반환에만 있고 `PushOutcome`·라우트 응답에는 실리지 않는다(지금은 `push:local`의 콘솔 경고가 유일한 소비자다).
+  로더·`read`와 같다). ⚠️ **접는 것은 양쪽이지만 보고는 생산자 쪽뿐이다** — `duplicateKeys`는 `buildPushPayload`의 반환에만 있고 `PushOutcome`·라우트 응답에는 실리지 않는다(**소비자가 둘이다** — `push:local`의 콘솔 경고와, 온보딩 첫 적재의 `failed` 집계: `lib/onboarding/ingest.ts`가 `errors.length + duplicateKeys`로 세고 `ingestHeadline`이 그것을 **화면 문구로** 낸다, SAAS 불변식 9).
 
 ### 5.5.16 사라진 로케일은 `orphaned`다, 삭제가 아니다 (2026-09-04)
 
@@ -878,6 +878,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **`pnpm build`는 이것을 오류로 보지 않는다.** 라우트 표에 청크 크기가 없고 typecheck·test도 침묵한다.
   **`components/__tests__/client-graph.test.ts`가 상시로 센다** — `"use client"`에서 시작해 값 import만
   따라가고(`import type`은 지운다) `"use server"` 파일에서 멈춘다(Action은 스텁으로 대체된다).
+- ⚠️ **판정은 금지 목록이 아니라 허용 목록이다.** `client-graph.test.ts`의 `ALLOWED`에 없는 패키지는 전부
+  걸린다 — 금지 목록은 "자기가 고른 패턴만 답한다"라 `yaml`·`zod` 같은 무게를 통과시켰다. **2026-09-08에 셋이
+  늘었다**(`radix-ui`·`class-variance-authority`·`lucide-react`): 이 리포가 `components/ui/` 프리미티브를
+  소유하면서 들어온 **의도된 결정**이고 메타 테스트가 셋을 각자 고정한다. `SKIP_DIR`의 `ui`는 **진입점 탐색만**
+  건너뛰고 import는 따라가므로, **프리미티브가 무는 것이 곧 이 목록의 결정**이 된다.
 - ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.
