@@ -34,11 +34,25 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
  * `next/*`는 접두로 허용한다 — 프레임워크가 서브패스를 여러 개 쓰고(`next/link`·`next/navigation`)
  * 그것을 하나씩 등재하면 목록이 프레임워크 버전을 따라다닌다.
  */
-const ALLOWED = ["react", "react-dom", "clsx", "tailwind-merge"];
+const ALLOWED = [
+  "react",
+  "react-dom",
+  "clsx",
+  "tailwind-merge",
+  /**
+   * ⚠️ **셋은 프리미티브(`components/ui/`)가 쓴다** — 이 리포가 그 디렉터리를 소유하면서 들어왔다
+   * (translation-ui design §3.2). `SKIP_DIR`의 `ui`는 **진입점 탐색**만 건너뛰므로 import를 따라가면
+   * 여기로 들어온다. **이것이 그 "여기서 한 번 하는 의도된 결정"이고**, 아래 메타 테스트가 셋을
+   * 각자 고정한다 — 하나라도 목록에서 빠지면 red다.
+   */
+  "radix-ui",
+  "class-variance-authority",
+  "lucide-react",
+];
 
-function allowed(specifier: string): boolean {
+function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean {
   if (specifier === "next" || specifier.startsWith("next/")) return true;
-  return ALLOWED.some((ok) => specifier === ok || specifier.startsWith(`${ok}/`));
+  return list.some((ok) => specifier === ok || specifier.startsWith(`${ok}/`));
 }
 
 /**
@@ -180,6 +194,31 @@ describe("클라이언트 그래프", () => {
     for (const bad of KNOWN_OFFENDERS) expect(allowed(bad), bad).toBe(false);
     // 목록에 없는 **아무** 패키지도 통과하지 못한다 — 그게 금지 목록과의 차이다.
     for (const bad of ["sonner", "@tanstack/react-virtual", "lodash"]) expect(allowed(bad), bad).toBe(false);
+  });
+
+  /**
+   * ⚠️ **의도된 확장이 실제로 필요한지, 그리고 그 셋만인지 센다.** 목록을 넓히는 것은 결정이므로
+   * 그 결정이 지워졌을 때(누가 셋 중 하나를 지웠을 때) 검사가 조용해지면 안 된다.
+   */
+  it("프리미티브의 셋은 의도적으로 허용된다 — 하나씩 빼면 걸린다", () => {
+    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react"]) {
+      expect(allowed(pkg), pkg).toBe(true);
+      expect(allowed(pkg, ALLOWED.filter((ok) => ok !== pkg)), pkg).toBe(false);
+    }
+  });
+
+  /**
+   * ⚠️ **사전은 잎이어야 한다** (translation-ui design §3.1). 클라이언트 컴포넌트가 `@/lib/i18n`을
+   * 읽으므로 그 그래프가 곧 번들이다 — 사전이 `@/lib/**`를 하나라도 물면 7.2MB 사고의 재현이다.
+   * 실 소비자는 T6부터 생기고, **그 전까지 이 검사가 공허하지 않도록** 여기서 직접 건다.
+   */
+  it("`@/lib/i18n`은 잎이다 — 사전 말고 아무것도 물지 않는다", () => {
+    const { files, packages } = walk([join(ROOT, "lib/i18n/index.ts")]);
+    expect([...packages].filter((name) => !allowed(name))).toEqual([]);
+    expect([...files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/i18n/index.ts",
+      "messages/en.tsx",
+    ]);
   });
 
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
