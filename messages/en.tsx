@@ -398,8 +398,13 @@ export const en = {
 
   /** 초대 수락 화면 — **셸 밖 카드다** (design §3.14). 거부 문구는 `errors.invite`가 든다. */
   invite: {
-    /** 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 갈린다. */
-    invitedTo: (project: string, role: string): string => `You're invited to ${project} as a ${role}.`,
+    /**
+     * 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 갈린다.
+     *
+     * ⚠️ **관사를 붙이지 않는다** (2026-09-08 실물 검증 — "as a Editor"가 나왔다). 역할 이름은 데이터라
+     * a/an을 문장이 알 수 없고, 그것을 알려면 역할마다 관사 표를 두게 된다. 직함처럼 관사 없이 쓴다.
+     */
+    invitedTo: (project: string, role: string): string => `You're invited to ${project} as ${role}.`,
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
     github: "Sign in with GitHub",
     google: "Sign in with Google",

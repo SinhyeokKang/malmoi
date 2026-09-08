@@ -60,6 +60,17 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 });
 
+describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
+  /**
+   * ⚠️ 2026-09-08 실물 검증에서 "as a Editor"가 나왔다. 역할 이름은 데이터라 문장이 a/an을 알 수 없고,
+   * 알려면 역할마다 관사 표를 두게 된다 — 직함처럼 관사 없이 쓴다.
+   */
+  it("초대 문장에 부정관사를 붙이지 않는다", () => {
+    expect(m.invite.invitedTo("bugshot-2", "Editor")).toBe("You're invited to bugshot-2 as Editor.");
+    expect(m.invite.invitedTo("bugshot-2", "Owner")).not.toMatch(/ an? /);
+  });
+});
+
 describe("사전 — 노드를 삽입하는 값", () => {
   it("받은 노드를 그대로(참조 동일성) 문장 안에 둔다 — 문장은 사전이 소유한다", () => {
     const path = createElement("code", null, ".github/workflows/l10n.yml");
