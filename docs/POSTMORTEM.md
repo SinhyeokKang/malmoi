@@ -625,3 +625,21 @@ _이 아래에 새 항목을 추가한다._
   - grep: `grep -rnE "\[[A-Za-z_][A-Za-z0-9_.]*\]\s*\?\?" --include='*.ts' --include='*.tsx' lib app components | grep -v __tests__` → **인덱스 접근 + `??` 폴백**을 전수로 세고, 키의 출처가 우리 코드인지 사용자인지 하나씩 본다. 배열·문자열 인덱스(`lines[i] ?? ""`)는 대상이 아니다.
     - 이 라운드 실행 결과 **후속 후보 1건**: `lib/adapters/json-catalog.ts:240`의 `format.nestedByPath?.[path] ?? format.nested ?? false`. `path`는 `pathTemplate`에 로케일을 치환한 값이라 보통 `i18n/ko.json`처럼 구분자·확장자를 갖고, 프로토타입 키와 정확히 같아지려면 **확장자 없는 루트 로케일 파일**(`{locale}` 템플릿 + `constructor`라는 파일명)이 필요하다 — 실질 도달은 매우 어렵지만 **결과가 나쁘다**: `nested`가 함수가 되어 truthy로 읽히고, 평평한 파일이 중첩으로 쓰여 **점 포함 키의 값이 사라진다**(ARCHITECTURE §1.35의 손실 계열). 어댑터를 손대는 6b-1에서 같이 본다.
   - **`as <Union>` 캐스트로 외부 입력을 좁히는 자리를 함께 센다.** grep: `grep -rn "as [A-Z][A-Za-z]*Error" --include='*.tsx' app components | grep -v __tests__` → 판정 함수(`is*`)를 지나지 않고 캐스팅하는 화면이 있으면 그 화면이 이 부류의 도달 지점이다.
+
+### 2026-09-08 — 라이브러리가 요구하는 조상 provider를 프리미티브가 계약에 안 넣어 "접기"가 셸을 죽였다
+
+- **영역**: `components/ui/tooltip.tsx` · `components/shell/sidebar.tsx`
+- **증상**: **게이트 셋이 전부 green이다** — `pnpm typecheck`·`pnpm test` 1,909건·`pnpm build`. 그런데 사이드바의 [Collapse sidebar]를 **한 번 누르면** Radix가 `` `Tooltip` must be used within `TooltipProvider` ``로 던져 셸이 통째로 죽는다. 툴팁이 **접힌 상태에서만** 렌더되기 때문에(펼친 상태에서는 라벨이 글자로 있다) 평소 경로에서는 절대 안 나타난다.
+  - ⚠️ **접힘이 `localStorage`에 남아 그 죽음이 영구화된다.** 다음 방문에도 같은 자리에서 죽고, 화면이 안 뜨니 접기 버튼을 다시 누를 수도 없다 — **사용자가 스스로 빠져나올 수 없다.** 이 항목을 기록하는 이유의 절반이 이것이다: 같은 예외라도 상태가 저장되면 심각도가 한 단계 올라간다.
+- **근본 원인**: 프리미티브가 `Tooltip.Root`만 감싸고 `Tooltip.Provider`는 **호출부의 숙제로 남겼다.** DESIGN §6.4가 "셸 레이아웃이 한 번 감싼다"고 적어 뒀고 그 문장이 맞는 설계였는데, **문서에 적힌 계약을 코드가 강제하지 않았다** — 셸을 만드는 커밋이 그것을 잊었고, 잊었다는 사실이 어디에도 드러나지 않았다.
+  - `@radix-ui/react-context`는 provider가 없으면 **던진다**(기본값을 두지 않는다 — 실측). 즉 이 부류는 "조용히 잘못 동작"이 아니라 "즉시 크래시"인데, **크래시가 조건부 렌더 뒤에 숨어 있으면 조용함과 같아진다.**
+  - 이 리포는 **렌더 테스트를 두지 않기로 했다**(translation-ui design §4 — 소스 스캔과 실물로 나눈다). 그 결정 자체는 유효하지만, 그러면 **"렌더해야만 드러나는 계약"을 프리미티브가 스스로 만족시켜야 한다** — 아니면 그 계약은 `/bugshot-qa`까지 아무 게이트도 안 지난다.
+- **그물**:
+  - 잡은 것: **`/code-review` 하나뿐.** `Tooltip`을 쓰는 자리를 grep하고 provider 마운트를 찾다가 0건인 것을 보고, `@radix-ui/react-context`의 소스로 "없으면 던지는가"를 확인했다.
+  - 놓친 것: `typecheck`(provider는 **타입이 아니라 런타임 컨텍스트**다 — Radix가 그것을 타입으로 표현하지 않는다) · `test` 1,909건(렌더 테스트가 없다) · `build`(렌더하지 않는다) · `client-graph`·`focus-ring`(import·태그를 보지 컴포넌트 트리를 안 본다).
+  - ⚠️ **"문서에 적혀 있다"가 그물이 아니다.** DESIGN §6.4에 계약이 정확히 적혀 있었고 그것을 쓴 사람이 다음 커밋에서 잊었다.
+- **재발 방지**:
+  - **조상 provider를 요구하는 라이브러리 컴포넌트는 프리미티브가 자기 provider를 든다.** 중첩이 허용되면(Radix가 그렇다) 바깥의 공유 provider는 **최적화**로 남고, 잊어도 죽지 않는다. `components/__tests__/tooltip-provider.test.ts`가 그 형태를 소스로 고정한다(Provider가 Root를 감싸는 순서까지).
+  - grep: `grep -rn 'from "radix-ui"' components/ui/` → 쓰는 프리미티브를 세고, 각각에 대해 그 패키지의 `dist/index.mjs`에서 `createXContext(PROVIDER_NAME)`를 찾아 **Root가 자기 context를 만드는지 / 조상을 요구하는지** 본다.
+    - 이 라운드 실행 결과: `Dialog`·`DropdownMenu`는 **Root가 자기 context를 만든다**(각 3·2건) — 조상 provider를 요구하지 않으므로 같은 결함이 없다. 요구하는 것은 `Tooltip` 하나였다. **Radix 컴포넌트를 새로 들일 때 이 확인을 한 번 한다.**
+  - **조건부로만 렌더되는 컴포넌트를 의심한다.** 크래시가 `collapsed`·`mobileOpen`처럼 **기본값이 false인 상태 뒤에** 있으면 어떤 자동 게이트도 그 가지를 밟지 않는다. `/bugshot-qa`의 시나리오에 **상태를 토글하는 단계**를 넣는다(접기 → 새로고침 → 다시 접힌 상태로 뜨는지).
