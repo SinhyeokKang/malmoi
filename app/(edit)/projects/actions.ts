@@ -570,7 +570,7 @@ export async function createProject(raw: {
     if (files.length < attempted.length) {
       logFailure(
         "onboard-confirm",
-        new Error(`재검증 파일을 내려받지 못했다: ${attempted.length - files.length}/${attempted.length}`),
+        new Error(`could not download re-check files: ${attempted.length - files.length}/${attempted.length}`),
       );
       return { ok: false, error: "unavailable" };
     }
@@ -678,11 +678,11 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
   // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다.
   if (installationId === null || adapterName === null || pathTemplate === null || baseLocale === null) {
-    logFailure("onboard-ingest", new Error(`포맷이 저장되지 않은 프로젝트다: ${slug}`));
+    logFailure("onboard-ingest", new Error(`project has no stored format: ${slug}`));
     return { ok: false, error: "ingest-failed" };
   }
   if (!isAdapterName(adapterName)) {
-    logFailure("onboard-ingest", new Error(`모르는 어댑터 이름이 저장돼 있다: ${adapterName}`));
+    logFailure("onboard-ingest", new Error(`unknown adapter name stored: ${adapterName}`));
     return { ok: false, error: "ingest-failed" };
   }
 
@@ -702,7 +702,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   const files = await readFiles(reader, snapshot, attempted);
   const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
   if (confirmed.status !== "ok") {
-    logFailure("onboard-ingest", new Error(`저장된 포맷이 더 이상 성립하지 않는다: ${confirmed.reason}`));
+    logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
     return { ok: false, error: "ingest-failed" };
   }
 

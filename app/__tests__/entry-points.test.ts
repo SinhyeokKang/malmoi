@@ -285,25 +285,68 @@ describe("죽은 라우트 링크", () => {
  * 라우트 링크"와 같은 층의 소스 대조로 센다.
  */
 describe("쿼리 파라미터의 수신자", () => {
+  const ROUTES_SOURCE = readFileSync(join(APP, "../lib/routes.ts"), "utf8");
   const PAGES = ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) => ({
     shape: shape("/" + e.path.replace(/\/?page\.tsx$/, "")),
     source: e.source,
     path: e.path,
   }));
 
-  /** 진입점 소스가 만드는 "경로 + 쿼리" 리터럴. 주석 줄은 뺀다. */
+  /**
+   * `lib/routes.ts`의 각 항목 → 그 경로의 shape. **리터럴을 여기 복사하지 않고 그 파일에서 읽는다** —
+   * 복사하면 라우트를 옮길 때 이 테스트가 옛 경로를 정답으로 들고 조용히 통과한다(2026-09-05 사고의 형).
+   */
+  function routeShapes(source: string): Map<string, string> {
+    const out = new Map<string, string>();
+    const re = /(\w+):\s*\([^)]*\)[^=]*=>\s*(?:withQuery\(\s*)?[`"']([^`"']+)[`"']/g;
+    for (const m of source.matchAll(re)) out.set(m[1] ?? "", shape(m[2] ?? ""));
+    return out;
+  }
+
+  /**
+   * 진입점 소스가 만드는 "경로 + 쿼리". **두 형태를 다 본다**:
+   *
+   * 1. 경로 리터럴 — `` `/invite/${token}?e=${error}` ``
+   * 2. **생성기 호출** — `` `${routes.invite(token)}?e=${error}` ``
+   *
+   * ⚠️ **2번이 없으면 이 검사가 조용히 0건이 된다** (2026-09-08 실측). ship 4가 화면들의 경로 리터럴을
+   * `routes.*`로 옮기면서 1번 패턴이 한 줄도 남지 않았고, 아래 "0건이 되지 않는다" 가드가 그것을 잡았다 —
+   * 가드가 없었으면 "쿼리를 보내놓고 읽는 쪽이 없다"는 부류(issue #2)가 다시 사각지대로 들어갔다.
+   */
+  const ROUTE_PATHS = routeShapes(ROUTES_SOURCE);
+
   const EMITTED = ENTRY_POINTS.flatMap((e) => {
     const code = e.source
       .split("\n")
       .filter((l) => !/^\s*(\*|\/\/)/.test(l))
       .join("\n");
-    return [...code.matchAll(/["'`](\/[a-z][A-Za-z0-9/[\]$_{}.-]*)\?([A-Za-z_][A-Za-z0-9_]*)=/g)].map(
-      (m) => ({ from: e.path, target: shape(m[1] ?? ""), key: m[2] ?? "" }),
+    const literal = [
+      ...code.matchAll(/["'`](\/[a-z][A-Za-z0-9/[\]$_{}.-]*)\?([A-Za-z_][A-Za-z0-9_]*)=/g),
+    ].map((m) => ({ from: e.path, target: shape(m[1] ?? ""), key: m[2] ?? "" }));
+    const generated = [...code.matchAll(/routes\.(\w+)\([^)]*\)\}\?([A-Za-z_][A-Za-z0-9_]*)=/g)].flatMap(
+      (m) => {
+        const target = ROUTE_PATHS.get(m[1] ?? "");
+        // 생성기에 없는 이름이면 아래 "죽은 라우트 링크"가 잡는 부류다 — 여기서 조용히 버리지 않는다.
+        return target === undefined ? [] : [{ from: e.path, target, key: m[2] ?? "" }];
+      },
     );
+    return [...literal, ...generated];
   });
 
   it("쿼리를 실어 보내는 자리를 하나 이상 찾았다 — 스캐너가 조용히 0건이 되지 않는다", () => {
     expect(EMITTED.length).toBeGreaterThan(0);
+  });
+
+  it("`routes.ts`에서 경로를 읽어냈다 — 이름→shape 표가 비면 생성기 형태가 전부 버려진다", () => {
+    expect(ROUTE_PATHS.get("projects")).toBe("/projects");
+    expect(ROUTE_PATHS.get("invite")).toBe("/invite/*");
+    expect(ROUTE_PATHS.get("translations")).toBe("/projects/*/translations");
+  });
+
+  /** ⚠️ 두 형태를 각각 먹인다 — 하나를 못 집으면 그 부류가 조용히 사각지대로 들어간다. */
+  it("리터럴과 생성기 호출을 둘 다 집는다", () => {
+    expect(EMITTED.some((x) => x.target === "/invite/*" && x.key === "e")).toBe(true);
+    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
   });
 
   /**
@@ -326,7 +369,6 @@ describe("쿼리 파라미터의 수신자", () => {
     return [...body.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
   }
 
-  const ROUTES_SOURCE = readFileSync(join(APP, "../lib/routes.ts"), "utf8");
   const TRANSLATIONS_PAGE = ENTRY_POINTS.find((e) => e.path === "projects/[slug]/translations/page.tsx");
   /** 번역 화면이 **실제로 받는** 쿼리 키. 그 페이지의 `type Search`가 계약이다. */
   const ACCEPTED = queryKeysOf(TRANSLATIONS_PAGE?.source ?? "", "Search");

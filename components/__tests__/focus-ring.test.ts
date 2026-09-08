@@ -27,21 +27,13 @@ const RING = ["focus-visible:ring-ring", "focus-visible:ring-[3px]", "focus-visi
 const SKIP = new Set(["__tests__", "node_modules"]);
 
 /**
- * **raw 네 태그를 아직 쓰는 파일** — 축소형 목록이다(`no-korean-ui`와 같은 형). 화면이 프리미티브로
- * 옮겨질 때마다 자기 파일을 뺀다. T8 끝에 비고, 그때부터 "`ui/` 밖에 raw 태그 0"이 전면 방어선이 된다.
+ * ✅ **비었다** (2026-09-08 ship 4). 축소형 목록이 목적을 다했다 — 아래 검사가 이제 "`ui/` **밖에** raw
+ * `<button>`·`<input>`·`<select>`·`<textarea>`가 0개"라는 **전면 방어선**이다. 화면이 raw 태그를 쓰면
+ * 그 커밋이 red이고, 링을 프리미티브 안에 한 번 두는 것의 대가가 그것이다.
  *
- * ⚠️ **늘리지 않는다.** 새 화면이 raw 태그를 쓰면 그 커밋이 red다 — 그것이 이 목록의 요지다.
+ * ⚠️ **다시 채우지 않는다.** 새 컨트롤이 필요하면 `components/ui/`에 프리미티브로 만든다.
  */
-const RAW_TAG_ALLOWED = [
-  "components/github-account.tsx",
-  "components/onboarding/connect-github.tsx",
-  "components/onboarding/copy-button.tsx",
-  "components/onboarding/first-ingest-retry.tsx",
-  "components/onboarding/new-project-flow.tsx",
-  "components/onboarding/push-token-panel.tsx",
-  "components/reconnect-button.tsx",
-  "app/invite/[token]/page.tsx",
-];
+const RAW_TAG_ALLOWED: string[] = [];
 
 function tsxFiles(dir: string): string[] {
   const out: string[] = [];

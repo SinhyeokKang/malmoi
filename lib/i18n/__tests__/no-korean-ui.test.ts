@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest";
  * **화면에 닿는 소스에 한글 리터럴이 없다** (design §3.1.5).
  *
  * UI 문자열의 단일 출처는 `messages/en.tsx`이고, 그 규칙을 지키는 것은 리뷰가 아니라 이 검사다.
- * 다만 재작성이 여러 커밋에 걸쳐 있으므로 **축소형 허용 목록**을 쓴다 — 아직 안 옮긴 파일을
- * 이름으로 고정하고, UI 커밋마다 자기 파일을 목록에서 뺀다. 목록이 비면 이 검사가 전면 방어선이 된다.
+ *
+ * ✅ **2026-09-08 ship 4에서 화면 파일이 목록에서 전부 빠졌다.** 남은 셋은 화면이 아니다 —
+ * `auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 · `lib/pull/render.ts`의 어댑터 부류 문구(6b-1).
+ * 즉 **`app/`·`components/`에 대해서는 이미 전면 방어선이고**, 새 화면이 한글 리터럴을 심으면 그 커밋이 red다.
  *
  * **단언이 둘인 것이 요지다**: 목록 **밖**은 0자(회귀 즉시 red) · 목록 **안**은 ≥1자(낡은 항목 금지).
  * 처음 초안의 `it.fails`는 세 방향으로 무너졌다(QA 검수): 중간 커밋이 한글을 0으로 만드는 순간 red ·
@@ -63,18 +65,6 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  * (tasks 문서는 그 파일이 목록에 남을 것으로 적었는데, 실제로 남는 근거는 리터럴이고 run.ts엔 없다.)
  */
 const KOREAN_ALLOWED = [
-  "app/(edit)/projects/[slug]/settings/page.tsx",
-  "app/(edit)/projects/actions.ts",
-  "app/(edit)/projects/new/page.tsx",
-  "app/invite/[token]/page.tsx",
-  "components/github-account.tsx",
-  "components/onboarding/connect-github.tsx",
-  "components/onboarding/copy-button.tsx",
-  "components/onboarding/first-ingest-retry.tsx",
-  "components/onboarding/new-project-flow.tsx",
-  "components/onboarding/push-token-panel.tsx",
-  "components/onboarding/workflow-block.tsx",
-  "components/reconnect-button.tsx",
   // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "auth.ts",

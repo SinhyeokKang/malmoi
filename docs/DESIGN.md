@@ -82,7 +82,7 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 ## 4. 타이포그래피
 
 - **`font-sans`**: Pretendard Variable → 시스템 한/영 폴백. 폰트 파일은 **동적 서브셋 생성물**이라 `public/fonts/`가 gitignore돼 있다 (CLAUDE.md 폰트 절). GitLab Sans(Inter 기반)를 들이지 않는다 — Pretendard의 라틴 글리프도 Inter에서 왔다.
-- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목, `text-lg`=페이지 제목(한 화면에 하나).
+- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목·**셸 안 페이지 제목**, `text-lg`=**셸 밖 카드의 제목 전용**(로그인·초대 수락 둘뿐이다 — 아래 네 번째 불릿).
 - **임의값(`text-[…]`)은 스케일에 대응값이 없을 때만.** 12px은 `text-xs`, 14px은 `text-sm`이 있으므로 임의값으로 쓰지 않는다.
 - 본문·셸 안 제목은 `font-medium`(500)이고, **셸 밖 카드의 페이지 제목만** `text-lg font-semibold tracking-tight`(600)다(로그인·초대 수락). 700은 쓰지 않는다.
 
@@ -141,7 +141,20 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 라우트는 여덟이다 (user-stories.md 순서) — 로그인 · 목록 · 새 프로젝트 · **번역** · **멤버** · 설정 · **계정** · 초대 수락. 공통 형은 §6.4.
 
-### 6.1 번역 표
+### 6.1 번역 화면 — 패널 · 헤더 스트립 · 고정 슬롯 · 표
+
+**표 밖에 셋이 있다** (2026-09-08 ship 3). 표만 적어 두면 다음 사람이 그 셋을 다시 발명한다.
+
+| 요소 | 규칙 |
+|---|---|
+| **네임스페이스 패널** | `aside` `w-52 shrink-0 overflow-y-auto border-r py-2`(콘텐츠 표면 — 셸 사이드바의 muted가 아니다). 항목 `px-3 py-1.5 text-sm`, 우측에 `pending/total`(전부 번역됐으면 총계만). ⚠️ **선택은 `bg-muted` 알약이다** — 셸 사이드바의 선택은 `bg-background`다. **비대칭이 의도다**(표면이 서로 반대라서) — 한쪽으로 맞추면 그 표면에서 알약이 사라진다. muted 알약 위 글자는 `text-foreground`이고 링에 `ring-offset-1`을 덧댄다(§7) |
+| **헤더 스트립** | `border-b px-6 py-4 space-y-3` — breadcrumb → `h1 text-base font-medium` + 키 수 + "Last sent …" + PR 링크 → 우측에 툴바. **자기 안에서 스크롤하지 않는다**(표만 스크롤한다) |
+| **툴바 필터 행** | 검색 `Input w-56 pl-8` + `Search` `absolute left-2` · 상태 `Select` + `ListFilter` · **기준 로케일 `Select`**(세 번째 필터 — 집계와 상태 필터가 그 로케일을 본다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08) |
+| **고정 슬롯 순서** | 툴바 아래 **편집 손실 배너가 위, Publish 결과 `Alert`가 아래**다. ⚠️ **둘 다 조건부 분기 밖**에 있어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07) |
+
+**빈 상태 넷**: 준비 전(readiness — OWNER는 설정으로 보낸다) · 로케일 없음 · 키 없음 · 필터 0행. 전부 `EmptyState`다.
+
+#### 표 자체
 
 화면은 `| Key | en (base) | ko | fr |`이고 **모든 셀이 편집 가능**하다 (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다 — 키든 로케일이든 어느 축이 orphaned면 그 셀은 `disabled` + placeholder "Not editable — removed from the code".
 
@@ -153,16 +166,16 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | `description` | `text-xs text-muted-foreground` — **`background` 표면 위일 때만** (§2.2) |
 | 코드 참조 | `text-xs text-blue-600 underline` + `ExternalLink` 12px (§6.3) |
 | 번역 입력 | `Textarea` `rows=1` + `field-sizing-content`(미지원 브라우저는 1행), `text-sm`. ⚠️ **`aria-label`이 `{키} · {로케일}`이다** — placeholder는 값이 차면 안 읽혀 채워진 셀이 이름 없는 입력이 된다 |
-| 저장 상태 | 셀 안 한 줄은 **시각 전용** — Saving… / Saved(1.5초 뒤 소거) / 실패 문장 + `[Retry]`(`Button link sm`, `text-destructive`). ⚠️ **`role="status"`를 셀에 두지 않는다** — 903행×3로케일이면 live region이 2,700개다. 알림은 표 하나의 영역이 든다(§7) |
+| 저장 상태 | 셀 안 한 줄은 **시각 전용**이고 상태가 **넷**이다 — Saving… / Saved(1.5초 뒤 소거) / **Not saved yet**(값이 변했고 아직 blur 전) / 실패 = `text-destructive` 문장 + `[Retry]`(`Button link sm` — 그 variant는 파랑 밑줄이고 destructive는 옆 문장이 든다). ⚠️ 사유가 `unauthorized`면 [Retry] 자리에 **[Sign in]** `ButtonLink`가 온다. ⚠️ **`role="status"`를 셀에 두지 않는다** — 903행×3로케일이면 live region이 2,700개다. 알림은 표 하나의 영역이 든다(§7) |
 | 헤더 | `bg-muted/50` + `sticky top-0`. 글자는 `text-foreground/60` — **`text-muted-foreground`가 아니다** (§2.2). `(base)` 표기도 같은 규칙 |
 | 열 순서 | **base가 맨 앞**, 나머지는 코드순 |
 | 행 | `px-4 py-3` · 셀 `border-t`(표는 `divide-y`가 아니다) · hover `bg-muted/30` · `align-top`. ⚠️ 헤더는 `sticky top-0 **z-10**` — `z`가 없으면 스크롤 시 셀의 포커스 링이 헤더 위로 그려진다 |
 
-**넓은 표는 자기 컨테이너에서만 스크롤한다** — `Table` 래퍼가 `h-full overflow-auto`로 **두 축을 다 든다.** 로케일이 6개면 표가 화면을 넘고, 페이지 본문이 좌우로 흔들리면 사이드바까지 밀린다. ⚠️ **세로도 그 컨테이너여야 `sticky top-0` 헤더가 붙는다** — `sticky`는 가장 가까운 스크롤 컨테이너를 기준으로 하므로, 세로를 바깥이 들면 헤더가 붙을 대상 없이 그냥 흘러간다. 높이는 부모(`min-h-0 flex-1`)가 정한다.
+**넓은 표는 자기 컨테이너에서만 스크롤한다** — `Table` 래퍼가 `h-full min-w-0 overflow-auto`로 **두 축을 다 든다** (`min-w-0`이 없으면 표가 콘텐츠 컬럼을 밀어낸다). 로케일이 6개면 표가 화면을 넘고, 페이지 본문이 좌우로 흔들리면 사이드바까지 밀린다. ⚠️ **세로도 그 컨테이너여야 `sticky top-0` 헤더가 붙는다** — `sticky`는 가장 가까운 스크롤 컨테이너를 기준으로 하므로, 세로를 바깥이 들면 헤더가 붙을 대상 없이 그냥 흘러간다. 높이는 부모(`min-h-0 flex-1`)가 정한다.
 
 **"Translated"에는 배지를 붙이지 않는다** — 가장 흔한 상태가 가장 조용해야 한다 (§6.2와 같은 원리). 같은 이유로 **"From repository" 같은 표시도 두지 않는다**.
 
-### 6.2 상태 색 — 배지 3종 + 연결 건강성 6종 + Alert 4종, 색 체계는 하나
+### 6.2 상태 색 — 배지 4종 + 연결 건강성 6종 + Alert 4종, 색 체계는 하나
 
 **축이 셋이고 색 체계는 하나다.** amber는 **경고**, destructive는 **글자색 전용 오류**, 나머지는 무색이다. **semantic 토큰으로 표현 못 하는 상태 색**이라 raw 색을 쓰되, 라이트 단일이므로 `dark:` 짝을 두지 않는다.
 
@@ -170,9 +183,10 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 |---|---|---|
 | 미번역 | 무색 — `text-muted-foreground` "Untranslated" | 없음은 상태가 아니라 부재다. 색을 주면 셋 중 가장 흔한 것이 가장 시끄러워진다 |
 | 검토필요 (`needsReview`) | **amber** — `Badge warning` = `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
+| 미배포 (`isUnpublished`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·편집 손실 배너와 **같은 술어**다(`updatedBy`가 사람인 행). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
 | orphaned | **red 계열 글자만** — `Badge danger` = `text-destructive` (배경 없음) | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기** |
 
-**연결 건강성 6종** (설정 화면): `ok`·`not-connected`·`unknown` → 무색 `Badge muted` / `repo-moved` → **amber** / `app-uninstalled`·`installation-changed` → **`text-destructive` 글자만**. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
+**연결 건강성 6종** (설정 화면): **배지를 쓰지 않는다** (2026-09-08 실물 정정) — `ok`·`not-connected`·`unknown`은 평문 `text-muted-foreground text-xs`(가장 흔한 상태가 조용하다) / `repo-moved` → **`Alert warning`** / `app-uninstalled`·`installation-changed` → **`Alert danger` + [Reconnect]**. 색 체계는 아래와 같고 담는 그릇만 다르다. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
 
 **첫 적재 상태 3종** (`planProjectReadiness`): `ready` → **표시 없음**(`readinessLabel`이 `null`) / `awaiting_first_sync`·`setup` → 무색 `Badge muted`. 오류가 아니라 진행 중이다.
 
@@ -191,11 +205,11 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ### 6.3 외부 링크
 
-**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · App 설치 링크 · GitHub 프로필. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
+**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · 툴바의 "View what was sent" · App 설치 링크 둘. ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
 
 ### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
-옛 판의 "hand-rolled 컨트롤 클래스 표"는 사라졌다. **형은 `components/ui/`의 variant이고 화면은 raw 태그를 쓰지 않는다** — `focus-ring.test.ts`가 `ui/` 밖의 `<button>`·`<input>`·`<select>`·`<textarea>`를 **허용 목록 밖에서** 0개로 고정한다(§7 — 목록이 비면 전면 0이 된다). 색은 전부 §2의 토큰이다.
+옛 판의 "hand-rolled 컨트롤 클래스 표"는 사라졌다. **형은 `components/ui/`의 variant이고 화면은 raw 태그를 쓰지 않는다** — `focus-ring.test.ts`가 `ui/` 밖의 `<button>`·`<input>`·`<select>`·`<textarea>`를 **0개로 고정한다** (§7 — 축소형 허용 목록이 2026-09-08 ship 4에서 비어 전면 방어선이 됐다). 색은 전부 §2의 토큰이다.
 
 | 프리미티브 | 형 (옛 표의 어느 행을 잇나) |
 |---|---|
@@ -203,12 +217,13 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **Button** `default` | `border border-input bg-background hover:bg-accent text-foreground` · 같은 치수 — 옛 "bordered(페이지·툴바)"를 하나로. 툴바도 `h-8`이다 |
 | **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소 |
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |
-| **Button** `link` | `text-blue-600 underline` 인라인 — "Sign in with another account" |
+| **Button** `link` | `text-blue-600 underline` 인라인 — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
 | **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:opacity-70`(primary) — 옛 규칙 그대로 |
 | **Button** `loading` | **라벨 교체**("Saving…") + disabled. 옆 문구가 아니다(폭이 흔들린다). **목록 안에서는 누른 버튼 하나만** 교체한다 |
 | **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
-| **Input·Textarea·Select** | `h-8 px-2 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
+| **Input·Select** | `h-8 px-2 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
+| **Textarea** | 같은 형이지만 **`h-8`을 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `font-normal` |
 | **Radio** | `size-4` · `border-input accent-primary` · label `text-sm`. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
 | **Badge** | `text-xs rounded px-1.5 py-0.5` · variants `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`) — §6.2 |
@@ -222,7 +237,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
 | **EmptyState** | 제목 `text-base font-medium` ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음 |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
-| **코드 블록** | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + 우상단 `ghost sm` [Copy] → 라벨 교체 "Copied" |
+| **코드 블록** | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + **블록 위 한 줄의 오른쪽**에 [Copy] `default`(아이콘 `Copy` → `Check`) → 라벨 교체 "Copied", 실패는 "Copy failed"(삼키면 사용자가 복사된 줄 알고 떠난다) |
 
 **빈 상태 문체**: 제목은 마침표 없는 짧은 구, 설명은 완전 문장 하나, 버튼 하나 (§10).
 
@@ -234,8 +249,8 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 |---|---|
 | 사이드바 | `w-60 shrink-0 bg-muted border-r border-border` (§5.1) · `xl` 이상에서 아이콘 레일(`w-12`)로 접기 · `xl` 미만은 햄버거로 여는 오버레이 + `bg-foreground/40` 배경 |
 | 브랜드 | `h-12 px-4` "Malmoi" 워드마크 `text-sm font-medium` |
-| 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(내 멤버십 목록 + "All projects"). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
-| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · 우측 카운트 `text-xs text-foreground/60` |
+| 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(**내 멤버십 목록만** — "All projects"는 하단 전역 항목이 든다). hover는 `hover:bg-background/60`이다 — muted 표면에서 유효한 유일한 배경 hover다(§2.1). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
+| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · **(6b) 우측 카운트** — 지금은 없다. 카운트가 사는 곳은 번역 화면의 네임스페이스 패널이다(§6.1) |
 | 항목 셋 | Translations · Members* · Settings* (* OWNER에게만 렌더 — 편의다, 방어는 페이지). **6a는 둘이다** — Members는 6b가 더한다(`lib/shell/nav.ts`의 `projectSections`) |
 | 구분선 | `mx-4 my-3 border-t border-border` |
 | 하단 전역 항목 | All projects · New project · Sign out · **Collapse sidebar** — 같은 항목 형, **아이콘도 전부 든다**(§6.8). Account·Members는 6b가 더한다 |
@@ -245,14 +260,14 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다. **Publish 버튼은 셸에 없다** — 번역 화면 툴바다(셸은 `/projects`도 감싸 slug를 모른다).
 
-### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 넷
+### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 다섯
 
-블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(연결 상태·[Reconnect]·**Base branch·Base language 폼**) · **Import status** · **Push token** · **Workflow**, 그 아래 한 줄 "GitHub account — Connected as @handle · Manage in Account".
+블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ⚠️ **Base branch·Base language 폼은 6b다** — design §3.13 머리의 🔴이 그 설계를 다시 쓰라고 요구한다. `/account` 라우트도 없으므로 "Manage in Account" 같은 문구를 두지 않는다.
 
 - ⚠️ **블록이 독립적으로 실패한다.** 건강성은 App 토큰, 계정 한 줄은 사용자 토큰 — 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다. 각 블록이 자기 오류를 `Alert danger`(in-block)로 낸다.
 - **push 토큰은 발급 응답에만 원문이 있다** — 값 칩 + [Copy] + "You won't see this again. Update the repository secret now."
 - **[Run first import]의 결과 컴포넌트는 readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
-- **Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409).
+- **(6b) Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409). 그 폼이 서기 전까지는 이 불릿의 대상이 없다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
 
 ### 6.7 새 프로젝트 (`/projects/new`)
@@ -268,7 +283,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 경로 템플릿 | **mono.** `{locale}` 자리를 "the language goes here"로 한 줄 |
 | 기준 언어 | `Radio`, 기본은 `pickBaseLocale`. 코드는 mono |
 | 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동** |
-| ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · "Imported N keys" / 부분 실패 목록 "Could not read {path}"(`text-sm text-destructive`) + 원문 진단은 `<details>` 안 `text-mono text-xs` · [Open translations] `primary` |
+| ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 "Imported N keys." + 상위 5건 "Could not read {path}" `text-xs` + `<details>` 안 `text-mono` 진단 · [Start translating] `primary`. ⚠️ **tone은 `failed`가 정한다** — 진단 목록 길이로 고르면 목록이 빈 부분 실패가 success로 그려진다(불변식 9) |
 
 ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
 
@@ -302,11 +317,12 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 사이드바가 muted 표면이 되면서 그 자리가 늘었다.
-- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에서 raw 태그를 쓰는 파일이 축소형 허용 목록뿐인지** 둘을 센다. 2026-09-08 실물 기준 그 목록은 **8개**이고(T7이 번역 화면·셀·Publish·초대 폼 넷을 뺐다) T8이 나머지를 비운다 — 비는 순간 (2)가 "밖에 네 태그 0개"가 된다.
+- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
   - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 프리미티브 다섯(`Button`·`Input`·`Textarea`·`Select`·`Radio`)이 각자의 태그에 셋을 **리터럴로** 적는다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
   - 스캐너는 **주석을 벗기고 센다** — 프리미티브가 자기 태그 이름을 docstring에 쓴다(`native \`<select>\`다`).
 - `--ring` == `--border`라서 **`muted` 표면 위에선 포커스 링이 약하다** — 사이드바 항목·값 칩 옆 버튼에 `focus-visible:ring-offset-1`을 더한다(offset 색 기본이 배경).
 - **저장 알림은 표 하나에 `aria-live="polite"` 영역 하나**다 (`components/translations/announcer.tsx`) — 셀마다 두면 903행×3로케일에 2,700개다. 결과만 알린다("Saving…"은 알리지 않는다). 실패 시 포커스는 **`shouldRefocus(active, own)`가 정한다**: `body`이거나 같은 셀일 때만 되돌리고, 사용자가 다음 셀을 치고 있으면 뺏지 않는다 — 재시도 지점은 상태줄의 `[Retry]`다 (design §3.8).
+- **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — `aria-live`가 announcer에만 있는지 · 셀에 `role="status"`가 없는지 · 셀이 키·로케일을 접근 이름으로 드는지 · `Textarea rows=1`인지 · 배너 tone이 warning인지 · 옛 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
 - 아이콘만 있는 버튼은 `aria-label`. 사이드바 접힘 상태의 라벨은 Tooltip **과** `aria-label` 둘 다.
 - 드롭다운·모달은 Radix가 포커스 트랩·Esc·`aria-*`를 든다 — 직접 만들지 않는다.
 
@@ -314,7 +330,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 - 조건부 클래스는 **항상 `cn()`** 을 지난다 (§4.2의 twMerge 등록 때문에 특히). 삼항으로 문자열을 고르는 것도 조건부 클래스다.
 - 변형이 셋 이상이면 `class-variance-authority`(Button·Badge·Alert). 둘 이하면 인라인 삼항이 낫다.
-- 프리미티브는 `className`을 받아 **끝에** 병합한다(`cn(base, variants, className)`) — 호출부가 폭·여백만 덧댄다. 색·높이를 호출부에서 덮으면 형이 갈린다.
+- 프리미티브는 `className`을 받아 **끝에** 병합한다(`cn(base, variants, className)`) — 호출부가 폭·여백만 덧댄다. 색·높이를 호출부에서 덮으면 형이 갈린다. ⚠️ 2026-09-08 `/doc-check`이 로그인 provider 버튼의 `h-9`를 잡았고 **규칙이 아니라 코드를 고쳤다** — 지금 높이를 덮는 자리는 사이드바의 `h-auto`(§6.5가 그 형을 적어 둔다) 하나다.
 
 ## 9. SaaS UI 레퍼런스 — GitLab (2026-09-07 결정, Supabase에서 변경)
 

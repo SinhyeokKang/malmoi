@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a`로 **프로덕션에 나갔고**, **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 dev에 있다. 남은 것은 ship 4(T8·T9) · **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 dev에 있다. 남은 것은 **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -80,7 +80,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 16개 + `radix-ui`에서 DropdownMenu·Dialog·Tooltip 셋. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
-| 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
+| 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). 주석·앵커·빈 줄을 지켜야 해서 재생성용 파서로 쓰지 않는다 | `yaml` 2.9.0 |
@@ -91,7 +91,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
 
-⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. `sonner`는 여전히 import 0곳이다.
+⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`·`tw-animate-css`는 사용 0으로 확인돼 2026-09-08에 제거했다** — 피드백은 셀 인라인(저장)과 `Alert`(Publish)이고 토스트는 그것을 둘로 가른다. `components/__tests__/client-graph.test.ts`가 `sonner`를 금지 목록으로 들고 있다.
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
 
@@ -150,7 +150,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 ⚠️ **관측됐다** (2026-09-07 실측, `/bugshot-qa`): `ts-dict` 903키 프로젝트의 **필터 없는** 번역 화면이 **12.7초**다 — 903행 · `<input>` 2,711개 · 네임스페이스 52개. 필터를 걸면 위 전제대로 수십 행이다. **그래도 지금 가상화를 넣지 않는다**: 그 화면은 동결분이고(MVP §8.3) SAAS §8 6단계가 재작성하므로, 거기서 "기본 착지를 첫 네임스페이스로" 같은 값싼 수단을 먼저 본다.
 
-✅ **그 값싼 수단이 화면에 붙었다** (2026-09-08, 6a T2 판정 + T7 화면): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시키고 표는 그 ns의 행만 렌더한다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **전체 보기는 `?ns=*`로만 간다.** ⚠️ **2초 목표는 아직 안 쟀다** — dev DB에 903키 프로젝트가 없고(24키짜리 `order-check` 하나뿐) 그 프로젝트는 prod에만 있어서, 같은 프로젝트·같은 방법(DevTools Performance LCP)의 재측정은 프로덕션 배포 뒤다.
+✅ **그 값싼 수단이 화면에 붙었다** (2026-09-08, 6a T2 판정 + T7 화면): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시키고 표는 그 ns의 행만 렌더한다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **전체 보기는 `?ns=*`로만 간다.**
+
+⚠️ **재측정했고 2초 목표는 미달이다** (2026-09-08 프로덕션, 같은 프로젝트·같은 방법): 필터 없는 화면 **12.7 → 4.66초**(2.7배), **기본 착지 3.30초**. 그런데 **24키 프로젝트도 3.29초이고 `/projects` 목록은 1.42초다** — 약 1.9초가 **키 수와 무관한 고정 비용**이라 **가상화도, 조회를 네임스페이스로 좁히는 것도 이 3.3초를 못 줄인다.** 후보는 순차 DB 왕복(도쿄 리전 — 레이아웃 2회 + 페이지 5회)이고, LCP가 DCL과 거의 같은 것이 그 신호다(TTFB는 10~78ms). 다음 수단 셋은 표를 `Suspense`로 감싸 셸을 먼저 그리기 · 왕복 병합 · 폰트 CSS의 렌더 블로킹 해제이고 **전부 번역 화면 밖이다** (`docs/features/README.md` 백로그).
 
 ### 폰트 — Pretendard 동적 서브셋 (생성물)
 
@@ -190,7 +192,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 마이그레이션 상태 (**prod**) | `pnpm db:status:prod` — `/merge` 1단계가 이걸 본다 |
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
-| 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). 인자 파싱·리포 훑기는 세 CLI가 `lib/cli/`를 공유한다 |
+| 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). **인자 파싱은 네 CLI가, 리포 훑기는 세 CLI가** `lib/cli/`를 공유한다 |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **결과가 어떻든 exit 0**, 사용법 오류만 2). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> --project <slug> [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` (적재+스캔+POST). ⚠️ `--base`는 2026-09-04 감사가 더했다 — 키 집합의 진실이 base 파일이라 틀리면 진짜 base에만 있는 키가 orphaned로 떨어진다 |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--json] [--verdicts <파일>] [--out <파일>] [--limit N] [--jobs N]` (오픈소스 리포에 detect·read·왕복을 돌려 지표를 낸다 — **읽기 전용, 결과가 어떻든 exit 0** — 사용법 오류만 2. 파이프엔 `pnpm --silent`) |
@@ -265,11 +267,15 @@ dev push와 PR이 같은 SHA에 두 번 도는 것은 **의도된 중복**이다
 app/
   page.tsx              루트 — 로그인 화면(GitHub·Google). 세션이 있으면 /projects로 redirect.
                         Auth.js의 `pages.error`가 여기라 거부 사유를 `?error=`로 보인다
-  layout.tsx            루트 레이아웃 (Pretendard <link>)
+  layout.tsx            루트 레이아웃 (Pretendard <link>). ⚠️ **`lang="en"`** — 화면 문구가 전부
+                        영어라 `app/__tests__/screens.test.ts`가 그것을 고정한다 (2026-09-08 ship 4)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  __tests__/            ⚠️ **진입점 소스 스캔** — app/ 아래 모든 page·route·actions가 인가를
-                        지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
-                        본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선
+  __tests__/            **둘이다.** entry-points — ⚠️ **진입점 소스 스캔**: app/ 아래 모든 page·route·actions가
+                        인가를 지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
+                        본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선. ⚠️ **쿼리 수신자
+                        검사가 생성기 형태도 본다** (2026-09-08) — 화면이 경로를 `routes.*`로 옮기면서
+                        `"/path?key="` 리터럴이 0건이 됐고 그 검사가 조용해졌다(자기 "0건 아님" 가드가 잡았다)
+                        + screens — `lang="en"`·설정 화면의 revalidate 안전·초대 수락의 갇힘 없음을 소스로 센다
   (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사 — GET·HEAD만, Action POST는 통과)
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
@@ -368,8 +374,8 @@ components/
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
                         후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
-                        ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
-                        소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
+                        ⚠️ **T5~T8에서 전부 `components/ui/` 프리미티브로 옮겼다** — raw 컨트롤이 0개라
+                        "포커스 링을 상수에 숨기지 말라"는 경고의 대상이 이 디렉터리에서 사라졌다
   shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
                         `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
                         문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
@@ -384,13 +390,14 @@ components/
                         Dialog·Tooltip. 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** — cva 베이스나 공유 상수에 모으면
                         focus-ring 스캐너가 그 파일을 통째로 못 본다. `Button`에 `asChild`가 없는 것도
-                        같은 이유다(Slot 한 겹이 태그를 지운다). 아직 화면 소비자는 0곳 — T6부터 붙는다
+                        같은 이유다(Slot 한 겹이 태그를 지운다). **T6~T8이 붙였다** — 화면 소비자가 21곳이고 `ui/` 밖 raw 컨트롤은 0개다
   __tests__/            focus-ring — button·input·select·textarea가 포커스 링 셋을 드는지 **소스로**
                         센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
                         눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제").
                         ⚠️ **ui/ 제외가 풀렸다** (2026-09-08) — 그 디렉터리가 링이 사는 유일한 자리다.
-                        대신 **ui/ 밖에서 raw 태그를 쓰는 파일**이 축소형 허용 목록(13개)으로 고정되고
-                        T6~T8이 비운다. 주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
+                        축소형 허용 목록은 **2026-09-08 ship 4에서 비었다** — (2)가 이제 "ui/ 밖에 네 태그
+                        0개"인 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다.
+                        주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
                         + translations-screen — 번역 화면의 배선을 소스로 센다(tone→Alert variant 항등 ·
                         `<details>` 파일 목록 · live region 1개 · `shouldRefocus` · 배너 마운트 게이트 ·
                         셀의 `aria-label` · 초대 링크가 `routes.invite`). 렌더 테스트가 없는 자리의 방어선이다
@@ -530,8 +537,11 @@ lib/
     cookie.ts           hasSessionCookie + shouldRedirectToLogin — 미들웨어 1차 차단용. __Secure- 접두 유무
                         둘 다 보고, GET·HEAD만 돌려보낸다 (Action POST는 통과)
     message.ts          accessErrorMessage · inviteErrorMessage · signInErrorMessage — 거부 사유 →
-                        한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
-                        버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
+                        **영어 문구**(`messages/en.tsx`). 갈래 누락은 `satisfies Record<Union, string>`이
+                        컴파일 타임에 잡는다(옛 `never` 검사와 같은 힘). ⚠️ **`inviteErrorMessage`는
+                        `string`을 받는다** — `?e=`가 주소창 값이라 `pick`이 폴백을 낸다(단언을 걸면
+                        그 계약이 검사에서 지워진다). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐 버튼이
+                        안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel + defaultNamespace·
                         resolveNamespace·filterRows·isUnpublished + relativeTime) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only — loadProject·loadKeys·loadActors·countUnpublished·loadMemberships)
@@ -560,15 +570,15 @@ prisma/
                         linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
   __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
                         + push-token-column.test.ts(pushTokenHash가 nullable·unique이고 **원문 컬럼이 없는지**)
-  migrations/           11개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  migrations/           12개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
                         _add_locale_orphaned, _add_translation_updated_at_index,
                         _add_tenant_auth_tables, _add_project_push_token
                         ⚠️ 마지막 것은 `migrate dev`가 비대화형을 거부해 `migrate diff`로 만들었다 (`/db` 4c).
                         prod 반영 완료 (2026-09-07, `db:status:prod` 11개 up to date).
-                        ⚠️ **12번째가 붙었다** — `_add_project_last_published`(2026-09-08, 6a T3 — `Project.lastPublishedAt`·
-                        `lastPrUrl`). additive 둘이고 **prod 반영 완료**(2026-09-08 `/merge` 1단계, 12개 up to date)
+                        , _add_project_last_published (2026-09-08, 6a T3 — `Project.lastPublishedAt`·
+                        `lastPrUrl`. additive 둘이고 **prod 반영 완료** — `db:status:prod` 12개 up to date)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
@@ -612,7 +622,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`routes.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
@@ -672,7 +682,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 32개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 34개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -681,7 +691,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **프로덕션에 보내지 않고 dev에만 쌓고 싶으면 `/push`까지만 하고 `/merge`를 부르지 않는다.** 커밋조차 남기고 싶지 않으면 `/ship` 대신 개별 스킬로 진행한다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정(additive-first)도 여기서 한다. **프로덕션 반영(`db:deploy`)은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`** 으로 `docs/POSTMORTEM.md`에 회고를 남긴다. 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
-- **`/doc-check`은 문서 전수 대조다** (2026-09-06 추가 — bugshot-2에서 가져와 이 리포의 문서 12개에 맞췄다). `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 문서별 에이전트가 양방향(틀린 단언 + 누락)으로 대조한다. 같은 날 tenant-auth 리뷰가 잡은 "전환 전 상태를 서술하는" 여덟 곳이 정확히 `/push`가 못 보는 부류였다. 리포트 후 사용자 확인을 거쳐 문서별 커밋까지 한다 — `POSTMORTEM.md`(append-only)와 `docs/features/*`(근거 기록)는 대상이 아니다.
+- **`/doc-check`은 문서 전수 대조다** (2026-09-06 추가 — bugshot-2에서 가져와 이 리포의 문서 11개에 맞췄다). `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 문서별 에이전트가 양방향(틀린 단언 + 누락)으로 대조한다. 같은 날 tenant-auth 리뷰가 잡은 "전환 전 상태를 서술하는" 여덟 곳이 정확히 `/push`가 못 보는 부류였다. 리포트 후 사용자 확인을 거쳐 문서별 커밋까지 한다 — `POSTMORTEM.md`(append-only)와 `docs/features/*`(근거 기록)는 대상이 아니다.
 - **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** (2026-09-06 추가). ego-browser 태스크 스페이스에서 로컬 dev를 훑고, 결함을 BugShot 확장으로 `SinhyeokKang/malmoi` 이슈로 낸다. **`pnpm test`가 값은 보지만 화면은 못 보는 축**이 대상이다 — 라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다. **리포트+이슈 전용이라 코드를 고치지 않고**, preview가 아니라 **로컬**을 쓴다(preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다).
 - **`/l10n-roundtrip`은 실물 검증 전담이다** (2026-09-03 추가). 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돌린다. **어댑터를 새로 만들거나 `write` 경로를 고쳤으면 이걸 돌린다** — 값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다(ARCHITECTURE §1.1). 대상은 **폐기용 리포**만이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다. **어느 리포를 고르는지가 판정을 가른다**: 앞의 둘은 수술적 어댑터라 재생성 경로를 한 줄도 지나지 않고, 재생성(`json-catalog`·`chrome-locales`)을 고쳤으면 `i18n-order-check`다 — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다.
 
@@ -689,7 +699,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 두 층이다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지하고(대상·트리거는 `.claude/commands/push.md` 4단계), **`/doc-check`이 diff와 무관하게 전수 대조한다** (2026-09-06 추가 — "문서가 일곱 개뿐"이라 두지 않던 것을 열두 개가 되면서 되살렸다. 최근 커밋이 안 건드린 문서에 쌓인 stale은 `/push`가 원리적으로 못 본다). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
-- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(GitLab super sidebar — 2026-09-07에 Supabase에서 바꿨다)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
+- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 유일한 진실은 `app/globals.css`다 — 시드 파일(`components.json`)은 CLI를 버린 2026-09-08에 함께 삭제됐다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(GitLab super sidebar — 2026-09-07에 Supabase에서 바꿨다)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
   - 완료 기록은 **압축하지 않는다.** 체크리스트로 보이지만 실제 내용은 "그 결정이 언제 왜 뒤집혔나"이고, ARCHITECTURE·POSTMORTEM과 겹쳐 보여도 그쪽은 현재 불변식이라 시간축이 없다. 순수 검증 목록이었던 §1·§2와 대체된 §5b-old만 접었다
 - **docs/SAAS.md** — **현재 단계의 정본.** SaaS 범위·비범위·설계 결정·단계별 체크리스트·불변식 9개. **SaaS 기능을 추가/삭제했거나 단계를 끝냈거나 §10 "아직 안 정한 것"이 결정됐으면 여기부터** 갱신한다. `lib/auth/`·`app/(edit)/`·`prisma/schema.prisma`에 SaaS 관련 변경이 있으면 거의 항상 걸린다. 커밋 prefix `docs(SAAS): ...`
@@ -709,6 +719,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 ## 코드 컨벤션
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
+- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고, 허용 목록은 셋뿐이다(`auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 · `lib/pull/render.ts` — 6b-1). **주석은 벗기고 세므로 아래의 "주석은 한국어로"와 충돌하지 않는다.**
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.

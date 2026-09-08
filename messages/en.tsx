@@ -80,6 +80,106 @@ export const en = {
       failed === 0
         ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
         : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
+
+    title: "New project",
+    back: "Projects",
+
+    /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
+    empty: {
+      connect: {
+        title: "Connect your GitHub account",
+        description: "The connection is only used to see which repositories have the Malmoi app installed.",
+        action: "Connect GitHub",
+        reauthorize: "Reconnect GitHub",
+        /** GitHub으로 나가는 왕복이라 "연결 중"이 아니라 이동이다. */
+        redirecting: "Opening GitHub…",
+      },
+      /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
+      noInstallations: "No installation found",
+      noRepos: "No repositories selected",
+      install: "Install the app",
+      addRepos: "Add repositories to the installation",
+      /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
+      noLink: "Ask your administrator to install the Malmoi app on the repository.",
+      afterInstall: "Refresh this page once you're done.",
+      listFailed: "We couldn't load your repositories.",
+      retryHint: "Refresh this page in a moment.",
+    },
+
+    /** ② 리포 고르기 */
+    repo: {
+      title: "Repository",
+      search: "Find a repository by name",
+      none: "No repository matches that name.",
+      pick: "Select",
+      detecting: "Detecting…",
+      other: "Choose another repository",
+    },
+
+    /** ③ 후보 · 기준 언어 · 수동 지정 */
+    files: {
+      title: "Locale files",
+      /** 후보 줄의 요약 — 키 수를 못 셌으면 호출부가 `key-count-failed`를 넣는다. */
+      summary: (locales: readonly string[], keys: string): string =>
+        `${locales.length} languages (${locales.join(", ")}) · ${keys}`,
+      keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
+      more: "There may be more — set the path yourself below if what you need isn't listed.",
+      manual: {
+        summary: "Can't find your files?",
+        format: "File format",
+        path: "Path",
+        /** 문장을 사전이 소유한다 — 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3). */
+        pathHint: (token: ReactNode): ReactNode => <>The {token} placeholder is where the language goes.</>,
+        baseLocale: "Base language",
+        hint: "Setting a path clears the selection above. If no file matches, the project isn't created.",
+      },
+    },
+
+    baseLocale: {
+      title: "Base language",
+      hint: "This language's file decides which keys exist. Pick the wrong one and keys that live only in another language are left out.",
+    },
+
+    /** ④ 이름·주소 */
+    naming: {
+      title: "Name and address",
+      name: "Name",
+      slug: "Address",
+      /** 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다. */
+      hint: (address: ReactNode, branch: ReactNode): ReactNode => (
+        <>
+          Opens at {address}. Translations come back as a pull request on {branch}.{" "}
+          <strong>The address can't be changed later.</strong>
+        </>
+      ),
+      create: "Create project",
+      creating: "Creating…",
+    },
+
+    /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */
+    result: {
+      token: {
+        title: "Push token",
+        description: (secret: ReactNode): ReactNode => (
+          <>
+            Add this to the repository's Actions secret {secret}.{" "}
+            <strong>You won't see it again after you leave this page.</strong> If you lose it, rotate it in settings.
+          </>
+        ),
+      },
+      ingest: {
+        title: "First import",
+        running: "Importing…",
+        retry: "Try again",
+        /** 못 읽은 파일 — 건수만으로는 사용자가 할 일이 없다 (SAAS 불변식 9). */
+        couldNotRead: (path: string): string => `Could not read ${path}`,
+        /** `<details>`의 요약 — 그 안은 어댑터가 준 원문이다 (6b-1이 코드화한다). */
+        diagnostics: "Details",
+        refsHint: "Code references arrive after your first CI push. You can start translating now.",
+        open: "Start translating",
+      },
+      failed: "We couldn't finish. Try again in a moment.",
+    },
   },
 
   translations: {
@@ -215,13 +315,105 @@ export const en = {
     },
   },
 
+  /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
+    title: "Settings",
+
+    repository: {
+      title: "Repository",
+      description: "Where your source strings come from, and where translations go back.",
+      connect: "Connect",
+      reconnect: "Reconnect",
+      /** 대기 라벨 — **누른 라벨에서 파생된다** (DESIGN §6.4). 같은 문구를 쓰면 진행 신호가 사라진다. */
+      connecting: "Connecting…",
+      connectFailed: "We couldn't start the connection. Try again in a moment.",
+      /**
+       * 건강성 6종 (DESIGN §6.2). ⚠️ **`unknown`을 `app-uninstalled` 문구로 접지 않는다** — 조회 실패를
+       * "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
+       */
+      health: {
+        // 가장 흔한 상태가 가장 조용해야 한다 — 초록도 배지도 쓰지 않는다.
+        ok: "Connected",
+        "not-connected": "No installation is connected yet.",
+        "app-uninstalled": "The app was removed or suspended, or its access to this repository was revoked.",
+        "installation-changed": "The app was reinstalled — connect it again.",
+        moved: (fullName: ReactNode): ReactNode => <>This repository moved to {fullName}</>,
+        unknown: "We can't check this right now. Open this page again in a moment.",
+        install: "Install the app",
+        installHint: "Install it, then come back here and connect again.",
+      },
+    },
+
+    status: {
+      title: "Import status",
+      /** ready는 조용하다 — 진행 중인 둘만 무엇을 기다리는지 말한다. */
+      ready: "The first import finished.",
+      setup: "Finish connecting the repository first.",
+      awaiting: "We haven't read this repository's locale files yet.",
+      run: "Run first import",
+      running: "Importing…",
+      failed: "The import didn't finish. Try again in a moment.",
+    },
+
+    token: {
+      title: "Push token",
+      description: (secret: ReactNode): ReactNode => (
+        <>
+          Rotating makes the current token invalid immediately — CI stays broken until you update the
+          repository's {secret} secret.
+        </>
+      ),
+      rotate: "Rotate token",
+      rotating: "Rotating…",
+      warning: "You won't see this again after you leave this page. If you lose it, rotate it again.",
+      failed: "We couldn't rotate the token. Try again in a moment.",
+    },
+
     workflow: {
+      title: "Workflow",
       /**
        * 문장을 사전이 소유한다 — JSX 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3).
        */
       saveAs: (path: ReactNode): ReactNode => <>Save this in your repository as {path}.</>,
+      copy: "Copy YAML",
+      /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (spec §5의 빚). */
+      hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
+        <>
+          Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
+        </>
+      ),
     },
+
+    account: {
+      title: "GitHub account",
+      connect: "Connect GitHub",
+      reconnect: "Reconnect GitHub",
+      reauthorize: "Your GitHub authorization expired.",
+      unavailable: "We couldn't load your account. Open this page again in a moment.",
+      disconnect: "Disconnect",
+      disconnecting: "Disconnecting…",
+      disconnectFailed: "We couldn't disconnect. Try again in a moment.",
+    },
+  },
+
+  /** 초대 수락 화면 — **셸 밖 카드다** (design §3.14). 거부 문구는 `errors.invite`가 든다. */
+  invite: {
+    /**
+     * 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 갈린다.
+     *
+     * ⚠️ **관사를 붙이지 않는다** (2026-09-08 실물 검증 — "as a Editor"가 나왔다). 역할 이름은 데이터라
+     * a/an을 문장이 알 수 없고, 그것을 알려면 역할마다 관사 표를 두게 된다. 직함처럼 관사 없이 쓴다.
+     */
+    invitedTo: (project: string, role: string): string => `You're invited to ${project} as ${role}.`,
+    signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
+    github: "Sign in with GitHub",
+    google: "Sign in with Google",
+    accept: "Accept invitation",
+    otherAccount: "Sign in with another account",
+    sentTo: (email: string): string =>
+      `This invitation was sent to ${email}. Signing in with a different account won't accept it.`,
+    // ⚠️ 장애 문구를 여기 두지 않는다 — `errors.invite.unavailable`이 같은 상태를 말한다.
+    // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
   },
 
   errors: {

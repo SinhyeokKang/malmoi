@@ -1,11 +1,14 @@
 "use client";
 
+import { Link2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { startGithubConnectForUser } from "@/app/(edit)/projects/actions";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
-import { cn } from "@/lib/utils";
 
 /**
  * GitHub 계정 연결 — **사용자 수준** (design §3.6). 설정 화면의 같은 버튼과 다른 것은 인가와 착지
@@ -23,9 +26,11 @@ export function ConnectGithubButton({ label }: { label: string }) {
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        disabled={pending}
+      <Button
+        variant="primary"
+        loading={pending}
+        // ⚠️ 라벨과 같게 두면 대기 상태가 안 보인다 — GitHub으로 나가는 왕복이라 문구가 "이동"이다.
+        loadingLabel={m.newProject.empty.connect.redirecting}
         onClick={() => {
           setError(null);
           startTransition(async () => {
@@ -34,15 +39,12 @@ export function ConnectGithubButton({ label }: { label: string }) {
             if (!result.ok) setError(result.error);
           });
         }}
-        className={cn(
-          "bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium",
-          "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
-          "disabled:cursor-not-allowed disabled:opacity-70",
-        )}
       >
-        {pending ? "이동하는 중…" : label}
-      </button>
-      {error !== null && <p className="text-destructive text-xs">{messageFor(error)}</p>}
+        {/* ⚠️ `lucide-react` 1.x에 브랜드 아이콘이 없다 (DESIGN §6.8) */}
+        <Link2 aria-hidden />
+        {label}
+      </Button>
+      {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}
     </div>
   );
 }
@@ -50,5 +52,5 @@ export function ConnectGithubButton({ label }: { label: string }) {
 function messageFor(error: string): string {
   if (isOnboardError(error)) return onboardErrorMessage(error);
   if (isConnectError(error)) return connectErrorMessage(error);
-  return "GitHub으로 이동하지 못했어요. 잠시 뒤 다시 눌러 주세요.";
+  return m.settings.repository.connectFailed;
 }
