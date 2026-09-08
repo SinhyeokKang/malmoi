@@ -83,12 +83,22 @@ function openingTag(src: string, start: number): string {
 }
 
 /**
+ * 주석을 벗긴다 — **프리미티브는 자기 태그 이름을 주석에 쓴다**(`native \`<select>\`다`). 안 벗기면
+ * 그 설명이 컨트롤로 잡혀 영원히 red다. `no-korean-ui`와 같은 벗기기이고, 아래 메타 테스트가 셋을
+ * 하나씩 먹여 실제로 벗기는지 본다.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+}
+
+/**
  * 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다.
  *
  * ⚠️ **네 태그를 본다.** `button|input`만 보던 시절 온보딩의 `<select>`가 방어선 밖이었다
  * (2026-09-07). 포커스를 받는 태그가 늘면 여기에 더한다 — 아래 메타 테스트가 목록을 고정한다.
  */
-function controls(src: string): string[] {
+function controls(source: string): string[] {
+  const src = stripComments(source);
   const found: string[] = [];
   for (const m of src.matchAll(/<(?:button|input|select|textarea)[\s>]/g)) {
     const tag = openingTag(src, m.index);
@@ -150,6 +160,14 @@ describe("포커스 링 (DESIGN §7)", () => {
     const [tag] = controls(fake);
     expect(tag).toBeDefined();
     expect(RING.every((cls) => tag?.includes(cls))).toBe(false);
+  });
+
+  it("주석 안의 태그 이름을 컨트롤로 세지 않는다 — 프리미티브가 자기 태그를 설명한다", () => {
+    expect(controls('// native `<select>`다\nconst a = 1;')).toEqual([]);
+    expect(controls('/** `<input type="radio">`를 쓴다 */\nconst a = 1;')).toEqual([]);
+    expect(controls('<div>{/* <button>은 안 쓴다 */}</div>')).toEqual([]);
+    // 벗기기가 넓어져 진짜 태그까지 지우면 방어선이 빈다.
+    expect(controls('<button className="x">y</button>')).toHaveLength(1);
   });
 
   it("여는 태그를 화살표 함수에서 자르지 않는다", () => {
