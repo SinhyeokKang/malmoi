@@ -173,13 +173,31 @@ describe("차단 규칙", () => {
  *
  * ⚠️ 주석 속 인용은 잡지 않는다 — 회고가 그 경로를 근거로 들고 있고, 그건 지우면 안 되는 기록이다.
  */
+/** `/invite/${token}` · `/projects/[slug]` → `/invite/*` · `/projects/*`. 두 표기를 같은 모양으로 만든다. */
+function shape(path: string): string {
+  return path.replace(/\$\{[^}]*\}/g, "*").replace(/\[[^\]]*\]/g, "*");
+}
+
 describe("죽은 라우트 링크", () => {
   const ROUTES = new Set(ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) =>
     "/" + e.path.replace(/\/page\.tsx$/, "").replace(/^page\.tsx$/, ""),
   ));
 
+  /**
+   * ⚠️ **`lib/routes.ts`도 읽는다** (translation-ui design §3.3). 링크 생성이 그 파일 한 곳으로
+   * 모이면서, `app/` 아래만 스캔하는 이 검사가 **가장 중요한 파일을 못 보게** 됐다.
+   */
+  const LINK_SOURCES = [
+    ...ENTRY_POINTS,
+    { path: "lib/routes.ts", source: readFileSync(join(APP, "../lib/routes.ts"), "utf8") },
+  ];
+
   it("app/ 아래 라우트 목록을 읽었다", () => {
     expect(ROUTES.size).toBeGreaterThan(2);
+  });
+
+  it("링크 생성기(lib/routes.ts)를 스캔 대상에 넣었다", () => {
+    expect(LINK_SOURCES.some((e) => e.path === "lib/routes.ts")).toBe(true);
   });
 
   /**
@@ -196,9 +214,47 @@ describe("죽은 라우트 링크", () => {
     expect(found).toEqual(["/projects/new"]);
   });
 
+  /**
+   * ⚠️ **동적 경로가 이 검사의 사각지대였다.** `STATIC_PATH`는 `${…}`가 없는 리터럴만 잡는데,
+   * **2026-09-05 사고가 정확히 동적 경로였다**(`/keys?ns=…` → `/projects/${slug}/translations`).
+   * "쿼리 파라미터의 수신자"가 이미 쓰는 `shape()` 정규화(`${…}`·`[…]` → `*`)를 여기에도 적용해
+   * `lib/routes.ts`의 템플릿을 실재 라우트와 대조한다.
+   */
+  const TEMPLATE_PATH = /["'`](\/[a-z][A-Za-z0-9/\-]*(?:\$\{[^}]*\}[A-Za-z0-9/\-]*)+)(?:[?"'`])/g;
+
+  it("검사식이 템플릿 경로를 잡고 정적 경로와 겹치지 않는다", () => {
+    const found = [...[
+      "const a = `/projects/${slug}/translations`;",
+      'const b = "/projects/new";',
+    ].join("\n").matchAll(TEMPLATE_PATH)].map((m) => m[1]);
+    expect(found).toEqual(["/projects/${slug}/translations"]);
+  });
+
+  it("템플릿으로 만든 경로도 실재하는 라우트를 가리킨다", () => {
+    const ROUTE_SHAPES = [...ROUTES].map(shape);
+    const dead: string[] = [];
+    const seen: string[] = [];
+    for (const entry of LINK_SOURCES) {
+      const code = entry.source
+        .split("\n")
+        .filter((l) => !/^\s*(\*|\/\/)/.test(l))
+        .join("\n");
+      for (const m of code.matchAll(TEMPLATE_PATH)) {
+        const path = shape(m[1] ?? "");
+        if (path.startsWith("/api")) continue;
+        seen.push(path);
+        const known = ROUTE_SHAPES.some((r) => r === path || r.startsWith(path + "/"));
+        if (!known) dead.push(`${entry.path}: ${path}`);
+      }
+    }
+    expect(dead).toEqual([]);
+    // 실제로 걸었다 — 0건 통과를 성공으로 읽지 않는다.
+    expect(seen.length).toBeGreaterThan(0);
+  });
+
   it("코드가 만드는 경로 리터럴이 실재하는 라우트를 가리킨다", () => {
     const dead: string[] = [];
-    for (const entry of ENTRY_POINTS) {
+    for (const entry of LINK_SOURCES) {
       // 주석 줄은 뺀다 — POSTMORTEM 인용이 옛 경로를 들고 있다.
       const code = entry.source
         .split("\n")
@@ -229,11 +285,6 @@ describe("죽은 라우트 링크", () => {
  * 라우트 링크"와 같은 층의 소스 대조로 센다.
  */
 describe("쿼리 파라미터의 수신자", () => {
-  /** `/invite/${token}` · `/projects/[slug]` → `/invite/*` · `/projects/*`. 두 표기를 같은 모양으로 만든다. */
-  function shape(path: string): string {
-    return path.replace(/\$\{[^}]*\}/g, "*").replace(/\[[^\]]*\]/g, "*");
-  }
-
   const PAGES = ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) => ({
     shape: shape("/" + e.path.replace(/\/?page\.tsx$/, "")),
     source: e.source,
