@@ -35,7 +35,7 @@
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
 - [x] base branch·기준 로케일 변경 필드 — **둘 다 넣는다** → **6b**
-- [x] 어댑터 오류 문구 — **코드로 리팩터** → **6b** (재측정 포함)
+- [x] 어댑터 오류 문구 — **코드로 리팩터** → **6b-1에서 닫혔다** (2026-09-08, 14차 재측정 포함 — ADAPTER-COVERAGE §20)
 - [x] 멤버 화면 이메일 — 전원 마스킹 → 6b
 - [x] `sonner`·`tw-animate-css`·`components.json` — 마지막 chore에서 사용 0이면 제거
 - [x] 모노 폰트 — 시스템 스택 유지
@@ -303,7 +303,30 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 **착수 전 design을 다시 연다** — `/feature-review`가 잡은 결함이 아래에 있고, 그 답이 6b의 설계다. 여기서는 태스크 뼈대와 지적만 남긴다.
 
-## 6b-1. 어댑터 오류 코드화 + survey 분류기 + 재측정 (첫 사이클)
+## 6b-1. 어댑터 오류 코드화 + survey 분류기 + 재측정 — ✅ 닫혔다 (2026-09-08)
+
+> **결과**: 생성 지점 **35곳**(계획의 34 + `lib/onboarding/ingest.ts`의 `download-failed` — 계획이 그것을 못 셌다)이
+> `AdapterErrorCode` 스물둘을 낸다. 재측정은 **학습·홀드아웃 둘 다** 돌려 전 지표가 13차와 같았다
+> (`docs/ADAPTER-COVERAGE.md` **§20**). 지표 ③의 유형별 건수까지 동일하고, §1이 "분모 없음"으로 비워 뒀던
+> 세 행(`json-parse` 0 · `adapter-threw` 0 · `other` 1)이 이 회차로 채워졌다.
+>
+> **아래 계획이 틀린 곳 셋** — 다음 사이클이 같은 착각을 하지 않도록 남긴다:
+> 1. **소비자가 여덟이 아니라 아홉이다** — `lib/onboarding/ingest.ts`가 `{ path, message: "could not download the file" }`을
+>    만들고 있었다. 타입 변경이 그것을 물었다.
+> 2. **`classify`의 골든 등식을 스물둘 전부에 걸 수 없다.** write 층 아홉은 `read1.errors`에 **도달하지 못하고**,
+>    그 옛 문구가 read 갈래의 부분 문자열을 품어(`구문 오류로 원본을 그대로 둔다: …`) 옛 분류기에 먹이면
+>    `json-parse`가 나온다. 등식은 read 층 **열셋**에만 걸고 나머지는 `other`임을 따로 단언한다.
+> 3. **어댑터 테스트 갱신이 "한글 단언 갱신"으로 끝나지 않았다.** `code-dict`의 한 단언이 겨냥한
+>    `write-slot-missing`은 **도달 불가**였고(`findScalar`가 먼저 잡는다), 옛 단언이 `message.includes("a.deep")`이라
+>    두 갈래를 구별하지 못해 그 사실이 숨어 있었다 (POSTMORTEM 2026-09-08).
+>
+> **범위에 하나 더 들어갔다**: POSTMORTEM이 "어댑터를 손대는 6b-1에서 같이 본다"로 배정해 둔
+> `lib/adapters/json-catalog.ts`의 `format.nestedByPath?.[path] ?? …` 프로토타입 키 위험을 `Object.hasOwn`으로 감쌌다.
+> 출력 바이트는 안 바뀐다 — `false ?? x`가 `false`를 유지하므로 정상 입력의 결과가 같다.
+
+<details>
+<summary>원래 계획 (그대로 남긴다 — 위의 "틀린 곳 셋"이 이것을 가리킨다)</summary>
+
 
 - `lib/adapters/types.ts` — `AdapterErrorCode` union + `AdapterError = { path, code, key?, detail? }`. **`key?`가 필요하다** — 기존 어댑터 테스트 12건 중 6건이 보간된
   키 이름(`"a.deep"`·`"fr"`·`"grp"`)을 단언한다. 코드화 대상은 **34곳**(어댑터 33 + `lib/pull/render.ts:72` `missingOriginal`) — 나머지 5는 `new Error`(`json-style.ts` 4·`index.ts` 1)라 대상이 아니다
@@ -318,6 +341,8 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
   목표 초과 12/99 · clean 초과 1/38 · surgicalEditHunks 20/29 · yaml 중앙값/초과 · 홀드아웃 16/16·3/15. **하나라도 다르면 머지하지 않는다**
 - `/l10n-roundtrip`은 돌리지 않는다 — `contract`·`write-contract`·`key-order-golden` + 바이트 고정점 100/100이 바이트 층을 덮고 `write`의 `content`를 안 건드린다
 - `no-korean-ui` 목록에서 `lib/adapters/**`·`lib/pull/run.ts`·`lib/pull/render.ts` 제외를 푼다
+
+</details>
 
 ## 6b-2. 설정 — base branch·기준 로케일 (🔴 design §3.13을 다시 쓴다)
 

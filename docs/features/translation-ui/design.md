@@ -19,7 +19,7 @@
 | **push** | `applyPush`의 번역 upsert가 `ON CONFLICT`에서 **`"updatedBy" = NULL`** 을 함께 쓴다 (§3.6). 값·키·orphaned 판정은 그대로 |
 
 **6a는 어댑터(`lib/adapters/**`)를 한 줄도 건드리지 않는다** — 재측정 트리거가 없다. 어댑터 오류 `message`의 코드화(§3.1.4 — 2026-09-07 사용자
-결정)는 **6b-1**이고, 그때 `pnpm adapter-survey`를 학습·홀드아웃 둘 다 돌려 ADAPTER-COVERAGE §20(14차)을 더한다(tasks 6b-1에 비교할 값 목록).
+결정)는 **6b-1**이었고 ✅ **2026-09-08에 닫혔다** — 학습·홀드아웃 둘 다 돌려 전 지표가 13차와 같음을 확인하고 ADAPTER-COVERAGE §20(14차)을 더했다.
 
 ### 1.1 인벤토리 (2026-09-07 전수)
 
@@ -125,14 +125,14 @@ export const accessErrorMessage = (e: AccessError) => ACCESS[e];
 |---|---|---|
 | **화면 문구** (라벨·제목·빈 상태·거부 사유·상태 문구·placeholder·`aria-label`) | `messages/en.tsx` | 사용자가 읽는다. ko의 대상이다 |
 | **진단 문구** — `fail()`·`throw`의 메시지 (`lib/pull/**`·`lib/push/**`·`lib/github.ts`·`lib/auth/profile.ts`·`lib/env.ts`·`lib/github-connect/state.ts`) | **영어 리터럴로 고쳐 코드에 남긴다.** 사전 밖 | 개발자·로그·Actions 로그가 읽는다. 커밋 메시지와 같은 부류다. `classifyFailure`가 `safe`로 통과시켜 "Publish failed: …"에 실리므로 **한국어로 남으면 en UI에 한글이 샌다** — 그래서 영어로는 바꾸되 사전에는 넣지 않는다(ko로 번역할 대상이 아니다). ⚠️ `lib/pull/run.ts:127`의 warnings 조립은 어댑터 `message`를 싣는 자리라 **6b**까지 한글이 남는다 |
-| **어댑터 오류** (`lib/adapters/**`의 `AdapterError.message` — 생성 34곳: 어댑터 33 + `lib/pull/render.ts:72` `missingOriginal`; `new Error` 5곳은 대상 아님) | **6b-1에서 코드로 리팩터한다** — `AdapterError = { path, code: AdapterErrorCode, key?: string, detail?: string }`(`key?`는 기존 테스트가 보간된 키 이름을 단언해서 필요하다). 문장은 사전(`m.adapterErrors[code]`)이 낸다 | 사용자 결정(2026-09-07). 화면(온보딩 부분 실패·Publish warnings)에 닿는 값이 자유 문자열이면 en으로 바꿔도 사전 밖이라 ko가 못 따라온다. `lib/survey/one.ts`의 `classify(message)`(부분 문자열 분류)는 `classify(code)`가 된다 — **단위 테스트가 0건이라 재측정만이 판정한다**. `detail`(파서 원문 등)은 진단이라 사전 밖이고 `<details>`에만. **6a는 이 부류를 손대지 않는다** |
+| **어댑터 오류** (`lib/adapters/**`의 `AdapterError` — 생성 **35곳**: 어댑터 33 + `lib/pull/render.ts`의 `missingOriginal` + `lib/onboarding/ingest.ts`의 `download-failed`. ⚠️ **이 표는 34로 적고 있었다** — 마지막 것을 못 셌고 타입 변경이 그것을 물었다. `new Error` 5곳은 코드화 대상이 아니지만 **영어로 고쳤다**(제외가 풀려 `no-korean-ui`가 훑는다)) | ✅ **6b-1에서 코드가 됐다** (2026-09-08) — `AdapterError = { path, code: AdapterErrorCode, key?, detail? }`이고 코드는 스물둘. 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage`가 `m.adapterErrors[code]`에서 꺼내 `key`(앞)·`detail`(뒤 괄호)을 붙인다 | 사용자 결정(2026-09-07). 화면(온보딩 부분 실패·Publish warnings)에 닿는 값이 자유 문자열이면 en으로 바꿔도 사전 밖이라 ko가 못 따라온다. `detail`(파서 원문 등)은 진단이라 사전 밖이고 `<details>`에만. ⚠️ **`classify(message)` → `classify(code)`를 "재측정만이 판정한다"고 적었는데 그것이 부족했다** — 코퍼스가 밟는 갈래는 스물둘 중 **여섯**뿐이라 나머지의 회귀는 지표에 0으로 조용히 남는다. 옛 문구 22개와 **옛 분류기 본문**을 픽스처로 든 `lib/survey/__tests__/classify.test.ts`가 실제 방어선이고, 골든 등식은 **read 층 열셋에만** 걸린다(write 층 아홉은 `read1.errors`에 도달하지 못한다) |
 | **survey·scan CLI 출력** (`lib/survey/summarize.ts`·`one.ts`의 표 문구, `lib/scan/**` 경고) | **그대로 둔다** (한국어) | 웹 UI가 아니다 — `pnpm adapter-survey`·`pnpm scan`의 터미널 출력이다. `no-korean-ui` 스캔에서 제외 |
 | **워크플로 YAML 주석** (`lib/onboarding/workflow.ts`) | 영어로. `docs/ACTIONS.md`와 **같은 커밋** | 사용자 리포에 복사된다. `workflow.test.ts`가 ACTIONS.md와 줄 대조하므로 문서가 함께 바뀌어야 green이다 |
 
 #### 3.1.5 상시 방어선 — `lib/i18n/__tests__/no-korean-ui.test.ts` (축소형 허용 목록)
 
 `app/`·`components/`·`lib/`(아래 제외)의 `.ts`·`.tsx`에서 **주석을 벗긴 뒤** `[가-힣]`를 센다. 제외: `__tests__`, `lib/survey/**`, `lib/scan/**`
-(§3.1.4 넷째 줄), **`lib/adapters/**`(6a — 6b-1이 푼다)**. 주석 제거는 `//`·`/* */`·JSX `{/* */}` 셋이고, **메타 테스트가 셋을 하나씩 먹여
+(§3.1.4 넷째 줄). ✅ **`lib/adapters/**` 제외는 6b-1이 풀었다** (2026-09-08 — 허용 목록도 `auth.ts`·`lib/push/apply.ts` 둘로 줄었다). 주석 제거는 `//`·`/* */`·JSX `{/* */}` 셋이고, **메타 테스트가 셋을 하나씩 먹여
 스캐너가 각각을 벗기는지, 그리고 코드 안의 한글 리터럴을 실제로 잡는지 본다** (POSTMORTEM 2026-09-07 "좁은 검사는 자기 좁음을 신고할 수
 없다"). 주석은 CLAUDE.md대로 한국어라 이 벗기기가 없으면 검사가 성립하지 않는다.
 
@@ -435,7 +435,7 @@ model Project {
 
 | 불변식 | 영향 |
 |---|---|
-| export 결정성 (ARCH §1) | **없음 (6a).** `lib/adapters/**`를 건드리지 않는다. 6b-1의 코드화는 오류 **보고** 경로만 바꾸고 `key-order-golden`·`contract`·`write-contract` + 재측정(학습+홀드아웃, 13차 값 동일)이 판정한다 |
+| export 결정성 (ARCH §1) | **없음 (6a).** `lib/adapters/**`를 건드리지 않는다. ✅ **6b-1의 코드화도 오류 보고 경로만 바꿨다** — `key-order-golden`·`contract`·`write-contract`가 green이고 재측정(학습+홀드아웃)이 13차와 동일했다(§20). 함께 들어간 `json-catalog`의 `hasOwn` 가드도 바이트에 안 닿는다 |
 | blob SHA·2층 스킵 (ARCH §2·§3) | **없음.** `run.ts`는 `pr` 값 하나를 결과에 더하고 `saveLastPulledAt`이 컬럼 둘을 더 쓴다 |
 | 인증 경계 (ARCH §6.1) | 6a는 라우트를 늘리지 않는다. 레이아웃은 여전히 차단이 아니다 — 사이드바의 역할별 노출은 편의다. 6b의 신설 라우트는 `entry-points.test.ts`가 자동으로 센다 |
 | 테넌트 격리 (CLAUDE.md) | 신설 조회 둘(`countUnpublished` — `projectId` · `loadMemberships` — `userId`)이 좁힌다. 하네스 시드에 프로젝트·사용자를 둘씩 둔다. `disconnectGithub`은 이미 `userId`로 좁힌다 |
