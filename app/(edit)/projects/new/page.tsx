@@ -1,14 +1,20 @@
-import Link from "next/link";
+// ⚠️ `lucide-react` 1.x에 브랜드 아이콘이 없다 — `Github`을 import하면 빌드가 죽는다 (DESIGN §6.8)
+import { FolderGit2, Link2 } from "lucide-react";
 
+import { ConnectGithubButton } from "@/components/onboarding/connect-github";
+import { NewProjectFlow, type AdapterChoice, type RepoOption } from "@/components/onboarding/new-project-flow";
+import { Alert } from "@/components/ui/alert";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ADAPTERS } from "@/lib/adapters";
 import { requireUser } from "@/lib/auth/session";
 import { optionalEnv } from "@/lib/env";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { m } from "@/lib/i18n";
 import { formatLabel } from "@/lib/onboarding/detect";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { normalizeProjectSlug } from "@/lib/onboarding/slug";
-import { ConnectGithubButton } from "@/components/onboarding/connect-github";
-import { NewProjectFlow, type AdapterChoice, type RepoOption } from "@/components/onboarding/new-project-flow";
+import { routes } from "@/lib/routes";
 
 import { listConnectableRepos } from "../actions";
 
@@ -54,26 +60,33 @@ export default async function NewProjectPage({
   }));
 
   return (
-    <main className="mx-auto max-w-2xl space-y-4 p-8">
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-lg font-medium">새 프로젝트</h1>
-        <Link href="/projects" className="text-muted-foreground hover:text-foreground text-xs underline">
-          ← 프로젝트
-        </Link>
-      </div>
-      {message !== null && <p className="text-destructive text-sm">{message}</p>}
-
-      {listed.ok ? (
-        <NewProjectFlow
-          repos={listed.repos.map(
-            (repo): RepoOption => ({ ...repo, suggestedSlug: normalizeProjectSlug(repo.repo) }),
-          )}
-          adapters={adapters}
-        />
-      ) : (
-        <EmptyState error={listed.error} />
+    <>
+      {/* 페이지 수준 거부는 **global Alert**다 — top bar 아래 전폭 (DESIGN §6.4). */}
+      {message !== null && (
+        <div className="px-6 pt-6">
+          <Alert variant="danger">{message}</Alert>
+        </div>
       )}
-    </main>
+      <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
+        <div className="space-y-3">
+          <Breadcrumb
+            items={[{ label: m.projects.title, href: routes.projects() }, { label: m.newProject.title }]}
+          />
+          <h1 className="text-base font-medium">{m.newProject.title}</h1>
+        </div>
+
+        {listed.ok ? (
+          <NewProjectFlow
+            repos={listed.repos.map(
+              (repo): RepoOption => ({ ...repo, suggestedSlug: normalizeProjectSlug(repo.repo) }),
+            )}
+            adapters={adapters}
+          />
+        ) : (
+          <Blocked error={listed.error} />
+        )}
+      </main>
+    </>
   );
 }
 
@@ -84,57 +97,58 @@ export default async function NewProjectPage({
  * `GITHUB_APP_SLUG`는 `optionalEnv`라 **없으면 링크가 조용히 사라진다** — 그때는 관리자에게
  * 요청하라고 말한다.
  */
-function EmptyState({ error }: { error: string }) {
+function Blocked({ error }: { error: string }) {
   const appSlug = optionalEnv("GITHUB_APP_SLUG");
   const installUrl = appSlug === undefined ? null : `https://github.com/apps/${appSlug}/installations/new`;
 
   if (error === "not-connected" || error === "reauthorize") {
     return (
-      <section className="space-y-2">
-        <p className="text-sm">
-          {error === "not-connected"
-            ? "먼저 GitHub 계정을 연결해 주세요."
-            : "GitHub 인가가 만료됐어요 — 다시 연결해 주세요."}
-        </p>
-        <p className="text-muted-foreground text-xs">
-          연결은 <strong>어느 리포에 App이 설치돼 있는지</strong>를 확인하는 데만 써요.
-        </p>
-        <ConnectGithubButton label={error === "not-connected" ? "GitHub 연결" : "GitHub 다시 연결"} />
-      </section>
+      <EmptyState
+        icon={Link2}
+        title={m.newProject.empty.connect.title}
+        description={m.newProject.empty.connect.description}
+        action={
+          <ConnectGithubButton
+            label={
+              error === "not-connected"
+                ? m.newProject.empty.connect.action
+                : m.newProject.empty.connect.reauthorize
+            }
+          />
+        }
+      />
     );
   }
 
-  if (isOnboardError(error) && (error === "no-installations" || error === "no-repos")) {
+  if (error === "no-installations" || error === "no-repos") {
     return (
-      <section className="space-y-2">
-        {/* 가드를 지난 값이라 단언하지 않는다 — 분기에 새 문자열을 더해도 컴파일러가 잡는다 */}
-        <p className="text-sm">{onboardErrorMessage(error)}</p>
-        {installUrl === null ? (
-          <p className="text-muted-foreground text-xs">
-            리포 관리자에게 말모이 App 설치를 요청해 주세요.
-          </p>
-        ) : (
-          <p className="text-xs">
-            <a href={installUrl} className="text-blue-600 underline">
-              {error === "no-installations" ? "App 설치하기" : "설치에 리포 추가하기"}
-            </a>
-            <span className="text-muted-foreground"> — 끝낸 뒤 이 화면을 새로고침해 주세요.</span>
-          </p>
-        )}
-      </section>
+      <EmptyState
+        icon={FolderGit2}
+        // 가드를 지난 값이라 단언하지 않는다 — 분기에 새 문자열을 더해도 컴파일러가 잡는다
+        title={onboardErrorMessage(error)}
+        description={
+          installUrl === null ? (
+            m.newProject.empty.noLink
+          ) : (
+            <>
+              <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
+              </a>{" "}
+              — {m.newProject.empty.afterInstall}
+            </>
+          )
+        }
+      />
     );
   }
 
   return (
-    <section className="space-y-2">
-      <p className="text-destructive text-sm">
-        {isOnboardError(error)
-          ? onboardErrorMessage(error)
-          : isConnectError(error)
-            ? connectErrorMessage(error)
-            : "리포 목록을 가져오지 못했어요."}
-      </p>
-      <p className="text-muted-foreground text-xs">잠시 뒤 이 화면을 새로고침해 주세요.</p>
-    </section>
+    <Alert variant="danger" title={m.newProject.empty.listFailed}>
+      {isOnboardError(error)
+        ? onboardErrorMessage(error)
+        : isConnectError(error)
+          ? connectErrorMessage(error)
+          : m.newProject.empty.retryHint}
+    </Alert>
   );
 }
