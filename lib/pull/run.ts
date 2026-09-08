@@ -55,7 +55,18 @@ export type PullDeps = {
  */
 export type PullResult =
   | { status: "skipped"; reason: "no-edits" | "no-changes"; warnings?: string[] }
-  | { status: "committed"; commitSha: string; prUrl: string; changed: string[]; warnings?: string[] };
+  | {
+      status: "committed";
+      /**
+       * 열린 PR이 있었는지 — 화면 문구가 갈린다("Sent for review" vs "Updated what you sent earlier").
+       * `findOpenPrUrl`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (design §3.4).
+       */
+      pr: "created" | "updated";
+      commitSha: string;
+      prUrl: string;
+      changed: string[];
+      warnings?: string[];
+    };
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
@@ -169,5 +180,12 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
   await deps.saveLastPulledAt(project.id, captured);
 
-  return { status: "committed", commitSha, prUrl, changed: changes.map((c) => c.path), ...withWarnings };
+  return {
+    status: "committed",
+    pr: existing === null ? "created" : "updated",
+    commitSha,
+    prUrl,
+    changed: changes.map((c) => c.path),
+    ...withWarnings,
+  };
 }

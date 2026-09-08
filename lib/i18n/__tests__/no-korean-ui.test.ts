@@ -84,7 +84,6 @@ const KOREAN_ALLOWED = [
   "lib/onboarding/readiness.ts",
   "lib/onboarding/workflow.ts",
   "lib/pull/load.ts",
-  "lib/pull/message.ts",
   "lib/pull/payload.ts",
   "lib/pull/plan.ts",
   "lib/pull/render.ts",

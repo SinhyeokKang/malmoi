@@ -37,8 +37,10 @@ export function PullButton({ slug }: { slug: string }) {
           ) : message ? (
             <span
               className={cn(
-                message.tone === "destructive" && "text-destructive",
-                message.tone !== "destructive" && "text-muted-foreground",
+                message.tone === "danger" && "text-destructive",
+                // 버린 값이 있는 결과는 조용하면 안 된다 (SAAS 불변식 9) — amber는 §6.2에 등재된 색이다.
+                message.tone === "warning" && "text-amber-800",
+                (message.tone === "info" || message.tone === "success") && "text-muted-foreground",
               )}
             >
               {message.text}
