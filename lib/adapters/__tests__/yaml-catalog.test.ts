@@ -274,7 +274,7 @@ describe("yaml-catalog — 중복 키는 보고하고 계속한다", () => {
 
   it("중복 키를 에러로 보고한다 — 값 하나가 사라지는 건 사실이다", () => {
     const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", DUP)]);
-    expect(r.errors.map((e) => e.message).join(" ")).toContain("중복");
+    expect(r.errors.map((e) => e.code)).toContain("duplicate-key");
     // 남은 키는 읽힌다 — 리포 전체를 버리지 않는다
     expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["a", "b"]);
   });
@@ -422,7 +422,7 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
       entries: [{ key: "ref", message: "새 값" }],
     });
     expect(res.content).toBe(src);
-    expect(res.errors.some((e) => e.message.includes("ref"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-slot-not-scalar" && e.key === "ref")).toBe(true);
   });
 
   it("맵 자리에 스칼라를 쓰려 하면 포기하되 에러로 남긴다", () => {
@@ -432,7 +432,7 @@ describe("yaml-catalog — 키 단위 스킵도 보고한다 (2026-09-04 audit #
       entries: [{ key: "grp", message: "스칼라로 덮으려 한다" }],
     });
     expect(res.content).toBe(src);
-    expect(res.errors.some((e) => e.message.includes("grp"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-slot-not-scalar" && e.key === "grp")).toBe(true);
   });
 
   it("정상 치환에는 에러가 없다", () => {

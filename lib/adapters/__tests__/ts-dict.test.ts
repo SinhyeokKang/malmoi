@@ -141,7 +141,7 @@ describe("ts-dict — read", () => {
     // (2026-09-04 audit #9). 깨진 namespace 파일이면 나머지 키가 orphaned로 떨어졌다.
     const broken = SOURCE.replace('"common.close": "닫기",', '"common.close": "닫기');
     const r = tsDict.read(format, file(broken));
-    expect(r.errors.some((e) => e.message.includes("구문"))).toBe(true);
+    expect(r.errors.some((e) => e.code === "parse-failed")).toBe(true);
   });
 
   it("여러 파일의 키가 합쳐진다", () => {
@@ -312,7 +312,7 @@ describe("ts-dict — write의 방어", () => {
   it("writeWithErrors가 비리터럴 프로퍼티를 에러로 돌려준다 — write는 그것을 버렸다", () => {
     const res = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "둘" }] });
     expect(res.content).toContain('"둘"');
-    expect(res.errors.some((e) => e.message.includes("b"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "value-not-string-literal" && e.key === "b")).toBe(true);
   });
 });
 
@@ -324,7 +324,7 @@ describe("ts-dict — write도 구문 진단을 본다", () => {
       { locale: "ko", entries: [{ key: "common.ok", message: "확인!" }] },
     );
     expect(res.content).toBe(broken);
-    expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-parse-failed")).toBe(true);
   });
 });
 
@@ -343,7 +343,7 @@ describe("ts-dict — 로케일 객체 부재도 보고한다 (2026-09-04 audit 
       entries: [{ key: "a", message: "un" }],
     });
     expect(res.content).toBe(SRC_KO_ONLY);
-    expect(res.errors.some((e) => e.message.includes("fr"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-locale-object-missing" && e.key === "fr")).toBe(true);
   });
 
   it("있는 로케일은 에러 없이 치환한다", () => {

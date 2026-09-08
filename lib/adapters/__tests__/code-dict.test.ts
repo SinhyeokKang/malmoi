@@ -129,7 +129,8 @@ describe("code-dict — read", () => {
     ]);
     // Pagination(shorthand) + default: typeTemplate(식별자) = 2건
     expect(r.errors.length).toBeGreaterThanOrEqual(2);
-    expect(r.errors.map((e) => e.message).join(" ")).toContain("Pagination");
+    expect(r.errors.map((e) => e.key)).toContain("Pagination");
+    expect(r.errors.map((e) => e.code)).toContain("shorthand-property");
   });
 
   it("경로에서 로케일을 역산한다", () => {
@@ -489,7 +490,7 @@ describe("code-dict — write도 read와 같은 구문 진단을 본다", () => 
       { locale: "ko", entries: [{ key: "clear", message: "지우기" }] },
     );
     expect(res.content).toBe(broken);
-    expect(res.errors.some((e) => e.message.includes("구문"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-parse-failed")).toBe(true);
   });
 });
 
@@ -519,7 +520,7 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
       entries: [{ key: "a", message: "값" }],
     });
     expect(res.content).toBe("export default {\n  a: someExpr,\n}\n");
-    expect(res.errors.some((e) => e.message.includes("a"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-slot-not-string-literal" && e.key === "a")).toBe(true);
   });
 
   it("문자열 자리를 객체로 덮어야 하는 삽입은 포기하되 에러로 남긴다", () => {
@@ -527,7 +528,7 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
       locale: "ko",
       entries: [{ key: "a.deep", message: "값" }],
     });
-    expect(res.errors.some((e) => e.message.includes("a.deep"))).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-slot-missing" && e.key === "a.deep")).toBe(true);
   });
 
   it("정상 입력에는 에러가 없다", () => {
