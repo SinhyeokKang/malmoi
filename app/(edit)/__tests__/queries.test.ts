@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { countUnpublished, loadMemberships } from "@/lib/keys/query";
+import { isUnpublished } from "@/lib/keys/view";
 
 import { createHarness, type Seed } from "./harness";
 
@@ -94,4 +95,26 @@ describe("loadMemberships", () => {
     });
     expect((await loadMemberships(prisma, "u1")).map((m) => m.slug)).toEqual(["acme", "beta"]);
   });
+});
+
+/**
+ * ⚠️ **같은 술어가 두 벌이다** (2026-09-08 code-review 🟡E): `isUnpublished`는 행 단위 TS 판정이고
+ * `countUnpublished`는 Prisma `where`다. 한쪽만 고치면 **배너의 숫자와 셀의 점 표시가 갈린다** —
+ * 이 리포가 이미 두 번 밟은 "규칙 두 벌" 부류(`matchGlobPaths`·`scanJson`)다.
+ *
+ * 하네스가 그 `where`를 해석하므로, 여기서 두 경로에 **같은 행 집합**을 먹여 결과를 맞댄다.
+ */
+describe("isUnpublished ↔ countUnpublished — 술어가 갈리지 않는다", () => {
+  const rows = seed().translations ?? [];
+
+  for (const lastPulledAt of [PULLED, null]) {
+    it(`같은 행 집합에서 같은 수를 낸다 (lastPulledAt=${lastPulledAt === null ? "null" : "있음"})`, async () => {
+      const { prisma } = createHarness(seed());
+      // p1의 키는 k1 하나다 — 하네스의 count가 키를 통해 projectId로 좁히는 것과 같은 범위를 손으로 만든다.
+      const mine = rows.filter((t) => t.keyId === "k1");
+      const byPredicate = mine.filter((t) => isUnpublished(t, lastPulledAt)).length;
+
+      expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(byPredicate);
+    });
+  }
 });

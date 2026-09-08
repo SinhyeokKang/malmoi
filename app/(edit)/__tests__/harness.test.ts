@@ -139,3 +139,47 @@ describe("harness — $transaction이 project.create를 되돌린다", () => {
     expect(h.projects.map((p) => p.slug)).not.toContain("fresh");
   });
 });
+
+/**
+ * ⚠️ **`select`한 필드만 낸다** (2026-09-08 code-review 🟡6). 실제 Prisma가 그렇다 — 원본 행을 통째로
+ * 돌려주면 가짜가 실제보다 관대해져서, 호출부가 select 안 한 필드를 읽어도 **테스트는 green이고
+ * 프로덕션만 `undefined`** 가 된다. 이 리포가 이미 한 번 밟은 형태다 (POSTMORTEM 2026-09-05).
+ */
+describe("harness — projectMember.findMany가 select를 지킨다", () => {
+  const seed = {
+    projects: [
+      { id: "p1", slug: "acme", name: "Acme" },
+      { id: "p2", slug: "beta", name: "Beta" },
+    ],
+    members: [
+      { projectId: "p2", userId: "u1", role: "EDITOR" as const },
+      { projectId: "p1", userId: "u1", role: "OWNER" as const },
+    ],
+  };
+
+  it("select 밖의 필드는 없다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.projectMember.findMany({
+      where: { userId: "u1" },
+      select: { role: true, project: { select: { slug: true, name: true } } },
+    });
+    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["project", "role"]);
+  });
+
+  it("select가 없으면 행 전체다 — 기존 호출부가 그렇게 쓴다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.projectMember.findMany({ where: { userId: "u1" } });
+    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["projectId", "role", "userId"]);
+  });
+
+  it("정렬 뒤에도 select 밖 필드가 새지 않는다 — 정렬은 원본 행을 봐야 한다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.projectMember.findMany({
+      where: { userId: "u1" },
+      select: { role: true, project: { select: { slug: true, name: true } } },
+      orderBy: { project: { slug: "asc" } },
+    });
+    expect(rows.map((r) => (r as { project: { slug: string } }).project.slug)).toEqual(["acme", "beta"]);
+    for (const row of rows) expect(Object.keys(row).sort()).toEqual(["project", "role"]);
+  });
+});

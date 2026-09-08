@@ -306,6 +306,47 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(EMITTED.length).toBeGreaterThan(0);
   });
 
+  /**
+   * ⚠️ **링크 생성기가 이 검사의 사각지대였다** (2026-09-08 code-review 🟡3). `lib/routes.ts`는 쿼리를
+   * `URLSearchParams`로 조립하므로 `"/path?key="` 리터럴이 **한 줄도 없다** — 위 `EMITTED` 정규식이
+   * 조용히 0건을 낸다. 그래서 그 파일은 **타입에서** 키를 읽어 대상 페이지와 대조한다.
+   *
+   * 아직 수신자가 없는 키는 **이름으로 고정한다**(축소형 — `no-korean-ui`·`focus-ring`과 같은 형).
+   * T7이 번역 화면에 필터를 붙이면 목록에서 빼야 하고, 안 빼면 아래 둘째 단언이 red다.
+   */
+  const PENDING_QUERY_KEYS = ["q", "state"];
+
+  /**
+   * `type X = { ns?: string; … }` → 필드 이름들. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로
+   * 잡히면 이 검사가 자기 대상을 잘못 세고, 그건 조용한 오탐이다.
+   */
+  function queryKeysOf(source: string, typeName: string): string[] {
+    const bare = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+    const body = new RegExp(`type ${typeName} = \\{([\\s\\S]*?)\\};`).exec(bare)?.[1] ?? "";
+    return [...body.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
+  }
+
+  const ROUTES_SOURCE = readFileSync(join(APP, "../lib/routes.ts"), "utf8");
+  const TRANSLATIONS_PAGE = ENTRY_POINTS.find((e) => e.path === "projects/[slug]/translations/page.tsx");
+  /** 번역 화면이 **실제로 받는** 쿼리 키. 그 페이지의 `type Search`가 계약이다. */
+  const ACCEPTED = queryKeysOf(TRANSLATIONS_PAGE?.source ?? "", "Search");
+
+  it("양쪽 타입에서 쿼리 키를 읽어냈다 — 스캐너가 조용히 0건이 되지 않는다", () => {
+    expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "focus", "q", "state"]);
+    expect(ACCEPTED.length).toBeGreaterThan(0);
+  });
+
+  it("생성기가 내는 쿼리 키를 번역 화면이 받는다", () => {
+    const unread = queryKeysOf(ROUTES_SOURCE, "TranslationsQuery").filter(
+      (key) => !PENDING_QUERY_KEYS.includes(key) && !ACCEPTED.includes(key),
+    );
+    expect(unread).toEqual([]);
+  });
+
+  it("대기 목록에 낡은 항목이 없다 — 화면이 받기 시작하면 목록에서 뺀다", () => {
+    expect(PENDING_QUERY_KEYS.filter((key) => ACCEPTED.includes(key))).toEqual([]);
+  });
+
   it("보낸 쿼리를 대상 페이지가 읽는다", () => {
     const unread: string[] = [];
     for (const emit of EMITTED) {

@@ -31,6 +31,13 @@ const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const ROOTS = ["app", "components", "lib", "messages"];
 
 /**
+ * ⚠️ **리포 루트의 `.ts`·`.tsx`도 본다** (2026-09-08 code-review 🟡5). `auth.ts`·`middleware.ts`가
+ * `ROOTS` 밖이라 거기 UI 문자열이 생기면 이 방어선이 **영원히 조용하다** — "좁은 검사는 자기 좁음을
+ * 신고할 수 없다"(POSTMORTEM 2026-09-07)의 정확한 형태다. 설정 파일은 UI가 아니라 뺀다.
+ */
+const ROOT_FILES = ["auth.ts", "middleware.ts"];
+
+/**
  * 스캔에서 빼는 갈래 (design §3.1.4).
  *
  * - `lib/survey/**`·`lib/scan/**` — 웹 UI가 아니라 `pnpm adapter-survey`·`pnpm scan`의 **터미널 출력**이다.
@@ -75,6 +82,9 @@ const KOREAN_ALLOWED = [
   "components/pull-button.tsx",
   "components/reconnect-button.tsx",
   "components/translation-input.tsx",
+  // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
+  // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
+  "auth.ts",
   "lib/pull/render.ts",
   "lib/push/apply.ts",
 ];
@@ -102,7 +112,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 function scanned(): { path: string; korean: number }[] {
-  return ROOTS.flatMap((root) => sourceFiles(join(ROOT, root)))
+  return [...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
     .map((file) => relative(ROOT, file))
     .filter((path) => !EXCLUDED_PREFIX.some((prefix) => path.startsWith(prefix)))
     .map((path) => ({
@@ -114,6 +124,11 @@ function scanned(): { path: string; korean: number }[] {
 describe("UI 문자열은 사전에서 온다 — 소스에 한글 리터럴이 없다", () => {
   it("스캐너가 실제로 파일을 걸었다 — 조용히 0건이 되지 않는다", () => {
     expect(scanned().length).toBeGreaterThan(50);
+  });
+
+  it("리포 루트 파일도 스캔 대상이다 — 그 자리가 비면 검사가 조용해진다", () => {
+    const paths = scanned().map(({ path }) => path);
+    for (const file of ROOT_FILES) expect(paths, file).toContain(file);
   });
 
   it("허용 목록 밖의 파일에 한글이 없다", () => {
