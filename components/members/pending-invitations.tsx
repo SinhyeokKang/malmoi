@@ -67,7 +67,9 @@ export function PendingInvitations({
           <Th>{m.members.pending.columns.role}</Th>
           <Th>{m.members.pending.columns.expires}</Th>
           <Th>{m.members.pending.columns.invitedBy}</Th>
-          <Th className="text-right">{m.members.columns.actions}</Th>
+          <Th className="text-right">
+            <span className="sr-only">{m.members.columns.actions}</span>
+          </Th>
         </tr>
       </thead>
       <tbody>
@@ -83,6 +85,7 @@ export function PendingInvitations({
               {manage && (
                 <Button
                   variant="ghost"
+                  aria-label={m.members.pending.revokeLabel(maskEmail(invitation.email))}
                   loading={pendingId === invitation.id}
                   loadingLabel={m.members.pending.revoking}
                   onClick={() => revoke(invitation.id)}

@@ -3,9 +3,7 @@ import { redirect } from "next/navigation";
 import { InviteDialog } from "@/components/members/invite-dialog";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
-import { Alert } from "@/components/ui/alert";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform } from "@/lib/auth/permission";
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -23,24 +21,17 @@ import { routes } from "@/lib/routes";
  *
  * ⚠️ **최상단에서 던진다.** 조건부 렌더는 차단이 아니다 — App Router가 레이아웃과 페이지를 병렬로
  * 렌더해 페이지가 이미 실행되고 RSC 페이로드에 데이터가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB).
+ *
+ * ⚠️ **`?e=` 슬롯이 없다.** design §3.9가 "global Alert 슬롯이 와이어에 있어야 한다"고 요구했지만
+ * **그 쿼리를 보내는 자리를 설계가 만들지 않았다** — `requireProjectAccess`의 거부는 `/projects?e=`로
+ * 가고, `changeMember`·`revokeInvitation`의 실패는 **행 옆 인라인**이다(어느 행이 거부됐는지가
+ * 정보이므로 상단으로 올리면 그것을 잃는다). 읽는 쪽만 두면 도달 불가 코드이고, 그것을 두지 않는
+ * 것이 이 리포의 규칙이다 (2026-09-08 code-review 🟡1). 생산자가 생기면 **둘을 같은 커밋에** 넣는다 —
+ * `components/__tests__/members-screen.test.ts`가 그 짝을 강제한다.
  */
-export default async function MembersPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ e?: string }>;
-}) {
+export default async function MembersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { projectId, role, userId } = await requireProjectAccess({ slug, permission: "translation:write" });
-
-  /**
-   * ⚠️ **`?e=`를 판정 함수로 거른다 — 캐스팅하지 않는다.** 주소창 값이라 union이 아니고,
-   * `as AccessError`로 넘기면 프로토타입 키(`?e=constructor`)가 사전에서 **함수**를 찾아내 JSX
-   * 자식이 된다 — 화면이 통째로 죽는다 (POSTMORTEM 2026-09-08). 모르는 값은 무시한다.
-   */
-  const { e } = await searchParams;
-  const notice = isAccessError(e) ? accessErrorMessage(e) : null;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
@@ -58,14 +49,7 @@ export default async function MembersPage({
   ]);
 
   return (
-    <>
-      {/* 페이지 수준 거부는 global Alert다 — top bar 아래 전폭 (DESIGN §6.4). */}
-      {notice !== null && (
-        <div className="px-6 pt-6">
-          <Alert variant="danger">{notice}</Alert>
-        </div>
-      )}
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
+    <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
         {/* breadcrumb은 셸이 안 든다 — 레이아웃이 페이지 props를 못 받는다 (CLAUDE.md). */}
         <div className="space-y-3">
           <Breadcrumb
@@ -82,8 +66,7 @@ export default async function MembersPage({
         <section className="space-y-3">
           <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
           <PendingInvitations slug={slug} invitations={pending} role={role} now={now} />
-        </section>
-      </main>
-    </>
+      </section>
+    </main>
   );
 }

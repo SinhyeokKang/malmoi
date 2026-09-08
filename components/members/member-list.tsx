@@ -65,11 +65,17 @@ export function MemberList({
           <Th>{m.members.columns.email}</Th>
           <Th>{m.members.columns.role}</Th>
           <Th>{m.members.columns.joined}</Th>
-          <Th className="text-right">{m.members.columns.actions}</Th>
+          {/* 시각적으로는 빈 열이지만 이름 없는 `<th>`를 남기지 않는다 (DESIGN §7 · 🟡3). */}
+          <Th className="text-right">
+            <span className="sr-only">{m.members.columns.actions}</span>
+          </Th>
         </tr>
       </thead>
       <tbody>
-        {members.map((member) => (
+        {members.map((member) => {
+          // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
+          const who = member.name ?? (member.email === null ? m.members.unnamed : maskEmail(member.email));
+          return (
           <tr key={member.userId}>
             <Td>
               {member.name ?? <span className="text-muted-foreground">{m.members.unnamed}</span>}
@@ -82,7 +88,7 @@ export function MemberList({
             <Td>
               {manage ? (
                 <Select
-                  aria-label={m.members.changeRole}
+                  aria-label={m.members.changeRole(who)}
                   value={member.role}
                   disabled={pendingId === member.userId}
                   onChange={(e) => apply(member.userId, e.target.value as Role)}
@@ -98,7 +104,7 @@ export function MemberList({
             <Td className="text-right">
               {manage && (
                 <RemoveButton
-                  who={member.name ?? (member.email === null ? m.members.unnamed : maskEmail(member.email))}
+                  who={who}
                   pending={pendingId === member.userId}
                   onConfirm={() => apply(member.userId, null)}
                 />
@@ -112,7 +118,8 @@ export function MemberList({
               )}
             </Td>
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </Table>
   );
@@ -131,7 +138,14 @@ function RemoveButton({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" loading={pending} loadingLabel={m.members.removing}>
+        {/* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을
+            찾으므로 다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */}
+        <Button
+          variant="ghost"
+          aria-label={m.members.removeLabel(who)}
+          loading={pending}
+          loadingLabel={m.members.removing}
+        >
           {m.members.remove}
         </Button>
       </DialogTrigger>

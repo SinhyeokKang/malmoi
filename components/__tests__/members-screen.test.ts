@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +23,22 @@ const stripComments = (source: string): string =>
 
 const read = (path: string): string => stripComments(readFileSync(join(ROOT, path), "utf8"));
 
+/** `?e=` 생산자를 세는 범위. `app/`·`components/` 전부 — 어디서 보내도 잡힌다. */
+const SCANNED = (function collect(): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir)) {
+      if (name.startsWith(".") || name === "node_modules" || name === "__tests__") continue;
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (/\.tsx?$/.test(name)) out.push(read(full.slice(ROOT.length)));
+    }
+  };
+  walk(join(ROOT, "app"));
+  walk(join(ROOT, "components"));
+  return out;
+})();
+
 const PAGE = "app/(edit)/projects/[slug]/members/page.tsx";
 const LIST = "components/members/member-list.tsx";
 const INVITE = "components/members/invite-dialog.tsx";
@@ -38,14 +54,31 @@ describe("멤버 화면 — 페이지", () => {
   });
 
   /**
-   * ⚠️ **`?e=`를 판정 함수 없이 캐스팅하면 프로토타입 키가 함수를 JSX 자식으로 만든다**
-   * (POSTMORTEM 2026-09-08 — 초대 화면이 그렇게 죽을 수 있었다). 다른 세 화면은 `isAccessError`류로
-   * 거른다.
+   * **읽는 쪽과 보내는 쪽이 짝이다** (2026-09-08 code-review 🟡1).
+   *
+   * design §3.9는 `?e=` global Alert 슬롯을 요구했지만 **그 쿼리를 이 경로로 보내는 자리를 설계가
+   * 만들지 않았다** — 거부는 `/projects?e=`로 가고 Action 실패는 행 옆 인라인이다. 읽는 쪽만 두면
+   * 도달 불가 코드다. 그래서 지웠고, **이 검사가 그 상태를 고정한다**: 누가 슬롯만 되살리면 red이고,
+   * 생산자를 만들면 같은 커밋에서 이 검사를 뒤집게 된다.
+   *
+   * ⚠️ **되살릴 때는 `isAccessError`로 거른다 — 캐스팅하지 않는다.** `?e=`는 주소창 값이라 union이
+   * 아니고, `as AccessError`는 프로토타입 키(`?e=constructor`)에서 사전이 **함수**를 내주게 만들어
+   * 화면을 통째로 죽인다 (POSTMORTEM 2026-09-08).
    */
-  it("`?e=`를 isAccessError로 거른다 — 캐스팅하지 않는다", () => {
+  it("`?e=`를 읽지 않는다 — 그 쿼리를 이 경로로 보내는 자리가 없다", () => {
     const src = read(PAGE);
-    expect(src).toContain("isAccessError");
+    expect(src).not.toContain("searchParams");
+    // 되살리는 커밋이 캐스팅으로 가지 않도록 금지 패턴은 계속 센다.
     expect(src).not.toMatch(/as\s+AccessError/);
+  });
+
+  it("생산자 스캔이 실제로 파일을 걸었다 — 조용히 0건이 되지 않는다", () => {
+    expect(SCANNED.length).toBeGreaterThan(20);
+  });
+
+  it("보내는 자리가 실제로 0곳이다 — 생산자가 생기면 위 검사를 뒤집어야 한다", () => {
+    const producers = [...SCANNED].filter((s) => /\/members[^"'`]*\?e=|routes\.members\([^)]*\)\}\?e=/.test(s));
+    expect(producers).toEqual([]);
   });
 
   it("이메일을 maskEmail로 낸다 — 이 표는 멤버 전원이 본다 (역할로 나누지 않는다)", () => {
