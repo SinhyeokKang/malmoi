@@ -483,6 +483,8 @@ git ref-safe(`isRefSafeSlug` — 브랜치 이름 `l10n/sync-<slug>`에 그대�
 /projects/:slug/settings       설정
 ```
 
+⚠️ **번역 화면의 필터는 쿼리 상태다** (2026-09-08 ship 3) — `?ns=`·`?q=`·`?state=`·`?focus=`를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+
 ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼이다(`components/publish-button.tsx` — 6a T7이 `pull-button.tsx`를 대체했다). 한때 `/projects/:slug/publish`로 적혀 있었는데 그런 라우트는 만들지 않았고 §8 6단계도 요구하지 않는다.
 
 **account 단계를 두지 않는다** (`/:account/:project`가 아니다). 조직 계층이 §4.2 비범위이므로 그 단계를
@@ -748,12 +750,12 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 
 ⚠️ **6a / 6b로 갈렸고 6a는 4번의 배송이다** (2026-09-08, `/feature-review` — `features/translation-ui/tasks.md`의
 배송 단위 절이 정본). **ship 1**(기반 — 사전 `messages/en.tsx` · 순수 판정 `lib/keys/view.ts`·`lib/routes.ts` ·
-additive 컬럼 둘 · 프리미티브 16)과 **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 **프로덕션에
-나갔고**(PR #12 → squash `46df51a`, PR #14 → squash `add099a`), **ship 3**(T7 번역 화면 + Publish)이 dev에 있다.
-남은 것은 **ship 4**(T8·T9) · **6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 · 멤버 화면 ·
-`/account` 판정).
+additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 번역 화면 + Publish)이 **프로덕션에 나갔고**
+(PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`), **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 +
+문서·chore)가 dev에 있다. 남은 것은 **6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 ·
+멤버 화면 · `/account` 판정).
 
-**아래 항목들의 판정·데이터층은 대부분 섰고 남은 것이 화면이다** — `defaultNamespace`·`resolveNamespace`·
+**아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 미작성 화면은 멤버 관리(6b-3) 하나다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
 `PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts`)이 그것이다.
 
@@ -771,7 +773,10 @@ additive 컬럼 둘 · 프리미티브 16)과 **ship 2**(셸 — 사이드바·t
     **가상화도 조회 좁힘도 이 3.3초를 못 줄인다.** 다음 수단은 표를 `Suspense`로 감싸 셸을 먼저 그리기 ·
     순차 DB 왕복 병합 · 폰트 CSS의 렌더 블로킹 해제이고, 셋 다 번역 화면 밖이라 후속이다
     (`features/README.md` 백로그, 표는 `features/translation-ui/tasks.md` T7)
-- [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
+- [ ] **6b-1 어댑터 오류 코드화 + 재측정** (학습·홀드아웃 둘 다 — `lib/adapters/**`를 치므로 트리거가 열린다)
+- [ ] **6b-2 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
+- [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
+- [ ] **6b-3 멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
 - [x] ~~**"GitHub 계정" 섹션을 사용자 수준 화면으로**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9 — 4단계
@@ -786,7 +791,7 @@ additive 컬럼 둘 · 프리미티브 16)과 **ship 2**(셸 — 사이드바·t
 - [x] ~~**MVP §10 미결 둘 중 하나**~~ ✅ **답했다** (2026-09-08, 6a T3): **push가 `updatedBy`를 비운다**
       (`applyPush`의 `ON CONFLICT … "updatedBy" = NULL`). strict에서 덮인 값의 저자는 리포이므로 사람 이름이
       남는 쪽이 거짓이었고, **미배포 집계가 그 조건 위에 선다** — `updatedAt`만 보면 code push 직후 903키
-      전부가 "안 보낸 편집"이 된다. 남은 하나(orphaned 로케일 화면)는 T7이 확정한다.
+      전부가 "안 보낸 편집"이 된다. 남은 하나(orphaned 로케일 화면)는 T7이 확정했다 — 바로 아래 항목이다.
 - [x] **MVP §10 미결 둘을 여기서 답한다** — ✅ **둘 다 답했다.** orphaned 로케일은 **열 유지 + 헤더
       `Badge danger` + 셀 `disabled` + placeholder로 확정했다** (2026-09-08, ship 3 — 2026-09-06 임시안이
       그대로 맞았다: 열을 숨기면 로케일이 사라진 것을 편집자가 알 길이 없고, 편집을 허용하면 `updatedAt`만
@@ -798,8 +803,8 @@ additive 컬럼 둘 · 프리미티브 16)과 **ship 2**(셸 — 사이드바·t
       찍던 것은 `loadActors`+`actorLabel`이 이름으로 바꿨다 — **화면 재작성과 독립적인 데이터층이라
       6단계를 기다리지 않았다.** 여기 남은 것은 **"덮인 값에 편집자 이름이 남아 화면이 거짓을 말한다"**
       쪽이고, 이름이 사람으로 보이게 된 만큼 그 거짓이 더 잘 읽힌다
-- [ ] **편집 손실 창 배너** (MVP §3.1·§8.3이 SaaS로 이관한 항목)
-- [ ] 미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)
+- [x] ~~**편집 손실 창 배너**~~ ✅ **ship 3** (2026-09-08, T7 — `components/translations/edit-loss-banner.tsx`. 닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다. MVP §3.1이 감수한 대가를 편집자가 보는 자리에 처음으로 적었다)
+- [x] ~~미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)~~ ✅ **ship 3** (2026-09-08, T7): `countUnpublished` → 버튼 라벨·배너 · `PublishButton`/`PublishResult`가 문구 다섯·tone 넷을 하나의 `Alert`로 · `Project.lastPublishedAt`·`lastPrUrl`이 "Last sent … · View what was sent"를 새로고침 뒤에도 남긴다 · `warnings`는 `<details>`에 **파일 목록**으로 편다(건수만으로는 행동할 수 없다)
 
 완료 게이트: 변경 없음 / 새 PR / 기존 PR 갱신 / 부분 기록 불가 / 실패가 **서로 다른 상태**다 /
 PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상태의 반복 Publish가 새 커밋을 만들지 않는다.
