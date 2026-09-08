@@ -169,7 +169,9 @@ describe("harness — projectMember.findMany가 select를 지킨다", () => {
   it("select가 없으면 행 전체다 — 기존 호출부가 그렇게 쓴다", async () => {
     const h = createHarness(seed);
     const rows = await h.prisma.projectMember.findMany({ where: { userId: "u1" } });
-    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["projectId", "role", "userId"]);
+    // ⚠️ **`createdAt`이 늘었다** (2026-09-08 6b-2). 스키마에 있는 컬럼이고 `loadMembers`가 "Joined …"로
+    // 읽는다 — 가짜가 그것을 안 들면 실제보다 **좁아서** 나는 실패가 되고, 그건 프로덕션 신호가 아니다.
+    expect(Object.keys(rows[0] ?? {}).sort()).toEqual(["createdAt", "projectId", "role", "userId"]);
   });
 
   it("정렬 뒤에도 select 밖 필드가 새지 않는다 — 정렬은 원본 행을 봐야 한다", async () => {

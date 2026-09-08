@@ -24,7 +24,7 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { createInvitation, changeMember } = await import("../projects/actions");
+const { createInvitation, changeMember, revokeInvitation } = await import("../projects/actions");
 const { acceptInvitation } = await import("../../invite/actions");
 
 const LATER = new Date("2126-01-01T00:00:00Z");
@@ -435,5 +435,98 @@ describe("경합에서도 거부가 응답으로 온다", () => {
     const result = await acceptInvitation({ token: "tok" });
     expect(result).toEqual({ ok: false, error: "already-member" });
     expect(db.members.filter((m) => m.userId === "u-editor" && m.projectId === "pA")).toHaveLength(1);
+  });
+});
+
+/**
+ * `revokeInvitation` (6b-2, design §3.9).
+ *
+ * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
+ * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
+ * 기존 관용구는 `expiresAt = now`이고(`createInvitation`의 회전) `loadPendingInvitations`의
+ * `expiresAt > now()` 술어가 그대로 맞는다.
+ */
+describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
+  function withInvites() {
+    const db = createHarness({
+      projects: [
+        { id: "pA", slug: "alpha" },
+        { id: "pB", slug: "beta" },
+      ],
+      members: [
+        { projectId: "pA", userId: "u-owner", role: "OWNER" },
+        { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+        { projectId: "pB", userId: "u-other", role: "OWNER" },
+      ],
+      users: [{ id: "u-owner", email: "owner@a.com" }],
+      invitations: [
+        { id: "i-a", projectId: "pA", email: "x@a.com", role: "EDITOR", tokenHash: "hA", expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner" },
+        { id: "i-done", projectId: "pA", email: "y@a.com", role: "EDITOR", tokenHash: "hD", expiresAt: LATER, acceptedAt: new Date("2026-09-05T00:00:00Z"), invitedBy: "u-owner" },
+        { id: "i-b", projectId: "pB", email: "z@b.com", role: "EDITOR", tokenHash: "hB", expiresAt: LATER, acceptedAt: null, invitedBy: "u-other" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+    return db;
+  }
+
+  it("OWNER는 대기 초대를 무효화한다 — 만료 시각을 당기는 것이다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: true });
+
+    const [args] = db.spies.updateManyInvitations.mock.calls.at(-1) ?? [];
+    expect(args?.where).toMatchObject({ id: "i-a", projectId: "pA", acceptedAt: null });
+    expect(args?.data.expiresAt).toBeInstanceOf(Date);
+    // 삭제 경로를 쓰지 않는다 — 하네스에 그 메서드가 없어 부르면 던진다는 것과 별개로 계약을 고정한다.
+    expect(db.spies.updateManyInvitations).toHaveBeenCalled();
+  });
+
+  it("다른 프로젝트의 초대 id는 0행이다 — id를 알아도 남의 테넌트를 못 건드린다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-b" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+
+    const untouched = db.invitations.find((i) => i.id === "i-b");
+    expect(untouched?.expiresAt).toEqual(LATER);
+  });
+
+  it("이미 수락된 초대는 건드리지 않는다 — 그 사람은 이미 멤버다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-done" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+
+    const row = db.invitations.find((i) => i.id === "i-done");
+    expect(row?.expiresAt).toEqual(LATER);
+  });
+
+  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (SAAS §3)", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-editor");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "forbidden" });
+  });
+
+  it("멤버가 아니면 not-found다 — 프로젝트의 존재를 노출하지 않는다", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-other");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+  });
+
+  it("비로그인은 거부된다", async () => {
+    withInvites();
+    hoisted.session = null;
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "unauthorized" });
+  });
+
+  it("입력이 비면 invalid input이다 — 예외로 죽지 않는다", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-owner");
+    expect(await revokeInvitation({ slug: "", invitationId: "i-a" })).toEqual({ ok: false, error: "invalid input" });
+    expect(await revokeInvitation({ slug: "alpha", invitationId: "" })).toEqual({ ok: false, error: "invalid input" });
   });
 });

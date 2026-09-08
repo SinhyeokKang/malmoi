@@ -51,11 +51,22 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
  */
 describe("projectSections — 역할이 항목을 정한다", () => {
   it("OWNER는 Translations와 Settings를 본다", () => {
-    expect(projectSections("OWNER").map((s) => s.key)).toEqual(["translations", "settings"]);
+    expect(projectSections("OWNER").map((s) => s.key)).toEqual(["translations", "members", "settings"]);
   });
 
   it("EDITOR는 Translations만 본다", () => {
-    expect(projectSections("EDITOR").map((s) => s.key)).toEqual(["translations"]);
+    expect(projectSections("EDITOR").map((s) => s.key)).toEqual(["translations", "members"]);
+  });
+
+  /**
+   * ⚠️ **Members는 `member:manage` 뒤가 아니다** (design §3.9 검수 (b)). EDITOR도 목록을 본다 —
+   * user-stories §5의 "EDITOR는 목록만 본다"와 §0의 "OWNER만"이 모순이었고 전자가 맞다. 컨트롤만
+   * 역할로 감추고 Action이 `member:manage`로 거부한다.
+   */
+  it("Members는 두 역할에 다 있다 — 목록은 전원이 본다, 컨트롤만 갈린다", () => {
+    for (const role of ["OWNER", "EDITOR"] as const) {
+      expect(projectSections(role).map((s) => s.key), role).toContain("members");
+    }
   });
 
   it("모든 항목이 아이콘을 든다 — 접힌 레일에서 아이콘이 유일한 라벨이다 (DESIGN §6.8)", () => {
