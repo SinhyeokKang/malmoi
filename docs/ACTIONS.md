@@ -8,7 +8,7 @@
 
 ⚠️ **말모이 리포가 private이라 접근을 열어야 한다.** `malmoi` > Settings > Actions > General > Access > **"Accessible from repositories owned by the user"**. 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
 
-⚠️ **그 설정은 소유자가 같은 리포만 열어준다** — **다른 계정이 소유한 리포는 이 경로가 원리적으로 없다.** 그 프로젝트는 편집과 야간 pull은 정상이고 **자동 수집(push)만 안 돈다**: 소스 키가 갱신되지 않으므로 리포에 새 문자열이 생겨도 화면에 나타나지 않는다. 온보딩이 이것을 알려진 한계로 등재한다.
+⚠️ **그 설정은 소유자가 같은 리포만 열어준다** — **다른 계정이 소유한 리포는 이 경로가 원리적으로 없다.** 그 프로젝트는 편집과 야간 pull은 정상이고 **자동 수집(push)만 안 돈다**: 소스 키가 갱신되지 않으므로 리포에 새 문자열이 생겨도 화면에 나타나지 않는다. 온보딩 **스펙**이 이것을 §5 빚으로 등재했다 — ⚠️ **결과 화면은 아직 말하지 않는다**.
 
 ## 2. 대상 리포 쪽 설정
 
@@ -109,7 +109,7 @@ jobs:
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
-| `/api/push`가 4xx·5xx | **red** — 오배송(409)·역행(409)·스키마 위반(400)이 여기 걸린다 |
+| `/api/push`가 4xx·5xx | **red** — **409가 셋**(오배송 · 커밋 역행 · **표면 교체 `format mismatch`**)·스키마 위반(400)이 여기 걸린다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
@@ -117,7 +117,7 @@ jobs:
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
-**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues` 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 `expected/got` slug 또는 `commitAt/lastCommitAt`, **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues` 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 셋이다 — slug 오배송(`expected/got`) · 커밋 역행(`commitAt/lastCommitAt`) · **표면 교체**(`format mismatch` — `expected`·`got`이 `adapter`·`pathTemplate`·`baseLocale` 객체다). 마지막 것은 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다, **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 

@@ -3,11 +3,14 @@
 `/feature`가 만든 산출물이 사는 곳이다. 디렉터리 하나가 기능 하나이고 안에 `spec.md`(무엇을 왜) ·
 `design.md`(어떻게) · `tasks.md`(순서와 검증)가 있다. 넷째 종류로 **외부 검토·감사 원문**이 있다
 (`saas-review.md`, `tenant-auth/audit-2026-09-06-codex.md`) — 근거로 보관하고 실행 계획으로 읽지 않는다.
+다섯째로 **`user-stories.md`**(화면별 사용자 스토리 — `translation-ui/`에만 있다)가 있고, **완료돼도
+남긴다**: `docs/DESIGN.md`가 "화면별 구성은 그쪽"이라고 **정본에서 가리키므로** 지우면 그 참조가 죽는다.
 
-⚠️ **다음 단계 둘은 이름이 이미 정해졌고 디렉터리만 없다** (SAAS §8): 6단계 `translation-ui/` ·
-7단계 `sync-runs/`. CLAUDE.md가 이 파일을 "`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이
-없으면 그 단계를 시작하는 사람이 지정된 필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와
-완료 게이트는 SAAS §8에 있다. (5단계 `project-onboarding/`은 2026-09-07에 디렉터리가 생기고 같은 날 T1~T8이 프로덕션까지 갔다 — 아래 표.)
+⚠️ **다음 단계 하나는 이름이 정해졌고 디렉터리만 없다** (SAAS §8): 7단계 `sync-runs/`. CLAUDE.md가
+이 파일을 "`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이 없으면 그 단계를 시작하는 사람이
+지정된 필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와 완료 게이트는 SAAS §8에 있다.
+(6단계 `translation-ui/`는 2026-09-07에 디렉터리가 생겼고 **지금 진행 중이다** — 아래 표. 5단계
+`project-onboarding/`은 2026-09-07에 생기고 같은 날 T1~T8이 프로덕션까지 갔다.)
 
 **여기 있는 문서는 스펙이 아니다.** 정본은 셋 — `docs/SAAS.md`(현재 단계 — 무엇을 만드는가),
 `docs/MVP.md`(PoC — 닫힘), `docs/ARCHITECTURE.md`(불변식·함정) — 이고, 이 디렉터리는 **그 결론에
@@ -44,6 +47,7 @@
 | [tenant-auth](./tenant-auth/) | ✅ 완료 (2026-09-06, 프로덕션 반영까지) | **SAAS.md §5·§6·§8 2단계** · ARCHITECTURE §5.1·§6~§6.3 · CLAUDE.md(차단 두 층·세션) | 없음 · `tasks.md` **남긴다**(§6.1이 실물 검증 기록이다) · `audit-2026-09-06-codex.md`는 배포 뒤 Codex 정적 감사 9건 — **9/9 전부 닫혔다**: 7건은 `194fb91`(PR #6 squash)이, #4(동시 초대 발급)와 #8(CI 경고가 프로젝트별 sync 브랜치를 안 봤다 — `289ec22`)이 같은 날 |
 | [github-connect](./github-connect/) | ✅ 완료 (2026-09-07, 실물 검증까지) | **SAAS.md §5.4·§5.7·§8 4단계** · CLAUDE.md(자격증명 셋·`lib/github-connect/`) · MVP §7(비범위 정정) | 없음 · `tasks.md` **남긴다**(T5가 실물 검증 10시나리오와 **거기서만 잡힌 결함 하나**를 들고 있다 — malmoi#7, `redirect_uri` 누락) · **둘은 끝내 못 밟았다**: App 제거(폐기용과 프로덕션이 같은 설치를 공유) · 다른 User의 GitHub 계정으로 연결 시도(세션 둘 필요) |
 | [project-onboarding](./project-onboarding/) | ✅ **완료 (2026-09-07, 프로덕션 반영까지)** | ✅ **올라갔다**: 워크플로 판정 → SAAS §10 · 후보 순위 → §7.3 · 조회 방향 → §7.8 · 3개 제한 → §8 7단계 · `StateDest` → §5.4.1 · 2패스 탐지와 첫 적재 → ARCHITECTURE §3.1 · 잎 모듈 규칙 → §6.35 | ✅ **없음** — 마지막 잔여였던 Vercel 옛 env(`ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN`) 삭제가 2026-09-07 리뷰 ⚪16에서 끝났다(**두 스코프였다** — Development엔 없었다). ⚠️ T8이 전제 둘을 뒤집었다: **토큰 발급은 `order-check` 하나**(l10n 워크플로가 붙은 리포가 그것뿐이고 쓰는 곳 없는 토큰은 발급하지 않았다)이고, **prod `Project` 행은 여섯**이다(`i18n-format-check` 하나에 프로젝트가 둘 — SAAS §7.1의 "표면이 둘"이 실재한다) |
+| [translation-ui](./translation-ui/) | 🚧 **진행 중** (SaaS 6a — ship 1 프로덕션 `46df51a`/PR #12 · ship 2 dev) | **SAAS.md §8 6단계** · DESIGN §3.1·§6.4·§6.5·§6.8·§7 · ARCHITECTURE §1.35·§3·§5.5·§6.35 · CLAUDE.md(`messages/`·`lib/i18n`·`lib/routes`·`components/shell`·`components/ui`) · POSTMORTEM 2건(2026-09-08) | **ship 3**(T7 번역 화면 + Publish) · **ship 4**(T8 나머지 화면 · T9 문서·정리) · **6b 넷**(어댑터 오류 코드화+재측정 · base 변경 필드 · 멤버 화면 · `/account` 판정). `user-stories.md`는 완료돼도 남긴다(DESIGN이 참조한다) |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
@@ -52,8 +56,8 @@
 
 ## 살아 있는 백로그 (아직 문서가 없다)
 
-앞의 넷은 `docs/ADAPTER-COVERAGE.md` §6 후속 표에서 왔고 **`lib/adapters/**`를 쳐서 재측정 트리거가 각각 붙는다**
-(`/push` 4d). 그 아래는 tenant-auth 검수와 2026-09-06 리뷰의 이월이다.
+앞의 **다섯**은 `docs/ADAPTER-COVERAGE.md`에서 왔고(§6 후속 표 셋 · §13.3 · §15.3·§16.4) **`lib/adapters/**`를 쳐서
+재측정 트리거가 각각 붙는다** (`/push` 4d). 그 아래는 tenant-auth 검수와 2026-09-06 리뷰의 이월이다.
 
 | 항목 | 근거 | 왜 아직 안 했나 |
 |---|---|---|
@@ -63,7 +67,7 @@
 | **단일 로케일 리포 지원 여부** | ADAPTER-COVERAGE §6 순위 4 — arkadiyt/zoom-redirector 1개 | "로케일 2개 이상" 규칙의 대가다. ⚠️ **5단계가 규칙을 바꾸지 않고 진단 문구까지만 갔다** (2026-09-07): `no-candidates`가 이유를 말한다("언어가 2개 이상인 로케일 파일이 필요해요"). 규칙을 바꾸면 어댑터 재측정이 따라오고 근거가 아직 리포 1건이다 |
 | **minify된 파일** | HeaderEditor 1.000 (§15.3·§16.4, **관측 1리포**) | 루트를 `compactPaths`에서 제외한 설계 + 한 줄 여백 미관측이 겹친 자리. **관측 상태를 늘릴 근거가 리포 1건뿐이다** |
 | **한 리포에 프로젝트가 둘일 때 Actions secret 배선** | project-onboarding T8 실측 · SAAS §7.1 | 토큰이 프로젝트를 정하므로 `PUSH_TOKEN` secret 하나로 둘을 먹일 수 없다 — 워크플로에 스텝 둘 + secret 둘이 필요하다. prod에 실재한다(`i18n-format-check` → `format-check-code`·`format-check-yaml`). **워크플로를 붙일 때 결정할 자리라** 미결로 둔다 |
-| **`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀** | tenant-auth 검수(CDO) | 저장 실패 문구가 스크린리더에 안 읽히고, blur로 포커스가 떠난 뒤라 재시도 지점이 없다. **6단계(번역 UI 재작성)에서 화면과 함께** 고친다 — 동결된 UI를 지금 다듬으면 버려진다(MVP §8.3) |
+| ~~**`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀**~~ → **문서가 생겼다** | tenant-auth 검수(CDO) → **`translation-ui/tasks.md` T7**(ship 3) | 백로그가 아니라 태스크다. 해법까지 확정돼 있다 — 표 **하나**에 시각 숨김 `aria-live="polite"` 영역(셀마다 두면 903행×3로케일에 2,700개다) + 실패 시 `document.activeElement`가 `body`이거나 같은 셀일 때만 `focus()`, 아니면 상태줄 `[Retry]`(비동기 저장이라 응답이 올 때 사용자는 이미 다음 셀을 치고 있을 수 있다) |
 | ~~**GitHub 계정 해제가 `project:settings` 뒤에 있다**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9) | github-connect code-review 🟡3 (2026-09-07) · design §3.4 | `disconnectGithub`이 `projects/actions.ts`로 가고 인가가 `requireUser`가 됐다(인자 없음). `/projects`에 계정 섹션. ⚠️ **미룬 사유가 낡았던 것이 앞당긴 이유다** — "OWNER 강등 경로가 실사용에 없다"였는데 5단계가 연결을 사용자 수준으로 열면서 **프로젝트를 하나도 안 만든 사용자**가 같은 잠금에 걸리게 됐고, 그 사람에겐 설정 화면이 없다 |
 
 ## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다

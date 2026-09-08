@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **다음은 6단계(번역 UI 재작성 + Publish)다.** **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 ship 3(T7 번역 화면 + Publish) · ship 4(T8·T9) · **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -51,7 +51,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 따라서:
 
-- **push는 리포 값으로 번역을 덮는다** (`ON CONFLICT DO UPDATE`, strict). 변경 감지도 병합도 없다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다 (MVP §3.1). 정책을 느슨하게 하면(변경 감지·병합) 이 원칙이 요구하는 단순성이 무너진다.
+- **push는 리포 값으로 번역을 덮고 저자도 비운다** (`ON CONFLICT DO UPDATE`, strict — `"updatedBy" = NULL`, 2026-09-08). 변경 감지도 병합도 없다. **덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이었다** (MVP §10 미결 하나가 여기서 닫혔다). 미배포 집계(`countUnpublished`·`isUnpublished`)가 그 조건 위에 선다 — `updatedAt`만 보면 push가 전 행의 시각을 올려 code push 직후 903키 전부가 "안 보낸 편집"이 된다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다 (MVP §3.1). 정책을 느슨하게 하면(변경 감지·병합) 이 원칙이 요구하는 단순성이 무너진다.
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다. 삭제는 되돌릴 수 없어 이 원칙을 깬다.
 - **pull은 값을 병합하지 않는다.** **모든 어댑터가 원본 파일 내용을 읽는다** (2026-09-04) — 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 **구조**(빈 줄·주석·키 순서)를, 재생성(`chrome-locales`·`json-catalog`)은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)을 가져온다. 어느 쪽도 **값**은 아니다. 값은 전부 DB에서 온다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다. *(2026-09-01 정정: 이전 서술은 "읽는 것은 blob SHA뿐"이었는데 MVP §4.1이 승인한 수술적 치환과 어긋났다 — 지키는 것은 "안 읽는다"가 아니라 "병합하지 않는다"다.)*
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | shadcn/ui (CLI `shadcn@4.19.0`, style `new-york`) — **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 16개 + `radix-ui`에서 DropdownMenu·Dialog·Tooltip 셋. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘·토스트 | `lucide-react` 1.37.0 / `sonner` 2.0.8 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -91,9 +91,11 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
 
+⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. `sonner`는 여전히 import 0곳이다.
+
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
 
-**⚠️ `app/globals.css`의 `@custom-variant dark` 한 줄이 라이트를 고정한다.** Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 shadcn 생성 컴포넌트의 `dark:` 클래스가 OS 다크에서 살아난다.** 상세는 [docs/DESIGN.md](./docs/DESIGN.md) §3.1.
+**⚠️ `app/globals.css`의 `@custom-variant dark` 한 줄이 라이트를 고정한다.** Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아난다.** 지금 소스에 `dark:`는 0곳이지만(shadcn 생성물과 함께 사라졌다) 그 줄은 남긴다 — 막는 것이 요지다. 상세는 [docs/DESIGN.md](./docs/DESIGN.md) §3.1.
 
 ### Prisma 7 — v6와 배선이 다르다
 
@@ -188,7 +190,6 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 마이그레이션 상태 (**prod**) | `pnpm db:status:prod` — `/merge` 1단계가 이걸 본다 |
 | Prisma 클라이언트 재생성 | `pnpm db:generate` |
 | DB 브라우저 | `pnpm db:studio` |
-| shadcn 컴포넌트 추가 | `pnpm dlx shadcn@4.19.0 add <name>` (버전 고정 — latest는 생성 코드가 움직인다) |
 | 로케일 적재 | `pnpm ingest <대상 디렉터리> [--json] [--base <locale>] [--adapter <name>]` (포맷 탐지 → 키 적재 → 왕복 검증). 인자 파싱·리포 훑기는 세 CLI가 `lib/cli/`를 공유한다 |
 | 사용처 스캔 | `pnpm scan <대상 디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (`refs` 수집 — **결과가 어떻든 exit 0**, 사용법 오류만 2). 끝의 `()`가 훅이고(`next-intl#useTranslations()`), **여러 번 줄 수 있다** |
 | 로컬 push | `pnpm push:local <대상 디렉터리> --project <slug> [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` (적재+스캔+POST). ⚠️ `--base`는 2026-09-04 감사가 더했다 — 키 집합의 진실이 base 파일이라 틀리면 진짜 base에만 있는 키가 orphaned로 떨어진다 |
@@ -319,7 +320,9 @@ app/
                         그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 한 줄
     __tests__/          harness.ts(메모리 DB 한 벌) + harness.test.ts(**하네스 자기검사** — 페이크가 실제
                         스키마보다 느슨하면 아무 행이나 집어도 정답이 나온다, POSTMORTEM 2026-09-06)
-                        + 흐름·인가·멤버십·연결·게시실패·온보딩 테스트 여섯
+                        + 흐름·인가·멤버십·연결·게시실패·온보딩·조회·셸레이아웃 테스트 **여덟**
+                        (queries — countUnpublished·loadMemberships의 테넌트 좁힘 / shell-layout — 셸이
+                        **뷰포트 고정**인지 소스로, malmoi#13의 상시 방어선)
                         (github-connect·publish-failure·onboarding은 mock 범위가 달라 일부러 갈랐다)
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
                         게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
@@ -352,6 +355,14 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
                         소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
+  shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
+                        `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
+                        문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
+                        스크롤은 콘텐츠 컬럼과 사이드바가 **각자** 든다 — sidebar.tsx(usePathname으로 프로젝트 컨텍스트·
+                        역할별 항목·접힘 localStorage) / top-bar.tsx / user-menu.tsx.
+                        ⚠️ **breadcrumb은 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아 페이지
+                        콘텐츠의 첫 줄이 든다. ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의
+                        requireProjectAccess) — 판정은 lib/shell/nav.ts의 순수 함수 둘이 한다
   ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI를 다시 돌리지 않는다). Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
@@ -365,6 +376,10 @@ components/
                         ⚠️ **ui/ 제외가 풀렸다** (2026-09-08) — 그 디렉터리가 링이 사는 유일한 자리다.
                         대신 **ui/ 밖에서 raw 태그를 쓰는 파일**이 축소형 허용 목록(13개)으로 고정되고
                         T6~T8이 비운다. 주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
+                        + tooltip-provider — `Tooltip`이 **자기 Radix Provider를 드는지** 소스로 센다.
+                        조상 provider가 없으면 Radix가 **던지고**, 그 툴팁은 접힌 사이드바에서만 렌더되므로
+                        "접기를 누르면 셸이 죽는다"로 나타난다 — 접힘이 `localStorage`에 남아 사용자가
+                        스스로 못 빠져나온다 (POSTMORTEM 2026-09-08)
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
@@ -377,6 +392,8 @@ lib/
   i18n/index.ts         사전의 유일한 입구(`m`) + `pick(dict, key, fallback)`. ⚠️ **`DICT[key] ?? fallback`을
                         쓰지 않는다** — 프로토타입 키에서 값이 찾아져 폴백을 우회하고 문자열 자리에 함수가 온다
                         (초대 화면이 `?e=`를 가드 없이 넘긴다). ko를 더할 때 바뀌는 파일이 여기 하나다
+  shell/nav.ts          사이드바의 순수 판정 둘 — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
+                        없으면 컨텍스트 없음) / projectSections(canPerform이 항목을 정한다 — 권한표가 한 벌)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
                         `entry-points.test.ts`가 이 파일의 경로·쿼리 키를 실재 라우트와 대조한다
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
@@ -403,7 +420,7 @@ lib/
                         / walk.ts(SKIP_DIR + 리포 훑기, fs — **세 CLI**)
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
-  __tests__/            db·env·failure·githash·utils·github-probe(환경변수 누락이 MissingEnvError로 던져지는지)
+  __tests__/            db·env·failure·githash·utils·routes·github-probe(환경변수 누락이 MissingEnvError로 던져지는지)
                         + ⚠️ globals-css·no-nul-bytes — 뒤의 둘은 lib/ 아래 어느 모듈에도 대응하지 않는다
                         (앞은 app/globals.css의 라이트 고정 상시 방어선(DESIGN §3.1), 뒤는 소스에 리터럴 NUL 금지)
   failure.ts            500 본문 판정 (classifyFailure·MissingEnvError) — 우리 메시지는 그대로,
@@ -456,12 +473,12 @@ lib/
                           클라이언트로 끌고 갔다 — POSTMORTEM 2026-09-07)
                         / plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
-                        / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회·lastPulledAt 쓰기)
+                        / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회 · `lastPulledAt` +
+                          `lastPublishedAt`·`lastPrUrl` 쓰기 — ⚠️ **`skipped`는 뒤의 둘을 안 건드린다**:
+                          "마지막으로 **보낸**" 것이지 시도한 것이 아니다)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
                         / targets.ts(selectPullTargets — cron이 순회할 프로젝트 선별: installationId·lastCommitSha가
                           없으면 제외, slug 결정적 정렬. 한 프로젝트의 실패가 나머지를 막지 않고 응답은 **배열**이다)
-                / ref-slug.ts(isRefSafeSlug — **import 0인 잎 모듈**. trigger.ts가 재수출한다: 판정을
-                          오케스트레이션 파일에 두면 클라이언트가 그 그래프를 통째로 문다, POSTMORTEM 2026-09-07)
                 / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
@@ -529,7 +546,9 @@ prisma/
                         _add_locale_orphaned, _add_translation_updated_at_index,
                         _add_tenant_auth_tables, _add_project_push_token
                         ⚠️ 마지막 것은 `migrate dev`가 비대화형을 거부해 `migrate diff`로 만들었다 (`/db` 4c).
-                        prod 반영 완료 (2026-09-07, `db:status:prod` 11개 up to date)
+                        prod 반영 완료 (2026-09-07, `db:status:prod` 11개 up to date).
+                        ⚠️ **12번째가 붙었다** — `_add_project_last_published`(2026-09-08, 6a T3 — `Project.lastPublishedAt`·
+                        `lastPrUrl`). additive 둘이고 **prod 반영 완료**(2026-09-08 `/merge` 1단계, 12개 up to date)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
@@ -633,7 +652,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-07 기준 29개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 32개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -650,7 +669,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 두 층이다. `/push`가 **푸시될 diff에 걸린 문서만** 트라이아지하고(대상·트리거는 `.claude/commands/push.md` 4단계), **`/doc-check`이 diff와 무관하게 전수 대조한다** (2026-09-06 추가 — "문서가 일곱 개뿐"이라 두지 않던 것을 열두 개가 되면서 되살렸다. 최근 커밋이 안 건드린 문서에 쌓인 stale은 `/push`가 원리적으로 못 본다). 갱신은 문서별 별도 커밋(`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...`).
 
-- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(Supabase 대시보드)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
+- **docs/DESIGN.md** — UI 시각 규칙. UI를 만들거나 고칠 때 필독. 토큰 값의 진실은 `app/globals.css`이고 `components.json`의 `baseColor`는 CLI 시드일 뿐이다. 새 raw 색을 늘렸으면 §6.2에 등재한다. **§9가 SaaS 화면의 레퍼런스(GitLab super sidebar — 2026-09-07에 Supabase에서 바꿨다)를 든다 — 레이아웃·밀도·정보구조만 가져오고 색과 다크는 가져오지 않는다.** 커밋 prefix `docs(DESIGN): ...`
 - **docs/TASKS.md** — **태스크 체크리스트.** **앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이고, 그 아래 `# 완료 기록`은 닫힌 단계다** (2026-09-05 재배치 — 미결이 §7과 §8 사이에 끼어 있어 살아 있는 항목을 찾으려면 600줄을 지나야 했다). **`lib/`·`app/`·`prisma/`에 실질 변경이 있으면 거의 항상 걸린다** — 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다. 검증 조건이 실제로 통과한 태스크만 체크한다. 커밋 prefix `docs(TASKS): ...`
   - 완료 기록은 **압축하지 않는다.** 체크리스트로 보이지만 실제 내용은 "그 결정이 언제 왜 뒤집혔나"이고, ARCHITECTURE·POSTMORTEM과 겹쳐 보여도 그쪽은 현재 불변식이라 시간축이 없다. 순수 검증 목록이었던 §1·§2와 대체된 §5b-old만 접었다
 - **docs/SAAS.md** — **현재 단계의 정본.** SaaS 범위·비범위·설계 결정·단계별 체크리스트·불변식 9개. **SaaS 기능을 추가/삭제했거나 단계를 끝냈거나 §10 "아직 안 정한 것"이 결정됐으면 여기부터** 갱신한다. `lib/auth/`·`app/(edit)/`·`prisma/schema.prisma`에 SaaS 관련 변경이 있으면 거의 항상 걸린다. 커밋 prefix `docs(SAAS): ...`
@@ -662,7 +681,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
-- **docs/features/README.md** — 기능 문서 8개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **docs/features/README.md** — 기능 문서 9개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
 - **README.md** — CLAUDE.md의 요약 미러. 스택·명령·브랜치·현 단계 선언이 바뀌면 같이 갱신한다 — 신규 진입자가 처음 여는 파일이라 여기가 낡으면 닫힌 스펙으로 안내한다. 커밋 prefix `docs(README): ...`
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.

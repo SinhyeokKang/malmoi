@@ -140,8 +140,20 @@ export async function countUnpublished(
   });
 }
 
-/** 사이드바의 프로젝트 전환 목록. 역할이 항목 노출을 정한다(방어는 페이지다). */
-export type MembershipRow = { slug: string; name: string; role: Role };
+/**
+ * 내 멤버십 한 줄. 셸 사이드바와 프로젝트 목록이 **같은 조회**를 쓴다 — 이름이 같은 함수가 두 벌이면
+ * 그중 하나가 낡는다(2026-09-08에 실제로 그렇게 갈릴 뻔했다).
+ *
+ * `installationId`·`lastCommitSha`는 목록의 상태 텍스트 재료다 — `planProjectReadiness`가 컬럼을
+ * 만들지 않고 이 둘로 판정한다 (design §3.7). 사이드바는 그것을 안 읽는다.
+ */
+export type MembershipRow = {
+  slug: string;
+  name: string;
+  role: Role;
+  installationId: string | null;
+  lastCommitSha: string | null;
+};
 
 /**
  * 내 멤버십 목록 — 셸 레이아웃이 읽는다. **새 조회다**(지금 레이아웃은 Prisma를 안 부른다).
@@ -152,9 +164,18 @@ export type MembershipRow = { slug: string; name: string; role: Role };
 export async function loadMemberships(prisma: PrismaClient, userId: string): Promise<MembershipRow[]> {
   const rows = await prisma.projectMember.findMany({
     where: { userId },
-    select: { role: true, project: { select: { slug: true, name: true } } },
+    select: {
+      role: true,
+      project: { select: { slug: true, name: true, installationId: true, lastCommitSha: true } },
+    },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
     orderBy: { project: { slug: "asc" } },
   });
-  return rows.map((r) => ({ slug: r.project.slug, name: r.project.name, role: r.role }));
+  return rows.map((r) => ({
+    slug: r.project.slug,
+    name: r.project.name,
+    role: r.role,
+    installationId: r.project.installationId,
+    lastCommitSha: r.project.lastCommitSha,
+  }));
 }

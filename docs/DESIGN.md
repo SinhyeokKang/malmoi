@@ -11,7 +11,7 @@
 | | 값 | bugshot-2와의 차이 |
 |---|---|---|
 | Tailwind | **v4** — `tailwind.config.js`가 **없다**. 테마는 `app/globals.css`의 `@theme inline` | v3 + config 파일 |
-| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-07 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog·Tooltip 셋만 | shadcn 생성물을 그대로 씀 |
+| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog·Tooltip 셋만 | shadcn 생성물을 그대로 씀 |
 | 변형 | `class-variance-authority` — Button·Badge·Alert | 같음 |
 | 아이콘 | `lucide-react` **16px** — 세트는 이것 하나이고 **셸은 전 항목이 든다** (§6.8). ⚠️ 1.x에 브랜드 아이콘(`Github`)이 없다 | 같음 |
 | 애니메이션 | `tw-animate-css` (사용 0이면 6단계 마지막 chore에서 뺀다) | `tailwindcss-animate` |
@@ -73,7 +73,7 @@
 
 Tailwind v4는 `dark:`의 기본 동작이 **`prefers-color-scheme`** 이다. 이 줄이 그걸 클래스 기반으로 덮어쓰고, `.dark` 클래스를 **DOM에 어디에도 붙이지 않으므로** `dark:` 유틸이 컴파일돼도 절대 매치되지 않는다.
 
-shadcn 생성물이 사라져(2026-09-07) `dark:`를 쓰는 소스는 0곳이지만 **줄은 남긴다** — 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아나는 경로를 막는 것이 이 줄이고, `lib/__tests__/globals-css.test.ts`가 리터럴로 고정한다.
+shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳이지만 **줄은 남긴다** — 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아나는 경로를 막는 것이 이 줄이고, `lib/__tests__/globals-css.test.ts`가 리터럴로 고정한다.
 
 ### 3.2 `.dark` 토큰 블록이 없다
 
@@ -84,7 +84,7 @@ shadcn 생성물이 사라져(2026-09-07) `dark:`를 쓰는 소스는 0곳이지
 - **`font-sans`**: Pretendard Variable → 시스템 한/영 폴백. 폰트 파일은 **동적 서브셋 생성물**이라 `public/fonts/`가 gitignore돼 있다 (CLAUDE.md 폰트 절). GitLab Sans(Inter 기반)를 들이지 않는다 — Pretendard의 라틴 글리프도 Inter에서 왔다.
 - 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목, `text-lg`=페이지 제목(한 화면에 하나).
 - **임의값(`text-[…]`)은 스케일에 대응값이 없을 때만.** 12px은 `text-xs`, 14px은 `text-sm`이 있으므로 임의값으로 쓰지 않는다.
-- 헤딩·라벨은 `font-medium`(500)이고 700을 쓰지 않는다.
+- 본문·셸 안 제목은 `font-medium`(500)이고, **셸 밖 카드의 페이지 제목만** `text-lg font-semibold tracking-tight`(600)다(로그인·초대 수락). 700은 쓰지 않는다.
 
 ### 4.1 mono 표면 불변식 — 13px / 18px
 
@@ -156,7 +156,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 저장 상태 | 셀 안 `role="status"` 한 줄 — Saving… / Saved(1.5초 뒤 소거) / Couldn't save: … (`text-destructive`). 실패 시 포커스가 그 입력으로 돌아온다 |
 | 헤더 | `bg-muted/50` + `sticky top-0`. 글자는 `text-foreground/60` — **`text-muted-foreground`가 아니다** (§2.2). `(base)` 표기도 같은 규칙 |
 | 열 순서 | **base가 맨 앞**, 나머지는 코드순 |
-| 행 | `px-4 py-3` · `divide-y` · hover `bg-muted/40` · `align-top` |
+| 행 | `px-4 py-3` · 셀 `border-t`(표는 `divide-y`가 아니다) · hover `bg-muted/30` · `align-top`. ⚠️ 헤더는 `sticky top-0 **z-10**` — `z`가 없으면 스크롤 시 셀의 포커스 링이 헤더 위로 그려진다 |
 
 **넓은 표는 자기 컨테이너에서만 스크롤한다** (`overflow-x-auto`). 로케일이 6개면 표가 화면을 넘고, 페이지 본문이 좌우로 흔들리면 사이드바까지 밀린다.
 
@@ -193,9 +193,9 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 **리포 밖으로 나가는 링크는 전부 `text-blue-600 underline` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · App 설치 링크 · GitHub 프로필. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
 
-### 6.4 공통 형 — 프리미티브가 든다 (2026-09-07)
+### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
-옛 판의 "hand-rolled 컨트롤 클래스 표"는 사라졌다. **형은 `components/ui/`의 variant이고 화면은 raw 태그를 쓰지 않는다** — `focus-ring.test.ts`가 `ui/` 밖의 `<button>`·`<input>`·`<select>`·`<textarea>`를 0개로 고정한다(§7). 색은 전부 §2의 토큰이다.
+옛 판의 "hand-rolled 컨트롤 클래스 표"는 사라졌다. **형은 `components/ui/`의 variant이고 화면은 raw 태그를 쓰지 않는다** — `focus-ring.test.ts`가 `ui/` 밖의 `<button>`·`<input>`·`<select>`·`<textarea>`를 **허용 목록 밖에서** 0개로 고정한다(§7 — 목록이 비면 전면 0이 된다). 색은 전부 §2의 토큰이다.
 
 | 프리미티브 | 형 (옛 표의 어느 행을 잇나) |
 |---|---|
@@ -207,9 +207,10 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
 | **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:opacity-70`(primary) — 옛 규칙 그대로 |
 | **Button** `loading` | **라벨 교체**("Saving…") + disabled. 옆 문구가 아니다(폭이 흔들린다). **목록 안에서는 누른 버튼 하나만** 교체한다 |
+| **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
 | **Input·Textarea·Select** | `h-8 px-2 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `font-normal` |
-| **Checkbox·Radio** | 16px · `border-input` · checked `bg-primary border-primary` · label `text-sm` |
+| **Radio** | `size-4` · `border-input accent-primary` · label `text-sm`. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
 | **Badge** | `text-xs rounded px-1.5 py-0.5` · variants `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`) — §6.2 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(top bar 아래 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
@@ -217,7 +218,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Esc·배경·X·Cancel 넷으로 닫힌다 |
-| **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만 |
+| **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만. ⚠️ **프리미티브가 자기 `Provider`를 든다** (2026-09-08) — Radix는 조상 provider가 없으면 **던지고**, 그 툴팁은 접힌 상태에서만 렌더되므로 "접기를 누르면 셸이 죽는다"로 나타난다(접힘이 `localStorage`에 남아 영구화된다, POSTMORTEM 2026-09-08). 바깥의 `TooltipProvider`는 **지연 공유 최적화**이고 필수가 아니다 |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
 | **EmptyState** | 제목 `text-base font-medium` ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음 |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
@@ -233,13 +234,14 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 |---|---|
 | 사이드바 | `w-60 shrink-0 bg-muted border-r border-border` (§5.1) · `xl` 이상에서 아이콘 레일(`w-12`)로 접기 · `xl` 미만은 햄버거로 여는 오버레이 + `bg-foreground/40` 배경 |
 | 브랜드 | `h-12 px-4` "Malmoi" 워드마크 `text-sm font-medium` |
-| 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronDown` 16 → DropdownMenu(내 멤버십 목록 + "All projects"). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
+| 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(내 멤버십 목록 + "All projects"). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
 | 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · 우측 카운트 `text-xs text-foreground/60` |
-| 항목 셋 | Translations · Members* · Settings* (* OWNER에게만 렌더 — 편의다, 방어는 페이지) |
+| 항목 셋 | Translations · Members* · Settings* (* OWNER에게만 렌더 — 편의다, 방어는 페이지). **6a는 둘이다** — Members는 6b가 더한다(`lib/shell/nav.ts`의 `projectSections`) |
 | 구분선 | `mx-4 my-3 border-t border-border` |
-| 하단 전역 항목 | All projects · Account · Sign out · **Collapse sidebar** — 같은 항목 형, **아이콘도 전부 든다**(§6.8) |
-| top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-between` · 좌 = 햄버거(`xl` 미만) + `Breadcrumb` · 우 = 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → Account · Sign out) |
+| 하단 전역 항목 | All projects · New project · Sign out · **Collapse sidebar** — 같은 항목 형, **아이콘도 전부 든다**(§6.8). Account·Members는 6b가 더한다 |
+| top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-end` · **드는 것은 사용자 메뉴 하나다** — 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → Sign out; Account는 6b). ⚠️ **breadcrumb은 여기 없다** (2026-09-08 정정): 레이아웃이 페이지 props를 못 받아 여기 두려면 parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요하다 — **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 햄버거(`xl` 미만)는 사이드바가 자기 여는 버튼으로 든다 |
 | 콘텐츠 | `flex-1 min-w-0` · limited면 `mx-auto max-w-4xl px-6 py-6` · fluid(번역)면 `flex min-h-0 flex-1` |
+| **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). **스크롤은 콘텐츠 컬럼과 사이드바가 각자 든다**(둘 다 `overflow-y-auto`), 콘텐츠 컬럼엔 `min-w-0`이 함께 있어야 번역 표의 가로 스크롤이 사이드바를 밀지 않는다. `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
 
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다. **Publish 버튼은 셸에 없다** — 번역 화면 툴바다(셸은 `/projects`도 감싸 slug를 모른다).
 
@@ -281,7 +283,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 사이드바 섹션 | Translations `Languages` · Members `Users` · Settings `Settings` |
 | 사이드바 하단 전역 | All projects `LayoutGrid` · New project `Plus` · Account `CircleUser` · Sign out `LogOut` · Collapse `PanelLeft` |
 | 프로젝트 컨텍스트 | 우측 `ChevronsUpDown` (DropdownMenu 트리거) |
-| top bar | 햄버거 `Menu`(`xl` 미만) · breadcrumb 구분 `ChevronRight` |
+| top bar | **사용자 메뉴 아바타뿐이다** — 햄버거 `Menu`(`xl` 미만)는 그것이 여는 **사이드바**가 든다. breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · 재시도 `RotateCcw` · 행 메뉴 `Ellipsis` |
 | 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` |
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · 상태 `Select` 앞 `ListFilter` |
@@ -300,7 +302,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 사이드바가 muted 표면이 되면서 그 자리가 늘었다.
-- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) `ui/`의 네 태그가 셋을 드는지, (2) `ui/` **밖에서 raw 태그를 쓰는 파일이 축소형 허용 목록뿐인지** 둘을 센다. 2026-09-08 실물 기준 그 목록은 13개이고 T6~T8이 화면을 옮기며 비운다 — 비는 순간 (2)가 "밖에 네 태그 0개"가 된다.
+- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에서 raw 태그를 쓰는 파일이 축소형 허용 목록뿐인지** 둘을 센다. 2026-09-08 실물 기준 그 목록은 **11개**이고 T7~T8이 화면을 옮기며 비운다 — 비는 순간 (2)가 "밖에 네 태그 0개"가 된다.
   - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 프리미티브 다섯(`Button`·`Input`·`Textarea`·`Select`·`Radio`)이 각자의 태그에 셋을 **리터럴로** 적는다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
   - 스캐너는 **주석을 벗기고 센다** — 프리미티브가 자기 태그 이름을 docstring에 쓴다(`native \`<select>\`다`).
 - `--ring` == `--border`라서 **`muted` 표면 위에선 포커스 링이 약하다** — 사이드바 항목·값 칩 옆 버튼에 `focus-visible:ring-offset-1`을 더한다(offset 색 기본이 배경).
@@ -325,7 +327,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 축 | 무엇 | 어디 |
 |---|---|---|
 | **super sidebar** | 브랜드 → 프로젝트 컨텍스트(전환 메뉴) → 섹션 항목 → 하단 전역 항목 · 접힘 | §6.5 |
-| **top bar** | breadcrumb 좌 · 사용자 메뉴 우 · 48px | §6.5 |
+| **top bar** | 사용자 메뉴 우 · 48px — **breadcrumb은 페이지 콘텐츠 첫 줄이다**(§6.5) | §6.5 |
 | **콘텐츠 폭 둘** | 폼·설정은 limited, 표는 fluid | §5.1 |
 | **settings-block** | 제목 + 설명 + 본문 카드가 세로로 쌓인다 | §6.6 |
 | **표 구성** | 헤더 sticky · 행 hover · 세로선 없음 · 마지막 행에도 하단선 | §6.1 |
@@ -341,7 +343,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - **다크 모드** (§3).
 - **top bar의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). SAAS §4.2.
 - **Vue 컴포넌트(`@gitlab/ui`)·아이콘 세트(`gitlab-svgs`)** — lucide 16px로 대응.
-- **일러스트**(빈 상태 SVG) — 로그인 우측 장식은 CSS dot-grid + 인라인 SVG 카드 하나뿐이다(design §3.12).
+- **일러스트**(빈 상태 SVG) — 로그인 우측 장식은 CSS dot-grid + **토큰만 쓴 정적 모형 카드** 하나뿐이다(design §3.12).
 
 ### 9.3 판정 기준
 
@@ -349,7 +351,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 ## 10. UI 문장 규칙 (en — design.gitlab.com/content에서 가져온 것, 2026-09-07)
 
-문자열은 `messages/en.tsx`에 있고(design §3.1) 이 절이 그 문체다.
+문자열은 `messages/en.tsx`에 있고 화면은 **`@/lib/i18n`의 `m`** 으로 읽는다(design §3.1 — 그 모듈은 잎이라 `client-graph.test.ts`가 무게를 센다). 이 절이 그 문체이고, **`lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 고정한다**(`focus-ring`·`globals-css`와 같은 계열).
 
 - **Sentence case.** 라벨·열 제목·버튼·제목 전부.
 - **UI 요소 라벨에 마침표 없음**(버튼·라벨·제목·배지). help text·Alert 본문 같은 완전 문장에는 있음. **느낌표 금지.**

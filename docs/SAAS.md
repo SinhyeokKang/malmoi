@@ -53,7 +53,7 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 | 번역 조회·수정 | O | O |
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
-| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 §8 6단계다 |
+| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 **§8 6b**다 (`features/translation-ui/tasks.md` 6b-2 — 6a에는 없다) |
 | 멤버 관리·프로젝트 삭제 | O | X |
 
 **EDITOR에게 Publish를 허용한다.** Publish는 base branch 직접 쓰기가 아니라 **검토 가능한 PR 생성**이다.
@@ -392,6 +392,12 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 소유자를 backfill한 뒤, 애플리케이션을 새 인가 경로로 전환하고, 필요하면 그다음에 NOT NULL을 건다.
 ⚠️ 브랜치가 갈린 뒤로 이건 **두 단계**다: `pnpm db:migrate`(dev) → `pnpm db:deploy`(prod, `/merge` 직전).
 
+⚠️ **6단계가 컬럼 둘을 더했다** (2026-09-08, additive — 마이그레이션 `_add_project_last_published`가 12번째다):
+`Project.lastPublishedAt`·`lastPrUrl`. **`lastPulledAt`과 뜻이 다르다** — 그쪽은 벽시계가 아니라 캡처된
+`max(updatedAt)`이고 변경 없는 스킵에도 전진하는 **진행 판정**이라 미배포 집계의 기준이고, 이 둘은
+"마지막으로 **보낸**" **사건 기록**이라 툴바의 "Last sent"가 읽는다. `saveLastPulledAt`이 `committed`일 때만
+같은 `update`에 함께 싣는다.
+
 ## 7. 설계 결정
 
 ### 7.1 1 Project = 1 repository + 1 translation surface
@@ -576,7 +582,7 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
       composite action이 이미 `project`·`push-token` input을 갖고 있어 워크플로는 안 바뀐다
 - [x] **프로젝트 수명주기** → §7.9. 보관까지만 만들고 자동 영구 삭제는 안 만든다. App 제거는
       `needs_reconnect`이고 데이터를 지우지 않는다
-- [x] **UI 레퍼런스 — Supabase 대시보드** → `docs/DESIGN.md` §9. 레이아웃·밀도·정보구조를 참조하고
+- [x] **UI 레퍼런스 — GitLab super sidebar** (2026-09-07에 Supabase에서 바꿨다) → `docs/DESIGN.md` §9. 레이아웃·밀도·정보구조를 참조하고
       **색은 우리 토큰을 유지한다** (라이트 단일 강제가 그대로다)
 
 완료 게이트: 모든 화면과 mutation을 **사용자·프로젝트·권한으로 표현**할 수 있다 ✅ /
@@ -736,9 +742,23 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 상시로 센다. ⚠️ **"세 스코프"가 아니었다** — 둘 다 **Production+Preview**만 갖고 있었고 Development에는
 없었다. 삭제는 `vercel env ls`로 확인했다(CLI의 성공 메시지가 근거가 아니다 — CLAUDE.md).
 
-### 6단계 — 번역 UI 재작성 + Publish ⬜ → `features/translation-ui/`
+### 6단계 — 번역 UI 재작성 + Publish 🚧 **진행 중** → `features/translation-ui/`
 
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
+
+⚠️ **6a / 6b로 갈렸고 6a는 4번의 배송이다** (2026-09-08, `/feature-review` — `features/translation-ui/tasks.md`의
+배송 단위 절이 정본). **ship 1**(기반 — 사전 `messages/en.tsx` · 순수 판정 `lib/keys/view.ts`·`lib/routes.ts` ·
+additive 컬럼 둘 · 프리미티브 16)이 **프로덕션에 나갔고**(PR #12 → squash `46df51a`), **ship 2**(셸 — 사이드바·
+top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 **ship 3**(T7 번역 화면 + Publish) · **ship 4**(T8·T9) ·
+**6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 · 멤버 화면 · `/account` 판정).
+
+**아래 항목들의 판정·데이터층은 대부분 섰고 남은 것이 화면이다** — `defaultNamespace`·`resolveNamespace`·
+`filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
+`PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts`)이 그것이다.
+
+**UI 문자열은 영어 단일이고 출처가 `messages/en.tsx` 하나다** (6a T1). 화면은 `@/lib/i18n`의 `m`으로 읽고,
+`lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 상시 고정한다.
+**ko를 여는 시점은 아직 안 정했다** — §10에 있다.
 
 - [ ] 원문 + 전 로케일, 저장 상태, `needsReview`·`orphaned` 배지, 코드 permalink
   - ⚠️ **큰 프로젝트의 첫 착지가 느리다** (2026-09-07 실측): `ts-dict` 903키의 필터 없는 화면이 12.7초 ·
@@ -756,6 +776,10 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
       수준으로 열면서 **프로젝트를 하나도 안 만든 사용자**가 같은 잠금에 걸리는 경로가 새로 생겼다 —
       그 사람에게는 설정 화면이 아예 없다. `Account`는 사용자 소유라 게이트가 `requireUser`인 것이
       원래 맞았다
+- [x] ~~**MVP §10 미결 둘 중 하나**~~ ✅ **답했다** (2026-09-08, 6a T3): **push가 `updatedBy`를 비운다**
+      (`applyPush`의 `ON CONFLICT … "updatedBy" = NULL`). strict에서 덮인 값의 저자는 리포이므로 사람 이름이
+      남는 쪽이 거짓이었고, **미배포 집계가 그 조건 위에 선다** — `updatedAt`만 보면 code push 직후 903키
+      전부가 "안 보낸 편집"이 된다. 남은 하나(orphaned 로케일 화면)는 T7이 확정한다.
 - [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
       배지 + 편집 비활성으로 닫았다 — 여기서 확정), ~~덮인 셀의 `updatedBy`~~ ✅ **답했다** (2026-09-08,
       6a T3): **push가 비운다**(`applyPush`의 `ON CONFLICT … "updatedBy" = NULL`). strict에서 덮인 값의 저자는
@@ -824,6 +848,12 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 `lib/pull/ref-slug.ts`로 내려 끊었다. 상시 검사는 `components/__tests__/client-graph.test.ts`다.
 
 ## 10. 아직 안 정한 것
+
+- **UI를 ko로 여는 시점.** 6a가 UI 문자열을 영어 단일로 모았고(`messages/en.tsx`), 여는 길은 이미
+  좁혀 뒀다 — `messages/ko.tsx`를 `satisfies Messages`로 만들고 `lib/i18n/index.ts`의 `m`을 상수에서
+  `getMessages(locale)`(서버) + provider(클라이언트)로 바꾸면 된다. **소비자의 import 자리는 안 바뀐다.**
+  안 정한 것은 **언제 여는가**와 **locale을 무엇이 정하는가**(사용자 설정 / `Accept-Language` / 프로젝트
+  속성)다. 이 도구를 이 리포 자신에 붙이는 8단계가 그 답을 요구한다.
 
 - ~~**Workflows 권한을 요구할 것인가**~~ → ✅ **요구하지 않는다** (2026-09-07, 5단계). 연동 PR을 자동으로
   내지 않고 **복사용 YAML**을 낸다. 근거는 신뢰 비용과 권한 면적 둘이다 — 설치 화면의 "워크플로 파일을

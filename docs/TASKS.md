@@ -39,7 +39,9 @@
 `vercel env ls`로 삭제를 확인했다(성공 메시지가 근거가 아니다).
 ⚠️ **전환 계획의 "기존 프로젝트 넷의 토큰 재발급"은 전제가 틀렸다** — l10n 워크플로가 붙은 리포는
 `i18n-order-check` **하나**이고, 쓰는 곳이 없는 토큰은 발급하지 않았다(`pushTokenHash`가 `null`인 것이
-fail-closed의 올바른 기본값이다). **다음은 6단계(번역 UI 재작성 + Publish)다.**
+fail-closed의 올바른 기본값이다). **6단계(번역 UI 재작성 + Publish)는 진행 중이다** — 6a가 4번의 배송으로 갈렸고 **ship 1**(기반)이
+프로덕션(`46df51a`, PR #12), **ship 2**(셸)가 dev에 있다. 진행의 정본은 SAAS §8과
+`features/translation-ui/tasks.md`다.
 
 ### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
 
@@ -185,10 +187,9 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
     `scripts/__tests__/required-args.test.ts`(CLI·라우트·targets) · `app/api/__tests__/route-diagnostics.test.ts`
     (그 값이 없어도 두 라우트가 돈다). ⚠️ **그래서 그 이름은 테스트에 남아 있어야 한다** — 지우면 방어선이
     함께 사라진다.
-  - ⚠️ **Vercel 세 스코프의 env 항목 삭제만 남았다** (대상 리포 secret 교체는 2026-09-07에 끝났다 —
-    `order-check` CI green). 코드는 그 값을 읽지 않으므로 남아 있어도 무해하고, **롤백 창을 닫는 시점까지
-    의도적으로 보류**다(지우면 T3 이전 배포로 롤백할 때 그 배포가 그 값을 요구한다). 남겨 두는 비용은
-    "다음 사람이 설정해야 하는 값으로 읽는다" 하나다
+  - ✅ **Vercel 옛 env 항목 삭제도 2026-09-07에 끝났다** (§0 참조). ⚠️ **"세 스코프"가 아니었다** —
+    `ACTIVE_PROJECT_SLUG`·`PUSH_TOKEN` 둘 다 **Production+Preview 두 스코프만** 갖고 있었고 Development엔
+    없었다. `vercel env ls`의 목록으로 삭제를 확인했다(성공 메시지가 근거가 아니다)
 
 - [x] 🔒 **dev/prod DB 분리** ✅ **분리했다** (2026-09-04, `9f8afc1`) — Supabase 프로젝트 둘: `malmoi-dev`(ref `bfugwmjubgmmroevrave`, 로컬·Preview) / prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`, 프로덕션 배포). `prisma.config.ts`가 `PRISMA_TARGET`으로 갈라 `db:migrate`는 dev를, `db:deploy`는 `DIRECT_URL_PROD`로 prod를 겨눈다
   - **새 실패 모드가 생겼다**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 분리 전에는 `migrate dev`가 이미 프로덕션을 바꿔놔서 잊어도 안 깨졌다 — 그래서 **그 확인은 `/merge` 1단계의 `pnpm db:status:prod`다** (`/push` 3단계의 `db:status`는 dev를 본다 — 게이트가 프로덕션 배포 직전에 서야 프로덕션이 코드보다 앞서는 창이 짧다)
@@ -202,7 +203,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   관측되면 그때 대응한다"의 그 관측이다: `ts-dict` 903키 프로젝트의 **필터 없는 번역 화면이 12.7초**
   (903행 · `<input>` 2,711개 · 네임스페이스 52개). **지금 가상화를 넣지 않는다** — 그 화면은 동결분이고
   SAAS §8 6단계가 재작성하므로, 인라인 편집 + 가상 스크롤의 스크롤 튐·포커스 유실을 동결된 화면에 얹으면
-  버려진다. 더 값싼 답은 **기본 착지를 첫 네임스페이스로 두는 것**이고 그 판정도 6단계다
+  버려진다. 더 값싼 답은 **기본 착지를 첫 네임스페이스로 두는 것**이고 판정은 났고(pending>0인 첫 ns) `defaultNamespace`가 6a T2로 프로덕션에 나갔다 — 남은 것은 T7의 화면 배선이다
 - [x] **`pnpm build`를 로컬 게이트에** (2026-08-31 해소 — CI가 아니라 `/push` 1단계)
   - 근거: `tsc`가 RSC 경계를 못 본다. CI에 넣으면 **배포 후에** 알게 되고, 로컬 게이트가 프로덕션 앞의 유일한 방어선이다. 콜드 5초 / 웜 2초
 

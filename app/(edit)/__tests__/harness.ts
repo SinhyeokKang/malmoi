@@ -217,7 +217,12 @@ export function createHarness(seed: Seed = {}) {
         if (args.select.userId === true) projected["userId"] = m.userId;
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);
-          projected["project"] = { slug: project?.slug ?? "", name: project?.name ?? project?.slug ?? "" };
+          projected["project"] = {
+            slug: project?.slug ?? "",
+            name: project?.name ?? project?.slug ?? "",
+            installationId: project?.installationId ?? null,
+            lastCommitSha: project?.lastCommitSha ?? null,
+          };
         }
         return projected as unknown as typeof m;
       });

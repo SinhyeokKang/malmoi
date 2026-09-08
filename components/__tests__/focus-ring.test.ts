@@ -43,9 +43,7 @@ const RAW_TAG_ALLOWED = [
   "components/pull-button.tsx",
   "components/reconnect-button.tsx",
   "components/translation-input.tsx",
-  "app/(edit)/layout.tsx",
   "app/invite/[token]/page.tsx",
-  "app/page.tsx",
 ];
 
 function tsxFiles(dir: string): string[] {

@@ -22,9 +22,37 @@ export const en = {
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
     appName: "Malmoi",
+    /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
+    nav: {
+      allProjects: "All projects",
+      newProject: "New project",
+      signOut: "Sign out",
+      collapse: "Collapse sidebar",
+      expand: "Expand sidebar",
+      openMenu: "Open menu",
+      closeMenu: "Close menu",
+      switchProject: "Switch project",
+      userMenu: "Account menu",
+    },
+  },
+
+  signIn: {
+    tagline: "Translate the projects you were invited to, and send your changes back.",
+    github: "Continue with GitHub",
+    google: "Continue with Google",
+    /** 장식 카드의 정적 문구 — 실제 데이터가 아니라 모형이다 (design §3.12). */
+    sample: { file: "locales/ko.json", branch: "l10n/sync", sent: "Sent for review" },
   },
 
   projects: {
+    title: "Your projects",
+    /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
+    role: { OWNER: "Owner", EDITOR: "Editor" },
+    empty: {
+      title: "No projects yet",
+      description: "Connect a repository to create one, or open an invite link you were sent.",
+    },
+    githubAccount: { title: "GitHub account", connected: "Connected." },
     /** `readinessLabel` — `ready`는 문구가 없다(가장 흔한 상태가 가장 조용하다). */
     readiness: {
       awaiting_first_sync: "Waiting for first import",

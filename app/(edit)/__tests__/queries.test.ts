@@ -72,7 +72,9 @@ describe("countUnpublished", () => {
 describe("loadMemberships", () => {
   it("내 멤버십만 낸다 — 남의 프로젝트가 사이드바에 뜨지 않는다", async () => {
     const { prisma } = createHarness(seed());
-    expect(await loadMemberships(prisma, "u1")).toEqual([{ slug: "acme", name: "Acme", role: "OWNER" }]);
+    expect(await loadMemberships(prisma, "u1")).toEqual([
+      { slug: "acme", name: "Acme", role: "OWNER", installationId: "1", lastCommitSha: "a".repeat(40) },
+    ]);
   });
 
   it("역할을 그대로 낸다 — 사이드바의 항목 노출이 이 값으로 갈린다", async () => {

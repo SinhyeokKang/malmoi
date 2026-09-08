@@ -1130,5 +1130,5 @@ livemarks)가 나왔다 — 지표를 넣고 배선을 안 하는 것이 이 리
 `lib/survey/one.ts`가 그 필드를 넘기고 있었으므로 **측정 경로의 입력이 프로덕션과 같아진 것이 이 변경의
 값이다**(전에는 갈려 있었다). 지표에 영향이 없어 회차를 더하지 않는다.
 `lib/adapters/__tests__/code-dict-paths.test.ts`가 부분집합·순서 보존·로케일 집합 동일을 단언하고, `detect-candidates`·
-`key-order-golden`이 그대로 green이다. `lib/adapters/**` 변경이지만 **재측정 트리거로 보지 않고 회차를 더하지 않는다** —
+`key-order-golden`·`write-contract`(`write`·`writeWithErrors`가 `WriteInput`을 **이름으로** 받는지 소스로 센다 — 메서드 파라미터 양변성 때문에 타입 검사가 못 보는 부류이고, 이 절이 서술하는 결함이 정확히 그것이다)이 그대로 green이다. `lib/adapters/**` 변경이지만 **재측정 트리거로 보지 않고 회차를 더하지 않는다** —
 같은 입력에 같은 후보를 내는 코드 이동이라 잴 것이 없다.
