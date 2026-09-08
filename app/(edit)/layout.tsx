@@ -45,12 +45,19 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="flex min-h-svh">
+    /**
+     * ⚠️ **`h-svh` + `overflow-hidden`이지 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라
+     * 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어나
+     * 하단 항목(Sign out·Collapse sidebar)이 화면 밖으로 나간다 — 24키 화면에서도 그랬다.
+     * 스크롤은 아래 콘텐츠 컬럼이 자기 안에서 든다.
+     */
+    <div className="flex h-svh overflow-hidden">
       <Sidebar memberships={memberships} signOut={signOutAction} />
       {/* `min-w-0`이 없으면 번역 표의 가로 스크롤이 이 컬럼을 밀어 사이드바까지 움직인다 */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar name={name} email={session.email} signOut={signOutAction} />
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        {/* 페이지가 여기서 스크롤한다 — top bar와 사이드바는 위에서 고정된 채 남는다 */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   );

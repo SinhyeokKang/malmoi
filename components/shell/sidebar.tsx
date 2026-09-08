@@ -85,7 +85,8 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
 
       <aside
         className={cn(
-          "bg-muted border-border flex shrink-0 flex-col border-r",
+          // 자기 안에서 스크롤한다 — 멤버십·항목이 늘어도 문서를 밀지 않는다 (malmoi#13).
+          "bg-muted border-border flex shrink-0 flex-col overflow-y-auto border-r",
           rail ? "xl:w-12" : "xl:w-60",
           "fixed inset-y-0 left-0 z-40 w-60 xl:static xl:z-auto",
           mobileOpen ? "flex" : "hidden xl:flex",
