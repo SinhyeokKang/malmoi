@@ -110,7 +110,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 - 네임스페이스 사이드바 → 키 리스트 → 인라인 편집
 - 키마다: description, **코드 참조 permalink**, `needsReview`·`orphaned` 배지. ⚠️ **둘이 스펙과 다르게 구현됐다**: `sourceText`는 이 화면에 실리지 않고 base 로케일 **열**이 그 역할을 하며(2026-09-04 audit #47), permalink는 스캔 당시 커밋이 아니라 `Project.lastCommitSha`의 **현재값**을 쓴다 — push마다 링크가 이동한다(`KeyRef`에 `commitSha` 컬럼이 없다)
-- 필터 3개: 미번역 / 검토필요 / orphaned — **동결로 미착수** (§8.3, SaaS 단계에서 새 화면에 만든다)
+- 필터 3개: 미번역 / 검토필요 / orphaned — **PoC에서는 동결로 미착수**했다 (§8.3). SaaS 6a ship 3(2026-09-08)이 그 화면을 재작성하며 둘(미번역·검토필요)을 만들었고 orphaned는 필터가 아니라 배지로 남았다 (SAAS §8 6단계)
 - blur 시 저장, `updatedBy`에 GitHub 핸들 기록 (2026-09-05부터 `User.id` — SAAS §5.6). **저장은 `needsReview`를 내린다** — 사람이 값을 손댔으면 "원문이 바뀌었으니 봐 달라"는 표시는 소용을 다한 것이다
 
 컨텍스트는 **코드 참조 자동 수집 + 네임스페이스 그룹핑** 두 개까지다. 스크린샷·번역자 노트는 비범위(§7).
@@ -260,7 +260,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
 | 상태 모델 | `needsReview` 플래그만 | 미번역/번역됨/검토필요 3상태가 공짜로 생기고 필터링이 가능해진다 |
 | 컨텍스트 | 코드 참조 자동 수집 + 네임스페이스 그룹핑 | 자동이라 유지보수가 0에 가깝다 |
-| UI | shadcn/ui (`new-york`) + Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 **slate** — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이고 값의 진실은 `app/globals.css`다 (DESIGN §2) |
+| UI | shadcn/ui (`new-york`) + Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 **slate** — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이었고(**2026-09-08 삭제** — 6a T5부터 프리미티브를 이 리포가 소유하고 CLI를 다시 돌리지 않는다) 값의 진실은 `app/globals.css`다 (DESIGN §2) |
 | 폰트 | Pretendard Variable **동적 서브셋, 자사 호스트** | 단일 파일은 2.0MB. 서브셋은 브라우저가 `unicode-range`로 필요한 구간만 받아 150~450KB. CDN은 렌더 방해 외부 요청이 생긴다 |
 | 내부 쓰기 | **Server Action** | 클라이언트 fetch 배선·중복 스키마·수동 revalidate가 사라진다. 외부 진입점만 Route Handler (⚠️ `/api/github/callback`이 2026-09-06에 **셋째**로 붙었다 — SAAS §5.4) |
 | 세션 | ~~**JWT** (DB 어댑터 없음)~~ → 2026-09-05 DB 세션 (SAAS §5.3) | PoC 근거: 사용자 테이블 4개가 필요 없어 스키마가 5테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 — SaaS가 그 대가를 되돌렸다 |
@@ -431,9 +431,11 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 2번을 먼저 한 이유: 결정적 export와 blob SHA가 틀리면 나머지가 전부 무의미해지는데, 이 둘만은 순수 함수로 완전히 검증할 수 있다.
 
-### 8.3 편집 UI는 동작 확인용으로 **동결**한다
+### 8.3 편집 UI는 동작 확인용으로 **동결했다** (2026-09-08에 풀렸다)
 
-`app/(edit)/keys`(현 `app/(edit)/projects/[slug]/translations`)는 **저장이 돌고 pull이 그 값을 실어 나가는 것까지만** 확인하는 용도다. 필터·손실 창 경고·"다음 push까지" 표시(구 5d)는 만들지 않는다.
+`app/(edit)/keys`(현 `app/(edit)/projects/[slug]/translations`)는 **저장이 돌고 pull이 그 값을 실어 나가는 것까지만** 확인하는 용도다. 필터·손실 창 경고·"다음 push까지" 표시(구 5d)는 만들지 않았다.
+
+✅ **그 동결은 SaaS 6a ship 3(2026-09-08)이 그 화면을 재작성하면서 풀렸고, 구 5d 셋이 거기서 만들어졌다** — 필터 둘(`?q=`·`?state=`) · 편집 손실 배너 · 셀의 "Not yet sent" 배지. 정본은 SAAS §8 6단계다.
 
 근거는 **버려질 작업이기 때문**이다 — SaaS 단계에서 UI를 새로 시작하므로(§8.4) 지금 다듬는 화면은 그때 갈린다. MVP가 답해야 하는 질문은 "번역 값이 코드 → DB → PR로 손실 없이 도는가"이고, 그건 화면의 완성도와 무관하다.
 
