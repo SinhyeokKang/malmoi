@@ -174,9 +174,11 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
  * "수정이 회귀를 만들었나"를 물을 수 없게 된다. `__tests__/classify.test.ts`가 옛 문구 스물둘과
  * 옛 분류기를 픽스처로 들고 이 표를 대조한다.
  *
- * ⚠️ **`other`로 가는 셋이 의도된 것이다**: `no-default-export`는 읽기 실패의 *유형*이 아니라
- * 포맷 불일치이고(옛 구현이 명시적으로 그렇게 보냈다), `parse-crashed`는 파서가 던진 것이라
- * `parse-failed`(구문 진단)와 다른 통이며, write·껍데기 층 코드는 `read1.errors`에 애초에 안 들어온다.
+ * ⚠️ **`other`로 가는 갈래가 두 부류이고 근거가 다르다.** read 층의 둘은 옛 구현이 명시적으로
+ * 그렇게 보낸 것이다 — `no-default-export`는 읽기 실패의 *유형*이 아니라 포맷 불일치이고,
+ * `parse-crashed`(파서가 던졌다)는 `parse-failed`(구문 진단)와 다른 통이었다. write·껍데기 층은
+ * 근거가 아예 다르다: **`read1.errors`에 도달할 수 없어** 옛 구현에서도 이 함수를 지난 적이 없다
+ * (옛 문구를 먹이면 `json-parse`가 나오는 것도 있다 — 그래서 골든 등식을 그쪽에 걸지 않는다).
  */
 const KIND_OF: Record<AdapterErrorCode, ReadErrorKind> = {
   "parse-failed": "json-parse",
@@ -192,7 +194,7 @@ const KIND_OF: Record<AdapterErrorCode, ReadErrorKind> = {
   "shorthand-property": "non-literal-value",
   "not-property-assignment": "non-literal-value",
   "duplicate-key": "key-collision",
-  // ── 아래는 write·적재 껍데기 층이라 여기까지 오지 않는다. 옛 구현에서도 `other`였다. ──
+  // ── 아래는 write·적재 껍데기 층이라 여기까지 오지 않는다 (테스트의 `NON_READ`). ──
   "key-shadowed": "other",
   "write-parse-failed": "other",
   "write-no-default-export": "other",

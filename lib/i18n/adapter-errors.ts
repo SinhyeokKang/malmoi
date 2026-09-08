@@ -1,5 +1,12 @@
-import type { AdapterError } from "@/lib/adapters/types";
-import { en } from "@/messages/en";
+import type { AdapterError, AdapterErrorCode } from "@/lib/adapters/types";
+import { m } from "@/lib/i18n";
+
+/**
+ * 갈래 누락을 **컴파일 타임에** 잡는다 — 사전이 잎이라 union을 그쪽에서 import할 수 없으므로
+ * 소비자가 `satisfies`를 건다 (translation-ui design §3.1.2). `ACCESS`·`INVITE`·`CONNECT`·`ONBOARD`와
+ * 같은 형이고, 이것이 옛 `never` 검사가 하던 일이다.
+ */
+const ADAPTER = m.adapterErrors satisfies Record<AdapterErrorCode | "fallback", string>;
 
 /**
  * **어댑터 오류 하나를 사람이 읽는 한 줄로.** 문장은 사전이 내고 어댑터는 코드만 준다
@@ -14,8 +21,8 @@ import { en } from "@/messages/en";
  * 찾아져 문자열 자리에 들어간다 (POSTMORTEM 2026-09-08 🔴1 — `pick`이 존재하는 이유).
  */
 export function adapterErrorMessage(error: AdapterError): string {
-  const sentence = Object.hasOwn(en.adapterErrors, error.code) ? en.adapterErrors[error.code] : undefined;
-  const base = typeof sentence === "string" ? sentence : en.adapterErrors.fallback;
+  const sentence = Object.hasOwn(ADAPTER, error.code) ? ADAPTER[error.code] : undefined;
+  const base = typeof sentence === "string" ? sentence : ADAPTER.fallback;
   // `key`는 **행동 가능한 정보**라 앞에 온다 — 903키 파일에서 "어느 키인가"가 유일한 단서다.
   // `detail`은 파서 원문이라 뒤에 접어 붙인다(사전 밖 — 번역 대상이 아니다).
   const withKey = error.key === undefined ? base : `${error.key} — ${base}`;
