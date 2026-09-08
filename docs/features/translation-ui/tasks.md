@@ -8,6 +8,30 @@
 > 사이클이다 — 어댑터 오류 코드화+재측정 · 설정의 base 필드 · 멤버 화면 · `/account`. **6a는 `lib/adapters/**`를 한 줄도
 > 건드리지 않는다** — 재측정 없이 나간다.
 
+## 배송 단위 — 6a를 **4번의 `/push`→`/merge`** 로 쪼갠다 (2026-09-08)
+
+**6a 전체를 한 번에 프로덕션에 보내지 않는다.** T1~T9는 커밋 15개 · 화면 8개 재작성이고, 그걸 한 PR로 묶으면
+(a) `/merge`의 PR CI가 red일 때 무엇이 깼는지 특정하는 비용이 커지고 (b) 되돌리는 유일한 수단이 "다음 배포"라
+(브랜치 정책) 롤백 면적이 화면 전부가 된다. **아래 넷은 각자 그 자체로 동작하는 상태다** — 어느 지점에서 멈춰도
+프로덕션이 성립한다.
+
+| Ship | 태스크 | 무엇이 나가나 | 사용자 눈에 보이는 변화 | 게이트 (`/push` 로컬 게이트에 더해) |
+|---|---|---|---|---|
+| **1. 기반** | T1 · T2 · T3 · T5 | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
+| **2. 셸** | T4 · T6 | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
+| **3. 번역 화면** | T7 | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
+| **4. 나머지 + 정리** | T8 · T9 | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
+
+- **순서는 고정이다** — T5(프리미티브)가 T6~T8보다 앞서야 하고 T1(사전)이 T4보다 앞서야 한다. Ship 1이 그 둘을
+  한꺼번에 앞으로 뺀 것이고, 그래서 **가장 크지만 가장 안 보이는** 배송이다.
+- **문서는 각 ship이 자기 몫만 든다** — `/push` 4단계가 그 diff에 걸린 문서를 트라이아지한다. 전수 대조(T9의
+  `/doc-check`)는 ship 4다. ⚠️ **DESIGN §3.1·§6.4·§7의 목표 상태 서술은 ship 1(T5)에서 실물과 맞는다** — 그 전까지
+  `/doc-check` DESIGN 불일치는 의도된 상태다(아래 T0 ⚠️).
+- **`/bugshot-qa`는 ship 4에 한 번**이다. ship 2·3은 위 표의 "실물" 줄만 손으로 확인한다 — 화면이 절반만 새것인
+  상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
+- **6b는 6a 넷이 다 나간 뒤 별도 사이클 셋**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정) · 6b-2(base 변경
+  — design을 다시 쓴다) · 6b-3(멤버 화면). 6b-4(`/account`)는 **만들지 않는 쪽이 추천**이라 배송이 아니라 판정이다.
+
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
 - [x] base branch·기준 로케일 변경 필드 — **둘 다 넣는다** → **6b**
@@ -103,6 +127,8 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 - [ ] shadcn 생성물 4개 삭제 → **16개**: `Button`(cva `primary·default·danger·ghost·link` × `md`(`h-8`)·`sm`(`h-7`), `loading` 라벨 교체) · `Input` ·
       `Textarea` · `Select`(native) · `Radio` · `FormGroup` · `Badge` · `Alert` · `Card` · `Table` · `Breadcrumb` · `Avatar` · `EmptyState` · `DropdownMenu` ·
       `Dialog` · `Tooltip` — 치수·색은 DESIGN §6.4 **그대로**(정본). `Checkbox`·`Skeleton`은 없다(사용처 0)
+      ⚠️ **아이콘을 자기 안에 드는 프리미티브가 셋이다** — `Alert`(variant→`Info`·`CircleCheck`·`TriangleAlert`·`CircleX`, DESIGN §6.2 표) · `EmptyState`(24, `text-muted-foreground`) ·
+      `Dialog`(닫기 `X`). 나머지는 호출부가 `children`으로 넣는다. 세트는 `lucide-react` 하나이고 크기는 16·12·24 셋뿐이다 (DESIGN §6.8)
       검증: `pnpm typecheck` · 각 파일의 네 태그가 포커스 링 **셋**을 든다(`ring-offset-1`은 사이드바 항목·칩 옆 버튼에만 — DESIGN §7) · `dark:` 0곳 ·
       **DESIGN §3.1·§6.4·§7의 서술이 이 커밋부터 실물과 일치한다**(`/doc-check`)
 - [ ] `app/globals.css` — **토큰 값 변경 없음**
@@ -122,7 +148,11 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
       검증: `entry-points.test.ts` "차단 규칙" green · 소스에 `redirect(` 둘
 - [ ] `components/shell/sidebar.tsx`(client — `usePathname`·프로젝트 컨텍스트·역할별 항목·collapse `localStorage`) · `top-bar.tsx` · `user-menu.tsx`.
       6a 섹션은 **Translations · Settings(OWNER)** 둘 — Members·Account는 6b
-      검증: `client-graph.test.ts` green · EDITOR 세션으로 Settings가 렌더되지 않는다(실물) · 접힌 상태에서 항목에 `aria-label`(소스)
+      ⚠️ **사이드바·top bar는 전 항목이 아이콘을 든다** (DESIGN §6.8 표 — 섹션 `Languages`·`Users`·`Settings`, 하단 전역 `LayoutGrid`·`Plus`·`CircleUser`·`LogOut`·`PanelLeft`,
+      프로젝트 컨텍스트 `ChevronsUpDown`, 햄버거 `Menu`, breadcrumb 구분 `ChevronRight`). 접힌 레일에서 **아이콘이 유일한 라벨**이라 하나라도 비면 그 상태가 성립하지 않는다.
+      ⚠️ `lucide-react` 1.37.0에 `Github`이 없다 — 브랜드 아이콘은 1.x에서 빠졌다
+      검증: `client-graph.test.ts` green(`lucide-react`가 T1의 허용 목록에 있다) · EDITOR 세션으로 Settings가 렌더되지 않는다(실물) · 접힌 상태에서 항목에 `aria-label`(소스) ·
+      사이드바 항목 수 == 아이콘 수(소스)
 - [ ] `app/page.tsx` — 2열 로그인(design §3.12 — 장식은 `--border` dot-grid + `from-primary/5 to-muted`, **raw 색 0**), `?error=` Alert, 장애 문구
       검증: `focus-ring` 목록에서 제거 · `no-korean-ui` 목록에서 제거 · 소스에 `violet|purple` 0
 - [ ] `app/(edit)/projects/page.tsx` — 행 구조 + EmptyState + `?e=` **global** Alert(두 union). GitHub 계정 섹션은 **그대로 둔다**(6b가 `/account`를 판정한다)
@@ -141,7 +171,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
       `body`이거나 같은 셀일 때만** `focus()`, 아니면 상태줄 [Retry] · "Saved" 1.5초 뒤 소거 · `unauthorized` → "Your session ended — sign in again. Your text is kept." +
       로그인 링크 · `unavailable` → "Temporary problem — try again" · 문구 `m`
       검증: 소스에 `activeElement`·`Retry` · 실물에서 저장 실패 유발(오프라인) 후 다른 셀 타이핑 중이면 포커스가 안 뺏긴다 · 표의 live region이 결과를 읽는다(VoiceOver)
-- [ ] `components/publish-button.tsx`(옛 `pull-button` 대체) — `Send changes ({n})` · 결과 `Alert` 다섯 문구/네 tone · warning 본문 `<details>`에 못 쓴 파일 목록 ·
+- [ ] `components/publish-button.tsx`(옛 `pull-button` 대체) — `Send changes ({n})` + `Send` 아이콘 16 (툴바 검색 `Search`·상태 `ListFilter`·PR 링크 `ExternalLink` 12 — DESIGN §6.8) · 결과 `Alert` 다섯 문구/네 tone · warning 본문 `<details>`에 못 쓴 파일 목록 ·
       성공 후 `router.refresh()` · Alert는 readiness 분기 밖 · **결과 Alert 위·배너 아래** 고정
       검증: `pullMessage` 다섯 갈래→Alert variant 표를 소스에서 센다(단위) · 실물에서 연속 두 번 눌러 둘째가 "Nothing to send"
 - [ ] 편집 손실 배너 — `Alert warning` "{n} changes not yet sent. They can be lost if your developers push code first — send them when you're done." ·
