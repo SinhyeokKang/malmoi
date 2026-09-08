@@ -117,8 +117,10 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
       검증: `lib/__tests__/failure.test.ts`가 `safe` 메시지 예시를 영어로 갱신 · `render.test.ts` 9줄·`run.test.ts` 5줄의 한글 단언 갱신 · 스캔 목록에서 이 파일들 제거
 - [ ] `lib/onboarding/workflow.ts` YAML 주석 영어화 + `docs/ACTIONS.md` 같은 커밋
       검증: `workflow*.test.ts`(ACTIONS.md 줄 대조) green
-- [ ] `app/layout.tsx` — `lang="en"`, `metadata` 영어
-      검증: 소스에 `lang="en"` · `no-korean-ui` 목록에서 제거
+- [ ] `app/layout.tsx` — `metadata` 영어. ⚠️ **`lang`은 T8로 미룬다** (2026-09-08 code-review 🟡4): 화면 문구가
+      21개 파일에서 아직 한국어인데 `lang="en"`을 선언하면 스크린리더가 한국어 본문을 영어 음성으로 읽는다.
+      ship 2·3이 프로덕션에 나가는 동안 그 상태가 유지된다
+      검증: `no-korean-ui` 목록에서 제거
 
 —— `refactor(i18n): message modules read the dictionary; diagnostics in English` · `docs(ACTIONS): workflow comments in English`
 
@@ -193,6 +195,11 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
       검증: `client-graph.test.ts` green(어댑터 라벨은 여전히 서버가 내려준다) · 실물 ②~⑥ 한 바퀴(폐기용 리포) · 두 목록에서 제거
 - [ ] `app/invite/[token]/page.tsx` — 셸 밖 카드, 분기별 Alert, provider 버튼은 `Button default`
       검증: 두 목록에서 제거 · `entry-points.test.ts` 예외 목록 그대로 green
+- [ ] `app/layout.tsx` — `lang="en"` (T4에서 미룬 것 — 이 커밋에서 화면 문구가 전부 영어가 된다)
+      검증: 소스에 `lang="en"`
+- [ ] `lib/routes.ts`가 내는 `?q=`·`?state=`의 **수신자가 생긴다** — `entry-points.test.ts`의
+      `PENDING_QUERY_KEYS`에서 둘을 뺀다 (안 빼면 "낡은 항목" 단언이 red다, 2026-09-08 code-review 🟡3)
+      검증: 그 목록이 비고 `entry-points` green
 - [ ] 이 시점에 **두 허용 목록이 빈다** (`no-korean-ui`는 `lib/pull/run.ts`·`lib/pull/render.ts`·`lib/adapters/**` 제외 — 6b)
       검증: `pnpm test` 전체 green · `pnpm build` · `find .next/static/chunks -name '*.js' -size +1M` 출력이 비어 있다
 
