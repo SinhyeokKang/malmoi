@@ -34,6 +34,10 @@ export const en = {
       switchProject: "Switch project",
       userMenu: "Account menu",
     },
+    /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
+    copy: "Copy",
+    copied: "Copied",
+    copyFailed: "Couldn't copy — select it yourself",
   },
 
   signIn: {
@@ -82,11 +86,91 @@ export const en = {
     /** 카운터 — ICU가 아니라 삼항 하나다 (MVP §7). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
 
+    title: "Translations",
+    /** ⚠️ URL 값은 `"*"`다 — 이건 그 행의 라벨이다 (`ALL_NAMESPACES`). */
+    allKeys: "All keys",
+    columnKey: "Key",
+    /** 기준 로케일 열의 꼬리. muted 표면 위라 색은 호출부가 정한다 (DESIGN §2.2). */
+    baseColumn: "(base)",
+
+    /** 배지 3종 (DESIGN §6.2) — **"Translated"가 없다**: 가장 흔한 상태가 가장 조용해야 한다. */
+    orphaned: "Orphaned",
+    untranslated: "Untranslated",
+    needsReview: "Needs review",
+    /** 셀 메타 — `updatedBy`가 사람일 때만 붙는다. push가 덮은 셀에는 표기가 없다 (design §3.6). */
+    editedBy: (name: string): string => `Edited by ${name}`,
+    notSent: "Not yet sent",
+
+    /** orphaned 축(키·로케일 어느 쪽이든)이면 셀이 disabled다 (DESIGN §6.1). */
+    notEditable: "Not editable — removed from the code",
+    placeholder: "Add a translation",
+
+    filters: {
+      search: "Search keys and values",
+      state: "Filter by state",
+      stateAny: "Any state",
+      /** 집계와 상태 필터가 보는 로케일 — 표가 로케일을 열로 펼치므로 하나를 골라야 한다. */
+      focus: "Language to track",
+    },
+
+    /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */
+    lastSent: (when: string): string => `Last sent ${when}`,
+
+    banner: {
+      /**
+       * 편집 손실 창 (design §3.11). **주어가 편집자의 행동이다** — 처음 초안은 "code push"가 주어였고,
+       * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다.
+       */
+      unsent: (n: number): string =>
+        `${n === 1 ? "1 change" : `${n} changes`} not yet sent. ` +
+        "They can be lost if your developers push code first — send them when you're done.",
+    },
+
+    empty: {
+      /** 첫 적재 전. OWNER는 설정으로 보내므로 이 문구를 읽는 사람은 번역자다 (design §3.7). */
+      notReady: "Nothing to translate yet",
+      noLocales: {
+        title: "No languages yet",
+        description: "The first import hasn't found any locale files. Ask the project owner.",
+      },
+      noKeys: {
+        title: "No keys yet",
+        description: "Once your developers push code, the strings they marked show up here.",
+      },
+      noMatch: {
+        title: "No keys match",
+        description: "Clear the search or the state filter to see the rest.",
+      },
+    },
+
+    /** ⚠️ 셀 안 상태줄은 **시각 전용**이다 — 알림은 표 하나의 live region이 든다 (design §3.8). */
+    save: {
+      saving: "Saving…",
+      saved: "Saved",
+      unsaved: "Not saved yet — leave the cell to save",
+      failed: (reason: string): string => `Couldn't save: ${reason}`,
+      retry: "Retry",
+      /** 입력값을 지우지 않는다 — 다시 로그인하면 그대로 저장할 수 있어야 한다. */
+      sessionEnded: "Your session ended — sign in again. Your text is kept.",
+      signIn: "Sign in",
+      unavailable: "Temporary problem — try again",
+    },
+
+    /** 표 하나의 `aria-live` 영역이 읽는 문구. **"Saving…"은 알리지 않는다** — 결과만이다. */
+    announce: {
+      saved: (key: string, locale: string): string => `Saved ${key} · ${locale}`,
+      failed: (key: string, locale: string, reason: string): string =>
+        `Couldn't save ${key} · ${locale}: ${reason}`,
+    },
+
     /**
      * Publish 결과 다섯 (design §3.4). **git 어휘를 쓰지 않는다** — 읽는 사람은 비개발자 동료다.
      * 링크 라벨만 예외가 될 수 있는데(DESIGN §10), 이 자리는 "보낸 것"을 보여주는 것이라 그쪽도 편집자 어휘다.
      */
     publish: {
+      /** 미배포 건수를 라벨이 든다 — 0이면 숫자를 붙이지 않는다(괄호 안 0은 정보가 아니다). */
+      button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n})`),
+      sending: "Sending…",
       nothing: "Nothing to send — everything is up to date.",
       created: "Sent for review. Your developers need to accept it before their next code push.",
       updated: "Updated what you sent earlier with your latest changes.",
@@ -101,8 +185,27 @@ export const en = {
           ? `Sent, but ${values} couldn't be written — tell your developers.`
           : `Nothing new was sent, and ${values} couldn't be written — tell your developers.`;
       },
+      /** ⚠️ **건수만으로는 편집자가 행동할 수 없다** — `<details>`가 어느 파일인지 편다. */
+      dropped: "Which values couldn't be written",
       failed: (reason: string): string => `Couldn't send: ${reason}`,
       viewLink: "View what was sent",
+    },
+
+    /**
+     * 초대 — **6a에서는 번역 화면 툴바의 `Dialog`다.** 멤버 관리 화면은 6b이고, 이 폼이 없으면
+     * `createInvitation`에 호출부가 없다.
+     */
+    invite: {
+      open: "Invite",
+      title: "Invite a translator",
+      email: "Email",
+      help: "They'll be able to edit translations in this project.",
+      create: "Create link",
+      creating: "Creating…",
+      /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (SAAS §5.6). */
+      linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
+      alreadyMember: "That email is already a member of this project.",
+      failed: (reason: string): string => `Couldn't create the link: ${reason}`,
     },
   },
 

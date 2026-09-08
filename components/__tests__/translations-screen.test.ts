@@ -13,7 +13,16 @@ import { describe, expect, it } from "vitest";
  * 유형이 "만든 것이 실제로 호출되는가"다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const read = (path: string): string => readFileSync(join(ROOT, path), "utf8");
+
+/**
+ * ⚠️ **주석을 벗기고 센다** — `focus-ring`·`no-korean-ui`와 같은 벗기기다. 이 화면의 docstring은
+ * 자기가 **피하는 것**을 이름으로 적으므로(`role="status"`를 셀에 두지 않는다), 안 벗기면 그 설명이
+ * 위반으로 잡혀 영원히 red다.
+ */
+const read = (path: string): string =>
+  readFileSync(join(ROOT, path), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
 const PAGE = "app/(edit)/projects/[slug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";

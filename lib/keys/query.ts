@@ -25,8 +25,18 @@ export type ProjectContext = {
   name: string;
   repoOwner: string;
   repoName: string;
+  /**
+   * readiness 판정의 재료 둘 (`planProjectReadiness`). **번역 화면이 따로 조회하지 않는다** —
+   * 같은 행을 두 번 읽던 것을 한 번으로 합쳤다 (T7).
+   */
+  installationId: string | null;
   lastCommitSha: string | null;
   baseLocale: string | null;
+  /** 미배포 판정의 기준선. 벽시계가 아니라 캡처된 `max(updatedAt)`이다 (design §3.5). */
+  lastPulledAt: Date | null;
+  /** 마지막으로 **보낸** 시각과 그때의 PR. `skipped`는 이 둘을 건드리지 않는다 (design §3.4). */
+  lastPublishedAt: Date | null;
+  lastPrUrl: string | null;
   locales: LocaleRow[];
 };
 
@@ -41,7 +51,8 @@ export async function loadProject(prisma: PrismaClient, projectId: string): Prom
     where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true,
-      lastCommitSha: true, baseLocale: true,
+      installationId: true, lastCommitSha: true, baseLocale: true,
+      lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
       locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
     },
   });
