@@ -700,3 +700,20 @@ _이 아래에 새 항목을 추가한다._
   - **자유 문자열 오류를 코드로 바꿀 때 기존 단언을 전수로 다시 읽는다.** 컴파일러는 `message` 필드가 사라진 것만 잡고 **단언이 무엇을 주장했는지는 안 본다** — 이번엔 16곳 중 1곳이 갈래를 잘못 짚고 있었다.
   - **골든·기준선 테스트는 관측 가능한 자리에만 건다.** 옛 구현과의 등식을 옮길 때 "그 입력이 옛 구현에 실제로 도달했는가"를 먼저 묻는다. 도달 불가한 갈래는 등식이 아니라 **별도 단언**(여기서는 `NON_READ` 아홉이 `other`임)으로 둔다.
   - **도달 불가 갈래는 지우지 않고 표시한다** (CLAUDE.md — 내 변경이 만든 고아만 제거). `write-slot-missing`의 `errors.push`는 `insert`의 false 분기와 짝이고, 그 분기가 "구조 변경은 포기한다"는 계약의 서술이다. 지우면 계약이 코드에서 사라진다.
+
+### 2026-09-08 — 접어 둔 진단이 개행을 잃었고, 고친 뒤에도 절반만 고쳐진 채 새 검사가 green이었다
+
+- **영역**: `components/onboarding/first-ingest-retry.tsx`·`new-project-flow.tsx`, `components/publish-button.tsx`, `app/globals.css`(`text-mono` 유틸), `components/__tests__/multiline-detail.test.ts`
+- **증상**: 어댑터 오류의 `detail`(파서 원문)이 **여러 줄일 수 있는데** 렌더 자리 셋 모두 `white-space` 규칙이 없어 개행이 공백으로 접혔다. YAML 파서가 `Missing closing "quote at line 4, column 1:\n\n  retries: 3\n\n^\n`처럼 **캐럿 다이어그램**을 넣으므로, 읽으라고 `<details>`에 접어 둔 진단이 `… column 1: retries: 3 ^`가 되어 캐럿이 가리킬 열을 잃는다. **값이 사라지는 것은 아니고 읽을 수 없게 되는 것**이다.
+- **근본 원인** — 둘이다.
+  1. **`text-mono` 유틸이 "글꼴·크기·행간 셋"만 싣는다** (`app/globals.css`). 그 이름이 "코드 표면"을 뜻하는데 코드 표면의 나머지 절반인 개행 보존은 안 들어 있고, 소비자 12곳이 `truncate`와 함께 쓰므로 유틸에 넣을 수도 없다. **여러 줄일 수 있는 값을 그 클래스에 넣는 순간 결정을 소비자가 해야 하는데, 클래스 이름이 그것을 안 알려준다.**
+  2. **회귀 검사의 키가 도달할 수 없는 경로가 있었다.** 스캔을 `adapterErrorMessage(`로 잡았는데 `lib/pull/run.ts:138`이 **서버에서** `` `${e.path}: ${adapterErrorMessage(e)}` ``로 문자열을 완성해 `PullResult.warnings`에 싣고, Publish의 `<details>`는 그 완성품만 받는다 — 그 컴포넌트에 그 심볼이 없다. 온보딩 둘을 고치자 검사가 green이 됐고 **번역자가 실제로 보는 쪽은 안 고쳐진 상태**였다. 같은 날 항목(단언이 보간된 키만 봤다)과 축이 다르다: 그쪽은 단언의 **해상도**, 이쪽은 검사 **키의 도달 범위**다.
+- **그물**:
+  - 잡은 것 ①: **실물 `pnpm ingest`.** 픽스처 리포 셋(json·yaml·code)을 만들어 오류 갈래 다섯을 실제로 통과시키다가 YAML 것만 여러 줄인 것을 봤다. `pnpm test` 1,977건은 전부 green이었다.
+  - 잡은 것 ②: **`/code-review`.** "고쳤다"의 근거가 스캔 green인데 그 스캔이 Publish를 못 본다는 것을 diff에서 짚었다.
+  - 놓친 것: 단위 테스트 전수, typecheck, `next build`, ship 3·4의 `/bugshot-qa` 한 바퀴. QA는 **정상 상태의 화면을 훑으므로** 이 자리에 원리적으로 도달하지 않는다 — `detail`이 여러 줄인 갈래는 다섯 어댑터 중 `yaml-catalog` 하나이고 그마저 **파싱이 실패한 리포**가 있어야 나타난다.
+  - `/tdd` 분류표의 "React 컴포넌트 렌더는 스킵 OK"가 이 부류를 프로덕션까지 보냈다. 규칙 자체는 옳다(렌더 테스트 비용 > 가치) — **빠져 있던 것은 세 번째 답**이고, 그것이 이 리포에 이미 있다: `focus-ring.test.ts`("키보드 사용자에게만 보이는 결함이라 눈으로 두 번 놓쳤다")·`translations-screen.test.ts`·`tooltip-provider.test.ts`가 전부 **소스 스캔**이다.
+- **재발 방지**:
+  - **`text-mono`에 여러 줄일 수 있는 값을 넣을 때는 `whitespace-pre-wrap`을 같은 태그에 적는다.** grep: `grep -rn "text-mono" $(find components app -name "*.tsx" -not -path "*__tests__*")` → 각 자리가 **한 줄 값인지** 확인한다. 지금 여러 줄인 것은 어댑터 오류 셋과 워크플로 YAML 하나이고, **뒤쪽은 `<pre>`라 처음부터 옳았다**(`components/onboarding/workflow-block.tsx` — 그 주석이 "여러 줄이라 값 칩이 아니다"라고 이미 적고 있다). 그 외 0건.
+  - **검사 키가 "그 값이 만들어지는 자리"에 있으면 "그 값이 렌더되는 자리"를 못 본다.** 서버가 문자열을 완성해 클라이언트로 보내는 경로가 이 리포에 여럿이다(`PullResult.warnings`·`FirstIngestResultView.errors`·`?e=`). 그런 값의 렌더 자리는 **심볼 스캔으로 안 잡히므로 이름으로 고정한다** — `multiline-detail.test.ts`의 `COMPOSED_SITES`가 그 목록이고, `entry-points.test.ts`가 인가 예외를 이름으로 고정하고 **그 이름이 실재하는지도** 보는 것과 같은 형이다. ⚠️ **목록 밖의 새 소비자는 그 검사가 못 잡는다** — 그 좁음이 목록의 대가이고 파일 주석에 적혀 있다.
+  - **"한 갈래에서만 보이는 렌더 결함"은 `/tdd` 스킵 대상이 아니다.** 렌더 테스트를 세우는 대신 소스 스캔을 박는다. 판정 질문: **"이 결함을 보려면 특별한 데이터·상태가 필요한가?"** — 그렇다면 QA 한 바퀴와 눈이 원리적으로 못 보므로 스캔이 유일한 상시 방어선이다.
