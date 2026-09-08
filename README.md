@@ -4,7 +4,7 @@
 
 **코어 설계 원칙: 번역 값은 DB가 진실, 소스 키는 코드가 진실.** 각 축에 소유자가 하나뿐이므로 머지 로직이 아예 존재하지 않는다 — export가 DB에서 결정적으로 재생성되므로, git 브랜치가 갈라져도 base에서 다시 따서 파일을 새로 뽑으면 끝난다.
 
-Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는 2026-09-05에 닫혔고 지금은 SaaS화 단계다** — 인증·인가(2단계, 2026-09-06 프로덕션 반영), GitHub 설치 연결(4단계)과 탐지 온보딩(5단계)이 **2026-09-07에 프로덕션까지** 갔다(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → `f595cc3`). **다음은 번역 UI 재작성 + Publish(6단계)다.** 정본은 [docs/SAAS.md](./docs/SAAS.md).
+Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는 2026-09-05에 닫혔고 지금은 SaaS화 단계다** — 인증·인가(2단계, 2026-09-06 프로덕션 반영), GitHub 설치 연결(4단계)과 탐지 온보딩(5단계)이 **2026-09-07에 프로덕션까지** 갔다(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → `f595cc3`). ****6단계(번역 UI 재작성 + Publish)에 들어갔다** — 6a를 4번의 배송으로 쪼갰고 ship 1(기반 — 사전·판정 함수·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → `46df51a`로 프로덕션, ship 2(셸)가 dev에 있다.** 정본은 [docs/SAAS.md](./docs/SAAS.md).
 
 ## 문서
 
@@ -23,7 +23,7 @@ Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · GitHub App · Tailwind 4 + shadcn/ui (**라이트 단일, `dark:` 금지**) · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 16개, Radix 3종) + 앱 셸 + `messages/en.tsx` 단일 사전 (**라이트 단일, `dark:` 금지**) · Vercel
 
 ## 개발
 
