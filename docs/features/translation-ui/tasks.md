@@ -19,7 +19,7 @@
 |---|---|---|---|---|
 | **1. 기반** ✅ | T1 · T2 · T3 · T4 · T5 (2026-09-08 — T4가 앞당겨졌다) | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
 | **2. 셸** ✅ | T6 (T4는 ship 1이 가져갔다) | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
-| **3. 번역 화면** | T7 | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
+| **3. 번역 화면** ✅ | T7 (2026-09-08 — dev) | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
 | **4. 나머지 + 정리** | T8 · T9 | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
 
 - **순서는 고정이다** — T5(프리미티브)가 T6~T8보다 앞서야 하고 T1(사전)이 T4보다 앞서야 한다. Ship 1이 그 둘을
@@ -170,25 +170,40 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T7. 번역 화면 + Publish
 
-- [ ] `app/(edit)/projects/[slug]/translations/page.tsx` — `resolveNamespace` 기본 착지(pending>0 첫 ns) · 네임스페이스 패널("All keys" 행에도 `pending/total`) ·
+- [x] `app/(edit)/projects/[slug]/translations/page.tsx` — `resolveNamespace` 기본 착지(pending>0 첫 ns) · 네임스페이스 패널("All keys" 행에도 `pending/total`) ·
       breadcrumb · 툴바(필터 `?q=`·`?state=`·Last sent 링크) · 표(`Table` + `Textarea`) · 배지 · orphaned 열 배지 · `countUnpublished` · **표 하나에 시각 숨김
       `aria-live="polite"` 영역 하나** · 빈 상태 넷(준비 전·로케일 없음·필터 0·**키 없음**)
       검증: 실물 903키 프로젝트 첫 착지 **< 2초**(같은 프로젝트·같은 머신·DevTools Performance의 LCP — 기준선 12.7초를 같은 방법으로 다시 잰다) · `?ns=*`로 전체 ·
       `lib/keys/__tests__/actor.test.ts:87-97` 소스 스캔 green(`loadActors(`·`CellMeta` 배선 — 이름이 바뀌면 스캔 갱신) · 두 목록에서 제거
-- [ ] `components/translation-input.tsx` — `Textarea`(Enter=저장·Shift+Enter=개행·Esc=되돌리기) · 셀 안 상태줄은 **시각 전용** · 실패 시 **`document.activeElement`가
+- [x] `components/translation-input.tsx` — `Textarea`(Enter=저장·Shift+Enter=개행·Esc=되돌리기) · 셀 안 상태줄은 **시각 전용** · 실패 시 **`document.activeElement`가
       `body`이거나 같은 셀일 때만** `focus()`, 아니면 상태줄 [Retry] · "Saved" 1.5초 뒤 소거 · `unauthorized` → "Your session ended — sign in again. Your text is kept." +
       로그인 링크 · `unavailable` → "Temporary problem — try again" · 문구 `m`
       검증: 소스에 `activeElement`·`Retry` · 실물에서 저장 실패 유발(오프라인) 후 다른 셀 타이핑 중이면 포커스가 안 뺏긴다 · 표의 live region이 결과를 읽는다(VoiceOver)
-- [ ] `components/publish-button.tsx`(옛 `pull-button` 대체) — `Send changes ({n})` + `Send` 아이콘 16 (툴바 검색 `Search`·상태 `ListFilter`·PR 링크 `ExternalLink` 12 — DESIGN §6.8) · 결과 `Alert` 다섯 문구/네 tone · warning 본문 `<details>`에 못 쓴 파일 목록 ·
+- [x] `components/publish-button.tsx`(옛 `pull-button` 대체) — `Send changes ({n})` + `Send` 아이콘 16 (툴바 검색 `Search`·상태 `ListFilter`·PR 링크 `ExternalLink` 12 — DESIGN §6.8) · 결과 `Alert` 다섯 문구/네 tone · warning 본문 `<details>`에 못 쓴 파일 목록 ·
       성공 후 `router.refresh()` · Alert는 readiness 분기 밖 · **결과 Alert 위·배너 아래** 고정
       검증: `pullMessage` 다섯 갈래→Alert variant 표를 소스에서 센다(단위) · 실물에서 연속 두 번 눌러 둘째가 "Nothing to send"
-- [ ] 편집 손실 배너 — `Alert warning` "{n} changes not yet sent. They can be lost if your developers push code first — send them when you're done." ·
+- [x] 편집 손실 배너 — `Alert warning` "{n} changes not yet sent. They can be lost if your developers push code first — send them when you're done." ·
       복수 `one/other` · 닫기 키 = `lastPulledAt`(`sessionStorage` — 다음 Publish 뒤 다시 보인다) · SSR에서 닫힘 상태를 모르므로 **클라이언트 마운트 뒤에만 렌더**
       검증: 미배포 0이면 DOM에 없다(실물) · 닫은 뒤 Publish하고 편집하면 다시 보인다(실물)
-- [ ] `components/invite-form.tsx`는 **6a에서 그대로 둔다**(멤버 화면이 6b) — 번역 화면 헤더에서 툴바 오른쪽 `ghost` 버튼 → `Dialog`로 옮긴다
+- [x] `components/invite-form.tsx`는 **6a에서 그대로 둔다**(멤버 화면이 6b) — 번역 화면 헤더에서 툴바 오른쪽 `ghost` 버튼 → `Dialog`로 옮긴다
       검증: OWNER만 렌더(소스) · 두 목록에서 제거
 
 —— `feat(translations): namespace landing, filters, publish states, edit-loss banner`
+
+> ✅ **ship 3으로 dev에 나갔다** (2026-09-08 — `3ca5399` 구현 · `177b6ac` 테스트 · `1f200b5` 리뷰 픽스).
+> 두 목록(`KOREAN_ALLOWED`·`RAW_TAG_ALLOWED`)에서 넷이 빠졌고 `PENDING_QUERY_KEYS`는 비었다.
+>
+> **게이트 둘 중 하나가 남았다.**
+> - **Publish 다섯 갈래 중 넷을 실물로 밟았다** (로컬 dev, `order-check`): 변경 없음(info) · 새로 보냄
+>   (success, PR #5) · 갱신(success) · 실패(danger — 세션 쿠키를 지우고 눌렀다). **못 밟은 것은
+>   "일부 미기록"(warning)** — writer가 값을 버리는 상황이 필요한데 그건 **수술적 어댑터**에서 나고
+>   `order-check`은 재생성(json-catalog)이다. `pullMessage`의 그 갈래는 단위 테스트가, tone→variant 배선과
+>   `<details>` 목록은 소스 스캔이 든다. 실물은 `/l10n-roundtrip`(`bugshot-i18n-test`)이 답할 자리다.
+> - **첫 착지 < 2초는 아직 안 쟀다.** dev DB에 903키 프로젝트가 없다(24키 `order-check` 하나뿐) —
+>   그 프로젝트는 prod에만 있으므로 `/merge` 뒤 같은 프로젝트·같은 방법(DevTools Performance LCP)으로 잰다.
+>
+> 실물에서 잡아 고친 결함 둘은 POSTMORTEM 2026-09-08 두 항목이다 — 제출 버튼 없는 폼의 Enter, 실패 뒤
+> `router.refresh()`의 네비게이션.
 
 ## T8. 설정 · 새 프로젝트 · 초대 수락 (라우트별 커밋)
 

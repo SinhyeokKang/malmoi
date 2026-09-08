@@ -39,9 +39,9 @@
 `vercel env ls`로 삭제를 확인했다(성공 메시지가 근거가 아니다).
 ⚠️ **전환 계획의 "기존 프로젝트 넷의 토큰 재발급"은 전제가 틀렸다** — l10n 워크플로가 붙은 리포는
 `i18n-order-check` **하나**이고, 쓰는 곳이 없는 토큰은 발급하지 않았다(`pushTokenHash`가 `null`인 것이
-fail-closed의 올바른 기본값이다). **6단계(번역 UI 재작성 + Publish)는 진행 중이다** — 6a가 4번의 배송으로 갈렸고 **ship 1**(기반)이
-프로덕션(`46df51a`, PR #12), **ship 2**(셸)가 dev에 있다. 진행의 정본은 SAAS §8과
-`features/translation-ui/tasks.md`다.
+fail-closed의 올바른 기본값이다). **6단계(번역 UI 재작성 + Publish)는 진행 중이다** — 6a가 4번의 배송으로 갈렸고 **ship 1**(기반, `46df51a`
+PR #12)과 **ship 2**(셸, `add099a` PR #14)가 프로덕션, **ship 3**(T7 번역 화면 + Publish)이 dev에 있다.
+진행의 정본은 SAAS §8과 `features/translation-ui/tasks.md`다.
 
 ### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
 
