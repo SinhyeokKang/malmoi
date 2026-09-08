@@ -523,12 +523,17 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
     expect(res.errors.some((e) => e.code === "write-slot-not-string-literal" && e.key === "a")).toBe(true);
   });
 
+  /**
+   * ⚠️ **`write-slot-missing`이 아니다.** 중간 세그먼트가 객체가 아닌 키는 삽입 단계에 닿기 전에
+   * `findScalar`가 `"not-a-literal"`로 잡는다 — 옛 단언은 `message.includes("a.deep")`이라 두 갈래를
+   * 구별하지 못했다. 어느 코드가 실제로 나오는지가 화면 문구를 정하므로 여기서 고정한다.
+   */
   it("문자열 자리를 객체로 덮어야 하는 삽입은 포기하되 에러로 남긴다", () => {
     const res = codeDict.writeWithErrors!(fmtOf('export default {\n  a: "leaf",\n}\n'), {
       locale: "ko",
       entries: [{ key: "a.deep", message: "값" }],
     });
-    expect(res.errors.some((e) => e.code === "write-slot-missing" && e.key === "a.deep")).toBe(true);
+    expect(res.errors.some((e) => e.code === "write-slot-not-string-literal" && e.key === "a.deep")).toBe(true);
   });
 
   it("정상 입력에는 에러가 없다", () => {

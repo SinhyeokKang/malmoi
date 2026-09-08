@@ -6,8 +6,10 @@ import { useState, useTransition } from "react";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import type { AdapterError } from "@/lib/adapters/types";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { ingestHeadline, isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 /**
@@ -26,7 +28,7 @@ import { ingestHeadline, isOnboardError, onboardErrorMessage } from "@/lib/onboa
 export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boolean }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<
-    | { ok: true; text: string; failed: number; errors: { path: string; message: string }[] }
+    | { ok: true; text: string; failed: number; errors: AdapterError[] }
     | { ok: false; error: string }
     | null
   >(null);
@@ -74,10 +76,10 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
             {result.errors.slice(0, 5).map((e, index) => (
               <div key={`${index} ${e.path}`} className="text-xs">
                 {m.newProject.result.ingest.couldNotRead(e.path)}
-                {/* 원문 진단은 접어 둔다 — 6a에선 어댑터가 준 원문 그대로다 (6b-1이 코드화한다) */}
+                {/* 진단은 접어 둔다 — 코드는 사전이 문장으로 내고 파서 원문은 그 뒤에 붙는다 (6b-1) */}
                 <details className="mt-0.5">
                   <summary className="cursor-pointer">{m.newProject.result.ingest.diagnostics}</summary>
-                  <span className="text-mono">{e.message}</span>
+                  <span className="text-mono">{adapterErrorMessage(e)}</span>
                 </details>
               </div>
             ))}

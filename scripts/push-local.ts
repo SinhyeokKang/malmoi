@@ -22,6 +22,7 @@ import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
+import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import { assemblePushInput } from "../lib/push/assemble";
 import { buildPushPayload } from "../lib/push/payload";
 import {
@@ -137,7 +138,7 @@ const { read, baseLocale } = assembled;
 
 if (read.errors.length) {
   console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
-  for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${e.message}`);
+  for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
   process.exit(1);
 }
 

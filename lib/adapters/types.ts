@@ -112,10 +112,62 @@ export type ReadLocale = {
   entries: LocaleEntry[];
 };
 
-/** `path:line`이 아니라 `path`만 든다 — JSON 파서가 줄 번호를 주지 않는다. */
+/**
+ * **어댑터가 낼 수 있는 오류 갈래 전부.** 문장은 여기 없다 — `lib/i18n/adapter-errors.ts`가 낸다.
+ *
+ * ⚠️ **자유 문자열이 아니라 코드인 이유**: 이 값이 온보딩 결과 화면·Publish warnings·CLI에 그대로
+ * 실린다. 어댑터가 문장을 만들면 화면에 닿는 문구가 사전 밖에 있게 되어 **ko를 더할 때 따라오지
+ * 않는다** (translation-ui design §3.1.4, 사용자 결정 2026-09-07).
+ *
+ * ⚠️ **갈래를 합치면 측정 지표가 조용히 움직인다.** `lib/survey/one.ts`의 `classify`가 이 코드로
+ * 지표 ③(read 에러 유형별)을 가르므로, 옛 문구 기준으로 서로 다른 통에 있던 둘을 한 코드로
+ * 묶으면 `docs/ADAPTER-COVERAGE.md`의 회차 간 대조가 무의미해진다 — `parse-failed`(구문 진단)와
+ * `parse-crashed`(파서가 던졌다)가 정확히 그 쌍이다. `lib/survey/__tests__/classify.test.ts`가
+ * 옛 문구 22개를 픽스처로 들고 대조한다.
+ */
+export const ADAPTER_ERROR_CODES = [
+  // ── read: 파일 층 ──
+  "parse-failed",
+  "parse-crashed",
+  "root-not-object",
+  "no-default-export",
+  // ── read: 엔트리 층 ──
+  "invalid-chrome-key",
+  "missing-message-field",
+  "value-not-message-object",
+  "value-not-string",
+  "value-not-string-or-container",
+  "value-not-string-literal",
+  "shorthand-property",
+  "not-property-assignment",
+  "duplicate-key",
+  // ── write ──
+  "key-shadowed",
+  "write-parse-failed",
+  "write-no-default-export",
+  "write-locale-object-missing",
+  "write-slot-not-string-literal",
+  "write-slot-not-scalar",
+  "write-slot-missing",
+  "original-file-missing",
+  // ── 적재 껍데기 (`lib/onboarding/ingest.ts`) ──
+  "download-failed",
+] as const;
+
+export type AdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
+
+/**
+ * `path:line`이 아니라 `path`만 든다 — JSON 파서가 줄 번호를 주지 않는다.
+ *
+ * - `key` — 어느 키에서 났는지. **903키 파일에서는 이것만이 행동 가능한 정보다.** 없는 갈래도 있다
+ *   (파싱 실패는 파일 전체다).
+ * - `detail` — 파서 원문 등 **진단**이다. 사전 밖이고 접힌 자리(`<details>`·CLI)에만 간다.
+ */
 export type AdapterError = {
   path: string;
-  message: string;
+  code: AdapterErrorCode;
+  key?: string;
+  detail?: string;
 };
 
 export type ReadResult = {

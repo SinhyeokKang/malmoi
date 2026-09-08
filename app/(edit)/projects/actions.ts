@@ -10,7 +10,7 @@ import { z } from "zod";
 import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
-import type { AdapterFile, AdapterName } from "@/lib/adapters/types";
+import type { AdapterError, AdapterFile, AdapterName } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import type { AccessError } from "@/lib/auth/message";
@@ -629,7 +629,7 @@ export async function createProject(raw: {
 }
 
 export type FirstIngestResultView =
-  | { ok: true; count: number; failed: number; errors: { path: string; message: string }[] }
+  | { ok: true; count: number; failed: number; errors: AdapterError[] }
   | { ok: false; error: OnboardError | AccessError | "invalid input" };
 
 /**

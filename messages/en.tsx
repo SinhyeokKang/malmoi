@@ -504,4 +504,44 @@ export const en = {
       fallback: "We couldn't create the project. Start over and try again.",
     },
   },
+
+  /**
+   * `adapterErrorMessage` — `AdapterErrorCode` 스물둘 + 폴백 (translation-ui design §3.1.4, 6b-1).
+   *
+   * ⚠️ **이 문구들은 접힌 자리에만 간다** — 온보딩 결과의 `<details>` · Publish warnings · CLI.
+   * 그래도 사전에 있는 이유는 **번역자와 개발자가 같은 화면에서 읽기 때문**이다: 자유 문자열로
+   * 두면 en으로 고쳐도 ko가 따라오지 않는다.
+   *
+   * ⚠️ **git 어휘를 쓰지 않는다** (DESIGN §10) — `original-file-missing`이 Publish의 `<details>`에
+   * 실려 번역자가 읽는다. "base 트리"·"PR"이 그 자리에 가면 안 된다.
+   *
+   * 문체는 "무엇이 안 됐는지 + 그래서 어떻게 됐는지"다. 무엇을 하라는 말은 없다 — 고칠 수 있는
+   * 사람은 리포를 가진 개발자이고, 그 안내는 상위 문구(`ingestHeadline`·`pullMessage`)가 든다.
+   */
+  adapterErrors: {
+    "parse-failed": "The file couldn't be parsed.",
+    "parse-crashed": "The parser failed on this file.",
+    "root-not-object": "The top level of the file isn't a key-value map.",
+    "no-default-export": "This file has no default-export object.",
+    "invalid-chrome-key": "The key uses characters chrome.i18n doesn't allow (allowed: A-Z a-z 0-9 _ @).",
+    "missing-message-field": "The entry has no 'message' field.",
+    "value-not-message-object": "The value isn't a { message } object.",
+    "value-not-string": "The value isn't text.",
+    "value-not-string-or-container": "The value isn't text, an object or an array.",
+    "value-not-string-literal": "The value isn't a plain text literal.",
+    "shorthand-property": "The property is shorthand, so its value can't be read — it looks like an imported reference.",
+    "not-property-assignment": "This isn't a property assignment.",
+    "duplicate-key": "The key appears twice, so one of the two values is lost.",
+    "key-shadowed": "The key is the start of a longer key, so it has no slot of its own — this value wasn't written.",
+    "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
+    "write-no-default-export": "This file has no default-export object, so it was left untouched.",
+    "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",
+    "write-slot-not-string-literal": "The value isn't in a plain text slot, so it wasn't written.",
+    "write-slot-not-scalar": "The value isn't in a plain text slot (it's an alias, a map or a list), so it wasn't written.",
+    "write-slot-missing": "There's no slot for this key, so it was skipped — the file's structure would have to change.",
+    "original-file-missing": "The original file isn't in the repository, so this language was skipped and wasn't sent.",
+    "download-failed": "We couldn't download the file.",
+    /** ⚠️ 코드가 아니다 — 모르는 코드가 왔을 때의 문장이라 union 밖에 있어야 한다. */
+    fallback: "We couldn't read this file.",
+  },
 } as const;

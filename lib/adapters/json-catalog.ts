@@ -155,11 +155,11 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
     try {
       parsed = JSON.parse(file.content);
     } catch (cause) {
-      errors.push({ path: file.path, message: `JSON 파싱 실패: ${(cause as Error).message}` });
+      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
       continue;
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      errors.push({ path: file.path, message: "최상위가 객체가 아니다" });
+      errors.push({ path: file.path, code: "root-not-object" });
       continue;
     }
 
@@ -211,7 +211,7 @@ function flatten(
     // 에러를 냈다 — 그 리포는 번역되지 않은 키를 `null`로 두는 관례다. 빈 문자열과 같은 취급이
     // 맞고, 에러로 세면 남의 CI를 우리 관례로 실패시키게 된다. 숫자·불린은 그대로 에러다.
     if (value === null) continue;
-    errors.push({ path, message: `'${key}'의 값이 문자열이나 객체/배열이 아니다 (${typeof value})` });
+    errors.push({ path, code: "value-not-string-or-container", key, detail: typeof value });
   }
 }
 
@@ -237,7 +237,14 @@ function writeWithErrors(
 
   // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
   const path = format.pathTemplate.replaceAll("{locale}", input.locale);
-  const nested = format.nestedByPath?.[path] ?? format.nested ?? false;
+  // ⚠️ **`?.[path] ?? …`를 쓰지 않는다** (POSTMORTEM 2026-09-08 감사 후속). `nestedByPath`는 `Project`의
+  // Json 컬럼에서 온 평범한 객체라 `path`가 프로토타입 키(`constructor`·`toString`)와 같으면
+  // `Object.prototype`에서 **값이 찾아져** `??`가 안 걸리고 `nested`가 함수가 된다 — truthy로 읽혀
+  // 평평한 파일이 중첩으로 쓰이고 **점 포함 키의 값이 사라진다**(§1.35의 손실 계열). 도달 조건은
+  // 확장자 없는 `{locale}` 템플릿 + 그 이름의 로케일이라 좁지만, 결과가 조용한 데이터 손실이다.
+  const byPath = format.nestedByPath;
+  const observed = byPath !== undefined && Object.hasOwn(byPath, path) ? byPath[path] : undefined;
+  const nested = observed ?? format.nested ?? false;
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
   // **경로로 조회한다**: 호출부가 여러 파일을 실으면 다른 로케일의 스타일을 읽게 된다.
@@ -265,10 +272,7 @@ function writeWithErrors(
   const root: Record<string, unknown> = {};
   for (const e of usable) {
     if (shadowed.has(e.key)) {
-      errors.push({
-        path,
-        message: `'${e.key}'가 더 깊은 키의 접두라 중첩 복원에서 자리를 잃는다 — 이 값은 파일에 나가지 않는다`,
-      });
+      errors.push({ path, code: "key-shadowed", key: e.key });
       continue;
     }
     setDeep(root, e.key.split(SEP), e.message);

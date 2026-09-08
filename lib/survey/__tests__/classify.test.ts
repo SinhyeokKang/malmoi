@@ -31,7 +31,7 @@ const LEGACY_MESSAGE: Record<AdapterErrorCode, string> = {
   "shorthand-property": "'k'이 shorthand라 값을 읽을 수 없다 (import 참조로 보인다)",
   "not-property-assignment": "'...spread'은 프로퍼티 대입이 아니다",
   "duplicate-key": "'a'가 중복 키다 — 값 하나가 사라진다",
-  // ── 아래는 write·껍데기 층이라 `read1.errors`에 들어가지 않는다. 옛 구현에서도 `other`였다. ──
+  // ── 아래는 write·껍데기 층이라 `read1.errors`에 들어가지 않는다 (`NON_READ`). ──
   "key-shadowed": "'a.b'가 더 깊은 키의 접두라 중첩 복원에서 자리를 잃는다 — 이 값은 파일에 나가지 않는다",
   "write-parse-failed": "구문 오류로 원본을 그대로 둔다: boom",
   "write-no-default-export": "default export 객체 리터럴을 찾을 수 없다 — 원본을 그대로 둔다",
@@ -72,12 +72,44 @@ function legacyClassify(message: string): ReadErrorKind {
   return "other";
 }
 
+/**
+ * `read1.errors`에 **도달하지 않는** 코드 — write 층과 적재 껍데기.
+ *
+ * ⚠️ **이쪽에는 골든 등식을 걸지 않는다.** 옛 문구가 `구문 오류로 원본을 그대로 둔다: …`처럼
+ * read 갈래의 부분 문자열을 품어서, 옛 분류기에 먹이면 `json-parse`가 나온다 — 그런데 그 값은
+ * `classify`에 **도달할 수 없어** 지표에 한 번도 실린 적이 없다. 관측 불가능한 자리를 고정하면
+ * 등식이 거짓 정밀도를 갖는다. 이쪽은 `other`("read 실패 유형이 아니다")임을 따로 단언한다.
+ */
+const NON_READ = [
+  "key-shadowed",
+  "write-parse-failed",
+  "write-no-default-export",
+  "write-locale-object-missing",
+  "write-slot-not-string-literal",
+  "write-slot-not-scalar",
+  "write-slot-missing",
+  "original-file-missing",
+  "download-failed",
+] as const satisfies readonly AdapterErrorCode[];
+
+const READ_CODES = ADAPTER_ERROR_CODES.filter(
+  (code) => !(NON_READ as readonly string[]).includes(code),
+);
+
 describe("classify(code) — 지표 ③의 분류가 문구 기반과 한 칸도 다르지 않다", () => {
-  it("코드마다 옛 문구와 같은 통에 들어간다", () => {
-    const drifted = ADAPTER_ERROR_CODES.filter(
+  it("read 층 코드마다 옛 문구와 같은 통에 들어간다", () => {
+    const drifted = READ_CODES.filter(
       (code) => classify(code) !== legacyClassify(LEGACY_MESSAGE[code]),
     ).map((code) => `${code}: ${classify(code)} ≠ ${legacyClassify(LEGACY_MESSAGE[code])}`);
     expect(drifted).toEqual([]);
+  });
+
+  it("read 층이 비어 있지 않다 — 위 등식이 조용히 0건이 되지 않는다", () => {
+    expect(READ_CODES.length).toBe(13);
+  });
+
+  it("write·껍데기 층은 `other`다 — read 실패의 유형이 아니다", () => {
+    for (const code of NON_READ) expect(classify(code), code).toBe("other");
   });
 
   it("기준선 표에 낡은 항목·누락이 없다 — 코드를 더하면 이 표도 늘어난다", () => {

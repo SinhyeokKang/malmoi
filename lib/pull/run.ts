@@ -1,5 +1,6 @@
 import { fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { GitClient } from "./client";
 import { buildCommitPayload, buildTreePayload } from "./payload";
 import {
@@ -135,7 +136,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
 
   const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);
-  const warnings = local.flatMap((f) => (f.errors ?? []).map((e) => `${e.path}: ${e.message}`));
+  const warnings = local.flatMap((f) => (f.errors ?? []).map((e) => `${e.path}: ${adapterErrorMessage(e)}`));
   const withWarnings = warnings.length === 0 ? {} : { warnings };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────

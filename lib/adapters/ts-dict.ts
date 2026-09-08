@@ -66,7 +66,7 @@ function pairs(
     const key = nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
     const init = prop.getInitializer();
     if (!init?.isKind(SyntaxKind.StringLiteral)) {
-      errors.push({ path, message: `'${key}'의 값이 문자열 리터럴이 아니다 (${init?.getKindName() ?? "없음"})` });
+      errors.push({ path, code: "value-not-string-literal", key, detail: init?.getKindName() ?? "none" });
       continue;
     }
     out.push({ key, value: init.getLiteralValue(), assignment: prop });
@@ -140,7 +140,7 @@ export const tsDictDetectByContent = detectByContent;
 /** 첫 구문 진단 메시지. 타입 진단은 lib 로드가 필요하고 여기선 의미가 없다 — 구문만 본다. */
 function syntaxError(project: Project, sf: SourceFile): string | undefined {
   const first = project.getProgram().getSyntacticDiagnostics(sf)[0];
-  return first === undefined ? undefined : (first.getMessageText()?.toString() ?? "알 수 없음");
+  return first === undefined ? undefined : (first.getMessageText()?.toString() ?? "unknown");
 }
 
 function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResult {
@@ -155,7 +155,7 @@ function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResul
     // 통과하고 나머지 키가 orphaned로 떨어진다. `code-dict.read`와 같은 계약 (§1.35).
     const syntax = syntaxError(project, sf);
     if (syntax !== undefined) {
-      errors.push({ path: file.path, message: `구문 오류: ${syntax}` });
+      errors.push({ path: file.path, code: "parse-failed", detail: syntax });
       continue;
     }
     for (const [locale, obj] of localeObjects(sf)) {
@@ -210,7 +210,7 @@ function writeWithErrors(
   // write도 read와 같은 진단을 본다 — 깨진 원본에 치환하면 복구된 AST를 다시 찍어 파일이 바뀐다.
   const syntax = syntaxError(project, sf);
   if (syntax !== undefined) {
-    return { content: file.content, errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${syntax}` }] };
+    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: syntax }] };
   }
   const obj = localeObjects(sf).get(input.locale);
   // **로케일 객체가 없는 것을 성공으로 처리하지 않는다.** 그 로케일의 번역이 통째로 반영되지
@@ -218,7 +218,7 @@ function writeWithErrors(
   if (!obj) {
     return {
       content: file.content,
-      errors: [{ path: file.path, message: `'${input.locale}' 로케일 객체가 파일에 없어 번역을 반영하지 못했다` }],
+      errors: [{ path: file.path, code: "write-locale-object-missing", key: input.locale }],
     };
   }
 

@@ -69,10 +69,7 @@ export function rowsForLocale(
  * @param current 경로 → 원본 내용. 수술적 치환 어댑터만 쓴다 (재생성은 빈 맵이어도 된다).
  */
 /** 수술적 어댑터가 원본 없이 파일을 안 낼 때의 보고. 값을 잃은 것은 아니지만 **빠졌다는 사실**은 알려야 한다. */
-const missingOriginal = (path: string): AdapterError => ({
-  path,
-  message: "원본 파일이 base 트리에 없어 수술적 치환을 건너뛰었다 — 이 로케일은 PR에 나가지 않는다",
-});
+const missingOriginal = (path: string): AdapterError => ({ path, code: "original-file-missing" });
 
 export function renderLocaleFiles(
   format: DetectedFormat,
