@@ -338,6 +338,14 @@ clone하지 않는다.
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
+**커밋이 나갔으면 `pr: "created" | "updated"`가 함께 실린다** (2026-09-08). 재사용 판정은 이미 하고 있었고
+(`findOpenPrUrl`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
+사실이다. **`Project`에 컬럼 둘이 따라온다**: `lastPublishedAt`·`lastPrUrl`은 `committed`일 때만 쓰고
+(`saveLastPulledAt`의 같은 `update` 한 번), `skipped`는 건드리지 않는다. ⚠️ **`lastPulledAt`과 뜻이 다르다** —
+그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계의 기준은
+그쪽이고(진행 판정), 툴바의 "Last sent"가 읽는 것은 이쪽이다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
+"보냈다"가 갱신된다.
+
 ⚠️ **`warnings`는 실행별 진단이고 큐가 아니다** (2026-09-04). 2층까지 통과하면 `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 같은 경고가 다시 나오지 않는다. **경고가 있으면 `lastPulledAt`을 안 쓰는 쪽은 택하지 않았다** — `missingOriginal`(리포에 그 로케일 파일이 없다)처럼 **지속 상태**인 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다. 대신 `lib/pull/trigger.ts`가 `console.warn`으로도 낸다 — 진입점 둘이 공유하는 조립층이라 한 곳이면 되고, cron 응답 JSON을 놓쳐도 Vercel 로그에 남는다.
 
 ### 함정
@@ -539,6 +547,12 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **`updatedBy`는 2026-09-05부터 `User.id`를 담고, 그 전 행은 GitHub 핸들을 그대로 들고 있다.** 처음 핸들을 쓴 이유는 "JWT 세션이라 사용자 테이블이 없다"였고 그 이유는 사라졌다(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: **한 컬럼에 두 종류 값이 섞여 있다.**
   참조 무결성을 주장할 수 없고, `User`에 join하는 화면은 못 찾는 경우를 다뤄야 한다. `User.id`를 쓰는
   이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
+  ⚠️ **push는 이 컬럼을 비운다** (2026-09-08, SaaS 6a). strict 덮어쓰기에서 **값의 저자는 리포**이므로
+  사람 이름이 남는 것이 거짓이다 — `applyPush`의 `ON CONFLICT … DO UPDATE SET`에 `"updatedBy" = NULL`이
+  있다(`flow.test.ts`의 SQL 캡처가 고정한다). 귀결이 둘이다: 셀 메타는 사람이 저장한 값에만 붙고,
+  **미배포 집계가 이 조건 위에 선다** — `updatedAt`만 보면 push가 전 행의 시각을 올리므로 code push
+  직후 903키 전부가 "안 보낸 편집"으로 세어진다(`countUnpublished`·`isUnpublished`가 `updatedBy`를
+  함께 본다). MVP §10의 미결 하나가 여기서 닫혔다.
   ⚠️ **그래서 이 컬럼을 읽는 쪽은 폴백을 갖는다** — `loadActors`가 id로 `User`를 따로 읽고(join이 아니다,
   옛 행이 전부 떨어진다) `actorLabel`이 **못 찾은 값을 원문 그대로** 낸다. 옛 핸들과 지워진 `User`의 id가
   그 갈래로 살아남는다. cuid 모양으로 갈라내려 하면 후자가 함께 사라진다. **이 폴백이 없던 동안 화면이
