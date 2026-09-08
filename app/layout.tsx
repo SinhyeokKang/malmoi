@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <head>
         {/*
           Pretendard 동적 서브셋. globals.css의 @import가 아니라 <link>로 넣는다 —

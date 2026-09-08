@@ -51,12 +51,12 @@ export function makeProbe(blobs: ReadonlyMap<string, string>): FileProbe {
  * 보인다. 사용자가 자기 리포에서 확인할 수 있는 유일한 단서라서 숨기면 후보를 고를 근거가 사라진다.
  * "코드 딕셔너리"가 둘이라 경로 예시가 구별자다.
  */
+const FORMATS = m.newProject.formats satisfies Record<AdapterName, { label: string; example: string }>;
+
 export function formatLabel(adapter: AdapterName): { label: string; example: string } {
   // 어댑터를 추가하면 사전에 키가 없어 여기서 컴파일 에러가 난다 — 전 `never` 검사와 같은 힘이다.
   return FORMATS[adapter];
 }
-
-const FORMATS = m.newProject.formats satisfies Record<AdapterName, { label: string; example: string }>;
 
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
 

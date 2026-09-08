@@ -1,6 +1,9 @@
 import "server-only";
 
-import type { PrismaClient, Role } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+// ⚠️ `Role`은 **생성물이 아니라 도메인 층**에서 온다 — 그 파일이 "Prisma의 `enum Role`과 두 벌인 것은
+// 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
+import type { Role } from "@/lib/auth/permission";
 import type { Actor, KeyRow } from "./view";
 
 /**

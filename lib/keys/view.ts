@@ -186,6 +186,9 @@ export function defaultNamespace(counts: readonly NamespaceCount[]): string | nu
   return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
 }
 
+/** "전체" 네임스페이스의 URL 값. `lib/routes.ts`의 `ns`와 이 판정이 같은 값을 봐야 한다. */
+export const ALL_NAMESPACES = "*";
+
 /**
  * `?ns=`의 해석. **`"*"`가 전체다** — 어댑터가 만들 수 없는 이름이라 실제 키 접두와 충돌하지 않는다
  * (`all`은 진짜 접두일 수 있다).
@@ -210,9 +213,6 @@ export function resolveNamespace(
   const fallback = defaultNamespace(counts);
   return fallback === null ? { kind: "none" } : { kind: "one", namespace: fallback };
 }
-
-/** "전체" 네임스페이스의 URL 값. `lib/routes.ts`의 `ns`와 이 판정이 같은 값을 봐야 한다. */
-export const ALL_NAMESPACES = "*";
 
 export type RowFilter = {
   /** 상태 필터가 보는 로케일. 표가 로케일을 열로 펼치므로 "남은 일"이 로케일마다 다르다. */
