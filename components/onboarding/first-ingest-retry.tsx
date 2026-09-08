@@ -79,7 +79,9 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
                 {/* 진단은 접어 둔다 — 코드는 사전이 문장으로 내고 파서 원문은 그 뒤에 붙는다 (6b-1) */}
                 <details className="mt-0.5">
                   <summary className="cursor-pointer">{m.newProject.result.ingest.diagnostics}</summary>
-                  <span className="text-mono">{adapterErrorMessage(e)}</span>
+                  {/* ⚠️ `detail`이 여러 줄일 수 있다 — YAML 파서가 캐럿 다이어그램을 넣는다. `text-mono`엔
+                      `white-space`가 없어 기본값이 개행을 공백으로 접고 캐럿이 가리킬 열을 잃는다 */}
+                  <span className="text-mono whitespace-pre-wrap">{adapterErrorMessage(e)}</span>
                 </details>
               </div>
             ))}
