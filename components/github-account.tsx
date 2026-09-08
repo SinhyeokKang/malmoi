@@ -1,11 +1,14 @@
 "use client";
 
+import { Link2 } from "lucide-react";
 import { useState, useTransition } from "react";
-
-import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 
 import { disconnectGithub } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { m } from "@/lib/i18n";
 
 /**
  * GitHub 계정 연결·해제 (design §8 섹션 2). 연결은 **폼 제출**이다 — `startGithubConnect`가 성공하면
@@ -14,12 +17,16 @@ import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/action
  * ⚠️ **두 Action이 서로 다른 파일에서 온다** (2026-09-07 리뷰 🟡9): 해제는 **사용자 수준**
  * (`projects/actions.ts`, 인가는 `requireUser`)이고 이 화면의 연결은 설정 화면 전용이다
  * (착지 지점이 그 프로젝트라 slug가 필요하다). 사용자 수준 연결은 `ConnectGithubButton`이 따로 있다.
+ *
+ * ⚠️ **`lucide-react` 1.x에 브랜드 아이콘이 없다** (DESIGN §6.8) — `Github`을 import하면 빌드가 죽는다.
+ * 연결 버튼은 `Link2`다.
  */
 export function GithubAccount({ slug, login }: { slug: string; login: string | null }) {
-  if (login === null) return <ConnectForm slug={slug} label="GitHub 연결" />;
+  if (login === null) return <ConnectForm slug={slug} label={m.settings.account.connect} />;
 
   return (
     <div className="flex items-center gap-3">
+      {/* GitHub 핸들은 식별자라 mono다 (DESIGN §4.1) */}
       <span className="text-mono bg-muted rounded px-2 py-1">@{login}</span>
       <DisconnectGithubButton />
     </div>
@@ -30,8 +37,8 @@ export function GithubAccount({ slug, login }: { slug: string; login: string | n
 export function ReauthorizePrompt({ slug }: { slug: string }) {
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">GitHub 인가가 풀렸어요.</p>
-      <ConnectForm slug={slug} label="GitHub 다시 연결" />
+      <p className="text-muted-foreground text-xs">{m.settings.account.reauthorize}</p>
+      <ConnectForm slug={slug} label={m.settings.account.reconnect} />
     </div>
   );
 }
@@ -44,17 +51,17 @@ function ConnectForm({ slug, label }: { slug: string; label: string }) {
       action={async () => {
         // 성공하면 여기서 돌아오지 않는다 — Action이 GitHub으로 redirect한다.
         const result = await startGithubConnect({ slug });
-        setError(isAccessError(result.error) ? accessErrorMessage(result.error) : "연결을 시작하지 못했어요.");
+        setError(
+          isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.repository.connectFailed,
+        );
       }}
       className="space-y-2"
     >
-      <button
-        type="submit"
-        className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring rounded-md px-4 py-2 text-sm font-medium focus-visible:ring-[3px] focus-visible:outline-none"
-      >
+      <Button type="submit" variant="primary">
+        <Link2 aria-hidden />
         {label}
-      </button>
-      {error !== null && <p className="text-destructive text-xs">{error}</p>}
+      </Button>
+      {error !== null && <Alert variant="danger">{error}</Alert>}
     </form>
   );
 }
@@ -71,23 +78,28 @@ export function DisconnectGithubButton() {
 
   return (
     <>
-      <button
-        type="button"
-        disabled={pending}
+      <Button
+        variant="danger"
+        size="sm"
+        loading={pending}
+        loadingLabel={m.settings.account.disconnecting}
         onClick={() => {
           setError(null);
           startTransition(async () => {
             const result = await disconnectGithub();
             if (!result.ok) {
-              setError(isAccessError(result.error) ? accessErrorMessage(result.error) : "해제하지 못했어요.");
+              setError(
+                isAccessError(result.error)
+                  ? accessErrorMessage(result.error)
+                  : m.settings.account.disconnectFailed,
+              );
             }
           });
         }}
-        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded text-xs underline focus-visible:ring-[3px] focus-visible:outline-none disabled:cursor-not-allowed"
       >
-        {pending ? "해제하는 중…" : "연결 해제"}
-      </button>
-      {error !== null && <p className="text-destructive text-xs">{error}</p>}
+        {m.settings.account.disconnect}
+      </Button>
+      {error !== null && <Alert variant="danger">{error}</Alert>}
     </>
   );
 }
