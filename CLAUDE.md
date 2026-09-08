@@ -14,7 +14,7 @@
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 dev에 있다. 남은 것은 **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)이 그다음이고, 남은 것은 **6b 셋**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -394,10 +394,17 @@ messages/
                         삽입을 헬퍼 셋으로 만들지 않는다(`fmt`·`plural`·`rich`가 없다). `as const`라 접근 자체가
                         타입 검사이고, 갈래 누락은 **소비자가 거는** `satisfies Record<Union, string>`이 잡는다.
                         ⚠️ **잎이다** — `react`의 `ReactNode` 타입 하나만 import한다
+                        ⚠️ **`adapterErrors` 스물둘 + 폴백이 여기 있다** (2026-09-08 6b-1) — 어댑터가 코드를
+                        내고 문장은 사전이 낸다. **git 어휘를 쓰지 않는다**: `original-file-missing`이
+                        Publish의 `<details>`에 실려 번역자가 읽는다
 lib/
   i18n/index.ts         사전의 유일한 입구(`m`) + `pick(dict, key, fallback)`. ⚠️ **`DICT[key] ?? fallback`을
                         쓰지 않는다** — 프로토타입 키에서 값이 찾아져 폴백을 우회하고 문자열 자리에 함수가 온다
                         (초대 화면이 `?e=`를 가드 없이 넘긴다). ko를 더할 때 바뀌는 파일이 여기 하나다
+  i18n/adapter-errors.ts
+                        adapterErrorMessage(error) — 코드 → 문장 + `key`(어느 키인지, 앞) + `detail`(파서
+                        원문, 뒤 괄호). ⚠️ **잎이다** — 온보딩 클라이언트 둘이 읽으므로 `@/lib/adapters/types`를
+                        **타입으로만** 가져온다(값이면 `ADAPTER_ERROR_CODES`를 따라 그 디렉터리가 열린다)
   shell/nav.ts          사이드바의 순수 판정 둘 — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
                         없으면 컨텍스트 없음) / projectSections(canPerform이 항목을 정한다 — 권한표가 한 벌)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
@@ -407,6 +414,10 @@ lib/
     index.ts            detectFormat / detectFormatWith(명시 지정의 유일한 입구 — ts-dict를 쓰는 길이다)
                         / detectCandidatesAcross / adapterFor / isAdapterName / ADAPTERS
     types.ts            Adapter·DetectedFormat·LocaleEntry 계약 (writeWithErrors는 선택 구현)
+                        + ADAPTER_ERROR_CODES 22 · AdapterError = { path, code, key?, detail? } (2026-09-08 6b-1)
+                        ⚠️ **갈래를 합치면 지표가 조용히 움직인다** — `lib/survey/one.ts`의 classify가 이
+                        코드로 ADAPTER-COVERAGE ③을 가른다. `parse-failed`(구문 진단)와 `parse-crashed`
+                        (파서가 던졌다)가 옛 문구 기준으로 다른 통이라 갈라져 있다
     shared.ts           재생성 writer의 결정성 규칙(orderedEntries·compareKeys) + 후보 순위·검증
                         + matchGlobPaths(multi-locale 경로 — push·pull·survey가 공유하는 유일한 규칙)
     quote-style.ts      수술적 어댑터의 인용 부호 보존 (quoteLiteral·dominantQuote)
@@ -467,6 +478,9 @@ lib/
                         가른다. hook은 반환 바인딩을 스코프째 추적하고 next-intl의 namespace
                         상대 키를 절대 키로 되돌린다 (ARCHITECTURE §4.0)
   survey/               어댑터 범용성 실측의 순수 판정층 (I/O는 scripts/adapter-survey.ts만)
+                        ⚠️ **one.ts의 classify(code)가 지표 ③을 가른다** — 옛 문구 기반이었고 6b-1이 코드로
+                        옮겼다. `__tests__/classify.test.ts`가 **옛 문구 22개 + 옛 분류기 본문**을 픽스처로
+                        들고 대조한다(코퍼스가 밟는 갈래는 여섯뿐이라 재측정만으로는 회귀가 0으로 조용하다)
                         select(파일 고르기) / one(리포 하나) / summarize(집계·표) / diff(변경 줄
                         비율·hunk) / json-shape(원본 텍스트의 키 순서·들여쓰기) / ts-shape / stats
                         / merge(detectCandidatesAcross 위임 — 흔적) / types
@@ -663,7 +677,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 34개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 35개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -687,7 +701,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **docs/MVP.md** — **PoC 스펙 (닫힘).** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
-- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, **13차까지**). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
+- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, **14차까지**). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
   - **⚠️ 재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를 **학습과 홀드아웃 둘 다** 돌리고 이 문서에 회차를 더한다 — §0 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중 하나는 학습 코퍼스에서만 나타났다. 한쪽만 돌리면 못 본다. 판정은 `/push` 4d가 사용자에게 묻는다(네트워크 ~4분이라 게이트가 아니다)
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
@@ -700,7 +714,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 ## 코드 컨벤션
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
-- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고, 허용 목록은 셋뿐이다(`auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 · `lib/pull/render.ts` — 6b-1). **주석은 벗기고 세므로 아래의 "주석은 한국어로"와 충돌하지 않는다.**
+- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고, 허용 목록은 **둘뿐이다**(`auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 — 2026-09-08 6b-1이 `lib/pull/render.ts`를 뺐고 **`lib/adapters/**` 제외도 함께 풀렸다**). **주석은 벗기고 세므로 아래의 "주석은 한국어로"와 충돌하지 않는다.**
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
