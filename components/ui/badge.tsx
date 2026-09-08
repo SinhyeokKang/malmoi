@@ -12,8 +12,10 @@ import { cn } from "@/lib/utils";
 const badge = cva("inline-flex items-center rounded px-1.5 py-0.5 text-xs", {
   variants: {
     variant: {
-      // muted 표면 위에서도 읽혀야 해서 `text-muted-foreground`가 아니다 (§2.2).
-      muted: "text-foreground/60",
+      // ⚠️ **muted 표면 위에 놓지 않는다** — 이 색은 흰 배경에서 4.75:1이고 `--muted` 위에서는
+      // 4.34:1로 AA 미달이다 (§2.2). 배지가 사는 곳은 표 셀·목록 행(흰 배경)이고, 표 헤더처럼
+      // muted인 자리에 놓을 일이 생기면 호출부가 `text-foreground/60`으로 덮는다.
+      muted: "text-muted-foreground",
       warning: "bg-amber-100/80 text-amber-800",
       // 배경 없음 — orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 (§6.2).
       danger: "text-destructive",
