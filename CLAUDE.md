@@ -333,12 +333,19 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
                         소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
-  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 앱에서 import 0곳 —
-                        UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner도 import 0곳이고,
-                        radix-ui·lucide-react는 **동결된 ui/ 안에서만** 쓰인다
-  __tests__/            focus-ring — app/·components/의 button·input이 포커스 링 셋을 드는지 **소스로**
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+                        삭제됐고 CLI를 다시 돌리지 않는다). Button·Input·Textarea·Select(native)·Radio·
+                        FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
+                        Dialog·Tooltip. 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** — cva 베이스나 공유 상수에 모으면
+                        focus-ring 스캐너가 그 파일을 통째로 못 본다. `Button`에 `asChild`가 없는 것도
+                        같은 이유다(Slot 한 겹이 태그를 지운다). 아직 화면 소비자는 0곳 — T6부터 붙는다
+  __tests__/            focus-ring — button·input·select·textarea가 포커스 링 셋을 드는지 **소스로**
                         센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
-                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
+                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제").
+                        ⚠️ **ui/ 제외가 풀렸다** (2026-09-08) — 그 디렉터리가 링이 사는 유일한 자리다.
+                        대신 **ui/ 밖에서 raw 태그를 쓰는 파일**이 축소형 허용 목록(13개)으로 고정되고
+                        T6~T8이 비운다. 주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
