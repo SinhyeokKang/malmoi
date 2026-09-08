@@ -401,7 +401,8 @@ Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나(`p
 | `readinessLabel` · `formatLabel` · `ingestHeadline` · 문구 모듈 넷 | 기존 자리 | 사전 읽기로 바뀌어도 시그니처는 같다 — 기존 테스트가 문구 상수만 바꿔 그대로 산다 |
 | `stripComments(src)` (스캐너용) | `lib/i18n/__tests__/no-korean-ui.test.ts` 내부 | `//`·`/* */`·`{/* */}` 셋. 메타 테스트로 각각 검증 |
 | `Button`/`Badge`/`Alert` variant 매핑(`cva`) | `components/ui/*` | 렌더 테스트는 두지 않는다 — variant→클래스 표는 소스 스캔이 아니라 `focus-ring`류 상시 검사가 든다 |
-| (6b) `isValidBranchName` · `planBaseLocaleChange` · `AdapterErrorCode`+`adapterErrorMessage` · `classify(code)` | §3.13·§3.1.4 | 6b 착수 때 다시 정한다 — `classify`는 단위 테스트가 0건이라 재측정만이 판정한다 |
+| (6b-3) `isValidBranchName` · `planBaseLocaleChange` | §3.13 | 6b-3 착수 때 정한다 — 그 절을 다시 쓰는 것이 선행이다 |
+| ~~(6b-1) `AdapterErrorCode`+`adapterErrorMessage` · `classify(code)`~~ ✅ **닫혔다** (2026-09-08) | §3.1.4 | 코드 스물둘 + `lib/i18n/adapter-errors.ts`. ⚠️ **"재측정만이 판정한다"가 틀렸다** — 코퍼스가 밟는 갈래는 여섯뿐이라 옛 문구 22개와 옛 분류기를 픽스처로 든 `classify.test.ts`가 실제 방어선이다 |
 
 `pullResultPr`·`landing(dest)`는 목록에서 뺐다 — 앞은 한 줄 삼항이라 이름·테스트를 붙일 이유가 없고(`run.ts:158`에 인라인), 뒤는 `state.ts`가 아니라 callback route의
 지역 함수라 6b가 `/account`를 만들 때만 대상이 된다.

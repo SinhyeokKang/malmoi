@@ -53,7 +53,7 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 | 번역 조회·수정 | O | O |
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
-| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 **§8 6b**다 (`features/translation-ui/tasks.md` 6b-2 — 6a에는 없다) |
+| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 **§8 6b**다 (`features/translation-ui/tasks.md` **6b-3** — 6a에는 없다) |
 | 멤버 관리·프로젝트 삭제 | O | X |
 
 **EDITOR에게 Publish를 허용한다.** Publish는 base branch 직접 쓰기가 아니라 **검토 가능한 PR 생성**이다.
@@ -756,7 +756,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 + survey 분류기 + 14차 재측정)이 그다음이고, 남은 것은 **6b 셋**(base branch·기준 로케일 필드 ·
 멤버 화면 · `/account` 판정).
 
-**아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 미작성 화면은 멤버 관리(6b-3) 하나다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
+**아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 미작성 화면은 멤버 관리(6b-2) 하나다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
 `PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts`)이 그것이다.
 
@@ -782,11 +782,14 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - ⚠️ **재측정이 이 변경의 주된 방어선이 아니다** — 코퍼스가 밟는 갈래는 스물둘 중 여섯뿐이라 나머지의
     회귀는 지표에 **0으로 조용히** 남는다. 옛 문구 22개와 **옛 분류기 본문**을 픽스처로 든
     `lib/survey/__tests__/classify.test.ts`가 그 자리를 메운다
-- [ ] **6b-2 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
-- [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
-- [ ] **6b-3 멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
+- [ ] **6b-2 멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
+- [ ] **6b-3 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
+- [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
+  - ⚠️ **번호가 실행 순서다** (2026-09-08 교체). 그 전에는 base 변경이 6b-2, 멤버 화면이 6b-3이었는데
+    base 변경은 design §3.13을 다시 써야 착수할 수 있어 그대로 두면 **뒷번호를 먼저 하게 된다.** 이 목록도
+    6b-2 → 6b-4 → 6b-3 순으로 어긋나 있었다. **이 날짜 이전 문서·PR 본문의 "6b-2"는 base 변경이다.**
 - [x] ~~**"GitHub 계정" 섹션을 사용자 수준 화면으로**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9 — 4단계
       code-review 🟡3이 6단계로 미뤘던 것을 앞당겼다). 연결은 5단계가 이미 사용자 수준으로 옮겼고
       (`startGithubConnectForUser`), **해제도 `projects/actions.ts`의 `disconnectGithub`(인가

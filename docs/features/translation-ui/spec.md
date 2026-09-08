@@ -193,7 +193,7 @@ Supabase를 골랐던 이유(옛 DESIGN §9.1)는 "개발자 도구이면서 비
 1. **어댑터 오류 코드화 + `survey` 분류기 + 14차 재측정** — `AdapterError = { path, code, key?, detail? }`(기존 테스트가 키 이름을 단언한다). `.message` 소비자 여덟(`lib/pull/run.ts:127` 포함).
    재측정 판정 값 목록은 tasks 6b-1. `/l10n-roundtrip`은 돌리지 않는다.
 2. **설정의 base branch·기준 로케일** — 🔴 현재 design §3.13은 pull을 깨뜨린다(pull의 base 진실은 `Project.baseLocale`이고 `Locale.isBase`는 UI만 읽는다 · 재적재 경로는 CI뿐 ·
-   `needsReview` 일괄 전파). 답의 후보는 tasks 6b-2.
+   `needsReview` 일괄 전파). 답의 후보는 tasks 6b-3.
 3. **멤버 화면** — 별도 라우트의 근거를 먼저 쓴다(`github-connect/spec.md`는 settings 섹션으로 결정했다). 전원에게 렌더. `revokeInvitation`은 `expiresAt = now`(삭제 금지 —
    `schema.prisma:365`). 임시 초대 폼 삭제.
 4. **`/account`** — 만들지 말지부터. 추천은 "만들지 않는다"(사용자 메뉴 항목으로 `/projects` 계정 섹션에 간다).
