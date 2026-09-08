@@ -109,6 +109,6 @@ export function isAdapterName(name: string): name is AdapterName {
 
 export function adapterFor(format: DetectedFormat): Adapter {
   const found = ADAPTERS.find((a) => a.name === format.adapter);
-  if (!found) throw new Error(`등록되지 않은 어댑터: ${format.adapter}`);
+  if (!found) throw new Error(`unregistered adapter: ${format.adapter}`);
   return found;
 }

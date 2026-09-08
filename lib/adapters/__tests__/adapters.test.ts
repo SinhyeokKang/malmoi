@@ -141,7 +141,8 @@ describe("chrome-locales — read", () => {
       f("public/_locales/en/messages.json", '{"BAD": {"description": "no message"}}'),
     ]);
     expect(r.errors).toHaveLength(1);
-    expect(r.errors[0]?.message).toMatch(/message/);
+    expect(r.errors[0]?.code).toBe("missing-message-field");
+    expect(r.errors[0]?.key).toBe("BAD");
   });
 
   it("JSON이 깨지면 에러다", () => {
@@ -154,7 +155,8 @@ describe("chrome-locales — read", () => {
       f("public/_locales/en/messages.json", '{"common.ok": {"message": "OK"}}'),
     ]);
     expect(r.errors).toHaveLength(1);
-    expect(r.errors[0]?.message).toMatch(/키 이름/);
+    expect(r.errors[0]?.code).toBe("invalid-chrome-key");
+    expect(r.errors[0]?.key).toBe("common.ok");
   });
 });
 

@@ -150,22 +150,22 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
     try {
       doc = parseDocument(file.content, PARSE_OPTS);
     } catch (cause) {
-      errors.push({ path: file.path, message: `YAML 파싱 실패: ${(cause as Error).message}` });
+      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
       continue;
     }
     if (doc.errors.length > 0) {
-      errors.push({ path: file.path, message: `YAML 파싱 실패: ${doc.errors[0]?.message ?? "알 수 없음"}` });
+      errors.push({ path: file.path, code: "parse-failed", detail: doc.errors[0]?.message ?? "unknown" });
       continue;
     }
 
     const rootKey = rootKeyOf(doc);
     const root = rootKey === undefined ? doc.contents : (doc.getIn([rootKey], true) as Node | undefined);
     if (root === undefined || root === null) {
-      errors.push({ path: file.path, message: "최상위가 맵이 아니다" });
+      errors.push({ path: file.path, code: "root-not-object" });
       continue;
     }
     if (!isMap(root)) {
-      errors.push({ path: file.path, message: "최상위가 맵이 아니다" });
+      errors.push({ path: file.path, code: "root-not-object" });
       continue;
     }
 
@@ -204,7 +204,7 @@ function collect(
       if (name === undefined) continue;
       const key = prefix === "" ? name : `${prefix}${SEP}${name}`;
       // 중복 키는 값 하나가 사라진다 — 탐지를 막지는 않되(위 `PARSE_OPTS`) 사실은 알린다.
-      if (seen.has(name)) errors.push({ path, message: `'${key}'가 중복 키다 — 값 하나가 사라진다` });
+      if (seen.has(name)) errors.push({ path, code: "duplicate-key", key });
       else seen.add(name);
       if (item.value !== null && item.value !== undefined) collect(item.value as Node, key, out, errors, path);
     }
@@ -221,7 +221,7 @@ function collect(
   if (isScalar(node)) {
     if (typeof node.value === "string") out.push({ key: prefix, message: node.value });
     else if (node.value !== null) {
-      errors.push({ path, message: `'${prefix}'의 값이 문자열이 아니다 (${typeof node.value})` });
+      errors.push({ path, code: "value-not-string", key: prefix, detail: typeof node.value });
     }
     return;
   }
@@ -296,13 +296,13 @@ function writeWithErrors(
   } catch (cause) {
     return {
       content: file.content,
-      errors: [{ path: file.path, message: `YAML 파싱 실패로 원본을 그대로 둔다: ${(cause as Error).message}` }],
+      errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }],
     };
   }
   if (doc.errors.length > 0) {
     return {
       content: file.content,
-      errors: [{ path: file.path, message: `YAML 파싱 실패로 원본을 그대로 둔다: ${doc.errors[0]?.message ?? "알 수 없음"}` }],
+      errors: [{ path: file.path, code: "write-parse-failed", detail: doc.errors[0]?.message ?? "unknown" }],
     };
   }
 
@@ -336,7 +336,7 @@ function writeWithErrors(
     // 않는다**: 알리아스는 값의 출처가 앵커 쪽이라 편집이 원리적으로 무효이고, 맵 자리는 원본
     // 규약을 갈아치우게 된다. 어느 키를 못 넣었는지는 알려야 한다 (ARCHITECTURE §1.35).
     if (node !== undefined && node !== null) {
-      errors.push({ path: file.path, message: `'${key}'가 스칼라 자리가 아니라 값을 넣지 못했다 (알리아스·맵·시퀀스)` });
+      errors.push({ path: file.path, code: "write-slot-not-scalar", key });
       continue;
     }
     missing.push(key);

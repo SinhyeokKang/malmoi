@@ -1,7 +1,7 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
 import { dominantFieldOrder } from "../adapters/chrome-locales";
 import { sameMeaning } from "../adapters/shared";
-import type { AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
+import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
 import { pickBaseLocale } from "../push/payload";
@@ -89,7 +89,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     survey.ms = Date.now() - started;
     return survey;
   }
-  for (const e of read1.errors) survey.errors[classify(e.message)] += 1;
+  for (const e of read1.errors) survey.errors[classify(e.code)] += 1;
 
   const allKeys = new Set<string>();
   for (const loc of read1.locales) {
@@ -165,37 +165,49 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
   return out;
 }
 
-function classify(message: string): ReadErrorKind {
-  // 파서가 셋이라(JSON·YAML·TypeScript) 같은 사건이 다른 문구로 온다. 문구를 놓치면 지표 ③이
-  // `other`로 뭉개져 "무슨 값이라 못 읽었는지"가 사라진다 — 실측 4회차에서 272건이 그랬다.
-  if (message.includes("JSON 파싱 실패") || message.includes("YAML 파싱 실패") || message.includes("구문 오류")) {
-    return "json-parse";
-  }
-  if (message.includes("최상위가 객체가 아니다") || message.includes("최상위가 맵이 아니다")) {
-    return "non-object-root";
-  }
-  if (message.includes("default export 객체 리터럴을 찾을 수 없다")) return "other";
-  if (message.includes("값이 문자열이 아니다")) return "leaf-type";
-  // YAML 중복 키 — json-catalog의 접두/중복 충돌과 같은 사건이라 같은 통에 넣는다.
-  if (message.includes("중복 키다")) return "key-collision";
-  if (message.includes("chrome.i18n이 허용하지 않는")) return "chrome-key";
-  if (
-    message.includes("문자열 리터럴이 아니다") ||
-    // code-dict의 shorthand(import 참조)·비프로퍼티도 같은 계열이다 — `other`로 흘리면
-    // 지표 ③에서 "무슨 값이라 못 읽었는지"가 사라진다.
-    message.includes("shorthand라 값을 읽을 수 없다") ||
-    message.includes("프로퍼티 대입이 아니다")
-  ) {
-    return "non-literal-value";
-  }
-  if (
-    message.includes("문자열이나 객체/배열이 아니다") ||
-    message.includes("객체가 아니다") ||
-    message.includes("message 필드가 없다")
-  ) {
-    return "leaf-type";
-  }
-  return "other";
+/**
+ * 지표 ③(read 에러 유형별)의 갈래를 정한다. **`AdapterErrorCode` → `ReadErrorKind`.**
+ *
+ * ⚠️ **옛 구현은 한국어 부분 문자열로 갈랐다** (`classify(message)`, 6b-1까지). 어댑터가 코드를
+ * 내면서 사라졌지만 **분류 결과는 한 칸도 달라지지 않아야 한다** — 이 함수의 출력이
+ * `docs/ADAPTER-COVERAGE.md`의 회차 간 대조 대상이라, 갈래가 움직이면 지표가 조용히 이동해
+ * "수정이 회귀를 만들었나"를 물을 수 없게 된다. `__tests__/classify.test.ts`가 옛 문구 스물둘과
+ * 옛 분류기를 픽스처로 들고 이 표를 대조한다.
+ *
+ * ⚠️ **`other`로 가는 갈래가 두 부류이고 근거가 다르다.** read 층의 둘은 옛 구현이 명시적으로
+ * 그렇게 보낸 것이다 — `no-default-export`는 읽기 실패의 *유형*이 아니라 포맷 불일치이고,
+ * `parse-crashed`(파서가 던졌다)는 `parse-failed`(구문 진단)와 다른 통이었다. write·껍데기 층은
+ * 근거가 아예 다르다: **`read1.errors`에 도달할 수 없어** 옛 구현에서도 이 함수를 지난 적이 없다
+ * (옛 문구를 먹이면 `json-parse`가 나오는 것도 있다 — 그래서 골든 등식을 그쪽에 걸지 않는다).
+ */
+const KIND_OF: Record<AdapterErrorCode, ReadErrorKind> = {
+  "parse-failed": "json-parse",
+  "parse-crashed": "other",
+  "root-not-object": "non-object-root",
+  "no-default-export": "other",
+  "invalid-chrome-key": "chrome-key",
+  "missing-message-field": "leaf-type",
+  "value-not-message-object": "leaf-type",
+  "value-not-string": "leaf-type",
+  "value-not-string-or-container": "leaf-type",
+  "value-not-string-literal": "non-literal-value",
+  "shorthand-property": "non-literal-value",
+  "not-property-assignment": "non-literal-value",
+  "duplicate-key": "key-collision",
+  // ── 아래는 write·적재 껍데기 층이라 여기까지 오지 않는다 (테스트의 `NON_READ`). ──
+  "key-shadowed": "other",
+  "write-parse-failed": "other",
+  "write-no-default-export": "other",
+  "write-locale-object-missing": "other",
+  "write-slot-not-string-literal": "other",
+  "write-slot-not-scalar": "other",
+  "write-slot-missing": "other",
+  "original-file-missing": "other",
+  "download-failed": "other",
+};
+
+export function classify(code: AdapterErrorCode): ReadErrorKind {
+  return Object.hasOwn(KIND_OF, code) ? KIND_OF[code] : "other";
 }
 
 /**

@@ -13,6 +13,7 @@ import { adapterFor, detectFormat, detectFormatWith, isAdapterName, namespaceOf 
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
 import { blobSha } from "../lib/githash";
+import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import { matchGlobPaths } from "../lib/adapters/index";
 import { sameMeaning } from "../lib/adapters/shared";
 import { pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
@@ -161,7 +162,7 @@ if (baseLocale) {
 
   if (result.errors.length) {
     console.error(`\n에러 ${result.errors.length}건:`);
-    for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${e.message}`);
+    for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
     if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
   }
   process.exitCode = result.errors.length ? 1 : 0;

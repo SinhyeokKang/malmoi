@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest";
  *
  * UI 문자열의 단일 출처는 `messages/en.tsx`이고, 그 규칙을 지키는 것은 리뷰가 아니라 이 검사다.
  *
- * ✅ **2026-09-08 ship 4에서 화면 파일이 목록에서 전부 빠졌다.** 남은 셋은 화면이 아니다 —
- * `auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 · `lib/pull/render.ts`의 어댑터 부류 문구(6b-1).
- * 즉 **`app/`·`components/`에 대해서는 이미 전면 방어선이고**, 새 화면이 한글 리터럴을 심으면 그 커밋이 red다.
+ * ✅ **2026-09-08 6b-1에서 목록이 둘로 줄고 `lib/adapters/**` 제외가 풀렸다.** 남은 둘은 화면이 아니다 —
+ * `auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석. 즉 **`app/`·`components/`·`lib/adapters/`에
+ * 대해서는 전면 방어선이고**, 새 화면이나 어댑터가 한글 리터럴을 심으면 그 커밋이 red다.
  *
  * **단언이 둘인 것이 요지다**: 목록 **밖**은 0자(회귀 즉시 red) · 목록 **안**은 ≥1자(낡은 항목 금지).
  * 처음 초안의 `it.fails`는 세 방향으로 무너졌다(QA 검수): 중간 커밋이 한글을 0으로 만드는 순간 red ·
@@ -43,10 +43,11 @@ const ROOT_FILES = ["auth.ts", "middleware.ts"];
  * 스캔에서 빼는 갈래 (design §3.1.4).
  *
  * - `lib/survey/**`·`lib/scan/**` — 웹 UI가 아니라 `pnpm adapter-survey`·`pnpm scan`의 **터미널 출력**이다.
- * - `lib/adapters/**` — 오류 문구의 코드화가 **6b-1**이고, 그때 `lib/survey/one.ts`의 분류기와 재측정이
- *   함께 움직여야 한다. 6a가 손대면 지표 분류기가 조용히 깨진다.
+ *
+ * ✅ **`lib/adapters/**`가 2026-09-08 6b-1에서 빠졌다** — 오류 문구가 `AdapterErrorCode`로 바뀌어
+ * 문장은 사전이 낸다. 그 디렉터리가 다시 한글 리터럴을 들면 이제 이 검사가 red다.
  */
-const EXCLUDED_PREFIX = ["lib/survey/", "lib/scan/", "lib/adapters/"];
+const EXCLUDED_PREFIX = ["lib/survey/", "lib/scan/"];
 
 const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
 
@@ -57,18 +58,15 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  * ⚠️ **`lib/push/apply.ts`는 목록에서 나가지 않는다** — 남은 한글이 `$queryRaw` 템플릿 안의 **SQL 주석**이고,
  * 그건 코드 주석이라 CLAUDE.md대로 한국어다. 스캐너가 JS 주석만 벗기므로 여기 남는다.
  *
- * ⚠️ `lib/pull/render.ts`는 **6b-1까지** 남는다 — `missingOriginal`이 어댑터 오류와 같은 부류의 문구이고,
- * 그 34곳이 코드로 바뀌는 것이 6b-1이다.
+ * ✅ **`lib/pull/render.ts`가 6b-1에서 빠졌다** — `missingOriginal`이 `original-file-missing` 코드가 됐다.
  *
- * ⚠️ **`lib/pull/run.ts`는 목록에 없다.** 그 파일도 어댑터의 한국어 `message`를 warnings로 조립하지만
- * 그건 **런타임 값**이라 소스 스캐너가 원리적으로 못 본다 — 이 검사가 답하는 것은 "리터럴이 있는가"뿐이다.
- * (tasks 문서는 그 파일이 목록에 남을 것으로 적었는데, 실제로 남는 근거는 리터럴이고 run.ts엔 없다.)
+ * ⚠️ **`lib/pull/run.ts`는 목록에 없다.** 그 파일도 어댑터 오류를 warnings로 조립하지만 그건 **런타임 값**이라
+ * 소스 스캐너가 원리적으로 못 본다 — 이 검사가 답하는 것은 "리터럴이 있는가"뿐이다.
  */
 const KOREAN_ALLOWED = [
   // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "auth.ts",
-  "lib/pull/render.ts",
   "lib/push/apply.ts",
 ];
 

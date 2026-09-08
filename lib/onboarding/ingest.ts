@@ -81,7 +81,7 @@ export async function ingestFirstSnapshot(
 
   const errors = [
     ...read.errors,
-    ...missing.map((path) => ({ path, message: "could not download the file" })),
+    ...missing.map((path): AdapterError => ({ path, code: "download-failed" })),
   ];
   return {
     count: payload.keys.length,

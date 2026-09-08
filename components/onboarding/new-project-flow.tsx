@@ -11,10 +11,11 @@ import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { Radio } from "@/components/ui/radio";
 import { Select } from "@/components/ui/select";
-import type { AdapterName } from "@/lib/adapters/types";
+import type { AdapterError, AdapterName } from "@/lib/adapters/types";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { ingestHeadline, isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
@@ -54,7 +55,7 @@ type Stage =
 
 type Ingest =
   | { status: "running" }
-  | { status: "done"; count: number; failed: number; errors: { path: string; message: string }[] }
+  | { status: "done"; count: number; failed: number; errors: AdapterError[] }
   | { status: "failed"; error: string };
 
 export function NewProjectFlow({ repos, adapters }: { repos: RepoOption[]; adapters: AdapterChoice[] }) {
@@ -495,10 +496,10 @@ function Result({
               {ingest.errors.slice(0, 5).map((e, index) => (
                 <div key={`${index} ${e.path}`} className="text-xs">
                   {m.newProject.result.ingest.couldNotRead(e.path)}
-                  {/* 원문 진단은 접어 둔다 — 6a에선 어댑터가 준 원문 그대로다 (6b-1이 코드화한다) */}
+                  {/* 진단은 접어 둔다 — 코드는 사전이 문장으로 내고 파서 원문은 그 뒤에 붙는다 (6b-1) */}
                   <details className="mt-0.5">
                     <summary className="cursor-pointer">{m.newProject.result.ingest.diagnostics}</summary>
-                    <span className="text-mono">{e.message}</span>
+                    <span className="text-mono">{adapterErrorMessage(e)}</span>
                   </details>
                 </div>
               ))}

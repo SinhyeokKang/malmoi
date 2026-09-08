@@ -277,7 +277,7 @@ class Scanner {
   }
 
   private expect(ch: string): void {
-    if (this.text[this.i] !== ch) throw new Error(`'${ch}' 자리에 '${this.text[this.i] ?? "EOF"}'`);
+    if (this.text[this.i] !== ch) throw new Error(`expected '${ch}', got '${this.text[this.i] ?? "EOF"}'`);
     this.i += 1;
   }
 
@@ -290,7 +290,7 @@ class Scanner {
   private value(inArray = false): void {
     this.ws();
     const ch = this.peek();
-    if (ch === undefined) throw new Error("입력이 끝났다");
+    if (ch === undefined) throw new Error("unexpected end of input");
     // 최상위 값이 객체·배열이면 중첩이다 — `json-catalog.read`의 `nested` 판정과 같은 규칙.
     if ((ch === "{" || ch === "[") && this.depth === 1) this.out.nested = true;
     if (ch === "{") return this.object();
@@ -392,7 +392,7 @@ class Scanner {
     const start = this.i;
     for (;;) {
       const ch = this.text[this.i];
-      if (ch === undefined) throw new Error("닫히지 않은 문자열");
+      if (ch === undefined) throw new Error("unterminated string");
       if (ch === "\\") {
         // ⚠️ 이스케이프 관측이 **여기** 있어야 한다. 문자열 문맥을 안 보는 전역 정규식이면 값이
         // 담은 리터럴 백슬래시-u 여섯 글자를 이스케이프로 오독하고, 재관측이 false → true로
@@ -422,7 +422,7 @@ class Scanner {
   private literal(): string {
     const start = this.i;
     while (this.i < this.text.length && /[^,}\]\s]/.test(this.text[this.i]!)) this.i += 1;
-    if (this.i === start) throw new Error("빈 리터럴");
+    if (this.i === start) throw new Error("empty literal");
     return this.text.slice(start, this.i);
   }
 }

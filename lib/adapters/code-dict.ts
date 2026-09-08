@@ -213,16 +213,16 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       // 구문 진단만 본다 — 타입 진단은 lib을 로드해야 하고 여기선 의미가 없다.
       const syntax = project.getProgram().getSyntacticDiagnostics(sf);
       if (syntax.length > 0) {
-        errors.push({ path: file.path, message: `구문 오류: ${syntax[0]?.getMessageText()?.toString() ?? "알 수 없음"}` });
+        errors.push({ path: file.path, code: "parse-failed", detail: syntax[0]?.getMessageText()?.toString() ?? "unknown" });
         continue;
       }
       obj = defaultExportObject(sf);
     } catch (cause) {
-      errors.push({ path: file.path, message: `파싱 실패: ${(cause as Error).message}` });
+      errors.push({ path: file.path, code: "parse-crashed", detail: (cause as Error).message });
       continue;
     }
     if (obj === undefined) {
-      errors.push({ path: file.path, message: "default export 객체 리터럴을 찾을 수 없다" });
+      errors.push({ path: file.path, code: "no-default-export" });
       continue;
     }
 
@@ -253,11 +253,11 @@ function collect(
 ): void {
   for (const prop of obj.getProperties()) {
     if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
-      errors.push({ path, message: `'${prop.getName()}'이 shorthand라 값을 읽을 수 없다 (import 참조로 보인다)` });
+      errors.push({ path, code: "shorthand-property", key: prop.getName() });
       continue;
     }
     if (!prop.isKind(SyntaxKind.PropertyAssignment)) {
-      errors.push({ path, message: `'${prop.getText().slice(0, 40)}'은 프로퍼티 대입이 아니다` });
+      errors.push({ path, code: "not-property-assignment", key: prop.getText().slice(0, 40) });
       continue;
     }
     const nameNode = prop.getNameNode();
@@ -272,7 +272,7 @@ function collect(
       out.push({ key, message: init.getLiteralValue() });
       continue;
     }
-    errors.push({ path, message: `'${key}'의 값이 문자열 리터럴이 아니다 (${init?.getKindName() ?? "없음"})` });
+    errors.push({ path, code: "value-not-string-literal", key, detail: init?.getKindName() ?? "none" });
   }
 }
 
@@ -305,15 +305,15 @@ function writeWithErrors(
     if (syntax !== undefined) {
       return {
         content: file.content,
-        errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${syntax.getMessageText()?.toString() ?? "알 수 없음"}` }],
+        errors: [{ path: file.path, code: "write-parse-failed", detail: syntax.getMessageText()?.toString() ?? "unknown" }],
       };
     }
     root = defaultExportObject(sf);
   } catch (cause) {
-    return { content: file.content, errors: [{ path: file.path, message: `구문 오류로 원본을 그대로 둔다: ${(cause as Error).message}` }] };
+    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }] };
   }
   if (root === undefined) {
-    return { content: file.content, errors: [{ path: file.path, message: "default export 객체 리터럴을 찾을 수 없다 — 원본을 그대로 둔다" }] };
+    return { content: file.content, errors: [{ path: file.path, code: "write-no-default-export" }] };
   }
 
   const wanted = new Map<string, string>();
@@ -335,7 +335,7 @@ function writeWithErrors(
     // 문자열 리터럴이 아닌 자리는 건드리지 않는다. **다만 조용히 버리지 않는다** — 값을 잃더라도
     // 어느 키에서 잃었는지 알려주는 것이 최소 조건이다 (ARCHITECTURE §1.35).
     if (target === "not-a-literal") {
-      errors.push({ path: file.path, message: `'${key}'가 문자열 리터럴 자리가 아니라 값을 넣지 못했다` });
+      errors.push({ path: file.path, code: "write-slot-not-string-literal", key });
       continue;
     }
     if (target.getLiteralValue() === value) continue;
@@ -358,7 +358,7 @@ function writeWithErrors(
       continue;
     }
     // 문자열 자리를 객체로 덮는 삽입은 구조 변경이라 포기한다 — 그 사실을 보고한다.
-    errors.push({ path: file.path, message: `'${key}'를 넣을 자리를 만들 수 없어 건너뛰었다 (구조 변경)` });
+    errors.push({ path: file.path, code: "write-slot-missing", key });
   }
 
   return { content: changed ? sf.getFullText() : file.content, errors };

@@ -136,25 +136,22 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
     try {
       parsed = JSON.parse(file.content);
     } catch (cause) {
-      errors.push({ path: file.path, message: `JSON 파싱 실패: ${(cause as Error).message}` });
+      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
       continue;
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      errors.push({ path: file.path, message: "최상위가 객체가 아니다" });
+      errors.push({ path: file.path, code: "root-not-object" });
       continue;
     }
 
     const entries: LocaleEntry[] = [];
     for (const [key, raw] of Object.entries(parsed)) {
       if (!CHROME_KEY.test(key)) {
-        errors.push({
-          path: file.path,
-          message: `키 이름 '${key}'에 chrome.i18n이 허용하지 않는 문자가 있다 (허용: A-Z a-z 0-9 _ @)`,
-        });
+        errors.push({ path: file.path, code: "invalid-chrome-key", key });
         continue;
       }
       if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-        errors.push({ path: file.path, message: `'${key}'의 값이 { message } 객체가 아니다` });
+        errors.push({ path: file.path, code: "value-not-message-object", key });
         continue;
       }
       const { message, description, placeholders } = raw as {
@@ -163,7 +160,7 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
         placeholders?: unknown;
       };
       if (typeof message !== "string") {
-        errors.push({ path: file.path, message: `'${key}'에 message 필드가 없다` });
+        errors.push({ path: file.path, code: "missing-message-field", key });
         continue;
       }
       // `entries.length`가 곧 파일 순서다 — 정렬은 아래에서 **뒤에** 일어난다.

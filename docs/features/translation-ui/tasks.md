@@ -20,7 +20,7 @@
 | **1. 기반** ✅ | T1 · T2 · T3 · T4 · T5 (2026-09-08 — T4가 앞당겨졌다) | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
 | **2. 셸** ✅ | T6 (T4는 ship 1이 가져갔다) | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
 | **3. 번역 화면** ✅ | T7 (2026-09-08 — dev) | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
-| **4. 나머지 + 정리** | T8 · T9 | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
+| **4. 나머지 + 정리** ✅ | T8 · T9 (2026-09-08 — prod `695e441`) | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
 
 - **순서는 고정이다** — T5(프리미티브)가 T6~T8보다 앞서야 하고 T1(사전)이 T4보다 앞서야 한다. Ship 1이 그 둘을
   한꺼번에 앞으로 뺀 것이고, 그래서 **가장 크지만 가장 안 보이는** 배송이다.
@@ -35,7 +35,7 @@
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
 - [x] base branch·기준 로케일 변경 필드 — **둘 다 넣는다** → **6b**
-- [x] 어댑터 오류 문구 — **코드로 리팩터** → **6b** (재측정 포함)
+- [x] 어댑터 오류 문구 — **코드로 리팩터** → **6b-1에서 닫혔다** (2026-09-08, 14차 재측정 포함 — ADAPTER-COVERAGE §20)
 - [x] 멤버 화면 이메일 — 전원 마스킹 → 6b
 - [x] `sonner`·`tw-animate-css`·`components.json` — 마지막 chore에서 사용 0이면 제거
 - [x] 모노 폰트 — 시스템 스택 유지
@@ -51,17 +51,17 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T1. i18n 기반 — 사전 하나 + 스캐너 (순수)
 
-- [ ] `messages/en.tsx` — `export const en = { common, signIn, projects, newProject, translations, settings, invite, errors } as const`.
+- [x] `messages/en.tsx` — `export const en = { common, signIn, projects, newProject, translations, settings, invite, errors } as const`.
       **값은 문자열 또는 함수다**: 카운터 `keys: (n: number) => n === 1 ? "1 key" : \`${n} keys\`` · 쪼개진 문장 `saveAs: (path: ReactNode) => <>Save this in your repository as {path}.</>`.
       `fmt`·`plural`·`rich`·`resolveJsonModule`·JSON resolver는 **없다** (design §3.1.1)
       검증: `pnpm typecheck` · `lib/i18n/__tests__/dictionary.test.ts` — 함수 값 셋(카운터 0·1·2, 노드 삽입 참조 동일성)
-- [ ] `lib/i18n/index.ts` — `export { en as m } from "@/messages/en"` + `export type Messages = typeof en`. **`@/lib/**` import 0** (잎)
+- [x] `lib/i18n/index.ts` — `export { en as m } from "@/messages/en"` + `export type Messages = typeof en`. **`@/lib/**` import 0** (잎)
       검증: `client-graph.test.ts` — **클라이언트 픽스처가 `@/lib/i18n`을 import했을 때** green (T1 시점엔 실 소비자가 없어 공허하므로
       메타 테스트에 픽스처를 하나 둔다)
-- [ ] `components/__tests__/client-graph.test.ts` — `ALLOWED`에 `radix-ui`·`class-variance-authority`·`lucide-react` 추가 (**의도된 결정** —
+- [x] `components/__tests__/client-graph.test.ts` — `ALLOWED`에 `radix-ui`·`class-variance-authority`·`lucide-react` 추가 (**의도된 결정** —
       그 파일 주석이 요구하는 "여기서 한 번"이다, design §9)
       검증: 메타 테스트가 셋 중 하나를 빼면 red
-- [ ] `lib/i18n/__tests__/no-korean-ui.test.ts` — **축소형 허용 목록**. `app/`·`components/`·`lib/`(`__tests__`·`lib/survey`·`lib/scan`·
+- [x] `lib/i18n/__tests__/no-korean-ui.test.ts` — **축소형 허용 목록**. `app/`·`components/`·`lib/`(`__tests__`·`lib/survey`·`lib/scan`·
       **`lib/adapters` 제외 — 6b**)의 `.ts`·`.tsx`에서 주석(`//`·`/* */`·`{/* */}`)을 벗긴 뒤 `[가-힣]`를 센다. 단언 둘: **목록 밖 파일은 0자** ·
       **목록의 파일마다 ≥1자**(낡은 항목 금지). 초기 목록 = 지금 한글이 있는 파일 전부. UI 커밋마다 자기 파일을 뺀다 → T8 끝에 빈다.
       메타 테스트: 주석 종류 셋을 하나씩 먹여 벗기는지 + 코드 안 한글 리터럴을 잡는지
@@ -71,18 +71,18 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T2. 판정 함수 — 번역 화면·Publish·상태 (순수)
 
-- [ ] `lib/keys/view.ts` — `defaultNamespace(counts, focus)`(focus 로케일 기준 pending>0인 첫 ns → 없으면 `compareKeys` 첫 ns → 비면 `null`) ·
+- [x] `lib/keys/view.ts` — `defaultNamespace(counts, focus)`(focus 로케일 기준 pending>0인 첫 ns → 없으면 `compareKeys` 첫 ns → 비면 `null`) ·
       `resolveNamespace(param, counts, focus)`(`"*"`=all, 없는 이름→default) · `filterRows(rows, {q, state, locale})` · `isUnpublished(cell, lastPulledAt)`.
       ⚠️ `compareKeys`는 `lib/adapters/shared`에서 온다 — **view.ts는 잎이 아니다.** 클라이언트가 이 함수들을 값으로 읽지 않는다(서버 렌더 필터)
       검증: `lib/keys/__tests__/view.test.ts` 확장 — 빈 목록·`*`·낡은 이름·대소문자·상태 필터·`lastPulledAt null`·**orphaned만 있는 ns를 default가 건너뛴다**·
       `?ns` 유효+`?q` 0행·pending 전부 0이면 첫 ns
-- [ ] `lib/pull/run.ts` — `PullResult.committed`에 `pr: "created" | "updated"`. `existing === null ? "created" : "updated"` 한 줄 인라인 (`run.ts:158`,
+- [x] `lib/pull/run.ts` — `PullResult.committed`에 `pr: "created" | "updated"`. `existing === null ? "created" : "updated"` 한 줄 인라인 (`run.ts:158`,
       `GitClient.findOpenPrUrl` 결과)
       검증: `lib/pull/__tests__/run.test.ts`가 두 갈래를 각자 단언 (기존 PR mock 있음/없음)
-- [ ] `lib/pull/message.ts` — **문구 다섯·tone 넷**(`info|success|warning|danger`, success 둘) · 문구는 `m`에서 · **편집자 어휘 유지**(기존 어휘 금지
+- [x] `lib/pull/message.ts` — **문구 다섯·tone 넷**(`info|success|warning|danger`, success 둘) · 문구는 `m`에서 · **편집자 어휘 유지**(기존 어휘 금지
       테스트 `message.test.ts:52,59` 그대로) · warnings ≥1이면 `skipped`여도 `warning`
       검증: `message.test.ts` — 다섯 갈래 문구가 서로 다르다 · tone 매핑 표 · warnings≥1 → `warning`(committed·skipped 둘 다) · exhaustive · 어휘 금지 green
-- [ ] `lib/routes.ts` — `routes.projects()`·`.newProject()`·`.translations(slug, {ns,focus,q,state})`·`.settings(slug)`·`.invite(token)`. **잎**
+- [x] `lib/routes.ts` — `routes.projects()`·`.newProject()`·`.translations(slug, {ns,focus,q,state})`·`.settings(slug)`·`.invite(token)`. **잎**
       검증: `lib/__tests__/routes.test.ts` — 쿼리 undefined 제거·`*` 인코딩. `entry-points.test.ts` "죽은 라우트 링크"가 이 파일도 읽고, **`${…}`
       템플릿을 `shape()`("쿼리 파라미터의 수신자"의 정규화)로 접어 동적 경로도 대조한다**(지금은 `STATIC_PATH`가 정적만 잡는다 — 2026-09-05 사고는 동적이었다)
       + 그 확장을 고정하는 단언
@@ -91,33 +91,33 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T3. 스키마 — additive 둘 + push `updatedBy` + 조회
 
-- [ ] `prisma/schema.prisma` — `Project.lastPublishedAt DateTime?`·`lastPrUrl String?` (주석은 design §5 문장)
+- [x] `prisma/schema.prisma` — `Project.lastPublishedAt DateTime?`·`lastPrUrl String?` (주석은 design §5 문장)
       검증: `/db`가 `--create-only`로 SQL 생성 → 눈으로 확인 → dev 적용 → `pnpm db:status` up to date
-- [ ] `lib/pull/load.ts` `saveLastPulledAt` — `committed`일 때 둘을 함께 쓴다(같은 `update`), `skipped`는 `lastPulledAt`만
+- [x] `lib/pull/load.ts` `saveLastPulledAt` — `committed`일 때 둘을 함께 쓴다(같은 `update`), `skipped`는 `lastPulledAt`만
       검증: **신설** `lib/pull/__tests__/load.test.ts` — Prisma mock의 `update` 인자 캡처 (committed/skipped 둘)
-- [ ] `lib/push/apply.ts` — 번역 upsert `ON CONFLICT … DO UPDATE SET … "updatedBy" = NULL`
+- [x] `lib/push/apply.ts` — 번역 upsert `ON CONFLICT … DO UPDATE SET … "updatedBy" = NULL`
       검증: `lib/push/__tests__/flow.test.ts`(SQL 캡처)가 그 문자열을 고정. `app/(edit)/__tests__/authorization.test.ts:222-226`은 저장 경로라 그대로 green
-- [ ] `lib/keys/query.ts` — `countUnpublished(prisma, projectId, lastPulledAt)` = `prisma.translation.count({ where: { projectId, updatedBy: { not: null },
+- [x] `lib/keys/query.ts` — `countUnpublished(prisma, projectId, lastPulledAt)` = `prisma.translation.count({ where: { projectId, updatedBy: { not: null },
       updatedAt: { gt: lastPulledAt } } })` (null이면 `gt` 생략) · `loadKeys`의 select에 `updatedAt` 추가(셀 점 표시용)
       검증: 하네스 `app/(edit)/__tests__/harness.ts`에 `translation.count` 추가 + **시드에 프로젝트 둘** — 다른 프로젝트 행을 세지 않는다 · `lastPulledAt null`
-- [ ] `app/(edit)/layout.tsx`용 `loadMemberships(prisma, userId)` — `{slug, name, role}[]`. **새 조회다**(지금 레이아웃은 Prisma를 안 부른다) — `userId` 스코프
+- [x] `app/(edit)/layout.tsx`용 `loadMemberships(prisma, userId)` — `{slug, name, role}[]`. **새 조회다**(지금 레이아웃은 Prisma를 안 부른다) — `userId` 스코프
       검증: 하네스 — 다른 사용자의 멤버십을 내지 않는다 (POSTMORTEM 2026-09-06)
 
 —— `feat(db): record last publish on Project` (스키마+마이그레이션 **만** — `/db` 6단계 규칙) · `feat(pull,push,keys): persist last publish, push clears updatedBy, unpublished count`
 
 ## T4. 문구 모듈·진단 문구 — 사전 읽기로 전환
 
-- [ ] `lib/auth/message.ts`·`lib/github-connect/message.ts`·`lib/onboarding/message.ts`(+`ingestHeadline`)·`lib/onboarding/readiness.ts`(`readinessLabel`)·
+- [x] `lib/auth/message.ts`·`lib/github-connect/message.ts`·`lib/onboarding/message.ts`(+`ingestHeadline`)·`lib/onboarding/readiness.ts`(`readinessLabel`)·
       `lib/onboarding/detect.ts`(`formatLabel`) — `satisfies Record<Union,string>`. `lib/pull/message.ts`는 T2
       검증: 문구 모듈 테스트 **33줄**(auth 16·onboarding 11·pull 4·github-connect 2)을 영어 기대값으로 갱신해 green · 갈래 하나를 사전에서 지우면 typecheck red(한 번 확인하고 되돌린다) ·
       `credential-separation.test.ts` green(`lib/onboarding`이 `@/lib/i18n`을 읽는 것은 허용 방향)
-- [ ] 진단 문구 영어화 — `lib/pull/**`·`lib/push/**`·`lib/github.ts`·`lib/auth/profile.ts`·`lib/env.ts`·`lib/github-connect/state.ts`의 `fail()`/`throw` (사전 밖, design §3.1.4).
+- [x] 진단 문구 영어화 — `lib/pull/**`·`lib/push/**`·`lib/github.ts`·`lib/auth/profile.ts`·`lib/env.ts`·`lib/github-connect/state.ts`의 `fail()`/`throw` (사전 밖, design §3.1.4).
       ⚠️ **`lib/pull/run.ts:127`의 warnings 조립(`${path}: ${message}`)은 어댑터 `message`를 그대로 실으므로 6a에서는 한글이 남는다** — `no-korean-ui` 목록에
       `run.ts`가 남고 6b가 뺀다
       검증: `lib/__tests__/failure.test.ts`가 `safe` 메시지 예시를 영어로 갱신 · `render.test.ts` 9줄·`run.test.ts` 5줄의 한글 단언 갱신 · 스캔 목록에서 이 파일들 제거
-- [ ] `lib/onboarding/workflow.ts` YAML 주석 영어화 + `docs/ACTIONS.md` 같은 커밋
+- [x] `lib/onboarding/workflow.ts` YAML 주석 영어화 + `docs/ACTIONS.md` 같은 커밋
       검증: `workflow*.test.ts`(ACTIONS.md 줄 대조) green
-- [ ] `app/layout.tsx` — `metadata` 영어. ⚠️ **`lang`은 T8로 미룬다** (2026-09-08 code-review 🟡4): 화면 문구가
+- [x] `app/layout.tsx` — `metadata` 영어. ⚠️ **`lang`은 T8로 미룬다** (2026-09-08 code-review 🟡4): 화면 문구가
       21개 파일에서 아직 한국어인데 `lang="en"`을 선언하면 스크린리더가 한국어 본문을 영어 음성으로 읽는다.
       ship 2·3이 프로덕션에 나가는 동안 그 상태가 유지된다
       검증: `no-korean-ui` 목록에서 제거
@@ -229,45 +229,63 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T8. 설정 · 새 프로젝트 · 초대 수락 (라우트별 커밋)
 
-- [ ] `app/(edit)/projects/[slug]/settings/page.tsx` — settings-block 넷(리포 연결·상태·push 토큰·워크플로) + 계정 섹션 **그대로**. `FirstIngestRetry`는 분기 밖 유지.
+- [x] `app/(edit)/projects/[slug]/settings/page.tsx` — settings-block 넷(리포 연결·상태·push 토큰·워크플로) + 계정 섹션 **그대로**. `FirstIngestRetry`는 분기 밖 유지.
       base 필드는 **6b**
       검증: 두 목록에서 제거 · `revalidatePath` 호출 컴포넌트가 분기 밖(소스) · 실물 [다시 시도] 결과 문구가 남는다
-- [ ] `app/(edit)/projects/new/page.tsx` + `components/onboarding/*` — 상태 기계 그대로, `FormGroup`·`Card`·`Radio`·`EmptyState`로 · 부분 실패 목록 "Could not read {path}" +
+- [x] `app/(edit)/projects/new/page.tsx` + `components/onboarding/*` — 상태 기계 그대로, `FormGroup`·`Card`·`Radio`·`EmptyState`로 · 부분 실패 목록 "Could not read {path}" +
       `<details>` 원문(어댑터 `message` — 6a에선 한국어 원문이 `<details>` 안에 남는다, 6b가 코드화) · 쪼개진 문장 **7곳**(`new-project-flow` 399·447-452·485-486 ·
       `projects/new/page` 100 · `push-token-panel` 26-27 · `workflow-block` 18·24-25)을 사전 함수 값으로
       검증: `client-graph.test.ts` green(어댑터 라벨은 여전히 서버가 내려준다) · 실물 ②~⑥ 한 바퀴(폐기용 리포) · 두 목록에서 제거
-- [ ] `app/invite/[token]/page.tsx` — 셸 밖 카드, 분기별 Alert, provider 버튼은 `Button default`
+- [x] `app/invite/[token]/page.tsx` — 셸 밖 카드, 분기별 Alert, provider 버튼은 `Button default`
       검증: 두 목록에서 제거 · `entry-points.test.ts` 예외 목록 그대로 green
-- [ ] `app/layout.tsx` — `lang="en"` (T4에서 미룬 것 — 이 커밋에서 화면 문구가 전부 영어가 된다)
+- [x] `app/layout.tsx` — `lang="en"` (T4에서 미룬 것 — 이 커밋에서 화면 문구가 전부 영어가 된다)
       검증: 소스에 `lang="en"`
-- [ ] `lib/routes.ts`가 내는 `?q=`·`?state=`의 **수신자가 생긴다** — `entry-points.test.ts`의
+- [x] `lib/routes.ts`가 내는 `?q=`·`?state=`의 **수신자가 생긴다** — `entry-points.test.ts`의
       `PENDING_QUERY_KEYS`에서 둘을 뺀다 (안 빼면 "낡은 항목" 단언이 red다, 2026-09-08 code-review 🟡3)
       검증: 그 목록이 비고 `entry-points` green
-- [ ] 이 시점에 **두 허용 목록이 빈다** (`no-korean-ui`는 `lib/pull/run.ts`·`lib/pull/render.ts`·`lib/adapters/**` 제외 — 6b)
+- [x] 이 시점에 **두 허용 목록이 빈다** (`no-korean-ui`는 `lib/pull/run.ts`·`lib/pull/render.ts`·`lib/adapters/**` 제외 — 6b)
       검증: `pnpm test` 전체 green · `pnpm build` · `find .next/static/chunks -name '*.js' -size +1M` 출력이 비어 있다
 
 —— `feat(settings): settings blocks on primitives` · `feat(onboarding): new-project flow on primitives` · `feat(invite): accept page on primitives`
 
 ## T9. 문서·정리·검증
 
-- [ ] `docs/SAAS.md` §8 6단계 체크(6a 항목) + **6b 항목을 같은 절에 미체크로** + §8 1단계 "UI 레퍼런스 — Supabase" 줄을 GitLab으로 + §10에 ko 미결 한 줄
+- [x] `docs/SAAS.md` §8 6단계 체크(6a 항목) + **6b 항목을 같은 절에 미체크로** + §8 1단계 "UI 레퍼런스 — Supabase" 줄을 GitLab으로 + §10에 ko 미결 한 줄
       검증: `/doc-check` SAAS 에이전트 이슈 0
-- [ ] `docs/ARCHITECTURE.md` — §6.35에 `lib/i18n`·`lib/routes` 잎 추가 · 새 절 "UI 문자열 경계"(design §3.1.4) · `updatedBy` 의미(push가 비운다) · `lastPulledAt` vs
+- [x] `docs/ARCHITECTURE.md` — §6.35에 `lib/i18n`·`lib/routes` 잎 추가 · 새 절 "UI 문자열 경계"(design §3.1.4) · `updatedBy` 의미(push가 비운다) · `lastPulledAt` vs
       `lastPublishedAt`의 의미 차이(design §3.5)
       검증: `/doc-check`
-- [ ] `docs/features/README.md` — translation-ui 행(6a 완료·6b 대기) · `translation-input` a11y 항목 닫음 · "디렉터리만 없다" 정정
-- [ ] `CLAUDE.md` — 디렉터리 구조(`messages/`·`lib/i18n/`·`lib/routes.ts`·`components/ui/` 소유·`components/shell/`) · "가상화하지 않는다" 절에 착지 실측 추가 ·
+- [x] `docs/features/README.md` — translation-ui 행(6a 완료·6b 대기) · `translation-input` a11y 항목 닫음 · "디렉터리만 없다" 정정
+- [x] `CLAUDE.md` — 디렉터리 구조(`messages/`·`lib/i18n/`·`lib/routes.ts`·`components/ui/` 소유·`components/shell/`) · "가상화하지 않는다" 절에 착지 실측 추가 ·
       `focus-ring`·`client-graph` 서술(허용 목록 셋)
-- [ ] `README.md` 요약 미러
-- [ ] chore — `sonner`·`tw-animate-css` 사용 0이면 제거, `components.json` 판정
+- [x] `README.md` 요약 미러
+- [x] chore — `sonner`·`tw-animate-css` 사용 0이면 제거, `components.json` 판정
       검증: `pnpm build` green · `git grep sonner` 0
-- [ ] `/bugshot-qa` 한 바퀴 — user-stories §1·§2·§3·§4·§6·§8 순서 + EDITOR의 settings URL 직접 진입(`not-found`) + 저장 실패 포커스(다른 셀 타이핑 중) +
+- [x] `/bugshot-qa` 한 바퀴 — user-stories §1·§2·§3·§4·§6·§8 순서 + EDITOR의 settings URL 직접 진입(`not-found`) + 저장 실패 포커스(다른 셀 타이핑 중) +
       Publish 다섯 갈래 중 넷(**실패는 App 설치의 선택 목록에서 폐기용 리포를 빼서** 유발 — base 브랜치를 못 읽는다; push 토큰은 pull과 무관) + 첫 착지 <2초 +
       배너 부재/재등장 + EDITOR 사이드바 + VoiceOver 한 번
       검증: 이슈 0건 또는 전부 닫힘
-- [ ] `/db` → `/push` → `/merge`(`db:deploy` 1단계)
+- [x] `/db` → `/push` → `/merge`(`db:deploy` 1단계)
 
 —— 문서별 커밋(`docs(SAAS): …`·`docs(ARCHITECTURE): …`·`docs(CLAUDE): …`·`docs(feature): …`) · `chore: drop unused ui deps`
+
+> ✅ **ship 4로 프로덕션에 나갔다** (2026-09-08 — PR #16 → squash `695e441`). **6a가 닫혔다.**
+>
+> - **문서는 `/doc-check` 전수 대조로 갱신했다** — 12개 문서에서 54건(🔴 10 · 🟡 24 · ⚪ 20)을 잡아 문서별
+>   커밋 10개 + 코드 커밋 1개로 반영했다. T9가 열거한 항목보다 넓다. 가장 값이 컸던 것: ARCHITECTURE와
+>   `lib/auth/session.ts` 주석이 **"`not-found`와 `forbidden`이 같게 말하므로 존재 노출이 없다"**고 적고
+>   있었는데 `access.ts`는 일부러 둘을 **다르게** 말한다 — 실제 방어는 비멤버에게 무조건 `not-found`를
+>   내는 **분기 순서**다(EDITOR가 `/settings`를 직접 열면 `?e=forbidden`으로 실측됐다). 그 문장을 믿으면
+>   반대 방향의 수정 둘이 정당해 보인다. DESIGN은 §6.1에 **표 밖 구조 셋**(네임스페이스 패널·헤더
+>   스트립·고정 슬롯)이 통째로 없었다.
+> - **chore 판정**: `sonner`(import 0) · `tw-animate-css`(`@import`만, `animate-*` 0곳) 제거,
+>   **`components.json`도 삭제**했다 — CLI를 다시 돌리지 않는 리포에 CLI 설정만 남는다.
+> - **`/bugshot-qa` 이슈 0건.** 못 밟은 시나리오 다섯: VoiceOver(CDP로 스크린리더 구동 불가) · 온보딩
+>   ①①' 3갈래(설치·리포가 실재해 유발 불가) · 첫 착지 <2초(dev DB에 903키 프로젝트가 없다 — prod에서
+>   이미 쟀고 **미달**) · 저장 실패 포커스(ship 3에서 실측, 이 배송이 그 파일을 안 건드렸다) · Record tab.
+>   ⚠️ **T9의 기대값 하나가 틀렸다** — "EDITOR의 settings 직접 진입(`not-found`)"은 실제로 `forbidden`이고
+>   **그게 맞다**(EDITOR는 그 프로젝트의 멤버다).
+> - **`/db`는 스킵**했다 — 스키마 변경 0.
 
 ## 검증이 원리적으로 못 보는 것 — 실물로만
 
@@ -285,7 +303,30 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 **착수 전 design을 다시 연다** — `/feature-review`가 잡은 결함이 아래에 있고, 그 답이 6b의 설계다. 여기서는 태스크 뼈대와 지적만 남긴다.
 
-## 6b-1. 어댑터 오류 코드화 + survey 분류기 + 재측정 (첫 사이클)
+## 6b-1. 어댑터 오류 코드화 + survey 분류기 + 재측정 — ✅ 닫혔다 (2026-09-08)
+
+> **결과**: 생성 지점 **35곳**(계획의 34 + `lib/onboarding/ingest.ts`의 `download-failed` — 계획이 그것을 못 셌다)이
+> `AdapterErrorCode` 스물둘을 낸다. 재측정은 **학습·홀드아웃 둘 다** 돌려 전 지표가 13차와 같았다
+> (`docs/ADAPTER-COVERAGE.md` **§20**). 지표 ③의 유형별 건수까지 동일하고, §1이 "분모 없음"으로 비워 뒀던
+> 세 행(`json-parse` 0 · `adapter-threw` 0 · `other` 1)이 이 회차로 채워졌다.
+>
+> **아래 계획이 틀린 곳 셋** — 다음 사이클이 같은 착각을 하지 않도록 남긴다:
+> 1. **소비자가 여덟이 아니라 아홉이다** — `lib/onboarding/ingest.ts`가 `{ path, message: "could not download the file" }`을
+>    만들고 있었다. 타입 변경이 그것을 물었다.
+> 2. **`classify`의 골든 등식을 스물둘 전부에 걸 수 없다.** write 층 아홉은 `read1.errors`에 **도달하지 못하고**,
+>    그 옛 문구가 read 갈래의 부분 문자열을 품어(`구문 오류로 원본을 그대로 둔다: …`) 옛 분류기에 먹이면
+>    `json-parse`가 나온다. 등식은 read 층 **열셋**에만 걸고 나머지는 `other`임을 따로 단언한다.
+> 3. **어댑터 테스트 갱신이 "한글 단언 갱신"으로 끝나지 않았다.** `code-dict`의 한 단언이 겨냥한
+>    `write-slot-missing`은 **도달 불가**였고(`findScalar`가 먼저 잡는다), 옛 단언이 `message.includes("a.deep")`이라
+>    두 갈래를 구별하지 못해 그 사실이 숨어 있었다 (POSTMORTEM 2026-09-08).
+>
+> **범위에 하나 더 들어갔다**: POSTMORTEM이 "어댑터를 손대는 6b-1에서 같이 본다"로 배정해 둔
+> `lib/adapters/json-catalog.ts`의 `format.nestedByPath?.[path] ?? …` 프로토타입 키 위험을 `Object.hasOwn`으로 감쌌다.
+> 출력 바이트는 안 바뀐다 — `false ?? x`가 `false`를 유지하므로 정상 입력의 결과가 같다.
+
+<details>
+<summary>원래 계획 (그대로 남긴다 — 위의 "틀린 곳 셋"이 이것을 가리킨다)</summary>
+
 
 - `lib/adapters/types.ts` — `AdapterErrorCode` union + `AdapterError = { path, code, key?, detail? }`. **`key?`가 필요하다** — 기존 어댑터 테스트 12건 중 6건이 보간된
   키 이름(`"a.deep"`·`"fr"`·`"grp"`)을 단언한다. 코드화 대상은 **34곳**(어댑터 33 + `lib/pull/render.ts:72` `missingOriginal`) — 나머지 5는 `new Error`(`json-style.ts` 4·`index.ts` 1)라 대상이 아니다
@@ -300,6 +341,8 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
   목표 초과 12/99 · clean 초과 1/38 · surgicalEditHunks 20/29 · yaml 중앙값/초과 · 홀드아웃 16/16·3/15. **하나라도 다르면 머지하지 않는다**
 - `/l10n-roundtrip`은 돌리지 않는다 — `contract`·`write-contract`·`key-order-golden` + 바이트 고정점 100/100이 바이트 층을 덮고 `write`의 `content`를 안 건드린다
 - `no-korean-ui` 목록에서 `lib/adapters/**`·`lib/pull/run.ts`·`lib/pull/render.ts` 제외를 푼다
+
+</details>
 
 ## 6b-2. 설정 — base branch·기준 로케일 (🔴 design §3.13을 다시 쓴다)
 

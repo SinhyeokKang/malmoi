@@ -285,6 +285,7 @@ describe("renderLocaleFiles — writer가 버린 항목을 errors로 싣는다",
     const files = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map());
     const en = files.find((f) => f.path === "i18n/en.json");
     expect(en?.errors?.length ?? 0).toBeGreaterThan(0);
-    expect(en?.errors?.[0]?.message).toMatch(/a\.b/);
+    expect(en?.errors?.[0]?.code).toBe("key-shadowed");
+    expect(en?.errors?.[0]?.key).toBe("a.b");
   });
 });

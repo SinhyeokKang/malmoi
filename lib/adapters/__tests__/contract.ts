@@ -263,7 +263,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
     const res = adapter.writeWithErrors(fmt, { locale, entries: entriesFor(CONTRACT_KEYS) });
     if (res.content !== plain) bad.push("writeWithErrors의 content가 write와 다르다 — 한쪽만 고치면 갈린다");
     if (res.errors.length > 0) {
-      bad.push(`정상 입력에 write 에러를 냈다: ${res.errors.map((e) => e.message).join(" / ")}`);
+      bad.push(`정상 입력에 write 에러를 냈다: ${res.errors.map((e) => e.code).join(" / ")}`);
     }
   }
 

@@ -78,7 +78,8 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
       entries: r.locales[0]!.entries,
     });
     expect(res.errors.length).toBeGreaterThan(0);
-    expect(res.errors.map((e) => e.message).join(" ")).toContain("grp.task.database");
+    expect(res.errors.map((e) => e.key)).toContain("grp.task.database");
+    expect(res.errors.map((e) => e.code)).toContain("key-shadowed");
   });
 
   it("충돌해도 깊은 쪽을 살린다 — 문자열 자리를 객체로 덮는 대신 얕은 쪽을 건너뛴다", () => {
