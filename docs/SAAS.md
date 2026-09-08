@@ -750,9 +750,10 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 
 ⚠️ **6a / 6b로 갈렸고 6a는 4번의 배송이다** (2026-09-08, `/feature-review` — `features/translation-ui/tasks.md`의
 배송 단위 절이 정본). **ship 1**(기반 — 사전 `messages/en.tsx` · 순수 판정 `lib/keys/view.ts`·`lib/routes.ts` ·
-additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 번역 화면 + Publish)이 **프로덕션에 나갔고**
-(PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`), **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 +
-문서·chore)가 dev에 있다. 남은 것은 **6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 ·
+additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 번역 화면 + Publish) · **ship 4**(T8·T9 —
+설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
+(PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
++ survey 분류기 + 14차 재측정)이 그다음이고, 남은 것은 **6b 셋**(base branch·기준 로케일 필드 ·
 멤버 화면 · `/account` 판정).
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 미작성 화면은 멤버 관리(6b-3) 하나다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
@@ -773,7 +774,14 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
     **가상화도 조회 좁힘도 이 3.3초를 못 줄인다.** 다음 수단은 표를 `Suspense`로 감싸 셸을 먼저 그리기 ·
     순차 DB 왕복 병합 · 폰트 CSS의 렌더 블로킹 해제이고, 셋 다 번역 화면 밖이라 후속이다
     (`features/README.md` 백로그, 표는 `features/translation-ui/tasks.md` T7)
-- [ ] **6b-1 어댑터 오류 코드화 + 재측정** (학습·홀드아웃 둘 다 — `lib/adapters/**`를 치므로 트리거가 열린다)
+- [x] ~~**6b-1 어댑터 오류 코드화 + 재측정**~~ ✅ (2026-09-08) — 생성 지점 35곳이 `AdapterErrorCode` 스물둘을
+      내고 문장은 `messages/en.tsx`의 `adapterErrors`가 낸다(`lib/i18n/adapter-errors.ts`). `lib/survey/one.ts`의
+      `classify`가 문구 기반에서 코드 기반으로 갔고, **학습·홀드아웃 둘 다 돌려 전 지표가 13차와 같음을
+      확인했다** (ADAPTER-COVERAGE **§20** — 14차). `no-korean-ui`의 `lib/adapters/**` 제외와 `lib/pull/render.ts`
+      허용이 함께 풀려 목록이 둘로 줄었다
+  - ⚠️ **재측정이 이 변경의 주된 방어선이 아니다** — 코퍼스가 밟는 갈래는 스물둘 중 여섯뿐이라 나머지의
+    회귀는 지표에 **0으로 조용히** 남는다. 옛 문구 22개와 **옛 분류기 본문**을 픽스처로 든
+    `lib/survey/__tests__/classify.test.ts`가 그 자리를 메운다
 - [ ] **6b-2 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
 - [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
 - [ ] **6b-3 멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
