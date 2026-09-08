@@ -1,4 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
+import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -79,5 +80,33 @@ export function Button({
     >
       {loading && loadingLabel !== undefined ? loadingLabel : children}
     </button>
+  );
+}
+
+/**
+ * 버튼 형을 입은 **링크**. 주 행동이 라우트 이동인 자리("New project"·"Open translations")가 이것이다.
+ *
+ * ⚠️ **`Button`의 `asChild`가 아니라 별도 컴포넌트다** — Slot 한 겹이 `<button>` 태그를 지워
+ * `focus-ring` 스캐너가 그 파일을 못 보게 된다 (DESIGN §7). 여기는 `<a>`라 스캐너의 네 태그가 아니고,
+ * 그래서 링을 상수로 붙여도 방어선이 좁아지지 않는다.
+ */
+export function ButtonLink({
+  href,
+  variant,
+  size,
+  className,
+  children,
+}: VariantProps<typeof buttonClass> & {
+  href: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
+    >
+      {children}
+    </Link>
   );
 }

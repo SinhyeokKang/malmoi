@@ -63,14 +63,11 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  * (tasks 문서는 그 파일이 목록에 남을 것으로 적었는데, 실제로 남는 근거는 리터럴이고 run.ts엔 없다.)
  */
 const KOREAN_ALLOWED = [
-  "app/(edit)/layout.tsx",
   "app/(edit)/projects/[slug]/settings/page.tsx",
   "app/(edit)/projects/[slug]/translations/page.tsx",
   "app/(edit)/projects/actions.ts",
   "app/(edit)/projects/new/page.tsx",
-  "app/(edit)/projects/page.tsx",
   "app/invite/[token]/page.tsx",
-  "app/page.tsx",
   "components/github-account.tsx",
   "components/invite-form.tsx",
   "components/onboarding/connect-github.tsx",
