@@ -42,8 +42,8 @@
 
 :root {
   /* 팔레트는 slate(푸른 틴트). bugshot-2가 라이트=slate / 다크=neutral로 갈랐던 비대칭은
-     라이트 단일이라 필요 없다 (docs/DESIGN.md §2). 값의 진실은 components.json의
-     baseColor가 아니라 이 파일이다 — 그건 CLI 생성 시드일 뿐이다. */
+     라이트 단일이라 필요 없다 (docs/DESIGN.md §2). ⚠️ 값의 **유일한** 진실이 이 파일이다 —
+     시드 파일(components.json)은 CLI를 버린 2026-09-08에 함께 삭제됐다. */
   --radius: 0.625rem;
 
   --background: hsl(0 0% 100%);

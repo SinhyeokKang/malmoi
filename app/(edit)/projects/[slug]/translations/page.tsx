@@ -1,4 +1,4 @@
-import { Languages } from "lucide-react";
+import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -252,9 +252,16 @@ function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
   const link = buildPermalink(project, ref);
   if (!link) return null;
   return (
-    <a href={link} target="_blank" rel="noreferrer" className="mt-0.5 block text-xs text-blue-600 underline">
+    // 리포 밖으로 나가는 링크는 색·밑줄 + `ExternalLink` 12 (DESIGN §6.3)
+    <a
+      href={link}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600 underline"
+    >
       {ref.path.split("/").pop()}:{ref.line}
       {row.refs.length > 1 && ` +${row.refs.length - 1}`}
+      <ExternalLink className="size-3" aria-hidden />
     </a>
   );
 }

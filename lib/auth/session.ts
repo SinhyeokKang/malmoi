@@ -36,7 +36,9 @@ export async function requireProjectAccess(input: {
   const access = await getProjectAccess(getPrisma(), { userId, ...input });
   // not-found와 forbidden을 같은 곳으로 보낸다 — 목적지 차이로 존재 여부를 알려주지 않는다. 사유는 `?e=`로
   // 실어 목록 화면이 한 줄 보인다 — 버리면 사용자는 왜 목록으로 왔는지 모른다 (code-review 2026-09-06 🟡12).
-  // 문구 자체가 둘을 같게 말하므로(`accessErrorMessage`) 존재 노출은 없다.
+  // ⚠️ **문구는 일부러 다르다** (2026-09-08 정정 — 이 주석이 반대를 말하고 있었다). 존재를 가리는 것은
+  // `planProjectAccess`가 **멤버가 아니면 무조건 `not-found`**를 내는 것이고, 그래서 `forbidden`은 멤버에게만
+  // 도달한다. 문구를 같게 맞추거나 그 판정을 멤버 검사 앞으로 옮기면 이 성질이 깨진다.
   if (access.status !== "ok") redirect(`/projects?e=${access.status}`);
   // `userId`도 돌려준다 — 호출부가 세션을 다시 읽으면 DB 왕복이 하나 늘고, 무엇보다 **자기 행이
   // 아닌 것을 조회하는 실수**가 열린다 (설정 화면이 `findFirst({ provider })`로 남의 계정을 집을 뻔했다).

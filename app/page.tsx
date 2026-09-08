@@ -64,7 +64,8 @@ function ProviderButton({
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >
-      <Button type="submit" variant={variant} className="h-9 w-full">
+      {/* ⚠️ 높이를 덮지 않는다 (DESIGN §8) — 호출부는 폭·여백만 덧댄다 */}
+      <Button type="submit" variant={variant} className="w-full">
         {label}
       </Button>
     </form>

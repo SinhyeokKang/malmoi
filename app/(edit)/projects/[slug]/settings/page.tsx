@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { GithubAccount, ReauthorizePrompt } from "@/components/github-account";
@@ -214,8 +215,14 @@ function HealthRow({
             <p>{m.settings.repository.health["app-uninstalled"]}</p>
             {installUrl !== null && (
               <p className="mt-1">
-                <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                <a
+                  href={installUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-baseline gap-1 text-blue-600 underline"
+                >
                   {m.settings.repository.health.install}
+                  <ExternalLink className="size-3" aria-hidden />
                 </a>{" "}
                 — {m.settings.repository.health.installHint}
               </p>

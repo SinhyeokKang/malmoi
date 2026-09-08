@@ -1,5 +1,5 @@
 // ⚠️ `lucide-react` 1.x에 브랜드 아이콘이 없다 — `Github`을 import하면 빌드가 죽는다 (DESIGN §6.8)
-import { FolderGit2, Link2 } from "lucide-react";
+import { ExternalLink, FolderGit2, Link2 } from "lucide-react";
 
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { NewProjectFlow, type AdapterChoice, type RepoOption } from "@/components/onboarding/new-project-flow";
@@ -140,8 +140,14 @@ function Blocked({ error }: { error: string }) {
               m.newProject.empty.noLink
             ) : (
               <>
-                <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                <a
+                  href={installUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-baseline gap-1 text-blue-600 underline"
+                >
                   {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
+                  <ExternalLink className="size-3" aria-hidden />
                 </a>{" "}
                 — {m.newProject.empty.afterInstall}
               </>
