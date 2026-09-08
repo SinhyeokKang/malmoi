@@ -81,7 +81,13 @@ export type InviteError =
  */
 const INVITE = m.errors.invite satisfies Record<InviteError | "fallback", string>;
 
-export function inviteErrorMessage(error: InviteError): string {
+/**
+ * ⚠️ **인자가 `string`이다 — `InviteError`가 아니다** (2026-09-08). 이 함수의 계약은 "모르는 값에
+ * 폴백"이고 구현도 그렇게 돼 있는데 타입만 좁아서, 유일한 호출부(초대 화면)가 주소창 값에
+ * `as InviteError`를 걸고 있었다 — **단언은 그 계약을 검사에서 지우는 것이다.** `signInErrorMessage`가
+ * 같은 이유로 처음부터 `string`을 받는다.
+ */
+export function inviteErrorMessage(error: string): string {
   // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 외부인이 여는 화면이 죽는다.
   return pick(INVITE, error, INVITE.fallback);
 }
