@@ -104,6 +104,12 @@ export const en = {
     /** orphaned 축(키·로케일 어느 쪽이든)이면 셀이 disabled다 (DESIGN §6.1). */
     notEditable: "Not editable — removed from the code",
     placeholder: "Add a translation",
+    /**
+     * ⚠️ **셀의 접근 이름 — placeholder로 대신할 수 없다.** placeholder는 값이 있으면 읽히지 않아
+     * 채워진 셀이 이름 없는 입력이 된다. 903행 × 3로케일에서 그건 표 전체가 익명이라는 뜻이다.
+     * live region이 같은 어휘(`키 · 로케일`)를 쓰므로 알림과 입력이 같은 이름을 가리킨다.
+     */
+    cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
 
     filters: {
       search: "Search keys and values",

@@ -107,6 +107,28 @@ describe("셀 편집 — 포커스를 뺏지 않는다 (design §3.8)", () => {
   });
 });
 
+describe("접근 이름과 경로 (code-review 2026-09-08 🟡)", () => {
+  /**
+   * ⚠️ **903행 × 3로케일에서 placeholder는 이름이 아니다** — 값이 채워진 입력에는 읽히지 않으므로,
+   * 스크린리더가 어느 키·어느 로케일인지 알 길이 없다. 같은 화면의 live region은 `Saved
+   * buttons.cancel · ja`처럼 말하면서 정작 입력에는 그 맥락이 없었다 (DESIGN §7).
+   */
+  it("셀이 키와 로케일을 접근 이름으로 든다", () => {
+    expect(read(INPUT)).toMatch(/aria-label=\{m\.translations\.cellLabel\(/);
+  });
+
+  /**
+   * ⚠️ **경로 리터럴은 타입이 아니라 데이터다** (POSTMORTEM 2026-09-05 — 라우트를 옮겼는데 링크
+   * 생성기가 옛 경로를 든 채 남아 전부 404였다). `entry-points.test.ts`의 "죽은 라우트 링크"는
+   * `app/` 아래 진입점만 읽어 `components/`가 사각지대라, 이 화면 몫을 여기서 센다.
+   */
+  it("초대 링크를 `routes.invite`로 만든다 — 경로를 문자열로 조립하지 않는다", () => {
+    const src = read("components/invite-form.tsx");
+    expect(src).toMatch(/routes\.invite\(/);
+    expect(src).not.toMatch(/["`']\/invite\//);
+  });
+});
+
 describe("편집 손실 배너 (design §3.11)", () => {
   const src = read(BANNER);
 

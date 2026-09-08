@@ -11,6 +11,7 @@ import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 
 /**
  * 초대 링크 발급 — **OWNER에게만 보인다.**
@@ -45,7 +46,9 @@ export function InviteForm({ slug }: { slug: string }) {
       });
       if (result.ok) {
         // 원문은 서버가 저장하지 않는다 — **이 화면을 벗어나면 다시 볼 수 없다** (SAAS §5.6).
-        setLink(`${window.location.origin}/invite/${result.token}`);
+        // ⚠️ 경로는 `lib/routes.ts` 한 곳이다 — 문자열로 조립하면 라우트를 옮겨도 아무것도 안 깨지고
+        // 발급된 링크만 조용히 404가 된다 (POSTMORTEM 2026-09-05).
+        setLink(`${window.location.origin}${routes.invite(result.token)}`);
         setEmail("");
       } else {
         setError(result.error);

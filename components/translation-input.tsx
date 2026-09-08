@@ -103,6 +103,7 @@ export function TranslationInput({
         }}
         disabled={disabled === true || pending}
         placeholder={disabled === true ? m.translations.notEditable : m.translations.placeholder}
+        aria-label={m.translations.cellLabel(keyName, localeCode)}
         // `fieldClass`가 `aria-[invalid=true]:border-destructive`를 든다 — 색을 여기서 또 주지 않는다.
         aria-invalid={failed}
         className="w-full"
