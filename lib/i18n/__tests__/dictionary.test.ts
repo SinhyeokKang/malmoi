@@ -39,6 +39,25 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   it("실패 문구는 원인을 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고 방법이 없어진다", () => {
     expect(m.translations.publish.failed("internal (ref abc)")).toContain("internal (ref abc)");
   });
+
+  /**
+   * 편집 손실 배너 (design §3.11). **주어가 편집자의 행동이다** — 처음 초안은 "code push"가 주어였고,
+   * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다 (CDO·CPO 검수).
+   */
+  it("배너는 1건과 여러 건의 문장이 갈린다", () => {
+    expect(m.translations.banner.unsent(1)).toContain("1 change ");
+    expect(m.translations.banner.unsent(1)).not.toContain("1 changes");
+    expect(m.translations.banner.unsent(4)).toContain("4 changes ");
+  });
+
+  it("배너는 편집자가 할 수 있는 일로 끝난다 — 막힌 사실만 말하면 갇힌다", () => {
+    expect(m.translations.banner.unsent(2)).toMatch(/send them/);
+  });
+
+  it("Publish 버튼 라벨이 미배포 건수를 든다 — 0이면 숫자를 붙이지 않는다", () => {
+    expect(m.translations.publish.button(0)).toBe("Send changes");
+    expect(m.translations.publish.button(3)).toBe("Send changes (3)");
+  });
 });
 
 describe("사전 — 노드를 삽입하는 값", () => {

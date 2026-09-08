@@ -483,7 +483,7 @@ git ref-safe(`isRefSafeSlug` — 브랜치 이름 `l10n/sync-<slug>`에 그대�
 /projects/:slug/settings       설정
 ```
 
-⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼이다(`components/pull-button.tsx`). 한때 `/projects/:slug/publish`로 적혀 있었는데 그런 라우트는 만들지 않았고 §8 6단계도 요구하지 않는다.
+⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼이다(`components/publish-button.tsx` — 6a T7이 `pull-button.tsx`를 대체했다). 한때 `/projects/:slug/publish`로 적혀 있었는데 그런 라우트는 만들지 않았고 §8 6단계도 요구하지 않는다.
 
 **account 단계를 두지 않는다** (`/:account/:project`가 아니다). 조직 계층이 §4.2 비범위이므로 그 단계를
 지금 만들면 **쓰이지 않는 계층을 미리 만드는 것**이고, `Account` 테이블과 개인/조직 판정이 따라온다.
@@ -748,9 +748,10 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 
 ⚠️ **6a / 6b로 갈렸고 6a는 4번의 배송이다** (2026-09-08, `/feature-review` — `features/translation-ui/tasks.md`의
 배송 단위 절이 정본). **ship 1**(기반 — 사전 `messages/en.tsx` · 순수 판정 `lib/keys/view.ts`·`lib/routes.ts` ·
-additive 컬럼 둘 · 프리미티브 16)이 **프로덕션에 나갔고**(PR #12 → squash `46df51a`), **ship 2**(셸 — 사이드바·
-top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 **ship 3**(T7 번역 화면 + Publish) · **ship 4**(T8·T9) ·
-**6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 · 멤버 화면 · `/account` 판정).
+additive 컬럼 둘 · 프리미티브 16)과 **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 **프로덕션에
+나갔고**(PR #12 → squash `46df51a`, PR #14 → squash `add099a`), **ship 3**(T7 번역 화면 + Publish)이 dev에 있다.
+남은 것은 **ship 4**(T8·T9) · **6b 넷**(어댑터 오류 코드화+재측정 · base branch·기준 로케일 필드 · 멤버 화면 ·
+`/account` 판정).
 
 **아래 항목들의 판정·데이터층은 대부분 섰고 남은 것이 화면이다** — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -760,10 +761,14 @@ top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 **
 `lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 상시 고정한다.
 **ko를 여는 시점은 아직 안 정했다** — §10에 있다.
 
-- [ ] 원문 + 전 로케일, 저장 상태, `needsReview`·`orphaned` 배지, 코드 permalink
+- [x] ~~원문 + 전 로케일, 저장 상태, `needsReview`·`orphaned` 배지, 코드 permalink~~ ✅ **ship 3** (2026-09-08, T7)
   - ⚠️ **큰 프로젝트의 첫 착지가 느리다** (2026-09-07 실측): `ts-dict` 903키의 필터 없는 화면이 12.7초 ·
     `<input>` 2,711개 · 네임스페이스 52개. **가상화가 첫 수단이 아니다** — 인라인 편집과 섞으면 스크롤
     튐·포커스 유실이 붙는다(CLAUDE.md). 기본 착지를 첫 네임스페이스로 두는 것이 더 값싸다
+  - ⚠️ **그 값싼 수단은 붙었지만 2초 목표는 아직 안 쟀다.** `defaultNamespace`가 pending>0인 첫 ns로
+    착지시키고 표는 그 ns의 행만 렌더한다. **재측정이 프로덕션에서만 가능하다** — dev DB에는 903키
+    프로젝트가 없고(24키짜리 `order-check` 하나뿐) 그 프로젝트는 prod에만 있다. `/merge` 뒤 같은
+    프로젝트·같은 방법(DevTools Performance LCP)으로 잰다
 - [ ] **멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
       번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
       테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
@@ -780,8 +785,10 @@ top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 **
       (`applyPush`의 `ON CONFLICT … "updatedBy" = NULL`). strict에서 덮인 값의 저자는 리포이므로 사람 이름이
       남는 쪽이 거짓이었고, **미배포 집계가 그 조건 위에 선다** — `updatedAt`만 보면 code push 직후 903키
       전부가 "안 보낸 편집"이 된다. 남은 하나(orphaned 로케일 화면)는 T7이 확정한다.
-- [ ] **MVP §10 미결 둘을 여기서 답한다** — orphaned 로케일의 화면 처리(2026-09-06에 임시로 열 유지 +
-      배지 + 편집 비활성으로 닫았다 — 여기서 확정), ~~덮인 셀의 `updatedBy`~~ ✅ **답했다** (2026-09-08,
+- [x] **MVP §10 미결 둘을 여기서 답한다** — ✅ **둘 다 답했다.** orphaned 로케일은 **열 유지 + 헤더
+      `Badge danger` + 셀 `disabled` + placeholder로 확정했다** (2026-09-08, ship 3 — 2026-09-06 임시안이
+      그대로 맞았다: 열을 숨기면 로케일이 사라진 것을 편집자가 알 길이 없고, 편집을 허용하면 `updatedAt`만
+      올라 pull이 헛돈다). ~~덮인 셀의 `updatedBy`~~ ✅ **답했다** (2026-09-08,
       6a T3): **push가 비운다**(`applyPush`의 `ON CONFLICT … "updatedBy" = NULL`). strict에서 덮인 값의 저자는
       리포이므로 사람 이름이 남는 쪽이 거짓이었다. **미배포 집계가 그 조건 위에 선다** — `updatedAt`만 보면
       push가 전 행의 시각을 올려 code push 직후 903키 전부가 "안 보낸 편집"이 된다.

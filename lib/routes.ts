@@ -37,6 +37,8 @@ function withQuery(path: string, query: Record<string, string | undefined>): str
 }
 
 export const routes = {
+  /** 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다 (design §3.8). */
+  signIn: (): string => "/",
   projects: (): string => "/projects",
   newProject: (): string => "/projects/new",
   translations: (slug: string, query: TranslationsQuery = {}): string =>

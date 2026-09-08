@@ -14,7 +14,7 @@
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 dev에 있다. 남은 것은 ship 3(T7 번역 화면 + Publish) · ship 4(T8·T9) · **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸 — 사이드바·top bar·2열 로그인·프로젝트 목록)가 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a`로 **프로덕션에 나갔고**, **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 dev에 있다. 남은 것은 ship 4(T8·T9) · **6b 넷**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -131,7 +131,7 @@
 
 ⚠️ **관측됐다** (2026-09-07 실측, `/bugshot-qa`): `ts-dict` 903키 프로젝트의 **필터 없는** 번역 화면이 **12.7초**다 — 903행 · `<input>` 2,711개 · 네임스페이스 52개. 필터를 걸면 위 전제대로 수십 행이다. **그래도 지금 가상화를 넣지 않는다**: 그 화면은 동결분이고(MVP §8.3) SAAS §8 6단계가 재작성하므로, 거기서 "기본 착지를 첫 네임스페이스로" 같은 값싼 수단을 먼저 본다.
 
-✅ **그 값싼 수단이 판정 함수로 서 있다** (2026-09-08, 6a T2): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시킨다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **화면이 그것을 쓰는 것은 T7이고**, 그때 같은 프로젝트·같은 방법(DevTools Performance LCP)으로 12.7초를 다시 재 목표가 2초다.
+✅ **그 값싼 수단이 화면에 붙었다** (2026-09-08, 6a T2 판정 + T7 화면): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시키고 표는 그 ns의 행만 렌더한다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **전체 보기는 `?ns=*`로만 간다.** ⚠️ **2초 목표는 아직 안 쟀다** — dev DB에 903키 프로젝트가 없고(24키짜리 `order-check` 하나뿐) 그 프로젝트는 prod에만 있어서, 같은 프로젝트·같은 방법(DevTools Performance LCP)의 재측정은 프로덕션 배포 뒤다.
 
 ### 폰트 — Pretendard 동적 서브셋 (생성물)
 
@@ -298,7 +298,11 @@ app/
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
-                        그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 한 줄
+                        그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 빈 상태.
+                        ⚠️ **기본 착지가 pending>0인 첫 네임스페이스다** (6a T7) — 전체는 `?ns=*`.
+                        `type Search`가 URL 계약이고(ns·focus·q·state) entry-points가 routes.ts와 대조한다.
+                        ⚠️ **헤더를 무조건 렌더한다** — Publish 결과 Alert가 그 안에 있어 조건부 분기에
+                        두면 router.refresh()가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07)
     __tests__/          harness.ts(메모리 DB 한 벌) + harness.test.ts(**하네스 자기검사** — 페이크가 실제
                         스키마보다 느슨하면 아무 행이나 집어도 정답이 나온다, POSTMORTEM 2026-09-06)
                         + 흐름·인가·멤버십·연결·게시실패·온보딩·조회·셸레이아웃 테스트 **여덟**
@@ -323,14 +327,25 @@ app/
                         Server Action이 triggerPull을 직접 부른다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 (matcher에 보호 라우트 등록). 렌더 요청만 막는다
 components/
-  translation-input.tsx 인라인 편집 (client — blur 시 저장)
-  pull-button.tsx       변경 내보내기 (client — 인라인 상태 4개, 토스트 안 씀)
+  translation-input.tsx 셀 편집 (client — Textarea, blur/Enter 저장, Shift+Enter 개행, Esc 되돌리기).
+                        ⚠️ **셀 안 상태줄은 시각 전용**이고 알림은 표 하나의 live region이 든다.
+                        실패 시 포커스는 `shouldRefocus`가 정한다 — 다른 셀을 치고 있으면 뺏지 않고 [Retry]
+  publish-button.tsx    Publish (client — 옛 `pull-button`. 버튼과 결과 Alert가 **갈라져 있다**:
+                        자리가 툴바 오른쪽 / 배너 아래라 상태는 header가 든다).
+                        ⚠️ 실패에는 `router.refresh()`를 부르지 않는다 (POSTMORTEM 2026-09-08)
   reconnect-button.tsx  리포 재연결 (client — pending 라벨 교체, 인라인 오류)
   github-account.tsx    GitHub 계정 연결·해제 (client). ⚠️ reauthorize는 **자동 redirect가 아니라
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받고 `/projects` 계정 섹션이 같은 버튼을 쓴다
-  invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6단계 멤버 관리 화면이 대체한다)
+  invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6b 멤버 관리 화면이 대체한다).
+                        6a T7이 툴바 인라인 폼에서 `Dialog`로 옮겼다
+  translations/         번역 화면의 클라이언트 조각 (6a T7). header(breadcrumb·툴바·배너·결과 Alert를
+                        **한 상태 트리**로 든다) / filters(?q=·?state=·?focus= → routes.translations) /
+                        announcer(표 하나의 `aria-live` — 셀마다 두면 903행×3로케일에 2,700개다) /
+                        edit-loss-banner(닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다)
+                        ⚠️ **filters는 `<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로
+                        submit되지 않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
                         후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
@@ -357,6 +372,9 @@ components/
                         ⚠️ **ui/ 제외가 풀렸다** (2026-09-08) — 그 디렉터리가 링이 사는 유일한 자리다.
                         대신 **ui/ 밖에서 raw 태그를 쓰는 파일**이 축소형 허용 목록(13개)으로 고정되고
                         T6~T8이 비운다. 주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
+                        + translations-screen — 번역 화면의 배선을 소스로 센다(tone→Alert variant 항등 ·
+                        `<details>` 파일 목록 · live region 1개 · `shouldRefocus` · 배너 마운트 게이트 ·
+                        셀의 `aria-label` · 초대 링크가 `routes.invite`). 렌더 테스트가 없는 자리의 방어선이다
                         + tooltip-provider — `Tooltip`이 **자기 Radix Provider를 드는지** 소스로 센다.
                         조상 provider가 없으면 Radix가 **던지고**, 그 툴팁은 접힌 사이드바에서만 렌더되므로
                         "접기를 누르면 셸이 죽는다"로 나타난다 — 접힘이 `localStorage`에 남아 사용자가
@@ -496,8 +514,10 @@ lib/
                         한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel + defaultNamespace·
-                        resolveNamespace·filterRows·isUnpublished) / save.ts(순수 — 저장 판정)
+                        resolveNamespace·filterRows·isUnpublished + relativeTime) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only — loadProject·loadKeys·loadActors·countUnpublished·loadMemberships)
+                        / refocus.ts(⚠️ **잎, import 0** — shouldRefocus. `translation-input.tsx` 안에 두면
+                          그 파일의 그래프에 server-only가 있어 vitest가 import만으로 죽는다)
                         ⚠️ **`isUnpublished`와 `countUnpublished`는 같은 술어의 두 벌이다** — `updatedBy`가 사람인
                         행만 센다(push가 그것을 비운다). `updatedAt`만 보면 code push 직후 전 키가 미배포로 나온다.
                         `app/(edit)/__tests__/queries.test.ts`가 두 경로에 같은 행을 먹여 맞댄다

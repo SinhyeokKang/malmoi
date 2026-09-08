@@ -5,6 +5,7 @@ import {
   filterRows,
   isUnpublished,
   namespaceCounts,
+  relativeTime,
   resolveNamespace,
   translationState,
   type KeyRow,
@@ -303,5 +304,39 @@ describe("isUnpublished — 아직 안 보낸 편집인가", () => {
   it("한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다", () => {
     expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2020-01-01") }, null)).toBe(true);
     expect(isUnpublished({ updatedBy: null, updatedAt: new Date("2020-01-01") }, null)).toBe(false);
+  });
+});
+
+/**
+ * 툴바의 "Last sent 2 days ago". **문자열을 사전이 아니라 `Intl`이 만든다** — 상대 시각은 UI 문구가
+ * 아니라 서식이고, 사전에 넣으면 단위마다 갈래를 손으로 늘리게 된다 (design §3.4).
+ *
+ * ⚠️ **서버에서 만들어 문자열로 내려보낸다.** 클라이언트가 자기 시계로 다시 계산하면 하이드레이션이
+ * 갈리고, 그 차이는 조용하다.
+ */
+describe("relativeTime — 마지막으로 보낸 시각", () => {
+  const now = new Date("2026-09-08T12:00:00Z");
+
+  it("방금 보낸 것은 '초'로 말하지 않는다", () => {
+    expect(relativeTime(new Date("2026-09-08T11:59:50Z"), now)).toBe("now");
+  });
+
+  it("분·시간·일 단위로 올라간다", () => {
+    expect(relativeTime(new Date("2026-09-08T11:55:00Z"), now)).toBe("5 minutes ago");
+    expect(relativeTime(new Date("2026-09-08T09:00:00Z"), now)).toBe("3 hours ago");
+    expect(relativeTime(new Date("2026-09-06T12:00:00Z"), now)).toBe("2 days ago");
+  });
+
+  it("어제는 '어제'다 — numeric auto가 숫자보다 읽기 쉽다", () => {
+    expect(relativeTime(new Date("2026-09-07T12:00:00Z"), now)).toBe("yesterday");
+  });
+
+  it("⚠️ 미래 시각도 던지지 않는다 — 서버·DB 시계가 어긋날 수 있다", () => {
+    expect(relativeTime(new Date("2026-09-08T12:00:30Z"), now)).toBe("now");
+  });
+
+  it("같은 입력 → 같은 결과 (결정성)", () => {
+    const then = new Date("2026-09-01T00:00:00Z");
+    expect(relativeTime(then, now)).toBe(relativeTime(then, now));
   });
 });

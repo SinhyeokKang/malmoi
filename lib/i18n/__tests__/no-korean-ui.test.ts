@@ -64,21 +64,17 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  */
 const KOREAN_ALLOWED = [
   "app/(edit)/projects/[slug]/settings/page.tsx",
-  "app/(edit)/projects/[slug]/translations/page.tsx",
   "app/(edit)/projects/actions.ts",
   "app/(edit)/projects/new/page.tsx",
   "app/invite/[token]/page.tsx",
   "components/github-account.tsx",
-  "components/invite-form.tsx",
   "components/onboarding/connect-github.tsx",
   "components/onboarding/copy-button.tsx",
   "components/onboarding/first-ingest-retry.tsx",
   "components/onboarding/new-project-flow.tsx",
   "components/onboarding/push-token-panel.tsx",
   "components/onboarding/workflow-block.tsx",
-  "components/pull-button.tsx",
   "components/reconnect-button.tsx",
-  "components/translation-input.tsx",
   // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "auth.ts",
