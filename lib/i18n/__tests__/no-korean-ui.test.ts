@@ -48,8 +48,12 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  * ⚠️ **`lib/push/apply.ts`는 목록에서 나가지 않는다** — 남은 한글이 `$queryRaw` 템플릿 안의 **SQL 주석**이고,
  * 그건 코드 주석이라 CLAUDE.md대로 한국어다. 스캐너가 JS 주석만 벗기므로 여기 남는다.
  *
- * ⚠️ `lib/pull/run.ts`·`lib/pull/render.ts`는 **6b-1까지** 남는다 — 어댑터 `AdapterError.message`(한국어)를
- * warnings로 조립하는 자리라, 그 문구가 코드화되기 전에는 뺄 수 없다.
+ * ⚠️ `lib/pull/render.ts`는 **6b-1까지** 남는다 — `missingOriginal`이 어댑터 오류와 같은 부류의 문구이고,
+ * 그 34곳이 코드로 바뀌는 것이 6b-1이다.
+ *
+ * ⚠️ **`lib/pull/run.ts`는 목록에 없다.** 그 파일도 어댑터의 한국어 `message`를 warnings로 조립하지만
+ * 그건 **런타임 값**이라 소스 스캐너가 원리적으로 못 본다 — 이 검사가 답하는 것은 "리터럴이 있는가"뿐이다.
+ * (tasks 문서는 그 파일이 목록에 남을 것으로 적었는데, 실제로 남는 근거는 리터럴이고 run.ts엔 없다.)
  */
 const KOREAN_ALLOWED = [
   "app/(edit)/layout.tsx",
@@ -59,7 +63,6 @@ const KOREAN_ALLOWED = [
   "app/(edit)/projects/new/page.tsx",
   "app/(edit)/projects/page.tsx",
   "app/invite/[token]/page.tsx",
-  "app/layout.tsx",
   "app/page.tsx",
   "components/github-account.tsx",
   "components/invite-form.tsx",
@@ -72,21 +75,8 @@ const KOREAN_ALLOWED = [
   "components/pull-button.tsx",
   "components/reconnect-button.tsx",
   "components/translation-input.tsx",
-  "lib/auth/profile.ts",
-  "lib/env.ts",
-  "lib/github-connect/state.ts",
-  "lib/github.ts",
-  "lib/onboarding/ingest.ts",
-  "lib/onboarding/workflow.ts",
-  "lib/pull/load.ts",
-  "lib/pull/payload.ts",
-  "lib/pull/plan.ts",
   "lib/pull/render.ts",
-  "lib/pull/run.ts",
-  "lib/pull/trigger.ts",
   "lib/push/apply.ts",
-  "lib/push/assemble.ts",
-  "lib/push/plan.ts",
 ];
 
 /**

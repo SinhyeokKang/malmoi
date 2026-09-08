@@ -34,7 +34,7 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
     },
   });
-  if (!project) fail(`프로젝트를 찾을 수 없다: ${slug}`);
+  if (!project) fail(`project not found: ${slug}`);
 
   const { locales, ...rest } = project;
 

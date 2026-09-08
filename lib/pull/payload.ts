@@ -41,9 +41,9 @@ export function buildTreePayload(
   baseSha: string,
 ): TreePayload {
   // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다.
-  if (changes.length === 0) fail("변경분이 0개다 (트리를 만들 이유가 없다)");
+  if (changes.length === 0) fail("no changes (nothing to build a tree from)");
   // 빈 문자열은 필드 누락과 구별되지 않는다 — GitHub이 조용히 base 없는 트리로 처리한다.
-  if (baseSha === "") fail("base_tree가 비어 있다");
+  if (baseSha === "") fail("base_tree is empty");
 
   return {
     base_tree: baseSha,
@@ -67,9 +67,9 @@ export function buildCommitPayload(
   parentSha: string,
   summary: string,
 ): CommitPayload {
-  if (treeSha === "") fail("tree SHA가 비어 있다");
+  if (treeSha === "") fail("tree SHA is empty");
   // parents가 비면 리포의 루트 커밋이 되어 base의 히스토리 전체가 떨어져 나간다.
-  if (parentSha === "") fail("parent SHA가 비어 있다 (base head여야 한다)");
+  if (parentSha === "") fail("parent SHA is empty (must be the base head)");
 
   const body = summary === "" ? "sync translations" : `sync translations (${summary})`;
   return {

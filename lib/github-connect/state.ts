@@ -130,7 +130,7 @@ export function verifyState(input: {
  * 사용자가 할 수 있는 일이 없는 프로그래밍 오류라 500이 정직하다.
  */
 function requireSecret(secret: string): void {
-  if (secret === "") throw new Error("state 서명 키가 비어 있다 — AUTH_SECRET을 확인한다.");
+  if (secret === "") throw new Error("the state signing key is empty — check AUTH_SECRET.");
 }
 
 function sign(encoded: string, secret: string): string {

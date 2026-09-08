@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "말모이",
-  description: "사내 로컬라이제이션 관리 도구",
+  title: "Malmoi",
+  description: "Localization management for your team",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <head>
         {/*
           Pretendard 동적 서브셋. globals.css의 @import가 아니라 <link>로 넣는다 —

@@ -62,7 +62,7 @@ jobs:
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
-          github-token: ${{ secrets.GITHUB_TOKEN }}   # 열린 번역 PR 경고용 (읽기만)
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
 ✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된 전 프로젝트를 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.

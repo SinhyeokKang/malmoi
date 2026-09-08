@@ -42,11 +42,11 @@ export function assemblePushInput(input: {
 
   if (input.baseLocale !== undefined && !format.locales.includes(input.baseLocale)) {
     fail(
-      `기준 로케일 ${input.baseLocale}이 탐지된 로케일(${format.locales.slice().sort().join(", ")})에 없다`,
+      `base locale ${input.baseLocale} is not among the detected locales (${format.locales.slice().sort().join(", ")})`,
     );
   }
   const baseLocale = input.baseLocale ?? pickBaseLocale(format.locales);
-  if (baseLocale === undefined) fail("로케일이 없다 — 연동 불가");
+  if (baseLocale === undefined) fail("no locales — nothing to connect");
 
   const adapter = adapterFor(format);
   const read = adapter.read(format, selectLocaleFiles(adapter.layout, format, paths, probe));

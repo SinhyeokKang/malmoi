@@ -75,12 +75,12 @@ export function formatFromProject(
   locales: readonly string[],
 ): DetectedFormat {
   const { adapterName, pathTemplate, baseLocale } = cols;
-  if (adapterName === null) fail("Project.adapterName이 비어 있다 (push를 먼저 받아야 한다)");
-  if (pathTemplate === null) fail("Project.pathTemplate이 비어 있다 (push를 먼저 받아야 한다)");
-  if (baseLocale === null) fail("Project.baseLocale이 비어 있다 (base 판정 불가)");
+  if (adapterName === null) fail("Project.adapterName is empty (a push has to land first)");
+  if (pathTemplate === null) fail("Project.pathTemplate is empty (a push has to land first)");
+  if (baseLocale === null) fail("Project.baseLocale is empty (cannot tell which locale is the base)");
   // 문자열 컬럼이라 DB가 값을 제약하지 않는다. 여기서 걸러야 adapterFor가 나중에 터지지 않는다.
-  if (!isAdapterName(adapterName)) fail(`등록되지 않은 어댑터: ${adapterName}`);
-  if (locales.length === 0) fail("로케일이 0개다 (낼 파일이 없다)");
+  if (!isAdapterName(adapterName)) fail(`unknown adapter: ${adapterName}`);
+  if (locales.length === 0) fail("no locales (there are no files to write)");
 
   return {
     adapter: adapterName,
@@ -118,7 +118,7 @@ export function resolveLocalePaths(
     // 손으로 DB를 고쳤을 때만 열리는 구멍이지만 방어가 한 줄이다.
     // **multi-locale은 이 검사를 받지 않는다** — 정의상 치환하지 않는다 (ARCHITECTURE §1.1).
     if (format.locales.length > 1 && !format.pathTemplate.includes("{locale}")) {
-      fail(`per-locale인데 pathTemplate에 {locale}이 없다: ${format.pathTemplate}`);
+      fail(`per-locale layout but pathTemplate has no {locale}: ${format.pathTemplate}`);
     }
     // 파일이 아직 없어도 새로 만든다 — 트리를 보지 않는 것이 이 갈래의 요지다.
     // 정렬하는 이유: 이 순서가 트리 페이로드 순서가 되고, 흔들리면 커밋이 비결정적이 된다.
@@ -131,7 +131,7 @@ export function resolveLocalePaths(
   const matched = matchGlobPaths(format.pathTemplate, treePaths);
   // 0개는 "낼 것이 없다"가 아니라 **경로가 이동했다**는 신호다. 조용히 빈 PR을 내면 안 된다.
   if (matched.length === 0) {
-    fail(`글롭이 매칭한 파일이 0개다: ${format.pathTemplate}`);
+    fail(`the glob matched no files: ${format.pathTemplate}`);
   }
   return matched.map((path) => ({ path }));
 }

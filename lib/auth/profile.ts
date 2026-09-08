@@ -20,13 +20,13 @@ export function githubUserinfo(input: { user: unknown; addresses: unknown }): Re
   const { user, addresses } = input;
 
   if (typeof user !== "object" || user === null) {
-    fail("github: /user 조회에 실패했다 (응답이 객체가 아니다)");
+    fail("github: /user lookup failed (response is not an object)");
   }
   const record: Record<string, unknown> = { ...user };
   const id = record["id"];
   // provider의 기본 `profile()`이 `id.toString()`을 부른다 — 없으면 거기서 죽는다.
   if (typeof id !== "number" && typeof id !== "string") {
-    fail("github: /user 응답에 id가 없다");
+    fail("github: /user response has no id");
   }
 
   return { ...record, email: verifiedEmailFrom({ provider: "github", addresses }) ?? "" };
@@ -47,7 +47,7 @@ export async function githubApi(
   token: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<unknown> {
-  if (token === "") fail("github: access_token이 없어 이메일 검증을 할 수 없다");
+  if (token === "") fail("github: no access_token, cannot verify the email");
   const response = await fetchImpl(`https://api.github.com${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -55,6 +55,6 @@ export async function githubApi(
       "User-Agent": "malmoi",
     },
   });
-  if (!response.ok) fail(`github: ${path} 조회 실패 (${response.status})`);
+  if (!response.ok) fail(`github: ${path} lookup failed (${response.status})`);
   return await response.json();
 }

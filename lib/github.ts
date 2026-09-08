@@ -247,7 +247,7 @@ export async function createGitClient(
       // 잘린 트리를 그대로 쓰면 base에 있는 파일을 "없다"고 판정해 신규로 올리고,
       // blob SHA 비교 전체가 틀어진다. 조용히 진행하는 것이 최악이다.
       if (res.data.truncated) {
-        throw new Error(`트리가 잘렸다 (${commitSha}) — 파일이 너무 많아 비교를 신뢰할 수 없다`);
+        throw new Error(`tree is truncated (${commitSha}) — too many files for the comparison to be trusted`);
       }
       const blobs: GitTreeBlob[] = [];
       for (const entry of res.data.tree) {
@@ -266,7 +266,7 @@ export async function createGitClient(
       });
       // Git blob API는 base64로 준다. 한글·프랑스어가 들어가므로 UTF-8로 디코딩해야 한다.
       if (res.data.encoding !== "base64") {
-        throw new Error(`예상하지 않은 blob 인코딩: ${res.data.encoding}`);
+        throw new Error(`unexpected blob encoding: ${res.data.encoding}`);
       }
       return Buffer.from(res.data.content, "base64").toString("utf8");
     },
