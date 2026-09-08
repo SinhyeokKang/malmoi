@@ -1,5 +1,5 @@
 import { connectErrorMessage } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { m, pick } from "@/lib/i18n";
 
 import { PROJECT_LIMIT } from "./create-plan";
 import { PROJECT_SLUG_MAX } from "./slug";
@@ -120,7 +120,7 @@ export function onboardErrorMessage(error: OnboardError): string {
       return ONBOARD["invalid-slug"](PROJECT_SLUG_MAX);
     default:
       // 모르는 값은 접는다 — `?e=`는 주소창에 있다.
-      return ONBOARD[error] ?? ONBOARD.fallback;
+      return pick(ONBOARD, error, ONBOARD.fallback);
   }
 }
 

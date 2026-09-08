@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { m } from "@/lib/i18n";
+
 import {
   accessErrorMessage,
   inviteErrorMessage,
@@ -181,5 +183,50 @@ describe("isAccessError — 문자열이 AccessError인가", () => {
     expect(isAccessError("invalid input")).toBe(false);
     expect(isAccessError("")).toBe(false);
     expect(isAccessError(undefined)).toBe(false);
+  });
+});
+
+/**
+ * **회귀** (2026-09-08 code-review 🔴1). `app/invite/[token]/page.tsx`는 `?e=`를 **판정 함수 없이**
+ * `as InviteError`로 캐스팅해 넘긴다 — 그 화면은 외부인이 열고, 폴백이 존재하는 이유가 그것이다.
+ * 사전 조회가 `DICT[key] ?? fallback`이면 `?e=constructor`가 `Object` 생성자 **함수**를 돌려주고,
+ * 그 값이 JSX 자식이 되어 초대 화면이 통째로 죽는다.
+ */
+describe("문구 함수는 어떤 입력에도 문자열을 낸다", () => {
+  const PROTOTYPE_KEYS = ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"];
+
+  it("inviteErrorMessage — 프로토타입 키에도 폴백 문자열이다", () => {
+    for (const key of PROTOTYPE_KEYS) {
+      const text = inviteErrorMessage(key as InviteError);
+      expect(typeof text, key).toBe("string");
+      expect(text, key).toBe(inviteErrorMessage("nope" as InviteError));
+    }
+  });
+
+  it("signInErrorMessage — 프로토타입 키에도 폴백 문자열이다", () => {
+    for (const key of PROTOTYPE_KEYS) {
+      expect(typeof signInErrorMessage(key), key).toBe("string");
+    }
+  });
+});
+
+/**
+ * ⚠️ **`satisfies`는 잉여 키를 못 잡는다** (2026-09-08 code-review ⚪9). `m.errors.x satisfies
+ * Record<Union, string>`은 **없는 키**를 컴파일 에러로 만들지만, union에서 갈래를 지웠을 때 사전에 남는
+ * **죽은 문구**에는 침묵한다(신선한 객체 리터럴이 아니라 excess property check가 안 걸린다).
+ * 그래서 반대 방향은 런타임으로 센다.
+ */
+describe("사전에 죽은 문구가 남지 않는다", () => {
+  it("errors.access의 키가 전부 AccessError다", () => {
+    for (const key of Object.keys(m.errors.access)) expect(isAccessError(key), key).toBe(true);
+  });
+
+  it("errors.invite의 키가 전부 InviteError다 (fallback 제외)", () => {
+    const known = new Set<string>(INVITE_ERRORS);
+    known.add("unavailable");
+    for (const key of Object.keys(m.errors.invite)) {
+      if (key === "fallback") continue;
+      expect(known.has(key), key).toBe(true);
+    }
   });
 });

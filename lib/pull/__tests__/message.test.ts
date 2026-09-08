@@ -107,7 +107,7 @@ describe("pullMessage — writer가 버린 항목", () => {
   it("warnings가 있으면 건수와 '개발자에게 알리라'를 덧붙인다 — 값이 사라진 것을 편집자가 알아야 한다", () => {
     const m = pullMessage(committed({ warnings: ["i18n/en.json: 'a.b' dropped"] }));
     expect(m.tone).toBe("warning");
-    expect(m.text).toMatch(/1 values.*developers/);
+    expect(m.text).toMatch(/1 value couldn.t be written.*developers/);
   });
 
   it("warnings가 없으면 성공 문구가 그대로다", () => {

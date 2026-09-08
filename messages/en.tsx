@@ -18,12 +18,11 @@ import type { ReactNode } from "react";
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
 export const en = {
+  // ⚠️ 화면 섹션은 **그 화면을 만드는 커밋이 더한다** — 빈 껍데기를 미리 두지 않는다("만든 것이 실제로
+  // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
     appName: "Malmoi",
   },
-
-  /** T6이 채운다 (로그인 화면). */
-  signIn: {},
 
   projects: {
     /** `readinessLabel` — `ready`는 문구가 없다(가장 흔한 상태가 가장 조용하다). */
@@ -67,10 +66,13 @@ export const en = {
        * ⚠️ **`sent`가 필요하다.** 이 갈래는 `committed`와 `skipped` 둘 다 온다(warnings ≥ 1) — 스킵인데
        * "Sent"라고 쓰면 아무것도 안 보낸 것을 보냈다고 말하게 된다. 갈래는 하나, 문장만 갈린다.
        */
-      partial: (count: number, sent: boolean): string =>
-        sent
-          ? `Sent, but ${count} values couldn't be written — tell your developers.`
-          : `Nothing new was sent, and ${count} values couldn't be written — tell your developers.`,
+      partial: (count: number, sent: boolean): string => {
+        // 1건이 가장 흔한 경우다 — 카운터를 만들어 놓고 여기서 안 쓰면 "1 values"가 나간다.
+        const values = count === 1 ? "1 value" : `${count} values`;
+        return sent
+          ? `Sent, but ${values} couldn't be written — tell your developers.`
+          : `Nothing new was sent, and ${values} couldn't be written — tell your developers.`;
+      },
       failed: (reason: string): string => `Couldn't send: ${reason}`,
       viewLink: "View what was sent",
     },
@@ -84,9 +86,6 @@ export const en = {
       saveAs: (path: ReactNode): ReactNode => <>Save this in your repository as {path}.</>,
     },
   },
-
-  /** T8이 채운다 (초대 수락 화면). */
-  invite: {},
 
   errors: {
     /** `accessErrorMessage` — `AccessError` 여섯. */

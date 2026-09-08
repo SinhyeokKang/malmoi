@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import { m, pick } from "@/lib/i18n";
 
 /**
  * 인가 거부 → 사용자 문구. 문구는 사전(`messages/en.tsx`)이 들고, **케이스 누락은 `satisfies
@@ -83,7 +83,7 @@ const INVITE = m.errors.invite satisfies Record<InviteError | "fallback", string
 
 export function inviteErrorMessage(error: InviteError): string {
   // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 외부인이 여는 화면이 죽는다.
-  return INVITE[error] ?? INVITE.fallback;
+  return pick(INVITE, error, INVITE.fallback);
 }
 
 /**
@@ -98,10 +98,7 @@ export function inviteErrorMessage(error: InviteError): string {
 const SIGN_IN = m.errors.signIn;
 
 export function signInErrorMessage(code: string): string {
-  // Auth.js의 코드 집합은 우리 union이 아니다 — 아는 셋만 갈라 말하고 나머지는 재시도로 접는다.
-  if (code === "OAuthAccountNotLinked") return SIGN_IN.OAuthAccountNotLinked;
-  if (code === "AccessDenied") return SIGN_IN.AccessDenied;
-  // Auth.js 코드가 아니라 우리 것이다 — `requireUser`가 세션을 못 읽었을 때 보낸다 (`lib/auth/outage.ts`).
-  if (code === "Unavailable") return SIGN_IN.Unavailable;
-  return SIGN_IN.fallback;
+  // Auth.js의 코드 집합은 우리 union이 아니다 — 아는 것만 갈라 말하고 나머지는 재시도로 접는다.
+  // `fallback` 자체는 코드가 아니므로 사전에서 직접 꺼내 온다.
+  return code === "fallback" ? SIGN_IN.fallback : pick(SIGN_IN, code, SIGN_IN.fallback);
 }
