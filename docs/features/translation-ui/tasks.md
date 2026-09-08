@@ -17,8 +17,8 @@
 
 | Ship | 태스크 | 무엇이 나가나 | 사용자 눈에 보이는 변화 | 게이트 (`/push` 로컬 게이트에 더해) |
 |---|---|---|---|---|
-| **1. 기반** | T1 · T2 · T3 · T5 | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
-| **2. 셸** | T4 · T6 | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
+| **1. 기반** ✅ | T1 · T2 · T3 · T4 · T5 (2026-09-08 — T4가 앞당겨졌다) | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
+| **2. 셸** | T6 (T4는 ship 1이 가져갔다) | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
 | **3. 번역 화면** | T7 | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
 | **4. 나머지 + 정리** | T8 · T9 | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
 
@@ -126,22 +126,24 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T5. 프리미티브 — `components/ui/`
 
-- [ ] shadcn 생성물 4개 삭제 → **16개**: `Button`(cva `primary·default·danger·ghost·link` × `md`(`h-8`)·`sm`(`h-7`), `loading` 라벨 교체) · `Input` ·
+- [x] shadcn 생성물 4개 삭제 → **16개**: `Button`(cva `primary·default·danger·ghost·link` × `md`(`h-8`)·`sm`(`h-7`), `loading` 라벨 교체) · `Input` ·
       `Textarea` · `Select`(native) · `Radio` · `FormGroup` · `Badge` · `Alert` · `Card` · `Table` · `Breadcrumb` · `Avatar` · `EmptyState` · `DropdownMenu` ·
       `Dialog` · `Tooltip` — 치수·색은 DESIGN §6.4 **그대로**(정본). `Checkbox`·`Skeleton`은 없다(사용처 0)
       ⚠️ **아이콘을 자기 안에 드는 프리미티브가 셋이다** — `Alert`(variant→`Info`·`CircleCheck`·`TriangleAlert`·`CircleX`, DESIGN §6.2 표) · `EmptyState`(24, `text-muted-foreground`) ·
       `Dialog`(닫기 `X`). 나머지는 호출부가 `children`으로 넣는다. 세트는 `lucide-react` 하나이고 크기는 16·12·24 셋뿐이다 (DESIGN §6.8)
       검증: `pnpm typecheck` · 각 파일의 네 태그가 포커스 링 **셋**을 든다(`ring-offset-1`은 사이드바 항목·칩 옆 버튼에만 — DESIGN §7) · `dark:` 0곳 ·
       **DESIGN §3.1·§6.4·§7의 서술이 이 커밋부터 실물과 일치한다**(`/doc-check`)
-- [ ] `app/globals.css` — **토큰 값 변경 없음**
+- [x] `app/globals.css` — **토큰 값 변경 없음**
       검증: `git diff app/globals.css`가 비어 있다 · `globals-css.test.ts` green
-- [ ] `components/__tests__/focus-ring.test.ts` — `ui/` 제외 해제 + **"raw 태그 허용 파일 목록"**(축소형 — 초기값은 지금 raw 태그를 쓰는 파일 전부, UI 커밋마다 뺀다,
+- [x] `components/__tests__/focus-ring.test.ts` — `ui/` 제외 해제 + **"raw 태그 허용 파일 목록"**(축소형 — 초기값은 지금 raw 태그를 쓰는 파일 전부, UI 커밋마다 뺀다,
       목록의 파일은 raw 태그 ≥1이어야 한다) + 메타 테스트(태그 넷을 하나씩)
       검증: 이 시점에 **green**(목록이 현재 상태) · 목록 밖에 raw 태그 하나를 픽스처로 넣으면 red
-- [ ] `lib/utils.ts` — twMerge `text-mono` 등록 변경 없음
+- [x] `lib/utils.ts` — twMerge `text-mono` 등록 변경 없음
       검증: `git diff lib/utils.ts` 비어 있음
 
-—— `feat(ui): owned primitives on existing tokens` (ui/ + focus-ring 테스트)
+—— `feat(ui): owned primitives on existing tokens` (ui/ + focus-ring 테스트) ✅ **끝났다** (2026-09-08 — `67b924a` 테스트(red) → `7c6469b` 구현 → `d860286` 리뷰 수정).
+⚠️ **검증 중 하나가 문서를 고치게 했다**: 스캐너가 여는 태그의 **소스**를 읽으므로 링을 `cva` 베이스·공유 `fieldClass`에 모으면 그 파일이 검사 밖이 된다 — DESIGN §7의 "상수에 숨기지 말 것"이 `ui/` 안으로 자리를 옮겼을 뿐 사라지지 않았다. `Button`에 `asChild`를 두지 않는 것도 같은 이유다.
+⚠️ **`ui/` 밖 raw 태그는 아직 13개 파일**이다 — "밖에 0개"는 T8 끝의 상태이고, 그때까지 축소형 허용 목록이 그 자리를 든다.
 
 ## T6. 셸·전역 화면 — 로그인 · 목록 (라우트별 커밋)
 
