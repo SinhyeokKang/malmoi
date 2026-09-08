@@ -1,11 +1,10 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 /* ⚠️ 이 줄이 **라이트 고정의 유일한 장치다** — 지우지 말 것 (docs/DESIGN.md §3.1).
    Tailwind v4는 `dark:`의 기본 동작이 prefers-color-scheme이다. 이 줄이 그걸 클래스
    기반으로 덮어쓰고, `.dark`를 DOM에 붙이지 않으므로 `dark:` 유틸이 컴파일돼도 절대
-   매치되지 않는다. 지우면 shadcn 생성 컴포넌트 넷(badge·button·input·select)의 dark:
-   클래스가 OS 다크에서 살아나 라이트 단일이 조용히 깨진다. */
+   매치되지 않는다. 지금 소스에 `dark:`는 0곳이지만(shadcn 생성물과 함께 사라졌다) 이 줄은
+   남긴다 — 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아나는 경로를 막는 것이 요지다. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
