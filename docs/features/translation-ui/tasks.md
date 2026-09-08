@@ -18,7 +18,7 @@
 | Ship | 태스크 | 무엇이 나가나 | 사용자 눈에 보이는 변화 | 게이트 (`/push` 로컬 게이트에 더해) |
 |---|---|---|---|---|
 | **1. 기반** ✅ | T1 · T2 · T3 · T4 · T5 (2026-09-08 — T4가 앞당겨졌다) | 사전 · 순수 판정 · 스키마 둘 · 프리미티브 16 | **거의 없다** — 프리미티브는 소비자 0곳, Publish 결과 문구만 영어로 바뀐다 | `/db`(T3 마이그레이션) · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 |
-| **2. 셸** | T6 (T4는 ship 1이 가져갔다) | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
+| **2. 셸** ✅ | T6 (T4는 ship 1이 가져갔다) | 문구 모듈 영어화 · 사이드바·top bar · 로그인 · 목록 | **크다** — 셸이 처음 선다. 번역·설정 화면은 아직 옛 마크업(토큰이 같아 안 깨진다) | 실물: EDITOR 세션 사이드바 항목 · 접힌 레일 · `?e=` Alert · 로그인 2열 |
 | **3. 번역 화면** | T7 | 네임스페이스 착지 · 필터 · Publish · 편집 손실 배너 | **6단계의 값 전부** | 실물: 903키 첫 착지 **< 2초**(LCP, 기준선 12.7초와 같은 방법) · Publish 다섯 갈래 · 저장 실패 포커스 |
 | **4. 나머지 + 정리** | T8 · T9 | 설정 · 새 프로젝트 · 초대 수락 · 문서 · chore | 마지막 세 화면 | **두 허용 목록이 빈다** · `/bugshot-qa` 한 바퀴 · `/doc-check` |
 
@@ -147,22 +147,26 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ## T6. 셸·전역 화면 — 로그인 · 목록 (라우트별 커밋)
 
-- [ ] `app/(edit)/layout.tsx` — `loadMemberships(userId)` → `<Sidebar memberships>` + top bar(사용자 메뉴만). `redirect()` 둘 유지(2차 방어). **breadcrumb은 페이지
+- [x] `app/(edit)/layout.tsx` — `loadMemberships(userId)` → `<Sidebar memberships>` + top bar(사용자 메뉴만). `redirect()` 둘 유지(2차 방어). **breadcrumb은 페이지
       콘텐츠 첫 줄**이다(레이아웃이 페이지 props를 못 받는다 — design §2)
       검증: `entry-points.test.ts` "차단 규칙" green · 소스에 `redirect(` 둘
-- [ ] `components/shell/sidebar.tsx`(client — `usePathname`·프로젝트 컨텍스트·역할별 항목·collapse `localStorage`) · `top-bar.tsx` · `user-menu.tsx`.
+- [x] `components/shell/sidebar.tsx`(client — `usePathname`·프로젝트 컨텍스트·역할별 항목·collapse `localStorage`) · `top-bar.tsx` · `user-menu.tsx`.
       6a 섹션은 **Translations · Settings(OWNER)** 둘 — Members·Account는 6b
       ⚠️ **사이드바·top bar는 전 항목이 아이콘을 든다** (DESIGN §6.8 표 — 섹션 `Languages`·`Users`·`Settings`, 하단 전역 `LayoutGrid`·`Plus`·`CircleUser`·`LogOut`·`PanelLeft`,
       프로젝트 컨텍스트 `ChevronsUpDown`, 햄버거 `Menu`, breadcrumb 구분 `ChevronRight`). 접힌 레일에서 **아이콘이 유일한 라벨**이라 하나라도 비면 그 상태가 성립하지 않는다.
       ⚠️ `lucide-react` 1.37.0에 `Github`이 없다 — 브랜드 아이콘은 1.x에서 빠졌다
       검증: `client-graph.test.ts` green(`lucide-react`가 T1의 허용 목록에 있다) · EDITOR 세션으로 Settings가 렌더되지 않는다(실물) · 접힌 상태에서 항목에 `aria-label`(소스) ·
       사이드바 항목 수 == 아이콘 수(소스)
-- [ ] `app/page.tsx` — 2열 로그인(design §3.12 — 장식은 `--border` dot-grid + `from-primary/5 to-muted`, **raw 색 0**), `?error=` Alert, 장애 문구
+- [x] `app/page.tsx` — 2열 로그인(design §3.12 — 장식은 `--border` dot-grid + `from-primary/5 to-muted`, **raw 색 0**), `?error=` Alert, 장애 문구
       검증: `focus-ring` 목록에서 제거 · `no-korean-ui` 목록에서 제거 · 소스에 `violet|purple` 0
-- [ ] `app/(edit)/projects/page.tsx` — 행 구조 + EmptyState + `?e=` **global** Alert(두 union). GitHub 계정 섹션은 **그대로 둔다**(6b가 `/account`를 판정한다)
+- [x] `app/(edit)/projects/page.tsx` — 행 구조 + EmptyState + `?e=` **global** Alert(두 union). GitHub 계정 섹션은 **그대로 둔다**(6b가 `/account`를 판정한다)
       검증: 두 목록에서 제거 · "쿼리 파라미터의 수신자" green
 
-—— `feat(shell): sidebar and top bar` · `feat(sign-in): two-column sign-in on primitives` · `feat(projects): project list on primitives`
+—— `feat(shell): sidebar and top bar` · `feat(sign-in): two-column sign-in on primitives` · `feat(projects): project list on primitives` ✅ **끝났다** (2026-09-08 — `485dbc9` 테스트(red) → `206f8a5`·`7d2d476`·`bfcb471` → `8fc4233` 리뷰 수정).
+⚠️ **리뷰가 🔴 하나를 잡았다**: `Tooltip`이 Radix provider 없이 렌더돼 **[Collapse sidebar]를 누르면 셸이 죽었다** — 접힘이 `localStorage`에 남아 다음 방문에도 같은 자리에서 죽는다. 프리미티브가 자기 provider를 들게 고쳤다 (POSTMORTEM 2026-09-08).
+⚠️ **`Button`에 `asChild`가 없어 `ButtonLink`가 생겼다** — Slot 한 겹이 `focus-ring` 스캐너에서 태그를 지운다. 링크는 `<a>`라 그 넷이 아니고, 그래서 링을 상수로 붙여도 방어선이 안 좁아진다.
+⚠️ **`loadMemberships`가 목록 화면의 지역 사본을 흡수했다** — 같은 이름이 두 벌이면 그중 하나가 낡는다. `installationId`·`lastCommitSha`가 반환에 더해졌다(목록의 상태 텍스트 재료).
+⚠️ **Account 항목은 사이드바에 없다** — 6b-4가 `/account`를 만들지 말지 정한 뒤에 붙는다. 지금 하단 전역은 All projects · New project · Sign out · Collapse 넷이다.
 
 ## T7. 번역 화면 + Publish
 
