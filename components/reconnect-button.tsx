@@ -20,12 +20,18 @@ import { m } from "@/lib/i18n";
 export function ReconnectButton({ slug, label }: { slug: string; label: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  /**
+   * ⚠️ **대기 라벨을 `label`과 무관하게 두면 안 된다** (code-review 2026-09-08). 호출부가 [Connect]로도
+   * [Reconnect]로도 쓰는데 대기 문구를 `reconnect`로 박아 두면 **누른 것과 다른 행동이 시작된 것처럼**
+   * 보인다. 반대로 둘을 같게 두면 진행 신호가 시각적으로 사라진다 (DESIGN §6.4).
+   */
+  const pendingLabel = m.settings.repository.connecting;
 
   return (
     <div className="space-y-2">
       <Button
         loading={pending}
-        loadingLabel={m.settings.repository.reconnect}
+        loadingLabel={pendingLabel}
         onClick={() => {
           setError(null);
           startTransition(async () => {

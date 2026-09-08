@@ -91,7 +91,12 @@ export const en = {
         description: "The connection is only used to see which repositories have the Malmoi app installed.",
         action: "Connect GitHub",
         reauthorize: "Reconnect GitHub",
+        /** GitHub으로 나가는 왕복이라 "연결 중"이 아니라 이동이다. */
+        redirecting: "Opening GitHub…",
       },
+      /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
+      noInstallations: "No installation found",
+      noRepos: "No repositories selected",
       install: "Install the app",
       addRepos: "Add repositories to the installation",
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
@@ -319,6 +324,8 @@ export const en = {
       description: "Where your source strings come from, and where translations go back.",
       connect: "Connect",
       reconnect: "Reconnect",
+      /** 대기 라벨 — **누른 라벨에서 파생된다** (DESIGN §6.4). 같은 문구를 쓰면 진행 신호가 사라진다. */
+      connecting: "Connecting…",
       connectFailed: "We couldn't start the connection. Try again in a moment.",
       /**
        * 건강성 6종 (DESIGN §6.2). ⚠️ **`unknown`을 `app-uninstalled` 문구로 접지 않는다** — 조회 실패를
@@ -400,7 +407,8 @@ export const en = {
     otherAccount: "Sign in with another account",
     sentTo: (email: string): string =>
       `This invitation was sent to ${email}. Signing in with a different account won't accept it.`,
-    unavailable: "Something went wrong. Try opening this link again in a moment.",
+    // ⚠️ 장애 문구를 여기 두지 않는다 — `errors.invite.unavailable`이 같은 상태를 말한다.
+    // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
   },
 
   errors: {

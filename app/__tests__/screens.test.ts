@@ -60,6 +60,39 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
   });
 });
 
+describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 🟡)", () => {
+  /**
+   * ⚠️ **헤드라인과 tone이 다른 지표를 보면 부분 실패가 조용해진다.** `ingestHeadline`은 `failed`로
+   * 문장을 고르는데 tone을 `errors.length`로 고르면, 진단 목록이 빈 부분 실패가 `success`로 그려진다 —
+   * SAAS 불변식 9(버린 값을 숨기지 않는다)가 정확히 그 자리에서 깨진다. 같은 커밋의 온보딩 결과
+   * 화면은 처음부터 `failed`를 봤다: **두 화면이 같은 지표를 봐야 한다.**
+   */
+  it("설정 화면도 온보딩 결과 화면과 같은 지표(`failed`)를 본다", () => {
+    for (const path of [
+      "components/onboarding/first-ingest-retry.tsx",
+      "components/onboarding/new-project-flow.tsx",
+    ]) {
+      expect(read(path), path).toMatch(/failed === 0 \? "success" : "warning"/);
+      expect(read(path), path).not.toMatch(/errors\.length === 0 \? "success"/);
+    }
+  });
+});
+
+describe("대기 라벨은 누른 행동을 말한다 (DESIGN §6.4)", () => {
+  /**
+   * ⚠️ **`loadingLabel`이 `label`과 무관하면 안 된다.** [Connect]를 눌렀는데 "Reconnect"로 바뀌면
+   * 사용자는 다른 동작이 시작된 것으로 읽고, 반대로 둘이 **같으면** 대기 상태가 시각적으로 사라진다.
+   */
+  it("재연결 버튼의 대기 라벨이 눌린 라벨에서 파생된다", () => {
+    const src = read("components/reconnect-button.tsx");
+    expect(src).toMatch(/loadingLabel=\{pendingLabel\}/);
+  });
+
+  it("GitHub 연결 버튼에 진행 중 문구가 따로 있다", () => {
+    expect(read("components/onboarding/connect-github.tsx")).toMatch(/redirecting/);
+  });
+});
+
 describe("초대 수락 — 갇히는 길을 남기지 않는다", () => {
   const src = read(INVITE);
 

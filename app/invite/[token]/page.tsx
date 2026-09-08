@@ -42,7 +42,7 @@ export default async function InvitePage({
   const { e } = await searchParams;
   const session = await readSession();
   // 세션을 못 읽었으면 초대 행도 못 읽는다(같은 DB) — 비로그인 화면으로 접지 않고 장애라고 말한다.
-  if (session.status === "unavailable") return <Notice>{m.invite.unavailable}</Notice>;
+  if (session.status === "unavailable") return <Notice>{m.errors.invite.unavailable}</Notice>;
 
   const invitation = await getPrisma().projectInvitation.findUnique({
     where: { tokenHash: hashInviteToken(token) },

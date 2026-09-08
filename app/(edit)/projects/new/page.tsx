@@ -124,19 +124,29 @@ function Blocked({ error }: { error: string }) {
     return (
       <EmptyState
         icon={FolderGit2}
-        // 가드를 지난 값이라 단언하지 않는다 — 분기에 새 문자열을 더해도 컴파일러가 잡는다
-        title={onboardErrorMessage(error)}
+        /**
+         * ⚠️ **제목에 판정층 문구를 넣지 않는다** (code-review 2026-09-08). `onboardErrorMessage`는
+         * "무엇이 없다 + 무엇을 하라"의 두 문장이고, 빈 상태의 제목은 마침표 없는 짧은 구다
+         * (DESIGN §6.4·§10). 사유는 설명이 들고, 그 아래 링크가 행동이다.
+         */
+        title={
+          error === "no-installations" ? m.newProject.empty.noInstallations : m.newProject.empty.noRepos
+        }
         description={
-          installUrl === null ? (
-            m.newProject.empty.noLink
-          ) : (
-            <>
-              <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
-                {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
-              </a>{" "}
-              — {m.newProject.empty.afterInstall}
-            </>
-          )
+          <>
+            {/* 가드를 지난 값이라 단언하지 않는다 — 분기에 새 문자열을 더해도 컴파일러가 잡는다 */}
+            {onboardErrorMessage(error)}{" "}
+            {installUrl === null ? (
+              m.newProject.empty.noLink
+            ) : (
+              <>
+                <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                  {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
+                </a>{" "}
+                — {m.newProject.empty.afterInstall}
+              </>
+            )}
+          </>
         }
       />
     );

@@ -26,7 +26,7 @@ import { ingestHeadline, isOnboardError, onboardErrorMessage } from "@/lib/onboa
 export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boolean }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<
-    | { ok: true; text: string; errors: { path: string; message: string }[] }
+    | { ok: true; text: string; failed: number; errors: { path: string; message: string }[] }
     | { ok: false; error: string }
     | null
   >(null);
@@ -44,7 +44,14 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
               setResult(
                 outcome.ok
                   // 불변식 9 — 0건이 아니면 성공 문구를 그대로 쓰지 않는다.
-                  ? { ok: true, text: ingestHeadline(outcome.count, outcome.failed), errors: outcome.errors }
+                  ? {
+                      ok: true,
+                      text: ingestHeadline(outcome.count, outcome.failed),
+                      // ⚠️ **tone도 `failed`가 정한다** — `errors.length`(상위 5건)로 고르면 진단 목록이
+                      // 빈 부분 실패가 `success`로 그려진다 (code-review 2026-09-08 · 불변식 9).
+                      failed: outcome.failed,
+                      errors: outcome.errors,
+                    }
                   : { ok: false, error: outcome.error },
               );
             });
@@ -56,7 +63,7 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
       )}
       {result !== null &&
         (result.ok ? (
-          <Alert variant={result.errors.length === 0 ? "success" : "warning"}>
+          <Alert variant={result.failed === 0 ? "success" : "warning"}>
             <p>{result.text}</p>
             {/*
               ⚠️ **어느 파일을 못 읽었는지 함께 보인다** (2026-09-07 리뷰 ⚪12). 헤드라인은 개수만
