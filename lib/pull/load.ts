@@ -34,7 +34,7 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
     },
   });
-  if (!project) fail(`프로젝트를 찾을 수 없다: ${slug}`);
+  if (!project) fail(`project not found: ${slug}`);
 
   const { locales, ...rest } = project;
 
@@ -91,10 +91,28 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
   };
 }
 
+/**
+ * 2층까지 통과했을 때의 갱신. **`published`가 있으면 같은 `update`에 함께 실린다** — 왕복을 두 번
+ * 만들지 않는다.
+ *
+ * ⚠️ **`skipped`는 `lastPublishedAt`을 건드리지 않는다** — 그 컬럼은 "마지막으로 **보낸**" 시각이지
+ * "마지막으로 시도한" 시각이 아니다 (translation-ui design §3.4). 반대로 `lastPulledAt`은 변경 없는
+ * 스킵에도 전진한다(그 순간 export == base 트리가 검증된 상태다).
+ *
+ * 시각은 **여기서** 잰다 — `lastPulledAt`에 들어가는 캡처 값(`max(updatedAt)`)은 벽시계가 아니라
+ * 그 둘이 같은 값이면 안 된다.
+ */
 export async function saveLastPulledAt(
   prisma: PrismaClient,
   projectId: string,
   at: Date,
+  published?: { prUrl: string },
 ): Promise<void> {
-  await prisma.project.update({ where: { id: projectId }, data: { lastPulledAt: at } });
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      lastPulledAt: at,
+      ...(published === undefined ? {} : { lastPublishedAt: new Date(), lastPrUrl: published.prUrl }),
+    },
+  });
 }

@@ -197,7 +197,22 @@ describe("runPull — 커밋·PR 경로", () => {
       "findOpenPrUrl",
       "createPr",
     ]);
-    expect(result).toMatchObject({ status: "committed" });
+    expect(result).toMatchObject({ status: "committed", pr: "created" });
+  });
+
+  /**
+   * ⚠️ **화면 문구가 이 값으로 갈린다** — "Sent for review"(새로 보냄)와 "Updated what you sent
+   * earlier"(먼저 보낸 것을 갱신)는 편집자에게 다른 사실이다. 재사용 판정은 이미 하고 있었고
+   * 값으로만 안 내고 있었다 (design §3.4).
+   */
+  it("열린 PR을 재사용하면 pr는 updated다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPrUrl: "https://github.com/o/r/pull/7",
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
   });
 
   it("트리 페이로드에 base_tree가 들어간다", async () => {

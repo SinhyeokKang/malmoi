@@ -25,7 +25,7 @@ describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", 
   });
 
   it("변경분이 0개면 던진다 — 낼 것이 없는데 트리를 만들면 base와 같은 빈 커밋이 나간다", () => {
-    expect(() => buildTreePayload([], "basetree-sha")).toThrow(/변경/);
+    expect(() => buildTreePayload([], "basetree-sha")).toThrow(/no changes/);
   });
 
   it("base_tree가 빈 문자열이면 던진다 — 누락과 구별되지 않는 값이다", () => {

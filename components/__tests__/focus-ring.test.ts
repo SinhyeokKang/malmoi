@@ -20,10 +20,33 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const RING = ["focus-visible:ring-ring", "focus-visible:ring-[3px]", "focus-visible:outline-none"];
 
 /**
- * ⚠️ `components/ui/`는 제외한다 — shadcn 생성물이고 앱에서 import 0곳이다(UI 동결, MVP §8.3).
- * CLI 재실행이 덮으므로 여기서 강제하면 생성물과 싸우게 된다.
+ * ⚠️ **`components/ui/`를 더 이상 제외하지 않는다** (2026-09-08, SaaS 6a T5). 그 디렉터리는 이제
+ * **이 리포가 소유하는 프리미티브**이고 shadcn CLI를 다시 돌리지 않는다 — 생성물과 싸울 일이 없으므로
+ * 제외할 이유가 사라졌고, 오히려 **링이 사는 유일한 자리**라 여기가 검사의 본체다 (DESIGN §7).
  */
-const SKIP = new Set(["ui", "__tests__", "node_modules"]);
+const SKIP = new Set(["__tests__", "node_modules"]);
+
+/**
+ * **raw 네 태그를 아직 쓰는 파일** — 축소형 목록이다(`no-korean-ui`와 같은 형). 화면이 프리미티브로
+ * 옮겨질 때마다 자기 파일을 뺀다. T8 끝에 비고, 그때부터 "`ui/` 밖에 raw 태그 0"이 전면 방어선이 된다.
+ *
+ * ⚠️ **늘리지 않는다.** 새 화면이 raw 태그를 쓰면 그 커밋이 red다 — 그것이 이 목록의 요지다.
+ */
+const RAW_TAG_ALLOWED = [
+  "components/github-account.tsx",
+  "components/invite-form.tsx",
+  "components/onboarding/connect-github.tsx",
+  "components/onboarding/copy-button.tsx",
+  "components/onboarding/first-ingest-retry.tsx",
+  "components/onboarding/new-project-flow.tsx",
+  "components/onboarding/push-token-panel.tsx",
+  "components/pull-button.tsx",
+  "components/reconnect-button.tsx",
+  "components/translation-input.tsx",
+  "app/(edit)/layout.tsx",
+  "app/invite/[token]/page.tsx",
+  "app/page.tsx",
+];
 
 function tsxFiles(dir: string): string[] {
   const out: string[] = [];
@@ -60,12 +83,22 @@ function openingTag(src: string, start: number): string {
 }
 
 /**
+ * 주석을 벗긴다 — **프리미티브는 자기 태그 이름을 주석에 쓴다**(`native \`<select>\`다`). 안 벗기면
+ * 그 설명이 컨트롤로 잡혀 영원히 red다. `no-korean-ui`와 같은 벗기기이고, 아래 메타 테스트가 셋을
+ * 하나씩 먹여 실제로 벗기는지 본다.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+}
+
+/**
  * 포커스를 받을 수 있는 hand-rolled 컨트롤. `type="hidden"`은 포커스 대상이 아니다.
  *
  * ⚠️ **네 태그를 본다.** `button|input`만 보던 시절 온보딩의 `<select>`가 방어선 밖이었다
  * (2026-09-07). 포커스를 받는 태그가 늘면 여기에 더한다 — 아래 메타 테스트가 목록을 고정한다.
  */
-function controls(src: string): string[] {
+function controls(source: string): string[] {
+  const src = stripComments(source);
   const found: string[] = [];
   for (const m of src.matchAll(/<(?:button|input|select|textarea)[\s>]/g)) {
     const tag = openingTag(src, m.index);
@@ -76,24 +109,49 @@ function controls(src: string): string[] {
 
 const FILES = [...tsxFiles(join(ROOT, "components")), ...tsxFiles(join(ROOT, "app"))];
 
-describe("hand-rolled 컨트롤의 포커스 링 (DESIGN §7)", () => {
+/** 리포 기준 상대 경로 — 허용 목록과 같은 표기로 맞춘다. */
+const rel = (file: string): string => file.slice(ROOT.length).replace(/^\//, "");
+
+describe("포커스 링 (DESIGN §7)", () => {
   it("검사 대상 파일을 실제로 찾는다", () => {
     // 글롭이 조용히 0건이 되면 이 테스트가 항상 green이 된다 — 방어선이 아니라 장식이 된다.
     expect(FILES.length).toBeGreaterThan(0);
+    // 프리미티브가 실제로 스캔에 들어왔다 — `ui/` 제외를 푼 것이 이 커밋의 요지다.
+    expect(FILES.some((f) => rel(f).startsWith("components/ui/"))).toBe(true);
   });
 
-  it("button·input 전부가 포커스 링 셋을 든다", () => {
+  it("네 태그 전부가 포커스 링 셋을 든다", () => {
     const missing: string[] = [];
     for (const file of FILES) {
       const src = readFileSync(file, "utf8");
       for (const tag of controls(src)) {
         if (RING.every((cls) => tag.includes(cls))) continue;
-        const rel = file.slice(ROOT.length);
         const label = /className="([^"]*)"/.exec(tag)?.[1] ?? tag.slice(0, 60);
-        missing.push(`${rel}: ${label}`);
+        missing.push(`${rel(file)}: ${label}`);
       }
     }
     expect(missing).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **화면은 raw 태그를 쓰지 않는다.** 링을 프리미티브 안에 한 번 두는 것의 대가가 이것이다 —
+   * 호출부가 `<button>`을 직접 쓰면 그 한 곳만 기본값 없이 남는다(2026-09-06·07에 두 번 그랬다).
+   */
+  it("`ui/` 밖에 raw 태그를 쓰는 파일이 허용 목록뿐이다", () => {
+    const offenders = FILES.filter(
+      (f) =>
+        !rel(f).startsWith("components/ui/") &&
+        controls(readFileSync(f, "utf8")).length > 0 &&
+        !RAW_TAG_ALLOWED.includes(rel(f)),
+    ).map(rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("허용 목록에 낡은 항목이 없다 — 옮긴 화면은 목록에서 빠져야 한다", () => {
+    const stale = RAW_TAG_ALLOWED.filter(
+      (path) => controls(readFileSync(join(ROOT, path), "utf8")).length === 0,
+    );
+    expect(stale).toEqual([]);
   });
 
   it("셋 중 하나만 빠져도 잡는다 — 스캐너가 red를 낼 수 있는지", () => {
@@ -102,6 +160,14 @@ describe("hand-rolled 컨트롤의 포커스 링 (DESIGN §7)", () => {
     const [tag] = controls(fake);
     expect(tag).toBeDefined();
     expect(RING.every((cls) => tag?.includes(cls))).toBe(false);
+  });
+
+  it("주석 안의 태그 이름을 컨트롤로 세지 않는다 — 프리미티브가 자기 태그를 설명한다", () => {
+    expect(controls('// native `<select>`다\nconst a = 1;')).toEqual([]);
+    expect(controls('/** `<input type="radio">`를 쓴다 */\nconst a = 1;')).toEqual([]);
+    expect(controls('<div>{/* <button>은 안 쓴다 */}</div>')).toEqual([]);
+    // 벗기기가 넓어져 진짜 태그까지 지우면 방어선이 빈다.
+    expect(controls('<button className="x">y</button>')).toHaveLength(1);
   });
 
   it("여는 태그를 화살표 함수에서 자르지 않는다", () => {

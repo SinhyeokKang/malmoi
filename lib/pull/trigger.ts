@@ -37,7 +37,7 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
  */
 export function syncBranchFor(slug: string): string {
   if (!isRefSafeSlug(slug)) {
-    fail(`git 브랜치 이름으로 쓸 수 없는 프로젝트 slug다: ${JSON.stringify(slug)}`);
+    fail(`project slug is not usable as a git branch name: ${JSON.stringify(slug)}`);
   }
   return `l10n/sync-${slug}`;
 }
@@ -47,10 +47,10 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
       // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
-      if (project.installationId === null) fail("installationId가 없다");
+      if (project.installationId === null) fail("installationId is missing");
       return createGitClient(project.repoOwner, project.repoName, project.installationId);
     },
-    saveLastPulledAt: (projectId, at) => saveLastPulledAt(prisma, projectId, at),
+    saveLastPulledAt: (projectId, at, published) => saveLastPulledAt(prisma, projectId, at, published),
     syncBranch: syncBranchFor(slug),
   });
 

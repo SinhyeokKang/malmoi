@@ -13,7 +13,7 @@
 | Tailwind | **v4** — `tailwind.config.js`가 **없다**. 테마는 `app/globals.css`의 `@theme inline` | v3 + config 파일 |
 | 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-07 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog·Tooltip 셋만 | shadcn 생성물을 그대로 씀 |
 | 변형 | `class-variance-authority` — Button·Badge·Alert | 같음 |
-| 아이콘 | `lucide-react` **16px** | 같음 |
+| 아이콘 | `lucide-react` **16px** — 세트는 이것 하나이고 **셸은 전 항목이 든다** (§6.8). ⚠️ 1.x에 브랜드 아이콘(`Github`)이 없다 | 같음 |
 | 애니메이션 | `tw-animate-css` (사용 0이면 6단계 마지막 chore에서 뺀다) | `tailwindcss-animate` |
 | 폰트 | Pretendard Variable 동적 서브셋, 자사 호스트 | 같은 폰트, `@fontsource` |
 | 테마 | **라이트 단일** | 라이트/다크 |
@@ -185,7 +185,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · Publish "일부 미기록" · `repo-moved` |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
-⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (SAAS §3). 문구는 `messages/en.json`이 든다.
+⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (SAAS §3). 문구는 `messages/en.tsx`이 든다.
 
 **새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**. 초록·주황·보라는 없다.
 
@@ -234,10 +234,10 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 사이드바 | `w-60 shrink-0 bg-muted border-r border-border` (§5.1) · `xl` 이상에서 아이콘 레일(`w-12`)로 접기 · `xl` 미만은 햄버거로 여는 오버레이 + `bg-foreground/40` 배경 |
 | 브랜드 | `h-12 px-4` "Malmoi" 워드마크 `text-sm font-medium` |
 | 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronDown` 16 → DropdownMenu(내 멤버십 목록 + "All projects"). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
-| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings`) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · 우측 카운트 `text-xs text-foreground/60` |
+| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · 우측 카운트 `text-xs text-foreground/60` |
 | 항목 셋 | Translations · Members* · Settings* (* OWNER에게만 렌더 — 편의다, 방어는 페이지) |
 | 구분선 | `mx-4 my-3 border-t border-border` |
-| 하단 전역 항목 | All projects · Account · Sign out · **Collapse sidebar**(`PanelLeft`) — 같은 항목 형 |
+| 하단 전역 항목 | All projects · Account · Sign out · **Collapse sidebar** — 같은 항목 형, **아이콘도 전부 든다**(§6.8) |
 | top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-between` · 좌 = 햄버거(`xl` 미만) + `Breadcrumb` · 우 = 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → Account · Sign out) |
 | 콘텐츠 | `flex-1 min-w-0` · limited면 `mx-auto max-w-4xl px-6 py-6` · fluid(번역)면 `flex min-h-0 flex-1` |
 
@@ -270,10 +270,39 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
 
+### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
+
+세트는 `lucide-react` **하나**다 (§1). 크기는 **셋뿐이다**: **16**(기본 — 사이드바·버튼·Alert·인라인) · **12**(외부 링크 `ExternalLink`만, §6.3) · **24**(`EmptyState` 하나). 그 밖의 크기를 만들지 않는다 — 사이드바 항목이 `h-8`이고 아이콘 박스가 `size-6`이라 20 이상은 알약 안에서 넘친다 (§5.1).
+
+**아이콘이 없으면 미완인 자리** (LNB가 대표다 — 접힌 레일에서는 아이콘이 유일한 라벨이므로, 항목 하나라도 비면 그 상태가 성립하지 않는다):
+
+| 자리 | 아이콘 |
+|---|---|
+| 사이드바 섹션 | Translations `Languages` · Members `Users` · Settings `Settings` |
+| 사이드바 하단 전역 | All projects `LayoutGrid` · New project `Plus` · Account `CircleUser` · Sign out `LogOut` · Collapse `PanelLeft` |
+| 프로젝트 컨텍스트 | 우측 `ChevronsUpDown` (DropdownMenu 트리거) |
+| top bar | 햄버거 `Menu`(`xl` 미만) · breadcrumb 구분 `ChevronRight` |
+| 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · 재시도 `RotateCcw` · 행 메뉴 `Ellipsis` |
+| 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` |
+| 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · 상태 `Select` 앞 `ListFilter` |
+| Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
+| 외부 링크 | `ExternalLink` 12 (§6.3) |
+| `EmptyState` | 24 `text-muted-foreground` 하나 — **일러스트는 여전히 없다** |
+
+**쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
+
+**형**: `size-4`(12는 `size-3`, 24는 `size-6`) · 색은 **상속**(`currentColor`) — 아이콘에 별도 색 클래스를 주지 않는다(예외는 Alert 4종과 `EmptyState`뿐) · 라벨과 `gap-2` · **라벨이 있으면 `aria-hidden`**, 아이콘만이면 `aria-label`, 접힌 사이드바는 Tooltip **과** `aria-label` 둘 다 (§7).
+
+⚠️ **`lucide-react` 1.x에 브랜드 아이콘이 없다** — `Github`·`Google`을 import하면 빌드가 죽는다(1.37.0 실측). GitHub 연결 버튼은 `Link2`이거나 아이콘 없이 라벨만이고, provider 로고가 필요하면 인라인 SVG를 그 컴포넌트 안에 둔다.
+
+⚠️ **아이콘 import는 `client-graph.test.ts`의 허용 목록을 지난다** — `lucide-react`가 거기 없으면 클라이언트 컴포넌트가 아이콘 하나만 써도 red다 (`features/translation-ui/tasks.md` T1이 넣는다).
+
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 사이드바가 muted 표면이 되면서 그 자리가 늘었다.
-- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** 화면이 raw 태그를 쓰지 않으므로 옛 판의 "태그마다 리터럴로, 상수에 숨기지 말 것"은 사라졌다 — `components/__tests__/focus-ring.test.ts`가 (1) `ui/`의 네 태그가 셋을 드는지, (2) `ui/` 밖에 네 태그가 **0개**인지 둘을 센다. 옛 규칙이 있던 이유(hand-rolled라 기본값이 지켜 주지 않았다 — 2026-09-06·07 두 번 샜다)가 프리미티브로 없어졌다.
+- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) `ui/`의 네 태그가 셋을 드는지, (2) `ui/` **밖에서 raw 태그를 쓰는 파일이 축소형 허용 목록뿐인지** 둘을 센다. 2026-09-08 실물 기준 그 목록은 13개이고 T6~T8이 화면을 옮기며 비운다 — 비는 순간 (2)가 "밖에 네 태그 0개"가 된다.
+  - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 프리미티브 다섯(`Button`·`Input`·`Textarea`·`Select`·`Radio`)이 각자의 태그에 셋을 **리터럴로** 적는다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
+  - 스캐너는 **주석을 벗기고 센다** — 프리미티브가 자기 태그 이름을 docstring에 쓴다(`native \`<select>\`다`).
 - `--ring` == `--border`라서 **`muted` 표면 위에선 포커스 링이 약하다** — 사이드바 항목·값 칩 옆 버튼에 `focus-visible:ring-offset-1`을 더한다(offset 색 기본이 배경).
 - **저장 상태는 `role="status" aria-live="polite"`** 고, 실패 시 포커스가 그 입력으로 돌아간다 (design §3.8).
 - 아이콘만 있는 버튼은 `aria-label`. 사이드바 접힘 상태의 라벨은 Tooltip **과** `aria-label` 둘 다.
@@ -320,7 +349,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 ## 10. UI 문장 규칙 (en — design.gitlab.com/content에서 가져온 것, 2026-09-07)
 
-문자열은 `messages/en.json`에 있고(design §3.1) 이 절이 그 문체다.
+문자열은 `messages/en.tsx`에 있고(design §3.1) 이 절이 그 문체다.
 
 - **Sentence case.** 라벨·열 제목·버튼·제목 전부.
 - **UI 요소 라벨에 마침표 없음**(버튼·라벨·제목·배지). help text·Alert 본문 같은 완전 문장에는 있음. **느낌표 금지.**
@@ -349,7 +378,8 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600뿐 (§6.2)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
 - [ ] 임의값(`text-[…]`) 대신 스케일을 썼나 (§4)
-- [ ] 문자열이 `messages/en.json`에서 오고 §10의 문체인가
+- [ ] 문자열이 `messages/en.tsx`에서 오고 §10의 문체인가
 - [ ] 외부 링크에 `ExternalLink` 아이콘이 있나 (§6.3)
+- [ ] 사이드바 항목·주 행동 버튼·Alert에 §6.8의 아이콘이 붙었나 — 16px, 색은 상속, 라벨 있으면 `aria-hidden`
 - [ ] 결과를 인라인으로 보이는 컴포넌트가 `revalidatePath`가 바꾸는 분기 밖에 있나 (§6.6)
 - [ ] (셸) §9.1의 아홉 축과 어긋나지 않았나 — 색·폰트를 GitLab에 맞추려 하지 않았나 (§9.2)

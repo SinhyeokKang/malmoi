@@ -44,7 +44,7 @@ export type PullDeps = {
    * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
    * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
    */
-  saveLastPulledAt(projectId: string, at: Date): Promise<void>;
+  saveLastPulledAt(projectId: string, at: Date, published?: { prUrl: string }): Promise<void>;
   syncBranch: string;
 };
 
@@ -55,7 +55,18 @@ export type PullDeps = {
  */
 export type PullResult =
   | { status: "skipped"; reason: "no-edits" | "no-changes"; warnings?: string[] }
-  | { status: "committed"; commitSha: string; prUrl: string; changed: string[]; warnings?: string[] };
+  | {
+      status: "committed";
+      /**
+       * 열린 PR이 있었는지 — 화면 문구가 갈린다("Sent for review" vs "Updated what you sent earlier").
+       * `findOpenPrUrl`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (design §3.4).
+       */
+      pr: "created" | "updated";
+      commitSha: string;
+      prUrl: string;
+      changed: string[];
+      warnings?: string[];
+    };
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
@@ -69,21 +80,21 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
   // `shouldSkipPull`이 `maxUpdatedAt === null`이면 true를 주므로 여기선 non-null이다.
   // 조용한 폴백(`?? new Date(0)`)을 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
-  if (maxUpdatedAt === null) fail("도달 불가: 1층 판정을 통과했는데 maxUpdatedAt이 null이다");
+  if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
   // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
   // 편집이 다음 실행에서 영영 스킵된다.
   const captured = maxUpdatedAt;
 
   // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
   if (project.installationId === null) {
-    fail(`Project.installationId가 비어 있다 (${project.slug}) — App을 설치한다`);
+    fail(`Project.installationId is empty (${project.slug}) — install the app`);
   }
 
   const format = formatFromProject(project, localeCodes);
   // `formatFromProject`가 null이면 이미 던졌다 — 여기선 non-null이므로 좁혀서 쓴다.
   // 빈 문자열로 폴백하면 base 판정이 전부 false가 되어 base 파일이 조용히 폴백을 잃는다.
   const { baseLocale } = project;
-  if (baseLocale === null) fail("도달 불가: formatFromProject를 통과했는데 baseLocale이 null이다");
+  if (baseLocale === null) fail("unreachable: passed formatFromProject but baseLocale is null");
   const { layout } = adapterFor(format);
   const client = await deps.createClient(project);
 
@@ -93,7 +104,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // (`l10n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
   if (baseHead === null) {
     fail(
-`base 브랜치를 읽을 수 없다: ${project.baseBranch} (브랜치 부재 또는 App 권한 누락)`,
+`cannot read the base branch: ${project.baseBranch} (missing branch, or the app lacks access)`,
     );
   }
 
@@ -167,7 +178,15 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     ));
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
-  await deps.saveLastPulledAt(project.id, captured);
+  // **보낸 것의 링크가 새로고침을 넘어야 한다** — cron 경로도 여기를 지나므로 야간 pull이 만든 PR도 남는다.
+  await deps.saveLastPulledAt(project.id, captured, { prUrl });
 
-  return { status: "committed", commitSha, prUrl, changed: changes.map((c) => c.path), ...withWarnings };
+  return {
+    status: "committed",
+    pr: existing === null ? "created" : "updated",
+    commitSha,
+    prUrl,
+    changed: changes.map((c) => c.path),
+    ...withWarnings,
+  };
 }

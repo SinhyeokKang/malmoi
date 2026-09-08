@@ -44,7 +44,8 @@ export function renderWorkflowYaml(input: {
     "",
     "jobs:",
     "  push:",
-    "    # 번역 PR이 머지될 때 다시 돌지 않게 한다 — 없으면 push와 pull이 서로를 부른다.",
+    // ⚠️ 사용자 리포에 복사되는 줄이라 영어다 — 이 파일의 주석(한국어)과 성격이 다르다.
+    "    # Keeps the workflow from re-running when a translation PR is merged — without it, push and pull call each other.",
     "    if: \"!contains(github.event.head_commit.message, '[skip-l10n]')\"",
     "    runs-on: ubuntu-latest",
     "    steps:",
@@ -55,7 +56,7 @@ export function renderWorkflowYaml(input: {
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${slug}`,
     ...extra,
-    "          github-token: ${{ secrets.GITHUB_TOKEN }}   # 열린 번역 PR 경고용 (읽기만)",
+    "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
     "",
   ].join("\n");
 }

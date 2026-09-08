@@ -208,6 +208,16 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
     expect(columnsOf(stmt(captured, 'INSERT INTO "Translation"'))["value"]).not.toContain("");
   });
 
+  /**
+   * **덮인 값의 저자는 리포다** (translation-ui design §3.6). strict 덮어쓰기에서 사람 이름이 남으면
+   * 거짓이고, 미배포 집계(isUnpublished)가 push 직후 **전 키를** "안 보낸 편집"으로 센다 —
+   * 903키 프로젝트에서 배너가 매번 뜬다.
+   */
+  it("push는 updatedBy를 비운다 — ON CONFLICT에서 NULL로 덮는다", async () => {
+    const { captured } = await runFlow();
+    expect(stmt(captured, 'INSERT INTO "Translation"').sql).toMatch(/"updatedBy"\s*=\s*NULL/);
+  });
+
   it("base 로케일도 Translation 행을 갖는다 — base도 편집 대상이다", async () => {
     const { captured } = await runFlow();
     expect(columnsOf(stmt(captured, 'INSERT INTO "Translation"'))["localeCode"]).toContain("en");

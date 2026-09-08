@@ -1,4 +1,5 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 import type { PullResult } from "./run";
@@ -11,14 +12,19 @@ import type { PullResult } from "./run";
  *
  * **문구에 git 어휘를 쓰지 않는다.** 읽는 사람은 번역 편집자(비개발자 동료)이고, spec이 그의
  * 가치를 "자기가 고친 값이 실제 제품으로 돌아가는 것을 본다"로 정의했다 — "PR이 열렸다"는
- * 그 가치를 전달하지 못한다.
+ * 그 가치를 전달하지 못한다. 링크 라벨도 같다.
+ *
+ * **문구 다섯 · tone 넷이다** (design §3.4) — success가 둘이라 개수가 다르다.
  */
 
 /** `runPull`은 실패 시 던지므로, 그것을 잡은 쪽이 이 모양으로 바꿔 넘긴다. */
 export type PullOutcome = PullResult | { status: "failed"; error: string };
 
+/** `Alert` variant와 같은 이름이다 (DESIGN §6.2) — 화면이 매핑 표를 또 들지 않는다. */
+export type PublishTone = "info" | "success" | "warning" | "danger";
+
 export type PullMessage = {
-  tone: "success" | "muted" | "destructive";
+  tone: PublishTone;
   text: string;
   /** 있으면 링크로 보인다. */
   href?: string;
@@ -27,41 +33,44 @@ export type PullMessage = {
 
 export function pullMessage(outcome: PullOutcome): PullMessage {
   switch (outcome.status) {
-    case "committed":
+    case "committed": {
+      const dropped = outcome.warnings?.length ?? 0;
       return {
-        tone: "success",
-        text: `변경 사항을 개발자에게 보냈어요. 검토 후 제품에 반영됩니다.${dropped(outcome.warnings ?? [])}`,
+        // ⚠️ **버린 값이 있으면 success가 아니다** (SAAS 불변식 9). 보내긴 했으므로 danger도 아니다.
+        tone: dropped === 0 ? "success" : "warning",
+        text:
+          dropped === 0
+            ? outcome.pr === "created"
+              ? m.translations.publish.created
+              : m.translations.publish.updated
+            : m.translations.publish.partial(dropped, true),
         href: outcome.prUrl,
-        linkLabel: "보낸 내용 보기",
+        linkLabel: m.translations.publish.viewLink,
       };
-    case "skipped":
+    }
+    case "skipped": {
       // **두 스킵 이유를 편집자에게 구별해 보이지 않는다.** "편집이 없다"와 "파일이 안 바뀐다"의
       // 차이는 내부 판정 층의 구분이고, 편집자에게는 둘 다 "보낼 것이 없다"다.
-      return {
-        tone: "muted",
-        text: `이미 최신 상태예요 — 보낼 변경이 없어요.${dropped(outcome.warnings ?? [])}`,
-      };
+      const dropped = outcome.warnings?.length ?? 0;
+      // ⚠️ **스킵에도 warnings가 붙는다**(2층 스킵 + writer 경고). 그것을 info로 접으면 버린 값을
+      // 조용히 숨기는 것이라 같은 불변식 위반이다 — 다만 "Sent"라고 쓰지도 않는다(아무것도 안 갔다).
+      if (dropped > 0) return { tone: "warning", text: m.translations.publish.partial(dropped, false) };
+      return { tone: "info", text: m.translations.publish.nothing };
+    }
     case "failed":
-      // 인가 거부·장애는 `accessErrorMessage`가 한국어로 — 이 자리만 `not-found`를 영어로 흘렸다
-      // (code-review 2026-09-06 🟡9). 그 밖의 원인은 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고
-      // 방법이 없어진다. 남의 라이브러리 메시지는 Action이 이미 `ref`로 접었다.
-      if (isAccessError(outcome.error)) return { tone: "destructive", text: accessErrorMessage(outcome.error) };
-      // ⚠️ **온보딩 갈래도 읽는다** — `not-ready`가 여기로 오는데 위 판정만 보면 영어 토큰이 그대로
+      // 인가 거부·장애는 `accessErrorMessage`가 사람 말로 바꾼다 — 이 자리만 `not-found`를 영어
+      // 토큰으로 흘렸다 (code-review 2026-09-06 🟡9).
+      if (isAccessError(outcome.error)) return { tone: "danger", text: accessErrorMessage(outcome.error) };
+      // ⚠️ **온보딩 갈래도 읽는다** — `not-ready`가 여기로 오는데 위 판정만 보면 내부 토큰이 그대로
       // 나간다 (2026-09-07, T6). 두 union이 겹치는 것은 `unavailable`·`unauthorized`뿐이고 뜻이 같다.
-      if (isOnboardError(outcome.error)) return { tone: "destructive", text: onboardErrorMessage(outcome.error) };
-      return { tone: "destructive", text: `내보내기에 실패했어요: ${outcome.error}` };
+      if (isOnboardError(outcome.error)) return { tone: "danger", text: onboardErrorMessage(outcome.error) };
+      // 그 밖의 원인은 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고 방법이 없어진다.
+      // 남의 라이브러리 메시지는 Action이 이미 `ref`로 접었다.
+      return { tone: "danger", text: m.translations.publish.failed(outcome.error) };
     default: {
       // 상태를 추가하면 여기서 컴파일 에러가 난다.
       const exhaustive: never = outcome;
       return exhaustive;
     }
   }
-}
-
-/**
- * writer가 버린 항목이 있으면 덧붙인다. 편집자가 고칠 수 있는 일이 아니라 **개발자에게 알리라**고만
- * 말한다 — 어느 키인지는 서버 로그(`warnings`)에 있다. 삼키면 값이 사라진 것을 아무도 모른다.
- */
-function dropped(warnings: readonly string[]): string {
-  return warnings.length === 0 ? "" : ` 다만 ${warnings.length}건은 반영되지 못했어요 — 개발자에게 알려 주세요.`;
 }

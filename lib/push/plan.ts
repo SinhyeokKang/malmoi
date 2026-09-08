@@ -65,7 +65,7 @@ export const PushPayload = z
      */
     projectSlug: z.string().min(1),
     // 40자 hex — permalink 기준이라 형태가 틀리면 링크가 전부 깨진다.
-    commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha는 40자 소문자 hex여야 한다"),
+    commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha must be 40 lowercase hex characters"),
     /**
      * 커밋 시각 (`git show -s --format=%cI`). **역행하면 409다** — strict라 오래된 run의
      * Re-run이 DB를 그 시점으로 되돌린다. offset이 붙은 ISO 8601만 받는다.
@@ -101,11 +101,11 @@ export const PushPayload = z
     })),
   })
   .refine((p) => p.locales.includes(p.format.baseLocale), {
-    message: "baseLocale이 locales에 없다",
+    message: "baseLocale is not in locales",
     path: ["format", "baseLocale"],
   })
   .refine((p) => p.translations.every((t) => p.locales.includes(t.locale)),
-    { message: "translations에 locales에 없는 로케일이 있다", path: ["translations"] });
+    { message: "translations carry a locale that is not in locales", path: ["translations"] });
 
 export type PushPayloadType = z.infer<typeof PushPayload>;
 

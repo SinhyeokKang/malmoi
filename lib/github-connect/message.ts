@@ -1,3 +1,5 @@
+import { m, pick } from "@/lib/i18n";
+
 /**
  * 연결 실패 사유 → 사용자 문구 (design §3.5). `inviteErrorMessage`(`lib/auth/message.ts`)와 **같은 형**이다:
  * `satisfies never`로 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다.
@@ -64,39 +66,9 @@ export function isConnectError(value: unknown): value is ConnectError {
   return typeof value === "string" && CONNECT_ERRORS.has(value);
 }
 
+const CONNECT = m.errors.connect satisfies Record<ConnectError | "fallback", string>;
+
 export function connectErrorMessage(error: ConnectError): string {
-  switch (error) {
-    case "state-mismatch":
-      return "연결 요청을 확인하지 못했어요. 설정 화면에서 다시 눌러 주세요.";
-    case "state-expired":
-      return "연결 요청이 만료됐어요. 설정 화면에서 다시 눌러 주세요.";
-    case "wrong-user":
-      return "연결을 시작한 계정과 지금 로그인한 계정이 달라요. 다시 눌러 주세요.";
-    case "denied":
-      return "GitHub에서 연결을 취소했어요. 계속하려면 다시 눌러 주세요.";
-    case "exchange-failed":
-      return "GitHub과 연결을 마치지 못했어요. 다시 눌러 주세요.";
-    case "taken-by-other":
-      // 무엇을 하면 되는지 말한다 — 막힌 이유만 알려주면 사용자가 갇힌다. 해제는 그 계정의
-      // 주인만 할 수 있다 (design §3.4).
-      return "그 GitHub 계정은 이미 다른 사용자가 연결했어요. 그분이 연결을 해제하면 쓸 수 있어요.";
-    case "not-connected":
-      return "먼저 GitHub 계정을 연결해 주세요. 아래 'GitHub 연결'을 누르면 돼요.";
-    case "reauthorize":
-      return "GitHub 인가가 풀렸어요. 'GitHub 다시 연결'을 눌러 주세요.";
-    case "repo-not-installed":
-      return "이 리포에 App이 설치돼 있지 않아요. 설치 링크로 설치한 뒤 다시 연결해 주세요.";
-    case "installation-forbidden":
-      return "그 설치에 접근할 수 있는 계정이 아니에요. 리포 소유자에게 권한을 요청해 주세요.";
-    case "repo-forbidden":
-      return "그 리포에 접근할 수 있는 계정이 아니에요. 리포 소유자에게 권한을 요청해 주세요.";
-    case "unavailable":
-      // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다 —
-      // 그래서 이 문구는 여기 하나뿐이다 (2026-09-05 preview 실측의 `OAuthAccountNotLinked`).
-      return "일시적인 오류가 났어요. 잠시 뒤 다시 시도해 주세요.";
-    default:
-      // 사유를 추가하면 여기서 컴파일 에러가 난다. 실행 시점의 모르는 값은 접는다(위 ⚠️).
-      error satisfies never;
-      return "GitHub 연결에 실패했어요. 설정 화면에서 다시 시도해 주세요.";
-  }
+  // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 설정 화면이 통째로 죽는다.
+  return pick(CONNECT, error, CONNECT.fallback);
 }

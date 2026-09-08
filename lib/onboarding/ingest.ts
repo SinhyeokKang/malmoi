@@ -81,7 +81,7 @@ export async function ingestFirstSnapshot(
 
   const errors = [
     ...read.errors,
-    ...missing.map((path) => ({ path, message: "파일을 내려받지 못했다" })),
+    ...missing.map((path) => ({ path, message: "could not download the file" })),
   ];
   return {
     count: payload.keys.length,

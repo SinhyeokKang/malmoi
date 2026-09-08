@@ -1,6 +1,8 @@
+import { m, pick } from "@/lib/i18n";
+
 /**
- * 인가 거부 → 사용자 문구. `pullMessage`(`lib/pull/message.ts`)와 같은 형태다 — **케이스 누락을
- * 컴파일 타임에 막는 `never` 검사**가 아래에 있다.
+ * 인가 거부 → 사용자 문구. 문구는 사전(`messages/en.tsx`)이 들고, **케이스 누락은 `satisfies
+ * Record<Union, string>`이 컴파일 타임에 막는다** — 갈래를 늘리면 사전에 키가 없어 빌드가 깨진다.
  *
  * ⚠️ 이게 필요한 이유: DB 세션에서 "권한 회수가 즉시 반영된다"는 성질은 사용자에게
  * **blur 저장 실패 한 줄로만** 드러난다. 그 자리에 `unauthorized`라는 영어 토큰이 뜨면 번역
@@ -30,43 +32,27 @@ const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
 /**
  * 화면이 `error: string`을 받아 문구를 고를 때의 판정. 전에는 화면 셋이 각자 `Set`을 들고 `as AccessError`로
  * 단언했다 — 사유가 늘면 셋 중 하나가 빠진다. `satisfies` 검사로 union과 목록이 같은 크기임을 강제하지는
- * 못하므로, 아래 `accessErrorMessage`의 `never` 검사와 `lib/auth/__tests__/message.test.ts`가 함께 본다.
+ * 못하므로, 아래 `ACCESS`의 `satisfies`와 `lib/auth/__tests__/message.test.ts`가 함께 본다.
  */
 export function isAccessError(value: unknown): value is AccessError {
   return typeof value === "string" && ACCESS_ERRORS.has(value);
 }
 
+/**
+ * 갈래가 늘면 **사전에 키가 없어 컴파일 에러**다 — 지금까지의 `never` 검사와 같은 힘이고 코드는 줄어든다.
+ * 던져도 되는 이유는 인자가 우리 코드가 만든 값만 들어오기 때문이다(아래 둘과 다르다).
+ */
+const ACCESS = m.errors.access satisfies Record<AccessError, string>;
+
 export function accessErrorMessage(error: AccessError): string {
-  switch (error) {
-    case "unauthorized":
-      return "로그인이 만료됐어요. 다시 로그인한 뒤 저장해 주세요.";
-    case "forbidden":
-      // 무엇이 모자란지까지는 말하지 않는다 — 역할 이름은 내부 어휘다.
-      return "이 작업을 할 권한이 없어요. 프로젝트 소유자에게 문의해 주세요.";
-    case "not-found":
-      // "없다"와 "멤버가 아니다"를 가르지 않는다 — 프로젝트 존재 여부를 노출하지 않는다 (SAAS §7.7).
-      return "이 프로젝트에 접근할 수 없어요. 초대 링크를 다시 확인해 주세요.";
-    case "last-owner":
-      // 무엇을 하면 되는지 말한다 — 막힌 이유만 알려주면 사용자가 갇힌다.
-      return "프로젝트에는 소유자가 한 명 이상 있어야 해요. 다른 사람을 소유자로 만든 뒤에 다시 시도해 주세요.";
-    case "not-member":
-      return "그 사람은 이 프로젝트의 멤버가 아니에요.";
-    case "unavailable":
-      // 유일하게 재시도가 맞는 사유다 — 입력값은 남아 있으니 그것을 말한다.
-      return "일시적인 오류가 났어요. 잠시 뒤 다시 저장해 주세요. 입력한 값은 그대로 있어요.";
-    default: {
-      // 사유를 추가하면 여기서 컴파일 에러가 난다.
-      const exhaustive: never = error;
-      return exhaustive;
-    }
-  }
+  return ACCESS[error];
 }
 
 /**
  * 초대 수락 실패 사유 → 사용자 문구.
  *
  * ⚠️ **`AcceptResult.error`가 `string`이면 이 함수가 무의미하다** — 사유를 늘려도 컴파일러가
- * 아무 말을 안 한다. 그래서 union으로 좁혀 두고, 아래 `never` 검사가 누락을 잡는다.
+ * 아무 말을 안 한다. 그래서 union으로 좁혀 두고, 아래 `satisfies`가 누락을 잡는다.
  */
 export type InviteError =
   /** 세션이 없거나 만료됐다. 링크만으로는 들어올 수 없다. */
@@ -93,29 +79,11 @@ export type InviteError =
  * 통째로 죽고, 그건 외부인이 여는 화면이다. `accessErrorMessage`가 던져도 되는 것과 다르다(그쪽 인자는
  * 우리 코드가 만든 값만 들어온다).
  */
+const INVITE = m.errors.invite satisfies Record<InviteError | "fallback", string>;
+
 export function inviteErrorMessage(error: InviteError): string {
-  switch (error) {
-    case "unauthorized":
-      return "로그인이 풀렸어요. 다시 로그인하면 이 링크로 돌아와요.";
-    case "not-found":
-      return "초대를 찾을 수 없어요. 링크가 잘못됐거나 취소된 초대예요.";
-    case "expired":
-      return "초대가 만료됐어요. 초대한 분에게 새 링크를 요청해 주세요.";
-    case "already-accepted":
-      return "이미 사용된 링크예요. 초대는 한 번만 쓸 수 있어요.";
-    case "email-mismatch":
-      // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 말하면 갇힌다.
-      return "초대받은 주소의 계정으로 로그인해 주세요. 지금 로그인한 계정은 초대 대상이 아니에요.";
-    case "already-member":
-      // 실패로 읽히지 않게 쓴다 — 원하는 상태는 이미 이뤄져 있다.
-      return "이미 이 프로젝트의 멤버예요. 프로젝트 목록에서 바로 열 수 있어요.";
-    case "unavailable":
-      return "일시적인 오류가 났어요. 잠시 뒤 다시 눌러 주세요.";
-    default:
-      // 사유를 추가하면 여기서 컴파일 에러가 난다. 실행 시점의 모르는 값은 접는다(위 ⚠️).
-      error satisfies never;
-      return "초대를 수락하지 못했어요. 초대한 분에게 새 링크를 요청해 주세요.";
-  }
+  // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 외부인이 여는 화면이 죽는다.
+  return pick(INVITE, error, INVITE.fallback);
 }
 
 /**
@@ -127,21 +95,10 @@ export function inviteErrorMessage(error: InviteError): string {
  *
  * ⚠️ **코드를 그대로 노출하지 않는다.** 읽는 사람은 비개발자 동료다 (SAAS §3).
  */
-export function signInErrorMessage(code: string): string {
-  switch (code) {
-    case "OAuthAccountNotLinked":
-      // SAAS §5.5 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은
-      // 불편이 아니라 계정 탈취다. 명시적 연결은 SaaS 4단계가 만든다.
-      return "그 이메일은 이미 다른 로그인 방식으로 가입돼 있어요. 처음 쓰신 방식으로 로그인해 주세요.";
-    case "AccessDenied":
-      return "이 계정으로는 들어올 수 없어요. 이메일이 검증되지 않았을 수 있어요.";
-    case "Unavailable":
-      // Auth.js 코드가 아니라 우리 것이다 — `requireUser`가 세션을 못 읽었을 때 보낸다 (`lib/auth/outage.ts`).
-      // "로그인에 실패"라고 말하지 않는다: 사용자는 로그인하려던 것이 아니라 편집 중이었다.
-      return "일시적인 오류가 났어요. 잠시 뒤 다시 열어 주세요.";
-    default:
-      // 나머지는 우리가 원인을 모른다 — 재시도가 유효한 유일한 경우다.
-      return "로그인에 실패했어요. 잠시 뒤 다시 시도해 주세요.";
-  }
-}
+const SIGN_IN = m.errors.signIn;
 
+export function signInErrorMessage(code: string): string {
+  // Auth.js의 코드 집합은 우리 union이 아니다 — 아는 것만 갈라 말하고 나머지는 재시도로 접는다.
+  // `fallback` 자체는 코드가 아니므로 사전에서 직접 꺼내 온다.
+  return code === "fallback" ? SIGN_IN.fallback : pick(SIGN_IN, code, SIGN_IN.fallback);
+}

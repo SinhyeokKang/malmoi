@@ -12,7 +12,7 @@ export function requireEnv(name: string, source: EnvSource = process.env): strin
   const value = source[name];
   if (value === undefined || value === "") {
     // 전용 타입이다 — 라우트가 이 오류만 500 본문에 그대로 싣는다 (`lib/failure.ts`).
-    throw new MissingEnvError(`환경변수 ${name}이(가) 없다. .env.example을 참고해 설정한다.`);
+    throw new MissingEnvError(`missing environment variable ${name}. See .env.example.`);
   }
   return value;
 }

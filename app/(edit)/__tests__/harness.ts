@@ -176,14 +176,53 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
-  const findManyMembers = vi.fn(async (args: { where: { projectId?: string; userId?: string } }) =>
-    members.filter(
-      (m) =>
-        (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
-        (args.where.userId === undefined || m.userId === args.where.userId),
-    ),
-  );
+  /**
+   * ⚠️ **`select`에 `project` 관계가 오면 그것을 붙여 준다** (`loadMemberships`). 안 붙이면 호출부가
+   * `r.project.slug`에서 터지는데, 그건 가짜가 실제보다 **좁아서** 나는 실패라 프로덕션 신호가 아니다.
+   * 반대로 아무 때나 붙이면 가짜가 실제보다 **관대**해진다 — 그래서 요청했을 때만 붙인다.
+   */
+  const findManyMembers = vi.fn(
+    async (args: {
+      where: { projectId?: string; userId?: string };
+      select?: { role?: true; projectId?: true; userId?: true; project?: unknown };
+      orderBy?: { project?: { slug?: "asc" | "desc" } };
+    }) => {
+      const rows = members.filter(
+        (m) =>
+          (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
+          (args.where.userId === undefined || m.userId === args.where.userId),
+      );
 
+      // **정렬을 투영보다 먼저** 한다 — 뒤에 하면 `select` 결과에 정렬 키가 없어 원본 행을 따로 들고
+      // 다녀야 하고, 그 임시 필드가 곧 "관대한 가짜"가 된다.
+      const direction = args.orderBy?.project?.slug;
+      const sorted =
+        direction === undefined
+          ? rows
+          : rows.slice().sort((a, b) => {
+              const av = projects.find((p) => p.id === a.projectId)?.slug ?? "";
+              const bv = projects.find((p) => p.id === b.projectId)?.slug ?? "";
+              return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+            });
+      /**
+       * ⚠️ **`select`가 있으면 그 필드만 낸다** (2026-09-08 code-review 🟡6). 실제 Prisma가 그렇다 —
+       * 원본 필드를 함께 내면 가짜가 실제보다 **관대**해져서, 호출부가 select 안 한 필드를 읽어도
+       * 테스트는 green이고 프로덕션만 `undefined`가 된다 (POSTMORTEM 2026-09-05와 같은 형).
+       */
+      return sorted.map((m) => {
+        if (args.select === undefined) return m;
+        const projected: Record<string, unknown> = {};
+        if (args.select.role === true) projected["role"] = m.role;
+        if (args.select.projectId === true) projected["projectId"] = m.projectId;
+        if (args.select.userId === true) projected["userId"] = m.userId;
+        if (args.select.project !== undefined) {
+          const project = projects.find((p) => p.id === m.projectId);
+          projected["project"] = { slug: project?.slug ?? "", name: project?.name ?? project?.slug ?? "" };
+        }
+        return projected as unknown as typeof m;
+      });
+    },
+  );
   const createMember = vi.fn(async (args: { data: MemberSeed }) => {
     // 스키마의 `@@unique([projectId, userId])`를 흉내낸다 — 안 하면 가짜가 실제보다 관대해지고,
     // 그 차이가 곧 "테스트는 통과하는데 프로덕션은 던진다"가 된다.
@@ -538,6 +577,28 @@ export function createHarness(seed: Seed = {}) {
         } as TranslationSeed;
         translations.push(row);
         return row;
+      },
+      /**
+       * ⚠️ **`projectId`로 좁힌다.** 시드의 번역 행은 `keyId`만 들지만 실제 테이블에는 `projectId`
+       * 컬럼이 있다 — 키를 통해 되짚어 **같은 좁힘**을 흉내 낸다. 안 하면 `countUnpublished`의
+       * 테넌트 좁힘을 이 하네스로는 판정할 수 없다 (POSTMORTEM 2026-09-06 하네스 자기검사).
+       */
+      count: async ({
+        where,
+      }: {
+        where: {
+          projectId: string;
+          updatedBy?: { not: null };
+          updatedAt?: { gt: Date };
+        };
+      }) => {
+        const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));
+        return translations.filter((t) => {
+          if (!ids.has(t.keyId)) return false;
+          if (where.updatedBy !== undefined && t.updatedBy === null) return false;
+          if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
+          return true;
+        }).length;
       },
       aggregate: async ({ where }: { where: { projectId: string } }) => {
         const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));

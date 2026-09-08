@@ -148,6 +148,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 ⚠️ **관측됐다** (2026-09-07 실측, `/bugshot-qa`): `ts-dict` 903키 프로젝트의 **필터 없는** 번역 화면이 **12.7초**다 — 903행 · `<input>` 2,711개 · 네임스페이스 52개. 필터를 걸면 위 전제대로 수십 행이다. **그래도 지금 가상화를 넣지 않는다**: 그 화면은 동결분이고(MVP §8.3) SAAS §8 6단계가 재작성하므로, 거기서 "기본 착지를 첫 네임스페이스로" 같은 값싼 수단을 먼저 본다.
 
+✅ **그 값싼 수단이 판정 함수로 서 있다** (2026-09-08, 6a T2): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시킨다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **화면이 그것을 쓰는 것은 T7이고**, 그때 같은 프로젝트·같은 방법(DevTools Performance LCP)으로 12.7초를 다시 재 목표가 2초다.
+
 ### 폰트 — Pretendard 동적 서브셋 (생성물)
 
 단일 `PretendardVariable.woff2`는 **2.0MB**다. 동적 서브셋은 92개 구간으로 쪼개져 있고 브라우저가 `unicode-range`로 필요한 구간만 받으므로 ko/en/fr 혼용 UI에서 실 전송량이 150~450KB 수준이다.
@@ -350,16 +352,33 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **포커스 링 셋을 공유 상수에 숨기지 않는다** — focus-ring 테스트가 여는 태그의
                         소스를 읽으므로 상수에 넣으면 그 방어선이 파일을 통째로 못 본다 (DESIGN §7)
-  ui/                   shadcn 생성물 (직접 편집해도 되지만 CLI 재실행 시 덮인다). ⚠️ 앱에서 import 0곳 —
-                        UI 동결(MVP §8.3)이라 지우지도 쓰지도 않는다. sonner도 import 0곳이고,
-                        radix-ui·lucide-react는 **동결된 ui/ 안에서만** 쓰인다
-  __tests__/            focus-ring — app/·components/의 button·input이 포커스 링 셋을 드는지 **소스로**
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+                        삭제됐고 CLI를 다시 돌리지 않는다). Button·Input·Textarea·Select(native)·Radio·
+                        FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
+                        Dialog·Tooltip. 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** — cva 베이스나 공유 상수에 모으면
+                        focus-ring 스캐너가 그 파일을 통째로 못 본다. `Button`에 `asChild`가 없는 것도
+                        같은 이유다(Slot 한 겹이 태그를 지운다). 아직 화면 소비자는 0곳 — T6부터 붙는다
+  __tests__/            focus-ring — button·input·select·textarea가 포커스 링 셋을 드는지 **소스로**
                         센다 (DESIGN §7). ⚠️ 렌더가 아니라 스캔인 이유: 탭으로 지나가야 보이는 결함이라
-                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제"). ui/는 제외
+                        눈으로 두 번 놓쳤다(2026-09-06 버튼 4곳, 2026-09-07 "연결 해제").
+                        ⚠️ **ui/ 제외가 풀렸다** (2026-09-08) — 그 디렉터리가 링이 사는 유일한 자리다.
+                        대신 **ui/ 밖에서 raw 태그를 쓰는 파일**이 축소형 허용 목록(13개)으로 고정되고
+                        T6~T8이 비운다. 주석은 벗기고 센다(프리미티브가 자기 태그를 설명한다)
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
+messages/
+  en.tsx                ⚠️ **UI 문자열의 단일 출처** (SaaS 6a). 값은 문자열 **또는 함수**다 — 보간·복수·노드
+                        삽입을 헬퍼 셋으로 만들지 않는다(`fmt`·`plural`·`rich`가 없다). `as const`라 접근 자체가
+                        타입 검사이고, 갈래 누락은 **소비자가 거는** `satisfies Record<Union, string>`이 잡는다.
+                        ⚠️ **잎이다** — `react`의 `ReactNode` 타입 하나만 import한다
 lib/
+  i18n/index.ts         사전의 유일한 입구(`m`) + `pick(dict, key, fallback)`. ⚠️ **`DICT[key] ?? fallback`을
+                        쓰지 않는다** — 프로토타입 키에서 값이 찾아져 폴백을 우회하고 문자열 자리에 함수가 온다
+                        (초대 화면이 `?e=`를 가드 없이 넘긴다). ko를 더할 때 바뀌는 파일이 여기 하나다
+  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
+                        `entry-points.test.ts`가 이 파일의 경로·쿼리 키를 실재 라우트와 대조한다
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
                         ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 **별개 축**이다
     index.ts            detectFormat / detectFormatWith(명시 지정의 유일한 입구 — ts-dict를 쓰는 길이다)
@@ -478,8 +497,12 @@ lib/
     message.ts          accessErrorMessage · inviteErrorMessage · signInErrorMessage — 거부 사유 →
                         한국어 (pullMessage와 같은 never 검사). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐
                         버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
-  keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel) / save.ts(순수 — 저장 판정)
-                        / query.ts(조회, server-only — loadProject·loadKeys·loadActors)
+  keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel + defaultNamespace·
+                        resolveNamespace·filterRows·isUnpublished) / save.ts(순수 — 저장 판정)
+                        / query.ts(조회, server-only — loadProject·loadKeys·loadActors·countUnpublished·loadMemberships)
+                        ⚠️ **`isUnpublished`와 `countUnpublished`는 같은 술어의 두 벌이다** — `updatedBy`가 사람인
+                        행만 센다(push가 그것을 비운다). `updatedAt`만 보면 code push 직후 전 키가 미배포로 나온다.
+                        `app/(edit)/__tests__/queries.test.ts`가 두 경로에 같은 행을 먹여 맞댄다
                         ⚠️ **updatedBy는 join으로 못 푼다** — FK가 없고 User.id와 옛 GitHub 핸들이 섞여 있어
                         loadActors가 따로 읽고 actorLabel이 못 찾은 값을 원문으로 낸다 (malmoi#3)
   onboarding/           탐지 온보딩 (SaaS 5단계, 2026-09-07). 순수 판정 + DB 껍데기 하나 — **GitHub을 모른다**

@@ -229,7 +229,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **에러로 보고하고 그 키를 건너뛴다.** 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.ts`가 그 계약을 `ADAPTERS` 순회로 고정한다: 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
-  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI 문구는 건수와 "개발자에게 알려 주세요"만 덧붙이고(`lib/pull/message.ts`), 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
+  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 메시지`, 있을 때만)로 올린다. 편집 UI에서는 **결과 자체가 갈린다** (2026-09-08): `pullMessage`가 warnings ≥ 1이면 tone을 `warning`으로 내리고 "N values couldn't be written — tell your developers." 문장을 낸다 — 성공 문구에 덧붙이는 것이 아니다(그러면 버린 값이 success 안에 숨는다, SAAS 불변식 9). **2층 스킵에 warnings가 붙어도 같다** — 다만 그때는 "Sent"라고 쓰지 않는다(아무것도 안 갔다). 어느 키인지는 그 결과를 받은 쪽(cron 응답 JSON·Action 반환)에 있다. 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
 
@@ -337,6 +337,14 @@ clone하지 않는다.
 6. `PATCH /git/refs/heads/{l10n/sync-<slug>}` — `force: true`
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
+
+**커밋이 나갔으면 `pr: "created" | "updated"`가 함께 실린다** (2026-09-08). 재사용 판정은 이미 하고 있었고
+(`findOpenPrUrl`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
+사실이다. **`Project`에 컬럼 둘이 따라온다**: `lastPublishedAt`·`lastPrUrl`은 `committed`일 때만 쓰고
+(`saveLastPulledAt`의 같은 `update` 한 번), `skipped`는 건드리지 않는다. ⚠️ **`lastPulledAt`과 뜻이 다르다** —
+그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계의 기준은
+그쪽이고(진행 판정), 툴바의 "Last sent"가 읽는 것은 이쪽이다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
+"보냈다"가 갱신된다.
 
 ⚠️ **`warnings`는 실행별 진단이고 큐가 아니다** (2026-09-04). 2층까지 통과하면 `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 같은 경고가 다시 나오지 않는다. **경고가 있으면 `lastPulledAt`을 안 쓰는 쪽은 택하지 않았다** — `missingOriginal`(리포에 그 로케일 파일이 없다)처럼 **지속 상태**인 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다. 대신 `lib/pull/trigger.ts`가 `console.warn`으로도 낸다 — 진입점 둘이 공유하는 조립층이라 한 곳이면 되고, cron 응답 JSON을 놓쳐도 Vercel 로그에 남는다.
 
@@ -539,6 +547,12 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - **`updatedBy`는 2026-09-05부터 `User.id`를 담고, 그 전 행은 GitHub 핸들을 그대로 들고 있다.** 처음 핸들을 쓴 이유는 "JWT 세션이라 사용자 테이블이 없다"였고 그 이유는 사라졌다(`User` 테이블이 생겼다). 그런데도 **FK를 걸지 않는다**: **한 컬럼에 두 종류 값이 섞여 있다.**
   참조 무결성을 주장할 수 없고, `User`에 join하는 화면은 못 찾는 경우를 다뤄야 한다. `User.id`를 쓰는
   이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
+  ⚠️ **push는 이 컬럼을 비운다** (2026-09-08, SaaS 6a). strict 덮어쓰기에서 **값의 저자는 리포**이므로
+  사람 이름이 남는 것이 거짓이다 — `applyPush`의 `ON CONFLICT … DO UPDATE SET`에 `"updatedBy" = NULL`이
+  있다(`flow.test.ts`의 SQL 캡처가 고정한다). 귀결이 둘이다: 셀 메타는 사람이 저장한 값에만 붙고,
+  **미배포 집계가 이 조건 위에 선다** — `updatedAt`만 보면 push가 전 행의 시각을 올리므로 code push
+  직후 903키 전부가 "안 보낸 편집"으로 세어진다(`countUnpublished`·`isUnpublished`가 `updatedBy`를
+  함께 본다). MVP §10의 미결 하나가 여기서 닫혔다.
   ⚠️ **그래서 이 컬럼을 읽는 쪽은 폴백을 갖는다** — `loadActors`가 id로 `User`를 따로 읽고(join이 아니다,
   옛 행이 전부 떨어진다) `actorLabel`이 **못 찾은 값을 원문 그대로** 낸다. 옛 핸들과 지워진 `User`의 id가
   그 갈래로 살아남는다. cuid 모양으로 갈라내려 하면 후자가 함께 사라진다. **이 폴백이 없던 동안 화면이
@@ -852,6 +866,15 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 - **판정은 잎 모듈에 둔다.** `lib/pull/ref-slug.ts`는 **import이 0**이고 `trigger.ts`가 재수출한다 —
   규칙은 한 벌이고 무게는 따라오지 않는다.
+- ⚠️ **잎이 둘 늘었다** (2026-09-08, SaaS 6a): **`lib/i18n/`**(→ `messages/en.tsx`)와 **`lib/routes.ts`**.
+  앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
+  지난다 — 사전이 `@/lib/**`를 하나라도 물면 그 무게가 세 화면에 붙는다. 그래서 `messages/en.tsx`의
+  import는 `react`의 `ReactNode` **타입 하나**이고, `client-graph.test.ts`가 그 잎 성질을 직접 건다
+  (실 소비자가 생기기 전에도 공허하지 않도록 `lib/i18n/index.ts`에서 출발하는 케이스를 따로 둔다).
+- ⚠️ **사전 조회는 `Object.hasOwn`을 지난다** (`lib/i18n`의 `pick`). `DICT[key] ?? fallback`은
+  프로토타입 키(`constructor`·`toString`…)에서 값이 찾아져 폴백을 우회하고, **문자열 자리에 함수가
+  돌아간다** — 그 값이 JSX 자식이 되면 화면이 죽고, `?e=`를 그대로 넘기는 초대 화면(외부인이 연다)에서
+  주소창으로 도달 가능하다.
 - **`pnpm build`는 이것을 오류로 보지 않는다.** 라우트 표에 청크 크기가 없고 typecheck·test도 침묵한다.
   **`components/__tests__/client-graph.test.ts`가 상시로 센다** — `"use client"`에서 시작해 값 import만
   따라가고(`import type`은 지운다) `"use server"` 파일에서 멈춘다(Action은 스텁으로 대체된다).

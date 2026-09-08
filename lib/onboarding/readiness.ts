@@ -1,3 +1,5 @@
+import { m } from "@/lib/i18n";
+
 /**
  * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (design §3.7).
  *
@@ -37,17 +39,6 @@ export function planProjectReadiness(project: {
  * 그에게 아무것도 알려주지 않는다.
  */
 export function readinessLabel(readiness: ProjectReadiness): string | null {
-  switch (readiness) {
-    case "ready":
-      return null;
-    case "awaiting_first_sync":
-      return "첫 적재 대기";
-    case "setup":
-      return "준비 중";
-    default: {
-      // 갈래를 추가하면 여기서 컴파일 에러가 난다.
-      const exhaustive: never = readiness;
-      return exhaustive;
-    }
-  }
+  // ⚠️ `ready`는 `null`이다 — 가장 흔한 상태가 가장 조용해야 한다. 사전에 그 키를 두지 않는 이유이기도 하다.
+  return readiness === "ready" ? null : m.projects.readiness[readiness];
 }

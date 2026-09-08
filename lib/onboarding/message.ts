@@ -1,12 +1,13 @@
 import { connectErrorMessage } from "@/lib/github-connect/message";
+import { m, pick } from "@/lib/i18n";
 
 import { PROJECT_LIMIT } from "./create-plan";
 import { PROJECT_SLUG_MAX } from "./slug";
 
 /**
- * 온보딩 실패 갈래 → 사용자 문구 (design §3.12). `connectErrorMessage`와 **같은 형**이다: `satisfies never`로
- * 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가
- * 손댈 수 있다.
+ * 온보딩 실패 갈래 → 사용자 문구 (design §3.12). `connectErrorMessage`와 **같은 형**이다: 문구는
+ * 사전(`messages/en.tsx`)이 들고 갈래 누락은 `satisfies Record<Union, string>`이 컴파일 타임에 막으며,
+ * 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있다.
  *
  * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`translation-input`·`pull-button`·온보딩 화면).
  * 그래서 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다. 2026-09-07에 실제로 새어 나갔다:
@@ -90,52 +91,36 @@ export function isOnboardError(value: unknown): value is OnboardError {
   return typeof value === "string" && ONBOARD_ERRORS.has(value);
 }
 
+/**
+ * ⚠️ **넷은 사전에 없다** — `installation-forbidden`·`repo-forbidden`·`repo-not-installed`·`unavailable`은
+ * 연결 화면과 같은 거부라 `connectErrorMessage`가 그대로 낸다. 같은 거부에 문구가 두 벌이면 안 된다.
+ *
+ * ⚠️ **둘은 함수 값이다** — 상수를 보간해야 하는데 사전은 잎이라 `PROJECT_LIMIT`·`PROJECT_SLUG_MAX`를
+ * import할 수 없다. 그래서 값은 여기서 넘긴다.
+ */
+type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-not-installed" | "unavailable";
+type Interpolated = "limit-reached" | "invalid-slug";
+
+const ONBOARD = m.errors.onboarding satisfies Record<
+  Exclude<OnboardError, SharedWithConnect | Interpolated> | "fallback",
+  string
+> &
+  Record<Interpolated, (value: number) => string>;
+
 export function onboardErrorMessage(error: OnboardError): string {
   switch (error) {
-    case "no-installations":
-      return "말모이 App을 설치한 GitHub 계정이 없어요. 먼저 App을 설치해 주세요.";
-    case "no-repos":
-      return "이 설치에 선택된 리포가 없어요. GitHub 설치 설정에서 리포를 추가해 주세요.";
-    case "no-candidates":
-      // 이유를 말한다 — 수동 지정으로 가는 근거다 (spec §5: 로케일이 하나뿐인 리포는 붙일 수 없다).
-      return "로케일 파일을 찾지 못했어요. 언어가 2개 이상인 로케일 파일이 필요해요.";
-    case "tree-truncated":
-      // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
-      return "이 리포는 파일이 너무 많아 번역 파일을 찾을 수 없어요. 직접 지정해도 같은 이유로 막혀요.";
-    case "base-branch-missing":
-      return "기본 브랜치를 읽을 수 없어요. 리포에 커밋이 있는지 확인해 주세요.";
-    case "key-count-failed":
-      // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "언어 3개 · 키 4개" 자리에 그대로 들어간다
-      // (2026-09-07 리뷰 ⚪10: 화면이 자기 문구를 따로 들고 있었다).
-      return "키 수 확인 실패";
-    case "manual-no-match":
-      return "그 경로에서 이 형식의 파일을 찾지 못했어요. 경로와 형식을 다시 확인해 주세요.";
     case "installation-forbidden":
     case "repo-forbidden":
     case "repo-not-installed":
     case "unavailable":
-      // 같은 거부에 문구가 두 벌이면 안 된다 — 연결 화면과 같은 말을 한다.
       return connectErrorMessage(error);
-    case "slug-taken":
-      return "이미 쓰는 주소예요. 다른 주소를 골라 주세요.";
     case "limit-reached":
-      return `프로젝트는 ${PROJECT_LIMIT}개까지 만들 수 있어요.`;
+      return ONBOARD["limit-reached"](PROJECT_LIMIT);
     case "invalid-slug":
-      return `주소는 소문자·숫자·'-'·'.'·'_'만 쓸 수 있고 ${PROJECT_SLUG_MAX}자 이내여야 해요. 'new'는 쓸 수 없어요.`;
-    case "not-awaiting":
-      return "이미 적재가 끝났어요. 다시 적재하면 편집한 번역이 리포 값으로 덮이므로 여기서는 하지 않아요.";
-    case "ingest-failed":
-      return "첫 적재에 실패했어요. 설정 화면에서 다시 시도할 수 있어요.";
-    case "not-ready":
-      // 번역자가 읽는다 — 무엇을 기다리는지와 누가 끝낼 수 있는지를 말한다.
-      return "아직 준비 중인 프로젝트예요. 소유자가 설정을 마치면 편집할 수 있어요.";
-    case "unauthorized":
-      // "입력한 값은 그대로 있어요"를 쓰지 않는다 — 중간 상태를 저장하지 않으므로 거짓이다.
-      return "로그인이 만료됐어요. 다시 로그인한 뒤 처음부터 진행해 주세요.";
+      return ONBOARD["invalid-slug"](PROJECT_SLUG_MAX);
     default:
-      // 사유를 추가하면 여기서 컴파일 에러가 난다. 실행 시점의 모르는 값은 접는다(위 ⚠️).
-      error satisfies never;
-      return "프로젝트를 만들지 못했어요. 처음부터 다시 시도해 주세요.";
+      // 모르는 값은 접는다 — `?e=`는 주소창에 있다.
+      return pick(ONBOARD, error, ONBOARD.fallback);
   }
 }
 
@@ -146,6 +131,5 @@ export function onboardErrorMessage(error: OnboardError): string {
  * @param failed `read.errors.length + duplicateKeys`
  */
 export function ingestHeadline(count: number, failed: number): string {
-  if (failed === 0) return `${count}개 키를 적재했어요.`;
-  return `${count}개를 적재했지만 ${failed}건을 읽지 못했어요.`;
+  return m.newProject.imported(count, failed);
 }

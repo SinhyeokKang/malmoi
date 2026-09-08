@@ -84,7 +84,7 @@ describe("formatFromProject — pull 경로엔 read가 없어 여기가 유일�
   });
 
   it("로케일이 0개면 던진다 — 낼 파일이 없다", () => {
-    expect(() => formatFromProject(cols(), [])).toThrow(/로케일/);
+    expect(() => formatFromProject(cols(), [])).toThrow(/no locales/);
   });
 });
 
@@ -222,7 +222,7 @@ describe("resolveLocalePaths — multi-locale (글롭)", () => {
   });
 
   it("글롭이 0파일을 매칭하면 던진다 — 경로가 이동했다는 신호다. 조용히 빈 PR을 내면 안 된다", () => {
-    expect(() => resolveLocalePaths(format, "multi-locale", ["README.md"])).toThrow(/매칭/);
+    expect(() => resolveLocalePaths(format, "multi-locale", ["README.md"])).toThrow(/matched no files/);
   });
 });
 
