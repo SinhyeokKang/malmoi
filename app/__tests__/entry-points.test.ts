@@ -314,7 +314,7 @@ describe("쿼리 파라미터의 수신자", () => {
    * 아직 수신자가 없는 키는 **이름으로 고정한다**(축소형 — `no-korean-ui`·`focus-ring`과 같은 형).
    * T7이 번역 화면에 필터를 붙이면 목록에서 빼야 하고, 안 빼면 아래 둘째 단언이 red다.
    */
-  const PENDING_QUERY_KEYS = ["q", "state"];
+  const PENDING_QUERY_KEYS: string[] = [];
 
   /**
    * `type X = { ns?: string; … }` → 필드 이름들. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로

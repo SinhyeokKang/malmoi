@@ -34,15 +34,12 @@ const SKIP = new Set(["__tests__", "node_modules"]);
  */
 const RAW_TAG_ALLOWED = [
   "components/github-account.tsx",
-  "components/invite-form.tsx",
   "components/onboarding/connect-github.tsx",
   "components/onboarding/copy-button.tsx",
   "components/onboarding/first-ingest-retry.tsx",
   "components/onboarding/new-project-flow.tsx",
   "components/onboarding/push-token-panel.tsx",
-  "components/pull-button.tsx",
   "components/reconnect-button.tsx",
-  "components/translation-input.tsx",
   "app/invite/[token]/page.tsx",
 ];
 
