@@ -147,8 +147,55 @@ export async function createInvitation(raw: {
     });
   });
 
-  revalidatePath(`/projects/${input.slug}/translations`);
+  // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
+  revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true, token };
+}
+
+const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
+
+export type RevokeResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * 대기 중인 초대를 무효화한다 (6b-2 — design §3.9).
+ *
+ * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
+ * 그 링크의 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다.
+ * 무효화의 기존 관용구는 **만료 시각을 당기는 것**이고(`createInvitation`의 토큰 회전이 같은 쓰기다)
+ * `loadPendingInvitations`의 `expiresAt > now()` 술어가 그대로 맞는다.
+ *
+ * ⚠️ **`where`에 `projectId`와 `acceptedAt: null`이 함께 있다.** 앞은 테넌트 경계다 — id를 알아도
+ * 남의 프로젝트 초대를 건드릴 수 없어야 한다(RLS가 없다). 뒤는 "이미 멤버가 된 사람의 초대를 되돌린
+ * 것처럼 보이지 않게" 한다. 둘 중 하나만 있어도 `count`가 0이 되어 `not-found`로 나간다 — 존재
+ * 여부를 문구로 가르지 않는 것은 `getProjectAccess`와 같은 규칙이다.
+ */
+export async function revokeInvitation(raw: { slug: string; invitationId: string }): Promise<RevokeResult> {
+  const parsed = RevokeInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, {
+    userId: session.userId,
+    slug: input.slug,
+    permission: "member:manage",
+  });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  // 조건부 쓰기의 count를 읽는다 — `update`는 행이 없을 때 P2025로 던지고, Server Action의
+  // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
+  const written = await prisma.projectInvitation.updateMany({
+    where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
+    data: { expiresAt: new Date() },
+  });
+  if (written.count === 0) return { ok: false, error: "not-found" };
+
+  revalidatePath(`/projects/${input.slug}/members`);
+  return { ok: true };
 }
 
 export type MemberChangeResult = { ok: true } | { ok: false; error: string };
@@ -230,7 +277,7 @@ export async function changeMember(raw: {
 
   if (outcome !== "ok") return { ok: false, error: outcome };
 
-  revalidatePath(`/projects/${input.slug}/translations`);
+  revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true };
 }
 

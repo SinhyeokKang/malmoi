@@ -13,7 +13,15 @@ import { describe, expect, it } from "vitest";
  * 있어야 보인다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-const read = (path: string): string => readFileSync(join(ROOT, path), "utf8");
+/**
+ * ⚠️ **주석을 벗기고 센다.** 이 리포의 주석은 함정을 인용하므로 금지 패턴을 **문장으로** 담는다 —
+ * 벗기지 않으면 "`as AccessError`로 넘기면 죽는다"는 경고가 그 패턴의 사용으로 잡힌다
+ * (`no-korean-ui.test.ts`와 같은 관용구).
+ */
+const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+
+const read = (path: string): string => stripComments(readFileSync(join(ROOT, path), "utf8"));
 
 const PAGE = "app/(edit)/projects/[slug]/members/page.tsx";
 const LIST = "components/members/member-list.tsx";
@@ -78,6 +86,18 @@ describe("멤버 화면 — 컨트롤", () => {
     const src = read(INVITE);
     expect(src).toContain("<form");
     expect(src).toContain('type="submit"');
+  });
+
+  /**
+   * ⚠️ **경로 리터럴은 타입이 아니라 데이터다** (POSTMORTEM 2026-09-05 — 라우트를 옮겼는데 링크
+   * 생성기가 옛 경로를 든 채 남아 전부 404였다). `entry-points.test.ts`의 "죽은 라우트 링크"는
+   * `app/` 아래 진입점만 읽어 `components/`가 사각지대다. 6a에서는 `translations-screen.test.ts`가
+   * 이 몫을 셌고, 폼이 여기로 옮겨오면서 검사도 따라왔다.
+   */
+  it("초대 링크를 `routes.invite`로 만든다 — 경로를 문자열로 조립하지 않는다", () => {
+    const src = read(INVITE);
+    expect(src).toMatch(/routes\.invite\(/);
+    expect(src).not.toMatch(/["`']\/invite\//);
   });
 });
 

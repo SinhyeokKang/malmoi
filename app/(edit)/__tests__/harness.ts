@@ -259,8 +259,11 @@ export function createHarness(seed: Seed = {}) {
       (m) => m.projectId === args.data.projectId && m.userId === args.data.userId,
     );
     if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
-    members.push(args.data);
-    return args.data;
+    // 실 호출은 `createdAt`을 안 넘긴다 (`@default(now())`) — 가짜가 그 자리를 채워야 행 모양이 균일하고
+    // `orderBy: { createdAt }`가 `undefined`를 비교하지 않는다.
+    const row = { createdAt: new Date(), ...args.data };
+    members.push(row);
+    return row;
   });
 
   const updateMember = vi.fn(

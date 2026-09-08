@@ -37,8 +37,8 @@ function seeded() {
       { id: "pB", slug: "beta" },
     ],
     members: [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
       { projectId: "pB", userId: "u-other", role: "OWNER" },
     ],
     users: [
@@ -193,7 +193,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     invite();
     const result = await acceptInvitation({ token: "tok" });
     expect(result).toEqual({ ok: true, slug: "alpha" });
-    expect(db.members).toContainEqual({ projectId: "pA", userId: "u-guest", role: "EDITOR" });
+    expect(db.members).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: "pA", userId: "u-guest", role: "EDITOR" })]));
   });
 
   it("없는 토큰은 not-found다", async () => {
@@ -321,7 +321,7 @@ describe("changeMember — 마지막 OWNER 보호", () => {
   });
 
   it("OWNER가 둘이면 하나를 강등할 수 있다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     const result = await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: "EDITOR" });
     expect(result).toEqual({ ok: true });
     expect(db.members.find((m) => m.userId === "u-owner")?.role).toBe("EDITOR");
@@ -357,8 +357,8 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   it("판정 뒤 행이 사라져도 not-member다 — OWNER 둘이 같은 멤버를 동시에 제거하는 경우", async () => {
     // 목록에는 있지만 실제 행은 없다 = 다른 요청이 먼저 지운 뒤다.
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: null });
     expect(result).toEqual({ ok: false, error: "not-member" });
@@ -366,8 +366,8 @@ describe("경합에서도 거부가 응답으로 온다", () => {
 
   it("역할 변경도 같다", async () => {
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: "OWNER" });
     expect(result).toEqual({ ok: false, error: "not-member" });
@@ -382,12 +382,12 @@ describe("경합에서도 거부가 응답으로 온다", () => {
    * OWNER 둘인데 실제 행은 하나만 OWNER다(다른 요청이 먼저 강등했다). 쓰기 뒤 재집계가 0을 보고 되돌려야 한다.
    */
   it("판정 뒤 다른 OWNER가 이미 줄었으면 last-owner로 되돌린다 — 쓰기 뒤 OWNER를 다시 센다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     // 판정은 둘 다 OWNER로 본다.
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-second", role: "OWNER" },
-      { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     // 실제로는 다른 요청이 u-second를 이미 강등했다.
     const second = db.members.find((m) => m.userId === "u-second");
@@ -400,10 +400,10 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   });
 
   it("자기 제거도 같은 재집계를 지난다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-second", role: "OWNER" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     db.members.splice(db.members.findIndex((m) => m.userId === "u-second"), 1);
 
@@ -454,8 +454,8 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
         { id: "pB", slug: "beta" },
       ],
       members: [
-        { projectId: "pA", userId: "u-owner", role: "OWNER" },
-        { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+        { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+        { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
         { projectId: "pB", userId: "u-other", role: "OWNER" },
       ],
       users: [{ id: "u-owner", email: "owner@a.com" }],

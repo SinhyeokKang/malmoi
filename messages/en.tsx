@@ -301,8 +301,34 @@ export const en = {
      * 초대 — **6a에서는 번역 화면 툴바의 `Dialog`다.** 멤버 관리 화면은 6b이고, 이 폼이 없으면
      * `createInvitation`에 호출부가 없다.
      */
+  },
+
+  /**
+   * 멤버 화면 (6b-2 — design §3.9). **역할 이름은 `projects.role`에서 온다** — 어휘가 두 벌이면 갈린다.
+   *
+   * ⚠️ **이 표는 프로젝트의 전원이 본다**(EDITOR 포함) — 그래서 이메일 문구가 "마스킹돼 있다"를
+   * 설명하지 않는다. 마스킹은 사과할 일이 아니라 기본값이다.
+   */
+  members: {
+    title: "Members",
+    /** 표 헤더. `Joined`는 상대 시각이라 열 이름이 단위를 말하지 않는다. */
+    columns: { person: "Person", email: "Email", role: "Role", joined: "Joined", actions: "" },
+    /** 이름이 없는 사용자 — Google 계정엔 핸들이 없다. */
+    unnamed: "No name set",
+    you: "You",
+    changeRole: "Change role",
+    remove: "Remove",
+    removing: "Removing…",
+    /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
+    confirmRemove: (who: string): string => `Remove ${who} from this project?`,
+    confirmRemoveHint: "They lose access right away. Their past edits stay.",
+    cancel: "Cancel",
+    /** 마지막 OWNER 보호는 `accessErrorMessage("last-owner")`가 낸다 — 여기 두 벌로 쓰지 않는다. */
+    changeFailed: (reason: string): string => `Couldn't apply that change: ${reason}`,
+
+    /** 초대 발급 — 6a의 임시 폼(`translations.invite`)에서 여기로 옮겼다. 화면 하나에 어휘 한 벌이다. */
     invite: {
-      open: "Invite",
+      open: "Invite member",
       title: "Invite a translator",
       email: "Email",
       help: "They'll be able to edit translations in this project.",
@@ -312,6 +338,20 @@ export const en = {
       linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
       alreadyMember: "That email is already a member of this project.",
       failed: (reason: string): string => `Couldn't create the link: ${reason}`,
+    },
+
+    pending: {
+      title: "Pending invitations",
+      columns: { email: "Email", role: "Role", expires: "Expires", invitedBy: "Invited by" },
+      /** 초대한 사람의 이름이 없을 때. 이메일을 여기 쓰지 않는다 — 이미 마스킹한 열이 옆에 있다. */
+      unknownInviter: "a member",
+      revoke: "Revoke",
+      revoking: "Revoking…",
+      revokeFailed: (reason: string): string => `Couldn't revoke that invitation: ${reason}`,
+      empty: {
+        title: "No pending invitations",
+        description: "Everyone you invited has joined, or their links have expired.",
+      },
     },
   },
 

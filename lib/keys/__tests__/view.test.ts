@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+
+import { relativeTime } from "@/lib/relative-time";
 import {
   buildPermalink,
   defaultNamespace,
   filterRows,
   isUnpublished,
   namespaceCounts,
-  relativeTime,
   resolveNamespace,
   translationState,
   type KeyRow,

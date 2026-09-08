@@ -261,23 +261,8 @@ export function isUnpublished(
 }
 
 /**
- * 툴바의 "Last sent 2 days ago" (design §3.4).
- *
- * ⚠️ **서버에서 만들어 문자열로 내려보낸다.** 클라이언트가 자기 시계로 다시 계산하면 하이드레이션이
- * 갈리고 그 차이는 조용하다 — 헤더는 이미 만들어진 라벨을 받는다.
- *
- * ⚠️ **문구를 사전에 두지 않는다.** 상대 시각은 UI 문장이 아니라 **서식**이고, 사전에 넣으면 단위마다
- * 갈래를 손으로 늘리게 된다. `Intl`이 "yesterday"·"5 minutes ago"를 이미 안다.
- *
- * 미래 시각(서버·DB 시계 어긋남)도 던지지 않는다 — 1분 미만은 전부 "now"다.
+ * ⚠️ **`relativeTime`은 이 파일에 없다 — `lib/relative-time.ts`(잎)에 있다.** 클라이언트 컴포넌트
+ * 둘(멤버 표·대기 초대)이 그것을 값으로 읽는데, **이 모듈은 잎이 아니다**(`compareKeys` 때문에
+ * `lib/adapters/shared` → `json-style`을 문다). 여기서 재수출하면 그 그래프가 그대로 따라오므로
+ * 재수출도 하지 않는다 — 서버 호출부도 잎을 직접 읽는다 (`lib/keys/refocus.ts`와 같은 근거).
  */
-export function relativeTime(then: Date, now: Date): string {
-  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  const seconds = Math.round((then.getTime() - now.getTime()) / 1000);
-  const abs = Math.abs(seconds);
-  // 초 단위를 읽어 주지 않는다 — "12 seconds ago"는 정보가 아니라 소음이다.
-  if (abs < 60) return format.format(0, "second");
-  if (abs < 3600) return format.format(Math.round(seconds / 60), "minute");
-  if (abs < 86400) return format.format(Math.round(seconds / 3600), "hour");
-  return format.format(Math.round(seconds / 86400), "day");
-}

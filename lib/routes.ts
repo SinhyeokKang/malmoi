@@ -43,6 +43,7 @@ export const routes = {
   newProject: (): string => "/projects/new",
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
+  members: (slug: string): string => `/projects/${slug}/members`,
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,
 } as const;
