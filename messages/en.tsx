@@ -29,8 +29,10 @@ export const en = {
       account: "Your account",
       allProjects: "All projects",
       newProject: "New project",
-      /** 프로젝트 구역의 항목 셋. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      /** 프로젝트 구역의 항목 다섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      home: "Overview",
       translations: "Translations",
+      locales: "Languages",
       members: "Members",
       settings: "Settings",
       signOut: "Sign out",
@@ -53,6 +55,40 @@ export const en = {
     google: "Continue with Google",
     /** 장식 카드의 정적 문구 — 실제 데이터가 아니라 모형이다 (design §3.12). */
     sample: { file: "locales/ko.json", branch: "l10n/sync", sent: "Sent for review" },
+  },
+
+  /**
+   * Home(`/projects/:slug`) — 프로젝트 진입의 착지점 (6b-6).
+   *
+   * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (SAAS §7.7 결정 2). 키 수·미배포 건수는 번역
+   * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
+   */
+  home: {
+    /** ⚠️ **착지 클릭 하나를 갚는 주된 동작이다** (결정 1의 대가) — 화면당 하나인 primary가 이것이다. */
+    openTranslations: "Open translations",
+    progress: {
+      title: "Languages",
+      /** orphaned 로케일은 이 목록에 없다 — 그 열은 편집이 막혀 있어 일이 아니다. */
+      description: "Pick a language to start from. Values waiting for review don't count as translated.",
+      /**
+       * ⚠️ **도달 가능한 상태다** — 적재는 끝났는데 살아 있는 로케일이 0인 경우(파일이 전부
+       * 사라졌다). 로케일 화면의 "첫 적재 뒤에 나타난다" 문구를 빌려 쓰면 **이 상태에선 거짓**이라
+       * 따로 쓰고, 사유가 사는 자리로 보낸다.
+       */
+      empty: "No languages to translate — their files are missing from the repository.",
+      emptyLink: "See languages",
+    },
+    activity: {
+      title: "Recent activity",
+      /** ⚠️ 첫 적재 뒤에도 한동안 비어 있다 — 실패가 아니라 아직 아무 일도 없는 것이다. */
+      empty: "Nothing yet. Edits, CI pushes and what you send back all show up here.",
+      /** 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다. */
+      edit: (who: string | null, key: string, locale: string): string =>
+        who === null ? `${key} was edited in ${locale}` : `${who} edited ${key} in ${locale}`,
+      push: "CI pushed source strings from the repository",
+      publish: "Translations were sent back for review",
+      pr: "Open pull request",
+    },
   },
 
   projects: {
@@ -361,6 +397,66 @@ export const en = {
    * ⚠️ **이 표는 프로젝트의 전원이 본다**(EDITOR 포함) — 그래서 이메일 문구가 "마스킹돼 있다"를
    * 설명하지 않는다. 마스킹은 사과할 일이 아니라 기본값이다.
    */
+  /**
+   * 로케일 화면 (6b-5 — `/projects/:slug/locales`). **사용자 어휘는 "language"다** — `locale`은 우리
+   * 내부 낱말이고 URL에만 남는다 (설정의 "Base language"와 같은 어휘).
+   *
+   * ⚠️ **`save`류를 설정과 공유하지 않는다.** 서로 다른 폼의 서로 다른 버튼이라 한 벌로 묶을 이유가
+   * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
+   */
+  locales: {
+    title: "Languages",
+    description: "The list comes from the locale files in your repository.",
+    columns: { code: "Language", progress: "Translated" },
+    /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
+    base: "Base",
+    /** `localeProgress` — 검토 필요는 번역된 것이 아니라 따로 센다. */
+    progress: (percent: number, translated: number, total: number): string =>
+      `${percent}% · ${translated} of ${total}`,
+    needsReview: (n: number): string => (n === 1 ? "1 needs review" : `${n} need review`),
+    /**
+     * ⚠️ **orphaned 로케일이 이 화면의 존재 이유다** (ARCHITECTURE §5.5.16). 그 상태는 오래전부터
+     * 정의돼 있었는데 **화면이 없어서** 번역자가 볼 수 있는 것은 "열이 사라졌다"뿐이었다. 그래서
+     * 사유와 되살리는 방법을 둘 다 말한다 — 되돌릴 수 있는 상태라는 것이 요지다.
+     */
+    orphaned: {
+      badge: "File missing",
+      reason: (code: string): string =>
+        `There's no file for ${code} in the repository any more, so it isn't sent back.`,
+      /** ⚠️ "below"라고 쓰지 않는다 — 그 번역은 아래가 아니라 같은 행의 진행률 열이다(실물로 확인했다). */
+      restore: "Add the file again and its translations come back on the next CI push.",
+    },
+    empty: {
+      title: "No languages yet",
+      description: "They appear after the first import reads your locale files.",
+    },
+    /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (design §3.13). */
+    field: {
+      label: "Base language",
+      help: "The language your source strings are written in. Changing it takes effect on the next CI push.",
+      save: "Save",
+      saving: "Saving…",
+      saved: "Saved",
+      failed: "We couldn't save this. Try again in a moment.",
+      /** 첫 적재 전 — 고를 언어가 없어 폼이 막힌다. 이유를 말하지 않으면 고장으로 보인다. */
+      noLocales: "You can set this after the first import.",
+    },
+    /**
+     * 선언과 현실이 어긋난 동안 상시로 뜬다 (`basePending`) — 저장 직후만이 아니다.
+     *
+     * ⚠️ **git 어휘를 피하지 않는다** — 이 Alert는 **`project:settings`가 있는 역할에만** 렌더된다
+     * (페이지 게이트는 `translation:write`이고 컨트롤만 role로 갈린다 — 6b-2 관용구). 고칠 수 없는
+     * 사람에게 YAML 한 줄과 [Copy]는 소음이고, 번역 화면의 배너가 편집자 어휘로 같은 사실을 말한다.
+     */
+    pending: {
+      title: "The base language change is waiting on your workflow",
+      body: (path: ReactNode): ReactNode => (
+        <>Update {path} — until then CI pushes keep the old base language.</>
+      ),
+      copy: "Copy line",
+    },
+  },
+
   members: {
     title: "Members",
     /**
@@ -449,38 +545,22 @@ export const en = {
       },
 
       /**
-       * 기준 브랜치·기준 로케일 (6b-3 — design §3.13). **한 폼이라 저장도 하나다.**
+       * 기준 브랜치 하나다 (6b-3이 언어와 한 폼에 뒀던 것을 **6b-5가 갈랐다** — 언어는
+       * `m.locales.field`이고 화면은 `/projects/:slug/locales`다, SAAS §7.7 결정 4).
        *
-       * ⚠️ **두 필드의 뜻이 다르다**: base branch는 **즉시** 쓰이고(pull의 커밋 parent·PR base),
-       * base language는 **선언만** 쓰인다 — 실제로 바뀌는 것은 다음 CI push다. help 문구가 그
-       * 차이를 말한다. 안 말하면 저장 직후 화면이 안 바뀌는 것이 버그로 보인다.
+       * ⚠️ **브랜치는 즉시 쓰인다** — pull의 커밋 parent와 PR base가 그것이고 대기 개념이 없다.
+       * 선언만 쓰이는 축(base language)이 여기서 사라졌으므로 두 성질을 한 help 문구로 설명할
+       * 필요도 없어졌다.
        */
       fields: {
         branch: "Base branch",
         branchHelp: "The branch translations are sent back to, and the one CI watches.",
-        locale: "Base language",
-        localeHelp: "The language your source strings are written in. Changing it takes effect on the next CI push.",
         save: "Save",
         saving: "Saving…",
         saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
-        /** 첫 적재 전 — 고를 언어가 없어 폼 전체가 막힌다. 이유를 말하지 않으면 고장으로 보인다. */
-        noLocales: "You can change these after the first import.",
       },
 
-      /**
-       * 선언과 현실이 어긋난 동안 상시로 뜬다 (`basePending`) — 저장 직후만이 아니다.
-       *
-       * ⚠️ **git 어휘를 피하지 않는다** — 이 화면을 보는 사람은 리포를 가진 개발자다(게이트가
-       * `project:settings`). 번역 화면의 같은 배너는 편집자가 읽으므로 문장이 다르다.
-       */
-      pending: {
-        title: "The base language change is waiting on your workflow",
-        body: (path: ReactNode): ReactNode => (
-          <>Update {path} — until then CI pushes keep the old base language.</>
-        ),
-        copy: "Copy line",
-      },
     },
 
     status: {

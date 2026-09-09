@@ -117,7 +117,7 @@ export default async function InvitePage({
           // 실패 사유를 쿼리로 넘긴다 — 이 페이지가 다시 그리며 위 문구를 고른다.
           redirect(
             result.ok
-              ? routes.translations(result.slug)
+              ? routes.project(result.slug)
               : `${routes.invite(token)}?e=${result.error}`,
           );
         }}

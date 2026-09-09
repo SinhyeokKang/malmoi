@@ -13,7 +13,10 @@
 > 3. **T5(5단계)까지의 화면 전부가 재작성 대상이다** — 번역 화면만이 아니다.
 >
 > **2026-09-08 `/feature-review` 결정 — 단계를 둘로 나눈다** (design §11 #6). **6a**가 이 문서의 §3이고 SAAS §8 6단계의 완료 게이트를
-> 전부 닫는다. **6b**(§3.10)는 6a 머지 뒤 별도 사이클이다 — 어댑터 오류 코드화·설정의 base 필드·멤버 화면·`/account`. 6a는
+> 전부 닫는다. **6b**(§3.10)는 6a 머지 뒤 별도 사이클이었다 — ✅ **여섯으로 닫혔다** (2026-09-09): 어댑터
+> 오류 코드화(6b-1) · 멤버 화면(6b-2) · 설정의 base 필드(6b-3) · `/account`(6b-4) · 로케일 화면(6b-5) ·
+> Home 착지점(6b-6). ⚠️ **뒤의 셋은 이 문서에 없다** — 2026-09-09 IA 확정이 `/account`의 추천을 뒤집고
+> `locales`·Home을 더했고, **그 정본은 SAAS §7.7**이다. 6a는
 > `lib/adapters/**`를 건드리지 않아 재측정 없이 나간다. 셋(CPO·CTO·QA)이 독립적으로 같은 절단선을 냈다: 그 넷은 완료 게이트에 기여하지
 > 않으면서 재측정 실패 하나가 UI 전체 머지를 막을 수 있었다.
 
@@ -27,7 +30,7 @@
 | 설정 (`/projects/:slug/settings`) | 개발자 (OWNER) | 리포 연결·상태·push 토큰·워크플로 |
 | 새 프로젝트 (`/projects/new`) | 개발자 | 첫 왕복을 설명 없이 끝내는 것이 SAAS §1 완료 조건이다 |
 | 프로젝트 목록 · 로그인 · 초대 수락 | 둘 다 | 진입점 |
-| 멤버 (`/projects/:slug/members`) · 계정 (`/account`) | — | **6b** (§3.10) |
+| 멤버 (`/projects/:slug/members`) · 계정 (`/account`) · 로케일 (`/projects/:slug/locales`) · Home (`/projects/:slug`) | — | ✅ **6b** — 순서대로 6b-2·6b-4·6b-5·6b-6 (뒤의 둘은 SAAS §7.7이 더했다) |
 
 **SAAS §3의 "편집자가 알 필요 없는 것"** (`adapterName`·`pathTemplate`·blob SHA·토큰 종류)은 이번에도
 화면에 오르지 않는다. 문자열이 영어가 된다고 어휘가 개발자 어휘가 되는 것은 아니다 — Publish의 결과
@@ -77,8 +80,10 @@
   낮추는 것뿐이고, 그러면 **리포 연결·push 토큰 재발급이 EDITOR에게 열린다.** 그래서 멤버 화면은
   `translation:write`로 들어오고 **컨트롤만** `member:manage`로 갈린다 — 판정은 Action이 한다.
   라우트 하나가 늘어나는 대가는 `middleware.ts`의 `matcher`가 `/projects/:path*`라 이미 덮고 있어 0이었다.
-- GitHub 계정 **해제**는 2026-09-07에 사용자 수준으로 옮겨져 `/projects`의 계정 섹션에 있다(`disconnectGithub()`, `requireUser`).
-  `/account` 신설은 그 섹션의 이사일 뿐이라 **만들지 말지부터** 6b가 판정한다(SAAS §8 6단계 3번은 이미 `[x]`).
+- GitHub 계정 **해제**는 2026-09-07에 사용자 수준으로 옮겨져 `/projects`의 계정 섹션에 있었다
+  (`disconnectGithub()`, `requireUser`). ✅ **6b-4가 `/account`를 만들어 그 섹션을 옮겼다**(복제가 아니다).
+  ⚠️ **이 문서의 추천은 "만들지 않는다"였고 뒤집혔다** — 근거가 "계정 컨트롤이 하나뿐"이었는데,
+  **그 하나를 목록 화면에 얹게 만든 원인이 자리가 없다는 것**이었다(SAAS §7.7).
 
 ### 2.4 문자열이 한국어로 소스에 박혀 있고 문체가 갈린다
 
@@ -107,90 +112,108 @@ Supabase를 골랐던 이유(옛 DESIGN §9.1)는 "개발자 도구이면서 비
 
 ## 3. 완료 조건 — 검증 가능한 문장으로 (6a)
 
+✅ **전부 통과했다** (2026-09-09 대조 — 6a 넷이 프로덕션에 나간 것은 2026-09-08이고 체크가 그때 빠졌다).
+근거는 각 항목의 "검증:" 줄이 가리키는 것 그대로다: `pnpm typecheck`·`pnpm test` **2,192건**·`pnpm build`
+green · `find .next/static/chunks -name '*.js' -size +1M` 빈 출력 · `components/ui/` **16파일** ·
+`components/ui/`에 `dark:` **0곳** · `@custom-variant dark` 유지 · `no-korean-ui` 허용 목록이 **둘**
+(`auth.ts`·`lib/push/apply.ts` — 화면이 아니다) · `/bugshot-qa` 한 바퀴 이슈 0건(tasks T9).
+
+⚠️ **`[x]`는 "6a의 게이트가 통과했다"는 뜻이고 "지금도 그 모양이다"가 아니다.** 6b가 넷의 대상을
+바꿨고 그 자리마다 아래에 표시해 뒀다 — 사이드바 섹션 수 · orphaned 로케일의 설명 자리 · 설정의 base
+필드 · `no-korean-ui`의 `lib/adapters` 제외.
+
 ### 3.1 디자인 시스템
 
-- [ ] `docs/DESIGN.md`가 GitLab을 **레이아웃·정보구조·컴포넌트 구성**의 레퍼런스로 삼고, **색·타입·간격 토큰은 기존 그대로**다 (HEAD에 이미 반영 — 전제).
+- [x] `docs/DESIGN.md`가 GitLab을 **레이아웃·정보구조·컴포넌트 구성**의 레퍼런스로 삼고, **색·타입·간격 토큰은 기존 그대로**다 (HEAD에 이미 반영 — 전제).
       검증: `app/globals.css`의 토큰 값이 바뀌지 않았다(`git diff` 0).
-- [ ] `components/ui/`가 **이 리포가 소유하는 프리미티브 16개**로 바뀐다 (shadcn 생성물 4개는 지운다): Button(variants **`primary`·`default`·`danger`·`ghost`·`link`** —
+- [x] `components/ui/`가 **이 리포가 소유하는 프리미티브 16개**로 바뀐다 (shadcn 생성물 4개는 지운다): Button(variants **`primary`·`default`·`danger`·`ghost`·`link`** —
       DESIGN §6.4가 정본, sizes `md`·`sm`) · Input · Textarea · Select · Radio · FormGroup · Badge · Alert · Card · Table · Breadcrumb · Avatar · EmptyState ·
       DropdownMenu · Dialog · Tooltip. **Checkbox·Skeleton은 없다**(와이어 8개에서 사용 0). 검증: `focus-ring.test.ts`가 **`ui/`를 더 이상 제외하지 않고** green이다.
-- [ ] `app/`·`components/`(`ui/` 밖)에 **raw `<button>`·`<input>`·`<select>`·`<textarea>`가 0개**다 — 전부 프리미티브를 지난다. 검증: `focus-ring.test.ts`의
+- [x] `app/`·`components/`(`ui/` 밖)에 **raw `<button>`·`<input>`·`<select>`·`<textarea>`가 0개**다 — 전부 프리미티브를 지난다. 검증: `focus-ring.test.ts`의
       **raw 태그 허용 파일 목록이 비어 있다**(축소형 — 목록 밖 파일에 raw 태그가 있으면 red, 목록의 파일에 없어도 red).
-- [ ] 라이트 단일이 유지된다. 검증: `lib/__tests__/globals-css.test.ts` green (`@custom-variant dark` 유지) · `components/ui/`에 `dark:` 0곳.
-- [ ] `text-mono` 유틸·twMerge 등록이 유지된다. 검증: `git diff lib/utils.ts` 비어 있음.
-- [ ] `client-graph.test.ts`의 허용 목록이 `radix-ui`·`class-variance-authority`·`lucide-react` 셋만큼 넓어진다 — **의도된 결정**이고 메타 테스트가 셋을 각자 고정한다.
+- [x] 라이트 단일이 유지된다. 검증: `lib/__tests__/globals-css.test.ts` green (`@custom-variant dark` 유지) · `components/ui/`에 `dark:` 0곳.
+- [x] `text-mono` 유틸·twMerge 등록이 유지된다. 검증: `git diff lib/utils.ts` 비어 있음.
+- [x] `client-graph.test.ts`의 허용 목록이 `radix-ui`·`class-variance-authority`·`lucide-react` 셋만큼 넓어진다 — **의도된 결정**이고 메타 테스트가 셋을 각자 고정한다.
 
 ### 3.2 앱 셸
 
-- [ ] `(edit)` 아래 모든 라우트가 **같은 셸**을 쓴다: 좌측 사이드바(프로젝트 컨텍스트 + 섹션 네비게이션) + 상단 top bar(사용자 메뉴). **breadcrumb은 페이지
+- [x] `(edit)` 아래 모든 라우트가 **같은 셸**을 쓴다: 좌측 사이드바(프로젝트 컨텍스트 + 섹션 네비게이션) + 상단 top bar(사용자 메뉴). **breadcrumb은 페이지
       콘텐츠 첫 줄**이다(레이아웃은 페이지 props를 못 받는다 — design §2). 검증: 실물(`/bugshot-qa`)에서 `/projects`·`/projects/new`·`/projects/:slug/*`
       셋 부류가 같은 사이드바를 보인다.
-- [ ] 사이드바의 섹션은 프로젝트 안에서 **둘**(Translations · Settings)이고 Settings는 OWNER에게만 보인다 (Members는 6b — 그때 **전원**에게 보인다).
+- [x] 사이드바의 섹션은 프로젝트 안에서 **둘**(Translations · Settings)이고 Settings는 OWNER에게만 보인다 (Members는 6b — 그때 **전원**에게 보인다).
+      ⚠️ **6a 시점의 게이트다.** 지금은 **다섯**이고(Overview·Translations·Languages·Members·Settings) 구역도 둘로 갈렸다 —
+      `Settings`만 `canPerform` 뒤이고 나머지는 전원이 본다 (SAAS §7.7, 6b-2·6b-4·6b-5·6b-6).
       검증: EDITOR 세션으로 Settings가 렌더되지 않고, URL 직접 진입은 `not-found`다(`app/(edit)/__tests__/authorization.test.ts`가 이미 그 진입을 고정한다).
-- [ ] 레이아웃의 멤버십 조회는 **새 조회**이고 `userId`로 좁힌다(지금 레이아웃은 Prisma를 부르지 않는다). 검증: 하네스로 다른 사용자의 멤버십을 내지 않는다.
-- [ ] 로그인·초대 수락은 셸 **밖**이다 (지금과 같다).
+- [x] 레이아웃의 멤버십 조회는 **새 조회**이고 `userId`로 좁힌다(지금 레이아웃은 Prisma를 부르지 않는다). 검증: 하네스로 다른 사용자의 멤버십을 내지 않는다.
+- [x] 로그인·초대 수락은 셸 **밖**이다 (지금과 같다).
 
 ### 3.3 번역 화면
 
-- [ ] **기본 착지는 기준 로케일(`?focus=`)에서 pending>0인 첫 네임스페이스다**(`compareKeys` 순). 전부 0이면 첫 네임스페이스, 키가 없으면 "No keys yet" 빈 상태.
+- [x] **기본 착지는 기준 로케일(`?focus=`)에서 pending>0인 첫 네임스페이스다**(`compareKeys` 순). 전부 0이면 첫 네임스페이스, 키가 없으면 "No keys yet" 빈 상태.
       "All keys"는 명시적으로 고른다(`?ns=*`)이고 그 행에도 `pending/total`이 있다. 검증: `lib/keys/__tests__/view.test.ts`의 `defaultNamespace`; 실물에서
       903키 프로젝트의 첫 착지가 **2초 안**에 그려진다 — **같은 프로젝트·같은 머신·DevTools Performance의 LCP**로 재고, 기준선 12.7초를 같은 방법으로 다시 잰 값과 비교한다.
-- [ ] 네임스페이스 패널이 남은 일(`pending/total`)을 보이고, 기준 로케일(`?focus=`)로 집계가 바뀐다 (지금과 같다).
-- [ ] 키·값 **텍스트 필터**(`?q=`)와 상태 필터(`?state=`)가 네임스페이스 안에서 동작한다. 검증: `filterRows` 단위 테스트(0행 포함).
-- [ ] 키 열의 **코드 참조 링크**가 유지된다(`buildPermalink`, `lastCommitSha`). 검증: `view.test.ts` 기존 케이스 green.
-- [ ] 셀 저장: blur 저장 유지(Enter=저장·Shift+Enter=개행·Esc=되돌리기 — 지금 습관 그대로) + **표 하나에 시각 숨김 `aria-live="polite"` 영역 하나**가 결과("Saved
+- [x] 네임스페이스 패널이 남은 일(`pending/total`)을 보이고, 기준 로케일(`?focus=`)로 집계가 바뀐다 (지금과 같다).
+- [x] 키·값 **텍스트 필터**(`?q=`)와 상태 필터(`?state=`)가 네임스페이스 안에서 동작한다. 검증: `filterRows` 단위 테스트(0행 포함).
+- [x] 키 열의 **코드 참조 링크**가 유지된다(`buildPermalink`, `lastCommitSha`). 검증: `view.test.ts` 기존 케이스 green.
+- [x] 셀 저장: blur 저장 유지(Enter=저장·Shift+Enter=개행·Esc=되돌리기 — 지금 습관 그대로) + **표 하나에 시각 숨김 `aria-live="polite"` 영역 하나**가 결과("Saved
       common.viewAll · ko" / "Couldn't save …")를 읽는다(셀마다 두면 903×3 live region). 실패 시 **`document.activeElement`가 `body`이거나 같은 셀일 때만** 포커스가 그 셀로
       돌아가고, 아니면 상태줄 [Retry]가 재시도 지점이다(다른 셀 타이핑 중 포커스 탈취 금지 — WCAG 3.2). 검증: 소스 스캔(`aria-live` 1곳·`activeElement`·`Retry`) +
       실물에서 다른 셀 타이핑 중 실패 유발 후 포커스 위치.
-- [ ] 세션 만료 중 저장(Action이 `unauthorized`)은 "Your session ended — sign in again. Your text is kept." + 로그인 링크, `unavailable`은 "Temporary problem — try again"이다.
+- [x] 세션 만료 중 저장(Action이 `unauthorized`)은 "Your session ended — sign in again. Your text is kept." + 로그인 링크, `unavailable`은 "Temporary problem — try again"이다.
       검증: `translation-input` 소스에 두 갈래.
-- [ ] 배지: `needsReview`·orphaned(키·로케일 두 축) 유지. **"Translated"에는 배지가 없다**.
-- [ ] **덮인 셀**: push가 값을 덮으면 `updatedBy`가 비워져 사람 이름이 남지 않는다 — 편집자 표기가 사라질 뿐
+- [x] 배지: `needsReview`·orphaned(키·로케일 두 축) 유지. **"Translated"에는 배지가 없다**.
+- [x] **덮인 셀**: push가 값을 덮으면 `updatedBy`가 비워져 사람 이름이 남지 않는다 — 편집자 표기가 사라질 뿐
       "From repository" 같은 새 표시는 두지 않는다(design §3.6). 검증: `lib/push/__tests__/flow.test.ts`(SQL 캡처)가 upsert에 `"updatedBy" = NULL`을 고정한다.
-- [ ] **orphaned 로케일**의 처리를 확정한다: 열 유지 + 헤더 배지 + 편집 비활성 (2026-09-06 임시안을 그대로
+- [x] **orphaned 로케일**의 처리를 확정한다: 열 유지 + 헤더 배지 + 편집 비활성 (2026-09-06 임시안을 그대로
       확정). 검증: 헤더에 배지, 셀 `disabled`, 저장 Action은 여전히 `locale is no longer in the repo`로 거부.
-- [ ] **편집 손실 창 배너**: 미배포 변경이 1건 이상이면 툴바 아래 경고 Alert — "{n} changes not yet sent. They can be lost if your developers push code first — send them
+      ⚠️ **열의 동작은 그대로이고, 6b-5가 "왜 그렇게 됐나"를 말하는 화면을 만들었다** — 그때까지 번역자가 볼 수
+      있는 것은 배지 하나였고 되살리는 방법은 어디에도 없었다 (`/projects/:slug/locales`, ARCHITECTURE §5.5.16).
+- [x] **편집 손실 창 배너**: 미배포 변경이 1건 이상이면 툴바 아래 경고 Alert — "{n} changes not yet sent. They can be lost if your developers push code first — send them
       when you're done."(복수 `one/other`). 닫기 키는 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다. 검증: `countUnpublished`가 0이면 DOM에 없다 · 닫고 Publish·편집하면 재등장(실물).
 
 ### 3.4 Publish
 
-- [ ] 툴바의 [Send changes] 버튼이 **미배포 변경 수**를 함께 보인다 (`Send changes (3)`). 0이면 버튼은 살아 있고 결과가
+- [x] 툴바의 [Send changes] 버튼이 **미배포 변경 수**를 함께 보인다 (`Send changes (3)`). 0이면 버튼은 살아 있고 결과가
       "Nothing to send"다 — no-op에도 반드시 무엇인가 보인다 (현 `pull-button` 결정 유지).
-- [ ] 결과가 **다섯 문구·네 tone**으로 갈린다: 변경 없음(info) / 새로 보냄(success) / 먼저 보낸 것을 갱신(success) / 일부 값 미기록(**warning** — `skipped`여도 warnings≥1이면
+- [x] 결과가 **다섯 문구·네 tone**으로 갈린다: 변경 없음(info) / 새로 보냄(success) / 먼저 보낸 것을 갱신(success) / 일부 값 미기록(**warning** — `skipped`여도 warnings≥1이면
       warning, 본문 `<details>`에 못 쓴 파일 목록) / 실패(danger). **편집자 어휘**다 — "pull request"·"merge"를 쓰지 않는다. 검증: `PullResult`가
       `pr: "created" | "updated"`를 들고, `pullMessage`의 exhaustive switch가 다섯 문구를 각자 다르게 내며 기존 어휘 금지 테스트가 green이다 (`lib/pull/__tests__/message.test.ts`).
-- [ ] **보낸 것의 링크가 새로고침 뒤에도 남는다**: 마지막 Publish의 PR URL·시각을 `Project`에 저장하고 툴바가 "Last sent 2 days ago · View what was sent"로 보인다.
+- [x] **보낸 것의 링크가 새로고침 뒤에도 남는다**: 마지막 Publish의 PR URL·시각을 `Project`에 저장하고 툴바가 "Last sent 2 days ago · View what was sent"로 보인다.
       검증: additive 마이그레이션 + **신설** `lib/pull/__tests__/load.test.ts`.
-- [ ] PR 생성과 머지를 같은 완료로 표시하지 않는다 — 성공 문구 본문이 "Your developers need to accept it before their next code push."로 경계를 한 번 말한다.
-- [ ] 결과 Alert와 편집 손실 배너는 같은 자리에 **결과 위·배너 아래**로 고정된다.
-- [ ] 같은 DB 상태의 반복 Publish가 새 커밋을 만들지 않는다 (이미 성립 — 2층 blob SHA. 회귀 테스트만 확인).
+- [x] PR 생성과 머지를 같은 완료로 표시하지 않는다 — 성공 문구 본문이 "Your developers need to accept it before their next code push."로 경계를 한 번 말한다.
+- [x] 결과 Alert와 편집 손실 배너는 같은 자리에 **결과 위·배너 아래**로 고정된다.
+- [x] 같은 DB 상태의 반복 Publish가 새 커밋을 만들지 않는다 (이미 성립 — 2층 blob SHA. 회귀 테스트만 확인).
 
 ### 3.5 그 밖의 화면
 
-- [ ] 로그인(`/`): 두 provider 버튼 + 거부 사유(`?error=`) + 장애 문구. 2열(폼 좌 / 장식 우) — 장식은 **토큰만**(`--border` dot-grid + `from-primary/5 to-muted`), raw 색 0.
-- [ ] 프로젝트 목록(`/projects`): 행마다 이름·리포·상태(`readinessLabel`)·역할 + [New project]. 빈 상태는 EmptyState + CTA. `?e=`는 **global** Alert(DESIGN §6.4 배치).
+- [x] 로그인(`/`): 두 provider 버튼 + 거부 사유(`?error=`) + 장애 문구. 2열(폼 좌 / 장식 우) — 장식은 **토큰만**(`--border` dot-grid + `from-primary/5 to-muted`), raw 색 0.
+- [x] 프로젝트 목록(`/projects`): 행마다 이름·리포·상태(`readinessLabel`)·역할 + [New project]. 빈 상태는 EmptyState + CTA. `?e=`는 **global** Alert(DESIGN §6.4 배치).
       GitHub 계정 섹션은 그대로 둔다(6b가 `/account`를 판정한다).
-- [ ] 새 프로젝트(`/projects/new`): ②~⑥ 상태 기계 **그대로**, 형만 프리미티브·카드로.
-- [ ] 설정: 섹션 넷(리포 연결·상태·push 토큰·워크플로)을 settings-block 형으로. 계정 섹션 그대로. base 필드는 6b.
-- [ ] 초대 수락(`/invite/:token`): 셸 밖 카드. 실패 분기 각자 한 줄 (지금과 같다).
-- [ ] 임시 초대 폼은 6a에 **남는다** — 툴바 `ghost` 버튼 → `Dialog`로 옮긴다(OWNER만). 6b 멤버 화면이 대체한다.
+- [x] 새 프로젝트(`/projects/new`): ②~⑥ 상태 기계 **그대로**, 형만 프리미티브·카드로.
+- [x] 설정: 섹션 넷(리포 연결·상태·push 토큰·워크플로)을 settings-block 형으로. 계정 섹션 그대로. base 필드는 6b.
+      ⚠️ **base 필드는 6b-3이 넣고 6b-5가 옮겼다** — 기준 브랜치만 이 화면에 남았고, 기준 로케일과 대기 Alert는
+      `/projects/:slug/locales`다 (SAAS §7.7 결정 4). 계정 섹션은 그대로 남았지만 `/account`(6b-4)도 같은 상태를 보인다.
+- [x] 초대 수락(`/invite/:token`): 셸 밖 카드. 실패 분기 각자 한 줄 (지금과 같다).
+- [x] 임시 초대 폼은 6a에 **남는다** — 툴바 `ghost` 버튼 → `Dialog`로 옮긴다(OWNER만). 6b 멤버 화면이 대체한다.
 
 ### 3.6 i18n 구조
 
-- [ ] 사용자 문자열의 **단일 출처가 `messages/en.tsx`**(`as const`)이고, `lib/i18n/index.ts`가 `m`으로 재수출한다. **값은 문자열 또는 함수** — 카운터·복수·쪼개진 문장은 함수 값이다.
+- [x] 사용자 문자열의 **단일 출처가 `messages/en.tsx`**(`as const`)이고, `lib/i18n/index.ts`가 `m`으로 재수출한다. **값은 문자열 또는 함수** — 카운터·복수·쪼개진 문장은 함수 값이다.
       `fmt`·`plural`·`rich` 헬퍼, `resolveJsonModule`, JSON resolver는 **없다**(design §3.1.1). ko는 같은 모양의 `ko.tsx` 하나로 더한다.
-- [ ] `app/`·`components/`·`lib/` 소스(테스트·주석·`lib/survey`·`lib/scan`·**`lib/adapters`(6b)** 제외)에 **한글이 0자**다. 검증:
+- [x] `app/`·`components/`·`lib/` 소스(테스트·주석·`lib/survey`·`lib/scan`·**`lib/adapters`(6b)** 제외)에 **한글이 0자**다.
+      ⚠️ **`lib/adapters` 제외는 6b-1이 풀었다** (2026-09-08) — 어댑터가 문장 대신 코드를 내면서 그 디렉터리에 화면 문구가
+      남지 않았다. 지금 허용 목록은 **둘**이고 둘 다 화면이 아니다(`auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석). 검증:
       `lib/i18n/__tests__/no-korean-ui.test.ts` — **축소형 허용 목록**(목록 밖 0자·목록 안 ≥1자)이 6a 끝에 `lib/pull/run.ts`·`render.ts`만 남긴다(어댑터 `message`를 싣는다 — 6b).
-- [ ] 문구 모듈 넷(`lib/auth/message.ts`·`lib/github-connect/message.ts`·`lib/onboarding/message.ts`·`lib/pull/message.ts`)이
+- [x] 문구 모듈 넷(`lib/auth/message.ts`·`lib/github-connect/message.ts`·`lib/onboarding/message.ts`·`lib/pull/message.ts`)이
       사전을 읽고, **갈래 누락은 여전히 컴파일 에러**다 (`satisfies Record<Union, string>`).
-- [ ] 사전이 클라이언트 번들에 들어가도 무게가 없다. 검증: `client-graph.test.ts` green (`lib/i18n/`이 잎이다 — 메타 테스트의 클라이언트 픽스처가 그것을 import한다).
-- [ ] ICU 복수형은 쓰지 않는다 (MVP §7). 복수는 함수 값 하나(`n === 1 ? … : …`)다.
+- [x] 사전이 클라이언트 번들에 들어가도 무게가 없다. 검증: `client-graph.test.ts` green (`lib/i18n/`이 잎이다 — 메타 테스트의 클라이언트 픽스처가 그것을 import한다).
+- [x] ICU 복수형은 쓰지 않는다 (MVP §7). 복수는 함수 값 하나(`n === 1 ? … : …`)다.
 
 ### 3.7 게이트
 
-- [ ] `pnpm typecheck && pnpm test && pnpm build` green. `find .next/static/chunks -name '*.js' -size +1M` 출력이 비어 있다.
-- [ ] `/bugshot-qa` 한 바퀴: 라우트 6개(user-stories §1·§2·§3·§4·§6·§8) + 거부 경로(EDITOR가 settings URL) + tasks T9의 실물 항목.
-- [ ] `/l10n-roundtrip`·`pnpm adapter-survey`는 **돌리지 않는다** — 6a는 `lib/adapters/**`를 건드리지 않는다.
+- [x] `pnpm typecheck && pnpm test && pnpm build` green. `find .next/static/chunks -name '*.js' -size +1M` 출력이 비어 있다.
+- [x] `/bugshot-qa` 한 바퀴: 라우트 6개(user-stories §1·§2·§3·§4·§6·§8) + 거부 경로(EDITOR가 settings URL) + tasks T9의 실물 항목.
+- [x] `/l10n-roundtrip`·`pnpm adapter-survey`는 **돌리지 않는다** — 6a는 `lib/adapters/**`를 건드리지 않는다.
 
 ### 3.8 (이전 §3.8 어댑터 오류 코드화) → §3.10 6b
 
@@ -208,7 +231,9 @@ Supabase를 골랐던 이유(옛 DESIGN §9.1)는 "개발자 도구이면서 비
    `apply.ts`의 전파 SQL을 건드려야 한다). 태스크는 tasks 6b-3의 T1~T6.
 3. **멤버 화면** — 별도 라우트의 근거를 먼저 쓴다(`github-connect/spec.md`는 settings 섹션으로 결정했다). 전원에게 렌더. `revokeInvitation`은 `expiresAt = now`(삭제 금지 —
    `schema.prisma:365`). 임시 초대 폼 삭제.
-4. **`/account`** — 만들지 말지부터. 추천은 "만들지 않는다"(사용자 메뉴 항목으로 `/projects` 계정 섹션에 간다).
+4. ✅ **`/account`** — **만들었다** (6b-4). 이 문서의 추천은 "만들지 않는다"였고 2026-09-09 IA 확정이
+   뒤집었다 — 근거가 "계정 컨트롤이 하나뿐"이었는데 **그 하나를 목록 화면에 얹게 만든 원인이 자리가
+   없다는 것**이었다 (SAAS §7.7). 그 확정이 `locales`(6b-5)·Home(6b-6)도 더했다.
 
 ## 4. 범위 밖 — 이번에 안 하는 것
 

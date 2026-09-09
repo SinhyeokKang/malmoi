@@ -48,6 +48,13 @@ export const routes = {
   account: (): string => "/account",
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
+  /**
+   * 프로젝트 진입의 **착지점** (SAAS §7.7 결정 1 — 6b-6). "프로젝트로 간다"를 뜻하는 자리가 전부
+   * 이것이다: 목록 행 · 사이드바 스위처 · 각 화면의 breadcrumb · 초대 수락. 하나라도 다른 곳을
+   * 가리키면 같은 의도가 어디서 눌렀는지에 따라 다른 곳에 착지하고, 그 불일치는 눈에 안 보인다.
+   */
+  project: (slug: string): string => `/projects/${slug}`,
+  locales: (slug: string): string => `/projects/${slug}/locales`,
   members: (slug: string): string => `/projects/${slug}/members`,
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,

@@ -185,3 +185,97 @@ describe("harness — projectMember.findMany가 select를 지킨다", () => {
     for (const row of rows) expect(Object.keys(row).sort()).toEqual(["project", "role"]);
   });
 });
+
+/**
+ * **진행률 집계의 두 델리게이트** (6b-5). `localeProgress`가 순수 함수라 그 자체는 이미 테스트되지만,
+ * **분자·분모를 뽑는 조회가 관대하면 집계가 아무 값이나 맞는 것처럼 보인다** — 이 하네스 자기검사가
+ * 없으면 화면 테스트가 통과하면서 프로덕션이 틀린 숫자를 낸다 (POSTMORTEM 2026-09-06과 같은 축).
+ *
+ * 흉내 내는 것: `StringKey.orphaned` 필터 · `Translation.value != ""` · `stringKey.orphaned` 관계 필터 ·
+ * `projectId` 테넌트 좁힘 · `select` 밖 필드 차단.
+ */
+describe("harness — 진행률 집계의 조회 둘 (6b-5)", () => {
+  const seed = {
+    projects: [{ id: "pA", slug: "alpha" }, { id: "pB", slug: "beta" }],
+    keys: [
+      { id: "k1", projectId: "pA", key: "a.one", sourceText: "One", description: null, sortIndex: 0, orphaned: false },
+      { id: "k2", projectId: "pA", key: "a.two", sourceText: "Two", description: null, sortIndex: 1, orphaned: false },
+      // 코드에서 사라진 키 — 분모에도 분자에도 들어가면 안 된다.
+      { id: "k3", projectId: "pA", key: "a.gone", sourceText: "Gone", description: null, sortIndex: 2, orphaned: true },
+      { id: "kB", projectId: "pB", key: "b.one", sourceText: "One", description: null, sortIndex: 0, orphaned: false },
+    ],
+    locales: [
+      { projectId: "pA", code: "en", isBase: true },
+      { projectId: "pA", code: "ko" },
+      { projectId: "pB", code: "en", isBase: true },
+    ],
+    translations: [
+      { keyId: "k1", localeCode: "ko", value: "하나", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01") },
+      // 빈 값 — 편집 UI에서 값을 지우면 이 모양으로 남는다. 번역으로 세면 안 된다.
+      { keyId: "k2", localeCode: "ko", value: "", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01") },
+      // 죽은 키의 번역 — 관계 필터가 없으면 분자가 분모보다 커진다.
+      { keyId: "k3", localeCode: "ko", value: "사라짐", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01") },
+      { keyId: "k1", localeCode: "en", value: "One", description: null, placeholders: null, needsReview: true, updatedBy: null, updatedAt: new Date("2026-09-01") },
+      // 남의 테넌트 — projectId 좁힘이 없으면 새어 들어온다.
+      { keyId: "kB", localeCode: "en", value: "One", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01") },
+    ],
+  };
+
+  it("`stringKey.count`가 orphaned를 실제로 거른다 — 분모에 죽은 키가 남으면 100%에 못 닿는다", async () => {
+    const h = createHarness(seed);
+    expect(await h.prisma.stringKey.count({ where: { projectId: "pA", orphaned: false } })).toBe(2);
+    // 필터가 없으면 셋이다 — 그 차이가 이 검사가 공허하지 않다는 증거다.
+    expect(await h.prisma.stringKey.count({ where: { projectId: "pA" } })).toBe(3);
+  });
+
+  it("`stringKey.count`가 `projectId`로 좁힌다", async () => {
+    const h = createHarness(seed);
+    expect(await h.prisma.stringKey.count({ where: { projectId: "pB", orphaned: false } })).toBe(1);
+  });
+
+  it("`translation.findMany`가 빈 값과 죽은 키의 번역을 둘 다 뺀다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.translation.findMany({
+      where: { projectId: "pA", value: { not: "" }, stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    });
+    expect(rows).toEqual([
+      { localeCode: "ko", needsReview: false },
+      { localeCode: "en", needsReview: true },
+    ]);
+  });
+
+  it("필터를 하나씩 빼면 결과가 달라진다 — 페이크가 필터를 무시하지 않는다", async () => {
+    const h = createHarness(seed);
+    // 빈 값 필터만 뺀다 → k2의 빈 셀이 들어온다.
+    const noEmptyFilter = await h.prisma.translation.findMany({
+      where: { projectId: "pA", stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    });
+    expect(noEmptyFilter).toHaveLength(3);
+    // orphaned 필터만 뺀다 → k3의 번역이 들어온다.
+    const noOrphanFilter = await h.prisma.translation.findMany({
+      where: { projectId: "pA", value: { not: "" } },
+      select: { localeCode: true, needsReview: true },
+    });
+    expect(noOrphanFilter).toHaveLength(3);
+  });
+
+  it("`select` 밖의 필드가 새지 않는다 — 화면이 안 받은 값을 쓰게 되면 계약이 거짓이다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.translation.findMany({
+      where: { projectId: "pA", value: { not: "" }, stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    });
+    for (const row of rows) expect(Object.keys(row).sort()).toEqual(["localeCode", "needsReview"]);
+  });
+
+  it("남의 테넌트 번역이 새어 들어오지 않는다", async () => {
+    const h = createHarness(seed);
+    const rows = await h.prisma.translation.findMany({
+      where: { projectId: "pB", value: { not: "" }, stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    });
+    expect(rows).toEqual([{ localeCode: "en", needsReview: false }]);
+  });
+});

@@ -2,13 +2,13 @@ import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
 import { TranslationInput } from "@/components/translation-input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
-import { canPerform } from "@/lib/auth/permission";
 import { relativeTime } from "@/lib/relative-time";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -62,22 +62,11 @@ export default async function TranslationsPage({
   if (!project) redirect(routes.projects());
 
   /**
-   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **OWNER는 설정 화면으로 보낸다** — 거기에 [다시 시도]와
-   * 워크플로 YAML이 있어 스스로 끝낼 수 있다. EDITOR·VIEWER는 그 화면에 들어갈 수 없으므로
-   * 보낼 곳이 없고, 한 줄로 무엇을 기다리는지 말한다.
+   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **정책과 문구는 `ProjectNotReady`가 든다** — Home도
+   * 같은 갈래를 만나고, 두 벌이면 정책이 바뀔 때 한쪽이 낡는다(그 낡음은 URL을 직접 친 사람에게만
+   * 보인다). 6b-6이 그 사본을 만들었고 같은 사이클이 합쳤다.
    */
-  if (planProjectReadiness(project) !== "ready") {
-    if (canPerform(role, "project:settings")) redirect(routes.settings(slug));
-    return (
-      <Centered>
-        <EmptyState
-          icon={Languages}
-          title={m.translations.empty.notReady}
-          description={m.errors.onboarding["not-ready"]}
-        />
-      </Centered>
-    );
-  }
+  if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
 
   if (project.locales.length === 0) {
     return (

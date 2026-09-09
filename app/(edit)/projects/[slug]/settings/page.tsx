@@ -19,9 +19,11 @@ import { loadAccountView } from "@/lib/github-connect/account-view";
 import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connect/health";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+// ⚠️ **필드와 대기 Alert는 6b-5가 `/locales`로 옮겼지만 이 조건은 남는다** — 아래 `workflowYaml`이
+// 대기 중 `base-locale:`을 박고, 그 줄이 없으면 CI가 옛 base를 계속 보내 변경이 영영 안 일어난다.
 import { basePending } from "@/lib/onboarding/base-pending";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { baseLocaleLine, renderWorkflowYaml } from "@/lib/onboarding/workflow";
+import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import { routes } from "@/lib/routes";
 
 /**
@@ -70,10 +72,13 @@ export default async function SettingsPage({
       baseBranch: true,
       adapterName: true,
       baseLocale: true,
-      // 기준 로케일 변경의 선언 — 대기 Alert의 조건과 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
+      // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       declaredBaseLocale: true,
-      // ⚠️ **살아 있는 것만 고를 수 있다** — orphaned 로케일을 base로 세우면 다음 push가 키 0개를 낸다.
-      locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
+      /**
+       * ⚠️ **로케일 목록을 읽지 않는다.** 6b-3이 여기서 셀렉트 항목으로 썼지만 6b-5가 그 필드를
+       * `/projects/:slug/locales`로 옮겼고, 남겨 두면 **아무 데도 안 쓰이는 행을 매 렌더에 읽는다.**
+       * 이 화면이 선언 컬럼에 대해 하는 일은 워크플로 YAML에 한 줄을 박는 것뿐이다.
+       */
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 빈 화면 대신 `requireProjectAccess`의 not-found와
@@ -96,7 +101,7 @@ export default async function SettingsPage({
         <div className="space-y-3">
           <Breadcrumb
             items={[
-              { label: project.name, href: routes.translations(slug) },
+              { label: project.name, href: routes.project(slug) },
               { label: m.settings.title },
             ]}
           />
@@ -110,18 +115,15 @@ export default async function SettingsPage({
           </p>
           <HealthRow health={health} slug={slug} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
           {/*
-            기준 브랜치·기준 로케일 (6b-3 — design §3.13). ⚠️ **readiness 분기 밖이다** — 안에 두면
-            첫 적재가 끝나는 순간 `revalidatePath`가 폼을 언마운트해 방금 받은 저장 결과가 사라진다
+            기준 브랜치 (6b-3 — design §3.13). ⚠️ **readiness 분기 밖이다** — 안에 두면 첫 적재가
+            끝나는 순간 `revalidatePath`가 폼을 언마운트해 방금 받은 저장 결과가 사라진다
             (POSTMORTEM 2026-09-07, `FirstIngestRetry`와 같은 축).
+
+            ⚠️ **기준 언어 필드와 대기 Alert는 여기 없다** — 6b-5가 `/projects/:slug/locales`로 옮겼다
+            (SAAS §7.7 결정 4). 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를
+            말할 자리가 생긴다. 이 화면은 그 선언을 **읽기만** 한다(아래 워크플로 YAML).
           */}
-          <RepositoryForm
-            slug={slug}
-            baseBranch={project.baseBranch}
-            baseLocale={project.baseLocale}
-            declaredBaseLocale={project.declaredBaseLocale}
-            locales={project.locales.map((l) => l.code)}
-          />
-          <BasePendingAlert declared={project.declaredBaseLocale} baseLocale={project.baseLocale} />
+          <RepositoryForm slug={slug} baseBranch={project.baseBranch} />
         </Card>
 
         <Card title={m.settings.status.title}>
@@ -250,28 +252,6 @@ function HealthRow({
   }
 }
 
-/**
- * 기준 로케일 변경 대기 Alert (6b-3 — design §3.13). **조건은 `basePending` 하나다** — 저장 직후만이
- * 아니라 대기 중 상시로 뜬다.
- *
- * ⚠️ **파일 전체를 다시 보이지 않는다.** 아래 워크플로 블록이 이미 선언을 반영한 YAML을 통째로
- * 내므로(`workflowYaml`), 여기서 같은 것을 또 내면 한 화면에 저장할 파일이 둘로 보인다. 필요한
- * 것은 **고칠 한 줄**이고 그것을 복사할 수 있으면 된다 — 줄의 정본은 `baseLocaleLine`이다.
- */
-function BasePendingAlert({ declared, baseLocale }: { declared: string | null; baseLocale: string | null }) {
-  if (!basePending({ baseLocale, declaredBaseLocale: declared }) || declared === null) return null;
-  const line = baseLocaleLine(declared);
-  return (
-    <Alert variant="warning" title={m.settings.repository.pending.title}>
-      <p>{m.settings.repository.pending.body(<span className="text-mono">.github/workflows/l10n.yml</span>)}</p>
-      {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
-      <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{line}</pre>
-      <p className="mt-2">
-        <CopyButton value={line} label={m.settings.repository.pending.copy} />
-      </p>
-    </Alert>
-  );
-}
 
 /**
  * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다** — 그 포맷은 자동 탐지에 참여하지 않으므로

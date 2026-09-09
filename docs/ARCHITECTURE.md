@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/routes.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/routes.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -657,6 +657,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
   정렬하고 기본 열을 고르므로 **화면이 사라진 로케일을 base로 세운다.**
 - ⚠️ **목록이 비면 표시 문장을 내지 않는다.** `<> ALL('{}')`은 전 로케일을 orphan시킨다.
 - **편집 UI는 그 열을 보이되 편집을 막는다** (2026-09-06) — 헤더에 키와 같은 어휘의 `orphaned` 배지, 그 열의 입력은 `disabled`. `loadProject`가 `orphaned`를 함께 싣는다. 셋(저장 거부 + 배지 + 비활성)이 한 축이다 — 전에는 저장 거부만 있어 편집자가 **내부 토큰**을 봤다.
+- ✅ **이 상태를 설명하는 화면이 생겼다** (2026-09-09, 6b-5 — `/projects/[slug]/locales`). 그때까지 이 절이 정의한 상태를 **사용자가 볼 수 있는 형태는 "열이 사라졌다" 하나뿐**이었다: 배지는 왜인지 말하지 않고, 되살리는 방법은 어디에도 없었다. 그 화면이 행마다 **사유와 복구 방법**을 함께 내고 진행률도 계속 낸다(되살리면 돌아온다는 것의 근거다). ⚠️ **게이트가 `translation:write`인 이유가 이것이다** — 열이 사라진 것을 보는 사람이 번역자이므로, `project:settings` 뒤에 두면 설명이 그 사람에게 닿지 않는다.
+  - ⚠️ **기준 로케일 선택 목록에서는 빼고, 거부는 Action이 한다** (`planBaseLocaleChange`의 `orphaned-locale`). 감추는 것은 편의이고 **렌더 뒤에 orphaned가 된 경우**가 그 갈래가 실제로 닿는 경로다 — orphaned를 base로 세우면 다음 push가 그 파일을 못 읽어 **키 집합이 0**이 되고 살아 있던 키 전부가 orphan한다.
 
 ### 5.5.2 번역값은 strict 덮어쓰기다
 
@@ -873,6 +875,13 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
 실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
+
+⚠️ **무효화 범위는 "이 값을 보이는 화면 집합"에 대한 단언이고, 컴파일러도 테스트도 그것을 안 본다** (2026-09-09). 접두로 그 집합을 표현하면 **라우트가 옮겨질 때 조용히 깨진다** — `disconnectGithub`이 `/projects` 접두를 골랐는데 계정 카드가 `/account`로 가면서 주 화면을 놓쳤고(POSTMORTEM 2026-09-09), 같은 회고가 예고한 자리를 6b-6이 닫았다. 지금 **서브트리를 무효화하는 쓰기가 셋**이다:
+- `saveTranslation` → `/projects/<slug>` **layout**. 그 행을 읽는 화면이 셋이다(번역 표 · 로케일 화면의 진행률 · Home의 진행률·활동).
+- `updateBaseLocale` → 같은 범위. `declaredBaseLocale`을 읽는 화면이 셋이다(로케일 화면의 필드·대기 Alert · 번역 화면의 배너 · **설정의 워크플로 YAML**이 대기 중 `base-locale:`을 박는다).
+- `disconnectGithub` → `/` **layout**. slug를 모르는 자리이므로 좁힐 수단이 없다.
+
+**나머지는 좁힌 채 둔다** — 멤버·초대 셋은 그 상태를 멤버 화면만 보이고, `rotatePushToken`·`connectRepository`·`updateRepositorySettings`는 설정만 보인다. **화면을 옮기거나 새로 만들면 그 화면이 보이는 상태를 쓰는 Action의 범위를 함께 본다**(grep: `revalidatePath(`).
 
 ⚠️ **`requireProjectAccess`는 `userId`도 돌려준다** (2026-09-06). `{ projectId, role }`만 주면 그 반환값이
 "이 요청에 대해 아는 전부"처럼 보이고, 호출부가 세션 주체를 조건에서 빼 버린다 — 설정 화면이

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
-import { DropdownMenu as Primitive } from "radix-ui";
+import { DropdownMenu as Primitive, Slot } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -35,6 +35,21 @@ export function DropdownMenuContent({
   );
 }
 
+/**
+ * ⚠️ **`{children}`을 `Slot.Slottable`로 감싼다.** 호출부가 `asChild`를 주면 Radix Slot이 자식에
+ * props를 얹는데, Slot은 **정확히 하나의 엘리먼트**만 받는다 — 아래 `Check`가 형제로 붙는 순간 자식이
+ * 둘이 되어 ``Primitive.div failed to slot onto its children``으로 **던지고, 그 컴포넌트를 든 트리가
+ * 통째로 죽는다.**
+ *
+ * 실측 (2026-09-09): 사이드바의 프로젝트 스위처를 **한 번 열면** 셸이 "This page couldn't load"로
+ * 죽었다 — `asChild` + `selected`가 그 조합이고 `add099a`(6a ship 2)부터 프로덕션에 있었다. 게이트
+ * 셋이 전부 green이었다: 렌더되는 것과 **클릭했을 때 사는 것**은 다른 사실이다
+ * (POSTMORTEM 2026-09-08의 툴팁 provider와 같은 모양).
+ *
+ * `Slottable`은 "이 자식이 슬롯 대상"을 알려 주므로 형제가 허용된다. `Check`는 슬롯된 엘리먼트(예:
+ * `<Link>`) 안으로 들어가고, 그 엘리먼트가 아래 `flex`를 받으므로 `ml-auto`가 그대로 동작한다.
+ * `components/__tests__/slottable-item.test.ts`가 이 조합을 상시로 센다.
+ */
 export function DropdownMenuItem({
   className,
   selected = false,
@@ -51,7 +66,7 @@ export function DropdownMenuItem({
       )}
       {...props}
     >
-      {children}
+      <Slot.Slottable>{children}</Slot.Slottable>
       {selected && <Check className="ml-auto size-4" aria-hidden />}
     </Primitive.Item>
   );

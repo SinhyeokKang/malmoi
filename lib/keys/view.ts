@@ -266,3 +266,76 @@ export function isUnpublished(
  * `lib/adapters/shared` → `json-style`을 문다). 여기서 재수출하면 그 그래프가 그대로 따라오므로
  * 재수출도 하지 않는다 — 서버 호출부도 잎을 직접 읽는다 (`lib/keys/refocus.ts`와 같은 근거).
  */
+
+/**
+ * 로케일 하나의 진행 상태 (6b-5 — `/projects/:slug/locales`).
+ *
+ * ⚠️ **`total`이 로케일마다 같다.** 분모는 "살아 있는 키 수"이고 그것은 프로젝트 속성이다 —
+ * 로케일마다 다른 것은 채워진 셀 수뿐이다.
+ */
+export type LocaleProgress = {
+  code: string;
+  isBase: boolean;
+  orphaned: boolean;
+  total: number;
+  translated: number;
+  needsReview: number;
+  untranslated: number;
+  /** 0~100. **내림이다** — 아래 함수 주석. */
+  percent: number;
+};
+
+/**
+ * 로케일별 진행률 (6b-5). **순수하다** — 분모·분자는 조회가 가져온다 (`loadLocaleCounts`).
+ *
+ * ⚠️ **`percent`가 내림이다.** 902/903을 100%로 보이면 "다 됐다"로 읽히고 그 하나가 영영 안 채워진다.
+ * 100%는 실제로 전부일 때만 나온다.
+ *
+ * ⚠️ **base 로케일도 100%가 아닐 수 있다.** 그 파일이 키 집합의 진실이지만 값이 빈 키가 있을 수 있고
+ * (POSTMORTEM 2026-09-09이 그 상태를 다뤘다), base 행을 무조건 100%로 그리면 화면이 거짓말을 한다.
+ *
+ * ⚠️ **`검토 필요`는 번역된 것이 아니다** — 원문이 바뀌어 사람이 다시 봐야 하는 값이라 `translated`와
+ * 따로 센다. `namespaceCounts`가 같은 축을 쓴다.
+ *
+ * **순서가 화면의 정보구조다**: base가 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 →
+ * orphaned 맨 뒤. 마지막 것은 행마다 사유 설명이 붙어서, 사이에 끼면 건강한 목록이 쪼개진다.
+ */
+export function localeProgress(input: {
+  locales: readonly { code: string; isBase: boolean; orphaned: boolean }[];
+  /** 살아 있는 키 수. orphaned 키는 export에서 빠지므로 번역해야 할 일이 아니다. */
+  total: number;
+  /** **값이 있는** 셀만. 죽은 키의 셀도 조회가 걸러 준다 — 안 걸러지면 분자가 분모보다 커진다. */
+  cells: readonly { localeCode: string; needsReview: boolean }[];
+}): LocaleProgress[] {
+  const filled = new Map<string, { translated: number; needsReview: number }>();
+  for (const locale of input.locales) filled.set(locale.code, { translated: 0, needsReview: 0 });
+
+  for (const cell of input.cells) {
+    // 목록에 없는 코드는 버린다 — 로케일 목록의 정본은 `Locale` 행이고 셀이 행을 지어내지 않는다.
+    const entry = filled.get(cell.localeCode);
+    if (entry === undefined) continue;
+    if (cell.needsReview) entry.needsReview += 1;
+    else entry.translated += 1;
+  }
+
+  const rows = input.locales.map((locale): LocaleProgress => {
+    const { translated, needsReview } = filled.get(locale.code) ?? { translated: 0, needsReview: 0 };
+    return {
+      ...locale,
+      total: input.total,
+      translated,
+      needsReview,
+      untranslated: input.total - translated - needsReview,
+      // 0으로 나누지 않는다 — 첫 적재 전에는 키가 없다.
+      percent: input.total === 0 ? 0 : Math.floor((translated / input.total) * 100),
+    };
+  });
+
+  return rows.sort((a, b) => {
+    // base는 orphaned여도 맨 앞이다 — "선언된 base"라는 사실이 그 상태보다 먼저다.
+    if (a.isBase !== b.isBase) return a.isBase ? -1 : 1;
+    if (a.orphaned !== b.orphaned) return a.orphaned ? 1 : -1;
+    // 어댑터 writer와 같은 규칙 — 재구현하지 않고 그 함수를 쓴다 (ARCHITECTURE §1.1).
+    return compareKeys(a.code, b.code);
+  });
+}

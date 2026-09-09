@@ -31,7 +31,7 @@
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
 - **6b는 6a 넷이 다 나간 뒤 별도 사이클들**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
   닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **2026-09-09 dev**) ·
-  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
+  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면 — **2026-09-09 dev**) · 6b-6(Home — **2026-09-09 dev**). ✅ **여섯이 다 닫혔고 6단계가 끝났다.** ⚠️ **번호가 실행 순서다** —
   2026-09-08에 6b-2·6b-3을 맞바꿨다(그 절 머리에 이유가 있다). **6b-4의 옛 "만들지 않는 쪽이 추천"은
   2026-09-09 IA 확정(SAAS §7.7)이 뒤집었고, 그때 6b-5·6b-6이 생겼다.**
 
@@ -169,7 +169,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 ⚠️ **리뷰가 🔴 하나를 잡았다**: `Tooltip`이 Radix provider 없이 렌더돼 **[Collapse sidebar]를 누르면 셸이 죽었다** — 접힘이 `localStorage`에 남아 다음 방문에도 같은 자리에서 죽는다. 프리미티브가 자기 provider를 들게 고쳤다 (POSTMORTEM 2026-09-08).
 ⚠️ **`Button`에 `asChild`가 없어 `ButtonLink`가 생겼다** — Slot 한 겹이 `focus-ring` 스캐너에서 태그를 지운다. 링크는 `<a>`라 그 넷이 아니고, 그래서 링을 상수로 붙여도 방어선이 안 좁아진다.
 ⚠️ **`loadMemberships`가 목록 화면의 지역 사본을 흡수했다** — 같은 이름이 두 벌이면 그중 하나가 낡는다. `installationId`·`lastCommitSha`가 반환에 더해졌다(목록의 상태 텍스트 재료).
-⚠️ **Account 항목은 사이드바에 없다** — 6b-4가 `/account`를 만들지 말지 정한 뒤에 붙는다. 지금 하단 전역은 All projects · New project · Sign out · Collapse 넷이다.
+⚠️ **Account 항목은 6a 시점의 사이드바에 없었다** — 갈 곳이 없어서다. ✅ **6b-4가 `/account`를 만들며 붙였고 사이드바를 2구역으로 재편했다**: `Your work`(All projects · New project · Your account) / `<project>`(Overview · Translations · Languages · Members · Settings). Sign out·Collapse는 라우트가 아니라 조작이라 구역 밖 하단이다.
 
 ## T7. 번역 화면 + Publish
 
@@ -588,46 +588,72 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ---
 
-## 6b-5. `/projects/:slug/locales` — 로케일 화면
+## 6b-5. `/projects/:slug/locales` — 로케일 화면 ✅ (2026-09-09, dev)
 
-> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨진다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
-> `settings`의 Repository 카드에 넣은 것이고, 옮기는 이유는 **지금 로케일이 번역 표의 열로만 존재해서**다 —
-> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없다(ARCHITECTURE §5.5.16이
+> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨졌다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
+> `settings`의 Repository 카드에 넣은 것이고, 옮긴 이유는 **그때까지 로케일이 번역 표의 열로만 존재해서**다 —
+> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없었다(ARCHITECTURE §5.5.16이
 > 그 상태를 정의해 놓고 화면이 없었다).
 
-- [ ] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트는 **`translation:write`**(EDITOR도 목록을 본다), 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드 · base 배지 · 번역 진행률 · **orphaned면 사유와 되살리는 방법**(그 파일이 리포에서 사라졌다 → 되살리면 번역이 그대로 돌아온다)
-      검증: `entry-points` 통과 · 소스 스캔 — orphaned 행이 `Badge danger`와 설명을 든다
-- [ ] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 이 화면으로. `settings`엔 base branch만 남는다. ⚠️ **`updateRepositorySettings`가 두 필드를 한 폼으로 받는 것이 6b-3의 전제였다** — 화면이 갈리면 Action도 갈라야 한다(`updateBaseLocale` 신설 또는 인자 optional화. **추천: 갈라라** — optional은 "무엇을 안 보냈나"를 서버가 추측하게 만든다)
-      검증: `repository-settings.test.ts` 이관·확장 — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)과 `Locale.isBase`를 건드리지 않는다**
-- [ ] **대기 배너 이관** — `basePending` Alert가 이 화면으로. ⚠️ **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다). 번역 화면의 배너는 **그대로 둔다**(편집자가 읽는 자리다)
-      검증: `base-locale-screens.test.ts` 갱신 — `basePending` 소비자가 여전히 **각자 그 함수를 부른다**(조건이 두 벌이 되지 않는다) · 손으로 쓴 비교가 0건
-- [ ] `settings`의 워크플로 YAML은 **그대로 둔다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4)
+커밋 넷: `3816fd0`(test) · `1a834e2`(feat) · `e6772ae`(refactor) · `3cca010`(fix — 실물이 잡은 셋).
+
+- [x] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트 **`translation:write`**, 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드(mono) · base 배지 · 진행률 · **orphaned면 사유와 되살리는 방법**
+      검증: `entry-points` 통과 · 소스 스캔(orphaned 행이 `Badge danger` + 설명) · **실물로 확인했다**(dev 로케일 행 하나를 뒤집었다 되돌렸다: 맨 뒤 정렬 · 배경 없는 danger 배지 · 진행률 유지 · **셀렉트에서 빠진다**)
+  - [x] 진행률은 **두 쿼리 병렬 한 벌**이다(`loadLocaleCounts`) — `loadKeys` 재사용은 행마다 셀과 `refs`를 들고 와 903키에서 이 화면을 번역 화면만큼 무겁게 만든다. 순수 판정은 `localeProgress`이고 **percent는 내림**이다(902/903이 100%로 보이면 그 하나가 영영 안 채워진다) · **base도 100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다 — POSTMORTEM 2026-09-09)
+  - [x] 하네스에 조회 둘을 더했고 **자기검사가 차등이다** — 필터를 하나씩 빼면 행 수가 달라진다(페이크가 스키마보다 느슨하면 집계가 아무 값이나 맞는 것처럼 보인다, POSTMORTEM 2026-09-06)
+- [x] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 `components/locales/base-locale-form.tsx`로. `settings`엔 base branch만 남았다. **Action도 갈랐다**(`updateBaseLocale` 신설) — optional 인자는 "무엇을 안 보냈나"를 서버가 추측하게 만들고 그것이 malmoi#20의 모양이다
+      검증: `repository-settings.test.ts` 이관·확장(21케이스) — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)·`Locale.isBase`·`baseBranch`를 건드리지 않는다** · **설정 Action이 선언 컬럼을 아예 모른다**
+- [x] **대기 배너 이관** — `basePending` Alert가 이 화면으로. **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계). 번역 화면의 배너는 **그대로 뒀다**(편집자가 읽는 자리다)
+      검증: `base-locale-screens.test.ts` 갱신 — 소비자가 여전히 **각자** `basePending`을 부른다 · 손으로 쓴 비교 0건 · 설정에 `baseLocaleLine` 0건
+  - [x] **무효화가 `/projects/<slug>` 서브트리다** — 그 컬럼의 소비자가 **셋**이고(이 화면 · 번역 배너 · **설정의 워크플로 YAML**) 경로를 하나씩 나열하면 넷째가 조용히 빠진다(POSTMORTEM 2026-09-09). **실물로 셋 다 확인했다**: `ja` 저장 → 세 화면이 함께 새 값 → `en`으로 되돌리면 함께 사라진다
+- [x] `settings`의 워크플로 YAML은 **그대로 뒀다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4). 그래서 설정 화면은 그 컬럼을 **읽기만** 하고 `basePending`도 계속 부른다
+  - [x] ⚠️ **그 결과로 남은 고아를 지웠다**(`e6772ae`) — 설정의 `locales` select는 셀렉트 항목이 유일한 소비자였다. 소스 스캔이 양방향으로 센다(설정엔 0건 / 로케일 화면엔 있어야 하고 orphaned를 걸러 오지도 않는다)
+- [x] ⚠️ **실물이 셋을 잡았다**(`3cca010`) — 테스트가 원리적으로 못 보는 부류다: 표가 Card 안이라 셀이 16px 더 들여쓰였다(멤버 화면 관용구로 Card 밖에 둔다) · Card 제목·설명이 `FormGroup`의 라벨·help와 겹쳐 **같은 문장이 두 번** 나왔다 · orphaned 문구가 "the translations **below**"라고 했는데 그 번역은 아래가 아니라 같은 행의 진행률 열이다
 
 —— `feat(locales): a screen that owns the locale list and the base locale`
 
 ---
 
-## 6b-6. `/projects/:slug` Home — 착지점
+## 6b-6. `/projects/:slug` Home — 착지점 ✅ (2026-09-09, dev)
 
 > **프로젝트 진입의 착지점이다** (사용자 결정 2026-09-09). `/projects` 목록의 링크가
-> `routes.translations(slug)` → `routes.project(slug)`로 바뀐다.
+> `routes.translations(slug)` → `routes.project(slug)`로 바뀌었다.
 
-⚠️ **이 화면의 가장 큰 위험은 "복제"다** (SAAS §7.7 결정 2). 번역 화면 툴바가 이미 키 수·미배포 건수·
-마지막 전송·PR 링크를 들고, 설정 화면이 리포·연결·적재 상태를 든다. 세 번째 사본을 만들면 그중 하나가
-낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
+커밋 다섯: `d215a9b`(test) · `a9a455e`(feat) · `8c62bd9`(refactor) · **`bf7e00f`(fix — 실물이 잡은
+프로덕션 버그)** · `0e5e02b`(postmortem).
 
-⚠️ **착지 클릭 하나를 갚아야 한다** (결정 1이 받아들인 대가). 번역자의 일은 `translations` 하나이므로,
-개요만 있고 링크가 없으면 그 클릭이 순손실이다 — **번역으로 가는 경로가 이 화면의 주된 동작이어야 한다.**
-
-- [ ] 순수 판정 — 로케일별 진행률(`lib/keys/view.ts`의 집계를 재사용한다, 새로 만들지 않는다)
-      검증: 단위 테스트 — 빈 프로젝트 · orphaned 로케일 제외 · base 로케일의 진행률 정의(항상 100%가 아니다 — 빈 값이 있을 수 있다)
-- [ ] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. **로케일별 진행률**(각 행이 `routes.translations(slug, { focus })` 링크) + **최근 활동**(각 항목이 `?ns=`·`?focus=` 링크)
-      검증: 소스 스캔 — 진행률·활동 항목이 **링크다**(그것이 착지 클릭을 갚는 유일한 수단) · 번역 화면 툴바의 지표를 재계산하지 않는다
-- [ ] 최근 활동은 **지금 재료로만** — `Translation.updatedAt`+`updatedBy`(`loadActors`·`actorLabel` 재사용) · `Project.lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. ⚠️ **`logs`는 7단계 `SyncRun`의 소비자다**(SAAS §6) — 그때 이 블록이 그 테이블로 갈아탄다
-      검증: 쿼리가 `projectId`로 좁혀진다 · 렌더되는 행만 `loadActors`를 지난다(903키 리포에서 전 행을 조회하지 않는다)
-- [ ] `/projects` 목록의 링크를 `routes.project(slug)`로
-      검증: `entry-points`의 죽은 라우트 링크 검사
-- [ ] ⚠️ **사이드바 카운트를 달지 않는다** (결정 5) — 셸 레이아웃이 매 렌더에 세게 되고 **키 수와 무관한 1.9초 고정비**가 이미 실측돼 있다(CLAUDE.md 가상화 절). 그 고정비를 먼저 낮춘 뒤 다시 본다
+- [x] 순수 판정 — `lib/home/overview.ts`의 `activeLocaleProgress`(6b-5의 `localeProgress`를 **재사용**하고
+      **orphaned만 뺀다**: 그 열은 번역 화면에서 disabled라 `?focus=` 링크가 편집할 수 없는 곳으로
+      데려간다) + `recentActivity`
+      검증: 15케이스 — 빈 프로젝트 · orphaned 제외 · **base도 100%가 아닐 수 있다** · `limit`이 병합
+      **뒤에** 적용된다(편집만 자르면 push·publish가 항상 밀려난다) · **동시각 정렬이 결정적이다**
+- [x] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. 진행률 행 **전체가**
+      `?focus=` 링크 + 활동의 편집 항목이 `?ns=`+`?focus=` 링크 + 화면당 하나인 primary
+      [Open translations]
+      검증: `components/__tests__/home-screen.test.ts` 10케이스 — 링크 배선 · **`countUnpublished`·
+      `loadKeys` 0건**(툴바 지표 복제 금지) · 루트 링크 여섯 자리
+- [x] 최근 활동은 **지금 재료로만** — `loadRecentEdits`(`updatedBy: { not: null }`로 **사람의 편집만**:
+      push는 그 컬럼을 비우며 전 행의 `updatedAt`을 올려 code push 직후 903건이 "편집"이 된다) ·
+      `lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. **`logs`는 7단계 `SyncRun`의 소비자다**
+      검증: `projectId` 좁힘 · **렌더되는 행만** `loadActors`를 지난다 · `value`를 select하지 않는다
+- [x] `/projects` 목록의 링크를 `routes.project(slug)`로 — ⚠️ **그 의미의 자리가 일곱이었다**:
+      목록 행 · 사이드바 스위처 · breadcrumb 넷 · **초대 수락**(계획서 줄 밖의 판정이다 — 진입의
+      착지점이 규칙이므로 하나라도 남으면 같은 동작이 다른 곳에 착지한다). `[Start translating]`과
+      나브의 Translations는 번역 화면을 **명시적으로** 가리켜 그대로 뒀다
+- [x] **사이드바 카운트를 달지 않았다** (결정 5)
+- [x] ⚠️ **`saveTranslation`의 무효화를 서브트리로 넓혔다** — 그 행을 읽는 화면이 셋이 됐다.
+      POSTMORTEM 2026-09-09가 6b-5 때 이 자리를 **이름으로 예고했다**
+- [x] ⚠️ **활성 판정을 축에서 항목으로 옮겼다**(`NavItem.exact`) — `/projects/<slug>`가 그 프로젝트
+      **모든** 하위 라우트의 접두라 옛 규칙이면 어디서나 Home이 선택돼 보였다. 실물로 셋 확인:
+      Home·Translations·Settings에서 각각 하나만 활성이다 (6b-4 code-review ⚪2가 예고한 자리)
+- [x] ⚠️ **readiness 분기의 사본을 합쳤다**(`components/project-not-ready.tsx`) — Home이 착지점이 되며
+      그 갈래를 먼저 만나는 자리가 생겨 사본이 둘이 됐다. **이 사이클이 만든 사본이라 이 사이클이 합쳤다**
+- [x] 🔴 ⚠️ **실물이 프로덕션 버그를 잡았다** (`bf7e00f`) — `DropdownMenuItem`이 `asChild` 자식 옆에
+      형제(`selected`의 `Check`)를 붙여 Radix Slot이 던지고, **프로젝트 스위처를 한 번 열면 셸이 죽었다.**
+      `add099a`(6a ship 2)부터 프로덕션에 있었고 게이트 셋·`/code-review` 여러 라운드·`/bugshot-qa` 세
+      라운드·**6b-4의 실물 라운드까지 전부 지나갔다**(그 라운드가 이 블록을 옮겼는데 스위처를 열지 않고
+      `querySelectorAll`로 href만 읽었다 — 포털 안 항목은 열기 전까지 DOM에 없다). 픽스는
+      `Slot.Slottable`이고 `components/__tests__/slottable-item.test.ts`가 상시로 센다 (POSTMORTEM 2026-09-09)
 
 —— `feat(home): a project overview that leads into the work`
 

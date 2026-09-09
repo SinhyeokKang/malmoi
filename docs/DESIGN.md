@@ -242,6 +242,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Esc·배경·X·Cancel 넷으로 닫힌다 |
+| **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
 | **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만. ⚠️ **프리미티브가 자기 `Provider`를 든다** (2026-09-08) — Radix는 조상 provider가 없으면 **던지고**, 그 툴팁은 접힌 상태에서만 렌더되므로 "접기를 누르면 셸이 죽는다"로 나타난다(접힘이 `localStorage`에 남아 영구화된다, POSTMORTEM 2026-09-08). 바깥의 `TooltipProvider`는 **지연 공유 최적화**이고 필수가 아니다 |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
 | **EmptyState** | 제목 `text-base font-medium` ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음 |
@@ -261,8 +262,8 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(**내 멤버십 목록만** — "All projects"는 하단 전역 항목이 든다). hover는 `hover:bg-background/60`이다 — muted 표면에서 유효한 유일한 배경 hover다(§2.1). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
 | 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · **우측 카운트는 없다** — SAAS §7.7 결정 5이 그것을 닫았다(셸이 매 렌더에 세게 되고 키 수와 무관한 1.9초 고정비가 이미 있다). 카운트가 사는 곳은 번역 화면의 네임스페이스 패널이다(§6.1) |
 | **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (6b-4 — SAAS §7.7). 순서는 **사용자 축 먼저**(`Your work`: All projects · New project · Your account) → **프로젝트 축**(`<project>`). 헤더가 서로 다르다: 앞은 라벨 `<p>` `text-xs text-muted-foreground font-medium tracking-wide uppercase px-4 pt-2 pb-1`, 뒤는 **프로젝트 컨텍스트 스위처가 곧 헤더**다(이름을 라벨로도 보이면 같은 값이 두 번 뜬다). 둘째 구역만 `border-t border-border mt-3 pt-1`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 렌더되지 않는다**(그때 구역을 구별할 수단이 `aria-label`뿐이다) |
-| 프로젝트 축 항목 | Translations · Members · Settings* (* `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **Locales·Home은 6b-5·6b-6, Logs는 7단계다** — **항목은 자기 라우트와 같은 사이클에 온다**(없는 라우트를 가리키는 항목은 404다) |
-| 활성 판정 | ⚠️ **축마다 다르다.** 프로젝트 축은 **접두**(`?ns=`·`/settings` 같은 하위 경로가 있다), 사용자 축은 **정확히 일치** — `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 [All projects]도 함께 선택돼 보인다 |
+| 프로젝트 축 항목 | **Overview**(`House`, 6b-6 — 착지점이라 맨 앞) · Translations · **Languages**(`Globe`, 6b-5) · Members · Settings* (* `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **Logs는 7단계다** — **항목은 자기 라우트와 같은 사이클에 온다**(없는 라우트를 가리키는 항목은 404다). ⚠️ **라벨과 URL이 갈리는 자리 둘**: "Languages"→`/locales`, "Overview"→`/projects/<slug>`. `locale`은 내부 낱말이라 화면에 쓰지 않는다(설정의 "Base language"와 같은 어휘) |
+| 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6이 옮겼다 — `NavItem.exact`). **하위 경로가 있는 항목만 접두**다: Translations·Languages·Members·Settings(`?ns=`·`/settings`). **정확히 일치인 것 넷**: Overview(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두라 접두로 재면 어디서나 선택돼 보인다) · All projects(`/projects`가 `/projects/new`의 접두다) · New project · Your account |
 | 하단 전역 | Sign out · **Collapse sidebar** — 라우트가 아니라 조작이라 구역 밖 `mt-auto`다. 같은 항목 형이고 **아이콘도 전부 든다**(§6.8) |
 | top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-end` · **드는 것은 사용자 메뉴 하나다** — 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → **Your account** → Sign out). ⚠️ **breadcrumb은 여기 없다** (2026-09-08 정정): 레이아웃이 페이지 props를 못 받아 여기 두려면 parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요하다 — **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 햄버거(`xl` 미만)는 사이드바가 자기 여는 버튼으로 든다 |
 | 콘텐츠 | `flex-1 min-w-0` · limited면 `mx-auto max-w-4xl px-6 py-6` · fluid(번역)면 `flex min-h-0 flex-1` |
@@ -272,13 +273,37 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 다섯
 
-블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ✅ **Base branch·Base language 폼은 6b-3이 Repository 카드에 넣었다**(기준 로케일은 6b-5가 `locales`로 옮긴다 — SAAS §7.7 결정 4). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
+블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(SAAS §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
 
 - ⚠️ **블록이 독립적으로 실패한다.** 건강성은 App 토큰, 계정 한 줄은 사용자 토큰 — 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다. 각 블록이 자기 오류를 `Alert danger`(in-block)로 낸다.
 - **push 토큰은 발급 응답에만 원문이 있다** — 값 칩 + [Copy] + "You won't see this again. Update the repository secret now."
 - **[Run first import]의 결과 컴포넌트는 readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
 - **(6b) Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409). 그 폼이 서기 전까지는 이 불릿의 대상이 없다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
+
+### 6.64 Home (`/projects/[slug]`) — 개요 (2026-09-09, 6b-6)
+
+**프로젝트 진입의 착지점이다** (SAAS §7.7 결정 1). 셸 안 `mx-auto max-w-4xl px-6 py-6`,
+**breadcrumb 없다**(이 화면이 프로젝트 루트다 — 위로 가는 길은 사이드바가 든다).
+
+⚠️ **그 결정이 번역자에게 클릭 하나를 물렸고, 이 화면이 그것을 갚아야 한다.** 개요만 있고 링크가
+없으면 순손실이다 — **번역으로 가는 경로가 주된 동작**이어야 한다.
+
+⚠️ **다른 화면의 지표를 복제하지 않는다** (결정 2). 키 수·미배포 건수·마지막 전송·PR 링크는 번역
+화면 툴바(§6.1)의 것이고, 리포·연결·적재 상태는 설정(§6.6)의 것이다 — 세 번째 사본을 만들면 그중
+하나가 낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
+
+| 요소 | 규칙 |
+|---|---|
+| 머리 | `h1` = 프로젝트 이름 + 우측에 **화면당 하나인 primary** [Open translations](`Languages` 아이콘). 그 버튼이 클릭을 갚는 가장 직접적인 형태다 |
+| Languages | 제목 + 설명 한 줄 + **행 전체가 링크인 목록**(`/projects` 목록과 같은 형: `ul.divide-y.border.rounded-lg`). 행 = 코드(`text-mono`) + base `Badge` + 우측에 검토 필요 `Badge warning` + "N% · a of b". ⚠️ **`?focus=` 링크가 개요를 일로 잇는 유일한 수단**이다 |
+| orphaned | ⚠️ **이 목록에 없다** — 그 열은 번역 화면에서 `disabled`라 `?focus=` 링크가 편집할 수 없는 곳으로 데려간다. 사유·복구는 §6.66이 든다. 살아 있는 로케일이 0이면 한 줄 + 그 화면 링크 |
+| Recent activity | 세 출처를 시각 내림차순으로 한 줄에: **편집**(`?ns=`+`?focus=` 링크) · **CI push**(링크 없음 — 어느 키인지 모른다) · **Publish**(PR 외부 링크 `text-blue-600` + `ExternalLink` 12px §6.3). 각 행 우측에 상대 시각 `text-xs text-muted-foreground` |
+| 없을 때 | 두 블록 각자 한 줄로 — 실패가 아니라 아직 아무 일도 없는 것이다 (§6.1의 "가장 흔한 상태가 가장 조용하다") |
+| 역할 | 게이트는 **`translation:write`**. 이 화면에는 role로 갈리는 컨트롤이 없다 — 개요와 링크뿐이다 |
+
+⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다. ⚠️ **첫 적재 전 화면은 `ProjectNotReady`가 든다** —
+번역 화면과 **같은 컴포넌트**다(정책과 문구의 소유자가 하나여야 한다, 6b-6이 그 사본을 합쳤다).
 
 ### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
 
@@ -305,6 +330,27 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 - **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
 - **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
   대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
+
+### 6.66 언어 (`/projects/[slug]/locales`) — 표 + 폼 (2026-09-09, 6b-5)
+
+**이 화면이 생긴 이유는 orphaned 로케일이다.** 그때까지 로케일은 **번역 표의 열로만** 존재해서, 파일이
+사라진 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 없었다 (ARCHITECTURE §5.5.16).
+
+셸 안 `mx-auto max-w-4xl px-6 py-6`. breadcrumb(프로젝트 이름 → Languages) → `h1` → 설명 한 줄 →
+**표** → **기준 언어 Card**.
+
+| 요소 | 규칙 |
+|---|---|
+| 표 | ⚠️ **`Card` 밖이다** — Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). 멤버 화면(§6.65)과 같은 관용구로 `<Table>`을 `<main>`에 직접 둔다. 열 둘: Language · Translated |
+| Language 열 | 코드는 파일명 그대로가 진실이라 **`text-mono`**(§4.1) + base면 `Badge`(muted) + orphaned면 `Badge danger`("File missing" — **배경 없음**, 되돌릴 수 있는 상태다 §6.2) |
+| orphaned 행 | ⚠️ **배지만 달지 않는다** — 사유와 되살리는 방법을 `text-xs text-muted-foreground` 한 단락으로 함께 낸다. 그 둘이 이 화면이 존재하는 이유다. **진행률도 계속 낸다**("되살리면 돌아온다"의 근거) |
+| Translated 열 | `localeProgress` — "N% · a of b" + 검토 필요가 있으면 `Badge warning`. ⚠️ **percent는 내림**이라 902/903이 100%로 보이지 않고, **base 로케일도 100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다) |
+| 정렬 | base 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 → **orphaned 맨 뒤**(행마다 설명이 붙어 사이에 끼면 건강한 목록이 쪼개진다). base가 orphaned여도 맨 앞이다 |
+| 기준 언어 Card | ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 라벨과 help를 들고, 둘을 다 두면 같은 문장이 화면에 두 번 나온다(실측). `Select`(native) + [Save] 하나. **orphaned 로케일은 목록에 없다** — 감추는 것은 편의이고 방어는 Action이다 |
+| 대기 Alert | `Alert warning` + 고칠 줄을 **`<pre>`**로(여러 줄일 수 있는 코드는 값 칩이 아니다 §6.4) + [Copy line]. ⚠️ **`settings`로 링크하지 않는다** — 그러면 고치려고 두 화면을 오간다(§7.7 결정 4의 경계). 워크플로 YAML **전체**는 설정에 남는다 |
+| 역할 | 페이지 게이트는 **`translation:write`**(번역자도 "왜 열이 사라졌나"를 봐야 한다). **기준 언어 Card와 대기 Alert만 `project:settings`로 갈리고 판정은 Action**이 한다 (§6.65와 같은 관용구) |
+
+⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다(거부는 `/projects?e=`, 저장 실패는 폼 안 `Alert danger`).
 
 ### 6.67 계정 (`/account`) — 카드 셋 (2026-09-09, 6b-4)
 

@@ -195,3 +195,94 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     lastCommitSha: r.project.lastCommitSha,
   }));
 }
+
+/**
+ * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
+ *
+ * ⚠️ **`loadKeys`를 재사용하지 않는다.** 그쪽은 행마다 셀과 `refs`를 들고 오므로 903키 프로젝트에서
+ * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 **셀에서 `{ localeCode, needsReview }`
+ * 둘만** 뽑는다 — `value`를 select하면 번역 본문 전체가 따라온다.
+ *
+ * ⚠️ **필터 둘이 판정이다.**
+ * - `value: { not: "" }` — 빈 값은 미번역이다. 편집 UI에서 값을 지우면 빈 문자열 행이 남는다
+ *   (`translationState`와 같은 규칙 — 두 벌이 되면 표의 배지와 이 화면의 숫자가 갈린다).
+ * - `stringKey: { orphaned: false }` — 코드에서 사라진 키의 번역은 분자에서 빠져야 한다. 분모도 같은
+ *   조건이므로 안 걸면 **분자가 분모보다 커진다.**
+ *
+ * ⚠️ **둘을 병렬로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 하나 더 붙고, 그 고정 비용이 이미
+ * 실측돼 있다 (CLAUDE.md 가상화 절).
+ */
+export type LocaleCounts = {
+  /** 살아 있는 키 수 — 전 로케일 공통 분모다. */
+  total: number;
+  cells: { localeCode: string; needsReview: boolean }[];
+};
+
+export async function loadLocaleCounts(prisma: PrismaClient, projectId: string): Promise<LocaleCounts> {
+  const [total, cells] = await Promise.all([
+    prisma.stringKey.count({ where: { projectId, orphaned: false } }),
+    prisma.translation.findMany({
+      where: { projectId, value: { not: "" }, stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    }),
+  ]);
+  return { total, cells };
+}
+
+/**
+ * Home의 최근 활동 재료 — **사람이 만진 편집만** (6b-6).
+ *
+ * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push는 그 컬럼을 비우면서 전 행의 `updatedAt`을
+ * 올리므로(strict — MVP §3.1), 조건이 없으면 code push 직후 활동 목록이 **903건의 "편집"**으로 덮인다.
+ * `countUnpublished`가 같은 술어를 쓰는 것과 같은 이유다.
+ *
+ * ⚠️ **`take`가 인덱스 앞에 있다.** `@@index([projectId, updatedAt])`를 역방향으로 타 첫 N행에서
+ * 멈춘다 — 정렬 없이 전부 읽어 JS에서 자르면 903키 리포에서 전 행이 넘어온다.
+ *
+ * ⚠️ **`value`를 select하지 않는다.** 활동 목록은 "무엇이 바뀌었나"를 키 이름으로 말하고, 값을
+ * 실으면 번역 본문 전체가 이 화면에 따라온다.
+ */
+export type RecentEditRow = {
+  at: Date;
+  key: string;
+  namespace: string;
+  locale: string;
+  /** SQL이 null을 걸렀으므로 여기서 좁힌다 — 화면이 다시 가드하지 않는다. */
+  updatedBy: string;
+};
+
+export async function loadRecentEdits(
+  prisma: PrismaClient,
+  projectId: string,
+  limit: number,
+): Promise<RecentEditRow[]> {
+  const rows = await prisma.translation.findMany({
+    // ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
+    where: { projectId, updatedBy: { not: null } },
+    /**
+     * ⚠️ **보조 키가 있어야 어느 N건이 오는지 결정적이다.** 경계 시각을 공유하는 행이 셋인데
+     * `take`가 둘만 받으면, 보조 키 없이는 그 셋 중 무엇이 오는지가 요청마다 달라진다. 화면 순서의
+     * 보증은 `recentActivity`가 따로 들고 있다 — 이쪽은 **선택**을 고정한다.
+     */
+    orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }],
+    take: limit,
+    select: {
+      updatedAt: true,
+      updatedBy: true,
+      localeCode: true,
+      stringKey: { select: { key: true, namespace: true } },
+    },
+  });
+  return rows.flatMap((row) =>
+    // `updatedBy`는 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
+    row.updatedBy === null
+      ? []
+      : [{
+          at: row.updatedAt,
+          key: row.stringKey.key,
+          namespace: row.stringKey.namespace,
+          locale: row.localeCode,
+          updatedBy: row.updatedBy,
+        }],
+  );
+}

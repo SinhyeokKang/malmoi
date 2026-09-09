@@ -6,6 +6,7 @@ import {
   defaultNamespace,
   filterRows,
   isUnpublished,
+  localeProgress,
   namespaceCounts,
   resolveNamespace,
   translationState,
@@ -339,5 +340,159 @@ describe("relativeTime — 마지막으로 보낸 시각", () => {
   it("같은 입력 → 같은 결과 (결정성)", () => {
     const then = new Date("2026-09-01T00:00:00Z");
     expect(relativeTime(then, now)).toBe(relativeTime(then, now));
+  });
+});
+
+
+/**
+ * **로케일별 진행률** (6b-5 — `/projects/:slug/locales`).
+ *
+ * ⚠️ **분모는 살아 있는 키 수 하나다** — orphaned 키는 export에서 빠지므로(ARCHITECTURE §5.5.16)
+ * 번역해야 할 일이 아니다. 조회가 그것을 걸러 주고 이 함수는 셈만 한다.
+ *
+ * ⚠️ **base 로케일도 100%가 아닐 수 있다.** 그 파일이 키 집합의 진실이지만 값이 빈 키가 있을 수
+ * 있고(2026-09-09 POSTMORTEM이 그 상태를 다뤘다), 그때 base 행이 100%로 보이면 화면이 거짓말을 한다.
+ */
+describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
+  const locales = [
+    { code: "en", isBase: true, orphaned: false },
+    { code: "ko", isBase: false, orphaned: false },
+  ];
+
+  it("값이 있는 셀을 로케일별로 센다 — 검토 필요는 따로 센다", () => {
+    expect(
+      localeProgress({
+        locales,
+        total: 4,
+        cells: [
+          { localeCode: "en", needsReview: false },
+          { localeCode: "en", needsReview: false },
+          { localeCode: "ko", needsReview: false },
+          { localeCode: "ko", needsReview: true },
+        ],
+      }),
+    ).toEqual([
+      { code: "en", isBase: true, orphaned: false, total: 4, translated: 2, needsReview: 0, untranslated: 2, percent: 50 },
+      { code: "ko", isBase: false, orphaned: false, total: 4, translated: 1, needsReview: 1, untranslated: 2, percent: 25 },
+    ]);
+  });
+
+  /** 검토 필요는 **번역된 것이 아니다** — 원문이 바뀌어 사람이 다시 봐야 하는 값이다. */
+  it("untranslated는 total에서 나머지 둘을 뺀 값이다", () => {
+    const [ko] = localeProgress({
+      locales: [{ code: "ko", isBase: false, orphaned: false }],
+      total: 10,
+      cells: [
+        ...Array.from({ length: 3 }, () => ({ localeCode: "ko", needsReview: false })),
+        ...Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: true })),
+      ],
+    });
+    expect(ko).toMatchObject({ translated: 3, needsReview: 2, untranslated: 5 });
+  });
+
+  it("셀이 없는 로케일은 0이다 — 행을 빼지 않는다", () => {
+    expect(localeProgress({ locales, total: 3, cells: [] }).map((l) => [l.code, l.translated])).toEqual([
+      ["en", 0],
+      ["ko", 0],
+    ]);
+  });
+
+  it("빈 프로젝트는 percent가 0이다 — 0으로 나누지 않는다", () => {
+    const rows = localeProgress({ locales, total: 0, cells: [] });
+    for (const r of rows) expect(r.percent, r.code).toBe(0);
+    expect(rows.map((r) => r.untranslated)).toEqual([0, 0]);
+  });
+
+  /**
+   * ⚠️ **내림이다.** 902/903을 100%로 보이면 "다 됐다"로 읽히고, 그 하나가 영영 안 채워진다.
+   * 100%는 실제로 전부일 때만 나온다.
+   */
+  it("percent는 내림이다 — 하나 남았는데 100%가 되지 않는다", () => {
+    const [only] = localeProgress({
+      locales: [{ code: "ko", isBase: false, orphaned: false }],
+      total: 903,
+      cells: Array.from({ length: 902 }, () => ({ localeCode: "ko", needsReview: false })),
+    });
+    expect(only?.percent).toBe(99);
+  });
+
+  it("전부 번역되면 100이다", () => {
+    const [only] = localeProgress({
+      locales: [{ code: "ko", isBase: false, orphaned: false }],
+      total: 2,
+      cells: Array.from({ length: 2 }, () => ({ localeCode: "ko", needsReview: false })),
+    });
+    expect(only?.percent).toBe(100);
+  });
+
+  /** base 파일에도 빈 값이 있을 수 있다 (POSTMORTEM 2026-09-09) — 100%로 보이면 화면이 거짓말이다. */
+  it("base 로케일도 100%가 아닐 수 있다", () => {
+    const [base] = localeProgress({
+      locales: [{ code: "en", isBase: true, orphaned: false }],
+      total: 4,
+      cells: [{ localeCode: "en", needsReview: false }],
+    });
+    expect(base).toMatchObject({ isBase: true, translated: 1, untranslated: 3, percent: 25 });
+  });
+
+  /**
+   * ⚠️ **순서가 화면의 정보구조다**: base가 먼저(나머지가 그것의 번역이다), 그다음 살아 있는 로케일,
+   * orphaned는 **맨 뒤**다 — 그 행마다 사유 설명이 붙어서 사이에 끼면 건강한 목록이 쪼개진다.
+   */
+  it("base 먼저, 그다음 코드순, orphaned는 맨 뒤다", () => {
+    expect(
+      localeProgress({
+        locales: [
+          { code: "ko", isBase: false, orphaned: false },
+          { code: "de", isBase: false, orphaned: true },
+          { code: "en", isBase: true, orphaned: false },
+          { code: "fr", isBase: false, orphaned: false },
+          { code: "ja", isBase: false, orphaned: true },
+        ],
+        total: 1,
+        cells: [],
+      }).map((l) => l.code),
+    ).toEqual(["en", "fr", "ko", "de", "ja"]);
+  });
+
+  it("base가 orphaned여도 맨 앞이다 — 선언된 base라는 사실이 먼저다", () => {
+    expect(
+      localeProgress({
+        locales: [
+          { code: "ko", isBase: false, orphaned: false },
+          { code: "en", isBase: true, orphaned: true },
+        ],
+        total: 1,
+        cells: [],
+      }).map((l) => [l.code, l.orphaned]),
+    ).toEqual([
+      ["en", true],
+      ["ko", false],
+    ]);
+  });
+
+  /** orphaned 로케일의 번역은 DB에 남아 있다 — 진행률을 내는 것이 "되살리면 돌아온다"의 근거다. */
+  it("orphaned 로케일도 진행률을 낸다 — 행을 감추지 않는다", () => {
+    const [row] = localeProgress({
+      locales: [{ code: "fr", isBase: false, orphaned: true }],
+      total: 2,
+      cells: [{ localeCode: "fr", needsReview: false }],
+    });
+    expect(row).toMatchObject({ code: "fr", orphaned: true, translated: 1, percent: 50 });
+  });
+
+  /** 목록에 없는 코드의 셀은 행을 지어내지 않는다 — 로케일 목록의 정본은 `Locale` 행이다. */
+  it("모르는 로케일 코드의 셀은 버린다", () => {
+    expect(
+      localeProgress({
+        locales: [{ code: "ko", isBase: false, orphaned: false }],
+        total: 1,
+        cells: [{ localeCode: "zz", needsReview: false }],
+      }).map((l) => [l.code, l.translated]),
+    ).toEqual([["ko", 0]]);
+  });
+
+  it("로케일이 없으면 빈 배열이다", () => {
+    expect(localeProgress({ locales: [], total: 5, cells: [] })).toEqual([]);
   });
 });

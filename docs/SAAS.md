@@ -525,9 +525,9 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /account                       ✅ 프로필 · OAuth 연동/해제        ← 6b-4 (2026-09-09, dev)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
-/projects/:slug                ⬜ Home — 개요 (착지점)            ← 6b-6
+/projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, dev)
 /projects/:slug/translations   번역
-/projects/:slug/locales        ⬜ 로케일 목록 + 기준 로케일 지정   ← 6b-5
+/projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, dev)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ⬜ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
@@ -539,12 +539,18 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 **IA 결정 다섯** — 각각 이유가 있고, 이유가 사라지면 결정도 다시 본다:
 
-1. **착지점은 `Home`이다** (2026-09-09 사용자 결정 — 프로젝트 진입 시). `/projects/:slug`가 곧 그
-   화면이라 목록에서 프로젝트를 누르면 여기로 온다.
+1. ✅ **착지점은 `Home`이다** (2026-09-09 사용자 결정 — 프로젝트 진입 시. **6b-6이 구현했다**).
+   `/projects/:slug`가 곧 그 화면이라 목록에서 프로젝트를 누르면 여기로 온다.
+   - ⚠️ **"프로젝트로 간다"를 뜻하는 자리가 일곱이었다** — 목록 행 · 사이드바 스위처 · 각 화면의
+     breadcrumb 넷 · **초대 수락**. 계획서는 첫 하나만 적었지만 나머지도 같은 의도이고, 하나라도
+     남으면 같은 동작이 **어디서 눌렀는지에 따라 다른 곳에 착지한다.** `[Start translating]`(새
+     프로젝트 결과)과 나브의 Translations 항목은 번역 화면을 **명시적으로** 가리키는 동작이라 그대로 뒀다.
    - ⚠️ **받아들인 대가**: 번역자(비개발자)의 일은 `translations` 하나이므로 **매 세션에 클릭이 하나
      늘어난다.** 그래서 `Home`의 완료 조건에 그 대가를 갚는 항목이 들어간다 — **거기서 번역으로 가는
      경로가 화면의 주된 동작이어야 한다**(로케일별 진행률이 곧 `?focus=` 링크, 최근 활동이 곧 `?ns=`·
      `?focus=` 링크). 개요만 있고 링크가 없으면 그 클릭이 순손실이다.
+     ✅ 구현은 셋으로 갚는다: **진행률 행 전체가 링크** · **활동의 편집 항목이 링크** · 화면당 하나인
+     primary가 [Open translations]다. `components/__tests__/home-screen.test.ts`가 그 셋을 소스로 센다.
    - ⚠️ **`/projects` 목록의 링크가 바뀐다** — 지금 `routes.translations(slug)`로 가는데
      `routes.project(slug)`가 된다. 생성기가 `lib/routes.ts` 하나라 그 파일과 `entry-points` 대조가
      같은 커밋에서 움직인다.
@@ -552,14 +558,17 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
    전송·PR 링크를 들고, 설정 화면이 리포·연결·적재 상태를 든다. 세 번째 사본을 만들면 그중 하나가
    낡는다(6b-2가 초대 폼을 지운 근거와 같다). `Home`이 **소유하는 것**은 "한 화면에 모아야만 보이는
    것"뿐이다 — 로케일별 진행률 대비, 그리고 최근 활동.
-3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (§6). 그래서 `logs`가 `Home`의 최근 활동 블록보다
-   **먼저**다 — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
+3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (§6). ✅ **그래서 `Home`이 그 부분집합으로 먼저
+   섰다** (6b-6) — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
    `Project.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
    "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
-4. **기준 로케일은 `locales`가 소유한다** — 로케일 목록과 base 지정이 한 화면에 있어야 한다.
-   ⚠️ **6b-3이 그것을 `settings`의 Repository 카드에 넣었고 6b-5가 옮긴다.** 옮기는 이유: 지금
-   로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할
-   자리가 없다(ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이 없었다).
+4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
+   화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
+   옮겼다.** 옮긴 이유: 그때까지 로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게
+   됐고 어떻게 되살리는지 말할 자리가 없었다(ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이
+   없었다). **화면이 갈리면서 Action도 갈랐다** — `updateBaseLocale` 신설이고, 인자를 optional로
+   두지 않은 이유는 "무엇을 안 보냈나"를 서버가 추측하게 되면 그것이 곧 malmoi#20의 모양이기
+   때문이다(대기 중에 브랜치만 고친 저장이 선언을 지웠다).
    - ⚠️ **경계 하나가 남는다**: `checkFormat`은 `adapter`·`pathTemplate`·`baseLocale` **셋을 한 묶음**으로
      검사하고 워크플로 YAML도 그 셋을 함께 낸다. base만 `locales`로 가면 **한 화면에서 고친 값이 다른
      화면의 코드 블록을 바꾼다.** 답: **`locales`의 대기 Alert가 고칠 줄을 직접 보인다**(6b-3이 이미 그
@@ -860,7 +869,7 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 상시로 센다. ⚠️ **"세 스코프"가 아니었다** — 둘 다 **Production+Preview**만 갖고 있었고 Development에는
 없었다. 삭제는 `vercel env ls`로 확인했다(CLI의 성공 메시지가 근거가 아니다 — CLAUDE.md).
 
-### 6단계 — 번역 UI 재작성 + Publish 🚧 **진행 중** → `features/translation-ui/`
+### 6단계 — 번역 UI 재작성 + Publish ✅ **완료 (2026-09-09, dev — 6a 넷 + 6b 여섯)** → `features/translation-ui/`
 
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
 
@@ -870,9 +879,9 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
 (PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
 + survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
-`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — dev) · **6b-4**(`/account` — dev)까지 올랐다.
-**남은 것은 `6b-5`(로케일 화면)와 `6b-6`(Home)이다** — 라우트 여덟 중 `logs` 하나가 7단계로 나갔고
-(§7.7), 그 둘이 §7.7의 ⬜를 비운다.
+`a00d380`)와 **6b-3**(base branch·기준 로케일 필드) · **6b-4**(`/account`) · **6b-5**(로케일 화면) ·
+**6b-6**(Home — 착지점)까지 dev에 올랐다. ✅ **6b가 닫혔다** — 라우트 여덟 중 남은 ⬜는 `logs`
+하나이고 그것은 **7단계**다(`SyncRun`의 소비자, §6). 즉 **6단계는 이 배송으로 끝난다.**
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -942,18 +951,41 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - ⚠️ **`disconnectGithub`의 무효화 범위가 함께 움직여야 했다** (`4b9b0a6`) — `revalidatePath("/projects",
       "layout")`이 주 화면을 덮지 않게 됐다. POSTMORTEM 2026-09-09에 일반 규칙과 grep 전수 결과가 있고,
       **`saveTranslation`이 6b-6에서 같은 이유로 부족해진다**(Home이 같은 행을 읽는다)
-- [ ] **6b-5 `/projects/:slug/locales`** — 로케일 목록(orphaned 사유와 되살리는 방법을 말하는 유일한
-      자리 — ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이 없었다) + **기준 로케일 지정을 6b-3에서
-      이관** + 대기 배너 이관. ⚠️ **대기 Alert가 고칠 `base-locale:` 줄을 이 화면에서 직접 보인다**
-      (§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다)
-- [ ] **6b-6 `/projects/:slug` Home** — **착지점이다**(사용자 결정 2026-09-09).
-      ⚠️ **다른 화면의 지표를 복제하지 않는다**(§7.7 결정 2) — 소유하는 것은 "한 화면에 모아야만 보이는
-      것"뿐이다: 로케일별 진행률 대비 + 최근 활동. ⚠️ **착지 클릭 하나를 갚아야 한다**(결정 1) —
-      진행률·활동이 각각 `?focus=`·`?ns=` 링크여서 **번역으로 가는 경로가 주된 동작**이어야 한다
-  - ⚠️ 최근 활동은 지금 재료로만 낸다(`Translation.updatedAt`+`updatedBy` · `lastCommitAt` ·
-      `lastPublishedAt`) — **`logs`는 7단계 `SyncRun`의 소비자**다 (§6)
-  - ⚠️ **사이드바 카운트를 달지 않는다**(결정 5) — 셸 레이아웃이 매 렌더에 세게 되고, 키 수와 무관한
-      1.9초 고정비가 이미 실측돼 있다
+- [x] **6b-5 `/projects/:slug/locales`** ✅ **dev에 올랐다** (2026-09-09 — `1a834e2` + `e6772ae` +
+      `3cca010`). 로케일 목록(orphaned **사유와 되살리는 방법**을 말하는 유일한 자리) + 기준 로케일
+      지정·대기 Alert를 6b-3에서 이관. 게이트는 `translation:write`이고 컨트롤만 role로 갈린다.
+  - [x] 진행률은 **두 쿼리 병렬 한 벌**이다 — `loadKeys`를 재사용하면 903키 프로젝트에서 이 화면이
+      번역 화면만큼 무거워진다. `percent`는 **내림**이라 902/903이 100%로 보이지 않고, **base 로케일도
+      100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다 — POSTMORTEM 2026-09-09)
+  - [x] 무효화는 `/projects/<slug>` **서브트리**다 — `declaredBaseLocale` 소비자가 셋이고(이 화면 ·
+      번역 배너 · **설정의 워크플로 YAML**) 경로를 하나씩 나열하면 넷째가 조용히 빠진다
+      (POSTMORTEM 2026-09-09). **실물로 셋 다 확인했다**: 저장하면 세 화면이 함께 새 값을 보이고
+      되돌리면 함께 사라진다
+  - [x] **orphaned 갈래를 실물로 확인했다** (dev 로케일 행 하나를 뒤집었다 되돌렸다) — 맨 뒤로 정렬 ·
+      배경 없는 danger 배지 · 진행률 유지 · **셀렉트에서 빠진다**
+  - ⚠️ **워크플로 YAML은 설정에 그대로 뒀다**(§7.7 결정 4) — 대기 중 `base-locale:`을 박는 동작도
+      유지한다. 그래서 설정 화면은 그 컬럼을 **읽기만** 하고 `basePending`도 계속 부른다
+- [x] **6b-6 `/projects/:slug` Home** ✅ **dev에 올랐다** (2026-09-09 — `a9a455e` + `8c62bd9`).
+      **착지점이다**(사용자 결정 2026-09-09).
+  - [x] **다른 화면의 지표를 복제하지 않는다**(§7.7 결정 2) — `countUnpublished`·`loadKeys`를 **부르지
+      않는다**(소스 스캔이 센다). 소유하는 것은 로케일별 진행률 대비와 최근 활동뿐이고, 진행률은
+      6b-5의 `localeProgress`를 그대로 쓴다 — 다만 **orphaned 로케일을 뺀다**(그 열은 번역 화면에서
+      disabled라 `?focus=` 링크가 편집할 수 없는 곳으로 데려간다)
+  - [x] **착지 클릭을 셋으로 갚는다**(결정 1) — 진행률 행 전체가 `?focus=` 링크 · 활동의 편집 항목이
+      `?ns=`+`?focus=` 링크 · primary [Open translations]
+  - [x] 최근 활동은 지금 재료로만(`Translation.updatedAt`+`updatedBy` · `lastCommitAt` ·
+      `lastPublishedAt`+`lastPrUrl`) — **`logs`는 7단계 `SyncRun`의 소비자**다 (§6). ⚠️ `limit`은
+      **병합 뒤에** 적용된다(편집만 먼저 자르면 push·publish가 항상 밀려난다) · 동시각 정렬이
+      **결정적**이다(같은 DB 상태가 같은 화면을 내야 한다)
+  - [x] **사이드바 카운트를 달지 않았다**(결정 5)
+  - [x] ⚠️ **`saveTranslation`의 무효화를 서브트리로 넓혔다** — 그 행을 읽는 화면이 셋이 됐다(번역 ·
+      로케일 진행률 · Home). POSTMORTEM 2026-09-09가 6b-5 때 이 자리를 이름으로 예고했다
+  - [x] ⚠️ **사이드바 활성 판정이 축에서 항목으로 옮겨졌다** — `/projects/<slug>`가 그 프로젝트의 모든
+      하위 라우트의 접두라, 옛 규칙("프로젝트 축이면 접두")이면 어디서나 Home이 선택돼 보였다
+      (6b-4 code-review ⚪2가 예고한 자리)
+  - [x] ⚠️ **실물이 프로덕션 버그를 잡았다** (`bf7e00f`) — `DropdownMenuItem`이 `asChild` 자식 옆에
+      형제를 붙여 **프로젝트 스위처를 한 번 열면 셸이 죽었다.** `add099a`(6a ship 2)부터 프로덕션에
+      있었고 게이트 셋·리뷰·QA 세 라운드·6b-4의 실물 라운드가 전부 지나갔다 (POSTMORTEM 2026-09-09)
   - ⚠️ **번호가 실행 순서다** (2026-09-08 교체). 그 전에는 base 변경이 6b-2, 멤버 화면이 6b-3이었는데
     base 변경은 design §3.13을 다시 써야 착수할 수 있어 그대로 두면 **뒷번호를 먼저 하게 된다.** 이 목록도
     6b-2 → 6b-4 → 6b-3 순으로 어긋나 있었다. **이 날짜 이전 문서·PR 본문의 "6b-2"는 base 변경이다.**
