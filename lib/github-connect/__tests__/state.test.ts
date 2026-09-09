@@ -339,3 +339,40 @@ describe("stateCookieNames — 읽는 쪽은 두 이름을 다 본다", () => {
     expect(new Set(stateCookieNames()).size).toBe(2);
   });
 });
+
+/**
+ * **오염된 쿠키가 던지면 callback이 500이 된다** (sec-audit 발견 6).
+ *
+ * `equalConstantTime`의 길이 사전검사가 `String.length`(UTF-16)인데 `timingSafeEqual`은
+ * `Buffer`(UTF-8)를 받는다. 쿠키는 **공격자가 정하는 값**이라 "코드 유닛 수는 같고 바이트 수는
+ * 다른" 서명을 만들 수 있고, 그때 `RangeError`가 나 `state-mismatch`가 장애로 위장된다.
+ *
+ * ⚠️ **`lib/push/auth.ts`와 같은 형이다** — 그쪽 주석이 이 함수를 "같은 형"으로 상호 참조하므로
+ * 한쪽만 고치면 다른 쪽 주석이 거짓이 된다.
+ */
+describe("verifyState — 오염된 쿠키가 던지지 않는다 (sec-audit 6)", () => {
+  const SECRET = "s".repeat(32);
+  const base = () =>
+    signState({
+      userId: "u1",
+      dest: { kind: "new" },
+      nonce: "n1",
+      expiresAt: new Date("2026-09-09T01:00:00Z"),
+      secret: SECRET,
+    });
+  const now = new Date("2026-09-09T00:00:00Z");
+
+  it("서명 자리에 비ASCII가 오면 state-mismatch다 — 던지지 않는다", () => {
+    const payload = base().slice(0, base().lastIndexOf("."));
+    for (const forged of [`${payload}.가`, `${payload}.🎉`, `${payload}.${"가".repeat(43)}`]) {
+      expect(() => verifyState({ cookie: forged, query: "n1", userId: "u1", now, secret: SECRET })).not.toThrow();
+      expect(verifyState({ cookie: forged, query: "n1", userId: "u1", now, secret: SECRET }).status).toBe(
+        "state-mismatch",
+      );
+    }
+  });
+
+  it("진짜 서명은 그대로 통과한다 — 비교 방식이 바뀌어도 계약은 같다", () => {
+    expect(verifyState({ cookie: base(), query: "n1", userId: "u1", now, secret: SECRET }).status).toBe("ok");
+  });
+});
