@@ -15,10 +15,13 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  */
 
 /**
- * 연결 왕복이 끝난 뒤 착지할 곳 (design §3.6). **갈래가 둘이다**: 설정 화면은 프로젝트가 있고,
- * 생성 화면(`/projects/new`)은 아직 없다 — 그래서 slug가 착지를 겸할 수 없다.
+ * 연결 왕복이 끝난 뒤 착지할 곳 (design §3.6 + 6b-4). **갈래가 셋이다**: 설정 화면은 프로젝트가 있고,
+ * 생성 화면(`/projects/new`)과 계정 화면(`/account`)은 없다 — 그래서 slug가 착지를 겸할 수 없다.
+ *
+ * ⚠️ **뒤의 둘을 하나로 합치지 않는다.** 둘 다 slug가 없어 payload 모양이 같지만 **착지가 다르고**,
+ * 합치면 계정 화면에서 연결을 누른 사람이 `/projects/new`에 떨어져 "내가 뭘 만들려던 게 아닌데"가 된다.
  */
-export type StateDest = { kind: "settings"; slug: string } | { kind: "new" };
+export type StateDest = { kind: "settings"; slug: string } | { kind: "new" } | { kind: "account" };
 
 /** 서명 대상. 키를 늘리면 옛 쿠키가 통째로 `state-mismatch`가 된다 — 10분 만료라 감수한다. */
 type StatePayload = { userId: string; dest: StateDest; nonce: string; exp: number };
@@ -186,6 +189,8 @@ function parseDest(dest: unknown): StateDest | null {
   if (typeof dest !== "object" || dest === null || Array.isArray(dest)) return null;
   const { kind, slug } = dest as Record<string, unknown>;
   if (kind === "new") return { kind: "new" };
+  // 6b-4가 더한 갈래. **늘리는 방향은 안전하다** — 옛 쿠키 둘은 위·아래 줄이 그대로 받는다.
+  if (kind === "account") return { kind: "account" };
   if (kind !== "settings") return null;
   if (typeof slug !== "string" || slug === "") return null;
   return { kind: "settings", slug };

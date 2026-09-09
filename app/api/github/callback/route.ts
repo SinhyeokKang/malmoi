@@ -168,8 +168,8 @@ function isUniqueViolation(error: unknown): boolean {
 
 /**
  * 착지 + state 쿠키 소거. **사유는 항상 `?e=`로 실린다** — 넘겨놓고 읽는 쪽을 안 만들면 거부가
- * 통째로 무음이다 (POSTMORTEM 2026-09-06). 읽는 쪽은 셋이다: 설정 화면 · `/projects/new` ·
- * `/projects`(state를 못 믿어 돌아갈 곳을 모르는 경우).
+ * 통째로 무음이다 (POSTMORTEM 2026-09-06). 읽는 쪽은 **넷**이다: 설정 화면 · `/projects/new` ·
+ * `/account`(6b-4) · `/projects`(state를 못 믿어 돌아갈 곳을 모르는 경우).
  *
  * ⚠️ **경로는 서명된 `dest`가 정한다.** 쿼리에서 읽으면 공격자가 착지를 고르고, 그러면 open
  * redirect 판정이 필요해진다 (design §3.6).
@@ -179,8 +179,7 @@ function landing(
   dest: StateDest | null,
   error: ConnectError | null,
 ): NextResponse {
-  const path =
-    dest === null ? "/projects" : dest.kind === "new" ? "/projects/new" : `/projects/${dest.slug}/settings`;
+  const path = landingPath(dest);
   const target = error === null ? path : `${path}?e=${error}`;
   const res = NextResponse.redirect(new URL(target, request.url));
   // 같은 state로 두 번 들어오지 못하게 한다. 실패 경로에서도 지운다 — 남겨 두면 다음 시도가
@@ -190,4 +189,20 @@ function landing(
     res.cookies.set(name, "", { maxAge: 0, path: "/", secure: name.startsWith("__Host-") });
   }
   return res;
+}
+
+/**
+ * `dest` → 경로. **삼항 사슬을 함수로 내렸다** (6b-4에서 갈래가 넷이 됐다) — 사슬로 두면 새 갈래를
+ * 더할 때 어느 조건이 기본값인지가 보이지 않는다. `null`은 "state를 못 믿는다"이고 그때만 목록이다.
+ */
+function landingPath(dest: StateDest | null): string {
+  if (dest === null) return "/projects";
+  switch (dest.kind) {
+    case "new":
+      return "/projects/new";
+    case "account":
+      return "/account";
+    case "settings":
+      return `/projects/${dest.slug}/settings`;
+  }
 }

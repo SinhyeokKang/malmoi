@@ -330,6 +330,14 @@ class ProjectLimitRollback extends Error {
 export type StartUserConnectResult = { ok: false; error: OnboardFailure };
 
 /**
+ * 사용자 축의 착지 갈래 **둘** (6b-4). ⚠️ **`StateDest`를 그대로 받지 않는다** — 클라이언트가
+ * `{kind:"settings", slug}`를 통째로 보낼 수 있으면 남의 설정 화면으로 착지를 정할 수 있고, 그러면
+ * 이 자리에 open redirect 판정이 생긴다. 갈래 **이름만** 받고 payload는 서버가 만든다.
+ */
+const UserConnectDest = z.enum(["new", "account"]);
+export type UserConnectDest = z.infer<typeof UserConnectDest>;
+
+/**
  * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
  * `Account` 행은 사용자 소유이므로 프로젝트 권한을 요구할 근거가 없다.
  *
@@ -337,9 +345,18 @@ export type StartUserConnectResult = { ok: false; error: OnboardFailure };
  * origin 판정은 `requestOrigin`·`callbackUrl`·`stateCookieName`이 한 곳에서 든다 — 그 규칙을
  * 여기서 다시 구현하지 않는다 (malmoi#7이 그 판정이 갈려서 났다).
  *
+ * ⚠️ **착지가 인자로 갈린다** (6b-4). 전에는 무인자라 `/projects/new` 하나였는데, `/account`가
+ * 생기면서 같은 Action이 두 착지를 낸다 — 계정 화면에서 연결을 누른 사람이 생성 화면에 떨어지면
+ * "내가 뭘 만들려던 게 아닌데"가 된다.
+ *
  * 성공하면 GitHub으로 `redirect`하므로 **반환하지 않는다.**
  */
-export async function startGithubConnectForUser(): Promise<StartUserConnectResult> {
+export async function startGithubConnectForUser(raw: UserConnectDest): Promise<StartUserConnectResult> {
+  // 입력이 인가보다 먼저다 — 모르는 갈래가 서명 payload에 실리면 착지가 `landingPath`의 사각지대가 된다.
+  const parsed = UserConnectDest.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const dest = parsed.data;
+
   const { userId } = await requireUser();
 
   const head = await headers();
@@ -357,7 +374,7 @@ export async function startGithubConnectForUser(): Promise<StartUserConnectResul
     signState({
       userId,
       // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
-      dest: { kind: "new" },
+      dest: { kind: dest },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),
