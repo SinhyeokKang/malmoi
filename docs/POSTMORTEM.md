@@ -836,3 +836,25 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     - ⚠️ **앞으로 깨질 것 하나**: `app/(edit)/actions.ts:86`의 `saveTranslation`이 `/projects/{slug}/translations` **하나만** 무효화한다. **6b-6의 Home이 같은 행에서 로케일별 진행률과 최근 활동을 낸다**(SAAS §7.7 결정 2) — 그 화면이 서는 순간 이 인자가 부족해진다. 그 사이클의 몫으로 남긴다.
     - 나머지 아홉은 지금 덮는다: 멤버·초대 셋(그 상태는 멤버 화면만 보인다) · `createProject`와 `runFirstIngest`(목록과 설정 둘 다 무효화한다) · `rotatePushToken`·`connectRepository`(설정만 보인다) · `updateRepositorySettings`(설정 **과** 번역 — 대기 배너가 두 화면에 있어 6b-3이 이미 둘을 넓혀 뒀다).
   - **접두로 화면 집합을 표현하지 않는다.** 접두는 라우트 구조에 대한 가정이고, 이 리포는 라우트를 옮긴다(`/keys` → `/projects/[slug]/translations`, 계정 카드 → `/account`). slug를 모르는 자리에서는 루트 레이아웃을 무효화한다 — 드문 조작이면 그 대가가 0이다.
+
+### 2026-09-09 — 프리미티브가 `asChild` 자식 옆에 형제를 붙여, 프로젝트 스위처를 **한 번 열면** 셸이 죽었다
+
+- **영역**: `components/ui/dropdown-menu.tsx`의 `DropdownMenuItem` · 호출부는 `components/shell/sidebar.tsx`(프로젝트 스위처). **`add099a`(6a ship 2, PR #14)부터 2026-09-08 이후 프로덕션에 있었다** — 이 회고는 사후가 아니라 **아직 프로덕션에 있는 동안** 쓰였고, 픽스는 6b-6과 같은 배송에 실린다.
+- **증상**: **게이트 셋이 전부 green이다** — `pnpm typecheck`·`pnpm test` 2,188건·`pnpm build`. 그런데 사이드바의 프로젝트 스위처를 **한 번 누르면** 화면이 `This page couldn't load`로 바뀐다. 서버 로그: ``Uncaught Error: Primitive.div failed to slot onto its children. Expected a single React element child or `Slottable`.`` → `DropdownMenuItem` → `Sidebar` → `EditLayout`. **셸이 죽으므로 그 프로젝트의 모든 화면이 함께 죽는다**(레이아웃이 던진다). 스위처는 프로젝트를 옮기는 **유일한** 컨트롤이다.
+- **근본 원인**: 프리미티브가 Radix `Primitive.Item`을 감싸면서 **자식 옆에 형제를 하나 붙였다** — `{children}{selected && <Check/>}`. `asChild`가 오면 Radix Slot이 "그 자식에 props를 얹는" 모드가 되는데, Slot은 **정확히 하나의 엘리먼트**만 받는다. 자식이 둘이면 던진다.
+  - ⚠️ **`asChild`가 프리미티브의 props 시그니처에 없다.** `ComponentProps<typeof Primitive.Item>`으로 딸려 들어와 `{...props}`로 흘러가므로, **이 컴포넌트를 쓴 사람도 만든 사람도 "여기 Slot이 켜질 수 있다"를 소스에서 볼 수 없다.** 형제를 하나 더 렌더하는 것은 그 자체로 완전히 정상인 코드이고, 위험해지는 것은 **호출부가 `asChild`를 준 순간**이다 — 두 파일에 나뉘어 있어 어느 쪽도 혼자서는 틀리지 않았다.
+  - **타입이 이것을 못 본다.** `children`과 `Check` 둘 다 유효한 `ReactNode`이고, Slot의 "하나여야 한다"는 제약은 **런타임 계약**이다. `Primitive.Item`의 타입에도 그 조건이 없다.
+  - ⚠️ **이 리포는 이 함정을 이미 한 번 밟았다** (2026-09-08 — 툴팁 provider). 같은 계보다: **조건부로만 도달하는 Radix 조합이 클릭 한 번에 셸을 죽이고, 자동 게이트는 전부 green이다.** 그때 배운 규칙("조건부로만 렌더되는 컴포넌트를 의심한다")이 옳았는데 **적용되지 않았다** — 아래 그물 참조.
+- **그물**:
+  - 잡은 것: **실물 브라우저에서 스위처를 실제로 눌러 본 것**뿐이다(6b-6 검증 라운드). 그 클릭이 아니면 이 코드는 계속 프로덕션에 있었다.
+  - 놓친 것: `typecheck`(Slot 인자 수는 타입이 아니다) · `test` 2,188건(렌더 테스트가 없다 — translation-ui design §4의 의도된 결정) · `build`(렌더하지 않는다) · `/code-review` 여러 라운드 · `/bugshot-qa` 세 라운드 · `client-graph`·`focus-ring`(import·태그를 보지 컴포넌트 트리를 안 본다).
+  - ⚠️ **6b-4의 실물 라운드도 놓쳤다 — 그 사이클이 이 블록을 옮겼는데도.** 사이드바를 2구역으로 재편하면서 스위처 JSX를 그대로 이동했고, 실물 확인에서는 **접기 버튼 · 툴팁 hover · 계정 항목**을 눌렀다. 스위처는 `querySelectorAll('aside nav a')`로 **href만 읽었다** — 그것은 닫힌 트리거를 읽은 것이고 **포털 안의 항목은 렌더되지도 않는다.** **DOM을 읽는 것은 여는 것이 아니다.**
+  - ⚠️ **가장 불편한 사실**: 2026-09-08 회고의 재발 방지 grep이 **바로 이 컴포넌트를 검사하고 통과시켰다.** 그 기록은 이렇게 적혀 있다 — "`Dialog`·`DropdownMenu`는 Root가 자기 context를 만든다 → 같은 결함이 없다". 그 판정은 **그 축에서는 옳다**(조상 provider를 요구하지 않는다). 틀린 것은 없고, **grep은 자기가 묻는 축에서만 무죄를 준다** — 같은 파일이 다른 축에서 이미 깨져 있었다.
+- **재발 방지**:
+  - **`asChild`가 닿을 수 있는 프리미티브는 `{children}`을 `Slot.Slottable`로 감싼다.** 그러면 슬롯 대상이 명시되어 형제가 허용되고, `Check`는 슬롯된 엘리먼트(예: `<Link>`) **안으로** 들어가 그 요소가 받은 `flex`에서 `ml-auto`가 그대로 동작한다. `radix-ui` 단일 패키지가 `Slot.Slottable`을 내보낸다.
+  - **`components/__tests__/slottable-item.test.ts`가 상시로 센다.** 두 축이다: ① `components/ui/`를 순회해 **`asChild`가 닿을 수 있는 것**(Radix `Primitive.*` + `{...props}`)만 좁힌 뒤 형제 렌더 형태를 잡고, ② **`DropdownMenuItem`을 이름으로 고정**한다(형태 검사는 형제를 `<>…</>`로 합치면 통과한다 — `multiline-detail.test.ts`가 이름 목록을 드는 것과 같은 이유). 좁힘이 실제로 좁히는지도 메타 케이스가 본다(`FormGroup`은 형제를 렌더하지만 `asChild`가 닿지 않아 대상이 아니다 — 좁히지 않으면 오탐이 쌓여 아무도 안 보는 검사가 된다).
+  - grep (실제로 돌렸다):
+    - `grep -rn "asChild" app components --include="*.tsx" | grep -v "components/ui/"` → **9건**. 대상은 넷이고 `DropdownMenuItem`(3건) 말고는 **전부 Radix 프리미티브의 맨 재수출**이다: `DropdownMenuTrigger = Primitive.Trigger` · `DialogTrigger = Primitive.Trigger` · `DialogClose = Primitive.Close`. 아무것도 감싸지 않으므로 형제가 있을 수 없다. **감싸면서 형제를 붙인 것이 이 하나였다.**
+    - `components/ui/*.tsx`에서 `radix-ui` import + `{...props}` + `{children}` 뒤 형제 → 픽스 전 **`dropdown-menu.tsx` 하나**(`form-group.tsx`는 형제를 렌더하지만 Radix도 `{...props}`도 없어 오탐).
+  - **실물 검증 규칙**: **드롭다운·다이얼로그는 실제로 열어 본다.** 포털 안 내용은 열기 전까지 DOM에 없으므로 `querySelectorAll`로 링크를 읽는 것은 그 가지를 밟은 것이 **아니다** — 2026-09-08의 "상태를 토글하는 단계를 넣는다"를 여기까지 넓힌다: 토글뿐 아니라 **트리거를 눌러 포털을 띄우는 단계**가 필요하다. `selected`처럼 **항목 중 하나만 참인 prop**이 있으면 그 항목이 보이는 상태에서 눌러야 한다(스위처는 현재 프로젝트가 그것이라 항상 하나 있었다).
+  - ⚠️ **회고의 재발 방지 grep에는 축이 하나뿐이다.** 어떤 컴포넌트가 한 회고의 grep을 통과했다는 사실은 **다른 축의 무죄가 아니다.** 같은 파일이 다시 나오면 새 축으로 다시 본다.
