@@ -186,7 +186,7 @@
 **한 ship인 이유**: 전부 app/auth 층이고 마이그레이션이 없다. 4번과 23번이 같은 축("타입·문서가
 좁혀 놓은 것을 직렬화가 넓힌다")이고, 14번은 그 축을 상시로 지킬 가드다.
 
-- [ ] **T1** `/tdd interface`
+- [x] **T1** `/tdd interface`
   - `lib/auth/query.ts`: 두 로더가 **원문 이메일을 반환하지 않는다**(반환 타입에 `email`이 없다)
   - 목록 전체를 보고 만든 라벨이 충돌 시에만 넓어진다 — `maskedInviteLabels`와 **글자 하나까지 같은
     출력**(malmoi#18의 성질을 멤버 표로 확장한다)
@@ -197,35 +197,37 @@
   - `disconnectGithub`: 다른 사용자의 `Account` 행이 있어도 그것을 지우지 않는다
   - `entry-points`: 프로젝트 스코프 Action이 `requireUser`만 부르면 **red**여야 한다
   - 검증: 위 다섯이 수정 전 red
-- [ ] **T2** `lib/auth/invite-label.ts` — 목록 라벨 생성을 초대 전용에서 **이메일 목록 일반**으로
+- ✅ **결정: 일반화 + 옛 이름 재수출** (2026-09-09 사용자) — 본체가 `maskedEmailLabels`이고 `maskedInviteLabels`는 그것의 얼은이다.
+- [x] **T2** `lib/auth/invite-label.ts` — 목록 라벨 생성을 초대 전용에서 **이메일 목록 일반**으로
   - 🔒 기존 `maskedInviteLabels`를 일반화하는가 / 형제 export를 두는가. **추천은 일반화 + 옛 이름
     유지**(재수출) — `docs/DESIGN.md` §6.65와 `CLAUDE.md`가 그 이름을 가리킨다
-- [ ] **T3** `lib/auth/query.ts` — `MemberView`·`PendingInvitation`이 `email` 대신 라벨을 든다
+- [x] **T3** `lib/auth/query.ts` — `MemberView`·`PendingInvitation`이 `email` 대신 라벨을 든다
   - ⚠️ **`app/(edit)/__tests__/queries.test.ts`가 이 로더들을 메모리 DB로 직접 부른다** — 그 테스트가
     같은 커밋에서 따라온다
-- [ ] **T4** 두 클라이언트 컴포넌트에서 `maskEmail` 호출 제거 + `member-list.tsx`의 `who`(aria-label)를
+- [x] **T4** 두 클라이언트 컴포넌트에서 `maskEmail` 호출 제거 + `member-list.tsx`의 `who`(aria-label)를
       서버 라벨로
-- [ ] **T5** `app/(edit)/projects/actions.ts` — `disconnectGithub`을 `deleteMany({ where: { userId, provider } })`로
+- [x] **T5** `app/(edit)/projects/actions.ts` — `disconnectGithub`을 `deleteMany({ where: { userId, provider } })`로
   - ⚠️ **주석도 고친다** — "없는 행을 지우려 하면 P2025로 던진다"는 이유가 `deleteMany`에서 사라진다
-- [ ] **T6** `app/__tests__/entry-points.test.ts` — 가드 판정을 갈른다 (발견 14)
+- [x] **T6** `app/__tests__/entry-points.test.ts` — 가드 판정을 갈른다 (발견 14)
   - `requireUser`는 **사용자 소유 행만 만지는 Action**의 게이트로만 인정한다(그 목록을 이름으로 고정) /
     `invite/actions.ts` 면제를 **파일 단위에서 export 단위로** 좁힌다 / doc comment의 "다섯"과 Set의
     여섯을 맞추고 여섯째의 사유를 쓴다
   - ⚠️ **자기 "0건 아님" 가드를 함께 넣는다** — 이 파일이 조용해진 전례가 있다(2026-09-08 쿼리 수신자 검사)
-- [ ] **T7** `createInvitation.email`에 `.email().max(320)` (발견 19) ·
+- [x] **T7** `createInvitation.email`에 `.email().max(320)` (발견 19) ·
       `app/(edit)/layout.tsx`가 사이드바에 셋만 `.map()`으로 넘긴다 (발견 23)
   - 검증: `lib/shell/nav.ts`의 `NavProject`가 반환 타입으로 강제된다(초과 프로퍼티 검사가 걸리는 모양)
-- [ ] **T8** `pnpm typecheck && pnpm test`
-- [ ] `——` `test:` → `fix:`
+- [x] **T8** `pnpm typecheck && pnpm test`
+- [x] `——` `test:` → `fix:`
+- ⏳ **미실행** — 세션 쿠키가 있어야 그 화면이 렌더되므로 `curl` 한 줄로는 안 된다. 대신 소스 스캔 넷(클라이언트가 `maskEmail`을 안 든다 · 반환 매핑에 `email:`이 없다 · 두 반환 타입이 `emailLabel`이다 · 로더가 `maskedEmailLabels`를 부른다)과 메모리 DB 단위 테스트 넷이 같은 것을 고정한다. **실물은 `/bugshot-qa`가 밟을 자리다.**
 - [ ] **T9** `[manual]` 실물 확인 — `pnpm dev`에서 `/projects/<slug>/members`의 응답 본문에 `@`가 든
       원문 주소가 없는지 본다(`curl -s … | grep '@'`)
   - ⚠️ **이 한 줄이 감사가 못 한 검증이다**(정적 추론이었다)
-- [ ] **T10** 문서 — `docs/DESIGN.md` §6.65(마스킹은 서버가 한다) · `CLAUDE.md`(디렉터리 구조의 두
+- [x] **T10** 문서 — `docs/DESIGN.md` §6.65(마스킹은 서버가 한다) · `CLAUDE.md`(디렉터리 구조의 두
       로더·두 컴포넌트 주석) · `/postmortem`
   - POSTMORTEM 축: **"문서가 단언한 통제가 배선되지 않았다"** — DESIGN이 "두 표 모두 마스킹"을
     말하는데 마스킹이 클라이언트에서 일어나 원문이 와이어에 있었다. 2026-09-05("경고는 문서에 있었는데
     배선이 지키지 않았다")과 같은 계열이고 그 항목의 grep이 이것을 못 잡았다는 것이 새로운 부분이다
-- [ ] `——` 문서 커밋
+- [x] `——` 문서 커밋
 - [ ] **T11** `/push` → `/merge`
 
 ---
