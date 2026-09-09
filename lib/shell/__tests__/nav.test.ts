@@ -52,12 +52,32 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
  * 하는 것뿐이다. 그래서 판정을 `canPerform`이 하고 이 함수는 그것을 부르기만 한다.
  */
 describe("projectSections — 역할이 항목을 정한다", () => {
-  it("OWNER는 Translations와 Settings를 본다", () => {
-    expect(projectSections("OWNER").map((s) => s.key)).toEqual(["translations", "members", "settings"]);
+  /**
+   * ⚠️ **순서가 SAAS §7.7의 라우트 표 순서다** — Locales가 Translations 다음이다. Home·Logs는 아직
+   * 라우트가 없어 빠져 있다(6b-6·7단계). **항목은 자기 라우트와 같은 사이클에 온다** (6b-4 판정).
+   */
+  it("OWNER는 넷을 본다 — Locales가 6b-5에서 붙었다", () => {
+    expect(projectSections("OWNER").map((s) => s.key)).toEqual([
+      "translations",
+      "locales",
+      "members",
+      "settings",
+    ]);
   });
 
-  it("EDITOR는 Translations만 본다", () => {
-    expect(projectSections("EDITOR").map((s) => s.key)).toEqual(["translations", "members"]);
+  it("EDITOR는 Settings만 못 본다 — Locales는 전원이 본다", () => {
+    expect(projectSections("EDITOR").map((s) => s.key)).toEqual(["translations", "locales", "members"]);
+  });
+
+  /**
+   * ⚠️ **Locales의 게이트도 `translation:write`다** (6b-2 관용구). 그 화면은 orphaned 로케일이 왜
+   * 그렇게 됐는지를 말하는 유일한 자리이고, 번역자가 열이 사라진 이유를 알 길이 그것뿐이다 —
+   * `project:settings` 뒤에 두면 EDITOR가 아예 못 들어온다.
+   */
+  it("Locales는 두 역할에 다 있다 — 컨트롤만 갈린다", () => {
+    for (const role of ["OWNER", "EDITOR"] as const) {
+      expect(projectSections(role).map((s) => s.key), role).toContain("locales");
+    }
   });
 
   /**

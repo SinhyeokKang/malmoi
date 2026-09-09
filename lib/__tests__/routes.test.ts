@@ -22,6 +22,7 @@ describe("routes — 정적 경로", () => {
   });
 
   it("프로젝트 경로는 slug를 그대로 든다", () => {
+    expect(routes.locales("bugshot-2")).toBe("/projects/bugshot-2/locales");
     expect(routes.settings("bugshot-2")).toBe("/projects/bugshot-2/settings");
     expect(routes.invite("abc123")).toBe("/invite/abc123");
   });

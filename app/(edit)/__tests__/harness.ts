@@ -568,6 +568,17 @@ export function createHarness(seed: Seed = {}) {
     stringKey: {
       findFirst: async ({ where }: { where: { id: string; projectId: string } }) =>
         keys.find((k) => k.id === where.id && k.projectId === where.projectId) ?? null,
+      /**
+       * 로케일별 진행률의 **분모** (6b-5). ⚠️ **`orphaned`를 실제로 본다** — 무시하면 코드에서
+       * 사라진 키가 분모에 남아 진행률이 영구히 100%에 못 닿고, 그건 페이크가 스키마보다 느슨해
+       * 아무 값이나 맞는 것처럼 보이는 부류다 (POSTMORTEM 2026-09-06 하네스 자기검사).
+       */
+      count: async ({ where }: { where: { projectId: string; orphaned?: boolean } }) =>
+        keys.filter(
+          (k) =>
+            k.projectId === where.projectId &&
+            (where.orphaned === undefined || (k.orphaned ?? false) === where.orphaned),
+        ).length,
       findMany: async ({ where }: { where: { projectId: string } }) =>
         keys
           .filter((k) => k.projectId === where.projectId)
@@ -663,6 +674,41 @@ export function createHarness(seed: Seed = {}) {
           if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
           return true;
         }).length;
+      },
+      /**
+       * 진행률의 **분자** (6b-5). 값이 있는 셀만 `{ localeCode, needsReview }`로 준다.
+       *
+       * ⚠️ **필터 둘을 실제로 적용한다.** `value: { not: "" }`를 무시하면 빈 값이 번역으로 세지고
+       * (편집 UI에서 값을 지우면 빈 문자열 행이 남는다), `stringKey.orphaned`를 무시하면 죽은 키의
+       * 번역이 분자에 들어가 **분모보다 커진다.** 둘 중 하나만 빠져도 이 집계 테스트가 통과하면서
+       * 프로덕션에서 틀린 숫자를 낸다.
+       */
+      findMany: async ({
+        where,
+        select,
+      }: {
+        where: {
+          projectId: string;
+          value?: { not: string };
+          stringKey?: { orphaned?: boolean };
+        };
+        select?: { localeCode?: boolean; needsReview?: boolean };
+      }) => {
+        const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
+        const rows = translations.filter((t) => {
+          const key = live.get(t.keyId);
+          if (key === undefined) return false;
+          if (where.value !== undefined && t.value === where.value.not) return false;
+          const wantOrphaned = where.stringKey?.orphaned;
+          if (wantOrphaned !== undefined && (key.orphaned ?? false) !== wantOrphaned) return false;
+          return true;
+        });
+        // ⚠️ `select` 밖의 필드를 흘리지 않는다 — 하네스가 관대하면 화면이 안 받은 값을 쓰게 된다.
+        if (select === undefined) return rows;
+        return rows.map((t) => ({
+          ...(select.localeCode === true ? { localeCode: t.localeCode } : {}),
+          ...(select.needsReview === true ? { needsReview: t.needsReview } : {}),
+        }));
       },
       aggregate: async ({ where }: { where: { projectId: string } }) => {
         const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));

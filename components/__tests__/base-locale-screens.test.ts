@@ -7,6 +7,11 @@ import { describe, expect, it } from "vitest";
 /**
  * 기준 로케일 변경이 **두 화면에 실제로 배선됐는지** 소스에서 센다 (6b-3 — design §3.13).
  *
+ * ⚠️ **6b-5가 자리를 옮겼다** (SAAS §7.7 결정 4): 필드와 대기 Alert가 `settings` → `locales`다.
+ * 옮기는 이유는 로케일이 지금까지 **번역 표의 열로만** 존재해서 orphaned 로케일이 왜 그렇게 됐고
+ * 어떻게 되살리는지 말할 자리가 없었기 때문이다. **번역 화면의 배너는 그대로 둔다** — 편집자가
+ * 읽는 자리다.
+ *
  * ⚠️ 렌더 테스트가 없는 자리의 상시 방어선이다(`translations-screen`·`members-screen`과 같은 계열).
  * 이 사이클의 실패 유형은 특히 뚜렷하다: **`basePending`이 green인 것과 두 화면이 그것을 부르는
  * 것은 다른 사실**이고, 한쪽만 부르면 "경고는 사라졌는데 실제로는 아직 대기 중"이 된다.
@@ -21,16 +26,26 @@ const read = (path: string): string =>
 
 const SETTINGS_PAGE = "app/(edit)/projects/[slug]/settings/page.tsx";
 const SETTINGS_FORM = "components/settings/repository-form.tsx";
+const LOCALES_PAGE = "app/(edit)/projects/[slug]/locales/page.tsx";
+const LOCALES_FORM = "components/locales/base-locale-form.tsx";
 const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const BASE_BANNER = "components/translations/base-pending-banner.tsx";
 const EDIT_LOSS_BANNER = "components/translations/edit-loss-banner.tsx";
 
 describe("대기 조건은 한 벌이다 — 두 화면이 `basePending`을 부른다", () => {
-  it("설정 화면이 `basePending`을 읽는다", () => {
-    const src = read(SETTINGS_PAGE);
+  it("로케일 화면이 `basePending`을 읽는다", () => {
+    const src = read(LOCALES_PAGE);
     expect(src).toMatch(/from "@\/lib\/onboarding\/base-pending"/);
     expect(src).toMatch(/basePending\(/);
+  });
+
+  /**
+   * ⚠️ **설정 화면은 이제 그 조건을 몰라야 한다.** 필드가 없는 화면에 경고만 남으면 사용자가 고칠
+   * 곳을 찾아 두 화면을 오간다 — §7.7 결정 4가 그 왕복을 없애려고 자리를 합친 것이다.
+   */
+  it("설정 화면에는 대기 Alert가 남아 있지 않다 — 필드와 같은 자리로 갔다", () => {
+    expect(read(SETTINGS_PAGE)).not.toMatch(/basePending\(/);
   });
 
   it("번역 화면의 배너가 `basePending`을 읽는다", () => {
@@ -45,7 +60,7 @@ describe("대기 조건은 한 벌이다 — 두 화면이 `basePending`을 부�
    * 빠진다 — 특히 "첫 push 전"이 온보딩 중 경고로 새어 나온다.
    */
   it("어느 화면도 비교를 손으로 다시 쓰지 않는다", () => {
-    for (const path of [SETTINGS_PAGE, BASE_BANNER, HEADER, SETTINGS_FORM]) {
+    for (const path of [SETTINGS_PAGE, BASE_BANNER, HEADER, SETTINGS_FORM, LOCALES_PAGE, LOCALES_FORM]) {
       expect(read(path), path).not.toMatch(/declaredBaseLocale\s*!==\s*baseLocale/);
       expect(read(path), path).not.toMatch(/baseLocale\s*!==\s*declaredBaseLocale/);
     }
@@ -87,31 +102,22 @@ describe("번역 화면 — 배너 둘의 자리가 갈린다", () => {
   });
 });
 
-describe("설정 화면 — 폼과 대기 Alert", () => {
-  it("readiness 분기 밖이다 — revalidate가 저장 결과를 씻지 않는다", () => {
-    const src = read(SETTINGS_PAGE);
-    const form = src.indexOf("<RepositoryForm");
-    const readiness = src.indexOf("readiness === ");
-    expect(form).toBeGreaterThan(-1);
-    // 폼이 readiness를 처음 읽는 자리보다 **앞**이다 — 그 분기 안에 있을 수 없다.
-    expect(form).toBeLessThan(readiness);
-  });
-
+describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
   /** 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */
   it("대기 Alert가 고칠 줄을 `<pre>`로 내고 복사할 수 있다", () => {
-    const src = read(SETTINGS_PAGE);
+    const src = read(LOCALES_PAGE);
     expect(src).toMatch(/<Alert variant="warning"/);
     expect(src).toMatch(/<pre/);
     expect(src).toMatch(/<CopyButton/);
   });
 
   /**
-   * ⚠️ **그 줄의 정본이 `baseLocaleLine`이다.** 화면이 `base-locale:` 리터럴을 직접 조립하면
-   * 워크플로 생성기와 갈리고, 그때 사용자가 붙여넣은 YAML이 action의 input과 어긋나 CI가 조용히
-   * 옛 base를 계속 보낸다.
+   * ⚠️ **고칠 줄을 이 화면에서 직접 보인다** (§7.7 결정 4의 경계). 설정 화면으로 링크하면 "고치려면
+   * 두 화면을 오간다"가 되고, 자리를 합친 이유가 사라진다. 워크플로 YAML 전체는 설정에 남는다 —
+   * 여기 필요한 것은 한 줄이다.
    */
   it("`base-locale:` 리터럴을 화면이 직접 만들지 않는다", () => {
-    const src = read(SETTINGS_PAGE);
+    const src = read(LOCALES_PAGE);
     expect(src).toMatch(/baseLocaleLine\(/);
     expect(src).not.toMatch(/base-locale:/);
   });
@@ -120,24 +126,20 @@ describe("설정 화면 — 폼과 대기 Alert", () => {
    * **필드는 저장이 보낼 값을 보인다** (malmoi#20 회귀).
    *
    * ⚠️ 현실로 초기화하면 대기 중에 화면을 새로 열었을 때 필드가 옛 언어를 보이고, 그 상태의
-   * 저장(브랜치만 고쳐도)이 옛 언어를 "고른 값"으로 보내 **되돌리기 경로가 선언을 지운다** —
-   * 배너까지 함께 사라져 무음이다. 판정이 green인 것과 폼이 그것을 부르는 것은 다른 사실이다.
+   * 저장이 옛 언어를 "고른 값"으로 보내 **되돌리기 경로가 선언을 지운다** — 배너까지 함께 사라져
+   * 무음이다. 판정이 green인 것과 폼이 그것을 부르는 것은 다른 사실이다.
    */
   it("기준 언어 필드가 `baseLocaleFieldValue`로 초기화된다 — 현실 단독이 아니다", () => {
-    const src = read(SETTINGS_FORM);
+    const src = read(LOCALES_FORM);
     expect(src).toMatch(/from "@\/lib\/onboarding\/base-pending"/);
     expect(src).toMatch(/baseLocaleFieldValue\(/);
     // 옛 형태(`useState(baseLocale ?? …)`)가 남아 있으면 안 된다.
     expect(src).not.toMatch(/useState\(\s*baseLocale\s*\?\?/);
   });
 
-  it("페이지가 선언을 폼에 넘긴다 — 안 넘기면 폼이 판정할 재료가 없다", () => {
-    expect(read(SETTINGS_PAGE)).toMatch(/declaredBaseLocale=\{project\.declaredBaseLocale\}/);
-  });
-
   /** 저장 실패는 **in-block** `Alert danger`다 — 페이지 수준 거부(`?e=`)만 global이다 (DESIGN §6.6). */
   it("저장 실패가 폼 안의 danger Alert로 간다", () => {
-    const src = read(SETTINGS_FORM);
+    const src = read(LOCALES_FORM);
     expect(src).toMatch(/<Alert variant="danger"/);
     expect(src).toMatch(/isRepositorySettingsError/);
   });
@@ -147,10 +149,51 @@ describe("설정 화면 — 폼과 대기 Alert", () => {
    * `focus-ring.test.ts`가 "`ui/` 밖에 네 태그 0개"를 전면 방어선으로 든다.
    */
   it("폼이 `components/ui/` 프리미티브만 쓴다", () => {
-    const src = read(SETTINGS_FORM);
-    expect(src).toMatch(/from "@\/components\/ui\/input"/);
+    const src = read(LOCALES_FORM);
     expect(src).toMatch(/from "@\/components\/ui\/select"/);
-    expect(src).not.toMatch(/<input\b/);
     expect(src).not.toMatch(/<select\b/);
+  });
+
+  /**
+   * ⚠️ **orphaned 행이 사유와 되살리는 방법을 든다.** ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고
+   * **화면이 없었다** — 번역자가 볼 수 있는 것은 열이 사라진 사실뿐이었다. 이 화면의 존재 이유가
+   * 그것이고, 배지만 달고 설명이 없으면 그 이유가 성립하지 않는다.
+   */
+  it("orphaned 행이 danger 배지와 설명을 든다", () => {
+    const src = read(LOCALES_PAGE);
+    expect(src).toMatch(/variant="danger"/);
+    expect(src).toMatch(/orphaned/);
+    expect(src).toMatch(/m\.locales\.orphaned/);
+  });
+});
+
+describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
+  it("readiness 분기 밖이다 — revalidate가 저장 결과를 씻지 않는다", () => {
+    const src = read(SETTINGS_PAGE);
+    const form = src.indexOf("<RepositoryForm");
+    const readiness = src.indexOf("readiness === ");
+    expect(form).toBeGreaterThan(-1);
+    // 폼이 readiness를 처음 읽는 자리보다 **앞**이다 — 그 분기 안에 있을 수 없다.
+    expect(form).toBeLessThan(readiness);
+  });
+
+  /**
+   * ⚠️ **셀렉트가 남아 있으면 소유자가 둘이다.** 두 화면에서 같은 컬럼을 쓸 수 있으면 한쪽의 저장이
+   * 다른 쪽의 대기를 지우는 경로가 다시 열린다 (malmoi#20의 원인 구조).
+   */
+  it("설정 폼에 로케일 셀렉트가 없다", () => {
+    const src = read(SETTINGS_FORM);
+    expect(src).not.toMatch(/from "@\/components\/ui\/select"/);
+    expect(src).not.toMatch(/<Select/);
+    expect(src).not.toMatch(/baseLocaleFieldValue\(/);
+  });
+
+  /**
+   * ⚠️ **워크플로 YAML은 그대로 둔다** (§7.7 결정 4) — 대기 중 `base-locale:`을 박는 동작도
+   * 유지한다. 그 줄이 없으면 CI가 탐지 1순위(옛 base)를 보내고 `checkFormat`이 통과시켜 사용자가
+   * 원한 변경이 **영영 일어나지 않는다.** 그래서 이 화면은 선언 컬럼을 **읽기만** 한다.
+   */
+  it("설정 화면이 선언을 워크플로 YAML에는 여전히 넘긴다", () => {
+    expect(read(SETTINGS_PAGE)).toMatch(/declaredBaseLocale/);
   });
 });
