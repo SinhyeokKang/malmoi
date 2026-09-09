@@ -544,6 +544,23 @@ _이 아래에 새 항목을 추가한다._
   - **판정 함수를 오케스트레이션 파일에 두지 않는다.** `syncBranchFor`처럼 I/O를 부르는 함수와 `isRefSafeSlug`처럼
     순수한 판정이 같은 파일에 있으면, 후자를 공유하는 순간 전자의 그래프가 함께 간다.
 
+🔁 **재발 — 2026-09-09 (6b-2 멤버 화면).** `relativeTime`이 `lib/keys/view.ts`에 있었고, 멤버 표 둘이
+**클라이언트에서** 그것을 값으로 읽으면서 그 파일의 그래프(`compareKeys` → `lib/adapters/shared` →
+`json-style`)가 번들로 따라왔다. 위 규칙("판정 함수를 오케스트레이션 파일에 두지 않는다")의 정확한
+형태이고, `lib/pull/ref-slug.ts`·`lib/keys/refocus.ts`와 같은 이유로 `lib/relative-time.ts`(잎)로 내려
+해결했다 — **재수출도 하지 않았다**(재수출하면 그래프가 그대로 따라온다).
+
+⚠️ **이번에 새로 배운 것: `client-graph.test.ts`가 이 재발을 못 봤다.** 그 검사는 **금지 목록**
+(`ts-morph`·`octokit`·`@prisma/client`·`node:fs`·`server-only`)으로 판정하는데 `lib/adapters/shared`와
+`json-style`은 그 목록에 없다 — 무겁지 않아서다. 즉 **"무거운 것이 들어왔나"는 잡고 "잎이어야 하는데
+아닌가"는 못 잡는다.** 잡으려면 잎 목록(화이트리스트)이 필요하고, 그것은 클라이언트가 읽어도 되는
+`@/lib/*`를 전수로 관리하는 일이라 이번에는 만들지 않았다. **대신 CLAUDE.md가 `view.ts`에 대해 적어 둔
+경고("view.ts는 잎이 아니다 — 클라이언트가 이 함수들을 값으로 읽지 않는다")가 유일한 방어선이었고,
+그것이 실제로 작동한 경로는 `/implement`의 자체 검증이다** — 검사가 아니라 문서를 읽는 사람이 잡았다.
+grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app --include='*.tsx')`
+→ 2026-09-09 현재 **0건**(멤버 표 둘이 `lib/relative-time.ts`로 옮겼다). 이 grep이 1건이 되면 그 파일의
+그래프를 다시 확인한다.
+
 ### 2026-09-07 — `revalidatePath`가 방금 받은 적재 결과 문구를 씻어냈다 (불변식 9가 사용자에게 안 닿았다)
 
 - **영역**: `app/(edit)/projects/[slug]/settings/page.tsx`(상태 섹션) · `components/onboarding/first-ingest-retry.tsx`
@@ -717,3 +734,19 @@ _이 아래에 새 항목을 추가한다._
   - **`text-mono`에 여러 줄일 수 있는 값을 넣을 때는 `whitespace-pre-wrap`을 같은 태그에 적는다.** grep: `grep -rn "text-mono" $(find components app -name "*.tsx" -not -path "*__tests__*")` → 각 자리가 **한 줄 값인지** 확인한다. 지금 여러 줄인 것은 어댑터 오류 셋과 워크플로 YAML 하나이고, **뒤쪽은 `<pre>`라 처음부터 옳았다**(`components/onboarding/workflow-block.tsx` — 그 주석이 "여러 줄이라 값 칩이 아니다"라고 이미 적고 있다). 그 외 0건.
   - **검사 키가 "그 값이 만들어지는 자리"에 있으면 "그 값이 렌더되는 자리"를 못 본다.** 서버가 문자열을 완성해 클라이언트로 보내는 경로가 이 리포에 여럿이다(`PullResult.warnings`·`FirstIngestResultView.errors`·`?e=`). 그런 값의 렌더 자리는 **심볼 스캔으로 안 잡히므로 이름으로 고정한다** — `multiline-detail.test.ts`의 `COMPOSED_SITES`가 그 목록이고, `entry-points.test.ts`가 인가 예외를 이름으로 고정하고 **그 이름이 실재하는지도** 보는 것과 같은 형이다. ⚠️ **목록 밖의 새 소비자는 그 검사가 못 잡는다** — 그 좁음이 목록의 대가이고 파일 주석에 적혀 있다.
   - **"한 갈래에서만 보이는 렌더 결함"은 `/tdd` 스킵 대상이 아니다.** 렌더 테스트를 세우는 대신 소스 스캔을 박는다. 판정 질문: **"이 결함을 보려면 특별한 데이터·상태가 필요한가?"** — 그렇다면 QA 한 바퀴와 눈이 원리적으로 못 보므로 스캔이 유일한 상시 방어선이다.
+
+### 2026-09-09 — 마스킹한 이메일이 두 초대를 같은 행으로 만들었고, 되돌릴 수 없는 버튼이 그 위에 있었다 ([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18))
+
+- **영역**: `components/members/pending-invitations.tsx`, `lib/auth/email.ts`(`maskEmail`), `lib/auth/invite-label.ts`(신설)
+- **증상**: `/projects/:slug/members`의 **Pending invitations** 표에서 `qa-invite-1788618586045@example.com`과 `qa-signed-out@example.com`이 **둘 다 `q***@example.com`** 으로 렌더됐다. 그 표에는 이름 열이 없어 주소가 유일한 식별자이고, 같은 날 발급된 초대면 만료 상대 시각("in 7 days")까지 같아져 **행이 바이트 단위로 동일**해진다 — `aria-label`(`Revoke invitation for q***@example.com`)까지 같아서 ego-browser의 스냅샷이 그 버튼들을 `loc=ambiguous`로 표시했다. [Revoke]는 **되돌릴 수 없다**(복구는 새 링크 재발급 + 재전달)이므로 결과는 **엉뚱한 사람의 링크를 무효화**하는 것이다.
+- **근본 원인**: `maskEmail`은 **첫 글자 + 도메인**만 남긴다. 그 함수가 만들어진 자리(초대 화면·셀 메타·멤버 표)에서는 마스킹한 값이 **보조 정보**였다 — 초대 화면은 "누구에게 보낸 링크인지" 확인용이고, 멤버 표에는 이름 열이 있다. 대기 초대 표는 **그 값이 유일한 식별자인 첫 소비자**였는데, design §3.9가 "이 표는 멤버 전원이 본다 → 마스킹한다"까지만 정하고 **"마스킹해도 행이 갈리는가"를 묻지 않았다.** 즉 규칙은 옳았고 그 규칙이 성립하려면 필요한 전제가 새 화면에서 처음 깨졌다. `lib/auth/email.ts`의 주석은 "되돌릴 수 없어 **대조에 쓰지 않는다**"까지 경고하는데, 여기서 일어난 것은 대조가 아니라 **표시 자체가 식별의 근거가 된 것**이다.
+- **그물**:
+  - 잡은 것: **`/bugshot-qa` 실물 라운드.** dev DB에 마스킹이 충돌하는 주소 쌍이 실제로 있었고(우연이 아니다 — `qa-…` 접두를 쓰는 테스트 데이터가 쌓인 결과다), 스냅샷의 `loc=ambiguous`가 첫 신호였다.
+  - 놓친 것: `pnpm test` **2,009건**, `typecheck`, `next build`, `/code-review`, `/refactor`. **전부 원리적으로 못 본다** — 단위 테스트는 `maskEmail`을 한 주소씩 먹이고(그 함수는 정확히 동작한다), 소스 스캔은 `maskEmail`이 **불렸는지**만 본다. 결함은 **한 함수의 출력이 아니라 목록 안에서의 유일성**이라 입력이 하나인 검사로는 나타나지 않는다.
+  - `/code-review`가 같은 파일에서 다른 a11y 문제(행마다 같은 `aria-label`)를 잡았는데 **그 원인이 이것이었다** — 라벨을 대상별로 바꾸자 `aria-label`이 여전히 같았고, 리뷰가 거기서 한 걸음 더 갔으면 잡혔다. "라벨에 대상을 넣었다"로 만족한 것이 놓친 지점이다.
+- **재발 방지**:
+  - **표시용 축약이 유일한 식별자인 자리를 만들지 않는다.** `maskEmail`·`truncate`·상대 시각·`slice(0, N)`은 전부 **정보를 버리는** 변환이고, 그 값으로 행을 구별해야 하는 표에서는 **목록 전체를 보는 판정**이 필요하다. `lib/auth/invite-label.ts`의 `maskedInviteLabels`가 그 형태다 — 충돌하는 행만 최소한을 더 보이고, 충돌이 없으면 출력이 `maskEmail`과 글자 하나까지 같다(흔한 경우가 가장 조용하다, DESIGN §6.1).
+  - **`maskEmail`을 고치지 않는다.** 소비자가 셋이고 지역 사본을 두면 같은 주소가 화면마다 다르게 보인다(CLAUDE.md). 문제는 그 함수가 아니라 **그 함수의 출력에 식별을 의존한 화면**이다.
+  - grep: `grep -rn 'maskEmail(\|truncate\|relativeTime(' $(find components app -name '*.tsx' -not -path '*__tests__*')` → **그 자리가 "행을 구별하는 유일한 값"인지 묻는다.** 2026-09-09 전수 결과: 멤버 표(이름 열이 있다) · 초대 화면(단일 행) · 셀 메타(키가 식별자다) · 리포명·경로 템플릿의 `truncate`(전체 값이 옆에 있거나 유일하다) — 대기 초대 하나만 해당했고 고쳤다.
+  - **되돌릴 수 없는 액션은 그 행을 특정할 수 있어야 한다.** [Remove]는 `Dialog`로 대상 이름을 다시 보이는데 [Revoke]에는 확인 단계가 없다 — 확인을 붙이는 것은 답이 아니었다(같은 마스킹 값이 다이얼로그에 다시 나올 뿐이다). **식별을 먼저 고치고 확인은 안 붙였다**는 판정을 남긴다.
+  - ⚠️ **같은 라운드의 부산물 하나**: `pnpm dev`가 `next-env.d.ts`를 `.next/dev/types/…`로 다시 쓰고 그 값이 커밋에 딸려갔다(`pnpm build`가 되돌린다). `/bugshot-qa`는 매 라운드 dev 서버를 띄우므로 **그 스킬 뒤에는 `git status`를 본다** — 커밋되는 유일한 생성물이라 gitignore로 막을 수 없다.
