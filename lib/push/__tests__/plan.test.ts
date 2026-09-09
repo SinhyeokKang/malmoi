@@ -35,14 +35,14 @@ describe("sourceHash", () => {
 
 describe("planPush — 신규 키", () => {
   it("DB에 없는 키는 insert 대상이다", () => {
-    const p = planPush([], [incoming("a_one", "One")]);
+    const p = planPush([], [incoming("a_one", "One")], { baseChanged: false });
     expect(p.toInsert.map((k) => k.key)).toEqual(["a_one"]);
     expect(p.toUpdate).toEqual([]);
     expect(p.toOrphan).toEqual([]);
   });
 
   it("insert 키에 sourceHash·namespace가 채워진다", () => {
-    const p = planPush([], [incoming("popup_title", "Start")]);
+    const p = planPush([], [incoming("popup_title", "Start")], { baseChanged: false });
     expect(p.toInsert[0]).toMatchObject({
       key: "popup_title",
       sourceText: "Start",
@@ -52,7 +52,7 @@ describe("planPush — 신규 키", () => {
   });
 
   it("신규 키는 stale이 아니다 — 번역이 애초에 없다", () => {
-    const p = planPush([], [incoming("a_one", "One")]);
+    const p = planPush([], [incoming("a_one", "One")], { baseChanged: false });
     expect(p.staleKeyIds).toEqual([]);
   });
 });
@@ -62,7 +62,7 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One")],
-    );
+    , { baseChanged: false });
     expect(p.toUpdate.map((k) => k.key)).toEqual(["a_one"]);
     expect(p.staleKeyIds).toEqual([]);
   });
@@ -71,7 +71,7 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One changed")],
-    );
+    , { baseChanged: false });
     expect(p.staleKeyIds).toEqual(["id-a_one"]);
   });
 
@@ -79,7 +79,7 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One", { description: "새 설명" })],
-    );
+    , { baseChanged: false });
     expect(p.staleKeyIds).toEqual([]);
     expect(p.toUpdate[0]?.description).toBe("새 설명");
   });
@@ -87,18 +87,18 @@ describe("planPush — 기존 키", () => {
 
 describe("planPush — orphaned", () => {
   it("페이로드에 없는 기존 키는 orphan 대상이다", () => {
-    const p = planPush([existing({ key: "gone" }), existing({ key: "alive" })], [incoming("alive", "A")]);
+    const p = planPush([existing({ key: "gone" }), existing({ key: "alive" })], [incoming("alive", "A")], { baseChanged: false });
     expect(p.toOrphan).toEqual(["id-gone"]);
   });
 
   it("**삭제 목록은 존재하지 않는다** — orphaned로만 표시한다", () => {
-    const p = planPush([existing({ key: "gone" })], []);
+    const p = planPush([existing({ key: "gone" })], [], { baseChanged: false });
     expect(p).not.toHaveProperty("toDelete");
     expect(p.toOrphan).toEqual(["id-gone"]);
   });
 
   it("이미 orphaned인 키는 다시 orphan하지 않는다 (무의미한 UPDATE 방지)", () => {
-    const p = planPush([existing({ key: "gone", orphaned: true })], []);
+    const p = planPush([existing({ key: "gone", orphaned: true })], [], { baseChanged: false });
     expect(p.toOrphan).toEqual([]);
   });
 
@@ -106,13 +106,13 @@ describe("planPush — orphaned", () => {
     const p = planPush(
       [existing({ key: "back", orphaned: true, sourceHash: sourceHash("B") })],
       [incoming("back", "B")],
-    );
+    , { baseChanged: false });
     expect(p.toUnorphan).toEqual(["id-back"]);
     expect(p.toOrphan).toEqual([]);
   });
 
   it("orphaned가 아닌 채로 다시 온 키는 unorphan 목록에 없다", () => {
-    const p = planPush([existing({ key: "k", sourceHash: sourceHash("V") })], [incoming("k", "V")]);
+    const p = planPush([existing({ key: "k", sourceHash: sourceHash("V") })], [incoming("k", "V")], { baseChanged: false });
     expect(p.toUnorphan).toEqual([]);
   });
 });
@@ -121,8 +121,8 @@ describe("planPush — 결정성", () => {
   it("입력 순서를 뒤섞어도 계획이 같다", () => {
     const ex = [existing({ key: "b" }), existing({ key: "a" })];
     const inc = [incoming("a", "A"), incoming("b", "B"), incoming("c", "C")];
-    const forward = planPush(ex, inc);
-    const reversed = planPush([...ex].reverse(), [...inc].reverse());
+    const forward = planPush(ex, inc, { baseChanged: false });
+    const reversed = planPush([...ex].reverse(), [...inc].reverse(), { baseChanged: false });
     expect(JSON.stringify(reversed)).toBe(JSON.stringify(forward));
   });
 
@@ -130,7 +130,7 @@ describe("planPush — 결정성", () => {
     const p = planPush(
       [existing({ key: "z_gone" }), existing({ key: "a_gone" })],
       [incoming("m_new", "M"), incoming("b_new", "B")],
-    );
+    , { baseChanged: false });
     expect(p.toInsert.map((k) => k.key)).toEqual(["b_new", "m_new"]);
     expect(p.toOrphan).toEqual(["id-a_gone", "id-z_gone"]);
   });
@@ -138,7 +138,7 @@ describe("planPush — 결정성", () => {
 
 describe("planPush — 중복 키", () => {
   it("페이로드에 같은 키가 두 번 오면 뒤가 이긴다 (마지막 승)", () => {
-    const p = planPush([], [incoming("k", "First"), incoming("k", "Second")]);
+    const p = planPush([], [incoming("k", "First"), incoming("k", "Second")], { baseChanged: false });
     expect(p.toInsert).toHaveLength(1);
     expect(p.toInsert[0]?.sourceText).toBe("Second");
   });
@@ -217,5 +217,46 @@ describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키�
     for (const line of [0, -1, 1.5]) {
       expect(PushPayload.safeParse({ ...valid, refs: [{ key: "a.b", path: "p", line }] }).success).toBe(false);
     }
+  });
+});
+
+/**
+ * **base가 바뀌는 push에서는 `needsReview` 전파를 건너뛴다** (design §3.13, 6b-3).
+ *
+ * ⚠️ **`sourceHash`가 바뀐 원인이 평소와 다르다.** 평소의 전파는 "개발자가 원문 문장을 고쳤다 →
+ * 번역이 낡았을 수 있다"인데, base 변경은 **원문의 언어가 교체된 것**이고 의미는 그대로다 —
+ * en→ko면 `sourceText`가 "Save"에서 "저장"이 되지만 fr의 "Enregistrer"는 여전히 정확하고, 옛
+ * base(en)의 값도 마찬가지다. 전파하면 **살아남는 키 전부**에 검토 표시가 붙어 903키 프로젝트에서
+ * `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다).
+ */
+describe("planPush — base 변경 push의 stale 전파", () => {
+  const before = [existing({ key: "a_one" }), existing({ key: "a_two" })];
+  // 원문이 전부 바뀐 push (base 언어가 교체됐다).
+  const after = [incoming("a_one", "하나"), incoming("a_two", "둘")];
+
+  it("base가 그대로면 원문이 바뀐 키가 stale이다 — 옛 동작", () => {
+    const p = planPush(before, after, { baseChanged: false });
+    expect(p.staleKeyIds.slice().sort()).toEqual(["id-a_one", "id-a_two"]);
+  });
+
+  it("base가 바뀌면 staleKeyIds가 빈 배열이다", () => {
+    const p = planPush(before, after, { baseChanged: true });
+    expect(p.staleKeyIds).toEqual([]);
+  });
+
+  /** 전파만 끈다 — 키 자체의 갱신·orphan·unorphan은 그대로 일어나야 한다. */
+  it("전파만 끈다 — toUpdate·toOrphan은 영향받지 않는다", () => {
+    const withGone = [...before, existing({ key: "gone" })];
+    const changed = planPush(withGone, after, { baseChanged: true });
+    const same = planPush(withGone, after, { baseChanged: false });
+    expect(changed.toUpdate.map((k) => k.key)).toEqual(same.toUpdate.map((k) => k.key));
+    expect(changed.toOrphan).toEqual(same.toOrphan);
+    expect(changed.toInsert).toEqual(same.toInsert);
+  });
+
+  it("base가 바뀌어도 새 키는 그대로 들어온다", () => {
+    const p = planPush(before, [...after, incoming("b_new", "셋")], { baseChanged: true });
+    expect(p.toInsert.map((k) => k.key)).toEqual(["b_new"]);
+    expect(p.staleKeyIds).toEqual([]);
   });
 });
