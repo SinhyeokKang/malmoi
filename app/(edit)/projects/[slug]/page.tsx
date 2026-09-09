@@ -115,7 +115,10 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
           */
           <p className="text-muted-foreground text-xs">
             {m.home.progress.empty}{" "}
-            <Link href={routes.locales(slug)} className="text-blue-600 underline">
+            <Link
+              href={routes.locales(slug)}
+              className="focus-visible:ring-ring text-foreground underline-offset-2 hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+            >
               {m.home.progress.emptyLink}
             </Link>
           </p>
