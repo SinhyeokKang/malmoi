@@ -5,7 +5,7 @@ import { ADAPTERS } from "../index";
 import { observeJsonStyle } from "../json-style";
 import { orderedEntries } from "../shared";
 import type { Adapter, DetectedFormat, LocaleEntry, WriteInput } from "../types";
-import { CONTRACT_KEYS, formatFor, writerContractViolations } from "./contract";
+import { CONTRACT_KEYS, formatFor, prototypeKeyViolations, writerContractViolations } from "./contract";
 
 /**
  * writer 계약을 **`ADAPTERS` 순회로** 검사한다. 어댑터를 추가하면 이 블록이 자동으로 늘어난다 —
@@ -183,4 +183,53 @@ describe("writer 출력의 blobSha가 git hash-object와 일치한다 (§1·§2 
       expect(blobSha(out!)).toBe(fromGit);
     });
   }
+});
+
+/**
+ * **프로토타입 키 — `ADAPTERS` 전수** (sec-audit 발견 1·17).
+ *
+ * 리포의 로케일 파일 키는 남이 정한다. 그중 `__proto__`가 오면 `lib/adapters`의 **대입** 자리들이
+ * 조용히 값을 잃거나(발견 17) 중첩 복원에서 `Object.prototype`에 쓴다(발견 1 — 프로세스 전역,
+ * 테넌트 경계를 넘는다).
+ *
+ * ⚠️ **조회 자리는 2026-09-08에 이미 닫혔다**(`Object.hasOwn` 다섯 곳 — POSTMORTEM). 그 후속이
+ * 대입 자리를 안 봐서 같은 뿌리가 남았다. 규칙에 주인을 두는 것이 이 블록이다 — 어댑터가 늘면
+ * 여기도 자동으로 는다.
+ */
+describe("프로토타입 키 계약 — ADAPTERS 전수 (sec-audit 1·17)", () => {
+  for (const adapter of ADAPTERS) {
+    it(`${adapter.name} (${adapter.writeStrategy})`, () => {
+      expect(prototypeKeyViolations(adapter)).toEqual([]);
+    });
+  }
+
+  it("검사기가 오염을 실제로 잡는다 (무조건 green이 아니다)", () => {
+    const polluting: Adapter = {
+      name: "json-catalog",
+      layout: "per-locale",
+      writeStrategy: "regenerate",
+      detect: () => undefined,
+      detectCandidates: () => [],
+      read: () => ({ locales: [], errors: [], nested: false }),
+      write: (_f: DetectedFormat, input: WriteInput): string | null => {
+        const root: Record<string, unknown> = {};
+        for (const e of input.entries) {
+          const segments = e.key.split(".");
+          let node = root;
+          for (const seg of segments.slice(0, -1)) {
+            const next = node[seg];
+            const child = next !== null && typeof next === "object" ? (next as Record<string, unknown>) : {};
+            node[seg] = child;
+            node = child;
+          }
+          node[segments[segments.length - 1]!] = e.message;
+        }
+        return `${JSON.stringify(root, null, 2)}\n`;
+      },
+    };
+    const found = prototypeKeyViolations(polluting).join("\n");
+    expect(found).toMatch(/Object\.prototype에 "polluted"이 생겼다/);
+    // 검사기가 오염을 되돌렸는지 — 안 되돌리면 뒤의 테스트가 오염 위에서 돈다
+    expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain("polluted");
+  });
 });

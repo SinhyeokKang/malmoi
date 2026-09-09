@@ -69,6 +69,19 @@ describe("templatePaths — 템플릿이 가리키는 파일 경로", () => {
     expect(templatePaths("nope" as never, "src/locales/{locale}.json", TREE)).toEqual([]);
   });
 
+  /**
+   * **글롭 예산은 두 갈래 다 지난다** (sec-audit 발견 11). `createProject`가 `planConfirmedFormat`
+   * 검증 **전에** 원값으로 이 함수를 부르므로, 여기서 안 막으면 온보딩이 첫 진입점이 된다.
+   *
+   * ⚠️ **per-locale 줄은 지금도 빈 배열이라 red가 아니다.** `{locale}` 인접 반복은 greedy 매치의
+   * 캡처가 서로 달라 `captures.every(...)`에서 어차피 걸러진다 — 비용만 지수로 든다. 그래도 적는
+   * 것은 상한을 뗐을 때 **비용이 조용히 돌아오는 것**을 이 줄이 막기 때문이다.
+   */
+  it("예산을 넘는 템플릿은 빈 배열이다 — 두 갈래 모두", () => {
+    expect(templatePaths("ts-dict", "src/i18n/namespaces/*****.ts", TREE)).toEqual([]);
+    expect(templatePaths("json-catalog", "l/{locale}{locale}{locale}{locale}{locale}.json", TREE)).toEqual([]);
+  });
+
   it("정규식 특수문자가 들어간 경로도 리터럴로 다룬다", () => {
     expect(templatePaths("json-catalog", "a+b/{locale}.json", ["a+b/en.json", "aab/en.json", "a+b/ko.json"])).toEqual([
       "a+b/en.json",

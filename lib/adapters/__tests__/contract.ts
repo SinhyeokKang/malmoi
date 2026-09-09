@@ -356,3 +356,66 @@ export function writerContractViolations(adapter: Adapter): string[] {
   }
   return bad;
 }
+
+/**
+ * **프로토타입 키 계약** (sec-audit 발견 1·17).
+ *
+ * 리포의 로케일 파일은 남이 쓴다 — 키 이름이 `__proto__`·`constructor`·`prototype`일 수 있다.
+ * 어느 어댑터에 먹여도 두 가지가 참이어야 한다:
+ *
+ * 1. **`Object.prototype`에 아무것도 안 생긴다.** 오염은 프로세스 전역이라 같은 람다 인스턴스가
+ *    서비스하는 **다른 테넌트**의 pull까지 바꾼다 — 테넌트 경계를 넘는 유일한 부류다.
+ * 2. **그 키의 값이 출력에서 사라지지 않는다.** 대입 자리(`out[key] = v`)에서 `__proto__`는
+ *    setter를 호출해 own property를 만들지 않으므로 **조용히** 없어진다(에러도 경고도 없다).
+ *
+ * ⚠️ **`writeStrategy`로 갈리지 않는다** — 재생성이든 수술적이든 남의 키를 잃으면 안 된다.
+ * 갈리는 것은 `nested` 변형을 돌리는지뿐이다(수술적은 원본 구조를 따르므로 그 축이 없다).
+ *
+ * ⚠️ **센티넬을 객체 리터럴로 만들지 않는다.** `{ __proto__: "..." }`는 own property를 만들지 않아
+ * 조회가 `Object.prototype`을 돌려준다 — 그러면 이 검사가 어댑터가 아니라 **픽스처**를 재고,
+ * 값 자리에 객체가 들어가 엉뚱한 곳에서 터진다(감사가 이 함정에 한 번 걸렸다 — findings §1.1).
+ */
+export const PROTOTYPE_KEYS = ["__proto__", "constructor", "prototype", "deep.__proto__.polluted"] as const;
+
+export function prototypeKeyViolations(adapter: Adapter): string[] {
+  const bad: string[] = [];
+  const keys = ["a", ...PROTOTYPE_KEYS];
+  const sentinel = new Map(keys.map((k, i) => [k, `PROTO_SENTINEL_${i}`]));
+  const entries: LocaleEntry[] = keys.map((k, i) => ({ key: k, message: sentinel.get(k)!, order: i }));
+  const base = formatFor(adapter, keys);
+  const locale = adapter.layout === "multi-locale" ? "ko" : "en";
+  // 재생성은 flat·nested 두 갈래를 다 돈다 — 오염은 nested 복원(`setDeep`)에서, 키 소실은 flat
+  // 대입에서 난다. 한 갈래만 돌리면 나머지가 조용히 남는다.
+  const variants: Array<[string, DetectedFormat]> =
+    adapter.writeStrategy === "regenerate"
+      ? [
+          ["flat", base],
+          ["nested", { ...base, nested: true }],
+        ]
+      : [["원본", base]];
+
+  for (const [label, fmt] of variants) {
+    const before = new Set(Object.getOwnPropertyNames(Object.prototype));
+    let out: string | null = null;
+    try {
+      out = adapter.write(fmt, { locale, entries });
+    } catch (error) {
+      bad.push(`${label}: write가 던졌다 — ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      // 오염을 남기면 **뒤의 모든 테스트가 그 위에서 돈다** — 되돌리고 위반으로 적는다.
+      for (const name of Object.getOwnPropertyNames(Object.prototype)) {
+        if (before.has(name)) continue;
+        bad.push(`${label}: Object.prototype에 "${name}"이 생겼다 — 프로세스 전역 오염이다`);
+        delete (Object.prototype as Record<string, unknown>)[name];
+      }
+    }
+    if (out === null) {
+      bad.push(`${label}: 낼 항목이 있는데 null을 냈다`);
+      continue;
+    }
+    for (const key of keys) {
+      if (!out.includes(sentinel.get(key)!)) bad.push(`${label}: "${key}"의 값이 출력에서 사라졌다`);
+    }
+  }
+  return bad;
+}
