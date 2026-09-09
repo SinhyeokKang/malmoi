@@ -24,8 +24,15 @@ export const en = {
     appName: "Malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
+      /** ⚠️ **2인칭으로 통일한다** (SAAS §7.7) — 시안의 `My account`는 구역과 인칭이 섞였다. */
+      yourWork: "Your work",
+      account: "Your account",
       allProjects: "All projects",
       newProject: "New project",
+      /** 프로젝트 구역의 항목 셋. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      translations: "Translations",
+      members: "Members",
+      settings: "Settings",
       signOut: "Sign out",
       collapse: "Collapse sidebar",
       expand: "Expand sidebar",
@@ -50,7 +57,6 @@ export const en = {
 
   projects: {
     title: "Your projects",
-    githubAccount: { title: "GitHub account", connected: "Connected." },
     /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {

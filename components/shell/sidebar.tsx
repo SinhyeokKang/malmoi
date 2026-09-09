@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, LayoutGrid, LogOut, Menu, PanelLeft, Plus, X } from "lucide-react";
+import { ChevronsUpDown, LogOut, Menu, PanelLeft, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -16,7 +16,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import { activeProject, projectSections, type NavProject } from "@/lib/shell/nav";
+import { activeProject, navZones, type NavProject, type NavZone } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
 const COLLAPSED_KEY = "malmoi:sidebar-collapsed";
@@ -60,6 +60,7 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
   }
 
   const project = activeProject(pathname, memberships);
+  const zones = navZones(project);
   const rail = collapsed;
 
   return (
@@ -107,68 +108,59 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
           </Button>
         </div>
 
-        {project !== null && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                aria-label={m.common.nav.switchProject}
-                // ⚠️ `ring-offset-1`은 **muted 표면 위**라서 붙는다 — `--ring == --border`라 사이드바에서
-                // 링이 약하다 (DESIGN §7).
-                className="hover:bg-background/60 mx-2 my-1 h-auto justify-start gap-2 px-2 py-2 focus-visible:ring-offset-1"
-              >
-                <Avatar name={project.name} shape="square" size={24} />
-                {!rail && (
-                  <>
-                    <span className="truncate font-medium">{project.name}</span>
-                    <ChevronsUpDown className="text-muted-foreground ml-auto size-4" aria-hidden />
-                  </>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {memberships.map((membership) => (
-                <DropdownMenuItem key={membership.slug} asChild selected={membership.slug === project.slug}>
-                  <Link href={routes.translations(membership.slug)}>{membership.name}</Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
-        {project !== null && (
-          <nav className="mt-1">
-            {projectSections(project.role).map((section) => (
+        {/*
+          **구역 둘** (SAAS §7.7). ⚠️ 헤더가 서로 다르다: 사용자 축은 글자 라벨이고, 프로젝트 축은
+          **스위처가 곧 헤더**다 — 이름을 라벨로도 보이고 스위처로도 보이면 같은 값이 두 번 뜬다.
+        */}
+        {zones.map((zone, index) => (
+          <nav key={zone.key} className={index === 0 ? undefined : "border-border mt-3 border-t pt-1"}>
+            {zone.key === "project" && project !== null ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    aria-label={m.common.nav.switchProject}
+                    // ⚠️ `ring-offset-1`은 **muted 표면 위**라서 붙는다 — `--ring == --border`라 사이드바에서
+                    // 링이 약하다 (DESIGN §7).
+                    className="hover:bg-background/60 mx-2 my-1 h-auto justify-start gap-2 px-2 py-2 focus-visible:ring-offset-1"
+                  >
+                    <Avatar name={zone.label} shape="square" size={24} />
+                    {!rail && (
+                      <>
+                        <span className="truncate font-medium">{zone.label}</span>
+                        <ChevronsUpDown className="text-muted-foreground ml-auto size-4" aria-hidden />
+                      </>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {memberships.map((membership) => (
+                    <DropdownMenuItem key={membership.slug} asChild selected={membership.slug === project.slug}>
+                      <Link href={routes.translations(membership.slug)}>{membership.name}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              // 접힌 레일에서는 글자가 안 보이므로 구역 라벨도 숨긴다 — 아이콘이 유일한 라벨이다.
+              !rail && (
+                <p className="text-muted-foreground px-4 pt-2 pb-1 text-xs font-medium tracking-wide uppercase">
+                  {zone.label}
+                </p>
+              )
+            )}
+            {zone.items.map((item) => (
               <Item
-                key={section.key}
-                href={section.href(project.slug)}
-                label={section.label}
-                icon={section.icon}
-                active={pathname.startsWith(section.href(project.slug))}
+                key={item.key}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={isActive(pathname, item, zone)}
                 rail={rail}
               />
             ))}
           </nav>
-        )}
-
-        <div className="border-border mx-4 my-3 border-t" />
-
-        <nav>
-          <Item
-            href={routes.projects()}
-            label={m.common.nav.allProjects}
-            icon={LayoutGrid}
-            active={pathname === routes.projects()}
-            rail={rail}
-          />
-          <Item
-            href={routes.newProject()}
-            label={m.common.nav.newProject}
-            icon={Plus}
-            active={pathname === routes.newProject()}
-            rail={rail}
-          />
-        </nav>
+        ))}
 
         <div className="mt-auto pb-2">
           <form action={signOut}>
@@ -185,6 +177,17 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
       </aside>
     </>
   );
+}
+
+/**
+ * ⚠️ **접두 일치는 프로젝트 축에서만 옳다.** `/projects`가 `/projects/new`의 접두라, 사용자 축에서
+ * 접두로 판정하면 새 프로젝트 화면에서 [All projects]도 함께 선택돼 보인다 — 그 축은 정확히 일치할
+ * 때만 활성이다. 프로젝트 축은 하위 경로(`?ns=`·`/settings`)가 있어 접두여야 한다.
+ */
+function isActive(pathname: string, item: { href: string }, zone: NavZone): boolean {
+  // 쿼리는 pathname에 없지만 `routes.*`가 붙일 수 있어 잘라낸다.
+  const path = item.href.split("?")[0] ?? item.href;
+  return zone.key === "project" ? pathname.startsWith(path) : pathname === path;
 }
 
 /**

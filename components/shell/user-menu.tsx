@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { CircleUser, LogOut } from "lucide-react";
+import Link from "next/link";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { m } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 
 /**
- * top bar 우측. **6a는 로그아웃 하나다** — Account 항목은 6b가 `/account`를 만들지 말지 정한 뒤에 붙는다.
+ * top bar 우측. **항목 둘이다** — 계정과 로그아웃. 앞의 것은 6b-4가 `/account`를 만들면서 붙었다
+ * (6a 시점에는 갈 곳이 없어 로그아웃 하나였다).
  *
  * ⚠️ **아바타 이미지를 싣지 않는다** — `SessionRead`가 `name`·`email`만 든다. GitHub 아바타를 넣으려면
  * `publicSession`이 필드를 하나 더 실어야 하고, 그건 모든 요청의 세션 페이로드를 넓히는 결정이다.
@@ -46,6 +49,12 @@ export function UserMenu({
           {email !== null && <span className="block">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href={routes.account()} className="flex w-full items-center gap-2 px-2">
+            <CircleUser className="size-4" aria-hidden />
+            {m.common.nav.account}
+          </Link>
+        </DropdownMenuItem>
         {/* 폼이 항목을 감싼다 — Radix Item은 기본이 `div`라 그 안에 submit을 두어야 한다. */}
         <form action={signOut}>
           <DropdownMenuItem asChild>
