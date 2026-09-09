@@ -508,8 +508,96 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 - ~~옛 base 로케일의 번역만 전파에서 제외하는 것~~ → **T3이 전파 자체를 건너뛰는 쪽으로 바뀌었다** (2026-09-09 판정). 옛 base만 빼는 것은 절반만 고치는 것이었다 — `sourceHash`가 바뀐 원인이 "원문 수정"이 아니라 "원문 언어 교체"라 **다른 로케일의 번역도 여전히 정확하다.**
 - **base 변경 뒤 자동 재적재.** 재적재 경로는 CI 하나뿐이고(`runFirstIngest`는 ready에서 `not-awaiting`) 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
 
-## 6b-4. `/account` — 만들지 말지부터
+## 6b-4. `/account` — 사용자 축 (IA 확정: SAAS §7.7, 2026-09-09)
 
-- SAAS §8 6단계 3번이 이미 `[x]`이고 착지처가 `/projects`다(계정 섹션이 거기 있다). 라우트 하나에 matcher·`StateDest` 갈래(배포 직후 10분 옛 쿠키 창)·`entry-points`·사이드바 항목이 따라온다.
-  **추천: 만들지 않는다** — 사용자 메뉴에 "GitHub account" 항목으로 `/projects#github`. 만들면 `landing`은 `app/api/github/callback/route.ts:177`의 지역 함수(request 인자)라 잎으로
-  내리는 작업이 신설로 붙고, `startGithubConnectForUser`는 **무인자**라 `dest` 인자 추가는 시그니처 변경(`onboarding.test.ts` 호출부 갱신)이다
+> **판정이 끝났다: 만든다.** 옛 추천은 "만들지 않는다"였고 근거가 "지금 계정 컨트롤이 하나뿐"이었는데,
+> **그 하나를 목록 화면(`/projects`)에 얹게 만든 원인이 자리가 없다는 것**이라 방향을 뒤집었다.
+> IA 정본은 **SAAS §7.7**이고 이 절은 그 배송 순서다.
+
+### T1. 라우트와 차단
+
+- [ ] `lib/routes.ts` — `account()` · `project(slug)`(Home). ⚠️ **잎을 유지한다**(import 0)
+      검증: `app/__tests__/entry-points.test.ts`가 생성기↔실재 라우트를 대조한다 — 새 경로가 파일 없이 등재되면 red
+- [ ] `middleware.ts` matcher — `/account` 추가. ⚠️ **지금 matcher는 `/projects/:path*` 하나라 `/account`가 1차 차단 밖이다**
+      검증: `curl -si https://…/account`가 로그인으로 302(비로그인) · `entry-points`의 보호 라우트 검사
+- [ ] `app/(edit)/account/page.tsx` — **`requireUser`만**(인가할 프로젝트가 없다). 프로필(이름·이메일 **읽기 전용** — provider가 소유하고 `planEmailRefresh`가 매 로그인에 갱신한다) + GitHub 연결·해제·재인가 + 로그아웃
+      검증: `entry-points`의 진입점 스캔 통과 · `?e=`를 `isConnectError`로 거른다(주소창 값)
+
+—— `feat(account): a route for the user axis`
+
+### T2. 연결 왕복의 착지
+
+- [ ] `lib/github-connect/state.ts` — `StateDest`에 `{ kind: "account" }` + `parseDest` 분기
+      검증: `state.test.ts` — 새 갈래 왕복 · **옛 `{kind:"new"}`·`{kind:"settings"}` 쿠키가 그대로 파싱된다**(배포 직후 10분 창은 이 방향이 안전하다)
+- [ ] `app/api/github/callback/route.ts` — `landing`의 삼항에 갈래 추가. `?e=` 읽는 자리가 셋 → **넷**
+      검증: `api/__tests__/github-callback.test.ts` — `account` dest가 `/account`로, 오류면 `/account?e=…`
+- [ ] `app/(edit)/projects/actions.ts` — `startGithubConnectForUser(dest)`. ⚠️ **무인자라 시그니처 변경**이고 `onboarding.test.ts` 호출부가 함께 움직인다
+      검증: `onboarding.test.ts` 갱신 · 서명된 `dest`가 쿠키 안에 있다(쿼리로 실으면 open redirect 판정이 필요해진다 — design §3.1)
+
+—— `feat(account): land the connect round trip back on /account`
+
+### T3. 셸 재편 + 계정 카드 이동
+
+- [ ] `lib/shell/nav.ts` — **2구역**(`Your work` / `<project>`). `projectSections`가 셋 → **여섯**(Home·Translations·Locales·Members·Logs·Settings). ⚠️ **`Logs`는 라우트가 7단계다** — 항목을 미리 넣지 않는다
+      검증: `nav.test.ts` — 구역 둘 · EDITOR에게 `Settings`만 빠진다(나머지는 전원 — 6b-2 관용구)
+- [ ] `components/shell/user-menu.tsx` — `Your account` 항목. ⚠️ 그 파일 주석이 이 자리를 예약해 뒀다("6b가 `/account`를 만들지 말지 정한 뒤에 붙는다") — **주석도 함께 고친다**
+- [ ] `app/(edit)/projects/page.tsx` — 계정 카드 **제거**(이동, 복제 아니다). 6b-2가 초대 폼을 지운 근거와 같다
+      검증: 소스 스캔 — `/projects`에 `DisconnectGithubButton`이 0건 · `/account`에 연결·해제가 둘 다 있다
+- [ ] 문구는 **2인칭 통일** — `Your work` / `Your account`(시안의 `My account`는 인칭이 섞였다)
+
+—— `feat(shell): two sidebar zones, and the account card moves`
+
+---
+
+## 6b-5. `/projects/:slug/locales` — 로케일 화면
+
+> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨진다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
+> `settings`의 Repository 카드에 넣은 것이고, 옮기는 이유는 **지금 로케일이 번역 표의 열로만 존재해서**다 —
+> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없다(ARCHITECTURE §5.5.16이
+> 그 상태를 정의해 놓고 화면이 없었다).
+
+- [ ] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트는 **`translation:write`**(EDITOR도 목록을 본다), 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드 · base 배지 · 번역 진행률 · **orphaned면 사유와 되살리는 방법**(그 파일이 리포에서 사라졌다 → 되살리면 번역이 그대로 돌아온다)
+      검증: `entry-points` 통과 · 소스 스캔 — orphaned 행이 `Badge danger`와 설명을 든다
+- [ ] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 이 화면으로. `settings`엔 base branch만 남는다. ⚠️ **`updateRepositorySettings`가 두 필드를 한 폼으로 받는 것이 6b-3의 전제였다** — 화면이 갈리면 Action도 갈라야 한다(`updateBaseLocale` 신설 또는 인자 optional화. **추천: 갈라라** — optional은 "무엇을 안 보냈나"를 서버가 추측하게 만든다)
+      검증: `repository-settings.test.ts` 이관·확장 — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)과 `Locale.isBase`를 건드리지 않는다**
+- [ ] **대기 배너 이관** — `basePending` Alert가 이 화면으로. ⚠️ **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다). 번역 화면의 배너는 **그대로 둔다**(편집자가 읽는 자리다)
+      검증: `base-locale-screens.test.ts` 갱신 — `basePending` 소비자가 여전히 **각자 그 함수를 부른다**(조건이 두 벌이 되지 않는다) · 손으로 쓴 비교가 0건
+- [ ] `settings`의 워크플로 YAML은 **그대로 둔다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4)
+
+—— `feat(locales): a screen that owns the locale list and the base locale`
+
+---
+
+## 6b-6. `/projects/:slug` Home — 착지점
+
+> **프로젝트 진입의 착지점이다** (사용자 결정 2026-09-09). `/projects` 목록의 링크가
+> `routes.translations(slug)` → `routes.project(slug)`로 바뀐다.
+
+⚠️ **이 화면의 가장 큰 위험은 "복제"다** (SAAS §7.7 결정 2). 번역 화면 툴바가 이미 키 수·미배포 건수·
+마지막 전송·PR 링크를 들고, 설정 화면이 리포·연결·적재 상태를 든다. 세 번째 사본을 만들면 그중 하나가
+낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
+
+⚠️ **착지 클릭 하나를 갚아야 한다** (결정 1이 받아들인 대가). 번역자의 일은 `translations` 하나이므로,
+개요만 있고 링크가 없으면 그 클릭이 순손실이다 — **번역으로 가는 경로가 이 화면의 주된 동작이어야 한다.**
+
+- [ ] 순수 판정 — 로케일별 진행률(`lib/keys/view.ts`의 집계를 재사용한다, 새로 만들지 않는다)
+      검증: 단위 테스트 — 빈 프로젝트 · orphaned 로케일 제외 · base 로케일의 진행률 정의(항상 100%가 아니다 — 빈 값이 있을 수 있다)
+- [ ] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. **로케일별 진행률**(각 행이 `routes.translations(slug, { focus })` 링크) + **최근 활동**(각 항목이 `?ns=`·`?focus=` 링크)
+      검증: 소스 스캔 — 진행률·활동 항목이 **링크다**(그것이 착지 클릭을 갚는 유일한 수단) · 번역 화면 툴바의 지표를 재계산하지 않는다
+- [ ] 최근 활동은 **지금 재료로만** — `Translation.updatedAt`+`updatedBy`(`loadActors`·`actorLabel` 재사용) · `Project.lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. ⚠️ **`logs`는 7단계 `SyncRun`의 소비자다**(SAAS §6) — 그때 이 블록이 그 테이블로 갈아탄다
+      검증: 쿼리가 `projectId`로 좁혀진다 · 렌더되는 행만 `loadActors`를 지난다(903키 리포에서 전 행을 조회하지 않는다)
+- [ ] `/projects` 목록의 링크를 `routes.project(slug)`로
+      검증: `entry-points`의 죽은 라우트 링크 검사
+- [ ] ⚠️ **사이드바 카운트를 달지 않는다** (결정 5) — 셸 레이아웃이 매 렌더에 세게 되고 **키 수와 무관한 1.9초 고정비**가 이미 실측돼 있다(CLAUDE.md 가상화 절). 그 고정비를 먼저 낮춘 뒤 다시 본다
+
+—— `feat(home): a project overview that leads into the work`
+
+---
+
+## 6b 밖으로 나간 것
+
+| 무엇 | 어디로 | 왜 |
+|---|---|---|
+| `/projects/:slug/logs` | **7단계** (`features/sync-runs/`) | 데이터 원천이 그 단계의 `SyncRun`이다 (SAAS §6). 그 전에 만들면 "최근 편집 목록"까지다 |
+| MCP 토큰 | **`settings` 섹션** (판정: SAAS §4.3 ④) | 라우트를 쓸 만한 지면이 없다. push 토큰이 이미 그 형태다. ⚠️ **읽기·쓰기를 둘 다 여는 토큰**이라 범위·폐기 판정이 push 토큰의 재사용으로 끝나지 않는다 |
+| OAuth 계정 병합 | **2차** (판정: SAAS §4.3 ③) | UI가 아니라 데이터 이관 + 인증 경계다. 지금 `OAuthAccountNotLinked` 거부는 **의도된 것이고 문구도 정확하다** |
