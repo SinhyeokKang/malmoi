@@ -522,7 +522,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  생성
-/account                       ⬜ 프로필 · OAuth 연동/해제        ← 6b-4
+/account                       ✅ 프로필 · OAuth 연동/해제        ← 6b-4 (2026-09-09, dev)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ⬜ Home — 개요 (착지점)            ← 6b-6
@@ -870,8 +870,9 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
 (PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
 + survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
-`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — dev)까지 올랐다. **남은 것은 `6b-4` 하나**이고 그것은
-배송이 아니라 "`/account`를 만들지 말지"의 판정이다.
+`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — dev) · **6b-4**(`/account` — dev)까지 올랐다.
+**남은 것은 `6b-5`(로케일 화면)와 `6b-6`(Home)이다** — 라우트 여덟 중 `logs` 하나가 7단계로 나갔고
+(§7.7), 그 둘이 §7.7의 ⬜를 비운다.
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -922,18 +923,25 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 - [x] ~~**6b-4 `/account` — 만들지 말지의 판정**~~ → **판정이 끝났다: 만든다** (2026-09-09 IA 확정 §7.7).
       계획서의 옛 추천은 "만들지 않는다"였고 근거가 "지금 계정 컨트롤이 하나뿐"이었는데, **그 하나를
       목록 화면(`/projects`)에 얹게 만든 원인이 자리가 없다는 것**이라 방향을 뒤집었다.
-- [ ] **6b-4 `/account` 배송** — 프로필(읽기 전용 — provider가 소유한다, `planEmailRefresh`) ·
-      GitHub 연결·해제·재인가 · 로그아웃. **`/projects`의 계정 카드를 옮긴다(복제하지 않는다)** —
-      6b-2가 초대 폼을 지운 근거와 같고, 이것이 CLAUDE.md에 적힌 빚("프로젝트 0개인 사용자가 해제에
-      도달할 길이 없다")을 제대로 닫는다(유저 메뉴에서 항상 닿는다)
-  - ⚠️ **`StateDest`에 `{ kind: "account" }` 갈래가 필요하다** — 연결 후 `/account`로 돌아와야 한다.
-      `startGithubConnectForUser()`가 **무인자**라 `dest` 인자 추가는 시그니처 변경이고
-      `onboarding.test.ts` 호출부가 함께 움직인다. `?e=` 읽는 자리가 셋 → 넷
-  - ⚠️ **`middleware.ts`의 matcher가 `/projects/:path*` 하나다** — `/account`가 1차 차단 **밖**이다.
-      한 줄 추가하고 `entry-points`가 그것을 센다. 배포 직후 10분 창은 **안전한 방향**이다(새 `kind`를
-      더하므로 배포 전 서명된 옛 쿠키는 그대로 파싱된다)
-  - 사이드바를 **2구역으로** 재편한다(`Your work` / `<project>`) + 유저 메뉴에 `Your account` 항목
-      (`user-menu.tsx`의 주석이 그 자리를 예약해 뒀다)
+- [x] **6b-4 `/account` 배송** ✅ **dev에 올랐다** (2026-09-09 — 커밋 여섯: `8fb0e12`·`f3d16f2`·`47d03cf`
+      + `fix` `4b9b0a6`). 프로필(읽기 전용 — provider가 소유한다, `planEmailRefresh`) · GitHub
+      연결·해제·재인가 · 로그아웃. **`/projects`의 계정 카드를 옮겼다(복제하지 않았다)** — 그것이
+      CLAUDE.md에 적힌 빚("프로젝트 0개인 사용자가 해제에 도달할 길이 없다")을 닫는다.
+  - [x] `StateDest`에 `{ kind: "account" }` — 옛 쿠키 둘은 그대로 파싱되고 `state.test.ts`가 그 방향을
+      고정한다. `startGithubConnectForUser(dest)`는 **갈래 이름만** 받는다(`"new" | "account"`, zod) —
+      `StateDest`를 통째로 받으면 클라이언트가 착지를 골라 이 자리에 open redirect 판정이 생긴다.
+      `?e=` 읽는 자리가 셋 → **넷**
+  - [x] `middleware.ts` matcher에 `/account`. **그 그물이 실제로 도는지 확인했다** — 그 한 줄을 빼면
+      `entry-points`의 "(edit) 아래 모든 페이지가 어느 패턴에든 걸린다"가 red다
+  - [x] 사이드바 **2구역**(`Your work` / `<project>`) + 유저 메뉴 `Your account`. ⚠️ **구역 둘이
+      `aria-label`을 든다** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 아예
+      렌더되지 않는다**(실물로 확인: 레일에서 `nav`의 라벨 둘은 남고 `<p>` 둘은 사라진다)
+  - ⚠️ **`projectSections`는 셋으로 뒀다.** 계획서는 여섯(Home·Translations·Locales·Members·Logs·Settings)을
+      적었지만 Home·Locales·Logs의 라우트가 6b-6·6b-5·7단계다 — 없는 라우트를 가리키는 항목은 404다.
+      **각 항목은 자기 라우트와 같은 사이클에 온다.** 같은 이유로 `routes.project(slug)`도 6b-6 몫이다
+  - ⚠️ **`disconnectGithub`의 무효화 범위가 함께 움직여야 했다** (`4b9b0a6`) — `revalidatePath("/projects",
+      "layout")`이 주 화면을 덮지 않게 됐다. POSTMORTEM 2026-09-09에 일반 규칙과 grep 전수 결과가 있고,
+      **`saveTranslation`이 6b-6에서 같은 이유로 부족해진다**(Home이 같은 행을 읽는다)
 - [ ] **6b-5 `/projects/:slug/locales`** — 로케일 목록(orphaned 사유와 되살리는 방법을 말하는 유일한
       자리 — ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이 없었다) + **기준 로케일 지정을 6b-3에서
       이관** + 대기 배너 이관. ⚠️ **대기 Alert가 고칠 `base-locale:` 줄을 이 화면에서 직접 보인다**
