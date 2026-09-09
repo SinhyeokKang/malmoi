@@ -228,3 +228,56 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string):
   ]);
   return { total, cells };
 }
+
+/**
+ * Home의 최근 활동 재료 — **사람이 만진 편집만** (6b-6).
+ *
+ * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push는 그 컬럼을 비우면서 전 행의 `updatedAt`을
+ * 올리므로(strict — MVP §3.1), 조건이 없으면 code push 직후 활동 목록이 **903건의 "편집"**으로 덮인다.
+ * `countUnpublished`가 같은 술어를 쓰는 것과 같은 이유다.
+ *
+ * ⚠️ **`take`가 인덱스 앞에 있다.** `@@index([projectId, updatedAt])`를 역방향으로 타 첫 N행에서
+ * 멈춘다 — 정렬 없이 전부 읽어 JS에서 자르면 903키 리포에서 전 행이 넘어온다.
+ *
+ * ⚠️ **`value`를 select하지 않는다.** 활동 목록은 "무엇이 바뀌었나"를 키 이름으로 말하고, 값을
+ * 실으면 번역 본문 전체가 이 화면에 따라온다.
+ */
+export type RecentEditRow = {
+  at: Date;
+  key: string;
+  namespace: string;
+  locale: string;
+  /** SQL이 null을 걸렀으므로 여기서 좁힌다 — 화면이 다시 가드하지 않는다. */
+  updatedBy: string;
+};
+
+export async function loadRecentEdits(
+  prisma: PrismaClient,
+  projectId: string,
+  limit: number,
+): Promise<RecentEditRow[]> {
+  const rows = await prisma.translation.findMany({
+    // ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
+    where: { projectId, updatedBy: { not: null } },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    select: {
+      updatedAt: true,
+      updatedBy: true,
+      localeCode: true,
+      stringKey: { select: { key: true, namespace: true } },
+    },
+  });
+  return rows.flatMap((row) =>
+    // `updatedBy`는 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
+    row.updatedBy === null
+      ? []
+      : [{
+          at: row.updatedAt,
+          key: row.stringKey.key,
+          namespace: row.stringKey.namespace,
+          locale: row.localeCode,
+          updatedBy: row.updatedBy,
+        }],
+  );
+}

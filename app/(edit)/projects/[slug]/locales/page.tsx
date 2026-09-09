@@ -73,7 +73,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
       {/* breadcrumb은 셸이 안 든다 — 레이아웃이 페이지 props를 못 받는다 (CLAUDE.md). */}
       <div className="space-y-3">
         <Breadcrumb
-          items={[{ label: project.name, href: routes.translations(slug) }, { label: m.locales.title }]}
+          items={[{ label: project.name, href: routes.project(slug) }, { label: m.locales.title }]}
         />
         <h1 className="text-base font-medium">{m.locales.title}</h1>
         {/* 설명은 제목 아래 한 줄이다 — 표 Card에 제목을 또 달면 같은 낱말이 연달아 나온다. */}

@@ -81,7 +81,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               return (
                 <li key={membership.slug}>
                   <Link
-                    href={routes.translations(membership.slug)}
+                    href={routes.project(membership.slug)}
                     className="hover:bg-muted/40 focus-visible:ring-ring flex items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
                   >
                     <span className="text-sm font-medium">{membership.name}</span>

@@ -83,7 +83,13 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
     update: { value: plan.value, needsReview: false, updatedBy: userId },
   });
 
-  revalidatePath(`/projects/${slug}/translations`);
+  /**
+   * ⚠️ **이 행을 읽는 화면이 셋이다**: 번역 화면 · 로케일 화면의 진행률(6b-5) · Home의 진행률과 최근
+   * 활동(6b-6). 경로를 하나씩 나열하면 넷째 소비자가 조용히 빠지고, 그때 번역자가 저장한 값이 다른
+   * 화면에서 옛 숫자로 남는다 — 쓰기는 성공했는데 화면이 거짓말을 하는 부류다
+   * (POSTMORTEM 2026-09-09가 이 자리를 이름으로 적어 뒀다). 그래서 세그먼트 레이아웃을 무효화한다.
+   */
+  revalidatePath(`/projects/${slug}`, "layout");
   return { ok: true, value: plan.value };
 }
 

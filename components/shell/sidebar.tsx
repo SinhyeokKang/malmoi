@@ -16,7 +16,7 @@ import {
 import { Tooltip } from "@/components/ui/tooltip";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import { activeProject, navZones, type NavProject, type NavZone } from "@/lib/shell/nav";
+import { activeProject, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
 const COLLAPSED_KEY = "malmoi:sidebar-collapsed";
@@ -143,7 +143,7 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
                 <DropdownMenuContent>
                   {memberships.map((membership) => (
                     <DropdownMenuItem key={membership.slug} asChild selected={membership.slug === project.slug}>
-                      <Link href={routes.translations(membership.slug)}>{membership.name}</Link>
+                      <Link href={routes.project(membership.slug)}>{membership.name}</Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -162,7 +162,7 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
-                active={isActive(pathname, item, zone)}
+                active={isActive(pathname, item)}
                 rail={rail}
               />
             ))}
@@ -187,14 +187,15 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
 }
 
 /**
- * ⚠️ **접두 일치는 프로젝트 축에서만 옳다.** `/projects`가 `/projects/new`의 접두라, 사용자 축에서
- * 접두로 판정하면 새 프로젝트 화면에서 [All projects]도 함께 선택돼 보인다 — 그 축은 정확히 일치할
- * 때만 활성이다. 프로젝트 축은 하위 경로(`?ns=`·`/settings`)가 있어 접두여야 한다.
+ * ⚠️ **판정이 축이 아니라 항목에 붙는다** (6b-6). 전에는 "프로젝트 축이면 접두"였는데 Home
+ * (`/projects/<slug>`)이 그 축에 들어오면서 그 규칙이 거짓이 됐다 — 그 경로는 같은 프로젝트의
+ * **모든** 하위 라우트의 접두라, 번역 화면에 있어도 Home이 선택돼 보인다. 규칙의 실제 근거는
+ * **하위 경로가 있는가**이므로 `NavItem.exact`가 그것을 든다 (`lib/shell/nav.ts`).
  */
-function isActive(pathname: string, item: { href: string }, zone: NavZone): boolean {
+function isActive(pathname: string, item: NavItem): boolean {
   // 쿼리는 pathname에 없지만 `routes.*`가 붙일 수 있어 잘라낸다.
   const path = item.href.split("?")[0] ?? item.href;
-  return zone.key === "project" ? pathname.startsWith(path) : pathname === path;
+  return item.exact ? pathname === path : pathname.startsWith(path);
 }
 
 /**

@@ -29,7 +29,8 @@ export const en = {
       account: "Your account",
       allProjects: "All projects",
       newProject: "New project",
-      /** 프로젝트 구역의 항목 넷. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      /** 프로젝트 구역의 항목 다섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      home: "Overview",
       translations: "Translations",
       locales: "Languages",
       members: "Members",
@@ -54,6 +55,40 @@ export const en = {
     google: "Continue with Google",
     /** 장식 카드의 정적 문구 — 실제 데이터가 아니라 모형이다 (design §3.12). */
     sample: { file: "locales/ko.json", branch: "l10n/sync", sent: "Sent for review" },
+  },
+
+  /**
+   * Home(`/projects/:slug`) — 프로젝트 진입의 착지점 (6b-6).
+   *
+   * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (SAAS §7.7 결정 2). 키 수·미배포 건수는 번역
+   * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
+   */
+  home: {
+    /** ⚠️ **착지 클릭 하나를 갚는 주된 동작이다** (결정 1의 대가) — 화면당 하나인 primary가 이것이다. */
+    openTranslations: "Open translations",
+    progress: {
+      title: "Languages",
+      /** orphaned 로케일은 이 목록에 없다 — 그 열은 편집이 막혀 있어 일이 아니다. */
+      description: "Pick a language to start from. Values waiting for review don't count as translated.",
+      /**
+       * ⚠️ **도달 가능한 상태다** — 적재는 끝났는데 살아 있는 로케일이 0인 경우(파일이 전부
+       * 사라졌다). 로케일 화면의 "첫 적재 뒤에 나타난다" 문구를 빌려 쓰면 **이 상태에선 거짓**이라
+       * 따로 쓰고, 사유가 사는 자리로 보낸다.
+       */
+      empty: "No languages to translate — their files are missing from the repository.",
+      emptyLink: "See languages",
+    },
+    activity: {
+      title: "Recent activity",
+      /** ⚠️ 첫 적재 뒤에도 한동안 비어 있다 — 실패가 아니라 아직 아무 일도 없는 것이다. */
+      empty: "Nothing yet. Edits, CI pushes and what you send back all show up here.",
+      /** 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다. */
+      edit: (who: string | null, key: string, locale: string): string =>
+        who === null ? `${key} was edited in ${locale}` : `${who} edited ${key} in ${locale}`,
+      push: "CI pushed source strings from the repository",
+      publish: "Translations were sent back for review",
+      pr: "Open pull request",
+    },
   },
 
   projects: {

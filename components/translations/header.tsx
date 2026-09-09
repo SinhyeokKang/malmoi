@@ -64,7 +64,7 @@ export function TranslationsHeader({
     <div className="border-border space-y-3 border-b px-6 py-4">
       <Breadcrumb
         items={[
-          { label: projectName, href: routes.translations(slug) },
+          { label: projectName, href: routes.project(slug) },
           { label: m.translations.title },
         ]}
       />

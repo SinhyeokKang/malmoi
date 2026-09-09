@@ -101,7 +101,7 @@ export default async function SettingsPage({
         <div className="space-y-3">
           <Breadcrumb
             items={[
-              { label: project.name, href: routes.translations(slug) },
+              { label: project.name, href: routes.project(slug) },
               { label: m.settings.title },
             ]}
           />

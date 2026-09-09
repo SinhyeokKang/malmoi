@@ -84,7 +84,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   it("Home만 정확히 일치다 — 나머지 프로젝트 항목은 하위 경로가 있어 접두다", () => {
     const byKey = new Map(projectSections("OWNER").map((s) => [s.key, s.exact]));
     expect(byKey.get("home")).toBe(true);
-    for (const key of ["translations", "locales", "members", "settings"]) {
+    for (const key of ["translations", "locales", "members", "settings"] as const) {
       expect(byKey.get(key), key).toBe(false);
     }
   });
@@ -119,9 +119,11 @@ describe("projectSections — 역할이 항목을 정한다", () => {
     }
   });
 
+  /** ⚠️ 인덱스로 집지 않는다 — 6b-6이 Home을 맨 앞에 넣으면서 그 전제가 깨졌다. 키로 찾는다. */
   it("경로는 slug를 받아 만든다 — 화면이 문자열을 조립하지 않는다 (lib/routes.ts)", () => {
-    const [translations] = projectSections("EDITOR");
-    expect(translations?.href("acme")).toBe("/projects/acme/translations");
+    const byKey = new Map(projectSections("EDITOR").map((s) => [s.key, s.href]));
+    expect(byKey.get("home")?.("acme")).toBe("/projects/acme");
+    expect(byKey.get("translations")?.("acme")).toBe("/projects/acme/translations");
   });
 });
 
