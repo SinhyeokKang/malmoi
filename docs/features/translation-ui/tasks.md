@@ -31,7 +31,7 @@
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
 - **6b는 6a 넷이 다 나간 뒤 별도 사이클들**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
   닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **2026-09-09 dev**) ·
-  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면 — **2026-09-09 dev**) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
+  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면 — **2026-09-09 dev**) · 6b-6(Home — **2026-09-09 dev**). ✅ **여섯이 다 닫혔고 6단계가 끝났다.** ⚠️ **번호가 실행 순서다** —
   2026-09-08에 6b-2·6b-3을 맞바꿨다(그 절 머리에 이유가 있다). **6b-4의 옛 "만들지 않는 쪽이 추천"은
   2026-09-09 IA 확정(SAAS §7.7)이 뒤집었고, 그때 6b-5·6b-6이 생겼다.**
 
@@ -614,27 +614,46 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ---
 
-## 6b-6. `/projects/:slug` Home — 착지점
+## 6b-6. `/projects/:slug` Home — 착지점 ✅ (2026-09-09, dev)
 
 > **프로젝트 진입의 착지점이다** (사용자 결정 2026-09-09). `/projects` 목록의 링크가
-> `routes.translations(slug)` → `routes.project(slug)`로 바뀐다.
+> `routes.translations(slug)` → `routes.project(slug)`로 바뀌었다.
 
-⚠️ **이 화면의 가장 큰 위험은 "복제"다** (SAAS §7.7 결정 2). 번역 화면 툴바가 이미 키 수·미배포 건수·
-마지막 전송·PR 링크를 들고, 설정 화면이 리포·연결·적재 상태를 든다. 세 번째 사본을 만들면 그중 하나가
-낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
+커밋 다섯: `d215a9b`(test) · `a9a455e`(feat) · `8c62bd9`(refactor) · **`bf7e00f`(fix — 실물이 잡은
+프로덕션 버그)** · `0e5e02b`(postmortem).
 
-⚠️ **착지 클릭 하나를 갚아야 한다** (결정 1이 받아들인 대가). 번역자의 일은 `translations` 하나이므로,
-개요만 있고 링크가 없으면 그 클릭이 순손실이다 — **번역으로 가는 경로가 이 화면의 주된 동작이어야 한다.**
-
-- [ ] 순수 판정 — 로케일별 진행률(`lib/keys/view.ts`의 집계를 재사용한다, 새로 만들지 않는다)
-      검증: 단위 테스트 — 빈 프로젝트 · orphaned 로케일 제외 · base 로케일의 진행률 정의(항상 100%가 아니다 — 빈 값이 있을 수 있다)
-- [ ] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. **로케일별 진행률**(각 행이 `routes.translations(slug, { focus })` 링크) + **최근 활동**(각 항목이 `?ns=`·`?focus=` 링크)
-      검증: 소스 스캔 — 진행률·활동 항목이 **링크다**(그것이 착지 클릭을 갚는 유일한 수단) · 번역 화면 툴바의 지표를 재계산하지 않는다
-- [ ] 최근 활동은 **지금 재료로만** — `Translation.updatedAt`+`updatedBy`(`loadActors`·`actorLabel` 재사용) · `Project.lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. ⚠️ **`logs`는 7단계 `SyncRun`의 소비자다**(SAAS §6) — 그때 이 블록이 그 테이블로 갈아탄다
-      검증: 쿼리가 `projectId`로 좁혀진다 · 렌더되는 행만 `loadActors`를 지난다(903키 리포에서 전 행을 조회하지 않는다)
-- [ ] `/projects` 목록의 링크를 `routes.project(slug)`로
-      검증: `entry-points`의 죽은 라우트 링크 검사
-- [ ] ⚠️ **사이드바 카운트를 달지 않는다** (결정 5) — 셸 레이아웃이 매 렌더에 세게 되고 **키 수와 무관한 1.9초 고정비**가 이미 실측돼 있다(CLAUDE.md 가상화 절). 그 고정비를 먼저 낮춘 뒤 다시 본다
+- [x] 순수 판정 — `lib/home/overview.ts`의 `activeLocaleProgress`(6b-5의 `localeProgress`를 **재사용**하고
+      **orphaned만 뺀다**: 그 열은 번역 화면에서 disabled라 `?focus=` 링크가 편집할 수 없는 곳으로
+      데려간다) + `recentActivity`
+      검증: 15케이스 — 빈 프로젝트 · orphaned 제외 · **base도 100%가 아닐 수 있다** · `limit`이 병합
+      **뒤에** 적용된다(편집만 자르면 push·publish가 항상 밀려난다) · **동시각 정렬이 결정적이다**
+- [x] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. 진행률 행 **전체가**
+      `?focus=` 링크 + 활동의 편집 항목이 `?ns=`+`?focus=` 링크 + 화면당 하나인 primary
+      [Open translations]
+      검증: `components/__tests__/home-screen.test.ts` 10케이스 — 링크 배선 · **`countUnpublished`·
+      `loadKeys` 0건**(툴바 지표 복제 금지) · 루트 링크 여섯 자리
+- [x] 최근 활동은 **지금 재료로만** — `loadRecentEdits`(`updatedBy: { not: null }`로 **사람의 편집만**:
+      push는 그 컬럼을 비우며 전 행의 `updatedAt`을 올려 code push 직후 903건이 "편집"이 된다) ·
+      `lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. **`logs`는 7단계 `SyncRun`의 소비자다**
+      검증: `projectId` 좁힘 · **렌더되는 행만** `loadActors`를 지난다 · `value`를 select하지 않는다
+- [x] `/projects` 목록의 링크를 `routes.project(slug)`로 — ⚠️ **그 의미의 자리가 일곱이었다**:
+      목록 행 · 사이드바 스위처 · breadcrumb 넷 · **초대 수락**(계획서 줄 밖의 판정이다 — 진입의
+      착지점이 규칙이므로 하나라도 남으면 같은 동작이 다른 곳에 착지한다). `[Start translating]`과
+      나브의 Translations는 번역 화면을 **명시적으로** 가리켜 그대로 뒀다
+- [x] **사이드바 카운트를 달지 않았다** (결정 5)
+- [x] ⚠️ **`saveTranslation`의 무효화를 서브트리로 넓혔다** — 그 행을 읽는 화면이 셋이 됐다.
+      POSTMORTEM 2026-09-09가 6b-5 때 이 자리를 **이름으로 예고했다**
+- [x] ⚠️ **활성 판정을 축에서 항목으로 옮겼다**(`NavItem.exact`) — `/projects/<slug>`가 그 프로젝트
+      **모든** 하위 라우트의 접두라 옛 규칙이면 어디서나 Home이 선택돼 보였다. 실물로 셋 확인:
+      Home·Translations·Settings에서 각각 하나만 활성이다 (6b-4 code-review ⚪2가 예고한 자리)
+- [x] ⚠️ **readiness 분기의 사본을 합쳤다**(`components/project-not-ready.tsx`) — Home이 착지점이 되며
+      그 갈래를 먼저 만나는 자리가 생겨 사본이 둘이 됐다. **이 사이클이 만든 사본이라 이 사이클이 합쳤다**
+- [x] 🔴 ⚠️ **실물이 프로덕션 버그를 잡았다** (`bf7e00f`) — `DropdownMenuItem`이 `asChild` 자식 옆에
+      형제(`selected`의 `Check`)를 붙여 Radix Slot이 던지고, **프로젝트 스위처를 한 번 열면 셸이 죽었다.**
+      `add099a`(6a ship 2)부터 프로덕션에 있었고 게이트 셋·`/code-review` 여러 라운드·`/bugshot-qa` 세
+      라운드·**6b-4의 실물 라운드까지 전부 지나갔다**(그 라운드가 이 블록을 옮겼는데 스위처를 열지 않고
+      `querySelectorAll`로 href만 읽었다 — 포털 안 항목은 열기 전까지 DOM에 없다). 픽스는
+      `Slot.Slottable`이고 `components/__tests__/slottable-item.test.ts`가 상시로 센다 (POSTMORTEM 2026-09-09)
 
 —— `feat(home): a project overview that leads into the work`
 
