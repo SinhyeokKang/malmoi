@@ -427,3 +427,44 @@ describe("formatFromProject — nestedByPath (ARCHITECTURE §1.35)", () => {
     expect(f.nestedByPath).toEqual({ "i18n/en.json": true });
   });
 });
+
+/**
+ * **2층 방어 — 스키마를 지나기 전에 저장된 행이 있다** (sec-audit 발견 2).
+ *
+ * `Locale.code`·`Project.pathTemplate`은 push 페이로드에서 **그대로** 저장된 값이라, ship 2의 Zod
+ * 경계가 서기 **전에** 들어온 행이 DB에 남아 있을 수 있다. 야간 cron은 그 행을 읽어 **설치 토큰으로**
+ * 커밋하므로, 경계 하나로는 그 경로가 안 닫힌다.
+ *
+ * ⚠️ **트리를 안 보는 갈래는 그대로다** — 새 로케일 파일을 만드는 것이 그 갈래의 요지이고, 막는 것은
+ * **템플릿의 디렉터리 밖으로 나가는 것**뿐이다.
+ */
+describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는다 (sec-audit 2)", () => {
+  const fmt = (pathTemplate: string, locales: string[]) =>
+    formatFromProject(
+      { adapterName: "json-catalog", pathTemplate, nested: false, nestedByPath: null, baseLocale: "en" },
+      locales,
+    );
+
+  it("정상 신규 로케일은 그대로 만든다 — 이 갈래를 좁히지 않는다", () => {
+    expect(resolveLocalePaths(fmt("locales/{locale}.json", ["ja", "en"]), "per-locale", [])).toEqual([
+      { locale: "en", path: "locales/en.json" },
+      { locale: "ja", path: "locales/ja.json" },
+    ]);
+  });
+
+  it("발견 2의 저장된 행을 던진다 — `{locale}` 템플릿 + 경로를 담은 로케일", () => {
+    expect(() =>
+      resolveLocalePaths(fmt("{locale}", [".github/workflows/pwn"]), "per-locale", []),
+    ).toThrow(/path/i);
+  });
+
+  it("`..`가 든 로케일 코드는 디렉터리를 거슬러 오르므로 던진다", () => {
+    expect(() =>
+      resolveLocalePaths(fmt("locales/{locale}.json", ["../../.github/workflows/pwn"]), "per-locale", []),
+    ).toThrow(/path/i);
+  });
+
+  it("저장된 `pathTemplate` 자체가 리포를 벗어나도 던진다", () => {
+    expect(() => resolveLocalePaths(fmt("../{locale}.json", ["en"]), "per-locale", [])).toThrow(/path/i);
+  });
+});
