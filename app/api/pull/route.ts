@@ -6,7 +6,7 @@ import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
-import { selectPullTargets, type PullItem } from "@/lib/pull/targets";
+import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/targets";
 import { triggerPull } from "@/lib/pull/trigger";
 
 /**
@@ -52,7 +52,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       select: { slug: true, installationId: true, lastCommitSha: true },
     });
 
-    const targets = selectPullTargets(projects);
+    // ⚠️ **상한이 붙었다** (2026-09-09, sec-audit 발견 26) — 못 돈 수가 응답과 로그에 실린다.
+    const { targets, unprocessed } = selectPullTargets(projects, PULL_BATCH_LIMIT);
     const results: PullItem[] = [];
     for (const slug of targets) {
       // ⚠️ **프로젝트마다 잡는다.** 한 프로젝트의 GitHub 장애가 나머지의 편집을 다음 밤까지 묶어두면
@@ -72,8 +73,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
     // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
     const failed = results.filter((r) => r.status === "failed").length;
-    console.log(`[pull] targets=${targets.length} failed=${failed}`);
-    return NextResponse.json(results);
+    console.log(`[pull] targets=${targets.length} failed=${failed} unprocessed=${unprocessed}`);
+    // ⚠️ **미처리를 배열 밖에 싣는다** — 항목으로 섞으면 `PullItem` 계약이 흔들리고, 소비자가
+    // 그것을 프로젝트 하나로 센다. 0이어도 필드를 뺀 적이 없어야 부재와 0이 구별된다.
+    return NextResponse.json({ results, unprocessed });
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
     // (`MissingEnvError` — 변수 이름만 담는다)는 본문에 남긴다: 그게 POSTMORTEM 2026-09-03이

@@ -81,18 +81,18 @@ describe("멤버 화면 — 페이지", () => {
     expect(producers).toEqual([]);
   });
 
-  it("이메일을 maskEmail로 낸다 — 이 표는 멤버 전원이 본다 (역할로 나누지 않는다)", () => {
-    expect(read(PAGE) + read(LIST) + read(PENDING)).toContain("maskEmail");
-  });
-
   /**
-   * ⚠️ **대기 초대는 `maskEmail`을 직접 쓰지 않는다** (malmoi#18). 그 표에서 마스킹한 주소는 유일한
-   * 식별자이고, 첫 글자만 남기면 서로 다른 주소가 같은 행이 된다 — [Revoke]가 되돌릴 수 없으므로
-   * 엉뚱한 링크를 무효화한다. 라벨은 **목록 전체를 본** `maskedInviteLabels`가 만들고 서버가 내려준다.
+   * ⚠️ **마스킹이 로더로 갔다** (2026-09-09, sec-audit 발견 4). 전에는 이 자리가 "화면 셋 중
+   * 어딘가에 `maskEmail`이 있다"를 셌는데, **그것이 바로 결함이었다** — 클라이언트에서 가리면
+   * 원문은 이미 RSC 페이로드에 실려 있다. 지금 이 축의 검사는 아래 "원문이 안 간다" 블록이다.
+   *
+   * ⚠️ **두 표 다 목록 전체를 본 판정에서 온다** (malmoi#18): 행마다 따로 마스킹하면 서로 다른
+   * 주소가 같은 행이 되고, [Revoke]는 되돌릴 수 없어 엉뚱한 링크를 무효화한다.
    */
-  it("대기 초대 라벨은 목록 전체를 본 판정에서 온다 — 행마다 따로 마스킹하지 않는다", () => {
-    expect(read(PENDING)).not.toContain("maskEmail(");
-    expect(read(PAGE)).toContain("maskedInviteLabels");
+  it("두 표가 서버가 만든 라벨을 그대로 그린다", () => {
+    expect(read(LIST)).toContain("emailLabel");
+    expect(read(PENDING)).toContain("emailLabel");
+    expect(read(PAGE)).not.toContain("maskedInviteLabels");
   });
 });
 
@@ -151,5 +151,50 @@ describe("멤버 화면 — 임시 폼이 대체됐다", () => {
 
   it("번역 화면이 그것을 더 이상 import하지 않는다", () => {
     expect(read("components/translations/header.tsx")).not.toContain("invite-form");
+  });
+});
+
+/**
+ * **마스킹은 서버가 한다 — 원문은 와이어에 안 오른다** (sec-audit 발견 4).
+ *
+ * 두 로더가 `email`을 원문으로 select하고 `"use client"` 컴포넌트 props로 넘어가면, 마스킹이
+ * JSX 안에서 일어나도 **원문은 RSC 페이로드에 그대로 실린다.** 관측자는 그 프로젝트의 EDITOR
+ * 이상이고 view-source로 읽는다 — **대기 초대 쪽이 더 민감하다**(아직 멤버가 아닌 외부인의 주소다).
+ * `docs/DESIGN.md` §6.65가 "두 표 모두 마스킹"을 단언하는데 그 통제가 화장품이었다.
+ *
+ * ⚠️ **렌더가 아니라 스캔인 이유**: 페이로드는 눈으로 안 보인다. 화면은 마스킹된 값을 보여주고
+ * 있었고 감사도 정적으로만 확인했다 — `focus-ring`·`multiline-detail`과 같은 계보다.
+ *
+ * ⚠️ **`app/invite/[token]/page.tsx`가 이미 서버에서 마스킹한다** — 두 화면 중 하나가 낡은 것이
+ * 아니라 규칙이 문서에만 있고 배선이 안 따라간 것이다 (POSTMORTEM 2026-09-05과 같은 축).
+ */
+describe("멤버 화면 — 이메일 원문이 클라이언트로 안 간다 (sec-audit 4)", () => {
+  const clients = ["components/members/member-list.tsx", "components/members/pending-invitations.tsx"];
+
+  it("클라이언트 컴포넌트가 `maskEmail`을 import하지 않는다 — 마스킹은 서버의 일이다", () => {
+    for (const path of clients) {
+      expect(read(path), path).not.toMatch(/maskEmail/);
+    }
+  });
+
+  it("반환 매핑이 `email`을 안 싣는다 — 읽는 것과 돌려주는 것은 다르다", () => {
+    // 가리려면 원문을 읽어야 하므로 `select`에는 남는다. 나가면 안 되는 것은 **반환값**이다.
+    const query = read("lib/auth/query.ts");
+    expect(query).not.toMatch(/^\s*email:\s*r\./m);
+  });
+
+  it("두 반환 타입이 `email`을 안 든다 — 타입이 계약이라 호출부가 못 되살린다", () => {
+    const query = read("lib/auth/query.ts");
+    for (const name of ["MemberView", "PendingInvitation"]) {
+      const at = query.indexOf(`export type ${name} = {`);
+      expect(at, name).toBeGreaterThan(-1);
+      const body = query.slice(at, query.indexOf("};", at));
+      expect(body, name).not.toMatch(/^\s*email\??:/m);
+      expect(body, name).toMatch(/emailLabel/);
+    }
+  });
+
+  it("라벨은 서버가 목록 전체를 보고 만든다 — 행마다 따로 만들면 충돌이 안 갈린다", () => {
+    expect(read("lib/auth/query.ts")).toMatch(/maskedEmailLabels/);
   });
 });

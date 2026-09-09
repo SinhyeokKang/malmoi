@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { maskEmail } from "../email";
-import { maskedInviteLabels } from "../invite-label";
+import { maskedEmailLabels, maskedInviteLabels } from "../invite-label";
 
 /**
  * **대기 초대 표에서는 마스킹한 주소가 유일한 식별자다** (malmoi#18).
@@ -74,5 +74,38 @@ describe("maskedInviteLabels — 충돌하는 행만 구별한다", () => {
 
   it("`@`가 없는 값도 죽지 않는다 — maskEmail과 같은 폴백이다", () => {
     expect(maskedInviteLabels(["broken"])).toEqual([maskEmail("broken")]);
+  });
+});
+
+/**
+ * **같은 규칙이 두 표를 덮는다** (sec-audit 발견 4). 대기 초대에서 시작한 라벨 생성이 멤버 표에도
+ * 필요해졌다 — 원문 이메일을 와이어에 안 싣기로 했으므로 **서버가** 두 표의 라벨을 만든다.
+ *
+ * ⚠️ **옛 이름을 지우지 않는다** — `docs/DESIGN.md` §6.65와 `CLAUDE.md`가 `maskedInviteLabels`를
+ * 가리킨다. 본체가 일반형이고 그 이름은 얼은이다. 규칙이 두 벌이 되는 것이 이 리포가 반복해서
+ * 밟은 부류다(`matchGlobPaths`·`scanJson`).
+ */
+describe("maskedEmailLabels — 일반형 (sec-audit 4)", () => {
+  it("옛 이름과 글자 하나까지 같은 출력이다", () => {
+    for (const emails of [
+      ["a@x.com", "b@y.com"],
+      ["qa-invite-1@example.com", "qa-signed-out@example.com"],
+      ["a@x.com", "ab@x.com"],
+      [],
+      ["not-an-email"],
+    ]) {
+      expect(maskedEmailLabels(emails)).toEqual(maskedInviteLabels(emails));
+    }
+  });
+
+  it("멤버 표에서도 충돌하는 행만 넓어진다", () => {
+    expect(maskedEmailLabels(["alice@acme.com", "andrew@acme.com"])).toEqual([
+      "al***@acme.com",
+      "an***@acme.com",
+    ]);
+    expect(maskedEmailLabels(["alice@acme.com", "bob@other.com"])).toEqual([
+      "a***@acme.com",
+      "b***@other.com",
+    ]);
   });
 });

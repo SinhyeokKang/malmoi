@@ -195,7 +195,9 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   // 키만 예외이고, chrome 키 이름 규칙상 여기선 생기지 않는다).
   const fieldOrder = dominantFieldOrder(original);
 
-  const out: Record<string, Record<string, unknown>> = {};
+  // ⚠️ **프로토타입 없는 객체다** (sec-audit 발견 17). `CHROME_KEY`(`/^[A-Za-z0-9_@]+$/`)가
+  // `__proto__`를 통과시키므로 정규식을 고치는 것으로는 안 닫힌다 — 막아야 하는 것은 **대입 자리**다.
+  const out: Record<string, Record<string, unknown>> = Object.create(null) as Record<string, Record<string, unknown>>;
   for (const e of usable) {
     const entry: Record<string, unknown> = {};
     // 삽입 순서가 곧 출력 순서다 — 원본이 `description`을 먼저 썼으면 우리도 먼저 넣는다.

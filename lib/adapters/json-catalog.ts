@@ -252,7 +252,9 @@ function writeWithErrors(
 
   if (!nested) {
     // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.
-    const out: Record<string, string> = {};
+    // ⚠️ **프로토타입 없는 객체다** (sec-audit 발견 17). 평범한 `{}`에 `out["__proto__"] = v`를 하면
+    // setter가 불려 own property가 안 생기고 **그 키가 조용히 사라진다** — 에러도 경고도 없다.
+    const out: Record<string, string> = Object.create(null) as Record<string, string>;
     for (const e of usable) out[e.key] = e.message;
     return { content: serializeJson(out, style), errors };
   }
@@ -269,7 +271,7 @@ function writeWithErrors(
       }
     }
   }
-  const root: Record<string, unknown> = {};
+  const root: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const e of usable) {
     if (shadowed.has(e.key)) {
       errors.push({ path, code: "key-shadowed", key: e.key });
@@ -288,7 +290,15 @@ function setDeep(node: Record<string, unknown>, segments: readonly string[], val
     return;
   }
   const next = node[head];
-  const child = next !== null && typeof next === "object" ? (next as Record<string, unknown>) : {};
+  // ⚠️ **중간 노드가 프로토타입 없는 객체다** (sec-audit 발견 1). 평범한 `{}`였을 때
+  // `head === "__proto__"`면 `node[head]`가 `Object.prototype`을 돌려주고 `typeof === "object"`라
+  // 그것이 `child`가 되어, 다음 세그먼트가 `Object.prototype[x] = value`로 앉았다 — 오염은 프로세스
+  // 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. 프로토타입이 없으면
+  // 그 조회가 `undefined`이고 대입도 own property가 된다.
+  const child =
+    next !== null && typeof next === "object"
+      ? (next as Record<string, unknown>)
+      : (Object.create(null) as Record<string, unknown>);
   node[head] = child;
   setDeep(child, rest, value);
 }
@@ -303,7 +313,8 @@ function normalizeArrays(value: unknown): unknown {
   if (value === null || typeof value !== "object") return value;
   const obj = value as Record<string, unknown>;
   const names = Object.keys(obj);
-  const converted: Record<string, unknown> = {};
+  // 여기서 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 이 한 줄에서 다시 사라진다.
+  const converted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const name of names) converted[name] = normalizeArrays(obj[name]);
 
   const isDense = names.length > 0 && names.every((n, i) => n === String(i));

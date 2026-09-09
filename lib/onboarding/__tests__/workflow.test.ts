@@ -82,7 +82,9 @@ describe("renderWorkflowYaml", () => {
     const yml = renderWorkflowYaml({ slug: "x", baseBranch: "main" });
     expect(yml).toContain("[skip-l10n]");
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
-    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/l10n-push@main");
+    // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
+    // `secrets.PUSH_TOKEN`을 든 대상 리포 러너에서 즉시 돈다.
+    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1");
   });
 
   it("docs/ACTIONS.md의 예시와 같은 모양이다 — 주석·빈 줄을 빼면 줄 단위로 같다", () => {

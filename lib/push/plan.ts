@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-import { compareKeys } from "@/lib/adapters/shared";
+import { compareKeys, exceedsGlobBudget } from "@/lib/adapters/shared";
+import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
 import type { AdapterName } from "@/lib/adapters/types";
@@ -23,13 +24,49 @@ export function sourceHash(sourceText: string): string {
 // 사실만 덧붙인다.
 const ADAPTER_NAMES = ADAPTERS.map((a) => a.name) as [AdapterName, ...AdapterName[]];
 
+/**
+ * **크기 상한** (sec-audit 발견 10). 하나도 없었다.
+ *
+ * 근거는 실측이다 — prod 최대가 `ts-dict` 903키 · `StringKey` 3,297행 · `Translation` 12,783행이라
+ * 아래는 **20배 여유**다. 넘으면 400이고 그 이유가 응답에 실린다(대상 리포 Actions 로그로 간다 —
+ * `lib/failure.ts`의 판정대로 우리 메시지는 본문에 그대로 나간다).
+ *
+ * ⚠️ **`placeholders`는 여기 없다.** `z.unknown()`으로 두는 것이 계약이고("모양을 검사하지 않는다"),
+ * 검증을 시작하면 크롬 스펙을 따라다녀야 한다. 상한은 **개수·길이** 축에서만 건다.
+ */
+const MAX_KEYS = 20_000;
+const MAX_LOCALES = 200;
+/** 번역 값·원문 한 건의 길이. 문단 몇 개짜리 마케팅 문자열도 이 안이다. */
+const MAX_TEXT = 10_000;
+/** 키·네임스페이스·파일 경로 한 건. */
+const MAX_NAME = 1_000;
+/** `translations`·`refs` 행 수 — 20,000키 × 10로케일이 이 안이다. */
+const MAX_ROWS = 200_000;
+
+/**
+ * 로케일 코드는 **파일명 한 조각**이다 (sec-audit 발견 2). `applyPush`가 이 값을 그대로 저장하고
+ * 야간 pull이 `pathTemplate`에 보간해 **설치 토큰으로** 커밋하므로, 검증이 없으면 push 토큰 하나가
+ * 리포의 임의 파일에 쓰는 원시체가 된다 — `.github/workflows/pwn`은 `..` 없이도 성립한다.
+ */
+const LocaleCode = z.string().refine(isPathSafeLocale, {
+  message: "locale code must be a safe path segment (letters, digits, - and _)",
+});
+
 const Format = z.object({
   adapter: z.enum(ADAPTER_NAMES),
   /**
    * per-locale 어댑터는 `{locale}`을 치환해 경로를 만들고, multi-locale 어댑터(`ts-dict`)는
    * 한 파일에 로케일이 여러 개라 글롭이다 — 그래서 `{locale}`을 요구하지 않는다.
    */
-  pathTemplate: z.string().min(1),
+  pathTemplate: z
+    .string()
+    .min(1)
+    // 경로를 벗어나는 템플릿(`..`·절대 경로)과 **글롭 예산 초과**를 함께 막는다. 뒤의 것은
+    // `lib/adapters/shared.ts`가 이미 순수 함수 안에서도 걸지만(저장된 값이 cron으로 들어온다),
+    // 경계에서 거부하면 그 값이 **애초에 저장되지 않는다**.
+    .refine((t) => isPathSafeRepoPath(t) && !exceedsGlobBudget(t), {
+      message: "pathTemplate must stay inside the repository and stay within the glob budget",
+    }),
   nested: z.boolean(),
   /**
    * 파일 경로 → 그 파일이 중첩이었는지. **`nested`보다 이쪽이 정확하다** (ARCHITECTURE §1.35).
@@ -38,14 +75,14 @@ const Format = z.object({
    * 위해서다 — 없으면 write가 `nested`로 폴백한다.
    */
   nestedByPath: z.record(z.string(), z.boolean()).optional(),
-  baseLocale: z.string().min(1),
+  baseLocale: LocaleCode,
 });
 
 const IncomingKey = z.object({
-  key: z.string().min(1),
-  sourceText: z.string(),
-  namespace: z.string().min(1),
-  description: z.string().optional(),
+  key: z.string().min(1).max(MAX_NAME),
+  sourceText: z.string().max(MAX_TEXT),
+  namespace: z.string().min(1).max(MAX_NAME),
+  description: z.string().max(MAX_TEXT).optional(),
   /**
    * base 로케일 **파일 안에서의** 키 위치 (`LocaleEntry.order`).
    *
@@ -72,33 +109,33 @@ export const PushPayload = z
      */
     commitAt: z.iso.datetime({ offset: true }),
     format: Format,
-    locales: z.array(z.string().min(1)).min(1),
+    locales: z.array(LocaleCode).min(1).max(MAX_LOCALES),
     // **키 0개를 거부한다.** 스캔이 조용히 아무것도 못 찾은 경우 전 프로젝트가 orphan된다.
-    keys: z.array(IncomingKey).min(1),
+    keys: z.array(IncomingKey).min(1).max(MAX_KEYS),
     /**
      * 리포 파일에 있던 번역값. **DB를 덮는다** (strict — MVP §3.1). 변경 감지도 병합도 없다.
      * 대가는 편집 손실 창이다: pull PR이 머지되기 전의 편집은 다음 push가 지운다.
      */
     translations: z.array(z.object({
-      locale: z.string().min(1),
-      key: z.string().min(1),
-      value: z.string(),
+      locale: LocaleCode,
+      key: z.string().min(1).max(MAX_NAME),
+      value: z.string().max(MAX_TEXT),
       /**
        * **그 로케일 파일이 실제로 갖고 있던** description. `keys[].description`(소스 키 메타데이터)과
        * 다른 것이다 — 합치면 base 값을 비-base에 복제하게 되고 그건 병합이다.
        */
-      description: z.string().optional(),
+      description: z.string().max(MAX_TEXT).optional(),
       /**
        * chrome `placeholders` 블록. **모양을 검사하지 않는다** — 요구는 "잃지 않는다"뿐이고,
        * 스키마를 검증하기 시작하면 크롬 스펙을 따라다녀야 한다 (`LocaleEntry.placeholders`와 같은 계약).
        */
       placeholders: z.unknown().optional(),
-    })),
+    })).max(MAX_ROWS),
     refs: z.array(z.object({
-      key: z.string().min(1),
-      path: z.string().min(1),
+      key: z.string().min(1).max(MAX_NAME),
+      path: z.string().min(1).max(MAX_NAME),
       line: z.number().int().positive(),
-    })),
+    })).max(MAX_ROWS),
   })
   .refine((p) => p.locales.includes(p.format.baseLocale), {
     message: "baseLocale is not in locales",

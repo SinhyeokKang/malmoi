@@ -321,6 +321,13 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 - **거부 문구는 행 옆 in-block `Alert danger`다.** 마지막 OWNER 보호(`last-owner`)는 **그 행에 대한 판정**이라
   상단 global Alert로 올리면 어느 행이 거부됐는지 사라진다. ⚠️ 이 화면에는 **global Alert 슬롯이 없다** —
   `?e=`를 이 경로로 보내는 자리가 없다(거부는 `/projects?e=`로 간다).
+- ⚠️ **마스킹은 서버가 한다 — 원문은 와이어에 오르지 않는다** (2026-09-09, sec-audit 발견 4). 전에는 두
+  로더가 `email`을 원문으로 내려보내고 `"use client"` 컴포넌트가 렌더할 때 가렸다 — **그러면 원문이 RSC
+  페이로드에 그대로 실린다.** 관측자는 그 프로젝트의 EDITOR 이상이고 view-source로 읽으며, **대기 초대
+  쪽이 더 민감하다**(아직 멤버가 아닌 외부인의 주소다). 지금 `MemberView.emailLabel`·
+  `PendingInvitation.emailLabel`이 **이미 마스킹된 값**이고 컴포넌트는 그것을 그대로 그린다.
+  상시 검사는 `components/__tests__/members-screen.test.ts`이고 **렌더가 아니라 소스 스캔**이다 —
+  페이로드는 눈으로 안 보인다.
 - ⚠️ **이메일 마스킹의 예외가 여기 있다.** 두 표 모두 `maskEmail`이 기본이지만(이 표는 EDITOR도 본다 —
   규칙을 역할로 나누지 않는다) **대기 초대는 마스킹한 주소가 유일한 식별자**라 첫 글자만 남기면 서로 다른
   둘이 같은 행이 된다([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)). 서버가

@@ -64,7 +64,15 @@ const INVITE_DAYS = 7;
  * 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3, code-review 2026-09-06 🟡13).
  */
 const RoleSchema = z.enum(["OWNER", "EDITOR"]);
-const InvitationInput = z.object({ slug: z.string().min(1), email: z.string().min(1), role: RoleSchema });
+// ⚠️ `email`은 **형식과 상한**을 둘 다 갖는다 (2026-09-09, sec-audit 발견 19). 두 줄 아래 `name`엔
+// `.max(200)`이 있었는데 여기만 `min(1)`뿐이었다. 320은 RFC 5321의 주소 최대 길이다.
+const InvitationInput = z.object({
+  slug: z.string().min(1),
+  // ⚠️ **`.trim()`이 `.email()`보다 앞이다** — 폼이 앞뒤 공백을 실어 보내고(`" New@A.com "`),
+  // 검증을 먼저 하면 정상 입력이 거부된다. 정규화(`normalizeEmail`)는 그 뒤에 소문자만 더한다.
+  email: z.string().trim().email().max(320),
+  role: RoleSchema,
+});
 const MemberChangeInput = z.object({
   slug: z.string().min(1),
   targetUserId: z.string().min(1),
@@ -413,22 +421,14 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
 
   const prisma = getPrisma();
   try {
-    // 없는 행을 지우려 하면 P2025로 던진다 — 조회 후 지운다. 연결이 이미 없는 것은 실패가 아니다:
-    // 원하는 상태가 이미 이뤄져 있다.
-    const row = await prisma.account.findFirst({
-      where: { userId, provider: APP_ACCOUNT_PROVIDER },
-      select: { providerAccountId: true },
-    });
-    if (row !== null) {
-      await prisma.account.delete({
-        where: {
-          provider_providerAccountId: {
-            provider: APP_ACCOUNT_PROVIDER,
-            providerAccountId: row.providerAccountId,
-          },
-        },
-      });
-    }
+    // ⚠️ **`userId`로 좁혀 지운다** (2026-09-09, sec-audit 발견 15). 전에는 `(userId, provider)`로
+    // **읽고** PK(`provider_providerAccountId`)로 **지웠다** — `where`에 `userId`가 없어, 두 문장
+    // 사이에 그 `providerAccountId`의 소유자가 바뀌면 **남의 연결을 지운다**(탈취가 아니라 삭제다).
+    // POSTMORTEM 2026-09-06이 넓힌 규칙 "사용자에 속한 행은 `userId`로 좁힌다"의 유일한 위반이었다.
+    //
+    // `deleteMany`라 조회가 필요 없다 — 없는 행은 `count: 0`이고 P2025를 안 던진다. 연결이 이미
+    // 없는 것은 실패가 아니다: 원하는 상태가 이미 이뤄져 있다.
+    await prisma.account.deleteMany({ where: { userId, provider: APP_ACCOUNT_PROVIDER } });
   } catch (error) {
     // 처리하지 않으면 digest만 있는 일반 오류가 된다 — 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3).
     logFailure("disconnect", error);
@@ -883,25 +883,50 @@ async function checkRepoAccess(
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { status: "rejected", error: token.status };
 
-  // ⚠️ **try 밖이다.** `probeRepo`는 GitHub 실패를 값으로 주고, 던지는 것은 환경변수 누락(설정
-  // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
-  const probe = await probeRepo(owner, repo);
-
+  /**
+   * ⚠️ **인가가 App 자격증명보다 앞이다** (2026-09-09, sec-audit 발견 5). 전에는 `probeRepo`가 먼저
+   * 돌았고, `RepoInput`은 `z.string().min(1)` 둘뿐이다 — 로그인은 검증 이메일만 요구하므로(SAAS §5,
+   * 의도된 성질) **낯선 사람이 임의 private 리포에 대해 "말모이 App이 설치돼 있는가"를 물을 수
+   * 있었다.** 반환 갈래가 `repo-not-installed`(없다)와 `installation-forbidden`(있는데 못 본다)로
+   * 갈려 그대로 화면 문구가 됐다 — **존재 오라클**이다. 부수로 App quota를 상한 없이 태운다.
+   *
+   * 지금은 **사용자 토큰으로만** 그 리포가 내 설치에 있는지 먼저 보고, 없으면 한 갈래로 거부한다.
+   * ⚠️ **`planRepoConnect`의 3중 검증은 그대로다** — 순서만 바뀐다.
+   */
   let userInstallationIds: readonly string[];
-  let userRepoFullNames: readonly string[];
+  let userRepoFullNames: readonly string[] = [];
   try {
     userInstallationIds = await listUserInstallations(token.accessToken);
-    // ⚠️ **접근 불가 설치의 리포 목록을 부르지 않는다** — 404가 나고 catch가 그것을 `unavailable`로
-    // 접어 거부가 장애로 위장된다. 빈 목록이면 `planRepoConnect`가 `installation-forbidden`을 낸다.
-    userRepoFullNames =
-      probe.status === "ok" && userInstallationIds.includes(probe.installationId)
-        ? await listInstallationRepos(token.accessToken, probe.installationId)
-        : [];
+    const wanted = `${owner}/${repo}`.toLowerCase();
+    /**
+     * ⚠️ **한 설치의 실패가 나머지를 막지 않는다** (`listConnectableRepos`와 같은 판단). 일시중지된
+     * 설치는 403을 주고 그건 영구 상태다 — 통째로 접으면 정상 설치의 리포도 연결하지 못한다.
+     */
+    const settled = await Promise.all(
+      userInstallationIds.map((id) =>
+        listInstallationRepos(token.accessToken, id).then(
+          (repos): { repos: readonly string[] } => ({ repos }),
+          (): { repos: readonly string[] } => ({ repos: [] }),
+        ),
+      ),
+    );
+    // 대소문자만 다른 이름을 거짓 거부하지 않는다 (`planRepoConnect`와 같은 규칙).
+    const holder = settled.find((r) => r.repos.some((name) => name.toLowerCase() === wanted));
+    if (holder === undefined) {
+      // ⚠️ **여기서 갈래를 나누지 않는다** — "우리 App이 없다"와 "네가 못 본다"를 구별해 주는 것이
+      // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
+      return { status: "rejected", error: "repo-not-installed" };
+    }
+    userRepoFullNames = holder.repos;
   } catch (error) {
     if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
     logFailure("onboard-access", error);
     return { status: "rejected", error: "unavailable" };
   }
+
+  // ⚠️ **try 밖이다.** `probeRepo`는 GitHub 실패를 값으로 주고, 던지는 것은 환경변수 누락(설정
+  // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
+  const probe = await probeRepo(owner, repo);
 
   const connect = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
   // ⚠️ **`unavailable`을 거부로 접지 않는다** — `planProjectCreate`가 그것을 그대로 흘리도록

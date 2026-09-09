@@ -21,7 +21,7 @@
  * `git cat-file`을 부르면 partial clone이 blob당 네트워크 왕복을 해서 리포 하나에 수 분이 든다.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, lstatSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -46,7 +46,9 @@ if (!listPath) {
 
 const flag = (name: string): string | undefined => flagValue(argv, `--${name}`);
 const asJson = hasFlag(argv, "--json");
-const limit = Number(flag("limit") ?? "0") || undefined;
+// ⚠️ `undefined`면 `.slice(0, undefined)`가 **전량**이다 — 의도한 기본값이지만 읽는 사람에게
+// "상한 없음"이 안 보여서 값으로 적는다 (sec-audit 발견 20).
+const limit = Number(flag("limit") ?? "0") || Number.POSITIVE_INFINITY;
 const jobs = Math.max(1, Number(flag("jobs") ?? "6") || 6);
 const outPath = flag("out");
 const verdictsPath = flag("verdicts");
@@ -88,19 +90,27 @@ function fetchRepo(repo: string): SurveyInput {
     if (wanted.length > 0) {
       try {
         // 한 번에 받는다. 개별 blob fetch는 네트워크 왕복이 파일 수만큼 든다.
-        git(work, ["sparse-checkout", "set", "--no-cone", ...wanted]);
+        // ⚠️ **`--`가 있어야 한다** (sec-audit 발견 20). `wanted`는 **신뢰할 수 없는 리포의 경로**라
+        // `-`로 시작하면 argv에서 옵션으로 읽힌다. 이 서브커맨드에 실행 옵션이 없어 RCE 경로는 못
+        // 찾았지만, 그것은 지금 git 버전의 성질이지 우리 계약이 아니다.
+        git(work, ["sparse-checkout", "set", "--no-cone", "--", ...wanted]);
         git(work, ["checkout", "--quiet", "HEAD"]);
       } catch {
         // 부분 실패해도 받은 것만으로 진행한다 — 아래 읽기가 없는 파일을 건너뛴다.
       }
       for (const p of wanted) {
         try {
-          const buf = readFileSync(join(work, p));
+          const full = join(work, p);
+          // ⚠️ **심링크는 `catch`가 안 잡는다** (sec-audit 발견 12). 옛 주석이 "심볼릭 링크는 없는
+          // 파일로 취급한다"였는데 `catch`는 **오류일 때만** 돌고, 링크가 유효하면 `readFileSync`가
+          // 링크를 **따라가** 그 대상을 읽는다 — 측정 대상이 아닌 파일이 코퍼스에 섞인다.
+          if (lstatSync(full).isSymbolicLink()) continue;
+          const buf = readFileSync(full);
           // 비UTF-8·바이너리는 건너뛴다. 로케일 카탈로그가 그런 경우는 그 자체가 관측치다.
           if (buf.includes(0)) continue;
           files.set(p, buf.toString("utf8"));
         } catch {
-          // 서브모듈(gitlink)·심볼릭 링크·체크아웃 실패 — 없는 파일로 취급한다.
+          // 서브모듈(gitlink)·체크아웃 실패 — 없는 파일로 취급한다.
         }
       }
     }

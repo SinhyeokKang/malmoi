@@ -35,7 +35,7 @@
 
 ⚠️ **아래 표는 `writeStrategy === "regenerate"`(`chrome-locales`·`json-catalog`)에만 적용된다.** 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 원본의 순서·빈 줄·주석을 보존하는 것이 요지라 정렬·재조립을 하지 않고 `orderedEntries`를 지나지 않는다 — §1.4를 따른다. **`layout`이 아니라 `writeStrategy`로 갈린다** — `yaml-catalog`은 `per-locale`인데도 이 표를 지나지 않는다.
 
-계약 테스트(`lib/adapters/__tests__/contract.ts`)가 `ADAPTERS`를 순회하며 이 매트릭스를 그대로 검사한다. 어댑터를 추가하면 검사가 자동으로 늘고, 규칙을 어기는 가짜 어댑터를 잡는 네거티브 테스트가 검사기 자체를 지킨다.
+계약 테스트(`lib/adapters/__tests__/contract.ts`)가 `ADAPTERS`를 순회하며 이 매트릭스를 그대로 검사한다. 어댑터를 추가하면 검사가 자동으로 늘고, 규칙을 어기는 가짜 어댑터를 잡는 네거티브 테스트가 검사기 자체를 지킨다. **같은 파일의 `prototypeKeyViolations`가 프로토타입 키 계약을 `writeStrategy`와 무관하게** 전 어댑터에 건다 — 재생성은 flat·nested 두 갈래를 다 돈다(오염은 중첩 복원에서, 키 소실은 flat 대입에서 난다).
 
 | 규칙 | 값 | 깨지는 방식 |
 |---|---|---|
@@ -50,6 +50,7 @@
 | `orphaned` | 제외 | DB엔 남는다 — export에서만 빠진다. **`orderedEntries`가 유일한 관문이라 모든 재생성 writer가 이걸 지나야 불변식에 주인이 생긴다** |
 | 미번역 | 제외 (빈 문자열 포함) | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다 |
 | 낼 것 0개 | `null` — 파일을 내지 않는다 | 빈 `{}`는 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다 |
+| 키 대입 | **프로토타입 없는 객체**(`Object.create(null)`)에만 대입한다 | 2026-09-09 추가 (sec-audit 발견 1·17). 로케일 파일의 키는 남이 쓰므로 `__proto__`가 온다. 평범한 `{}`에서 `out["__proto__"] = v`는 setter를 불러 own property를 안 만들고 **그 키가 조용히 사라지고**, 중첩 복원의 `node[head]` 조회는 `Object.prototype`을 돌려줘 다음 세그먼트가 **거기에 앉는다** — 프로세스 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. ⚠️ **재조립 자리도 같다** — `normalizeArrays`가 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 한 줄 뒤에 사라진다. 검사는 `prototypeKeyViolations`(`ADAPTERS` 전수) |
 
 **⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
 `LocaleEntry.order`까지 가려면 이 넷을 지나고, **하나만 끊겨도 `orderedEntries`가 코드 유닛
@@ -594,6 +595,20 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   SAAS §8 7단계의 고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
   "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
+⚠️ **`Account`·`Session`의 토큰 컬럼은 평문이다** (2026-09-09 수용 기록 — sec-audit 발견 16).
+`access_token`·`refresh_token`·`id_token`·`sessionToken` 넷이고, **Auth.js Prisma adapter의 기본 모양**이라
+컬럼 암호화는 그 어댑터 밖이다(스키마를 바꾸면 어댑터가 런타임에 던진다 — §5.1의 첫 경고와 같은 축).
+
+**전제 조건을 적어 두는 것이 이 항목의 전부다**: 그 값에 닿으려면 **DB 자격증명**이 있어야 한다.
+2026-09-09 전에는 아니었다 — `anon` 키 하나로 읽을 수 있었고(POSTMORTEM 2026-09-09), 지금은
+`public` 스키마의 `anon`·`authenticated` GRANT가 **dev·prod 둘 다 0건**이다(실측). 즉 이 수용은
+**그 0건에 기대어 있다** — `/db` 5단계의 검사가 그것을 보는 자리다.
+
+⚠️ **런타임 롤은 `postgres`이고 `rolbypassrls=true`다**(실측). **지금 RLS를 켜도 앱 연결에는 안 걸린다** —
+"RLS가 없어 애플리케이션이 유일한 방어선"이라는 서술은 이 사실과 함께 읽는다. 최소권한 롤로 옮기는
+것은 **RLS를 실제로 켜는 시점**의 선행 작업으로 미뤘다 (2026-09-09 판정 — `DATABASE_URL`이 사는 네 곳을
+동시에 건드리는 변경이고, GRANT 0이라 지금 얻는 것이 작다).
+
 ## 5.5 push 적용 (`lib/push/`)
 
 **판정과 I/O를 나눈다.** `payload.ts`가 로케일 파일에서 페이로드를 조립하고, `plan.ts`가 순수 함수로 계획을 세우고(`toInsert`/`toUpdate`/`toOrphan`/`toUnorphan`/`staleKeyIds`), `apply.ts`가 그것만 실행한다. `PushPlan`에 **`toDelete`가 없는 것이 요지다** — 코드에서 사라진 키는 `orphaned`로 표시만 한다.
@@ -609,6 +624,36 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   지난다**(셋을 직접 부르지 않는다). 생산자가 하나인 이유와 같은 이유로 그 입구도 하나여야 한다.
 - `scripts/ingest.ts`는 **`selectLocaleFiles`·`pickBaseLocale`을 그대로 import한다** (2026-09-04 — 전엔 바이트 동일한 복사본이었다). ⚠️ **그 CLI는 `assemblePushInput`을 지나지 않는다** — 두 함수를 각자 부르므로 단일 입구를 우회한다(통일은 미결). ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
 - **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
+
+### 5.5.05 외부 페이로드가 **경로와 크기**를 정하지 못한다 (2026-09-09, sec-audit 발견 2·10)
+
+`locales[]`와 `format.pathTemplate`은 `applyPush`가 **그대로** 저장하고, 야간 pull이 그것을 보간해
+**설치 토큰으로** 커밋한다. 그래서 그 둘은 값이 아니라 **경로 조각**이고, `z.string().min(1)`뿐이던
+동안 push 토큰 하나가 리포의 임의 파일에 쓰는 원시체였다.
+
+⚠️ **`..`가 필요 없다.** `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 그 경로가
+그대로 나가고, `l10n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
+(`[skip-l10n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
+목록에 리포가 보이는 것만 요구하므로 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을 받는다.
+
+판정은 `lib/locale-code.ts`의 `isPathSafeLocale`·`isPathSafeRepoPath`이고 **import가 0인 잎**이다 —
+push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙을 쓴다. ⚠️ **`looksLikeLocale`을
+재사용하지 않는다**: 그것은 *탐지* 규칙이라 "우연히 로케일로 보이는 디렉터리인가"를 묻고 2~3자
+소문자를 받는데, 여기 축은 "경로에 넣어도 되는가"다. 그 함수가 `lib/adapters/**`에 있어 재측정
+트리거가 붙는 것도 이유의 하나다.
+
+**방어가 두 층인 것이 요지다.** 스키마 경계(`lib/push/plan.ts`)는 새 값이 저장되는 것을 막고,
+`resolveLocalePaths`(`lib/pull/plan.ts`)는 **경계가 서기 전에 저장된 행**을 막는다 — 야간 cron이 읽는
+것이 정확히 그 행이다. 트리에 없는 파일을 만드는 갈래는 그대로다(신규 로케일이 그것으로 생긴다);
+막는 것은 **템플릿의 디렉터리 밖으로 나가는 것**뿐이다.
+
+⚠️ **온보딩의 첫 적재는 Zod 경계를 지나지 않는다** (`lib/onboarding/ingest.ts` → `buildPushPayload` →
+`applyPush`). 값이 리포의 파일명·식별자에서 오므로 실질 위험이 없고, 남는 위험은 2층이 받는다 —
+그 경로로 들어온 값이 있으면 pull이 `fail()`로 **시끄럽게** 멈춘다.
+
+크기 상한(발견 10)은 같은 자리에 있다 — 키 20,000 · 로케일 200 · 문자열 10,000자 · 행 200,000이고
+근거는 실측이다(prod 최대 903키 · `Translation` 12,783행 — **20배 여유**). ⚠️ **`placeholders`엔 안
+건다**: `z.unknown()`으로 두는 것이 계약이고, 상한은 개수·길이 축에서만 건다.
 
 ### 5.5.1 pooler가 구현을 규정한다
 
@@ -784,6 +829,24 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 ⚠️ **판정은 문구가 아니라 타입이다.** 남의 오류가 우리 문구를 담아도 안전이 아니고, 우리 문구가
 바뀌어도 판정이 흔들리지 않는다. `instanceof`가 아니라 `name` 비교인 이유는 모듈 인스턴스가 둘이
 되면(번들 경계·mock) 조용히 false가 되어 설정 누락이 `internal`로 접히기 때문이다.
+
+### 6.05 시크릿 비교는 **고정 길이 digest**로 한다 (2026-09-09, sec-audit 발견 6)
+
+`timingSafeEqual`은 길이가 다른 버퍼에 **던진다.** 그래서 두 자리(`lib/push/auth.ts`의 `checkBearer` ·
+`lib/github-connect/state.ts`의 `equalConstantTime`)가 앞에 길이 검사를 뒀는데, **재는 자가 어긋나
+있었다** — 검사는 `String.length`(UTF-16 코드 유닛)이고 비교는 `Buffer`(UTF-8 바이트)다. `"가"`는
+코드 유닛 1 · 3바이트라 `"a"`와 같은 길이로 통과하고 `RangeError`가 난다.
+
+⚠️ **두 입력 모두 공격자가 정한다** — Bearer 헤더와 state 쿠키다. 던지면 라우트의 `catch`가 500으로
+접어 **거부가 장애로 위장된다**(§6.3의 반대 방향).
+
+**해시하면 양쪽이 항상 32바이트라 길이 검사 자체가 사라진다.** 규칙을 고치는 것이 아니라 **없애는**
+쪽이고, 그래서 세 번째 비교 자리가 생겨도 같은 함정을 복사하지 않는다. 두 파일이 각자 `sha256`
+헬퍼를 들고 서로를 "같은 규칙"으로 참조한다.
+
+⚠️ **호스트 판정도 같은 절에 있다** (발견 25): `requestOrigin`은 모양 검사 위에 **기대 호스트 허용
+목록**을 든다. 실측으로는 Vercel 엣지가 `Host` 위조를 404로 막고 `X-Forwarded-Host`를 반영하지
+않지만(2026-09-09 프로덕션), 그 방어는 **플랫폼 설정의 성질이지 우리 코드의 성질이 아니다.**
 
 ### 6.1 ⚠️ 차단은 미들웨어, **인가는 진입점** (2026-09-05 갈렸다)
 
@@ -1054,5 +1117,29 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
 
 ## 8. Vercel
 
+- ⚠️ **함수는 DB 옆(`hnd1`)에서 돈다 — 기본값이 아니라 `vercel.json`이 정한다** (2026-09-09). `regions`를
+  안 주면 함수가 **`iad1`(워싱턴)**이고 DB는 도쿄라 **요청마다의 왕복 일곱이 전부 태평양을 건넌다**
+  (홉당 ~375ms → 번역 화면 첫 착지 3.30초). 이 앱의 비용은 페이로드가 아니라 **홉 개수**다 — 문서는
+  8KB인데 본문이 3.4초 걸렸다. **엣지는 그대로 `icn1`**이므로 사용자까지의 거리는 한 홉만 늘고 DB
+  일곱 홉이 짧아진다.
+  - **실행 리전은 `x-vercel-id`의 두 번째 필드다** (`icn1::hnd1::…` — 앞이 엣지, 뒤가 함수).
+    `curl -sD- https://mal-moi.com/ | grep -i x-vercel-id`.
+  - ⚠️ **TTFB로 서버 시간을 재지 않는다.** 스트리밍 응답은 헤더를 먼저 보내므로 TTFB가 8ms여도 서버가
+    본문을 3.4초 붙들고 있을 수 있다 — `performance`의 **`responseEnd`와 `transferSize`를 함께** 본다
+    (POSTMORTEM 2026-09-09: 그 오독이 원인을 "순차 DB 왕복"으로 진단하게 만들었다).
 - **Cron은 Hobby 플랜에서 하루 1회.** 야간 pull 1회가 요구사항이라 지금은 맞다.
+  - ⚠️ **한 실행이 도는 프로젝트에 상한이 있다** (2026-09-09, sec-audit 발견 26 — `PULL_BATCH_LIMIT` 50).
+    전에는 준비된 전 프로젝트를 직렬로 돌았고, `maxDuration = 60`을 넘으면 **slug 정렬 뒤쪽이 통째로
+    안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
+    정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
+    **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
+- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9). enforce 셋
+  (`X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  `Content-Security-Policy: frame-ancestors 'none'`) + **CSP 본체는 Report-Only**다.
+  - ⚠️ **`Referrer-Policy`가 이 중 실질이 가장 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그
+    화면에 외부 링크가 하나 추가되는 순간 토큰이 `Referer`로 나간다.
+  - ⚠️ **CSP를 바로 enforce하지 않는다** — Next가 인라인 스타일·스크립트를 넣고, 깨지면 **콘솔에만**
+    난다. 이 리포엔 렌더 테스트가 없어 `pnpm build`로도 못 본다. 콘솔을 읽은 뒤에 올린다.
+  - ⚠️ **`tsc`는 이 함수를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
+    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.

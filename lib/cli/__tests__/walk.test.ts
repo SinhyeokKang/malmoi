@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -35,5 +35,35 @@ describe("sourceKind", () => {
     expect(sourceKind("a.html")).toBe("raw");
     expect(sourceKind("a.json")).toBe("raw");
     expect(sourceKind("a.png")).toBeUndefined();
+  });
+});
+
+/**
+ * **심링크를 따라가지 않는다** (sec-audit 발견 12).
+ *
+ * `statSync`는 심링크를 **따라가므로** 대상이 디렉터리면 그 안으로 들어간다. 대상 리포는 남이
+ * 쓰는 트리이고 세 CLI(`ingest`·`scan`·`push:local`)가 전부 이 함수를 지난다 — 링크 하나로
+ * 훑기가 리포 밖으로 나가거나(`ln -s /etc x`) 자기 자신으로 돌아 끝나지 않는다(`ln -s . loop`).
+ */
+describe("walkFiles — 심링크 (sec-audit 12)", () => {
+  const sroot = mkdtempSync(join(tmpdir(), "walk-link-"));
+  const outside = mkdtempSync(join(tmpdir(), "walk-outside-"));
+  writeFileSync(join(outside, "secret.ts"), "");
+  mkdirSync(join(sroot, "src"), { recursive: true });
+  writeFileSync(join(sroot, "src/a.ts"), "");
+  symlinkSync(join(outside, "secret.ts"), join(sroot, "src/link.ts"));
+  symlinkSync(outside, join(sroot, "outdir"), "dir");
+  symlinkSync(".", join(sroot, "loop"), "dir");
+  afterAll(() => {
+    rmSync(sroot, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it("리포 밖을 가리키는 심링크는 결과에 없다 — 파일 링크도 디렉터리 링크도", () => {
+    expect(walkFiles(sroot)).toEqual(["src/a.ts"]);
+  });
+
+  it("자기 자신을 가리키는 심링크에서 종료한다 — 던지지도 않는다", () => {
+    expect(() => walkFiles(sroot)).not.toThrow();
   });
 });

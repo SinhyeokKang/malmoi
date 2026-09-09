@@ -8,9 +8,10 @@ minimumReleaseAge: 1440
 # 라이프사이클(install/postinstall) 스크립트 실행을 허용할 패키지 화이트리스트.
 # pnpm 10은 빌드 스크립트를 기본 차단한다(악성 postinstall 차단).
 # "Ignored build scripts" 경고가 뜨면 정말 필요한지 확인 후 pnpm approve-builds로 검토해 추가.
+# ⚠️ **실제로 스크립트를 가진 것만 남긴다** (sec-audit 발견 21 — `.pnpm` 375개 전수 확인).
+# `@prisma/client`·`sharp`는 install 스크립트가 없어 지금은 아무것도 안 주는데, 목록에 있으면
+# **업스트림이 나중에 스크립트를 추가할 때 자동 승인**된다 — 화이트리스트의 요지가 사라진다.
 onlyBuiltDependencies:
-  - '@prisma/client'
   - '@prisma/engines'
   - prisma
   - esbuild
-  - sharp

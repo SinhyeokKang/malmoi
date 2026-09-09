@@ -1,5 +1,5 @@
 import { ADAPTERS, detectFormatWith, isAdapterName, matchGlobPaths } from "@/lib/adapters";
-import { compareKeys, looksLikeLocale } from "@/lib/adapters/shared";
+import { compareKeys, exceedsGlobBudget, looksLikeLocale } from "@/lib/adapters/shared";
 import type { AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
 
 import { makeProbe } from "./detect";
@@ -23,6 +23,10 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
   const layout = ADAPTERS.find((a) => a.name === adapter)?.layout;
   // 모르는 어댑터는 어느 파일도 가리키지 못한다 — `planConfirmedFormat`의 `unknown-adapter` 검사에 의존하지 않는다.
   if (layout === undefined) return [];
+  // ⚠️ **글롭 예산은 두 갈래 다 지난다** (sec-audit 발견 11). `createProject`가 `planConfirmedFormat`
+  // 검증 **전에** 원값으로 이 함수를 부르므로, 여기서 안 막으면 온보딩이 첫 진입점이 된다. per-locale
+  // 갈래도 `{locale}` N개를 인접 `([^/]+)`로 이어 붙여 같은 모양을 만든다.
+  if (exceedsGlobBudget(pathTemplate)) return [];
   if (layout === "multi-locale") return matchGlobPaths(pathTemplate, paths);
 
   const parts = pathTemplate.split("{locale}");

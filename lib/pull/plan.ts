@@ -2,6 +2,7 @@ import { fail } from "@/lib/failure";
 import { compareKeys, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import type { Adapter, AdapterError, DetectedFormat, LocaleEntry } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
+import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 /**
  * pull의 판정 전부. **I/O가 없다** — GitHub 호출과 DB 조회는 껍데기(`lib/pull/run.ts`)가 맡고
@@ -122,9 +123,20 @@ export function resolveLocalePaths(
     }
     // 파일이 아직 없어도 새로 만든다 — 트리를 보지 않는 것이 이 갈래의 요지다.
     // 정렬하는 이유: 이 순서가 트리 페이로드 순서가 되고, 흔들리면 커밋이 비결정적이 된다.
-    return [...format.locales]
-      .sort(compareKeys)
-      .map((locale) => ({ locale, path: format.pathTemplate.replaceAll("{locale}", locale) }));
+    return [...format.locales].sort(compareKeys).map((locale) => {
+      // ⚠️ **2층 방어다** (sec-audit 발견 2). `/api/push`의 Zod 경계가 같은 규칙을 걸지만, 그것이
+      // 서기 **전에** 저장된 `Locale.code`·`Project.pathTemplate` 행이 DB에 남아 있을 수 있고
+      // 야간 cron은 그 행을 읽어 **설치 토큰으로** 커밋한다. 경계 하나로는 이 경로가 안 닫힌다.
+      if (!isPathSafeLocale(locale)) {
+        fail(`unsafe locale code for a repo path: ${locale}`);
+      }
+      const path = format.pathTemplate.replaceAll("{locale}", locale);
+      // 트리에 없는 파일을 만드는 것은 유지하고, **템플릿의 디렉터리 밖으로 나가는 것만** 막는다.
+      if (!isPathSafeRepoPath(path)) {
+        fail(`the resolved path leaves the repository: ${path}`);
+      }
+      return { locale, path };
+    });
   }
 
   // 글롭 규칙은 `lib/adapters/shared.ts`에 하나만 있다 — push·survey가 같은 함수를 쓴다.

@@ -265,3 +265,116 @@ describe("planPush — base 변경 push의 stale 전파", () => {
     expect(p.staleKeyIds).toEqual([]);
   });
 });
+
+/**
+ * **외부 페이로드가 경로와 크기를 정하지 못하게** (sec-audit 발견 2 · 10).
+ *
+ * `locales[]`와 `format.pathTemplate`은 `applyPush`가 **그대로** 저장하고, 야간 pull이 그것을 보간해
+ * **설치 토큰으로** 커밋한다. 검증이 없으면 push 토큰 하나로 리포의 임의 파일에 쓰는 원시체가 된다 —
+ * `.github/workflows/pwn`은 `..` 없이도 성립하고, 그 브랜치 push가 워크플로를 그 리포의 secret과
+ * 함께 실행시킨다.
+ *
+ * ⚠️ **거부는 400이다** (409가 아니다) — 오배송·역행이 아니라 **스키마 위반**이고, 그 구별이 대상
+ * 리포 CI 로그에서 원인을 가른다.
+ */
+describe("PushPayload — 로케일·템플릿 charset (sec-audit 2)", () => {
+  const valid = {
+    projectSlug: "skillflo",
+    commitSha: "a".repeat(40),
+    commitAt: "2026-08-31T16:38:15+09:00",
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },
+    locales: ["en", "ko"],
+    keys: [{ key: "a.b", sourceText: "V", namespace: "a" }],
+    translations: [{ locale: "ko", key: "a.b", value: "값" }],
+    refs: [{ key: "a.b", path: "src/a.ts", line: 3 }],
+  };
+
+  it("정상 페이로드는 그대로 통과한다", () => {
+    expect(PushPayload.safeParse(valid).success).toBe(true);
+  });
+
+  it("발견 2의 페이로드를 거부한다 — `{locale}` 템플릿 + 경로를 담은 로케일", () => {
+    const attack = { ...valid, format: { ...valid.format, pathTemplate: "{locale}" },
+      locales: ["en", ".github/workflows/pwn"],
+      translations: [{ locale: "en", key: "a.b", value: "v" }] };
+    expect(PushPayload.safeParse(attack).success).toBe(false);
+  });
+
+  it("경로를 담은 로케일 코드를 전부 거부한다", () => {
+    for (const locale of ["../etc", "a/b", "/abs", "..", "a\\b", "a\0b", "%2e%2e"]) {
+      const bad = { ...valid, locales: ["en", locale], format: { ...valid.format, baseLocale: "en" },
+        translations: [{ locale: "en", key: "a.b", value: "v" }] };
+      expect(PushPayload.safeParse(bad).success).toBe(false);
+    }
+  });
+
+  it("`baseLocale`도 같은 규칙을 지난다 — 그것도 로케일 코드다", () => {
+    const bad = { ...valid, locales: ["../x"], format: { ...valid.format, baseLocale: "../x" },
+      translations: [] };
+    expect(PushPayload.safeParse(bad).success).toBe(false);
+  });
+
+  it("리포를 벗어나는 `pathTemplate`을 거부한다", () => {
+    for (const t of ["../{locale}.json", "/etc/{locale}", "a/../../{locale}", "a\\{locale}"]) {
+      expect(PushPayload.safeParse({ ...valid, format: { ...valid.format, pathTemplate: t } }).success).toBe(false);
+    }
+  });
+
+  it("실제 템플릿 모양은 통과한다 — 글롭과 중첩 디렉터리를 막지 않는다", () => {
+    for (const t of ["public/_locales/{locale}/messages.json", "src/i18n/namespaces/*.ts"]) {
+      expect(PushPayload.safeParse({ ...valid, format: { ...valid.format, pathTemplate: t } }).success).toBe(true);
+    }
+  });
+});
+
+/**
+ * **크기 상한** (sec-audit 발견 10). 상한이 하나도 없었다 — prod 최대가 903키·`Translation` 12,783행이라
+ * 아래 값은 실측의 20배 여유다. 넘으면 400이고 그 이유가 응답에 실린다(대상 리포 CI 로그로 간다).
+ *
+ * ⚠️ **`placeholders: z.unknown()`은 그대로 둔다** — "모양을 검사하지 않는다"가 계약이고(크롬 스펙을
+ * 따라다니지 않는다), 상한은 **개수·길이** 축에서만 건다.
+ */
+describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
+  const base = {
+    projectSlug: "skillflo",
+    commitSha: "a".repeat(40),
+    commitAt: "2026-08-31T16:38:15+09:00",
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },
+    locales: ["en"],
+    keys: [{ key: "a.b", sourceText: "V", namespace: "a" }],
+    translations: [] as Array<Record<string, unknown>>,
+    refs: [] as Array<Record<string, unknown>>,
+  };
+  const key = (i: number) => ({ key: `k${i}`, sourceText: "V", namespace: "n" });
+
+  it("실측의 20배 여유 안에서는 통과한다 — prod 최대가 903키다", () => {
+    const keys = Array.from({ length: 5_000 }, (_, i) => key(i));
+    expect(PushPayload.safeParse({ ...base, keys }).success).toBe(true);
+  });
+
+  it("키 20,000개를 넘으면 거부한다", () => {
+    const keys = Array.from({ length: 20_001 }, (_, i) => key(i));
+    expect(PushPayload.safeParse({ ...base, keys }).success).toBe(false);
+  });
+
+  it("로케일 200개를 넘으면 거부한다", () => {
+    const locales = Array.from({ length: 201 }, (_, i) => `l${i}`);
+    expect(PushPayload.safeParse({ ...base, locales: ["en", ...locales] }).success).toBe(false);
+  });
+
+  it("번역 값 10,000자를 넘으면 거부한다", () => {
+    const t = (n: number) => [{ locale: "en", key: "a.b", value: "x".repeat(n) }];
+    expect(PushPayload.safeParse({ ...base, translations: t(10_000) }).success).toBe(true);
+    expect(PushPayload.safeParse({ ...base, translations: t(10_001) }).success).toBe(false);
+  });
+
+  it("`sourceText`·`key`·`namespace`도 상한을 갖는다", () => {
+    expect(PushPayload.safeParse({ ...base, keys: [{ key: "a", sourceText: "x".repeat(10_001), namespace: "n" }] }).success).toBe(false);
+    expect(PushPayload.safeParse({ ...base, keys: [{ key: "k".repeat(1_001), sourceText: "V", namespace: "n" }] }).success).toBe(false);
+  });
+
+  it("`refs`와 `translations` 배열에도 상한이 있다", () => {
+    const refs = Array.from({ length: 200_001 }, () => ({ key: "a.b", path: "src/a.ts", line: 1 }));
+    expect(PushPayload.safeParse({ ...base, refs }).success).toBe(false);
+  });
+});

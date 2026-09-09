@@ -5,12 +5,16 @@ dist/
 coverage/
 
 # 로컬 시크릿 — Vercel env가 정본이고 로컬 파일은 절대 커밋하지 않는다.
-.env
-.env.local
-.env*.local
+# ⚠️ 전에는 `.env` 정확 일치 + `*.local`이라 `.env.production`·`.env.development`가 안 잡혔다
+# (sec-audit 발견 18, `git check-ignore` 실측). `.env*`로 넓히고 예시 파일만 되돌린다.
+.env*
+!.env.example
 
-# GitHub App 개인키. 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
+# 자격증명 파일. 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
 *.pem
+*.key
+*.p12
+*.pfx
 
 .DS_Store
 *.tsbuildinfo

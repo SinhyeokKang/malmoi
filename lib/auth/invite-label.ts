@@ -1,7 +1,10 @@
 import { maskEmail } from "./email";
 
 /**
- * 대기 초대 표의 표시 라벨 — **목록 전체를 보고** 충돌하는 행만 구별한다 (malmoi#18).
+ * 이메일 목록의 표시 라벨 — **목록 전체를 보고** 충돌하는 행만 구별한다 (malmoi#18).
+ *
+ * ⚠️ **두 표가 쓴다** (2026-09-09, sec-audit 발견 4 — 전엔 대기 초대 전용이었다). 원문 이메일을
+ * 와이어에 안 싣기로 하면서 멤버 표의 라벨도 서버가 만들게 됐다.
  *
  * ⚠️ **왜 `maskEmail`을 고치지 않는가.** 그 함수의 소비자가 셋이고(초대 화면·셀 메타·멤버 표)
  * 지역 사본을 두면 같은 주소가 화면마다 다르게 보인다 (CLAUDE.md). 그리고 대기 초대만의 성질이
@@ -14,9 +17,15 @@ import { maskEmail } from "./email";
  * (DESIGN §6.1) — 항상 세 글자를 보이는 쪽으로 고치면 충돌하지 않는 다수의 주소가 필요 이상으로
  * 노출된다. 노출은 **갈라야 할 때 최소한만** 늘린다.
  */
-export function maskedInviteLabels(emails: readonly string[]): string[] {
+export function maskedEmailLabels(emails: readonly string[]): string[] {
   return emails.map((email, index) => label(email, emails, index));
 }
+
+/**
+ * 옛 이름 — `docs/DESIGN.md` §6.65와 `CLAUDE.md`가 이것을 가리킨다. **얼은이다**: 규칙이 두 벌이면
+ * 같은 주소가 표마다 다르게 보인다 (이 리포가 `matchGlobPaths`·`scanJson`으로 두 번 밟은 부류).
+ */
+export const maskedInviteLabels = maskedEmailLabels;
 
 function label(email: string, all: readonly string[], index: number): string {
   const at = email.indexOf("@");

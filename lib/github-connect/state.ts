@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /**
  * OAuth state 서명·검증 (design §3.1). **I/O가 없다** — nonce 생성과 쿠키 쓰기·읽기는 껍데기가 한다.
@@ -197,8 +197,14 @@ function parseDest(dest: unknown): StateDest | null {
 }
 
 function equalConstantTime(a: string, b: string): boolean {
-  // 길이가 다르면 timingSafeEqual이 던지므로 먼저 걸러낸다 (`lib/push/auth.ts`와 같은 형).
-  // 서명 길이는 고정이라 노출되는 정보가 없다.
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  // ⚠️ **길이 사전검사가 없다** (2026-09-09, sec-audit 발견 6 — `lib/push/auth.ts`와 같은 규칙).
+  // 전에는 `String.length`(UTF-16)로 재고 `Buffer`(UTF-8)를 넘겨, **쿠키에 비ASCII 서명이 오면**
+  // `RangeError`가 났다 — 쿠키는 공격자가 정하는 값이라 `state-mismatch`가 500으로 위장됐다.
+  // 해시하면 양쪽이 항상 32바이트라 그 자리가 사라진다.
+  return timingSafeEqual(sha256(a), sha256(b));
+}
+
+/** 고정 길이(32바이트) digest. `lib/push/auth.ts`의 같은 이름 함수와 규칙이 하나다. */
+function sha256(value: string): Buffer {
+  return createHash("sha256").update(value, "utf8").digest();
 }

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { planProjectAccess, type ProjectAccess } from "./access";
+import { maskedEmailLabels } from "./invite-label";
 import type { Permission, Role } from "./permission";
 
 /**
@@ -52,7 +53,12 @@ export type MemberView = {
   userId: string;
   /** Google 계정엔 핸들이 없다 — 이름이 비면 화면이 마스킹한 이메일로 대신한다. */
   name: string | null;
-  email: string | null;
+  /**
+   * ⚠️ **원문이 아니라 마스킹 라벨이다** (2026-09-09, sec-audit 발견 4). 이 값이 `"use client"`
+   * 컴포넌트 props로 넘어가 **RSC 페이로드에 실리므로**, 클라이언트에서 가리는 것은 화장품이다 —
+   * 관측자는 그 프로젝트의 EDITOR 이상이고 view-source로 읽는다. 안 읽는 것이 안 새는 것이다.
+   */
+  emailLabel: string | null;
   role: Role;
   joinedAt: Date;
 };
@@ -61,13 +67,16 @@ export type MemberView = {
 export async function loadMembers(prisma: PrismaClient, projectId: string): Promise<MemberView[]> {
   const rows = await prisma.projectMember.findMany({
     where: { projectId },
+    // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
     select: { userId: true, role: true, createdAt: true, user: { select: { name: true, email: true } } },
     orderBy: { createdAt: "asc" },
   });
-  return rows.map((r) => ({
+  // 라벨은 **목록 전체를 보고** 만든다 — 행마다 따로 만들면 같은 도메인의 두 주소가 같은 라벨이 된다.
+  const labels = maskedEmailLabels(rows.map((r) => r.user?.email ?? ""));
+  return rows.map((r, i) => ({
     userId: r.userId,
     name: r.user?.name ?? null,
-    email: r.user?.email ?? null,
+    emailLabel: r.user?.email ? (labels[i] ?? null) : null,
     role: r.role,
     joinedAt: r.createdAt,
   }));
@@ -75,7 +84,8 @@ export async function loadMembers(prisma: PrismaClient, projectId: string): Prom
 
 export type PendingInvitation = {
   id: string;
-  email: string;
+  /** ⚠️ **마스킹 라벨이다** — `MemberView.emailLabel`과 같은 이유이고, 여기가 더 민감하다(발견 4). */
+  emailLabel: string;
   role: Role;
   expiresAt: Date;
   invitedByName: string | null;
@@ -107,9 +117,10 @@ export async function loadPendingInvitations(
     // 이메일 오름차순 — `createdAt`을 쓰면 같은 이메일의 회전 이력이 순서를 흔든다.
     orderBy: { email: "asc" },
   });
-  return rows.map((r) => ({
+  const labels = maskedEmailLabels(rows.map((r) => r.email));
+  return rows.map((r, i) => ({
     id: r.id,
-    email: r.email,
+    emailLabel: labels[i] ?? "",
     role: r.role,
     expiresAt: r.expiresAt,
     invitedByName: r.invitedByUser?.name ?? null,

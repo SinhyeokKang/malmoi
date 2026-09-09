@@ -133,7 +133,9 @@
 
 ✅ **그 값싼 수단이 화면에 붙었다** (2026-09-08, 6a T2 판정 + T7 화면): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시키고 표는 그 ns의 행만 렌더한다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **전체 보기는 `?ns=*`로만 간다.**
 
-⚠️ **재측정했고 2초 목표는 미달이다** (2026-09-08 프로덕션, 같은 프로젝트·같은 방법): 필터 없는 화면 **12.7 → 4.66초**(2.7배), **기본 착지 3.30초**. 그런데 **24키 프로젝트도 3.29초이고 `/projects` 목록은 1.42초다** — 약 1.9초가 **키 수와 무관한 고정 비용**이라 **가상화도, 조회를 네임스페이스로 좁히는 것도 이 3.3초를 못 줄인다.** 후보는 순차 DB 왕복(도쿄 리전 — 레이아웃 2회 + 페이지 5회)이고, LCP가 DCL과 거의 같은 것이 그 신호다(TTFB는 10~78ms). 다음 수단 셋은 표를 `Suspense`로 감싸 셸을 먼저 그리기 · 왕복 병합 · 폰트 CSS의 렌더 블로킹 해제이고 **전부 번역 화면 밖이다** (`docs/features/README.md` 백로그).
+⚠️ **재측정했고 2초 목표가 미달이었다** (2026-09-08 프로덕션): 필터 없는 화면 **12.7 → 4.66초**(2.7배), **기본 착지 3.30초**. 그런데 **24키 프로젝트도 3.29초**라 약 1.9초가 **키 수와 무관한 고정 비용**이었고, **가상화도 조회 좁힘도 그것을 못 줄인다**는 판정은 그대로다.
+
+✅ **그 고정분의 원인이 나왔고 가상화와 무관했다** (2026-09-09): **Vercel 함수가 `iad1`(워싱턴)에서 돌고 DB는 도쿄**였다 — `x-vercel-id: icn1::iad1::…`(앞이 엣지, **뒤가 실행 리전**). 왕복 일곱이 전부 태평양을 건너 홉당 ~375ms였다. `vercel.json`에 `regions: ["hnd1"]`을 박아 **기본 착지 3.30 → 0.44~0.54초**, **필터 없는 907키 화면 4.66 → 1.20초**다(FCP 3회, PR #24 → `7b029b8`). **2초 목표는 최악 경로에서도 통과했고 수단 셋(`Suspense`·왕복 병합·폰트) 중 아무것도 쓰지 않았다.** ⚠️ **오진을 부른 것은 TTFB다** — 8~78ms를 서버 시간으로 읽으면 "셸은 빠른데 클라이언트가 느리다"가 되는데, 실제로는 헤더만 먼저 나가고 서버가 8KB 본문을 3.4초 붙들고 있었다. 스트리밍 응답에서는 **`responseEnd`와 `transferSize`를 함께** 본다 (POSTMORTEM 2026-09-09).
 
 ### 폰트 — Pretendard 동적 서브셋 (생성물)
 
@@ -222,7 +224,7 @@ awk '{printf "%s\n", $0}' key.pem | sed 's/\\n$//' | vercel env add GITHUB_APP_P
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(**`db:generate`** + typecheck + test + Codex 미러 드리프트) 단일이다. 앞의 스텝은 게이트가 아니라 선행 조건이지만, `.env.local`이 없는 환경에서 `prisma generate`가 도는지의 **상시 검증을 겸한다**(POSTMORTEM 2026-08-31 🔁). 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
+`ci.yml` 하나뿐이고 job은 `verify`(**`db:generate`** + typecheck + test + Codex 미러 드리프트) 단일이다. ⚠️ **`permissions: contents: read`가 job에 박혀 있고 `uses:` 셋이 40자 SHA로 핀돼 있다** (2026-09-09, sec-audit 발견 13 — 리포 기본값이 지금도 `read`라 동작은 안 바뀌었고, 요지는 그 설정을 **트리 안으로** 옮긴 것이다: 기본값은 대시보드 한 번으로 `write`가 되는데 이 job은 `pnpm test`로 임의 프로젝트 코드를 돈다). 앞의 스텝은 게이트가 아니라 선행 조건이지만, `.env.local`이 없는 환경에서 `prisma generate`가 도는지의 **상시 검증을 겸한다**(POSTMORTEM 2026-08-31 🔁). 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
 
 **✅ CI가 프로덕션 앞의 게이트다** (2026-09-04 브랜치 분리로 되살아났다). `dev→main` PR에 붙는 run이 그것이고, `/merge`는 그 체크가 green이어야 머지한다. 브랜치가 하나였던 동안에는 PR 이벤트 자체가 없어 CI가 배포 **뒤에** 돌았다 — 그때의 유일한 방어선은 `/push`의 로컬 게이트였다.
 
@@ -525,6 +527,10 @@ lib/
                         ⚠️ **6b-5부터 Action 둘이 이 union을 공유한다** — `updateRepositorySettings`는
                         `invalid-branch`만, `updateBaseLocale`은 로케일 갈래 둘만 낸다.
                         ⚠️ **`noop`이 이 union에 없다** — 거부가 아니라 "쓸 것이 없다"라 화면은 성공으로 보인다
+  locale-code.ts        ⚠️ **잎, import 0** — isPathSafeLocale·isPathSafeRepoPath. 로케일 코드와
+                        pathTemplate이 리포 **경로 조각**이라 값이 아니라 경로로 검증한다 (sec-audit 발견 2).
+                        push 스키마와 pull 판정이 **두 층으로** 같은 함수를 쓴다 — 경계는 새 값을,
+                        resolveLocalePaths는 경계가 서기 전에 저장된 행을 막는다
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). `account()`는 6b-4, `project(slug)`는
                         6b-6이 **그 페이지와 같은 커밋에** 더했다 — 페이지 없이 등재하면 404를 가리키는
                         생성기가 되고 죽은 링크 검사의 접두 규칙이 `/projects/*`를 통과시켜 못 잡는다.
@@ -642,6 +648,9 @@ lib/
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회
+                        + loadMembers·loadPendingInvitations — ⚠️ **원문 이메일을 안 낸다** (2026-09-09,
+                        sec-audit 발견 4): 반환 타입이 `emailLabel`이고 마스킹을 로더가 한다. 클라이언트에서
+                        가리면 원문이 이미 RSC 페이로드에 있다 — **안 읽는 것이 아니라 안 돌려주는** 것이다
                         + loadMembers·loadPendingInvitations (6b-2 — 멤버 화면. **`projectId`로만 좁힌다**,
                         인가는 호출부가 이미 지났다. 뒤의 것은 `acceptedAt IS NULL AND expiresAt > now()`
                         **둘 다** 본다 — 한쪽만 보면 이미 멤버가 된 사람의 초대가 "대기 중"으로 보인다).
@@ -660,6 +669,9 @@ lib/
                         permission이 아니라 translation:write에 들어 있다
     access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
                         (프로젝트 존재를 노출하지 않는다). forbidden은 멤버인데 권한이 모자란 경우만
+    invite-label.ts     maskedEmailLabels — **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 (malmoi#18).
+                        ⚠️ **두 표가 쓴다** (2026-09-09) — 원문을 와이어에 안 싣기로 하면서 멤버 표의 라벨도
+                        서버가 만든다. `maskedInviteLabels`는 그것의 얼은이다(문서 둘이 그 이름을 가리킨다)
     invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
@@ -741,7 +753,10 @@ vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). 
                         `iad1`(워싱턴)이고 DB는 도쿄라 왕복 하나가 태평양을 건넜다. 이 앱의 비용은
                         페이로드가 아니라 **홉 개수**다(요청당 일곱, 문서는 8KB) — 엣지는 그대로
                         `icn1`이므로 사용자까지의 거리는 한 홉만 늘고 DB 일곱 홉이 짧아진다
-next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
+next.config.ts          ⚠️ **보안 응답 헤더가 여기 있다** (2026-09-09, sec-audit 발견 9) — enforce 셋
+                        (nosniff · Referrer-Policy · CSP `frame-ancestors 'none'`) + **CSP 본체는 Report-Only**.
+                        `tsc`가 이 함수를 못 보므로 `app/__tests__/security-headers.test.ts`가 설정을
+                        **불러서** 검사한다. ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
                         그 파일은 sync-agents.mjs가 소유하는 생성물이라, 켜져 있으면 next dev를 돌릴
                         때마다 미러 게이트가 드리프트로 잡고 지우면 Next가 다시 만든다
 pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼다** — 아래 게이트웨이 절
@@ -799,7 +814,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
 | `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
 
-- **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. **대상 리포의 composite action 참조(`…/l10n-push@main`)는 default branch와 무관하므로 그대로 동작한다** — 오히려 action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓰는 것이 안전한 성질이다 (docs/ACTIONS.md).
+- **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. ⚠️ **대상 리포의 composite action 참조는 `@l10n-push-v1`(불변 태그)이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 — 전엔 `@main`이었고 이 줄이 그것을 "안전하다"고 적었다). 그 논거는 *낡음*(action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다)이었는데 **묻는 축은 가변성**이다 — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다 (docs/ACTIONS.md).
 - **`main`에 직접 커밋·푸시하지 않는다.** 프로덕션 앞의 게이트(PR CI)를 통째로 건너뛴다.
 - **preview는 dev DB를 본다.** 프로덕션 데이터에 닿지 않는 것이 preview를 쓰는 이유의 절반이다 — Vercel env의 Preview 스코프가 그렇게 갈려 있어야 성립한다.
   - **dev 브랜치 고정 URL**: `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app` (배포별 URL과 별개로 dev의 최신 preview를 항상 가리킨다)
@@ -842,7 +857,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 42개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 48개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -883,6 +898,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다 (예: "pooler로 마이그레이션하면 DDL 세션을 못 잡아 실패한다").
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
+- **⚠️ 남이 정한 키로 조회하거나 대입하면 프로토타입을 먼저 끊는다.** 조회는 `Object.hasOwn`(`?? 폴백`은 `Object.prototype`에서 찾아진 값을 못 막는다 — POSTMORTEM 2026-09-08), **대입은 `Object.create(null)`**이다. 평범한 `{}`에 `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생기고 **그 키가 조용히 사라지며**, 중첩 복원에서는 그 조회가 `Object.prototype`을 돌려줘 다음 세그먼트가 거기 앉는다(프로세스 전역 — 테넌트 경계를 넘는다, sec-audit 발견 1·17). **로케일 파일의 키·`Locale.code`·`pathTemplate`이 전부 이 부류다.**
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`) — 흩어진 `process.env` 접근은 누락된 변수를 런타임까지 숨긴다. 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다. ⚠️ **`PUSH_TOKEN`은 이 부류가 아니다** — 서버의 인가 판정에 안 들어가고 `scripts/push-local.ts`가 **보낼** 값이다(2026-09-07부터 push 인증은 `Project.pushTokenHash` 조회다).
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 함수 안에 두고 호출 시점에 읽는다. 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다 (`prisma.config.ts`가 이걸로 CI를 red로 만든 전례 — `docs/POSTMORTEM.md` 2026-08-31). 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 클라이언트 번들 유입을 컴파일 타임에 막는다. **단 테스트가 직접 import하는 순수 모듈(`lib/env.ts` 등)엔 붙이지 않는다** — 이 패키지는 `react-server` 조건 밖에서 던져서 vitest가 죽는다.
@@ -894,7 +910,9 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** RLS가 없어 애플리케이션이 유일한 방어선이다 — 멤버십 판정을 지났더라도 쿼리가 `projectId`를 빠뜨리면 다른 테넌트의 행이 나온다.
   - ⚠️ **"애플리케이션이 유일한 방어선"은 2026-09-09까지 거짓이었다.** 그 문장은 "DB에 닿는 경로가 앱 하나"를 전제하는데 **Supabase는 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고**, `public` 스키마의 `pg_default_acl`이 **`anon`·`authenticated` 롤에 새 테이블 전 권한을 자동으로 준다.** 실측: prod·dev 12테이블 전부 RLS off + `anon`에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE` — **anon key 하나로 `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다**(Supabase 주간 advisor 메일이 알려줬다). **조치: `anon`·`authenticated`의 `public` 권한을 REVOKE하고 `ALTER DEFAULT PRIVILEGES`에서도 뺐다** — 후자가 없으면 **다음 마이그레이션이 만드는 테이블이 다시 열린다.** `service_role`은 남겼다(그 키는 비밀이고 공개 전제가 아니다). RLS+정책 대신 REVOKE를 고른 이유: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다.
-  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db`가 그 검사를 든다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
+  - ⚠️ **그 조치는 절반만 닫는다** (2026-09-09 재실측 — sec-audit 발견 8). `ALTER DEFAULT PRIVILEGES`는 **객체를 만드는 롤별**이라 고친 것은 `postgres` 소유 항목이고, **`supabase_admin` 소유 항목은 `anon`·`authenticated`에 전 권한을 그대로 준다.** 마이그레이션은 `postgres`로 도니 **Prisma가 만드는 테이블은 안 열리고**, 열리는 것은 **대시보드로 만드는 경로**다. ⚠️ **`postgres`로는 그 항목을 못 지운다** — `permission denied to change default privileges`(실측: `rolsuper=false`이고 `supabase_admin`의 멤버가 아니다). 그래서 여기는 **예방이 아니라 탐지**다.
+  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db` 5단계가 그 검사를 든다 — 위 이유로 그것이 대시보드 경로의 **유일한** 방어선이다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
+  - ⚠️ **런타임 롤이 `postgres`이고 `rolbypassrls=true`다** (실측). 즉 **지금 RLS를 켜도 앱 연결에는 안 걸린다** — "애플리케이션이 유일한 방어선"이라는 위 문장은 그 사실과 함께 읽어야 한다. **최소권한 롤로 옮기는 것은 지금 하지 않는다** (2026-09-09 판정): `DATABASE_URL` 교체가 `.env.local` 두 머신 · Vercel Production · Preview **넷을 동시에** 건드리고(개인키 하나를 지웠다가 넷이 끊긴 것과 같은 형), GRANT가 이미 0이라 인터넷 노출은 닫혀 있다. **RLS를 실제로 켜는 시점에 이 롤부터 바꾼다.**
 
 ## 게이트웨이 (알아두면 유용)
 
@@ -904,7 +922,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - ⚠️ **App 설치가 `Only select repositories`다** (2026-09-07 전환 — 그 전엔 `all`이었다). **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 화면은 "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요"를, 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 넷**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`. `skillflo-web`은 일부러 빠져 있다(`Project.installationId`가 `null`이라 pull이 애초에 안 돈다). 전환한 이유는 T5의 접근 철회 시나리오가 `all`에서 재현 불가였기 때문이다.
 - **GitHub App 개인키는 개행이 들어간 PEM**이다. Vercel env에 넣을 때 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다.
 - **`.pem`은 `.gitignore`에 있다.** 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
-- ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 설치 대상에서 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다(긴급 패치가 필요하면 `minimumReleaseAgeExclude`). `onlyBuiltDependencies`는 pnpm 10이 빌드 스크립트를 기본 차단하는 것의 화이트리스트라, 여기 없는 패키지는 `Ignored build scripts` 경고만 남기고 postinstall이 안 돈다. **둘 다 증상이 원인을 안 가리킨다.**
+- ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 설치 대상에서 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다(긴급 패치가 필요하면 `minimumReleaseAgeExclude`). `onlyBuiltDependencies`는 pnpm 10이 빌드 스크립트를 기본 차단하는 것의 화이트리스트라, 여기 없는 패키지는 `Ignored build scripts` 경고만 남기고 postinstall이 안 돈다. ⚠️ **목록은 셋뿐이다** (2026-09-09, sec-audit 발견 21 — `@prisma/client`·`sharp`를 뺐다): 스크립트가 **없는** 패키지를 목록에 두면 업스트림이 나중에 추가할 때 자동 승인되어 화이트리스트의 요지가 사라진다. **둘 다 증상이 원인을 안 가리킨다.**
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — 리포에서 사라진 로케일도 지우지 않고 표시만 하며, pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.
 
 ## 명시적 비범위

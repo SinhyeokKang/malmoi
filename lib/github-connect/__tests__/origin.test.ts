@@ -29,7 +29,8 @@ describe("requestOrigin — host와 proto로 origin·secure를 함께 정한다"
   it("origin과 secure가 **같은 판정에서** 나온다 — 갈리면 쿠키를 못 찾는다", () => {
     // 이 함수가 존재하는 이유다. 두 곳에서 따로 판정하면 한쪽만 바뀌어도 조용히 깨진다.
     for (const proto of ["https", "http", null]) {
-      const r = requestOrigin({ host: "example.com", forwardedProto: proto });
+      // 허용 목록의 호스트를 쓴다 (2026-09-09) — `example.com`은 이제 모양과 무관하게 거부다.
+      const r = requestOrigin({ host: "mal-moi.com", forwardedProto: proto });
       expect(r).not.toBeNull();
       expect(r?.origin.startsWith("https://")).toBe(r?.secure);
     }
@@ -105,5 +106,38 @@ describe("authorizeUrl — redirect_uri를 반드시 싣는다 (malmoi#7)", () =
       expect(new URL(authorizeUrl("n", cb)).searchParams.get("redirect_uri")).toBe(cb);
     }
     vi.unstubAllEnvs();
+  });
+});
+
+/**
+ * **기대 호스트 허용 목록** (sec-audit 발견 25).
+ *
+ * `Host`는 클라이언트가 정하는 값이고, 이 한 판정이 `redirect_uri` · state 쿠키 이름 · `secure`
+ * 셋을 함께 정한다. 실측으로는 Vercel 엣지가 막고 있지만(`Host: evil.com` → 404
+ * `DEPLOYMENT_NOT_FOUND` · `X-Forwarded-Host`는 반영 안 됨, 2026-09-09 프로덕션),
+ * **방어가 플랫폼 설정에 얹혀 있으면 그 설정이 바뀔 때 조용히 사라진다.**
+ *
+ * ⚠️ **모양 검사(`HOST` 정규식)는 `evil.com`도 통과시킨다** — 그것이 이 항목의 요지다.
+ */
+describe("requestOrigin — 허용 목록 (sec-audit 25)", () => {
+  const https = (host: string) => requestOrigin({ host, forwardedProto: "https" });
+
+  it("세 환경의 호스트를 통과시킨다", () => {
+    expect(https("mal-moi.com")?.origin).toBe("https://mal-moi.com");
+    expect(https("malmoi-git-dev-ox501501-1046s-projects.vercel.app")?.origin).toBe(
+      "https://malmoi-git-dev-ox501501-1046s-projects.vercel.app",
+    );
+    expect(requestOrigin({ host: "localhost:3000", forwardedProto: null })?.origin).toBe("http://localhost:3000");
+  });
+
+  it("모르는 호스트는 null이다 — 모양이 맞아도 통과시키지 않는다", () => {
+    for (const host of ["evil.com", "mal-moi.com.evil.com", "sub.mal-moi.com", "127.0.0.1.evil.com"]) {
+      expect(https(host), host).toBeNull();
+    }
+  });
+
+  it("localhost는 포트가 달라도 받는다 — 개발 서버가 3000을 못 잡는 경우가 있다", () => {
+    expect(requestOrigin({ host: "localhost:3001", forwardedProto: null })?.origin).toBe("http://localhost:3001");
+    expect(requestOrigin({ host: "127.0.0.1:3000", forwardedProto: null })?.origin).toBe("http://127.0.0.1:3000");
   });
 });

@@ -268,6 +268,35 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
     });
   });
 
+  /**
+   * **인가가 App 자격증명보다 앞이다** (sec-audit 발견 5).
+   *
+   * 전에는 `probeRepo`(App JWT → 설치 토큰 → repo GET)가 사용자 설치 목록보다 **먼저** 돌았고,
+   * `RepoInput`은 `z.string().min(1)` 둘뿐이었다. 로그인은 검증 이메일만 요구하므로(SAAS §5 —
+   * 의도된 성질) **낯선 사람이 임의 private 리포에 대해 "말모이 App이 설치돼 있는가"를 물을 수
+   * 있었고**, 반환 갈래가 `repo-not-installed`(없다)와 `installation-forbidden`(있는데 너는 못
+   * 본다)로 갈려 그대로 화면 문구가 됐다 — **존재 오라클**이다.
+   *
+   * 부수로 호출당 App 호출 셋이 상한 없이 돌아 **전 테넌트가 공유하는 App quota**를 태운다.
+   *
+   * ⚠️ **`planRepoConnect`의 3중 검증은 그대로다** — 순서만 바꾼다.
+   */
+  it("내 설치에 없는 리포면 App 자격증명을 한 번도 안 쓴다 (sec-audit 5)", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue(["acme/other"]);
+
+    const result = await detectRepoFormats({ owner: "someone", repo: "private-thing" });
+    expect(result.ok).toBe(false);
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+  });
+
+  it("내 설치에 있으면 그때 probe한다 — 순서만 바뀌고 성공 경로는 같다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue(["acme/web"]);
+
+    const result = await detectRepoFormats({ owner: "acme", repo: "web" });
+    expect(result.ok).toBe(true);
+    expect(hoisted.probeRepo).toHaveBeenCalledTimes(1);
+  });
+
   it("설치가 0개면 no-installations이고 리포 목록을 부르지 않는다", async () => {
     hoisted.listUserInstallations.mockResolvedValue([]);
 
@@ -417,12 +446,20 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
       error: "installation-forbidden",
     });
 
+    /**
+     * ⚠️ **셋째 갈래가 `repo-not-installed`로 접힌다** (2026-09-09, sec-audit 발견 5). 내 설치 목록에
+     * 그 리포가 없으면 **probe를 아예 안 부르므로** "우리 App이 없다"와 "네가 못 본다"를 구별할
+     * 수단이 없고, **구별해 주는 것이 곧 존재 오라클이었다.** `repo-forbidden`은 설정 화면의
+     * 재연결 경로에 그대로 살아 있다 — 거기서는 리포가 `Project` 행에 고정이라 오라클이 아니다.
+     */
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
     hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
+    hoisted.probeRepo.mockClear();
     expect(await detectRepoFormats({ owner: "acme", repo: "web" })).toEqual({
       ok: false,
-      error: "repo-forbidden",
+      error: "repo-not-installed",
     });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
 
     expect(hoisted.openRepoReader).not.toHaveBeenCalled();
   });
@@ -630,7 +667,8 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     hoisted.prisma = db.prisma;
     hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-forbidden" });
+    // 내 설치에 없는 리포는 한 갈래로 접힌다 (sec-audit 발견 5) — 위 describe의 주석이 근거다.
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-not-installed" });
   });
 
   it("이름이 지나치게 길면 입력 오류다 — 상한 없는 사용자 입력을 저장하지 않는다", async () => {
@@ -644,7 +682,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   it("3중 검증 거부는 행을 만들지 않는다", async () => {
     hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-forbidden" });
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-not-installed" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
@@ -832,6 +870,39 @@ describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절�
     expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
   });
 
+  /**
+   * **삭제도 `userId`로 좁힌다** (sec-audit 발견 15). 전에는 `findFirst({ userId, provider })`로 읽고
+   * `delete({ where: { provider_providerAccountId } })`로 지웠다 — `where`에 `userId`가 없어, 읽기와
+   * 삭제 사이에 그 `providerAccountId`의 소유자가 바뀌면 **남의 연결이 지워진다**. 탈취가 아니라
+   * 삭제다(`planAccountLink`의 `taken-by-other`가 행이 사는 동안 탈취를 막는다).
+   *
+   * 창은 좁지만(A가 해제를 두 번 누르는 사이 B가 같은 GitHub 계정을 연결) 이 자리는 POSTMORTEM
+   * 2026-09-06이 넓힌 규칙 — **사용자에 속한 행은 `userId`로 좁힌다** — 의 유일한 위반이었다.
+   */
+  it("`userId`로 좁혀 지운다 — PK만으로 지우면 남의 행에 닿는 창이 열린다", async () => {
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.spies.deleteManyAccounts).toHaveBeenCalledWith({
+      where: { userId: OWNER, provider: "github-app" },
+    });
+    expect(db.spies.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it("같은 provider의 남의 행은 남는다", async () => {
+    db = createHarness({
+      projects: [],
+      members: [],
+      users: [{ id: OWNER, email: "o@a.com" }, { id: "other", email: "x@a.com" }],
+      accounts: [
+        { userId: OWNER, provider: "github-app", providerAccountId: "gh-1" },
+        { userId: "other", provider: "github-app", providerAccountId: "gh-2" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.accounts.map((a) => a.userId)).toEqual(["other"]);
+  });
+
   it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
     expect(await disconnectGithub()).toEqual({ ok: true });
     expect(db.accounts.find((a) => a.userId === OWNER)).toBeUndefined();
@@ -900,7 +971,7 @@ describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절�
   });
 
   it("삭제가 던지면 unavailable이다 — digest만 있는 오류를 사용자에게 보내지 않는다", async () => {
-    db.spies.deleteAccount.mockRejectedValueOnce(new Error("Can't reach database server"));
+    db.spies.deleteManyAccounts.mockRejectedValueOnce(new Error("Can't reach database server"));
 
     expect(await disconnectGithub()).toEqual({ ok: false, error: "unavailable" });
   });
