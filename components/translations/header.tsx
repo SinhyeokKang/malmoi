@@ -4,7 +4,6 @@ import { ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { InviteForm } from "@/components/invite-form";
 import { PublishButton, PublishResult } from "@/components/publish-button";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { TranslationFilters } from "@/components/translations/filters";
@@ -35,7 +34,6 @@ export function TranslationsHeader({
   lastSentLabel,
   lastPrUrl,
   dismissKey,
-  canInvite,
 }: {
   slug: string;
   projectName: string;
@@ -52,7 +50,6 @@ export function TranslationsHeader({
   /** 배너 닫기 키 = `lastPulledAt` (design §3.11). */
   dismissKey: string;
   /** OWNER만 초대할 수 있다. **화면에서 감추는 것은 편의**이고 방어는 `createInvitation`이다. */
-  canInvite: boolean;
 }) {
   const router = useRouter();
   const [outcome, setOutcome] = useState<PullOutcome | null>(null);
@@ -91,7 +88,6 @@ export function TranslationsHeader({
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <TranslationFilters slug={slug} query={query} locales={locales} />
-          {canInvite && <InviteForm slug={slug} />}
           <PublishButton
             slug={slug}
             count={unpublished}

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Languages, Settings } from "lucide-react";
+import { Languages, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { routes } from "@/lib/routes";
@@ -28,21 +28,26 @@ export function activeProject(pathname: string, memberships: readonly NavProject
 }
 
 export type NavSection = {
-  key: "translations" | "settings";
+  key: "translations" | "members" | "settings";
   label: string;
   icon: ComponentType<{ className?: string }>;
   href: (slug: string) => string;
 };
 
 /**
- * 프로젝트 컨텍스트의 항목들. **6a는 둘이다** — Members는 6b가 더한다.
+ * 프로젝트 컨텍스트의 항목들. **셋이다** (6b-2가 Members를 더했다).
  *
  * ⚠️ **노출은 편의이고 차단이 아니다.** 판정을 `canPerform`에 맡겨 권한표가 한 벌로 남는다 —
  * 여기서 역할을 다시 나열하면 표가 둘이 되고, 그중 하나가 낡는다.
+ *
+ * ⚠️ **Members는 `canPerform` 뒤가 아니다 — 전원에게 보인다** (design §3.9 검수 (b)). EDITOR도
+ * 목록을 보고(`translation:write`로 페이지에 들어온다) **컨트롤만** 역할로 갈린다. 처음 초안의
+ * "OWNER만"은 user-stories §5와 모순이었고, 감추면 EDITOR가 "누가 이 프로젝트에 있나"를 알 길이 없다.
  */
 export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [
     { key: "translations", label: "Translations", icon: Languages, href: (slug) => routes.translations(slug) },
+    { key: "members", label: "Members", icon: Users, href: (slug) => routes.members(slug) },
   ];
   if (canPerform(role, "project:settings")) {
     sections.push({ key: "settings", label: "Settings", icon: Settings, href: (slug) => routes.settings(slug) });

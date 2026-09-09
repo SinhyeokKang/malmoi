@@ -11,6 +11,12 @@ Use this skill when the user asks to run the migrated source command `code-revie
 
 변경분을 정적으로 리뷰한다. **리포트 전용** — 수정은 `/refactor`가 한다.
 
+> **⚠️ "리포트 전용"은 "여기서 턴을 끝낸다"가 아니다.** 이 스킬이 코드를 고치지 않는다는 뜻이고,
+> **누가 다음을 실행하는지는 호출자가 정한다**:
+> - **단독 호출** — 리포트를 내고 끝난다. 사용자가 `/refactor`를 부른다.
+> - **`/ship` 안** — `/ship`이 지휘자다. 리포트를 낸 **같은 턴에서** `/ship`이 5단계(`/refactor`)를
+>   실행한다. 아래 리포트의 "다음:" 줄을 사용자에게 넘기는 신호로 읽지 않는다.
+
 ## 사용
 
 - `/code-review` — 커밋됐지만 아직 push되지 않은 변경분(`git diff @{u}..HEAD`) + 미커밋 변경.
@@ -36,6 +42,7 @@ Use this skill when the user asks to run the migrated source command `code-revie
 - **fail-open 인가**: `AUTH_ALLOWED_LOGINS`가 비었을 때 통과시키는 코드
 - **레이아웃·페이지의 조건부 렌더로 인증을 막음**: 차단이 아니다. App Router가 병렬 렌더하므로 페이지가 이미 실행돼 RSC 페이로드에 데이터가 실린다(실측 1.3MB 노출). 차단은 `middleware.ts`, 레이아웃은 `redirect()`. **새 보호 라우트가 `matcher`에 있는지 본다** (POSTMORTEM 2026-08-31)
 - **`projectId`로 좁히지 않은 쿼리**: 테넌트 간 데이터가 새는 경로다. RLS가 없어 애플리케이션이 유일한 방어선이고, Server Action은 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인해야 한다
+  - ⚠️ **"앱이 유일한 방어선"은 앱이 유일한 *경로*일 때만 참이다.** 2026-09-09까지 Supabase 데이터 API가 `anon` 롤로 전 테이블에 열려 있었고 그 전제가 거짓이었다(POSTMORTEM 2026-09-09). **스키마를 늘리는 변경에서는 "이 테이블에 닿는 경로가 앱 하나인가"를 묻는다** — `pg_default_acl`이 새 테이블을 자동으로 열 수 있다
 - **`Translation.value` 쓰기 주체를 늘림**: 지금은 둘이다(편집 UI의 `saveTranslation`, push의 strict 덮어쓰기). 셋째가 생기면 어느 쪽이 이기는지 판정이 필요해진다 — **push가 값을 쓰는 것 자체는 정상이다**(2026-08-31 strict 전환)
 - **키 삭제**: `orphaned` 대신 `DELETE` — 되돌릴 수 없다
 - **시크릿 노출**: 로그·에러 메시지·클라이언트 번들에 토큰/PEM/DB URL
@@ -76,6 +83,9 @@ POSTMORTEM 대조: <재발 위험 항목 또는 해당 없음>
 
 다음: /refactor (🔴/🟡 있으면) / 없으면 /push
 ```
+
+**"다음:" 줄은 무엇을 할지의 기록이지 턴을 끝내라는 신호가 아니다** — `/ship` 안이면 그 줄에 적은 것을
+같은 턴에서 실행한다 (위 머리말).
 
 **🔴은 "실패 시나리오"를 반드시 채운다.** 구체적 입력·상황을 못 쓰면 그건 🔴이 아니라 🟡이나 ⚪다.
 

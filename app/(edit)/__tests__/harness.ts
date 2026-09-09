@@ -30,7 +30,12 @@ export type ProjectSeed = {
   /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
   pushTokenHash?: string | null;
 };
-export type MemberSeed = { projectId: string; userId: string; role: Role };
+/**
+ * ⚠️ **`createdAt`이 optional이다** — 스키마가 `@default(now())`이므로 실 호출은 안 넘긴다. 시드가 안 주면
+ * 결정적인 기준 시각을 준다: `loadMembers`가 "Joined …"를 내고 정렬 키로도 쓰므로, `undefined`를 두면
+ * 정렬이 구현 정의가 되고 가짜가 실제보다 **관대**해진다 (하네스 자기검사 — POSTMORTEM 2026-09-06).
+ */
+export type MemberSeed = { projectId: string; userId: string; role: Role; createdAt?: Date };
 export type UserSeed = { id: string; email: string; name?: string | null };
 export type InvitationSeed = {
   id: string;
@@ -119,7 +124,11 @@ export function createHarness(seed: Seed = {}) {
   const accounts = (seed.accounts ?? []).map((a) => ({
     access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
   }));
-  const members = seed.members ?? [];
+  // 시드가 `createdAt`을 안 주면 결정적인 값을 심는다 — 정렬·표시가 이 컬럼을 읽는다.
+  const members = (seed.members ?? []).map((m, i) => ({
+    createdAt: new Date(Date.UTC(2026, 0, 1 + i)),
+    ...m,
+  }));
   const users = seed.users ?? [];
   const invitations = seed.invitations ?? [];
   const keys = seed.keys ?? [
@@ -184,8 +193,8 @@ export function createHarness(seed: Seed = {}) {
   const findManyMembers = vi.fn(
     async (args: {
       where: { projectId?: string; userId?: string };
-      select?: { role?: true; projectId?: true; userId?: true; project?: unknown };
-      orderBy?: { project?: { slug?: "asc" | "desc" } };
+      select?: { role?: true; projectId?: true; userId?: true; createdAt?: true; project?: unknown; user?: unknown };
+      orderBy?: { project?: { slug?: "asc" | "desc" }; createdAt?: "asc" | "desc" };
     }) => {
       const rows = members.filter(
         (m) =>
@@ -196,14 +205,22 @@ export function createHarness(seed: Seed = {}) {
       // **정렬을 투영보다 먼저** 한다 — 뒤에 하면 `select` 결과에 정렬 키가 없어 원본 행을 따로 들고
       // 다녀야 하고, 그 임시 필드가 곧 "관대한 가짜"가 된다.
       const direction = args.orderBy?.project?.slug;
+      const byCreated = args.orderBy?.createdAt;
       const sorted =
-        direction === undefined
-          ? rows
-          : rows.slice().sort((a, b) => {
+        direction !== undefined
+          ? rows.slice().sort((a, b) => {
               const av = projects.find((p) => p.id === a.projectId)?.slug ?? "";
               const bv = projects.find((p) => p.id === b.projectId)?.slug ?? "";
               return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-            });
+            })
+          : byCreated !== undefined
+            ? rows
+                .slice()
+                .sort(
+                  (a, b) =>
+                    (byCreated === "asc" ? 1 : -1) * (a.createdAt.getTime() - b.createdAt.getTime()),
+                )
+            : rows;
       /**
        * ⚠️ **`select`가 있으면 그 필드만 낸다** (2026-09-08 code-review 🟡6). 실제 Prisma가 그렇다 —
        * 원본 필드를 함께 내면 가짜가 실제보다 **관대**해져서, 호출부가 select 안 한 필드를 읽어도
@@ -215,6 +232,13 @@ export function createHarness(seed: Seed = {}) {
         if (args.select.role === true) projected["role"] = m.role;
         if (args.select.projectId === true) projected["projectId"] = m.projectId;
         if (args.select.userId === true) projected["userId"] = m.userId;
+        if (args.select.createdAt === true) projected["createdAt"] = m.createdAt;
+        // 멤버 표가 이름·이메일을 보이므로 `user` 관계를 요청할 수 있다. **없는 사용자면 null이다** —
+        // 시드가 사용자를 안 준 채 멤버를 만들 수 있고, 그때 가짜가 빈 객체를 내면 호출부의 null 처리가 검증되지 않는다.
+        if (args.select.user !== undefined) {
+          const user = users.find((u) => u.id === m.userId);
+          projected["user"] = user === undefined ? null : { name: user.name ?? null, email: user.email };
+        }
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);
           projected["project"] = {
@@ -235,8 +259,11 @@ export function createHarness(seed: Seed = {}) {
       (m) => m.projectId === args.data.projectId && m.userId === args.data.userId,
     );
     if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
-    members.push(args.data);
-    return args.data;
+    // 실 호출은 `createdAt`을 안 넘긴다 (`@default(now())`) — 가짜가 그 자리를 채워야 행 모양이 균일하고
+    // `orderBy: { createdAt }`가 `undefined`를 비교하지 않는다.
+    const row = { createdAt: new Date(), ...args.data };
+    members.push(row);
+    return row;
   });
 
   const updateMember = vi.fn(
@@ -478,6 +505,31 @@ export function createHarness(seed: Seed = {}) {
     }
   };
 
+  /**
+   * ⚠️ **`acceptedAt: null`과 `expiresAt.gt`를 둘 다 본다** — 실제 술어가 그렇다
+   * (`acceptedAt IS NULL AND expiresAt > now()`). 한쪽만 보는 가짜는 수락된 초대나 만료된 초대를
+   * 목록에 남기고, 그게 "대기 중"으로 보이면 OWNER가 없는 링크를 기다린다.
+   */
+  const findManyInvitations = vi.fn(
+    async (args: {
+      where: { projectId: string; acceptedAt?: null; expiresAt?: { gt: Date } };
+      orderBy?: { email?: "asc" | "desc" };
+    }) => {
+      const rows = invitations.filter(
+        (i) =>
+          i.projectId === args.where.projectId &&
+          (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
+          (args.where.expiresAt === undefined || i.expiresAt.getTime() > args.where.expiresAt.gt.getTime()),
+      );
+      const sorted =
+        args.orderBy?.email === undefined
+          ? rows
+          : rows.slice().sort((a, b) => (args.orderBy?.email === "desc" ? -1 : 1) * a.email.localeCompare(b.email));
+      // `invitedByUser` 관계는 요청했을 때만 붙인다 — 아무 때나 붙이면 가짜가 실제보다 관대해진다.
+      return sorted.map((i) => ({ ...i, invitedByUser: users.find((u) => u.id === i.invitedBy) ?? null }));
+    },
+  );
+
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
@@ -494,6 +546,7 @@ export function createHarness(seed: Seed = {}) {
     },
     projectInvitation: {
       findUnique: findInvitation,
+      findMany: findManyInvitations,
       create: createInvitationRow,
       updateMany: updateManyInvitations,
     },
@@ -650,6 +703,7 @@ export function createHarness(seed: Seed = {}) {
       findInvitation,
       createInvitationRow,
       updateManyInvitations,
+      findManyInvitations,
       findUser,
     },
   };

@@ -421,7 +421,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     // 원문은 DB 어디에도 없다 — 해시로만 조회된다 (SAAS §7.8).
     expect(JSON.stringify(row)).not.toContain(token);
     expect(row?.pushTokenHash).toBe(hashPushToken(token));
-    expect(db.members).toContainEqual({ projectId: row?.id, userId: OWNER, role: "OWNER" });
+    expect(db.members).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: row?.id, userId: OWNER, role: "OWNER" })]));
   });
 
   it("저장된 포맷이 `detectFormatWith`의 반환값이다 — 클라이언트 입력이 아니다", async () => {

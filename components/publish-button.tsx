@@ -88,10 +88,13 @@ export function PublishResult({ outcome }: { outcome: PullOutcome }) {
       {warnings.length > 0 && (
         <details className="mt-2">
           <summary className="text-xs">{m.translations.publish.dropped}</summary>
-          {/* 6a는 어댑터가 준 원문 그대로다 — 오류 코드화는 6b-1이다 (design §3.4). */}
+          {/* ⚠️ **여기 오는 문자열은 서버가 합친 것이다** — `lib/pull/run.ts`가 `경로: 문장`으로 만들고
+              문장은 사전(`m.adapterErrors`)에서 온다 (6b-1). 뒤에 붙는 파서 원문이 **여러 줄일 수 있어**
+              `whitespace-pre-wrap`이 필요하다: YAML 파서가 캐럿 다이어그램을 넣는데 기본 `white-space`가
+              그 개행을 공백으로 접어 캐럿이 가리킬 열을 잃는다 */}
           <ul className="mt-1 space-y-0.5">
             {warnings.map((warning, index) => (
-              <li key={`${index} ${warning}`} className="text-xs">
+              <li key={`${index} ${warning}`} className="text-xs whitespace-pre-wrap">
                 {warning}
               </li>
             ))}

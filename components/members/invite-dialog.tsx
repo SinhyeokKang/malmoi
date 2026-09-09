@@ -14,19 +14,15 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * 초대 링크 발급 — **OWNER에게만 보인다.**
+ * 초대 링크 발급 — **OWNER에게만 렌더된다** (호출부가 `canPerform`으로 가른다).
  *
- * ⚠️ **임시 화면이다.** 멤버 관리 화면은 6b이고, 여기 있는 이유는 하나다: 이게 없으면
- * `createInvitation`에 호출부가 없고, **spec 완료 조건 3(GitHub 계정 없이 번역)을 손으로도 밟을 수
- * 없다.** 만든 것이 실제로 호출되는지 묻지 않는 것이 이 리포의 반복 실패 유형이다
- * (POSTMORTEM 2026-09-03).
+ * 6a의 `components/invite-form.tsx`가 여기로 옮겨왔다. 그 파일은 번역 화면 툴바에 있던 **임시**
+ * 자리였고(`createInvitation`에 호출부가 없으면 그 판정이 실재하지 않는다 — POSTMORTEM 2026-09-03),
+ * 이제 제자리인 멤버 화면이 있으므로 삭제됐다. 초대 수단이 둘이면 하나가 낡는다.
  *
  * **메일을 보내지 않는다** (SAAS §4.3 ①) — OWNER가 링크를 슬랙·메신저로 직접 전달한다.
- *
- * 6a에서 툴바의 인라인 폼에서 `Dialog`로 옮겼다 — 툴바가 필터 셋과 Publish를 이미 들어서
- * 이메일 입력까지 한 줄에 두면 903키 화면의 헤더가 두 줄로 접힌다.
  */
-export function InviteForm({ slug }: { slug: string }) {
+export function InviteDialog({ slug }: { slug: string }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [link, setLink] = useState<string | null>(null);
@@ -70,14 +66,15 @@ export function InviteForm({ slug }: { slug: string }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="ghost">
+        <Button variant="primary">
           <UserPlus aria-hidden />
-          {m.translations.invite.open}
+          {m.members.invite.open}
         </Button>
       </DialogTrigger>
-      <DialogContent title={m.translations.invite.title}>
+      <DialogContent title={m.members.invite.title}>
+        {/* ⚠️ 제출 버튼이 이 `<form>` 안에 있어야 Enter가 submit된다 (POSTMORTEM 2026-09-08). */}
         <form action={submit} className="space-y-3">
-          <FormGroup label={m.translations.invite.email} htmlFor="invite-email" help={m.translations.invite.help}>
+          <FormGroup label={m.members.invite.email} htmlFor="invite-email" help={m.members.invite.help}>
             <Input
               id="invite-email"
               name="email"
@@ -88,8 +85,8 @@ export function InviteForm({ slug }: { slug: string }) {
               className="w-full"
             />
           </FormGroup>
-          <Button type="submit" variant="primary" loading={pending} loadingLabel={m.translations.invite.creating}>
-            {m.translations.invite.create}
+          <Button type="submit" variant="primary" loading={pending} loadingLabel={m.members.invite.creating}>
+            {m.members.invite.create}
           </Button>
         </form>
 
@@ -97,7 +94,7 @@ export function InviteForm({ slug }: { slug: string }) {
 
         {link !== null && (
           <div className="space-y-2">
-            <p className="text-muted-foreground text-xs">{m.translations.invite.linkHint}</p>
+            <p className="text-muted-foreground text-xs">{m.members.invite.linkHint}</p>
             <div className="flex items-center gap-2">
               {/* 링크는 식별자라 mono다 (DESIGN §4.1) */}
               <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1">{link}</code>
@@ -127,6 +124,6 @@ export function InviteForm({ slug }: { slug: string }) {
 
 function inviteFailureText(error: string): string {
   if (isAccessError(error)) return accessErrorMessage(error);
-  if (error === "already-member") return m.translations.invite.alreadyMember;
-  return m.translations.invite.failed(error);
+  if (error === "already-member") return m.members.invite.alreadyMember;
+  return m.members.invite.failed(error);
 }

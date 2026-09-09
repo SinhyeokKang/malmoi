@@ -9,13 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { canPerform } from "@/lib/auth/permission";
+import { relativeTime } from "@/lib/relative-time";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { countUnpublished, loadActors, loadKeys, loadProject, type ProjectContext } from "@/lib/keys/query";
 import {
   ALL_NAMESPACES, actorLabel, buildPermalink, cellState, collectActorIds, filterRows,
-  isUnpublished, namespaceCounts, relativeTime, resolveNamespace,
+  isUnpublished, namespaceCounts, resolveNamespace,
   type KeyRow, type NamespaceCount, type TranslationState,
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -151,7 +152,6 @@ export default async function TranslationsPage({
           }
           lastPrUrl={project.lastPrUrl}
           dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
-          canInvite={canPerform(role, "member:manage")}
         />
 
         <div className="min-h-0 flex-1">

@@ -124,6 +124,21 @@ npx prisma migrate diff \
 - 생성된 `prisma/migrations/<ts>_<name>/migration.sql`을 **읽는다.** Prisma가 만든 SQL이 의도와 맞는지 확인 — 특히 `DROP`·`ALTER COLUMN`이 예상 외로 들어갔는지
 - `pnpm db:generate` → `pnpm typecheck` — 스키마 변경이 타입에 반영되고 코드가 여전히 컴파일되는지
 - `pnpm test`
+- ⚠️ **새 테이블을 만들었으면 `anon` 권한이 0인지 확인한다** (2026-09-09 추가). Supabase의 `public`
+  스키마에는 **새 테이블을 `anon`·`authenticated`에 전 권한으로 여는 default privilege**가 걸려
+  있었고, 그래서 12테이블이 전부 데이터 API로 열려 있었다 — `Account.access_token`·
+  `Session.sessionToken`까지 anon key 하나로 읽고 지울 수 있었다 (POSTMORTEM 2026-09-09).
+  2026-09-09에 `ALTER DEFAULT PRIVILEGES`에서 그 롤들을 뺐으므로 **지금은 새 테이블이 닫힌 채로
+  태어난다** — 이 검사는 그것이 유지되는지 보는 것이다(Supabase가 default ACL을 되살릴 수 있다):
+
+  ```sql
+  SELECT grantee, table_name FROM information_schema.role_table_grants
+  WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');
+  ```
+
+  **dev·prod 둘 다** 0건이어야 한다. 1건이라도 나오면 그 테이블에 `REVOKE ALL ... FROM anon,
+  authenticated`를 치고 `pg_default_acl`도 다시 본다. Supabase 대시보드 **Advisors → Security**가
+  0 errors인지도 같은 신호다.
 
 ### 6. 커밋
 
@@ -141,6 +156,7 @@ npx prisma migrate diff \
 변경: <컬럼·테이블 요약>
 SQL 확인: <DROP/ALTER 유무와 내용>
 generate + typecheck: OK / test: <n> passed
+anon 권한: dev 0건 / prod 0건  ← 새 테이블을 만들었으면 필수
 커밋: <해시> (스키마+마이그레이션만)
 
 배포 순서:

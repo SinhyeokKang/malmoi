@@ -101,6 +101,15 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 - **13px인 이유**: 12px이 작고, 14px는 mono 자폭이 sans의 1.2배라 트렁케이션·가로 스크롤이 함께 늘어난다.
 - **`text-[13px]`가 아니라 `text-mono`를 쓴다.** 임의값은 행간이 따라오지 않아 표면마다 갈린다.
+- ⚠️ **여러 줄일 수 있는 값에는 같은 태그에 `whitespace-pre-wrap`을 함께 적는다** (2026-09-08). `text-mono`는
+  **글꼴·크기·행간 셋만** 싣고 `white-space`는 안 든다 — 이름이 "코드 표면"을 뜻하는데 코드 표면의 나머지
+  절반이 빠져 있다. 유틸에 넣을 수는 없다: 소비 자리 29곳이 한 줄 값이고 여럿이 `truncate`와 함께 쓰므로
+  접히는 것이 의도다. **결정을 소비자가 해야 하고 클래스 이름이 그것을 안 알려준다는 것이 이 줄의 이유다.**
+  실제로 어댑터 오류의 파서 원문(YAML의 캐럿 다이어그램)이 세 자리에서 한 줄로 접혀 나갔다
+  (POSTMORTEM 2026-09-08). `components/__tests__/multiline-detail.test.ts`가 그 세 자리를 상시로 센다.
+  ⚠️ **여러 줄이 본문인 값은 `<pre>`다** — 워크플로 YAML이 그 예이고(§6.4 코드 블록) `whitespace-pre-wrap`이
+  아니라 `overflow-x-auto`가 붙는다. 가르는 기준은 "긴 줄을 접어야 하나(pre-wrap)"와 "원본 줄바꿈을
+  지켜야 하나(pre)"다.
 
 ### 4.2 ⚠ `text-mono`를 twMerge에 등록해야 한다
 
@@ -270,6 +279,32 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 - **(6b) Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409). 그 폼이 서기 전까지는 이 불릿의 대상이 없다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
 
+### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
+
+**Members** 표(Person · Email · Role · Joined · Actions) 위에 [Invite member] `primary`, 그 아래 **Pending
+invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `max-w-4xl` 본문에 있고 breadcrumb은
+`프로젝트 이름 / Members`다.
+
+- **Actions 열은 헤더가 `sr-only`다** — 시각적으로 비어야 하지만 이름 없는 `<th>`는 스크린 리더가 빈 열로
+  읽는다 (§7).
+- **행 컨트롤의 라벨은 대상을 든다** — `Change role for {name}` · `Remove {name}` · `Revoke invitation for
+  {email}`. 열마다 같은 라벨이면 셀렉트 다섯 개가 누구의 것인지 구별되지 않는다(번역 셀의 `cellLabel`과
+  같은 형). ⚠️ [Remove]의 `aria-label`은 **보이는 텍스트를 포함**한다 — 음성 입력이 라벨로 컨트롤을 찾는다
+  (WCAG 2.5.3).
+- **역할 변경은 native `Select`**(즉시 적용), **제거는 `Dialog` 확인 한 번**(되돌릴 수 없다). `Revoke`에는
+  확인이 없다 — 같은 마스킹 값이 다이얼로그에 다시 나올 뿐이라 **식별을 고치는 것이 답이었다**(아래).
+- **거부 문구는 행 옆 in-block `Alert danger`다.** 마지막 OWNER 보호(`last-owner`)는 **그 행에 대한 판정**이라
+  상단 global Alert로 올리면 어느 행이 거부됐는지 사라진다. ⚠️ 이 화면에는 **global Alert 슬롯이 없다** —
+  `?e=`를 이 경로로 보내는 자리가 없다(거부는 `/projects?e=`로 간다).
+- ⚠️ **이메일 마스킹의 예외가 여기 있다.** 두 표 모두 `maskEmail`이 기본이지만(이 표는 EDITOR도 본다 —
+  규칙을 역할로 나누지 않는다) **대기 초대는 마스킹한 주소가 유일한 식별자**라 첫 글자만 남기면 서로 다른
+  둘이 같은 행이 된다([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)). 서버가
+  `maskedInviteLabels`로 **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 — 충돌이 없으면 출력이 `maskEmail`과
+  같다(§6.1 "가장 흔한 상태가 가장 조용하다").
+- **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
+- **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
+  대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
+
 ### 6.7 새 프로젝트 (`/projects/new`)
 
 ②~⑥이 한 라우트의 클라이언트 상태다 (`features/project-onboarding/design.md` §2 — 바꾸지 않는다). 형만 바뀐다:
@@ -283,7 +318,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 경로 템플릿 | **mono.** `{locale}` 자리를 "the language goes here"로 한 줄 |
 | 기준 언어 | `Radio`, 기본은 `pickBaseLocale`. 코드는 mono |
 | 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동** |
-| ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 "Imported N keys." + 상위 5건 "Could not read {path}" `text-xs` + `<details>` 안 `text-mono` 진단 · [Start translating] `primary`. ⚠️ **tone은 `failed`가 정한다** — 진단 목록 길이로 고르면 목록이 빈 부분 실패가 success로 그려진다(불변식 9) |
+| ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 "Imported N keys." + 상위 5건 "Could not read {path}" `text-xs` + `<details>` 안 `text-mono whitespace-pre-wrap` 진단(§4.1 — 파서 원문이 여러 줄이다) · [Start translating] `primary`. ⚠️ **tone은 `failed`가 정한다** — 진단 목록 길이로 고르면 목록이 빈 부분 실패가 success로 그려진다(불변식 9) |
 
 ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
 

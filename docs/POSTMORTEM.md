@@ -544,6 +544,23 @@ _이 아래에 새 항목을 추가한다._
   - **판정 함수를 오케스트레이션 파일에 두지 않는다.** `syncBranchFor`처럼 I/O를 부르는 함수와 `isRefSafeSlug`처럼
     순수한 판정이 같은 파일에 있으면, 후자를 공유하는 순간 전자의 그래프가 함께 간다.
 
+🔁 **재발 — 2026-09-09 (6b-2 멤버 화면).** `relativeTime`이 `lib/keys/view.ts`에 있었고, 멤버 표 둘이
+**클라이언트에서** 그것을 값으로 읽으면서 그 파일의 그래프(`compareKeys` → `lib/adapters/shared` →
+`json-style`)가 번들로 따라왔다. 위 규칙("판정 함수를 오케스트레이션 파일에 두지 않는다")의 정확한
+형태이고, `lib/pull/ref-slug.ts`·`lib/keys/refocus.ts`와 같은 이유로 `lib/relative-time.ts`(잎)로 내려
+해결했다 — **재수출도 하지 않았다**(재수출하면 그래프가 그대로 따라온다).
+
+⚠️ **이번에 새로 배운 것: `client-graph.test.ts`가 이 재발을 못 봤다.** 그 검사는 **금지 목록**
+(`ts-morph`·`octokit`·`@prisma/client`·`node:fs`·`server-only`)으로 판정하는데 `lib/adapters/shared`와
+`json-style`은 그 목록에 없다 — 무겁지 않아서다. 즉 **"무거운 것이 들어왔나"는 잡고 "잎이어야 하는데
+아닌가"는 못 잡는다.** 잡으려면 잎 목록(화이트리스트)이 필요하고, 그것은 클라이언트가 읽어도 되는
+`@/lib/*`를 전수로 관리하는 일이라 이번에는 만들지 않았다. **대신 CLAUDE.md가 `view.ts`에 대해 적어 둔
+경고("view.ts는 잎이 아니다 — 클라이언트가 이 함수들을 값으로 읽지 않는다")가 유일한 방어선이었고,
+그것이 실제로 작동한 경로는 `/implement`의 자체 검증이다** — 검사가 아니라 문서를 읽는 사람이 잡았다.
+grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app --include='*.tsx')`
+→ 2026-09-09 현재 **0건**(멤버 표 둘이 `lib/relative-time.ts`로 옮겼다). 이 grep이 1건이 되면 그 파일의
+그래프를 다시 확인한다.
+
 ### 2026-09-07 — `revalidatePath`가 방금 받은 적재 결과 문구를 씻어냈다 (불변식 9가 사용자에게 안 닿았다)
 
 - **영역**: `app/(edit)/projects/[slug]/settings/page.tsx`(상태 섹션) · `components/onboarding/first-ingest-retry.tsx`
@@ -700,3 +717,63 @@ _이 아래에 새 항목을 추가한다._
   - **자유 문자열 오류를 코드로 바꿀 때 기존 단언을 전수로 다시 읽는다.** 컴파일러는 `message` 필드가 사라진 것만 잡고 **단언이 무엇을 주장했는지는 안 본다** — 이번엔 16곳 중 1곳이 갈래를 잘못 짚고 있었다.
   - **골든·기준선 테스트는 관측 가능한 자리에만 건다.** 옛 구현과의 등식을 옮길 때 "그 입력이 옛 구현에 실제로 도달했는가"를 먼저 묻는다. 도달 불가한 갈래는 등식이 아니라 **별도 단언**(여기서는 `NON_READ` 아홉이 `other`임)으로 둔다.
   - **도달 불가 갈래는 지우지 않고 표시한다** (CLAUDE.md — 내 변경이 만든 고아만 제거). `write-slot-missing`의 `errors.push`는 `insert`의 false 분기와 짝이고, 그 분기가 "구조 변경은 포기한다"는 계약의 서술이다. 지우면 계약이 코드에서 사라진다.
+
+### 2026-09-08 — 접어 둔 진단이 개행을 잃었고, 고친 뒤에도 절반만 고쳐진 채 새 검사가 green이었다
+
+- **영역**: `components/onboarding/first-ingest-retry.tsx`·`new-project-flow.tsx`, `components/publish-button.tsx`, `app/globals.css`(`text-mono` 유틸), `components/__tests__/multiline-detail.test.ts`
+- **증상**: 어댑터 오류의 `detail`(파서 원문)이 **여러 줄일 수 있는데** 렌더 자리 셋 모두 `white-space` 규칙이 없어 개행이 공백으로 접혔다. YAML 파서가 `Missing closing "quote at line 4, column 1:\n\n  retries: 3\n\n^\n`처럼 **캐럿 다이어그램**을 넣으므로, 읽으라고 `<details>`에 접어 둔 진단이 `… column 1: retries: 3 ^`가 되어 캐럿이 가리킬 열을 잃는다. **값이 사라지는 것은 아니고 읽을 수 없게 되는 것**이다.
+- **근본 원인** — 둘이다.
+  1. **`text-mono` 유틸이 "글꼴·크기·행간 셋"만 싣는다** (`app/globals.css`). 그 이름이 "코드 표면"을 뜻하는데 코드 표면의 나머지 절반인 개행 보존은 안 들어 있고, 소비자 12곳이 `truncate`와 함께 쓰므로 유틸에 넣을 수도 없다. **여러 줄일 수 있는 값을 그 클래스에 넣는 순간 결정을 소비자가 해야 하는데, 클래스 이름이 그것을 안 알려준다.**
+  2. **회귀 검사의 키가 도달할 수 없는 경로가 있었다.** 스캔을 `adapterErrorMessage(`로 잡았는데 `lib/pull/run.ts:138`이 **서버에서** `` `${e.path}: ${adapterErrorMessage(e)}` ``로 문자열을 완성해 `PullResult.warnings`에 싣고, Publish의 `<details>`는 그 완성품만 받는다 — 그 컴포넌트에 그 심볼이 없다. 온보딩 둘을 고치자 검사가 green이 됐고 **번역자가 실제로 보는 쪽은 안 고쳐진 상태**였다. 같은 날 항목(단언이 보간된 키만 봤다)과 축이 다르다: 그쪽은 단언의 **해상도**, 이쪽은 검사 **키의 도달 범위**다.
+- **그물**:
+  - 잡은 것 ①: **실물 `pnpm ingest`.** 픽스처 리포 셋(json·yaml·code)을 만들어 오류 갈래 다섯을 실제로 통과시키다가 YAML 것만 여러 줄인 것을 봤다. `pnpm test` 1,977건은 전부 green이었다.
+  - 잡은 것 ②: **`/code-review`.** "고쳤다"의 근거가 스캔 green인데 그 스캔이 Publish를 못 본다는 것을 diff에서 짚었다.
+  - 놓친 것: 단위 테스트 전수, typecheck, `next build`, ship 3·4의 `/bugshot-qa` 한 바퀴. QA는 **정상 상태의 화면을 훑으므로** 이 자리에 원리적으로 도달하지 않는다 — `detail`이 여러 줄인 갈래는 다섯 어댑터 중 `yaml-catalog` 하나이고 그마저 **파싱이 실패한 리포**가 있어야 나타난다.
+  - `/tdd` 분류표의 "React 컴포넌트 렌더는 스킵 OK"가 이 부류를 프로덕션까지 보냈다. 규칙 자체는 옳다(렌더 테스트 비용 > 가치) — **빠져 있던 것은 세 번째 답**이고, 그것이 이 리포에 이미 있다: `focus-ring.test.ts`("키보드 사용자에게만 보이는 결함이라 눈으로 두 번 놓쳤다")·`translations-screen.test.ts`·`tooltip-provider.test.ts`가 전부 **소스 스캔**이다.
+- **재발 방지**:
+  - **`text-mono`에 여러 줄일 수 있는 값을 넣을 때는 `whitespace-pre-wrap`을 같은 태그에 적는다.** grep: `grep -rn "text-mono" $(find components app -name "*.tsx" -not -path "*__tests__*")` → 각 자리가 **한 줄 값인지** 확인한다. 지금 여러 줄인 것은 어댑터 오류 셋과 워크플로 YAML 하나이고, **뒤쪽은 `<pre>`라 처음부터 옳았다**(`components/onboarding/workflow-block.tsx` — 그 주석이 "여러 줄이라 값 칩이 아니다"라고 이미 적고 있다). 그 외 0건.
+  - **검사 키가 "그 값이 만들어지는 자리"에 있으면 "그 값이 렌더되는 자리"를 못 본다.** 서버가 문자열을 완성해 클라이언트로 보내는 경로가 이 리포에 여럿이다(`PullResult.warnings`·`FirstIngestResultView.errors`·`?e=`). 그런 값의 렌더 자리는 **심볼 스캔으로 안 잡히므로 이름으로 고정한다** — `multiline-detail.test.ts`의 `COMPOSED_SITES`가 그 목록이고, `entry-points.test.ts`가 인가 예외를 이름으로 고정하고 **그 이름이 실재하는지도** 보는 것과 같은 형이다. ⚠️ **목록 밖의 새 소비자는 그 검사가 못 잡는다** — 그 좁음이 목록의 대가이고 파일 주석에 적혀 있다.
+  - **"한 갈래에서만 보이는 렌더 결함"은 `/tdd` 스킵 대상이 아니다.** 렌더 테스트를 세우는 대신 소스 스캔을 박는다. 판정 질문: **"이 결함을 보려면 특별한 데이터·상태가 필요한가?"** — 그렇다면 QA 한 바퀴와 눈이 원리적으로 못 보므로 스캔이 유일한 상시 방어선이다.
+
+### 2026-09-09 — 마스킹한 이메일이 두 초대를 같은 행으로 만들었고, 되돌릴 수 없는 버튼이 그 위에 있었다 ([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18))
+
+- **영역**: `components/members/pending-invitations.tsx`, `lib/auth/email.ts`(`maskEmail`), `lib/auth/invite-label.ts`(신설)
+- **증상**: `/projects/:slug/members`의 **Pending invitations** 표에서 `qa-invite-1788618586045@example.com`과 `qa-signed-out@example.com`이 **둘 다 `q***@example.com`** 으로 렌더됐다. 그 표에는 이름 열이 없어 주소가 유일한 식별자이고, 같은 날 발급된 초대면 만료 상대 시각("in 7 days")까지 같아져 **행이 바이트 단위로 동일**해진다 — `aria-label`(`Revoke invitation for q***@example.com`)까지 같아서 ego-browser의 스냅샷이 그 버튼들을 `loc=ambiguous`로 표시했다. [Revoke]는 **되돌릴 수 없다**(복구는 새 링크 재발급 + 재전달)이므로 결과는 **엉뚱한 사람의 링크를 무효화**하는 것이다.
+- **근본 원인**: `maskEmail`은 **첫 글자 + 도메인**만 남긴다. 그 함수가 만들어진 자리(초대 화면·셀 메타·멤버 표)에서는 마스킹한 값이 **보조 정보**였다 — 초대 화면은 "누구에게 보낸 링크인지" 확인용이고, 멤버 표에는 이름 열이 있다. 대기 초대 표는 **그 값이 유일한 식별자인 첫 소비자**였는데, design §3.9가 "이 표는 멤버 전원이 본다 → 마스킹한다"까지만 정하고 **"마스킹해도 행이 갈리는가"를 묻지 않았다.** 즉 규칙은 옳았고 그 규칙이 성립하려면 필요한 전제가 새 화면에서 처음 깨졌다. `lib/auth/email.ts`의 주석은 "되돌릴 수 없어 **대조에 쓰지 않는다**"까지 경고하는데, 여기서 일어난 것은 대조가 아니라 **표시 자체가 식별의 근거가 된 것**이다.
+- **그물**:
+  - 잡은 것: **`/bugshot-qa` 실물 라운드.** dev DB에 마스킹이 충돌하는 주소 쌍이 실제로 있었고(우연이 아니다 — `qa-…` 접두를 쓰는 테스트 데이터가 쌓인 결과다), 스냅샷의 `loc=ambiguous`가 첫 신호였다.
+  - 놓친 것: `pnpm test` **2,009건**, `typecheck`, `next build`, `/code-review`, `/refactor`. **전부 원리적으로 못 본다** — 단위 테스트는 `maskEmail`을 한 주소씩 먹이고(그 함수는 정확히 동작한다), 소스 스캔은 `maskEmail`이 **불렸는지**만 본다. 결함은 **한 함수의 출력이 아니라 목록 안에서의 유일성**이라 입력이 하나인 검사로는 나타나지 않는다.
+  - `/code-review`가 같은 파일에서 다른 a11y 문제(행마다 같은 `aria-label`)를 잡았는데 **그 원인이 이것이었다** — 라벨을 대상별로 바꾸자 `aria-label`이 여전히 같았고, 리뷰가 거기서 한 걸음 더 갔으면 잡혔다. "라벨에 대상을 넣었다"로 만족한 것이 놓친 지점이다.
+- **재발 방지**:
+  - **표시용 축약이 유일한 식별자인 자리를 만들지 않는다.** `maskEmail`·`truncate`·상대 시각·`slice(0, N)`은 전부 **정보를 버리는** 변환이고, 그 값으로 행을 구별해야 하는 표에서는 **목록 전체를 보는 판정**이 필요하다. `lib/auth/invite-label.ts`의 `maskedInviteLabels`가 그 형태다 — 충돌하는 행만 최소한을 더 보이고, 충돌이 없으면 출력이 `maskEmail`과 글자 하나까지 같다(흔한 경우가 가장 조용하다, DESIGN §6.1).
+  - **`maskEmail`을 고치지 않는다.** 소비자가 셋이고 지역 사본을 두면 같은 주소가 화면마다 다르게 보인다(CLAUDE.md). 문제는 그 함수가 아니라 **그 함수의 출력에 식별을 의존한 화면**이다.
+  - grep: `grep -rn 'maskEmail(\|truncate\|relativeTime(' $(find components app -name '*.tsx' -not -path '*__tests__*')` → **그 자리가 "행을 구별하는 유일한 값"인지 묻는다.** 2026-09-09 전수 결과: 멤버 표(이름 열이 있다) · 초대 화면(단일 행) · 셀 메타(키가 식별자다) · 리포명·경로 템플릿의 `truncate`(전체 값이 옆에 있거나 유일하다) — 대기 초대 하나만 해당했고 고쳤다.
+  - **되돌릴 수 없는 액션은 그 행을 특정할 수 있어야 한다.** [Remove]는 `Dialog`로 대상 이름을 다시 보이는데 [Revoke]에는 확인 단계가 없다 — 확인을 붙이는 것은 답이 아니었다(같은 마스킹 값이 다이얼로그에 다시 나올 뿐이다). **식별을 먼저 고치고 확인은 안 붙였다**는 판정을 남긴다.
+  - ⚠️ **같은 라운드의 부산물 하나**: `pnpm dev`가 `next-env.d.ts`를 `.next/dev/types/…`로 다시 쓰고 그 값이 커밋에 딸려갔다(`pnpm build`가 되돌린다). `/bugshot-qa`는 매 라운드 dev 서버를 띄우므로 **그 스킬 뒤에는 `git status`를 본다** — 커밋되는 유일한 생성물이라 gitignore로 막을 수 없다.
+
+### 2026-09-09 — 앱 층 인가를 촘촘히 만들었는데 DB가 인터넷에 열려 있었다 (Supabase advisor가 알려줬다)
+
+- **영역**: Supabase 프로젝트 둘(`malmoi` `xgsyyapzkpbdtkrprlmn` · `malmoi-dev` `bfugwmjubgmmroevrave`)의 `public` 스키마 권한. 코드 변경은 없다 — `CLAUDE.md`·`.claude/commands/{code-review,audit,db}.md`의 **거짓 전제**가 대상이다.
+- **증상**: Supabase 주간 security advisor 메일(2026-09-09 07:11, `noreply@supabase.com`)이 두 프로젝트에 CRITICAL 둘을 보고했다 — `rls_disabled_in_public` · `sensitive_columns_exposed`. DB에 직접 물어 확인한 값: **12테이블 전부 RLS off · 정책 0개 · `anon`과 `authenticated` 롤에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER`가 전부 GRANT**. 데이터 API(PostgREST)는 켜져 있었다(키 없는 요청에 401 — 엔드포인트는 살아 있다). 즉 **anon key 하나로 전 테이블을 읽고 쓰고 `TRUNCATE`할 수 있었다.** 노출 대상에 `Account.access_token`·`refresh_token`(사용자 GitHub 토큰) · `Session.sessionToken`(세션 하이재킹) · `User.email` · `ProjectInvitation.tokenHash` · 번역 전체가 있었다. **anon key는 공개 전제로 설계된 값이다**(클라이언트에 박도록 만들어졌다) — 우리가 어디에도 뿌리지 않은 것이 유일한 우연이었고, 방어선은 아니었다.
+- **근본 원인** — 셋이 겹쳤다.
+  1. **문서가 이 사실을 알면서 결론을 반대로 냈다.** `CLAUDE.md`가 "RLS가 없어 **애플리케이션이 유일한 방어선이다**"라고 적어 놨고, 그 문장을 **"그러니 쿼리를 `projectId`로 좁혀라"는 앱 층 규칙의 근거로만** 썼다. 그 문장이 참이려면 **DB에 닿는 경로가 앱 하나**여야 하는데, 그 전제를 한 번도 검증하지 않았다. Supabase는 PostgREST·GraphQL을 **기본으로 켜 두고** `public` 스키마의 `pg_default_acl`이 `anon`·`authenticated`에게 **새 테이블 전 권한을 자동으로 준다** — `postgres` 롤(=우리 마이그레이션 롤)이 만드는 객체에 적용되므로 **Prisma가 테이블을 만들 때마다 열렸다.**
+  2. **"안 쓴다"를 "닫혀 있다"로 읽었다.** `@supabase/supabase-js`가 의존성에 없고 anon key를 `.env.example`에도 안 넣었다 — 그 부재가 안심을 줬다. 안 쓰는 문이 잠긴 문은 아니다.
+  3. **검사의 시선이 전부 코드 안이었다.** `/code-review`·`/audit`의 보안 항목(인증 경계 혼입 · `projectId` 좁힘 · fail-closed · 조건부 렌더는 차단이 아니다)은 **우리 코드가 만드는 경로**만 본다. **"DB에 도달하는 경로가 몇 개인가"를 묻는 항목이 없었다.** 그래서 회고 36개, 감사 3라운드, 인증·인가 전용 단계(SAAS 2단계), `/bugshot-qa` 두 바퀴가 전부 이 자리를 지나갔다.
+- **그물**:
+  - 잡은 것: **Supabase의 주간 advisor 메일.** 우리 것이 아니다. 그리고 대시보드 **Advisors → Security** 화면이 같은 것을 계속 말하고 있었는데 **한 번도 열지 않았다** — 주간 메일이므로 이번이 첫 통보가 아니었을 가능성이 높다.
+  - 놓친 것: `pnpm test` 2,021건 · `typecheck` · `next build` · `/code-review` 여러 라운드 · `/audit` 3라운드 · `/bugshot-qa` 2라운드 · SAAS 2단계(인증·인가 전용) · POSTMORTEM 36항목. **전부 원리적으로 못 본다** — 이 결함은 소스에 없다. DB의 카탈로그에만 있다.
+  - ⚠️ **가장 불편한 사실**: 앱 층 인가는 실제로 촘촘했다(미들웨어 1차 차단 · 진입점 `requireProjectAccess` · 테넌트 좁힘 · fail-closed · DB 세션 · `getProjectAccess`). **그 노력 전체가 검증되지 않은 전제 하나 위에 서 있었다.**
+- **조치** (2026-09-09 실행, dev → prod 순):
+  - `REVOKE ALL ON ALL {TABLES,SEQUENCES,FUNCTIONS} IN SCHEMA public FROM anon, authenticated`
+  - `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON {TABLES,SEQUENCES,FUNCTIONS} FROM anon, authenticated` — **이것이 없으면 다음 마이그레이션이 만드는 테이블이 다시 열린다.** 재발 경로가 정확히 여기다
+  - `service_role`은 **남겼다** — 그 키는 비밀이고(anon과 달리 공개 전제가 아니다) 빼면 대시보드 기능이 깨진다. 최소 침습
+  - **RLS+정책이 아니라 REVOKE를 골랐다**: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다. Prisma는 `postgres` 롤로 붙어 영향이 없다 — 실측으로 확인했다(런타임 pooler 조회 · `/` 200 · `mal-moi.com` 200)
+  - 검증: `information_schema.role_table_grants`에서 `anon`·`authenticated` **0건**(양쪽) · `pg_default_acl`에 `postgres=…|service_role=…`만 · **Supabase Advisors가 두 프로젝트 모두 0 errors / 0 warnings**
+  - **데이터 API 자체는 끄지 않았다** — GRANT가 0이면 추가로 막는 것이 없고 대시보드 Table Editor가 함께 죽는다
+- **재발 방지**:
+  - **`/db` 5단계에 검사를 심었다** — 새 테이블을 만들면 `role_table_grants`에서 `anon`·`authenticated`가 **dev·prod 둘 다 0건**인지 확인하고 리포트에 적는다. Supabase가 default ACL을 되살릴 수 있으므로 "한 번 고쳤다"로 끝내지 않는다.
+  - **`/audit`의 `tenancy-env` 차원에 축을 더했다: "DB에 도달하는 경로를 전수로 센다."** 그 에이전트는 **코드가 아니라 DB에 묻는다** — 쿼리 셋(권한·default ACL·RLS)이 그 파일에 있다.
+  - **`/code-review`의 `projectId` 항목에 경고를 붙였다**: "앱이 유일한 방어선"은 **앱이 유일한 경로일 때만** 참이다. 스키마를 늘리는 변경에서 그 질문을 다시 한다.
+  - **CLAUDE.md의 그 문장에 실측과 조치를 붙였다** — 문장을 지우지 않고 남긴 이유는 그 문장이 **여전히 앱 층 규칙의 근거로 옳고**, 틀린 것은 "유일한"이라는 단어의 범위였기 때문이다.
+  - **관리 콘솔의 자동 진단을 읽는 루틴이 없다는 것이 더 큰 구멍이다.** Supabase Advisors·Vercel·GitHub Dependabot 전부 우리가 안 보는 화면이다. grep으로 잡을 수 있는 부류가 아니라 **주기적으로 열어야 하는 목록**이고, 지금은 그 목록이 어디에도 없다 — `docs/features/README.md` 백로그에 올렸다.
+  - ⚠️ **토큰 회전은 하지 않았다** (사용자 판단 대기). anon key를 우리가 어디에도 뿌리지 않았고 유출 흔적이 없다 — 다만 `Account.access_token`이 노출 **가능** 상태였으므로 안전을 택하면 `AUTH_SECRET` 회전(전원 로그아웃)이 가장 값싸다.

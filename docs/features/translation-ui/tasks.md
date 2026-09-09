@@ -29,8 +29,10 @@
   `/doc-check` DESIGN 불일치는 의도된 상태다(아래 T0 ⚠️).
 - **`/bugshot-qa`는 ship 4에 한 번**이다. ship 2·3은 위 표의 "실물" 줄만 손으로 확인한다 — 화면이 절반만 새것인
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
-- **6b는 6a 넷이 다 나간 뒤 별도 사이클 셋**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정) · 6b-2(base 변경
-  — design을 다시 쓴다) · 6b-3(멤버 화면). 6b-4(`/account`)는 **만들지 않는 쪽이 추천**이라 배송이 아니라 판정이다.
+- **6b는 6a 넷이 다 나간 뒤 별도 사이클 셋**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
+  닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **design을 다시 써야 착수할 수 있다**). 6b-4(`/account`)는
+  **만들지 않는 쪽이 추천**이라 배송이 아니라 판정이다. ⚠️ **번호가 실행 순서다** — 2026-09-08에 뒤의 둘을
+  맞바꿨다(그 절 머리에 이유가 있다).
 
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
@@ -344,7 +346,45 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 </details>
 
-## 6b-2. 설정 — base branch·기준 로케일 (🔴 design §3.13을 다시 쓴다)
+> ⚠️ **2026-09-08에 6b-2와 6b-3의 번호를 맞바꿨다** (사용자 지적). 그 전에는 base 변경이 6b-2, 멤버 화면이
+> 6b-3이었는데 base 변경은 **design §3.13을 다시 써야** 착수할 수 있어(아래 🔴) 뒷번호를 먼저 하게 되고,
+> 그러면 번호가 실행 순서를 뜻하지 않는다. **번호 = 실행 순서**로 맞췄다 — `SAAS.md` §8도 나열 순서가
+> 번호와 어긋나 있었다(6b-2 → 6b-4 → 6b-3). **옛 참조를 읽을 때 주의**: 이 날짜 이전 문서·PR 본문의
+> "6b-2"는 base 변경, "6b-3"은 멤버 화면이다.
+
+## 6b-2. 멤버 화면 — ✅ 닫혔다 (2026-09-09)
+
+> **결과**: `/projects/:slug/members` 신설 — 멤버 표(역할 native `Select`·제거 `Dialog`) · 대기 초대 표
+> (`revokeInvitation` — `expiresAt`을 당긴다) · 초대 `Dialog`. 임시 폼 `components/invite-form.tsx` 삭제.
+> 계획의 첫 항목(라우트 신설 근거)은 `spec.md` §2.3에 적고 `github-connect/spec.md` 두 곳에 🔴 STALE을 달았다.
+>
+> **계획 밖에서 더 들어간 것 둘**:
+> 1. **`relativeTime`을 `lib/relative-time.ts`(잎)로 내렸다.** 멤버 표 둘이 클라이언트에서 그것을 값으로
+>    읽는데 `lib/keys/view.ts`는 잎이 아니다(`compareKeys` → `lib/adapters/shared` → `json-style`) —
+>    POSTMORTEM 2026-09-07의 재발이고 `client-graph`가 못 보는 부류다(금지 목록에 없는 가벼운 의존).
+> 2. **[malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)** — `maskEmail`이 서로 다른 주소를
+>    같은 문자열로 접어 대기 초대 행이 구별되지 않았다. `/bugshot-qa`가 잡았고 `maskedInviteLabels`
+>    (목록 전체를 보고 충돌하는 행만 늘린다)로 같은 사이클에서 고쳤다.
+>
+> **계획이 놓쳤던 것**: `?e=` global Alert 슬롯을 요구했지만 **그 쿼리를 이 경로로 보내는 자리가 없다** —
+> 거부는 `/projects?e=`로 가고 Action 실패는 행 옆 인라인이다(어느 행인지가 정보다). 슬롯을 만들지 않고
+> `members-screen.test.ts`가 "읽는 쪽도 보내는 쪽도 0"을 고정한다 — 짝을 강제한다.
+
+<details>
+<summary>원래 계획 (그대로 남긴다)</summary>
+
+
+- **라우트 신설 근거를 먼저 적는다** — `github-connect/spec.md:45,127`은 "`/settings` 페이지에 섹션"으로 결정했다. 별도 라우트의 실제 이유(EDITOR가 목록을 봐야 하는데 `/settings`는
+  `project:settings` 뒤)를 spec §2.3에 쓰고 그쪽을 stale로 표시한다
+- **Members는 전원에게 렌더**(EDITOR도 목록을 본다 — user-stories §5 스토리와 §0 "OWNER만"이 모순이었다). Settings만 OWNER
+- `revokeInvitation`은 **`deleteMany`가 아니라 `updateMany({ where: { id, projectId, acceptedAt: null }, data: { expiresAt: now } })`** — `prisma/schema.prisma:365`가 삭제를 금지하고
+  기존 관용구가 `expiresAt = now`(`createInvitation`, `actions.ts:132`)다. `loadPendingInvitations`의 `expiresAt > now()` 술어가 그대로 맞는다. 모델명은 `ProjectInvitation`
+- 대기 초대 0건 빈 상태 · `?e=` global Alert 슬롯 · 역할 변경은 native `Select`(DropdownMenu 아님) · `components/invite-form.tsx` 삭제는 이 커밋에서
+- 검증: `app/(edit)/__tests__/membership.test.ts` — 다른 프로젝트의 초대 id는 0행 · EDITOR `forbidden` · 마지막 OWNER 문구 · 이미 수락된 초대는 건드리지 않는다
+
+</details>
+
+## 6b-3. 설정 — base branch·기준 로케일 (🔴 design §3.13을 다시 쓴다)
 
 - **지금 설계대로면 pull이 깨진 파일을 낸다.** push·pull의 base 진실은 `Project.baseLocale`(`lib/pull/load.ts:30`·`run.ts:85`·`render.ts:115`)이고 `Locale.isBase`는 편집 UI만
   읽는다(`lib/keys/query.ts:42`). UI가 저장하면 CI push는 409로 막히지만 **야간 pull은 막히지 않아** `value ?? sourceText`(`plan.ts:174`) 폴백으로 옛 base 원문이 새 base 파일에 실린 PR이 나간다
@@ -354,16 +394,6 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
   멈추고** UI 배너가 같은 조건을 읽는다. 트랜잭션 스왑·`planBaseLocaleChange`의 절반이 사라진다
 - `isValidBranchName`(`lib/pull/branch-name.ts` 잎) · `checkFormat`은 3필드(adapter·pathTemplate·baseLocale) 비교 · 하네스 `locale`에 `findMany`·`updateMany` 필요 · isBase 단일성은 스키마 제약이 아니다(`@@id([projectId, code])`뿐)
 - 실물: 폐기용 리포에서 옛 `base-locale`로 CI를 한 번 돌려 409를 본다 — 어느 스킬에도 없는 확인이라 별도 줄
-
-## 6b-3. 멤버 화면
-
-- **라우트 신설 근거를 먼저 적는다** — `github-connect/spec.md:45,127`은 "`/settings` 페이지에 섹션"으로 결정했다. 별도 라우트의 실제 이유(EDITOR가 목록을 봐야 하는데 `/settings`는
-  `project:settings` 뒤)를 spec §2.3에 쓰고 그쪽을 stale로 표시한다
-- **Members는 전원에게 렌더**(EDITOR도 목록을 본다 — user-stories §5 스토리와 §0 "OWNER만"이 모순이었다). Settings만 OWNER
-- `revokeInvitation`은 **`deleteMany`가 아니라 `updateMany({ where: { id, projectId, acceptedAt: null }, data: { expiresAt: now } })`** — `prisma/schema.prisma:365`가 삭제를 금지하고
-  기존 관용구가 `expiresAt = now`(`createInvitation`, `actions.ts:132`)다. `loadPendingInvitations`의 `expiresAt > now()` 술어가 그대로 맞는다. 모델명은 `ProjectInvitation`
-- 대기 초대 0건 빈 상태 · `?e=` global Alert 슬롯 · 역할 변경은 native `Select`(DropdownMenu 아님) · `components/invite-form.tsx` 삭제는 이 커밋에서
-- 검증: `app/(edit)/__tests__/membership.test.ts` — 다른 프로젝트의 초대 id는 0행 · EDITOR `forbidden` · 마지막 OWNER 문구 · 이미 수락된 초대는 건드리지 않는다
 
 ## 6b-4. `/account` — 만들지 말지부터
 

@@ -24,7 +24,7 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { createInvitation, changeMember } = await import("../projects/actions");
+const { createInvitation, changeMember, revokeInvitation } = await import("../projects/actions");
 const { acceptInvitation } = await import("../../invite/actions");
 
 const LATER = new Date("2126-01-01T00:00:00Z");
@@ -37,8 +37,8 @@ function seeded() {
       { id: "pB", slug: "beta" },
     ],
     members: [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
       { projectId: "pB", userId: "u-other", role: "OWNER" },
     ],
     users: [
@@ -193,7 +193,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     invite();
     const result = await acceptInvitation({ token: "tok" });
     expect(result).toEqual({ ok: true, slug: "alpha" });
-    expect(db.members).toContainEqual({ projectId: "pA", userId: "u-guest", role: "EDITOR" });
+    expect(db.members).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: "pA", userId: "u-guest", role: "EDITOR" })]));
   });
 
   it("없는 토큰은 not-found다", async () => {
@@ -321,7 +321,7 @@ describe("changeMember — 마지막 OWNER 보호", () => {
   });
 
   it("OWNER가 둘이면 하나를 강등할 수 있다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     const result = await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: "EDITOR" });
     expect(result).toEqual({ ok: true });
     expect(db.members.find((m) => m.userId === "u-owner")?.role).toBe("EDITOR");
@@ -357,8 +357,8 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   it("판정 뒤 행이 사라져도 not-member다 — OWNER 둘이 같은 멤버를 동시에 제거하는 경우", async () => {
     // 목록에는 있지만 실제 행은 없다 = 다른 요청이 먼저 지운 뒤다.
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: null });
     expect(result).toEqual({ ok: false, error: "not-member" });
@@ -366,8 +366,8 @@ describe("경합에서도 거부가 응답으로 온다", () => {
 
   it("역할 변경도 같다", async () => {
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-ghost", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-ghost", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     const result = await changeMember({ slug: "alpha", targetUserId: "u-ghost", nextRole: "OWNER" });
     expect(result).toEqual({ ok: false, error: "not-member" });
@@ -382,12 +382,12 @@ describe("경합에서도 거부가 응답으로 온다", () => {
    * OWNER 둘인데 실제 행은 하나만 OWNER다(다른 요청이 먼저 강등했다). 쓰기 뒤 재집계가 0을 보고 되돌려야 한다.
    */
   it("판정 뒤 다른 OWNER가 이미 줄었으면 last-owner로 되돌린다 — 쓰기 뒤 OWNER를 다시 센다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     // 판정은 둘 다 OWNER로 본다.
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-second", role: "OWNER" },
-      { projectId: "pA", userId: "u-editor", role: "EDITOR" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     // 실제로는 다른 요청이 u-second를 이미 강등했다.
     const second = db.members.find((m) => m.userId === "u-second");
@@ -400,10 +400,10 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   });
 
   it("자기 제거도 같은 재집계를 지난다", async () => {
-    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER" });
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
     db.spies.findManyMembers.mockImplementationOnce(async () => [
-      { projectId: "pA", userId: "u-owner", role: "OWNER" },
-      { projectId: "pA", userId: "u-second", role: "OWNER" },
+      { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+      { projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
     ]);
     db.members.splice(db.members.findIndex((m) => m.userId === "u-second"), 1);
 
@@ -435,5 +435,98 @@ describe("경합에서도 거부가 응답으로 온다", () => {
     const result = await acceptInvitation({ token: "tok" });
     expect(result).toEqual({ ok: false, error: "already-member" });
     expect(db.members.filter((m) => m.userId === "u-editor" && m.projectId === "pA")).toHaveLength(1);
+  });
+});
+
+/**
+ * `revokeInvitation` (6b-2, design §3.9).
+ *
+ * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
+ * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
+ * 기존 관용구는 `expiresAt = now`이고(`createInvitation`의 회전) `loadPendingInvitations`의
+ * `expiresAt > now()` 술어가 그대로 맞는다.
+ */
+describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
+  function withInvites() {
+    const db = createHarness({
+      projects: [
+        { id: "pA", slug: "alpha" },
+        { id: "pB", slug: "beta" },
+      ],
+      members: [
+        { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
+        { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
+        { projectId: "pB", userId: "u-other", role: "OWNER" },
+      ],
+      users: [{ id: "u-owner", email: "owner@a.com" }],
+      invitations: [
+        { id: "i-a", projectId: "pA", email: "x@a.com", role: "EDITOR", tokenHash: "hA", expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner" },
+        { id: "i-done", projectId: "pA", email: "y@a.com", role: "EDITOR", tokenHash: "hD", expiresAt: LATER, acceptedAt: new Date("2026-09-05T00:00:00Z"), invitedBy: "u-owner" },
+        { id: "i-b", projectId: "pB", email: "z@b.com", role: "EDITOR", tokenHash: "hB", expiresAt: LATER, acceptedAt: null, invitedBy: "u-other" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+    return db;
+  }
+
+  it("OWNER는 대기 초대를 무효화한다 — 만료 시각을 당기는 것이다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: true });
+
+    const [args] = db.spies.updateManyInvitations.mock.calls.at(-1) ?? [];
+    expect(args?.where).toMatchObject({ id: "i-a", projectId: "pA", acceptedAt: null });
+    expect(args?.data.expiresAt).toBeInstanceOf(Date);
+    // 삭제 경로를 쓰지 않는다 — 하네스에 그 메서드가 없어 부르면 던진다는 것과 별개로 계약을 고정한다.
+    expect(db.spies.updateManyInvitations).toHaveBeenCalled();
+  });
+
+  it("다른 프로젝트의 초대 id는 0행이다 — id를 알아도 남의 테넌트를 못 건드린다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-b" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+
+    const untouched = db.invitations.find((i) => i.id === "i-b");
+    expect(untouched?.expiresAt).toEqual(LATER);
+  });
+
+  it("이미 수락된 초대는 건드리지 않는다 — 그 사람은 이미 멤버다", async () => {
+    const db = withInvites();
+    hoisted.session = sessionFor("u-owner");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-done" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+
+    const row = db.invitations.find((i) => i.id === "i-done");
+    expect(row?.expiresAt).toEqual(LATER);
+  });
+
+  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (SAAS §3)", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-editor");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "forbidden" });
+  });
+
+  it("멤버가 아니면 not-found다 — 프로젝트의 존재를 노출하지 않는다", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-other");
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "not-found" });
+  });
+
+  it("비로그인은 거부된다", async () => {
+    withInvites();
+    hoisted.session = null;
+    const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });
+    expect(result).toEqual({ ok: false, error: "unauthorized" });
+  });
+
+  it("입력이 비면 invalid input이다 — 예외로 죽지 않는다", async () => {
+    withInvites();
+    hoisted.session = sessionFor("u-owner");
+    expect(await revokeInvitation({ slug: "", invitationId: "i-a" })).toEqual({ ok: false, error: "invalid input" });
+    expect(await revokeInvitation({ slug: "alpha", invitationId: "" })).toEqual({ ok: false, error: "invalid input" });
   });
 });

@@ -294,7 +294,11 @@ app/
                         isConnectError 둘로** 읽는다 (callback이 착지시킨다).
                         ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
                         모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
-    projects/actions.ts createInvitation · changeMember (OWNER 전용 — member:manage)
+    projects/actions.ts createInvitation · changeMember · **revokeInvitation** (OWNER 전용 — member:manage)
+                        ⚠️ revokeInvitation은 **행을 지우지 않는다** — `expiresAt`을 당긴다. 스키마가
+                        삭제를 금지하고(재사용을 `already-accepted`로 구별해야 한다) 기존 무효화 관용구가
+                        `createInvitation`의 토큰 회전이다. `where`에 `projectId`+`acceptedAt: null`이
+                        함께 있어 id를 알아도 남의 테넌트를 못 건드린다
                         + 온보딩 일곱 (2026-09-07): startGithubConnectForUser · disconnectGithub ·
                         listConnectableRepos · detectRepoFormats · createProject · runFirstIngest ·
                         rotatePushToken
@@ -308,6 +312,13 @@ app/
                         "이 사람이 그 설치를 볼 수 있는가"는 사용자 토큰. lib/onboarding/은 둘 다 모른다
                         ⚠️ createProject는 **클라이언트가 보낸 pathTemplate을 저장하지 않는다** — 파일을
                         다시 읽어 detectFormatWith를 돌리고 그 반환값을 저장한다 (design §3.4)
+    projects/[slug]/members/page.tsx
+                        멤버 관리 (6b-2, 2026-09-09). ⚠️ **게이트가 `translation:write`다** —
+                        `member:manage`로 하면 EDITOR가 못 들어오는데 그 사람도 목록을 봐야 한다
+                        (user-stories §5). 컨트롤만 role로 갈리고 **판정은 Action**이 한다.
+                        ⚠️ **이것이 `/settings` 섹션이 아니라 별도 라우트인 이유다** — 그 페이지는
+                        `project:settings` 뒤라 게이트가 갈린다. `github-connect/spec.md`의 반대 결정을
+                        뒤집었고 그쪽에 🔴 STALE을 달았다. ⚠️ **`?e=` 슬롯이 없다**(보내는 자리가 0)
     projects/[slug]/settings/page.tsx
                         리포 연결 + **상태 + push 토큰 + 워크플로** + GitHub 계정 (4·5단계).
                         최상단에서 requireProjectAccess를 던진다. maxDuration=60 (Action이 첫 적재를 돈다).
@@ -363,8 +374,13 @@ components/
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받고 `/projects` 계정 섹션이 같은 버튼을 쓴다
-  invite-form.tsx       초대 링크 발급 (client, OWNER만 — **임시**, 6b 멤버 관리 화면이 대체한다).
-                        6a T7이 툴바 인라인 폼에서 `Dialog`로 옮겼다
+  members/              멤버 관리 화면의 클라이언트 조각 (6b-2, 2026-09-09). member-list(역할 native
+                        `Select` + 제거 `Dialog` — 거부 문구는 **행 옆 인라인**이다) / pending-invitations
+                        (`revokeInvitation` + 0건 빈 상태) / invite-dialog(옛 `components/invite-form.tsx` —
+                        **삭제됐다**. 초대 수단이 둘이면 하나가 낡는다)
+                        ⚠️ **대기 초대의 이메일은 `maskEmail`이 아니다** — 그 표에선 마스킹한 주소가 유일한
+                        식별자라 서로 다른 둘이 같은 행이 됐다(malmoi#18). 서버가 `maskedInviteLabels`로
+                        목록 전체를 보고 라벨을 내려준다
   translations/         번역 화면의 클라이언트 조각 (6a T7). header(breadcrumb·툴바·배너·결과 Alert를
                         **한 상태 트리**로 든다) / filters(?q=·?state=·?focus= → routes.translations) /
                         announcer(표 하나의 `aria-live` — 셀마다 두면 903행×3로케일에 2,700개다) /
@@ -405,6 +421,10 @@ components/
                         조상 provider가 없으면 Radix가 **던지고**, 그 툴팁은 접힌 사이드바에서만 렌더되므로
                         "접기를 누르면 셸이 죽는다"로 나타난다 — 접힘이 `localStorage`에 남아 사용자가
                         스스로 못 빠져나온다 (POSTMORTEM 2026-09-08)
+                        + multiline-detail — 어댑터 오류를 렌더하는 자리가 `whitespace-pre-wrap`을 드는지
+                        **두 축으로** 센다: `adapterErrorMessage(`를 부르는 자리 전수 + 서버가 합친 문자열
+                        (`PullResult.warnings`)을 렌더하는 자리 **이름 고정**. ⚠️ **앞쪽만 있으면 절반만 고쳐도
+                        green이다** — Publish의 `<details>`엔 그 심볼이 없다(POSTMORTEM 2026-09-08)
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
@@ -425,7 +445,14 @@ lib/
                         원문, 뒤 괄호). ⚠️ **잎이다** — 온보딩 클라이언트 둘이 읽으므로 `@/lib/adapters/types`를
                         **타입으로만** 가져온다(값이면 `ADAPTER_ERROR_CODES`를 따라 그 디렉터리가 열린다)
   shell/nav.ts          사이드바의 순수 판정 둘 — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
-                        없으면 컨텍스트 없음) / projectSections(canPerform이 항목을 정한다 — 권한표가 한 벌)
+                        없으면 컨텍스트 없음) / projectSections(**셋** — Translations·Members·Settings. ⚠️ **Members는
+                        `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고 컨트롤만 갈린다)
+  relative-time.ts      relativeTime(then, now) — **잎, import 0** (2026-09-09에 `lib/keys/view.ts`에서
+                        내렸다). ⚠️ 그 모듈은 잎이 아니다(`compareKeys` → `lib/adapters/shared`)라서
+                        클라이언트가 값으로 읽으면 그래프가 따라온다 — **재수출도 하지 않는다**
+                        (POSTMORTEM 2026-09-07 재발). `client-graph`는 그 셋이 무겁지 않아 못 잡는다
+  auth/invite-label.ts  maskedInviteLabels — **목록 전체를 보고** 충돌하는 행만 최소한을 더 보인다.
+                        충돌이 없으면 출력이 `maskEmail`과 글자 하나까지 같다 (malmoi#18)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
                         `entry-points.test.ts`가 이 파일의 경로·쿼리 키를 실재 라우트와 대조한다
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
@@ -523,7 +550,10 @@ lib/
                         / message.ts(결과→문구)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
-    query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회.
+    query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회
+                        + loadMembers·loadPendingInvitations (6b-2 — 멤버 화면. **`projectId`로만 좁힌다**,
+                        인가는 호출부가 이미 지났다. 뒤의 것은 `acceptedAt IS NULL AND expiresAt > now()`
+                        **둘 다** 본다 — 한쪽만 보면 이미 멤버가 된 사람의 초대가 "대기 중"으로 보인다).
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
     session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only).
                         장애는 /?error=Unavailable, 거부는 /projects?e=<status>
@@ -696,7 +726,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-08 기준 35개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 38개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -747,6 +777,8 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** RLS가 없어 애플리케이션이 유일한 방어선이다 — 멤버십 판정을 지났더라도 쿼리가 `projectId`를 빠뜨리면 다른 테넌트의 행이 나온다.
+  - ⚠️ **"애플리케이션이 유일한 방어선"은 2026-09-09까지 거짓이었다.** 그 문장은 "DB에 닿는 경로가 앱 하나"를 전제하는데 **Supabase는 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고**, `public` 스키마의 `pg_default_acl`이 **`anon`·`authenticated` 롤에 새 테이블 전 권한을 자동으로 준다.** 실측: prod·dev 12테이블 전부 RLS off + `anon`에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE` — **anon key 하나로 `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다**(Supabase 주간 advisor 메일이 알려줬다). **조치: `anon`·`authenticated`의 `public` 권한을 REVOKE하고 `ALTER DEFAULT PRIVILEGES`에서도 뺐다** — 후자가 없으면 **다음 마이그레이션이 만드는 테이블이 다시 열린다.** `service_role`은 남겼다(그 키는 비밀이고 공개 전제가 아니다). RLS+정책 대신 REVOKE를 고른 이유: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다.
+  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db`가 그 검사를 든다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
 
 ## 게이트웨이 (알아두면 유용)
 
