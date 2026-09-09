@@ -89,7 +89,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
 | 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
-| DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다 | — |
+| DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다** (`vercel.json`의 `regions: ["hnd1"]`, 2026-09-09) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
 ⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`·`tw-animate-css`는 사용 0으로 확인돼 2026-09-08에 제거했다** — 피드백은 셀 인라인(저장)과 `Alert`(Publish)이고 토스트는 그것을 둘로 가른다. `components/__tests__/client-graph.test.ts`가 `sonner`를 금지 목록으로 들고 있다.
 
@@ -756,6 +756,10 @@ prisma/
                         additive 하나이고 **prod 반영 완료** — `db:status:prod` 13개 up to date)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
+                        ⚠️ **`regions: ["hnd1"]`이 함수를 DB 옆에 붙인다** (2026-09-09 계측) — 기본값은
+                        `iad1`(워싱턴)이고 DB는 도쿄라 왕복 하나가 태평양을 건넜다. 이 앱의 비용은
+                        페이로드가 아니라 **홉 개수**다(요청당 일곱, 문서는 8KB) — 엣지는 그대로
+                        `icn1`이므로 사용자까지의 거리는 한 홉만 늘고 DB 일곱 홉이 짧아진다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
                         그 파일은 sync-agents.mjs가 소유하는 생성물이라, 켜져 있으면 next dev를 돌릴
                         때마다 미러 게이트가 드리프트로 잡고 지우면 Next가 다시 만든다
