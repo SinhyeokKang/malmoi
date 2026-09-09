@@ -509,11 +509,12 @@ export const en = {
       },
 
       /**
-       * 기준 브랜치·기준 로케일 (6b-3 — design §3.13). **한 폼이라 저장도 하나다.**
+       * 기준 브랜치 하나다 (6b-3이 언어와 한 폼에 뒀던 것을 **6b-5가 갈랐다** — 언어는
+       * `m.locales.field`이고 화면은 `/projects/:slug/locales`다, SAAS §7.7 결정 4).
        *
-       * ⚠️ **두 필드의 뜻이 다르다**: base branch는 **즉시** 쓰이고(pull의 커밋 parent·PR base),
-       * base language는 **선언만** 쓰인다 — 실제로 바뀌는 것은 다음 CI push다. help 문구가 그
-       * 차이를 말한다. 안 말하면 저장 직후 화면이 안 바뀌는 것이 버그로 보인다.
+       * ⚠️ **브랜치는 즉시 쓰인다** — pull의 커밋 parent와 PR base가 그것이고 대기 개념이 없다.
+       * 선언만 쓰이는 축(base language)이 여기서 사라졌으므로 두 성질을 한 help 문구로 설명할
+       * 필요도 없어졌다.
        */
       fields: {
         branch: "Base branch",

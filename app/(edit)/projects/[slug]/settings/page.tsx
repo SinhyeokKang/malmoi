@@ -72,10 +72,13 @@ export default async function SettingsPage({
       baseBranch: true,
       adapterName: true,
       baseLocale: true,
-      // 기준 로케일 변경의 선언 — 대기 Alert의 조건과 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
+      // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       declaredBaseLocale: true,
-      // ⚠️ **살아 있는 것만 고를 수 있다** — orphaned 로케일을 base로 세우면 다음 push가 키 0개를 낸다.
-      locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
+      /**
+       * ⚠️ **로케일 목록을 읽지 않는다.** 6b-3이 여기서 셀렉트 항목으로 썼지만 6b-5가 그 필드를
+       * `/projects/:slug/locales`로 옮겼고, 남겨 두면 **아무 데도 안 쓰이는 행을 매 렌더에 읽는다.**
+       * 이 화면이 선언 컬럼에 대해 하는 일은 워크플로 YAML에 한 줄을 박는 것뿐이다.
+       */
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 빈 화면 대신 `requireProjectAccess`의 not-found와
