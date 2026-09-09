@@ -303,7 +303,14 @@
   - ⚠️ **`/invite/<token>` 때문에 `Referrer-Policy`가 이 셋 중 실질이 가장 크다**(findings 9)
 - [x] **T2** `next.config.ts`에 `headers()` — 위 셋 + CSP Report-Only
   - ✅ **`curl -sI` 확인** (2026-09-09, 로컬 프로덕션 빌드): 넷 다 `/`와 **`/invite/<token>`**에 붙는다.
-  - ⏳ **화면 넷 동작 확인은 미실행** — 브라우저 세션이 필요하다. Report-Only는 원리적으로 렌더를 못 깨고, enforce 셋도 iframe·Referer·MIME 축이라 화면 동작에 안 닿는다.
+  - ✅ **프로덕션 실측: CSP Report-Only 위반 0건** (2026-09-09, `https://mal-moi.com` 로그인 상태 9라우트 —
+    `/projects` · Home · translations(기본·`?ns=*`) · members · locales · settings · new · account).
+    ⚠️ **DOM `securitypolicyviolation` 이벤트로는 못 잰다** — 리스너에 안 닿는다(확장이 낀 환경에서 실측).
+    잡히는 것은 **CDP `Log.entryAdded`의 `source: "security"`** 이고, `example.com`의 script·img를 심어
+    **그 검사가 실제로 위반을 집는 것까지 확인한 뒤** 0을 읽었다.
+  - ⚠️ **한 번 무효 측정을 냈다** — 리스너를 심고 **다시 navigate**해서 document가 교체됐고, 사라진
+    `window.__v`를 0으로 읽었다. `Page.addScriptToEvaluateOnNewDocument`로 바꿔도 이벤트 자체가 안 와서
+    결국 Log 도메인으로 갔다. **"0건"을 보고하기 전에 그 검사가 1건을 낼 수 있는지 먼저 만든다.**
   - 검증: `pnpm build` 통과(`tsc`는 이 파일의 형태를 못 본다) / `[manual]` `curl -sI`로 응답 헤더 확인 /
     `[manual]` 로그인·번역·설정·초대 넷이 그대로 동작한다
 - [x] **T3** `app/api/pull/route.ts` — 순회 상한 + 요약에 "미처리" (발견 26)
