@@ -31,7 +31,7 @@
 **한 ship인 이유**: 셋 다 `lib/adapters/**`라 **재측정 트리거가 한 번으로 끝난다**(학습+홀드아웃 둘,
 `/push` 4d가 사용자에게 묻는다). 나누면 4분 네트워크를 두 번 쓰고 ADAPTER-COVERAGE 회차가 둘로 늘어난다.
 
-- [ ] **T1** `/tdd interface` — 아래 테스트를 먼저 박는다
+- [x] **T1** `/tdd interface` — 아래 테스트를 먼저 박는다
   - `lib/adapters/__tests__/contract.ts`에 **`ADAPTERS` 순회 검사 하나 추가**: 어느 어댑터든
     `__proto__`·`constructor`·`prototype` 세그먼트를 든 키를 `write`에 먹여도 (a) `({} as never).x`가
     오염되지 않고 (b) 그 키가 **출력에서 사라지지 않는다**
@@ -44,34 +44,36 @@
     **경계 시간 안에** 빈 배열을 낸다(타이머가 아니라 판정으로 검사 — `*` 개수·길이 상한이 순수 함수의
     반환에 드러나야 한다)
   - `lib/adapters/__tests__/key-order-golden.test.ts`는 **그대로 green이어야 한다**(결정성 회귀 없음)
-- [ ] **T2** `lib/adapters/json-catalog.ts` — `setDeep`의 중간 노드를 프로토타입 없는 객체로
+- [x] **T2** `lib/adapters/json-catalog.ts` — `setDeep`의 중간 노드를 프로토타입 없는 객체로
+  - ✅ **결정: (a) 그대로 파일에 낸다** (2026-09-09 사용자). 왕복을 실측으로 확인했다 — flat·nested 둘 다 write → read가 같은 키를 돌려준다.
   - 🔒 **출력 정책**: `"__proto__"` 키를 (a) 그대로 파일에 낸다 / (b) `AdapterError`로 떨어뜨린다.
     **추천은 (a)** — 값을 잃지 않는 것이 코어 원칙이고 `JSON.parse`가 그것을 own property로 되돌리므로
     왕복이 성립한다. (b)를 고르면 `ADAPTER_ERROR_CODES`에 코드가 하나 늘고 `messages/en.tsx`의
     `adapterErrors`가 따라온다(6b-1의 계약)
   - 검증: T1의 contract 검사 green / `normalizeArrays`가 `Object.keys`로 도는데 프로토타입 없는 객체에서
     그 키가 **보인다**(현재는 안 보여 출력에서 사라진다)
-- [ ] **T3** flat 대입 자리 둘 — `json-catalog.ts:256` · `chrome-locales.ts:217`
+- [x] **T3** flat 대입 자리 둘 — `json-catalog.ts:256` · `chrome-locales.ts:217`
   - `out`을 프로토타입 없는 객체로. ⚠️ `CHROME_KEY`(`/^[A-Za-z0-9_@]+$/`)가 `__proto__`를 통과시키므로
     **정규식을 고치는 것으로는 안 닫힌다** — 대입 자리를 고친다
   - 검증: `chrome-locales` write 결과에 그 키가 실린다 / `serializeJson`이 프로토타입 없는 객체를 그대로 받는다
-- [ ] **T4** `lib/adapters/shared.ts` — `matchGlobPaths`에 `*` 개수·템플릿 길이 상한
+- [x] **T4** `lib/adapters/shared.ts` — `matchGlobPaths`에 `*` 개수·템플릿 길이 상한
+  - ✅ **결정: 순수 함수 안** (2026-09-09 사용자). 스키마 경계는 ship 2가 같은 `exceedsGlobBudget`을 재사용한다. **예산은 인접 양자 4개 · 템플릿 200자**이고 `{locale}`도 같은 예산을 쓴다(per-locale 갈래가 인접 `([^/]+)`를 만든다).
   - 🔒 **상한을 어디서 거는가**: 순수 함수 안(빈 배열 → pull이 `fail("the glob matched no files")`로
     **시끄럽게** 멈춘다) / 스키마 경계(ship 2) / 둘 다. **추천은 둘 다** — 저장된 템플릿이 이미 DB에
     있을 수 있어 경계만으로는 cron 경로가 안 닫힌다
   - 검증: `lib/onboarding/confirm.ts:30`의 `{locale}` N개 경로도 같은 상한을 지난다
-- [ ] **T5** `pnpm typecheck && pnpm test`
-- [ ] `——` `test:` → `fix:` 두 커밋
-- [ ] **T6** **재측정** `[manual]` — `pnpm adapter-survey`를 **학습·홀드아웃 둘 다** 돌리고
+- [x] **T5** `pnpm typecheck && pnpm test`
+- [x] `——` `test:` → `fix:` 두 커밋
+- [x] **T6** **재측정** `[manual]` — `pnpm adapter-survey`를 **학습·홀드아웃 둘 다** 돌리고
       `docs/ADAPTER-COVERAGE.md`에 **15차**를 더한다
   - ⚠️ 한쪽만 돌리면 못 본다(§0 3차 — 수정 4건 중 2건이 수정이 만든 회귀였고 하나는 학습에서만 나타났다)
   - 검증: ③ 지표가 14차와 같거나 나아진다. **달라지면 그 자체가 발견이다** — 프로토타입 키를 가진
     리포가 코퍼스에 있었다는 뜻이고 findings에 적는다
-- [ ] **T7** 문서 — `docs/ARCHITECTURE.md` §1.1(재생성 규칙에 프로토타입 키 한 줄) ·
+- [x] **T7** 문서 — `docs/ARCHITECTURE.md` §1.1(재생성 규칙에 프로토타입 키 한 줄) ·
       `CLAUDE.md` 코드 컨벤션(대입 자리도 `Object.hasOwn`/null 프로토타입) · `/postmortem`
   - ⚠️ POSTMORTEM 항목의 축은 **"조회 자리만 고쳤다"**다 — 2026-09-08 항목이 `??` 폴백을 닫았는데
     같은 뿌리의 대입 자리 셋이 남았다. 재발 방지 grep은 "untrusted 키로 `obj[k] =`"다
-- [ ] `——` `docs(ARCHITECTURE): …` · `docs(CLAUDE): …` · `docs(POSTMORTEM): …`
+- [x] `——` `docs(ARCHITECTURE): …` · `docs(CLAUDE): …` · `docs(POSTMORTEM): …`
 - [ ] **T8** `/push` → `/merge`
 
 ---
