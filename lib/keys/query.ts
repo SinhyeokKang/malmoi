@@ -195,3 +195,36 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     lastCommitSha: r.project.lastCommitSha,
   }));
 }
+
+/**
+ * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
+ *
+ * ⚠️ **`loadKeys`를 재사용하지 않는다.** 그쪽은 행마다 셀과 `refs`를 들고 오므로 903키 프로젝트에서
+ * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 **셀에서 `{ localeCode, needsReview }`
+ * 둘만** 뽑는다 — `value`를 select하면 번역 본문 전체가 따라온다.
+ *
+ * ⚠️ **필터 둘이 판정이다.**
+ * - `value: { not: "" }` — 빈 값은 미번역이다. 편집 UI에서 값을 지우면 빈 문자열 행이 남는다
+ *   (`translationState`와 같은 규칙 — 두 벌이 되면 표의 배지와 이 화면의 숫자가 갈린다).
+ * - `stringKey: { orphaned: false }` — 코드에서 사라진 키의 번역은 분자에서 빠져야 한다. 분모도 같은
+ *   조건이므로 안 걸면 **분자가 분모보다 커진다.**
+ *
+ * ⚠️ **둘을 병렬로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 하나 더 붙고, 그 고정 비용이 이미
+ * 실측돼 있다 (CLAUDE.md 가상화 절).
+ */
+export type LocaleCounts = {
+  /** 살아 있는 키 수 — 전 로케일 공통 분모다. */
+  total: number;
+  cells: { localeCode: string; needsReview: boolean }[];
+};
+
+export async function loadLocaleCounts(prisma: PrismaClient, projectId: string): Promise<LocaleCounts> {
+  const [total, cells] = await Promise.all([
+    prisma.stringKey.count({ where: { projectId, orphaned: false } }),
+    prisma.translation.findMany({
+      where: { projectId, value: { not: "" }, stringKey: { orphaned: false } },
+      select: { localeCode: true, needsReview: true },
+    }),
+  ]);
+  return { total, cells };
+}

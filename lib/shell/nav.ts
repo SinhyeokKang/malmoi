@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { CircleUser, LayoutGrid, Languages, Plus, Settings, Users } from "lucide-react";
+import { CircleUser, Globe, LayoutGrid, Languages, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -29,14 +29,17 @@ export function activeProject(pathname: string, memberships: readonly NavProject
 }
 
 export type NavSection = {
-  key: "translations" | "members" | "settings";
+  key: "translations" | "locales" | "members" | "settings";
   label: string;
   icon: ComponentType<{ className?: string }>;
   href: (slug: string) => string;
 };
 
 /**
- * 프로젝트 컨텍스트의 항목들. **셋이다** (6b-2가 Members를 더했다).
+ * 프로젝트 컨텍스트의 항목들. **넷이다** (6b-2가 Members를, 6b-5가 Locales를 더했다).
+ *
+ * ⚠️ **Home·Logs는 없다** — 라우트가 6b-6·7단계다. **항목은 자기 라우트와 같은 사이클에 온다**
+ * (6b-4 판정): 없는 라우트를 가리키는 항목은 404이고, 죽은 링크 검사의 접두 규칙이 그것을 못 잡는다.
  *
  * ⚠️ **노출은 편의이고 차단이 아니다.** 판정을 `canPerform`에 맡겨 권한표가 한 벌로 남는다 —
  * 여기서 역할을 다시 나열하면 표가 둘이 되고, 그중 하나가 낡는다.
@@ -48,6 +51,12 @@ export type NavSection = {
 export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [
     { key: "translations", label: m.common.nav.translations, icon: Languages, href: (slug) => routes.translations(slug) },
+    /**
+     * ⚠️ **Locales도 `canPerform` 뒤가 아니다** (6b-2 관용구). 그 화면은 orphaned 로케일이 왜 그렇게
+     * 됐고 어떻게 되살리는지 말하는 유일한 자리이고(ARCHITECTURE §5.5.16), 번역자가 "열이 사라졌다"의
+     * 이유를 알 길이 그것뿐이다 — `project:settings` 뒤에 두면 EDITOR가 아예 못 들어온다.
+     */
+    { key: "locales", label: m.common.nav.locales, icon: Globe, href: (slug) => routes.locales(slug) },
     { key: "members", label: m.common.nav.members, icon: Users, href: (slug) => routes.members(slug) },
   ];
   if (canPerform(role, "project:settings")) {

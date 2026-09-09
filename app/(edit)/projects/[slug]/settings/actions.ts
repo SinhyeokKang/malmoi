@@ -21,7 +21,6 @@ import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-conn
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
-import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
@@ -194,13 +193,12 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
 }
 
 
-// ── 기준 브랜치·기준 로케일 (6b-3 — design §3.13) ─────────────────────────────
+// ── 기준 브랜치 (6b-3. 기준 로케일은 6b-5가 `locales/actions.ts`로 옮겼다) ────────
 
 const SettingsInput = z.object({
   slug: z.string().min(1),
   /** 트림하지 않는다 — `isValidBranchName`이 앞뒤 공백을 **거부**한다 (그 모듈의 경고). */
   baseBranch: z.string().min(1),
-  baseLocale: z.string().min(1),
 });
 
 export type RepositorySettingsResult =
@@ -208,13 +206,12 @@ export type RepositorySettingsResult =
   | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" };
 
 /**
- * 기준 브랜치와 기준 로케일 (design §3.13). **둘을 한 폼에 두므로 저장도 하나다.**
+ * 기준 브랜치 — `Project.baseBranch`를 **즉시** 쓴다. `checkFormat`이 보지 않는 축이라 대기 개념이 없다.
  *
- * ⚠️ **두 필드가 쓰는 컬럼의 성질이 다르다**:
- * - `baseBranch` → `Project.baseBranch`를 **즉시** 쓴다. `checkFormat`이 보지 않는 축이라 대기 개념이 없다.
- * - `baseLocale` → `Project.declaredBaseLocale`에 **선언만** 쓴다. 현실(`baseLocale`)은 push가 소유하고
- *   pull이 그것을 읽으므로, 여기서 현실을 바꾸면 야간 pull이 **옛 base의 원문을 새 base 파일에 실은 PR**을
- *   낸다 (design §3.13이 그 안을 기각한 근거).
+ * ⚠️ **6b-5가 기준 로케일을 떼어냈다** (`locales/actions.ts`의 `updateBaseLocale`). 인자를 optional로
+ * 두지 않고 **가른** 이유: 화면이 갈린 뒤 optional 인자는 서버가 "무엇을 안 보냈나"를 추측하게
+ * 만들고, 그 추측이 곧 malmoi#20의 모양이다 — 대기 중에 브랜치만 고친 저장이 선언을 지웠다.
+ * 지금 이 Action은 **선언 컬럼을 아예 모른다.**
  *
  * ⚠️ **`Translation`·`StringKey`를 건드리지 않는다.** 재적재 경로는 CI 하나뿐이고
  * (`runFirstIngest`는 ready에서 `not-awaiting`), 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
@@ -222,11 +219,10 @@ export type RepositorySettingsResult =
 export async function updateRepositorySettings(raw: {
   slug: string;
   baseBranch: string;
-  baseLocale: string;
 }): Promise<RepositorySettingsResult> {
   const parsed = SettingsInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug, baseBranch, baseLocale } = parsed.data;
+  const { slug, baseBranch } = parsed.data;
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
@@ -247,45 +243,17 @@ export async function updateRepositorySettings(raw: {
   // ⚠️ **인가가 준 projectId로 읽는다** — slug로 다시 찾으면 인가한 행과 조회한 행이 갈릴 수 있다.
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: {
-      baseBranch: true,
-      baseLocale: true,
-      declaredBaseLocale: true,
-      // 살아 있는 것만 보지 않는다 — `orphaned-locale`을 **거부 사유로 구별**해야 하고, 걸러 오면
-      // 그 갈래가 `unknown-locale`로 뭉개진다 (`planBaseLocaleChange`).
-      locales: { select: { code: true, orphaned: true } },
-    },
+    select: { baseBranch: true },
   });
   // 인가와 조회 사이에 지워진 경우다 — 존재 여부를 말하지 않는 같은 갈래로 접는다.
   if (project === null) return { ok: false, error: "not-found" };
 
-  const plan = planBaseLocaleChange({
-    current: project.baseLocale,
-    next: baseLocale,
-    locales: project.locales,
-  });
-  if (plan === "unknown-locale" || plan === "orphaned-locale") return { ok: false, error: plan };
-
-  const data: { baseBranch?: string; declaredBaseLocale?: string | null } = {};
-  if (baseBranch !== project.baseBranch) data.baseBranch = baseBranch;
-  if (plan === "ok") {
-    data.declaredBaseLocale = baseLocale;
-  } else if (project.declaredBaseLocale !== null) {
-    /**
-     * `noop`인데 선언이 남아 있다 — **되돌리는 경로다** (design §3.13: "B로 선언했다가 A로 다시
-     * 저장하면 대기가 사라진다"). 별도 취소 버튼을 두지 않는 근거가 이 한 줄이고, `null`로 비우는
-     * 것이 현실과 같은 값을 넣는 것보다 낫다 — `checkFormat`에 남는 예외가 아예 없다.
-     */
-    data.declaredBaseLocale = null;
-  }
   // **바뀐 것이 없으면 쓰지 않는다** — 빈 update는 `Project.updatedAt`만 올린다.
-  if (Object.keys(data).length > 0) {
-    await prisma.project.update({ where: { id: projectId }, data });
+  if (baseBranch !== project.baseBranch) {
+    await prisma.project.update({ where: { id: projectId }, data: { baseBranch } });
   }
 
+  // 브랜치를 보이는 화면은 이것 하나다 — 워크플로 YAML의 `branches: [...]`도 같은 화면에 있다.
   revalidatePath(`/projects/${slug}/settings`);
-  // ⚠️ **번역 화면도 갱신한다** — 대기 배너가 `declaredBaseLocale`을 읽으므로(design §3.13) 이
-  // 경로를 빼면 편집자가 다음 전체 새로고침까지 배너를 못 본다.
-  revalidatePath(`/projects/${slug}/translations`);
   return { ok: true };
 }

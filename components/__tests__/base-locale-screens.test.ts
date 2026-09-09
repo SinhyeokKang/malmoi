@@ -41,11 +41,18 @@ describe("대기 조건은 한 벌이다 — 두 화면이 `basePending`을 부�
   });
 
   /**
-   * ⚠️ **설정 화면은 이제 그 조건을 몰라야 한다.** 필드가 없는 화면에 경고만 남으면 사용자가 고칠
-   * 곳을 찾아 두 화면을 오간다 — §7.7 결정 4가 그 왕복을 없애려고 자리를 합친 것이다.
+   * ⚠️ **옮겨간 것은 "고칠 줄 + Copy" UI다.** 필드가 없는 화면에 그 UI만 남으면 사용자가 고칠 곳을
+   * 찾아 두 화면을 오간다 — §7.7 결정 4가 그 왕복을 없애려고 자리를 합친 것이다.
+   *
+   * ⚠️ **`basePending` 자체는 설정에 남는다** — 워크플로 YAML이 **대기 중** `base-locale:`을 박기
+   * 때문이다(그 줄이 없으면 CI가 옛 base를 계속 보내고 변경이 영영 안 일어난다). 그래서 이 컬럼의
+   * 소비자가 셋이고, `updateBaseLocale`의 무효화 범위가 그 셋을 다 덮어야 한다 (POSTMORTEM 2026-09-09).
    */
-  it("설정 화면에는 대기 Alert가 남아 있지 않다 — 필드와 같은 자리로 갔다", () => {
-    expect(read(SETTINGS_PAGE)).not.toMatch(/basePending\(/);
+  it("설정 화면이 고칠 줄을 더는 보이지 않는다 — 필드와 같은 자리로 갔다", () => {
+    const src = read(SETTINGS_PAGE);
+    expect(src).not.toMatch(/baseLocaleLine\(/);
+    // 조건은 여전히 읽는다 — 워크플로 YAML이 그것으로 `base-locale:`을 고정한다.
+    expect(src).toMatch(/basePending\(/);
   });
 
   it("번역 화면의 배너가 `basePending`을 읽는다", () => {

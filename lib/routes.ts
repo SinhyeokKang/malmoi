@@ -48,6 +48,7 @@ export const routes = {
   account: (): string => "/account",
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
+  locales: (slug: string): string => `/projects/${slug}/locales`,
   members: (slug: string): string => `/projects/${slug}/members`,
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,
