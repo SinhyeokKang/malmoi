@@ -43,6 +43,10 @@ export const config = {
    *
    * ⚠️ **`/invite/:path*`는 넣지 않는다** (design §4.1). 비로그인으로 열려야 초대 링크의 토큰이
    * 보존된다 — 여기서 `/`로 302하면 토큰이 사라진다.
+   *
+   * ⚠️ **`/account`는 `/projects/:path*`가 덮지 않는다** (6b-4). 앞의 패턴 하나였던 동안 `(edit)` 아래
+   * 모든 페이지가 우연히 그 접두를 갖고 있었고, 사용자 축이 생기면서 그 우연이 끝났다 —
+   * `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느 패턴에든 걸린다"가 그것을 센다.
    */
-  matcher: ["/projects/:path*"],
+  matcher: ["/projects/:path*", "/account"],
 };

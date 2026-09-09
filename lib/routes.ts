@@ -41,6 +41,11 @@ export const routes = {
   signIn: (): string => "/",
   projects: (): string => "/projects",
   newProject: (): string => "/projects/new",
+  /**
+   * 사용자 축 (SAAS §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
+   * 사람에 속하고, 그래서 프로젝트를 하나도 안 만든 사용자도 도달해야 한다.
+   */
+  account: (): string => "/account",
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
   members: (slug: string): string => `/projects/${slug}/members`,
