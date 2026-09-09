@@ -667,6 +667,9 @@ lib/
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회
+                        + loadMembers·loadPendingInvitations — ⚠️ **원문 이메일을 안 낸다** (2026-09-09,
+                        sec-audit 발견 4): 반환 타입이 `emailLabel`이고 마스킹을 로더가 한다. 클라이언트에서
+                        가리면 원문이 이미 RSC 페이로드에 있다 — **안 읽는 것이 아니라 안 돌려주는** 것이다
                         + loadMembers·loadPendingInvitations (6b-2 — 멤버 화면. **`projectId`로만 좁힌다**,
                         인가는 호출부가 이미 지났다. 뒤의 것은 `acceptedAt IS NULL AND expiresAt > now()`
                         **둘 다** 본다 — 한쪽만 보면 이미 멤버가 된 사람의 초대가 "대기 중"으로 보인다).
@@ -685,6 +688,9 @@ lib/
                         permission이 아니라 translation:write에 들어 있다
     access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
                         (프로젝트 존재를 노출하지 않는다). forbidden은 멤버인데 권한이 모자란 경우만
+    invite-label.ts     maskedEmailLabels — **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 (malmoi#18).
+                        ⚠️ **두 표가 쓴다** (2026-09-09) — 원문을 와이어에 안 싣기로 하면서 멤버 표의 라벨도
+                        서버가 만든다. `maskedInviteLabels`는 그것의 얼은이다(문서 둘이 그 이름을 가리킨다)
     invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
@@ -867,7 +873,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 46개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 47개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 

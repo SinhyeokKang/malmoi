@@ -921,3 +921,20 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **fs 순회는 `lstat` 계열로 쓴다.** `readdirSync(dir, { withFileTypes: true })`가 기본형이고, `statSync`는 "따라가도 되는가"를 답한 자리에서만 쓴다. 순환 검출은 `dev:ino` 집합으로 따로 둔다 — 하드링크·마운트는 `lstat`만으로 못 가른다.
   - grep: `grep -rn 'statSync(' lib scripts | grep -v lstat` → 각각이 **남이 쓴 트리**를 도는지 보고, 그렇다면 `withFileTypes`/`lstat`으로 바꾼다.
   - **테스트가 만드는 픽스처에 링크·순환을 하나 넣는다.** `lib/cli/__tests__/walk.test.ts`가 이제 리포 밖 링크와 `ln -s . loop` 둘을 든다 — 없으면 이 부류는 원리적으로 green이다.
+
+### 2026-09-09 — 문서가 단언한 통제가 배선되지 않아, 마스킹이 화장품이었다
+
+- **영역**: `lib/auth/query.ts`(두 로더) · `components/members/member-list.tsx`·`pending-invitations.tsx` · `app/(edit)/projects/[slug]/members/page.tsx`
+- **증상**: 없다 — 화면은 정확히 `a***@acme.com`을 보여줬다. **그게 이 항목의 전부다**: 마스킹이 `"use client"` 컴포넌트의 JSX에서 일어났고, 로더가 `email`을 원문으로 내려보냈으므로 **원문은 RSC 페이로드에 그대로 실려 있었다.** 관측자는 그 프로젝트의 EDITOR 이상(`translation:write` 게이트)이고 view-source로 읽는다. **대기 초대 쪽이 더 민감하다** — 아직 멤버가 아닌 외부인의 주소다.
+- **근본 원인**: `docs/DESIGN.md` §6.65가 "두 표 모두 `maskEmail`이 기본"이라고 단언했고 **코드가 그 문장을 만족했다** — `maskEmail`이 실제로 불렸다. 어긋난 것은 **어디서** 불리는가이고, 문서에 그 축이 없었다.
+  - 같은 리포에 옳은 방식이 이미 있었다: `app/invite/[token]/page.tsx`는 서버 컴포넌트에서 마스킹해 문자열만 와이어에 올린다. **두 화면 중 하나가 낡은 것이 아니라, 규칙이 문서에만 있고 배선이 안 따라갔다.**
+  - 붙잡아 두던 유일한 이유였던 `labels[index] ?? invitation.email` 폴백은 **두 배열 길이가 항상 같아 도달 불가**였다 — "혹시 몰라서" 남긴 값이 유출의 통로였다.
+- **그물**:
+  - 잡은 것: 전수 보안 감사. **"이 값이 클라이언트 컴포넌트 props로 가는가"**를 물어야 나온다.
+  - 놓친 것: `pnpm test` 2,204건(로더의 반환에 `email`이 **있어야** 한다고 단언하고 있었다 — 테스트가 옛 계약을 고정했다) · `/code-review` · `/bugshot-qa`(**화면이 맞게 보였다**) · POSTMORTEM 2026-09-05("경고는 문서에 있었는데 배선이 지키지 않았다")의 재발 방지 grep(그 항목은 라우트·링크 축이라 이 자리를 안 봤다).
+  - ⚠️ **눈으로 하는 검증이 이 부류에 무력하다.** 화면은 통제가 있을 때와 없을 때가 **같아 보인다** — 다른 것은 페이로드뿐이다.
+- **재방지**:
+  - **마스킹·절삭·요약은 서버에서 한다.** 클라이언트에서 하는 것은 표시 형식이지 통제가 아니다. 통제라면 **반환 타입에서 원본 필드를 지운다** — 타입이 계약이라 호출부가 되살릴 수 없다.
+  - 상시 검사는 **소스 스캔**이다(`components/__tests__/members-screen.test.ts`): 클라이언트 컴포넌트가 `maskEmail`을 import하지 않는다 · 로더의 반환 매핑에 `email:`이 없다 · 두 반환 타입이 `emailLabel`을 든다. 렌더 테스트로는 못 본다.
+  - grep: `grep -rn 'email\|token\|secret' lib/auth/query.ts lib/keys/query.ts | grep -v '//'` → **서버 로더의 반환 타입**을 훑고, 각 필드가 화면에 그대로 보여도 되는 값인지 센다. 로더의 반환은 곧 와이어다.
+  - **문서가 통제를 단언하면 "어디서"를 함께 적는다.** §6.65가 "마스킹이 기본"까지만 적어서, 그 문장을 만족하는 잘못된 배선이 통과했다.
