@@ -139,7 +139,9 @@
 **한 ship인 이유**: 런타임 코드 0줄(스크립트·워크플로·설정)이라 게이트가 typecheck+test뿐이다.
 **3번만 소비자 리포 넷을 건드리는 판정을 낀다** — 그래서 T2를 먼저 띄운다.
 
-- [ ] **T1** 🔒 **가장 먼저 띄울 판정: `@main` 참조를 어떻게 바꾸는가** (발견 3)
+- ✅ **결정: (a) 불변 태그 `l10n-push-v1`** (2026-09-09 사용자). 소비자 리포 넷의 갱신도 **T9에서 함께** 한다.
+  ⚠️ **태그는 아직 없다** — `/merge` 뒤에 `main` 커밋에 끊는다. 그때까지 `docs/ACTIONS.md`·`renderWorkflowYaml`의 참조가 **실재하지 않는 ref**를 가리키므로, 대상 리포 넷은 그 전까지 `@main`을 그대로 둔다(지금 바꾸면 그 넷의 CI가 즉시 깨진다).
+- [x] **T1** 🔒 **가장 먼저 띄울 판정: `@main` 참조를 어떻게 바꾸는가** (발견 3)
   - 후보 (a) 불변 태그(`l10n-push-v1`)를 끊고 `docs/ACTIONS.md`가 그것을 가리킨다 /
     (b) 소비자에게 SHA 핀을 안내한다 / (c) `@main`을 유지하고 `main` 접근 통제로 대응한다
   - **추천은 (a)** — (b)는 소비자가 우리 릴리스마다 SHA를 갱신해야 하고, (c)는 Free+private에서
@@ -148,31 +150,33 @@
     `i18n-format-check` · `i18n-order-check`. 태그를 끊고 문서만 고치면 **그 넷은 계속 `@main`이다**
   - ⚠️ **`docs/ACTIONS.md`와 `CLAUDE.md`가 지금 `@main`을 "안전하다"고 서술한다** — 그 논거는
     *낡음*이고 *가변성*이 아니다. 판정이 어느 쪽이든 **두 문서의 그 문장을 고친다**
-- [ ] **T2** `.github/actions/l10n-push/action.yml` — `pnpm/action-setup`·`actions/setup-node`를 40자
+- [x] **T2** `.github/actions/l10n-push/action.yml` — `pnpm/action-setup`·`actions/setup-node`를 40자
       commit SHA로 핀(`# v4.x.x` 주석 동반)
+  - ⏳ **`[manual]` 미실행** — 태그가 없어 대상 리포를 아직 못 옮겼다. T9에서 `i18n-order-check`로 확인한다.
   - 검증: `[manual]` 대상 리포 하나에서 워크플로를 한 번 돌려 green
-- [ ] **T3** `.github/workflows/ci.yml` — `permissions: contents: read`(job 레벨) + 액션 셋 SHA 핀
+- [x] **T3** `.github/workflows/ci.yml` — `permissions: contents: read`(job 레벨) + 액션 셋 SHA 핀
   - ⚠️ 리포 기본값이 지금 `read`라 **동작 변화가 없어야 한다** — 그것이 이 태스크의 요지다(설정을
     트리 안으로 옮긴다)
   - 검증: `verify` job green
-- [ ] **T4** `lib/cli/walk.ts` — 심링크를 건너뛰고 순환을 검출한다 (발견 12)
+- [x] **T4** `lib/cli/walk.ts` — 심링크를 건너뛰고 순환을 검출한다 (발견 12)
   - `withFileTypes` 또는 `lstatSync`. visited 집합은 `dev:ino`
   - 검증: 테스트로 (a) 디렉터리 밖을 가리키는 심링크가 결과에 없다 (b) `ln -s . loop` 모양이 종료한다
   - ⚠️ **세 CLI가 이 함수를 공유한다**(`ingest`·`scan`·`push:local`) — 세 경로가 다 통과하는지 본다
-- [ ] **T5** `scripts/adapter-survey.ts` — `readFileSync` 앞에 `lstat` 검사 + `sparse-checkout set`에
+- [x] **T5** `scripts/adapter-survey.ts` — `readFileSync` 앞에 `lstat` 검사 + `sparse-checkout set`에
       `"--"` + `--limit` 기본값 (발견 12 · 20)
   - ⚠️ 96행 주석("심링크는 없는 파일로 취급")이 **거짓이므로 주석도 고친다** — `catch`는 오류일 때만 돈다
   - ⚠️ **이 변경이 코퍼스 선택을 바꾸면 지표가 움직인다.** 규칙상 재측정 트리거는 `lib/adapters/**`·
     `lib/survey/**`뿐이라 자동으로 걸리지 않는다 — **ship 1의 15차 직후이므로 선택 파일 수가 15차와
     같은지 한 줄로 확인**하고, 다르면 그때 재측정한다
-- [ ] **T6** `.gitignore`에 `.env*` + `!.env.example` · `*.key` · `*.p12` · `*.pfx` (발견 18) ·
+  - ✅ **확인: 안 움직였다** (2026-09-09) — 수정 뒤 학습 코퍼스를 다시 돌려 **지표 블록이 15차와 바이트 동일**이다(`diff` 무출력). 코퍼스에 심링크로 걸리는 파일이 없다는 뜻이라 회차를 더하지 않는다
+- [x] **T6** `.gitignore`에 `.env*` + `!.env.example` · `*.key` · `*.p12` · `*.pfx` (발견 18) ·
       `pnpm-workspace.yaml`의 `onlyBuiltDependencies`에서 `@prisma/client`·`sharp` 제거 (발견 21)
   - 검증: `git check-ignore -v .env.production .env.development app.key cert.p12`가 넷 다 잡는다 /
     `pnpm install`이 `Ignored build scripts` 경고 없이 끝난다(셋만 남아야 한다)
-- [ ] **T7** `pnpm typecheck && pnpm test`
-- [ ] `——` `chore:`(핀·gitignore·workspace) · `fix:`(walk·survey) 두 커밋
-- [ ] **T8** 문서 — `docs/ACTIONS.md`(참조 방식·red 조건) · `CLAUDE.md`(게이트웨이 절 · CI 절)
-- [ ] `——` `docs(ACTIONS): …` · `docs(CLAUDE): …`
+- [x] **T7** `pnpm typecheck && pnpm test`
+- [x] `——` `chore:`(핀·gitignore·workspace) · `fix:`(walk·survey) 두 커밋
+- [x] **T8** 문서 — `docs/ACTIONS.md`(참조 방식·red 조건) · `CLAUDE.md`(게이트웨이 절 · CI 절)
+- [x] `——` `docs(ACTIONS): …` · `docs(CLAUDE): …`
 - [ ] **T9** `/push` → `/merge` → `[manual]` 대상 리포 넷의 참조 갱신(T1 판정이 (a)·(b)면)
 
 ---
