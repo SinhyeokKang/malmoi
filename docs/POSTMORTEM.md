@@ -750,3 +750,30 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `grep -rn 'maskEmail(\|truncate\|relativeTime(' $(find components app -name '*.tsx' -not -path '*__tests__*')` → **그 자리가 "행을 구별하는 유일한 값"인지 묻는다.** 2026-09-09 전수 결과: 멤버 표(이름 열이 있다) · 초대 화면(단일 행) · 셀 메타(키가 식별자다) · 리포명·경로 템플릿의 `truncate`(전체 값이 옆에 있거나 유일하다) — 대기 초대 하나만 해당했고 고쳤다.
   - **되돌릴 수 없는 액션은 그 행을 특정할 수 있어야 한다.** [Remove]는 `Dialog`로 대상 이름을 다시 보이는데 [Revoke]에는 확인 단계가 없다 — 확인을 붙이는 것은 답이 아니었다(같은 마스킹 값이 다이얼로그에 다시 나올 뿐이다). **식별을 먼저 고치고 확인은 안 붙였다**는 판정을 남긴다.
   - ⚠️ **같은 라운드의 부산물 하나**: `pnpm dev`가 `next-env.d.ts`를 `.next/dev/types/…`로 다시 쓰고 그 값이 커밋에 딸려갔다(`pnpm build`가 되돌린다). `/bugshot-qa`는 매 라운드 dev 서버를 띄우므로 **그 스킬 뒤에는 `git status`를 본다** — 커밋되는 유일한 생성물이라 gitignore로 막을 수 없다.
+
+### 2026-09-09 — 앱 층 인가를 촘촘히 만들었는데 DB가 인터넷에 열려 있었다 (Supabase advisor가 알려줬다)
+
+- **영역**: Supabase 프로젝트 둘(`malmoi` `xgsyyapzkpbdtkrprlmn` · `malmoi-dev` `bfugwmjubgmmroevrave`)의 `public` 스키마 권한. 코드 변경은 없다 — `CLAUDE.md`·`.claude/commands/{code-review,audit,db}.md`의 **거짓 전제**가 대상이다.
+- **증상**: Supabase 주간 security advisor 메일(2026-09-09 07:11, `noreply@supabase.com`)이 두 프로젝트에 CRITICAL 둘을 보고했다 — `rls_disabled_in_public` · `sensitive_columns_exposed`. DB에 직접 물어 확인한 값: **12테이블 전부 RLS off · 정책 0개 · `anon`과 `authenticated` 롤에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER`가 전부 GRANT**. 데이터 API(PostgREST)는 켜져 있었다(키 없는 요청에 401 — 엔드포인트는 살아 있다). 즉 **anon key 하나로 전 테이블을 읽고 쓰고 `TRUNCATE`할 수 있었다.** 노출 대상에 `Account.access_token`·`refresh_token`(사용자 GitHub 토큰) · `Session.sessionToken`(세션 하이재킹) · `User.email` · `ProjectInvitation.tokenHash` · 번역 전체가 있었다. **anon key는 공개 전제로 설계된 값이다**(클라이언트에 박도록 만들어졌다) — 우리가 어디에도 뿌리지 않은 것이 유일한 우연이었고, 방어선은 아니었다.
+- **근본 원인** — 셋이 겹쳤다.
+  1. **문서가 이 사실을 알면서 결론을 반대로 냈다.** `CLAUDE.md`가 "RLS가 없어 **애플리케이션이 유일한 방어선이다**"라고 적어 놨고, 그 문장을 **"그러니 쿼리를 `projectId`로 좁혀라"는 앱 층 규칙의 근거로만** 썼다. 그 문장이 참이려면 **DB에 닿는 경로가 앱 하나**여야 하는데, 그 전제를 한 번도 검증하지 않았다. Supabase는 PostgREST·GraphQL을 **기본으로 켜 두고** `public` 스키마의 `pg_default_acl`이 `anon`·`authenticated`에게 **새 테이블 전 권한을 자동으로 준다** — `postgres` 롤(=우리 마이그레이션 롤)이 만드는 객체에 적용되므로 **Prisma가 테이블을 만들 때마다 열렸다.**
+  2. **"안 쓴다"를 "닫혀 있다"로 읽었다.** `@supabase/supabase-js`가 의존성에 없고 anon key를 `.env.example`에도 안 넣었다 — 그 부재가 안심을 줬다. 안 쓰는 문이 잠긴 문은 아니다.
+  3. **검사의 시선이 전부 코드 안이었다.** `/code-review`·`/audit`의 보안 항목(인증 경계 혼입 · `projectId` 좁힘 · fail-closed · 조건부 렌더는 차단이 아니다)은 **우리 코드가 만드는 경로**만 본다. **"DB에 도달하는 경로가 몇 개인가"를 묻는 항목이 없었다.** 그래서 회고 36개, 감사 3라운드, 인증·인가 전용 단계(SAAS 2단계), `/bugshot-qa` 두 바퀴가 전부 이 자리를 지나갔다.
+- **그물**:
+  - 잡은 것: **Supabase의 주간 advisor 메일.** 우리 것이 아니다. 그리고 대시보드 **Advisors → Security** 화면이 같은 것을 계속 말하고 있었는데 **한 번도 열지 않았다** — 주간 메일이므로 이번이 첫 통보가 아니었을 가능성이 높다.
+  - 놓친 것: `pnpm test` 2,021건 · `typecheck` · `next build` · `/code-review` 여러 라운드 · `/audit` 3라운드 · `/bugshot-qa` 2라운드 · SAAS 2단계(인증·인가 전용) · POSTMORTEM 36항목. **전부 원리적으로 못 본다** — 이 결함은 소스에 없다. DB의 카탈로그에만 있다.
+  - ⚠️ **가장 불편한 사실**: 앱 층 인가는 실제로 촘촘했다(미들웨어 1차 차단 · 진입점 `requireProjectAccess` · 테넌트 좁힘 · fail-closed · DB 세션 · `getProjectAccess`). **그 노력 전체가 검증되지 않은 전제 하나 위에 서 있었다.**
+- **조치** (2026-09-09 실행, dev → prod 순):
+  - `REVOKE ALL ON ALL {TABLES,SEQUENCES,FUNCTIONS} IN SCHEMA public FROM anon, authenticated`
+  - `ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON {TABLES,SEQUENCES,FUNCTIONS} FROM anon, authenticated` — **이것이 없으면 다음 마이그레이션이 만드는 테이블이 다시 열린다.** 재발 경로가 정확히 여기다
+  - `service_role`은 **남겼다** — 그 키는 비밀이고(anon과 달리 공개 전제가 아니다) 빼면 대시보드 기능이 깨진다. 최소 침습
+  - **RLS+정책이 아니라 REVOKE를 골랐다**: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다. Prisma는 `postgres` 롤로 붙어 영향이 없다 — 실측으로 확인했다(런타임 pooler 조회 · `/` 200 · `mal-moi.com` 200)
+  - 검증: `information_schema.role_table_grants`에서 `anon`·`authenticated` **0건**(양쪽) · `pg_default_acl`에 `postgres=…|service_role=…`만 · **Supabase Advisors가 두 프로젝트 모두 0 errors / 0 warnings**
+  - **데이터 API 자체는 끄지 않았다** — GRANT가 0이면 추가로 막는 것이 없고 대시보드 Table Editor가 함께 죽는다
+- **재발 방지**:
+  - **`/db` 5단계에 검사를 심었다** — 새 테이블을 만들면 `role_table_grants`에서 `anon`·`authenticated`가 **dev·prod 둘 다 0건**인지 확인하고 리포트에 적는다. Supabase가 default ACL을 되살릴 수 있으므로 "한 번 고쳤다"로 끝내지 않는다.
+  - **`/audit`의 `tenancy-env` 차원에 축을 더했다: "DB에 도달하는 경로를 전수로 센다."** 그 에이전트는 **코드가 아니라 DB에 묻는다** — 쿼리 셋(권한·default ACL·RLS)이 그 파일에 있다.
+  - **`/code-review`의 `projectId` 항목에 경고를 붙였다**: "앱이 유일한 방어선"은 **앱이 유일한 경로일 때만** 참이다. 스키마를 늘리는 변경에서 그 질문을 다시 한다.
+  - **CLAUDE.md의 그 문장에 실측과 조치를 붙였다** — 문장을 지우지 않고 남긴 이유는 그 문장이 **여전히 앱 층 규칙의 근거로 옳고**, 틀린 것은 "유일한"이라는 단어의 범위였기 때문이다.
+  - **관리 콘솔의 자동 진단을 읽는 루틴이 없다는 것이 더 큰 구멍이다.** Supabase Advisors·Vercel·GitHub Dependabot 전부 우리가 안 보는 화면이다. grep으로 잡을 수 있는 부류가 아니라 **주기적으로 열어야 하는 목록**이고, 지금은 그 목록이 어디에도 없다 — `docs/features/README.md` 백로그에 올렸다.
+  - ⚠️ **토큰 회전은 하지 않았다** (사용자 판단 대기). anon key를 우리가 어디에도 뿌리지 않았고 유출 흔적이 없다 — 다만 `Account.access_token`이 노출 **가능** 상태였으므로 안전을 택하면 `AUTH_SECRET` 회전(전원 로그아웃)이 가장 값싸다.

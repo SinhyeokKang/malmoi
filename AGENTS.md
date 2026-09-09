@@ -726,7 +726,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 37개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 38개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -777,6 +777,8 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ 새 writer를 만들면 `lib/adapters/shared.ts`의 결정성 규칙을 쓴다.** 정렬·재조립·들여쓰기·끝 개행 1개를 직접 구현하지 않는다 — 표현은 `lib/adapters/json-style.ts`가, 정렬은 `orderedEntries`가 한 곳에서 든다 (ARCHITECTURE §1.1). **단 수술적 치환 어댑터는 그 규칙을 지나지 않는다** — 원본 보존이 요지다. 어느 쪽인지는 `writeStrategy`가 정하고, `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를 순회하며 그 매트릭스를 검사한다.
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** RLS가 없어 애플리케이션이 유일한 방어선이다 — 멤버십 판정을 지났더라도 쿼리가 `projectId`를 빠뜨리면 다른 테넌트의 행이 나온다.
+  - ⚠️ **"애플리케이션이 유일한 방어선"은 2026-09-09까지 거짓이었다.** 그 문장은 "DB에 닿는 경로가 앱 하나"를 전제하는데 **Supabase는 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고**, `public` 스키마의 `pg_default_acl`이 **`anon`·`authenticated` 롤에 새 테이블 전 권한을 자동으로 준다.** 실측: prod·dev 12테이블 전부 RLS off + `anon`에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE` — **anon key 하나로 `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다**(Supabase 주간 advisor 메일이 알려줬다). **조치: `anon`·`authenticated`의 `public` 권한을 REVOKE하고 `ALTER DEFAULT PRIVILEGES`에서도 뺐다** — 후자가 없으면 **다음 마이그레이션이 만드는 테이블이 다시 열린다.** `service_role`은 남겼다(그 키는 비밀이고 공개 전제가 아니다). RLS+정책 대신 REVOKE를 고른 이유: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다.
+  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db`가 그 검사를 든다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
 
 ## 게이트웨이 (알아두면 유용)
 

@@ -125,7 +125,32 @@ Use this skill when the user asks to run the migrated source command `audit`.
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | authz | `middleware.ts`, `auth.ts`, `lib/auth/**`, `app/api/**` | **보호 라우트가 전부 `matcher`에 있는가**(레이아웃 조건부 렌더는 차단이 아니다 — RSC 페이로드가 실린다) / 레이아웃이 `redirect()`를 던지는가 / `AUTH_ALLOWED_LOGINS`가 비면 **fail-closed**인가 / `/api/push`의 `PUSH_TOKEN`·`/api/pull`의 `CRON_SECRET` 검증 / **OAuth 토큰으로 커밋하거나 App 토큰으로 사용자 식별하는 코드**(두 자격증명 혼입) |
-| tenancy-env | `lib/db.ts`, `lib/env.ts`, `lib/keys/query.ts`, `prisma/**` | **모든 DB 쿼리가 `projectId`로 좁혀졌는가**(RLS 없음 — 애플리케이션이 유일한 방어선) / Server Action이 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인하는가 / **환경변수를 모듈 최상위에서 평가하는 코드**(파일을 읽기만 해도 죽는다 — 두 번 밟은 함정) / `process.env` 산발 접근 / 코드가 읽는 변수가 `.env.example`에 전부 있는가 |
+| tenancy-env | `lib/db.ts`, `lib/env.ts`, `lib/keys/query.ts`, `prisma/**` | **모든 DB 쿼리가 `projectId`로 좁혀졌는가**(RLS 없음 — 애플리케이션이 유일한 방어선) / Server Action이 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인하는가 / **환경변수를 모듈 최상위에서 평가하는 코드**(파일을 읽기만 해도 죽는다 — 두 번 밟은 함정) / `process.env` 산발 접근 / 코드가 읽는 변수가 `.env.example`에 전부 있는가 / ⚠️ **DB에 닿는 경로가 앱 하나인가** — 아래 |
+
+⚠️ **`tenancy-env` 차원은 2026-09-09에 축이 하나 늘었다: "DB에 도달하는 경로를 전수로 센다."**
+
+그날까지 이 감사는 **우리 코드 안의 경로만** 봤다. 그런데 Supabase는 PostgREST·GraphQL 데이터 API를 기본으로
+켜 두고 `public` 스키마의 `pg_default_acl`이 `anon`·`authenticated`에 **새 테이블 전 권한을 자동으로 준다** —
+prod·dev 12테이블이 전부 그렇게 열려 있었고, 앱 층 인가(미들웨어·진입점·테넌트 좁힘·fail-closed)를
+얼마나 촘촘히 해도 **그 경로는 그것을 지나지 않는다.** 앱이 그 API를 **안 쓴다는 것**이 그 문이 **잠겼다는
+뜻이 아니었다** (POSTMORTEM 2026-09-09).
+
+**이 차원의 에이전트는 코드가 아니라 DB에 물어야 한다** (읽기 전용, `DIRECT_URL`·`DIRECT_URL_PROD`):
+
+```sql
+-- 1) anon·authenticated가 우리 테이블에 어떤 권한을 갖는가 (0건이어야 한다)
+SELECT grantee, table_name, string_agg(DISTINCT privilege_type, ',') FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND grantee IN ('anon','authenticated') GROUP BY 1,2;
+-- 2) 다음 마이그레이션이 만드는 테이블이 다시 열리는가 (anon이 없어야 한다)
+SELECT pg_get_userbyid(defaclrole), array_to_string(defaclacl,' | ') FROM pg_default_acl d
+JOIN pg_namespace n ON n.oid = d.defaclnamespace WHERE n.nspname = 'public';
+-- 3) RLS 상태 (GRANT를 뺐으면 off여도 된다 — 둘 중 하나는 있어야 한다)
+SELECT relname, relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND relkind='r';
+```
+
+Supabase 대시보드의 **Advisors → Security**가 0 errors인지도 같은 신호다 — 그 화면이 이 결함을 계속
+말하고 있었는데 아무도 보지 않았다.
 | runtime-edges | `app/**`, `lib/github.ts` | **서버 전용 모듈에 `import "server-only"`가 있는가**, 반대로 **테스트가 직접 import하는 순수 모듈에 잘못 붙었는가**(`react-server` 조건 밖에서 던져 vitest가 죽는다) / 내부 쓰기에 Route Handler를 새로 만들었는가(Server Action이어야 한다) / 외부 진입점을 Server Action으로 만들었는가 / 시크릿이 로그·에러 메시지·클라이언트 번들로 새는가 |
 
 **전문가 통합 점검**
