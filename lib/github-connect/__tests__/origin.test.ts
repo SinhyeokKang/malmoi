@@ -29,7 +29,8 @@ describe("requestOrigin — host와 proto로 origin·secure를 함께 정한다"
   it("origin과 secure가 **같은 판정에서** 나온다 — 갈리면 쿠키를 못 찾는다", () => {
     // 이 함수가 존재하는 이유다. 두 곳에서 따로 판정하면 한쪽만 바뀌어도 조용히 깨진다.
     for (const proto of ["https", "http", null]) {
-      const r = requestOrigin({ host: "example.com", forwardedProto: proto });
+      // 허용 목록의 호스트를 쓴다 (2026-09-09) — `example.com`은 이제 모양과 무관하게 거부다.
+      const r = requestOrigin({ host: "mal-moi.com", forwardedProto: proto });
       expect(r).not.toBeNull();
       expect(r?.origin.startsWith("https://")).toBe(r?.secure);
     }

@@ -92,7 +92,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
    */
   logger: {
     error(error) {
-      console.error("[auth]", error);
+      // ⚠️ **오류 객체를 통째로 찍지 않는다** (2026-09-09, sec-audit 발견 24). `console.error(error)`는
+      // `cause` 사슬까지 펼쳐, 아래 계층(Prisma·어댑터)이 인자를 품은 경우 그것이 Vercel 로그에
+      // 남는다. `lib/github-connect/log.ts`가 `error.message`만 쓰는 것과 형을 맞춘다.
+      //
+      // ⚠️ **`noteAuthError`는 좁히지 않는다** — 그 판정은 `error.type`을 보므로 **출력만** 줄인다
+      // (POSTMORTEM 2026-09-06: 이 통로가 장애를 밖으로 알리는 유일한 자리다).
+      const type = error instanceof Error ? error.name : typeof error;
+      console.error("[auth]", type, error instanceof Error ? error.message : String(error));
       noteAuthError(error);
     },
   },
