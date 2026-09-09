@@ -522,12 +522,12 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  생성
-/account                       ✅ 프로필 · OAuth 연동/해제        ← 6b-4 (2026-09-09, dev)
+/account                       ✅ 프로필 · OAuth 연동/해제        ← 6b-4 (2026-09-09, 프로덕션)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
-/projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, dev)
+/projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
 /projects/:slug/translations   번역
-/projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, dev)
+/projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, 프로덕션)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ⬜ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
@@ -869,7 +869,7 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 상시로 센다. ⚠️ **"세 스코프"가 아니었다** — 둘 다 **Production+Preview**만 갖고 있었고 Development에는
 없었다. 삭제는 `vercel env ls`로 확인했다(CLI의 성공 메시지가 근거가 아니다 — CLAUDE.md).
 
-### 6단계 — 번역 UI 재작성 + Publish ✅ **완료 (2026-09-09, dev — 6a 넷 + 6b 여섯)** → `features/translation-ui/`
+### 6단계 — 번역 UI 재작성 + Publish ✅ **완료 (2026-09-09, 프로덕션 — 6a 넷 + 6b 여섯)** → `features/translation-ui/`
 
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
 
@@ -879,9 +879,10 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
 (PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
 + survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
-`a00d380`)와 **6b-3**(base branch·기준 로케일 필드) · **6b-4**(`/account`) · **6b-5**(로케일 화면) ·
-**6b-6**(Home — 착지점)까지 dev에 올랐다. ✅ **6b가 닫혔다** — 라우트 여덟 중 남은 ⬜는 `logs`
-하나이고 그것은 **7단계**다(`SyncRun`의 소비자, §6). 즉 **6단계는 이 배송으로 끝난다.**
+`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — PR #21 → `7c975c0`) · **6b-4**(`/account` — PR #22 →
+`70e393b`) · **6b-5**(로케일 화면)·**6b-6**(Home — 착지점, 둘이 PR #23 → `0d68d71`)까지 **프로덕션에
+나갔다.** ✅ **6b가 닫혔다** — 라우트 여덟 중 남은 ⬜는 `logs` 하나이고 그것은 **7단계**다
+(`SyncRun`의 소비자, §6). 즉 **6단계는 이 배송으로 끝났다.**
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -918,7 +919,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - 실측(`/bugshot-qa`): 두 역할의 사이드바·컨트롤 노출·`/settings` 직접 접근 거부·마지막 OWNER 거부
     문구·대기 초대 술어·빈 상태·`revalidatePath`까지 통과. **결함 1건**([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18) —
     마스킹이 두 초대를 같은 행으로 접었다)을 같은 사이클에서 고쳤다
-- [x] ~~**6b-3 설정의 기준 브랜치·기준 로케일 필드**~~ ✅ **T1~T5가 dev에 있다** (2026-09-09 — `fe5f39e`·`6ab0f70`·`3a98886`).
+- [x] ~~**6b-3 설정의 기준 브랜치·기준 로케일 필드**~~ ✅ **프로덕션에 나갔다** (2026-09-09, PR #21 → `7c975c0` — T1~T5는 `fe5f39e`·`6ab0f70`·`3a98886`).
       **선언을 별 컬럼으로 뺐다**: `Project.declaredBaseLocale`(additive, nullable)이 OWNER의 허가이고 `baseLocale`은 push가
       소유하는 현실로 남는다 → **pull 코드가 한 줄도 안 바뀌고 어느 단계도 멈추지 않는다.** 검수의 후보안(같은 컬럼을
       선언으로 쓰고 pull을 `skipped`로 멈춘다)은 기각했다 — 멈추면 편집 손실 창이 대기 기간만큼 늘어난다.
@@ -926,13 +927,16 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
       push마다 비우면 워크플로를 고치기 전의 평범한 CI push가 허가와 배너를 함께 지운다, POSTMORTEM 2026-09-09).
       `planPush`는 base 교체 push에서 `needsReview` 전파를 건너뛴다 — `sourceHash`가 바뀐 원인이 "원문 수정"이 아니라
       "원문 **언어** 교체"라 다른 로케일의 번역은 여전히 정확하다.
-  - ⚠️ **T6(실물 409 → 워크플로 수정 → 통과·대기 해소)은 남았다.** 대상 리포의 워크플로가 프로덕션
-    `mal-moi.com/api/push`를 찌르므로 dev에서 검증할 수 없다 — **`/merge` 뒤**에 별도로 돈다
-    (`features/translation-ui/tasks.md` 6b-3 T6). 그때 `pnpm db:deploy`도 함께 필요하다
+  - [x] **T6(실물 409 → 워크플로 수정 → 통과·대기 해소)** ✅ 2026-09-09에 프로덕션 `order-check`로
+    실측했다 — 대상 리포의 워크플로가 프로덕션 `mal-moi.com/api/push`를 찌르므로 dev에서는 검증할 수
+    없었고 `/merge` 뒤에 돌렸다 (결과 표는 `features/translation-ui/tasks.md` 6b-3 T6).
+    ⚠️ **거기서 나온 선행 결함 둘은 6b-3 밖이다** — base 셀을 비우면 다음 push가 그 키를 전 로케일에서
+    orphan한다(`lib/pull/plan.ts` — 빈 문자열도 "없음"으로 센다) · DB가 base와 같아지면 pull이 스킵해
+    열린 sync PR이 옛 스냅샷을 든 채 남는다(`lib/pull/run.ts` — 변경 0건이면 브랜치를 base head로 되돌린다)
 - [x] ~~**6b-4 `/account` — 만들지 말지의 판정**~~ → **판정이 끝났다: 만든다** (2026-09-09 IA 확정 §7.7).
       계획서의 옛 추천은 "만들지 않는다"였고 근거가 "지금 계정 컨트롤이 하나뿐"이었는데, **그 하나를
       목록 화면(`/projects`)에 얹게 만든 원인이 자리가 없다는 것**이라 방향을 뒤집었다.
-- [x] **6b-4 `/account` 배송** ✅ **dev에 올랐다** (2026-09-09 — 커밋 여섯: `8fb0e12`·`f3d16f2`·`47d03cf`
+- [x] **6b-4 `/account` 배송** ✅ **프로덕션에 나갔다** (2026-09-09, PR #22 → `70e393b` — 커밋 여섯: `8fb0e12`·`f3d16f2`·`47d03cf`
       + `fix` `4b9b0a6`). 프로필(읽기 전용 — provider가 소유한다, `planEmailRefresh`) · GitHub
       연결·해제·재인가 · 로그아웃. **`/projects`의 계정 카드를 옮겼다(복제하지 않았다)** — 그것이
       CLAUDE.md에 적힌 빚("프로젝트 0개인 사용자가 해제에 도달할 길이 없다")을 닫는다.
@@ -951,7 +955,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - ⚠️ **`disconnectGithub`의 무효화 범위가 함께 움직여야 했다** (`4b9b0a6`) — `revalidatePath("/projects",
       "layout")`이 주 화면을 덮지 않게 됐다. POSTMORTEM 2026-09-09에 일반 규칙과 grep 전수 결과가 있고,
       **`saveTranslation`이 6b-6에서 같은 이유로 부족해진다**(Home이 같은 행을 읽는다)
-- [x] **6b-5 `/projects/:slug/locales`** ✅ **dev에 올랐다** (2026-09-09 — `1a834e2` + `e6772ae` +
+- [x] **6b-5 `/projects/:slug/locales`** ✅ **프로덕션에 나갔다** (2026-09-09, PR #23 → `0d68d71` — `1a834e2` + `e6772ae` +
       `3cca010`). 로케일 목록(orphaned **사유와 되살리는 방법**을 말하는 유일한 자리) + 기준 로케일
       지정·대기 Alert를 6b-3에서 이관. 게이트는 `translation:write`이고 컨트롤만 role로 갈린다.
   - [x] 진행률은 **두 쿼리 병렬 한 벌**이다 — `loadKeys`를 재사용하면 903키 프로젝트에서 이 화면이
@@ -965,7 +969,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
       배경 없는 danger 배지 · 진행률 유지 · **셀렉트에서 빠진다**
   - ⚠️ **워크플로 YAML은 설정에 그대로 뒀다**(§7.7 결정 4) — 대기 중 `base-locale:`을 박는 동작도
       유지한다. 그래서 설정 화면은 그 컬럼을 **읽기만** 하고 `basePending`도 계속 부른다
-- [x] **6b-6 `/projects/:slug` Home** ✅ **dev에 올랐다** (2026-09-09 — `a9a455e` + `8c62bd9`).
+- [x] **6b-6 `/projects/:slug` Home** ✅ **프로덕션에 나갔다** (2026-09-09, PR #23 → `0d68d71` — `a9a455e` + `8c62bd9`).
       **착지점이다**(사용자 결정 2026-09-09).
   - [x] **다른 화면의 지표를 복제하지 않는다**(§7.7 결정 2) — `countUnpublished`·`loadKeys`를 **부르지
       않는다**(소스 스캔이 센다). 소유하는 것은 로케일별 진행률 대비와 최근 활동뿐이고, 진행률은

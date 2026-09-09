@@ -14,7 +14,6 @@
 | 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog·Tooltip 셋만 | shadcn 생성물을 그대로 씀 |
 | 변형 | `class-variance-authority` — Button·Badge·Alert | 같음 |
 | 아이콘 | `lucide-react` **16px** — 세트는 이것 하나이고 **셸은 전 항목이 든다** (§6.8). ⚠️ 1.x에 브랜드 아이콘(`Github`)이 없다 | 같음 |
-| 애니메이션 | `tw-animate-css` (사용 0이면 6단계 마지막 chore에서 뺀다) | `tailwindcss-animate` |
 | 폰트 | Pretendard Variable 동적 서브셋, 자사 호스트 | 같은 폰트, `@fontsource` |
 | 테마 | **라이트 단일** | 라이트/다크 |
 
@@ -137,7 +136,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **사이드바 폭** | `w-60` (240px) | `$super-sidebar-width: 15rem` |
 | **top bar 높이** | `h-12` (48px) + 하단 1px `border` | `$header-height: 3rem + 1px` |
 | 사이드바 항목 높이 | `h-8` (32px), 아이콘 16을 `size-6` 박스에 | nav item ≈ 32px |
-| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — 폼·설정·목록·계정·온보딩·초대 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
+| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — 폼·설정·목록·계정·온보딩·초대 · Home·언어·멤버 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
 | 콘텐츠 fluid | 번역 표 — 전폭, 표만 자기 컨테이너 안에서 가로 스크롤 | 표 화면은 fluid |
 | 콘텐츠 패딩 | `px-6 py-6` | 12~24 |
 | 사이드바 접힘 기준 | **`xl`** — 이상은 아이콘 레일로 접기(`localStorage`), 미만은 햄버거로 여는 오버레이 | 1200px |
@@ -148,7 +147,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 ## 6. 편집 UI 특화 규칙
 
-라우트는 여덟이다 (user-stories.md 순서) — 로그인 · 목록 · 새 프로젝트 · **번역** · **멤버** · 설정 · **계정** · 초대 수락. 공통 형은 §6.4.
+라우트는 열이다 (user-stories.md 순서) — 로그인 · 목록 · 새 프로젝트 · **Home** · **번역** · **언어** · **멤버** · 설정 · **계정** · 초대 수락. 공통 형은 §6.4.
 
 ### 6.1 번역 화면 — 패널 · 헤더 스트립 · 고정 슬롯 · 표
 
@@ -399,7 +398,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 프로젝트 컨텍스트 | 우측 `ChevronsUpDown` (DropdownMenu 트리거) |
 | top bar | **사용자 메뉴 아바타뿐이다** — 햄버거 `Menu`(`xl` 미만)는 그것이 여는 **사이드바**가 든다. breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · 재시도 `RotateCcw` · 행 메뉴 `Ellipsis` |
-| 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` |
+| 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` · Home의 [Open translations] `Languages` |
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · 상태 `Select` 앞 `ListFilter` |
 | Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
 | 외부 링크 | `ExternalLink` 12 (§6.3) |
