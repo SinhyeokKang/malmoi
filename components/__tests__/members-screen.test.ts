@@ -84,6 +84,16 @@ describe("멤버 화면 — 페이지", () => {
   it("이메일을 maskEmail로 낸다 — 이 표는 멤버 전원이 본다 (역할로 나누지 않는다)", () => {
     expect(read(PAGE) + read(LIST) + read(PENDING)).toContain("maskEmail");
   });
+
+  /**
+   * ⚠️ **대기 초대는 `maskEmail`을 직접 쓰지 않는다** (malmoi#18). 그 표에서 마스킹한 주소는 유일한
+   * 식별자이고, 첫 글자만 남기면 서로 다른 주소가 같은 행이 된다 — [Revoke]가 되돌릴 수 없으므로
+   * 엉뚱한 링크를 무효화한다. 라벨은 **목록 전체를 본** `maskedInviteLabels`가 만들고 서버가 내려준다.
+   */
+  it("대기 초대 라벨은 목록 전체를 본 판정에서 온다 — 행마다 따로 마스킹하지 않는다", () => {
+    expect(read(PENDING)).not.toContain("maskEmail(");
+    expect(read(PAGE)).toContain("maskedInviteLabels");
+  });
 });
 
 describe("멤버 화면 — 컨트롤", () => {

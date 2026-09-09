@@ -4,6 +4,7 @@ import { InviteDialog } from "@/components/members/invite-dialog";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { maskedInviteLabels } from "@/lib/auth/invite-label";
 import { canPerform } from "@/lib/auth/permission";
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -65,7 +66,13 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
-          <PendingInvitations slug={slug} invitations={pending} role={role} now={now} />
+          <PendingInvitations
+            slug={slug}
+            invitations={pending}
+            labels={maskedInviteLabels(pending.map((i) => i.email))}
+            role={role}
+            now={now}
+          />
       </section>
     </main>
   );

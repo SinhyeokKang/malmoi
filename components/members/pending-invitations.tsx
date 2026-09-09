@@ -8,7 +8,6 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th } from "@/components/ui/table";
-import { maskEmail } from "@/lib/auth/email";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { PendingInvitation } from "@/lib/auth/query";
@@ -26,11 +25,18 @@ import { relativeTime } from "@/lib/relative-time";
 export function PendingInvitations({
   slug,
   invitations,
+  labels,
   role,
   now,
 }: {
   slug: string;
   invitations: readonly PendingInvitation[];
+  /**
+   * 행별 표시 라벨. **서버가 목록 전체를 보고 만든다** (`maskedInviteLabels`) — 행마다 따로
+   * 마스킹하면 서로 다른 주소가 같은 행이 되고 [Revoke]가 엉뚱한 링크를 지운다 (malmoi#18).
+   * 순서가 `invitations`와 짝이다.
+   */
+  labels: readonly string[];
   role: Role;
   now: Date;
 }) {
@@ -73,9 +79,12 @@ export function PendingInvitations({
         </tr>
       </thead>
       <tbody>
-        {invitations.map((invitation) => (
+        {invitations.map((invitation, index) => {
+          // 짝이 깨지면 라벨이 비므로 주소를 숨긴 채 행을 남기지 않는다 — 그럼 구별이 불가능하다.
+          const shown = labels[index] ?? invitation.email;
+          return (
           <tr key={invitation.id}>
-            <Td className="text-mono">{maskEmail(invitation.email)}</Td>
+            <Td className="text-mono">{shown}</Td>
             <Td>{m.projects.role[invitation.role]}</Td>
             <Td className="text-muted-foreground text-xs">{relativeTime(invitation.expiresAt, now)}</Td>
             <Td className="text-muted-foreground text-xs">
@@ -85,7 +94,7 @@ export function PendingInvitations({
               {manage && (
                 <Button
                   variant="ghost"
-                  aria-label={m.members.pending.revokeLabel(maskEmail(invitation.email))}
+                  aria-label={m.members.pending.revokeLabel(shown)}
                   loading={pendingId === invitation.id}
                   loadingLabel={m.members.pending.revoking}
                   onClick={() => revoke(invitation.id)}
@@ -102,7 +111,8 @@ export function PendingInvitations({
               )}
             </Td>
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </Table>
   );
