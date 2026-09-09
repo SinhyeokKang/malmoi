@@ -285,22 +285,26 @@
 
 ## ship 6 — 헤더와 경계 bounds (발견 9 · 26)
 
-- [ ] **T1** 🔒 **CSP 강도** — 추천은 **`Content-Security-Policy-Report-Only`부터**다
+- ✅ **결정: Report-Only부터** (2026-09-09 사용자). enforce는 셋(nosniff · Referrer-Policy · `frame-ancestors 'none'`)이다.
+- [x] **T1** 🔒 **CSP 강도** — 추천은 **`Content-Security-Policy-Report-Only`부터**다
   - 이 앱은 인라인 스타일·인라인 스크립트를 Next가 만들어 넣으므로 enforce를 바로 켜면 화면이 깨질
     수 있고, 깨지는 방식이 조용하다. `frame-ancestors 'none'` + `Referrer-Policy: strict-origin-when-cross-origin` +
     `X-Content-Type-Options: nosniff`는 **깨질 여지가 없어 바로 enforce**한다
   - ⚠️ **`/invite/<token>` 때문에 `Referrer-Policy`가 이 셋 중 실질이 가장 크다**(findings 9)
-- [ ] **T2** `next.config.ts`에 `headers()` — 위 셋 + CSP Report-Only
+- [x] **T2** `next.config.ts`에 `headers()` — 위 셋 + CSP Report-Only
+  - ✅ **`curl -sI` 확인** (2026-09-09, 로컬 프로덕션 빌드): 넷 다 `/`와 **`/invite/<token>`**에 붙는다.
+  - ⏳ **화면 넷 동작 확인은 미실행** — 브라우저 세션이 필요하다. Report-Only는 원리적으로 렌더를 못 깨고, enforce 셋도 iframe·Referer·MIME 축이라 화면 동작에 안 닿는다.
   - 검증: `pnpm build` 통과(`tsc`는 이 파일의 형태를 못 본다) / `[manual]` `curl -sI`로 응답 헤더 확인 /
     `[manual]` 로그인·번역·설정·초대 넷이 그대로 동작한다
-- [ ] **T3** `app/api/pull/route.ts` — 순회 상한 + 요약에 "미처리" (발견 26)
+- [x] **T3** `app/api/pull/route.ts` — 순회 상한 + 요약에 "미처리" (발견 26)
+  - ✅ **결정: `take` 50 + 응답에 `unprocessed`** (2026-09-09 사용자). 응답 모양이 `{ results, unprocessed }`로 바뀌었다 — cron은 본문을 버리므로 실질 소비자는 없다.
   - 🔒 상한 값과 초과 시 동작: 추천은 **`take`로 자르고 요약에 `unprocessed` 수를 넣는다**(조용한
     누락을 시끄럽게 만드는 것이 요지다. 프로젝트가 그만큼 늘면 그때 cron 분할을 본다)
   - 검증: `selectPullTargets`가 상한을 인자로 받고 순수 판정으로 검사된다 / 상한 초과 시 응답에 그 수가 있다
-- [ ] **T4** `pnpm typecheck && pnpm test && pnpm build`
-- [ ] `——` `test:` → `feat:`
-- [ ] **T5** 문서 — `docs/ARCHITECTURE.md`(응답 헤더 · cron 상한) · `CLAUDE.md`(`next.config.ts` 항목)
-- [ ] `——` 문서 커밋
+- [x] **T4** `pnpm typecheck && pnpm test && pnpm build`
+- [x] `——` `test:` → `feat:`
+- [x] **T5** 문서 — `docs/ARCHITECTURE.md`(응답 헤더 · cron 상한) · `CLAUDE.md`(`next.config.ts` 항목)
+- [x] `——` 문서 커밋
 - [ ] **T6** `/push` → `/merge`
 
 ---

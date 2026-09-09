@@ -772,7 +772,10 @@ vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). 
                         `iad1`(워싱턴)이고 DB는 도쿄라 왕복 하나가 태평양을 건넜다. 이 앱의 비용은
                         페이로드가 아니라 **홉 개수**다(요청당 일곱, 문서는 8KB) — 엣지는 그대로
                         `icn1`이므로 사용자까지의 거리는 한 홉만 늘고 DB 일곱 홉이 짧아진다
-next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
+next.config.ts          ⚠️ **보안 응답 헤더가 여기 있다** (2026-09-09, sec-audit 발견 9) — enforce 셋
+                        (nosniff · Referrer-Policy · CSP `frame-ancestors 'none'`) + **CSP 본체는 Report-Only**.
+                        `tsc`가 이 함수를 못 보므로 `app/__tests__/security-headers.test.ts`가 설정을
+                        **불러서** 검사한다. ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
                         그 파일은 sync-agents.mjs가 소유하는 생성물이라, 켜져 있으면 next dev를 돌릴
                         때마다 미러 게이트가 드리프트로 잡고 지우면 Next가 다시 만든다
 pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼다** — 아래 게이트웨이 절
