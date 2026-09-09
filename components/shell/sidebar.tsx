@@ -113,7 +113,14 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
           **스위처가 곧 헤더**다 — 이름을 라벨로도 보이고 스위처로도 보이면 같은 값이 두 번 뜬다.
         */}
         {zones.map((zone, index) => (
-          <nav key={zone.key} className={index === 0 ? undefined : "border-border mt-3 border-t pt-1"}>
+          <nav
+            key={zone.key}
+            // ⚠️ **구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고, 접힌 레일에서는 아예 렌더되지
+            // 않는다** — 그러면 landmark 둘이 구별되지 않아 "구역을 이름으로 말한다"가 스크린리더
+            // 사용자에게만 성립하지 않는다.
+            aria-label={zone.label}
+            className={index === 0 ? undefined : "border-border mt-3 border-t pt-1"}
+          >
             {zone.key === "project" && project !== null ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

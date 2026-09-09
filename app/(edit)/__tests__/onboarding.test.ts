@@ -35,6 +35,7 @@ const hoisted = vi.hoisted(() => ({
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
   triggerPull: vi.fn(),
+  revalidatePath: vi.fn(),
   cookieSet: vi.fn(),
   headerGet: vi.fn(),
   redirect: vi.fn(),
@@ -43,7 +44,7 @@ const hoisted = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/github", () => ({
   probeRepo: hoisted.probeRepo,
   openRepoReader: hoisted.openRepoReader,
@@ -815,6 +816,22 @@ describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
  * 권한을 요구할 근거가 애초에 없었다.
  */
 describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절반)", () => {
+  /**
+   * ⚠️ **무효화 범위가 이 연결을 보이는 화면 전부를 덮어야 한다** (6b-4). 6b-4까지는 화면이 둘이고
+   * 둘 다 `/projects` 아래여서 `revalidatePath("/projects", "layout")`으로 충분했는데, **계정 카드가
+   * `/account`로 옮겨가면서 그 접두가 주 화면을 놓쳤다.** 놓치면 [Disconnect]를 누른 사용자가
+   * `@handle`과 그 버튼을 그대로 보고, 다시 눌러도 행이 이미 없어 조용히 `{ok:true}`가 돌아온다 —
+   * "버튼이 안 눌린다"로 보이지만 해제는 이미 됐다 (POSTMORTEM 2026-09-06과 같은 모양).
+   */
+  it("`/account`까지 덮는 범위로 무효화한다 — `/projects` 접두는 주 화면을 놓친다", async () => {
+    expect(await disconnectGithub()).toEqual({ ok: true });
+
+    const covered = hoisted.revalidatePath.mock.calls.some(
+      ([path, type]) => path === "/" && type === "layout",
+    );
+    expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
+  });
+
   it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
     expect(await disconnectGithub()).toEqual({ ok: true });
     expect(db.accounts.find((a) => a.userId === OWNER)).toBeUndefined();

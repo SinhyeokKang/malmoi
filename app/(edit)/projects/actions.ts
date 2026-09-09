@@ -436,10 +436,16 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
   }
 
   /**
-   * ⚠️ **`"layout"`이다.** 이 연결을 보이는 화면이 둘이고(`/projects`의 계정 섹션 · 각 프로젝트의
-   * 설정 화면) 여기서는 slug를 모른다 — 경로 하나만 무효화하면 설정 화면이 연결된 상태를 계속 보인다.
+   * ⚠️ **루트 레이아웃을 무효화한다.** 이 연결을 보이는 화면이 **둘이고 접두가 갈린다**: `/account`
+   * (주 화면, 6b-4)와 각 프로젝트의 설정 화면이다. 전에는 둘 다 `/projects` 아래여서 그 접두로
+   * 충분했는데, 계정 카드가 사용자 축으로 옮겨가면서 **그 접두가 주 화면을 놓쳤다** — 놓치면
+   * [Disconnect]를 누른 사용자가 `@handle`과 그 버튼을 그대로 보고, 다시 눌러도 행이 이미 없어
+   * 조용히 `{ok:true}`가 온다("버튼이 안 눌린다"로 보이지만 해제는 됐다).
+   *
+   * 여기서는 slug를 모르므로 경로를 좁힐 수단도 없다. 해제는 드문 조작이라 넓은 무효화의 대가가
+   * 사실상 0이고, 어느 화면이 이 상태를 보이든 맞는다.
    */
-  revalidatePath("/projects", "layout");
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
