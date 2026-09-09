@@ -30,9 +30,36 @@ export function compareKeys(a: string, b: string): number {
  * 정렬해 돌려준다: 이 순서가 트리 페이로드 순서가 되고, 흔들리면 커밋이 비결정적이 된다.
  */
 export function matchGlobPaths(pathTemplate: string, paths: readonly string[]): string[] {
+  if (exceedsGlobBudget(pathTemplate)) return [];
   const escaped = pathTemplate.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[^/]*");
   const pattern = new RegExp(`^${escaped}$`);
   return paths.filter((p) => pattern.test(p)).sort(compareKeys);
+}
+
+/** 인접 양자로 컴파일되는 자리 — `*`는 `[^/]*`로, `{locale}`은 `([^/]+)`로 간다. */
+const GLOB_QUANTIFIER = /\*|\{locale\}/g;
+/** 인접 `k`개는 매칭 실패에서 n글자를 k조각으로 나누는 모든 경우를 훑는다 — 실제 템플릿은 1개다. */
+const MAX_GLOB_QUANTIFIERS = 4;
+/** 백트래킹 비용이 `n^(k-1)`이라 n도 함께 묶어야 상한이 성립한다. */
+const MAX_TEMPLATE_LENGTH = 200;
+
+/**
+ * 이 템플릿을 정규식으로 컴파일해도 되는가 — **아니면 어느 파일도 고르지 않는다** (sec-audit 발견 11).
+ *
+ * 값을 정하는 것은 클라이언트다(`CreateProjectInput` · `PushPayload.format`). 메타문자는 전부
+ * 이스케이프되므로 주입이 아니라 **ReDoS**이고, 인접한 양자 k개가 매칭 **실패** 경로에서 지수 시간을
+ * 만든다. 상한을 넘으면 빈 배열이라 pull이 `fail("the glob matched no files")`로 **시끄럽게** 멈춘다 —
+ * 조용히 통과시키는 것보다 낫고, 어느 파일도 안 고르는 쪽이 안전한 기본값이다.
+ *
+ * ⚠️ **저장된 템플릿에도 걸려야 한다.** 스키마 경계만 좁히면 이미 DB에 있는 값이 야간 cron에서
+ * 그대로 컴파일된다 — 그래서 판정이 순수 함수 안에 있다.
+ *
+ * ⚠️ **`{locale}`도 같은 예산을 쓴다** — `lib/onboarding/confirm.ts`의 per-locale 갈래가 그것을
+ * `([^/]+)`로 이어 붙여 같은 모양을 만든다. 예산이 두 벌이면 한쪽만 조용히 열린다.
+ */
+export function exceedsGlobBudget(pathTemplate: string): boolean {
+  if (pathTemplate.length > MAX_TEMPLATE_LENGTH) return true;
+  return (pathTemplate.match(GLOB_QUANTIFIER)?.length ?? 0) > MAX_GLOB_QUANTIFIERS;
 }
 
 /**
