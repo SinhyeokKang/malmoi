@@ -51,7 +51,10 @@ export function renderWorkflowYaml(input: {
     "    steps:",
     "      - uses: actions/checkout@v4",
     "",
-    "      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@main",
+    // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3). 이 스텝에 `secrets.PUSH_TOKEN`이 들어가므로
+    // `@main`이면 말모이 `main`의 커밋 하나가 **대상 리포 러너에서 즉시** 돈다 — 소비자 측 리뷰도
+    // 롤백 창도 없다. `docs/ACTIONS.md`의 예시와 줄 단위로 대조되므로 둘이 함께 움직인다.
+    "      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1",
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${slug}`,
