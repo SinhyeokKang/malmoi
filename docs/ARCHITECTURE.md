@@ -595,6 +595,20 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   SAAS §8 7단계의 고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
   "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
+⚠️ **`Account`·`Session`의 토큰 컬럼은 평문이다** (2026-09-09 수용 기록 — sec-audit 발견 16).
+`access_token`·`refresh_token`·`id_token`·`sessionToken` 넷이고, **Auth.js Prisma adapter의 기본 모양**이라
+컬럼 암호화는 그 어댑터 밖이다(스키마를 바꾸면 어댑터가 런타임에 던진다 — §5.1의 첫 경고와 같은 축).
+
+**전제 조건을 적어 두는 것이 이 항목의 전부다**: 그 값에 닿으려면 **DB 자격증명**이 있어야 한다.
+2026-09-09 전에는 아니었다 — `anon` 키 하나로 읽을 수 있었고(POSTMORTEM 2026-09-09), 지금은
+`public` 스키마의 `anon`·`authenticated` GRANT가 **dev·prod 둘 다 0건**이다(실측). 즉 이 수용은
+**그 0건에 기대어 있다** — `/db` 5단계의 검사가 그것을 보는 자리다.
+
+⚠️ **런타임 롤은 `postgres`이고 `rolbypassrls=true`다**(실측). **지금 RLS를 켜도 앱 연결에는 안 걸린다** —
+"RLS가 없어 애플리케이션이 유일한 방어선"이라는 서술은 이 사실과 함께 읽는다. 최소권한 롤로 옮기는
+것은 **RLS를 실제로 켜는 시점**의 선행 작업으로 미뤘다 (2026-09-09 판정 — `DATABASE_URL`이 사는 네 곳을
+동시에 건드리는 변경이고, GRANT 0이라 지금 얻는 것이 작다).
+
 ## 5.5 push 적용 (`lib/push/`)
 
 **판정과 I/O를 나눈다.** `payload.ts`가 로케일 파일에서 페이로드를 조립하고, `plan.ts`가 순수 함수로 계획을 세우고(`toInsert`/`toUpdate`/`toOrphan`/`toUnorphan`/`staleKeyIds`), `apply.ts`가 그것만 실행한다. `PushPlan`에 **`toDelete`가 없는 것이 요지다** — 코드에서 사라진 키는 `orphaned`로 표시만 한다.

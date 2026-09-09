@@ -313,17 +313,21 @@
 
 ⚠️ **여기의 모든 쓰기는 사용자 승인이 앞에 있다.** 감사는 읽기만 했다.
 
-- [ ] **D1** `[manual]` 🔒 **발견 8을 예방으로 닫을 수 있는지 실측**
+- ✅ **실측: 통하지 않는다** (2026-09-09) — `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin …`가 `permission denied to change default privileges`다(`current_user=postgres`, `rolsuper=false`, `supabase_admin` 멤버 아님). **탐지로 간다.**
+  ⚠️ **prod·dev의 `pg_default_acl`이 동일**하고 `role_table_grants`의 `anon`·`authenticated`는 **둘 다 0건**이다(읽기 전용 재확인).
+- [x] **D1** `[manual]` 🔒 **발견 8을 예방으로 닫을 수 있는지 실측**
   - `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;`가
     `postgres`로 통하는지 본다. **통하지 않을 것으로 본다** — `postgres`는 superuser가 아니고
     (`rolsuper=false`, 실측) `supabase_admin`의 멤버도 아니다
   - 통하면 prod·dev 둘 다 적용하고 끝. 통하지 않으면 **탐지로 간다** → D2
-- [ ] **D2** `/db` 스킬에 **마이그레이션 뒤 `anon`·`authenticated` 권한 0 확인** 스텝이 실제로 있는지
+- ✅ **스텝은 있었고 전제가 틀렸다** — `/db` 5단계가 "고쳤으니 새 테이블이 닫힌 채로 태어난다"고 적었는데, 그것은 `postgres` 소유 항목에만 참이다. **대시보드(`supabase_admin`) 경로에는 이 검사가 유일한 방어선**이라고 고쳤다.
+- [x] **D2** `/db` 스킬에 **마이그레이션 뒤 `anon`·`authenticated` 권한 0 확인** 스텝이 실제로 있는지
       확인하고, 없으면 넣는다
   - CLAUDE.md는 이미 그 확인을 요구한다("새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다") —
     ⚠️ **스킬 문서에 그 스텝이 없으면 그 문장은 지켜지지 않는다**(문서와 배선이 갈린 부류)
   - 쿼리는 `findings.md` §0의 것을 쓴다(`information_schema.role_table_grants`)
-- [ ] **D3** 🔒 **발견 7 — 런타임 롤을 최소권한으로 바꾸는가**
+- ✅ **결정: 지금 하지 않고 기록한다** (2026-09-09 추천대로). `rolbypassrls=true`라 **지금 RLS를 켜도 앱 연결에는 안 걸린다**는 사실을 CLAUDE.md·ARCHITECTURE §5.1에 함께 적었고, **RLS를 켜는 시점의 선행 작업**으로 배정했다.
+- [x] **D3** 🔒 **발견 7 — 런타임 롤을 최소권한으로 바꾸는가**
   - 비용: 새 롤 + GRANT 설계 · `DATABASE_URL` 교체가 **`.env.local` 두 머신 · Vercel Production ·
     Preview 넷**을 동시에 건드린다(CLAUDE.md의 "개인키 하나 지웠더니 네 곳이 끊겼다"와 같은 형) ·
     마이그레이션은 계속 `postgres`여야 하므로 `DIRECT_URL`은 그대로 · Prisma 7 driver adapter가 그
@@ -333,9 +337,9 @@
   - **추천은 "지금 하지 않고 기록한다"** — PoC 단계에서 넷을 동시에 건드리는 변경의 위험이 얻는 것보다
     크고, GRANT가 이미 0이라 인터넷 노출은 닫혀 있다. **다만 "애플리케이션이 유일한 방어선"이라는
     서술을 이 롤 사실과 함께 적어 둔다** — 그 문장이 한 번 거짓이었다(POSTMORTEM 2026-09-09)
-- [ ] **D4** 발견 16 수용 기록 — `Account`·`Session`의 평문 토큰 컬럼. 어댑터 기본값이고 컬럼 암호화는
+- [x] **D4** 발견 16 수용 기록 — `Account`·`Session`의 평문 토큰 컬럼. 어댑터 기본값이고 컬럼 암호화는
       Auth.js Prisma adapter 밖이다. GRANT 0 + DB 자격증명이 전제 조건이라는 것을 `docs/ARCHITECTURE.md` §5.1에 한 줄
-- [ ] `——` `docs(ARCHITECTURE): …` (+ `/db` 스킬을 고쳤으면 그 커밋)
+- [x] `——` `docs(ARCHITECTURE): …` (+ `/db` 스킬을 고쳤으면 그 커밋)
 
 ---
 

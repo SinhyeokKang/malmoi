@@ -910,7 +910,9 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.** `yaml-catalog`·`code-dict`가 `per-locale`인데 수술적이다 — `layout`으로 가르는 코드가 남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다 (ARCHITECTURE §1).
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.** RLS가 없어 애플리케이션이 유일한 방어선이다 — 멤버십 판정을 지났더라도 쿼리가 `projectId`를 빠뜨리면 다른 테넌트의 행이 나온다.
   - ⚠️ **"애플리케이션이 유일한 방어선"은 2026-09-09까지 거짓이었다.** 그 문장은 "DB에 닿는 경로가 앱 하나"를 전제하는데 **Supabase는 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고**, `public` 스키마의 `pg_default_acl`이 **`anon`·`authenticated` 롤에 새 테이블 전 권한을 자동으로 준다.** 실측: prod·dev 12테이블 전부 RLS off + `anon`에 `SELECT,INSERT,UPDATE,DELETE,TRUNCATE` — **anon key 하나로 `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다**(Supabase 주간 advisor 메일이 알려줬다). **조치: `anon`·`authenticated`의 `public` 권한을 REVOKE하고 `ALTER DEFAULT PRIVILEGES`에서도 뺐다** — 후자가 없으면 **다음 마이그레이션이 만드는 테이블이 다시 열린다.** `service_role`은 남겼다(그 키는 비밀이고 공개 전제가 아니다). RLS+정책 대신 REVOKE를 고른 이유: 우리는 그 API를 한 줄도 안 쓰므로 대가가 0이고, 정책을 잘못 쓰면 구멍이 남는다.
-  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db`가 그 검사를 든다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
+  - ⚠️ **그 조치는 절반만 닫는다** (2026-09-09 재실측 — sec-audit 발견 8). `ALTER DEFAULT PRIVILEGES`는 **객체를 만드는 롤별**이라 고친 것은 `postgres` 소유 항목이고, **`supabase_admin` 소유 항목은 `anon`·`authenticated`에 전 권한을 그대로 준다.** 마이그레이션은 `postgres`로 도니 **Prisma가 만드는 테이블은 안 열리고**, 열리는 것은 **대시보드로 만드는 경로**다. ⚠️ **`postgres`로는 그 항목을 못 지운다** — `permission denied to change default privileges`(실측: `rolsuper=false`이고 `supabase_admin`의 멤버가 아니다). 그래서 여기는 **예방이 아니라 탐지**다.
+  - **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다** (`/db` 5단계가 그 검사를 든다 — 위 이유로 그것이 대시보드 경로의 **유일한** 방어선이다). Supabase Advisors(Security)가 0 errors인지도 같은 신호다.
+  - ⚠️ **런타임 롤이 `postgres`이고 `rolbypassrls=true`다** (실측). 즉 **지금 RLS를 켜도 앱 연결에는 안 걸린다** — "애플리케이션이 유일한 방어선"이라는 위 문장은 그 사실과 함께 읽어야 한다. **최소권한 롤로 옮기는 것은 지금 하지 않는다** (2026-09-09 판정): `DATABASE_URL` 교체가 `.env.local` 두 머신 · Vercel Production · Preview **넷을 동시에** 건드리고(개인키 하나를 지웠다가 넷이 끊긴 것과 같은 형), GRANT가 이미 0이라 인터넷 노출은 닫혀 있다. **RLS를 실제로 켜는 시점에 이 롤부터 바꾼다.**
 
 ## 게이트웨이 (알아두면 유용)
 

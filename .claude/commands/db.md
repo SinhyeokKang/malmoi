@@ -128,8 +128,18 @@ npx prisma migrate diff \
   스키마에는 **새 테이블을 `anon`·`authenticated`에 전 권한으로 여는 default privilege**가 걸려
   있었고, 그래서 12테이블이 전부 데이터 API로 열려 있었다 — `Account.access_token`·
   `Session.sessionToken`까지 anon key 하나로 읽고 지울 수 있었다 (POSTMORTEM 2026-09-09).
-  2026-09-09에 `ALTER DEFAULT PRIVILEGES`에서 그 롤들을 뺐으므로 **지금은 새 테이블이 닫힌 채로
-  태어난다** — 이 검사는 그것이 유지되는지 보는 것이다(Supabase가 default ACL을 되살릴 수 있다):
+  ⚠️ **"고쳤으니 이제 닫힌 채로 태어난다"는 절반만 참이다** (2026-09-09 재실측 — sec-audit 발견 8).
+  `ALTER DEFAULT PRIVILEGES`는 **객체를 만드는 롤별**이라, 그때 고친 것은 `postgres` 소유 항목이다:
+
+  ```
+  postgres       | r | postgres=arwdDxtm | service_role=arwdDxtm          ← 고친 쪽
+  supabase_admin | r | postgres=arwdDxtm | anon=arwdDxtm | authenticated=arwdDxtm | service_role=…
+  ```
+
+  마이그레이션은 `postgres`로 도니 **Prisma가 만드는 테이블은 안 열린다.** 열리는 것은
+  **`supabase_admin`으로 만드는 경로**(대시보드 SQL 에디터·Table Editor)이고, **`postgres`로는 그 항목을
+  못 지운다** — `permission denied to change default privileges`(실측: `rolsuper=false`, `supabase_admin`
+  멤버 아님). 그래서 이 검사는 "유지되는지 보는 것"이 아니라 **그 경로의 유일한 방어선**이다:
 
   ```sql
   SELECT grantee, table_name FROM information_schema.role_table_grants
@@ -137,7 +147,8 @@ npx prisma migrate diff \
   ```
 
   **dev·prod 둘 다** 0건이어야 한다. 1건이라도 나오면 그 테이블에 `REVOKE ALL ... FROM anon,
-  authenticated`를 치고 `pg_default_acl`도 다시 본다. Supabase 대시보드 **Advisors → Security**가
+  authenticated`를 치고 `pg_default_acl`도 다시 본다. ⚠️ **대시보드에서 테이블을 만들었다면 이 검사가
+  0건이 아닌 것이 정상 결과다** — 위 `supabase_admin` 항목이 그렇게 만든다. Supabase 대시보드 **Advisors → Security**가
   0 errors인지도 같은 신호다.
 
 ### 6. 커밋
