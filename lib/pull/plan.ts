@@ -169,9 +169,19 @@ export function buildWriteEntries(
   for (const row of rows) {
     // 코드에서 사라진 키. 재생성은 파일에서 빠지고, 수술적 치환은 값을 안 바꿔 원본이 남는다.
     if (row.orphaned) continue;
-    // base 파일은 행이 없으면 sourceText로 폴백한다 (MVP §3.2). **행이 있는데 빈 값이면 폴백하지
-    // 않는다** — 그건 "지우기"라는 정당한 조작이고, 미번역으로 떨어져 파일에서 빠지는 게 맞다.
-    const message = row.value ?? (opts.isBase ? row.sourceText : null);
+    /**
+     * base 파일은 값이 없으면 sourceText로 폴백한다 (MVP §3.2).
+     *
+     * ⚠️ **빈 문자열도 "없음"으로 센다** (2026-09-09, T6 실측이 고쳤다). 옛 동작은 빈 값을
+     * "지우기라는 정당한 조작"으로 읽어 그 키를 파일에서 뺐는데, **base 로케일에서는 그 조작의 뜻이
+     * 다르다**: 그 파일이 **키 집합의 진실**이라(MVP §3.1) 키가 빠진 base 파일이 머지되면 다음
+     * push가 그 키를 **전 로케일에서 orphan한다** — 번역자의 셀 편집 하나가 키를 지우고, 그 일이
+     * 라운드트립 한 번 뒤에 조용히 일어난다. base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
+     *
+     * **비-base는 그대로다** — 그쪽의 빈 값은 미번역이고 파일에서 빠지는 것이 맞다.
+     */
+    const present = row.value === "" ? null : row.value;
+    const message = present ?? (opts.isBase ? row.sourceText : null);
     if (message === null || message === "") continue;
     entries.push({
       key: row.key,

@@ -145,8 +145,28 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     tree.map((t) => ({ path: t.path, sha: t.sha })),
   );
   if (changes.length === 0) {
+    /**
+     * ⚠️ **sync 브랜치가 base보다 앞서 있으면 되돌린다** (2026-09-09, T6 실측 발견 B).
+     *
+     * 2층이 비교하는 것은 **base 트리**다 — 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경
+     * 0건이라 커밋을 만들지 않고, 그때 `l10n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다. 그 PR을
+     * 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB 상태의
+     * 스냅샷"이라 부르는데, 이 경로에서 그 불변식이 깨져 있었다.
+     *
+     * 불변식을 바꾸는 것이 아니라 지키는 것이다: base head를 가리키게 하면 그 시점의 DB 상태
+     * (= base와 동일)를 정확히 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
+     *
+     * ⚠️ **읽기 1회가 늘어나는 곳은 여기뿐이다** — 편집이 있었던 실행만 이 줄에 닿는다.
+     * 1층 스킵의 "GitHub API 0회"(spec 완료 조건 4)는 그대로다.
+     */
+    const staleHead = await client.getRefSha(`heads/${deps.syncBranch}`);
+    // 브랜치 부재는 정상 상태다(첫 실행 전) — 되돌릴 것이 없고, 여기서 만들지도 않는다.
+    if (staleHead !== null && staleHead !== baseHead) {
+      await client.updateRefForce(deps.syncBranch, baseHead);
+    }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
+    // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
     await deps.saveLastPulledAt(project.id, captured);
     return { status: "skipped", reason: "no-changes", ...withWarnings };
   }
