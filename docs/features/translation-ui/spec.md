@@ -202,8 +202,10 @@ Supabase를 골랐던 이유(옛 DESIGN §9.1)는 "개발자 도구이면서 비
 
 1. **어댑터 오류 코드화 + `survey` 분류기 + 14차 재측정** — `AdapterError = { path, code, key?, detail? }`(기존 테스트가 키 이름을 단언한다). `.message` 소비자 여덟(`lib/pull/run.ts:127` 포함).
    재측정 판정 값 목록은 tasks 6b-1. `/l10n-roundtrip`은 돌리지 않는다.
-2. **설정의 base branch·기준 로케일** — 🔴 현재 design §3.13은 pull을 깨뜨린다(pull의 base 진실은 `Project.baseLocale`이고 `Locale.isBase`는 UI만 읽는다 · 재적재 경로는 CI뿐 ·
-   `needsReview` 일괄 전파). 답의 후보는 tasks 6b-3.
+2. **설정의 base branch·기준 로케일** — ✅ **설계 확정** (2026-09-09, design §3.13 재작성). **선언을 별 컬럼(`Project.declaredBaseLocale`, additive)으로 뺐다** —
+   `baseLocale`은 push가 소유하는 현실로 남으므로 pull 코드가 한 줄도 안 바뀌고 대기 중에도 옛 base로 정상 동작한다(멈추면 편집 손실 창이 늘어난다).
+   `checkFormat`이 선언과도 대조해 통과시키고 그 push가 선언을 소비한다. `needsReview` 일괄 전파는 **받아들이고 배너가 미리 알린다**(옛 base 제외는 비목표 —
+   `apply.ts`의 전파 SQL을 건드려야 한다). 태스크는 tasks 6b-3의 T1~T6.
 3. **멤버 화면** — 별도 라우트의 근거를 먼저 쓴다(`github-connect/spec.md`는 settings 섹션으로 결정했다). 전원에게 렌더. `revokeInvitation`은 `expiresAt = now`(삭제 금지 —
    `schema.prisma:365`). 임시 초대 폼 삭제.
 4. **`/account`** — 만들지 말지부터. 추천은 "만들지 않는다"(사용자 메뉴 항목으로 `/projects` 계정 섹션에 간다).
@@ -244,4 +246,4 @@ Supabase를 골랐던 이유(옛 DESIGN §9.1)는 "개발자 도구이면서 비
   원문 변경으로 `needsReview`가 되면 다음 Publish 전까지 "not yet sent"로 **다시 센다**. 그 편집을 다시 검토해
   보내야 하는 상태이므로 틀린 신호는 아니지만 정확한 뜻은 "사람이 만졌고 아직 안 나간 값"이 아니라 "사람이
   만진 값 중 마지막 Publish 뒤 바뀐 행"이다. design §3.5에 적어 둔다.
-- **6b 착수 시 design §3.13·§3.9·§3.10을 다시 쓴다** — tasks 6b 절의 지적이 입력이다.
+- ✅ **design §3.9는 6b-2가, §3.13은 6b-3 착수 전에 다시 썼다** (2026-09-08·09). **§3.10(계정 화면)만 남았고 그것은 판정이다**(6b-4 — 추천은 만들지 않는 것).

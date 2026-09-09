@@ -8,7 +8,7 @@
 > **2026-09-08 `/feature-review`** — 단계가 6a/6b로 갈렸고(§11 #6) 아래 결정이 바뀌었다: 사전은 `messages/en.tsx`(§3.1) · 스캐너는 축소형
 > 허용 목록(§3.1.5) · 미배포 집계는 Prisma `count`(§3.5) · 저장 a11y는 표 단위 live region + 조건부 포커스(§3.8) · Publish는 편집자 어휘·
 > 문구 다섯/tone 넷(§3.4) · 배너 재정의(§3.11) · 프리미티브 16(§3.2) · 로그인 장식은 토큰만(§3.12) · 기본 착지는 pending>0인 첫 ns(§3.3).
-> **§3.9·§3.10·§3.13은 6b다** — 검수가 잡은 결함이 각 절 머리에 있고, 6b 착수 때 다시 쓴다.
+> **§3.9·§3.13은 다시 썼다** (2026-09-09 — 6b-2 구현 / 6b-3 재작성). **§3.10(계정 화면)만 남았고 그것은 판정이다**(6b-4 — 추천은 만들지 않는 것).
 
 ## 1. 영향 받는 흐름
 
@@ -359,38 +359,76 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 파일 둘이 체크되고 브랜치 이름이 붙은 카드). 이미지 파일을 두지 않는다 — `public/`에 생성물 아닌 바이너리를 늘리지 않고, 다크·해상도
 문제가 없다. `lg` 미만은 좌측 카드 하나. `?error=`는 Alert.
 
-### 3.13 설정 — settings-block 넷 (6a) + 기준 브랜치·기준 로케일 변경 (**6b** — 🔴 다시 쓴다)
+### 3.13 설정 — settings-block 넷 (6a) + 기준 브랜치·기준 로케일 변경 (**6b-3** — 2026-09-09 다시 썼다)
 
 섹션은 GitLab settings-block 형(제목 · 한 줄 설명 · 본문)이고 **각자 독립적으로 실패**한다(DESIGN 기존 규칙 유지). 계정 섹션은 6a에서 **그대로**다.
-`FirstIngestRetry`는 readiness 분기 밖 유지. `?e=`는 global Alert(DESIGN §6.4 배치 — 처음 초안은 "목록 위"·"상단"·"global" 셋으로 갈려 있었다).
+`FirstIngestRetry`는 readiness 분기 밖 유지. `?e=`는 global Alert(DESIGN §6.4 배치).
 
-> ⚠️ **2026-09-08 검수 — 아래 설계는 그대로 구현하면 pull이 깨진 파일을 낸다** (CTO 🔴). push·pull의 base 진실은 `Project.baseLocale`이고(`lib/pull/load.ts:30`·
-> `run.ts:85`·`render.ts:115`) `Locale.isBase`는 편집 UI만 읽는다(`lib/keys/query.ts:42`). UI가 저장한 뒤 CI push는 409로 막히지만 **야간 pull은 막히지 않는다** — 새 base
-> 파일에 `value ?? sourceText`(`lib/pull/plan.ts:174`) 폴백이 걸려 옛 base의 원문이 새 base 파일에 실린 PR이 나간다. 또 **재적재 경로는 CI 하나뿐이다** — `runFirstIngest`는
-> ready에서 `not-awaiting`(`actions.ts:676`). 그리고 살아남는 키 전부 `sourceHash`가 바뀌어 **`needsReview` 일괄 전파 + `updatedAt` 일괄 상승**(`plan.ts:178`·`apply.ts:170`)이
-> 온다. 답의 후보: `Project.baseLocale`만 "선언"으로 바꾸고 `Locale.isBase`는 push 소유(`apply.ts:94`)로 둔다 → `isBase ≠ baseLocale`이 "재적재 대기" 신호가 되어 pull이
-> `skipped: base-change-pending`으로 멈추고 UI 배너가 같은 조건을 읽는다. 트랜잭션 스왑·`planBaseLocaleChange`의 절반이 사라진다. 6b 착수 때 이 절을 다시 쓴다.
+> ✅ **2026-09-09 재작성.** 이 절의 처음 초안은 `Locale.isBase`와 `Project.baseLocale`을 **한 트랜잭션에서 함께 스왑**했고, 검수가 "그대로면 pull이 깨진 파일을 낸다"로 🔴을 걸었다.
+> 재작성의 근거는 **실측 넷**이다:
+>
+> | 사실 | 자리 |
+> |---|---|
+> | **pull은 `Project.baseLocale`만 읽는다** — `locale === baseLocale`로 `isBase`를 계산하고 그 값이 `value ?? sourceText` 폴백과 description 폴백을 정한다 | `render.ts:112·131` → `plan.ts:174` · `render.ts:46` |
+> | **`Locale.isBase`는 pull이 한 번도 안 읽는다** — 읽는 곳은 편집 화면 둘뿐이다(열 정렬·focus 기본·"base" 라벨) | `keys/query.ts:56` · `translations/page.tsx:96·107·181` |
+> | **`Locale.isBase`를 쓰는 곳은 하나다** | `push/apply.ts:94` (`code === payload.format.baseLocale`) |
+> | **`checkFormat`은 `adapter`·`pathTemplate`·`baseLocale` 셋을 저장값과 비교해 하나라도 다르면 409** | `push/guard.ts:66-77` |
+>
+> ⚠️ **검수가 적어 둔 답의 후보("`Project.baseLocale`만 선언으로 바꾸고 `Locale.isBase`는 push 소유로 둔다")는 그대로 성립하지 않는다.** 그 컬럼이 곧 **pull이 읽는 진실**이라,
+> UI가 거기에 선언을 쓰는 순간 야간 pull이 그것을 즉시 진실로 읽어 **옛 base의 `sourceText`가 새 base 파일에 실린 PR**을 낸다 — 초안과 같은 결함이다. 그 안은 pull을 `skipped:
+> base-change-pending`으로 멈춰 그것을 막으려 했는데, **멈추는 것이 두 번째 해를 만든다**: 편집이 리포로 못 나가는 동안 strict push가 덮을 **편집 손실 창(MVP §3.1)이 대기 기간만큼 늘어난다.**
 
-**Repository 블록에 편집 가능한 필드 둘이 들어간다** — SAAS §3 표가 "화면이 없다 — 그 화면은 6단계"라 적어 둔 것이다. (아래는 처음 초안 — 위 ⚠️의 답으로 대체된다.)
+**답: 선언을 별 컬럼으로 뺀다 — 그러면 pull 코드가 한 줄도 안 바뀌고 아무것도 멈추지 않는다.**
 
-| 필드 | 저장 | 파생 효과 | 순수 판정 |
+| 컬럼 | 뜻 | 소유자 | 읽는 곳 |
 |---|---|---|---|
-| **Base branch** | `Project.baseBranch` | pull이 커밋 parent·PR base로 쓴다(`run.ts`) · 워크플로 YAML의 `branches: [x]`가 바뀐다 | `isValidBranchName` — `git check-ref-format` 부분집합(공백·`..`·`~^:?*[`·끝 `/`·`.lock` 금지). `isRefSafeSlug`보다 넓다(`/`·대문자 허용) |
-| **Base language** | `Project.baseLocale` + `Locale.isBase` 스왑(한 트랜잭션, `projectId`로 좁힌다) | 키 집합의 진실이 바뀐다(다음 push부터) · export의 description 폴백 · `needsReview` 전파 제외 대상 · 화면의 첫 열 · YAML의 `base-locale:` | `planBaseLocaleChange(current, next, locales)` — `next`가 **orphaned 아닌 기존 로케일**이어야 하고 현재와 같으면 `noop` |
+| `Project.baseLocale` | **현실** — 리포가 마지막으로 확인해 준 base | push (`applyPush`) | pull · `checkFormat` |
+| `Project.declaredBaseLocale` (**신설, additive, nullable**) | **선언** — "다음 CI push가 이 base를 가져오면 받아들이겠다"는 OWNER의 허가 | 설정 화면 | `checkFormat` · 두 화면의 배너 조건 |
+| `Locale.isBase` | 편집 화면의 base 열 | push (`apply.ts:94`) | 편집 화면만 |
 
-⚠️ **둘 다 CI와 충돌한다 — 그리고 그 충돌을 서버가 409로 막는다.** `lib/push/guard.ts`의 `checkFormat`(커밋됨, `ab44ec8`)이 payload의 `adapter`·`pathTemplate`·`baseLocale`
-**셋 중 하나라도** 저장값과 다르면 `wrong-format`을 낸다(`guard.ts:56-77`, `nested`는 제외). 그래서 UI가 기준 로케일을 바꾸면 **워크플로의 `base-locale:` 입력을
-바꾸기 전까지 그 리포의 push는 409**다. 이것은 결함이 아니라 원칙이다 — 키 집합의 진실은 코드이고, DB와 CI가 다른 base를 주장하는 상태를 strict
-push가 조용히 받으면 진짜 base의 키가 orphan된다(ACTIONS.md `base-locale` 행). 따라서 저장 성공 응답에 **재생성한 YAML**을 함께 돌려주고 블록 안
-`Alert warning`으로 "Update `.github/workflows/l10n.yml` — until then CI pushes are rejected"를 낸다. base branch는 push를 막지 않지만(guard가 안
-본다) `on.push.branches`가 옛 브랜치를 가리켜 **CI가 영영 안 돈다** — 같은 Alert에 같은 이유로 실린다.
+**흐름 — 어느 단계에서도 멈추지 않는다:**
 
-Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나(`project:settings`)다 — 둘을 한 폼에 두므로 저장도 하나다. 결과에
-`workflowYaml`이 실린다. 이 컴포넌트는 revalidate로 바뀌는 분기 밖이다(블록 자체는 readiness와 무관).
+1. OWNER가 설정에서 base language를 B로 바꾼다 → `declaredBaseLocale = "B"`. **그것만 쓴다.**
+2. **대기 상태**(`declaredBaseLocale !== null && declaredBaseLocale !== baseLocale`). 이 사이에도 **전부 정상 동작한다**:
+   - **pull은 옛 base(A)로 계속 돈다** — `baseLocale`이 아직 A이므로 옳다. 편집이 리포로 계속 나가고 손실 창이 늘지 않는다.
+   - **옛 base로 오는 CI push도 통과한다** — `payload.baseLocale === stored.baseLocale`.
+3. 사용자가 워크플로의 `base-locale:`을 B로 고친다 (저장 응답이 **재생성한 YAML**을 준다).
+4. CI push가 B로 온다 → **`checkFormat`이 선언과도 대조해 통과시킨다** (아래).
+5. `applyPush`가 `baseLocale = "B"`·`isBase`를 맞춘다 → 선언과 현실이 같아져 **대기가 저절로 해소된다.**
 
-**base 로케일 변경이 데이터에 하는 일의 경계**: `Translation`·`StringKey` 행은 건드리지 않는다. 옛 base 로케일의 번역은 그대로 남고 다음 push가
-새 base 파일로 키 집합을 다시 세운다(사라진 키는 orphaned — 되돌릴 수 있다). `sourceText`·`sourceHash`는 push가 다시 채운다. **UI가 재적재를
-돌리지 않는다** — 재적재는 **CI 하나뿐**이고(위 ⚠️ — [Run first import]는 ready에서 거부한다), 그것을 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
+⚠️ **`checkFormat`이 이번에 넓어지는 유일한 자리다**: `payload.baseLocale`이 `stored.baseLocale` **또는** `stored.declaredBaseLocale`과 같으면 `ok`.
+`adapter`·`pathTemplate`은 그대로 엄격하다 — **오배송(다른 리포가 우리 토큰으로 push)은 그 둘이 막는다.** 느슨해지는 것은 base 하나이고 그것도 "OWNER가 UI에서 명시적으로
+허가한 값"이라는 좁은 예외다. 그 절의 기존 경고("일부만 있는 상태는 이해할 수 없다")는 그대로 유지된다.
+
+**선언을 되돌리는 경로는 코드가 필요 없다** — B로 선언했다가 A로 다시 저장하면 `declaredBaseLocale === baseLocale`이 되어 대기가 사라진다. 별도 "취소" 버튼을 두지 않는다.
+
+**Base branch는 별개 축이다.** `checkFormat`이 보지 않으므로 대기 개념이 없고 `Project.baseBranch`를 바로 쓴다. 위험 둘: 워크플로의 `on.push.branches`가 옛 브랜치를 가리키면
+**CI가 영영 안 돈다**(조용하다 — 같은 Alert가 말한다), 새 브랜치가 리포에 없으면 **pull이 "base 브랜치를 읽을 수 없다"로 실패한다**(시끄럽다 — 그쪽이 낫다).
+
+| 필드 | 저장 | 파생 효과 |
+|---|---|---|
+| **Base branch** | `Project.baseBranch` (즉시) | pull의 커밋 parent·PR base · 워크플로의 `branches: [x]` |
+| **Base language** | `Project.declaredBaseLocale` (선언만) | 다음 CI push가 키 집합의 진실을 새로 세운다 · 그 push가 `baseLocale`·`isBase`·화면의 첫 열을 함께 바꾼다 |
+
+**⚠️ base 변경이 실제로 적용되는 순간(5단계) 편집자의 값이 덮인다** — strict push가 그 push에 실린 값으로 번역을 덮는다(MVP §3.1). **그래서 번역 화면의 배너가
+대기 상태에서 "먼저 보내라"를 말한다** — 그것이 손실 창을 좁히는 유일한 수단이다.
+
+⚠️ **그 push에서는 `needsReview` 전파를 건너뛴다** (2026-09-09 판정). 살아남는 키 전부 `sourceText`가 B의 원문으로 바뀌어 `sourceHash`가 달라지지만(`plan.ts:187`),
+**그 변화의 뜻이 평소와 다르다**: 평소의 전파는 "개발자가 원문 문장을 고쳤다 → 번역이 낡았을 수 있다"인데 base 변경은 **원문의 언어가 교체된 것**이고 의미는
+그대로다 — en→ko면 `sourceText`가 "Save"→"저장"이 되지만 fr의 "Enregistrer"는 여전히 정확하고, 옛 base(en)의 값도 마찬가지다. 전파하면 살아남는 키 **전부**에
+검토 표시가 붙어 903키 프로젝트에서 `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다). `planPush`가 옛 base를 인자로 받아
+`payload.format.baseLocale !== 옛 base`이면 `staleKeyIds`를 비운다 — `app/api/push/route.ts:56`이 **이미 `project`를 읽어 `checkFormat`에 넘기므로** 값을 하나 더
+넘기는 것이 전부이고 `apply.ts`의 SQL은 손대지 않는다(`staleKeyIds`가 비면 그 statement가 안 나간다).
+
+✅ **미배포 집계는 흔들리지 않는다.** 그 push가 전 행의 `updatedAt`을 올리지만 `updatedBy`를 비우고, `countUnpublished`·`isUnpublished`는 **`updatedBy`가 사람인 행만** 센다
+(ARCHITECTURE §1.35 아래 판정 · `queries.test.ts`가 두 경로를 맞댄다). 이 설계가 그 판정에 얹혀 있다.
+
+**Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나**(`project:settings`)다 — 둘을 한 폼에 두므로 저장도 하나다. 결과에 `workflowYaml`이 실린다.
+`Translation`·`StringKey` 행은 **건드리지 않는다.** UI가 재적재를 돌리지 않는다 — 재적재 경로는 **CI 하나뿐이다**(`runFirstIngest`는 ready에서 `not-awaiting` —
+`actions.ts:676`. 처음 초안의 "[Run first import]와 같은 경로"는 거짓이었다).
+
+**비목표(6b-3에서 안 한다)**: base 변경 뒤 자동 재적재. 재적재 경로는 CI 하나뿐이고 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
+⚠️ **T6(실물 409→통과 확인)은 `/ship` 밖이다** — 대상 리포의 워크플로가 프로덕션 `/api/push`를 찌르므로 dev에서 검증할 수 없다(`/merge` 뒤 별도).
 
 ### 3.14 목록·온보딩·초대 — 형만 바뀐다
 
@@ -413,7 +451,7 @@ Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나(`p
 | `readinessLabel` · `formatLabel` · `ingestHeadline` · 문구 모듈 넷 | 기존 자리 | 사전 읽기로 바뀌어도 시그니처는 같다 — 기존 테스트가 문구 상수만 바꿔 그대로 산다 |
 | `stripComments(src)` (스캐너용) | `lib/i18n/__tests__/no-korean-ui.test.ts` 내부 | `//`·`/* */`·`{/* */}` 셋. 메타 테스트로 각각 검증 |
 | `Button`/`Badge`/`Alert` variant 매핑(`cva`) | `components/ui/*` | 렌더 테스트는 두지 않는다 — variant→클래스 표는 소스 스캔이 아니라 `focus-ring`류 상시 검사가 든다 |
-| (6b-3) `isValidBranchName` · `planBaseLocaleChange` | §3.13 | 6b-3 착수 때 정한다 — 그 절을 다시 쓰는 것이 선행이다 |
+| ~~(6b-3) `isValidBranchName` · `planBaseLocaleChange`~~ ✅ **정했다** (2026-09-09 §3.13 재작성) | §3.13 | 셋이다 — `isValidBranchName`(잎, `lib/pull/branch-name.ts`) · `planBaseLocaleChange` 4갈래 · **`basePending`**(두 화면이 같은 조건을 읽는 유일한 자리). 스키마는 additive 하나(`Project.declaredBaseLocale`) |
 | ~~(6b-1) `AdapterErrorCode`+`adapterErrorMessage` · `classify(code)`~~ ✅ **닫혔다** (2026-09-08) | §3.1.4 | 코드 스물둘 + `lib/i18n/adapter-errors.ts`. ⚠️ **"재측정만이 판정한다"가 틀렸다** — 코퍼스가 밟는 갈래는 여섯뿐이라 옛 문구 22개와 옛 분류기를 픽스처로 든 `classify.test.ts`가 실제 방어선이다 |
 
 `pullResultPr`·`landing(dest)`는 목록에서 뺐다 — 앞은 한 줄 삼항이라 이름·테스트를 붙일 이유가 없고(`run.ts:158`에 인라인), 뒤는 `state.ts`가 아니라 callback route의

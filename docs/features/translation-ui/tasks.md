@@ -384,16 +384,83 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 </details>
 
-## 6b-3. 설정 — base branch·기준 로케일 (🔴 design §3.13을 다시 쓴다)
+## 6b-3. 설정 — base branch·기준 로케일 (design §3.13 — **2026-09-09 재작성 완료**)
 
-- **지금 설계대로면 pull이 깨진 파일을 낸다.** push·pull의 base 진실은 `Project.baseLocale`(`lib/pull/load.ts:30`·`run.ts:85`·`render.ts:115`)이고 `Locale.isBase`는 편집 UI만
-  읽는다(`lib/keys/query.ts:42`). UI가 저장하면 CI push는 409로 막히지만 **야간 pull은 막히지 않아** `value ?? sourceText`(`plan.ts:174`) 폴백으로 옛 base 원문이 새 base 파일에 실린 PR이 나간다
-- **재적재 경로는 CI 하나뿐이다** — `runFirstIngest`는 ready에서 `not-awaiting`(`actions.ts:676`). "[Run first import]와 같은 경로"는 거짓
-- 살아남는 키 전부 `sourceHash`가 바뀌어 **`needsReview` 일괄 전파 + `updatedAt` 일괄 상승**(`plan.ts:178`·`apply.ts:170`) — 편집자에게 "전 셀 검토 필요"로 보인다. 받아들이는 대가로 적는다
-- 답의 후보(CTO): `Project.baseLocale`만 "선언"으로 바꾸고 `Locale.isBase`는 push 소유로 둔다 → `isBase ≠ baseLocale`이 "재적재 대기" 신호가 되어 **pull이 `skipped: base-change-pending`으로
-  멈추고** UI 배너가 같은 조건을 읽는다. 트랜잭션 스왑·`planBaseLocaleChange`의 절반이 사라진다
-- `isValidBranchName`(`lib/pull/branch-name.ts` 잎) · `checkFormat`은 3필드(adapter·pathTemplate·baseLocale) 비교 · 하네스 `locale`에 `findMany`·`updateMany` 필요 · isBase 단일성은 스키마 제약이 아니다(`@@id([projectId, code])`뿐)
-- 실물: 폐기용 리포에서 옛 `base-locale`로 CI를 한 번 돌려 409를 본다 — 어느 스킬에도 없는 확인이라 별도 줄
+> **설계 요지**: **선언을 별 컬럼으로 뺀다.** `Project.declaredBaseLocale`(신설, additive, nullable)이 "다음 CI push가
+> 이 base를 가져오면 받아들이겠다"는 OWNER의 허가이고, `Project.baseLocale`은 **리포가 확인해 준 현실**로 남는다.
+> pull은 현실만 읽으므로 **코드가 한 줄도 안 바뀌고 어느 단계도 멈추지 않는다** — 대기 중에도 pull이 옛 base로
+> 돌아 편집이 리포로 나가고, 옛 base로 오는 CI push도 통과한다. 검수의 후보안(같은 컬럼을 선언으로 쓰고 pull을
+> `skipped`로 멈춘다)을 기각한 이유가 그것이다: 멈추면 **편집 손실 창이 대기 기간만큼 늘어난다**(design §3.13의 ⚠️).
+
+### T1. 순수 판정 셋 (잎)
+
+- [ ] `lib/pull/branch-name.ts` — `isValidBranchName(name)`. `git check-ref-format` 부분집합: 공백·`..`·`~^:?*[`·제어문자·끝 `/`·`.lock` 끝·빈 문자열 금지. **`isRefSafeSlug`보다 넓다**(`/`·대문자 허용) — 그쪽은 우리가 만드는 ref 이름이고 이쪽은 남의 리포에 있는 브랜치다. ⚠️ **import 0인 잎이어야 한다** — 설정 화면(클라이언트)이 값으로 읽는다(`lib/pull/ref-slug.ts`가 같은 이유로 내려왔다, POSTMORTEM 2026-09-07)
+      검증: `lib/pull/__tests__/branch-name.test.ts` — 정상 넷(`main`·`release/2.0`·`feat/UI-1`·`v1.0`) · 거부 여덟(빈 문자열·`a b`·`a..b`·`a~b`·`a:b`·`a/`·`a.lock`·`he^ad`)
+- [ ] `lib/onboarding/base-locale.ts` — `planBaseLocaleChange({ current, next, locales })` → `"noop" | "ok" | "unknown-locale" | "orphaned-locale"`. `next === current`면 `noop`, `locales`에 없으면 `unknown-locale`, 있지만 `orphaned`면 `orphaned-locale`(그 파일은 리포에서 사라졌다 — base로 세우면 다음 push가 키 0개를 낸다)
+      검증: `__tests__/base-locale.test.ts` — 네 갈래 각각 + 빈 `locales` + 대소문자를 접지 않는다(`zh_CN` ≠ `zh-CN` — `DetectedFormat.locales`가 파일명 그대로다)
+- [ ] `lib/onboarding/base-pending.ts` — `basePending({ baseLocale, declaredBaseLocale })` → `boolean`. **두 화면이 같은 조건을 읽는 유일한 자리다** — 설정의 Alert와 번역 화면의 배너가 각자 조건을 쓰면 하나가 낡는다
+      검증: `__tests__/base-pending.test.ts` — 선언 null / 선언 === 현실 / 선언 ≠ 현실 / 현실 null(첫 push 전) 넷
+
+—— `feat(base): pure decisions for branch name, base-locale change, and the pending state`
+
+### T2. 스키마 (additive 하나)
+
+- [ ] `prisma/schema.prisma` — `Project.declaredBaseLocale String?`. 주석에 **소유자와 읽는 곳**을 적는다(선언 = 설정 화면 / 현실 = `baseLocale`, push 소유). `/db`가 마이그레이션을 만든다
+      검증: `pnpm db:migrate` 뒤 `pnpm db:status` up to date · `prisma/__tests__/schema-contract.test.ts`에 nullable 단언 추가 · **`anon` 권한 0건**(dev·prod — `/db` 5단계, POSTMORTEM 2026-09-09)
+
+—— `chore(db): add Project.declaredBaseLocale` (`/db`가 이 커밋을 만든다)
+
+### T3. `checkFormat`이 선언과도 대조한다
+
+- [ ] `lib/push/guard.ts` — `payload.baseLocale`이 `stored.baseLocale` **또는** `stored.declaredBaseLocale`과 같으면 `ok`. `adapter`·`pathTemplate`은 **그대로 엄격**하다(오배송을 막는 것은 그 둘이다). 호출부(`api/push/route.ts`)가 `declaredBaseLocale`을 `select`에 더한다 — ⚠️ **optional로 두지 않는다**(껍데기가 빼면 컴파일러가 막는다, POSTMORTEM 2026-09-02)
+      검증: `lib/push/__tests__/guard.test.ts` 확장 — 선언과 일치하면 `ok` · 현실과 일치하면 `ok` · **둘 다 아니면 `wrong-format`** · 선언이 null이면 옛 동작 그대로 · `adapter`만 달라도 `wrong-format`(느슨해진 것이 base 하나뿐임을 고정한다)
+- [ ] `lib/push/apply.ts` — push 성공 시 `declaredBaseLocale`을 **비운다**(`null`). 안 비우면 선언이 영구히 남아 `checkFormat`이 그 값을 계속 받아들인다 — 일회용 허가여야 한다
+      검증: `lib/push/__tests__/flow.test.ts` — 새 base로 push 뒤 `declaredBaseLocale === null` · `baseLocale`·`isBase`가 새 값 · **같은 payload를 두 번 보내도 두 번째가 `ok`**(현실이 이미 새 값이므로)
+- [ ] `lib/push/plan.ts` — `planPush`가 **옛 base를 인자로 받고**, `payload.format.baseLocale !== 옛 base`이면 `staleKeyIds`를 **비운다**.
+      ⚠️ **`needsReview` 전파의 뜻이 base 변경에서는 성립하지 않는다.** 평소의 전파는 "개발자가 원문 문장을 고쳤다 → 번역이 낡았을 수 있다"인데, base 변경은
+      **원문의 언어가 교체된 것**이고 의미는 그대로다 — en→ko면 `sourceText`가 "Save"→"저장"으로 바뀌지만 fr의 "Enregistrer"는 여전히 정확하고, 옛 base(en)의 값도
+      마찬가지다. 전파하면 **살아남는 키 전부**에 검토 표시가 붙어 903키 프로젝트에서 `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다).
+      `app/api/push/route.ts:56`이 **이미 `project`를 읽어 `checkFormat`에 넘기므로** 그 값을 하나 더 넘기는 것이 전부다 — `apply.ts`의 전파 SQL은 손대지 않는다
+      (`staleKeyIds`가 비면 그 statement가 애초에 안 나간다)
+      검증: `lib/push/__tests__/plan.test.ts` — base 같으면 옛 동작 그대로(원문 수정 키만 stale) · base 다르면 `staleKeyIds`가 **빈 배열** · 옛 base가 null(첫 push)이면 옛 동작 · `flow.test.ts`에서 그 push 뒤 `needsReview`가 **한 행도 안 붙는지** SQL 인자로 본다
+
+—— `feat(push): accept a base that the owner declared, and consume the declaration`
+
+### T4. 설정 화면 — Repository 블록의 필드 둘
+
+- [ ] `updateRepositorySettings({ slug, baseBranch, baseLocale })` (`project:settings`) — 둘을 한 폼에 두므로 저장도 하나다. `baseBranch`는 즉시 쓰고 `baseLocale`은 **선언만** 쓴다. 결과에 재생성한 `workflowYaml`이 실린다
+      검증: `app/(edit)/__tests__/` — EDITOR `forbidden` · 다른 프로젝트 slug는 `not-found` · 잘못된 브랜치 이름은 `invalid-branch` · orphaned 로케일은 `orphaned-locale` · `noop`이면 쓰지 않는다
+- [ ] 블록 안 `Alert warning`은 **`basePending`이 조건**이다(저장 직후만이 아니라 대기 중 상시) — "Update `.github/workflows/l10n.yml` — until then CI pushes keep the old base language" + YAML 코드 블록 + [Copy]. ⚠️ **readiness 분기 밖**(POSTMORTEM 2026-09-07 revalidate)
+      검증: `components/__tests__/` 소스 스캔 — `basePending`을 읽는다 · `<pre>`로 YAML을 낸다(여러 줄이라 `whitespace-pre-wrap`이 아니다, DESIGN §4.1) · 저장 실패는 in-block Alert
+- [ ] `docs/ACTIONS.md`와 같은 커밋 — `base-locale` 행에 "설정에서 바꾸면 이 값을 함께 고쳐야 한다"를 적는다. `workflow.test.ts`가 ACTIONS.md와 줄 대조하므로 문서가 함께 바뀌어야 green이다
+
+—— `feat(settings): base branch and base language fields`
+
+### T5. 번역 화면 — 대기 배너
+
+- [ ] `components/translations/`에 배너 하나. 조건은 `basePending`, 문구는 **"먼저 보내라"** — 다음 CI push가 키 집합을 새로 세우고 strict가 값을 덮으므로(MVP §3.1) 그 전에 Publish하는 것이 손실 창을 좁히는 유일한 수단이다.
+      ⚠️ **검토 표시를 예고하지 않는다** — T3이 base 변경 push에서 전파를 건너뛰므로 그 일이 안 일어난다. 배너는 **덮어쓰기 하나만** 말한다(둘을 말하면 무엇을 해야 하는지가 흐려진다)
+      검증: 소스 스캔 — 편집 손실 배너와 **자리가 갈린다**(둘 다 조건부 분기 **밖** — DESIGN §6.1 고정 슬롯) · `basePending`을 읽는다(조건이 두 벌이 아니다)
+
+—— `feat(translations): banner for a pending base-language change`
+
+### T6. 실물 — ⚠️ **`/ship` 밖이다. `/merge` 뒤에 돈다**
+
+**대상 리포의 워크플로가 `PUSH_TOKEN`으로 프로덕션 `mal-moi.com/api/push`를 찌른다** — dev(preview)는 그 경로에 없으므로 **`/ship` 안에서는 원리적으로 검증할 수 없다.**
+`/l10n-roundtrip`이 `/push`·`/merge` 밖에 있는 것과 같은 이유다. 그래서 **6b-3의 완료 조건이 둘로 갈린다**:
+
+| 무엇 | 언제 | 게이트 |
+|---|---|---|
+| T1~T5 | `/ship bypass 6b-3` | 단위·소스 검증 + `/db`(T2) + `/push` 로컬 게이트 |
+| **T6** | **`/merge` 뒤** | 실물 — 아래 |
+
+- [ ] 폐기용 리포에서 **옛 `base-locale`로 CI를 한 번 돌려** 409를 본다 → 워크플로의 `base-locale:`을 고쳐 다시 돌려 통과와 대기 해소를 본다. `/l10n-roundtrip`은 어댑터 표현 층이라 이 축을 안 본다
+      검증: 실측 — push 응답 **409**(`wrong-format`) · 워크플로 수정 후 **200** · 그 뒤 `declaredBaseLocale === null`·`baseLocale`이 새 값 · **`needsReview`가 한 행도 안 붙었다**(T3) · 다음 pull이 새 base 파일을 낸다
+
+### 비목표 (6b-3에서 안 한다)
+
+- ~~옛 base 로케일의 번역만 전파에서 제외하는 것~~ → **T3이 전파 자체를 건너뛰는 쪽으로 바뀌었다** (2026-09-09 판정). 옛 base만 빼는 것은 절반만 고치는 것이었다 — `sourceHash`가 바뀐 원인이 "원문 수정"이 아니라 "원문 언어 교체"라 **다른 로케일의 번역도 여전히 정확하다.**
+- **base 변경 뒤 자동 재적재.** 재적재 경로는 CI 하나뿐이고(`runFirstIngest`는 ready에서 `not-awaiting`) 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
 
 ## 6b-4. `/account` — 만들지 말지부터
 
