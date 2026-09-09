@@ -62,7 +62,30 @@ export function recentActivity(input: {
     items.push({ kind: "publish", at: input.lastPublishedAt, prUrl: input.lastPrUrl });
   }
 
-  items.sort((a, b) => b.at.getTime() - a.at.getTime() || RANK[a.kind] - RANK[b.kind]);
+  /**
+   * ⚠️ **DB가 준 순서에 기대지 않는다.** `Array.sort`는 안정 정렬이라, 시각·종류가 같은 편집 둘의
+   * 순서를 **입력 그대로 보존한다** — 조회의 `orderBy`에 보조 키가 없으면 그것이 요청마다 다를 수
+   * 있고, 그러면 같은 DB 상태가 다른 화면을 낸다. 조회 쪽에도 보조 키를 뒀지만(어느 N건을 고를지가
+   * 그것으로 정해진다) **보증은 여기 있어야 테스트가 잡는다.**
+   */
+  items.sort(
+    (a, b) =>
+      b.at.getTime() - a.at.getTime() ||
+      RANK[a.kind] - RANK[b.kind] ||
+      // 편집끼리만 남는 갈래다 — push·publish는 종류가 유일해 위에서 갈린다.
+      compareEdit(a, b),
+  );
   // ⚠️ **자르는 것은 병합 뒤다.** 편집만 먼저 자르면 push·publish가 항상 밀려나 화면에서 사라진다.
   return items.slice(0, input.limit);
+}
+
+/**
+ * 같은 시각·같은 종류의 편집 둘. **키 → 로케일 코드 유닛 비교**다 — `localeCompare`는 로케일 설정에
+ * 따라 답이 달라서 이 리포가 export 정렬에서도 쓰지 않는다 (ARCHITECTURE §1.1).
+ */
+function compareEdit(a: ActivityItem, b: ActivityItem): number {
+  if (a.kind !== "edit" || b.kind !== "edit") return 0;
+  if (a.key !== b.key) return a.key < b.key ? -1 : 1;
+  if (a.locale === b.locale) return 0;
+  return a.locale < b.locale ? -1 : 1;
 }

@@ -1,0 +1,31 @@
+import { Languages } from "lucide-react";
+import { redirect } from "next/navigation";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { canPerform, type Role } from "@/lib/auth/permission";
+import { m } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
+
+/**
+ * 첫 적재 전 프로젝트 화면 (design §3.7). **정책과 문구를 한 곳이 든다** — Home과 번역 화면이
+ * 같은 갈래를 만나고, 6b-6이 Home을 착지점으로 만들면서 그 사본이 둘이 됐다.
+ *
+ * **OWNER는 설정 화면으로 보낸다** — 거기에 [다시 시도]와 워크플로 YAML이 있어 스스로 끝낼 수 있다.
+ * EDITOR는 그 화면에 들어갈 수 없으므로 보낼 곳이 없고, 한 줄로 무엇을 기다리는지 말한다.
+ *
+ * ⚠️ **`redirect()`가 렌더 중에 던지는 것이 안전한 이유**: 호출부가 이 컴포넌트 **하나만** 반환하고
+ * 그 시점에 프로젝트 데이터는 아직 페이로드에 없다. 인가 차단과는 다른 축이다 — 그쪽은 최상단
+ * `requireProjectAccess`가 이미 지났다 (ARCHITECTURE §6.1).
+ */
+export function ProjectNotReady({ slug, role }: { slug: string; role: Role }) {
+  if (canPerform(role, "project:settings")) redirect(routes.settings(slug));
+  return (
+    <main className="mx-auto w-full max-w-4xl px-6 py-6">
+      <EmptyState
+        icon={Languages}
+        title={m.translations.empty.notReady}
+        description={m.errors.onboarding["not-ready"]}
+      />
+    </main>
+  );
+}

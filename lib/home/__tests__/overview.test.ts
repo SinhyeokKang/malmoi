@@ -191,6 +191,29 @@ describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
   });
 
   /**
+   * ⚠️ **DB가 준 순서에 기대지 않는다** (code-review 🟡1). `orderBy: { updatedAt: "desc" }`에 보조 키가
+   * 없으면 같은 시각의 편집 둘의 순서가 요청마다 다를 수 있고, `Array.sort`는 안정 정렬이라 **그
+   * 순서를 그대로 보존한다** — 같은 DB 상태가 다른 화면을 낸다. 보증을 조회 문자열이 아니라
+   * **이 함수**에 둔다: 여기서 깨면 테스트가 잡고, 조회는 어느 8건을 고를지만 정한다.
+   */
+  it("같은 시각의 편집은 키·로케일 순으로 결정적이다 — 입력 순서가 뒤바뀌어도 같다", () => {
+    const same = at("2026-09-09T10:00:00Z");
+    const a = { at: same, key: "a.one", namespace: "a", locale: "ko", actor: null };
+    const b = { at: same, key: "a.one", namespace: "a", locale: "ja", actor: null };
+    const c = { at: same, key: "b.two", namespace: "b", locale: "ko", actor: null };
+
+    const order = (edits: typeof a[]) =>
+      recentActivity({ edits, lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 }).map(
+        (i) => (i.kind === "edit" ? `${i.key}:${i.locale}` : i.kind),
+      );
+
+    expect(order([a, b, c])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
+    // 조회가 다른 순서로 줘도 화면이 같아야 한다 — 그것이 이 케이스의 요지다.
+    expect(order([c, a, b])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
+    expect(order([b, c, a])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
+  });
+
+  /**
    * ⚠️ **동시각 정렬이 결정적이어야 한다.** 같은 DB 상태가 같은 화면을 내야 하고, 안 그러면
    * 새로고침마다 순서가 바뀌는 목록이 된다 — 이 리포가 export 결정성에 대해 지키는 규칙과 같은 축이다.
    * 리포 수준 사건(publish·push)이 그 시각의 편집들 **위**에 온다: 그것들이 편집을 감싸는 사건이다.

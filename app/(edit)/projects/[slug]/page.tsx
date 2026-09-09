@@ -2,10 +2,9 @@ import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProjectNotReady } from "@/components/project-not-ready";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { activeLocaleProgress, recentActivity, type ActivityItem } from "@/lib/home/overview";
@@ -65,22 +64,10 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
 
   /**
-   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **OWNER는 설정 화면으로 보낸다** — 거기에 [다시 시도]와
-   * 워크플로 YAML이 있어 스스로 끝낼 수 있다. 번역 화면과 같은 분기다: 이 화면이 착지점이 된 뒤로
-   * 그 갈래를 **먼저** 만나는 자리가 여기다.
+   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **정책과 문구는 `ProjectNotReady`가 든다** — 번역
+   * 화면도 같은 갈래를 만나고, 이 화면이 착지점이 된 뒤로 그것을 **먼저** 만나는 자리가 여기다.
    */
-  if (planProjectReadiness(project) !== "ready") {
-    if (canPerform(role, "project:settings")) redirect(routes.settings(slug));
-    return (
-      <main className="mx-auto w-full max-w-4xl px-6 py-6">
-        <EmptyState
-          icon={Languages}
-          title={m.translations.empty.notReady}
-          description={m.errors.onboarding["not-ready"]}
-        />
-      </main>
-    );
-  }
+  if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
 
   const [counts, edits] = await Promise.all([
     loadLocaleCounts(prisma, projectId),

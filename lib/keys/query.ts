@@ -259,7 +259,12 @@ export async function loadRecentEdits(
   const rows = await prisma.translation.findMany({
     // ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
     where: { projectId, updatedBy: { not: null } },
-    orderBy: { updatedAt: "desc" },
+    /**
+     * ⚠️ **보조 키가 있어야 어느 N건이 오는지 결정적이다.** 경계 시각을 공유하는 행이 셋인데
+     * `take`가 둘만 받으면, 보조 키 없이는 그 셋 중 무엇이 오는지가 요청마다 달라진다. 화면 순서의
+     * 보증은 `recentActivity`가 따로 들고 있다 — 이쪽은 **선택**을 고정한다.
+     */
+    orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }],
     take: limit,
     select: {
       updatedAt: true,
