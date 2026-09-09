@@ -106,10 +106,16 @@ beforeEach(() => {
 const ready = (slug: string) => ({ slug, installationId: "1", lastCommitSha: "a".repeat(40) });
 
 describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => {
-  it("대상이 0개면 빈 배열 200이다 — 오류가 아니다", async () => {
+  /**
+   * ⚠️ **응답 모양이 `{ results, unprocessed }`다** (2026-09-09, sec-audit 발견 26). 전에는 배열
+   * 자체였는데, 순회 상한이 붙으면서 **못 돈 수**를 실을 자리가 필요했다 — 항목으로 섞으면
+   * `PullItem` 계약이 흔들리고 소비자가 그것을 프로젝트 하나로 센다. cron은 본문을 버리므로
+   * 실질 소비자는 없지만, 계약이 바뀐 것은 사실이라 여기 적는다.
+   */
+  it("대상이 0개면 빈 결과 200이다 — 오류가 아니다", async () => {
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual([]);
+    await expect(res.json()).resolves.toEqual({ results: [], unprocessed: 0 });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
   });
 
@@ -119,10 +125,13 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
     expect(hoisted.triggerPull.mock.calls.map((c) => c[1])).toEqual(["alpha", "zulu"]);
-    await expect(res.json()).resolves.toEqual([
-      { slug: "alpha", status: "skipped", reason: "no-edits" },
-      { slug: "zulu", status: "skipped", reason: "no-edits" },
-    ]);
+    await expect(res.json()).resolves.toEqual({
+      results: [
+        { slug: "alpha", status: "skipped", reason: "no-edits" },
+        { slug: "zulu", status: "skipped", reason: "no-edits" },
+      ],
+      unprocessed: 0,
+    });
   });
 
   it("준비 안 된 프로젝트는 부르지 않는다 — 돌리면 `runPull`이 던져 매일 밤 로그를 채운다", async () => {
@@ -145,7 +154,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     const res = await pullGet(pullRequest());
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const { results: body } = await res.json();
     expect(body).toHaveLength(3);
     expect(body[0]).toMatchObject({ slug: "a", status: "skipped" });
     expect(body[2]).toMatchObject({ slug: "c", status: "committed" });
@@ -167,9 +176,10 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual([
-      { slug: "order-check", status: "failed", error: "프로젝트를 찾을 수 없다: order-check" },
-    ]);
+    await expect(res.json()).resolves.toEqual({
+      results: [{ slug: "order-check", status: "failed", error: "프로젝트를 찾을 수 없다: order-check" }],
+      unprocessed: 0,
+    });
     spy.mockRestore();
   });
 
@@ -208,7 +218,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
       .mockRejectedValueOnce("문자열 throw")
       .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const body = await (await pullGet(pullRequest())).json();
+    const { results: body } = await (await pullGet(pullRequest())).json();
     expect(body).toHaveLength(2);
     expect(body[0]).toMatchObject({ slug: "a", status: "failed" });
     expect(body[1]).toMatchObject({ slug: "b", status: "skipped" });
@@ -225,9 +235,10 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
   it("`triggerPull`이 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
     hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-changes", warnings: ["w"] });
-    await expect((await pullGet(pullRequest())).json()).resolves.toEqual([
-      { slug: "a", status: "skipped", reason: "no-changes", warnings: ["w"] },
-    ]);
+    await expect((await pullGet(pullRequest())).json()).resolves.toEqual({
+      results: [{ slug: "a", status: "skipped", reason: "no-changes", warnings: ["w"] }],
+      unprocessed: 0,
+    });
   });
 
   it("조회 자체가 실패하면 500이다 — 순회 전이라 배열을 만들 수 없다", async () => {

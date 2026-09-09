@@ -18,12 +18,25 @@ import type { PullResult } from "./run";
  */
 export function selectPullTargets(
   projects: readonly { slug: string; installationId: string | null; lastCommitSha: string | null }[],
-): string[] {
-  return projects
+  limit: number,
+): { targets: string[]; unprocessed: number } {
+  const ready = projects
     .filter((p) => p.installationId !== null && p.lastCommitSha !== null)
     .map((p) => p.slug)
     .sort(compareKeys);
+  // ⚠️ **자르기는 정렬 뒤다** — 매일 밤 같은 앞부분이 돈다는 뜻이고, 그래야 실패 지점이 재현된다.
+  return { targets: ready.slice(0, limit), unprocessed: Math.max(0, ready.length - limit) };
 }
+
+/**
+ * 한 번의 cron이 도는 프로젝트 수 상한 (2026-09-09, sec-audit 발견 26).
+ *
+ * ⚠️ **상한이 잘림을 없애지 않는다 — 시끄럽게 만든다.** 전에는 준비된 전 프로젝트를 직렬로 돌았고,
+ * `maxDuration = 60`을 넘으면 slug 정렬 **뒤쪽이 통째로 안 돌았다.** 응답은 항상 200 배열이라 cron
+ * 실행은 성공으로 표시되고 요약에도 그 사실이 없어, **관측값이 정상과 같았다**(POSTMORTEM 2026-09-06의
+ * 형태). 지금은 못 돈 수가 응답과 로그에 실린다 — 거기 닿으면 그때 cron 분할을 본다.
+ */
+export const PULL_BATCH_LIMIT = 50;
 
 /**
  * cron 응답의 항목 하나. **계약을 타입으로 든다** — `unknown[]`이면 `slug`가 스프레드에 덮이거나
