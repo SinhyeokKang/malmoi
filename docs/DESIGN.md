@@ -259,11 +259,12 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 사이드바 | `w-60 shrink-0 bg-muted border-r border-border` (§5.1) · `xl` 이상에서 아이콘 레일(`w-12`)로 접기 · `xl` 미만은 햄버거로 여는 오버레이 + `bg-foreground/40` 배경 |
 | 브랜드 | `h-12 px-4` "Malmoi" 워드마크 `text-sm font-medium` |
 | 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(**내 멤버십 목록만** — "All projects"는 하단 전역 항목이 든다). hover는 `hover:bg-background/60`이다 — muted 표면에서 유효한 유일한 배경 hover다(§2.1). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
-| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · **(6b) 우측 카운트** — 지금은 없다. 카운트가 사는 곳은 번역 화면의 네임스페이스 패널이다(§6.1) |
-| 항목 셋 | Translations · Members* · Settings* (* OWNER에게만 렌더 — 편의다, 방어는 페이지). **6a는 둘이다** — Members는 6b가 더한다(`lib/shell/nav.ts`의 `projectSections`) |
-| 구분선 | `mx-4 my-3 border-t border-border` |
-| 하단 전역 항목 | All projects · New project · Sign out · **Collapse sidebar** — 같은 항목 형, **아이콘도 전부 든다**(§6.8). Account·Members는 6b가 더한다 |
-| top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-end` · **드는 것은 사용자 메뉴 하나다** — 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → Sign out; Account는 6b). ⚠️ **breadcrumb은 여기 없다** (2026-09-08 정정): 레이아웃이 페이지 props를 못 받아 여기 두려면 parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요하다 — **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 햄버거(`xl` 미만)는 사이드바가 자기 여는 버튼으로 든다 |
+| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · **우측 카운트는 없다** — SAAS §7.7 결정 5이 그것을 닫았다(셸이 매 렌더에 세게 되고 키 수와 무관한 1.9초 고정비가 이미 있다). 카운트가 사는 곳은 번역 화면의 네임스페이스 패널이다(§6.1) |
+| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (6b-4 — SAAS §7.7). 순서는 **사용자 축 먼저**(`Your work`: All projects · New project · Your account) → **프로젝트 축**(`<project>`). 헤더가 서로 다르다: 앞은 라벨 `<p>` `text-xs text-muted-foreground font-medium tracking-wide uppercase px-4 pt-2 pb-1`, 뒤는 **프로젝트 컨텍스트 스위처가 곧 헤더**다(이름을 라벨로도 보이면 같은 값이 두 번 뜬다). 둘째 구역만 `border-t border-border mt-3 pt-1`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 렌더되지 않는다**(그때 구역을 구별할 수단이 `aria-label`뿐이다) |
+| 프로젝트 축 항목 | Translations · Members · Settings* (* `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **Locales·Home은 6b-5·6b-6, Logs는 7단계다** — **항목은 자기 라우트와 같은 사이클에 온다**(없는 라우트를 가리키는 항목은 404다) |
+| 활성 판정 | ⚠️ **축마다 다르다.** 프로젝트 축은 **접두**(`?ns=`·`/settings` 같은 하위 경로가 있다), 사용자 축은 **정확히 일치** — `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 [All projects]도 함께 선택돼 보인다 |
+| 하단 전역 | Sign out · **Collapse sidebar** — 라우트가 아니라 조작이라 구역 밖 `mt-auto`다. 같은 항목 형이고 **아이콘도 전부 든다**(§6.8) |
+| top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-end` · **드는 것은 사용자 메뉴 하나다** — 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → **Your account** → Sign out). ⚠️ **breadcrumb은 여기 없다** (2026-09-08 정정): 레이아웃이 페이지 props를 못 받아 여기 두려면 parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요하다 — **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 햄버거(`xl` 미만)는 사이드바가 자기 여는 버튼으로 든다 |
 | 콘텐츠 | `flex-1 min-w-0` · limited면 `mx-auto max-w-4xl px-6 py-6` · fluid(번역)면 `flex min-h-0 flex-1` |
 | **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). **스크롤은 콘텐츠 컬럼과 사이드바가 각자 든다**(둘 다 `overflow-y-auto`), 콘텐츠 컬럼엔 `min-w-0`이 함께 있어야 번역 표의 가로 스크롤이 사이드바를 밀지 않는다. `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
 
@@ -271,7 +272,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 다섯
 
-블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ⚠️ **Base branch·Base language 폼은 6b다** — design §3.13 머리의 🔴이 그 설계를 다시 쓰라고 요구한다. `/account` 라우트도 없으므로 "Manage in Account" 같은 문구를 두지 않는다.
+블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ✅ **Base branch·Base language 폼은 6b-3이 Repository 카드에 넣었다**(기준 로케일은 6b-5가 `locales`로 옮긴다 — SAAS §7.7 결정 4). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
 
 - ⚠️ **블록이 독립적으로 실패한다.** 건강성은 App 토큰, 계정 한 줄은 사용자 토큰 — 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다. 각 블록이 자기 오류를 `Alert danger`(in-block)로 낸다.
 - **push 토큰은 발급 응답에만 원문이 있다** — 값 칩 + [Copy] + "You won't see this again. Update the repository secret now."
@@ -304,6 +305,23 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 - **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
 - **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
   대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
+
+### 6.67 계정 (`/account`) — 카드 셋 (2026-09-09, 6b-4)
+
+**사용자 축의 유일한 화면이다** (SAAS §7.7). 셸 안 `mx-auto max-w-4xl px-6 py-6`, 제목 `text-base
+font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올라갈 자리가 없다.
+
+카드 셋: **Profile** · **GitHub account** · **Sign out**.
+
+| 블록 | 규칙 |
+|---|---|
+| Profile | 이름·이메일을 `<dl>`로 (`sm:grid-cols-[8rem_1fr]`, 라벨 `text-xs text-muted-foreground`). ⚠️ **읽기 전용이고 그 이유를 카드 설명이 말한다** — provider가 소유하고 재로그인마다 `planEmailRefresh`가 갱신한다(고칠 수 있게 하면 초대 대조가 검증되지 않은 주소 위에 선다). 값은 세션이 아니라 **`User` 행**에서 읽는다: 초대 대조가 보는 값이 그쪽이다. ⚠️ 주소는 식별자라 `text-mono`이고 **마스킹하지 않는다**(자기 주소다 — 남의 주소를 보이는 자리만 `maskEmail`을 지난다) · 값이 없으면 "None" |
+| GitHub account | 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 다른 것은 **연결 버튼의 착지**뿐이다(`dest="account"`) |
+| Sign out | 셸에 이미 둘(사이드바 하단·유저 메뉴)이 있는데 여기 세 번째를 둔다 — Action 하나에 상태가 없어 **낡을 수 없고**, 계정 화면에 로그아웃이 없으면 사용자가 찾으러 나간다. 버튼은 `default sm`이다(`danger`가 아니다 — 되돌릴 수 있다) |
+
+⚠️ **페이지 수준 거부는 global `Alert danger`** (§6.4) — callback이 연결 실패를 `?e=`로 여기 보낸다.
+**주소창 값이라 `isConnectError`로 거른다**: 캐스팅하면 프로토타입 키가 문자열 자리에 함수를 넣어 화면이
+죽는다 (POSTMORTEM 2026-09-08).
 
 ### 6.7 새 프로젝트 (`/projects/new`)
 
