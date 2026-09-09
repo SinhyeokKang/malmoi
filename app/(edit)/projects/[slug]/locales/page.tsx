@@ -80,8 +80,11 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         <p className="text-muted-foreground text-xs">{m.locales.description}</p>
       </div>
 
-      <Card>
-        {rows.length === 0 ? (
+      {/*
+        ⚠️ **표는 Card 밖이다** (멤버 화면과 같은 관용구). Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐
+        표만 16px 더 들여쓰였다 — 실측으로 확인했다. 행 구분은 `Td`의 `border-t`가 든다.
+      */}
+      {rows.length === 0 ? (
           <EmptyState
             icon={Globe}
             title={m.locales.empty.title}
@@ -132,10 +135,13 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
             </tbody>
           </Table>
         )}
-      </Card>
 
+      {/*
+        ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 이미 라벨과 help를 들고, 둘을 다 두면
+        같은 문장이 화면에 두 번 나온다(실물로 확인했다). Card는 경계선만 든다.
+      */}
       {canManage && (
-        <Card title={m.locales.field.label} description={m.locales.field.help}>
+        <Card>
           <BaseLocaleForm
             slug={slug}
             baseLocale={project.baseLocale}

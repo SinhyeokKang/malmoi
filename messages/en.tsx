@@ -388,7 +388,8 @@ export const en = {
       badge: "File missing",
       reason: (code: string): string =>
         `There's no file for ${code} in the repository any more, so it isn't sent back.`,
-      restore: "Add the file again and the translations below come back on the next CI push.",
+      /** ⚠️ "below"라고 쓰지 않는다 — 그 번역은 아래가 아니라 같은 행의 진행률 열이다(실물로 확인했다). */
+      restore: "Add the file again and its translations come back on the next CI push.",
     },
     empty: {
       title: "No languages yet",
