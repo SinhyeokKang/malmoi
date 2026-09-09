@@ -7,6 +7,10 @@
 > 역할은 둘이다 — **OWNER**(개발자) · **EDITOR**(번역 편집자). 로그인 provider는 역할을 정하지 않는다 (SAAS §3).
 >
 > **2026-09-08 `/feature-review`** — §5(멤버)·§7(계정)과 §6의 base 필드는 **6b**다(spec §3.10). 6a의 라우트는 §1·§2·§3·§4·§6·§8 여섯.
+>
+> ✅ **6b가 닫혔다** (2026-09-09). ⚠️ **이 문서에 스토리가 없는 화면이 둘 생겼다** — 로케일(`/projects/:slug/locales`)과
+> Home(`/projects/:slug`)이고, 2026-09-09 IA 확정이 더했다. **그 정본은 SAAS §7.7**이다. 아래 §6의
+> base language 자리도 6b-5가 `locales`로 옮겼다.
 
 ## 0. 앱 셸 — 모든 `(edit)` 라우트가 공유한다
 
@@ -91,7 +95,8 @@ Projects                                                        [ + New project 
   둘째 줄에 요약 또는 **readiness 라벨**(`ready`면 표시 없음 — 가장 흔한 상태가 조용하다).
 - **빈 상태**: EmptyState("No projects yet" + "Connect a repository to start translating." + [New project]).
 - `?e=` 거부 사유는 **global Alert**(top bar 아래 전폭 — DESIGN §6.4 배치 셋 중 하나. `isAccessError`·`isConnectError` 둘 다 읽는다 — POSTMORTEM 2026-09-06).
-- **GitHub 계정 섹션은 6a에서 그대로 여기 남는다**(해제 버튼 포함) — 6b가 `/account`를 만들지 말지 판정한다.
+- **GitHub 계정 섹션은 6a에서 그대로 여기 남았다**(해제 버튼 포함). ✅ **6b-4가 `/account`로 옮겼다** —
+  판정이 뒤집혔고(SAAS §7.7) 목록 화면에는 그 섹션이 없다.
 - 정렬은 이름순. 검색·페이지네이션은 없다 (사용자당 프로젝트 3개 제한 — SAAS §8 7단계).
 
 스토리:
@@ -279,7 +284,9 @@ Workflow
   ┌ yaml ───────────────────────────────────────────┐
 
 GitHub account
-  (6a: 지금 섹션 그대로 — 연결 상태 + [Disconnect])   (6b: Connected as @handle · Manage in Account → — /account를 만든다면)
+  (6a: 지금 섹션 그대로 — 연결 상태 + [Disconnect])   (6b-4 이후: 이 블록은 설정에 **남는다** — 재인가
+  안내가 리포 재연결의 맥락에서 필요하다. "Manage in Account" 링크는 두지 않았다: 고치려고 두 화면을
+  오가게 된다, DESIGN §6.6)
 ```
 
 - 섹션 넷이 **settings-block** 형(제목 + 한 줄 설명 + 본문)이고, 각자 **독립적으로 실패**한다 (건강성은 App 토큰,
@@ -287,7 +294,10 @@ GitHub account
 - 연결 건강성 6갈래의 색 규칙은 DESIGN §6(상태 배지)을 따른다 — `unknown`을 `app-uninstalled`로 접지 않는다.
 - [Run first import]의 결과 컴포넌트는 **readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤 실패는 인라인(in-block) — 두 층을 섞지 않는다.
-- **Base branch·Base language는 6b-3이고 설계가 확정됐다** (2026-09-09 design §3.13 재작성). 기준 로케일은 orphaned 아닌 기존 로케일만 고를 수 있다.
+- **Base branch·Base language는 6b-3이 이 화면에 넣었다** (2026-09-09 design §3.13 재작성). 기준 로케일은
+  orphaned 아닌 기존 로케일만 고를 수 있다. ⚠️ **하루 뒤 6b-5가 기준 로케일을 `/projects/:slug/locales`로
+  옮겼다** — 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를 말할 자리가 생긴다
+  (SAAS §7.7 결정 4). **이 화면에 남은 것은 base branch 하나**이고, 대기 Alert도 함께 갔다.
   ⚠️ **저장은 `Project.declaredBaseLocale`(선언)에만 쓴다** — `baseLocale`(현실)은 push가 소유하므로 **야간 pull이 옛 base로 계속 정상 동작하고 아무것도 멈추지 않는다.**
   대기 중(`basePending`)에는 이 블록에 `Alert warning` + 재생성 YAML이 **상시** 남고("Update the workflow — until then CI pushes keep the old base language"),
   워크플로를 고쳐 CI가 새 base로 push하면 `checkFormat`이 **선언과 대조해 통과**시키고 그 push가 선언을 소비한다.
@@ -305,10 +315,12 @@ GitHub account
 - As an **OWNER whose first import failed partially**, I want the list of files that could not be read to stay on
   screen, so that dropped values are never hidden as success (SAAS 불변식 9).
 
-## 7. `/account` — Account (**6b** — 만들지 말지부터, design §3.10)
+## 7. `/account` — Account (✅ **6b-4가 만들었다** — 판정이 뒤집혔다, design §3.10)
 
 > 추천은 "만들지 않는다": 계정 섹션은 이미 `/projects`에 있고 `disconnectGithub()`은 사용자 수준이다. 사용자 메뉴의 "GitHub account" 항목이 거기로 간다.
-> 만든다면 아래 와이어 — `startGithubConnectForUser`는 무인자라 `dest` 인자 추가가 시그니처 변경이고, `landing`은 callback route의 지역 함수다.
+> 아래 와이어대로 만들었다. ⚠️ **`startGithubConnectForUser`는 `dest`를 받되 `StateDest`가 아니라 갈래
+> **이름**(`"new" | "account"`)만 받는다** — 통째로 받으면 클라이언트가 착지를 골라 open redirect 판정이
+> 생긴다. `landing`은 callback route의 지역 함수이고 6b-4가 삼항 사슬을 `landingPath`로 내렸다(갈래 넷).
 
 ```
 Account
@@ -364,8 +376,10 @@ GitHub
 | `/projects/:slug/settings` | 안 | `requireProjectAccess(project:settings)` | ✓ | 6a (base 필드는 6b) |
 | `/invite/:token` | 밖 | 토큰 (인가 예외) | ✗ (의도) | 6a |
 | `/projects/:slug/members` | 안 | `requireProjectAccess(translation:write)` — 컨트롤은 `member:manage` | ✓ | ✅ **6b-2 신설** (2026-09-09) |
-| `/account` | 안 (컨텍스트 없음) | `requireUser` | 추가 | **6b — 만들지 말지부터** |
-| `/api/github/callback` | — | `requireUser` | ✗ (의도) | 6b (`dest` 갈래 `account` — 만든다면) |
+| `/account` | 안 (컨텍스트 없음) | `requireUser` | 추가 | ✅ **6b-4** (matcher는 `/account` — 하위 라우트가 없다) |
+| `/api/github/callback` | — | `requireUser` | ✗ (의도) | ✅ 6b-4 (`dest` 갈래 `account`) |
+| `/projects/:slug/locales` | 안 | `translation:write` | 이미 덮임 | ✅ **6b-5** (SAAS §7.7이 더했다) |
+| `/projects/:slug` (Home) | 안 | `translation:write` | 이미 덮임 | ✅ **6b-6** (착지점, SAAS §7.7) |
 
 `app/__tests__/entry-points.test.ts`가 신설 라우트를 자동으로 센다 — `page.tsx`가 `GUARDS` 중 하나를 부르지 않으면 red이고, `(edit)/**/page.tsx`가 matcher에 없으면
 "보호 라우트가 미들웨어 matcher에 있다"(`:333`)가 red다.

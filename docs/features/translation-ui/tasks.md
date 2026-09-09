@@ -169,7 +169,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 ⚠️ **리뷰가 🔴 하나를 잡았다**: `Tooltip`이 Radix provider 없이 렌더돼 **[Collapse sidebar]를 누르면 셸이 죽었다** — 접힘이 `localStorage`에 남아 다음 방문에도 같은 자리에서 죽는다. 프리미티브가 자기 provider를 들게 고쳤다 (POSTMORTEM 2026-09-08).
 ⚠️ **`Button`에 `asChild`가 없어 `ButtonLink`가 생겼다** — Slot 한 겹이 `focus-ring` 스캐너에서 태그를 지운다. 링크는 `<a>`라 그 넷이 아니고, 그래서 링을 상수로 붙여도 방어선이 안 좁아진다.
 ⚠️ **`loadMemberships`가 목록 화면의 지역 사본을 흡수했다** — 같은 이름이 두 벌이면 그중 하나가 낡는다. `installationId`·`lastCommitSha`가 반환에 더해졌다(목록의 상태 텍스트 재료).
-⚠️ **Account 항목은 사이드바에 없다** — 6b-4가 `/account`를 만들지 말지 정한 뒤에 붙는다. 지금 하단 전역은 All projects · New project · Sign out · Collapse 넷이다.
+⚠️ **Account 항목은 6a 시점의 사이드바에 없었다** — 갈 곳이 없어서다. ✅ **6b-4가 `/account`를 만들며 붙였고 사이드바를 2구역으로 재편했다**: `Your work`(All projects · New project · Your account) / `<project>`(Overview · Translations · Languages · Members · Settings). Sign out·Collapse는 라우트가 아니라 조작이라 구역 밖 하단이다.
 
 ## T7. 번역 화면 + Publish
 

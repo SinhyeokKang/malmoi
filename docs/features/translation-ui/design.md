@@ -8,7 +8,14 @@
 > **2026-09-08 `/feature-review`** — 단계가 6a/6b로 갈렸고(§11 #6) 아래 결정이 바뀌었다: 사전은 `messages/en.tsx`(§3.1) · 스캐너는 축소형
 > 허용 목록(§3.1.5) · 미배포 집계는 Prisma `count`(§3.5) · 저장 a11y는 표 단위 live region + 조건부 포커스(§3.8) · Publish는 편집자 어휘·
 > 문구 다섯/tone 넷(§3.4) · 배너 재정의(§3.11) · 프리미티브 16(§3.2) · 로그인 장식은 토큰만(§3.12) · 기본 착지는 pending>0인 첫 ns(§3.3).
-> **§3.9·§3.13은 다시 썼다** (2026-09-09 — 6b-2 구현 / 6b-3 재작성). **§3.10(계정 화면)만 남았고 그것은 판정이다**(6b-4 — 추천은 만들지 않는 것).
+> **§3.9·§3.13은 다시 썼다** (2026-09-09 — 6b-2 구현 / 6b-3 재작성).
+>
+> ✅ **6b가 여섯으로 닫혔다** (2026-09-09 — 6b-1~6b-6 전부 dev). ⚠️ **§3.10의 판정이 뒤집혔다**: 이 문서의
+> 추천은 "`/account`를 만들지 않는다"였고 근거가 "지금 계정 컨트롤이 하나뿐"이었는데, **그 하나를 목록
+> 화면에 얹게 만든 원인이 자리가 없다는 것**이라 2026-09-09 IA 확정이 방향을 뒤집었다 — 그래서 6b-4가
+> 만들었다. **화면 구조의 정본은 이제 SAAS §7.7**이고(라우트 여덟 + 결정 다섯), 6b-5·6b-6은 그 문서가
+> 만든 배송이라 이 design에 절이 없다. 이 문서에 남은 값은 **왜 그렇게 정했나**이고 뒤집힌 결정은
+> 위처럼 표시해 둔다.
 
 ## 1. 영향 받는 흐름
 
@@ -328,13 +335,14 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 안 고쳤다**(소비자 셋의 표시가 갈린다). 규칙: **정보를 버리는 표시 변환이 행을 구별하는 유일한 값이면
 목록 전체를 보는 판정이 필요하다** (POSTMORTEM 2026-09-09).
 
-### 3.10 계정 화면 — **6b** (만들지 말지부터)
+### 3.10 계정 화면 — ✅ **6b-4가 만들었다** (판정이 뒤집혔다)
 
 > ⚠️ 2026-09-08 검수: SAAS §8 6단계 3번이 이미 `[x]`이고 착지처가 `/projects`다(계정 섹션이 거기 있다 — `disconnectGithub()`은 `app/(edit)/projects/actions.ts`에
 > **커밋돼 있다**, `requireUser`, 자기 `Account` 행). `/account`는 그 섹션의 이사일 뿐인데 라우트·matcher·`StateDest` 갈래(배포 직후 10분 옛 쿠키 창)·
 > `entry-points`·사이드바 항목이 따라온다. **추천: 만들지 않는다** — 사용자 메뉴에 "GitHub account" 항목으로 `/projects` 계정 섹션에 간다.
 
-만든다면: `/account` (`requireUser`) · `middleware.ts` matcher에 `/account/:path*`(`entry-points.test.ts` "보호 라우트가 미들웨어 matcher에 있다"(`:333`)가 센다) ·
+실제로 만든 것: `/account` (`requireUser`) · `middleware.ts` matcher에 **`/account`**(⚠️ 이 문서는
+`/account/:path*`로 적었는데 하위 라우트가 없어 그 패턴을 쓰지 않았다) (`entry-points.test.ts` "보호 라우트가 미들웨어 matcher에 있다"(`:333`)가 센다) ·
 `startGithubConnectForUser`는 **무인자**이고 `dest`가 안에 `new`로 고정돼 있어(`actions.ts:295·313`) `dest` 인자 추가는 시그니처 변경이다(`onboarding.test.ts` 호출부 갱신) ·
 `landing`은 `lib/github-connect/state.ts`가 아니라 **`app/api/github/callback/route.ts:177`의 지역 함수**(request 인자)라 잎으로 내리는 작업이 신설로 붙는다(`state.ts`엔
 `StateDest` 타입만 있다) · 설정 화면의 GitHub 계정 섹션은 "Connected as @handle · Manage in Account" 한 줄.
@@ -360,6 +368,13 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 문제가 없다. `lg` 미만은 좌측 카드 하나. `?error=`는 Alert.
 
 ### 3.13 설정 — settings-block 넷 (6a) + 기준 브랜치·기준 로케일 변경 (**6b-3** — 2026-09-09 다시 썼다)
+
+> ⚠️ **기준 로케일은 하루 뒤 `/projects/:slug/locales`로 갔다** (6b-5 — SAAS §7.7 결정 4). 아래 절의
+> **판정과 컬럼 설계는 그대로 유효하고**(`declaredBaseLocale`은 선언, `baseLocale`은 현실, 되돌리기는
+> 같은 값 재저장) **자리와 Action만 옮겨졌다**: `updateBaseLocale`이 신설되고 `updateRepositorySettings`는
+> base branch만 받는다. 옮긴 이유는 그때 로케일이 **번역 표의 열로만** 존재해 orphaned 로케일의 사유를
+> 말할 자리가 없었기 때문이다. 설정 화면에 남은 것은 base branch와 **워크플로 YAML의 `base-locale:` 한 줄**
+> (대기 중에 박는 동작 유지)이다.
 
 섹션은 GitLab settings-block 형(제목 · 한 줄 설명 · 본문)이고 **각자 독립적으로 실패**한다(DESIGN 기존 규칙 유지). 계정 섹션은 6a에서 **그대로**다.
 `FirstIngestRetry`는 readiness 분기 밖 유지. `?e=`는 global Alert(DESIGN §6.4 배치).

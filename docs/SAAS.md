@@ -869,7 +869,7 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 상시로 센다. ⚠️ **"세 스코프"가 아니었다** — 둘 다 **Production+Preview**만 갖고 있었고 Development에는
 없었다. 삭제는 `vercel env ls`로 확인했다(CLI의 성공 메시지가 근거가 아니다 — CLAUDE.md).
 
-### 6단계 — 번역 UI 재작성 + Publish 🚧 **진행 중** → `features/translation-ui/`
+### 6단계 — 번역 UI 재작성 + Publish ✅ **완료 (2026-09-09, dev — 6a 넷 + 6b 여섯)** → `features/translation-ui/`
 
 3단계에서 이관한 화면을 **여기서 제대로 만든다.**
 
