@@ -243,7 +243,7 @@ awk '{printf "%s\n", $0}' key.pem | sed 's/\\n$//' | vercel env add GITHUB_APP_P
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(**`db:generate`** + typecheck + test + Codex 미러 드리프트) 단일이다. 앞의 스텝은 게이트가 아니라 선행 조건이지만, `.env.local`이 없는 환경에서 `prisma generate`가 도는지의 **상시 검증을 겸한다**(POSTMORTEM 2026-08-31 🔁). 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
+`ci.yml` 하나뿐이고 job은 `verify`(**`db:generate`** + typecheck + test + Codex 미러 드리프트) 단일이다. ⚠️ **`permissions: contents: read`가 job에 박혀 있고 `uses:` 셋이 40자 SHA로 핀돼 있다** (2026-09-09, sec-audit 발견 13 — 리포 기본값이 지금도 `read`라 동작은 안 바뀌었고, 요지는 그 설정을 **트리 안으로** 옮긴 것이다: 기본값은 대시보드 한 번으로 `write`가 되는데 이 job은 `pnpm test`로 임의 프로젝트 코드를 돈다). 앞의 스텝은 게이트가 아니라 선행 조건이지만, `.env.local`이 없는 환경에서 `prisma generate`가 도는지의 **상시 검증을 겸한다**(POSTMORTEM 2026-08-31 🔁). 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동(`workflow_dispatch`)** 이다.
 
 **✅ CI가 프로덕션 앞의 게이트다** (2026-09-04 브랜치 분리로 되살아났다). `dev→main` PR에 붙는 run이 그것이고, `/merge`는 그 체크가 green이어야 머지한다. 브랜치가 하나였던 동안에는 PR 이벤트 자체가 없어 CI가 배포 **뒤에** 돌았다 — 그때의 유일한 방어선은 `/push`의 로컬 게이트였다.
 
@@ -824,7 +824,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
 | `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
 
-- **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. **대상 리포의 composite action 참조(`…/l10n-push@main`)는 default branch와 무관하므로 그대로 동작한다** — 오히려 action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓰는 것이 안전한 성질이다 (docs/ACTIONS.md).
+- **GitHub default branch는 `dev`다.** PR 기본 base가 dev가 되면 실수로 main에 PR을 여는 일이 준다. ⚠️ **대상 리포의 composite action 참조는 `@l10n-push-v1`(불변 태그)이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 — 전엔 `@main`이었고 이 줄이 그것을 "안전하다"고 적었다). 그 논거는 *낡음*(action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다)이었는데 **묻는 축은 가변성**이다 — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다 (docs/ACTIONS.md).
 - **`main`에 직접 커밋·푸시하지 않는다.** 프로덕션 앞의 게이트(PR CI)를 통째로 건너뛴다.
 - **preview는 dev DB를 본다.** 프로덕션 데이터에 닿지 않는 것이 preview를 쓰는 이유의 절반이다 — Vercel env의 Preview 스코프가 그렇게 갈려 있어야 성립한다.
   - **dev 브랜치 고정 URL**: `https://malmoi-git-dev-ox501501-1046s-projects.vercel.app` (배포별 URL과 별개로 dev의 최신 preview를 항상 가리킨다)
@@ -930,7 +930,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - ⚠️ **App 설치가 `Only select repositories`다** (2026-09-07 전환 — 그 전엔 `all`이었다). **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 화면은 "App이 제거·일시중지됐거나 이 리포 접근이 철회됐어요"를, 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 넷**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`. `skillflo-web`은 일부러 빠져 있다(`Project.installationId`가 `null`이라 pull이 애초에 안 돈다). 전환한 이유는 T5의 접근 철회 시나리오가 `all`에서 재현 불가였기 때문이다.
 - **GitHub App 개인키는 개행이 들어간 PEM**이다. Vercel env에 넣을 때 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다.
 - **`.pem`은 `.gitignore`에 있다.** 이 패턴이 뚫리면 리포 쓰기 권한이 새어나간다.
-- ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 설치 대상에서 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다(긴급 패치가 필요하면 `minimumReleaseAgeExclude`). `onlyBuiltDependencies`는 pnpm 10이 빌드 스크립트를 기본 차단하는 것의 화이트리스트라, 여기 없는 패키지는 `Ignored build scripts` 경고만 남기고 postinstall이 안 돈다. **둘 다 증상이 원인을 안 가리킨다.**
+- ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 설치 대상에서 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다(긴급 패치가 필요하면 `minimumReleaseAgeExclude`). `onlyBuiltDependencies`는 pnpm 10이 빌드 스크립트를 기본 차단하는 것의 화이트리스트라, 여기 없는 패키지는 `Ignored build scripts` 경고만 남기고 postinstall이 안 돈다. ⚠️ **목록은 셋뿐이다** (2026-09-09, sec-audit 발견 21 — `@prisma/client`·`sharp`를 뺐다): 스크립트가 **없는** 패키지를 목록에 두면 업스트림이 나중에 추가할 때 자동 승인되어 화이트리스트의 요지가 사라진다. **둘 다 증상이 원인을 안 가리킨다.**
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — 리포에서 사라진 로케일도 지우지 않고 표시만 하며, pull이 그 파일을 내지 않는다 (ARCHITECTURE §5.5.16). "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.
 
 ## 명시적 비범위

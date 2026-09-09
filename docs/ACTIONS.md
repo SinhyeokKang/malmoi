@@ -58,12 +58,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@main
+      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
+
+⚠️ **참조는 `@l10n-push-v1`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3). 이 스텝에는
+`secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
+대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. Free + private에서
+브랜치 프로텍션이 거부되므로(403 실측) `main`을 지키는 것은 `/merge` 관행뿐이고, 그 관행이 남의
+리포의 보안 경계가 되어서는 안 된다.
+
+⚠️ **전에 이 문서와 `CLAUDE.md`가 `@main`을 "안전하다"고 적었는데, 그 논거는 *낡음*이었다** —
+"action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
+**가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
+
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 `l10n-push-v1`을 그 커밋으로
+옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v2`를 새로 끊고 이 문서의 예시를
+바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다).
+
+⚠️ **action 안의 `uses:`도 전부 40자 SHA로 핀돼 있다** — 업스트림 태그 재지정(2025년
+`tj-actions/changed-files`)이 같은 경로로 들어온다. `scripts/__tests__/workflow-pins.test.ts`가
+`.github/` 전체를 훑어 가변 태그가 0건인지 상시로 센다.
 
 ✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된 전 프로젝트를 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
 
