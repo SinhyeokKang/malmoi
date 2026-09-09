@@ -527,7 +527,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ⬜ Home — 개요 (착지점)            ← 6b-6
 /projects/:slug/translations   번역
-/projects/:slug/locales        ⬜ 로케일 목록 + 기준 로케일 지정   ← 6b-5
+/projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, dev)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ⬜ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
@@ -556,10 +556,13 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
    **먼저**다 — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
    `Project.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
    "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
-4. **기준 로케일은 `locales`가 소유한다** — 로케일 목록과 base 지정이 한 화면에 있어야 한다.
-   ⚠️ **6b-3이 그것을 `settings`의 Repository 카드에 넣었고 6b-5가 옮긴다.** 옮기는 이유: 지금
-   로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할
-   자리가 없다(ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이 없었다).
+4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
+   화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
+   옮겼다.** 옮긴 이유: 그때까지 로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게
+   됐고 어떻게 되살리는지 말할 자리가 없었다(ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이
+   없었다). **화면이 갈리면서 Action도 갈랐다** — `updateBaseLocale` 신설이고, 인자를 optional로
+   두지 않은 이유는 "무엇을 안 보냈나"를 서버가 추측하게 되면 그것이 곧 malmoi#20의 모양이기
+   때문이다(대기 중에 브랜치만 고친 저장이 선언을 지웠다).
    - ⚠️ **경계 하나가 남는다**: `checkFormat`은 `adapter`·`pathTemplate`·`baseLocale` **셋을 한 묶음**으로
      검사하고 워크플로 YAML도 그 셋을 함께 낸다. base만 `locales`로 가면 **한 화면에서 고친 값이 다른
      화면의 코드 블록을 바꾼다.** 답: **`locales`의 대기 Alert가 고칠 줄을 직접 보인다**(6b-3이 이미 그
@@ -870,9 +873,9 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
 (PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
 + survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
-`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — dev) · **6b-4**(`/account` — dev)까지 올랐다.
-**남은 것은 `6b-5`(로케일 화면)와 `6b-6`(Home)이다** — 라우트 여덟 중 `logs` 하나가 7단계로 나갔고
-(§7.7), 그 둘이 §7.7의 ⬜를 비운다.
+`a00d380`)와 **6b-3**(base branch·기준 로케일 필드) · **6b-4**(`/account`) · **6b-5**(로케일 화면)까지
+dev에 올랐다. **남은 것은 `6b-6`(Home) 하나다** — 라우트 여덟 중 `logs`는 7단계로 나갔고(§7.7), Home이
+§7.7의 마지막 ⬜를 비운다.
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -942,10 +945,20 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - ⚠️ **`disconnectGithub`의 무효화 범위가 함께 움직여야 했다** (`4b9b0a6`) — `revalidatePath("/projects",
       "layout")`이 주 화면을 덮지 않게 됐다. POSTMORTEM 2026-09-09에 일반 규칙과 grep 전수 결과가 있고,
       **`saveTranslation`이 6b-6에서 같은 이유로 부족해진다**(Home이 같은 행을 읽는다)
-- [ ] **6b-5 `/projects/:slug/locales`** — 로케일 목록(orphaned 사유와 되살리는 방법을 말하는 유일한
-      자리 — ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이 없었다) + **기준 로케일 지정을 6b-3에서
-      이관** + 대기 배너 이관. ⚠️ **대기 Alert가 고칠 `base-locale:` 줄을 이 화면에서 직접 보인다**
-      (§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다)
+- [x] **6b-5 `/projects/:slug/locales`** ✅ **dev에 올랐다** (2026-09-09 — `1a834e2` + `e6772ae` +
+      `3cca010`). 로케일 목록(orphaned **사유와 되살리는 방법**을 말하는 유일한 자리) + 기준 로케일
+      지정·대기 Alert를 6b-3에서 이관. 게이트는 `translation:write`이고 컨트롤만 role로 갈린다.
+  - [x] 진행률은 **두 쿼리 병렬 한 벌**이다 — `loadKeys`를 재사용하면 903키 프로젝트에서 이 화면이
+      번역 화면만큼 무거워진다. `percent`는 **내림**이라 902/903이 100%로 보이지 않고, **base 로케일도
+      100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다 — POSTMORTEM 2026-09-09)
+  - [x] 무효화는 `/projects/<slug>` **서브트리**다 — `declaredBaseLocale` 소비자가 셋이고(이 화면 ·
+      번역 배너 · **설정의 워크플로 YAML**) 경로를 하나씩 나열하면 넷째가 조용히 빠진다
+      (POSTMORTEM 2026-09-09). **실물로 셋 다 확인했다**: 저장하면 세 화면이 함께 새 값을 보이고
+      되돌리면 함께 사라진다
+  - [x] **orphaned 갈래를 실물로 확인했다** (dev 로케일 행 하나를 뒤집었다 되돌렸다) — 맨 뒤로 정렬 ·
+      배경 없는 danger 배지 · 진행률 유지 · **셀렉트에서 빠진다**
+  - ⚠️ **워크플로 YAML은 설정에 그대로 뒀다**(§7.7 결정 4) — 대기 중 `base-locale:`을 박는 동작도
+      유지한다. 그래서 설정 화면은 그 컬럼을 **읽기만** 하고 `basePending`도 계속 부른다
 - [ ] **6b-6 `/projects/:slug` Home** — **착지점이다**(사용자 결정 2026-09-09).
       ⚠️ **다른 화면의 지표를 복제하지 않는다**(§7.7 결정 2) — 소유하는 것은 "한 화면에 모아야만 보이는
       것"뿐이다: 로케일별 진행률 대비 + 최근 활동. ⚠️ **착지 클릭 하나를 갚아야 한다**(결정 1) —
