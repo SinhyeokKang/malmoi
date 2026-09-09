@@ -796,6 +796,10 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
 - **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — `/`로 302되면 쿼리의 `code`가 사라져 연결이 성립하지 않는다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
+  **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
+  우연이 끝났다(SAAS §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
+  패턴에든 걸린다"가 red다(실측으로 확인했다 — 검사가 공허하지 않다).
 - ✅ **`/projects/:slug/members`는 matcher를 안 늘렸다** (2026-09-09, 6b-2). 패턴이 `/projects/:path*`라
   이미 덮는다 — `entry-points.test.ts`가 그것을 실제로 대조한다(패턴을 정규식으로 바꿔 보호 페이지 전수에 먹인다).
   ⚠️ **그 화면의 게이트가 `translation:write`다** — 멤버 관리 Action은 `member:manage`인데 **페이지는 아니다.**
@@ -864,6 +868,9 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
+**`/account`는 `isConnectError` 하나다** (2026-09-09, 6b-4) — 그 화면에 도달하는 사유가 연결 왕복뿐이고,
+인가 거부는 `requireUser`가 `/`로 보낸다. ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
+거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
 실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
 
@@ -928,11 +935,18 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
   것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
 - **목적지를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
-  ⚠️ **2026-09-07에 slug 하나에서 `dest` 갈래 둘로 넓어졌다** (SaaS 5단계): `{kind:"settings", slug}`와
-  `{kind:"new"}`. 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
-  공격자가 착지를 정한다. **옛 `{slug}` payload는 `state-mismatch`로 거부된다** — 관대하게 받으면
-  "slug가 있으면 설정 화면"이라는 세 번째 규칙이 영구히 남는다. 10분 만료라 배포 직후 그 창의
-  사용자는 버튼을 다시 누르면 된다.
+  ⚠️ **2026-09-07에 slug 하나에서 `dest` 갈래 둘로, 2026-09-09에 셋으로 넓어졌다**: `{kind:"settings",
+  slug}` · `{kind:"new"}`(SaaS 5단계) · `{kind:"account"}`(6b-4). 뒤의 둘은 **사용자 축이라 프로젝트가
+  없고** slug가 착지를 겸할 수 없으며, 갈래를 쿼리로 빼면 공격자가 착지를 정한다. **옛 `{slug}`
+  payload는 `state-mismatch`로 거부된다** — 관대하게 받으면 "slug가 있으면 설정 화면"이라는 세 번째
+  규칙이 영구히 남는다. 10분 만료라 배포 직후 그 창의 사용자는 버튼을 다시 누르면 된다.
+  - ⚠️ **갈래를 늘리는 방향과 payload 모양을 바꾸는 방향은 다르다.** 늘리기는 안전하다 — 옛 쿠키가
+    그대로 파싱되므로 진행 중인 왕복이 깨지지 않는다. 모양 변경(`{slug}` → `{dest}`)은 그 창의 왕복을
+    전부 죽인다. `state.test.ts`가 **양방향을 각각** 고정한다(옛 둘은 ok, 옛 모양은 mismatch).
+  - ⚠️ **나가는 Action은 `StateDest`를 인자로 받지 않는다** (6b-4). `startGithubConnectForUser`가 받는
+    것은 갈래 **이름**뿐이고(`"new" | "account"`, zod enum) payload는 서버가 만든다 — 클라이언트가
+    `{kind:"settings", slug}`를 통째로 보낼 수 있으면 남의 설정 화면으로 착지를 정할 수 있고, 그러면
+    이 자리에 open redirect 판정이 생긴다. 그 판정이 없는 것이 "목적지를 서명에 싣는" 설계의 값이다.
 - **⚠️ 빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
   않으므로, 이 층이 `requireEnv`에만 기대면 호출부의 실수 하나로 **누구나 재현 가능한 서명**이 통과한다
   (`checkBearer`가 `expected === ""`를 `not-configured`로 가른 것과 같은 판단). 설정 오류를 "다시 눌러
@@ -941,9 +955,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   요청 URL로 프로토콜을 판정해 **갈릴 수 있고**, 갈리면 연결이 100% `state-mismatch`가 된다.
   `__Host-` 접두를 https에서만 붙이는 이유는 **Safari가 `http://localhost`에서 Secure 쿠키를 버리기**
   때문이다 — `lib/auth/cookie.ts`의 `__Secure-` 이중 검사와 같은 계열이다.
-- **착지는 셋으로 갈린다** (2026-09-07): `dest`가 `settings`면 `/projects/<slug>/settings?e=`,
-  `new`면 `/projects/new?e=`, **state가 무효면 `/projects?e=`**다 — 목적지를 서명에서 얻으므로
-  무효한 state의 목적지는 믿을 수 없다. **셋 다 `?e=`를 읽는 쪽이 있다**(§6.3).
+- **착지는 넷으로 갈린다** (2026-09-09): `dest`가 `settings`면 `/projects/<slug>/settings?e=`,
+  `new`면 `/projects/new?e=`, `account`면 `/account?e=`, **state가 무효면 `/projects?e=`**다 —
+  목적지를 서명에서 얻으므로 무효한 state의 목적지는 믿을 수 없다. **넷 다 `?e=`를 읽는 쪽이
+  있다**(§6.3). ⚠️ 갈래가 넷이 되면서 삼항 사슬을 `landingPath`로 내렸다 — 사슬로 두면 새 갈래를
+  더할 때 어느 조건이 기본값(`null` = state를 못 믿는다)인지 보이지 않는다.
 
 #### `planRepoConnect` — 3중 검증이 판정 자리 하나에 모여 있다 (`connect-plan.ts`)
 
