@@ -160,12 +160,23 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * 1층 스킵의 "GitHub API 0회"(spec 완료 조건 4)는 그대로다.
      */
     const staleHead = await client.getRefSha(`heads/${deps.syncBranch}`);
-    // 브랜치 부재는 정상 상태다(첫 실행 전) — 되돌릴 것이 없고, 여기서 만들지도 않는다.
+    /**
+     * 브랜치 부재는 정상 상태다(첫 실행 전) — 되돌릴 것이 없고, 여기서 만들지도 않는다.
+     *
+     * ⚠️ **여기서는 `null`을 "부재"로 읽어도 된다.** `getRefSha`의 `null`은 "권한이 없다"일 수도
+     * 있어서(GitHub은 접근 불가 리소스에 404를 준다) 그것을 부재로 읽는 것이 오진의 원천이다
+     * (POSTMORTEM — base ref를 그렇게 읽으면 `createRef`가 실패할 때까지 오진이 이어진다).
+     * 이 줄이 안전한 이유는 **권한 문제라면 이미 위에서 죽었다**는 것뿐이다: base ref 조회가
+     * `null`이면 던지고, 그 뒤 트리와 blob을 전부 읽고 나서야 이 지점에 온다. 그 순서가 바뀌면
+     * 이 판정도 함께 다시 봐야 한다.
+     */
     if (staleHead !== null && staleHead !== baseHead) {
       await client.updateRefForce(deps.syncBranch, baseHead);
     }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
+    // ⚠️ **되돌리기보다 뒤에 쓴다** — 아래 커밋 경로와 같은 순서다. force가 실패했는데 먼저 쓰면
+    // 그 편집이 1층에 걸려 다음 실행이 스킵하고, 브랜치는 옛 스냅샷 그대로 남는다.
     // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
     await deps.saveLastPulledAt(project.id, captured);
     return { status: "skipped", reason: "no-changes", ...withWarnings };
