@@ -384,7 +384,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 </details>
 
-## 6b-3. 설정 — base branch·기준 로케일 ✅ **T1~T5 dev에 있다** (2026-09-09) / ⬜ T6은 `/merge` 뒤
+## 6b-3. 설정 — base branch·기준 로케일 ✅ **닫혔다** (2026-09-09 — T1~T5 프로덕션 `7c975c0` · T6 실측 완료)
 
 > **설계 요지**: **선언을 별 컬럼으로 뺀다.** `Project.declaredBaseLocale`(신설, additive, nullable)이 "다음 CI push가
 > 이 base를 가져오면 받아들이겠다"는 OWNER의 허가이고, `Project.baseLocale`은 **리포가 확인해 준 현실**로 남는다.
@@ -466,16 +466,40 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ⚠️ **워크플로 파일 수정이 곧 트리거다** — 그 리포의 `on.push.branches`가 `[main]`이라 커밋 자체가 run을 만든다. 커밋 메시지에 `[skip-l10n]`을 **넣지 않는다**(넣으면 job이 스킵된다).
 
-- [ ] ① **선언 없이 제3의 값 → 409.** 워크플로에 `base-locale: ja`를 박아 돌린다(선언은 `null`인 상태다).
+- [x] ① **선언 없이 제3의 값 → 409.** 워크플로에 `base-locale: ja`를 박아 돌린다(선언은 `null`인 상태다).
       검증: run **red** · 응답 본문 `{"error":"format mismatch"}` · **409** · `expected`에 `baseLocale: "en"`과 **`declaredBaseLocale`이 함께** 실렸다(6b-3이 더한 진단 — 여기서는 `null`이고, ②처럼 대기 중이면 그 값이 실려야 "그것도 받아들여진다"가 CI 로그에서 보인다) · DB의 `baseLocale`이 `en`으로 **그대로**
-- [ ] ② **선언을 세운 뒤 옛 base가 통과한다.** 설정 화면에서 기준 언어를 `ja`로 저장(대기 배너 확인) → 워크플로의 `base-locale:`을 **`en`으로** 되돌려 돌린다.
+- [x] ② **선언을 세운 뒤 옛 base가 통과한다.** 설정 화면에서 기준 언어를 `ja`로 저장(대기 배너 확인) → 워크플로의 `base-locale:`을 **`en`으로** 되돌려 돌린다.
       검증: **200** · **`declaredBaseLocale`이 `ja`로 살아 있다**(허가를 쓰지 않은 push는 선언을 비우지 않는다 — code-review 🔴1 · POSTMORTEM 2026-09-09) · 두 화면의 대기 배너가 **그대로 보인다** · `baseLocale`은 여전히 `en`
-- [ ] ③ **워크플로를 선언값으로 고치면 전환된다.** `base-locale: ja`로 고쳐 돌린다.
+- [x] ③ **워크플로를 선언값으로 고치면 전환된다.** `base-locale: ja`로 고쳐 돌린다.
       검증: **200** · `baseLocale === "ja"` · **`declaredBaseLocale === null`**(허가 소비) · `Locale.isBase`가 `ja` 한 행만 true · **`needsReview` 증가분 0**(기준선 4 그대로 — T3) · 대기 배너가 두 화면에서 사라졌다 · 편집 화면의 첫 열이 `ja`
-- [ ] ④ **다음 pull이 새 base로 파일을 낸다.** 번역 화면에서 Publish를 누른다.
-      검증: PR diff에서 `locales/ja.json`이 base 취급이다 — 빈 값이 `sourceText` 폴백으로 채워지고(`plan.ts:174`) description 폴백도 그 파일에 붙는다(`render.ts:46`)
-- [ ] ⑤ **원상복구.** 설정에서 `en`을 선언 → 워크플로 `base-locale: en` → 돌려서 `baseLocale === "en"`·선언 `null`로 되돌린다.
+- [x] ④ **다음 pull이 새 base로 파일을 낸다.** ⚠️ **이 단언은 틀렸고 실측이 고쳤다** (2026-09-09).
+      옛 문장은 "빈 값이 `sourceText` 폴백으로 채워진다"였는데 `plan.ts:174`의 폴백은 **행이 없을 때**만 걸린다 — `row.value ?? …`라 **빈 문자열은 통과하고**
+      다음 줄(`:175`)이 그것을 파일에서 뺀다. 그것이 의도다(그 자리 주석: "행이 있는데 빈 값이면 폴백하지 않는다 — 그건 '지우기'라는 정당한 조작이다").
+      description 폴백도 이 코퍼스에선 무의미하다 — **`json-catalog`엔 description 슬롯이 없다**(파일이 `키→문자열`이다).
+      **그래서 이 프로젝트에서 base 이동은 렌더 바이트에 아무 영향이 없다**: 빈 값 0개 · description 0개라 어느 로케일이 base여도 파일이 같고,
+      Publish가 "Nothing to send"를 내는 것이 **정답**이다(2층 blob 비교가 전부 일치 → `skipped`, `lastPublishedAt`을 건드리지 않는다 — design §3.4 확인).
+      실측: 그것을 관측 가능하게 만들려고 한 키의 en·ja를 비워 Publish했고, **두 파일에서 그 키가 함께 빠졌다** — base 여부와 무관했다. 그 관측이 아래 발견 둘을 낳았다
+- [x] ⑤ **원상복구.** 설정에서 `en`을 선언 → 워크플로 `base-locale: en` → 돌려서 `baseLocale === "en"`·선언 `null`로 되돌린다.
       검증: ①의 기준선과 같은 상태 (`baseLocale: en` · 선언 null · `needsReview` 4 · `Locale.isBase`가 `en`)
+
+#### T6 실측 결과 (2026-09-09, 프로덕션 `order-check`)
+
+| 단계 | 관측 |
+|---|---|
+| ① | run red · `POST https://mal-moi.com/api/push → 409` · `{"error":"format mismatch","expected":{…,"baseLocale":"en","declaredBaseLocale":null},"got":{…,"baseLocale":"ja"}}` — **`declaredBaseLocale`이 본문에 실린다**(6b-3의 진단이 프로덕션에서 동작한다). DB 무변경(`lastCommitSha` 그대로) |
+| ② | **200** `updated: 23` · **`declaredBaseLocale`이 `ja`로 살아남았다** · `baseLocale`은 `en` · 두 화면의 배너 유지 — **code-review 🔴1의 픽스가 실물에서 확인됐다** |
+| ③ | **200** · `baseLocale='ja'` · `declaredBaseLocale=null` · `isBase`가 `ja` 한 행 · **`needsReview` 4→4(증가분 0)** 이고 응답의 `staleTranslations: 0` · 배너 소멸 · 표 헤더가 `ja (base)` 첫 열 |
+| ④ | 위 정정 참조. **발견 둘**(아래) |
+| ⑤ | `baseLocale='en'` · 선언 `null` · `isBase` 복귀 · 값·키·`needsReview` 기준선 동일 · 워크플로 파일 원본과 바이트 동일 |
+
+⚠️ **복구하지 못한 상태 하나**: `Project.lastPublishedAt`이 `null` → `2026-09-08T20:06:59Z`로 전진했다. ④의 Publish가 **실제로 보냈기** 때문이라 옳은 값이고, 되돌리려면 프로덕션에 쓰기를 해야 해서 그대로 뒀다.
+⚠️ **대상 리포에 커밋 다섯**(워크플로 ①②③⑤ + 원복)과 **닫은 PR 하나**(#5 — 아래 발견 B)가 남는다. 워크플로 **파일 내용**은 원본과 동일하다.
+
+#### T6이 찾은 것 — 둘 다 **6b-3 밖이고 선행 결함**이다
+
+**A. base 로케일 셀을 비우면 다음 CI push가 그 키를 프로젝트 전체에서 orphan한다.** `buildWriteEntries`의 빈 값 처리는 의도된 것이지만(그 주석) **base와 비-base를 구별하지 않는다.** 비-base에서 "미번역으로 떨어진다"는 옳고, **base에서는 뜻이 다르다** — 그 파일이 키 집합의 진실이라(MVP §3.1) 키가 빠진 base 파일이 머지되면 `planPush`가 그 키를 `toOrphan`에 넣는다. 값은 DB에 남지만 편집 화면에서 전 로케일이 함께 사라지고, **그 일이 라운드트립 한 번 뒤에 조용히 일어난다.**
+
+**B. DB가 base와 같아지면 pull이 스킵해 열린 sync PR이 옛 스냅샷을 들고 남는다.** `planPullChanges`가 비교하는 것은 **base 트리**다 — 되돌린 편집으로 렌더가 base와 같아지면 변경 0건이라 커밋을 만들지 않고, `l10n/sync-<slug>` 브랜치는 **직전 스냅샷 그대로** 남는다. 그 PR을 머지하면 **사용자가 되돌린 편집이 리포에 적용된다.** ARCHITECTURE가 그 브랜치를 "현재 DB 상태의 스냅샷"이라고 부르는데 이 경우 그 불변식이 깨진다. 실측: ④의 되돌리기 뒤 Publish가 "Nothing to send"였고 PR #5는 삭제 두 줄을 그대로 들고 있었다 — **PR을 닫고 브랜치를 지워** 정리했다(다음 Publish가 다시 만든다).
 
 **T6 비목표: base branch 변경은 실물로 밟지 않는다.** `checkFormat`이 그 축을 보지 않아 409 경로가 없고, 실패 모드 둘은 design §3.13이 이미 적어 뒀다 — 그중 하나가 **"워크플로의 `on.push.branches`가 옛 브랜치를 가리켜 CI가 영영 안 돈다"**(조용하다)라서, 실물로 밟으려면 대상 리포의 CI를 의도적으로 멈춰야 한다. 얻는 것보다 되돌리기 비용이 크다.
 
