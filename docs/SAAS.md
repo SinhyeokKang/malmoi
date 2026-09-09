@@ -782,9 +782,15 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - ⚠️ **재측정이 이 변경의 주된 방어선이 아니다** — 코퍼스가 밟는 갈래는 스물둘 중 여섯뿐이라 나머지의
     회귀는 지표에 **0으로 조용히** 남는다. 옛 문구 22개와 **옛 분류기 본문**을 픽스처로 든
     `lib/survey/__tests__/classify.test.ts`가 그 자리를 메운다
-- [ ] **6b-2 멤버 관리 화면** — 2단계가 만든 `createInvitation`·`changeMember`의 제대로 된 호출부. 지금은
-      번역 화면 헤더의 **임시 초대 폼**(`components/invite-form.tsx`)뿐이고, 멤버 목록·역할 변경·제거는
-      테스트에서만 불린다 (마지막 OWNER 보호 문구는 `accessErrorMessage`가 이미 갖고 있다)
+- [x] ~~**6b-2 멤버 관리 화면**~~ ✅ (2026-09-09) — `/projects/:slug/members` 신설. `createInvitation`·
+      `changeMember`가 제대로 된 호출부를 얻고 `revokeInvitation`이 더해졌으며(행을 지우지 않고
+      `expiresAt`을 당긴다) 임시 폼 `components/invite-form.tsx`는 삭제됐다.
+  - **게이트가 `translation:write`다** — EDITOR도 목록을 본다(user-stories §5). 컨트롤만 역할로 갈리고
+    판정은 Action의 `member:manage`가 한다. `github-connect/spec.md`의 "`/settings` 섹션으로" 결정을
+    뒤집은 것이고 그쪽에 🔴 STALE을 표시했다 — `/settings`는 `project:settings` 뒤라 EDITOR가 못 들어온다
+  - 실측(`/bugshot-qa`): 두 역할의 사이드바·컨트롤 노출·`/settings` 직접 접근 거부·마지막 OWNER 거부
+    문구·대기 초대 술어·빈 상태·`revalidatePath`까지 통과. **결함 1건**([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18) —
+    마스킹이 두 초대를 같은 행으로 접었다)을 같은 사이클에서 고쳤다
 - [ ] **6b-3 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
 - [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
   - ⚠️ **번호가 실행 순서다** (2026-09-08 교체). 그 전에는 base 변경이 6b-2, 멤버 화면이 6b-3이었는데
