@@ -560,9 +560,15 @@ lib/
                         / ref-slug.ts(⚠️ **import 0인 잎 모듈** — REF_SAFE_SLUG·isRefSafeSlug. trigger.ts에
                           있던 것을 내렸다: 온보딩이 판정을 공유하면서 그 파일의 그래프(octokit·ts-morph)를
                           클라이언트로 끌고 갔다 — POSTMORTEM 2026-09-07)
-                        / plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
+                        / plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA)
+                          ⚠️ **base 파일의 값 폴백은 빈 문자열까지 잡는다** (2026-09-09) — base 셀을
+                          비우면 그 키가 그 파일에서 빠지고 **다음 push가 전 로케일에서 orphan한다**
+                          (그 파일이 키 집합의 진실이다). 비-base의 빈 값은 그대로 "미번역"이다 / payload.ts(Git Data API 본문)
                         / render.ts(순수 — DB→파일 내용, multi-locale은 파일×로케일 이중 루프)
-                        / run.ts(오케스트레이션 — 의존성 주입) / load.ts(Prisma 조회 · `lastPulledAt` +
+                        / run.ts(오케스트레이션 — 의존성 주입). ⚠️ **2층이 변경 0건이면 sync 브랜치를
+                          base head로 되돌린다** (2026-09-09) — 그 비교는 **base 트리 대비**라, 편집을
+                          되돌려 렌더가 base와 같아지면 브랜치가 옛 스냅샷을 든 채 남고 그 PR을
+                          머지하면 되돌린 편집이 적용된다 / load.ts(Prisma 조회 · `lastPulledAt` +
                           `lastPublishedAt`·`lastPrUrl` 쓰기 — ⚠️ **`skipped`는 뒤의 둘을 안 건드린다**:
                           "마지막으로 **보낸**" 것이지 시도한 것이 아니다)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
