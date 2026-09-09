@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)이 그다음이고, 남은 것은 **6b 셋**이다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 2026-09-09에 **dev에 올랐다**. 남은 것은 **6b-4 하나**(`/account`를 만들지 말지의 판정)와 **6b-3의 T6**(실물 409 검증 — 대상 리포 워크플로가 프로덕션 `/api/push`를 찌르므로 `/merge` 뒤에 돈다)다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -320,14 +320,21 @@ app/
                         `project:settings` 뒤라 게이트가 갈린다. `github-connect/spec.md`의 반대 결정을
                         뒤집었고 그쪽에 🔴 STALE을 달았다. ⚠️ **`?e=` 슬롯이 없다**(보내는 자리가 0)
     projects/[slug]/settings/page.tsx
-                        리포 연결 + **상태 + push 토큰 + 워크플로** + GitHub 계정 (4·5단계).
+                        리포 연결 + **기준 브랜치·기준 로케일** + 상태 + push 토큰 + 워크플로 + GitHub 계정.
+                        ⚠️ **기준 로케일 필드는 `Project.declaredBaseLocale`(선언)만 쓴다** (6b-3, 2026-09-09) —
+                        현실(`baseLocale`)은 push가 소유하고 pull이 그것을 읽으므로 여기서 바꾸면 야간 pull이
+                        옛 base의 원문을 새 base 파일에 실어 보낸다. 대기 Alert의 조건은 `basePending` 하나고
+                        번역 화면의 배너가 같은 함수를 읽는다
                         최상단에서 requireProjectAccess를 던진다. maxDuration=60 (Action이 첫 적재를 돈다).
                         ⚠️ 상태 섹션의 [다시 시도] 컴포넌트는 **readiness 분기 밖**에 있다 — 안에 두면
                         revalidate가 성공 직후 그것을 언마운트해 결과 문구가 사라진다 (POSTMORTEM 2026-09-07)
                         ⚠️ **섹션 둘이 독립적으로 실패한다** — 건강성은 App 토큰, 계정은 사용자 토큰이라
                         묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다
     projects/[slug]/settings/actions.ts
-                        startGithubConnect · connectRepository (둘뿐이다 — **해제는 2026-09-07에
+                        startGithubConnect · connectRepository · **updateRepositorySettings** (6b-3 —
+                        기준 브랜치는 즉시, 기준 로케일은 **선언만**. `noop`인데 선언이 남아 있으면 비운다 =
+                        되돌리기라 취소 버튼이 없다. 바뀐 것이 없으면 `project.update`를 아예 부르지 않는다)
+                        (**해제는 2026-09-07에
                         사용자 수준으로 갔다**: `projects/actions.ts`의 disconnectGithub, 인가는 requireUser)
                         ⚠️ **나가는 쪽은 Server Action이다** — Route Handler는 돌아오는 callback 하나뿐.
                         ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
@@ -384,7 +391,10 @@ components/
   translations/         번역 화면의 클라이언트 조각 (6a T7). header(breadcrumb·툴바·배너·결과 Alert를
                         **한 상태 트리**로 든다) / filters(?q=·?state=·?focus= → routes.translations) /
                         announcer(표 하나의 `aria-live` — 셀마다 두면 903행×3로케일에 2,700개다) /
-                        edit-loss-banner(닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다)
+                        edit-loss-banner(닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다) /
+                        base-pending-banner(6b-3 — 조건은 `basePending`, **닫기가 없다**: 할 일이 남은 동안
+                        계속 참이다. 문구는 "먼저 보내라" **하나**다 — 검토 표시를 예고하지 않는다,
+                        `planPush`가 base 교체 push에서 전파를 건너뛰므로 그 일이 안 일어난다)
                         ⚠️ **filters는 `<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로
                         submit되지 않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
@@ -392,6 +402,9 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **T5~T8에서 전부 `components/ui/` 프리미티브로 옮겼다** — raw 컨트롤이 0개라
                         "포커스 링을 상수에 숨기지 말라"는 경고의 대상이 이 디렉터리에서 사라졌다
+  settings/             설정 화면의 클라이언트 조각 (6b-3). repository-form(기준 브랜치·기준 로케일 한 폼 —
+                        저장 버튼 하나. 브랜치 형식은 보내기 전에 `isValidBranchName`으로도 보고 **방어는
+                        Action**이다. orphaned 로케일은 목록에 없다 — 감추는 것은 편의다)
   shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
                         `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
                         문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
@@ -425,6 +438,10 @@ components/
                         **두 축으로** 센다: `adapterErrorMessage(`를 부르는 자리 전수 + 서버가 합친 문자열
                         (`PullResult.warnings`)을 렌더하는 자리 **이름 고정**. ⚠️ **앞쪽만 있으면 절반만 고쳐도
                         green이다** — Publish의 `<details>`엔 그 심볼이 없다(POSTMORTEM 2026-09-08)
+                        + base-locale-screens — 두 화면이 `basePending`을 **각자 부르는지**, 배너 둘이 조건부
+                        분기 밖의 형제인지, `base-locale:` 리터럴을 화면이 직접 만들지 않는지 센다 (6b-3).
+                        ⚠️ 조건을 손으로 다시 쓰면 갈래 넷 중 하나가 빠진다 — 특히 "첫 push 전"이 온보딩 중
+                        경고로 새어 나온다
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
@@ -453,6 +470,8 @@ lib/
                         (POSTMORTEM 2026-09-07 재발). `client-graph`는 그 셋이 무겁지 않아 못 잡는다
   auth/invite-label.ts  maskedInviteLabels — **목록 전체를 보고** 충돌하는 행만 최소한을 더 보인다.
                         충돌이 없으면 출력이 `maskEmail`과 글자 하나까지 같다 (malmoi#18)
+  settings/message.ts   RepositorySettingsError 셋 → 문구 (`lib/auth/message.ts`와 같은 형, 잎).
+                        ⚠️ **`noop`이 이 union에 없다** — 거부가 아니라 "쓸 것이 없다"라 화면은 성공으로 보인다
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). 2026-09-05 하드코딩 사고의 답이고
                         `entry-points.test.ts`가 이 파일의 경로·쿼리 키를 실재 라우트와 대조한다
   adapters/             양방향 로케일 어댑터 — 리포 포맷을 읽고 같은 포맷으로 쓴다
@@ -534,7 +553,11 @@ lib/
                         **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
-  pull/                 ref-slug.ts(⚠️ **import 0인 잎 모듈** — REF_SAFE_SLUG·isRefSafeSlug. trigger.ts에
+  pull/                 branch-name.ts(⚠️ **잎, import 0** — isValidBranchName. `isRefSafeSlug`보다 **넓다**:
+                          그쪽은 우리가 만드는 ref라 한 세그먼트고 이쪽은 남의 리포에 있는 브랜치라
+                          `release/2.0`이 정상이다. 앞뒤 공백을 **거부**한다 — 트림하면 화면과 저장값이
+                          갈려 조용한 409가 된다)
+                        / ref-slug.ts(⚠️ **import 0인 잎 모듈** — REF_SAFE_SLUG·isRefSafeSlug. trigger.ts에
                           있던 것을 내렸다: 온보딩이 판정을 공유하면서 그 파일의 그래프(octokit·ts-morph)를
                           클라이언트로 끌고 갔다 — POSTMORTEM 2026-09-07)
                         / plan.ts(순수 판정 — 1층 스킵·경로·entries·2층 SHA) / payload.ts(Git Data API 본문)
@@ -601,6 +624,9 @@ lib/
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
                         · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
                         / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
+                        / base-locale.ts(planBaseLocaleChange 4갈래 — orphaned 거부가 요지다: 그 파일은 리포에서
+                        사라졌고 base로 세우면 다음 push가 키 0개를 낸다. `zh_CN` ≠ `zh-CN`)
+                        / base-pending.ts(⚠️ **잎, import 0** — basePending. **두 화면이 이 함수 하나를 읽는다**)
                         / message.ts(OnboardError 18갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸
                           import한다. 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
                         / ingest.ts(서버측 첫 적재 — assemblePushInput→buildPushPayload→applyPush를 **우회하지 않는다**.
@@ -610,11 +636,17 @@ lib/
 types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환으로 제거 — Google 사용자엔 핸들이 없다)
 prisma/
   schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+                        ⚠️ **`Project`에 base 로케일 컬럼이 둘이다** (6b-3): `baseLocale`은 **현실**(push 소유,
+                        pull·`checkFormat`이 읽는다) / `declaredBaseLocale`은 **선언**(설정 화면 소유,
+                        `checkFormat`·두 화면의 배너가 읽는다). **합치면 pull이 깨진다**
                         ⚠️ Auth.js 4테이블의 **모양은 어댑터가 정한다** — 컬럼 하나만 빠져도
                         linkAccount가 런타임에 던지고 **타입 검사는 그걸 못 본다**(ARCHITECTURE §5.1)
   __tests__/            schema-contract.test.ts — 어댑터 소스와 스키마를 대조하는 유일한 자동 방어선
                         + push-token-column.test.ts(pushTokenHash가 nullable·unique이고 **원문 컬럼이 없는지**)
-  migrations/           12개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+                        + declared-base-locale-column.test.ts(6b-3 — nullable이고 `baseLocale`이 **그대로 남았는지**.
+                        주석이 "pull은 이 컬럼을 안 읽는다"와 "일회용"을 드는지까지 본다 — 그 구별이 사라지면
+                        다음 사람이 두 컬럼을 합친다)
+  migrations/           13개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
                         _add_locale_orphaned, _add_translation_updated_at_index,
@@ -623,6 +655,8 @@ prisma/
                         prod 반영 완료 (2026-09-07, `db:status:prod` 11개 up to date).
                         , _add_project_last_published (2026-09-08, 6a T3 — `Project.lastPublishedAt`·
                         `lastPrUrl`. additive 둘이고 **prod 반영 완료** — `db:status:prod` 12개 up to date)
+                        , _add_project_declared_base_locale (2026-09-09, 6b-3 — `Project.declaredBaseLocale`.
+                        additive 하나, **dev만 적용됐다** — prod는 `/merge` 1단계의 `db:deploy`가 넓힌다)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
@@ -726,7 +760,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 38개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 39개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 

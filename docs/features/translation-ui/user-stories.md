@@ -260,8 +260,8 @@ Projects / bugshot-2 / Settings
 Repository
   owner/bugshot-2                                     ● Connected      [ Reconnect ]
   The GitHub App reads this repository and opens pull requests on l10n/sync-bugshot-2.
-  (6b) Base branch    [ main        ]
-  (6b) Base language  ● en  ○ ko  ○ fr   Defines which keys exist. Changing it changes the key set on the next import.
+  (6b-3) Base branch  [ main        ]
+  (6b-3) Base language ● en ○ ko ○ fr   Defines which keys exist. Changing it takes effect on the next CI import.
                                                                         [ Save ]
   (6b) ⚠ Update .github/workflows/l10n.yml with the new values — until then CI pushes are rejected.   (저장 뒤에만)
 
@@ -287,9 +287,12 @@ GitHub account
 - 연결 건강성 6갈래의 색 규칙은 DESIGN §6(상태 배지)을 따른다 — `unknown`을 `app-uninstalled`로 접지 않는다.
 - [Run first import]의 결과 컴포넌트는 **readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤 실패는 인라인(in-block) — 두 층을 섞지 않는다.
-- **Base branch·Base language는 6b다** — 🔴 design §3.13 머리의 ⚠️(UI가 base를 바꾸면 야간 pull이 깨진 파일을 낸다 · 재적재는 CI뿐)를 풀고 나서 그린다.
-  기준 로케일은 orphaned 아닌 기존 로케일만 고를 수 있고, 저장 성공 시 재생성된 YAML이 Workflow 블록에 반영되며 **CI push가 409로 거부된다는 경고**가 이 블록 안에
-  남는다(`checkFormat`이 adapter·pathTemplate·baseLocale 셋을 대조한다).
+- **Base branch·Base language는 6b-3이고 설계가 확정됐다** (2026-09-09 design §3.13 재작성). 기준 로케일은 orphaned 아닌 기존 로케일만 고를 수 있다.
+  ⚠️ **저장은 `Project.declaredBaseLocale`(선언)에만 쓴다** — `baseLocale`(현실)은 push가 소유하므로 **야간 pull이 옛 base로 계속 정상 동작하고 아무것도 멈추지 않는다.**
+  대기 중(`basePending`)에는 이 블록에 `Alert warning` + 재생성 YAML이 **상시** 남고("Update the workflow — until then CI pushes keep the old base language"),
+  워크플로를 고쳐 CI가 새 base로 push하면 `checkFormat`이 **선언과 대조해 통과**시키고 그 push가 선언을 소비한다.
+  ⚠️ **번역 화면에는 별도 배너가 뜬다** — 그 push가 키 집합을 새로 세우고 strict가 값을 덮으므로(MVP §3.1) **"먼저 보내라"**가 손실 창을 좁히는 유일한 수단이다.
+  검토 표시(`needsReview`)가 base 아닌 전 번역에 일괄로 붙는 것도 그 배너가 미리 알린다.
 
 스토리:
 - As an **OWNER**, I want to see at a glance whether the app can still read my repository and, if not, what exactly

@@ -53,7 +53,7 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 | 번역 조회·수정 | O | O |
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
-| 기준 로케일·base branch **변경** | O | X | ⚠️ **화면이 없다** — `baseBranch`는 `createProject`가 default branch로 한 번 심고 `baseLocale`은 재적재의 재검증 부산물로만 갱신된다. 그 화면은 **§8 6b**다 (`features/translation-ui/tasks.md` **6b-3** — 6a에는 없다) |
+| 기준 로케일·base branch **변경** | O | X | ✅ **화면이 생겼다** (2026-09-09, 6b-3 — `updateRepositorySettings`, `project:settings`). ⚠️ **두 필드가 쓰는 것의 성질이 다르다**: `baseBranch`는 `Project.baseBranch`를 즉시 쓰고, 기준 로케일은 **선언**(`Project.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때 현실이 된다 (design §3.13) |
 | 멤버 관리·프로젝트 삭제 | O | X |
 
 **EDITOR에게 Publish를 허용한다.** Publish는 base branch 직접 쓰기가 아니라 **검토 가능한 PR 생성**이다.
@@ -753,10 +753,11 @@ fail-closed의 올바른 기본값이다) ② **prod `Project` 행은 여섯**�
 additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 번역 화면 + Publish) · **ship 4**(T8·T9 —
 설정·새 프로젝트·초대 수락 + 문서·chore)가 **넷 다 프로덕션에 나가 6a가 닫혔다**
 (PR #12 → `46df51a`, PR #14 → `add099a`, PR #15 → `ef9da44`, PR #16 → `695e441`). **6b-1**(어댑터 오류 코드화
-+ survey 분류기 + 14차 재측정)이 그다음이고, 남은 것은 **6b 셋**(base branch·기준 로케일 필드 ·
-멤버 화면 · `/account` 판정).
++ survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
+`a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — dev)까지 올랐다. **남은 것은 `6b-4` 하나**이고 그것은
+배송이 아니라 "`/account`를 만들지 말지"의 판정이다.
 
-**아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 미작성 화면은 멤버 관리(6b-2) 하나다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
+**아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
 `PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts`)이 그것이다.
 
@@ -791,7 +792,17 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - 실측(`/bugshot-qa`): 두 역할의 사이드바·컨트롤 노출·`/settings` 직접 접근 거부·마지막 OWNER 거부
     문구·대기 초대 술어·빈 상태·`revalidatePath`까지 통과. **결함 1건**([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18) —
     마스킹이 두 초대를 같은 행으로 접었다)을 같은 사이클에서 고쳤다
-- [ ] **6b-3 설정의 기준 브랜치·기준 로케일 필드** — ⚠️ design §3.13 머리의 🔴을 반영해 **설계를 다시 쓴다**(그대로 구현하면 야간 pull이 깨진 파일을 낸다)
+- [x] ~~**6b-3 설정의 기준 브랜치·기준 로케일 필드**~~ ✅ **T1~T5가 dev에 있다** (2026-09-09 — `fe5f39e`·`6ab0f70`·`3a98886`).
+      **선언을 별 컬럼으로 뺐다**: `Project.declaredBaseLocale`(additive, nullable)이 OWNER의 허가이고 `baseLocale`은 push가
+      소유하는 현실로 남는다 → **pull 코드가 한 줄도 안 바뀌고 어느 단계도 멈추지 않는다.** 검수의 후보안(같은 컬럼을
+      선언으로 쓰고 pull을 `skipped`로 멈춘다)은 기각했다 — 멈추면 편집 손실 창이 대기 기간만큼 늘어난다.
+      `checkFormat`이 선언과도 대조해 통과시키고 **그 값을 실제로 가져온 push만** 선언을 비운다(일회용 허가 —
+      push마다 비우면 워크플로를 고치기 전의 평범한 CI push가 허가와 배너를 함께 지운다, POSTMORTEM 2026-09-09).
+      `planPush`는 base 교체 push에서 `needsReview` 전파를 건너뛴다 — `sourceHash`가 바뀐 원인이 "원문 수정"이 아니라
+      "원문 **언어** 교체"라 다른 로케일의 번역은 여전히 정확하다.
+  - ⚠️ **T6(실물 409 → 워크플로 수정 → 통과·대기 해소)은 남았다.** 대상 리포의 워크플로가 프로덕션
+    `mal-moi.com/api/push`를 찌르므로 dev에서 검증할 수 없다 — **`/merge` 뒤**에 별도로 돈다
+    (`features/translation-ui/tasks.md` 6b-3 T6). 그때 `pnpm db:deploy`도 함께 필요하다
 - [ ] **6b-4 `/account`** — 만들지 말지의 **판정**이다(배송이 아니다)
   - ⚠️ **번호가 실행 순서다** (2026-09-08 교체). 그 전에는 base 변경이 6b-2, 멤버 화면이 6b-3이었는데
     base 변경은 design §3.13을 다시 써야 착수할 수 있어 그대로 두면 **뒷번호를 먼저 하게 된다.** 이 목록도

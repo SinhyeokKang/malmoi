@@ -60,21 +60,47 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  *
  * 트림하지 않는다: 이 셋은 셸 치환이 아니라 **탐지 결과**에서 오고, `--adapter`·`--base`로 들어온
  * 값은 `isAdapterName`·`assemblePushInput`이 CLI에서 먼저 거부한다.
+ *
+ * ⚠️ **`baseLocale`만 `declaredBaseLocale`도 받는다** (6b-3 — design §3.13). OWNER가 설정 화면에서
+ * 선언한 값이고, 그것이 없으면 base를 바꾸는 순간 그 리포의 push가 **영영 409**다(워크플로를 고쳐도
+ * 저장값은 옛 base라 되돌릴 경로가 DB 직접 수정뿐이다). **느슨해지는 것은 base 하나이고**
+ * `adapter`·`pathTemplate`은 그대로 엄격하다 — 오배송을 막는 것은 그 둘이다.
  */
 export function checkFormat(
   payload: { adapter: string; pathTemplate: string; baseLocale: string },
-  stored: { adapterName: string | null; pathTemplate: string | null; baseLocale: string | null },
+  stored: {
+    adapterName: string | null;
+    pathTemplate: string | null;
+    baseLocale: string | null;
+    /** OWNER의 **일회용 허가**. `applyPush`가 push 성공 시 비운다 — 안 비우면 영구 예외가 된다. */
+    declaredBaseLocale: string | null;
+  },
 ): GuardResult {
   // 셋은 항상 함께 쓰인다(`applyPush`·`createProject`) — 전부 비어 있는 것만 "아직 없다"다.
+  // ⚠️ **선언은 이 판정에 넣지 않는다** — 현실이 비어 있는데 선언만 있는 행은 온보딩 중이고,
+  // 그 상태의 첫 push는 아래를 지나지 않고 여기서 통과해야 한다.
   if (stored.adapterName === null && stored.pathTemplate === null && stored.baseLocale === null) {
     return "ok";
   }
   // 일부만 있는 상태는 이해할 수 없다 — 그걸 통과시키면 절반이 비어 있는 행이 무제한 표면 교체를 받는다.
-  return payload.adapter === stored.adapterName &&
-    payload.pathTemplate === stored.pathTemplate &&
-    payload.baseLocale === stored.baseLocale
+  const baseAllowed =
+    payload.baseLocale === stored.baseLocale ||
+    (stored.declaredBaseLocale !== null && payload.baseLocale === stored.declaredBaseLocale);
+  return payload.adapter === stored.adapterName && payload.pathTemplate === stored.pathTemplate && baseAllowed
     ? "ok"
     : "wrong-format";
+}
+
+/**
+ * 이 push가 **base 로케일을 바꾸는가** — `planPush`가 `needsReview` 전파를 건너뛸지 정한다
+ * (design §3.13).
+ *
+ * ⚠️ 저장값이 없으면(첫 push) 변경이 아니다 — 비교 대상이 없고 기존 키도 없어 전파할 것이 애초에
+ * 없다. 여기서 `true`를 내면 "첫 push는 전파를 끈다"는 무의미한 특례가 하나 생긴다.
+ */
+export function isBaseLocaleChange(payloadBase: string, storedBase: string | null): boolean {
+  if (storedBase === null) return false;
+  return payloadBase !== storedBase;
 }
 
 /**

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
 
@@ -57,17 +58,30 @@ export type PushOutcome = {
   translationsFilled: number;
 };
 
+export type ApplyOptions = {
+  /**
+   * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
+   * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
+   *
+   * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
+   * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
+   */
+  previousBaseLocale: string | null;
+};
+
 export async function applyPush(
   prisma: PrismaClient,
   projectId: string,
   payload: PushPayloadType,
+  options: ApplyOptions,
 ): Promise<PushOutcome> {
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
   const existing: ExistingKey[] = await prisma.stringKey.findMany({
     where: { projectId },
     select: { id: true, key: true, sourceHash: true, orphaned: true },
   });
-  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key));
+  const baseChanged = isBaseLocaleChange(payload.format.baseLocale, options.previousBaseLocale);
+  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key), { baseChanged });
 
   // **삽입 id를 여기서 만들어 들고 있는다.** 문장 안에서 만들어 버리면 키 id를 다시 조회해야 하고,
   // 그 조회 때문에 트랜잭션이 둘로 갈렸다.
@@ -239,6 +253,19 @@ export async function applyPush(
         // 무해하고, `Prisma.DbNull`을 쓰려면 이 모듈이 생성 클라이언트를 값으로 물어야 한다.
         ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
+        /**
+         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (design §3.13, 6b-3).
+         *
+         * ⚠️ **push마다 비우면 기능이 흔한 경로에서 무력화된다** (code-review 2026-09-09). OWNER가
+         * base를 선언한 뒤 워크플로를 고치기 전에 평범한 CI push 한 번이 오면(base 브랜치에 머지가
+         * 있을 때마다 온다) 허가가 조용히 사라지고 **두 화면의 대기 배너도 함께 사라진다** — OWNER는
+         * 반영된 줄 알지만 아무것도 안 바뀌었고 신호가 없다.
+         *
+         * `baseChanged`가 곧 "허가가 쓰였다"다: `checkFormat`이 payload의 base를 **현실 또는 선언**으로만
+         * 통과시키므로, 현실과 다른 base가 여기까지 왔다면 그 값은 선언과 같다. 남는 경우(선언 == 현실)는
+         * `basePending`이 false라 배너가 없고, `checkFormat`의 그 갈래도 현실과 같은 값이라 예외가 아니다.
+         */
+        ...(baseChanged ? { declaredBaseLocale: null } : {}),
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),

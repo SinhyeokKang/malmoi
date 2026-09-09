@@ -22,7 +22,7 @@ export function renderWorkflowYaml(input: {
   const { slug, baseBranch, adapter, baseLocale } = input;
   const extra = [
     adapter === undefined ? [] : [`          adapter: ${adapter}`],
-    baseLocale === undefined ? [] : [`          base-locale: ${baseLocale}`],
+    baseLocale === undefined ? [] : [baseLocaleLine(baseLocale)],
   ].flat();
 
   return [
@@ -59,4 +59,15 @@ export function renderWorkflowYaml(input: {
     "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
     "",
   ].join("\n");
+}
+
+/**
+ * 워크플로의 `base-locale:` 한 줄 — **들여쓰기까지 포함해 붙여넣을 수 있는 형태다**.
+ *
+ * ⚠️ **리터럴을 두 벌 두지 않으려고 함수로 뺐다** (6b-3). 기준 로케일 변경 대기 Alert가 "이 줄을
+ * 고쳐라"로 같은 줄을 보이는데, 그때 들여쓰기나 키 이름이 갈리면 사용자가 붙여넣은 YAML이
+ * action의 input과 어긋나 CI가 조용히 옛 base를 계속 보낸다.
+ */
+export function baseLocaleLine(baseLocale: string): string {
+  return `          base-locale: ${baseLocale}`;
 }

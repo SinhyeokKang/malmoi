@@ -420,7 +420,14 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
    * 보내면 2순위를 확정한 프로젝트의 키가 **전부 orphan된다.** 되돌릴 수 없어 409다.
    */
   describe("포맷 교체 거부 (checkFormat)", () => {
-    const STORED = { adapterName: "code-dict", pathTemplate: "src/i18n/{locale}.ts", baseLocale: "en" };
+    // ⚠️ `declaredBaseLocale`을 빼지 않는다 — 라우트의 `select`가 그 컬럼을 들고 있으므로, mock이
+    // 그것을 생략하면 가짜가 실제보다 **좁아져** 응답 본문의 그 필드가 조용히 사라진다 (6b-3).
+    const STORED = {
+      adapterName: "code-dict",
+      pathTemplate: "src/i18n/{locale}.ts",
+      baseLocale: "en",
+      declaredBaseLocale: null,
+    };
     const stored = (over: Record<string, unknown> = {}) => project({ ...STORED, ...over });
 
     it("저장된 표면과 다른 어댑터는 409이고 적재까지 가지 않는다", async () => {
@@ -430,7 +437,13 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
       // CI 로그에서 무엇을 고쳐야 하는지 보여야 한다 — 이미 그 프로젝트의 토큰을 든 호출자다.
       await expect(res.json()).resolves.toMatchObject({
         error: "format mismatch",
-        expected: { adapter: "code-dict", pathTemplate: "src/i18n/{locale}.ts", baseLocale: "en" },
+        // 선언도 싣는다 — 대기 중이면 그 값도 받아들여지므로 CI 로그에 보여야 한다 (6b-3).
+        expected: {
+          adapter: "code-dict",
+          pathTemplate: "src/i18n/{locale}.ts",
+          baseLocale: "en",
+          declaredBaseLocale: null,
+        },
         got: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
       });
       expect(hoisted.applyPush).not.toHaveBeenCalled();
