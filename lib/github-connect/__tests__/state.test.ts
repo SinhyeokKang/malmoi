@@ -14,7 +14,8 @@ import { signState, stateCookieName, stateCookieNames, verifyState } from "../st
  *
  * ⚠️ **목적지는 쿠키에서 온다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를 정한다.
  *
- * ⚠️ **`dest`가 갈래 둘이다** (design §3.6): 설정 화면(`{kind:"settings", slug}`)과 생성 화면(`{kind:"new"}`).
+ * ⚠️ **`dest`가 갈래 셋이다** (design §3.6 + 6b-4): 설정 화면(`{kind:"settings", slug}`) · 생성 화면
+ * (`{kind:"new"}`) · 계정 화면(`{kind:"account"}`). 뒤의 둘은 **사용자 축이라 slug가 없다** (SAAS §7.7).
  * 생성 경로에는 프로젝트가 없어 slug가 그 역할을 겸할 수 없다. 갈래를 **서명 안에** 두는 이유는
  * 쿼리로 실으면 공격자가 착지를 정해 open redirect 판정이 필요해지기 때문이다.
  */
@@ -60,6 +61,10 @@ describe("signState — 결정적이고 payload를 그대로 들고 있다", () 
     expect(sign({ dest: { kind: "settings", slug: "acme" } })).not.toBe(sign({ dest: { kind: "new" } }));
   });
 
+  it("계정 갈래도 따로 서명된다 — new와 account가 같은 쿠키로 통하지 않는다 (6b-4)", () => {
+    expect(sign({ dest: { kind: "account" } })).not.toBe(sign({ dest: { kind: "new" } }));
+  });
+
   it("secret이 다르면 다른 서명이다 — 서명이 실제로 secret을 쓴다", () => {
     expect(sign({ secret: SECRET })).not.toBe(sign({ secret: `${SECRET}x` }));
   });
@@ -81,6 +86,15 @@ describe("verifyState — 정상 왕복", () => {
   it("생성 경로의 dest는 slug가 없다 — 프로젝트 없이 연결이 성립한다 (design §3.6)", () => {
     const cookie = sign({ dest: { kind: "new" } });
     expect(verify({ cookie, query: "nonce-1" })).toEqual({ status: "ok", dest: { kind: "new" } });
+  });
+
+  /**
+   * `/account`도 사용자 축이라 slug가 없다 (SAAS §7.7). **생성 경로와 갈래를 합치지 않는 이유는
+   * 착지가 다르기 때문**이다 — 합치면 계정 화면에서 연결을 누른 사람이 `/projects/new`에 떨어진다.
+   */
+  it("계정 경로의 dest도 slug가 없다 — 사용자 축이다 (6b-4)", () => {
+    const cookie = sign({ dest: { kind: "account" } });
+    expect(verify({ cookie, query: "nonce-1" })).toEqual({ status: "ok", dest: { kind: "account" } });
   });
 });
 
@@ -240,6 +254,18 @@ describe("옛 payload 모양은 거부된다 — 배포 직후 10분의 창을 �
     for (const dest of ["acme", 1, null, [], true]) {
       const cookie = signRaw({ userId: "user-1", dest, nonce: "nonce-1", exp: EXPIRES.getTime() });
       expect(verify({ cookie })).toEqual({ status: "state-mismatch" });
+    }
+  });
+
+  /**
+   * ⚠️ **갈래를 늘리는 방향은 안전하다** — 6b-4가 `account`를 더할 때 진행 중인 왕복(옛 쿠키 둘)이
+   * 깨지면 배포 직후 10분 동안 연결이 100% 실패하고, 증상이 "버튼을 눌렀는데 아무 일도 안 났다"다.
+   * `{slug}` 모양을 일부러 거부하는 것과 **방향이 반대**라 따로 센다.
+   */
+  it("갈래를 늘려도 옛 쿠키 둘은 그대로 파싱된다 — 진행 중인 왕복을 깨지 않는다 (6b-4)", () => {
+    for (const dest of [{ kind: "new" }, { kind: "settings", slug: "acme" }]) {
+      const cookie = signRaw({ userId: "user-1", dest, nonce: "nonce-1", exp: EXPIRES.getTime() });
+      expect(verify({ cookie }), JSON.stringify(dest)).toEqual({ status: "ok", dest });
     }
   });
 

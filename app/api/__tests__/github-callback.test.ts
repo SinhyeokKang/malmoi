@@ -231,6 +231,38 @@ describe("착지 갈래는 서명된 dest가 정한다 (design §3.6)", () => {
     expect(location(res)).toBe("/projects/new?e=exchange-failed");
   });
 
+  /**
+   * `/account`는 사용자 축이라 slug가 없다 (SAAS §7.7 — 6b-4). **읽는 쪽이 셋에서 넷이 됐다**:
+   * 설정 화면 · `/projects/new` · `/projects` · `/account`. 사유를 실어 보내놓고 읽는 쪽을 안
+   * 만들면 거부가 통째로 무음이다 (POSTMORTEM 2026-09-06).
+   */
+  it("dest가 account면 /account로 돌아간다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "account" } }) });
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/account");
+    expect(hoisted.account.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("dest가 account인데 실패하면 /account?e=로 사유가 실린다 — 그 화면이 읽는다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "account" } }) });
+    hoisted.exchangeCode.mockRejectedValue(new Error("bad code"));
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/account?e=exchange-failed");
+  });
+
+  it("account 갈래에서 사용자가 취소하면 /account?e=denied다 — 설정 화면으로 새지 않는다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "account" } }) });
+
+    const res = await GET(request({ error: "access_denied", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/account?e=denied");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+  });
+
   it("state가 무효면 dest를 못 믿어 /projects다 — new로 보내지 않는다", async () => {
     hoisted.cookieGet.mockReturnValue(undefined);
 
