@@ -299,7 +299,7 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 - **세션 만료 중 저장**: Action은 redirect 없이 `{ ok: false, error: "unauthorized" }`를 돌려준다(`app/(edit)/actions.ts:34`). 사전 갈래로 "Your session ended — sign in
   again. Your text is kept." + 로그인 링크(`Button link`), `unavailable`은 "Temporary problem — try again". 입력값은 그대로 둔다.
 
-### 3.9 멤버 화면 — **6b** (검수 지적을 반영해 다시 쓴다)
+### 3.9 멤버 화면 — ✅ **6b-2가 구현했다** (2026-09-09; 아래는 그 근거이고 검수 지적 셋을 다 반영했다)
 
 > ⚠️ 2026-09-08 검수: (a) `github-connect/spec.md:45,127`은 "`/settings` 페이지에 멤버 섹션"으로 결정했다 — 별도 라우트의 근거(EDITOR가 목록을 봐야 하는데
 > `/settings`는 `project:settings` 뒤)를 spec에 쓰고 그쪽을 stale로 표시해야 한다. (b) 사이드바는 Members를 **전원**에게 렌더한다(EDITOR도 목록을 본다 — 처음 초안의
@@ -315,6 +315,18 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 - EDITOR는 목록을 본다(`translation:write`로 페이지 진입) — 컨트롤은 role로 감추고 Action이 `member:manage`로 거부한다.
 - 대기 초대 0건의 빈 상태 · `?e=` global Alert 슬롯이 와이어에 있어야 한다.
 - `components/invite-form.tsx`는 이 커밋에서 삭제된다(6a는 툴바 `Dialog`로 옮겨 둔다 — 초대 수단 없는 창을 만들지 않는다).
+
+⚠️ **구현이 이 절과 갈린 곳 하나**: "`?e=` global Alert 슬롯이 와이어에 있어야 한다"를 **만들지 않았다** —
+그 쿼리를 이 경로로 보내는 자리가 설계에 없다(거부는 `/projects?e=`, Action 실패는 행 옆 인라인이고
+그게 옳다 — 어느 행이 거부됐는지가 정보다). 읽는 쪽만 두면 도달 불가 코드이고,
+`components/__tests__/members-screen.test.ts`가 "읽는 쪽 0 · 보내는 쪽 0"을 고정해 짝을 강제한다.
+
+⚠️ **이 절이 못 물은 것**: "이메일은 마스킹한다"까지 정했지만 **"마스킹해도 행이 갈리는가"** 를 안 물었다.
+대기 초대 표는 마스킹한 주소가 **유일한 식별자**인 첫 소비자였고, `maskEmail`이 첫 글자만 남겨
+서로 다른 두 주소가 같은 행이 됐다([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18) —
+`/bugshot-qa`가 잡았다). 답은 `lib/auth/invite-label.ts`의 `maskedInviteLabels`이고 **`maskEmail`은
+안 고쳤다**(소비자 셋의 표시가 갈린다). 규칙: **정보를 버리는 표시 변환이 행을 구별하는 유일한 값이면
+목록 전체를 보는 판정이 필요하다** (POSTMORTEM 2026-09-09).
 
 ### 3.10 계정 화면 — **6b** (만들지 말지부터)
 

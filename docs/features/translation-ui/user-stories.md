@@ -213,10 +213,11 @@ Projects / bugshot-2 / Translations
 - As **any member**, I want a cell overwritten by the repository to stop showing a colleague's name, so that the table
   does not lie about who wrote a value.
 
-## 5. `/projects/:slug/members` — Members (**6b** — design §3.9 머리의 ⚠️를 반영해 다시 그린다)
+## 5. `/projects/:slug/members` — Members (✅ **6b-2가 만들었다**, 2026-09-09)
 
-> 6b 착수 때 반영할 것: 별도 라우트의 근거를 spec에 적는다(`github-connect/spec.md`는 settings 섹션으로 결정했다) · 사이드바 항목은 전원에게 · [Revoke]는
-> `expiresAt = now`(행 삭제 금지) · 대기 초대 0건 빈 상태 · `?e=` global Alert 슬롯 · 역할 변경은 native Select.
+> ✅ 여섯 중 다섯이 그대로 들어갔다(근거는 spec §2.3 · 사이드바 전원 · `expiresAt = now` · 빈 상태 · native Select).
+> **`?e=` 슬롯만 만들지 않았다** — 보내는 자리가 없어 도달 불가다(design §3.9 끝의 ⚠️).
+> ⚠️ 대기 초대의 이메일은 `maskEmail`이 아니라 `maskedInviteLabels`가 낸다 — 마스킹이 두 주소를 같은 행으로 접었다(malmoi#18).
 
 ```
 Projects / bugshot-2 / Members
@@ -359,7 +360,7 @@ GitHub
 | `/projects/:slug/translations` | 안 | `requireProjectAccess(translation:write)` | ✓ | 6a |
 | `/projects/:slug/settings` | 안 | `requireProjectAccess(project:settings)` | ✓ | 6a (base 필드는 6b) |
 | `/invite/:token` | 밖 | 토큰 (인가 예외) | ✗ (의도) | 6a |
-| `/projects/:slug/members` | 안 | `requireProjectAccess(translation:write)` — 컨트롤은 `member:manage` | ✓ | **6b 신설** |
+| `/projects/:slug/members` | 안 | `requireProjectAccess(translation:write)` — 컨트롤은 `member:manage` | ✓ | ✅ **6b-2 신설** (2026-09-09) |
 | `/account` | 안 (컨텍스트 없음) | `requireUser` | 추가 | **6b — 만들지 말지부터** |
 | `/api/github/callback` | — | `requireUser` | ✗ (의도) | 6b (`dest` 갈래 `account` — 만든다면) |
 

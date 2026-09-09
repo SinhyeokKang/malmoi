@@ -65,8 +65,18 @@
 
 ### 2.3 멤버·계정 관리가 임시다 → 6b
 
-- 멤버 관리는 번역 화면 헤더의 **임시 초대 폼** 하나다. `changeMember`(역할 변경·제거)는 2단계가 만들었지만
-  **테스트에서만 불린다**. 멤버 목록도, 대기 중인 초대 목록도 화면에 없다.
+- ✅ **멤버 관리는 6b-2가 닫았다** (2026-09-09) — `/projects/:slug/members` 신설. 그 전에는 번역 화면 헤더의
+  **임시 초대 폼** 하나였고 `changeMember`(역할 변경·제거)는 2단계가 만들었으나 **테스트에서만 불렸다**.
+  이제 멤버 목록·역할 변경·제거·대기 초대·`revokeInvitation`이 화면에 있고 임시 폼은 삭제됐다.
+
+  ⚠️ **왜 `/settings`의 섹션이 아니라 별도 라우트인가.** `github-connect/spec.md`(§1·§4 표)는 "같은
+  `/settings` 페이지에 얹는다"로 결정했고 **그것을 6b-2가 뒤집었다**(그쪽에 🔴 STALE로 표시했다). 이유는
+  **게이트가 다르다**: `/settings`는 `project:settings` 뒤라 EDITOR가 못 들어오는데(실측 —
+  `/projects?e=forbidden`) user-stories §5는 "EDITOR는 목록만 본다"로 결정했고 "누가 이 프로젝트에 있나"는
+  번역자에게도 필요한 정보다. 섹션으로 얹으면 그 스토리를 만족시킬 길이 게이트를 `translation:write`로
+  낮추는 것뿐이고, 그러면 **리포 연결·push 토큰 재발급이 EDITOR에게 열린다.** 그래서 멤버 화면은
+  `translation:write`로 들어오고 **컨트롤만** `member:manage`로 갈린다 — 판정은 Action이 한다.
+  라우트 하나가 늘어나는 대가는 `middleware.ts`의 `matcher`가 `/projects/:path*`라 이미 덮고 있어 0이었다.
 - GitHub 계정 **해제**는 2026-09-07에 사용자 수준으로 옮겨져 `/projects`의 계정 섹션에 있다(`disconnectGithub()`, `requireUser`).
   `/account` 신설은 그 섹션의 이사일 뿐이라 **만들지 말지부터** 6b가 판정한다(SAAS §8 6단계 3번은 이미 `[x]`).
 
