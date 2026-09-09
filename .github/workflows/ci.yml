@@ -26,12 +26,17 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
+    # 리포 기본값이 지금도 read라 **동작은 바뀌지 않는다** — 요지는 그 설정을 트리 안으로
+    # 옮기는 것이다. 기본값은 대시보드 한 번으로 write가 되고, 이 job은 `pnpm test`로 임의
+    # 프로젝트 코드를 돌린다 (sec-audit 발견 13).
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
