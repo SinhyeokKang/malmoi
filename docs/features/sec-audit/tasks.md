@@ -86,7 +86,7 @@
 있지만 **재사용하지 않는다** — 그러면 재측정 트리거가 붙고, 더 중요하게 그 함수는 *탐지* 규칙이라
 "경로로 안전한가"와 축이 다르다(2~3자 소문자를 받는 것이 탐지엔 맞고 경로 방어엔 느슨하다).
 
-- [ ] **T1** `/tdd interface` — 판정 함수와 두 경계
+- [x] **T1** `/tdd interface` — 판정 함수와 두 경계
   - 새 잎 모듈의 순수 판정: `..`·선행 `/`·`/` 포함·NUL·백슬래시·퍼센트 인코딩·빈 문자열·길이 초과를
     각각 거부하고 `ko`·`pt-BR`·`zh_Hans`·`en`을 통과시킨다
   - `PushPayload`: 안전하지 않은 로케일 코드·템플릿을 **400으로** 거부한다(409가 아니다 — 스키마 위반이다)
@@ -96,36 +96,40 @@
     (2층 방어 — 스키마를 지나기 전에 저장된 행이 있다)
   - 검증: 수정 전 red. 특히 `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`가
     현재 `.github/workflows/pwn`을 낸다는 것을 red로 고정한다
-- [ ] **T2** 🔒 **잎 모듈의 이름과 자리** — 추천은 `lib/locale-code.ts`(import 0, `lib/routes.ts`·
+- ✅ **결정: `lib/locale-code.ts`** (2026-09-09 사용자) — `isPathSafeLocale`·`isPathSafeRepoPath` 둘, import 0.
+- [x] **T2** 🔒 **잎 모듈의 이름과 자리** — 추천은 `lib/locale-code.ts`(import 0, `lib/routes.ts`·
       `lib/relative-time.ts`와 같은 층)
   - ⚠️ `lib/pull/ref-slug.ts`가 같은 이유로 내려온 선례다(온보딩이 판정을 공유하면서 그 파일의
     그래프를 클라이언트로 끌고 갔다 — POSTMORTEM 2026-09-07). **`lib/pull/`에 두면 push 스키마가
     그것을 import해 pull 그래프를 끌어온다**
-- [ ] **T3** `lib/push/plan.ts` — 로케일·템플릿 charset + 배열·문자열 `.max()`
+- [x] **T3** `lib/push/plan.ts` — 로케일·템플릿 charset + 배열·문자열 `.max()`
+  - ✅ **결정: 추천값 그대로** (2026-09-09 사용자) — 키 20,000 · 로케일 200 · 문자열 10,000자 · 템플릿 200자. 행(`translations`·`refs`) 200,000이 하나 더 붙었다(20,000키 × 10로케일).
   - 🔒 **상한 값**: 키 수·로케일 수·문자열 길이. 근거는 실측이다 — prod 최대가 `ts-dict` 903키 ·
     `StringKey` 3,297행 · `Translation` 12,783행(감사 중 실측). 추천은 **키 20,000 / 로케일 200 /
     값 10,000자 / 템플릿 200자**이고, 넘으면 400 + 그 이유를 응답에 담는다(대상 리포 CI 로그로 간다)
   - ⚠️ `placeholders: z.unknown()`은 **그대로 둔다** — "모양을 검사하지 않는다"가 계약이다. 상한은
     바이트가 아니라 개수·길이 축에서만 건다
   - 검증: `.env.example`·문서 변경 없음(새 환경변수를 만들지 않는다)
-- [ ] **T4** `lib/pull/plan.ts` — 보간 결과의 경로 봉쇄
+- [x] **T4** `lib/pull/plan.ts` — 보간 결과의 경로 봉쇄
   - `resolveLocalePaths`의 per-locale 갈래에서 치환 뒤 경로를 검사한다. 파일이 트리에 없어도 만드는
     것은 유지하고(그 갈래의 요지다), **템플릿의 디렉터리 밖으로 나가는 것만** 막는다
   - 검증: 정상 신규 로케일(`locales/ja.json`)은 그대로 생성된다 / `..`가 든 코드는 `fail()`
-- [ ] **T5** 🔒 `checkFormat`의 "셋 다 null이면 통과"(`lib/push/guard.ts:69-71`)를 유지하는가
+- ✅ **결정: 유지** (2026-09-09 사용자) — 코드 변경 0줄. T3의 charset 검증이 그 구멍의 실질을 없앤다.
+- [x] **T5** 🔒 `checkFormat`의 "셋 다 null이면 통과"(`lib/push/guard.ts:69-71`)를 유지하는가
   - **추천은 유지**다 — "포맷은 push가 채운다"가 스키마의 원래 계약이고, T3의 charset 검증이 그 구멍의
     실질을 없앤다. 좁히면 온보딩 밖에서 만들어진 행의 첫 push가 막힌다
-- [ ] **T6** `[manual]` **실데이터 확인** — prod·dev의 `Locale.code`·`Project.pathTemplate`에 안전하지
+- [x] **T6** `[manual]` **실데이터 확인** — prod·dev의 `Locale.code`·`Project.pathTemplate`에 안전하지
       않은 값이 있는지 읽기 전용으로 센다
   - ⚠️ **하나라도 있으면 이 ship이 아니라 사고 대응이다** — 이미 나간 PR을 봐야 한다
+  - ✅ **0건 확인** (2026-09-09, 읽기 전용): dev `Locale.code` 4종·`pathTemplate` 2종 / prod 7종·5종 — 전부 새 판정을 통과한다(`en`·`fr`·`id`·`ja`·`ko`·`zh-CN`·`zh-TW`). 사고 대응 불필요.
   - 검증: 0건
-- [ ] **T7** `pnpm typecheck && pnpm test`
-- [ ] `——` `test:` → `fix:`
-- [ ] **T8** 문서 — `docs/ARCHITECTURE.md` §5.5(외부 페이로드가 정하지 못하는 것) ·
+- [x] **T7** `pnpm typecheck && pnpm test`
+- [x] `——` `test:` → `fix:`
+- [x] **T8** 문서 — `docs/ARCHITECTURE.md` §5.5(외부 페이로드가 정하지 못하는 것) ·
       `docs/SAAS.md` 불변식(경로는 서버가 정한다) · `/postmortem`
   - POSTMORTEM 축: **"검증이 탐지 경로에만 있었고 적재 경로에 없었다"** — `looksLikeLocale`이 존재하는데
     쓰이지 않은 것이 이 결함의 모양이다. 재발 방지 grep은 "입력이 경로 문자열로 보간되는 자리"
-- [ ] `——` 문서 커밋
+- [x] `——` 문서 커밋
 - [ ] **T9** `/push` → `/merge`
 
 ---
