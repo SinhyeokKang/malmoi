@@ -236,44 +236,49 @@
 
 ⚠️ **이 목록에서 가장 무겁다** — 5번이 `lib/onboarding/message.ts`의 18갈래를 흔든다. 나머지 셋은 작다.
 
-- [ ] **T1** 🔒 **가장 먼저: 발견 25의 측정** `[manual]`
+- ✅ **실측 결과** (2026-09-09 프로덕션): `Host: evil.com` → Vercel 엣지가 **404 `DEPLOYMENT_NOT_FOUND`** · `X-Forwarded-Host: evil.com`·`X-Forwarded-Proto: http` → `/api/auth/providers`가 **`https://mal-moi.com`을 그대로** 낸다(반영 안 됨). 우리 코드는 `x-forwarded-host`를 읽지도 않는다.
+  **사용자 판정: 그래도 허용 목록을 넣는다** — 그 방어가 플랫폼 설정의 성질이지 우리 코드의 성질이 아니라서다. T5 수행함.
+- [x] **T1** 🔒 **가장 먼저: 발견 25의 측정** `[manual]`
   - 프로덕션에 `Host: evil.com` / `X-Forwarded-Host: evil.com`을 보내 앱이 그것을 받는지 본다
     (preview는 Vercel SSO 뒤라 `sso-api` 302가 온다 — **프로덕션에서 재야 한다**)
   - 결과가 "Vercel이 거른다"면 25번은 **수용**이고 T5가 사라진다. "앱까지 온다"면 `requestOrigin`에
     기대 호스트 허용 목록을 넣는 태스크가 생긴다(프로덕션 도메인 + dev 고정 preview + localhost)
-- [ ] **T2** `/tdd interface`
+- [x] **T2** `/tdd interface`
   - `checkBearer`·`equalConstantTime`: **비ASCII 입력이 던지지 않고** `bad-token`/`false`를 낸다
     (현재 `RangeError` — findings §1.6이 재현 확정)
   - `checkRepoAccess`: 사용자 설치 목록에 없는 리포에 대해 **App 자격증명 호출이 0회**다
     (`probeRepo` mock의 호출 횟수로 검사한다 — `github-callback.test.ts`가 `exchangeCode` 미호출을
     단언하는 것과 같은 형)
   - 검증: 앞의 둘이 수정 전 red(던진다)
-- [ ] **T3** 🔒 **비교 방식** — 추천은 **고정 길이 sha256 digest 비교**다
+- ✅ **결정: 고정 길이 sha256 digest** (2026-09-09 사용자) — 길이 사전검사가 두 자리에서 **사라졌다**.
+- [x] **T3** 🔒 **비교 방식** — 추천은 **고정 길이 sha256 digest 비교**다
   - 그러면 길이 사전검사가 아예 사라지고 두 자리의 "같은 형"이 규칙 하나가 된다. 차선은
     `Buffer.byteLength`로 재는 것(변경이 두 줄이지만 규칙이 두 곳에 남는다)
   - ⚠️ **두 자리를 같은 커밋에 고친다** — `state.ts:77`이 `lib/push/auth.ts`를 "같은 형"으로 상호
     참조하므로 한쪽만 고치면 다른 쪽이 남고 주석이 거짓이 된다
   - 검증: `/api/pull`이 비ASCII Bearer에 **401**을 낸다(500이 아니다) / callback이 오염된 쿠키에
     `state-mismatch`로 착지한다
-- [ ] **T4** `app/(edit)/projects/actions.ts` — `checkRepoAccess`의 순서를 뒤집는다 (발견 5)
+- [x] **T4** `app/(edit)/projects/actions.ts` — `checkRepoAccess`의 순서를 뒤집는다 (발견 5)
   - 사용자 설치 목록을 먼저 읽고, 그 목록에 없으면 `probeRepo`를 부르지 않고 **한 갈래로** 거부한다
   - ⚠️ **`lib/onboarding/message.ts`의 갈래 정리가 같은 커밋이다** — `repo-not-installed`와
     `installation-forbidden`을 외부에서 구별할 수 없게 되면 그중 하나가 도달 불가가 된다.
     POSTMORTEM 2026-09-08("도달 불가한 오류 갈래를 겨냥한 테스트가 1년치 green이었다")이 정확히 이 함정이다
   - ⚠️ **`planRepoConnect`의 3중 검증을 약화시키지 않는다** — 순서만 바꾼다. 빈 목록을 통과로 읽지
     않는 fail-closed(`connect-plan.ts:44`)가 그대로여야 한다
+  - ⏳ **`[manual]` 온보딩 한 바퀴 미실행** — 실물 GitHub 왕복이라 이 세션에서 안 돌렸다. 갈래 합침의 결과는 단위 테스트가 고정했다(내 설치에 없으면 `repo-not-installed` + `probeRepo` 0회).
+  - ✅ **`repo-forbidden`은 도달 가능하다** — 설정 화면의 재연결 경로가 그대로 남는다(리포가 `Project` 행에 고정이라 오라클이 아니다). 갈래를 지우지 않은 근거를 `features/github-connect/design.md`에 적었다
   - 검증: 화면 문구가 여전히 사용자에게 유용하다(`[manual]` — 자기 리포로 온보딩을 한 바퀴)
-- [ ] **T5** (T1 결과에 따라) `lib/github-connect/origin.ts`에 기대 호스트 허용 목록
-- [ ] **T6** `auth.ts:95` — 로그를 `error.message`(+`type`)로 좁힌다 (발견 24)
+- [x] **T5** (T1 결과에 따라) `lib/github-connect/origin.ts`에 기대 호스트 허용 목록
+- [x] **T6** `auth.ts:95` — 로그를 `error.message`(+`type`)로 좁힌다 (발견 24)
   - ⚠️ **`noteAuthError`의 장애 판정을 깨지 않는다** — 그 판정은 `error.type`을 보므로 좁히는 대상은
     출력뿐이다(POSTMORTEM 2026-09-06)
-- [ ] **T7** `pnpm typecheck && pnpm test`
-- [ ] `——` `test:` → `fix:`
-- [ ] **T8** 문서 — `docs/ARCHITECTURE.md` §6(시크릿 비교 규칙 한 줄) ·
+- [x] **T7** `pnpm typecheck && pnpm test`
+- [x] `——` `test:` → `fix:`
+- [x] **T8** 문서 — `docs/ARCHITECTURE.md` §6(시크릿 비교 규칙 한 줄) ·
       `docs/features/github-connect/design.md`에 순서 판정 한 줄 · `/postmortem`
   - POSTMORTEM 축: **"주석이 이유를 정확히 적었는데 재는 단위가 어긋났다"** — 길이 사전검사의 사유는
     맞았고 UTF-16 대 UTF-8만 틀렸다
-- [ ] `——` 문서 커밋
+- [x] `——` 문서 커밋
 - [ ] **T9** `/push` → `/merge`
 
 ---
