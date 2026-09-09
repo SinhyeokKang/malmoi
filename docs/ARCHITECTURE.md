@@ -611,6 +611,36 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - `scripts/ingest.ts`는 **`selectLocaleFiles`·`pickBaseLocale`을 그대로 import한다** (2026-09-04 — 전엔 바이트 동일한 복사본이었다). ⚠️ **그 CLI는 `assemblePushInput`을 지나지 않는다** — 두 함수를 각자 부르므로 단일 입구를 우회한다(통일은 미결). ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
 - **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
 
+### 5.5.05 외부 페이로드가 **경로와 크기**를 정하지 못한다 (2026-09-09, sec-audit 발견 2·10)
+
+`locales[]`와 `format.pathTemplate`은 `applyPush`가 **그대로** 저장하고, 야간 pull이 그것을 보간해
+**설치 토큰으로** 커밋한다. 그래서 그 둘은 값이 아니라 **경로 조각**이고, `z.string().min(1)`뿐이던
+동안 push 토큰 하나가 리포의 임의 파일에 쓰는 원시체였다.
+
+⚠️ **`..`가 필요 없다.** `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 그 경로가
+그대로 나가고, `l10n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
+(`[skip-l10n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
+목록에 리포가 보이는 것만 요구하므로 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을 받는다.
+
+판정은 `lib/locale-code.ts`의 `isPathSafeLocale`·`isPathSafeRepoPath`이고 **import가 0인 잎**이다 —
+push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙을 쓴다. ⚠️ **`looksLikeLocale`을
+재사용하지 않는다**: 그것은 *탐지* 규칙이라 "우연히 로케일로 보이는 디렉터리인가"를 묻고 2~3자
+소문자를 받는데, 여기 축은 "경로에 넣어도 되는가"다. 그 함수가 `lib/adapters/**`에 있어 재측정
+트리거가 붙는 것도 이유의 하나다.
+
+**방어가 두 층인 것이 요지다.** 스키마 경계(`lib/push/plan.ts`)는 새 값이 저장되는 것을 막고,
+`resolveLocalePaths`(`lib/pull/plan.ts`)는 **경계가 서기 전에 저장된 행**을 막는다 — 야간 cron이 읽는
+것이 정확히 그 행이다. 트리에 없는 파일을 만드는 갈래는 그대로다(신규 로케일이 그것으로 생긴다);
+막는 것은 **템플릿의 디렉터리 밖으로 나가는 것**뿐이다.
+
+⚠️ **온보딩의 첫 적재는 Zod 경계를 지나지 않는다** (`lib/onboarding/ingest.ts` → `buildPushPayload` →
+`applyPush`). 값이 리포의 파일명·식별자에서 오므로 실질 위험이 없고, 남는 위험은 2층이 받는다 —
+그 경로로 들어온 값이 있으면 pull이 `fail()`로 **시끄럽게** 멈춘다.
+
+크기 상한(발견 10)은 같은 자리에 있다 — 키 20,000 · 로케일 200 · 문자열 10,000자 · 행 200,000이고
+근거는 실측이다(prod 최대 903키 · `Translation` 12,783행 — **20배 여유**). ⚠️ **`placeholders`엔 안
+건다**: `z.unknown()`으로 두는 것이 계약이고, 상한은 개수·길이 축에서만 건다.
+
 ### 5.5.1 pooler가 구현을 규정한다
 
 - **push는 배열형 `$transaction([...])`을 쓴다 — 왕복 수 때문이다.** 한 번에 배치로 보내 문장 수만큼의 왕복이 없다. ⚠️ **"대화형 `$transaction(async tx => …)`은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형을 쓰는 것은 **다섯**이다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다 — 잠금과 롤백이 필요한 자리다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다.

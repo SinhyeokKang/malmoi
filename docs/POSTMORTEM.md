@@ -889,3 +889,20 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **픽스처를 리터럴 JSON으로 만든다.** `JSON.stringify({__proto__: …})`나 `{ __proto__: v }` 조회는 own property를 안 만들어 **이 부류의 테스트를 원리적으로 통과시킨다** — 감사가 한 번, 이 작업의 중간 probe가 한 번 걸렸다. 센티넬 맵도 `new Map`이다.
   - grep: `grep -rn '\[\(e\.key\|key\|name\|head\|seg\|k\)\] *=' lib --include='*.ts' | grep -v __tests__` → **왼쪽 객체가 `Object.create(null)`인지 하나씩 확인한다.** 재조립·정규화처럼 **평범한 `{}`로 되돌리는 자리**가 특히 위험하다(`normalizeArrays`가 그것이었다 — `setDeep`을 고쳐도 한 줄 뒤에 다시 사라졌을 것이다).
   - **후속 조치 목록은 증상이 아니라 뿌리로 훑는다.** POSTMORTEM 항목을 닫을 때 "같은 원인이 반대 방향(읽기↔쓰기, 조회↔대입, 직렬화↔역직렬화)으로도 있는가"를 명시적으로 묻는다.
+
+### 2026-09-09 — 검증이 **탐지** 경로에만 있었고 **적재** 경로에 없어, 페이로드가 리포 경로를 정했다
+
+- **영역**: `lib/push/plan.ts`(`PushPayload`의 `locales`·`format.pathTemplate`) · `lib/pull/plan.ts`(`resolveLocalePaths`) · `lib/locale-code.ts`(신규)
+- **증상**: 없다 — 프로덕션에 나타난 적이 없고 실데이터도 깨끗했다(prod `Locale.code` 7종 · `pathTemplate` 5종 전부 안전, 읽기 전용 실측). 발현하면 **push 토큰 하나로 대상 리포의 임의 파일에 쓴다**: `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 야간 pull이 **설치 토큰으로** 그 워크플로를 `l10n/sync-<slug>`에 커밋하고, 그 브랜치 push가 **대상 리포의 secret과 함께** 실행시킨다. **`..`가 필요 없어** 트리 API가 거부할 근거도 없다.
+- **근본 원인**: **같은 판정을 요구하는 두 경로 중 한쪽에만 규칙이 있었다.** `looksLikeLocale`이 존재했고 다른 보간 자리는 전부 트리에 재고정한다(`templatePaths`가 `paths` 필터 + 재검사, `selectLocaleFiles`가 `paths.includes`) — **적재 경로만 아니었다.** 그 자리가 다른 이유는 설계상 정당하다: per-locale 갈래는 **새 로케일 파일을 만들어야 해서** 트리를 안 본다. 트리가 방어를 겸하고 있었고, 그것을 뺀 갈래에 대체 방어를 안 뒀다.
+  - 검증이 있는 자리가 **탐지**(어느 포맷인가)이고 없는 자리가 **적재**(그 값을 저장한다)라, 코드를 읽으면 "검증이 있다"로 보인다. `looksLikeLocale`이 그 착시의 이름이다.
+  - 크기 상한(발견 10)은 같은 함수에 상한이 **하나도** 없던 것이고, 원인이 같다 — 외부 진입점의 스키마를 "모양이 맞는가"로만 읽고 "얼마나 큰가"를 축으로 안 세웠다.
+- **그물**:
+  - 잡은 것: 전수 보안 감사 하나. **"이 값이 어디까지 흐르나"를 끝까지 따라가야** 나온다 — `locales[]`가 `applyPush` → `Locale.code` → `resolveLocalePaths` → 트리 엔트리까지 네 홉이고, 각 홉만 보면 전부 정상이다.
+  - 놓친 것: `pnpm test`(스키마가 받는 값을 테스트가 정하므로 **테스트도 안전한 값만 먹였다**) · `/code-review` 여러 회차 · `/audit` 3회차 · 실측 코퍼스(공격 입력이 없다).
+- **재방지**:
+  - **판정은 잎 모듈에 한 벌**(`lib/locale-code.ts`, import 0) — push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 함수를 쓴다. `lib/pull/ref-slug.ts`가 같은 이유의 선례다(POSTMORTEM 2026-09-07).
+  - **방어를 두 층에 건다.** 스키마 경계는 새 값을, `resolveLocalePaths`는 **경계가 서기 전에 저장된 행**을 막는다 — 외부에서 온 값이 DB에 남는 설계에서는 경계 하나가 원리적으로 부족하다(야간 cron이 읽는 것이 정확히 그 행이다).
+  - **탐지용 판정을 적재 방어로 재사용하지 않는다.** `looksLikeLocale`은 "우연히 로케일로 보이는가"라 2~3자 소문자를 일부러 받는다 — 축이 다르면 이름이 비슷해도 다른 함수다.
+  - grep: `grep -rn 'replaceAll("{locale}"\|`${.*}/`\|path.join(' lib app | grep -v __tests__` → **입력이 경로 문자열로 보간되는 자리**를 세고, 각각이 (a) 트리·디스크에 재고정하는지 (b) 아니면 순수 판정을 지나는지 확인한다. 둘 다 아니면 그 자리가 이 항목이다.
+  - **외부 진입점 스키마는 "모양"과 "크기" 둘 다 갖는다.** `z.string().min(1)`만 있는 필드를 보면 상한이 왜 없는지 한 줄로 답할 수 있어야 한다(`placeholders`는 답이 있다 — 모양을 검사하지 않는 것이 계약이라 개수·길이 축에서만 건다).
