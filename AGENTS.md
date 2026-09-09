@@ -684,7 +684,7 @@ prisma/
                         , _add_project_last_published (2026-09-08, 6a T3 — `Project.lastPublishedAt`·
                         `lastPrUrl`. additive 둘이고 **prod 반영 완료** — `db:status:prod` 12개 up to date)
                         , _add_project_declared_base_locale (2026-09-09, 6b-3 — `Project.declaredBaseLocale`.
-                        additive 하나, **dev만 적용됐다** — prod는 `/merge` 1단계의 `db:deploy`가 넓힌다)
+                        additive 하나이고 **prod 반영 완료** — `db:status:prod` 13개 up to date)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
 next.config.ts          ⚠️ **agentRules: false** — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다.
