@@ -21,6 +21,15 @@ describe("routes — 정적 경로", () => {
     expect(routes.account()).toBe("/account");
   });
 
+  /**
+   * ⚠️ **6b-4가 이것을 미뤘다** — Home 페이지가 없는 채로 등재하면 404를 가리키는 생성기가 되고,
+   * 죽은 링크 검사의 접두 규칙(`r.startsWith(path + "/")`)이 `/projects/*`를 통과시켜 못 잡는다.
+   * 6b-6이 그 페이지와 **같은 커밋에** 넣는다.
+   */
+  it("프로젝트 루트가 Home이다 — 진입의 착지점 (6b-6)", () => {
+    expect(routes.project("bugshot-2")).toBe("/projects/bugshot-2");
+  });
+
   it("프로젝트 경로는 slug를 그대로 든다", () => {
     expect(routes.locales("bugshot-2")).toBe("/projects/bugshot-2/locales");
     expect(routes.settings("bugshot-2")).toBe("/projects/bugshot-2/settings");

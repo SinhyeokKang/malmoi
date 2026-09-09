@@ -56,8 +56,9 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    * ⚠️ **순서가 SAAS §7.7의 라우트 표 순서다** — Locales가 Translations 다음이다. Home·Logs는 아직
    * 라우트가 없어 빠져 있다(6b-6·7단계). **항목은 자기 라우트와 같은 사이클에 온다** (6b-4 판정).
    */
-  it("OWNER는 넷을 본다 — Locales가 6b-5에서 붙었다", () => {
+  it("OWNER는 다섯을 본다 — Home이 6b-6에서 붙었다", () => {
     expect(projectSections("OWNER").map((s) => s.key)).toEqual([
+      "home",
       "translations",
       "locales",
       "members",
@@ -65,8 +66,27 @@ describe("projectSections — 역할이 항목을 정한다", () => {
     ]);
   });
 
-  it("EDITOR는 Settings만 못 본다 — Locales는 전원이 본다", () => {
-    expect(projectSections("EDITOR").map((s) => s.key)).toEqual(["translations", "locales", "members"]);
+  it("EDITOR는 Settings만 못 본다 — Home·Locales는 전원이 본다", () => {
+    expect(projectSections("EDITOR").map((s) => s.key)).toEqual([
+      "home",
+      "translations",
+      "locales",
+      "members",
+    ]);
+  });
+
+  /**
+   * ⚠️ **Home은 접두로 재면 항상 활성이다** (6b-4 code-review ⚪2가 예고한 자리). `/projects/acme`는
+   * 그 프로젝트의 **모든** 하위 라우트의 접두라, 번역 화면에 있어도 Home이 선택돼 보인다 — 어디에
+   * 있는지를 사이드바가 거짓으로 말하는 것이고, 그것이 구역에 이름을 붙인 목적(추론이 아니라 표시)을
+   * 무너뜨린다. **규칙은 축이 아니라 라우트 모양에 붙는다**: 하위 경로가 있는 항목만 접두다.
+   */
+  it("Home만 정확히 일치다 — 나머지 프로젝트 항목은 하위 경로가 있어 접두다", () => {
+    const byKey = new Map(projectSections("OWNER").map((s) => [s.key, s.exact]));
+    expect(byKey.get("home")).toBe(true);
+    for (const key of ["translations", "locales", "members", "settings"]) {
+      expect(byKey.get(key), key).toBe(false);
+    }
   });
 
   /**
@@ -147,6 +167,12 @@ describe("navZones — 사용자 축과 프로젝트 축 (SAAS §7.7)", () => {
   it("EDITOR에게 빠지는 항목은 Settings 하나다 — 나머지는 전원이 본다", () => {
     const keys = (role: Role): string[] => navZones(project(role)).flatMap((z) => z.items.map((i) => i.key));
     expect(keys("OWNER").filter((k) => !keys("EDITOR").includes(k))).toEqual(["settings"]);
+  });
+
+  it("사용자 축은 전부 정확히 일치다 — `/projects`가 `/projects/new`의 접두다", () => {
+    const work = navZones(null)[0];
+    expect(work?.items.length).toBeGreaterThan(0);
+    for (const item of work?.items ?? []) expect(item.exact, item.key).toBe(true);
   });
 
   it("항목마다 아이콘과 **완성된** href가 있다 — 접힌 레일에서 아이콘이 유일한 라벨이다 (DESIGN §6.8)", () => {

@@ -23,11 +23,14 @@ import { createHarness, sessionFor, type Seed } from "./harness";
 const hoisted = vi.hoisted(() => ({
   prisma: undefined as unknown as PrismaClient,
   session: null as { user: { id: string } } | null,
+  revalidated: [] as [string, string | undefined][],
 }));
 
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/cache", () => ({
+  revalidatePath: (path: string, type?: string) => hoisted.revalidated.push([path, type]),
+}));
 
 /** 편집자는 `acme`의 EDITOR다 — 저장·Publish 둘 다 그 역할로 통과해야 한다 (SAAS §3). */
 const EDITOR = "u-translator";
@@ -69,6 +72,22 @@ describe("편집 → DB → 다음 pull의 출력", () => {
     db = memoryDb();
     hoisted.prisma = db.prisma;
     hoisted.session = sessionFor(EDITOR);
+    hoisted.revalidated = [];
+  });
+
+  /**
+   * ⚠️ **이 행을 읽는 화면이 셋이다** (POSTMORTEM 2026-09-09가 이 자리를 이름으로 적어 뒀다):
+   * 번역 화면 · **로케일 화면의 진행률**(6b-5) · **Home의 진행률과 최근 활동**(6b-6). 경로를 하나씩
+   * 나열하면 넷째 소비자가 조용히 빠지고, 그때 번역자가 저장한 값이 다른 화면에서 옛 숫자로 남는다 —
+   * 쓰기는 성공했는데 화면이 거짓말을 하는 부류다. `/projects/<slug>` 세그먼트의 레이아웃을 무효화한다.
+   */
+  it("무효화가 `/projects/<slug>` 서브트리다 — 같은 행을 세 화면이 읽는다", async () => {
+    await saveTranslation({ slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+
+    expect(hoisted.revalidated, JSON.stringify(hoisted.revalidated)).toContainEqual([
+      "/projects/acme",
+      "layout",
+    ]);
   });
 
   it("저장한 값이 pull이 커밋하는 파일에 그대로 나온다", async () => {
