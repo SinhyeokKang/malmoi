@@ -177,7 +177,17 @@
 - [x] `——` `chore:`(핀·gitignore·workspace) · `fix:`(walk·survey) 두 커밋
 - [x] **T8** 문서 — `docs/ACTIONS.md`(참조 방식·red 조건) · `CLAUDE.md`(게이트웨이 절 · CI 절)
 - [x] `——` `docs(ACTIONS): …` · `docs(CLAUDE): …`
-- [ ] **T9** `/push` → `/merge` → `[manual]` 대상 리포 넷의 참조 갱신(T1 판정이 (a)·(b)면)
+- [x] **T9** `/push` → `/merge` → `[manual]` 대상 리포의 참조 갱신
+  - ✅ **닫혔다** (2026-09-09). PR #25 → squash `bc3615c` → 태그 **`l10n-push-v1`**을 그 커밋에 끊고 push →
+    소비자 리포의 `@main`을 태그로 옮겼다. **그 참조로 실제 run이 green이다**
+    ([run 34365434170](https://github.com/SinhyeokKang/i18n-order-check/actions/runs/34365434170)).
+  - ⚠️ **"대상 리포 넷"이 틀렸다** — 실제로 action을 참조하는 리포는 **`i18n-order-check` 하나**다
+    (`bugshot-2`·`bugshot-i18n-test`는 `ci.yml`·`trigger-web-deploy.yml`뿐이고 `l10n-push`가 0건,
+    `i18n-format-check`은 `.github/workflows` 자체가 없다 — `gh api`로 전수 확인).
+    CLAUDE.md가 적어 둔 "워크플로가 붙은 리포는 `order-check` 하나"가 맞았고 이 문서가 낡았다.
+  - ⚠️ **남은 경고 하나**: 그 run이 `actions/checkout@v4`·`actions/setup-node`가 **Node 20을 겨눠 Node 24로
+    강제 실행된다**고 annotation을 낸다. 실패가 아니고 이번 핀(v4 계열 유지)의 대가다 — 메이저를 올리는
+    것은 공급망 변경이 아니라 동작 변경이라 이 ship에서 하지 않았다.
 
 ---
 
