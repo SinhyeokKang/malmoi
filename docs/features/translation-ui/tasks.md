@@ -455,8 +455,29 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 | T1~T5 | `/ship bypass 6b-3` | 단위·소스 검증 + `/db`(T2) + `/push` 로컬 게이트 |
 | **T6** | **`/merge` 뒤** | 실물 — 아래 |
 
-- [ ] 폐기용 리포에서 **옛 `base-locale`로 CI를 한 번 돌려** 409를 본다 → 워크플로의 `base-locale:`을 고쳐 다시 돌려 통과와 대기 해소를 본다. `/l10n-roundtrip`은 어댑터 표현 층이라 이 축을 안 본다
-      검증: 실측 — push 응답 **409**(`wrong-format`) · 워크플로 수정 후 **200** · 그 뒤 `declaredBaseLocale === null`·`baseLocale`이 새 값 · **`needsReview`가 한 행도 안 붙었다**(T3) · 다음 pull이 새 base 파일을 낸다
+> ⚠️ **2026-09-09에 이 절을 고쳤다 — 옛 문장("옛 `base-locale`로 CI를 돌려 409를 본다")은 설계가 바뀌면서 거짓이 됐다.**
+> 선언이 서 있으면 **옛 base와 새 base가 둘 다 통과한다** — 그것이 "어느 단계도 멈추지 않는다"의 절반이다(design §3.13). 그래서 409를 보려면
+> **선언과 무관한 제3의 값**을 보내야 하고, 그 확인은 선언을 세우기 **전에** 해야 한다. 순서가 바뀌면 ①이 통과해 버려 아무것도 검증하지 못한다.
+
+**대상은 `order-check`(`SinhyeokKang/i18n-order-check`) 하나다** — 프로덕션에서 `pushTokenHash`를 가진 프로젝트가 그것뿐이다(나머지 다섯은 미발급이 정상 상태다). 실측 기준선(2026-09-09):
+`baseLocale: en` · 살아 있는 로케일 `en,ja,ko` · 키 23 · **`needsReview`가 이미 4행** · `baseBranch: main` · `json-catalog` · `locales/{locale}.json`.
+
+⚠️ **`needsReview` 단언은 절대값 0이 아니라 증가분 0이다** — 기준선이 4다. 절대값으로 쓰면 그 단언이 처음부터 red이고, 그걸 맞추려 기준선을 지우면 실 데이터를 건드린다.
+
+⚠️ **워크플로 파일 수정이 곧 트리거다** — 그 리포의 `on.push.branches`가 `[main]`이라 커밋 자체가 run을 만든다. 커밋 메시지에 `[skip-l10n]`을 **넣지 않는다**(넣으면 job이 스킵된다).
+
+- [ ] ① **선언 없이 제3의 값 → 409.** 워크플로에 `base-locale: ja`를 박아 돌린다(선언은 `null`인 상태다).
+      검증: run **red** · 응답 본문 `{"error":"format mismatch"}` · **409** · `expected`에 `baseLocale: "en"`과 **`declaredBaseLocale`이 함께** 실렸다(6b-3이 더한 진단 — 여기서는 `null`이고, ②처럼 대기 중이면 그 값이 실려야 "그것도 받아들여진다"가 CI 로그에서 보인다) · DB의 `baseLocale`이 `en`으로 **그대로**
+- [ ] ② **선언을 세운 뒤 옛 base가 통과한다.** 설정 화면에서 기준 언어를 `ja`로 저장(대기 배너 확인) → 워크플로의 `base-locale:`을 **`en`으로** 되돌려 돌린다.
+      검증: **200** · **`declaredBaseLocale`이 `ja`로 살아 있다**(허가를 쓰지 않은 push는 선언을 비우지 않는다 — code-review 🔴1 · POSTMORTEM 2026-09-09) · 두 화면의 대기 배너가 **그대로 보인다** · `baseLocale`은 여전히 `en`
+- [ ] ③ **워크플로를 선언값으로 고치면 전환된다.** `base-locale: ja`로 고쳐 돌린다.
+      검증: **200** · `baseLocale === "ja"` · **`declaredBaseLocale === null`**(허가 소비) · `Locale.isBase`가 `ja` 한 행만 true · **`needsReview` 증가분 0**(기준선 4 그대로 — T3) · 대기 배너가 두 화면에서 사라졌다 · 편집 화면의 첫 열이 `ja`
+- [ ] ④ **다음 pull이 새 base로 파일을 낸다.** 번역 화면에서 Publish를 누른다.
+      검증: PR diff에서 `locales/ja.json`이 base 취급이다 — 빈 값이 `sourceText` 폴백으로 채워지고(`plan.ts:174`) description 폴백도 그 파일에 붙는다(`render.ts:46`)
+- [ ] ⑤ **원상복구.** 설정에서 `en`을 선언 → 워크플로 `base-locale: en` → 돌려서 `baseLocale === "en"`·선언 `null`로 되돌린다.
+      검증: ①의 기준선과 같은 상태 (`baseLocale: en` · 선언 null · `needsReview` 4 · `Locale.isBase`가 `en`)
+
+**T6 비목표: base branch 변경은 실물로 밟지 않는다.** `checkFormat`이 그 축을 보지 않아 409 경로가 없고, 실패 모드 둘은 design §3.13이 이미 적어 뒀다 — 그중 하나가 **"워크플로의 `on.push.branches`가 옛 브랜치를 가리켜 CI가 영영 안 돈다"**(조용하다)라서, 실물로 밟으려면 대상 리포의 CI를 의도적으로 멈춰야 한다. 얻는 것보다 되돌리기 비용이 크다.
 
 ### 비목표 (6b-3에서 안 한다)
 
