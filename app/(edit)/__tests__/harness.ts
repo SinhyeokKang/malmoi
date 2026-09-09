@@ -40,7 +40,9 @@ export type ProjectSeed = {
  * 정렬이 구현 정의가 되고 가짜가 실제보다 **관대**해진다 (하네스 자기검사 — POSTMORTEM 2026-09-06).
  */
 export type MemberSeed = { projectId: string; userId: string; role: Role; createdAt?: Date };
-export type UserSeed = { id: string; email: string; name?: string | null };
+/** ⚠️ `email`이 nullable이다 — 스키마가 그렇고(OAuth provider가 주소를 안 줄 수 있다), 페이크가
+ *  스키마보다 좁으면 "이메일 없는 멤버" 갈래를 테스트가 만들 수 없다 (하네스 자기검사 — POSTMORTEM 2026-09-06). */
+export type UserSeed = { id: string; email: string | null; name?: string | null };
 export type InvitationSeed = {
   id: string;
   projectId: string;
@@ -472,6 +474,19 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
+  /**
+   * ⚠️ **`userId`를 실제로 본다** (sec-audit 발견 15). 페이크가 그 조건을 무시하면 "남의 행이 남는다"는
+   * 테스트가 무엇을 넣어도 통과한다 — 페이크가 스키마보다 느슨한 부류다 (POSTMORTEM 2026-09-06).
+   */
+  const deleteManyAccounts = vi.fn(async (args: { where: { userId: string; provider: string } }) => {
+    const before = accounts.length;
+    for (let i = accounts.length - 1; i >= 0; i -= 1) {
+      const row = accounts[i]!;
+      if (row.userId === args.where.userId && row.provider === args.where.provider) accounts.splice(i, 1);
+    }
+    return { count: before - accounts.length };
+  });
+
   /** `SELECT … FOR UPDATE` 같은 잠금 SQL. 메모리 DB는 잠글 것이 없다 — 호출 인자만 남긴다. */
   const executeRaw = vi.fn(async (_strings: TemplateStringsArray, ..._values: unknown[]) => 0);
 
@@ -564,6 +579,7 @@ export function createHarness(seed: Seed = {}) {
       update: updateAccount,
       updateMany: updateManyAccounts,
       delete: deleteAccount,
+      deleteMany: deleteManyAccounts,
     },
     stringKey: {
       findFirst: async ({ where }: { where: { id: string; projectId: string } }) =>
@@ -743,6 +759,7 @@ export function createHarness(seed: Seed = {}) {
       updateAccount,
       updateManyAccounts,
       deleteAccount,
+      deleteManyAccounts,
       findMember,
       findManyMembers,
       createMember,

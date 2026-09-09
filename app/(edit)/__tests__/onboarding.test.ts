@@ -933,7 +933,7 @@ describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절�
   });
 
   it("삭제가 던지면 unavailable이다 — digest만 있는 오류를 사용자에게 보내지 않는다", async () => {
-    db.spies.deleteAccount.mockRejectedValueOnce(new Error("Can't reach database server"));
+    db.spies.deleteManyAccounts.mockRejectedValueOnce(new Error("Can't reach database server"));
 
     expect(await disconnectGithub()).toEqual({ ok: false, error: "unavailable" });
   });

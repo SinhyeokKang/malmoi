@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { Table, Td, Th } from "@/components/ui/table";
-import { maskEmail } from "@/lib/auth/email";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { MemberView } from "@/lib/auth/query";
@@ -74,7 +73,8 @@ export function MemberList({
       <tbody>
         {members.map((member) => {
           // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
-          const who = member.name ?? (member.email === null ? m.members.unnamed : maskEmail(member.email));
+          // ⚠️ **라벨은 서버가 만든다** (sec-audit 발견 4) — 여기서 가리면 원문이 이미 페이로드에 있다.
+          const who = member.name ?? member.emailLabel ?? m.members.unnamed;
           return (
           <tr key={member.userId}>
             <Td>
@@ -84,7 +84,7 @@ export function MemberList({
               )}
             </Td>
             {/* 주소는 식별자라 mono다 (DESIGN §4.1) — 한 줄이므로 개행 보존이 필요 없다. */}
-            <Td className="text-mono">{member.email === null ? "—" : maskEmail(member.email)}</Td>
+            <Td className="text-mono">{member.emailLabel ?? "—"}</Td>
             <Td>
               {manage ? (
                 <Select

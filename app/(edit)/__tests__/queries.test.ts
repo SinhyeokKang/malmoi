@@ -174,11 +174,12 @@ describe("loadMembers", () => {
     ]);
   });
 
-  it("이름·이메일·역할을 함께 낸다 — 이름이 없는 사용자는 null이다 (Google 계정에 핸들이 없다)", async () => {
+  it("이름·이메일 라벨·역할을 함께 낸다 — 이름이 없는 사용자는 null이다 (Google 계정에 핸들이 없다)", async () => {
     const db = createHarness(memberSeed());
     const rows = await loadMembers(db.prisma, "p1");
-    expect(rows[0]).toMatchObject({ name: "Owner", email: "owner@x.com", role: "OWNER" });
-    expect(rows[1]).toMatchObject({ name: null, email: "editor@x.com", role: "EDITOR" });
+    // ⚠️ 원문이 아니라 라벨이다 (sec-audit 발견 4) — 이 값이 그대로 RSC 페이로드로 나간다.
+    expect(rows[0]).toMatchObject({ name: "Owner", emailLabel: "o***@x.com", role: "OWNER" });
+    expect(rows[1]).toMatchObject({ name: null, emailLabel: "e***@x.com", role: "EDITOR" });
   });
 
   it("멤버가 없으면 빈 목록이다", async () => {
@@ -203,7 +204,7 @@ describe("loadPendingInvitations", () => {
   it("초대한 사람의 이름을 함께 낸다 — 누가 보냈는지가 행의 정보다", async () => {
     const db = createHarness(memberSeed());
     const [row] = await loadPendingInvitations(db.prisma, "p1", NOW);
-    expect(row).toMatchObject({ email: "a@x.com", role: "EDITOR", invitedByName: "Owner" });
+    expect(row).toMatchObject({ emailLabel: "a***@x.com", role: "EDITOR", invitedByName: "Owner" });
   });
 
   it("대기 0건이면 빈 목록이다 — 화면이 빈 상태를 그린다", async () => {

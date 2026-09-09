@@ -64,7 +64,15 @@ const INVITE_DAYS = 7;
  * 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3, code-review 2026-09-06 🟡13).
  */
 const RoleSchema = z.enum(["OWNER", "EDITOR"]);
-const InvitationInput = z.object({ slug: z.string().min(1), email: z.string().min(1), role: RoleSchema });
+// ⚠️ `email`은 **형식과 상한**을 둘 다 갖는다 (2026-09-09, sec-audit 발견 19). 두 줄 아래 `name`엔
+// `.max(200)`이 있었는데 여기만 `min(1)`뿐이었다. 320은 RFC 5321의 주소 최대 길이다.
+const InvitationInput = z.object({
+  slug: z.string().min(1),
+  // ⚠️ **`.trim()`이 `.email()`보다 앞이다** — 폼이 앞뒤 공백을 실어 보내고(`" New@A.com "`),
+  // 검증을 먼저 하면 정상 입력이 거부된다. 정규화(`normalizeEmail`)는 그 뒤에 소문자만 더한다.
+  email: z.string().trim().email().max(320),
+  role: RoleSchema,
+});
 const MemberChangeInput = z.object({
   slug: z.string().min(1),
   targetUserId: z.string().min(1),
@@ -413,22 +421,14 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
 
   const prisma = getPrisma();
   try {
-    // 없는 행을 지우려 하면 P2025로 던진다 — 조회 후 지운다. 연결이 이미 없는 것은 실패가 아니다:
-    // 원하는 상태가 이미 이뤄져 있다.
-    const row = await prisma.account.findFirst({
-      where: { userId, provider: APP_ACCOUNT_PROVIDER },
-      select: { providerAccountId: true },
-    });
-    if (row !== null) {
-      await prisma.account.delete({
-        where: {
-          provider_providerAccountId: {
-            provider: APP_ACCOUNT_PROVIDER,
-            providerAccountId: row.providerAccountId,
-          },
-        },
-      });
-    }
+    // ⚠️ **`userId`로 좁혀 지운다** (2026-09-09, sec-audit 발견 15). 전에는 `(userId, provider)`로
+    // **읽고** PK(`provider_providerAccountId`)로 **지웠다** — `where`에 `userId`가 없어, 두 문장
+    // 사이에 그 `providerAccountId`의 소유자가 바뀌면 **남의 연결을 지운다**(탈취가 아니라 삭제다).
+    // POSTMORTEM 2026-09-06이 넓힌 규칙 "사용자에 속한 행은 `userId`로 좁힌다"의 유일한 위반이었다.
+    //
+    // `deleteMany`라 조회가 필요 없다 — 없는 행은 `count: 0`이고 P2025를 안 던진다. 연결이 이미
+    // 없는 것은 실패가 아니다: 원하는 상태가 이미 이뤄져 있다.
+    await prisma.account.deleteMany({ where: { userId, provider: APP_ACCOUNT_PROVIDER } });
   } catch (error) {
     // 처리하지 않으면 digest만 있는 일반 오류가 된다 — 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3).
     logFailure("disconnect", error);
