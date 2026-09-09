@@ -279,6 +279,32 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 - **(6b) Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409). 그 폼이 서기 전까지는 이 불릿의 대상이 없다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
 
+### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
+
+**Members** 표(Person · Email · Role · Joined · Actions) 위에 [Invite member] `primary`, 그 아래 **Pending
+invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `max-w-4xl` 본문에 있고 breadcrumb은
+`프로젝트 이름 / Members`다.
+
+- **Actions 열은 헤더가 `sr-only`다** — 시각적으로 비어야 하지만 이름 없는 `<th>`는 스크린 리더가 빈 열로
+  읽는다 (§7).
+- **행 컨트롤의 라벨은 대상을 든다** — `Change role for {name}` · `Remove {name}` · `Revoke invitation for
+  {email}`. 열마다 같은 라벨이면 셀렉트 다섯 개가 누구의 것인지 구별되지 않는다(번역 셀의 `cellLabel`과
+  같은 형). ⚠️ [Remove]의 `aria-label`은 **보이는 텍스트를 포함**한다 — 음성 입력이 라벨로 컨트롤을 찾는다
+  (WCAG 2.5.3).
+- **역할 변경은 native `Select`**(즉시 적용), **제거는 `Dialog` 확인 한 번**(되돌릴 수 없다). `Revoke`에는
+  확인이 없다 — 같은 마스킹 값이 다이얼로그에 다시 나올 뿐이라 **식별을 고치는 것이 답이었다**(아래).
+- **거부 문구는 행 옆 in-block `Alert danger`다.** 마지막 OWNER 보호(`last-owner`)는 **그 행에 대한 판정**이라
+  상단 global Alert로 올리면 어느 행이 거부됐는지 사라진다. ⚠️ 이 화면에는 **global Alert 슬롯이 없다** —
+  `?e=`를 이 경로로 보내는 자리가 없다(거부는 `/projects?e=`로 간다).
+- ⚠️ **이메일 마스킹의 예외가 여기 있다.** 두 표 모두 `maskEmail`이 기본이지만(이 표는 EDITOR도 본다 —
+  규칙을 역할로 나누지 않는다) **대기 초대는 마스킹한 주소가 유일한 식별자**라 첫 글자만 남기면 서로 다른
+  둘이 같은 행이 된다([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)). 서버가
+  `maskedInviteLabels`로 **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 — 충돌이 없으면 출력이 `maskEmail`과
+  같다(§6.1 "가장 흔한 상태가 가장 조용하다").
+- **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
+- **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
+  대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
+
 ### 6.7 새 프로젝트 (`/projects/new`)
 
 ②~⑥이 한 라우트의 클라이언트 상태다 (`features/project-onboarding/design.md` §2 — 바꾸지 않는다). 형만 바뀐다:
