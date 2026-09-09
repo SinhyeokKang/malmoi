@@ -266,6 +266,29 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
     expect(has(captured, 'INSERT INTO "KeyRef"')).toBe(false);
   });
 
+  /**
+   * **선언은 그것을 쓴 push만 비운다** (6b-3 회귀 — code-review 2026-09-09 🔴1).
+   *
+   * 처음 구현은 push마다 `declaredBaseLocale: null`을 실었다. 그러면 OWNER가 base를 선언한 뒤
+   * **워크플로를 고치기 전에 평범한 CI push 한 번**이 오면(base 브랜치에 머지가 있을 때마다 온다)
+   * 그 허가가 조용히 사라지고 **두 화면의 대기 배너도 함께 사라진다** — OWNER는 변경이 반영된 줄
+   * 알지만 아무것도 안 바뀌었다. 흔한 경로에서 기능이 무력화되고 신호가 없다.
+   *
+   * `baseChanged`가 곧 "허가가 쓰였다"다: `checkFormat`이 payload의 base를 현실 또는 선언으로만
+   * 통과시키므로, 현실과 다른 base가 여기까지 왔다면 그것은 선언과 같은 값이다.
+   */
+  it("base가 그대로인 push는 선언을 건드리지 않는다 — 허가를 쓰지 않았다", async () => {
+    const { projectUpdates } = await runFlow();
+    const data = (projectUpdates[0] as { data: Record<string, unknown> }).data;
+    expect(Object.hasOwn(data, "declaredBaseLocale")).toBe(false);
+  });
+
+  it("base를 바꾸는 push는 선언을 비운다 — 일회용이다", async () => {
+    const { projectUpdates } = await runFlow({ previousBaseLocale: "ko" });
+    const data = (projectUpdates[0] as { data: Record<string, unknown> }).data;
+    expect(data["declaredBaseLocale"]).toBeNull();
+  });
+
   it("포맷과 커밋 정보가 Project에 실린다 — pull이 이 값을 읽는다", async () => {
     const { projectUpdates } = await runFlow();
     expect(projectUpdates).toEqual([{
@@ -275,8 +298,7 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         pathTemplate: "_locales/{locale}/messages.json",
         nested: false,
         baseLocale: "en",
-        // **선언은 push마다 비워진다 — 일회용 허가다** (6b-3, design §3.13).
-        declaredBaseLocale: null,
+        // ⚠️ `declaredBaseLocale`이 **없다** — base가 안 바뀐 push는 허가를 쓰지 않았다 (위 두 케이스).
         lastCommitSha: "a".repeat(40),
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },

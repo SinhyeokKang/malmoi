@@ -425,6 +425,8 @@ export const en = {
         saving: "Saving…",
         saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
+        /** 첫 적재 전 — 고를 언어가 없어 폼 전체가 막힌다. 이유를 말하지 않으면 고장으로 보인다. */
+        noLocales: "You can change these after the first import.",
       },
 
       /**

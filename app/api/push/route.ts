@@ -114,6 +114,9 @@ export async function POST(request: Request): Promise<NextResponse> {
             adapter: project.adapterName,
             pathTemplate: project.pathTemplate,
             baseLocale: project.baseLocale,
+            // ⚠️ **선언도 보인다** (6b-3). 없으면 대기 중인 프로젝트의 CI 로그가 "expected en, got fr"만
+            // 보여, 실제로는 `ko`도 받아들여진다는 사실이 진단에서 사라진다. 비밀이 아니라 라우팅 정보다.
+            declaredBaseLocale: project.declaredBaseLocale,
           },
           got: {
             adapter: parsed.data.format.adapter,

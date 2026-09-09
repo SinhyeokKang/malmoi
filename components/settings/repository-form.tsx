@@ -111,6 +111,14 @@ export function RepositoryForm({
         {result === "saved" && (
           <span className="text-muted-foreground text-xs">{m.settings.repository.fields.saved}</span>
         )}
+        {/*
+          ⚠️ **왜 저장할 수 없는지 말한다** (code-review 2026-09-09 🟡). Action이 `baseLocale`을
+          필수로 받으므로 로케일 목록이 비면 폼 전체가 막히는데, 이유가 없으면 브랜치 필드가
+          고장난 것으로 보인다. 첫 적재 전에는 `baseBranch`가 이미 리포의 default branch다.
+        */}
+        {noLocales && (
+          <span className="text-muted-foreground text-xs">{m.settings.repository.fields.noLocales}</span>
+        )}
       </div>
 
       {typeof result === "object" && <Alert variant="danger">{messageFor(result.error)}</Alert>}

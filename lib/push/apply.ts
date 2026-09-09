@@ -254,14 +254,18 @@ export async function applyPush(
         ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
         /**
-         * **선언을 비운다 — 일회용 허가다** (design §3.13, 6b-3). 안 비우면 `checkFormat`이 그
-         * 값을 영구히 받아들여, OWNER가 한 번 허가한 base가 그 뒤로 아무 때나 통과하는 예외가 된다.
+         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (design §3.13, 6b-3).
          *
-         * base가 안 바뀐 push에서도 비우는 것이 맞다 — 그때 선언이 남아 있다면 사용자가 워크플로를
-         * 아직 안 고친 것이고, 그 상태로 옛 base push가 한 번 더 온 것 자체가 "허가를 쓰지 않았다"는
-         * 뜻이 아니다. 대기를 유지하려면 다시 선언하면 되고(같은 폼), 남겨 두는 쪽이 위험하다.
+         * ⚠️ **push마다 비우면 기능이 흔한 경로에서 무력화된다** (code-review 2026-09-09). OWNER가
+         * base를 선언한 뒤 워크플로를 고치기 전에 평범한 CI push 한 번이 오면(base 브랜치에 머지가
+         * 있을 때마다 온다) 허가가 조용히 사라지고 **두 화면의 대기 배너도 함께 사라진다** — OWNER는
+         * 반영된 줄 알지만 아무것도 안 바뀌었고 신호가 없다.
+         *
+         * `baseChanged`가 곧 "허가가 쓰였다"다: `checkFormat`이 payload의 base를 **현실 또는 선언**으로만
+         * 통과시키므로, 현실과 다른 base가 여기까지 왔다면 그 값은 선언과 같다. 남는 경우(선언 == 현실)는
+         * `basePending`이 false라 배너가 없고, `checkFormat`의 그 갈래도 현실과 같은 값이라 예외가 아니다.
          */
-        declaredBaseLocale: null,
+        ...(baseChanged ? { declaredBaseLocale: null } : {}),
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),
