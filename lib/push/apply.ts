@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
 
@@ -57,17 +58,30 @@ export type PushOutcome = {
   translationsFilled: number;
 };
 
+export type ApplyOptions = {
+  /**
+   * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
+   * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
+   *
+   * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
+   * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
+   */
+  previousBaseLocale: string | null;
+};
+
 export async function applyPush(
   prisma: PrismaClient,
   projectId: string,
   payload: PushPayloadType,
+  options: ApplyOptions,
 ): Promise<PushOutcome> {
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
   const existing: ExistingKey[] = await prisma.stringKey.findMany({
     where: { projectId },
     select: { id: true, key: true, sourceHash: true, orphaned: true },
   });
-  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key));
+  const baseChanged = isBaseLocaleChange(payload.format.baseLocale, options.previousBaseLocale);
+  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key), { baseChanged });
 
   // **삽입 id를 여기서 만들어 들고 있는다.** 문장 안에서 만들어 버리면 키 id를 다시 조회해야 하고,
   // 그 조회 때문에 트랜잭션이 둘로 갈렸다.
@@ -239,6 +253,15 @@ export async function applyPush(
         // 무해하고, `Prisma.DbNull`을 쓰려면 이 모듈이 생성 클라이언트를 값으로 물어야 한다.
         ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
+        /**
+         * **선언을 비운다 — 일회용 허가다** (design §3.13, 6b-3). 안 비우면 `checkFormat`이 그
+         * 값을 영구히 받아들여, OWNER가 한 번 허가한 base가 그 뒤로 아무 때나 통과하는 예외가 된다.
+         *
+         * base가 안 바뀐 push에서도 비우는 것이 맞다 — 그때 선언이 남아 있다면 사용자가 워크플로를
+         * 아직 안 고친 것이고, 그 상태로 옛 base push가 한 번 더 온 것 자체가 "허가를 쓰지 않았다"는
+         * 뜻이 아니다. 대기를 유지하려면 다시 선언하면 되고(같은 폼), 남겨 두는 쪽이 위험하다.
+         */
+        declaredBaseLocale: null,
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),

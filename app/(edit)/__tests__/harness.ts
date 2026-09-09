@@ -27,6 +27,10 @@ export type ProjectSeed = {
   lastCommitSha?: string | null;
   /** 역행 409 판정의 비교 대상 — T3 테스트가 시드로 넣는다. */
   lastCommitAt?: Date | null;
+  /** 기준 로케일 — `planBaseLocaleChange`의 `current`다 (6b-3). */
+  baseLocale?: string | null;
+  /** 기준 로케일 변경의 선언. `basePending`이 이것과 `baseLocale`을 견준다 (6b-3). */
+  declaredBaseLocale?: string | null;
   /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
   pushTokenHash?: string | null;
 };
@@ -92,6 +96,8 @@ const FORMAT = {
   nested: false,
   nestedByPath: null,
   baseLocale: "en",
+  /** 기준 로케일 변경의 선언 — 기본은 "대기 없음"이다 (`basePending`). 6b-3 테스트가 시드로 넣는다. */
+  declaredBaseLocale: null as string | null,
   lastCommitSha: null as string | null,
   lastCommitAt: null as Date | null,
   lastPulledAt: null as Date | null,

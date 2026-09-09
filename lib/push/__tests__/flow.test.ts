@@ -145,11 +145,19 @@ async function runFlow(options: {
   scanRefs?: Parameters<typeof buildPushPayload>[0]["scanRefs"];
   /** 페이로드의 로케일 목록을 덮는다 — 생산자가 안 내는 모양(중복)을 `applyPush`에 먹여 볼 때. */
   locales?: string[];
+  /**
+   * 이 push **전의** `Project.baseLocale`. 기본은 페이로드의 base와 같다(= base 교체가 아니다) —
+   * 기존 케이스 전부가 그 상황이고, base 교체는 아래 별도 describe가 명시적으로 다르게 준다 (6b-3).
+   */
+  previousBaseLocale?: string | null;
 } = {}) {
   const built = payloadFromFiles(options.scanRefs ?? []);
   const payload = options.locales === undefined ? built : { ...built, locales: options.locales };
   const stub = stubPrisma(options.existing ?? [], payload.keys.map((k) => k.key));
-  const outcome = await applyPush(stub.prisma, PROJECT_ID, payload);
+  const outcome = await applyPush(stub.prisma, PROJECT_ID, payload, {
+    previousBaseLocale:
+      options.previousBaseLocale === undefined ? payload.format.baseLocale : options.previousBaseLocale,
+  });
   return { ...stub, payload, outcome };
 }
 
@@ -267,6 +275,8 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         pathTemplate: "_locales/{locale}/messages.json",
         nested: false,
         baseLocale: "en",
+        // **선언은 push마다 비워진다 — 일회용 허가다** (6b-3, design §3.13).
+        declaredBaseLocale: null,
         lastCommitSha: "a".repeat(40),
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },
@@ -329,6 +339,29 @@ describe("push 흐름 — 기존 키가 있다", () => {
     expect(has(captured, '"needsReview" = true')).toBe(false);
   });
 
+  /**
+   * **base 교체 push는 `needsReview`를 한 행도 세우지 않는다** (6b-3 — design §3.13).
+   *
+   * ⚠️ 이 케이스가 다른 것과 갈리는 지점은 **원인**이다. `sourceHash`가 전부 달라지지만 그 변화의
+   * 뜻이 "원문 문장이 수정됐다"가 아니라 "원문의 **언어**가 교체됐다"라 다른 로케일의 번역은
+   * 여전히 정확하다. 전파하면 살아남는 키 전부에 검토 표시가 붙어 `needsReview` 필터가 죽는다.
+   */
+  it("base가 바뀌는 push에서는 needsReview 문장이 아예 없다", async () => {
+    const changed: ExistingKey = { ...existingZebra, sourceHash: sourceHash("옛 base의 원문") };
+    // 옛 base가 ko였고 이번 push가 en으로 온다 — 픽스처의 base가 en이다.
+    const { captured } = await runFlow({ existing: [changed], previousBaseLocale: "ko" });
+    expect(has(captured, '"needsReview" = true')).toBe(false);
+    // **전파만 끈다** — 원문 갱신은 그대로 일어난다.
+    expect(stmt(captured, 'UPDATE "StringKey" AS s').sql).toContain('"sourceHash" = v."sourceHash"');
+  });
+
+  /** 첫 push는 base 교체가 아니다 — 비교 대상이 없고 기존 키도 없다 (`isBaseLocaleChange`). */
+  it("옛 base가 null이면(첫 push) 옛 동작 그대로다", async () => {
+    const changed: ExistingKey = { ...existingZebra, sourceHash: sourceHash("옛날 원문") };
+    const { captured } = await runFlow({ existing: [changed], previousBaseLocale: null });
+    expect(stmt(captured, '"needsReview" = true').values).toContainEqual(["id-zebra"]);
+  });
+
   it("orphaned였던 키가 돌아오면 되살아난다", async () => {
     const { captured, outcome } = await runFlow({ existing: [{ ...existingZebra, orphaned: true }] });
     expect(outcome.unorphaned).toBe(1);
@@ -367,7 +400,7 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
       scanRefs: [],
     }).payload;
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, PROJECT_ID, payload);
+    await applyPush(stub.prisma, PROJECT_ID, payload, { previousBaseLocale: payload.format.baseLocale });
     return { ...stub, payload };
   }
 
@@ -419,7 +452,9 @@ describe("push 흐름 — 중복 키를 페이로드가 접는다", () => {
     const first = payload.translations[0]!;
     const dup = { ...first, value: "나중 값이 이긴다" };
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, PROJECT_ID, { ...payload, translations: [...payload.translations, dup] });
+    await applyPush(stub.prisma, PROJECT_ID, { ...payload, translations: [...payload.translations, dup] }, {
+      previousBaseLocale: payload.format.baseLocale,
+    });
     const cols = columnsOf(stmt(stub.captured, 'INSERT INTO "Translation"'));
     const pairs = (cols["keyId"] ?? []).map((id, i) => `${String(id)}|${String((cols["localeCode"] ?? [])[i])}`);
     expect(new Set(pairs).size).toBe(pairs.length);
@@ -449,7 +484,9 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
   it("로케일 목록이 비면 표시 문장을 내지 않는다 — 전체를 orphan시키는 사고가 된다", async () => {
     const payload = payloadFromFiles();
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, PROJECT_ID, { ...payload, locales: [] });
+    await applyPush(stub.prisma, PROJECT_ID, { ...payload, locales: [] }, {
+      previousBaseLocale: payload.format.baseLocale,
+    });
     expect(has(stub.captured, 'UPDATE "Locale"')).toBe(false);
   });
 });

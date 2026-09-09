@@ -63,6 +63,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         adapterName: true,
         pathTemplate: true,
         baseLocale: true,
+        // ⚠️ **optional로 두지 않는다** — 껍데기가 빼면 `checkFormat`이 선언을 못 보고 base 변경이
+        // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (design §3.13).
+        declaredBaseLocale: true,
       },
     });
     // ⚠️ **404를 내지 않는다** — 토큰이 유효하지 않은 것과 그런 프로젝트가 없는 것을 가르면 프로젝트 존재가
@@ -136,7 +139,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       );
     }
 
-    const outcome = await applyPush(prisma, project.id, parsed.data);
+    /**
+     * ⚠️ **`previousBaseLocale`은 이 행의 값이다** — `applyPush`가 그것으로 base 교체를 알아보고
+     * `needsReview` 전파를 건너뛴다 (design §3.13). 아래 update가 `baseLocale`을 덮으므로 **덮기 전의
+     * 값**을 넘겨야 하고, 그래서 조회를 다시 하지 않고 위에서 읽은 행을 그대로 쓴다.
+     */
+    const outcome = await applyPush(prisma, project.id, parsed.data, {
+      previousBaseLocale: project.baseLocale,
+    });
     return NextResponse.json({
       projectId: project.id,
       commitSha: parsed.data.commitSha,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PublishButton, PublishResult } from "@/components/publish-button";
+import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { TranslationFilters } from "@/components/translations/filters";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -34,6 +35,8 @@ export function TranslationsHeader({
   lastSentLabel,
   lastPrUrl,
   dismissKey,
+  baseLocale,
+  declaredBaseLocale,
 }: {
   slug: string;
   projectName: string;
@@ -49,6 +52,9 @@ export function TranslationsHeader({
   lastPrUrl: string | null;
   /** 배너 닫기 키 = `lastPulledAt` (design §3.11). */
   dismissKey: string;
+  /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). */
+  baseLocale: string | null;
+  declaredBaseLocale: string | null;
   /** OWNER만 초대할 수 있다. **화면에서 감추는 것은 편의**이고 방어는 `createInvitation`이다. */
 }) {
   const router = useRouter();
@@ -107,7 +113,14 @@ export function TranslationsHeader({
         </div>
       </div>
 
-      {/* 배너가 위, 결과가 아래다 (design §3.11) — 결과는 방금 누른 것에 대한 답이라 더 가까이 둔다. */}
+      {/*
+        배너가 위, 결과가 아래다 (design §3.11) — 결과는 방금 누른 것에 대한 답이라 더 가까이 둔다.
+        ⚠️ **둘 다 조건부 분기 밖의 고정 슬롯이다** (DESIGN §6.1) — 안에 두면 `router.refresh()`가
+        방금 만든 상태를 언마운트한다 (POSTMORTEM 2026-09-07).
+        기준 로케일 대기가 **먼저**다: 편집 손실 배너는 "보내라"이고 이쪽은 "왜 지금 보내야 하는가"라
+        순서를 뒤집으면 이유가 결론 뒤에 온다.
+      */}
+      <BasePendingBanner baseLocale={baseLocale} declaredBaseLocale={declaredBaseLocale} />
       <EditLossBanner count={unpublished} dismissKey={dismissKey} />
       {outcome !== null && <PublishResult outcome={outcome} />}
     </div>

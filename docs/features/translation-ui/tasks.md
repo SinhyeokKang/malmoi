@@ -429,9 +429,10 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 ### T4. 설정 화면 — Repository 블록의 필드 둘
 
 - [ ] `updateRepositorySettings({ slug, baseBranch, baseLocale })` (`project:settings`) — 둘을 한 폼에 두므로 저장도 하나다. `baseBranch`는 즉시 쓰고 `baseLocale`은 **선언만** 쓴다. 결과에 재생성한 `workflowYaml`이 실린다
-      검증: `app/(edit)/__tests__/` — EDITOR `forbidden` · 다른 프로젝트 slug는 `not-found` · 잘못된 브랜치 이름은 `invalid-branch` · orphaned 로케일은 `orphaned-locale` · `noop`이면 쓰지 않는다
+      검증: `app/(edit)/__tests__/repository-settings.test.ts` — EDITOR `forbidden` · 다른 프로젝트 slug는 `not-found` · 잘못된 브랜치 이름은 `invalid-branch`(앞뒤 공백 포함) · orphaned 로케일은 `orphaned-locale` · `noop`이고 선언도 없으면 **`project.update`를 아예 부르지 않는다** · `noop`인데 선언이 남아 있으면 그것을 비운다(되돌리기) · 성공 경로가 `baseLocale`·`Locale.isBase`를 **건드리지 않는다**
 - [ ] 블록 안 `Alert warning`은 **`basePending`이 조건**이다(저장 직후만이 아니라 대기 중 상시) — "Update `.github/workflows/l10n.yml` — until then CI pushes keep the old base language" + YAML 코드 블록 + [Copy]. ⚠️ **readiness 분기 밖**(POSTMORTEM 2026-09-07 revalidate)
-      검증: `components/__tests__/` 소스 스캔 — `basePending`을 읽는다 · `<pre>`로 YAML을 낸다(여러 줄이라 `whitespace-pre-wrap`이 아니다, DESIGN §4.1) · 저장 실패는 in-block Alert
+      ⚠️ **그 블록은 파일 전체가 아니라 고칠 한 줄이다** (구현에서 좁혔다): 아래 워크플로 카드가 이미 선언을 반영한 YAML을 통째로 내므로, 여기서 또 내면 한 화면에 저장할 파일이 둘로 보인다. 줄의 정본은 `lib/onboarding/workflow.ts`의 `baseLocaleLine`이고 **대기 중에는 `workflowYaml`이 어댑터와 무관하게 `base-locale:`을 박는다** — 안 박으면 CI가 탐지 1순위(=옛 base)를 보내 통과하고 변경이 영영 조용히 안 일어난다
+      검증: `components/__tests__/base-locale-screens.test.ts` 소스 스캔 — `basePending`을 읽는다 · `<pre>`로 낸다(여러 줄이라 `whitespace-pre-wrap`이 아니다, DESIGN §4.1) · `base-locale:` 리터럴을 화면이 직접 만들지 않는다 · 저장 실패는 in-block Alert · 폼이 `components/ui/` 프리미티브만 쓴다
 - [ ] `docs/ACTIONS.md`와 같은 커밋 — `base-locale` 행에 "설정에서 바꾸면 이 값을 함께 고쳐야 한다"를 적는다. `workflow.test.ts`가 ACTIONS.md와 줄 대조하므로 문서가 함께 바뀌어야 green이다
 
 —— `feat(settings): base branch and base language fields`
@@ -440,7 +441,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 - [ ] `components/translations/`에 배너 하나. 조건은 `basePending`, 문구는 **"먼저 보내라"** — 다음 CI push가 키 집합을 새로 세우고 strict가 값을 덮으므로(MVP §3.1) 그 전에 Publish하는 것이 손실 창을 좁히는 유일한 수단이다.
       ⚠️ **검토 표시를 예고하지 않는다** — T3이 base 변경 push에서 전파를 건너뛰므로 그 일이 안 일어난다. 배너는 **덮어쓰기 하나만** 말한다(둘을 말하면 무엇을 해야 하는지가 흐려진다)
-      검증: 소스 스캔 — 편집 손실 배너와 **자리가 갈린다**(둘 다 조건부 분기 **밖** — DESIGN §6.1 고정 슬롯) · `basePending`을 읽는다(조건이 두 벌이 아니다)
+      검증: `components/__tests__/base-locale-screens.test.ts` — 편집 손실 배너와 **자리가 갈린다**(둘 다 조건부 분기 **밖** — DESIGN §6.1 고정 슬롯, 대기 배너가 **먼저**다) · `basePending`을 읽는다(조건이 두 벌이 아니다 — 손으로 쓴 비교가 어느 화면에도 없다) · **닫기가 없다**(편집 손실 배너와 반대다 — 할 일이 남은 동안 계속 참이다)
 
 —— `feat(translations): banner for a pending base-language change`
 

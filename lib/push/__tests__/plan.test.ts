@@ -62,7 +62,8 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One")],
-    , { baseChanged: false });
+      { baseChanged: false },
+    );
     expect(p.toUpdate.map((k) => k.key)).toEqual(["a_one"]);
     expect(p.staleKeyIds).toEqual([]);
   });
@@ -71,7 +72,8 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One changed")],
-    , { baseChanged: false });
+      { baseChanged: false },
+    );
     expect(p.staleKeyIds).toEqual(["id-a_one"]);
   });
 
@@ -79,7 +81,8 @@ describe("planPush — 기존 키", () => {
     const p = planPush(
       [existing({ key: "a_one", sourceHash: sourceHash("One") })],
       [incoming("a_one", "One", { description: "새 설명" })],
-    , { baseChanged: false });
+      { baseChanged: false },
+    );
     expect(p.staleKeyIds).toEqual([]);
     expect(p.toUpdate[0]?.description).toBe("새 설명");
   });
@@ -106,7 +109,8 @@ describe("planPush — orphaned", () => {
     const p = planPush(
       [existing({ key: "back", orphaned: true, sourceHash: sourceHash("B") })],
       [incoming("back", "B")],
-    , { baseChanged: false });
+      { baseChanged: false },
+    );
     expect(p.toUnorphan).toEqual(["id-back"]);
     expect(p.toOrphan).toEqual([]);
   });
@@ -130,7 +134,8 @@ describe("planPush — 결정성", () => {
     const p = planPush(
       [existing({ key: "z_gone" }), existing({ key: "a_gone" })],
       [incoming("m_new", "M"), incoming("b_new", "B")],
-    , { baseChanged: false });
+      { baseChanged: false },
+    );
     expect(p.toInsert.map((k) => k.key)).toEqual(["b_new", "m_new"]);
     expect(p.toOrphan).toEqual(["id-a_gone", "id-z_gone"]);
   });

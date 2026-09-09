@@ -53,9 +53,21 @@ model Project {
   /// 사라진다** — musicblocks 84로케일 중 81개에서 각 4키가 그렇게 없어졌다 (ARCHITECTURE §1.35).
   /// Json인 이유: 로케일 수가 리포마다 다르고(실측 최대 106개) 조회 조건이 아니라 write 입력이다.
   nestedByPath Json?
-  /// 키 집합을 정의하는 기준 로케일. CI가 보낸 값을 저장한다 — 고르는 규칙(`pickBaseLocale`: en 우선,
-  /// 없으면 사전순)은 리포 관례를 추정한 것이고 정본은 미결이다 (TASKS §3a 🔒 / MVP §10).
+  /// 키 집합을 정의하는 기준 로케일 — **현실**이다. CI가 보낸 값을 저장한다(소유자는 `applyPush`) —
+  /// 고르는 규칙(`pickBaseLocale`: en 우선, 없으면 사전순)은 리포 관례를 추정한 것이고 정본은
+  /// 미결이다 (TASKS §3a 🔒 / MVP §10). **pull과 `checkFormat`이 이 값을 읽는다.**
   baseLocale   String?
+  /// 기준 로케일 변경의 **선언** — "다음 CI push가 이 base를 가져오면 받아들이겠다"는 OWNER의
+  /// **일회용 허가**다 (6b-3 — translation-ui design §3.13).
+  ///
+  /// ⚠️ **소유자와 읽는 곳이 위 컬럼과 다르다**: 쓰는 것은 설정 화면(`updateRepositorySettings`)이고
+  /// 읽는 것은 `checkFormat`(선언과 같은 base도 통과시킨다)과 두 화면의 대기 배너(`basePending`)다.
+  /// **pull은 이 컬럼을 보지 않는다** — 그래서 대기 중에도 옛 base로 정상 동작하고 어느 단계도
+  /// 멈추지 않는다. 같은 컬럼에 선언을 쓰면 pull이 그것을 즉시 진실로 읽어 옛 base의 원문이 새
+  /// base 파일에 실린 PR을 낸다(그 안을 기각한 근거다).
+  ///
+  /// `applyPush`가 push 성공 시 **null로 비운다** — 안 비우면 한 번 허가한 base가 영구 예외가 된다.
+  declaredBaseLocale String?
 
   /// 마지막 push의 커밋 SHA. 편집 UI의 코드 참조 permalink 기준이다.
   /// `KeyRef`가 push마다 전체 교체되므로 프로젝트당 값 하나로 충분하다 — ref마다 들 필요가 없다.

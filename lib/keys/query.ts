@@ -32,6 +32,11 @@ export type ProjectContext = {
   installationId: string | null;
   lastCommitSha: string | null;
   baseLocale: string | null;
+  /**
+   * 기준 로케일 변경의 **선언**. 번역 화면의 대기 배너가 `basePending`으로 이것과 `baseLocale`을
+   * 견준다 (6b-3 — design §3.13). pull은 이 컬럼을 읽지 않는다.
+   */
+  declaredBaseLocale: string | null;
   /** 미배포 판정의 기준선. 벽시계가 아니라 캡처된 `max(updatedAt)`이다 (design §3.5). */
   lastPulledAt: Date | null;
   /** 마지막으로 **보낸** 시각과 그때의 PR. `skipped`는 이 둘을 건드리지 않는다 (design §3.4). */
@@ -51,7 +56,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string): Prom
     where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true,
-      installationId: true, lastCommitSha: true, baseLocale: true,
+      installationId: true, lastCommitSha: true, baseLocale: true, declaredBaseLocale: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
       locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
     },

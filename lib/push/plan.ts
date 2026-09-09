@@ -150,9 +150,28 @@ export type PushPlan = {
  */
 export type IncomingKeyType = z.infer<typeof IncomingKey>;
 
+/**
+ * ⚠️ **`baseChanged`가 필수 인자다** (6b-3). optional로 두면 껍데기가 빼먹어도 컴파일러가 조용하고,
+ * 그 침묵이 이 리포에 이미 기록된 실패다 (POSTMORTEM 2026-09-02). 판정 자체는
+ * `isBaseLocaleChange`(`guard.ts`)가 하고 여기는 그 결론만 받는다.
+ */
+export type PlanOptions = {
+  /**
+   * 이 push가 base 로케일을 교체하는가. `true`면 **`needsReview` 전파를 건너뛴다** (design §3.13).
+   *
+   * ⚠️ **`sourceHash`가 바뀐 원인이 평소와 다르다.** 평소의 전파는 "개발자가 원문 문장을 고쳤다 →
+   * 번역이 낡았을 수 있다"인데, base 변경은 **원문의 언어가 교체된 것**이고 의미는 그대로다 —
+   * en→ko면 `sourceText`가 "Save"→"저장"이 되지만 fr의 "Enregistrer"는 여전히 정확하고 옛
+   * base(en)의 값도 마찬가지다. 전파하면 **살아남는 키 전부**에 검토 표시가 붙어 903키
+   * 프로젝트에서 `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다).
+   */
+  baseChanged: boolean;
+};
+
 export function planPush(
   existingKeys: readonly ExistingKey[],
   incomingKeys: readonly IncomingKeyType[],
+  options: PlanOptions,
 ): PushPlan {
   // 같은 키가 두 번 오면 뒤가 이긴다 — Map이 그 의미를 그대로 준다.
   const incoming = new Map<string, PlannedKey>();
@@ -202,7 +221,8 @@ export function planPush(
     toUpdate: toUpdate.sort(byKey),
     toOrphan: toOrphan.sort(compare),
     toUnorphan: toUnorphan.sort(compare),
-    staleKeyIds: staleKeyIds.sort(compare),
+    // **전파만 끈다** — 갱신·orphan·unorphan은 그대로다. 비면 `apply.ts`의 전파 SQL이 애초에 안 나간다.
+    staleKeyIds: options.baseChanged ? [] : staleKeyIds.sort(compare),
   };
 }
 

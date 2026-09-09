@@ -77,7 +77,8 @@ export async function ingestFirstSnapshot(
     scanRefs: [],
   });
 
-  await applyPush(prisma, input.projectId, payload);
+  // 첫 적재라 base가 바뀔 수 없다 — 이 프로젝트는 아직 `baseLocale`이 null이다 (design §3.13).
+  await applyPush(prisma, input.projectId, payload, { previousBaseLocale: null });
 
   const errors = [
     ...read.errors,

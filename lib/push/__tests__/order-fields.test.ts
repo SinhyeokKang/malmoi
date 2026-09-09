@@ -89,10 +89,14 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
   const existing: readonly ExistingKey[] = [];
 
   it("신규 키에 sortIndex가 실린다", () => {
-    const plan = planPush(existing, [
-      { key: "b", sourceText: "B", namespace: "n", order: 0 },
-      { key: "a", sourceText: "A", namespace: "n", order: 1 },
-    ]);
+    const plan = planPush(
+      existing,
+      [
+        { key: "b", sourceText: "B", namespace: "n", order: 0 },
+        { key: "a", sourceText: "A", namespace: "n", order: 1 },
+      ],
+      { baseChanged: false },
+    );
     expect(plan.toInsert.map((k) => [k.key, k.sortIndex])).toEqual([
       ["a", 1],
       ["b", 0],
@@ -100,22 +104,28 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
   });
 
   it("기존 키도 매 push마다 sortIndex가 갱신된다 — drift가 생기지 않는 근거다", () => {
-    const plan = planPush([{ id: "id-a", key: "a", sourceHash: "h", orphaned: false }], [
-      { key: "a", sourceText: "A", namespace: "n", order: 7 },
-    ]);
+    const plan = planPush(
+      [{ id: "id-a", key: "a", sourceHash: "h", orphaned: false }],
+      [{ key: "a", sourceText: "A", namespace: "n", order: 7 }],
+      { baseChanged: false },
+    );
     expect(plan.toUpdate[0]?.sortIndex).toBe(7);
   });
 
   it("order가 없으면 sortIndex가 undefined로 남는다 — 배열 인덱스로 채우지 않는다", () => {
-    const plan = planPush(existing, [
-      { key: "b", sourceText: "B", namespace: "n" },
-      { key: "a", sourceText: "A", namespace: "n" },
-    ]);
+    const plan = planPush(
+      existing,
+      [
+        { key: "b", sourceText: "B", namespace: "n" },
+        { key: "a", sourceText: "A", namespace: "n" },
+      ],
+      { baseChanged: false },
+    );
     expect(plan.toInsert.every((k) => k.sortIndex === undefined)).toBe(true);
   });
 
   it("order 0을 빠뜨리지 않는다 — falsy라 조건문으로 거르면 사라진다", () => {
-    const plan = planPush(existing, [{ key: "a", sourceText: "A", namespace: "n", order: 0 }]);
+    const plan = planPush(existing, [{ key: "a", sourceText: "A", namespace: "n", order: 0 }], { baseChanged: false });
     expect(plan.toInsert[0]?.sortIndex).toBe(0);
   });
 
@@ -123,6 +133,7 @@ describe("planPush — order를 sortIndex로 싣는다", () => {
     const plan = planPush(
       [{ id: "id-a", key: "a", sourceHash: sourceHash("A"), orphaned: false }],
       [{ key: "a", sourceText: "A", namespace: "n", order: 3 }],
+      { baseChanged: false },
     );
     // 원문이 같으면 stale이 아니다. (해시가 다르면 stale인 것은 기존 테스트가 덮는다.)
     expect(plan.staleKeyIds).not.toContain("id-a");

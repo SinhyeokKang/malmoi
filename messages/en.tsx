@@ -230,6 +230,19 @@ export const en = {
       unsent: (n: number): string =>
         `${n === 1 ? "1 change" : `${n} changes`} not yet sent. ` +
         "They can be lost if your developers push code first — send them when you're done.",
+
+      /**
+       * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**
+       *
+       * ⚠️ **검토 표시를 예고하지 않는다** — `planPush`가 base 교체 push에서 전파를 건너뛰므로 그
+       * 일이 안 일어난다. 둘을 말하면 무엇을 해야 하는지가 흐려진다.
+       *
+       * ⚠️ **로케일 코드를 그대로 보인다** — 사람이 읽는 이름이 없다(`Locale.name`이 코드와 같게
+       * 심긴다). 지어내면 리포의 파일명과 갈린다.
+       */
+      basePending: (locale: string): string =>
+        `The source language is changing to ${locale}. ` +
+        "Send your changes now — the push that switches it overwrites translations that haven't been sent.",
     },
 
     empty: {
@@ -395,6 +408,38 @@ export const en = {
         install: "Install the app",
         installHint: "Install it, then come back here and connect again.",
       },
+
+      /**
+       * 기준 브랜치·기준 로케일 (6b-3 — design §3.13). **한 폼이라 저장도 하나다.**
+       *
+       * ⚠️ **두 필드의 뜻이 다르다**: base branch는 **즉시** 쓰이고(pull의 커밋 parent·PR base),
+       * base language는 **선언만** 쓰인다 — 실제로 바뀌는 것은 다음 CI push다. help 문구가 그
+       * 차이를 말한다. 안 말하면 저장 직후 화면이 안 바뀌는 것이 버그로 보인다.
+       */
+      fields: {
+        branch: "Base branch",
+        branchHelp: "The branch translations are sent back to, and the one CI watches.",
+        locale: "Base language",
+        localeHelp: "The language your source strings are written in. Changing it takes effect on the next CI push.",
+        save: "Save",
+        saving: "Saving…",
+        saved: "Saved",
+        failed: "We couldn't save this. Try again in a moment.",
+      },
+
+      /**
+       * 선언과 현실이 어긋난 동안 상시로 뜬다 (`basePending`) — 저장 직후만이 아니다.
+       *
+       * ⚠️ **git 어휘를 피하지 않는다** — 이 화면을 보는 사람은 리포를 가진 개발자다(게이트가
+       * `project:settings`). 번역 화면의 같은 배너는 편집자가 읽으므로 문장이 다르다.
+       */
+      pending: {
+        title: "The base language change is waiting on your workflow",
+        body: (path: ReactNode): ReactNode => (
+          <>Update {path} — until then CI pushes keep the old base language.</>
+        ),
+        copy: "Copy line",
+      },
     },
 
     status: {
@@ -555,6 +600,18 @@ export const en = {
       // "입력한 값은 그대로"를 쓰지 않는다 — 중간 상태를 저장하지 않으므로 거짓이다.
       unauthorized: "Your session ended. Sign in again and start over.",
       fallback: "We couldn't create the project. Start over and try again.",
+    },
+
+    /**
+     * `updateRepositorySettings`의 거부 셋 (6b-3). ⚠️ **`noop`은 여기 없다** — 그것은 거부가
+     * 아니라 "쓸 것이 없다"이고 화면은 성공으로 보인다.
+     */
+    repositorySettings: {
+      "invalid-branch": "That's not a valid branch name. Spaces and the characters ~^:?*[ aren't allowed.",
+      // 왜 없는지를 말한다 — 목록은 리포의 로케일 파일에서 온다.
+      "unknown-locale": "This repository has no locale file for that language.",
+      // 되돌릴 수 있는 상태이므로 무엇을 해야 하는지 말한다.
+      "orphaned-locale": "That language's file is gone from the repository. Bring it back first.",
     },
   },
 

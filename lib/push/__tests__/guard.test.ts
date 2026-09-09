@@ -93,7 +93,27 @@ describe("checkFormat — 확정한 번역 표면을 CI가 다른 것으로 갈�
 
   it("아직 아무것도 저장돼 있지 않으면 통과한다 — push가 채우는 것이 옛 계약이다", () => {
     expect(
-      checkFormat(payload, { adapterName: null, pathTemplate: null, baseLocale: null }),
+      checkFormat(payload, {
+        adapterName: null,
+        pathTemplate: null,
+        baseLocale: null,
+        declaredBaseLocale: null,
+      }),
+    ).toBe("ok");
+  });
+
+  /**
+   * 온보딩 중에 선언만 있는 행. **"전부 비어 있다" 판정에 선언을 넣지 않는 근거다** — 넣으면 이
+   * 행의 첫 push가 아래 엄격 비교로 내려가 `wrong-format`이 된다 (6b-3).
+   */
+  it("현실은 비어 있고 선언만 있어도 통과한다 — 첫 push가 그 값을 심는다", () => {
+    expect(
+      checkFormat(payload, {
+        adapterName: null,
+        pathTemplate: null,
+        baseLocale: null,
+        declaredBaseLocale: "ko",
+      }),
     ).toBe("ok");
   });
 

@@ -152,6 +152,8 @@ export default async function TranslationsPage({
           }
           lastPrUrl={project.lastPrUrl}
           dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
+          baseLocale={project.baseLocale}
+          declaredBaseLocale={project.declaredBaseLocale}
         />
 
         <div className="min-h-0 flex-1">

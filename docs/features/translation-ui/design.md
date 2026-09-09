@@ -423,7 +423,11 @@ Prisma `count`인 이유(2026-09-08): 처음 초안은 raw SQL이었는데 하�
 ✅ **미배포 집계는 흔들리지 않는다.** 그 push가 전 행의 `updatedAt`을 올리지만 `updatedBy`를 비우고, `countUnpublished`·`isUnpublished`는 **`updatedBy`가 사람인 행만** 센다
 (ARCHITECTURE §1.35 아래 판정 · `queries.test.ts`가 두 경로를 맞댄다). 이 설계가 그 판정에 얹혀 있다.
 
-**Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나**(`project:settings`)다 — 둘을 한 폼에 두므로 저장도 하나다. 결과에 `workflowYaml`이 실린다.
+**Action은 `updateRepositorySettings({ slug, baseBranch, baseLocale })` 하나**(`project:settings`)다 — 둘을 한 폼에 두므로 저장도 하나다.
+⚠️ **반환값에 `workflowYaml`을 싣지 않는다** (2026-09-09 구현에서 정정). 초안은 그것을 결과에 실었는데, **YAML은 서버가 렌더한다** — 대기 Alert와 워크플로 블록이
+`Project.declaredBaseLocale`을 읽어 `base-locale:` 줄을 박고, `revalidatePath`가 저장 직후 그 둘을 다시 그린다. 값을 반환하면 같은 문자열의 생산자가 둘이 되고 그중
+하나(클라이언트가 든 사본)가 낡는다. 조건부 분기에 든 클라이언트 상태를 revalidate가 씻는 문제(POSTMORTEM 2026-09-07)도 여기서는 없다 — Alert를 만드는 것이
+revalidate 자신이다. **되돌리기도 코드가 없다**: `noop`인데 선언이 남아 있으면 그것을 `null`로 비운다(그 한 줄이 "취소 버튼을 두지 않는다"의 구현이다).
 `Translation`·`StringKey` 행은 **건드리지 않는다.** UI가 재적재를 돌리지 않는다 — 재적재 경로는 **CI 하나뿐이다**(`runFirstIngest`는 ready에서 `not-awaiting` —
 `actions.ts:676`. 처음 초안의 "[Run first import]와 같은 경로"는 거짓이었다).
 
