@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+import { baseLocaleFieldValue } from "@/lib/onboarding/base-pending";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 
@@ -35,19 +36,30 @@ export function RepositoryForm({
   slug,
   baseBranch,
   baseLocale,
+  declaredBaseLocale,
   locales,
 }: {
   slug: string;
   baseBranch: string;
   /** 현실 — 첫 push 전이면 null이다. */
   baseLocale: string | null;
+  /**
+   * 대기 중인 **선언**. ⚠️ 이것을 안 받으면 필드가 현실을 보이고, 그 상태의 저장 한 번이 대기 중인
+   * 변경을 조용히 취소한다 (malmoi#20 — `baseLocaleFieldValue`의 경고).
+   */
+  declaredBaseLocale: string | null;
   /** 살아 있는 로케일만. 서버가 걸러 내려준다. */
   locales: readonly string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [branch, setBranch] = useState(baseBranch);
-  // 첫 push 전에는 고를 것이 없다 — 그때는 빈 값이고 아래에서 필드가 disabled다.
-  const [locale, setLocale] = useState(baseLocale ?? locales[0] ?? "");
+  /**
+   * **필드는 저장이 보낼 값을 보인다** — 선언이 있으면 선언이다 (malmoi#20). 첫 push 전에는 고를
+   * 것이 없어 빈 값이고, 그때는 아래에서 폼이 disabled다.
+   */
+  const [locale, setLocale] = useState(
+    baseLocaleFieldValue({ baseLocale, declaredBaseLocale }) ?? locales[0] ?? "",
+  );
   const [result, setResult] = useState<"idle" | "saved" | { error: string }>("idle");
 
   const noLocales = locales.length === 0;

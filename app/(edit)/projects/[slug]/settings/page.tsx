@@ -119,6 +119,7 @@ export default async function SettingsPage({
             slug={slug}
             baseBranch={project.baseBranch}
             baseLocale={project.baseLocale}
+            declaredBaseLocale={project.declaredBaseLocale}
             locales={project.locales.map((l) => l.code)}
           />
           <BasePendingAlert declared={project.declaredBaseLocale} baseLocale={project.baseLocale} />

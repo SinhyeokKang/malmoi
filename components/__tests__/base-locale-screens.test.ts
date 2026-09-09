@@ -116,6 +116,25 @@ describe("설정 화면 — 폼과 대기 Alert", () => {
     expect(src).not.toMatch(/base-locale:/);
   });
 
+  /**
+   * **필드는 저장이 보낼 값을 보인다** (malmoi#20 회귀).
+   *
+   * ⚠️ 현실로 초기화하면 대기 중에 화면을 새로 열었을 때 필드가 옛 언어를 보이고, 그 상태의
+   * 저장(브랜치만 고쳐도)이 옛 언어를 "고른 값"으로 보내 **되돌리기 경로가 선언을 지운다** —
+   * 배너까지 함께 사라져 무음이다. 판정이 green인 것과 폼이 그것을 부르는 것은 다른 사실이다.
+   */
+  it("기준 언어 필드가 `baseLocaleFieldValue`로 초기화된다 — 현실 단독이 아니다", () => {
+    const src = read(SETTINGS_FORM);
+    expect(src).toMatch(/from "@\/lib\/onboarding\/base-pending"/);
+    expect(src).toMatch(/baseLocaleFieldValue\(/);
+    // 옛 형태(`useState(baseLocale ?? …)`)가 남아 있으면 안 된다.
+    expect(src).not.toMatch(/useState\(\s*baseLocale\s*\?\?/);
+  });
+
+  it("페이지가 선언을 폼에 넘긴다 — 안 넘기면 폼이 판정할 재료가 없다", () => {
+    expect(read(SETTINGS_PAGE)).toMatch(/declaredBaseLocale=\{project\.declaredBaseLocale\}/);
+  });
+
   /** 저장 실패는 **in-block** `Alert danger`다 — 페이지 수준 거부(`?e=`)만 global이다 (DESIGN §6.6). */
   it("저장 실패가 폼 안의 danger Alert로 간다", () => {
     const src = read(SETTINGS_FORM);

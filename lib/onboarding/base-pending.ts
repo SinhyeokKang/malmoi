@@ -20,3 +20,22 @@ export function basePending(input: { baseLocale: string | null; declaredBaseLoca
   // 선언을 현실과 같은 값으로 다시 저장하는 것이 **되돌리는 경로**다 — 별도 취소 버튼을 두지 않는다.
   return input.declaredBaseLocale !== input.baseLocale;
 }
+
+/**
+ * 설정 화면의 기준 언어 필드가 **보여야 하는 값** — 선언이 있으면 선언이다 (malmoi#20).
+ *
+ * ⚠️ **현실을 보이면 저장 한 번이 대기 중인 변경을 조용히 취소한다.** 필드가 옛 언어를 보이는
+ * 동안 사용자가 브랜치만 고쳐 저장하면, 그 옛 언어가 "고른 값"으로 서버에 가고
+ * `planBaseLocaleChange`가 `noop`으로 읽어 **되돌리기 경로가 선언을 지운다** — 배너까지 함께
+ * 사라지므로 무음이다. 되돌리기 자체는 옳고(design §3.13), 틀린 것은 "사용자가 현실을 다시
+ * 골랐다"는 전제였다. 필드가 선언을 보이면 그 전제가 참이 된다.
+ *
+ * ⚠️ **`basePending`과 합치지 않는다.** 같은 입력을 받지만 묻는 것이 다르다 — 하나는 "대기인가",
+ * 하나는 "무엇을 보일까"다. 합치면 "대기 중에만 선언을 보인다" 같은 절반짜리 규칙이 생긴다.
+ */
+export function baseLocaleFieldValue(input: {
+  baseLocale: string | null;
+  declaredBaseLocale: string | null;
+}): string | null {
+  return input.declaredBaseLocale ?? input.baseLocale;
+}
