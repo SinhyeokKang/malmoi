@@ -780,6 +780,12 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
 - **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — `/`로 302되면 쿼리의 `code`가 사라져 연결이 성립하지 않는다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- ✅ **`/projects/:slug/members`는 matcher를 안 늘렸다** (2026-09-09, 6b-2). 패턴이 `/projects/:path*`라
+  이미 덮는다 — `entry-points.test.ts`가 그것을 실제로 대조한다(패턴을 정규식으로 바꿔 보호 페이지 전수에 먹인다).
+  ⚠️ **그 화면의 게이트가 `translation:write`다** — 멤버 관리 Action은 `member:manage`인데 **페이지는 아니다.**
+  EDITOR도 "누가 이 프로젝트에 있나"를 봐야 하고(user-stories §5), 컨트롤 노출은 role로 갈리되 **판정은
+  Action**이 한다. 즉 **한 화면 안에서 페이지 permission과 Action permission이 다른 첫 사례**다 — 노출을
+  차단으로 착각하면 그 차이가 구멍이 된다(§6.1의 "조건부 렌더는 차단이 아니다"가 여기서도 같다).
 - ⚠️ **라우트가 살아 있는 동안 matcher에서 빼지 않는다.** 빼는 순간 그 페이지의 방어가 레이아웃 `redirect()` 하나로 줄고, 그게 위 회고가 배운 부류다. `/keys`는 `/projects/[slug]/translations`로 **옮겨지는 같은 커밋에서** 함께 빠졌다 — 라우트가 사라진 뒤의 matcher 항목은 방어가 아니라 낡은 이름이다.
 - **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
