@@ -31,7 +31,7 @@
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
 - **6b는 6a 넷이 다 나간 뒤 별도 사이클들**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
   닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **2026-09-09 dev**) ·
-  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
+  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면 — **2026-09-09 dev**) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
   2026-09-08에 6b-2·6b-3을 맞바꿨다(그 절 머리에 이유가 있다). **6b-4의 옛 "만들지 않는 쪽이 추천"은
   2026-09-09 IA 확정(SAAS §7.7)이 뒤집었고, 그때 6b-5·6b-6이 생겼다.**
 
@@ -588,20 +588,27 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 ---
 
-## 6b-5. `/projects/:slug/locales` — 로케일 화면
+## 6b-5. `/projects/:slug/locales` — 로케일 화면 ✅ (2026-09-09, dev)
 
-> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨진다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
-> `settings`의 Repository 카드에 넣은 것이고, 옮기는 이유는 **지금 로케일이 번역 표의 열로만 존재해서**다 —
-> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없다(ARCHITECTURE §5.5.16이
+> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨졌다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
+> `settings`의 Repository 카드에 넣은 것이고, 옮긴 이유는 **그때까지 로케일이 번역 표의 열로만 존재해서**다 —
+> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없었다(ARCHITECTURE §5.5.16이
 > 그 상태를 정의해 놓고 화면이 없었다).
 
-- [ ] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트는 **`translation:write`**(EDITOR도 목록을 본다), 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드 · base 배지 · 번역 진행률 · **orphaned면 사유와 되살리는 방법**(그 파일이 리포에서 사라졌다 → 되살리면 번역이 그대로 돌아온다)
-      검증: `entry-points` 통과 · 소스 스캔 — orphaned 행이 `Badge danger`와 설명을 든다
-- [ ] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 이 화면으로. `settings`엔 base branch만 남는다. ⚠️ **`updateRepositorySettings`가 두 필드를 한 폼으로 받는 것이 6b-3의 전제였다** — 화면이 갈리면 Action도 갈라야 한다(`updateBaseLocale` 신설 또는 인자 optional화. **추천: 갈라라** — optional은 "무엇을 안 보냈나"를 서버가 추측하게 만든다)
-      검증: `repository-settings.test.ts` 이관·확장 — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)과 `Locale.isBase`를 건드리지 않는다**
-- [ ] **대기 배너 이관** — `basePending` Alert가 이 화면으로. ⚠️ **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다). 번역 화면의 배너는 **그대로 둔다**(편집자가 읽는 자리다)
-      검증: `base-locale-screens.test.ts` 갱신 — `basePending` 소비자가 여전히 **각자 그 함수를 부른다**(조건이 두 벌이 되지 않는다) · 손으로 쓴 비교가 0건
-- [ ] `settings`의 워크플로 YAML은 **그대로 둔다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4)
+커밋 넷: `3816fd0`(test) · `1a834e2`(feat) · `e6772ae`(refactor) · `3cca010`(fix — 실물이 잡은 셋).
+
+- [x] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트 **`translation:write`**, 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드(mono) · base 배지 · 진행률 · **orphaned면 사유와 되살리는 방법**
+      검증: `entry-points` 통과 · 소스 스캔(orphaned 행이 `Badge danger` + 설명) · **실물로 확인했다**(dev 로케일 행 하나를 뒤집었다 되돌렸다: 맨 뒤 정렬 · 배경 없는 danger 배지 · 진행률 유지 · **셀렉트에서 빠진다**)
+  - [x] 진행률은 **두 쿼리 병렬 한 벌**이다(`loadLocaleCounts`) — `loadKeys` 재사용은 행마다 셀과 `refs`를 들고 와 903키에서 이 화면을 번역 화면만큼 무겁게 만든다. 순수 판정은 `localeProgress`이고 **percent는 내림**이다(902/903이 100%로 보이면 그 하나가 영영 안 채워진다) · **base도 100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다 — POSTMORTEM 2026-09-09)
+  - [x] 하네스에 조회 둘을 더했고 **자기검사가 차등이다** — 필터를 하나씩 빼면 행 수가 달라진다(페이크가 스키마보다 느슨하면 집계가 아무 값이나 맞는 것처럼 보인다, POSTMORTEM 2026-09-06)
+- [x] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 `components/locales/base-locale-form.tsx`로. `settings`엔 base branch만 남았다. **Action도 갈랐다**(`updateBaseLocale` 신설) — optional 인자는 "무엇을 안 보냈나"를 서버가 추측하게 만들고 그것이 malmoi#20의 모양이다
+      검증: `repository-settings.test.ts` 이관·확장(21케이스) — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)·`Locale.isBase`·`baseBranch`를 건드리지 않는다** · **설정 Action이 선언 컬럼을 아예 모른다**
+- [x] **대기 배너 이관** — `basePending` Alert가 이 화면으로. **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계). 번역 화면의 배너는 **그대로 뒀다**(편집자가 읽는 자리다)
+      검증: `base-locale-screens.test.ts` 갱신 — 소비자가 여전히 **각자** `basePending`을 부른다 · 손으로 쓴 비교 0건 · 설정에 `baseLocaleLine` 0건
+  - [x] **무효화가 `/projects/<slug>` 서브트리다** — 그 컬럼의 소비자가 **셋**이고(이 화면 · 번역 배너 · **설정의 워크플로 YAML**) 경로를 하나씩 나열하면 넷째가 조용히 빠진다(POSTMORTEM 2026-09-09). **실물로 셋 다 확인했다**: `ja` 저장 → 세 화면이 함께 새 값 → `en`으로 되돌리면 함께 사라진다
+- [x] `settings`의 워크플로 YAML은 **그대로 뒀다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4). 그래서 설정 화면은 그 컬럼을 **읽기만** 하고 `basePending`도 계속 부른다
+  - [x] ⚠️ **그 결과로 남은 고아를 지웠다**(`e6772ae`) — 설정의 `locales` select는 셀렉트 항목이 유일한 소비자였다. 소스 스캔이 양방향으로 센다(설정엔 0건 / 로케일 화면엔 있어야 하고 orphaned를 걸러 오지도 않는다)
+- [x] ⚠️ **실물이 셋을 잡았다**(`3cca010`) — 테스트가 원리적으로 못 보는 부류다: 표가 Card 안이라 셀이 16px 더 들여쓰였다(멤버 화면 관용구로 Card 밖에 둔다) · Card 제목·설명이 `FormGroup`의 라벨·help와 겹쳐 **같은 문장이 두 번** 나왔다 · orphaned 문구가 "the translations **below**"라고 했는데 그 번역은 아래가 아니라 같은 행의 진행률 열이다
 
 —— `feat(locales): a screen that owns the locale list and the base locale`
 
