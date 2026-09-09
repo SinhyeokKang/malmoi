@@ -681,7 +681,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
-| `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가) |
+| `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
 | `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
@@ -694,6 +694,20 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 - **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
   키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
+- ⚠️ **`baseLocale`은 `Project.declaredBaseLocale`과도 대조한다** (2026-09-09, SaaS 6b-3 — `features/translation-ui/design.md` §3.13).
+  그 컬럼은 OWNER가 설정 화면에서 세운 **일회용 허가**("다음 CI push가 이 base를 가져오면 받아들이겠다")이고,
+  없으면 기준 로케일을 바꾸는 순간 그 리포의 push가 **영영 409**다 — 워크플로를 고쳐도 저장값은 옛 base라
+  되돌릴 경로가 DB 직접 수정뿐이다. **느슨해지는 것은 base 하나이고** `adapter`·`pathTemplate`은 그대로
+  엄격하다(오배송을 막는 것은 그 둘이다). **선언을 "전부 null" 판정에는 넣지 않는다** — 현실이 비어 있고
+  선언만 있는 행은 온보딩 중이고 그 첫 push는 아래 규칙으로 통과해야 한다.
+  - **소비는 `applyPush`가 하고 조건은 "그 값을 실제로 가져왔는가"다** — `baseLocale`이 바뀐 push만
+    선언을 `null`로 비운다. push마다 비우면 워크플로를 고치기 전의 평범한 CI push 한 번이 허가와 두 화면의
+    대기 배너를 함께 지우고, 그 실패가 무음이다 (POSTMORTEM 2026-09-09).
+  - **그 push에서는 `needsReview` 전파를 건너뛴다** (`planPush`의 `baseChanged`). 살아남는 키 전부의
+    `sourceHash`가 달라지지만 원인이 "원문 수정"이 아니라 **"원문 언어 교체"**라 다른 로케일의 번역은
+    여전히 정확하다 — 전파하면 903키 프로젝트에서 `needsReview` 필터가 통째로 죽는다.
+  - **pull은 이 컬럼을 읽지 않는다.** 그래서 대기 중에도 pull이 옛 base로 정상 동작하고 편집 손실 창이
+    늘지 않는다 — 같은 컬럼에 선언을 쓰는 안을 기각한 근거다.
 - **셋이 다 null이면 통과시킨다** — "포맷은 push가 채운다"가 원래 계약이고 온보딩 밖에서 만들어진 행은
   첫 push가 심는다. 좁아지는 것은 한 번 채워진 뒤부터다.
 - ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 이 라우트는 GitHub을 부르지 않으므로
