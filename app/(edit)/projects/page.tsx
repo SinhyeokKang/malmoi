@@ -1,16 +1,13 @@
 import { FolderGit2, Plus } from "lucide-react";
 import Link from "next/link";
 
-import { DisconnectGithubButton } from "@/components/github-account";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 import { loadMemberships } from "@/lib/keys/query";
@@ -40,22 +37,13 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
       ? connectErrorMessage(e)
       : null;
 
-  const prisma = getPrisma();
   /**
-   * ⚠️ **GitHub 계정 섹션이 여기 있는 이유** (2026-09-07 리뷰 🟡9): 연결은 사용자 수준으로 열려 있어
-   * **프로젝트를 하나도 안 만든 사용자**가 연결만 하고 남을 수 있는데, 그 사람에게는 설정 화면이
-   * 없어 해제에 도달할 길이 없었다 — `taken-by-other`가 영구 잠금이 된다 (SAAS §5.5).
-   *
-   * **핸들을 위해 GitHub을 부르지 않는다.** 이 화면은 로그인 후 착지점이라 매 렌더에 왕복을 붙일
-   * 자리가 아니고, `@login`이 필요하면 설정 화면이 보인다. 여기서는 **행의 존재만** 읽는다.
+   * ⚠️ **GitHub 계정 섹션이 2026-09-09에 `/account`로 갔다** (6b-4 — SAAS §7.7). 그것이 여기 있었던
+   * 이유는 "프로젝트를 하나도 안 만든 사용자에게 도달 가능한 자리가 여기뿐"이어서였고(2026-09-07
+   * 리뷰 🟡9), 사용자 축 라우트가 생기면서 그 이유가 사라졌다. **옮긴 것이지 복제가 아니다** —
+   * 두 자리에 두면 하나가 낡는다 (6b-2가 초대 폼을 지운 근거와 같다).
    */
-  const [memberships, connection] = await Promise.all([
-    loadMemberships(prisma, userId),
-    prisma.account.findFirst({
-      where: { userId, provider: APP_ACCOUNT_PROVIDER },
-      select: { providerAccountId: true },
-    }),
-  ]);
+  const memberships = await loadMemberships(getPrisma(), userId);
 
   return (
     <>
@@ -109,15 +97,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               );
             })}
           </ul>
-        )}
-
-        {connection !== null && (
-          <Card title={m.projects.githubAccount.title}>
-            <div className="flex items-center gap-3">
-              <p className="text-muted-foreground text-xs">{m.projects.githubAccount.connected}</p>
-              <DisconnectGithubButton />
-            </div>
-          </Card>
         )}
       </main>
     </>

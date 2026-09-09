@@ -1,13 +1,14 @@
 import type { ComponentType } from "react";
 
-import { Languages, Settings, Users } from "lucide-react";
+import { CircleUser, LayoutGrid, Languages, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
+import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
- * `permission`·`routes`는 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
+ * `permission`·`routes`·`i18n`은 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
  */
 
 export type NavProject = { slug: string; name: string; role: Role };
@@ -46,11 +47,68 @@ export type NavSection = {
  */
 export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [
-    { key: "translations", label: "Translations", icon: Languages, href: (slug) => routes.translations(slug) },
-    { key: "members", label: "Members", icon: Users, href: (slug) => routes.members(slug) },
+    { key: "translations", label: m.common.nav.translations, icon: Languages, href: (slug) => routes.translations(slug) },
+    { key: "members", label: m.common.nav.members, icon: Users, href: (slug) => routes.members(slug) },
   ];
   if (canPerform(role, "project:settings")) {
-    sections.push({ key: "settings", label: "Settings", icon: Settings, href: (slug) => routes.settings(slug) });
+    sections.push({
+      key: "settings",
+      label: m.common.nav.settings,
+      icon: Settings,
+      href: (slug) => routes.settings(slug),
+    });
   }
   return sections;
+}
+
+/** 사이드바가 실제로 렌더하는 항목 — **href가 완성돼 있다.** 화면이 문자열을 조립하지 않는다. */
+export type NavItem = {
+  key: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  href: string;
+};
+
+/**
+ * 사이드바의 구역. 프로젝트 구역의 라벨은 **프로젝트 이름**이라 상수가 아니다.
+ */
+export type NavZone = { key: "work" | "project"; label: string; items: NavItem[] };
+
+/**
+ * **축이 둘이고 구역이 그것을 드러낸다** (SAAS §7.7 — IA 확정 2026-09-09).
+ *
+ * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
+ * 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.
+ *
+ * ⚠️ **프로젝트 구역은 `projectSections`를 그대로 든다.** 여기서 역할을 다시 보면 권한표가 두 벌이
+ * 되고 그중 하나가 낡는다 — 판정은 `canPerform` 한 곳이다.
+ *
+ * ⚠️ **항목에 카운트를 달지 않는다** (SAAS §7.7 결정 5). 그 숫자는 셸 레이아웃이 **매 페이지
+ * 렌더에서** 세야 하는데, 번역 화면에 이미 키 수와 무관한 1.9초 고정비가 실측돼 있다.
+ */
+export function navZones(project: NavProject | null): NavZone[] {
+  const work: NavZone = {
+    key: "work",
+    label: m.common.nav.yourWork,
+    items: [
+      { key: "projects", label: m.common.nav.allProjects, icon: LayoutGrid, href: routes.projects() },
+      { key: "new-project", label: m.common.nav.newProject, icon: Plus, href: routes.newProject() },
+      { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account() },
+    ],
+  };
+  if (project === null) return [work];
+
+  return [
+    work,
+    {
+      key: "project",
+      label: project.name,
+      items: projectSections(project.role).map((section) => ({
+        key: section.key,
+        label: section.label,
+        icon: section.icon,
+        href: section.href(project.slug),
+      })),
+    },
+  ];
 }

@@ -128,6 +128,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 - `Translation`이 **base 포함 모든 로케일**의 값을 담는다. push가 base 번역 행도 만든다
 - `StringKey.sourceText`는 **`sourceHash` 계산과 stale 판정 전용**이다. 화면의 base 값은 `Translation`이다
 - export할 때 base 파일은 `Translation`(base) 값으로 쓰고, 행이 없으면 `sourceText`로 폴백한다
+  - ⚠️ **빈 문자열도 "없음"이다** (2026-09-09 정정 — 그전 구현은 빈 값을 "지우기"로 읽어 그 키를 base 파일에서 뺐다). base 파일이 키 집합의 진실이라 거기서 키가 빠지면 다음 push가 **전 로케일에서 그 키를 orphan한다** — 번역자의 셀 편집이 키를 지우면 §2의 "소스 키는 코드가 진실"이 깨진다. **비-base는 그대로다**(빈 값 = 미번역 = 파일에서 빠진다)
 - strict 정책이라 개발자가 리포의 base 파일을 고치면 다음 push가 DB의 base 값을 그것으로 덮는다 — 코드 수정이 정상 반영된다
 
 **대가**: base 편집도 다른 로케일과 같은 손실 창에 놓인다 (§3.1). 번역자가 원문 오타를 고쳐도 pull PR이 머지되기 전에 push가 오면 리포의 옛 원문으로 되돌아간다.

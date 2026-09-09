@@ -15,11 +15,9 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { probeRepo } from "@/lib/github";
+import { loadAccountView } from "@/lib/github-connect/account-view";
 import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connect/health";
-import { logFailure } from "@/lib/github-connect/log";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { ensureUserToken } from "@/lib/github-connect/token-store";
-import { getViewer } from "@/lib/github-connect/user";
 import { m } from "@/lib/i18n";
 import { basePending } from "@/lib/onboarding/base-pending";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -82,7 +80,8 @@ export default async function SettingsPage({
   // 같은 곳으로 보낸다 (문구가 존재 여부를 말하지 않는다).
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
 
-  const [health, account] = await Promise.all([loadHealth(project), loadAccount(prisma, userId)]);
+  // ⚠️ **계정 상태는 `/account`와 같은 함수가 낸다** (6b-4) — 사본을 두면 두 화면이 갈린다.
+  const [health, account] = await Promise.all([loadHealth(project), loadAccountView(prisma, userId)]);
   const readiness = planProjectReadiness(project);
 
   return (
@@ -181,28 +180,6 @@ async function loadHealth(project: {
   // 보인다 (code-review 2026-09-07 🟡1). "블록의 독립 실패"는 GitHub 장애에 대한 것이지 설정 오류가 아니다.
   const probe = await probeRepo(project.repoOwner, project.repoName);
   return planConnectionHealth({ project, probe });
-}
-
-/** 사용자 토큰 쪽. 실패해도 건강성 블록을 막지 않는다. */
-async function loadAccount(
-  prisma: ReturnType<typeof getPrisma>,
-  userId: string,
-): Promise<{ status: "ok"; login: string | null } | { status: "reauthorize" } | { status: "unavailable" }> {
-  // ⚠️ **세션 사용자의 행만 본다.** `where`에 `userId`가 없으면 아무의 연결이나 집어 남의 GitHub
-  // 핸들을 화면에 띄운다 — 조회를 인가된 주체로 좁히는 것은 `projectId` 규칙과 같은 축이다.
-  const token = await ensureUserToken(prisma, userId, new Date());
-  if (token.status === "not-connected") return { status: "ok", login: null };
-  if (token.status === "reauthorize") return { status: "reauthorize" };
-  if (token.status === "unavailable") return { status: "unavailable" };
-
-  try {
-    const viewer = await getViewer(token.accessToken);
-    return { status: "ok", login: viewer.login };
-  } catch (error) {
-    // 401이면 인가가 철회된 것이고, 그 밖은 일시 장애다 — 둘을 가르는 것은 다음 호출이 한다.
-    logFailure("viewer", error);
-    return { status: "unavailable" };
-  }
 }
 
 /** §3.3 표 그대로 여섯 갈래. **DESIGN §6.2 밖의 raw 색을 늘리지 않는다.** */

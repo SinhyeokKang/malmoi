@@ -109,6 +109,7 @@ function Blocked({ error }: { error: string }) {
         description={m.newProject.empty.connect.description}
         action={
           <ConnectGithubButton
+            dest="new"
             label={
               error === "not-connected"
                 ? m.newProject.empty.connect.action

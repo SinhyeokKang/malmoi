@@ -24,8 +24,15 @@ export const en = {
     appName: "Malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
+      /** ⚠️ **2인칭으로 통일한다** (SAAS §7.7) — 시안의 `My account`는 구역과 인칭이 섞였다. */
+      yourWork: "Your work",
+      account: "Your account",
       allProjects: "All projects",
       newProject: "New project",
+      /** 프로젝트 구역의 항목 셋. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      translations: "Translations",
+      members: "Members",
+      settings: "Settings",
       signOut: "Sign out",
       collapse: "Collapse sidebar",
       expand: "Expand sidebar",
@@ -56,11 +63,43 @@ export const en = {
       title: "No projects yet",
       description: "Connect a repository to create one, or open an invite link you were sent.",
     },
-    githubAccount: { title: "GitHub account", connected: "Connected." },
     /** `readinessLabel` — `ready`는 문구가 없다(가장 흔한 상태가 가장 조용하다). */
     readiness: {
       awaiting_first_sync: "Waiting for first import",
       setup: "Setting up",
+    },
+  },
+
+  /**
+   * 계정 화면 (6b-4 — SAAS §7.7의 사용자 축). ⚠️ **컨트롤 라벨은 `settings.account`가 든다** —
+   * `github-account.tsx`의 두 버튼이 그 키를 읽으므로 여기에 사본을 두면 같은 버튼이 화면마다
+   * 다른 말을 한다. 여기 있는 것은 이 화면만 쓰는 문구다.
+   */
+  account: {
+    title: "Your account",
+    profile: {
+      title: "Profile",
+      /**
+       * ⚠️ **읽기 전용인 이유를 화면이 말한다.** 이름·이메일은 provider가 소유하고 재로그인마다
+       * `planEmailRefresh`가 갱신한다 — 여기서 고칠 수 있게 하면 초대 대조(SAAS §5.6)가 검증되지
+       * 않은 주소 위에 서게 된다.
+       */
+      description: "Your name and email come from the account you sign in with, and refresh when you sign in again.",
+      name: "Name",
+      email: "Email",
+      /**
+       * ⚠️ **이름 칸과 이메일 칸이 같은 문구를 쓴다.** 이메일은 검증된 주소 없이 로그인 자체가
+       * 막히므로 사실상 안 나오고, 이름은 provider가 안 줄 수 있다 — 어느 쪽도 빈 칸을 남기지 않는다.
+       */
+      none: "None",
+    },
+    github: {
+      description: "Connect GitHub to see which repositories you can add.",
+      notConnected: "Not connected.",
+    },
+    signOut: {
+      title: "Sign out",
+      description: "You'll need to sign in again to open your projects.",
     },
   },
 

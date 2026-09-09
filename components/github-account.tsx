@@ -69,8 +69,10 @@ function ConnectForm({ slug, label }: { slug: string; label: string }) {
 /**
  * 연결 해제 — **사용자 수준이라 slug를 받지 않는다** (2026-09-07 리뷰 🟡9).
  *
- * 설정 화면과 `/projects`의 계정 섹션이 **같은 버튼**을 쓴다: 연결이 사용자 수준으로 열린 뒤로
+ * `/account`와 각 프로젝트의 설정 화면이 **같은 버튼**을 쓴다: 연결이 사용자 수준으로 열린 뒤로
  * **프로젝트를 하나도 안 만든 사용자**가 생길 수 있고, 그 사람에게는 설정 화면이 없다.
+ * ⚠️ 2026-09-09까지 앞의 자리는 `/projects` 목록의 카드였다 — 갈 곳이 없어 거기 얹혀 있었고
+ * 6b-4가 사용자 축 라우트를 만들어 옮겼다. `disconnectGithub`의 무효화 범위가 그 이동을 따라간다.
  */
 export function DisconnectGithubButton() {
   const [pending, startTransition] = useTransition();

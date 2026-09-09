@@ -142,7 +142,15 @@ describe("runPull — 2층 blob SHA 스킵", () => {
     const result = await runPull(deps);
 
     // 원본을 읽는 것까지가 2층 판정 전의 정상 경로다. 커밋·PR 경로로는 가지 않는다.
-    expect(calls.map((c) => c.method)).toEqual(["getRefSha", "getTree", "getBlobText", "getBlobText"]);
+    // ⚠️ **마지막 `getRefSha`가 2026-09-09에 붙었다** — sync 브랜치가 base보다 앞서 있는지 확인한다
+    // (아래 describe). 1층 스킵의 "API 0회"는 그대로다 — 이 경로는 편집이 있었던 실행이다.
+    expect(calls.map((c) => c.method)).toEqual([
+      "getRefSha",
+      "getTree",
+      "getBlobText",
+      "getBlobText",
+      "getRefSha",
+    ]);
     expect(result).toEqual({ status: "skipped", reason: "no-changes" });
   });
 
@@ -179,6 +187,81 @@ describe("runPull — 2층 blob SHA 스킵", () => {
     const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(writes[0]?.getTime()).toBe(captured.getTime());
+  });
+});
+
+/**
+ * **2층이 변경 0건일 때 sync 브랜치를 base로 되돌린다** (T6 실측 발견 B, 2026-09-09).
+ *
+ * ⚠️ `planPullChanges`가 비교하는 것은 **base 트리**다. 사용자가 편집을 되돌려 렌더가 base와
+ * 같아지면 변경 0건이라 커밋을 만들지 않고, `l10n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다 —
+ * 그 PR을 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB
+ * 상태의 스냅샷"이라 부르는데 이 경우 그 불변식이 깨져 있었다. 실측으로 정확히 그 상태를 만났다.
+ *
+ * 고치는 방향은 불변식을 **바꾸는 것이 아니라 지키는 것**이다: 브랜치를 base head로 force update하면
+ * 그 시점의 DB 상태(= base와 동일)를 그대로 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
+ */
+describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다", () => {
+  /** 파일이 전부 base와 같은 상태. 이 셋이 2층 스킵 경로의 공통 입력이다. */
+  function cleanClient(refSha: Record<string, string>) {
+    return createFakeGitClient({
+      refSha,
+      tree: {
+        basehead: [
+          { path: "i18n/ko.json", sha: blobSha(KO_CONTENT) },
+          { path: "i18n/en.json", sha: blobSha(EN_CONTENT) },
+        ],
+      },
+      blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
+    });
+  }
+
+  it("브랜치가 base보다 앞서 있으면 base head로 되돌린다", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { deps } = makeDeps({}, { client, calls });
+    const result = await runPull(deps);
+
+    const forced = calls.filter((c) => c.method === "updateRefForce");
+    expect(forced).toEqual([{ method: "updateRefForce", args: ["l10n/sync", "basehead"] }]);
+    // 되돌리는 것뿐이다 — 커밋·트리·PR 경로로 가지 않는다.
+    expect(calls.map((c) => c.method)).not.toContain("createCommit");
+    expect(calls.map((c) => c.method)).not.toContain("createPr");
+    expect(result).toEqual({ status: "skipped", reason: "no-changes" });
+  });
+
+  it("브랜치가 이미 base head면 건드리지 않는다 — 무의미한 force가 매일 밤 나가면 안 된다", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "basehead" });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("updateRefForce");
+  });
+
+  /** 브랜치가 아직 없는 것은 정상 상태다(첫 실행 전) — 되돌릴 것이 없고 만들지도 않는다. */
+  it("브랜치가 없으면 만들지 않는다", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead" });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("createRef");
+    expect(calls.map((c) => c.method)).not.toContain("updateRefForce");
+  });
+
+  it("되돌린 뒤에도 lastPulledAt은 갱신한다 — export == base가 검증된 순간이다", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { deps, writes } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(writes).toEqual([new Date("2026-09-01T10:00:00Z")]);
+  });
+
+  /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4). */
+  it("되돌리기는 published로 세지 않는다", async () => {
+    const published: unknown[] = [];
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { deps } = makeDeps(
+      { saveLastPulledAt: async (_id, _at, pub) => { published.push(pub); } },
+      { client, calls },
+    );
+    await runPull(deps);
+    expect(published).toEqual([undefined]);
   });
 });
 

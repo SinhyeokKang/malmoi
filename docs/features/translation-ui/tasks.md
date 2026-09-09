@@ -29,10 +29,11 @@
   `/doc-check` DESIGN 불일치는 의도된 상태다(아래 T0 ⚠️).
 - **`/bugshot-qa`는 ship 4에 한 번**이다. ship 2·3은 위 표의 "실물" 줄만 손으로 확인한다 — 화면이 절반만 새것인
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
-- **6b는 6a 넷이 다 나간 뒤 별도 사이클 셋**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
-  닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **design을 다시 써야 착수할 수 있다**). 6b-4(`/account`)는
-  **만들지 않는 쪽이 추천**이라 배송이 아니라 판정이다. ⚠️ **번호가 실행 순서다** — 2026-09-08에 뒤의 둘을
-  맞바꿨다(그 절 머리에 이유가 있다).
+- **6b는 6a 넷이 다 나간 뒤 별도 사이클들**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
+  닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **2026-09-09 dev**) ·
+  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
+  2026-09-08에 6b-2·6b-3을 맞바꿨다(그 절 머리에 이유가 있다). **6b-4의 옛 "만들지 않는 쪽이 추천"은
+  2026-09-09 IA 확정(SAAS §7.7)이 뒤집었고, 그때 6b-5·6b-6이 생겼다.**
 
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
@@ -384,7 +385,7 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 
 </details>
 
-## 6b-3. 설정 — base branch·기준 로케일 ✅ **T1~T5 dev에 있다** (2026-09-09) / ⬜ T6은 `/merge` 뒤
+## 6b-3. 설정 — base branch·기준 로케일 ✅ **닫혔다** (2026-09-09 — T1~T5 프로덕션 `7c975c0` · T6 실측 완료)
 
 > **설계 요지**: **선언을 별 컬럼으로 뺀다.** `Project.declaredBaseLocale`(신설, additive, nullable)이 "다음 CI push가
 > 이 base를 가져오면 받아들이겠다"는 OWNER의 허가이고, `Project.baseLocale`은 **리포가 확인해 준 현실**로 남는다.
@@ -455,16 +456,187 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 | T1~T5 | `/ship bypass 6b-3` | 단위·소스 검증 + `/db`(T2) + `/push` 로컬 게이트 |
 | **T6** | **`/merge` 뒤** | 실물 — 아래 |
 
-- [ ] 폐기용 리포에서 **옛 `base-locale`로 CI를 한 번 돌려** 409를 본다 → 워크플로의 `base-locale:`을 고쳐 다시 돌려 통과와 대기 해소를 본다. `/l10n-roundtrip`은 어댑터 표현 층이라 이 축을 안 본다
-      검증: 실측 — push 응답 **409**(`wrong-format`) · 워크플로 수정 후 **200** · 그 뒤 `declaredBaseLocale === null`·`baseLocale`이 새 값 · **`needsReview`가 한 행도 안 붙었다**(T3) · 다음 pull이 새 base 파일을 낸다
+> ⚠️ **2026-09-09에 이 절을 고쳤다 — 옛 문장("옛 `base-locale`로 CI를 돌려 409를 본다")은 설계가 바뀌면서 거짓이 됐다.**
+> 선언이 서 있으면 **옛 base와 새 base가 둘 다 통과한다** — 그것이 "어느 단계도 멈추지 않는다"의 절반이다(design §3.13). 그래서 409를 보려면
+> **선언과 무관한 제3의 값**을 보내야 하고, 그 확인은 선언을 세우기 **전에** 해야 한다. 순서가 바뀌면 ①이 통과해 버려 아무것도 검증하지 못한다.
+
+**대상은 `order-check`(`SinhyeokKang/i18n-order-check`) 하나다** — 프로덕션에서 `pushTokenHash`를 가진 프로젝트가 그것뿐이다(나머지 다섯은 미발급이 정상 상태다). 실측 기준선(2026-09-09):
+`baseLocale: en` · 살아 있는 로케일 `en,ja,ko` · 키 23 · **`needsReview`가 이미 4행** · `baseBranch: main` · `json-catalog` · `locales/{locale}.json`.
+
+⚠️ **`needsReview` 단언은 절대값 0이 아니라 증가분 0이다** — 기준선이 4다. 절대값으로 쓰면 그 단언이 처음부터 red이고, 그걸 맞추려 기준선을 지우면 실 데이터를 건드린다.
+
+⚠️ **워크플로 파일 수정이 곧 트리거다** — 그 리포의 `on.push.branches`가 `[main]`이라 커밋 자체가 run을 만든다. 커밋 메시지에 `[skip-l10n]`을 **넣지 않는다**(넣으면 job이 스킵된다).
+
+- [x] ① **선언 없이 제3의 값 → 409.** 워크플로에 `base-locale: ja`를 박아 돌린다(선언은 `null`인 상태다).
+      검증: run **red** · 응답 본문 `{"error":"format mismatch"}` · **409** · `expected`에 `baseLocale: "en"`과 **`declaredBaseLocale`이 함께** 실렸다(6b-3이 더한 진단 — 여기서는 `null`이고, ②처럼 대기 중이면 그 값이 실려야 "그것도 받아들여진다"가 CI 로그에서 보인다) · DB의 `baseLocale`이 `en`으로 **그대로**
+- [x] ② **선언을 세운 뒤 옛 base가 통과한다.** 설정 화면에서 기준 언어를 `ja`로 저장(대기 배너 확인) → 워크플로의 `base-locale:`을 **`en`으로** 되돌려 돌린다.
+      검증: **200** · **`declaredBaseLocale`이 `ja`로 살아 있다**(허가를 쓰지 않은 push는 선언을 비우지 않는다 — code-review 🔴1 · POSTMORTEM 2026-09-09) · 두 화면의 대기 배너가 **그대로 보인다** · `baseLocale`은 여전히 `en`
+- [x] ③ **워크플로를 선언값으로 고치면 전환된다.** `base-locale: ja`로 고쳐 돌린다.
+      검증: **200** · `baseLocale === "ja"` · **`declaredBaseLocale === null`**(허가 소비) · `Locale.isBase`가 `ja` 한 행만 true · **`needsReview` 증가분 0**(기준선 4 그대로 — T3) · 대기 배너가 두 화면에서 사라졌다 · 편집 화면의 첫 열이 `ja`
+- [x] ④ **다음 pull이 새 base로 파일을 낸다.** ⚠️ **이 단언은 틀렸고 실측이 고쳤다** (2026-09-09).
+      옛 문장은 "빈 값이 `sourceText` 폴백으로 채워진다"였는데 `plan.ts:174`의 폴백은 **행이 없을 때**만 걸린다 — `row.value ?? …`라 **빈 문자열은 통과하고**
+      다음 줄(`:175`)이 그것을 파일에서 뺀다. 그것이 의도다(그 자리 주석: "행이 있는데 빈 값이면 폴백하지 않는다 — 그건 '지우기'라는 정당한 조작이다").
+      description 폴백도 이 코퍼스에선 무의미하다 — **`json-catalog`엔 description 슬롯이 없다**(파일이 `키→문자열`이다).
+      **그래서 이 프로젝트에서 base 이동은 렌더 바이트에 아무 영향이 없다**: 빈 값 0개 · description 0개라 어느 로케일이 base여도 파일이 같고,
+      Publish가 "Nothing to send"를 내는 것이 **정답**이다(2층 blob 비교가 전부 일치 → `skipped`, `lastPublishedAt`을 건드리지 않는다 — design §3.4 확인).
+      실측: 그것을 관측 가능하게 만들려고 한 키의 en·ja를 비워 Publish했고, **두 파일에서 그 키가 함께 빠졌다** — base 여부와 무관했다. 그 관측이 아래 발견 둘을 낳았다
+- [x] ⑤ **원상복구.** 설정에서 `en`을 선언 → 워크플로 `base-locale: en` → 돌려서 `baseLocale === "en"`·선언 `null`로 되돌린다.
+      검증: ①의 기준선과 같은 상태 (`baseLocale: en` · 선언 null · `needsReview` 4 · `Locale.isBase`가 `en`)
+
+#### T6 실측 결과 (2026-09-09, 프로덕션 `order-check`)
+
+| 단계 | 관측 |
+|---|---|
+| ① | run red · `POST https://mal-moi.com/api/push → 409` · `{"error":"format mismatch","expected":{…,"baseLocale":"en","declaredBaseLocale":null},"got":{…,"baseLocale":"ja"}}` — **`declaredBaseLocale`이 본문에 실린다**(6b-3의 진단이 프로덕션에서 동작한다). DB 무변경(`lastCommitSha` 그대로) |
+| ② | **200** `updated: 23` · **`declaredBaseLocale`이 `ja`로 살아남았다** · `baseLocale`은 `en` · 두 화면의 배너 유지 — **code-review 🔴1의 픽스가 실물에서 확인됐다** |
+| ③ | **200** · `baseLocale='ja'` · `declaredBaseLocale=null` · `isBase`가 `ja` 한 행 · **`needsReview` 4→4(증가분 0)** 이고 응답의 `staleTranslations: 0` · 배너 소멸 · 표 헤더가 `ja (base)` 첫 열 |
+| ④ | 위 정정 참조. **발견 둘**(아래) |
+| ⑤ | `baseLocale='en'` · 선언 `null` · `isBase` 복귀 · 값·키·`needsReview` 기준선 동일 · 워크플로 파일 원본과 바이트 동일 |
+
+⚠️ **복구하지 못한 상태 하나**: `Project.lastPublishedAt`이 `null` → `2026-09-08T20:06:59Z`로 전진했다. ④의 Publish가 **실제로 보냈기** 때문이라 옳은 값이고, 되돌리려면 프로덕션에 쓰기를 해야 해서 그대로 뒀다.
+⚠️ **대상 리포에 커밋 다섯**(워크플로 ①②③⑤ + 원복)과 **닫은 PR 하나**(#5 — 아래 발견 B)가 남는다. 워크플로 **파일 내용**은 원본과 동일하다.
+
+#### T6이 찾은 것 — 둘 다 **6b-3 밖이고 선행 결함**이다
+
+**A. base 로케일 셀을 비우면 다음 CI push가 그 키를 프로젝트 전체에서 orphan한다.** `buildWriteEntries`의 빈 값 처리는 의도된 것이지만(그 주석) **base와 비-base를 구별하지 않는다.** 비-base에서 "미번역으로 떨어진다"는 옳고, **base에서는 뜻이 다르다** — 그 파일이 키 집합의 진실이라(MVP §3.1) 키가 빠진 base 파일이 머지되면 `planPush`가 그 키를 `toOrphan`에 넣는다. 값은 DB에 남지만 편집 화면에서 전 로케일이 함께 사라지고, **그 일이 라운드트립 한 번 뒤에 조용히 일어난다.**
+
+**B. DB가 base와 같아지면 pull이 스킵해 열린 sync PR이 옛 스냅샷을 들고 남는다.** `planPullChanges`가 비교하는 것은 **base 트리**다 — 되돌린 편집으로 렌더가 base와 같아지면 변경 0건이라 커밋을 만들지 않고, `l10n/sync-<slug>` 브랜치는 **직전 스냅샷 그대로** 남는다. 그 PR을 머지하면 **사용자가 되돌린 편집이 리포에 적용된다.** ARCHITECTURE가 그 브랜치를 "현재 DB 상태의 스냅샷"이라고 부르는데 이 경우 그 불변식이 깨진다. 실측: ④의 되돌리기 뒤 Publish가 "Nothing to send"였고 PR #5는 삭제 두 줄을 그대로 들고 있었다 — **PR을 닫고 브랜치를 지워** 정리했다(다음 Publish가 다시 만든다).
+
+**T6 비목표: base branch 변경은 실물로 밟지 않는다.** `checkFormat`이 그 축을 보지 않아 409 경로가 없고, 실패 모드 둘은 design §3.13이 이미 적어 뒀다 — 그중 하나가 **"워크플로의 `on.push.branches`가 옛 브랜치를 가리켜 CI가 영영 안 돈다"**(조용하다)라서, 실물로 밟으려면 대상 리포의 CI를 의도적으로 멈춰야 한다. 얻는 것보다 되돌리기 비용이 크다.
 
 ### 비목표 (6b-3에서 안 한다)
 
 - ~~옛 base 로케일의 번역만 전파에서 제외하는 것~~ → **T3이 전파 자체를 건너뛰는 쪽으로 바뀌었다** (2026-09-09 판정). 옛 base만 빼는 것은 절반만 고치는 것이었다 — `sourceHash`가 바뀐 원인이 "원문 수정"이 아니라 "원문 언어 교체"라 **다른 로케일의 번역도 여전히 정확하다.**
 - **base 변경 뒤 자동 재적재.** 재적재 경로는 CI 하나뿐이고(`runFirstIngest`는 ready에서 `not-awaiting`) 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
 
-## 6b-4. `/account` — 만들지 말지부터
+## 6b-4. `/account` — 사용자 축 (IA 확정: SAAS §7.7, 2026-09-09)
 
-- SAAS §8 6단계 3번이 이미 `[x]`이고 착지처가 `/projects`다(계정 섹션이 거기 있다). 라우트 하나에 matcher·`StateDest` 갈래(배포 직후 10분 옛 쿠키 창)·`entry-points`·사이드바 항목이 따라온다.
-  **추천: 만들지 않는다** — 사용자 메뉴에 "GitHub account" 항목으로 `/projects#github`. 만들면 `landing`은 `app/api/github/callback/route.ts:177`의 지역 함수(request 인자)라 잎으로
-  내리는 작업이 신설로 붙고, `startGithubConnectForUser`는 **무인자**라 `dest` 인자 추가는 시그니처 변경(`onboarding.test.ts` 호출부 갱신)이다
+> **판정이 끝났다: 만든다.** 옛 추천은 "만들지 않는다"였고 근거가 "지금 계정 컨트롤이 하나뿐"이었는데,
+> **그 하나를 목록 화면(`/projects`)에 얹게 만든 원인이 자리가 없다는 것**이라 방향을 뒤집었다.
+> IA 정본은 **SAAS §7.7**이고 이 절은 그 배송 순서다.
+
+### T1. 라우트와 차단 ✅ (2026-09-09, `f3d16f2`)
+
+- [x] `lib/routes.ts` — `account()`. ⚠️ **잎을 유지한다**(import 0)
+      검증: `lib/__tests__/routes.test.ts` + `entry-points`가 생성기↔실재 라우트를 대조한다
+  - ⚠️ **`project(slug)`(Home)는 넣지 않았다 — 6b-6 몫이다.** 그 페이지가 없는 채로 등재하면 404를
+      가리키는 생성기가 되고, **죽은 링크 검사는 그것을 못 잡는다**(실측: `ROUTE_SHAPES.some(r =>
+      r.startsWith(path + "/"))`가 `/projects/*/translations`로 `/projects/*`를 통과시킨다).
+      **생성기는 그 라우트를 쓰는 커밋과 같이 온다.**
+- [x] `middleware.ts` matcher — `/account` 추가. ⚠️ **그때까지 matcher는 `/projects/:path*` 하나였고
+      `(edit)` 아래가 전부 우연히 그 접두였다**
+      검증: 비로그인 `curl`이 307 `/`(실측) · 본문에 이름·이메일 0건 · **그 한 줄을 빼면 `entry-points`의
+      "(edit) 아래 모든 페이지가 어느 패턴에든 걸린다"가 red다**(검사가 공허하지 않은지 실제로 확인했다)
+- [x] `app/(edit)/account/page.tsx` — **`requireUser`만**(인가할 프로젝트가 없다). 프로필(이름·이메일
+      **읽기 전용** — provider가 소유하고 `planEmailRefresh`가 매 로그인에 갱신한다) + GitHub
+      연결·해제·재인가 + 로그아웃
+      검증: `entry-points` 통과 · `screens.test.ts`의 계정 화면 스캔 여섯 · 실물로 `?e=` 넷 확인
+      (`denied`·`taken-by-other`는 배너, `constructor`·`nonsense`는 무음+무사고)
+  - ⚠️ **설정 화면의 `loadAccount`를 `lib/github-connect/account-view.ts`로 내렸다** — 같은 3갈래를 두
+      화면이 필요로 하고, 사본을 두면 갈린다. 다른 것은 연결 버튼의 착지뿐이다
+
+—— `feat(account): a route for the user axis`
+
+### T2. 연결 왕복의 착지 ✅ (2026-09-09, `8fb0e12`)
+
+> ⚠️ **T1보다 먼저 커밋했다.** T1의 페이지가 `dest="account"`를 쓰므로 T1이 앞이면 그 커밋이 타입
+> 체크를 통과하지 못한다 — 이 문서 머리의 순서 규칙("순수 함수 → 껍데기 → UI")이 이 방향이다.
+> 커밋 **내용** 경계와 메시지는 계획 그대로다.
+
+- [x] `lib/github-connect/state.ts` — `StateDest`에 `{ kind: "account" }` + `parseDest` 분기
+      검증: `state.test.ts` — 새 갈래 왕복 · **옛 `{kind:"new"}`·`{kind:"settings"}` 쿠키가 그대로
+      파싱된다**(그 케이스는 지금 green이고 이 변경이 깨면 red가 된다 — 배포 직후 10분 창)
+- [x] `app/api/github/callback/route.ts` — 삼항 사슬을 `landingPath`로 내리고 갈래 추가. `?e=` 읽는
+      자리가 셋 → **넷**
+      검증: `github-callback.test.ts` 셋 — `account` dest가 `/account`로, 교환 실패면 `/account?e=…`,
+      사용자 취소면 `/account?e=denied`(설정 화면으로 새지 않는다)
+- [x] `app/(edit)/projects/actions.ts` — `startGithubConnectForUser(dest)`. 호출부 다섯이 함께 움직였다
+      검증: `onboarding.test.ts` — `account` dest가 서명 payload 안에 있다 · **모르는 갈래는 값으로
+      거부하고 쿠키를 심지 않는다**
+  - ⚠️ **인자는 `StateDest`가 아니라 갈래 이름이다** (`"new" | "account"`, zod enum). 통째로 받으면
+      클라이언트가 `{kind:"settings", slug}`로 남의 설정 화면을 착지로 고를 수 있고, 그러면 이 자리에
+      open redirect 판정이 생긴다 — "목적지를 서명에 싣는" 설계의 값이 그 판정의 부재다
+
+—— `feat(account): land the connect round trip back on /account`
+
+### T3. 셸 재편 + 계정 카드 이동 ✅ (2026-09-09, `47d03cf`)
+
+- [x] `lib/shell/nav.ts` — **2구역**(`Your work` / `<project>`), 사용자 축이 먼저다
+      검증: `nav.test.ts` 일곱 — 구역 둘·컨텍스트 없으면 하나 · 사용자 축 셋 · 프로젝트 구역이
+      `projectSections`를 그대로 든다 · **EDITOR에게 빠지는 것은 `settings` 하나**
+  - ⚠️ **`projectSections`는 셋으로 뒀다** — 계획서의 여섯(Home·Translations·Locales·Members·Logs·Settings)
+      중 Home·Locales·Logs의 라우트가 6b-6·6b-5·7단계다. 계획서 자신이 Logs에 대해 "항목을 미리 넣지
+      않는다"고 적었고, **그 근거가 나머지 둘에도 그대로 적용된다** — 없는 라우트를 가리키는 항목은 404다.
+      **항목은 자기 라우트와 같은 사이클에 온다.**
+  - ⚠️ **활성 판정을 축마다 갈랐다** — 프로젝트 축은 접두(하위 경로가 있다), 사용자 축은 정확히 일치.
+      `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 [All projects]도 켜진다
+- [x] `components/shell/user-menu.tsx` — `Your account` 항목 + 그 자리를 예약해 뒀던 주석 정정
+- [x] `app/(edit)/projects/page.tsx` — 계정 카드 **제거**(이동, 복제 아니다). 고아가 된 사전 키 둘
+      (`projects.githubAccount`)도 함께 지웠다
+      검증: `screens.test.ts` — `/projects`에 `DisconnectGithubButton`·`APP_ACCOUNT_PROVIDER` 0건 ·
+      `/account`에 연결·해제 둘 다 · 사이드바가 `projectSections`를 직접 부르지 않는다
+- [x] 문구는 **2인칭 통일** — `Your work` / `Your account`. 프로젝트 항목 라벨 셋도 소스 리터럴에서
+      사전으로 옮겼다(`Your work`를 사전에 넣는 커밋이라 같이 갔다)
+- [x] ⚠️ **`<nav>` 둘에 `aria-label`** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌
+      레일에서는 렌더되지 않는다.** 실물로 확인했다: 레일에서 `nav`의 라벨 둘은 남고 `<p>` 둘은 사라지며
+      항목 여섯이 각자 `aria-label`을 든다(툴팁도 뜬다 — POSTMORTEM 2026-09-08 미재발)
+- [x] ⚠️ **`disconnectGithub`의 무효화 범위**(`fix` `4b9b0a6`) — `revalidatePath("/projects", "layout")`이
+      옮겨간 주 화면을 덮지 않게 됐다. `("/", "layout")`으로 넓혔고 POSTMORTEM 2026-09-09에 grep 전수와
+      **6b-6에서 같은 이유로 부족해질 자리 하나**(`saveTranslation`)를 적어 뒀다
+
+—— `feat(shell): two sidebar zones, and the account card moves`
+
+---
+
+## 6b-5. `/projects/:slug/locales` — 로케일 화면
+
+> **기준 로케일의 소유자가 `settings` → `locales`로 옮겨진다** (SAAS §7.7 결정 4). 6b-3이 **하루 전에**
+> `settings`의 Repository 카드에 넣은 것이고, 옮기는 이유는 **지금 로케일이 번역 표의 열로만 존재해서**다 —
+> orphaned 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없다(ARCHITECTURE §5.5.16이
+> 그 상태를 정의해 놓고 화면이 없었다).
+
+- [ ] `app/(edit)/projects/[slug]/locales/page.tsx` — 게이트는 **`translation:write`**(EDITOR도 목록을 본다), 컨트롤만 role로 갈리고 판정은 Action (6b-2 관용구). 로케일마다: 코드 · base 배지 · 번역 진행률 · **orphaned면 사유와 되살리는 방법**(그 파일이 리포에서 사라졌다 → 되살리면 번역이 그대로 돌아온다)
+      검증: `entry-points` 통과 · 소스 스캔 — orphaned 행이 `Badge danger`와 설명을 든다
+- [ ] **기준 로케일 필드를 6b-3에서 이관** — `RepositoryForm`에서 base 셀렉트를 떼어 이 화면으로. `settings`엔 base branch만 남는다. ⚠️ **`updateRepositorySettings`가 두 필드를 한 폼으로 받는 것이 6b-3의 전제였다** — 화면이 갈리면 Action도 갈라야 한다(`updateBaseLocale` 신설 또는 인자 optional화. **추천: 갈라라** — optional은 "무엇을 안 보냈나"를 서버가 추측하게 만든다)
+      검증: `repository-settings.test.ts` 이관·확장 — EDITOR `forbidden` · `unknown-locale`·`orphaned-locale` · `noop`이고 선언 없으면 쓰지 않는다 · **`baseLocale`(현실)과 `Locale.isBase`를 건드리지 않는다**
+- [ ] **대기 배너 이관** — `basePending` Alert가 이 화면으로. ⚠️ **고칠 `base-locale:` 줄을 여기서 직접 보인다**(§7.7 결정 4의 경계 — `settings`로 링크하면 두 화면을 오간다). 번역 화면의 배너는 **그대로 둔다**(편집자가 읽는 자리다)
+      검증: `base-locale-screens.test.ts` 갱신 — `basePending` 소비자가 여전히 **각자 그 함수를 부른다**(조건이 두 벌이 되지 않는다) · 손으로 쓴 비교가 0건
+- [ ] `settings`의 워크플로 YAML은 **그대로 둔다** — 대기 중 `base-locale:`을 박는 동작도 유지한다(§7.7 결정 4)
+
+—— `feat(locales): a screen that owns the locale list and the base locale`
+
+---
+
+## 6b-6. `/projects/:slug` Home — 착지점
+
+> **프로젝트 진입의 착지점이다** (사용자 결정 2026-09-09). `/projects` 목록의 링크가
+> `routes.translations(slug)` → `routes.project(slug)`로 바뀐다.
+
+⚠️ **이 화면의 가장 큰 위험은 "복제"다** (SAAS §7.7 결정 2). 번역 화면 툴바가 이미 키 수·미배포 건수·
+마지막 전송·PR 링크를 들고, 설정 화면이 리포·연결·적재 상태를 든다. 세 번째 사본을 만들면 그중 하나가
+낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
+
+⚠️ **착지 클릭 하나를 갚아야 한다** (결정 1이 받아들인 대가). 번역자의 일은 `translations` 하나이므로,
+개요만 있고 링크가 없으면 그 클릭이 순손실이다 — **번역으로 가는 경로가 이 화면의 주된 동작이어야 한다.**
+
+- [ ] 순수 판정 — 로케일별 진행률(`lib/keys/view.ts`의 집계를 재사용한다, 새로 만들지 않는다)
+      검증: 단위 테스트 — 빈 프로젝트 · orphaned 로케일 제외 · base 로케일의 진행률 정의(항상 100%가 아니다 — 빈 값이 있을 수 있다)
+- [ ] `app/(edit)/projects/[slug]/page.tsx` — 게이트 `translation:write`. **로케일별 진행률**(각 행이 `routes.translations(slug, { focus })` 링크) + **최근 활동**(각 항목이 `?ns=`·`?focus=` 링크)
+      검증: 소스 스캔 — 진행률·활동 항목이 **링크다**(그것이 착지 클릭을 갚는 유일한 수단) · 번역 화면 툴바의 지표를 재계산하지 않는다
+- [ ] 최근 활동은 **지금 재료로만** — `Translation.updatedAt`+`updatedBy`(`loadActors`·`actorLabel` 재사용) · `Project.lastCommitAt` · `lastPublishedAt`+`lastPrUrl`. ⚠️ **`logs`는 7단계 `SyncRun`의 소비자다**(SAAS §6) — 그때 이 블록이 그 테이블로 갈아탄다
+      검증: 쿼리가 `projectId`로 좁혀진다 · 렌더되는 행만 `loadActors`를 지난다(903키 리포에서 전 행을 조회하지 않는다)
+- [ ] `/projects` 목록의 링크를 `routes.project(slug)`로
+      검증: `entry-points`의 죽은 라우트 링크 검사
+- [ ] ⚠️ **사이드바 카운트를 달지 않는다** (결정 5) — 셸 레이아웃이 매 렌더에 세게 되고 **키 수와 무관한 1.9초 고정비**가 이미 실측돼 있다(CLAUDE.md 가상화 절). 그 고정비를 먼저 낮춘 뒤 다시 본다
+
+—— `feat(home): a project overview that leads into the work`
+
+---
+
+## 6b 밖으로 나간 것
+
+| 무엇 | 어디로 | 왜 |
+|---|---|---|
+| `/projects/:slug/logs` | **7단계** (`features/sync-runs/`) | 데이터 원천이 그 단계의 `SyncRun`이다 (SAAS §6). 그 전에 만들면 "최근 편집 목록"까지다 |
+| MCP 토큰 | **`settings` 섹션** (판정: SAAS §4.3 ④) | 라우트를 쓸 만한 지면이 없다. push 토큰이 이미 그 형태다. ⚠️ **읽기·쓰기를 둘 다 여는 토큰**이라 범위·폐기 판정이 push 토큰의 재사용으로 끝나지 않는다 |
+| OAuth 계정 병합 | **2차** (판정: SAAS §4.3 ③) | UI가 아니라 데이터 이관 + 인증 경계다. 지금 `OAuthAccountNotLinked` 거부는 **의도된 것이고 문구도 정확하다** |

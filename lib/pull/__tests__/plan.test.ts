@@ -266,13 +266,36 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
     expect(entries).toEqual([{ key: "a.one", message: "src:a.one" }]);
   });
 
-  it("base 로케일도 값이 빈 문자열이면 제외한다 — 폴백은 행 부재에만 적용된다", () => {
+  /**
+   * ⚠️ **이 기대값이 2026-09-09에 뒤집혔다** (T6 실측). 옛 동작은 "행이 있는데 빈 값이면 폴백하지
+   * 않는다 — 지우기는 정당한 조작이다"였는데, **base 로케일에서는 그 조작의 뜻이 다르다**:
+   * base 파일이 **키 집합의 진실**이므로(MVP §3.1) 키가 빠진 base 파일이 머지되면 다음 push가
+   * 그 키를 **전 로케일에서 orphan한다.** 번역자의 셀 편집이 키를 지울 수 있으면 "소스 키는
+   * 코드가 진실"이 깨진다 — base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
+   *
+   * **비-base는 그대로다** — 그쪽의 빈 값은 "미번역"이고 파일에서 빠지는 것이 맞다(위 케이스).
+   */
+  it("base 로케일은 값이 빈 문자열이어도 sourceText로 폴백한다 — 원문이 남아야 키가 살아남는다", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: "" })], { isBase: true });
-    expect(entries).toEqual([]);
+    expect(entries).toEqual([{ key: "a.one", message: "src:a.one" }]);
   });
 
   it("base 로케일의 sourceText도 비어 있으면 제외한다", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: null, sourceText: "" })], {
+      isBase: true,
+    });
+    expect(entries).toEqual([]);
+  });
+
+  /** 빈 값과 행 부재가 **같은 답**을 내야 한다 — 두 경로가 갈리면 어느 쪽이 base 파일을 정하는지가 상황 의존이 된다. */
+  it("base에서 빈 값과 행 부재의 결과가 같다", () => {
+    const empty = buildWriteEntries([row({ key: "a.one", value: "" })], { isBase: true });
+    const absent = buildWriteEntries([row({ key: "a.one", value: null })], { isBase: true });
+    expect(empty).toEqual(absent);
+  });
+
+  it("base에서 값과 sourceText가 둘 다 비면 제외한다 — 폴백할 원문이 없다", () => {
+    const entries = buildWriteEntries([row({ key: "a.one", value: "", sourceText: "" })], {
       isBase: true,
     });
     expect(entries).toEqual([]);

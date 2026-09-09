@@ -35,6 +35,7 @@ const hoisted = vi.hoisted(() => ({
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
   triggerPull: vi.fn(),
+  revalidatePath: vi.fn(),
   cookieSet: vi.fn(),
   headerGet: vi.fn(),
   redirect: vi.fn(),
@@ -43,7 +44,7 @@ const hoisted = vi.hoisted(() => ({
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/github", () => ({
   probeRepo: hoisted.probeRepo,
   openRepoReader: hoisted.openRepoReader,
@@ -171,7 +172,7 @@ describe("비로그인은 어느 Action도 지나지 못한다", () => {
   });
 
   it("사용자 수준 Action 다섯은 로그인 화면으로 보낸다", async () => {
-    await expect(startGithubConnectForUser()).rejects.toThrow(/NEXT_REDIRECT/);
+    await expect(startGithubConnectForUser("new")).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(listConnectableRepos()).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(detectRepoFormats({ owner: "acme", repo: "web" })).rejects.toThrow(/NEXT_REDIRECT/);
     await expect(createProject(createInput())).rejects.toThrow(/NEXT_REDIRECT/);
@@ -193,26 +194,55 @@ describe("비로그인은 어느 Action도 지나지 못한다", () => {
 });
 
 describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한다 (design §3.6)", () => {
+  /** 심어진 쿠키의 서명 payload. 착지 갈래가 **쿠키 안에** 있다는 것이 이 함수의 요지다. */
+  function signedDest(): unknown {
+    const value = hoisted.cookieSet.mock.calls[0]?.[1] as string;
+    const payload = value.slice(0, value.lastIndexOf("."));
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  }
+
   it("멤버십을 요구하지 않는다 — Account 행은 사용자 소유다", async () => {
     hoisted.session = sessionFor("u-nobody");
 
-    await expect(startGithubConnectForUser()).rejects.toThrow(/NEXT_REDIRECT/);
+    await expect(startGithubConnectForUser("new")).rejects.toThrow(/NEXT_REDIRECT/);
 
     expect(hoisted.cookieSet).toHaveBeenCalledTimes(1);
     expect(hoisted.redirect).toHaveBeenCalledWith("https://github.com/login/oauth/authorize?client_id=x");
   });
 
   it("서명된 state의 dest가 `{kind:\"new\"}`다 — 착지가 쿼리에 없다", async () => {
-    await expect(startGithubConnectForUser()).rejects.toThrow(/NEXT_REDIRECT/);
+    await expect(startGithubConnectForUser("new")).rejects.toThrow(/NEXT_REDIRECT/);
 
-    const value = hoisted.cookieSet.mock.calls[0]?.[1] as string;
-    const payload = value.slice(0, value.lastIndexOf("."));
-    const decoded: unknown = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    expect(decoded).toMatchObject({ userId: OWNER, dest: { kind: "new" } });
+    expect(signedDest()).toMatchObject({ userId: OWNER, dest: { kind: "new" } });
+  });
+
+  /**
+   * ⚠️ **착지가 인자로 갈린다** (6b-4). 전에는 무인자라 `/projects/new` 하나였고, `/account`가 생기면서
+   * **같은 Action이 두 착지를 낸다** — 계정 화면에서 연결을 누른 사람이 생성 화면에 떨어지면
+   * "내가 뭘 만들려고 한 게 아닌데"가 된다.
+   */
+  it("계정 화면에서 시작하면 dest가 `{kind:\"account\"}`다 — 같은 Action이 두 착지를 낸다", async () => {
+    await expect(startGithubConnectForUser("account")).rejects.toThrow(/NEXT_REDIRECT/);
+
+    expect(signedDest()).toMatchObject({ userId: OWNER, dest: { kind: "account" } });
+  });
+
+  /**
+   * ⚠️ **착지는 서명 안에 있고 인자는 갈래 이름뿐이다.** 클라이언트가 `{kind:"settings", slug}`를
+   * 통째로 보낼 수 있으면 남의 프로젝트 설정 화면으로 착지를 정할 수 있고, 그러면 이 자리에
+   * open redirect 판정이 생긴다 (design §3.1).
+   */
+  it("모르는 갈래는 값으로 거부하고 쿠키를 심지 않는다 — 클라이언트가 착지를 고르지 못한다", async () => {
+    expect(await startGithubConnectForUser("settings" as never)).toEqual({
+      ok: false,
+      error: "invalid input",
+    });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+    expect(hoisted.redirect).not.toHaveBeenCalled();
   });
 
   it("callback URL이 요청 origin에서 나온다 — 안 넘기면 GitHub이 프로덕션으로 되돌린다 (malmoi#7)", async () => {
-    await expect(startGithubConnectForUser()).rejects.toThrow(/NEXT_REDIRECT/);
+    await expect(startGithubConnectForUser("new")).rejects.toThrow(/NEXT_REDIRECT/);
 
     expect(hoisted.authorizeUrl.mock.calls[0]?.[1]).toBe("http://localhost:3000/api/github/callback");
   });
@@ -220,7 +250,7 @@ describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한�
   it("Host 헤더가 없으면 unavailable — 추측한 origin으로 사용자를 보내지 않는다", async () => {
     hoisted.headerGet.mockReturnValue(null);
 
-    expect(await startGithubConnectForUser()).toEqual({ ok: false, error: "unavailable" });
+    expect(await startGithubConnectForUser("new")).toEqual({ ok: false, error: "unavailable" });
     expect(hoisted.cookieSet).not.toHaveBeenCalled();
   });
 });
@@ -786,6 +816,22 @@ describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
  * 권한을 요구할 근거가 애초에 없었다.
  */
 describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절반)", () => {
+  /**
+   * ⚠️ **무효화 범위가 이 연결을 보이는 화면 전부를 덮어야 한다** (6b-4). 6b-4까지는 화면이 둘이고
+   * 둘 다 `/projects` 아래여서 `revalidatePath("/projects", "layout")`으로 충분했는데, **계정 카드가
+   * `/account`로 옮겨가면서 그 접두가 주 화면을 놓쳤다.** 놓치면 [Disconnect]를 누른 사용자가
+   * `@handle`과 그 버튼을 그대로 보고, 다시 눌러도 행이 이미 없어 조용히 `{ok:true}`가 돌아온다 —
+   * "버튼이 안 눌린다"로 보이지만 해제는 이미 됐다 (POSTMORTEM 2026-09-06과 같은 모양).
+   */
+  it("`/account`까지 덮는 범위로 무효화한다 — `/projects` 접두는 주 화면을 놓친다", async () => {
+    expect(await disconnectGithub()).toEqual({ ok: true });
+
+    const covered = hoisted.revalidatePath.mock.calls.some(
+      ([path, type]) => path === "/" && type === "layout",
+    );
+    expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
+  });
+
   it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
     expect(await disconnectGithub()).toEqual({ ok: true });
     expect(db.accounts.find((a) => a.userId === OWNER)).toBeUndefined();
