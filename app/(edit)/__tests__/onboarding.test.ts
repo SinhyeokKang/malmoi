@@ -832,6 +832,39 @@ describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절�
     expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
   });
 
+  /**
+   * **삭제도 `userId`로 좁힌다** (sec-audit 발견 15). 전에는 `findFirst({ userId, provider })`로 읽고
+   * `delete({ where: { provider_providerAccountId } })`로 지웠다 — `where`에 `userId`가 없어, 읽기와
+   * 삭제 사이에 그 `providerAccountId`의 소유자가 바뀌면 **남의 연결이 지워진다**. 탈취가 아니라
+   * 삭제다(`planAccountLink`의 `taken-by-other`가 행이 사는 동안 탈취를 막는다).
+   *
+   * 창은 좁지만(A가 해제를 두 번 누르는 사이 B가 같은 GitHub 계정을 연결) 이 자리는 POSTMORTEM
+   * 2026-09-06이 넓힌 규칙 — **사용자에 속한 행은 `userId`로 좁힌다** — 의 유일한 위반이었다.
+   */
+  it("`userId`로 좁혀 지운다 — PK만으로 지우면 남의 행에 닿는 창이 열린다", async () => {
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.spies.deleteManyAccounts).toHaveBeenCalledWith({
+      where: { userId: OWNER, provider: "github-app" },
+    });
+    expect(db.spies.deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it("같은 provider의 남의 행은 남는다", async () => {
+    db = createHarness({
+      projects: [],
+      members: [],
+      users: [{ id: OWNER, email: "o@a.com" }, { id: "other", email: "x@a.com" }],
+      accounts: [
+        { userId: OWNER, provider: "github-app", providerAccountId: "gh-1" },
+        { userId: "other", provider: "github-app", providerAccountId: "gh-2" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+
+    expect(await disconnectGithub()).toEqual({ ok: true });
+    expect(db.accounts.map((a) => a.userId)).toEqual(["other"]);
+  });
+
   it("자기 github-app 행만 지우고 Project는 건드리지 않는다", async () => {
     expect(await disconnectGithub()).toEqual({ ok: true });
     expect(db.accounts.find((a) => a.userId === OWNER)).toBeUndefined();

@@ -211,3 +211,69 @@ describe("loadPendingInvitations", () => {
     expect(await loadPendingInvitations(db.prisma, "p1", NOW)).toEqual([]);
   });
 });
+
+/**
+ * **로더가 원문 이메일을 안 낸다** (sec-audit 발견 4).
+ *
+ * 두 반환값이 `"use client"` 컴포넌트의 props로 그대로 넘어가므로, 로더가 `email`을 들고 있으면
+ * 마스킹을 어디서 하든 **원문이 RSC 페이로드에 실린다.** 그래서 마스킹이 로더의 일이 됐다 —
+ * 그리고 라벨은 **목록 전체를 보고** 만들어야 충돌하는 행만 넓어진다 (malmoi#18).
+ */
+describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온다 (sec-audit 4)", () => {
+  const withEmails = (): Seed => ({
+    ...seed(),
+    users: [
+      { id: "u1", email: "alice@acme.com", name: "A" },
+      { id: "u2", email: "andrew@acme.com", name: null },
+    ],
+    members: [
+      { projectId: "p1", userId: "u1", role: "OWNER" },
+      { projectId: "p1", userId: "u2", role: "EDITOR" },
+    ],
+  });
+
+  it("멤버 행에 `email`이 없고 마스킹 라벨만 있다", async () => {
+    const { prisma } = createHarness(withEmails());
+    const rows = await loadMembers(prisma, "p1");
+    for (const row of rows) expect(row).not.toHaveProperty("email");
+    expect(rows.map((r) => r.emailLabel)).toEqual(["al***@acme.com", "an***@acme.com"]);
+  });
+
+  it("라벨은 목록 전체를 보고 만든다 — 도메인이 다르면 첫 글자만 남는다", async () => {
+    const { prisma } = createHarness({
+      ...withEmails(),
+      users: [
+        { id: "u1", email: "alice@acme.com", name: "A" },
+        { id: "u2", email: "bob@other.com", name: null },
+      ],
+    });
+    expect((await loadMembers(prisma, "p1")).map((r) => r.emailLabel)).toEqual([
+      "a***@acme.com",
+      "b***@other.com",
+    ]);
+  });
+
+  it("이메일이 없는 멤버는 라벨이 null이다 — 화면이 '이름 없음'으로 대신한다", async () => {
+    const { prisma } = createHarness({
+      ...withEmails(),
+      users: [{ id: "u1", email: null, name: null }],
+      members: [{ projectId: "p1", userId: "u1", role: "OWNER" }],
+    });
+    expect((await loadMembers(prisma, "p1"))[0]?.emailLabel).toBeNull();
+  });
+
+  it("대기 초대도 같다 — 여기가 더 민감하다(아직 멤버가 아닌 외부인의 주소다)", async () => {
+    const now = new Date("2026-09-09T00:00:00Z");
+    const { prisma } = createHarness({
+      ...seed(),
+      invitations: [
+        { id: "i1", projectId: "p1", email: "qa-invite-1@example.com", role: "EDITOR", tokenHash: "h1", expiresAt: new Date("2026-09-10T00:00:00Z"), acceptedAt: null, invitedBy: "u1" },
+        { id: "i2", projectId: "p1", email: "qa-signed-out@example.com", role: "EDITOR", tokenHash: "h2", expiresAt: new Date("2026-09-10T00:00:00Z"), acceptedAt: null, invitedBy: "u1" },
+      ],
+    });
+    const rows = await loadPendingInvitations(prisma, "p1", now);
+    for (const row of rows) expect(row).not.toHaveProperty("email");
+    // 둘 다 `q***@example.com`이 되면 [Revoke]가 엉뚱한 링크를 무효화한다 (malmoi#18)
+    expect(new Set(rows.map((r) => r.emailLabel)).size).toBe(2);
+  });
+});

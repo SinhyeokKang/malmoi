@@ -17,8 +17,18 @@ import { describe, expect, it } from "vitest";
  * - `/api/auth/[...nextauth]` — Auth.js 핸들러 자체
  * - `/` — 로그인 화면. 세션이 없는 사람이 보는 유일한 화면이다
  * - `/invite/[token]` — **수락 전엔 멤버가 아니다.** 토큰이 인가를 대신한다 (membership.test.ts)
+ * - `/api/github/callback` — GitHub이 브라우저를 되돌리는 지점. `requireUser`로 스스로 인증하고,
+ *   state가 무효면 slug를 못 믿어 `/projects?e=`로 간다 (`matcher`에 넣으면 `code`가 사라진다)
  *
  * 목록에 이름을 더하려면 **왜 그 진입점이 프로젝트 인가를 안 지나는지**가 함께 설명돼야 한다.
+ *
+ * ⚠️ **`requireUser`는 프로젝트 인가가 아니다** (2026-09-09, sec-audit 발견 14). 전에는 `GUARDS`에
+ * 섞여 있어 **프로젝트 스코프 Action이 `requireUser()`만 불러도 green**이었다. 지금은 갈라져 있고,
+ * `requireUser`로 충분한 export는 **이름으로** 고정한다 — 전부 **사용자 소유 행**만 만지거나
+ * 인가할 프로젝트가 아직 없는 생성 경로다 (design §3.6).
+ *
+ * ⚠️ **`invite/actions.ts`의 면제도 파일이 아니라 export 단위다.** 파일 단위였을 때는 그 파일에
+ * export가 하나 늘면 검사 밖이었다.
  */
 
 const APP = fileURLToPath(new URL("..", import.meta.url));
@@ -30,11 +40,40 @@ const EXEMPT = new Set([
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",
   "invite/[token]/page.tsx",
-  "invite/actions.ts",
 ]);
 
-/** 인가를 지났다고 인정하는 호출. 셋 다 결국 `planProjectAccess`로 간다. */
-const GUARDS = ["requireProjectAccess", "getProjectAccess", "requireUser"];
+/** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
+const PROJECT_GUARDS = ["requireProjectAccess", "getProjectAccess"];
+/** 로그인만 확인한다 — **프로젝트 인가가 아니다.** 아래 목록의 export에서만 충분하다. */
+const USER_GUARD = "requireUser";
+/** 파일·페이지 수준에서 인정하는 호출 전부. 페이지는 export 단위 검사를 안 받는다. */
+const GUARDS = [...PROJECT_GUARDS, USER_GUARD];
+
+/**
+ * `requireUser` **하나로 충분한** Server Action의 `파일#export`.
+ *
+ * 셋 다 같은 이유다 — **인가할 프로젝트가 없거나**(생성 경로) **행이 사용자 소유**다(`Account`).
+ * 여기 이름을 더하려면 그 둘 중 어느 쪽인지 적는다.
+ */
+const USER_SCOPED_ACTIONS = new Set([
+  // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
+  "projects/actions.ts#listConnectableRepos",
+  "projects/actions.ts#detectRepoFormats",
+  "projects/actions.ts#createProject",
+  // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
+  "projects/actions.ts#startGithubConnectForUser",
+  "projects/actions.ts#disconnectGithub",
+]);
+
+/**
+ * **인가를 아예 안 지나는 export.** 파일 단위였던 면제를 export 단위로 좁힌 자리다 —
+ * 파일 면제는 그 파일에 export가 하나 늘면 조용히 검사 밖이었다.
+ *
+ * `acceptInvitation`은 `requireUser`도 안 부른다(`readSession`을 직접 읽는다): **수락 전엔 멤버가
+ * 아니고**, 인가를 대신하는 것은 단일 사용 토큰과 provider가 검증한 이메일 대조다 (SAAS §5.6,
+ * membership.test.ts).
+ */
+const EXEMPT_ACTIONS = new Set(["invite/actions.ts#acceptInvitation"]);
 
 /**
  * `"use server"` 파일이 내보내는 **공개 엔드포인트**의 선언 위치. 형태가 둘이라 둘을 다 본다 —
@@ -110,10 +149,37 @@ describe("서버 진입점", () => {
       for (const [i, mark] of marks.entries()) {
         // 다음 export 선언까지가 그 함수의 범위다 — 파일 어딘가에 호출이 있다는 것으로는 부족하다.
         const body = file.source.slice(mark.at, marks[i + 1]?.at ?? file.source.length);
-        if (!GUARDS.some((g) => body.includes(g))) unguarded.push(`${file.path}#${mark.name}`);
+        const id = `${file.path}#${mark.name}`;
+        if (EXEMPT_ACTIONS.has(id)) continue;
+        // ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프 Action이
+        // 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
+        const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
+        if (!accepted.some((g) => body.includes(g))) unguarded.push(id);
       }
     }
     expect(unguarded).toEqual([]);
+  });
+
+  it("`requireUser` 면제 목록이 전부 실재한다 — 낡은 이름이 검사를 넓힌 채 남지 않는다", () => {
+    const found = new Set<string>();
+    for (const file of ENTRY_POINTS.filter((e) => e.path.endsWith("actions.ts"))) {
+      for (const mark of actionExports(file.source)) found.add(`${file.path}#${mark.name}`);
+    }
+    for (const id of [...USER_SCOPED_ACTIONS, ...EXEMPT_ACTIONS]) expect(found, id).toContain(id);
+  });
+
+  /**
+   * ⚠️ **자기 "0건 아님" 가드다.** 이 파일의 검사 하나가 2026-09-08에 조용해진 전례가 있다
+   * (쿼리 수신자 검사 — 화면이 경로를 `routes.*`로 옮기면서 리터럴이 0건이 됐다).
+   */
+  it("갈라진 판정이 실제로 red를 낸다 — 프로젝트 스코프 Action이 `requireUser`만 부르면 잡힌다", () => {
+    const source = 'export async function updateThing(slug: string) { await requireUser(); }';
+    const marks = actionExports(source);
+    expect(marks.map((m) => m.name)).toEqual(["updateThing"]);
+    const id = "projects/[slug]/settings/actions.ts#updateThing";
+    expect(USER_SCOPED_ACTIONS.has(id)).toBe(false);
+    const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
+    expect(accepted.some((g) => source.includes(g))).toBe(false);
   });
 
   /**

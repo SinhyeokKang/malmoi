@@ -153,3 +153,47 @@ describe("멤버 화면 — 임시 폼이 대체됐다", () => {
     expect(read("components/translations/header.tsx")).not.toContain("invite-form");
   });
 });
+
+/**
+ * **마스킹은 서버가 한다 — 원문은 와이어에 안 오른다** (sec-audit 발견 4).
+ *
+ * 두 로더가 `email`을 원문으로 select하고 `"use client"` 컴포넌트 props로 넘어가면, 마스킹이
+ * JSX 안에서 일어나도 **원문은 RSC 페이로드에 그대로 실린다.** 관측자는 그 프로젝트의 EDITOR
+ * 이상이고 view-source로 읽는다 — **대기 초대 쪽이 더 민감하다**(아직 멤버가 아닌 외부인의 주소다).
+ * `docs/DESIGN.md` §6.65가 "두 표 모두 마스킹"을 단언하는데 그 통제가 화장품이었다.
+ *
+ * ⚠️ **렌더가 아니라 스캔인 이유**: 페이로드는 눈으로 안 보인다. 화면은 마스킹된 값을 보여주고
+ * 있었고 감사도 정적으로만 확인했다 — `focus-ring`·`multiline-detail`과 같은 계보다.
+ *
+ * ⚠️ **`app/invite/[token]/page.tsx`가 이미 서버에서 마스킹한다** — 두 화면 중 하나가 낡은 것이
+ * 아니라 규칙이 문서에만 있고 배선이 안 따라간 것이다 (POSTMORTEM 2026-09-05과 같은 축).
+ */
+describe("멤버 화면 — 이메일 원문이 클라이언트로 안 간다 (sec-audit 4)", () => {
+  const clients = ["components/members/member-list.tsx", "components/members/pending-invitations.tsx"];
+
+  it("클라이언트 컴포넌트가 `maskEmail`을 import하지 않는다 — 마스킹은 서버의 일이다", () => {
+    for (const path of clients) {
+      expect(read(path), path).not.toMatch(/maskEmail/);
+    }
+  });
+
+  it("두 로더의 `select`에 `email: true`가 없다 — 안 읽는 것이 안 새는 것이다", () => {
+    const query = read("lib/auth/query.ts");
+    expect(query).not.toMatch(/email:\s*true/);
+  });
+
+  it("두 반환 타입이 `email`을 안 든다 — 타입이 계약이라 호출부가 못 되살린다", () => {
+    const query = read("lib/auth/query.ts");
+    for (const name of ["MemberView", "PendingInvitation"]) {
+      const at = query.indexOf(`export type ${name} = {`);
+      expect(at, name).toBeGreaterThan(-1);
+      const body = query.slice(at, query.indexOf("};", at));
+      expect(body, name).not.toMatch(/^\s*email\??:/m);
+      expect(body, name).toMatch(/emailLabel/);
+    }
+  });
+
+  it("라벨은 서버가 목록 전체를 보고 만든다 — 행마다 따로 만들면 충돌이 안 갈린다", () => {
+    expect(read("lib/auth/query.ts")).toMatch(/maskedEmailLabels/);
+  });
+});
