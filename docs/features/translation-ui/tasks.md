@@ -29,10 +29,11 @@
   `/doc-check` DESIGN 불일치는 의도된 상태다(아래 T0 ⚠️).
 - **`/bugshot-qa`는 ship 4에 한 번**이다. ship 2·3은 위 표의 "실물" 줄만 손으로 확인한다 — 화면이 절반만 새것인
   상태에 QA 한 바퀴를 태우면 "옛 마크업이라 그렇다"가 이슈의 절반이 된다.
-- **6b는 6a 넷이 다 나간 뒤 별도 사이클 셋**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
-  닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **design을 다시 써야 착수할 수 있다**). 6b-4(`/account`)는
-  **만들지 않는 쪽이 추천**이라 배송이 아니라 판정이다. ⚠️ **번호가 실행 순서다** — 2026-09-08에 뒤의 둘을
-  맞바꿨다(그 절 머리에 이유가 있다).
+- **6b는 6a 넷이 다 나간 뒤 별도 사이클들**이다 (맨 아래 절): 6b-1(어댑터 오류 코드화 + 재측정 — **2026-09-08
+  닫혔다**) · 6b-2(멤버 화면 — **2026-09-09 닫혔다**) · 6b-3(base 변경 — **2026-09-09 dev**) ·
+  6b-4(`/account` — **2026-09-09 dev**) · 6b-5(로케일 화면) · 6b-6(Home). ⚠️ **번호가 실행 순서다** —
+  2026-09-08에 6b-2·6b-3을 맞바꿨다(그 절 머리에 이유가 있다). **6b-4의 옛 "만들지 않는 쪽이 추천"은
+  2026-09-09 IA 확정(SAAS §7.7)이 뒤집었고, 그때 6b-5·6b-6이 생겼다.**
 
 ## T0. 결정 — 닫혔다 (2026-09-07 design §11 #1~5, 2026-09-08 #6~#14)
 
@@ -514,36 +515,74 @@ raw 태그 0 고정"). 실물은 T5 전까지 그와 다르다(`components/ui/` 
 > **그 하나를 목록 화면(`/projects`)에 얹게 만든 원인이 자리가 없다는 것**이라 방향을 뒤집었다.
 > IA 정본은 **SAAS §7.7**이고 이 절은 그 배송 순서다.
 
-### T1. 라우트와 차단
+### T1. 라우트와 차단 ✅ (2026-09-09, `f3d16f2`)
 
-- [ ] `lib/routes.ts` — `account()` · `project(slug)`(Home). ⚠️ **잎을 유지한다**(import 0)
-      검증: `app/__tests__/entry-points.test.ts`가 생성기↔실재 라우트를 대조한다 — 새 경로가 파일 없이 등재되면 red
-- [ ] `middleware.ts` matcher — `/account` 추가. ⚠️ **지금 matcher는 `/projects/:path*` 하나라 `/account`가 1차 차단 밖이다**
-      검증: `curl -si https://…/account`가 로그인으로 302(비로그인) · `entry-points`의 보호 라우트 검사
-- [ ] `app/(edit)/account/page.tsx` — **`requireUser`만**(인가할 프로젝트가 없다). 프로필(이름·이메일 **읽기 전용** — provider가 소유하고 `planEmailRefresh`가 매 로그인에 갱신한다) + GitHub 연결·해제·재인가 + 로그아웃
-      검증: `entry-points`의 진입점 스캔 통과 · `?e=`를 `isConnectError`로 거른다(주소창 값)
+- [x] `lib/routes.ts` — `account()`. ⚠️ **잎을 유지한다**(import 0)
+      검증: `lib/__tests__/routes.test.ts` + `entry-points`가 생성기↔실재 라우트를 대조한다
+  - ⚠️ **`project(slug)`(Home)는 넣지 않았다 — 6b-6 몫이다.** 그 페이지가 없는 채로 등재하면 404를
+      가리키는 생성기가 되고, **죽은 링크 검사는 그것을 못 잡는다**(실측: `ROUTE_SHAPES.some(r =>
+      r.startsWith(path + "/"))`가 `/projects/*/translations`로 `/projects/*`를 통과시킨다).
+      **생성기는 그 라우트를 쓰는 커밋과 같이 온다.**
+- [x] `middleware.ts` matcher — `/account` 추가. ⚠️ **그때까지 matcher는 `/projects/:path*` 하나였고
+      `(edit)` 아래가 전부 우연히 그 접두였다**
+      검증: 비로그인 `curl`이 307 `/`(실측) · 본문에 이름·이메일 0건 · **그 한 줄을 빼면 `entry-points`의
+      "(edit) 아래 모든 페이지가 어느 패턴에든 걸린다"가 red다**(검사가 공허하지 않은지 실제로 확인했다)
+- [x] `app/(edit)/account/page.tsx` — **`requireUser`만**(인가할 프로젝트가 없다). 프로필(이름·이메일
+      **읽기 전용** — provider가 소유하고 `planEmailRefresh`가 매 로그인에 갱신한다) + GitHub
+      연결·해제·재인가 + 로그아웃
+      검증: `entry-points` 통과 · `screens.test.ts`의 계정 화면 스캔 여섯 · 실물로 `?e=` 넷 확인
+      (`denied`·`taken-by-other`는 배너, `constructor`·`nonsense`는 무음+무사고)
+  - ⚠️ **설정 화면의 `loadAccount`를 `lib/github-connect/account-view.ts`로 내렸다** — 같은 3갈래를 두
+      화면이 필요로 하고, 사본을 두면 갈린다. 다른 것은 연결 버튼의 착지뿐이다
 
 —— `feat(account): a route for the user axis`
 
-### T2. 연결 왕복의 착지
+### T2. 연결 왕복의 착지 ✅ (2026-09-09, `8fb0e12`)
 
-- [ ] `lib/github-connect/state.ts` — `StateDest`에 `{ kind: "account" }` + `parseDest` 분기
-      검증: `state.test.ts` — 새 갈래 왕복 · **옛 `{kind:"new"}`·`{kind:"settings"}` 쿠키가 그대로 파싱된다**(배포 직후 10분 창은 이 방향이 안전하다)
-- [ ] `app/api/github/callback/route.ts` — `landing`의 삼항에 갈래 추가. `?e=` 읽는 자리가 셋 → **넷**
-      검증: `api/__tests__/github-callback.test.ts` — `account` dest가 `/account`로, 오류면 `/account?e=…`
-- [ ] `app/(edit)/projects/actions.ts` — `startGithubConnectForUser(dest)`. ⚠️ **무인자라 시그니처 변경**이고 `onboarding.test.ts` 호출부가 함께 움직인다
-      검증: `onboarding.test.ts` 갱신 · 서명된 `dest`가 쿠키 안에 있다(쿼리로 실으면 open redirect 판정이 필요해진다 — design §3.1)
+> ⚠️ **T1보다 먼저 커밋했다.** T1의 페이지가 `dest="account"`를 쓰므로 T1이 앞이면 그 커밋이 타입
+> 체크를 통과하지 못한다 — 이 문서 머리의 순서 규칙("순수 함수 → 껍데기 → UI")이 이 방향이다.
+> 커밋 **내용** 경계와 메시지는 계획 그대로다.
+
+- [x] `lib/github-connect/state.ts` — `StateDest`에 `{ kind: "account" }` + `parseDest` 분기
+      검증: `state.test.ts` — 새 갈래 왕복 · **옛 `{kind:"new"}`·`{kind:"settings"}` 쿠키가 그대로
+      파싱된다**(그 케이스는 지금 green이고 이 변경이 깨면 red가 된다 — 배포 직후 10분 창)
+- [x] `app/api/github/callback/route.ts` — 삼항 사슬을 `landingPath`로 내리고 갈래 추가. `?e=` 읽는
+      자리가 셋 → **넷**
+      검증: `github-callback.test.ts` 셋 — `account` dest가 `/account`로, 교환 실패면 `/account?e=…`,
+      사용자 취소면 `/account?e=denied`(설정 화면으로 새지 않는다)
+- [x] `app/(edit)/projects/actions.ts` — `startGithubConnectForUser(dest)`. 호출부 다섯이 함께 움직였다
+      검증: `onboarding.test.ts` — `account` dest가 서명 payload 안에 있다 · **모르는 갈래는 값으로
+      거부하고 쿠키를 심지 않는다**
+  - ⚠️ **인자는 `StateDest`가 아니라 갈래 이름이다** (`"new" | "account"`, zod enum). 통째로 받으면
+      클라이언트가 `{kind:"settings", slug}`로 남의 설정 화면을 착지로 고를 수 있고, 그러면 이 자리에
+      open redirect 판정이 생긴다 — "목적지를 서명에 싣는" 설계의 값이 그 판정의 부재다
 
 —— `feat(account): land the connect round trip back on /account`
 
-### T3. 셸 재편 + 계정 카드 이동
+### T3. 셸 재편 + 계정 카드 이동 ✅ (2026-09-09, `47d03cf`)
 
-- [ ] `lib/shell/nav.ts` — **2구역**(`Your work` / `<project>`). `projectSections`가 셋 → **여섯**(Home·Translations·Locales·Members·Logs·Settings). ⚠️ **`Logs`는 라우트가 7단계다** — 항목을 미리 넣지 않는다
-      검증: `nav.test.ts` — 구역 둘 · EDITOR에게 `Settings`만 빠진다(나머지는 전원 — 6b-2 관용구)
-- [ ] `components/shell/user-menu.tsx` — `Your account` 항목. ⚠️ 그 파일 주석이 이 자리를 예약해 뒀다("6b가 `/account`를 만들지 말지 정한 뒤에 붙는다") — **주석도 함께 고친다**
-- [ ] `app/(edit)/projects/page.tsx` — 계정 카드 **제거**(이동, 복제 아니다). 6b-2가 초대 폼을 지운 근거와 같다
-      검증: 소스 스캔 — `/projects`에 `DisconnectGithubButton`이 0건 · `/account`에 연결·해제가 둘 다 있다
-- [ ] 문구는 **2인칭 통일** — `Your work` / `Your account`(시안의 `My account`는 인칭이 섞였다)
+- [x] `lib/shell/nav.ts` — **2구역**(`Your work` / `<project>`), 사용자 축이 먼저다
+      검증: `nav.test.ts` 일곱 — 구역 둘·컨텍스트 없으면 하나 · 사용자 축 셋 · 프로젝트 구역이
+      `projectSections`를 그대로 든다 · **EDITOR에게 빠지는 것은 `settings` 하나**
+  - ⚠️ **`projectSections`는 셋으로 뒀다** — 계획서의 여섯(Home·Translations·Locales·Members·Logs·Settings)
+      중 Home·Locales·Logs의 라우트가 6b-6·6b-5·7단계다. 계획서 자신이 Logs에 대해 "항목을 미리 넣지
+      않는다"고 적었고, **그 근거가 나머지 둘에도 그대로 적용된다** — 없는 라우트를 가리키는 항목은 404다.
+      **항목은 자기 라우트와 같은 사이클에 온다.**
+  - ⚠️ **활성 판정을 축마다 갈랐다** — 프로젝트 축은 접두(하위 경로가 있다), 사용자 축은 정확히 일치.
+      `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 [All projects]도 켜진다
+- [x] `components/shell/user-menu.tsx` — `Your account` 항목 + 그 자리를 예약해 뒀던 주석 정정
+- [x] `app/(edit)/projects/page.tsx` — 계정 카드 **제거**(이동, 복제 아니다). 고아가 된 사전 키 둘
+      (`projects.githubAccount`)도 함께 지웠다
+      검증: `screens.test.ts` — `/projects`에 `DisconnectGithubButton`·`APP_ACCOUNT_PROVIDER` 0건 ·
+      `/account`에 연결·해제 둘 다 · 사이드바가 `projectSections`를 직접 부르지 않는다
+- [x] 문구는 **2인칭 통일** — `Your work` / `Your account`. 프로젝트 항목 라벨 셋도 소스 리터럴에서
+      사전으로 옮겼다(`Your work`를 사전에 넣는 커밋이라 같이 갔다)
+- [x] ⚠️ **`<nav>` 둘에 `aria-label`** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌
+      레일에서는 렌더되지 않는다.** 실물로 확인했다: 레일에서 `nav`의 라벨 둘은 남고 `<p>` 둘은 사라지며
+      항목 여섯이 각자 `aria-label`을 든다(툴팁도 뜬다 — POSTMORTEM 2026-09-08 미재발)
+- [x] ⚠️ **`disconnectGithub`의 무효화 범위**(`fix` `4b9b0a6`) — `revalidatePath("/projects", "layout")`이
+      옮겨간 주 화면을 덮지 않게 됐다. `("/", "layout")`으로 넓혔고 POSTMORTEM 2026-09-09에 grep 전수와
+      **6b-6에서 같은 이유로 부족해질 자리 하나**(`saveTranslation`)를 적어 뒀다
 
 —— `feat(shell): two sidebar zones, and the account card moves`
 
