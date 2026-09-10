@@ -23,7 +23,7 @@ Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 17개, Radix 3종) + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 16개, Radix 2종 — DropdownMenu·Dialog) + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
 
 ## 개발
 
@@ -41,7 +41,12 @@ pnpm dev
 | 용도 | 명령 |
 |---|---|
 | 타입 체크 | `pnpm typecheck` |
+| 빌드 | `pnpm build` — ⚠️ `/push` 로컬 게이트 셋의 하나다. `tsc`는 RSC 경계를 못 본다 |
 | 테스트 | `pnpm test` |
+| 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 키 적재 → 왕복 검증 |
+| 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
+| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt>` — 읽기 전용, 네트워크 |
+| GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
 | 자격증명 전환 | `pnpm credentials:dev` / `credentials:prod` (+ `credentials:finalize:dev`·`:prod`) — 기본 check-only. 절차는 [운영 문서](./docs/features/credential-storage/operations.md) |
@@ -50,6 +55,6 @@ pnpm dev
 
 **브랜치는 `main` / `dev` 둘이다** (2026-09-04 분리). 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
 
-게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). ⚠️ **둘 다 못 보는 스위트가 하나 있다** — `pnpm test:credentials:postgres`는 별도 config + 로컬 PostgreSQL이라 `pnpm test`에도 CI에도 없다. GitHub 브랜치 프로텍션은 Free 플랜 + private 조합이라 없으므로, PR CI가 게이트인 것은 `/merge`가 그것을 확인하기 때문이지 서버가 강제해서가 아니다.
+**린터가 없다** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않고, 스타일 게이트가 곧 타입 체크와 테스트다. 게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). ⚠️ **둘 다 못 보는 스위트가 하나 있다** — `pnpm test:credentials:postgres`는 별도 config + 로컬 PostgreSQL이라 `pnpm test`에도 CI에도 없다. GitHub 브랜치 프로텍션은 Free 플랜 + private 조합이라 없으므로, PR CI가 게이트인 것은 `/merge`가 그것을 확인하기 때문이지 서버가 강제해서가 아니다.
 
 preview는 **dev DB**를 본다. preview에서 GitHub 로그인은 dev 브랜치 고정 URL에서만 된다 — OAuth App의 callback URL이 하나뿐이라 preview 전용 앱을 따로 두고 그 URL에 박았다.
