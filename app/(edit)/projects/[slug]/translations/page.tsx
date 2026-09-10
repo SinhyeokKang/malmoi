@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
+import { PanelBody } from "@/components/shell/content-panel";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
@@ -137,10 +138,10 @@ export default async function TranslationsPage({
         <NamespacePanel slug={slug} counts={counts} total={rows.length} selection={selection} query={query} />
       )}
 
-      {/* ⚠️ **본문 랜드마크가 이 열이다** — 왼쪽 `<aside>`는 네임스페이스 내비게이션이라 밖에 둔다.
-          `Centered`(빈 상태 셋)도 `<main>`을 들지만 **그건 다른 갈래**라, 소스에 `<main`이 있다는
-          것만으로는 이 경로가 덮이지 않았다 — 실측으로 잡았다 (2026-09-11). */}
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* ⚠️ **본문 랜드마크를 여기가 들지 않는다** (2026-09-11) — `ContentPanel`이 `<main>`이 되면서
+          라우트당 하나가 구조적으로 보장됐다. 그 전엔 화면마다 하나씩이라 관행이었고, 이 열은
+          2026-09-11에 실측으로 잃은 것을 되찾은 자리였다. */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
             `router.refresh()`·`revalidatePath`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07). */}
         <TranslationsHeader
@@ -160,7 +161,11 @@ export default async function TranslationsPage({
           declaredBaseLocale={project.declaredBaseLocale}
         />
 
-        <div className="min-h-0 flex-1">
+        {/*
+          ⚠️ **표의 스크롤을 여기가 든다** (2026-09-11). `ContentPanel`이 `overflow-y-auto`를 놓고
+          `overflow-hidden`으로 바뀌었으므로, 이 열이 스크롤을 안 들면 903행 표가 **잘린다**.
+        */}
+        <PanelBody>
           {selection.kind === "none" ? (
             <EmptyState
               icon={Languages}
@@ -235,15 +240,25 @@ export default async function TranslationsPage({
               </Table>
             </Announcer>
           )}
-        </div>
-      </main>
+        </PanelBody>
+      </div>
     </div>
   );
 }
 
-/** 표가 없는 화면(빈 상태 셋)의 자리. 셸 안 `limited` 폭이다 (DESIGN §5.1). */
+/**
+ * 표가 없는 화면(빈 상태 셋)의 자리. 셸 안 `limited` 폭이다 (DESIGN §5.1).
+ *
+ * ⚠️ **`<main>`이 아니라 `PanelBody`다** (2026-09-11) — 랜드마크는 `ContentPanel`이 들고, 여기가
+ * 드는 것은 **스크롤 경계**다. `max-w-4xl`은 안쪽 `div`가 든다(`PanelBody`에 주면 스크롤 컨테이너가
+ * 좁아져 스크롤바가 콘텐츠 옆에 생긴다).
+ */
 function Centered({ children }: { children: React.ReactNode }) {
-  return <main className="mx-auto w-full max-w-4xl px-6 py-6">{children}</main>;
+  return (
+    <PanelBody>
+      <div className="mx-auto w-full max-w-4xl px-6 py-6">{children}</div>
+    </PanelBody>
+  );
 }
 
 /** 셀이 "아직 안 보낸 편집"인가 — `countUnpublished`와 **같은 술어**다 (design §3.5). */

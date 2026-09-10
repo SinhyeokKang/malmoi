@@ -1,4 +1,4 @@
-import { ContentPanel } from "@/components/shell/content-panel";
+import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
@@ -19,38 +19,40 @@ import { ContentPanel } from "@/components/shell/content-panel";
 export default function ProjectsLoading() {
   return (
     <ContentPanel>
-      <div className="flex flex-1 flex-col" aria-hidden>
-        {/* 머리 — `page.tsx`의 `px-4 pt-6 pb-3`과 같은 자리다. */}
-        <div className="flex flex-col gap-4 px-4 pt-6 pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Block className="h-7 w-40" />
-              <Block className="size-5 rounded-full" />
-            </div>
-            <Block className="h-9 w-32" />
+      {/*
+        ⚠️ **`aria-hidden`이 둘로 갈렸다** — 머리와 본문이 형제가 되면서 그것을 함께 감싸던 래퍼가
+        사라졌다. 하나라도 빠지면 스크린리더가 회색 블록을 읽는다.
+      */}
+      {/* 머리 — `page.tsx`의 `px-6 pt-6 pb-3`과 같은 자리다. */}
+      <PanelHeader className="flex flex-col gap-4 px-6 pt-6 pb-3" aria-hidden>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Block className="h-7 w-40" />
+            <Block className="size-5 rounded-full" />
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <Block className="h-9 w-96" />
-            <Block className="h-9 w-64" />
-          </div>
+          <Block className="h-9 w-32" />
         </div>
+        <div className="flex items-center justify-between gap-2">
+          <Block className="h-9 w-96" />
+          <Block className="h-9 w-64" />
+        </div>
+      </PanelHeader>
 
-        {/* 본문 — 목록의 `<ul>`과 같은 테두리·radius 안에 행 둘. */}
-        <div className="flex flex-1 flex-col px-4 pt-3 pb-8">
-          <ul className="divide-border border-border shrink-0 divide-y overflow-hidden rounded-lg border">
-            {[0, 1].map((i) => (
-              <li key={i} className="flex items-center justify-between gap-2.5 py-3.5 pr-3.5 pl-3">
-                <Block className="size-7 rounded-sm" />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <Block className="h-5 w-48" />
-                  <Block className="h-5 w-72" />
-                </div>
-                <Block className="h-5 w-16 rounded-full" />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      {/* 본문 — 목록의 `<ul>`과 같은 테두리·radius 안에 행 둘. */}
+      <PanelBody className="flex flex-col px-6 pt-3 pb-8" aria-hidden>
+        <ul className="divide-border border-border shrink-0 divide-y overflow-hidden rounded-lg border">
+          {[0, 1].map((i) => (
+            <li key={i} className="flex items-center justify-between gap-2.5 py-3.5 pr-3.5 pl-3">
+              <Block className="size-7 rounded-sm" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <Block className="h-5 w-48" />
+                <Block className="h-5 w-72" />
+              </div>
+              <Block className="h-5 w-16 rounded-full" />
+            </li>
+          ))}
+        </ul>
+      </PanelBody>
     </ContentPanel>
   );
 }

@@ -4,6 +4,7 @@ import { ProjectArchived } from "@/components/project-archived";
 import { InviteDialog } from "@/components/members/invite-dialog";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
+import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { canPerform } from "@/lib/auth/permission";
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
@@ -51,29 +52,36 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   ]);
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
+    <>
+      {/*
+        ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
+        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
+        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+      */}
+      <PanelHeader>
         {/* breadcrumb은 셸이 안 든다 — 레이아웃이 페이지 props를 못 받는다 (CLAUDE.md). */}
-        <div className="space-y-3">
+        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
           <Breadcrumb
             items={[{ label: project.name, href: routes.project(slug) }, { label: m.common.nav.members }]}
           />
+          {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-base font-medium">{m.common.nav.members}</h1>
             {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
           </div>
         </div>
+      </PanelHeader>
 
-        <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} />
+      <PanelBody>
+        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
+          <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} />
 
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
-          <PendingInvitations
-            slug={slug}
-            invitations={pending}
-            role={role}
-            now={now}
-          />
-      </section>
-    </main>
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
+            <PendingInvitations slug={slug} invitations={pending} role={role} now={now} />
+          </section>
+        </div>
+      </PanelBody>
+    </>
   );
 }

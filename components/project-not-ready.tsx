@@ -1,6 +1,7 @@
 import { Languages } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { PanelBody } from "@/components/shell/content-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -20,12 +21,18 @@ import { routes } from "@/lib/routes";
 export function ProjectNotReady({ slug, role }: { slug: string; role: Role }) {
   if (canPerform(role, "project:settings")) redirect(routes.settings(slug));
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-6">
-      <EmptyState
-        icon={Languages}
-        title={m.translations.empty.notReady}
-        description={m.errors.onboarding["not-ready"]}
-      />
-    </main>
+    /*
+      ⚠️ **`PanelHeader`가 없다 — 이 갈래엔 제목이 없다.** 본문만 있으므로 `PanelBody` 하나이고,
+      `max-w-4xl`은 안쪽 래퍼가 든다(스크롤 컨테이너를 좁히면 스크롤바가 콘텐츠 옆에 생긴다).
+    */
+    <PanelBody>
+      <div className="mx-auto w-full max-w-4xl px-6 py-6">
+        <EmptyState
+          icon={Languages}
+          title={m.translations.empty.notReady}
+          description={m.errors.onboarding["not-ready"]}
+        />
+      </div>
+    </PanelBody>
   );
 }

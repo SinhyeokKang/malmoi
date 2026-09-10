@@ -121,7 +121,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   });
 });
 
-describe("프로젝트 목록 — 행이 잘리지 않고 패널이 스크롤한다", () => {
+describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한다", () => {
   /**
    * ⚠️ **`overflow-hidden`을 든 flex 자식은 축소 하한이 0이다.** CSS의 automatic minimum size는
    * 스크롤 컨테이너에 적용되지 않아, `<ul>`이 내용 높이 대신 **남은 공간까지 줄어들고** 넘친 행은
@@ -140,11 +140,18 @@ describe("프로젝트 목록 — 행이 잘리지 않고 패널이 스크롤한
   });
 
   /**
-   * ⚠️ **스크롤은 `ContentPanel`이 든다** (`shell-layout.test.ts`). 이 화면의 열에 `min-h-0`을 주면
-   * 그 열이 콘텐츠보다 작아지도록 허락하는 것이고, 그러면 넘친 부분이 패널의 스크롤 영역에
-   * 안 들어온다. 빈 상태의 세로 중앙 정렬은 `flex-1`만으로 성립한다 — `min-h-0`이 필요하지 않다.
+   * ⚠️ **스크롤이 `PanelBody`로 내려갔다** (2026-09-11 — 패널 레이아웃). 그 전엔 패널이 통째로
+   * 스크롤해서 이 화면의 열에 `min-h-0`을 주면 안 됐고(넘친 부분이 패널의 스크롤 영역에 안
+   * 들어온다) 이 검사가 그것을 고정했다. 지금은 `PanelBody`가 `min-h-0 flex-1 overflow-y-auto`를
+   * **자기가** 들므로 화면이 그 짝을 다시 적을 이유가 없다 — 적으면 두 벌이 되고, 프리미티브가
+   * 값을 바꿀 때 한쪽만 낡는다.
+   *
+   * ⚠️ **`flex-1`도 마찬가지다** — 본문 블록은 `PanelBody`의 `className`으로 `flex flex-col`만
+   * 넘긴다. 빈 상태의 세로 중앙 정렬은 그 위에서 성립한다.
    */
-  it("열이 콘텐츠보다 작아지도록 허락하지 않는다 — `min-h-0`이 없다", () => {
+  it("본문이 스크롤 규칙을 다시 적지 않는다 — `PanelBody`가 든다", () => {
+    expect(code(PAGE)).toContain("<PanelBody");
     expect(code(PAGE)).not.toContain("min-h-0");
+    expect(code(PAGE)).not.toContain("overflow-y-auto");
   });
 });

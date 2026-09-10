@@ -3,6 +3,7 @@ import { ExternalLink, FolderGit2, Link2 } from "lucide-react";
 
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { NewProjectFlow, type AdapterChoice, type RepoOption } from "@/components/onboarding/new-project-flow";
+import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -61,31 +62,38 @@ export default async function NewProjectPage({
 
   return (
     <>
-      {/* 페이지 수준 거부는 **global Alert**다 — top bar 아래 전폭 (DESIGN §6.4). */}
-      {message !== null && (
-        <div className="px-6 pt-6">
-          <Alert variant="danger">{message}</Alert>
-        </div>
-      )}
-      <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
-        <div className="space-y-3">
+      {/*
+        ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
+        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
+        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+
+        ⚠️ **거부 `Alert`가 머리에 있다** — 페이지 수준 거부는 스크롤해서 찾을 것이 아니다.
+      */}
+      <PanelHeader>
+        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
+          {/* 페이지 수준 거부는 **global Alert**다 — 머리 맨 위 전폭 (DESIGN §6.4). */}
+          {message !== null && <Alert variant="danger">{message}</Alert>}
           <Breadcrumb
             items={[{ label: m.common.nav.projects, href: routes.projects() }, { label: m.common.nav.newProject }]}
           />
           <h1 className="text-base font-medium">{m.common.nav.newProject}</h1>
         </div>
+      </PanelHeader>
 
-        {listed.ok ? (
-          <NewProjectFlow
-            repos={listed.repos.map(
-              (repo): RepoOption => ({ ...repo, suggestedSlug: normalizeProjectSlug(repo.repo) }),
-            )}
-            adapters={adapters}
-          />
-        ) : (
-          <Blocked error={listed.error} />
-        )}
-      </main>
+      <PanelBody>
+        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
+          {listed.ok ? (
+            <NewProjectFlow
+              repos={listed.repos.map(
+                (repo): RepoOption => ({ ...repo, suggestedSlug: normalizeProjectSlug(repo.repo) }),
+              )}
+              adapters={adapters}
+            />
+          ) : (
+            <Blocked error={listed.error} />
+          )}
+        </div>
+      </PanelBody>
     </>
   );
 }

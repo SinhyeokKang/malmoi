@@ -43,8 +43,27 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     expect(layout).toMatch(/className="[^"]*\bh-svh\b[^"]*\boverflow-hidden\b/);
   });
 
-  it("콘텐츠 패널이 자기 안에서 스크롤한다", () => {
-    expect(contentPanel).toMatch(/\boverflow-y-auto\b/);
+  /**
+   * ⚠️ **스크롤이 패널이 아니라 `PanelBody`에 있다** (2026-09-11 사용자). 패널이 통째로 스크롤하면
+   * 제목·툴바가 콘텐츠와 함께 올라가는데, 그 둘은 "지금 보고 있는 것이 무엇인지"를 말하므로 화면에
+   * 붙어 있어야 한다. 패널은 `overflow-hidden`으로 **경계만** 만들고, 문서가 스크롤되면 셸이 딸려
+   * 올라가는 것(malmoi#13)은 그대로 막힌다.
+   *
+   * ⚠️ **`min-h-0`이 `flex-1`의 짝이라는 것까지 센다** — 없으면 본문 열이 콘텐츠 높이 아래로 못
+   * 줄어들어 패널이 통째로 늘어나고, 스크롤이 본문이 아니라 바깥에 생겨 **머리가 다시 같이
+   * 올라간다.** 눈으로는 "스크롤은 되네"로 보여서 못 알아챈다.
+   */
+  it("패널은 넘침을 가두고, 스크롤은 `PanelBody`가 든다", () => {
+    expect(contentPanel).toMatch(/<main className="[^"]*\boverflow-hidden\b/);
+    expect(contentPanel).not.toMatch(/<main className="[^"]*\boverflow-y-auto\b/);
+    expect(contentPanel).toMatch(/export function PanelBody\b/);
+    expect(contentPanel).toMatch(/cn\("min-h-0 flex-1 overflow-y-auto"/);
+  });
+
+  /** ⚠️ **머리가 `shrink-0`이다** — flex 자식의 축소 하한은 콘텐츠 높이가 아니라 0이라, 본문이 길면 눌린다. */
+  it("`PanelHeader`가 눌리지 않는다", () => {
+    expect(contentPanel).toMatch(/export function PanelHeader\b/);
+    expect(contentPanel).toMatch(/cn\("shrink-0"/);
   });
 
   it("사이드바도 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다", () => {
@@ -177,25 +196,26 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
   });
 
   /**
-   * ⚠️ **본문 랜드마크는 패널이 아니라 페이지가 든다.** 8-2가 목록의 `<main>`을 `ContentPanel`로
-   * 갈아끼우면서 그 화면만 랜드마크를 잃었다 (Codex 리뷰 2026-09-11 실측: `/projects`에서
-   * `document.querySelectorAll('main,[role="main"]').length === 0`, 다른 화면 아홉은 그대로였다).
-   * 스크린리더의 "본문으로 건너뛰기"가 **그 화면에서만** 안 듣는데 눈으로는 아무 차이가 없다.
+   * ⚠️ **본문 랜드마크를 `ContentPanel`이 든다** (2026-09-11 — 패널 레이아웃). 그 전엔 페이지마다
+   * 하나씩이라 **관행**이었고, 실제로 8-2가 목록의 `<main>`을 패널로 갈아끼우면서 그 화면만
+   * 랜드마크를 잃었다 (Codex 리뷰 2026-09-11 실측: `/projects`에서
+   * `document.querySelectorAll('main,[role="main"]').length === 0`). 눈으로는 아무 차이가 없고
+   * 스크린리더의 "본문으로 건너뛰기"만 그 화면에서 안 들었다.
    *
-   * ⚠️ **`ContentPanel`을 통째로 `<main>`으로 바꾸는 것이 답이 아니다** — 나머지 화면은 이미 자기
-   * `<main>`을 들고 있어 중첩된다. 그래서 페이지 쪽 책임으로 두고 **하나 이상**으로 센다(보관·미준비
-   * 갈래처럼 분기마다 다른 `<main>`을 내는 화면이 있어 "정확히 하나"는 성립하지 않는다).
-   *
-   * ⚠️ **이 검사는 렌더 경로를 못 본다 — 소스에 `<main`이 있으면 통과한다.** 실제로 번역 화면은
-   * 빈 상태용 `Centered` 헬퍼에만 그것이 있어 **본 화면에서 랜드마크가 0이었고**, 이 검사가 green인
-   * 채였다(2026-09-11 실측으로 잡았다 — `multiline-detail`의 "절반만 고쳐도 green"과 같은 부류).
-   * 갈래가 여럿인 화면을 새로 만들면 브라우저로 한 번 센다.
+   * ⚠️ **그때는 "패널을 `<main>`으로 바꾸면 나머지 화면의 것과 중첩된다"가 이유였는데, 지금은
+   * 화면이 자기 `<main>`을 안 든다** — 머리/본문을 가르면서 전부 걷었다. 그래서 라우트당 하나가
+   * **구조로** 보장되고, 이 검사는 "체인에 있나"가 아니라 **"화면이 자기 것을 또 들지 않나"**를
+   * 함께 센다. 중첩된 `<main>`은 랜드마크를 둘로 만들고 브라우저가 그것을 고쳐주지 않는다.
    */
-  it("각 페이지의 체인이 본문 랜드마크를 든다", () => {
-    const missing = found.filter(
-      (rel) => !chain(rel).some((f) => readFileSync(f, "utf8").includes("<main")),
-    );
-    expect(missing).toEqual([]);
+  it("본문 랜드마크가 패널 하나다 — 화면이 자기 `<main>`을 들지 않는다", () => {
+    expect(contentPanel).toMatch(/<main /);
+    /**
+     * ⚠️ **여는 태그만 센다** — `includes("<main")`이면 **주석 안의 표기**(`` `<main>` ``)까지 잡혀,
+     * 통과시키려고 주석의 낱말을 바꾸게 된다. 그건 결함을 고치는 게 아니라 검사를 피하는 것이고,
+     * 그 자리의 주석은 대개 "왜 여기가 랜드마크가 아닌가"를 설명하는 문장이라 **지우면 안 되는 쪽**이다.
+     */
+    const nested = found.filter((rel) => /^\s*<main[\s/>]/m.test(readFileSync(join(EDIT, rel), "utf8")));
+    expect(nested).toEqual([]);
   });
 
   it("각 페이지의 체인에 콘텐츠 패널이 정확히 하나다", () => {
