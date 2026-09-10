@@ -264,6 +264,8 @@ app/
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지나고,
                         그 뒤 planProjectReadiness로 첫 적재 전 프로젝트를 not-ready로 거부한다
+                        ⚠️ **triggerPullAction에 try/catch가 없다** (7단계) — `runSync`가 던지지 않고
+                        오류 접기(남의 메시지 → ref)도 그쪽으로 옮겨갔다
                         ⚠️ **`saveTranslation`의 무효화는 `/projects/<slug>` 서브트리다** (6b-6) — 그 행을
                         읽는 화면이 셋이다(번역 표 · 로케일 진행률 · Home). 경로를 나열하면 넷째가
                         조용히 빠진다 (POSTMORTEM 2026-09-09)
@@ -365,6 +367,9 @@ app/
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
+                        ⚠️ **maxDuration=60이 여기 있어야 한다** (7단계) — Server Action은 자기를 부른
+                        페이지 세그먼트의 값을 쓰고, 없으면 기본값 300이 `STALE_AFTER_SECONDS`와 **같아져**
+                        정상 실행이 스스로를 stale로 본다
                         그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 빈 상태.
                         ⚠️ **기본 착지가 pending>0인 첫 네임스페이스다** (6a T7) — 전체는 `?ns=*`.
                         `type Search`가 URL 계약이고(ns·focus·q·state) entry-points가 routes.ts와 대조한다.
@@ -386,12 +391,15 @@ app/
                         + github-callback(state 검증 **전에** code 교환·Account 쓰기가 0회인지)
   api/push/route.ts     CI → DB (maxDuration 60). ⚠️ Bearer는 **그 프로젝트의 push 토큰 원문**이고
                         서버 env가 아니다 — sha256으로 Project.pushTokenHash를 **조회**해 프로젝트를 정한다
+                        ⚠️ **보관 409가 오배송·표면 검사보다 앞이다** (7단계) — 멈춘 프로젝트에서는
+                        페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 셋 다 같다(워크플로를 뗀다)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
                         `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
                         무효면 slug를 못 믿어 `/projects?e=`로 간다
-  api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
-                        Server Action이 triggerPull을 직접 부른다
+  api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60).
+                        ⚠️ **두 진입점 모두 `runSync`를 지난다** (7단계) — 편집 UI의 Server Action도 같다.
+                        `triggerPull`을 직접 부르는 자리는 이제 그 껍데기 하나뿐이다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 — matcher가 **둘**이다(`/projects/:path*` · `/account`).
                         렌더 요청만 막는다. 6b-4까지 하나였던 것은 `(edit)` 아래가 전부 그 접두였기 때문이다
 components/
@@ -631,7 +639,7 @@ lib/
                         / merge(detectCandidatesAcross 위임 — 흔적) / types
   push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / assemble.ts(select→read→base —
                         **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
-                        / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
+                        / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행·**보관** 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
   pull/                 branch-name.ts(⚠️ **잎, import 0** — isValidBranchName. `isRefSafeSlug`보다 **넓다**:
                           그쪽은 우리가 만드는 ref라 한 세그먼트고 이쪽은 남의 리포에 있는 브랜치라
