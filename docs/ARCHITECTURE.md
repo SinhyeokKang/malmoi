@@ -373,9 +373,12 @@ clone하지 않는다.
 `/api/pull`은 프로젝트 하나를 받지 않는다. `project.findMany` → `selectPullTargets` → 프로젝트별
 `runSync`를 돌고 **`{ results, unprocessed }`**로 응답한다.
 
-- **선택 규칙**: `installationId`와 `lastCommitSha`가 **둘 다 있고 보관되지 않은** 프로젝트만이다 — 앞은 App이 그 리포를
-  볼 수 있다는 뜻이고 뒤는 최초 적재가 끝났다는 뜻이다(`ready`의 판정 근거와 같다). 준비 안 된 행을
-  순회에 넣으면 매일 밤 실패 로그가 쌓이고 진짜 장애가 그 안에 묻힌다.
+- **선택 규칙**: `installationId`·`repositoryId`·`lastCommitSha`가 **셋 다 있고 보관되지 않은** 프로젝트만이다 —
+  앞의 둘은 App이 그 리포를 볼 수 있고 **어느 리포인지 고정돼 있다**는 뜻이고(§9), 뒤는 최초 적재가
+  끝났다는 뜻이다(`ready`의 판정 근거와 같다). 준비 안 된 행을 순회에 넣으면 매일 밤 실패 로그가
+  쌓이고 진짜 장애가 그 안에 묻힌다. ⚠️ **`repositoryId`가 조건에 들어간 것은 2026-09-10이다** —
+  그 컬럼이 생기기 전에 만들어진 행은 전부 null이고 `createClient`가 확실히 던지므로, 남겨 두면
+  재연결 전까지 **프로젝트마다 매일 밤 실패 `SyncRun`이 하나씩** 쌓인다.
 - **최근 실행이 오래된 순서이며 동점은 slug `compareKeys`**다(§5.6.5).
 - **한 프로젝트의 실패가 나머지를 막지 않는다** — 항목별 try/catch이고 실패도 배열의 한 항목으로 나온다.
   ⚠️ 그래서 **HTTP 200이 전부 성공을 뜻하지 않는다**: 항목의 `status`를 봐야 한다.
@@ -1256,6 +1259,17 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
   반환한 ID를 저장한다. 재연결은 기존 ID가 다르면 거부하고 기존 ID·owner/name을 조건으로 갱신한다.
   Publish는 ID 미고정 상태를 거부한다. installation 토큰도 해당 ID 하나로 범위를 제한하고,
   이름으로 조회한 저장소의 ID를 재대조한다. 검사 뒤 이름이 재사용되어도 다른 저장소에 쓸 권한이 없다.
+  - ⚠️ **그 판정이 화면에도 서야 한다** (2026-09-10 보완). 처음엔 쓰기 직전에만 대조해서,
+    이름을 재사용한 리포에서 `planConnectionHealth`가 `fullName`·`installationId`만 보고 **초록을
+    띄우는 동안 Publish만 죽었다.** 지금은 ID 대조가 이름 대조보다 **앞**이고 갈래가 하나 늘었다
+    (`repo-replaced`) — 리네임(같은 ID·다른 이름)만 `repo-moved`로 남는다. ⚠️ **그 화면에
+    [다시 연결]을 두지 않는다**: 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가 다른
+    ID로의 재고정을 거부하므로, 눌러도 실패할 버튼이 된다.
+  - ⚠️ **`ProbeResult.repositoryId`는 optional이 아니다.** `probeRepo`는 항상 채우는데 타입이 부재를
+    허용하면 판정 쪽 `=== null` 검사를 `undefined`가 조용히 지나간다. 부재를 표현할 곳은 **저장된
+    행**이지 방금 받은 응답이 아니다 — 필수로 바꾸자 픽스처 넷이 컴파일에서 걸렸다.
+  - ⚠️ **미고정 행은 cron 순회에서도 빠진다** (§3.05). 화면이 `not-connected`로 할 일을 말하는 동안
+    `/logs`가 실패로 채워지면 7단계 이력의 첫 화면이 무의미해진다.
 - nullable 컬럼 추가 마이그레이션 `20260910030000_pin_repository_id`를 앱 배포보다 먼저 적용한다.
   기존 프로젝트는 자동 고정하지 않는다. OWNER 재연결 전까지 Publish가 차단된다.
 - `loadPullState`는 프로젝트·키·번역 값·최대 수정 시각을 **같은 RepeatableRead 트랜잭션**에서 읽는다.
@@ -1263,5 +1277,12 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
   프로젝트 실행 직렬화(`SyncRun`)와는 별개의 보장이다.
 - 글롭 `*`는 `/`를 넘지 않는 DP 매칭(`lib/adapters/glob.ts`)이며 시간은 템플릿 길이 × 경로 길이에
   비례한다. 기존 템플릿 길이 200·양자 4개 상한을 유지한다. 온보딩 `{locale}` 캡처는 2~8자로 묶는다.
+  ⚠️ **DP 뒤에도 양자 예산이 남는 이유는 갈래가 둘이기 때문이다** — `matchGlobPaths`는 역추적을 안
+  하지만 `lib/onboarding/confirm.ts`의 per-locale 갈래는 여전히 `RegExp`이고 `{locale}` N개를 인접
+  캡처 N개로 이어 붙인다. 두 갈래가 `exceedsGlobBudget` 하나를 지난다.
+- ⚠️ **`lib/onboarding/budget.ts`가 `yaml`의 `Parser.stack`을 읽는다** — 공개 API가 아니다. YAML의
+  plain/block scalar 의미가 따옴표 스캐너와 달라 직접 구문을 추정하면 우회와 오탐이 함께 났고
+  (POSTMORTEM 2026-09-10), 실제 Lexer·CST로 옮기면서 내부 구조에 붙었다. 버전을 올릴 때 red를
+  내는 것은 `budget.test.ts`뿐이라 스택 표에 그 사실을 적었다.
 
 구현·검증·운영 잔여는 [sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)을 따른다.
