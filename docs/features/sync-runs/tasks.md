@@ -171,12 +171,34 @@
   - `docs/features/README.md` 표 행 + "logs 하나만 남았다" 문장 · 루트 `README.md` 현 단계 선언
 - [x] `——` 문서 커밋(문서별 — SAAS·DESIGN·CLAUDE·features README·README)
 - [ ] **T9** `/push` → `/merge`
-- [ ] **T10** `[manual]` 실물 (`i18n-order-check`) — ⚠️ **프로덕션 배포 뒤에만 가능하다**(cron·CI push가 대상이다)
-  - **두 탭 Publish 연속 클릭**: `gh pr view --json commits` 개수가 1 늘고 sync 브랜치 head가 한 번만 바뀐다 ·
-    `logs`에 SUCCEEDED 1행, FAILED 0행 · 둘째 탭에 `info` Alert "Already sending"
-  - **보관 뒤 야간 cron**: 같은 밤 **비보관 대조 프로젝트**에 `CRON` 행이 있고 **동시에** Vercel 로그 `[pull] targets=…`에
-    보관 slug가 없다. ⚠️ "logs가 비어 있다"만으로는 cron 미실행과 구별 불가(POSTMORTEM 2026-09-03)
-  - **보관 중 CI push**: 대상 리포 Actions가 409 `archived`로 red
+- [x] **T10** `[manual]` 실물 (`i18n-order-check`, 2026-09-10 프로덕션 `d0e8688` 배포 직후)
+  - [x] **두 탭 Publish 연속 클릭** — 11ms 간격(`02:08:57.277Z` / `.288Z`)으로 눌렀고 실행이 6.2초 걸렸다.
+    **`SyncRun` 행이 정확히 하나**(SUCCEEDED · MANUAL · `changed: 1`) — 거부된 쪽은 **행이 없다**(결정 6).
+    PR [#7](https://github.com/SinhyeokKang/i18n-order-check/pull/7) **커밋 1개**, sync 브랜치 head가
+    `1db8869` 하나. 둘째 탭 문구: **"Already sending. This page will show the result when it's done."**
+  - [x] **`too-soon`도 밟았다**(계획 밖 — 위 시나리오가 `already-running`으로 갔으므로 따로 쟀다):
+    1차 Publish가 `Nothing to send`(SKIPPED)로 끝난 뒤 곧바로 2차 → **"Just sent. Try again in 22 seconds."**
+    ⚠️ **이것이 "`lastSettled`가 SKIPPED도 센다"의 실물 증거다** — 1차가 성공이 아니었는데도 걸렸다.
+  - [x] **보관 뒤 cron** — `order-check`을 보관한 상태에서 `/api/pull`을 실물로 호출했다(야간 cron과 **같은
+    엔드포인트·같은 코드 경로**). 응답 `results` 넷이 전부 비보관 프로젝트이고 **보관 slug가 없다**;
+    `SyncRun`에 **CRON·SKIPPED 행 넷**(`requestedBy` null)이 남았고 `order-check` 행은 0이다.
+    ⚠️ **"logs가 비어 있다"와 구별된다** — 대조 넷에 행이 있으니 cron 자체는 돌았다(POSTMORTEM 2026-09-03).
+    ⚠️ **밤을 안 기다린 근거**: 그 시점 prod 전 프로젝트의 대기 편집이 0이라(`max(Translation.updatedAt) ≤
+    lastPulledAt`) 1층 스킵으로 **GitHub을 한 번도 안 부르는** 것이 사전에 확인됐다 — 부작용 없는 호출이다.
+  - [x] **보관 중 CI push** — `workflow_dispatch`로 대상 리포 워크플로를 돌려
+    [run 34428525390](https://github.com/SinhyeokKang/i18n-order-check/actions/runs/34428525390)이 **red**:
+    `POST https://mal-moi.com/api/push → 409` · `{"error":"archived"}`.
+  - [x] **화면** — 보관 상태에서 다섯 화면(Home·번역·언어·멤버·이력)이 같은 `EmptyState` + OWNER에게만
+    [Open settings] · 목록과 **프로젝트 스위처**에 "Archived" 배지(스위처는 이름과 배지가 같은 `Link` 안이라
+    Slot이 안 던졌다 — POSTMORTEM 2026-09-09의 상시 방어선이 실물에서도 성립) · settings-block **여섯**,
+    보관 카드가 맨 아래 · 확인 Dialog가 **열린 PR #7을 링크로** 실었다(서버가 실제로 물어 얻은 값) ·
+    확인 버튼이 `border-destructive/40 text-destructive`(danger) · **인라인 결과 Alert 0개**이고 카드가
+    [Restore project]로 전환되는 것이 피드백 · 되돌리기는 **확인 없이** 즉시.
+  - [x] **`logs` 화면** — 빈 상태 "No syncs yet"(조회 성공에서만) → 실행 뒤 행 하나:
+    `2026-09-10 02:08 UTC` + "2 minutes ago" · 저자 이름 · "Sent" · `1` + [View what was sent] · 사유 `—`.
+    CRON 행은 "Nightly" / "Nothing to send" / `0` / `—`.
+  - **뒷정리**: 보관 되돌림(`archivedAt IS NOT NULL`인 프로젝트 0) · **영구 `RUNNING` 행 0** ·
+    PR #7은 열린 채 남는다(정상 산출물이다 — 그 리포는 폐기용이고 편집 스탬프 `T10-102354`가 들어 있다)
 
 ---
 

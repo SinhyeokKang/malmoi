@@ -1042,8 +1042,9 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 
 ### 7단계 — 운영 안전성 ✅ → `features/sync-runs/`
 
-**배송 셋으로 나갔다** (2026-09-10): ship 1 순수 판정 · ship 2 테이블과 껍데기(⚠️ 마이그레이션) ·
-ship 3 화면. **[manual] 실물 검증(T10)이 프로덕션 배포 뒤에 남아 있다.**
+✅ **배송 셋이 프로덕션까지 갔다** (2026-09-10, PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) →
+`d0e8688`): ship 1 순수 판정 · ship 2 테이블과 껍데기(마이그레이션 `_add_sync_run`) · ship 3 화면.
+✅ **T10 실물 검증도 같은 날 끝났다** — 완료 게이트 셋이 전부 실물로 닫혔다(아래).
 
 - [x] ~~`SyncRun` — type · status · idempotencyKey · requestedBy · errorCode~~ ✅ **ship 2**
   - ⚠️ **`type`·`idempotencyKey`는 안 만들었다.** 지금 두 진입점 중 **키를 만들 주체가 없다** —
@@ -1082,9 +1083,12 @@ ship 3 화면. **[manual] 실물 검증(T10)이 프로덕션 배포 뒤에 남�
 
 완료 게이트: Publish 연속 클릭이 커밋·PR을 한 번만 만든다 / 실패한 sync가 마지막 성공 상태를 덮지
 않는다 / 프로세스 중단이 영구 `running`을 남기지 않는다.
-⚠️ **앞의 것은 `[manual]` 실물로만 닫힌다** — 하네스의 `$transaction`엔 직렬화가 없고 `$executeRaw`가
-no-op이라, 자동 테스트가 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞 · GitHub이 트랜잭션 밖)까지다
-(POSTMORTEM 2026-09-05).
+✅ **앞의 것을 실물로 닫았다** (2026-09-10 프로덕션 — `features/sync-runs/tasks.md` T10): 두 탭을 **11ms
+간격**으로 눌렀고 실행이 6.2초였는데 **`SyncRun` 행이 하나**, PR 커밋 **1개**, sync 브랜치 head가 한 번만
+움직였다. 거부된 쪽은 행이 없고 화면에 "Already sending"(tone `info`)이 떴다.
+⚠️ **자동 테스트로는 원리적으로 못 닫는다** — 하네스의 `$transaction`엔 직렬화가 없고 `$executeRaw`가
+no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞 · GitHub이
+트랜잭션 밖)까지다. 그래서 이 줄의 근거는 실물이고, 다음에 이 계약을 건드리면 **다시 실물로 재야 한다.**
 
 **후속으로 남긴 것**: `Home`의 최근 활동을 `SyncRun`으로 · push를 `SyncRun`에 넣기(그때 `type`·
 `idempotencyKey`가 의미를 갖는다) · `needs_configuration` · `SyncRun` 보존 기간(행이 쌓이는 속도를
