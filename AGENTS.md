@@ -592,6 +592,11 @@ lib/
   failure.ts            500 본문 판정 (classifyFailure·MissingEnvError) — 우리 메시지는 그대로,
                         남의 라이브러리 메시지는 ref만. 응답이 **대상 리포 Actions 로그**로 흘러가고
                         그 리포가 public일 수 있다
+                        ⚠️ **`AppError`가 선택 `code`를 든다** (2026-09-10, 7단계) — `SyncRun.errorCode`가
+                        될 값이라 `fail(message, code)`로 **던지는 자리**가 정한다. `classifyFailure`는
+                        그 필드를 안 본다(축이 다르다 — "실어도 되는가" vs "무엇이 실패했나").
+                        `lib/pull/__tests__/error-codes.test.ts`가 코드를 드는 자리 넷과 안 드는 자리
+                        열하나를 **양쪽으로** 고정한다 — 새 `fail(`은 둘 중 하나를 골라야 red를 벗는다
   githash.ts            sha1("blob <len>\0" + content) — 로컬 blob SHA
   github.ts             Git Data API 래퍼 (App installation 토큰) — ⚠️ server-only 없음(스모크가 물어야 한다)
                         + openRepoReader(스냅샷·blob — **설치 토큰을 한 번만 발급한다.** 읽기마다 App을 만들면
@@ -664,6 +669,16 @@ lib/
                 / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
+  sync/                 sync 실행의 게이트·결과 판정 (SaaS 7단계, 2026-09-10). **ship 1은 plan.ts 하나이고
+                        I/O가 0이다** — 껍데기(run.ts)·조회(query.ts)·화면 판정(view.ts)은 ship 2·3이다
+                        plan.ts(planSyncStart — ⚠️ **`already-running`이 `too-soon`보다 앞이다**(둘 다 걸릴 때
+                          "30초 뒤에"는 거짓이다) · `STALE_AFTER_SECONDS`보다 오래된 RUNNING은 실행 중으로
+                          안 치고 껍데기가 닫는다 · ⚠️ **`too-soon`은 cron에 안 건다**(하루 1회라 야간 실행이
+                          조용히 안 도는 경로가 생긴다) / planSyncFinish — ⚠️ **`skipped`를 `SUCCEEDED`로
+                          접지 않는다**(`lastPublishedAt`이 skipped에서 안 움직인다) · warnings는 둘 다 센다
+                          / classifySyncError — 코드는 **던지는 자리**가 든다, `safeMessage`는 `classifyFailure`
+                          위임. ⚠️ **`STALE_AFTER_SECONDS`(300)는 `maxDuration`(60)보다 넉넉해야 한다** —
+                          같으면 정상 실행이 스스로를 stale로 본다)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회
@@ -691,7 +706,10 @@ lib/
     invite-label.ts     maskedEmailLabels — **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 (malmoi#18).
                         ⚠️ **두 표가 쓴다** (2026-09-09) — 원문을 와이어에 안 싣기로 하면서 멤버 표의 라벨도
                         서버가 만든다. `maskedInviteLabels`는 그것의 얼은이다(문서 둘이 그 이름을 가리킨다)
-    invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기.
+    invitation.ts       hashInviteToken(sha256) + planInvitationAccept 5분기
+                        + **MEMBER_LIMIT(10)·planInvitationCreate** (2026-09-10, 7단계 — `PROJECT_LIMIT`과
+                        같은 형으로 **소비자 옆**이다. ⚠️ **대기 초대는 안 센다** — 세면 만료된 초대
+                        때문에 못 부르는 상태가 생기고 그것을 설명할 화면이 없다).
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
     email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
@@ -816,7 +834,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`routes.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`sync`·`routes.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
