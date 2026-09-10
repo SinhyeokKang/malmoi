@@ -9,15 +9,20 @@
 여섯째로 **`findings.md`**(우리가 돌린 감사의 발견 목록 — `sec-audit/`·`sec-audit-2/`에 있다), 일곱째로
 **`operations.md`**(운영 전환·복구 절차 — `credential-storage/`에 있다. ⚠️ **완료돼도 지우지 않는다**:
 키 회전·백업 복원처럼 **나중에 다시 실행할 절차**라 tasks와 수명이 다르고, SAAS 본문과 CLAUDE.md가
-직접 가리킨다), 여덟째로 **`review.md`**(리뷰 범위를 고정한 기록)가 있다. 그 디렉터리는
+직접 가리킨다), 여덟째로 **`review.md`**(리뷰 범위를 고정한 기록 — `credential-storage/`에 있고 그 디렉터리는 `spec`·`design`도 **함께** 갖는다)가 있다. **`findings.md`를 가진 디렉터리**는
 **`spec.md`·`design.md` 대신 감사 근거를 가진다** — 설계할 기능이 아니라 이미 있는 코드에서 찾은 결함이라,
 근거가 "왜 그 선택을 했나"가 아니라 **"무엇이 어떻게 뚫렸고 무엇은 봐서 깨끗했나"**다. `findings.md`는
 **완료돼도 남긴다**(다음 감사가 같은 비용을 다시 쓰지 않게 하는 것이 그 문서의 절반이다). `tasks.md`는
 규칙대로 닫히면 지운다. 넷째(외부 감사 원문)와 다른 점은 **실행 계획이 붙어 있다는 것**이다.
 
-✅ **7단계 `sync-runs/`가 배송 셋으로 dev까지 나갔다** (2026-09-10 — 아래 표). 8단계 `ui-rework/`는 **이름만 있고 디렉터리가 없다** (SAAS §8 — 시안 미확정이고 `/feature`는 7단계를 마친 뒤에 뜬다). CLAUDE.md가
-이 파일을 "`/feature` 착수 전 필독"으로 지정하므로, **여기에 그 축이 없으면 그 단계를 시작하는 사람이
-지정된 필독 문서만 읽고도 자기 단계의 존재를 못 본다.** 태스크와 완료 게이트는 SAAS §8에 있다.
+✅ **7단계 `sync-runs/`가 프로덕션까지 나갔다** (2026-09-10, PR #26 → `d0e8688` — 아래 표).
+🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)이 dev다.
+태스크와 완료 게이트는 SAAS §8에 있다.
+
+⚠️ **`ui-rework/`는 2단 구조다** — 축이 커서 디렉터리 안에 **배송별 하위 디렉터리**를 두고
+(`signin-auth/`), **아홉째 종류인 `README.md`**가 배송 순서와 **작업 규약 아홉**을 든다(SAAS §8과
+CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`tasks`가 필요한 것은 아니고,
+8-2·8-3처럼 시안이 곧 스펙인 배송은 그 `README.md`의 절 하나로 근거를 남긴다.
 (6단계 `translation-ui/`는 2026-09-07에 디렉터리가 생겼고 **2026-09-09에 프로덕션까지 닫혔다** — 아래 표. 5단계
 `project-onboarding/`은 2026-09-07에 생기고 같은 날 T1~T8이 프로덕션까지 갔다.)
 
@@ -40,6 +45,7 @@
   §후속에 있다. **`github-connect/tasks.md`도
   같다** — T5가 실물 10시나리오와 거기서만 잡힌 결함(malmoi#7)을, 그리고 **못 밟은 둘이 왜 못
   밟혔는지**를 든다. 뒤쪽이 특히 지워지면 안 된다: 다음 사람이 같은 벽에 다시 부딪힌다.
+  **`translation-ui/tasks.md`도 남긴다**(96개 전부 `[x]`인데 T7 재측정 기록이 붙어 있다) · **`sync-runs/tasks.md`도 남긴다**(T10 동시성 실물). ⚠️ **둘은 아래 표 칸에만 근거가 있었다** — 규칙을 읽는 사람이 삭제 대상으로 본다.
   **`project-onboarding/tasks.md`도 남긴다** — T8이 실물 검증 14행 표와 **전환 계획의 전제 둘이 틀렸다는
   실측**(l10n 워크플로가 붙은 리포는 하나 / prod는 여섯 행에 한 리포 두 프로젝트)을 들고 있고, 그 둘은
   다른 어디에도 없다.
@@ -62,6 +68,7 @@
 | [sec-audit-2](./sec-audit-2/) | ✅ 프로덕션 반영 (2026-09-10, PR #27 → `ff5e8a4`) | ARCHITECTURE §9 · SAAS §11 · [작업 기록](./sec-audit-2/tasks.md) | #37은 **사용자 결정으로 제외**(가시성 기반 정책 유지). #38은 session-revocation으로 배송 |
 | [credential-storage](./credential-storage/) | ✅ **dev·prod 전환 완료** (2026-09-10, PR #28 → `9e6854e` · #29 → `f6933d7`) | [spec](./credential-storage/spec.md) · [design](./credential-storage/design.md) · [operations](./credential-storage/operations.md) · SAAS 저장 보호 · ARCHITECTURE §5.1·§6.6 | 키 회전 리허설(P7) · 차단·drain 리허설(T11) |
 | [session-revocation](./session-revocation/) | ✅ 프로덕션 반영 (2026-09-10, PR #28 → `9e6854e`) | SAAS 전체 세션 회수 · ARCHITECTURE §6.1.1 · [spec](./session-revocation/spec.md) | GitHub 왕복·두 세션 회수·타 사용자 보존은 실물 확인. 남은 것은 Google 왕복·취소 경로·키보드/포커스(S7) |
+| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3 dev) | SAAS §8 · DESIGN §0·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | 8-3 이후 페이지별(번역 표·Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸

@@ -12,7 +12,8 @@
 |---|---|---|
 | **8-1** [`signin-auth/`](./signin-auth/) | `/signin` 신설 · 초대 수락 · `/privacy`·`/docs` 빈 라우트 · 토큰·shadcn 기반 배선 | ✅ 프로덕션 (PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → `718db80`) |
 | **8-2 셸** | 헤더·사이드바·콘텐츠 패널·오른쪽 패널 골격 · `projects/[slug]/layout.tsx` 신설 | ✅ dev (2026-09-10) |
-| 8-3~ 페이지별 | `/projects` · `/projects/new` · `/account` · Home · translations · locales · members · logs · settings | ⬜ |
+| **8-3 `/projects` 목록** | 2줄 행 · URL 필터(`?filter=`) · 상태 배지 하나 · fluid + **사이드바 시안 정렬**(접기·스위처·`New project` 제거, Help 추가) | ✅ dev (2026-09-10) |
+| 8-4~ 나머지 페이지별 | `/projects/new` · `/account` · Home · translations · locales · members · logs · settings | ⬜ |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
 
 ⚠️ **8-1이 기반을 겸한다.** signin은 셸 **밖** 화면이라(`(edit)` 밖) 셸 없이 그릴 수 있고, 그래서
@@ -194,6 +195,26 @@ blue 계열은 리포 토큰에 **없다** — Tailwind `blue-600` 유틸을 쓴
 
 ⚠️ **DESIGN §6.2의 "새 raw 색을 늘리지 않는다"가 여기서 깨진다** — Google G의 4색은 우리가 고른 색이
 아니라 **남의 브랜드 자산**이라 토큰으로 접을 수 없다. 예외로 등재한다.
+
+## 8-3 `/projects` 목록 (✅ 2026-09-10, dev)
+
+**시안**: [`206:883`](https://www.figma.com/design/cuMNHY0Cn5ei9Szjqfz0tm/bugshot?node-id=206-883)(목록) ·
+`240:20442`(빈 상태). 시각 규칙의 정본은 **DESIGN §6.63**이고 아래는 그리면서 갈린 것만 남긴다.
+
+- **시안이 한 번 개정됐다** — 초안은 메타가 `리포 · 멤버 수 · synced at`이고 우측이 역할 배지였는데,
+  개정본이 **역할을 메타 맨 앞 평문으로 내리고 우측을 상태 배지 하나로** 바꿨다. `synced`는 빠졌다
+  (양방향이라 어느 시각인지 말하지 않으면 그 줄이 거짓이 된다).
+- **`Active`가 보인다** — DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고 근거는 **필터 탭이
+  같은 낱말을 쓴다**는 것. 배지가 항상 하나라 행 우측 폭도 안 흔들린다.
+- **기다리는 둘만 amber다** — `Archived`를 칠하면 의도된 상태가 문제처럼 읽힌다.
+- **메타를 더 넣지 않았다** — 미배포 건수·진행률·키 수는 전부 다른 화면이 이미 드는 지표라
+  DESIGN §6.64 결정 2("세 번째 사본을 만들면 그중 하나가 낡는다")에 걸린다.
+- **리포는 전체 URL이다**(사용자 결정) — ⚠️ 행 전체가 이미 `<a>`라 그 URL은 링크가 아니다.
+- **사이드바가 함께 갔다** — 시안 `212:944`에 맞춰 접기·스위처·`New project`를 빼고 Help(`/docs`)를
+  더했으며, 구역 라벨이 이름 그대로가 되고 `Projects`에 개수 배지가 붙었다. 라벨도 시안이다
+  (`Overview`→`Home` · `Languages`→`Locales` · `Settings`→`Project settings`).
+
+**남긴 것**: 나머지 셋의 카운트 배지(SAAS §8 🔒) · `Needs reconnect` 상태(SAAS §7.5) · CTA 전폭.
 
 ## 8-2 셸 — 시안과 치수 (✅ 2026-09-10, dev)
 
