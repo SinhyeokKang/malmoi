@@ -44,6 +44,21 @@ export const en = {
       closeMenu: "Close menu",
       switchProject: "Switch project",
       userMenu: "Account menu",
+      /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다.
+          ⚠️ 위의 `home`은 프로젝트 Overview 항목이라 이름이 갈려 있어야 한다. */
+      appHome: "Malmoi home",
+    },
+    /**
+     * 프로젝트 화면 오른쪽의 320px 패널 (8-2). **탭 둘만 세우고 내용은 8-P가 채운다** —
+     * diff는 UI가 아니라 새 서버 능력이라(커밋 없이 렌더만 하는 경로) 여기서 UI만 먼저 만들면
+     * 빈 껍데기를 두 번 그린다.
+     */
+    panel: {
+      label: "Project panel",
+      general: "General",
+      changes: "Changes",
+      /** ⚠️ **"곧 나온다"고 쓰지 않는다** — 지키지 못할 약속이고, 지금 참인 것은 비어 있다는 사실이다. */
+      empty: "Nothing here yet.",
     },
     /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
     copy: "Copy",

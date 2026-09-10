@@ -1,6 +1,7 @@
 import { FolderGit2, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { ContentPanel } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -46,8 +47,14 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
   const memberships = await loadMemberships(getPrisma(), userId);
 
   return (
-    <>
-      {/* 페이지 수준 거부는 **global Alert**다 — top bar 아래 전폭 (DESIGN §6.4). */}
+    /**
+     * ⚠️ **여기만 페이지가 패널을 든다** (8-2). 형제 셋(`/account`·`/projects/new`·`/projects/[slug]`)은
+     * 각자 레이아웃이 드는데, 이 화면은 `projects/` 디렉터리를 `[slug]`와 공유해서 그 층에
+     * 레이아웃을 두면 프로젝트 화면이 **두 겹**으로 감싸인다. 라우트마다 정확히 하나인지는
+     * `__tests__/shell-layout.test.ts`가 체인을 훑어 센다.
+     */
+    <ContentPanel>
+      {/* 페이지 수준 거부는 **global Alert**다 — 헤더 아래 전폭 (DESIGN §6.4). */}
       {message !== null && (
         <div className="px-6 pt-6">
           <Alert variant="danger">{message}</Alert>
@@ -104,6 +111,6 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </ul>
         )}
       </main>
-    </>
+    </ContentPanel>
   );
 }

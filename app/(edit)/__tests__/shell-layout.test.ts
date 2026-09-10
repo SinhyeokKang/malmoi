@@ -73,7 +73,7 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
    * 루트에 `min-w-`가 없으면 스크롤이 아니라 **콘텐츠가 압축돼 잘린다** — 둘은 다르다.
    */
   it("루트가 1280을 하한으로 든다 — 없으면 잘림이지 스크롤이 아니다", () => {
-    expect(layout).toMatch(/\bmin-w-\[1280px\]\b/);
+    expect(layout).toMatch(/min-w-\[1280px\]/);
   });
 
   it("헤더가 전폭 48이고 로고와 사용자 메뉴 둘을 든다", () => {
@@ -126,8 +126,8 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
    * 필요로 하므로 그 자리가 프로젝트 레이아웃이어야 한다.
    */
   it("오른쪽 패널은 프로젝트 레이아웃이 든다 — 셸은 slug를 모른다", () => {
-    expect(projectLayout).toContain("ProjectPanel");
-    expect(layout).not.toContain("ProjectPanel");
+    expect(projectLayout).toMatch(/<ProjectPanel\b/);
+    expect(layout).not.toMatch(/<ProjectPanel\b/);
   });
 });
 
