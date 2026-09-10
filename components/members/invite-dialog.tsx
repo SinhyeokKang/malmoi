@@ -85,7 +85,7 @@ export function InviteDialog({ slug }: { slug: string }) {
               className="w-full"
             />
           </FormGroup>
-          <Button type="submit" variant="primary" loading={pending} loadingLabel={m.members.invite.creating}>
+          <Button type="submit" variant="primary" loading={pending}>
             {m.members.invite.create}
           </Button>
         </form>

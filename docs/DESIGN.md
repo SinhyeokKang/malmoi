@@ -6,6 +6,29 @@
 
 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재)와 [MVP.md](./MVP.md)(PoC — 닫힘), 화면별 구성은 [features/translation-ui/user-stories.md](./features/translation-ui/user-stories.md), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+## 0. ⚠️ 8단계 UI 재작성으로 바뀐 것 (2026-09-10)
+
+**Figma 시안을 화면에 입히면서 전역 규칙 여덟이 바뀌었다.** 이 문서의 나머지가 그 이전을 서술하고
+있으면 그쪽이 낡은 것이다 — 각 항목의 상세는 오른쪽 절에 있다.
+
+| 무엇 | 전 | 후 | 상세 |
+|---|---|---|---|
+| **팔레트** | slate (푸른 틴트) | **neutral** | §2 |
+| **font-weight** | 최대 600, 기본 400 | **최대 500, 기본 300** — 버튼 라벨 400 | §4 |
+| **자간** | 유틸(`tracking-tight`)로 그때그때 | **크기 토큰이 든다** (`--text-*--letter-spacing`) | §4 |
+| **radius** | `--radius` 10px | **12px** — 파생 전부 상승(md 10 · lg 12 · xl 16), 버튼 base `rounded-lg` | §5 |
+| **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
+| **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
+| **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
+| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8 | §5.1 |
+
+⚠️ **이 목록은 8-1b(로그인·초대) 하나를 그리며 나왔고 전 화면에 적용된다.** 8-2 이후가 셸·나머지
+화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
+[features/ui-rework/README.md](./features/ui-rework/README.md)가 든다.
+
+⚠️ **아직 반영 안 된 화면이 있다** — `Button size="lg"`는 셸 밖 전용이고, base 치수 교체는
+**마지막 화면이 옮겨온 뒤**다(§6.4). 그때까지 셸 안팎의 버튼 높이가 다르다.
+
 ## 1. 기반 스택
 
 | | 값 | bugshot-2와의 차이 |
@@ -81,9 +104,27 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 ## 4. 타이포그래피
 
 - **`font-sans`**: Pretendard Variable → 시스템 한/영 폴백. 폰트 파일은 **동적 서브셋 생성물**이라 `public/fonts/`가 gitignore돼 있다 (CLAUDE.md 폰트 절). GitLab Sans(Inter 기반)를 들이지 않는다 — Pretendard의 라틴 글리프도 Inter에서 왔다.
-- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목·**셸 안 페이지 제목**, `text-lg`=**셸 밖 카드의 제목 전용**(로그인·초대 수락 둘뿐이다 — 아래 네 번째 불릿).
+- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목·**셸 안 페이지 제목**, `text-lg`=**셸 밖 카드의 제목 전용**이었다 — ⚠️ **8-1b가 그 둘을 `text-2xl`로 올렸다**(Figma 시안). 지금 `text-lg`의 소비자는 `/privacy`·`/docs` placeholder뿐이고, 8단계가 그 둘을 그리면 이 줄을 다시 본다.
 - **임의값(`text-[…]`)은 스케일에 대응값이 없을 때만.** 12px은 `text-xs`, 14px은 `text-sm`이 있으므로 임의값으로 쓰지 않는다.
-- 본문·셸 안 제목은 `font-medium`(500)이고, **셸 밖 카드의 페이지 제목만** `text-lg font-semibold tracking-tight`(600)다(로그인·초대 수락). 700은 쓰지 않는다.
+- ⚠️ **weight 규칙이 2026-09-10에 전면 교체됐다** — **가장 두꺼운 서체가 500이다.**
+
+  | 전 | 후 | 쓰는 곳 |
+  |---|---|---|
+  | 600 (`font-semibold`) | **500** (`font-medium`) | 셸 밖 카드의 페이지 제목 |
+  | 500 (`font-medium`) | 500 그대로 | 셸 안 제목·라벨 |
+  | — | **400** (`font-normal`) | **버튼 라벨** — 본문(300)과 제목(500) 사이. 500이면 버튼만 도드라진다 |
+  | 400 (기본·`font-normal`) | **300** (`body`의 기본값 · `font-light`) | 나머지 전부 |
+
+  **`body`에 `font-weight: 300`이 있고 그것이 기본이다.** Pretendard Variable이 `45 920` 범위라
+  300이 실제로 나온다 — 정적 폰트였다면 400으로 반올림됐다. **600 이상은 쓰지 않는다.**
+  ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 `font-light`를 **명시**한다(기본과 같아 보여도
+  그 의도가 코드에 남아야 한다).
+  ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다.
+
+- ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
+  `--text-*--letter-spacing`이 크기마다 값을 갖고(작을수록 넓게, 클수록 좁게), **호출부에
+  `tracking-tight`를 붙이면 그것을 덮는다.** 실제로 제목 넷에 그 클래스가 남아 있어 전역 자간
+  조정이 그 자리에만 안 먹었다 — 쓰려면 토큰을 고친다.
 
 ### 4.1 mono 표면 불변식 — 13px / 18px
 
@@ -122,7 +163,27 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mono·JetBrains Mono(GitLab Mono의 기반) 같은 리거처 폰트를 도입하면 `font-variant-ligatures: none`을 켠다** — `--`를 2셀에서 1셀로 붕괴시키고, 우리 키에 `_`·`.`이 흔해 같은 계열 문제가 난다. `font-feature-settings`가 아니라 `font-variant-ligatures`를 쓴다(전자는 가산이 아니라 통째로 덮어쓴다). 시스템 스택을 유지하기로 했다(2026-09-07).
 
+## 4.5 elevation — **Tailwind 기본 그림자를 쓰지 않는다** (8-1b)
+
+Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경로는 `shadow-low`·`shadow-medium`
+유틸이다.
+
+| 토큰 | 값 | 시안 |
+|---|---|---|
+| `--shadow-low` | `0 4px 12px 4px rgb(22 24 27 / 0.05)` | 색 그대로, **spread 0 → 4** |
+| `--shadow-medium` | `0 6px 16px 2px rgb(22 24 27 / 0.15)` | 색 그대로, **spread −2 → 2** |
+
+- ⚠️ **spread를 키운 것이 의도다** (2026-09-10 사용자) — 패널이 아주 연한 회색 배경 위에 떠 있는
+  구조라 좁은 그림자는 **경계선처럼** 보이고 떠 있는 느낌이 안 난다.
+- ⚠️ **Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다.
+- ⚠️ **`--shadow-*`는 `:root`에 안 나온다** — Tailwind가 유틸로만 소비하므로 `getComputedStyle`로
+  읽으면 빈 문자열이다. 확인은 `boxShadow` 실효값으로 한다.
+
 ## 5. 간격 · Radius · 레이아웃
+
+⚠️ **최소 대응 너비는 1280px다** (8단계, 2026-09-10 사용자). 그 아래에서는 **가로 스크롤이 나는 것이
+정상**이고 모바일 분기를 만들지 않는다 — 레이아웃 루트에 `min-w-[1280px]`가 있어야 실제로 스크롤이
+나고, 없으면 grid가 압축돼 **콘텐츠가 잘린다**(스크롤과 잘림은 다르다).
 
 - `--radius: 0.625rem`. shadcn 관용대로 `--radius-sm/md/lg/xl`이 `calc()`로 파생된다. 컨트롤은 `rounded-md`, 카드·패널은 `rounded-lg`.
 - 간격은 Tailwind 기본 스케일. **섹션은 `space-y-4`, 컨트롤 묶음은 `space-y-2`, 카드·표 셀 패딩은 `px-4 py-3`** — 실사용을 따랐다(2026-09-06 실측).
@@ -143,7 +204,12 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 드롭다운 패널 | `min-w-60 max-w-md` | 248~456px |
 | 모달 | `max-w-lg` (512px) | modal sm 512 |
 
-**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 사이드바 + top bar + `max-w-4xl` 또는 fluid) / **셸 밖 카드**(로그인 2열 · 초대 수락 `mx-auto max-w-sm`). 새 화면은 둘 중 하나다.
+**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 사이드바 + top bar + `max-w-4xl` 또는 fluid) / **셸 밖 카드**(로그인·초대 수락 — **둘 다 2열**이다, 8-1b). 새 화면은 둘 중 하나다.
+
+⚠️ **셸 밖 화면의 골격은 `components/signin/auth-layout.tsx` 하나가 든다** (8-1b) — 바깥 padding 8 ·
+패널 간 gap 8 · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-sm`, 바깥은 `--auth-canvas`(아주
+연한 회색)이고 좌측 패널은 **true white**다. **그 대비가 없으면 흰 패널과 흰 배경이 붙어 경계가
+사라진다.** 시안 전체가 이 규칙이고 좌표로 검산했다 (`features/ui-rework/README.md` 규약 3.5).
 
 ## 6. 편집 UI 특화 규칙
 
@@ -207,7 +273,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
 | `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | "Nothing to publish" |
-| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | Publish 성공 둘 + **로그인 화면의 전체 로그아웃 완료**(`?sessions=revoked` — 셸 **밖** 카드 안이라 §6.4의 배치 셋 중 어디에도 안 들어간다) — **초록을 쓰지 않는다**(raw 색을 늘리지 않는다). 성공은 조용하다 |
+| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | Publish 성공 둘 — **초록을 쓰지 않는다**(raw 색을 늘리지 않는다). 성공은 조용하다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
 | `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · Publish "일부 미기록" · `repo-moved` |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
@@ -215,9 +281,40 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 **새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive**, 그리고 §6.3의 외부 링크 **blue-600**. 초록·주황·보라는 없다.
 
+### 6.25 토스트 — 피드백의 두 번째 표면 (8-1b, 2026-09-10)
+
+⚠️ **2026-09-08이 `sonner`를 "사용 0"으로 제거하며 반대로 판정한 자리다.** 8단계가 **토스트로 통일**
+하기로 뒤집었고(사용자, 두 번 재확인), 그 결정이 요구한 **경계**는 `features/ui-rework/README.md`
+규약 8에 있다:
+
+| | 무엇 | 예 |
+|---|---|---|
+| **토스트** | **전역 결과를 내는 이벤트** — 대상이 화면 전체이고 읽고 나면 사라져도 되는 것 | 로그인 거부 · 세션 회수 완료 |
+| 인라인 | **대상이 있는 판정** | 셀 저장 상태 · 멤버 행 옆 거부 |
+| 인라인 | **지속되는 조건** | 편집 손실 배너 · base 대기 배너 |
+| 인라인 | **페이지 콘텐츠 자체** | 초대의 `not-found`·`expired`·`already-accepted` |
+
+- **`<Toaster theme="light" />`가 `app/layout.tsx`에 있다.** ⚠️ `sonner`는 테마를 **스스로 감지**하므로
+  그 prop이 없으면 OS 다크에서 토스트만 어두워진다 — `globals.css`의 `@custom-variant dark`는 우리
+  `dark:` 유틸만 막지 남의 패키지 내부 스타일은 못 막는다(§3.1의 사각지대).
+- **`toastOptions.classNames`로 우리 토큰에 묶는다** — 안 묶으면 `sonner`가 자기 배경·radius·shadow를
+  주입해 **두 번째 CSS 출처**가 되고 `Alert`와 같은 뜻을 다른 형으로 말한다.
+- ⚠️ **조치가 필요한 정보는 `duration: Infinity` + 닫기.** 로그인 거부 사유가 4초 뒤 사라지면
+  화면에 설명이 0이 된다 — 인라인 `Alert`를 걷어낸 대가를 여기서 갚는다. 세션 회수 완료도 긴
+  duration이다(되돌릴 수 없는 조치의 유일한 완료 증거다).
+- ⚠️ **`id`를 고정한다** — StrictMode에서 effect가 두 번 돌아 같은 토스트가 둘이 뜬다.
+- ⚠️ **`role="alert"`에서 `aria-live="polite"`로 강등된다.** `Alert variant="danger"`는 끼어들어
+  읽히고 토스트는 큐에 들어간다 — `lib/pull/message.ts`가 반대 방향으로 같은 축을 판단한 전례가
+  있다("already sending"을 `info`로 내렸다). **거부는 끊어야 하는 쪽**이라 실물 확인이 판정이다.
+
 ### 6.3 외부 링크
 
-**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · 툴바의 "View what was sent" · App 설치 링크 둘. ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
+⚠️ **밑줄을 쓰지 않는다** (2026-09-10 사용자 — 전역 규칙). **인라인 하이퍼링크는 색과 아이콘으로
+구별하고 `underline`·`hover:underline`을 붙이지 않는다.** 8-1b에서 소스 13곳을 전수로 걷어냈고
+(`grep -rn underline app components --include='*.tsx'`가 0건이어야 한다) `Button` variant `link`도
+같이 바뀌었다.
+
+**리포 밖으로 나가는 링크는 전부 `text-blue-600` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · 툴바의 "View what was sent" · App 설치 링크 둘. ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
 
 ### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
@@ -225,11 +322,11 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 | 프리미티브 | 형 (옛 표의 어느 행을 잇나) |
 |---|---|
-| **Button** `primary` | `bg-primary text-primary-foreground hover:bg-primary/90` · `h-8 px-3 text-sm font-medium rounded-md` — 옛 "primary 버튼". **화면당 하나**(확정 액션) |
+| **Button** `primary` | `bg-primary text-primary-foreground hover:bg-primary/90` · `h-8 px-3 text-sm font-normal rounded-md` — 옛 "primary 버튼". **화면당 하나**(확정 액션) |
 | **Button** `default` | `border border-input bg-background hover:bg-accent text-foreground` · 같은 치수 — 옛 "bordered(페이지·툴바)"를 하나로. 툴바도 `h-8`이다 |
 | **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소 |
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |
-| **Button** `link` | `text-blue-600 underline` 인라인 — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
+| **Button** `link` | `text-blue-600` 인라인 (밑줄 없음) — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
 | **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:opacity-70`(primary) — 옛 규칙 그대로 |
 | **Button** `loading` | **라벨 교체**("Saving…") + disabled. 옆 문구가 아니다(폭이 흔들린다). **목록 안에서는 누른 버튼 하나만** 교체한다 |
@@ -248,6 +345,8 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
 | **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만. ⚠️ **프리미티브가 자기 `Provider`를 든다** (2026-09-08) — Radix는 조상 provider가 없으면 **던지고**, 그 툴팁은 접힌 상태에서만 렌더되므로 "접기를 누르면 셸이 죽는다"로 나타난다(접힘이 `localStorage`에 남아 영구화된다, POSTMORTEM 2026-09-08). 바깥의 `TooltipProvider`는 **지연 공유 최적화**이고 필수가 아니다 |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
+| **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
+| **Button `size="lg"`** | `h-10 px-4` — **셸 밖 카드 전용**(로그인·초대 수락). ⚠️ **base를 안 바꾼 이유**: 소비자가 26파일인데 8-1b가 검증한 화면은 셋이다. 각 화면의 배송이 옮겨오고 **마지막이 옮겨온 뒤 기본값을 바꾼다** — 그때까지 셸 안 화면이 "signin이 쓰니 우리도"로 번지지 않게 이 줄이 막는다 |
 | **EmptyState** | 제목 `text-base font-medium` ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음 |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
 | **코드 블록** | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + **블록 위 한 줄의 오른쪽**에 [Copy] `default`(아이콘 `Copy` → `Check`) → 라벨 교체 "Copied", 실패는 "Copy failed"(삼키면 사용자가 복사된 줄 알고 떠난다) |
@@ -389,7 +488,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 블록 | 규칙 |
 |---|---|
 | Profile | 이름·이메일을 `<dl>`로 (`sm:grid-cols-[8rem_1fr]`, 라벨 `text-xs text-muted-foreground`). ⚠️ **읽기 전용이고 그 이유를 카드 설명이 말한다** — provider가 소유하고 재로그인마다 `planEmailRefresh`가 갱신한다(고칠 수 있게 하면 초대 대조가 검증되지 않은 주소 위에 선다). 값은 세션이 아니라 **`User` 행**에서 읽는다: 초대 대조가 보는 값이 그쪽이다. ⚠️ 주소는 식별자라 `text-mono`이고 **마스킹하지 않는다**(자기 주소다 — 남의 주소를 보이는 자리만 `maskEmail`을 지난다) · 값이 없으면 "None" |
-| Sessions | "Sign out everywhere" — 확인 버튼은 **`danger sm`**이고 누르면 **공급자 재왕복**이다(`Dialog`가 아니다: 확인의 근거가 "정말?"이 아니라 **그 계정을 지금 통제하는가**여서, 브라우저 안 확인으로는 그 질문에 답할 수 없다). 버튼은 `loading`/`loadingLabel`로 라벨이 바뀐다(§6.4). 실패는 **in-block `Alert danger`**를 폼 안에 렌더한다 — 페이지 상단으로 올리면 어느 카드의 실패인지 사라진다. ⚠️ **아래 Sign out 카드는 `danger`가 아니다** — 그쪽은 이 기기 하나이고 되돌리기가 재로그인 한 번이라, **되돌릴 수 없는 쪽만** 빨강을 쓴다 |
+| Sessions | "Sign out everywhere" — 확인 버튼은 **`danger sm`**이고 누르면 **공급자 재왕복**이다(`Dialog`가 아니다: 확인의 근거가 "정말?"이 아니라 **그 계정을 지금 통제하는가**여서, 브라우저 안 확인으로는 그 질문에 답할 수 없다). 버튼은 `loading`이면 스피너가 붙는다(§6.4 — 라벨은 안 바뀐다). 실패는 **in-block `Alert danger`**를 폼 안에 렌더한다 — 페이지 상단으로 올리면 어느 카드의 실패인지 사라진다. ⚠️ **아래 Sign out 카드는 `danger`가 아니다** — 그쪽은 이 기기 하나이고 되돌리기가 재로그인 한 번이라, **되돌릴 수 없는 쪽만** 빨강을 쓴다 |
 | GitHub account | 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 다른 것은 **연결 버튼의 착지**뿐이다(`dest="account"`) |
 | Sign out | 셸에 이미 둘(사이드바 하단·유저 메뉴)이 있는데 여기 세 번째를 둔다 — Action 하나에 상태가 없어 **낡을 수 없고**, 계정 화면에 로그아웃이 없으면 사용자가 찾으러 나간다. 버튼은 `default sm`이다(`danger`가 아니다 — 되돌릴 수 있다) |
 
@@ -433,7 +532,10 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
 
-세트는 `lucide-react` **하나**다 (§1). 크기는 **셋뿐이다**: **16**(기본 — 사이드바·버튼·Alert·인라인) · **12**(외부 링크 `ExternalLink`만, §6.3) · **24**(`EmptyState` 하나). 그 밖의 크기를 만들지 않는다 — 사이드바 항목이 `h-8`이고 아이콘 박스가 `size-6`이라 20 이상은 알약 안에서 넘친다 (§5.1).
+세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — provider 브랜드 로고(GitHub·Google)는
+그 라이브러리에 **없다**(브랜드 글리프를 제외한다). `components/signin/brand-icons.tsx`가 인라인 SVG로
+들고, **Google의 4색은 §6.2의 "새 raw 색을 늘리지 않는다"와 아래 "색은 상속"의 예외다** — 브랜드 색은
+우리가 고르는 값이 아니라 남의 자산이라 토큰으로 접을 수 없다 (8-1b). 크기는 **셋뿐이다**: **16**(기본 — 사이드바·버튼·Alert·인라인) · **12**(외부 링크 `ExternalLink`만, §6.3) · **24**(`EmptyState` 하나). 그 밖의 크기를 만들지 않는다 — 사이드바 항목이 `h-8`이고 아이콘 박스가 `size-6`이라 20 이상은 알약 안에서 넘친다 (§5.1).
 
 **아이콘이 없으면 미완인 자리** (LNB가 대표다 — 접힌 레일에서는 아이콘이 유일한 라벨이므로, 항목 하나라도 비면 그 상태가 성립하지 않는다):
 
@@ -503,7 +605,8 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - **다크 모드** (§3).
 - **top bar의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). SAAS §4.2.
 - **Vue 컴포넌트(`@gitlab/ui`)·아이콘 세트(`gitlab-svgs`)** — lucide 16px로 대응.
-- **일러스트**(빈 상태 SVG) — 로그인 우측 장식은 CSS dot-grid + **토큰만 쓴 정적 모형 카드** 하나뿐이다(design §3.12).
+- **일러스트**(빈 상태 SVG) — `EmptyState`는 여전히 아이콘 하나뿐이다.
+  - ⚠️ **로그인 우측 장식은 예외가 됐다** (8-1b). 그전까지 "CSS dot-grid + 토큰만 쓴 정적 모형 카드"였는데, Figma 시안이 **래스터 키비주얼(`public/brand/malmoi-signin-kv.png`)과 Canvas 도트 필드**를 들여왔다. 셸 **밖** 화면 둘(로그인·초대 수락)에만 해당하고, 셸 안 화면에는 여전히 일러스트를 두지 않는다.
 
 ### 9.3 판정 기준
 
@@ -537,7 +640,11 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] raw `<button>`·`<input>`·`<select>`·`<textarea>`를 쓰지 않고 프리미티브를 지났나 (§6.4·§7)
 - [ ] `muted` 표면(사이드바·표 헤더·칩) 위에 `text-muted-foreground`·`hover:bg-accent`를 쓰지 않았나 (§2.1·§2.2)
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)
-- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600뿐 (§6.2)
+- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600뿐 (§6.2). 브랜드 글리프만 예외 (§6.8)
+- [ ] **weight가 500을 넘지 않나** — 기본은 300, 버튼 라벨은 400 (§0·§4)
+- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다 (§4)
+- [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
+- [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
 - [ ] 임의값(`text-[…]`) 대신 스케일을 썼나 (§4)
 - [ ] 문자열이 `messages/en.tsx`에서 오고 §10의 문체인가

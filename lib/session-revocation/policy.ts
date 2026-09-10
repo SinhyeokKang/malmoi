@@ -1,3 +1,5 @@
+import { routes } from "@/lib/routes";
+
 import { createHash } from "node:crypto";
 import { hashSessionToken } from "@/lib/credentials/crypto";
 
@@ -51,8 +53,14 @@ export function revocationCookie(secure: boolean) {
     secure, httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 300,
   } };
 }
+/**
+ * ⚠️ **`?sessions=revoked`의 유일한 생산자다** (소비자는 `http.ts`). 8-1a에서 로그인 화면이
+ * `/signin`으로 옮겨갈 때 이 자리를 놓치면 **루트 껍데기가 쿼리를 버려** 회수 완료 피드백이
+ * 원리적으로 뜨지 않는다 — 보내는 쪽과 받는 쪽이 갈라진 채 통과하는 부류다
+ * (POSTMORTEM 2026-09-06).
+ */
 export function outcomeUrl(outcome: Outcome): string {
-  return outcome === "revoked" ? "/?sessions=revoked" : `/account?sessionRevocation=${outcome}`;
+  return outcome === "revoked" ? routes.signIn({ sessions: "revoked" }) : `/account?sessionRevocation=${outcome}`;
 }
 
 /** Auth.js encrypts state with the cookie name as salt, so it cannot be renamed into ordinary login. */

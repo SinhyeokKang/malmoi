@@ -144,7 +144,6 @@ function RemoveButton({
           variant="ghost"
           aria-label={m.members.removeLabel(who)}
           loading={pending}
-          loadingLabel={m.members.removing}
         >
           {m.members.remove}
         </Button>

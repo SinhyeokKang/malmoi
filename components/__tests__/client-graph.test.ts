@@ -48,6 +48,18 @@ const ALLOWED = [
   "radix-ui",
   "class-variance-authority",
   "lucide-react",
+  /**
+   * ⚠️ **8-1b가 다시 들였다.** 2026-09-08에 "사용 0"으로 제거하면서 이 파일의 **메타 반례**로
+   * 남겨 뒀던 패키지다 — 그때 근거는 *"피드백은 셀 인라인과 `Alert`이고 토스트는 그것을 둘로
+   * 가른다"*였고, 8단계가 **토스트로 통일**하기로 뒤집었다(2026-09-10 사용자, 두 번 재확인).
+   *
+   * **경계가 규약 8에 있다**: 토스트 = 전역 결과를 내는 이벤트 / 인라인 = 대상이 있는 판정 ·
+   * 지속되는 조건 · 페이지 콘텐츠 자체. 그 경계가 없으면 셀 저장 상태 4종과 초대 화면의
+   * `not-found`까지 토스트로 밀려간다.
+   *
+   * ⚠️ 그래서 아래 메타 반례에서 **빠졌다** — 목록과 반례에 동시에 있으면 한 파일 안에서 모순이다.
+   */
+  "sonner",
 ];
 
 function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean {
@@ -193,15 +205,15 @@ describe("클라이언트 그래프", () => {
     }
     for (const bad of KNOWN_OFFENDERS) expect(allowed(bad), bad).toBe(false);
     // 목록에 없는 **아무** 패키지도 통과하지 못한다 — 그게 금지 목록과의 차이다.
-    for (const bad of ["sonner", "@tanstack/react-virtual", "lodash"]) expect(allowed(bad), bad).toBe(false);
+    for (const bad of ["@tanstack/react-virtual", "lodash", "date-fns"]) expect(allowed(bad), bad).toBe(false);
   });
 
   /**
    * ⚠️ **의도된 확장이 실제로 필요한지, 그리고 그 셋만인지 센다.** 목록을 넓히는 것은 결정이므로
    * 그 결정이 지워졌을 때(누가 셋 중 하나를 지웠을 때) 검사가 조용해지면 안 된다.
    */
-  it("프리미티브의 셋은 의도적으로 허용된다 — 하나씩 빼면 걸린다", () => {
-    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react"]) {
+  it("의도적으로 허용된 넷 — 하나씩 빼면 걸린다", () => {
+    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react", "sonner"]) {
       expect(allowed(pkg), pkg).toBe(true);
       expect(allowed(pkg, ALLOWED.filter((ok) => ok !== pkg)), pkg).toBe(false);
     }

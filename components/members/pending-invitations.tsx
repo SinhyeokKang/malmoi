@@ -92,7 +92,6 @@ export function PendingInvitations({
                   variant="ghost"
                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                   loading={pendingId === invitation.id}
-                  loadingLabel={m.members.pending.revoking}
                   onClick={() => revoke(invitation.id)}
                 >
                   {m.members.pending.revoke}

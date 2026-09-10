@@ -37,8 +37,21 @@ function withQuery(path: string, query: Record<string, string | undefined>): str
 }
 
 export const routes = {
-  /** 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다 (design §3.8). */
-  signIn: (): string => "/",
+  /**
+   * 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다 (design §3.8).
+   *
+   * ⚠️ **`/`가 아니라 `/signin`이다** (8-1a). 랜딩 페이지가 `/`에 들어올 예정이라 미리 갈랐다 —
+   * 나중에 옮기면 이 목적지를 가리키는 **아홉 자리**가 동시에 움직이고, 경로 문자열은 타입이
+   * 못 보는 부류라 하나만 빠뜨려도 조용하다 (POSTMORTEM 2026-09-05).
+   *
+   * ⚠️ **쿼리를 `withQuery`로 만드는 것이 계약의 절반이다.** `entry-points.test.ts`의 "쿼리
+   * 파라미터 수신자" 검사는 생성기 호출을 **`routes.foo(...)}?key=`** 모양으로 찾으므로,
+   * 문자열 연결(`routes.signIn() + "?error=..."`)로 만들면 **그 검사를 통째로 회피한다** —
+   * 사유를 보내놓고 아무도 안 읽는 것이 POSTMORTEM 2026-09-06의 사고다.
+   *
+   * `error`는 Auth.js의 거부 사유(`signInErrorMessage`), `sessions`는 전체 세션 회수 결과다.
+   */
+  signIn: (query: { error?: string; sessions?: string } = {}): string => withQuery("/signin", query),
   projects: (): string => "/projects",
   newProject: (): string => "/projects/new",
   /**
@@ -64,4 +77,13 @@ export const routes = {
     withQuery(`/projects/${slug}/logs`, query),
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,
+  /**
+   * 공개 문서 둘 — **로그인 화면 푸터가 가리킨다.**
+   *
+   * ⚠️ **아직 placeholder다**(출시 전에 채운다). 그래도 **페이지와 같은 커밋에 등재한다** —
+   * 페이지 없이 넣으면 404를 가리키는 생성기가 되고, 죽은 링크 검사의 접두 규칙이 그것을
+   * 통과시켜 못 잡는다 (6b-4·6b-6·7단계와 같은 판정).
+   */
+  privacy: (): string => "/privacy",
+  docs: (): string => "/docs",
 } as const;

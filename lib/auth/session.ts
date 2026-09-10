@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { getPrisma } from "@/lib/db";
 
+import { rejectTarget } from "./landing";
+
 import type { Permission } from "./permission";
 import { getProjectAccess } from "./query";
 import { readSession } from "./read-session";
@@ -21,10 +23,9 @@ import { readSession } from "./read-session";
  */
 export async function requireUser(): Promise<{ userId: string }> {
   const session = await readSession();
-  // ⚠️ 장애는 `/`가 아니라 `/?error=Unavailable`로 — 그냥 `/`로 보내면 정당한 비로그인과 **바이트 단위로 같은
-  // 응답**이 되어 전면 장애가 "리다이렉트 100% = 정상"으로 읽혔다 (POSTMORTEM 2026-09-06).
-  if (session.status === "unavailable") redirect("/?error=Unavailable");
-  if (session.status === "none") redirect("/");
+  // ⚠️ 장애와 비로그인의 목적지가 **달라야 한다** — 같으면 전면 장애가 "리다이렉트 100% = 정상"으로
+  // 읽힌다 (POSTMORTEM 2026-09-06). 그 구별을 `rejectTarget`이 한 자리에서 든다 (8-1a).
+  if (session.status !== "ok") redirect(rejectTarget(session.status));
   return { userId: session.userId };
 }
 

@@ -53,6 +53,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
 
   // Server Action을 클라이언트 컴포넌트가 아니라 폼에 직접 넘긴다 — 셸의 로그아웃과 같은 형이다.
+  // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자): 로그아웃은 랜딩으로 간다.
   async function signOutAction() {
     "use server";
     await signOut({ redirectTo: "/" });

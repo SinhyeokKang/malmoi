@@ -120,7 +120,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
             {m.home.progress.empty}{" "}
             <Link
               href={routes.locales(slug)}
-              className="focus-visible:ring-ring text-foreground underline-offset-2 hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+              className="focus-visible:ring-ring text-foreground focus-visible:ring-[3px] focus-visible:outline-none"
             >
               {m.home.progress.emptyLink}
             </Link>
@@ -191,7 +191,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
         */}
         <Link
           href={routes.translations(slug, { ns: item.namespace, focus: item.locale })}
-          className="focus-visible:ring-ring text-sm underline-offset-2 hover:underline focus-visible:ring-[3px] focus-visible:outline-none"
+          className="focus-visible:ring-ring text-sm focus-visible:ring-[3px] focus-visible:outline-none"
         >
           {m.home.activity.edit(item.actor, item.key, item.locale)}
         </Link>
@@ -212,7 +212,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
                 href={item.prUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+                className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 {m.home.activity.pr}
                 <ExternalLink className="size-3" aria-hidden />

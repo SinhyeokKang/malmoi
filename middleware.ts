@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { shouldRedirectToLogin } from "@/lib/auth/cookie";
+import { routes } from "@/lib/routes";
 
 /**
  * **1차 차단 — 세션 쿠키가 있는지만 본다.**
@@ -30,8 +31,8 @@ export default function middleware(request: NextRequest): NextResponse | undefin
   });
   if (!redirectToLogin) return undefined;
 
-  // 로그인 화면은 `app/page.tsx`(루트)가 그린다.
-  return NextResponse.redirect(new URL("/", request.nextUrl.origin));
+  // 로그인 화면은 `app/signin/page.tsx`가 그린다 — 루트는 랜딩 자리를 비워 둔 껍데기다 (8-1a).
+  return NextResponse.redirect(new URL(routes.signIn(), request.nextUrl.origin));
 }
 
 export const config = {
@@ -42,7 +43,13 @@ export const config = {
    * **새 보호 라우트를 추가하면 여기도 추가한다** — 빠뜨리면 그 라우트가 무방비다.
    *
    * ⚠️ **`/invite/:path*`는 넣지 않는다** (design §4.1). 비로그인으로 열려야 초대 링크의 토큰이
-   * 보존된다 — 여기서 `/`로 302하면 토큰이 사라진다.
+   * 보존된다 — 여기서 로그인 화면으로 302하면 토큰이 사라진다.
+   *
+   * ⚠️ **`/signin`·`/privacy`·`/docs`도 같은 이유로 넣지 않는다** (8-1a). 특히 `/signin`은 넣으면
+   * **로그인이 통째로 죽는다** — 위 `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지
+   * 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을
+   * 돈다. 바로 위 "새 보호 라우트를 추가하면 여기도 추가한다"가 그 함정을 부르는 문장이라,
+   * `entry-points.test.ts`가 **부정 단언**으로 상시 고정한다.
    *
    * ⚠️ **`/account`는 `/projects/:path*`가 덮지 않는다** (6b-4). 앞의 패턴 하나였던 동안 `(edit)` 아래
    * 모든 페이지가 우연히 그 접두를 갖고 있었고, 사용자 축이 생기면서 그 우연이 끝났다 —

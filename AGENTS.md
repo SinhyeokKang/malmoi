@@ -91,7 +91,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다** (`vercel.json`의 `regions: ["hnd1"]`, 2026-09-09) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
-⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`·`tw-animate-css`는 사용 0으로 확인돼 2026-09-08에 제거했다** — 피드백은 셀 인라인(저장)과 `Alert`(Publish)이고 토스트는 그것을 둘로 가른다. `components/__tests__/client-graph.test.ts`가 `sonner`를 금지 목록으로 들고 있다.
+⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`가 2026-09-10에 돌아왔다** (8-1b). 2026-09-08에 "사용 0"으로 제거하면서 *"피드백은 셀 인라인과 `Alert`이고 토스트는 그것을 둘로 가른다"*를 근거로 적었는데, **8단계가 토스트로 통일하기로 뒤집었다**(사용자, 두 번 재확인). 그 결정이 요구한 **경계**는 `docs/features/ui-rework/README.md` 규약 8과 DESIGN §6.25에 있다 — 토스트는 **전역 결과를 내는 이벤트**만이고, 대상이 있는 판정·지속되는 조건·페이지 콘텐츠 자체는 인라인이다. ⚠️ **`client-graph.test.ts`는 허용 목록이라 편집이 셋이었다**(`ALLOWED` 추가 · 메타 반례에서 제거 · 근거 주석). `tw-animate-css`는 그대로 없다.
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
 
@@ -140,9 +140,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 ⚠️ **`maxAge` 24시간은 "마지막 활동 뒤 24시간"이다** (2026-09-06 결정 — `updateAge` 1h). 그 전엔 `updateAge`를 안 줘서 기본값(24h)이 `maxAge`와 같았고, 그러면 Auth.js의 갱신 조건이 `expires`와 일치해 **세션이 한 번도 연장되지 않았다** — 로그인 정각 24시간 뒤 편집 도중 끊기고 쿠키까지 사라졌다. 활동 중인 세션은 시간당 한 번 DB 쓰기로 연장된다 (ARCHITECTURE §6.1.1).
 
-⚠️ **`auth()`를 직접 부르지 않는다 — `readSession()`을 쓴다** (`lib/auth/read-session.ts`, 2026-09-06). `auth()`는 어댑터 예외를 삼키고 `null`을 돌려주므로 **DB 장애와 비로그인이 반환값으로 구별되지 않는다** — 장애를 `/`로 보내면 정상 로그아웃과 바이트 단위로 같은 응답이 되어 프로덕션 전면 장애를 "정상"으로 읽었다 (POSTMORTEM 2026-09-06). `readSession`은 `logger.error` + AsyncLocalStorage로 `unavailable`을 가르고, 그때 `/?error=Unavailable`·"일시적인 오류" 문구로 간다 (ARCHITECTURE §6.1.2).
+⚠️ **`auth()`를 직접 부르지 않는다 — `readSession()`을 쓴다** (`lib/auth/read-session.ts`, 2026-09-06). `auth()`는 어댑터 예외를 삼키고 `null`을 돌려주므로 **DB 장애와 비로그인이 반환값으로 구별되지 않는다** — 장애를 로그인 화면으로 그냥 보내면 정상 로그아웃과 바이트 단위로 같은 응답이 되어 프로덕션 전면 장애를 "정상"으로 읽었다 (POSTMORTEM 2026-09-06). `readSession`은 `logger.error` + AsyncLocalStorage로 `unavailable`을 가르고, 그때 `/signin?error=Unavailable`·"일시적인 오류" 문구로 간다 (ARCHITECTURE §6.1.2).
 
-⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. **렌더 요청(GET·HEAD)에** 쿠키 이름만 보는 것으로 갈랐고, **Server Action POST는 통과시킨다**(307이면 `fetch`가 POST를 `/`로 재전송해 페이지 오류가 된다 — Action은 스스로 인증한다). 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
+⚠️ **미들웨어에서 `auth()`를 부르지 않는다** — DB 세션에서 그 래퍼는 DB를 읽고 세션 갱신 쓰기까지 한다. **렌더 요청(GET·HEAD)에** 쿠키 이름만 보는 것으로 갈랐고, **Server Action POST는 통과시킨다**(307이면 `fetch`가 POST를 로그인 화면으로 재전송해 페이지 오류가 된다 — Action은 스스로 인증한다). 상세는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §6.1이다.
 
 ### 키 리스트는 가상화하지 않는다
 
@@ -287,8 +287,17 @@ dev push와 PR이 같은 SHA에 두 번 도는 것은 **의도된 중복**이다
 
 ```
 app/
-  page.tsx              루트 — 로그인 화면(GitHub·Google). 세션이 있으면 /projects로 redirect.
-                        Auth.js의 `pages.error`가 여기라 거부 사유를 `?error=`로 보인다
+  page.tsx              루트 — **랜딩 자리의 redirect 껍데기다** (8-1a, 2026-09-10). 세션 상태만 보고
+                        `landingTarget`이 정한 곳으로 보낸다. ⚠️ **로그인 상태면 /projects이고 랜딩이
+                        선 뒤에도 그렇다**("로그인 이후 랜딩 못 가게"). 쿼리를 읽지 않는다 — `?error=`·
+                        `?sessions=`를 싣는 자리는 전부 routes.signIn({...})으로 /signin에 간다
+  signin/page.tsx       로그인 화면(GitHub·Google) — 8-1a가 루트에서 옮겼다. Auth.js의 `pages.signIn`·
+                        `pages.error`가 여기라 거부 사유를 `?error=`로 보인다.
+                        ⚠️ **`?error=` 없이도 세션이 `unavailable`이면 문구를 띄운다** — 로그인 버튼만
+                        보이면 사용자가 헛로그인한다. ⚠️ **matcher에 넣지 않는다**(자기 자신으로 307)
+  privacy/page.tsx      ⚠️ **placeholder** (8-1a) — 로그인 푸터가 가리켜서 라우트를 먼저 땄다.
+  docs/page.tsx         출시 전에 채운다. 둘 다 `components/public-doc.tsx`를 쓰고 **돌아가는 링크가
+                        있다**(셸 밖이라 없으면 뒤로가기 말고 길이 없다). Terms는 만들지 않는다
   layout.tsx            루트 레이아웃 (Pretendard <link>). ⚠️ **`lang="en"`** — 화면 문구가 전부
                         영어라 `app/__tests__/screens.test.ts`가 그것을 고정한다 (2026-09-08 ship 4)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
@@ -445,13 +454,17 @@ app/
                         페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 셋 다 같다(워크플로를 뗀다)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
-                        `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
+                        로그인 화면으로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
                         무효면 slug를 못 믿어 `/projects?e=`로 간다
   api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60).
                         ⚠️ **두 진입점 모두 `runSync`를 지난다** (7단계) — 편집 UI의 Server Action도 같다.
                         `triggerPull`을 직접 부르는 자리는 이제 그 껍데기 하나뿐이다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 — matcher가 **둘**이다(`/projects/:path*` · `/account`).
-                        렌더 요청만 막는다. 6b-4까지 하나였던 것은 `(edit)` 아래가 전부 그 접두였기 때문이다
+                        렌더 요청만 막고 목적지는 `routes.signIn()`이다. 6b-4까지 하나였던 것은 `(edit)`
+                        아래가 전부 그 접두였기 때문이다.
+                        ⚠️ **`/signin`을 여기 넣으면 로그인이 통째로 죽는다** (8-1a) — 이 파일도
+                        `shouldRedirectToLogin`도 **경로를 안 보므로** 쿠키 없는 모든 요청이 자기
+                        자신으로 307을 돈다. `entry-points.test.ts`가 부정 단언으로 고정한다
 components/
   translation-input.tsx 셀 편집 (client — Textarea, blur/Enter 저장, Shift+Enter 개행, Esc 되돌리기).
                         ⚠️ **셀 안 상태줄은 시각 전용**이고 알림은 표 하나의 live region이 든다.
@@ -464,6 +477,7 @@ components/
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받고 `/projects` 계정 섹션이 같은 버튼을 쓴다
+  public-doc.tsx        `/privacy`·`/docs`가 공유하는 껍데기 (8-1a) — **돌아가는 링크가 요지다**
   project-archived.tsx  보관된 프로젝트 화면 (7단계) — `project-not-ready.tsx`와 같은 형이지만
                         **`redirect()`를 쓰지 않는다**: 보관은 되돌릴 수 있는 상태이고 OWNER가 갈 곳은
                         설정 안의 카드 하나라, 튕기면 자기가 왜 거기 왔는지 모른다. 화면 **다섯**이
@@ -505,6 +519,15 @@ components/
                         기준 로케일을 `components/locales/`로 옮겼다. 브랜치 형식은 보내기 전에
                         `isValidBranchName`으로도 보고 **방어는 Action**이다.
                         ⚠️ **이 폼이 보내는 값에 언어가 없다** — 그것이 malmoi#20의 구조를 없앤다)
+  signin/               셸 **밖** 화면 둘의 조각 (8-1b) — auth-layout(2열 골격: **바깥 padding 8 ·
+                        패널 간 gap 8 · 각 패널 radius+연한 border+shadow**. 시안 전체가 이 규칙이고
+                        번역 화면에서도 검산했다) / auth-toast(`?error=`·`?sessions=` → 토스트.
+                        ⚠️ **아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의
+                        자리가 된다) / provider-button(`useFormStatus`로 pending을 읽는다 — ⚠️ **`<form>` 안에 있어야
+                        참을 낸다**) / dot-field(Canvas 2D — ⚠️ **커서가 없으면 `autoCursor`가 ㄹ자로
+                        순회한다**(2026-09-10),
+                        `prefers-reduced-motion`이면 1회 렌더) / brand-icons(GitHub·Google 인라인 SVG —
+                        ⚠️ `lucide-react`에 브랜드 글리프가 없고 Google 4색은 DESIGN §6.2의 예외다)
   shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
                         `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
                         문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
@@ -604,7 +627,14 @@ lib/
                         pathTemplate이 리포 **경로 조각**이라 값이 아니라 경로로 검증한다 (sec-audit 발견 2).
                         push 스키마와 pull 판정이 **두 층으로** 같은 함수를 쓴다 — 경계는 새 값을,
                         resolveLocalePaths는 경계가 서기 전에 저장된 행을 막는다
-  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). `logs(slug, {cursor})`는 7단계가
+  signin/dot-field.ts   ⚠️ **잎, import 0** (8-1b) — dotGrid(경계 포함 · gap 0이면 빈 배열: `ResizeObserver`
+                        콜백에서 불려 무한 루프 한 번이 탭을 얼린다) · dotScale(거리→값 선형 보간.
+                        **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
+                        · autoCursor(커서가 없을 때의 ㄹ자 순회. ⚠️ **줄 사이에 세로 전환 구간이 있다** —
+                        없으면 y가 줄 인덱스로만 정해져 줄바꿈이 순간이동한다)
+  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`signIn()`이 쿼리를 받는다**
+                        (8-1a) — `withQuery`를 지나야 `entry-points.test.ts`의 "쿼리 수신자" 검사에
+                        걸린다(문자열 연결은 그 검사를 회피한다). `privacy()`·`docs()`도 8-1a다. `logs(slug, {cursor})`는 7단계가
                         **그 페이지와 같은 커밋에** 더했다 (`account()`·`project()`와 같은 판정).
                          `account()`는 6b-4, `project(slug)`는
                         6b-6이 **그 페이지와 같은 커밋에** 더했다 — 페이지 없이 등재하면 404를 가리키는
@@ -793,7 +823,7 @@ lib/
                         **둘 다** 본다 — 한쪽만 보면 이미 멤버가 된 사람의 초대가 "대기 중"으로 보인다).
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
     session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only).
-                        장애는 /?error=Unavailable, 거부는 /projects?e=<status>
+                        장애는 /signin?error=Unavailable, 거부는 /projects?e=<status>
                         ⚠️ **보관만 redirect하지 않는다** (7단계) — `archived: boolean`을 값으로 돌려주고
                         페이지가 `ProjectArchived`를 그린다. 되돌릴 곳이 설정 안의 카드 하나라 목록으로
                         튕기면 사용자가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고
@@ -803,6 +833,10 @@ lib/
                         수동 Cookie로 보내면 자기 OAuth 계정을 남의 User에 붙일 수 있었다. 조회가
                         만료 행을 아예 안 돌려주는 것이 두 경로를 동시에 덮는 유일한 자리다.
                         ⚠️ **로그인 수단은 User당 하나** — SAAS §5.5의 정책이 여기서 쓰기까지 닿는다
+    landing.ts          ⚠️ **잎** (8-1a) — rejectTarget(거부·장애 2갈래) · landingTarget(루트의 착지 3갈래).
+                        세 파일에 흩어져 있던 if 문을 모았다. ⚠️ **삼항이 아니라 맵 + `satisfies`다** —
+                        갈래가 늘면 키가 없어 컴파일 에러가 나고, 삼항이면 새 갈래가 **사유 없이**
+                        로그인 화면으로 떨어지는데 `tsc`가 조용하다(실측). `lib/auth/message.ts`와 같은 관용구
     read-session.ts     readSession — auth()를 장애 표시와 함께 읽는 **유일한 진입점** (ok|none|unavailable).
                         ⚠️ server-only 없음 — Action 테스트가 @/auth만 mock한다
     outage.ts           AsyncLocalStorage + noteAuthError — SessionTokenError만 장애로 표시.
@@ -942,6 +976,9 @@ next.config.ts          ⚠️ **보안 응답 헤더가 여기 있다** (2026-0
 pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼다** — 아래 게이트웨이 절
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
+public/brand/           ⚠️ **커밋된 원본이다** (8-1a) — 로고 SVG 넷 + 키비주얼 PNG. 위 폰트와 반대다.
+app/icon.svg            favicon — `malmoi-icon-black.svg`의 **복사본**이다(Next 파일 규약이 app/ 아래를
+                        요구한다). 로고를 바꾸면 둘 다 바꾼다. 리포에 favicon이 없었다
 scripts/
   adapter-survey.ts     어댑터 범용성 실측 CLI (네트워크 — 판정은 lib/survey/)
   sync-agents.mjs       Claude Code 원본 → Codex 미러 생성기

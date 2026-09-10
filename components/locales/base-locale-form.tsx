@@ -83,7 +83,7 @@ export function BaseLocaleForm({
       </FormGroup>
 
       <div className="flex items-center gap-2">
-        <Button type="submit" loading={pending} loadingLabel={m.locales.field.saving} disabled={noLocales}>
+        <Button type="submit" loading={pending} disabled={noLocales}>
           {m.locales.field.save}
         </Button>
         {result === "saved" && (

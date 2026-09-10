@@ -38,7 +38,6 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
       {canRun && (
         <Button
           loading={pending}
-          loadingLabel={m.settings.status.running}
           onClick={() => {
             setResult(null);
             startTransition(async () => {

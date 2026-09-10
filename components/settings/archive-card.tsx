@@ -41,7 +41,6 @@ export function ArchiveCard({
       <Button
         variant="default"
         loading={pending}
-        loadingLabel={m.archive.restoring}
         onClick={() => startTransition(async () => void (await unarchiveProject(slug)))}
       >
         {m.archive.restore}
@@ -52,7 +51,7 @@ export function ArchiveCard({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" loading={pending} loadingLabel={m.archive.archiving}>
+        <Button variant="default" loading={pending}>
           {m.archive.action}
         </Button>
       </DialogTrigger>
@@ -84,7 +83,7 @@ export function ArchiveCard({
               href={openPrUrl}
               target="_blank"
               rel="noreferrer"
-              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
             >
               {m.archive.confirm.openPrLink}
               <ExternalLink className="size-3" aria-hidden />

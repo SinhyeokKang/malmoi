@@ -1007,3 +1007,56 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 회수 목적을 수명이 짧은 nonce 쿠키와 삭제 가능한 DB 요청에서만 찾았다. 그 표식이 없으면 일반 로그인이라고 판단했지만 OAuth 증거는 아직 유효했다. 실패 목적지로 리다이렉트하는 것은 이미 발생한 가입/이메일 갱신을 되돌리지 못한다.
 - **그물**: 일반 nonce 유실 테스트는 DB 요청이 남아 있어 임시 state 조회 보강을 통과시켰다. 요청 교체/소비 후에도 증거가 남는 순서를 추가해 red를 확인했다. 최종 구현은 Auth.js state 쿠키 이름과 암호화 salt를 일반 로그인과 분리한다. state를 제거하거나 일반 이름으로 바꿔도 로그인 쓰기 전에 검증이 실패한다. 정상 확인은 signIn의 문자열 반환으로 handleLoginOrRegister 전에 끝낸다.
 - **재발 방지**: `rg -n 'signIn\(|withRevocation|malmoi-revocation-state' auth.ts app lib/session-revocation --glob '!**/__tests__/**'`로 OAuth 시작 세 곳과 callback의 목적 수명을 대조한다. 일반 로그인 둘(`/`, `/invite/[token]`)은 공통 `clearRevocationCookies`를 먼저 호출한다. 공급자 화면에서 이탈 후 새 로그인/초대 복귀, 확인 요청 교체/소비, nonce 유실, state 쿠키 이름 변경을 실제 Auth.js 회귀에 유지한다. 이번 범위 밖 동일 목적 전환 경로는 발견하지 않았다.
+
+---
+
+### 2026-09-10 — `pnpm test`가 2553 green인데 단언 하나가 거짓이었다 — 그 스위트는 애초에 안 돌아간다
+
+- **영역**: `vitest.config.ts`의 `include` · `lib/credentials/__tests__/postgres.integration.ts` · CLAUDE.md 명령어 표의 `test:credentials:postgres` 줄. **8-1a 라우트 이관 중(`/` → `/signin`) 드러났고 dev에도 나가지 않았다.**
+- **증상**: `?sessions=revoked`의 목적지를 옮기면서 그 값을 단언하는 자리 여섯 중 다섯이 red가 됐고 고쳤다. **그 상태에서 `pnpm test`가 2553 green이었다.** 손으로 `pnpm test:credentials:postgres`를 돌리자 **2건 red** — `postgres.integration.ts:428`이 아직 `"http://localhost/?sessions=revoked"`를 단언하고 있었다.
+- **근본 원인**: **가려진 자리가 둘 겹쳤다.**
+  - **① `include` 글롭이 확장자로 가른다.** `vitest.config.ts`는 `**/__tests__/**/*.test.{ts,tsx}`이고 그 파일은 `*.integration.ts`다 — **같은 `__tests__` 디렉터리 안에 있으면서** 패턴에서 빠진다. 격리 PostgreSQL 17이 필요해 일부러 갈랐고(`vitest.credentials.config.ts`), 그 사실은 CLAUDE.md 명령어 표의 마지막 줄에만 있다.
+  - **② 손으로 돌릴 트리거가 경로 기반인데, 단언은 그 경로 밖의 값을 문다.** 규칙은 *"`lib/credentials/**`를 건드렸으면 손으로 돌린다"*인데 이 배송이 건드린 것은 `lib/session-revocation/`·`auth.ts`·`lib/routes.ts`다. 그리고 **그 파일이 단언하는 것은 `lib/credentials/`의 동작이 아니다** — `auth.ts`의 callback이 만드는 **redirect URL**이다. 소유 디렉터리와 단언 대상이 갈린 순간 경로 트리거는 구조적으로 못 덮는다.
+  - 결과적으로 **프로덕션 앞의 자동 게이트 둘 다 이 스위트를 안 본다**: `/push` 1단계(typecheck+test+build)도, PR CI의 `verify` job도.
+- **그물**:
+  - 잡은 것: **`/feature-review`의 QA Lead가 코드를 쓰기 전에 찾았다.** 그 파일을 grep해 세 자리를 세고 *"이 배송은 그 트리거를 밟지 않는다"*까지 판정해, `tasks.md` T3의 검증 항목에 `pnpm test:credentials:postgres`가 **명시로** 들어갔다. 구현이 그것을 돌려 red를 봤다.
+  - 놓친 것: `pnpm test` 2553건 · `pnpm typecheck` · `/push` 게이트 · PR CI — **전부 원리적으로 못 본다.** 리뷰가 없었으면 green인 채로 나갔고, 다음에 누가 `lib/credentials/**`를 건드릴 때 *"관계없는 스위트가 왜 red지"*로 만났을 것이다.
+  - ⚠️ **`pnpm test`의 "162 passed"가 "전부 green"이라는 인상을 준다.** 파일 하나가 통계에서 빠지는 것은 출력 어디에도 안 보인다 — `passWithNoTests`를 안 켠 것이 include 글롭이 **깨지는** 경우를 막지만, 글롭이 **처음부터 안 덮는** 파일은 그 방어선 밖이다.
+- **재발 방지**:
+  - **`pnpm test`의 include 밖 테스트 파일 전수** (실제로 돌렸다): `find . -path ./node_modules -prune -o -name "*.integration.ts" -print -o -name "*.integration.tsx" -print` → **1건**(`postgres.integration.ts`)뿐이다. `find … -name "*.test.ts" | grep -v __tests__` → **0건**. **지금 사각지대는 그 파일 하나이고 늘리지 않는다.**
+  - **규칙: 손으로 돌려야 하는 스위트의 트리거는 "어느 디렉터리를 건드렸나"가 아니라 "무엇을 단언하나"로 쓴다.** 그 파일이 단언하는 앱 전역 값은 여섯이다(실측): `"http://localhost"` 셋(로그인 성공 착지) · `/signin?sessions=revoked` · `/account?sessionRevocation=` 둘. **그 문자열을 바꾸는 변경이면 소유 디렉터리와 무관하게 돌린다.**
+    - grep: `grep -n 'toBe("http\|toBe("/\|toContain("/' lib/credentials/__tests__/postgres.integration.ts`
+  - ⚠️ **로그인 성공 착지 셋(`"http://localhost"`)이 다음 차례다.** 지금 `/`는 redirect 껍데기라 그 단언이 여전히 참이지만(Auth.js가 `redirectTo`를 그대로 낸다), **랜딩이 `/`에 서면 그 착지의 뜻이 바뀐다.** 8-1b 이후 랜딩 배송이 이 파일을 다시 봐야 한다.
+  - ⚠️ **바로 앞 항목(2026-09-10 재인증 callback)의 재발 방지 문장이 이 이관으로 낡았다** — *"일반 로그인 둘(`/`, `/invite/[token]`)은 공통 `clearRevocationCookies`를 먼저 호출한다"*의 `/`는 이제 `/signin`이다. append-only라 그 항목을 고치지 않고 여기 적는다. **`normal-login.test.tsx`는 그 계약을 그대로 지키고 있다**(import 대상만 `@/app/signin/page`로 옮겼고 순서 단언·`redirectTo: "/projects"`는 건드리지 않았다).
+  - **`pnpm test`에 합치지 않는다**: 그 스위트는 로컬 PostgreSQL 17을 전제하고 CI 러너에 그것이 없다. 합치면 CI가 상시 red가 되어 게이트가 통째로 죽는다 — **사각지대를 없애는 대신 트리거를 정확하게 하는 쪽**이 이 리포의 답이다.
+
+---
+
+### 2026-09-10 — 테스트가 green이었던 이유가 둘 다 우연이었다 (SVG 치수 · 단언이 지운 좁힘)
+
+- **영역**: `vitest.config.ts`의 `nextStaticImage` 플러그인 · `components/signin/dot-field.tsx` · `app/signin/page.tsx`·`app/invite/[token]/page.tsx`의 로고 import. **8-1b 구현 중이고 dev에도 나가지 않았다.**
+- **증상**: 없다 — `pnpm test` 2,578건·`typecheck`가 전부 green이었다. **두 자리 모두 "지켜지고 있다"가 아니라 "지켜지는지 아무도 안 물었다"였고**, `/code-review`가 각각을 지적한 뒤 손으로 재현해서야 red가 나왔다.
+
+#### ① Vite는 SVG를 **data URI로 인라인**하고, `next/image`는 그것을 거부한다
+
+- **근본 원인**: **테스트 러너가 프레임워크와 다른 모듈 해석을 한다.** Next 번들러는 정적 이미지 import를 `{ src, width, height, blurDataURL }` **객체**로 바꾸지만 Vite는 URL 문자열을 주고, SVG는 아예 `data:image/svg+xml,…`로 인라인한다. 그래서 `<Image src={logo}/>`가 `is missing required "width" property`로 던진다.
+  키비주얼 PNG에서 먼저 겪어 stub 플러그인을 넣었는데 정규식이 `png|jpe?g|gif|webp|avif`였다 — **`svg`가 빠진 채로 전체가 green이었다.**
+- **왜 green이었나**: 로고가 `width={48} height={48}`을 **명시**하고 있어 그 둘이 stub 부재를 덮었다. **무관한 속성이 계약을 가린 것**이고, 그 속성을 지우는 순간 두 화면의 렌더 테스트가 죽는데 원인이 vitest 설정에 있다는 것은 스택에 안 나온다.
+- ⚠️ **재현 경로가 테스트마다 다르다**: `lib/session-revocation/__tests__/normal-login.test.tsx`는 `SignIn()`을 호출해 **요소 트리만 순회**하므로 `<Image>`를 렌더하지 않아 red가 안 난다. 실제로 렌더하는 `app/invite/__tests__/page.test.tsx`에서만 잡혔다 — **같은 결함이 어떤 테스트에서는 원리적으로 안 보인다.**
+
+#### ② `function` 선언이 TS의 null 좁힘을 버리고, 단언이 그 사실을 지운다
+
+- **근본 원인**: effect 초입에서 `const canvas = ref.current; if (canvas === null) return;`으로 좁혀도, 그 아래 **`function` 선언**(`draw`·`resize`·`onMove`) 안에서는 `'canvas' is possibly 'null'`이 난다 — 함수 선언은 **호이스팅**되므로 TS가 좁힘을 그 안까지 들고 가지 않는다. 화살표 함수는 그렇지 않다.
+- **왜 조용했나**: `canvas!`·`ctx!` 단언 넷으로 우회했고 typecheck가 통과했다. **단언은 "여기서 null이 아니다"를 사람이 보증하는 것이라, effect 구조가 바뀌어도 컴파일러가 다시 묻지 않는다.**
+- ⚠️ **하나씩 고치면 에러가 옮겨 다닌다** — `onMove`를 화살표로 바꾸니 `resize`에서, 그것을 바꾸니 또 다른 함수에서 났다. **effect 안 함수를 전부 화살표로** 바꾼 뒤에야 단언이 0이 됐다. 부분 수정은 "고쳤다"의 근거가 되지 않는다.
+
+- **그물**:
+  - 잡은 것: **`/code-review` 둘 다.** ①은 "stub 정규식과 실제 import 확장자가 비대칭"이라는 정적 대조, ②는 "단언은 구조 변경에 조용하다"는 원칙. **자동 검사는 둘 다 못 봤다.**
+  - 놓친 것: `pnpm test` 2,578건 · `typecheck` · 소스 스캔 방어선 전부. ①은 무관한 속성이 덮었고 ②는 단언이 검사 자체를 지웠다.
+  - **근거를 만든 방법이 둘 다 "일부러 깨보기"였다** — 로고 치수를 임시로 지워 red를 보고, 단언을 하나씩 떼어 에러가 옮겨 다니는 것을 봤다. 이 리포에서 반복되는 형태다(2026-09-10 `rejectTarget`도 갈래를 임시로 늘려 확인했다).
+
+- **재발 방지**:
+  - **번들러가 변환하는 import 전수** (실제로 돌렸다): `grep -rn 'from "@/public\|next/font' app components lib | grep -v __tests__` → **3건**(로고 SVG ×2 · 키비주얼 PNG). `next/font`는 0건이다 — 폰트는 `<link>`로 넣는다(CLAUDE.md 폰트 절). **이 목록이 늘면 stub 정규식이 그것을 덮는지 확인한다.**
+  - **화면을 실제로 렌더하는 테스트만 이 부류를 잡는다**: `grep -rln "renderToString\|renderToStaticMarkup" app lib components` → **2건**(`app/invite/__tests__/page.test.tsx` · `lib/session-revocation/__tests__/ui.test.tsx`). 요소 트리만 순회하는 테스트는 `<Image>`를 렌더하지 않으므로 **green이 무죄의 근거가 아니다.**
+  - **non-null 단언 전수** (실제로 돌렸다): `grep -rn '[a-zA-Z_)\]]!\.' app components lib --include='*.ts' --include='*.tsx' | grep -v __tests__` → **4건**이고 `components/signin/`에는 **0건**이다. 남은 넷은 인덱스 접근(`columns[0]!`·`pending[0]!`)과 배열 요소 좁힘이라 이 항목의 부류(클로저 좁힘 우회)가 아니다.
+  - **규칙: effect 안에서 ref를 좁혔으면 그 effect의 함수를 전부 화살표로 쓴다.** `function` 하나가 섞이면 그 자리에서만 단언이 되살아나고, 그 단언이 다음 사람에게는 "필요해서 있는 것"으로 보인다.

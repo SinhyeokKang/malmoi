@@ -46,7 +46,6 @@ export function PublishButton({
       // pending 중 연타를 막는다 — 두 실행이 병렬이면 둘 다 열린 PR을 못 보고
       // 각자 생성을 시도해 GitHub이 422로 거부한다.
       loading={pending}
-      loadingLabel={m.translations.publish.sending}
     >
       <Send aria-hidden />
       {m.translations.publish.button(count)}
@@ -76,7 +75,7 @@ export function PublishResult({ outcome }: { outcome: PullOutcome }) {
             href={message.href}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-baseline gap-1 text-blue-600 underline"
+            className="inline-flex items-baseline gap-1 text-blue-600"
           >
             {message.linkLabel}
             <ExternalLink className="size-3" aria-hidden />

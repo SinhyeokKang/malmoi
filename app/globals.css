@@ -32,8 +32,52 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  /**
+   * ⚠️ **`--border`보다 한 단계 연한 경계선** (8-1b). 셸 밖 패널이 아주 연한 회색 배경 위에
+   * 떠 있는 구조라(규약 3.5) `--border`(`#e2e8f0`)를 쓰면 선이 도드라진다. 시안은 `#f5f6f7`이고
+   * **배경과 거의 같은 톤**이다 — border는 경계를 만드는 게 아니라 가장자리를 정리한다.
+   */
+  --color-border-subtle: var(--border-subtle);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /**
+   * ⚠️ **여기 등록하지 않으면 클래스가 생성되지 않는다.** `:root`에 변수만 만들면
+   * `bg-auth-canvas`·`from-auth-hero-from`이 **존재하지 않는 유틸**이 되어 조용히 무시되고,
+   * 배경은 흰색으로 그라데이션은 통째로 사라진다 — 8-1b가 실제로 그렇게 나갔다.
+   */
+  /**
+   * **elevation 둘** — Figma `effect-elevation/low`·`/medium`을 옮겼다 (8-1b).
+   * 색은 시안 토큰 그대로(`#16181b0d`·`#16181b26`)이고 **spread만 키웠다**(0 → 4, −2 → 2):
+   * 패널이 아주 연한 회색 배경 위에 떠 있는 구조라 좁은 그림자는 경계처럼 보이고 **떠 있는
+   * 느낌이 안 난다**(2026-09-10 사용자).
+   *
+   * ⚠️ **Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 그쪽은 검정 기반이라 이
+   * 팔레트에서 탁해진다.
+   */
+  /**
+   * **자간을 전역으로 넓혔다** (2026-09-10 사용자). 행간은 Tailwind 기본 그대로다.
+   *
+   * ⚠️ **본문 weight가 300이라 글자가 가늘다**(§4) — 자간이 좁으면 글자끼리 붙어 읽기 어렵다.
+   * 큰 제목일수록 좁히는 것이 관용이므로 **크기가 커질수록 값을 줄인다**.
+   *
+   * ⚠️ **크기 토큰의 짝으로 정의해야 유틸이 그것을 쓴다.** `body`에 `letter-spacing`만 주면
+   * `tracking-tight` 같은 유틸이 있는 자리에서만 덮이고 나머지는 상속에 기대게 된다.
+   */
+  --text-xs--letter-spacing: 0.02em;
+  --text-sm--letter-spacing: 0.02em;
+  --text-base--letter-spacing: 0.015em;
+  --text-lg--letter-spacing: 0.01em;
+  --text-xl--letter-spacing: 0.005em;
+  --text-2xl--letter-spacing: 0;
+  --text-3xl--letter-spacing: -0.005em;
+
+  --shadow-low: 0 4px 12px 4px rgb(22 24 27 / 0.05);
+  --shadow-medium: 0 6px 16px 2px rgb(22 24 27 / 0.15);
+
+  --color-auth-canvas: var(--auth-canvas);
+  --color-auth-hero-from: var(--auth-hero-from);
+  --color-auth-hero-to: var(--auth-hero-to);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -41,47 +85,99 @@
 }
 
 :root {
-  /* 팔레트는 slate(푸른 틴트). bugshot-2가 라이트=slate / 다크=neutral로 갈랐던 비대칭은
-     라이트 단일이라 필요 없다 (docs/DESIGN.md §2). ⚠️ 값의 **유일한** 진실이 이 파일이다 —
-     시드 파일(components.json)은 CLI를 버린 2026-09-08에 함께 삭제됐다. */
-  --radius: 0.625rem;
+  /* 팔레트는 **neutral**이다 (2026-09-10 전역 교체 — 8-1b).
+     ⚠️ 2026-09-10 초에 "slate 유지, 차이는 런타임 목측"으로 결정했다가 **그 목측이 뒤집었다**:
+     시안의 회색이 전부 중립(`#090b0c`·`#6f6f6f`·`#f5f6f7`)인데 slate는 푸른 틴트라, 패널·배경·
+     보조 텍스트가 나란히 놓이자 화면 전체가 시안보다 파랗게 보였다. 색을 하나씩 맞추는 대신
+     **팔레트를 바꾸는 것**이 그 차이를 없애는 유일한 방법이다.
+     ⚠️ 값의 **유일한** 진실이 이 파일이다 — 시드 파일(components.json)은 CLI를 버린
+     2026-09-08에 함께 삭제됐다. */
+  /**
+   * ⚠️ **한 단계 올렸다** (2026-09-10 사용자 — 8-1b): `0.625rem`(10px) → `0.75rem`(12px).
+   * bugshot-2도 shadcn 기본보다 한 단계 둥글게 굴렸고 같은 결을 따른다.
+   *
+   * 파생 넷이 함께 오른다: sm 6→8 · md 8→**10** · lg 10→**12** · xl 14→**16**.
+   * **`rounded-md`(버튼)가 10px, `rounded-lg`(카드·Alert)가 12px**이 되어 시안의 12px와 맞물린다.
+   */
+  --radius: 0.75rem;
 
   --background: hsl(0 0% 100%);
-  --foreground: hsl(222.2 84% 4.9%);
+  --foreground: hsl(0 0% 3.9%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222.2 84% 4.9%);
+  --card-foreground: hsl(0 0% 3.9%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(222.2 47.4% 11.2%);
-  --primary-foreground: hsl(210 40% 98%);
+  --popover-foreground: hsl(0 0% 3.9%);
+  --primary: hsl(0 0% 9%);
+  --primary-foreground: hsl(0 0% 98%);
 
   /* ⚠️ secondary == muted == accent 가 같은 값이다 (DESIGN.md §2.1).
      muted 표면 위 컨트롤에 hover:bg-accent 는 무효다 — hover 피드백이 0이다. */
-  --secondary: hsl(210 40% 96.1%);
-  --secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --muted: hsl(210 40% 96.1%);
-  --accent: hsl(210 40% 96.1%);
-  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --secondary: hsl(0 0% 96.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 96.1%);
+  --accent: hsl(0 0% 96.1%);
+  --accent-foreground: hsl(0 0% 9%);
 
   /* ⚠️ background 위에선 4.75:1로 AA를 넘지만 muted 표면 위에선 4.34:1로 미달한다.
      muted 위 글자엔 text-foreground/60 을 쓴다 (DESIGN.md §2.2). */
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --muted-foreground: hsl(0 0% 45.1%);
 
   /* 글자색 전용이다 — bg-destructive 를 쓰지 않는다. red-600으로 흰 배경에서 4.83:1.
      shadcn 기본값 red-500은 3.76:1로 AA 미달이라 쓰지 않는다 (DESIGN.md §2.3). */
   --destructive: hsl(0 72.2% 50.6%);
-  --destructive-foreground: hsl(210 40% 98%);
+  --destructive-foreground: hsl(0 0% 98%);
 
   /* ⚠️ ring == border 라서 muted·secondary 표면 위에선 포커스 링이 약하다 (DESIGN.md §7). */
-  --border: hsl(214.3 31.8% 91.4%);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(214.3 31.8% 91.4%);
+  --border: hsl(0 0% 89.8%);
+  /**
+   * 시안 `color-semantic/divider/low` = **`#f5f6f7`**. 위 `--border`(`#e2e8f0`)보다 한 단계 연하다.
+   *
+   * ⚠️ **페이지 배경(`#f5f6f7`)보다 살짝 진하다** (2026-09-10 사용자). 시안은 `divider/low`와
+   * `paper/surface-medium`이 **같은 값**이라 배경 위에서 선이 아예 사라졌는데, 그러면 패널
+   * 가장자리가 그림자에만 기댄다. 한 단계 진하게 두어 윤곽이 남게 한다 — 그래도 `--border`
+   * (`#e2e8f0`)보다는 연해서 선이 도드라지지는 않는다.
+   */
+  --border-subtle: rgb(233 236 239);
+  --input: hsl(0 0% 89.8%);
+  --ring: hsl(0 0% 89.8%);
 
   /* mono 표면 타입스케일 단일 출처. 번역 키가 mono 표면이다 — 식별자라 sans로 깔면
      l/1/I 와 _/. 이 구분되지 않는다. 소비 경로는 text-mono 유틸 **하나**이고,
      두 번째 경로가 생기면 "하나만 놓치면 갈라진다"는 경고가 적용된다 (DESIGN.md §4.1). */
   --mono-size: 13px;
   --mono-leading: 18px;
+
+  /**
+   * 로그인 우측 장식의 도트 (8-1b). ⚠️ **여기 있는 이유는 Canvas가 유틸 클래스를 못 받아서다** —
+   * `components/signin/dot-field.tsx`가 `getComputedStyle`로 읽는다. tsx에 hex를 박으면 리포
+   * 최초의 인라인 색이 되고(§6.2), 값의 집이 둘이 된다.
+   *
+   * 시안은 `#006BFF` @5%이고 blue-600(`#2563eb`)으로 매핑했다 — 5% 투명도라 육안 차이가
+   * 사실상 0이고, `blue-500`은 리포 전수 0건의 미등재 색이다(§6.3의 외부 링크 blue-600만 등재).
+   */
+  /**
+   * ⚠️ **알파가 없다** — 투명도는 커서 거리에 따라 변하는 **인터랙션 값**이라 `dot-field.tsx`가
+   * `globalAlpha`로 든다. 여기 알파를 박으면 두 곳이 곱해져 값이 조용히 어두워진다.
+   */
+  --signin-dot: rgb(37 99 235);
+
+  /**
+   * 셸 밖 화면(로그인·초대)의 **바깥 배경** (8-1b). 시안은 탭 두 장이 이 위에 8px 여백을 두고
+   * 떠 있는 구조라, 이 색이 없으면 흰 카드와 흰 배경이 붙어 **탭 경계가 사라진다.**
+   */
+  /** 시안 `color-semantic/paper/surface-medium` = `#f5f6f7`. **우측 패널의 base도 이 색이다.** */
+  --auth-canvas: rgb(245 246 247);
+
+  /**
+   * 우측 장식 패널의 그라데이션 (8-1b).
+   *
+   * ⚠️ **위쪽이 페이지 배경색 그대로이고 아래로 갈수록 파랑이 든다** (2026-09-10 사용자 —
+   * "위쪽은 거의 날아갔으면"). 그래서 `from`이 `--auth-canvas`와 같은 값이다:
+   * **그라데이션이 없으면 우측 패널이 배경과 구분되지 않고, 로그인 패널만 떠 있는 그림이 된다.**
+   * 그것이 이 화면의 의도이므로 위쪽에서 그 상태로 수렴한다.
+   */
+  --auth-hero-from: rgb(245 246 247);
+  --auth-hero-to: rgb(215 227 254);
 }
 
 /* text-mono 유틸 — 글꼴·13px·18px 셋을 한 클래스로 싣는다. text-[13px] 임의값을 쓰면 행간이
@@ -103,5 +199,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    /**
+     * ⚠️ **기본이 400이 아니라 300이다** (2026-09-10 사용자 — weight 규칙 전면 변경).
+     * **가장 두꺼운 서체가 500**이고 600 이상을 쓰지 않는다. Pretendard Variable이
+     * `font-weight: 45 920` 범위라 300이 실제로 나온다(정적 폰트였다면 400으로 반올림됐다).
+     */
+    font-weight: 300;
   }
 }

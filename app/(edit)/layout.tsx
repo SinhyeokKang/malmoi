@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/auth";
 import { Sidebar } from "@/components/shell/sidebar";
 import { TopBar } from "@/components/shell/top-bar";
+import { rejectTarget } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { loadMemberships } from "@/lib/keys/query";
@@ -25,9 +26,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   const session = await readSession();
 
   // 2차 방어. 차단의 1차는 미들웨어다(위 주석) — 장애는 `requireUser`와 같은 목적지로 보내
-  // 비로그인과 같은 응답을 내지 않는다.
-  if (session.status === "unavailable") redirect("/?error=Unavailable");
-  if (session.status === "none") redirect("/");
+  // 비로그인과 같은 응답을 내지 않는다. 그 판정은 `rejectTarget`이 든다 (8-1a).
+  if (session.status !== "ok") redirect(rejectTarget(session.status));
 
   // 사이드바가 프로젝트 컨텍스트를 알아야 하는데 레이아웃은 `[slug]` params를 못 받는다 —
   // 멤버십 목록을 넘기면 클라이언트가 pathname으로 그 안에서 찾는다 (design §2).
@@ -39,6 +39,9 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   const name = session.name ?? session.email ?? "?";
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 그래야 사이드바가 `@/auth`를 물지 않는다.
+  // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자). **로그아웃은 랜딩으로 간다**:
+  // 지금은 루트 껍데기가 `/signin`으로 한 홉 더 보내고, 랜딩이 서면 거기 착지한다.
+  // `routes.signIn()`으로 바꾸면 그 결정이 조용히 뒤집힌다.
   async function signOutAction() {
     "use server";
     await signOut({ redirectTo: "/" });

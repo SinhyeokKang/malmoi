@@ -181,10 +181,10 @@ export default async function TranslationsPage({
                       <Th key={l.code} className="text-xs">
                         {l.code}
                         {/* muted 표면 위라 text-muted-foreground가 아니다 (DESIGN §2.2·§6.1) */}
-                        {l.isBase && <span className="font-normal"> {m.translations.baseColumn}</span>}
+                        {l.isBase && <span className="font-light"> {m.translations.baseColumn}</span>}
                         {/* 키의 orphaned 배지와 같은 어휘 — 이 열은 편집이 막힌다. 저장을 받아도 pull이 파일을 내지 않는다. */}
                         {l.orphaned && (
-                          <Badge variant="danger" className="ml-1 font-normal">
+                          <Badge variant="danger" className="ml-1 font-light">
                             {m.translations.orphaned}
                           </Badge>
                         )}
@@ -260,7 +260,7 @@ function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
       href={link}
       target="_blank"
       rel="noreferrer"
-      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600 underline"
+      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600"
     >
       {ref.path.split("/").pop()}:{ref.line}
       {row.refs.length > 1 && ` +${row.refs.length - 1}`}
