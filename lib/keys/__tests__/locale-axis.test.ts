@@ -123,7 +123,8 @@ describe("namespaceCountsFor — 선택된 로케일 기준 집계", () => {
 
   /** ⚠️ 누산기가 `Map`이다 — 네임스페이스 이름이 리포의 키다(남이 정한 값). */
   it("`__proto__` 네임스페이스가 조용히 사라지지 않는다", () => {
-    const rows = [row({ key: "__proto__.a" }), row({ key: "b.c" })];
+    // ⚠️ 픽스처가 `_`로도 가르므로 네임스페이스를 명시한다 — 재는 것은 누산기이지 `namespaceOf`가 아니다.
+    const rows = [row({ key: "__proto__.a", namespace: "__proto__" }), row({ key: "b.c" })];
     expect(namespaceCountsFor(rows, ["ko"]).map((c) => c.namespace)).toContain("__proto__");
   });
 
@@ -234,7 +235,7 @@ describe("groupByNamespace — `?ns=*`의 섹션", () => {
 
   /** ⚠️ 평범한 `{}`에 `out["__proto__"] = v`를 하면 그 그룹이 조용히 사라진다. */
   it("`__proto__` 네임스페이스의 행이 사라지지 않는다", () => {
-    const rows = [row({ key: "__proto__.a" })];
+    const rows = [row({ key: "__proto__.a", namespace: "__proto__" })];
     const groups = groupByNamespace(rows, namespaceCountsFor(rows, ["ko"]));
     expect(groups).toEqual([{ namespace: "__proto__", rows }]);
   });
