@@ -283,6 +283,8 @@ app/
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지나고,
                         그 뒤 planProjectReadiness로 첫 적재 전 프로젝트를 not-ready로 거부한다
+                        ⚠️ **triggerPullAction에 try/catch가 없다** (7단계) — `runSync`가 던지지 않고
+                        오류 접기(남의 메시지 → ref)도 그쪽으로 옮겨갔다
                         ⚠️ **`saveTranslation`의 무효화는 `/projects/<slug>` 서브트리다** (6b-6) — 그 행을
                         읽는 화면이 셋이다(번역 표 · 로케일 진행률 · Home). 경로를 나열하면 넷째가
                         조용히 빠진다 (POSTMORTEM 2026-09-09)
@@ -305,6 +307,13 @@ app/
                         ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
                         모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
     projects/actions.ts createInvitation · changeMember · **revokeInvitation** (OWNER 전용 — member:manage)
+                        + **archiveProject · unarchiveProject** (7단계 — `project:settings`. 그 permission이라
+                        보관된 프로젝트에서도 지나간다). ⚠️ **둘을 한 함수로 합치거나 인가를 공용 헬퍼로
+                        빼지 않는다** — `entry-points.test.ts`가 **각 export 안에서** `getProjectAccess(`를
+                        보고, "파일 어딘가에 호출이 있다"로는 부족하다는 것이 그 검사의 존재 이유다.
+                        ⚠️ 무효화가 `revalidatePath("/", "layout")`이다 — 보관은 목록·사이드바·Home·번역을
+                        다 바꾸므로 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다
+                        ⚠️ createInvitation이 **잠금 안에서** 멤버를 세어 `planInvitationCreate`에 넘긴다 (7단계)
                         ⚠️ revokeInvitation은 **행을 지우지 않는다** — `expiresAt`을 당긴다. 스키마가
                         삭제를 금지하고(재사용을 `already-accepted`로 구별해야 한다) 기존 무효화 관용구가
                         `createInvitation`의 토큰 회전이다. `where`에 `projectId`+`acceptedAt: null`이
@@ -377,6 +386,9 @@ app/
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
                         키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
+                        ⚠️ **maxDuration=60이 여기 있어야 한다** (7단계) — Server Action은 자기를 부른
+                        페이지 세그먼트의 값을 쓰고, 없으면 기본값 300이 `STALE_AFTER_SECONDS`와 **같아져**
+                        정상 실행이 스스로를 stale로 본다
                         그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 빈 상태.
                         ⚠️ **기본 착지가 pending>0인 첫 네임스페이스다** (6a T7) — 전체는 `?ns=*`.
                         `type Search`가 URL 계약이고(ns·focus·q·state) entry-points가 routes.ts와 대조한다.
@@ -398,12 +410,15 @@ app/
                         + github-callback(state 검증 **전에** code 교환·Account 쓰기가 0회인지)
   api/push/route.ts     CI → DB (maxDuration 60). ⚠️ Bearer는 **그 프로젝트의 push 토큰 원문**이고
                         서버 env가 아니다 — sha256으로 Project.pushTokenHash를 **조회**해 프로젝트를 정한다
+                        ⚠️ **보관 409가 오배송·표면 검사보다 앞이다** (7단계) — 멈춘 프로젝트에서는
+                        페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 셋 다 같다(워크플로를 뗀다)
   api/auth/[...nextauth]/  Auth.js v5 핸들러
   api/github/callback/  GitHub이 브라우저를 되돌리는 지점 (SaaS 4단계). ⚠️ **matcher에 넣지 않는다** —
                         `/`로 302되면 `code`가 사라진다. `requireUser`로 스스로 인증하고, state가
                         무효면 slug를 못 믿어 `/projects?e=`로 간다
-  api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60). 편집 UI는
-                        Server Action이 triggerPull을 직접 부른다
+  api/pull/route.ts     DB → PR — **cron 전용** (CRON_SECRET, maxDuration 60).
+                        ⚠️ **두 진입점 모두 `runSync`를 지난다** (7단계) — 편집 UI의 Server Action도 같다.
+                        `triggerPull`을 직접 부르는 자리는 이제 그 껍데기 하나뿐이다
 middleware.ts           ⚠️ 인증 차단의 유일한 1차 지점 — matcher가 **둘**이다(`/projects/:path*` · `/account`).
                         렌더 요청만 막는다. 6b-4까지 하나였던 것은 `(edit)` 아래가 전부 그 접두였기 때문이다
 components/
@@ -643,7 +658,7 @@ lib/
                         / merge(detectCandidatesAcross 위임 — 흔적) / types
   push/                 payload.ts(순수 조립 — **생산자는 여기 하나다**) / assemble.ts(select→read→base —
                         **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
-                        / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행 409)
+                        / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행·**보관** 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
   pull/                 branch-name.ts(⚠️ **잎, import 0** — isValidBranchName. `isRefSafeSlug`보다 **넓다**:
                           그쪽은 우리가 만드는 ref라 한 세그먼트고 이쪽은 남의 리포에 있는 브랜치라
@@ -665,12 +680,20 @@ lib/
                           "마지막으로 **보낸**" 것이지 시도한 것이 아니다)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
                         / targets.ts(selectPullTargets — cron이 순회할 프로젝트 선별: installationId·lastCommitSha가
-                          없으면 제외, slug 결정적 정렬. 한 프로젝트의 실패가 나머지를 막지 않고 응답은 **배열**이다)
+                          없으면 제외, **보관 제외**(7단계 — `unprocessed`로도 안 센다). 한 프로젝트의 실패가
+                          나머지를 막지 않고 응답은 **배열**이다.
+                          ⚠️ **정렬이 slug가 아니라 "마지막 실행이 오래된 것부터"다** (7단계) — 상한에서 잘리는
+                          뒤쪽이 매일 밤 같은 프로젝트면 그것은 영원히 안 돈다. 동점 폴백이 slug라 결정성은 그대로다)
                 / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
-  sync/                 sync 실행의 게이트·결과 판정 (SaaS 7단계, 2026-09-10). **ship 1은 plan.ts 하나이고
-                        I/O가 0이다** — 껍데기(run.ts)·조회(query.ts)·화면 판정(view.ts)은 ship 2·3이다
+  sync/                 sync 실행의 게이트·결과 판정 (SaaS 7단계, 2026-09-10). 조회(query.ts)·화면 판정(view.ts)은 ship 3이다
+                        run.ts(runSync — **진입점 둘이 지나는 유일한 껍데기**. ⚠️ **던지지 않는다**: 실패도
+                          게이트 거부도 `PullOutcome`이라 행 닫기가 한 곳이다(세 벌이면 그 사이 어딘가로 빠진다)
+                          / ⚠️ **잠금 트랜잭션 안에서 GitHub을 안 부른다** — 지연이 곧 커넥션 점유이고 pooler에서
+                          전 테넌트에 번진다. 트랜잭션은 stale 닫기 + 행 생성까지이고 조회는 **순차**다
+                          / ⚠️ **`Project` 컬럼을 아예 안 쓴다** — 실패가 마지막 성공을 덮을 경로를 만들지 않는다
+                          / `server-only` 없음(하네스가 직접 부른다))
                         plan.ts(planSyncStart — ⚠️ **`already-running`이 `too-soon`보다 앞이다**(둘 다 걸릴 때
                           "30초 뒤에"는 거짓이다) · `STALE_AFTER_SECONDS`보다 오래된 RUNNING은 실행 중으로
                           안 치고 껍데기가 닫는다 · ⚠️ **`too-soon`은 cron에 안 건다**(하루 1회라 야간 실행이
@@ -703,6 +726,9 @@ lib/
                         permission이 아니라 translation:write에 들어 있다
     access.ts           planProjectAccess — "slug 없음"과 "멤버 아님"을 같은 not-found로 접는다
                         (프로젝트 존재를 노출하지 않는다). forbidden은 멤버인데 권한이 모자란 경우만
+                        ⚠️ **`archived` 갈래가 붙었다** (7단계) — `project:settings`를 뺀 모든 permission이
+                        거기로 떨어진다. **설정만 통과하는 이유는 그것이 되돌리는 길**이어서다.
+                        ⚠️ **판정 순서가 권한 → 보관이다** — 뒤집으면 보관 여부가 권한 없는 사람에게 샌다
     invite-label.ts     maskedEmailLabels — **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 (malmoi#18).
                         ⚠️ **두 표가 쓴다** (2026-09-09) — 원문을 와이어에 안 싣기로 하면서 멤버 표의 라벨도
                         서버가 만든다. `maskedInviteLabels`는 그것의 얼은이다(문서 둘이 그 이름을 가리킨다)
@@ -762,7 +788,13 @@ lib/
                         (`credential-separation.test.ts`가 세 검사로 상시 고정한다)
 types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환으로 제거 — Google 사용자엔 핸들이 없다)
 prisma/
-  schema.prisma         11테이블 + enum Role (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+  schema.prisma         **12테이블** + enum 셋(Role · SyncStatus · SyncTrigger — 7단계가 뒤의 둘과
+                        `SyncRun`을 더했다) (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+                        ⚠️ **`SyncRun`에 `type`·`idempotencyKey`가 없다** — SAAS §8이 두 이름을 적어 뒀지만
+                        지금 두 진입점 중 **키를 만들 주체가 없다**(cron은 하루 한 번, UI는 클릭이다).
+                        동시성은 `Project` 행 잠금이 막고, 둘은 **push를 이 테이블에 넣을 때** 의미가 생긴다
+                        ⚠️ **`Project.archivedAt`은 상태 컬럼이 아니다** — `orphaned`와 같은 "되돌릴 수 있는
+                        사실 하나"이고, 거부는 `planProjectAccess`의 갈래가 한 자리에서 한다
                         ⚠️ **`Project`에 base 로케일 컬럼이 둘이다** (6b-3): `baseLocale`은 **현실**(push 소유,
                         pull·`checkFormat`이 읽는다) / `declaredBaseLocale`은 **선언**(설정 화면 소유,
                         `checkFormat`·두 화면의 배너가 읽는다). **합치면 pull이 깨진다**
@@ -784,6 +816,10 @@ prisma/
                         `lastPrUrl`. additive 둘이고 **prod 반영 완료** — `db:status:prod` 12개 up to date)
                         , _add_project_declared_base_locale (2026-09-09, 6b-3 — `Project.declaredBaseLocale`.
                         additive 하나이고 **prod 반영 완료** — `db:status:prod` 13개 up to date)
+                        , _add_sync_run (2026-09-10, 7단계 ship 2 — `SyncRun` 테이블 + enum 둘 +
+                        `Project.archivedAt`. **전부 additive**(SQL에 `DROP`·`ALTER COLUMN` 0건)이고
+                        dev 반영 완료. ⚠️ **prod는 `/merge` 1단계의 `pnpm db:deploy`가 넓힌다** —
+                        그 전에 배포되면 프로덕션이 없는 테이블을 조회한다)
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
                         ⚠️ **`regions: ["hnd1"]`이 함수를 DB 옆에 붙인다** (2026-09-09 계측) — 기본값은
