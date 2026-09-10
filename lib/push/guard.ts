@@ -8,7 +8,18 @@
  * 읽기만 해도 죽는다"를 뜻해 CI를 red로 만든 전례가 있다 (POSTMORTEM 2026-08-31).
  * `lib/push/auth.ts`가 `expected`를 인자로 받는 것과 같은 이유다.
  */
-export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format";
+export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format" | "archived";
+
+/**
+ * 보관된 프로젝트는 CI push도 안 받는다 (7단계 — sync-runs design §4, 결정 9).
+ *
+ * ⚠️ **보관의 뜻이 "멈춘다"다.** 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀌는데, strict push라
+ * 그 덮어쓰기는 되돌릴 수 없다 (`Translation`의 FK가 RESTRICT라 이물 키도 못 지운다). 대상 리포
+ * CI가 red가 되는 것은 **의도된 신호**다 — 워크플로를 떼라는 뜻이다.
+ */
+export function checkArchived(archivedAt: Date | null): GuardResult {
+  return archivedAt === null ? "ok" : "archived";
+}
 
 /**
  * 페이로드가 **이 토큰이 정한 프로젝트**를 향하는가.

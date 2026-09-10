@@ -21,7 +21,7 @@ import { createHarness } from "../../(edit)/__tests__/harness";
  */
 
 const hoisted = vi.hoisted(() => ({
-  triggerPull: vi.fn(),
+  runSync: vi.fn(),
   applyPush: vi.fn(),
   prisma: {
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
@@ -30,7 +30,7 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 vi.mock("@/lib/push/apply", () => ({ applyPush: hoisted.applyPush }));
 
 const { GET: pullGet } = await import("../pull/route");
@@ -66,6 +66,10 @@ const project = (over: Record<string, unknown> = {}) => ({
   adapterName: null,
   pathTemplate: null,
   baseLocale: null,
+  // ⚠️ **`null`이지 부재가 아니다** (7단계). `checkArchived`는 fail-closed라 `undefined`를 보관으로
+  // 읽는데, 실제 Prisma는 `select`한 컬럼을 항상 값으로 준다 — 여기서 빼면 가짜가 실제보다 **엄격**해져
+  // 정상 push가 전부 409로 보인다.
+  archivedAt: null,
   ...over,
 });
 
@@ -102,8 +106,20 @@ beforeEach(() => {
   hoisted.prisma.project.findMany.mockResolvedValue([]);
 });
 
-/** 순회 대상이 되는 행 모양. `selectPullTargets`가 보는 세 컬럼만 있으면 된다. */
-const ready = (slug: string) => ({ slug, installationId: "1", lastCommitSha: "a".repeat(40) });
+/**
+ * 순회 대상이 되는 행 모양. `selectPullTargets`가 보는 컬럼만 있으면 된다.
+ *
+ * ⚠️ **`syncRuns`가 빈 배열이다** — "한 번도 안 돈 프로젝트가 맨 앞"이라 전부 동점이고, 그러면
+ * 정렬이 slug로 떨어진다(7단계). 아래 순서 단언이 그 위에 서 있다.
+ */
+const ready = (slug: string) => ({
+  id: `id-${slug}`,
+  slug,
+  installationId: "1",
+  lastCommitSha: "a".repeat(40),
+  archivedAt: null,
+  syncRuns: [] as { startedAt: Date }[],
+});
 
 describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => {
   /**
@@ -116,15 +132,15 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ results: [], unprocessed: 0 });
-    expect(hoisted.triggerPull).not.toHaveBeenCalled();
+    expect(hoisted.runSync).not.toHaveBeenCalled();
   });
 
   it("준비된 프로젝트마다 한 번씩, `slug` 오름차순으로 부른다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("zulu"), ready("alpha")]);
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runSync.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
-    expect(hoisted.triggerPull.mock.calls.map((c) => c[1])).toEqual(["alpha", "zulu"]);
+    expect(hoisted.runSync.mock.calls.map((c) => (c[1] as { slug: string }).slug)).toEqual(["alpha", "zulu"]);
     await expect(res.json()).resolves.toEqual({
       results: [
         { slug: "alpha", status: "skipped", reason: "no-edits" },
@@ -136,17 +152,17 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
 
   it("준비 안 된 프로젝트는 부르지 않는다 — 돌리면 `runPull`이 던져 매일 밤 로그를 채운다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([
-      { slug: "skillflo-web", installationId: null, lastCommitSha: "deadbeef" },
+      { ...ready("skillflo-web"), installationId: null, lastCommitSha: "deadbeef" },
       ready("order-check"),
     ]);
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runSync.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     await pullGet(pullRequest());
-    expect(hoisted.triggerPull.mock.calls.map((c) => c[1])).toEqual(["order-check"]);
+    expect(hoisted.runSync.mock.calls.map((c) => (c[1] as { slug: string }).slug)).toEqual(["order-check"]);
   });
 
   it("한 프로젝트가 던져도 나머지가 돈다 — 그 항목만 `failed` + `ref`다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b"), ready("c")]);
-    hoisted.triggerPull
+    hoisted.runSync
       .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" })
       .mockRejectedValueOnce(new Error("GitHub App 토큰 발급 실패"))
       .mockResolvedValueOnce({ status: "committed", commitSha: "abc", prUrl: "u", changed: [] });
@@ -172,7 +188,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
 
   it("우리 도메인 오류(AppError)는 그 항목의 메시지로 실린다 — slug·경로는 시크릿이 아니다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("order-check")]);
-    hoisted.triggerPull.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
+    hoisted.runSync.mockRejectedValue(new AppError("프로젝트를 찾을 수 없다: order-check"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
@@ -189,7 +205,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     // POSTMORTEM 2026-09-06 "리다이렉트 횟수로 검증해 전면 장애를 정상으로 읽었다"와 같은 형태).
     // 2026-09-06 개인키 사고의 증상이 정확히 이 갈래였다: "base 브랜치를 읽을 수 없다".
     hoisted.prisma.project.findMany.mockResolvedValue([ready("order-check")]);
-    hoisted.triggerPull.mockRejectedValue(new AppError("base 브랜치를 읽을 수 없다: main"));
+    hoisted.runSync.mockRejectedValue(new AppError("base 브랜치를 읽을 수 없다: main"));
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     await pullGet(pullRequest());
     const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
@@ -200,7 +216,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
 
   it("순회 요약을 한 줄 남긴다 — '전 프로젝트 실패'가 로그 grep 하나로 잡혀야 한다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b")]);
-    hoisted.triggerPull
+    hoisted.runSync
       .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" })
       .mockRejectedValueOnce(new AppError("base 브랜치를 읽을 수 없다: main"));
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -214,7 +230,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
 
   it("Error가 아닌 값을 던져도 루프가 멈추지 않는다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b")]);
-    hoisted.triggerPull
+    hoisted.runSync
       .mockRejectedValueOnce("문자열 throw")
       .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -225,16 +241,16 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     spy.mockRestore();
   });
 
-  it("`triggerPull`에 라우트가 만든 prisma 인스턴스를 넘긴다 — 두 클라이언트를 만들지 않는다", async () => {
+  it("`runSync`에 라우트가 만든 prisma 인스턴스를 넘긴다 — 두 클라이언트를 만들지 않는다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runSync.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     await pullGet(pullRequest());
-    expect(hoisted.triggerPull.mock.calls[0]?.[0]).toBe(hoisted.prisma);
+    expect(hoisted.runSync.mock.calls[0]?.[0]).toBe(hoisted.prisma);
   });
 
-  it("`triggerPull`이 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {
+  it("`runSync`가 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-changes", warnings: ["w"] });
+    hoisted.runSync.mockResolvedValue({ status: "skipped", reason: "no-changes", warnings: ["w"] });
     await expect((await pullGet(pullRequest())).json()).resolves.toEqual({
       results: [{ slug: "a", status: "skipped", reason: "no-changes", warnings: ["w"] }],
       unprocessed: 0,
@@ -268,7 +284,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
   it("서버 env `ACTIVE_PROJECT_SLUG`가 없어도 돈다 — cron이 그 값을 더 읽지 않는다", async () => {
     vi.stubEnv("ACTIVE_PROJECT_SLUG", "");
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runSync.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     expect((await pullGet(pullRequest())).status).toBe(200);
   });
 });
@@ -389,6 +405,21 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     expect(res.status).toBe(409);
     await expect(res.json()).resolves.toMatchObject({ error: "project mismatch", expected: "acme", got: "other" });
     // 오배송이면 적재까지 가지 않는다.
+    expect(hoisted.applyPush).not.toHaveBeenCalled();
+  });
+
+  /**
+   * **보관 중 CI push는 409** (7단계 — sync-runs design §4, 결정 9). 대상 리포 CI가 red가 되는 것은
+   * 의도된 신호다 — 워크플로를 떼라는 뜻이고, 조용히 200을 주면 보관이 "멈춘다"를 뜻하지 않게 된다.
+   */
+  it("보관된 프로젝트는 409다 — 오배송·표면 검사보다 앞이다", async () => {
+    hoisted.prisma.project.findUnique.mockResolvedValue(
+      project({ archivedAt: new Date("2026-09-10T00:00:00Z") }),
+    );
+    // 오배송 페이로드를 보내도 보관이 먼저 답한다 — 멈춘 프로젝트에서는 그것이 답할 질문이 아니다.
+    const res = await pushPost(pushRequest({ ...payload(), projectSlug: "other" }));
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: "archived" });
     expect(hoisted.applyPush).not.toHaveBeenCalled();
   });
 

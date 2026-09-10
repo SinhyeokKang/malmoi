@@ -622,6 +622,7 @@ export function createHarness(seed: Seed = {}) {
         trigger: "MANUAL" | "CRON";
         requestedBy?: string | null;
       };
+      select?: Record<string, true>;
     }) => {
       syncRunSeq += 1;
       const row = {
@@ -642,7 +643,7 @@ export function createHarness(seed: Seed = {}) {
         ...args.data,
       };
       syncRuns.push(row);
-      return row;
+      return projectFields(row, args.select);
     },
   );
 
@@ -675,11 +676,26 @@ export function createHarness(seed: Seed = {}) {
           .slice()
           .sort((a, b) => (direction === "asc" ? 1 : -1) * (a.startedAt.getTime() - b.startedAt.getTime()));
 
+  /** ⚠️ **`select`가 있으면 그 필드만 낸다** — 원본을 통째로 내면 가짜가 실제보다 관대해진다. */
+  const projectFields = <T extends object>(row: T, select: Record<string, true> | undefined) => {
+    if (select === undefined) return row;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(select)) out[key] = (row as Record<string, unknown>)[key];
+    return out;
+  };
+
   const findFirstSyncRun = vi.fn(
     async (args: {
       where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } };
       orderBy?: { startedAt?: "asc" | "desc" };
-    }) => sortSyncRuns(syncRuns.filter((r) => matchesSyncRun(r, args.where)), args.orderBy?.startedAt)[0] ?? null,
+      select?: Record<string, true>;
+    }) => {
+      const row = sortSyncRuns(
+        syncRuns.filter((r) => matchesSyncRun(r, args.where)),
+        args.orderBy?.startedAt,
+      )[0];
+      return row === undefined ? null : projectFields(row, args.select);
+    },
   );
 
   const findManySyncRuns = vi.fn(
@@ -687,15 +703,17 @@ export function createHarness(seed: Seed = {}) {
       where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } };
       orderBy?: { startedAt?: "asc" | "desc" };
       take?: number;
+      select?: Record<string, true>;
     }) => {
       const rows = sortSyncRuns(syncRuns.filter((r) => matchesSyncRun(r, args.where)), args.orderBy?.startedAt);
-      return args.take === undefined ? rows : rows.slice(0, args.take);
+      const page = args.take === undefined ? rows : rows.slice(0, args.take);
+      return page.map((r) => projectFields(r, args.select));
     },
   );
 
   /** ⚠️ `where`에 `projectId`가 함께 온다 — id를 알아도 남의 테넌트 행을 못 닫는다 (`revokeInvitation` 선례). */
   const updateSyncRun = vi.fn(
-    async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+    async (args: { where: { id: string }; data: Record<string, unknown>; select?: Record<string, true> }) => {
       const row = syncRuns.find((r) => r.id === args.where.id);
       // 실 Prisma는 없는 행에 P2025로 던진다 — 조용히 넘기면 "행을 닫는다"가 검증되지 않는다.
       if (row === undefined) throw Object.assign(new Error("Record to update not found"), { code: "P2025" });

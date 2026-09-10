@@ -383,6 +383,17 @@ export const en = {
       dropped: "Which values couldn't be written",
       failed: (reason: string): string => `Couldn't send: ${reason}`,
       viewLink: "View what was sent",
+      /**
+       * 게이트 거부 (7단계 — sync-runs design §6.1). **고장이 아니라 "방금 보냈다"라 tone이 `info`다.**
+       *
+       * ⚠️ **카운트다운이 아니라 정적 문장이다** — 줄어드는 숫자를 그리려면 `setInterval`과
+       * `aria-live`가 붙는데, 헤더의 live region은 하나이고 그것은 저장 알림이 든다.
+       */
+      gate: {
+        "already-running": "Already sending. This page will show the result when it's done.",
+        "too-soon": (seconds: number): string =>
+          `Just sent. Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}.`,
+      },
     },
 
     /**
@@ -648,6 +659,8 @@ export const en = {
       "not-member": "That person isn't a member of this project.",
       // 유일하게 재시도가 맞는 사유다 — 입력값이 남아 있다는 것을 말한다.
       unavailable: "Something went wrong. Try again in a moment — your text is kept.",
+      // 되돌릴 수 있다는 것과 **누가** 되돌리는지를 함께 말한다 — 그러지 않으면 사용자가 갇힌다.
+      archived: "This project is archived. An owner can restore it in its settings.",
     },
 
     /** `inviteErrorMessage` — `InviteError` 일곱 + 폴백(모르는 `?e=`에 던지지 않는다). */

@@ -12,7 +12,7 @@ import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
-import { hashInviteToken } from "@/lib/auth/invitation";
+import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
 import type { AccessError } from "@/lib/auth/message";
 import { planMemberChange } from "@/lib/auth/membership";
 import type { Role } from "@/lib/auth/permission";
@@ -132,8 +132,17 @@ export async function createInvitation(raw: {
    * role이 다르면 둘 다 수락된다. `changeMember`와 같은 잠금이다. 잠금 없이 트랜잭션만 걸면 "기존 행이 없는
    * 동시 발급"은 막지 못한다 — 두 요청 모두 회전할 행이 없어 충돌이 안 난다.
    */
-  await prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+
+    /**
+     * ⚠️ **집계가 잠금 안이다** (7단계 — sync-runs design §1.5). 밖에서 세면 두 OWNER가 동시에
+     * 초대할 때 각자 "자리 있음"을 보고 각자 만든다 — `createProject`의 재집계와 같은 형이고,
+     * 여기는 잠글 `Project` 행이 **이미 있다**. 대기 초대는 안 센다(`planInvitationCreate`).
+     */
+    const memberCount = await tx.projectMember.count({ where: { projectId } });
+    const limit = planInvitationCreate({ memberCount });
+    if (limit.status !== "ok") return limit.status;
 
     // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, email)`이 unique가 아니라
     // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
@@ -153,7 +162,9 @@ export async function createInvitation(raw: {
         invitedBy: userId,
       },
     });
+    return "ok" as const;
   });
+  if (outcome !== "ok") return { ok: false, error: outcome };
 
   // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
   revalidatePath(`/projects/${input.slug}/members`);
@@ -599,7 +610,9 @@ export async function createProject(raw: {
 
   const [ownerCount, existing] = await Promise.all([
     // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (spec §4).
-    prisma.projectMember.count({ where: { userId, role: "OWNER" } }),
+    // ⚠️ **보관은 슬롯을 비운다** (7단계, 결정 10) — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
+    // 아래 재집계와 **같은 조건**이어야 한다: 하나만 좁히면 선조회를 지난 뒤 재집계가 거부한다.
+    prisma.projectMember.count({ where: { userId, role: "OWNER", project: { archivedAt: null } } }),
     // ⚠️ **전역 조회다** — slug는 `@unique`이고 "이미 쓰는 주소인가"는 테넌트 안에서 답할 수 없는
     // 질문이다 (§7.7의 대가). 돌려주는 것은 존재 여부뿐이고 화면에는 `slug-taken` 한 줄만 간다 —
     // 남의 프로젝트 이름·리포는 새지 않는다.
@@ -661,7 +674,9 @@ export async function createProject(raw: {
        * 선조회를 남겨 두는 것은 거부될 요청이 GitHub을 읽지 않게 하기 위해서다.
        */
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
-      const owned = await tx.projectMember.count({ where: { userId, role: "OWNER" } });
+      const owned = await tx.projectMember.count({
+        where: { userId, role: "OWNER", project: { archivedAt: null } },
+      });
       if (owned >= PROJECT_LIMIT) throw new ProjectLimitRollback();
 
       const project = await tx.project.create({
@@ -849,6 +864,75 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true, pushToken };
+}
+
+export type ArchiveResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * 프로젝트 보관 (7단계 — sync-runs design §4).
+ *
+ * **되돌릴 수 있는 사실 하나를 쓴다** — 상태 머신도 삭제도 아니다(SAAS §7.9의 자동 영구 삭제는
+ * 비목표다). 그 사실 하나가 편집·Publish·야간 cron·CI push를 한꺼번에 멈춘다.
+ *
+ * ⚠️ **인가가 `project:settings`다** — 그래서 보관된 프로젝트에서도 이 Action이 지나간다
+ * (`planProjectAccess`가 그 permission만 통과시킨다). 그것이 되돌리는 길이다.
+ *
+ * ⚠️ **`revalidatePath("/", "layout")`이다.** 보관은 목록·사이드바·Home·번역·설정을 다 바꾼다 —
+ * 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다 (POSTMORTEM 2026-09-09, `disconnectGithub` 선례).
+ *
+ * ⚠️ **열린 PR을 닫지 않는다** (SAAS §7.9). 보관의 뜻은 "멈춘다"이고 GitHub 상태를 정리하는 일이
+ * 아니다 — 설정 화면이 그 PR을 링크로 보여 사람이 판단한다.
+ */
+export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
+  const parsed = SlugOnlyInput.safeParse({ slug });
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, {
+    userId: session.userId,
+    slug: parsed.data.slug,
+    permission: "project:settings",
+  });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
+  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * 되돌리기. **확인을 묻지 않는다** — 잃는 것이 없다.
+ *
+ * ⚠️ **위와 한 함수로 합치지 않는다.** 인가 호출을 공용 헬퍼로 빼면 `entry-points.test.ts`가
+ * 각 export 안에서 그것을 못 보고, 그 검사는 "파일 어딘가에 호출이 있다"로는 부족하다는 것이
+ * 존재 이유 전부다. 여기서 반복되는 여덟 줄은 **반복되기를 바라는** 여덟 줄이다.
+ */
+export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
+  const parsed = SlugOnlyInput.safeParse({ slug });
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, {
+    userId: session.userId,
+    slug: parsed.data.slug,
+    permission: "project:settings",
+  });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
+
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 /**

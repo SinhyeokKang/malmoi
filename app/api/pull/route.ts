@@ -7,7 +7,7 @@ import { classifyFailure } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
 import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/targets";
-import { triggerPull } from "@/lib/pull/trigger";
+import { runSync } from "@/lib/sync/run";
 
 /**
  * DB → `l10n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
@@ -49,11 +49,22 @@ export async function GET(request: Request): Promise<NextResponse> {
     const prisma = getPrisma();
     // 순회 대상은 판정층이 고른다 (`lib/pull/targets.ts`) — 준비 안 된 프로젝트를 돌리면 던진다.
     const projects = await prisma.project.findMany({
-      select: { slug: true, installationId: true, lastCommitSha: true },
+      select: {
+        id: true,
+        slug: true,
+        installationId: true,
+        lastCommitSha: true,
+        // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
+        archivedAt: true,
+        // ⚠️ **정렬 재료다** — 마지막 실행이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이
+        // 매일 밤 같은 프로젝트면 그것은 영원히 안 돈다 (`selectPullTargets`).
+        syncRuns: { take: 1, orderBy: { startedAt: "desc" }, select: { startedAt: true } },
+      },
     });
 
     // ⚠️ **상한이 붙었다** (2026-09-09, sec-audit 발견 26) — 못 돈 수가 응답과 로그에 실린다.
     const { targets, unprocessed } = selectPullTargets(projects, PULL_BATCH_LIMIT);
+    const byslug = new Map(projects.map((p) => [p.slug, p.id]));
     const results: PullItem[] = [];
     for (const slug of targets) {
       // ⚠️ **프로젝트마다 잡는다.** 한 프로젝트의 GitHub 장애가 나머지의 편집을 다음 밤까지 묶어두면
@@ -62,8 +73,17 @@ export async function GET(request: Request): Promise<NextResponse> {
       // ⚠️ 격리의 실제 경계는 루프 본문이 **아니라 이 catch 본문까지**다 — 여기서 무엇이든 던지면
       // 바깥 catch가 받아 이미 모은 결과가 통째로 버려지고 500이 된다. `failureItem`은 순수 판정과
       // 로그뿐이라 던질 것이 없다.
+      //
+      // ⚠️ **`runSync`는 던지지 않는다** (7단계) — 실패도 게이트 거부도 값이다. 그래도 `try`를 남기는
+      // 이유는 그 함수의 DB 쓰기(행 생성·닫기)가 여전히 던질 수 있어서다.
       try {
-        results.push({ slug, ...(await triggerPull(prisma, slug)) });
+        // 인가를 지날 일이 없는 경로다 — `projectId`는 방금 조회한 행의 것이고 slug는 로그용이다.
+        const projectId = byslug.get(slug);
+        if (projectId === undefined) continue;
+        results.push({
+          slug,
+          ...(await runSync(prisma, { projectId, slug, trigger: "cron", requestedBy: null })),
+        });
       } catch (error) {
         results.push(failureItem(slug, error));
       }

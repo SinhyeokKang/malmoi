@@ -1,17 +1,14 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
-import { classifyFailure } from "@/lib/failure";
 import { SaveInput, planSave } from "@/lib/keys/save";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
-import { triggerPull } from "@/lib/pull/trigger";
+import { runSync } from "@/lib/sync/run";
 
 /**
  * 번역값 저장과 Publish.
@@ -124,18 +121,18 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   // 여기서 문구가 있는 사유로 거부한다 (design §3.7).
   if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready" };
 
-  try {
-    return await triggerPull(prisma, slug);
-  } catch (error) {
-    // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다.
-    // ⚠️ **남의 라이브러리 메시지는 싣지 않는다** — `/api/pull`과 같은 규칙이다 (ARCHITECTURE §6.0). 읽는 사람이
-    // 외부 초대자이고, Prisma 접속 오류 한 줄이 pooler 호스트와 DB 유저를 담는다 (Codex 감사 2026-09-06 #7).
-    const failure = classifyFailure(error);
-    if (failure.safe) return { status: "failed", error: failure.message };
-    const ref = randomUUID().slice(0, 8);
-    console.error(`[pull:action] ${ref} ${failure.detail}`);
-    return { status: "failed", error: `internal (ref ${ref})` };
-  }
+  /**
+   * ⚠️ **`triggerPull`을 직접 부르지 않는다** (7단계). `runSync`가 게이트(동시 실행·최소 간격)·
+   * `SyncRun` 행·오류 분류를 들고, **던지지 않는다** — 그래서 여기 있던 `try/catch`가 사라졌다.
+   * 남의 라이브러리 메시지를 `ref`로 접는 규칙도 그쪽으로 함께 옮겨갔다(`publish-failure.test.ts`가
+   * 이 경로로 그것을 계속 잰다).
+   */
+  return runSync(prisma, {
+    projectId: access.projectId,
+    slug,
+    trigger: "manual",
+    requestedBy: userId,
+  });
 }
 
 /**

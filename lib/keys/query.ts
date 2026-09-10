@@ -169,6 +169,11 @@ export type MembershipRow = {
   role: Role;
   installationId: string | null;
   lastCommitSha: string | null;
+  /**
+   * 보관 시각 (7단계). **목록에서 숨기는 대신 배지로 남긴다** — 숨기면 OWNER가 되돌릴 링크에
+   * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (sync-runs design §4).
+   */
+  archivedAt: Date | null;
 };
 
 /**
@@ -182,7 +187,9 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     where: { userId },
     select: {
       role: true,
-      project: { select: { slug: true, name: true, installationId: true, lastCommitSha: true } },
+      project: {
+        select: { slug: true, name: true, installationId: true, lastCommitSha: true, archivedAt: true },
+      },
     },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
     orderBy: { project: { slug: "asc" } },
@@ -193,6 +200,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     role: r.role,
     installationId: r.project.installationId,
     lastCommitSha: r.project.lastCommitSha,
+    archivedAt: r.project.archivedAt,
   }));
 }
 
