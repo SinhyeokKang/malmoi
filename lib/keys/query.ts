@@ -221,6 +221,8 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 export type ProjectListRow = MembershipRow & {
   repoOwner: string;
   repoName: string;
+  /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, SAAS §7.5). */
+  repositoryId: string | null;
   memberCount: number;
 };
 
@@ -250,6 +252,7 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
           archivedAt: true,
           repoOwner: true,
           repoName: true,
+          repositoryId: true,
           _count: { select: { members: true } },
         },
       },
@@ -266,6 +269,7 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
     archivedAt: r.project.archivedAt,
     repoOwner: r.project.repoOwner,
     repoName: r.project.repoName,
+    repositoryId: r.project.repositoryId,
     memberCount: r.project._count.members,
   }));
 }

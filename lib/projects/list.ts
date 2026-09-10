@@ -46,14 +46,24 @@ export function filterProjects<T extends { archivedAt: Date | null }>(
  * ⚠️ **보관이 readiness보다 앞이다** — 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이
  * 아니다 (`planProjectAccess`가 권한 → 보관 순으로 보는 것과 같은 결).
  */
-export type ProjectStatus = "active" | "archived" | "setup" | "awaiting_first_sync";
+export type ProjectStatus = "active" | "archived" | "setup" | "awaiting_first_sync" | "needs_reconnect";
 
 export function projectStatus(row: {
   archivedAt: Date | null;
   installationId: string | null;
   lastCommitSha: string | null;
+  repositoryId: string | null;
 }): ProjectStatus {
   if (row.archivedAt !== null) return "archived";
   const readiness = planProjectReadiness(row);
-  return readiness === "ready" ? "active" : readiness;
+  if (readiness !== "ready") return readiness;
+  /**
+   * ⚠️ **`repositoryId`는 readiness의 축이 아니라 셋째 축이다** (SAAS §7.5). sec-audit-2 이전에
+   * 만들어진 행은 그 컬럼이 null이고, 결과는 **Publish만 조용히 거부되는 것**이다 — 야간 순회에서도
+   * 빠지는데(`selectPullTargets`) 목록은 여태 `Active`를 보였다.
+   *
+   * ⚠️ **`ready`일 때만 본다.** 첫 적재조차 안 끝난 프로젝트에서 "다시 연결하라"는 답할 질문이
+   * 아니다 — 이 컬럼이 막는 것은 **되돌려보내기**이고, ready가 아니면 되돌려보낼 것이 없다.
+   */
+  return row.repositoryId === null ? "needs_reconnect" : "active";
 }

@@ -278,6 +278,11 @@ export const en = {
       archived: "Archived",
       awaiting_first_sync: "Waiting for first import",
       setup: "Setting up",
+      /**
+       * ⚠️ **git 어휘를 쓰지 않는다** (DESIGN §10) — 번역자도 이 목록을 본다. "repository id가
+       * 고정되지 않았다"가 아니라 **그 사람이 할 일**을 말한다: OWNER가 설정에서 다시 연결한다.
+       */
+      needs_reconnect: "Reconnect needed",
     },
   },
 
