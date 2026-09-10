@@ -455,11 +455,11 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 |---|---|
 | 머리 | `h1` `text-xl font-medium` + **총계 `Badge neutral`**. ⚠️ **총계는 필터 전의 값이다** — 탭을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에 답한다. 사이드바 카운트(SAAS §8 🔒)와 달리 이미 가진 배열의 길이라 왕복이 0이다 |
 | 필터 | `SegmentedLinks` — **링크다, 클라이언트 상태가 아니다.** 트랙에 고정 폭이 없다(`inline-flex gap-1 p-1` + 세그먼트 `min-w-11`); 시안 192×36에 실측 188×36으로 앉는다. `?filter=active\|archived`이고 기본값 `all`은 URL에 안 싣는다. 모르는 값은 `all`로 떨어진다(주소창 값이다 — `parseProjectFilter`) |
-| 행 | `p-4`, 좌측 2줄 / 우측 배지 하나. 이름 `text-sm font-medium`(2026-09-10 사용자 — 한 단계 내렸다), 메타 `text-sm text-muted-foreground` 한 줄: **`역할 · 리포 URL · N members`**. 실측 높이 80(시안 72 — Tailwind 기본 행간 차이) |
+| 행 | `p-4`, 좌측 2줄 / 우측 배지 하나. 이름 `text-base font-medium`(2026-09-10에 한 단계 내렸다가 **2026-09-11에 원복**), 메타 `text-sm text-muted-foreground` 한 줄: **`역할 · 리포 URL · N members`**. 실측 높이 80(시안 72 — Tailwind 기본 행간 차이) |
 | 역할 | ⚠️ **배지가 아니라 메타 평문이다** (시안 개정). 배지로 만들면 우측에서 상태와 나란히 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다 |
 | 리포 | 전체 URL. ⚠️ **링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없고, 눌러도 GitHub이 아니라 프로젝트로 간다 |
-| 상태 배지 | **항상 하나**이고 갈래는 `projectStatus`가 정한다: `Archived` · `Setting up` · `Waiting for first import` · **`Active`**. ⚠️ **보관이 readiness보다 앞이다** — 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이 아니다 |
-| 배지 색 | **기다리는 둘만 `warning`(amber)**, `Active`·`Archived`는 `neutral`. ⚠️ **`Archived`를 amber로 칠하면 의도된 상태가 문제처럼 읽히고**, `Active`에 색을 주면 가장 흔한 상태가 가장 시끄러워진다(§6.1). 색 선택은 **맵 + `satisfies`**다 — 삼항이면 새 갈래가 사유 없이 회색으로 떨어지고 `tsc`가 조용하다 |
+| 상태 배지 | **항상 하나**이고 갈래는 `projectStatus`가 정한다 — **다섯**: `Archived` · `Setting up` · `Waiting for first import` · **`Reconnect needed`**(2026-09-11 — `repositoryId === null`, Publish만 조용히 거부되던 상태다. SAAS §7.5) · **`Active`**. ⚠️ **순서가 판정의 절반이다**: 보관 → readiness → `repositoryId`. 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이 아니고, 첫 적재도 안 끝난 프로젝트에서 "다시 연결하라"도 아니다(그 컬럼이 막는 것은 **되돌려보내기**다) |
+| 배지 색 | **사람이 뭔가 해야 끝나는 셋만 `warning`(amber)** — `Setting up`·`Waiting for first import`·`Reconnect needed`. `Active`·`Archived`는 `neutral`. ⚠️ **`Archived`를 amber로 칠하면 의도된 상태가 문제처럼 읽히고**, `Active`에 색을 주면 가장 흔한 상태가 가장 시끄러워진다(§6.1). 색 선택은 **맵 + `satisfies`**다 — 삼항이면 새 갈래가 사유 없이 회색으로 떨어지고 `tsc`가 조용하다 |
 | **`Active`가 보이는 이유** | ⚠️ §6.1("가장 흔한 상태가 가장 조용하다")의 **예외다.** 근거는 **필터 탭이 같은 낱말을 쓴다**는 것 — `All / Active / Archived`를 보는 사람에게 행의 배지가 그 축을 되비추면 "지금 무엇을 보고 있나"가 이어지고, 배지가 항상 하나라 행 우측 폭도 안 흔들린다 |
 | 빈 상태 (프로젝트 0개) | ⚠️ **필터와 [New project]를 그리지 않는다** (시안에서 그 줄이 `hidden`이다). 고를 것이 없는 탭 셋은 죽은 컨트롤이고, 만들기 버튼이 머리와 빈 상태에 둘 다 있으면 같은 행동이 한 화면에 두 번 나온다. `EmptyState`가 패널 **세로 중앙**에 선다 |
 | 빈 상태 (필터 0건) | **다른 화면이다** — 머리는 그대로 두고 한 줄만 낸다("No archived projects."). 같은 빈 화면을 내면 사용자가 프로젝트를 잃었다고 읽는다 |

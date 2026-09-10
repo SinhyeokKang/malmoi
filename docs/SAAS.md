@@ -512,15 +512,18 @@ setup → awaiting_first_sync → ready
 
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
   멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
-- 🔴 **`repositoryId === null`은 readiness와도 건강성과도 다른 셋째 축이고, 지금 사용자가 그것을 볼
-  자리가 없다** (2026-09-10 `/doc-check`이 잡았다). sec-audit-2 이전에 만들어진 행이 그 상태이고
+- ✅ **`repositoryId === null`은 readiness와도 건강성과도 다른 셋째 축이고, 2026-09-11에 목록이 그것을
+  드러낸다** (`Reconnect needed` 배지 — 2026-09-10 `/doc-check`이 잡았다). sec-audit-2 이전에 만들어진 행이 그 상태이고
   결과는 셋이다 — 목록에서 **`Active`로 보이고**(`planProjectReadiness`가 그 컬럼을 안 본다 →
   `projectStatus`가 `active`를 낸다), 야간 순회에서 **조용히 빠지며**(`selectPullTargets`),
   Publish만 `not-installed`로 죽는다. 설정 화면의 건강성 행조차 `not-connected`("연결 안 됨")로 접어
   **리포 미고정임을 말하지 않는다.** `Needs reconnect` 문자열은 리포 전수 0건이다.
-  - **결정: 목록·Home이 그것을 드러낸다.** 자리는 `lib/projects/list.ts`의 `projectStatus`이고
-    `ProjectReadiness` union이 아니다(§6.36) — 그 union을 늘리면 설정 화면·`ProjectNotReady`의 정책이
-    함께 움직인다. ⚠️ **8-3에는 넣지 않았다** — 갈래 하나가 화면 셋을 건드려 별도 배송이 맞다.
+  - **자리는 `lib/projects/list.ts`의 `projectStatus`이고 `ProjectReadiness` union이 아니다**
+    (ARCHITECTURE §6.36) — 그 union을 늘리면 설정 화면·`ProjectNotReady`의 정책이 함께 움직인다.
+    ⚠️ **`ready`일 때만 본다**: 그 컬럼이 막는 것은 **되돌려보내기**이고, 첫 적재도 안 끝난
+    프로젝트에서 "다시 연결하라"는 답할 질문이 아니다.
+    ⚠️ **Home은 아직 안 드러낸다** — 그 화면은 `ProjectNotReady` 갈래를 쓰지 목록 배지가 없다.
+    필요해지면 같은 순수 함수를 읽는다.
 - **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
   받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 - **`repo-replaced`는 사람도 못 따라간다** (2026-09-10, sec-audit-2 발견 34). 이름은 주소이고
@@ -665,7 +668,9 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 ⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·`?state=`·`?focus=`와 **목록의 `?filter=all|active|archived`**(8-3), 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
-⚠️ **`?sessionRevocation=`만 그 계약 밖이다** (2026-09-10 `/doc-check`). `/account?sessionRevocation=<outcome>`를 세 자리가 **문자열 연결로** 만들고(`lib/session-revocation/policy.ts`·`app/(edit)/account/actions.ts`·`lib/session-revocation/http.ts`) `routes.account()`는 쿼리를 안 받는다 — `signIn()` 주석이 못 박은 바로 그 형태이고, 그러면 "쿼리 수신자" 검사를 통째로 회피한다. **`routes.account({ sessionRevocation })`로 옮기는 것이 후속이다.**
+✅ **`?sessionRevocation=`도 2026-09-11에 그 계약 안으로 들어왔다.** 그전에는 세 자리가 문자열 연결로 만들었고(`signIn()` 주석이 못 박은 그 형태) 검사를 회피했다 — 지금은 `routes.account({ sessionRevocation })`이 만들고 **읽는 쪽(`lib/session-revocation/http.ts`)만 리터럴로 비교한다**(만드는 쪽과 읽는 쪽이 같은 함수를 쓰면 그 비교가 무엇을 확인하는지 흐려진다).
+
+⚠️ **그 옮기기가 검사의 사각지대를 드러냈다** — `entry-points.test.ts`의 쿼리 수신자 검사가 **문자열 보간 안의 `?key=`만** 봤고, `routes.*`가 쿼리를 **인자로** 받는 형태는 네 자리(`signIn`·`projects`·`account`·`logs`) 전부 검사 밖이었다. 같은 커밋이 세 번째 형태(생성기의 쿼리 인자)를 검사에 더했다.
 
 ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼이다(`components/publish-button.tsx` — 6a T7이 `pull-button.tsx`를 대체했다). 한때 `/projects/:slug/publish`로 적혀 있었는데 그런 라우트는 만들지 않았고 §8 6단계도 요구하지 않는다.
 
