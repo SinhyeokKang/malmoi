@@ -2,6 +2,12 @@
 
 2026-09-10: 로컬 구현과 격리 PostgreSQL 검증 단계다. 공유 dev/prod DB의 credential 전환, 실제 공급자 브라우저 왕복, 배포 URL 차단·drain 검증은 아직 수행하지 않았다. 이 문서는 전환 완료 증거가 아니다.
 
+## dev 병합과 자동 배포 보류 (2026-09-10)
+
+사용자 승인으로 코드 리뷰를 위해 dev에 먼저 통합한다. `vercel.json`의 `git.deploymentEnabled.dev=false`가 dev Git 푸시의 자동 Preview 배포를 보류한다. 기존 Preview와 DB는 그대로이며 수동 배포를 허용한다는 뜻이 아니다. [Vercel 설정 계약](https://vercel.com/docs/project-configuration/git-configuration#gitdeploymentenabled)을 따른다.
+
+아래 차단·키 준비·R1/backfill/R2·실물 검증을 마친 뒤에만 이 dev 항목을 제거해 자동 배포를 재개한다. main 병합은 별도 프로덕션 전환 게이트를 통과해야 한다. 원격 dev에 코드가 있다는 사실을 운영 전환 완료로 읽지 않는다.
+
 ## 준비와 차단
 
 1. 기존 sec-audit-2 코드 기준의 R1에는 `20260910050000_add_email_lookup` **additive migration만** 배송한다. credential 런타임 코드는 아직 활성화하지 않는다. 기존 email unique/초대 email 인덱스를 유지한다. dev는 `pnpm exec prisma migrate deploy`, prod는 별도 승인된 `pnpm db:deploy`다. 이 워크트리 전체를 평문 DB에 배포하면 로그인과 개인정보 조회가 실패한다.

@@ -25,3 +25,6 @@
 `lib/session-revocation/**`, `components/session-revocation.tsx`, `app/(edit)/account/actions.ts`·`page.tsx`, `auth.ts`, 루트/초대 로그인 시작, `messages/en.tsx`, 인증 진입점 테스트와 `lib/credentials/__tests__/{sign-in.test.ts,postgres.integration.ts}` 후속 회귀다. 기존 credential 미커밋 구현과 공통 파일이 있으므로 전체 diff를 sec-audit-2 단독 변경으로 읽지 않는다.
 
 S7과 credential 운영 전환 게이트는 미완료다. 이번 라운드는 빌드·커밋·push·배포·공유 DB 변경을 수행하지 않았다.
+
+
+2026-09-10 후속: 사용자 요청으로 credential과 함께 dev 통합·워크트리 정리를 진행한다. dev 자동 Preview 배포는 `vercel.json`에서 보류하며 실제 전환은 credential 운영 절차를 따른다. 위 빌드·커밋 미수행 표시는 구현 라운드 당시 기록이다.

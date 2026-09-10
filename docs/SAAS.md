@@ -1247,6 +1247,8 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 
 ## Credential 저장 보호 — 구현과 운영 전환 (2026-09-10)
 
+코드 리뷰를 위한 dev 통합은 사용자 승인으로 진행하며 `vercel.json`의 `git.deploymentEnabled.dev=false`로 자동 Preview 배포를 보류한다. 키/DB 전환과 실물 검증 전에는 해제하지 않는다.
+
 현재 credential 코드에서 유효 어댑터는 safePrismaAdapter를 확장한 credentialAdapter다. 추가 로그인 계정 거부·User 잠금은 보존하며 세션은 도메인 분리 SHA-256으로 저장한다. 브라우저와 Auth.js 내부에서만 원문을 쓰고 DB digest 쿠키는 거부한다. 24시간/1시간 슬라이딩과 요청별 membership 판정은 그대로다. 기존 원문 세션은 차단 전환에서 폐기한다.
 
 User.email/name/image와 모든 초대 email은 서버에서 암·복호화한다. User.emailLookup은 전체 사용자 범위 HMAC unique, 초대 lookup은 프로젝트 범위 일반 인덱스다. 타인 이메일은 기존 서버 마스킹을 유지하며 손상/키 오류는 unavailable로 표시한다. GitHub refresh는 쓰기 키를 먼저 검증한 뒤 공급자를 호출하고 토큰 쌍을 암호화해 저장한다.
