@@ -523,9 +523,9 @@ components/
                         순회한다**(2026-09-10),
                         `prefers-reduced-motion`이면 1회 렌더) / brand-icons(GitHub·Google 인라인 SVG —
                         ⚠️ `lucide-react`에 브랜드 글리프가 없고 Google 4색은 DESIGN §6.2의 예외다)
-  shell/                앱 셸 (6a T6 → **8-2가 시안으로 재작성**, 2026-09-10). ⚠️ **셸 루트는 `h-svh
-                        overflow-hidden`이고 `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께
-                        자라 `aside`가 문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다
+  shell/                앱 셸 (6a T6 → **8-2가 시안으로, 8-3이 사이드바를 시안으로 재작성**). ⚠️ **셸 루트는
+                        `h-svh overflow-hidden`이고 `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가
+                        함께 자라 `aside`가 문서 높이만큼 늘고, Sign out이 화면 밖으로 나간다
                         (malmoi#13, `9c94359`). 거기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 —
                         ⚠️ `min-w-`가 없으면 1280 미만이 스크롤이 아니라 **잘림**이다. 시각 규칙은 DESIGN §6.5.
                         header.tsx(**전폭 48 — 로고 좌 · 사용자 메뉴 우, 그 둘뿐이다.** 옛 `top-bar.tsx`를
@@ -533,27 +533,28 @@ components/
                         content-panel.tsx(흰 패널 — ⚠️ **셸이 `{children}`을 이걸로 감싸지 않는다**: 감싸면
                         오른쪽 패널이 그 안에 갇힌다. 각 갈래의 레이아웃이 들고 `shell-layout.test.ts`가
                         라우트마다 **정확히 하나**인지 체인을 훑어 센다) /
-                        project-panel.tsx(**320 골격 — 세그먼트 컨트롤 + 빈 본문.** 내용은 8-P다:
-                        diff는 UI가 아니라 새 서버 능력이라 UI만 먼저 만들면 빈 껍데기를 두 번 그린다) /
-                        sidebar.tsx(usePathname으로 프로젝트 컨텍스트·역할별 항목·접힘 localStorage.
+                        project-panel.tsx(**320 골격 — 세그먼트 컨트롤 + 빈 본문.** 내용은 8-P다) /
+                        sidebar.tsx(usePathname으로 프로젝트 컨텍스트·역할별 항목.
                         ⚠️ **배경도 border도 없다** — 캔버스 위에 얹히므로 hover·선택이 `bg-foreground/5`·`/10`
-                        **알파**다(`--accent == --muted`라 캔버스 위에서 안 보인다). ⚠️ **반응형 분기가 0개다**
-                        (규약 3 — 1280 고정이라 `xl` 오버레이·햄버거가 도달 불가였다). ⚠️ **구역 둘이 각자
-                        `aria-label`을 든다** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌
-                        레일에서는 렌더되지 않는다**. 활성 판정도 축마다 다르다: 프로젝트 축은 접두, 사용자
-                        축은 정확히 일치(`/projects`가 `/projects/new`의 접두다)) /
-                        user-menu.tsx(**항목 둘** — Your account·Sign out. ⚠️ 트리거가 아바타와 같은 32여야
+                        **알파**다(`--accent == --muted`라 캔버스 위에서 안 보인다). ⚠️ **8-3이 셋을 지웠다**:
+                        접기(레일 + 그 안에서만 렌더되던 `Tooltip`) · 프로젝트 스위처 · `New project` —
+                        프로젝트를 옮기는 길이 **목록 하나**로 통일됐다. ⚠️ **구역 라벨이 이름 그대로다**
+                        (사용자 이름 / 프로젝트 이름). ⚠️ **개수 배지는 `Projects` 하나뿐**이고 `0`도 보인다 —
+                        나머지 셋은 매 페이지 왕복이라 SAAS §8 🔒다. ⚠️ **구역 둘이 각자 `aria-label`을 든다** —
+                        라벨이 `<p>`라 접근성 트리에서 이름이 아니다. 하단은 **Help(`/docs`)·Sign out** 둘) /
+                        user-menu.tsx(**항목 둘** — Settings·Sign out. ⚠️ 트리거가 아바타와 같은 32여야
                         한다 — `size="sm"`(28)이면 아바타가 삐져나온다).
                         ⚠️ **breadcrumb·Publish는 아직 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아
-                        페이지 콘텐츠의 첫 줄이 들고, 8-3이 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
+                        페이지 콘텐츠의 첫 줄이 들고, 8-3 이후가 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
-                        판정은 lib/shell/nav.ts의 순수 함수 셋이 한다
+                        판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
   ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했다**).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·Tooltip·SegmentedControl(⚠️ `role="radiogroup"`이지 `tablist`가 아니다 —
-                        ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        Dialog·Tooltip·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
+                        8-3이 더한 **`SegmentedLinks`**(링크, `<nav>` + `aria-current`). **상태가 URL이면 뒤엣것**이다.
+                        ⚠️ `tablist`가 아닌 이유: ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09) —
                         `asChild`가 오면 Slot이 **자식 하나만** 받으므로 `selected`의 `Check`가 형제로
                         붙는 순간 던지고 셸이 죽는다. `add099a`부터 프로덕션에 있었다
@@ -614,7 +615,7 @@ lib/
                         ⚠️ **`limit`은 병합 뒤에** 적용된다 — 편집만 자르면 push·publish가 항상 밀려난다.
                         ⚠️ 동시각 정렬이 **결정적**이다: DB `orderBy`에 기대지 않고 여기서 키·로케일로
                         가른다(`Array.sort`가 안정 정렬이라 입력 순서를 보존한다))
-  shell/nav.ts          사이드바의 순수 판정 **셋** — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
+  shell/nav.ts          사이드바의 순수 판정 **넷** (8-3이 `navFooterItems`를 더했다) — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
                         없으면 컨텍스트 없음) / projectSections(**여섯** — Overview(6b-6)·Translations·Languages(6b-5)·
                         Members·**Logs**(7단계)·Settings. ⚠️ **앞의 넷은 `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고
                         컨트롤만 갈린다. ⚠️ 라벨과 URL이 갈리는 자리 둘: "Languages"→`/locales`,
@@ -753,6 +754,12 @@ lib/
                         **CLI와 서버 첫 적재가 같은 함수를 지난다**) / plan.ts(순수 판정)
                         / apply.ts(벌크 I/O) / auth.ts(fail-closed) / guard.ts(오배송·역행·**보관** 409)
                         / token.ts(generatePushToken·hashPushToken — 해시는 hashInviteToken **그 함수**다, 규칙 한 곳)
+  projects/list.ts      목록 필터·상태의 순수 판정 (8-3, **잎에 가깝다** — `planProjectReadiness` 하나만 문다).
+                        PROJECT_FILTERS · parseProjectFilter(⚠️ **객체 조회가 아니라 배열 `includes`다** —
+                        주소창 값이라 프로토타입 키가 갈래로 새는 부류이고 이 리포가 두 번 밟았다) ·
+                        filterProjects(원본 불변 — 호출부가 같은 배열로 **필터 전** 총계를 센다) ·
+                        projectStatus(⚠️ **보관이 readiness보다 앞이다** · ⚠️ `repositoryId === null`은
+                        안 본다 — SAAS §7.5의 미결)
   pull/                 branch-name.ts(⚠️ **잎, import 0** — isValidBranchName. `isRefSafeSlug`보다 **넓다**:
                           그쪽은 우리가 만드는 ref라 한 세그먼트고 이쪽은 남의 리포에 있는 브랜치라
                           `release/2.0`이 정상이다. 앞뒤 공백을 **거부**한다 — 트림하면 화면과 저장값이
@@ -891,7 +898,10 @@ lib/
                         ⚠️ percent는 **내림**이라 902/903이 100%가 되지 않고, **base도 100%가 아닐 수 있다**;
                         정렬은 base → 살아 있는 로케일 → **orphaned 맨 뒤**)) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only — loadProject·loadKeys·loadActors·countUnpublished·
-                        loadMemberships + **loadLocaleCounts**(6b-5 — 분모 `stringKey.count`·분자
+                        loadMemberships + **loadProjectList**(8-3 — 목록 전용. ⚠️ **`loadMemberships`를
+                        넓히지 않고 나눴다**: 그쪽은 셸이 **매 페이지에서** 부르므로 목록 하나를 위한
+                        `_count` 서브쿼리를 얹으면 모든 화면이 문다 — SAAS §7.7 결정 5와 같은 축이다)
+                        + **loadLocaleCounts**(6b-5 — 분모 `stringKey.count`·분자
                         `translation.findMany` **병렬 한 벌**. ⚠️ `loadKeys` 재사용은 903키에서 이 화면을
                         번역 화면만큼 무겁게 만든다; 필터 둘(`value != ""` · `stringKey.orphaned`)이 판정이다)
                         + **loadRecentEdits**(6b-6 — Home의 활동. `updatedBy: { not: null }`로 **사람의
