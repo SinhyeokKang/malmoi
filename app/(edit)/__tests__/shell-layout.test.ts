@@ -176,6 +176,23 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
     expect(found.length).toBeGreaterThan(3);
   });
 
+  /**
+   * ⚠️ **본문 랜드마크는 패널이 아니라 페이지가 든다.** 8-2가 목록의 `<main>`을 `ContentPanel`로
+   * 갈아끼우면서 그 화면만 랜드마크를 잃었다 (Codex 리뷰 2026-09-11 실측: `/projects`에서
+   * `document.querySelectorAll('main,[role="main"]').length === 0`, 다른 화면 아홉은 그대로였다).
+   * 스크린리더의 "본문으로 건너뛰기"가 **그 화면에서만** 안 듣는데 눈으로는 아무 차이가 없다.
+   *
+   * ⚠️ **`ContentPanel`을 통째로 `<main>`으로 바꾸는 것이 답이 아니다** — 나머지 화면은 이미 자기
+   * `<main>`을 들고 있어 중첩된다. 그래서 페이지 쪽 책임으로 두고 **하나 이상**으로 센다(보관·미준비
+   * 갈래처럼 분기마다 다른 `<main>`을 내는 화면이 있어 "정확히 하나"는 성립하지 않는다).
+   */
+  it("각 페이지의 체인이 본문 랜드마크를 든다", () => {
+    const missing = found.filter(
+      (rel) => !chain(rel).some((f) => readFileSync(f, "utf8").includes("<main")),
+    );
+    expect(missing).toEqual([]);
+  });
+
   it("각 페이지의 체인에 콘텐츠 패널이 정확히 하나다", () => {
     const wrong = found
       .map((rel) => ({

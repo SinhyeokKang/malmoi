@@ -108,3 +108,31 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
     expect(code(PAGE)).not.toMatch(/<Badge[^>]*>\s*\{m\.projects\.role/);
   });
 });
+
+describe("프로젝트 목록 — 행이 잘리지 않고 패널이 스크롤한다", () => {
+  /**
+   * ⚠️ **`overflow-hidden`을 든 flex 자식은 축소 하한이 0이다.** CSS의 automatic minimum size는
+   * 스크롤 컨테이너에 적용되지 않아, `<ul>`이 내용 높이 대신 **남은 공간까지 줄어들고** 넘친 행은
+   * 그 안에 감춰진다 — 바깥 패널에는 스크롤이 생기지 않으므로 **휠로도 못 본다**.
+   *
+   * 실측 (Codex 리뷰 2026-09-11): 프로젝트 2개·1280×360에서 `ul` clientHeight 124 / scrollHeight 161,
+   * 바깥 패널은 clientHeight === scrollHeight 286. 둘째 행의 메타와 배지가 잘렸다.
+   *
+   * ⚠️ 주석의 "행이 최대 셋"은 계약이 아니다 — `PROJECT_LIMIT`은 **내가 OWNER인 살아 있는** 프로젝트만
+   * 세고, 이 목록은 초대받은 것과 보관한 것까지 든다.
+   */
+  it("목록이 축소되지 않는다 — `<ul>`이 `shrink-0`을 든다", () => {
+    const ul = /<ul className="([^"]*)"/.exec(code(PAGE))?.[1] ?? "";
+    expect(ul).not.toBe("");
+    expect(ul).toContain("shrink-0");
+  });
+
+  /**
+   * ⚠️ **스크롤은 `ContentPanel`이 든다** (`shell-layout.test.ts`). 이 화면의 열에 `min-h-0`을 주면
+   * 그 열이 콘텐츠보다 작아지도록 허락하는 것이고, 그러면 넘친 부분이 패널의 스크롤 영역에
+   * 안 들어온다. 빈 상태의 세로 중앙 정렬은 `flex-1`만으로 성립한다 — `min-h-0`이 필요하지 않다.
+   */
+  it("열이 콘텐츠보다 작아지도록 허락하지 않는다 — `min-h-0`이 없다", () => {
+    expect(code(PAGE)).not.toContain("min-h-0");
+  });
+});

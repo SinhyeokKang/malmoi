@@ -101,112 +101,130 @@ export default async function ProjectsPage({
      */
     <ContentPanel>
       {/*
-        패널 안 상단은 시안의 `fixed` 블록이다 — `pt-6 pb-3 px-4`. 스크롤은 패널이 들고 이 블록은
-        지금 고정되지 않는다(행이 최대 셋이라 sticky가 벌어주는 것이 없다).
+        ⚠️ **본문 랜드마크를 페이지가 든다.** 8-2가 이 화면의 `<main>`을 `ContentPanel`로 갈아끼우면서
+        목록만 랜드마크를 잃었고, 다른 화면 아홉은 각자 자기 것을 들고 있었다 — 눈으로는 차이가 없고
+        스크린리더의 "본문으로 건너뛰기"만 이 화면에서 안 들었다 (Codex 리뷰 2026-09-11 실측).
+        패널을 통째로 `<main>`으로 바꾸지 않는 이유는 그 아홉과 중첩되기 때문이다.
+
+        ⚠️ **`min-h-0`을 주지 않는다** — 스크롤은 패널이 들고, 이 열이 콘텐츠보다 작아지도록 허락하면
+        넘친 행이 패널의 스크롤 영역에 안 들어온다.
       */}
-      <div className="flex flex-col gap-4 px-4 pt-6 pb-3">
-        {/* 페이지 수준 거부는 **global Alert**다 — 목록 위 전폭 (DESIGN §6.4). */}
-        {message !== null && <Alert variant="danger">{message}</Alert>}
+      <main className="flex flex-1 flex-col">
+        {/*
+          패널 안 상단은 시안의 `fixed` 블록이다 — `pt-6 pb-3 px-4`. 스크롤은 패널이 들고 이 블록은
+          지금 고정되지 않는다.
+        */}
+        <div className="flex flex-col gap-4 px-4 pt-6 pb-3">
+          {/* 페이지 수준 거부는 **global Alert**다 — 목록 위 전폭 (DESIGN §6.4). */}
+          {message !== null && <Alert variant="danger">{message}</Alert>}
 
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-medium">{m.projects.title}</h1>
-          {/*
-            ⚠️ **총계는 필터 전의 값이다** — 탭을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
-            답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.
-          */}
-          <Badge variant="neutral">{all.length}</Badge>
-        </div>
-
-        {hasProjects && (
-        <div className="flex items-center justify-between gap-2">
-          <SegmentedLinks
-            label={m.projects.filter.label}
-            current={filter}
-            options={PROJECT_FILTERS.map((value) => ({
-              value,
-              label: m.projects.filter[value],
-              // 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
-              href: routes.projects({ filter: value === "all" ? undefined : value }),
-            }))}
-          />
-          <ButtonLink variant="primary" href={routes.newProject()}>
-            <Plus aria-hidden />
-            {m.common.nav.newProject}
-          </ButtonLink>
-        </div>
-        )}
-      </div>
-
-      {/*
-        ⚠️ **`flex-1`이 여기 있어야 빈 상태가 패널 세로 중앙에 선다** (시안). `EmptyState` 안에
-        `h-full`을 박지 않는 이유는 그 컴포넌트가 표 안에서도 쓰여서다 — 중앙 정렬은 자리마다 다르다.
-      */}
-      <div className="flex min-h-0 flex-1 flex-col px-4 pt-3 pb-8">
-        {!hasProjects ? (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={FolderGit2}
-              title={m.projects.empty.title}
-              description={m.projects.empty.description}
-              action={
-                <ButtonLink variant="primary" href={routes.newProject()}>
-                  <Plus aria-hidden />
-                  {m.common.nav.newProject}
-                </ButtonLink>
-              }
-            />
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-medium">{m.projects.title}</h1>
+            {/*
+              ⚠️ **총계는 필터 전의 값이다** — 탭을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
+              답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.
+            */}
+            <Badge variant="neutral">{all.length}</Badge>
           </div>
-        ) : rows.length === 0 ? (
-          /*
-            ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭을 바꾸면 있다. 같은 빈 화면을 내면
-            사용자가 프로젝트를 잃었다고 읽는다.
-          */
-          <p className="text-muted-foreground py-8 text-center text-sm">
-            {filter === "archived" ? m.projects.filterEmpty.archived : m.projects.filterEmpty.active}
-          </p>
-        ) : (
-          <ul className="divide-border border-border divide-y overflow-hidden rounded-xl border">
-            {rows.map((row) => {
-              const status = projectStatus(row);
-              return (
-                <li key={row.slug}>
-                  <Link
-                    href={routes.project(row.slug)}
-                    className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-4 p-4 focus-visible:ring-[3px] focus-visible:outline-none"
-                  >
-                    <span className="flex min-w-0 flex-col gap-1">
-                      <span className="truncate text-base font-medium">{row.name}</span>
-                      {/*
-                        메타 한 줄 — **역할이 맨 앞이다** (시안 개정). 배지가 아니라 평문인 이유는
-                        역할이 *사실*이고 행마다 늘 있어서다: 배지로 만들면 우측에 상태와 나란히
-                        놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
 
-                        ⚠️ **리포 URL이 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
-                        누르면 GitHub이 아니라 프로젝트로 간다.
-                      */}
-                      <span className="text-muted-foreground truncate text-sm">
-                        {m.projects.role[row.role]}
-                        {" · "}
-                        {`https://github.com/${row.repoOwner}/${row.repoName}`}
-                        {" · "}
-                        {m.projects.memberCount(row.memberCount)}
+          {hasProjects && (
+          <div className="flex items-center justify-between gap-2">
+            <SegmentedLinks
+              label={m.projects.filter.label}
+              current={filter}
+              options={PROJECT_FILTERS.map((value) => ({
+                value,
+                label: m.projects.filter[value],
+                // 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
+                href: routes.projects({ filter: value === "all" ? undefined : value }),
+              }))}
+            />
+            <ButtonLink variant="primary" href={routes.newProject()}>
+              <Plus aria-hidden />
+              {m.common.nav.newProject}
+            </ButtonLink>
+          </div>
+          )}
+        </div>
+
+        {/*
+          ⚠️ **`flex-1`이 여기 있어야 빈 상태가 패널 세로 중앙에 선다** (시안). `EmptyState` 안에
+          `h-full`을 박지 않는 이유는 그 컴포넌트가 표 안에서도 쓰여서다 — 중앙 정렬은 자리마다 다르다.
+        */}
+        <div className="flex flex-1 flex-col px-4 pt-3 pb-8">
+          {!hasProjects ? (
+            <div className="flex flex-1 items-center justify-center">
+              <EmptyState
+                icon={FolderGit2}
+                title={m.projects.empty.title}
+                description={m.projects.empty.description}
+                action={
+                  <ButtonLink variant="primary" href={routes.newProject()}>
+                    <Plus aria-hidden />
+                    {m.common.nav.newProject}
+                  </ButtonLink>
+                }
+              />
+            </div>
+          ) : rows.length === 0 ? (
+            /*
+              ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭을 바꾸면 있다. 같은 빈 화면을 내면
+              사용자가 프로젝트를 잃었다고 읽는다.
+            */
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              {filter === "archived" ? m.projects.filterEmpty.archived : m.projects.filterEmpty.active}
+            </p>
+          ) : (
+            /*
+              ⚠️ **`shrink-0`이 없으면 아래 행이 잘린다.** `overflow-hidden`을 든 flex 자식은 CSS의
+              automatic minimum size가 적용되지 않아 축소 하한이 0이다 — 내용 높이 대신 남은 공간까지
+              줄어들고, 넘친 행은 `<ul>` **안에** 감춰져 바깥 패널에 스크롤조차 생기지 않는다
+              (실측 2026-09-11: 프로젝트 2개·1280×360에서 clientHeight 124 / scrollHeight 161).
+              `overflow-hidden` 자체는 남긴다 — `rounded-xl`이 첫·끝 행의 모서리를 자르는 수단이다.
+            */
+            <ul className="divide-border border-border divide-y shrink-0 overflow-hidden rounded-xl border">
+              {rows.map((row) => {
+                const status = projectStatus(row);
+                return (
+                  <li key={row.slug}>
+                    <Link
+                      href={routes.project(row.slug)}
+                      className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-4 p-4 focus-visible:ring-[3px] focus-visible:outline-none"
+                    >
+                      <span className="flex min-w-0 flex-col gap-1">
+                        <span className="truncate text-base font-medium">{row.name}</span>
+                        {/*
+                          메타 한 줄 — **역할이 맨 앞이다** (시안 개정). 배지가 아니라 평문인 이유는
+                          역할이 *사실*이고 행마다 늘 있어서다: 배지로 만들면 우측에 상태와 나란히
+                          놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
+
+                          ⚠️ **리포 URL이 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
+                          누르면 GitHub이 아니라 프로젝트로 간다.
+                        */}
+                        <span className="text-muted-foreground truncate text-sm">
+                          {m.projects.role[row.role]}
+                          {" · "}
+                          {`https://github.com/${row.repoOwner}/${row.repoName}`}
+                          {" · "}
+                          {m.projects.memberCount(row.memberCount)}
+                        </span>
                       </span>
-                    </span>
-                    {/*
-                      ⚠️ **배지가 항상 하나다** — 갈래는 `projectStatus`가 정한다(보관이 readiness보다
-                      앞이다). 보관을 목록에서 숨기지 않는 7단계 결정은 그대로다: 숨기면 OWNER가
-                      되돌릴 링크에 도달할 길이 없어지고, `Archived` 탭이 생겨도 기본은 `all`이다.
-                    */}
-                    <Badge variant={STATUS_VARIANT[status]} className="shrink-0">
-                      {m.projects.status[status]}
-                    </Badge>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                      {/*
+                        ⚠️ **배지가 항상 하나다** — 갈래는 `projectStatus`가 정한다(보관이 readiness보다
+                        앞이다). 보관을 목록에서 숨기지 않는 7단계 결정은 그대로다: 숨기면 OWNER가
+                        되돌릴 링크에 도달할 길이 없어지고, `Archived` 탭이 생겨도 기본은 `all`이다.
+                      */}
+                      <Badge variant={STATUS_VARIANT[status]} className="shrink-0">
+                        {m.projects.status[status]}
+                      </Badge>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </main>
     </ContentPanel>
   );
 }
