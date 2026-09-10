@@ -25,27 +25,32 @@ export const en = {
     appName: "Malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
-      /** ⚠️ **2인칭으로 통일한다** (SAAS §7.7) — 시안의 `My account`는 구역과 인칭이 섞였다. */
-      yourWork: "Your work",
-      account: "Your account",
-      allProjects: "All projects",
-      newProject: "New project",
+      /**
+       * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(SAAS §7.7)에서
+       * 바뀐 것: `Your work` 구역 라벨이 **사용자 이름**으로, `All projects`→`Projects`,
+       * `Your account`→`Settings`, `Overview`→`Home`, `Languages`→`Locales`,
+       * `Settings`(프로젝트)→`Project settings`. `New project`는 사이드바에서 빠졌다.
+       */
+      projects: "Projects",
+      /**
+       * 사용자 축의 설정(`/account`) — **프로젝트 축의 `Project settings`와 이름으로 갈린다.**
+       * ⚠️ 유저 메뉴도 같은 문구를 쓴다: 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다.
+       */
+      settings: "Settings",
       /** 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
-      home: "Overview",
+      home: "Home",
+      locales: "Locales",
       translations: "Translations",
-      locales: "Languages",
       members: "Members",
       logs: "Logs",
-      settings: "Settings",
+      projectSettings: "Project settings",
+      /** 하단 전역 — `/docs`로 간다. 그 화면은 아직 placeholder이지만 라우트는 실재한다. */
+      help: "Help",
       signOut: "Sign out",
-      collapse: "Collapse sidebar",
-      expand: "Expand sidebar",
-      openMenu: "Open menu",
-      closeMenu: "Close menu",
-      switchProject: "Switch project",
+      /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
+      newProject: "New project",
       userMenu: "Account menu",
-      /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다.
-          ⚠️ 위의 `home`은 프로젝트 Overview 항목이라 이름이 갈려 있어야 한다. */
+      /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
       appHome: "Malmoi home",
     },
     /**

@@ -174,7 +174,7 @@ export default async function ProjectsPage({
                     className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-4 p-4 focus-visible:ring-[3px] focus-visible:outline-none"
                   >
                     <span className="flex min-w-0 flex-col gap-1">
-                      <span className="truncate text-base font-medium">{row.name}</span>
+                      <span className="truncate text-sm font-medium">{row.name}</span>
                       {/*
                         메타 한 줄 — **역할이 맨 앞이다** (시안 개정). 배지가 아니라 평문인 이유는
                         역할이 *사실*이고 행마다 늘 있어서다: 배지로 만들면 우측에 상태와 나란히

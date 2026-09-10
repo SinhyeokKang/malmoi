@@ -71,6 +71,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
         */}
         <Sidebar
           memberships={memberships.map(({ slug, name, role, archivedAt }) => ({ slug, name, role, archived: archivedAt !== null }))}
+          userName={name}
           signOut={signOutAction}
         />
         {children}

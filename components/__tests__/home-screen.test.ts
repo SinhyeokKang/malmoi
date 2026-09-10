@@ -85,7 +85,6 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
    */
   const SITES = [
     "app/(edit)/projects/page.tsx",
-    "components/shell/sidebar.tsx",
     "components/translations/header.tsx",
     "app/(edit)/projects/[slug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
@@ -93,8 +92,15 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
     "app/(edit)/projects/[slug]/logs/page.tsx",
   ];
 
+  /**
+   * ⚠️ **사이드바가 아니라 `lib/shell/nav.ts`다** (8-3). 스위처가 사라지면서 그 호출이 화면에서
+   * 판정층으로 내려갔다 — 셸에서 프로젝트 루트로 가는 자리는 이제 `Home` 항목 하나이고 그 href를
+   * 만드는 것이 `projectSections`다.
+   */
+  const ROOT_LINK_SITES = [...SITES, "lib/shell/nav.ts"];
+
   it("일곱 자리가 전부 `routes.project`를 쓴다", () => {
-    for (const path of SITES) {
+    for (const path of ROOT_LINK_SITES) {
       expect(read(path), path).toMatch(/routes\.project\(/);
     }
   });
