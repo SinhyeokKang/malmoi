@@ -119,8 +119,13 @@ export const en = {
       /** FK가 `SetNull`이라 이력은 남고 저자만 빈다. */
       removed: "Removed user",
     },
-    /** 변경 파일 수. 실패는 관측 자체가 없어 대시 하나다 — 0으로 쓰면 "안 바뀌었다"는 거짓말이다. */
-    changed: (count: number | null): string => (count === null ? "—" : String(count)),
+    /**
+     * 값이 없는 칸. **실패의 변경 수는 0이 아니라 부재다** — 0으로 쓰면 "안 바뀌었다"는 거짓말이고,
+     * 그건 관측이 있었다는 뜻이 된다. 사유가 없는 행도 같은 글자를 쓴다(빈 칸은 열이 깨진 것처럼 보인다).
+     */
+    none: "—",
+    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 SAAS 불변식 9 위반이다. */
+    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count} dropped`),
     empty: {
       title: "No syncs yet",
       description: "This fills in the first time your translations are sent back.",

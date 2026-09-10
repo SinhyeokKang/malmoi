@@ -112,12 +112,12 @@ export default async function LogsPage({
                     {/* 버린 값을 조용히 숨기지 않는다 (SAAS 불변식 9) — 성공한 행에도 붙는다. */}
                     {row.warnings > 0 && (
                       <p className="mt-1">
-                        <Badge variant="warning">{m.translations.publish.dropped}</Badge>
+                        <Badge variant="warning">{m.logs.warnings(row.warnings)}</Badge>
                       </p>
                     )}
                   </Td>
                   <Td>
-                    <span className="text-sm">{m.logs.changed(row.changed)}</span>
+                    <span className="text-sm">{row.changed === null ? m.logs.none : row.changed}</span>
                     {row.prUrl !== null && (
                       <p className="mt-1">
                         <a
@@ -134,7 +134,7 @@ export default async function LogsPage({
                   </Td>
                   <Td>
                     {view.reasonKey === null ? (
-                      <span className="text-muted-foreground text-xs">{m.logs.changed(null)}</span>
+                      <span className="text-muted-foreground text-xs">{m.logs.none}</span>
                     ) : (
                       <span className="text-xs">{syncReasonMessage(view.reasonKey)}</span>
                     )}
