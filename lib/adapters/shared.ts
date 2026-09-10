@@ -18,7 +18,12 @@ export function compareKeys(a: string, b: string): number {
  * 글롭 `pathTemplate`이 가리키는 파일들 — **`multi-locale` 어댑터(`ts-dict`)의 유일한 경로 규칙이다.**
  *
  * ⚠️ **`*`는 `/`를 먹지 않는다.** 먹게 두면 하위 디렉터리의 엉뚱한 파일을 로케일 파일로 읽는다.
- * 정규식 대신 DP로 매칭한다. `*` 이외 문자는 그대로 비교하며 `?`도 리터럴이다.
+ *
+ * ⚠️ **정규식이 아니라 DP다** (2026-09-10, sec-audit-2 발견 35). 전에는 메타문자를 이스케이프해
+ * `RegExp`로 컴파일했는데, 이스케이프는 **주입**을 막을 뿐 인접한 `[^/]*` 여러 개가 매칭 **실패**
+ * 경로에서 만드는 지수 시간을 막지 못했다 — 비용을 키우는 것이 템플릿이 아니라 **매칭 대상 경로의
+ * 길이**여서 템플릿만 재는 예산으로는 상한이 안 섰다. `matchesGlob`은 조합을 탐색하지 않는다.
+ * 지원하는 와일드카드는 `*` 하나이고 `?`를 포함한 나머지는 전부 리터럴이다.
  *
  * ⚠️ **push·pull·survey가 이 함수를 공유한다** (2026-09-04). 셋이 각자 규칙을 들었던 동안 push는
  * 하위 디렉터리와 `.tsx`를 포함하고 pull의 글롭은 둘 다 뺐다 — 그 차이에 걸린 파일은 **키가 DB에
@@ -34,12 +39,28 @@ export function matchGlobPaths(pathTemplate: string, paths: readonly string[]): 
   return paths.filter((p) => matchesGlob(pathTemplate, p)).sort(compareKeys);
 }
 
-/** DP glob and bounded locale captures share the persisted template budget. */
+/** 인접 양자로 컴파일되는 자리 — `*`와 `{locale}` 둘이다. */
 const GLOB_QUANTIFIER = /\*|\{locale\}/g;
+/** 인접 `k`개는 매칭 실패에서 문자열을 k조각으로 나누는 경우를 훑는다 — 실제 템플릿은 1개다. */
 const MAX_GLOB_QUANTIFIERS = 4;
+/** DP 표가 `템플릿 × 경로`라 템플릿 쪽 변을 여기서 묶는다. */
 const MAX_TEMPLATE_LENGTH = 200;
 
-/** Stored templates must pass the same budget as new external input. */
+/**
+ * 이 템플릿으로 매칭해도 되는가 — **아니면 어느 파일도 고르지 않는다** (sec-audit 발견 11).
+ *
+ * 값을 정하는 것은 클라이언트다(`CreateProjectInput` · `PushPayload.format`). 상한을 넘으면 빈
+ * 배열이라 pull이 `fail("the glob matched no files")`로 **시끄럽게** 멈춘다 — 조용히 통과시키는
+ * 것보다 낫고, 어느 파일도 안 고르는 쪽이 안전한 기본값이다.
+ *
+ * ⚠️ **저장된 템플릿에도 걸려야 한다.** 스키마 경계만 좁히면 이미 DB에 있는 값이 야간 cron에서
+ * 그대로 쓰인다 — 그래서 판정이 순수 함수 안에 있다.
+ *
+ * ⚠️ **DP 전환(발견 35) 뒤에도 이 예산이 남는 이유는 갈래가 둘이기 때문이다.** `matchGlobPaths`는
+ * 이제 역추적을 하지 않으니 길이 상한만으로 충분하지만, `lib/onboarding/confirm.ts`의 per-locale
+ * 갈래는 여전히 `RegExp`이고 `{locale}` N개를 인접 캡처 N개로 이어 붙인다. 예산이 두 벌이면
+ * 한쪽만 조용히 열린다 — 그래서 두 갈래가 이 함수 하나를 지난다.
+ */
 export function exceedsGlobBudget(pathTemplate: string): boolean {
   if (pathTemplate.length > MAX_TEMPLATE_LENGTH) return true;
   return (pathTemplate.match(GLOB_QUANTIFIER)?.length ?? 0) > MAX_GLOB_QUANTIFIERS;

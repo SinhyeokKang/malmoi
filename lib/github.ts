@@ -5,7 +5,7 @@
 // `"use client"` 그래프에 들어가면 octokit 때문에 번들이 터져 즉시 드러난다.
 import { App, Octokit } from "octokit";
 import { fail } from "@/lib/failure";
-import { requireRepositoryId } from "@/lib/github-connect/repository-id";
+import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
 import { httpStatus, probeFromError, type ProbeResult } from "@/lib/github-connect/health";
@@ -221,15 +221,21 @@ export async function createGitClient(
   repositoryId: string,
 ): Promise<GitClient> {
   const app = createApp();
-  requireRepositoryId(repositoryId, repositoryId);
-  const numericId = Number(repositoryId);
-  if (!Number.isSafeInteger(numericId)) fail("repository id is not a safe integer");
-  // Scope the token too: a name reused after the check must not grant access to another repo.
-  const auth = await app.octokit.auth({ type: "installation", installationId: Number(installationId), repositoryIds: [numericId] });
-  if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") fail("installation token unavailable");
+  const pinned = requirePinnedRepositoryId(repositoryId);
+  // ⚠️ **토큰 범위도 그 리포 하나로 좁힌다.** 아래 대조는 `GET /repos`가 답한 시점의 사실이라,
+  // 그 뒤에 이름이 다시 옮겨가도 이 토큰으로는 다른 리포를 못 건드린다 (sec-audit-2 발견 34).
+  const auth = await app.octokit.auth({
+    type: "installation",
+    installationId: Number(installationId),
+    repositoryIds: [Number(pinned)],
+  });
+  if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") {
+    fail("installation token unavailable");
+  }
   const octokit = new Octokit({ auth: auth.token });
+  // 저장된 주소가 지금 무엇을 가리키는지 **쓰기 전에** 묻는다. 이름이 재사용됐으면 여기서 멈춘다.
   const identity = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
-  requireRepositoryId(repositoryId, String(identity.data.id));
+  requireSameRepository(pinned, String(identity.data.id));
   const base = { owner, repo };
 
   return {

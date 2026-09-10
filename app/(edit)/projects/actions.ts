@@ -984,7 +984,7 @@ async function checkRepoAccess(
   owner: string,
   repo: string,
 ): Promise<
-  | { status: "ok"; connect: RepoConnect; repositoryId: string | null; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
   | { status: "rejected"; error: OnboardFailure }
 > {
   const token = await ensureUserToken(prisma, userId, new Date());
@@ -1047,7 +1047,9 @@ async function checkRepoAccess(
   return {
     status: "ok",
     connect,
-    repositoryId: probe.repositoryId ?? null,
+    // ⚠️ **null 폴백을 두지 않는다** — 위에서 `probe.status`를 좁혔으므로 여기서 부재를 표현하면
+    // 고정되지 않은 프로젝트를 **새로 만드는** 경로가 생긴다 (sec-audit-2 발견 34).
+    repositoryId: probe.repositoryId,
     installationId: connect.installationId,
     repoOwner: connect.repoOwner,
     repoName: connect.repoName,

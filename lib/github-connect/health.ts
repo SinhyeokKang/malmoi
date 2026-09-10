@@ -18,8 +18,13 @@ export type ProbeResult =
    * @param defaultBranch `GET /repos` 응답에 이미 있다 — 호출을 늘리지 않는다. `Project.baseBranch`를
    *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (design §4).
    *   `planConnectionHealth`는 이 필드를 보지 않는다 — 판정은 그대로다.
+   *
+   * @param repositoryId GitHub이 그 리포에 붙인 **불변 id** (sec-audit-2 발견 34). ⚠️ **optional로 두지
+   *   않는다** — `probeRepo`는 항상 채우는데 타입이 부재를 허용하면 판정 쪽의 `=== null` 검사가
+   *   `undefined`를 조용히 통과시킨다. 부재를 표현할 곳은 **저장된 행**(`Project.repositoryId`)이지
+   *   방금 받은 응답이 아니다.
    */
-  | { status: "ok"; installationId: string; repositoryId?: string; fullName: string; defaultBranch: string }
+  | { status: "ok"; installationId: string; repositoryId: string; fullName: string; defaultBranch: string }
   | { status: "not-installed" }
   | { status: "error" };
 
@@ -28,6 +33,12 @@ export type ConnectionHealth =
   | { status: "app-uninstalled" }
   | { status: "installation-changed"; installationId: string }
   | { status: "repo-moved"; fullName: string }
+  /**
+   * 주소는 그대로인데 **그 자리에 다른 리포가 있다** (sec-audit-2 발견 34). `repo-moved`와 갈라 두는
+   * 이유는 사용자가 할 일이 다르기 때문이다 — 리네임은 새 이름을 확인하고 따라가면 되지만, 이쪽은
+   * **저장된 번역이 남의 리포로 나갈 뻔한 것**이라 어느 리포에 붙일지부터 다시 정해야 한다.
+   */
+  | { status: "repo-replaced" }
   | { status: "ok" }
   | { status: "unknown" };
 
@@ -61,12 +72,15 @@ export function probeFromError(status: number | undefined): "not-installed" | "e
 }
 
 export function planConnectionHealth(input: {
-  project: { installationId: string | null; repositoryId?: string | null; repoOwner: string; repoName: string };
+  project: { installationId: string | null; repositoryId: string | null; repoOwner: string; repoName: string };
   probe: ProbeResult;
 }): ConnectionHealth {
   const { project, probe } = input;
 
   // 저장된 것이 없으면 probe 결과와 무관하게 아직 연결 전이다.
+  // ⚠️ **리포 id도 같은 줄에 있다** (sec-audit-2 발견 34). 그 컬럼이 생기기 전에 만들어진 행은
+  // 이름만 맞는 상태이고, `createGitClient`가 쓰기 직전에 그것을 거부한다 — 여기서 `ok`를 주면
+  // 화면이 초록인데 Publish만 죽는다. 고정은 OWNER의 [다시 연결] 한 번으로 끝난다.
   if (project.installationId === null || project.repositoryId === null) return { status: "not-connected" };
 
   if (probe.status === "error") return { status: "unknown" };
@@ -76,6 +90,11 @@ export function planConnectionHealth(input: {
   if (probe.installationId !== project.installationId) {
     return { status: "installation-changed", installationId: probe.installationId };
   }
+
+  // ⚠️ **이름보다 id가 앞이다** — 이름은 주소이고 id가 정체성이다 (sec-audit-2 발견 34). 리포 A를
+  // 리네임한 뒤 **옛 이름으로 B를 새로 만들면** 아래 이름 비교가 통과하므로, id를 안 보는 판정은
+  // 그 순간 초록을 띄운다. 리네임(같은 id·다른 이름)만 `repo-moved`로 남는다.
+  if (probe.repositoryId !== project.repositoryId) return { status: "repo-replaced" };
 
   // 대소문자만 다른 것을 이동으로 읽지 않는다. GitHub이 정규화해 주지만, 거짓 경고가 사용자에게
   // "다시 연결"을 시키는 쪽이 비교를 접는 것보다 나쁘다.

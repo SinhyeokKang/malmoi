@@ -106,6 +106,7 @@ const HEAD_AT = "2026-09-07T00:00:00Z";
 const PROBE_OK = {
   status: "ok",
   installationId: "77",
+  repositoryId: "1035512",
   fullName: "acme/web",
   defaultBranch: "develop",
 } satisfies ProbeResult;
