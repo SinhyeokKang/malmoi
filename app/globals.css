@@ -46,6 +46,35 @@
    * `bg-auth-canvas`·`from-auth-hero-from`이 **존재하지 않는 유틸**이 되어 조용히 무시되고,
    * 배경은 흰색으로 그라데이션은 통째로 사라진다 — 8-1b가 실제로 그렇게 나갔다.
    */
+  /**
+   * **elevation 둘** — Figma `effect-elevation/low`·`/medium`을 옮겼다 (8-1b).
+   * 색은 시안 토큰 그대로(`#16181b0d`·`#16181b26`)이고 **spread만 키웠다**(0 → 4, −2 → 2):
+   * 패널이 아주 연한 회색 배경 위에 떠 있는 구조라 좁은 그림자는 경계처럼 보이고 **떠 있는
+   * 느낌이 안 난다**(2026-09-10 사용자).
+   *
+   * ⚠️ **Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 그쪽은 검정 기반이라 이
+   * 팔레트에서 탁해진다.
+   */
+  /**
+   * **자간을 전역으로 넓혔다** (2026-09-10 사용자). 행간은 Tailwind 기본 그대로다.
+   *
+   * ⚠️ **본문 weight가 300이라 글자가 가늘다**(§4) — 자간이 좁으면 글자끼리 붙어 읽기 어렵다.
+   * 큰 제목일수록 좁히는 것이 관용이므로 **크기가 커질수록 값을 줄인다**.
+   *
+   * ⚠️ **크기 토큰의 짝으로 정의해야 유틸이 그것을 쓴다.** `body`에 `letter-spacing`만 주면
+   * `tracking-tight` 같은 유틸이 있는 자리에서만 덮이고 나머지는 상속에 기대게 된다.
+   */
+  --text-xs--letter-spacing: 0.02em;
+  --text-sm--letter-spacing: 0.02em;
+  --text-base--letter-spacing: 0.015em;
+  --text-lg--letter-spacing: 0.01em;
+  --text-xl--letter-spacing: 0.005em;
+  --text-2xl--letter-spacing: 0;
+  --text-3xl--letter-spacing: -0.005em;
+
+  --shadow-low: 0 4px 12px 4px rgb(22 24 27 / 0.05);
+  --shadow-medium: 0 6px 16px 2px rgb(22 24 27 / 0.15);
+
   --color-auth-canvas: var(--auth-canvas);
   --color-auth-hero-from: var(--auth-hero-from);
   --color-auth-hero-to: var(--auth-hero-to);
@@ -59,7 +88,14 @@
   /* 팔레트는 slate(푸른 틴트). bugshot-2가 라이트=slate / 다크=neutral로 갈랐던 비대칭은
      라이트 단일이라 필요 없다 (docs/DESIGN.md §2). ⚠️ 값의 **유일한** 진실이 이 파일이다 —
      시드 파일(components.json)은 CLI를 버린 2026-09-08에 함께 삭제됐다. */
-  --radius: 0.625rem;
+  /**
+   * ⚠️ **한 단계 올렸다** (2026-09-10 사용자 — 8-1b): `0.625rem`(10px) → `0.75rem`(12px).
+   * bugshot-2도 shadcn 기본보다 한 단계 둥글게 굴렸고 같은 결을 따른다.
+   *
+   * 파생 넷이 함께 오른다: sm 6→8 · md 8→**10** · lg 10→**12** · xl 14→**16**.
+   * **`rounded-md`(버튼)가 10px, `rounded-lg`(카드·Alert)가 12px**이 되어 시안의 12px와 맞물린다.
+   */
+  --radius: 0.75rem;
 
   --background: hsl(0 0% 100%);
   --foreground: hsl(222.2 84% 4.9%);
@@ -89,8 +125,15 @@
 
   /* ⚠️ ring == border 라서 muted·secondary 표면 위에선 포커스 링이 약하다 (DESIGN.md §7). */
   --border: hsl(214.3 31.8% 91.4%);
-  /** 시안 `#f5f6f7` — 셸 밖 패널의 경계선. 위 `--border`는 그것보다 한 단계 진하다 (8-1b). */
-  --border-subtle: hsl(210 20% 96.5%);
+  /**
+   * 시안 `color-semantic/divider/low` = **`#f5f6f7`**. 위 `--border`(`#e2e8f0`)보다 한 단계 연하다.
+   *
+   * ⚠️ **페이지 배경(`#f5f6f7`)보다 살짝 진하다** (2026-09-10 사용자). 시안은 `divider/low`와
+   * `paper/surface-medium`이 **같은 값**이라 배경 위에서 선이 아예 사라졌는데, 그러면 패널
+   * 가장자리가 그림자에만 기댄다. 한 단계 진하게 두어 윤곽이 남게 한다 — 그래도 `--border`
+   * (`#e2e8f0`)보다는 연해서 선이 도드라지지는 않는다.
+   */
+  --border-subtle: rgb(233 236 239);
   --input: hsl(214.3 31.8% 91.4%);
   --ring: hsl(214.3 31.8% 91.4%);
 
@@ -118,14 +161,19 @@
    * 셸 밖 화면(로그인·초대)의 **바깥 배경** (8-1b). 시안은 탭 두 장이 이 위에 8px 여백을 두고
    * 떠 있는 구조라, 이 색이 없으면 흰 카드와 흰 배경이 붙어 **탭 경계가 사라진다.**
    */
-  --auth-canvas: rgb(246 247 248);
+  /** 시안 `color-semantic/paper/surface-medium` = `#f5f6f7`. **우측 패널의 base도 이 색이다.** */
+  --auth-canvas: rgb(245 246 247);
 
   /**
-   * 우측 장식 패널의 그라데이션 (8-1b). ⚠️ **`from-background to-muted`보다 진하다** — 그 조합은
-   * 흰색에서 시작해 거의 안 보였다(2026-09-10 사용자: "좀 더 강하게").
+   * 우측 장식 패널의 그라데이션 (8-1b).
+   *
+   * ⚠️ **위쪽이 페이지 배경색 그대로이고 아래로 갈수록 파랑이 든다** (2026-09-10 사용자 —
+   * "위쪽은 거의 날아갔으면"). 그래서 `from`이 `--auth-canvas`와 같은 값이다:
+   * **그라데이션이 없으면 우측 패널이 배경과 구분되지 않고, 로그인 패널만 떠 있는 그림이 된다.**
+   * 그것이 이 화면의 의도이므로 위쪽에서 그 상태로 수렴한다.
    */
-  --auth-hero-from: rgb(239 244 255);
-  --auth-hero-to: rgb(205 219 254);
+  --auth-hero-from: rgb(245 246 247);
+  --auth-hero-to: rgb(215 227 254);
 }
 
 /* text-mono 유틸 — 글꼴·13px·18px 셋을 한 클래스로 싣는다. text-[13px] 임의값을 쓰면 행간이

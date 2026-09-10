@@ -88,7 +88,8 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
   | 전 | 후 | 쓰는 곳 |
   |---|---|---|
   | 600 (`font-semibold`) | **500** (`font-medium`) | 셸 밖 카드의 페이지 제목 |
-  | 500 (`font-medium`) | 500 그대로 | 본문·셸 안 제목·라벨·버튼 |
+  | 500 (`font-medium`) | 500 그대로 | 셸 안 제목·라벨 |
+  | — | **400** (`font-normal`) | **버튼 라벨** — 본문(300)과 제목(500) 사이. 500이면 버튼만 도드라진다 |
   | 400 (기본·`font-normal`) | **300** (`body`의 기본값 · `font-light`) | 나머지 전부 |
 
   **`body`에 `font-weight: 300`이 있고 그것이 기본이다.** Pretendard Variable이 `45 920` 범위라
@@ -133,6 +134,22 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 ### 4.3 mono 리거처
 
 mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mono·JetBrains Mono(GitLab Mono의 기반) 같은 리거처 폰트를 도입하면 `font-variant-ligatures: none`을 켠다** — `--`를 2셀에서 1셀로 붕괴시키고, 우리 키에 `_`·`.`이 흔해 같은 계열 문제가 난다. `font-feature-settings`가 아니라 `font-variant-ligatures`를 쓴다(전자는 가산이 아니라 통째로 덮어쓴다). 시스템 스택을 유지하기로 했다(2026-09-07).
+
+## 4.5 elevation — **Tailwind 기본 그림자를 쓰지 않는다** (8-1b)
+
+Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경로는 `shadow-low`·`shadow-medium`
+유틸이다.
+
+| 토큰 | 값 | 시안 |
+|---|---|---|
+| `--shadow-low` | `0 4px 12px 4px rgb(22 24 27 / 0.05)` | 색 그대로, **spread 0 → 4** |
+| `--shadow-medium` | `0 6px 16px 2px rgb(22 24 27 / 0.15)` | 색 그대로, **spread −2 → 2** |
+
+- ⚠️ **spread를 키운 것이 의도다** (2026-09-10 사용자) — 패널이 아주 연한 회색 배경 위에 떠 있는
+  구조라 좁은 그림자는 **경계선처럼** 보이고 떠 있는 느낌이 안 난다.
+- ⚠️ **Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다.
+- ⚠️ **`--shadow-*`는 `:root`에 안 나온다** — Tailwind가 유틸로만 소비하므로 `getComputedStyle`로
+  읽으면 빈 문자열이다. 확인은 `boxShadow` 실효값으로 한다.
 
 ## 5. 간격 · Radius · 레이아웃
 
@@ -272,7 +289,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 | 프리미티브 | 형 (옛 표의 어느 행을 잇나) |
 |---|---|
-| **Button** `primary` | `bg-primary text-primary-foreground hover:bg-primary/90` · `h-8 px-3 text-sm font-medium rounded-md` — 옛 "primary 버튼". **화면당 하나**(확정 액션) |
+| **Button** `primary` | `bg-primary text-primary-foreground hover:bg-primary/90` · `h-8 px-3 text-sm font-normal rounded-md` — 옛 "primary 버튼". **화면당 하나**(확정 액션) |
 | **Button** `default` | `border border-input bg-background hover:bg-accent text-foreground` · 같은 치수 — 옛 "bordered(페이지·툴바)"를 하나로. 툴바도 `h-8`이다 |
 | **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소 |
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |

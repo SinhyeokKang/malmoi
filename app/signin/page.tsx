@@ -6,7 +6,7 @@ import { signIn } from "@/auth";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
-import { Button } from "@/components/ui/button";
+import { ProviderSubmit } from "@/components/signin/provider-button";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
@@ -97,10 +97,11 @@ function ProviderButton({
       }}
     >
       {/* ⚠️ 높이는 `size="lg"`가 든다 (DESIGN §8) — 호출부는 폭·여백만 덧댄다. */}
-      <Button type="submit" variant={variant} size="lg" className="w-full">
-        {provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
-        {label}
-      </Button>
+      <ProviderSubmit
+        label={label}
+        variant={variant}
+        icon={provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+      />
     </form>
   );
 }

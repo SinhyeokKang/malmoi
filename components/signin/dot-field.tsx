@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { dotGrid, dotScale } from "@/lib/signin/dot-field";
+import { autoCursor, dotGrid, dotScale } from "@/lib/signin/dot-field";
 
 /** 시안 값 — 지름 4px(반지름 2), 간격 16px. 커서 반경과 확대치는 목측으로 정했다. */
 const GAP = 16;
@@ -19,6 +19,16 @@ const CURSOR_RADIUS = 180;
  */
 const BASE_ALPHA = 0.08;
 const MAX_ALPHA = 0.3;
+
+/**
+ * 커서가 없을 때의 **자동 순회** (2026-09-10 사용자). 가상 커서가 ㄹ자로 천천히 지나간다.
+ *
+ * ⚠️ **가로·세로가 같은 속도다** — `autoCursor`가 줄바꿈도 같은 px/s로 움직이므로 코너에서
+ * 속도가 튀지 않는다. 너무 빠르면 장식이 아니라 로딩 인디케이터로 읽히고 로그인 버튼에서
+ * 시선을 빼앗는다 — 640px 폭 기준 한 줄에 약 4초다.
+ */
+const AUTO_SPEED = 160;
+const AUTO_ROWS = 5;
 
 /**
  * 로그인 우측의 커서 추종 도트 (8-1b).
@@ -55,7 +65,12 @@ export function DotField({ className }: { className?: string }) {
      */
     const color = getComputedStyle(canvas).getPropertyValue("--signin-dot").trim();
 
-    /** 커서는 캔버스 좌표계다. `null`이면 확대 없이 기본 크기만 그린다. */
+    /**
+     * **실제** 커서. 캔버스 좌표계이고 `null`이면 자동 순회가 대신 든다.
+     *
+     * ⚠️ **실제 커서가 항상 이긴다** — 사용자가 움직이는 동안 가상 커서가 겹쳐 돌면 도트가
+     * 두 군데서 밝아져 어느 쪽이 자기 커서인지 알 수 없다.
+     */
     let pointer: { x: number; y: number } | null = null;
     let frame = 0;
     /** ⚠️ 루프가 도는 동안만 참 — 중복 rAF 예약을 막는다. */
@@ -65,7 +80,30 @@ export function DotField({ className }: { className?: string }) {
     let width = 0;
     let height = 0;
 
+    /**
+     * ⚠️ **`prefers-reduced-motion`이면 rAF를 아예 시작하지 않는다.** 로그인은 첫 진입점이라
+     * 여기서 배터리를 태우지 않는다 — 자동 순회도 애니메이션이므로 그때는 정적 렌더 한 번이다.
+     * `matchMedia`는 **effect 안**에서 읽는다(SSR에 없다).
+     */
+    const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /** 자동 순회의 기준 시각 — effect가 살아 있는 동안 고정이다. */
+    const startedAt = performance.now();
+
+    /**
+     * 지금 도트가 반응해야 할 지점. **실제 커서가 항상 이긴다** — 사용자가 움직이는 동안 가상
+     * 커서가 겹쳐 돌면 도트가 두 군데서 밝아져 어느 쪽이 자기 커서인지 알 수 없다.
+     *
+     * ⚠️ `motionOk`가 거짓이면 **둘 다 없다** — 정적 렌더가 되어야 한다.
+     */
+    const focus = (): { x: number; y: number } | null => {
+      if (pointer !== null) return pointer;
+      if (!motionOk) return null;
+      return autoCursor(performance.now() - startedAt, width, height, AUTO_SPEED, AUTO_ROWS);
+    };
+
     const draw = () => {
+      const spot = focus();
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = color;
       for (const dot of dots) {
@@ -73,7 +111,7 @@ export function DotField({ className }: { className?: string }) {
          * ⚠️ **같은 보간 함수를 두 번 부른다** — 크기용·알파용으로 함수를 따로 만들면 두 곡선이
          * 갈려 커서 주변에 링이 생긴다. 거리는 한 번만 잰다.
          */
-        const distance = pointer === null ? Infinity : Math.hypot(dot.x - pointer.x, dot.y - pointer.y);
+        const distance = spot === null ? Infinity : Math.hypot(dot.x - spot.x, dot.y - spot.y);
         ctx.globalAlpha = dotScale(distance, CURSOR_RADIUS, BASE_ALPHA, MAX_ALPHA);
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dotScale(distance, CURSOR_RADIUS, BASE_RADIUS, MAX_RADIUS), 0, Math.PI * 2);
@@ -84,10 +122,10 @@ export function DotField({ className }: { className?: string }) {
     const loop = () => {
       draw();
       /**
-       * ⚠️ **커서가 나가면 멈춘다.** `mouseleave`에서 `pointer`를 비우고 한 프레임 더 그린 뒤
-       * 루프를 끝낸다 — 정지 화면에서 rAF가 계속 도는 것을 막는다.
+       * ⚠️ **`prefers-reduced-motion`이면 한 프레임만 그리고 끝낸다** — 자동 순회도 애니메이션이다.
+       * 그 외에는 커서가 나가도 **가상 커서가 이어받으므로** 루프가 계속 돈다.
        */
-      if (pointer === null) {
+      if (!motionOk) {
         running = false;
         return;
       }
@@ -118,11 +156,8 @@ export function DotField({ className }: { className?: string }) {
 
     resize();
 
-    /**
-     * ⚠️ **`prefers-reduced-motion`이면 rAF를 아예 시작하지 않는다.** 로그인은 첫 진입점이라
-     * 여기서 배터리를 태우지 않는다. `matchMedia`는 **effect 안**에서 읽는다 — SSR에 없다.
-     */
-    const motionOk = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    /** ⚠️ 커서가 없어도 도는 루프이므로 시작 조건이 여기 하나다. */
+    if (motionOk) start();
 
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
@@ -137,18 +172,13 @@ export function DotField({ className }: { className?: string }) {
       pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top };
       start();
     };
+
+    /** ⚠️ 커서가 나가면 **자동 순회가 이어받는다** — 루프를 멈추지 않는다. */
     const onLeave = () => {
       pointer = null;
-      /** 루프가 이미 멈춰 있으면 한 번 그려서 기본 크기로 되돌린다. */
-      if (!running) draw();
     };
 
     if (motionOk) {
-      /**
-       * ⚠️ **`pointerenter`가 아니라 `pointermove`로 시작한다** — 캔버스 위에서 처음 움직인
-       * 순간이 곧 좌표를 아는 순간이다. 어느 쪽이든 **패널에 한 번도 안 가는 기본 경로**
-       * (좌측 버튼 둘만 누른다)에서는 루프가 돌지 않는다.
-       */
       canvas.addEventListener("pointermove", onMove);
       canvas.addEventListener("pointerleave", onLeave);
     }

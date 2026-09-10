@@ -61,8 +61,13 @@ frame 1920×1080                        frame 1920×1080
 
 - **바깥 padding 8** · **모든 패널 경계 gap 8**. 예외를 만들지 않는다
 - 각 패널은 **radius 12**(리포에서는 `rounded-xl` = 14px, 규약 6) · 옅은 border · 낮은 shadow
-- **바깥 배경은 아주 연한 회색**(`--auth-canvas`), 패널은 **true white** — 그 대비가 없으면
+- **바깥 배경은 `#f5f6f7`**(시안 `paper/surface-medium`), 패널은 **true white** — 그 대비가 없으면
   흰 패널과 흰 배경이 붙어 **경계가 통째로 사라진다**
+- ⚠️ **border(`--border-subtle`)가 배경과 같은 값이다** — 시안에서 `divider/low`와
+  `paper/surface-medium`이 둘 다 `#f5f6f7`이라, 그 선은 **흰 패널 위에서만 보인다**. 경계를 만드는
+  것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리한다
+- ⚠️ **장식 패널의 base도 페이지 배경색이다** — 그라데이션이 없으면 배경과 구분되지 않아
+  **로그인 패널만 떠 있는 그림**이 된다. 그것이 의도이므로 그라데이션 위쪽이 그 색으로 수렴한다
 - ⚠️ **컬럼을 화면에 꽉 채우지 않는다.** 8-1b 초안이 `grid-cols-2`로 꽉 채웠다가 padding·gap·
   radius·border·shadow가 **한꺼번에** 빠졌다 — 하나가 아니라 구조 전체가 사라지는 실수다
 

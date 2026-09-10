@@ -35,7 +35,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         배경에서 떼어내는 것은 **흰색 대비와 shadow**이고 border는 가장자리를 정리할 뿐이다.
         `--border`(`#e2e8f0`)는 한 단계 진해 선이 도드라진다.
       */}
-      <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
+      <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
         {children}
         <Footer />
       </main>
@@ -80,8 +80,8 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
 /**
  * 우측 장식 — 도트 필드 + 문구 둘 + 키비주얼.
  *
- * ⚠️ **패딩이 배치를 잡는다, 정적 폭이 아니다** (2026-09-10 사용자): 좌우 80 · 상하 64(상하는
- * 문구 자리). 키비주얼은 `max-w-[768px]`이고 컨테이너에 맞춰 줄어들어, 1280px에서 우측 컬럼
+ * ⚠️ **패딩이 배치를 잡는다, 정적 폭이 아니다** (2026-09-10 사용자): **사방 80**(`p-20`).
+ * 키비주얼은 `max-w-[768px]`이고 컨테이너에 맞춰 줄어들어, 1280px에서 우측 컬럼
  * 640 − 160 = 480px이라 **넘치지 않는다.**
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
@@ -93,7 +93,7 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  */
 function Decoration() {
   return (
-    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-br px-20 py-16 shadow-sm">
+    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b p-20">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-medium tracking-tight">{m.signIn.hero.top}</p>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dotGrid, dotScale } from "@/lib/signin/dot-field";
+import { autoCursor, dotGrid, dotScale } from "@/lib/signin/dot-field";
 
 /**
  * 로그인 우측 장식의 판정 둘 (8-1b T8 — `features/ui-rework/signin-auth/design.md` §4).
@@ -99,5 +99,73 @@ describe("dotScale — 커서 거리 → 반지름", () => {
   it("반경 0은 기본 크기다 — NaN을 내지 않는다", () => {
     expect(dotScale(0, 0, BASE, MAX)).toBe(BASE);
     expect(dotScale(10, 0, BASE, MAX)).toBe(BASE);
+  });
+});
+
+describe("autoCursor — 커서가 없을 때의 자동 순회", () => {
+  const W = 600;
+  const H = 400;
+  const SPEED = 300; // px/s
+  const ROWS = 3;
+  const ACROSS = (W / SPEED) * 1000; // 2000ms — 한 줄
+  const STEP = H / (ROWS - 1); // 200px
+  const DOWN = (STEP / SPEED) * 1000; // ~667ms — 줄바꿈
+
+  it("첫 줄은 왼쪽에서 오른쪽으로 간다", () => {
+    expect(autoCursor(0, W, H, SPEED, ROWS)).toEqual({ x: 0, y: 0 });
+    expect(autoCursor(ACROSS / 2, W, H, SPEED, ROWS).x).toBeCloseTo(W / 2);
+  });
+
+  /**
+   * ⚠️ **줄 사이에 세로 구간이 있다** — 없으면 `y`가 줄 인덱스로만 정해져 줄이 바뀌는 순간
+   * 순간이동한다. 그 구간에서 `x`는 방금 끝난 줄의 끝에 머문다(코너가 직각으로 이어진다).
+   */
+  it("줄바꿈은 세로로 이어진다 — 순간이동하지 않는다", () => {
+    const atCorner = autoCursor(ACROSS, W, H, SPEED, ROWS);
+    const midDown = autoCursor(ACROSS + DOWN / 2, W, H, SPEED, ROWS);
+    const nextRow = autoCursor(ACROSS + DOWN, W, H, SPEED, ROWS);
+    // 부동소수 오차가 있다 — 진행률이 1에 수렴하는 지점이라 599.999…가 나온다.
+    expect(atCorner.x).toBeCloseTo(W);
+    expect(atCorner.y).toBeCloseTo(0);
+    expect(midDown.x).toBeCloseTo(W);
+    expect(midDown.y).toBeCloseTo(STEP / 2);
+    expect(nextRow.y).toBeCloseTo(STEP);
+  });
+
+  it("둘째 줄은 오른쪽에서 왼쪽으로 온다", () => {
+    const start = autoCursor(ACROSS + DOWN, W, H, SPEED, ROWS);
+    const mid = autoCursor(ACROSS + DOWN + ACROSS / 2, W, H, SPEED, ROWS);
+    expect(start.x).toBeCloseTo(W);
+    expect(mid.x).toBeCloseTo(W / 2);
+  });
+
+  /** 경로가 끊기지 않는다 — 촘촘히 샘플링해 한 프레임의 이동 거리가 튀지 않는지 본다. */
+  it("경로가 연속이다 — 코너에서 속도가 튀지 않는다", () => {
+    const cycle = ROWS * ACROSS + (ROWS - 1) * DOWN;
+    let prev = autoCursor(0, W, H, SPEED, ROWS);
+    let maxJump = 0;
+    for (let t = 16; t <= cycle; t += 16) {
+      const now = autoCursor(t, W, H, SPEED, ROWS);
+      maxJump = Math.max(maxJump, Math.hypot(now.x - prev.x, now.y - prev.y));
+      prev = now;
+    }
+    // 16ms에 speed(300px/s)로 움직이면 4.8px — 여유를 둬도 두 배를 넘으면 순간이동이다.
+    expect(maxJump).toBeLessThan(10);
+  });
+
+  it("주기를 돌면 처음으로 돌아온다", () => {
+    const cycle = ROWS * ACROSS + (ROWS - 1) * DOWN;
+    expect(autoCursor(cycle, W, H, SPEED, ROWS)).toEqual(autoCursor(0, W, H, SPEED, ROWS));
+  });
+
+  it("퇴화 입력은 원점이다 — NaN이나 무한 루프를 만들지 않는다", () => {
+    expect(autoCursor(1000, 0, H, SPEED, ROWS)).toEqual({ x: 0, y: 0 });
+    expect(autoCursor(1000, W, H, 0, ROWS)).toEqual({ x: 0, y: 0 });
+    expect(autoCursor(1000, W, H, SPEED, 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  /** 줄이 하나면 `(rows - 1)`이 0이라 나눗셈이 무너진다 — 세로 중앙으로 접는다. */
+  it("한 줄이면 세로 중앙이다", () => {
+    expect(autoCursor(0, W, H, SPEED, 1).y).toBe(H / 2);
   });
 });

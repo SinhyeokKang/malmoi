@@ -42,3 +42,63 @@ export function dotScale(distance: number, radius: number, base: number, max: nu
   if (radius <= 0 || distance >= radius) return base;
   return base + (max - base) * (1 - distance / radius);
 }
+
+/**
+ * 자동 재생용 **가상 커서 위치** — 경과 시간(ms) → 좌표 (8-1b).
+ *
+ * ⚠️ **ㄹ자(boustrophedon)다** — 왼→오른, 한 줄 내려가, 오른→왼. 대각선이나 원형은 "무엇이
+ * 지나간다"로 안 읽히고 화면을 가로지르는 스캔이라야 도트가 순서대로 밝아진다.
+ *
+ * ⚠️ **줄과 줄 사이에 세로 전환 구간이 있다** — 없으면 `y`가 줄 인덱스로만 정해져 줄이 바뀌는
+ * 순간 **순간이동**한다(2026-09-10 사용자: "열 이동은 연결이 안 됨"). 가로 이동과 세로 이동을
+ * 번갈아 하면 경로가 끊기지 않는다.
+ *
+ * ⚠️ **순수 함수인 것이 요지다.** 시간을 인자로 받으므로 rAF 없이 값만 검증할 수 있고,
+ * 컴포넌트는 `performance.now()`를 넣어 부르기만 한다.
+ *
+ * @param elapsed 시작 후 경과 ms
+ * @param width   순회할 폭
+ * @param height  순회할 높이
+ * @param speed   px/초 — 가로·세로 같은 속도로 움직여야 코너에서 속도가 안 튄다
+ * @param rows    세로로 몇 줄을 훑는가
+ */
+export function autoCursor(
+  elapsed: number,
+  width: number,
+  height: number,
+  speed: number,
+  rows: number,
+): Dot {
+  if (width <= 0 || height <= 0 || speed <= 0 || rows <= 0) return { x: 0, y: 0 };
+  if (rows === 1) return { x: legWithin(elapsed, width, speed, 0), y: height / 2 };
+
+  /** 줄 간격 — 세로 전환 구간의 길이이기도 하다. */
+  const step = height / (rows - 1);
+  const acrossMs = (width / speed) * 1000;
+  const downMs = (step / speed) * 1000;
+
+  /** 한 줄(가로) + 한 번의 줄바꿈(세로)이 한 묶음이고, 마지막 줄 뒤에는 줄바꿈이 없다. */
+  const cycle = rows * acrossMs + (rows - 1) * downMs;
+  const t = ((elapsed % cycle) + cycle) % cycle;
+
+  let remaining = t;
+  for (let row = 0; row < rows; row++) {
+    if (remaining < acrossMs) {
+      return { x: legWithin(remaining, width, speed, row), y: row * step };
+    }
+    remaining -= acrossMs;
+    if (row === rows - 1) break;
+    if (remaining < downMs) {
+      // 세로 전환 — x는 방금 끝난 줄의 끝에 머문다(그래야 코너가 직각으로 이어진다).
+      return { x: row % 2 === 0 ? width : 0, y: row * step + (remaining / downMs) * step };
+    }
+    remaining -= downMs;
+  }
+  return { x: (rows - 1) % 2 === 0 ? width : 0, y: height };
+}
+
+/** 한 줄 안에서의 가로 위치. 홀수 줄은 오른쪽에서 왼쪽으로 — 그것이 ㄹ자를 만든다. */
+function legWithin(elapsed: number, width: number, speed: number, row: number): number {
+  const progress = Math.min(1, (elapsed / 1000) * speed / width);
+  return row % 2 === 0 ? progress * width : width - progress * width;
+}
