@@ -255,9 +255,9 @@ MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘�
 깨진다. 이건 MVP부터의 규칙이다.
 
 **가운데 토큰은 수명이 짧고 회전한다** (`lib/github-connect/token.ts`·`token-store.ts`). 8시간 만료 +
-refresh **1회용**이고, 원문이 `Account` 행에 눕는다. `planTokenUse`가 `use | refresh | reauthorize`를
+refresh **1회용**이며 credential 구현에서는 `Account`에 AES-GCM 암호문을 저장한다(운영 전환은 대기). `planTokenUse`가 `use | refresh | reauthorize`를
 가르되 만료 판정에 **60초 여유**를 둔다(경계에서 발급받아 곧바로 죽는 토큰을 쓰지 않으려고). 회전 결과는
-**읽었던 `refresh_token`을 `where`에 넣은 조건부 `updateMany`**로 즉시 쓰고, count 0이면 다른 요청이
+**읽었던 refresh 암호문·userId·providerAccountId를 `where`에 넣은 조건부 `updateMany`**로 즉시 쓰고, count 0이면 다른 요청이
 먼저 돌린 것이므로 재조회한다 — 초대 토큰의 단일 사용(§5.6)과 같은 형태다.
 
 ⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없어 refresh 만료·인가 철회를 미리 볼 수 없다** —
@@ -277,8 +277,7 @@ Cascade라 **User 삭제가 연결 토큰까지 지운다**(§6이 어댑터 이
 연결은 브라우저가 GitHub을 다녀오는 왕복이라 **초대 토큰(§5.6)과 같은 급의 서명 축**이 필요하다
 (`lib/github-connect/state.ts`).
 
-- **HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨(`"malmoi-github-state"`). ⚠️ 세션 서명과 **키를
-  공유**하므로 회전하면 진행 중인 연결이 전부 죽는다.
+- **HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨(`"malmoi-github-state"`). Auth.js의 OAuth/CSRF 보호와 키를 공유하므로 회전하면 진행 중인 연결이 무효화된다. DB 세션 digest는 이 키를 쓰지 않으며 기존 세션 폐기는 별개다.
 - **10분 만료 · 서명은 `timingSafeEqual`**(길이 선검사) **· nonce는 단순 대조**(서명이 이미 검증됐다). 판정 순서는 서명 → nonce → 만료 →
   사용자로, **만료를 사용자보다 앞에 둬** 만료된 state가 누구 것이었는지 말하지 않는다.
 - **목적지를 서명 payload에 싣는다** — 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
@@ -322,7 +321,7 @@ Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 �
 사용자가 명시적으로 "GitHub 연결"을 실행한 경우에만 같은 User에 `github-app` Account를 추가한다.
 로그인용 github/google Account의 추가 연결은 허용하지 않는다. `safePrismaAdapter`가 User 행을
 잠근 뒤 검사하고, OAuth callback이 쓰는 세션 조회부터 만료를 검사한다. 신규 로그인 Account에는
-식별자 네 필드만 저장한다. 기존 토큰 정리와 암호화는 credential-storage 후속 전환이다.
+식별자 네 필드만 저장한다. credential-storage의 로컬 저장 보호 구현·격리 PostgreSQL 검증은 준비됐으며 배포·실물 OAuth·운영 데이터 전환은 미완료다.
 
 잘못된 자동 병합은 불편이 아니라 **계정 탈취**다 — provider가 반환하는 이메일이 검증됐다는 보장이
 provider마다 다르다.
@@ -355,7 +354,7 @@ provider마다 다르다.
 - membership은 이메일이 아니라 **`User.id`를 참조**한다 (이메일 주소는 재할당될 수 있다).
   같은 이유로 `Translation.updatedBy`도 2026-09-05부터 **`User.id`**다 (전에는 GitHub 핸들이었다).
 
-⚠️ **`(projectId, email)`은 unique가 아니라 index다.** unique로 걸면 수락·만료된 행이 이메일을
+⚠️ **credential 구현의 `(projectId, emailLookup)`은 unique가 아니라 index다.** unique로 걸면 수락·만료된 행이 이메일을
 점유해 **재초대가 막힌다.** 대신 `createInvitation`이 미수락 행을 먼저 만료시켜 **토큰을 회전**시킨다 — 회전과 생성은 `Project` 행을 잠근 한 트랜잭션이다(2026-09-06). 갈라 두면 동시 발급이 유효 링크를 둘 남긴다.
 
 ⚠️ **토큰이 URL 경로에 실린다** — 브라우저 히스토리·리퍼러·전달된 링크에 남는다. **단일 사용과 7일
@@ -399,7 +398,7 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 
 | 테이블 | 언제 | 왜 |
 |---|---|---|
-| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider를 안 쓰므로 **항상 비어 있다** — 어댑터가 그 델리게이트를 부르므로 테이블은 있어야 한다. ⚠️ **`Account`는 4단계부터 소유자가 둘이다** — 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)이 provider 값으로 갈린 같은 테이블이고, **4단계의 스키마 변화는 0이다**(§5.4) |
+| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider에는 쓰지 않으며, 현재 로컬 구현에서는 전체 세션 회수의 5분 확인 요청을 목적 접두로 분리해 저장한다(아래 전체 세션 회수 절). ⚠️ **`Account`는 4단계부터 소유자가 둘이다** — 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)이 provider 값으로 갈린 같은 테이블이고, **4단계의 스키마 변화는 0이다**(§5.4) |
 | `ProjectMember` | 2단계 ✅ | 권한의 유일한 정본 |
 | `ProjectInvitation` | 2단계 ✅ | 수락 전 상태. `tokenHash` unique |
 | `SyncRun` | 7단계 | 실행 이력·idempotency·동시 실행 차단 |
@@ -1240,8 +1239,27 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
   코드 구문 검사는 완전한 실행 시간 격리를 보장하지 않는다.
 - **Publish 정합성**: 번역 값과 완료 기준 최대 수정 시각은 같은 RepeatableRead 스냅샷이다.
   `SyncRun` 실행 잠금이 막는 중복 실행과 구분한다.
-- **후속 정책**: 리포 연결자 admin 권한 요구(#37), 재인증·전체 세션 회수 UI(#38)는 이번 패치에
-  포함하지 않는다. 암호화 전환과 기존 로그인 토큰 정리는 credential-storage에서 이어간다.
+- **후속 정책**: 리포 연결자 admin 권한 추가 요구(#37)는 2026-09-10 사용자 결정으로 제외한다. 전체 세션 회수(#38)는 별도 후속으로 로컬 구현했다(아래 절). credential-storage의 로컬 구현과 운영 전환 상태는 아래 저장 보호 절 및 feature 태스크에서 추적한다.
 
 자동 검증과 실제 DB/OAuth/GitHub 검증의 구분은
 [sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)에 남긴다. 이 절은 프로덕션 반영 선언이 아니다.
+
+
+## Credential 저장 보호 — 구현과 운영 전환 (2026-09-10)
+
+코드 리뷰를 위한 dev 통합은 사용자 승인으로 진행하며 `vercel.json`의 `git.deploymentEnabled.dev=false`로 자동 Preview 배포를 보류한다. 키/DB 전환과 실물 검증 전에는 해제하지 않는다.
+
+현재 credential 코드에서 유효 어댑터는 safePrismaAdapter를 확장한 credentialAdapter다. 추가 로그인 계정 거부·User 잠금은 보존하며 세션은 도메인 분리 SHA-256으로 저장한다. 브라우저와 Auth.js 내부에서만 원문을 쓰고 DB digest 쿠키는 거부한다. 24시간/1시간 슬라이딩과 요청별 membership 판정은 그대로다. 기존 원문 세션은 차단 전환에서 폐기한다.
+
+User.email/name/image와 모든 초대 email은 서버에서 암·복호화한다. User.emailLookup은 전체 사용자 범위 HMAC unique, 초대 lookup은 프로젝트 범위 일반 인덱스다. 타인 이메일은 기존 서버 마스킹을 유지하며 손상/키 오류는 unavailable로 표시한다. GitHub refresh는 쓰기 키를 먼저 검증한 뒤 공급자를 호출하고 토큰 쌍을 암호화해 저장한다.
+
+R1은 nullable lookup·새 인덱스만 준비하고 기존 평문 코드가 계속 동작한다. R2는 전체 트래픽/구 배포/진행 중 writer를 차단한 뒤 backfill, 전건 검증, NOT NULL 및 옛 email 인덱스 제거, 새 앱 활성화를 수행한다. **공유 dev/prod 전환과 실제 브라우저 두 공급자 검증은 아직 완료하지 않았다.** [운영 절차](features/credential-storage/operations.md)·[검증 현황](features/credential-storage/tasks.md)을 따른다.
+
+
+## 전체 세션 회수 — sec-audit-2 #38 (2026-09-10, 로컬 구현)
+
+`/account`의 Sign out everywhere는 서버가 고른 기존 로그인 공급자의 새 OAuth 확인을 거친다. 같은 providerAccountId·기존 세션·state·5분 nonce가 일치해야 해당 사용자 Session 전부를 삭제한다. 현재 기기도 포함하며 확인 요청 소비와 삭제는 한 트랜잭션이다. 다른 사용자·멤버십·초대·GitHub 연결에는 손대지 않는다. DB 실패는 성공으로 표시하지 않는다.
+
+Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 두 화면(`/`, `/invite/[token]`)은 남은 회수 쿠키를 먼저 지운다. 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
+
+공급자 SSO는 허용한다. 계정 선택을 요청하지만 비밀번호/MFA 재입력 강제를 보장하지 않는다. 취소·만료·다른 계정·장애를 화면에서 구분하며 다시 시작할 수 있다. **실제 공급자 두 종류와 두 브라우저·키보드 검증, 배포는 대기**다. [스펙](features/session-revocation/spec.md)·[검증 기록](features/session-revocation/tasks.md)을 따른다.

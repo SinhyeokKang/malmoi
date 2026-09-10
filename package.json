@@ -27,7 +27,12 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "sync:agents": "node scripts/sync-agents.mjs",
-    "sync:agents:check": "node scripts/sync-agents.mjs --check"
+    "sync:agents:check": "node scripts/sync-agents.mjs --check",
+    "credentials:dev": "CREDENTIAL_TARGET=dev NODE_OPTIONS=--conditions=react-server tsx scripts/credentials.ts",
+    "credentials:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/credentials.ts",
+    "test:credentials:postgres": "vitest run --config vitest.credentials.config.ts",
+    "credentials:finalize:dev": "CREDENTIAL_TARGET=dev NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
+    "credentials:finalize:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

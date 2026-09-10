@@ -486,3 +486,10 @@ POSTMORTEM 2026-09-05의 "링크 생성기"는 번역 페이지 로컬 `qs()`였
 
 ⚠️ **3중 검증(`planRepoConnect`)은 약해지지 않았다** — 순서만 바뀌었고 빈 목록을 통과로 읽지 않는
 fail-closed가 그대로다. 한 설치의 실패가 나머지를 막지 않는 것도 `listConnectableRepos`와 같다.
+
+
+## Credential 저장 보호 연결 (2026-09-10 구현, 운영 전환 대기)
+
+callback의 User 잠금·소유자 조건은 유지하며 `github-app` access/refresh를 독립 토큰 키의 AES-256-GCM envelope로 저장한다. AAD는 사용자·provider·providerAccountId·필드를 묶는다. token-store는 GitHub 호출 직전에만 복호화하고, 일회용 refresh 소비 전에 active 쓰기 키를 검증한다. 갱신 CAS는 **조회한 refresh 암호문 원본 + userId + providerAccountId**이며 새 토큰 쌍과 expires_at을 함께 쓴다. CAS 실패는 승자 재조회이며 연결을 다시 생성하지 않는다.
+
+키/인증 복호화 오류는 unavailable이고 자동 평문 fallback·자동 재연결은 없다. 로그에는 ref·단계·HTTP 상태 또는 unavailable만 남긴다. 키 회전은 트래픽과 진행 중 refresh를 차단한 상태에서 수행한다. 현재 로컬 코드·격리 PostgreSQL 검증과 실제 서비스 전환은 별개다. [credential 스펙](../credential-storage/spec.md)·[운영 절차](../credential-storage/operations.md)가 그 경계를 정한다.

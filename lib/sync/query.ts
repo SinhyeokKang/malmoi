@@ -1,3 +1,6 @@
+import { decodeUser, readable } from "@/lib/credentials/records";
+import { validatePiiReadKeys } from "@/lib/credentials/storage";
+import { m } from "@/lib/i18n";
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -62,11 +65,17 @@ export async function loadSyncRuns(
       warnings: true,
       prUrl: true,
       // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
-      requester: { select: { name: true, email: true } },
+      requester: { select: { id: true, name: true, email: true, emailLookup: true } },
     },
   });
 
-  const page = rows.slice(0, SYNC_LOG_PAGE_SIZE);
+  // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
+  validatePiiReadKeys();
+  const page = rows.slice(0, SYNC_LOG_PAGE_SIZE).map(r => ({
+    ...r,
+    requester: r.requester === null ? null : readable(() => decodeUser(r.requester!)),
+    hadRequester: r.requester !== null,
+  }));
   const labels = maskedEmailLabels(page.map((r) => r.requester?.email ?? ""));
   const last = page.at(-1);
   return {
@@ -76,9 +85,11 @@ export async function loadSyncRuns(
       trigger: r.trigger,
       errorCode: r.errorCode,
       requester:
-        r.requester === null
+        !r.hadRequester
           ? null
-          : { name: r.requester.name, emailLabel: r.requester.email ? (labels[i] ?? null) : null },
+          : r.requester === null
+            ? { name: null, emailLabel: m.common.unreadable }
+            : { name: r.requester.name, emailLabel: r.requester.email ? (labels[i] ?? null) : null },
       startedAt: r.startedAt,
       finishedAt: r.finishedAt,
       changed: r.changed,

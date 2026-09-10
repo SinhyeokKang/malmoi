@@ -1,5 +1,7 @@
 "use server";
 
+import { decodeUser, decodeInvitation } from "@/lib/credentials/records";
+
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
 import type { InviteError } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
@@ -32,67 +34,73 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
 
-  const prisma = getPrisma();
+  try {
+    const prisma = getPrisma();
 
-  // `User.email`은 로그인 시점에 provider가 검증한 값이다 (ARCHITECTURE §6.2) — 그래서 여기서
-  // 다시 provider를 부를 필요가 없다.
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-  if (user === null) return { ok: false, error: "unauthorized" };
+    // `User.email`은 로그인 시점에 provider가 검증한 값이다 (ARCHITECTURE §6.2) — 그래서 여기서
+    // 다시 provider를 부를 필요가 없다.
+    const storedUser = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, emailLookup: true } });
+    const user = storedUser === null ? null : decodeUser(storedUser);
+    if (user === null) return { ok: false, error: "unauthorized" };
 
-  const invitation = await prisma.projectInvitation.findUnique({
-    where: { tokenHash: hashInviteToken(input.token) },
-    select: { id: true, projectId: true, email: true, role: true, expiresAt: true, acceptedAt: true },
-  });
-
-  const now = new Date();
-  const plan = planInvitationAccept({
-    invitation,
-    verifiedEmail: user.email,
-    now,
-  });
-  if (plan !== "ok") return { ok: false, error: plan };
-  // `plan === "ok"`는 행이 있었다는 뜻이다 — `not-found`가 그 앞에서 걸린다.
-  if (invitation === null) return { ok: false, error: "not-found" };
-
-  const project = await prisma.project.findUnique({
-    where: { id: invitation.projectId },
-    select: { slug: true },
-  });
-  if (project === null) return { ok: false, error: "not-found" };
-
-  // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitation`이 그 조합을 막지만 **막혀 있다는 것이 코드가
-  // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
-  // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
-  const already = await prisma.projectMember.findUnique({
-    where: { projectId_userId: { projectId: invitation.projectId, userId } },
-    select: { userId: true },
-  });
-  if (already !== null) return { ok: false, error: "already-member" };
-
-  const accepted = await prisma.$transaction(async (tx) => {
-    // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
-    // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.
-    // ⚠️ **만료도 소비 조건에 넣는다.** 위 판정은 조회 시점의 행을 봤다 — 그 뒤 OWNER가 재초대로 이 행을
-    // 만료시켰으면(`createInvitation`의 회전) 옛 role로 멤버가 되면 안 된다 (Codex 감사 2026-09-06 #3).
-    const claimed = await tx.projectInvitation.updateMany({
-      where: { id: invitation.id, acceptedAt: null, expiresAt: { equals: invitation.expiresAt, gt: new Date() } },
-      data: { acceptedAt: new Date() },
+    const storedInvitation = await prisma.projectInvitation.findUnique({
+      where: { tokenHash: hashInviteToken(input.token) },
+      select: { id: true, projectId: true, email: true, emailLookup: true, role: true, expiresAt: true, acceptedAt: true },
     });
-    if (claimed.count === 0) return false;
 
-    await tx.projectMember.create({
-      data: { projectId: invitation.projectId, userId, role: invitation.role },
+    const invitation = storedInvitation === null ? null : decodeInvitation(storedInvitation);
+    const now = new Date();
+    const plan = planInvitationAccept({
+      invitation,
+      verifiedEmail: user.email,
+      now,
     });
-    return true;
-  });
+    if (plan !== "ok") return { ok: false, error: plan };
+    // `plan === "ok"`는 행이 있었다는 뜻이다 — `not-found`가 그 앞에서 걸린다.
+    if (invitation === null) return { ok: false, error: "not-found" };
 
-  if (!accepted) {
-    // 경합에서 진 쪽 — 왜 졌는지는 행을 다시 봐야 안다. 수락됨이 만료보다 앞이다 (`planInvitationAccept`와 같은 순서).
-    const after = await prisma.projectInvitation.findUnique({
-      where: { id: invitation.id },
-      select: { acceptedAt: true },
+    const project = await prisma.project.findUnique({
+      where: { id: invitation.projectId },
+      select: { slug: true },
     });
-    return { ok: false, error: after?.acceptedAt != null ? "already-accepted" : "expired" };
+    if (project === null) return { ok: false, error: "not-found" };
+
+    // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitation`이 그 조합을 막지만 **막혀 있다는 것이 코드가
+    // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
+    // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
+    const already = await prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId: invitation.projectId, userId } },
+      select: { userId: true },
+    });
+    if (already !== null) return { ok: false, error: "already-member" };
+
+    const accepted = await prisma.$transaction(async (tx) => {
+      // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
+      // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.
+      // ⚠️ **만료도 소비 조건에 넣는다.** 위 판정은 조회 시점의 행을 봤다 — 그 뒤 OWNER가 재초대로 이 행을
+      // 만료시켰으면(`createInvitation`의 회전) 옛 role로 멤버가 되면 안 된다 (Codex 감사 2026-09-06 #3).
+      const claimed = await tx.projectInvitation.updateMany({
+        where: { id: invitation.id, acceptedAt: null, expiresAt: { equals: invitation.expiresAt, gt: new Date() } },
+        data: { acceptedAt: new Date() },
+      });
+      if (claimed.count === 0) return false;
+
+      await tx.projectMember.create({
+        data: { projectId: invitation.projectId, userId, role: invitation.role },
+      });
+      return true;
+    });
+
+    if (!accepted) {
+      // 경합에서 진 쪽 — 왜 졌는지는 행을 다시 봐야 안다. 수락됨이 만료보다 앞이다 (`planInvitationAccept`와 같은 순서).
+      const after = await prisma.projectInvitation.findUnique({
+        where: { id: invitation.id },
+        select: { acceptedAt: true },
+      });
+      return { ok: false, error: after?.acceptedAt != null ? "already-accepted" : "expired" };
+    }
+    return { ok: true, slug: project.slug };
+  } catch {
+    return { ok: false, error: "unavailable" };
   }
-  return { ok: true, slug: project.slug };
 }

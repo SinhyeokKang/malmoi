@@ -1,3 +1,6 @@
+import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
+import { decodeInvitation } from "@/lib/credentials/records";
+import { credentialIO } from "@/lib/credentials/access";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -42,11 +45,15 @@ export default async function InvitePage({
   const { e } = await searchParams;
   const session = await readSession();
   // 세션을 못 읽었으면 초대 행도 못 읽는다(같은 DB) — 비로그인 화면으로 접지 않고 장애라고 말한다.
-  if (session.status === "unavailable") return <Notice>{m.errors.invite.unavailable}</Notice>;
+  if (session.status === "unavailable") return <Notice retryToken={token}>{m.errors.invite.unavailable}</Notice>;
 
-  const invitation = await getPrisma().projectInvitation.findUnique({
+  const invitation = await credentialIO(async () => {
+    const row = await getPrisma().projectInvitation.findUnique({
     where: { tokenHash: hashInviteToken(token) },
     select: {
+      id: true,
+      projectId: true,
+      emailLookup: true,
       email: true,
       role: true,
       expiresAt: true,
@@ -54,6 +61,9 @@ export default async function InvitePage({
       project: { select: { name: true } },
     },
   });
+    return row === null ? null : decodeInvitation(row);
+  }).catch(() => undefined);
+  if (invitation === undefined) return <Notice retryToken={token}>{m.errors.invite.unavailable}</Notice>;
 
   if (invitation === null) return <Notice>{m.errors.invite["not-found"]}</Notice>;
   if (invitation.acceptedAt !== null) return <Notice>{m.errors.invite["already-accepted"]}</Notice>;
@@ -154,6 +164,7 @@ function ProviderButton({
     <form
       action={async () => {
         "use server";
+        await clearRevocationCookies();
         await signIn(provider, { redirectTo: routes.invite(token) });
       }}
     >
@@ -165,10 +176,13 @@ function ProviderButton({
 }
 
 /** 행을 읽자마자 갈리는 셋 — 사용자가 할 수 있는 일이 없으므로 버튼을 두지 않는다. */
-function Notice({ children }: { children: ReactNode }) {
+function Notice({ children, retryToken }: { children: ReactNode; retryToken?: string }) {
   return (
     <Card>
       <Alert variant="danger">{children}</Alert>
+      {retryToken !== undefined && <form method="get" action={routes.invite(retryToken)}>
+        <Button type="submit">{m.common.retry}</Button>
+      </form>}
     </Card>
   );
 }

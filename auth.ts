@@ -1,9 +1,13 @@
-import { safePrismaAdapter } from "@/lib/auth/safe-adapter";
+import { credentialAdapter } from "@/lib/credentials/adapter";
+import { refreshVerifiedEmail } from "@/lib/credentials/access";
+import { randomBytes } from "node:crypto";
 import NextAuth from "next-auth";
+import { authorizeRevocation, withRevocation, revocationAuthCookies } from "@/lib/session-revocation/http";
+import type { NextRequest } from "next/server";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-import { freshVerifiedEmail, planEmailRefresh, verifiedEmailFrom } from "@/lib/auth/email";
+import { freshVerifiedEmail, verifiedEmailFrom } from "@/lib/auth/email";
 import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
@@ -19,6 +23,7 @@ import { getPrisma } from "@/lib/db";
  * 검증 실패는 빈 문자열이고, `signIn`이 그때 거부한다.
  */
 const github = GitHub({
+  checks: ["pkce", "state"],
   userinfo: {
     url: "https://api.github.com/user",
     async request({ tokens }: { tokens: { access_token?: unknown } }) {
@@ -36,6 +41,7 @@ const github = GitHub({
 });
 
 const google = Google({
+  checks: ["pkce", "state"],
   profile(profile) {
     return {
       id: String(profile.sub),
@@ -71,8 +77,9 @@ const google = Google({
  * SAAS §5.5는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
  * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
  */
-export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
-  adapter: safePrismaAdapter(getPrisma()),
+const authConfig = NextAuth(async () => ({
+  adapter: credentialAdapter(getPrisma()),
+  cookies: revocationAuthCookies(),
   providers: [github, google],
   /**
    * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
@@ -81,7 +88,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
    * 지워 blur 저장이 미들웨어에 걸렸다 (Codex 감사 2026-09-06 #6). `updateAge` 1시간이면 활동 중인 세션은
    * 한 시간에 한 번만 DB 쓰기로 연장된다.
    */
-  session: { strategy: "database", maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
+  session: { strategy: "database", generateSessionToken: () => randomBytes(32).toString("base64url"), maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
   // 거부는 우리 로그인 화면에서 보인다 — 기본 `/api/auth/error`는 디자인 밖의 무스타일 페이지다.
   pages: { signIn: "/", error: "/" },
   /**
@@ -94,12 +101,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
     error(error) {
       // ⚠️ **오류 객체를 통째로 찍지 않는다** (2026-09-09, sec-audit 발견 24). `console.error(error)`는
       // `cause` 사슬까지 펼쳐, 아래 계층(Prisma·어댑터)이 인자를 품은 경우 그것이 Vercel 로그에
-      // 남는다. `lib/github-connect/log.ts`가 `error.message`만 쓰는 것과 형을 맞춘다.
+      // 남는다. `lib/github-connect/log.ts`처럼 메시지·cause 없이 고정 분류만 기록한다.
       //
       // ⚠️ **`noteAuthError`는 좁히지 않는다** — 그 판정은 `error.type`을 보므로 **출력만** 줄인다
       // (POSTMORTEM 2026-09-06: 이 통로가 장애를 밖으로 알리는 유일한 자리다).
       const type = error instanceof Error ? error.name : typeof error;
-      console.error("[auth]", type, error instanceof Error ? error.message : String(error));
+      console.error("[auth]", type);
       noteAuthError(error);
     },
   },
@@ -128,6 +135,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
      * 저장된 값이 오염되지는 않는다.
      */
     async signIn({ user, account, profile }) {
+      const revocation = await authorizeRevocation(getPrisma(), account);
+      if (revocation !== null) return revocation;
       // provider 설정이 검증에 실패하면 email을 비워 보낸다 (`githubUserinfo`).
       if (typeof user.email !== "string" || user.email === "") return false;
 
@@ -140,26 +149,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
       const provider = account?.provider;
       const providerAccountId = account?.providerAccountId;
       if (provider === undefined || providerAccountId === undefined) return true;
-      const prisma = getPrisma();
-      const linked = await prisma.account.findUnique({
-        where: { provider_providerAccountId: { provider, providerAccountId } },
-        select: { userId: true, user: { select: { email: true } } },
-      });
-      if (linked === null) return true;
-
-      const fresh = freshVerifiedEmail(provider, profile);
-      const taken =
-        fresh === null ? null : await prisma.user.findUnique({ where: { email: fresh }, select: { id: true } });
-      const plan = planEmailRefresh({
-        stored: linked.user.email,
-        fresh,
-        takenByOther: taken !== null && taken.id !== linked.userId,
-      });
-      if (plan === "update" && fresh !== null) {
-        await prisma.user.update({ where: { id: linked.userId }, data: { email: fresh } });
-      } else if (plan === "conflict") {
-        // 주소는 로그에 남기지 않는다 — 어느 사용자인지는 id로 충분하다.
-        console.warn(`[auth] user ${linked.userId}: 검증 이메일이 바뀌었지만 다른 사용자가 쓰는 주소라 갱신하지 않았다`);
+      try {
+        await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
+      } catch {
+        return "/?error=Unavailable";
       }
       return true;
     },
@@ -177,3 +170,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
     },
   },
 }));
+
+export const { auth, signIn, signOut } = authConfig;
+export const handlers = {
+  GET: (request: NextRequest) => withRevocation(request, () => authConfig.handlers.GET(request)),
+  POST: (request: NextRequest) => withRevocation(request, () => authConfig.handlers.POST(request)),
+};

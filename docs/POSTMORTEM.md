@@ -983,3 +983,27 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   `rg -n 'expiresAt:.*gt|acceptedAt: null' app/invite/actions.ts 'app/(edit)/projects/actions.ts'`로
   조회·소비·취소를 함께 검토한다. 재발급 경로는 발급 트랜잭션의 프로젝트 잠금과 옛 행 회전을 유지한다.
   미래 취소 시각과 옛 역할을 함께 넣은 회귀 테스트를 삭제하지 않는다.
+
+### 2026-09-10 — DB URL의 겉보기 대상과 드라이버가 접속할 대상이 달랐다
+
+- **영역**: credential 전환 CLI의 `lib/credentials/command.ts`.
+- **증상**: dev 프로젝트 username을 검사한 URL에 query `user`를 붙이면 실제 pg 드라이버는 query의 사용자로 접속할 수 있었다. 코드 리뷰와 로컬 회귀에서 확인했으며 공유 DB에 실행하지 않았다.
+- **근본 원인**: URL 구조 검사 결과를 실제 연결 설정으로 간주했다. 설치된 pg-connection-string은 query를 먼저 처리하므로 username·port·password 등의 우선순위가 URL 객체 속성과 달랐다.
+- **그물**: 프로젝트 ref/포트 검사만으로는 놓쳤다. 리뷰에서 드라이버의 파서를 대조했고 dev URL에 다른 user·port·password·host·options를 넣는 테스트가 red→green을 증명했다.
+- **재발 방지**: 전환 CLI는 query를 허용 목록(`sslmode=verify-full`)으로 제한한다. `rg -n 'new URL|connectionString' scripts lib --glob '!**/__tests__/**'`로 검증된 URL을 실제 드라이버에 넘기는 경계를 확인한다. 이번 대상 검증 재사용처는 credentials와 finalize 둘이며 일반 런타임 DB/기존 smoke CLI는 대상 전환 가드를 주장하지 않는다.
+
+### 2026-09-10 — 일회용 자격증명을 소비한 뒤에야 저장 키 오류가 드러났다
+
+- **영역**: `lib/github-connect/token-store.ts`, `app/api/github/callback/route.ts`.
+- **증상**: 기존 읽기 키는 정상인데 active 쓰기 kid가 잘못되면 refresh 호출은 성공한 뒤 새 토큰 저장에서 실패할 수 있었다. 공급자가 옛 refresh를 무효화하므로 설정 복구만으로 연결을 살릴 수 없다. 코드 교환에도 같은 순서가 있었다. 로컬 mock 회귀에서 외부 호출 1회를 확인했고 실 공급자에 실행하지 않았다.
+- **근본 원인**: 복호화 성공이 새 토큰 암호화 가능성을 보장한다고 취급했다. 읽기 keyring과 active 쓰기 kid는 별개의 전제조건이다.
+- **그물**: 기존 정상 회전/CAS 테스트는 읽기만 가능한 잘못된 키 구성을 만들지 않았다. active kid 누락 시 unavailable·외부 refresh/code 교환 0회·DB 쓰기 0회를 검사하는 테스트가 잡았다.
+- **재발 방지**: 외부 일회용 소비 전에 `validateTokenWriteKey`를 검사한다. `rg -n 'refreshUserToken|exchangeCode' lib app --glob '!**/__tests__/**'`로 소비 지점 둘을 대조했다. 이 검사는 이후의 DB 장애까지 제거하지 않으며, 운영 키 회전의 차단·drain 절차를 대신하지 않는다.
+
+### 2026-09-10 — 재인증 목적이 사라진 OAuth callback이 일반 가입을 실행했다
+
+- **영역**: `lib/session-revocation/http.ts`, `auth.ts`, 루트/초대 로그인 시작.
+- **증상**: 전체 세션 회수 확인 요청을 교체/소비한 뒤 nonce·callback-url·현재 세션 쿠키를 빼고 아직 유효한 state/PKCE로 callback하면 새 User·Account·Session이 생성됐다. 격리 PostgreSQL과 실제 Auth.js 회귀 두 건에서 관측했고 운영 배포 전 수정했다.
+- **근본 원인**: 회수 목적을 수명이 짧은 nonce 쿠키와 삭제 가능한 DB 요청에서만 찾았다. 그 표식이 없으면 일반 로그인이라고 판단했지만 OAuth 증거는 아직 유효했다. 실패 목적지로 리다이렉트하는 것은 이미 발생한 가입/이메일 갱신을 되돌리지 못한다.
+- **그물**: 일반 nonce 유실 테스트는 DB 요청이 남아 있어 임시 state 조회 보강을 통과시켰다. 요청 교체/소비 후에도 증거가 남는 순서를 추가해 red를 확인했다. 최종 구현은 Auth.js state 쿠키 이름과 암호화 salt를 일반 로그인과 분리한다. state를 제거하거나 일반 이름으로 바꿔도 로그인 쓰기 전에 검증이 실패한다. 정상 확인은 signIn의 문자열 반환으로 handleLoginOrRegister 전에 끝낸다.
+- **재발 방지**: `rg -n 'signIn\(|withRevocation|malmoi-revocation-state' auth.ts app lib/session-revocation --glob '!**/__tests__/**'`로 OAuth 시작 세 곳과 callback의 목적 수명을 대조한다. 일반 로그인 둘(`/`, `/invite/[token]`)은 공통 `clearRevocationCookies`를 먼저 호출한다. 공급자 화면에서 이탈 후 새 로그인/초대 복귀, 확인 요청 교체/소비, nonce 유실, state 쿠키 이름 변경을 실제 Auth.js 회귀에 유지한다. 이번 범위 밖 동일 목적 전환 경로는 발견하지 않았다.

@@ -1,3 +1,4 @@
+import { openToken } from "@/lib/credentials/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { signState, type StateDest } from "@/lib/github-connect/state";
@@ -288,9 +289,11 @@ describe("정상 연결", () => {
       userId: SESSION_USER,
       provider: "github-app",
       providerAccountId: "gh-1",
-      access_token: "user-token",
-      refresh_token: "refresh-1",
+      access_token: expect.stringMatching(/^enc:v1:/),
+      refresh_token: expect.stringMatching(/^enc:v1:/),
     });
+    expect(openToken(args.data.access_token, { userId: SESSION_USER, providerAccountId: "gh-1", field: "access_token" })).toBe("user-token");
+    expect(openToken(args.data.refresh_token, { userId: SESSION_USER, providerAccountId: "gh-1", field: "refresh_token" })).toBe("refresh-1");
   });
 
   it("clientSecret을 저장하지 않는다 — OAuthApp의 authentication 객체가 그것을 물고 온다", async () => {
@@ -451,4 +454,13 @@ describe("동시 GitHub 연결", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.userId).toBe(SESSION_USER);
   });
+});
+it("invalid encryption write key rejects before consuming the OAuth code", async () => {
+  vi.stubEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID", "missing");
+  try {
+    const response = await GET(request({ code: "abc", state: "nonce-1" }));
+    expect(location(response)).toContain("unavailable");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+    expect(hoisted.account.create).not.toHaveBeenCalled();
+  } finally { vi.unstubAllEnvs(); }
 });

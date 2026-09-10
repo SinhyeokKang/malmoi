@@ -254,6 +254,55 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
     ]);
   });
 
+  /**
+   * ⚠️ **행 하나가 못 읽히는 것은 목록 전체의 실패가 아니다** (credential-storage 리뷰). 전환 중에는
+   * **부분 변환 상태가 정상**이고(backfill이 행 단위 CAS다), 키를 회전하고 옛 키를 지우면 옛 세대의
+   * 행이 그대로 남는다. `decodeUser`가 던지는 것을 그대로 올리면 멤버 아홉이 멀쩡한데 화면이 통째로
+   * 500이 된다.
+   *
+   * ⚠️ **`null`(이메일 없음)로 접지 않는다** — POSTMORTEM 2026-09-03의 "실패한 조회를 '없음'으로
+   * 읽어 경고가 존재하지 않는 것과 구별되지 않았다"가 정확히 이 부류다. 못 읽은 행은 **자기 문구**를 든다.
+   */
+  it("복호화되지 않는 멤버 한 행이 나머지를 죽이지 않는다", async () => {
+    const db = createHarness({
+      ...withEmails(),
+      users: [
+        { id: "u1", email: "alice@acme.com", name: "A" },
+        // 옛 키로 봉인된 행 — 지금 keyring에 그 kid가 없다.
+        { id: "u2", email: "andrew@acme.com", name: "Andrew", unreadable: true },
+      ],
+    });
+    const rows = await loadMembers(db.prisma, "p1");
+    expect(rows.map((r) => r.emailLabel)).toEqual(["a***@acme.com", "Unavailable"]);
+    // 못 읽은 행은 이름도 못 읽는다 — 옛 값을 그럴듯하게 보여주지 않는다.
+    expect(rows[1]?.name).toBeNull();
+    for (const row of rows) expect(row).not.toHaveProperty("email");
+  });
+
+  it("복호화되지 않는 초대 한 행이 나머지를 죽이지 않고 맨 뒤로 간다", async () => {
+    const pending = {
+      projectId: "p1", role: "EDITOR" as const, expiresAt: new Date("2026-09-20T00:00:00Z"),
+      acceptedAt: null, invitedBy: "u1",
+    };
+    const db = createHarness({
+      ...withEmails(),
+      invitations: [
+        { ...pending, id: "i-lost", email: "aaa@acme.com", tokenHash: "h-lost", unreadable: true },
+        { ...pending, id: "i-ok", email: "zoe@acme.com", tokenHash: "h-ok" },
+      ],
+    });
+    const rows = await loadPendingInvitations(db.prisma, "p1", NOW);
+    // 못 읽은 행이 알파벳순으로는 앞인데 **맨 뒤로** 간다 — 손상 하나가 나머지 순서를 흔들지 않는다.
+    expect(rows.map((r) => r.emailLabel)).toEqual(["z***@acme.com", "Unavailable"]);
+  });
+
+  it("⚠️ **키가 통째로 없으면 던진다** — 그것은 행의 손상이 아니라 장애다", async () => {
+    const db = createHarness(withEmails());
+    vi.stubEnv("PII_ENCRYPTION_KEYS", "");
+    await expect(loadMembers(db.prisma, "p1")).rejects.toThrow();
+    vi.unstubAllEnvs();
+  });
+
   it("이메일이 없는 멤버는 라벨이 null이다 — 화면이 '이름 없음'으로 대신한다", async () => {
     const { prisma } = createHarness({
       ...withEmails(),

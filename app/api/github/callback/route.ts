@@ -1,3 +1,4 @@
+import { sealToken, validateTokenWriteKey } from "@/lib/credentials/storage";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -61,6 +62,13 @@ export async function GET(request: Request): Promise<NextResponse> {
   const code = url.searchParams.get("code");
   // code도 error도 없는 요청을 성공으로 읽지 않는다.
   if (code === null || code === "") return landing(request, dest, "exchange-failed");
+
+  try {
+    validateTokenWriteKey();
+  } catch (error) {
+    logFailure("link-key", error);
+    return landing(request, dest, "unavailable");
+  }
 
   let tokens: UserTokens;
   let viewer: { id: string; login: string };
@@ -135,7 +143,7 @@ async function linkAccountLocked(
 
   if (plan === "already-linked") {
     // `userId`를 data에 넣지 않는다 — 이미 내 행이고, 넣으면 경합에서 소유권이 움직인다.
-    await prisma.account.update({ where: { provider_providerAccountId: key, userId }, data: columns(tokens) });
+    await prisma.account.update({ where: { provider_providerAccountId: key, userId }, data: columns(tokens, userId, providerAccountId) });
     return null;
   }
 
@@ -144,11 +152,11 @@ async function linkAccountLocked(
     await prisma.account.delete({
       where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: current.providerAccountId }, userId },
     });
-    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
+    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId) } });
     return null;
   }
 
-  await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
+  await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId) } });
   return null;
 }
 
@@ -156,14 +164,14 @@ async function linkAccountLocked(
  * ⚠️ **`authentication`을 통째로 넘기지 않는다** — `pickTokens`가 이미 걸렀지만, 이 자리가 `Account`
  * 행의 모양을 정하는 곳이라 무엇이 저장되는지 한눈에 보이게 둔다.
  */
-function columns(tokens: UserTokens): {
+function columns(tokens: UserTokens, userId: string, providerAccountId: string): {
   access_token: string;
   refresh_token: string | null;
   expires_at: number | null;
 } {
   return {
-    access_token: tokens.accessToken,
-    refresh_token: tokens.refreshToken,
+    access_token: sealToken(tokens.accessToken, { userId, providerAccountId, field: "access_token" })!,
+    refresh_token: sealToken(tokens.refreshToken, { userId, providerAccountId, field: "refresh_token" }),
     // 어댑터 계약대로 **초** 단위 epoch다.
     expires_at: tokens.expiresAt === null ? null : Math.floor(tokens.expiresAt.getTime() / 1000),
   };

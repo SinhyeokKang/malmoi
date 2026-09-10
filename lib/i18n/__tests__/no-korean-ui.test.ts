@@ -66,7 +66,6 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
 const KOREAN_ALLOWED = [
   // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
-  "auth.ts",
   "lib/push/apply.ts",
 ];
 

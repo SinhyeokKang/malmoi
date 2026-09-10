@@ -13,6 +13,13 @@ import { randomUUID } from "node:crypto";
  */
 export function logFailure(stage: string, error: unknown): void {
   const ref = randomUUID().slice(0, 8);
-  const detail = error instanceof Error ? error.message : String(error);
+  /**
+   * ⚠️ **메시지는 안 찍지만 분류는 남긴다** (2026-09-10 credential 리뷰). 남의 라이브러리 메시지에는
+   * Prisma 인자·암호문이 실릴 수 있어 원문은 못 쓴다 — 그러나 전부 `"unavailable"` 한 단어로 접으면
+   * **이 함수의 존재 이유가 사라진다**: 화면엔 갈래 이름만 가므로 원인을 볼 곳이 여기뿐이다
+   * (ARCHITECTURE §6.4). 생성자 이름은 우리와 라이브러리가 정한 상수이지 사용자 데이터가 아니다.
+   */
+  const status = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number" ? error.status : null;
+  const detail = status !== null ? `http-${status}` : error instanceof Error ? error.constructor.name : typeof error;
   console.error(`[github-connect] ${ref} ${stage}: ${detail}`);
 }

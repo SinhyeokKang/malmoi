@@ -1,3 +1,4 @@
+import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { hashInviteToken } from "@/lib/auth/invitation";
@@ -164,7 +165,7 @@ describe("createInvitation — 회전과 생성이 한 트랜잭션이다", () =
     db.spies.createInvitationRow.mockImplementationOnce(async () => {
       throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
     });
-    await expect(createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).rejects.toThrow();
+    await expect(createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).resolves.toEqual({ ok: false, error: "unavailable" });
     expect(db.invitations).toHaveLength(1);
     expect(db.invitations[0]?.expiresAt).toEqual(LATER);
   });
@@ -239,7 +240,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     invite({ expiresAt: EARLIER });
     // 판정 시점엔 살아 있었다 — 그 직후 다른 요청이 회전시켰다.
     db.spies.findInvitation.mockImplementationOnce(async () => ({
-      id: "inv-1", projectId: "pA", email: "guest@a.com", role: "EDITOR",
+      id: "inv-1", projectId: "pA", ...encodeInvitationEmail("inv-1", "pA", "guest@a.com"), role: "EDITOR",
       tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
     }));
 
@@ -251,7 +252,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
   it("수락 조회 뒤 미래 시각으로 취소돼도 옛 초대는 소비하지 않는다", async () => {
     invite({ expiresAt: new Date(Date.now() + 1000) });
     db.spies.findInvitation.mockImplementationOnce(async () => ({
-      id: "inv-1", projectId: "pA", email: "guest@a.com", role: "OWNER",
+      id: "inv-1", projectId: "pA", ...encodeInvitationEmail("inv-1", "pA", "guest@a.com"), role: "OWNER",
       tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
     }));
     expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "expired" });

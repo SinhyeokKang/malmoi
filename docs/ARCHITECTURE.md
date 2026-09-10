@@ -566,7 +566,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
-- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.email`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(pull 1층 판정과 미배포 집계 — §2). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(pull 1층 판정과 미배포 집계 — §2). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
 
 ### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
 
@@ -575,23 +575,23 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 않았다(마이그레이션 SQL에 그 다섯을 대상으로 하는 `ALTER`·`DROP` 0건).
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
-  `where` 키가 그것을 정한다 — `user.findUnique({where:{email}})`가 `email @unique`를, `account`의
+  `where` 키가 그것을 정한다 — 현재 `credentialAdapter.getUserByEmail`은 `emailLookup @unique`를 요구하고, `account`의
   `where:{provider_providerAccountId}`가 복합 키를 요구하는 식이다. `Account`의 snake_case 컬럼 일곱은
-  OAuth 응답을 그대로 받는 자리라 **하나라도 빠지면 `linkAccount`가 `Unknown argument`로 던진다.**
+  어댑터 스키마 계약을 유지하지만 현재 로그인 linkAccount는 식별자 네 필드만 저장한다.
 - ⚠️ **그 계약을 타입 검사가 못 본다.** 어댑터 시그니처의 `PrismaClient`는 `@prisma/client`에서 오고, 그
   패키지는 `.prisma/client/default`를 re-export하는데 Prisma 7의 `prisma-client` 생성기는 그 경로를 만들지
   않는다(우리 산출물은 `generated/prisma`다). `skipLibCheck: true`가 해결 실패를 삼켜 **파라미터가 사실상
   `any`가 된다** — `PrismaAdapter({ nope: true })`도 컴파일되는 것을 실측했다. 이건 2026-08-31
   「외부 계약 페이로드를 리터럴로 조립해…」와 같은 형태다(계약의 한쪽만 타입으로 이어져 있다). 거기서
   얻은 규칙(`z.infer`를 생산자에 붙인다)은 남의 패키지라 쓸 수 없어 **`prisma/__tests__/schema-contract.test.ts`가
-  대신 선다** — 어댑터 소스를 읽어 델리게이트·`where` 키를 스키마와 대조하므로 어댑터 버전을 올리면 red가 된다.
+  대신 선다** — 기본 어댑터의 상속 메서드와 credential 어댑터의 User override·lookup 조회를 각각 스키마와 대조한다.
 - **`onDelete`가 둘로 갈린다.** `Account`·`Session` → `User`는 **Cascade**다 — 어댑터의 `deleteUser`가
   `p.user.delete` 하나만 부르므로 `Restrict`면 그 메서드가 항상 실패한다. `ProjectMember`·`ProjectInvitation`은
   기존 `Project` 관계와 같은 **Restrict**다: 삭제가 조용히 번지면 **마지막 OWNER가 사라진 프로젝트를
   되살릴 수 없다.**
 - **`Session`·`VerificationToken`·`ProjectMember`에 PRIMARY KEY가 없다.** 각자의 unique 제약이 Prisma의
-  식별자 역할을 하고, 어댑터와 우리 쿼리 모두 그 unique로만 접근한다.
-- **`ProjectInvitation`의 `(projectId, email)`은 index이지 unique가 아니다.** `acceptedAt`을 남기는 설계라
+  식별자 역할을 한다. 단일 행은 unique로 조회하며 전체 세션 회수는 `Session.userId`와 `VerificationToken.identifier` 목적 접두로 조회·삭제 범위를 제한한다.
+- **`ProjectInvitation`의 `(projectId, emailLookup)`은 index이지 unique가 아니다.** `acceptedAt`을 남기는 설계라
   수락·만료된 행이 이메일을 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이
   된다. 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가른다.
 - **`ProjectMember`에 `userId` 단독 인덱스를 두지 않는다.** ⚠️ **`loadMemberships`는 이제 `(edit)` 레이아웃도 부른다** (2026-09-08 — 셸 사이드바가 같은 조회를 쓴다) — 그 스캔이 그룹 전 페이지의 매 렌더에 붙는다. 판정의 근거는 화면 수가 아니라 **행 수 상한**이다. 목록이 그 컬럼으로 조회하지만
@@ -600,14 +600,11 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 **신규 github/google 로그인 Account는 OAuth 토큰을 저장하지 않는다** (2026-09-10).
 `safePrismaAdapter.linkAccount`가 `userId`·`type`·`provider`·`providerAccountId`만 저장한다.
-기존 로그인 Account의 잔존 토큰, `github-app`의 access/refresh 토큰과 Session 원문은 아직 평문이다.
-기존 행 정리·세션 해시·회원 정보 암호화는 [credential-storage](features/credential-storage/spec.md)의
-후속 전환이며 이 보안 수정으로 완료된 것이 아니다.
+현재 credential 구현은 Session을 도메인 분리 SHA-256 digest로, GitHub App 토큰과 User.email/name/image·초대 email을 독립 AES-256-GCM 키로 저장한다. 검색은 별도 키의 HMAC emailLookup을 사용한다. User DTO는 서버에서 복호화하고 타인 이메일의 기존 마스킹을 유지한다. 조회·복호화 장애는 unavailable이며 자동 계정 생성이나 평문 fallback은 없다.
 
-**전제 조건을 적어 두는 것이 이 항목의 전부다**: 그 값에 닿으려면 **DB 자격증명**이 있어야 한다.
-2026-09-09 전에는 아니었다 — `anon` 키 하나로 읽을 수 있었고(POSTMORTEM 2026-09-09), 지금은
-`public` 스키마의 `anon`·`authenticated` GRANT가 **dev·prod 둘 다 0건**이다(실측). 즉 이 수용은
-**그 0건에 기대어 있다** — `/db` 5단계의 검사가 그것을 보는 자리다.
+**2026-09-10 현재 로컬 구현·격리 DB 검증 상태이며, 배포·기존 운영 DB 전환은 미완료다.** R1은 nullable lookup 추가와 새 인덱스만 적용하고 옛 email 인덱스를 유지한다. R2에서 전체 트래픽·구 배포·writer를 차단한 뒤 backfill·전건 검증·NOT NULL/옛 인덱스 제거·새 앱 활성화를 수행한다. 현재 Prisma nullable 선언은 준비 단계이며 최종 R2에서 필수로 바꾼다. 자세한 실행·회전·복구 순서는 [credential 운영 절차](features/credential-storage/operations.md)다. 키는 지연 로드하며 DB와 별도로 백업한다. 키/DB 백업 쌍을 보존하지 않으면 복구할 수 없다.
+
+2026-09-09 확인한 public 스키마의 anon/authenticated GRANT 0건은 계속 필요한 방어선이다. 저장 암호화는 앱 서버나 암호 키까지 탈취한 경우를 방어하지 않으며, 접근 통제의 대체가 아니다.
 
 ⚠️ **런타임 롤은 `postgres`이고 `rolbypassrls=true`다**(실측). **지금 RLS를 켜도 앱 연결에는 안 걸린다** —
 "RLS가 없어 애플리케이션이 유일한 방어선"이라는 서술은 이 사실과 함께 읽는다. 최소권한 롤로 옮기는
@@ -976,13 +973,20 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 - **2차: 레이아웃의 `redirect()`** — 조건부 렌더가 아니라 `redirect`를 던져야 응답이 중단된다. matcher 누락 시의 안전망이다. **페이지 최상단의 `await requireProjectAccess()`도 같은 성질이다** — 실패하면 던지므로 페이로드가 만들어지지 않는다. `if (!access) return <Denied/>`로 되돌아가면 2026-08-31의 실수를 그대로 반복한다.
 - **검증은 화면이 아니라 응답 본문으로 한다**: `curl -s <라우트> | grep <민감 데이터>`가 0건이어야 한다.
 
-**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **예외가 하나다**: `app/invite/actions.ts`는 프로젝트 인가를 지나지 않고 **토큰이 그것을 대신한다**(단일 사용). `app/__tests__/entry-points.test.ts`의 `EXEMPT`에 이름으로 고정돼 있고, 같은 테스트의 `GUARDS`가 `requireUser`도 인정하므로 **세션만 확인하는 진입점**(**여덟** — 두 부류다: **사용자 소유 자원**을 다루는 것(`/api/github/callback`·`/projects` 목록의 계정 섹션·`disconnectGithub`)과 **인가할 프로젝트가 아직 없는 생성 경로**(`/projects/new` + `projects/actions.ts`의 연결·목록·탐지·생성 넷))도 자동 검사를 통과한다. ⚠️ **편집 중 저장 Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. **나가는 OAuth 시작은 예외다** — `startGithubConnect`는 성공 시 GitHub으로 `redirect`하고 실패만 값으로 돌아온다(목적지가 우리 화면이 아니라 남의 사이트라 값으로 돌려줄 것이 없다). `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
+**Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **예외가 하나다**: `app/invite/actions.ts`는 프로젝트 인가를 지나지 않고 **토큰이 그것을 대신한다**(단일 사용). `app/__tests__/entry-points.test.ts`의 `EXEMPT`에 이름으로 고정돼 있고, 같은 테스트의 `GUARDS`가 `requireUser`도 인정하므로 **세션만 확인하는 진입점**(두 부류다: **사용자 소유 자원**을 다루는 것(`/api/github/callback`·`/account` 계정 연결·`disconnectGithub`·전체 세션 회수 시작)과 **인가할 프로젝트가 아직 없는 생성 경로**(`/projects/new` + `projects/actions.ts`의 연결·목록·탐지·생성 넷))도 자동 검사를 통과한다. ⚠️ **편집 중 저장 Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. **나가는 OAuth 시작은 예외다** — `startGithubConnect`는 성공 시 GitHub으로 `redirect`하고 실패만 값으로 돌아온다(목적지가 우리 화면이 아니라 남의 사이트라 값으로 돌려줄 것이 없다). `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
 
 #### 6.1.1 세션 정책 — 마지막 활동 뒤 24시간 (2026-09-06)
+
+`credentialAdapter`는 32바이트 난수 세션 원문을 HttpOnly 쿠키와 Auth.js 내부 반환에만 유지하고 DB에는 `sha256:v1:<digest>`를 저장한다. 조회 입력을 항상 다시 해시하므로 DB digest를 쿠키로 제출해도 인증되지 않는다. 갱신은 현재 미만료 행만 바꾸고 삭제된 세션을 생성하지 않는다. 공개 `publicSession` 허용 목록은 그대로다.
+
 
 `session: { strategy: "database", maxAge: 24h, updateAge: 1h }`. ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
+
+**전체 세션 회수(#38, 2026-09-10 로컬 구현)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
+
+`lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. **공유 DB 운영 전환·실제 공급자 및 브라우저 검증은 미완료**이며 [설계](features/session-revocation/design.md)·[태스크](features/session-revocation/tasks.md)를 따른다.
 
 #### 6.1.2 ⚠️ "세션 없음"과 "세션을 못 읽었다"는 다르다 (POSTMORTEM 2026-09-06)
 
@@ -1006,7 +1010,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
 
 **로그인된 세션에서 추가 provider를 연결하는 경로는 별도로 막는다** (sec-audit-2 #31).
-`safePrismaAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
+`safePrismaAdapter` 기반의 `credentialAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
 현재도 만료인 행만 조건부 삭제한다. `linkAccount`는 User 행을 잠근 뒤 기존 github/google
 Account가 있으면 거부한다. 신규 로그인 Account는 식별자 네 필드만 저장해 OAuth 토큰을 남기지 않는다.
 GitHub App 연결은 별도 callback이며 User 행 잠금으로 직렬화하고 UPDATE/DELETE에 `userId`를
@@ -1041,7 +1045,7 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
-**`/account`는 `isConnectError` 하나다** (2026-09-09, 6b-4) — 그 화면에 도달하는 사유가 연결 왕복뿐이고,
+**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). 2026-09-10 로컬 구현은 `sessionRevocation` 결과도 별도 고정 비교로 검사한다.
 인가 거부는 `requireUser`가 `/`로 보낸다. ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
@@ -1148,7 +1152,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 셋을 각각 다른 갈래로 낸다: 사용자가 그 **설치**를 못 보면 `installation-forbidden`, 그 **리포**를 못
 보면 `repo-forbidden`, App이 그 리포에 **설치되지 않았으면** `repo-not-installed`. HTTP 실패는
-`unavailable`로 접고 로그에만 원인을 남긴다. ⚠️ **세 갈래를 하나로 접지 않는 이유는 화면 문구가
+`unavailable`로 접고 로그에는 고정 단계·ref·HTTP 상태만 남긴다. ⚠️ **세 갈래를 하나로 접지 않는 이유는 화면 문구가
 아니라 판정이다** — "권한이 없다"와 "설치가 없다"는 사용자가 할 일이 다르다(관리자에게 요청 vs 설치
 목록에 리포 추가).
 
@@ -1198,7 +1202,7 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 갈래를 늘리면 컴파일이 red다.
 
 ⚠️ **`unavailable`·`error`로 접는 자리는 전부 `logFailure`를 부른다** (`lib/github-connect/log.ts`,
-2026-09-07). 화면에는 갈래 이름만 가므로 GitHub 5xx·네트워크·Prisma가 사용자 제보에서 구별되지 않는다 —
+2026-09-07; 2026-09-10부터 원인 메시지 대신 HTTP 상태/unavailable만 기록). 화면에는 갈래 이름만 가므로 GitHub 5xx·네트워크·Prisma가 사용자 제보에서 구별되지 않는다 —
 callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던 것을 한 곳으로 모았다. `reauthorize`는
 남기지 않는다(화면이 다음 행동을 말한다). `token-store.test.ts`·`github-connect.test.ts`가 `console.error`
 호출을 단언한다.
@@ -1207,6 +1211,16 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
 조용히 받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
+
+
+### 6.6 Credential 저장 경계 (2026-09-10 구현, 운영 전환 대기)
+
+`refreshVerifiedEmail`은 기존 User 잠금 아래 HMAC 조회·복호화 이메일 대조 후 암호문과 lookup을 함께 갱신한다. 이미 사용 중인 주소 또는 동시 unique 충돌이면 옛 이메일·userId로 로그인을 허용하며 병합하지 않는다. 새 가입의 unique 충돌은 거부한다.
+
+GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한다. CAS 비교값은 **조회한 refresh 암호문 원본 + userId + providerAccountId**이며, 새 access/refresh 쌍은 각기 난수 nonce로 암호화해 함께 저장한다. 키/복호화 오류는 reauthorize와 구별되는 unavailable이다.
+
+`credentialIO`는 Prisma/crypto 예외를 원인 객체 없는 고정 오류로 바꾼다. `auth.ts`는 오류 타입만, `logFailure`는 HTTP 상태 또는 unavailable만 기록한다. 메시지·cause·암호문·lookup·키를 로그에 남기지 않는다. Auth.js SessionTokenError를 통한 readSession 장애 판정은 유지한다.
+
 
 ## 7. Supabase / Prisma
 
