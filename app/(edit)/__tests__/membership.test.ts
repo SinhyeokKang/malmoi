@@ -248,6 +248,16 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     expect(db.invitations[0]?.acceptedAt).toBeNull();
   });
 
+  it("수락 조회 뒤 미래 시각으로 취소돼도 옛 초대는 소비하지 않는다", async () => {
+    invite({ expiresAt: new Date(Date.now() + 1000) });
+    db.spies.findInvitation.mockImplementationOnce(async () => ({
+      id: "inv-1", projectId: "pA", email: "guest@a.com", role: "OWNER",
+      tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
+    }));
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "expired" });
+    expect(db.members.some((m) => m.userId === "u-guest")).toBe(false);
+  });
+
   it("소비 조건에 만료 시각이 들어간다", async () => {
     invite();
     await acceptInvitation({ token: "tok" });

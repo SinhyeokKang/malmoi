@@ -48,3 +48,16 @@ describe("saveLastPulledAt", () => {
     expect(data.lastPublishedAt.getFullYear()).toBeGreaterThan(2020);
   });
 });
+
+it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다", async () => {
+  const { loadPullState } = await import("../load");
+  const tx = {
+    project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", locales: [] })) },
+    stringKey: { findMany: vi.fn(async () => []) },
+    translation: { aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })) },
+  };
+  const transaction = vi.fn(async (fn: (client: typeof tx) => Promise<unknown>, _options: unknown) => fn(tx));
+  const state = await loadPullState({ $transaction: transaction } as unknown as PrismaClient, "a");
+  expect(state.maxUpdatedAt).toEqual(new Date(100));
+  expect(transaction).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ isolationLevel: "RepeatableRead" }));
+});

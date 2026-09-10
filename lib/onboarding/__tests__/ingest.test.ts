@@ -190,3 +190,9 @@ describe("ingestFirstSnapshot — 경계", () => {
     fetchSpy.mockRestore();
   });
 });
+
+it("첫 적재도 API의 번역 길이 상한을 넘어 DB에 쓰지 않는다", async () => {
+  const { stub, result } = run({ blobs: new Map([["src/locales/en.json", JSON.stringify({ hello: "x".repeat(10001) })], ["src/locales/ko.json", '{"hello":"안녕"}']]) });
+  await expect(result).rejects.toThrow();
+  expect(stub.captured).toHaveLength(0);
+});

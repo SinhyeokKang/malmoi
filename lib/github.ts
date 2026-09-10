@@ -3,7 +3,9 @@
 // `lib/push/apply.ts`가 같은 이유로 붙이지 않은 선례다 (ARCHITECTURE §5.5.4).
 // 클라이언트 유입 위험은 낮다: 이 파일이 무는 것은 타입과 `lib/env.ts`, `octokit`뿐이고
 // `"use client"` 그래프에 들어가면 octokit 때문에 번들이 터져 즉시 드러난다.
-import { App } from "octokit";
+import { App, Octokit } from "octokit";
+import { fail } from "@/lib/failure";
+import { requireRepositoryId } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
 import { httpStatus, probeFromError, type ProbeResult } from "@/lib/github-connect/health";
@@ -15,7 +17,7 @@ import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
  * GitHub App installation 토큰으로 Git Data API를 부르는 얇은 껍데기.
  *
  * **판정은 전혀 하지 않는다** — 무엇을 낼지는 `lib/pull/plan.ts`·`payload.ts`가 정하고 여기는
- * 보내기만 한다. 그래서 이 파일에 단위 테스트가 없고(fetch 모킹 비용 > 가치), 검증은
+ * 보내기만 한다. 저장소 ID·토큰 범위는 repository-client 테스트가 지키고, 나머지 검증은
  * `scripts/smoke-github.ts`의 실 호출과 오케스트레이션의 fake 테스트가 나눠 맡는다.
  *
  * ⚠️ **사용자 OAuth 토큰이 이 경로에 들어오면 안 된다.** 커밋이 개인 명의가 되고 그 사람이
@@ -47,7 +49,7 @@ export function isNotFound(error: unknown): boolean {
  *
  * ⚠️ **`GET /repos/{o}/{r}`만으로는 판정할 수 없다.** installation 토큰으로도 **public 리포는 접근을
  * 철회한 뒤에 200을 주므로** 그것만 보면 `ok`로 오판한다. App JWT의 `/installation`이 "설치돼 있는가"를
- * 결정적으로 답하고, 두 번째 호출은 **이름 감지 전용**이다(리네임이면 octokit이 301을 따라가 새
+ * 결정적으로 답하고, 두 번째 호출은 **이름과 불변 repository ID 확인용**이다(리네임이면 octokit이 301을 따라가 새
  * `full_name`을 준다).
  *
  * ⚠️ **try가 토큰 발급까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
@@ -76,6 +78,7 @@ export async function probeRepo(owner: string, repo: string): Promise<ProbeResul
       status: "ok",
       // `Project.installationId`가 문자열이라 여기서 좁힌다 (`createGitClient`의 `Number()`와 대칭).
       installationId: String(installation.data.id),
+      repositoryId: String(res.data.id),
       fullName: res.data.full_name,
       // 같은 응답에 이미 있다 — 온보딩이 `Project.baseBranch`를 이 값으로 채운다 (design §4).
       defaultBranch: res.data.default_branch,
@@ -178,7 +181,7 @@ export async function openRepoReader(
         for (const entry of tree.data.tree) {
           if (entry.type !== "blob") continue;
           if (entry.path === undefined || entry.sha === undefined) continue;
-          files.push({ path: entry.path, sha: entry.sha });
+          files.push({ path: entry.path, sha: entry.sha, size: entry.size });
         }
         return { status: "ok", headSha, headCommittedAt: commit.data.committer.date, files };
       } catch (error) {
@@ -215,9 +218,18 @@ export async function createGitClient(
   owner: string,
   repo: string,
   installationId: string,
+  repositoryId: string,
 ): Promise<GitClient> {
   const app = createApp();
-  const octokit = await app.getInstallationOctokit(Number(installationId));
+  requireRepositoryId(repositoryId, repositoryId);
+  const numericId = Number(repositoryId);
+  if (!Number.isSafeInteger(numericId)) fail("repository id is not a safe integer");
+  // Scope the token too: a name reused after the check must not grant access to another repo.
+  const auth = await app.octokit.auth({ type: "installation", installationId: Number(installationId), repositoryIds: [numericId] });
+  if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") fail("installation token unavailable");
+  const octokit = new Octokit({ auth: auth.token });
+  const identity = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
+  requireRepositoryId(repositoryId, String(identity.data.id));
   const base = { owner, repo };
 
   return {

@@ -1,7 +1,10 @@
+import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
 import { applyPush } from "@/lib/push/apply";
 import { assemblePushInput } from "@/lib/push/assemble";
+import { PushPayload } from "@/lib/push/plan";
+import { fail } from "@/lib/failure";
 import { buildPushPayload } from "@/lib/push/payload";
 
 import { makeProbe } from "./detect";
@@ -56,6 +59,8 @@ export async function ingestFirstSnapshot(
 ): Promise<FirstIngestResult> {
   // 내려받지 못한 파일은 **실패로 센다.** 빈 내용을 먹이면 그 로케일의 키를 통째로 잃고, 조용히 빼면
   // 성공 문구가 나간다 — 둘 다 값이 사라진 것을 사용자가 모른다.
+  let totalBytes = 0;
+  for (const [path, content] of input.blobs) totalBytes = checkContentBudget(path, content, totalBytes);
   const missing = input.targets.filter((p) => !input.blobs.has(p));
 
   const { read, baseLocale } = assemblePushInput({
@@ -76,6 +81,9 @@ export async function ingestFirstSnapshot(
     // 빈 배열은 "참조 없음"으로 저장되고, CI가 처음 push하면 채워진다 — 화면이 그 사실을 한 줄로 알린다.
     scanRefs: [],
   });
+
+  if (payload.keys.length === 0) return { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors };
+  if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 
   // 첫 적재라 base가 바뀔 수 없다 — 이 프로젝트는 아직 `baseLocale`이 null이다 (design §3.13).
   await applyPush(prisma, input.projectId, payload, { previousBaseLocale: null });

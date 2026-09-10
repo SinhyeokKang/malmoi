@@ -1,5 +1,5 @@
 import { fail } from "@/lib/failure";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { PullState } from "./run";
 
 /**
@@ -14,6 +14,10 @@ import type { PullState } from "./run";
  */
 
 export async function loadPullState(prisma: PrismaClient, slug: string): Promise<PullState> {
+  return prisma.$transaction((tx) => loadSnapshot(tx, slug), { isolationLevel: "RepeatableRead" });
+}
+
+async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Promise<PullState> {
   const project = await prisma.project.findUnique({
     where: { slug },
     select: {
@@ -23,6 +27,7 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
       repoName: true,
       baseBranch: true,
       installationId: true,
+      repositoryId: true,
       adapterName: true,
       pathTemplate: true,
       nested: true,

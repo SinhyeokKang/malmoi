@@ -27,6 +27,7 @@ export type PullProject = ProjectFormatColumns & {
   repoName: string;
   baseBranch: string;
   installationId: string | null;
+  repositoryId?: string | null;
   lastPulledAt: Date | null;
 };
 

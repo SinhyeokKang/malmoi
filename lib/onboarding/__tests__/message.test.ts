@@ -36,6 +36,7 @@ const ERRORS = [
   // 다시 시도 · 첫 적재
   "not-awaiting",
   "ingest-failed",
+  "resource-limit",
   // 번역 Action — 첫 적재 전
   "not-ready",
   // 전부

@@ -9,7 +9,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { stateCookieNames, verifyState, type StateDest } from "@/lib/github-connect/state";
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 /**
  * GitHub이 브라우저를 되돌리는 지점 (design §3.1). **연결 흐름에서 Route Handler는 이것 하나다** —
@@ -96,6 +96,25 @@ async function linkAccount(
   prisma: PrismaClient,
   input: { userId: string; providerAccountId: string; tokens: UserTokens },
 ): Promise<ConnectError | null> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${input.userId} FOR UPDATE`;
+      return linkAccountLocked(tx, input);
+    });
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    const winner = await prisma.account.findUnique({
+      where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: input.providerAccountId } },
+      select: { userId: true },
+    });
+    return winner?.userId === input.userId ? null : "taken-by-other";
+  }
+}
+
+async function linkAccountLocked(
+  prisma: Prisma.TransactionClient,
+  input: { userId: string; providerAccountId: string; tokens: UserTokens },
+): Promise<ConnectError | null> {
   const { userId, providerAccountId, tokens } = input;
   const key = { provider: PROVIDER, providerAccountId };
 
@@ -116,33 +135,21 @@ async function linkAccount(
 
   if (plan === "already-linked") {
     // `userId`를 data에 넣지 않는다 — 이미 내 행이고, 넣으면 경합에서 소유권이 움직인다.
-    await prisma.account.update({ where: { provider_providerAccountId: key }, data: columns(tokens) });
+    await prisma.account.update({ where: { provider_providerAccountId: key, userId }, data: columns(tokens) });
     return null;
   }
 
   if (plan === "replace" && current !== null) {
     // User당 App 연결은 하나다 (design §2.3). 삭제와 생성이 갈리면 그 사이에 연결이 0인 창이 생긴다.
-    await prisma.$transaction(async (tx) => {
-      await tx.account.delete({
-        where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: current.providerAccountId } },
-      });
-      await tx.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
+    await prisma.account.delete({
+      where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: current.providerAccountId }, userId },
     });
+    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
     return null;
   }
 
-  try {
-    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
-    return null;
-  } catch (error) {
-    if (!isUniqueViolation(error)) throw error;
-    // 졌다 — 먼저 만든 것이 누구 것인지 다시 본다. 내 것이면 같은 사람의 중복 클릭이다.
-    const winner = await prisma.account.findUnique({
-      where: { provider_providerAccountId: key },
-      select: { userId: true },
-    });
-    return winner?.userId === userId ? null : "taken-by-other";
-  }
+  await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens) } });
+  return null;
 }
 
 /**

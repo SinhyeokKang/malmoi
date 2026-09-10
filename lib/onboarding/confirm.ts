@@ -31,7 +31,7 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
 
   const parts = pathTemplate.split("{locale}");
   if (parts.length < 2) return [];
-  const pattern = new RegExp(`^${parts.map(escapeRegExp).join("([^/]+)")}$`);
+  const pattern = new RegExp(`^${parts.map(escapeRegExp).join("([A-Za-z_-]{2,8})")}$`);
   return paths
     .filter((p) => {
       const m = pattern.exec(p);

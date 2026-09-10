@@ -815,6 +815,7 @@ export const en = {
       "invalid-slug": (max: number): string =>
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
       "not-awaiting": "The first import already finished. Importing again would overwrite edited translations, so it's blocked here.",
+      "resource-limit": "These translation files are too large or too deeply nested to import. Reduce their size and try again.",
       "ingest-failed": "The first import failed. You can try again from settings.",
       // 번역자가 읽는다 — 무엇을 기다리는지와 누가 끝낼 수 있는지를 말한다.
       "not-ready": "This project isn't ready yet. The owner needs to finish setting it up.",

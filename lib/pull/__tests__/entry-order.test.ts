@@ -114,6 +114,7 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
     return [];
   };
   const prisma = {
+    $transaction: async (fn: (tx: PrismaClient) => Promise<unknown>) => fn(prisma),
     project: {
       findUnique: async () => ({
         ...PROJECT,

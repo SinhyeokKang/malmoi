@@ -89,10 +89,10 @@ const { saveTranslation, triggerPullAction } = await import("../actions");
 
 /** 탐지가 후보를 내는 최소 리포 — `i18n/{locale}.json` 3로케일. */
 const TREE = [
-  { path: "README.md", sha: "sha-readme" },
-  { path: "i18n/en.json", sha: "sha-en" },
-  { path: "i18n/ko.json", sha: "sha-ko" },
-  { path: "i18n/fr.json", sha: "sha-fr" },
+  { path: "README.md", sha: "sha-readme", size: 100 },
+  { path: "i18n/en.json", sha: "sha-en", size: 100 },
+  { path: "i18n/ko.json", sha: "sha-ko", size: 100 },
+  { path: "i18n/fr.json", sha: "sha-fr", size: 100 },
 ];
 const CATALOG = `${JSON.stringify({ "a.greet": "Hello", "a.bye": "Bye" }, null, 2)}\n`;
 
@@ -403,7 +403,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
 
   it("후보가 0개면 no-candidates다 — 수동 지정이 유일한 길이라 화면이 그것을 펼친다", async () => {
     hoisted.openRepoReader.mockImplementation(async () =>
-      reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{ path: "README.md", sha: "s" }] } }),
+      reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{ path: "README.md", sha: "s", size: 100 }] } }),
     );
 
     expect(await detectRepoFormats({ owner: "acme", repo: "web" })).toEqual({
@@ -1043,4 +1043,9 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
     ).toEqual({ ok: true, value: "안녕" });
     expect(await triggerPullAction("acme")).toEqual({ status: "skipped" });
   });
+});
+
+it("탐지 예산 초과는 화면용 오류이며 DB에 쓰지 않는다", async () => {
+  hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{path:"i18n/en.json",sha:"sha-en",size:2_000_001},{path:"i18n/ko.json",sha:"sha-ko",size:2_000_001}] } }));
+  expect(await detectRepoFormats({ owner: "acme", repo: "web" })).toEqual({ok:false,error:"resource-limit"});
 });

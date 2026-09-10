@@ -19,7 +19,7 @@ export type ProbeResult =
    *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (design §4).
    *   `planConnectionHealth`는 이 필드를 보지 않는다 — 판정은 그대로다.
    */
-  | { status: "ok"; installationId: string; fullName: string; defaultBranch: string }
+  | { status: "ok"; installationId: string; repositoryId?: string; fullName: string; defaultBranch: string }
   | { status: "not-installed" }
   | { status: "error" };
 
@@ -61,13 +61,13 @@ export function probeFromError(status: number | undefined): "not-installed" | "e
 }
 
 export function planConnectionHealth(input: {
-  project: { installationId: string | null; repoOwner: string; repoName: string };
+  project: { installationId: string | null; repositoryId?: string | null; repoOwner: string; repoName: string };
   probe: ProbeResult;
 }): ConnectionHealth {
   const { project, probe } = input;
 
   // 저장된 것이 없으면 probe 결과와 무관하게 아직 연결 전이다.
-  if (project.installationId === null) return { status: "not-connected" };
+  if (project.installationId === null || project.repositoryId === null) return { status: "not-connected" };
 
   if (probe.status === "error") return { status: "unknown" };
   if (probe.status === "not-installed") return { status: "app-uninstalled" };

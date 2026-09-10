@@ -138,7 +138,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { repoOwner: true, repoName: true },
+    select: { repoOwner: true, repoName: true, repositoryId: true },
   });
   if (project === null) return { ok: false, error: "not-found" };
 
@@ -178,15 +178,26 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   const plan = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
+  if (probe.status !== "ok" || !probe.repositoryId || (project.repositoryId && project.repositoryId !== probe.repositoryId)) return { ok: false, error: "repo-forbidden" };
+
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — 클라이언트가 보낸 slug는 판정 입력일 뿐이다.
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      installationId: plan.installationId,
-      repoOwner: plan.repoOwner,
-      repoName: plan.repoName,
-    },
-  });
+  try {
+    await prisma.project.update({
+      where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
+      data: {
+        installationId: plan.installationId,
+        repositoryId: probe.repositoryId,
+        repoOwner: plan.repoOwner,
+        repoName: plan.repoName,
+      },
+    });
+  } catch (error) {
+    // A concurrent reconnect changed the identity/address we authorized.
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
+      return { ok: false, error: "repo-forbidden" };
+    }
+    throw error;
+  }
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true };

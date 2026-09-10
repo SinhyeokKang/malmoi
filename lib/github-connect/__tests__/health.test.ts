@@ -134,3 +134,7 @@ describe("planConnectionHealth — 정상", () => {
     ).toEqual({ status: "ok" });
   });
 });
+
+it("기존 프로젝트에 리포 ID가 없으면 재연결을 안내한다", () => {
+  expect(planConnectionHealth({ project: { installationId: "1", repositoryId: null, repoOwner: "o", repoName: "r" }, probe: { status: "ok", installationId: "1", fullName: "o/r", defaultBranch: "main" } })).toEqual({ status: "not-connected" });
+});

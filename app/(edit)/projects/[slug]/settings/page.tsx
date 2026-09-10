@@ -70,6 +70,7 @@ export default async function SettingsPage({
       repoOwner: true,
       repoName: true,
       installationId: true,
+      repositoryId: true,
       // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
       lastCommitSha: true,
       baseBranch: true,
@@ -194,6 +195,7 @@ async function loadHealth(project: {
   repoOwner: string;
   repoName: string;
   installationId: string | null;
+  repositoryId: string | null;
 }): Promise<ConnectionHealth> {
   // ⚠️ 저장된 설치가 없으면 probe 결과가 판정을 바꾸지 못한다(`planConnectionHealth`가 그때
   // `not-connected`를 준다) — 부르면 App JWT 조회와 토큰 발급 두 번이 헛돈다. 지금 프로덕션의
@@ -327,6 +329,7 @@ async function loadOpenPrUrl(
     repoName: string;
     baseBranch: string;
     installationId: string | null;
+    repositoryId: string | null;
     archivedAt: Date | null;
   },
 ): Promise<string | null | undefined> {
@@ -334,8 +337,9 @@ async function loadOpenPrUrl(
   // 쓰이지 않는 값을 위해 왕복을 하나 늘리는 셈이고, `createGitClient`는 호출마다 설치 토큰을 새로 뽑는다.
   if (project.archivedAt !== null) return null;
   if (project.installationId === null) return null;
+  if (project.repositoryId === null) return undefined;
   try {
-    const client = await createGitClient(project.repoOwner, project.repoName, project.installationId);
+    const client = await createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     return await client.findOpenPrUrl(`${project.repoOwner}:${syncBranchFor(slug)}`, project.baseBranch);
   } catch {
     return undefined;
