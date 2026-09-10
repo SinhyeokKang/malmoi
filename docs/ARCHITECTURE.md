@@ -960,11 +960,11 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 | 층 | 무엇을 하나 | 무엇을 못 하나 |
 |---|---|---|
-| **1차 `middleware.ts`** | `shouldRedirectToLogin` — **렌더 요청(GET·HEAD)에** 세션 쿠키가 없을 때만 `/`로 돌린다. 쿠키 이름은 `authjs.session-token`(http) / `__Secure-authjs.session-token`(https) **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다. ⚠️ **Server Action POST는 통과시킨다** (2026-09-06) — 307을 내면 `fetch`가 POST를 `/`로 재전송해 action id를 못 찾고 **페이지 오류**가 된다. Action은 스스로 `readSession`으로 `unauthorized`를 내므로 여기서 막아 얻는 것이 없고, 세션이 만료되면 브라우저가 쿠키를 지우므로 "쿠키 없는 POST"는 매일 일어나는 경로다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
+| **1차 `middleware.ts`** | `shouldRedirectToLogin` — **렌더 요청(GET·HEAD)에** 세션 쿠키가 없을 때만 **`/signin`으로** 돌린다(8-1a 전에는 `/`였다). 쿠키 이름은 `authjs.session-token`(http) / `__Secure-authjs.session-token`(https) **둘 다 검사한다**: 로컬은 접두가 없고 preview·프로덕션은 있다. ⚠️ **Server Action POST는 통과시킨다** (2026-09-06) — 307을 내면 `fetch`가 POST를 로그인 화면으로 재전송해 action id를 못 찾고 **페이지 오류**가 된다. Action은 스스로 `readSession`으로 `unauthorized`를 내므로 여기서 막아 얻는 것이 없고, 세션이 만료되면 브라우저가 쿠키를 지우므로 "쿠키 없는 POST"는 매일 일어나는 경로다 | 쿠키가 위조·만료됐는지 모른다. **프로젝트 인가는 전혀 모른다** |
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(redirect) / `getProjectAccess`(union 반환) → `planProjectAccess` | — |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
-- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — `/`로 302되면 쿼리의 `code`가 사라져 연결이 성립하지 않는다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`가 사라져 연결이 성립하지 않는다. ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(SAAS §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
@@ -992,7 +992,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 **전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
-`lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스이고 [설계](features/session-revocation/design.md)·[태스크](features/session-revocation/tasks.md)를 따른다.
+`lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/signin`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스이고 [설계](features/session-revocation/design.md)·[태스크](features/session-revocation/tasks.md)를 따른다.
 
 #### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
 
@@ -1009,7 +1009,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 - **모든 서버 진입점은 `auth()` 대신 `readSession()`을 쓴다** (`lib/auth/read-session.ts`) — `ok | none | unavailable`. `app/__tests__/entry-points.test.ts`의 "세션 읽기 단일 진입점"이 `app/`·`lib/`·`middleware.ts`를 스캔해 그 밖의 `auth()` import·호출을 red로 만든다.
 - 통로는 `logger`다. `auth.ts`의 `logger.error`가 `noteAuthError`를 부르고, `withOutageFlag`가 **AsyncLocalStorage**로 요청 스코프에 표시를 남긴다 (`lib/auth/outage.ts`). 모듈 변수 하나면 다른 요청의 장애가 이 요청의 거부로 둔갑한다.
-- `unavailable`이면 `requireUser`·레이아웃은 `/?error=Unavailable`로(비로그인의 `/`와 **다른 응답**), Action은 `error: "unavailable"`로, 로그인 화면은 `m.errors.signIn.Unavailable`("Something went wrong. Try opening this again in a moment.")을 보인다. **로그인을 시키지 않는다** — 장애 중 "다시 로그인하라"는 틀린 지시다.
+- `unavailable`이면 `requireUser`·레이아웃은 `/signin?error=Unavailable`로(비로그인의 `/signin`과 **다른 응답**), Action은 `error: "unavailable"`로, 로그인 화면은 `m.errors.signIn.Unavailable`("Something went wrong. Try opening this again in a moment.")을 보인다. **로그인을 시키지 않는다** — 장애 중 "다시 로그인하라"는 틀린 지시다.
 - 같은 모양이 하나 더 있었다: GitHub `/user/emails` HTTP 실패가 "미검증 이메일"로 접혀 처음 로그인하는 사람만 거부됐다. 지금은 `githubApi`가 non-OK를 `fail()`로 던져 `Configuration`("잠시 뒤 다시")으로 간다.
 
 ### 6.2 이메일 검증 — **저장되는 값을 만드는 자리에서** 한다 (2026-09-05)
@@ -1063,7 +1063,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
 **`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — 쿼리 슬롯이 둘이다.
-인가 거부는 `requireUser`가 `/`로 보낸다. ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
+인가 거부는 `requireUser`가 **`/signin`으로** 보낸다 — 판정은 `lib/auth/landing.ts`의 `rejectTarget` 하나이고, **삼항이 아니라 맵 + `satisfies`다**(갈래가 늘면 키가 없어 컴파일 에러가 난다; 삼항이면 새 갈래가 사유 없이 로그인 화면으로 떨어지고 `tsc`가 조용하다 — 8-1a에서 실측). ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
 실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
