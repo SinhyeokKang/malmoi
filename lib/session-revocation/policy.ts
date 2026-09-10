@@ -60,7 +60,9 @@ export function revocationCookie(secure: boolean) {
  * (POSTMORTEM 2026-09-06).
  */
 export function outcomeUrl(outcome: Outcome): string {
-  return outcome === "revoked" ? routes.signIn({ sessions: "revoked" }) : `/account?sessionRevocation=${outcome}`;
+  return outcome === "revoked"
+    ? routes.signIn({ sessions: "revoked" })
+    : routes.account({ sessionRevocation: outcome });
 }
 
 /** Auth.js encrypts state with the cookie name as salt, so it cannot be renamed into ordinary login. */

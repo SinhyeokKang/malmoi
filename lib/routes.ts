@@ -64,8 +64,13 @@ export const routes = {
   /**
    * 사용자 축 (SAAS §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
    * 사람에 속하고, 그래서 프로젝트를 하나도 안 만든 사용자도 도달해야 한다.
+   *
+   * ⚠️ **`sessionRevocation`이 2026-09-11에 여기로 들어왔다.** 그 전에는 세 자리가 문자열 연결로
+   * `/account?sessionRevocation=…`을 만들었고 — `signIn()` 주석이 못 박은 바로 그 형태다 —
+   * `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를 통째로 회피했다. 갈래는 다섯이다
+   * (`cancelled`·`wrong-account`·`expired`·`invalid`·`unavailable`).
    */
-  account: (): string => "/account",
+  account: (query: { sessionRevocation?: string } = {}): string => withQuery("/account", query),
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
   /**

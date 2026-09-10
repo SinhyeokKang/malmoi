@@ -7,6 +7,7 @@ import { signIn } from "@/auth";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
+import { routes } from "@/lib/routes";
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
@@ -25,7 +26,7 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     const accounts = await prisma.account.findMany({ where: { userId, provider: { in: ["github", "google"] } }, select: { provider: true, providerAccountId: true } });
     const account = accounts[0];
     if (accounts.length !== 1 || !account || (account.provider !== "github" && account.provider !== "google")) return { error: "unavailable" };
-    destination = await withRevocationStart(origin.secure, () => signIn(account.provider, { redirect: false, redirectTo: "/account?sessionRevocation=expired" }, { prompt: "select_account" }));
+    destination = await withRevocationStart(origin.secure, () => signIn(account.provider, { redirect: false, redirectTo: routes.account({ sessionRevocation: "expired" }) }, { prompt: "select_account" }));
     const state = new URL(destination).searchParams.get("state");
     if (!state) return { error: "unavailable" };
     const nonce = randomBytes(32).toString("base64url");
