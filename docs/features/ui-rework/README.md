@@ -10,8 +10,8 @@
 
 | 배송 | 범위 | 상태 |
 |---|---|---|
-| **8-1** [`signin-auth/`](./signin-auth/) | `/signin` 신설 · 초대 수락 · `/privacy`·`/docs` 빈 라우트 · 토큰·shadcn 기반 배선 | ⬜ 착수 |
-| 8-2 셸 | 헤더·사이드바·오른쪽 패널 골격 · `projects/[slug]/layout.tsx` 신설 | ⬜ |
+| **8-1** [`signin-auth/`](./signin-auth/) | `/signin` 신설 · 초대 수락 · `/privacy`·`/docs` 빈 라우트 · 토큰·shadcn 기반 배선 | ✅ 프로덕션 (PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → `718db80`) |
+| **8-2 셸** | 헤더·사이드바·콘텐츠 패널·오른쪽 패널 골격 · `projects/[slug]/layout.tsx` 신설 | ✅ dev (2026-09-10) |
 | 8-3~ 페이지별 | `/projects` · `/projects/new` · `/account` · Home · translations · locales · members · logs · settings | ⬜ |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
 
@@ -60,7 +60,7 @@ frame 1920×1080                        frame 1920×1080
 ```
 
 - **바깥 padding 8** · **모든 패널 경계 gap 8**. 예외를 만들지 않는다
-- 각 패널은 **radius 12**(리포에서는 `rounded-xl` = 14px, 규약 6) · 옅은 border · 낮은 shadow
+- 각 패널은 **radius 12**(리포에서는 `rounded-xl` — `--radius`를 12px로 올린 뒤 **16px**다, 규약 6) · 옅은 border · 낮은 shadow
 - **바깥 배경은 `#f5f6f7`**(시안 `paper/surface-medium`), 패널은 **true white** — 그 대비가 없으면
   흰 패널과 흰 배경이 붙어 **경계가 통째로 사라진다**
 - ⚠️ **border(`--border-subtle`)가 배경과 같은 값이다** — 시안에서 `divider/low`와
@@ -120,7 +120,7 @@ signin 하나에서만 **새 토큰 하나 + twMerge 등록 + DESIGN 예외 둘*
 
 | 시안이 요구하는 것 | 쓰는 값 | 안 만드는 이유 |
 |---|---|---|
-| radius 12px | `rounded-xl` = **14px** | 토큰은 8·10·14뿐이고 12px 칸이 없다 |
+| radius 12px | `rounded-xl` = **16px** | 파생은 8·10·12·16이고, `rounded-lg`(12px)는 버튼·카드가 이미 쓴다 |
 | 높이 38px | `h-10` = **40px** | 리포의 임의 치수가 `ring-[3px]` 하나뿐이다 |
 | 아이콘 20px | **16px** | §6.8이 *"크기는 셋뿐(16·12·24), 그 밖을 만들지 않는다"* |
 | 28px 문구 | `text-3xl` = **30px** | Tailwind는 24 → 30이고 그 사이가 없다 |
@@ -195,7 +195,24 @@ blue 계열은 리포 토큰에 **없다** — Tailwind `blue-600` 유틸을 쓴
 ⚠️ **DESIGN §6.2의 "새 raw 색을 늘리지 않는다"가 여기서 깨진다** — Google G의 4색은 우리가 고른 색이
 아니라 **남의 브랜드 자산**이라 토큰으로 접을 수 없다. 예외로 등재한다.
 
-## 8-2 셸 — 시안과 치수
+## 8-2 셸 — 시안과 치수 (✅ 2026-09-10, dev)
+
+**실측이 시안 좌표와 일치한다** (1920×1080, ego-browser): 헤더 `(8,8) 1904×48` · 사이드바
+`(8,64) 240×1008` · 콘텐츠 `x=256 w=1328` · 프로젝트 패널 `x=1592 w=320`. 시각 규칙의 정본은
+**DESIGN §6.5·§6.55**로 올라갔고 아래는 그 근거로 남긴다.
+
+**그리면서 갈린 것 넷**:
+- **사이드바가 패널이 아니다** — 헤더와 함께 캔버스 위에 얹힌다(배경·border 0). 그래서 항목의
+  hover·선택이 `bg-foreground/5`·`/10` **알파**다: `--accent == --muted`라 캔버스 위에서 안 보이고,
+  6단계의 "흰 알약"도 배경이 흰색이 아니게 되면서 근거가 사라졌다
+- **반응형 분기를 전부 걷었다** — `xl` 오버레이·햄버거는 1280 고정에서 도달 불가였다(규약 3)
+- **`--auth-canvas` → `--canvas`** — 셸과 셸 밖 화면이 같은 값이라 이름에 화면을 남기면 둘째 변수가 생긴다
+- **콘텐츠 패널을 셸이 감싸지 않는다** — 감싸면 오른쪽 패널이 그 안에 갇힌다. 각 갈래의 레이아웃이
+  들고 `shell-layout.test.ts`가 라우트마다 정확히 하나인지 체인을 훑어 센다
+
+**남긴 것**: 사이드바 카운트 배지(SAAS §8 🔒) · Help 항목(목적지가 없다) · 프로젝트 패널의 내용(8-P).
+
+### 원래 계획 (아래는 착수 전 기록)
 
 **시안**: [`/project/:slug/translations` (node `212-937`)](https://www.figma.com/design/cuMNHY0Cn5ei9Szjqfz0tm/bugshot?node-id=212-937)
 — 셸 전용 시안은 없고 **번역 화면 시안이 셸을 그리고 있다.** 그 프레임에서 좌표로 읽은 값이 아래다.
