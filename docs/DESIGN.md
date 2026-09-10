@@ -21,7 +21,7 @@
 
 ## 2. 색상 (디자인 토큰)
 
-`components.json`의 `"baseColor"`는 **shadcn CLI 생성 시드일 뿐이다.** `cssVariables: true`라 생성 컴포넌트는 semantic 토큰만 참조하고, **실제 값의 진실은 `app/globals.css`다.**
+**토큰 값의 유일한 진실은 `app/globals.css`다.** ⚠️ 한때 `components.json`의 `"baseColor"`가 시드로 있었지만 **그 파일은 2026-09-08에 CLI를 버리면서 함께 삭제됐다** — 이제 시드도 생성기도 없고, `components/ui/`는 이 리포가 소유한다.
 
 **팔레트는 `slate`다** (푸른 틴트). bugshot-2가 라이트=slate / 다크=neutral로 갈랐던 이유는 "같은 채도가 저명도에서 배경을 남색으로 물들여 칙칙하게 읽힌다"는 것인데, **라이트 단일이라 그 비대칭이 필요 없다** — 고명도에서 slate의 틴트는 순백 배경 위에서 맑게 읽히는 쪽이다. **GitLab의 회색·파랑을 들이지 않는다** (§9.2) — 레퍼런스에서 가져오는 것은 배치이고 색이 아니다.
 
@@ -183,7 +183,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 **"Translated"에는 배지를 붙이지 않는다** — 가장 흔한 상태가 가장 조용해야 한다 (§6.2와 같은 원리). 같은 이유로 **"From repository" 같은 표시도 두지 않는다**.
 
-### 6.2 상태 색 — 배지 4종 + 연결 건강성 6종 + Alert 4종, 색 체계는 하나
+### 6.2 상태 색 — 배지 4종 + 연결 건강성 7종 + Alert 4종, 색 체계는 하나
 
 **축이 셋이고 색 체계는 하나다.** amber는 **경고**, destructive는 **글자색 전용 오류**, 나머지는 무색이다. **semantic 토큰으로 표현 못 하는 상태 색**이라 raw 색을 쓰되, 라이트 단일이므로 `dark:` 짝을 두지 않는다.
 
@@ -194,7 +194,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | 미배포 (`isUnpublished`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·편집 손실 배너와 **같은 술어**다(`updatedBy`가 사람인 행). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
 | orphaned | **red 계열 글자만** — `Badge danger` = `text-destructive` (배경 없음) | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기** |
 
-**연결 건강성 6종** (설정 화면): **배지를 쓰지 않는다** (2026-09-08 실물 정정) — `ok`·`not-connected`·`unknown`은 평문 `text-muted-foreground text-xs`(가장 흔한 상태가 조용하다) / `repo-moved` → **`Alert warning`** / `app-uninstalled`·`installation-changed` → **`Alert danger` + [Reconnect]**. 색 체계는 아래와 같고 담는 그릇만 다르다. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
+**연결 건강성 7종** (설정 화면): **배지를 쓰지 않는다** (2026-09-08 실물 정정) — `ok`·`not-connected`·`unknown`은 평문 `text-muted-foreground text-xs`(가장 흔한 상태가 조용하다) / `repo-moved` → **`Alert warning`** / `app-uninstalled`·`installation-changed` → **`Alert danger` + [Reconnect]** / **`repo-replaced` → `Alert danger`이고 [Reconnect]가 **없다**(2026-09-10, sec-audit-2 — 저장된 주소가 **다른 리포**를 가리키는 상태다. 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가 재고정을 거부하므로 **눌러도 실패할 버튼**이고, 그래서 'danger = danger + [Reconnect]'라는 짝이 여기서만 깨진다). 색 체계는 아래와 같고 담는 그릇만 다르다. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
 
 **첫 적재 상태 3종** (`planProjectReadiness`): `ready` → **표시 없음**(`readinessLabel`이 `null`) / `awaiting_first_sync`·`setup` → 무색 `Badge muted`. 오류가 아니라 진행 중이다.
 
@@ -207,7 +207,7 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
 | `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | "Nothing to publish" |
-| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | Publish 성공 둘 — **초록을 쓰지 않는다**(raw 색을 늘리지 않는다). 성공은 조용하다 |
+| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | Publish 성공 둘 + **로그인 화면의 전체 로그아웃 완료**(`?sessions=revoked` — 셸 **밖** 카드 안이라 §6.4의 배치 셋 중 어디에도 안 들어간다) — **초록을 쓰지 않는다**(raw 색을 늘리지 않는다). 성공은 조용하다 |
 | `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · Publish "일부 미기록" · `repo-moved` |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
@@ -309,6 +309,20 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다. ⚠️ **첫 적재 전 화면은 `ProjectNotReady`가 든다** —
 번역 화면과 **같은 컴포넌트**다(정책과 문구의 소유자가 하나여야 한다, 6b-6이 그 사본을 합쳤다).
 
+### 6.645 ⚠️ 이메일 칸에는 상태가 **셋**이다 (2026-09-10)
+
+암호화 전환 뒤 표의 이메일·이름 칸이 세 갈래로 갈린다 — **셋을 같은 모양으로 그리면 안 된다**:
+
+| 상태 | 무엇 | 어떻게 |
+|---|---|---|
+| 값 있음 | 남의 주소 | **마스킹 라벨**(`a***@acme.com`) — 충돌하는 행만 접두를 늘린다(malmoi#18). **서버가** 만든다 |
+| 부재 | 그 값이 원래 없다 | 이력 표는 `—`, 멤버 표는 이름으로 대신(§6.68·§6.65) |
+| **못 읽었다** | 저장된 값을 지금 키로 못 연다 | **`m.common.unreadable`("Unavailable")** — `lib/auth/query.ts`·`lib/sync/query.ts`가 낸다 |
+
+⚠️ **셋째를 부재로 접지 않는다.** 빈 칸으로 두면 관리자가 "이 사람은 이메일이 없구나"로 읽는데, 실제로는 키가 옛 세대라 못 연 것이다 — POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다")이 화면 층으로 내려온 자리다. 이력 표에서는 `—`와 "Unavailable"이 **같은 열에서** 갈린다.
+
+⚠️ **배지가 아니라 평문이다** — 사용자가 할 일이 없고(운영자가 키를 되살린다) 드문 상태를 요란하게 만들면 §6.1의 "가장 흔한 상태가 가장 조용하다"가 뒤집힌다.
+
 ### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
 
 **Members** 표(Person · Email · Role · Joined · Actions) 위에 [Invite member] `primary`, 그 아래 **Pending
@@ -363,16 +377,19 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다(거부는 `/projects?e=`, 저장 실패는 폼 안 `Alert danger`).
 
-### 6.67 계정 (`/account`) — 카드 셋 (2026-09-09, 6b-4)
+### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수)
 
 **사용자 축의 유일한 화면이다** (SAAS §7.7). 셸 안 `mx-auto max-w-4xl px-6 py-6`, 제목 `text-base
 font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올라갈 자리가 없다.
 
-카드 셋: **Profile** · **GitHub account** · **Sign out**.
+카드 넷: **Profile** · **GitHub account** · **Sessions**(전체 로그아웃) · **Sign out**.
+
+⚠️ **쿼리 슬롯이 둘이다** — `?e=`(연결 실패, `isConnectError`)와 `?sessionRevocation=`(다섯 갈래: `cancelled`·`wrong-account`·`expired`·`invalid`·`unavailable`). 하나로 합치면 두 흐름의 실패가 서로의 문구를 띄운다.
 
 | 블록 | 규칙 |
 |---|---|
 | Profile | 이름·이메일을 `<dl>`로 (`sm:grid-cols-[8rem_1fr]`, 라벨 `text-xs text-muted-foreground`). ⚠️ **읽기 전용이고 그 이유를 카드 설명이 말한다** — provider가 소유하고 재로그인마다 `planEmailRefresh`가 갱신한다(고칠 수 있게 하면 초대 대조가 검증되지 않은 주소 위에 선다). 값은 세션이 아니라 **`User` 행**에서 읽는다: 초대 대조가 보는 값이 그쪽이다. ⚠️ 주소는 식별자라 `text-mono`이고 **마스킹하지 않는다**(자기 주소다 — 남의 주소를 보이는 자리만 `maskEmail`을 지난다) · 값이 없으면 "None" |
+| Sessions | "Sign out everywhere" — 확인 버튼은 **`danger sm`**이고 누르면 **공급자 재왕복**이다(`Dialog`가 아니다: 확인의 근거가 "정말?"이 아니라 **그 계정을 지금 통제하는가**여서, 브라우저 안 확인으로는 그 질문에 답할 수 없다). 버튼은 `loading`/`loadingLabel`로 라벨이 바뀐다(§6.4). 실패는 **in-block `Alert danger`**를 폼 안에 렌더한다 — 페이지 상단으로 올리면 어느 카드의 실패인지 사라진다. ⚠️ **아래 Sign out 카드는 `danger`가 아니다** — 그쪽은 이 기기 하나이고 되돌리기가 재로그인 한 번이라, **되돌릴 수 없는 쪽만** 빨강을 쓴다 |
 | GitHub account | 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 다른 것은 **연결 버튼의 착지**뿐이다(`dest="account"`) |
 | Sign out | 셸에 이미 둘(사이드바 하단·유저 메뉴)이 있는데 여기 세 번째를 둔다 — Action 하나에 상태가 없어 **낡을 수 없고**, 계정 화면에 로그아웃이 없으면 사용자가 찾으러 나간다. 버튼은 `default sm`이다(`danger`가 아니다 — 되돌릴 수 있다) |
 
