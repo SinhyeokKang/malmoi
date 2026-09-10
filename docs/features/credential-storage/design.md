@@ -4,7 +4,7 @@
 
 ## 1. 변경 경계
 
-`auth.ts`의 PrismaAdapter를 명시적인 래퍼로 감싸 세션 CRUD·User CRUD/조회와 로그인 `linkAccount`를 변경한다. GitHub App 연결은 Auth.js 어댑터를 거치지 않으므로 `app/api/github/callback/route.ts`와 `lib/github-connect/token-store.ts`에도 저장 경계를 적용한다. Prisma 전역 middleware로 모든 문자열을 변환하지 않는다.
+sec-audit-2가 반영된 `auth.ts`의 **safePrismaAdapter를 기준으로 확장**해 세션 CRUD·User CRUD/조회와 로그인 `linkAccount`를 변경한다. GitHub App 연결은 Auth.js 어댑터를 거치지 않으므로 `app/api/github/callback/route.ts`와 `lib/github-connect/token-store.ts`에도 저장 경계를 적용한다. Prisma 전역 middleware로 모든 문자열을 변환하지 않는다.
 
 편집 UI 인증과 GitHub 연결을 이용하는 생성·탐지가 영향받는다. push bearer 검증, installation 토큰을 쓰는 pull, 번역 export는 그대로다. 새 화면은 없다.
 
@@ -23,7 +23,7 @@
 
 설치된 `@auth/core@0.41.3`은 OAuth 콜백에서 어댑터가 반환한 sessionToken을 쿠키에 쓴다. DB digest를 그대로 반환하면 로그인 계약이 깨진다. 반대로 내부 원문 객체가 공개 session callback/event 로그에 실리지 않도록 기존 `publicSession` 허용 목록과 로그 제한을 검증한다.
 
-`getSessionAndUser`에서 직접 만료를 검사하므로 일반 세션 조회뿐 아니라 OAuth 콜백에도 적용된다. DB 예외는 null로 삼키지 않는다. `readSession`의 `SessionTokenError` → unavailable 경로를 보존한다. 유효 세션의 추가 OAuth 계정 연결 금지는 별도 수정이다.
+`getSessionAndUser`에서 직접 만료를 검사하므로 일반 세션 조회뿐 아니라 OAuth 콜백에도 적용된다. DB 예외는 null로 삼키지 않는다. `readSession`의 `SessionTokenError` → unavailable 경로를 보존한다. 유효 세션의 추가 OAuth 계정 연결 금지는 현재 safePrismaAdapter의 User 행 잠금·기존 로그인 Account 검사로 유지한다. 만료행 정리도 digest와 현재 만료 조건을 함께 쓰며, 조회 뒤 갱신된 유효 세션을 삭제하지 않는다.
 
 ## 3. GitHub App 토큰 암호화
 
@@ -39,7 +39,7 @@ AAD는 고정 순서 문자열 배열의 JSON UTF-8 바이트다:
 
 ### 읽기와 쓰기
 
-- callback의 create/update/replace 모두 암호화한 토큰 쌍을 하나의 DB 쓰기에 담는다. 갱신 조건에는 계정 복합키와 현재 userId를 포함한다. 조회 뒤 소유자가 바뀌면 0건으로 실패시키고 타인 행을 덮지 않는다(감사 33번 관련).
+- callback의 User 행 잠금·연결 변경 직렬화·실패 트랜잭션 밖 P2002 재조회를 보존한다. create/update/replace 모두 암호화한 토큰 쌍을 하나의 DB 쓰기에 담는다. 갱신 조건에는 계정 복합키와 현재 userId를 포함한다. 조회 뒤 소유자가 바뀌면 0건으로 실패시키고 타인 행을 덮지 않는다(감사 33번 관련).
 - token-store 조회에는 providerAccountId를 포함한다. 원문은 서버의 GitHub 호출 직전에만 복호화하고 외부 반환형에 추가하지 않는다.
 - refresh CAS 조건은 **조회한 refresh 암호문 원본 + 복합키 + userId**다. 복호화한 값을 다시 암호화해 비교하지 않는다. 성공한 access/refresh 쌍과 expires_at을 함께 갱신한다.
 - CAS 실패 시 현재 행을 재조회해 승자의 토큰을 사용한다. 삭제/소유자 변경이면 실패하고 재생성하지 않는다. 외부 refresh 호출을 DB 트랜잭션 안에서 기다리지 않는다.
@@ -47,7 +47,7 @@ AAD는 고정 순서 문자열 배열의 JSON UTF-8 바이트다:
 
 ## 4. 로그인 OAuth 토큰 최소화
 
-Auth.js adapter `linkAccount`에서 `github`·`google`에 대해 식별 필드(`userId`, `type`, `provider`, `providerAccountId`)만 저장한다. 기존 access_token·refresh_token·id_token은 전환 작업에서 NULL로 만든다. 공급자가 인증하는 동안 쓰는 응답을 조기에 제거하지 않고 **DB 저장 경계에서만** 제거한다. 검증된 이메일 저장 규칙은 유지한다.
+현재 safePrismaAdapter의 `linkAccount`가 User 행 잠금과 추가 계정 연결 거부 후 `github`·`google`에 대해 식별 필드(`userId`, `type`, `provider`, `providerAccountId`)만 저장한다. 기존 access_token·refresh_token·id_token은 전환 작업에서 NULL로 만든다. 공급자가 인증하는 동안 쓰는 응답을 조기에 제거하지 않고 **DB 저장 경계에서만** 제거한다. 검증된 이메일 저장 규칙은 유지한다.
 
 이 어댑터는 등록된 로그인 provider만 허용한다. `github-app`은 별도 연결 경로가 암호화해서 쓴다. 전체 OAuth 응답이나 인증 라이브러리 객체를 spread해서 저장하지 않는다.
 
@@ -125,13 +125,13 @@ nonce 생성·env 읽기·현재 시각·DB·GitHub는 껍데기에 둔다. 테�
 
 lookup은 `hmac:v1:<keyId>:<64자리 hex>`다. Node HMAC-SHA-256으로 JSON 배열 `["malmoi/email-lookup", "v1", scope, normalizedEmail]`을 인증한다. User의 scope는 `user`, 초대는 `invitation:<projectId>`다. 같은 주소라도 테이블 및 프로젝트 간 digest가 다르다. 단순 SHA-256(email), 암호화 키 재사용, 결정적 AES-GCM nonce는 금지한다.
 
-정규화는 기존 `normalizeEmail`만 사용한다. 조회 후 복호화한 이메일도 정규화 입력과 일치하는지 검사한다. 불일치/손상은 데이터 오류로 중단하고 사용자 자동 생성·병합으로 넘기지 않는다. 로그인/초대 이메일 변경은 암호문과 lookup을 같은 쓰기로 갱신한다. unique 충돌은 기존 중복 이메일 거부 의미로 처리한다.
+정규화는 기존 `normalizeEmail`만 사용한다. 조회 후 복호화한 이메일도 정규화 입력과 일치하는지 검사한다. 불일치/손상은 데이터 오류로 중단하고 사용자 자동 생성·병합으로 넘기지 않는다. 로그인/초대 이메일 변경은 암호문과 lookup을 같은 쓰기로 갱신한다. 신규 가입의 unique 충돌은 중복 가입을 거부한다. 기존 회원의 이메일 refresh 충돌은 갱신·병합만 거부하고 기존 이메일과 userId로 로그인한다. 사전 조회 후의 P2002도 같은 결과이며 암호문과 lookup 중 하나만 바뀌면 안 된다.
 
 인덱스는 정확 일치만 지원한다. 부분 검색·정렬에는 쓰지 않는다. 현재 초대 목록의 `orderBy: {email:"asc"}`는 프로젝트로 좁힌 행을 서버에서 복호화한 뒤 기존 이메일 순서와 ID tie-break로 정렬하고 마스킹한다. 이후 페이지네이션이 생기면 암호문 순 정렬로 대체하지 말고 별도 설계한다.
 
 ### Auth.js와 직접 Prisma 경로
 
-PrismaAdapter를 spread하고 세션만 바꾸면 기본 User 메서드가 암호문을 반환하므로 불충분하다. `createUser`, `updateUser`, `getUser`, `getUserByEmail`, `getUserByAccount`, `getSessionAndUser`와 사용자 객체를 반환하는 `deleteUser`까지 명시적으로 감싼다. AdapterUser는 신뢰된 서버 경계 안에서만 평문으로 복원한다. 업데이트에서 undefined는 유지, nullable 필드의 null은 제거로 구별한다. emailVerified를 OAuth 소유권 검증의 근거로 승격하지 않는다.
+기본 PrismaAdapter를 새로 spread하거나 safePrismaAdapter의 세션만 바꾸면 기본 User 메서드가 암호문을 반환하므로 불충분하다. `createUser`, `updateUser`, `getUser`, `getUserByEmail`, `getUserByAccount`, `getSessionAndUser`와 사용자 객체를 반환하는 `deleteUser`까지 명시적으로 감싼다. AdapterUser는 신뢰된 서버 경계 안에서만 평문으로 복원한다. 업데이트에서 undefined는 유지, nullable 필드의 null은 제거로 구별한다. emailVerified를 OAuth 소유권 검증의 근거로 승격하지 않는다.
 
 Auth.js 밖의 아래 경로도 서버 전용 저장 접근 함수로 모은다. DB 모델과 복호화 DTO 타입을 나누고 불필요한 필드를 복호화/반환하지 않는다.
 
@@ -143,9 +143,10 @@ Auth.js 밖의 아래 경로도 서버 전용 저장 접근 함수로 모은다.
 | invite/[token]/page.tsx | 토큰·상태 검사 후 서버에서 복호화 및 마스킹 |
 | lib/auth/query.ts | 멤버·초대·초대한 사람의 필요한 필드만 복호화; 기존 maskedEmailLabels 적용 |
 | lib/keys/query.ts loadActors | 인가된 번역 행에서 수집한 ID만 조회, 서버 표시 라벨로 변환 |
+| lib/sync/query.ts loadSyncRuns | 현재 requester.name/email 소비자. requester의 ID도 조회해 필요한 필드를 복호화한 뒤 이름·서버 마스킹 라벨만 반환. 삭제된 requester=null 보존 |
 | account/page.tsx 및 publicSession | 본인에게 허용된 기존 필드만 반환; envelope/lookup은 제외 |
 
-새로 추가되는 SyncRun 등의 actor 조회도 같은 접근 함수를 쓰는지 구현 시 전체 검색으로 확인한다. 이메일·이름을 새 로그 스냅샷 컬럼에 평문으로 복제하지 않는다. DB raw row를 RSC props로 넘기거나 Prisma 오류의 인자 값을 기록하지 않는다. 개인정보 복호화 실패는 로그인 필요가 아니라 unavailable로 분류한다.
+이미 존재하는 SyncRun actor 조회를 필수 전환하고, 이후 추가되는 소비자는 전체 검색으로 확인한다. 이메일·이름을 새 로그 스냅샷 컬럼에 평문으로 복제하지 않는다. DB raw row를 RSC props로 넘기거나 Prisma 오류의 인자 값을 기록하지 않는다. 개인정보 복호화 실패는 로그인 필요가 아니라 unavailable로 분류한다.
 
 ### 전환·회전·복구
 
@@ -160,3 +161,64 @@ Auth.js 밖의 아래 경로도 서버 전용 저장 접근 함수로 모은다.
 `emailLookup(normalizedEmail, scope, key, keyId)`, `encodePiiAAD`, `encrypt/decryptPiiField`, `encode/decodeUser`, `planPiiMigration`을 테스트 우선 대상으로 추가한다. 공급자 검증은 기존 함수, 정규화는 기존 계약을 재사용한다.
 
 검색용 인덱스의 별도 키·도메인 분리와 동일 값 노출이라는 한계는 [CipherSweet의 보안 모델](https://ciphersweet.paragonie.com/security)과 [키 계층 설명](https://ciphersweet.paragonie.com/internals/key-hierarchy)을 참고했다. 이 설계는 해당 라이브러리/프로토콜을 구현한다고 주장하지 않으며, 이 저장소의 정확 일치·DB unique 요구를 위한 전체 길이 HMAC을 사용한다.
+
+
+## 10. feature-review에서 고정한 회귀·배송 계약
+
+### 보안 기준점과 저장소 테스트
+
+구현 재개 기준은 origin/dev의 sec-audit-2 `dac4c97` 포함 여부다. 보존할 계약은 다음과 같다.
+
+- safePrismaAdapter의 User 잠금·추가 로그인 계정 거부·만료행 조건부 정리·신규 로그인 토큰 미저장.
+- GitHub callback의 사용자별 직렬화·소유자 조건과 rollback 후 P2002 재조회.
+- 초대 소비의 조회한 expiresAt 동등 조건·소비 직전 만료 검사. 초대 이메일 암호화가 이 CAS를 지우지 않는다.
+- `schema-contract.test.ts`는 최종 유효 어댑터 기준으로 바꾼다. User.email unique 단언을 삭제만 하지
+  않고 emailLookup unique, 초대 `(projectId,emailLookup)` 인덱스, 필수 User 메서드 override,
+  평문 `findUnique({email})` 미사용을 대체 계약으로 검증한다. 상속하는 기본 메서드는 기존 계약을 유지한다.
+
+### 두 릴리스와 마이그레이션 실행 경계
+
+**준비 릴리스 R1에는 additive migration만 포함한다.** 최종 NOT NULL·구 인덱스 제거 migration은
+R1의 `prisma/migrations/`에 넣지 않는다. 준비 시점의 `migrate deploy`가 모든 pending SQL을
+실행해도 additive만 적용되도록 checkout을 고정하고 pending 목록을 검사한다.
+
+**전환 릴리스 R2는 별도로 준비한다.** 트래픽·구 배포·worker 접근을 차단하고 진행 중 쓰기의 종료를
+입증한 후, R2 전환 도구로 backfill·전건 복호화·lookup 일치·중복/NULL 0을 확인한다. 그 뒤에만 R2의
+finalize migration을 적용하고 새 앱을 활성화한다. R2로 미리 `migrate deploy`하지 않는다. finalize SQL도
+NULL 잔여를 거부하고, 도구 preflight는 전건 검증 실패 시 finalize 명령을 실행하지 않는다.
+
+dev는 `pnpm exec prisma migrate deploy`(dev DIRECT_URL), prod는 별도 prod 승인 절차의
+`pnpm db:deploy`다. prod 명령을 dev 리허설에 재사용하지 않는다. backfill은 Prisma migration과
+별도의 멱등 도구다. 실패한 migration은 실제 DDL 상태를 먼저 확인하고 검토된 복구 절차로만 resolve한다.
+체크섬 파일 편집·무조건 applied 처리·DB reset은 금지한다.
+
+빈 DB·legacy DB·첫 backfill 배치 커밋 후 중단·backfill 완료 후 finalize 전 중단·finalize 후 앱 활성화 전
+중단·검색 키 일부 행 교체 후 중단을 격리 PostgreSQL에서 검증한다. 각 재개는 ID/FK 보존,
+평문/NULL/lookup 불일치 수, 동일 검색 키 세대, 트래픽 차단 유지까지 검사한다.
+
+전환 도구 T10/P6/P7이 준비된 뒤 T11 전체 리허설을 수행한다. 인입 503만으로 drain을 증명하지 않는다.
+구 배포 URL·OAuth·cron·CI push·로컬 writer를 포함한 접근 목록과 이미 연결된 쓰기의 종료 근거를
+운영 체크리스트로 남긴다. 환경에서 이를 보장할 구체적 수단이 검증되지 않으면 전환은 실행하지 않는다.
+
+### 장애 표시와 로그의 책임
+
+| 발생 경로 | 사용자에게 전달할 결과 |
+|---|---|
+| session 조회 | 기존 readSession unavailable. 만료·비로그인과 구분 |
+| OAuth callback / signIn의 User·email 저장 접근 | 암호/DB 장애를 안전한 Unavailable 경로로 전달. 일반 예외가 AccessDenied로 포장돼 이메일 미검증 안내가 나오지 않게 함 |
+| 초대 페이지의 초대 행 복호화 | 기존 카드의 danger Alert와 재시도. 토큰 오류·로그인 필요로 오분류 금지 |
+| 멤버·번역자·logs 등 페이지 로더 | 페이지 오류 및 재시도 경계. 빈 목록·익명 actor로 대체 금지 |
+| 초대·연결 등 Server Action | 기존 인라인 unavailable 수신자. 성공 응답·재연결 요구로 대체 금지 |
+
+기존 Alert의 role=alert와 키보드 재시도/포커스 규칙을 사용한다. 알고리즘·키 ID는 제품 문구에 넣지 않는다.
+실제 Auth.js callback 핸들러부터 로그인 화면 오류 코드까지 검증하며 wrapper 직접 호출로 대체하지 않는다.
+잘못된 이메일·정당한 인가 거부는 장애로 바꾸지 않는다.
+
+crypto 오류뿐 아니라 DB writer 실패도 저장 경계에서 값 없는 고정 코드로 정규화한다. 임의
+`error.message`·cause·Prisma 인자 객체를 기존 로거에 넘기지 않는다. 서버 진단에는 분류 코드만 남기되
+Auth.js의 SessionTokenError 감지는 유지한다. 평문·암호문·lookup을 포함한 Prisma 오류 fixture로
+로그와 사용자 응답 양쪽에 값이 없는지 검증한다.
+
+점검 중 사용자는 일시 점검 안내와 재시도 행동을 받는다. 열린 편집기의 저장을 성공으로 응답하지 않고
+실패를 알린다. 초대 링크·ID·멤버십은 유지하며 점검 후 기존 공급자로 로그인해 복귀한다. 앱의 신규
+점검 기능을 확장하는 것이 아니라 차단 운영 수단이 이 최소 응답 계약을 충족하는지 검증하는 범위다.
