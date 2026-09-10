@@ -17,12 +17,12 @@ import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { countUnpublished, loadActors, loadKeys, loadProject, type ProjectContext } from "@/lib/keys/query";
 import {
-  ALL_NAMESPACES, actorLabel, buildPermalink, cellState, collectActorIds, filterRows,
+  actorLabel, buildPermalink, cellState, collectActorIds, filterRows,
   isUnpublished, namespaceCounts, resolveNamespace,
   type KeyRow, type NamespaceCount, type TranslationState,
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { routes, type TranslationsQuery } from "@/lib/routes";
+import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 export const maxDuration = 60;
 
 /** ⚠️ 이 타입이 URL 계약이다 — `entry-points.test.ts`가 `routes.translations`의 키와 대조한다. */
-type Search = { ns?: string; focus?: string; q?: string; state?: string };
+type Search = { ns?: string; focus?: string; locales?: string; q?: string; state?: string };
 
 export default async function TranslationsPage({
   params,

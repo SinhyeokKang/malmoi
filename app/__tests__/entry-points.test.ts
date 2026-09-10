@@ -469,7 +469,7 @@ describe("쿼리 파라미터의 수신자", () => {
   const ACCEPTED = queryKeysOf(TRANSLATIONS_PAGE?.source ?? "", "Search");
 
   it("양쪽 타입에서 쿼리 키를 읽어냈다 — 스캐너가 조용히 0건이 되지 않는다", () => {
-    expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "focus", "q", "state"]);
+    expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "focus", "locales", "q", "state"]);
     expect(ACCEPTED.length).toBeGreaterThan(0);
   });
 

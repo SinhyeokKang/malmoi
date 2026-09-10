@@ -1,5 +1,6 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { maskEmail } from "@/lib/auth/email";
+import { ALL_NAMESPACES } from "@/lib/routes";
 
 /**
  * 키 리스트 화면의 순수 판정. DB 조회 결과를 받아 사이드바 집계·배지·permalink를 만든다.
@@ -278,9 +279,6 @@ export function defaultNamespace(counts: readonly NamespaceCount[]): string | nu
   // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
   return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
 }
-
-/** "전체" 네임스페이스의 URL 값. `lib/routes.ts`의 `ns`와 이 판정이 같은 값을 봐야 한다. */
-export const ALL_NAMESPACES = "*";
 
 /**
  * `?ns=`의 해석. **`"*"`가 전체다** — 어댑터가 만들 수 없는 이름이라 실제 키 접두와 충돌하지 않는다
