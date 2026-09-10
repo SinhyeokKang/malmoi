@@ -137,7 +137,10 @@ export default async function TranslationsPage({
         <NamespacePanel slug={slug} counts={counts} total={rows.length} selection={selection} query={query} />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* ⚠️ **본문 랜드마크가 이 열이다** — 왼쪽 `<aside>`는 네임스페이스 내비게이션이라 밖에 둔다.
+          `Centered`(빈 상태 셋)도 `<main>`을 들지만 **그건 다른 갈래**라, 소스에 `<main`이 있다는
+          것만으로는 이 경로가 덮이지 않았다 — 실측으로 잡았다 (2026-09-11). */}
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
             `router.refresh()`·`revalidatePath`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07). */}
         <TranslationsHeader
@@ -233,7 +236,7 @@ export default async function TranslationsPage({
             </Announcer>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
