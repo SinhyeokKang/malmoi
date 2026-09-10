@@ -57,6 +57,15 @@ const UNCODED: readonly string[] = [
 type Site = { file: string; args: string; hasCode: boolean };
 
 /**
+ * 주석을 공백으로 지운다 — **이 리포의 소스 스캐너 관용구다**(`focus-ring`·`no-korean-ui`).
+ * 안 벗기면 `// fail(...)`을 언급한 주석 한 줄이 호출 자리로 세어져 거짓 red가 되고, 그러면
+ * 이 방어선을 통째로 버리게 된다. 길이를 보존해 오프셋이 안 흔들리게 같은 수의 공백으로 바꾼다.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, " "));
+}
+
+/**
  * `fail(` 호출의 인자 텍스트를 통째로 꺼낸다.
  *
  * ⚠️ **정규식으로는 못 센다** — 인자가 여러 줄이고 템플릿 리터럴 안에 `(`·`,`가 들어 있다.
@@ -91,7 +100,7 @@ function callSites(file: string, source: string): Site[] {
   return sites;
 }
 
-const SITES = FILES.flatMap((f) => callSites(f, readFileSync(`${ROOT}${f}`, "utf8")));
+const SITES = FILES.flatMap((f) => callSites(f, stripComments(readFileSync(`${ROOT}${f}`, "utf8"))));
 
 describe("lib/pull의 fail( 자리 — 코드를 드는 것과 안 드는 것이 둘 다 고정돼 있다", () => {
   it("스캐너가 실제로 자리를 찾는다 — 0건이면 이 파일 전체가 공허하다", () => {
