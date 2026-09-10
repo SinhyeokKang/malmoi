@@ -23,7 +23,7 @@
 | 축 | 정하는 것 | 갈리는 지점 |
 |---|---|---|
 | `layout` | **경로 모양** | `resolveLocalePaths`(`{locale}` 치환 vs 글롭 매칭), `renderLocaleFiles`(로케일당 1회 vs 파일 × 로케일 이중 루프) |
-| `writeStrategy` | **write 기계** | `run.ts`가 **blob 내용을 받는지**, 빈 값 필터를 호출부가 지는지, 결정성 규칙(§1.1)을 적용받는지 |
+| `writeStrategy` | **write 기계** | 원본 부재 시 처리, 빈 값 필터를 호출부가 지는지, 결정성 규칙(§1.1)을 적용받는지 |
 
 **`layout`으로 "원본이 필요한가"를 판단하는 코드가 남아 있으면 낡은 것이다.** 그렇게 두면 YAML·코드 딕셔너리 프로젝트가 원본 없이 write에 들어가 `null`을 받고 **PR이 조용히 비어 나간다.**
 
@@ -371,12 +371,15 @@ clone하지 않는다.
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
 `/api/pull`은 프로젝트 하나를 받지 않는다. `project.findMany` → `selectPullTargets` → 프로젝트별
-`triggerPull`을 돌고 **배열**(`PullItem[]`)로 응답한다.
+`runSync`를 돌고 **`{ results, unprocessed }`**로 응답한다.
 
-- **선택 규칙**: `installationId`와 `lastCommitSha`가 **둘 다 있는** 프로젝트만이다 — 앞은 App이 그 리포를
-  볼 수 있다는 뜻이고 뒤는 최초 적재가 끝났다는 뜻이다(`ready`의 판정 근거와 같다). 준비 안 된 행을
-  순회에 넣으면 매일 밤 실패 로그가 쌓이고 진짜 장애가 그 안에 묻힌다.
-- **정렬은 slug `compareKeys`** — 응답 순서가 결정적이어야 로그를 비교할 수 있다.
+- **선택 규칙**: `installationId`·`repositoryId`·`lastCommitSha`가 **셋 다 있고 보관되지 않은** 프로젝트만이다 —
+  앞의 둘은 App이 그 리포를 볼 수 있고 **어느 리포인지 고정돼 있다**는 뜻이고(§9), 뒤는 최초 적재가
+  끝났다는 뜻이다(`ready`의 판정 근거와 같다). 준비 안 된 행을 순회에 넣으면 매일 밤 실패 로그가
+  쌓이고 진짜 장애가 그 안에 묻힌다. ⚠️ **`repositoryId`가 조건에 들어간 것은 2026-09-10이다** —
+  그 컬럼이 생기기 전에 만들어진 행은 전부 null이고 `createClient`가 확실히 던지므로, 남겨 두면
+  재연결 전까지 **프로젝트마다 매일 밤 실패 `SyncRun`이 하나씩** 쌓인다.
+- **최근 실행이 오래된 순서이며 동점은 slug `compareKeys`**다(§5.6.5).
 - **한 프로젝트의 실패가 나머지를 막지 않는다** — 항목별 try/catch이고 실패도 배열의 한 항목으로 나온다.
   ⚠️ 그래서 **HTTP 200이 전부 성공을 뜻하지 않는다**: 항목의 `status`를 봐야 한다.
 
@@ -595,9 +598,11 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   SAAS §8 7단계의 고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
   "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
-⚠️ **`Account`·`Session`의 토큰 컬럼은 평문이다** (2026-09-09 수용 기록 — sec-audit 발견 16).
-`access_token`·`refresh_token`·`id_token`·`sessionToken` 넷이고, **Auth.js Prisma adapter의 기본 모양**이라
-컬럼 암호화는 그 어댑터 밖이다(스키마를 바꾸면 어댑터가 런타임에 던진다 — §5.1의 첫 경고와 같은 축).
+**신규 github/google 로그인 Account는 OAuth 토큰을 저장하지 않는다** (2026-09-10).
+`safePrismaAdapter.linkAccount`가 `userId`·`type`·`provider`·`providerAccountId`만 저장한다.
+기존 로그인 Account의 잔존 토큰, `github-app`의 access/refresh 토큰과 Session 원문은 아직 평문이다.
+기존 행 정리·세션 해시·회원 정보 암호화는 [credential-storage](features/credential-storage/spec.md)의
+후속 전환이며 이 보안 수정으로 완료된 것이 아니다.
 
 **전제 조건을 적어 두는 것이 이 항목의 전부다**: 그 값에 닿으려면 **DB 자격증명**이 있어야 한다.
 2026-09-09 전에는 아니었다 — `anon` 키 하나로 읽을 수 있었고(POSTMORTEM 2026-09-09), 지금은
@@ -617,7 +622,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 `buildPushPayload`·`selectLocaleFiles`·`pickBaseLocale`이 **호출부가 아니라 `lib/`에 있다.** 전에는 `scripts/push-local.ts`의 리터럴이라 계약이 넓어져도 컴파일러가 붙잡을 지점이 없었고, 필수 필드 둘이 늘었는데 typecheck·test가 전부 green이었다 (POSTMORTEM 2026-08-31). **스키마(zod)와 소비자(`applyPush`)는 타입으로 이어져 있었는데 생산자만 끊겨 있었다.**
 
-- **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write에 원본이 필요한지를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
+- **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write 방식과 원본 부재 시 처리를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
 - **`pickBaseLocale`은 추정이고 정본이 아니다** — `en` 우선, 없으면 사전순 첫 번째. 🔒는 2026-09-07에 해소됐다: 온보딩이 사용자에게 확정받아 `Project.baseLocale`에 저장하고 push가 `input.baseLocale ?? pickBaseLocale(...)`로 그것을 우선한다. 이 함수는 **후보 화면의 기본값**으로 남았다.
 - ⚠️ **그 위에 층이 하나 더 있다** — `lib/push/assemble.ts`의 `assemblePushInput`이 `selectLocaleFiles` →
   `adapter.read` → base 판정을 한 묶음으로 들고, `scripts/push-local.ts`와 온보딩의 첫 적재가 **둘 다 이걸
@@ -647,9 +652,13 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 것이 정확히 그 행이다. 트리에 없는 파일을 만드는 갈래는 그대로다(신규 로케일이 그것으로 생긴다);
 막는 것은 **템플릿의 디렉터리 밖으로 나가는 것**뿐이다.
 
-⚠️ **온보딩의 첫 적재는 Zod 경계를 지나지 않는다** (`lib/onboarding/ingest.ts` → `buildPushPayload` →
-`applyPush`). 값이 리포의 파일명·식별자에서 오므로 실질 위험이 없고, 남는 위험은 2층이 받는다 —
-그 경로로 들어온 값이 있으면 pull이 `fail()`로 **시끄럽게** 멈춘다.
+**온보딩 첫 적재도 `PushPayload.safeParse`를 통과한 뒤 `applyPush`를 호출한다**
+(`lib/onboarding/ingest.ts`). 빈 키 집합과 스키마 거부는 DB에 쓰지 않는다.
+탐지·포맷 확정·첫 적재는 `lib/onboarding/budget.ts`의 공통 예산을 적용한다:
+최대 200파일, 파일당 2,000,000바이트, 합계 10,000,000바이트. Git tree의 크기를 다운로드 전에
+검사하고 실제 UTF-8 본문을 다시 센다. 크기 누락도 거부한다. YAML은 Lexer/CST Parser의 구성
+스택으로 중첩 100을 제한하고, JSON·코드 리터럴은 문자열·주석을 제외한 구분자 깊이를 검사한다.
+코드 구문 검사는 완전한 CPU 격리가 아니다. Action은 예산 초과를 `resource-limit`으로 표시한다.
 
 크기 상한(발견 10)은 같은 자리에 있다 — 키 20,000 · 로케일 200 · 문자열 10,000자 · 행 200,000이고
 근거는 실측이다(prod 최대 903키 · `Translation` 12,783행 — **20배 여유**). ⚠️ **`placeholders`엔 안
@@ -657,7 +666,7 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 ### 5.5.1 pooler가 구현을 규정한다
 
-- **push는 배열형 `$transaction([...])`을 쓴다 — 왕복 수 때문이다.** 한 번에 배치로 보내 문장 수만큼의 왕복이 없다. ⚠️ **"대화형 `$transaction(async tx => …)`은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형을 쓰는 것은 **다섯**이다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다 — 잠금과 롤백이 필요한 자리다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다.
+- **push는 배열형 `$transaction([...])`을 쓴다 — 왕복 수 때문이다.** 한 번에 배치로 보내 문장 수만큼의 왕복이 없다. ⚠️ **"대화형 `$transaction(async tx => …)`은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결(TASKS §4).
 
@@ -897,7 +906,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 **두 라우트와 Publish Server Action(`triggerPullAction`)의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04, Action은 2026-09-06). `lib/failure.ts`의
 `classifyFailure`가 가른다:
 
-⚠️ **`/api/pull`은 `catch`가 둘이다** (§3.05의 프로젝트별 격리와 이어진다) — 외곽 하나와 프로젝트별 `failureItem` 하나. `lib/pull/**`의 실패는 대개 `safe`(`fail()`)이고 응답은 **항상 200 배열**이며 cron이 본문을 버리므로, 조용한 `safe` 갈래는 전면 장애를 성공과 구별 불가로 만든다. 그래서 프로젝트별 실패도 분류를 지나 항목으로 남는다.
+⚠️ **`/api/pull`은 `catch`가 둘이다** (§3.05의 프로젝트별 격리와 이어진다) — 외곽 하나와 프로젝트별 `failureItem` 하나. `lib/pull/**`의 실패는 대개 `safe`(`fail()`)이고 개별 실행 결과는 **HTTP 200의 results 배열**이며 cron이 본문을 버리므로, 조용한 `safe` 갈래는 전면 장애를 성공과 구별 불가로 만든다. 그래서 프로젝트별 실패도 분류를 지나 항목으로 남는다.
 
 | 오류 | 본문 | 전문 |
 |---|---|---|
@@ -994,7 +1003,14 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 ⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
 
-⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **그 기본 동작이 이 단계의 계정 병합 방어선 전부다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
+⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
+
+**로그인된 세션에서 추가 provider를 연결하는 경로는 별도로 막는다** (sec-audit-2 #31).
+`safePrismaAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
+현재도 만료인 행만 조건부 삭제한다. `linkAccount`는 User 행을 잠근 뒤 기존 github/google
+Account가 있으면 거부한다. 신규 로그인 Account는 식별자 네 필드만 저장해 OAuth 토큰을 남기지 않는다.
+GitHub App 연결은 별도 callback이며 User 행 잠금으로 직렬화하고 UPDATE/DELETE에 `userId`를
+포함한다. P2002 재조회는 실패한 트랜잭션 밖에서 수행한다.
 
 **인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
@@ -1044,7 +1060,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 **규칙은 두 축이다: 프로젝트에 속한 행은 `projectId`로, 사용자에 속한 행(`Account`·`Session`)은 `userId`로
 좁힌다.** 둘 다 인가가 돌려준 값이어야 하고 클라이언트가 보낸 값이면 안 된다.
 
-⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany({ acceptedAt: null, expiresAt: { gt: now } })`의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
+⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany`의 `acceptedAt: null`·조회 당시 `expiresAt` 동등 조건·소비 직전 시각보다 미래인 조건의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
 
 ⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
 
@@ -1095,7 +1111,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `state-mismatch`다. **origin과 쿠키의 `secure`가 한 판정에서 나오는 것**이 그 파일의 요지다 — 따로
   읽으면 한쪽만 바뀌어도 심은 이름과 찾는 이름이 갈린다.
 - **state는 HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨. ⚠️ 세션 서명과 **키를 공유**하므로 회전하면
-  진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · `timingSafeEqual`(길이 선검사).
+  진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · 고정 길이 SHA-256 digest의 `timingSafeEqual` 비교.
 - **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
   것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
 - **목적지를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
@@ -1148,7 +1164,7 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 
 **installation 토큰으로도 public 리포는 접근을 철회한 뒤에 200을 준다.** `GET /repos/{o}/{r}`만 보면
 `ok`로 오판하므로, **App JWT의 `GET /repos/{o}/{r}/installation`이 "설치돼 있는가"를 결정적으로 답하고**
-두 번째 호출은 **이름 감지 전용**이다(리네임이면 octokit이 301을 따라가 새 `full_name`을 준다).
+두 번째 호출은 **이름과 불변 repository ID 확인용**이다(리네임이면 octokit이 301을 따라가 새 `full_name`을 준다).
 2026-09-07에 실물로 확인했다 — 설치의 선택 목록에서 리포를 빼자 `probeRepo`가 `not-installed`로 바뀌었다.
 
 - **`try`가 토큰 발급까지 감싼다.** 설치가 삭제되면 `GET /repos`가 아니라
@@ -1235,3 +1251,38 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
   - ⚠️ **`tsc`는 이 함수를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
     `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.
+
+
+## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
+
+- **리포 이름은 주소, `Project.repositoryId`는 정체성이다.** 최초 생성·OWNER 재연결 때 GitHub가
+  반환한 ID를 저장한다. 재연결은 기존 ID가 다르면 거부하고 기존 ID·owner/name을 조건으로 갱신한다.
+  Publish는 ID 미고정 상태를 거부한다. installation 토큰도 해당 ID 하나로 범위를 제한하고,
+  이름으로 조회한 저장소의 ID를 재대조한다. 검사 뒤 이름이 재사용되어도 다른 저장소에 쓸 권한이 없다.
+  - ⚠️ **그 판정이 화면에도 서야 한다** (2026-09-10 보완). 처음엔 쓰기 직전에만 대조해서,
+    이름을 재사용한 리포에서 `planConnectionHealth`가 `fullName`·`installationId`만 보고 **초록을
+    띄우는 동안 Publish만 죽었다.** 지금은 ID 대조가 이름 대조보다 **앞**이고 갈래가 하나 늘었다
+    (`repo-replaced`) — 리네임(같은 ID·다른 이름)만 `repo-moved`로 남는다. ⚠️ **그 화면에
+    [다시 연결]을 두지 않는다**: 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가 다른
+    ID로의 재고정을 거부하므로, 눌러도 실패할 버튼이 된다.
+  - ⚠️ **`ProbeResult.repositoryId`는 optional이 아니다.** `probeRepo`는 항상 채우는데 타입이 부재를
+    허용하면 판정 쪽 `=== null` 검사를 `undefined`가 조용히 지나간다. 부재를 표현할 곳은 **저장된
+    행**이지 방금 받은 응답이 아니다 — 필수로 바꾸자 픽스처 넷이 컴파일에서 걸렸다.
+  - ⚠️ **미고정 행은 cron 순회에서도 빠진다** (§3.05). 화면이 `not-connected`로 할 일을 말하는 동안
+    `/logs`가 실패로 채워지면 7단계 이력의 첫 화면이 무의미해진다.
+- nullable 컬럼 추가 마이그레이션 `20260910030000_pin_repository_id`를 앱 배포보다 먼저 적용한다.
+  기존 프로젝트는 자동 고정하지 않는다. OWNER 재연결 전까지 Publish가 차단된다.
+- `loadPullState`는 프로젝트·키·번역 값·최대 수정 시각을 **같은 RepeatableRead 트랜잭션**에서 읽는다.
+  이 트랜잭션은 GitHub 호출 전에 종료된다. 값을 A에서 읽고 완료 기준 시각을 B에서 읽는 경합을 막는다.
+  프로젝트 실행 직렬화(`SyncRun`)와는 별개의 보장이다.
+- 글롭 `*`는 `/`를 넘지 않는 DP 매칭(`lib/adapters/glob.ts`)이며 시간은 템플릿 길이 × 경로 길이에
+  비례한다. 기존 템플릿 길이 200·양자 4개 상한을 유지한다. 온보딩 `{locale}` 캡처는 2~8자로 묶는다.
+  ⚠️ **DP 뒤에도 양자 예산이 남는 이유는 갈래가 둘이기 때문이다** — `matchGlobPaths`는 역추적을 안
+  하지만 `lib/onboarding/confirm.ts`의 per-locale 갈래는 여전히 `RegExp`이고 `{locale}` N개를 인접
+  캡처 N개로 이어 붙인다. 두 갈래가 `exceedsGlobBudget` 하나를 지난다.
+- ⚠️ **`lib/onboarding/budget.ts`가 `yaml`의 `Parser.stack`을 읽는다** — 공개 API가 아니다. YAML의
+  plain/block scalar 의미가 따옴표 스캐너와 달라 직접 구문을 추정하면 우회와 오탐이 함께 났고
+  (POSTMORTEM 2026-09-10), 실제 Lexer·CST로 옮기면서 내부 구조에 붙었다. 버전을 올릴 때 red를
+  내는 것은 `budget.test.ts`뿐이라 스택 표에 그 사실을 적었다.
+
+구현·검증·운영 잔여는 [sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)을 따른다.

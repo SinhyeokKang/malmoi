@@ -16,6 +16,7 @@ const project = (
   over: Partial<{
     slug: string;
     installationId: string | null;
+    repositoryId: string | null;
     lastCommitSha: string | null;
     archivedAt: Date | null;
     syncRuns: { startedAt: Date }[];
@@ -23,6 +24,7 @@ const project = (
 ) => ({
   slug: "acme",
   installationId: "1",
+  repositoryId: "1035512",
   lastCommitSha: "a".repeat(40),
   archivedAt: null,
   // 라우트가 `take: 1, orderBy: { startedAt: desc }`로 읽는 모양 그대로다 — 판정층이 재조립하지 않는다.
@@ -37,6 +39,13 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
 
   it("`installationId`가 null이면 뺀다 — `runPull`이 던지는 자리를 미리 막는다", () => {
     expect(selectPullTargets([project({ installationId: null })], 50).targets).toEqual([]);
+  });
+
+  it("⚠️ 리포 ID가 고정 안 된 옛 행도 뺀다 — `createClient`가 확실히 던지는 자리다", () => {
+    // sec-audit-2 발견 34가 그 컬럼을 만들었고, 그 전에 생긴 행은 전부 null이다. 순회에 남기면
+    // **재연결할 때까지 매일 밤 프로젝트마다 실패 `SyncRun`이 하나씩 쌓인다** — 7단계 `/logs`의
+    // 첫 화면이 그것으로 채워진다. 사용자에게 할 일을 말하는 자리는 설정 화면의 `not-connected`다.
+    expect(selectPullTargets([project({ repositoryId: null })], 50).targets).toEqual([]);
   });
 
   it("`lastCommitSha`가 null이면 뺀다 — 첫 적재 전이라 포맷 컬럼도 비어 있다", () => {

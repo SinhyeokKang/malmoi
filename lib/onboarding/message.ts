@@ -54,6 +54,7 @@ export type OnboardError =
   /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (design §3.7). */
   | "not-awaiting"
   | "ingest-failed"
+  | "resource-limit"
   /**
    * 첫 적재가 끝나기 전에 번역 Action이 불렸다 (design §3.7). 화면으로는 도달하지 않고 **URL 직접
    * 호출**과 적재 실패 후의 재방문이 여기로 온다 — 그래도 문구를 두는 이유는 번역자가 저장 실패
@@ -82,6 +83,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "invalid-slug",
   "not-awaiting",
   "ingest-failed",
+  "resource-limit",
   "not-ready",
   "unavailable",
   "unauthorized",

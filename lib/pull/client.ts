@@ -14,7 +14,7 @@ import type { CommitPayload, TreePayload } from "./payload";
  */
 
 /** 트리의 파일 하나. 디렉터리·심링크는 호출부가 쓰지 않으므로 담지 않는다. */
-export type GitTreeBlob = { path: string; sha: string };
+export type GitTreeBlob = { path: string; sha: string; size?: number };
 
 export type GitClient = {
   /**

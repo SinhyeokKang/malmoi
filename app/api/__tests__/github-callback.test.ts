@@ -90,7 +90,7 @@ beforeEach(() => {
   hoisted.account.findFirst.mockResolvedValue(null);
   hoisted.account.create.mockResolvedValue({});
   hoisted.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
-    typeof fn === "function" ? fn({ account: hoisted.account }) : undefined,
+    typeof fn === "function" ? fn({ account: hoisted.account, $executeRaw: async () => 1 }) : undefined,
   );
 });
 
@@ -408,5 +408,47 @@ describe("교환 실패와 장애", () => {
     const res = await GET(request({ code: "abc", state: "nonce-1" }));
 
     expect(location(res)).toBe("/projects/acme/settings?e=unavailable");
+  });
+});
+
+it("기존 연결 갱신은 쓰기 시점 소유자를 조건으로 삼는다", async () => {
+  hoisted.account.findUnique.mockResolvedValue({ userId: SESSION_USER });
+  hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-1" });
+  await GET(request({ code: "abc", state: "nonce-1" }));
+  expect(hoisted.account.update).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: SESSION_USER }) }));
+});
+
+describe("동시 GitHub 연결", () => {
+  it("같은 사용자의 서로 다른 첫 연결은 직렬화돼 한 행만 남긴다", async () => {
+    const rows: { userId: string; providerAccountId: string }[] = [];
+    let tail = Promise.resolve();
+    hoisted.getViewer.mockResolvedValueOnce({ id: "gh-a", login: "a" }).mockResolvedValueOnce({ id: "gh-b", login: "b" });
+    const account = {
+      findUnique: async ({ where }: { where: { provider_providerAccountId: { providerAccountId: string } } }) =>
+        rows.find(row => row.providerAccountId === where.provider_providerAccountId.providerAccountId) ?? null,
+      findFirst: async () => rows[0] ?? null,
+      create: async ({ data }: { data: { userId: string; providerAccountId: string } }) => { rows.push(data); return data; },
+      delete: async ({ where }: { where: { userId: string; provider_providerAccountId: { providerAccountId: string } } }) => {
+        const index = rows.findIndex(row => row.userId === where.userId && row.providerAccountId === where.provider_providerAccountId.providerAccountId);
+        if (index < 0) throw new Error("ownership changed");
+        return rows.splice(index, 1)[0];
+      },
+    };
+    hoisted.transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      let release: (() => void) | undefined;
+      const tx = {
+        account,
+        $executeRaw: async () => {
+          const previous = tail;
+          tail = new Promise<void>(resolve => { release = resolve; });
+          await previous;
+        },
+      };
+      try { return await fn(tx); } finally { release?.(); }
+    });
+    const responses = await Promise.all(["a", "b"].map(code => GET(request({ code, state: "nonce-1" }))));
+    expect(responses.every(response => !location(response).includes("?e="))).toBe(true);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.userId).toBe(SESSION_USER);
   });
 });

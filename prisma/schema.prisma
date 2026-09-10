@@ -28,6 +28,13 @@ model Project {
   /// GitHub App **설치** id. App 자체(GITHUB_APP_ID·PRIVATE_KEY)는 앱 단위라 환경변수에 남고,
   /// 설치는 고객이 각자 하므로 여기 둔다. 미설치 상태를 표현해야 해서 nullable이다.
   installationId String?
+  /// GitHub이 그 리포에 붙인 **불변 id** (2026-09-10, sec-audit-2 발견 34). 이름은 정체성이 아니다 —
+  /// 리포를 리네임하고 **같은 조직이 옛 이름으로 새 리포를 만들면** redirect가 사라지고, 저장된
+  /// `repoOwner/repoName`이 남의 리포를 가리킨다. 그러면 pull이 이 프로젝트의 번역을 거기 커밋한다.
+  /// ⚠️ **nullable인 이유는 옛 행 때문이지 선택 사항이어서가 아니다** — 이 컬럼이 생기기 전에 만들어진
+  /// 프로젝트는 null이고, `planConnectionHealth`가 `not-connected`로, `createGitClient`가 쓰기 거부로
+  /// 각각 막는다. OWNER가 설정에서 [다시 연결]을 한 번 누르면 채워진다.
+  repositoryId String?
 
   // ── 로케일 포맷 (온보딩이 확정하고 pull이 읽는다) ─────────────────────────
   // 원래는 push가 채우는 값이었다(CI가 리포를 탐지한다). 2026-09-07 온보딩이 **사용자에게 확정받아**

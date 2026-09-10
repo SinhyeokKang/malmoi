@@ -75,8 +75,8 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     // ⚠️ **만료도 소비 조건에 넣는다.** 위 판정은 조회 시점의 행을 봤다 — 그 뒤 OWNER가 재초대로 이 행을
     // 만료시켰으면(`createInvitation`의 회전) 옛 role로 멤버가 되면 안 된다 (Codex 감사 2026-09-06 #3).
     const claimed = await tx.projectInvitation.updateMany({
-      where: { id: invitation.id, acceptedAt: null, expiresAt: { gt: now } },
-      data: { acceptedAt: now },
+      where: { id: invitation.id, acceptedAt: null, expiresAt: { equals: invitation.expiresAt, gt: new Date() } },
+      data: { acceptedAt: new Date() },
     });
     if (claimed.count === 0) return false;
 

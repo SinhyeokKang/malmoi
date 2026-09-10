@@ -21,7 +21,7 @@ import type { ProbeResult } from "../health";
  * 말하면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
  */
 
-const installed: ProbeResult = { status: "ok", installationId: "158107153", fullName: "acme/web", defaultBranch: "main" };
+const installed: ProbeResult = { status: "ok", installationId: "158107153", repositoryId: "1035512", fullName: "acme/web", defaultBranch: "main" };
 
 function plan(over: Partial<Parameters<typeof planRepoConnect>[0]> = {}) {
   return planRepoConnect({
@@ -96,7 +96,7 @@ describe("planRepoConnect — 통과", () => {
   it("리네임된 리포면 ok의 owner/name이 **새 이름**이다 — 재연결이 이름을 갱신하는 유일한 경로다", () => {
     expect(
       plan({
-        probe: { status: "ok", installationId: "158107153", fullName: "newco/website", defaultBranch: "main" },
+        probe: { ...installed, fullName: "newco/website" },
         userRepoFullNames: ["newco/website"],
       }),
     ).toEqual({
@@ -122,7 +122,7 @@ describe("planRepoConnect — 모양이 이상한 full_name", () => {
     for (const fullName of ["acme", "acme/web/extra", "/web", "acme/", ""]) {
       expect(
         plan({
-          probe: { status: "ok", installationId: "158107153", fullName, defaultBranch: "main" },
+          probe: { ...installed, fullName },
           userRepoFullNames: [fullName],
         }),
       ).toEqual({ status: "unavailable" });

@@ -146,8 +146,8 @@ IA 확정(§7.7)이 더했다.
 #### ③ OAuth 계정 병합 → 뺀다
 
 **같은 사람의 GitHub 계정과 Google 계정을 한 `User`로 합치는 기능을 1차에서 만들지 않는다.**
-지금은 `planAccountLink`가 `taken-by-other`로 **거부**하고, 그 판정이 §5.5("계정 병합 — 자동으로
-하지 않는다")의 구현이다.
+로그인 Account의 추가 연결은 `safePrismaAdapter`가 거부한다. `planAccountLink`의
+`taken-by-other`는 별개인 GitHub App 연결의 소유권을 지킨다(§5.5).
 
 근거: 병합은 UI가 아니라 **데이터 이관과 인증 경계**다 — 두 `Account` 행을 한 `User`로 옮기고
 `ProjectMember`·`Translation.updatedBy`·`ProjectInvitation.invitedBy`의 참조를 함께 옮겨야 하고,
@@ -319,12 +319,15 @@ Workflows 권한은 **연동 PR이 워크플로 파일을 쓸 때만** 필요하
 ### 5.5 계정 병합 — 자동으로 하지 않는다
 
 Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 병합하지 않는다.** 기존 로그인 세션에서
-사용자가 명시적으로 "GitHub 연결"을 실행한 경우에만 같은 User에 Account를 추가한다.
+사용자가 명시적으로 "GitHub 연결"을 실행한 경우에만 같은 User에 `github-app` Account를 추가한다.
+로그인용 github/google Account의 추가 연결은 허용하지 않는다. `safePrismaAdapter`가 User 행을
+잠근 뒤 검사하고, OAuth callback이 쓰는 세션 조회부터 만료를 검사한다. 신규 로그인 Account에는
+식별자 네 필드만 저장한다. 기존 토큰 정리와 암호화는 credential-storage 후속 전환이다.
 
 잘못된 자동 병합은 불편이 아니라 **계정 탈취**다 — provider가 반환하는 이메일이 검증됐다는 보장이
 provider마다 다르다.
 
-**로그인 경로의 방어선은 `allowDangerousEmailAccountLinking`을 켜지 않는 것이고, 실물에서 확인했다**
+**이메일 기반 자동 병합은 `allowDangerousEmailAccountLinking`을 켜지 않아 거부하며, 실물에서 확인했다**
 (2026-09-05, preview): GitHub으로 OWNER가 된 계정과 **같은 주소**의 Google로 로그인하면
 `?error=OAuthAccountNotLinked`로 거부되고 `User`·`Account`에 고아 행이 남지 않는다.
 
@@ -332,7 +335,8 @@ provider마다 다르다.
 지나지 않으므로 어댑터 설정이 **아무 역할을 하지 않는다.** 연결 경로의 방어선은 따로 둘이다:
 `planAccountLink`의 **`taken-by-other`가 `replace`보다 앞이고**(뒤였으면 옛 행을 지운 다음 거부해
 "실패했는데 연결까지 풀렸다"가 된다), Account 쓰기가 `upsert`가 아니라 **`create` + P2002 재조회**다
-(동시 요청이 `userId`를 덮으면 소유권이 이동한다).
+(동시 요청이 `userId`를 덮으면 소유권이 이동한다). 동일 사용자의 연결 변경은 User 행 잠금으로
+직렬화하며 기존 행 갱신·삭제에도 `userId` 조건을 건다. P2002 재조회는 롤백 뒤 수행한다.
 
 ### 5.6 초대 — 토큰은 해시만 저장한다
 
@@ -342,7 +346,7 @@ provider마다 다르다.
   **재로그인마다 provider의 현재 검증 주소로 갱신한다** (2026-09-06) — OAuth 재로그인은 Auth.js가
   `updateUser`를 부르지 않아 첫 로그인 값으로 굳고, primary를 바꾼 사람이 새 주소로 온 초대를 영영 못
   받았다. 새 주소를 **다른 User가 쓰면 갱신도 병합도 하지 않고 로그인은 허용한다**(§5.5 우회 금지).
-- 단일 사용은 `updateMany({ acceptedAt: null, expiresAt > now })`의 count로 강제한다 — 만료가 소비
+- 단일 사용은 `updateMany`의 `acceptedAt: null`·조회한 `expiresAt` 동등 조건·소비 직전 미만료 조건의 count로 강제한다 — 만료가 소비
   조건에 들어 있어 판정~소비 사이에 재초대로 회전된 옛 행이 옛 role로 멤버를 만들지 않는다.
 - Project에는 **항상 OWNER가 한 명 이상** 있어야 한다 — 마지막 OWNER는 탈퇴·자기 제거 불가.
   **강제 수단은 `changeMember`의 대화형 트랜잭션이다**: `Project` 행 `FOR UPDATE` 잠금 → 판정 → 쓰기 →
@@ -490,14 +494,19 @@ setup → awaiting_first_sync → ready
 
 ⚠️ **연결 건강성은 이것과 별개 축이고, 4단계가 먼저 세웠다.** 이 절이 묻는 것은 "편집 가능한가"이고,
 건강성이 묻는 것은 "리포·설치가 지금 어떤 상태인가"다. 후자는 **상태 컬럼 없이 매 렌더 계산**하며
-(`planConnectionHealth` 6갈래 — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
-`repo-moved`·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다(설계 어휘로만
-남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 둘:
+(`planConnectionHealth` **7갈래** — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
+`repo-moved`·**`repo-replaced`**·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다
+(설계 어휘로만 남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 셋:
 
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
   멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
 - **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
   받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
+- **`repo-replaced`는 사람도 못 따라간다** (2026-09-10, sec-audit-2 발견 34). 이름은 주소이고
+  `Project.repositoryId`가 정체성이라, 저장된 주소가 **다른 리포**를 가리키면 그 화면에는 [다시 연결]이
+  없다 — 리포는 생성 시점에 고정이고 `connectRepository`가 다른 ID로의 재고정을 거부하므로 답은
+  "새 프로젝트"다. ⚠️ **ID 대조가 이름 대조보다 앞이다**: 리네임 뒤 같은 조직이 옛 이름으로 리포를
+  새로 만들면 `fullName`도 `installationId`도 저장값과 같아, ID를 안 보면 이 화면이 초록을 띄운다.
 
 ### 7.6 Publish — PR 생성은 완료가 아니다
 
@@ -1042,8 +1051,9 @@ PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상�
 
 ### 7단계 — 운영 안전성 ✅ → `features/sync-runs/`
 
-**배송 셋으로 나갔다** (2026-09-10): ship 1 순수 판정 · ship 2 테이블과 껍데기(⚠️ 마이그레이션) ·
-ship 3 화면. **[manual] 실물 검증(T10)이 프로덕션 배포 뒤에 남아 있다.**
+✅ **배송 셋이 프로덕션까지 갔다** (2026-09-10, PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) →
+`d0e8688`): ship 1 순수 판정 · ship 2 테이블과 껍데기(마이그레이션 `_add_sync_run`) · ship 3 화면.
+✅ **T10 실물 검증도 같은 날 끝났다** — 완료 게이트 셋이 전부 실물로 닫혔다(아래).
 
 - [x] ~~`SyncRun` — type · status · idempotencyKey · requestedBy · errorCode~~ ✅ **ship 2**
   - ⚠️ **`type`·`idempotencyKey`는 안 만들었다.** 지금 두 진입점 중 **키를 만들 주체가 없다** —
@@ -1082,9 +1092,12 @@ ship 3 화면. **[manual] 실물 검증(T10)이 프로덕션 배포 뒤에 남�
 
 완료 게이트: Publish 연속 클릭이 커밋·PR을 한 번만 만든다 / 실패한 sync가 마지막 성공 상태를 덮지
 않는다 / 프로세스 중단이 영구 `running`을 남기지 않는다.
-⚠️ **앞의 것은 `[manual]` 실물로만 닫힌다** — 하네스의 `$transaction`엔 직렬화가 없고 `$executeRaw`가
-no-op이라, 자동 테스트가 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞 · GitHub이 트랜잭션 밖)까지다
-(POSTMORTEM 2026-09-05).
+✅ **앞의 것을 실물로 닫았다** (2026-09-10 프로덕션 — `features/sync-runs/tasks.md` T10): 두 탭을 **11ms
+간격**으로 눌렀고 실행이 6.2초였는데 **`SyncRun` 행이 하나**, PR 커밋 **1개**, sync 브랜치 head가 한 번만
+움직였다. 거부된 쪽은 행이 없고 화면에 "Already sending"(tone `info`)이 떴다.
+⚠️ **자동 테스트로는 원리적으로 못 닫는다** — 하네스의 `$transaction`엔 직렬화가 없고 `$executeRaw`가
+no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞 · GitHub이
+트랜잭션 밖)까지다. 그래서 이 줄의 근거는 실물이고, 다음에 이 계약을 건드리면 **다시 실물로 재야 한다.**
 
 **후속으로 남긴 것**: `Home`의 최근 활동을 `SyncRun`으로 · push를 `SyncRun`에 넣기(그때 `type`·
 `idempotencyKey`가 의미를 갖는다) · `needs_configuration` · `SyncRun` 보존 기간(행이 쌓이는 속도를
@@ -1214,3 +1227,21 @@ no-op이라, 자동 테스트가 고정하는 것은 **배선**(잠금 SQL이 �
     `github.ref`만 쓰면 같은 커밋의 두 스텝이 같은 그룹에서 `cancel-in-progress`로 서로를 죽이고
     **그 표면은 영영 적재되지 않는데 취소는 실패로 보이지 않는다.** ② 스텝 둘이 서로의 포맷을 보내는
     오설정은 `checkFormat`이 409로 막는다(§7.8) — 전에는 조용히 키를 전부 orphan시켰다
+
+
+## 11. sec-audit-2 보안 보강 (2026-09-10, 배포 전)
+
+- **쓰기 대상 고정**: `Project.repositoryId` nullable 컬럼을 먼저 추가한다. 생성·OWNER 재연결에서
+  GitHub의 ID를 저장하고, installation 토큰도 그 ID에만 한정한다. 이름이 같은 다른 리포나 ID가 없는
+  기존 프로젝트의 Publish는 거부한다. 기존 프로젝트는 OWNER가 재연결해야 한다.
+- **첫 적재 경계**: 탐지·확정·적재에 파일 200개 / 파일당 2,000,000바이트 / 합계 10,000,000바이트를
+  적용한다. 메타데이터 사전 검사와 실제 UTF-8 본문 검사를 함께 하며 예산 초과는 `resource-limit`이다.
+  YAML 구조 중첩 100, JSON·코드 리터럴의 구분자 깊이를 검사하고 적재 직전 PushPayload도 검증한다.
+  코드 구문 검사는 완전한 실행 시간 격리를 보장하지 않는다.
+- **Publish 정합성**: 번역 값과 완료 기준 최대 수정 시각은 같은 RepeatableRead 스냅샷이다.
+  `SyncRun` 실행 잠금이 막는 중복 실행과 구분한다.
+- **후속 정책**: 리포 연결자 admin 권한 요구(#37), 재인증·전체 세션 회수 UI(#38)는 이번 패치에
+  포함하지 않는다. 암호화 전환과 기존 로그인 토큰 정리는 credential-storage에서 이어간다.
+
+자동 검증과 실제 DB/OAuth/GitHub 검증의 구분은
+[sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)에 남긴다. 이 절은 프로덕션 반영 선언이 아니다.

@@ -53,6 +53,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         id: true,
         slug: true,
         installationId: true,
+        repositoryId: true,
         lastCommitSha: true,
         // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
         archivedAt: true,

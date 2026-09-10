@@ -1,4 +1,4 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { safePrismaAdapter } from "@/lib/auth/safe-adapter";
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
@@ -66,13 +66,13 @@ const google = Google({
  * (POSTMORTEM 2026-08-31 + 🔁 재발 2건).
  *
  * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
- * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 그게 이
- * 단계의 계정 병합 방어선 전부다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
+ * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 이메일 기반 자동 병합을 막는다.
+ * 로그인 세션의 추가 계정 연결은 safePrismaAdapter가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
  * SAAS §5.5는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
  * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth(async () => ({
-  adapter: PrismaAdapter(getPrisma()),
+  adapter: safePrismaAdapter(getPrisma()),
   providers: [github, google],
   /**
    * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를

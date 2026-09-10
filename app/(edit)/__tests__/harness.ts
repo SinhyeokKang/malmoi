@@ -377,7 +377,7 @@ export function createHarness(seed: Seed = {}) {
   /** 단일 사용의 근거다 — 두 번째 수락은 `acceptedAt: null` 조건에 걸려 count 0이 된다. */
   const updateManyInvitations = vi.fn(
     async (args: {
-      where: { id?: string; projectId?: string; email?: string; acceptedAt?: null; expiresAt?: { gt: Date } };
+      where: { id?: string; projectId?: string; email?: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date } };
       data: { acceptedAt?: Date; expiresAt?: Date };
     }) => {
       const matched = invitations.filter(
@@ -386,7 +386,7 @@ export function createHarness(seed: Seed = {}) {
           (args.where.projectId === undefined || i.projectId === args.where.projectId) &&
           (args.where.email === undefined || i.email === args.where.email) &&
           (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
-          (args.where.expiresAt === undefined || i.expiresAt.getTime() > args.where.expiresAt.gt.getTime()),
+          (args.where.expiresAt === undefined || (i.expiresAt.getTime() > args.where.expiresAt.gt.getTime() && (args.where.expiresAt.equals === undefined || i.expiresAt.getTime() === args.where.expiresAt.equals.getTime()))),
       );
       for (const row of matched) Object.assign(row, args.data);
       return { count: matched.length };
@@ -588,14 +588,14 @@ export function createHarness(seed: Seed = {}) {
    */
   const findManyInvitations = vi.fn(
     async (args: {
-      where: { projectId: string; acceptedAt?: null; expiresAt?: { gt: Date } };
+      where: { projectId: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date } };
       orderBy?: { email?: "asc" | "desc" };
     }) => {
       const rows = invitations.filter(
         (i) =>
           i.projectId === args.where.projectId &&
           (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
-          (args.where.expiresAt === undefined || i.expiresAt.getTime() > args.where.expiresAt.gt.getTime()),
+          (args.where.expiresAt === undefined || (i.expiresAt.getTime() > args.where.expiresAt.gt.getTime() && (args.where.expiresAt.equals === undefined || i.expiresAt.getTime() === args.where.expiresAt.equals.getTime()))),
       );
       const sorted =
         args.orderBy?.email === undefined

@@ -69,6 +69,7 @@ const PROBE_OK = {
   installationId: "1",
   fullName: "o/r",
   defaultBranch: "main",
+  repositoryId: "100",
 } satisfies ProbeResult;
 
 let db: ReturnType<typeof createHarness>;
@@ -259,17 +260,22 @@ describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가�
 });
 
 describe("connectRepository — 저장", () => {
+  it("조회 뒤 저장소 조건이 바뀌면 예외 대신 재연결을 거부한다", async () => {
+    db.spies.updateProject.mockRejectedValueOnce({ code: "P2025" });
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "repo-forbidden" });
+  });
+
   it("정상 OWNER면 update 1회이고 **인가된 projectId**에만 쓴다", async () => {
     const result = await connectRepository({ slug: "acme" });
 
     expect(result).toEqual({ ok: true });
     expect(db.spies.updateProject).toHaveBeenCalledTimes(1);
     const [args] = db.spies.updateProject.mock.calls[0] ?? [];
-    expect(args?.where).toEqual({ id: "p1" });
+    expect(args?.where).toEqual({ id: "p1", repositoryId: null, repoOwner: "o", repoName: "r" });
   });
 
   it("저장하는 installationId는 **probe가 준 값**이다 — 클라이언트가 보낸 것이 아니다", async () => {
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main" } satisfies ProbeResult);
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main", repositoryId: "100" } satisfies ProbeResult);
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
 
     await connectRepository({ slug: "acme" });
@@ -279,7 +285,7 @@ describe("connectRepository — 저장", () => {
   });
 
   it("리네임된 리포면 새 owner/name도 함께 저장한다 — 이름이 갱신되는 유일한 경로다", async () => {
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website", defaultBranch: "main" } satisfies ProbeResult);
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website", defaultBranch: "main", repositoryId: "100" } satisfies ProbeResult);
     hoisted.listInstallationRepos.mockResolvedValue(["newco/website"]);
 
     await connectRepository({ slug: "acme" });
@@ -299,7 +305,7 @@ describe("connectRepository — 저장", () => {
       accounts: [{ userId: "u-owner", provider: "github-app", providerAccountId: "gh-1" }],
     });
     hoisted.prisma = db.prisma;
-    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main" } satisfies ProbeResult);
+    hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "77", fullName: "o/r", defaultBranch: "main", repositoryId: "100" } satisfies ProbeResult);
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
 
     await connectRepository({ slug: "acme" });

@@ -637,6 +637,9 @@ export const en = {
         "app-uninstalled": "The app was removed or suspended, or its access to this repository was revoked.",
         "installation-changed": "The app was reinstalled — connect it again.",
         moved: (fullName: ReactNode): ReactNode => <>This repository moved to {fullName}</>,
+        // ⚠️ **[다시 연결]을 권하지 않는다** — 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가
+        // 다른 id로의 재고정을 거부한다. 여기서 버튼을 주면 눌러도 실패만 한다.
+        "repo-replaced": "This address now holds a different repository than the one this project was connected to. Check it on GitHub — if the repository really was replaced, create a new project for it.",
         unknown: "We can't check this right now. Open this page again in a moment.",
         install: "Install the app",
         installHint: "Install it, then come back here and connect again.",
@@ -815,6 +818,7 @@ export const en = {
       "invalid-slug": (max: number): string =>
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
       "not-awaiting": "The first import already finished. Importing again would overwrite edited translations, so it's blocked here.",
+      "resource-limit": "These translation files are too large or too deeply nested to import. Reduce their size and try again.",
       "ingest-failed": "The first import failed. You can try again from settings.",
       // 번역자가 읽는다 — 무엇을 기다리는지와 누가 끝낼 수 있는지를 말한다.
       "not-ready": "This project isn't ready yet. The owner needs to finish setting it up.",

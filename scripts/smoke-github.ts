@@ -52,6 +52,7 @@ async function main(): Promise<void> {
         repoName: true,
         baseBranch: true,
         installationId: true,
+        repositoryId: true,
         adapterName: true,
         pathTemplate: true,
         nested: true,
@@ -125,10 +126,12 @@ async function main(): Promise<void> {
     }
 
 
+    if (!project.repositoryId) throw new Error("Repository identity is not pinned; reconnect first");
     const client = await createGitClient(
       project.repoOwner,
       project.repoName,
       project.installationId,
+      project.repositoryId,
     );
 
     const headSha = await client.getRefSha(`heads/${project.baseBranch}`);

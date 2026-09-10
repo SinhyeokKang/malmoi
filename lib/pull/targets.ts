@@ -5,7 +5,8 @@ import type { PullResult } from "./run";
 /**
  * 야간 cron이 돌 프로젝트 고르기 (design §3.9). **순수 판정이다** — 조회는 라우트가 한다.
  *
- * ⚠️ **준비 안 된 프로젝트를 돌리면 던진다.** `installationId`가 null이면 `runPull`(`run.ts`)이,
+ * ⚠️ **준비 안 된 프로젝트를 돌리면 던진다.** `installationId`·`repositoryId`가 null이면
+ * `triggerPull`의 `createClient`가, `runPull`(`run.ts`)이,
  * 포맷 컬럼이 null이면 `formatFromProject`(`plan.ts`)가 던지고 — `loadPullState`는 프로젝트 부재만
  * `fail()`한다 — 그 실패가 매일 밤 로그를 채운다. 그래서 필터가 순회 앞에 선다.
  *
@@ -29,6 +30,12 @@ export function selectPullTargets(
   projects: readonly {
     slug: string;
     installationId: string | null;
+    /**
+     * ⚠️ **sec-audit-2 발견 34 전에 만들어진 행은 전부 null이다.** 그런 행은 `createClient`가
+     * 확실히 던지므로 순회에 남기면 **재연결 전까지 매일 밤 실패 `SyncRun`이 쌓인다** — 설정
+     * 화면이 `not-connected`로 할 일을 말하는 동안 `/logs`는 실패로 채워진다.
+     */
+    repositoryId: string | null;
     lastCommitSha: string | null;
     archivedAt: Date | null;
     syncRuns: readonly { startedAt: Date }[];
@@ -36,7 +43,7 @@ export function selectPullTargets(
   limit: number,
 ): { targets: string[]; unprocessed: number } {
   const ready = projects
-    .filter((p) => p.installationId !== null && p.lastCommitSha !== null && p.archivedAt === null)
+    .filter((p) => p.installationId !== null && p.repositoryId !== null && p.lastCommitSha !== null && p.archivedAt === null)
     .slice()
     .sort((a, b) => {
       // 한 번도 안 돈 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.

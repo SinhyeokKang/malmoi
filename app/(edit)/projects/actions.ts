@@ -1,5 +1,7 @@
 "use server";
 
+import { checkDownloadBudget, checkContentBudget, IngestBudgetError } from "@/lib/onboarding/budget";
+
 import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
@@ -554,7 +556,12 @@ export async function detectRepoFormats(raw: { owner: string; repo: string }): P
   const paths = snapshot.files.map((f) => f.path);
   // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
   const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths));
-  const files = await readFiles(reader, snapshot, targets);
+  let files: AdapterFile[];
+  try { files = await readFiles(reader, snapshot, targets); }
+  catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    throw error;
+  }
   const blobs = new Map(files.map((f) => [f.path, f.content]));
 
   // 2패스: 내려받은 내용으로 검증된 후보만 남는다.
@@ -639,7 +646,12 @@ export async function createProject(raw: {
 
   const paths = snapshot.files.map((f) => f.path);
   const attempted = templatePaths(adapterName, input.pathTemplate, paths);
-  const files = await readFiles(reader, snapshot, attempted);
+  let files: AdapterFile[];
+  try { files = await readFiles(reader, snapshot, attempted); }
+  catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    throw error;
+  }
   const confirmed = planConfirmedFormat(
     { adapter: adapterName, pathTemplate: input.pathTemplate, baseLocale: input.baseLocale },
     files,
@@ -690,6 +702,7 @@ export async function createProject(raw: {
           // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (design §4).
           baseBranch: access.defaultBranch,
           installationId: plan.installationId,
+          repositoryId: access.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
           adapterName: confirmed.format.adapter,
           pathTemplate: confirmed.format.pathTemplate,
@@ -784,7 +797,12 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
    */
   const attempted = templatePaths(adapterName, pathTemplate, paths);
-  const files = await readFiles(reader, snapshot, attempted);
+  let files: AdapterFile[];
+  try { files = await readFiles(reader, snapshot, attempted); }
+  catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    throw error;
+  }
   const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
   if (confirmed.status !== "ok") {
     logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
@@ -801,8 +819,13 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   );
   const blobs = new Map(files.map((f) => [f.path, f.content]));
   // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
-  for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
-    blobs.set(extra.path, extra.content);
+  try {
+    for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
+      blobs.set(extra.path, extra.content);
+    }
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    throw error;
   }
 
   try {
@@ -961,7 +984,7 @@ async function checkRepoAccess(
   owner: string,
   repo: string,
 ): Promise<
-  | { status: "ok"; connect: RepoConnect; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
   | { status: "rejected"; error: OnboardFailure }
 > {
   const token = await ensureUserToken(prisma, userId, new Date());
@@ -1024,6 +1047,9 @@ async function checkRepoAccess(
   return {
     status: "ok",
     connect,
+    // ⚠️ **null 폴백을 두지 않는다** — 위에서 `probe.status`를 좁혔으므로 여기서 부재를 표현하면
+    // 고정되지 않은 프로젝트를 **새로 만드는** 경로가 생긴다 (sec-audit-2 발견 34).
+    repositoryId: probe.repositoryId,
     installationId: connect.installationId,
     repoOwner: connect.repoOwner,
     repoName: connect.repoName,
@@ -1043,6 +1069,8 @@ async function readFiles(
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
   paths: readonly string[],
 ): Promise<AdapterFile[]> {
+  checkDownloadBudget(paths, snapshot.files);
+  let totalBytes = 0;
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];
   // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤21개(탐지) 또는
@@ -1052,6 +1080,7 @@ async function readFiles(
     if (sha === undefined) continue;
     const content = await reader.blob(sha);
     if (content === undefined) continue;
+    totalBytes = checkContentBudget(path, content, totalBytes);
     out.push({ path, content });
   }
   return out;

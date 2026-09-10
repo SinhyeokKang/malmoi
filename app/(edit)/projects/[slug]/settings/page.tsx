@@ -70,6 +70,7 @@ export default async function SettingsPage({
       repoOwner: true,
       repoName: true,
       installationId: true,
+      repositoryId: true,
       // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
       lastCommitSha: true,
       baseBranch: true,
@@ -194,6 +195,7 @@ async function loadHealth(project: {
   repoOwner: string;
   repoName: string;
   installationId: string | null;
+  repositoryId: string | null;
 }): Promise<ConnectionHealth> {
   // ⚠️ 저장된 설치가 없으면 probe 결과가 판정을 바꾸지 못한다(`planConnectionHealth`가 그때
   // `not-connected`를 준다) — 부르면 App JWT 조회와 토큰 발급 두 번이 헛돈다. 지금 프로덕션의
@@ -207,7 +209,7 @@ async function loadHealth(project: {
   return planConnectionHealth({ project, probe });
 }
 
-/** §3.3 표 그대로 여섯 갈래. **DESIGN §6.2 밖의 raw 색을 늘리지 않는다.** */
+/** §3.3 표 + 리포 정체성 한 갈래 = 일곱. **DESIGN §6.2 밖의 raw 색을 늘리지 않는다.** */
 function HealthRow({
   health,
   slug,
@@ -269,6 +271,11 @@ function HealthRow({
           <ReconnectButton slug={slug} label={m.settings.repository.reconnect} />
         </div>
       );
+    case "repo-replaced":
+      // ⚠️ **[다시 연결]이 없다** — 리포는 생성 시점에 고정이고 `connectRepository`가 다른 id로의
+      // 재고정을 `repo-forbidden`으로 거부한다 (sec-audit-2 발견 34). 눌러도 실패할 버튼을 주면
+      // 사용자는 자기가 뭘 잘못했는지 찾는 데 시간을 쓴다.
+      return <Alert variant="danger">{m.settings.repository.health["repo-replaced"]}</Alert>;
     default:
       // 조회 실패를 "제거됨"으로 접지 않는다 (design §3.3) — 그러면 사용자가 멀쩡한 설치를 다시 만든다.
       return <p className="text-muted-foreground text-xs">{m.settings.repository.health.unknown}</p>;
@@ -327,6 +334,7 @@ async function loadOpenPrUrl(
     repoName: string;
     baseBranch: string;
     installationId: string | null;
+    repositoryId: string | null;
     archivedAt: Date | null;
   },
 ): Promise<string | null | undefined> {
@@ -334,8 +342,9 @@ async function loadOpenPrUrl(
   // 쓰이지 않는 값을 위해 왕복을 하나 늘리는 셈이고, `createGitClient`는 호출마다 설치 토큰을 새로 뽑는다.
   if (project.archivedAt !== null) return null;
   if (project.installationId === null) return null;
+  if (project.repositoryId === null) return undefined;
   try {
-    const client = await createGitClient(project.repoOwner, project.repoName, project.installationId);
+    const client = await createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     return await client.findOpenPrUrl(`${project.repoOwner}:${syncBranchFor(slug)}`, project.baseBranch);
   } catch {
     return undefined;

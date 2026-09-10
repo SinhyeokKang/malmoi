@@ -64,7 +64,7 @@
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
-| YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). 주석·앵커·빈 줄을 지켜야 해서 재생성용 파서로 쓰지 않는다 | `yaml` 2.9.0 |
+| YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). 주석·앵커·빈 줄을 지켜야 해서 재생성용 파서로 쓰지 않는다. ⚠️ **고정 이유가 둘이다** (2026-09-10): `lib/onboarding/budget.ts`가 첫 적재의 중첩 깊이를 재려고 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀔 수 있고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |
 | **키·원문 출처** | **리포의 로케일 파일** — 어댑터가 양방향으로 읽고 쓴다 (`lib/adapters/`) | — |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
@@ -634,7 +634,14 @@ lib/
     account-view.ts     loadAccountView 3갈래 (6b-4) — ⚠️ **화면 둘이 이 함수 하나를 읽는다**(`/account`·설정).
                         설정 화면의 지역 `loadAccount`를 내린 것이고, 다른 것은 연결 버튼의 착지뿐이다
     connect-plan.ts     planRepoConnect — SAAS §5.4 3중 검증의 판정 자리 (5단계가 재사용)
-    health.ts           planConnectionHealth 6갈래 + probeFromError·httpStatus
+    health.ts           planConnectionHealth 7갈래 + probeFromError·httpStatus
+                        ⚠️ **ID 대조가 이름 대조보다 앞이다** (2026-09-10) — 리네임 뒤 같은 조직이 옛
+                        이름으로 리포를 새로 만들면 `fullName`·`installationId`가 저장값과 같아,
+                        `repositoryId`를 안 보면 초록을 띄우는 동안 Publish만 죽는다. 그 갈래가
+                        `repo-replaced`이고 **[다시 연결] 버튼이 없다**(리포는 생성 시점 고정이라
+                        `connectRepository`가 재고정을 거부한다 — 눌러도 실패할 버튼이다)
+                        ⚠️ **`ProbeResult.repositoryId`는 optional이 아니다** — 부재를 허용하면 판정의
+                        `=== null`을 `undefined`가 조용히 지난다. 부재는 **저장된 행**의 성질이다
                         ⚠️ 403(설치 일시중지)은 error가 아니라 not-installed다 — 영구 상태다
     token.ts            planTokenUse 3갈래 + refreshFailure (⚠️ 429는 4xx인데 unavailable이다)
     token-store.ts      ensureUserToken — 회전 결과를 조건부 updateMany로 즉시 쓴다
@@ -677,8 +684,10 @@ lib/
                           `lastPublishedAt`·`lastPrUrl` 쓰기 — ⚠️ **`skipped`는 뒤의 둘을 안 건드린다**:
                           "마지막으로 **보낸**" 것이지 시도한 것이 아니다)
                         / client.ts(GitClient 인터페이스 — 주입 계약, 구현은 lib/github.ts)
-                        / targets.ts(selectPullTargets — cron이 순회할 프로젝트 선별: installationId·lastCommitSha가
-                          없으면 제외, **보관 제외**(7단계 — `unprocessed`로도 안 센다). 한 프로젝트의 실패가
+                        / targets.ts(selectPullTargets — cron이 순회할 프로젝트 선별: installationId·
+                          **repositoryId**·lastCommitSha가 없으면 제외, **보관 제외**(7단계 — `unprocessed`로도 안 센다).
+                          ⚠️ 가운데 것은 2026-09-10에 붙었다 — 그 컬럼 이전에 만들어진 행은 전부 null이라
+                          남겨 두면 재연결 전까지 **프로젝트마다 매일 밤 실패 `SyncRun`이 쌓인다**. 한 프로젝트의 실패가
                           나머지를 막지 않고 응답은 **배열**이다.
                           ⚠️ **정렬이 slug가 아니라 "마지막 실행이 오래된 것부터"다** (7단계) — 상한에서 잘리는
                           뒤쪽이 매일 밤 같은 프로젝트면 그것은 영원히 안 돈다. 동점 폴백이 slug라 결정성은 그대로다)

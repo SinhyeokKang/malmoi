@@ -27,6 +27,7 @@ const FILES = ["lib/pull/run.ts", "lib/pull/plan.ts", "lib/pull/trigger.ts"] as 
 const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
   ["Project.installationId is empty", "not-installed"],
   ["installationId is missing", "not-installed"],
+  ["repository identity is not pinned", "not-installed"],
   ["cannot read the base branch", "base-unreadable"],
   ["the glob matched no files", "glob-matched-nothing"],
 ];

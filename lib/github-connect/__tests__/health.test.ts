@@ -14,8 +14,14 @@ import { planConnectionHealth, probeFromError, type ProbeResult } from "../healt
  * 저장은 사람이 "다시 연결"을 눌러야 일어난다 (SAAS §7.9).
  */
 
-const project = { installationId: "158107153", repoOwner: "acme", repoName: "web" };
-const okProbe: ProbeResult = { status: "ok", installationId: "158107153", fullName: "acme/web", defaultBranch: "main" };
+const project = { installationId: "158107153", repositoryId: "1035512", repoOwner: "acme", repoName: "web" };
+const okProbe: ProbeResult = {
+  status: "ok",
+  installationId: "158107153",
+  repositoryId: "1035512",
+  fullName: "acme/web",
+  defaultBranch: "main",
+};
 
 describe("probeFromError — 실패를 '설치 없음'과 '모름'으로 가른다", () => {
   it("404는 not-installed다 — App JWT는 유효하고 그 리포에 설치가 없다", () => {
@@ -87,7 +93,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "999", fullName: "acme/web", defaultBranch: "main" },
+        probe: { ...okProbe, installationId: "999" },
       }),
     ).toEqual({ status: "installation-changed", installationId: "999" });
   });
@@ -96,7 +102,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "acme/website", defaultBranch: "main" },
+        probe: { ...okProbe, fullName: "acme/website" },
       }),
     ).toEqual({ status: "repo-moved", fullName: "acme/website" });
   });
@@ -105,7 +111,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "newco/web", defaultBranch: "main" },
+        probe: { ...okProbe, fullName: "newco/web" },
       }),
     ).toEqual({ status: "repo-moved", fullName: "newco/web" });
   });
@@ -114,7 +120,7 @@ describe("planConnectionHealth — 설치·리포가 바뀐 경우", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "999", fullName: "newco/web", defaultBranch: "main" },
+        probe: { ...okProbe, installationId: "999", fullName: "newco/web" },
       }),
     ).toEqual({ status: "installation-changed", installationId: "999" });
   });
@@ -129,8 +135,44 @@ describe("planConnectionHealth — 정상", () => {
     expect(
       planConnectionHealth({
         project,
-        probe: { status: "ok", installationId: "158107153", fullName: "Acme/Web", defaultBranch: "main" },
+        probe: { ...okProbe, fullName: "Acme/Web" },
       }),
     ).toEqual({ status: "ok" });
+  });
+});
+
+describe("planConnectionHealth — 리포 정체성", () => {
+  it("고정된 ID가 없는 옛 행은 not-connected다 — 이름만 맞는 것을 연결로 세지 않는다", () => {
+    expect(
+      planConnectionHealth({ project: { ...project, repositoryId: null }, probe: okProbe }),
+    ).toEqual({ status: "not-connected" });
+  });
+
+  it("⚠️ **이름이 같아도 ID가 다르면 repo-replaced다** — 이름 재사용이 여기서 갈린다", () => {
+    // sec-audit-2 발견 34: 리포 A를 리네임하고 같은 조직에서 **옛 이름으로 B를 새로 만들면**
+    // `fullName`도 `installationId`도 저장값과 같다. ID를 안 보면 이 화면이 초록을 띄우는데
+    // `createGitClient`는 쓰기 직전에 거부하므로, **사용자는 초록을 보면서 Publish만 실패한다.**
+    expect(
+      planConnectionHealth({ project, probe: { ...okProbe, repositoryId: "9999999" } }),
+    ).toEqual({ status: "repo-replaced" });
+  });
+
+  it("ID 대조가 이름 대조보다 앞이다 — 둘 다 달라도 repo-moved가 아니다", () => {
+    // 이름은 주소이고 ID가 정체성이다. 리네임(같은 ID·다른 이름)만 `repo-moved`로 남는다.
+    expect(
+      planConnectionHealth({
+        project,
+        probe: { ...okProbe, repositoryId: "9999999", fullName: "newco/web" },
+      }),
+    ).toEqual({ status: "repo-replaced" });
+  });
+
+  it("재설치 판정이 ID 판정보다 앞이다 — 새 설치 id를 '다른 리포'로 말하지 않는다", () => {
+    expect(
+      planConnectionHealth({
+        project,
+        probe: { ...okProbe, installationId: "999", repositoryId: "9999999" },
+      }),
+    ).toEqual({ status: "installation-changed", installationId: "999" });
   });
 });
