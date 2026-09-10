@@ -178,3 +178,58 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
     expect(src).not.toContain("projectSections");
   });
 });
+
+/**
+ * **보관된 프로젝트를 여는 다섯 화면** (7단계 — sync-runs design §4).
+ *
+ * ⚠️ **`requireProjectAccess`가 `archived`를 값으로 돌려준다** — redirect하지 않는 이유는 되돌릴 수
+ * 있는 상태이고 OWNER가 갈 곳이 설정 안의 카드 하나여서다(목록으로 튕기면 자기가 왜 거기 왔는지
+ * 모른다). 그 대가가 **호출부가 빠뜨릴 수 있다**는 것이고, 빠뜨리면 화면이 **정상으로 렌더된다** —
+ * 보관된 프로젝트에서 편집 표가 그대로 보이고, 저장을 눌러야 비로소 Action이 거부한다.
+ * 눈으로는 안 보이는 결함이라 스캔이 든다 (`entry-points.test.ts`와 같은 계열).
+ */
+describe("보관 — 다섯 화면이 같은 갈래를 그린다 (7단계)", () => {
+  const SITES = [
+    "app/(edit)/projects/[slug]/page.tsx",
+    "app/(edit)/projects/[slug]/translations/page.tsx",
+    "app/(edit)/projects/[slug]/locales/page.tsx",
+    "app/(edit)/projects/[slug]/members/page.tsx",
+    "app/(edit)/projects/[slug]/logs/page.tsx",
+  ];
+
+  it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
+    for (const path of SITES) {
+      const src = read(path);
+      expect(src, path).toContain("ProjectArchived");
+      expect(src, path).toMatch(/if\s*\(archived\)\s*return\s*<ProjectArchived/);
+    }
+  });
+
+  /**
+   * ⚠️ **인가 바로 다음이다.** 뒤로 밀면 그 사이의 조회가 이미 돌고 그 데이터가 RSC 페이로드에
+   * 실린다 — 조건부 렌더가 차단이 아닌 것과 같은 축이다 (ARCHITECTURE §6.1, 실측 1.3MB).
+   */
+  it("보관 분기가 프로젝트 데이터 조회보다 앞이다", () => {
+    for (const path of SITES) {
+      const src = read(path);
+      const branch = src.indexOf("if (archived)");
+      const query = src.indexOf("getPrisma()");
+      expect(branch, path).toBeGreaterThan(-1);
+      if (query !== -1) expect(branch, path).toBeLessThan(query);
+    }
+  });
+
+  /**
+   * ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`는 보관을 통과하는 유일한 permission이고,
+   * 그것이 되돌리는 길이다. 여기에 분기를 두면 보관이 편도가 된다.
+   */
+  it("설정 화면은 보관 분기를 두지 않는다", () => {
+    expect(read(SETTINGS)).not.toContain("ProjectArchived");
+  });
+
+  it("문구와 정책을 한 곳이 든다 — 화면이 각자 만들지 않는다", () => {
+    for (const path of SITES) {
+      expect(read(path), path).not.toContain("archive.empty");
+    }
+  });
+});

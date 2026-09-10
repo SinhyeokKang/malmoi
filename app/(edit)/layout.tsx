@@ -53,13 +53,13 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      */
     <div className="flex h-svh overflow-hidden">
       {/*
-        ⚠️ **셋만 넘긴다** (2026-09-09, sec-audit 발견 23). `memberships`는 `MembershipRow`(다섯 필드)이고
+        ⚠️ **넷만 넘긴다** (2026-09-09, sec-audit 발견 23 — 7단계가 `archived`를 더했다). `memberships`는 `MembershipRow`(여섯 필드)이고
         prop 타입은 `NavProject`(셋)인데, **신선한 리터럴이 아니라 초과 프로퍼티 검사가 안 걸렸다** —
         `installationId`·`lastCommitSha`가 `(edit)` 아래 **모든** 페이지의 RSC 페이로드에 실렸다.
         비밀은 아니지만 `lib/shell/nav.ts`가 좁힌 계약이 무의미해진다.
       */}
       <Sidebar
-        memberships={memberships.map(({ slug, name, role }) => ({ slug, name, role }))}
+        memberships={memberships.map(({ slug, name, role, archivedAt }) => ({ slug, name, role, archived: archivedAt !== null }))}
         signOut={signOutAction}
       />
       {/* `min-w-0`이 없으면 번역 표의 가로 스크롤이 이 컬럼을 밀어 사이드바까지 움직인다 */}

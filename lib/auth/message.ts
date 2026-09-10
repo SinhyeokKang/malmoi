@@ -18,7 +18,12 @@ export type AccessError =
   /** 대상이 그 프로젝트의 멤버가 아니다 — "성공"으로 접지 않는다. */
   | "not-member"
   /** 세션을 **못 읽었다** — 거부가 아니라 장애다 (`lib/auth/outage.ts`). 로그인을 시키면 헛로그인이다. */
-  | "unavailable";
+  | "unavailable"
+  /**
+   * 프로젝트가 보관됐다 (7단계). **`forbidden`과 가른다** — 권한은 그대로이고 프로젝트가 멈춘
+   * 것이라, "권한이 없다"고 말하면 사용자가 OWNER에게 권한을 달라고 하게 된다.
+   */
+  | "archived";
 
 const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "unauthorized",
@@ -27,6 +32,7 @@ const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "last-owner",
   "not-member",
   "unavailable",
+  "archived",
 ]);
 
 /**

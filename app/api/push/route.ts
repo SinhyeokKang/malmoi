@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { applyPush } from "@/lib/push/apply";
-import { checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
+import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
 
@@ -66,6 +66,8 @@ export async function POST(request: Request): Promise<NextResponse> {
         // ⚠️ **optional로 두지 않는다** — 껍데기가 빼면 `checkFormat`이 선언을 못 보고 base 변경이
         // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (design §3.13).
         declaredBaseLocale: true,
+        // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
+        archivedAt: true,
       },
     });
     // ⚠️ **404를 내지 않는다** — 토큰이 유효하지 않은 것과 그런 프로젝트가 없는 것을 가르면 프로젝트 존재가
@@ -85,6 +87,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!parsed.success) {
       // 검증 실패를 조용히 삼키지 않는다 — CI 로그에서 무엇이 틀렸는지 보여야 한다.
       return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
+    }
+
+    /**
+     * 보관 거부 (7단계 — sync-runs design §4, 결정 9). **오배송·표면 검사보다 앞이다** — 멈춘
+     * 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 그 셋 중 무엇이 걸리든 사용자가
+     * 할 일은 같다(워크플로를 뗀다).
+     */
+    const archived = checkArchived(project.archivedAt);
+    if (archived !== "ok") {
+      return NextResponse.json({ error: "archived" }, { status: guardStatus(archived) });
     }
 
     // 오배송 거부 — 대조 대상이 **토큰이 정한 프로젝트**다 (전에는 서버 env였다).

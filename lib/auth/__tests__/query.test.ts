@@ -16,7 +16,7 @@ import type { Role } from "../permission";
 type MemberRow = { projectId: string; userId: string; role: Role };
 
 function memoryDb(seed: {
-  projects?: { id: string; slug: string }[];
+  projects?: { id: string; slug: string; archivedAt?: Date | null }[];
   members?: MemberRow[];
 }) {
   const projects = seed.projects ?? [{ id: "p1", slug: "acme" }];
@@ -24,7 +24,9 @@ function memoryDb(seed: {
 
   const findProject = vi.fn(async ({ where }: { where: { slug: string } }) => {
     const found = projects.find((p) => p.slug === where.slug);
-    return found === undefined ? null : { id: found.id };
+    // ⚠️ **`archivedAt`을 함께 낸다** (7단계) — 조회가 그 컬럼을 select하고 판정이 그것을 읽는다.
+    // 가짜가 빼면 `undefined`가 오고, fail-closed 판정이 정상 프로젝트를 전부 `archived`로 만든다.
+    return found === undefined ? null : { id: found.id, archivedAt: found.archivedAt ?? null };
   });
 
   const findMember = vi.fn(
@@ -125,5 +127,39 @@ describe("getProjectAccess — 조회가 projectId로 좁혀진다", () => {
       permission: "translation:write",
     });
     expect(result).toEqual({ status: "ok", projectId: "authorized-id", role: "OWNER" });
+  });
+});
+
+/**
+ * **보관 조회** (7단계 — sync-runs design §4). 판정은 `planProjectAccess`가 하고, 여기서 고정하는 것은
+ * **그 입력을 이 조회가 든다**는 것이다 — 호출부가 따로 읽으면 진입점마다 왕복이 하나 늘고 조건이 갈린다.
+ */
+describe("getProjectAccess — 보관", () => {
+  it("보관된 프로젝트는 편집 권한에서 archived다", async () => {
+    const { db } = memoryDb({
+      projects: [{ id: "p1", slug: "acme", archivedAt: new Date("2026-09-10T00:00:00Z") }],
+      members: [{ projectId: "p1", userId: "u1", role: "EDITOR" }],
+    });
+    await expect(
+      getProjectAccess(db, { userId: "u1", slug: "acme", permission: "translation:write" }),
+    ).resolves.toEqual({ status: "archived", projectId: "p1", role: "EDITOR" });
+  });
+
+  it("설정은 그대로 통과한다 — 되돌리는 길이다", async () => {
+    const { db } = memoryDb({
+      projects: [{ id: "p1", slug: "acme", archivedAt: new Date("2026-09-10T00:00:00Z") }],
+      members: [{ projectId: "p1", userId: "u1", role: "OWNER" }],
+    });
+    await expect(
+      getProjectAccess(db, { userId: "u1", slug: "acme", permission: "project:settings" }),
+    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "OWNER" });
+  });
+
+  it("조회가 `archivedAt`을 select한다 — 판정이 그 값을 볼 수 있어야 한다", async () => {
+    const { db, findProject } = memoryDb({
+      members: [{ projectId: "p1", userId: "u1", role: "EDITOR" }],
+    });
+    await getProjectAccess(db, { userId: "u1", slug: "acme", permission: "translation:write" });
+    expect(findProject.mock.calls[0]?.[0]).toMatchObject({ select: { archivedAt: true } });
   });
 });

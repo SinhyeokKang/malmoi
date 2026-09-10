@@ -177,7 +177,17 @@
 - [x] `——` `chore:`(핀·gitignore·workspace) · `fix:`(walk·survey) 두 커밋
 - [x] **T8** 문서 — `docs/ACTIONS.md`(참조 방식·red 조건) · `CLAUDE.md`(게이트웨이 절 · CI 절)
 - [x] `——` `docs(ACTIONS): …` · `docs(CLAUDE): …`
-- [ ] **T9** `/push` → `/merge` → `[manual]` 대상 리포 넷의 참조 갱신(T1 판정이 (a)·(b)면)
+- [x] **T9** `/push` → `/merge` → `[manual]` 대상 리포의 참조 갱신
+  - ✅ **닫혔다** (2026-09-09). PR #25 → squash `bc3615c` → 태그 **`l10n-push-v1`**을 그 커밋에 끊고 push →
+    소비자 리포의 `@main`을 태그로 옮겼다. **그 참조로 실제 run이 green이다**
+    ([run 34365434170](https://github.com/SinhyeokKang/i18n-order-check/actions/runs/34365434170)).
+  - ⚠️ **"대상 리포 넷"이 틀렸다** — 실제로 action을 참조하는 리포는 **`i18n-order-check` 하나**다
+    (`bugshot-2`·`bugshot-i18n-test`는 `ci.yml`·`trigger-web-deploy.yml`뿐이고 `l10n-push`가 0건,
+    `i18n-format-check`은 `.github/workflows` 자체가 없다 — `gh api`로 전수 확인).
+    CLAUDE.md가 적어 둔 "워크플로가 붙은 리포는 `order-check` 하나"가 맞았고 이 문서가 낡았다.
+  - ⚠️ **남은 경고 하나**: 그 run이 `actions/checkout@v4`·`actions/setup-node`가 **Node 20을 겨눠 Node 24로
+    강제 실행된다**고 annotation을 낸다. 실패가 아니고 이번 핀(v4 계열 유지)의 대가다 — 메이저를 올리는
+    것은 공급망 변경이 아니라 동작 변경이라 이 ship에서 하지 않았다.
 
 ---
 
@@ -293,7 +303,14 @@
   - ⚠️ **`/invite/<token>` 때문에 `Referrer-Policy`가 이 셋 중 실질이 가장 크다**(findings 9)
 - [x] **T2** `next.config.ts`에 `headers()` — 위 셋 + CSP Report-Only
   - ✅ **`curl -sI` 확인** (2026-09-09, 로컬 프로덕션 빌드): 넷 다 `/`와 **`/invite/<token>`**에 붙는다.
-  - ⏳ **화면 넷 동작 확인은 미실행** — 브라우저 세션이 필요하다. Report-Only는 원리적으로 렌더를 못 깨고, enforce 셋도 iframe·Referer·MIME 축이라 화면 동작에 안 닿는다.
+  - ✅ **프로덕션 실측: CSP Report-Only 위반 0건** (2026-09-09, `https://mal-moi.com` 로그인 상태 9라우트 —
+    `/projects` · Home · translations(기본·`?ns=*`) · members · locales · settings · new · account).
+    ⚠️ **DOM `securitypolicyviolation` 이벤트로는 못 잰다** — 리스너에 안 닿는다(확장이 낀 환경에서 실측).
+    잡히는 것은 **CDP `Log.entryAdded`의 `source: "security"`** 이고, `example.com`의 script·img를 심어
+    **그 검사가 실제로 위반을 집는 것까지 확인한 뒤** 0을 읽었다.
+  - ⚠️ **한 번 무효 측정을 냈다** — 리스너를 심고 **다시 navigate**해서 document가 교체됐고, 사라진
+    `window.__v`를 0으로 읽었다. `Page.addScriptToEvaluateOnNewDocument`로 바꿔도 이벤트 자체가 안 와서
+    결국 Log 도메인으로 갔다. **"0건"을 보고하기 전에 그 검사가 1건을 낼 수 있는지 먼저 만든다.**
   - 검증: `pnpm build` 통과(`tsc`는 이 파일의 형태를 못 본다) / `[manual]` `curl -sI`로 응답 헤더 확인 /
     `[manual]` 로그인·번역·설정·초대 넷이 그대로 동작한다
 - [x] **T3** `app/api/pull/route.ts` — 순회 상한 + 요약에 "미처리" (발견 26)
@@ -370,8 +387,11 @@
   강제되지 않는다는 부분은 새롭다** — 지금은 업스트림이 exact로 고정해 성립하고, 깨지면 세션 복호가
   조용히 쪼개진다. `pnpm.overrides`를 넣는 것은 **의존성 정책 변경**이라 요청 없이 하지 않는다.
 - **발견 16** — DB 트랙 D4.
-- **발견 22** — `.env.local`은 에이전트가 편집하지 않는다(CLAUDE.md). ⚠️ **사람이 지울 항목**:
-  `ACTIVE_PROJECT_SLUG` · `VERCEL_OIDC_TOKEN` · 1행의 prod ref 주석.
+- ~~**발견 22**~~ ✅ **닫혔다** (2026-09-09, 사용자가 정리했다). `.env.local`은 에이전트가 편집하지 않으므로
+  (CLAUDE.md) 사람 몫이었고, **키 이름만** 다시 세어 확인했다: `ACTIVE_PROJECT_SLUG`·`VERCEL_OIDC_TOKEN`
+  **둘 다 없고** 1행 주석도 prod ref가 아니라 접속 문자열 안내다(값은 읽지 않았다).
+  ⚠️ **리포트가 이 항목을 한 번 되살렸다** — 감사 시점 상태를 그대로 옮겨 적었다. **수용 목록은 옮겨
+  적지 말고 그 자리에서 다시 확인한다**, 특히 사람이 손대는 자리는 그 사이에 이미 고쳐져 있다.
 
 ## 이미 백로그에 있는 것 (여기서 중복하지 않는다)
 

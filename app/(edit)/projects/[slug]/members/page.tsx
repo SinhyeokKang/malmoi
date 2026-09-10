@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { ProjectArchived } from "@/components/project-archived";
 import { InviteDialog } from "@/components/members/invite-dialog";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
@@ -31,7 +32,8 @@ import { routes } from "@/lib/routes";
  */
 export default async function MembersPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { projectId, role, userId } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role, userId, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });

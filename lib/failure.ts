@@ -1,5 +1,7 @@
 // 500 본문에 무엇을 실을지의 판정. I/O가 없는 순수 함수라 두 라우트가 같은 규칙을 쓴다.
 
+import type { SyncErrorCode } from "@/lib/sync/plan";
+
 /**
  * **우리가 문구를 정한 오류.** 500 본문에 그대로 실린다.
  *
@@ -11,9 +13,20 @@
  * false가 되고, 그러면 설정 누락이 `internal`로 접혀 회고가 요구한 "원인이 남는 500"을 잃는다.
  */
 export class AppError extends Error {
-  constructor(message: string) {
+  /**
+   * `SyncRun.errorCode`에 남을 안정적 이름 (`docs/features/sync-runs/design.md` §1.3).
+   *
+   * ⚠️ **선택이다** — 코드가 붙는 자리는 sync가 가려야 하는 실패뿐이고, 불변식 위반(`unreachable:`)이나
+   * readiness가 이미 막는 설정 부재에는 붙지 않는다("생산자 없는 코드는 두지 않는다").
+   * ⚠️ **`classifyFailure`는 이 필드를 안 본다** — 그 함수는 "본문에 실어도 되는가"를, 코드는
+   * "무엇이 실패했나"를 답한다. 축이 다르므로 판정도 따로다(`classifySyncError`).
+   */
+  readonly code?: SyncErrorCode;
+
+  constructor(message: string, code?: SyncErrorCode) {
     super(message);
     this.name = "AppError";
+    this.code = code;
   }
 }
 
@@ -22,9 +35,12 @@ export class AppError extends Error {
  *
  * `throw new AppError(...)`보다 이걸 쓰는 이유는 호출부가 `if (!x) fail(...)` 한 줄로 끝나서다 —
  * 18곳을 바꾸면서 줄이 늘지 않는다.
+ *
+ * @param code 있으면 `SyncRun.errorCode`가 된다. **잡는 쪽이 메시지를 매칭하지 않게 하려는 것**이라
+ *   문구를 고쳐도 분류가 안 흔들린다.
  */
-export function fail(message: string): never {
-  throw new AppError(message);
+export function fail(message: string, code?: SyncErrorCode): never {
+  throw new AppError(message, code);
 }
 
 /** `requireEnv`가 던지는 오류. `AppError`와 같은 이유로 안전하다 — 변수 **이름**만 담는다. */

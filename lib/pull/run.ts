@@ -88,7 +88,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
   if (project.installationId === null) {
-    fail(`Project.installationId is empty (${project.slug}) — install the app`);
+    fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
 
   const format = formatFromProject(project, localeCodes);
@@ -104,8 +104,10 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
   // (`l10n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
   if (baseHead === null) {
+    // ⚠️ **브랜치 부재와 접근 상실이 같은 `null`로 온다** — 코드가 그 둘을 가르지 않는 것이 정직하다.
     fail(
-`cannot read the base branch: ${project.baseBranch} (missing branch, or the app lacks access)`,
+      `cannot read the base branch: ${project.baseBranch} (missing branch, or the app lacks access)`,
+      "base-unreadable",
     );
   }
 

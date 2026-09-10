@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { CircleUser, Globe, House, LayoutGrid, Languages, Plus, Settings, Users } from "lucide-react";
+import { CircleUser, Globe, History, House, LayoutGrid, Languages, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -11,7 +11,11 @@ import { routes } from "@/lib/routes";
  * `permission`·`routes`·`i18n`은 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
  */
 
-export type NavProject = { slug: string; name: string; role: Role };
+/**
+ * ⚠️ **`archived`가 boolean이지 `Date`가 아니다** — 사이드바가 시각을 쓸 일이 없고, 셸이 넘기는
+ * prop은 필요한 것만이라야 초과 프로퍼티가 안 샌다 (sec-audit 발견 23).
+ */
+export type NavProject = { slug: string; name: string; role: Role; archived: boolean };
 
 /**
  * pathname → 지금 보고 있는 프로젝트.
@@ -29,7 +33,7 @@ export function activeProject(pathname: string, memberships: readonly NavProject
 }
 
 export type NavSection = {
-  key: "home" | "translations" | "locales" | "members" | "settings";
+  key: "home" | "translations" | "locales" | "members" | "logs" | "settings";
   label: string;
   icon: ComponentType<{ className?: string }>;
   href: (slug: string) => string;
@@ -43,11 +47,11 @@ export type NavSection = {
 };
 
 /**
- * 프로젝트 컨텍스트의 항목들. **다섯이다** (6b-2가 Members, 6b-5가 Locales, 6b-6이 Home을 더했다).
+ * 프로젝트 컨텍스트의 항목들. **여섯이다** (6b-2가 Members, 6b-5가 Locales, 6b-6이 Home,
+ * 7단계가 Logs를 더해 SAAS §7.7의 라우트 표가 찼다).
  *
- * ⚠️ **Logs는 없다** — 라우트가 7단계다(`SyncRun`의 소비자, SAAS §6). **항목은 자기 라우트와 같은
- * 사이클에 온다**(6b-4 판정): 없는 라우트를 가리키는 항목은 404이고, 죽은 링크 검사의 접두 규칙이
- * 그것을 못 잡는다.
+ * ⚠️ **항목은 자기 라우트와 같은 사이클에 온다** (6b-4 판정) — 없는 라우트를 가리키는 항목은 404이고,
+ * 죽은 링크 검사의 접두 규칙(`/projects/*`)이 그것을 못 잡는다.
  *
  * ⚠️ **노출은 편의이고 차단이 아니다.** 판정을 `canPerform`에 맡겨 권한표가 한 벌로 남는다 —
  * 여기서 역할을 다시 나열하면 표가 둘이 되고, 그중 하나가 낡는다.
@@ -74,6 +78,13 @@ export function projectSections(role: Role): NavSection[] {
      */
     { key: "locales", label: m.common.nav.locales, icon: Globe, href: (slug) => routes.locales(slug), exact: false },
     { key: "members", label: m.common.nav.members, icon: Users, href: (slug) => routes.members(slug), exact: false },
+    /**
+     * ⚠️ **Logs도 `canPerform` 뒤가 아니다** (design §6). "내가 보낸 게 실제로 갔나"를 묻는 사람이
+     * 번역자다 — OWNER 전용으로 두면 그 질문에 답할 화면이 그 사람에게 없다.
+     *
+     * `exact: true`인 것은 하위 라우트가 없어서다 — `?cursor=`는 쿼리라 경로가 아니다.
+     */
+    { key: "logs", label: m.common.nav.logs, icon: History, href: (slug) => routes.logs(slug), exact: true },
   ];
   if (canPerform(role, "project:settings")) {
     sections.push({

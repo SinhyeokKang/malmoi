@@ -29,11 +29,12 @@ export const en = {
       account: "Your account",
       allProjects: "All projects",
       newProject: "New project",
-      /** 프로젝트 구역의 항목 다섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      /** 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
       home: "Overview",
       translations: "Translations",
       locales: "Languages",
       members: "Members",
+      logs: "Logs",
       settings: "Settings",
       signOut: "Sign out",
       collapse: "Collapse sidebar",
@@ -91,8 +92,94 @@ export const en = {
     },
   },
 
+  /**
+   * sync 이력 (7단계 — sync-runs design §6). **과거 시제다** — Publish Alert가 "지금 무슨 일이
+   * 일어났나"를 현재 시제로 말하고, 이 화면은 "그때 무슨 일이 있었나"라 어휘가 갈려야 한다.
+   */
+  logs: {
+    title: "Sync history",
+    description: "Every time your translations were sent back to the repository.",
+    columns: {
+      when: "When",
+      trigger: "Started by",
+      result: "Result",
+      changed: "Files",
+      reason: "Reason",
+    },
+    status: {
+      succeeded: "Sent",
+      /** ⚠️ **"branch equals base"가 아니다** — 읽는 사람은 번역 편집자다. */
+      skipped: "Nothing to send",
+      failed: "Failed",
+      /** ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). */
+      running: "Running…",
+    },
+    trigger: {
+      cron: "Nightly",
+      /** FK가 `SetNull`이라 이력은 남고 저자만 빈다. */
+      removed: "Removed user",
+    },
+    /**
+     * 값이 없는 칸. **실패의 변경 수는 0이 아니라 부재다** — 0으로 쓰면 "안 바뀌었다"는 거짓말이고,
+     * 그건 관측이 있었다는 뜻이 된다. 사유가 없는 행도 같은 글자를 쓴다(빈 칸은 열이 깨진 것처럼 보인다).
+     */
+    none: "—",
+    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 SAAS 불변식 9 위반이다. */
+    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count} dropped`),
+    empty: {
+      title: "No syncs yet",
+      description: "This fills in the first time your translations are sent back.",
+    },
+    older: "Older",
+    /**
+     * ⚠️ **과거 시제이고 git 어휘가 없다.** 이 문장을 읽는 사람은 실패를 겪은 번역 편집자이고,
+     * 그가 할 수 있는 일(개발자에게 말한다·기다린다)까지 말한다.
+     */
+    reasons: {
+      "base-unreadable": "We couldn't read your repository. Ask your developers to check the app's access.",
+      "not-installed": "The app wasn't connected to the repository. Ask your developers to reconnect it.",
+      "glob-matched-nothing": "The translation files weren't where we expected. Ask your developers.",
+      "github-error": "GitHub didn't answer. The next nightly run tries again.",
+      "db-unavailable": "We couldn't reach our own storage. The next nightly run tries again.",
+      stale: "This run stopped before it finished.",
+      unknown: "Something went wrong. The next nightly run tries again.",
+      fallback: "Something went wrong. Tell your developers if it keeps happening.",
+    },
+  },
+
+  /**
+   * 보관 (7단계 — sync-runs design §6.2). ⚠️ **"삭제"라고 쓰지 않는다** — 되돌릴 수 있고,
+   * 자동 영구 삭제는 비목표다 (SAAS §7.9).
+   */
+  archive: {
+    title: "Archive project",
+    description: "Stop this project without deleting anything.",
+    action: "Archive project",
+    /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
+    restore: "Restore project",
+    restoring: "Restoring…",
+    archiving: "Archiving…",
+    archived: (when: string): string => `Archived ${when}.`,
+    confirm: {
+      title: (name: string): string => `Archive ${name}?`,
+      body: "Everyone stops editing, the nightly send stops, and pushes from your repository are refused.",
+      /** ⚠️ 열린 PR을 닫지 않는다 (SAAS §7.9) — 사람이 알고 판단해야 한다. */
+      openPr: "What you already sent stays open for your developers:",
+      openPrLink: "See what's open",
+      /** ⚠️ 조회 실패를 "없다"로 접지 않는다 (POSTMORTEM 2026-09-03). */
+      prUnknown: "We couldn't check what's still open for your developers.",
+      cancel: "Cancel",
+    },
+    failed: (reason: string): string => `Couldn't change this: ${reason}`,
+    /** 보관된 프로젝트를 연 사람이 보는 화면. **사유는 `errors.access.archived`가 든다** — 저장 실패
+     *  한 줄과 같은 문장이어야 사용자가 두 자리를 같은 일로 읽는다. */
+    empty: { title: "This project is archived", action: "Open settings" },
+  },
+
   projects: {
     title: "Your projects",
+    /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
+    archived: "Archived",
     /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {
@@ -383,6 +470,17 @@ export const en = {
       dropped: "Which values couldn't be written",
       failed: (reason: string): string => `Couldn't send: ${reason}`,
       viewLink: "View what was sent",
+      /**
+       * 게이트 거부 (7단계 — sync-runs design §6.1). **고장이 아니라 "방금 보냈다"라 tone이 `info`다.**
+       *
+       * ⚠️ **카운트다운이 아니라 정적 문장이다** — 줄어드는 숫자를 그리려면 `setInterval`과
+       * `aria-live`가 붙는데, 헤더의 live region은 하나이고 그것은 저장 알림이 든다.
+       */
+      gate: {
+        "already-running": "Already sending. This page will show the result when it's done.",
+        "too-soon": (seconds: number): string =>
+          `Just sent. Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}.`,
+      },
     },
 
     /**
@@ -648,6 +746,8 @@ export const en = {
       "not-member": "That person isn't a member of this project.",
       // 유일하게 재시도가 맞는 사유다 — 입력값이 남아 있다는 것을 말한다.
       unavailable: "Something went wrong. Try again in a moment — your text is kept.",
+      // 되돌릴 수 있다는 것과 **누가** 되돌리는지를 함께 말한다 — 그러지 않으면 사용자가 갇힌다.
+      archived: "This project is archived. An owner can restore it in its settings.",
     },
 
     /** `inviteErrorMessage` — `InviteError` 일곱 + 폴백(모르는 `?e=`에 던지지 않는다). */

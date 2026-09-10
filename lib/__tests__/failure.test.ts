@@ -103,3 +103,31 @@ function fail_wrapped(): unknown {
     return e;
   }
 }
+
+/**
+ * **`AppError`가 선택 `code`를 든다** (`docs/features/sync-runs/design.md` §1.3).
+ *
+ * 던지는 자리가 코드를 들어야 `SyncRun.errorCode`가 안정적이다 — 잡는 쪽에서 메시지를 매칭하면
+ * 문장 하나가 바뀔 때 분류가 조용히 무너진다. ⚠️ **`classifyFailure`는 이 필드를 안 본다** —
+ * 그 함수는 "본문에 실어도 되는가"를 답하고 코드는 "무엇이 실패했나"를 답한다. 축이 다르다.
+ */
+describe("AppError.code — 던지는 자리가 코드를 든다", () => {
+  it("fail의 둘째 인자가 code로 남는다", () => {
+    try {
+      fail("cannot read the base branch: main", "base-unreadable");
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(AppError);
+      expect((e as AppError).code).toBe("base-unreadable");
+      expect((e as AppError).message).toBe("cannot read the base branch: main");
+    }
+  });
+
+  it("안 주면 undefined다 — 기존 자리 전부가 그대로 동작한다", () => {
+    expect(new AppError("x").code).toBeUndefined();
+  });
+
+  it("코드가 있어도 안전 판정은 안 바뀐다 — classifyFailure는 name만 본다", () => {
+    expect(classifyFailure(new AppError("x", "not-installed"))).toEqual({ safe: true, message: "x" });
+  });
+});

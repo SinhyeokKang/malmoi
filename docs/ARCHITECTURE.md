@@ -782,6 +782,98 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 - **컬럼 이름 개수 = 값 배열 개수를 매번 검사한다.** `unnest` 인자 순서가 컬럼 목록과 어긋나면 값이 옆 컬럼으로 들어가는데, 타입이 같으면(`text[]`끼리) 런타임도 조용하다.
 - 덮는 손실 지점: `sortIndex`의 0(falsy), 키 description과 로케일 description의 분리, `placeholders`의 JSON 직렬화, `refs`의 keyId 연결, 빈 값 번역 제외, orphan·unorphan·`needsReview` 전파.
 
+## 5.6 sync 실행 (`lib/sync/`)
+
+**7단계가 pull 바깥에 껍데기를 하나 얹었다** (2026-09-10). `runPull`의 판정층은 한 줄도 안 바뀌었다 —
+1층 스킵·2층 blob 비교·`captured = maxUpdatedAt`이 그대로다. 새로 생긴 것은 **"돌려도 되는가"**와
+**"무엇으로 끝났는가"** 둘뿐이고, 진입점 둘(편집 UI [Send changes] · 야간 cron)이 같은 함수를 지난다.
+
+### 5.6.1 동시 실행은 `Project` 행 잠금이 막는다
+
+```
+$transaction(tx):
+  tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = … FOR UPDATE`
+  running     = 최신 RUNNING 행
+  lastSettled = 최신 SUCCEEDED|SKIPPED 행        ← FAILED는 안 집는다
+  planSyncStart(...)  → 거부면 값으로 반환(행 없음)
+  stale이면 updateMany로 옛 RUNNING을 FAILED/"stale"로 닫는다
+  syncRun.create({ status: RUNNING })
+```
+
+- ⚠️ **잠금은 `Project` 행이지 `SyncRun`이 아니다** — 막으려는 것이 "이 프로젝트에 대한 두 번째
+  실행"이고, **아직 존재하지 않는 행은 잠글 수 없다.** `createInvitation`·`changeMember`·`createProject`가
+  같은 형이다.
+- ⚠️ **부분 유니크 인덱스(`WHERE status='RUNNING'`)를 쓰지 않는다** — Prisma가 그 문법을 못 내서
+  마이그레이션에 raw SQL을 손으로 넣어야 하고, 스키마와 실제 DB가 갈리는 자리가 하나 는다.
+- ⚠️ **잠금 트랜잭션 안에서 GitHub을 부르지 않는다.** 여기까지가 수 ms이고 실제 pull은 밖에서 돈다 —
+  안 그러면 GitHub 지연이 곧 DB 커넥션 점유이고 pooler에서 그것은 전 테넌트에 번진다.
+  `app/(edit)/__tests__/sync-run.test.ts`가 그 배선을 소스가 아니라 **호출 시점으로** 잰다.
+- ⚠️ **트랜잭션 안 조회는 순차다.** 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 못 줄이고,
+  엔진 내부 직렬화에 기대는 모양이 된다.
+- ⚠️ **하네스로는 진짜 동시성을 못 잰다** — 메모리 `$transaction`에 직렬화가 없고 `$executeRaw`가
+  no-op이다 (POSTMORTEM 2026-09-05). 테스트가 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞이다,
+  GitHub이 트랜잭션 밖이다)이고, 실제 직렬화는 실물 검증의 몫이다.
+
+### 5.6.2 행은 시작한 실행에만, stale은 닫는다
+
+- **게이트에서 거부된 것은 행이 없다** — `already-running`의 증거는 **첫 실행의 `RUNNING` 행**이고,
+  거부마다 행을 만들면 `logs`가 "눌렀지만 아무 일도 안 일어난 것"으로 가득 찬다.
+- **중단된 프로세스가 남긴 `RUNNING`은 다음 실행이 `FAILED`/`errorCode: "stale"`로 닫는다** — 지우지
+  않는다. 영구 RUNNING이 안 남는 것과 "무슨 일이 있었나"가 남는 것을 함께 얻는다.
+- ⚠️ **`STALE_AFTER_SECONDS`(300)는 `maxDuration`(60)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이
+  스스로를 stale로 보고** 두 번째 실행을 허용한다. 그 전제가 수동 경로에서 서려면 번역 페이지가
+  `export const maxDuration = 60`을 들어야 한다 — Server Action은 **자기를 부른 페이지 세그먼트**의
+  값을 쓰고, 없으면 프로젝트 기본값(300)이라 두 수가 같아진다.
+- **`SKIPPED`를 `SUCCEEDED`로 접지 않는다** — `lastPublishedAt`이 skipped에서 안 움직이므로
+  ("마지막으로 **보낸**" 것이지 시도한 것이 아니다) 그 구별이 행에도 남아야 `logs`가 "어제 밤엔 보낼
+  게 없었다"와 "어제 밤에 보냈다"를 가른다. `warnings`는 **둘 다** 센다 (SAAS 불변식 9).
+- **실패해도 마지막 성공을 안 덮는다** — 껍데기가 `Project` 컬럼을 **아예 안 쓴다**. `lastPulledAt`·
+  `lastPublishedAt`·`lastPrUrl`은 `runPull`이 성공 경로에서만 쓰고, 행을 `FAILED`로 닫는 것은 다른
+  문장이라 실패가 성공 상태에 닿을 경로가 생기지 않는다.
+
+### 5.6.3 오류 코드는 **던지는 자리**가 든다
+
+`AppError`에 선택 `code`가 붙었고 `fail(message, code)`가 그것을 넘긴다. 잡는 쪽에서 메시지를
+매칭하면 문장 하나가 바뀔 때 분류가 조용히 `unknown`으로 무너진다 — pull 실패는 전부 메시지만
+다른 `AppError`다.
+
+- `classifyFailure`는 이 필드를 **안 본다.** 그 함수는 "본문에 실어도 되는가"를, 코드는 "무엇이
+  실패했나"를 답한다 — 축이 다르므로 판정도 따로다(`classifySyncError`). `safeMessage`는 앞의 것을
+  그대로 부른다: 그 값이 대상 리포의 (public일 수 있는) Actions 로그로 흘러가므로 규칙이 두 벌이면 안 된다.
+- **생산자 없는 코드는 두지 않는다.** 일곱뿐이고, `lib/pull/__tests__/error-codes.test.ts`가 **양방향으로**
+  고정한다 — 코드를 드는 자리 넷과 **안 드는 자리 열하나**를 이름으로 박아, 새 `fail(`은 둘 중 하나를
+  골라야 red를 벗는다(`entry-points.test.ts`가 예외를 이름으로 고정하는 것과 같은 형).
+- 안 드는 자리는 **불변식 위반**(`unreachable:`)이거나 **readiness가 이미 막는 설정 부재**다 — sync 층에서
+  가를 이름이 없고, `unknown`이 정직하다.
+
+### 5.6.4 보관은 인가 union의 갈래 하나다
+
+`Project.archivedAt`은 **되돌릴 수 있는 사실 하나**이지 상태 머신이 아니다 (`Locale.orphaned`와 같은 형 —
+SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정했다).
+
+- 거부는 `planProjectAccess`가 한다. **`project:settings`를 제외한 모든 permission이 `archived`로 떨어지고**,
+  그래서 페이지·Server Action 전부가 **한 자리**에서 거부된다 — `entry-points.test.ts`가 진입점 전수를
+  세므로 새 갈래를 빠뜨린 화면이 없다. 설정만 통과하는 이유는 **그것이 되돌리는 길**이어서다.
+- ⚠️ **판정 순서가 권한 → 보관이다.** EDITOR가 보관된 프로젝트의 설정을 열려 하면 답이 `forbidden`이지
+  `archived`가 아니다 — 그래야 보관 여부가 권한 없는 사람에게 새지 않는다.
+- **목록에서 숨기지 않는다** — 숨기면 되돌릴 링크에 도달할 길이 없다. `loadMemberships`가 `archivedAt`을
+  함께 내고 행에 배지가 붙는다.
+- **CI push는 409**(`checkArchived`) — 보관의 뜻이 "멈춘다"인데 리포가 계속 덮으면 보관 중에 번역이
+  조용히 바뀌고, strict push라 그 덮어쓰기는 되돌릴 수 없다. 대상 리포 CI가 red가 되는 것은 의도된
+  신호다(워크플로를 떼라는 뜻).
+- **cron 순회에서 빠진다**(`selectPullTargets`) — 게이트까지 가지도 않고 `unprocessed`로도 세지 않는다.
+- **`PROJECT_LIMIT` 슬롯을 비운다** — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
+  ⚠️ **선조회와 트랜잭션 안 재집계가 같은 조건이어야 한다**: 하나만 좁히면 증상이 같다(선조회 통과 뒤
+  재집계가 거부하거나, 그 반대).
+- ⚠️ **열린 PR을 닫지 않는다** (SAAS §7.9) — 보관은 GitHub 상태를 정리하는 일이 아니다.
+
+### 5.6.5 cron 순회 순서는 아사 대책이다
+
+`selectPullTargets`가 **마지막 `SyncRun.startedAt`이 가장 오래된 것부터** 돈다(한 번도 안 돈 프로젝트가
+맨 앞, 동점은 slug). 전에는 `slug` 오름차순이라 `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 **매일 밤 같은
+프로젝트**였고 — 그 프로젝트는 영원히 안 돈다. `project-onboarding`이 "7단계가 큐로 가른다"고 넘긴
+자리이고, **큐 없이 정렬로** 풀었다. 동점 폴백이 slug인 것은 결정성을 잃지 않기 위해서다.
+
 ## 6. 인증 경계
 
 **세 GitHub 자격증명을 섞지 않는다** (2026-09-06에 둘에서 셋이 됐다 — 4단계가 "이 사람이 어느 설치를 볼 수 있는가"를 묻기 시작했다).

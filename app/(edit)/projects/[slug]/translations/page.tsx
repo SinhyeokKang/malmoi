@@ -2,6 +2,7 @@ import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
@@ -37,6 +38,16 @@ import { cn } from "@/lib/utils";
  * 시각 규칙은 docs/DESIGN.md — 키는 mono(§4.1), 배지 3종(§6.2), muted 표면 대비(§2.2).
  */
 
+/**
+ * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (설정 화면과 같은 이유).
+ * 이 화면의 [Send changes]가 `triggerPullAction`을 부르고 그것이 로케일 파일마다 blob을 읽는다.
+ *
+ * ⚠️ **`STALE_AFTER_SECONDS`(300)의 전제가 이 줄이다** (7단계 — sync-runs design §1.4). 없으면 이
+ * 세그먼트가 프로젝트 기본값(300)을 쓰고, 그러면 stale 판정 창과 실행 상한이 **같아져** 정상 실행이
+ * 스스로를 stale로 보고 두 번째 실행을 허용한다.
+ */
+export const maxDuration = 60;
+
 /** ⚠️ 이 타입이 URL 계약이다 — `entry-points.test.ts`가 `routes.translations`의 키와 대조한다. */
 type Search = { ns?: string; focus?: string; q?: string; state?: string };
 
@@ -52,7 +63,8 @@ export default async function TranslationsPage({
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
   // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
-  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
   // ⚠️ **인가가 준 id로 읽는다 — URL의 slug로 다시 찾지 않는다.** 클라이언트가 준 식별자를 두 번

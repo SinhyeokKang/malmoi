@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hashInviteToken, planInvitationAccept, type InvitationRow } from "../invitation";
+import {
+  MEMBER_LIMIT,
+  hashInviteToken,
+  planInvitationAccept,
+  planInvitationCreate,
+  type InvitationRow,
+} from "../invitation";
 
 /**
  * 초대 토큰과 수락 판정 (SAAS.md §5.6).
@@ -118,5 +124,40 @@ describe("planInvitationAccept — 다섯 분기", () => {
     expect(
       planInvitationAccept({ invitation: invitation({ email: "" }), verifiedEmail: "", now: BEFORE }),
     ).toBe("email-mismatch");
+  });
+});
+
+/**
+ * **프로젝트당 멤버 제한** (spec 완료 조건 8, design §1.5).
+ *
+ * 상한이 `PROJECT_LIMIT`(`lib/onboarding/create-plan.ts`)과 같은 형이다 — 상수는 **소비자 옆**에
+ * 두고 모음 파일을 만들지 않는다. `createInvitation`이 이미 `Project` 행을 잠그므로 그 트랜잭션
+ * 안에서 센 값을 넘긴다.
+ */
+describe("planInvitationCreate — 멤버 10명 제한", () => {
+  it("9명이면 통과다 — 열째 자리가 남아 있다", () => {
+    expect(planInvitationCreate({ memberCount: MEMBER_LIMIT - 1 })).toEqual({ status: "ok" });
+  });
+
+  it("10명이면 거부하고 상한을 값으로 준다 — 문구가 숫자를 따로 들면 둘이 갈린다", () => {
+    expect(planInvitationCreate({ memberCount: MEMBER_LIMIT })).toEqual({
+      status: "member-limit",
+      limit: MEMBER_LIMIT,
+    });
+  });
+
+  it("이미 넘겨 있어도 거부다 — 경계만 보면 넘어간 프로젝트가 계속 초대한다", () => {
+    expect(planInvitationCreate({ memberCount: MEMBER_LIMIT + 5 })).toMatchObject({
+      status: "member-limit",
+    });
+  });
+
+  it("⚠️ 대기 초대는 안 센다 — 가장 단순한 규칙이고 그 대가는 초과 수락이다", () => {
+    // 대기 초대까지 세면 "만료된 초대 때문에 못 부른다"가 생기고 그것을 설명할 화면이 없다.
+    expect(planInvitationCreate({ memberCount: 0 })).toEqual({ status: "ok" });
+  });
+
+  it("상한이 10이다", () => {
+    expect(MEMBER_LIMIT).toBe(10);
   });
 });

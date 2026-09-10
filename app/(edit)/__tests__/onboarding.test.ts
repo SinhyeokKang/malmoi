@@ -582,6 +582,40 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     expect(db.members.some((m) => m.userId === OWNER && m.projectId.startsWith("p-"))).toBe(false);
   });
 
+  /**
+   * **보관은 슬롯을 비운다** (7단계 — sync-runs design 결정 10). `project-onboarding/spec.md`가
+   * "삭제가 비범위라 슬롯을 되찾을 길이 없다"를 이 단계로 넘긴 자리다.
+   *
+   * ⚠️ **두 집계 모두** 좁혀야 한다 — 선조회만 좁히면 트랜잭션 안 재집계가 보관분을 세어 거부하고,
+   * 재집계만 좁히면 선조회가 먼저 거부해 GitHub도 안 읽는다. 둘 중 하나만 고치면 증상이 같다.
+   */
+  it("보관된 프로젝트는 OWNER 슬롯을 차지하지 않는다", async () => {
+    db = createHarness({
+      projects: [
+        { id: "p1", slug: "a1", name: "A1" },
+        { id: "p2", slug: "a2", name: "A2" },
+        { id: "p3", slug: "a3", name: "A3", archivedAt: new Date("2026-09-10T00:00:00Z") },
+      ],
+      members: [
+        { projectId: "p1", userId: OWNER, role: "OWNER" },
+        { projectId: "p2", userId: OWNER, role: "OWNER" },
+        { projectId: "p3", userId: OWNER, role: "OWNER" },
+      ],
+      users: [{ id: OWNER, email: "o@a.com" }],
+    });
+    hoisted.prisma = db.prisma;
+
+    const result = await createProject(createInput());
+    expect(result).toMatchObject({ ok: true });
+    // 두 집계가 같은 조건을 쓴다 — 하나만 좁히면 선조회 통과 뒤 재집계가 거부한다.
+    for (const call of db.spies.countMembers.mock.calls) {
+      const where = (call[0] as { where: Record<string, unknown> }).where;
+      if (where["role"] === "OWNER" && where["userId"] !== undefined) {
+        expect(where["project"]).toEqual({ archivedAt: null });
+      }
+    }
+  });
+
   it("OWNER 셋을 이미 가졌으면 limit-reached다", async () => {
     db = createHarness({
       projects: [

@@ -12,10 +12,21 @@ import { selectPullTargets } from "../targets";
  * "화면은 준비됐다는데 cron이 안 돈다"가 된다.
  */
 
-const project = (over: Partial<{ slug: string; installationId: string | null; lastCommitSha: string | null }> = {}) => ({
+const project = (
+  over: Partial<{
+    slug: string;
+    installationId: string | null;
+    lastCommitSha: string | null;
+    archivedAt: Date | null;
+    syncRuns: { startedAt: Date }[];
+  }> = {},
+) => ({
   slug: "acme",
   installationId: "1",
   lastCommitSha: "a".repeat(40),
+  archivedAt: null,
+  // 라우트가 `take: 1, orderBy: { startedAt: desc }`로 읽는 모양 그대로다 — 판정층이 재조립하지 않는다.
+  syncRuns: [] as { startedAt: Date }[],
   ...over,
 });
 
@@ -100,5 +111,66 @@ describe("selectPullTargets — 순회 상한 (sec-audit 26)", () => {
   it("준비 안 된 프로젝트는 상한을 안 먹는다 — 필터가 자르기보다 앞이다", () => {
     const rows = [...many(2), project({ slug: "zzz", installationId: null })];
     expect(selectPullTargets(rows, 2)).toEqual({ targets: ["p000", "p001"], unprocessed: 0 });
+  });
+});
+
+/**
+ * **보관 제외와 아사 방지** (7단계 — sync-runs design §4·§5.2).
+ *
+ * ⚠️ **정렬이 순서 취향이 아니라 대책이다.** `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 매일 밤 같은
+ * 프로젝트면 그 프로젝트는 **영원히 안 돈다** — `project-onboarding/design.md`가 "7단계 `SyncRun`이
+ * 큐로 가른다"고 넘긴 자리이고, 이번에 **큐 없이 정렬로** 푼다.
+ */
+describe("selectPullTargets — 보관 제외", () => {
+  it("보관된 프로젝트는 순회 대상이 아니다 — 게이트까지 가지도 않는다", () => {
+    const rows = [
+      project({ slug: "archived", archivedAt: new Date("2026-09-10T00:00:00Z") }),
+      project({ slug: "live" }),
+    ];
+    expect(selectPullTargets(rows, 50).targets).toEqual(["live"]);
+  });
+
+  it("보관은 미처리로 세지 않는다 — 못 돈 것이 아니라 안 도는 것이다", () => {
+    const rows = [project({ slug: "a", archivedAt: new Date("2026-09-10T00:00:00Z") })];
+    expect(selectPullTargets(rows, 50)).toEqual({ targets: [], unprocessed: 0 });
+  });
+});
+
+describe("selectPullTargets — 오래 안 돈 것부터", () => {
+  const at = (iso: string) => [{ startedAt: new Date(iso) }];
+
+  it("마지막 실행이 오래된 프로젝트가 앞이다", () => {
+    const rows = [
+      project({ slug: "recent", syncRuns: at("2026-09-09T00:00:00Z") }),
+      project({ slug: "old", syncRuns: at("2026-09-01T00:00:00Z") }),
+    ];
+    expect(selectPullTargets(rows, 50).targets).toEqual(["old", "recent"]);
+  });
+
+  it("한 번도 안 돈 프로젝트가 맨 앞이다 — 새 프로젝트가 뒤에서 굶지 않는다", () => {
+    const rows = [
+      project({ slug: "ran", syncRuns: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "never" }),
+    ];
+    expect(selectPullTargets(rows, 50).targets).toEqual(["never", "ran"]);
+  });
+
+  it("동점은 slug다 — 순서가 결정적이어야 실패 지점이 재현된다", () => {
+    const rows = [
+      project({ slug: "zulu", syncRuns: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "alpha", syncRuns: at("2026-09-01T00:00:00Z") }),
+    ];
+    expect(selectPullTargets(rows, 50).targets).toEqual(["alpha", "zulu"]);
+  });
+
+  it("⚠️ 잘린 뒤쪽이 다음 밤에는 앞이다 — 그것이 이 정렬의 목적 전부다", () => {
+    // 어젯밤 a·b가 돌고 c·d가 잘렸다면, 오늘 밤 입력은 c·d에 실행 기록이 없다.
+    const rows = [
+      project({ slug: "a", syncRuns: at("2026-09-09T18:00:00Z") }),
+      project({ slug: "b", syncRuns: at("2026-09-09T18:00:10Z") }),
+      project({ slug: "c" }),
+      project({ slug: "d" }),
+    ];
+    expect(selectPullTargets(rows, 2)).toEqual({ targets: ["c", "d"], unprocessed: 2 });
   });
 });

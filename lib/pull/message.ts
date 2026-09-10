@@ -14,11 +14,32 @@ import type { PullResult } from "./run";
  * 가치를 "자기가 고친 값이 실제 제품으로 돌아가는 것을 본다"로 정의했다 — "PR이 열렸다"는
  * 그 가치를 전달하지 못한다. 링크 라벨도 같다.
  *
- * **문구 다섯 · tone 넷이다** (design §3.4) — success가 둘이라 개수가 다르다.
+ * **문구 일곱 · tone 넷이다** — success가 둘이고, 7단계가 게이트 거부 둘(`info`)을 더했다.
  */
 
-/** `runPull`은 실패 시 던지므로, 그것을 잡은 쪽이 이 모양으로 바꿔 넘긴다. */
-export type PullOutcome = PullResult | { status: "failed"; error: string };
+/**
+ * `runPull`은 실패 시 던지므로, 그것을 잡은 쪽이 이 모양으로 바꿔 넘긴다.
+ *
+ * ⚠️ **게이트 거부도 같은 모양이다** (7단계 — sync-runs design 결정 5). `status: "failed"`인 이유가
+ * 둘이다: `header.tsx`의 refresh 분기가 `status !== "failed"`라 그대로 맞고, 실패에는
+ * `router.refresh()`를 부르지 않는다는 2026-09-08 규칙이 거부에도 옳다(바뀐 것이 없다).
+ */
+export type PullOutcome =
+  | PullResult
+  | { status: "failed"; error: string; retryAfterSeconds?: number };
+
+/**
+ * 게이트 거부의 사유 (`lib/sync/plan.ts`의 판정에서 온다). **sync 오류가 아니다** — 행에 남지 않고
+ * (design 결정 6) 다음 시도가 그대로 통과한다.
+ */
+export type SyncGateError = "already-running" | "too-soon";
+
+const SYNC_GATE_ERRORS: ReadonlySet<string> = new Set<SyncGateError>(["already-running", "too-soon"]);
+
+/** `isAccessError`·`isOnboardError`와 같은 형 — 화면이 토큰을 그대로 흘리지 않게 한다. */
+export function isSyncGateError(value: unknown): value is SyncGateError {
+  return typeof value === "string" && SYNC_GATE_ERRORS.has(value);
+}
 
 /** `Alert` variant와 같은 이름이다 (DESIGN §6.2) — 화면이 매핑 표를 또 들지 않는다. */
 export type PublishTone = "info" | "success" | "warning" | "danger";
@@ -58,6 +79,22 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
       return { tone: "info", text: m.translations.publish.nothing };
     }
     case "failed":
+      /**
+       * ⚠️ **게이트 거부가 먼저다.** 고장이 아니라 "이미 보내고 있다"·"방금 보냈다"라 **tone이 `info`**이고,
+       * `danger`는 `role="alert"`라 스크린리더가 읽던 것을 끊는다 (design 결정 5·§6.1).
+       *
+       * `retryAfterSeconds`가 outcome에 실려 오는 이유: 이 함수는 결정성 테스트 아래라 `Date.now()`를
+       * 볼 수 없고, 문구가 상수를 따로 들면 판정과 갈린다 (`lib/sync/plan.ts` §1.1).
+       */
+      if (isSyncGateError(outcome.error)) {
+        return {
+          tone: "info",
+          text:
+            outcome.error === "too-soon"
+              ? m.translations.publish.gate["too-soon"](outcome.retryAfterSeconds ?? 0)
+              : m.translations.publish.gate["already-running"],
+        };
+      }
       // 인가 거부·장애는 `accessErrorMessage`가 사람 말로 바꾼다 — 이 자리만 `not-found`를 영어
       // 토큰으로 흘렸다 (code-review 2026-09-06 🟡9).
       if (isAccessError(outcome.error)) return { tone: "danger", text: accessErrorMessage(outcome.error) };

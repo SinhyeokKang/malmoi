@@ -530,3 +530,75 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
     expect(await revokeInvitation({ slug: "alpha", invitationId: "" })).toEqual({ ok: false, error: "invalid input" });
   });
 });
+
+/**
+ * **멤버 10명 제한** (7단계 — sync-runs spec 완료 조건 8, design §1.5·결정 3).
+ *
+ * ⚠️ **집계가 잠금 안이다.** 밖에서 세면 두 OWNER가 동시에 초대할 때 각자 "자리 있음"을 보고
+ * 각자 만든다 — `createProject`의 재집계와 같은 형이고, 여기는 잠글 `Project` 행이 **이미 있다**.
+ */
+describe("createInvitation — 멤버 제한", () => {
+  const many = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      projectId: "pA",
+      userId: `u-${i}`,
+      role: "EDITOR" as const,
+    }));
+
+  function withMembers(count: number) {
+    return createHarness({
+      projects: [{ id: "pA", slug: "alpha" }],
+      members: [{ projectId: "pA", userId: "u-owner", role: "OWNER" as const }, ...many(count - 1)],
+      users: [{ id: "u-owner", email: "owner@a.com" }],
+    });
+  }
+
+  it("9명이면 통과한다 — 열째 자리가 남아 있다", async () => {
+    const db = withMembers(9);
+    hoisted.prisma = db.prisma;
+    hoisted.session = sessionFor("u-owner");
+    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    expect(result).toMatchObject({ ok: true });
+  });
+
+  it("10명이면 member-limit으로 거부하고 행을 만들지 않는다", async () => {
+    const db = withMembers(10);
+    hoisted.prisma = db.prisma;
+    hoisted.session = sessionFor("u-owner");
+    const before = db.invitations.length;
+    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    expect(result).toEqual({ ok: false, error: "member-limit" });
+    expect(db.invitations).toHaveLength(before);
+  });
+
+  it("⚠️ 집계가 잠금 뒤다 — 밖에서 세면 동시 초대가 자리를 하나 더 만든다", async () => {
+    const db = withMembers(10);
+    hoisted.prisma = db.prisma;
+    hoisted.session = sessionFor("u-owner");
+    await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+
+    const lockOrder = db.spies.executeRaw.mock.invocationCallOrder[0] ?? Infinity;
+    const countOrder = db.spies.countMembers.mock.invocationCallOrder.at(-1) ?? -Infinity;
+    expect(lockOrder).toBeLessThan(countOrder);
+  });
+
+  it("다른 프로젝트의 멤버는 안 센다", async () => {
+    const db = createHarness({
+      projects: [{ id: "pA", slug: "alpha" }, { id: "pB", slug: "beta" }],
+      members: [
+        { projectId: "pA", userId: "u-owner", role: "OWNER" as const },
+        ...Array.from({ length: 12 }, (_, i) => ({
+          projectId: "pB",
+          userId: `u-b-${i}`,
+          role: "EDITOR" as const,
+        })),
+      ],
+      users: [{ id: "u-owner", email: "owner@a.com" }],
+    });
+    hoisted.prisma = db.prisma;
+    hoisted.session = sessionFor("u-owner");
+    expect(await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).toMatchObject({
+      ok: true,
+    });
+  });
+});

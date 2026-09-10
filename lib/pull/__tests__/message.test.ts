@@ -10,7 +10,7 @@ import { pullMessage, type PullOutcome } from "../message";
  * 특히 **no-op이 기본 경로다** (MVP §3.3 1.5 "여기서 대부분 끝난다"). 성공 직후 한 번 더 누르면
  * 반드시 이 경로이고, 무반응이면 편집자가 고장으로 읽는다.
  *
- * **문구 다섯 · tone 넷이다** (design §3.4) — success가 둘이라 개수가 다르다.
+ * **문구 일곱 · tone 넷이다** — success가 둘이고, 7단계가 게이트 거부 둘(`info`)을 더했다.
  */
 
 const committed = (over: Partial<Extract<PullOutcome, { status: "committed" }>> = {}) =>
@@ -57,15 +57,17 @@ describe("pullMessage — 편집자가 읽는 문구다", () => {
     expect(m.text).toContain("dev");
   });
 
-  it("문구 다섯이 서로 다르다 — 같은 말을 두 상태에 쓰지 않는다", () => {
+  it("문구 일곱이 서로 다르다 — 같은 말을 두 상태에 쓰지 않는다", () => {
     const texts = [
       pullMessage({ status: "skipped", reason: "no-edits" }).text,
       pullMessage(committed({ pr: "created" })).text,
       pullMessage(committed({ pr: "updated" })).text,
       pullMessage(committed({ warnings: ["x"] })).text,
       pullMessage({ status: "failed", error: "boom" }).text,
+      pullMessage({ status: "failed", error: "already-running" }).text,
+      pullMessage({ status: "failed", error: "too-soon", retryAfterSeconds: 20 }).text,
     ];
-    expect(new Set(texts).size).toBe(5);
+    expect(new Set(texts).size).toBe(7);
   });
 
   it("tone은 넷이고 Alert variant 이름과 같다 (DESIGN §6.2)", () => {
@@ -73,6 +75,34 @@ describe("pullMessage — 편집자가 읽는 문구다", () => {
     expect(pullMessage(committed()).tone).toBe("success");
     expect(pullMessage(committed({ warnings: ["x"] })).tone).toBe("warning");
     expect(pullMessage({ status: "failed", error: "boom" }).tone).toBe("danger");
+  });
+
+  /**
+   * **게이트 거부는 고장이 아니다** (7단계 — sync-runs design 결정 5·§6.1).
+   *
+   * ⚠️ `danger`는 `role="alert"`라 스크린리더가 읽던 것을 끊는다. "이미 보내고 있다"에 그럴 이유가 없다.
+   */
+  describe("게이트 거부", () => {
+    it("tone이 info다 — danger가 아니다", () => {
+      expect(pullMessage({ status: "failed", error: "already-running" }).tone).toBe("info");
+      expect(pullMessage({ status: "failed", error: "too-soon", retryAfterSeconds: 20 }).tone).toBe("info");
+    });
+
+    it("남은 초가 문구에 들어간다 — 상수를 문구가 따로 들면 판정과 갈린다", () => {
+      expect(pullMessage({ status: "failed", error: "too-soon", retryAfterSeconds: 20 }).text).toContain("20");
+    });
+
+    it("1초는 단수다 — 카운터를 만들어 놓고 안 쓰면 '1 seconds'가 나간다", () => {
+      const text = pullMessage({ status: "failed", error: "too-soon", retryAfterSeconds: 1 }).text;
+      expect(text).toContain("1 second");
+      expect(text).not.toContain("1 seconds");
+    });
+
+    it("내부 토큰이 그대로 새지 않는다", () => {
+      for (const error of ["already-running", "too-soon"] as const) {
+        expect(pullMessage({ status: "failed", error, retryAfterSeconds: 5 }).text).not.toContain(error);
+      }
+    });
   });
 
   it("문구에 PR·머지 같은 git 어휘를 쓰지 않는다 — 편집자는 비개발자다 (spec 사용자 절)", () => {

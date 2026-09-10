@@ -37,6 +37,25 @@ describe("routes — 정적 경로", () => {
   });
 });
 
+/**
+ * **`logs`도 페이지와 같은 커밋에 온다** (7단계 — 6b-4·6b-6과 같은 판정). 페이지 없이 등재하면
+ * 404를 가리키는 생성기가 되고, 죽은 링크 검사의 접두 규칙이 `/projects/*`를 통과시켜 못 잡는다.
+ */
+describe("routes.logs — 서버 페이지네이션", () => {
+  it("커서가 없으면 쿼리가 붙지 않는다 — 첫 페이지 주소가 깨끗해야 공유된다", () => {
+    expect(routes.logs("bugshot-2")).toBe("/projects/bugshot-2/logs");
+    expect(routes.logs("bugshot-2", {})).toBe("/projects/bugshot-2/logs");
+  });
+
+  it("커서는 `?cursor=`다 — `entry-points.test.ts`가 이 키를 실재 라우트와 대조한다", () => {
+    expect(routes.logs("bugshot-2", { cursor: "abc" })).toBe("/projects/bugshot-2/logs?cursor=abc");
+  });
+
+  it("빈 커서는 지운다 — `?cursor=`만 실리면 서버가 그것을 값으로 읽는다", () => {
+    expect(routes.logs("bugshot-2", { cursor: "" })).toBe("/projects/bugshot-2/logs");
+  });
+});
+
 describe("routes.translations — 쿼리", () => {
   it("쿼리가 없으면 물음표도 없다", () => {
     expect(routes.translations("p")).toBe("/projects/p/translations");

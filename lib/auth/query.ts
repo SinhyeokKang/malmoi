@@ -19,7 +19,9 @@ export async function getProjectAccess(
 ): Promise<ProjectAccess> {
   const project = await prisma.project.findUnique({
     where: { slug: input.slug },
-    select: { id: true },
+    // ⚠️ **`archivedAt`이 여기 있어야 한다** — 판정이 `planProjectAccess` 한 자리이므로 그 입력을
+    // 이 조회가 든다. 호출부가 따로 읽으면 진입점마다 왕복이 하나씩 늘고 조건이 갈린다.
+    select: { id: true, archivedAt: true },
   });
   // ⚠️ 프로젝트가 없는 것과 멤버가 아닌 것을 **같은 not-found로 접는다** (SAAS §7.7) —
   // 둘을 404/403으로 가르면 남의 프로젝트 존재 여부가 샌다. 여기서 일찍 반환하는 이유는
@@ -33,7 +35,7 @@ export async function getProjectAccess(
     select: { projectId: true, role: true },
   });
 
-  return planProjectAccess({ member, permission: input.permission });
+  return planProjectAccess({ member, permission: input.permission, archivedAt: project.archivedAt });
 }
 
 /**

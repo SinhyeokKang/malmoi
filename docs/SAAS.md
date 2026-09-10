@@ -529,7 +529,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/translations   번역
 /projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, 프로덕션)
 /projects/:slug/members        멤버
-/projects/:slug/logs           ⬜ 변경 이력                        ← 7단계 (SyncRun 소비자)
+/projects/:slug/logs           ✅ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
 
@@ -654,21 +654,32 @@ push도 409다. `applyPush`가 페이로드 포맷으로 포맷 컬럼 셋을 �
 ### 7.9 프로젝트 수명주기 — 보관까지만 만든다
 
 ```
-active → archived (편집·sync 중단, 목록에서 숨김)
+active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다)
        → 영구 삭제는 손으로
 ```
 
 **자동 영구 삭제를 구현하지 않는다** — 유예 기간을 세려면 스케줄러가 필요하고, 포트폴리오 단계에서
 그것이 답하는 질문이 없다. 보관 상태와 정책만 둔다.
 
-⚠️ **아직 구현 0이고 담당은 §8 7단계다** (2026-09-07 배정). `archiv`가 코드·스키마에 한 건도 없다 —
-`features/github-connect/spec.md`가 "상태 축이 5단계에서 선 다음"으로 미뤘고 그 5단계가 끝났으므로,
-`SyncRun`·고정 제한·오류 분류와 같은 단계에서 상태 축을 함께 세운다(sync를 멈춘다는 것이 곧 운영
-안전성의 항목이다).
+✅ **7단계가 세웠다** (2026-09-10). `Project.archivedAt` **하나**이고 상태 컬럼이 아니다 — §7.5가
+"별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정했고, `Locale.orphaned`와 같은 "되돌릴 수 있는 사실
+하나"다. 거부는 `planProjectAccess`의 갈래 하나가 하므로 **페이지·Server Action 전부가 한 자리에서**
+막히고 `entry-points.test.ts`가 진입점 전수를 센다.
+
+⚠️ **"목록에서 숨김"을 뒤집었다** (2026-09-10 구현 판정). 숨기면 OWNER가 되돌릴 링크에 도달할 길이
+없어져 **보관이 편도가 된다.** 목록·스위처에 "Archived" 배지로 남고, `project:settings`만 통과시켜
+그 화면의 카드에서 되돌린다.
+
+**멈추는 것 셋**: 편집·Publish(`translation:write`가 `archived`로 거부) · 야간 cron(`selectPullTargets`가
+순회에서 뺀다 — 게이트까지 가지도 않는다) · **CI push(409)**. 마지막이 필요한 이유는 보관의 뜻이
+"멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
+대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `l10n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
-  가정하지 않는다. 보관 화면에 "열린 PR이 있습니다"만 알린다.
+  가정하지 않는다. ✅ 설정 화면의 보관 **확인 Dialog**가 그 PR을 링크로 싣는다 (2026-09-10).
+  ⚠️ **조회 실패는 "없다"가 아니라 "확인하지 못했다"다** — 접으면 그 정보가 조용히 사라진다
+  (POSTMORTEM 2026-09-03).
 - **GitHub App을 제거해도 프로젝트를 지우지 않는다** — `needs_reconnect`로 두고 재설치로 되돌린다
   (§8 4단계).
 
@@ -882,8 +893,9 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 + survey 분류기 + 14차 재측정)이 그 뒤였고(PR #17 → `982cb42`), 2026-09-09에 **6b-2**(멤버 화면 — PR #19 →
 `a00d380`)와 **6b-3**(base branch·기준 로케일 필드 — PR #21 → `7c975c0`) · **6b-4**(`/account` — PR #22 →
 `70e393b`) · **6b-5**(로케일 화면)·**6b-6**(Home — 착지점, 둘이 PR #23 → `0d68d71`)까지 **프로덕션에
-나갔다.** ✅ **6b가 닫혔다** — 라우트 여덟 중 남은 ⬜는 `logs` 하나이고 그것은 **7단계**다
-(`SyncRun`의 소비자, §6). 즉 **6단계는 이 배송으로 끝났다.**
+나갔다.** ✅ **6b가 닫혔다** — 라우트 여덟 중 남았던 ⬜는 `logs` 하나였고 그것은 **7단계**였다
+(`SyncRun`의 소비자, §6). 즉 **6단계는 그 배송으로 끝났다.** ✅ **그 마지막 칸도 2026-09-10에 찼다** —
+7단계 ship 3이 `logs`를 냈고 **§7.7의 라우트 여덟이 전부 ✅다.**
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
@@ -1028,27 +1040,55 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 완료 게이트: 변경 없음 / 새 PR / 기존 PR 갱신 / 부분 기록 불가 / 실패가 **서로 다른 상태**다 /
 PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상태의 반복 Publish가 새 커밋을 만들지 않는다.
 
-### 7단계 — 운영 안전성 ⬜ → `features/sync-runs/`
+### 7단계 — 운영 안전성 ✅ → `features/sync-runs/`
 
-- [ ] `SyncRun` — type · status · idempotencyKey · requestedBy · errorCode
-- [ ] **프로젝트당 동일 종류 실행은 하나** / HTTP 성공은 접수이지 완료가 아니다
-- [ ] Publish 동시성 계약 — 시작 시점의 `max(updatedAt)`까지 포함, 실패는 `lastPulledAt`을 전진시키지 않음
-      (⚠️ **`lib/pull/run.ts`가 이미 그렇게 한다** — SyncRun으로 옮길 때 잃지 않는다)
+**배송 셋으로 나갔다** (2026-09-10): ship 1 순수 판정 · ship 2 테이블과 껍데기(⚠️ 마이그레이션) ·
+ship 3 화면. **[manual] 실물 검증(T10)이 프로덕션 배포 뒤에 남아 있다.**
+
+- [x] ~~`SyncRun` — type · status · idempotencyKey · requestedBy · errorCode~~ ✅ **ship 2**
+  - ⚠️ **`type`·`idempotencyKey`는 안 만들었다.** 지금 두 진입점 중 **키를 만들 주체가 없다** —
+    cron은 하루 한 번이고 UI는 클릭이다. 동시성은 `Project` 행 잠금이 막고, 둘은 **push를 이
+    테이블에 넣을 때** 의미가 생긴다(같은 커밋의 Re-run이 그 키다). 그날 additive로 붙인다 —
+    "확장성을 위한 선반영은 그 자체가 결함이다"(CLAUDE.md). 아래 후속 목록에 있다
+- [x] ~~**프로젝트당 동일 종류 실행은 하나**~~ ✅ **ship 2** — `SELECT … FOR UPDATE`로 `Project` 행을
+      잠그고 판정·stale 닫기·행 생성을 한 트랜잭션에서 한다 (ARCHITECTURE §5.6.1). 부분 유니크
+      인덱스도 CAS 컬럼도 쓰지 않는다
+- [x] ~~Publish 동시성 계약 — 실패는 `lastPulledAt`을 전진시키지 않음~~ ✅ **ship 2** — 껍데기가
+      `Project` 컬럼을 **아예 안 쓴다**. `lib/pull/run.ts`가 이미 하던 것을 감싸면서 잃지 않는 것이
+      조건이었고, `sync-run.test.ts`가 껍데기 층에서 다시 건다
 - [ ] 로케일 파일이 사라지면 `needs_configuration` — **자동 재탐지하지 않는다** (§7.3의 연장)
-- [ ] 고정 제한 — 사용자당 프로젝트 3 / 프로젝트당 멤버 10 / 동시 sync 1 / Publish 최소 간격 30초
-  - ⚠️ **사용자당 3개는 5단계에서 먼저 걸었다** (`lib/onboarding/create-plan.ts`의 `PROJECT_LIMIT`,
-    자율 가입을 여는 대가다). **분자는 OWNER 행이다** — 멤버십 전체를 세면 EDITOR로 초대만 받은
-    사람이 하나도 못 만든다. 나머지 셋이 여기 남는다
-- [ ] **프로젝트 보관 (`active → archived`)** — §7.9의 상태 축. 편집·sync 중단 + 목록에서 숨김,
-      영구 삭제는 손으로. 지금 `archiv`가 코드·스키마에 0건이다 (2026-09-07에 이 단계로 배정 —
-      "sync를 멈춘다"가 곧 운영 안전성의 항목이라서다)
-- [ ] 오류 분류 — 안정적 내부 code + 사용자용 설명 + 재시도 가능 여부 (`lib/failure.ts` 확장)
-- [ ] **`/projects/:slug/logs` 화면** — IA(§7.7)가 라우트를 잡아 뒀고 **데이터 원천이 이 단계의
-      `SyncRun`이다.** 그 전에 만들면 "최근 편집 목록"까지이므로 6단계가 아니라 여기 있다.
-      6b-6의 Home이 그 요약 블록을 이 테이블로 갈아탄다
+  - ⚠️ **후속으로 옮겼다** (2026-09-10). 별도 상태 축이고 그것을 세우는 화면이 따로 필요하다 —
+    `SyncRun`의 소비자가 아니라 **탐지의 소비자**라 이 단계에 묶일 이유가 없었다
+- [x] ~~고정 제한 — 사용자당 프로젝트 3 / 프로젝트당 멤버 10 / 동시 sync 1 / Publish 최소 간격 30초~~
+      ✅ **ship 1·2** — `MEMBER_LIMIT`(`lib/auth/invitation.ts`, `createInvitation`의 **잠금 안에서**
+      강제) · `PUBLISH_MIN_INTERVAL_SECONDS`(`lib/sync/plan.ts`)
+  - ⚠️ **사용자당 3개는 5단계에서 먼저 걸었다** (`PROJECT_LIMIT`, 자율 가입을 여는 대가다).
+    **분자는 OWNER 행이고 보관은 그 슬롯을 비운다** — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다
+  - ⚠️ **최소 간격은 cron에 안 건다.** 하루 1회라 의미가 없고, 거기 걸면 **야간 실행이 조용히 안 도는**
+    경로가 생긴다 (design §1.1)
+- [x] ~~**프로젝트 보관 (`active → archived`)**~~ ✅ **ship 2·3** — `Project.archivedAt` 하나이고
+      **상태 컬럼이 아니다**(§7.5가 그것을 이미 정했다). 거부는 `planProjectAccess`의 갈래 하나라
+      페이지·Action 전부가 한 자리에서 막힌다
+  - ⚠️ **목록에서 숨기지 않는다** — 이 줄의 원래 서술("목록에서 숨김")을 **뒤집었다**: 숨기면 OWNER가
+    되돌릴 링크에 도달할 길이 없어져 보관이 편도가 된다. 배지로 남기고 `project:settings`만 통과시킨다
+- [x] ~~오류 분류 — 안정적 내부 code + 사용자용 설명 + 재시도 가능 여부~~ ✅ **ship 1** —
+      `AppError`에 선택 `code`가 붙고 **던지는 자리**가 그것을 든다(문자열 매칭이 아니다).
+      `classifyFailure`는 그 필드를 안 본다 — 축이 다르다 (ARCHITECTURE §5.6.3)
+- [x] ~~**`/projects/:slug/logs` 화면**~~ ✅ **ship 3** — 게이트가 `translation:write`다(OWNER 전용이
+      아니다: "내가 보낸 게 갔나"를 묻는 사람이 번역자다). 서버 `?cursor=` + "Older" 하나라 클라이언트
+      상태가 0이다
+  - ⚠️ **6b-6 Home의 요약 블록은 아직 `Translation`을 읽는다** — 그것을 `SyncRun`으로 갈아타는 것은
+    후속이다(아래). 지금 갈아타면 "사람의 편집"과 "실행 이력"이 한 목록에서 섞인다
 
 완료 게이트: Publish 연속 클릭이 커밋·PR을 한 번만 만든다 / 실패한 sync가 마지막 성공 상태를 덮지
 않는다 / 프로세스 중단이 영구 `running`을 남기지 않는다.
+⚠️ **앞의 것은 `[manual]` 실물로만 닫힌다** — 하네스의 `$transaction`엔 직렬화가 없고 `$executeRaw`가
+no-op이라, 자동 테스트가 고정하는 것은 **배선**(잠금 SQL이 행 생성보다 앞 · GitHub이 트랜잭션 밖)까지다
+(POSTMORTEM 2026-09-05).
+
+**후속으로 남긴 것**: `Home`의 최근 활동을 `SyncRun`으로 · push를 `SyncRun`에 넣기(그때 `type`·
+`idempotencyKey`가 의미를 갖는다) · `needs_configuration` · `SyncRun` 보존 기간(행이 쌓이는 속도를
+한 달 관측한 뒤).
 
 ### 8단계 — UI 재작성 (Figma) ⬜ → `features/ui-rework/`
 

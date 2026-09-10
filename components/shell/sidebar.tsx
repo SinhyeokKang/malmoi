@@ -143,7 +143,17 @@ export function Sidebar({ memberships, signOut }: { memberships: NavProject[]; s
                 <DropdownMenuContent>
                   {memberships.map((membership) => (
                     <DropdownMenuItem key={membership.slug} asChild selected={membership.slug === project.slug}>
-                      <Link href={routes.project(membership.slug)}>{membership.name}</Link>
+                      {/*
+                        ⚠️ **배지가 `Link` 안이다.** `asChild`가 걸린 `DropdownMenuItem`은 Slot이라
+                        자식을 하나만 받고, 형제를 두면 던져서 셸이 통째로 죽는다
+                        (POSTMORTEM 2026-09-09 — `slottable-item.test.ts`가 그 규칙을 상시로 센다).
+                      */}
+                      <Link href={routes.project(membership.slug)}>
+                        {membership.name}
+                        {membership.archived && (
+                          <span className="text-muted-foreground ml-2 text-xs">{m.projects.archived}</span>
+                        )}
+                      </Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

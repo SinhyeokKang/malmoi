@@ -13,18 +13,39 @@ import type { PullResult } from "./run";
  * `lib/onboarding/readiness.ts`). 그쪽은 화면용 3갈래이고 여기는 대상 필터라 목적이 다르지만, 조건이
  * 갈리면 "화면은 준비됐다는데 cron이 안 돈다"가 된다.
  *
- * 순서가 `slug` 오름차순인 이유는 **결정성**이다 — 실패 지점을 재현하려면 도는 순서가 고정돼야 한다.
- * `localeCompare`가 아니라 `compareKeys`(코드 유닛)를 쓰는 것은 export 정렬과 같은 이유다.
+ * ⚠️ **보관된 프로젝트는 여기서 빠진다** (7단계) — 순회 대상이 아니므로 게이트까지 가지도 않고,
+ * `unprocessed`로도 세지 않는다. "못 돈 것"이 아니라 "안 도는 것"이라 그 수에 섞으면 상한 경보가 거짓이 된다.
+ *
+ * ⚠️ **순서가 취향이 아니라 아사 대책이다** (7단계 — sync-runs spec 비목표 "재시도 큐"). 전에는
+ * `slug` 오름차순이라, `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 **매일 밤 같은 프로젝트**였다 —
+ * 그 프로젝트는 영원히 안 돈다. `project-onboarding/design.md`가 "7단계 `SyncRun`이 큐로 가른다"고
+ * 넘긴 자리이고, 여기서 **큐 없이 정렬로** 푼다: 마지막 실행이 가장 오래된 것부터, 한 번도 안 돈
+ * 프로젝트가 맨 앞, **동점은 slug**(결정성은 그대로 지킨다 — `localeCompare`가 아니라 `compareKeys`다).
+ *
+ * @param projects 라우트의 `select` 결과 그대로다 — `syncRuns`는 `take: 1, orderBy: { startedAt: desc }`로
+ *   읽은 **최근 하나**이고, 판정층이 그것을 재조립하지 않는다.
  */
 export function selectPullTargets(
-  projects: readonly { slug: string; installationId: string | null; lastCommitSha: string | null }[],
+  projects: readonly {
+    slug: string;
+    installationId: string | null;
+    lastCommitSha: string | null;
+    archivedAt: Date | null;
+    syncRuns: readonly { startedAt: Date }[];
+  }[],
   limit: number,
 ): { targets: string[]; unprocessed: number } {
   const ready = projects
-    .filter((p) => p.installationId !== null && p.lastCommitSha !== null)
-    .map((p) => p.slug)
-    .sort(compareKeys);
-  // ⚠️ **자르기는 정렬 뒤다** — 매일 밤 같은 앞부분이 돈다는 뜻이고, 그래야 실패 지점이 재현된다.
+    .filter((p) => p.installationId !== null && p.lastCommitSha !== null && p.archivedAt === null)
+    .slice()
+    .sort((a, b) => {
+      // 한 번도 안 돈 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.
+      const at = a.syncRuns[0]?.startedAt.getTime() ?? -Infinity;
+      const bt = b.syncRuns[0]?.startedAt.getTime() ?? -Infinity;
+      return at === bt ? compareKeys(a.slug, b.slug) : at - bt;
+    })
+    .map((p) => p.slug);
+  // ⚠️ **자르기는 정렬 뒤다** — 잘린 뒤쪽이 실행 기록 없이 남으므로 다음 밤에는 앞으로 온다.
   return { targets: ready.slice(0, limit), unprocessed: Math.max(0, ready.length - limit) };
 }
 
