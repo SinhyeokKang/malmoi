@@ -142,6 +142,15 @@ export default async function TranslationsPage({
     q: search.q,
   };
 
+  /**
+   * 칩이 보는 쿼리 — **기본 착지의 네임스페이스를 싣지 않는다.**
+   *
+   * ⚠️ `query.ns`는 항상 **해석된** 값이라(툴바의 `Select`와 링크 보존이 그것을 필요로 한다) 그대로
+   * 칩에 넘기면 아무것도 안 누른 사용자에게도 "Namespace: common ×"가 선다. 그 착지는 화면이 정한
+   * 것이지 사용자가 고른 필터가 아니다 (6a T2).
+   */
+  const chipQuery: TranslationsQuery = { ...query, ns: search.ns === undefined ? undefined : query.ns };
+
   return (
     // ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
     // `router.refresh()`·`revalidatePath`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
@@ -149,6 +158,7 @@ export default async function TranslationsPage({
       slug={slug}
       totalCount={rows.length}
       query={query}
+      chipQuery={chipQuery}
       namespaces={counts.map((c) => ({
         namespace: c.namespace,
         pending: c.untranslated + c.needsReview,

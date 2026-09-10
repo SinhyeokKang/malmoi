@@ -4,10 +4,8 @@ import { relativeTime } from "@/lib/relative-time";
 import {
   buildPermalink,
   defaultNamespace,
-  filterRows,
   isUnpublished,
   localeProgress,
-  namespaceCounts,
   resolveNamespace,
   translationState,
   type KeyRow,
@@ -30,47 +28,6 @@ const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
 /** 단일 로케일 관점 헬퍼 — 배지 판정 테스트는 셀 하나만 본다. */
 const cell = (over: Partial<KeyRow["cells"][string]> = {}) => ({
   value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH, ...over,
-});
-
-describe("namespaceCounts — 사이드바", () => {
-  // 테이블이 로케일을 열로 펼치므로 "일이 얼마나 남았나"는 로케일마다 다르다.
-  // 어느 로케일 기준으로 셀지를 인자로 받는다.
-  it("네임스페이스별 개수를 센다", () => {
-    const counts = namespaceCounts([
-      row({ key: "common.ok" }),
-      row({ key: "common.cancel" }),
-      row({ key: "auth.login" }),
-    ], "ko");
-    expect(counts).toEqual([
-      { namespace: "auth", total: 1, untranslated: 1, needsReview: 0, orphaned: 0 },
-      { namespace: "common", total: 2, untranslated: 2, needsReview: 0, orphaned: 0 },
-    ]);
-  });
-
-  it("네임스페이스가 정렬되어 나온다", () => {
-    const counts = namespaceCounts([row({ key: "z.a" }), row({ key: "a.b" }), row({ key: "m.c" })], "ko");
-    expect(counts.map((c) => c.namespace)).toEqual(["a", "m", "z"]);
-  });
-
-  it("상태별 개수를 함께 센다", () => {
-    const counts = namespaceCounts([
-      row({ key: "a.done", cells: { ko: cell({ value: "값" }) } }),
-      row({ key: "a.stale", cells: { ko: cell({ value: "값", needsReview: true }) } }),
-      row({ key: "a.gone", cells: { ko: cell({ value: "값" }) }, orphaned: true }),
-      row({ key: "a.empty" }),
-    ], "ko");
-    expect(counts[0]).toEqual({
-      namespace: "a",
-      total: 4,
-      untranslated: 1,
-      needsReview: 1,
-      orphaned: 1,
-    });
-  });
-
-  it("키가 0개면 빈 목록", () => {
-    expect(namespaceCounts([], "ko")).toEqual([]);
-  });
 });
 
 describe("translationState — 배지 판정", () => {
@@ -97,25 +54,6 @@ describe("translationState — 배지 판정", () => {
 
   it("needsReview인데 값이 없으면 untranslated다 — 검토할 값이 없다", () => {
     expect(translationState({ orphaned: false, value: null, needsReview: true })).toBe("untranslated");
-  });
-});
-
-describe("namespaceCounts — 로케일마다 남은 일이 다르다", () => {
-  const rows = [
-    row({ key: "a.x", cells: { ko: cell({ value: "번역됨" }), fr: cell() } }),
-    row({ key: "a.y", cells: { ko: cell(), fr: cell({ value: "traduit" }) } }),
-  ];
-
-  it("ko 기준", () => {
-    expect(namespaceCounts(rows, "ko")[0]).toMatchObject({ total: 2, untranslated: 1 });
-  });
-
-  it("fr 기준 — 다른 결과가 나온다", () => {
-    expect(namespaceCounts(rows, "fr")[0]).toMatchObject({ total: 2, untranslated: 1 });
-  });
-
-  it("셀이 없는 로케일은 전부 미번역이다", () => {
-    expect(namespaceCounts(rows, "ja")[0]).toMatchObject({ total: 2, untranslated: 2 });
   });
 });
 
@@ -149,7 +87,7 @@ describe("buildPermalink — GitHub 코드 참조", () => {
  * **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (design §3.3). `compareKeys` 첫 항목은
  * 알파벳순이라 이미 다 번역된 사소한 네임스페이스일 수 있고, 그러면 편집자가 매번 직접 찾아야 한다.
  *
- * ⚠️ **`focus` 인자를 받지 않는다** — 집계(`namespaceCounts(rows, locale)`)가 이미 그 로케일 기준으로
+ * ⚠️ **로케일 인자를 받지 않는다** — 집계(`namespaceCountsFor(rows, locales)`)가 이미 그 기준으로
  * 만들어진다. 여기서 로케일을 또 받으면 두 값이 갈릴 수 있는 자리만 생긴다.
  */
 describe("defaultNamespace — 착지할 네임스페이스", () => {
@@ -187,7 +125,7 @@ describe("defaultNamespace — 착지할 네임스페이스", () => {
     expect(defaultNamespace(counts(["auth", { total: 2, orphaned: 2 }]))).toBeNull();
   });
 
-  it("집계 순서를 따른다 — 정렬은 namespaceCounts가 이미 했다", () => {
+  it("집계 순서를 따른다 — 정렬은 namespaceCountsFor가 이미 했다", () => {
     expect(defaultNamespace(counts(["z", { untranslated: 1 }], ["a", { untranslated: 1 }]))).toBe("z");
   });
 });
@@ -228,62 +166,6 @@ describe("resolveNamespace — `?ns=`의 해석", () => {
   });
 });
 
-describe("filterRows — 툴바의 두 필터", () => {
-  const rows = [
-    row({ key: "common.save", cells: { ko: { value: "저장", needsReview: false, updatedBy: null, updatedAt: EPOCH } } }),
-    row({ key: "common.cancel", cells: { ko: { value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH } } }),
-    row({ key: "auth.login", cells: { ko: { value: "로그인", needsReview: true, updatedBy: null, updatedAt: EPOCH } } }),
-  ];
-
-  it("필터가 없으면 그대로다", () => {
-    expect(filterRows(rows, { locale: "ko" })).toHaveLength(3);
-  });
-
-  it("공백만인 `q`는 무필터다 — 지운 필터가 0행을 내면 안 된다", () => {
-    expect(filterRows(rows, { locale: "ko", q: "   " })).toHaveLength(3);
-  });
-
-  it("키를 부분 일치로 찾는다", () => {
-    expect(filterRows(rows, { locale: "ko", q: "common." }).map((r) => r.key)).toEqual([
-      "common.save",
-      "common.cancel",
-    ]);
-  });
-
-  it("대소문자를 무시한다", () => {
-    expect(filterRows(rows, { locale: "ko", q: "COMMON" })).toHaveLength(2);
-  });
-
-  it("값도 본다 — 어느 로케일이든 (편집자는 자기 언어로 찾는다)", () => {
-    expect(filterRows(rows, { locale: "ko", q: "로그인" }).map((r) => r.key)).toEqual(["auth.login"]);
-  });
-
-  it("미번역 필터", () => {
-    expect(filterRows(rows, { locale: "ko", state: "untranslated" }).map((r) => r.key)).toEqual([
-      "common.cancel",
-    ]);
-  });
-
-  it("검토 필요 필터", () => {
-    expect(filterRows(rows, { locale: "ko", state: "needs-review" }).map((r) => r.key)).toEqual([
-      "auth.login",
-    ]);
-  });
-
-  it("상태는 focus 로케일 기준이다 — 다른 로케일에선 결과가 다르다", () => {
-    expect(filterRows(rows, { locale: "fr", state: "untranslated" })).toHaveLength(3);
-  });
-
-  it("둘을 겹치면 교집합이다 — 0행이 정상 결과다", () => {
-    expect(filterRows(rows, { locale: "ko", q: "common", state: "needs-review" })).toEqual([]);
-  });
-});
-
-/**
- * **미배포 판정** (design §3.5). `updatedAt > lastPulledAt`만으로는 안 된다 — push가 전 행의
- * `updatedAt`을 올리므로 push 직후 903키 전부가 "안 보낸 편집"이 된다. 사람이 저장한 행만
- * `updatedBy`를 든다(push는 그것을 비운다 — design §3.6).
- */
 describe("isUnpublished — 아직 안 보낸 편집인가", () => {
   const pulled = new Date("2026-09-08T00:00:00Z");
 

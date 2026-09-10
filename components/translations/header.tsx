@@ -40,6 +40,7 @@ export function TranslationsHeader({
   slug,
   totalCount,
   query,
+  chipQuery,
   namespaces,
   locales,
   selected,
@@ -59,6 +60,11 @@ export function TranslationsHeader({
    */
   totalCount: number;
   query: TranslationsQuery;
+  /**
+   * 칩이 보는 쿼리 — `query`와 **`ns` 하나만 다르다**(기본 착지면 비어 있다). 화면이 정한 착지를
+   * 칩으로 세우면 아무것도 안 누른 사용자에게 필터가 걸린 것처럼 보인다.
+   */
+  chipQuery: TranslationsQuery;
   namespaces: readonly { namespace: string; pending: number; total: number }[];
   locales: readonly { code: string; orphaned: boolean }[];
   selected: readonly string[];
@@ -133,7 +139,7 @@ export function TranslationsHeader({
           selected={selected}
           fallback={fallback}
         />
-        <FilterChips slug={slug} query={query} selected={selected} fallback={fallback} />
+        <FilterChips slug={slug} query={chipQuery} selected={selected} fallback={fallback} />
       </PanelHeader>
 
       <PanelBody className="px-6 py-4">

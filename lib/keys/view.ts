@@ -123,33 +123,6 @@ export type NamespaceCount = {
 };
 
 /**
- * 사이드바 집계. **어느 로케일 기준인지 받아야 한다** — 테이블이 로케일을 열로 펼치므로
- * "일이 얼마나 남았나"가 로케일마다 다르다. 총 개수만으로는 알 수 없다.
- */
-export function namespaceCounts(rows: readonly KeyRow[], locale: string): NamespaceCount[] {
-  const byName = new Map<string, NamespaceCount>();
-
-  for (const row of rows) {
-    const entry = byName.get(row.namespace) ?? {
-      namespace: row.namespace,
-      total: 0,
-      untranslated: 0,
-      needsReview: 0,
-      orphaned: 0,
-    };
-    entry.total += 1;
-    const state = cellState(row, locale);
-    if (state === "untranslated") entry.untranslated += 1;
-    else if (state === "needsReview") entry.needsReview += 1;
-    else if (state === "orphaned") entry.orphaned += 1;
-    byName.set(row.namespace, entry);
-  }
-
-  // 어댑터 writer와 같은 규칙 — 재구현하지 않고 그 함수를 쓴다 (ARCHITECTURE §1.1).
-  return [...byName.values()].sort((a, b) => compareKeys(a.namespace, b.namespace));
-}
-
-/**
  * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (8-4 design §3.1).
  *
  * ⚠️ **코드 배열이 아니라 이 모양을 받는다.** 폴백이 orphaned를 빼야 하는데 코드만 받으면
@@ -267,13 +240,14 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
  * `compareKeys` 첫 항목(알파벳순)으로 착지하면 이미 다 번역된 사소한 네임스페이스일 수 있고,
  * 그러면 편집자가 열 때마다 직접 찾아야 한다. 903키 프로젝트에서 그 비용이 매번 든다.
  *
- * ⚠️ **로케일을 인자로 받지 않는다** — `counts`가 이미 focus 로케일 기준으로 만들어져 있다
- * (`namespaceCounts(rows, locale)`). 여기서 또 받으면 두 값이 갈릴 자리만 생긴다.
+ * ⚠️ **로케일을 인자로 받지 않는다** — `counts`가 이미 선택된 로케일 기준으로 만들어져 있다
+ * (`namespaceCountsFor(rows, locales)`). 여기서 또 받으면 두 값이 갈릴 자리만 생긴다.
+ * **6a T2의 판정이 8-4의 축 변경을 그대로 통과한 것**이 이 배치 덕이다.
  *
  * @returns 키가 없거나 전부 orphaned면 `null` — 화면이 빈 상태로 간다.
  */
 export function defaultNamespace(counts: readonly NamespaceCount[]): string | null {
-  // 정렬은 `namespaceCounts`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
+  // 정렬은 `namespaceCountsFor`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
   const pending = counts.find((c) => c.untranslated + c.needsReview > 0);
   if (pending) return pending.namespace;
   // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
@@ -305,22 +279,12 @@ export function resolveNamespace(
   return fallback === null ? { kind: "none" } : { kind: "one", namespace: fallback };
 }
 
-export type RowFilter =
-  | {
-      /**
-       * ⚠️ **옛 갈래 — 로케일이 열이던 시절이다.** 상태 필터가 이 로케일을 봤다. 8-4의 화면
-       * 재작성이 마지막 호출부를 옮기면 이 갈래를 지운다.
-       */
-      locale: string;
-      q?: string;
-      state?: "needs-review" | "untranslated";
-    }
-  | {
-      /** 보고 있는 로케일. **검색의 대상이 이 집합으로 좁혀진다** (아래). */
-      locales: readonly string[];
-      /** 키·**선택된 로케일 값**의 부분 일치(대소문자 무시). 편집자는 자기 언어로 찾는다. */
-      q?: string;
-    };
+export type RowFilter = {
+  /** 보고 있는 로케일. **검색의 대상이 이 집합으로 좁혀진다** (아래). */
+  locales: readonly string[];
+  /** 키·**선택된 로케일 값**의 부분 일치(대소문자 무시). 편집자는 자기 언어로 찾는다. */
+  q?: string;
+};
 
 /**
  * 툴바의 검색 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
@@ -333,23 +297,10 @@ export type RowFilter =
  */
 export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[] {
   const needle = filter.q?.trim().toLowerCase() ?? "";
-
-  if ("locales" in filter) {
-    if (needle === "") return [...rows];
-    return rows.filter((row) => {
-      const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
-      return haystack.some((text) => text.toLowerCase().includes(needle));
-    });
-  }
-
+  if (needle === "") return [...rows];
   return rows.filter((row) => {
-    if (needle !== "") {
-      const haystack = [row.key, ...Object.values(row.cells).map((cell) => cell?.value ?? "")];
-      if (!haystack.some((text) => text.toLowerCase().includes(needle))) return false;
-    }
-    if (filter.state === undefined) return true;
-    const state = cellState(row, filter.locale);
-    return filter.state === "untranslated" ? state === "untranslated" : state === "needsReview";
+    const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
+    return haystack.some((text) => text.toLowerCase().includes(needle));
   });
 }
 
@@ -468,7 +419,7 @@ export type LocaleProgress = {
  * (POSTMORTEM 2026-09-09이 그 상태를 다뤘다), base 행을 무조건 100%로 그리면 화면이 거짓말을 한다.
  *
  * ⚠️ **`검토 필요`는 번역된 것이 아니다** — 원문이 바뀌어 사람이 다시 봐야 하는 값이라 `translated`와
- * 따로 센다. `namespaceCounts`가 같은 축을 쓴다.
+ * 따로 센다. `namespaceCountsFor`가 같은 축을 쓴다.
  *
  * **순서가 화면의 정보구조다**: base가 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 →
  * orphaned 맨 뒤. 마지막 것은 행마다 사유 설명이 붙어서, 사이에 끼면 건강한 목록이 쪼개진다.
