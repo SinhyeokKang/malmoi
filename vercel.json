@@ -8,10 +8,5 @@
       "path": "/api/pull",
       "schedule": "0 18 * * *"
     }
-  ],
-  "git": {
-    "deploymentEnabled": {
-      "dev": false
-    }
-  }
+  ]
 }
