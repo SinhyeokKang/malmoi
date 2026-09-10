@@ -25,25 +25,58 @@ export const en = {
     appName: "Malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
-      /** ⚠️ **2인칭으로 통일한다** (SAAS §7.7) — 시안의 `My account`는 구역과 인칭이 섞였다. */
-      yourWork: "Your work",
-      account: "Your account",
-      allProjects: "All projects",
-      newProject: "New project",
-      /** 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
-      home: "Overview",
+      /**
+       * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(SAAS §7.7)에서
+       * 바뀐 것: `Your work` 구역 라벨이 **사용자 이름**으로, `All projects`→`Projects`,
+       * `Your account`→`Settings`, `Overview`→`Home`, `Languages`→`Locales`,
+       * `Settings`(프로젝트)→`Project settings`. `New project`는 사이드바에서 빠졌다.
+       */
+      projects: "Projects",
+      /**
+       * 사용자 축의 설정(`/account`) — **프로젝트 축의 `Project settings`와 이름으로 갈린다.**
+       * ⚠️ 유저 메뉴도 같은 문구를 쓴다: 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다.
+       */
+      settings: "Settings",
+      /**
+       * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
+       *
+       * ⚠️ **화면 제목도 이 키들을 쓴다** (2026-09-11 사용자 — "LNB 메뉴명과 페이지 타이틀은 항상
+       * 동기"). 사이드바에서 `Projects`를 누르고 도착한 화면이 `Your projects`라고 말하면 같은
+       * 곳인지 매번 확인하게 된다. **키를 공유해 구조적으로 묶었다** — 두 벌로 두고 규칙만 적으면
+       * 하나가 낡고, 그 어긋남은 한 화면 안에서 안 보인다(사이드바와 제목을 함께 보는 눈이 없다).
+       *
+       * ⚠️ **그래서 `projects.title`·`locales.title` 같은 키가 없다.** 화면이 자기 제목을 갖고
+       * 싶어지면 그 순간이 "메뉴명과 갈라도 되는가"를 판정할 자리다.
+       */
+      home: "Home",
+      locales: "Locales",
       translations: "Translations",
-      locales: "Languages",
       members: "Members",
       logs: "Logs",
-      settings: "Settings",
+      projectSettings: "Project settings",
       signOut: "Sign out",
-      collapse: "Collapse sidebar",
-      expand: "Expand sidebar",
-      openMenu: "Open menu",
-      closeMenu: "Close menu",
-      switchProject: "Switch project",
+      /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
+      newProject: "New project",
       userMenu: "Account menu",
+      /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
+      appHome: "Malmoi home",
+    },
+    /**
+     * 프로젝트 화면 오른쪽의 320px 패널 (8-2). **탭 둘만 세우고 내용은 8-P가 채운다** —
+     * diff는 UI가 아니라 새 서버 능력이라(커밋 없이 렌더만 하는 경로) 여기서 UI만 먼저 만들면
+     * 빈 껍데기를 두 번 그린다.
+     */
+    panel: {
+      label: "Project panel",
+      /**
+       * ⚠️ **랜드마크 이름과 갈라야 한다** — `<aside>`와 그 안의 세그먼트 컨트롤이 같은 이름을 들면
+       * 스크린리더가 둘을 "Project panel"로 똑같이 읽고 구별할 단서가 role뿐이다.
+       */
+      view: "Panel view",
+      general: "General",
+      changes: "Changes",
+      /** ⚠️ **"곧 나온다"고 쓰지 않는다** — 지키지 못할 약속이고, 지금 참인 것은 비어 있다는 사실이다. */
+      empty: "Nothing here yet.",
     },
     /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
     copy: "Copy",
@@ -99,6 +132,11 @@ export const en = {
       title: "Privacy Policy",
       body: "We're still writing this. It will be here before launch.",
     },
+    /**
+     * ⚠️ **`title`의 소비자가 둘이다** — 이 화면의 제목과 **사이드바 하단 항목**
+     * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
+     * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
+     */
     docs: {
       title: "Docs",
       body: "We're still writing this. It will be here before launch.",
@@ -138,7 +176,6 @@ export const en = {
    * 일어났나"를 현재 시제로 말하고, 이 화면은 "그때 무슨 일이 있었나"라 어휘가 갈려야 한다.
    */
   logs: {
-    title: "Sync history",
     description: "Every time your translations were sent back to the repository.",
     columns: {
       when: "When",
@@ -216,7 +253,51 @@ export const en = {
   },
 
   projects: {
-    title: "Your projects",
+    /**
+     * 목록 필터 (8-3). **탭이 링크라 라벨이 목적지의 이름이다** — `Active`가 "보관하지 않은 것"이다.
+     */
+    filter: {
+      label: "Filter projects",
+      all: "All projects",
+      /**
+       * ⚠️ **나머지 다섯은 `projects.status`를 그대로 쓴다** (2026-09-11 사용자 — 필터 축이 상태
+       * 다섯으로 넓어졌다). 탭 라벨과 행 배지가 같은 낱말이라야 "지금 무엇을 보고 있나"가 이어지고,
+       * 두 벌로 두면 하나가 낡는다.
+       */
+    },
+    /**
+     * 툴바 우측의 이름 검색 (2026-09-11).
+     *
+     * ⚠️ **검색 필드의 placeholder는 `…`로 끝난다** (2026-09-11 사용자 — 앞으로 이 패턴이다).
+     * §10이 줄임표를 "진행 중과 **추가 입력이 필요한 행동**"에 허용하는데 빈 검색창이 정확히
+     * 뒤쪽이다. **문자는 `…`(U+2026)이고 마침표 셋이 아니다** — 리포의 다른 자리(`Running…`)가
+     * 그 표기이고, 마침표 셋은 폰트에 따라 간격이 벌어진다.
+     *
+     * ⚠️ **`aria-label`은 줄임표가 없다** — 스크린리더가 읽는 **이름**이라 장식이 붙으면 안 된다.
+     * 그래서 키가 둘로 갈려 있고, 값이 다르므로 "두 벌이면 하나가 낡는다"에 걸리지 않는다.
+     *
+     * ⚠️ **`clear`가 없다** — 지우기는 `type="search"`의 네이티브 ✕가 든다.
+     */
+    search: { label: "Search projects", placeholder: "Search projects…" },
+    /** 행 메타 — 리포와 멤버 수 둘뿐이다. ⚠️ **복수형을 함수가 든다**(시안의 "1 members"는 틀렸다). */
+    memberCount: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
+    /** 필터가 걸러 0건인 상태. **"프로젝트가 없다"와 다르다** — 탭을 바꾸면 있다. */
+    /**
+     * 좁혀서 0건일 때의 빈 상태 (2026-09-11 사용자 — `EmptyState` 형으로 올렸다).
+     *
+     * ⚠️ **"프로젝트가 없다"(`empty`)와 같은 형이되 액션이 반대다.** 그쪽은 만들라고 하고(primary),
+     * 여기는 **되돌리라고** 한다(ghost) — 프로젝트는 이미 있고 화면이 좁혀져 있을 뿐이다.
+     *
+     * ⚠️ **제목이 질의를 안 싣는다** — 긴 질의가 제목을 밀어내고, 무엇을 쳤는지는 검색창이 이미
+     * 보여준다. 설명이 갈래를 가른다.
+     */
+    narrowed: {
+      title: "No results",
+      /** ⚠️ 되돌릴 것이 질의인지 탭인지 갈라 말한다 — 아니면 엉뚱한 컨트롤을 만진다. */
+      bySearch: (q: string) => `No project matches "${q}".`,
+      byFilter: "No project in this view.",
+      reset: "Clear filters",
+    },
     /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
     archived: "Archived",
     /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
@@ -225,10 +306,36 @@ export const en = {
       title: "No projects yet",
       description: "Connect a repository to create one, or open an invite link you were sent.",
     },
-    /** `readinessLabel` — `ready`는 문구가 없다(가장 흔한 상태가 가장 조용하다). */
-    readiness: {
-      awaiting_first_sync: "Waiting for first import",
-      setup: "Setting up",
+    /**
+     * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
+     * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다.
+     *
+     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (SAAS §3) — 번역자도 이 목록을 보고
+     * `awaiting_first_sync`는 그에게 아무것도 알려주지 않는다.
+     */
+    status: {
+      active: "Active",
+      archived: "Archived",
+      /**
+       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Waiting for first import"에서 줄였다). 배지는 행
+       * 우측의 좁은 칸이고, 문장이 들어가면 이름·리포 URL과 폭을 다툰다. 무엇을 기다리는지는
+       * 그 프로젝트를 열면 `ProjectNotReady`가 문장으로 말한다.
+       */
+      awaiting_first_sync: "Pending",
+      /**
+       * ⚠️ **한 낱말이고 동사가 아니다** (2026-09-11 사용자 — "Setting up"에서 줄였다). 진행형은
+       * 뭔가가 저절로 돌고 있다는 뜻인데 이 상태는 **멈춰 있다**: OWNER가 GitHub App을 연결해야
+       * 다음이 없다. 명사가 그 사실을 말하고, 나머지 넷과도 품사가 맞는다.
+       */
+      setup: "Setup",
+      /**
+       * ⚠️ **git 어휘를 쓰지 않는다** (DESIGN §10) — 번역자도 이 목록을 본다. "repository id가
+       * 고정되지 않았다"가 아니라 **그 사람이 보는 사실**을 말한다.
+       *
+       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Reconnect needed"에서 줄였다). 배지는 상태를 말하고
+       * 할 일은 설정 화면의 `Alert`가 말한다 — 좁은 칸에 동사를 넣으면 누를 수 있는 것처럼 읽힌다.
+       */
+      needs_reconnect: "Disconnected",
     },
   },
 
@@ -238,7 +345,6 @@ export const en = {
    * 다른 말을 한다. 여기 있는 것은 이 화면만 쓰는 문구다.
    */
   account: {
-    title: "Your account",
     profile: {
       title: "Profile",
       /**
@@ -292,7 +398,6 @@ export const en = {
         ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
         : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
 
-    title: "New project",
     back: "Projects",
 
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
@@ -393,7 +498,6 @@ export const en = {
     /** 카운터 — ICU가 아니라 삼항 하나다 (MVP §7). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
 
-    title: "Translations",
     /** ⚠️ URL 값은 `"*"`다 — 이건 그 행의 라벨이다 (`ALL_NAMESPACES`). */
     allKeys: "All keys",
     columnKey: "Key",
@@ -548,7 +652,6 @@ export const en = {
    * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
    */
   locales: {
-    title: "Languages",
     description: "The list comes from the locale files in your repository.",
     columns: { code: "Language", progress: "Translated" },
     /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
@@ -602,7 +705,6 @@ export const en = {
   },
 
   members: {
-    title: "Members",
     /**
      * 표 헤더. `Joined`는 상대 시각이라 열 이름이 단위를 말하지 않는다.
      *
@@ -659,7 +761,6 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
-    title: "Settings",
 
     repository: {
       title: "Repository",

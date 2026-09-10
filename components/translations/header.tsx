@@ -65,7 +65,7 @@ export function TranslationsHeader({
       <Breadcrumb
         items={[
           { label: projectName, href: routes.project(slug) },
-          { label: m.translations.title },
+          { label: m.common.nav.translations },
         ]}
       />
 

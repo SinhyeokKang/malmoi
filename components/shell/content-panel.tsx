@@ -1,0 +1,69 @@
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
+
+/**
+ * 콘텐츠가 앉는 흰 패널 — 시안의 `tab body` (8-2).
+ *
+ * ⚠️ **셸(`app/(edit)/layout.tsx`)이 `{children}`을 이걸로 감싸지 않는다.** 감싸면 오른쪽 패널이 그
+ * 안에 갇혀 "패널 둘이 gap 8로 나란히"가 성립하지 않는다 — 대신 각 갈래의 레이아웃이 든다.
+ * 라우트마다 **정확히 하나**인지는 `app/(edit)/__tests__/shell-layout.test.ts`가 체인을 훑어 센다.
+ *
+ * ⚠️ **네 클래스가 함께 있어야 패널이 뜬다** — 흰 배경 · radius · 아주 연한 border · `shadow-low`.
+ * 8-1b가 그중 몇을 한꺼번에 잃고도 화면이 "그럭저럭" 보여서 못 알아챘다 (규약 3.5).
+ *
+ * ⚠️ **스크롤이 패널이 아니라 `PanelBody`에 있다** (2026-09-11 사용자). 패널이 통째로 스크롤하면
+ * 제목·툴바가 콘텐츠와 함께 올라가는데, 그 둘은 **지금 보고 있는 것이 무엇인지**를 말하므로
+ * 화면에 붙어 있어야 한다. 패널은 `overflow-hidden`으로 **경계만** 만든다 — 문서가 스크롤되면
+ * 셸이 딸려 올라가는 것(malmoi#13)은 그대로 막힌다.
+ *
+ * ⚠️ **`head` prop을 받지 않는다.** 라우트 넷 중 셋(`[slug]`·`new`·`account`)은 이 패널을
+ * **레이아웃**이 드는데 레이아웃은 페이지 props를 못 받아 머리를 모른다. 그래서 슬롯이 아니라
+ * **형제 둘**(`PanelHeader`·`PanelBody`)이고, 페이지가 그 둘을 든다.
+ *
+ * ⚠️ **이것이 본문 랜드마크다 — 화면은 자기 `<main>`을 들지 않는다** (2026-09-11). 전엔 화면마다
+ * 하나씩이라 라우트당 하나인지가 **관행**이었고, 실제로 `/projects`는 8-2에서 그것을 잃었다가
+ * 2026-09-11에 되찾았다. 여기로 올리면 구조가 그것을 보장한다.
+ *
+ * ⚠️ **`<header>`가 아니라 `<main>`이다.** 셸(`components/shell/header.tsx`)이 이미 `<header>`를
+ * 쓰는데 둘 다 sectioning content 밖이라, 패널 머리를 `<header>`로 만들면 **banner 랜드마크가
+ * 둘**이 된다. 그래서 `PanelHeader`는 평범한 `div`다.
+ */
+export function ContentPanel({ children }: { children: ReactNode }) {
+  return (
+    <main className="border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">
+      {children}
+    </main>
+  );
+}
+
+/**
+ * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · breadcrumb · 툴바 · 전역 `Alert`.
+ *
+ * ⚠️ **`shrink-0`이 없으면 본문이 길 때 머리가 눌린다.** flex 자식의 축소 하한은 콘텐츠 높이가
+ * 아니라 0이다.
+ *
+ * ⚠️ **여백을 여기서 정하지 않는다** — 화면마다 다르고(`/projects`는 `px-4`, 나머지는 `px-6`),
+ * 이 배송의 목표는 **스크롤 경계**다. 여백까지 통일하려 들면 화면 아홉의 시각이 한꺼번에 바뀐다.
+ */
+export function PanelHeader({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
+  return (
+    <div className={cn("shrink-0", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 패널 안에서 **스크롤하는** 본문.
+ *
+ * ⚠️ **`min-h-0`이 `flex-1`의 짝이다.** 없으면 이 열이 콘텐츠 높이 아래로 못 줄어들어 패널이
+ * 통째로 늘어나고, 스크롤이 여기가 아니라 바깥에 생긴다 — 그러면 머리가 다시 같이 올라간다.
+ */
+export function PanelBody({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
+  return (
+    <div className={cn("min-h-0 flex-1 overflow-y-auto", className)} {...props}>
+      {children}
+    </div>
+  );
+}

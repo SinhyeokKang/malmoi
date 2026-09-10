@@ -117,7 +117,7 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
 컨텍스트는 **코드 참조 자동 수집 + 네임스페이스 그룹핑** 두 개까지다. 스크린샷·번역자 노트는 비범위(§7).
 
-**MVP 동안 유일한 사용자 mutation은 "번역값 수정"이었다.** Server Action은 `saveTranslation`·`triggerPullAction` **둘**이었고(SaaS 2·4·5단계가 그 위에 열두 개를 더했다 — SAAS §5.6), 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
+**MVP 동안 유일한 사용자 mutation은 "번역값 수정"이었다.** Server Action은 `saveTranslation`·`triggerPullAction` **둘**이었고(SaaS 단계들이 그 위에 **열여덟을** 더했다 — 전수는 SAAS §5.6이다. 숫자를 여기 박으면 다음 단계마다 또 틀린다), 키 추가·삭제·로케일 추가·삭제 UI가 없다 — 키와 로케일은 리포가 정하고 적재로만 들어온다.
 
 **값 지우기는 행 삭제가 아니라 `value=""`다** (행을 지우면 export가 `sourceText` 폴백·미번역 판정에서 갈린다).
 
@@ -263,7 +263,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 | 사용처 수집 | ts-morph AST + 정규식, **`refs` 전담** | 컨텍스트 제공용이므로 실패가 경고다. 정규식 단독은 주석 속 호출·문자열 안의 호출을 구분 못 해 오탐이 섞이므로 AST를 쓴다 |
 | 상태 모델 | `needsReview` 플래그만 | 미번역/번역됨/검토필요 3상태가 공짜로 생기고 필터링이 가능해진다 |
 | 컨텍스트 | 코드 참조 자동 수집 + 네임스페이스 그룹핑 | 자동이라 유지보수가 0에 가깝다 |
-| UI | shadcn/ui (`new-york`) + Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 **slate** — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이었고(**2026-09-08 삭제** — 6a T5부터 프리미티브를 이 리포가 소유하고 CLI를 다시 돌리지 않는다) 값의 진실은 `app/globals.css`다 (DESIGN §2) |
+| UI | ~~shadcn/ui (`new-york`)~~ → **`components/ui/`를 이 리포가 소유**(2026-09-08) + `radix-ui` 단일 패키지, Tailwind 4, **라이트 단일** | 컴포넌트를 소스로 받아 직접 고칠 수 있다. Tailwind 4는 config 파일 없이 CSS의 `@theme`으로 끝난다. 팔레트는 ~~slate~~ **neutral**(2026-09-10 전역 교체 — DESIGN §0) — `components.json`의 `baseColor: neutral`은 CLI 시드일 뿐이었고(**2026-09-08 삭제** — 6a T5부터 프리미티브를 이 리포가 소유하고 CLI를 다시 돌리지 않는다) 값의 진실은 `app/globals.css`다 (DESIGN §2) |
 | 폰트 | Pretendard Variable **동적 서브셋, 자사 호스트** | 단일 파일은 2.0MB. 서브셋은 브라우저가 `unicode-range`로 필요한 구간만 받아 150~450KB. CDN은 렌더 방해 외부 요청이 생긴다 |
 | 내부 쓰기 | **Server Action** | 클라이언트 fetch 배선·중복 스키마·수동 revalidate가 사라진다. 외부 진입점만 Route Handler (⚠️ `/api/github/callback`이 2026-09-06에 **셋째**로 붙었다 — SAAS §5.4) |
 | 세션 | ~~**JWT** (DB 어댑터 없음)~~ → 2026-09-05 DB 세션 (SAAS §5.3) | PoC 근거: 사용자 테이블 4개가 필요 없어 스키마가 5테이블로 유지되고 요청마다의 DB 왕복이 없다. 대가는 권한 회수가 최대 24h 지연 — SaaS가 그 대가를 되돌렸다 |
@@ -481,11 +481,11 @@ MVP 범위를 잡으면서 추가로 뺀 것: **편집 UI의 키 추가·삭제,
 
 **2026-09-04 실행 (원본 포맷 보존 기능 뒤)**: `i18n-order-check`로 한 바퀴 — 편집 0건에서 `no-changes`(2층 blob 전 파일 동일), 편집 3건 → [PR #3](https://github.com/SinhyeokKang/i18n-order-check/pull/3) `+3 -3 / 2파일`(안 건드린 `ja.json`은 안 나갔다), 머지 → 재pull `no-edits`(GitHub API 0회) → 재push 뒤 다시 `no-changes`. **표현 5축이 실물 PR diff에서 전부 살아 있었다** — 한 줄 컨테이너가 편집을 받고도 한 줄로 남고, 새로 넣은 한글 값이 그 파일의 `\uXXXX` 관례를 따라 나갔다. ⚠️ **`chrome-locales`는 여전히 실물 PR 이력 0이다** — 같은 갈래(per-locale·재생성)가 검증됐다는 것이 근거이지 그 어댑터가 검증된 것은 아니다.
 
-## 10. 아직 안 정한 것
+## 10. 미결이었던 것 (전부 닫혔다 — 지금 열린 미결은 [SAAS.md](./SAAS.md) §10이다)
 
-- ~~**orphaned 로케일이 편집 UI에 남는 것**~~ — 리포에서 사라진 로케일도 키 테이블의 열로 보였고, 저장은 서버가 거부하는데(ARCHITECTURE §5.5.16) **화면은 편집할 수 있는 것처럼 보였다.** ✅ **2026-09-06에 배지+비활성으로 닫았다**(`194fb91` — 헤더 배지 + `disabled`). 열을 지울지까지의 **확정은 SAAS §8 6단계**(번역 UI 재작성)다
+- ~~**orphaned 로케일이 편집 UI에 남는 것**~~ — 리포에서 사라진 로케일도 키 테이블의 열로 보였고, 저장은 서버가 거부하는데(ARCHITECTURE §5.5.16) **화면은 편집할 수 있는 것처럼 보였다.** ✅ **2026-09-06에 배지+비활성으로 닫았다**(`194fb91` — 헤더 배지 + `disabled`). ✅ **6단계가 "남긴다"로 닫았다** (2026-09-09) — 열은 배지+비활성으로 유지하고, 사유와 복구는 `/projects/:slug/locales`(6b-5)가 설명한다
 
 - ~~**덮인 셀의 `updatedBy`**~~ ✅ **닫혔다** (2026-09-08, SaaS 6a): **push가 비운다.** push가 리포 값으로 덮어도 편집자 이름이 남아 편집 UI가 "이 값은 누가 편집함"으로 보여줬다 (§3.1 실증) — 지우면 "누가 마지막으로 만졌나"를 잃는 것이 대가였는데, **strict의 귀결이 그 답을 이미 갖고 있었다**: 덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이다. 잃는 정보는 "그 사람이 **전에** 만졌다"뿐이고 그 값은 이미 사라진 값이다. 되레 그 조건이 없으면 **미배포 집계가 push 직후 전 키를 "안 보낸 편집"으로 센다**(`updatedAt`은 push가 전부 올린다). 구현은 `applyPush`의 `ON CONFLICT … DO UPDATE SET "updatedBy" = NULL`이고 ARCHITECTURE §5.5가 근거를 든다. 거기 붙었던 파생 항목 하나(셀 메타가 `User.id` cuid를 원문으로 찍는다, malmoi#3)는 **2026-09-07에 먼저 닫혔다** — 화면 재작성과 무관한 데이터층이었다(`lib/keys/view.ts`의 `actorLabel`). ⚠️ 다만 `actors`에서 못 찾은 id는 **원문으로 폴백한다** — 지워진 `User`나 2026-09-05 이전 GitHub 핸들 행에서는 여전히 원문이 보이고, 그게 그 컬럼에 두 종류가 섞여 있는 값이다.
 
-- ~~**base 로케일 판정**~~ ✅ **닫혔다** (2026-09-07, SaaS 5단계 — 온보딩이 확정값을 심고 `checkFormat`이 대조만 한다) — 지금은 추정이다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지가 물음이었다. **방향은 정해졌다 — SAAS §7.3·§8 5단계에서 사용자가 후보를 보고 확정한다**("자동 탐지는 추천이지 진실이 아니다"). **SaaS 5단계가 그 방향으로 닫았다** (2026-09-07) — 온보딩이 사용자에게 확정받아 `Project.baseLocale`에 저장하고, `pickBaseLocale`은 후보 화면의 추천 기본값으로 남았다
+- ~~**base 로케일 판정**~~ ✅ **닫혔다** (2026-09-07, SaaS 5단계 — 온보딩이 확정값을 심고 `checkFormat`이 대조만 한다) — **당시엔** 추정이었다(`pickBaseLocale`: `en`이 있으면 `en`, 없으면 사전순 첫 번째 — push·ingest·survey가 같은 함수를 쓴다). 어느 로케일이 키 집합의 기준인지는 리포의 관례라 정본이 없다. 대상 리포 설정 파일(`crowdin.yml`·`i18next-parser.config.*`)이나 `Project` 컬럼의 명시 지정으로 갈지가 물음이었다. **방향은 정해졌다 — SAAS §7.3·§8 5단계에서 사용자가 후보를 보고 확정한다**("자동 탐지는 추천이지 진실이 아니다"). **SaaS 5단계가 그 방향으로 닫았다** (2026-09-07) — 온보딩이 사용자에게 확정받아 `Project.baseLocale`에 저장하고, `pickBaseLocale`은 후보 화면의 추천 기본값으로 남았다
 - ~~**테넌트별 인가로 넘어가는 시점**~~ ✅ 해소 (2026-09-05 — SAAS §5.3·§6: `ProjectMember`·`Role`·DB 세션. JWT 결정이 뒤집혔다)

@@ -155,7 +155,7 @@ write가 `null`을 내므로 비교 대상이 없다. 결함이 아니라 그 �
 | `other` | **1** | 위 어디에도 안 맞는 것. 14차 값이고 **전부 `no-default-export` 한 갈래다**(quasarframework/quasar의 `code-dict` 파일 하나). 그 코드가 `other`로 가는 것은 옛 문구 기반 분류기의 **명시적 판정**이었고 — 읽기 실패의 *유형*이 아니라 포맷 불일치다 — 이 1건이 §20의 등식이 공허하지 않다는 증거다 |
 | 무증상 skip | **0** | `ts-dict`가 자동 탐지에서 빠져 이 경로가 닫혔다 |
 
-⚠️ **이 문서의 탐지 지표는 "전 후보에 probe를 먹인" 조건의 값이다** (`lib/survey/select.ts`가 `FILE_BUDGET` 1200까지 로컬 clone 파일을 넣는다). **프로덕션 온보딩은 상위 5+2만 probe한다** (`lib/onboarding/detect.ts`의 `PROBE_LIMITS`, blob ≤21) — 그리고 `chrome-locales`·`json-catalog`·`yaml-catalog`은 probe 내용이 없으면 `verifySamples`가 `false`라 **미검증 = 탈락**이다. 즉 **6순위 이하 후보는 프로덕션에서 조용히 사라지는데 실측 코퍼스에서는 살아 있었다** — §0의 "discourse의 정답이 5순위였다"가 정확히 그 경계선이다.
+⚠️ **이 문서의 탐지 지표는 "전 후보에 probe를 먹인" 조건의 값이다** (`lib/survey/select.ts`가 **`MAX_SHAPE_GROUPS` 8로 모양 그룹을 먼저 자른 뒤** `FILE_BUDGET` 1200까지 로컬 clone 파일을 넣는다 — ⚠️ **측정 코퍼스에서도 일부 후보는 내용이 안 실린다**, 그만큼 아래 경계가 덜 날카롭다). **프로덕션 온보딩은 상위 5+2만 probe한다** (`lib/onboarding/detect.ts`의 `PROBE_LIMITS`, blob ≤21) — 그리고 `chrome-locales`·`json-catalog`·`yaml-catalog`은 probe 내용이 없으면 `verifySamples`가 `false`라 **미검증 = 탈락**이다. 즉 **6순위 이하 후보는 프로덕션에서 조용히 사라지는데 실측 코퍼스에서는 살아 있었다** — §0의 "discourse의 정답이 5순위였다"가 정확히 그 경계선이다.
 
 **`null` 리프는 에러가 아니다** (2차에서 정정). jsxc 한 리포가 이것만으로 5,099건을 냈는데, 그 리포는
 미번역 키를 `null`로 두는 관례다 — 빈 문자열과 같은 취급이 맞고, 에러로 세면 남의 CI를 우리 관례로
@@ -1138,7 +1138,7 @@ livemarks)가 나왔다 — 지표를 넣고 배선을 안 하는 것이 이 리
 - 실행: 13차와 같다 (학습 `repos.txt` 109개 / 홀드아웃 `repos-heldout.txt` 20개).
 
 **`AdapterError.message`(자유 문자열)가 `AdapterErrorCode`(스물둘)로 바뀐 것의 확인이다**
-(translation-ui 6b-1). 생성 지점 35곳이 코드를 내고 문장은 `messages/en.tsx`가 낸다. **측정에 이것이
+(translation-ui 6b-1). 생성 지점 **34곳**이 코드를 내고 문장은 `messages/en.tsx`가 낸다. **측정에 이것이
 걸리는 이유는 `lib/survey/one.ts`의 `classify`다** — 지표 ③이 그 문구의 부분 문자열로 갈리고 있었고,
 이 회차로 `classify(code)`가 됐다. 함께 들어간 어댑터 변경 하나가 더 있다: `json-catalog`의 파일별
 중첩 조회를 `Object.hasOwn`으로 감쌌다(프로토타입 키가 `?.[path] ?? …`를 우회해 평평한 파일을

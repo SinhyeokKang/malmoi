@@ -34,9 +34,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         이 컴포넌트가 들고(마운트된 동안만 참이다), `useEffect`로 클래스를 붙이는 대신 인라인
         `<style>`을 쓴다 — effect는 첫 페인트를 놓쳐 흰색이 한 번 보인다.
       */}
-      <style>{`body{background-color:var(--auth-canvas)}`}</style>
+      <style>{`body{background-color:var(--canvas)}`}</style>
 
-      <div className="bg-auth-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
+      <div className="bg-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
         {/*
           ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
           ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.

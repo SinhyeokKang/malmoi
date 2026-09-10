@@ -39,7 +39,11 @@ export function UserMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label={m.common.nav.userMenu} className="px-1">
+        {/*
+          ⚠️ **버튼이 아바타와 같은 32px여야 한다** (8-2 실측). `size="sm"`은 `h-7`(28)이라 32 아바타가
+          위아래로 2px씩 삐져나왔고, 시안의 헤더는 딱 32 정사각이다.
+        */}
+        <Button variant="ghost" aria-label={m.common.nav.userMenu} className="size-8 rounded-full p-0">
           <Avatar name={name} size={32} />
         </Button>
       </DropdownMenuTrigger>
@@ -52,7 +56,7 @@ export function UserMenu({
         <DropdownMenuItem asChild>
           <Link href={routes.account()} className="flex w-full items-center gap-2 px-2">
             <CircleUser className="size-4" aria-hidden />
-            {m.common.nav.account}
+            {m.common.nav.settings}
           </Link>
         </DropdownMenuItem>
         {/* 폼이 항목을 감싼다 — Radix Item은 기본이 `div`라 그 안에 submit을 두어야 한다. */}

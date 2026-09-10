@@ -1,5 +1,6 @@
 import { Archive } from "lucide-react";
 
+import { PanelBody } from "@/components/shell/content-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -20,19 +21,25 @@ import { routes } from "@/lib/routes";
  */
 export function ProjectArchived({ slug, role }: { slug: string; role: Role }) {
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 py-6">
-      <EmptyState
-        icon={Archive}
-        title={m.archive.empty.title}
-        description={m.errors.access.archived}
-        action={
-          canPerform(role, "project:settings") ? (
-            <ButtonLink href={routes.settings(slug)} variant="primary">
-              {m.archive.empty.action}
-            </ButtonLink>
-          ) : undefined
-        }
-      />
-    </main>
+    /*
+      ⚠️ **`PanelHeader`가 없다 — 이 갈래엔 제목이 없다.** 본문만 있으므로 `PanelBody` 하나이고,
+      `max-w-4xl`은 안쪽 래퍼가 든다(스크롤 컨테이너를 좁히면 스크롤바가 콘텐츠 옆에 생긴다).
+    */
+    <PanelBody>
+      <div className="mx-auto w-full max-w-4xl px-6 py-6">
+        <EmptyState
+          icon={Archive}
+          title={m.archive.empty.title}
+          description={m.errors.access.archived}
+          action={
+            canPerform(role, "project:settings") ? (
+              <ButtonLink href={routes.settings(slug)} variant="primary">
+                {m.archive.empty.action}
+              </ButtonLink>
+            ) : undefined
+          }
+        />
+      </div>
+    </PanelBody>
   );
 }

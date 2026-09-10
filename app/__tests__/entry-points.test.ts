@@ -381,10 +381,16 @@ describe("쿼리 파라미터의 수신자", () => {
    *
    * 1. 경로 리터럴 — `` `/invite/${token}?e=${error}` ``
    * 2. **생성기 호출** — `` `${routes.invite(token)}?e=${error}` ``
+   * 3. **생성기의 쿼리 인자** — `routes.account({ sessionRevocation })`
    *
    * ⚠️ **2번이 없으면 이 검사가 조용히 0건이 된다** (2026-09-08 실측). ship 4가 화면들의 경로 리터럴을
    * `routes.*`로 옮기면서 1번 패턴이 한 줄도 남지 않았고, 아래 "0건이 되지 않는다" 가드가 그것을 잡았다 —
    * 가드가 없었으면 "쿼리를 보내놓고 읽는 쪽이 없다"는 부류(issue #2)가 다시 사각지대로 들어갔다.
+   *
+   * ⚠️ **3번은 2026-09-11에 붙었다.** 그전까지 앞의 둘은 **문자열 보간 안의 `?key=`만** 봤는데,
+   * `routes.*`가 쿼리를 인자로 받기 시작하면서(`signIn({ error })`·`projects({ filter })`·
+   * `account({ sessionRevocation })`·`logs({ cursor })`) 그 형태가 **네 자리 전부 검사 밖**이었다 —
+   * 옮기는 것 자체가 검사를 회피시키는 모양이었고, `routes.ts` 주석은 반대로 적고 있었다.
    */
   const ROUTE_PATHS = routeShapes(ROUTES_SOURCE);
 
@@ -403,7 +409,20 @@ describe("쿼리 파라미터의 수신자", () => {
         return target === undefined ? [] : [{ from: e.path, target, key: m[2] ?? "" }];
       },
     );
-    return [...literal, ...generated];
+    /**
+     * `routes.foo({ a, b: x })` → 그 객체의 키들. **값은 안 본다** — 키가 계약이고, 값은 화면이
+     * 어떻게 채우든 수신자가 같아야 한다.
+     */
+    const passed = [...code.matchAll(/routes\.(\w+)\(\s*(?:[^(){}]*,\s*)?\{([^}]*)\}/g)].flatMap((m) => {
+      const target = ROUTE_PATHS.get(m[1] ?? "");
+      if (target === undefined) return [];
+      return [...(m[2] ?? "").matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*[,:}]/g)].map((k) => ({
+        from: e.path,
+        target,
+        key: k[1] ?? "",
+      }));
+    });
+    return [...literal, ...generated, ...passed];
   });
 
   it("쿼리를 실어 보내는 자리를 하나 이상 찾았다 — 스캐너가 조용히 0건이 되지 않는다", () => {
@@ -416,10 +435,13 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(ROUTE_PATHS.get("translations")).toBe("/projects/*/translations");
   });
 
-  /** ⚠️ 두 형태를 각각 먹인다 — 하나를 못 집으면 그 부류가 조용히 사각지대로 들어간다. */
-  it("리터럴과 생성기 호출을 둘 다 집는다", () => {
+  /** ⚠️ 세 형태를 각각 먹인다 — 하나를 못 집으면 그 부류가 조용히 사각지대로 들어간다. */
+  it("리터럴·생성기 호출·쿼리 인자를 다 집는다", () => {
     expect(EMITTED.some((x) => x.target === "/invite/*" && x.key === "e")).toBe(true);
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
+    // 3번 — 인자 객체. 이 셋이 2026-09-11까지 전부 검사 밖이었다.
+    expect(EMITTED.some((x) => x.target === "/account" && x.key === "sessionRevocation")).toBe(true);
+    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "filter")).toBe(true);
   });
 
   /**

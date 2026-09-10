@@ -38,6 +38,9 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
   if (!intent && callback) {
     try {
       const target = new URL(decodeURIComponent(callback.value), url.origin);
+      // ⚠️ **여기는 `routes.account()`를 부르지 않는다** — 만드는 쪽이 아니라 **읽는 쪽**이고,
+      // 돌아온 URL을 우리가 만든 문자열과 비교하면 그 비교가 무엇을 확인하는지 흐려진다.
+      // 계약은 `lib/routes.ts`의 `account({ sessionRevocation })`이고 이 값이 그 짝이다.
       intent = target.pathname === "/account" && target.searchParams.get("sessionRevocation") === "expired";
     } catch { /* An invalid destination cannot authorize anything; Auth.js still validates its encrypted state cookie. */ }
   }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
+import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -96,80 +97,93 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
   const now = new Date();
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-        <h1 className="text-base font-medium">{project.name}</h1>
-        <ButtonLink variant="primary" href={routes.translations(slug)}>
-          <Languages aria-hidden />
-          {m.home.openTranslations}
-        </ButtonLink>
-      </div>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-sm font-medium">{m.home.progress.title}</h2>
-          <p className="text-muted-foreground mt-1 text-xs">{m.home.progress.description}</p>
+    <>
+      {/*
+        ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
+        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
+        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+      */}
+      <PanelHeader>
+        <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
+            <h1 className="text-base font-medium">{project.name}</h1>
+            <ButtonLink variant="primary" href={routes.translations(slug)}>
+              <Languages aria-hidden />
+              {m.home.openTranslations}
+            </ButtonLink>
+          </div>
         </div>
-        {locales.length === 0 ? (
-          /*
-            ⚠️ **적재는 끝났는데 살아 있는 로케일이 0인 상태다** — 파일이 전부 사라졌다. 사유와
-            되살리는 방법은 로케일 화면이 들고 있으므로(6b-5) 그리로 보낸다.
-          */
-          <p className="text-muted-foreground text-xs">
-            {m.home.progress.empty}{" "}
-            <Link
-              href={routes.locales(slug)}
-              className="focus-visible:ring-ring text-foreground focus-visible:ring-[3px] focus-visible:outline-none"
-            >
-              {m.home.progress.emptyLink}
-            </Link>
-          </p>
-        ) : (
-          <ul className="divide-border border-border divide-y rounded-lg border">
-            {locales.map((locale) => (
-              <li key={locale.code}>
-                {/*
-                  ⚠️ **행 전체가 링크다.** 그 로케일 기준으로 번역 화면에 착지시키는 것이 개요가 일로
-                  이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
-                */}
-                <Link
-                  href={routes.translations(slug, { focus: locale.code })}
-                  className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
-                >
-                  {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 (DESIGN §4.1) */}
-                  <span className="text-mono">{locale.code}</span>
-                  {locale.isBase && <Badge>{m.locales.base}</Badge>}
-                  <span className="ml-auto flex items-baseline gap-2">
-                    {locale.needsReview > 0 && (
-                      <Badge variant="warning">{m.locales.needsReview(locale.needsReview)}</Badge>
-                    )}
-                    <span className="text-sm">
-                      {m.locales.progress(locale.percent, locale.translated, locale.total)}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      </PanelHeader>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium">{m.home.activity.title}</h2>
-        {activity.length === 0 ? (
-          <p className="text-muted-foreground text-xs">{m.home.activity.empty}</p>
-        ) : (
-          <ul className="divide-border border-border divide-y rounded-lg border">
-            {activity.map((item) => (
-              <li key={activityKey(item)} className="px-4 py-3">
-                <ActivityRow item={item} slug={slug} now={now} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+      <PanelBody>
+        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-sm font-medium">{m.home.progress.title}</h2>
+              <p className="text-muted-foreground mt-1 text-xs">{m.home.progress.description}</p>
+            </div>
+            {locales.length === 0 ? (
+              /*
+                ⚠️ **적재는 끝났는데 살아 있는 로케일이 0인 상태다** — 파일이 전부 사라졌다. 사유와
+                되살리는 방법은 로케일 화면이 들고 있으므로(6b-5) 그리로 보낸다.
+              */
+              <p className="text-muted-foreground text-xs">
+                {m.home.progress.empty}{" "}
+                <Link
+                  href={routes.locales(slug)}
+                  className="focus-visible:ring-ring text-foreground focus-visible:ring-[3px] focus-visible:outline-none"
+                >
+                  {m.home.progress.emptyLink}
+                </Link>
+              </p>
+            ) : (
+              <ul className="divide-border border-border divide-y rounded-lg border">
+                {locales.map((locale) => (
+                  <li key={locale.code}>
+                    {/*
+                      ⚠️ **행 전체가 링크다.** 그 로케일 기준으로 번역 화면에 착지시키는 것이 개요가 일로
+                      이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
+                    */}
+                    <Link
+                      href={routes.translations(slug, { focus: locale.code })}
+                      className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
+                    >
+                      {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 (DESIGN §4.1) */}
+                      <span className="text-mono">{locale.code}</span>
+                      {locale.isBase && <Badge>{m.locales.base}</Badge>}
+                      <span className="ml-auto flex items-baseline gap-2">
+                        {locale.needsReview > 0 && (
+                          <Badge variant="warning">{m.locales.needsReview(locale.needsReview)}</Badge>
+                        )}
+                        <span className="text-sm">
+                          {m.locales.progress(locale.percent, locale.translated, locale.total)}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium">{m.home.activity.title}</h2>
+            {activity.length === 0 ? (
+              <p className="text-muted-foreground text-xs">{m.home.activity.empty}</p>
+            ) : (
+              <ul className="divide-border border-border divide-y rounded-lg border">
+                {activity.map((item) => (
+                  <li key={activityKey(item)} className="px-4 py-3">
+                    <ActivityRow item={item} slug={slug} now={now} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </PanelBody>
+    </>
   );
 }
 

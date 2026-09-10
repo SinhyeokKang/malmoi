@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planProjectReadiness, readinessLabel, type ProjectReadiness } from "../readiness";
+import { planProjectReadiness } from "../readiness";
 
 /**
  * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (design §3.7).
@@ -41,42 +41,8 @@ describe("planProjectReadiness", () => {
 });
 
 /**
- * 목록 화면의 상태 텍스트 (design §3.7). **번역자도 보는 목록이므로 내부 이름을 쓰지 않는다** —
- * `awaiting_first_sync`가 화면에 뜨면 비개발자 동료는 무슨 일인지 알 수 없다.
- *
- * ⚠️ **`ready`는 표시가 없다** — 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1·§6.2의 "번역됨"·
- * "연결됨"과 같은 원리). 그래서 반환이 `string | null`이고, 화면이 null을 렌더하지 않는다.
+ * ⚠️ **문구 판정은 2026-09-10에 여기서 나갔다** (8-3). `readinessLabel`의 소비자가 목록 화면
+ * 하나였고, 그 화면의 배지 계약이 시안 개정으로 바뀌었다(`ready`가 침묵이 아니라 `Active`다) —
+ * 지금은 `lib/projects/list.ts`의 `projectStatus`가 보관까지 함께 보고 갈래를 넷으로 낸다.
+ * "내부 이름을 화면에 흘리지 않는다"는 검사도 그쪽으로 따라갔다.
  */
-describe("readinessLabel — raw 색 없이 텍스트만 (DESIGN §6.2)", () => {
-  const ALL = ["setup", "awaiting_first_sync", "ready"] as const satisfies readonly ProjectReadiness[];
-
-  type Missing = Exclude<ProjectReadiness, (typeof ALL)[number]>;
-  const _coversUnion: [Missing] extends [never] ? true : false = true;
-  void _coversUnion;
-
-  it("ready는 표시가 없다 — 가장 흔한 상태가 가장 조용하다", () => {
-    expect(readinessLabel("ready")).toBeNull();
-  });
-
-  it("첫 적재를 기다리는 중이면 그 사실을 말한다", () => {
-    expect(readinessLabel("awaiting_first_sync")).toBe("Waiting for first import");
-  });
-
-  it("연결 전이면 준비 중이다", () => {
-    expect(readinessLabel("setup")).toBe("Setting up");
-  });
-
-  it("내부 이름을 흘리지 않는다 — 읽는 사람은 비개발자 동료다", () => {
-    for (const readiness of ALL) {
-      const label = readinessLabel(readiness);
-      if (label === null) continue;
-      expect(label).not.toContain(readiness);
-      // snake_case는 우리 내부 이름의 모양이다 — en 라벨의 보통 낱말과 갈린다.
-      expect(label).not.toMatch(/[a-z]+_[a-z]+/);
-    }
-  });
-
-  it("두 표시가 서로 다르다 — 한 문구로 접히면 상태를 구별할 수 없다", () => {
-    expect(readinessLabel("setup")).not.toBe(readinessLabel("awaiting_first_sync"));
-  });
-});

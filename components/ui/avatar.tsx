@@ -1,3 +1,4 @@
+import { toneFill } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,7 +30,14 @@ export function Avatar({
       style={style}
       aria-hidden
       className={cn(
-        "bg-muted text-foreground/60 inline-flex shrink-0 items-center justify-center text-xs font-medium",
+        /**
+         * ⚠️ **색이 이름에서 온다** (2026-09-11 사용자). 그 전엔 `bg-muted` 하나라 사람이 여럿인
+         * 화면에서 아바타가 전부 같은 회색이었다 — 이니셜만으로는 훑을 때 안 갈린다.
+         *
+         * ⚠️ **글자가 흰색이다** — 채워진 배경 위라 `text-foreground/60`은 안 읽힌다.
+         */
+        "inline-flex shrink-0 items-center justify-center text-xs font-medium text-white",
+        toneFill(name),
         shapeClass,
         className,
       )}

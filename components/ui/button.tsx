@@ -16,9 +16,9 @@ import { cn } from "@/lib/utils";
  * 되돌리므로(v3와 다르다) 명시하지 않으면 **버튼 위에서 손가락 커서가 안 나온다** — 눌리는
  * 요소로 안 보인다. `disabled:cursor-not-allowed`가 그 짝이다.
  *
- * ⚠️ **radius가 `rounded-lg`(12px)다** (2026-09-10 사용자). `--radius`를 한 단계 올린 뒤에도
- * `rounded-md`는 10px이라 시안(12px)과 어긋나서, **base 자체를 한 칸 올렸다** — 소비자 26파일이
- * 함께 둥글어진다.
+ * ⚠️ **radius가 base가 아니라 `size`에 붙어 있다** (2026-09-11). 크기가 커질수록 한 칸씩 둥글어진다 —
+ * `sm` 8 · `md` 10 · `lg` 12. **base에 두고 size에서 덮으면** cva가 충돌하는 클래스 둘을 내고
+ * `cn()`의 twMerge가 이기는 것에 기대게 되는데, 그 의존을 만들지 않는 것이 이 배치의 이유다.
  *
  * ⚠️ **라벨 weight가 400이다** (2026-09-10 사용자 — 8-1b에서 한 단계 내렸다). 본문 기본이 300이고
  * 가장 두꺼운 서체가 500이므로(§4), 버튼은 그 사이에 앉는다 — 500이면 화면에서 버튼만 도드라진다.
@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
  */
 export const buttonClass = cva(
   cn(
-    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg text-sm font-normal whitespace-nowrap",
+    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 text-sm font-normal whitespace-nowrap",
     "transition-colors disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   ),
@@ -57,21 +57,27 @@ export const buttonClass = cva(
         link: "text-blue-600 disabled:text-muted-foreground",
       },
       size: {
-        md: "h-8 px-3",
-        sm: "h-7 px-2 text-xs",
+        /**
+         * ⚠️ **32 → 36으로 올렸다** (2026-09-11 사용자 — 시안의 기본 버튼이 36이다). §6.4가 "마지막
+         * 화면이 옮겨온 뒤 base를 바꾼다"로 미뤄 둔 그 교체이고, 미룬 이유(소비자 26파일이 함께
+         * 움직인다)는 그대로이되 **시안의 기본값이 드러난 지금이 그 시점**이다. `size`를 넷으로
+         * 늘리지 않는 것이 요지다 — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다.
+         */
+        md: "h-9 rounded-md px-3",
+        sm: "h-7 rounded-sm px-2 text-xs",
         /**
          * **셸 밖 카드 전용이다** (8-1b — 로그인·초대 수락 둘뿐이다). 시안은 38px인데
          * `h-10`(40px)을 쓴다 — 리포의 임의 치수가 `ring-[3px]` 하나뿐이라 2px 때문에 둘째를
          * 만들지 않는다 (README 규약 6).
          *
-         * ⚠️ **base를 바꾸지 않은 이유**: `Button` 소비자가 26파일인데 이 배송이 검증하는 화면은
-         * 셋이다. 각 화면의 배송이 시안을 보고 옮겨오고, **마지막 화면이 옮겨온 뒤 기본값을 바꾼다.**
+         * ⚠️ **base는 2026-09-11에 36으로 올라갔다** — 위 `md` 주석. 그때까지 이 자리에 "마지막 화면이
+         * 옮겨온 뒤 기본값을 바꾼다"가 적혀 있었고, 그 미루기의 대상은 **40이 아니라 36**이었다는 것이
+         * 8-3에서 드러났다. `lg`(40)은 셸 밖 전용으로 남는다 — 4px 차이가 그 화면의 여백에서 온다.
          *
-         * ⚠️ **radius를 덮지 않는다** — base가 `rounded-lg`(12px)이고 그것이 시안 값이다.
-         * size에서 덮으면 **cva base와 충돌하는 클래스를 내고 `cn()`의 twMerge에 의존해 이기는**
-         * 모양이 되므로, 값이 바뀌면 base를 고친다.
+         * ⚠️ **radius가 여기 있다** (2026-09-11) — base에서 내려왔다. `md`(10)보다 한 칸 둥근 12이고,
+         * 그 차이가 셸 안팎을 시각적으로 가른다.
          */
-        lg: "h-10 px-4",
+        lg: "h-10 rounded-lg px-4",
       },
     },
     defaultVariants: { variant: "default", size: "md" },

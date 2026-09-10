@@ -314,12 +314,32 @@ export function createHarness(seed: Seed = {}) {
         }
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);
-          projected["project"] = {
-            slug: project?.slug ?? "",
-            name: project?.name ?? project?.slug ?? "",
-            installationId: project?.installationId ?? null,
-            lastCommitSha: project?.lastCommitSha ?? null,
-          };
+          /**
+           * ⚠️ **요청한 필드만 낸다.** 실제 Prisma가 그렇고, 다 내면 가짜가 관대해져서 호출부가
+           * select 안 한 필드를 읽어도 green이다. 여기 `project`는 **중첩 select**라 그 안을 또 본다.
+           */
+          const inner = (args.select.project as { select?: Record<string, unknown> }).select ?? {};
+          const p: Record<string, unknown> = {};
+          if (inner["slug"] === true) p["slug"] = project?.slug ?? "";
+          if (inner["name"] === true) p["name"] = project?.name ?? project?.slug ?? "";
+          if (inner["installationId"] === true) p["installationId"] = project?.installationId ?? null;
+          if (inner["lastCommitSha"] === true) p["lastCommitSha"] = project?.lastCommitSha ?? null;
+          if (inner["archivedAt"] === true) p["archivedAt"] = project?.archivedAt ?? null;
+          if (inner["repoOwner"] === true) p["repoOwner"] = project?.repoOwner ?? "";
+          if (inner["repoName"] === true) p["repoName"] = project?.repoName ?? "";
+          /**
+           * ⚠️ **`_count`는 시드가 아니라 `members` 배열에서 센다** — 시드에 숫자를 두면 가짜가
+           * 실제와 어긋난 채 고정되고, 멤버를 더한 뒤에도 옛 숫자를 낸다.
+           */
+          const count = (inner["_count"] as { select?: Record<string, unknown> } | undefined)?.select;
+          if (count !== undefined) {
+            const c: Record<string, unknown> = {};
+            if (count["members"] === true) {
+              c["members"] = members.filter((x) => x.projectId === m.projectId).length;
+            }
+            p["_count"] = c;
+          }
+          projected["project"] = p;
         }
         return projected as unknown as typeof m;
       });

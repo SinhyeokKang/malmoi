@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/routes.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`routes.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 넷을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -135,7 +135,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 #### ⚠️ `catalogVerdict`의 전신은 샘플 하나로 리포 전체를 버렸다 (2026-09-02 실측)
 
-규칙의 주인은 `catalogVerdict`·`verdictFromValues`·`sampleOrder`·`verifySamples`(`lib/adapters/shared.ts`)다 — `looksLikeCatalog`은 그 3값 결과를 boolean으로 접기만 하는 `@deprecated` 껍데기이고(**`lib`·`app`·`scripts`에서 import 0** — 남겨 둔 이름이다), 온보딩(`lib/onboarding/detect.ts`)이 참조하는 이름도 앞쪽이다. ⚠️ **온보딩 판정층이 사전을 문다** (2026-09-08) — `detect.ts`·`readiness.ts`·`message.ts`가 `@/lib/i18n`의 `m`을 읽고, `formatLabel`의 라벨 표가 `m.newProject.formats satisfies Record<AdapterName, …>`로 서 있다. 즉 "어댑터를 추가하면 컴파일 에러"라는 성질이 **사전 키 유무**에 걸려 있다. 사전은 잎이라 무게가 없다(§6.35).
+규칙의 주인은 `catalogVerdict`·`verdictFromValues`·`sampleOrder`·`verifySamples`(`lib/adapters/shared.ts`)다 — `looksLikeCatalog`은 그 3값 결과를 boolean으로 접기만 하는 `@deprecated` 껍데기이고(**`lib`·`app`·`scripts`에서 import 0** — 남겨 둔 이름이다), 온보딩(`lib/onboarding/detect.ts`)이 참조하는 이름도 앞쪽이다. ⚠️ **온보딩 판정층이 사전을 문다** (2026-09-08) — `detect.ts`·`message.ts` **둘**이 `@/lib/i18n`의 `m`을 읽고(⚠️ `readiness.ts`는 8-3부터 **잎이다** — 문구 판정이 `lib/projects/list.ts`의 `projectStatus`로 갔다, §6.35), `formatLabel`의 라벨 표가 `m.newProject.formats satisfies Record<AdapterName, …>`로 서 있다. 즉 "어댑터를 추가하면 컴파일 에러"라는 성질이 **사전 키 유무**에 걸려 있다. 사전은 잎이라 무게가 없다(§6.35).
 
 지원 포맷인데 탐지 실패한 4건 중 **셋이 같은 구조**에서 나왔다. probe가 **정렬상 첫 로케일 하나**만 읽는데, 그 첫 로케일이 체계적으로 **가장 덜 관리된 파일**이다:
 
@@ -285,7 +285,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 **함정 둘:**
 
 - **`setLiteralValue`를 쓰면 안 된다** — 이스케이프를 하지 않아 백슬래시·개행·따옴표가 재파싱에서 깨진다(실측: `a"b\c\nd` → `a"bcd`). `JSON.stringify(next)`로 따옴표까지 포함한 유효한 JS 리터럴을 만들고 `replaceWithText`로 갈아끼운다. 비ASCII는 그대로 남아 한글이 유니코드 이스케이프로 바뀌지 않는다.
-- **`export`된 선언은 로케일 객체가 아니다.** `export const ai = { ko, en, fr }` 같은 묶음 객체의 이름이 2~3자 소문자면 `looksLikeLocale`을 통과한다(bugshot-2의 `ai`·`app`이 0키 "로케일"로 잡혔다). 묶음은 항상 export되고 로케일 객체는 항상 파일 내부용이라 그 한 줄로 갈린다.
+- **`export`된 선언은 로케일 객체가 아니다** (⚠️ **이것은 `ts-dict`의 규칙이고 `code-dict`는 반대다** — 그쪽은 default export가 없을 때 **export된 것만** 후보로 받는다)**.** `export const ai = { ko, en, fr }` 같은 묶음 객체의 이름이 2~3자 소문자면 `looksLikeLocale`을 통과한다(bugshot-2의 `ai`·`app`이 0키 "로케일"로 잡혔다). 묶음은 항상 export되고 로케일 객체는 항상 파일 내부용이라 그 한 줄로 갈린다.
 
 **빈 값은 호출부가 걸러서 넘기지 않는다** (2026-08-31 결정). `write`가 `orderedEntries`를 지나지 않으므로 빈 문자열이 오면 그대로 치환돼 소스에 `""`가 박히고, TS 딕셔너리엔 폴백이 없어 그대로 렌더된다. **"미번역 제외"만은 두 방식에 똑같이 적용한다** — 그래야 지우기가 원본 값을 남기는 쪽으로 떨어진다 (MVP §3.2·§4.1).
 
@@ -472,7 +472,7 @@ Action에 적용되지 않으므로 `app/(edit)/projects/new/page.tsx`와 `[slug
 
 **출력은 `refs`뿐이다.** `ScanResult`에 `errors` 필드가 **없는 것이 이 층의 요지다** — 키의 존재·원문·키 이름 합법성은 전부 §1의 적재 층이 로케일 파일을 읽어 정한다. 이 층은 편집 UI의 컨텍스트("이 문자열이 어디 나오는지")만 만든다.
 
-`pnpm scan`은 **항상 exit 0이다.** CI를 실패시킬 수 있는 건 `pnpm ingest`뿐이다.
+`pnpm scan`은 **스캔이 돌기 시작한 뒤에는 항상 exit 0이다** — 사용법 오류(대상 디렉터리 누락·`--wrapper` 스펙 파싱 실패)만 2다. CI를 실패시킬 수 있는 건 `pnpm ingest`뿐이다.
 
 bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지금 **115키 / 참조 273건 / 경고 9건 / exit 0**. 경고 9건은 전부 그 리포의 실제 동적 키다. 훅 기반 두 리포의 실측은 §4.0.2.
 
@@ -853,7 +853,7 @@ $transaction(tx):
   실패했나"를 답한다 — 축이 다르므로 판정도 따로다(`classifySyncError`). `safeMessage`는 앞의 것을
   그대로 부른다: 그 값이 대상 리포의 (public일 수 있는) Actions 로그로 흘러가므로 규칙이 두 벌이면 안 된다.
 - **생산자 없는 코드는 두지 않는다.** 일곱뿐이고, `lib/pull/__tests__/error-codes.test.ts`가 **양방향으로**
-  고정한다 — 코드를 드는 자리 넷과 **안 드는 자리 열하나**를 이름으로 박아, 새 `fail(`은 둘 중 하나를
+  고정한다 — 코드를 드는 자리 **다섯**(sec-audit-2가 `repository identity is not pinned`을 더했다)과 **안 드는 자리 열하나**를 이름으로 박아, 새 `fail(`은 둘 중 하나를
   골라야 red를 벗는다(`entry-points.test.ts`가 예외를 이름으로 고정하는 것과 같은 형).
 - 안 드는 자리는 **불변식 위반**(`unreachable:`)이거나 **readiness가 이미 막는 설정 부재**다 — sync 층에서
   가를 이름이 없고, `unknown`이 정직하다.
@@ -906,7 +906,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 ### 6.0 ⚠️ 500 본문은 우리 메시지만 담는다
 
-**두 라우트와 Publish Server Action(`triggerPullAction`)의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04, Action은 2026-09-06). `lib/failure.ts`의
+**두 라우트의 `catch`는 던진 메시지를 그대로 싣지 않는다** (2026-09-04). ⚠️ **Publish Server Action은 7단계부터 `catch`가 없다** — `runSync`가 던지지 않고 오류 접기가 `lib/sync/`로 옮겨갔다(§5.6). 아래 규칙은 그 껍데기 안에서 그대로 산다. `lib/failure.ts`의
 `classifyFailure`가 가른다:
 
 ⚠️ **`/api/pull`은 `catch`가 둘이다** (§3.05의 프로젝트별 격리와 이어진다) — 외곽 하나와 프로젝트별 `failureItem` 하나. `lib/pull/**`의 실패는 대개 `safe`(`fail()`)이고 개별 실행 결과는 **HTTP 200의 results 배열**이며 cron이 본문을 버리므로, 조용한 `safe` 갈래는 전면 장애를 성공과 구별 불가로 만든다. 그래서 프로젝트별 실패도 분류를 지나 항목으로 남는다.
@@ -928,7 +928,7 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 접속 오류 한 번이 pooler 호스트와 DB 유저를 **공개 Actions 로그**에 박는다(`bugshot-2`가 public이다).
 회고의 요구("원인이 남는다")는 `ref`로 지킨다: 운영자가 그 값으로 Vercel 로그를 찾는다.
 
-⚠️ **Server Action도 같은 규칙이다** (2026-09-06 Codex 감사 #7). 같은 `triggerPull`을 부르는 `triggerPullAction`이 `error.message`를 그대로 직렬화해 **외부 초대자의 화면**에 Prisma 접속 오류가 갈 수 있었다 — 읽는 사람이 우리가 아닌 것은 Actions 로그와 같다. `app/(edit)/__tests__/publish-failure.test.ts`가 원문 부재와 `ref` 존재를 검사한다.
+⚠️ **Server Action도 같은 규칙이다** (2026-09-06 Codex 감사 #7). `triggerPullAction`이 `error.message`를 그대로 직렬화해 **외부 초대자의 화면**에 Prisma 접속 오류가 갈 수 있었다 — 읽는 사람이 우리가 아닌 것은 Actions 로그와 같다. ⚠️ **7단계가 그 `catch`를 `runSync` 안으로 옮겼다**(`classifySyncError` → `safeMessage`가 `classifyFailure`에 위임한다) — 규칙은 같고 **자리가 하나로 줄었다**. `app/(edit)/__tests__/publish-failure.test.ts`가 원문 부재와 `ref` 존재를 검사한다.
 
 ⚠️ **판정은 문구가 아니라 타입이다.** 남의 오류가 우리 문구를 담아도 안전이 아니고, 우리 문구가
 바뀌어도 판정이 흔들리지 않는다. `instanceof`가 아니라 `name` 비교인 이유는 모듈 인스턴스가 둘이
@@ -1068,10 +1068,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
 실어 보내고 온보딩 Action은 `OnboardError`를 낸다. 겹치는 값은 `unavailable`·`unauthorized` 둘이고 뜻이 같다.
 
-⚠️ **무효화 범위는 "이 값을 보이는 화면 집합"에 대한 단언이고, 컴파일러도 테스트도 그것을 안 본다** (2026-09-09). 접두로 그 집합을 표현하면 **라우트가 옮겨질 때 조용히 깨진다** — `disconnectGithub`이 `/projects` 접두를 골랐는데 계정 카드가 `/account`로 가면서 주 화면을 놓쳤고(POSTMORTEM 2026-09-09), 같은 회고가 예고한 자리를 6b-6이 닫았다. 지금 **서브트리를 무효화하는 쓰기가 셋**이다:
+⚠️ **무효화 범위는 "이 값을 보이는 화면 집합"에 대한 단언이고, 컴파일러도 테스트도 그것을 안 본다** (2026-09-09). 접두로 그 집합을 표현하면 **라우트가 옮겨질 때 조용히 깨진다** — `disconnectGithub`이 `/projects` 접두를 골랐는데 계정 카드가 `/account`로 가면서 주 화면을 놓쳤고(POSTMORTEM 2026-09-09), 같은 회고가 예고한 자리를 6b-6이 닫았다. 지금 **서브트리를 무효화하는 쓰기가 다섯**이다 — 뒤의 둘은 보관이고, 그것이 목록·사이드바·Home·번역을 한꺼번에 바꾸므로 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다:
 - `saveTranslation` → `/projects/<slug>` **layout**. 그 행을 읽는 화면이 셋이다(번역 표 · 로케일 화면의 진행률 · Home의 진행률·활동).
 - `updateBaseLocale` → 같은 범위. `declaredBaseLocale`을 읽는 화면이 셋이다(로케일 화면의 필드·대기 Alert · 번역 화면의 배너 · **설정의 워크플로 YAML**이 대기 중 `base-locale:`을 박는다).
 - `disconnectGithub` → `/` **layout**. slug를 모르는 자리이므로 좁힐 수단이 없다.
+- `archiveProject`·`unarchiveProject` → `/` **layout** (7단계). 보관은 목록 행의 배지·사이드바·Home·번역 화면을 **한꺼번에** 바꾼다 — 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다.
 
 **나머지는 좁힌 채 둔다** — 멤버·초대 셋은 그 상태를 멤버 화면만 보이고, `rotatePushToken`·`connectRepository`·`updateRepositorySettings`는 설정만 보인다. **화면을 옮기거나 새로 만들면 그 화면이 보이는 상태를 쓰는 Action의 범위를 함께 본다**(grep: `revalidatePath(`).
 
@@ -1101,6 +1102,8 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   규칙은 한 벌이고 무게는 따라오지 않는다.
 - ⚠️ **화면 문구는 영어 단일이고 출처가 `messages/en.tsx` 하나다** (2026-09-08, SaaS 6a). 화면은 `@/lib/i18n`의 `m`으로 읽고 `<html lang="en">`이며, **소스의 한글 UI 리터럴을 `lib/i18n/__tests__/no-korean-ui.test.ts`가 상시로 0으로 고정한다**(허용 목록 셋은 화면이 아니다). ko를 여는 시점은 SAAS §10에 있다.
 - ⚠️ **잎이 다섯 늘었다** (2026-09-08, SaaS 6a): **`lib/i18n/`**(→ `messages/en.tsx`) · **`lib/routes.ts`** · **`lib/shell/nav.ts`** · **`lib/auth/permission.ts`**(⚠️ 사이드바 → `nav.ts` 경로로 **권한표가 브라우저에 나간다** — 판정만 담고 조회가 없어 안전하다) · **`lib/keys/refocus.ts`**. ⚠️ **마지막 하나는 동기가 다르다** — 번들 무게가 아니라 **테스트 가능성**이다: `translation-input.tsx`가 Server Action을 물어 그 그래프에 `server-only`가 있고, 판정을 그 안에 두면 vitest가 import만으로 죽는다.
+- ⚠️ **그 뒤로 일곱이 더 생겼다** (6b~8단계): **`lib/tone.ts`**(이름 해시 → 색 여덟 — 셸 헤더가 매 페이지에서 렌더하는 클라이언트 트리가 읽는다. 클래스 맵은 `components/ui/tone.ts`가 들어 판정과 층이 갈린다) · **`lib/locale-code.ts`**(§5.5.05) · **`lib/pull/branch-name.ts`**(설정 폼이 읽는다) · **`lib/relative-time.ts`**(멤버·이력 화면 — ⚠️ `lib/keys/view.ts`에서 **내린** 것이고 그쪽은 잎이 아니다, 재수출도 하지 않는다) · **`lib/onboarding/base-pending.ts`** · **`lib/signin/dot-field.ts`**(Canvas 판정) · **`lib/projects/list.ts`**(목록 필터·상태). **명부가 낡으면 규칙이 실측 없이 서 있다** — 잎을 새로 만들면 여기 더한다.
+- ⚠️ **`lib/onboarding/readiness.ts`도 8-3에 잎이 됐다** — `readinessLabel`이 나가면서 `@/lib/i18n` import가 사라졌다. 잎이 된 것은 의도가 아니라 **결과**이고, 그래서 §1.3의 "온보딩 판정층이 사전을 문다"가 셋에서 둘로 줄었다.
   앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
   지난다 — 사전이 `@/lib/**`를 하나라도 물면 그 무게가 세 화면에 붙는다. 그래서 `messages/en.tsx`의
   import는 `react`의 `ReactNode` **타입 하나**이고, `client-graph.test.ts`가 그 잎 성질을 직접 건다
@@ -1115,8 +1118,26 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **판정은 금지 목록이 아니라 허용 목록이다.** `client-graph.test.ts`의 `ALLOWED`에 없는 패키지는 전부
   걸린다 — 금지 목록은 "자기가 고른 패턴만 답한다"라 `yaml`·`zod` 같은 무게를 통과시켰다. **2026-09-08에 셋이
   늘었다**(`radix-ui`·`class-variance-authority`·`lucide-react`): 이 리포가 `components/ui/` 프리미티브를
-  소유하면서 들어온 **의도된 결정**이고 메타 테스트가 셋을 각자 고정한다. `SKIP_DIR`의 `ui`는 **진입점 탐색만**
+  소유하면서 들어온 **의도된 결정**이다. ⚠️ **8-1b가 `sonner`를 되돌려 넷이 됐다** — 2026-09-08에 "사용 0"으로
+  빼면서 이 파일의 **메타 반례**로 남겨 뒀던 패키지이고, 8단계가 피드백을 토스트로 통일하며 뒤집었다
+  (경계는 규약 8 · DESIGN §6.25). 메타 테스트가 **넷**을 각자 고정하고, 반례 목록에서는 그만큼 빠졌다. `SKIP_DIR`의 `ui`는 **진입점 탐색만**
   건너뛰고 import는 따라가므로, **프리미티브가 무는 것이 곧 이 목록의 결정**이 된다.
+### 6.36 목록 필터의 순수 판정 (`lib/projects/list.ts`, 2026-09-10 8-3)
+
+- ⚠️ **`parseProjectFilter`가 객체 조회가 아니라 배열 `includes`다.** 입력이 주소창 값이라 **남이 정한
+  문자열을 객체 키로 쓰는** 부류이고, 이 리포는 그것을 두 번 밟았다(POSTMORTEM 2026-09-08 조회 ·
+  2026-09-09 대입). 배열은 프로토타입 체인을 안 본다. §1.1의 "키 대입" 규칙과 같은 계보인데 그쪽은
+  어댑터 축에만 적혀 있어 여기 다시 적는다.
+- ⚠️ **`projectStatus`는 보관을 readiness보다 먼저 본다.** 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은
+  답할 질문이 아니다 — `planProjectAccess`가 권한 → 보관 순으로 보는 것(§5.6.4)과 같은 형이고,
+  뒤집으면 보관된 신규 프로젝트가 `Setting up`으로 보여 사용자가 되돌리는 대신 온보딩을 고치러 간다.
+- ⚠️ **`repositoryId === null`이 셋째 축이고 `ready`일 때만 본다** (2026-09-11). readiness와 독립이라
+  그전까지 목록에서 `Active`로 보였다 — Publish만 조용히 거부되고 야간 순회에서도 빠지는 상태다.
+  **`ProjectReadiness` union을 늘리지 않고 여기서 본 이유**: 그 union은 설정 화면·`ProjectNotReady`의
+  정책까지 물고 있어서, 갈래 하나가 화면 셋을 건드린다. ⚠️ **`ready`가 아니면 안 보는 것이 판정의
+  절반이다** — 그 컬럼이 막는 것은 되돌려보내기이고, 첫 적재도 안 끝난 프로젝트에서 "다시 연결하라"는
+  답할 질문이 아니다.
+
 - ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.

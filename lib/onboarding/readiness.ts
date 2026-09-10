@@ -1,5 +1,3 @@
-import { m } from "@/lib/i18n";
-
 /**
  * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (design §3.7).
  *
@@ -25,20 +23,4 @@ export function planProjectReadiness(project: {
   if (project.installationId === null) return "setup";
   if (project.lastCommitSha === null) return "awaiting_first_sync";
   return "ready";
-}
-
-/**
- * 목록 화면의 상태 텍스트 (design §3.7). **raw 색을 늘리지 않는다** — `ready`가 아닌 것은 오류가
- * 아니라 진행 중이므로 `text-muted-foreground` 텍스트로만 보인다 (DESIGN §6.2의 `not-connected`·
- * `unknown` 전례).
- *
- * ⚠️ **`ready`는 `null`이다.** 가장 흔한 상태가 가장 조용해야 한다 — "번역됨"에 배지를 안 붙이고
- * "연결됨"에 초록을 안 쓰는 것과 같은 원리다 (DESIGN §6.1).
- *
- * ⚠️ **내부 이름을 화면에 쓰지 않는다** (SAAS §3). 번역자도 이 목록을 보고, `awaiting_first_sync`는
- * 그에게 아무것도 알려주지 않는다.
- */
-export function readinessLabel(readiness: ProjectReadiness): string | null {
-  // ⚠️ `ready`는 `null`이다 — 가장 흔한 상태가 가장 조용해야 한다. 사전에 그 키를 두지 않는 이유이기도 하다.
-  return readiness === "ready" ? null : m.projects.readiness[readiness];
 }
