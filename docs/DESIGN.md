@@ -6,6 +6,29 @@
 
 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재)와 [MVP.md](./MVP.md)(PoC — 닫힘), 화면별 구성은 [features/translation-ui/user-stories.md](./features/translation-ui/user-stories.md), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+## 0. ⚠️ 8단계 UI 재작성으로 바뀐 것 (2026-09-10)
+
+**Figma 시안을 화면에 입히면서 전역 규칙 여덟이 바뀌었다.** 이 문서의 나머지가 그 이전을 서술하고
+있으면 그쪽이 낡은 것이다 — 각 항목의 상세는 오른쪽 절에 있다.
+
+| 무엇 | 전 | 후 | 상세 |
+|---|---|---|---|
+| **팔레트** | slate (푸른 틴트) | **neutral** | §2 |
+| **font-weight** | 최대 600, 기본 400 | **최대 500, 기본 300** — 버튼 라벨 400 | §4 |
+| **자간** | 유틸(`tracking-tight`)로 그때그때 | **크기 토큰이 든다** (`--text-*--letter-spacing`) | §4 |
+| **radius** | `--radius` 10px | **12px** — 파생 전부 상승(md 10 · lg 12 · xl 16), 버튼 base `rounded-lg` | §5 |
+| **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
+| **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
+| **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
+| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8 | §5.1 |
+
+⚠️ **이 목록은 8-1b(로그인·초대) 하나를 그리며 나왔고 전 화면에 적용된다.** 8-2 이후가 셸·나머지
+화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
+[features/ui-rework/README.md](./features/ui-rework/README.md)가 든다.
+
+⚠️ **아직 반영 안 된 화면이 있다** — `Button size="lg"`는 셸 밖 전용이고, base 치수 교체는
+**마지막 화면이 옮겨온 뒤**다(§6.4). 그때까지 셸 안팎의 버튼 높이가 다르다.
+
 ## 1. 기반 스택
 
 | | 값 | bugshot-2와의 차이 |
@@ -616,7 +639,11 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] raw `<button>`·`<input>`·`<select>`·`<textarea>`를 쓰지 않고 프리미티브를 지났나 (§6.4·§7)
 - [ ] `muted` 표면(사이드바·표 헤더·칩) 위에 `text-muted-foreground`·`hover:bg-accent`를 쓰지 않았나 (§2.1·§2.2)
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)
-- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600뿐 (§6.2)
+- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600뿐 (§6.2). 브랜드 글리프만 예외 (§6.8)
+- [ ] **weight가 500을 넘지 않나** — 기본은 300, 버튼 라벨은 400 (§0·§4)
+- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다 (§4)
+- [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
+- [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
 - [ ] 임의값(`text-[…]`) 대신 스케일을 썼나 (§4)
 - [ ] 문자열이 `messages/en.tsx`에서 오고 §10의 문체인가
