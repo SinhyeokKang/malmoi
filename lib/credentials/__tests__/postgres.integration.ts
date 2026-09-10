@@ -15,6 +15,7 @@ import { encodeUserFields, decodeUser } from "../records";
 import { refreshVerifiedEmail } from "../access";
 import { hashSessionToken } from "../crypto";
 import { lookupEmail, openToken } from "../storage";
+import { FINALIZE_MIGRATION } from "../finalize";
 import { noteAuthError, withOutageFlag } from "@/lib/auth/outage";
 import { publicSession } from "@/lib/auth/public-session";
 import { beginRevocation, finishRevocation } from "@/lib/session-revocation/store";
@@ -29,10 +30,19 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => prisma }));
 let started = false;
 const cutover = { apply: true, trafficBlocked: true, writersDrained: true };
 const ids = { u1: "u1", u2: "u2", p1: "p1", i1: "i1" };
+/**
+ * 픽스처 DB를 **R1 상태**로 세운다.
+ *
+ * ⚠️ **finalize는 일부러 뺀다** (2026-09-10 R2 배송). 그 파일이 `prisma/migrations`로 옮겨진 뒤로는
+ * 전부 적용하면 여기가 곧 R2가 되어 **평문 unique 인덱스가 사라진 채로 시작한다** — 그러면 R1의
+ * additive 성질(옛 writer가 그대로 동작하고 중복 이메일이 거부된다)을 잴 수 없다. 이 스위트가
+ * 재는 것은 R1→backfill→R2의 **경로**이므로 출발점은 언제나 R1이다.
+ */
 async function resetSchema() {
   await pool.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public');
   for (const name of readdirSync("prisma/migrations").sort()) {
-    if (name !== "migration_lock.toml") await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
+    if (name === "migration_lock.toml" || name === FINALIZE_MIGRATION) continue;
+    await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
 }
 async function legacy() {
@@ -219,7 +229,14 @@ it("R2 refuses legacy rows, then finalizes verified data and rejects missing loo
   await convertCredentials(prisma, { mode: "backfill", ...cutover });
   await pool.query(sql);
   expect(await convertCredentials(prisma, { mode: "verify" })).toMatchObject({ changes: 0 });
-  await expect(pool.query('INSERT INTO "User" (id,email) VALUES ($1,$2)', ["invalid", "enc:v1:placeholder"])).rejects.toThrow();
+  /**
+   * ⚠️ **R2는 `emailLookup`에 NOT NULL을 걸지 않는다** (2026-09-10 판단 — migration.sql의 주석).
+   * 그 제약은 전환 도구의 backfill CAS가 안 채워진 행을 `emailLookup: null`로 집는 것을 막아,
+   * 컷오버 이전 백업을 복원했을 때 다시 채울 수단을 없앤다. 그래서 **DB가 막는 것은 유일성**이고
+   * **값 존재는 유일한 생성자가 증명한다** — 아래 두 줄이 그 분담을 고정한다.
+   */
+  await expect(pool.query('INSERT INTO "User" (id,email,"emailLookup") VALUES ($1,$2,$3)',
+    ["duplicate-lookup", "enc:v1:placeholder", lookupEmail("alice@example.com")])).rejects.toThrow();
   const indices = await pool.query<{ indexname: string }>("SELECT indexname FROM pg_indexes WHERE schemaname='public'");
   expect(indices.rows.map(r => r.indexname)).not.toContain("User_email_key");
   expect(indices.rows.map(r => r.indexname)).toContain("User_emailLookup_key");
@@ -314,7 +331,11 @@ it("actual Prisma R1/R2 deploy records failed finalize and resumes only after ve
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public');
   const migrations = join(directory, "migrations");
   mkdirSync(migrations);
-  for (const name of readdirSync("prisma/migrations")) cpSync(join("prisma/migrations", name), join(migrations, name), { recursive: true });
+  // ⚠️ finalize는 **아래에서** 넣는다 — 처음부터 넣으면 R1 deploy가 그것까지 적용해 "실패한 R2"를 못 만든다.
+  for (const name of readdirSync("prisma/migrations")) {
+    if (name === FINALIZE_MIGRATION) continue;
+    cpSync(join("prisma/migrations", name), join(migrations, name), { recursive: true });
+  }
   const configPath = join(directory, "prisma.config.ts");
   writeFileSync(configPath, `export default ${JSON.stringify({ schema: join(process.cwd(), "prisma/schema.prisma"), migrations: { path: migrations }, datasource: { url: `postgresql://postgres@localhost:55479/postgres?host=${encodeURIComponent(directory)}` } })};\n`);
   const run = (...args: string[]) => execFileSync("pnpm", ["exec", "prisma", "migrate", ...args, "--config", configPath], { stdio: "pipe" });
