@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
-import { countUnpublished, loadMemberships } from "@/lib/keys/query";
+import { countUnpublished, loadMemberships, loadProjectList } from "@/lib/keys/query";
 import { isUnpublished } from "@/lib/keys/view";
 
 import { createHarness, type Seed } from "./harness";
@@ -73,8 +73,21 @@ describe("countUnpublished", () => {
 describe("loadMemberships", () => {
   it("내 멤버십만 낸다 — 남의 프로젝트가 사이드바에 뜨지 않는다", async () => {
     const { prisma } = createHarness(seed());
+    /**
+     * ⚠️ **`archivedAt: null`이 여기 있어야 한다.** 8-3 전까지 하네스의 `project` 투영이 그 필드를
+     * 아예 안 내서 `undefined`가 왔고, 이 단언이 그 **누락을 정답으로 고정**하고 있었다 — 셸은
+     * `archivedAt !== null`로 보관을 판정하므로 `undefined`면 **전부 보관됨**이 된다(실제 Prisma가
+     * `null`을 내서 프로덕션만 무사했다). 가짜가 실제보다 좁으면 이런 식으로 조용하다.
+     */
     expect(await loadMemberships(prisma, "u1")).toEqual([
-      { slug: "acme", name: "Acme", role: "OWNER", installationId: "1", lastCommitSha: "a".repeat(40) },
+      {
+        slug: "acme",
+        name: "Acme",
+        role: "OWNER",
+        installationId: "1",
+        lastCommitSha: "a".repeat(40),
+        archivedAt: null,
+      },
     ]);
   });
 
@@ -325,5 +338,43 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
     for (const row of rows) expect(row).not.toHaveProperty("email");
     // 둘 다 `q***@example.com`이 되면 [Revoke]가 엉뚱한 링크를 무효화한다 (malmoi#18)
     expect(new Set(rows.map((r) => r.emailLabel)).size).toBe(2);
+  });
+});
+
+/**
+ * 목록 화면 전용 조회 (8-3). **셸의 `loadMemberships`와 나뉘어 있는 것이 요지다** — 그쪽은 매 페이지가
+ * 부르므로 목록 하나를 위한 집계를 얹지 않는다 (SAAS §7.7 결정 5와 같은 축).
+ */
+describe("loadProjectList", () => {
+  it("내 멤버십만 낸다 — 남의 프로젝트가 섞이지 않는다", async () => {
+    const h = createHarness(seed());
+    const rows = await loadProjectList(h.prisma, "u1");
+    expect(rows.map((r) => r.slug)).toEqual(["acme"]);
+  });
+
+  it("멤버 수를 센다 — 시드의 숫자가 아니라 실제 행이다", async () => {
+    const base = seed();
+    const h = createHarness({ ...base, members: [...(base.members ?? []), { projectId: "p1", userId: "u2", role: "EDITOR" }] });
+    const [row] = await loadProjectList(h.prisma, "u1");
+    expect(row?.memberCount).toBe(2);
+  });
+
+  it("리포와 보관 시각을 함께 낸다 — 행 메타와 필터의 재료다", async () => {
+    const h = createHarness(seed());
+    const [row] = await loadProjectList(h.prisma, "u1");
+    expect(row?.repoOwner).toBe("o");
+    expect(row?.repoName).toBe("r");
+    expect(row?.archivedAt).toBeNull();
+  });
+
+  /**
+   * ⚠️ **셸이 이 집계를 물지 않는다.** 두 로더가 같은 테이블을 읽는 것이 중복처럼 보이지만,
+   * 합치는 순간 `(edit)` 아래 **모든** 페이지가 `_count` 서브쿼리를 돈다.
+   */
+  it("`loadMemberships`는 목록 전용 필드를 내지 않는다", async () => {
+    const h = createHarness(seed());
+    const [row] = await loadMemberships(h.prisma, "u1");
+    expect(row).not.toHaveProperty("memberCount");
+    expect(row).not.toHaveProperty("repoOwner");
   });
 });

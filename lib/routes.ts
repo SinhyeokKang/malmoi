@@ -52,7 +52,14 @@ export const routes = {
    * `error`는 Auth.js의 거부 사유(`signInErrorMessage`), `sessions`는 전체 세션 회수 결과다.
    */
   signIn: (query: { error?: string; sessions?: string } = {}): string => withQuery("/signin", query),
-  projects: (): string => "/projects",
+  /**
+   * 내 프로젝트 목록. **`filter`는 URL 상태다** (8-3) — 세그먼트가 링크라 뒤로가기·공유·새로고침이
+   * 그냥 되고, 서버가 이미 걸러 그리므로 클라이언트 상태가 0이다.
+   *
+   * ⚠️ **`withQuery`를 지나야 한다** — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터
+   * 수신자" 검사를 통째로 회피한다(위 `signIn` 주석과 같은 이유). 기본값 `all`은 안 싣는다.
+   */
+  projects: (query: { filter?: string } = {}): string => withQuery("/projects", query),
   newProject: (): string => "/projects/new",
   /**
    * 사용자 축 (SAAS §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라

@@ -237,6 +237,22 @@ export const en = {
 
   projects: {
     title: "Your projects",
+    /**
+     * 목록 필터 (8-3). **탭이 링크라 라벨이 목적지의 이름이다** — `Active`가 "보관하지 않은 것"이다.
+     */
+    filter: {
+      label: "Filter projects",
+      all: "All",
+      active: "Active",
+      archived: "Archived",
+    },
+    /** 행 메타 — 리포와 멤버 수 둘뿐이다. ⚠️ **복수형을 함수가 든다**(시안의 "1 members"는 틀렸다). */
+    memberCount: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
+    /** 필터가 걸러 0건인 상태. **"프로젝트가 없다"와 다르다** — 탭을 바꾸면 있다. */
+    filterEmpty: {
+      active: "No active projects.",
+      archived: "No archived projects.",
+    },
     /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
     archived: "Archived",
     /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
@@ -245,8 +261,16 @@ export const en = {
       title: "No projects yet",
       description: "Connect a repository to create one, or open an invite link you were sent.",
     },
-    /** `readinessLabel` — `ready`는 문구가 없다(가장 흔한 상태가 가장 조용하다). */
-    readiness: {
+    /**
+     * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
+     * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다.
+     *
+     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (SAAS §3) — 번역자도 이 목록을 보고
+     * `awaiting_first_sync`는 그에게 아무것도 알려주지 않는다.
+     */
+    status: {
+      active: "Active",
+      archived: "Archived",
       awaiting_first_sync: "Waiting for first import",
       setup: "Setting up",
     },

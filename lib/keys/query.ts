@@ -216,6 +216,61 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 }
 
 /**
+ * 목록 화면의 한 행 (8-3). `MembershipRow`에 **그 화면만 쓰는 셋**이 더 붙는다.
+ */
+export type ProjectListRow = MembershipRow & {
+  repoOwner: string;
+  repoName: string;
+  memberCount: number;
+};
+
+/**
+ * `/projects` 목록 전용 조회 (8-3).
+ *
+ * ⚠️ **`loadMemberships`를 넓히지 않고 함수를 나눈 이유**: 그쪽은 **셸이 매 페이지에서** 부른다.
+ * 거기에 `_count`와 리포 컬럼을 얹으면 모든 화면이 목록 하나를 위한 집계를 물게 되고, 그것이
+ * SAAS §7.7 결정 5(사이드바 카운트 거절)가 막은 것과 같은 축이다.
+ *
+ * ⚠️ **멤버 수는 `_count` 서브쿼리라 왕복이 +0이다** — 프로젝트마다 세면 N+1이 되고, 도쿄 리전
+ * 왕복 하나가 그대로 붙는다(CLAUDE.md 가상화 절의 실측).
+ *
+ * ⚠️ **`userId`로 좁힌다** — 목록의 단위가 "내 멤버십"이다 (POSTMORTEM 2026-09-06).
+ */
+export async function loadProjectList(prisma: PrismaClient, userId: string): Promise<ProjectListRow[]> {
+  const rows = await prisma.projectMember.findMany({
+    where: { userId },
+    select: {
+      role: true,
+      project: {
+        select: {
+          slug: true,
+          name: true,
+          installationId: true,
+          lastCommitSha: true,
+          archivedAt: true,
+          repoOwner: true,
+          repoName: true,
+          _count: { select: { members: true } },
+        },
+      },
+    },
+    // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
+    orderBy: { project: { slug: "asc" } },
+  });
+  return rows.map((r) => ({
+    slug: r.project.slug,
+    name: r.project.name,
+    role: r.role,
+    installationId: r.project.installationId,
+    lastCommitSha: r.project.lastCommitSha,
+    archivedAt: r.project.archivedAt,
+    repoOwner: r.project.repoOwner,
+    repoName: r.project.repoName,
+    memberCount: r.project._count.members,
+  }));
+}
+
+/**
  * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
  *
  * ⚠️ **`loadKeys`를 재사용하지 않는다.** 그쪽은 행마다 셀과 `refs`를 들고 오므로 903키 프로젝트에서
