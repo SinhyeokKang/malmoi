@@ -504,7 +504,9 @@ components/
                         패널 간 gap 8 · 각 패널 radius+연한 border+shadow**. 시안 전체가 이 규칙이고
                         번역 화면에서도 검산했다) / auth-toast(`?error=`·`?sessions=` → 토스트.
                         ⚠️ **아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의
-                        자리가 된다) / dot-field(Canvas 2D — ⚠️ **커서가 오기 전엔 rAF를 안 돌린다**,
+                        자리가 된다) / provider-button(`useFormStatus`로 pending을 읽는다 — ⚠️ **`<form>` 안에 있어야
+                        참을 낸다**) / dot-field(Canvas 2D — ⚠️ **커서가 없으면 `autoCursor`가 ㄹ자로
+                        순회한다**(2026-09-10),
                         `prefers-reduced-motion`이면 1회 렌더) / brand-icons(GitHub·Google 인라인 SVG —
                         ⚠️ `lucide-react`에 브랜드 글리프가 없고 Google 4색은 DESIGN §6.2의 예외다)
   shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
@@ -609,6 +611,8 @@ lib/
   signin/dot-field.ts   ⚠️ **잎, import 0** (8-1b) — dotGrid(경계 포함 · gap 0이면 빈 배열: `ResizeObserver`
                         콜백에서 불려 무한 루프 한 번이 탭을 얼린다) · dotScale(거리→값 선형 보간.
                         **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
+                        · autoCursor(커서가 없을 때의 ㄹ자 순회. ⚠️ **줄 사이에 세로 전환 구간이 있다** —
+                        없으면 y가 줄 인덱스로만 정해져 줄바꿈이 순간이동한다)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`signIn()`이 쿼리를 받는다**
                         (8-1a) — `withQuery`를 지나야 `entry-points.test.ts`의 "쿼리 수신자" 검사에
                         걸린다(문자열 연결은 그 검사를 회피한다). `privacy()`·`docs()`도 8-1a다. `logs(slug, {cursor})`는 7단계가
