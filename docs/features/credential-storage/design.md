@@ -222,3 +222,12 @@ Auth.js의 SessionTokenError 감지는 유지한다. 평문·암호문·lookup�
 점검 중 사용자는 일시 점검 안내와 재시도 행동을 받는다. 열린 편집기의 저장을 성공으로 응답하지 않고
 실패를 알린다. 초대 링크·ID·멤버십은 유지하며 점검 후 기존 공급자로 로그인해 복귀한다. 앱의 신규
 점검 기능을 확장하는 것이 아니라 차단 운영 수단이 이 최소 응답 계약을 충족하는지 검증하는 범위다.
+
+
+## 11. 구현 위치와 전환 상태 (2026-09-10)
+
+순수 암호/세션 판정은 `lib/credentials/crypto.ts`, 지연 키 로드·AAD는 `storage.ts`, DTO 변환은 `records.ts`, 유효 Auth.js 어댑터는 `adapter.ts`다. `access.ts`가 조회·이메일 refresh와 고정 예외 경계를 가진다. 전환은 `migration.ts`의 행 계획과 `conversion.ts`의 사전 검증·행별 CAS, `command.ts`의 옵션·DB 대상 검증으로 나눈다.
+
+명령은 `credentials:dev/prod`, 최종 DDL은 `credentials:finalize:dev/prod`다. R2 SQL은 `prisma/credential-cutover/`에 보관하며 R1 pending에 넣지 않았다. 최종 R2에서 현재 nullable emailLookup 선언도 필수로 바꾼다. 전환 스크립트는 애플리케이션 접근을 차단하지 않는다. [운영 절차](./operations.md)의 차단·drain 실측이 없으면 apply하지 않는다.
+
+로컬/격리 테스트 완료는 실제 OAuth·공유 DB 전환 완료가 아니다. 구체적인 증거와 잔여는 tasks의 실행 기록을 따른다.

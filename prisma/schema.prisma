@@ -361,8 +361,10 @@ model SyncRun {
 model User {
   id            String    @id @default(cuid())
   name          String?
-  /// 정규화된 주소를 저장한다(`normalizeEmail` — trim + 소문자). 원문을 저장하면 대조가 갈린다.
-  email         String    @unique
+  /// 정규화한 주소의 AES-GCM envelope. 정확 일치 조회는 별도 HMAC emailLookup을 쓴다.
+  email         String
+  /// R1 준비 단계 nullable. 차단 backfill·검증 후 R2에서 NOT NULL로 전환한다.
+  emailLookup   String?   @unique
   emailVerified DateTime?
   image         String?
   createdAt     DateTime  @default(now())
@@ -414,9 +416,9 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// 어댑터가 요구하는 테이블. **이메일 provider를 쓰지 않으므로 항상 비어 있다** (SAAS §4.3 ①) —
-/// 매직링크는 메일 인프라 운영을 끌고 와서 1차에서 뺐다. 어댑터의 두 메서드가 이 델리게이트를
-/// 부르므로 테이블 자체는 있어야 한다.
+/// Auth.js 어댑터 계약 테이블. 이메일 provider는 쓰지 않는다.
+/// 전체 세션 회수의 5분 확인 요청을 목적별 identifier + nonce digest로 저장한다.
+/// 소비와 사용자 Session 삭제는 같은 트랜잭션이다 (session-revocation 설계).
 model VerificationToken {
   identifier String
   token      String
@@ -458,8 +460,10 @@ model ProjectMember {
 model ProjectInvitation {
   id        String @id @default(cuid())
   projectId String
-  /// 정규화된 주소. 수락 시 **provider가 검증한 이메일**과 대조한다 (design §2.1).
+  /// 정규화한 주소의 AES-GCM envelope. 서버에서 복호화해 검증된 회원 이메일과 대조한다.
   email     String
+  /// 프로젝트 범위 HMAC. R2 최종 전환에서 NOT NULL로 바꾼다.
+  emailLookup String?
   role      Role
   /// 링크로 행을 찾는 유일한 키다. 원문은 발급 시 한 번만 보이고 저장하지 않는다.
   tokenHash String   @unique
@@ -477,5 +481,5 @@ model ProjectInvitation {
   /// ⚠️ **unique가 아니라 index다.** `acceptedAt`을 남기는 설계라 수락·만료된 행이 이메일을
   /// 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이 된다.
   /// 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가르므로 판정은 선다.
-  @@index([projectId, email])
+  @@index([projectId, emailLookup])
 }

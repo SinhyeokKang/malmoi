@@ -93,9 +93,13 @@ describe("Auth.js 어댑터 계약 — 모델과 컬럼", () => {
 });
 
 describe("Auth.js 어댑터 계약 — where가 요구하는 unique", () => {
-  it("getUserByEmail이 findUnique({where:{email}})라 User.email이 unique다", () => {
-    expect(ADAPTER_SOURCE).toContain("p.user.findUnique({ where: { email } })");
-    expect(block("model", "User")).toMatch(/^\s*email\s+String.*@unique/m);
+  it("credential adapter가 emailLookup unique로 조회하며 email은 암호문이다", () => {
+    const adapter = readFileSync(fileURLToPath(new URL("../../lib/credentials/adapter.ts", import.meta.url)), "utf8");
+    expect(adapter).toContain("emailLookup: lookupEmail(email)");
+    expect(adapter).not.toMatch(/where:\s*\{\s*email\s*[:}]/);
+    for (const method of ["createUser", "updateUser", "getUser", "getUserByEmail", "getUserByAccount", "getSessionAndUser", "deleteUser"]) expect(adapter).toContain(`async ${method}(`);
+    expect(block("model", "User")).toMatch(/^\s*emailLookup\s+String\?.*@unique/m);
+    expect(block("model", "User")).not.toMatch(/^\s*email\s+String.*@unique/m);
   });
 
   it("getUserByAccount가 where:{provider_providerAccountId}라 Account에 복합 키가 있다", () => {
@@ -178,8 +182,8 @@ describe("테넌트 모델 — ProjectMember · ProjectInvitation", () => {
     // acceptedAt을 남기는 설계라 수락·만료된 행이 이메일을 점유한다. 멤버를 뺐다가 다시 부르는
     // 정상 경로가 unique 위반이 된다 (design §5). 판정은 planInvitationAccept가 한다.
     const body = block("model", "ProjectInvitation");
-    expect(body).toContain("@@index([projectId, email])");
-    expect(body).not.toContain("@@unique([projectId, email])");
+    expect(body).toContain("@@index([projectId, emailLookup])");
+    expect(body).not.toContain("@@unique([projectId, emailLookup])");
   });
 
   it("인덱스가 projectId 선두다 (ARCHITECTURE §5 — 모든 조회가 프로젝트로 먼저 좁혀진다)", () => {

@@ -56,6 +56,8 @@ const GUARDS = [...PROJECT_GUARDS, USER_GUARD];
  * 여기 이름을 더하려면 그 둘 중 어느 쪽인지 적는다.
  */
 const USER_SCOPED_ACTIONS = new Set([
+  // Session revocation affects only the authenticated user, including users without projects.
+  "account/actions.ts#startSessionRevocation",
   // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",

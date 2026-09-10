@@ -21,6 +21,7 @@ export const en = {
   // ⚠️ 화면 섹션은 **그 화면을 만드는 커밋이 더한다** — 빈 껍데기를 미리 두지 않는다("만든 것이 실제로
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
+    retry: "Try again",
     appName: "Malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
@@ -219,6 +220,17 @@ export const en = {
     github: {
       description: "Connect GitHub to see which repositories you can add.",
       notConnected: "Not connected.",
+    },
+    sessions: {
+      title: "Sign out everywhere",
+      description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
+      button: "Confirm and sign out everywhere",
+      pending: "Opening account confirmation…",
+      complete: "You have been signed out on all devices. Sign in again to continue.",
+      failed: "We could not sign you out everywhere. Try again.",
+      cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
+      expired: "This confirmation expired. Start again to sign out everywhere.",
+      wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
     },
     signOut: {
       title: "Sign out",

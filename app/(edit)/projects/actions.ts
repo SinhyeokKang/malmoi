@@ -1,8 +1,12 @@
 "use server";
 
+import { findUserByEmail } from "@/lib/credentials/access";
+import { encodeInvitationEmail } from "@/lib/credentials/records";
+import { lookupEmail } from "@/lib/credentials/storage";
+
 import { checkDownloadBudget, checkContentBudget, IngestBudgetError } from "@/lib/onboarding/budget";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
@@ -113,64 +117,70 @@ export async function createInvitation(raw: {
   const email = normalizeEmail(input.email);
   if (email === "") return { ok: false, error: "invalid input" };
 
-  // 이미 멤버인 사람에게 초대를 보내면 수락해도 바뀌는 것이 없다 — 거부해서 OWNER가
-  // "보냈는데 왜 안 되지"를 겪지 않게 한다.
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (existing !== null) {
-    const member = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId, userId: existing.id } },
-      select: { userId: true },
-    });
-    if (member !== null) return { ok: false, error: "already-member" };
-  }
+  try {
+    // 이미 멤버인 사람에게 초대를 보내면 수락해도 바뀌는 것이 없다 — 거부해서 OWNER가
+    // "보냈는데 왜 안 되지"를 겪지 않게 한다.
+    const existing = await findUserByEmail(prisma, email);
+    if (existing !== null) {
+      const member = await prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId, userId: existing.id } },
+        select: { userId: true },
+      });
+      if (member !== null) return { ok: false, error: "already-member" };
+    }
 
-  // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (SAAS §5.6).
-  const token = randomBytes(32).toString("base64url");
-  const now = new Date();
-
-  /**
-   * ⚠️ **회전과 생성이 한 트랜잭션이고, 프로젝트 행을 먼저 잠근다** (Codex 감사 2026-09-06 #4). 갈라 두면
-   * 두 OWNER가 같은 이메일을 동시에 초대할 때 각자 회전을 끝내고 각자 만들어 **유효 링크가 둘** 남는다 —
-   * role이 다르면 둘 다 수락된다. `changeMember`와 같은 잠금이다. 잠금 없이 트랜잭션만 걸면 "기존 행이 없는
-   * 동시 발급"은 막지 못한다 — 두 요청 모두 회전할 행이 없어 충돌이 안 난다.
-   */
-  const outcome = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (SAAS §5.6).
+    const token = randomBytes(32).toString("base64url");
+    const now = new Date();
 
     /**
-     * ⚠️ **집계가 잠금 안이다** (7단계 — sync-runs design §1.5). 밖에서 세면 두 OWNER가 동시에
-     * 초대할 때 각자 "자리 있음"을 보고 각자 만든다 — `createProject`의 재집계와 같은 형이고,
-     * 여기는 잠글 `Project` 행이 **이미 있다**. 대기 초대는 안 센다(`planInvitationCreate`).
+     * ⚠️ **회전과 생성이 한 트랜잭션이고, 프로젝트 행을 먼저 잠근다** (Codex 감사 2026-09-06 #4). 갈라 두면
+     * 두 OWNER가 같은 이메일을 동시에 초대할 때 각자 회전을 끝내고 각자 만들어 **유효 링크가 둘** 남는다 —
+     * role이 다르면 둘 다 수락된다. `changeMember`와 같은 잠금이다. 잠금 없이 트랜잭션만 걸면 "기존 행이 없는
+     * 동시 발급"은 막지 못한다 — 두 요청 모두 회전할 행이 없어 충돌이 안 난다.
      */
-    const memberCount = await tx.projectMember.count({ where: { projectId } });
-    const limit = planInvitationCreate({ memberCount });
-    if (limit.status !== "ok") return limit.status;
+    const outcome = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
 
-    // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, email)`이 unique가 아니라
-    // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
-    await tx.projectInvitation.updateMany({
-      where: { projectId, email, acceptedAt: null },
-      data: { expiresAt: now },
+      /**
+       * ⚠️ **집계가 잠금 안이다** (7단계 — sync-runs design §1.5). 밖에서 세면 두 OWNER가 동시에
+       * 초대할 때 각자 "자리 있음"을 보고 각자 만든다 — `createProject`의 재집계와 같은 형이고,
+       * 여기는 잠글 `Project` 행이 **이미 있다**. 대기 초대는 안 센다(`planInvitationCreate`).
+       */
+      const memberCount = await tx.projectMember.count({ where: { projectId } });
+      const limit = planInvitationCreate({ memberCount });
+      if (limit.status !== "ok") return limit.status;
+
+      // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, emailLookup)`이 unique가 아니라
+      // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
+      await tx.projectInvitation.updateMany({
+        where: { projectId, emailLookup: lookupEmail(email, projectId), acceptedAt: null },
+        data: { expiresAt: now },
+      });
+
+      const id = randomUUID();
+      await tx.projectInvitation.create({
+        data: {
+          id,
+          projectId,
+          ...encodeInvitationEmail(id, projectId, email),
+          role: input.role,
+          tokenHash: hashInviteToken(token),
+          expiresAt: new Date(now.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000),
+          acceptedAt: null,
+          invitedBy: userId,
+        },
+      });
+      return "ok" as const;
     });
+    if (outcome !== "ok") return { ok: false, error: outcome };
 
-    await tx.projectInvitation.create({
-      data: {
-        projectId,
-        email,
-        role: input.role,
-        tokenHash: hashInviteToken(token),
-        expiresAt: new Date(now.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000),
-        acceptedAt: null,
-        invitedBy: userId,
-      },
-    });
-    return "ok" as const;
-  });
-  if (outcome !== "ok") return { ok: false, error: outcome };
-
-  // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
-  revalidatePath(`/projects/${input.slug}/members`);
-  return { ok: true, token };
+    // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
+    revalidatePath(`/projects/${input.slug}/members`);
+    return { ok: true, token };
+  } catch {
+    return { ok: false, error: "unavailable" };
+  }
 }
 
 const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });

@@ -1,3 +1,4 @@
+import { sealToken, openToken } from "@/lib/credentials/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -33,12 +34,15 @@ const at = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
 
 /** `Account` 행 중 이 껍데기가 보는 것만. */
 function row(over: Partial<{ access_token: string; refresh_token: string | null; expires_at: number | null }> = {}) {
-  return {
+  const plain = {
     access_token: "live-token",
     refresh_token: "refresh-1",
     expires_at: Math.floor(at(3600).getTime() / 1000),
     ...over,
   };
+  return { ...plain, providerAccountId: "gh1",
+    access_token: sealToken(plain.access_token, { userId: "u1", providerAccountId: "gh1", field: "access_token" }),
+    refresh_token: sealToken(plain.refresh_token, { userId: "u1", providerAccountId: "gh1", field: "refresh_token" }) };
 }
 
 const prisma = {
@@ -109,9 +113,12 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
     await ensureUserToken(prisma, "u1", NOW);
 
     const [args] = hoisted.updateMany.mock.calls[0] ?? [];
+    for (const [field, expected] of [["access_token", "new-token"], ["refresh_token", "refresh-2"]] as const) {
+      expect(openToken(args?.data[field], { userId: "u1", providerAccountId: "gh1", field })).toBe(expected);
+    }
     expect(args?.data).toEqual({
-      access_token: "new-token",
-      refresh_token: "refresh-2",
+      access_token: expect.stringMatching(/^enc:v1:/),
+      refresh_token: expect.stringMatching(/^enc:v1:/),
       expires_at: Math.floor(refreshed.expiresAt.getTime() / 1000),
     });
   });
@@ -123,7 +130,8 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
     await ensureUserToken(prisma, "u1", NOW);
 
     const [args] = hoisted.updateMany.mock.calls[0] ?? [];
-    expect(args?.where).toMatchObject({ refresh_token: "refresh-1" });
+    const stored = await hoisted.findFirst.mock.results[0]!.value;
+    expect(args?.where).toMatchObject({ userId: "u1", providerAccountId: "gh1", refresh_token: stored.refresh_token });
   });
 
   it("update 데이터에 userId가 없다 — 경합에서 소유권이 이동하지 않는다", async () => {
@@ -235,7 +243,17 @@ describe("ensureUserToken — 갱신 실패를 거부와 장애로 가른다", (
     await ensureUserToken(prisma, "u1", NOW);
 
     expect(error).toHaveBeenCalledTimes(1);
-    expect(error.mock.calls[0]?.[0]).toContain("connection lost");
+    expect(error.mock.calls[0]?.[0]).toContain("unavailable");
+    expect(JSON.stringify(error.mock.calls)).not.toContain("connection lost");
     error.mockRestore();
   });
+});
+it("invalid active encryption key fails before consuming the one-use refresh token", async () => {
+  hoisted.findFirst.mockResolvedValue(row({ expires_at: 0 }));
+  vi.stubEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID", "missing");
+  try {
+    expect(await ensureUserToken(prisma, "u1", NOW)).toEqual({ status: "unavailable" });
+    expect(hoisted.refreshUserToken).not.toHaveBeenCalled();
+    expect(hoisted.updateMany).not.toHaveBeenCalled();
+  } finally { vi.unstubAllEnvs(); }
 });

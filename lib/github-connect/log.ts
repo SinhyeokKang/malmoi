@@ -13,6 +13,6 @@ import { randomUUID } from "node:crypto";
  */
 export function logFailure(stage: string, error: unknown): void {
   const ref = randomUUID().slice(0, 8);
-  const detail = error instanceof Error ? error.message : String(error);
+  const detail = typeof error === "object" && error !== null && "status" in error && typeof error.status === "number" ? `http-${error.status}` : "unavailable";
   console.error(`[github-connect] ${ref} ${stage}: ${detail}`);
 }

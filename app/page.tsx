@@ -1,3 +1,4 @@
+import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
@@ -18,8 +19,8 @@ import { m } from "@/lib/i18n";
  * 형은 2열이다 (design §3.12): 폼 좌 · 장식 우. **장식은 CSS와 인라인 SVG뿐이고 raw 색이 0이다** —
  * `public/`에 생성물 아닌 바이너리를 늘리지 않고, 그러면 다크·해상도 문제가 애초에 없다.
  */
-export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string; sessions?: string }> }) {
+  const { error, sessions } = await searchParams;
   const session = await readSession();
   if (session.status === "ok") redirect("/projects");
   // 세션을 못 읽었으면 `?error=`가 없어도 장애 문구를 보인다 — 로그인 버튼만 보이면 사용자가 헛로그인한다.
@@ -33,6 +34,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
             <h1 className="text-lg font-semibold tracking-tight">{m.common.appName}</h1>
             <p className="text-muted-foreground text-sm">{m.signIn.tagline}</p>
           </div>
+
+          {sessions === "revoked" && <Alert variant="success">{m.account.sessions.complete}</Alert>}
 
           {shown !== undefined && <Alert variant="danger">{signInErrorMessage(shown)}</Alert>}
 
@@ -61,6 +64,7 @@ function ProviderButton({
     <form
       action={async () => {
         "use server";
+        await clearRevocationCookies();
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >

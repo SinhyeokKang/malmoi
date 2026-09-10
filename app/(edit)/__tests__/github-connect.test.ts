@@ -244,7 +244,8 @@ describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가�
     await connectRepository({ slug: "acme" });
 
     expect(error).toHaveBeenCalledTimes(1);
-    expect(error.mock.calls[0]?.[0]).toContain("fetch failed");
+    expect(error.mock.calls[0]?.[0]).toContain("unavailable");
+    expect(JSON.stringify(error.mock.calls)).not.toContain("fetch failed");
     error.mockRestore();
   });
 

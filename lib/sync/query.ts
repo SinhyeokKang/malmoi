@@ -1,3 +1,4 @@
+import { decodeUser } from "@/lib/credentials/records";
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -62,11 +63,11 @@ export async function loadSyncRuns(
       warnings: true,
       prUrl: true,
       // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
-      requester: { select: { name: true, email: true } },
+      requester: { select: { id: true, name: true, email: true, emailLookup: true } },
     },
   });
 
-  const page = rows.slice(0, SYNC_LOG_PAGE_SIZE);
+  const page = rows.slice(0, SYNC_LOG_PAGE_SIZE).map(r => ({ ...r, requester: r.requester === null ? null : decodeUser(r.requester) }));
   const labels = maskedEmailLabels(page.map((r) => r.requester?.email ?? ""));
   const last = page.at(-1);
   return {

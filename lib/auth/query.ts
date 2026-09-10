@@ -1,3 +1,4 @@
+import { decodeUser, decodeInvitation } from "@/lib/credentials/records";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { planProjectAccess, type ProjectAccess } from "./access";
@@ -67,12 +68,13 @@ export type MemberView = {
 
 /** 가입 순서. 목록이 렌더마다 흔들리면 사용자가 행을 근육 기억으로 못 찾는다 (`loadMemberships`와 같은 이유). */
 export async function loadMembers(prisma: PrismaClient, projectId: string): Promise<MemberView[]> {
-  const rows = await prisma.projectMember.findMany({
+  const storedRows = await prisma.projectMember.findMany({
     where: { projectId },
     // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
-    select: { userId: true, role: true, createdAt: true, user: { select: { name: true, email: true } } },
+    select: { userId: true, role: true, createdAt: true, user: { select: { id: true, name: true, email: true, emailLookup: true } } },
     orderBy: { createdAt: "asc" },
   });
+  const rows = storedRows.map(r => ({ ...r, user: r.user === null ? null : decodeUser(r.user) }));
   // 라벨은 **목록 전체를 보고** 만든다 — 행마다 따로 만들면 같은 도메인의 두 주소가 같은 라벨이 된다.
   const labels = maskedEmailLabels(rows.map((r) => r.user?.email ?? ""));
   return rows.map((r, i) => ({
@@ -107,18 +109,22 @@ export async function loadPendingInvitations(
   projectId: string,
   now: Date,
 ): Promise<PendingInvitation[]> {
-  const rows = await prisma.projectInvitation.findMany({
+  const storedRows = await prisma.projectInvitation.findMany({
     where: { projectId, acceptedAt: null, expiresAt: { gt: now } },
     select: {
       id: true,
       email: true,
+      emailLookup: true,
+      projectId: true,
       role: true,
       expiresAt: true,
-      invitedByUser: { select: { name: true } },
+      invitedByUser: { select: { id: true, name: true } },
     },
     // 이메일 오름차순 — `createdAt`을 쓰면 같은 이메일의 회전 이력이 순서를 흔든다.
-    orderBy: { email: "asc" },
+    orderBy: { id: "asc" },
   });
+  const rows = storedRows.map(r => ({ ...decodeInvitation(r), invitedByUser: r.invitedByUser === null ? null : decodeUser(r.invitedByUser) }))
+    .sort((a, b) => a.email < b.email ? -1 : a.email > b.email ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const labels = maskedEmailLabels(rows.map((r) => r.email));
   return rows.map((r, i) => ({
     id: r.id,

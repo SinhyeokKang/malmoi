@@ -1,3 +1,4 @@
+import { openToken, sealToken, validateTokenWriteKey } from "@/lib/credentials/storage";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { httpStatus } from "./health";
@@ -31,6 +32,7 @@ const PROVIDER = "github-app";
 
 /** 이 껍데기가 보는 컬럼만. */
 type AccountRow = {
+  providerAccountId: string;
   access_token: string | null;
   refresh_token: string | null;
   expires_at: number | null;
@@ -50,14 +52,15 @@ export async function ensureUserToken(
       now,
       hasRefreshToken: row.refresh_token !== null,
     });
-    if (plan === "use") return usable(row);
+    if (plan === "use") return usable(row, userId);
     // `planTokenUse`가 refresh 토큰 없음을 이미 걸렀다 — 여기 오면 갱신 수단이 없다.
     if (plan === "reauthorize" || row.refresh_token === null) return { status: "reauthorize" };
 
+    validateTokenWriteKey();
     const previous = row.refresh_token;
     let fresh;
     try {
-      fresh = await refreshUserToken(previous);
+      fresh = await refreshUserToken(openToken(previous, { userId, providerAccountId: row.providerAccountId, field: "refresh_token" })!);
     } catch (error) {
       // 갱신이 실패해도 **한 번 다시 읽는다** — 다른 요청이 이미 회전시켜 놓았을 수 있고,
       // 그때 사용자에게 재인가를 시키면 멀쩡한 연결을 지우게 만든다.
@@ -71,10 +74,10 @@ export async function ensureUserToken(
 
     const written = await prisma.account.updateMany({
       // ⚠️ `userId`는 `where`에만 있고 `data`에는 없다 — 넣으면 경합에서 소유권이 이동한다.
-      where: { userId, provider: PROVIDER, refresh_token: previous },
+      where: { userId, provider: PROVIDER, providerAccountId: row.providerAccountId, refresh_token: previous },
       data: {
-        access_token: fresh.accessToken,
-        refresh_token: fresh.refreshToken,
+        access_token: sealToken(fresh.accessToken, { userId, providerAccountId: row.providerAccountId, field: "access_token" }),
+        refresh_token: sealToken(fresh.refreshToken, { userId, providerAccountId: row.providerAccountId, field: "refresh_token" }),
         expires_at: toEpoch(fresh.expiresAt),
       },
     });
@@ -98,7 +101,7 @@ export async function ensureUserToken(
 async function readAccount(prisma: PrismaClient, userId: string): Promise<AccountRow | null> {
   return prisma.account.findFirst({
     where: { userId, provider: PROVIDER },
-    select: { access_token: true, refresh_token: true, expires_at: true },
+    select: { providerAccountId: true, access_token: true, refresh_token: true, expires_at: true },
   });
 }
 
@@ -116,13 +119,13 @@ async function afterRace(
     hasRefreshToken: row.refresh_token !== null,
   });
   // 여전히 못 쓰면 갱신을 되풀이하지 않는다 — 호출부가 사유를 정한다.
-  return plan === "use" ? usable(row) : null;
+  return plan === "use" ? usable(row, userId) : null;
 }
 
-function usable(row: AccountRow): UserToken {
+function usable(row: AccountRow, userId: string): UserToken {
   return row.access_token === null
     ? { status: "reauthorize" }
-    : { status: "ok", accessToken: row.access_token };
+    : { status: "ok", accessToken: openToken(row.access_token, { userId, providerAccountId: row.providerAccountId, field: "access_token" })! };
 }
 
 /** `Account.expires_at`은 어댑터 계약대로 **초** 단위 epoch다. */

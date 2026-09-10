@@ -48,12 +48,12 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
   });
 
   it("signIn이 기존 사용자의 이메일을 현재 검증 주소로 맞춘다 — 판정은 planEmailRefresh다", () => {
-    expect(AUTH_TS).toContain("planEmailRefresh(");
+    expect(AUTH_TS).toContain("refreshVerifiedEmail(");
     expect(AUTH_TS).toContain("freshVerifiedEmail(");
   });
 
   it("어댑터가 배선돼 있다", () => {
-    expect(AUTH_TS).toContain("PrismaAdapter");
+    expect(AUTH_TS).toContain("credentialAdapter(");
   });
 
   it("GitHub과 Google 둘 다 등록돼 있다 — Google 없이는 spec 완료 조건 3을 검증할 수 없다", () => {

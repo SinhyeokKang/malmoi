@@ -1,13 +1,13 @@
 # 자격증명·회원 정보 저장 보호
 
-> 상태: feature-review 반영 · 구현 재개 전 | 2026-09-10
-> 연결: [기술 설계](./design.md) · [태스크](./tasks.md) · [보안 감사 2](../sec-audit-2/findings.md)
+> 상태: 로컬 구현·검증 완료 · 실물 검증·운영 전환 대기 | 2026-09-10
+> 연결: [기술 설계](./design.md) · [태스크](./tasks.md) · [보안 감사 2](../sec-audit-2/findings.md) · [운영 절차](./operations.md)
 
 ## 1. 사용자와 문제
 
 개발자는 DB 유출 시 GitHub 연결과 로그인까지 탈취되는 피해를 줄여야 한다. 번역 편집자는 재로그인 후 기존 프로젝트·권한·번역을 그대로 사용해야 한다.
 
-현재 `Session.sessionToken`은 브라우저 bearer 원문이며, GitHub App 사용자 access/refresh 토큰과 기존 로그인 Account의 잔존 토큰이 평문이다. sec-audit-2(`dac4c97`, origin/dev 반영)의 safePrismaAdapter는 신규 로그인 OAuth 토큰을 이미 저장하지 않는다. 로그인용 OAuth 토큰은 현재 앱 기능에서 재사용하지 않는다. GitHub App 사용자 토큰은 설치 조회·갱신에 원문이 필요하다. 모두 같은 방식으로 암호화할 이유는 없다.
+sec-audit-2 기준의 운영 저장 형태에서 `Session.sessionToken`은 브라우저 bearer 원문이며, GitHub App 사용자 access/refresh 토큰과 기존 로그인 Account의 잔존 토큰이 평문이다. sec-audit-2(`dac4c97`, origin/dev 반영)의 safePrismaAdapter는 신규 로그인 OAuth 토큰을 이미 저장하지 않는다. 로그인용 OAuth 토큰은 현재 앱 기능에서 재사용하지 않는다. GitHub App 사용자 토큰은 설치 조회·갱신에 원문이 필요하다. 모두 같은 방식으로 암호화할 이유는 없다.
 
 ## 2. 범위와 결정
 

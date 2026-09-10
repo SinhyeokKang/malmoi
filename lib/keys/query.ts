@@ -1,3 +1,4 @@
+import { decodeUser } from "@/lib/credentials/records";
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -126,9 +127,9 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
   if (ids.length === 0) return new Map();
   const users = await prisma.user.findMany({
     where: { id: { in: ids } },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, emailLookup: true },
   });
-  return new Map(users.map((u) => [u.id, u]));
+  return new Map(users.map((u) => [u.id, decodeUser(u)]));
 }
 
 /**

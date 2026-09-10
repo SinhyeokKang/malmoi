@@ -1,3 +1,5 @@
+import { decodeUser } from "@/lib/credentials/records";
+import { SessionRevocation } from "@/components/session-revocation";
 import { signOut } from "@/auth";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
@@ -23,7 +25,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **프로필은 읽기 전용이다.** 이름·이메일은 provider가 소유하고 재로그인마다 `planEmailRefresh`가
  * 갱신한다 — 고칠 수 있게 하면 초대 대조(SAAS §5.6)가 검증되지 않은 주소 위에 선다.
  */
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ e?: string; sessionRevocation?: string }> }) {
   const { userId } = await requireUser();
 
   /**
@@ -32,7 +34,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * (POSTMORTEM 2026-09-06). **판정 함수로 거른다** — 주소창 값을 캐스팅하면 프로토타입 키가 문자열
    * 자리에 함수를 넣어 화면이 죽는다 (POSTMORTEM 2026-09-08).
    */
-  const { e } = await searchParams;
+  const { e, sessionRevocation } = await searchParams;
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
 
   const prisma = getPrisma();
@@ -43,10 +45,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **두 블록이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [profile, account] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+  const [storedProfile, account] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true } }),
     loadAccountView(prisma, userId),
   ]);
+
+  const profile = storedProfile === null ? null : decodeUser(storedProfile);
 
   // Server Action을 클라이언트 컴포넌트가 아니라 폼에 직접 넘긴다 — 셸의 로그아웃과 같은 형이다.
   async function signOutAction() {
@@ -96,6 +100,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               <DisconnectGithubButton />
             </div>
           )}
+        </Card>
+
+        <Card title={m.account.sessions.title} description={m.account.sessions.description}>
+          <SessionRevocation outcome={sessionRevocation} />
         </Card>
 
         <Card title={m.account.signOut.title} description={m.account.signOut.description}>

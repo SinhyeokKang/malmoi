@@ -1,3 +1,5 @@
+import { encodeUserFields, encodeInvitationEmail, decodeInvitation } from "@/lib/credentials/records";
+import { lookupEmail } from "@/lib/credentials/storage";
 import { vi } from "vitest";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +14,12 @@ import type { Role } from "@/lib/auth/permission";
  *
  * 저장과 조회가 **같은 상태**를 본다 — 홉 사이에서 값이 사라지면 red다.
  */
+
+// Seeds remain readable for authorization scenarios; delegate boundaries use encrypted rows.
+function storedUser(user: UserSeed) {
+  return { ...user, ...encodeUserFields(user.id, { name: user.name ?? null, ...(user.email === null ? {} : { email: user.email }) }) };
+}
+function storedInvitation(row: InvitationSeed) { return { ...row, ...encodeInvitationEmail(row.id, row.projectId, row.email) }; }
 
 export type ProjectSeed = {
   id: string;
@@ -284,7 +292,7 @@ export function createHarness(seed: Seed = {}) {
         // 시드가 사용자를 안 준 채 멤버를 만들 수 있고, 그때 가짜가 빈 객체를 내면 호출부의 null 처리가 검증되지 않는다.
         if (args.select.user !== undefined) {
           const user = users.find((u) => u.id === m.userId);
-          projected["user"] = user === undefined ? null : { name: user.name ?? null, email: user.email };
+          projected["user"] = user === undefined ? null : storedUser(user);
         }
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);
@@ -359,25 +367,22 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
-  const findInvitation = vi.fn(
-    async (args: { where: { tokenHash?: string; id?: string } }) =>
-      invitations.find(
-        (i) =>
-          (args.where.tokenHash !== undefined && i.tokenHash === args.where.tokenHash) ||
-          (args.where.id !== undefined && i.id === args.where.id),
-      ) ?? null,
-  );
-
-  const createInvitationRow = vi.fn(async (args: { data: Omit<InvitationSeed, "id"> }) => {
-    const row: InvitationSeed = { id: `inv-${invitations.length + 1}`, ...args.data };
+  const findInvitation = vi.fn(async (args: { where: { tokenHash?: string; id?: string } }) => {
+    const row = invitations.find(i =>
+      (args.where.tokenHash !== undefined && i.tokenHash === args.where.tokenHash) ||
+      (args.where.id !== undefined && i.id === args.where.id));
+    return row ? storedInvitation(row) : null;
+  });
+  const createInvitationRow = vi.fn(async (args: { data: InvitationSeed & { emailLookup: string } }) => {
+    const row = decodeInvitation(args.data);
     invitations.push(row);
-    return row;
+    return args.data;
   });
 
   /** 단일 사용의 근거다 — 두 번째 수락은 `acceptedAt: null` 조건에 걸려 count 0이 된다. */
   const updateManyInvitations = vi.fn(
     async (args: {
-      where: { id?: string; projectId?: string; email?: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date } };
+      where: { id?: string; projectId?: string; email?: string; emailLookup?: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date } };
       data: { acceptedAt?: Date; expiresAt?: Date };
     }) => {
       const matched = invitations.filter(
@@ -385,6 +390,7 @@ export function createHarness(seed: Seed = {}) {
           (args.where.id === undefined || i.id === args.where.id) &&
           (args.where.projectId === undefined || i.projectId === args.where.projectId) &&
           (args.where.email === undefined || i.email === args.where.email) &&
+          (args.where.emailLookup === undefined || lookupEmail(i.email, i.projectId) === args.where.emailLookup) &&
           (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
           (args.where.expiresAt === undefined || (i.expiresAt.getTime() > args.where.expiresAt.gt.getTime() && (args.where.expiresAt.equals === undefined || i.expiresAt.getTime() === args.where.expiresAt.equals.getTime()))),
       );
@@ -541,14 +547,11 @@ export function createHarness(seed: Seed = {}) {
   /** `SELECT … FOR UPDATE` 같은 잠금 SQL. 메모리 DB는 잠글 것이 없다 — 호출 인자만 남긴다. */
   const executeRaw = vi.fn(async (_strings: TemplateStringsArray, ..._values: unknown[]) => 0);
 
-  const findUser = vi.fn(
-    async (args: { where: { id?: string; email?: string } }) =>
-      users.find(
-        (u) =>
-          (args.where.id !== undefined && u.id === args.where.id) ||
-          (args.where.email !== undefined && u.email === args.where.email),
-      ) ?? null,
-  );
+  const findUser = vi.fn(async (args: { where: { id?: string; emailLookup?: string } }) => {
+    const row = users.find(u => (args.where.id !== undefined && u.id === args.where.id) ||
+      (args.where.emailLookup !== undefined && u.email !== null && lookupEmail(u.email) === args.where.emailLookup));
+    return row ? storedUser(row) : null;
+  });
 
   /**
    * 트랜잭션 — **콜백이 던지면 되돌린다.** 실 DB는 롤백하는데 가짜가 안 하면 "판정 뒤 되돌린다"는
@@ -602,7 +605,7 @@ export function createHarness(seed: Seed = {}) {
           ? rows
           : rows.slice().sort((a, b) => (args.orderBy?.email === "desc" ? -1 : 1) * a.email.localeCompare(b.email));
       // `invitedByUser` 관계는 요청했을 때만 붙인다 — 아무 때나 붙이면 가짜가 실제보다 관대해진다.
-      return sorted.map((i) => ({ ...i, invitedByUser: users.find((u) => u.id === i.invitedBy) ?? null }));
+      return sorted.map((i) => ({ ...storedInvitation(i), invitedByUser: (() => { const u = users.find(u => u.id === i.invitedBy); return u ? storedUser(u) : null; })() }));
     },
   );
 
