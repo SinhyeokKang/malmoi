@@ -31,9 +31,18 @@ export async function requireUser(): Promise<{ userId: string }> {
 export async function requireProjectAccess(input: {
   slug: string;
   permission: Permission;
-}): Promise<{ projectId: string; role: "OWNER" | "EDITOR"; userId: string }> {
+}): Promise<{ projectId: string; role: "OWNER" | "EDITOR"; userId: string; archived: boolean }> {
   const { userId } = await requireUser();
   const access = await getProjectAccess(getPrisma(), { userId, ...input });
+  /**
+   * ⚠️ **보관은 redirect하지 않는다** (7단계 — sync-runs design §4). 되돌릴 수 있는 상태이고
+   * OWNER가 갈 곳은 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. 페이지가
+   * `ProjectArchived`를 그리고, **그리는지는 `app/__tests__/screens.test.ts`가 소스로 센다** —
+   * 값으로 돌려주는 이상 호출부가 빠뜨릴 수 있고 그 실수는 화면에 안 보인다(정상 렌더가 된다).
+   */
+  if (access.status === "archived") {
+    return { projectId: access.projectId, role: access.role, userId, archived: true };
+  }
   // not-found와 forbidden을 같은 곳으로 보낸다 — 목적지 차이로 존재 여부를 알려주지 않는다. 사유는 `?e=`로
   // 실어 목록 화면이 한 줄 보인다 — 버리면 사용자는 왜 목록으로 왔는지 모른다 (code-review 2026-09-06 🟡12).
   // ⚠️ **문구는 일부러 다르다** (2026-09-08 정정 — 이 주석이 반대를 말하고 있었다). 존재를 가리는 것은
@@ -42,5 +51,5 @@ export async function requireProjectAccess(input: {
   if (access.status !== "ok") redirect(`/projects?e=${access.status}`);
   // `userId`도 돌려준다 — 호출부가 세션을 다시 읽으면 DB 왕복이 하나 늘고, 무엇보다 **자기 행이
   // 아닌 것을 조회하는 실수**가 열린다 (설정 화면이 `findFirst({ provider })`로 남의 계정을 집을 뻔했다).
-  return { projectId: access.projectId, role: access.role, userId };
+  return { projectId: access.projectId, role: access.role, userId, archived: false };
 }

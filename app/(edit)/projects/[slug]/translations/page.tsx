@@ -2,6 +2,7 @@ import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
@@ -62,7 +63,8 @@ export default async function TranslationsPage({
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
   // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
-  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
   // ⚠️ **인가가 준 id로 읽는다 — URL의 slug로 다시 찾지 않는다.** 클라이언트가 준 식별자를 두 번

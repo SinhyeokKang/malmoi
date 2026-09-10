@@ -2,6 +2,7 @@ import { ExternalLink, Languages } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -42,7 +43,9 @@ const ACTIVITY_LIMIT = 8;
 
 export default async function ProjectHomePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  // 보관된 프로젝트는 여기서 끝난다 — 판정은 인가가 했고 화면은 그 갈래를 그리기만 한다 (7단계).
+  if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({

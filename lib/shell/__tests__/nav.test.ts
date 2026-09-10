@@ -13,8 +13,8 @@ import { activeProject, navZones, projectSections, type NavProject } from "../na
  */
 
 const memberships: NavProject[] = [
-  { slug: "acme", name: "Acme", role: "OWNER" },
-  { slug: "beta", name: "Beta", role: "EDITOR" },
+  { slug: "acme", name: "Acme", role: "OWNER", archived: false },
+  { slug: "beta", name: "Beta", role: "EDITOR", archived: false },
 ];
 
 describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
@@ -153,7 +153,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
  * 정보구조이고, 뒤집으면 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.
  */
 describe("navZones — 사용자 축과 프로젝트 축 (SAAS §7.7)", () => {
-  const project = (role: Role): NavProject => ({ slug: "acme", name: "Acme", role });
+  const project = (role: Role): NavProject => ({ slug: "acme", name: "Acme", role, archived: false });
 
   it("프로젝트 컨텍스트가 있으면 구역이 둘이고 사용자 축이 먼저다", () => {
     expect(navZones(project("OWNER")).map((z) => z.key)).toEqual(["work", "project"]);
@@ -168,7 +168,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (SAAS §7.7)", () => {
   });
 
   it("프로젝트 구역의 라벨은 프로젝트 이름이다 — 어느 스코프인지 이름으로 말한다", () => {
-    expect(navZones({ slug: "beta", name: "Beta", role: "EDITOR" })[1]?.label).toBe("Beta");
+    expect(navZones({ slug: "beta", name: "Beta", role: "EDITOR", archived: false })[1]?.label).toBe("Beta");
   });
 
   it("프로젝트 구역은 `projectSections`를 그대로 든다 — 권한 판정이 두 벌이 되지 않는다", () => {

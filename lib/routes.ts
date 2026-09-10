@@ -56,6 +56,12 @@ export const routes = {
   project: (slug: string): string => `/projects/${slug}`,
   locales: (slug: string): string => `/projects/${slug}/locales`,
   members: (slug: string): string => `/projects/${slug}/members`,
+  /**
+   * sync 이력 (7단계). **커서는 서버가 만든 값이고 클라이언트 상태가 아니다** — "Older"가 링크
+   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (design 결정 14).
+   */
+  logs: (slug: string, query: { cursor?: string } = {}): string =>
+    withQuery(`/projects/${slug}/logs`, query),
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,
 } as const;

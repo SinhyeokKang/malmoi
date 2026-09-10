@@ -71,9 +71,14 @@ describe("logs — 시각과 페이지네이션", () => {
     expect(src).not.toMatch(/["'`]\/projects\/\$\{[^}]+\}\/logs/);
   });
 
-  /** ⚠️ 한 페이지가 상수다 — 화면이 20을 직접 적으면 판정과 갈린다. */
-  it("페이지 크기가 `SYNC_LOG_PAGE_SIZE`다", () => {
-    expect(src).toContain("SYNC_LOG_PAGE_SIZE");
+  /**
+   * ⚠️ **한 페이지 크기를 화면이 모른다.** 자르는 것은 조회이고(`loadSyncRuns`), 화면이 숫자를
+   * 다시 적으면 둘이 갈려 "Older"가 있는데 다음 페이지가 비거나 그 반대가 된다.
+   */
+  it("페이지 크기는 조회가 `SYNC_LOG_PAGE_SIZE`로 든다 — 화면엔 그 숫자가 없다", () => {
+    expect(read("lib/sync/query.ts")).toContain("SYNC_LOG_PAGE_SIZE");
+    expect(src).not.toMatch(/\btake\b/);
+    expect(src).not.toContain("SYNC_LOG_PAGE_SIZE");
   });
 });
 
@@ -83,9 +88,18 @@ describe("logs — 사유 사전", () => {
   /**
    * ⚠️ **갈래 누락을 컴파일 타임에 잡는다** — `lib/i18n/adapter-errors.ts` 선례다. 코드가 늘 때
    * 문장이 안 늘면 그 행의 사유 칸이 비고, 그것을 볼 사람은 실패를 겪은 사용자뿐이다.
+   *
+   * ⚠️ **`satisfies`는 소비자가 건다** — `messages/en.tsx`에서 union을 import하면 그 파일이 잎이
+   * 아니게 되고, 그 그래프가 곧 클라이언트 번들이다 (POSTMORTEM 2026-09-07의 7.2MB).
    */
-  it("`logs.reasons`가 `SyncErrorCode | \"fallback\"` 전수를 든다", () => {
-    expect(dict).toMatch(/satisfies\s+Record<\s*SyncErrorCode\s*\|\s*"fallback"\s*,\s*string\s*>/);
+  it("`logs.reasons`의 전수 검사를 소비자가 건다", () => {
+    expect(read("lib/sync/view.ts")).toMatch(
+      /satisfies\s+Record<\s*SyncErrorCode\s*\|\s*"fallback"\s*,\s*string\s*>/,
+    );
+  });
+
+  it("사전이 잎으로 남는다 — `SyncErrorCode`를 import하지 않는다", () => {
+    expect(dict).not.toContain("SyncErrorCode");
   });
 
   it("사유 문장에 git 어휘를 쓰지 않는다 — 읽는 사람은 번역 편집자다", () => {

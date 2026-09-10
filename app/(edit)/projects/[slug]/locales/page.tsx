@@ -1,6 +1,7 @@
 import { Globe } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { ProjectArchived } from "@/components/project-archived";
 import { BaseLocaleForm } from "@/components/locales/base-locale-form";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { Alert } from "@/components/ui/alert";
@@ -39,7 +40,8 @@ import { routes } from "@/lib/routes";
  */
 export default async function LocalesPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { projectId, role } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
   const [project, counts] = await Promise.all([

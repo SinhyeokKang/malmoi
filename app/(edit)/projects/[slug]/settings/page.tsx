@@ -11,7 +11,10 @@ import { RepositoryForm } from "@/components/settings/repository-form";
 import { Alert } from "@/components/ui/alert";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card } from "@/components/ui/card";
+import { ArchiveCard } from "@/components/settings/archive-card";
 import { requireProjectAccess } from "@/lib/auth/session";
+import { createGitClient } from "@/lib/github";
+import { syncBranchFor } from "@/lib/pull/trigger";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { probeRepo } from "@/lib/github";
@@ -74,6 +77,9 @@ export default async function SettingsPage({
       baseLocale: true,
       // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       declaredBaseLocale: true,
+      // 보관 카드 (7단계). ⚠️ **이 화면만 보관된 프로젝트를 연다** — `project:settings`가 그 갈래를
+      // 통과하는 유일한 permission이고, 그것이 되돌리는 길이다.
+      archivedAt: true,
       /**
        * ⚠️ **로케일 목록을 읽지 않는다.** 6b-3이 여기서 셀렉트 항목으로 썼지만 6b-5가 그 필드를
        * `/projects/:slug/locales`로 옮겼고, 남겨 두면 **아무 데도 안 쓰이는 행을 매 렌더에 읽는다.**
@@ -86,7 +92,11 @@ export default async function SettingsPage({
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
 
   // ⚠️ **계정 상태는 `/account`와 같은 함수가 낸다** (6b-4) — 사본을 두면 두 화면이 갈린다.
-  const [health, account] = await Promise.all([loadHealth(project), loadAccountView(prisma, userId)]);
+  const [health, account, openPrUrl] = await Promise.all([
+    loadHealth(project),
+    loadAccountView(prisma, userId),
+    loadOpenPrUrl(slug, project),
+  ]);
   const readiness = planProjectReadiness(project);
 
   return (
@@ -160,6 +170,19 @@ export default async function SettingsPage({
           ) : (
             <GithubAccount slug={slug} login={account.login} />
           )}
+        </Card>
+
+        {/*
+          보관 (7단계 — design §6.2). **맨 아래이고 readiness 분기 밖의 형제다** — 첫 적재가 실패한
+          프로젝트도 멈출 수 있어야 하고, 분기 안에 두면 그 상태에서 카드가 사라진다.
+        */}
+        <Card title={m.archive.title} description={m.archive.description}>
+          <ArchiveCard
+            slug={slug}
+            name={project.name}
+            archived={project.archivedAt !== null}
+            openPrUrl={openPrUrl}
+          />
         </Card>
       </main>
     </>
@@ -284,4 +307,28 @@ function workflowYaml(
     return renderWorkflowYaml({ slug, baseBranch: project.baseBranch, baseLocale });
   }
   return renderWorkflowYaml({ slug, baseBranch: project.baseBranch, adapter: "ts-dict", baseLocale });
+}
+
+
+/**
+ * 열린 sync PR 하나. **보관 확인 Dialog가 그것을 링크로 싣는다** — 보관은 PR을 닫지 않으므로
+ * (SAAS §7.9) 사람이 알고 판단해야 한다.
+ *
+ * ⚠️ **실패를 `null`("없다")로 접지 않는다** — `undefined`가 "확인하지 못했다"이고 화면이 그것을
+ * 다른 문장으로 말한다 (POSTMORTEM 2026-09-03: 실패한 PR 조회를 "PR 없음"으로 읽어 경고가 사라졌다).
+ *
+ * ⚠️ **호출을 하나만 한다.** 설정 화면은 이미 App 토큰으로 건강성을 묻고 있고, 여기서 목록을 훑거나
+ * 재시도하면 그 화면 하나가 GitHub 왕복 여럿이 된다.
+ */
+async function loadOpenPrUrl(
+  slug: string,
+  project: { repoOwner: string; repoName: string; baseBranch: string; installationId: string | null },
+): Promise<string | null | undefined> {
+  if (project.installationId === null) return null;
+  try {
+    const client = await createGitClient(project.repoOwner, project.repoName, project.installationId);
+    return await client.findOpenPrUrl(`${project.repoOwner}:${syncBranchFor(slug)}`, project.baseBranch);
+  } catch {
+    return undefined;
+  }
 }

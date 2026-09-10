@@ -88,6 +88,11 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                     {/* slug는 주소라 mono다 — `text-xs`를 겹치지 않는다 (DESIGN §4.1·§4.2) */}
                     <span className="text-mono text-muted-foreground">{membership.slug}</span>
                     <span className="ml-auto flex items-baseline gap-2">
+                      {/*
+                        ⚠️ **보관을 목록에서 숨기지 않는다** (7단계) — 숨기면 OWNER가 되돌릴 링크에
+                        도달할 길이 없어지고, 그것이 보관을 편도로 만든다. 배지로 남는다.
+                      */}
+                      {membership.archivedAt !== null && <Badge>{m.projects.archived}</Badge>}
                       {/* 상태는 오류가 아니라 진행 중이다 — raw 색을 늘리지 않는다 (DESIGN §6.2) */}
                       {status !== null && <Badge>{status}</Badge>}
                       <span className="text-muted-foreground text-xs">{m.projects.role[membership.role]}</span>
