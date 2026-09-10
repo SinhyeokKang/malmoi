@@ -72,7 +72,7 @@
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다** (`vercel.json`의 `regions: ["hnd1"]`, 2026-09-09) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
-⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`·`tw-animate-css`는 사용 0으로 확인돼 2026-09-08에 제거했다** — 피드백은 셀 인라인(저장)과 `Alert`(Publish)이고 토스트는 그것을 둘로 가른다. `components/__tests__/client-graph.test.ts`는 **허용 목록**이고(금지 목록이 아니다) `sonner`는 그 판정에 쓰이지 않는 **메타 테스트의 반례**로만 등장한다 — 다시 들이려면 `ALLOWED` 추가와 그 반례 제거가 **함께** 필요하다.
+⚠️ **`lucide-react`는 셸 전 항목이 든다** (DESIGN §6.8 — 접힌 레일에서 아이콘이 유일한 라벨이다). Radix는 `components/ui/`의 프리미티브 셋을 통해서만 쓰인다. ⚠️ **`sonner`가 2026-09-10에 돌아왔다** (8-1b). 2026-09-08에 "사용 0"으로 제거하면서 *"피드백은 셀 인라인과 `Alert`이고 토스트는 그것을 둘로 가른다"*를 근거로 적었는데, **8단계가 토스트로 통일하기로 뒤집었다**(사용자, 두 번 재확인). 그 결정이 요구한 **경계**는 `docs/features/ui-rework/README.md` 규약 8과 DESIGN §6.25에 있다 — 토스트는 **전역 결과를 내는 이벤트**만이고, 대상이 있는 판정·지속되는 조건·페이지 콘텐츠 자체는 인라인이다. ⚠️ **`client-graph.test.ts`는 허용 목록이라 편집이 셋이었다**(`ALLOWED` 추가 · 메타 반례에서 제거 · 근거 주석). `tw-animate-css`는 그대로 없다.
 
 **린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 (`next-themes`·`@tanstack/*` 미설치).
 
@@ -500,6 +500,13 @@ components/
                         기준 로케일을 `components/locales/`로 옮겼다. 브랜치 형식은 보내기 전에
                         `isValidBranchName`으로도 보고 **방어는 Action**이다.
                         ⚠️ **이 폼이 보내는 값에 언어가 없다** — 그것이 malmoi#20의 구조를 없앤다)
+  signin/               셸 **밖** 화면 둘의 조각 (8-1b) — auth-layout(2열 골격: **바깥 padding 8 ·
+                        패널 간 gap 8 · 각 패널 radius+연한 border+shadow**. 시안 전체가 이 규칙이고
+                        번역 화면에서도 검산했다) / auth-toast(`?error=`·`?sessions=` → 토스트.
+                        ⚠️ **아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의
+                        자리가 된다) / dot-field(Canvas 2D — ⚠️ **커서가 오기 전엔 rAF를 안 돌린다**,
+                        `prefers-reduced-motion`이면 1회 렌더) / brand-icons(GitHub·Google 인라인 SVG —
+                        ⚠️ `lucide-react`에 브랜드 글리프가 없고 Google 4색은 DESIGN §6.2의 예외다)
   shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
                         `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
                         문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
@@ -599,6 +606,9 @@ lib/
                         pathTemplate이 리포 **경로 조각**이라 값이 아니라 경로로 검증한다 (sec-audit 발견 2).
                         push 스키마와 pull 판정이 **두 층으로** 같은 함수를 쓴다 — 경계는 새 값을,
                         resolveLocalePaths는 경계가 서기 전에 저장된 행을 막는다
+  signin/dot-field.ts   ⚠️ **잎, import 0** (8-1b) — dotGrid(경계 포함 · gap 0이면 빈 배열: `ResizeObserver`
+                        콜백에서 불려 무한 루프 한 번이 탭을 얼린다) · dotScale(거리→값 선형 보간.
+                        **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`signIn()`이 쿼리를 받는다**
                         (8-1a) — `withQuery`를 지나야 `entry-points.test.ts`의 "쿼리 수신자" 검사에
                         걸린다(문자열 연결은 그 검사를 회피한다). `privacy()`·`docs()`도 8-1a다. `logs(slug, {cursor})`는 7단계가

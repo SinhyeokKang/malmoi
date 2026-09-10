@@ -30,7 +30,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
         ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
       */}
-      <main className="border-border/60 relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
+      {/*
+        ⚠️ **시안의 border는 `#f5f6f7`이고 바깥 배경과 거의 같은 톤이다** —
+        패널을 배경에서 떼어내는 것은 **흰색 대비와 shadow**이고 border는 가장자리를 정리할
+        뿐이다. `--border`(`#e2e8f0`)는 한 단계 진해 선이 도드라진다. slate-100(`#f1f5f9`)이
+        팔레트에서 시안에 가장 가깝다 — 투명도로 흉내내면 배경색이 바뀔 때 실효값이 따라 변한다.
+      */}
+      <main className="border-border relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
         {children}
         <Footer />
       </main>
@@ -85,7 +91,7 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  */
 function Decoration() {
   return (
-    <div className="from-auth-hero-from to-auth-hero-to border-border/60 relative flex flex-col items-center justify-between overflow-hidden rounded-xl border bg-gradient-to-br px-20 py-16 shadow-sm">
+    <div className="from-auth-hero-from to-auth-hero-to border-border relative flex flex-col items-center justify-between overflow-hidden rounded-xl border bg-gradient-to-br px-20 py-16 shadow-sm">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-semibold tracking-tight">{m.signIn.hero.top}</p>
