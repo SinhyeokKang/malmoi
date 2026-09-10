@@ -1007,3 +1007,25 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 회수 목적을 수명이 짧은 nonce 쿠키와 삭제 가능한 DB 요청에서만 찾았다. 그 표식이 없으면 일반 로그인이라고 판단했지만 OAuth 증거는 아직 유효했다. 실패 목적지로 리다이렉트하는 것은 이미 발생한 가입/이메일 갱신을 되돌리지 못한다.
 - **그물**: 일반 nonce 유실 테스트는 DB 요청이 남아 있어 임시 state 조회 보강을 통과시켰다. 요청 교체/소비 후에도 증거가 남는 순서를 추가해 red를 확인했다. 최종 구현은 Auth.js state 쿠키 이름과 암호화 salt를 일반 로그인과 분리한다. state를 제거하거나 일반 이름으로 바꿔도 로그인 쓰기 전에 검증이 실패한다. 정상 확인은 signIn의 문자열 반환으로 handleLoginOrRegister 전에 끝낸다.
 - **재발 방지**: `rg -n 'signIn\(|withRevocation|malmoi-revocation-state' auth.ts app lib/session-revocation --glob '!**/__tests__/**'`로 OAuth 시작 세 곳과 callback의 목적 수명을 대조한다. 일반 로그인 둘(`/`, `/invite/[token]`)은 공통 `clearRevocationCookies`를 먼저 호출한다. 공급자 화면에서 이탈 후 새 로그인/초대 복귀, 확인 요청 교체/소비, nonce 유실, state 쿠키 이름 변경을 실제 Auth.js 회귀에 유지한다. 이번 범위 밖 동일 목적 전환 경로는 발견하지 않았다.
+
+---
+
+### 2026-09-10 — `pnpm test`가 2553 green인데 단언 하나가 거짓이었다 — 그 스위트는 애초에 안 돌아간다
+
+- **영역**: `vitest.config.ts`의 `include` · `lib/credentials/__tests__/postgres.integration.ts` · CLAUDE.md 명령어 표의 `test:credentials:postgres` 줄. **8-1a 라우트 이관 중(`/` → `/signin`) 드러났고 dev에도 나가지 않았다.**
+- **증상**: `?sessions=revoked`의 목적지를 옮기면서 그 값을 단언하는 자리 여섯 중 다섯이 red가 됐고 고쳤다. **그 상태에서 `pnpm test`가 2553 green이었다.** 손으로 `pnpm test:credentials:postgres`를 돌리자 **2건 red** — `postgres.integration.ts:428`이 아직 `"http://localhost/?sessions=revoked"`를 단언하고 있었다.
+- **근본 원인**: **가려진 자리가 둘 겹쳤다.**
+  - **① `include` 글롭이 확장자로 가른다.** `vitest.config.ts`는 `**/__tests__/**/*.test.{ts,tsx}`이고 그 파일은 `*.integration.ts`다 — **같은 `__tests__` 디렉터리 안에 있으면서** 패턴에서 빠진다. 격리 PostgreSQL 17이 필요해 일부러 갈랐고(`vitest.credentials.config.ts`), 그 사실은 CLAUDE.md 명령어 표의 마지막 줄에만 있다.
+  - **② 손으로 돌릴 트리거가 경로 기반인데, 단언은 그 경로 밖의 값을 문다.** 규칙은 *"`lib/credentials/**`를 건드렸으면 손으로 돌린다"*인데 이 배송이 건드린 것은 `lib/session-revocation/`·`auth.ts`·`lib/routes.ts`다. 그리고 **그 파일이 단언하는 것은 `lib/credentials/`의 동작이 아니다** — `auth.ts`의 callback이 만드는 **redirect URL**이다. 소유 디렉터리와 단언 대상이 갈린 순간 경로 트리거는 구조적으로 못 덮는다.
+  - 결과적으로 **프로덕션 앞의 자동 게이트 둘 다 이 스위트를 안 본다**: `/push` 1단계(typecheck+test+build)도, PR CI의 `verify` job도.
+- **그물**:
+  - 잡은 것: **`/feature-review`의 QA Lead가 코드를 쓰기 전에 찾았다.** 그 파일을 grep해 세 자리를 세고 *"이 배송은 그 트리거를 밟지 않는다"*까지 판정해, `tasks.md` T3의 검증 항목에 `pnpm test:credentials:postgres`가 **명시로** 들어갔다. 구현이 그것을 돌려 red를 봤다.
+  - 놓친 것: `pnpm test` 2553건 · `pnpm typecheck` · `/push` 게이트 · PR CI — **전부 원리적으로 못 본다.** 리뷰가 없었으면 green인 채로 나갔고, 다음에 누가 `lib/credentials/**`를 건드릴 때 *"관계없는 스위트가 왜 red지"*로 만났을 것이다.
+  - ⚠️ **`pnpm test`의 "162 passed"가 "전부 green"이라는 인상을 준다.** 파일 하나가 통계에서 빠지는 것은 출력 어디에도 안 보인다 — `passWithNoTests`를 안 켠 것이 include 글롭이 **깨지는** 경우를 막지만, 글롭이 **처음부터 안 덮는** 파일은 그 방어선 밖이다.
+- **재발 방지**:
+  - **`pnpm test`의 include 밖 테스트 파일 전수** (실제로 돌렸다): `find . -path ./node_modules -prune -o -name "*.integration.ts" -print -o -name "*.integration.tsx" -print` → **1건**(`postgres.integration.ts`)뿐이다. `find … -name "*.test.ts" | grep -v __tests__` → **0건**. **지금 사각지대는 그 파일 하나이고 늘리지 않는다.**
+  - **규칙: 손으로 돌려야 하는 스위트의 트리거는 "어느 디렉터리를 건드렸나"가 아니라 "무엇을 단언하나"로 쓴다.** 그 파일이 단언하는 앱 전역 값은 여섯이다(실측): `"http://localhost"` 셋(로그인 성공 착지) · `/signin?sessions=revoked` · `/account?sessionRevocation=` 둘. **그 문자열을 바꾸는 변경이면 소유 디렉터리와 무관하게 돌린다.**
+    - grep: `grep -n 'toBe("http\|toBe("/\|toContain("/' lib/credentials/__tests__/postgres.integration.ts`
+  - ⚠️ **로그인 성공 착지 셋(`"http://localhost"`)이 다음 차례다.** 지금 `/`는 redirect 껍데기라 그 단언이 여전히 참이지만(Auth.js가 `redirectTo`를 그대로 낸다), **랜딩이 `/`에 서면 그 착지의 뜻이 바뀐다.** 8-1b 이후 랜딩 배송이 이 파일을 다시 봐야 한다.
+  - ⚠️ **바로 앞 항목(2026-09-10 재인증 callback)의 재발 방지 문장이 이 이관으로 낡았다** — *"일반 로그인 둘(`/`, `/invite/[token]`)은 공통 `clearRevocationCookies`를 먼저 호출한다"*의 `/`는 이제 `/signin`이다. append-only라 그 항목을 고치지 않고 여기 적는다. **`normal-login.test.tsx`는 그 계약을 그대로 지키고 있다**(import 대상만 `@/app/signin/page`로 옮겼고 순서 단언·`redirectTo: "/projects"`는 건드리지 않았다).
+  - **`pnpm test`에 합치지 않는다**: 그 스위트는 로컬 PostgreSQL 17을 전제하고 CI 러너에 그것이 없다. 합치면 CI가 상시 red가 되어 게이트가 통째로 죽는다 — **사각지대를 없애는 대신 트리거를 정확하게 하는 쪽**이 이 리포의 답이다.
