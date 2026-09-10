@@ -270,10 +270,28 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
   const json = JSON.stringify({ members, invitations, logs });
   for (const secret of ["enc:v1:", "hmac:v1:", "alice@example.com", "bob@example.com"]) expect(json).not.toContain(secret);
   expect((await loadActors(prisma, [ids.u1])).get(ids.u1)?.name).toBe("Alice");
+  /**
+   * ⚠️ **행 하나가 못 열려도 목록은 산다** (2026-09-10 credential 리뷰). 전에는 여기서 세 로더가
+   * 모두 거부했는데, 전환 중에는 **부분 변환이 정상 상태**이고(backfill이 행 단위 CAS다) 키 회전
+   * 뒤에는 옛 세대가 남는다 — 그때 멤버 아홉이 멀쩡한데 화면이 통째로 500이 된다.
+   *
+   * ⚠️ **`null`(정보 없음)로 접지도 않는다.** 못 읽은 행은 자기 문구를 들고, 이름은 비운다 —
+   * 옛 값을 그럴듯하게 보여줄 자리가 없다.
+   */
   await prisma.user.update({ where: { id: ids.u1 }, data: { name: "damaged" } });
+  const damaged = await loadMembers(prisma, ids.p1);
+  expect(damaged.find(r => r.userId === ids.u1)).toMatchObject({ name: null, emailLabel: "Unavailable" });
+  expect((await loadSyncRuns(prisma, ids.p1, undefined)).rows[0]?.requester).toMatchObject({ name: null, emailLabel: "Unavailable" });
+  // 편집자 지도에서는 **빠진다** — `actorLabel`이 그때 `updatedBy` 원문을 내므로 셀이 비지 않는다.
+  expect((await loadActors(prisma, [ids.u1])).has(ids.u1)).toBe(false);
+  expect(JSON.stringify(damaged)).not.toContain("enc:v1:");
+
+  /** ⚠️ **키 자체가 없으면 장애다** — 행의 손상과 달리 여기서는 던져야 "전원 정보 없음"이 안 된다. */
+  vi.stubEnv("PII_ENCRYPTION_KEYS", "");
   await expect(loadMembers(prisma, ids.p1)).rejects.toThrow("credential storage unavailable");
   await expect(loadSyncRuns(prisma, ids.p1, undefined)).rejects.toThrow("credential storage unavailable");
   await expect(loadActors(prisma, [ids.u1])).rejects.toThrow("credential storage unavailable");
+  vi.unstubAllEnvs();
 });
 it("installed Auth.js preserves SessionTokenError outage classification on crypto failure", async () => {
   const handlers = fakeAuth("github", "outage");

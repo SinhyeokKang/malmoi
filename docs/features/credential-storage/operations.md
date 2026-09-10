@@ -35,6 +35,15 @@ prod에서는 명령 이름만 `credentials:prod`로 바꾼다. 도구는 dev/pr
 cp -R prisma/credential-cutover/20260910060000_finalize_credential_storage prisma/migrations/
 ```
 
+⚠️ **R2를 backfill보다 먼저 올리면 backfill이 불가능해진다** (2026-09-10 실측). 전환 도구의 CAS는
+아직 안 채워진 행을 `where: { emailLookup: null }`로 집는데, 스키마가 NOT NULL이 되는 순간 Prisma가
+그 **입력**을 거부한다(`Argument \`emailLookup\` must not be null.`). 읽기는 관대해서 NULL을 그대로
+돌려주므로 조회만으로는 드러나지 않는다 — 막히는 곳은 쓰기다. 그래서 **모든 환경이 backfill을
+끝낸 뒤에** R2 스키마를 올린다: dev만 끝난 상태에서 R2를 커밋하면 prod backfill을 못 돈다.
+`postgres.integration.ts`가 이것을 잡는다(legacy 픽스처가 NOT NULL에 걸린다) — ⚠️ **그 스위트는
+`pnpm test`에 없다**(별도 config + 로컬 PostgreSQL 17). `/push` 게이트가 안 돌리므로
+`lib/credentials/**`를 건드렸으면 `pnpm test:credentials:postgres`를 손으로 돌린다.
+
 동일 R2에서 `prisma/schema.prisma`의 두 `emailLookup String?`를 `String`으로 바꾸고 `pnpm db:generate`·타입 검사·테스트를 수행한다. 현재 모델의 nullable은 R1 준비 상태다. 무작위 암호문의 email unique와 초대 옛 email 인덱스는 모델에서 제거돼 있지만 R1 DB에는 남아 있다. R2 finalize 후 모델과 최종 DB가 일치한다. **R1에서 migrate dev로 이 과도 상태의 차이를 자동 정리하지 않는다.**
 
 ```sh
