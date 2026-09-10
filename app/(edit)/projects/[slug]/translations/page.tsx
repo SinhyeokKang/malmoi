@@ -203,7 +203,10 @@ export default async function TranslationsPage({
                 <div className="mb-2 flex items-baseline gap-2">
                   <h2 className="text-sm font-medium">{group.namespace}</h2>
                   {/* 필터 **후** 건수다 — 제목 옆 총계가 필터 전이라 둘이 같은 값이 아니다. */}
-                  <Badge variant="neutral">{group.rows.length}</Badge>
+                  <Badge variant="neutral">
+                    <span aria-hidden>{group.rows.length}</span>
+                    <span className="sr-only">{m.translations.keys(group.rows.length)}</span>
+                  </Badge>
                 </div>
                 <div className="border-border overflow-hidden rounded-lg border">
                   {group.rows.map((row) => (

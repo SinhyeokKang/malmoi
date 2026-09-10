@@ -271,6 +271,26 @@ describe("행 축 (8-4)", () => {
     }
   });
 
+  /**
+   * ⚠️ **결과 `Alert`가 스크롤 본문 맨 위에 그려진다** — 버튼은 고정 머리에 있으므로 903키 표를
+   * 아래로 내린 채 누르면 방금 만든 문구가 **뷰포트 밖**이다. 성공은 "Last sent"가 바뀌는 간접
+   * 신호라도 있지만 **실패는 신호가 0이다**(스피너가 멈추는 것이 전부) — 버린 값이 화면에 닿아야
+   * 한다는 SAAS 불변식 9가 거기서 깨진다 (2026-09-11 code-review 🟡).
+   */
+  it("Publish 결과를 화면으로 끌어온다", () => {
+    const src = read(HEADER);
+    expect(src).toMatch(/scrollIntoView/);
+    // 배너가 아니라 **결과**에만 걸린다 — 배너는 도착 시점의 조건이라 사용자가 위에서 본다.
+    expect(src).toMatch(/\[outcome\]/);
+  });
+
+  /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */
+  it("개수 배지가 접근 이름으로 완전한 문장을 든다", () => {
+    for (const path of [HEADER, PAGE]) {
+      expect(read(path), path).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
+    }
+  });
+
   /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */
   it("`NamespacePanel`·`NsLink`가 없다", () => {
     for (const path of [PAGE, HEADER, FILTERS]) {

@@ -2,7 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { PublishButton, PublishResult } from "@/components/publish-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
@@ -83,6 +83,20 @@ export function TranslationsHeader({
 }) {
   const router = useRouter();
   const [outcome, setOutcome] = useState<PullOutcome | null>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * ⚠️ **결과를 화면으로 끌어온다.** 버튼은 고정 머리에 있고 결과는 스크롤 본문 맨 위라, 903키
+   * 표를 아래로 내린 채 누르면 방금 만든 `Alert`가 **뷰포트 밖**에 그려진다 — 성공은 "Last sent"가
+   * 바뀌는 간접 신호라도 있지만 **실패는 신호가 0이다**(스피너가 멈추는 것이 전부). 버린 값이
+   * 화면에 닿아야 한다는 것이 SAAS 불변식 9이고, 자리를 고정 영역으로 되돌리는 것보다 이쪽이 싸다
+   * (배너 둘까지 고정이면 400px을 넘는다 — design §1).
+   *
+   * 배너 둘은 이 처리가 필요 없다 — 도착 시점의 조건이라 사용자가 위에서 본다.
+   */
+  useEffect(() => {
+    if (outcome !== null) resultRef.current?.scrollIntoView({ block: "nearest" });
+  }, [outcome]);
 
   return (
     <>
@@ -90,7 +104,14 @@ export function TranslationsHeader({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {/* 화면 제목이 사이드바 라벨과 **같은 키**다 (8-3) — 두 벌이면 하나가 낡는다. */}
           <h1 className="text-base font-medium">{m.common.nav.translations}</h1>
-          <Badge variant="neutral">{totalCount}</Badge>
+          {/*
+            ⚠️ **숫자만 그리면 접근 이름이 "Translations 1134"다.** 시안이 숫자 배지라 보이는 것은
+            그대로 두고, 스크린리더에는 완전한 문장을 준다.
+          */}
+          <Badge variant="neutral">
+            <span aria-hidden>{totalCount}</span>
+            <span className="sr-only">{m.translations.keys(totalCount)}</span>
+          </Badge>
           {lastSentLabel !== null && (
             <span className="text-muted-foreground text-xs">
               {m.translations.lastSent(lastSentLabel)}
@@ -153,7 +174,11 @@ export function TranslationsHeader({
         <div className="mb-4 empty:mb-0 space-y-3">
           <BasePendingBanner baseLocale={baseLocale} declaredBaseLocale={declaredBaseLocale} />
           <EditLossBanner count={unpublished} dismissKey={dismissKey} />
-          {outcome !== null && <PublishResult outcome={outcome} />}
+          {outcome !== null && (
+            <div ref={resultRef}>
+              <PublishResult outcome={outcome} />
+            </div>
+          )}
         </div>
         {children}
       </PanelBody>
