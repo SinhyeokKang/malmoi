@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
-import { classifyFailure } from "@/lib/failure";
+import { classifyFailure, fail } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
 import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/targets";
@@ -78,8 +78,10 @@ export async function GET(request: Request): Promise<NextResponse> {
       // 이유는 그 함수의 DB 쓰기(행 생성·닫기)가 여전히 던질 수 있어서다.
       try {
         // 인가를 지날 일이 없는 경로다 — `projectId`는 방금 조회한 행의 것이고 slug는 로그용이다.
-        const projectId = byslug.get(slug);
-        if (projectId === undefined) continue;
+        // ⚠️ **부재를 조용히 건너뛰지 않는다.** `targets`가 같은 배열에서 나오므로 일어날 수 없지만,
+        // 일어난다면 그 프로젝트는 결과에서 **흔적 없이 사라지고** 요약의 `targets` 수와 어긋난다 —
+        // 이 리포가 반복해 밟은 "실패한 조회를 없음으로 읽는" 형태다 (POSTMORTEM 2026-09-03).
+        const projectId = byslug.get(slug) ?? fail(`no project row for target: ${slug}`);
         results.push({
           slug,
           ...(await runSync(prisma, { projectId, slug, trigger: "cron", requestedBy: null })),

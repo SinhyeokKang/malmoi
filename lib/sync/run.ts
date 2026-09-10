@@ -88,28 +88,29 @@ async function startRun(
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
 
-    const [running, lastSettled] = await Promise.all([
-      tx.syncRun.findFirst({
-        where: { projectId, status: "RUNNING" },
-        orderBy: { startedAt: "desc" },
-        select: { startedAt: true },
-      }),
-      // ⚠️ **FAILED를 안 집는다** — 최소 간격은 "리포에 쓴 뒤 쉬는 간격"이라 아무것도 못 쓴 실행은
-      // 세지 않는다 (design 결정 7). 그 술어가 여기 있으므로 판정 함수는 `null`만 받는다.
-      tx.syncRun.findFirst({
-        where: { projectId, status: { in: ["SUCCEEDED", "SKIPPED"] } },
-        orderBy: { startedAt: "desc" },
-        select: { finishedAt: true },
-      }),
-    ]);
+    // ⚠️ **순차로 보낸다.** 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못하고,
+    // 엔진 내부 직렬화에 기대는 모양이 된다 — 이 리포에 트랜잭션 안 `Promise.all` 선례가 없다.
+    const running = await tx.syncRun.findFirst({
+      where: { projectId, status: "RUNNING" },
+      orderBy: { startedAt: "desc" },
+      select: { startedAt: true },
+    });
+    // ⚠️ **FAILED를 안 집는다** — 최소 간격은 "리포에 쓴 뒤 쉬는 간격"이라 아무것도 못 쓴 실행은
+    // 세지 않는다 (design 결정 7). 그 술어가 여기 있으므로 판정 함수는 `null`만 받는다.
+    const lastSettled = await tx.syncRun.findFirst({
+      where: { projectId, status: { in: ["SUCCEEDED", "SKIPPED"] } },
+      orderBy: { startedAt: "desc" },
+      select: { finishedAt: true },
+    });
 
     const now = new Date();
+    // `finishedAt`은 terminal 행에서 항상 채워지지만 컬럼이 nullable이라 타입이 그것을 모른다.
+    // 없으면 "직전 성공 없음"으로 읽는다 — 게이트가 더 관대해질 뿐 잘못 막지 않는다.
+    const settledAt = lastSettled?.finishedAt ?? null;
     const gate = planSyncStart({
       now,
       running,
-      // `finishedAt`은 terminal 행에서 항상 채워지지만, 컬럼이 nullable이라 타입이 그것을 모른다.
-      // 없으면 "직전 성공 없음"으로 읽는 쪽이 안전하다 — 게이트가 더 관대해질 뿐 잘못 막지 않는다.
-      lastSettled: lastSettled?.finishedAt == null ? null : { finishedAt: lastSettled.finishedAt },
+      lastSettled: settledAt === null ? null : { finishedAt: settledAt },
       trigger,
     });
     if (gate.status === "already-running") {
