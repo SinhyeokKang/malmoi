@@ -345,6 +345,13 @@ app/
                         ⚠️ **이것이 `/settings` 섹션이 아니라 별도 라우트인 이유다** — 그 페이지는
                         `project:settings` 뒤라 게이트가 갈린다. `github-connect/spec.md`의 반대 결정을
                         뒤집었고 그쪽에 🔴 STALE을 달았다. ⚠️ **`?e=` 슬롯이 없다**(보내는 자리가 0)
+    projects/[slug]/logs/page.tsx
+                        sync 이력 (7단계, 2026-09-10) — SAAS §7.7 라우트 표의 마지막 칸.
+                        ⚠️ **게이트가 `translation:write`다** — "내가 보낸 게 갔나"를 묻는 사람이 번역자다.
+                        ⚠️ **`try`가 없다** — 조회 실패는 던져야 "없음"과 다른 화면이 된다
+                        (POSTMORTEM 2026-09-03). 그래서 빈 상태는 조회 성공에서만 나온다.
+                        ⚠️ **[Send changes]가 없다** — `logs`는 과거 이력이고 "지금 상태 + 행동"은
+                        8단계 패널이다. 페이지네이션은 서버 `?cursor=` + 링크 하나
     projects/[slug]/settings/page.tsx
                         리포 연결 + **기준 브랜치** + 상태 + push 토큰 + 워크플로 + GitHub 계정.
                         ⚠️ **기준 로케일 필드와 대기 Alert는 6b-5가 `/locales`로 옮겼다** (2026-09-09).
@@ -414,6 +421,11 @@ components/
                         버튼**이다 — 렌더 중 튕기면 callback 실패 시 루프다
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받고 `/projects` 계정 섹션이 같은 버튼을 쓴다
+  project-archived.tsx  보관된 프로젝트 화면 (7단계) — `project-not-ready.tsx`와 같은 형이지만
+                        **`redirect()`를 쓰지 않는다**: 보관은 되돌릴 수 있는 상태이고 OWNER가 갈 곳은
+                        설정 안의 카드 하나라, 튕기면 자기가 왜 거기 왔는지 모른다. 화면 **다섯**이
+                        같은 갈래를 만난다(Home·번역·언어·멤버·이력) — `screens.test.ts`가 전수를 센다.
+                        ⚠️ **EDITOR에게 설정 링크를 주지 않는다** — 눌러도 못 들어간다
   project-not-ready.tsx 첫 적재 전 화면 (6b-6) — **정책과 문구를 한 곳이 든다**: OWNER는 설정으로
                         (거기에 [다시 시도]와 워크플로 YAML이 있다), 나머지는 한 줄. Home과 번역 화면이
                         같은 갈래를 만나고 6b-6이 그 사본을 합쳤다.
@@ -443,7 +455,10 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **T5~T8에서 전부 `components/ui/` 프리미티브로 옮겼다** — raw 컨트롤이 0개라
                         "포커스 링을 상수에 숨기지 말라"는 경고의 대상이 이 디렉터리에서 사라졌다
-  settings/             설정 화면의 클라이언트 조각 (6b-3). repository-form(**기준 브랜치 하나** — 6b-5가
+  settings/             설정 화면의 클라이언트 조각 (6b-3·7단계). archive-card(보관·되돌리기 —
+                        ⚠️ **인라인 결과 Alert가 없다**: revalidate가 방금 받은 문구를 언마운트한다
+                        (POSTMORTEM 2026-09-07). 카드가 [Restore project]로 바뀌는 것이 피드백이고,
+                        확인 Dialog는 **보관 쪽에만** 있다) / repository-form(**기준 브랜치 하나** — 6b-5가
                         기준 로케일을 `components/locales/`로 옮겼다. 브랜치 형식은 보내기 전에
                         `isValidBranchName`으로도 보고 **방어는 Action**이다.
                         ⚠️ **이 폼이 보내는 값에 언어가 없다** — 그것이 malmoi#20의 구조를 없앤다)
@@ -523,8 +538,8 @@ lib/
                         ⚠️ 동시각 정렬이 **결정적**이다: DB `orderBy`에 기대지 않고 여기서 키·로케일로
                         가른다(`Array.sort`가 안정 정렬이라 입력 순서를 보존한다))
   shell/nav.ts          사이드바의 순수 판정 **셋** — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
-                        없으면 컨텍스트 없음) / projectSections(**다섯** — Overview(6b-6)·Translations·Languages(6b-5)·
-                        Members·Settings. ⚠️ **앞의 넷은 `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고
+                        없으면 컨텍스트 없음) / projectSections(**여섯** — Overview(6b-6)·Translations·Languages(6b-5)·
+                        Members·**Logs**(7단계)·Settings. ⚠️ **앞의 넷은 `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고
                         컨트롤만 갈린다. ⚠️ 라벨과 URL이 갈리는 자리 둘: "Languages"→`/locales`,
                         "Overview"→`/projects/<slug>`. ⚠️ **`exact`를 항목마다 든다** — 활성 판정이 축이
                         아니라 라우트 모양에 붙는다: `/projects/<slug>`는 그 프로젝트 **모든** 하위
@@ -546,7 +561,9 @@ lib/
                         pathTemplate이 리포 **경로 조각**이라 값이 아니라 경로로 검증한다 (sec-audit 발견 2).
                         push 스키마와 pull 판정이 **두 층으로** 같은 함수를 쓴다 — 경계는 새 값을,
                         resolveLocalePaths는 경계가 서기 전에 저장된 행을 막는다
-  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). `account()`는 6b-4, `project(slug)`는
+  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). `logs(slug, {cursor})`는 7단계가
+                        **그 페이지와 같은 커밋에** 더했다 (`account()`·`project()`와 같은 판정).
+                         `account()`는 6b-4, `project(slug)`는
                         6b-6이 **그 페이지와 같은 커밋에** 더했다 — 페이지 없이 등재하면 404를 가리키는
                         생성기가 되고 죽은 링크 검사의 접두 규칙이 `/projects/*`를 통과시켜 못 잡는다.
                         ⚠️ **`project(slug)`가 "프로젝트로 간다"의 유일한 답이다** — 목록 행·스위처·
@@ -668,13 +685,21 @@ lib/
                 / trigger.ts(진입점 둘이 공유하는 조립 + syncBranchFor — 브랜치가
                           l10n/sync-<slug>다, 같은 리포 두 Project가 서로를 덮지 않게. ref-slug를 재수출한다)
                         / message.ts(결과→문구)
-  sync/                 sync 실행의 게이트·결과 판정 (SaaS 7단계, 2026-09-10). 조회(query.ts)·화면 판정(view.ts)은 ship 3이다
+  sync/                 sync 실행의 게이트·결과·화면 판정 (SaaS 7단계, 2026-09-10)
                         run.ts(runSync — **진입점 둘이 지나는 유일한 껍데기**. ⚠️ **던지지 않는다**: 실패도
                           게이트 거부도 `PullOutcome`이라 행 닫기가 한 곳이다(세 벌이면 그 사이 어딘가로 빠진다)
                           / ⚠️ **잠금 트랜잭션 안에서 GitHub을 안 부른다** — 지연이 곧 커넥션 점유이고 pooler에서
                           전 테넌트에 번진다. 트랜잭션은 stale 닫기 + 행 생성까지이고 조회는 **순차**다
                           / ⚠️ **`Project` 컬럼을 아예 안 쓴다** — 실패가 마지막 성공을 덮을 경로를 만들지 않는다
                           / `server-only` 없음(하네스가 직접 부른다))
+                        query.ts(loadSyncRuns — server-only. 키셋 페이지네이션(`startedAt`+`id`,
+                          **정렬 키 둘이 커서 둘과 같아야 한다** — 어긋나면 페이지 경계에서 행이
+                          사라지거나 겹친다) + 한 개 더 읽어 "다음 페이지가 있나"를 조회 하나로 답한다.
+                          ⚠️ **원문 이메일을 안 낸다** — `loadMembers`와 같은 규칙이고 마스킹은 로더가 한다)
+                        view.ts(syncRunView — 행 → tone·label·triggerLabel·reasonKey + encodeCursor/
+                          decodeCursor. ⚠️ **`@/generated/prisma/client`를 값으로 안 읽는다**(상태·트리거를
+                          문자열 union으로 다시 적는다) · ⚠️ **무효 커서는 null이지 예외가 아니다**(주소창
+                          값이다) · ⚠️ **배지 색이 셋뿐이라 구별은 라벨이 든다**)
                         plan.ts(planSyncStart — ⚠️ **`already-running`이 `too-soon`보다 앞이다**(둘 다 걸릴 때
                           "30초 뒤에"는 거짓이다) · `STALE_AFTER_SECONDS`보다 오래된 RUNNING은 실행 중으로
                           안 치고 껍데기가 닫는다 · ⚠️ **`too-soon`은 cron에 안 건다**(하루 1회라 야간 실행이
@@ -695,6 +720,10 @@ lib/
                         ⚠️ server-only가 **없다**(테스트가 메모리 DB로 직접 부른다)
     session.ts          requireUser · requireProjectAccess — redirect만 한다 (server-only).
                         장애는 /?error=Unavailable, 거부는 /projects?e=<status>
+                        ⚠️ **보관만 redirect하지 않는다** (7단계) — `archived: boolean`을 값으로 돌려주고
+                        페이지가 `ProjectArchived`를 그린다. 되돌릴 곳이 설정 안의 카드 하나라 목록으로
+                        튕기면 사용자가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고
+                        (빠뜨리면 화면이 정상 렌더된다) `app/__tests__/screens.test.ts`가 다섯을 센다
     read-session.ts     readSession — auth()를 장애 표시와 함께 읽는 **유일한 진입점** (ok|none|unavailable).
                         ⚠️ server-only 없음 — Action 테스트가 @/auth만 mock한다
     outage.ts           AsyncLocalStorage + noteAuthError — SessionTokenError만 장애로 표시.
