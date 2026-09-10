@@ -60,7 +60,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 17개 + `radix-ui`에서 DropdownMenu·Dialog·Tooltip 셋. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 16개 + `radix-ui`에서 DropdownMenu·Dialog **둘** (2026-09-11에 `Tooltip`을 걷었다 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -548,13 +548,18 @@ components/
                         페이지 콘텐츠의 첫 줄이 들고, 8-3 이후가 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
                         판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
-                        삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했다**).
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+                        삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
+                        `Tooltip`이 빠졌다** — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·Tooltip·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
+                        Dialog·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
                         8-3이 더한 **`SegmentedLinks`**(링크, `<nav>` + `aria-current`). **상태가 URL이면 뒤엣것**이다.
-                        ⚠️ `tablist`가 아닌 이유: ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ `tablist`가 아닌 이유: ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다.
+                        ⚠️ **대신 라디오의 계약은 든다** (2026-09-11) — `nextRovingIndex`가 방향키·Home·End를
+                        판정하고 **선택된 칸만 `tabIndex=0`**이다. 전엔 `onClick`만 있어 방향키가 죽었고 Tab이
+                        칸마다 멈췄다. 네이티브 radio로 안 바꾼 이유: 숨긴 `<input>`에 링을 얹게 되어
+                        `focus-ring.test.ts`가 **보이지 않는 링으로 green**이 된다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09) —
                         `asChild`가 오면 Slot이 **자식 하나만** 받으므로 `selected`의 `Check`가 형제로
                         붙는 순간 던지고 셸이 죽는다. `add099a`부터 프로덕션에 있었다
@@ -571,10 +576,13 @@ components/
                         + translations-screen — 번역 화면의 배선을 소스로 센다(tone→Alert variant 항등 ·
                         `<details>` 파일 목록 · live region 1개 · `shouldRefocus` · 배너 마운트 게이트 ·
                         셀의 `aria-label` · 초대 링크가 `routes.invite`). 렌더 테스트가 없는 자리의 방어선이다
-                        + tooltip-provider — `Tooltip`이 **자기 Radix Provider를 드는지** 소스로 센다.
-                        조상 provider가 없으면 Radix가 **던지고**, 그 툴팁은 접힌 사이드바에서만 렌더되므로
-                        "접기를 누르면 셸이 죽는다"로 나타난다 — 접힘이 `localStorage`에 남아 사용자가
-                        스스로 못 빠져나온다 (POSTMORTEM 2026-09-08)
+                        + segmented-control — `nextRovingIndex` 순수 판정 + 프리미티브를 **함수로 불러**
+                        `tabIndex`와 `onKeyDown`을 잰다 (2026-09-11 회귀). ⚠️ `tooltip-provider`는 같은
+                        커밋에 `Tooltip`과 함께 지웠다 — 그 교훈(조상 provider를 요구하는 Radix 컴포넌트는
+                        프리미티브가 자기 provider를 든다)은 POSTMORTEM 2026-09-08에 남아 있다
+                        + auth-toast — 토스트의 **수명**을 잰다. `useEffect`를 가로채 효과를 실제로 돌리고
+                        언마운트 정리가 두 id를 거두는지 본다. ⚠️ 정리가 없어 `/signin`의 무기한 오류
+                        토스트가 `/docs`까지 따라갔다 (2026-09-11 실측)
                         + multiline-detail — 어댑터 오류를 렌더하는 자리가 `whitespace-pre-wrap`을 드는지
                         **두 축으로** 센다: `adapterErrorMessage(`를 부르는 자리 전수 + 서버가 합친 문자열
                         (`PullResult.warnings`)을 렌더하는 자리 **이름 고정**. ⚠️ **앞쪽만 있으면 절반만 고쳐도
