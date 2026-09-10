@@ -59,7 +59,11 @@ export const routes = {
    * ⚠️ **`withQuery`를 지나야 한다** — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터
    * 수신자" 검사를 통째로 회피한다(위 `signIn` 주석과 같은 이유). 기본값 `all`은 안 싣는다.
    */
-  projects: (query: { filter?: string } = {}): string => withQuery("/projects", query),
+  /**
+   * ⚠️ **`q`는 이름 검색이다** (2026-09-11) — 번역 화면의 `q`와 이름은 같지만 대상이 다르다
+   * (그쪽은 키 + 값, 여기는 프로젝트 이름 하나).
+   */
+  projects: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects", query),
   newProject: (): string => "/projects/new",
   /**
    * 사용자 축 (SAAS §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라

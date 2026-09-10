@@ -36,6 +36,24 @@ export function filterProjects<T extends { archivedAt: Date | null }>(
 }
 
 /**
+ * 이름으로 좁힌다 (2026-09-11 사용자 — 목록 툴바의 검색).
+ *
+ * ⚠️ **대상이 이름 하나다.** slug·리포 URL·역할까지 훑으면 "왜 이 행이 나왔나"에 답할 것이 화면에
+ * 없다 — 행에 보이는 것 중 질의와 맞은 자리를 사용자가 못 찾는다. 번역 화면의 `q`가 키와 값을 함께
+ * 보는 것은 그 둘이 **같은 행에 나란히 보여서**이고, 여기는 그렇지 않다.
+ *
+ * ⚠️ **빈 질의는 전부다** — `undefined`와 `""`와 공백만인 문자열이 같은 뜻이라야, 검색창을 비우는
+ * 것과 URL에서 키를 빼는 것이 같은 화면을 준다.
+ *
+ * ⚠️ **원본을 건드리지 않는다** — `filterProjects`와 같은 이유(총계는 필터 전의 값이다).
+ */
+export function searchProjects<T extends { name: string }>(rows: readonly T[], q: string | undefined): T[] {
+  const needle = (q ?? "").trim().toLowerCase();
+  if (needle === "") return [...rows];
+  return rows.filter((row) => row.name.toLowerCase().includes(needle));
+}
+
+/**
  * 행 우측 배지의 갈래 (8-3 시안 개정).
  *
  * ⚠️ **`ready`가 침묵이 아니라 `Active`다.** DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고

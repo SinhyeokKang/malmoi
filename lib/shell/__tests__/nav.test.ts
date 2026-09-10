@@ -248,7 +248,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (SAAS §7.7 · 8-3 시�
 describe("navFooterItems", () => {
   it("Help가 `/docs`를 가리킨다 — 그 라우트는 실재한다 (8-1a)", () => {
     expect(navFooterItems().map((i) => ({ key: i.key, href: i.href }))).toEqual([
-      { key: "help", href: "/docs" },
+      { key: "docs", href: "/docs" },
     ]);
   });
 

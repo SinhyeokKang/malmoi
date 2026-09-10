@@ -187,7 +187,7 @@ export default async function TranslationsPage({
                         {l.isBase && <span className="font-light"> {m.translations.baseColumn}</span>}
                         {/* 키의 orphaned 배지와 같은 어휘 — 이 열은 편집이 막힌다. 저장을 받아도 pull이 파일을 내지 않는다. */}
                         {l.orphaned && (
-                          <Badge variant="danger" className="ml-1 font-light">
+                          <Badge variant="danger" className="ml-1">
                             {m.translations.orphaned}
                           </Badge>
                         )}

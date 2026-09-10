@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 
-import { filterProjects, parseProjectFilter, projectStatus, type ProjectStatus } from "../list";
+import { filterProjects, parseProjectFilter, projectStatus, searchProjects, type ProjectStatus } from "../list";
 
 /**
  * 목록 필터의 순수 판정 (8-3). **입력이 주소창 값이라** 폴백이 계약의 절반이다.
@@ -65,6 +65,48 @@ describe("filterProjects", () => {
  * 행 우측 배지의 갈래 (8-3). **`lib/onboarding/readiness.ts`의 `readinessLabel`을 대체했다** —
  * 그 함수의 소비자가 이 화면 하나였고, 시안 개정이 계약을 바꿨다(`ready`가 침묵이 아니라 `Active`).
  */
+describe("searchProjects", () => {
+  const rows = [
+    { slug: "a", name: "BugShot Web" },
+    { slug: "b", name: "말모이" },
+    { slug: "c", name: "bugshot-extension" },
+  ];
+
+  it("빈 질의는 전부 낸다", () => {
+    expect(searchProjects(rows, "").map((r) => r.slug)).toEqual(["a", "b", "c"]);
+    expect(searchProjects(rows, undefined).map((r) => r.slug)).toEqual(["a", "b", "c"]);
+  });
+
+  it("공백만 있는 질의도 전부 낸다", () => {
+    expect(searchProjects(rows, "   ").map((r) => r.slug)).toEqual(["a", "b", "c"]);
+  });
+
+  // 이름은 사용자가 정하고 질의는 주소창 값이라 대소문자를 맞출 수 없다.
+  it("대소문자를 가리지 않고 부분 일치한다", () => {
+    expect(searchProjects(rows, "bugshot").map((r) => r.slug)).toEqual(["a", "c"]);
+    expect(searchProjects(rows, "SHOT").map((r) => r.slug)).toEqual(["a", "c"]);
+  });
+
+  it("앞뒤 공백을 무시한다", () => {
+    expect(searchProjects(rows, "  web  ").map((r) => r.slug)).toEqual(["a"]);
+  });
+
+  it("비ASCII 이름도 찾는다", () => {
+    expect(searchProjects(rows, "말모").map((r) => r.slug)).toEqual(["b"]);
+  });
+
+  it("맞는 것이 없으면 빈 배열이다", () => {
+    expect(searchProjects(rows, "zzz")).toEqual([]);
+  });
+
+  // ⚠️ 호출부가 같은 배열로 필터 전 총계를 센다 — 제자리에서 잘라내면 제목 옆 숫자가 흔들린다.
+  it("원본을 건드리지 않는다", () => {
+    const original = [...rows];
+    searchProjects(rows, "bugshot");
+    expect(rows).toEqual(original);
+  });
+});
+
 describe("projectStatus", () => {
   const READY = { archivedAt: null, installationId: "1", lastCommitSha: "a".repeat(40), repositoryId: "42" };
 

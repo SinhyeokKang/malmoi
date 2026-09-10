@@ -1,6 +1,7 @@
-import { FolderGit2, Plus } from "lucide-react";
+import { Box, FolderGit2, Plus } from "lucide-react";
 import Link from "next/link";
 
+import { ProjectSearch } from "@/components/projects/search-input";
 import { ContentPanel } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import {
   PROJECT_FILTERS,
   parseProjectFilter,
   projectStatus,
+  searchProjects,
   type ProjectStatus,
 } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
@@ -38,25 +40,30 @@ import { routes } from "@/lib/routes";
 /**
  * 상태 배지의 색 (8-3).
  *
- * ⚠️ **`warning`은 "누군가 뭔가를 더 해야 끝나는" 둘에만 붙는다.** `Archived`는 의도된 상태라
- * amber로 칠하면 문제처럼 읽히고, `Active`는 가장 흔한 상태라 조용해야 한다 (DESIGN §6.1).
- * amber는 §6.2에 이미 등재된 색이라 raw 색이 늘지 않는다.
+ * ⚠️ **amber는 `Disconnected` 하나뿐이다** (2026-09-11 사용자 — `Setup`·`Pending`을 무색으로
+ * 내렸다). 축이 "덜 됐나"가 아니라 **"깨졌나"**다: 앞의 둘은 새 프로젝트가 지나가는 정상 경로이고
+ * 시간이 지나면 저절로 `Active`가 되지만, `Disconnected`는 **한때 돌던 것이 멈춘 것**이라
+ * 사람이 손대야 풀린다. 셋 다 amber면 온보딩 중인 프로젝트가 고장난 것처럼 보인다.
+ *
+ * ⚠️ **`Active`가 초록이다**. DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고 근거는
+ * **이 목록이 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어
+ * 대비가 생겨야 한다. green은 §6.2에 새로 등재됐다.
  *
  * ⚠️ **삼항이 아니라 맵 + `satisfies`다** (`lib/auth/landing.ts`와 같은 관용구). 갈래가 늘면 키가
  * 없어 컴파일 에러가 나는데, 삼항이면 새 갈래가 **사유 없이** 기본값으로 떨어지고 `tsc`가 조용하다.
  */
 const STATUS_VARIANT = {
-  active: "neutral",
+  active: "success",
   archived: "neutral",
-  setup: "warning",
-  awaiting_first_sync: "warning",
+  setup: "neutral",
+  awaiting_first_sync: "neutral",
   needs_reconnect: "warning",
-} as const satisfies Record<ProjectStatus, "neutral" | "warning">;
+} as const satisfies Record<ProjectStatus, "neutral" | "warning" | "success">;
 
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ e?: string; filter?: string }>;
+  searchParams: Promise<{ e?: string; filter?: string; q?: string }>;
 }) {
   const { userId } = await requireUser();
   /**
@@ -67,7 +74,7 @@ export default async function ProjectsPage({
    * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 두 union은 `unavailable`
    * 하나만 겹치고 뜻이 같으므로 먼저 보는 쪽이 이겨도 문제가 없다.
    */
-  const { e, filter: rawFilter } = await searchParams;
+  const { e, filter: rawFilter, q } = await searchParams;
   const message = isAccessError(e)
     ? accessErrorMessage(e)
     : isConnectError(e)
@@ -84,7 +91,9 @@ export default async function ProjectsPage({
    * ⚠️ **셸의 `loadMemberships`와 다른 함수다** — 그쪽에 목록 전용 집계를 얹으면 모든 페이지가 문다.
    */
   const all = await loadProjectList(getPrisma(), userId);
-  const rows = filterProjects(all, filter);
+  // ⚠️ **필터 → 검색 순이다.** 두 축이 직교하므로 순서가 결과를 바꾸지는 않지만, 빈 결과의 문구가
+  // "검색 0건"인지 "탭 0건"인지는 아래에서 `q`를 먼저 보고 가른다.
+  const rows = searchProjects(filterProjects(all, filter), q);
   /**
    * ⚠️ **프로젝트가 하나도 없으면 필터와 [New project]를 그리지 않는다** (시안: 그 줄이 `hidden`).
    * 고를 것이 없는 탭 셋은 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 안에 하나만 있어야 한다 —
@@ -118,13 +127,26 @@ export default async function ProjectsPage({
           {/* 페이지 수준 거부는 **global Alert**다 — 목록 위 전폭 (DESIGN §6.4). */}
           {message !== null && <Alert variant="danger">{message}</Alert>}
 
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-medium">{m.projects.title}</h1>
-            {/*
-              ⚠️ **총계는 필터 전의 값이다** — 탭을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
-              답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.
-            */}
-            <Badge variant="neutral">{all.length}</Badge>
+          {/*
+            ⚠️ **[New project]가 제목 줄에 있다** (2026-09-11 사용자). 화면당 하나인 primary는 제목과
+            같은 높이에 서는 것이 이 리포의 형이고(Home의 [Open translations]와 같다), 아래 줄은
+            **보기를 좁히는 것들**(탭·검색)만 남아 두 줄의 역할이 갈린다.
+          */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-medium">{m.projects.title}</h1>
+              {/*
+                ⚠️ **총계는 필터 전의 값이다** — 탭·검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
+                답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.
+              */}
+              <Badge variant="neutral">{all.length}</Badge>
+            </div>
+            {hasProjects && (
+              <ButtonLink variant="primary" href={routes.newProject()}>
+                <Plus aria-hidden />
+                {m.common.nav.newProject}
+              </ButtonLink>
+            )}
           </div>
 
           {hasProjects && (
@@ -135,14 +157,23 @@ export default async function ProjectsPage({
               options={PROJECT_FILTERS.map((value) => ({
                 value,
                 label: m.projects.filter[value],
-                // 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
-                href: routes.projects({ filter: value === "all" ? undefined : value }),
+                /**
+                 * ⚠️ **개수는 검색을 반영하고 탭은 반영하지 않는다** — 그 탭을 누르면 몇 행이 나오는지가
+                 * 이 숫자의 뜻이다. 지금 탭까지 걸면 선택된 칸만 맞고 나머지 둘이 거짓이 된다.
+                 *
+                 * ⚠️ **0도 보인다** — "그 탭이 비었다"는 그 자체로 정보다 (`SegmentContent.badge`).
+                 */
+                badge: searchProjects(filterProjects(all, value), q).length,
+                /**
+                 * 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
+                 *
+                 * ⚠️ **탭을 옮겨도 `q`가 남는다** — 검색이 탭과 직교하는 축이라, 여기서 떨어뜨리면
+                 * 탭을 누르는 순간 질의가 조용히 사라진다.
+                 */
+                href: routes.projects({ filter: value === "all" ? undefined : value, q }),
               }))}
             />
-            <ButtonLink variant="primary" href={routes.newProject()}>
-              <Plus aria-hidden />
-              {m.common.nav.newProject}
-            </ButtonLink>
+            <ProjectSearch filter={filter === "all" ? undefined : filter} q={q} />
           </div>
           )}
         </div>
@@ -168,11 +199,18 @@ export default async function ProjectsPage({
             </div>
           ) : rows.length === 0 ? (
             /*
-              ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭을 바꾸면 있다. 같은 빈 화면을 내면
-              사용자가 프로젝트를 잃었다고 읽는다.
+              ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭이나 질의를 되돌리면 있다. 같은 빈 화면을
+              내면 사용자가 프로젝트를 잃었다고 읽는다.
+
+              ⚠️ **검색을 먼저 본다** — 질의가 있으면 되돌릴 것은 탭이 아니라 그 질의다. 탭 문구를
+              내면 사용자가 엉뚱한 컨트롤을 만진다.
             */
             <p className="text-muted-foreground py-8 text-center text-sm">
-              {filter === "archived" ? m.projects.filterEmpty.archived : m.projects.filterEmpty.active}
+              {q !== undefined && q.trim() !== ""
+                ? m.projects.searchEmpty(q.trim())
+                : filter === "archived"
+                  ? m.projects.filterEmpty.archived
+                  : m.projects.filterEmpty.active}
             </p>
           ) : (
             /*
@@ -182,29 +220,69 @@ export default async function ProjectsPage({
               (실측 2026-09-11: 프로젝트 2개·1280×360에서 clientHeight 124 / scrollHeight 161).
               `overflow-hidden` 자체는 남긴다 — `rounded-xl`이 첫·끝 행의 모서리를 자르는 수단이다.
             */
-            <ul className="divide-border border-border divide-y shrink-0 overflow-hidden rounded-xl border">
+            <ul className="divide-border border-border divide-y shrink-0 overflow-hidden rounded-lg border">
               {rows.map((row) => {
                 const status = projectStatus(row);
                 return (
                   <li key={row.slug}>
                     <Link
                       href={routes.project(row.slug)}
-                      className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-4 p-4 focus-visible:ring-[3px] focus-visible:outline-none"
+                      className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-2.5 p-3.5 focus-visible:ring-[3px] focus-visible:outline-none"
                     >
-                      <span className="flex min-w-0 flex-col gap-1">
+                      {/*
+                        프로젝트 이미지 자리 — **지금은 빈 상태뿐이다** (2026-09-11 사용자).
+                        업로드 기능이 없으므로 컨테이너(28)와 폴백 글리프(20)만 세운다: 자리를 먼저 잡아야
+                        나중에 이미지가 들어올 때 행 높이·정렬이 안 흔들린다.
+
+                        ⚠️ **`Avatar` 프리미티브를 쓰지 않는다** — 그쪽 폴백은 **이니셜**이고
+                        (`shape="square"`가 프로젝트용으로 이미 있다), 여기 요구는 글리프다. 이미지가
+                        실제로 붙는 사이클에 둘을 합칠지 정한다.
+
+                        ⚠️ **글리프가 `Box`이고 사이드바의 `Projects` 항목과 같다** (2026-09-11 사용자) —
+                        같은 대상을 가리키는 두 자리가 같은 글리프여야 "프로젝트"의 시각 어휘가 하나로
+                        남는다. 화면의 **빈 상태**만 `FolderGit2`를 계속 쓴다: 그 자리는 큰 글리프라
+                        획이 뭉치지 않고, 말하는 것도 "프로젝트 하나"가 아니라 "아직 없다"이다.
+
+                        ⚠️ **표면을 아예 안 그린다 — 배경도 border도 그림자도 없다** (2026-09-11 사용자).
+                        빈 상태에서 보이는 것은 **글리프 하나뿐**이다: 컨테이너를 그리면 행마다
+                        "여기 이미지가 없다"를 외치게 되고, 그건 이 화면이 답할 질문이 아니다.
+                        **자리(28)와 `rounded-sm`은 남긴다** — 이미지가 붙을 때 행 높이·정렬이
+                        흔들리지 않아야 하고, 그때 이 span이 그대로 그 이미지의 틀이 된다.
+
+                        ⚠️ **연하게 하는 수단이 색 알파가 아니라 요소 `opacity`다** (2026-09-11 실측).
+                        lucide 글리프는 `<path>`·`<circle>` **여러 요소**라 `text-foreground/40` 같은
+                        색 알파를 쓰면 획이 만나는 접점에서 알파가 **누적돼 그 점만 진해진다** —
+                        `GitBranch`처럼 선과 원이 붙는 글리프에서 특히 보인다. `opacity`는 요소를 별도
+                        레이어로 렌더한 뒤 합성하므로 내부 겹침이 먼저 해소된다. **같은 이유로 다중
+                        요소 아이콘에는 색 알파를 쓰지 않는다.**
+
+                        메타 두 줄이 `text-muted-foreground`인데 아이콘까지 같으면 셋이 한 층으로
+                        읽혀서 한 단계 뒤로 뺐다. **장식이라 대비 하한이 없다** (`aria-hidden`이고
+                        프로젝트 이름이 바로 옆이다).
+                      */}
+                      <span
+                        aria-hidden
+                        className="text-muted-foreground flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm opacity-60"
+                      >
+                        <Box className="size-5" />
+                      </span>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="truncate text-base font-medium">{row.name}</span>
                         {/*
-                          메타 한 줄 — **역할이 맨 앞이다** (시안 개정). 배지가 아니라 평문인 이유는
-                          역할이 *사실*이고 행마다 늘 있어서다: 배지로 만들면 우측에 상태와 나란히
-                          놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
+                          메타 한 줄 — **URL · 역할 · 멤버 수** (2026-09-11 사용자). 리포가 맨 앞인
+                          것은 그것이 이 행을 **식별**하는 값이어서다: 이름이 비슷한 프로젝트 둘을
+                          가르는 것이 리포이고, 역할·멤버 수는 그 프로젝트에 대한 서술이다.
+
+                          배지가 아니라 평문인 이유는 역할이 *사실*이고 행마다 늘 있어서다: 배지로
+                          만들면 우측에 상태와 나란히 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
 
                           ⚠️ **리포 URL이 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
                           누르면 GitHub이 아니라 프로젝트로 간다.
                         */}
                         <span className="text-muted-foreground truncate text-sm">
-                          {m.projects.role[row.role]}
-                          {" · "}
                           {`https://github.com/${row.repoOwner}/${row.repoName}`}
+                          {" · "}
+                          {m.projects.role[row.role]}
                           {" · "}
                           {m.projects.memberCount(row.memberCount)}
                         </span>

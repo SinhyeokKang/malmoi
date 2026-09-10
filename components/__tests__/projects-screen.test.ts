@@ -87,16 +87,28 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   });
 
   /**
-   * ⚠️ **`warning`은 기다리는 둘에만 붙는다.** `Archived`를 amber로 칠하면 의도된 상태가 문제처럼
-   * 읽히고, `Active`에 색을 주면 가장 흔한 상태가 가장 시끄러워진다 (DESIGN §6.1).
+   * ⚠️ **`warning`은 "누군가 뭔가를 더 해야 끝나는" 셋에만 붙는다.** `Archived`를 amber로 칠하면
+   * 의도된 상태가 문제처럼 읽힌다.
+   *
+   * ⚠️ **`Active`가 초록이다** (2026-09-11 사용자 — 그 전엔 `neutral`이었고 이 단언이 그것을
+   * 고정했다). DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고, 근거는 **이 목록이
+   * 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어야 대비가 생긴다.
+   * 예외를 문서가 아니라 여기서도 고정하는 이유는, 다음 사람이 §6.1만 읽고 되돌리면 그 되돌림이
+   * 조용하기 때문이다.
    */
-  it("보관과 정상은 색이 없다", () => {
+  it("정상은 초록, amber는 `Disconnected` 하나, 나머지 셋은 무색이다", () => {
     const map = /const STATUS_VARIANT = \{([\s\S]*?)\}/.exec(code(PAGE))?.[1] ?? "";
     expect(map).not.toBe("");
     expect(map).toMatch(/archived:\s*"neutral"/);
-    expect(map).toMatch(/active:\s*"neutral"/);
-    expect(map).toMatch(/setup:\s*"warning"/);
-    expect(map).toMatch(/awaiting_first_sync:\s*"warning"/);
+    expect(map).toMatch(/active:\s*"success"/);
+    /**
+     * ⚠️ **온보딩 중인 둘은 amber가 아니다** (2026-09-11 사용자). 새 프로젝트가 지나가는 정상
+     * 경로이고 시간이 지나면 저절로 `Active`가 된다 — amber로 칠하면 고장난 것처럼 보인다.
+     */
+    expect(map).toMatch(/setup:\s*"neutral"/);
+    expect(map).toMatch(/awaiting_first_sync:\s*"neutral"/);
+    /** ⚠️ **한때 돌던 것이 멈춘 것**이라 사람이 손대야 풀린다 — amber가 여기 하나만 남았다. */
+    expect(map).toMatch(/needs_reconnect:\s*"warning"/);
   });
 
   /**

@@ -44,8 +44,6 @@ export const en = {
       members: "Members",
       logs: "Logs",
       projectSettings: "Project settings",
-      /** 하단 전역 — `/docs`로 간다. 그 화면은 아직 placeholder이지만 라우트는 실재한다. */
-      help: "Help",
       signOut: "Sign out",
       /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
       newProject: "New project",
@@ -124,6 +122,11 @@ export const en = {
       title: "Privacy Policy",
       body: "We're still writing this. It will be here before launch.",
     },
+    /**
+     * ⚠️ **`title`의 소비자가 둘이다** — 이 화면의 제목과 **사이드바 하단 항목**
+     * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
+     * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
+     */
     docs: {
       title: "Docs",
       body: "We're still writing this. It will be here before launch.",
@@ -247,13 +250,24 @@ export const en = {
      */
     filter: {
       label: "Filter projects",
-      all: "All",
+      all: "All projects",
       active: "Active",
       archived: "Archived",
+    },
+    /** 툴바 우측의 이름 검색 (2026-09-11). ⚠️ **`placeholder`가 라벨을 겸하지 않는다** — `label`이 `aria-label`이다. */
+    search: {
+      label: "Search projects",
+      placeholder: "Search by name",
+      clear: "Clear search",
     },
     /** 행 메타 — 리포와 멤버 수 둘뿐이다. ⚠️ **복수형을 함수가 든다**(시안의 "1 members"는 틀렸다). */
     memberCount: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
     /** 필터가 걸러 0건인 상태. **"프로젝트가 없다"와 다르다** — 탭을 바꾸면 있다. */
+    /**
+     * ⚠️ **검색 0건은 필터 0건과 다른 문구다** — 필터는 탭을 바꾸면 있고, 검색은 질의를 지우면 있다.
+     * 같은 문장을 내면 사용자가 무엇을 되돌려야 하는지 모른다.
+     */
+    searchEmpty: (q: string) => `No project matches "${q}".`,
     filterEmpty: {
       active: "No active projects.",
       archived: "No archived projects.",
@@ -276,13 +290,26 @@ export const en = {
     status: {
       active: "Active",
       archived: "Archived",
-      awaiting_first_sync: "Waiting for first import",
-      setup: "Setting up",
+      /**
+       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Waiting for first import"에서 줄였다). 배지는 행
+       * 우측의 좁은 칸이고, 문장이 들어가면 이름·리포 URL과 폭을 다툰다. 무엇을 기다리는지는
+       * 그 프로젝트를 열면 `ProjectNotReady`가 문장으로 말한다.
+       */
+      awaiting_first_sync: "Pending",
+      /**
+       * ⚠️ **한 낱말이고 동사가 아니다** (2026-09-11 사용자 — "Setting up"에서 줄였다). 진행형은
+       * 뭔가가 저절로 돌고 있다는 뜻인데 이 상태는 **멈춰 있다**: OWNER가 GitHub App을 연결해야
+       * 다음이 없다. 명사가 그 사실을 말하고, 나머지 넷과도 품사가 맞는다.
+       */
+      setup: "Setup",
       /**
        * ⚠️ **git 어휘를 쓰지 않는다** (DESIGN §10) — 번역자도 이 목록을 본다. "repository id가
-       * 고정되지 않았다"가 아니라 **그 사람이 할 일**을 말한다: OWNER가 설정에서 다시 연결한다.
+       * 고정되지 않았다"가 아니라 **그 사람이 보는 사실**을 말한다.
+       *
+       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Reconnect needed"에서 줄였다). 배지는 상태를 말하고
+       * 할 일은 설정 화면의 `Alert`가 말한다 — 좁은 칸에 동사를 넣으면 누를 수 있는 것처럼 읽힌다.
        */
-      needs_reconnect: "Reconnect needed",
+      needs_reconnect: "Disconnected",
     },
   },
 

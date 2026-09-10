@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Briefcase, CircleHelp, Globe, History, House, Languages, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Globe, History, House, Languages, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -145,12 +145,21 @@ export function navZones(
       {
         key: "projects",
         label: m.common.nav.projects,
-        icon: Briefcase,
+        /**
+         * ⚠️ **목록 행의 글리프와 같다** (2026-09-11 사용자) — 사이드바 항목과 그 항목이 데려가는
+         * 화면의 행이 다른 글리프를 쓰면 "프로젝트"의 시각 어휘가 둘이 된다.
+         */
+        icon: Box,
         href: routes.projects(),
         exact: true,
         badge: context.projectCount,
       },
-      { key: "account", label: m.common.nav.settings, icon: Settings, href: routes.account(), exact: true },
+      /**
+       * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
+       * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
+       * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
+       */
+      { key: "account", label: m.common.nav.settings, icon: CircleUser, href: routes.account(), exact: true },
     ],
   };
   if (project === null) return [work];
@@ -178,5 +187,5 @@ export function navZones(
  * 실재한다**(8-1a가 땄다) — 없는 곳을 가리키는 항목이 아니다. 내용은 출시 전에 채운다.
  */
 export function navFooterItems(): NavItem[] {
-  return [{ key: "help", label: m.common.nav.help, icon: CircleHelp, href: routes.docs(), exact: true }];
+  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true }];
 }

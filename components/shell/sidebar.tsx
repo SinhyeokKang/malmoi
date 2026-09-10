@@ -118,8 +118,14 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       className={cn(
         "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm",
         "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
-        // ⚠️ hover와 선택이 **같은 알파면** 포인터 아래의 항목이 선택된 것처럼 보인다 — 한 단계 벌린다.
-        active ? "bg-foreground/10 font-medium" : "hover:bg-foreground/5",
+        /**
+         * ⚠️ hover와 선택이 **같은 알파면** 포인터 아래의 항목이 선택된 것처럼 보인다 — 한 단계 벌린다.
+         *
+         * ⚠️ **둘 다 한 단계 내렸다** (2026-09-11 사용자 — `/10`·`/5`에서). 사이드바는 배경도
+         * border도 없이 **캔버스 위에 얹혀** 있어서(§6.5), 같은 알파라도 흰 패널 위보다 진하게
+         * 보인다. `[0.03]`은 프로젝트 목록 행의 hover와 같은 값이라 임의값이 늘지 않는다.
+         */
+        active ? "bg-foreground/[0.07] font-medium" : "hover:bg-foreground/[0.03]",
       )}
     >
       <span className="flex size-4 shrink-0 items-center justify-center">
