@@ -46,7 +46,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
 function Footer() {
   return (
-    <footer className="text-muted-foreground absolute bottom-6 flex gap-4 text-xs">
+    <footer className="text-muted-foreground absolute bottom-6 flex gap-4 text-sm">
       <span>{m.signIn.footer.copyright}</span>
       {/*
         ⚠️ **외부 URL은 `lib/routes.ts`에 넣지 않는다** — 그 파일은 앱 **내부** 링크의 단일
@@ -96,7 +96,7 @@ function Decoration() {
     <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-br px-20 py-16 shadow-sm">
       <DotField className="absolute inset-0 size-full" />
 
-      <p className="relative text-3xl font-semibold tracking-tight">{m.signIn.hero.top}</p>
+      <p className="relative text-3xl font-medium tracking-tight">{m.signIn.hero.top}</p>
 
       {/*
         ⚠️ **`next/image`다.** `<img>`면 372KB PNG가 원본 그대로 나가고 LCP 요소가 된다 —
@@ -119,7 +119,7 @@ function Decoration() {
         className="relative w-full max-w-[768px]"
       />
 
-      <p className="relative text-3xl font-semibold tracking-tight">{m.signIn.hero.bottom}</p>
+      <p className="relative text-3xl font-medium tracking-tight">{m.signIn.hero.bottom}</p>
     </div>
   );
 }

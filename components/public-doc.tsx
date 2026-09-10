@@ -14,7 +14,7 @@ import { routes } from "@/lib/routes";
 export function PublicDoc({ title, body }: { title: string; body: string }) {
   return (
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 px-8 py-12">
-      <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-lg font-medium tracking-tight">{title}</h1>
       <p className="text-muted-foreground text-sm">{body}</p>
       <Link
         href={routes.signIn()}

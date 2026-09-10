@@ -147,5 +147,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+    /**
+     * ⚠️ **기본이 400이 아니라 300이다** (2026-09-10 사용자 — weight 규칙 전면 변경).
+     * **가장 두꺼운 서체가 500**이고 600 이상을 쓰지 않는다. Pretendard Variable이
+     * `font-weight: 45 920` 범위라 300이 실제로 나온다(정적 폰트였다면 400으로 반올림됐다).
+     */
+    font-weight: 300;
   }
 }
