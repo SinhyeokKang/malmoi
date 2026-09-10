@@ -21,9 +21,11 @@
 | **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
 | **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
 | **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8 | §5.1 |
+| **앱 셸** (8-2) | 사이드바 `bg-muted border-r` + top bar + `xl` 미만 오버레이 | **캔버스 위 패널 셋** — 전폭 48 헤더 · 투명 사이드바 · 흰 콘텐츠 패널 · 320 프로젝트 패널, 반응형 분기 0 | §5.1·§6.5 |
+| **캔버스 토큰** (8-2) | `--auth-canvas` | **`--canvas`** — 셸과 셸 밖 화면이 같은 값을 쓴다 | §2 |
 
-⚠️ **이 목록은 8-1b(로그인·초대) 하나를 그리며 나왔고 전 화면에 적용된다.** 8-2 이후가 셸·나머지
-화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
+⚠️ **앞의 여덟은 8-1b(로그인·초대)를 그리며 나왔고 뒤의 둘은 8-2(셸)다. 전 화면에 적용된다.**
+8-3 이후가 나머지 화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
 [features/ui-rework/README.md](./features/ui-rework/README.md)가 든다.
 
 ⚠️ **아직 반영 안 된 화면이 있다** — `Button size="lg"`는 셸 밖 전용이고, base 치수 교체는
@@ -194,20 +196,28 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 | 항목 | 값 | GitLab |
 |---|---|---|
-| **사이드바 폭** | `w-60` (240px) | `$super-sidebar-width: 15rem` |
-| **top bar 높이** | `h-12` (48px) + 하단 1px `border` | `$header-height: 3rem + 1px` |
-| 사이드바 항목 높이 | `h-8` (32px), 아이콘 16을 `size-6` 박스에 | nav item ≈ 32px |
+| **사이드바 폭** | `w-60` (240px) — ⚠️ **8-2부터 배경도 border도 없다**(캔버스 위에 얹힌다) | `$super-sidebar-width: 15rem` |
+| **헤더 높이** | `h-12` (48px) — ⚠️ **8-2가 top bar를 대체했다**: 전폭이고 border가 없으며 로고를 든다 | `$header-height: 3rem + 1px` |
+| 사이드바 항목 높이 | `p-1.5` + `text-sm` = 32px, 아이콘 16 (8-2 시안 치수: `p-6`·`gap-8`·`radius-8`) | nav item ≈ 32px |
+| **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 gap 8(`gap-2`) — 규약 3.5, 예외 없음 | — |
+| **프로젝트 패널 폭** | `w-80` (320px) — 프로젝트 축 라우트에만 (§6.55) | — |
 | **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — 폼·설정·목록·계정·온보딩·초대 · Home·언어·멤버 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
 | 콘텐츠 fluid | 번역 표 — 전폭, 표만 자기 컨테이너 안에서 가로 스크롤 | 표 화면은 fluid |
 | 콘텐츠 패딩 | `px-6 py-6` | 12~24 |
-| 사이드바 접힘 기준 | **`xl`** — 이상은 아이콘 레일로 접기(`localStorage`), 미만은 햄버거로 여는 오버레이 | 1200px |
+| 사이드바 접힘 | **아이콘 레일**(`w-12`)로 접기, `localStorage`. ⚠️ **8-2가 반응형 분기를 걷었다** — 최소 대응 너비가 1280이라 `xl` 미만 오버레이·햄버거는 도달 불가였다 | 1200px |
 | 드롭다운 패널 | `min-w-60 max-w-md` | 248~456px |
 | 모달 | `max-w-lg` (512px) | modal sm 512 |
 
-**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 사이드바 + top bar + `max-w-4xl` 또는 fluid) / **셸 밖 카드**(로그인·초대 수락 — **둘 다 2열**이다, 8-1b). 새 화면은 둘 중 하나다.
+**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 헤더 + 사이드바 + 흰 콘텐츠 패널, 그 안이 `max-w-4xl` 또는 fluid) / **셸 밖**(로그인·초대 수락 — **둘 다 2열**이다, 8-1b). 새 화면은 둘 중 하나다.
+
+⚠️ **둘이 같은 골격이다** (8-2): 캔버스(`--canvas`) 위에 패널이 뜨고 바깥 padding 8 · 패널 간 gap 8 ·
+각 패널 `rounded-xl` + `border-border-subtle` + `shadow-low`다. 셸 안의 그 패널을
+`components/shell/content-panel.tsx`가 들고, **셸 레이아웃이 `{children}`을 감싸지 않는다** — 감싸면
+프로젝트 패널이 그 안에 갇힌다. 라우트마다 정확히 하나인지는
+`app/(edit)/__tests__/shell-layout.test.ts`가 레이아웃 체인을 훑어 센다.
 
 ⚠️ **셸 밖 화면의 골격은 `components/signin/auth-layout.tsx` 하나가 든다** (8-1b) — 바깥 padding 8 ·
-패널 간 gap 8 · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-sm`, 바깥은 `--auth-canvas`(아주
+패널 간 gap 8 · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-low`, 바깥은 `--canvas`(아주
 연한 회색)이고 좌측 패널은 **true white**다. **그 대비가 없으면 흰 패널과 흰 배경이 붙어 경계가
 사라진다.** 시안 전체가 이 규칙이고 좌표로 검산했다 (`features/ui-rework/README.md` 규약 3.5).
 
@@ -336,7 +346,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `font-normal` |
 | **Radio** | `size-4` · `border-input accent-primary` · label `text-sm`. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
 | **Badge** | `text-xs rounded px-1.5 py-0.5` · variants `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`) — §6.2 |
-| **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(top bar 아래 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
+| **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
 | **Table** | §6.1 |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
@@ -353,25 +363,52 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 **빈 상태 문체**: 제목은 마침표 없는 짧은 구, 설명은 완전 문장 하나, 버튼 하나 (§10).
 
-### 6.5 앱 셸 — 사이드바와 top bar (GitLab super sidebar 형, 2026-09-07)
+### 6.5 앱 셸 — 헤더·사이드바·패널 (Figma 시안 `212:937`, 2026-09-10 8-2)
 
-레이아웃만 GitLab이다. 색은 §2다.
+**셸은 캔버스 위에 패널이 떠 있는 구조다.** 1920 기준 좌표로 검산했고 런타임에서 그대로 나온다:
+헤더 `(8,8) 1904×48` · 사이드바 `(8,64) 240×1008` · 콘텐츠 `x=256 w=1328` · 프로젝트 패널 `x=1592 w=320`.
+
+⚠️ **2026-09-07의 GitLab super sidebar 형을 시안이 대체했다.** 가져간 것은 **정보구조**(구역 둘 ·
+프로젝트 컨텍스트 · 하단 전역 항목 · 접힘)이고, **표면**(사이드바 배경·top bar·경계선)은 시안이 정한다.
 
 | 요소 | 규칙 |
 |---|---|
-| 사이드바 | `w-60 shrink-0 bg-muted border-r border-border` (§5.1) · `xl` 이상에서 아이콘 레일(`w-12`)로 접기 · `xl` 미만은 햄버거로 여는 오버레이 + `bg-foreground/40` 배경 |
-| 브랜드 | `h-12 px-4` "Malmoi" 워드마크 `text-sm font-medium` |
-| 프로젝트 컨텍스트 | `mx-2 my-1 px-2 py-2 rounded-md` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(**내 멤버십 목록만** — "All projects"는 하단 전역 항목이 든다). hover는 `hover:bg-background/60`이다 — muted 표면에서 유효한 유일한 배경 hover다(§2.1). **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
-| 섹션 항목 | `h-8 mx-2 px-2 rounded-md text-sm flex items-center gap-2` · 아이콘 16(`Languages`·`Users`·`Settings` — **전 항목 표는 §6.8**) · **비활성 `text-foreground/70 hover:text-foreground`(muted 표면이라 §2.2·§2.1 — `hover:bg-accent`는 무효)** · **선택 `bg-background text-foreground font-medium shadow-sm`**(흰 알약 — GitLab의 선택 배경을 우리 토큰으로 옮긴 것) · **우측 카운트는 없다** — SAAS §7.7 결정 5이 그것을 닫았다(셸이 매 렌더에 세게 되고 키 수와 무관한 1.9초 고정비가 이미 있다). 카운트가 사는 곳은 번역 화면의 네임스페이스 패널이다(§6.1) |
-| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (6b-4 — SAAS §7.7). 순서는 **사용자 축 먼저**(`Your work`: All projects · New project · Your account) → **프로젝트 축**(`<project>`). 헤더가 서로 다르다: 앞은 라벨 `<p>` `text-xs text-muted-foreground font-medium tracking-wide uppercase px-4 pt-2 pb-1`, 뒤는 **프로젝트 컨텍스트 스위처가 곧 헤더**다(이름을 라벨로도 보이면 같은 값이 두 번 뜬다). 둘째 구역만 `border-t border-border mt-3 pt-1`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 렌더되지 않는다**(그때 구역을 구별할 수단이 `aria-label`뿐이다) |
-| 프로젝트 축 항목 | **Overview**(`House`, 6b-6 — 착지점이라 맨 앞) · Translations · **Languages**(`Globe`, 6b-5) · Members · Settings* (* `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **Logs는 7단계다** — **항목은 자기 라우트와 같은 사이클에 온다**(없는 라우트를 가리키는 항목은 404다). ⚠️ **라벨과 URL이 갈리는 자리 둘**: "Languages"→`/locales`, "Overview"→`/projects/<slug>`. `locale`은 내부 낱말이라 화면에 쓰지 않는다(설정의 "Base language"와 같은 어휘) |
-| 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6이 옮겼다 — `NavItem.exact`). **하위 경로가 있는 항목만 접두**다: Translations·Languages·Members·Settings(`?ns=`·`/settings`). **정확히 일치인 것 넷**: Overview(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두라 접두로 재면 어디서나 선택돼 보인다) · All projects(`/projects`가 `/projects/new`의 접두다) · New project · Your account |
-| 하단 전역 | Sign out · **Collapse sidebar** — 라우트가 아니라 조작이라 구역 밖 `mt-auto`다. 같은 항목 형이고 **아이콘도 전부 든다**(§6.8) |
-| top bar | `h-12 bg-background border-b border-border px-4 flex items-center justify-end` · **드는 것은 사용자 메뉴 하나다** — 아바타 32 원형 `ghost` 버튼 → DropdownMenu(이름·이메일 → **Your account** → Sign out). ⚠️ **breadcrumb은 여기 없다** (2026-09-08 정정): 레이아웃이 페이지 props를 못 받아 여기 두려면 parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요하다 — **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 햄버거(`xl` 미만)는 사이드바가 자기 여는 버튼으로 든다 |
-| 콘텐츠 | `flex-1 min-w-0` · limited면 `mx-auto max-w-4xl px-6 py-6` · fluid(번역)면 `flex min-h-0 flex-1` |
-| **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). **스크롤은 콘텐츠 컬럼과 사이드바가 각자 든다**(둘 다 `overflow-y-auto`), 콘텐츠 컬럼엔 `min-w-0`이 함께 있어야 번역 표의 가로 스크롤이 사이드바를 밀지 않는다. `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
+| **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). 여기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 — ⚠️ `min-w-`가 없으면 1280 미만에서 **스크롤이 아니라 flex가 압축돼 콘텐츠가 잘린다**(실측: 1100 뷰포트에서 문서 폭 1280, 가로 스크롤 발생). `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
+| **헤더** | `h-12 px-1`, **배경도 border도 없다**(캔버스 위에 얹힌다). 드는 것은 **로고 32 좌측**(`public/brand/malmoi-icon-black.svg`, `/projects` 링크) **+ 사용자 메뉴 32 우측**(아바타 `ghost` 버튼 → DropdownMenu: 이름·이메일 → Your account → Sign out) **둘뿐이다.** ⚠️ 버튼이 아바타와 같은 32여야 한다 — `size="sm"`(28)이면 아바타가 위아래로 삐져나온다(실측). ⚠️ **breadcrumb은 여기 없다** — 레이아웃이 페이지 props를 못 받아 **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 8-3이 그것을 `projects/[slug]/layout.tsx`로 옮길 자리다 |
+| 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** 접으면 `w-12` 레일(`localStorage`). ⚠️ **반응형 분기가 0개다**(8단계 규약 3 — 최소 대응 너비 1280): `xl` 오버레이·햄버거·`bg-foreground/40` 배경은 도달 불가라 걷어냈다 |
+| **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/10 font-medium`, 비활성 hover `hover:bg-foreground/5`. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
+| 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) · **우측 카운트는 없다** — SAAS §7.7 결정 5이 닫았고 §8이 재검토 항목으로 든다 |
+| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (6b-4 — SAAS §7.7). 순서는 **사용자 축 먼저**(`Your work`: All projects · New project · Your account) → **프로젝트 축**(`<project>`). 헤더가 서로 다르다: 앞은 라벨 `<p>` `text-sm font-medium text-foreground py-1.5`(⚠️ **8-2가 uppercase·`text-xs`·muted를 걷었다** — 시안은 본문과 같은 크기의 굵은 글자다), 뒤는 **프로젝트 컨텍스트 스위처가 곧 헤더**다. 둘째 구역만 `border-t border-border pt-2`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 렌더되지 않는다** |
+| 프로젝트 컨텍스트 | `px-1.5 py-1.5 rounded-lg` · 아바타 24 라운드 사각 + 이름 `font-medium truncate` + `ChevronsUpDown` 16 → DropdownMenu(**내 멤버십 목록만** — "All projects"는 사용자 구역이 든다). hover는 항목과 같은 `hover:bg-foreground/5`다. **프로젝트 밖 라우트(`/projects`·`/projects/new`·`/account`)에는 없다** |
+| 프로젝트 축 항목 | **Overview**(`House` — 착지점이라 맨 앞) · Translations · **Languages**(`Globe`) · Members · **Logs**(`History`) · Settings* (* `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **라벨과 URL이 갈리는 자리 둘**: "Languages"→`/locales`, "Overview"→`/projects/<slug>` |
+| 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6 — `NavItem.exact`). **하위 경로가 있는 항목만 접두**다: Translations·Languages·Members·Settings. **정확히 일치인 것 넷**: Overview(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두라 접두로 재면 어디서나 선택돼 보인다) · All projects(`/projects`가 `/projects/new`의 접두다) · New project · Your account |
+| 하단 전역 | Sign out · **Collapse sidebar** — 라우트가 아니라 조작이라 구역 밖 `mt-auto`다. 같은 항목 형이되 `<button>`이고 **아이콘도 전부 든다**(§6.8). ⚠️ 상속을 되돌려 `font-light`를 명시한다 — `Button` base가 400이라 옆 링크(300)와 굵기가 갈린다 |
+| 콘텐츠 패널 | `components/shell/content-panel.tsx` — `flex min-w-0 flex-1 flex-col overflow-y-auto rounded-xl border border-border-subtle bg-background shadow-low`. 그 안이 limited면 `mx-auto max-w-4xl px-6 py-6`, fluid(번역)면 `flex min-h-0 flex-1`. ⚠️ **넷이 함께 있어야 패널이 뜬다**(흰 배경·radius·border·그림자) — 8-1b가 그중 몇을 한꺼번에 잃고도 "그럭저럭" 보여서 못 알아챘다 |
 
-GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다. **Publish 버튼은 셸에 없다** — 번역 화면 툴바다(셸은 `/projects`도 감싸 slug를 모른다).
+**스크롤은 사이드바와 콘텐츠 패널이 각자 자기 안에서 든다**(둘 다 `overflow-y-auto`), 콘텐츠 패널엔
+`min-w-0`이 함께 있어야 번역 표의 가로 스크롤이 사이드바를 밀지 않는다. 실측에서 문서 자체는 세로로
+스크롤되지 않고 활성 스크롤러가 하나였다.
+
+GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다.
+**Publish 버튼은 아직 셸에 없다** — 번역 화면 툴바이고, SAAS §8이 그것을 §6.55의 패널로 옮긴다.
+
+### 6.55 프로젝트 패널 (`w-80`, 2026-09-10 8-2 — **골격뿐이다**)
+
+프로젝트 축 라우트 여섯 전부에 붙는 320px 흰 패널. `app/(edit)/projects/[slug]/layout.tsx`가 마운트한다.
+
+⚠️ **셸이 이걸 못 든다.** `app/(edit)/layout.tsx`는 `/projects` 목록도 감싸 `[slug]` params를 못 받는다 —
+breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 그 레이아웃이 생긴 것이 8-2의 절반이다.
+
+| 요소 | 규칙 |
+|---|---|
+| 프레임 | `w-80 shrink-0 p-2 gap-2` + 콘텐츠 패널과 **같은** 네 클래스(흰 배경·`rounded-xl`·`border-border-subtle`·`shadow-low`) · `aria-label="Project panel"` |
+| 세그먼트 컨트롤 | 트랙 `bg-canvas rounded-sm p-1` · 세그먼트 `rounded px-2 py-1 text-sm`, 선택은 `bg-background shadow-low font-medium`. 갈래 둘: General · Changes |
+| 본문 | **비어 있다** — "Nothing here yet." ⚠️ **"곧 나온다"고 쓰지 않는다**(§10) |
+| 접근 이름 | ⚠️ **랜드마크와 컨트롤의 이름이 달라야 한다**(`Project panel` / `Panel view`) — 같으면 스크린리더가 둘을 똑같이 읽고 구별할 단서가 role뿐이다 |
+
+⚠️ **내용은 8-P다.** `Changes`가 보여줄 diff는 **UI가 아니라 새 서버 능력**이고(커밋 없이 렌더만 하는
+경로 + 접힌 상태에서 GitHub 0회 — SAAS §8), UI만 먼저 만들면 빈 껍데기를 두 번 그린다. 편집 손실 배너·
+미배포 카운트·Publish 결과가 그때 번역 화면에서 이리로 옮겨온다.
 
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 여섯
 
@@ -544,7 +581,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 사이드바 섹션 | Overview `House` · Translations `Languages` · Languages `Globe` · Members `Users` · **Logs `History`**(2026-09-10) · Settings `Settings` |
 | 사이드바 하단 전역 | All projects `LayoutGrid` · New project `Plus` · Account `CircleUser` · Sign out `LogOut` · Collapse `PanelLeft` |
 | 프로젝트 컨텍스트 | 우측 `ChevronsUpDown` (DropdownMenu 트리거) |
-| top bar | **사용자 메뉴 아바타뿐이다** — 햄버거 `Menu`(`xl` 미만)는 그것이 여는 **사이드바**가 든다. breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
+| 헤더 | **로고와 사용자 메뉴 아바타뿐이다** (8-2) — ⚠️ 햄버거 `Menu`는 **없어졌다**(반응형 분기 0). breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · 재시도 `RotateCcw` · 행 메뉴 `Ellipsis` |
 | 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` · Home의 [Open translations] `Languages` |
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · 상태 `Select` 앞 `ListFilter` |
@@ -589,7 +626,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 축 | 무엇 | 어디 |
 |---|---|---|
 | **super sidebar** | 브랜드 → 프로젝트 컨텍스트(전환 메뉴) → 섹션 항목 → 하단 전역 항목 · 접힘 | §6.5 |
-| **top bar** | 사용자 메뉴 우 · 48px — **breadcrumb은 페이지 콘텐츠 첫 줄이다**(§6.5) | §6.5 |
+| **헤더** | 사용자 메뉴 우 · 48px — **breadcrumb은 페이지 콘텐츠 첫 줄이다**(§6.5). ⚠️ 8-2가 로고를 왼쪽에 더하고 전폭으로 넓혔다 | §6.5 |
 | **콘텐츠 폭 둘** | 폼·설정은 limited, 표는 fluid | §5.1 |
 | **settings-block** | 제목 + 설명 + 본문 카드가 세로로 쌓인다 | §6.6 |
 | **표 구성** | 헤더 sticky · 행 hover · 세로선 없음 · 마지막 행에도 하단선 | §6.1 |
@@ -603,7 +640,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - **색 팔레트·시맨틱 토큰** (Pajamas neutral/blue/…). 토큰의 진실은 `app/globals.css`(slate)이고 새 raw 색을 늘리지 않는다(§6.2).
 - **타입 스케일·폰트**(GitLab Sans·GitLab Mono)·**간격·radius 값**. 우리 스케일로 반올림한다(§5.1).
 - **다크 모드** (§3).
-- **top bar의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). SAAS §4.2.
+- **헤더의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). SAAS §4.2.
 - **Vue 컴포넌트(`@gitlab/ui`)·아이콘 세트(`gitlab-svgs`)** — lucide 16px로 대응.
 - **일러스트**(빈 상태 SVG) — `EmptyState`는 여전히 아이콘 하나뿐이다.
   - ⚠️ **로그인 우측 장식은 예외가 됐다** (8-1b). 그전까지 "CSS dot-grid + 토큰만 쓴 정적 모형 카드"였는데, Figma 시안이 **래스터 키비주얼(`public/brand/malmoi-signin-kv.png`)과 Canvas 도트 필드**를 들여왔다. 셸 **밖** 화면 둘(로그인·초대 수락)에만 해당하고, 셸 안 화면에는 여전히 일러스트를 두지 않는다.
