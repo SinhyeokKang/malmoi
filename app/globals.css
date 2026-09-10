@@ -85,9 +85,13 @@
 }
 
 :root {
-  /* 팔레트는 slate(푸른 틴트). bugshot-2가 라이트=slate / 다크=neutral로 갈랐던 비대칭은
-     라이트 단일이라 필요 없다 (docs/DESIGN.md §2). ⚠️ 값의 **유일한** 진실이 이 파일이다 —
-     시드 파일(components.json)은 CLI를 버린 2026-09-08에 함께 삭제됐다. */
+  /* 팔레트는 **neutral**이다 (2026-09-10 전역 교체 — 8-1b).
+     ⚠️ 2026-09-10 초에 "slate 유지, 차이는 런타임 목측"으로 결정했다가 **그 목측이 뒤집었다**:
+     시안의 회색이 전부 중립(`#090b0c`·`#6f6f6f`·`#f5f6f7`)인데 slate는 푸른 틴트라, 패널·배경·
+     보조 텍스트가 나란히 놓이자 화면 전체가 시안보다 파랗게 보였다. 색을 하나씩 맞추는 대신
+     **팔레트를 바꾸는 것**이 그 차이를 없애는 유일한 방법이다.
+     ⚠️ 값의 **유일한** 진실이 이 파일이다 — 시드 파일(components.json)은 CLI를 버린
+     2026-09-08에 함께 삭제됐다. */
   /**
    * ⚠️ **한 단계 올렸다** (2026-09-10 사용자 — 8-1b): `0.625rem`(10px) → `0.75rem`(12px).
    * bugshot-2도 shadcn 기본보다 한 단계 둥글게 굴렸고 같은 결을 따른다.
@@ -98,33 +102,33 @@
   --radius: 0.75rem;
 
   --background: hsl(0 0% 100%);
-  --foreground: hsl(222.2 84% 4.9%);
+  --foreground: hsl(0 0% 3.9%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222.2 84% 4.9%);
+  --card-foreground: hsl(0 0% 3.9%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222.2 84% 4.9%);
-  --primary: hsl(222.2 47.4% 11.2%);
-  --primary-foreground: hsl(210 40% 98%);
+  --popover-foreground: hsl(0 0% 3.9%);
+  --primary: hsl(0 0% 9%);
+  --primary-foreground: hsl(0 0% 98%);
 
   /* ⚠️ secondary == muted == accent 가 같은 값이다 (DESIGN.md §2.1).
      muted 표면 위 컨트롤에 hover:bg-accent 는 무효다 — hover 피드백이 0이다. */
-  --secondary: hsl(210 40% 96.1%);
-  --secondary-foreground: hsl(222.2 47.4% 11.2%);
-  --muted: hsl(210 40% 96.1%);
-  --accent: hsl(210 40% 96.1%);
-  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --secondary: hsl(0 0% 96.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 96.1%);
+  --accent: hsl(0 0% 96.1%);
+  --accent-foreground: hsl(0 0% 9%);
 
   /* ⚠️ background 위에선 4.75:1로 AA를 넘지만 muted 표면 위에선 4.34:1로 미달한다.
      muted 위 글자엔 text-foreground/60 을 쓴다 (DESIGN.md §2.2). */
-  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --muted-foreground: hsl(0 0% 45.1%);
 
   /* 글자색 전용이다 — bg-destructive 를 쓰지 않는다. red-600으로 흰 배경에서 4.83:1.
      shadcn 기본값 red-500은 3.76:1로 AA 미달이라 쓰지 않는다 (DESIGN.md §2.3). */
   --destructive: hsl(0 72.2% 50.6%);
-  --destructive-foreground: hsl(210 40% 98%);
+  --destructive-foreground: hsl(0 0% 98%);
 
   /* ⚠️ ring == border 라서 muted·secondary 표면 위에선 포커스 링이 약하다 (DESIGN.md §7). */
-  --border: hsl(214.3 31.8% 91.4%);
+  --border: hsl(0 0% 89.8%);
   /**
    * 시안 `color-semantic/divider/low` = **`#f5f6f7`**. 위 `--border`(`#e2e8f0`)보다 한 단계 연하다.
    *
@@ -134,8 +138,8 @@
    * (`#e2e8f0`)보다는 연해서 선이 도드라지지는 않는다.
    */
   --border-subtle: rgb(233 236 239);
-  --input: hsl(214.3 31.8% 91.4%);
-  --ring: hsl(214.3 31.8% 91.4%);
+  --input: hsl(0 0% 89.8%);
+  --ring: hsl(0 0% 89.8%);
 
   /* mono 표면 타입스케일 단일 출처. 번역 키가 mono 표면이다 — 식별자라 sans로 깔면
      l/1/I 와 _/. 이 구분되지 않는다. 소비 경로는 text-mono 유틸 **하나**이고,

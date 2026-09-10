@@ -145,7 +145,7 @@ function Blocked({ error }: { error: string }) {
                   href={installUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-baseline gap-1 text-blue-600 underline"
+                  className="inline-flex items-baseline gap-1 text-blue-600"
                 >
                   {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
                   <ExternalLink className="size-3" aria-hidden />

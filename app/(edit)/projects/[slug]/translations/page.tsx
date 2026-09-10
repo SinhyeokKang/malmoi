@@ -260,7 +260,7 @@ function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
       href={link}
       target="_blank"
       rel="noreferrer"
-      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600 underline"
+      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600"
     >
       {ref.path.split("/").pop()}:{ref.line}
       {row.refs.length > 1 && ` +${row.refs.length - 1}`}

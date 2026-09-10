@@ -76,7 +76,7 @@ export function PublishResult({ outcome }: { outcome: PullOutcome }) {
             href={message.href}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-baseline gap-1 text-blue-600 underline"
+            className="inline-flex items-baseline gap-1 text-blue-600"
           >
             {message.linkLabel}
             <ExternalLink className="size-3" aria-hidden />

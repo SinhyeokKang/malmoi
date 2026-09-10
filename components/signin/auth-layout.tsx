@@ -96,7 +96,7 @@ function Decoration() {
     <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b p-20">
       <DotField className="absolute inset-0 size-full" />
 
-      <p className="relative text-3xl font-medium tracking-tight">{m.signIn.hero.top}</p>
+      <p className="relative text-3xl font-medium">{m.signIn.hero.top}</p>
 
       {/*
         ⚠️ **`next/image`다.** `<img>`면 372KB PNG가 원본 그대로 나가고 LCP 요소가 된다 —
@@ -119,7 +119,7 @@ function Decoration() {
         className="relative w-full max-w-[768px]"
       />
 
-      <p className="relative text-3xl font-medium tracking-tight">{m.signIn.hero.bottom}</p>
+      <p className="relative text-3xl font-medium">{m.signIn.hero.bottom}</p>
     </div>
   );
 }

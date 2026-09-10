@@ -98,6 +98,11 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
   그 의도가 코드에 남아야 한다).
   ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다.
 
+- ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
+  `--text-*--letter-spacing`이 크기마다 값을 갖고(작을수록 넓게, 클수록 좁게), **호출부에
+  `tracking-tight`를 붙이면 그것을 덮는다.** 실제로 제목 넷에 그 클래스가 남아 있어 전역 자간
+  조정이 그 자리에만 안 먹었다 — 쓰려면 토큰을 고친다.
+
 ### 4.1 mono 표면 불변식 — 13px / 18px
 
 **식별자는 mono 표면이다** — 번역 키, 프로젝트 slug, 리포 `owner/name`, 브랜치 이름, 초대 링크 URL, 파일 경로, 토큰 값. `common.viewAll`·`popup_title`은 식별자고 산문이 아니다 — sans로 깔면 `l`/`1`/`I`와 `_`/`.`이 구분되지 않아 번역자가 키를 잘못 읽는다.
@@ -281,7 +286,12 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 ### 6.3 외부 링크
 
-**리포 밖으로 나가는 링크는 전부 `text-blue-600 underline` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · 툴바의 "View what was sent" · App 설치 링크 둘. ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
+⚠️ **밑줄을 쓰지 않는다** (2026-09-10 사용자 — 전역 규칙). **인라인 하이퍼링크는 색과 아이콘으로
+구별하고 `underline`·`hover:underline`을 붙이지 않는다.** 8-1b에서 소스 13곳을 전수로 걷어냈고
+(`grep -rn underline app components --include='*.tsx'`가 0건이어야 한다) `Button` variant `link`도
+같이 바뀌었다.
+
+**리포 밖으로 나가는 링크는 전부 `text-blue-600` + `ExternalLink` 12px 아이콘**이다 — 코드 참조 permalink · Publish 결과의 PR 링크 · 툴바의 "View what was sent" · App 설치 링크 둘. ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`. 내부 링크(사이드바·breadcrumb·목록 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다.
 
 ### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
@@ -293,7 +303,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **Button** `default` | `border border-input bg-background hover:bg-accent text-foreground` · 같은 치수 — 옛 "bordered(페이지·툴바)"를 하나로. 툴바도 `h-8`이다 |
 | **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소 |
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |
-| **Button** `link` | `text-blue-600 underline` 인라인 — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
+| **Button** `link` | `text-blue-600` 인라인 (밑줄 없음) — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
 | **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:opacity-70`(primary) — 옛 규칙 그대로 |
 | **Button** `loading` | **라벨 교체**("Saving…") + disabled. 옆 문구가 아니다(폭이 흔들린다). **목록 안에서는 누른 버튼 하나만** 교체한다 |

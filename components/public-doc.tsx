@@ -14,11 +14,11 @@ import { routes } from "@/lib/routes";
 export function PublicDoc({ title, body }: { title: string; body: string }) {
   return (
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 px-8 py-12">
-      <h1 className="text-lg font-medium tracking-tight">{title}</h1>
+      <h1 className="text-lg font-medium">{title}</h1>
       <p className="text-muted-foreground text-sm">{body}</p>
       <Link
         href={routes.signIn()}
-        className="focus-visible:ring-ring text-sm text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+        className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
       >
         {m.publicDocs.back}
       </Link>

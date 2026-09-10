@@ -84,7 +84,7 @@ export function ArchiveCard({
               href={openPrUrl}
               target="_blank"
               rel="noreferrer"
-              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
             >
               {m.archive.confirm.openPrLink}
               <ExternalLink className="size-3" aria-hidden />

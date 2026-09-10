@@ -48,7 +48,7 @@ export default async function SignIn({
     <AuthLayout>
       <div className="flex w-[320px] flex-col items-center gap-4">
         <Image src={logo} alt="" width={48} height={48} priority />
-        <h1 className="text-2xl font-medium tracking-tight">{m.signIn.title}</h1>
+        <h1 className="text-2xl font-medium">{m.signIn.title}</h1>
 
         <div className="flex w-full flex-col gap-2">
           {/* ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 시안이 GitHub을 채움으로 그렸다. */}
@@ -59,7 +59,7 @@ export default async function SignIn({
             {m.signIn.consent.before}
             <Link
               href={routes.privacy()}
-              className="focus-visible:ring-ring text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
             >
               {m.signIn.consent.link}
             </Link>
