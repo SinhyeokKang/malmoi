@@ -26,13 +26,17 @@
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
 | **EmptyState** (8-3) | 맨 아이콘 24 | **48 원형 칩 + 아이콘 16** | §6.4·§6.8 |
 | **사이드바** (8-3) | 접기 레일 · 프로젝트 스위처 · `Your work` 라벨 | **접기 없음 · 스위처 없음 · 라벨이 이름 그대로 · Help** | §6.5 |
+| **번역 표의 축** (8-4) | 로케일이 **열** (`\| Key \| en \| ko \|`) | **로케일이 행** — 키 셀 320 + 그 아래 로케일 행들, `<table>`이 아니라 `div` + `grid` | §6.1 |
+| **번역 필터** (8-4) | 왼쪽 `w-52` 네임스페이스 패널 + 상태 `Select` + 기준 로케일 `Select` | **툴바 셋**(네임스페이스 드롭다운 · 로케일 다중 선택 · 검색) + **칩 행**, 상태 필터 없음 | §6.1 |
+| **breadcrumb** (8-4) | 프로젝트 하위 화면 다섯의 첫 줄 | **없다** — 위로 가는 길은 사이드바가 든다(프리미티브는 `/projects/new`가 계속 쓴다) | §6.1 |
 
 ⚠️ **앞의 여덟은 8-1b(로그인·초대)를 그리며 나왔고 뒤의 둘은 8-2(셸)다. 전 화면에 적용된다.**
 8-3 이후가 나머지 화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
 [features/ui-rework/README.md](./features/ui-rework/README.md)가 든다.
 
-⚠️ **아직 반영 안 된 화면이 있다** — `Button size="lg"`는 셸 밖 전용이고, base 치수 교체는
-**마지막 화면이 옮겨온 뒤**다(§6.4). 그때까지 셸 안팎의 버튼 높이가 다르다.
+⚠️ **base 치수 교체는 2026-09-11에 끝났다** — `md`가 36(`h-9`)이고 입력 셋도 같은 높이다. 미뤄 둔
+이유("소비자 26파일이 함께 움직인다")는 시안의 기본값이 36으로 드러나면서 해소됐다. `Button
+size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 수락 — §6.4).
 
 ## 1. 기반 스택
 
@@ -233,39 +237,66 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 라우트는 열이다 (user-stories.md 순서) — 로그인 · 목록 · 새 프로젝트 · **Home** · **번역** · **언어** · **멤버** · 설정 · **계정** · 초대 수락. 공통 형은 §6.4.
 
-### 6.1 번역 화면 — 패널 · 헤더 스트립 · 고정 슬롯 · 표
+### 6.1 번역 화면 — 머리 · 툴바 · 칩 · **키 그룹**
 
-**표 밖에 셋이 있다** (2026-09-08 ship 3). 표만 적어 두면 다음 사람이 그 셋을 다시 발명한다.
+⚠️ **2026-09-11(8-4)에 표의 축이 바뀌었다.** 그 전에는 `| Key | en(base) | ko | fr |`로 **로케일이
+열**이었고, 지금은 **키가 왼쪽 셀 하나(320)이고 로케일이 그 아래 행으로 쌓인다**(시안 `212:937`).
+열이 축이면 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다 — 그 가로 스크롤 규칙이
+여기 적혀 있었고, 축을 바꾸면서 통째로 사라졌다.
 
-| 요소 | 규칙 |
-|---|---|
-| **네임스페이스 패널** | `aside` `w-52 shrink-0 overflow-y-auto border-r py-2`(콘텐츠 표면 — 셸 사이드바가 아니다). 항목 `px-3 py-1.5 text-sm`, 우측에 `pending/total`(전부 번역됐으면 총계만). ⚠️ **선택은 `bg-muted` 알약이다** — 셸 사이드바의 선택은 `bg-foreground/10` 알파다(8-2). **비대칭이 의도다**(표면이 서로 다르다) — 한쪽으로 맞추면 그 표면에서 알약이 사라진다. muted 알약 위 글자는 `text-foreground`이고 링에 `ring-offset-1`을 덧댄다(§7) |
-| **헤더 스트립** | `border-b px-6 py-4 space-y-3` — breadcrumb → `h1 text-base font-medium` + 키 수 + "Last sent …" + PR 링크 → 우측에 툴바. **자기 안에서 스크롤하지 않는다**(표만 스크롤한다) |
-| **툴바 필터 행** | 검색 `Input w-56 pl-8` + `Search` `absolute left-2` · 상태 `Select` + `ListFilter` · **기준 로케일 `Select`**(세 번째 필터 — 집계와 상태 필터가 그 로케일을 본다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08) |
-| **고정 슬롯 순서** | 툴바 아래 **편집 손실 배너가 위, Publish 결과 `Alert`가 아래**다. ⚠️ **둘 다 조건부 분기 밖**에 있어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07) |
+⚠️ **"행이 3배"가 "입력이 3배"는 아니다** — 903키 × 3로케일 = **`<Textarea>` 2,709개**이고 그 수는
+축이 바뀌어도 그대로다. 늘어나는 것은 행 래퍼와 로케일 배지다.
 
-**빈 상태 넷**: 준비 전(readiness — OWNER는 설정으로 보낸다) · 로케일 없음 · 키 없음 · 필터 0행. 전부 `EmptyState`다.
-
-#### 표 자체
-
-화면은 `| Key | en (base) | ko | fr |`이고 **모든 셀이 편집 가능**하다 (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다 — 키든 로케일이든 어느 축이 orphaned면 그 셀은 `disabled` + placeholder "Not editable — removed from the code".
-
-**셀 메타는 배지 + 편집자**다: "Edited by {name}"을 `text-muted-foreground text-xs`로 붙이고, **이름이 없으면 마스킹한 이메일**이다(`s***@example.com` — 이 표는 멤버 전원이 본다). **`updatedBy`가 없으면 편집자 표기가 없다** — push가 덮은 셀이 그 상태다(design §3.6). ⚠️ `Translation.updatedBy`에 `User.id`와 옛 GitHub 핸들이 섞여 있어 **못 찾은 값은 원문이 그대로 보인다** — 그게 정상 폴백이다 (malmoi#3).
+**표 밖에 넷이 있다.** 표만 적어 두면 다음 사람이 그것들을 다시 발명한다.
 
 | 요소 | 규칙 |
 |---|---|
-| 키 이름 | **`text-mono`** (§4.1) + Orphaned 배지 |
-| `description` | `text-xs text-muted-foreground` — **`background` 표면 위일 때만** (§2.2) |
-| 코드 참조 | `text-xs text-blue-600 underline` + `ExternalLink` 12px (§6.3) |
-| 번역 입력 | `Textarea` `rows=1` + `field-sizing-content`(미지원 브라우저는 1행), `text-sm`. ⚠️ **`aria-label`이 `{키} · {로케일}`이다** — placeholder는 값이 차면 안 읽혀 채워진 셀이 이름 없는 입력이 된다 |
-| 저장 상태 | 셀 안 한 줄은 **시각 전용**이고 상태가 **넷**이다 — Saving… / Saved(1.5초 뒤 소거) / **Not saved yet**(값이 변했고 아직 blur 전) / 실패 = `text-destructive` 문장 + `[Retry]`(`Button link sm` — 그 variant는 파랑 밑줄이고 destructive는 옆 문장이 든다). ⚠️ 사유가 `unauthorized`면 [Retry] 자리에 **[Sign in]** `ButtonLink`가 온다. ⚠️ **`role="status"`를 셀에 두지 않는다** — 903행×3로케일이면 live region이 2,700개다. 알림은 표 하나의 영역이 든다(§7) |
-| 헤더 | `bg-muted/50` + `sticky top-0`. 글자는 `text-foreground/60` — **`text-muted-foreground`가 아니다** (§2.2). `(base)` 표기도 같은 규칙 |
-| 열 순서 | **base가 맨 앞**, 나머지는 코드순 |
-| 행 | `px-4 py-3` · 셀 `border-t`(표는 `divide-y`가 아니다) · hover `bg-muted/30` · `align-top`. ⚠️ 헤더는 `sticky top-0 **z-10**` — `z`가 없으면 스크롤 시 셀의 포커스 링이 헤더 위로 그려진다 |
+| **머리** | `PanelHeader` `space-y-3 px-6 py-4` — `h1 text-base font-medium`(**사이드바 라벨과 같은 키**) + 총계 `Badge neutral` + "Last sent …" + PR 링크, 우측에 **Publish 버튼**. ⚠️ **breadcrumb이 없다**(8-4 — 프로젝트 하위 화면 다섯에서 함께 지웠다; 위로 가는 길은 사이드바가 든다). ⚠️ **총계는 필터 *전*의 값이다**(§6.63과 같은 규칙) — 필터마다 흔들리면 "이 프로젝트에 키가 몇 개인가"에 답하지 못한다. 필터 후 건수는 섹션 헤딩의 배지가 든다. ⚠️ **숫자 배지는 `aria-hidden` 숫자 + `sr-only` 문장**이다 — 숫자만 그리면 접근 이름이 "Translations 1134"다 |
+| **툴바** | 네임스페이스 `Select w-40`(옵션 라벨이 `{name} ({pending}/{total})` — native `<select>`라 옵션 안에 배지를 못 그린다) · 로케일 **다중 선택** `DropdownMenu w-32`(`DropdownMenuCheckboxItem`) · 검색 `Input w-64 pl-8` + `Search` `absolute left-2`(우측 정렬). ⚠️ **상태 필터가 없다**(8-4 — 시안의 칩이 정확히 세 종류라 그 부재가 의도다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08). ⚠️ **왼쪽 네임스페이스 패널이 사라졌다** — 드롭다운이 그 역할을 가져갔고, 둘을 두면 같은 필터가 두 곳이고 하나가 낡는다 |
+| **칩 행** | 적용된 필터가 `bg-muted rounded-full` 칩이고 **종류가 셋**(`Namespace:` · `Languages:` · `Search:`). ⚠️ **로케일 칩은 코드마다가 아니라 하나로 묶는다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 **전체로 넓어지고**(제거가 넓힘이 된다), 6로케일에서 한 줄을 넘는다. ⚠️ **칩 전체가 링크가 아니다** — 라벨은 평문이고 제거만 `Button ghost sm`(중첩 상호작용 요소는 금지, POSTMORTEM 2026-09-09와 같은 모양이다). 초기화는 칩이 하나라도 있을 때만 보이는 `ghost sm` 정사각. ⚠️ **기본 착지의 네임스페이스는 칩이 아니다** — 그것은 화면이 정한 착지점이지 사용자가 고른 필터가 아니다 |
+| **배너·결과 자리** | 칩 아래, **스크롤 영역 안**이다 — 배너 둘과 Publish 결과 `Alert`가 동시에 서면 고정 영역이 400px을 넘어 뷰포트의 40%를 먹는다. 순서는 **기준 로케일 대기 → 편집 손실 → Publish 결과**. ⚠️ **셋 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **결과는 나타날 때 `scrollIntoView`로 화면에 올린다** — 버튼은 고정 머리에 있으므로 표를 내린 채 누르면 그 문구가 뷰포트 밖이고, **실패는 다른 신호가 0이다**(SAAS 불변식 9) |
 
-**넓은 표는 자기 컨테이너에서만 스크롤한다** — `Table` 래퍼가 `h-full min-w-0 overflow-auto`로 **두 축을 다 든다** (`min-w-0`이 없으면 표가 콘텐츠 컬럼을 밀어낸다). 로케일이 6개면 표가 화면을 넘고, 페이지 본문이 좌우로 흔들리면 사이드바까지 밀린다. ⚠️ **세로도 그 컨테이너여야 `sticky top-0` 헤더가 붙는다** — `sticky`는 가장 가까운 스크롤 컨테이너를 기준으로 하므로, 세로를 바깥이 들면 헤더가 붙을 대상 없이 그냥 흘러간다. 높이는 부모(`min-h-0 flex-1`)가 정한다.
+⚠️ **Publish 버튼과 결과 `Alert`는 8-P가 오른쪽 프로젝트 패널로 가져간다** (SAAS §8). 시안에 없는데
+여기 있는 이유는 그 패널이 아직 골격뿐이고, **작동하는 능력을 "계획상 다른 곳으로 갈 것"이라는
+이유로 먼저 지우면 그 사이 배포가 기능 회귀**이기 때문이다 — 번역을 리포로 되돌려보낼 길이 앱에서
+사라진다. 되옮길 것은 `header.tsx` 한 파일의 슬롯 배선이다.
 
-**"Translated"에는 배지를 붙이지 않는다** — 가장 흔한 상태가 가장 조용해야 한다 (§6.2와 같은 원리). 같은 이유로 **"From repository" 같은 표시도 두지 않는다**.
+**빈 상태 넷**: 준비 전(readiness — OWNER는 설정으로 보낸다) · 로케일 없음 · 키 없음 · 필터 0행.
+전부 `EmptyState`다. ⚠️ **필터 0행에서도 칩과 초기화가 보인다** — 빠져나갈 길이 그것뿐이다.
+
+#### 키 그룹 자체
+
+**마크업이 `<table>`이 아니라 `div` + `grid`다** (8-4). 시안은 키 셀이 로케일 행들을 세로로 걸치는
+구조라 `rowSpan`이 자연스러워 보이지만, 값이 여러 줄이면 행 높이가 로케일마다 달라 `rowSpan`이
+정렬을 어긋나게 한다 — 이 화면의 값은 여러 줄일 수 있다(`field-sizing-content`).
+
+**잃은 시맨틱을 무엇이 대신하는가**가 이 결정의 절반이다:
+
+| 잃는 것 | 대신 |
+|---|---|
+| 열 헤더의 이름 | 각 입력의 `aria-label`이 `{키} · {로케일}`을 든다 |
+| 섹션 구분 | ⚠️ **네임스페이스 헤딩이 실제 `<h2>`여야 한다** — 네임스페이스 간 이동이 스크린리더의 heading 탐색으로만 가능하다 |
+| 본문 랜드마크 | `ContentPanel`의 `<main>`(§6.5) — 화면은 자기 것을 들지 않는다 |
+
+**모든 셀이 편집 가능하다** (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다: 키든 로케일이든
+어느 축이 orphaned면 그 셀은 `disabled` + placeholder "Not editable — removed from the code".
+
+| 요소 | 규칙 |
+|---|---|
+| 그룹 | `grid-cols-[320px_minmax(0,1fr)]` + `border-b`. 섹션은 `rounded-lg border`로 감싼다 |
+| 키 셀 | 이름 **`text-mono`**(§4.1) + Orphaned 배지 → `description` `text-xs text-muted-foreground` → 코드 참조 `text-xs text-blue-600` + `ExternalLink` 12(§6.3). ⚠️ **1280px에서도 320 고정이다** — 값 열이 ≈368px로 주는 쪽을 받아들인다(키 이름이 잘리는 쪽이 더 나쁘다) |
+| 로케일 행 | `flex items-start gap-3 px-3 py-2` — 로케일 칸 `w-20`(중앙 정렬) · 입력 `flex-1` · **우측 고정 폭 메타 슬롯 `w-40 shrink-0`** |
+| 로케일 배지 | **국기(있으면) + 코드 + `(base)`**. ⚠️ **국기가 `<img>`가 아니라 CSS `background-image`다** — `?ns=*`에서 배지가 2,709개 서고 `<img>`면 요소·레이아웃 오브젝트가 그만큼 는다. 규칙은 로케일 **종류만큼** `globals.css`에 있고 요소는 `<span>` 하나이며 치수는 클래스가 든다. ⚠️ **매핑이 없으면 아무것도 안 그린다 — 코드만**(물음표·지구본은 모르는 것을 아이콘으로 주장하는 것이다). ⚠️ **orphaned는 배지 자체를 `danger`로** 바꾼다 — 로케일 칸 80px에 별도 배지가 안 들어가고, 로케일 헤더가 사라져 그 표시가 살 자리가 여기뿐이다(사유 문장은 `disabled` 입력의 placeholder가 든다). 색만으로 말하지 않으므로 `sr-only` 문구가 함께 간다 |
+| 번역 입력 | `Textarea` `rows=1` + `field-sizing-content`, `text-sm`. ⚠️ **테두리 없는 표면**이고 hover·포커스에서만 드러난다 — 2,709개가 각자 테두리를 들면 표가 격자로 읽혀 값이 안 보인다. ⚠️ **`placeholder`가 미번역의 유일한 시각 신호다** — `Untranslated` 배지·상태 필터·입력 테두리가 **같은 배송에서 동시에** 사라졌다. ⚠️ **`aria-label`이 `{키} · {로케일}`이다** — placeholder는 값이 차면 안 읽혀 채워진 셀이 이름 없는 입력이 된다 |
+| 메타 슬롯 | `Needs review` 배지 · `Not yet sent` 배지 · "Edited by {name}"(`text-muted-foreground text-xs`, **이름이 없으면 마스킹한 이메일** — 이 표는 멤버 전원이 본다). ⚠️ **빈 상태에서도 폭을 차지한다**(`shrink-0`) — 안 그러면 입력 폭이 행마다 다르다. ⚠️ `Translation.updatedBy`에 `User.id`와 옛 GitHub 핸들이 섞여 있어 **못 찾은 값은 원문이 그대로 보인다**(malmoi#3). push가 덮은 셀에는 표기가 없다 |
+| 저장 상태 | 셀 안 한 줄은 **시각 전용**이고 상태가 **넷**이다 — Saving… / Saved(1.5초 뒤 소거) / **Not saved yet** / 실패 = `text-destructive` 문장 + `[Retry]`(사유가 `unauthorized`면 **[Sign in]**). ⚠️ **메타 슬롯이 아니라 입력 아래 줄이다** — "Not saved yet — leave the cell to save"가 약 230px이고 타이핑 중에 나타났다 사라져서, 우측에 두면 `field-sizing-content` textarea의 폭이 그때마다 재계산돼 줄바꿈과 커서가 튄다. ⚠️ **`role="status"`를 셀에 두지 않는다** — 903행×3로케일이면 live region이 2,700개다. 알림은 표 하나의 영역이 든다(§7) |
+| 로케일 순서 | **base가 맨 위**, 나머지는 코드순 — 원문이 위에 있어야 그 아래를 채운다 |
+| 섹션 | `?ns=*`면 네임스페이스마다 `<h2 text-sm font-medium>` + 필터 후 건수 배지, 단일 선택이면 헤딩 하나. ⚠️ **sticky로 만들지 않는다** — 시안이 스크롤 영역 안의 보통 블록이고, sticky는 스크롤 컨테이너 기준이라 이 레이아웃에서 자리가 애매하다 |
+| 행 순서 | **각 섹션 안에서 pending 키가 위**다(untranslated 또는 needsReview, orphaned는 제외). ⚠️ **상태 필터를 뺀 대가를 갚는 유일한 수단이다** — `namespaceOf`가 구분자 없는 키를 전부 `_root`로 묶고 **크롬 확장 `messages.json`이 정확히 그 부류**라, 그 프로젝트에서는 `pending/total`이 전체 집계와 같아져 남은 일을 찾는 수단이 검색 하나가 된다. **URL 상태가 아니다** — 칩이 넷째가 되지 않는다 |
+
+**"Translated"에는 배지를 붙이지 않는다** — **가장 흔한 상태가 가장 조용해야 한다** (§6.2와 같은
+원리). 같은 이유로 8-4가 `Untranslated` 배지를 뗐고("값 칸이 비어 있는 것이 이미 그 말이다"),
+**"From repository" 같은 표시도 두지 않는다**.
 
 ### 6.2 상태 색 — 배지 4종 + 연결 건강성 7종 + Alert 4종, 색 체계는 하나
 
@@ -360,7 +391,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-light`로 되누른다. variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
-| **Table** | §6.1 |
+| **Table** | 소비자가 **셋**이다 — 언어(§6.66)·이력(§6.68)·멤버(§6.65). ⚠️ **번역 화면은 2026-09-11(8-4)에 이 프리미티브를 떠났다** — 키 그룹이 `div` + `grid`다(§6.1). 그래서 이 행의 옛 포인터 `§6.1`이 끊겼고, 대신 그 절이 "무엇이 `<table>`의 시맨틱을 대신하는가"를 든다 |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Esc·배경·X·Cancel 넷으로 닫힌다 |
@@ -368,7 +399,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유). **프리미티브가 16 → 17이 됐다** |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
-| **Button `size="lg"`** | `h-10 px-4` — **셸 밖 카드 전용**(로그인·초대 수락). ⚠️ **base를 안 바꾼 이유**: 소비자가 26파일인데 8-1b가 검증한 화면은 셋이다. 각 화면의 배송이 옮겨오고 **마지막이 옮겨온 뒤 기본값을 바꾼다** — 그때까지 셸 안 화면이 "signin이 쓰니 우리도"로 번지지 않게 이 줄이 막는다 |
+| **Button `size` 셋** | `md` `h-9 rounded-md px-3`(기본 — 2026-09-11에 32에서 36으로 올렸다, 시안의 기본 버튼이 36이고 입력 셋도 같이 올라갔다) · `sm` `h-7 rounded-sm px-2 text-xs` · `lg` `h-10 rounded-lg px-4`(**셸 밖 카드 전용** — 로그인·초대 수락). ⚠️ **넷으로 늘리지 않는다** — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다. ⚠️ **radius가 base가 아니라 `size`에 붙어 있다**(§5) — base에 두고 size가 덮으면 cva가 충돌하는 클래스 둘을 내고 twMerge가 이기는 것에 기대게 된다. ⚠️ **`size="icon"`은 없다** — 정사각 아이콘 버튼은 `ghost` + 정사각 유틸이다(`user-menu.tsx`·칩 행의 초기화) |
 | **EmptyState** | ⚠️ **아이콘이 48px 원형 칩 안이다** (8-3 — `bg-foreground/5` + 아이콘 16). 맨 아이콘은 텍스트에 붙어 제목의 일부처럼 읽히는데 칩이 그것을 **그림 자리**로 만든다(시안은 아이콘 20인데 §6.8이 크기를 셋으로 고정한다). 제목 **`text-lg font-medium` + `mb-1`** (2026-09-11 — `--text-base`가 15px로 내려가 설명 14와 1px 차이가 됐다) ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음. ⚠️ **수직 중앙을 컴포넌트가 하지 않는다** — 표 안(`logs`·대기 초대)에서도 쓰여서 자리마다 다르다. `flex-1`은 호출부가 든다. ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11) — 칩 `mb-3` · 제목 `mb-1` · 액션 `mt-4`가 각자 여백을 들어 gap이 **거기에 더해지고**, 그러면 하나를 건드릴 때 세 간격이 함께 움직인다. 구조는 shadcn `Empty`와 1:1이고 **CLI를 돌리지 않는다**(Radix 없는 순수 마크업이다) |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
 | **코드 블록** | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + **블록 위 한 줄의 오른쪽**에 [Copy] `default`(아이콘 `Copy` → `Check`) → 라벨 교체 "Copied", 실패는 "Copy failed"(삼키면 사용자가 복사된 줄 알고 떠난다) |
@@ -404,7 +435,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 스크롤되지 않고 활성 스크롤러가 하나였다.
 
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다.
-**Publish 버튼은 아직 셸에 없다** — 번역 화면 툴바이고, SAAS §8이 그것을 §6.55의 패널로 옮긴다.
+**Publish 버튼은 아직 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), SAAS §8이 그것을 §6.55의 패널로 옮긴다.
 
 ### 6.55 프로젝트 패널 (`w-80`, 2026-09-10 8-2 — **골격뿐이다**)
 
@@ -482,15 +513,15 @@ SAAS §7.7 결정 5가 사이드바 카운트를 거절한 것과 같은 축이�
 없으면 순손실이다 — **번역으로 가는 경로가 주된 동작**이어야 한다.
 
 ⚠️ **다른 화면의 지표를 복제하지 않는다** (결정 2). 키 수·미배포 건수·마지막 전송·PR 링크는 번역
-화면 툴바(§6.1)의 것이고, 리포·연결·적재 상태는 설정(§6.6)의 것이다 — 세 번째 사본을 만들면 그중
+화면 머리(§6.1)의 것이고, 리포·연결·적재 상태는 설정(§6.6)의 것이다 — 세 번째 사본을 만들면 그중
 하나가 낡는다. **Home이 소유하는 것은 "한 화면에 모아야만 보이는 것"뿐이다.**
 
 | 요소 | 규칙 |
 |---|---|
 | 머리 | `h1` = 프로젝트 이름 + 우측에 **화면당 하나인 primary** [Open translations](`Languages` 아이콘). 그 버튼이 클릭을 갚는 가장 직접적인 형태다 |
-| Languages | 제목 + 설명 한 줄 + **행 전체가 링크인 목록**(`ul.divide-y.border.rounded-lg` + 행 `px-4 py-3`). ⚠️ **`/projects` 목록과 더 이상 같은 형이 아니다** — 8-3이 그쪽을 `rounded-xl` + 2줄 행 `p-4`로 바꿨다(§6.63). 행 = 코드(`text-mono`) + base `Badge` + 우측에 검토 필요 `Badge warning` + "N% · a of b". ⚠️ **`?focus=` 링크가 개요를 일로 잇는 유일한 수단**이다 |
-| orphaned | ⚠️ **이 목록에 없다** — 그 열은 번역 화면에서 `disabled`라 `?focus=` 링크가 편집할 수 없는 곳으로 데려간다. 사유·복구는 §6.66이 든다. 살아 있는 로케일이 0이면 한 줄 + 그 화면 링크 |
-| Recent activity | 세 출처를 시각 내림차순으로 한 줄에: **편집**(`?ns=`+`?focus=` 링크) · **CI push**(링크 없음 — 어느 키인지 모른다) · **Publish**(PR 외부 링크 `text-blue-600` + `ExternalLink` 12px §6.3). 각 행 우측에 상대 시각 `text-xs text-muted-foreground` |
+| Languages | 제목 + 설명 한 줄 + **행 전체가 링크인 목록**(`ul.divide-y.border.rounded-lg` + 행 `px-4 py-3`). ⚠️ **`/projects` 목록과 더 이상 같은 형이 아니다** — 8-3이 그쪽을 `rounded-xl` + 2줄 행 `p-4`로 바꿨다(§6.63). 행 = 코드(`text-mono`) + base `Badge` + 우측에 검토 필요 `Badge warning` + "N% · a of b". ⚠️ **`?locales=` 링크가 개요를 일로 잇는 유일한 수단**이다 (8-4에서 `?focus=`가 그 이름으로 바뀌었다 — 로케일이 열이 아니라 행이라 "기준 열"이 아니라 **보일 로케일**이고, 단일 선택이라 동작은 같다) |
+| orphaned | ⚠️ **이 목록에 없다** — 그 행은 번역 화면에서 `disabled`라 `?locales=` 링크가 편집할 수 없는 곳으로 데려간다. 사유·복구는 §6.66이 든다. 살아 있는 로케일이 0이면 한 줄 + 그 화면 링크 |
+| Recent activity | 세 출처를 시각 내림차순으로 한 줄에: **편집**(`?ns=`+`?locales=` 링크) · **CI push**(링크 없음 — 어느 키인지 모른다) · **Publish**(PR 외부 링크 `text-blue-600` + `ExternalLink` 12px §6.3). 각 행 우측에 상대 시각 `text-xs text-muted-foreground` |
 | 없을 때 | 두 블록 각자 한 줄로 — 실패가 아니라 아직 아무 일도 없는 것이다 (§6.1의 "가장 흔한 상태가 가장 조용하다") |
 | 역할 | 게이트는 **`translation:write`**. 이 화면에는 role로 갈리는 컨트롤이 없다 — 개요와 링크뿐이다 |
 
@@ -682,7 +713,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | **헤더** | 사용자 메뉴 우 · 48px — **breadcrumb은 페이지 콘텐츠 첫 줄이다**(§6.5). ⚠️ 8-2가 로고를 왼쪽에 더하고 전폭으로 넓혔다 | §6.5 |
 | **콘텐츠 폭 둘** | 폼·설정은 limited, 표는 fluid | §5.1 |
 | **settings-block** | 제목 + 설명 + 본문 카드가 세로로 쌓인다 | §6.6 |
-| **표 구성** | 헤더 sticky · 행 hover · 세로선 없음 · 마지막 행에도 하단선 | §6.1 |
+| **표 구성** | 헤더 sticky · 행 hover · 세로선 없음 · 마지막 행에도 하단선 | §6.66·§6.68 (⚠️ 번역 화면은 8-4에 `<table>`을 떠났다 — §6.1) |
 | **Alert 배치 셋** | global / page-level / in-block | §6.4 |
 | **빈 상태 패턴** | 짧은 제목 · 문장 하나 · 버튼 하나 | §6.4 |
 | **로그인 2열** | 폼 좌 · 장식 우(스크린샷 2) | user-stories §1 |

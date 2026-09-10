@@ -14,7 +14,7 @@
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 **dev까지 갔다**(2026-09-10~11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4(번역 화면)는 설계 문서만 섰고 미착수다**(`docs/features/ui-rework/translations/`). **8단계의 전역 규칙 열은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 **dev까지 갔다**(2026-09-10~11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4**(번역 화면 재작성 — **표의 축이 로케일 = 행이 됐다**: `?focus=`·`?state=` 폐기 → `?locales=` 다중 · 툴바 + 칩 행 · 왼쪽 네임스페이스 패널 삭제 · **breadcrumb을 프로젝트 하위 화면 다섯에서 함께 삭제** · `lib/keys/flag.ts`·`filters.ts` 신설 · 프리미티브 17)도 **dev까지 갔다**(2026-09-11, `docs/features/ui-rework/translations/`). ⚠️ **잔여 둘**: 국기 SVG 에셋(사용자가 준다 — 없어도 화면이 서므로 blocker가 아니다)과 **903키 `?ns=*` 2초 실측**(T12). **8단계의 전역 규칙 열은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -60,7 +60,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 16개 + `radix-ui`에서 DropdownMenu·Dialog **둘** (2026-09-11에 `Tooltip`을 걷었다 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 **17개** + `radix-ui`에서 DropdownMenu·Dialog **둘** (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -134,6 +134,8 @@
 ✅ **그 값싼 수단이 화면에 붙었다** (2026-09-08, 6a T2 판정 + T7 화면): `defaultNamespace`가 **pending>0인 첫 네임스페이스**로 착지시키고 표는 그 ns의 행만 렌더한다 — `compareKeys` 첫 항목은 알파벳순이라 이미 다 번역된 사소한 ns일 수 있었다. orphaned만 있는 ns는 건너뛴다. **전체 보기는 `?ns=*`로만 간다.**
 
 ⚠️ **재측정했고 2초 목표가 미달이었다** (2026-09-08 프로덕션): 필터 없는 화면 **12.7 → 4.66초**(2.7배), **기본 착지 3.30초**. 그런데 **24키 프로젝트도 3.29초**라 약 1.9초가 **키 수와 무관한 고정 비용**이었고, **가상화도 조회 좁힘도 그것을 못 줄인다**는 판정은 그대로다.
+
+⚠️ **8-4가 표의 축을 바꿨고 그 판정이 아직 안 끝났다** (2026-09-11). 로케일이 행이 되면서 `?ns=*`의 **표 행이 903 → 2,709**가 됐지만 **`<Textarea>` 수는 2,709 그대로다**(축이 바뀌어도 셀 수는 안 변한다) — 늘어난 것은 행 래퍼와 로케일 배지이고, **국기는 CSS `background-image`라 요소가 0개 는다.** 그래서 가상화를 선반영하지 않았다. **게이트는 SAAS §8 원문 그대로 `?ns=*` 첫 착지 2초**이고 기준선이 1.20초(FCP)다 — **미달이면 그 자리에서 가상화를 판정한다**(다음 사이클로 넘기면 게이트가 게이트가 아니다). ⚠️ dev DB에 903키 프로젝트가 없어 `push:local` 적재가 선행이고, 재는 방법은 6a T7과 같아야 한다(같은 프로젝트·같은 머신·DevTools Performance, **FCP 3회**).
 
 ✅ **그 고정분의 원인이 나왔고 가상화와 무관했다** (2026-09-09): **Vercel 함수가 `iad1`(워싱턴)에서 돌고 DB는 도쿄**였다 — `x-vercel-id: icn1::iad1::…`(앞이 엣지, **뒤가 실행 리전**). 왕복 일곱이 전부 태평양을 건너 홉당 ~375ms였다. `vercel.json`에 `regions: ["hnd1"]`을 박아 **기본 착지 3.30 → 0.44~0.54초**, **필터 없는 907키 화면 4.66 → 1.20초**다(FCP 3회, PR #24 → `7b029b8`). **2초 목표는 최악 경로에서도 통과했고 수단 셋(`Suspense`·왕복 병합·폰트) 중 아무것도 쓰지 않았다.** ⚠️ **오진을 부른 것은 TTFB다** — 8~78ms를 서버 시간으로 읽으면 "셸은 빠른데 클라이언트가 느리다"가 되는데, 실제로는 헤더만 먼저 나가고 서버가 8KB 본문을 3.4초 붙들고 있었다. 스트리밍 응답에서는 **`responseEnd`와 `transferSize`를 함께** 본다 (POSTMORTEM 2026-09-09).
 
@@ -420,15 +422,26 @@ app/
                         ⚠️ connectRepository는 **리포를 고르지 않는다** — 리포는 Project에 고정이고
                         installationId는 probeRepo가 GitHub에 물어 얻는다(클라이언트가 보내지 않는다)
     projects/[slug]/translations/page.tsx
-                        키 테이블 — 로케일이 열. 최상단에서 requireProjectAccess를 **던진다**.
+                        **키 그룹 — 로케일이 행이다** (8-4). 키 셀 320 + 그 아래 선택된 로케일마다 한 행.
+                        최상단에서 requireProjectAccess를 **던진다**.
                         ⚠️ **maxDuration=60이 여기 있어야 한다** (7단계) — Server Action은 자기를 부른
                         페이지 세그먼트의 값을 쓰고, 없으면 기본값 300이 `STALE_AFTER_SECONDS`와 **같아져**
                         정상 실행이 스스로를 stale로 본다
                         그 뒤 planProjectReadiness: ready가 아니면 OWNER는 설정으로, 그 외는 빈 상태.
                         ⚠️ **기본 착지가 pending>0인 첫 네임스페이스다** (6a T7) — 전체는 `?ns=*`.
-                        `type Search`가 URL 계약이고(ns·focus·q·state) entry-points가 routes.ts와 대조한다.
+                        그 판정(`defaultNamespace`)이 축 변경을 **그대로 통과했다** — 로케일을 인자로
+                        안 받게 만들어 둔 것이 여기서 값을 했다.
+                        `type Search`가 URL 계약이고(**ns·locales·q** — 8-4가 focus·state를 폐기했다)
+                        entry-points가 routes.ts와 대조한다.
+                        ⚠️ **조립 순서가 계약이다**: parseLocaleSelection → namespaceCountsFor →
+                        resolveNamespace → filterRows({locales,q}) → pendingFirst → groupByNamespace.
+                        **pendingFirst가 그룹핑보다 앞**이라도 분할이 안정적이라 섹션 안 순서가 보존된다
+                        ⚠️ **`chipQuery`가 `query`와 `ns` 하나만 다르다** — 기본 착지의 네임스페이스는
+                        화면이 정한 것이지 사용자가 고른 필터가 아니라 칩으로 세우지 않는다
                         ⚠️ **헤더를 무조건 렌더한다** — Publish 결과 Alert가 그 안에 있어 조건부 분기에
-                        두면 router.refresh()가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07)
+                        두면 router.refresh()가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+                        **표를 그 컴포넌트의 `children`으로 넘긴다** — 배너 둘과 결과 Alert가 스크롤
+                        영역 안이어야 해서(셋이 서면 고정 영역이 400px을 넘는다) 머리와 본문을 그것이 든다
     __tests__/          harness.ts(메모리 DB 한 벌) + harness.test.ts(**하네스 자기검사** — 페이크가 실제
                         스키마보다 느슨하면 아무 행이나 집어도 정답이 나온다, POSTMORTEM 2026-09-06)
                         + 흐름·인가·멤버십·연결·게시실패·온보딩·조회·셸레이아웃 테스트 **여덟**
@@ -493,8 +506,20 @@ components/
                         ⚠️ **대기 초대의 이메일은 `maskEmail`이 아니다** — 그 표에선 마스킹한 주소가 유일한
                         식별자라 서로 다른 둘이 같은 행이 됐다(malmoi#18). 서버가 `maskedInviteLabels`로
                         목록 전체를 보고 라벨을 내려준다
-  translations/         번역 화면의 클라이언트 조각 (6a T7). header(breadcrumb·툴바·배너·결과 Alert를
-                        **한 상태 트리**로 든다) / filters(?q=·?state=·?focus= → routes.translations) /
+  translations/         번역 화면의 조각 (6a T7 → **8-4가 행 축으로 재작성**). header(제목·Publish·툴바·
+                        칩·배너·결과 Alert를 **한 상태 트리**로 들고 표를 `children`으로 받는다.
+                        ⚠️ **breadcrumb이 없다** — 8-4가 하위 화면 다섯에서 함께 지웠다.
+                        ⚠️ **결과 Alert에 `scrollIntoView`가 붙어 있다** — 버튼은 고정 머리, 결과는
+                        스크롤 본문 맨 위라 표를 내린 채 누르면 뷰포트 밖이고 **실패는 다른 신호가 0이다**) /
+                        key-group(**서버 컴포넌트** — 키 셀 + 로케일 행들. `<table>`이 아니라 `div`+`grid`다:
+                        값이 여러 줄이면 `rowSpan`이 정렬을 어긋나게 한다) /
+                        locale-badge(국기 + 코드 + `(base)`. ⚠️ **국기가 CSS `background-image`다** —
+                        `?ns=*`에서 2,709개가 서므로 `<img>`면 요소가 그만큼 는다. orphaned는 배지 자체를
+                        `danger`로 바꾼다 — 로케일 칸 80px에 별도 배지가 안 들어간다) /
+                        filter-chips(⚠️ **칩 전체가 링크가 아니다** — 라벨은 평문, 제거만 `Button`) /
+                        filters(?ns=·?locales=·?q= → routes.translations. 네임스페이스 `Select` +
+                        로케일 다중 선택 + 검색. ⚠️ **마지막 로케일 하나는 못 뗀다** — 선택이 비면
+                        폴백이 걸려 오히려 전체로 넓어진다) /
                         announcer(표 하나의 `aria-live` — 셀마다 두면 903행×3로케일에 2,700개다) /
                         edit-loss-banner(닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다) /
                         base-pending-banner(6b-3 — 조건은 `basePending`, **닫기가 없다**: 할 일이 남은 동안
@@ -552,13 +577,19 @@ components/
                         라벨이 `<p>`라 접근성 트리에서 이름이 아니다. 하단은 **Docs(`/docs`)·Sign out** 둘 — 라벨이 그 화면 제목과 **같은 키**다) /
                         user-menu.tsx(**항목 둘** — Settings·Sign out. ⚠️ 트리거가 아바타와 같은 32여야
                         한다 — `size="sm"`(28)이면 아바타가 삐져나온다).
-                        ⚠️ **breadcrumb·Publish는 아직 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아
-                        페이지 콘텐츠의 첫 줄이 들고, 8-3 이후가 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
+                        ⚠️ **breadcrumb은 옮기지 않고 지웠다** (8-4, 2026-09-11 — 이 줄의 절반을 정정한다).
+                        프로젝트 하위 화면 **다섯 전부**에서 걷었고 위로 가는 길은 사이드바가 든다
+                        (프리미티브 `components/ui/breadcrumb.tsx`는 남는다 — `/projects/new`가 계속 쓴다:
+                        프로젝트 컨텍스트 밖이라 사이드바가 길을 못 준다).
+                        **Publish는 그대로 셸 밖**이다 — 번역 화면 제목 행 우측이고 8-P가 패널로 가져간다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
                         판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
-                        `Tooltip`이 빠졌다** — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다).
+                        `Tooltip`이 빠지고**(8-3이 접기 레일을 지우면서 소비자가 0이 됐다) **같은 날 8-4가
+                        `DropdownMenuCheckboxItem`을 더했다** — `role="menuitemcheckbox"`와 `aria-checked`를
+                        Radix가 주고, `onSelect`의 `preventDefault()`를 **프리미티브가 든다**: 소비자마다
+                        기억하게 하면 하나가 빠지고 그 하나는 "고를 때마다 메뉴가 닫힌다"로만 드러난다).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
                         Dialog·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
@@ -660,7 +691,10 @@ lib/
                         **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
                         · autoCursor(커서가 없을 때의 ㄹ자 순회. ⚠️ **줄 사이에 세로 전환 구간이 있다** —
                         없으면 y가 줄 인덱스로만 정해져 줄바꿈이 순간이동한다)
-  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`signIn()`이 쿼리를 받는다**
+  routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`ALL_NAMESPACES`가 2026-09-11에
+                        `lib/keys/view.ts`에서 여기로 내려왔다** (8-4) — 칩 판정(`lib/keys/filters.ts`)이
+                        그 값을 알아야 하는데 그 모듈은 잎이라 `view.ts`를 물 수 없다. URL 값이므로 이
+                        파일이 원래 자리이기도 하다. ⚠️ **`signIn()`이 쿼리를 받는다**
                         (8-1a) — `withQuery`를 지나야 `entry-points.test.ts`의 "쿼리 수신자" 검사에
                         걸린다(문자열 연결은 그 검사를 회피한다). `privacy()`·`docs()`도 8-1a다. `logs(slug, {cursor})`는 7단계가
                         **그 페이지와 같은 커밋에** 더했다 (`account()`·`project()`와 같은 판정).
@@ -916,7 +950,15 @@ lib/
                         그 계약이 검사에서 지워진다). ⚠️ 거부가 화면에 닿지 않으면 사용자에겐 버튼이
                         안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06)
   keys/                 view.ts(순수 — 집계·배지·permalink + collectActorIds·actorLabel + defaultNamespace·
-                        resolveNamespace·filterRows·isUnpublished + relativeTime + **localeProgress**(6b-5 —
+                        resolveNamespace·isUnpublished + **행 축 다섯**(8-4 — parseLocaleSelection ·
+                        rowState · namespaceCountsFor · pendingFirst · groupByNamespace, 그리고
+                        filterRows가 `{ q, locales }`를 받는다. ⚠️ **옛 `namespaceCounts`와 단일 로케일
+                        갈래는 지웠다** — 두 벌이면 하나가 낡는다. ⚠️ **키 단위로 한 번만 센다**: 로케일마다
+                        세면 `pending`이 `total`을 넘는다. ⚠️ **검색 대상이 선택된 로케일로 좁혀진다** —
+                        안 좁히면 안 보이는 값에 맞은 키가 이유 없이 난다. ⚠️ `groupByNamespace`는
+                        **순서를 `counts`에서 받는다**: `rows`만 보면 출처가 Postgres collation이라
+                        `compareKeys`와 갈릴 수 있고 그러면 섹션 순서 ≠ 드롭다운 순서다)
+                        + relativeTime + **localeProgress**(6b-5 —
                         ⚠️ percent는 **내림**이라 902/903이 100%가 되지 않고, **base도 100%가 아닐 수 있다**;
                         정렬은 base → 살아 있는 로케일 → **orphaned 맨 뒤**)) / save.ts(순수 — 저장 판정)
                         / query.ts(조회, server-only — loadProject·loadKeys·loadActors·countUnpublished·
@@ -932,6 +974,16 @@ lib/
                         키가 **어느 N건이 오는지**를 고정한다. `value`를 select하지 않는다))
                         / refocus.ts(⚠️ **잎, import 0** — shouldRefocus. `translation-input.tsx` 안에 두면
                           그 파일의 그래프에 server-only가 있어 vitest가 import만으로 죽는다)
+                        / filters.ts(8-4 — activeFilters · clearedQuery. 칩 행의 유일한 출처이고 `next`가
+                          **그 칩을 뗀 뒤의 쿼리**다. ⚠️ **잎이다 — import가 `lib/routes.ts`까지**:
+                          칩 행이 클라이언트인데 `view.ts`는 잎이 아니다(`compareKeys` →
+                          `lib/adapters/shared`). ⚠️ **라벨을 만들지 않는다** — 문구는 사전이 든다)
+                        / flag.ts(8-4 — flagFor · FLAG_INVENTORY. ⚠️ **잎, import 0** — 로케일 배지가
+                          `?ns=*`에서 2,709번 렌더된다. ⚠️ **매핑이 원리적으로 실패한다**: 계약은 성공이
+                          아니라 **실패했을 때 코드만 그린다**이고, 표는 `Map`이다(로케일 코드가 남이 정한
+                          값이라 객체 조회는 `__proto__`에서 프로토타입을 돌려준다). ⚠️ **목록이 비어
+                          있는 것이 정상 상태다** — 에셋이 오면 목록·`public/flags/`·globals.css 규칙 셋이
+                          함께 늘고 `__tests__/flag-assets.test.ts`가 그 셋을 대조한다)
                         ⚠️ **`isUnpublished`와 `countUnpublished`는 같은 술어의 두 벌이다** — `updatedBy`가 사람인
                         행만 센다(push가 그것을 비운다). `updatedAt`만 보면 code push 직후 전 키가 미배포로 나온다.
                         `app/(edit)/__tests__/queries.test.ts`가 두 경로에 같은 행을 먹여 맞댄다
@@ -1020,6 +1072,10 @@ pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 public/brand/           ⚠️ **커밋된 원본이다** (8-1a) — 로고 SVG 넷 + 키비주얼 PNG. 위 폰트와 반대다.
+public/flags/           ⚠️ **같은 부류의 커밋된 원본** (8-4) — 로케일 배지의 국기 SVG(16×11, 파일명이
+                        ISO 3166-1 alpha-2 소문자). **아직 비어 있다** — 사용자가 export 해서 넣고
+                        (`ui-rework/README.md` 규약 2), 그때까지 전 로케일이 코드만으로 선다.
+                        ⚠️ **`lib/keys/flag.ts`의 목록·`app/globals.css`의 규칙과 셋이 함께 움직인다**
 app/icon.svg            favicon — `malmoi-icon-black.svg`의 **복사본**이다(Next 파일 규약이 app/ 아래를
                         요구한다). 로고를 바꾸면 둘 다 바꾼다. 리포에 favicon이 없었다
 scripts/

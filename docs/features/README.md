@@ -16,7 +16,7 @@
 규칙대로 닫히면 지운다. 넷째(외부 감사 원문)와 다른 점은 **실행 계획이 붙어 있다는 것**이다.
 
 ✅ **7단계 `sync-runs/`가 프로덕션까지 나갔다** (2026-09-10, PR #26 → `d0e8688` — 아래 표).
-🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)과 **2026-09-11 폴리싱 라운드**(패널 머리 고정 · 목록 검색·상태 필터 · `Tooltip` 제거 · 화면 제목이 사이드바 라벨 키 공유 · `lib/tone.ts`)가 dev다. **8-4(번역 화면)는 설계 문서만 섰고 미착수다.**
+🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)과 **2026-09-11 폴리싱 라운드**(패널 머리 고정 · 목록 검색·상태 필터 · `Tooltip` 제거 · 화면 제목이 사이드바 라벨 키 공유 · `lib/tone.ts`), 그리고 **8-4(번역 화면 — 표의 축을 로케일 = 행으로 재작성)**가 dev다.
 태스크와 완료 게이트는 SAAS §8에 있다.
 
 ⚠️ **`ui-rework/`는 2단 구조다** — 축이 커서 디렉터리 안에 **배송별 하위 디렉터리**를 두고
@@ -68,7 +68,7 @@ CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`t
 | [sec-audit-2](./sec-audit-2/) | ✅ 프로덕션 반영 (2026-09-10, PR #27 → `ff5e8a4`) | ARCHITECTURE §9 · SAAS §11 · [작업 기록](./sec-audit-2/tasks.md) | #37은 **사용자 결정으로 제외**(가시성 기반 정책 유지). #38은 session-revocation으로 배송 |
 | [credential-storage](./credential-storage/) | ✅ **dev·prod 전환 완료** (2026-09-10, PR #28 → `9e6854e` · #29 → `f6933d7`) | [spec](./credential-storage/spec.md) · [design](./credential-storage/design.md) · [operations](./credential-storage/operations.md) · SAAS 저장 보호 · ARCHITECTURE §5.1·§6.6 | 키 회전 리허설(P7) · 차단·drain 리허설(T11) |
 | [session-revocation](./session-revocation/) | ✅ 프로덕션 반영 (2026-09-10, PR #28 → `9e6854e`) | SAAS 전체 세션 회수 · ARCHITECTURE §6.1.1 · [spec](./session-revocation/spec.md) | GitHub 왕복·두 세션 회수·타 사용자 보존은 실물 확인. 남은 것은 Google 왕복·취소 경로·키보드/포커스(S7) |
-| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3 + 폴리싱 dev) | SAAS §8 · DESIGN §0·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | **8-4 번역 표(설계 완료·미착수 — [translations/](./ui-rework/translations/))** · 나머지 페이지별(Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
+| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3·8-4 + 폴리싱 dev) | SAAS §8 · DESIGN §0·**§6.1**·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | **8-4의 잔여 둘**([translations/](./ui-rework/translations/)) — 국기 SVG 에셋(사용자가 준다, blocker 아님) · 903키 `?ns=*` 2초 실측(T12) / 나머지 페이지별(Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
