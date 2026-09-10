@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **다음은 8단계(UI 재작성)**이고 아직 착수 전이다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)는 **dev까지 갔다**(2026-09-10). **8단계의 전역 규칙 열은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 16개 + `radix-ui`에서 DropdownMenu·Dialog·Tooltip 셋. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 17개 + `radix-ui`에서 DropdownMenu·Dialog·Tooltip 셋. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -309,8 +309,15 @@ app/
                         + screens — `lang="en"`·설정 화면의 revalidate 안전·초대 수락의 갇힘 없음을 소스로 센다
                         + security-headers — `next.config.ts`의 응답 헤더를 **불러서** 검사한다(`tsc`가 그 함수를 못 본다)
   (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사 — GET·HEAD만, Action POST는 통과)
-    layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
-                        ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
+    layout.tsx          셸 — 캔버스 + 헤더 + (사이드바 · children) 행. 2차 방어로 redirect()
+                        (조건부 렌더는 차단이 아니다).
+                        ⚠️ Publish·breadcrumb이 없다 — /projects 목록도 감싸므로 slug가 없다
+                        ⚠️ **`{children}`을 흰 패널로 감싸지 않는다** (8-2) — 감싸면 오른쪽 패널이 그 안에
+                        갇힌다. `ContentPanel`은 **각 갈래의 레이아웃**이 든다: projects/[slug]/layout.tsx
+                        (+ ProjectPanel) · projects/new/layout.tsx · account/layout.tsx, 그리고
+                        **projects/page.tsx만 페이지가 직접** 든다(`projects/`를 `[slug]`와 공유해 그 층에
+                        레이아웃을 두면 프로젝트 화면이 두 겹이 된다). `shell-layout.test.ts`가 라우트마다
+                        정확히 하나인지 체인을 훑어 센다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지나고,
                         그 뒤 planProjectReadiness로 첫 적재 전 프로젝트를 not-ready로 거부한다
                         ⚠️ **triggerPullAction에 try/catch가 없다** (7단계) — `runSync`가 던지지 않고
@@ -368,6 +375,13 @@ app/
                         "이 사람이 그 설치를 볼 수 있는가"는 사용자 토큰. lib/onboarding/은 둘 다 모른다
                         ⚠️ createProject는 **클라이언트가 보낸 pathTemplate을 저장하지 않는다** — 파일을
                         다시 읽어 detectFormatWith를 돌리고 그 반환값을 저장한다 (design §3.4)
+    projects/[slug]/layout.tsx
+                        프로젝트 축 레이아웃 (8-2 신설) — `<ContentPanel>{children}</ContentPanel>` +
+                        `<ProjectPanel/>`. ⚠️ **이 파일이 생긴 이유는 셸이 `[slug]`를 못 보기 때문이다** —
+                        breadcrumb·Publish·오른쪽 패널이 셸에 없던 이유가 그것이고, 8-3이 앞의 둘을,
+                        8-P가 패널의 diff를 여기로 가져온다.
+                        ⚠️ **지금은 서버 데이터를 안 읽는다** — 레이아웃은 인가의 차단 지점이 될 수 없어
+                        (페이지와 병렬 렌더) 여기서 조회를 시작하면 인가 전에 프로젝트 데이터를 만진다
     projects/[slug]/page.tsx
                         Home — **프로젝트 진입의 착지점** (6b-6, 2026-09-09). 게이트 `translation:write`.
                         breadcrumb이 없다(이 화면이 루트다). 로케일별 진행률 + 최근 활동.
@@ -528,21 +542,37 @@ components/
                         순회한다**(2026-09-10),
                         `prefers-reduced-motion`이면 1회 렌더) / brand-icons(GitHub·Google 인라인 SVG —
                         ⚠️ `lucide-react`에 브랜드 글리프가 없고 Google 4색은 DESIGN §6.2의 예외다)
-  shell/                앱 셸 (SaaS 6a T6, 전부 client). ⚠️ **셸 루트는 `h-svh overflow-hidden`이고
-                        `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께 자라 `aside`가
-                        문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다 (malmoi#13, `9c94359`).
-                        스크롤은 콘텐츠 컬럼과 사이드바가 **각자** 든다 — sidebar.tsx(usePathname으로 프로젝트 컨텍스트·
-                        역할별 항목·접힘 localStorage. ⚠️ **구역 둘이 각자 `aria-label`을 든다** — 구역 라벨이
-                        `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 렌더되지 않는다**. 활성 판정도
-                        축마다 다르다: 프로젝트 축은 접두, 사용자 축은 정확히 일치(`/projects`가 `/projects/new`의
-                        접두다)) / top-bar.tsx / user-menu.tsx(**항목 둘** — Your account·Sign out).
-                        ⚠️ **breadcrumb은 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아 페이지
-                        콘텐츠의 첫 줄이 든다. ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의
-                        requireProjectAccess) — 판정은 lib/shell/nav.ts의 순수 함수 둘이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
-                        삭제됐고 CLI를 다시 돌리지 않는다). Button·Input·Textarea·Select(native)·Radio·
+  shell/                앱 셸 (6a T6 → **8-2가 시안으로 재작성**, 2026-09-10). ⚠️ **셸 루트는 `h-svh
+                        overflow-hidden`이고 `min-h-svh`가 아니다** — `min-`은 콘텐츠가 길면 컨테이너가 함께
+                        자라 `aside`가 문서 높이만큼 늘고, Sign out·Collapse가 화면 밖으로 나간다
+                        (malmoi#13, `9c94359`). 거기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 —
+                        ⚠️ `min-w-`가 없으면 1280 미만이 스크롤이 아니라 **잘림**이다. 시각 규칙은 DESIGN §6.5.
+                        header.tsx(**전폭 48 — 로고 좌 · 사용자 메뉴 우, 그 둘뿐이다.** 옛 `top-bar.tsx`를
+                        대체했고 SAAS §8의 "top bar가 사라진다"를 8-2가 정정했다) /
+                        content-panel.tsx(흰 패널 — ⚠️ **셸이 `{children}`을 이걸로 감싸지 않는다**: 감싸면
+                        오른쪽 패널이 그 안에 갇힌다. 각 갈래의 레이아웃이 들고 `shell-layout.test.ts`가
+                        라우트마다 **정확히 하나**인지 체인을 훑어 센다) /
+                        project-panel.tsx(**320 골격 — 세그먼트 컨트롤 + 빈 본문.** 내용은 8-P다:
+                        diff는 UI가 아니라 새 서버 능력이라 UI만 먼저 만들면 빈 껍데기를 두 번 그린다) /
+                        sidebar.tsx(usePathname으로 프로젝트 컨텍스트·역할별 항목·접힘 localStorage.
+                        ⚠️ **배경도 border도 없다** — 캔버스 위에 얹히므로 hover·선택이 `bg-foreground/5`·`/10`
+                        **알파**다(`--accent == --muted`라 캔버스 위에서 안 보인다). ⚠️ **반응형 분기가 0개다**
+                        (규약 3 — 1280 고정이라 `xl` 오버레이·햄버거가 도달 불가였다). ⚠️ **구역 둘이 각자
+                        `aria-label`을 든다** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌
+                        레일에서는 렌더되지 않는다**. 활성 판정도 축마다 다르다: 프로젝트 축은 접두, 사용자
+                        축은 정확히 일치(`/projects`가 `/projects/new`의 접두다)) /
+                        user-menu.tsx(**항목 둘** — Your account·Sign out. ⚠️ 트리거가 아바타와 같은 32여야
+                        한다 — `size="sm"`(28)이면 아바타가 삐져나온다).
+                        ⚠️ **breadcrumb·Publish는 아직 셸이 안 든다** — 레이아웃이 페이지 props를 못 받아
+                        페이지 콘텐츠의 첫 줄이 들고, 8-3이 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
+                        ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
+                        판정은 lib/shell/nav.ts의 순수 함수 셋이 한다
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+                        삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했다**).
+                        Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·Tooltip. 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        Dialog·Tooltip·SegmentedControl(⚠️ `role="radiogroup"`이지 `tablist`가 아니다 —
+                        ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09) —
                         `asChild`가 오면 Slot이 **자식 하나만** 받으므로 `selected`의 `Check`가 형제로
                         붙는 순간 던지고 셸이 죽는다. `add099a`부터 프로덕션에 있었다
