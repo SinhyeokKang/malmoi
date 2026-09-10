@@ -85,6 +85,8 @@ base 브랜치 푸시 시 GitHub Actions에서 리포의 로케일 파일을 올
 
    **`commitAt` 역행을 거부한다** (2026-08-31 결정). Actions가 커밋 시각을 실어 보내고, `Project.lastCommitAt`보다 과거면 **409**다. strict라 오래된 run을 Re-run하면 DB가 그 시점으로 회귀하는데(키 orphan + 번역값 회귀 + permalink가 옛 SHA) 되돌릴 경로가 없다. **같은 커밋의 재전송은 통과시킨다** — strict라 결과가 같고, 스캐너를 고쳐 같은 커밋을 다시 올리는 것은 정당하다. GitHub API로 조상 관계를 확인하는 편이 정확하지만 그러면 지금 GitHub을 전혀 안 부르는 push 라우트에 App 토큰과 네트워크 호출이 들어온다.
 
+   ⚠️ **SaaS 7단계가 넷째 거부를 앞에 뒀다** (2026-09-10): 보관된 프로젝트의 push는 **409**이고 그 판정이 오배송·표면·역행 셋보다 먼저다 — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다 (SAAS §7.8 · ARCHITECTURE §5.5.5).
+
    **`POST`인 이유**: 전체 키 집합을 보내므로 의미상 `PUT`에 가깝지만, 리소스 교체가 아니라 **부수효과 있는 RPC**다 — `orphaned` 표시·`needsReview` 전파 같은 파생 효과가 있고, 같은 URL에 `GET`하면 그 리소스가 나오지 않는다.
 
    **`PATCH`가 불가능한 이유**: 증분 전송으로는 사라진 키를 알 수 없다. `orphaned` 판정이 "페이로드에 없다"에 의존하므로 전체 집합이 필수다. CI가 이전 상태를 알게 만들면 그게 diff 동기화이고 코어 원칙(§2, 머지 로직 없음)과 충돌한다.
@@ -254,7 +256,7 @@ bugshot-2가 실전 검증 대상이고, `--adapter ts-dict`·`Project.adapterNa
 |---|---|---|
 | 앱 | Next.js 16 App Router, Vercel | UI·push/pull 라우트·cron이 한 배포 단위에 들어간다 |
 | DB | Supabase Postgres **둘** — prod(`malmoi`) / dev(`malmoi-dev`) | Auth·Storage를 나중에 쓸 여지가 있고 관리 부담이 없다. **2026-09-04에 인스턴스를 갈랐다** — 그전에는 하나여서 `migrate dev`가 프로덕션을 직접 바꿨고, 번역 데이터가 쌓이기 전에 끊는 것이 조건이었다. 대가로 **잊으면 깨지는 실패 모드**가 생겼다: dev에만 적용하고 `db:deploy`를 빠뜨리면 배포 순간 프로덕션이 없는 컬럼을 조회한다 (`/merge` 1단계가 `db:status:prod`를 보는 이유 — `/push` 3단계는 dev만 본다) |
-| DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
+| DB 열쇠 | Prisma 7 + `pg` driver adapter (런타임 6543 / 마이그레이션 5432) | 스키마 파일 하나로 마이그레이션·타입. 쓰기가 전부 서버 라우트라 RLS 없이도 안전. ⚠️ **이 근거는 2026-09-09에 반증됐다** — 앱이 DB에 닿는 유일한 경로가 아니었다(Supabase가 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고 `public`의 기본 ACL이 `anon`에 전 권한을 준다). `anon` REVOKE로 닫았고 현재 상태는 CLAUDE.md에 있다. v7은 접속 URL이 `prisma.config.ts`와 adapter로 갈린다 |
 | 로그인 | ~~GitHub OAuth **단독** + **허용 핸들 목록**(`AUTH_ALLOWED_LOGINS`)~~ → 2026-09-05 GitHub + Google, 인가는 `ProjectMember` (SAAS §5) | 리포 기반 도구라 GitHub 계정이 곧 신원이다. org 멤버십 검사는 **개인 계정 리포에서 성립하지 않는다** — 대상이 `SinhyeokKang/malmoi`라 그렇다. 핸들 목록은 개인·org 양쪽에서 동작하고 동료 몇 명 규모에 맞으며 org API 호출이 사라진다**였다** — 그 메커니즘 자체가 지금은 없다(인가는 `ProjectMember`, `lib/auth/query.ts`) |
 | 리포 쓰기 | GitHub App installation token | 사용자 OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | 키·원문 출처 | **base 로케일의 `messages.json`** (어댑터 구조 — §5.1) | 리포 연동만으로 적재가 되어야 한다. 코드 스캔을 진실로 두면 대상 리포의 전면 리팩터링이 선행 조건이 된다 |
@@ -355,7 +357,7 @@ export type Adapter = {
 - 코드가 참조하는데 로케일 파일에 없는 키도 **경고**다 — 개발자가 파일에 추가하는 것을 잊었다는 신호지만, 우리가 남의 CI를 실패시킬 근거는 아니다
 - **래퍼 함수 지원은 선택사항이다.** 대상 리포에 `t(key, ...)` 류가 있으면 `--wrapper <module>#<export>`로 알려줄 수 있다. **이름만으로 매칭하지 않는다** — bugshot-2가 하필 `@/i18n#t`를 쓰고 있어 기본값 추측이 오탐 1391건을 냈다
 
-## 6. 스키마 (PoC 시점 5테이블 — SaaS 2단계에서 11로, SAAS §6)
+## 6. 스키마 (PoC 시점 5테이블 — SaaS 2단계에서 11로, 7단계에서 12로, SAAS §6)
 
 ```
 Project      id PK, slug UNIQUE, name,
