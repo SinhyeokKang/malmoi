@@ -1,4 +1,4 @@
-import { Box, FolderGit2, Plus } from "lucide-react";
+import { Box, FolderGit2, Plus, RotateCcw, Search } from "lucide-react";
 import Link from "next/link";
 
 import { ProjectSearch } from "@/components/projects/search-input";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SegmentedLinks } from "@/components/ui/segmented-control";
+import { toneFill } from "@/components/ui/tone";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -16,13 +17,15 @@ import { m } from "@/lib/i18n";
 import { loadProjectList } from "@/lib/keys/query";
 import {
   filterProjects,
-  PROJECT_FILTERS,
   parseProjectFilter,
+  PROJECT_FILTERS,
   projectStatus,
   searchProjects,
+  type ProjectFilter,
   type ProjectStatus,
 } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 /**
  * 내 프로젝트 목록. **로그인 후 착지점**이고, 인가 거부의 redirect 목적지다.
@@ -59,6 +62,14 @@ const STATUS_VARIANT = {
   awaiting_first_sync: "neutral",
   needs_reconnect: "warning",
 } as const satisfies Record<ProjectStatus, "neutral" | "warning" | "success">;
+
+/**
+ * 탭 라벨 — `all`만 자기 문구를 갖고 나머지 다섯은 **행 배지와 같은 낱말**을 쓴다 (2026-09-11).
+ * 두 벌로 두면 "지금 무엇을 보고 있나"가 탭과 행에서 다르게 읽힌다.
+ */
+function filterLabel(filter: ProjectFilter): string {
+  return filter === "all" ? m.projects.filter.all : m.projects.status[filter];
+}
 
 export default async function ProjectsPage({
   searchParams,
@@ -150,31 +161,29 @@ export default async function ProjectsPage({
           </div>
 
           {hasProjects && (
-          <div className="flex items-center justify-between gap-2">
-            <SegmentedLinks
-              label={m.projects.filter.label}
-              current={filter}
-              options={PROJECT_FILTERS.map((value) => ({
-                value,
-                label: m.projects.filter[value],
-                /**
-                 * ⚠️ **개수는 검색을 반영하고 탭은 반영하지 않는다** — 그 탭을 누르면 몇 행이 나오는지가
-                 * 이 숫자의 뜻이다. 지금 탭까지 걸면 선택된 칸만 맞고 나머지 둘이 거짓이 된다.
-                 *
-                 * ⚠️ **0도 보인다** — "그 탭이 비었다"는 그 자체로 정보다 (`SegmentContent.badge`).
-                 */
-                badge: searchProjects(filterProjects(all, value), q).length,
-                /**
-                 * 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
-                 *
-                 * ⚠️ **탭을 옮겨도 `q`가 남는다** — 검색이 탭과 직교하는 축이라, 여기서 떨어뜨리면
-                 * 탭을 누르는 순간 질의가 조용히 사라진다.
-                 */
-                href: routes.projects({ filter: value === "all" ? undefined : value, q }),
-              }))}
-            />
-            <ProjectSearch filter={filter === "all" ? undefined : filter} q={q} />
-          </div>
+            <div className="flex items-center justify-between gap-2">
+              {/*
+                ⚠️ **여섯 칸이 늘 그대로다** (2026-09-11 사용자 — 존재하는 상태만 그리던 것을 되돌렸다).
+                칸이 데이터에 따라 생겼다 사라지면 컨트롤의 자리가 매번 달라지고, "그 상태가 0건"이라는
+                사실 자체도 정보다 — 누르면 빈 상태가 그것을 문장으로 말한다.
+              */}
+              <SegmentedLinks
+                label={m.projects.filter.label}
+                current={filter}
+                options={PROJECT_FILTERS.map((value) => ({
+                  value,
+                  label: filterLabel(value),
+                  /**
+                   * 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
+                   *
+                   * ⚠️ **탭을 옮겨도 `q`가 남는다** — 검색이 탭과 직교하는 축이라, 여기서 떨어뜨리면
+                   * 탭을 누르는 순간 질의가 조용히 사라진다.
+                   */
+                  href: routes.projects({ filter: value === "all" ? undefined : value, q }),
+                }))}
+              />
+              <ProjectSearch filter={filter === "all" ? undefined : filter} q={q} />
+            </div>
           )}
         </div>
 
@@ -200,18 +209,38 @@ export default async function ProjectsPage({
           ) : rows.length === 0 ? (
             /*
               ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭이나 질의를 되돌리면 있다. 같은 빈 화면을
-              내면 사용자가 프로젝트를 잃었다고 읽는다.
+              내면 사용자가 프로젝트를 잃었다고 읽는다. 그래서 **형은 같고 액션이 반대다**:
+              그쪽은 primary로 만들라 하고, 여기는 outlined(`default`)로 되돌리라 한다. ghost가 아닌
+              이유는 이 화면에 **버튼이 그것 하나뿐**이어서다 — 유일한 출구가 배경 없는 글자면
+              누를 것으로 안 보인다.
 
-              ⚠️ **검색을 먼저 본다** — 질의가 있으면 되돌릴 것은 탭이 아니라 그 질의다. 탭 문구를
-              내면 사용자가 엉뚱한 컨트롤을 만진다.
+              ⚠️ **설명이 검색을 먼저 본다** — 질의가 있으면 되돌릴 것은 탭이 아니라 그 질의다.
+              탭 문구를 내면 사용자가 엉뚱한 컨트롤을 만진다.
+
+              ⚠️ **[Clear filters]가 둘 다 지운다** — 어느 쪽이 걸렸는지 사용자가 판정하게 하지 않는다.
+              `routes.projects()`가 인자 없이 곧 초기 상태라, 화면이 무엇을 비울지 나열하지 않는다.
             */
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              {q !== undefined && q.trim() !== ""
-                ? m.projects.searchEmpty(q.trim())
-                : filter === "archived"
-                  ? m.projects.filterEmpty.archived
-                  : m.projects.filterEmpty.active}
-            </p>
+            <div className="flex flex-1 items-center justify-center">
+              <EmptyState
+                icon={Search}
+                title={m.projects.narrowed.title}
+                description={
+                  q !== undefined && q.trim() !== ""
+                    ? m.projects.narrowed.bySearch(q.trim())
+                    : m.projects.narrowed.byFilter
+                }
+                action={
+                  <ButtonLink variant="default" href={routes.projects()}>
+                    {/*
+                      ⚠️ **`RotateCcw`이고 `FilterX`가 아니다** — 이 버튼은 필터만이 아니라 검색까지
+                      **둘 다** 되돌린다. 깔때기 글리프면 지워지는 것이 필터뿐이라고 말하게 된다.
+                    */}
+                    <RotateCcw aria-hidden />
+                    {m.projects.narrowed.reset}
+                  </ButtonLink>
+                }
+              />
+            </div>
           ) : (
             /*
               ⚠️ **`shrink-0`이 없으면 아래 행이 잘린다.** `overflow-hidden`을 든 flex 자식은 CSS의
@@ -227,11 +256,18 @@ export default async function ProjectsPage({
                   <li key={row.slug}>
                     <Link
                       href={routes.project(row.slug)}
-                      className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-2.5 p-3.5 focus-visible:ring-[3px] focus-visible:outline-none"
+                      /**
+                       * ⚠️ **링이 `ring-inset`이다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로**
+                       * 3px 퍼지는데 부모 `<ul>`이 `overflow-hidden`이라 그 3px이 통째로 잘려
+                       * **키보드 사용자에게 포커스가 아예 안 보였다.** 부모의 `overflow-hidden`은
+                       * `rounded-lg`가 첫·끝 행의 모서리를 자르는 수단이라 뗄 수 없으므로,
+                       * 링을 안쪽으로 그린다.
+                       */
+                      className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-2.5 py-3.5 pr-3.5 pl-3 focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:outline-none"
                     >
                       {/*
                         프로젝트 이미지 자리 — **지금은 빈 상태뿐이다** (2026-09-11 사용자).
-                        업로드 기능이 없으므로 컨테이너(28)와 폴백 글리프(20)만 세운다: 자리를 먼저 잡아야
+                        업로드 기능이 없으므로 컨테이너(28)와 폴백 글리프(16)만 세운다: 자리를 먼저 잡아야
                         나중에 이미지가 들어올 때 행 높이·정렬이 안 흔들린다.
 
                         ⚠️ **`Avatar` 프리미티브를 쓰지 않는다** — 그쪽 폴백은 **이니셜**이고
@@ -249,22 +285,30 @@ export default async function ProjectsPage({
                         **자리(28)와 `rounded-sm`은 남긴다** — 이미지가 붙을 때 행 높이·정렬이
                         흔들리지 않아야 하고, 그때 이 span이 그대로 그 이미지의 틀이 된다.
 
-                        ⚠️ **연하게 하는 수단이 색 알파가 아니라 요소 `opacity`다** (2026-09-11 실측).
+⚠️ **연하게 할 일이 생기면 색 알파가 아니라 요소 `opacity`다** (2026-09-11 실측).
                         lucide 글리프는 `<path>`·`<circle>` **여러 요소**라 `text-foreground/40` 같은
-                        색 알파를 쓰면 획이 만나는 접점에서 알파가 **누적돼 그 점만 진해진다** —
-                        `GitBranch`처럼 선과 원이 붙는 글리프에서 특히 보인다. `opacity`는 요소를 별도
-                        레이어로 렌더한 뒤 합성하므로 내부 겹침이 먼저 해소된다. **같은 이유로 다중
-                        요소 아이콘에는 색 알파를 쓰지 않는다.**
-
-                        메타 두 줄이 `text-muted-foreground`인데 아이콘까지 같으면 셋이 한 층으로
-                        읽혀서 한 단계 뒤로 뺐다. **장식이라 대비 하한이 없다** (`aria-hidden`이고
-                        프로젝트 이름이 바로 옆이다).
+                        색 알파를 쓰면 획이 만나는 접점에서 알파가 **누적돼 그 점만 진해진다**.
+                        `opacity`는 요소를 별도 레이어로 렌더한 뒤 합성하므로 내부 겹침이 먼저
+                        해소된다. **다중 요소 아이콘에는 색 알파를 쓰지 않는다.**
                       */}
                       <span
                         aria-hidden
-                        className="text-muted-foreground flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm opacity-60"
+                        className={cn(
+                          "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm",
+                          /**
+                           * ⚠️ **색이 프로젝트 이름에서 온다** — 사용자 아바타와 **같은 판정**
+                           * (`lib/tone.ts`)이고 입력만 다르다. 목록을 훑을 때 행을 가르는 것이
+                           * 이름 글자보다 색이 먼저라, 회색 글리프가 여덟 줄 반복되면 아무것도
+                           * 안 가른다.
+                           *
+                           * ⚠️ **아바타와 같은 형이다** — 채운 배경 + 흰 글리프(`toneFill`).
+                           * 이미지가 붙는 날 이 배경이 그대로 그 이미지의 자리가 된다.
+                           */
+                          "text-white",
+                          toneFill(row.name),
+                        )}
                       >
-                        <Box className="size-5" />
+                        <Box className="size-4" />
                       </span>
                       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                         <span className="truncate text-base font-medium">{row.name}</span>

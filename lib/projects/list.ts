@@ -7,9 +7,33 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
  * 뒤로가기·공유·새로고침이 그냥 되고, `logs`의 `?cursor=`와 같은 관용구다.
  */
 
-export const PROJECT_FILTERS = ["all", "active", "archived"] as const;
+/**
+ * 상태 다섯 — **순서가 탭 순서다** (2026-09-11 사용자).
+ *
+ * ⚠️ **`Active`가 앞이고 `Archived`가 끝이다.** 가운데 셋은 "손볼 것"이고, 보관은 의도적으로 멈춘
+ * 것이라 훑는 눈에서 가장 멀어야 한다. 생애주기 순(setup → 적재 → active)이 아닌 이유는 이 목록이
+ * **훑어보는 화면**이어서다 — 가장 흔한 것이 먼저다.
+ */
+export const PROJECT_STATUSES = ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const;
+
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+/**
+ * ⚠️ **필터 갈래가 곧 상태 갈래다** (2026-09-11 사용자 — 전엔 `all`·`active`·`archived` 셋이었다).
+ * 둘이 갈리면 배지가 말하는 상태 중 일부는 **골라낼 수 없는 상태**가 되고, 그 비대칭은 화면에서
+ * 안 보인다.
+ */
+export const PROJECT_FILTERS = ["all", ...PROJECT_STATUSES] as const;
 
 export type ProjectFilter = (typeof PROJECT_FILTERS)[number];
+
+/** `projectStatus`가 보는 네 컬럼. 필터도 같은 것을 받는다 — 판정이 한 곳이라야 한다. */
+export type ProjectStatusInput = {
+  archivedAt: Date | null;
+  installationId: string | null;
+  lastCommitSha: string | null;
+  repositoryId: string | null;
+};
 
 /**
  * 주소창 값 → 갈래. **모르는 값은 `all`이다** — 빈 화면을 주지 않는다.
@@ -26,13 +50,14 @@ export function parseProjectFilter(raw: string | undefined): ProjectFilter {
  * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 세므로, 제자리에서 잘라내면 제목 옆
  * 숫자가 탭에 따라 달라진다(총계는 필터 전의 값이어야 한다).
  */
-export function filterProjects<T extends { archivedAt: Date | null }>(
-  rows: readonly T[],
-  filter: ProjectFilter,
-): T[] {
+export function filterProjects<T extends ProjectStatusInput>(rows: readonly T[], filter: ProjectFilter): T[] {
   if (filter === "all") return [...rows];
-  const archived = filter === "archived";
-  return rows.filter((row) => (row.archivedAt !== null) === archived);
+  /**
+   * ⚠️ **`archivedAt` 비교가 아니라 `projectStatus` 판정이다** (2026-09-11). 그 전엔 보관 여부만
+   * 봤는데 필터가 상태 다섯으로 넓어지면서, 규칙이 둘이면 **배지와 탭이 같은 행을 다르게 가른다** —
+   * 그 어긋남은 화면에서 안 보인다.
+   */
+  return rows.filter((row) => projectStatus(row) === filter);
 }
 
 /**
@@ -64,14 +89,7 @@ export function searchProjects<T extends { name: string }>(rows: readonly T[], q
  * ⚠️ **보관이 readiness보다 앞이다** — 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이
  * 아니다 (`planProjectAccess`가 권한 → 보관 순으로 보는 것과 같은 결).
  */
-export type ProjectStatus = "active" | "archived" | "setup" | "awaiting_first_sync" | "needs_reconnect";
-
-export function projectStatus(row: {
-  archivedAt: Date | null;
-  installationId: string | null;
-  lastCommitSha: string | null;
-  repositoryId: string | null;
-}): ProjectStatus {
+export function projectStatus(row: ProjectStatusInput): ProjectStatus {
   if (row.archivedAt !== null) return "archived";
   const readiness = planProjectReadiness(row);
   if (readiness !== "ready") return readiness;

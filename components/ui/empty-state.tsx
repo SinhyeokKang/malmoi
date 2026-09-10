@@ -26,13 +26,23 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1 py-12 text-center">
+    /**
+     * ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11 사용자). 칩과 액션이 각자 `mb-3`·`mt-4`를 들고
+     * 있어서 gap이 **거기에 더해진다** — 세 간격이 서로 다른 수단으로 잡히고, gap을 건드리면
+     * 의도치 않게 셋이 함께 움직인다. 간격의 출처를 margin 하나로 남긴다.
+     */
+    <div className="flex flex-col items-center py-12 text-center">
       {Icon !== undefined && (
         <span className="bg-foreground/5 mb-3 flex size-12 items-center justify-center rounded-full">
           <Icon className="text-muted-foreground size-4" aria-hidden />
         </span>
       )}
-      <p className="text-base font-medium">{title}</p>
+      {/*
+        ⚠️ **`text-lg`다** (2026-09-11 사용자 — `text-base`에서 한 단계 올렸다). 같은 날 `--text-base`가
+        15px로 내려가면서 제목과 설명(`text-sm`, 14)의 차이가 1px이 됐고, 그러면 둘이 한 덩어리로
+        읽혀 **어느 쪽이 답인지** 안 보인다. 이 블록은 화면에 그것 하나뿐이라 위계가 스스로 서야 한다.
+      */}
+      <p className="mb-1 text-lg font-medium">{title}</p>
       {description !== undefined && (
         <p className="text-muted-foreground max-w-prose text-sm">{description}</p>
       )}

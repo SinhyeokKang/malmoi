@@ -125,13 +125,18 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
          * border도 없이 **캔버스 위에 얹혀** 있어서(§6.5), 같은 알파라도 흰 패널 위보다 진하게
          * 보인다. `[0.03]`은 프로젝트 목록 행의 hover와 같은 값이라 임의값이 늘지 않는다.
          */
-        active ? "bg-foreground/[0.07] font-medium" : "hover:bg-foreground/[0.03]",
+        active ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.03]",
       )}
     >
       <span className="flex size-4 shrink-0 items-center justify-center">
         <Icon className="size-4" aria-hidden />
       </span>
-      <span className="min-w-0 truncate">{item.label}</span>
+      {/*
+        ⚠️ **선택의 굵기가 라벨에만 붙는다** (2026-09-11 사용자). `<Link>`에 두면 `Badge`가 그것을
+        **상속해** 개수까지 굵어진다 — 배지는 weight를 지정하지 않아 자기가 앉은 자리를 따르기
+        때문이다. 선택은 **라벨**의 성질이지 행 전체의 성질이 아니다.
+      */}
+      <span className={cn("min-w-0 truncate", active && "font-medium")}>{item.label}</span>
       {/*
         ⚠️ **0도 보인다** — `undefined`와 `0`이 다르다. 프로젝트가 없다는 사실은 그 자체로 정보이고,
         `item.badge && …`로 쓰면 0이 falsy라 조용히 사라진다.

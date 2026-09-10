@@ -14,11 +14,16 @@ import { cn } from "@/lib/utils";
  * 시안의 배지가 전부 알약이라 variant마다 갈라 두면 화면에서 모서리 둘이 섞인다.
  */
 /**
- * ⚠️ **라벨 weight가 500이다** (2026-09-11 사용자). 본문 weight가 300이라(DESIGN §4) 배지 글자가
- * 11~12px에서 배경 위에 얹히면 가늘어서 읽히지 않는다 — **base가 든다**: variant마다 적으면
- * 넷 중 하나가 빠지고, 빠져도 "그럭저럭" 보여서 못 알아챈다.
+ * ⚠️ **weight를 지정하지 않는다** (2026-09-11 사용자 — 500으로 올렸다가 되돌렸다). 배지는 자기가
+ * 앉은 자리의 굵기를 따르고, 그래서 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-light`로
+ * 되눌러야 주변과 어긋나지 않는다.
+ *
+ * ⚠️ **한 글자면 정원이다** (2026-09-11 사용자). `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와
+ * 같고 `justify-center`가 그 안에 글자를 앉힌다 — 좌우 padding만으로는 한 글자에서도 가로가 더 길어
+ * 개수 배지가 알약처럼 늘어졌다. **padding을 `px-1.5`로 줄여야** 한 글자에서 min-w가 이긴다
+ * (`px-2`면 8+7+8=23으로 20을 넘는다). 여러 글자는 그대로 알약이 된다.
  */
-const badge = cva("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", {
+const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs", {
   variants: {
     variant: {
       // ⚠️ **muted 표면 위에 놓지 않는다** — 이 색은 흰 배경에서 4.75:1이고 `--muted` 위에서는

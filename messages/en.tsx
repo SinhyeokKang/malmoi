@@ -251,26 +251,44 @@ export const en = {
     filter: {
       label: "Filter projects",
       all: "All projects",
-      active: "Active",
-      archived: "Archived",
+      /**
+       * ⚠️ **나머지 다섯은 `projects.status`를 그대로 쓴다** (2026-09-11 사용자 — 필터 축이 상태
+       * 다섯으로 넓어졌다). 탭 라벨과 행 배지가 같은 낱말이라야 "지금 무엇을 보고 있나"가 이어지고,
+       * 두 벌로 두면 하나가 낡는다.
+       */
     },
-    /** 툴바 우측의 이름 검색 (2026-09-11). ⚠️ **`placeholder`가 라벨을 겸하지 않는다** — `label`이 `aria-label`이다. */
-    search: {
-      label: "Search projects",
-      placeholder: "Search by name",
-      clear: "Clear search",
-    },
+    /**
+     * 툴바 우측의 이름 검색 (2026-09-11).
+     *
+     * ⚠️ **검색 필드의 placeholder는 `…`로 끝난다** (2026-09-11 사용자 — 앞으로 이 패턴이다).
+     * §10이 줄임표를 "진행 중과 **추가 입력이 필요한 행동**"에 허용하는데 빈 검색창이 정확히
+     * 뒤쪽이다. **문자는 `…`(U+2026)이고 마침표 셋이 아니다** — 리포의 다른 자리(`Running…`)가
+     * 그 표기이고, 마침표 셋은 폰트에 따라 간격이 벌어진다.
+     *
+     * ⚠️ **`aria-label`은 줄임표가 없다** — 스크린리더가 읽는 **이름**이라 장식이 붙으면 안 된다.
+     * 그래서 키가 둘로 갈려 있고, 값이 다르므로 "두 벌이면 하나가 낡는다"에 걸리지 않는다.
+     *
+     * ⚠️ **`clear`가 없다** — 지우기는 `type="search"`의 네이티브 ✕가 든다.
+     */
+    search: { label: "Search projects", placeholder: "Search projects…" },
     /** 행 메타 — 리포와 멤버 수 둘뿐이다. ⚠️ **복수형을 함수가 든다**(시안의 "1 members"는 틀렸다). */
     memberCount: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
     /** 필터가 걸러 0건인 상태. **"프로젝트가 없다"와 다르다** — 탭을 바꾸면 있다. */
     /**
-     * ⚠️ **검색 0건은 필터 0건과 다른 문구다** — 필터는 탭을 바꾸면 있고, 검색은 질의를 지우면 있다.
-     * 같은 문장을 내면 사용자가 무엇을 되돌려야 하는지 모른다.
+     * 좁혀서 0건일 때의 빈 상태 (2026-09-11 사용자 — `EmptyState` 형으로 올렸다).
+     *
+     * ⚠️ **"프로젝트가 없다"(`empty`)와 같은 형이되 액션이 반대다.** 그쪽은 만들라고 하고(primary),
+     * 여기는 **되돌리라고** 한다(ghost) — 프로젝트는 이미 있고 화면이 좁혀져 있을 뿐이다.
+     *
+     * ⚠️ **제목이 질의를 안 싣는다** — 긴 질의가 제목을 밀어내고, 무엇을 쳤는지는 검색창이 이미
+     * 보여준다. 설명이 갈래를 가른다.
      */
-    searchEmpty: (q: string) => `No project matches "${q}".`,
-    filterEmpty: {
-      active: "No active projects.",
-      archived: "No archived projects.",
+    narrowed: {
+      title: "No results",
+      /** ⚠️ 되돌릴 것이 질의인지 탭인지 갈라 말한다 — 아니면 엉뚱한 컨트롤을 만진다. */
+      bySearch: (q: string) => `No project matches "${q}".`,
+      byFilter: "No project in this view.",
+      reset: "Clear filters",
     },
     /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
     archived: "Archived",

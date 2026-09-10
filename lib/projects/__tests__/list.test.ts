@@ -2,16 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 
-import { filterProjects, parseProjectFilter, projectStatus, searchProjects, type ProjectStatus } from "../list";
+import {
+  filterProjects,
+  parseProjectFilter,
+  projectStatus,
+  searchProjects,
+  type ProjectStatus,
+} from "../list";
 
 /**
  * 목록 필터의 순수 판정 (8-3). **입력이 주소창 값이라** 폴백이 계약의 절반이다.
  */
 describe("parseProjectFilter", () => {
-  it("세 갈래를 그대로 낸다", () => {
+  it("여섯 갈래를 그대로 낸다 — `all` + 상태 다섯", () => {
     expect(parseProjectFilter("all")).toBe("all");
     expect(parseProjectFilter("active")).toBe("active");
     expect(parseProjectFilter("archived")).toBe("archived");
+    expect(parseProjectFilter("setup")).toBe("setup");
+    expect(parseProjectFilter("awaiting_first_sync")).toBe("awaiting_first_sync");
+    expect(parseProjectFilter("needs_reconnect")).toBe("needs_reconnect");
   });
 
   it("없거나 모르는 값은 `all`이다 — 주소창을 고친 사람에게 빈 화면을 주지 않는다", () => {
@@ -33,38 +42,48 @@ describe("parseProjectFilter", () => {
 });
 
 describe("filterProjects", () => {
+  const READY = { installationId: "i", lastCommitSha: "s", repositoryId: "r", archivedAt: null };
   const rows = [
-    { slug: "a", archivedAt: null },
-    { slug: "b", archivedAt: new Date("2026-09-10T00:00:00Z") },
-    { slug: "c", archivedAt: null },
+    { slug: "a", ...READY },
+    { slug: "b", ...READY, archivedAt: new Date("2026-09-10T00:00:00Z") },
+    { slug: "c", ...READY },
+    { slug: "d", ...READY, installationId: null },
+    { slug: "e", ...READY, lastCommitSha: null },
+    { slug: "f", ...READY, repositoryId: null },
   ];
 
   it("`all`은 순서를 보존한 채 전부 낸다", () => {
-    expect(filterProjects(rows, "all").map((r) => r.slug)).toEqual(["a", "b", "c"]);
-  });
-
-  it("`active`는 보관을 뺀다", () => {
-    expect(filterProjects(rows, "active").map((r) => r.slug)).toEqual(["a", "c"]);
-  });
-
-  it("`archived`는 보관만 낸다", () => {
-    expect(filterProjects(rows, "archived").map((r) => r.slug)).toEqual(["b"]);
+    expect(filterProjects(rows, "all").map((r) => r.slug)).toEqual(["a", "b", "c", "d", "e", "f"]);
   });
 
   /**
-   * ⚠️ **입력을 제자리에서 바꾸지 않는다** — 호출부가 같은 배열로 카운트도 세므로, 필터가 원본을
-   * 잘라내면 제목 옆 총계가 탭에 따라 달라진다.
+   * ⚠️ **`archivedAt` 비교가 아니라 `projectStatus` 판정으로 좁힌다** (2026-09-11 사용자 —
+   * 필터 축이 상태 다섯으로 넓어졌다). 둘로 나뉘어 있으면 배지와 탭이 다른 규칙으로 같은 행을
+   * 가르게 되고, 그 어긋남은 화면에서 안 보인다.
+   */
+  it("상태마다 그 상태의 행만 낸다", () => {
+    expect(filterProjects(rows, "active").map((r) => r.slug)).toEqual(["a", "c"]);
+    expect(filterProjects(rows, "archived").map((r) => r.slug)).toEqual(["b"]);
+    expect(filterProjects(rows, "setup").map((r) => r.slug)).toEqual(["d"]);
+    expect(filterProjects(rows, "awaiting_first_sync").map((r) => r.slug)).toEqual(["e"]);
+    expect(filterProjects(rows, "needs_reconnect").map((r) => r.slug)).toEqual(["f"]);
+  });
+
+  it("빈 목록에서도 죽지 않는다", () => {
+    expect(filterProjects([], "archived")).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 세므로, 제자리에서 잘라내면 제목 옆
+   * 숫자가 탭에 따라 달라진다.
    */
   it("원본을 건드리지 않는다", () => {
-    filterProjects(rows, "archived");
-    expect(rows).toHaveLength(3);
+    const original = [...rows];
+    filterProjects(rows, "active");
+    expect(rows).toEqual(original);
   });
 });
 
-/**
- * 행 우측 배지의 갈래 (8-3). **`lib/onboarding/readiness.ts`의 `readinessLabel`을 대체했다** —
- * 그 함수의 소비자가 이 화면 하나였고, 시안 개정이 계약을 바꿨다(`ready`가 침묵이 아니라 `Active`).
- */
 describe("searchProjects", () => {
   const rows = [
     { slug: "a", name: "BugShot Web" },
