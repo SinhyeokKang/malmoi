@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCommitOrder, checkFormat, checkProjectSlug, guardStatus, isBaseLocaleChange } from "../guard";
+import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus, isBaseLocaleChange } from "../guard";
 
 const at = (iso: string) => new Date(iso);
 
@@ -220,5 +220,25 @@ describe("isBaseLocaleChange", () => {
   /** 첫 push다 — 비교 대상이 없고 기존 키도 없으므로 전파할 것이 애초에 없다. */
   it("저장값이 없으면 변경이 아니다", () => {
     expect(isBaseLocaleChange("en", null)).toBe(false);
+  });
+});
+
+/**
+ * **보관 중 CI push는 409** (7단계 — sync-runs design §4, 결정 9).
+ *
+ * 보관의 뜻이 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀐다** — strict push라
+ * 그 덮어쓰기는 되돌릴 수 없다. 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
+ */
+describe("checkArchived — 멈춘 프로젝트는 push도 안 받는다", () => {
+  it("보관되지 않았으면 통과다", () => {
+    expect(checkArchived(null)).toBe("ok");
+  });
+
+  it("보관됐으면 거부다", () => {
+    expect(checkArchived(new Date("2026-09-10T00:00:00Z"))).toBe("archived");
+  });
+
+  it("거부는 409다 — 페이로드 형식이 아니라 서버 상태와의 충돌이다", () => {
+    expect(guardStatus(checkArchived(new Date("2026-09-10T00:00:00Z")))).toBe(409);
   });
 });

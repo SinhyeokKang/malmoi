@@ -33,6 +33,26 @@ export type ProjectSeed = {
   declaredBaseLocale?: string | null;
   /** 프로젝트별 push 토큰의 sha256 — `@unique`(NULL 여럿 허용)를 `create`가 흉내낸다. */
   pushTokenHash?: string | null;
+  /** 보관 시각 (7단계). 값이 있으면 `planProjectAccess`가 `project:settings` 외 전부를 거부한다. */
+  archivedAt?: Date | null;
+};
+
+/**
+ * `SyncRun` 행 (7단계). **게이트가 이 두 조회에 걸려 있다** — `RUNNING` 최신 하나와
+ * settled(`SUCCEEDED`|`SKIPPED`) 최신 하나.
+ */
+export type SyncRunSeed = {
+  id: string;
+  projectId: string;
+  status: "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED";
+  trigger?: "MANUAL" | "CRON";
+  requestedBy?: string | null;
+  startedAt: Date;
+  finishedAt?: Date | null;
+  errorCode?: string | null;
+  prUrl?: string | null;
+  changed?: number | null;
+  warnings?: number;
 };
 /**
  * ⚠️ **`createdAt`이 optional이다** — 스키마가 `@default(now())`이므로 실 호출은 안 넘긴다. 시드가 안 주면
@@ -104,6 +124,13 @@ const FORMAT = {
   lastCommitAt: null as Date | null,
   lastPulledAt: null as Date | null,
   pushTokenHash: null as string | null,
+  /**
+   * ⚠️ **기본값이 null이 아니다** (7단계). "실패한 sync가 마지막 성공을 안 덮는다"(완료 조건 2)를
+   * 재려면 덮일 값이 **있어야** 한다 — null이면 그 단언이 `undefined === undefined`로 항상 참이다.
+   */
+  lastPublishedAt: new Date("2026-09-01T00:00:00Z") as Date | null,
+  lastPrUrl: "https://github.com/o/r/pull/7" as string | null,
+  archivedAt: null as Date | null,
 };
 
 export type Seed = {
@@ -115,6 +142,7 @@ export type Seed = {
   keys?: KeySeed[];
   locales?: LocaleSeed[];
   translations?: TranslationSeed[];
+  syncRuns?: SyncRunSeed[];
 };
 
 /** 시드 프로젝트의 기본 `lastCommitSha` — "첫 적재가 끝났다"의 증거다 (`ProjectSeed` 주석). */
@@ -148,6 +176,17 @@ export function createHarness(seed: Seed = {}) {
     { projectId: "p1", code: "ko", isBase: false, orphaned: false },
   ];
   const translations = seed.translations ?? [];
+  // 스키마 기본값을 시드가 안 준 자리에 채운다 — 가짜가 실제보다 좁으면 호출부의 null 처리가 검증되지 않는다.
+  const syncRuns = (seed.syncRuns ?? []).map((r) => ({
+    trigger: "MANUAL" as const,
+    requestedBy: null as string | null,
+    finishedAt: null as Date | null,
+    errorCode: null as string | null,
+    prUrl: null as string | null,
+    changed: null as number | null,
+    warnings: 0,
+    ...r,
+  }));
 
   // 저장마다 시각이 앞으로 간다 — pull의 1층 스킵 판정이 이 값 하나에 걸려 있다.
   let now = new Date("2026-09-03T00:00:00Z");
@@ -355,13 +394,25 @@ export function createHarness(seed: Seed = {}) {
   );
 
   // `projectId`(마지막 OWNER 보호)와 `userId`(사용자당 프로젝트 3개 제한 — OWNER 행만 센다) 둘 다 받는다.
-  const countMembers = vi.fn(async (args: { where: { projectId?: string; userId?: string; role?: Role } }) =>
-    members.filter(
-      (m) =>
-        (args.where.projectId === undefined || m.projectId === args.where.projectId) &&
-        (args.where.userId === undefined || m.userId === args.where.userId) &&
-        (args.where.role === undefined || m.role === args.where.role),
-    ).length,
+  /**
+   * ⚠️ **`project: { archivedAt: null }`을 실제로 본다** (7단계). 무시하면 "보관이 `PROJECT_LIMIT`
+   * 슬롯을 비운다"(design 결정 10)가 **무엇을 넣어도 통과한다** — 가짜가 실제보다 관대한 부류다
+   * (POSTMORTEM 2026-09-06 하네스 자기검사).
+   */
+  const countMembers = vi.fn(
+    async (args: {
+      where: { projectId?: string; userId?: string; role?: Role; project?: { archivedAt?: Date | null } };
+    }) =>
+      members.filter((m) => {
+        if (args.where.projectId !== undefined && m.projectId !== args.where.projectId) return false;
+        if (args.where.userId !== undefined && m.userId !== args.where.userId) return false;
+        if (args.where.role !== undefined && m.role !== args.where.role) return false;
+        if (args.where.project?.archivedAt !== undefined) {
+          const project = projects.find((p) => p.id === m.projectId);
+          if ((project?.archivedAt ?? null) !== args.where.project.archivedAt) return false;
+        }
+        return true;
+      }).length,
   );
 
   const updateProject = vi.fn(
@@ -513,6 +564,9 @@ export function createHarness(seed: Seed = {}) {
       translations: snapshot(translations),
       projects: snapshot(projects),
       accounts: snapshot(accounts),
+      // ⚠️ **빠뜨리면 롤백 테스트가 공허하다** — 트랜잭션 안에서 만든 `RUNNING` 행이 예외 뒤에도
+      // 남아 있는데 아무도 그것을 보지 않게 된다 (7단계).
+      syncRuns: snapshot(syncRuns),
     };
     try {
       return await fn(prisma);
@@ -522,6 +576,7 @@ export function createHarness(seed: Seed = {}) {
       restore(translations, saved.translations);
       restore(projects, saved.projects);
       restore(accounts, saved.accounts);
+      restore(syncRuns, saved.syncRuns);
       throw error;
     }
   };
@@ -551,9 +606,125 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
+  /**
+   * `SyncRun` 델리게이트 (7단계).
+   *
+   * ⚠️ **`where.projectId`를 실제로 본다.** 무시하면 "다른 프로젝트의 실행이 내 것을 막지 않는다"가
+   * **무엇을 넣어도 통과한다** — 게이트 전체가 그 좁힘 위에 서 있으므로 그때 이 하네스는 테넌트
+   * 경계를 검사하지 못하는 것이 아니라 **검사한다고 거짓말한다** (POSTMORTEM 2026-09-06).
+   */
+  let syncRunSeq = 0;
+  const createSyncRun = vi.fn(
+    async (args: {
+      data: {
+        projectId: string;
+        status: SyncRunSeed["status"];
+        trigger: "MANUAL" | "CRON";
+        requestedBy?: string | null;
+      };
+    }) => {
+      syncRunSeq += 1;
+      const row = {
+        id: `sr-${syncRunSeq}`,
+        requestedBy: null as string | null,
+        // 실제 컬럼이 `@default(now())`다 — 가짜가 안 채우면 `startedAt`이 undefined인 행이 생기고
+        // stale 판정이 그 위에서 조용히 통과한다.
+        //
+        // ⚠️ **`tick()`이 아니라 벽시계다.** 하네스의 `tick`은 2026-09-03에서 출발하는 자체 시계인데,
+        // 게이트는 `new Date()`와 이 값을 견준다 — 둘이 갈리면 방금 만든 행이 **며칠 전 것으로 보여
+        // 곧바로 stale로 닫힌다.** 실제 DB의 `now()`도 앱과 같은 벽시계다.
+        startedAt: new Date(),
+        finishedAt: null as Date | null,
+        errorCode: null as string | null,
+        prUrl: null as string | null,
+        changed: null as number | null,
+        warnings: 0,
+        ...args.data,
+      };
+      syncRuns.push(row);
+      return row;
+    },
+  );
+
+  /** `status`는 등호와 `{ in: [...] }` 둘만 받는다 — 모르는 연산자는 던진다(조용한 빈 결과 금지). */
+  const matchesSyncRun = (
+    row: (typeof syncRuns)[number],
+    where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } },
+  ): boolean => {
+    if (row.projectId !== where.projectId) return false;
+    if (where.status !== undefined) {
+      if (typeof where.status === "string") {
+        if (row.status !== where.status) return false;
+      } else if (where.status !== null && typeof where.status === "object" && "in" in where.status) {
+        const wanted = (where.status as { in: readonly string[] }).in;
+        if (!wanted.includes(row.status)) return false;
+      } else {
+        throw new Error(`harness syncRun: 지원하지 않는 status 연산자 ${JSON.stringify(where.status)}`);
+      }
+    }
+    if (where.startedAt?.lt !== undefined && !(row.startedAt.getTime() < where.startedAt.lt.getTime())) {
+      return false;
+    }
+    return true;
+  };
+
+  const sortSyncRuns = (rows: typeof syncRuns, direction: "asc" | "desc" | undefined) =>
+    direction === undefined
+      ? rows
+      : rows
+          .slice()
+          .sort((a, b) => (direction === "asc" ? 1 : -1) * (a.startedAt.getTime() - b.startedAt.getTime()));
+
+  const findFirstSyncRun = vi.fn(
+    async (args: {
+      where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } };
+      orderBy?: { startedAt?: "asc" | "desc" };
+    }) => sortSyncRuns(syncRuns.filter((r) => matchesSyncRun(r, args.where)), args.orderBy?.startedAt)[0] ?? null,
+  );
+
+  const findManySyncRuns = vi.fn(
+    async (args: {
+      where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } };
+      orderBy?: { startedAt?: "asc" | "desc" };
+      take?: number;
+    }) => {
+      const rows = sortSyncRuns(syncRuns.filter((r) => matchesSyncRun(r, args.where)), args.orderBy?.startedAt);
+      return args.take === undefined ? rows : rows.slice(0, args.take);
+    },
+  );
+
+  /** ⚠️ `where`에 `projectId`가 함께 온다 — id를 알아도 남의 테넌트 행을 못 닫는다 (`revokeInvitation` 선례). */
+  const updateSyncRun = vi.fn(
+    async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+      const row = syncRuns.find((r) => r.id === args.where.id);
+      // 실 Prisma는 없는 행에 P2025로 던진다 — 조용히 넘기면 "행을 닫는다"가 검증되지 않는다.
+      if (row === undefined) throw Object.assign(new Error("Record to update not found"), { code: "P2025" });
+      Object.assign(row, args.data);
+      return row;
+    },
+  );
+
+  const updateManySyncRuns = vi.fn(
+    async (args: {
+      where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } };
+      data: Record<string, unknown>;
+    }) => {
+      const rows = syncRuns.filter((r) => matchesSyncRun(r, args.where));
+      for (const row of rows) Object.assign(row, args.data);
+      return { count: rows.length };
+    },
+  );
+
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
+    syncRun: {
+      create: createSyncRun,
+      findFirst: findFirstSyncRun,
+      findMany: findManySyncRuns,
+      update: updateSyncRun,
+      updateMany: updateManySyncRuns,
+    },
     project: { findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject },
     projectMember: {
       findUnique: findMember,
@@ -748,7 +919,13 @@ export function createHarness(seed: Seed = {}) {
     locales,
     translations,
     accounts,
+    syncRuns,
     spies: {
+      createSyncRun,
+      findFirstSyncRun,
+      findManySyncRuns,
+      updateSyncRun,
+      updateManySyncRuns,
       findProject,
       findManyProjects,
       createProject,

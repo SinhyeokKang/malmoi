@@ -279,3 +279,109 @@ describe("harness — 진행률 집계의 조회 둘 (6b-5)", () => {
     expect(rows).toEqual([{ localeCode: "en", needsReview: false }]);
   });
 });
+
+/**
+ * **`syncRun` 델리게이트 자기검사** (7단계).
+ *
+ * 게이트 전체가 "이 프로젝트의 최신 RUNNING 하나 / 최신 settled 하나"에 걸려 있다. 가짜가
+ * `where.projectId`를 무시하면 **"다른 프로젝트의 실행이 내 것을 막지 않는다"가 무엇을 넣어도
+ * 통과하고**, 롤백을 안 하면 "행 insert가 던지면 행도 잠금도 없다"가 공허해진다.
+ */
+describe("harness: syncRun — 좁힘과 롤백", () => {
+  const runSeed = {
+    projects: [
+      { id: "pA", slug: "a" },
+      { id: "pB", slug: "b" },
+    ],
+    syncRuns: [
+      { id: "r-a-old", projectId: "pA", status: "SUCCEEDED" as const, startedAt: new Date("2026-09-01T00:00:00Z"), finishedAt: new Date("2026-09-01T00:01:00Z") },
+      { id: "r-a-run", projectId: "pA", status: "RUNNING" as const, startedAt: new Date("2026-09-02T00:00:00Z") },
+      { id: "r-b-run", projectId: "pB", status: "RUNNING" as const, startedAt: new Date("2026-09-03T00:00:00Z") },
+    ],
+  };
+
+  it("projectId로 좁힌다 — 남의 프로젝트 RUNNING이 내 게이트에 안 걸린다", async () => {
+    const h = createHarness(runSeed);
+    const mine = await h.prisma.syncRun.findFirst({
+      where: { projectId: "pA", status: "RUNNING" },
+      orderBy: { startedAt: "desc" },
+    });
+    expect(mine?.id).toBe("r-a-run");
+    const empty = await h.prisma.syncRun.findFirst({
+      where: { projectId: "pC", status: "RUNNING" },
+      orderBy: { startedAt: "desc" },
+    });
+    expect(empty).toBeNull();
+  });
+
+  it("status의 `in`을 실제로 본다 — settled 조회가 FAILED를 집으면 too-soon 기준이 거짓이 된다", async () => {
+    const h = createHarness(runSeed);
+    const settled = await h.prisma.syncRun.findFirst({
+      where: { projectId: "pA", status: { in: ["SUCCEEDED", "SKIPPED"] } },
+      orderBy: { startedAt: "desc" },
+    });
+    expect(settled?.id).toBe("r-a-old");
+  });
+
+  it("startedAt의 `lt`를 실제로 본다 — stale 닫기가 진행 중인 실행까지 닫으면 안 된다", async () => {
+    const h = createHarness(runSeed);
+    const { count } = await h.prisma.syncRun.updateMany({
+      where: { projectId: "pA", status: "RUNNING", startedAt: { lt: new Date("2026-09-01T12:00:00Z") } },
+      data: { status: "FAILED" },
+    });
+    expect(count).toBe(0);
+    expect(h.syncRuns.find((r) => r.id === "r-a-run")?.status).toBe("RUNNING");
+  });
+
+  it("모르는 연산자는 던진다 — 조용한 빈 결과가 '실행 없음'으로 읽히지 않는다", async () => {
+    const h = createHarness(runSeed);
+    await expect(
+      h.prisma.syncRun.findFirst({ where: { projectId: "pA", status: { not: "RUNNING" } as never } }),
+    ).rejects.toThrow(/지원하지 않는/);
+  });
+
+  it("트랜잭션이 던지면 그 안에서 만든 행이 사라진다", async () => {
+    const h = createHarness(runSeed);
+    await expect(
+      h.prisma.$transaction(async (tx) => {
+        await tx.syncRun.create({ data: { projectId: "pA", status: "RUNNING", trigger: "MANUAL" } });
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(h.syncRuns.filter((r) => r.projectId === "pA" && r.status === "RUNNING")).toHaveLength(1);
+  });
+
+  it("update는 없는 행에 던진다 — 조용히 넘기면 '행을 닫는다'가 검증되지 않는다", async () => {
+    const h = createHarness(runSeed);
+    await expect(
+      h.prisma.syncRun.update({ where: { id: "nope" }, data: { status: "FAILED" } }),
+    ).rejects.toThrow(/not found/);
+  });
+
+  it("시드 프로젝트가 마지막 게시 값을 든다 — '안 움직인다'가 undefined 비교로 참이 되지 않는다", async () => {
+    const h = createHarness(runSeed);
+    const project = h.projects.find((p) => p.id === "pA");
+    expect(project?.lastPublishedAt).toBeInstanceOf(Date);
+    expect(project?.lastPrUrl).toEqual(expect.stringContaining("http"));
+    expect(project?.archivedAt).toBeNull();
+  });
+
+  it("OWNER 집계가 `project: { archivedAt: null }`을 실제로 본다 — 보관이 슬롯을 비운다", async () => {
+    const h = createHarness({
+      projects: [
+        { id: "pA", slug: "a" },
+        { id: "pB", slug: "b", archivedAt: new Date("2026-09-05T00:00:00Z") },
+      ],
+      members: [
+        { projectId: "pA", userId: "u1", role: "OWNER" as const },
+        { projectId: "pB", userId: "u1", role: "OWNER" as const },
+      ],
+    });
+    expect(await h.prisma.projectMember.count({ where: { userId: "u1", role: "OWNER" } })).toBe(2);
+    expect(
+      await h.prisma.projectMember.count({
+        where: { userId: "u1", role: "OWNER", project: { archivedAt: null } },
+      }),
+    ).toBe(1);
+  });
+});
