@@ -25,22 +25,31 @@ export function AuthLayout({ children }: { children: ReactNode }) {
    * 컬럼을 화면에 꽉 채우면 그 여백과 radius가 통째로 사라진다.
    */
   return (
-    <div className="bg-auth-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
+    <>
       {/*
-        ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
-        ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
+        ⚠️ **`body`까지 칠해야 스크롤 바운스에서 흰색이 안 보인다.** 이 래퍼는 `min-h-svh`라
+        뷰포트를 채우지만 그 **바깥**(오버스크롤 영역)은 `body`의 색이고 그것이 흰색이다.
+
+        ⚠️ **셸 밖 화면에서만이다** — 전역 CSS로 주면 셸 안 화면의 배경까지 회색이 된다. 그래서
+        이 컴포넌트가 들고(마운트된 동안만 참이다), `useEffect`로 클래스를 붙이는 대신 인라인
+        `<style>`을 쓴다 — effect는 첫 페인트를 놓쳐 흰색이 한 번 보인다.
       */}
-      {/*
-        ⚠️ **`border-subtle`이다.** 시안의 `#f5f6f7`은 바깥 배경과 거의 같은 톤이라 — 패널을
-        배경에서 떼어내는 것은 **흰색 대비와 shadow**이고 border는 가장자리를 정리할 뿐이다.
-        `--border`(`#e2e8f0`)는 한 단계 진해 선이 도드라진다.
-      */}
-      <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
-        {children}
-        <Footer />
-      </main>
-      <Decoration />
-    </div>
+      <style>{`body{background-color:var(--auth-canvas)}`}</style>
+
+      <div className="bg-auth-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
+        {/*
+          ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
+          ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
+          ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
+          것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
+        */}
+        <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
+          {children}
+          <Footer />
+        </main>
+        <Decoration />
+      </div>
+    </>
   );
 }
 
