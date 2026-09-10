@@ -25,13 +25,19 @@ const read = (path: string): string =>
     .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
 const SIGNIN = "app/signin/page.tsx";
-const LAYOUT = "app/layout.tsx";
+/**
+ * ⚠️ **골격은 공유 컴포넌트가 든다** (8-1b) — 로그인과 초대 수락이 같은 2열 형을 쓰기 때문이다.
+ * 이 검사가 보는 것은 **계약이지 파일이 아니므로**, 그 계약이 사는 자리를 따라간다.
+ */
+const SHELL = "components/signin/auth-layout.tsx";
+const ROOT_LAYOUT = "app/layout.tsx";
 const TOAST = "components/signin/auth-toast.tsx";
 const DOTS = "components/signin/dot-field.tsx";
 const ICONS = "components/signin/brand-icons.tsx";
 
 describe("로그인 화면 — 레이아웃 계약", () => {
-  const src = read(SIGNIN);
+  /** 화면과 그 골격을 함께 본다 — 계약이 둘 중 어디에 있든 지켜지면 된다. */
+  const src = read(SIGNIN) + read(SHELL);
 
   /** 스캐너가 조용히 0건이 되지 않는다 — 이 리포의 모든 소스 스캔이 갖는 자기검사다. */
   it("소스를 실제로 읽었다", () => {
@@ -72,7 +78,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
 
 describe("로그인 화면 — 장식은 접근성 트리 밖이다", () => {
   const dots = read(DOTS);
-  const signin = read(SIGNIN);
+  const signin = read(SIGNIN) + read(SHELL);
 
   /** 948px짜리 장식이고 포커스 대상이 아니다 — 스크린리더가 읽을 내용이 0이다. */
   it("도트 캔버스가 `aria-hidden`이다", () => {
@@ -101,7 +107,7 @@ describe("로그인 화면 — 장식은 접근성 트리 밖이다", () => {
 });
 
 describe("토스트 배선", () => {
-  const layout = read(LAYOUT);
+  const layout = read(ROOT_LAYOUT);
   const toast = read(TOAST);
 
   /**

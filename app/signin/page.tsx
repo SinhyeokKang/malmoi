@@ -1,13 +1,18 @@
-import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
+import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
-import { Alert } from "@/components/ui/alert";
+import { AuthLayout } from "@/components/signin/auth-layout";
+import { AuthToast } from "@/components/signin/auth-toast";
+import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
+import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -24,11 +29,15 @@ import { routes } from "@/lib/routes";
  *
  * ⚠️ **거부 사유를 여기서 보인다.** `signIn` 콜백이 false를 내면 Auth.js가 `pages.error`로 보내고,
  * 그것을 이 화면으로 돌려놨다 — 기본 `/api/auth/error`는 우리 디자인 밖의 무스타일 페이지다.
+ * **피드백은 토스트 하나다**(규약 8) — 인라인 `Alert`를 병행하지 않는다.
  *
- * 형은 2열이다 (design §3.12): 폼 좌 · 장식 우. **장식은 CSS와 인라인 SVG뿐이고 raw 색이 0이다** —
- * `public/`에 생성물 아닌 바이너리를 늘리지 않고, 그러면 다크·해상도 문제가 애초에 없다.
+ * 형은 2열이다 (8-1b 시안): 폼 좌 · 키비주얼 우.
  */
-export default async function SignIn({ searchParams }: { searchParams: Promise<{ error?: string; sessions?: string }> }) {
+export default async function SignIn({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; sessions?: string }>;
+}) {
   const { error, sessions } = await searchParams;
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
@@ -36,30 +45,40 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<{
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
-    <main className="grid min-h-svh lg:grid-cols-2">
-      <div className="flex flex-col justify-center px-8 py-12">
-        <div className="mx-auto w-full max-w-sm space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-lg font-semibold tracking-tight">{m.common.appName}</h1>
-            <p className="text-muted-foreground text-sm">{m.signIn.tagline}</p>
-          </div>
+    <AuthLayout>
+      <div className="flex w-[320px] flex-col items-center gap-4">
+        <Image src={logo} alt="" width={48} height={48} priority />
+        <h1 className="text-2xl font-semibold tracking-tight">{m.signIn.title}</h1>
 
-          {sessions === "revoked" && <Alert variant="success">{m.account.sessions.complete}</Alert>}
+        <div className="flex w-full flex-col gap-2">
+          {/* ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 시안이 GitHub을 채움으로 그렸다. */}
+          <ProviderButton provider="github" label={m.signIn.github} variant="primary" />
+          <ProviderButton provider="google" label={m.signIn.google} variant="default" />
 
-          {shown !== undefined && <Alert variant="danger">{signInErrorMessage(shown)}</Alert>}
-
-          <div className="flex flex-col gap-2">
-            <ProviderButton provider="github" label={m.signIn.github} variant="primary" />
-            <ProviderButton provider="google" label={m.signIn.google} variant="default" />
-          </div>
+          <p className="text-muted-foreground text-center text-xs leading-relaxed">
+            {m.signIn.consent.before}
+            <Link
+              href={routes.privacy()}
+              className="focus-visible:ring-ring text-blue-600 underline focus-visible:ring-[3px] focus-visible:outline-none"
+            >
+              {m.signIn.consent.link}
+            </Link>
+          </p>
         </div>
       </div>
 
-      <Decoration />
-    </main>
+      {/* 렌더하지 않는다 — `?error=`·`?sessions=`를 토스트로 옮기는 조각이다. */}
+      <AuthToast error={shown === undefined ? undefined : signInErrorMessage(shown)} sessions={sessions} />
+    </AuthLayout>
   );
 }
 
+/**
+ * ⚠️ **함수 이름을 바꾸지 않는다.** `lib/session-revocation/__tests__/normal-login.test.tsx`가
+ * `child.type.name === "ProviderButton"`으로 이것을 찾고, 그 테스트는 **POSTMORTEM 2026-09-10의
+ * 유일한 방어선**이다 — `clearRevocationCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다.
+ * `redirectTo: "/projects"`도 같은 이유로 그대로다.
+ */
 function ProviderButton({
   provider,
   label,
@@ -77,56 +96,11 @@ function ProviderButton({
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >
-      {/* ⚠️ 높이를 덮지 않는다 (DESIGN §8) — 호출부는 폭·여백만 덧댄다 */}
-      <Button type="submit" variant={variant} className="w-full">
+      {/* ⚠️ 높이는 `size="lg"`가 든다 (DESIGN §8) — 호출부는 폭·여백만 덧댄다. */}
+      <Button type="submit" variant={variant} size="lg" className="w-full">
+        {provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         {label}
       </Button>
     </form>
-  );
-}
-
-/**
- * 우측 장식. **토큰만 쓴다** — dot-grid는 `--border`, 그라디언트는 `from-primary/5 to-muted`다.
- * 처음 초안의 연보라는 DESIGN §6.2가 명시로 막은 raw 색이자 레퍼런스의 브랜드 색이라, "배치는
- * 가져오고 색은 안 가져온다"는 경계를 유일하게 넘는 자리였다 (design §3.12).
- *
- * `lg` 미만에서는 통째로 사라진다 — 좁은 화면에서 장식이 폼을 밀어내면 그건 장식이 아니다.
- */
-function Decoration() {
-  return (
-    <div className="from-primary/5 to-muted relative hidden overflow-hidden bg-gradient-to-br lg:block">
-      <div
-        aria-hidden
-        className="absolute inset-0 opacity-60"
-        style={{
-          backgroundImage: "radial-gradient(var(--border) 1px, transparent 1px)",
-          backgroundSize: "16px 16px",
-        }}
-      />
-      <div className="relative flex h-full items-center justify-center p-12">
-        {/* 정적 모형 카드 — 실제 데이터가 아니다. 이 도구가 무엇을 하는지 한 장으로 말한다. */}
-        <div className="bg-background border-border w-full max-w-sm space-y-3 rounded-lg border p-4 shadow-sm">
-          <p className="text-mono text-muted-foreground">{m.signIn.sample.file}</p>
-          <div className="space-y-2">
-            <SampleRow label="ko" done />
-            <SampleRow label="en" done />
-            <SampleRow label="fr" />
-          </div>
-          <div className="border-border flex items-center justify-between border-t pt-3">
-            <span className="text-mono text-muted-foreground">{m.signIn.sample.branch}</span>
-            <span className="text-muted-foreground text-xs">{m.signIn.sample.sent}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SampleRow({ label, done = false }: { label: string; done?: boolean }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-mono text-muted-foreground w-6">{label}</span>
-      <span className={done ? "bg-primary/30 h-2 flex-1 rounded" : "bg-muted h-2 flex-1 rounded"} />
-    </div>
   );
 }

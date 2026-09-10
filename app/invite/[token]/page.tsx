@@ -1,10 +1,13 @@
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import { decodeInvitation } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { signIn, signOut } from "@/auth";
+import { AuthLayout } from "@/components/signin/auth-layout";
+import { AuthToast } from "@/components/signin/auth-toast";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { maskEmail } from "@/lib/auth/email";
@@ -14,6 +17,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import logo from "@/public/brand/malmoi-icon-black.svg";
 
 import { acceptInvitation } from "../actions";
 
@@ -26,10 +30,16 @@ import { acceptInvitation } from "../actions";
  * ⚠️ **비로그인에게 보이는 것은 마스킹한 이메일·프로젝트 이름·역할뿐이다.** 조건부 렌더이지만
  * 새는 데이터가 그것이 전부라 허용한다 — 번역 데이터는 이 페이지가 조회하지 않는다.
  *
- * ⚠️ **실패가 두 층에서 온다.** 행을 읽자마자 갈리는 셋(`not-found`·`already-accepted`·`expired`)은
- * 아래 `Notice`가 각자 내고, **수락 버튼을 눌러서 나는 셋**(`email-mismatch`·`already-member`·
- * `unauthorized`)은 `?e=`로 돌아와 `inviteErrorMessage`가 낸다. 여섯을 각자 다른 한 줄로 보이는 것이
- * 이 화면의 요지다 — 판정을 갈라놓고 화면을 안 갈라놓으면 사용자가 왜 실패했는지 모른다.
+ * ⚠️ **실패가 두 층에서 오고, 8-1b가 그 둘을 서로 다른 표면에 둔다** (규약 8의 첫 시험 사례):
+ *
+ * - **Layer A** — 행을 읽자마자 갈리는 넷(`not-found`·`already-accepted`·`expired`·`unavailable`)은
+ *   **인라인 `Notice`로 남는다.** 그것이 **페이지 콘텐츠 전부**이기 때문이다 — 토스트로 옮기면
+ *   빈 카드 + 우하단 토스트가 되고, 만료된 링크를 연 사람이 아무것도 없는 화면을 본다.
+ * - **Layer B** — 수락 버튼을 눌러서 나는 셋(`email-mismatch`·`already-member`·`unauthorized`)은
+ *   `?e=`로 돌아와 **토스트**가 낸다. 전역 결과를 내는 이벤트이고, 그 뒤에도 화면은 그대로 쓸 수 있다.
+ *
+ * 여섯을 각자 다른 한 줄로 보이는 것이 이 화면의 요지다 — 판정을 갈라놓고 화면을 안 갈라놓으면
+ * 사용자가 왜 실패했는지 모른다.
  */
 
 export default async function InvitePage({
@@ -81,7 +91,7 @@ export default async function InvitePage({
    * ⚠️ **주소창 값을 단언하지 않는다** — `inviteErrorMessage`가 모르는 값에 폴백 문구를 낸다
    * (`pick` — POSTMORTEM 2026-09-08의 프로토타입 키 사고가 그 함수를 그렇게 만들었다).
    */
-  const failure = e === undefined ? null : <Alert variant="danger">{inviteErrorMessage(e)}</Alert>;
+  const failure = e === undefined ? null : <AuthToast error={inviteErrorMessage(e)} />;
 
   if (session.status === "none") {
     return (
@@ -89,7 +99,7 @@ export default async function InvitePage({
         <p className="text-sm">{invited}</p>
         {failure}
         <p className="text-muted-foreground text-xs">{m.invite.signInHint(email)}</p>
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full flex-col gap-2">
           {/* 로그인 뒤 이 페이지로 돌아온다 — 토큰이 URL에 있으므로 그대로 이어진다. */}
           <ProviderButton provider="github" label={m.invite.github} token={token} />
           <ProviderButton provider="google" label={m.invite.google} token={token} />
@@ -110,17 +120,19 @@ export default async function InvitePage({
       */}
       {e === "email-mismatch" && (
         <form
+          className="w-full"
           action={async () => {
             "use server";
             await signOut({ redirectTo: routes.invite(token) });
           }}
         >
-          <Button type="submit" className="w-full">
+          <Button type="submit" size="lg" className="w-full">
             {m.invite.otherAccount}
           </Button>
         </form>
       )}
       <form
+        className="w-full"
         action={async () => {
           "use server";
           const result = await acceptInvitation({ token });
@@ -132,7 +144,7 @@ export default async function InvitePage({
           );
         }}
       >
-        <Button type="submit" variant="primary" className="w-full">
+        <Button type="submit" variant="primary" size="lg" className="w-full">
           {m.invite.accept}
         </Button>
       </form>
@@ -141,13 +153,18 @@ export default async function InvitePage({
   );
 }
 
-/** 셸 밖 카드 — 로그인 화면과 같은 형이다 (DESIGN §5.1: `mx-auto max-w-sm`). */
+/**
+ * 셸 밖 카드 — **로그인 화면과 같은 2열 골격을 쓴다** (8-1b). 번역자에게는 이 화면이 제품의 첫
+ * 얼굴이라 따로 그리면 같은 제품이 두 얼굴이 된다.
+ */
 function Card({ children }: { children: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 p-8">
-      <h1 className="text-lg font-semibold tracking-tight">{m.common.appName}</h1>
-      {children}
-    </main>
+    <AuthLayout>
+      <div className="flex w-[320px] flex-col items-center gap-4">
+        <Image src={logo} alt="" width={48} height={48} priority />
+        {children}
+      </div>
+    </AuthLayout>
   );
 }
 
@@ -162,13 +179,14 @@ function ProviderButton({
 }) {
   return (
     <form
+      className="w-full"
       action={async () => {
         "use server";
         await clearRevocationCookies();
         await signIn(provider, { redirectTo: routes.invite(token) });
       }}
     >
-      <Button type="submit" className="w-full">
+      <Button type="submit" size="lg" className="w-full">
         {label}
       </Button>
     </form>

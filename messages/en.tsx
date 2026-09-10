@@ -57,12 +57,27 @@ export const en = {
     unreadable: "Unavailable",
   },
 
+  /**
+   * 로그인 화면 (8-1b — Figma 시안).
+   *
+   * ⚠️ **tagline과 모형 카드 문구 넷이 사라졌다.** 시안이 제목 한 줄이고 우측 장식이 키비주얼
+   * 이미지로 바뀌었다 — 제품 설명은 **랜딩이 맡는다**(2026-09-10 사용자). 그때까지 비개발자가
+   * 이 제품이 뭔지 알 수 있는 자리가 앱에 없다는 것이 받아들인 대가다.
+   */
   signIn: {
-    tagline: "Translate the projects you were invited to, and send your changes back.",
+    title: "Sign in to malmoi",
     github: "Continue with GitHub",
     google: "Continue with Google",
-    /** 장식 카드의 정적 문구 — 실제 데이터가 아니라 모형이다 (design §3.12). */
-    sample: { file: "locales/ko.json", branch: "l10n/sync", sent: "Sent for review" },
+    /** 버튼 라벨을 교체한다 — 옆에 문구를 붙이면 폭이 흔들린다 (DESIGN §6.4). */
+    opening: "Opening…",
+    /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
+    consent: { before: "By clicking Continue through a third party you accept the malmoi ", link: "Privacy Policy" },
+    footer: { copyright: "© 2026 malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
+    /**
+     * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
+     * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
+     */
+    hero: { top: "Connect your projects", bottom: "Translate & ship together" },
   },
 
   /**
