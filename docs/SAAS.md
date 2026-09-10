@@ -513,7 +513,7 @@ setup → awaiting_first_sync → ready
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
   멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
 - ✅ **`repositoryId === null`은 readiness와도 건강성과도 다른 셋째 축이고, 2026-09-11에 목록이 그것을
-  드러낸다** (`Reconnect needed` 배지 — 2026-09-10 `/doc-check`이 잡았다). sec-audit-2 이전에 만들어진 행이 그 상태이고
+  드러낸다** (`Disconnected` 배지 — 2026-09-10 `/doc-check`이 잡았고 2026-09-11에 한 낱말로 줄였다). sec-audit-2 이전에 만들어진 행이 그 상태이고
   결과는 셋이다 — 목록에서 **`Active`로 보이고**(`planProjectReadiness`가 그 컬럼을 안 본다 →
   `projectStatus`가 `active`를 낸다), 야간 순회에서 **조용히 빠지며**(`selectPullTargets`),
   Publish만 `not-installed`로 죽는다. 설정 화면의 건강성 행조차 `not-connected`("연결 안 됨")로 접어
@@ -659,14 +659,14 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      (`docs/features/README.md`). **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
-인칭이 섞였다.
+⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. 아래는 그때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
+인칭이 섞였다.~~
 
 ⚠️ **역할 게이팅은 6b-2 관용구를 그대로 쓴다**: 페이지 게이트는 `translation:write`(EDITOR도 로케일·
 이력·개요를 본다) · **컨트롤만 role로 갈리고 판정은 Action**이 한다. `project:settings` 뒤에 두는 것은
 `settings` 하나다 — 거기에 리포 연결과 push 토큰이 있다.
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·`?state=`·`?focus=`와 **목록의 `?filter=all|active|archived`**(8-3), 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·`?state=`·`?focus=`와 **목록의 `?filter=`(값 여섯 — `all` + 상태 다섯)와 `?q=`(이름 검색, 2026-09-11)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
 ✅ **`?sessionRevocation=`도 2026-09-11에 그 계약 안으로 들어왔다.** 그전에는 세 자리가 문자열 연결로 만들었고(`signIn()` 주석이 못 박은 그 형태) 검사를 회피했다 — 지금은 `routes.account({ sessionRevocation })`이 만들고 **읽는 쪽(`lib/session-revocation/http.ts`)만 리터럴로 비교한다**(만드는 쪽과 읽는 쪽이 같은 함수를 쓰면 그 비교가 무엇을 확인하는지 흐려진다).
 
@@ -1193,9 +1193,10 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
       `namespaceCounts` · `localeProgress` · 셀 컴포넌트 · `?focus=` 계약이 전부 다시 정의된다
   - ⚠️ **행 수가 3배다** (903키 × 3로케일 = 2,709행). 2026-09-09의 리전 변경이 고친 것은 **서버
         시간**이고 DOM 노드 수는 별개다 — `?ns=*`에서 가상화 판정이 다시 열릴 수 있다 (CLAUDE.md 가상화 절)
-- [ ] 🔒 **`?focus=`의 뜻을 다시 정한다.** 지금은 "어느 로케일 열을 기준으로 집계·필터하나"인데
-      로케일이 항상 다 보이면 그 개념이 없다. 시안의 `Select locales`는 **다중 선택 필터**로 보이고,
-      그러면 `defaultNamespace`(pending>0인 첫 ns)의 기준도 함께 바뀐다
+- [x] ✅ **`?focus=`의 뜻이 정해졌다** (2026-09-11, 8-4 spec Q2 — **설계만, 미착수**): `?locales=`
+      **다중 선택**으로 바뀌고 `focus`는 폐기된다. 집계와 기본 착지는 "선택된 로케일 중 하나라도 남은
+      일이 있으면 pending"이고, 옛 `?focus=`는 404도 리다이렉트도 아닌 **기본 선택**으로 떨어진다.
+      ⚠️ 같은 spec이 `?state=` 제거(Q3)와 breadcrumb 삭제(Q5)도 결정했다 — `docs/features/ui-rework/translations/spec.md`
 - [ ] 🔒 **사이드바 카운트 배지** — ⚠️ **`Projects` 하나는 8-3이 넣었다**(셸이 이미 조회한 멤버십
       배열의 길이라 왕복이 0이다). 남은 셋(Translations 1134 · Locales 7 · Members 4)이 이 미결이다.
       ⚠️ **§7.7이 거절한 결정이다** — "카운트 넷은 모든 화면에 왕복을 더한다". 근거의 절반은
@@ -1210,7 +1211,7 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
       ⚠️ **셸 루트의 `h-svh overflow-hidden`은 유지했다** — `min-h-svh`로 돌아가면 malmoi#13이 재발한다
 - [x] 표면이 **회색 배경 + 흰 카드**로 바뀐다 (8-1b 토큰 · 8-2 셸) — 캔버스 `--canvas` 위에 패널이
       뜨고 바깥 padding 8 · 패널 간 gap 8이다. DESIGN §0이 바뀐 전역 규칙 열을 든다.
-      ⚠️ **mono 표면 불변식은 아직 다시 안 그렸다** — 8-3이 번역 표를 옮길 때다
+      ⚠️ **mono 표면 불변식은 아직 다시 안 그렸다** — **8-4**가 번역 표를 옮길 때다
 - [ ] **오른쪽 "project global panel" — 골격은 섰고 내용이 8-P다** (2026-09-09 사용자 · 8-2 골격).
       ✅ `app/(edit)/projects/[slug]/layout.tsx`가 생겼고 `components/shell/project-panel.tsx`가
       320px 프레임 + 세그먼트 컨트롤(General·Changes)을 든다. **본문은 비어 있다** — 아래 diff 조건
@@ -1232,16 +1233,17 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
   - ✅ **셸이 이걸 못 들어서 레이아웃을 새로 만들었다** (8-2). `app/(edit)/layout.tsx`는 `[slug]`
         params를 못 받는다 — breadcrumb과 Publish 버튼이 아직 셸에 없는 이유가 정확히 그것이고,
         `app/(edit)/projects/[slug]/layout.tsx`가 그 자리다(프로젝트 축 공통 배선이 설 자리가 생기는
-        것이 부수효과였고, 8-3이 breadcrumb·Publish를 거기로 옮긴다)
+        것이 부수효과였다. ⚠️ **breadcrumb은 옮기지 않고 지운다** — 8-4 spec Q5가 하위 화면 다섯에서 함께 걷기로 했고, Publish는 8-P까지 `components/translations/header.tsx`에 남는다)
   - 🔒 **7단계 `logs`와의 경계.** 둘 다 싱크를 다룬다. 제안은 **패널 = 지금 상태 + 행동**(무엇이 안
         갔나 · 보내면 무엇이 바뀌나 · 보내기) / **`logs` = 과거 이력**(언제 무엇이 갔고 무엇이
         실패했나). 안 그으면 `logs`가 패널의 열등한 사본이 된다
 - [x] **Help 항목의 목적지 — `/docs`로 정했다** (8-3, 2026-09-10 사용자). 그 화면은 아직
       placeholder이지만 **라우트는 실재한다**(8-1a가 땄다) — 없는 곳을 가리키는 항목이 아니고 내용은
-      출시 전에 채운다. ⚠️ **사이드바 하단이 Help·Sign out 둘이다** — Collapse는 8-3에 사라졌다
-- [ ] ⚠️ **로케일 국기 아이콘은 매핑이 원리적으로 실패한다** — 언어와 국가가 1:1이 아니다(시안의
-      `en`은 영국 국기다). `zh-CN`/`zh-TW`, 국가가 없는 `ar`, 그리고 **리포에서 오는 코드는 임의
-      문자열**이다. **매핑 실패 시 무엇을 그리는가가 계약**이고 그것을 먼저 정한다
+      출시 전에 채운다. ⚠️ **사이드바 하단이 Docs·Sign out 둘이다** — Collapse는 8-3에 사라졌고, 2026-09-11에 라벨이 `Help`에서 그 화면 제목과 **같은 키**로 바뀌었다
+- [x] ✅ **국기의 폴백 계약이 정해졌다** (2026-09-11, 8-4 spec Q4 — **설계만, 미착수**): 매핑이
+      원리적으로 실패한다는 사실은 그대로이고, **실패하면 아무것도 안 그린다 — 코드만이다**(물음표·
+      지구본을 쓰지 않는다). 매핑은 리포가 **명시 표**로 소유하고(`en` → GB는 시안의 선택), 하위태그가
+      있으면 그것이 이긴다. 에셋은 사용자가 준다 — 없어도 화면이 서므로 blocker가 아니다
 
 완료 게이트: 화면 열 개가 시안과 같은 골격이다 / 표 축 변경 뒤에도 `?ns=*`의 첫 착지가 2초 안이다 /
 `entry-points.test.ts`·`focus-ring.test.ts`·`client-graph.test.ts`가 새 구조에서 green이다.
