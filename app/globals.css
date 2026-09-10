@@ -32,8 +32,23 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  /**
+   * ⚠️ **`--border`보다 한 단계 연한 경계선** (8-1b). 셸 밖 패널이 아주 연한 회색 배경 위에
+   * 떠 있는 구조라(규약 3.5) `--border`(`#e2e8f0`)를 쓰면 선이 도드라진다. 시안은 `#f5f6f7`이고
+   * **배경과 거의 같은 톤**이다 — border는 경계를 만드는 게 아니라 가장자리를 정리한다.
+   */
+  --color-border-subtle: var(--border-subtle);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /**
+   * ⚠️ **여기 등록하지 않으면 클래스가 생성되지 않는다.** `:root`에 변수만 만들면
+   * `bg-auth-canvas`·`from-auth-hero-from`이 **존재하지 않는 유틸**이 되어 조용히 무시되고,
+   * 배경은 흰색으로 그라데이션은 통째로 사라진다 — 8-1b가 실제로 그렇게 나갔다.
+   */
+  --color-auth-canvas: var(--auth-canvas);
+  --color-auth-hero-from: var(--auth-hero-from);
+  --color-auth-hero-to: var(--auth-hero-to);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -74,6 +89,8 @@
 
   /* ⚠️ ring == border 라서 muted·secondary 표면 위에선 포커스 링이 약하다 (DESIGN.md §7). */
   --border: hsl(214.3 31.8% 91.4%);
+  /** 시안 `#f5f6f7` — 셸 밖 패널의 경계선. 위 `--border`는 그것보다 한 단계 진하다 (8-1b). */
+  --border-subtle: hsl(210 20% 96.5%);
   --input: hsl(214.3 31.8% 91.4%);
   --ring: hsl(214.3 31.8% 91.4%);
 

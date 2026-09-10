@@ -31,12 +31,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
       */}
       {/*
-        ⚠️ **시안의 border는 `#f5f6f7`이고 바깥 배경과 거의 같은 톤이다** —
-        패널을 배경에서 떼어내는 것은 **흰색 대비와 shadow**이고 border는 가장자리를 정리할
-        뿐이다. `--border`(`#e2e8f0`)는 한 단계 진해 선이 도드라진다. slate-100(`#f1f5f9`)이
-        팔레트에서 시안에 가장 가깝다 — 투명도로 흉내내면 배경색이 바뀔 때 실효값이 따라 변한다.
+        ⚠️ **`border-subtle`이다.** 시안의 `#f5f6f7`은 바깥 배경과 거의 같은 톤이라 — 패널을
+        배경에서 떼어내는 것은 **흰색 대비와 shadow**이고 border는 가장자리를 정리할 뿐이다.
+        `--border`(`#e2e8f0`)는 한 단계 진해 선이 도드라진다.
       */}
-      <main className="border-border relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
+      <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
         {children}
         <Footer />
       </main>
@@ -85,13 +84,16 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  * 문구 자리). 키비주얼은 `max-w-[768px]`이고 컨테이너에 맞춰 줄어들어, 1280px에서 우측 컬럼
  * 640 − 160 = 480px이라 **넘치지 않는다.**
  *
+ * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
+ * 폼 패널만 `border-subtle`을 든다.
+ *
  * ⚠️ **초대 화면의 실패 분기에서도 이 장식이 그대로 보인다** — 좌측이 "This invitation expired"인데
  * 우측이 환영 화면인 상태가 생긴다. KV에 문구가 **구워져 있어** 분기별로 못 바꾸고, 어색한지는
  * 런타임 목측(T11)이 판단한다.
  */
 function Decoration() {
   return (
-    <div className="from-auth-hero-from to-auth-hero-to border-border relative flex flex-col items-center justify-between overflow-hidden rounded-xl border bg-gradient-to-br px-20 py-16 shadow-sm">
+    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-br px-20 py-16 shadow-sm">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-semibold tracking-tight">{m.signIn.hero.top}</p>
