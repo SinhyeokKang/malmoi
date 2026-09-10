@@ -28,6 +28,7 @@ model Project {
   /// GitHub App **설치** id. App 자체(GITHUB_APP_ID·PRIVATE_KEY)는 앱 단위라 환경변수에 남고,
   /// 설치는 고객이 각자 하므로 여기 둔다. 미설치 상태를 표현해야 해서 nullable이다.
   installationId String?
+  repositoryId String?
 
   // ── 로케일 포맷 (온보딩이 확정하고 pull이 읽는다) ─────────────────────────
   // 원래는 push가 채우는 값이었다(CI가 리포를 탐지한다). 2026-09-07 온보딩이 **사용자에게 확정받아**
