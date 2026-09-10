@@ -955,3 +955,31 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **문자열 길이로 바이트를 재지 않는다.** grep: `grep -rn '\.length !== \|\.length ===' lib app | grep -iv 'array\|list\|rows\|entries\|keys\|segments'` → 그 값이 **바이트로 쓰이는지** 하나씩 본다. 쓰이면 `Buffer.byteLength`이거나, 애초에 길이를 안 재는 설계여야 한다.
   - **외부 입력을 받는 순수 함수의 픽스처에 비ASCII를 하나 넣는다.** 한글·이모지(서로게이트 쌍)가 서로 다른 함정을 낸다 — 앞은 코드 유닛 대 바이트, 뒤는 코드 유닛 대 코드 포인트다.
   - **주석이 "왜"를 적었다고 "무엇으로"까지 검토된 것은 아니다.** 리뷰에서 이유가 적힌 줄을 만나면 그 이유가 **그 코드로 달성되는지**를 따로 센다.
+
+### 2026-09-10 — YAML 자원 제한이 문자열을 구조로 읽어 우회와 오탐을 함께 만들었다
+
+- **영역**: `lib/onboarding/budget.ts` (sec-audit-2 구현·최종 검수).
+- **증상**: `title: don't stop` 뒤 깊이 101의 flow collection이 제한을 통과했다. 반대로 block scalar에
+  들어 있는 `[` 101자는 단순 번역 문자열인데 `resource-limit`으로 거부됐다. 로컬 재현이며 배포 전이다.
+- **근본 원인**: 일반 따옴표·괄호 스캐너를 YAML에 재사용했다. YAML의 plain scalar 작은따옴표와
+  block scalar 의미가 다르므로 바이트 검사는 맞아도 구문 깊이 판정은 맞지 않았다.
+- **그물**: 최종 code-review의 두 실제 입력이 잡았고 회귀 테스트 2개에서 red→green을 확인했다.
+  기존 깊은 괄호·들여쓰기 테스트는 문자열과 구조가 섞인 경우를 검사하지 못했다.
+- **재발 방지**: YAML Lexer/CST Parser가 구분한 구성 스택을 매 토큰 후 검사하고 재귀 AST 구성 전에
+  중단한다. `rg -n 'quote|parseDocument|new Parser' lib/onboarding/budget.ts lib/adapters`로 직접
+  구문 추정 경계를 전수 확인한다. 기존 yaml-catalog는 실제 파서를 사용한다. 코드 리터럴용 사전
+  스캐너는 완전한 언어 파서나 실행 시간 격리라고 문서화하지 않는다. 두 YAML 회귀는 budget 테스트에 남긴다.
+
+### 2026-09-10 — 초대 만료 조건이 있어도 취소 전 조회의 권한이 살아남았다
+
+- **영역**: `app/invite/actions.ts`, sec-audit-2 #29.
+- **증상**: 수락 요청이 먼저 읽은 만료 시각·역할을 보유한 사이 OWNER가 취소하거나 재발급하면,
+  취소 시각이 수락 요청의 이전 기준 시각보다 미래여서 옛 초대 소비가 통과할 수 있었다.
+- **근본 원인**: 쓰기에 만료 술어가 있다는 사실만 확인했고, 그 술어가 읽었던 행의 버전과 같은지를
+  확인하지 않았다. 과거 시각과 비교하는 것만으로 취소 경합이 닫히지 않는다.
+- **그물**: 실제 저장된 만료는 취소 시각, 최초 조회 결과는 옛 만료·OWNER 역할인 테스트가 잡았다.
+  기존 회귀는 취소 시각을 충분히 과거로 두어 동일 요청 구간의 경합을 놓쳤다.
+- **재발 방지**: 소비 UPDATE에 조회한 expiresAt 동등 조건과 소비 직전 미만료 조건을 함께 둔다.
+  `rg -n 'expiresAt:.*gt|acceptedAt: null' app/invite/actions.ts 'app/(edit)/projects/actions.ts'`로
+  조회·소비·취소를 함께 검토한다. 재발급 경로는 발급 트랜잭션의 프로젝트 잠금과 옛 행 회전을 유지한다.
+  미래 취소 시각과 옛 역할을 함께 넣은 회귀 테스트를 삭제하지 않는다.
