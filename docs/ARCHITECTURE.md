@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 넷을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -285,7 +285,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 **함정 둘:**
 
 - **`setLiteralValue`를 쓰면 안 된다** — 이스케이프를 하지 않아 백슬래시·개행·따옴표가 재파싱에서 깨진다(실측: `a"b\c\nd` → `a"bcd`). `JSON.stringify(next)`로 따옴표까지 포함한 유효한 JS 리터럴을 만들고 `replaceWithText`로 갈아끼운다. 비ASCII는 그대로 남아 한글이 유니코드 이스케이프로 바뀌지 않는다.
-- **`export`된 선언은 로케일 객체가 아니다.** `export const ai = { ko, en, fr }` 같은 묶음 객체의 이름이 2~3자 소문자면 `looksLikeLocale`을 통과한다(bugshot-2의 `ai`·`app`이 0키 "로케일"로 잡혔다). 묶음은 항상 export되고 로케일 객체는 항상 파일 내부용이라 그 한 줄로 갈린다.
+- **`export`된 선언은 로케일 객체가 아니다** (⚠️ **이것은 `ts-dict`의 규칙이고 `code-dict`는 반대다** — 그쪽은 default export가 없을 때 **export된 것만** 후보로 받는다)**.** `export const ai = { ko, en, fr }` 같은 묶음 객체의 이름이 2~3자 소문자면 `looksLikeLocale`을 통과한다(bugshot-2의 `ai`·`app`이 0키 "로케일"로 잡혔다). 묶음은 항상 export되고 로케일 객체는 항상 파일 내부용이라 그 한 줄로 갈린다.
 
 **빈 값은 호출부가 걸러서 넘기지 않는다** (2026-08-31 결정). `write`가 `orderedEntries`를 지나지 않으므로 빈 문자열이 오면 그대로 치환돼 소스에 `""`가 박히고, TS 딕셔너리엔 폴백이 없어 그대로 렌더된다. **"미번역 제외"만은 두 방식에 똑같이 적용한다** — 그래야 지우기가 원본 값을 남기는 쪽으로 떨어진다 (MVP §3.2·§4.1).
 
@@ -472,7 +472,7 @@ Action에 적용되지 않으므로 `app/(edit)/projects/new/page.tsx`와 `[slug
 
 **출력은 `refs`뿐이다.** `ScanResult`에 `errors` 필드가 **없는 것이 이 층의 요지다** — 키의 존재·원문·키 이름 합법성은 전부 §1의 적재 층이 로케일 파일을 읽어 정한다. 이 층은 편집 UI의 컨텍스트("이 문자열이 어디 나오는지")만 만든다.
 
-`pnpm scan`은 **항상 exit 0이다.** CI를 실패시킬 수 있는 건 `pnpm ingest`뿐이다.
+`pnpm scan`은 **스캔이 돌기 시작한 뒤에는 항상 exit 0이다** — 사용법 오류(대상 디렉터리 누락·`--wrapper` 스펙 파싱 실패)만 2다. CI를 실패시킬 수 있는 건 `pnpm ingest`뿐이다.
 
 bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지금 **115키 / 참조 273건 / 경고 9건 / exit 0**. 경고 9건은 전부 그 리포의 실제 동적 키다. 훅 기반 두 리포의 실측은 §4.0.2.
 
@@ -1102,7 +1102,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   규칙은 한 벌이고 무게는 따라오지 않는다.
 - ⚠️ **화면 문구는 영어 단일이고 출처가 `messages/en.tsx` 하나다** (2026-09-08, SaaS 6a). 화면은 `@/lib/i18n`의 `m`으로 읽고 `<html lang="en">`이며, **소스의 한글 UI 리터럴을 `lib/i18n/__tests__/no-korean-ui.test.ts`가 상시로 0으로 고정한다**(허용 목록 셋은 화면이 아니다). ko를 여는 시점은 SAAS §10에 있다.
 - ⚠️ **잎이 다섯 늘었다** (2026-09-08, SaaS 6a): **`lib/i18n/`**(→ `messages/en.tsx`) · **`lib/routes.ts`** · **`lib/shell/nav.ts`** · **`lib/auth/permission.ts`**(⚠️ 사이드바 → `nav.ts` 경로로 **권한표가 브라우저에 나간다** — 판정만 담고 조회가 없어 안전하다) · **`lib/keys/refocus.ts`**. ⚠️ **마지막 하나는 동기가 다르다** — 번들 무게가 아니라 **테스트 가능성**이다: `translation-input.tsx`가 Server Action을 물어 그 그래프에 `server-only`가 있고, 판정을 그 안에 두면 vitest가 import만으로 죽는다.
-- ⚠️ **그 뒤로 여섯이 더 생겼다** (6b~8단계): **`lib/locale-code.ts`**(§5.5.05) · **`lib/pull/branch-name.ts`**(설정 폼이 읽는다) · **`lib/relative-time.ts`**(멤버·이력 화면 — ⚠️ `lib/keys/view.ts`에서 **내린** 것이고 그쪽은 잎이 아니다, 재수출도 하지 않는다) · **`lib/onboarding/base-pending.ts`** · **`lib/signin/dot-field.ts`**(Canvas 판정) · **`lib/projects/list.ts`**(목록 필터·상태). **명부가 낡으면 규칙이 실측 없이 서 있다** — 잎을 새로 만들면 여기 더한다.
+- ⚠️ **그 뒤로 일곱이 더 생겼다** (6b~8단계): **`lib/tone.ts`**(이름 해시 → 색 여덟 — 셸 헤더가 매 페이지에서 렌더하는 클라이언트 트리가 읽는다. 클래스 맵은 `components/ui/tone.ts`가 들어 판정과 층이 갈린다) · **`lib/locale-code.ts`**(§5.5.05) · **`lib/pull/branch-name.ts`**(설정 폼이 읽는다) · **`lib/relative-time.ts`**(멤버·이력 화면 — ⚠️ `lib/keys/view.ts`에서 **내린** 것이고 그쪽은 잎이 아니다, 재수출도 하지 않는다) · **`lib/onboarding/base-pending.ts`** · **`lib/signin/dot-field.ts`**(Canvas 판정) · **`lib/projects/list.ts`**(목록 필터·상태). **명부가 낡으면 규칙이 실측 없이 서 있다** — 잎을 새로 만들면 여기 더한다.
 - ⚠️ **`lib/onboarding/readiness.ts`도 8-3에 잎이 됐다** — `readinessLabel`이 나가면서 `@/lib/i18n` import가 사라졌다. 잎이 된 것은 의도가 아니라 **결과**이고, 그래서 §1.3의 "온보딩 판정층이 사전을 문다"가 셋에서 둘로 줄었다.
   앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
   지난다 — 사전이 `@/lib/**`를 하나라도 물면 그 무게가 세 화면에 붙는다. 그래서 `messages/en.tsx`의
