@@ -26,9 +26,19 @@ import { routes } from "@/lib/routes";
  *
  * ⚠️ **장애는 사유를 싣는다.** 그냥 로그인 화면으로 보내면 정당한 비로그인과 **바이트 단위로 같은
  * 응답**이 되어, 프로덕션 전면 장애를 "리다이렉트 100% = 정상"으로 읽었다 (POSTMORTEM 2026-09-06).
+ *
+ * ⚠️ **삼항이 아니라 맵 + `satisfies`인 이유**: `SessionRead`에 갈래가 늘면 **키가 없어 컴파일
+ * 에러**가 난다. 삼항이면 새 갈래가 else로 떨어져 **사유 없이** 로그인 화면으로 가고 타입 검사가
+ * 아무 말도 안 한다(실측: 갈래를 넷으로 늘려도 `tsc`가 조용히 통과했다). `lib/auth/message.ts`의
+ * `ACCESS`·`INVITE`와 같은 관용구다 — 같은 문제에 두 가지 형을 만들지 않는다.
  */
+const REJECT = {
+  none: routes.signIn(),
+  unavailable: routes.signIn({ error: "Unavailable" }),
+} satisfies Record<Exclude<SessionRead["status"], "ok">, string>;
+
 export function rejectTarget(status: Exclude<SessionRead["status"], "ok">): string {
-  return status === "unavailable" ? routes.signIn({ error: "Unavailable" }) : routes.signIn();
+  return REJECT[status];
 }
 
 /**

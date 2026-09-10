@@ -20,7 +20,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
  * 호출자가 우리 UI가 아니라 GitHub이 보낸 전체 페이지 내비게이션이고, Server Action은 돌아오는
  * 쪽을 받을 수 없다.
  *
- * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** (design §7.1). `/`로 302되면 `code`가 사라지고
+ * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** (design §7.1). 로그인 화면으로 302되면 `code`가 사라지고
  * 사용자에게는 "연결을 눌렀는데 로그인 화면으로 돌아왔다"로 보인다 — `/invite/[token]`을 뺀 것과
  * 같은 이유다. 대신 `requireUser()`를 지나고 `entry-points.test.ts`의 `GUARDS`가 그것을 센다.
  */
@@ -28,7 +28,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 const PROVIDER = "github-app";
 
 export async function GET(request: Request): Promise<NextResponse> {
-  // 세션이 왕복 중 끊기면 `/`로 간다. `code`는 잃지만 재시도로 복구되고, 그때 맞는 목적지는
+  // 세션이 왕복 중 끊기면 로그인 화면으로 간다(8-1a부터 `/signin`). `code`는 잃지만 재시도로 복구되고, 그때 맞는 목적지는
   // 로그인 화면이다.
   const { userId } = await requireUser();
 
