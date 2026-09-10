@@ -580,4 +580,24 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
     const uncovered = PROTECTED.filter((path) => !PATTERNS.some((pattern) => covers(pattern, path)));
     expect(uncovered).toEqual([]);
   });
+
+  /**
+   * ⚠️ **로그인 화면을 matcher에 넣으면 로그인이 통째로 죽는다** (8-1a).
+   *
+   * `shouldRedirectToLogin`과 `middleware()`는 **경로를 한 번도 보지 않는다** — 목적지 제외 규칙이
+   * 한 줄도 없으므로, `/signin`이 matcher에 걸리면 쿠키 없는 모든 `GET /signin`이 **자기 자신으로
+   * 307을 돈다**(`ERR_TOO_MANY_REDIRECTS`).
+   *
+   * 이 단언이 필요한 이유는 **반대 방향의 압력이 규칙으로 박혀 있어서다**: `middleware.ts`의
+   * *"새 보호 라우트를 추가하면 여기도 추가한다"*와 POSTMORTEM 2026-08-31이 그것이다. 그 규칙을
+   * 그대로 따르는 사람이 정확히 이 함정을 밟는다.
+   *
+   * ⚠️ **비로그인으로 열려야 하는 라우트 전부가 대상이다** — `/`(랜딩 자리)·`/signin`·`/invite`
+   * (토큰이 `/`로 302되며 사라진다, design §4.1)·공개 문서 둘.
+   */
+  it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
+    const PUBLIC = ["/", "/signin", "/invite/sample", "/privacy", "/docs"];
+    const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
+    expect(covered).toEqual([]);
+  });
 });
