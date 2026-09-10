@@ -47,7 +47,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
       // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
-      if (project.installationId === null) fail("installationId is missing");
+      if (project.installationId === null) fail("installationId is missing", "not-installed");
       return createGitClient(project.repoOwner, project.repoName, project.installationId);
     },
     saveLastPulledAt: (projectId, at, published) => saveLastPulledAt(prisma, projectId, at, published),

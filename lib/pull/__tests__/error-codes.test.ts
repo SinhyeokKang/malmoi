@@ -127,7 +127,11 @@ describe("lib/pull의 fail( 자리 — 코드를 드는 것과 안 드는 것이
   });
 
   it("소스에 박힌 코드가 전부 SyncErrorCode다 — 오타가 unknown으로 조용히 접히지 않는다", () => {
-    const codes = SITES.filter((s) => s.hasCode).map((s) => s.args.slice(s.args.lastIndexOf(",") + 1).trim());
+    // ⚠️ 끝의 쉼표를 먼저 벗긴다 — 여러 줄 호출은 trailing comma를 달고 있어 그냥 자르면 빈 문자열이 나온다.
+    const codes = SITES.filter((s) => s.hasCode).map((s) => {
+      const args = s.args.replace(/,\s*$/, "");
+      return args.slice(args.lastIndexOf(",") + 1).trim();
+    });
     expect(codes.length).toBe(CODED.length);
     for (const raw of codes) {
       expect(SYNC_ERROR_CODES as readonly string[]).toContain(raw.replace(/^["']|["']$/g, ""));

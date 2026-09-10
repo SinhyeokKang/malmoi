@@ -143,7 +143,7 @@ export function resolveLocalePaths(
   const matched = matchGlobPaths(format.pathTemplate, treePaths);
   // 0개는 "낼 것이 없다"가 아니라 **경로가 이동했다**는 신호다. 조용히 빈 PR을 내면 안 된다.
   if (matched.length === 0) {
-    fail(`the glob matched no files: ${format.pathTemplate}`);
+    fail(`the glob matched no files: ${format.pathTemplate}`, "glob-matched-nothing");
   }
   return matched.map((path) => ({ path }));
 }

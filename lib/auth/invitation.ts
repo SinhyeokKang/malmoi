@@ -62,3 +62,28 @@ export function planInvitationAccept(input: {
 
   return verified === normalizeEmail(invitation.email) ? "ok" : "email-mismatch";
 }
+
+/**
+ * 프로젝트당 멤버 상한 (`docs/features/sync-runs/design.md` §1.5).
+ *
+ * `PROJECT_LIMIT`(`lib/onboarding/create-plan.ts`)과 같은 형이다 — **상수는 소비자 옆**에 두고
+ * 모음 파일을 만들지 않는다. 자율 가입의 대가로 건 고정 제한이 이로써 둘이다.
+ */
+export const MEMBER_LIMIT = 10;
+
+export type InvitationCreate = { status: "ok" } | { status: "member-limit"; limit: number };
+
+/**
+ * 초대를 하나 더 발급해도 되는가.
+ *
+ * ⚠️ **대기 초대는 안 센다.** 가장 단순한 규칙이고, 그 대가는 "10명 직전에 초대 여럿을 뿌리면
+ * 상한을 넘긴 채 수락된다"는 것이다. 대기까지 세면 **만료된 초대 때문에 못 부르는** 상태가 생기고
+ * 그것을 설명할 화면이 없다.
+ *
+ * @param memberCount `createInvitation`이 **이미 잠근 `Project` 행**의 트랜잭션 안에서 센 값이다 —
+ *   밖에서 세면 두 탭의 동시 초대가 자리를 하나 더 만든다 (`planProjectCreate`의 재집계와 같은 형).
+ * @returns `limit`을 값으로 돌려준다 — 문구가 상수를 따로 들면 둘이 갈린다.
+ */
+export function planInvitationCreate(input: { memberCount: number }): InvitationCreate {
+  return input.memberCount >= MEMBER_LIMIT ? { status: "member-limit", limit: MEMBER_LIMIT } : { status: "ok" };
+}
