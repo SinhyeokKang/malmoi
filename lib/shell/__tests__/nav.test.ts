@@ -53,25 +53,28 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
  */
 describe("projectSections — 역할이 항목을 정한다", () => {
   /**
-   * ⚠️ **순서가 SAAS §7.7의 라우트 표 순서다** — Locales가 Translations 다음이다. Home·Logs는 아직
-   * 라우트가 없어 빠져 있다(6b-6·7단계). **항목은 자기 라우트와 같은 사이클에 온다** (6b-4 판정).
+   * ⚠️ **순서가 SAAS §7.7의 라우트 표 순서다** — Locales가 Translations 다음이다. **항목은 자기
+   * 라우트와 같은 사이클에 온다** (6b-4 판정): 없는 라우트를 가리키는 항목은 404이고, 죽은 링크
+   * 검사의 접두 규칙(`/projects/*`)이 그것을 못 잡는다. 7단계가 Logs로 그 표를 채웠다.
    */
-  it("OWNER는 다섯을 본다 — Home이 6b-6에서 붙었다", () => {
+  it("OWNER는 여섯을 본다 — Logs가 7단계에서 붙어 라우트 표가 찼다", () => {
     expect(projectSections("OWNER").map((s) => s.key)).toEqual([
       "home",
       "translations",
       "locales",
       "members",
+      "logs",
       "settings",
     ]);
   });
 
-  it("EDITOR는 Settings만 못 본다 — Home·Locales는 전원이 본다", () => {
+  it("EDITOR는 Settings만 못 본다 — Home·Locales·Logs는 전원이 본다", () => {
     expect(projectSections("EDITOR").map((s) => s.key)).toEqual([
       "home",
       "translations",
       "locales",
       "members",
+      "logs",
     ]);
   });
 
@@ -81,11 +84,24 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    * 있는지를 사이드바가 거짓으로 말하는 것이고, 그것이 구역에 이름을 붙인 목적(추론이 아니라 표시)을
    * 무너뜨린다. **규칙은 축이 아니라 라우트 모양에 붙는다**: 하위 경로가 있는 항목만 접두다.
    */
-  it("Home만 정확히 일치다 — 나머지 프로젝트 항목은 하위 경로가 있어 접두다", () => {
+  it("Home과 Logs가 정확히 일치다 — 하위 경로가 없다", () => {
     const byKey = new Map(projectSections("OWNER").map((s) => [s.key, s.exact]));
     expect(byKey.get("home")).toBe(true);
+    // ⚠️ Logs의 `?cursor=`는 쿼리라 경로가 아니다 — 접두로 재도 결과가 같지만, 규칙이 **라우트
+    // 모양**에 붙는다는 것을 지키면 다음 사람이 하위 라우트를 더할 때 여기서 걸린다.
+    expect(byKey.get("logs")).toBe(true);
     for (const key of ["translations", "locales", "members", "settings"] as const) {
       expect(byKey.get(key), key).toBe(false);
+    }
+  });
+
+  /**
+   * ⚠️ **Logs도 `canPerform` 뒤가 아니다** (design §6). "내가 보낸 게 실제로 갔나"를 보는 사람이
+   * 번역자이고, OWNER 전용으로 두면 그 질문에 답할 화면이 그 사람에게 없다.
+   */
+  it("Logs는 두 역할에 다 있다 — 번역자가 자기 전송 결과를 본다", () => {
+    for (const role of ["OWNER", "EDITOR"] as const) {
+      expect(projectSections(role).map((s) => s.key), role).toContain("logs");
     }
   });
 
@@ -124,6 +140,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
     const byKey = new Map(projectSections("EDITOR").map((s) => [s.key, s.href]));
     expect(byKey.get("home")?.("acme")).toBe("/projects/acme");
     expect(byKey.get("translations")?.("acme")).toBe("/projects/acme/translations");
+    expect(byKey.get("logs")?.("acme")).toBe("/projects/acme/logs");
   });
 });
 

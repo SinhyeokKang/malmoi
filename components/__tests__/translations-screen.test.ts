@@ -141,3 +141,52 @@ describe("편집 손실 배너 (design §3.11)", () => {
     expect(src).toMatch(/variant="warning"/);
   });
 });
+
+/**
+ * **설정의 보관 카드** (7단계 — design §6.2).
+ *
+ * ⚠️ **인라인 결과 Alert를 두지 않는다.** 성공하면 `revalidatePath("/", "layout")`이 이 화면을 다시
+ * 그리는데, 결과 문구가 그 안에 있으면 방금 받은 결과가 **언마운트되면서 사라진다** —
+ * POSTMORTEM 2026-09-07(`FirstIngestRetry`)이 정확히 그 함정이고, 여기서는 **카드 상태 전환 자체가
+ * 피드백**이라 문구를 둘 이유도 없다 (`reconnect-button` 선례).
+ */
+describe("보관 카드 (7단계)", () => {
+  const CARD = "components/settings/archive-card.tsx";
+  const SETTINGS = "app/(edit)/projects/[slug]/settings/page.tsx";
+
+  it("확인이 `Dialog`다 — 전 멤버의 편집을 멈추는 일이라 클릭 하나로 끝나면 안 된다", () => {
+    expect(read(CARD)).toContain("Dialog");
+  });
+
+  it("확인 버튼이 `danger`다 — 멈추는 쪽이 되돌리는 쪽보다 무겁다", () => {
+    expect(read(CARD)).toMatch(/variant="danger"/);
+  });
+
+  it("⚠️ 인라인 결과 Alert가 없다 — revalidate가 그것을 언마운트한다", () => {
+    expect(read(CARD)).not.toContain("<Alert");
+  });
+
+  it("되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다", () => {
+    const src = read(CARD);
+    expect(src).toContain("unarchiveProject");
+    // Dialog가 하나뿐이다 — 보관 쪽에만 붙는다.
+    expect(src.match(/<Dialog\b/g)?.length ?? 0).toBe(1);
+  });
+
+  /**
+   * ⚠️ **열린 PR 조회 실패를 "없다"로 읽지 않는다** (POSTMORTEM 2026-09-03). 보관은 그 PR을 닫지
+   * 않으므로(SAAS §7.9) 사람이 그것을 알고 판단해야 하는데, 실패를 부재로 접으면 그 정보가
+   * 조용히 사라진다.
+   */
+  it("열린 PR 조회 실패에 전용 문구가 있다", () => {
+    expect(read("messages/en.tsx")).toMatch(/prUnknown/);
+  });
+
+  it("카드가 readiness 분기 **밖**의 형제다 — 첫 적재 전에도 보관할 수 있어야 한다", () => {
+    const src = read(SETTINGS);
+    const card = src.indexOf("<ArchiveCard");
+    expect(card).toBeGreaterThan(-1);
+    // readiness 삼항 안에 들어가 있으면 그 분기 문자열이 카드보다 뒤에 닫힌다.
+    expect(src.slice(card)).not.toMatch(/^\s*[^<]*readiness ===/);
+  });
+});

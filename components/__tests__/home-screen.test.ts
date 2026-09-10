@@ -76,7 +76,13 @@ describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
  * "프로젝트로 간다"가 어디서 눌렀는지에 따라 다른 곳에 착지하고**, 그 불일치는 눈에 안 보인다.
  */
 describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
-  /** 목록 행 · 사이드바 스위처 · breadcrumb 넷. */
+  /**
+   * 목록 행 · 사이드바 스위처 · breadcrumb 다섯.
+   *
+   * ⚠️ **새 화면이 생기면 여기 넣는다** — 안 넣으면 그 화면의 breadcrumb이 조용히 미검사이고,
+   * 그것이 정확히 "같은 의도가 어디서 눌렀는지에 따라 다른 곳에 착지한다"가 되는 경로다.
+   * 7단계가 `logs`를 더했다.
+   */
   const SITES = [
     "app/(edit)/projects/page.tsx",
     "components/shell/sidebar.tsx",
@@ -84,9 +90,10 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
     "app/(edit)/projects/[slug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
+    "app/(edit)/projects/[slug]/logs/page.tsx",
   ];
 
-  it("여섯 자리가 전부 `routes.project`를 쓴다", () => {
+  it("일곱 자리가 전부 `routes.project`를 쓴다", () => {
     for (const path of SITES) {
       expect(read(path), path).toMatch(/routes\.project\(/);
     }
