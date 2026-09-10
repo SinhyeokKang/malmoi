@@ -55,6 +55,11 @@ export const en = {
      */
     panel: {
       label: "Project panel",
+      /**
+       * ⚠️ **랜드마크 이름과 갈라야 한다** — `<aside>`와 그 안의 세그먼트 컨트롤이 같은 이름을 들면
+       * 스크린리더가 둘을 "Project panel"로 똑같이 읽고 구별할 단서가 role뿐이다.
+       */
+      view: "Panel view",
       general: "General",
       changes: "Changes",
       /** ⚠️ **"곧 나온다"고 쓰지 않는다** — 지키지 못할 약속이고, 지금 참인 것은 비어 있다는 사실이다. */

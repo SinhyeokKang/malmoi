@@ -30,7 +30,7 @@ export function ProjectPanel() {
       aria-label={m.common.panel.label}
       className="border-border-subtle bg-background shadow-low flex w-80 shrink-0 flex-col gap-2 overflow-y-auto rounded-xl border p-2"
     >
-      <SegmentedControl label={m.common.panel.label} value={tab} options={TABS} onChange={setTab} />
+      <SegmentedControl label={m.common.panel.view} value={tab} options={TABS} onChange={setTab} />
       {/* 비어 있다는 것이 지금 참인 전부다 — 예고를 쓰지 않는다 (DESIGN §10). */}
       <p className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
         {m.common.panel.empty}
