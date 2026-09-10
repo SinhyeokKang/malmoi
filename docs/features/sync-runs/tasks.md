@@ -38,7 +38,7 @@
   - 검증: T1 green + `run.test.ts` 변경 0줄로 green — `d47c371`
 - [x] **T3** `pnpm typecheck && pnpm test` — 2,309 passed
 - [x] `——` `test:` → `feat:` 두 커밋 (+ `/code-review` 🟡 하나로 `refactor:` `6c43d15` — 스캐너가 주석을 벗긴다)
-- [ ] **T4** `/push`
+- [x] **T4** `/push` — `f0db7f4`, CI green
 
 ---
 
@@ -48,14 +48,14 @@
 가져오므로 `syncRun` 델리게이트는 `db:generate` 뒤에야 typecheck를 지난다. vitest는 타입을 벗겨 red는 되지만
 `pnpm typecheck`는 생성 뒤에 본다.
 
-- [ ] **T1** `prisma/schema.prisma` — `SyncRun` + `SyncStatus`·`SyncTrigger` enum + `Project.archivedAt` +
+- [x] **T1** `prisma/schema.prisma` — `SyncRun` + `SyncStatus`·`SyncTrigger` enum + `Project.archivedAt` +
       `User.syncRuns`(FK `SetNull`). **전부 additive, `type` 컬럼 없음**
-  - 검증: `/db`가 만든 `migration.sql`에 `DROP`·`ALTER COLUMN`이 0건(`grep -c`)
-- [ ] **T2** `/db` — dev 마이그레이션 + `schema-contract` green
+  - 검증: `migration.sql`에 `DROP`·`ALTER COLUMN` 0건 — `fcf93f1`
+- [x] **T2** `/db` — `20260910012114_add_sync_run`, dev 적용. `anon`·`authenticated` 권한 **dev 0 / prod 0** 실측
   - ⚠️ **새 테이블이므로 `anon`·`authenticated` 권한 0을 확인한다** (`/db` 5단계 — `supabase_admin`
     default ACL이 남아 있어 **대시보드 경로로 만든 테이블은 열린 채 태어난다**. Prisma가 만드는 것은
     안 열리지만 그 검사가 이 경로의 유일한 방어선이다, sec-audit 발견 8)
-- [ ] **T3** `/tdd interface` — 하네스로 배선을 박는다
+- [x] **T3** `/tdd interface` — 하네스로 배선을 박는다
   - **하네스 보강**: `syncRun` 델리게이트(create·findFirst·findMany·update·updateMany — **`where.projectId`를 실제로
     본다**, 안 보면 "다른 프로젝트의 실행이 내 것을 막지 않는다"가 무엇을 넣어도 통과한다) + `$transaction` 스냅샷
     목록에 `syncRun` 배열(없으면 롤백 테스트가 공허하다) + 시드 프로젝트에 `lastPublishedAt`·`lastPrUrl` 값(없으면
@@ -84,13 +84,17 @@
   - **멤버 제한**: `createInvitation`이 멤버 10명에서 `member-limit` 거부, 잠금 안(`executeRaw`가 `count`보다 앞)
   - `publish-failure.test.ts`의 `{status:"failed", error}` **두 필드**(`toEqual`)와 `route-diagnostics`의
     `{results, unprocessed}`가 그대로 green
-  - 검증: `pnpm test` red
-- [ ] **T4** `lib/sync/run.ts` — `runSync(prisma, { projectId, slug, trigger, requestedBy }): Promise<PullOutcome>`
+    ⚠️ **응답 계약은 그대로지만 `route-diagnostics`의 mock 대상은 옮겼다** — 라우트가 `triggerPull`이 아니라
+    `runSync`를 부르므로 그 파일이 `@/lib/sync/run`을 mock한다. 안 옮기면 그 테스트가 게이트·행까지
+    흉내내야 하고, 그것은 `sync-run.test.ts`가 실제 하네스로 이미 재는 것의 두 번째 벌이 된다.
+    같은 이유로 push 픽스처에 `archivedAt: null`을 더했다(빼면 가짜가 실제보다 **엄격**해 정상 push가 409다)
+  - 검증: `pnpm test` red(19건) — `1881b68`
+- [x] **T4** `lib/sync/run.ts` — `runSync(prisma, { projectId, slug, trigger, requestedBy }): Promise<PullOutcome>`
   - ⚠️ **던지지 않는다** — 실패도 게이트 거부도 `PullOutcome`(design §5)
   - ⚠️ **잠금 트랜잭션 안에서 GitHub을 부르지 않는다** (design §3) — 트랜잭션은 stale 닫기 + 행 생성까지
   - `server-only` 없음(하네스가 직접 부른다)
-  - 검증: T3의 `runSync` 케이스 green
-- [ ] **T5** 진입점 둘을 `runSync`로 — `triggerPullAction`(`manual`, `requestedBy` 있음) · `/api/pull`(`cron`, null)
+  - 검증: T3의 `runSync` 케이스 green(18/18)
+- [x] **T5** 진입점 둘을 `runSync`로 — `triggerPullAction`(`manual`, `requestedBy` 있음) · `/api/pull`(`cron`, null)
   - `/api/pull`의 `select`에 `archivedAt` + 최근 `syncRuns`(`take: 1`, `select: startedAt`) — `selectPullTargets` 입력 확장
   - `app/(edit)/projects/[slug]/translations/page.tsx`에 **`export const maxDuration = 60`**(design §1.4 —
     없으면 `STALE_AFTER` 전제가 수동 경로에서 거짓)
@@ -98,16 +102,16 @@
     `message.test.ts`의 "문구·tone" 개수 단언 갱신
   - ⚠️ **`/api/pull` 응답에 `unprocessed`가 그대로 남는다**(sec-audit 발견 26)
   - 검증: T3 green + `route-diagnostics`·`publish-failure`·`message.test.ts` green
-- [ ] **T6** 보관 — `lib/auth/access.ts`에 `archived` 갈래 · `getProjectAccess`의 `select`에 `archivedAt` ·
+- [x] **T6** 보관 — `lib/auth/access.ts`에 `archived` 갈래 · `getProjectAccess`의 `select`에 `archivedAt` ·
       `ACCESS_ERRORS`에 `archived` · `archiveProject`·`unarchiveProject` Server Action(`project:settings`) ·
       `lib/push/guard.ts` `checkArchived` + `/api/push` 409 · `createProject` 분자에서 archived 제외 ·
       `loadMemberships`가 `archivedAt`을 낸다
   - 검증: T3의 보관 케이스 green + `entry-points.test.ts` green(새 Action 둘이 `getProjectAccess(`를 든다)
-- [ ] **T7** 멤버 제한 — `createInvitation` 잠금 안 `projectMember.count` → `planInvitationCreate` · `InviteError`에
+- [x] **T7** 멤버 제한 — `createInvitation` 잠금 안 `projectMember.count` → `planInvitationCreate` · `InviteError`에
       `member-limit` · `messages/en.tsx` 문구(`limit` 보간)
   - 검증: T3의 멤버 제한 케이스 green
-- [ ] **T8** `pnpm typecheck && pnpm test && pnpm build`
-- [ ] `——` `chore(db):`(스키마+마이그레이션) → `test:` → `feat:`
+- [x] **T8** `pnpm typecheck && pnpm test && pnpm build` — 2,373 passed
+- [x] `——` `chore(db):` `fcf93f1` → `test:` `1881b68` → `feat:` `8ff8d28` (+ `/code-review` 🟡 셋으로 `refactor:` `7e8fd67`)
 - [ ] **T9** `/push` → `/merge` (**`pnpm db:deploy` 필요**)
 
 ---
@@ -153,7 +157,8 @@
 - [ ] **T8** 문서 — 전부 같은 커밋 묶음
   - `docs/SAAS.md` §8 7단계 체크 + §7.7 라우트 표 `logs` ⬜ → ✅ + **§8:1033·1038·1046-1048 갱신**(`type`·`idempotencyKey`
     후속 / cron 면제 등재 / Home 교체·`needs_configuration` 후속으로) + §7.9 "편집·sync·push 중단"
-  - `docs/ARCHITECTURE.md` — 동시 실행 계약(행 잠금·stale 닫기) · 보관 갈래 · 오류 코드 태깅
+  - ~~`docs/ARCHITECTURE.md` — 동시 실행 계약(행 잠금·stale 닫기) · 보관 갈래 · 오류 코드 태깅~~ —
+    **ship 2가 §5.6으로 썼다**(그 계약이 ship 2에 전부 실렸고 ship 3에서 안 바뀐다). ship 3은 `logs` 화면만 더한다
   - ~~`CLAUDE.md` 디렉터리 구조 `lib/sync/` + `.claude/commands/push.md` 4단계 트리거~~ — **ship 1이 했다**
     (`/push` 4단계의 "`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다"가 그 디렉터리가 생긴 푸시에서
     발화한다. 미루면 ship 2·3이 트리거 목록이 틀린 채 지나간다). ship 3은 `plan.ts` 외 셋을 항목에 더한다
