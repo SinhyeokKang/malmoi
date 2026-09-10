@@ -11,6 +11,16 @@ const MAX_RADIUS = 3.5;
 const CURSOR_RADIUS = 180;
 
 /**
+ * ⚠️ **크기와 투명도를 함께 보간한다** (2026-09-10 사용자). 크기만 바꾸면 커서 주변이 "커진 점"일
+ * 뿐이고, 알파가 같이 오르면 **빛이 따라오는 것처럼** 읽힌다. 반경 밖에서 기본값으로 수렴하므로
+ * 경계가 생기지 않는다.
+ *
+ * 기본 알파는 시안(5%)보다 한 단계 진하다 — 그 값에서는 도트가 거의 안 보였다.
+ */
+const BASE_ALPHA = 0.08;
+const MAX_ALPHA = 0.3;
+
+/**
  * 로그인 우측의 커서 추종 도트 (8-1b).
  *
  * ⚠️ **Canvas인 이유**: 시안의 도트가 커서 주변에서 스케일하는데 `radial-gradient` 배경은
@@ -59,12 +69,14 @@ export function DotField({ className }: { className?: string }) {
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = color;
       for (const dot of dots) {
-        const radius =
-          pointer === null
-            ? BASE_RADIUS
-            : dotScale(Math.hypot(dot.x - pointer.x, dot.y - pointer.y), CURSOR_RADIUS, BASE_RADIUS, MAX_RADIUS);
+        /**
+         * ⚠️ **같은 보간 함수를 두 번 부른다** — 크기용·알파용으로 함수를 따로 만들면 두 곡선이
+         * 갈려 커서 주변에 링이 생긴다. 거리는 한 번만 잰다.
+         */
+        const distance = pointer === null ? Infinity : Math.hypot(dot.x - pointer.x, dot.y - pointer.y);
+        ctx.globalAlpha = dotScale(distance, CURSOR_RADIUS, BASE_ALPHA, MAX_ALPHA);
         ctx.beginPath();
-        ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+        ctx.arc(dot.x, dot.y, dotScale(distance, CURSOR_RADIUS, BASE_RADIUS, MAX_RADIUS), 0, Math.PI * 2);
         ctx.fill();
       }
     };

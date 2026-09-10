@@ -19,10 +19,18 @@ import { DotField } from "./dot-field";
  * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
  */
 export function AuthLayout({ children }: { children: ReactNode }) {
+  /**
+   * ⚠️ **탭 두 장이 배경 위에 떠 있는 구조다** (시안 검산: 프레임 1920 → body가 x=8 y=8의
+   * 1904×1064이고, 좌 탭 x=0(948)·우 탭 x=956 → **바깥 padding 8 · 탭 간 gap 8**).
+   * 컬럼을 화면에 꽉 채우면 그 여백과 radius가 통째로 사라진다.
+   */
   return (
-    <div className="grid min-h-svh min-w-[1280px] grid-cols-2">
-      {/* ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다. */}
-      <main className="bg-card relative flex flex-col items-center justify-center px-8">
+    <div className="bg-auth-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
+      {/*
+        ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
+        ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
+      */}
+      <main className="border-border/60 relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-sm">
         {children}
         <Footer />
       </main>
@@ -77,7 +85,7 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  */
 function Decoration() {
   return (
-    <div className="from-background to-muted relative flex flex-col items-center justify-between overflow-hidden bg-gradient-to-br px-20 py-16">
+    <div className="from-auth-hero-from to-auth-hero-to border-border/60 relative flex flex-col items-center justify-between overflow-hidden rounded-xl border bg-gradient-to-br px-20 py-16 shadow-sm">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-semibold tracking-tight">{m.signIn.hero.top}</p>
