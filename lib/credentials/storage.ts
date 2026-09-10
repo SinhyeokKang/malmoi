@@ -19,6 +19,14 @@ export function validateCredentialKeys(): void {
   if (new Set(all).size !== all.length) throw new CredentialError();
 }
 
+/**
+ * PII 저장이 **설정돼 있는가**. 행 하나의 손상과 서브시스템 장애를 가르는 자리다 —
+ * 이 검사 없이 행마다 실패를 삼키면 **키가 통째로 빠진 장애가 "전원 이름 없음"으로 보인다**
+ * (POSTMORTEM 2026-09-03의 "실패한 조회를 '없음'으로 읽는다"와 같은 부류).
+ * 읽기는 값에 박힌 kid를 쓰므로 active kid는 묻지 않는다 — keyring이 서 있는지만 본다.
+ */
+export function validatePiiReadKeys(): void { keys("PII"); }
+
 export function validateTokenWriteKey(): void {
   if (!keys("TOKEN").has(requireEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID"))) throw new CredentialError();
 }

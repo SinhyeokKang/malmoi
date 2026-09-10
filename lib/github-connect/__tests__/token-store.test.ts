@@ -243,7 +243,10 @@ describe("ensureUserToken — 갱신 실패를 거부와 장애로 가른다", (
     await ensureUserToken(prisma, "u1", NOW);
 
     expect(error).toHaveBeenCalledTimes(1);
-    expect(error.mock.calls[0]?.[0]).toContain("unavailable");
+    // ⚠️ **분류는 남고 메시지는 안 남는다** (2026-09-10 credential 리뷰). 남의 메시지에는 Prisma
+    // 인자·암호문이 실릴 수 있어 원문은 못 쓰지만, 전부 한 단어로 접으면 이 로그가 아무것도 안
+    // 가른다 — 생성자 이름은 우리와 라이브러리가 정한 상수이지 사용자 데이터가 아니다.
+    expect(error.mock.calls[0]?.[0]).toContain("token-store: Error");
     expect(JSON.stringify(error.mock.calls)).not.toContain("connection lost");
     error.mockRestore();
   });

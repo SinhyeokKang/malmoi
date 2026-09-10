@@ -49,6 +49,12 @@ export const en = {
     copy: "Copy",
     copied: "Copied",
     copyFailed: "Couldn't copy — select it yourself",
+    /**
+     * 저장된 값을 지금 키로 못 여는 행. **"없음"과 다른 말이어야 한다** — 빈 칸으로 두면 관리자가
+     * "이 사람은 이메일이 없구나"로 읽고, 그것이 POSTMORTEM 2026-09-03이 말하는 실패다.
+     * 표 셀에 들어가므로 한 단어이고, 사용자가 할 일은 없다(운영자가 키를 되살린다).
+     */
+    unreadable: "Unavailable",
   },
 
   signIn: {

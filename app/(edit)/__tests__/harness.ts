@@ -16,10 +16,26 @@ import type { Role } from "@/lib/auth/permission";
  */
 
 // Seeds remain readable for authorization scenarios; delegate boundaries use encrypted rows.
-function storedUser(user: UserSeed) {
-  return { ...user, ...encodeUserFields(user.id, { name: user.name ?? null, ...(user.email === null ? {} : { email: user.email }) }) };
+/**
+ * **지금 keyring으로 못 여는 행**을 만든다 — 봉투의 kid만 바꾼다.
+ *
+ * ⚠️ 평문을 심는 것으로는 못 만든다: `storedUser`가 조회마다 다시 봉인하므로 그 값이 정상 봉투가
+ * 된다. 실제로 이 상태가 생기는 경로는 둘이고 둘 다 **정상 운영**이다 — backfill이 행 단위 CAS라
+ * 전환 중에는 섞여 있고, 키를 회전한 뒤 옛 키를 폐기하면 옛 세대가 남는다.
+ * `emailLookup`은 그대로 유효하다(검색 키가 따로다).
+ */
+function sealedWithLostKey(value: string | null): string | null {
+  return value === null ? null : value.split(":").map((part, i) => (i === 2 ? "lost" : part)).join(":");
 }
-function storedInvitation(row: InvitationSeed) { return { ...row, ...encodeInvitationEmail(row.id, row.projectId, row.email) }; }
+function storedUser(user: UserSeed) {
+  const fields = encodeUserFields(user.id, { name: user.name ?? null, ...(user.email === null ? {} : { email: user.email }) });
+  if (user.unreadable !== true) return { ...user, ...fields };
+  return { ...user, ...fields, email: sealedWithLostKey(fields.email ?? null), name: sealedWithLostKey(fields.name ?? null) };
+}
+function storedInvitation(row: InvitationSeed) {
+  const fields = encodeInvitationEmail(row.id, row.projectId, row.email);
+  return { ...row, ...fields, ...(row.unreadable === true ? { email: sealedWithLostKey(fields.email) } : {}) };
+}
 
 export type ProjectSeed = {
   id: string;
@@ -70,7 +86,7 @@ export type SyncRunSeed = {
 export type MemberSeed = { projectId: string; userId: string; role: Role; createdAt?: Date };
 /** ⚠️ `email`이 nullable이다 — 스키마가 그렇고(OAuth provider가 주소를 안 줄 수 있다), 페이크가
  *  스키마보다 좁으면 "이메일 없는 멤버" 갈래를 테스트가 만들 수 없다 (하네스 자기검사 — POSTMORTEM 2026-09-06). */
-export type UserSeed = { id: string; email: string | null; name?: string | null };
+export type UserSeed = { id: string; email: string | null; name?: string | null; unreadable?: boolean };
 export type InvitationSeed = {
   id: string;
   projectId: string;
@@ -80,6 +96,8 @@ export type InvitationSeed = {
   expiresAt: Date;
   acceptedAt: Date | null;
   invitedBy: string;
+  /** 옛 키로 봉인된 행 — `sealedWithLostKey` 참고. */
+  unreadable?: boolean;
 };
 
 export type KeySeed = {

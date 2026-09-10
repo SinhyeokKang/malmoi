@@ -1,4 +1,5 @@
-import { decodeUser } from "@/lib/credentials/records";
+import { decodeUser, readable } from "@/lib/credentials/records";
+import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -129,7 +130,16 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
     where: { id: { in: ids } },
     select: { id: true, name: true, email: true, emailLookup: true },
   });
-  return new Map(users.map((u) => [u.id, decodeUser(u)]));
+  /**
+   * ⚠️ **못 읽은 행은 map에서 빠진다** — `actorLabel`이 그때 `updatedBy` 원문을 내므로 셀이 비지
+   * 않는다(그 폴백은 옛 GitHub 핸들을 위해 이미 있다). 던지면 번역 화면 전체가 죽고, 그건
+   * 편집 이력 한 줄이 못 읽힌 대가로 너무 크다.
+   *
+   * ⚠️ 키 부재는 **먼저** 걸러 장애로 남긴다 — 행마다 삼키면 "편집자 이름이 원래 없구나"가 된다.
+   */
+  validatePiiReadKeys();
+  const decoded = users.map((u) => readable(() => decodeUser(u))).filter((u) => u !== null);
+  return new Map(decoded.map((u) => [u.id, u]));
 }
 
 /**
