@@ -198,6 +198,10 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 **첫 적재 상태 3종** (`planProjectReadiness`): `ready` → **표시 없음**(`readinessLabel`이 `null`) / `awaiting_first_sync`·`setup` → 무색 `Badge muted`. 오류가 아니라 진행 중이다.
 
+**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(`PublishTone` 선례). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (SAAS 불변식 9).
+
+**보관** (2026-09-10): 목록·프로젝트 스위처에 무색 `Badge muted` "Archived". ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다.
+
 **Alert 4종** (§6.4 — Publish 결과·편집 손실 배너·페이지 수준 거부):
 
 | variant | 색 | 쓰는 곳 |
@@ -270,14 +274,15 @@ mono 폰트를 시스템 스택으로 두는 동안은 해당 없다. **Geist Mo
 
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다. **Publish 버튼은 셸에 없다** — 번역 화면 툴바다(셸은 `/projects`도 감싸 slug를 모른다).
 
-### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 다섯
+### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 여섯
 
-블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(SAAS §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
+블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`) · **Archive project**(2026-09-10, 7단계 — **맨 아래**). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(SAAS §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
 
 - ⚠️ **블록이 독립적으로 실패한다.** 건강성은 App 토큰, 계정 한 줄은 사용자 토큰 — 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다. 각 블록이 자기 오류를 `Alert danger`(in-block)로 낸다.
 - **push 토큰은 발급 응답에만 원문이 있다** — 값 칩 + [Copy] + "You won't see this again. Update the repository secret now."
 - **[Run first import]의 결과 컴포넌트는 readiness 분기 밖**에 있다 (POSTMORTEM 2026-09-07 revalidate).
 - **(6b) Base branch·Base language 저장 뒤에는 `Alert warning`이 블록 안에 남는다** — "Update the workflow file — until then CI pushes are rejected" (design §3.13, `checkFormat` 409). 그 폼이 서기 전까지는 이 불릿의 대상이 없다.
+- **(7단계) Archive 블록은 결과 Alert를 두지 않는다** — 성공하면 `revalidatePath("/", "layout")`이 이 화면을 다시 그려 **방금 받은 문구를 언마운트한다**(POSTMORTEM 2026-09-07과 같은 함정). **카드가 [Restore project]로 바뀌는 것 자체가 피드백**이다(`reconnect-button` 선례). 확인은 `Dialog`(전 멤버의 편집이 멈춘다) + `danger` "Archive project"이고, **되돌리기는 묻지 않는다**(잃는 것이 없다). Dialog 본문에 **열린 PR 링크**가 실리고 조회 실패는 "확인하지 못했다" 한 줄이다(POSTMORTEM 2026-09-03). ⚠️ **readiness 분기 밖의 형제다** — 첫 적재가 실패한 프로젝트도 멈출 수 있어야 한다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
 
 ### 6.64 Home (`/projects/[slug]`) — 개요 (2026-09-09, 6b-6)
@@ -375,6 +380,23 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 **주소창 값이라 `isConnectError`로 거른다**: 캐스팅하면 프로토타입 키가 문자열 자리에 함수를 넣어 화면이
 죽는다 (POSTMORTEM 2026-09-08).
 
+### 6.68 이력 (`/projects/[slug]/logs`) — 표 하나 (2026-09-10, 7단계)
+
+셸 안 `mx-auto max-w-4xl px-6 py-6`. breadcrumb(프로젝트 이름 → Sync history) + 제목 + 한 줄 설명, 그 아래 **표 하나**. ⚠️ **표는 `Card` 밖이다** — 로케일·멤버 화면과 같은 관용구이고, Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측).
+
+열 다섯: **When**(`<time dateTime>`에 절대 시각 `YYYY-MM-DD HH:mm UTC` + 그 아래 상대 시각 `text-xs`) · **Started by** · **Result**(배지 — §6.2) · **Files** · **Reason**.
+
+- ⚠️ **절대 시각이 먼저이고 UTC라고 말한다.** 이력에서 "2 days ago"만으로는 **어느 밤인지 못 가른다**. 서버 렌더라 `toLocaleString`은 서버의 타임존을 쓸 뿐 보는 사람의 것이 아니고, 라벨 없이 내면 사용자가 자기 시간대로 읽어 날짜를 하루 어긋나게 센다.
+- ⚠️ **값이 없는 칸은 빈 칸이 아니라 `—`다** — 빈 칸은 열이 깨진 것처럼 보인다. 실패의 변경 수가 `0`이 아닌 이유도 같다: 0은 "안 바뀌었다"는 **관측**이고 실패엔 관측이 없다.
+- **페이지네이션은 링크 하나다** — 서버 `?cursor=` + [Older](`ButtonLink`). 클라이언트 상태가 0이라 뒤로 가기·공유·새로고침이 그냥 된다. 무효 커서는 첫 페이지다(주소창 값이라 500이 아니다).
+- ⚠️ **`RUNNING` 행은 스냅샷이다** — 자동 갱신이 없다(이 리포에 폴링 0건). 갱신은 재방문이고, 줄임표는 **진행 중에만** 쓴다(§10).
+- ⚠️ **[Send changes]가 없다.** `logs` = 과거 이력 / 8단계 패널 = 지금 상태 + 행동 (SAAS §8 8단계 🔒). 섞으면 `logs`가 패널의 열등한 사본이 된다.
+- 빈 상태는 `EmptyState`("No syncs yet") — **표 대신** 반환한다. ⚠️ 그것이 나오는 것은 **조회가 성공했을 때뿐**이다(페이지에 `try`가 없다): 실패를 빈 표로 접으면 "아직 없다"와 "물어보지 못했다"가 같아진다 (POSTMORTEM 2026-09-03).
+
+### 6.69 보관된 프로젝트 (2026-09-10, 7단계)
+
+`translation:write` 화면 **다섯**(Home·번역·언어·멤버·이력)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
+
 ### 6.7 새 프로젝트 (`/projects/new`)
 
 ②~⑥이 한 라우트의 클라이언트 상태다 (`features/project-onboarding/design.md` §2 — 바꾸지 않는다). 형만 바뀐다:
@@ -400,7 +422,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 | 자리 | 아이콘 |
 |---|---|
-| 사이드바 섹션 | Translations `Languages` · Members `Users` · Settings `Settings` |
+| 사이드바 섹션 | Overview `House` · Translations `Languages` · Languages `Globe` · Members `Users` · **Logs `History`**(2026-09-10) · Settings `Settings` |
 | 사이드바 하단 전역 | All projects `LayoutGrid` · New project `Plus` · Account `CircleUser` · Sign out `LogOut` · Collapse `PanelLeft` |
 | 프로젝트 컨텍스트 | 우측 `ChevronsUpDown` (DropdownMenu 트리거) |
 | top bar | **사용자 메뉴 아바타뿐이다** — 햄버거 `Menu`(`xl` 미만)는 그것이 여는 **사이드바**가 든다. breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
@@ -409,7 +431,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · 상태 `Select` 앞 `ListFilter` |
 | Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
 | 외부 링크 | `ExternalLink` 12 (§6.3) |
-| `EmptyState` | 24 `text-muted-foreground` 하나 — **일러스트는 여전히 없다** |
+| `EmptyState` | 24 `text-muted-foreground` 하나 — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 **`Archive`**(2026-09-10) |
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 
