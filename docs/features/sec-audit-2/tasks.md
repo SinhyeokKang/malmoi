@@ -46,6 +46,28 @@
 - 최신 dev의 sync-runs squash 이후에는 코드 차이가 없고 문서만 바뀐 것을 확인했다.
   보안 변경만 최신 dev 기준으로 옮겨 오래된 sync-runs 커밋을 재생하지 않았다.
 
+## 후속 보완 (2026-09-10, Claude Code)
+
+위 여섯 라운드 뒤의 리뷰에서 나온 것들이다. **새 발견이 아니라 기존 수정이 닿지 않은 층**이다.
+
+- **#34의 판정이 쓰기 경로에만 있었다.** `planConnectionHealth`가 `fullName`·`installationId`만 봐서,
+  이름을 재사용한 리포에서 설정 화면이 `ok`를 띄우는 동안 Publish만 죽었다. ID 대조를 이름 대조
+  **앞**에 두고 갈래 `repo-replaced`를 더했다 — [다시 연결] 버튼은 두지 않는다(재고정을 거부하므로
+  눌러도 실패한다). `ProbeResult.repositoryId`·health 입력을 optional에서 필수로 바꿨고, 그 자리에서
+  픽스처 넷이 컴파일에 걸렸다(= 부재가 조용히 통과하던 경로가 실재했다).
+- **미고정 행이 cron 순회에 남아 있었다.** `createClient`가 확실히 던지므로 재연결 전까지
+  프로젝트마다 매일 밤 실패 `SyncRun`이 하나씩 쌓인다. `selectPullTargets`의 기존 "준비 안 된 행을
+  넣지 않는다" 규칙에 `repositoryId`를 더했다.
+- **`requireRepositoryId(id, id)`가 자기 자신과 비교했다.** `requirePinnedRepositoryId`(모양·안전 정수)와
+  `requireSameRepository`(대조) 둘로 갈랐다.
+- **새 파일 넷과 `shared.ts` 교체분의 주석이 영문이었다** (CLAUDE.md 규약은 한국어 "왜"). 되돌리면서
+  `exceedsGlobBudget`의 근거도 복원했다 — DP 전환으로 `matchGlobPaths`의 역추적은 사라졌지만
+  per-locale 갈래가 아직 `RegExp`이라 양자 예산이 남아 있는 이유가 코드에 없었다.
+- **`yaml`의 `Parser.stack`이 내부 API라는 사실**을 CLAUDE.md 스택 표에 적었다. 고정 이유가 CST 보존
+  하나에서 둘로 늘었고, 버전을 올릴 때 red를 내는 것은 `budget.test.ts`뿐이다.
+
+`pnpm test` 144파일 / **2,448**테스트, `pnpm typecheck`·`pnpm build` 통과.
+
 ## 배포·실물 검증 게이트 — 아직 수행하지 않음
 
 - [ ] `20260910030000_pin_repository_id` SQL 검토 후 대상 DB에 적용. **nullable 컬럼 추가가 앱 배포보다 먼저**다.
