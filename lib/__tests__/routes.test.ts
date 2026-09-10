@@ -92,6 +92,17 @@ describe("routes.privacy · routes.docs — 공개 문서", () => {
     expect(routes.privacy()).toBe("/privacy");
     expect(routes.docs()).toBe("/docs");
   });
+
+  /**
+   * ⚠️ **외부 URL은 이 파일에 넣지 않는다** (8-1b). 로그인 푸터의 GitHub 링크가 그것인데,
+   * 이 모듈은 **앱 내부 링크**의 단일 출처이고 `entry-points.test.ts`의 "죽은 라우트 링크"가
+   * 여기 값들을 **실재하는 `page.tsx`와 대조**한다 — 외부 URL을 섞으면 그 검사가 그것을 앱
+   * 경로로 읽고 "없는 라우트"로 잡는다.
+   */
+  it("외부 URL이 섞여 있지 않다 — 죽은 라우트 검사가 그것을 앱 경로로 읽는다", () => {
+    const values = Object.values(routes).map((make) => (make as (...args: never[]) => string)("x" as never));
+    expect(values.filter((url) => url.startsWith("http"))).toEqual([]);
+  });
 });
 
 describe("routes.logs — 서버 페이지네이션", () => {
