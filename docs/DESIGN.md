@@ -39,7 +39,7 @@
 | | 값 | bugshot-2와의 차이 |
 |---|---|---|
 | Tailwind | **v4** — `tailwind.config.js`가 **없다**. 테마는 `app/globals.css`의 `@theme inline` | v3 + config 파일 |
-| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog·Tooltip 셋만 | shadcn 생성물을 그대로 씀 |
+| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog **둘만** (2026-09-11에 `Tooltip`을 걷었다 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다) | shadcn 생성물을 그대로 씀 |
 | 변형 | `class-variance-authority` — Button·Badge·Alert | 같음 |
 | 아이콘 | `lucide-react` **16px** — 세트는 이것 하나이고 **셸은 전 항목이 든다** (§6.8). ⚠️ 1.x에 브랜드 아이콘(`Github`)이 없다 | 같음 |
 | 폰트 | Pretendard Variable 동적 서브셋, 자사 호스트 | 같은 폰트, `@fontsource` |
@@ -185,7 +185,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 - ⚠️ **spread를 키운 것이 의도다** (2026-09-10 사용자) — 패널이 아주 연한 회색 배경 위에 떠 있는
   구조라 좁은 그림자는 **경계선처럼** 보이고 떠 있는 느낌이 안 난다.
-- ⚠️ **패널·카드 표면에는 Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다. **팝오버 계열은 예외다**: `DropdownMenu`·`Tooltip`이 `shadow-md`, `Dialog`가 `shadow-lg`, 토스트가 `shadow-sm`을 그대로 쓴다(§6.4 표) — 배경 위에 **잠깐 뜨는 것**이라 짙은 그림자가 층을 만든다.
+- ⚠️ **패널·카드 표면에는 Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다. **팝오버 계열은 예외다**: `DropdownMenu`가 `shadow-md`, `Dialog`가 `shadow-lg`, 토스트가 `shadow-sm`을 그대로 쓴다(§6.4 표) — 배경 위에 **잠깐 뜨는 것**이라 짙은 그림자가 층을 만든다.
 - ⚠️ **`--shadow-*`는 `:root`에 안 나온다** — Tailwind가 유틸로만 소비하므로 `getComputedStyle`로
   읽으면 빈 문자열이다. 확인은 `boxShadow` 실효값으로 한다.
 
@@ -361,7 +361,6 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Esc·배경·X·Cancel 넷으로 닫힌다 |
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
-| **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만. ⚠️ **프리미티브가 자기 `Provider`를 든다** (2026-09-08) — Radix는 조상 provider가 없으면 **던지고**, 그 툴팁은 접힌 상태에서만 렌더되므로 "접기를 누르면 셸이 죽는다"로 나타난다(접힘이 `localStorage`에 남아 영구화된다, POSTMORTEM 2026-09-08). 바깥의 `TooltipProvider`는 **지연 공유 최적화**이고 필수가 아니다 |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
 | **Button `size="lg"`** | `h-10 px-4` — **셸 밖 카드 전용**(로그인·초대 수락). ⚠️ **base를 안 바꾼 이유**: 소비자가 26파일인데 8-1b가 검증한 화면은 셋이다. 각 화면의 배송이 옮겨오고 **마지막이 옮겨온 뒤 기본값을 바꾼다** — 그때까지 셸 안 화면이 "signin이 쓰니 우리도"로 번지지 않게 이 줄이 막는다 |
@@ -383,7 +382,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 |---|---|
 | **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). 여기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 — ⚠️ `min-w-`가 없으면 1280 미만에서 **스크롤이 아니라 flex가 압축돼 콘텐츠가 잘린다**(실측: 1100 뷰포트에서 문서 폭 1280, 가로 스크롤 발생). `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
 | **헤더** | `h-12 px-1`, **배경도 border도 없다**(캔버스 위에 얹힌다). 드는 것은 **로고 32 좌측**(`public/brand/malmoi-icon-black.svg`, `/projects` 링크) **+ 사용자 메뉴 32 우측**(아바타 `ghost` 버튼 → DropdownMenu: 이름·이메일 → Your account → Sign out) **둘뿐이다.** ⚠️ 버튼이 아바타와 같은 32여야 한다 — `size="sm"`(28)이면 아바타가 위아래로 삐져나온다(실측). ⚠️ **breadcrumb은 여기 없다** — 레이아웃이 페이지 props를 못 받아 **페이지 콘텐츠의 첫 줄**이 든다(`features/translation-ui/design.md` §2). 8-3이 그것을 `projects/[slug]/layout.tsx`로 옮길 자리다 |
-| 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 `Tooltip`도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다 — 프리미티브가 자기 provider를 드는 규칙은 그대로 유효하다). ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
+| 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 툴팁도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다). 소비자가 0이 되어 **2026-09-11에 `Tooltip` 프리미티브 자체를 걷었다** — 조상 provider를 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다는 교훈은 POSTMORTEM 2026-09-08에 남아 있고, 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다. ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
 | **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/10 font-medium`, 비활성 hover `hover:bg-foreground/5`. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
 | 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) |
 | **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — SAAS §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
@@ -640,7 +639,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 
-**형**: `size-4`(12는 `size-3`, 24는 `size-6`) · 색은 **상속**(`currentColor`) — 아이콘에 별도 색 클래스를 주지 않는다(예외는 Alert 4종과 `EmptyState`뿐) · 라벨과 `gap-2` · **라벨이 있으면 `aria-hidden`**, 아이콘만이면 `aria-label`, 접힌 사이드바는 Tooltip **과** `aria-label` 둘 다 (§7).
+**형**: `size-4`(12는 `size-3`, 24는 `size-6`) · 색은 **상속**(`currentColor`) — 아이콘에 별도 색 클래스를 주지 않는다(예외는 Alert 4종과 `EmptyState`뿐) · 라벨과 `gap-2` · **라벨이 있으면 `aria-hidden`**, 아이콘만이면 `aria-label` (§7).
 
 ⚠️ **`lucide-react` 1.x에 브랜드 아이콘이 없다** — `Github`·`Google`을 import하면 빌드가 죽는다(1.37.0 실측). GitHub 연결 버튼은 `Link2`이거나 아이콘 없이 라벨만이고, provider 로고가 필요하면 인라인 SVG를 그 컴포넌트 안에 둔다.
 
@@ -655,7 +654,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 - `--ring` == `--border`라서 **`muted` 표면 위에선 포커스 링이 약하다** — 사이드바 항목·값 칩 옆 버튼에 `focus-visible:ring-offset-1`을 더한다(offset 색 기본이 배경).
 - **저장 알림은 표 하나에 `aria-live="polite"` 영역 하나**다 (`components/translations/announcer.tsx`) — 셀마다 두면 903행×3로케일에 2,700개다. 결과만 알린다("Saving…"은 알리지 않는다). 실패 시 포커스는 **`shouldRefocus(active, own)`가 정한다**: `body`이거나 같은 셀일 때만 되돌리고, 사용자가 다음 셀을 치고 있으면 뺏지 않는다 — 재시도 지점은 상태줄의 `[Retry]`다 (design §3.8).
 - **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — `aria-live`가 announcer에만 있는지 · 셀에 `role="status"`가 없는지 · 셀이 키·로케일을 접근 이름으로 드는지 · `Textarea rows=1`인지 · 배너 tone이 warning인지 · 옛 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
-- 아이콘만 있는 버튼은 `aria-label`. 사이드바 접힘 상태의 라벨은 Tooltip **과** `aria-label` 둘 다.
+- 아이콘만 있는 버튼은 `aria-label`.
 - 드롭다운·모달은 Radix가 포커스 트랩·Esc·`aria-*`를 든다 — 직접 만들지 않는다.
 
 ## 8. className & 변형
