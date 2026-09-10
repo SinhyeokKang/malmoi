@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/routes.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`routes.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 넷을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/routes.ts`)을 건드리기 전에 읽는다** — 이 목록은 `.claude/commands/push.md` 4단계 트리거·CLAUDE.md 아키텍처 원칙 절과 같아야 한다. ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`routes.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 CLAUDE.md 디렉터리 구조 절**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 넷을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재 단계)와 [MVP.md](./MVP.md)(PoC — 닫힘), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md). 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -566,7 +566,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
-- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(pull 1층 판정과 미배포 집계 — §2). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — MVP §3.2의 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(pull 1층 판정과 미배포 집계 — §2), **`(projectId, startedAt)`**(`SyncRun` — `loadSyncRuns`의 키셋 페이지네이션이 그 위에 선다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
 
 ### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
 
@@ -602,7 +602,11 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 `safePrismaAdapter.linkAccount`가 `userId`·`type`·`provider`·`providerAccountId`만 저장한다.
 현재 credential 구현은 Session을 도메인 분리 SHA-256 digest로, GitHub App 토큰과 User.email/name/image·초대 email을 독립 AES-256-GCM 키로 저장한다. 검색은 별도 키의 HMAC emailLookup을 사용한다. User DTO는 서버에서 복호화하고 타인 이메일의 기존 마스킹을 유지한다. 조회·복호화 장애는 unavailable이며 자동 계정 생성이나 평문 fallback은 없다.
 
-**2026-09-10 현재 로컬 구현·격리 DB 검증 상태이며, 배포·기존 운영 DB 전환은 미완료다.** R1은 nullable lookup 추가와 새 인덱스만 적용하고 옛 email 인덱스를 유지한다. R2에서 전체 트래픽·구 배포·writer를 차단한 뒤 backfill·전건 검증·NOT NULL/옛 인덱스 제거·새 앱 활성화를 수행한다. 현재 Prisma nullable 선언은 준비 단계이며 최종 R2에서 필수로 바꾼다. 자세한 실행·회전·복구 순서는 [credential 운영 절차](features/credential-storage/operations.md)다. 키는 지연 로드하며 DB와 별도로 백업한다. 키/DB 백업 쌍을 보존하지 않으면 복구할 수 없다.
+**✅ 2026-09-10에 dev·prod 양쪽 전환이 끝났다.** R1(`_add_email_lookup`)이 nullable lookup과 새 인덱스만 넣어 옛 코드가 계속 돌았고, 차단 backfill·전건 검증 뒤 R2(`_finalize_credential_storage`)가 **평문 email 인덱스 둘을 제거**했다.
+
+⚠️ **`emailLookup`은 nullable로 남는다 — 준비 단계가 아니라 최종 형태다.** R2 초안의 `NOT NULL`은 전환 도구와 **상호 배타적**이다: 도구의 CAS가 아직 안 채워진 행을 `where: { emailLookup: null }`로 집는데, 컬럼이 non-nullable이 되는 순간 Prisma가 그 **입력**을 거부한다(`Argument \`emailLookup\` must not be null.`). **읽기는 관대해서 NULL을 그대로 돌려주므로 조회로는 안 드러난다** — 막히는 곳은 쓰기뿐이라 실측 전까지 보이지 않았다. 걸면 컷오버 이전 백업을 복원했을 때 다시 채울 수단이 사라진다. 유일성은 R1의 unique 인덱스가 들고, **"lookup 없는 행이 안 생긴다"는 유일한 생성자 `credentialAdapter.createUser`가** 쓰기 전에 증명한다(단언이 아니라 던진다 — 빠진 행은 unique에 안 걸려 **이메일로 영영 못 찾는 사용자**가 되고 같은 주소의 재가입이 조용히 중복 계정을 만든다).
+
+자세한 실행·회전·복구 순서는 [credential 운영 절차](features/credential-storage/operations.md)다. 키는 지연 로드하며 DB와 별도로 백업한다. 키/DB 백업 쌍을 보존하지 않으면 복구할 수 없다.
 
 2026-09-09 확인한 public 스키마의 anon/authenticated GRANT 0건은 계속 필요한 방어선이다. 저장 암호화는 앱 서버나 암호 키까지 탈취한 경우를 방어하지 않으며, 접근 통제의 대체가 아니다.
 
@@ -731,10 +735,11 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
-**세 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 둘 다 **409**로 떨어뜨린다.
+**네 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 전부 **409**로 떨어뜨린다.
 
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
+| `Project.archivedAt` ≠ null | DB 컬럼 | **보관.** ⚠️ **판정이 넷 중 맨 앞이다**(7단계, `checkArchived`) — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 나머지 셋과 달리 "워크플로를 뗀다"다 |
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
 | `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
 | `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
@@ -984,9 +989,18 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
-**전체 세션 회수(#38, 2026-09-10 로컬 구현)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
+**전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
-`lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. **공유 DB 운영 전환·실제 공급자 및 브라우저 검증은 미완료**이며 [설계](features/session-revocation/design.md)·[태스크](features/session-revocation/tasks.md)를 따른다.
+`lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스이고 [설계](features/session-revocation/design.md)·[태스크](features/session-revocation/tasks.md)를 따른다.
+
+#### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
+
+암호화 전환 뒤 목록 로더 넷이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadSyncRuns`(`lib/sync/query.ts`) · `loadActors`(`lib/keys/query.ts`).
+
+- **한 행이 못 열려도 목록은 산다.** 전환 중에는 **부분 변환이 정상 상태**이고(backfill이 행 단위 CAS다) 키를 회전하고 옛 키를 폐기하면 옛 세대가 남는다. 던지면 멤버 아홉이 멀쩡한데 화면이 통째로 500이다. 못 읽은 행은 **자기 문구**(`m.common.unreadable` = "Unavailable")를 들고, 이름은 비운다 — 옛 값을 그럴듯하게 보여줄 자리가 없다. `loadActors`만 다르다: map에서 **빼면** `actorLabel`이 `updatedBy` 원문으로 폴백하므로 셀이 비지 않는다(옛 GitHub 핸들을 위해 이미 있던 갈래다).
+- ⚠️ **`null`(정보 없음)로 접지 않는다.** 그것이 POSTMORTEM 2026-09-03의 "실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다"이고, 화면 층으로 내려온 같은 축이다 — 이력 표에서 `—`(부재)와 "Unavailable"(못 읽었다)이 **같은 열에서 갈린다**.
+- ⚠️ **`validatePiiReadKeys()`가 행 루프보다 먼저다.** 순서가 뒤집히면 **키가 통째로 빠진 장애가 "전원 정보 없음"으로 보인다** — 정상 화면과 바이트 단위로 같아진다. 키 부재는 행의 손상이 아니라 서브시스템 장애이므로 던진다. 이 순서가 §6.1.2("세션 없음 ≠ 못 읽었다")와 정확히 같은 판정이다.
+- `readable()`(`lib/credentials/records.ts`)은 **`CredentialError`만** 삼킨다. Prisma 오류나 프로그래밍 실수를 함께 접으면 그것도 조용해진다.
 
 #### 6.1.2 ⚠️ "세션 없음"과 "세션을 못 읽었다"는 다르다 (POSTMORTEM 2026-09-06)
 
@@ -1008,6 +1022,8 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 ⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
 
 ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
+
+⚠️ **두 provider에 `checks: ["pkce", "state"]`를 건다** (2026-09-10, sec-audit-2). Google은 OIDC PKCE를 지원하고, **GitHub도 `code_challenge`를 받는다** — 실물 왕복으로 확인했다(`code_challenge_method=S256`이 authorize URL에 실려 나가고 토큰 교환이 통과한다). `lib/credentials/__tests__/sign-in.test.ts`가 그 설정을 고정한다.
 
 **로그인된 세션에서 추가 provider를 연결하는 경로는 별도로 막는다** (sec-audit-2 #31).
 `safePrismaAdapter` 기반의 `credentialAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
@@ -1045,7 +1061,7 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
-**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). 2026-09-10 로컬 구현은 `sessionRevocation` 결과도 별도 고정 비교로 검사한다.
+**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — 쿼리 슬롯이 둘이다.
 인가 거부는 `requireUser`가 `/`로 보낸다. ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
@@ -1213,7 +1229,7 @@ callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
 
 
-### 6.6 Credential 저장 경계 (2026-09-10 구현, 운영 전환 대기)
+### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
 `refreshVerifiedEmail`은 기존 User 잠금 아래 HMAC 조회·복호화 이메일 대조 후 암호문과 lookup을 함께 갱신한다. 이미 사용 중인 주소 또는 동시 unique 충돌이면 옛 이메일·userId로 로그인을 허용하며 병합하지 않는다. 새 가입의 unique 충돌은 거부한다.
 
