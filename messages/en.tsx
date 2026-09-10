@@ -37,7 +37,17 @@ export const en = {
        * ⚠️ 유저 메뉴도 같은 문구를 쓴다: 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다.
        */
       settings: "Settings",
-      /** 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다. */
+      /**
+       * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
+       *
+       * ⚠️ **화면 제목도 이 키들을 쓴다** (2026-09-11 사용자 — "LNB 메뉴명과 페이지 타이틀은 항상
+       * 동기"). 사이드바에서 `Projects`를 누르고 도착한 화면이 `Your projects`라고 말하면 같은
+       * 곳인지 매번 확인하게 된다. **키를 공유해 구조적으로 묶었다** — 두 벌로 두고 규칙만 적으면
+       * 하나가 낡고, 그 어긋남은 한 화면 안에서 안 보인다(사이드바와 제목을 함께 보는 눈이 없다).
+       *
+       * ⚠️ **그래서 `projects.title`·`locales.title` 같은 키가 없다.** 화면이 자기 제목을 갖고
+       * 싶어지면 그 순간이 "메뉴명과 갈라도 되는가"를 판정할 자리다.
+       */
       home: "Home",
       locales: "Locales",
       translations: "Translations",
@@ -166,7 +176,6 @@ export const en = {
    * 일어났나"를 현재 시제로 말하고, 이 화면은 "그때 무슨 일이 있었나"라 어휘가 갈려야 한다.
    */
   logs: {
-    title: "Sync history",
     description: "Every time your translations were sent back to the repository.",
     columns: {
       when: "When",
@@ -244,7 +253,6 @@ export const en = {
   },
 
   projects: {
-    title: "Your projects",
     /**
      * 목록 필터 (8-3). **탭이 링크라 라벨이 목적지의 이름이다** — `Active`가 "보관하지 않은 것"이다.
      */
@@ -337,7 +345,6 @@ export const en = {
    * 다른 말을 한다. 여기 있는 것은 이 화면만 쓰는 문구다.
    */
   account: {
-    title: "Your account",
     profile: {
       title: "Profile",
       /**
@@ -391,7 +398,6 @@ export const en = {
         ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
         : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
 
-    title: "New project",
     back: "Projects",
 
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
@@ -492,7 +498,6 @@ export const en = {
     /** 카운터 — ICU가 아니라 삼항 하나다 (MVP §7). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
 
-    title: "Translations",
     /** ⚠️ URL 값은 `"*"`다 — 이건 그 행의 라벨이다 (`ALL_NAMESPACES`). */
     allKeys: "All keys",
     columnKey: "Key",
@@ -647,7 +652,6 @@ export const en = {
    * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
    */
   locales: {
-    title: "Languages",
     description: "The list comes from the locale files in your repository.",
     columns: { code: "Language", progress: "Translated" },
     /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
@@ -701,7 +705,6 @@ export const en = {
   },
 
   members: {
-    title: "Members",
     /**
      * 표 헤더. `Joined`는 상대 시각이라 열 이름이 단위를 말하지 않는다.
      *
@@ -758,7 +761,6 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
-    title: "Settings",
 
     repository: {
       title: "Repository",

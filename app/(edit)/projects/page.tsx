@@ -145,7 +145,7 @@ export default async function ProjectsPage({
           */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-medium">{m.projects.title}</h1>
+              <h1 className="text-xl font-medium">{m.common.nav.projects}</h1>
               {/*
                 ⚠️ **총계는 필터 전의 값이다** — 탭·검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
                 답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.

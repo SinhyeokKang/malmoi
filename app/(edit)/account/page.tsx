@@ -68,7 +68,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         </div>
       )}
       <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
-        <h1 className="text-base font-medium">{m.account.title}</h1>
+        <h1 className="text-base font-medium">{m.common.nav.settings}</h1>
 
         <Card title={m.account.profile.title} description={m.account.profile.description}>
           <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">

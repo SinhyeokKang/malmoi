@@ -113,10 +113,10 @@ export default async function SettingsPage({
           <Breadcrumb
             items={[
               { label: project.name, href: routes.project(slug) },
-              { label: m.settings.title },
+              { label: m.common.nav.projectSettings },
             ]}
           />
-          <h1 className="text-base font-medium">{m.settings.title}</h1>
+          <h1 className="text-base font-medium">{m.common.nav.projectSettings}</h1>
         </div>
 
         <Card title={m.settings.repository.title} description={m.settings.repository.description}>

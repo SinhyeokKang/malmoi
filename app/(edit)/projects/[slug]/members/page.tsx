@@ -55,10 +55,10 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         {/* breadcrumb은 셸이 안 든다 — 레이아웃이 페이지 props를 못 받는다 (CLAUDE.md). */}
         <div className="space-y-3">
           <Breadcrumb
-            items={[{ label: project.name, href: routes.project(slug) }, { label: m.members.title }]}
+            items={[{ label: project.name, href: routes.project(slug) }, { label: m.common.nav.members }]}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="text-base font-medium">{m.members.title}</h1>
+            <h1 className="text-base font-medium">{m.common.nav.members}</h1>
             {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
           </div>
         </div>

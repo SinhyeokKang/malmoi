@@ -70,8 +70,8 @@ export default async function LogsPage({
     <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
       {/* breadcrumb은 셸이 안 든다 — 레이아웃이 페이지 props를 못 받는다 (CLAUDE.md). */}
       <div className="space-y-3">
-        <Breadcrumb items={[{ label: project.name, href: routes.project(slug) }, { label: m.logs.title }]} />
-        <h1 className="text-base font-medium">{m.logs.title}</h1>
+        <Breadcrumb items={[{ label: project.name, href: routes.project(slug) }, { label: m.common.nav.logs }]} />
+        <h1 className="text-base font-medium">{m.common.nav.logs}</h1>
         <p className="text-muted-foreground text-xs">{m.logs.description}</p>
       </div>
 

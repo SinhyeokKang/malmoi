@@ -70,9 +70,9 @@ export default async function NewProjectPage({
       <main className="mx-auto w-full max-w-4xl space-y-6 px-6 py-6">
         <div className="space-y-3">
           <Breadcrumb
-            items={[{ label: m.projects.title, href: routes.projects() }, { label: m.newProject.title }]}
+            items={[{ label: m.common.nav.projects, href: routes.projects() }, { label: m.common.nav.newProject }]}
           />
-          <h1 className="text-base font-medium">{m.newProject.title}</h1>
+          <h1 className="text-base font-medium">{m.common.nav.newProject}</h1>
         </div>
 
         {listed.ok ? (
