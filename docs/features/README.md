@@ -16,11 +16,11 @@
 규칙대로 닫히면 지운다. 넷째(외부 감사 원문)와 다른 점은 **실행 계획이 붙어 있다는 것**이다.
 
 ✅ **7단계 `sync-runs/`가 프로덕션까지 나갔다** (2026-09-10, PR #26 → `d0e8688` — 아래 표).
-🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)이 dev다.
+🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)과 **2026-09-11 폴리싱 라운드**(패널 머리 고정 · 목록 검색·상태 필터 · `Tooltip` 제거 · 화면 제목이 사이드바 라벨 키 공유 · `lib/tone.ts`)가 dev다. **8-4(번역 화면)는 설계 문서만 섰고 미착수다.**
 태스크와 완료 게이트는 SAAS §8에 있다.
 
 ⚠️ **`ui-rework/`는 2단 구조다** — 축이 커서 디렉터리 안에 **배송별 하위 디렉터리**를 두고
-(`signin-auth/`), **아홉째 종류인 `README.md`**가 배송 순서와 **작업 규약 아홉**을 든다(SAAS §8과
+(`signin-auth/` · `translations/` — 뒤엣것이 8-4다), **아홉째 종류인 `README.md`**가 배송 순서와 **작업 규약 아홉**을 든다(SAAS §8과
 CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`tasks`가 필요한 것은 아니고,
 8-2·8-3처럼 시안이 곧 스펙인 배송은 그 `README.md`의 절 하나로 근거를 남긴다.
 (6단계 `translation-ui/`는 2026-09-07에 디렉터리가 생겼고 **2026-09-09에 프로덕션까지 닫혔다** — 아래 표. 5단계
@@ -68,7 +68,7 @@ CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`t
 | [sec-audit-2](./sec-audit-2/) | ✅ 프로덕션 반영 (2026-09-10, PR #27 → `ff5e8a4`) | ARCHITECTURE §9 · SAAS §11 · [작업 기록](./sec-audit-2/tasks.md) | #37은 **사용자 결정으로 제외**(가시성 기반 정책 유지). #38은 session-revocation으로 배송 |
 | [credential-storage](./credential-storage/) | ✅ **dev·prod 전환 완료** (2026-09-10, PR #28 → `9e6854e` · #29 → `f6933d7`) | [spec](./credential-storage/spec.md) · [design](./credential-storage/design.md) · [operations](./credential-storage/operations.md) · SAAS 저장 보호 · ARCHITECTURE §5.1·§6.6 | 키 회전 리허설(P7) · 차단·drain 리허설(T11) |
 | [session-revocation](./session-revocation/) | ✅ 프로덕션 반영 (2026-09-10, PR #28 → `9e6854e`) | SAAS 전체 세션 회수 · ARCHITECTURE §6.1.1 · [spec](./session-revocation/spec.md) | GitHub 왕복·두 세션 회수·타 사용자 보존은 실물 확인. 남은 것은 Google 왕복·취소 경로·키보드/포커스(S7) |
-| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3 dev) | SAAS §8 · DESIGN §0·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | 8-3 이후 페이지별(번역 표·Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
+| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3 + 폴리싱 dev) | SAAS §8 · DESIGN §0·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | **8-4 번역 표(설계 완료·미착수 — [translations/](./ui-rework/translations/))** · 나머지 페이지별(Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸
@@ -93,7 +93,7 @@ CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`t
 | **`lib/scan` 경고 단언의 해상도** | POSTMORTEM 2026-09-08 재발 방지 grep | `lib/scan/__tests__/scan.test.ts:124`의 `toMatch(/리터럴/)`가 `lib/scan/ast.ts`의 세 경고 중 **둘**(키 인자·namespace 인자)에 걸려 갈래를 구별하지 못한다 — 리팩터가 갈래를 바꿔도 green이다. `lib/scan`은 화면에 안 가서 오류 코드화 대상이 아니지만(translation-ui design §3.1.4) **단언 해상도는 별개 축**이다. 6b-1 범위 밖이라 미뤘다 — 고치면 사건별 부분 문자열을 단언하거나 경고에 `kind`를 붙인다 |
 | ~~**번역 화면의 고정 3.3초**~~ ✅ **닫혔다** (2026-09-09, `hnd1`) | translation-ui T7 재측정 (2026-09-08 프로덕션) | 기본 착지 LCP 3.30초인데 **24키 프로젝트도 3.29초**다 — 행 렌더가 아니라 키 수와 무관한 고정 비용이고, 필터 없는 화면은 12.7 → 4.66초로 이미 2.7배 줄었다. **가상화도 조회 좁힘도 이걸 못 줄인다.** 수단 셋(표를 `Suspense`로 감싸 셸을 먼저 그리기 · 순차 DB 왕복 병합 · 폰트 CSS의 렌더 블로킹 해제)이 전부 번역 화면 밖이라 T7에 넣지 않았다. ✅ **쟀다** (2026-09-09 — 로컬 프로덕션 빌드 → dev DB, 같은 도쿄 pooler. 서버 타이머를 임시로 박고 웜 3회). **왕복 하나가 ~85ms이고 레이아웃·페이지가 병렬로 도는 구간은 pooler가 직렬화해 ~155ms로 늘어난다.** 요청당 왕복 **일곱**(레이아웃 2 + 페이지 5)이고 **page total이 4키 175~232ms · 24키 215ms로 같다** — 행 수가 아니라 홉 개수라는 프로덕션 관측이 재현됐다. ⚠️ **줄일 자리 둘을 계측이 찾았다**: `readSession`이 **한 요청에서 두 번** 돈다(레이아웃 + 페이지의 `requireProjectAccess`→`requireUser`, 둘 다 실제 DB. React `cache()`가 안 걸려 있다) · `getProjectAccess`와 `loadProject`가 **둘 다 `Project`를 읽는다**(앞이 slug로 찾고 뒤가 그 id로 같은 행을 다시 읽는다). 둘을 합치면 페이지 사슬이 **5홉 → 3홉**이다. 나머지 수단 둘(`Suspense`·폰트)은 클라이언트 축이라 별개다. ⚠️⚠️ **그런데 원인은 셋 중 어느 것도 아니었다** (같은 날 프로덕션 실측): `x-vercel-id: icn1::iad1::…` — 엣지는 서울인데 **함수가 `iad1`(워싱턴)에서 돌고 DB는 도쿄**다. TTFB는 8~77ms인데 **본문이 끝나는 데 1.5~3.4초**이고 문서는 8KB다(대역폭이 아니다). 홉당 ~375ms — 태평양 RTT 그대로다. **`vercel.json`에 `regions: ["hnd1"]`을 박았다**(PR #24 → `7b029b8`). 프로덕션 재측정(FCP 3회): 기본 착지 **3,300 → 436·472·536ms** · 필터 없는 907키 화면 **4,660 → 1,196·1,204ms** · `/projects` 1,420 → 270~792ms. **2초 목표를 기본 착지뿐 아니라 최악 경로에서도 통과했다.** ⚠️ **홉 병합 둘은 하지 않았다** — 이제 홉당 비용이 태평양이 아니라 도쿄 안이라 근거가 사라졌고, 필요해지면 위 두 자리(`readSession` 중복 · `Project` 이중 조회)부터 본다 |
 | ~~**`translation-input` 저장 상태 `role=status`·실패 시 포커스 복귀**~~ ✅ **닫혔다** (2026-09-08 ship 3) | tenant-auth 검수(CDO) → **`translation-ui/tasks.md` T7**(ship 3) | `components/translations/announcer.tsx`(표 하나의 live region) + `lib/keys/refocus.ts`의 `shouldRefocus`로 들어갔다. 확정됐던 해법 그대로다 — 표 **하나**에 시각 숨김 `aria-live="polite"` 영역(셀마다 두면 903행×3로케일에 2,700개다) + 실패 시 `document.activeElement`가 `body`이거나 같은 셀일 때만 `focus()`, 아니면 상태줄 `[Retry]`(비동기 저장이라 응답이 올 때 사용자는 이미 다음 셀을 치고 있을 수 있다) |
-| ~~**GitHub 계정 해제가 `project:settings` 뒤에 있다**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9) | github-connect code-review 🟡3 (2026-09-07) · design §3.4 | `disconnectGithub`이 `projects/actions.ts`로 가고 인가가 `requireUser`가 됐다(인자 없음). `/projects`에 계정 섹션. ⚠️ **미룬 사유가 낡았던 것이 앞당긴 이유다** — "OWNER 강등 경로가 실사용에 없다"였는데 5단계가 연결을 사용자 수준으로 열면서 **프로젝트를 하나도 안 만든 사용자**가 같은 잠금에 걸리게 됐고, 그 사람에겐 설정 화면이 없다 |
+| ~~**GitHub 계정 해제가 `project:settings` 뒤에 있다**~~ ✅ **닫혔다** (2026-09-07 리뷰 🟡9) | github-connect code-review 🟡3 (2026-09-07) · design §3.4 | `disconnectGithub`이 `projects/actions.ts`로 가고 인가가 `requireUser`가 됐다(인자 없음). `/projects`에 계정 섹션(6b-4에서 `/account`로 옮겼다). ⚠️ **미룬 사유가 낡았던 것이 앞당긴 이유다** — "OWNER 강등 경로가 실사용에 없다"였는데 5단계가 연결을 사용자 수준으로 열면서 **프로젝트를 하나도 안 만든 사용자**가 같은 잠금에 걸리게 됐고, 그 사람에겐 설정 화면이 없다 |
 
 ## ⚠️ `adapter-generality/`의 파일 넷은 생성물이 아니라 입력이다
 
