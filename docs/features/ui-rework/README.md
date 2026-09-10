@@ -11,7 +11,7 @@
 | 배송 | 범위 | 상태 |
 |---|---|---|
 | **8-1** [`signin-auth/`](./signin-auth/) | `/signin` 신설 · 초대 수락 · `/privacy`·`/docs` 빈 라우트 · 토큰·shadcn 기반 배선 | ⬜ 착수 |
-| 8-2 셸 | top bar 제거 · `projects/[slug]/layout.tsx` 신설 · 오른쪽 project global panel 골격 | ⬜ |
+| 8-2 셸 | 헤더·사이드바·오른쪽 패널 골격 · `projects/[slug]/layout.tsx` 신설 | ⬜ |
 | 8-3~ 페이지별 | `/projects` · `/projects/new` · `/account` · Home · translations · locales · members · logs · settings | ⬜ |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
 
@@ -194,6 +194,39 @@ blue 계열은 리포 토큰에 **없다** — Tailwind `blue-600` 유틸을 쓴
 
 ⚠️ **DESIGN §6.2의 "새 raw 색을 늘리지 않는다"가 여기서 깨진다** — Google G의 4색은 우리가 고른 색이
 아니라 **남의 브랜드 자산**이라 토큰으로 접을 수 없다. 예외로 등재한다.
+
+## 8-2 셸 — 시안과 치수
+
+**시안**: [`/project/:slug/translations` (node `212-937`)](https://www.figma.com/design/cuMNHY0Cn5ei9Szjqfz0tm/bugshot?node-id=212-937)
+— 셸 전용 시안은 없고 **번역 화면 시안이 셸을 그리고 있다.** 그 프레임에서 좌표로 읽은 값이 아래다.
+
+```
+frame 1920×1080
+├ header  x=8 y=8   1904×48          ← 규약 3.5의 padding 8
+└ body    x=8 y=64  1904×1008        ← 8 + 48 + 8 (헤더와 gap 8)
+  ├ lnb              240×1008
+  └ wrapper x=248    1656            ← 240 + 8
+     ├ tab body       x=0    1328
+     └ project global x=1336  320    ← 1328 + 8
+```
+
+| 무엇 | 값 |
+|---|---|
+| header | **전폭 × 48** — 로고 32(x=4 y=8) 좌측 · 아바타 32 우측 |
+| lnb | **240** (내부 padding 4 → 콘텐츠 232) · 항목 높이 ~29-31 · 아이콘 16 · 구역 둘(사용자 축/프로젝트 축) |
+| project global panel | **320** |
+| 콘텐츠 | 나머지 (1920에서 1328) |
+
+⚠️ **SAAS §8은 "top bar가 사라진다"고 적었는데 시안에는 48px 헤더가 있다.** 사라지는 것은 **지금의**
+top bar이고 그 자리에 전폭 48 헤더가 온다 — 8-2가 그 문장을 정정한다.
+
+⚠️ **오른쪽 패널의 내용은 시안에 없다** — `project global panel`이라는 **빈 320px 프레임**과
+`SegmentedControls` 하나뿐이다. **골격만 세우고 내용은 8-P로 미루는 것**이 맞다: diff는 UI가 아니라
+**새 서버 능력**이라(커밋 없이 렌더만 하는 경로 + 접힌 상태에서 GitHub 0회) UI만 먼저 만들면 빈
+껍데기를 두 번 그린다.
+
+⚠️ **`app/(edit)/projects/[slug]/layout.tsx`가 먼저다** — 지금 셸(`app/(edit)/layout.tsx`)은 `[slug]`
+params를 못 받아 breadcrumb·Publish가 셸에 없다. 오른쪽 패널이 서려면 그 자리가 필요하다.
 
 ## Figma 접근
 
