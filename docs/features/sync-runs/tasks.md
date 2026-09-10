@@ -112,13 +112,13 @@
   - 검증: T3의 멤버 제한 케이스 green
 - [x] **T8** `pnpm typecheck && pnpm test && pnpm build` — 2,373 passed
 - [x] `——` `chore(db):` `fcf93f1` → `test:` `1881b68` → `feat:` `8ff8d28` (+ `/code-review` 🟡 셋으로 `refactor:` `7e8fd67`)
-- [ ] **T9** `/push` → `/merge` (**`pnpm db:deploy` 필요**)
+- [x] **T9** `/push` — `5171e25`, CI green. ⚠️ **`/merge`는 남았고 1단계의 `pnpm db:deploy`가 필수다**
 
 ---
 
 ## ship 3 — 화면 (`logs` + 보관 상태 + 보관 카드)
 
-- [ ] **T1** `/tdd interface`
+- [x] **T1** `/tdd interface`
   - `lib/sync/view.ts`(⚠️ `@/generated/prisma/client`는 **`import type`만** — `client-graph`가 센다. 상대 시각은
     `lib/relative-time.ts` 재사용): 행 → `{ tone, label, triggerLabel, reasonKey }` — tone 타입이 `Badge` variant union과
     같은 이름 · SUCCEEDED·SKIPPED·RUNNING = `muted`, FAILED = `danger` · `skipped` 라벨이 "Nothing to send" ·
@@ -134,27 +134,31 @@
   - `components/__tests__/home-screen.test.ts`의 `SITES`에 `logs/page.tsx` 추가(안 넣으면 조용히 미검사)
   - `components/__tests__/translations-screen.test.ts`: 보관 카드가 readiness 분기 **밖**의 형제 · 카드에 결과
     `Alert` 없음 · Dialog 확인 버튼이 `danger`
-  - 검증: `pnpm test` red
-- [ ] **T2** `lib/routes.ts`에 `logs(slug, { cursor? })` + `app/(edit)/projects/[slug]/logs/page.tsx` +
+  - 검증: `pnpm test` red(16건) — `b8fe1c7`
+- [x] **T2** `lib/routes.ts`에 `logs(slug, { cursor? })` + `app/(edit)/projects/[slug]/logs/page.tsx` +
       `lib/sync/query.ts`(server-only — `loadSyncRuns(projectId, cursor, take: SYNC_LOG_PAGE_SIZE + 1)`, `requester` 조인)
   - 인가 `translation:write` (design §6 — OWNER 전용이 아니다). **matcher 변경 0** — `/projects/:path*`가 이미 덮는다
   - 검증: T1의 routes·logs-screen green + `entry-points.test.ts` green(쿼리 키 `cursor` 대조)
-- [ ] **T3** 사이드바 — `lib/shell/nav.ts` `projectSections`에 `logs`("Logs", `History`, `exact: true`, `canPerform` 뒤 아님) +
+- [x] **T3** 사이드바 — `lib/shell/nav.ts` `projectSections`에 `logs`("Logs", `History`, `exact: true`, `canPerform` 뒤 아님) +
       `messages/en.tsx` nav 라벨 + `nav.ts` 주석("Logs는 없다") 삭제
   - 검증: T1의 nav.test.ts green
-- [ ] **T4** `components/project-archived.tsx`(`project-not-ready.tsx` 형 — OWNER는 설정 안내, 나머지 `EmptyState` 한 줄) +
+- [x] **T4** `components/project-archived.tsx`(`project-not-ready.tsx` 형 — OWNER는 설정 안내, 나머지 `EmptyState` 한 줄) +
       Home·translations·locales·members·logs 페이지가 `archived`에서 그것을 반환 · `/projects` 목록·스위처에 "Archived" 배지
-  - 검증: `[manual]` 보관 뒤 EDITOR로 다섯 화면 진입 → 같은 한 줄, OWNER → 설정 링크
-- [ ] **T5** `components/settings/archive-card.tsx` — settings-block 여섯째(맨 아래). Dialog 본문에 열린 PR 링크(서버가
+  - 검증: `app/__tests__/screens.test.ts`가 다섯 화면을 **소스로** 센다 — `ProjectArchived`를 반환하는지와
+    **그 분기가 프로젝트 조회보다 앞인지**(뒤면 그 데이터가 이미 RSC 페이로드에 실린다). 설정 화면엔
+    그 분기가 **없어야** 한다는 것도 함께 본다(`project:settings`가 되돌리는 길이다).
+    ⚠️ **`[manual]` 눈 검증은 T10에 남아 있다** — 값 반환이라 호출부가 빠뜨리면 화면이 **정상 렌더**되고,
+    스캔이 그것을 막지만 문구·링크가 실제로 맞는지는 눈이 봐야 한다
+- [x] **T5** `components/settings/archive-card.tsx` — settings-block 여섯째(맨 아래). Dialog 본문에 열린 PR 링크(서버가
       `findOpenPrUrl` 한 번, 실패는 "Couldn't check open PRs" 한 줄) · 확인 `danger` "Archive project" · 보관 상태면
       [Restore project] 무확인 · **인라인 결과 Alert 없음**
   - 검증: T1의 translations-screen 케이스 green
-- [ ] **T6** `messages/en.tsx` — `logs.*`·`archive.*`·`publish.gate.*`·`access.archived`·`invite.memberLimit` 전부.
+- [x] **T6** `messages/en.tsx` — `logs.*`·`archive.*`·`publish.gate.*`·`access.archived`·`invite.memberLimit` 전부.
       ⚠️ **소스에 한글 UI 리터럴 금지**
   - 검증: `no-korean-ui` green
-- [ ] **T7** `pnpm typecheck && pnpm test && pnpm build`
-- [ ] `——` `test:` → `feat:`
-- [ ] **T8** 문서 — 전부 같은 커밋 묶음
+- [x] **T7** `pnpm typecheck && pnpm test && pnpm build` — 2,416 passed
+- [x] `——` `test:` `b8fe1c7` → `feat:` `82ffb03` (+ `/code-review` 🟡 셋으로 `refactor:` `086b056`)
+- [x] **T8** 문서 — 전부 같은 커밋 묶음
   - `docs/SAAS.md` §8 7단계 체크 + §7.7 라우트 표 `logs` ⬜ → ✅ + **§8:1033·1038·1046-1048 갱신**(`type`·`idempotencyKey`
     후속 / cron 면제 등재 / Home 교체·`needs_configuration` 후속으로) + §7.9 "편집·sync·push 중단"
   - ~~`docs/ARCHITECTURE.md` — 동시 실행 계약(행 잠금·stale 닫기) · 보관 갈래 · 오류 코드 태깅~~ —
@@ -165,9 +169,9 @@
     → `pnpm sync:agents` 커밋
   - `docs/DESIGN.md` — §6.2 배지 표(sync 4종) · §6.6 settings-block 여섯 · §6.8 아이콘 표 `History` · §6.68 logs 화면
   - `docs/features/README.md` 표 행 + "logs 하나만 남았다" 문장 · 루트 `README.md` 현 단계 선언
-- [ ] `——` 문서 커밋(문서별)
+- [x] `——` 문서 커밋(문서별 — SAAS·DESIGN·CLAUDE·features README·README)
 - [ ] **T9** `/push` → `/merge`
-- [ ] **T10** `[manual]` 실물 (`i18n-order-check`)
+- [ ] **T10** `[manual]` 실물 (`i18n-order-check`) — ⚠️ **프로덕션 배포 뒤에만 가능하다**(cron·CI push가 대상이다)
   - **두 탭 Publish 연속 클릭**: `gh pr view --json commits` 개수가 1 늘고 sync 브랜치 head가 한 번만 바뀐다 ·
     `logs`에 SUCCEEDED 1행, FAILED 0행 · 둘째 탭에 `info` Alert "Already sending"
   - **보관 뒤 야간 cron**: 같은 밤 **비보관 대조 프로젝트**에 `CRON` 행이 있고 **동시에** Vercel 로그 `[pull] targets=…`에
