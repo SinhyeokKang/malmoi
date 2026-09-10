@@ -494,14 +494,19 @@ setup → awaiting_first_sync → ready
 
 ⚠️ **연결 건강성은 이것과 별개 축이고, 4단계가 먼저 세웠다.** 이 절이 묻는 것은 "편집 가능한가"이고,
 건강성이 묻는 것은 "리포·설치가 지금 어떤 상태인가"다. 후자는 **상태 컬럼 없이 매 렌더 계산**하며
-(`planConnectionHealth` 6갈래 — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
-`repo-moved`·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다(설계 어휘로만
-남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 둘:
+(`planConnectionHealth` **7갈래** — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
+`repo-moved`·**`repo-replaced`**·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다
+(설계 어휘로만 남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 셋:
 
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
   멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
 - **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
   받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
+- **`repo-replaced`는 사람도 못 따라간다** (2026-09-10, sec-audit-2 발견 34). 이름은 주소이고
+  `Project.repositoryId`가 정체성이라, 저장된 주소가 **다른 리포**를 가리키면 그 화면에는 [다시 연결]이
+  없다 — 리포는 생성 시점에 고정이고 `connectRepository`가 다른 ID로의 재고정을 거부하므로 답은
+  "새 프로젝트"다. ⚠️ **ID 대조가 이름 대조보다 앞이다**: 리네임 뒤 같은 조직이 옛 이름으로 리포를
+  새로 만들면 `fullName`도 `installationId`도 저장값과 같아, ID를 안 보면 이 화면이 초록을 띄운다.
 
 ### 7.6 Publish — PR 생성은 완료가 아니다
 
