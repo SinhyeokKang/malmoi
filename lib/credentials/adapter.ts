@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { safePrismaAdapter } from "@/lib/auth/safe-adapter";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { hashSessionToken, isSessionValid } from "./crypto";
+import { CredentialError, hashSessionToken, isSessionValid } from "./crypto";
 import { decodeUser, encodeUserFields, verifyLookupEmail } from "./records";
 import { lookupEmail } from "./storage";
 
@@ -14,9 +14,21 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
   const adapter: Adapter = {
     ...base,
     async createUser(user) {
+      // AAD가 행 id를 물으므로 id를 **먼저** 만든다 — DB 기본값에 맡기면 봉인 시점에 그 값이 없다.
       const id = randomUUID();
-      const fields = encodeUserFields(id, user);
-      const row = await prisma.user.create({ data: { id, emailVerified: user.emailVerified, ...fields, email: fields.email! } });
+      const { email, emailLookup, ...rest } = encodeUserFields(id, user);
+      /**
+       * ⚠️ **여기가 `emailLookup`이 비지 않는다는 것을 보증하는 유일한 자리다.** R2가 그 컬럼에
+       * NOT NULL을 걸지 않기로 했으므로(전환 도구가 `emailLookup: null`로 미변환 행을 집어야 한다 —
+       * `20260910060000_finalize_credential_storage`의 주석) DB는 **유일성만** 막는다. 값이 빠진 행은
+       * unique 인덱스에 안 걸려 **이메일로 영영 못 찾는 사용자**가 되고, 그 사람의 주소로 다시
+       * 가입하면 중복 계정이 생긴다 — 조용하다.
+       *
+       * `encodeUserFields`는 email이 있으면 lookup도 반드시 내지만 타입이 그것을 못 말한다
+       * (입력의 `email`이 optional이라 반환도 optional이다). 단언으로 지우지 않고 **센다**.
+       */
+      if (email === undefined || emailLookup === undefined) throw new CredentialError();
+      const row = await prisma.user.create({ data: { id, emailVerified: user.emailVerified, ...rest, email, emailLookup } });
       return decodeUser(row);
     },
     async updateUser({ id, ...fields }) {
