@@ -233,6 +233,26 @@ describe("클라이언트 그래프", () => {
     ]);
   });
 
+  /**
+   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (8-4 design §3.5·§3.7). 칩 행과
+   * 로케일 배지가 그것을 값으로 읽는데, 이웃한 `lib/keys/view.ts`는 잎이 아니다
+   * (`compareKeys` → `lib/adapters/shared` → `json-style`).
+   *
+   * ⚠️ **위 패키지 검사로는 못 잡는다** — `view.ts`가 무는 것이 전부 리포 안 모듈이라 npm 패키지가
+   * 하나도 안 나오고, 그래서 클라이언트가 그것을 값으로 읽어도 **green이다**. 그래서 `lib/i18n`과
+   * 같은 형으로 **파일 목록을 정확 일치**로 고정한다.
+   */
+  it("칩·국기 판정은 잎이다 — `lib/keys/view.ts`를 물지 않는다", () => {
+    const chips = walk([join(ROOT, "lib/keys/filters.ts")]);
+    expect([...chips.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/keys/filters.ts",
+      "lib/routes.ts",
+    ]);
+
+    const flag = walk([join(ROOT, "lib/keys/flag.ts")]);
+    expect([...flag.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/keys/flag.ts"]);
+  });
+
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
     const { files, packages } = walk(CLIENT_ENTRIES);
     const offenders = [...packages].filter((name) => !allowed(name));

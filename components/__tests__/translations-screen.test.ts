@@ -30,6 +30,12 @@ const ANNOUNCER = "components/translations/announcer.tsx";
 const BANNER = "components/translations/edit-loss-banner.tsx";
 const PUBLISH = "components/publish-button.tsx";
 const INPUT = "components/translation-input.tsx";
+/** 8-4가 더한 자리들 — 표 축이 바뀌면서 배선이 이 넷으로 갈렸다. */
+const FILTERS = "components/translations/filters.tsx";
+const CHIPS = "components/translations/filter-chips.tsx";
+const KEY_GROUP = "components/translations/key-group.tsx";
+const LOCALE_BADGE = "components/translations/locale-badge.tsx";
+const PANEL = "components/shell/content-panel.tsx";
 
 describe("Publish — 다섯 문구가 Alert로 가는 길이 한 줄이다", () => {
   it("옛 `pull-button.tsx`는 사라졌다 — 두 벌이 남으면 그중 하나가 낡는다", () => {
@@ -66,7 +72,7 @@ describe("Publish — 다섯 문구가 Alert로 가는 길이 한 줄이다", ()
 
 describe("live region — 표 하나에 하나다 (design §3.8)", () => {
   it("`aria-live`가 announcer에만 있다 — 903행×3로케일이면 셀마다 두는 순간 2,700개다", () => {
-    for (const path of [PAGE, HEADER, BANNER, PUBLISH, INPUT]) {
+    for (const path of [PAGE, HEADER, BANNER, PUBLISH, INPUT, FILTERS, CHIPS, KEY_GROUP, LOCALE_BADGE]) {
       expect(read(path), path).not.toMatch(/aria-live/);
     }
     expect(read(ANNOUNCER)).toMatch(/aria-live="polite"/);
@@ -188,5 +194,100 @@ describe("보관 카드 (7단계)", () => {
     expect(card).toBeGreaterThan(-1);
     // readiness 삼항 안에 들어가 있으면 그 분기 문자열이 카드보다 뒤에 닫힌다.
     expect(src.slice(card)).not.toMatch(/^\s*[^<]*readiness ===/);
+  });
+});
+
+/**
+ * **8-4 — 행 축의 배선.** 아래 여섯은 이 배송이 새로 만든 자리이고, 각각 이 리포가 **실제로 밟은**
+ * 결함 하나씩을 막는다.
+ */
+describe("행 축 (8-4)", () => {
+  /**
+   * ⚠️ **실패한 Publish 뒤에 `router.refresh()`를 부르면 안 된다** (POSTMORTEM 2026-09-08). 서버
+   * 상태가 안 바뀌었으니 갱신할 것이 없고, 사유가 `unauthorized`면 그 refresh가 미들웨어에 걸려
+   * 로그인 화면으로 **네비게이션**해 방금 만든 danger Alert가 한 프레임도 안 보인다.
+   *
+   * ⚠️ **그 가드를 지키는 단언이 8-4 전까지 0건이었다** — 위 "성공 뒤 서버 렌더를 갱신한다"는
+   * 호출이 **있는지만** 본다.
+   */
+  it("`router.refresh()`가 실패 갈래 **밖**이다", () => {
+    const lines = read(HEADER).split("\n").filter((line) => line.includes("router.refresh()"));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/status !== "failed"/);
+  });
+
+  /**
+   * ⚠️ **제출 버튼 없는 `<form>`은 Enter로 submit되지 않는다** (POSTMORTEM 2026-09-08 — 검색이
+   * 조용히 무효였고 CDP 원시 키까지 먹여 봐도 같았다). 툴바 재작성에서 되돌아가지 않게 고정한다.
+   */
+  it("툴바에 `<form>`이 없다 — Enter를 `onKeyDown`이 직접 받는다", () => {
+    const src = read(FILTERS);
+    expect(src).not.toMatch(/<form\b/);
+    expect(src).toMatch(/onKeyDown/);
+    expect(src).toMatch(/e\.key === "Enter"/);
+  });
+
+  /**
+   * ⚠️ **칩의 제거 버튼이 링크 안에 있으면 안 된다.** 상호작용 요소의 중첩은 접근성으로 금지이고,
+   * 그 모양이 정확히 Radix Slot이 던진 자리와 같다 (POSTMORTEM 2026-09-09 — `asChild` 자식 옆의
+   * 형제 하나로 셸이 죽었다). 형태와 이름 두 축으로 센다.
+   */
+  it("칩은 링크가 아니다 — 라벨이 평문이고 제거만 버튼이다", () => {
+    const src = read(CHIPS);
+    expect(src).not.toMatch(/<Link\b/);
+    expect(src).not.toMatch(/<a\b/);
+    expect(src).toMatch(/aria-label=\{m\.translations\.chips\.remove\(/);
+  });
+
+  /**
+   * ⚠️ **로케일 헤더가 사라져 orphaned 로케일의 표시가 살 자리가 배지뿐이다** (design §4).
+   * 색만으로 말하면 스크린리더에 아무것도 안 남으므로 `sr-only` 문구가 함께 있어야 한다.
+   */
+  it("로케일 배지가 orphaned 표시를 든다", () => {
+    const src = read(LOCALE_BADGE);
+    expect(src).toMatch(/orphaned \? "danger"/);
+    expect(src).toMatch(/sr-only/);
+  });
+
+  /**
+   * ⚠️ **`Untranslated` 배지·상태 필터·입력 테두리가 같은 배송에서 사라졌다** — 값이 빈 셀의
+   * 유일한 시각 신호가 `placeholder`다 (spec Q3).
+   */
+  it("빈 셀의 `placeholder`가 살아 있다", () => {
+    expect(read(INPUT)).toMatch(/placeholder=\{[^}]*m\.translations\.placeholder/);
+    // 배지 쪽은 반대로 사라졌다 — 사전에서 지웠으므로 남아 있으면 typecheck가 죽지만, 의도를 남긴다.
+    expect(read(KEY_GROUP)).not.toMatch(/m\.translations\.untranslated/);
+  });
+
+  /**
+   * ⚠️ **본문 랜드마크를 `ContentPanel`이 든다** — 표 갈래가 `<table>`에서 `div` + `grid`로 바뀌면서
+   * 이 화면의 트리를 통째로 다시 썼다. `shell-layout.test.ts`가 스스로 "렌더 경로를 못 본다"고
+   * 적어 뒀으므로 **어느 자리가 드는지를 이름으로** 고정한다 (design §8-7).
+   */
+  it("`<main>`을 `ContentPanel`이 들고 번역 화면은 자기 것을 안 든다", () => {
+    expect(read(PANEL)).toMatch(/<main\b/);
+    for (const path of [PAGE, HEADER, KEY_GROUP]) {
+      expect(read(path), path).not.toMatch(/<main\b/);
+    }
+  });
+
+  /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */
+  it("`NamespacePanel`·`NsLink`가 없다", () => {
+    for (const path of [PAGE, HEADER, FILTERS]) {
+      expect(read(path), path).not.toMatch(/NamespacePanel|NsLink/);
+    }
+  });
+
+  /**
+   * ⚠️ **스캐너가 red를 낼 수 있는지** 반례로 확인한다 (POSTMORTEM 2026-09-07 — "검사가 자기
+   * 대상의 일부만 본다"). 이 배송이 스캔을 여섯 더했으므로 그만큼 공허할 위험도 늘었다.
+   */
+  it("위 검사식들이 실제로 그 형태를 잡는다", () => {
+    expect(/status !== "failed"/.test("        router.refresh();")).toBe(false);
+    expect(/<form\b/.test('  <form action={go}>')).toBe(true);
+    expect(/<a\b/.test('<a href={x}>')).toBe(true);
+    expect(/<a\b/.test('<Announcer>')).toBe(false);
+    expect(/<main\b/.test('  <main className="x">')).toBe(true);
+    expect(/NamespacePanel|NsLink/.test("      <NsLink href={x} />")).toBe(true);
   });
 });
