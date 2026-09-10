@@ -13,7 +13,7 @@
 
 ## ship 1 — 순수 판정 (스키마·I/O 0줄)
 
-- [ ] **T1** `/tdd interface` — `lib/sync/plan.ts` + `lib/auth/invitation.ts` + `lib/failure.ts`
+- [x] **T1** `/tdd interface` — `lib/sync/plan.ts` + `lib/auth/invitation.ts` + `lib/failure.ts`
   - `planSyncStart`: `already-running` → `too-soon` 순서 · **stale**(`startedAt < now - 300s`)은 실행 중으로 안 치고
     `ok` + `staleToClose: true` · **`too-soon`은 `trigger: "cron"`에 안 걸린다** · `lastSettled: null`(직전이 FAILED)이면
     안 걸린다 · `retryAfterSeconds`가 `PUBLISH_MIN_INTERVAL_SECONDS - 경과`로 나온다
@@ -23,18 +23,21 @@
     `RequestError` → `github-error` · Prisma 오류 → `db-unavailable` · `retryable`이 갈린다(`not-installed` false,
     `db-unavailable` true) · `safeMessage`가 `classifyFailure`의 판정과 같다
   - `planInvitationCreate`: 9 → ok, 10 → `member-limit`(`limit: 10`)
-  - **`lib/pull` throw 자리 전수가 `code`를 든다** — `run.ts`·`plan.ts`·`trigger.ts`의 `fail(` 호출을 소스로 세고
-    코드 없는 것이 0
+  - **`lib/pull` throw 자리 전수가 `code`를 든다** — `run.ts`·`plan.ts`·`trigger.ts`의 `fail(` 호출을 소스로 센다.
+    ⚠️ **"코드 없는 것이 0"으로는 못 만든다** — design §1.3이 union을 일곱으로 묶고 "생산자 없는 코드는
+    두지 않는다"고 못박아서, 불변식 위반(`unreachable:`)과 readiness가 이미 막는 설정 부재 열하나에는
+    줄 이름이 없다. 그래서 **양쪽을 고정한다**: 코드를 드는 자리 넷 + 안 드는 자리 열하나를 이름으로 박고,
+    어느 목록에도 없는 `fail(`이 0. 새 자리는 둘 중 하나를 골라야 red를 벗는다 (`entry-points.test.ts` 형)
   - `STALE_AFTER_SECONDS > 60`
-  - 검증: `pnpm test` red(모듈 부재)
-- [ ] **T2** `lib/sync/plan.ts`(판정 셋 + 상수 셋) · `lib/auth/invitation.ts`(`MEMBER_LIMIT` + `planInvitationCreate`) ·
+  - 검증: `pnpm test` red(모듈 부재 2 + 단언 실패 6) — `cabf8e3`
+- [x] **T2** `lib/sync/plan.ts`(판정 셋 + 상수 셋) · `lib/auth/invitation.ts`(`MEMBER_LIMIT` + `planInvitationCreate`) ·
       `lib/failure.ts`(`AppError`에 `code?`, `fail`에 둘째 인자) · `lib/pull/{run,plan,trigger}.ts`의 `fail(` 셋에 코드
   - ⚠️ **`classifyFailure`를 고치지 않는다** — 축이 다르다(design §1.3). 새 함수가 그것을 **부른다**
   - ⚠️ **`runPull`의 분기·순서·값은 그대로다** — 바뀌는 것은 `fail(...)`의 둘째 인자뿐. `run.test.ts` 전부 green이 그 증거
   - ⚠️ `PROJECT_LIMIT`을 옮기지 않는다 — 상호 참조 주석만
-  - 검증: T1 green + `run.test.ts` 변경 0줄로 green
-- [ ] **T3** `pnpm typecheck && pnpm test`
-- [ ] `——` `test:` → `feat:` 두 커밋
+  - 검증: T1 green + `run.test.ts` 변경 0줄로 green — `d47c371`
+- [x] **T3** `pnpm typecheck && pnpm test` — 2,309 passed
+- [x] `——` `test:` → `feat:` 두 커밋 (+ `/code-review` 🟡 하나로 `refactor:` `6c43d15` — 스캐너가 주석을 벗긴다)
 - [ ] **T4** `/push`
 
 ---
@@ -151,8 +154,10 @@
   - `docs/SAAS.md` §8 7단계 체크 + §7.7 라우트 표 `logs` ⬜ → ✅ + **§8:1033·1038·1046-1048 갱신**(`type`·`idempotencyKey`
     후속 / cron 면제 등재 / Home 교체·`needs_configuration` 후속으로) + §7.9 "편집·sync·push 중단"
   - `docs/ARCHITECTURE.md` — 동시 실행 계약(행 잠금·stale 닫기) · 보관 갈래 · 오류 코드 태깅
-  - `CLAUDE.md` 디렉터리 구조 `lib/sync/` + **`.claude/commands/push.md` 4단계 트리거에 `lib/sync/`**(같은 커밋 —
-    CLAUDE.md가 "같아야 한다"고 못박았다) → `pnpm sync:agents` 커밋
+  - ~~`CLAUDE.md` 디렉터리 구조 `lib/sync/` + `.claude/commands/push.md` 4단계 트리거~~ — **ship 1이 했다**
+    (`/push` 4단계의 "`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다"가 그 디렉터리가 생긴 푸시에서
+    발화한다. 미루면 ship 2·3이 트리거 목록이 틀린 채 지나간다). ship 3은 `plan.ts` 외 셋을 항목에 더한다
+    → `pnpm sync:agents` 커밋
   - `docs/DESIGN.md` — §6.2 배지 표(sync 4종) · §6.6 settings-block 여섯 · §6.8 아이콘 표 `History` · §6.68 logs 화면
   - `docs/features/README.md` 표 행 + "logs 하나만 남았다" 문장 · 루트 `README.md` 현 단계 선언
 - [ ] `——` 문서 커밋(문서별)
