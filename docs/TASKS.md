@@ -46,8 +46,19 @@ PR #12) · **ship 2**(셸, `add099a` PR #14) · **ship 3**(T7 번역 화면 + Pu
 **6b-2**(멤버 화면 — `a00d380`) · **6b-3**(base branch·기준 로케일 — `7c975c0` PR #21) ·
 **6b-4**(`/account` — `70e393b` PR #22) · **6b-5**(로케일 화면)·**6b-6**(Home — 착지점)이 `0d68d71` PR #23.
 **잔여는 없다**: 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온
-선행 결함 둘은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. 남은 라우트는 `logs` 하나이고 **7단계**다.
+선행 결함 둘은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. ✅ **7단계(운영 안전성 — `SyncRun`·보관·`logs`)도 2026-09-10에 프로덕션이다**(PR #26 → `d0e8688`) —
+라우트 여덟이 전부 섰다. 그 뒤 **보안 라운드 셋**이 프로덕션까지 갔다(2026-09-10): sec-audit-2 수정
+(#27 → `ff5e8a4`) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(#28 → `9e6854e`) · 평문 email
+인덱스 제거(#29 → `f6933d7`). **다음은 8단계(UI 재작성)**이고 착수 전이다.
 진행의 정본은 SAAS §8과 `features/translation-ui/tasks.md`다.
+
+### 부채 정리 3회차 (2026-09-09~10, 보안 감사 둘 + 자격증명 저장 전환)
+
+sec-audit(PR #25 → `bc3615c` — 응답 헤더·`lib/locale-code.ts`·CI SHA 핀·Supabase anon REVOKE) ·
+sec-audit-2(#27 → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) ·
+credential-storage + session-revocation(#28 → `9e6854e`, #29 → `f6933d7`). **dev·prod 양쪽 DB 전환이
+끝났고 마이그레이션 17개가 둘 다 적용됐다.** 잔여는 `features/credential-storage/tasks.md`의 키 회전
+리허설(P7)과 차단·drain 리허설(T11), `features/session-revocation/tasks.md`의 S7이다.
 
 ### 부채 정리 라운드 (2026-09-04, `/audit` 1회차)
 
@@ -94,7 +105,12 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
 | `lib/keys` | 4 | 4 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 (`actor.test.ts`가 그 형태다 — malmoi#3). `refocus.ts`는 **잎**이다 — 저장 실패 포커스 판정을 `translation-input.tsx` 안에 두면 vitest가 import만으로 죽는다 |
 | `lib/i18n` | 1 | 2 | 사전의 유일한 입구(`m`·`pick`) + `messages/en.tsx`. **잎이다** — 클라이언트가 읽으므로 그래프가 곧 번들 |
-| `lib/shell` | 1 | 1 | 사이드바의 순수 판정 둘(`activeProject`·`projectSections`) |
+| `lib/shell` | 1 | 1 | 사이드바의 순수 판정 셋(`activeProject`·`projectSections`·`navZones`) |
+| `lib/sync` | 4 | 2 | sync 실행의 게이트·결과·화면 판정 (7단계) |
+| `lib/credentials` | 9 | 11 | 저장 시 암호화 — 세션 digest · PII/토큰 봉투 · HMAC 조회 + 전환 도구 |
+| `lib/session-revocation` | 4 | 4 | 전체 세션 회수 (sec-audit-2 #38) |
+| `lib/home` | 1 | 1 | Home의 순수 판정 둘 (6b-6) |
+| `lib/settings` | 1 | 0 | 설정 화면의 오류 문구 (잎) |
 | `lib/routes.ts` | 1 | 1 | 앱 내부 링크의 단일 출처. **잎, import 0** |
 | `lib/auth` | 13 | 13 | 없음 — tenant-auth(2026-09-05~06)로 늘었다. 표의 나머지 행은 2026-09-04 스냅샷 |
 | `lib/scan` | 4 | 3 | 없음 — 훅·namespace까지 (A-1 ✅) |
@@ -208,7 +224,7 @@ chrome 고유 축(엔트리 필드 순서)은 L2 골든과 코퍼스 관측 2건
   - **`DIRECT_URL`은 Vercel에 넣지 않는다** — 마이그레이션 전용이고 `datasource`가 조건부라 런타임·빌드 모두 불필요하다
   - 프로덕션 실측: `/keys`가 세션 없이 302 + 본문 15바이트 — POSTMORTEM 2026-08-31의 RSC 페이로드 노출(1.3MB)이 프로덕션에서 막혀 있다는 첫 확인
   - `/api/pull`(cron 경로)이 프로덕션에서 `{"status":"skipped","reason":"no-changes"}` — 2층까지 도달했으므로 DB·GitHub App·PEM 개행 복원·blob 비교가 한 번에 검증됐다
-- [ ] **키 리스트 가상화 — 답은 가상화가 아니었다** (2026-09-08 재측정으로 닫혔다). 관측(2026-09-07)은
+- [x] **키 리스트 가상화 — 답은 가상화가 아니었다** (2026-09-08 재측정 + 2026-09-09 리전 이동으로 닫혔다). 관측(2026-09-07)은
   `ts-dict` 903키의 **필터 없는 화면 12.7초**(903행 · `<input>` 2,711개 · 네임스페이스 52개)였고, 값싼 답
   (**기본 착지를 pending>0인 첫 네임스페이스로**)이 6a T2 판정 + T7 배선으로 프로덕션에 나갔다.
   **재측정**(같은 프로젝트·같은 방법, LCP): 필터 없음 **4.66초**(2.7배) · 기본 착지 **3.30초** ·

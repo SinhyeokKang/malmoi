@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 라우트 여덟 중 남은 것은 `logs` 하나인데 그것은 **7단계**다(`SyncRun`의 소비자). **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **다음은 8단계(UI 재작성)**이고 아직 착수 전이다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -178,6 +178,22 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다 — 개인키가 연결 경로로, 사용자 토큰이 커밋 경로로 가는 것을 양방향으로 막는다.
 
+### 암호화 키도 셋이고, 섞지 않는다 (2026-09-10 전환 완료)
+
+**저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가 셋이기 때문이고, `validateCredentialKeys`가 **여섯 값이 서로 다른지**까지 검사한다.
+
+| 무엇 | 환경변수 | 무엇을 여나 |
+|---|---|---|
+| 토큰 | `TOKEN_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | GitHub App **연결 토큰**(access·refresh) |
+| 개인정보 | `PII_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | `User.email`·`name`·`image` · 초대 email |
+| 검색 | `EMAIL_LOOKUP_KEY`·`_KEY_ID` | 정확 일치 조회용 HMAC (**복호화가 아니다** — 되돌릴 수 없다) |
+
+- **세션은 키가 없다** — `sha256:v1:` digest는 도메인 분리 해시라 대조만 한다.
+- ⚠️ **형식이 갈린다**: `*_ENCRYPTION_KEYS`는 keyring JSON, `EMAIL_LOOKUP_KEY`는 **원시 base64 하나**. 섞으면 base64 디코드가 조용히 깨진다.
+- ⚠️ **dev와 prod가 다른 키다** — dev 키가 새도 프로덕션 회원 데이터가 안 열려야 한다. 도구는 *어느 DB*만 검사하고 **키는 target에 안 묶여 있으므로**, prod 명령은 `.env.prod.local`을 셸로 source해 덮는다(`.env.example`). 그 파일에 넣을 수 없는 이유는 이름이 같아 한 파일에 두 벌이 안 들어가고 dotenv가 셸 env를 override하지 않아서다.
+- ⚠️ **PII 키를 잃으면 회원 이메일·이름을 복구할 수 없다** — DB 백업을 되살려도 그 시점의 키가 있어야 열린다. **키와 백업을 쌍으로** 보관하고 회전할 때 옛 키를 지우지 않는다.
+- 회전·재색인·복구 절차는 [credential 운영 절차](docs/features/credential-storage/operations.md).
+
 ## 명령어
 
 | 용도 | 명령 |
@@ -201,6 +217,10 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — App 토큰→base head→트리→글롭 매칭 확인. 실 API라 `pnpm test` 밖이다) |
 | 폰트 재복사 | `node scripts/copy-fonts.mjs` (predev·prebuild가 자동 실행) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
+| 자격증명 전환 (**dev**) | `pnpm credentials:dev [--mode=verify\|rotate-token\|rotate-pii\|reindex] [--apply --traffic-blocked --writers-drained]` — 기본은 **check-only**(쓰기 0) |
+| 자격증명 전환 (**prod**) | `pnpm credentials:prod …` — ⚠️ **prod DB를 직접 겨눈다**(`db:deploy`와 같은 부류). 키도 prod 것이어야 한다: `set -a; . ./.env.prod.local; set +a;`를 앞에 붙인다 |
+| 평문 인덱스 제거 (R2) | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 전건 검증 뒤 **finalize 하나만 pending**일 때 `migrate deploy`를 부른다 |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다**(별도 config + 로컬 PostgreSQL 17). `/push` 게이트가 안 돌리므로 `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 
@@ -208,7 +228,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 1. **Node를 `.nvmrc`에 맞춘다** (24). 로컬 게이트와 CI가 `.nvmrc`를 따르므로(위 브랜치·배포 섹션), 로컬과 Vercel의 메이저가 갈리면 두 게이트가 함께 거짓 green이 된다. **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다 (2026-09-03에 반대로 적었다가 고쳤다: `.nvmrc`가 20인데 Vercel 프로젝트는 24.x였다)
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 (2026-09-04에 실제로 그렇게 유출돼 전면 재발급했다). 구조가 필요하면 에이전트가 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. 값을 꺼낼 때도 `| pbcopy`로 클립보드에만 보낸다. ⚠️ **`vercel env pull`로는 못 가져온다** — 11개가 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 여섯이 비면 로그인·초대·멤버 조회가 통째로 죽는다**(위 표) — 다른 머신의 값을 옮기거나, 새 dev DB라면 새로 만들고 backfill을 돌린다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 (2026-09-04에 실제로 그렇게 유출돼 전면 재발급했다). 구조가 필요하면 에이전트가 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. 값을 꺼낼 때도 `| pbcopy`로 클립보드에만 보낸다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**로 등록돼 있어 CLI도 대시보드도 값을 못 읽는다(`[SENSITIVE]` 플레이스홀더만 내려온다). **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**이고, 그게 불가능하면 전면 재발급이다 (2026-09-03에 한 번 겪었다 — 아래). 시크릿을 리포·채팅에 붙여넣지 않는다
    - ⚠️ **GitHub OAuth 앱이 셋인데 `.env.local`이 갖는 건 하나뿐이다** (2026-09-04 브랜치 분리 뒤). callback URL을 앱당 하나만 등록할 수 있어서 갈렸다:
 
      | 앱 | callback | 자격증명이 사는 곳 |
@@ -272,12 +292,13 @@ app/
   layout.tsx            루트 레이아웃 (Pretendard <link>). ⚠️ **`lang="en"`** — 화면 문구가 전부
                         영어라 `app/__tests__/screens.test.ts`가 그것을 고정한다 (2026-09-08 ship 4)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
-  __tests__/            **둘이다.** entry-points — ⚠️ **진입점 소스 스캔**: app/ 아래 모든 page·route·actions가
+  __tests__/            **셋이다.** entry-points — ⚠️ **진입점 소스 스캔**: app/ 아래 모든 page·route·actions가
                         인가를 지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
                         본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선. ⚠️ **쿼리 수신자
                         검사가 생성기 형태도 본다** (2026-09-08) — 화면이 경로를 `routes.*`로 옮기면서
                         `"/path?key="` 리터럴이 0건이 됐고 그 검사가 조용해졌다(자기 "0건 아님" 가드가 잡았다)
                         + screens — `lang="en"`·설정 화면의 revalidate 안전·초대 수락의 갇힘 없음을 소스로 센다
+                        + security-headers — `next.config.ts`의 응답 헤더를 **불러서** 검사한다(`tsc`가 그 함수를 못 본다)
   (edit)/               인증 필요 (1차 차단은 middleware.ts의 쿠키 검사 — GET·HEAD만, Action POST는 통과)
     layout.tsx          셸 + 헤더. 2차 방어로 redirect() (조건부 렌더는 차단이 아니다).
                         ⚠️ Publish 버튼이 없다 — /projects 목록도 감싸므로 slug가 없다
@@ -294,6 +315,9 @@ app/
                         ⚠️ **GitHub 계정 섹션은 2026-09-09에 `/account`로 갔다** (6b-4) — 그것이 여기
                         있었던 이유는 "프로젝트 0개인 사용자에게 도달 가능한 자리가 여기뿐"이어서였고,
                         사용자 축 라우트가 생기며 그 이유가 사라졌다. **옮긴 것이지 복제가 아니다**
+    account/actions.ts  startSessionRevocation — 전체 세션 회수의 시작(인가는 `requireUser`).
+                        ⚠️ 서버가 **기존 로그인 Account를 고른다** — 클라이언트가 provider를 정하면
+                        공격자가 확인 상대를 고르게 된다. 완료는 callback을 가로채는 `withRevocation`이다
     account/page.tsx    계정 (6b-4) — **사용자 축의 유일한 화면**. `requireUser`만 지난다(인가할 프로젝트가
                         없다). 프로필(이름·이메일 **읽기 전용** — provider가 소유한다) + GitHub 연결·해제·
                         재인가 + 로그아웃. `?e=`는 `isConnectError` 하나로 거른다.
@@ -599,6 +623,10 @@ lib/
                         ⚠️ **갈래를 합치면 지표가 조용히 움직인다** — `lib/survey/one.ts`의 classify가 이
                         코드로 ADAPTER-COVERAGE ③을 가른다. `parse-failed`(구문 진단)와 `parse-crashed`
                         (파서가 던졌다)가 옛 문구 기준으로 다른 통이라 갈라져 있다
+    glob.ts             `matchesGlob` — **역추적 없는 DP 매처** (sec-audit-2 발견 35). 비용이
+                        `템플릿 × 경로` 길이로 고정된다. ⚠️ 정규식이던 시절엔 비용을 키우는 것이
+                        템플릿이 아니라 **매칭 대상 경로**(남이 정한다)라 템플릿 예산으로 상한이 안 섰다.
+                        `*`가 `/`를 안 먹는 것이 유일한 특수 규칙이고 `?`도 리터럴이다
     shared.ts           재생성 writer의 결정성 규칙(orderedEntries·compareKeys) + 후보 순위·검증
                         + matchGlobPaths(multi-locale 경로 — push·pull·survey가 공유하는 유일한 규칙)
     quote-style.ts      수술적 어댑터의 인용 부호 보존 (quoteLiteral·dominantQuote)
@@ -736,6 +764,24 @@ lib/
                           / classifySyncError — 코드는 **던지는 자리**가 든다, `safeMessage`는 `classifyFailure`
                           위임. ⚠️ **`STALE_AFTER_SECONDS`(300)는 `maxDuration`(60)보다 넉넉해야 한다** —
                           같으면 정상 실행이 스스로를 stale로 본다)
+  credentials/          저장 시 암호화 (2026-09-10, dev·prod 전환 완료). **축이 셋이고 키도 셋이다**:
+                        세션은 `sha256:v1:` **digest**(쿠키만 원문 — DB가 새도 살아 있는 세션이 안 넘어간다) /
+                        User·초대의 email·name·image와 GitHub App 토큰은 `enc:v1:` **AES-256-GCM 봉투**
+                        (AAD가 테이블·행 id·컬럼을 물어 **행·컬럼 교차 재사용을 인증 태그가 막는다**) /
+                        정확 일치 조회는 `hmac:v1:` **별도 컬럼**(초대는 scope에 projectId를 문다)
+                        crypto.ts(봉투·keyring·digest — 잎) / storage.ts(AAD 조립 + 키 로드.
+                        ⚠️ **`validatePiiReadKeys`가 행 루프보다 먼저다** — 없으면 키 부재가 "전원 정보
+                        없음"으로 보인다) / records.ts(User·초대 DTO + `readable` — **`CredentialError`만**
+                        삼킨다) / adapter.ts(`credentialAdapter` — `safePrismaAdapter`를 감싼다.
+                        ⚠️ `createUser`가 **lookup 존재를 증명한다**: R2가 NOT NULL을 안 걸어서
+                        DB가 안 막는다) / access.ts / conversion.ts·migration.ts·command.ts·finalize.ts(전환 도구)
+                        ⚠️ **로그인용 github/google 토큰은 아예 저장하지 않는다** — 로그인 뒤 안 쓴다
+  session-revocation/   전체 세션 회수 (sec-audit-2 #38). `/account`에서 공급자 재왕복 뒤 **그 사용자의**
+                        Session을 전부 지운다 — 확인 요청 소비와 삭제가 한 트랜잭션이다.
+                        policy.ts(순수 — Challenge·nonce·state 해시) / store.ts(User 잠금 + 일회 소비) /
+                        http.ts(callback 가로채기 — ⚠️ Auth.js state 쿠키를 **다른 이름·salt**로 분리해
+                        회수 왕복이 일반 로그인으로 바뀌지 않는다) / clear-cookies.ts
+                        ⚠️ `VerificationToken`을 목적 접두로 재사용한다(이메일 provider를 안 써서 비어 있다)
   auth/                 인증·인가. **판정은 순수 함수, 조회·세션은 얇은 껍데기**
                         ⚠️ `allow.ts`(허용 핸들 목록)는 2026-09-06에 삭제됐다 — 인가는 ProjectMember다
     query.ts            getProjectAccess(prisma, …) — slug→project→ProjectMember 두 조회
@@ -752,6 +798,11 @@ lib/
                         페이지가 `ProjectArchived`를 그린다. 되돌릴 곳이 설정 안의 카드 하나라 목록으로
                         튕기면 사용자가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고
                         (빠뜨리면 화면이 정상 렌더된다) `app/__tests__/screens.test.ts`가 다섯을 센다
+    safe-adapter.ts     `PrismaAdapter`를 **두 자리에서만** 감싼다 (sec-audit-2 #31·#39).
+                        ⚠️ **Auth.js는 세션 만료를 OAuth callback 앞에서 안 본다** — 만료 세션 토큰을
+                        수동 Cookie로 보내면 자기 OAuth 계정을 남의 User에 붙일 수 있었다. 조회가
+                        만료 행을 아예 안 돌려주는 것이 두 경로를 동시에 덮는 유일한 자리다.
+                        ⚠️ **로그인 수단은 User당 하나** — SAAS §5.5의 정책이 여기서 쓰기까지 닿는다
     read-session.ts     readSession — auth()를 장애 표시와 함께 읽는 **유일한 진입점** (ok|none|unavailable).
                         ⚠️ server-only 없음 — Action 테스트가 @/auth만 mock한다
     outage.ts           AsyncLocalStorage + noteAuthError — SessionTokenError만 장애로 표시.
@@ -818,7 +869,9 @@ lib/
                         사라졌고 base로 세우면 다음 push가 키 0개를 낸다. `zh_CN` ≠ `zh-CN`)
                         / base-pending.ts(⚠️ **잎, import 0** — basePending + baseLocaleFieldValue.
                         **화면 셋이 앞의 함수를 읽는다**: 로케일 화면·번역 배너·**설정의 워크플로 YAML**)
-                        / message.ts(OnboardError 18갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸
+                        / budget.ts(첫 적재 자원 예산 — 파일 200 · 파일당 2MB · 합계 10MB + 중첩 깊이.
+                          초과는 `resource-limit`. ⚠️ `/api/push`는 Zod를 지나는데 첫 적재는 안 지났다)
+                        / message.ts(OnboardError 19갈래 · ingestHeadline — ⚠️ 클라이언트 컴포넌트가 이걸
                           import한다. 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다) / workflow.ts(renderWorkflowYaml — ACTIONS.md와 줄 대조)
                         / ingest.ts(서버측 첫 적재 — assemblePushInput→buildPushPayload→applyPush를 **우회하지 않는다**.
                           스냅샷·blob은 값으로 받고, 내려받지 못한 파일을 실패로 센다)
@@ -828,6 +881,13 @@ types/next-auth.d.ts    session.user.id 타입 확장 (login은 DB 세션 전환
 prisma/
   schema.prisma         **12테이블** + enum 셋(Role · SyncStatus · SyncTrigger — 7단계가 뒤의 둘과
                         `SyncRun`을 더했다) (Project 테넌트 경계 / 접속 URL 없음 — Prisma 7).
+                        ⚠️ **`User.email`은 더 이상 `@unique`가 아니다** (2026-09-10) — 봉투가 nonce
+                        때문에 같은 주소마다 다른 바이트라 unique가 성립하지 않는다. **유일성은
+                        `emailLookup @unique`**(HMAC)가 들고, 초대는 `@@index([projectId, emailLookup])`다.
+                        ⚠️ **그 컬럼이 nullable인 것은 준비 단계여서가 아니다** — R2가 NOT NULL을
+                        일부러 안 걸었고(전환 도구가 `null`을 집어야 한다) 값 존재는 `createUser`가 증명한다.
+                        ⚠️ **`Project.repositoryId`는 쓰기 대상의 불변 id다** — 이름은 재사용되므로
+                        정체성이 아니다. 옛 행은 null이고 OWNER 재연결까지 Publish가 거부된다
                         ⚠️ **`SyncRun`에 `type`·`idempotencyKey`가 없다** — SAAS §8이 두 이름을 적어 뒀지만
                         지금 두 진입점 중 **키를 만들 주체가 없다**(cron은 하루 한 번, UI는 클릭이다).
                         동시성은 `Project` 행 잠금이 막고, 둘은 **push를 이 테이블에 넣을 때** 의미가 생긴다
@@ -843,7 +903,7 @@ prisma/
                         + declared-base-locale-column.test.ts(6b-3 — nullable이고 `baseLocale`이 **그대로 남았는지**.
                         주석이 "pull은 이 컬럼을 안 읽는다"와 "일회용"을 드는지까지 본다 — 그 구별이 사라지면
                         다음 사람이 두 컬럼을 합친다)
-  migrations/           13개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
+  migrations/           17개 — _init, _add_project_tenant_boundary, _add_project_locale_format,
                         _add_project_last_commit_at, _add_project_last_pulled_at,
                         _add_key_order_and_chrome_fields, _add_project_nested_by_path,
                         _add_locale_orphaned, _add_translation_updated_at_index,
@@ -856,8 +916,17 @@ prisma/
                         additive 하나이고 **prod 반영 완료** — `db:status:prod` 13개 up to date)
                         , _add_sync_run (2026-09-10, 7단계 ship 2 — `SyncRun` 테이블 + enum 둘 +
                         `Project.archivedAt`. **전부 additive**(SQL에 `DROP`·`ALTER COLUMN` 0건)이고
-                        dev 반영 완료. ⚠️ **prod는 `/merge` 1단계의 `pnpm db:deploy`가 넓힌다** —
-                        그 전에 배포되면 프로덕션이 없는 테이블을 조회한다)
+                        **dev·prod 반영 완료**)
+                        , _pin_repository_id (2026-09-10, sec-audit-2 — `Project.repositoryId`. additive.
+                        ⚠️ **옛 행은 null이라 OWNER 재연결까지 Publish가 거부된다** — 의도된 전환이다)
+                        , _add_email_lookup (2026-09-10, credential R1 — `emailLookup` 둘 + 인덱스 둘. additive)
+                        , _finalize_credential_storage (2026-09-10, credential R2 — ⚠️ **처음으로 additive가
+                        아니다**: 평문 `User_email_key`·`ProjectInvitation_projectId_email_idx`를 **DROP**한다.
+                        앞에 전제 검증 `DO` 블록이 서서 미변환 행이 하나라도 있으면 트랜잭션째 거부한다.
+                        ⚠️ **NOT NULL은 일부러 뺐다** — 걸면 전환 도구의 CAS가 `emailLookup: null`을 못 집어
+                        컷오버 이전 백업을 복원할 수단이 사라진다. 그 SQL 주석이 근거다)
+                        ⚠️ **마지막 셋은 `/merge` 전에 `db:deploy`로 prod에 먼저 넣었다** — 순서가 뒤집히면
+                        프로덕션이 없는 컬럼을 조회한다. dev·prod 모두 17개 up to date
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
                         ⚠️ **`regions: ["hnd1"]`이 함수를 DB 옆에 붙인다** (2026-09-09 계측) — 기본값은
@@ -881,9 +950,24 @@ scripts/
   ingest.ts             로케일 적재 CLI
   push-local.ts         적재+스캔+POST — TASK 7 워크플로가 할 일과 같은 순서
   smoke-github.ts       GitHub App 설정 검증 (읽기만)
+  credentials.ts        자격증명·개인정보 전환 CLI — ⚠️ **`CREDENTIAL_TARGET`이 DB를 정한다**(사람이
+                        넘기지 않는다, `PRISMA_TARGET`과 같은 형). 기본 check-only이고 `--apply`는
+                        `--traffic-blocked --writers-drained`를 함께 요구한다(운영자 확인 표식이지
+                        차단 기능이 아니다). ⚠️ **키는 target에 안 묶여 있다** — prod 명령에 dev 키를
+                        주면 그대로 돈다. `.env.prod.local`을 셸로 source하는 이유가 그것이다
+  finalize-credentials.ts  R2 — 전건 인증 복호화 검증 + 검토 SQL과 staged SQL 일치 + **finalize 하나만
+                        pending**일 때만 `migrate deploy`를 부른다. 체크섬을 손대거나 applied로 표시하지 않는다
   __tests__/            required-args.test.ts — push:local·smoke:github의 인자 필수와 **옛 공유 slug env의
                         소비자 0건**을 소스로 고정한다. ⚠️ 그 이름이 테스트에 남아 있어야 방어선이 산다
-auth.ts                 Auth.js v5 설정 — signIn 콜백은 검증 이메일 확인·갱신만, 인가는 ProjectMember.
+vitest.setup.ts         ⚠️ **`server-only`를 전역 mock하고 테스트용 암호화 키 셋을 세운다.** 없으면
+                        credentials 테스트가 통째로 죽는다. ⚠️ 그 mock이 "테스트가 죽는다"는 압력을
+                        없앴다 — 코드 컨벤션의 `server-only` 항목 참고
+vitest.credentials.config.ts  격리 PostgreSQL 스위트 전용 (`pnpm test:credentials:postgres`).
+                        ⚠️ `pnpm test`의 include에 안 들어간다 — `/push` 게이트가 못 본다
+auth.ts                 Auth.js v5 설정 — 어댑터가 **`credentialAdapter`**(그 아래가 `safePrismaAdapter`)이고
+                        세션 토큰은 우리가 만든다(`generateSessionToken`, 32바이트 난수 — DB엔 digest만).
+                        signIn 콜백은 검증 이메일 확인·갱신만, 인가는 ProjectMember.
+                        handlers는 `withRevocation`으로 감싸 회수 callback을 가로챈다.
                         logger.error가 outage.ts에 장애를 알린다
 docs/MVP.md             PoC 스펙 (닫힘 — §8.4가 SAAS.md를 가리킨다)
 docs/SAAS.md            **SaaS화 스펙 — 현재 단계의 정본.** 범위·비범위·설계 결정·단계별
@@ -898,10 +982,10 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
                         올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
                         ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
                         했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
-                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **넷이
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **다섯이
                         남아 있다**: pull-to-pr §4(실물 7시나리오) · tenant-auth §6.1(preview 실물 +
                         거기서만 잡힌 결함 넷) · github-connect T5(실물 10시나리오 + **못 밟은 둘의
-                        이유**) · project-onboarding T8(실물 14행 표 + **전제 둘이 틀렸다는 실측**). key-separator-contract는 보류라 애초에 대상이 아니다
+                        이유**) · project-onboarding T8(실물 14행 표 + **전제 둘이 틀렸다는 실측**) · sync-runs T10. key-separator-contract는 보류라 애초에 대상이 아니다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
@@ -968,7 +1052,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-09 기준 48개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-10 기준 53개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
@@ -992,12 +1076,12 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 - **docs/MVP.md** — **PoC 스펙 (닫힘).** 범위·기술 선택·세 흐름의 계약·스키마·구현 순서. 기능을 추가/삭제했거나 기술 선택을 바꿨거나 비범위 항목을 범위로 끌어들였으면 **여기부터** 갱신한다 (코드가 스펙을 앞서면 스펙이 거짓이 된다). §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. 커밋 prefix `docs(MVP): ...`
 - **CLAUDE.md** — 명령어 표, 스택, 브랜치·배포, 스킬 라인업, 코드 컨벤션
 - **docs/ARCHITECTURE.md** — export 결정성, blob SHA 비교, 커밋·PR 전략, 스캐너 계약, 스키마
-- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, **14차까지**). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
+- **docs/ADAPTER-COVERAGE.md** — **어댑터 범용성 측정 결과**(오픈소스 109개 + 홀드아웃 20개, **16차까지**). **§1~§4의 숫자는 학습 코퍼스 값이고, 일반화 여부는 §0 3차(홀드아웃)가 답한다** — 그쪽 오탐률이 6.3%다. §10은 키 순서 보존의 근거(4차). 지원 선언 포맷·§4.1 개정 판정·`ts-dict` 제외 판정·무인 탐지 신뢰 판정이 근거 숫자와 함께 있다. **어댑터를 새로 만들거나 탐지 규칙을 손대기 전에 읽는다.**
   - **⚠️ 재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를 **학습과 홀드아웃 둘 다** 돌리고 이 문서에 회차를 더한다 — §0 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 그중 하나는 학습 코퍼스에서만 나타났다. 한쪽만 돌리면 못 본다. 판정은 `/push` 4d가 사용자에게 묻는다(네트워크 ~4분이라 게이트가 아니다)
   - **상시 방어선은 `lib/adapters/__tests__/key-order-golden.test.ts`다** — 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 잰다. 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡고, 재측정이 답하는 것은 **일반화**뿐이다
 - **docs/ACTIONS.md** — **대상 리포**에 넣는 워크플로. 실제 일은 `.github/actions/l10n-push`(composite action)가 하고 대상 리포는 그것을 부르는 15줄만 갖는다. `inputs`를 바꾸거나 red 조건을 바꿨으면 갱신한다. ⚠️ **말모이 리포가 private이라 Settings > Actions > General에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓸 수 있다.** 커밋 prefix `docs(ACTIONS): ...`
 - **docs/POSTMORTEM.md** — 회고 누적 (append-only, `/postmortem` 전담)
-- **docs/features/README.md** — 기능 문서 9개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
+- **docs/features/README.md** — 기능 문서 14개 + 근거 문서의 상태 + **살아 있는 백로그**. 기능을 끝냈으면 표에 한 줄을 옮기고 **결론을 정본(SAAS — 현재 / ARCHITECTURE — 불변식 / MVP — PoC, 닫힘)으로 올린다** — 안 올리면 정본이 낡고 이 디렉터리가 스펙처럼 읽힌다. 커밋 prefix `docs(feature): ...`
 - **README.md** — CLAUDE.md의 요약 미러. 스택·명령·브랜치·현 단계 선언이 바뀌면 같이 갱신한다 — 신규 진입자가 처음 여는 파일이라 여기가 낡으면 닫힌 스펙으로 안내한다. 커밋 prefix `docs(README): ...`
 
 `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.

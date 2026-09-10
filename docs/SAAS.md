@@ -229,6 +229,12 @@ getProjectAccess(prisma, { userId, slug, permission })            // Server Acti
 - `@auth/prisma-adapter`로 전환했다 (2026-09-05).
 - **`maxAge` 24h는 "마지막 활동 뒤 24h"다** — `updateAge` 1h (2026-09-06). 명시하지 않으면 기본값이
   `maxAge`와 같아 세션이 한 번도 연장되지 않고 로그인 정각 24h 뒤 편집 중 끊긴다.
+- **DB에 있는 것은 토큰이 아니라 digest다** (2026-09-10). 쿠키는 우리가 만든 32바이트 난수 원문이고
+  `Session.sessionToken`은 도메인 분리 SHA-256(`sha256:v1:<hex>`)이다 — DB가 새도 살아 있는 세션이
+  그대로 넘어가지 않는다. ⚠️ **digest를 쿠키에 넣는 것도 통하지 않는다**(그 값을 다시 해싱한다).
+- **전체 세션 회수가 있다** (sec-audit-2 #38) — `/account`에서 공급자 재왕복을 거쳐 **그 사용자의**
+  Session을 전부 지운다. §5.7의 "제거된 멤버가 기존 세션으로 재접근"과 같은 축인데, 그쪽은 매 요청
+  `ProjectMember` 조회가 막고 이쪽은 **세션 자체를 없애는** 수단이다(자격증명 유출 뒤의 회수 경로).
 - **`session` 콜백은 입력을 돌려주지 않는다** — DB 세션에서 그 입력은 `sessionToken`을 든 **행**이고
   반환값이 `/api/auth/session` 본문이다. `publicSession`이 허용 목록으로 새 객체를 만든다 (2026-09-06까지
   토큰이 JSON에 실려 있었다 — Codex 감사 #1).
@@ -255,7 +261,7 @@ MVP에서 세운 경계가 SaaS에서 더 중요해진다. **2026-09-06에 둘�
 깨진다. 이건 MVP부터의 규칙이다.
 
 **가운데 토큰은 수명이 짧고 회전한다** (`lib/github-connect/token.ts`·`token-store.ts`). 8시간 만료 +
-refresh **1회용**이며 credential 구현에서는 `Account`에 AES-GCM 암호문을 저장한다(운영 전환은 대기). `planTokenUse`가 `use | refresh | reauthorize`를
+refresh **1회용**이며 `Account`에 AES-GCM 암호문으로 저장된다(2026-09-10 전환 완료). `planTokenUse`가 `use | refresh | reauthorize`를
 가르되 만료 판정에 **60초 여유**를 둔다(경계에서 발급받아 곧바로 죽는 토큰을 쓰지 않으려고). 회전 결과는
 **읽었던 refresh 암호문·userId·providerAccountId를 `where`에 넣은 조건부 `updateMany`**로 즉시 쓰고, count 0이면 다른 요청이
 먼저 돌린 것이므로 재조회한다 — 초대 토큰의 단일 사용(§5.6)과 같은 형태다.
@@ -281,9 +287,10 @@ Cascade라 **User 삭제가 연결 토큰까지 지운다**(§6이 어댑터 이
 - **10분 만료 · 서명은 `timingSafeEqual`**(길이 선검사) **· nonce는 단순 대조**(서명이 이미 검증됐다). 판정 순서는 서명 → nonce → 만료 →
   사용자로, **만료를 사용자보다 앞에 둬** 만료된 state가 누구 것이었는지 말하지 않는다.
 - **목적지를 서명 payload에 싣는다** — 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
-  ⚠️ **2026-09-07에 slug 하나에서 `StateDest` 갈래 둘로 넓어졌다**: `{kind:"settings", slug}`와
-  `{kind:"new"}`. 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
-  공격자가 착지를 정한다. 옛 `{slug}` payload는 `state-mismatch`로 거부된다(10분 만료라 배포 직후
+  ⚠️ **slug 하나에서 `StateDest` 갈래 셋으로 넓어졌다**: `{kind:"settings", slug}`·`{kind:"new"}`
+  (2026-09-07)·`{kind:"account"}`(6b-4). 뒤의 둘은 사용자 축이라 프로젝트가 없어 slug가 착지를
+  겸할 수 없고, 갈래를 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
+  쿼리로 빼면 공격자가 착지를 정한다. 옛 `{slug}` payload는 `state-mismatch`로 거부된다(10분 만료라 배포 직후
   창이고, 그 창의 사용자는 버튼을 다시 누르면 된다).
 - **빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** 설정 오류를 "다시 눌러 주세요"로 위장하면
   누구나 재현 가능한 서명이 통과한다.
@@ -321,7 +328,7 @@ Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 �
 사용자가 명시적으로 "GitHub 연결"을 실행한 경우에만 같은 User에 `github-app` Account를 추가한다.
 로그인용 github/google Account의 추가 연결은 허용하지 않는다. `safePrismaAdapter`가 User 행을
 잠근 뒤 검사하고, OAuth callback이 쓰는 세션 조회부터 만료를 검사한다. 신규 로그인 Account에는
-식별자 네 필드만 저장한다. credential-storage의 로컬 저장 보호 구현·격리 PostgreSQL 검증은 준비됐으며 배포·실물 OAuth·운영 데이터 전환은 미완료다.
+식별자 네 필드만 저장한다 — **토큰은 아예 남기지 않는다**(로그인 뒤 쓰지 않으므로 DB 유출 시 노출 범위만 넓어진다). 전환은 dev·prod 양쪽 완료됐고 실물 OAuth로 확인했다(같은 이메일의 다른 provider 로그인이 `OAuthAccountNotLinked`로 거부된다).
 
 잘못된 자동 병합은 불편이 아니라 **계정 탈취**다 — provider가 반환하는 이메일이 검증됐다는 보장이
 provider마다 다르다.
@@ -391,21 +398,21 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 - **state 없이·위조한 state로 연결 callback 도착** (§5.4.1) — code 교환과 `Account` 쓰기가 **0회**여야 한다
 - 로그·클라이언트 응답에 토큰·PEM·DB URL 노출 (`lib/failure.ts` + **Server Action 경로의 회귀 테스트 `app/(edit)/__tests__/publish-failure.test.ts`** — 같은 `triggerPull`을 부르면서 `error.message`를 직렬화해 Prisma 접속 오류가 pooler 호스트·DB 유저를 담은 적이 있다)
 
-## 6. 스키마 변화 — 5테이블에서 11테이블로
+## 6. 스키마 변화 — 5테이블에서 12테이블로
 
 **MVP가 5테이블을 지킨 것은 절제였다.** JWT 세션을 고른 이유가 정확히 "사용자 테이블 4개가 사라진다"
 였다(MVP §5). SaaS는 그 절제를 되돌린다 — 정당한 대가이지만, **한 번에 하지 않는다**(§8이 단계로 쪼갠 이유).
 
 | 테이블 | 언제 | 왜 |
 |---|---|---|
-| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider에는 쓰지 않으며, 현재 로컬 구현에서는 전체 세션 회수의 5분 확인 요청을 목적 접두로 분리해 저장한다(아래 전체 세션 회수 절). ⚠️ **`Account`는 4단계부터 소유자가 둘이다** — 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)이 provider 값으로 갈린 같은 테이블이고, **4단계의 스키마 변화는 0이다**(§5.4) |
+| `User` · `Account` · `Session` · `VerificationToken` | 2단계 ✅ | Auth.js DB 어댑터(`@auth/prisma-adapter` 2.11.3). `VerificationToken`은 이메일 provider에는 쓰지 않으며, 전체 세션 회수의 5분 확인 요청을 목적 접두로 분리해 저장한다(아래 전체 세션 회수 절). ⚠️ **`Account`는 4단계부터 소유자가 둘이다** — 로그인(`provider:"github"`)과 연결(`provider:"github-app"`)이 provider 값으로 갈린 같은 테이블이고, **4단계의 스키마 변화는 0이다**(§5.4) |
 | `ProjectMember` | 2단계 ✅ | 권한의 유일한 정본 |
 | `ProjectInvitation` | 2단계 ✅ | 수락 전 상태. `tokenHash` unique |
-| `SyncRun` | 7단계 | 실행 이력·idempotency·동시 실행 차단 |
+| `SyncRun` | 7단계 ✅ | 실행 이력·동시 실행 차단. ⚠️ **`idempotencyKey`·`type`은 만들지 않았다** — 지금 두 진입점 중 키를 만들 주체가 없다(cron은 하루 한 번, UI는 클릭이다). 동시성은 `Project` 행 잠금이 막고, 그 둘은 **push를 이 테이블에 넣을 때** 의미가 생긴다 |
 
 **✅ 여섯 테이블이 dev·prod에 섰다** (dev 2026-09-05 `db:migrate`, prod 2026-09-06 `db:deploy` —
 `20260904182548_add_tenant_auth_tables`). `Authenticator`(WebAuthn)는 만들지 않는다 — 그 provider를
-쓰지 않으므로 어댑터의 네 메서드가 호출될 경로가 없고, 위 11테이블 셈도 그것을 빼고 있다.
+쓰지 않으므로 어댑터의 네 메서드가 호출될 경로가 없고, 위 12테이블 셈도 그것을 빼고 있다.
 
 ⚠️ **`onDelete`가 둘로 갈렸다.** `Account`·`Session` → `User`는 **Cascade**여야 한다 — 어댑터의
 `deleteUser`가 `p.user.delete` 하나만 부르므로 `Restrict`면 그 메서드가 항상 실패한다. `ProjectMember`·
@@ -423,11 +430,17 @@ preview 실측)는 `features/tenant-auth/tasks.md` §6 대조표에 있다. 두 
 `ProjectMember.updatedAt`으로 대부분 추적되고, 감사 로그를 제대로 하려면 보존 기간·개인정보 마스킹
 정책이 따라온다. 실제로 "누가 언제 뭘 했는지"를 못 찾는 상황이 생기면 그때 만든다.
 
-⚠️ **그 문장의 `SyncRun`은 아직 없다 — 7단계가 만든다** (2026-09-09에 시제를 고쳤다. `SyncRun`이
-실재하는 것처럼 읽혀서 `logs` 화면을 설계할 때 "데이터는 이미 있다"로 오독됐다). 지금 이력의 재료는
-셋뿐이다: `Translation.updatedAt`+`updatedBy`(누가 무슨 값을 고쳤나) · `Project.lastCommitSha`+
-`lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(**마지막 Publish 1건**). 그래서 IA의
-`logs` 화면(§7.7)은 **7단계 `SyncRun`의 소비자**이고, 그 전에 만들면 "최근 편집 목록"까지다.
+✅ **`SyncRun`은 7단계가 만들었다** (`20260910012114_add_sync_run`). 그전까지 이력의 재료는 셋뿐이었고
+(`Translation.updatedAt`+`updatedBy` · `Project.lastCommitSha`+`lastCommitAt` · `lastPublishedAt`+`lastPrUrl`)
+`logs` 화면(§7.7)은 그 테이블의 소비자로 설계됐다. ⚠️ **이 자리에 한때 "아직 없다"가 적혀 있었던
+이유는 오독이다** — `SyncRun`이 실재하는 것처럼 읽혀 화면을 설계할 때 "데이터는 이미 있다"로 갔다.
+새 테이블을 예고할 때는 시제를 명시한다.
+
+**그 뒤 `Project`에 컬럼 넷이 더 섰다** — `declaredBaseLocale`(6b-3, 기준 로케일의 **선언**) ·
+`archivedAt`(7단계, 보관) · `repositoryId`(sec-audit-2, **쓰기 대상의 불변 id** — 옛 행은 null이고
+OWNER 재연결까지 Publish가 거부된다) · `User.emailLookup`/`ProjectInvitation.emailLookup`(credential,
+암호문 email의 조회 키). 마이그레이션은 **17개**이고, `20260910060000_finalize_credential_storage`가
+`DROP INDEX` 둘을 하므로 **처음으로 additive가 아니다**(전제 검증 DO 블록이 앞에 선다).
 
 **마이그레이션은 additive-first**로 배포한다 — nullable 관계와 새 테이블을 먼저 넣고, 기존 `Project`에
 소유자를 backfill한 뒤, 애플리케이션을 새 인가 경로로 전환하고, 필요하면 그다음에 NOT NULL을 건다.
@@ -652,12 +665,12 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 "서버가 아는 프로젝트와 다른가"였고 지금은 **"이 토큰이 그 프로젝트의 것인가"** 다. 역행 거부
 (`commitAt`)는 그대로다.
 
-⚠️ **거부가 셋으로 늘었다 — `checkFormat`** (2026-09-07). 같은 프로젝트인데 **다른 번역 표면**을 보내는
+⚠️ **거부가 넷이다 — `checkArchived`(7단계, 맨 앞) · 오배송 · 역행 · `checkFormat`(2026-09-07).** 같은 프로젝트인데 **다른 번역 표면**을 보내는
 push도 409다. `applyPush`가 페이로드 포맷으로 포맷 컬럼 셋을 덮으므로, 자동 후보의 YAML(=`adapter:`를
 박지 않는다)로 도는 CI가 1순위 표면을 보내면 **2순위를 확정한 프로젝트의 키가 전부 orphan된다.** 전제
 "자동 후보면 탐지가 같은 답을 낸다"는 1순위에만 참이고, 한 리포에 표면이 둘인 `i18n-format-check`가
-실물이다(§7.1). 상세와 대가는 ARCHITECTURE §5.5.5에 있다 — **정당한 이전도 409가 되고, 그 재설정 UI는
-§8 7단계다.**
+실물이다(§7.1). 상세와 대가는 ARCHITECTURE §5.5.5에 있다 — **정당한 이전도 409가 되는데 그 재설정 UI는
+아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다 — §8). 복구는 손으로 포맷 컬럼을 고치는 것뿐이다.
 
 ### 7.9 프로젝트 수명주기 — 보관까지만 만든다
 
@@ -855,7 +868,7 @@ GitHub 설정 페이지의 **레코드 번호**가 들어가 있어 로그인이
 - [x] **워크플로 없이 첫 적재** (§7.4) — `runFirstIngest`가 `assemblePushInput`→`buildPushPayload`→`applyPush`를 지난다
 - [x] 연동 PR 생성 또는 복사 가능한 워크플로 — **복사용 YAML로 정했다** (`workflows: write` 권한을 늘리지 않는다).
       설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운 문장이라는 판정이다
-- [x] `ready` 판정과 실패 진단 — `planProjectReadiness` 3갈래 + `OnboardError` 18갈래.
+- [x] `ready` 판정과 실패 진단 — `planProjectReadiness` 3갈래 + `OnboardError` 19갈래(sec-audit-2가 `resource-limit`을 더했다).
       ⚠️ **Actions 링크는 넣지 않았다** — 첫 적재는 Actions가 아니라 서버가 돌리므로 가리킬 run이 없다.
       실패 사유는 그 호출의 반환값에만 있고(중간 상태 무저장), 설정 화면의 [다시 시도]가 인라인으로 낸다
 - [x] **`Project.pushTokenHash` 발급·대조 + `/api/pull` 전 프로젝트 순회** (§7.8·§4.3 ②) — 공유 slug env
@@ -1102,7 +1115,7 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 `idempotencyKey`가 의미를 갖는다) · `needs_configuration` · `SyncRun` 보존 기간(행이 쌓이는 속도를
 한 달 관측한 뒤).
 
-### 8단계 — UI 재작성 (Figma) ⬜ → `features/ui-rework/`
+### 8단계 — UI 재작성 (Figma) ⬜ (착수 전 — `/feature`가 산출물 디렉터리를 만든다)
 
 **2026-09-09 사용자 결정.** 6단계가 화면 열 개를 한 디자인 시스템 위에 세웠고, 그 위에서 **시안이
 새로 그려지는 중이다**(Figma `cuMNHY0Cn5ei9Szjqfz0tm` node `212-937`, 번역 화면 하나). **폴리싱이
@@ -1197,6 +1210,13 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
     **대상 리포의 secret과 함께** 그것을 실행시킨다. 판정은 `lib/locale-code.ts`의 잎 함수 둘이고
     **두 층에 건다** — 스키마 경계는 새 값을, `resolveLocalePaths`는 **경계가 서기 전에 저장된
     행**을 막는다(야간 cron이 읽는 것이 그 행이다).
+11. **리포의 정체성은 이름이 아니라 `Project.repositoryId`다** — 이름은 주소일 뿐이라 재사용된다
+    (2026-09-10 추가, sec-audit-2 발견 34). 리포를 리네임하고 같은 조직이 옛 이름으로 새 리포를
+    만들면 GitHub의 redirect가 사라지고, 저장된 `repoOwner/repoName`이 **남의 리포**를 가리킨다 —
+    그 리포가 public이면 이 프로젝트의 번역이 그대로 공개된다. ⚠️ **판정이 세 층에 걸린다**:
+    installation 토큰을 그 id 하나로 좁히고(`createGitClient`), 쓰기 직전 `GET /repos`의 id를
+    재대조하고, **화면도 이름보다 id를 먼저 본다**(`planConnectionHealth`의 `repo-replaced`).
+    쓰기 층에만 두면 설정 화면이 초록인 채 Publish만 죽는다.
 
 **판정을 어디에 두는가도 불변식에 붙는다** (§5.2의 연장, 2026-09-07): 판정은 순수 함수여야 하고,
 **클라이언트가 읽는 판정은 잎 모듈이어야 한다.** `lib/onboarding/message.ts`를 클라이언트 컴포넌트가
@@ -1228,7 +1248,7 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
     오설정은 `checkFormat`이 409로 막는다(§7.8) — 전에는 조용히 키를 전부 orphan시켰다
 
 
-## 11. sec-audit-2 보안 보강 (2026-09-10, 배포 전)
+## 11. sec-audit-2 보안 보강 (2026-09-10, 프로덕션 반영 완료)
 
 - **쓰기 대상 고정**: `Project.repositoryId` nullable 컬럼을 먼저 추가한다. 생성·OWNER 재연결에서
   GitHub의 ID를 저장하고, installation 토큰도 그 ID에만 한정한다. 이름이 같은 다른 리포나 ID가 없는
@@ -1239,27 +1259,36 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
   코드 구문 검사는 완전한 실행 시간 격리를 보장하지 않는다.
 - **Publish 정합성**: 번역 값과 완료 기준 최대 수정 시각은 같은 RepeatableRead 스냅샷이다.
   `SyncRun` 실행 잠금이 막는 중복 실행과 구분한다.
-- **후속 정책**: 리포 연결자 admin 권한 추가 요구(#37)는 2026-09-10 사용자 결정으로 제외한다. 전체 세션 회수(#38)는 별도 후속으로 로컬 구현했다(아래 절). credential-storage의 로컬 구현과 운영 전환 상태는 아래 저장 보호 절 및 feature 태스크에서 추적한다.
+- **후속 정책**: 리포 연결자 admin 권한 추가 요구(#37)는 2026-09-10 사용자 결정으로 **제외**한다 — 현행 가시성 기반 정책을 유지한다. 전체 세션 회수(#38)는 ✅ 배송됐다(아래 절).
 
-자동 검증과 실제 DB/OAuth/GitHub 검증의 구분은
-[sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)에 남긴다. 이 절은 프로덕션 반영 선언이 아니다.
+✅ **PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → squash `ff5e8a4`로 프로덕션에 나갔고**, 마이그레이션 `20260910030000_pin_repository_id`가 dev·prod 양쪽에 적용됐다. 프로덕션 프로젝트 다섯은 OWNER 재연결로 `repositoryId`가 고정됐고 그 뒤 Publish가 실물 커밋을 냈다.
+
+⚠️ **판정이 화면에도 서 있다** — 쓰기 직전 대조만 두면 이름을 재사용한 리포에서 설정 화면이 초록을 띄우는 동안 Publish만 죽는다. `planConnectionHealth`가 ID를 이름보다 **먼저** 보고 `repo-replaced`를 낸다(§7.5의 7갈래). 미고정 행은 `selectPullTargets`가 야간 순회에서도 뺀다 — 남겨 두면 재연결 전까지 프로젝트마다 매일 밤 실패 `SyncRun`이 쌓인다.
+
+실물 검증과 남은 운영 항목은 [sec-audit-2 작업 기록](features/sec-audit-2/tasks.md)에 있다.
 
 
-## Credential 저장 보호 — 구현과 운영 전환 (2026-09-10)
+## Credential 저장 보호 — dev·prod 전환 완료 (2026-09-10)
 
-코드 리뷰를 위한 dev 통합은 사용자 승인으로 진행하며 `vercel.json`의 `git.deploymentEnabled.dev=false`로 자동 Preview 배포를 보류한다. 키/DB 전환과 실물 검증 전에는 해제하지 않는다.
+✅ **PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → squash `9e6854e`(전환) · [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → squash `f6933d7`(평문 인덱스 제거)로 프로덕션에 나갔다.** 양쪽 DB의 backfill·전건 검증이 끝났고 전환 중 걸었던 dev Preview 배포 보류는 해제됐다.
 
 현재 credential 코드에서 유효 어댑터는 safePrismaAdapter를 확장한 credentialAdapter다. 추가 로그인 계정 거부·User 잠금은 보존하며 세션은 도메인 분리 SHA-256으로 저장한다. 브라우저와 Auth.js 내부에서만 원문을 쓰고 DB digest 쿠키는 거부한다. 24시간/1시간 슬라이딩과 요청별 membership 판정은 그대로다. 기존 원문 세션은 차단 전환에서 폐기한다.
 
 User.email/name/image와 모든 초대 email은 서버에서 암·복호화한다. User.emailLookup은 전체 사용자 범위 HMAC unique, 초대 lookup은 프로젝트 범위 일반 인덱스다. 타인 이메일은 기존 서버 마스킹을 유지하며 손상/키 오류는 unavailable로 표시한다. GitHub refresh는 쓰기 키를 먼저 검증한 뒤 공급자를 호출하고 토큰 쌍을 암호화해 저장한다.
 
-R1은 nullable lookup·새 인덱스만 준비하고 기존 평문 코드가 계속 동작한다. R2는 전체 트래픽/구 배포/진행 중 writer를 차단한 뒤 backfill, 전건 검증, NOT NULL 및 옛 email 인덱스 제거, 새 앱 활성화를 수행한다. **공유 dev/prod 전환과 실제 브라우저 두 공급자 검증은 아직 완료하지 않았다.** [운영 절차](features/credential-storage/operations.md)·[검증 현황](features/credential-storage/tasks.md)을 따른다.
+R1은 nullable lookup·새 인덱스만 준비해 기존 평문 코드가 계속 동작했고, R2는 backfill·전건 검증 뒤 **평문 email 인덱스 둘을 제거**했다(`20260910060000_finalize_credential_storage`).
+
+⚠️ **R2가 `emailLookup`에 NOT NULL을 걸지 않는다 — 초안과 갈린 지점이다.** 그 제약은 전환 도구와 **상호 배타적**이다: 도구의 CAS가 아직 안 채워진 행을 `where: { emailLookup: null }`로 집는데, 컬럼이 non-nullable이 되는 순간 Prisma가 그 **입력**을 거부한다(읽기는 관대해서 NULL을 그대로 돌려주므로 조회로는 안 드러난다). 걸면 컷오버 이전 백업을 복원했을 때 다시 채울 수단이 사라진다. **유일성은 R1의 unique 인덱스가** 이미 들고, **"lookup 없는 행이 안 생긴다"는 유일한 생성자 `credentialAdapter.createUser`가** 쓰기 전에 증명한다(단언이 아니라 던진다). 근거는 그 migration.sql 주석과 [운영 절차](features/credential-storage/operations.md).
+
+⚠️ **dev와 prod는 서로 다른 키를 쓴다** — dev 키가 새도 프로덕션 회원 데이터가 안 열려야 한다. 도구는 *어느 DB*만 검사하고 키는 target에 묶여 있지 않으므로, prod 대상 명령은 별도 파일을 셸로 source해 키를 덮는다(`.env.example`).
+
+실물 검증(두 공급자 로그인·계정 병합 거부·전 화면 렌더·손상 행 격리·초대 왕복)은 끝났다. 남은 것은 [검증 현황](features/credential-storage/tasks.md)의 키 회전 리허설(P7)과 차단·drain 리허설(T11)이다.
 
 
-## 전체 세션 회수 — sec-audit-2 #38 (2026-09-10, 로컬 구현)
+## 전체 세션 회수 — sec-audit-2 #38 (2026-09-10, 프로덕션 반영 완료)
 
 `/account`의 Sign out everywhere는 서버가 고른 기존 로그인 공급자의 새 OAuth 확인을 거친다. 같은 providerAccountId·기존 세션·state·5분 nonce가 일치해야 해당 사용자 Session 전부를 삭제한다. 현재 기기도 포함하며 확인 요청 소비와 삭제는 한 트랜잭션이다. 다른 사용자·멤버십·초대·GitHub 연결에는 손대지 않는다. DB 실패는 성공으로 표시하지 않는다.
 
 Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 두 화면(`/`, `/invite/[token]`)은 남은 회수 쿠키를 먼저 지운다. 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
 
-공급자 SSO는 허용한다. 계정 선택을 요청하지만 비밀번호/MFA 재입력 강제를 보장하지 않는다. 취소·만료·다른 계정·장애를 화면에서 구분하며 다시 시작할 수 있다. **실제 공급자 두 종류와 두 브라우저·키보드 검증, 배포는 대기**다. [스펙](features/session-revocation/spec.md)·[검증 기록](features/session-revocation/tasks.md)을 따른다.
+공급자 SSO는 허용한다. 계정 선택을 요청하지만 비밀번호/MFA 재입력 강제를 보장하지 않는다(GitHub·Google 둘 다 `prompt=select_account`를 지원한다 — 계정 선택기까지이고 자격증명 재입력이 아니다). 취소·만료·다른 계정·장애를 화면에서 구분하며 다시 시작할 수 있다. ✅ **PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`로 배송됐고** 프로덕션에서 실물 확인했다 — 그 사용자의 세션 둘이 지워지고 **다른 사용자의 세션은 남았으며** 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스다. [스펙](features/session-revocation/spec.md)·[검증 기록](features/session-revocation/tasks.md)을 따른다.
