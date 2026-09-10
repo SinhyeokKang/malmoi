@@ -106,7 +106,16 @@ export function TranslationInput({
         aria-label={m.translations.cellLabel(keyName, localeCode)}
         // `fieldClass`가 `aria-[invalid=true]:border-destructive`를 든다 — 색을 여기서 또 주지 않는다.
         aria-invalid={failed}
-        className="w-full"
+        /**
+         * ⚠️ **테두리 없는 표면이다** (8-4 — 시안은 값 칸에 평문만 그린다). hover·포커스에서만
+         * 드러난다: 2,709개의 입력이 각자 테두리를 들면 표가 격자로 읽혀 값이 안 보인다.
+         *
+         * ⚠️ **`placeholder`를 지우지 않는다** — `Untranslated` 배지·상태 필터·이 테두리가 **같은
+         * 배송에서** 사라지므로, 값이 빈 셀의 유일한 시각 신호가 그것뿐이다 (spec Q3).
+         *
+         * ⚠️ **disabled 배경은 그대로 둔다** — orphaned 축의 셀이 왜 안 눌리는지 말하는 표면이다.
+         */
+        className="w-full border-transparent bg-transparent hover:border-input"
       />
 
       {/* 상태는 한 줄만 차지한다 — 행이 흔들리면 903행 표가 읽기 어려워진다 */}

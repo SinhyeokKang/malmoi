@@ -62,3 +62,15 @@ export function activeFilters(
 function sameSelection(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((code) => b.includes(code));
 }
+
+/**
+ * 초기화 — **칩 전부를 뗀 뒤의 쿼리** (8-4).
+ *
+ * ⚠️ **`ns`를 `undefined`로 되돌리지 않는다.** 그 값은 "기본 착지"(남은 일이 있는 첫 네임스페이스)를
+ * 뜻하는데, 초기화가 그리로 데려가면 사용자가 보고 있던 것과 무관한 곳에 떨어진다. 네임스페이스
+ * 칩의 제거와 같은 목적지(`*`)여야 한다 — 단, 애초에 칩이 아니었으면(미지정) 그대로 둔다.
+ */
+export function clearedQuery(query: TranslationsQuery): TranslationsQuery {
+  const ns = query.ns === undefined || query.ns === "" ? query.ns : ALL_NAMESPACES;
+  return { ...query, ns, locales: undefined, q: undefined };
+}

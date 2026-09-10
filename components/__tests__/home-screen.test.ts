@@ -35,17 +35,20 @@ describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
   });
 
   /**
-   * ⚠️ **진행률 행이 링크여야 한다.** `?focus=`를 실어 그 로케일 기준으로 번역 화면에 착지시키는
+   * ⚠️ **진행률 행이 링크여야 한다.** `?locales=`를 실어 그 로케일만 보이는 번역 화면에 착지시키는
    * 것이 개요가 일로 이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
+   *
+   * ⚠️ **8-4에서 `?focus=`가 `?locales=`로 바뀌었다** — 로케일이 열이 아니라 행이 되면서 "기준 열"에
+   * 화면의 대응물이 없어졌다. 단일 선택이라 이 링크의 동작은 같다.
    */
-  it("진행률 행이 `?focus=`를 실은 번역 화면 링크다", () => {
-    expect(src).toMatch(/routes\.translations\([^)]*focus/);
+  it("진행률 행이 `?locales=`를 실은 번역 화면 링크다", () => {
+    expect(src).toMatch(/routes\.translations\([^)]*locales/);
   });
 
   /** 활동 항목은 그 편집이 있던 네임스페이스와 로케일로 데려간다 — "무엇이 바뀌었나"에서 "고치자"로. */
-  it("활동 항목이 `?ns=`와 `?focus=`를 실은 링크다", () => {
+  it("활동 항목이 `?ns=`와 `?locales=`를 실은 링크다", () => {
     expect(src).toMatch(/ns:/);
-    expect(src).toMatch(/focus:/);
+    expect(src).toMatch(/locales:/);
   });
 
   it("순수 판정을 `lib/home/overview`에서 받는다 — 화면이 집계하지 않는다", () => {
@@ -77,11 +80,11 @@ describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
  */
 describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
   /**
-   * 목록 행 · 사이드바 스위처 · breadcrumb 다섯.
+   * 프로젝트 하위 화면 다섯 — **breadcrumb이 있던 자리들**이다.
    *
-   * ⚠️ **새 화면이 생기면 여기 넣는다** — 안 넣으면 그 화면의 breadcrumb이 조용히 미검사이고,
-   * 그것이 정확히 "같은 의도가 어디서 눌렀는지에 따라 다른 곳에 착지한다"가 되는 경로다.
-   * 7단계가 `logs`를 더했다.
+   * ⚠️ **8-4가 그 breadcrumb 다섯을 전부 지웠다** (spec Q5). 그래서 이 목록은 더 이상 "루트 링크를
+   * 드는 자리"가 아니라 **"루트 의미로 번역 화면을 가리키면 안 되는 자리"**의 목록이다 — 아래
+   * 부정 단언이 그 축이고, 긍정 단언의 대상은 `ROOT_LINK_SITES` 둘로 줄었다.
    */
   const SITES = [
     "app/(edit)/projects/page.tsx",
@@ -96,18 +99,31 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
    * ⚠️ **사이드바가 아니라 `lib/shell/nav.ts`다** (8-3). 스위처가 사라지면서 그 호출이 화면에서
    * 판정층으로 내려갔다 — 셸에서 프로젝트 루트로 가는 자리는 이제 `Home` 항목 하나이고 그 href를
    * 만드는 것이 `projectSections`다.
+   *
+   * ⚠️ **8-4에서 둘로 줄었다** — breadcrumb 다섯이 사라졌고, 위로 가는 길은 사이드바가 든다.
    */
-  const ROOT_LINK_SITES = [...SITES, "lib/shell/nav.ts"];
+  const ROOT_LINK_SITES = ["app/(edit)/projects/page.tsx", "lib/shell/nav.ts"];
 
-  it("일곱 자리가 전부 `routes.project`를 쓴다", () => {
+  it("두 자리가 전부 `routes.project`를 쓴다", () => {
     for (const path of ROOT_LINK_SITES) {
       expect(read(path), path).toMatch(/routes\.project\(/);
     }
   });
 
   /**
-   * ⚠️ **breadcrumb·스위처에 `routes.translations(slug)`가 남아 있으면 안 된다.** 쿼리를 실은
-   * 호출(`routes.translations(slug, { focus })`)은 번역 화면으로 **가려는** 것이라 대상이 아니다 —
+   * ⚠️ **breadcrumb이 하나도 안 남았다** (8-4 spec Q5) — 번역 화면에서만 떼면 형제 라우트 넷과
+   * 어긋난 상태로 배포된다. `components/ui/breadcrumb.tsx`는 지우지 않는다(`/projects/new`가
+   * 프로젝트 컨텍스트 밖이라 사이드바가 길을 못 준다).
+   */
+  it("프로젝트 하위 화면 다섯(과 목록)에 `Breadcrumb`이 없다", () => {
+    for (const path of SITES) {
+      expect(read(path), path).not.toMatch(/<Breadcrumb/);
+    }
+  });
+
+  /**
+   * ⚠️ **이 화면들에 `routes.translations(slug)`가 남아 있으면 안 된다.** 쿼리를 실은
+   * 호출(`routes.translations(slug, { locales })`)은 번역 화면으로 **가려는** 것이라 대상이 아니다 —
    * 인자가 slug 하나인 호출만 센다.
    */
   it("루트 의미로 `routes.translations(slug)`를 쓰는 자리가 없다", () => {

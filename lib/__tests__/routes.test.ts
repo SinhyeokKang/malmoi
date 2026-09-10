@@ -127,11 +127,11 @@ describe("routes.translations — 쿼리", () => {
   });
 
   it("undefined는 지운다 — `?ns=undefined`가 실리면 서버가 그것을 이름으로 읽는다", () => {
-    expect(routes.translations("p", { ns: undefined, focus: "ko" })).toBe("/projects/p/translations?focus=ko");
+    expect(routes.translations("p", { ns: undefined, locales: "ko" })).toBe("/projects/p/translations?locales=ko");
   });
 
   it("빈 문자열도 지운다 — 필터를 비운 것은 필터가 없는 것이다", () => {
-    expect(routes.translations("p", { q: "", focus: "ko" })).toBe("/projects/p/translations?focus=ko");
+    expect(routes.translations("p", { q: "", locales: "ko" })).toBe("/projects/p/translations?locales=ko");
   });
 
   it("`*`(전체)가 살아서 나간다 — 인코딩돼 이름이 바뀌면 전체 보기가 죽는다", () => {
@@ -145,13 +145,12 @@ describe("routes.translations — 쿼리", () => {
     expect(new URL(url, "https://x").searchParams.get("q")).toBe("a b&c=d");
   });
 
-  it("네 파라미터가 다 실린다", () => {
-    const url = new URL(routes.translations("p", { ns: "common", focus: "ko", q: "save", state: "needs-review" }), "https://x");
+  it("세 파라미터가 다 실린다 — 8-4가 `focus`·`state`를 폐기했다", () => {
+    const url = new URL(routes.translations("p", { ns: "common", locales: "ko,ja", q: "save" }), "https://x");
     expect([...url.searchParams.entries()]).toEqual([
       ["ns", "common"],
-      ["focus", "ko"],
+      ["locales", "ko,ja"],
       ["q", "save"],
-      ["state", "needs-review"],
     ]);
   });
 });

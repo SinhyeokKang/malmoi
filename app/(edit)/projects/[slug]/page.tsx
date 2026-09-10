@@ -142,11 +142,13 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                 {locales.map((locale) => (
                   <li key={locale.code}>
                     {/*
-                      ⚠️ **행 전체가 링크다.** 그 로케일 기준으로 번역 화면에 착지시키는 것이 개요가 일로
+                      ⚠️ **행 전체가 링크다.** 그 로케일만 보이는 번역 화면에 착지시키는 것이 개요가 일로
                       이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
+                      (8-4에서 `?focus=`가 `?locales=`로 바뀌었다 — 로케일이 열이 아니라 행이라
+                      "기준 열"이 아니라 **보일 로케일**이다. 단일 선택이라 동작은 같다.)
                     */}
                     <Link
-                      href={routes.translations(slug, { focus: locale.code })}
+                      href={routes.translations(slug, { locales: locale.code })}
                       className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
                     >
                       {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 (DESIGN §4.1) */}
@@ -204,7 +206,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
           이어지는 자리다. 키 하나를 가리키는 URL은 없으므로 그 키가 사는 화면 상태를 준다.
         */}
         <Link
-          href={routes.translations(slug, { ns: item.namespace, focus: item.locale })}
+          href={routes.translations(slug, { ns: item.namespace, locales: item.locale })}
           className="focus-visible:ring-ring text-sm focus-visible:ring-[3px] focus-visible:outline-none"
         >
           {m.home.activity.edit(item.actor, item.key, item.locale)}

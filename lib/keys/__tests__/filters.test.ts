@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activeFilters } from "../filters";
+import { activeFilters, clearedQuery } from "../filters";
 
 /**
  * 칩 행의 유일한 출처 (8-4 T2 — design §3.5).
@@ -73,5 +73,24 @@ describe("activeFilters — `next`가 나머지를 보존한다", () => {
 
   it("원본 쿼리를 건드리지 않는다 — 호출부가 같은 객체를 다시 쓴다", () => {
     expect(query).toEqual({ ns: "common", locales: "ko", q: "save" });
+  });
+});
+
+describe("clearedQuery — 초기화 버튼", () => {
+  it("칩 셋을 한 번에 뗀다", () => {
+    expect(clearedQuery({ ns: "common", locales: "ko", q: "save" })).toEqual({
+      ns: "*",
+      locales: undefined,
+      q: undefined,
+    });
+  });
+
+  /** ⚠️ 기본 착지는 칩이 아니었다 — 초기화가 그것을 바꾸면 사용자가 보던 곳을 잃는다. */
+  it("미지정 네임스페이스는 그대로 둔다", () => {
+    expect(clearedQuery({ q: "save" })).toEqual({ ns: undefined, locales: undefined, q: undefined });
+  });
+
+  it("이미 전체면 전체 그대로다", () => {
+    expect(clearedQuery({ ns: "*" })).toEqual({ ns: "*", locales: undefined, q: undefined });
   });
 });
