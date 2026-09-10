@@ -71,6 +71,27 @@ export const en = {
    * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (SAAS §7.7 결정 2). 키 수·미배포 건수는 번역
    * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
    */
+  /**
+   * 공개 문서 둘 — 로그인 화면 푸터가 가리킨다 (8-1a).
+   *
+   * ⚠️ **아직 placeholder이고 출시 전에 채운다.** 라우트를 먼저 딴 이유는 시안 푸터가 그것을
+   * 가리키기 때문이고, 링크가 죽어 있는 것보다 "준비 중"이 낫다는 판정이다.
+   *
+   * ⚠️ **`back`이 없으면 사용자가 갇힌다** — 이 둘은 셸 **밖**이라 사이드바도 푸터도 없고
+   * 뒤로가기 말고 돌아올 길이 없다.
+   */
+  publicDocs: {
+    back: "Back to sign in",
+    privacy: {
+      title: "Privacy Policy",
+      body: "We're still writing this. It will be here before launch.",
+    },
+    docs: {
+      title: "Docs",
+      body: "We're still writing this. It will be here before launch.",
+    },
+  },
+
   home: {
     /** ⚠️ **착지 클릭 하나를 갚는 주된 동작이다** (결정 1의 대가) — 화면당 하나인 primary가 이것이다. */
     openTranslations: "Open translations",

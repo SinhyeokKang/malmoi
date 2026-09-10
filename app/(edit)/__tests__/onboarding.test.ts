@@ -179,7 +179,8 @@ describe("비로그인은 어느 Action도 지나지 못한다", () => {
     await expect(createProject(createInput())).rejects.toThrow(/NEXT_REDIRECT/);
     // 2026-09-07에 다섯이 됐다 — 해제가 설정 화면에서 사용자 수준으로 옮겨왔다 (리뷰 🟡9).
     await expect(disconnectGithub()).rejects.toThrow(/NEXT_REDIRECT/);
-    expect(hoisted.redirect).toHaveBeenCalledWith("/");
+    // 8-1a: 로그인 화면이 `/signin`으로 갈렸다 — 루트는 랜딩 자리의 껍데기다.
+    expect(hoisted.redirect).toHaveBeenCalledWith("/signin");
   });
 
   it("GitHub을 한 번도 부르지 않는다 — 거부될 요청이 레이트 리밋을 태우지 않는다", async () => {

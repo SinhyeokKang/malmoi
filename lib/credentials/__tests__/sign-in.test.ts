@@ -8,7 +8,7 @@ it("production signIn callback distinguishes storage outages from unverified ema
   const callback = (await state.factory!()).callbacks!.signIn!;
   const input = { user: { id: "u1", email: "old@example.com" }, account: { provider: "github", providerAccountId: "gh1", type: "oauth" as const }, profile: { email: "fresh@example.com" } };
   state.findUnique.mockRejectedValue(new Error("Prisma private data"));
-  expect(await callback(input)).toBe("/?error=Unavailable");
+  expect(await callback(input)).toBe("/signin?error=Unavailable");
   expect(await callback({ ...input, user: { ...input.user, email: "" } })).toBe(false);
   state.findUnique.mockResolvedValue({ userId: "u1" });
   state.transaction.mockRejectedValue({ code: "P2002", message: "private collision" });

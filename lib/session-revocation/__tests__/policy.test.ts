@@ -31,6 +31,6 @@ it("현재 세션·state·공급자 ID가 일치한 미만료 요청만 통과�
 it("HTTPS 확인 쿠키는 Host 범위·HttpOnly·5분이며 성공과 실패 URL은 고정이다", () => {
   expect(revocationCookie(true)).toMatchObject({ name: "__Host-malmoi-session-revocation", options: { secure: true, httpOnly: true, sameSite: "lax", path: "/", maxAge: 300 } });
   expect(revocationCookie(false)).toMatchObject({ name: "malmoi-session-revocation", options: { secure: false } });
-  expect(outcomeUrl("revoked")).toBe("/?sessions=revoked");
+  expect(outcomeUrl("revoked")).toBe("/signin?sessions=revoked");
   expect(outcomeUrl("unavailable")).toBe("/account?sessionRevocation=unavailable");
 });

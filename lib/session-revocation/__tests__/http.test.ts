@@ -16,16 +16,16 @@ it("ordinary login and unrelated auth routes pass through untouched", async () =
 it("verified callback returns fixed URL and clears current session only after committed success", async () => {
   finish.mockResolvedValue("revoked");
   const response = await withRevocation(request(), async () => {
-    expect(await authorizeRevocation(db, account)).toBe("/?sessions=revoked");
-    return Response.redirect("http://localhost/?sessions=revoked");
+    expect(await authorizeRevocation(db, account)).toBe("/signin?sessions=revoked");
+    return Response.redirect("http://localhost/signin?sessions=revoked");
   });
   expect(finish).toHaveBeenLastCalledWith(db, { nonce: "nonce", sessionToken: "raw", state: "s", ...account });
-  expect(response.headers.get("location")).toBe("http://localhost/?sessions=revoked");
+  expect(response.headers.get("location")).toBe("http://localhost/signin?sessions=revoked");
   expect(response.headers.getSetCookie().some(c => c.startsWith("authjs.session-token=") && c.includes("Max-Age=0"))).toBe(true);
   expect(response.headers.getSetCookie().some(c => c.startsWith("malmoi-session-revocation=") && c.includes("Max-Age=0"))).toBe(true);
 });
 it("a forged success callback URL or early Auth.js error never becomes success", async () => {
-  for (const location of ["http://localhost/?sessions=revoked", "http://localhost/?error=CallbackRouteError"]) {
+  for (const location of ["http://localhost/signin?sessions=revoked", "http://localhost/signin?error=CallbackRouteError"]) {
     const response = await withRevocation(request(), async () => Response.redirect(location));
     expect(response.headers.get("location")).toBe("http://localhost/account?sessionRevocation=unavailable");
     expect(response.headers.getSetCookie().some(c => c.startsWith("authjs.session-token="))).toBe(false);
@@ -37,13 +37,13 @@ it("failures preserve session and concurrent requests never share an outcome", a
     const url = await authorizeRevocation(db, { ...account, providerAccountId });
     return Response.redirect(`http://localhost${url}`);
   })));
-  expect(responses.map(r => r.headers.get("location"))).toEqual(["http://localhost/?sessions=revoked", "http://localhost/account?sessionRevocation=wrong-account"]);
+  expect(responses.map(r => r.headers.get("location"))).toEqual(["http://localhost/signin?sessions=revoked", "http://localhost/account?sessionRevocation=wrong-account"]);
   expect(responses[1]!.headers.getSetCookie().some(c => c.startsWith("authjs.session-token="))).toBe(false);
 });
 it("secure callback uses secure proof and session cookies", async () => {
   finish.mockResolvedValue("revoked");
   const req = new NextRequest("https://mal-moi.com/api/auth/callback/github?state=s", { headers: { cookie: "__Host-malmoi-session-revocation=secure-nonce; __Secure-authjs.session-token=secure-raw" } });
-  const response = await withRevocation(req, async () => { await authorizeRevocation(db, account); return Response.redirect("https://mal-moi.com/?sessions=revoked"); });
+  const response = await withRevocation(req, async () => { await authorizeRevocation(db, account); return Response.redirect("https://mal-moi.com/signin?sessions=revoked"); });
   expect(finish).toHaveBeenLastCalledWith(db, expect.objectContaining({ nonce: "secure-nonce", sessionToken: "secure-raw" }));
   expect(response.headers.getSetCookie().some(c => c.startsWith("__Host-malmoi-session-revocation=") && c.includes("Secure"))).toBe(true);
 });
@@ -68,11 +68,11 @@ it("HTTPS proxy callback reads secure cookies even if its internal URL is HTTP",
   finish.mockResolvedValueOnce("revoked");
   const req = new NextRequest("http://mal-moi.com/api/auth/callback/github?state=s", { headers: { "x-forwarded-proto": "https", cookie: "__Host-malmoi-session-revocation=nonce; __Secure-authjs.session-token=raw" } });
   const response = await withRevocation(req, async () => { await authorizeRevocation(db, account); return new Response(null); });
-  expect(response.headers.get("location")).toBe("https://mal-moi.com/?sessions=revoked");
+  expect(response.headers.get("location")).toBe("https://mal-moi.com/signin?sessions=revoked");
   expect(finish).toHaveBeenLastCalledWith(db, expect.objectContaining({ nonce: "nonce", sessionToken: "raw" }));
 });
 it("provider cancellation is distinct from a storage outage and preserves the session", async () => {
-  const response = await withRevocation(request("/api/auth/callback/github?error=access_denied"), async () => Response.redirect("http://localhost/?error=AccessDenied"));
+  const response = await withRevocation(request("/api/auth/callback/github?error=access_denied"), async () => Response.redirect("http://localhost/signin?error=AccessDenied"));
   expect(response.headers.get("location")).toBe("http://localhost/account?sessionRevocation=cancelled");
   expect(response.headers.getSetCookie().some(c => c.startsWith("authjs.session-token="))).toBe(false);
 });

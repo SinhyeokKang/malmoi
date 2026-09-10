@@ -12,6 +12,7 @@ import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
 import { getPrisma } from "@/lib/db";
+import { routes } from "@/lib/routes";
 
 /**
  * ⚠️ **검증을 `profile`을 만드는 자리에서 한다.** 여기서 거른 값이 그대로 `User.email`이 되기
@@ -89,8 +90,15 @@ const authConfig = NextAuth(async () => ({
    * 한 시간에 한 번만 DB 쓰기로 연장된다.
    */
   session: { strategy: "database", generateSessionToken: () => randomBytes(32).toString("base64url"), maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
-  // 거부는 우리 로그인 화면에서 보인다 — 기본 `/api/auth/error`는 디자인 밖의 무스타일 페이지다.
-  pages: { signIn: "/", error: "/" },
+  /**
+   * 거부는 우리 로그인 화면에서 보인다 — 기본 `/api/auth/error`는 디자인 밖의 무스타일 페이지다.
+   *
+   * ⚠️ **둘이 서로 다른 갈래를 받는다.** `@auth/core`가 `AuthError.kind`로 가른다 —
+   * `OAuthAccountNotLinked`는 `signIn`으로, `AccessDenied`(아래 `return false`)·`Configuration`은
+   * `error`로 간다. 같은 값을 넣어 두면 그 분기가 보이지 않으므로, 검증할 때 **두 갈래를 각각**
+   * 밟아야 한다.
+   */
+  pages: { signIn: routes.signIn(), error: routes.signIn() },
   /**
    * ⚠️ **세션 읽기 실패를 밖으로 알리는 유일한 통로다.** `auth()`는 어댑터 예외를 여기로 보내고 `null`을
    * 돌려주므로(`session.js:123`) 반환값으로는 비로그인과 구별할 수 없다 — 프로덕션 전면 장애를
@@ -152,7 +160,8 @@ const authConfig = NextAuth(async () => ({
       try {
         await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
       } catch {
-        return "/?error=Unavailable";
+        // 장애는 사유를 실어 보낸다 — 그냥 로그인 화면이면 정당한 비로그인과 같은 응답이 된다.
+        return routes.signIn({ error: "Unavailable" });
       }
       return true;
     },

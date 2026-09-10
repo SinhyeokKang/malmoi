@@ -15,7 +15,9 @@ import { describe, expect, it } from "vitest";
  * - `/api/push` — Bearer `PUSH_TOKEN` (CI가 부른다. 사람이 아니다)
  * - `/api/pull` — `CRON_SECRET` (Vercel Cron)
  * - `/api/auth/[...nextauth]` — Auth.js 핸들러 자체
- * - `/` — 로그인 화면. 세션이 없는 사람이 보는 유일한 화면이다
+ * - `/` — **랜딩 자리의 껍데기다** (8-1a). 세션 상태만 보고 `/projects`나 `/signin`으로 보낸다
+ * - `/signin` — 로그인 화면. 세션이 없는 사람이 보는 화면이고, 여기가 막히면 아무도 못 들어온다
+ * - `/privacy`·`/docs` — 공개 문서. 로그인 없이 읽혀야 하고, 로그인 화면 푸터가 가리킨다
  * - `/invite/[token]` — **수락 전엔 멤버가 아니다.** 토큰이 인가를 대신한다 (membership.test.ts)
  * - `/api/github/callback` — GitHub이 브라우저를 되돌리는 지점. `requireUser`로 스스로 인증하고,
  *   state가 무효면 slug를 못 믿어 `/projects?e=`로 간다 (`matcher`에 넣으면 `code`가 사라진다)
@@ -39,6 +41,9 @@ const EXEMPT = new Set([
   "api/pull/route.ts",
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",
+  "signin/page.tsx",
+  "privacy/page.tsx",
+  "docs/page.tsx",
   "invite/[token]/page.tsx",
 ]);
 

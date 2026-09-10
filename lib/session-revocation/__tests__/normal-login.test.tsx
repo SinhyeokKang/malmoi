@@ -6,7 +6,7 @@ vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: 
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: s.set }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ id: "i", projectId: "p", email: "a@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2030-01-01"), project: { name: "Test" } }) } }) }));
 vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row }));
-import Home from "@/app/page";
+import SignIn from "@/app/signin/page";
 import InvitePage from "@/app/invite/[token]/page";
 function providers(node: ReactNode): ReactElement[] {
   const found: ReactElement[] = [];
@@ -18,7 +18,7 @@ function providers(node: ReactNode): ReactElement[] {
   return found;
 }
 it.each(["root", "invite"])("%s login clears abandoned revocation cookies and preserves its destination", async entry => {
-  const page = entry === "root" ? await Home({ searchParams: Promise.resolve({}) }) : await InvitePage({ params: Promise.resolve({ token: "invite-token" }), searchParams: Promise.resolve({}) });
+  const page = entry === "root" ? await SignIn({ searchParams: Promise.resolve({}) }) : await InvitePage({ params: Promise.resolve({ token: "invite-token" }), searchParams: Promise.resolve({}) });
   const buttons = providers(page);
   expect(buttons).toHaveLength(2);
   for (const button of buttons) {

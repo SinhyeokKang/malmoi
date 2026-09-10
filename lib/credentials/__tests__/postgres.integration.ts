@@ -425,7 +425,7 @@ async function startOAuthProof(provider: "github" | "google", identity = "same")
 it.each(["github", "google"] as const)("Auth.js %s state/PKCE callback revokes without minting any replacement session", async provider => {
   const { callback, handlers, other } = await startOAuthProof(provider);
   const response = await callback();
-  expect(response.headers.get("location")).toBe("http://localhost/?sessions=revoked");
+  expect(response.headers.get("location")).toBe("http://localhost/signin?sessions=revoked");
   expect(response.headers.getSetCookie().some(c => c.startsWith("authjs.session-token=") && c.includes("Max-Age=0"))).toBe(true);
   expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
   expect(await prisma.user.count()).toBe(2);
