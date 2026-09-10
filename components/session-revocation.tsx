@@ -19,7 +19,7 @@ export function SessionRevocation({ outcome }: { outcome?: string }) {
   return (
     <form action={submit} className="space-y-2">
       {message !== null && <Alert variant="danger">{message}</Alert>}
-      <Button type="submit" variant="danger" size="sm" loading={pending} loadingLabel={m.account.sessions.pending}>
+      <Button type="submit" variant="danger" size="sm" loading={pending}>
         {m.account.sessions.button}
       </Button>
     </form>

@@ -81,18 +81,30 @@ describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 �
   });
 });
 
-describe("대기 라벨은 누른 행동을 말한다 (DESIGN §6.4)", () => {
+describe("버튼 로딩은 스피너 하나다 (DESIGN §6.4)", () => {
   /**
-   * ⚠️ **`loadingLabel`이 `label`과 무관하면 안 된다.** [Connect]를 눌렀는데 "Reconnect"로 바뀌면
-   * 사용자는 다른 동작이 시작된 것으로 읽고, 반대로 둘이 **같으면** 대기 상태가 시각적으로 사라진다.
+   * ⚠️ **2026-09-10에 규칙이 뒤집혔다.** 전에는 `loadingLabel`로 문구까지 교체했고("Connect" →
+   * "Connecting…"), 그 규칙이 요구한 것은 *"대기 라벨이 눌린 라벨에서 파생된다"*였다. 지금은
+   * **스피너만 세우고 라벨을 그대로 둔다** — 문구가 바뀌면 폭이 흔들리고 화면마다 대기 문구를
+   * 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다).
+   *
+   * 이 검사는 그 prop이 **되살아나지 않는지**를 본다 — 되살리면 같은 문구 부채가 다시 쌓인다.
    */
-  it("재연결 버튼의 대기 라벨이 눌린 라벨에서 파생된다", () => {
-    const src = read("components/reconnect-button.tsx");
-    expect(src).toMatch(/loadingLabel=\{pendingLabel\}/);
+  it("`loadingLabel`이 어디에도 없다", () => {
+    const files = [
+      "components/ui/button.tsx",
+      "components/reconnect-button.tsx",
+      "components/onboarding/connect-github.tsx",
+      "components/publish-button.tsx",
+    ];
+    for (const path of files) expect(read(path), path).not.toMatch(/loadingLabel/);
   });
 
-  it("GitHub 연결 버튼에 진행 중 문구가 따로 있다", () => {
-    expect(read("components/onboarding/connect-github.tsx")).toMatch(/redirecting/);
+  /** 스피너가 없으면 진행 신호가 통째로 사라진다 — 라벨이 안 바뀌므로 이것이 유일한 신호다. */
+  it("`Button`이 진행 중에 스피너를 렌더한다", () => {
+    const src = read("components/ui/button.tsx");
+    expect(src).toMatch(/Loader2/);
+    expect(src).toMatch(/animate-spin/);
   });
 });
 

@@ -41,7 +41,6 @@ export function ArchiveCard({
       <Button
         variant="default"
         loading={pending}
-        loadingLabel={m.archive.restoring}
         onClick={() => startTransition(async () => void (await unarchiveProject(slug)))}
       >
         {m.archive.restore}
@@ -52,7 +51,7 @@ export function ArchiveCard({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" loading={pending} loadingLabel={m.archive.archiving}>
+        <Button variant="default" loading={pending}>
           {m.archive.action}
         </Button>
       </DialogTrigger>

@@ -33,7 +33,6 @@ export function ConnectGithubButton({ dest, label }: { dest: UserConnectDest; la
         variant="primary"
         loading={pending}
         // ⚠️ 라벨과 같게 두면 대기 상태가 안 보인다 — GitHub으로 나가는 왕복이라 문구가 "이동"이다.
-        loadingLabel={m.newProject.empty.connect.redirecting}
         onClick={() => {
           setError(null);
           startTransition(async () => {

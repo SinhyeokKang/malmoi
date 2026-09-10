@@ -33,7 +33,6 @@ export function PushTokenPanel({ slug }: { slug: string }) {
       </p>
       <Button
         loading={pending}
-        loadingLabel={m.settings.token.rotating}
         onClick={() => {
           setToken(null);
           setError(null);

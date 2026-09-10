@@ -81,11 +81,13 @@ export const buttonClass = cva(
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonClass> & {
     /**
-     * 진행 중 — **라벨을 교체한다.** 옆에 문구를 붙이면 폭이 흔들리고, 목록 안에서는 **누른 버튼
-     * 하나만** 바뀌어야 어느 행이 도는지 보인다 (§6.4).
+     * 진행 중 — **스피너만 세우고 라벨은 그대로 둔다** (2026-09-10 사용자 규칙 변경).
+     *
+     * ⚠️ **`loadingLabel`이 없어졌다.** 전에는 문구까지 교체했는데(`"Saving…"`), 그러면 폭이 흔들리고
+     * 문구를 각 화면이 따로 들어야 했다 — 죽은 문구 16개가 그 대가였다. 목록 안에서 어느 행이
+     * 도는지는 **스피너 위치**가 이미 말한다.
      */
     loading?: boolean;
-    loadingLabel?: ReactNode;
   };
 
 export function Button({
@@ -93,7 +95,6 @@ export function Button({
   variant,
   size,
   loading = false,
-  loadingLabel,
   children,
   disabled,
   ...props
@@ -104,13 +105,9 @@ export function Button({
       disabled={disabled === true || loading}
       {...props}
     >
-      {/*
-        ⚠️ **스피너는 라벨을 대체하지 않고 앞에 선다.** `loadingLabel`이 있으면 문구까지 바뀌고
-        (§6.4 — 목록 안에서 어느 행이 도는지 보인다), 없으면 원래 라벨 옆에 스피너만 붙는다.
-        16px는 §6.8의 기본 크기다.
-      */}
+      {/* 스피너가 라벨 **앞에** 선다 — 16px는 §6.8의 기본 크기다. */}
       {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
-      {loading && loadingLabel !== undefined ? loadingLabel : children}
+      {children}
     </button>
   );
 }

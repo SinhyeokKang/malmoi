@@ -214,7 +214,6 @@ function RepoPicker({
               <span className="text-mono min-w-0 flex-1 truncate">{repo.fullName}</span>
               <Button
                 loading={pending && picking === repo.fullName}
-                loadingLabel={m.newProject.repo.detecting}
                 disabled={pending}
                 onClick={() => {
                   setPicking(repo.fullName);
@@ -438,7 +437,6 @@ function ConfirmStep({
           variant="primary"
           disabled={!ready}
           loading={pending}
-          loadingLabel={m.newProject.naming.creating}
           onClick={submit}
         >
           <Plus aria-hidden />

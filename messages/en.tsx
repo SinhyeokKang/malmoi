@@ -68,8 +68,6 @@ export const en = {
     title: "Sign in to malmoi",
     github: "Continue with GitHub",
     google: "Continue with Google",
-    /** 버튼 라벨을 교체한다 — 옆에 문구를 붙이면 폭이 흔들린다 (DESIGN §6.4). */
-    opening: "Opening…",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
     consent: { before: "By clicking Continue through a third party you accept the malmoi ", link: "Privacy Policy" },
     footer: { copyright: "© 2026 malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
@@ -200,8 +198,6 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
-    restoring: "Restoring…",
-    archiving: "Archiving…",
     archived: (when: string): string => `Archived ${when}.`,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
@@ -267,7 +263,6 @@ export const en = {
       title: "Sign out everywhere",
       description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
       button: "Confirm and sign out everywhere",
-      pending: "Opening account confirmation…",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
@@ -307,8 +302,6 @@ export const en = {
         description: "The connection is only used to see which repositories have the Malmoi app installed.",
         action: "Connect GitHub",
         reauthorize: "Reconnect GitHub",
-        /** GitHub으로 나가는 왕복이라 "연결 중"이 아니라 이동이다. */
-        redirecting: "Opening GitHub…",
       },
       /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
       noInstallations: "No installation found",
@@ -328,7 +321,6 @@ export const en = {
       search: "Find a repository by name",
       none: "No repository matches that name.",
       pick: "Select",
-      detecting: "Detecting…",
       other: "Choose another repository",
     },
 
@@ -369,7 +361,6 @@ export const en = {
         </>
       ),
       create: "Create project",
-      creating: "Creating…",
     },
 
     /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */
@@ -480,6 +471,7 @@ export const en = {
 
     /** ⚠️ 셀 안 상태줄은 **시각 전용**이다 — 알림은 표 하나의 live region이 든다 (design §3.8). */
     save: {
+      /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
       saved: "Saved",
       unsaved: "Not saved yet — leave the cell to save",
@@ -505,7 +497,6 @@ export const en = {
     publish: {
       /** 미배포 건수를 라벨이 든다 — 0이면 숫자를 붙이지 않는다(괄호 안 0은 정보가 아니다). */
       button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n})`),
-      sending: "Sending…",
       nothing: "Nothing to send — everything is up to date.",
       created: "Sent for review. Your developers need to accept it before their next code push.",
       updated: "Updated what you sent earlier with your latest changes.",
@@ -587,6 +578,7 @@ export const en = {
       label: "Base language",
       help: "The language your source strings are written in. Changing it takes effect on the next CI push.",
       save: "Save",
+      /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
       saved: "Saved",
       failed: "We couldn't save this. Try again in a moment.",
@@ -629,7 +621,6 @@ export const en = {
     /** 보이는 텍스트. 아래 `removeLabel`이 그것을 **포함**해야 한다 (WCAG 2.5.3 Label in Name). */
     remove: "Remove",
     removeLabel: (who: string): string => `Remove ${who}`,
-    removing: "Removing…",
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
     confirmRemove: (who: string): string => `Remove ${who} from this project?`,
     confirmRemoveHint: "They lose access right away. Their past edits stay.",
@@ -644,7 +635,6 @@ export const en = {
       email: "Email",
       help: "They'll be able to edit translations in this project.",
       create: "Create link",
-      creating: "Creating…",
       /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (SAAS §5.6). */
       linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
       alreadyMember: "That email is already a member of this project.",
@@ -659,7 +649,6 @@ export const en = {
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */
       revokeLabel: (who: string): string => `Revoke invitation for ${who}`,
-      revoking: "Revoking…",
       revokeFailed: (reason: string): string => `Couldn't revoke that invitation: ${reason}`,
       empty: {
         title: "No pending invitations",
@@ -677,8 +666,6 @@ export const en = {
       description: "Where your source strings come from, and where translations go back.",
       connect: "Connect",
       reconnect: "Reconnect",
-      /** 대기 라벨 — **누른 라벨에서 파생된다** (DESIGN §6.4). 같은 문구를 쓰면 진행 신호가 사라진다. */
-      connecting: "Connecting…",
       connectFailed: "We couldn't start the connection. Try again in a moment.",
       /**
        * 건강성 6종 (DESIGN §6.2). ⚠️ **`unknown`을 `app-uninstalled` 문구로 접지 않는다** — 조회 실패를
@@ -711,8 +698,9 @@ export const en = {
         branch: "Base branch",
         branchHelp: "The branch translations are sent back to, and the one CI watches.",
         save: "Save",
-        saving: "Saving…",
-        saved: "Saved",
+        /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
+      saving: "Saving…",
+      saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
       },
 
@@ -738,7 +726,6 @@ export const en = {
         </>
       ),
       rotate: "Rotate token",
-      rotating: "Rotating…",
       warning: "You won't see this again after you leave this page. If you lose it, rotate it again.",
       failed: "We couldn't rotate the token. Try again in a moment.",
     },
@@ -765,7 +752,6 @@ export const en = {
       reauthorize: "Your GitHub authorization expired.",
       unavailable: "We couldn't load your account. Open this page again in a moment.",
       disconnect: "Disconnect",
-      disconnecting: "Disconnecting…",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
     },
   },

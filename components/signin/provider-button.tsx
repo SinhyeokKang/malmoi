@@ -3,7 +3,6 @@
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
 
 /**
  * provider 버튼의 **제출 상태**만 든다 (8-1b).
@@ -12,7 +11,8 @@ import { m } from "@/lib/i18n";
  * 있어야 한다. 부모(Server Component)가 `action`을 들고, 이것은 그 폼의 상태를 읽는다.
  *
  * ⚠️ **OAuth 왕복은 눈에 보이는 지연이 있다** — 누른 뒤 아무 변화가 없으면 사용자가 다시 누른다.
- * §6.4의 형대로 **라벨을 교체**하고 스피너를 앞에 세운다.
+ * **스피너만 세우고 라벨은 그대로 둔다**(2026-09-10 사용자) — 문구까지 바뀌면 폭이 흔들리고,
+ * 화면에 버튼이 둘뿐이라 "어느 것을 눌렀나"는 스피너 위치로 이미 보인다.
  */
 export function ProviderSubmit({
   label,
@@ -31,7 +31,6 @@ export function ProviderSubmit({
       size="lg"
       className="w-full"
       loading={pending}
-      loadingLabel={m.signIn.opening}
     >
       {/* 스피너가 대신 서므로 진행 중엔 아이콘을 숨긴다 — 둘 다 있으면 좁은 버튼이 붐빈다. */}
       {!pending && icon}

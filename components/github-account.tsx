@@ -84,7 +84,6 @@ export function DisconnectGithubButton() {
         variant="danger"
         size="sm"
         loading={pending}
-        loadingLabel={m.settings.account.disconnecting}
         onClick={() => {
           setError(null);
           startTransition(async () => {

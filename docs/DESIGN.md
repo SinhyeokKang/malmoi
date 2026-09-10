@@ -345,6 +345,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
 | **Tooltip** | `bg-foreground text-background text-xs px-2 py-1 rounded shadow-md` · 접힌 사이드바의 아이콘 라벨에만. ⚠️ **프리미티브가 자기 `Provider`를 든다** (2026-09-08) — Radix는 조상 provider가 없으면 **던지고**, 그 툴팁은 접힌 상태에서만 렌더되므로 "접기를 누르면 셸이 죽는다"로 나타난다(접힘이 `localStorage`에 남아 영구화된다, POSTMORTEM 2026-09-08). 바깥의 `TooltipProvider`는 **지연 공유 최적화**이고 필수가 아니다 |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백 `bg-muted text-foreground/60` |
+| **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
 | **Button `size="lg"`** | `h-10 px-4` — **셸 밖 카드 전용**(로그인·초대 수락). ⚠️ **base를 안 바꾼 이유**: 소비자가 26파일인데 8-1b가 검증한 화면은 셋이다. 각 화면의 배송이 옮겨오고 **마지막이 옮겨온 뒤 기본값을 바꾼다** — 그때까지 셸 안 화면이 "signin이 쓰니 우리도"로 번지지 않게 이 줄이 막는다 |
 | **EmptyState** | 제목 `text-base font-medium` ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` 완전 문장 · 액션 **버튼 하나** · 일러스트 없음 |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
@@ -487,7 +488,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 블록 | 규칙 |
 |---|---|
 | Profile | 이름·이메일을 `<dl>`로 (`sm:grid-cols-[8rem_1fr]`, 라벨 `text-xs text-muted-foreground`). ⚠️ **읽기 전용이고 그 이유를 카드 설명이 말한다** — provider가 소유하고 재로그인마다 `planEmailRefresh`가 갱신한다(고칠 수 있게 하면 초대 대조가 검증되지 않은 주소 위에 선다). 값은 세션이 아니라 **`User` 행**에서 읽는다: 초대 대조가 보는 값이 그쪽이다. ⚠️ 주소는 식별자라 `text-mono`이고 **마스킹하지 않는다**(자기 주소다 — 남의 주소를 보이는 자리만 `maskEmail`을 지난다) · 값이 없으면 "None" |
-| Sessions | "Sign out everywhere" — 확인 버튼은 **`danger sm`**이고 누르면 **공급자 재왕복**이다(`Dialog`가 아니다: 확인의 근거가 "정말?"이 아니라 **그 계정을 지금 통제하는가**여서, 브라우저 안 확인으로는 그 질문에 답할 수 없다). 버튼은 `loading`/`loadingLabel`로 라벨이 바뀐다(§6.4). 실패는 **in-block `Alert danger`**를 폼 안에 렌더한다 — 페이지 상단으로 올리면 어느 카드의 실패인지 사라진다. ⚠️ **아래 Sign out 카드는 `danger`가 아니다** — 그쪽은 이 기기 하나이고 되돌리기가 재로그인 한 번이라, **되돌릴 수 없는 쪽만** 빨강을 쓴다 |
+| Sessions | "Sign out everywhere" — 확인 버튼은 **`danger sm`**이고 누르면 **공급자 재왕복**이다(`Dialog`가 아니다: 확인의 근거가 "정말?"이 아니라 **그 계정을 지금 통제하는가**여서, 브라우저 안 확인으로는 그 질문에 답할 수 없다). 버튼은 `loading`이면 스피너가 붙는다(§6.4 — 라벨은 안 바뀐다). 실패는 **in-block `Alert danger`**를 폼 안에 렌더한다 — 페이지 상단으로 올리면 어느 카드의 실패인지 사라진다. ⚠️ **아래 Sign out 카드는 `danger`가 아니다** — 그쪽은 이 기기 하나이고 되돌리기가 재로그인 한 번이라, **되돌릴 수 없는 쪽만** 빨강을 쓴다 |
 | GitHub account | 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 다른 것은 **연결 버튼의 착지**뿐이다(`dest="account"`) |
 | Sign out | 셸에 이미 둘(사이드바 하단·유저 메뉴)이 있는데 여기 세 번째를 둔다 — Action 하나에 상태가 없어 **낡을 수 없고**, 계정 화면에 로그아웃이 없으면 사용자가 찾으러 나간다. 버튼은 `default sm`이다(`danger`가 아니다 — 되돌릴 수 있다) |
 

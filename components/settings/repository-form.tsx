@@ -65,7 +65,7 @@ export function RepositoryForm({ slug, baseBranch }: { slug: string; baseBranch:
       </FormGroup>
 
       <div className="flex items-center gap-2">
-        <Button type="submit" loading={pending} loadingLabel={m.settings.repository.fields.saving}>
+        <Button type="submit" loading={pending}>
           {m.settings.repository.fields.save}
         </Button>
         {result === "saved" && (
