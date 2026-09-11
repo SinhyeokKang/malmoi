@@ -201,7 +201,7 @@ export default async function TranslationsPage({
       ) : (
         /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
         <Announcer>
-          <div className="space-y-6">
+          <div>
             {groups.map((group) => (
               <section key={group.namespace}>
                 {/*
@@ -229,14 +229,10 @@ export default async function TranslationsPage({
                   ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다** — 붙어 있는 동안 뒤로
                   값이 흐르는 자리다. 패널과 같은 흰색이라 색이 늘지 않는다.
 
-                  ⚠️ **`z-*`를 주지 않는다** — positioned 요소(sticky)는 static 형제(키 그룹)보다 뒤에
-                  칠해지는 것이 페인팅 순서이고, 그 위에 층을 하나 더 만들면 셀의 포커스 링·드롭다운과
-                  높이를 다투게 된다.
-
-                  ⚠️ **조상에 `overflow-hidden`을 들이지 않는다** — 그 조상이 새 스크롤 컨테이너가 되어
-                  헤딩이 거기 갇힌다. 지금 체인은 `PanelBody`(스크롤) → 래퍼 → `Announcer` → 섹션이다.
+                  셀 상태 표시가 relative/absolute이므로 헤딩을 z-10으로 올린다.
+                  같은 층이면 뒤에 렌더된 셀이 sticky 제목 위에 칠해진다.
                 */}
-                <div className="border-border bg-background sticky top-0 flex items-center gap-2 border-b px-2 py-3">
+                <div className="border-border bg-background sticky top-0 z-10 flex items-center gap-2 border-b px-2 py-3">
                   <h2 className="text-sm font-medium">{group.namespace}</h2>
                   {/* 필터 **후** 건수다 — 제목 옆 총계가 필터 전이라 둘이 같은 값이 아니다. */}
                   <Badge variant="neutral">

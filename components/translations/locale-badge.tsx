@@ -31,6 +31,15 @@ import { flagFor } from "@/lib/keys/flag";
  * ⚠️ **orphaned는 배지 자체를 `danger`로 바꾼다.** 로케일 칸이 80px이고 배지가 이미 거의 다 쓰므로
  * "Orphaned" 배지를 옆에 붙일 자리가 없다. 로케일 헤더가 사라져 그 표시가 살 자리가 여기뿐이고,
  * 사유 문장은 `disabled` 입력의 placeholder가 든다.
+ *
+ * ⚠️ **`Base` 라벨은 들지 않는다** (2026-09-11 사용자). 이 표에서 base 행은 **키마다 맨 위 한 줄**이고
+ * (`sortLocales`가 그렇게 세운다) 같은 사실을 903키 × 로케일 수만큼 반복하면 68px 칸의 예산만 먹는다 —
+ * "가장 흔한 상태가 조용해야 한다"(DESIGN §6.2)의 연장이다. 그 라벨이 값을 하는 곳은 로케일이
+ * **목록**으로 서서 순서가 단서가 못 되는 `/locales`·Home이고, `m.locales.base`는 거기 남아 있다.
+ *
+ * ⚠️ 그래서 이 표가 base를 말하는 수단은 **순서 하나**다 — base 셀을 비우면 그 키가 base 파일에서
+ * 빠져 다음 push가 전 로케일에서 orphan한다(`lib/pull/plan.ts`). 라벨을 되살리고 싶어지면
+ * `translations-screen.test.ts`의 그 단언을 먼저 읽는다.
  */
 /**
  * 국기 조각만 — **배지와 로케일 드롭다운이 공유한다** (2026-09-11 실물 검증에서 갈라져 나왔다).
@@ -60,20 +69,11 @@ export function LocaleFlag({ code }: { code: string }) {
   );
 }
 
-export function LocaleBadge({
-  code,
-  isBase,
-  orphaned,
-}: {
-  code: string;
-  isBase: boolean;
-  orphaned: boolean;
-}) {
+export function LocaleBadge({ code, orphaned }: { code: string; orphaned: boolean }) {
   return (
     <Badge variant={orphaned ? "danger" : "neutral"} className="gap-1">
       <LocaleFlag code={code} />
       <span>{code}</span>
-      {isBase && <span>{m.locales.base}</span>}
       {/* 색만으로는 말하지 않는다 — 배지가 `danger`인 이유를 스크린리더에도 준다 (DESIGN §7). */}
       {orphaned && <span className="sr-only">{m.locales.orphaned.badge}</span>}
     </Badge>

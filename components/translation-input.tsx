@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Circle, LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { saveTranslation } from "@/app/(edit)/actions";
@@ -8,6 +9,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+import { editCommand } from "@/lib/keys/edit-command";
 import { shouldRefocus } from "@/lib/keys/refocus";
 import type { SaveInputType } from "@/lib/keys/save";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
@@ -87,64 +89,64 @@ export function TranslationInput({
   const failed = typeof status === "object";
 
   return (
-    <div className="space-y-1">
+    <div className="relative">
       <Textarea
         ref={ref}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setValue(e.target.value);
+          if (status === "saved") setStatus("idle");
+        }}
         onBlur={() => commit(value)}
         onKeyDown={(e) => {
-          // Enter가 개행이면 저장 트리거가 blur뿐이고 개행이 값에 조용히 들어간다.
-          if (e.key === "Enter" && !e.shiftKey) {
+          const command = editCommand({
+            key: e.key,
+            shiftKey: e.shiftKey,
+            isComposing: e.nativeEvent.isComposing,
+            keyCode: e.nativeEvent.keyCode,
+          });
+          if (command === "save") {
             e.preventDefault();
             e.currentTarget.blur();
           }
-          if (e.key === "Escape") setValue(saved);
+          if (command === "restore") {
+            e.preventDefault();
+            setValue(saved);
+          }
         }}
         disabled={disabled === true || pending}
         placeholder={disabled === true ? m.translations.notEditable : m.translations.placeholder}
         aria-label={m.translations.cellLabel(keyName, localeCode)}
         // `fieldClass`가 `aria-[invalid=true]:border-destructive`를 든다 — 색을 여기서 또 주지 않는다.
         aria-invalid={failed}
-        /**
-         * ⚠️ **테두리 없는 표면이다** (8-4 — 시안은 값 칸에 평문만 그린다). hover·포커스에서만
-         * 드러난다: 2,709개의 입력이 각자 테두리를 들면 표가 격자로 읽혀 값이 안 보인다.
-         *
-         * ⚠️ **`placeholder`를 지우지 않는다** — `Untranslated` 배지·상태 필터·이 테두리가 **같은
-         * 배송에서** 사라지므로, 값이 빈 셀의 유일한 시각 신호가 그것뿐이다 (spec Q3).
-         *
-         * ⚠️ **disabled 배경은 그대로 둔다** — orphaned 축의 셀이 왜 안 눌리는지 말하는 표면이다.
-         */
-        /**
-         * ⚠️ **`px-3`이 `fieldClass`의 `px-2`를 덮는다** (2026-09-11 — 시안 `212:5403`의 값 셀이
-         * `p-12`다). 행이 자기 padding을 안 들고 이 입력이 셀 폭 전체를 쓰므로, 값 텍스트의 좌측
-         * 여백을 정하는 것이 여기 한 곳이다 — 메타·상태줄이 같은 값을 든다.
-         */
-        className="w-full border-transparent bg-transparent px-3 hover:border-input"
+        // The parent cell draws the focus ring around the value and its expanded metadata.
+        className="block min-h-10 w-full rounded-none border-transparent bg-transparent py-3 pr-14 pl-3 hover:bg-muted/40 focus-visible:ring-0"
       />
 
-      {/* 상태는 한 줄만 차지한다 — 행이 흔들리면 903행 표가 읽기 어려워진다 */}
-      {(pending || failed || status === "saved" || value !== saved) && (
-        <div className="flex items-baseline gap-2 px-3 text-xs">
-          {failed ? (
-            <>
-              <span className="text-destructive">{saveMessage(status.error)}</span>
-              {status.error === "unauthorized" ? (
-                <ButtonLink variant="link" size="sm" href={routes.signIn()}>
-                  {m.translations.save.signIn}
-                </ButtonLink>
-              ) : (
-                <Button variant="link" size="sm" onClick={() => commit(value)}>
-                  {m.translations.save.retry}
-                </Button>
-              )}
-            </>
-          ) : pending ? (
-            <span className="text-muted-foreground">{m.translations.save.saving}</span>
-          ) : status === "saved" ? (
-            <span className="text-muted-foreground">{m.translations.save.saved}</span>
+      {!failed && (pending || status === "saved" || value !== saved) && (
+        <span
+          className="text-muted-foreground absolute top-[15px] right-7"
+          title={pending ? m.translations.save.saving : status === "saved" ? m.translations.save.saved : m.translations.save.unsaved}
+        >
+          {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            : status === "saved" ? <Check aria-hidden="true" className="size-4" />
+              : <Circle aria-hidden="true" className="size-4" />}
+          <span className="sr-only">
+            {pending ? m.translations.save.saving : status === "saved" ? m.translations.save.saved : m.translations.save.unsaved}
+          </span>
+        </span>
+      )}
+      {failed && (
+        <div className="flex flex-wrap items-baseline gap-2 px-3 pb-2 text-xs">
+          <span className="text-destructive">{saveMessage(status.error)}</span>
+          {status.error === "unauthorized" ? (
+            <ButtonLink variant="link" size="sm" href={routes.signIn()}>
+              {m.translations.save.signIn}
+            </ButtonLink>
           ) : (
-            <span className="text-muted-foreground">{m.translations.save.unsaved}</span>
+            <Button variant="link" size="sm" onClick={() => commit(value)}>
+              {m.translations.save.retry}
+            </Button>
           )}
         </div>
       )}
