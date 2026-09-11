@@ -74,7 +74,7 @@ function Footer() {
 
 function FooterLink({ href, label, external = false }: { href: string; label: string; external?: boolean }) {
   const className =
-    "focus-visible:ring-ring hover:text-foreground focus-visible:ring-[3px] focus-visible:outline-none";
+    "focus-visible:ring-ring hover:text-foreground focus-visible:ring-2 focus-visible:outline-none";
   return external ? (
     <a href={href} className={className} target="_blank" rel="noreferrer">
       {label}

@@ -15,7 +15,7 @@ export function Radio({
     <label className="flex cursor-pointer items-center gap-2 text-sm">
       <input
         type="radio"
-        className={cn("border-input accent-primary size-4", "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
+        className={cn("border-input accent-primary size-4", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
         {...props}
       />
       {label}

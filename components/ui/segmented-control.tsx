@@ -150,7 +150,7 @@ export function SegmentedControl<T extends string>({
               (siblings?.[next] as HTMLElement | undefined)?.focus();
             }}
             className={cn(
-              "focus-visible:ring-ring flex-1 focus-visible:ring-[3px] focus-visible:outline-none",
+              "focus-visible:ring-ring flex-1 focus-visible:ring-2 focus-visible:outline-none",
               SEGMENT,
               selected ? SELECTED : UNSELECTED,
             )}
@@ -193,7 +193,7 @@ export function SegmentedLinks({
             href={option.href}
             aria-current={selected ? "page" : undefined}
             className={cn(
-              "focus-visible:ring-ring min-w-11 focus-visible:ring-[3px] focus-visible:outline-none",
+              "focus-visible:ring-ring min-w-11 focus-visible:ring-2 focus-visible:outline-none",
               SEGMENT,
               selected ? SELECTED : UNSELECTED,
             )}

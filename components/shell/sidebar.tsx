@@ -118,7 +118,7 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       aria-current={active ? "page" : undefined}
       className={cn(
         "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm",
-        "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         /**
          * ⚠️ hover와 선택이 **같은 알파면** 포인터 아래의 항목이 선택된 것처럼 보인다 — 한 단계 벌린다.
          *

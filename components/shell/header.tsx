@@ -34,7 +34,7 @@ export function Header({
       <Link
         href={routes.projects()}
         aria-label={m.common.nav.appHome}
-        className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-lg focus-visible:ring-[3px] focus-visible:outline-none"
+        className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:outline-none"
       >
         {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
         <Image src={logo} alt="" width={32} height={32} priority />

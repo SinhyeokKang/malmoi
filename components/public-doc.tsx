@@ -18,7 +18,7 @@ export function PublicDoc({ title, body }: { title: string; body: string }) {
       <p className="text-muted-foreground text-sm">{body}</p>
       <Link
         href={routes.signIn()}
-        className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
+        className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
       >
         {m.publicDocs.back}
       </Link>
