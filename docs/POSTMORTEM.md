@@ -837,6 +837,35 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     - 나머지 아홉은 지금 덮는다: 멤버·초대 셋(그 상태는 멤버 화면만 보인다) · `createProject`와 `runFirstIngest`(목록과 설정 둘 다 무효화한다) · `rotatePushToken`·`connectRepository`(설정만 보인다) · `updateRepositorySettings`(설정 **과** 번역 — 대기 배너가 두 화면에 있어 6b-3이 이미 둘을 넓혀 뒀다).
   - **접두로 화면 집합을 표현하지 않는다.** 접두는 라우트 구조에 대한 가정이고, 이 리포는 라우트를 옮긴다(`/keys` → `/projects/[slug]/translations`, 계정 카드 → `/account`). slug를 모르는 자리에서는 루트 레이아웃을 무효화한다 — 드문 조작이면 그 대가가 0이다.
 
+  ---
+
+  🔁 **재발 (2026-09-11) — 그 전수 grep이 `runFirstIngest`를 통과시켰다.** 위 837행이 그것을
+  *"목록과 설정 둘 다 무효화한다"*로 판정했는데, **묻지 않은 축이 있었다**: 그 Action이 세우는
+  `lastCommitSha`는 `planProjectReadiness`를 `ready`로 넘기고 **그 판정을 읽는 화면은 넷**이다
+  (설정 · Home · 번역 · 목록). 2026-09-09 시점엔 Home이 없어(6b-6이 그날 이후다) 셋이었고 그중
+  둘만 덮였다.
+  - **증상**: 첫 적재를 막 끝낸 사용자가 Home·번역에서 캐시된 `ProjectNotReady`("아직 준비 안
+    됐다")를 본다. 설정 화면만 정상이고, 그 화면의 [다시 시도]는 이미 `ready`라 `not-awaiting`을
+    돌려준다 — **되돌릴 길이 없다.**
+  - **근본 원인 (위와 같되 한 겹 더)**: 무효화 범위를 검토할 때 **"이 Action이 쓰는 컬럼"**을 봤고
+    **"그 컬럼으로 만들어지는 판정"**을 안 봤다. `revalidatePath("/projects/<slug>/settings")`는
+    `lastCommitSha`를 **설정 화면의 값**으로 읽으면 맞는 인자다 — 그것이 `planProjectReadiness`를
+    지나 네 화면의 **분기**가 된다는 것은 다른 파일에 있다.
+  - **그물**: 2026-09-09의 전수 grep이 **돌았고 통과시켰다**(2026-09-08 툴팁 항목과 같은 계보 —
+    *"grep은 자기가 묻는 축에서만 무죄를 준다"*). 잡은 것은 `/doc-check`이고, 그것도 캐시를 본 것이
+    아니라 **ARCHITECTURE §6.3의 무효화 목록을 코드와 대조**하다가 나왔다. `pnpm test`·`typecheck`·
+    `build`는 원리적으로 못 본다(문자열 인자다).
+  - **재발 방지 (축을 하나 더 얹는다)**: 무효화 범위를 물을 때 **"이 Action이 쓰는 컬럼을 읽는
+    화면"이 아니라 "그 컬럼에서 파생되는 판정 함수를 부르는 화면"**을 센다. 실제로 돌렸다:
+    `grep -rn "planProjectReadiness\|projectStatus" app lib | grep -v __tests__` → 판정 둘이 화면
+    **다섯**에서 불린다. 회귀 테스트는 `app/(edit)/__tests__/onboarding.test.ts`가 서브트리 인자를
+    이름으로 고정한다.
+  - ⚠️ **같은 grep이 아직 안 고친 자리를 하나 더 냈다** — `connectRepository`
+    (`app/(edit)/projects/[slug]/settings/actions.ts`)가 `/projects/<slug>/settings`만 무효화하는데,
+    그것이 세우는 `repositoryId`를 **`projectStatus`가 읽어 목록 배지 `Disconnected`를 가른다**
+    (`lib/projects/list.ts`). 재연결 뒤 목록이 캐시된 amber 배지를 그대로 보일 수 있다. **후속 작업
+    후보**이고 이 회고가 그 근거다.
+
 ### 2026-09-09 — 프리미티브가 `asChild` 자식 옆에 형제를 붙여, 프로젝트 스위처를 **한 번 열면** 셸이 죽었다
 
 - **영역**: `components/ui/dropdown-menu.tsx`의 `DropdownMenuItem` · 호출부는 `components/shell/sidebar.tsx`(프로젝트 스위처). **`add099a`(6a ship 2, PR #14)부터 2026-09-08 이후 프로덕션에 있었다** — 이 회고는 사후가 아니라 **아직 프로덕션에 있는 동안** 쓰였고, 픽스는 6b-6과 같은 배송에 실린다.
@@ -1060,3 +1089,36 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **화면을 실제로 렌더하는 테스트만 이 부류를 잡는다**: `grep -rln "renderToString\|renderToStaticMarkup" app lib components` → **2건**(`app/invite/__tests__/page.test.tsx` · `lib/session-revocation/__tests__/ui.test.tsx`). 요소 트리만 순회하는 테스트는 `<Image>`를 렌더하지 않으므로 **green이 무죄의 근거가 아니다.**
   - **non-null 단언 전수** (실제로 돌렸다): `grep -rn '[a-zA-Z_)\]]!\.' app components lib --include='*.ts' --include='*.tsx' | grep -v __tests__` → **4건**이고 `components/signin/`에는 **0건**이다. 남은 넷은 인덱스 접근(`columns[0]!`·`pending[0]!`)과 배열 요소 좁힘이라 이 항목의 부류(클로저 좁힘 우회)가 아니다.
   - **규칙: effect 안에서 ref를 좁혔으면 그 effect의 함수를 전부 화살표로 쓴다.** `function` 하나가 섞이면 그 자리에서만 단언이 되살아나고, 그 단언이 다음 사람에게는 "필요해서 있는 것"으로 보인다.
+
+### 2026-09-11 — 게이트 셋과 소스 스캔 여섯이 green인데 번역 입력이 28px였다 (malmoi#33)
+
+- **영역**: `components/translations/key-group.tsx`(8-4 `LocaleRow`) · `docs/features/ui-rework/translations/spec.md` 「1280px」
+- **증상**: **규약 3이 못 박은 최소 폭 1280px**에서 로케일 행의 `Textarea`가 **28px**다. 값이 한 글자씩
+  세로로 쌓여 행 높이가 210px이 되고, 한 줄짜리 번역조차 읽을 수 없다. 1512px부터는 260px이라
+  **개발 중 쓰는 화면 폭에서는 한 번도 안 보였다.**
+- **근본 원인**: **spec이 "값 열 ≈368px"을 계산해 놓고 그것을 "입력 폭"으로 읽었다.** 실제로 그 열
+  안에는 로케일 칸(`w-20` 80) · 메타 슬롯(`w-40 shrink-0` 160) · padding·gap(36)이 **전부 고정**으로
+  들어 있어 입력에 남는 것이 28px이다. 설계가 그 슬롯을 정당화한 근거(*"메타는 렌더마다 안 변하니
+  빈 상태에서도 폭을 차지한다 — 안 그러면 입력 폭이 행마다 다르다"*)는 **폭 예산을 안 본 논증**이고,
+  그 걱정 자체가 우측 슬롯 전제에서만 성립한다(아래로 내리면 입력이 언제나 열 전체다).
+- **그물**:
+  - **놓친 것**: `pnpm typecheck`·`pnpm test` 2,715건·`pnpm build` · `/code-review` · 소스 스캔 여섯
+    (`focus-ring`·`client-graph`·`translations-screen`·`slottable-item`·`shell-layout`·`entry-points`).
+    **폭은 렌더 결과라 이 리포의 방어선이 원리적으로 못 보는 축이다** — 렌더 테스트가 없다는 것이
+    design §4의 의도된 결정이고, 그 대가가 여기서 나왔다.
+  - **잡은 것**: `/bugshot-qa`의 실물 브라우저 — 그것도 **뷰포트를 1280으로 override해서 재고 나서**다.
+    기본 1920에서는 정상으로 보인다.
+  - 계보가 같다: `slottable-item`(**클릭해야** 죽는다) · `focus-ring`(**탭해야** 보인다) ·
+    툴팁 provider(**열어야** 던진다). 이번은 **좁혀야** 보인다.
+- **재발 방지**:
+  - **행 안의 고정 폭 합을 소스로 센다.** `components/__tests__/translations-screen.test.ts`가
+    `shrink-0`과 함께 쓰인 `w-*`을 걷어 합을 내고, 1280 기준 값 열(366)에서 입력에 200px 이상
+    남는지 검사한다 — **픽셀이 아니라 예산을 쓰는 클래스를 잰다.** 다음 사람이 우측에 또 고정 폭을
+    얹으면 red다.
+  - grep (실제로 돌렸다): `grep -rnE 'className="[^"]*(w-[0-9]+[^"]*shrink-0|shrink-0[^"]*w-[0-9]+)'
+    components app` → **4건**. 셸 둘(사이드바 240 · 프로젝트 패널 320 — 레이아웃 축이라 정상) ·
+    국기 16 · 로케일 칸 80. **한 행 안에서 값 열을 다투는 것은 로케일 칸 하나뿐**이라 같은 모양의
+    다른 자리는 없다.
+  - **`[manual]` 목측 항목에 뷰포트를 명시한다.** `tasks.md` T12가 "1280px에서 값 열이 ≈368px이어도
+    성립하는지 본다"를 적어 뒀는데 **그 줄이 `/ship` 파이프라인의 검증에 안 들어간다** — 이 리포엔
+    e2e가 없으므로 `[manual]`은 사람이 돌리는 것이고, 배송이 dev까지 간 뒤에 돌았다.
