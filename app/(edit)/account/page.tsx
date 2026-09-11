@@ -12,6 +12,7 @@ import { getPrisma } from "@/lib/db";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 계정 화면 — **사용자 축의 유일한 자리** (SAAS §7.7, 6b-4).
@@ -26,7 +27,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **프로필은 읽기 전용이다.** 이름·이메일은 provider가 소유하고 재로그인마다 `planEmailRefresh`가
  * 갱신한다 — 고칠 수 있게 하면 초대 대조(SAAS §5.6)가 검증되지 않은 주소 위에 선다.
  */
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ e?: string; sessionRevocation?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation">> }) {
   const { userId } = await requireUser();
 
   /**
@@ -35,7 +36,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * (POSTMORTEM 2026-09-06). **판정 함수로 거른다** — 주소창 값을 캐스팅하면 프로토타입 키가 문자열
    * 자리에 함수를 넣어 화면이 죽는다 (POSTMORTEM 2026-09-08).
    */
-  const { e, sessionRevocation } = await searchParams;
+  const { e, sessionRevocation } = firstQueryValues(await searchParams);
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
 
   const prisma = getPrisma();

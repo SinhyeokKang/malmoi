@@ -19,6 +19,7 @@ import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 import { acceptInvitation } from "../actions";
 
@@ -50,10 +51,10 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
   // ⚠️ **이 인자를 빠뜨리면 아래 `redirect`가 넘기는 사유가 통째로 사라진다** — 주소창만 바뀌고
   // 화면은 그대로라, 사용자에게는 버튼이 안 눌린 것으로 보인다 (issue #2, POSTMORTEM 2026-09-06).
-  searchParams: Promise<{ e?: string }>;
+  searchParams: Promise<Raw<"e">>;
 }) {
   const { token } = await params;
-  const { e } = await searchParams;
+  const { e } = firstQueryValues(await searchParams);
   const session = await readSession();
   // 세션을 못 읽었으면 초대 행도 못 읽는다(같은 DB) — 비로그인 화면으로 접지 않고 장애라고 말한다.
   if (session.status === "unavailable") return <Notice retryToken={token}>{m.errors.invite.unavailable}</Notice>;

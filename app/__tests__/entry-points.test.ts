@@ -455,18 +455,32 @@ describe("쿼리 파라미터의 수신자", () => {
   const PENDING_QUERY_KEYS: string[] = [];
 
   /**
-   * `type X = { ns?: string; … }` → 필드 이름들. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로
-   * 잡히면 이 검사가 자기 대상을 잘못 세고, 그건 조용한 오탐이다.
+   * 타입에서 쿼리 키 이름을 뽑는다. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로 잡히면
+   * 이 검사가 자기 대상을 잘못 세고, 그건 조용한 오탐이다.
+   *
+   * ⚠️ **형이 둘이다** (2026-09-12): 생성기 쪽은 `type X = { ns?: string; … }` 리터럴이고, 화면 쪽은
+   * 배열을 경계에서 접느라 `type X = Raw<"ns" | "locales">`다. **앞것만 읽으면** 화면이 `Raw`로
+   * 옮겨가는 순간 `ACCEPTED`가 빈 배열이 되어 이 검사가 **통째로 무력해진다**(실측: 그 커밋에서
+   * "생성기가 내는 키를 화면이 받는다"가 red가 아니라 **모든 키를 미수신으로** 보고했다).
    */
   function queryKeysOf(source: string, typeName: string): string[] {
     const bare = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
-    const body = new RegExp(`type ${typeName} = \\{([\\s\\S]*?)\\};`).exec(bare)?.[1] ?? "";
-    return [...body.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
+    const literal = new RegExp(`type ${typeName} = \\{([\\s\\S]*?)\\};`).exec(bare)?.[1];
+    if (literal !== undefined) return [...literal.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
+    const raw = new RegExp(`type ${typeName} = Raw<([^>]*)>;`).exec(bare)?.[1] ?? "";
+    return [...raw.matchAll(/"([^"]+)"/g)].map((m) => m[1] ?? "");
   }
 
   const TRANSLATIONS_PAGE = ENTRY_POINTS.find((e) => e.path === "projects/[slug]/translations/page.tsx");
   /** 번역 화면이 **실제로 받는** 쿼리 키. 그 페이지의 `type Search`가 계약이다. */
   const ACCEPTED = queryKeysOf(TRANSLATIONS_PAGE?.source ?? "", "Search");
+
+  /** ⚠️ 두 형을 각각 먹인다 — 하나를 못 집으면 그쪽이 조용히 빈 목록이 되고 검사가 장식이 된다. */
+  it("리터럴과 `Raw<…>` 두 형에서 키를 뽑는다", () => {
+    expect(queryKeysOf('type S = { ns?: string; q?: string };', "S")).toEqual(["ns", "q"]);
+    expect(queryKeysOf('type S = Raw<"ns" | "locales" | "q">;', "S")).toEqual(["ns", "locales", "q"]);
+    expect(queryKeysOf("const other = 1;", "S")).toEqual([]);
+  });
 
   it("양쪽 타입에서 쿼리 키를 읽어냈다 — 스캐너가 조용히 0건이 되지 않는다", () => {
     expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "locales", "q"]);

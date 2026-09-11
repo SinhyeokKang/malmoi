@@ -13,6 +13,7 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -36,9 +37,9 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sessions?: string }>;
+  searchParams: Promise<Raw<"error" | "sessions">>;
 }) {
-  const { error, sessions } = await searchParams;
+  const { error, sessions } = firstQueryValues(await searchParams);
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
   // 세션을 못 읽었으면 `?error=`가 없어도 장애 문구를 보인다 — 로그인 버튼만 보이면 사용자가 헛로그인한다.

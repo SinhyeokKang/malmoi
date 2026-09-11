@@ -16,6 +16,7 @@ import { formatLabel } from "@/lib/onboarding/detect";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { normalizeProjectSlug } from "@/lib/onboarding/slug";
 import { routes } from "@/lib/routes";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 import { listConnectableRepos } from "../actions";
 
@@ -42,12 +43,12 @@ export const maxDuration = 60;
 export default async function NewProjectPage({
   searchParams,
 }: {
-  searchParams: Promise<{ e?: string }>;
+  searchParams: Promise<Raw<"e">>;
 }) {
   await requireUser();
 
   // 주소창 값이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-  const { e } = await searchParams;
+  const { e } = firstQueryValues(await searchParams);
   const message = isOnboardError(e)
     ? onboardErrorMessage(e)
     : isConnectError(e)
