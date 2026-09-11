@@ -190,7 +190,7 @@ export function TranslationsHeader({
         */}
         <div className="mb-4 empty:mb-0 space-y-3">
           <BasePendingBanner baseLocale={baseLocale} declaredBaseLocale={declaredBaseLocale} />
-        <EditLossBanner slug={slug} count={unpublished} dismissKey={dismissKey} />
+          <EditLossBanner slug={slug} count={unpublished} dismissKey={dismissKey} />
           {outcome !== null && (
             <div ref={resultRef}>
               <PublishResult outcome={outcome} />

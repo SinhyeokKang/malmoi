@@ -1,50 +1,51 @@
-import type * as React from "react";
-import type { HTMLAttributes, ThHTMLAttributes } from "react";
+import type { ComponentProps } from "react";
+
 import { cn } from "@/lib/utils";
 
-// shadcn/ui new-york-v4 Table 기반. 기존 소비자의 스크롤 계약은 scrollable 기본값으로 유지한다.
-// 원본: https://ui.shadcn.com/r/styles/new-york-v4/table.json
-
-function Table({ className, scrollable = true, ...props }: React.ComponentProps<"table"> & { scrollable?: boolean }) {
-  const table = <table data-slot="table" className={cn("w-full border-collapse caption-bottom text-sm", className)} {...props} />;
-  // translations는 PanelBody가 스크롤을 소유하므로 중첩 스크롤 컨테이너를 만들지 않는다.
+/**
+ * shadcn/ui `new-york-v4` Table 기반 (2026-09-12).
+ * 원본: https://ui.shadcn.com/r/styles/new-york-v4/table.json
+ *
+ * ⚠️ **프리셋이 둘이고 구현은 하나다.** 아래 `Th`·`Td`·`Tr`은 **별도 구현이 아니라** 이 파일의
+ * `TableHead`·`TableCell`·`TableRow`를 감싼 프리셋이다 — 마크업·`data-slot`이 한 곳에서 나오므로
+ * 기본값을 고치면 양쪽이 함께 움직인다. 프리셋이 **되눌러야 하는 기본값**은 각 함수 위에 적혀 있고,
+ * 기본값을 바꿀 때 그 목록이 확인 대상이다.
+ *
+ * ⚠️ **`TableFooter`·`TableCaption`은 두지 않는다** — 원본에는 있지만 이 리포에 소비자가 없다.
+ * 필요해지면 그때 원본에서 가져온다 (PoC: 선반영은 그 자체가 결함).
+ */
+export function Table({
+  className,
+  scrollable = true,
+  ...props
+}: ComponentProps<"table"> & { scrollable?: boolean }) {
+  const table = (
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom border-collapse text-sm", className)}
+      {...props}
+    />
+  );
+  /**
+   * ⚠️ **가로·세로 스크롤을 이 컨테이너가 든다** — 페이지 본문이 가로로 밀리면 사이드바까지 따라
+   * 움직이고, `sticky top-0`은 **가장 가까운 스크롤 컨테이너** 기준이라 세로를 바깥이 들면 헤더가
+   * 붙을 대상이 없어 그냥 흘러간다. 높이는 부모(`min-h-0 flex-1`)가 정해 준다.
+   *
+   * ⚠️ **번역 화면만 `scrollable={false}`다** — 그쪽은 `PanelBody`가 스크롤을 소유하므로 여기서
+   * 컨테이너를 하나 더 만들면 스크롤이 중첩된다.
+   */
   return scrollable ? <div className="h-full min-w-0 overflow-auto">{table}</div> : table;
 }
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
-  return (
-    <thead
-      data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
-      {...props}
-    />
-  );
+export function TableHeader({ className, ...props }: ComponentProps<"thead">) {
+  return <thead data-slot="table-header" className={cn("[&_tr]:border-b", className)} {...props} />;
 }
 
-function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
-  return (
-    <tbody
-      data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
-  );
+export function TableBody({ className, ...props }: ComponentProps<"tbody">) {
+  return <tbody data-slot="table-body" className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
 }
 
-function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
-  return (
-    <tfoot
-      data-slot="table-footer"
-      className={cn(
-        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+export function TableRow({ className, ...props }: ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
@@ -57,12 +58,13 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+export function TableHead({ className, ...props }: ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap",
+        "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}
@@ -70,12 +72,16 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+export function TableCell({ className, ...props }: ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        // ⚠️ 원본의 `p-2`를 축별로 쪼갰다 — 프리셋이 `px-4 py-3`로 되누를 때 tailwind-merge가
+        // `p-2`를 **지우지 못해** 클래스가 남고, 그때 누가 이기는지가 Tailwind의 출력 순서에
+        // 암묵적으로 걸린다. 값은 같고 되눌림만 명시적이 된다 (`table-presets.test.tsx`가 센다).
+        "px-2 py-2 align-middle whitespace-nowrap",
+        "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
       )}
       {...props}
@@ -83,60 +89,50 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   );
 }
 
-function TableCaption({
-  className,
-  ...props
-}: React.ComponentProps<"caption">) {
+/**
+ * 열 헤더 프리셋 — 언어·이력·멤버 화면이 쓴다 (번역 화면은 `TableHead`를 직접 든다).
+ *
+ * 되누르는 기본값: `h-10`(→ `h-auto`, 내용 높이로 둔다) · `whitespace-nowrap`(→ `normal`) ·
+ * `text-foreground`(→ `/60`) · `px-2`(→ `px-4 py-2`).
+ *
+ * ⚠️ muted 표면 위라 `text-muted-foreground`를 쓰지 않는다 — 대비가 4.34:1로 미달이다 (DESIGN §2.2).
+ *
+ * ⚠️ **`sticky`에는 `z`가 함께 있어야 한다** — 없으면 스크롤할 때 셀 내용(특히 입력의 포커스 링)이
+ * 헤더 위로 그려진다.
+ */
+export function Th({ className, ...props }: ComponentProps<"th">) {
   return (
-    <caption
-      data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  );
-}
-
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableFooter,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableCaption,
-};
-
-// 기존 화면의 치수·sticky 헤더를 유지한다.
-export function Th({ className, children, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return (
-    <th
-      // muted 표면 위라 `text-muted-foreground`를 쓰지 않는다 — 대비가 4.34:1로 미달이다 (§2.2).
-      // ⚠️ **`sticky`에는 `z`가 함께 있어야 한다** — 없으면 스크롤할 때 셀 내용(특히 입력의 포커스 링)이
-      // 헤더 위로 그려진다. 903행 표에서 헤더는 늘 겹침 대상이다.
+    <TableHead
       className={cn(
-        "bg-muted/50 text-foreground/60 sticky top-0 z-10 px-4 py-2 text-left font-medium",
+        "bg-muted/50 text-foreground/60 sticky top-0 z-10 h-auto px-4 py-2 whitespace-normal",
         className,
       )}
       {...props}
-    >
-      {children}
-    </th>
+    />
   );
 }
 
-export function Td({ className, children, ...props }: HTMLAttributes<HTMLTableCellElement>) {
+/**
+ * 본문 셀 프리셋.
+ *
+ * 되누르는 기본값: `whitespace-nowrap`(→ `normal`, 이력의 사유처럼 긴 문장이 온다) ·
+ * `align-middle`(→ `top`) · `p-2`(→ `px-4 py-3`).
+ */
+export function Td({ className, ...props }: ComponentProps<"td">) {
   return (
-    <td className={cn("border-border border-t px-4 py-3 align-top", className)} {...props}>
-      {children}
-    </td>
+    <TableCell
+      className={cn("border-border border-t px-4 py-3 align-top whitespace-normal", className)}
+      {...props}
+    />
   );
 }
 
-export function Tr({ className, children, ...props }: HTMLAttributes<HTMLTableRowElement>) {
-  return (
-    <tr className={cn("hover:bg-muted/30", className)} {...props}>
-      {children}
-    </tr>
-  );
+/**
+ * 행 프리셋.
+ *
+ * 되누르는 기본값: `border-b`(→ `0`, 이 형은 행 구분선을 `Td`의 `border-t`가 든다. 둘 다 두면
+ * 마지막 행 아래에 선이 하나 더 생긴다) · `hover:bg-muted/50`(→ `/30`).
+ */
+export function Tr({ className, ...props }: ComponentProps<"tr">) {
+  return <TableRow className={cn("border-b-0 hover:bg-muted/30", className)} {...props} />;
 }
