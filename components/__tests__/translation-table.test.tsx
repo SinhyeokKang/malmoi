@@ -20,7 +20,7 @@ const row: KeyRow = {
 };
 const locales = [{ code: "en", orphaned: false }, { code: "ko", orphaned: false }, { code: "fr", orphaned: true }];
 function View({ rows = [row], visible = locales }: { rows?: KeyRow[]; visible?: typeof locales }) {
-  return <Table aria-label="Common translations" className="table-fixed">
+  return <Table scrollable={false} aria-label="Common translations" className="table-fixed">
     <colgroup><col className="w-80" /><col className="w-17" /><col /></colgroup>
     {rows.map((item) => <KeyGroup key={item.id} slug="demo" row={item} locales={visible} project={project} actors={new Map()} lastPulledAt={null} />)}
   </Table>;
@@ -52,4 +52,11 @@ it("로케일 필터에 맞춰 rowspan을 줄이고 보존되는 셀의 draft와
   save.mockResolvedValueOnce({ ok: true, value: "작성 중" });
   await act(async () => area.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
   expect(save).toHaveBeenLastCalledWith({ slug: "demo", keyId: "key-one", localeCode: "ko", value: "작성 중" });
+});
+
+it("키 설명이 행 높이를 늘려도 값 열의 경계선은 전체 td 높이를 따른다", async () => {
+  const { container } = await render(<View rows={[{ ...row, description: "Long description ".repeat(120) }]} />);
+  for (const area of container.querySelectorAll("textarea")) {
+    expect(area.closest("td")?.classList.contains("border-l")).toBe(true);
+  }
 });

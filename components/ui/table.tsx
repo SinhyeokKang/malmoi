@@ -1,25 +1,113 @@
-import type { HTMLAttributes, ReactNode, ThHTMLAttributes } from "react";
-
+import type * as React from "react";
+import type { HTMLAttributes, ThHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-/**
- * 번역 표 (DESIGN §6.1).
- *
- * ⚠️ **가로 스크롤은 이 컨테이너 안에서만** 일어난다 — 페이지 본문이 가로로 밀리면 사이드바까지
- * 따라 움직인다. 903행에서 `thead`가 sticky여야 로케일 열이 무엇인지 계속 보인다.
- *
- * ⚠️ **세로도 이 컨테이너가 든다 (`h-full overflow-auto`).** `sticky top-0`은 **가장 가까운 스크롤
- * 컨테이너**를 기준으로 붙으므로, 세로 스크롤을 바깥이 들면 헤더가 붙을 대상이 없어 그냥 흘러간다.
- * 높이는 부모(`min-h-0 flex-1`)가 정해 준다.
- */
-export function Table({ className, children }: { className?: string; children: ReactNode }) {
+// shadcn/ui new-york-v4 Table 기반. 기존 소비자의 스크롤 계약은 scrollable 기본값으로 유지한다.
+// 원본: https://ui.shadcn.com/r/styles/new-york-v4/table.json
+
+function Table({ className, scrollable = true, ...props }: React.ComponentProps<"table"> & { scrollable?: boolean }) {
+  const table = <table data-slot="table" className={cn("w-full border-collapse caption-bottom text-sm", className)} {...props} />;
+  // translations는 PanelBody가 스크롤을 소유하므로 중첩 스크롤 컨테이너를 만들지 않는다.
+  return scrollable ? <div className="h-full min-w-0 overflow-auto">{table}</div> : table;
+}
+
+function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
-    <div className="h-full min-w-0 overflow-auto">
-      <table className={cn("w-full border-collapse text-sm", className)}>{children}</table>
-    </div>
+    <thead
+      data-slot="table-header"
+      className={cn("[&_tr]:border-b", className)}
+      {...props}
+    />
   );
 }
 
+function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
+  return (
+    <tbody
+      data-slot="table-body"
+      className={cn("[&_tr:last-child]:border-0", className)}
+      {...props}
+    />
+  );
+}
+
+function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
+  return (
+    <tfoot
+      data-slot="table-footer"
+      className={cn(
+        "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+  return (
+    <tr
+      data-slot="table-row"
+      className={cn(
+        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+  return (
+    <th
+      data-slot="table-head"
+      className={cn(
+        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+  return (
+    <td
+      data-slot="table-cell"
+      className={cn(
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function TableCaption({
+  className,
+  ...props
+}: React.ComponentProps<"caption">) {
+  return (
+    <caption
+      data-slot="table-caption"
+      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  );
+}
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+};
+
+// 기존 화면의 치수·sticky 헤더를 유지한다.
 export function Th({ className, children, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th

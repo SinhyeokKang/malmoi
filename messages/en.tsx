@@ -534,6 +534,7 @@ export const en = {
      * 채워진 셀이 이름 없는 입력이 된다. 903행 × 3로케일에서 그건 표 전체가 익명이라는 뜻이다.
      * live region이 같은 어휘(`키 · 로케일`)를 쓰므로 알림과 입력이 같은 이름을 가리킨다.
      */
+    columns: { key: "Key", locale: "Language", value: "Translation" },
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
 
     /**
