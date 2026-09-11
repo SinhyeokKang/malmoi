@@ -128,12 +128,15 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
   | 600 (`font-semibold`) | **500** (`font-medium`) | 셸 밖 카드의 페이지 제목 |
   | 500 (`font-medium`) | 500 그대로 | 셸 안 제목·라벨 |
   | — | **400** (`font-normal`) | **버튼 라벨** — 본문(300)과 제목(500) 사이. 500이면 버튼만 도드라진다 |
-  | 400 (기본·`font-normal`) | **300** (`body`의 기본값 · `font-light`) | 나머지 전부 |
+  | 400 (기본·`font-normal`) | ~~300~~ → **400** (`body`의 기본값) | 나머지 전부 — ⚠️ **2026-09-11에 300을 도로 400으로 올렸다**(사용자). **쓰는 weight가 400과 500 둘뿐**이고 `font-light`는 소비자가 0이 됐다 |
 
-  **`body`에 `font-weight: 300`이 있고 그것이 기본이다.** Pretendard Variable이 `45 920` 범위라
-  300이 실제로 나온다 — 정적 폰트였다면 400으로 반올림됐다. **600 이상은 쓰지 않는다.**
-  ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 `font-light`를 **명시**한다(기본과 같아 보여도
-  그 의도가 코드에 남아야 한다).
+  **`body`에 `font-weight: 400`이 있고 그것이 기본이다** (2026-09-11 — 전날의 300을 한 단계
+  되돌렸다). **600 이상은 쓰지 않는다.**
+  ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 **`font-normal`**을 명시한다(기본과 같아 보여도
+  그 의도가 코드에 남아야 한다) — 소비자는 `FormGroup`의 "(optional)"과 `Button` base 둘이다.
+  ⚠️ **`font-light`를 쓰지 않는다** — 300이 없으므로 가리킬 단계가 없다. 2026-09-11에 넷을 걷었고
+  (`FormGroup`·사이드바 Sign out·로케일 배지의 `(base)`·`Badge` 주석), 그중 둘은 **클래스를 지우는
+  것으로 끝났다**(기본이 이미 400이라 되누를 것이 없다).
   ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다.
 
 - ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
@@ -409,10 +412,10 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
 | **Input·Select** | `h-9 px-2 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
-| **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `text-muted-foreground font-light`(§4의 기본 300) |
+| **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `text-muted-foreground font-normal`(⚠️ label이 500이라 **되눌러야 한다** — §4의 기본 400) |
 | **Radio** | `size-4` · `border-input accent-primary` · label `text-sm`. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** (2026-09-11) — `nextRovingIndex`가 방향키·Home·End를 판정하고 **선택된 칸만 `tabIndex=0`**이다(roving tabindex) |
-| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-light`로 되누른다. variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
+| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-normal`로 되누른다(2026-09-11에 `font-light`에서 바뀌었다). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
 | **Table** | 소비자가 **셋**이다 — 언어(§6.66)·이력(§6.68)·멤버(§6.65). ⚠️ **번역 화면은 2026-09-11(8-4)에 이 프리미티브를 떠났다** — 키 그룹이 `div` + `grid`다(§6.1). 그래서 이 행의 옛 포인터 `§6.1`이 끊겼고, 대신 그 절이 "무엇이 `<table>`의 시맨틱을 대신하는가"를 든다 |
