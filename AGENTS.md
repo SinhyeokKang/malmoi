@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 **dev까지 갔다**(2026-09-10~11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4**(번역 화면 재작성 — **표의 축이 로케일 = 행이 됐다**: `?focus=`·`?state=` 폐기 → `?locales=` 다중 · 툴바 + 칩 행 · 왼쪽 네임스페이스 패널 삭제 · **breadcrumb을 프로젝트 하위 화면 다섯에서 함께 삭제** · `lib/keys/flag.ts`·`filters.ts` 신설 · 프리미티브 17)도 **dev까지 갔다**(2026-09-11, `docs/features/ui-rework/translations/`). ⚠️ **잔여 둘**: 국기 SVG 에셋(사용자가 준다 — 없어도 화면이 서므로 blocker가 아니다)과 **903키 `?ns=*` 2초 실측**(T12). **8단계의 전역 규칙 열은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 PR [#32](https://github.com/SinhyeokKang/malmoi/pull/32) → squash `23f0f50`으로 **프로덕션에 나갔다**(2026-09-11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4**(번역 화면 재작성 — **표의 축이 로케일 = 행이 됐다**: `?focus=`·`?state=` 폐기 → `?locales=` 다중 · 툴바 + 칩 행 · 왼쪽 네임스페이스 패널 삭제 · **breadcrumb을 프로젝트 하위 화면 다섯에서 함께 삭제** · `lib/keys/flag.ts`·`filters.ts` 신설 — 프리미티브는 16 그대로다(`DropdownMenuCheckboxItem`이 기존 파일의 export라 파일이 안 늘었다))도 **dev까지 갔다**(2026-09-11, `docs/features/ui-rework/translations/`). ⚠️ **잔여 하나**: **903키 `?ns=*` 2초 실측**(T12). 국기 SVG는 2026-09-11에 도착해 `public/flags/`에 **253개가 커밋됐다**(T0 닫힘). **8단계의 전역 규칙은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 **17개** + `radix-ui`에서 DropdownMenu·Dialog **둘** (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 **16개**(`components/ui/*.tsx` — **파일 단위로 센다**. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot** 셋 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -320,6 +320,10 @@ app/
                         **projects/page.tsx만 페이지가 직접** 든다(`projects/`를 `[slug]`와 공유해 그 층에
                         레이아웃을 두면 프로젝트 화면이 두 겹이 된다). `shell-layout.test.ts`가 라우트마다
                         정확히 하나인지 체인을 훑어 센다
+    error.tsx           오류 경계 (client) — 셸 안쪽이 통째로 빈 화면이 되는 것을 막는다.
+                        `Alert`(unavailable) + [다시 시도](`reset`) 둘뿐이다.
+                        ⚠️ **예외 메시지를 그대로 뿌리지 않는다** — 남의 문구를 실어 보내지 않는
+                        `classifyFailure`와 같은 츕이고, 화면이 보이는 것은 사전 문구 하나다
     actions.ts          saveTranslation · triggerPullAction — 둘 다 getProjectAccess를 지나고,
                         그 뒤 planProjectReadiness로 첫 적재 전 프로젝트를 not-ready로 거부한다
                         ⚠️ **triggerPullAction에 try/catch가 없다** (7단계) — `runSync`가 던지지 않고
@@ -333,6 +337,10 @@ app/
                         ⚠️ **GitHub 계정 섹션은 2026-09-09에 `/account`로 갔다** (6b-4) — 그것이 여기
                         있었던 이유는 "프로젝트 0개인 사용자에게 도달 가능한 자리가 여기뿐"이어서였고,
                         사용자 축 라우트가 생기며 그 이유가 사라졌다. **옮긴 것이지 복제가 아니다**
+    projects/loading.tsx
+                        목록 스켈레톤 (2026-09-11 폴리싱) — 행 타일과 **같은 높이**여야 한다.
+                        ⚠️ 이 파일이 `PanelHeader`까지 흥내 내면 제목이 두 번 그려진다 — 머리는 서버가 즉시 내므로
+                        스켈레톤은 **본문만** 든다
     account/actions.ts  startSessionRevocation — 전체 세션 회수의 시작(인가는 `requireUser`).
                         ⚠️ 서버가 **기존 로그인 Account를 고른다** — 클라이언트가 provider를 정하면
                         공격자가 확인 상대를 고르게 된다. 완료는 callback을 가로채는 `withRevocation`이다
@@ -341,6 +349,8 @@ app/
                         재인가 + 로그아웃. `?e=`는 `isConnectError` 하나로 거른다.
                         ⚠️ **middleware matcher를 늘려야 했다** — 패턴이 `/projects/:path*` 하나여서
                         `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다
+    account/layout.tsx  `ContentPanel` 하나만 둔다 (8-2) — 셸이 그것을 안 드는 이유가 위에 있다.
+                        ⚠️ 오른쪽 패널이 없다 — 그것은 프로젝트 축의 것이고 여긴 사용자 축이다
     projects/new/page.tsx
                         온보딩 (SaaS 5단계). 서버가 ①①'(계정 미연결·설치 0·리포 0)를 그리고 ②~⑥은
                         클라이언트 상태다. ⚠️ **maxDuration=60이 여기 있어야 한다** — Server Action은
@@ -348,6 +358,8 @@ app/
                         isConnectError 둘로** 읽는다 (callback이 착지시킨다).
                         ⚠️ 어댑터 라벨 표(formatLabel)를 **서버가 만들어 내려준다** — 클라이언트가 그
                         모듈을 값으로 import하면 ts-morph가 번들에 들어온다 (POSTMORTEM 2026-09-07)
+    projects/new/layout.tsx
+                        `ContentPanel` 하나 (8-2). `account/layout.tsx`와 같은 형이고 오른쪽 패널이 없다
     projects/actions.ts createInvitation · changeMember · **revokeInvitation** (OWNER 전용 — member:manage)
                         + **archiveProject · unarchiveProject** (7단계 — `project:settings`. 그 permission이라
                         보관된 프로젝트에서도 지나간다). ⚠️ **둘을 한 함수로 합치거나 인가를 공용 헬퍼로
@@ -387,8 +399,8 @@ app/
     projects/[slug]/page.tsx
                         Home — **프로젝트 진입의 착지점** (6b-6, 2026-09-09). 게이트 `translation:write`.
                         breadcrumb이 없다(이 화면이 루트다). 로케일별 진행률 + 최근 활동.
-                        ⚠️ **착지 클릭 하나를 갚아야 한다** — 진행률 행 전체가 `?focus=` 링크, 활동의
-                        편집 항목이 `?ns=`+`?focus=` 링크, primary가 [Open translations]다. 개요만 있고
+                        ⚠️ **착지 클릭 하나를 갚아야 한다** — 진행률 행 전체가 `?locales=` 링크, 활동의
+                        편집 항목이 `?ns=`+`?locales=` 링크(8-4가 `?focus=`를 그 이름으로 바꿨다), primary가 [Open translations]다. 개요만 있고
                         링크가 없으면 그 클릭이 순손실이다 (SAAS §7.7 결정 1)
                         ⚠️ **툴바 지표를 복제하지 않는다** — `countUnpublished`·`loadKeys`를 부르지 않는다
                         (`home-screen.test.ts`가 센다). 진행률은 orphaned를 뺀다(그 열은 disabled다)
@@ -463,16 +475,22 @@ app/
                         영역 안이어야 해서(셋이 서면 고정 영역이 400px을 넘는다) 머리와 본문을 그것이 든다
     __tests__/          harness.ts(메모리 DB 한 벌) + harness.test.ts(**하네스 자기검사** — 페이크가 실제
                         스키마보다 느슨하면 아무 행이나 집어도 정답이 나온다, POSTMORTEM 2026-09-06)
-                        + 흐름·인가·멤버십·연결·게시실패·온보딩·조회·셸레이아웃 테스트 **여덟**
+                        + 흐름·인가·멤버십·연결·게시실패·온보딩·조회·셸레이아웃·**보관·리포설정·sync** 테스트 **열둘**
                         (queries — countUnpublished·loadMemberships의 테넌트 좁힘 / shell-layout — 셸이
                         **뷰포트 고정**인지 소스로, malmoi#13의 상시 방어선)
                         (github-connect·publish-failure·onboarding은 mock 범위가 달라 일부러 갈랐다)
+                        (archive — 저장·Publish가 `archived`로 거부되고 `project:settings`만 지나는지 /
+                        repository-settings — 6b-5가 갈라낸 Action 둘이 **각자의 컴럼만** 쓰는지 /
+                        sync-run — `runSync`의 게이트·RUNNING 행 개폐·CRON trigger·SKIPPED 보존·FAILED 접기)
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
                         게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
     [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
                         email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
+    __tests__/          page — `renderToStaticMarkup`으로 **손상된 초대**가 unavailable + 링크를 보존한
+                        재시도를 내고, **없는 초대**는 그런 재시도를 안 내는지 가른다.
+                        ⚠️ 둘을 한 문구로 접으면 재시도해도 소용없는 사람에게 재시도 버튼을 준다
   api/__tests__/        route-diagnostics(인증·JSON·스키마 실패가 각자 응답을 내는지)
                         + github-callback(state 검증 **전에** code 교환·Account 쓰기가 0회인지)
   api/push/route.ts     CI → DB (maxDuration 60). ⚠️ Bearer는 **그 프로젝트의 push 토큰 원문**이고
@@ -505,6 +523,11 @@ components/
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받는다. 소비자는 `/account` 하나다(6b-4가 옮겼다)
   public-doc.tsx        `/privacy`·`/docs`가 공유하는 껍데기 (8-1a) — **돌아가는 링크가 요지다**
+  session-revocation.tsx
+                        전체 세션 회수 버튼 (client, sec-audit-2 #38) — 소비자는 `/account` 하나다.
+                        ⚠️ **provider를 안 보낸다** — 확인 상대를 서버가 고른다(`startSessionRevocation`).
+                        결과 `?sessionRevocation=`은 갈래 다섯인데 **문구는 넷**이다 — invalid·unavailable을
+                        한 문구로 접는다(둘 다 "다시 해달라"라 가르면 사용자가 할 일이 같다)
   project-archived.tsx  보관된 프로젝트 화면 (7단계) — `project-not-ready.tsx`와 같은 형이지만
                         **`redirect()`를 쓰지 않는다**: 보관은 되돌릴 수 있는 상태이고 OWNER가 갈 곳은
                         설정 안의 카드 하나라, 튕기면 자기가 왜 거기 왔는지 모른다. 화면 **다섯**이
@@ -556,6 +579,9 @@ components/
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
                         ⚠️ **T5~T8에서 전부 `components/ui/` 프리미티브로 옮겼다** — raw 컨트롤이 0개라
                         "포커스 링을 상수에 숨기지 말라"는 경고의 대상이 이 디렉터리에서 사라졌다
+  projects/             목록 화면의 클라이언트 조각 (2026-09-11 폴리싱) — search-input 하나다.
+                        ⚠️ **필터는 서버가, 검색어만 여기가 든다** — 둘 다 URL 상태(`?filter=`·`?q=`)이고
+                        판정은 `lib/projects/list.ts`의 순수 함수다. 이 파일이 드는 것은 입력 상태 하나뿐이다
   settings/             설정 화면의 클라이언트 조각 (6b-3·7단계). archive-card(보관·되돌리기 —
                         ⚠️ **인라인 결과 Alert가 없다**: revalidate가 방금 받은 문구를 언마운트한다
                         (POSTMORTEM 2026-09-07). 카드가 [Restore project]로 바뀌는 것이 피드백이고,
@@ -588,7 +614,11 @@ components/
                         구조로 보장된다. 8-2에서 `/projects`가 실제로 그것을 잃었다).
                         ⚠️ **셸이 `{children}`을 이걸로 감싸지 않는다**: 감싸면
                         오른쪽 패널이 그 안에 갇힌다. 각 갈래의 레이아웃이 들고 `shell-layout.test.ts`가
-                        라우트마다 **정확히 하나**인지 체인을 훑어 센다) /
+                        라우트마다 **정확히 하나**인지 체인을 훑어 센다.
+                        ⚠️ **콘텐츠 폭 상한을 이 파일이 든다** (2026-09-11) — `CONTENT_MAX = "mx-auto w-full max-w-7xl"`를
+                        `PanelHeader`·`PanelBody`가 **안쪽 래퍼**에 걸어 **1280px**가 라우트 아홉 전부에 걸린다.
+                        셸의 `min-w-[1280px]`과 **같은 숫자**인 것이 설계 의도다 — 최소폭에서 상한까지 한 칸이라
+                        그 사이에서는 어떤 중간 리플로도 필요 없다. 한쪽만 움직이면 패널이 떠거나 잘린다) /
                         project-panel.tsx(**320 골격 — 세그먼트 컨트롤 + 빈 본문.** 내용은 8-P다) /
                         sidebar.tsx(usePathname으로 프로젝트 컨텍스트·역할별 항목.
                         ⚠️ **배경도 border도 없다** — 캔버스 위에 얹히므로 hover·선택이 `bg-foreground/[0.03]`·`/[0.07]`
@@ -608,7 +638,7 @@ components/
                         **Publish는 그대로 셸 밖**이다 — 번역 화면 제목 행 우측이고 8-P가 패널로 가져간다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
                         판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개 + 헬퍼 하나** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
                         `Tooltip`이 빠지고**(8-3이 접기 레일을 지우면서 소비자가 0이 됐다) **같은 날 8-4가
                         `DropdownMenuCheckboxItem`을 더했다** — `role="menuitemcheckbox"`와 `aria-checked`를
@@ -623,6 +653,10 @@ components/
                         판정하고 **선택된 칸만 `tabIndex=0`**이다. 전엔 `onClick`만 있어 방향키가 죽었고 Tab이
                         칸마다 멈췄다. 네이티브 radio로 안 바꾼 이유: 숨긴 `<input>`에 링을 얹게 되어
                         `focus-ring.test.ts`가 **보이지 않는 링으로 green**이 된다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ **`tone.ts`는 그 열여섯에 안 들어간다** (2026-09-11) — 컴포넌트가 아니라 `toneFill(name)`
+                        하나다(`lib/tone.ts`가 골라준 색 이름 → `bg-<tone>-600`). **판정은 `lib/`, 클래스는 여기**가
+                        든다 — `lib/`가 Tailwind를 알면 그 규칙이 두 층에 걸친다. 소비자는 아바타 폴백과
+                        프로젝트 목록 행 아이콘 둘이고, 클래스는 **리터럴 맵**이다(조립하면 Tailwind가 정적 추출을 못 한다)
                         ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09) —
                         `asChild`가 오면 Slot이 **자식 하나만** 받으므로 `selected`의 `Check`가 형제로
                         붙는 순간 던지고 셸이 죽는다. `add099a`부터 프로덕션에 있었다
@@ -664,6 +698,17 @@ components/
                         + client-graph — `"use client"` 파일의 **값 import 그래프**를 따라가 ts-morph·
                         octokit·@prisma/client·node:fs·server-only가 없는지 센다. ⚠️ 없으면 7.2MB 청크가 조용히 나간다
                         (실제로 나갔다 — POSTMORTEM 2026-09-07). `import type`은 지우고 `"use server"`에서 멈춘다
+                        + logs-screen — `/logs`가 `try`를 안 써 조회 실패가 "실행 없음"과 다른 화면이 되는지 ·
+                        빈 상태가 `EmptyState`인지 · **[Send changes]가 없는지**(이력과 행동의 경계) · 사유 문구에
+                        git 어휘가 없는지
+                        + members-screen — 최상단 `requireProjectAccess` · `?e=` 생산자 0건 · **마스킹이 서버 전용**
+                        (클라이언트가 `maskEmail`을 import하지 않고 반환 타입에 `email`이 없다) · 역할이 native
+                        `Select` · 제거가 `Dialog`
+                        + projects-screen — 목록이 **서버 컴포넌트**인지(필터가 `useState`가 아니라 `?filter=`) ·
+                        행 전체가 `routes.project(slug)` 링크 · 배지 색 맵 + `satisfies` · 본문이 스크롤 규칙을
+                        다시 적지 않고 `PanelBody`에 맡기는지
+                        + signin-screen — `min-w-[1280px]` · `lg:` 분기 0 · **인라인 Alert 0**(토스트 단일) ·
+                        도트 캔버스 `aria-hidden` · 키비주얼이 `next/image` + `alt=""` · 토스트 id 고정
 messages/
   en.tsx                ⚠️ **UI 문자열의 단일 출처** (SaaS 6a). 값은 문자열 **또는 함수**다 — 보간·복수·노드
                         삽입을 헬퍼 셋으로 만들지 않는다(`fmt`·`plural`·`rich`가 없다). `as const`라 접근 자체가
@@ -681,14 +726,14 @@ lib/
                         원문, 뒤 괄호). ⚠️ **잎이다** — 온보딩 클라이언트 둘이 읽으므로 `@/lib/adapters/types`를
                         **타입으로만** 가져온다(값이면 `ADAPTER_ERROR_CODES`를 따라 그 디렉터리가 열린다)
   home/overview.ts      Home의 순수 판정 둘 (6b-6) — activeLocaleProgress(`localeProgress` 재사용 +
-                        **orphaned 제외**: 그 열은 번역 화면에서 disabled라 `?focus=` 링크가 편집할 수
+                        **orphaned 제외**: 그 행은 번역 화면에서 disabled라 `?locales=` 링크가 편집할 수
                         없는 곳으로 데려간다) / recentActivity(편집·CI push·Publish를 시각 desc로 병합.
                         ⚠️ **`limit`은 병합 뒤에** 적용된다 — 편집만 자르면 push·publish가 항상 밀려난다.
                         ⚠️ 동시각 정렬이 **결정적**이다: DB `orderBy`에 기대지 않고 여기서 키·로케일로
                         가른다(`Array.sort`가 안정 정렬이라 입력 순서를 보존한다))
   shell/nav.ts          사이드바의 순수 판정 **넷** (8-3이 `navFooterItems`를 더했다) — activeProject(pathname의 slug를 **내 멤버십 안에서** 찾는다,
                         없으면 컨텍스트 없음) / projectSections(**여섯** — Home(6b-6)·Locales(6b-5)·Translations·
-                        Members·**Logs**(7단계)·Settings. ⚠️ **앞의 넷은 `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고
+                        Members·**Logs**(7단계)·Settings. ⚠️ **앞의 다섯은 `canPerform` 뒤가 아니다**: EDITOR도 목록을 보고
                         컨트롤만 갈린다. ⚠️ 라벨과 URL이 갈리는 자리 둘: "Languages"→`/locales`,
                         "Overview"→`/projects/<slug>`. ⚠️ **`exact`를 항목마다 든다** — 활성 판정이 축이
                         아니라 라우트 모양에 붙는다: `/projects/<slug>`는 그 프로젝트 **모든** 하위
@@ -725,6 +770,10 @@ lib/
                          `account()`는 6b-4, `project(slug)`는
                         6b-6이 **그 페이지와 같은 커밋에** 더했다 — 페이지 없이 등재하면 404를 가리키는
                         생성기가 되고 죽은 링크 검사의 접두 규칙이 `/projects/*`를 통과시켜 못 잡는다.
+                        ⚠️ **쿼리를 받는 생성기가 둘 더 있다** — `projects({ filter, q })`(8-3. `q`는 **이름 검색**이라
+                        번역 화면의 `q`와 이름만 같고 대상이 다르다)와 `account({ sessionRevocation })`(2026-09-11 —
+                        그전엔 세 자리가 문자열 연결로 `/account?sessionRevocation=…`을 만들어 **위 검사를 통째로
+                        회피했다**. 갈래는 다섯: cancelled·wrong-account·expired·invalid·unavailable).
                         ⚠️ **`project(slug)`가 "프로젝트로 간다"의 유일한 답이다** — 목록 행·스위처·
                         breadcrumb 넷·초대 수락 일곱 자리가 그것이고, 하나라도 남으면 같은 동작이
                         어디서 눌렀는지에 따라 다른 곳에 착지한다
@@ -763,6 +812,9 @@ lib/
   db.ts                 getPrisma() — 지연 생성 싱글턴 (pg adapter, 6543, server-only)
   utils.ts              cn() — shadcn 표준 헬퍼
   __tests__/            db·env·failure·githash·utils·routes·github-probe(환경변수 누락이 MissingEnvError로 던져지는지)
+                        + locale-code(로케일 코드가 `pathTemplate`에 보간돼 **리포 쓰기 경로**가 되고 그 출처가
+                        `/api/push` 페이로드다 — sec-audit 발견 2) · tone(`toneOf`가 순수인지 — "같은 이름은
+                        언제나 같은 색", 2026-09-11)
                         + ⚠️ globals-css·no-nul-bytes — 뒤의 둘은 lib/ 아래 어느 모듈에도 대응하지 않는다
                         (앞은 app/globals.css의 라이트 고정 상시 방어선(DESIGN §3.1), 뒤는 소스에 리터럴 NUL 금지)
   failure.ts            500 본문 판정 (classifyFailure·MissingEnvError) — 우리 메시지는 그대로,
@@ -782,6 +834,10 @@ lib/
                         public 리포가 접근 철회 뒤에도 200이라 앞의 호출이 판정 근거다.
                         ⚠️ **createApp()은 try 밖** — 환경변수 누락은 값(error)으로 접지 않고 던진다
   github-connect/       GitHub 계정 연결 (SaaS 4단계). **사용자 토큰 전담 — App 개인키를 모른다**
+                        ⚠️ **예외가 하나다**: `repository-id.ts`는 사용자 토큰과 무관하고 소비자가
+                        `lib/github.ts`(**설치 토큰 경로**) 하나다 — "연결"이 아니라 "연결된 것의 정체성"이라
+                        여기 있다. 그 두 토큰을 섞지 말라는 규정은 그대로고,
+                        `credential-separation.test.ts`가 재는 것도 그대로다(이 파일은 `lib/failure`만 묘다)
     origin.ts           requestOrigin·callbackUrl — ⚠️ **redirect_uri와 쿠키 secure가 한 판정에서 나온다.**
                         redirect_uri를 안 보내면 GitHub이 App의 **첫** callback URL(프로덕션)로 되돌려
                         보내 로컬·preview 연결이 원리적으로 불가능했다 (malmoi#7)
@@ -813,6 +869,11 @@ lib/
     message.ts          ConnectError 12갈래 + isConnectError·connectErrorMessage (inviteErrorMessage 형)
     user.ts             OAuthApp·Octokit 호출 — ⚠️ authentication에 clientSecret이 섞여 오므로
                         token·expiresAt·refreshToken 셋만 뽑는다. 목록은 paginate로 전 페이지
+    repository-id.ts    requirePinnedRepositoryId · requireSameRepository (sec-audit-2 #34) — 쓰기 전에
+                        **지금 그 주소가 준 id**가 `Project.repositoryId`와 같은지 본다. ⚠️ **이름은 재사용된다** —
+                        리네임 뒤 같은 조직이 옛 이름으로 리포를 다시 만들면 `fullName`도 `installationId`도
+                        저장값과 같다. ⚠️ 옛 행은 pin이 null이라 **던진다**(`not-installed`) — OWNER 재연결까지
+                        Publish가 거부되는 것이 의도된 전환이다
   scan/                 사용처(`refs`) 수집 전담 — 진실이 아니다 (에러가 아니라 경고)
                         ⚠️ `WrapperId.kind`가 direct(`t("k")`)와 hook(`const { t } = useI18n()`)을
                         가른다. hook은 반환 바인딩을 스코프째 추적하고 next-intl의 namespace
@@ -1008,7 +1069,12 @@ lib/
                           코드가 남이 정한 값이라 객체 조회는 `__proto__`에서 프로토타입을 돌려준다).
                           ⚠️ **판정 순서가 계약이다** — 하위태그가 언어 표를 **이긴다**: `en`→GB는 표가,
                           `en-GB`→GB·`en-US`→US는 순서가 낸다(2026-09-11 사용자 규칙 셋). 표에 지역별
-                          항목을 더하면 규칙이 두 벌이 된다)
+                          항목을 더하면 규칙이 두 벌이 된다.
+                          ⚠️ **표에 무엇을 넣는가가 규칙이다** (2026-09-11에 넓혔다) — 기준은 "언어명과
+                          나라가 사실상 1:1"이고, **주요 사용국이 둘 이상이면 일부러 뺀다**:
+                          `es`·`pt`·`ar`·`sw`·`ta`·`ca`·`eu`·`gl`·`cy`. **틀린 국기는 없는 것보다 나쁜다** —
+                          그쪽은 `null`로 떨어져 코드만 그린다. 다만 `es-MX`·`pt-BR`처럼 하위태그가 붙으면
+                          이 표를 아예 안 지나 정확히 선다)
                         ⚠️ **`isUnpublished`와 `countUnpublished`는 같은 술어의 두 벌이다** — `updatedBy`가 사람인
                         행만 센다(push가 그것을 비운다). `updatedAt`만 보면 code push 직후 전 키가 미배포로 나온다.
                         `app/(edit)/__tests__/queries.test.ts`가 두 경로에 같은 행을 먹여 맞댄다
@@ -1018,7 +1084,7 @@ lib/
                         slug.ts(planSlug·normalizeProjectSlug — 형식은 pull/trigger의 isRefSafeSlug를 **그대로 부른다**)
                         / detect.ts(probeTargets — sampleOrder와 같은 파일 ≤21 · makeProbe · formatLabel · summarizeCandidates
                         · ingestTargets) / confirm.ts(templatePaths · planConfirmedFormat — 저장값은 detectFormatWith 반환)
-                        / create-plan.ts(planProjectCreate · PROJECT_LIMIT) / readiness.ts(setup|awaiting_first_sync|ready)
+                        / create-plan.ts(planProjectCreate · PROJECT_LIMIT **3** — 계정당 프로젝트 상한, `MEMBER_LIMIT(10)`과 같은 형으로 **소비자 옆**이다) / readiness.ts(setup|awaiting_first_sync|ready)
                         / base-locale.ts(planBaseLocaleChange 4갈래 — orphaned 거부가 요지다: 그 파일은 리포에서
                         사라졌고 base로 세우면 다음 push가 키 0개를 낸다. `zh_CN` ≠ `zh-CN`)
                         / base-pending.ts(⚠️ **잎, import 0** — basePending + baseLocaleFieldValue.
@@ -1081,6 +1147,12 @@ prisma/
                         컷오버 이전 백업을 복원할 수단이 사라진다. 그 SQL 주석이 근거다)
                         ⚠️ **마지막 셋은 `/merge` 전에 `db:deploy`로 prod에 먼저 넣었다** — 순서가 뒤집히면
                         프로덕션이 없는 컬럼을 조회한다. dev·prod 모두 17개 up to date
+  credential-cutover/   ⚠️ **마이그레이션이 아니라 스테이징 자리다** (credential R2) — SQL 첫 줄이
+                        `-- R2 ONLY: stage under prisma/migrations only after blocked backfill + authenticated
+                        verification.`다. **Prisma가 이 디렉터리를 안 본다** — 차단 backfill과 인증 복호 검증이
+                        끝나기 전에 `migrations/`에 올리지 않기 위해 두 자리를 갈랐다.
+                        `scripts/finalize-credentials.ts`가 **검토 SQL과 staged SQL의 바이트 일치**를 재는 상대가
+                        이것이고, 지금은 이미 올라가 둘이 같다
 prisma.config.ts        마이그레이션 접속 URL (DIRECT_URL) + .env.local 로드
 vercel.json             Cron — /api/pull 야간 1회 (UTC 18:00 = KST 03:00). Hobby는 하루 1회다
                         ⚠️ **`regions: ["hnd1"]`이 함수를 DB 옆에 붙인다** (2026-09-09 계측) — 기본값은
@@ -1124,6 +1196,9 @@ scripts/
                         pending**일 때만 `migrate deploy`를 부른다. 체크섬을 손대거나 applied로 표시하지 않는다
   __tests__/            required-args.test.ts — push:local·smoke:github의 인자 필수와 **옛 공유 slug env의
                         소비자 0건**을 소스로 고정한다. ⚠️ 그 이름이 테스트에 남아 있어야 방어선이 산다
+                        + workflow-pins — `.github/` 아래 모든 yml의 `uses:`가 **40자 SHA로 핀됐는지**를
+                        재귀로 센다. ⚠️ `l10n-push`는 **남의 리포 러너에서 돌고** 그 소비자가
+                        `secrets.PUSH_TOKEN`을 넘기므로, 움직이는 태그 하나가 곳 그 리포의 즉시 코드 실행이다
 vitest.setup.ts         ⚠️ **`server-only`를 전역 mock하고 테스트용 암호화 키 셋을 세운다.** 없으면
                         credentials 테스트가 통째로 죽는다. ⚠️ 그 mock이 "테스트가 죽는다"는 압력을
                         없앴다 — 코드 컨벤션의 `server-only` 항목 참고
@@ -1147,10 +1222,10 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
                         올라가고 여기는 근거로 남는다. 상태·백로그는 README.md
                         ⚠️ **셋의 수명이 다르다**: spec·design은 완료돼도 남기고(왜 그 선택을
                         했나), tasks는 닫히면 지운다(전부 [x]면 남는 정보가 없다 — 2026-09-05에
-                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **다섯이
+                        완료된 셋 841줄을 지웠다). 예외는 체크리스트 밖의 기록이 붙은 경우로 **여섯이
                         남아 있다**: pull-to-pr §4(실물 7시나리오) · tenant-auth §6.1(preview 실물 +
                         거기서만 잡힌 결함 넷) · github-connect T5(실물 10시나리오 + **못 밟은 둘의
-                        이유**) · project-onboarding T8(실물 14행 표 + **전제 둘이 틀렸다는 실측**) · sync-runs T10. key-separator-contract는 보류라 애초에 대상이 아니다
+                        이유**) · project-onboarding T8(실물 14행 표 + **전제 둘이 틀렸다는 실측**) · sync-runs T10 · **translation-ui T7**(96개 전부 `[x]`인데 재측정 기록이 붙어 있다). key-separator-contract는 보류라 애초에 대상이 아니다
                         ⚠️ adapter-generality/의 repos*.txt·verdicts*.json은 **살아 있는 입력**이다
                         (pnpm adapter-survey가 읽는다 — 완료된 산출물이 아니다)
 ```
@@ -1217,7 +1292,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-10 기준 53개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-11 기준 55개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 
