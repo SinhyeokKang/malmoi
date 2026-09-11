@@ -71,8 +71,8 @@ describe("flagFor — `null` 갈래 (폴백은 코드만이다)", () => {
 
 describe("보유 목록", () => {
   /**
-   * ⚠️ **비어 있어도 green이다** — 에셋(T0)이 사용자에게서 오고, 그 전까지 화면은 코드만으로 선다.
-   * 이 검사가 고정하는 것은 목록이 **파일 id 모양**이라는 것뿐이다.
+   * ⚠️ **2026-09-11에 채워졌다** — 사용자가 alpha-2 세트를 줬고 253개가 `public/flags/`에 들어왔다.
+   * 목록과 파일의 대조는 `flag-assets.test.ts`가 들고, 여기는 **모양**만 본다.
    */
   it("소문자 두 글자만 든다", () => {
     for (const id of FLAG_INVENTORY) expect(id).toMatch(/^[a-z]{2}$/);
