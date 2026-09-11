@@ -117,6 +117,11 @@ export default async function TranslationsPage({
   const counts = namespaceCountsFor(rows, selected);
   const selection = resolveNamespace(search.ns, counts);
 
+  // 최초 착지만 자동 선택한다. 저장 재검증이 다른 네임스페이스로 이동해 작성 중인 셀을 지우면 안 된다.
+  if (selection.kind === "one" && search.ns !== selection.namespace) {
+    redirect(routes.translations(slug, { ns: selection.namespace, locales: search.locales, q: search.q }));
+  }
+
   const scoped = selection.kind === "one" ? rows.filter((r) => r.namespace === selection.namespace) : rows;
   const filtered = selection.kind === "none" ? [] : filterRows(scoped, { locales: selected, q: search.q });
   /**

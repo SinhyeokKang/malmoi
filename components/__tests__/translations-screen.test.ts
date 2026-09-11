@@ -231,11 +231,11 @@ describe("행 축 (8-4)", () => {
    * ⚠️ **제출 버튼 없는 `<form>`은 Enter로 submit되지 않는다** (POSTMORTEM 2026-09-08 — 검색이
    * 조용히 무효였고 CDP 원시 키까지 먹여 봐도 같았다). 툴바 재작성에서 되돌아가지 않게 고정한다.
    */
-  it("툴바에 `<form>`이 없다 — Enter를 `onKeyDown`이 직접 받는다", () => {
+  it("툴바가 공통 검색 입력을 사용한다 — Enter 동작은 filter-interactions에서 검증한다", () => {
     const src = read(FILTERS);
     expect(src).not.toMatch(/<form\b/);
-    expect(src).toMatch(/onKeyDown/);
-    expect(src).toMatch(/e\.key === "Enter"/);
+    expect(src).toMatch(/<SearchInput\b/);
+    expect(src).toMatch(/onSearch=\{/);
   });
 
   /**

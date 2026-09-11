@@ -1,3 +1,6 @@
+"use client";
+
+import { RadioGroup as Primitive } from "radix-ui";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -22,3 +25,7 @@ export function Radio({
     </label>
   );
 }
+
+/** Styled consumers retain Radix selection and roving focus behavior. */
+export const RadioGroup = Primitive.Root;
+export const RadioGroupItem = Primitive.Item;

@@ -25,6 +25,7 @@ import {
   type ProjectStatus,
 } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
+import { firstQueryValue } from "@/lib/search-params";
 import { cn } from "@/lib/utils";
 
 /**
@@ -74,7 +75,7 @@ function filterLabel(filter: ProjectFilter): string {
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ e?: string; filter?: string; q?: string }>;
+  searchParams: Promise<{ e?: string | string[]; filter?: string | string[]; q?: string | string[] }>;
 }) {
   const { userId } = await requireUser();
   /**
@@ -85,7 +86,10 @@ export default async function ProjectsPage({
    * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 두 union은 `unavailable`
    * 하나만 겹치고 뜻이 같으므로 먼저 보는 쪽이 이겨도 문제가 없다.
    */
-  const { e, filter: rawFilter, q } = await searchParams;
+  const search = await searchParams;
+  const e = firstQueryValue(search.e);
+  const rawFilter = firstQueryValue(search.filter);
+  const q = firstQueryValue(search.q);
   const message = isAccessError(e)
     ? accessErrorMessage(e)
     : isConnectError(e)

@@ -10,6 +10,7 @@ import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { inviteErrorMessage } from "@/lib/auth/message";
@@ -126,9 +127,9 @@ export default async function InvitePage({
             await signOut({ redirectTo: routes.invite(token) });
           }}
         >
-          <Button type="submit" size="lg" className="w-full">
+          <SubmitButton size="lg" className="w-full">
             {m.invite.otherAccount}
-          </Button>
+          </SubmitButton>
         </form>
       )}
       <form
@@ -144,9 +145,9 @@ export default async function InvitePage({
           );
         }}
       >
-        <Button type="submit" variant="primary" size="lg" className="w-full">
+        <SubmitButton variant="primary" size="lg" className="w-full">
           {m.invite.accept}
-        </Button>
+        </SubmitButton>
       </form>
       <p className="text-muted-foreground text-xs">{m.invite.sentTo(email)}</p>
     </Card>
@@ -186,9 +187,9 @@ function ProviderButton({
         await signIn(provider, { redirectTo: routes.invite(token) });
       }}
     >
-      <Button type="submit" size="lg" className="w-full">
+      <SubmitButton size="lg" className="w-full">
         {label}
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

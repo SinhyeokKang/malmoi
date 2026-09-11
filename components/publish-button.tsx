@@ -40,7 +40,8 @@ export function PublishButton({
       variant="primary"
       onClick={() =>
         startTransition(async () => {
-          onResult(await triggerPullAction(slug));
+          const result = await triggerPullAction(slug).catch(() => ({ status: "failed" as const, error: "unavailable" }));
+          onResult(result);
         })
       }
       // pending 중 연타를 막는다 — 두 실행이 병렬이면 둘 다 열린 PR을 못 보고

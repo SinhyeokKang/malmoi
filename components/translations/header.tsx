@@ -8,7 +8,6 @@ import { PublishButton, PublishResult } from "@/components/publish-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
-import { FilterChips } from "@/components/translations/filter-chips";
 import { TranslationFilters } from "@/components/translations/filters";
 import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
@@ -165,12 +164,12 @@ export function TranslationsHeader({
         <TranslationFilters
           slug={slug}
           query={query}
+          chipQuery={chipQuery}
           namespaces={namespaces}
           locales={locales}
           selected={selected}
           fallback={fallback}
         />
-        <FilterChips slug={slug} query={chipQuery} selected={selected} fallback={fallback} />
       </PanelHeader>
 
       {/*
@@ -191,7 +190,7 @@ export function TranslationsHeader({
         */}
         <div className="mb-4 empty:mb-0 space-y-3">
           <BasePendingBanner baseLocale={baseLocale} declaredBaseLocale={declaredBaseLocale} />
-          <EditLossBanner count={unpublished} dismissKey={dismissKey} />
+        <EditLossBanner slug={slug} count={unpublished} dismissKey={dismissKey} />
           {outcome !== null && (
             <div ref={resultRef}>
               <PublishResult outcome={outcome} />

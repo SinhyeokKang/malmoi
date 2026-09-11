@@ -1122,3 +1122,30 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **`[manual]` 목측 항목에 뷰포트를 명시한다.** `tasks.md` T12가 "1280px에서 값 열이 ≈368px이어도
     성립하는지 본다"를 적어 뒀는데 **그 줄이 `/ship` 파이프라인의 검증에 안 들어간다** — 이 리포엔
     e2e가 없으므로 `[manual]`은 사람이 돌리는 것이고, 배송이 dev까지 간 뒤에 돌았다.
+
+### 2026-09-12 — 저장 중 서버 값을 수신 처리했지만 실패 후 취소 기준은 옛 값이었다
+
+- **영역**: `components/translation-input.tsx`
+- **증상**: DOM 회귀 테스트에서 초기값 A → B 저장 시작 → pending 중 서버 값 C 수신 → 저장 실패 후
+  Escape가 C 대신 A를 복원했다. A를 다시 저장하려 해도 `next === saved`라 요청을 생략한다.
+- **근본 원인**: 서버 값 수신 표식(`serverValue`)은 갱신하면서 취소 기준(`saved`) 갱신은 `!pending`에
+  묶었다. 실패 응답은 기준을 확정하지 않으며, pending이 끝나도 수신 표식이 같아 C를 다시 적용하지 않는다.
+- **그물**: 독립 code-review가 발견했고 `translation-interactions.test.tsx`의 오류 반환·전송 reject 두
+  회귀 테스트가 수정 전 red였다. 기존 테스트는 pending 중 props 변경과 성공 응답만 조합해 실패 교차를 놓쳤다.
+- **재발 방지**: pending 중에도 취소 기준을 갱신하되 draft는 보존하고, 성공 응답이 오면 그 값으로 확정한다.
+  회귀 테스트는 서버 값 연속 갱신·실패 문구 유지·Escape·옛 값 재저장을 함께 검사한다.
+  `rg -n 'setServerValue|setSaved\(initialValue\)' components --glob '!**/__tests__/**'`를 실제 실행했고
+  해당 패턴은 이 컴포넌트뿐이었다. 수신 표식과 적용 상태를 따로 두는 코드는 실패 후 재적용 여부도 검사한다.
+
+### 2026-09-12 — 필터 툴바만 잠가 칩이 이전 쿼리를 다시 제출할 수 있었다
+
+- **영역**: `components/translations/filters.tsx`·`filter-chips.tsx`·`header.tsx`
+- **증상**: namespace 변경 중 검색 칩 제거·초기화가 활성 상태였고, 칩에서 시작한 이동 중에는 툴바가
+  활성 상태였다. `?ns=a&q=hello`에서 b를 선택하고 검색 칩을 제거하면 옛 쿼리의 a를 다시 제출할 수 있었다.
+- **근본 원인**: 같은 URL을 바꾸는 툴바와 칩이 별개 라우터 호출을 갖고, pending은 툴바 안에서만 관리했다.
+- **그물**: 독립 code-review 후 실제 `TranslationsHeader`를 렌더하는 DOM 테스트로 세 시작점(namespace·
+  검색 칩·초기화)의 잠금 누락을 red로 확인했다. 기존 테스트는 툴바만 렌더해 형제 컨트롤을 보지 못했다.
+- **재발 방지**: `TranslationFilters`가 칩도 렌더하고 같은 pending·이동 함수를 공유한다. 테스트는 양쪽 잠금,
+  중복 요청 차단, 완료 후 잠금 해제, 새 namespace를 보존한 다음 칩 이동을 검사한다.
+  `rg -n 'router\.push\(routes\.translations|onNavigate=' components --glob '!**/__tests__/**'`를 실제 실행했고
+  번역 필터의 직접 이동은 `filters.tsx` 한 곳, 칩은 그 함수를 받는 한 곳으로 모였다.
