@@ -73,7 +73,7 @@ export function LocaleBadge({
     <Badge variant={orphaned ? "danger" : "neutral"} className="gap-1">
       <LocaleFlag code={code} />
       <span>{code}</span>
-      {isBase && <span className="font-light">{m.locales.base}</span>}
+      {isBase && <span>{m.locales.base}</span>}
       {/* 색만으로는 말하지 않는다 — 배지가 `danger`인 이유를 스크린리더에도 준다 (DESIGN §7). */}
       {orphaned && <span className="sr-only">{m.locales.orphaned.badge}</span>}
     </Badge>

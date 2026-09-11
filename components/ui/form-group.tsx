@@ -25,7 +25,7 @@ export function FormGroup({
     <div className="space-y-2">
       <label htmlFor={htmlFor} className="block text-sm font-medium">
         {label}
-        {optional && <span className="text-muted-foreground font-light"> (optional)</span>}
+        {optional && <span className="text-muted-foreground font-normal"> (optional)</span>}
       </label>
       {children}
       {error !== undefined ? (
