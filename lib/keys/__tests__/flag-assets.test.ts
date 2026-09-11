@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { FLAG_INVENTORY, flagFor } from "../flag";
+import { FLAG_INVENTORY, LANGUAGE_FLAGS, flagFor } from "../flag";
 
 /**
  * **보유 목록 ↔ 실제 파일**의 대조 (8-4 T0/T11).
@@ -73,9 +73,58 @@ describe("로케일 → 국기 (실제 보유 목록으로)", () => {
   });
 
   it("국가가 없는 언어와 임의 문자열은 `null`이다 — 폴백은 코드만이다", () => {
-    expect(flagFor("ar")).toBeNull();
     expect(flagFor("weird")).toBeNull();
     expect(flagFor("__proto__")).toBeNull();
+  });
+});
+
+/**
+ * **언어 표의 경계** (2026-09-11 사용자 — "언어명과 나라가 사실상 1:1인 것만").
+ *
+ * ⚠️ **뺀 쪽이 이 검사의 본체다.** 주요 사용국이 둘 이상인 언어에 국기를 하나 고르면 **절반에게
+ * 틀린 국기**가 되고, 그건 없는 것보다 나쁘다. 누가 편의로 `es`를 더하면 여기서 red다.
+ */
+describe("언어 표", () => {
+  it("표의 국기가 전부 보유 목록에 있다 — 없으면 배경이 조용히 빈다", () => {
+    const missing = [...LANGUAGE_FLAGS.entries()].filter(([, id]) => !FLAG_INVENTORY.includes(id));
+    expect(missing).toEqual([]);
+  });
+
+  it("1:1인 언어들이 선다", () => {
+    expect(flagFor("de")).toBe("de");
+    expect(flagFor("cs")).toBe("cz");
+    expect(flagFor("uk")).toBe("ua");
+    expect(flagFor("el")).toBe("gr");
+    expect(flagFor("vi")).toBe("vn");
+    expect(flagFor("hi")).toBe("in");
+  });
+
+  /** ⚠️ 노르웨이어는 코드가 셋인데 나라가 하나다 — 셋 다 와서 셋 다 적었다. */
+  it("노르웨이어 코드 셋이 같은 국기다", () => {
+    expect([flagFor("no"), flagFor("nb"), flagFor("nn")]).toEqual(["no", "no", "no"]);
+  });
+
+  /**
+   * ⚠️ **언어 코드와 국가 코드가 엇갈려 겹치는 두 쌍** — 오타로 보여서 "고쳐지기" 쉬운 자리다.
+   */
+  it("엇갈린 두 쌍이 서로를 안 먹는다", () => {
+    expect(flagFor("ms")).toBe("my"); // 말레이어 → 말레이시아
+    expect(flagFor("my")).toBe("mm"); // 버마어 → 미얀마
+    expect(flagFor("sl")).toBe("si"); // 슬로베니아어 → 슬로베니아
+    expect(flagFor("si")).toBe("lk"); // 싱할라어 → 스리랑카
+  });
+
+  it("주요 사용국이 여럿인 언어는 표에 없다 — 틀린 국기는 없는 것보다 나쁘다", () => {
+    for (const code of ["es", "pt", "ar", "sw", "ta", "ca", "eu", "gl", "cy"]) {
+      expect(flagFor(code), code).toBeNull();
+    }
+  });
+
+  /** 그래도 하위태그가 붙으면 정확히 선다 — 그 경우 표를 지나지 않는다. */
+  it("뺀 언어도 지역이 특정되면 선다", () => {
+    expect(flagFor("es-MX")).toBe("mx");
+    expect(flagFor("pt-BR")).toBe("br");
+    expect(flagFor("ar-EG")).toBe("eg");
   });
 });
 
