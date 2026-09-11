@@ -26,7 +26,7 @@
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
 | **EmptyState** (8-3) | 맨 아이콘 24 | **48 원형 칩 + 아이콘 16** | §6.4·§6.8 |
 | **사이드바** (8-3) | 접기 레일 · 프로젝트 스위처 · `Your work` 라벨 | **접기 없음 · 스위처 없음 · 라벨이 이름 그대로 · 하단에 Docs** | §6.5 |
-| **번역 표의 축** (8-4) | 로케일이 **열** (`\| Key \| en \| ko \|`) | **로케일이 행** — 키 셀 320 + 그 아래 로케일 행들, `<table>`이 아니라 `div` + `grid` | §6.1 |
+| **번역 표의 축** (8-4) | 로케일이 **열** (`\| Key \| en \| ko \|`) | **로케일이 행** — 키 셀 320 + 그 아래 로케일 행들, shadcn 기반 `<table>` | §6.1 |
 | **번역 필터** (8-4) | 왼쪽 `w-52` 네임스페이스 패널 + 상태 `Select` + 기준 로케일 `Select` | **툴바 셋**(네임스페이스 드롭다운 · 로케일 다중 선택 · 검색) + **칩 행**, 상태 필터 없음 | §6.1 |
 | **breadcrumb** (8-4) | 프로젝트 하위 화면 다섯의 첫 줄 | **없다** — 위로 가는 길은 사이드바가 든다(프리미티브는 `/projects/new`가 계속 쓴다) | §6.1 |
 
@@ -44,7 +44,7 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 | | 값 | bugshot-2와의 차이 |
 |---|---|---|
 | Tailwind | **v4** — `tailwind.config.js`가 **없다**. 테마는 `app/globals.css`의 `@theme inline` | v3 + config 파일 |
-| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI를 다시 돌리지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog **둘만** (2026-09-11에 `Tooltip`을 걷었다 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다) | shadcn 생성물을 그대로 씀 |
+| 프리미티브 | **`components/ui/`를 이 리포가 소유한다** (2026-09-08 — shadcn 생성 코드를 걷어내고 다시 썼고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). Radix는 `radix-ui` 단일 패키지에서 DropdownMenu·Dialog **둘만** (2026-09-11에 `Tooltip`을 걷었다 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다) | shadcn 생성물을 그대로 씀 |
 | 변형 | `class-variance-authority` — Button·Badge·Alert | 같음 |
 | 아이콘 | `lucide-react` **16px** — 세트는 이것 하나이고 **셸은 전 항목이 든다** (§6.8). ⚠️ 1.x에 브랜드 아이콘(`Github`)이 없다 | 같음 |
 | 폰트 | Pretendard Variable 동적 서브셋, 자사 호스트 | 같은 폰트, `@fontsource` |
@@ -285,24 +285,22 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 #### 키 그룹 자체
 
-**마크업이 `<table>`이 아니라 `div` + `grid`다** (8-4). 시안은 키 셀이 로케일 행들을 세로로 걸치는
-구조라 `rowSpan`이 자연스러워 보이지만, 값이 여러 줄이면 행 높이가 로케일마다 달라 `rowSpan`이
-정렬을 어긋나게 한다 — 이 화면의 값은 여러 줄일 수 있다(`field-sizing-content`).
+**2026-09-12 사용자 결정: shadcn Table 기반 시맨틱 표로 전환한다.** 공식 `new-york-v4` 레지스트리 소스를
+`components/ui/table.tsx`에 통합한다. 기존 `Table`·`Th`·`Td`·`Tr` 소비자의 스크롤·치수는 유지한다.
 
-**잃은 시맨틱을 무엇이 대신하는가**가 이 결정의 절반이다:
-
-| 잃는 것 | 대신 |
-|---|---|
-| 열 헤더의 이름 | 각 입력의 `aria-label`이 `{키} · {로케일}`을 든다 |
-| 섹션 구분 | ⚠️ **네임스페이스 헤딩이 실제 `<h2>`여야 한다** — 네임스페이스 간 이동이 스크린리더의 heading 탐색으로만 가능하다 |
-| 본문 랜드마크 | `ContentPanel`의 `<main>`(§6.5) — 화면은 자기 것을 들지 않는다 |
+- 네임스페이스별 `<table className="table-fixed">`, 키별 `<tbody>`, 로케일별 `<tr>`이다.
+- 키 셀은 `<th scope="rowgroup" rowSpan={보이는 로케일 수}>`이고 여러 줄 값의 행 높이는 브라우저가 계산한다.
+- 열 너비는 `<colgroup>`이 320px·68px·나머지로 고정한다. 입력의 접근 이름도 유지한다.
+- `TableHeader`의 숨긴 열 헤더는 Key·Language·Translation이다. 표 이름은 네임스페이스 `<h2>`와 연결한다.
+- translations는 `scrollable={false}`로 중첩 스크롤을 만들지 않는다. `PanelBody`와 sticky 섹션 제목을 유지한다.
+- `translation-table.test.tsx`가 행 그룹·rowSpan·여러 줄 값·orphaned·필터 후 draft와 저장을 검사한다.
 
 **모든 셀이 편집 가능하다** (base 포함 — 고정된 것은 키뿐이다). **예외는 orphaned**다: 키든 로케일이든
 어느 축이 orphaned면 그 셀은 `disabled` + placeholder "Not editable — removed from the code".
 
 | 요소 | 규칙 |
 |---|---|
-| 그룹 | `grid-cols-[320px_minmax(0,1fr)]` + `border-b`, 키 셀이 `border-r`를 든다. ⚠️ **섹션을 상자로 감싸지 않는다** (2026-09-11 — 시안 `212:5081`): 표의 구조를 **선만으로** 만든다(헤딩 아래·그룹 사이의 가로선 + 키 셀의 세로선). 8-4는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데, 상자가 있으면 그 선들이 **격자 안의 격자**가 되고 헤딩이 표에서 떨어져 어느 키를 덮는지가 흐려진다 |
+| 그룹 | `TableBody` + `border-b`, 키 셀이 `border-r`를 든다. ⚠️ **섹션을 상자로 감싸지 않는다** (2026-09-11 — 시안 `212:5081`): 표의 구조를 **선만으로** 만든다(헤딩 아래·그룹 사이의 가로선 + 키 셀의 세로선). 8-4는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데, 상자가 있으면 그 선들이 **격자 안의 격자**가 되고 헤딩이 표에서 떨어져 어느 키를 덮는지가 흐려진다 |
 | 키 셀 | 이름 **`text-sm` — sans다**(§4.1의 유일한 예외: 이 화면은 표 전체가 키라 mono 자폭이 320 칸의 트렁케이션을 늘린다) + Orphaned 배지 → `description` `text-xs text-muted-foreground` → 코드 참조 `text-xs text-blue-600` + `ExternalLink` 12(§6.3). ⚠️ **1280px에서도 320 고정이다** — 값 열이 주는 쪽을 받아들인다(키 이름이 잘리는 쪽이 더 나쁘다). ⚠️ **그 "값 열 ≈368"은 열 전체이지 입력 폭이 아니다** (malmoi#33이 그 오독에서 났다) — 실제 입력은 열에서 로케일 칸·padding·gap을 뺀 **약 200px**이고, 우측에 무엇을 더 얹으면 그만큼 더 줄어든다 |
 | 로케일 행 | `flex items-start` · 로케일 칸 68px · 값 칸은 나머지 전체이며 왼쪽에 `border-border border-l` 1px 구분선을 둔다. 입력 위아래 padding 12px(`py-3`), 한 줄 높이 46px + 행 구분선 1px. 로케일과 상태 표시는 첫 46px 중앙에 맞춘다. 입력 우측 여백은 상태 표시 유무와 무관하게 일정하다 |
 | 로케일 배지 | **국기(있으면) + 코드 + `(base)`**. ⚠️ **국기가 `<img>`가 아니라 `background-image`다** — `?ns=*`에서 배지가 2,709개 서고 `<img>`면 요소·레이아웃 오브젝트가 그만큼 는다. 요소는 `<span>` 하나이고 치수(16×11)와 radius(`rounded-xs`, §5의 예외)는 클래스가 든다. ⚠️ **URL은 인라인 `style`이다 — 전역 CSS 규칙이 아니다** (2026-09-11): 들어온 세트가 **253개**라 규칙으로 적으면 국기가 하나도 없는 화면까지 253줄을 받고, 손으로 소유하는 `globals.css`가 생성물이 된다. 인라인은 쓰는 것만 나가고 요소 수는 그대로다. ⚠️ **매핑이 없으면 아무것도 안 그린다 — 코드만**(물음표·지구본은 모르는 것을 아이콘으로 주장하는 것이다). 매핑 규칙은 **하위태그가 언어 표를 이긴다**(`en`→GB는 표 · `en-GB`→GB·`en-US`→US는 하위태그). ⚠️ **언어 표의 기준은 "언어명과 나라가 사실상 1:1"이고 그 밖은 안 넣는다** — `es`·`pt`·`ar`처럼 주요 사용국이 여럿인 언어에 국기를 하나 고르면 **절반에게 틀린 국기**가 되고, 그건 없는 것보다 나쁘다(하위태그가 붙으면 그때 정확히 선다). ⚠️ **orphaned는 배지 자체를 `danger`로** 바꾼다 — 로케일 칸 80px에 별도 배지가 안 들어가고, 로케일 헤더가 사라져 그 표시가 살 자리가 여기뿐이다(사유 문장은 `disabled` 입력의 placeholder가 든다). 색만으로 말하지 않으므로 `sr-only` 문구가 함께 간다 |
@@ -418,7 +416,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-normal`로 되누른다(2026-09-11에 `font-light`에서 바뀌었다). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
-| **Table** | 소비자가 **셋**이다 — 언어(§6.66)·이력(§6.68)·멤버(§6.65). ⚠️ **번역 화면은 2026-09-11(8-4)에 이 프리미티브를 떠났다** — 키 그룹이 `div` + `grid`다(§6.1). 그래서 이 행의 옛 포인터 `§6.1`이 끊겼고, 대신 그 절이 "무엇이 `<table>`의 시맨틱을 대신하는가"를 든다 |
+| **Table** | 번역·언어·이력·멤버 화면이 사용한다. shadcn 기반 구성 요소와 기존 `Th`·`Td`·`Tr`를 함께 제공한다. `scrollable` 기본값은 기존 스크롤 컨테이너를 유지하고, translations만 `false`로 PanelBody의 스크롤을 사용한다(§6.1) |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Esc·배경·X·Cancel 넷으로 닫힌다 |

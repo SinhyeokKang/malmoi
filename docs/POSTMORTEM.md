@@ -1149,3 +1149,16 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   중복 요청 차단, 완료 후 잠금 해제, 새 namespace를 보존한 다음 칩 이동을 검사한다.
   `rg -n 'router\.push\(routes\.translations|onNavigate=' components --glob '!**/__tests__/**'`를 실제 실행했고
   번역 필터의 직접 이동은 `filters.tsx` 한 곳, 칩은 그 함수를 받는 한 곳으로 모였다.
+
+### 2026-09-12 — rowSpan으로 커진 행에서 내부 div의 세로선이 끊겼다
+
+- **영역**: `components/translations/key-group.tsx` — shadcn Table 전환 중 발견, 커밋 전 수정.
+- **증상**: 1280px 브라우저에서 키 설명을 DOM상으로 길게 만든 실험에서 로케일 행은 약 370·373·262px로
+  늘었지만, 값 내부 div는 66·66·46px였다. 그 div의 왼쪽 border가 셀 높이 전체를 덮지 못했다.
+- **근본 원인**: grid 시절의 내부 div에 있던 경계선을 그대로 두었다. table의 rowSpan은 행 높이를
+  배분하지만 td 내부 블록의 높이까지 늘리지 않는다.
+- **그물**: 전체 테스트와 타입 검사는 통과했다. 브라우저의 긴 설명 실측으로 잡았고,
+  `translation-table.test.tsx`에 경계선이 실제 td에 있는지 확인하는 DOM 회귀 테스트를 추가해 red→green을 확인했다.
+- **재발 방지**: 행 전체를 나누는 선은 td에, 입력·메타데이터의 포커스 표시는 내부 div에 둔다.
+  `rg -n 'border-l' components/translations/key-group.tsx components/translation-input.tsx`를 실제 실행했고
+  이 경계선은 TableCell 한 곳에만 남았다. 수정 후 같은 브라우저 실험에서 늘어난 세 행 모두 td의 1px 경계선을 확인했다.
