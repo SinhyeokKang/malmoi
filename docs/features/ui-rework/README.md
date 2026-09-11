@@ -100,7 +100,7 @@ top bar**이고 그 자리에 **전폭 48 헤더**가 온다 — 8-2가 그 문�
 
 **그래서 정착 규칙이 붙는다 — CLI는 *소스 획득 수단*이고 생성물을 그대로 두지 않는다.** 넣은 직후:
 
-1. **포커스 링 셋**(`focus-visible:ring-ring` · `focus-visible:ring-[3px]` · `focus-visible:outline-none`)을 **여는 태그에 리터럴로** 끌어내린다
+1. **포커스 링 셋**(`focus-visible:ring-ring` · `focus-visible:ring-2` · `focus-visible:outline-none`)을 **여는 태그에 리터럴로** 끌어내린다 — ⚠️ **폭이 2026-09-11에 3px에서 `ring-2`로 내려갔다**(같은 날 `--ring`도 blue-400이 됐다, DESIGN §7). 아래 표의 "임의 치수가 `ring-[3px]` 하나뿐"은 **그 시점의 기록**이고 지금 임의 치수는 0이다
 2. `.dark` 블록과 `dark:` 변형을 **제거**한다
 3. import를 **`radix-ui` 통합 패키지**로 바꾼다
 4. `asChild`는 **실제로 필요한 자리만** 둔다. 두면 `{children}`을 `Slot.Slottable`로 감싼다

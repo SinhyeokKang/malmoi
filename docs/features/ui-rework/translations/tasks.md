@@ -397,3 +397,9 @@ dev에서 `responseEnd` 1,307ms였다.
 - **검증**: `[manual]` `/push` 4단계 문서 트라이아지에서 남은 stale이 0건
 
 —— commit —— `docs(DESIGN): rewrite the translations screen rules for the row axis`
+
+## 셀 밀도 보정 (2026-09-11)
+
+- [x] 값 셀 위아래 padding 12px·전체 값 상시 노출·포커스 시 메타·높이를 늘리지 않는 저장 표시
+- [x] IME 조합 중 저장/복구 명령 차단 회귀 테스트
+- [x] 전체 테스트·typecheck·브라우저 시각 확인
