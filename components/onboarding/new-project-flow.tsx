@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Search } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 
 import { createProject, detectRepoFormats, runFirstIngest } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -11,7 +11,7 @@ import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { Radio } from "@/components/ui/radio";
 import { Select } from "@/components/ui/select";
-import type { AdapterError, AdapterName } from "@/lib/adapters/types";
+import type { Adapter, AdapterError, AdapterName } from "@/lib/adapters/types";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -43,8 +43,22 @@ import { WorkflowBlock } from "./workflow-block";
 /** 서버가 만들어 내려주는 리포 항목. `suggestedSlug`는 `normalizeProjectSlug`의 결과다. */
 export type RepoOption = { owner: string; repo: string; fullName: string; suggestedSlug: string };
 
-/** 수동 지정 셀렉트의 선택지. `formatLabel`(design §3.3 표)이 만든다. */
-export type AdapterChoice = { adapter: AdapterName; label: string; example: string };
+/**
+ * 수동 지정 셀렉트의 선택지. `formatLabel`(design §3.3 표)이 만든다.
+ *
+ * ⚠️ **`layout`은 서버가 `Adapter.layout`에서 그대로 내려준다** — 이 파일이 `lib/adapters`를 값으로
+ * 읽으면 ts-morph가 클라이언트 번들에 들어온다 (POSTMORTEM 2026-09-07, `client-graph.test.ts`).
+ */
+export type AdapterChoice = { adapter: AdapterName; layout: Adapter["layout"]; label: string; example: string };
+
+/**
+ * Path 힌트의 갈래 — 사전에 layout 전부가 있는지를 **여기서** 닫는다 (`lib/auth/message.ts`와 같은 관용구:
+ * 사전은 잎이라 `satisfies`를 못 걸고 소비자가 건다).
+ */
+const PATH_HINTS = m.newProject.files.manual.pathHint satisfies Record<
+  Adapter["layout"],
+  (token: ReactNode) => ReactNode
+>;
 
 type Manual = { adapter: AdapterName; pathTemplate: string; baseLocale: string };
 
@@ -267,6 +281,8 @@ function ConfirmStep({
   const [name, setName] = useState(repo.repo);
   const [slug, setSlug] = useState(repo.suggestedSlug);
 
+  // 셀렉트의 선택지가 `adapters` 그 배열이라 못 찾을 수 없다 — 폴백은 타입을 닫기 위한 것이다.
+  const manualChoice = adapters.find((c) => c.adapter === manual.adapter);
   const candidate = picked === null ? undefined : candidates[picked];
   const usingManual = candidate === undefined;
   const ready = usingManual
@@ -381,14 +397,16 @@ function ConfirmStep({
             <FormGroup
               label={m.newProject.files.manual.path}
               htmlFor="manual-path"
-              help={m.newProject.files.manual.pathHint(<span className="text-mono">{"{locale}"}</span>)}
+              help={PATH_HINTS[manualChoice?.layout ?? "per-locale"](
+                <span className="text-mono">{manualChoice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
+              )}
             >
               <Input
                 id="manual-path"
                 value={manual.pathTemplate}
                 onChange={(e) => setManual({ ...manual, pathTemplate: e.target.value })}
                 onFocus={() => setPicked(null)}
-                placeholder="src/locales/{locale}.json"
+                placeholder={manualChoice?.example ?? "src/locales/{locale}.json"}
                 className="text-mono w-full"
               />
             </FormGroup>
