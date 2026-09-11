@@ -83,7 +83,8 @@ export function Sidebar({
           <Button
             type="submit"
             variant="ghost"
-            className="text-foreground hover:bg-foreground/5 h-auto w-full justify-start gap-2 rounded-sm p-1.5 font-light"
+            // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
+            className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5 font-light"
           >
             <span className="flex size-4 shrink-0 items-center justify-center">
               <LogOut className="size-4" aria-hidden />
