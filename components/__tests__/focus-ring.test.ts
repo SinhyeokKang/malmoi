@@ -13,8 +13,15 @@ import { Radio } from "@/components/ui/radio";
 import { SegmentedControl, SegmentedLinks } from "@/components/ui/segmented-control";
 import { render } from "./helpers/dom";
 
-// Inspect rendered classes so shared styles and Radix wrappers remain possible.
-// Keep source scanning only for the primitive boundary and fixture completeness.
+/**
+ * 렌더된 클래스를 보므로 공유 스타일·Radix 래퍼가 가능하다. 소스 스캔은 **프리미티브 경계**와
+ * 픽스처 완전성에만 남는다.
+ *
+ * ⚠️ **`import.meta.url`로 루트를 잡을 수 없다** — 이 파일은 `@vitest-environment jsdom`이고 그
+ * 환경에서 그 값은 `file:`이 아니라 `http://localhost/…`라 `fileURLToPath`가 **"The URL must be of
+ * scheme file"로 던진다**(실측). `process.cwd()`가 남는 유일한 수단이고, 그것이 실행 위치에
+ * 묶이는 대가는 아래 "검사 대상 파일을 실제로 찾는다"가 받는다 — 글롭이 0건이면 red다.
+ */
 const ROOT = process.cwd();
 
 /** DESIGN §7의 셋. 하나라도 빠지면 링이 안 보이거나 브라우저 기본 outline만 남는다. */
