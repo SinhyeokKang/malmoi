@@ -983,12 +983,13 @@ lib/
                           **그 칩을 뗀 뒤의 쿼리**다. ⚠️ **잎이다 — import가 `lib/routes.ts`까지**:
                           칩 행이 클라이언트인데 `view.ts`는 잎이 아니다(`compareKeys` →
                           `lib/adapters/shared`). ⚠️ **라벨을 만들지 않는다** — 문구는 사전이 든다)
-                        / flag.ts(8-4 — flagFor · FLAG_INVENTORY. ⚠️ **잎, import 0** — 로케일 배지가
-                          `?ns=*`에서 2,709번 렌더된다. ⚠️ **매핑이 원리적으로 실패한다**: 계약은 성공이
-                          아니라 **실패했을 때 코드만 그린다**이고, 표는 `Map`이다(로케일 코드가 남이 정한
-                          값이라 객체 조회는 `__proto__`에서 프로토타입을 돌려준다). ⚠️ **목록이 비어
-                          있는 것이 정상 상태다** — 에셋이 오면 목록·`public/flags/`·globals.css 규칙 셋이
-                          함께 늘고 `__tests__/flag-assets.test.ts`가 그 셋을 대조한다)
+                        / flag.ts(8-4 — flagFor · FLAG_INVENTORY **253**. ⚠️ **잎, import 0** — 로케일
+                          배지가 `?ns=*`에서 2,709번 렌더된다. ⚠️ **매핑이 원리적으로 실패한다**: 계약은
+                          성공이 아니라 **실패했을 때 코드만 그린다**이고, 언어 표는 `Map`이다(로케일
+                          코드가 남이 정한 값이라 객체 조회는 `__proto__`에서 프로토타입을 돌려준다).
+                          ⚠️ **판정 순서가 계약이다** — 하위태그가 언어 표를 **이긴다**: `en`→GB는 표가,
+                          `en-GB`→GB·`en-US`→US는 순서가 낸다(2026-09-11 사용자 규칙 셋). 표에 지역별
+                          항목을 더하면 규칙이 두 벌이 된다)
                         ⚠️ **`isUnpublished`와 `countUnpublished`는 같은 술어의 두 벌이다** — `updatedBy`가 사람인
                         행만 센다(push가 그것을 비운다). `updatedAt`만 보면 code push 직후 전 키가 미배포로 나온다.
                         `app/(edit)/__tests__/queries.test.ts`가 두 경로에 같은 행을 먹여 맞댄다
@@ -1077,10 +1078,14 @@ pnpm-workspace.yaml     ⚠️ **공급망 정책 둘이 설치 동작을 바꾼
 generated/prisma/       ⚠️ 생성물 (gitignore) — prisma generate
 public/fonts/           ⚠️ 생성물 (gitignore) — scripts/copy-fonts.mjs
 public/brand/           ⚠️ **커밋된 원본이다** (8-1a) — 로고 SVG 넷 + 키비주얼 PNG. 위 폰트와 반대다.
-public/flags/           ⚠️ **같은 부류의 커밋된 원본** (8-4) — 로케일 배지의 국기 SVG(16×11, 파일명이
-                        ISO 3166-1 alpha-2 소문자). **아직 비어 있다** — 사용자가 export 해서 넣고
-                        (`ui-rework/README.md` 규약 2), 그때까지 전 로케일이 코드만으로 선다.
-                        ⚠️ **`lib/keys/flag.ts`의 목록·`app/globals.css`의 규칙과 셋이 함께 움직인다**
+public/flags/           ⚠️ **같은 부류의 커밋된 원본** (8-4) — 로케일 배지의 국기 SVG **253개**(16×11,
+                        파일명이 ISO 3166-1 alpha-2 소문자, 1.1MB). 2026-09-11에 사용자가 전 세트를
+                        줬다 — 로케일은 **고객마다 다른 축**이라 쓸 것만 골라 두면 새 로케일마다
+                        에셋을 찾아야 한다(`pt-BR`·`es-MX`가 설정 없이 서는 것이 이 세트의 값이다).
+                        ⚠️ **`lib/keys/flag.ts`의 `FLAG_INVENTORY`와 정확히 같아야 한다** —
+                        어긋나면 배경이 조용히 빈다(`flag-assets.test.ts`가 양방향으로 센다).
+                        ⚠️ **URL은 배지의 인라인 `style`이 만든다** — `globals.css`에 규칙이 없다
+                        (253줄이 국기 없는 화면까지 나가고 손으로 쓰는 파일이 생성물이 된다)
 app/icon.svg            favicon — `malmoi-icon-black.svg`의 **복사본**이다(Next 파일 규약이 app/ 아래를
                         요구한다). 로고를 바꾸면 둘 다 바꾼다. 리포에 favicon이 없었다
 scripts/
