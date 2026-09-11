@@ -715,6 +715,11 @@ components/
                         다시 적지 않고 `PanelBody`에 맡기는지
                         + signin-screen — `min-w-[1280px]` · `lg:` 분기 0 · **인라인 Alert 0**(토스트 단일) ·
                         도트 캔버스 `aria-hidden` · 키비주얼이 `next/image` + `alt=""` · 토스트 id 고정
+                        + manual-format-hint — 온보딩 수동 지정의 Path 힌트가 어댑터 `layout`으로 갈리는지
+                        (2026-09-11). ⚠️ **한 문장으로 고정돼 있었다** — `{locale}` 자리표시자만 말해
+                        `ts-dict`(multi-locale, 경로에 로케일이 없다)에서 틀린 안내였고, 그것이 그 포맷으로
+                        가는 **유일한 길**이다(자동 탐지에서 빠져 있다). 갈래 누락은 소비자의
+                        `satisfies Record<Adapter["layout"], …>`가 잡고, 이 스캔은 **화면이 그것을 쓰는가**를 센다
 messages/
   en.tsx                ⚠️ **UI 문자열의 단일 출처** (SaaS 6a). 값은 문자열 **또는 함수**다 — 보간·복수·노드
                         삽입을 헬퍼 셋으로 만들지 않는다(`fmt`·`plural`·`rich`가 없다). `as const`라 접근 자체가
