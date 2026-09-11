@@ -12,8 +12,9 @@ import { localeProgress, type LocaleProgress } from "@/lib/keys/view";
 /**
  * Home이 보이는 진행률 — **orphaned 로케일을 뺀다.**
  *
- * ⚠️ 그 파일은 리포에서 사라졌고 번역 화면에서 그 열의 입력이 `disabled`다(ARCHITECTURE §5.5.16).
- * Home의 행은 `?focus=` 링크이므로, 넣으면 번역자를 **편집할 수 없는 열**로 데려간다. 로케일
+ * ⚠️ 그 파일은 리포에서 사라졌고 번역 화면에서 그 **행**의 입력이 `disabled`다(ARCHITECTURE §5.5.16 —
+ * 8-4가 축을 뒤집어 로케일이 열이 아니라 행이다). Home의 행은 `?locales=` 링크이므로, 넣으면
+ * 번역자를 **편집할 수 없는 행**으로 데려간다. 로케일
  * 화면(6b-5)은 반대로 그것을 **보여주는 것**이 요지다 — 같은 데이터에 다른 질문이라 함수가 둘이다.
  */
 export function activeLocaleProgress(input: Parameters<typeof localeProgress>[0]): LocaleProgress[] {

@@ -1,5 +1,6 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { maskEmail } from "@/lib/auth/email";
+import { ALL_NAMESPACES } from "@/lib/routes";
 
 /**
  * 키 리스트 화면의 순수 판정. DB 조회 결과를 받아 사이드바 집계·배지·permalink를 만든다.
@@ -122,10 +123,76 @@ export type NamespaceCount = {
 };
 
 /**
- * 사이드바 집계. **어느 로케일 기준인지 받아야 한다** — 테이블이 로케일을 열로 펼치므로
- * "일이 얼마나 남았나"가 로케일마다 다르다. 총 개수만으로는 알 수 없다.
+ * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (8-4 design §3.1).
+ *
+ * ⚠️ **코드 배열이 아니라 이 모양을 받는다.** 폴백이 orphaned를 빼야 하는데 코드만 받으면
+ * 그 판정을 호출부가 하게 되고, 그러면 규칙이 화면 코드로 내려간다.
  */
-export function namespaceCounts(rows: readonly KeyRow[], locale: string): NamespaceCount[] {
+export type LocaleOption = { code: string; orphaned: boolean };
+
+/**
+ * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — spec Q2).
+ *
+ * 로케일이 행이 된 뒤로 "기준 열"이라는 개념에 대응물이 없다. 그 자리를 **선택 집합**이 대신하고
+ * 집계·검색·pending 정렬·기본 착지가 전부 이 결과 위에 선다.
+ *
+ * ⚠️ **폴백이 "살아 있는 로케일 전체"다.** orphaned 로케일을 섞으면 리포에서 사라진 파일의 빈 셀이
+ * 전부 `untranslated`로 잡혀 `defaultNamespace`가 **행이 전부 disabled인 네임스페이스**에 착지한다
+ * (`cellState`는 키의 orphaned만 보고 로케일의 것을 모른다). `activeLocaleProgress`가 같은 이유로
+ * 이미 orphaned를 뺐다. **명시 선택(`?locales=fr`)은 허용한다** — 사라진 로케일의 값을 볼 길이
+ * 있어야 한다.
+ *
+ * ⚠️ **배열 `includes`로 거른다.** 주소창 값이라 객체 조회는 프로토타입 키가 갈래로 새고,
+ * 이 리포가 그 부류를 두 번 밟았다 (`parseProjectFilter`와 같은 관용구).
+ *
+ * ⚠️ **순서가 URL이 아니라 인자 순서다** — 같은 선택이 두 링크에서 다르게 보이면 안 된다.
+ * `columns`가 base를 맨 앞에 두므로 원문이 위에 온다 (MVP §3.2).
+ */
+export function parseLocaleSelection(
+  param: string | undefined,
+  locales: readonly LocaleOption[],
+): string[] {
+  const order = locales.map((l) => l.code);
+  const asked = (param ?? "")
+    .split(",")
+    .map((code) => code.trim())
+    .filter((code) => code !== "" && order.includes(code));
+  // 인자 순서로 되돌리면서 중복이 함께 접힌다 — `order`의 코드가 유일하기 때문이다.
+  const picked = order.filter((code) => asked.includes(code));
+  if (picked.length > 0) return picked;
+
+  const living = locales.filter((l) => !l.orphaned).map((l) => l.code);
+  // 전부 orphaned인 프로젝트에서도 빈 화면을 내지 않는다 — 폴백의 폴백이다.
+  return living.length > 0 ? living : order;
+}
+
+/**
+ * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (design §3.2).
+ *
+ * ⚠️ **키 단위로 한 번만 센다.** 로케일마다 세면 집계의 합이 `total`을 넘어 드롭다운의
+ * `pending/total`이 1을 넘는다. 우선순위는 `cellState`의 것을 그대로 쓴다
+ * (orphaned > untranslated > needsReview).
+ */
+export function rowState(row: KeyRow, locales: readonly string[]): TranslationState {
+  if (row.orphaned) return "orphaned";
+  let needsReview = false;
+  for (const code of locales) {
+    const state = cellState(row, code);
+    if (state === "untranslated") return "untranslated";
+    if (state === "needsReview") needsReview = true;
+  }
+  return needsReview ? "needsReview" : "translated";
+}
+
+/**
+ * 네임스페이스 드롭다운·섹션 헤딩의 집계 (8-4 — 옛 `namespaceCounts` 대체).
+ *
+ * ⚠️ **누산기가 `Map`이다** — 네임스페이스 이름이 리포의 키에서 온다(남이 정한 값).
+ */
+export function namespaceCountsFor(
+  rows: readonly KeyRow[],
+  locales: readonly string[],
+): NamespaceCount[] {
   const byName = new Map<string, NamespaceCount>();
 
   for (const row of rows) {
@@ -137,7 +204,7 @@ export function namespaceCounts(rows: readonly KeyRow[], locale: string): Namesp
       orphaned: 0,
     };
     entry.total += 1;
-    const state = cellState(row, locale);
+    const state = rowState(row, locales);
     if (state === "untranslated") entry.untranslated += 1;
     else if (state === "needsReview") entry.needsReview += 1;
     else if (state === "orphaned") entry.orphaned += 1;
@@ -173,21 +240,19 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
  * `compareKeys` 첫 항목(알파벳순)으로 착지하면 이미 다 번역된 사소한 네임스페이스일 수 있고,
  * 그러면 편집자가 열 때마다 직접 찾아야 한다. 903키 프로젝트에서 그 비용이 매번 든다.
  *
- * ⚠️ **로케일을 인자로 받지 않는다** — `counts`가 이미 focus 로케일 기준으로 만들어져 있다
- * (`namespaceCounts(rows, locale)`). 여기서 또 받으면 두 값이 갈릴 자리만 생긴다.
+ * ⚠️ **로케일을 인자로 받지 않는다** — `counts`가 이미 선택된 로케일 기준으로 만들어져 있다
+ * (`namespaceCountsFor(rows, locales)`). 여기서 또 받으면 두 값이 갈릴 자리만 생긴다.
+ * **6a T2의 판정이 8-4의 축 변경을 그대로 통과한 것**이 이 배치 덕이다.
  *
  * @returns 키가 없거나 전부 orphaned면 `null` — 화면이 빈 상태로 간다.
  */
 export function defaultNamespace(counts: readonly NamespaceCount[]): string | null {
-  // 정렬은 `namespaceCounts`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
+  // 정렬은 `namespaceCountsFor`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
   const pending = counts.find((c) => c.untranslated + c.needsReview > 0);
   if (pending) return pending.namespace;
   // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
   return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
 }
-
-/** "전체" 네임스페이스의 URL 값. `lib/routes.ts`의 `ns`와 이 판정이 같은 값을 봐야 한다. */
-export const ALL_NAMESPACES = "*";
 
 /**
  * `?ns=`의 해석. **`"*"`가 전체다** — 어댑터가 만들 수 없는 이름이라 실제 키 접두와 충돌하지 않는다
@@ -215,29 +280,88 @@ export function resolveNamespace(
 }
 
 export type RowFilter = {
-  /** 상태 필터가 보는 로케일. 표가 로케일을 열로 펼치므로 "남은 일"이 로케일마다 다르다. */
-  locale: string;
-  /** 키·**모든 로케일 값**의 부분 일치(대소문자 무시). 편집자는 자기 언어로 찾는다. */
+  /** 보고 있는 로케일. **검색의 대상이 이 집합으로 좁혀진다** (아래). */
+  locales: readonly string[];
+  /** 키·**선택된 로케일 값**의 부분 일치(대소문자 무시). 편집자는 자기 언어로 찾는다. */
   q?: string;
-  state?: "needs-review" | "untranslated";
 };
 
 /**
- * 툴바의 두 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
+ * 툴바의 검색 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
+ *
+ * ⚠️ **검색 대상을 선택된 로케일로 좁힌다** (8-4 design §3.3). 안 좁히면 `?locales=ko`에서
+ * **fr 값에 맞은 키가 아무 표시 없이 나타난다** — 옛 축에서는 전 로케일이 열로 보여서 어디가
+ * 맞았는지 눈에 띄었지만 행 축에서는 그 값이 화면에 없다.
  *
  * 0행은 정상 결과다(화면이 "No keys match" 빈 상태를 낸다) — 여기서 폴백하지 않는다.
  */
 export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[] {
   const needle = filter.q?.trim().toLowerCase() ?? "";
+  if (needle === "") return [...rows];
   return rows.filter((row) => {
-    if (needle !== "") {
-      const haystack = [row.key, ...Object.values(row.cells).map((cell) => cell?.value ?? "")];
-      if (!haystack.some((text) => text.toLowerCase().includes(needle))) return false;
-    }
-    if (filter.state === undefined) return true;
-    const state = cellState(row, filter.locale);
-    return filter.state === "untranslated" ? state === "untranslated" : state === "needsReview";
+    const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
+    return haystack.some((text) => text.toLowerCase().includes(needle));
   });
+}
+
+/**
+ * 섹션 안에서 **남은 일이 있는 키를 위로** 올린다 (8-4 — spec Q3).
+ *
+ * 상태 필터를 뺀 대가를 갚는 유일한 수단이다. 크롬 확장 `messages.json`은 구분자가 없어
+ * 네임스페이스가 `_root` 하나이고(그게 이 도구의 1차 타깃이다), 그 프로젝트에서는 `pending/total`이
+ * 전체 집계와 같아져 남은 일을 찾는 수단이 검색 하나가 된다.
+ *
+ * ⚠️ **정렬이 아니라 분할이다.** 같은 통 안의 순서를 **입력 그대로** 보존해야 하는데
+ * (`compareKeys` 순서다), 비교 함수를 새로 쓰면 그 규칙이 두 벌이 된다.
+ *
+ * ⚠️ **orphaned 키는 pending이 아니다** — 편집할 수 없으므로 위로 올리면 거짓이다.
+ *
+ * ⚠️ **URL 상태가 아니다** — 칩이 넷째가 되지 않고 `?state=`가 되살아나지도 않는다.
+ */
+export function pendingFirst(rows: readonly KeyRow[], locales: readonly string[]): KeyRow[] {
+  const pending: KeyRow[] = [];
+  const rest: KeyRow[] = [];
+  for (const row of rows) {
+    const state = rowState(row, locales);
+    if (state === "untranslated" || state === "needsReview") pending.push(row);
+    else rest.push(row);
+  }
+  return [...pending, ...rest];
+}
+
+/** `?ns=*`의 섹션 하나 — 헤딩과 그 밑의 키 그룹들. */
+export type NamespaceGroup = { namespace: string; rows: KeyRow[] };
+
+/**
+ * 전체 보기의 섹션 배열 (8-4 design §3.6).
+ *
+ * ⚠️ **순서를 `counts`에서 받는다.** `rows`만 보면 순서의 출처가 `loadKeys`의
+ * `orderBy: { key: "asc" }`(Postgres collation)인데 집계가 쓰는 것은 `compareKeys`
+ * (UTF-16 코드 유닛 비교)라 둘이 같다는 보장이 없다 — **섹션 헤딩 순서 ≠ 드롭다운 순서**가
+ * 되고, 그것이 이 함수가 막으려던 바로 그 결과다.
+ *
+ * ⚠️ **누산기가 `Map`이다** — 평범한 `{}`에 `out["__proto__"] = v`를 하면 setter가 불려
+ * own property가 안 생기고 **그 그룹이 조용히 사라진다** (POSTMORTEM 2026-09-09).
+ *
+ * 행이 하나도 없는 네임스페이스는 섹션이 되지 않는다 — 검색이 통째로 비운 경우다.
+ */
+export function groupByNamespace(
+  rows: readonly KeyRow[],
+  counts: readonly NamespaceCount[],
+): NamespaceGroup[] {
+  const byName = new Map<string, KeyRow[]>();
+  for (const row of rows) {
+    const bucket = byName.get(row.namespace);
+    if (bucket === undefined) byName.set(row.namespace, [row]);
+    else bucket.push(row);
+  }
+
+  const groups: NamespaceGroup[] = [];
+  for (const count of counts) {
+    const bucket = byName.get(count.namespace);
+    if (bucket !== undefined) groups.push({ namespace: count.namespace, rows: bucket });
+  }
+  return groups;
 }
 
 /**
@@ -295,7 +419,7 @@ export type LocaleProgress = {
  * (POSTMORTEM 2026-09-09이 그 상태를 다뤘다), base 행을 무조건 100%로 그리면 화면이 거짓말을 한다.
  *
  * ⚠️ **`검토 필요`는 번역된 것이 아니다** — 원문이 바뀌어 사람이 다시 봐야 하는 값이라 `translated`와
- * 따로 센다. `namespaceCounts`가 같은 축을 쓴다.
+ * 따로 센다. `namespaceCountsFor`가 같은 축을 쓴다.
  *
  * **순서가 화면의 정보구조다**: base가 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 →
  * orphaned 맨 뒤. 마지막 것은 행마다 사유 설명이 붙어서, 사이에 끼면 건강한 목록이 쪼개진다.

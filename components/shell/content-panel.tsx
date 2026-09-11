@@ -38,18 +38,36 @@ export function ContentPanel({ children }: { children: ReactNode }) {
 }
 
 /**
- * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · breadcrumb · 툴바 · 전역 `Alert`.
+ * **콘텐츠의 최대 폭** (2026-09-11 사용자). 패널은 남은 폭을 다 쓰지만 **그 안의 내용은 1280에서
+ * 멈춘다** — `max-w-7xl`이 Tailwind 스케일의 그 값이라 임의 치수를 늘리지 않는다(규약 6: 지금
+ * 임의값이 `ring-[3px]` 하나뿐이다).
+ *
+ * ⚠️ **등급을 셋으로 늘린 것이 아니다** (DESIGN §5.1). 폼·설정이 쓰는 `max-w-4xl`(896)은 그대로이고,
+ * 바뀐 것은 **fluid의 정의**다 — "제한 없음"에서 "1280 상한"으로. fluid 화면은 둘뿐이다
+ * (번역 · 프로젝트 목록). 화면이 고르는 것은 여전히 둘이다.
+ *
+ * ⚠️ **최소 폭과 같은 숫자다** — 셸 루트가 `min-w-[1280px]`이므로 "콘텐츠는 1280에서 1280까지"가
+ * 한 문장이 된다. 1440을 고르지 않은 이유는 그것이 **뷰포트 2032px부터** 걸려서다: 1920 디스플레이
+ * (패널 1328)에서는 아무 일도 안 한다.
+ */
+const CONTENT_MAX = "mx-auto w-full max-w-7xl";
+
+/**
+ * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · 전역 `Alert`.
  *
  * ⚠️ **`shrink-0`이 없으면 본문이 길 때 머리가 눌린다.** flex 자식의 축소 하한은 콘텐츠 높이가
  * 아니라 0이다.
  *
  * ⚠️ **여백을 여기서 정하지 않는다** — 화면마다 다르고(`/projects`는 `px-4`, 나머지는 `px-6`),
- * 이 배송의 목표는 **스크롤 경계**다. 여백까지 통일하려 들면 화면 아홉의 시각이 한꺼번에 바뀐다.
+ * 이 프리미티브의 목표는 **스크롤 경계**와 **폭 상한**이다. 여백까지 통일하려 들면 화면 아홉의
+ * 시각이 한꺼번에 바뀐다.
+ *
+ * ⚠️ **`className`이 안쪽 래퍼로 간다** — 여백이 상한 **안**에 있어야 머리와 본문의 왼쪽이 맞는다.
  */
 export function PanelHeader({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
   return (
-    <div className={cn("shrink-0", className)} {...props}>
-      {children}
+    <div className="shrink-0" {...props}>
+      <div className={cn(CONTENT_MAX, className)}>{children}</div>
     </div>
   );
 }
@@ -59,11 +77,18 @@ export function PanelHeader({ children, className, ...props }: ComponentPropsWit
  *
  * ⚠️ **`min-h-0`이 `flex-1`의 짝이다.** 없으면 이 열이 콘텐츠 높이 아래로 못 줄어들어 패널이
  * 통째로 늘어나고, 스크롤이 여기가 아니라 바깥에 생긴다 — 그러면 머리가 다시 같이 올라간다.
+ *
+ * ⚠️ **폭 상한을 스크롤 컨테이너에 직접 주지 않는다** — 그러면 **스크롤바가 콘텐츠 옆에** 생긴다.
+ * 화면 다섯이 `max-w-4xl`을 안쪽 래퍼에 두는 이유가 그것이고, 여기가 그 래퍼를 프리미티브로
+ * 올린 자리다(그 다섯은 안쪽에서 더 좁히므로 그대로 동작한다).
+ *
+ * ⚠️ **래퍼가 `min-h-full`을 든다** — `/projects`가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로
+ * 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가 위에 붙는다.
  */
 export function PanelBody({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
   return (
-    <div className={cn("min-h-0 flex-1 overflow-y-auto", className)} {...props}>
-      {children}
+    <div className="min-h-0 flex-1 overflow-y-auto" {...props}>
+      <div className={cn(CONTENT_MAX, "min-h-full", className)}>{children}</div>
     </div>
   );
 }

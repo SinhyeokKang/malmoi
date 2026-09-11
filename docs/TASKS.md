@@ -49,16 +49,16 @@ PR #12) · **ship 2**(셸, `add099a` PR #14) · **ship 3**(T7 번역 화면 + Pu
 선행 결함 둘은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. ✅ **7단계(운영 안전성 — `SyncRun`·보관·`logs`)도 2026-09-10에 프로덕션이다**(PR #26 → `d0e8688`) —
 라우트 여덟이 전부 섰다. 그 뒤 **보안 라운드 셋**이 프로덕션까지 갔다(2026-09-10): sec-audit-2 수정
 (#27 → `ff5e8a4`) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(#28 → `9e6854e`) · 평문 email
-인덱스 제거(#29 → `f6933d7`). 🔵 **8단계(UI 재작성)에 들어갔다** — **8-1**(signin·초대 + 전역 토큰)이 프로덕션(PR #31 → `718db80`), **8-2**(셸 — 헤더·사이드바·콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(프로젝트 목록 — 2줄 행·URL 필터 `?filter=`·상태 배지 하나·fluid, `readinessLabel` → `projectStatus`. **사이드바도 시안에 맞췄다** — 접기·스위처·`New project` 제거, Docs 추가)가 dev다(2026-09-10).
-진행의 정본은 SAAS §8과 `features/ui-rework/README.md`다.
+인덱스 제거(#29 → `f6933d7`). 🔵 **8단계(UI 재작성)에 들어갔다** — **8-1**(signin·초대 + 전역 토큰)·**8-2**(셸)·**8-3**(프로젝트 목록 + 사이드바)이 **프로덕션이다**(PR #31 → `718db80` / PR #32 → `23f0f50`). dev에 있는 것은 **8-4**(번역 화면 — 로케일 = 행, `?focus=`→`?locales=`, `?state=` 폐기, 국기 253, 콘텐츠 상한 1280)**와 2026-09-11 폴리싱 라운드**다.
+진행의 정본은 SAAS §8과 `features/ui-rework/README.md`다 — 배송별 범위·상태는 거기가 든다.
 
 ### 부채 정리 3회차 (2026-09-09~10, 보안 감사 둘 + 자격증명 저장 전환)
 
 sec-audit(PR #25 → `bc3615c` — 응답 헤더·`lib/locale-code.ts`·CI SHA 핀·Supabase anon REVOKE) ·
 sec-audit-2(#27 → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) ·
 credential-storage + session-revocation(#28 → `9e6854e`, #29 → `f6933d7`). **dev·prod 양쪽 DB 전환이
-끝났고 마이그레이션 17개가 둘 다 적용됐다.** 잔여는 `features/credential-storage/tasks.md`의 **미체크 여덟**(P2 · P7 키 회전 리허설 · T11 차단·drain
-리허설 · T12 실물 dev 검증 · feature-review 보완 넷)과 `features/session-revocation/tasks.md`의 S7이다.
+끝났고 마이그레이션 17개가 둘 다 적용됐다.** 잔여는 `features/credential-storage/tasks.md`의 **미체크 아홉**(P2 · P7 키 회전 리허설 · T11 차단·drain
+리허설 · T12 실물 dev 검증 · feature-review 보완 다섯)과 `features/session-revocation/tasks.md`의 S7이다.
 ⚠️ **P2(`emailLookup` additive 마이그레이션)가 미체크인 것은 같은 문단의 "마이그레이션 17개가 둘 다
 적용됐다"와 충돌한다** — `20260910050000_add_email_lookup`이 실재하고 prod 반영도 끝났으므로 **둘 중
 하나가 거짓이다**. 2026-09-10 `/doc-check`이 잡았고 그쪽 체크박스를 닫는 것이 후속이다.
@@ -108,7 +108,7 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
 | `lib/survey` | 9 | 6 | 없음 (측정 전용) |
 | `lib/keys` | 4 | 4 | `query.ts`가 `server-only`라 소스 정적 검사로 대신함 (`actor.test.ts`가 그 형태다 — malmoi#3). `refocus.ts`는 **잎**이다 — 저장 실패 포커스 판정을 `translation-input.tsx` 안에 두면 vitest가 import만으로 죽는다 |
 | `lib/i18n` | 1 | 2 | 사전의 유일한 입구(`m`·`pick`) + `messages/en.tsx`. **잎이다** — 클라이언트가 읽으므로 그래프가 곧 번들 |
-| `lib/shell` | 1 | 1 | 사이드바의 순수 판정 셋(`activeProject`·`projectSections`·`navZones`) |
+| `lib/shell` | 1 | 1 | 사이드바의 순수 판정 넷(`activeProject`·`projectSections`·`navZones`·`navFooterItems` — 마지막은 8-3) |
 | `lib/sync` | 4 | 2 | sync 실행의 게이트·결과·화면 판정 (7단계) |
 | `lib/credentials` | 9 | 11 | 저장 시 암호화 — 세션 digest · PII/토큰 봉투 · HMAC 조회 + 전환 도구 |
 | `lib/session-revocation` | 4 | 4 | 전체 세션 회수 (sec-audit-2 #38) |
@@ -117,9 +117,9 @@ ADAPTER-COVERAGE §18)가 학습·홀드아웃 둘 다 돌려 닫았다. 전 지
 | `lib/routes.ts` | 1 | 1 | 앱 내부 링크의 단일 출처. **잎, import 0** |
 | `lib/auth` | 13 | 13 | 없음 — tenant-auth(2026-09-05~06)로 늘었다 |
 
-⚠️ **이 표 전체가 2026-09-04~09-07 스냅샷이고 지금 아홉 행이 어긋난다** (2026-09-10 `/doc-check`).
+⚠️ **이 표 전체가 2026-09-04~09-07 스냅샷이고 지금 열 행이 어긋난다** (2026-09-10 `/doc-check`).
 `adapters` 11|21 · `pull` 11|15 · `onboarding` 11|11 · `auth` 16|16 · `github-connect` 12|11 ·
-`i18n` 2|3 · `survey` 테스트 7 · `session-revocation` 테스트 6이 실제 값이고, **8단계가 만든 두 모듈
+`i18n` 2|3 · `keys` 6|8 · `survey` 테스트 7 · `session-revocation` 테스트 6이 실제 값이고, **8단계가 만든 두 모듈
 (`lib/signin` 1|1 · `lib/projects` 1|1)과 루트 `lib/*.ts` 여섯은 어느 행에도 없다.** 이 문서는 PoC
 기록으로 닫혔으므로 **숫자를 계속 맞추지 않는다** — 살아 있는 모듈 인벤토리는 CLAUDE.md 디렉터리 구조
 절이고, 이 표는 "그때 A(모듈 완성)를 어떻게 쟀나"의 기록으로만 읽는다.

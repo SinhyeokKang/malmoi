@@ -741,6 +741,26 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
     db.projects[0]!.pathTemplate = "i18n/{locale}.json";
   });
 
+  /**
+   * ⚠️ **무효화가 readiness를 읽는 화면 전부를 덮어야 한다** (2026-09-11 `/doc-check`).
+   *
+   * 첫 적재가 `lastCommitSha`를 세우는 순간 `planProjectReadiness`가 `ready`로 넘어가는데, 그 판정을
+   * 읽는 화면이 **넷**이다 — 설정 · **Home**(`[slug]/page.tsx`) · **번역**(`translations/page.tsx`) ·
+   * 목록(`lib/projects/list.ts`). `/projects/<slug>/settings`와 `/projects`만 지우면 앞의 둘이 캐시된
+   * `ProjectNotReady`로 남아, **적재를 막 끝낸 사용자가 "아직 준비 안 됐다"를 본다.**
+   *
+   * 접두가 아니라 **서브트리**여야 하는 이유가 그것이다 — POSTMORTEM 2026-09-09(화면을 옮겼는데
+   * 무효화가 안 따라갔다)와 같은 모양이고, `saveTranslation`이 이미 그 형이다.
+   */
+  it("`/projects/<slug>` 서브트리를 지운다 — settings만으로는 Home·번역이 안 따라온다", async () => {
+    expect(await runFirstIngest({ slug: "acme" })).toMatchObject({ ok: true });
+
+    const covered = hoisted.revalidatePath.mock.calls.some(
+      ([path, type]) => path === "/projects/acme" && type === "layout",
+    );
+    expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
+  });
+
   it("스냅샷·blob을 값으로 넘겨 기존 적재 경로를 지난다", async () => {
     const result = await runFirstIngest({ slug: "acme" });
 

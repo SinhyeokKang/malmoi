@@ -53,8 +53,19 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 | 번역 조회·수정 | O | O |
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
-| 기준 로케일·base branch **변경** | O | X | ✅ **화면이 생겼다** (2026-09-09, 6b-3 — `updateRepositorySettings`, `project:settings`). ⚠️ **두 필드가 쓰는 것의 성질이 다르다**: `baseBranch`는 `Project.baseBranch`를 즉시 쓰고, 기준 로케일은 **선언**(`Project.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때 현실이 된다 (design §3.13) |
-| 멤버 관리·프로젝트 삭제 | O | X |
+| base branch **변경** | O | X |
+| 기준 로케일 **변경** | O | X |
+| 멤버 관리·프로젝트 **보관** | O | X |
+
+⚠️ **뒤의 둘은 화면도 Action도 갈려 있다** (6b-5, 2026-09-09). base branch는 `/settings`의
+`updateRepositorySettings`가 `Project.baseBranch`를 **즉시** 쓰고, 기준 로케일은 `/locales`의
+`updateBaseLocale`이 **선언**(`Project.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때
+현실이 된다 (design §3.13). 인가는 둘 다 `project:settings`다 — ⚠️ **`updateRepositorySettings`는
+선언 컬럼을 아예 모른다**: 인자를 optional로 두면 서버가 "무엇을 안 보냈나"를 추측하게 되고
+그것이 malmoi#20의 모양이다.
+
+⚠️ **표의 마지막 칸이 "삭제"가 아니라 "보관"인 이유**: 영구 삭제는 §7.9가 거절했고 구현이 없다.
+실재하는 OWNER 전용 수명주기 동작은 `archiveProject`·`unarchiveProject`(둘 다 `project:settings`)다.
 
 **EDITOR에게 Publish를 허용한다.** Publish는 base branch 직접 쓰기가 아니라 **검토 가능한 PR 생성**이다.
 비개발자가 Publish하고 개발자가 GitHub에서 리뷰·머지하는 경계가 병목을 줄이면서 코드 승인권은 남긴다.
@@ -75,7 +86,8 @@ MVP §7의 "세밀한 권한" 비범위가 여기서도 유지된다.
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
 - **Publish 경험** — 미배포 수, PR 상태, 버린 값 보고
-- **SyncRun** — 실행 이력·idempotency·동시 실행 차단
+- **SyncRun** — 실행 이력·동시 실행 차단. ⚠️ **idempotency는 여기 없다** — `idempotencyKey`는
+  일부러 안 만들었고(§6·§8 7단계), **push를 이 테이블에 넣을 때** 의미가 생긴다
 
 ### 4.2 만들지 않는 것
 
@@ -93,10 +105,11 @@ MVP §7을 그대로 잇고, SaaS 문맥에서 새로 거절하는 것을 더한
 - **범용 알림 시스템** — 이메일 발송 자체를 1차에서 뺀다(§5.1).
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
 
-### 4.3 1차에서 빼되 2차에 열어두는 것 — 판정 넷
+### 4.3 1차에서 빼되 2차에 열어두는 것 — 판정 다섯
 
-**다섯 다 "필요 없다"가 아니라 "지금 넣으면 면적 대비 얻는 게 작다"는 판정이다.** ④⑤는 2026-09-09
-IA 확정(§7.7)이 더했다.
+**다섯 다 "필요 없다"가 아니라 "지금 넣으면 면적 대비 얻는 게 작다"는 판정이다.** ⑤는 2026-09-09
+IA 확정(§7.7)이 더했다. ⚠️ **한때 ③이 둘이고 ⑤가 없었다** — ④가 `/account`를 만들지 말지의 판정이었는데
+그것이 §8 6b-4로 옮겨가면서 번호가 어긋난 채 남아 있었다 (2026-09-11 정정).
 
 #### ① 이메일 매직링크 로그인 → 뺀다
 
@@ -143,7 +156,7 @@ IA 확정(§7.7)이 더했다.
 2차에 열 조건: **연결 화면의 두 번째 인가 클릭이 실제로 이탈을 만들 때.** 그때는 왕복 하나를 줄이는
 값이 가용성 리스크를 넘는다.
 
-#### ③ OAuth 계정 병합 → 뺀다
+#### ④ OAuth 계정 병합 → 뺀다
 
 **같은 사람의 GitHub 계정과 Google 계정을 한 `User`로 합치는 기능을 1차에서 만들지 않는다.**
 로그인 Account의 추가 연결은 `safePrismaAdapter`가 거부한다. `planAccountLink`의
@@ -161,7 +174,7 @@ registered with a different sign-in method") — 막힌 것이 아니라 원래 
 2차에 열 조건: 한 사람이 **provider를 바꿔야 하는** 상황이 실제로 나올 때(회사 계정 폐쇄 등).
 그때도 자동 병합이 아니라 **`/account`에서 명시적으로 요청하고 두 쪽 소유를 각각 증명하는** 흐름이다.
 
-#### ④ MCP 토큰 — 전용 라우트를 만들지 않는다
+#### ⑤ MCP 토큰 — 전용 라우트를 만들지 않는다
 
 **AI에게 로케일 관리를 시키는 MCP 서버 자체는 §4.2 비범위가 아니다** — 이 도구의 축(코드↔DB
 왕복)의 자연스러운 확장이다. 뺀 것은 **화면**이다: 토큰 발급·폐기는 `settings`의 섹션이면 충분하고
@@ -217,6 +230,12 @@ getProjectAccess(prisma, { userId, slug, permission })            // Server Acti
 모든 서버 진입점이 이것을 지난다. **클라이언트가 보낸 role·owner 여부·projectId의 정당성을 믿지
 않는다.** ID 기반 mutation도 반드시 프로젝트를 조건에 함께 넣는다 — 이건 이미 코드 컨벤션이다
 ("모든 DB 쿼리는 `projectId`로 좁힌다", CLAUDE.md).
+
+⚠️ **갈래 하나는 redirect하지 않고 값으로 돌아온다** (7단계). `requireProjectAccess`의 반환은
+`{ projectId, role, userId, archived }`이고 **보관만** 튕기지 않는다 — 되돌릴 곳이 설정 안의 카드
+하나라 목록으로 보내면 사용자가 왜 거기 왔는지 모른다(§7.9). **대가는 호출부가 빠뜨릴 수 있다는
+것**이고(빠뜨리면 화면이 그냥 정상 렌더된다) `app/__tests__/screens.test.ts`가 그 갈래를 만나는
+화면 다섯을 전수로 센다.
 
 ### 5.3 세션 — JWT에서 DB 세션으로
 
@@ -284,13 +303,15 @@ Cascade라 **User 삭제가 연결 토큰까지 지운다**(§6이 어댑터 이
 (`lib/github-connect/state.ts`).
 
 - **HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨(`"malmoi-github-state"`). Auth.js의 OAuth/CSRF 보호와 키를 공유하므로 회전하면 진행 중인 연결이 무효화된다. DB 세션 digest는 이 키를 쓰지 않으며 기존 세션 폐기는 별개다.
-- **10분 만료 · 서명은 `timingSafeEqual`**(길이 선검사) **· nonce는 단순 대조**(서명이 이미 검증됐다). 판정 순서는 서명 → nonce → 만료 →
+- **10분 만료 · 서명은 `timingSafeEqual`**(⚠️ **길이 선검사가 없다** — 양쪽을 sha256으로 접어 항상
+  32바이트로 비교한다. `String.length`(UTF-16)로 재고 `Buffer`(UTF-8)를 넘기던 시절엔 **쿠키에
+  비ASCII 서명이 오면** `RangeError`가 나서 `state-mismatch`가 500으로 위장됐다 — 쿠키는 공격자가
+  정하는 값이다, sec-audit 발견 6) **· nonce는 단순 대조**(서명이 이미 검증됐다). 판정 순서는 서명 → nonce → 만료 →
   사용자로, **만료를 사용자보다 앞에 둬** 만료된 state가 누구 것이었는지 말하지 않는다.
 - **목적지를 서명 payload에 싣는다** — 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
   ⚠️ **slug 하나에서 `StateDest` 갈래 셋으로 넓어졌다**: `{kind:"settings", slug}`·`{kind:"new"}`
   (2026-09-07)·`{kind:"account"}`(6b-4). 뒤의 둘은 사용자 축이라 프로젝트가 없어 slug가 착지를
-  겸할 수 없고, 갈래를 프로젝트가 없어 slug가 착지를 겸할 수 없고, 갈래를 쿼리로 빼면
-  쿼리로 빼면 공격자가 착지를 정한다. 옛 `{slug}` payload는 `state-mismatch`로 거부된다(10분 만료라 배포 직후
+  겸할 수 없고, 갈래를 쿼리로 빼면 공격자가 착지를 정한다. 옛 `{slug}` payload는 `state-mismatch`로 거부된다(10분 만료라 배포 직후
   창이고, 그 창의 사용자는 버튼을 다시 누르면 된다).
 - **빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** 설정 오류를 "다시 눌러 주세요"로 위장하면
   누구나 재현 가능한 서명이 통과한다.
@@ -367,6 +388,30 @@ provider마다 다르다.
 ⚠️ **토큰이 URL 경로에 실린다** — 브라우저 히스토리·리퍼러·전달된 링크에 남는다. **단일 사용과 7일
 만료로 수용한 위험**이고, 없애려면 수락 폼에 토큰을 POST해야 하는데 그러면 비로그인 열람 화면이
 성립하지 않는다 (`features/tenant-auth/design.md` §4.1).
+
+### 5.6.1 sec-audit 1차가 닫은 것 — 앱 밖의 표면 (2026-09-09, 프로덕션)
+
+**§11이 sec-audit-2를 받듯 이 절이 1차를 받는다.** 전건 기록은
+[features/sec-audit/findings.md](features/sec-audit/findings.md)이고, 여기 올리는 것은 **SaaS 보안 모델의
+전제를 바꾼 셋**이다(나머지는 §9 불변식 10과 CLAUDE.md가 들었다).
+
+- **보안 응답 헤더가 하나도 없었다** (발견 9) — 지금은 `next.config.ts`가 enforce 셋
+  (`X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  CSP `frame-ancestors 'none'`)과 **CSP 본체 Report-Only**를 낸다. ⚠️ **enforce 쪽에 `default-src`를
+  섞지 않는다** — 섞으면 그게 곧 enforce이고 Report-Only가 무의미해진다. ⚠️ `tsc`가 그 함수를 못 보므로
+  `app/__tests__/security-headers.test.ts`가 설정을 **불러서** 검사한다.
+- ⚠️ **"애플리케이션이 유일한 방어선"이 거짓이었다** (발견 8 — §9 불변식 5의 전제를 흔든다).
+  Supabase는 PostgREST·GraphQL **데이터 API를 기본으로 켜 두고**, `public` 스키마의 `pg_default_acl`이
+  `anon`·`authenticated`에 새 테이블 전 권한을 자동으로 준다 — 실측으로 **anon key 하나로
+  `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다.** 조치는 그 두 롤의 `public`
+  권한 REVOKE + `ALTER DEFAULT PRIVILEGES`에서 제거다(후자가 없으면 **다음 마이그레이션이 만드는
+  테이블이 다시 열린다**). RLS+정책 대신 REVOKE인 이유: 그 API를 한 줄도 안 쓰므로 대가가 0이다.
+  ⚠️ **절반은 예방이 아니라 탐지다** — `supabase_admin` 소유 default ACL은 `postgres`로 지울 수 없어
+  (`permission denied`) **대시보드로 만드는 테이블**은 그대로 열린다. `/db` 5단계가 마이그레이션마다
+  `anon` 권한 0을 확인하는 것이 그 경로의 유일한 방어선이다.
+- **글롭 매처가 파국적 백트래킹을 열었다** (발견 11) — `lib/adapters/glob.ts`의 `matchesGlob`이
+  **역추적 없는 DP**라 비용이 `템플릿 × 경로` 길이로 고정된다. 정규식이던 시절엔 비용을 키우는 것이
+  템플릿이 아니라 **매칭 대상 경로**(남이 정한다)여서 템플릿 예산으로 상한이 안 섰다.
 
 ### 5.7 보안 테스트 완료 조건
 
@@ -507,8 +552,12 @@ setup → awaiting_first_sync → ready
 ⚠️ **연결 건강성은 이것과 별개 축이고, 4단계가 먼저 세웠다.** 이 절이 묻는 것은 "편집 가능한가"이고,
 건강성이 묻는 것은 "리포·설치가 지금 어떤 상태인가"다. 후자는 **상태 컬럼 없이 매 렌더 계산**하며
 (`planConnectionHealth` **7갈래** — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
-`repo-moved`·**`repo-replaced`**·`unknown`), 위 다이어그램의 `needs_reconnect`는 **코드에 없는 이름**이다
-(설계 어휘로만 남겨둔다 — 실제 값은 `app-uninstalled`다). 그 축의 결정 셋:
+`repo-moved`·**`repo-replaced`**·`unknown`), ⚠️ **위 다이어그램의 `needs_reconnect`는 그 union에는
+없고 다른 축에는 실재한다** (2026-09-11 정정 — 한때 "코드에 없는 이름"으로 적혀 있었다). 건강성의
+대응값은 `app-uninstalled`이고, **같은 낱말이 목록의 `ProjectStatus`에는 진짜 값으로 있다**
+(`lib/projects/list.ts`의 `PROJECT_STATUSES`·`projectStatus` — 조건은 `repositoryId === null`,
+화면 라벨은 `Disconnected`). 둘을 섞지 않는다: 건강성은 **GitHub에 물어** 매 렌더 계산하고,
+`ProjectStatus`는 **저장된 행만 보고** 목록 배지를 낸다. 그 축의 결정 셋:
 
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
   멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
@@ -590,7 +639,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
   푸터가 그것을 가리키기 때문이다. **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가
   아니라 Privacy Policy 하나로 퉁친다(2026-09-10 사용자).
 
-⚠️ **MCP 토큰 화면은 라우트로 만들지 않는다** (§4.3 ④). `settings`의 섹션이다 — push 토큰이 이미
+⚠️ **MCP 토큰 화면은 라우트로 만들지 않는다** (§4.3 ⑤). `settings`의 섹션이다 — push 토큰이 이미
 거기 있고 MCP 토큰도 토큰이다. 전용 라우트는 "MCP로 무엇을 시킬 수 있나"를 설명할 **지면**이
 필요해질 때 다시 판정한다.
 
@@ -604,8 +653,8 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      프로젝트 결과)과 나브의 Translations 항목은 번역 화면을 **명시적으로** 가리키는 동작이라 그대로 뒀다.
    - ⚠️ **받아들인 대가**: 번역자(비개발자)의 일은 `translations` 하나이므로 **매 세션에 클릭이 하나
      늘어난다.** 그래서 `Home`의 완료 조건에 그 대가를 갚는 항목이 들어간다 — **거기서 번역으로 가는
-     경로가 화면의 주된 동작이어야 한다**(로케일별 진행률이 곧 `?focus=` 링크, 최근 활동이 곧 `?ns=`·
-     `?focus=` 링크). 개요만 있고 링크가 없으면 그 클릭이 순손실이다.
+     경로가 화면의 주된 동작이어야 한다**(로케일별 진행률이 곧 `?locales=` 링크, 최근 활동이 곧 `?ns=`·
+     `?locales=` 링크 — 8-4가 `?focus=`를 그 이름으로 바꿨다). 개요만 있고 링크가 없으면 그 클릭이 순손실이다.
      ✅ 구현은 셋으로 갚는다: **진행률 행 전체가 링크** · **활동의 편집 항목이 링크** · 화면당 하나인
      primary가 [Open translations]다. `components/__tests__/home-screen.test.ts`가 그 셋을 소스로 센다.
    - ⚠️ **`/projects` 목록의 링크가 바뀐다** — 지금 `routes.translations(slug)`로 가는데
@@ -666,7 +715,14 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 이력·개요를 본다) · **컨트롤만 role로 갈리고 판정은 Action**이 한다. `project:settings` 뒤에 두는 것은
 `settings` 하나다 — 거기에 리포 연결과 push 토큰이 있다.
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·`?state=`·`?focus=`와 **목록의 `?filter=`(값 여섯 — `all` + 상태 다섯)와 `?q=`(이름 검색, 2026-09-11)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·**`?locales=`**(8-4가 `?focus=`·`?state=` 둘을 폐기했다 — 로케일이 행이라 "기준 열"에 대응물이 없고, 상태 필터는 섹션 안 pending 우선 정렬이 갚는다)와 **목록의 `?filter=`(값 여섯 — `all` + 상태 다섯)와 `?q=`(이름 검색, 2026-09-11)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+
+⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 다섯: `projects`·`projects/new`·`account`·
+`settings`·`invite/[token]`). 그것을 만드는 자리가 `redirect()`의 문자열 연결이기 때문이고
+(`lib/auth/session.ts`·`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx`),
+**이 문서가 바로 위에서 경고한 그 형태다** — 위 목록의 키들과 달리 `?e=`는 생성기↔수신자 대조의
+바깥에 있다. 늘릴 일이 생기면 `routes.*`의 쿼리 인자로 먼저 옮긴다. `/signin`의 `?error=`·
+`?sessions=`는 반대로 `routes.signIn({...})`이 만든다(8-1a).
 
 ✅ **`?sessionRevocation=`도 2026-09-11에 그 계약 안으로 들어왔다.** 그전에는 세 자리가 문자열 연결로 만들었고(`signIn()` 주석이 못 박은 그 형태) 검사를 회피했다 — 지금은 `routes.account({ sessionRevocation })`이 만들고 **읽는 쪽(`lib/session-revocation/http.ts`)만 리터럴로 비교한다**(만드는 쪽과 읽는 쪽이 같은 함수를 쓰면 그 비교가 무엇을 확인하는지 흐려진다).
 
@@ -826,7 +882,7 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 
 완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts`·`edit-flow.test.ts`
 + preview 실측) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이 실행되는 Server Action·
-Route Handler가 0 ✅(`entry-points.test.ts`가 예외 6개를 이름으로 고정) / Google 사용자가 GitHub 계정
+Route Handler가 0 ✅(`entry-points.test.ts`가 예외를 이름으로 고정 — **그때 여섯, 8-1a가 `/signin`·`/privacy`·`/docs`를 더해 지금은 여덟**) / Google 사용자가 GitHub 계정
 없이 초대 수락과 편집이 가능 ✅ **실물로 밟았다**.
 
 **`[manual]` 넷을 preview에서 밟았다** (2026-09-05 — e2e가 없어 자동화할 수 없다): 비로그인 응답
@@ -960,7 +1016,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
 
 **아래 항목들의 판정·데이터층이 먼저 섰고 화면도 ship 3·4가 세웠다 — 6b가 남은 화면 둘(멤버 관리·기준 로케일)을 채웠다.** 판정층은 — `defaultNamespace`·`resolveNamespace`·
 `filterRows`·`isUnpublished`(`lib/keys/view.ts`), `countUnpublished`(`lib/keys/query.ts`),
-`PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts`)이 그것이다.
+`PullResult.pr` + 문구 다섯·tone 넷(`lib/pull/message.ts` — ⚠️ **지금은 일곱이다**: 7단계가 게이트 거부 둘(`already-running`·`too-soon`, tone `info`)을 더했다)이 그것이다.
 
 **UI 문자열은 영어 단일이고 출처가 `messages/en.tsx` 하나다** (6a T1). 화면은 `@/lib/i18n`의 `m`으로 읽고,
 `lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 상시 고정한다.
@@ -1021,12 +1077,15 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - [x] `StateDest`에 `{ kind: "account" }` — 옛 쿠키 둘은 그대로 파싱되고 `state.test.ts`가 그 방향을
       고정한다. `startGithubConnectForUser(dest)`는 **갈래 이름만** 받는다(`"new" | "account"`, zod) —
       `StateDest`를 통째로 받으면 클라이언트가 착지를 골라 이 자리에 open redirect 판정이 생긴다.
-      `?e=` 읽는 자리가 셋 → **넷**
+      `?e=` 읽는 자리가 셋 → **넷** (그 뒤 `/settings`까지 **다섯**이다 — §7.7의 `?e=` 절)
   - [x] `middleware.ts` matcher에 `/account`. **그 그물이 실제로 도는지 확인했다** — 그 한 줄을 빼면
       `entry-points`의 "(edit) 아래 모든 페이지가 어느 패턴에든 걸린다"가 red다
-  - [x] 사이드바 **2구역**(`Your work` / `<project>`) + 유저 메뉴 `Your account`. ⚠️ **구역 둘이
-      `aria-label`을 든다** — 구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니고 **접힌 레일에서는 아예
-      렌더되지 않는다**(실물로 확인: 레일에서 `nav`의 라벨 둘은 남고 `<p>` 둘은 사라진다)
+  - [x] 사이드바 **2구역** + 유저 메뉴의 계정 항목. ⚠️ **구역 둘이 `aria-label`을 든다** — 구역
+      라벨이 `<p>`라 접근성 트리에서 이름이 아니다(**지금도 참이다**).
+      ⚠️ **문구 둘은 8-3이 뒤집었다** (2026-09-11, §7.7 L711) — ~~`Your work`~~는 **사용자 이름**,
+      ~~`Your account`~~는 **`Settings`**다. ~~그리고 **접힌 레일에서는 아예 렌더되지 않는다**(실물로
+      확인: 레일에서 `nav`의 라벨 둘은 남고 `<p>` 둘은 사라진다)~~ — **접기 레일 자체가 8-3에서
+      사라졌다**(`Tooltip` 프리미티브도 함께 삭제됐다). 그 문장이 재는 상태가 이제 없다
   - ⚠️ **`projectSections`는 셋으로 뒀다.** 계획서는 여섯(Home·Translations·Locales·Members·Logs·Settings)을
       적었지만 Home·Locales·Logs의 라우트가 6b-6·6b-5·7단계다 — 없는 라우트를 가리키는 항목은 404다.
       **각 항목은 자기 라우트와 같은 사이클에 온다.** 같은 이유로 `routes.project(slug)`도 6b-6 몫이다
@@ -1052,9 +1111,9 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
   - [x] **다른 화면의 지표를 복제하지 않는다**(§7.7 결정 2) — `countUnpublished`·`loadKeys`를 **부르지
       않는다**(소스 스캔이 센다). 소유하는 것은 로케일별 진행률 대비와 최근 활동뿐이고, 진행률은
       6b-5의 `localeProgress`를 그대로 쓴다 — 다만 **orphaned 로케일을 뺀다**(그 열은 번역 화면에서
-      disabled라 `?focus=` 링크가 편집할 수 없는 곳으로 데려간다)
-  - [x] **착지 클릭을 셋으로 갚는다**(결정 1) — 진행률 행 전체가 `?focus=` 링크 · 활동의 편집 항목이
-      `?ns=`+`?focus=` 링크 · primary [Open translations]
+      disabled라 `?locales=` 링크가 편집할 수 없는 곳으로 데려간다)
+  - [x] **착지 클릭을 셋으로 갚는다**(결정 1) — 진행률 행 전체가 `?locales=` 링크 · 활동의 편집 항목이
+      `?ns=`+`?locales=` 링크 · primary [Open translations] (8-4가 쿼리 키를 바꿨다)
   - [x] 최근 활동은 지금 재료로만(`Translation.updatedAt`+`updatedBy` · `lastCommitAt` ·
       `lastPublishedAt`+`lastPrUrl`) — **`logs`는 7단계 `SyncRun`의 소비자**다 (§6). ⚠️ `limit`은
       **병합 뒤에** 적용된다(편집만 먼저 자르면 push·publish가 항상 밀려난다) · 동시각 정렬이
@@ -1096,7 +1155,7 @@ additive 컬럼 둘 · 프리미티브 16) · **ship 2**(셸) · **ship 3**(T7 �
       6단계를 기다리지 않았다.** 여기 남은 것은 **"덮인 값에 편집자 이름이 남아 화면이 거짓을 말한다"**
       쪽이고, 이름이 사람으로 보이게 된 만큼 그 거짓이 더 잘 읽힌다
 - [x] ~~**편집 손실 창 배너**~~ ✅ **ship 3** (2026-09-08, T7 — `components/translations/edit-loss-banner.tsx`. 닫기 키가 `lastPulledAt`이라 다음 Publish 뒤 다시 보인다. MVP §3.1이 감수한 대가를 편집자가 보는 자리에 처음으로 적었다)
-- [x] ~~미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)~~ ✅ **ship 3** (2026-09-08, T7): `countUnpublished` → 버튼 라벨·배너 · `PublishButton`/`PublishResult`가 문구 다섯·tone 넷을 하나의 `Alert`로 · `Project.lastPublishedAt`·`lastPrUrl`이 "Last sent … · View what was sent"를 새로고침 뒤에도 남긴다 · `warnings`는 `<details>`에 **파일 목록**으로 편다(건수만으로는 행동할 수 없다)
+- [x] ~~미배포 변경 수 · Publish Server Action · PR 상태와 링크 · **버린 값 표시**(`warnings`)~~ ✅ **ship 3** (2026-09-08, T7): `countUnpublished` → 버튼 라벨·배너 · `PublishButton`/`PublishResult`가 문구 다섯·tone 넷(**7단계가 게이트 거부 둘을 더해 지금은 일곱**)을 하나의 `Alert`로 · `Project.lastPublishedAt`·`lastPrUrl`이 "Last sent … · View what was sent"를 새로고침 뒤에도 남긴다 · `warnings`는 `<details>`에 **파일 목록**으로 편다(건수만으로는 행동할 수 없다)
 
 완료 게이트: 변경 없음 / 새 PR / 기존 PR 갱신 / 부분 기록 불가 / 실패가 **서로 다른 상태**다 /
 PR 생성과 머지를 같은 완료로 표시하지 않는다 / 같은 DB 상태의 반복 Publish가 새 커밋을 만들지 않는다.
@@ -1157,7 +1216,15 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 
 ### 8단계 — UI 재작성 (Figma) 🔵 (착수 — `docs/features/ui-rework/`)
 
-✅ **8-1a(라우트 이관)·8-1b(시안 적용)가 dev에 나갔다** (2026-09-10).
+✅ **8-1(라우트 이관 + 시안 적용)이 프로덕션에 나갔고** (PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) →
+squash `718db80`), ✅ **8-2(셸)·8-3(사이드바 + 프로젝트 목록 재작성)도 프로덕션에 나갔다**
+(PR [#32](https://github.com/SinhyeokKang/malmoi/pull/32) → squash `23f0f50`, 2026-09-11).
+**dev에 남아 있는 것은 8-4(번역 화면)와 2026-09-11 폴리싱 라운드**(패널 머리 고정 · 컨트롤 36px ·
+`lib/tone.ts` · 콘텐츠 상한 1280)이고, 그 위에 **8-4 시안 정합 라운드**가 얹혔다(같은 날): 시안
+`212:937`을 좌표로 재서 머리 여백·제목 급·칩 높이·초기화 버튼 자리·표의 선 구조·로케일 칸 68을
+맞췄고, **mono가 키와 로케일 코드에서 빠졌으며**(위 불변식 항목), 패널 머리를 **라우트 아홉 전부**에서
+통일했다(제목 `text-xl` + 줄 높이 36 — 그 전에는 `/projects`·번역만 20px이라 페이지 제목의 급이
+라우트마다 달랐다).
 
 - **8-1a** — 시안 적용 전에 **`/signin`을 독립 라우트로 가르는 것**만 먼저 했다: 랜딩 자리를 비우고,
   로그인 목적지 아홉을 `lib/routes.ts` 하나로 모으고, `/privacy`·`/docs` placeholder를 세웠다.
@@ -1188,12 +1255,21 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 그릴 대상이 아직 없어서이고, 앞인 이유는 **9단계 산출물이 UI에 직접 의존해서다**(온보딩 GIF·공개
 데모·스크린샷). 순서를 뒤집으면 그 단계를 두 번 한다.
 
-- [ ] **번역 표의 축이 바뀐다 — 이 단계의 크기를 정하는 항목이다.** 지금은 `| Key | en | ko | fr |`로
-      **로케일이 열**인데 시안은 키가 왼쪽 셀 하나이고 **로케일이 행으로 쌓인다.** `filterRows` ·
-      `namespaceCounts` · `localeProgress` · 셀 컴포넌트 · `?focus=` 계약이 전부 다시 정의된다
-  - ⚠️ **행 수가 3배다** (903키 × 3로케일 = 2,709행). 2026-09-09의 리전 변경이 고친 것은 **서버
-        시간**이고 DOM 노드 수는 별개다 — `?ns=*`에서 가상화 판정이 다시 열릴 수 있다 (CLAUDE.md 가상화 절)
-- [x] ✅ **`?focus=`의 뜻이 정해졌다** (2026-09-11, 8-4 spec Q2 — **설계만, 미착수**): `?locales=`
+- [x] ✅ **번역 표의 축이 바뀌었다** (2026-09-11, 8-4). 키가 왼쪽 셀 하나(320)이고 **로케일이 행으로
+      쌓인다.** `filterRows`는 `{ q, locales }`가 됐고 `namespaceCounts`는 **`namespaceCountsFor`로
+      대체**됐다(키 단위로 한 번만 센다). 마크업은 `<table>`이 아니라 **`div` + `grid`**이고, 잃은
+      시맨틱을 무엇이 대신하는지는 DESIGN §6.1이 든다. `localeProgress`는 안 바뀌었다(Home·언어 화면의
+      것이라 축이 다르다)
+  - ⚠️ **"행 수가 3배"가 "입력이 3배"는 아니다** — 903키 × 3로케일 = **`<Textarea>` 2,709개**이고 그
+        수는 축이 바뀌어도 그대로다. 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다.
+        **국기는 CSS `background-image`라 요소가 0개 는다.** 가상화는 선반영하지 않았다
+  - ⚠️ **`?ns=*` 2초 게이트는 아직 실측 전이고, 그것이 8-4의 유일한 잔여다** — 903키 프로젝트가 dev DB에 없어 `push:local` 적재가
+        선행이다 (`features/ui-rework/translations/tasks.md` T12). 미달이면 그 자리에서 가상화를 판정한다
+  - ✅ **1280px 실측은 끝났고 결함 하나가 나왔다** (2026-09-11 `/bugshot-qa` — malmoi#33). 값 열의
+        고정 폭을 다 빼면 입력에 **28px**만 남아 값이 한 글자씩 세로로 쌓였다. 메타를 입력 아래 줄로
+        내려 200px을 확보했다. ⚠️ **폭은 소스 스캔이 원리적으로 못 보는 축이다** — `/code-review`·
+        `pnpm build`·방어선 여섯이 전부 green이었고 실물 브라우저가 유일한 관측 수단이었다
+- [x] ✅ **`?focus=`가 폐기되고 `?locales=`가 그 자리에 왔다** (2026-09-11, 8-4 — **구현 완료**): `?locales=`
       **다중 선택**으로 바뀌고 `focus`는 폐기된다. 집계와 기본 착지는 "선택된 로케일 중 하나라도 남은
       일이 있으면 pending"이고, 옛 `?focus=`는 404도 리다이렉트도 아닌 **기본 선택**으로 떨어진다.
       ⚠️ 같은 spec이 `?state=` 제거(Q3)와 breadcrumb 삭제(Q5)도 결정했다 — `docs/features/ui-rework/translations/spec.md`
@@ -1202,8 +1278,12 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
       ⚠️ **§7.7이 거절한 결정이다** — "카운트 넷은 모든 화면에 왕복을 더한다". 근거의 절반은
       2026-09-09에 사라졌지만(홉 단가 375ms → 수십 ms) §7.7이 남긴 더 값싼 답(`loadMemberships`에
       **서브쿼리로 붙이면 왕복 +0**)이 여전히 유효하다. 뒤집으려면 그 답을 먼저 쓴다
-- [ ] 네임스페이스가 **왼쪽 패널 → 드롭다운 + 본문 섹션 헤딩**으로 간다. `?ns=` 단일 선택과 `?ns=*`의
-      계약이 바뀌고 `entry-points.test.ts`가 `lib/routes.ts`와 대조하는 URL 키가 따라온다
+- [x] ✅ **네임스페이스가 왼쪽 패널 → 드롭다운 + 본문 섹션 헤딩으로 갔다** (2026-09-11, 8-4).
+      `NamespacePanel`·`NsLink`는 **소스에서 사라졌다** — 남기면 같은 필터가 두 곳이고 하나가 낡는다.
+      `?ns=`의 계약(단일 선택 + `?ns=*`)은 그대로이고 `ALL_NAMESPACES`가 `lib/routes.ts`로 내려왔다
+      (칩 판정이 잎이어야 해서 `view.ts`를 물 수 없다).
+      ⚠️ **섹션 순서가 드롭다운 순서와 같아야 한다** — `groupByNamespace`가 순서를 `counts`에서 받는
+      이유이고, `rows`만 보면 출처가 Postgres collation이라 `compareKeys`와 갈릴 수 있다
 - [x] **~~top bar가 사라진다~~ → 전폭 48 헤더가 그 자리에 온다** (8-2, 2026-09-10 — **이 문장을 정정한다**).
       `components/shell/top-bar.tsx`는 실제로 없어졌지만 시안에는 **전폭 48 헤더**가 있고 로고가 왼쪽,
       아바타가 오른쪽이다. "사라진다"만 읽으면 다음 배송이 헤더를 이관 누락으로 지운다 —
@@ -1211,7 +1291,11 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
       ⚠️ **셸 루트의 `h-svh overflow-hidden`은 유지했다** — `min-h-svh`로 돌아가면 malmoi#13이 재발한다
 - [x] 표면이 **회색 배경 + 흰 카드**로 바뀐다 (8-1b 토큰 · 8-2 셸) — 캔버스 `--canvas` 위에 패널이
       뜨고 바깥 padding 8 · 패널 간 gap 8이다. DESIGN §0이 바뀐 전역 규칙 열을 든다.
-      ⚠️ **mono 표면 불변식은 아직 다시 안 그렸다** — **8-4**가 번역 표를 옮길 때다
+      ⚠️ **mono 표면 불변식을 8-4가 다시 그렸고, 같은 날 한 번 더 줄었다** (2026-09-11) — 값 입력이
+      **테두리 없는 표면**이고(hover·포커스에서만 드러난다. 2,709개가 각자 테두리를 들면 표가 격자로
+      읽혀 값이 안 보인다), **키 이름과 로케일 코드는 mono에서 빠져 sans다**(사용자). 이 화면은 표
+      전체가 키라 mono의 넓은 자폭이 320 칸의 트렁케이션을 늘리고, **mono는 8-P의 diff 표면으로
+      남긴다** — 그 전에 식별자마다 깔아 두면 diff가 왔을 때 구별되지 않는다. DESIGN §4.1이 정본이다
 - [ ] **오른쪽 "project global panel" — 골격은 섰고 내용이 8-P다** (2026-09-09 사용자 · 8-2 골격).
       ✅ `app/(edit)/projects/[slug]/layout.tsx`가 생겼고 `components/shell/project-panel.tsx`가
       320px 프레임 + 세그먼트 컨트롤(General·Changes)을 든다. **본문은 비어 있다** — 아래 diff 조건
@@ -1240,10 +1324,17 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 - [x] **Help 항목의 목적지 — `/docs`로 정했다** (8-3, 2026-09-10 사용자). 그 화면은 아직
       placeholder이지만 **라우트는 실재한다**(8-1a가 땄다) — 없는 곳을 가리키는 항목이 아니고 내용은
       출시 전에 채운다. ⚠️ **사이드바 하단이 Docs·Sign out 둘이다** — Collapse는 8-3에 사라졌고, 2026-09-11에 라벨이 `Help`에서 그 화면 제목과 **같은 키**로 바뀌었다
-- [x] ✅ **국기의 폴백 계약이 정해졌다** (2026-09-11, 8-4 spec Q4 — **설계만, 미착수**): 매핑이
+- [x] ✅ **국기의 폴백 계약이 정해졌고 구현됐다** (2026-09-11, 8-4 — `lib/keys/flag.ts`): 매핑이
       원리적으로 실패한다는 사실은 그대로이고, **실패하면 아무것도 안 그린다 — 코드만이다**(물음표·
       지구본을 쓰지 않는다). 매핑은 리포가 **명시 표**로 소유하고(`en` → GB는 시안의 선택), 하위태그가
-      있으면 그것이 이긴다. 에셋은 사용자가 준다 — 없어도 화면이 서므로 blocker가 아니다
+      있으면 그것이 이긴다. ✅ **에셋이 들어왔다** (2026-09-11 사용자 — alpha-2 **253개**,
+      `public/flags/`에 커밋). 전 세트를 들인 이유는 **로케일이 고객마다 다른 축**이어서다:
+      `pt-BR`·`es-MX` 같은 하위태그가 설정 없이 선다. 사용자가 못 박은 규칙 셋이 그 경계를 보여
+      준다 — `en`→GB(**언어 표**, 국가가 특정되지 않았을 때의 폴백) · `en-GB`→GB · `en-US`→US
+      (**하위태그**, 표를 이긴다).
+      ⚠️ **URL은 배지의 인라인 `style`이고 전역 CSS 규칙이 아니다** — 253줄을 `globals.css`에 적으면
+      국기가 하나도 없는 화면까지 그것을 받고, 손으로 소유하는 파일이 생성물이 된다.
+      `lib/keys/__tests__/flag-assets.test.ts`가 목록↔파일을 양방향으로 대조한다
 
 완료 게이트: 화면 열 개가 시안과 같은 골격이다 / 표 축 변경 뒤에도 `?ns=*`의 첫 착지가 2초 안이다 /
 `entry-points.test.ts`·`focus-ring.test.ts`·`client-graph.test.ts`가 새 구조에서 green이다.
@@ -1267,6 +1358,11 @@ no-op이라(POSTMORTEM 2026-09-05) 거기서 고정하는 것은 **배선**(잠�
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다.
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
+   ⚠️ **"애플리케이션이 유일한 방어선"이라는 전제가 한때 거짓이었다** (2026-09-09, sec-audit 발견 8 —
+   §5.6.1). Supabase의 데이터 API가 기본으로 켜져 있고 `public` default ACL이 `anon`에 전 권한을 줘서,
+   이 불변식을 100% 지켜도 **앱을 통하지 않는 경로**가 열려 있었다. REVOKE로 닫았지만 `supabase_admin`
+   소유 default ACL은 지울 수 없어 **대시보드로 만드는 테이블은 탐지에 의존한다.** 이 불변식은
+   "앱 안의 쿼리"에 대한 것이고, "앱 밖의 경로가 없는가"는 §5.6.1이 따로 답한다.
 6. GitHub 사용자 OAuth와 App installation token의 **역할을 섞지 않는다**.
 7. 로그인 provider가 아니라 **`ProjectMember`가 권한을 결정**한다.
 8. **`ready`는 설정 저장이 아니라 최초 적재 성공**으로 판정한다.
@@ -1362,6 +1458,6 @@ R1은 nullable lookup·새 인덱스만 준비해 기존 평문 코드가 계속
 
 `/account`의 Sign out everywhere는 서버가 고른 기존 로그인 공급자의 새 OAuth 확인을 거친다. 같은 providerAccountId·기존 세션·state·5분 nonce가 일치해야 해당 사용자 Session 전부를 삭제한다. 현재 기기도 포함하며 확인 요청 소비와 삭제는 한 트랜잭션이다. 다른 사용자·멤버십·초대·GitHub 연결에는 손대지 않는다. DB 실패는 성공으로 표시하지 않는다.
 
-Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 두 화면(`/`, `/invite/[token]`)은 남은 회수 쿠키를 먼저 지운다. 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
+Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 두 화면(**`/signin`**, `/invite/[token]`)은 남은 회수 쿠키를 먼저 지운다 — ⚠️ **8-1a가 로그인을 `/`에서 갈라낸 뒤로 `/`는 세션 상태만 보는 redirect 껍데기라 provider 버튼이 없다** (2026-09-11 정정). 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
 
 공급자 SSO는 허용한다. 계정 선택을 요청하지만 비밀번호/MFA 재입력 강제를 보장하지 않는다(GitHub·Google 둘 다 `prompt=select_account`를 지원한다 — 계정 선택기까지이고 자격증명 재입력이 아니다). 취소·만료·다른 계정·장애를 화면에서 구분하며 다시 시작할 수 있다. ✅ **PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`로 배송됐고** 프로덕션에서 실물 확인했다 — 그 사용자의 세션 둘이 지워지고 **다른 사용자의 세션은 남았으며** 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스다. [스펙](features/session-revocation/spec.md)·[검증 기록](features/session-revocation/tasks.md)을 따른다.

@@ -49,7 +49,10 @@ export function renderWorkflowYaml(input: {
     "    if: \"!contains(github.event.head_commit.message, '[skip-l10n]')\"",
     "    runs-on: ubuntu-latest",
     "    steps:",
-    "      - uses: actions/checkout@v4",
+    // ⚠️ **가변 태그를 쓰지 않는다** — 이 스텝은 대상 리포에서 `secrets.PUSH_TOKEN`을 든 job 안에
+    // 돌므로 태그가 옮겨지면 남의 커밋이 그 토큰 옆에서 즉시 실행된다. `workflow-pins.test.ts`는
+    // `.github/`만 훑어 **이 줄을 못 본다**(docs/ACTIONS.md의 핀 문단이 그 구멍을 적는다).
+    "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4",
     "",
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3). 이 스텝에 `secrets.PUSH_TOKEN`이 들어가므로
     // `@main`이면 말모이 `main`의 커밋 하나가 **대상 리포 러너에서 즉시** 돈다 — 소비자 측 리뷰도

@@ -1,5 +1,4 @@
-import { ExternalLink, Languages } from "lucide-react";
-import Link from "next/link";
+import { Languages } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
@@ -7,36 +6,36 @@ import { PanelBody } from "@/components/shell/content-panel";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
-import { TranslationInput } from "@/components/translation-input";
+import { KeyGroup } from "@/components/translations/key-group";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { relativeTime } from "@/lib/relative-time";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
-import { countUnpublished, loadActors, loadKeys, loadProject, type ProjectContext } from "@/lib/keys/query";
+import { countUnpublished, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
 import {
-  ALL_NAMESPACES, actorLabel, buildPermalink, cellState, collectActorIds, filterRows,
-  isUnpublished, namespaceCounts, resolveNamespace,
-  type KeyRow, type NamespaceCount, type TranslationState,
+  collectActorIds, filterRows, groupByNamespace, namespaceCountsFor,
+  parseLocaleSelection, pendingFirst, resolveNamespace,
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { routes, type TranslationsQuery } from "@/lib/routes";
-import { cn } from "@/lib/utils";
+import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 
 /**
- * 키 테이블 — `| Key | en(base) | ko | fr |`. 원문과 번역을 나란히 본다 (MVP §3.2).
+ * 번역 화면 — **키 하나가 한 그룹이고 로케일이 그 아래 행으로 쌓인다** (8-4, 시안 `212:937`).
+ *
+ * 로케일이 열이던 시절에는 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다. 행이 축이면
+ * 그 문제가 사라지는 대신 세로가 로케일 배수로 는다 — ⚠️ **다만 `<Textarea>` 수는 그대로다**
+ * (903키 × 3로케일 = 2,709). 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다 (design §5).
  *
  * **base 로케일도 편집 가능하다** — 고정된 것은 키뿐이다. 화면의 base 값은 `StringKey.sourceText`가
- * 아니라 `cells[base]`다. ⚠️ **`sourceText`는 이 화면에 실리지 않는다** (2026-09-04 audit #47):
- * 행마다 나르면서 읽는 코드가 없었고, stale은 push가 세우는 `needsReview`가 든다.
+ * 아니라 `cells[base]`다. ⚠️ **`sourceText`는 이 화면에 실리지 않는다** (2026-09-04 audit #47).
  *
- * ⚠️ **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (design §3.3). 필터 없는 903키 렌더가
- * 12.7초였고(2026-09-07 실측) 원인은 조회가 아니라 `<input>` 2,711개였다 — 서버는 여전히 전 키를
- * 읽고(패널 집계에 필요하다) **렌더되는 행만** 표에 준다.
+ * ⚠️ **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (6a T2). 그 판정이 축 변경을 그대로
+ * 통과한다 — `defaultNamespace`가 로케일을 인자로 안 받게 만들어 둔 것이 여기서 값을 한다.
  *
- * 시각 규칙은 docs/DESIGN.md — 키는 mono(§4.1), 배지 3종(§6.2), muted 표면 대비(§2.2).
+ * 시각 규칙은 docs/DESIGN.md — 키·로케일 코드는 **sans**(§4.1: mono는 8-P의 diff로 간다),
+ * 배지(§6.2), 표 규칙(§6.1).
  */
 
 /**
@@ -49,8 +48,13 @@ import { cn } from "@/lib/utils";
  */
 export const maxDuration = 60;
 
-/** ⚠️ 이 타입이 URL 계약이다 — `entry-points.test.ts`가 `routes.translations`의 키와 대조한다. */
-type Search = { ns?: string; focus?: string; q?: string; state?: string };
+/**
+ * ⚠️ 이 타입이 URL 계약이다 — `entry-points.test.ts`가 `routes.translations`의 키와 대조한다.
+ *
+ * ⚠️ **옛 `focus`·`state`가 없다** (8-4). 옛 링크는 무시된다 — 기본 선택으로 떨어질 뿐 404도
+ * 리다이렉트도 아니다.
+ */
+type Search = { ns?: string; locales?: string; q?: string };
 
 export default async function TranslationsPage({
   params,
@@ -75,9 +79,8 @@ export default async function TranslationsPage({
   if (!project) redirect(routes.projects());
 
   /**
-   * 첫 적재 전에는 볼 것이 없다 (design §3.7). **정책과 문구는 `ProjectNotReady`가 든다** — Home도
-   * 같은 갈래를 만나고, 두 벌이면 정책이 바뀔 때 한쪽이 낡는다(그 낡음은 URL을 직접 친 사람에게만
-   * 보인다). 6b-6이 그 사본을 만들었고 같은 사이클이 합쳤다.
+   * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — Home도 같은 갈래를
+   * 만나고, 두 벌이면 정책이 바뀔 때 한쪽이 낡는다(그 낡음은 URL을 직접 친 사람에게만 보인다).
    */
   if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
 
@@ -93,7 +96,7 @@ export default async function TranslationsPage({
     );
   }
 
-  // base를 맨 앞에 두고 나머지는 코드순. 원문이 왼쪽에 있어야 번역을 채우기 쉽다.
+  // base를 맨 앞에 두고 나머지는 코드순. 원문이 위에 있어야 그 아래를 채운다 (MVP §3.2).
   const columns = [...project.locales].sort((a, b) =>
     a.isBase === b.isBase ? (a.code < b.code ? -1 : 1) : a.isBase ? -1 : 1,
   );
@@ -103,146 +106,161 @@ export default async function TranslationsPage({
     countUnpublished(prisma, project.id, project.lastPulledAt),
   ]);
 
-  // 집계 기준 로케일. base는 대개 채워져 있어 "남은 일"이 안 보이므로 base가 아닌 첫 로케일이
-  // 기본이다. `?focus=`로 바꾼다 — 없는 코드가 오면 그 기본으로 떨어진다(404가 아니다).
-  const focus = columns.find((l) => l.code === search.focus)?.code
-    ?? columns.find((l) => !l.isBase)?.code
-    ?? columns[0]!.code;
+  /**
+   * 보일 로케일. **폴백은 "살아 있는 로케일 전체"다** — orphaned를 섞으면 그 빈 셀이 전부
+   * 미번역으로 잡혀 기본 착지가 행이 전부 disabled인 네임스페이스로 간다 (design §3.1).
+   */
+  const fallback = parseLocaleSelection(undefined, columns);
+  const selected = parseLocaleSelection(search.locales, columns);
+  const visibleLocales = columns.filter((locale) => selected.includes(locale.code));
 
-  const counts = namespaceCounts(rows, focus);
+  const counts = namespaceCountsFor(rows, selected);
   const selection = resolveNamespace(search.ns, counts);
-  // 주소창 값이라 union으로 좁힌다 — 모르는 값은 필터 없음이다.
-  const state = search.state === "needs-review" || search.state === "untranslated" ? search.state : undefined;
 
   const scoped = selection.kind === "one" ? rows.filter((r) => r.namespace === selection.namespace) : rows;
-  const visible = selection.kind === "none" ? [] : filterRows(scoped, { locale: focus, q: search.q, state });
+  const filtered = selection.kind === "none" ? [] : filterRows(scoped, { locales: selected, q: search.q });
+  /**
+   * 섹션 안에서 남은 일이 위로 온다 (spec Q3 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
+   * **분할이 안정적이라** 그룹 안의 상대 순서가 그대로 보존되고, 그래서 그룹핑 전에 한 번만 한다.
+   */
+  const visible = pendingFirst(filtered, selected);
+  const groups = groupByNamespace(visible, counts);
 
   // 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
   // `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3). **렌더되는 행만** 모은다.
   const actors = await loadActors(prisma, collectActorIds(visible));
 
-  /** 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다. */
+  /**
+   * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (design §2).
+   *
+   * ⚠️ **선택이 기본과 같으면 `locales`를 안 싣는다** — 둘 다 `columns` 순서라 문자열 비교로
+   * 정확히 같다. 안 그러면 아무것도 안 고른 사용자의 URL에도 파라미터가 붙는다.
+   */
+  const localesParam = selected.join(",") === fallback.join(",") ? undefined : selected.join(",");
   const query: TranslationsQuery = {
     ns: selection.kind === "all" ? ALL_NAMESPACES : selection.kind === "one" ? selection.namespace : undefined,
-    focus,
+    locales: localesParam,
     q: search.q,
-    state,
   };
 
+  /**
+   * 칩이 보는 쿼리 — **기본 착지의 네임스페이스를 싣지 않는다.**
+   *
+   * ⚠️ `query.ns`는 항상 **해석된** 값이라(툴바의 `Select`와 링크 보존이 그것을 필요로 한다) 그대로
+   * 칩에 넘기면 아무것도 안 누른 사용자에게도 "Namespace: common ×"가 선다. 그 착지는 화면이 정한
+   * 것이지 사용자가 고른 필터가 아니다 (6a T2).
+   */
+  const chipQuery: TranslationsQuery = { ...query, ns: search.ns === undefined ? undefined : query.ns };
+
   return (
-    // 헤더 높이를 계산하지 않는다 — 레이아웃이 flex로 남은 높이를 준다.
-    // ⚠️ `overflow-hidden`이 있어야 패널과 표가 **각자** 스크롤한다 (없으면 컨테이너가 콘텐츠만큼
-    // 자라 패널이 표와 함께 흘러간다 — 6a 전까지 그랬다).
-    <div className="flex min-h-0 flex-1 overflow-hidden">
-      {counts.length > 0 && (
-        <NamespacePanel slug={slug} counts={counts} total={rows.length} selection={selection} query={query} />
+    // ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
+    // `router.refresh()`·`revalidatePath`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+    <TranslationsHeader
+      slug={slug}
+      totalCount={rows.length}
+      query={query}
+      chipQuery={chipQuery}
+      namespaces={counts.map((c) => ({
+        namespace: c.namespace,
+        pending: c.untranslated + c.needsReview,
+        total: c.total,
+      }))}
+      locales={columns}
+      selected={selected}
+      fallback={fallback}
+      unpublished={unpublished}
+      lastSentLabel={
+        project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date())
+      }
+      lastPrUrl={project.lastPrUrl}
+      dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
+      baseLocale={project.baseLocale}
+      declaredBaseLocale={project.declaredBaseLocale}
+    >
+      {/*
+        ⚠️ **빈 상태 둘이 패널 세로 중앙이다** (2026-09-11 — `/projects`와 같은 형). `PanelBody`가
+        `flex flex-col`이고 여기가 `flex-1`이라 남은 높이를 먹는다. 위에 붙여 두면 1080 화면에서
+        문구가 배너 바로 아래 한 줄로 떠 있고 그 아래가 통째로 빈다.
+      */}
+      {selection.kind === "none" ? (
+        <div className="flex flex-1 items-center justify-center">
+          <EmptyState
+            icon={Languages}
+            title={m.translations.empty.noKeys.title}
+            description={m.translations.empty.noKeys.description}
+          />
+        </div>
+      ) : groups.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <EmptyState
+            icon={Languages}
+            title={m.translations.empty.noMatch.title}
+            description={m.translations.empty.noMatch.description}
+          />
+        </div>
+      ) : (
+        /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
+        <Announcer>
+          <div className="space-y-6">
+            {groups.map((group) => (
+              <section key={group.namespace}>
+                {/*
+                  ⚠️ **실제 `<h2>`여야 한다** — `div` + `grid`로 가면서 네임스페이스 간 이동이
+                  스크린리더의 heading 탐색으로만 가능해졌다 (design §1.5).
+                  ⚠️ **sticky로 만들지 않는다** — 시안이 스크롤 영역 안의 보통 블록이고, sticky는
+                  스크롤 컨테이너 기준이라 이 레이아웃에서 자리가 애매하다. 필요해지면 실측 뒤에.
+                */}
+                {/*
+                  ⚠️ **헤딩이 표의 첫 행이다 — 표를 감싸는 상자가 없다** (2026-09-11 — 시안
+                  `212:3815`). 전에는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데,
+                  시안의 표는 **선만으로** 구조를 만든다: 바깥 테두리가 없고 헤딩 아래·키 그룹 사이의
+                  가로선과 키 셀의 세로선이 전부다. 상자를 두면 그 선들이 격자 안의 격자가 된다.
+
+                  ⚠️ **`px-2`가 키 셀과 같은 선이다** — 헤딩과 키 이름의 왼쪽이 맞아야 네임스페이스가
+                  그 아래 키들을 덮는 것으로 읽힌다.
+
+                  ⚠️ **`sticky top-0`이다** (2026-09-11 사용자 — DESIGN §6.1의 "sticky로 만들지
+                  않는다"를 뒤집었다). 그 판정의 근거는 *"sticky는 스크롤 컨테이너 기준이라 이
+                  레이아웃에서 자리가 애매하다"*였는데, 스크롤 경계가 `PanelBody` **하나로** 분명해진
+                  지금은 기준이 애매하지 않다 — 가장 가까운 스크롤 조상이 그것이고 `top-0`이 그
+                  상단이다. 섹션이 위로 빠져나가면 **다음 섹션의 헤딩이 밀어 올려 교체된다**(sticky의
+                  기본 동작이라 JS가 없다).
+
+                  ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다** — 붙어 있는 동안 뒤로
+                  값이 흐르는 자리다. 패널과 같은 흰색이라 색이 늘지 않는다.
+
+                  ⚠️ **`z-*`를 주지 않는다** — positioned 요소(sticky)는 static 형제(키 그룹)보다 뒤에
+                  칠해지는 것이 페인팅 순서이고, 그 위에 층을 하나 더 만들면 셀의 포커스 링·드롭다운과
+                  높이를 다투게 된다.
+
+                  ⚠️ **조상에 `overflow-hidden`을 들이지 않는다** — 그 조상이 새 스크롤 컨테이너가 되어
+                  헤딩이 거기 갇힌다. 지금 체인은 `PanelBody`(스크롤) → 래퍼 → `Announcer` → 섹션이다.
+                */}
+                <div className="border-border bg-background sticky top-0 flex items-center gap-2 border-b px-2 py-3">
+                  <h2 className="text-sm font-medium">{group.namespace}</h2>
+                  {/* 필터 **후** 건수다 — 제목 옆 총계가 필터 전이라 둘이 같은 값이 아니다. */}
+                  <Badge variant="neutral">
+                    <span aria-hidden>{group.rows.length}</span>
+                    <span className="sr-only">{m.translations.keys(group.rows.length)}</span>
+                  </Badge>
+                </div>
+                {group.rows.map((row) => (
+                  <KeyGroup
+                    key={row.id}
+                    slug={slug}
+                    row={row}
+                    locales={visibleLocales}
+                    project={project}
+                    actors={actors}
+                    lastPulledAt={project.lastPulledAt}
+                  />
+                ))}
+              </section>
+            ))}
+          </div>
+        </Announcer>
       )}
-
-      {/* ⚠️ **본문 랜드마크를 여기가 들지 않는다** (2026-09-11) — `ContentPanel`이 `<main>`이 되면서
-          라우트당 하나가 구조적으로 보장됐다. 그 전엔 화면마다 하나씩이라 관행이었고, 이 열은
-          2026-09-11에 실측으로 잃은 것을 되찾은 자리였다. */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
-            `router.refresh()`·`revalidatePath`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07). */}
-        <TranslationsHeader
-          slug={slug}
-          projectName={project.name}
-          namespaceLabel={selection.kind === "one" ? selection.namespace : m.translations.allKeys}
-          visibleCount={visible.length}
-          locales={columns.map((l) => l.code)}
-          query={query}
-          unpublished={unpublished}
-          lastSentLabel={
-            project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date())
-          }
-          lastPrUrl={project.lastPrUrl}
-          dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
-          baseLocale={project.baseLocale}
-          declaredBaseLocale={project.declaredBaseLocale}
-        />
-
-        {/*
-          ⚠️ **표의 스크롤을 여기가 든다** (2026-09-11). `ContentPanel`이 `overflow-y-auto`를 놓고
-          `overflow-hidden`으로 바뀌었으므로, 이 열이 스크롤을 안 들면 903행 표가 **잘린다**.
-        */}
-        <PanelBody>
-          {selection.kind === "none" ? (
-            <EmptyState
-              icon={Languages}
-              title={m.translations.empty.noKeys.title}
-              description={m.translations.empty.noKeys.description}
-            />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={Languages}
-              title={m.translations.empty.noMatch.title}
-              description={m.translations.empty.noMatch.description}
-            />
-          ) : (
-            /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
-            <Announcer>
-              <Table>
-                <thead>
-                  <tr>
-                    <Th className="w-[28%] text-xs">{m.translations.columnKey}</Th>
-                    {columns.map((l) => (
-                      <Th key={l.code} className="text-xs">
-                        {l.code}
-                        {/* muted 표면 위라 text-muted-foreground가 아니다 (DESIGN §2.2·§6.1) */}
-                        {l.isBase && <span className="font-light"> {m.translations.baseColumn}</span>}
-                        {/* 키의 orphaned 배지와 같은 어휘 — 이 열은 편집이 막힌다. 저장을 받아도 pull이 파일을 내지 않는다. */}
-                        {l.orphaned && (
-                          <Badge variant="danger" className="ml-1 font-light">
-                            {m.translations.orphaned}
-                          </Badge>
-                        )}
-                      </Th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((row) => (
-                    <Tr key={row.id}>
-                      <Td>
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-mono min-w-0 break-all">{row.key}</span>
-                          {row.orphaned && (
-                            <Badge variant="danger" className="shrink-0">
-                              {m.translations.orphaned}
-                            </Badge>
-                          )}
-                        </div>
-                        {row.description !== null && row.description !== undefined && (
-                          <div className="text-muted-foreground mt-0.5 text-xs">{row.description}</div>
-                        )}
-                        <CodeRef row={row} project={project} />
-                      </Td>
-                      {columns.map((l) => (
-                        <Td key={l.code}>
-                          <TranslationInput
-                            slug={slug}
-                            keyId={row.id}
-                            keyName={row.key}
-                            localeCode={l.code}
-                            initialValue={row.cells[l.code]?.value ?? ""}
-                            disabled={row.orphaned || l.orphaned}
-                          />
-                          <CellMeta
-                            state={cellState(row, l.code)}
-                            actor={actorLabel(row.cells[l.code]?.updatedBy ?? null, actors)}
-                            unsent={unsentCell(row, l.code, project.lastPulledAt)}
-                          />
-                        </Td>
-                      ))}
-                    </Tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Announcer>
-          )}
-        </PanelBody>
-      </div>
-    </div>
+    </TranslationsHeader>
   );
 }
 
@@ -255,129 +273,11 @@ export default async function TranslationsPage({
  */
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <PanelBody>
-      <div className="mx-auto w-full max-w-4xl px-6 py-6">{children}</div>
+    <PanelBody className="flex flex-col">
+      {/* ⚠️ 세로 중앙도 `flex-1`이 든다 — 위 표 안의 빈 상태 둘과 같은 형이다 (2026-09-11). */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center px-6 py-6">
+        {children}
+      </div>
     </PanelBody>
-  );
-}
-
-/** 셀이 "아직 안 보낸 편집"인가 — `countUnpublished`와 **같은 술어**다 (design §3.5). */
-function unsentCell(row: KeyRow, locale: string, lastPulledAt: Date | null): boolean {
-  const cell = row.cells[locale];
-  return cell !== undefined && isUnpublished(cell, lastPulledAt);
-}
-
-function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
-  const ref = row.refs[0];
-  if (!ref) return null;
-  const link = buildPermalink(project, ref);
-  if (!link) return null;
-  return (
-    // 리포 밖으로 나가는 링크는 색·밑줄 + `ExternalLink` 12 (DESIGN §6.3)
-    <a
-      href={link}
-      target="_blank"
-      rel="noreferrer"
-      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600"
-    >
-      {ref.path.split("/").pop()}:{ref.line}
-      {row.refs.length > 1 && ` +${row.refs.length - 1}`}
-      <ExternalLink className="size-3" aria-hidden />
-    </a>
-  );
-}
-
-/**
- * DESIGN §6.2 — 배지 3종. **"Translated"는 표시하지 않는다**(가장 흔한 상태가 조용해야 한다).
- *
- * ⚠️ **`updatedBy`가 아니라 해석된 라벨을 받는다** — 그 컬럼은 `User.id`와 옛 GitHub 핸들이 섞여
- * 있어 그대로 찍으면 번역자에게 cuid가 보인다 (malmoi#3). push가 덮은 셀은 저자가 리포이므로
- * 표기가 없다 (design §3.6).
- */
-function CellMeta({
-  state,
-  actor,
-  unsent,
-}: {
-  state: TranslationState;
-  actor: string | null;
-  unsent: boolean;
-}) {
-  if (state === "orphaned") return null; // 키 열·로케일 헤더에 이미 표시했다
-  if (state === "translated" && actor === null && !unsent) return null;
-  return (
-    <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5 text-xs">
-      {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
-      {state === "untranslated" && <Badge>{m.translations.untranslated}</Badge>}
-      {unsent && <Badge>{m.translations.notSent}</Badge>}
-      {actor !== null && <span className="text-muted-foreground">{m.translations.editedBy(actor)}</span>}
-    </div>
-  );
-}
-
-/**
- * 네임스페이스 패널. **"All keys" 행에도 `pending/total`이 있다** — 전역 잔여량이 보여야 편집자가
- * 다음에 어디로 갈지 안다 (design §3.3).
- *
- * ⚠️ **경로를 조립하지 않는다** — `lib/routes.ts` 한 곳이다. 2026-09-05에 이 패널의 링크 생성기가
- * 옛 경로를 하드코딩한 채 남아 전부 404였고 타입도 테스트도 그걸 못 봤다 (POSTMORTEM).
- */
-function NamespacePanel({
-  slug,
-  counts,
-  total,
-  selection,
-  query,
-}: {
-  slug: string;
-  counts: NamespaceCount[];
-  total: number;
-  selection: { kind: "all" } | { kind: "one"; namespace: string } | { kind: "none" };
-  query: TranslationsQuery;
-}) {
-  const pendingAll = counts.reduce((n, c) => n + c.untranslated + c.needsReview, 0);
-  return (
-    // 자기 안에서만 스크롤한다 — 콘텐츠와 함께 흘러가면 52개 네임스페이스에서 목록이 화면을 떠난다
-    <aside className="border-border w-52 shrink-0 overflow-y-auto border-r py-2">
-      <NsLink
-        href={routes.translations(slug, { ...query, ns: ALL_NAMESPACES })}
-        active={selection.kind === "all"}
-        label={m.translations.allKeys}
-        total={total}
-        pending={pendingAll}
-      />
-      {counts.map((c) => (
-        <NsLink
-          key={c.namespace}
-          href={routes.translations(slug, { ...query, ns: c.namespace })}
-          active={selection.kind === "one" && selection.namespace === c.namespace}
-          label={c.namespace}
-          total={c.total}
-          pending={c.untranslated + c.needsReview}
-        />
-      ))}
-    </aside>
-  );
-}
-
-function NsLink({ href, active, label, total, pending }: {
-  href: string; active: boolean; label: string; total: number; pending: number;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-baseline gap-2 px-3 py-1.5 text-sm",
-        // ⚠️ 선택 항목은 muted 알약이라 그 위 글자는 `text-muted-foreground`가 아니다 (DESIGN §2.2),
-        // 그리고 muted 위에서는 `hover:bg-accent`가 무효다 (§2.1) — 링에 offset을 덧댄다.
-        "focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-[3px] focus-visible:outline-none",
-        active ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      <span className="min-w-0 truncate">{label}</span>
-      <span className={cn("ml-auto shrink-0 text-xs", active && "text-foreground/60")}>
-        {pending > 0 ? `${pending}/${total}` : total}
-      </span>
-    </Link>
   );
 }

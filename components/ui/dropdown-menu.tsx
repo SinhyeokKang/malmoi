@@ -72,6 +72,52 @@ export function DropdownMenuItem({
   );
 }
 
+/**
+ * **다중 선택 항목** (8-4 — design §9). 번역 화면의 `Select locales`가 유일한 소비자다.
+ *
+ * ⚠️ **`DropdownMenuItem` + `selected`로는 안 된다.** 그쪽은 `bg-muted` + `<Check>`라는 **시각
+ * 표시만** 붙어 접근성 트리에 상태가 없고, Radix `Item`은 선택 시 메뉴를 **닫는다** — 다중 선택에서
+ * 항목마다 메뉴를 다시 열게 된다. `CheckboxItem`은 `role="menuitemcheckbox"`와 `aria-checked`를
+ * Radix가 준다.
+ *
+ * ⚠️ **`onSelect`의 `preventDefault()`를 프리미티브가 든다.** 소비자마다 기억하게 하면 하나가
+ * 빠지고, 그 하나는 "고를 때마다 메뉴가 닫힌다"로만 드러난다.
+ *
+ * ⚠️ **`{children}`을 `Slot.Slottable`로 감싼다** — 아래 지시자가 형제라 `asChild`가 오면 Slot이
+ * 던진다 (`DropdownMenuItem`과 같은 이유, POSTMORTEM 2026-09-09).
+ *
+ * ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** (§7) — cva 베이스나 공유 상수에 모으면
+ * `focus-ring.test.ts`가 이 파일을 통째로 못 본다.
+ */
+export function DropdownMenuCheckboxItem({
+  className,
+  children,
+  onSelect,
+  ...props
+}: ComponentProps<typeof Primitive.CheckboxItem>) {
+  return (
+    <Primitive.CheckboxItem
+      className={cn(
+        "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
+        "hover:bg-accent focus:bg-accent",
+        "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
+        className,
+      )}
+      onSelect={(event) => {
+        event.preventDefault();
+        onSelect?.(event);
+      }}
+      {...props}
+    >
+      <Slot.Slottable>{children}</Slot.Slottable>
+      {/* 체크 자리는 항상 비워 둔다 — 지시자가 켜질 때만 그려지지만 폭은 `ml-auto`가 오른쪽에 민다. */}
+      <Primitive.ItemIndicator className="ml-auto">
+        <Check className="size-4" aria-hidden />
+      </Primitive.ItemIndicator>
+    </Primitive.CheckboxItem>
+  );
+}
+
 export function DropdownMenuSeparator({ className }: { className?: string }) {
   return <Primitive.Separator className={cn("border-border my-1 border-t", className)} />;
 }

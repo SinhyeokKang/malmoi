@@ -853,7 +853,17 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       blobs,
     });
 
-    revalidatePath(`/projects/${slug}/settings`);
+    /**
+     * ⚠️ **서브트리다 — `/settings` 하나가 아니다** (2026-09-11 `/doc-check`). 이 Action이 세우는
+     * `lastCommitSha`가 `planProjectReadiness`를 `ready`로 넘기는데, 그 판정을 읽는 화면이 **넷**이다:
+     * 설정 · Home · 번역 · 목록. 설정만 지우면 **적재를 막 끝낸 사용자가 Home·번역에서 캐시된
+     * `ProjectNotReady`("아직 준비 안 됐다")를 본다** — 그리고 [다시 시도]는 `not-awaiting`이라
+     * 되돌릴 수도 없다.
+     *
+     * 경로를 나열하지 않는 이유는 POSTMORTEM 2026-09-09과 같다 — 다음에 생기는 화면이 조용히 빠진다.
+     * `saveTranslation`이 이미 이 형이다.
+     */
+    revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {

@@ -498,15 +498,17 @@ export const en = {
     /** 카운터 — ICU가 아니라 삼항 하나다 (MVP §7). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
 
-    /** ⚠️ URL 값은 `"*"`다 — 이건 그 행의 라벨이다 (`ALL_NAMESPACES`). */
-    allKeys: "All keys",
-    columnKey: "Key",
-    /** 기준 로케일 열의 꼬리. muted 표면 위라 색은 호출부가 정한다 (DESIGN §2.2). */
-    baseColumn: "(base)",
+    /** ⚠️ URL 값은 `"*"`다 — 이건 그 옵션의 라벨이다 (`ALL_NAMESPACES`). */
+    allNamespaces: "All namespaces",
 
-    /** 배지 3종 (DESIGN §6.2) — **"Translated"가 없다**: 가장 흔한 상태가 가장 조용해야 한다. */
+    /**
+     * 배지 (DESIGN §6.2) — **"Translated"가 없다**: 가장 흔한 상태가 가장 조용해야 한다.
+     *
+     * ⚠️ **`Untranslated`가 8-4에서 사라졌다** — 값 칸이 비어 있는 것이 이미 그 말이고, 남는
+     * 신호는 입력의 `placeholder`다(spec Q3 — 배지·상태 필터·입력 테두리가 **같은 배송에서**
+     * 사라지므로 그 하나가 유일하다). `needsReview`는 값이 차 있어 다른 신호가 없으므로 남는다.
+     */
     orphaned: "Orphaned",
-    untranslated: "Untranslated",
     needsReview: "Needs review",
     /** 셀 메타 — `updatedBy`가 사람일 때만 붙는다. push가 덮은 셀에는 표기가 없다 (design §3.6). */
     editedBy: (name: string): string => `Edited by ${name}`,
@@ -522,12 +524,38 @@ export const en = {
      */
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
 
+    /**
+     * 툴바 셋 (8-4 — 시안 `212:937`). **상태 필터가 없다** (spec Q3): 시안의 칩 행이 정확히 세
+     * 종류라 그 부재가 누락이 아니라 의도로 읽힌다. 대신 섹션 안에서 pending 키가 위로 온다.
+     */
     filters: {
       search: "Search keys and values",
-      state: "Filter by state",
-      stateAny: "Any state",
-      /** 집계와 상태 필터가 보는 로케일 — 표가 로케일을 열로 펼치므로 하나를 골라야 한다. */
-      focus: "Language to track",
+      namespace: "Filter by namespace",
+      /** 다중 선택 드롭다운의 트리거이자 접근 이름이다. */
+      locales: "Select locales",
+      /**
+       * 네임스페이스 옵션의 라벨. ⚠️ **숫자가 문자열 안에 들어갈 수밖에 없다** — native
+       * `<select>`라 옵션 안에 배지를 그릴 수 없다. 남은 일이 0이면 총계만 보인다.
+       */
+      namespaceOption: (name: string, pending: number, total: number): string =>
+        pending > 0 ? `${name} (${pending}/${total})` : `${name} (${total})`,
+      /** 초기화 버튼은 아이콘 하나라 접근 이름이 여기서만 온다. */
+      clear: "Clear filters",
+    },
+
+    /**
+     * 적용된 필터의 칩 (8-4 design §3.5). **라벨을 `lib/keys/filters.ts`가 만들지 않는다** —
+     * 그 모듈은 잎이어야 해서 사전을 물지 않는다.
+     *
+     * ⚠️ **로케일 칩이 하나다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 오히려
+     * 넓어지고, 6로케일에서 칩 행 한 줄을 넘는다.
+     */
+    chips: {
+      namespace: (value: string): string => `Namespace: ${value}`,
+      locales: (value: string): string => `Languages: ${value}`,
+      search: (value: string): string => `Search: ${value}`,
+      /** 제거 버튼은 X 하나다 — 어느 칩을 떼는지가 접근 이름에만 있다. */
+      remove: (label: string): string => `Remove ${label}`,
     },
 
     /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */
@@ -567,9 +595,10 @@ export const en = {
         title: "No keys yet",
         description: "Once your developers push code, the strings they marked show up here.",
       },
+      /** ⚠️ **상태 필터를 가리키지 않는다** — 8-4가 그것을 뺐다 (spec Q3). 빠져나갈 길은 칩이다. */
       noMatch: {
         title: "No keys match",
-        description: "Clear the search or the state filter to see the rest.",
+        description: "Remove a filter above to see the rest.",
       },
     },
 

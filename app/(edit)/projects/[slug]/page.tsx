@@ -21,8 +21,9 @@ import { routes } from "@/lib/routes";
  * 프로젝트 Home — **진입의 착지점** (SAAS §7.7 결정 1, 6b-6).
  *
  * ⚠️ **착지 클릭 하나를 갚아야 한다.** 번역자의 일은 `translations` 하나이므로, 개요만 있고 링크가
- * 없으면 그 클릭이 **순손실**이다(결정 1이 받아들인 대가). 그래서 진행률 행이 그대로 `?focus=`
- * 링크이고, 활동 항목이 `?ns=`·`?focus=` 링크이며, 화면당 하나인 primary가 [Open translations]다.
+ * 없으면 그 클릭이 **순손실**이다(결정 1이 받아들인 대가). 그래서 진행률 행이 그대로 `?locales=`
+ * 링크이고, 활동 항목이 `?ns=`·`?locales=` 링크이며, 화면당 하나인 primary가 [Open translations]다.
+ * (8-4가 `?focus=`를 그 이름으로 바꿨다 — 로케일이 열이 아니라 행이라 "기준 열"에 대응물이 없다.)
  *
  * ⚠️ **다른 화면의 지표를 복제하지 않는다** (결정 2). 번역 화면 툴바가 키 수·미배포 건수·마지막
  * 전송·PR 링크를 들고 설정 화면이 리포·연결·적재 상태를 든다 — 세 번째 사본을 만들면 그중 하나가
@@ -107,7 +108,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
         <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-            <h1 className="text-base font-medium">{project.name}</h1>
+            <h1 className="text-xl font-medium">{project.name}</h1>
             <ButtonLink variant="primary" href={routes.translations(slug)}>
               <Languages aria-hidden />
               {m.home.openTranslations}
@@ -142,15 +143,17 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                 {locales.map((locale) => (
                   <li key={locale.code}>
                     {/*
-                      ⚠️ **행 전체가 링크다.** 그 로케일 기준으로 번역 화면에 착지시키는 것이 개요가 일로
+                      ⚠️ **행 전체가 링크다.** 그 로케일만 보이는 번역 화면에 착지시키는 것이 개요가 일로
                       이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
+                      (8-4에서 `?focus=`가 `?locales=`로 바뀌었다 — 로케일이 열이 아니라 행이라
+                      "기준 열"이 아니라 **보일 로케일**이다. 단일 선택이라 동작은 같다.)
                     */}
                     <Link
-                      href={routes.translations(slug, { focus: locale.code })}
+                      href={routes.translations(slug, { locales: locale.code })}
                       className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
                     >
-                      {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 (DESIGN §4.1) */}
-                      <span className="text-mono">{locale.code}</span>
+                      {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
+                      <span>{locale.code}</span>
                       {locale.isBase && <Badge>{m.locales.base}</Badge>}
                       <span className="ml-auto flex items-baseline gap-2">
                         {locale.needsReview > 0 && (
@@ -204,7 +207,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
           이어지는 자리다. 키 하나를 가리키는 URL은 없으므로 그 키가 사는 화면 상태를 준다.
         */}
         <Link
-          href={routes.translations(slug, { ns: item.namespace, focus: item.locale })}
+          href={routes.translations(slug, { ns: item.namespace, locales: item.locale })}
           className="focus-visible:ring-ring text-sm focus-visible:ring-[3px] focus-visible:outline-none"
         >
           {m.home.activity.edit(item.actor, item.key, item.locale)}

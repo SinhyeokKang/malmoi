@@ -10,7 +10,6 @@ import { ReconnectButton } from "@/components/reconnect-button";
 import { RepositoryForm } from "@/components/settings/repository-form";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Card } from "@/components/ui/card";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -116,13 +115,9 @@ export default async function SettingsPage({
             버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
           */}
           {notice !== null && <Alert variant="danger">{notice}</Alert>}
-          <Breadcrumb
-            items={[
-              { label: project.name, href: routes.project(slug) },
-              { label: m.common.nav.projectSettings },
-            ]}
-          />
-          <h1 className="text-base font-medium">{m.common.nav.projectSettings}</h1>
+          {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+              위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.projectSettings}</h1>
         </div>
       </PanelHeader>
 

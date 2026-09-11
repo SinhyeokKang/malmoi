@@ -57,13 +57,39 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     expect(contentPanel).toMatch(/<main className="[^"]*\boverflow-hidden\b/);
     expect(contentPanel).not.toMatch(/<main className="[^"]*\boverflow-y-auto\b/);
     expect(contentPanel).toMatch(/export function PanelBody\b/);
-    expect(contentPanel).toMatch(/cn\("min-h-0 flex-1 overflow-y-auto"/);
+    expect(contentPanel).toMatch(/className="min-h-0 flex-1 overflow-y-auto"/);
   });
 
   /** ⚠️ **머리가 `shrink-0`이다** — flex 자식의 축소 하한은 콘텐츠 높이가 아니라 0이라, 본문이 길면 눌린다. */
   it("`PanelHeader`가 눌리지 않는다", () => {
     expect(contentPanel).toMatch(/export function PanelHeader\b/);
-    expect(contentPanel).toMatch(/cn\("shrink-0"/);
+    expect(contentPanel).toMatch(/className="shrink-0"/);
+  });
+
+  /**
+   * ⚠️ **폭 상한이 스크롤 컨테이너가 아니라 안쪽 래퍼에 있어야 한다** (2026-09-11 사용자).
+   * `overflow-y-auto`를 든 요소를 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 — 화면 다섯이
+   * `max-w-4xl`을 안쪽 래퍼에 두는 이유가 그것이고, 프리미티브로 올리면서 같은 함정이 따라온다.
+   *
+   * ⚠️ **눈으로는 "폭이 맞네"로 보인다** — 스크롤바 위치는 콘텐츠가 넘칠 때만 드러난다.
+   */
+  it("폭 상한이 스크롤 컨테이너에 붙지 않았다", () => {
+    // 바깥(스크롤·shrink) 요소의 className에는 `max-w-`가 없다.
+    const outers = [...contentPanel.matchAll(/<div className="([^"]*)"/g)].map((m) => m[1] ?? "");
+    expect(outers.filter((cls) => /max-w-/.test(cls))).toEqual([]);
+    // 상한 자체는 `cn(...)`을 지나는 안쪽 래퍼가 든다.
+    expect(contentPanel).toMatch(/const CONTENT_MAX = "mx-auto w-full max-w-7xl"/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, className\)/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "min-h-full", className\)/);
+  });
+
+  /**
+   * ⚠️ **본문 래퍼가 `min-h-full`을 든다** — `/projects`가 `flex flex-col`을 넘겨 빈 상태를
+   * `flex-1`로 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가
+   * 위에 붙는다. 데이터가 0건일 때만 드러나는 부류다.
+   */
+  it("본문 래퍼가 패널 높이를 이어받는다", () => {
+    expect(contentPanel).toMatch(/min-h-full/);
   });
 
   it("사이드바도 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다", () => {
