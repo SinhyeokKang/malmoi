@@ -142,7 +142,7 @@ function KeyVisual() {
             priority
             draggable={false}
             sizes="(min-width: 1880px) 230px, (min-width: 1280px) calc(14.91715vw - 51.315px), 140px"
-            className="h-auto w-full rounded-[7.4074%/7.9208%] shadow-low transition-[translate,box-shadow] duration-300 ease-out group-hover:shadow-medium motion-safe:group-hover:-translate-y-2 motion-reduce:transition-none"
+            className="h-auto w-full rounded-[7.4074%/7.9208%] opacity-90 shadow-low transition-[translate,box-shadow,opacity] duration-300 ease-out group-hover:opacity-100 group-hover:shadow-medium motion-safe:group-hover:-translate-y-2 motion-reduce:transition-none"
           />
         </div>
       ))}
