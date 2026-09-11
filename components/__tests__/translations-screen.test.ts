@@ -24,6 +24,17 @@ const read = (path: string): string =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
+/**
+ * `shrink-0`과 함께 쓰인 Tailwind 고정 폭(px). `w-N`은 `N * 4`px이다.
+ *
+ * ⚠️ **`shrink-0`이 붙은 것만 센다** — 줄어들 수 있는 폭은 좁은 화면에서 예산을 다투지 않는다.
+ */
+const fixedWidths = (source: string): number[] =>
+  [...source.matchAll(/className="([^"]*)"/g)]
+    .map((m) => m[1] ?? "")
+    .filter((cls) => /\bshrink-0\b/.test(cls))
+    .flatMap((cls) => [...cls.matchAll(/(?:^|\s)w-(\d+)(?:\s|$)/g)].map((w) => Number(w[1]) * 4));
+
 const PAGE = "app/(edit)/projects/[slug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const ANNOUNCER = "components/translations/announcer.tsx";
@@ -289,6 +300,36 @@ describe("행 축 (8-4)", () => {
     for (const path of [HEADER, PAGE]) {
       expect(read(path), path).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
     }
+  });
+
+  /**
+   * ⚠️ **로케일 행의 고정 폭 예산** (malmoi#33, 2026-09-11 `/bugshot-qa` 실측).
+   *
+   * 1280px(규약 3의 최소 폭)에서 콘텐츠 패널이 688이고 키 셀 320을 빼면 **값 열이 366**이다. 그
+   * 안에서 로케일 칸·메타 슬롯·padding·gap이 전부 고정이면 입력에 남는 폭이 그만큼 줄어드는데,
+   * 메타가 `w-40`(160)을 고정으로 들던 동안 **입력이 28px**였다 — 값이 한 글자씩 세로로 쌓이고
+   * 행 높이가 210px이 됐다.
+   *
+   * ⚠️ **spec의 "값 열 ≈368px에서도 한 줄 번역은 성립한다"가 열 전체를 입력 폭으로 읽은 것이다.**
+   * 그래서 이 검사는 **행 안의 고정 폭 합**을 센다 — 다음 사람이 우측에 또 고정 폭을 더하면 red다.
+   *
+   * ⚠️ **폭은 렌더 결과라 소스 스캔이 원리적으로 못 보는 축이지만**, 원인은 소스에 있는 상수다.
+   * 재는 것은 픽셀이 아니라 **예산을 쓰는 클래스**다.
+   */
+  it("로케일 행의 고정 폭이 로케일 칸 하나뿐이다", () => {
+    const fixed = fixedWidths(read(KEY_GROUP));
+    expect(fixed).toEqual([80]);
+    // 1280에서 값 열 366 − 로케일 칸 80 − px-3(24) − gap-3(12) = 250px이 입력에 남는다.
+    expect(366 - fixed.reduce((n, w) => n + w, 0) - 24 - 12).toBeGreaterThanOrEqual(200);
+  });
+
+  it("고정 폭 스캐너가 실제로 `w-40 shrink-0`을 잡는다", () => {
+    expect(fixedWidths('<div className="flex w-20 shrink-0 justify-center">')).toEqual([80]);
+    expect(fixedWidths('<div className="w-40 shrink-0 justify-end">')).toEqual([160]);
+    // `shrink-0`이 없으면 예산을 쓰지 않는다 — 줄어들 수 있는 폭은 대상이 아니다.
+    expect(fixedWidths('<div className="w-40 justify-end">')).toEqual([]);
+    // 키 셀 폭은 그리드가 들고 이 검사의 대상이 아니다.
+    expect(fixedWidths('<div className="grid grid-cols-[320px_minmax(0,1fr)]">')).toEqual([]);
   });
 
   /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */

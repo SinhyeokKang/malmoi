@@ -182,6 +182,8 @@ T4까지 red인데 **검증줄이 `pnpm test`뿐이면 vitest가 타입을 안 �
       - 키 셀: 키 이름(`text-mono`) · Orphaned 배지 · `description` · 코드 참조 (design §4)
       - 로케일 행: `LocaleBadge` · `TranslationInput` · **우측 고정 폭 메타 슬롯**
         (배지 둘 + `Edited by`, `shrink-0`)
+      - 🔴 **STALE — 우측 슬롯이 malmoi#33에서 뒤집혔다** (2026-09-11 실물): 1280px에서 그 고정 폭
+        160이 입력을 28px로 눌렀다. **배지 둘과 `Edited by`도 입력 아래 줄**이고 정본은 DESIGN §6.1이다
       - ⚠️ **저장 상태 4종은 우측이 아니라 입력 아래 줄이다** — `Not saved yet …`가 약 230px이고
         타이핑 중에 나타났다 사라져서, 우측에 두면 `field-sizing-content` textarea의 폭이 그때마다
         재계산된다 (design §4)

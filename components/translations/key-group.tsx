@@ -73,12 +73,21 @@ export function KeyGroup({
 }
 
 /**
- * 로케일 하나의 행 — 배지 · 입력 · **우측 고정 폭 메타 슬롯**.
+ * 로케일 하나의 행 — 배지 + (입력 · 메타).
  *
- * ⚠️ **셀 저장 상태 4종은 이 슬롯이 아니라 입력 아래 줄이다** (`TranslationInput` 안).
- * `Not saved yet — leave the cell to save`가 약 230px이고 타이핑 중에 나타났다 사라져서, 우측에
- * 두면 `field-sizing-content` textarea의 폭이 그때마다 재계산돼 줄바꿈과 커서가 튄다.
- * 배지 둘과 `Edited by`는 렌더마다 변하지 않으므로 여기 들어가고, **빈 상태에서도 폭을 차지한다**.
+ * ⚠️ **메타가 우측 고정 폭 슬롯이 아니라 입력 아래 줄이다** (malmoi#33, 2026-09-11 실측으로 뒤집혔다).
+ * 초안은 배지 둘과 `Edited by`를 `w-40`(160) 우측 슬롯에 두고 *"렌더마다 변하지 않으므로 빈 상태에서도
+ * 폭을 차지한다"*를 근거로 삼았는데, **1280px에서 그 예산이 안 남는다**: 값 열 366에서 로케일 칸 80 ·
+ * 메타 160 · padding·gap 36을 빼면 입력이 **28px**이고 값이 한 글자씩 세로로 쌓였다(행 높이 210px).
+ * 키 셀 320을 고정으로 두기로 한 이상(spec 「1280px」) 한 줄에 넷이 구조적으로 안 들어간다.
+ *
+ * ⚠️ **"입력 폭이 행마다 달라진다"는 걱정이 이 배치에서는 성립하지 않는다** — 메타가 아래 줄이면
+ * 입력은 언제나 값 열 전체다. 그 걱정이 우측 슬롯 전제의 것이었다.
+ *
+ * ⚠️ **셀 저장 상태 4종은 여전히 `TranslationInput` 안이다.** `Not saved yet — leave the cell to save`가
+ * 약 230px이고 타이핑 중에 나타났다 사라지므로 **입력과 같은 줄에 두면** `field-sizing-content`
+ * textarea의 폭이 그때마다 재계산돼 줄바꿈과 커서가 튄다 — 그것이 우측 슬롯을 피한 원래 이유이고
+ * 여기서도 지켜진다(메타와 저장 상태는 둘 다 입력 **아래**다).
  */
 function LocaleRow({
   slug,
@@ -98,12 +107,16 @@ function LocaleRow({
   const actor = actorLabel(cell?.updatedBy ?? null, actors);
   const unsent = cell !== undefined && isUnpublished(cell, lastPulledAt);
 
+  // orphaned 축은 키 셀·로케일 배지가 이미 말했다 — 여기서 또 말하지 않는다.
+  const meta = state === "needsReview" || unsent || actor !== null;
+
   return (
     <div className="flex items-start gap-3 px-3 py-2">
       <div className="flex w-20 shrink-0 justify-center pt-1.5">
         <LocaleBadge code={locale.code} isBase={locale.isBase} orphaned={locale.orphaned} />
       </div>
 
+      {/* ⚠️ 이 열이 값 열 전체를 쓴다 — 우측에 고정 폭을 얹으면 1280에서 입력이 28px가 된다 (malmoi#33). */}
       <div className="min-w-0 flex-1">
         <TranslationInput
           slug={slug}
@@ -113,17 +126,16 @@ function LocaleRow({
           initialValue={cell?.value ?? ""}
           disabled={row.orphaned || locale.orphaned}
         />
-      </div>
-
-      {/* ⚠️ `shrink-0` + 고정 폭 — 비어 있어도 자리를 지켜야 입력 폭이 행마다 달라지지 않는다. */}
-      <div className="flex w-40 shrink-0 items-baseline justify-end gap-1.5 pt-1.5 text-xs">
-        {/* orphaned 축은 키 셀·로케일 배지가 이미 말했다 — 여기서 또 말하지 않는다. */}
-        {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
-        {unsent && <Badge>{m.translations.notSent}</Badge>}
-        {actor !== null && (
-          <span className="text-muted-foreground min-w-0 truncate">
-            {m.translations.editedBy(actor)}
-          </span>
+        {meta && (
+          <div className="mt-1 flex flex-wrap items-baseline gap-1.5 text-xs">
+            {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
+            {unsent && <Badge>{m.translations.notSent}</Badge>}
+            {actor !== null && (
+              <span className="text-muted-foreground min-w-0 truncate">
+                {m.translations.editedBy(actor)}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>
