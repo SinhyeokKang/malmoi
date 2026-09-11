@@ -186,7 +186,7 @@ T4까지 red인데 **검증줄이 `pnpm test`뿐이면 vitest가 타입을 안 �
 ## T7. 표 — 키 그룹 + 로케일 행
 
 - [x] `components/translations/key-group.tsx` 신설 — 키 셀(320) + 로케일 행들
-      - **`div` + `grid`다** — `<table>`/`rowSpan`이 아니다 (design §1.5, 결정 완료)
+      - ~~**`div` + `grid`다** — `<table>`/`rowSpan`이 아니다 (design §1.5, 결정 완료)~~ → **2026-09-12에 뒤집혔다**: shadcn `<table>` + 키별 `tbody` + `rowSpan`이다 (DESIGN §6.1)
       - 키 셀: 키 이름(`text-mono`) · Orphaned 배지 · `description` · 코드 참조 (design §4)
       - 로케일 행: `LocaleBadge` · `TranslationInput` · **우측 고정 폭 메타 슬롯**
         (배지 둘 + `Edited by`, `shrink-0`)
