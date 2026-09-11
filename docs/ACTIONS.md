@@ -58,7 +58,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip-l10n]')"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1
         with:
@@ -84,6 +84,12 @@ jobs:
 ⚠️ **action 안의 `uses:`도 전부 40자 SHA로 핀돼 있다** — 업스트림 태그 재지정(2025년
 `tj-actions/changed-files`)이 같은 경로로 들어온다. `scripts/__tests__/workflow-pins.test.ts`가
 `.github/` 전체를 훑어 가변 태그가 0건인지 상시로 센다.
+
+⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout@v4`는 그 방어선 밖이다.**
+이 문서의 복붙 블록과 그것을 만드는 `lib/onboarding/workflow.ts`는 우리 리포의 워크플로가 아니라
+**남의 리포로 나가는 텍스트**라 파일 경로로 걸러지지 않는다. 그 스텝은 `secrets.PUSH_TOKEN`을 든
+job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `workflow.ts` · 줄 대조하는
+`lib/onboarding/__tests__/workflow.test.ts`)이고 한 커밋에 함께 움직여야 한다.
 
 ✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된·보관되지 않은 프로젝트를 한 번에 50개까지 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 필터는 넷(`installationId`·**`repositoryId`**·`lastCommitSha`·`archivedAt`)이고 상한은 `PULL_BATCH_LIMIT` 50이다. ⚠️ **`repositoryId`는 2026-09-10에 붙었다** — 그 이전에 만들어진 행은 null이라 **OWNER가 재연결할 때까지 순회에서 빠진다**. 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
 
@@ -130,7 +136,7 @@ jobs:
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
-| `/api/push`가 4xx·5xx | **red** — **409가 넷**(**보관** · 오배송 · 커밋 역행 · **표면 교체 `format mismatch`**)·스키마 위반(400)이 여기 걸린다 |
+| `/api/push`가 4xx·5xx | **red** — **409가 넷**(판정 순서대로 **보관** · 오배송 · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 넷 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 셋과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
@@ -141,7 +147,11 @@ jobs:
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
-**red일 때 어디를 보나.** 응답 본문이 run 로그에 800바이트까지 찍힌다. 4xx는 본문으로 진단된다 — 400은 zod `issues` 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 넷이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 셋은 slug 오배송(`expected/got`) · 커밋 역행(`commitAt/lastCommitAt`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3). 마지막 것은 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, SAAS §8),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+**red일 때 어디를 보나.**
+
+⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
+
+응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 넷이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 셋은 판정 순서대로 slug 오배송(`expected/got`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, SAAS §8),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 
