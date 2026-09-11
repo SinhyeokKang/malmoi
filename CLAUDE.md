@@ -60,7 +60,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). 프리미티브 **16개**(`components/ui/*.tsx` — **파일 단위로 센다**. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot** 셋 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). 프리미티브 **16개**(`components/ui/*.tsx` — **파일 단위로 센다**. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot**·**RadioGroup** 넷 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**. **RadioGroup은 2026-09-12에 붙었다** — `SegmentedControl`이 손으로 든 roving tabindex를 그쪽에 넘겼다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -68,7 +68,7 @@
 | **키·원문 출처** | **리포의 로케일 파일** — 어댑터가 양방향으로 읽고 쓴다 (`lib/adapters/`) | — |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
-| 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
+| 테스트 | Vitest — **순수 함수 단위 + DOM** (2026-09-12에 뒤가 붙었다: 파일 머리의 `// @vitest-environment jsdom`으로 켜고 `components/__tests__/helpers/dom.tsx`가 `createRoot`+`act`를 감싼다. ⚠️ **`vitest.config.ts`의 기본은 그대로 `node`다** — 전역으로 켜면 순수 모듈 수백 개가 이유 없이 jsdom을 세운다) | `vitest` 4.1.11 · `jsdom` 27.4.0 · `@testing-library/user-event` 14.6.1 |
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다** (`vercel.json`의 `regions: ["hnd1"]`, 2026-09-09) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
@@ -504,6 +504,16 @@ components/
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받는다. 소비자는 `/account` 하나다(6b-4가 옮겼다)
   public-doc.tsx        `/privacy`·`/docs`가 공유하는 껍데기 (8-1a) — **돌아가는 링크가 요지다**
+  search-input.tsx      검색 입력 (client, 2026-09-12) — 소비자 둘(프로젝트 목록·번역 툴바).
+                        ⚠️ **IME 조합 확정 Enter를 거른다** — `isComposing`과 `keyCode === 229`를 **둘 다**
+                        본다(브라우저마다 하나씩만 주는 경우가 있다). 그 전엔 한글 확정 Enter가 그대로
+                        검색으로 나갔다.
+                        ⚠️ **`<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로 submit되지
+                        않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
+                        ⚠️ **`w-64`는 인자가 아니다** — 두 툴바가 같아야 하는 값이라 프리미티브가 든다.
+                        `className`은 바깥 자리잡기(`ml-auto`)용이다
+  submit-button.tsx     `useFormStatus` + `Button loading` (client, 2026-09-12) — 로그인·초대의 폼 넷이 쓴다.
+                        ⚠️ **`<form>` 안에 있어야 pending이 참을 낸다** (그 훅의 계약이다)
   session-revocation.tsx
                         전체 세션 회수 버튼 (client, sec-audit-2 #38) — 소비자는 `/account` 하나다.
                         ⚠️ **provider를 안 보낸다** — 확인 상대를 서버가 고른다(`startSessionRevocation`).
@@ -534,8 +544,12 @@ components/
                         ⚠️ **breadcrumb이 없다** — 8-4가 하위 화면 다섯에서 함께 지웠다.
                         ⚠️ **결과 Alert에 `scrollIntoView`가 붙어 있다** — 버튼은 고정 머리, 결과는
                         스크롤 본문 맨 위라 표를 내린 채 누르면 뷰포트 밖이고 **실패는 다른 신호가 0이다**) /
-                        key-group(**서버 컴포넌트** — 키 셀 + 로케일 행들. `<table>`이 아니라 `div`+`grid`다:
-                        값이 여러 줄이면 `rowSpan`이 정렬을 어긋나게 한다.
+                        key-group(**서버 컴포넌트** — 키 셀 + 로케일 행들. ⚠️ **2026-09-12에 `div`+`grid`에서
+                        `<table>`로 돌아왔다** — 키별 `TableBody` + 키 셀 `th scope="rowgroup" rowSpan`이다.
+                        8-4가 그것을 거부한 근거("값이 여러 줄이면 `rowSpan`이 정렬을 어긋나게 한다")는
+                        **행 높이 배분에서는 틀렸고**(브라우저가 계산한다) **내부 블록에서는 맞았다** —
+                        전환 당일 값 칸의 `border-l`이 늘어난 td 높이를 못 따라가 선이 끊겼다
+                        (POSTMORTEM 2026-09-12). **행 전체를 나누는 선은 `td`가, 포커스 표시는 안쪽 div가** 든다.
                         ⚠️ **행에 고정 폭이 로케일 칸 하나뿐이다** — 배지·`Edited by`를 우측
                         `w-40` 슬롯에 두었더니 1280px에서 입력이 **28px**가 됐다(malmoi#33, 실물 실측).
                         메타는 저장 상태와 같은 자리(입력 **아래**)로 내려갔고, 그 예산을
@@ -633,13 +647,19 @@ components/
                         기억하게 하면 하나가 빠지고 그 하나는 "고를 때마다 메뉴가 닫힌다"로만 드러난다).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
+                        Dialog·**Table**(⚠️ **프리셋이 둘이고 구현은 하나다** — 2026-09-12에 shadcn 원본을 들이면서
+                        `Th`·`Td`·`Tr`을 **`TableHead`·`TableCell`·`TableRow`를 감싼 프리셋**으로 내렸다.
+                        되눌러야 하는 기본값(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`)이 각
+                        프리셋 위에 적혀 있고 `table-presets.test.ts`가 **렌더해서** 센다 — 안 지워지면
+                        긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다.
+                        ⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0이다)·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
                         8-3이 더한 **`SegmentedLinks`**(링크, `<nav>` + `aria-current`). **상태가 URL이면 뒤엣것**이다.
                         ⚠️ `tablist`가 아닌 이유: ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다.
-                        ⚠️ **대신 라디오의 계약은 든다** (2026-09-11) — `nextRovingIndex`가 방향키·Home·End를
-                        판정하고 **선택된 칸만 `tabIndex=0`**이다. 전엔 `onClick`만 있어 방향키가 죽었고 Tab이
-                        칸마다 멈췄다. 네이티브 radio로 안 바꾼 이유: 숨긴 `<input>`에 링을 얹게 되어
-                        `focus-ring.test.ts`가 **보이지 않는 링으로 green**이 된다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ **라디오의 키보드 계약을 Radix가 든다** (2026-09-12 — 2026-09-11의 손수 구현
+                        `nextRovingIndex`를 대체했다). `RadioGroup`이 방향키·roving tabindex·`loop`를 주고,
+                        **Home/End만 이 파일이 얹는다**(Radix가 안 준다 — `focus()` + `click()`으로 선택까지
+                        옮긴다). 링 검사는 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이
+                        **보이지 않는 링으로 green**을 만들지 않는다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **`tone.ts`는 그 열여섯에 안 들어간다** (2026-09-11) — 컴포넌트가 아니라 `toneFill(name)`
                         하나다(`lib/tone.ts`가 골라준 색 이름 → `bg-<tone>-600`). **판정은 `lib/`, 클래스는 여기**가
                         든다 — `lib/`가 Tailwind를 알면 그 규칙이 두 층에 걸친다. 소비자는 아바타 폴백과
@@ -660,8 +680,9 @@ components/
                         + translations-screen — 번역 화면의 배선을 소스로 센다(tone→Alert variant 항등 ·
                         `<details>` 파일 목록 · live region 1개 · `shouldRefocus` · 배너 마운트 게이트 ·
                         셀의 `aria-label` · 초대 링크가 `routes.invite`). 렌더 테스트가 없는 자리의 방어선이다
-                        + segmented-control — `nextRovingIndex` 순수 판정 + 프리미티브를 **함수로 불러**
-                        `tabIndex`와 `onKeyDown`을 잰다 (2026-09-11 회귀). ⚠️ `tooltip-provider`는 같은
+                        + segmented-control — 프리미티브를 **jsdom에 렌더해** `user-event`로 방향키·Home/End·
+                        Tab을 실제로 먹인다 (2026-09-11 회귀 → 2026-09-12에 Radix로 옮기며 렌더 테스트가 됐다.
+                        순수 판정 `nextRovingIndex`는 Radix가 그 일을 가져가며 함께 사라졌다). ⚠️ `tooltip-provider`는 같은
                         커밋에 `Tooltip`과 함께 지웠다 — 그 교훈(조상 provider를 요구하는 Radix 컴포넌트는
                         프리미티브가 자기 provider를 든다)은 POSTMORTEM 2026-09-08에 남아 있다
                         + auth-toast — 토스트의 **수명**을 잰다. `useEffect`를 가로채 효과를 실제로 돌리고
@@ -752,6 +773,16 @@ lib/
                         **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
                         · autoCursor(커서가 없을 때의 ㄹ자 순회. ⚠️ **줄 사이에 세로 전환 구간이 있다** —
                         없으면 y가 줄 인덱스로만 정해져 줄바꿈이 순간이동한다)
+  search-params.ts      ⚠️ **잎, import 0** (2026-09-12) — `Raw<K>` 타입 + firstQueryValue·firstQueryValues.
+                        Next의 `searchParams`는 반복 파라미터를 **배열로** 주므로 `{ q?: string }`이라고
+                        적은 화면의 타입이 `?q=a&q=b`에서 거짓이 된다. **화면 여덟이 전부 이것을 지난다**
+                        (`type Search = Raw<"ns" | "locales" | "q">` 꼴) — 하나만 고치면 나머지 일곱이
+                        같은 거짓을 든 채 남는다.
+                        ⚠️ **`Object.create(null)`로 만든다** — 키를 주소창이 정하므로 평범한 `{}`에
+                        `out["__proto__"] = v`를 하면 그 키가 조용히 사라진다 (sec-audit 발견 1·17)
+                        ⚠️ **`entry-points.test.ts`가 이 형을 안다** — 그 검사가 `type X = { … }` 리터럴만
+                        읽던 시절엔 화면이 `Raw<…>`로 옮기는 순간 수신 키가 0건이 되어 **검사가 통째로
+                        무력해졌다**(2026-09-12 실측)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`ALL_NAMESPACES`가 2026-09-11에
                         `lib/keys/view.ts`에서 여기로 내려왔다** (8-4) — 칩 판정(`lib/keys/filters.ts`)이
                         그 값을 알아야 하는데 그 모듈은 잎이라 `view.ts`를 물 수 없다. URL 값이므로 이
