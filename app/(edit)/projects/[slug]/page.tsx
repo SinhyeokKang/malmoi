@@ -133,7 +133,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                 {m.home.progress.empty}{" "}
                 <Link
                   href={routes.locales(slug)}
-                  className="focus-visible:ring-ring text-foreground focus-visible:ring-[3px] focus-visible:outline-none"
+                  className="focus-visible:ring-ring text-foreground focus-visible:ring-2 focus-visible:outline-none"
                 >
                   {m.home.progress.emptyLink}
                 </Link>
@@ -150,7 +150,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                     */}
                     <Link
                       href={routes.translations(slug, { locales: locale.code })}
-                      className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
+                      className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
                     >
                       {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
                       <span>{locale.code}</span>
@@ -208,7 +208,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
         */}
         <Link
           href={routes.translations(slug, { ns: item.namespace, locales: item.locale })}
-          className="focus-visible:ring-ring text-sm focus-visible:ring-[3px] focus-visible:outline-none"
+          className="focus-visible:ring-ring text-sm focus-visible:ring-2 focus-visible:outline-none"
         >
           {m.home.activity.edit(item.actor, item.key, item.locale)}
         </Link>
@@ -229,7 +229,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
                 href={item.prUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
+                className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
               >
                 {m.home.activity.pr}
                 <ExternalLink className="size-3" aria-hidden />

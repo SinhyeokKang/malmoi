@@ -260,7 +260,7 @@ export default async function ProjectsPage({
                      * `rounded-lg`가 첫·끝 행의 모서리를 자르는 수단이라 뗄 수 없으므로,
                      * 링을 안쪽으로 그린다.
                      */
-                    className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-2.5 py-3.5 pr-3.5 pl-3 focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:outline-none"
+                    className="hover:bg-foreground/[0.03] focus-visible:ring-ring flex items-center justify-between gap-2.5 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
                   >
                     {/*
                       프로젝트 이미지 자리 — **지금은 빈 상태뿐이다** (2026-09-11 사용자).

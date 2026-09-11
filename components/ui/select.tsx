@@ -9,5 +9,5 @@ import { fieldClass } from "./input";
  * 모바일에서 OS 피커가 붙는 쪽이 낫다. 팝오버가 필요한 자리는 `DropdownMenu`다 (design §3.2).
  */
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)} {...props} />;
+  return <select className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
 }

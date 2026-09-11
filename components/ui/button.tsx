@@ -26,8 +26,10 @@ import { cn } from "@/lib/utils";
  * ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** (§7). cva 베이스에 넣으면 짧아지지만
  * `focus-ring.test.ts`가 **여는 태그의 소스를 읽으므로** 그 순간 방어선이 이 파일을 통째로 못 본다 —
  * 링은 2026-09-06·07에 두 번 샜고 둘 다 "이 컨트롤만 기본값이 없었다"였다.
- * `focus-visible:ring-offset-1`은 **muted 표면 위**(사이드바 항목·값 칩 옆)에서만 호출부가 덧댄다:
- * `--ring == --border`라 그 표면에서는 링이 약하다.
+ * `focus-visible:ring-offset-1`은 값 칩 옆 하나(온보딩의 리포 되돌리기)에서만 호출부가 덧댄다.
+ * ⚠️ **2026-09-11에 `--ring`이 blue-400이 됐고, 그것이 이 offset을 다시 쓸모 있게 한다** — 대비가
+ * 낮아서(흰 배경 **2.54:1**, 하한 3:1 미달) 경계가 한 겹 더 있는 자리가 유리하다. 그전엔
+ * `--ring == --border`라 링이 흰 배경에서 실질적으로 없었다(1.19:1) — DESIGN §7.
  */
 export const buttonClass = cva(
   cn(
@@ -67,8 +69,9 @@ export const buttonClass = cva(
         sm: "h-7 rounded-sm px-2 text-xs",
         /**
          * **셸 밖 카드 전용이다** (8-1b — 로그인·초대 수락 둘뿐이다). 시안은 38px인데
-         * `h-10`(40px)을 쓴다 — 리포의 임의 치수가 `ring-[3px]` 하나뿐이라 2px 때문에 둘째를
-         * 만들지 않는다 (README 규약 6).
+         * `h-10`(40px)을 쓴다 — 2px 때문에 임의 치수를 만들지 않는다 (README 규약 6).
+         * ⚠️ **그때의 근거는 "임의값이 `ring-[3px]` 하나뿐"이었고, 2026-09-11에 링이 `ring-2`가 되며
+         * 그 하나도 사라졌다** — 근거가 없어진 것이 아니라 더 세졌다(지금 임의 치수는 0이다).
          *
          * ⚠️ **base는 2026-09-11에 36으로 올라갔다** — 위 `md` 주석. 그때까지 이 자리에 "마지막 화면이
          * 옮겨온 뒤 기본값을 바꾼다"가 적혀 있었고, 그 미루기의 대상은 **40이 아니라 36**이었다는 것이
@@ -107,7 +110,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
+      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
       disabled={disabled === true || loading}
       {...props}
     >
@@ -139,7 +142,7 @@ export function ButtonLink({
   return (
     <Link
       href={href}
-      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
+      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
     >
       {children}
     </Link>

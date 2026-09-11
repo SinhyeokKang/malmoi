@@ -84,7 +84,7 @@ export function Sidebar({
             type="submit"
             variant="ghost"
             // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
-            className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5 font-light"
+            className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
           >
             <span className="flex size-4 shrink-0 items-center justify-center">
               <LogOut className="size-4" aria-hidden />
@@ -118,7 +118,7 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       aria-current={active ? "page" : undefined}
       className={cn(
         "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm",
-        "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         /**
          * ⚠️ hover와 선택이 **같은 알파면** 포인터 아래의 항목이 선택된 것처럼 보인다 — 한 단계 벌린다.
          *

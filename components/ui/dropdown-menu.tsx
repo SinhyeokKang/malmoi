@@ -100,7 +100,7 @@ export function DropdownMenuCheckboxItem({
       className={cn(
         "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
         "hover:bg-accent focus:bg-accent",
-        "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         className,
       )}
       onSelect={(event) => {

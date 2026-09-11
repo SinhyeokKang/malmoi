@@ -59,7 +59,7 @@ export default async function SignIn({
             {m.signIn.consent.before}
             <Link
               href={routes.privacy()}
-              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-[3px] focus-visible:outline-none"
+              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
             >
               {m.signIn.consent.link}
             </Link>

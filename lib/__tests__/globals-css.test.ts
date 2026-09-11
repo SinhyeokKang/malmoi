@@ -35,6 +35,43 @@ describe("globals.css — text-mono 유틸", () => {
 });
 
 /**
+ * **포커스 링이 border와 같은 값이면 보이지 않는다** (2026-09-11 사용자 — 블루 계열로 전환).
+ *
+ * 그때까지 `--ring`이 `--border`(`hsl(0 0% 89.8%)`)와 **같은 값**이라 흰 배경에서 대비가 1.19:1이었다 —
+ * 프리미티브 여덟이 `ring-ring`을 정확히 들고 `focus-ring.test.ts`가 그것을 전수로 세는 동안,
+ * **링은 green이면서 눈에 안 보였다.** DESIGN §7이 그 사실을 "약하다"로 적고 호출부가
+ * `ring-offset-1`로 덧대는 우회를 들고 있었는데, 고칠 자리는 토큰 하나였다.
+ *
+ * ⚠️ 그래서 여기서 세는 것은 **값이 무엇인가가 아니라 border와 다른가**다 — 색을 고르는 것은
+ * DESIGN의 일이고, 되돌아가면 안 되는 것은 "같아지는 것"이다.
+ */
+describe("globals.css — 포커스 링", () => {
+  const tokenOf = (name: string): string => new RegExp(`^\\s*--${name}:\\s*([^;]+);`, "m").exec(CSS)?.[1]?.trim() ?? "";
+
+  it("--ring이 --border와 다르다 — 같으면 링이 green인 채로 안 보인다", () => {
+    expect(tokenOf("ring")).not.toBe("");
+    expect(tokenOf("border")).not.toBe("");
+    expect(tokenOf("ring")).not.toBe(tokenOf("border"));
+  });
+
+  /** 무채색으로 되돌아가면 같은 결함이 값만 바꿔 돌아온다 — 파랑 성분이 실재하는지 본다. */
+  it("무채색이 아니다", () => {
+    const ring = tokenOf("ring");
+    const hsl = /hsl\(\s*([\d.]+)\s+([\d.]+)%/.exec(ring);
+    const rgb = /rgb\(\s*(\d+)\s+(\d+)\s+(\d+)/.exec(ring);
+    if (hsl) {
+      // saturation 0이면 회색이다 — hue는 그때 의미가 없다.
+      expect(Number(hsl[2])).toBeGreaterThan(0);
+    } else if (rgb) {
+      const [r, g, b] = [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+      expect(b).toBeGreaterThan(Math.max(r, g));
+    } else {
+      throw new Error(`--ring 형식을 못 읽었다: ${ring}`);
+    }
+  });
+});
+
+/**
  * **`:root`에 변수만 만들고 `@theme inline` 등록을 빠뜨리면 클래스가 아예 생성되지 않는다.**
  *
  * ⚠️ 8-1b가 그렇게 나갔다 — `bg-auth-canvas`·`from-auth-hero-from`이 **존재하지 않는 유틸**이라

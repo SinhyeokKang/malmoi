@@ -55,8 +55,12 @@ export default async function NewProjectPage({
       : null;
 
   const listed = await listConnectableRepos();
+  // ⚠️ `layout`은 **어댑터에서 그대로** 온다 — 수동 지정의 Path 힌트·예시가 이 값으로 갈리므로
+  // 리터럴로 적으면 어댑터를 더할 때 화면이 조용히 틀린 안내를 한다. 클라이언트는 `lib/adapters`를
+  // 값으로 읽을 수 없다(ts-morph가 번들에 들어온다 — POSTMORTEM 2026-09-07).
   const adapters: AdapterChoice[] = ADAPTERS.map((adapter) => ({
     adapter: adapter.name,
+    layout: adapter.layout,
     ...formatLabel(adapter.name),
   }));
 

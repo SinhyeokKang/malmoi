@@ -20,5 +20,5 @@ export const fieldClass = cn(
  * 높이여야 한다. `Textarea`는 이 규칙 밖이다(`field-sizing-content`라 높이를 내용이 정한다).
  */
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)} {...props} />;
+  return <input className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
 }

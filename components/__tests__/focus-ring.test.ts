@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** DESIGN §7의 셋. 하나라도 빠지면 링이 안 보이거나 브라우저 기본 outline만 남는다. */
-const RING = ["focus-visible:ring-ring", "focus-visible:ring-[3px]", "focus-visible:outline-none"];
+const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
 
 /**
  * ⚠️ **`components/ui/`를 더 이상 제외하지 않는다** (2026-09-08, SaaS 6a T5). 그 디렉터리는 이제
@@ -143,7 +143,7 @@ describe("포커스 링 (DESIGN §7)", () => {
 
   it("셋 중 하나만 빠져도 잡는다 — 스캐너가 red를 낼 수 있는지", () => {
     // 이 테스트 자신이 무력해지는 것을 막는다 (credential-separation의 메타 테스트와 같은 이유).
-    const fake = `<button className="rounded focus-visible:ring-ring focus-visible:ring-[3px]">x</button>`;
+    const fake = `<button className="rounded focus-visible:ring-ring focus-visible:ring-2">x</button>`;
     const [tag] = controls(fake);
     expect(tag).toBeDefined();
     expect(RING.every((cls) => tag?.includes(cls))).toBe(false);

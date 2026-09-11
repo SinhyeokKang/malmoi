@@ -14,7 +14,7 @@
 | 무엇 | 전 | 후 | 상세 |
 |---|---|---|---|
 | **팔레트** | slate (푸른 틴트) | **neutral** | §2 |
-| **font-weight** | 최대 600, 기본 400 | **최대 500, 기본 300** — 버튼 라벨 400 | §4 |
+| **font-weight** | 최대 600, 기본 400 | **500과 400 둘뿐이다** — 제목·라벨 500, 나머지 400 (⚠️ 2026-09-11에 기본을 300에서 400으로 올렸다: 상한 500은 그대로이고 **하한이 사라졌다**. `font-light`는 소비자 0) | §4 |
 | **자간** | 유틸(`tracking-tight`)로 그때그때 | **크기 토큰이 든다** (`--text-*--letter-spacing`) | §4 |
 | **radius** | `--radius` 10px | **12px** — 파생 전부 상승(md 10 · lg 12 · xl 16), 버튼 base `rounded-lg` | §5 |
 | **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
@@ -121,19 +121,22 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 - **`font-sans`**: Pretendard Variable → 시스템 한/영 폴백. 폰트 파일은 **동적 서브셋 생성물**이라 `public/fonts/`가 gitignore돼 있다 (CLAUDE.md 폰트 절). GitLab Sans(Inter 기반)를 들이지 않는다 — Pretendard의 라틴 글리프도 Inter에서 왔다.
 - 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목(⚠️ **셸 안 페이지 제목이 2026-09-11에 `text-xl`로 빠져나갔다** — 사용자, 8단계 리워크 기준: `/projects`·번역만 20px이던 것을 나머지 일곱이 따라갔다. 남은 소비자는 프로젝트 목록 **행 이름**과 `Dialog` 제목이다), `text-lg`=**셸 밖 카드의 제목 전용**이었다 — ⚠️ **8-1b가 그 둘을 `text-2xl`로 올렸다**(Figma 시안). 지금 `text-lg`의 소비자는 `/privacy`·`/docs` placeholder와 **`EmptyState` 제목**이다(2026-09-11). ⚠️ **`text-base`만 15px다** — `@theme`이 Tailwind 기본 16을 덮는다. 남은 소비자가 둘 다 제목이고 본문은 `text-sm`(14)이라, 이 토큰이 정하는 것은 본문 크기가 아니라 **제목과 본문의 간격**이다(15/14면 한 단계, 16/14면 두 단계). `EmptyState` 제목이 `text-lg`로 올라간 것도 그 1px 차이 때문이다.
 - **임의값(`text-[…]`)은 스케일에 대응값이 없을 때만.** 12px은 `text-xs`, 14px은 `text-sm`이 있으므로 임의값으로 쓰지 않는다.
-- ⚠️ **weight 규칙이 2026-09-10에 전면 교체됐다** — **가장 두꺼운 서체가 500이다.**
+- ⚠️ **weight 규칙이 2026-09-10에 전면 교체됐고 2026-09-11에 하한이 되돌아갔다** — **가장 두꺼운 서체가 500이고, 쓰는 단계는 400과 500 둘뿐이다.**
 
   | 전 | 후 | 쓰는 곳 |
   |---|---|---|
   | 600 (`font-semibold`) | **500** (`font-medium`) | 셸 밖 카드의 페이지 제목 |
   | 500 (`font-medium`) | 500 그대로 | 셸 안 제목·라벨 |
   | — | **400** (`font-normal`) | **버튼 라벨** — 본문(300)과 제목(500) 사이. 500이면 버튼만 도드라진다 |
-  | 400 (기본·`font-normal`) | **300** (`body`의 기본값 · `font-light`) | 나머지 전부 |
+  | 400 (기본·`font-normal`) | ~~300~~ → **400** (`body`의 기본값) | 나머지 전부 — ⚠️ **2026-09-11에 300을 도로 400으로 올렸다**(사용자). **쓰는 weight가 400과 500 둘뿐**이고 `font-light`는 소비자가 0이 됐다 |
 
-  **`body`에 `font-weight: 300`이 있고 그것이 기본이다.** Pretendard Variable이 `45 920` 범위라
-  300이 실제로 나온다 — 정적 폰트였다면 400으로 반올림됐다. **600 이상은 쓰지 않는다.**
-  ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 `font-light`를 **명시**한다(기본과 같아 보여도
-  그 의도가 코드에 남아야 한다).
+  **`body`에 `font-weight: 400`이 있고 그것이 기본이다** (2026-09-11 — 전날의 300을 한 단계
+  되돌렸다). **600 이상은 쓰지 않는다.**
+  ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 **`font-normal`**을 명시한다(기본과 같아 보여도
+  그 의도가 코드에 남아야 한다) — 소비자는 `FormGroup`의 "(optional)"과 `Button` base 둘이다.
+  ⚠️ **`font-light`를 쓰지 않는다** — 300이 없으므로 가리킬 단계가 없다. 2026-09-11에 넷을 걷었고
+  (`FormGroup`·사이드바 Sign out·로케일 배지의 `(base)`·`Badge` 주석), 그중 둘은 **클래스를 지우는
+  것으로 끝났다**(기본이 이미 400이라 되누를 것이 없다).
   ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다.
 
 - ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
@@ -301,13 +304,13 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 |---|---|
 | 그룹 | `grid-cols-[320px_minmax(0,1fr)]` + `border-b`, 키 셀이 `border-r`를 든다. ⚠️ **섹션을 상자로 감싸지 않는다** (2026-09-11 — 시안 `212:5081`): 표의 구조를 **선만으로** 만든다(헤딩 아래·그룹 사이의 가로선 + 키 셀의 세로선). 8-4는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데, 상자가 있으면 그 선들이 **격자 안의 격자**가 되고 헤딩이 표에서 떨어져 어느 키를 덮는지가 흐려진다 |
 | 키 셀 | 이름 **`text-sm` — sans다**(§4.1의 유일한 예외: 이 화면은 표 전체가 키라 mono 자폭이 320 칸의 트렁케이션을 늘린다) + Orphaned 배지 → `description` `text-xs text-muted-foreground` → 코드 참조 `text-xs text-blue-600` + `ExternalLink` 12(§6.3). ⚠️ **1280px에서도 320 고정이다** — 값 열이 주는 쪽을 받아들인다(키 이름이 잘리는 쪽이 더 나쁘다). ⚠️ **그 "값 열 ≈368"은 열 전체이지 입력 폭이 아니다** (malmoi#33이 그 오독에서 났다) — 실제 입력은 열에서 로케일 칸·padding·gap을 뺀 **약 200px**이고, 우측에 무엇을 더 얹으면 그만큼 더 줄어든다 |
-| 로케일 행 | `flex items-start` — **행 자신은 padding이 없다** (2026-09-11, 시안 `212:5418`): 여백을 로케일 칸(`w-17` = 68, 시안 값)과 값 칸(`py-1.5 pr-3` + 입력 `px-3`)이 각자 들어야 hover·포커스 표면이 셀 폭 전체를 덮는다. ⚠️ **로케일 배지는 세로 중앙이 아니라 첫 줄에 맞춘다**(`pt-2.5`) — 시안은 `items-center`인데 **그 시안에는 메타 줄이 없다**: 우리 행은 `Needs review`·`Edited by`가 입력 아래에 붙어 블록 높이가 행마다 달라지고, 중앙이면 메타가 있는 행에서만 배지가 내려앉아 표에서 배지 높이가 들쭉날쭉해진다(실물 확인). 나머지 전부를 값 열이 쓴다(`min-w-0 flex-1`). ⚠️ **행에 고정 폭이 로케일 칸 **하나뿐**이다** (malmoi#33, 2026-09-11 실측): 1280px에서 값 열이 366이고 그 안의 고정 폭을 다 빼면 입력에 남는 것이 그만큼이라, 우측에 `w-40`(160) 슬롯을 얹었을 때 **입력이 28px**였다(값이 한 글자씩 세로로 쌓였다). `components/__tests__/translations-screen.test.ts`가 그 예산을 상시로 센다 |
+| 로케일 행 | `flex items-start` · 로케일 칸 68px · 값 칸은 나머지 전체이며 왼쪽에 `border-border border-l` 1px 구분선을 둔다. 입력 위아래 padding 12px(`py-3`), 한 줄 높이 46px + 행 구분선 1px. 로케일과 상태 표시는 첫 46px 중앙에 맞춘다. 입력 우측 여백은 상태 표시 유무와 무관하게 일정하다 |
 | 로케일 배지 | **국기(있으면) + 코드 + `(base)`**. ⚠️ **국기가 `<img>`가 아니라 `background-image`다** — `?ns=*`에서 배지가 2,709개 서고 `<img>`면 요소·레이아웃 오브젝트가 그만큼 는다. 요소는 `<span>` 하나이고 치수(16×11)와 radius(`rounded-xs`, §5의 예외)는 클래스가 든다. ⚠️ **URL은 인라인 `style`이다 — 전역 CSS 규칙이 아니다** (2026-09-11): 들어온 세트가 **253개**라 규칙으로 적으면 국기가 하나도 없는 화면까지 253줄을 받고, 손으로 소유하는 `globals.css`가 생성물이 된다. 인라인은 쓰는 것만 나가고 요소 수는 그대로다. ⚠️ **매핑이 없으면 아무것도 안 그린다 — 코드만**(물음표·지구본은 모르는 것을 아이콘으로 주장하는 것이다). 매핑 규칙은 **하위태그가 언어 표를 이긴다**(`en`→GB는 표 · `en-GB`→GB·`en-US`→US는 하위태그). ⚠️ **언어 표의 기준은 "언어명과 나라가 사실상 1:1"이고 그 밖은 안 넣는다** — `es`·`pt`·`ar`처럼 주요 사용국이 여럿인 언어에 국기를 하나 고르면 **절반에게 틀린 국기**가 되고, 그건 없는 것보다 나쁘다(하위태그가 붙으면 그때 정확히 선다). ⚠️ **orphaned는 배지 자체를 `danger`로** 바꾼다 — 로케일 칸 80px에 별도 배지가 안 들어가고, 로케일 헤더가 사라져 그 표시가 살 자리가 여기뿐이다(사유 문장은 `disabled` 입력의 placeholder가 든다). 색만으로 말하지 않으므로 `sr-only` 문구가 함께 간다 |
-| 번역 입력 | `Textarea` `rows=1` + `field-sizing-content` + **`resize-none`**, `text-sm`, `px-3`(값 칸의 좌우 여백을 이 입력이 든다). ⚠️ **`resize-none`이 프리미티브에 있다** (2026-09-11 실물) — 높이를 `field-sizing-content`가 정하므로 손잡이가 할 일이 없는데 브라우저 기본값이 그것을 그려, 표에서 **셀마다 빗금 글리프가 2,709개** 섰다(시안에 없다). ⚠️ **테두리 없는 표면**이고 hover·포커스에서만 드러난다 — 2,709개가 각자 테두리를 들면 표가 격자로 읽혀 값이 안 보인다. ⚠️ **`placeholder`가 미번역의 유일한 시각 신호다** — `Untranslated` 배지·상태 필터·입력 테두리가 **같은 배송에서 동시에** 사라졌다. ⚠️ **`aria-label`이 `{키} · {로케일}`이다** — placeholder는 값이 차면 안 읽혀 채워진 셀이 이름 없는 입력이 된다 |
-| 메타 | `Needs review` 배지 · `Not yet sent` 배지 · "Edited by {name}"(`text-muted-foreground text-xs`, **이름이 없으면 마스킹한 이메일** — 이 표는 멤버 전원이 본다). ⚠️ **우측 슬롯이 아니라 입력 아래 줄이고, 셋 다 없으면 렌더되지 않는다** (malmoi#33에서 뒤집혔다). 초안의 근거는 *"렌더마다 변하지 않으므로 빈 상태에서도 폭을 차지한다 — 안 그러면 입력 폭이 행마다 다르다"*였는데, **아래 줄이면 입력이 언제나 값 열 전체라 그 걱정 자체가 사라진다.** ⚠️ `Translation.updatedBy`에 `User.id`와 옛 GitHub 핸들이 섞여 있어 **못 찾은 값은 원문이 그대로 보인다**(malmoi#3). push가 덮은 셀에는 표기가 없다 |
-| 저장 상태 | 셀 안 한 줄은 **시각 전용**이고 상태가 **넷**이다 — Saving… / Saved(1.5초 뒤 소거) / **Not saved yet** / 실패 = `text-destructive` 문장 + `[Retry]`(사유가 `unauthorized`면 **[Sign in]**). ⚠️ **입력과 같은 줄에 두지 않는다** — "Not saved yet — leave the cell to save"가 약 230px이고 타이핑 중에 나타났다 사라져서, 옆에 두면 `field-sizing-content` textarea의 폭이 그때마다 재계산돼 줄바꿈과 커서가 튄다. 메타와 **같은 자리(입력 아래)**를 쓰되 서로 다른 줄이다. ⚠️ **`role="status"`를 셀에 두지 않는다** — 903행×3로케일이면 live region이 2,700개다. 알림은 표 하나의 영역이 든다(§7) |
+| 번역 입력 | `Textarea` `rows=1` + `field-sizing-content` + **`resize-none`**, `text-sm`, `px-3`(값 칸의 좌우 여백을 이 입력이 든다). ⚠️ **`resize-none`이 프리미티브에 있다** (2026-09-11 실물) — 높이를 `field-sizing-content`가 정하므로 손잡이가 할 일이 없는데 브라우저 기본값이 그것을 그려, 표에서 **셀마다 빗금 글리프가 2,709개** 섰다(시안에 없다). ⚠️ **기본은 테두리 없는 표면**이고, 편집 포커스에서는 값 셀 래퍼의 `::after`가 펼친 메타까지 포함한 셀 가장자리에 기존 `ring` 색상의 2px 링(셀 경계 중앙: 안쪽 1px·바깥쪽 1px)을 그린다. 링 레이어만 `z-20`으로 고정 헤딩(`z-10`) 위에 올려 첫 행의 윗변도 가려지지 않게 하고 링은 포인터 이벤트를 받지 않는다(2026-09-11 사용자 정정: 스크린샷은 위치 참고). 셀 크기·패딩은 바뀌지 않는다 — 2,709개가 각자 테두리를 들면 표가 격자로 읽혀 값이 안 보인다. ⚠️ **`placeholder`가 미번역의 유일한 시각 신호다** — `Untranslated` 배지·상태 필터·입력 테두리가 **같은 배송에서 동시에** 사라졌다. ⚠️ **`aria-label`이 `{키} · {로케일}`이다** — placeholder는 값이 차면 안 읽혀 채워진 셀이 이름 없는 입력이 된다 |
+| 메타 | **2026-09-11 사용자 시안 재확인**: `Needs review`·`Not yet sent`·작성자 상세는 해당 값 셀에 포커스했을 때만 아래에 펼친다. 미검토·미배포는 상시 작은 표시와 접근 이름으로 구별한다. 표시 버튼에도 포커스를 줄 수 있어 disabled 셀의 메타도 열 수 있다. 이름 폴백·마스킹 계약은 유지한다 |
+| 저장 상태 | Saving / Saved(1.5초) / Not saved yet는 입력 우측의 작은 표시(문구는 접근 이름과 title)로 행 높이를 늘리지 않는다. 실패 사유와 Retry / Sign in만 입력 아래에 계속 남긴다. 표 하나의 Announcer와 실패 시 shouldRefocus 계약은 유지한다 |
 | 로케일 순서 | **base가 맨 위**, 나머지는 코드순 — 원문이 위에 있어야 그 아래를 채운다 |
-| 섹션 | `?ns=*`면 네임스페이스마다 `<h2 text-sm font-medium>` + 필터 후 건수 배지, 단일 선택이면 헤딩 하나. ⚠️ **헤딩이 표의 첫 행이다** (2026-09-11 — 시안 `212:3815`: `px-2 py-3` + `border-b`): 위에 띄우지 않고, `px-2`가 **키 셀과 같은 선**이어야 네임스페이스가 그 아래 키들을 덮는 것으로 읽힌다. 섹션 사이는 `space-y-6`. ⚠️ **`sticky top-0 bg-background`다** (2026-09-11 사용자 — 그 전 판정 *"sticky로 만들지 않는다: 스크롤 컨테이너 기준이라 자리가 애매하다"*를 뒤집었다). **스크롤 경계가 `PanelBody` 하나로 분명해진 지금은 기준이 애매하지 않다** — 가장 가까운 스크롤 조상이 그것이고 `top-0`이 그 상단이다. 섹션이 빠져나가면 다음 헤딩이 밀어 올려 **교체**된다(sticky의 기본 동작이라 JS가 0줄이다. 실측: 포트 상단 189에서 `alerts` 112 → `buttons` 189). ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다.** ⚠️ **`z-*`를 주지 않는다** — positioned가 static 형제보다 뒤에 칠해지는 것이 페인팅 순서이고, 층을 더하면 셀 포커스 링과 높이를 다툰다. ⚠️ **조상에 `overflow-hidden`을 들이지 않는다** — 그 조상이 새 스크롤 컨테이너가 되어 헤딩이 거기 갇힌다 |
+| 섹션 | `?ns=*`면 네임스페이스마다 `<h2 text-sm font-medium>` + 필터 후 건수 배지, 단일 선택이면 헤딩 하나. ⚠️ **헤딩이 표의 첫 행이다** (2026-09-11 — 시안 `212:3815`: `px-2 py-3` + `border-b`): 위에 띄우지 않고, `px-2`가 **키 셀과 같은 선**이어야 네임스페이스가 그 아래 키들을 덮는 것으로 읽힌다. 섹션 사이 여백은 없다(2026-09-11 사용자 결정). ⚠️ **`sticky top-0 bg-background`다** (2026-09-11 사용자 — 그 전 판정 *"sticky로 만들지 않는다: 스크롤 컨테이너 기준이라 자리가 애매하다"*를 뒤집었다). **스크롤 경계가 `PanelBody` 하나로 분명해진 지금은 기준이 애매하지 않다** — 가장 가까운 스크롤 조상이 그것이고 `top-0`이 그 상단이다. 섹션이 빠져나가면 다음 헤딩이 밀어 올려 **교체**된다(sticky의 기본 동작이라 JS가 0줄이다. 실측: 포트 상단 189에서 `alerts` 112 → `buttons` 189). ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다.** **`z-10`이다** — 셀 상태 표시가 relative/absolute이므로 헤딩을 같은 층에 두면 뒤의 셀이 위에 겹친다(2026-09-11 브라우저 재현). ⚠️ **조상에 `overflow-hidden`을 들이지 않는다** — 그 조상이 새 스크롤 컨테이너가 되어 헤딩이 거기 갇힌다 |
 | 행 순서 | **각 섹션 안에서 pending 키가 위**다(untranslated 또는 needsReview, orphaned는 제외). ⚠️ **상태 필터를 뺀 대가를 갚는 유일한 수단이다** — `namespaceOf`가 구분자 없는 키를 전부 `_root`로 묶고 **크롬 확장 `messages.json`이 정확히 그 부류**라, 그 프로젝트에서는 `pending/total`이 전체 집계와 같아져 남은 일을 찾는 수단이 검색 하나가 된다. **URL 상태가 아니다** — 칩이 넷째가 되지 않는다 |
 
 **"Translated"에는 배지를 붙이지 않는다** — **가장 흔한 상태가 가장 조용해야 한다** (§6.2와 같은
@@ -348,7 +351,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (SAAS §3). 문구는 `messages/en.tsx`이 든다.
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600** · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`). 그 밖은 없다.
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`). 그 밖은 없다.
 
 **흑백 둘과 남의 자산은 이 규칙 밖이다** (2026-09-11 등재):
 
@@ -409,10 +412,10 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
 | **Input·Select** | `h-9 px-2 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
-| **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `text-muted-foreground font-light`(§4의 기본 300) |
+| **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground` · error `text-xs text-destructive` · "(optional)" `text-muted-foreground font-normal`(⚠️ label이 500이라 **되눌러야 한다** — §4의 기본 400) |
 | **Radio** | `size-4` · `border-input accent-primary` · label `text-sm`. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** (2026-09-11) — `nextRovingIndex`가 방향키·Home·End를 판정하고 **선택된 칸만 `tabIndex=0`**이다(roving tabindex) |
-| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-light`로 되누른다. variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
+| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). ⚠️ **weight를 지정하지 않는다** — 앉은 자리의 굵기를 따르므로 표 헤더처럼 이미 굵은 자리에서는 호출부가 `font-normal`로 되누른다(2026-09-11에 `font-light`에서 바뀌었다). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 `ghost sm`. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
 | **Table** | 소비자가 **셋**이다 — 언어(§6.66)·이력(§6.68)·멤버(§6.65). ⚠️ **번역 화면은 2026-09-11(8-4)에 이 프리미티브를 떠났다** — 키 그룹이 `div` + `grid`다(§6.1). 그래서 이 행의 옛 포인터 `§6.1`이 끊겼고, 대신 그 절이 "무엇이 `<table>`의 시맨틱을 대신하는가"를 든다 |
@@ -715,10 +718,13 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 남은 자리는 **표 헤더**(`bg-muted/50`)·**값 칩**·**코드 블록**이다(사이드바는 8-2부터 캔버스 위라 이 목록에 없다).
-- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none`. **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
+- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 `features/ui-rework/README.md` 규약 6·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
   - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 프리미티브 다섯(`Button`·`Input`·`Textarea`·`Select`·`Radio`)이 각자의 태그에 셋을 **리터럴로** 적는다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
   - 스캐너는 **주석을 벗기고 센다** — 프리미티브가 자기 태그 이름을 docstring에 쓴다(`native \`<select>\`다`).
-- `--ring` == `--border`라서 **`muted` 표면 위에선 포커스 링이 약하다** — 그런 자리의 호출부가 `focus-visible:ring-offset-1`을 더한다(offset 색 기본이 배경). 지금 그 소비자는 **값 칩 옆 버튼 하나**다(온보딩의 리포 되돌리기). 사이드바 항목은 8-2부터 캔버스 위라 대상이 아니다.
+- **`--ring`이 blue-400(`#60a5fa`)이다** (2026-09-11 사용자 — `app/globals.css`). ⚠️ **그 전엔 `--border`와 값이 같아** 흰 배경에서 대비가 **1.19:1**이었다: 프리미티브 여덟이 셋을 리터럴로 들고 위 스캐너가 전수로 세는 동안 **검사는 green이고 링은 화면에 없었다.** 이 절의 옛 문장은 그 사실을 "muted 표면 위에선 약하다"로 적고 호출부의 `ring-offset-1` 우회를 규칙으로 들고 있었는데, 고칠 자리는 토큰 한 줄이었다.
+  - ⚠️⚠️ **이 절의 3:1 하한을 이 토큰이 넘지 못한다 — 흰 배경 2.54:1 · muted 표면 2.49:1. 수용한 결정이다**(2026-09-11 사용자). blue-600(5.17 / 4.70) → **blue-400** → blue-300(1.80 / 1.64)을 차례로 목측하고 400으로 확정했다("너무 찐해" → "300으로" → "blue-400으로 확정") — **시각 무게를 대비보다 앞에 뒀다.** ⚠️ blue-300은 **고치기 전(1.19:1)과 같은 자릿수**여서 버렸다: 그 값에서는 이 전환이 사는 것이 "무채색이라 `--border`와 구별되지 않던 것"이 색상으로 구별되는 것까지이고 **보이게 만드는 것은 아니다.** 되돌릴 때의 후보는 **blue-500**(3:1을 넘는 가장 연한 파랑)이다.
+  - `focus-visible:ring-offset-1`은 **남겨 뒀다** — 값 칩 옆 버튼 하나(온보딩의 리포 되돌리기)이고, 링이 연해진 지금은 경계가 한 겹 더 있는 것이 오히려 유리하다. ⚠️ **`lib/__tests__/globals-css.test.ts`는 이 대비를 안 본다**(`--border`와 다른가 · 무채색이 아닌가 둘뿐이라 지금 값에서도 green이다) — 링이 안 보인다는 제보의 첫 확인 자리는 검사가 아니라 `--ring` 값이다. 사이드바 항목은 8-2부터 캔버스 위라 대상이 아니다.
+  - ⚠️ **`--input`과 값을 다시 같게 두지 않는다** — 필드 테두리는 쉬는 상태의 윤곽, 링은 포커스 신호로 축이 다르다. `lib/__tests__/globals-css.test.ts`가 `--border`와의 동일성과 무채색 여부를 센다.
 - ⚠️ **`overflow-hidden` 부모 안에서는 `focus-visible:ring-inset`이 예외로 붙는다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px 퍼지는데, 프로젝트 목록의 `<ul>`이 `rounded-lg`로 첫·끝 행의 모서리를 자르려고 `overflow-hidden`을 들고 있어 **그 3px이 통째로 잘렸다** — 키보드 사용자에게 포커스가 아예 안 보였다. 부모의 `overflow-hidden`을 뗄 수 없는 자리에서만 안쪽으로 그린다.
 - **저장 알림은 표 하나에 `aria-live="polite"` 영역 하나**다 (`components/translations/announcer.tsx`) — 셀마다 두면 903행×3로케일에 2,700개다. 결과만 알린다("Saving…"은 알리지 않는다). 실패 시 포커스는 **`shouldRefocus(active, own)`가 정한다**: `body`이거나 같은 셀일 때만 되돌리고, 사용자가 다음 셀을 치고 있으면 뺏지 않는다 — 재시도 지점은 상태줄의 `[Retry]`다 (design §3.8).
 - **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — `aria-live`가 announcer에만 있는지 · 셀에 `role="status"`가 없는지 · 셀이 키·로케일을 접근 이름으로 드는지 · `Textarea rows=1`인지 · 배너 tone이 warning인지 · 옛 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
@@ -793,8 +799,8 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] raw `<button>`·`<input>`·`<select>`·`<textarea>`를 쓰지 않고 프리미티브를 지났나 (§6.4·§7)
 - [ ] `muted` 표면(사이드바·표 헤더·칩) 위에 `text-muted-foreground`·`hover:bg-accent`를 쓰지 않았나 (§2.1·§2.2)
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)
-- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600·green·tone 여덟뿐 (§6.2). 예외는 **남의 자산**(브랜드 글리프 §6.8 · 국기 SVG §6.1)과 흑백 둘(`bg-white` 로그인 좌측 · `text-white` tone 위 글자)이다
-- [ ] **weight가 500을 넘지 않나** — 기본은 300, 버튼 라벨은 400 (§0·§4)
+- [ ] 새 raw 색을 늘리지 않았나 — amber·destructive·blue-600·**blue-400**(포커스 링)·green·tone 여덟뿐 (§6.2). 예외는 **남의 자산**(브랜드 글리프 §6.8 · 국기 SVG §6.1)과 흑백 둘(`bg-white` 로그인 좌측 · `text-white` tone 위 글자)이다
+- [ ] **weight가 400과 500 둘뿐인가** — 500을 넘지 않고 `font-light`도 쓰지 않는다 (§0·§4)
 - [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다 (§4)
 - [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
 - [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)

@@ -261,6 +261,23 @@ describe("행 축 (8-4)", () => {
   });
 
   /**
+   * ⚠️ **`Base` 라벨을 배지에서 뺐다** (2026-09-11 사용자). 이 표에서 base 행은 **맨 위 한 줄**이고
+   * (`sortLocales`가 그렇게 세운다) 그 사실이 903키 × 로케일 수만큼 반복되면 배지 폭만 먹는다 —
+   * "가장 흔한 상태가 조용해야 한다"는 규칙(DESIGN §6.2)의 연장이고, 그 라벨이 값을 하는 자리는
+   * 로케일이 **목록**으로 서는 `/locales`·Home이다(거기서는 계속 쓴다 — 사전 키를 지우지 않았다).
+   *
+   * ⚠️ 대가를 적어 둔다 — base 셀을 비우면 그 키가 base 파일에서 빠져 **다음 push가 전 로케일에서
+   * orphan한다**(`lib/pull/plan.ts`). 그 위험을 표에서 말하는 것은 이제 순서뿐이다.
+   */
+  it("배지가 base 라벨을 안 든다 — 이 표에서 base는 맨 위 한 줄이다", () => {
+    expect(read(LOCALE_BADGE)).not.toMatch(/m\.locales\.base/);
+    expect(read(KEY_GROUP)).not.toMatch(/isBase/);
+    // 사전 키는 남는다 — `/locales`·Home이 계속 쓴다.
+    expect(read("app/(edit)/projects/[slug]/locales/page.tsx")).toMatch(/m\.locales\.base/);
+    expect(read("app/(edit)/projects/[slug]/page.tsx")).toMatch(/m\.locales\.base/);
+  });
+
+  /**
    * ⚠️ **`Untranslated` 배지·상태 필터·입력 테두리가 같은 배송에서 사라졌다** — 값이 빈 셀의
    * 유일한 시각 신호가 `placeholder`다 (spec Q3).
    */

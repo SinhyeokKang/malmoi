@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 
 import { TranslationInput } from "@/components/translation-input";
 import { LocaleBadge } from "@/components/translations/locale-badge";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
 import type { ProjectContext } from "@/lib/keys/query";
@@ -32,8 +33,13 @@ export function KeyGroup({
 }: {
   slug: string;
   row: KeyRow;
-  /** 보이는 로케일 — base가 맨 앞이다. 원문이 위에 있어야 그 아래를 채운다 (MVP §3.2). */
-  locales: readonly { code: string; isBase: boolean; orphaned: boolean }[];
+  /**
+   * 보이는 로케일 — base가 맨 앞이다. 원문이 위에 있어야 그 아래를 채운다 (MVP §3.2).
+   *
+   * ⚠️ **`isBase`를 받지 않는다** — 정렬은 호출부(`sortLocales`)가 이미 했고 배지는 그 라벨을 안 든다.
+   * 여기서 다시 받으면 "쓰지 않는 필드"가 이 표의 계약처럼 읽힌다.
+   */
+  locales: readonly { code: string; orphaned: boolean }[];
   project: ProjectContext;
   actors: Map<string, Actor>;
   lastPulledAt: Date | null;
@@ -87,23 +93,7 @@ export function KeyGroup({
   );
 }
 
-/**
- * 로케일 하나의 행 — 배지 + (입력 · 메타).
- *
- * ⚠️ **메타가 우측 고정 폭 슬롯이 아니라 입력 아래 줄이다** (malmoi#33, 2026-09-11 실측으로 뒤집혔다).
- * 초안은 배지 둘과 `Edited by`를 `w-40`(160) 우측 슬롯에 두고 *"렌더마다 변하지 않으므로 빈 상태에서도
- * 폭을 차지한다"*를 근거로 삼았는데, **1280px에서 그 예산이 안 남는다**: 값 열 366에서 로케일 칸 80 ·
- * 메타 160 · padding·gap 36을 빼면 입력이 **28px**이고 값이 한 글자씩 세로로 쌓였다(행 높이 210px).
- * 키 셀 320을 고정으로 두기로 한 이상(spec 「1280px」) 한 줄에 넷이 구조적으로 안 들어간다.
- *
- * ⚠️ **"입력 폭이 행마다 달라진다"는 걱정이 이 배치에서는 성립하지 않는다** — 메타가 아래 줄이면
- * 입력은 언제나 값 열 전체다. 그 걱정이 우측 슬롯 전제의 것이었다.
- *
- * ⚠️ **셀 저장 상태 4종은 여전히 `TranslationInput` 안이다.** `Not saved yet — leave the cell to save`가
- * 약 230px이고 타이핑 중에 나타났다 사라지므로 **입력과 같은 줄에 두면** `field-sizing-content`
- * textarea의 폭이 그때마다 재계산돼 줄바꿈과 커서가 튄다 — 그것이 우측 슬롯을 피한 원래 이유이고
- * 여기서도 지켜진다(메타와 저장 상태는 둘 다 입력 **아래**다).
- */
+/** Metadata expands only for the active cell so completed rows retain the design's density. */
 function LocaleRow({
   slug,
   row,
@@ -113,7 +103,8 @@ function LocaleRow({
 }: {
   slug: string;
   row: KeyRow;
-  locale: { code: string; isBase: boolean; orphaned: boolean };
+  /** ⚠️ `isBase`가 없다 — 배지가 그 라벨을 안 들고, 이 표에서 base는 **순서**가 말한다. */
+  locale: { code: string; orphaned: boolean };
   actors: Map<string, Actor>;
   lastPulledAt: Date | null;
 }) {
@@ -122,32 +113,20 @@ function LocaleRow({
   const actor = actorLabel(cell?.updatedBy ?? null, actors);
   const unsent = cell !== undefined && isUnpublished(cell, lastPulledAt);
 
-  // orphaned 축은 키 셀·로케일 배지가 이미 말했다 — 여기서 또 말하지 않는다.
   const meta = state === "needsReview" || unsent || actor !== null;
+  const metaLabel = [
+    state === "needsReview" ? m.translations.needsReview : null,
+    unsent ? m.translations.notSent : null,
+    actor !== null ? m.translations.editedBy(actor) : null,
+  ].filter(Boolean).join(" · ");
 
   return (
-    /*
-      ⚠️ **행에 padding이 없다** (2026-09-11 — 시안 `212:5418`). 여백은 로케일 칸(68 고정)과 값 칸
-      (`p-3`)이 각자 든다: 행이 자기 padding을 들면 hover·포커스 표면이 셀 폭 전체를 못 덮고
-      값 텍스트의 좌측이 시안의 12에서 밀린다.
-    */
     <div className="flex items-start">
-      {/*
-        ⚠️ **68이고 80이 아니다** — 시안 `212:5076`의 로케일 칸 폭이다. 값 열의 예산을 12px 돌려준다
-        (`translations-screen.test.ts`가 그 합을 상시로 센다).
-
-        ⚠️ **세로 중앙이 아니라 첫 줄에 맞춘다** (2026-09-11 실물에서 시안을 벗어났다). 시안의 로케일
-        칸은 `items-center`인데 **그 시안에는 메타 줄이 없다** — 우리 행은 `Needs review`·`Edited by`가
-        입력 **아래**에 붙어(malmoi#33) 블록 높이가 행마다 다르고, 중앙 정렬이면 메타가 있는 행에서만
-        배지가 아래로 내려앉아 **같은 표에서 배지 높이가 들쭉날쭉해진다.** `pt-2.5`가 입력 첫 줄의
-        중심(값 칸 `py-1.5` + 입력 `py-1` + 첫 줄 절반)과 배지 중심을 맞춘 값이다.
-      */}
-      <div className="flex w-17 shrink-0 justify-center pt-2.5">
-        <LocaleBadge code={locale.code} isBase={locale.isBase} orphaned={locale.orphaned} />
+      <div className="flex h-[46px] w-17 shrink-0 items-center justify-center">
+        <LocaleBadge code={locale.code} orphaned={locale.orphaned} />
       </div>
 
-      {/* ⚠️ 이 열이 값 열 전체를 쓴다 — 우측에 고정 폭을 얹으면 1280에서 입력이 28px가 된다 (malmoi#33). */}
-      <div className="min-w-0 flex-1 py-1.5 pr-3">
+      <div className="group/cell border-border relative min-w-0 flex-1 border-l has-[textarea:focus-visible]:after:pointer-events-none has-[textarea:focus-visible]:after:absolute has-[textarea:focus-visible]:after:inset-px has-[textarea:focus-visible]:after:left-0 has-[textarea:focus-visible]:after:z-20 has-[textarea:focus-visible]:after:ring-ring has-[textarea:focus-visible]:after:ring-2">
         <TranslationInput
           slug={slug}
           keyId={row.id}
@@ -157,16 +136,29 @@ function LocaleRow({
           disabled={row.orphaned || locale.orphaned}
         />
         {meta && (
-          // ⚠️ `px-3`이 입력의 좌측 padding과 같은 값이다 — 다르면 메타가 값보다 어긋난다.
-          <div className="mt-1 flex flex-wrap items-baseline gap-1.5 px-3 text-xs">
-            {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
-            {unsent && <Badge>{m.translations.notSent}</Badge>}
-            {actor !== null && (
-              <span className="text-muted-foreground min-w-0 truncate">
-                {m.translations.editedBy(actor)}
-              </span>
-            )}
-          </div>
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={metaLabel}
+              title={metaLabel}
+              className="absolute top-[7px] right-1 h-8 w-6 px-0"
+            >
+              <span aria-hidden="true" className={state === "needsReview"
+                ? "block size-2 rotate-45 bg-amber-500"
+                : unsent ? "block size-2 rounded-full border border-current text-muted-foreground"
+                  : "block size-2 rounded-full bg-muted-foreground/40"} />
+            </Button>
+            <div className="hidden flex-wrap items-baseline gap-1.5 px-3 pb-2 text-xs group-focus-within/cell:flex">
+              {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
+              {unsent && <Badge>{m.translations.notSent}</Badge>}
+              {actor !== null && (
+                <span className="text-muted-foreground min-w-0 break-words">
+                  {m.translations.editedBy(actor)}
+                </span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

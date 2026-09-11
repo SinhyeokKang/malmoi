@@ -441,8 +441,20 @@ export const en = {
         summary: "Can't find your files?",
         format: "File format",
         path: "Path",
-        /** 문장을 사전이 소유한다 — 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3). */
-        pathHint: (token: ReactNode): ReactNode => <>The {token} placeholder is where the language goes.</>,
+        /**
+         * 문장을 사전이 소유한다 — 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3).
+         *
+         * ⚠️ **갈래가 어댑터의 `layout`이다** — multi-locale(`ts-dict`)은 한 파일에 로케일이 나란히
+         * 있어 경로에 로케일이 없다. 한 문장으로 두면 그 포맷에서 틀린 안내가 되고, 그것이
+         * 903키 딕셔너리로 가는 **유일한 길**이다(자동 탐지에서 빠져 있다 — ADAPTER-COVERAGE 판정 ③).
+         * 갈래 누락은 소비자가 거는 `satisfies Record<Layout, …>`가 잡는다.
+         */
+        pathHint: {
+          "per-locale": (token: ReactNode): ReactNode => <>The {token} placeholder is where the language goes.</>,
+          "multi-locale": (token: ReactNode): ReactNode => (
+            <>This format keeps every language in one file, so the path takes no language placeholder — use {token} to match the files.</>
+          ),
+        },
         baseLocale: "Base language",
         hint: "Setting a path clears the selection above. If no file matches, the project isn't created.",
       },
