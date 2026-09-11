@@ -21,6 +21,7 @@ import {
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 번역 화면 — **키 하나가 한 그룹이고 로케일이 그 아래 행으로 쌓인다** (8-4, 시안 `212:937`).
@@ -55,7 +56,7 @@ export const maxDuration = 60;
  * ⚠️ **옛 `focus`·`state`가 없다** (8-4). 옛 링크는 무시된다 — 기본 선택으로 떨어질 뿐 404도
  * 리다이렉트도 아니다.
  */
-type Search = { ns?: string; locales?: string; q?: string };
+type Search = Raw<"ns" | "locales" | "q">;
 
 export default async function TranslationsPage({
   params,
@@ -65,7 +66,7 @@ export default async function TranslationsPage({
   searchParams: Promise<Search>;
 }) {
   const { slug } = await params;
-  const search = await searchParams;
+  const search = firstQueryValues(await searchParams);
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
   // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
@@ -102,10 +103,13 @@ export default async function TranslationsPage({
     a.isBase === b.isBase ? (a.code < b.code ? -1 : 1) : a.isBase ? -1 : 1,
   );
 
-  const [rows, unpublished] = await Promise.all([
-    loadKeys(prisma, project.id),
-    countUnpublished(prisma, project.id, project.lastPulledAt),
-  ]);
+  /**
+   * ⚠️ **키만 먼저 읽는다 — 나머지 둘은 착지 redirect **뒤**다** (2026-09-12). 기본 착지는 URL을
+   * 고정하려고 아래에서 `redirect`하는데, 그 판정에 필요한 것은 `rows` 하나다. 집계·편집자를 여기서
+   * 함께 읽으면 **버려질 렌더가 그 둘까지 조회**하고, 사이드바에서 들어오는 가장 흔한 경로가 매번
+   * 그 값을 문다 (SAAS §8의 2초 게이트가 재는 것이 그 경로다).
+   */
+  const rows = await loadKeys(prisma, project.id);
 
   /**
    * 보일 로케일. **폴백은 "살아 있는 로케일 전체"다** — orphaned를 섞으면 그 빈 셀이 전부
@@ -118,7 +122,17 @@ export default async function TranslationsPage({
   const counts = namespaceCountsFor(rows, selected);
   const selection = resolveNamespace(search.ns, counts);
 
-  // 최초 착지만 자동 선택한다. 저장 재검증이 다른 네임스페이스로 이동해 작성 중인 셀을 지우면 안 된다.
+  /**
+   * 기본 착지를 **URL에 고정한다** — 그 뒤로는 화면이 ns를 다시 고르지 않는다.
+   *
+   * ⚠️ **저장 재검증이 화면을 옮기는 것을 막는 것이 요지다.** `?ns=`가 없으면 매 렌더가
+   * `defaultNamespace`를 다시 계산하는데, 한 셀을 채워 그 네임스페이스의 pending이 0이 되면
+   * 다음 재검증이 **다른 네임스페이스로 착지해** 작성 중인 셀이 통째로 언마운트된다.
+   *
+   * ⚠️ **이 자리가 조회 둘보다 앞이어야 한다** (2026-09-12) — 버려질 렌더이므로 여기까지 온 비용이
+   * 그대로 낭비다. 그래도 `loadKeys` 한 번은 못 피한다: 착지할 네임스페이스를 `counts`가 정하고
+   * 그 출처가 `rows`다.
+   */
   if (selection.kind === "one" && search.ns !== selection.namespace) {
     redirect(routes.translations(slug, { ns: selection.namespace, locales: search.locales, q: search.q }));
   }
@@ -132,9 +146,17 @@ export default async function TranslationsPage({
   const visible = pendingFirst(filtered, selected);
   const groups = groupByNamespace(visible, counts);
 
-  // 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
-  // `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3). **렌더되는 행만** 모은다.
-  const actors = await loadActors(prisma, collectActorIds(visible));
+  /**
+   * 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
+   * `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3). **렌더되는 행만** 모은다.
+   *
+   * ⚠️ **미배포 집계와 병렬이다** — 위에서 `loadKeys`를 떼어내며 라운드가 하나 늘 뻔했다. 둘은
+   * 서로를 안 물므로 같은 라운드에 보낸다.
+   */
+  const [unpublished, actors] = await Promise.all([
+    countUnpublished(prisma, project.id, project.lastPulledAt),
+    loadActors(prisma, collectActorIds(visible)),
+  ]);
 
   /**
    * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (design §2).
