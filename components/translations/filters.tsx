@@ -4,6 +4,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -113,7 +114,15 @@ export function TranslationFilters({
                 disabled={checked && selected.length === 1}
                 onCheckedChange={() => toggleLocale(locale.code)}
               >
-                <span className="text-mono">{locale.code}</span>
+                {/*
+                  ⚠️ **국기가 표의 배지와 같아야 한다** (2026-09-11 실물). 고르는 자리와 확인하는
+                  자리가 다르게 보이면 그 둘이 같은 로케일이라는 것을 사용자가 매번 대조하게 된다.
+                  조각은 `LocaleFlag`가 들고, 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 안 온다.
+                */}
+                <span className="flex items-center gap-1.5">
+                  <LocaleFlag code={locale.code} />
+                  {locale.code}
+                </span>
               </DropdownMenuCheckboxItem>
             );
           })}

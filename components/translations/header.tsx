@@ -100,10 +100,20 @@ export function TranslationsHeader({
 
   return (
     <>
-      <PanelHeader className="space-y-3 px-6 py-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          {/* 화면 제목이 사이드바 라벨과 **같은 키**다 (8-3) — 두 벌이면 하나가 낡는다. */}
-          <h1 className="text-base font-medium">{m.common.nav.translations}</h1>
+      {/*
+        ⚠️ **여백이 `/projects` 목록과 같은 형이다** (2026-09-11 — 시안 `212:5074` 실측: `pt-24`
+        `gap-16` `pb-12`). 전에는 `py-4 space-y-3`이라 제목이 패널 위에 붙고 툴바 간격이 한 칸
+        좁았다 — 같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다.
+      */}
+      <PanelHeader className="flex flex-col gap-4 px-6 pt-6 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/*
+            화면 제목이 사이드바 라벨과 **같은 키**다 (8-3) — 두 벌이면 하나가 낡는다.
+
+            ⚠️ **`text-xl`이고 `text-base`가 아니다** (2026-09-11 — 시안 20px). `/projects` 목록의
+            제목과 같은 급이어야 하고, 그 둘이 갈리면 어느 쪽이 페이지 제목인지가 화면마다 달라진다.
+          */}
+          <h1 className="text-xl font-medium">{m.common.nav.translations}</h1>
           {/*
             ⚠️ **숫자만 그리면 접근 이름이 "Translations 1134"다.** 시안이 숫자 배지라 보이는 것은
             그대로 두고, 스크린리더에는 완전한 문장을 준다.
@@ -163,7 +173,15 @@ export function TranslationsHeader({
         <FilterChips slug={slug} query={chipQuery} selected={selected} fallback={fallback} />
       </PanelHeader>
 
-      <PanelBody className="px-6 py-4">
+      {/*
+        시안의 `scroll area`가 머리 바로 아래에서 12로 시작한다 — 머리의 `pb-3`과 짝이다.
+
+        ⚠️ **`flex flex-col`이 빈 상태를 패널 세로 중앙에 세우는 장치다** (2026-09-11 — `/projects`와
+        같은 형). 래퍼가 `min-h-full`을 들고 있으므로(`content-panel.tsx`) 이 열이 패널 높이를 받고,
+        그 안의 빈 상태가 `flex-1`로 남은 높이를 먹는다. 표가 올 때는 아무 일도 안 한다 — 표는
+        `flex-1`이 아니라 자연 높이다.
+      */}
+      <PanelBody className="flex flex-col px-6 pt-3 pb-8">
         {/*
           배너가 위, 결과가 아래다 (design §3.11) — 결과는 방금 누른 것에 대한 답이라 더 가까이 둔다.
           ⚠️ **셋 다 조건부 분기 밖의 고정 슬롯이다** (DESIGN §6.1) — 안에 두면 `router.refresh()`가

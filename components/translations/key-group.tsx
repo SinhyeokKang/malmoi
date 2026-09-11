@@ -39,11 +39,25 @@ export function KeyGroup({
   lastPulledAt: Date | null;
 }) {
   return (
-    <div className="border-border grid grid-cols-[320px_minmax(0,1fr)] border-b last:border-b-0">
-      {/* 키 셀 — 이름 · orphaned · 설명 · 코드 참조. 시안의 320×123이 열려 있는 자리다 (design §4). */}
-      <div className="min-w-0 px-4 py-3">
+    <div className="border-border grid grid-cols-[320px_minmax(0,1fr)] border-b">
+      {/*
+        키 셀 — 이름 · orphaned · 설명 · 코드 참조. 시안의 320×123이 열려 있는 자리다 (design §4).
+
+        ⚠️ **오른쪽 경계선을 이 셀이 든다** (2026-09-11 — 시안 `212:5079`의 `border-r`). 값 열의
+        로케일 행 구분선은 그 선에서 시작하므로, 없으면 **키가 몇 줄을 걸치는지**가 표에서 사라진다.
+
+        ⚠️ **좌우 padding이 8이다** — 시안의 키 셀 텍스트가 x=8이고, 네임스페이스 헤딩도 같은 선에
+        선다. `px-4`면 그 둘이 6px 어긋난다.
+      */}
+      <div className="border-border min-w-0 border-r px-2 py-3">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-mono min-w-0 break-all">{row.key}</span>
+          {/*
+            ⚠️ **sans다 — `text-mono`가 아니다** (2026-09-11 사용자, 시안 `212:3814`가 14px regular).
+            DESIGN §4.1의 mono 표면 목록에서 **번역 키만** 빠졌다: 이 화면은 표 전체가 키이고,
+            2,709행에서 mono가 깔리면 자폭이 sans의 1.2배라 320 칸의 트렁케이션이 그만큼 늘어난다.
+            나머지 식별자(slug·리포명·브랜치·로케일 코드)는 그대로 mono다 — 그쪽은 화면에 한둘이다.
+          */}
+          <span className="min-w-0 text-sm break-all">{row.key}</span>
           {row.orphaned && (
             <Badge variant="danger" className="shrink-0">
               {m.translations.orphaned}
@@ -56,7 +70,8 @@ export function KeyGroup({
         <CodeRef row={row} project={project} />
       </div>
 
-      <div className="divide-border/60 min-w-0 divide-y">
+      {/* ⚠️ 구분선 색이 키 셀의 `border-r`과 **같아야** 한다 — `/60`이면 세로선만 진해 격자가 어긋나 보인다. */}
+      <div className="divide-border min-w-0 divide-y">
         {locales.map((locale) => (
           <LocaleRow
             key={locale.code}
@@ -111,13 +126,28 @@ function LocaleRow({
   const meta = state === "needsReview" || unsent || actor !== null;
 
   return (
-    <div className="flex items-start gap-3 px-3 py-2">
-      <div className="flex w-20 shrink-0 justify-center pt-1.5">
+    /*
+      ⚠️ **행에 padding이 없다** (2026-09-11 — 시안 `212:5418`). 여백은 로케일 칸(68 고정)과 값 칸
+      (`p-3`)이 각자 든다: 행이 자기 padding을 들면 hover·포커스 표면이 셀 폭 전체를 못 덮고
+      값 텍스트의 좌측이 시안의 12에서 밀린다.
+    */
+    <div className="flex items-start">
+      {/*
+        ⚠️ **68이고 80이 아니다** — 시안 `212:5076`의 로케일 칸 폭이다. 값 열의 예산을 12px 돌려준다
+        (`translations-screen.test.ts`가 그 합을 상시로 센다).
+
+        ⚠️ **세로 중앙이 아니라 첫 줄에 맞춘다** (2026-09-11 실물에서 시안을 벗어났다). 시안의 로케일
+        칸은 `items-center`인데 **그 시안에는 메타 줄이 없다** — 우리 행은 `Needs review`·`Edited by`가
+        입력 **아래**에 붙어(malmoi#33) 블록 높이가 행마다 다르고, 중앙 정렬이면 메타가 있는 행에서만
+        배지가 아래로 내려앉아 **같은 표에서 배지 높이가 들쭉날쭉해진다.** `pt-2.5`가 입력 첫 줄의
+        중심(값 칸 `py-1.5` + 입력 `py-1` + 첫 줄 절반)과 배지 중심을 맞춘 값이다.
+      */}
+      <div className="flex w-17 shrink-0 justify-center pt-2.5">
         <LocaleBadge code={locale.code} isBase={locale.isBase} orphaned={locale.orphaned} />
       </div>
 
       {/* ⚠️ 이 열이 값 열 전체를 쓴다 — 우측에 고정 폭을 얹으면 1280에서 입력이 28px가 된다 (malmoi#33). */}
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 py-1.5 pr-3">
         <TranslationInput
           slug={slug}
           keyId={row.id}
@@ -127,7 +157,8 @@ function LocaleRow({
           disabled={row.orphaned || locale.orphaned}
         />
         {meta && (
-          <div className="mt-1 flex flex-wrap items-baseline gap-1.5 text-xs">
+          // ⚠️ `px-3`이 입력의 좌측 padding과 같은 값이다 — 다르면 메타가 값보다 어긋난다.
+          <div className="mt-1 flex flex-wrap items-baseline gap-1.5 px-3 text-xs">
             {state === "needsReview" && <Badge variant="warning">{m.translations.needsReview}</Badge>}
             {unsent && <Badge>{m.translations.notSent}</Badge>}
             {actor !== null && (

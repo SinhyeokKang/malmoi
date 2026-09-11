@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterX, X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -37,37 +37,55 @@ export function FilterChips({
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      {chips.map((chip) => {
-        const label = chipLabel(chip);
-        return (
-          <span
-            key={chip.key}
-            className="bg-muted text-foreground flex items-center gap-0.5 rounded-full py-0.5 pr-0.5 pl-2.5 text-xs"
-          >
-            {label}
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={m.translations.chips.remove(label)}
-              onClick={() => router.push(routes.translations(slug, chip.next))}
-              className="size-5 rounded-full p-0"
+    /*
+      ⚠️ **초기화가 칩 옆이 아니라 줄 오른쪽 끝이다** (2026-09-11 — 시안 `212:4891`: 칩 그룹은
+      왼쪽, `IconButton`이 x=1252). 칩 옆에 두면 칩이 늘어날 때마다 그 버튼이 옮겨 다녀 **누를
+      자리가 화면마다 달라진다** — 툴바의 검색이 오른쪽에 고정인 것과 같은 축이다.
+    */
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-1">
+        {chips.map((chip) => {
+          const label = chipLabel(chip);
+          return (
+            /*
+              시안 `Chip` — h32 · `rounded-full` · `bg-muted` · px 8 · gap 4 · 14px.
+              ⚠️ **전에는 `text-xs py-0.5`라 높이가 20이었다** — 같은 줄의 컨트롤이 36인데 칩만
+              절반이면 필터가 걸려 있다는 사실이 눈에 안 들어온다.
+            */
+            <span
+              key={chip.key}
+              className="bg-muted text-foreground flex h-8 items-center gap-1 rounded-full pr-1 pl-2.5 text-sm"
             >
-              <X className="size-3" aria-hidden />
-            </Button>
-          </span>
-        );
-      })}
+              {label}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={m.translations.chips.remove(label)}
+                onClick={() => router.push(routes.translations(slug, chip.next))}
+                className="size-6 rounded-full p-0"
+              >
+                <X className="size-3.5" aria-hidden />
+              </Button>
+            </span>
+          );
+        })}
+      </div>
 
-      {/* ⚠️ `size="icon"`은 존재하지 않는다 — 관용구는 `ghost` + 정사각 유틸이다 (DESIGN §6.4). */}
+      {/*
+        ⚠️ `size="icon"`은 존재하지 않는다 — 관용구는 `ghost` + 정사각 유틸이다 (DESIGN §6.4).
+
+        ⚠️ **`RotateCcw`이고 `FilterX`가 아니다** (2026-09-11) — 시안이 `repeat-outlined`(순환
+        화살표)이고, **`/projects`의 [Clear filters]와 같은 글리프**다. 이 버튼도 필터만이 아니라
+        검색까지 되돌리므로 깔때기 글리프면 지워지는 것이 필터뿐이라고 말하게 된다.
+      */}
       <Button
         variant="ghost"
         size="sm"
         aria-label={m.translations.filters.clear}
         onClick={() => router.push(routes.translations(slug, clearedQuery(query)))}
-        className="ml-1 size-7 p-0"
+        className="size-7 shrink-0 rounded-full p-0"
       >
-        <FilterX aria-hidden />
+        <RotateCcw className="size-5" aria-hidden />
       </Button>
     </div>
   );

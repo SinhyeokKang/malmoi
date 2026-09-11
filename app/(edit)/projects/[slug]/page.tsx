@@ -108,7 +108,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
         <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-            <h1 className="text-base font-medium">{project.name}</h1>
+            <h1 className="text-xl font-medium">{project.name}</h1>
             <ButtonLink variant="primary" href={routes.translations(slug)}>
               <Languages aria-hidden />
               {m.home.openTranslations}
@@ -152,8 +152,8 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                       href={routes.translations(slug, { locales: locale.code })}
                       className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-[3px] focus-visible:outline-none"
                     >
-                      {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 (DESIGN §4.1) */}
-                      <span className="text-mono">{locale.code}</span>
+                      {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
+                      <span>{locale.code}</span>
                       {locale.isBase && <Badge>{m.locales.base}</Badge>}
                       <span className="ml-auto flex items-baseline gap-2">
                         {locale.needsReview > 0 && (

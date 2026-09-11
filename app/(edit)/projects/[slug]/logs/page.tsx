@@ -77,7 +77,7 @@ export default async function LogsPage({
         {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
               위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          <h1 className="text-base font-medium">{m.common.nav.logs}</h1>
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.logs}</h1>
           <p className="text-muted-foreground text-xs">{m.logs.description}</p>
         </div>
       </PanelHeader>

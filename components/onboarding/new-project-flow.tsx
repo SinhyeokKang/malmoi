@@ -353,7 +353,7 @@ function ConfirmStep({
                   name="baseLocale"
                   checked={baseLocale === code}
                   onChange={() => setBaseLocale(code)}
-                  label={<span className="text-mono">{code}</span>}
+                  label={<span>{code}</span>}
                 />
               ))}
             </div>

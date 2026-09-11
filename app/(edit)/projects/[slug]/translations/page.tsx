@@ -34,7 +34,8 @@ import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
  * ⚠️ **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (6a T2). 그 판정이 축 변경을 그대로
  * 통과한다 — `defaultNamespace`가 로케일을 인자로 안 받게 만들어 둔 것이 여기서 값을 한다.
  *
- * 시각 규칙은 docs/DESIGN.md — 키는 mono(§4.1), 배지(§6.2), 표 규칙(§6.1).
+ * 시각 규칙은 docs/DESIGN.md — 키·로케일 코드는 **sans**(§4.1: mono는 8-P의 diff로 간다),
+ * 배지(§6.2), 표 규칙(§6.1).
  */
 
 /**
@@ -176,18 +177,27 @@ export default async function TranslationsPage({
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
     >
+      {/*
+        ⚠️ **빈 상태 둘이 패널 세로 중앙이다** (2026-09-11 — `/projects`와 같은 형). `PanelBody`가
+        `flex flex-col`이고 여기가 `flex-1`이라 남은 높이를 먹는다. 위에 붙여 두면 1080 화면에서
+        문구가 배너 바로 아래 한 줄로 떠 있고 그 아래가 통째로 빈다.
+      */}
       {selection.kind === "none" ? (
-        <EmptyState
-          icon={Languages}
-          title={m.translations.empty.noKeys.title}
-          description={m.translations.empty.noKeys.description}
-        />
+        <div className="flex flex-1 items-center justify-center">
+          <EmptyState
+            icon={Languages}
+            title={m.translations.empty.noKeys.title}
+            description={m.translations.empty.noKeys.description}
+          />
+        </div>
       ) : groups.length === 0 ? (
-        <EmptyState
-          icon={Languages}
-          title={m.translations.empty.noMatch.title}
-          description={m.translations.empty.noMatch.description}
-        />
+        <div className="flex flex-1 items-center justify-center">
+          <EmptyState
+            icon={Languages}
+            title={m.translations.empty.noMatch.title}
+            description={m.translations.empty.noMatch.description}
+          />
+        </div>
       ) : (
         /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
         <Announcer>
@@ -200,7 +210,33 @@ export default async function TranslationsPage({
                   ⚠️ **sticky로 만들지 않는다** — 시안이 스크롤 영역 안의 보통 블록이고, sticky는
                   스크롤 컨테이너 기준이라 이 레이아웃에서 자리가 애매하다. 필요해지면 실측 뒤에.
                 */}
-                <div className="mb-2 flex items-baseline gap-2">
+                {/*
+                  ⚠️ **헤딩이 표의 첫 행이다 — 표를 감싸는 상자가 없다** (2026-09-11 — 시안
+                  `212:3815`). 전에는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데,
+                  시안의 표는 **선만으로** 구조를 만든다: 바깥 테두리가 없고 헤딩 아래·키 그룹 사이의
+                  가로선과 키 셀의 세로선이 전부다. 상자를 두면 그 선들이 격자 안의 격자가 된다.
+
+                  ⚠️ **`px-2`가 키 셀과 같은 선이다** — 헤딩과 키 이름의 왼쪽이 맞아야 네임스페이스가
+                  그 아래 키들을 덮는 것으로 읽힌다.
+
+                  ⚠️ **`sticky top-0`이다** (2026-09-11 사용자 — DESIGN §6.1의 "sticky로 만들지
+                  않는다"를 뒤집었다). 그 판정의 근거는 *"sticky는 스크롤 컨테이너 기준이라 이
+                  레이아웃에서 자리가 애매하다"*였는데, 스크롤 경계가 `PanelBody` **하나로** 분명해진
+                  지금은 기준이 애매하지 않다 — 가장 가까운 스크롤 조상이 그것이고 `top-0`이 그
+                  상단이다. 섹션이 위로 빠져나가면 **다음 섹션의 헤딩이 밀어 올려 교체된다**(sticky의
+                  기본 동작이라 JS가 없다).
+
+                  ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다** — 붙어 있는 동안 뒤로
+                  값이 흐르는 자리다. 패널과 같은 흰색이라 색이 늘지 않는다.
+
+                  ⚠️ **`z-*`를 주지 않는다** — positioned 요소(sticky)는 static 형제(키 그룹)보다 뒤에
+                  칠해지는 것이 페인팅 순서이고, 그 위에 층을 하나 더 만들면 셀의 포커스 링·드롭다운과
+                  높이를 다투게 된다.
+
+                  ⚠️ **조상에 `overflow-hidden`을 들이지 않는다** — 그 조상이 새 스크롤 컨테이너가 되어
+                  헤딩이 거기 갇힌다. 지금 체인은 `PanelBody`(스크롤) → 래퍼 → `Announcer` → 섹션이다.
+                */}
+                <div className="border-border bg-background sticky top-0 flex items-center gap-2 border-b px-2 py-3">
                   <h2 className="text-sm font-medium">{group.namespace}</h2>
                   {/* 필터 **후** 건수다 — 제목 옆 총계가 필터 전이라 둘이 같은 값이 아니다. */}
                   <Badge variant="neutral">
@@ -208,19 +244,17 @@ export default async function TranslationsPage({
                     <span className="sr-only">{m.translations.keys(group.rows.length)}</span>
                   </Badge>
                 </div>
-                <div className="border-border overflow-hidden rounded-lg border">
-                  {group.rows.map((row) => (
-                    <KeyGroup
-                      key={row.id}
-                      slug={slug}
-                      row={row}
-                      locales={visibleLocales}
-                      project={project}
-                      actors={actors}
-                      lastPulledAt={project.lastPulledAt}
-                    />
-                  ))}
-                </div>
+                {group.rows.map((row) => (
+                  <KeyGroup
+                    key={row.id}
+                    slug={slug}
+                    row={row}
+                    locales={visibleLocales}
+                    project={project}
+                    actors={actors}
+                    lastPulledAt={project.lastPulledAt}
+                  />
+                ))}
               </section>
             ))}
           </div>
@@ -239,8 +273,11 @@ export default async function TranslationsPage({
  */
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <PanelBody>
-      <div className="mx-auto w-full max-w-4xl px-6 py-6">{children}</div>
+    <PanelBody className="flex flex-col">
+      {/* ⚠️ 세로 중앙도 `flex-1`이 든다 — 위 표 안의 빈 상태 둘과 같은 형이다 (2026-09-11). */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center px-6 py-6">
+        {children}
+      </div>
     </PanelBody>
   );
 }

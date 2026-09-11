@@ -76,7 +76,7 @@ export default async function NewProjectPage({
           <Breadcrumb
             items={[{ label: m.common.nav.projects, href: routes.projects() }, { label: m.common.nav.newProject }]}
           />
-          <h1 className="text-base font-medium">{m.common.nav.newProject}</h1>
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.newProject}</h1>
         </div>
       </PanelHeader>
 

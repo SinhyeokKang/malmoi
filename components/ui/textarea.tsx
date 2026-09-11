@@ -18,7 +18,12 @@ export function Textarea({ className, rows = 1, ...props }: ComponentPropsWithRe
   return (
     <textarea
       rows={rows}
-      className={cn(fieldClass, "field-sizing-content py-1", "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
+      /**
+       * ⚠️ **`resize-none`이다** (2026-09-11 실물). `field-sizing-content`가 높이를 내용에 맞추므로
+       * 손잡이가 할 일이 없는데, 브라우저 기본값이 그것을 오른쪽 아래에 그린다 — 번역 표에서는
+       * **셀마다 그 빗금이 서서** 값 옆에 정체 모를 글리프가 2,709개 붙는다(시안에 없다).
+       */
+      className={cn(fieldClass, "field-sizing-content resize-none py-1", "focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none", className)}
       {...props}
     />
   );

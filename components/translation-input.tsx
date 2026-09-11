@@ -115,12 +115,17 @@ export function TranslationInput({
          *
          * ⚠️ **disabled 배경은 그대로 둔다** — orphaned 축의 셀이 왜 안 눌리는지 말하는 표면이다.
          */
-        className="w-full border-transparent bg-transparent hover:border-input"
+        /**
+         * ⚠️ **`px-3`이 `fieldClass`의 `px-2`를 덮는다** (2026-09-11 — 시안 `212:5403`의 값 셀이
+         * `p-12`다). 행이 자기 padding을 안 들고 이 입력이 셀 폭 전체를 쓰므로, 값 텍스트의 좌측
+         * 여백을 정하는 것이 여기 한 곳이다 — 메타·상태줄이 같은 값을 든다.
+         */
+        className="w-full border-transparent bg-transparent px-3 hover:border-input"
       />
 
       {/* 상태는 한 줄만 차지한다 — 행이 흔들리면 903행 표가 읽기 어려워진다 */}
       {(pending || failed || status === "saved" || value !== saved) && (
-        <div className="flex items-baseline gap-2 text-xs">
+        <div className="flex items-baseline gap-2 px-3 text-xs">
           {failed ? (
             <>
               <span className="text-destructive">{saveMessage(status.error)}</span>

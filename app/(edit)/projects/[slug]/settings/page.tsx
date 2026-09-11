@@ -117,7 +117,7 @@ export default async function SettingsPage({
           {notice !== null && <Alert variant="danger">{notice}</Alert>}
           {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
               위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
-          <h1 className="text-base font-medium">{m.common.nav.projectSettings}</h1>
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.projectSettings}</h1>
         </div>
       </PanelHeader>
 

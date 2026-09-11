@@ -81,7 +81,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
               위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          <h1 className="text-base font-medium">{m.common.nav.locales}</h1>
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.locales}</h1>
           {/* 설명은 제목 아래 한 줄이다 — 표 Card에 제목을 또 달면 같은 낱말이 연달아 나온다. */}
           <p className="text-muted-foreground text-xs">{m.locales.description}</p>
         </div>
@@ -112,8 +112,8 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
                   <Tr key={row.code}>
                     <Td>
                       <span className="flex flex-wrap items-baseline gap-2">
-                        {/* 로케일 코드는 파일명 그대로가 진실이라 식별자다 — mono (DESIGN §4.1) */}
-                        <span className="text-mono">{row.code}</span>
+                        {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
+                        <span>{row.code}</span>
                         {row.isBase && <Badge>{m.locales.base}</Badge>}
                         {/* orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 — 배경 없는 danger (§6.2) */}
                         {row.orphaned && <Badge variant="danger">{m.locales.orphaned.badge}</Badge>}

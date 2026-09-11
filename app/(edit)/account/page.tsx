@@ -75,7 +75,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
           */}
           {notice !== null && <Alert variant="danger">{notice}</Alert>}
-          <h1 className="text-base font-medium">{m.common.nav.settings}</h1>
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.settings}</h1>
         </div>
       </PanelHeader>
 
