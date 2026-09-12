@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 
 import { signIn, signOut } from "@/auth";
 import { InviteProjectCard } from "@/components/invite/project-card";
+import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { Alert } from "@/components/ui/alert";
@@ -106,8 +107,7 @@ export default async function InvitePage({
   if (session.status === "none") {
     return (
       <Card>
-        <h1 className="text-2xl font-medium">{m.invite.title}</h1>
-        <p className="text-muted-foreground text-center text-sm">{m.invite.sentTo(email)}</p>
+        <AuthHeading title={m.invite.title} description={m.invite.sentTo(email)} />
         {failure}
         <p className="text-muted-foreground text-center text-xs">{m.invite.signInHint(email)}</p>
         <div className="flex w-full flex-col gap-2">
@@ -122,12 +122,11 @@ export default async function InvitePage({
 
   return (
     <Card>
-      <h1 className="text-2xl font-medium">{m.invite.title}</h1>
       {/*
         ⚠️ **각주에서 설명으로 올라왔다** — 누구의 초대인지는 수락 버튼 뒤의 단서가 아니라 읽는
         순서의 둘째다 (account-linking §6).
       */}
-      <p className="text-muted-foreground text-center text-sm">{m.invite.sentTo(email)}</p>
+      <AuthHeading title={m.invite.title} description={m.invite.sentTo(email)} />
       {/* 수락 버튼을 눌러서 나는 실패는 이 줄이 유일한 통로다 — 없으면 아무 일도 안 일어난 것으로 보인다. */}
       {failure}
       <InviteProjectCard
@@ -140,6 +139,8 @@ export default async function InvitePage({
         페이지는 `(edit)` 레이아웃 밖이라 셸의 sign out이 없다 (code-review 2026-09-06 🟡11).
         로그아웃 뒤 같은 링크로 돌아온다.
       */}
+      {/* CTA 덩어리 — 컬럼 16과 달리 안쪽은 8이다 (`AuthColumn` 주석). */}
+      <div className="flex w-full flex-col gap-2">
       {e === "email-mismatch" && (
         <form
           className="w-full"
@@ -170,6 +171,7 @@ export default async function InvitePage({
           {m.invite.accept}
         </SubmitButton>
       </form>
+      </div>
     </Card>
   );
 }
@@ -181,10 +183,10 @@ export default async function InvitePage({
 function Card({ children }: { children: ReactNode }) {
   return (
     <AuthLayout>
-      <div className="flex w-[320px] flex-col items-center gap-4">
+      <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         {children}
-      </div>
+      </AuthColumn>
     </AuthLayout>
   );
 }

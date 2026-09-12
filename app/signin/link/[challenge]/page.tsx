@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
 import { SubmitButton } from "@/components/submit-button";
+import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
@@ -54,12 +55,12 @@ export default async function LinkAccountPage({
 
   return (
     <AuthLayout>
-      <div className="flex w-[320px] flex-col items-center gap-4">
+      <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
-        <h1 className="text-center text-2xl font-medium">{m.link.title}</h1>
-        <p className="text-muted-foreground text-center text-sm">
-          {m.link.description(providerLabel(view.pending), providerLabel(view.have))}
-        </p>
+        <AuthHeading
+          title={m.link.title}
+          description={m.link.description(providerLabel(view.pending), providerLabel(view.have))}
+        />
 
         {/*
           ⚠️ **실패는 기본 상태 + `Alert` 한 장이 전부다** (design §5.5) — 부제·각주·구분선·버튼
@@ -77,12 +78,15 @@ export default async function LinkAccountPage({
         )}
 
         {/*
-          ⚠️ **1행이 마스킹한 이메일이다** — 남의 계정이므로 이름·아바타 이미지를 싣지 않는다.
-          우측은 provider 마크 하나이고, 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를
-          그대로 받는다 (design §7).
+          ⚠️ **1행은 마스킹한 이메일이고 아바타만 이름·이미지에서 온다** — 주소가 "어느 계정인가"의
+          답이고, 아바타는 **셸과 같은 얼굴로 보이는 것**이 일이다(같은 계정이 화면마다 다른
+          글자·색이면 아바타가 소음이 된다). 우측은 provider 마크 하나이고, 브랜드 마크는 무채색
+          위계의 대상이 아니라 `--foreground`를 그대로 받는다 (design §7).
         */}
         <EntityCard
           name={view.emailLabel}
+          avatarName={view.name ?? view.emailLabel}
+          image={view.image}
           secondary={`${providerLabel(view.have)} · ${joinedLabel(view.joined)}`}
           meta={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
@@ -98,7 +102,7 @@ export default async function LinkAccountPage({
         <ButtonLink href={routes.signIn()} size="lg" className="w-full">
           {m.invite.otherAccount}
         </ButtonLink>
-      </div>
+      </AuthColumn>
     </AuthLayout>
   );
 }

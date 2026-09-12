@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
+import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
@@ -48,9 +49,10 @@ export default async function SignIn({
 
   return (
     <AuthLayout>
-      <div className="flex w-[320px] flex-col items-center gap-4">
+      <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
-        <h1 className="text-2xl font-medium">{m.signIn.title}</h1>
+        {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}
+        <AuthHeading title={m.signIn.title} />
 
         <div className="flex w-full flex-col gap-2">
           {/* ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 시안이 GitHub을 채움으로 그렸다. */}
@@ -67,7 +69,7 @@ export default async function SignIn({
             </Link>
           </p>
         </div>
-      </div>
+      </AuthColumn>
 
       {/* 렌더하지 않는다 — `?error=`·`?sessions=`를 토스트로 옮기는 조각이다. */}
       <AuthToast error={shown === undefined ? undefined : signInErrorMessage(shown)} sessions={sessions} />

@@ -1030,7 +1030,10 @@ lib/
                           건다** — `Account` PK가 `(provider, providerAccountId)`라 그 둘만으로 남의 행에
                           닿는다) / http.ts(withLoginLink·authorizeLoginLink·withLinkStart — ⚠️ **`withRevocation`이
                           바깥, 이것이 안쪽**이고 state 쿠키 이름·salt가 갈린다) / view.ts(loadChallengeView —
-                          **보일 값만**: 마스킹 이메일·provider·가입 월. 원문은 반환 타입에 없다)
+                          **보일 값만**: 마스킹 이메일·provider·가입 월·표시 이름·아바타 이미지.
+                          ⚠️ **이메일 원문은 반환 타입에 없고 계정 내용(프로젝트 수·멤버)도 안 싣는다** —
+                          이름·이미지는 2026-09-12에 열렸다(그 화면에 온 사람은 이미 주소를 검증받았고,
+                          가린 대가로 아바타가 셸과 다른 얼굴이 됐다))
                         / clear-cookies.ts(일반 로그인 셋이 부른다 — 배타성은 **양방향** 정리가 만든다)
   session-revocation/   전체 세션 회수 (sec-audit-2 #38). `/account`에서 공급자 재왕복 뒤 **그 사용자의**
                         Session을 전부 지운다 — 확인 요청 소비와 삭제가 한 트랜잭션이다.
