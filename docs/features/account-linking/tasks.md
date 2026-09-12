@@ -259,24 +259,73 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 ⚠️ **preview가 아니라 dev(로컬)** — preview는 Vercel SSO 뒤라 OAuth 자동화가 `sso-api` 302를 받는다.
 
-- [ ] 시나리오 1: GitHub 가입 → Google 시도 → 병합 화면 → 확인 → `/projects`
-- [ ] 시나리오 2: **초대 링크 → Google 로그인 → 병합 → `/invite/[token]` 복귀 → 수락** ★ 핵심
-- [ ] 시나리오 3: 역방향 (Google 가입 → GitHub 시도)
-- [ ] 시나리오 4: 다른 GitHub으로 확인 → Alert + 행 증가 0 + **세션 없음**
-- [ ] 시나리오 5: challenge 만료 10분 뒤 → `/signin`
-- [ ] 시나리오 6: 수단 둘인 계정에서 전체 세션 회수
-- [ ] 시나리오 7: 마지막 수단 해제 시도 → 비활성 **+ 사유가 화면에 보인다**
-- [ ] 시나리오 8: 확인 도중 provider 화면에서 취소 → 갇히지 않는다
-- [ ] 시나리오 10: **회수를 중단한 직후 병합 시작** → 병합 화면으로 간다
+- [x] 시나리오 1: GitHub 가입 → Google 시도 → 병합 화면 → 확인 → `/projects`
+- [x] 시나리오 2: **초대 링크 → Google 로그인 → 병합 → `/invite/[token]` 복귀 → 수락** ★ 핵심
+- [x] 시나리오 3: 역방향 (Google 가입 → GitHub 시도)
+- [x] 시나리오 4: 다른 GitHub으로 확인 → Alert + 행 증가 0 + **세션 없음**
+- [x] 시나리오 5: challenge 만료 10분 뒤 → `/signin`
+- [x] 시나리오 6: 수단 둘인 계정에서 전체 세션 회수
+- [x] 시나리오 7: 마지막 수단 해제 시도 → 비활성 **+ 사유가 화면에 보인다**
+- [x] 시나리오 8: 확인 도중 provider 화면에서 취소 → 갇히지 않는다
+- [x] 시나리오 10: **회수를 중단한 직후 병합 시작** → 병합 화면으로 간다
       (`/account?sessionRevocation=invalid`로 새지 않는다 — design 불변식 8)
-- [ ] 시나리오 11: **병합 뒤 양쪽으로 번갈아 로그인** → `User.email`이 **안 움직인다** (design ⑦)
-- [ ] 시나리오 9: 1440×900 · 1280px에서 세 화면 목측 (Canvas 대조).
+- [x] 시나리오 11: **병합 뒤 양쪽으로 번갈아 로그인** → `User.email`이 **안 움직인다** (design ⑦)
+- [x] 시나리오 9: 1440×900 · 1280px에서 세 화면 목측 (Canvas 대조).
       ⚠️ **`AuthLayout` 우측 KV의 대비를 이름으로 본다** — 좌측이 "This email already has an
       account"인데 우측은 "Connect your projects"다. KV에 문구가 **구워져 있어** 분기별로 못 바꾼다는
       것이 `auth-layout.tsx`에 이미 기록돼 있다
 
 **검증**: 각 시나리오의 결과와 **DB 행 증감**을 기록한다. ⚠️ 이 기록은 `tasks.md`가 닫혀도
 남긴다 — `github-connect` T5·`project-onboarding` T8과 같은 부류다.
+
+### 실측 (2026-09-12, 로컬 dev + ego-browser · dev DB를 중간에 한 번 비웠다)
+
+| # | 결과 | DB |
+|---|---|---|
+| 1 | GitHub 단독 계정 → Google 시도 → 병합 화면 → 확인 → `/projects` | `Account` +1 (같은 `User`), `VerificationToken` 소비 |
+| 2 ★ | 초대 링크(비로그인) → Google → **병합 화면** → 확인 → **그 초대로 복귀** → 수락 → `/projects/merge-invite` | `Account` +1 · `ProjectMember` +1 · `User` 증가 **0** |
+| 3 | 역방향도 같은 화면·같은 착지 (Google 세션에서 GitHub 확인) | 같음 |
+| 4 | 다른 GitHub(`sinhyeok-kang`)으로 확인 → 같은 화면 + `?e=wrong-account` Alert | `Account` 3 → 3 · `Session` 0 · **challenge 살아 있다**(재시도 가능) |
+| 5 | `VerificationToken.expires`를 과거로 당기고 확인 → `/signin?error=LinkExpired` | `Account`·`Session` 증가 0 |
+| 6 | 수단 둘에서 [Confirm and sign out everywhere] → `/signin?sessions=revoked` + 토스트 | `Session` 1 → 0 |
+| 7 | Google 해제 → GitHub 행이 "This is your only way to sign in." + **버튼 비활성** | `Account` 4 → 3, `?link=disconnected` |
+| 8 | **실제 취소다** — GitHub 재인가 화면의 [Cancel] → 같은 병합 화면 + `?e=cancelled`("Nothing changed") | 증가 0 · challenge 보존 |
+| 10 | 회수를 provider 화면에서 버리고 → 로그아웃 → Google 로그인 → **병합 화면**으로 갔다 | — |
+| 11 | 병합 뒤 GitHub·Google 번갈아 로그인 → `User.email`이 `ox501501@gmail.com` 그대로 | — |
+| 9 | 1440×900·1280×800 목측 (`~/Desktop/malmoi-*.png` 일곱 장) | — |
+
+⚠️ **시나리오 8을 처음에는 재현으로 밟았다** — 이미 승인한 OAuth 앱은 취소 버튼을 안 그려서
+`?error=access_denied`를 콜백에 직접 먹였고, **그 뒤 GitHub이 "Reauthorization required"를 띄우면서
+진짜 [Cancel] 버튼이 나왔다.** 둘의 결과가 같았다.
+
+⚠️ **GitHub이 왕복 횟수를 제한한다** — 이 라운드 끝에 `malmoi-local`이 "unusually high number of
+requests"로 재인가를 요구했고 **[Authorize]가 비활성인 채로 몇 분 이상 머물렀다.** 실물 OAuth를
+반복해서 밟는 검증은 **한 세션에 열 번 남짓이 상한**이라고 보고 계획한다.
+
+⚠️ **시나리오 11은 약한 검증이다** — 테스트 계정의 GitHub·Google이 **같은 주소**라 "안 움직인다"가
+자명하게 참이다. 주소가 갈리는 쌍이 생기기 전에는 `planEmailRefresh`의 `loginMethods > 1 → keep`을
+단위 테스트가 드는 유일한 방어선으로 둔다.
+
+### 초대 화면 전수 (2026-09-12, 같은 라운드)
+
+| 갈래 | 화면 |
+|---|---|
+| `not-found`(엉터리 토큰) · `expired` · `already-accepted` | 인라인 Alert 한 장 · **CTA 0** · 프로젝트 카드 없음 |
+| 비로그인 + 살아 있는 초대 | provider 버튼 둘 + 하단 캡션 · **카드 없음** |
+| 로그인 + 주소 일치 + 비멤버 | 카드 + [Accept invitation] → `/projects/<slug>` |
+| 로그인 + 주소 불일치 | Alert + **[Sign in with another account] 하나** (수락 버튼 없음) |
+| 로그인 + 이미 멤버 | Alert + **[Open project]** — 🔧 이 라운드에서 고쳤다 (아래) |
+| 비로그인 → 불일치 계정으로 로그인 | 같은 초대로 **복귀**한 뒤 위의 불일치 화면 |
+| provider에서 취소 | `/signin?error=…` + **[Back to invitation]** → 원래 토큰으로 복귀 |
+
+🔧 **`already-member`가 갇히는 길이었다** (실물에서만 보였다): 문구가 "프로젝트를 열어라"인데
+화면의 유일한 버튼이 **로그아웃**이었고 이 화면은 셸 밖이라 목록으로 가는 길이 0이었다.
+`[Open project]` 링크로 갈랐다 (`f661d7a` → `90333e1`).
+
+🔍 **남은 판단 하나** — `already-member` Alert이 `variant="danger"`(빨강)다. `message.test.ts`가
+*"실패처럼 읽히지 않는다 — 이미 원하는 상태다"*를 문구에 대해 이미 단언하는데 **색은 반대로 말한다.**
+DESIGN §6.62가 "실패는 모두 인라인 Alert"이라 일괄로 danger를 쓴 결과이고, 바꾸려면 그 줄부터 갈라야
+해서 이번엔 손대지 않았다.
 
 ---
 
