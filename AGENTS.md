@@ -87,7 +87,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | Node | `.nvmrc` **24**. **정본은 Vercel 프로젝트의 Node.js Version이다** — 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1`(도쿄). 직결은 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다**(`vercel.json`의 `regions: ["hnd1"]`) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
-**린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다. `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
+**린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 — ⚠️ **가상화를 넣지 않는 근거는 실측이고 [ARCHITECTURE §1.95](./docs/ARCHITECTURE.md)에 있다**(24키 프로젝트도 3.29초였다: 병목이 행 수가 아니라 함수 리전이었다). `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
 
 ⚠️ **`app/globals.css`의 `@custom-variant dark` 한 줄이 라이트를 고정한다.** Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아난다.** 지금 소스에 `dark:`는 0곳이지만 그 줄은 남긴다 — 막는 것이 요지다 (DESIGN §3.1).
 
