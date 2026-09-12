@@ -1,5 +1,23 @@
 # account-linking — 태스크
 
+> **상태 (2026-09-12)**: T1~T6·T8 완료, **dev에 있다.** 남은 것은 **T7(실물 왕복)** 하나이고
+> **실물 OAuth 계정 둘이 필요해 자동화가 안 된다** — 아래 시나리오 열하나를 로컬 dev에서 손으로 돈다.
+> `pnpm test`·`pnpm typecheck`·`pnpm test:credentials:postgres` 셋 다 green이다(후자 39개).
+>
+> ⚠️ **구현이 문서와 갈린 자리 셋**(전부 이유가 있고 본문에도 적혀 있다):
+> ① **`pickLoginAccount`가 `lib/login-link/policy.ts`에 있다**(tasks는 `session-revocation/policy.ts`라
+>    적었다) — 그쪽에 두면 login-link의 순수 층이 `lib/credentials/crypto`까지 물어 **T1이 자기
+>    검증에 적어 둔 그래프 경계를 스스로 깬다.**
+> ② **`challengeTokenHash`가 `policy.ts`가 아니라 `store.ts`에 있다** — `/account`의 수단 카드가
+>    클라이언트라 `policy.ts`의 그래프가 곧 번들이고, 해시가 `node:crypto`를 끌고 들어갔다
+>    (`client-graph.test.ts`가 실제로 잡았다).
+> ③ **`invite.target`을 만들지 않았다** — T4 검증의 마지막 줄이 요구한 그대로다: 프로젝트 이름과
+>    역할이 카드의 **두 행**이라 합친 문자열의 소비자가 없다.
+>
+> ⚠️ **design §14의 "닫힌 둘" 중 `sign-in.test.ts` 참조는 이 리포에 없는 파일이었다** — 그 단언
+> (*"회수 콜백은 `refreshVerifiedEmail`에 도달하지 않는다"*)이 실재하지 않으므로, 삽입 위치 계약을
+> `provider-config.test.ts`에 **새로 세웠다**(래핑 순서 · 콜백 안 순서 · 쿠키 스코프 셋).
+
 순수 함수 → 껍데기 → 화면 순서. 각 **커밋 경계**는 `pnpm typecheck && pnpm test` green이어야 한다.
 
 ⚠️ **T3·T5·T6은 `pnpm test:credentials:postgres`를 반드시 돌린다.** 그 스위트는 `pnpm test`의
@@ -49,13 +67,13 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 ⚠️ **디렉터리는 `lib/login-link/`이고 파일은 여섯이다** (design ⑫) — `lib/github-connect/account-link.ts`
 (GitHub App 연결 소유권)와 이름으로 갈려야 한다.
 
-- [ ] `lib/login-link/policy.ts` — `Challenge` 조립·파싱 · 쿠키 이름 둘 · `checkChallenge` ·
+- [x] `lib/login-link/policy.ts` — `Challenge` 조립·파싱 · 쿠키 이름 둘 · `checkChallenge` ·
       `outcomeUrl(dest)` · `CHALLENGE_TTL_MINUTES`(10) · `loginMethodRows` · `canUnlink`
-- [ ] `lib/login-link/plan.ts` — `planLinkOffer` 3갈래 + `planLinkConfirm` 5갈래
-- [ ] `lib/login-link/message.ts` — 결과 → 문구. ⚠️ **사전 절이 둘이다**: 화면 문구는
+- [x] `lib/login-link/plan.ts` — `planLinkOffer` 3갈래 + `planLinkConfirm` 5갈래
+- [x] `lib/login-link/message.ts` — 결과 → 문구. ⚠️ **사전 절이 둘이다**: 화면 문구는
       `messages/en.tsx`의 **`link`**, 오류 문구는 **`errors.link`**
-- [ ] `lib/session-revocation/policy.ts` — `pickLoginAccount` 추가
-- [ ] `lib/auth/email.ts` — `planEmailRefresh`가 **로그인 `Account` 수가 둘 이상이면 `keep`**
+- [x] `lib/session-revocation/policy.ts` — `pickLoginAccount` 추가
+- [x] `lib/auth/email.ts` — `planEmailRefresh`가 **로그인 `Account` 수가 둘 이상이면 `keep`**
       (design ⑦ — 이것이 없으면 병합 뒤 `User.email`이 로그인마다 뒤집힌다)
 
 **검증**
@@ -79,22 +97,22 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 ## T2 — 거부를 안내로 · 커밋 2
 
-- [ ] `lib/routes.ts` — **`signInLink(challenge, { e })`** 추가. ⚠️ **쿼리를 받는다** — 확인
+- [x] `lib/routes.ts` — **`signInLink(challenge, { e })`** 추가. ⚠️ **쿼리를 받는다** — 확인
       실패가 `Alert` 문구를 화면에 전달해야 하고, `withQuery`를 지나야 `entry-points.test.ts`의
       "쿼리 수신자" 검사에 걸린다(문자열 연결은 그 검사를 회피한다)
-- [ ] `lib/login-link/store.ts` — `beginLink` (해시는 `hashInviteToken` **그 함수**).
+- [x] `lib/login-link/store.ts` — `beginLink` (해시는 `hashInviteToken` **그 함수**).
       ⚠️ **자기 접두로 좁혀 지운다** — 같은 사용자가 두 번 시도하면 행이 둘이 되고, 넓게 지우면
       `session-revocation`의 목적을 소비한다
-- [ ] `lib/login-link/view.ts` — `loadChallengeView` (마스킹 이메일·provider·가입 월 **셋만**)
-- [ ] `auth.ts` `signIn` 콜백 — `planLinkOffer`가 `offer`면 challenge를 굽고 문자열 반환
-- [ ] `app/signin/link/[challenge]/page.tsx` — `AuthLayout` · 320 컬럼 (카드는 T4에서 오므로
+- [x] `lib/login-link/view.ts` — `loadChallengeView` (마스킹 이메일·provider·가입 월 **셋만**)
+- [x] `auth.ts` `signIn` 콜백 — `planLinkOffer`가 `offer`면 challenge를 굽고 문자열 반환
+- [x] `app/signin/link/[challenge]/page.tsx` — `AuthLayout` · 320 컬럼 (카드는 T4에서 오므로
       이 단계에선 평문 두 줄로 둔다). **아트보드 `#1c`**
-- [ ] `app/__tests__/entry-points.test.ts` — `EXEMPT`에 추가 **+ `PUBLIC` 배열에
+- [x] `app/__tests__/entry-points.test.ts` — `EXEMPT`에 추가 **+ `PUBLIC` 배열에
       `/signin/link/sample`**. ⚠️ **뒤엣것이 없으면 아래 부정 단언의 대상이 아예 없다** —
       그 배열은 하드코딩이고 `PROTECTED`는 `(edit)/` 아래에서만 만들어진다 (POSTMORTEM 2026-09-07)
-- [ ] 서버 반환 타입에 원문 `email`이 없는지 재는 **소스 스캔을 새로 쓴다**
+- [x] 서버 반환 타입에 원문 `email`이 없는지 재는 **소스 스캔을 새로 쓴다**
       (`members-screen.test.ts`와 같은 형 — 검증이 아니라 작성 대상이다)
-- [ ] `lib/session-revocation/__tests__/normal-login.test.tsx`의 `it.each(["root","invite"])`에
+- [x] `lib/session-revocation/__tests__/normal-login.test.tsx`의 `it.each(["root","invite"])`에
       **`"link"`를 더한다** — "일반 로그인 목록이 셋이 된다"를 **참으로 만드는 편집**이다
 
 **검증**
@@ -112,22 +130,22 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 **아트보드**: `#1c` 아래 "병합의 나머지 상태 둘" — 확인 대기(스피너만, 라벨 유지) · 확인 실패(`Alert` 한 장만 추가, 레이아웃 불변).
 
-- [ ] **먼저 design §14의 "닫힌 둘" 중 `linkAccount` 항목을 실물로 밟는다** — 라이브러리 소스로는
+- [x] **먼저 design §14의 "닫힌 둘" 중 `linkAccount` 항목을 실물로 밟는다** — 라이브러리 소스로는
       안 불리는 것이 확인됐지만(`handle-login.js`), 버전이 올라가면 조용히 바뀌는 부류다.
       불리면 설계 전제가 깨지므로 여기서 멈추고 재설계한다
-- [ ] `lib/login-link/store.ts` — `finishLink` (User 행 `FOR UPDATE` · 조건부 삭제 count로
+- [x] `lib/login-link/store.ts` — `finishLink` (User 행 `FOR UPDATE` · 조건부 삭제 count로
       단일 사용 · `Account` 생성이 같은 트랜잭션).
       ⚠️ **모든 조회·삭제에 `userId`를 함께 건다** — `Account` PK가 `(provider, providerAccountId)`라
       그 둘만으로 남의 행에 닿는다 (POSTMORTEM 2026-09-06)
-- [ ] `lib/login-link/http.ts` — `withLoginLink`·`authorizeLoginLink`·`withLinkStart`
-- [ ] `auth.ts` — `handlers`를 `withLoginLink`로도 감싸고(⚠️ **`withRevocation`이 바깥, 병합이
+- [x] `lib/login-link/http.ts` — `withLoginLink`·`authorizeLoginLink`·`withLinkStart`
+- [x] `auth.ts` — `handlers`를 `withLoginLink`로도 감싸고(⚠️ **`withRevocation`이 바깥, 병합이
       안쪽** — design 불변식 8a) `cookies`가 두 스코프를 본다.
       `signIn` 콜백의 확인 갈래: 일치 → `true`, 불일치 → **문자열**(세션 안 만듦).
       ⚠️ **`authorizeRevocation`이 계속 첫 줄이다** (불변식 8b — `sign-in.test.ts`가 그것을 단언한다)
-- [ ] `lib/session-revocation/*` — 회수 시작이 병합 쿠키를 지운다 (배타성, 양방향)
-- [ ] challenge의 `dest` 복원 → 초대에서 왔으면 `/invite/[token]`.
+- [x] `lib/session-revocation/*` — 회수 시작이 병합 쿠키를 지운다 (배타성, 양방향)
+- [x] challenge의 `dest` 복원 → 초대에서 왔으면 `/invite/[token]`.
       ⚠️ **임의 URL이 아니라 갈래다** (불변식 9 — `{kind:"invite",token}` | `{kind:"projects"}`)
-- [ ] **`lib/credentials/__tests__/postgres.integration.ts`의 `fakeAuth`를 같은 커밋에 갱신한다** —
+- [x] **`lib/credentials/__tests__/postgres.integration.ts`의 `fakeAuth`를 같은 커밋에 갱신한다** —
       그 파일은 `signIn` 콜백을 **손으로 다시 적는다**. 안 고치면 아래 회귀 ②③④가
       **옛 콜백을 검사한다**(머리말 ⚠️)
 
@@ -161,18 +179,18 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 **아트보드**: `#1b`(초대) · `#1c`(카드 삽입) · 마지막 절(`EntityCard` 규격 표).
 
-- [ ] `components/ui/entity-card.tsx` — 프리미티브 **16 → 17**. ⚠️ **`kind`·`size` prop이 없다**
+- [x] `components/ui/entity-card.tsx` — 프리미티브 **16 → 17**. ⚠️ **`kind`·`size` prop이 없다**
       (design ⑩) · 박스는 **`rounded-lg`**(12)다 — `rounded-xl`은 16이다
-- [ ] ~~`components/ui/avatar.tsx`~~ — **건드리지 않는다.** 40을 요구하던 소비자를 뺐다 (design ⑩)
-- [ ] `messages/en.tsx` — `invite.invitedTo` → `invite.title` + `invite.target`
+- [x] ~~`components/ui/avatar.tsx`~~ — **건드리지 않는다.** 40을 요구하던 소비자를 뺐다 (design ⑩)
+- [x] `messages/en.tsx` — `invite.invitedTo` → `invite.title` + `invite.target`
       (⚠️ **관사 금지 주석이 `target`으로 따라간다**).
       ⚠️ **`invite.sentTo`의 둘째 문장을 뗀다** — *"Signing in with a different account won't
       accept it."*이 이 기능으로 **거짓이 된다**(design §6)
-- [ ] `app/invite/[token]/page.tsx` — 로그인 상태 다섯 줄 · 비로그인은 카드 없음.
+- [x] `app/invite/[token]/page.tsx` — 로그인 상태 다섯 줄 · 비로그인은 카드 없음.
       ⚠️ **프로젝트 카드는 `components/`의 화면 조각이다** — `components/ui/`가 아니다 (design §7).
       ⚠️ 파일 주석의 "실패 여섯"을 **일곱**으로 (넷 + 셋)
-- [ ] `app/signin/link/[challenge]/page.tsx` — `EntityCard` 삽입
-- [ ] ~~`components/onboarding/new-project-flow.tsx`~~ — **이 배송에서 뺀다** (design ⑩ 이유 2).
+- [x] `app/signin/link/[challenge]/page.tsx` — `EntityCard` 삽입
+- [x] ~~`components/onboarding/new-project-flow.tsx`~~ — **이 배송에서 뺀다** (design ⑩ 이유 2).
       ③은 라디오이고 아바타·우측 슬롯이 없고 본문이 3줄이며 `<ul>`이 border를 든다 — 대체가
       아니라 **재설계**이고, 외과적 변경 원칙에 걸린다
 
@@ -192,13 +210,13 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 ## T5 — `/account` 로그인 수단 카드 · 커밋 5
 
-- [ ] `lib/routes.ts` — `account({ link })` 추가. ⚠️ **`withQuery`를 지난다**
-- [ ] `components/account/login-methods.tsx` — 행 둘 · **[Disconnect]만** · 마지막은 **비활성 +
+- [x] `lib/routes.ts` — `account({ link })` 추가. ⚠️ **`withQuery`를 지난다**
+- [x] `components/account/login-methods.tsx` — 행 둘 · **[Disconnect]만** · 마지막은 **비활성 +
       행 옆 인라인 사유**. ⚠️ **[Connect]는 없다** (design ⑨) · 해제에 **확인 `Dialog`**
-- [ ] `app/(edit)/account/page.tsx` — 프로필 아래, GitHub App 연결 **위**.
+- [x] `app/(edit)/account/page.tsx` — 프로필 아래, GitHub App 연결 **위**.
       ⚠️ `searchParams` 타입을 `Raw<"e" | "sessionRevocation" | **"link"**>`로 넓힌다
-- [ ] `app/(edit)/account/actions.ts` — `unlinkLoginMethod` (⚠️ `where`에 `userId`를 함께 건다)
-- [ ] `?link=` 결과를 **읽는 자리**를 같은 커밋에
+- [x] `app/(edit)/account/actions.ts` — `unlinkLoginMethod` (⚠️ `where`에 `userId`를 함께 건다)
+- [x] `?link=` 결과를 **읽는 자리**를 같은 커밋에
 
 **검증**
 - `pnpm test` green + **`pnpm test:credentials:postgres` green** (머리말 표 — 이 배송이
@@ -221,7 +239,7 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 두기로 했고(dev에만 나가고 `/merge` 전에 T6이 끝난다), **그 창을 여기 적어 둔다.**
 ⚠️ spec 완료 조건 9와 §6의 완화책이 그 구간에 한해 거짓이다.
 
-- [ ] `beginRevocation` · `startSessionRevocation` — `accounts.length !== 1` → `pickLoginAccount`.
+- [x] `beginRevocation` · `startSessionRevocation` — `accounts.length !== 1` → `pickLoginAccount`.
       ⚠️ **두 벌이고 화면에서 먼저 걸리는 것은 뒤엣것**이다
 
 **검증**
@@ -264,30 +282,30 @@ DesignSync get_file  projectId=b99d54cd-3034-44f1-8446-0a864da9d767
 
 ## T8 — 문서 · 커밋 7 (문서별 분리)
 
-- [ ] `docs/SAAS.md` **§4.3 ④** — **판정 자체가 거기 있다.** 제목·근거·개방 조건·흐름의 모양을
+- [x] `docs/SAAS.md` **§4.3 ④** — **판정 자체가 거기 있다.** 제목·근거·개방 조건·흐름의 모양을
       이 설계로 대체한다. ⚠️ **모양을 뒤집었다는 사실을 적는다**(1차 진입점이 `/account`가 아니다)
       **+ 개방 조건을 충족한 것이 아니라 사용자 재량으로 대체했다는 것도.** prefix `docs(SAAS): ...`
-- [ ] `docs/SAAS.md` §5.5 — 방어선 서술을 갱신. **"자동으로 하지 않는다"는 그대로 참이다** —
+- [x] `docs/SAAS.md` §5.5 — 방어선 서술을 갱신. **"자동으로 하지 않는다"는 그대로 참이다** —
       바뀌는 것은 "명시적 병합도 안 한다"뿐이다
-- [ ] `docs/SAAS.md` **§7.7 IA 라우트 표** — `/signin/link/:challenge` 신설
-- [ ] `docs/SAAS.md` — `entry-points.test.ts` 예외 수("여덟" → 아홉)
-- [ ] `docs/SAAS.md` 전체 세션 회수 절 — 확인 상대 선택이 `pickLoginAccount`가 되고
+- [x] `docs/SAAS.md` **§7.7 IA 라우트 표** — `/signin/link/:challenge` 신설
+- [x] `docs/SAAS.md` — `entry-points.test.ts` 예외 수("여덟" → 아홉)
+- [x] `docs/SAAS.md` 전체 세션 회수 절 — 확인 상대 선택이 `pickLoginAccount`가 되고
       "일반 로그인 **두 화면**"이 **셋**이 된다
-- [ ] `docs/ARCHITECTURE.md` §6 — `signIn` 콜백의 갈래 둘과 challenge의 수명.
+- [x] `docs/ARCHITECTURE.md` §6 — `signIn` 콜백의 갈래 둘과 challenge의 수명.
       ⚠️ **`linkAccount` 게이트는 안 바뀌었다고 명시**한다(다음 사람이 열지 않게).
       ⚠️ 그리고 **"Auth.js 경유의 유일한 경로"**로 뜻이 좁아졌다는 것도 — `finishLink`가 옆문이다
-- [ ] `lib/auth/safe-adapter.ts`의 **주석** — 위와 같은 이유 (코드는 한 줄도 안 바꾼다)
-- [ ] `docs/DESIGN.md` — `EntityCard` 규격 · 프리미티브 17 · 셸 밖 화면이 **셋** ·
+- [x] `lib/auth/safe-adapter.ts`의 **주석** — 위와 같은 이유 (코드는 한 줄도 안 바꾼다)
+- [x] `docs/DESIGN.md` — `EntityCard` 규격 · 프리미티브 17 · 셸 밖 화면이 **셋** ·
       `Button size="lg"`의 "둘뿐"이 **셋**이 된다 ⚠️ **그 문장이 네 자리에 있다**
       (`button.tsx` 주석 · DESIGN 세 곳)
-- [ ] `CLAUDE.md` — 디렉터리 구조(`lib/login-link/`·`app/signin/link/`·`components/account/`) ·
+- [x] `CLAUDE.md` — 디렉터리 구조(`lib/login-link/`·`app/signin/link/`·`components/account/`) ·
       프리미티브 수 · 코어 모듈 목록(`.claude/commands/push.md` 4단계 트리거와 **같아야 한다**) ·
       ⚠️ **`entry-points.test.ts` 예외가 "6개"로 적혀 있는데 실제는 8이다** — 이 김에 고친다
-- [ ] `docs/features/README.md` — 표에 한 줄
-- [ ] **`docs/features/ui-rework/README.md` · `docs/features/page-patterns/spec.md`** — 이 배송이
+- [x] `docs/features/README.md` — 표에 한 줄
+- [x] **`docs/features/ui-rework/README.md` · `docs/features/page-patterns/spec.md`** — 이 배송이
       `/invite`(8-1이 재작성했다)와 `/account`(8-5 미착수)를 건드리므로, 안 적으면 두 문서가
       **조용히 거짓**이 된다
-- [ ] `docs/POSTMORTEM.md` — T3에서 무언가 잡혔으면 `/postmortem`
+- [x] `docs/POSTMORTEM.md` — T3에서 무언가 잡혔으면 `/postmortem`
 
 **검증**: `/doc-check`이 green.
 
