@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
  * ⚠️ **`allowDangerousEmailAccountLinking`의 부재가 이 단계의 계정 병합 방어선 전부다.**
  * Auth.js 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 기본으로
  * `OAuthAccountNotLinked`를 던진다(`@auth/core`의 handle-login). 그 옵션을 켜는 순간 **같은
- * 이메일이라는 이유만으로 계정이 합쳐지고**, SAAS §5.5가 그걸 "불편이 아니라 계정 탈취"라 부른다.
+ * 이메일이라는 이유만으로 계정이 합쳐지고**, ARCHITECTURE §6.2.1가 그걸 "불편이 아니라 계정 탈취"라 부른다.
  * 명시적 연결은 4단계(`github-connect`)다.
  */
 
@@ -33,7 +33,7 @@ describe("auth.ts — 자동 계정 병합을 켜지 않는다", () => {
 });
 
 describe("auth.ts — DB 세션과 provider 둘", () => {
-  it("세션 전략이 database다 — JWT는 권한 회수가 최대 24시간 지연됐다 (SAAS §5.3)", () => {
+  it("세션 전략이 database다 — JWT는 권한 회수가 최대 24시간 지연됐다 (ARCHITECTURE §6.00 ④)", () => {
     expect(AUTH_TS).toMatch(/strategy:\s*"database"/);
     expect(AUTH_TS).not.toMatch(/strategy:\s*"jwt"/);
   });

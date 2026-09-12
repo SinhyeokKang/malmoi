@@ -2,9 +2,9 @@
 description: 코드베이스 전체를 불변식·원칙·경계·부채 기준으로 감사. 리포트 전용 — fix·빌드·커밋 안 함.
 ---
 
-최근 변경이 아닌 **코드베이스 전체**를 `CLAUDE.md`·`docs/MVP.md`·`docs/ARCHITECTURE.md`에 비추어 감사한다. 4명의 전문 에이전트가 각자 담당 차원에 집중해 병렬 감사한다. **리포트 전용 스킬** — 자동 fix 안 하고, 커밋도 안 한다. 무엇을 고칠지·언제 고칠지는 전적으로 사용자가 결정한다.
+최근 변경이 아닌 **코드베이스 전체**를 `CLAUDE.md`·`docs/PRODUCT.md`·`docs/ARCHITECTURE.md`에 비추어 감사한다. 4명의 전문 에이전트가 각자 담당 차원에 집중해 병렬 감사한다. **리포트 전용 스킬** — 자동 fix 안 하고, 커밋도 안 한다. 무엇을 고칠지·언제 고칠지는 전적으로 사용자가 결정한다.
 
-**이 스킬을 만든 이유는 MVP를 닫고 SaaS화에 들어가기 전에 부채를 정리하기 위해서다** (MVP §8.1). 그래서 대상이 "이번에 건드린 코드"가 아니라 "그동안 쌓인 것"이고, `/code-review`와 겹치지 않는다.
+**이 스킬을 만든 이유는 쌓인 부채를 주기적으로 정리하기 위해서다.** 그래서 대상이 "이번에 건드린 코드"가 아니라 "그동안 쌓인 것"이고, `/code-review`와 겹치지 않는다.
 
 ## 사용
 
@@ -14,7 +14,7 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 | 키워드 | 에이전트 | 담당 차원 | 핵심 관심사 |
 |---|---|---|---|
 | `invariant` | Invariant | 결정성, 어댑터 계약, 변경 감지 | export 결정성 3규칙, blob SHA, `writeStrategy` vs `layout`, 커밋·PR 전략 |
-| `principle` | Principle | 코어 원칙, 범위 | 병합 없음, 값 소유권, `orphaned`, MVP §7 비범위 유입 |
+| `principle` | Principle | 코어 원칙, 범위 | 병합 없음, 값 소유권, `orphaned`, PRODUCT §4.2 비범위 유입 |
 | `boundary` | Boundary | 인증·인가, 테넌시, 실행 경계 | `middleware.ts` matcher, `projectId` 스코프, `server-only`, env 접근, 두 GitHub 자격증명 |
 | `debt` | Debt | 부채, 테스트 공백, 문서 드리프트 | 데드 코드, 중복, `any`, 순수 함수 분리, 테스트 없는 순수 모듈, 문서-코드 불일치 |
 
@@ -34,7 +34,7 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 
 ### 1. 기준 로드
 
-`CLAUDE.md` · **`docs/SAAS.md`(현재 단계)** · `docs/MVP.md`(코어 원칙·PoC 계약) · `docs/ARCHITECTURE.md`를 읽어 감사 기준을 확립한다. **이 넷이 ground truth다.**
+`CLAUDE.md` · **`docs/PRODUCT.md`** · `docs/PRODUCT.md`(제품 판정) · `docs/ARCHITECTURE.md`를 읽어 감사 기준을 확립한다. **이 넷이 ground truth다.**
 
 **`docs/POSTMORTEM.md`도 읽는다 — 이 스킬에서는 선택이 아니다.** **전 항목**(2026-09-12 기준 59개 — 숫자를 믿지 말고 `grep -c '^### 20'`로 센다; `^### `만 세면 템플릿 헤딩이 끼어 하나 많다)이 각각 "이 코드베이스가 실제로 밟은 함정"이고, 그 항목들의 **재발 방지 grep을 전수로 돌리는 것**이 audit의 가장 큰 값이다. `/code-review`는 변경분에 걸린 항목만 소환하므로, 손대지 않은 코드에 남아 있는 같은 패턴은 이 스킬만 잡는다.
 
@@ -43,7 +43,7 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 ### 2. 전문 에이전트 병렬 감사
 
 활성화된 전문 에이전트를 **동시에** 실행한다 (`subagent_type: general-purpose`). 각 에이전트에게 전달할 것:
-- `CLAUDE.md` + `docs/MVP.md` + `docs/ARCHITECTURE.md`의 담당 차원 관련 규칙
+- `CLAUDE.md` + `docs/PRODUCT.md` + `docs/ARCHITECTURE.md`의 담당 차원 관련 규칙
 - `docs/POSTMORTEM.md`에서 담당 차원에 걸리는 항목의 **재발 방지 grep 패턴**
 - 하위 영역 분배 지침
 
@@ -97,17 +97,17 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 
 #### Principle 에이전트 (`principle`)
 
-**코어 원칙에서 파생되지 않는 복잡도**를 찾는다. MVP §2·§3.1·§7이 기준이다.
+**코어 원칙에서 파생되지 않는 복잡도**를 찾는다. ARCHITECTURE §0·§3.1·§7이 기준이다.
 
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | merge-free | `lib/push/**`, `lib/pull/**` | **머지 로직·3-way·충돌 해소·"누가 이겼나" 판정이 슬며시 들어왔는가** / push가 `ON CONFLICT DO UPDATE`(strict)를 유지하는가 / pull이 기존 파일 값과 DB 값을 견줘 고르는 코드가 있는가 / **키 삭제(`DELETE`) 대신 `orphaned`인가** |
 | write-owners | `app/(edit)/**`, `lib/keys/**` | **`Translation.value` 쓰기 주체가 둘인가**(편집 UI `saveTranslation` + push strict). 셋째가 생겼으면 판정이 필요해진 것 / 저장이 `updatedAt`을 올려 pull 1층 스킵을 푸는가 / 같은 값 재저장이 noop인가(빈 PR 방지) |
-| scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — MVP §7 + SAAS §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / 스키마가 5테이블을 넘었는가 |
+| scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — PRODUCT §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / 스키마가 5테이블을 넘었는가 |
 
 **전문가 통합 점검**
 - **"병합 없음"이 실제로 지켜지는 경로 전수** — 값을 고르는 분기가 어디에도 없어야 한다
-- 편집 손실 창(MVP §3.1)을 완화하려는 코드가 몰래 들어왔는지 — 완화하면 단순성이 무너진다
+- 편집 손실 창(ARCHITECTURE §0 불변식 2)을 완화하려는 코드가 몰래 들어왔는지 — 완화하면 단순성이 무너진다
 
 ---
 
@@ -160,8 +160,8 @@ Supabase 대시보드의 **Advisors → Security**가 0 errors인지도 같은 �
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | lib-health | `lib/**` | 데드 코드·미사용 export / 중복 유틸(같은 판정을 두 곳에서 구현) / **`any`·타입 단언** / `noUncheckedIndexedAccess` 아래 인덱스 접근 미처리 / 순수 함수에 I/O 혼입 / **에러를 `catch {}`로 삼킴** / 주석이 "무엇"을 반복하는가("왜"만 남긴다) |
-| app-scripts | `app/**`, `components/**`, `scripts/**` | 데드 컴포넌트·미사용 import / **동결된 편집 UI를 다듬는 변경**(MVP §8.3 — SaaS에서 새로 만들 화면이다) / 스크립트 간 중복 로직 / N+1 쿼리 / 날짜를 로컬 타임존으로 저장 |
-| test-doc-gap | `lib/**/__tests__/`, `docs/**` | **테스트 없는 순수 모듈**(CLAUDE.md: 신규 인터페이스는 테스트 우선) / **픽스처가 한 스타일만 가진 축**(그 축은 검증되지 않은 것 — POSTMORTEM 2026-09-03) / 테스트 이름과 본문 불일치(2026-09-03 "이름만 정확했다") / **문서-코드 드리프트**: `docs/TASKS.md` 미체크 완료 태스크, `docs/MVP.md` §10에 남은 결정된 항목, `ARCHITECTURE.md`의 `(미구현)` 표시, `CLAUDE.md` 디렉터리 구조·명령어 표와 실제 불일치 |
+| app-scripts | `app/**`, `components/**`, `scripts/**` | 데드 컴포넌트·미사용 import / 스크립트 간 중복 로직 / N+1 쿼리 / 날짜를 로컬 타임존으로 저장 |
+| test-doc-gap | `lib/**/__tests__/`, `docs/**` | **테스트 없는 순수 모듈**(CLAUDE.md: 신규 인터페이스는 테스트 우선) / **픽스처가 한 스타일만 가진 축**(그 축은 검증되지 않은 것 — POSTMORTEM 2026-09-03) / 테스트 이름과 본문 불일치(2026-09-03 "이름만 정확했다") / **문서-코드 드리프트**: `docs/PRODUCT.md` §10에 남은 결정된 항목, `docs/DIRECTORY.md`가 가리키는 없는 파일, `ARCHITECTURE.md`의 `(미구현)` 표시, `CLAUDE.md` 디렉터리 구조·명령어 표와 실제 불일치 |
 
 **전문가 통합 점검**
 - **`lib/` 하위 디렉터리가 늘었는데 `CLAUDE.md`의 코어 모듈 목록·`/push` 4단계 트리거에 반영됐는지** (ARCHITECTURE가 실제로 이걸로 낡은 전례가 있다)
@@ -216,7 +216,7 @@ POSTMORTEM 전수 재검: <전체>항목 중 재발 <n>건
 - `components/ui/**` — shadcn 생성물. import 여부만 확인하고 내부는 감사하지 않는다.
 - `generated/**`, `public/fonts/**` — 생성물 (gitignore).
 - `AGENTS.md`, `.agents/**` — `scripts/sync-agents.mjs` 생성물. 드리프트는 `pnpm sync:agents:check`가 본다.
-- `docs/features/**/repos*.txt` — 실측 코퍼스 목록.
+- `docs/adapter-survey/repos*.txt` — 실측 코퍼스 목록.
 - `__tests__/**`의 스타일 — 테스트 코드 스타일은 대상 외. **단 테스트 공백과 픽스처 편향은 Debt의 담당이다.**
 
 ## 금지 사항
@@ -226,5 +226,4 @@ POSTMORTEM 전수 재검: <전체>항목 중 재발 <n>건
 - **자동 fix 금지** — 리포트만.
 - **"고칠까요?" 같은 후속 액션 제안 금지.**
 - **커밋 / staging 안 함.**
-- **추측성 발견 남발 금지** — `CLAUDE.md`·`docs/MVP.md`·`docs/ARCHITECTURE.md`·`docs/POSTMORTEM.md`·실제 코드 패턴에 근거를 댈 수 있는 것만. "혹시 문제가 될 수 있다" 수준은 보고하지 않는다.
-- **동결된 편집 UI를 "개선 대상"으로 올리지 않는다** (MVP §8.3) — 동작이 깨진 것만 보고한다. 시각·UX 다듬기는 SaaS 단계에서 새로 만든다.
+- **추측성 발견 남발 금지** — `CLAUDE.md`·`docs/PRODUCT.md`·`docs/ARCHITECTURE.md`·`docs/POSTMORTEM.md`·실제 코드 패턴에 근거를 댈 수 있는 것만. "혹시 문제가 될 수 있다" 수준은 보고하지 않는다.

@@ -8,7 +8,7 @@ import type { FileProbe } from "../types";
  *
  * 왜 필요한가: 오탐률을 재려면 "1순위가 틀렸고 2순위가 정답이었다"를 관측할 수 있어야 하는데,
  * `detect`는 1순위 하나만 주므로 2순위가 존재했는지조차 알 수 없다
- * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
+ * (ARCHITECTURE §1.9).
  *
  * **additive여야 한다** — 기존 `detect`·`detectFormat`·`detectFormatWith`의 시그니처와 결과가
  * 그대로여야 호출부(`scripts/ingest.ts`·`scripts/push-local.ts`)를 건드리지 않는다.
@@ -52,7 +52,7 @@ describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
     ]);
   });
 
-  it("ts-dict: 자동 탐지에서 빠져 있어 항상 빈 배열이다 (ADAPTER-COVERAGE 판정 ③)", () => {
+  it("ts-dict: 자동 탐지에서 빠져 있어 항상 빈 배열이다 (ARCHITECTURE §1.9 판정 ③)", () => {
     expect(tsDict.detectCandidates(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE)).toEqual([]);
   });
 
@@ -103,7 +103,7 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
    * 두 함수의 역할이 다르다: `detectCandidates`는 **자동 탐지에 내놓는 후보**이고, `detect`는
    * **명시 지정(`--adapter`·`Project.adapterName`)됐을 때 고르는 것**이다. 자동 탐지에 참여하는
    * 어댑터에서는 둘이 같아야 하지만, `ts-dict`는 후보를 하나도 안 내놓기로 했으므로
-   * (ADAPTER-COVERAGE 판정 ③) 일치 자체가 성립하지 않는다 — 일치를 강요하면 명시 지정이
+   * (ARCHITECTURE §1.9 판정 ③) 일치 자체가 성립하지 않는다 — 일치를 강요하면 명시 지정이
    * 불가능해진다. 실제로 그 상태였고 `--adapter ts-dict`가 죽어 있었다 (2026-09-03).
    */
   const AUTO_DETECTED = ADAPTERS.filter((a) => a.name !== "ts-dict");

@@ -110,7 +110,7 @@ await js(String.raw`(async () => {
 
 1. **§3 런타임 확인.**
 2. **태스크 스페이스 하나**를 작업 전체에 쓴다. 라운드마다 첫 줄에 `useOrCreateTaskSpace(task.id)` — Node 프로세스가 라운드마다 새로 뜬다.
-3. **dev DB·서버 전제 확인.** `pnpm db:status`가 up to date여야 하고, `ProjectMember` 행이 있어야 아무나 들어갈 수 있다(없으면 fail-closed로 전원 차단 — `docs/features/tenant-auth/tasks.md` §3). `pnpm dev`를 백그라운드로 띄운다. **preview가 아니라 로컬을 쓴다** — preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다(CLAUDE.md 브랜치 정책).
+3. **dev DB·서버 전제 확인.** `pnpm db:status`가 up to date여야 하고, `ProjectMember` 행이 있어야 아무나 들어갈 수 있다(없으면 fail-closed로 전원 차단). `pnpm dev`를 백그라운드로 띄운다. **preview가 아니라 로컬을 쓴다** — preview는 Vercel SSO 뒤라 자동화가 `sso-api` 302를 받는다(CLAUDE.md 브랜치 정책).
 4. **로그인.** 태스크 스페이스는 브라우저 프로필의 provider 자격증명은 상속하지만 **`localhost` 세션 쿠키는 없다** — OAuth를 태워 새로 만든다. 계정 선택·동의 화면은 `snapshotText()`로 행을 찾아 클릭하면 지난다. ⚠️ **`.env.local`의 OAuth 값이 틀리면 provider가 404를 준다** — 값을 출력하지 말고 **형태만**(자릿수·숫자 여부) 비교해 진단한다. `.env.local`은 편집하지 않는다.
 5. **§4 바인딩 + 검증.** 로그가 필요하면 **페이지 조작보다 먼저.**
 6. **시나리오 루프.** 구조 판정(`snapshotText()`) 먼저, 육안 판정은 구조로 못 가르는 축에만. 결함을 찾으면 재현 절차를 **그 자리에서** 적는다. 열고 닫는 것을 짝으로 — 잔여 탭이 있으면 URL 매칭이 엉뚱한 탭을 잡는다.

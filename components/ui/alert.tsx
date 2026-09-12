@@ -13,7 +13,7 @@ import { Button } from "./button";
  *
  * ⚠️ **variant는 뜻으로 고른다** (DESIGN §6.2). `success`에 초록을 쓰지 않는다 — raw 색을 늘리지 않고,
  * **성공은 조용한** 쪽이 이 화면의 규칙이다. 버린 값이 있는 결과는 `success`가 아니라 `warning`이다
- * (SAAS 불변식 9).
+ * (ARCHITECTURE §0 불변식 9).
  */
 const alert = cva("flex gap-3 rounded-lg border p-4", {
   variants: {

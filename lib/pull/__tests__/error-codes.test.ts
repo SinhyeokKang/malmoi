@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
 /**
- * **던지는 자리가 코드를 든다** (spec 완료 조건 7 · `docs/features/sync-runs/design.md` §1.3).
+ * **던지는 자리가 코드를 든다** (spec 완료 조건 7 · ARCHITECTURE §5.6).
  *
  * pull 실패는 전부 메시지만 다른 `AppError`라, 잡는 쪽에서 문자열을 매칭하면 문장 하나가 바뀔 때
  * `SyncRun.errorCode`가 조용히 `unknown`으로 무너진다. 그래서 코드는 **던지는 자리**가 든다.

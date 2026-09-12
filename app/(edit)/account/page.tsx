@@ -18,7 +18,7 @@ import { loginMethodRows, LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
- * 계정 화면 — **사용자 축의 유일한 자리** (SAAS §7.7, 6b-4).
+ * 계정 화면 — **사용자 축의 유일한 자리** (PRODUCT §7.7, 6b-4).
  *
  * ⚠️ **`requireUser`만 지난다 — 인가할 프로젝트가 없다.** 이 화면이 존재하는 이유가 정확히 그것이다:
  * 연결 해제 버튼이 `/projects` 목록에 얹혀 있었는데(2026-09-07 리뷰 🟡9) 그건 목록 화면의 일이 아니고,
@@ -28,7 +28,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 사용자 축은 1차 차단 밖에서 태어난다 (`entry-points.test.ts`가 그것을 센다).
  *
  * ⚠️ **프로필은 읽기 전용이다.** 이름·이메일은 provider가 소유하고 재로그인마다 `planEmailRefresh`가
- * 갱신한다 — 고칠 수 있게 하면 초대 대조(SAAS §5.6)가 검증되지 않은 주소 위에 선다.
+ * 갱신한다 — 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지 않은 주소 위에 선다.
  */
 export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation" | "link">> }) {
   const { userId } = await requireUser();
@@ -51,7 +51,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const prisma = getPrisma();
   /**
    * ⚠️ **프로필을 세션이 아니라 `User` 행에서 읽는다.** 세션에도 이름·이메일이 있지만, 초대 대조가
-   * 보는 값은 저장된 `User.email`이다 (SAAS §5.6) — 이 화면이 보여야 하는 것은 그쪽이다.
+   * 보는 값은 저장된 `User.email`이다 (ARCHITECTURE §6.02) — 이 화면이 보여야 하는 것은 그쪽이다.
    *
    * ⚠️ **두 블록이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).

@@ -73,7 +73,7 @@ describe("renderLocaleFiles — per-locale", () => {
     expect(ko?.content).toBe('{\n  "a.one": "하나",\n  "b.two": "둘"\n}\n');
   });
 
-  it("낼 항목이 0개면 content가 null이다 — 빈 파일을 내지 않는다 (MVP §4.1)", () => {
+  it("낼 항목이 0개면 content가 null이다 — 빈 파일을 내지 않는다 (ARCHITECTURE §1.1)", () => {
     const files = renderLocaleFiles(format, "per-locale", paths, [], "en", new Map());
     expect(files.every((f) => f.content === null)).toBe(true);
   });
@@ -207,7 +207,7 @@ export const ns = { ko, en, fr };
     expect(out[0]?.content).toBe(source);
   });
 
-  it("빈 값은 치환하지 않는다 — 원본 리터럴이 남아야 한다 (MVP §4.1)", () => {
+  it("빈 값은 치환하지 않는다 — 원본 리터럴이 남아야 한다 (ARCHITECTURE §1.1)", () => {
     const keys: RenderKey[] = [key({ key: "a.one", cells: { ko: { value: "" } } })];
     const out = renderLocaleFiles(format, "multi-locale", paths, keys, "en", current);
     expect(out[0]?.content).toContain('"하나"');

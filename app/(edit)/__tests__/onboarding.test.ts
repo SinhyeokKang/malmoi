@@ -274,7 +274,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
    * **인가가 App 자격증명보다 앞이다** (sec-audit 발견 5).
    *
    * 전에는 `probeRepo`(App JWT → 설치 토큰 → repo GET)가 사용자 설치 목록보다 **먼저** 돌았고,
-   * `RepoInput`은 `z.string().min(1)` 둘뿐이었다. 로그인은 검증 이메일만 요구하므로(SAAS §5 —
+   * `RepoInput`은 `z.string().min(1)` 둘뿐이었다. 로그인은 검증 이메일만 요구하므로(ARCHITECTURE §6.00 —
    * 의도된 성질) **낯선 사람이 임의 private 리포에 대해 "말모이 App이 설치돼 있는가"를 물을 수
    * 있었고**, 반환 갈래가 `repo-not-installed`(없다)와 `installation-forbidden`(있는데 너는 못
    * 본다)로 갈려 그대로 화면 문구가 됐다 — **존재 오라클**이다.
@@ -487,7 +487,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
 
     const row = db.projects.find((p) => p.slug === "acme-web");
     expect(row).toBeDefined();
-    // 원문은 DB 어디에도 없다 — 해시로만 조회된다 (SAAS §7.8).
+    // 원문은 DB 어디에도 없다 — 해시로만 조회된다 (PRODUCT §7.8).
     expect(JSON.stringify(row)).not.toContain(token);
     expect(row?.pushTokenHash).toBe(hashPushToken(token));
     expect(db.members).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: row?.id, userId: OWNER, role: "OWNER" })]));
@@ -905,7 +905,7 @@ describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
  *
  * ⚠️ **인가가 `project:settings`에서 `requireUser`로 넓어졌다.** 연결이 사용자 수준으로 열린 뒤
  * (`startGithubConnectForUser`) **프로젝트를 하나도 안 만든 사용자**가 생길 수 있고, 그 사람에게는
- * 설정 화면이 없어 해제에 도달할 길이 없었다 — `taken-by-other`가 영구 잠금이 된다(SAAS §5.5는
+ * 설정 화면이 없어 해제에 도달할 길이 없었다 — `taken-by-other`가 영구 잠금이 된다(ARCHITECTURE §6.2.1는
  * 자동 병합을 금지하므로 다른 계정으로 옮길 길도 없다). `Account` 행은 사용자 소유라 프로젝트
  * 권한을 요구할 근거가 애초에 없었다.
  */

@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHarness, sessionFor } from "./harness";
 
 /**
- * **SAAS.md §5.7의 공격 시나리오를 케이스로 박는다.** 아래가 전부 거부돼야 2단계가 닫힌다.
+ * **ARCHITECTURE §6.03의 공격 시나리오를 케이스로 박는다.** 아래가 전부 거부돼야 2단계가 닫힌다.
  *
  * 여기가 검사하는 것은 **Server Action이 스스로 인가한다**는 것이다 — Action 호출은 레이아웃도
  * 미들웨어의 렌더 차단도 지나지 않으므로(ARCHITECTURE §6.1), 이 층이 비면 로그인만 한 사람이
  * 남의 프로젝트를 고칠 수 있다.
  *
- * ⚠️ **"프로젝트 없음"과 "멤버 아님"을 같은 `not-found`로 접는다** (SAAS §7.7 — URL을 안다는
+ * ⚠️ **"프로젝트 없음"과 "멤버 아님"을 같은 `not-found`로 접는다** (PRODUCT §7.7 — URL을 안다는
  * 사실은 접근 권한이 아니다). 둘을 다른 응답으로 가르면 남의 프로젝트 존재 여부가 샌다.
  */
 
@@ -192,7 +192,7 @@ describe("교차 테넌트 — A 멤버가 B를 겨눈다", () => {
   });
 });
 
-describe("EDITOR의 권한 — SAAS §3 권한표", () => {
+describe("EDITOR의 권한 — PRODUCT §3 권한표", () => {
   beforeEach(() => {
     hoisted.session = sessionFor("u-editor");
   });
@@ -202,7 +202,7 @@ describe("EDITOR의 권한 — SAAS §3 권한표", () => {
     expect(result).toEqual({ ok: true, value: "하나" });
   });
 
-  it("**Publish를 한다** — PR 생성은 base branch 직접 쓰기가 아니다 (SAAS §3)", async () => {
+  it("**Publish를 한다** — PR 생성은 base branch 직접 쓰기가 아니다 (PRODUCT §3)", async () => {
     const result = await triggerPullAction("alpha");
     // 인가를 지났다는 것만 본다 — GitHub 호출은 이 층의 관심이 아니다.
     expect(result.status).not.toBe("failed");

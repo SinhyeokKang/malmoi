@@ -11,7 +11,7 @@ import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
 /**
- * 기준 로케일 — **`/projects/:slug/locales`가 소유한다** (6b-5 · SAAS §7.7 결정 4).
+ * 기준 로케일 — **`/projects/:slug/locales`가 소유한다** (6b-5 · PRODUCT §7.7 결정 4).
  *
  * ⚠️ **6b-3이 하루 전에 이것을 `updateRepositorySettings`와 한 Action에 뒀다.** 화면이 갈리면서
  * Action도 갈랐다: 인자를 optional로 만들면 서버가 "무엇을 안 보냈나"를 추측하게 되고, 그 추측이

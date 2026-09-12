@@ -5,11 +5,11 @@ import { hashInviteToken } from "@/lib/auth/invitation";
 import { generatePushToken, hashPushToken } from "../token";
 
 /**
- * 프로젝트별 push 토큰 (design §3.8 · SAAS §7.8). **원문은 저장하지 않는다** — 발급 시 한 번 보여주고 해시만
+ * 프로젝트별 push 토큰 (design §3.8 · PRODUCT §7.8). **원문은 저장하지 않는다** — 발급 시 한 번 보여주고 해시만
  * `Project.pushTokenHash`에 남긴다. 인증은 `sha256(원문)`으로 행을 **조회**하므로 비교 자체가 없다 —
  * `timingSafeEqual`이 필요 없는 이유다 (`hashInviteToken`의 주석과 같은 판단).
  *
- * ⚠️ 해시 규칙은 초대 토큰과 **같은 sha256 hex**다. 두 곳이 갈리면 "해시 저장 규칙이 한 곳에 모인다"(SAAS §7.8)가
+ * ⚠️ 해시 규칙은 초대 토큰과 **같은 sha256 hex**다. 두 곳이 갈리면 "해시 저장 규칙이 한 곳에 모인다"(PRODUCT §7.8)가
  * 거짓이 된다 — 아래가 두 함수를 같은 입력으로 대조한다.
  */
 
@@ -23,7 +23,7 @@ describe("hashPushToken", () => {
     expect(hashPushToken("hello")).toBe("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
   });
 
-  it("초대 토큰과 같은 규칙이다 — 해시 저장 규칙은 한 곳에 모인다 (SAAS §7.8)", () => {
+  it("초대 토큰과 같은 규칙이다 — 해시 저장 규칙은 한 곳에 모인다 (PRODUCT §7.8)", () => {
     for (const raw of ["a", "push_token_xyz", generatePushToken()]) {
       expect(hashPushToken(raw)).toBe(hashInviteToken(raw));
     }

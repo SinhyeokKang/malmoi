@@ -3,7 +3,7 @@ import { m } from "@/lib/i18n";
 import { SYNC_ERROR_CODES, type SyncErrorCode } from "./plan";
 
 /**
- * `logs` 화면의 순수 판정 (`docs/features/sync-runs/design.md` §6).
+ * `logs` 화면의 순수 판정 (ARCHITECTURE §5.6).
  *
  * ⚠️ **`@/generated/prisma/client`를 값으로 import하지 않는다** — 이 모듈이 클라이언트 그래프에
  * 닿으면 그 순간 Prisma가 번들에 들어온다 (`components/__tests__/client-graph.test.ts`).

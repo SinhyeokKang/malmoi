@@ -4,7 +4,7 @@ import { landingTarget, rejectTarget } from "@/lib/auth/landing";
 import { routes } from "@/lib/routes";
 
 /**
- * 착지 판정의 계약 (8-1a T1 — `features/ui-rework/signin-auth/design.md` §3).
+ * 착지 판정의 계약 (8-1a).
  *
  * **축이 둘이고, 그것을 가르는 것이 이 모듈의 존재 이유다.** 실물 확인 결과 `lib/auth/session.ts`와
  * `app/(edit)/layout.tsx`는 **`unavailable`·`none` 2갈래뿐**이고 `ok` 갈래가 아예 없다 —

@@ -11,7 +11,7 @@ import { runSync } from "@/lib/sync/run";
 
 /**
  * DB → `l10n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
- * 직접 부른다 (MVP §5, 내부 쓰기에 Route Handler를 새로 만들지 않는다).
+ * 직접 부른다 (CLAUDE.md "데이터 변경 경로", 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
  * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 현재 matcher는
  * `/projects/:path*`뿐이라 기본값이 안전하지만, 보호 라우트를 넓힐 때 이 경로를 함께 넣으면

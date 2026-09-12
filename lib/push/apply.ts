@@ -175,7 +175,7 @@ export async function applyPush(
       ) AS v("key", "namespace", "sourceText", "sourceHash", "description", "sortIndex")
       WHERE s."projectId" = ${projectId} AND s."key" = v."key"`]),
 
-    // orphaned 표시. **삭제하지 않는다** — 되돌릴 수 있어야 한다 (MVP §2).
+    // orphaned 표시. **삭제하지 않는다** — 되돌릴 수 있어야 한다 (ARCHITECTURE §0).
     ...(plan.toOrphan.length === 0 ? [] : [prisma.$executeRaw`
       UPDATE "StringKey" SET "orphaned" = true, "updatedAt" = ${now}
       WHERE "projectId" = ${projectId} AND "id" = ANY(${plan.toOrphan}::text[])`]),
@@ -200,7 +200,7 @@ export async function applyPush(
     .filter((r): r is typeof r & { keyId: string } => r.keyId !== undefined);
 
   const rest = [
-    // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (MVP §3.1) — 변경 감지도 병합도 없다.
+    // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (ARCHITECTURE §0 불변식 2) — 변경 감지도 병합도 없다.
     // ⚠️ 대가: 번역자가 편집한 뒤 pull이 돌기 전에 push가 오면 그 편집이 사라진다.
     //    pull 주기가 곧 데이터 손실 창이다. 스펙에 감수하는 대가로 명시돼 있다.
     // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
@@ -222,7 +222,7 @@ export async function applyPush(
       ) AS v("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
       ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
         "value" = EXCLUDED."value",
-        -- strict라 chrome 필드도 리포 값이 덮는다 (MVP §3.1). 리포에서 사라졌으면 DB에서도 빠진다.
+        -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
         "description" = EXCLUDED."description",
         "placeholders" = EXCLUDED."placeholders",
         -- **덮인 값의 저자는 리포다** (translation-ui design §3.6). 사람 이름을 남기면 거짓이고,

@@ -15,7 +15,7 @@ import { pullMessage, type PullOutcome } from "@/lib/pull/message";
  * **토스트를 쓰지 않는다.** 저장 상태가 셀 인라인이므로 이 화면의 토스트는 0개인 것이 규칙이다 —
  * 피드백 방식이 둘로 갈리면 사용자가 어디를 봐야 할지 모른다.
  *
- * **no-op에도 반드시 뭔가 보인다.** 편집이 없는 날이 기본 경로라(MVP §3.3 1.5) 성공 직후 한 번 더
+ * **no-op에도 반드시 뭔가 보인다.** 편집이 없는 날이 기본 경로라(ARCHITECTURE §2) 성공 직후 한 번 더
  * 누르면 반드시 그 경로이고, 무반응이면 편집자가 고장으로 읽는다.
  *
  * ⚠️ **버튼과 결과가 갈라져 있다.** 결과 `Alert`는 툴바 아래 고정 자리(배너 밑)이고 버튼은 툴바
@@ -61,7 +61,7 @@ export function PublishButton({
  * `lib/pull/message.ts`의 결정이고, 여기서 매핑 표를 또 들면 두 벌이 갈린다.
  *
  * ⚠️ **`outcome`을 상태로 든다** — `PullMessage`만 들면 `warnings`가 사라져 "어느 파일인지"를
- * 못 편다. 건수만 말하는 경고는 비개발자가 행동할 수 없다 (SAAS 불변식 9).
+ * 못 편다. 건수만 말하는 경고는 비개발자가 행동할 수 없다 (ARCHITECTURE §0 불변식 9).
  */
 export function PublishResult({ outcome }: { outcome: PullOutcome }) {
   const message = pullMessage(outcome);

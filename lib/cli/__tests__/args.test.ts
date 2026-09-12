@@ -4,7 +4,7 @@ import { findTarget, flagValue, flagValues, hasFlag } from "../args";
 /**
  * 세 CLI(`ingest`·`scan`·`push-local`)가 각자 짰던 인자 파싱. `ingest`만 값 플래그의 값 자리를
  * 건너뛰지 않아 `pnpm ingest --adapter ts-dict ./repo`가 `ts-dict`를 디렉터리로 읽었다
- * (TASKS §3b가 scan·push-local에서 고친 결함이 ingest에 남아 있었다 — 2026-09-04 audit #10).
+ * (scan·push-local에서 고친 결함이 ingest에 남아 있었다 — 2026-09-04 audit #10).
  */
 const VALUE_FLAGS = new Set(["--adapter", "--base", "--wrapper", "--url", "--project"]);
 

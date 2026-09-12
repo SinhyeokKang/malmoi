@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
  *    "물어보지 못했다"가 **바이트 단위로 같아진다** — POSTMORTEM 2026-09-03이 정확히 그 형태였고
  *    (실패한 PR 조회를 "PR 없음"으로 읽어 경고가 사라졌다), 2026-09-06이 같은 축이었다.
  *    RSC에서 그 성질은 **`try`를 안 쓰는 것**으로 자동 성립한다: 던지면 Next 오류 화면이다.
- * 2. **8단계 패널과의 경계.** SAAS §8의 🔒 제안을 이 단계가 채택한다 — **`logs`는 과거 이력이고**
+ * 2. **8단계 패널과의 경계.** PRODUCT의 🔒 제안을 이 단계가 채택한다 — **`logs`는 과거 이력이고**
  *    "지금 상태 + 행동"은 패널이다. 여기에 [Send changes]를 두면 그 경계가 첫날에 무너진다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));

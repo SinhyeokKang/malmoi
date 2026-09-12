@@ -191,7 +191,7 @@ describe("chrome-locales — write (기존 lib/export.ts 규칙을 이어받는�
 
 // ── 엔트리 필드 순서 다수결 (원본 포맷 보존, 마지막 축) ──────────────────────
 // Midnight-Lizard 실측: 전 엔트리가 `description` → `message` 순이라 우리가 반대로 내면
-// **값 편집이 0건이어도 diff 0.456**이다 (ADAPTER-COVERAGE §11.5·§15.3).
+// **값 편집이 0건이어도 diff 0.456**이다 (ARCHITECTURE §1.9·§15.3).
 
 describe("dominantFieldOrder — 원본 엔트리에서 필드 순서를 센다", () => {
   it("description 선행이 다수면 그 순서다", () => {

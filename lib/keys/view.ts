@@ -73,7 +73,7 @@ export function actorLabel(updatedBy: string | null, actors: Map<string, Actor>)
 
 /**
  * 테이블의 한 행. **로케일별 셀을 전부 들고 있다** — 화면이 `| key | en | ko | fr |`이므로
- * 행 하나가 모든 로케일을 그린다. 로케일마다 화면을 갈아타면 문맥이 끊긴다 (MVP §3.2).
+ * 행 하나가 모든 로케일을 그린다. 로케일마다 화면을 갈아타면 문맥이 끊긴다.
  */
 export type KeyRow = {
   id: string;
@@ -146,7 +146,7 @@ export type LocaleOption = { code: string; orphaned: boolean };
  * 이 리포가 그 부류를 두 번 밟았다 (`parseProjectFilter`와 같은 관용구).
  *
  * ⚠️ **순서가 URL이 아니라 인자 순서다** — 같은 선택이 두 링크에서 다르게 보이면 안 된다.
- * `columns`가 base를 맨 앞에 두므로 원문이 위에 온다 (MVP §3.2).
+ * `columns`가 base를 맨 앞에 두므로 원문이 위에 온다.
  */
 export function parseLocaleSelection(
   param: string | undefined,

@@ -24,7 +24,7 @@ export * from "./types";
  * Rails YAML을 둘 다 갖는다) **재생성 어댑터가 다루기 쉬운 쪽**이고, 실측에서 그쪽이 앱 UI였다.
  *
  * ⚠️ **`ts-dict`는 목록에 있지만 자동 탐지에 참여하지 않는다** — `detectCandidates`가 항상 빈
- * 배열이다. 명시 지정(`--adapter`·`Project.adapterName`)으로만 쓴다 (ADAPTER-COVERAGE 판정 ③).
+ * 배열이다. 명시 지정(`--adapter`·`Project.adapterName`)으로만 쓴다 (ARCHITECTURE §1.9 판정 ③).
  */
 export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict];
 
@@ -34,7 +34,7 @@ export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCat
  * 뿐이고 규모가 큰 쪽을 놓칠 수 있으므로 **명시 지정이 이긴다**(`--adapter`, `Project.adapterName`).
  *
  * 한 프로젝트가 두 표면을 동시에 다루는 것은 비범위다 — `Project`가 어댑터를 하나만 들고,
- * 필요해지면 표면마다 프로젝트를 나눈다 (MVP §7).
+ * 필요해지면 표면마다 프로젝트를 나눈다 (PRODUCT §4.2).
  */
 export function detectFormatWith(
   name: AdapterName,

@@ -6,7 +6,7 @@ import type { LocaleEntry } from "../types";
  * `orderedEntries` — 재생성 writer 전부가 지나는 **유일한 관문**이다 (`usableEntries`를 대체).
  *
  * 거르는 규칙(orphaned·빈 값)은 그대로고, **정렬 규칙만 바뀐다**: `order`가 있으면 그 순서,
- * 없으면 코드 유닛 순으로 뒤에 붙는다 (`docs/features/key-order-preservation/`).
+ * 없으면 코드 유닛 순으로 뒤에 붙는다 (ARCHITECTURE §1.1).
  *
  * ⚠️ **전순서라야 한다.** 동률에서 입력 배열 순서로 갈리면 DB 조회 순서가 바이트에 새어
  * `같은 DB 상태 → 같은 바이트`가 환경에 묶인다 — blob SHA 비교 전체가 그 위에 서 있다.

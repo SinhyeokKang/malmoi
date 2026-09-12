@@ -1,5 +1,5 @@
 /**
- * 원본 JSON 파일의 **표현**을 관측해 그대로 되돌려준다 (`docs/features/format-preservation/`).
+ * 원본 JSON 파일의 **표현**을 관측해 그대로 되돌려준다 (ARCHITECTURE §1.1).
  *
  * **값은 DB에서, 표현은 원본에서** — ARCHITECTURE §1.4가 수술적 치환에 세운 그 문장을 재생성
  * 어댑터로 옮긴 것이다. 여기서 원본에서 읽는 것은 표현뿐이고 **값은 절대 아니다**(코어 원칙
@@ -31,7 +31,7 @@ export type JsonStyle = {
    * `JSON.stringify`는 절대 내지 않는다.
    *
    * 10차 측정이 드러냈다: Midnight-Lizard가 필드 순서를 고친 뒤에도 0.109가 남았고 그 잔여가
-   * 전부 `\/`였다 (ADAPTER-COVERAGE §16).
+   * 전부 `\/`였다 (ARCHITECTURE §1.9).
    */
   escapeSlash: boolean;
   /**
@@ -99,7 +99,7 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
 
 /**
  * 스타일대로 직렬화한다. 들여쓰기 2칸 고정을 대신하지만 **끝 개행 1개는 그대로 불변식이다**
- * (MVP §4.1 — `JSON.stringify`는 개행을 안 붙인다).
+ * (ARCHITECTURE §1.1 — `JSON.stringify`는 개행을 안 붙인다).
  *
  * ⚠️ **기본 경로는 `JSON.stringify`를 그대로 지난다.** `space`가 문자열을 받고 명세상 `space: 2`와
  * `space: "  "`가 **동일**하므로 그 경로의 바이트 동일성이 구성상 참이고, 서로게이트 쌍·제어문자

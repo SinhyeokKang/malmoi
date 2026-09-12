@@ -13,7 +13,7 @@ import { CONTRACT_KEYS, formatFor, prototypeKeyViolations, writerContractViolati
  *
  * 규칙 본문과 layout별 적용 범위는 `contract.ts`에 있다.
  */
-describe("writer 계약 — ADAPTERS 전수 (MVP §4.1 / ARCHITECTURE §1.1·§1.4)", () => {
+describe("writer 계약 — ADAPTERS 전수 (ARCHITECTURE §1.1 / ARCHITECTURE §1.1·§1.4)", () => {
   for (const adapter of ADAPTERS) {
     it(`${adapter.name} (${adapter.layout})`, () => {
       expect(writerContractViolations(adapter)).toEqual([]);

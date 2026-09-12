@@ -6,7 +6,7 @@ import { planProjectAccess } from "../access";
  * 프로젝트 인가의 판정 전부 (design §3). 껍데기(`requireProjectAccess`)는 조회와 redirect만 하고
  * **여기서 아무 I/O도 하지 않는다** — `checkBearer`(`lib/push/auth.ts`)·`planSave`와 같은 결이다.
  *
- * ⚠️ **"slug가 없다"와 "멤버가 아니다"를 같은 `not-found`로 접는다** (SAAS §7.7 — "URL을 안다는
+ * ⚠️ **"slug가 없다"와 "멤버가 아니다"를 같은 `not-found`로 접는다** (PRODUCT §7.7 — "URL을 안다는
  * 사실은 접근 권한이 아니다"). 호출부가 프로젝트를 못 찾으면 `member: null`을 넘긴다. 둘을
  * 403/404로 가르면 **프로젝트 존재 여부가 샌다.**
  *
@@ -62,7 +62,7 @@ describe("planProjectAccess — 통과하면 인가된 projectId를 준다", () 
     }
   });
 
-  it("projectId는 **멤버십 행의 것**이다 — 클라이언트가 보낸 값이 아니다 (SAAS §5.2)", () => {
+  it("projectId는 **멤버십 행의 것**이다 — 클라이언트가 보낸 값이 아니다 (ARCHITECTURE §6.00 ③)", () => {
     const result = planProjectAccess({
       member: { projectId: "authorized-project", role: "OWNER" },
       permission: "translation:write",

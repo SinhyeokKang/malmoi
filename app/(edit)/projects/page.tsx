@@ -95,7 +95,7 @@ export default async function ProjectsPage({
   const filter = parseProjectFilter(rawFilter);
 
   /**
-   * ⚠️ **GitHub 계정 섹션이 2026-09-09에 `/account`로 갔다** (6b-4 — SAAS §7.7). 그것이 여기 있었던
+   * ⚠️ **GitHub 계정 섹션이 2026-09-09에 `/account`로 갔다** (6b-4 — PRODUCT §7.7). 그것이 여기 있었던
    * 이유는 "프로젝트를 하나도 안 만든 사용자에게 도달 가능한 자리가 여기뿐"이어서였고(2026-09-07
    * 리뷰 🟡9), 사용자 축 라우트가 생기면서 그 이유가 사라졌다. **옮긴 것이지 복제가 아니다** —
    * 두 자리에 두면 하나가 낡는다 (6b-2가 초대 폼을 지운 근거와 같다).
@@ -145,7 +145,7 @@ export default async function ProjectsPage({
             <h1 className="text-xl font-medium">{m.common.nav.projects}</h1>
             {/*
               ⚠️ **총계는 필터 전의 값이다** — 탭·검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
-              답한다. 사이드바 카운트 배지(SAAS §8 🔒)와 달리 이건 이미 가진 배열의 길이다.
+              답한다. 사이드바 카운트 배지(PRODUCT 🔒)와 달리 이건 이미 가진 배열의 길이다.
             */}
             <Badge variant="neutral">{all.length}</Badge>
           </div>

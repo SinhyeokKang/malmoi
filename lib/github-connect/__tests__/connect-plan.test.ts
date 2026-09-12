@@ -4,7 +4,7 @@ import { planRepoConnect } from "../connect-plan";
 import type { ProbeResult } from "../health";
 
 /**
- * SAAS §5.4의 **3중 검증이 값으로 판정되는 자리** (design §3.2·§4). 5단계 프로젝트 생성 경로가
+ * ARCHITECTURE §6의 **3중 검증이 값으로 판정되는 자리** (design §3.2·§4). 5단계 프로젝트 생성 경로가
  * 이 함수를 그대로 재사용하므로, 여기가 닫히면 §5.7의 공격 시나리오 둘이 함께 닫힌다.
  *
  * ```
@@ -15,7 +15,7 @@ import type { ProbeResult } from "../health";
  *
  * ⚠️ **`installationId`는 클라이언트에서 오지 않는다.** `probe`가 App JWT 조회 결과이고, 사용자 쪽
  * 두 목록은 **제출 시점에 다시 부른 것**이다 — 렌더 때 본 목록을 폼에 실어 믿으면 클라이언트가
- * 보낸 값을 인가 근거로 쓰는 것이 된다 (SAAS §5.2).
+ * 보낸 값을 인가 근거로 쓰는 것이 된다 (ARCHITECTURE §6.00 ③).
  *
  * ⚠️ **조회 실패를 거부로 접지 않는다.** `probe`가 `error`면 `unavailable`이다 — 장애를 "권한 없음"으로
  * 말하면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
@@ -48,7 +48,7 @@ describe("planRepoConnect — probe가 먼저다", () => {
   });
 });
 
-describe("planRepoConnect — 사용자 ↔ 설치 (SAAS §5.4 둘째 조건)", () => {
+describe("planRepoConnect — 사용자 ↔ 설치 (ARCHITECTURE §6 둘째 조건)", () => {
   it("그 설치가 사용자 목록에 없으면 installation-forbidden이다", () => {
     expect(plan({ userInstallationIds: ["99"] })).toEqual({ status: "installation-forbidden" });
   });
@@ -64,7 +64,7 @@ describe("planRepoConnect — 사용자 ↔ 설치 (SAAS §5.4 둘째 조건)", 
   });
 });
 
-describe("planRepoConnect — 설치 ↔ 리포 (SAAS §5.4 셋째 조건)", () => {
+describe("planRepoConnect — 설치 ↔ 리포 (ARCHITECTURE §6 셋째 조건)", () => {
   it("그 리포가 사용자 리포 목록에 없으면 repo-forbidden이다", () => {
     expect(plan({ userRepoFullNames: ["acme/other"] })).toEqual({ status: "repo-forbidden" });
   });

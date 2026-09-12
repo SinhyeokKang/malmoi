@@ -62,7 +62,7 @@ describe("renderWorkflowYaml", () => {
 
   /**
    * ⚠️ **`concurrency.group`에 slug가 들어가야 한다** (2026-09-07 리뷰 🟡8). `github.ref`만 쓰면 한 리포에
-   * 프로젝트가 둘일 때(SAAS §7.1 — prod의 `i18n-format-check`가 실물이다) 같은 커밋에서 두 워크플로가
+   * 프로젝트가 둘일 때(PRODUCT §7.1 — prod의 `i18n-format-check`가 실물이다) 같은 커밋에서 두 워크플로가
    * 같은 그룹에 들어가고 `cancel-in-progress`가 **한쪽을 죽인다.** 그러면 그 표면은 영영 적재되지 않는데
    * 취소는 실패로 보이지 않는다. `syncBranchFor`가 브랜치 이름에 slug를 넣은 것과 같은 이유다.
    */

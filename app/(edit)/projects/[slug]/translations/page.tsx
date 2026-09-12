@@ -75,7 +75,7 @@ export default async function TranslationsPage({
 
   const prisma = getPrisma();
   // ⚠️ **인가가 준 id로 읽는다 — URL의 slug로 다시 찾지 않는다.** 클라이언트가 준 식별자를 두 번
-  // 믿지 않는 것이 이 규칙의 요지다 (SAAS §5.2). null은 인가와 조회 사이에 프로젝트가 사라진
+  // 믿지 않는 것이 이 규칙의 요지다 (ARCHITECTURE §6.00 ③). null은 인가와 조회 사이에 프로젝트가 사라진
   // 경우뿐이라 남겨 둔다.
   const project = await loadProject(prisma, projectId);
   if (!project) redirect(routes.projects());
@@ -98,7 +98,7 @@ export default async function TranslationsPage({
     );
   }
 
-  // base를 맨 앞에 두고 나머지는 코드순. 원문이 위에 있어야 그 아래를 채운다 (MVP §3.2).
+  // base를 맨 앞에 두고 나머지는 코드순. 원문이 위에 있어야 그 아래를 채운다.
   const columns = [...project.locales].sort((a, b) =>
     a.isBase === b.isBase ? (a.code < b.code ? -1 : 1) : a.isBase ? -1 : 1,
   );
@@ -107,7 +107,7 @@ export default async function TranslationsPage({
    * ⚠️ **키만 먼저 읽는다 — 나머지 둘은 착지 redirect **뒤**다** (2026-09-12). 기본 착지는 URL을
    * 고정하려고 아래에서 `redirect`하는데, 그 판정에 필요한 것은 `rows` 하나다. 집계·편집자를 여기서
    * 함께 읽으면 **버려질 렌더가 그 둘까지 조회**하고, 사이드바에서 들어오는 가장 흔한 경로가 매번
-   * 그 값을 문다 (SAAS §8의 2초 게이트가 재는 것이 그 경로다).
+   * 그 값을 문다 (PRODUCT의 2초 게이트가 재는 것이 그 경로다).
    */
   const rows = await loadKeys(prisma, project.id);
 

@@ -37,7 +37,7 @@ Use this skill when the user asks to run the migrated source command `ship`.
 **작은·외과적 변경 전용.** 아래 중 하나라도 해당하면 **중단하고 수동 흐름(`/feature`부터)을 권한다**:
 
 - 여러 서브시스템에 걸친 기능 (세 흐름 중 둘 이상을 동시에 건드림)
-- **비범위 항목**을 요구 — `docs/MVP.md` §7(PoC) 또는 `docs/SAAS.md` §4.2(SaaS). 범위 결정은 사용자 몫이다
+- **비범위 항목**을 요구 — `docs/PRODUCT.md` §4.2. 범위 결정은 사용자 몫이다
 - **코어 불변식 변경** — export 결정성 규칙, blob SHA 계약, 커밋·PR 전략, 인증 경계 (ARCHITECTURE §1·2·3·6)
 - **destructive 스키마 변경** — 2단계 배포가 필요해 한 파이프라인에 안 들어간다
 - `docs/features/<slug>/`가 필요한 신규 기능
@@ -70,7 +70,7 @@ Use this skill when the user asks to run the migrated source command `ship`.
 - 스코프 가드·브랜치 확인. 실패 시 중단.
 - **클린 워크트리 전제**: `git status --porcelain`에 미커밋 변경이 있으면 파이프라인 시작 전에 **먼저 별도 커밋**한다 (내용을 파악해 영문 메시지로, 허락 없이). 파이프라인 자체 커밋과 기존 잔여 변경을 섞지 않으려는 것.
   - 단, 미커밋 diff가 **이번 대상 변경과 겹치면** 커밋하지 말고 **중단+리포트** — `/tdd`가 테스트를 먼저 박는 순서가 이미 깨졌다.
-- **`docs/MVP.md`·`docs/ARCHITECTURE.md` 관련 섹션 확인** — 대상이 코어 로직이면 불변식을 파이프라인 전체에 들고 간다.
+- **`docs/PRODUCT.md`·`docs/ARCHITECTURE.md` 관련 섹션 확인** — 대상이 코어 로직이면 불변식을 파이프라인 전체에 들고 간다.
 - 변경 설명 확정.
 
 ### 1. `/tdd`
@@ -127,8 +127,7 @@ Use this skill when the user asks to run the migrated source command `ship`.
 
 ### 10. 커밋 #4 (docs)
 - 9단계가 POSTMORTEM을 바꿨을 때만 (`docs(postmortem):`).
-- 2단계 "문서 영향" 플래그는 여기서 소비하지 않는다 — TASKS/MVP/ARCHITECTURE/CLAUDE 갱신 주체는 11단계 `/push`의 4단계(문서 신선도)다. 플래그를 트라이아지 힌트로 전달만 한다.
-- **`docs/TASKS.md` 체크는 반드시 `/push`가 한다.** 파이프라인이 코드를 바꿨으면 태스크가 진행된 것이므로 11단계에서 무조건 걸린다.
+- 2단계 "문서 영향" 플래그는 여기서 소비하지 않는다 — PRODUCT/ARCHITECTURE/DIRECTORY/CLAUDE 갱신 주체는 11단계 `/push`의 4단계(문서 신선도)다. 플래그를 트라이아지 힌트로 전달만 한다.
 
 ### 11. `/push` = dev 푸시 (preview 배포) [Claude Code 전용 — Codex는 10단계에서 종료]
 - `/push`가 로컬 검증 게이트(**typecheck + test + build**) → dev 마이그레이션 확인 → 문서 신선도 → Codex 미러 → 푸시를 순서대로 돈다. `build`가 셋 중 유일하게 RSC 경계를 본다.

@@ -62,27 +62,26 @@ pnpm db:status     # dev를 본다
 - **후보 0개면 검사 종료, 바로 5단계.** 대부분의 푸시가 여기서 통과한다.
 
 트리거:
-- **`lib/`·`app/`·`prisma/`에 실질 변경이 있음 = 태스크가 진행됐다는 뜻 → docs/TASKS.md** (⚠️ 이 트리거는 거의 항상 걸린다. 코드를 고쳤는데 체크박스가 그대로면 그 문서는 거짓이다)
-- **SaaS 단계를 끝냈거나 SaaS 범위·설계 결정이 바뀜, `docs/SAAS.md` §10이 결정됨 → docs/SAAS.md** (현재 단계의 정본이다 — `lib/auth/`·`app/`·`prisma/schema.prisma`의 SaaS 관련 변경이면 거의 항상 걸린다)
-- 기능 추가/삭제, 세 흐름(push·편집 UI·pull)의 단계 변경, 기술 선택·버전 변경, 비범위 항목을 범위로 끌어들임, 스키마 변경 → **docs/MVP.md**(PoC 계약이 실제로 바뀐 경우만 — 대개는 SAAS.md다) + **docs/TASKS.md**(PoC 기록이라 이제 거의 안 걸린다)
-- **`lib/` 아래 코어 모듈 변경** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`, `prisma/schema.prisma`, `middleware.ts` (2026-09-04 감사에서 `cli`·`survey`·`db`가 빠져 있었다 — 아래 경고가 실제로 일어난 사례. `github-connect`는 2026-09-06에, `i18n`·`shell`은 6a에, `home`은 6b-6에 생기면서 같은 커밋에 등재했고, `settings`는 6b-3에 생겼는데 둘 다 빠져 있던 것을 2026-09-09 `/doc-check`이 잡았다 — **6b-6의 `/code-review`가 그 셋이 어긋난 것을 잡았다**. `sync`는 2026-09-10 7단계 ship 1에 생기면서 같은 커밋에 등재했고, `credentials`·`session-revocation`은 같은 날 생겼는데 세 목록 어디에도 없던 것을 `/doc-check`이 잡았다. **`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts` 다섯도 2026-09-10 `/doc-check` 2회차가 같은 이유로 잡았다 — 세 목록이 또 갈려 있었다**. **`tone.ts`는 2026-09-11 3회차다 — 이 목록에만 없었다**. `login-link`는 2026-09-12 account-linking에 생기면서 같은 커밋에 세 목록 전부에 등재했다) — 또는 새 불변식·함정 발견, 인증 경로 변경 → **docs/ARCHITECTURE.md**
+- **기능 추가/삭제, 역할·권한표 변경, 비범위 항목을 범위로 끌어들임, 설계 결정이 뒤집힘, `docs/PRODUCT.md` §10이 결정됨 → docs/PRODUCT.md** (제품 판정의 정본이다 — `lib/auth/`·`app/`·`prisma/schema.prisma`의 변경이면 자주 걸린다)
+- **파일·디렉터리를 새로 만들거나 옮김, 새 함정을 주석으로 남김 → docs/DIRECTORY.md** (⚠️ 없는 파일을 가리키는 트리가 되면 그 문서가 거짓이다)
+- **`/feature`로 시작한 기능이 끝남 → 결론을 정본으로 올리고 `docs/features/<slug>/`를 지운다** (근거 기록을 쌓아 두지 않는다 — `git log`가 든다)
+- **`lib/` 아래 코어 모듈 변경** — `lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`, `prisma/schema.prisma`, `middleware.ts` (⚠️ **이 목록은 `docs/ARCHITECTURE.md` 머리의 목록과 같아야 한다** — 2026-09-13 전까지 세 곳이었고 `/doc-check`이 네 번에 걸쳐 갈린 것을 잡았다. CLAUDE.md 쪽 사본을 없애 둘로 줄였다) — 또는 새 불변식·함정 발견, 인증 경로 변경 → **docs/ARCHITECTURE.md**
   - ⚠️ **이 목록은 실제 디렉터리와 어긋나기 쉽다.** `lib/export.ts`가 어댑터로 흡수된 뒤에도 트리거가 그 이름을 가리키고 있어서, `lib/push/`의 정책 반전(strict)이 ARCHITECTURE §5.5를 낡은 채로 통과시켰다. **`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다.**
-- **코어 원칙·정책이 뒤집힘** (번역값 소유권, export 결정성, 인증 경계, 병합 없음의 해석) → **CLAUDE.md 코어 원칙 절 + docs/MVP.md + docs/ARCHITECTURE.md 셋 다**
+- **코어 원칙·정책이 뒤집힘** (번역값 소유권, export 결정성, 인증 경계, 병합 없음의 해석) → **CLAUDE.md 코어 원칙 절 + docs/ARCHITECTURE.md §0 둘 다**
   - 정책 반전은 한 문서만 고치면 나머지가 **반대 불변식을 가르친다.** 뒤집기 전 서술을 grep해 전수로 찾는다 (예: strict 전환 때 `DO NOTHING`·"절대 건드리지 않는다")
 - `package.json` scripts·의존성 변경, 새 디렉터리, 브랜치·배포 방식 변경, 스킬 라인업 변경, 새 컨벤션·게이트웨이 → **CLAUDE.md**
 - **코드에서 새 `process.env.*`를 읽음** → **.env.example** (⚠️ diff에 `process.env`가 보이면 무조건 확인한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다)
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
-- **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ADAPTER-COVERAGE.md + `pnpm adapter-survey` 재실행** (아래 4d)
+- **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ARCHITECTURE.md §1.9 + `pnpm adapter-survey` 재실행** (아래 4d)
 - `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
 - 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
 
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
-- **docs/TASKS.md** — **완료 조건이 실제로 통과한 태스크만 `[x]`로 체크**하고 근거(커밋 해시·테스트 이름·산출물)를 한 줄 남긴다. "코드를 썼다"는 완료가 아니다. 반대로 **되돌린 작업은 체크를 해제**한다. `🔒` 항목이 결정됐으면 표시를 떼고 결정 내용을 적은 뒤 MVP.md §10에서도 뺀다. 단계가 끝났으면 헤딩의 `⬜`를 `✅`로, 다음 단계에 `← **현재 단계**`를 옮긴다. prefix `docs(TASKS): ...`
 - **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
-- **docs/SAAS.md** — 단계별 체크리스트가 실제 진행과 맞는지, 불변식 9개가 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(SAAS): ...`
-- **docs/MVP.md** (PoC 스펙 — 닫힘) — 코어 원칙·strict 정책·세 흐름의 계약이 코드와 맞는지. §10에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. **§8 구현 순서와 TASKS.md의 단계 구성이 어긋나면 안 된다.** prefix `docs(MVP): ...`
-- **docs/ARCHITECTURE.md** — 불변식·함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
-- **CLAUDE.md** — 명령어 표, 스택 버전, 디렉터리 구조, 브랜치·배포, 스킬 라인업. prefix `docs(CLAUDE): ...`
+- **docs/PRODUCT.md** — 역할·권한표·범위·비범위·설계 결정이 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(PRODUCT): ...`
+- **docs/ARCHITECTURE.md** — §0 불변식 열하나가 코드와 맞는지, 함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
+- **docs/DIRECTORY.md** — 트리가 실제 파일과 맞는지(없는 파일·새 파일·옮긴 파일). prefix `docs(DIRECTORY): ...`
+- **CLAUDE.md** — 명령어 표, 스택 버전, 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`
 - **README.md** — 스택 한 줄·명령어 표·브랜치 정책이 CLAUDE.md와 맞는지. prefix `docs(README): ...`
 
@@ -92,11 +91,11 @@ pnpm db:status     # dev를 본다
 
 **4d. 어댑터 실측 재측정 (사람 판단 — 사용자에게 묻는다).**
 
-`lib/adapters/**`·`lib/survey/**`에 실질 변경이 있으면 `docs/ADAPTER-COVERAGE.md`의 숫자가 낡았을 수 있다. **이 판단을 자동으로 내리지 않는다** — 실행이 리포 129개 clone에 ~4분이고 네트워크·GitHub 가용성에 묶여 있어 푸시를 막을 게이트로 쓸 수 없다.
+`lib/adapters/**`·`lib/survey/**`에 실질 변경이 있으면 `docs/ARCHITECTURE.md` §1.9의 숫자가 낡았을 수 있다. **이 판단을 자동으로 내리지 않는다** — 실행이 리포 129개 clone에 ~4분이고 네트워크·GitHub 가용성에 묶여 있어 푸시를 막을 게이트로 쓸 수 없다.
 
 - 변경이 **탐지 규칙·정렬·writer 출력**에 닿으면 재측정을 권하고 사용자 판단을 받는다. 계약 주석·타입만 바꾼 변경은 권하지 않는다.
-- 재측정한다면 **학습(`repos.txt`)과 홀드아웃(`repos-heldout.txt`)을 둘 다** 돌린다. `docs/ADAPTER-COVERAGE.md` §0 3차가 그 근거다: 그 라운드의 수정 4건 중 **2건이 수정이 만든 회귀**였고 그중 하나는 학습 코퍼스에서만 나타났다 — 한쪽만 돌렸으면 못 봤다.
-- 결과는 `docs/ADAPTER-COVERAGE.md`에 회차를 더해 기록한다. **어느 코퍼스의 값인지 지표마다 붙인다** (POSTMORTEM 2026-09-02 — 학습 오탐 0.0%가 홀드아웃에서 40%였다).
+- 재측정한다면 **학습(`docs/adapter-survey/repos.txt`)과 홀드아웃(`repos-heldout.txt`)을 둘 다** 돌린다. ARCHITECTURE §1.9의 홀드아웃 판정이 그 근거다: 그 라운드의 수정 4건 중 **2건이 수정이 만든 회귀**였고 그중 하나는 학습 코퍼스에서만 나타났다 — 한쪽만 돌렸으면 못 봤다.
+- 결과는 `docs/ARCHITECTURE.md` §1.9의 지표 표를 갱신한다. **어느 코퍼스의 값인지 지표마다 붙인다** (POSTMORTEM 2026-09-02 — 학습 오탐 0.0%가 홀드아웃에서 40%였다).
 - **재측정하지 않기로 했으면 그 사실을 리포트에 남긴다.** "안 걸렸다"와 "걸렸는데 미뤘다"는 다르다.
 
 ⚠️ **상시 방어선은 따로 있다.** `lib/adapters/__tests__/key-order-golden.test.ts`가 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 재므로, 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡는다. 재측정이 답하는 것은 **일반화**(처음 보는 리포에서도 그런가)뿐이다.

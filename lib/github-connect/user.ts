@@ -9,7 +9,7 @@ import { requireEnv } from "@/lib/env";
  *
  * ⚠️ **App 개인키를 모른다.** 여기서 쓰는 것은 App의 **OAuth client id/secret**이고
  * (`GITHUB_APP_CLIENT_ID` ≠ `GITHUB_APP_ID`), 커밋을 만드는 installation 토큰은
- * `lib/github.ts`에만 산다 (SAAS §9-6). `__tests__/credential-separation.test.ts`가 소스에서 센다.
+ * `lib/github.ts`에만 산다 (ARCHITECTURE §0-6). `__tests__/credential-separation.test.ts`가 소스에서 센다.
  *
  * ⚠️ **GET만 부른다.** 교환·갱신의 POST는 `OAuthApp`이 대신하고, 우리 코드가 조립하는 요청은
  * 전부 읽기다. 사용자 토큰이 쓰기 경로에 들어가면 커밋이 개인 명의가 된다 (ARCHITECTURE §6).
@@ -41,7 +41,7 @@ function createOAuthApp() {
   return new OAuthApp({
     clientType: "github-app",
     // ⚠️ `GITHUB_APP_ID`(숫자)가 아니라 client id(`Iv23li…`)다. 바꿔 넣으면 authorize가 404이고,
-    // 프로덕션 로그인이 같은 실수로 한 번도 성공한 적이 없었다 (SAAS §8 2단계).
+    // 프로덕션 로그인이 같은 실수로 한 번도 성공한 적이 없었다 (2단계).
     clientId: requireEnv("GITHUB_APP_CLIENT_ID"),
     clientSecret: requireEnv("GITHUB_APP_CLIENT_SECRET"),
   });

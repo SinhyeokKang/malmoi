@@ -18,13 +18,13 @@ Use this skill when the user asks to run the migrated source command `feature`.
 
 ## 0. 범위 게이트 (착수 전, 생략 금지)
 
-**비범위와 대조한다 — 목록이 둘이다: `docs/MVP.md` §7(PoC)과 `docs/SAAS.md` §4.2(SaaS).** ⚠️ SAAS.md §4.3은 성격이 다르다 — "1차에서 빼되 2차에 열어두는 것"(이메일 로그인·push 웹훅)이라, 요청이 거기 걸리면 **그 절에 적힌 "2차에 열 조건"이 충족됐는지**를 먼저 묻는다. (상대 링크 금지 — 이 파일은 `.agents/skills/`로 미러돼 기준 경로가 둘이다). 요청이 비범위 항목이거나 그것을 요구하면:
+**비범위와 대조한다 — 목록이 둘이다: `docs/PRODUCT.md` §4.2.** ⚠️ PRODUCT.md §4.3은 성격이 다르다 — "1차에서 빼되 2차에 열어두는 것"(이메일 로그인·push 웹훅)이라, 요청이 거기 걸리면 **그 절에 적힌 "2차에 열 조건"이 충족됐는지**를 먼저 묻는다. (상대 링크 금지 — 이 파일은 `.agents/skills/`로 미러돼 기준 경로가 둘이다). 요청이 비범위 항목이거나 그것을 요구하면:
 
 - 어떤 항목에 걸리는지, 원래 왜 뺐는지를 한 줄로 제시하고 **되묻는다**.
-- 사용자가 재확인하면 진행하되, **`docs/MVP.md` 갱신을 산출물에 포함**한다 (비범위에서 빼고 본문에 넣는다). 스펙보다 코드가 앞서면 스펙이 거짓이 된다.
+- 사용자가 재확인하면 진행하되, **`docs/PRODUCT.md` 갱신을 산출물에 포함**한다 (비범위에서 빼고 본문에 넣는다). 스펙보다 코드가 앞서면 스펙이 거짓이 된다.
 - "이 정도면 범위 안이겠지" 판단을 스스로 하지 않는다.
 
-또한 **코어 설계 원칙과 충돌하는지** 본다 (MVP.md §2). 머지 로직·충돌 해소·양방향 동기화를 요구하는 기능은 원칙 위반이므로 대안을 제시한다.
+또한 **코어 설계 원칙과 충돌하는지** 본다 (ARCHITECTURE §0). 머지 로직·충돌 해소·양방향 동기화를 요구하는 기능은 원칙 위반이므로 대안을 제시한다.
 
 ## 1. 산출물
 
@@ -51,7 +51,7 @@ Use this skill when the user asks to run the migrated source command `feature`.
 ## 2. 절차
 
 1. **범위 게이트** (위 0단계). 걸리면 되묻고 대기.
-2. **기존 문서 대조** — `docs/SAAS.md`(현재 단계)·`docs/MVP.md`(코어 원칙)·`docs/ARCHITECTURE.md`를 읽어 이미 정해진 것과 충돌하지 않게 한다. 이미 결정된 사항을 다시 설계하지 않는다.
+2. **기존 문서 대조** — `docs/PRODUCT.md`·`docs/ARCHITECTURE.md` §0(불변식)·`docs/ARCHITECTURE.md`를 읽어 이미 정해진 것과 충돌하지 않게 한다. 이미 결정된 사항을 다시 설계하지 않는다.
 3. **`docs/POSTMORTEM.md` grep** — 이 기능이 건드릴 영역에 과거 함정이 있으면 design.md에 인용한다.
 4. **3개 파일 작성.**
 5. **불확실한 지점을 목록으로 제시하고 확인받는다.** 여러 해석이 가능한 곳을 조용히 하나 고르지 않는다.
@@ -61,7 +61,7 @@ Use this skill when the user asks to run the migrated source command `feature`.
 ```
 📋 feature: <slug>
 문서: docs/features/<slug>/{spec,design,tasks}.md
-범위 게이트: 통과 / MVP.md 갱신 필요(<항목>)
+범위 게이트: 통과 / PRODUCT.md 갱신 필요(<항목>)
 순수 함수 대상: <목록>  ← /tdd 진입점
 스키마 변경: 없음 / additive / destructive(2단계 배포)
 새 환경변수: 없음 / <목록>
@@ -75,4 +75,4 @@ Use this skill when the user asks to run the migrated source command `feature`.
 - **코드 파일 생성·수정 금지.** `docs/features/` 아래 문서만.
 - **커밋 금지.**
 - **비범위를 임의 승격 금지** — 되묻고 대기.
-- **`docs/MVP.md`·`docs/ARCHITECTURE.md` 직접 수정 금지** — 필요를 태스크로 남기고, 실제 갱신은 `/implement` 또는 `/push` 신선도 단계에서.
+- **`docs/PRODUCT.md`·`docs/ARCHITECTURE.md` 직접 수정 금지** — 필요를 태스크로 남기고, 실제 갱신은 `/implement` 또는 `/push` 신선도 단계에서.

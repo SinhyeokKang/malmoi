@@ -58,7 +58,7 @@ describe("Publish — 다섯 문구가 Alert로 가는 길이 한 줄이다", ()
     expect(read(PUBLISH)).toMatch(/variant=\{message\.tone\}/);
   });
 
-  it("버린 값의 **파일 목록**을 편다 — 건수만으로는 편집자가 행동할 수 없다 (SAAS 불변식 9)", () => {
+  it("버린 값의 **파일 목록**을 편다 — 건수만으로는 편집자가 행동할 수 없다 (ARCHITECTURE §0 불변식 9)", () => {
     const src = read(PUBLISH);
     expect(src).toMatch(/<details/);
     expect(src).toMatch(/warnings/);
@@ -192,7 +192,7 @@ describe("보관 카드 (7단계)", () => {
 
   /**
    * ⚠️ **열린 PR 조회 실패를 "없다"로 읽지 않는다** (POSTMORTEM 2026-09-03). 보관은 그 PR을 닫지
-   * 않으므로(SAAS §7.9) 사람이 그것을 알고 판단해야 하는데, 실패를 부재로 접으면 그 정보가
+   * 않으므로(PRODUCT §7.9) 사람이 그것을 알고 판단해야 하는데, 실패를 부재로 접으면 그 정보가
    * 조용히 사라진다.
    */
   it("열린 PR 조회 실패에 전용 문구가 있다", () => {
@@ -303,7 +303,7 @@ describe("행 축 (8-4)", () => {
    * ⚠️ **결과 `Alert`가 스크롤 본문 맨 위에 그려진다** — 버튼은 고정 머리에 있으므로 903키 표를
    * 아래로 내린 채 누르면 방금 만든 문구가 **뷰포트 밖**이다. 성공은 "Last sent"가 바뀌는 간접
    * 신호라도 있지만 **실패는 신호가 0이다**(스피너가 멈추는 것이 전부) — 버린 값이 화면에 닿아야
-   * 한다는 SAAS 불변식 9가 거기서 깨진다 (2026-09-11 code-review 🟡).
+   * 한다는 ARCHITECTURE §0 불변식 9가 거기서 깨진다 (2026-09-11 code-review 🟡).
    */
   it("Publish 결과를 화면으로 끌어온다", () => {
     const src = read(HEADER);

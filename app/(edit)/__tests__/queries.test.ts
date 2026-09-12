@@ -343,7 +343,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
 
 /**
  * 목록 화면 전용 조회 (8-3). **셸의 `loadMemberships`와 나뉘어 있는 것이 요지다** — 그쪽은 매 페이지가
- * 부르므로 목록 하나를 위한 집계를 얹지 않는다 (SAAS §7.7 결정 5와 같은 축).
+ * 부르므로 목록 하나를 위한 집계를 얹지 않는다 (PRODUCT §7.7 결정 5와 같은 축).
  */
 describe("loadProjectList", () => {
   it("내 멤버십만 낸다 — 남의 프로젝트가 섞이지 않는다", async () => {

@@ -91,11 +91,11 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
 }
 
 /**
- * pull 트리거 — 편집 UI 버튼. **`/api/pull`을 fetch하지 않는다** (MVP §5): 내부 호출에
+ * pull 트리거 — 편집 UI 버튼. **`/api/pull`을 fetch하지 않는다** (CLAUDE.md "데이터 변경 경로"): 내부 호출에
  * Route Handler를 끼우면 세션 쿠키·절대 URL 배선이 따라오고, 그 라우트는 cron 전용이다.
  *
  * **EDITOR도 부를 수 있다** — Publish는 base branch 직접 쓰기가 아니라 검토 가능한 PR 생성이다
- * (SAAS §3). 그래서 permission이 `translation:write`이고 별도 권한을 두지 않았다.
+ * (PRODUCT §3). 그래서 permission이 `translation:write`이고 별도 권한을 두지 않았다.
  *
  * **커밋 작성자는 항상 App 토큰이다.** 로그인한 사용자의 OAuth 토큰이 이 경로에 들어오지
  * 않는다 (ARCHITECTURE §6) — `triggerPull`이 `createGitClient`만 쓴다.

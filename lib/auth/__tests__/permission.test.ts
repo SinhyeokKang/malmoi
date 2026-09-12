@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { canPerform, type Permission, type Role } from "../permission";
 
 /**
- * SAAS.md §3 권한표를 코드로. **역할은 둘, permission은 셋이라 6칸이 전부다.**
+ * PRODUCT §3 권한표를 코드로. **역할은 둘, permission은 셋이라 6칸이 전부다.**
  *
  * ⚠️ **Publish는 별도 permission이 아니라 `translation:write`에 포함된다** (design §2).
- * SAAS §3이 EDITOR에게 Publish를 허용했고("PR 생성이지 base 직접 쓰기가 아니다"),
+ * PRODUCT §3이 EDITOR에게 Publish를 허용했고("PR 생성이지 base 직접 쓰기가 아니다"),
  * "개발자만 Publish"가 필요해지면 그때 permission을 나눈다 — 지금 넷째를 두는 것은 선반영이다.
  *
  * fail-closed 계보(`lib/auth/allow.ts`)를 잇는다: **표에 없으면 거부**가 기본이다.
@@ -15,7 +15,7 @@ import { canPerform, type Permission, type Role } from "../permission";
 const ROLES: readonly Role[] = ["OWNER", "EDITOR"];
 const PERMISSIONS: readonly Permission[] = ["translation:write", "project:settings", "member:manage"];
 
-describe("canPerform — SAAS §3 권한표 6칸", () => {
+describe("canPerform — PRODUCT §3 권한표 6칸", () => {
   it("OWNER는 번역 조회·수정과 Publish를 한다", () => {
     expect(canPerform("OWNER", "translation:write")).toBe(true);
   });

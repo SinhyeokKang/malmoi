@@ -87,7 +87,7 @@ export const routes = {
   projects: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects", query),
   newProject: (): string => "/projects/new",
   /**
-   * 사용자 축 (SAAS §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
+   * 사용자 축 (PRODUCT §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
    * 사람에 속하고, 그래서 프로젝트를 하나도 안 만든 사용자도 도달해야 한다.
    *
    * ⚠️ **`sessionRevocation`이 2026-09-11에 여기로 들어왔다.** 그 전에는 세 자리가 문자열 연결로
@@ -115,7 +115,7 @@ export const routes = {
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
   /**
-   * 프로젝트 진입의 **착지점** (SAAS §7.7 결정 1 — 6b-6). "프로젝트로 간다"를 뜻하는 자리가 전부
+   * 프로젝트 진입의 **착지점** (PRODUCT §7.7 결정 1 — 6b-6). "프로젝트로 간다"를 뜻하는 자리가 전부
    * 이것이다: 목록 행 · 사이드바 스위처 · 각 화면의 breadcrumb · 초대 수락. 하나라도 다른 곳을
    * 가리키면 같은 의도가 어디서 눌렀는지에 따라 다른 곳에 착지하고, 그 불일치는 눈에 안 보인다.
    */

@@ -4,10 +4,10 @@ import { roundtripDiffRatio } from "../diff";
 /**
  * `roundtripDiffRatio` — 원본과 1차 write 출력의 **변경 줄 비율**.
  *
- * **첫 pull PR의 diff 크기 대리 지표다** (`docs/features/adapter-generality/spec.md` 지표 ④).
+ * **첫 pull PR의 diff 크기 대리 지표다**.
  * 재생성 writer가 키를 항상 재정렬하므로, 원본이 정렬돼 있지 않은 리포에서는 첫 PR이 파일
  * 전체 diff로 나온다 — skillflo 1446키가 통째로 재정렬된 PR은 리뷰어가 머지하지 않는다.
- * MVP §4.1 "키 정렬" 규칙을 개정해야 하는지가 이 숫자에 걸려 있다.
+ * ARCHITECTURE §1.1 "키 정렬" 규칙을 개정해야 하는지가 이 숫자에 걸려 있다.
  *
  * 정의: LCS로 맞춰지지 않은 줄의 비율. `1 - 2·LCS / (원본 줄 수 + 출력 줄 수)`.
  * 이 식이라야 아래 세 기준이 **정확히** 떨어진다.

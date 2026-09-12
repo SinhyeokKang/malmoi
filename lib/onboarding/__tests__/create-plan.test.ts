@@ -54,7 +54,7 @@ describe("planProjectCreate — slug 충돌", () => {
 });
 
 describe("planProjectCreate — 통과", () => {
-  it("installationId·repoOwner·repoName은 **probe가 준 값**이다 — 클라이언트 입력이 아니다 (SAAS §5.2)", () => {
+  it("installationId·repoOwner·repoName은 **probe가 준 값**이다 — 클라이언트 입력이 아니다 (ARCHITECTURE §6.00 ③)", () => {
     expect(planProjectCreate(base)).toEqual({
       status: "ok",
       installationId: "42",

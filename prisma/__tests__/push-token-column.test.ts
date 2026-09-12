@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * `Project.pushTokenHash` — 프로젝트별 push 토큰의 sha256 (design §6 · SAAS §7.8). `schema-contract.test.ts`와 같은
+ * `Project.pushTokenHash` — 프로젝트별 push 토큰의 sha256 (design §6 · PRODUCT §7.8). `schema-contract.test.ts`와 같은
  * 텍스트 대조다: 컬럼이 **nullable**이어야 기존 행에 무해하고(additive), **unique**여야 해시 조회가 행 하나를
  * 정하며(토큰이 프로젝트를 정한다 — design §3.8), 원문 컬럼이 없어야 "원문은 저장하지 않는다"가 스키마 수준에서
  * 지켜진다.

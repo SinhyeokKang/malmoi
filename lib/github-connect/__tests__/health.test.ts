@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planConnectionHealth, probeFromError, type ProbeResult } from "../health";
 
 /**
- * 연결 건강성 판정 (design §3.3·§4). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (SAAS §7.5).
+ * 연결 건강성 판정 (design §3.3·§4). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5).
  *
  * ⚠️ **이 표의 요지는 마지막 줄이다 — 조회 실패(`error`)를 `app-uninstalled`로 접지 않는다.**
  * 접으면 **장애가 "제거됨"으로 읽힌다**: POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽어
@@ -11,7 +11,7 @@ import { planConnectionHealth, probeFromError, type ProbeResult } from "../healt
  * '정상'으로 읽었다")이 같은 부류이고, `readSession`이 `none`과 `unavailable`을 가른 것과 같은 축이다.
  *
  * ⚠️ **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다.** 판정은 새 값을 **보여줄 뿐**이고,
- * 저장은 사람이 "다시 연결"을 눌러야 일어난다 (SAAS §7.9).
+ * 저장은 사람이 "다시 연결"을 눌러야 일어난다 (PRODUCT §7.9).
  */
 
 const project = { installationId: "158107153", repositoryId: "1035512", repoOwner: "acme", repoName: "web" };

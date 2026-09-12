@@ -67,7 +67,7 @@ const google = Google({
  * OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 떠나면 파이프라인이
  * 깨진다 (ARCHITECTURE §6).
  *
- * **DB 세션이다** (SaaS 2단계, SAAS §5.3). JWT의 대가였던 "권한 회수가 최대 24시간 지연"을
+ * **DB 세션이다** (SaaS 2단계, ARCHITECTURE §6.00 ④). JWT의 대가였던 "권한 회수가 최대 24시간 지연"을
  * 없앤다 — 세션에 담는 것은 `userId`뿐이고 권한은 매 요청 `ProjectMember`에서 읽는다. 토큰에
  * role이나 projectIds를 실으면 JWT의 지연 문제가 그대로 돌아온다.
  *
@@ -79,7 +79,7 @@ const google = Google({
  * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
  * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 이메일 기반 자동 병합을 막는다.
  * 로그인 세션의 추가 계정 연결은 safePrismaAdapter가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
- * SAAS §5.5는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
+ * ARCHITECTURE §6.2.1는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
  * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
  */
 const authConfig = NextAuth(async () => ({
@@ -137,7 +137,7 @@ const authConfig = NextAuth(async () => ({
      * 있는지만 본다.
      *
      * ⚠️ **허용 핸들 목록(`AUTH_ALLOWED_LOGINS`)이 2026-09-05에 사라졌다.** 인가는 이제
-     * `ProjectMember`가 한다 (SAAS §9 불변식 7) — **로그인은 신원 확인이고, 무엇을 할 수 있는지는
+     * `ProjectMember`가 한다 (ARCHITECTURE §0 불변식 7) — **로그인은 신원 확인이고, 무엇을 할 수 있는지는
      * 각 진입점의 `getProjectAccess`가 정한다.** 목록을 남긴 채 멤버십을 붙이면 두 인가가 AND로
      * 걸려 좁은 쪽이 이기고, 초대받은 비개발자가 핸들이 없어 **로그인 단계에서** 막힌다.
      * 그래서 전환과 제거가 같은 커밋이었다.
@@ -203,7 +203,7 @@ const authConfig = NextAuth(async () => ({
 
     /**
      * DB 세션에서는 `token`이 오지 않고 **`user`(어댑터가 읽은 행)** 가 온다. 세션에 싣는 것은
-     * `id` 하나다 — role·projectIds를 실으면 JWT의 회수 지연이 그대로 돌아온다 (SAAS §5.3).
+     * `id` 하나다 — role·projectIds를 실으면 JWT의 회수 지연이 그대로 돌아온다 (ARCHITECTURE §6.00 ④).
      *
      * ⚠️ **입력 `session`을 돌려주지 않는다.** 그 객체는 `Session` **행**이라 `sessionToken`이 들어
      * 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 그대로 돌려주면 HttpOnly 쿠키의 값이 JSON으로

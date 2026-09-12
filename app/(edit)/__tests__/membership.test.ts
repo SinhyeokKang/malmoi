@@ -6,7 +6,7 @@ import { hashInviteToken } from "@/lib/auth/invitation";
 import { createHarness, sessionFor } from "./harness";
 
 /**
- * 초대와 멤버 변경 (SAAS.md §5.6).
+ * 초대와 멤버 변경 (ARCHITECTURE §6.02).
  *
  * ⚠️ **초대 수락은 `requireProjectAccess`를 지나지 않는다** — 수락 전엔 멤버가 아니기 때문이다.
  * 그래서 그 Action은 spec 완료 조건 6의 **명시된 예외**이고, 대신 **토큰이 인가를 대신한다**:
@@ -72,7 +72,7 @@ describe("createInvitation — 누가 부를 수 있나", () => {
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
-  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (SAAS §3)", async () => {
+  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (PRODUCT §3)", async () => {
     hoisted.session = sessionFor("u-editor");
     const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
     expect(result).toEqual({ ok: false, error: "forbidden" });
@@ -513,7 +513,7 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
     expect(row?.expiresAt).toEqual(LATER);
   });
 
-  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (SAAS §3)", async () => {
+  it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (PRODUCT §3)", async () => {
     withInvites();
     hoisted.session = sessionFor("u-editor");
     const result = await revokeInvitation({ slug: "alpha", invitationId: "i-a" });

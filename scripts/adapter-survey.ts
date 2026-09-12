@@ -197,7 +197,7 @@ if (asJson) {
     console.log(`   └ ${name.padEnd(16)} 중앙값 ${d.median?.toFixed(3) ?? "–"}  초과 ${pct(d.overTarget)}`);
   }
 
-  console.log(`\n⑤ 키 순서 보존의 근거   [docs/features/key-order-preservation/]`);
+  console.log(`\n⑤ 키 순서 보존의 근거   [ARCHITECTURE §1.9]`);
   console.log(
     `   ★ 순서 외 원인 없는 재생성 리포: ${diff.clean.repos}개, 중앙값 ` +
       `${diff.clean.median?.toFixed(3) ?? "–"}, 목표 초과 ${pct(diff.clean.overTarget)}`,

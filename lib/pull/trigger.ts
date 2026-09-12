@@ -11,7 +11,7 @@ import { runPull, type PullResult } from "./run";
  * pull 한 번. **진입점 둘이 같은 조립을 반복하지 않게** 여기 모은다 —
  * `/api/pull`(cron)과 편집 UI의 Server Action이 이 함수를 부른다.
  *
- * 진입점이 둘인 것은 의도된 것이다 (MVP §5): 외부(cron)는 Route Handler, 내부(편집 UI)는
+ * 진입점이 둘인 것은 의도된 것이다 (CLAUDE.md "데이터 변경 경로"): 외부(cron)는 Route Handler, 내부(편집 UI)는
  * Server Action. **Action이 `/api/pull`을 fetch하지 않는다** — 내부 쓰기에 Route Handler를
  * 새로 만들지 않는 규칙의 반대편이고, 그러면 세션 쿠키·절대 URL 배선이 따라온다.
  */
@@ -28,8 +28,8 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
  * 매 pull마다 force update된다 (ARCHITECTURE §3).
  *
  * ⚠️ **slug가 이름에 들어가는 것이 요지다.** 예전에는 상수 `l10n/sync` 하나였는데, 한 리포에
- * 번역 표면이 둘이면 Project가 둘이 되고(SAAS.md §7.1) **그 둘이 같은 브랜치를 force update로
- * 서로 덮는다.** TASKS §7의 실물 검증에서 순차 실행으로 피해 갔던 자리이고, bugshot-2가 정확히
+ * 번역 표면이 둘이면 Project가 둘이 되고(PRODUCT §7.1) **그 둘이 같은 브랜치를 force update로
+ * 서로 덮는다.** 그때는 순차 실행으로 피해 갔고, bugshot-2가 정확히
  * 그 모양이다 (`_locales` 4키 + `ts-dict` 903키).
  *
  * `Project.slug`에는 형식 제약이 없으므로(`slug String @unique`) **여기가 유일한 방어선이다.**

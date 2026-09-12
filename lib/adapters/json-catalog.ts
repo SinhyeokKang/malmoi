@@ -17,7 +17,7 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  *   - bugshot-web (`src/lib/i18n/`) — next-intl 중첩, 배열값 포함
  *
  * **중첩은 `.`으로 평탄화해 읽고 write에서 복원한다.** 평탄화만 하고 복원하지 않으면 읽은
- * 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다 (MVP §4).
+ * 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다 (ARCHITECTURE §1).
  *
  * `description`을 담을 곳이 없다 — DB엔 남지만 파일로 나가지 않는다.
  *
@@ -29,7 +29,7 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  *
  * **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 후보로 낸다** (`PRIMARY_NAMES`).
  * `Project`가 포맷을 하나만 들기 때문이고, 그래서 Ghost의 5개 네임스페이스 중 1개만 덮는다 —
- * 나머지는 프로젝트를 나눠야 한다 (MVP §7).
+ * 나머지는 프로젝트를 나눠야 한다 (PRODUCT §4.2).
  */
 
 const SEP = KEY_SEP;

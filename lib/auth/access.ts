@@ -19,7 +19,7 @@ export type ProjectAccess =
 
 /**
  * ⚠️ **"그런 slug가 없다"와 "멤버가 아니다"를 같은 `not-found`로 접는다.** URL을 안다는 사실은
- * 접근 권한이 아니고(SAAS §7.7), 둘을 404/403으로 가르면 **프로젝트 존재 여부가 샌다.**
+ * 접근 권한이 아니고(PRODUCT §7.7), 둘을 404/403으로 가르면 **프로젝트 존재 여부가 샌다.**
  * 호출부는 프로젝트를 못 찾았을 때도 `member: null`을 넘긴다.
  *
  * 이건 `planInvitationAccept`가 `not-found`를 **가르는** 것과 방향이 반대인데 축이 다르다 —
@@ -28,7 +28,7 @@ export type ProjectAccess =
  * `forbidden`은 **멤버이지만 permission이 모자란** 경우에만 쓴다. 그래야 화면이 "권한이 없다"와
  * "그런 프로젝트가 없다"를 다르게 말한다.
  *
- * 반환하는 `projectId`는 **멤버십 행의 것**이다 — 클라이언트가 보낸 값을 믿지 않는다 (SAAS §5.2).
+ * 반환하는 `projectId`는 **멤버십 행의 것**이다 — 클라이언트가 보낸 값을 믿지 않는다 (ARCHITECTURE §6.00 ③).
  *
  * ⚠️ **보관 판정이 여기 있는 이유** (7단계, 결정 1): 페이지·Server Action이 각자 `archivedAt`을 보면
  * 새 화면 하나가 조용히 빠지는데, 인가 union에 두면 `entry-points.test.ts`가 세는 **모든 진입점이

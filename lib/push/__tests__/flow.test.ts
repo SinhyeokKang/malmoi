@@ -7,7 +7,7 @@ import { buildPushPayload, pickBaseLocale, selectLocaleFiles } from "../payload"
 import { sourceHash, type ExistingKey } from "../plan";
 
 /**
- * **push 흐름을 끝에서 끝까지 본다** (TASKS §0 B-1). 홉마다 단위 테스트가 있어도
+ * **push 흐름을 끝에서 끝까지 본다**. 홉마다 단위 테스트가 있어도
  * 이어 붙인 것을 보는 테스트가 없으면 값이 홉 사이에서 사라진다 — 이 리포의 반복 실패
  * 유형이고 `docs/POSTMORTEM.md`에 넷 있다.
  *
@@ -485,7 +485,7 @@ describe("push 흐름 — 중복 키를 페이로드가 접는다", () => {
 
 /**
  * **삭제된 로케일** (2026-09-04 audit #2). 로케일 목록의 정본은 어댑터가 탐지한 파일 목록이다
- * (MVP §3.1). 사라진 로케일을 표시하지 않으면 DB에 영구 잔존하고, pull이 그 로케일 파일을
+ * (ARCHITECTURE §0 불변식 2). 사라진 로케일을 표시하지 않으면 DB에 영구 잔존하고, pull이 그 로케일 파일을
  * **되살린다** — 개발자가 지운 파일이 다음 PR에서 돌아온다.
  */
 describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () => {

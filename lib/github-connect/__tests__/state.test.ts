@@ -15,7 +15,7 @@ import { signState, stateCookieName, stateCookieNames, verifyState } from "../st
  * ⚠️ **목적지는 쿠키에서 온다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를 정한다.
  *
  * ⚠️ **`dest`가 갈래 셋이다** (design §3.6 + 6b-4): 설정 화면(`{kind:"settings", slug}`) · 생성 화면
- * (`{kind:"new"}`) · 계정 화면(`{kind:"account"}`). 뒤의 둘은 **사용자 축이라 slug가 없다** (SAAS §7.7).
+ * (`{kind:"new"}`) · 계정 화면(`{kind:"account"}`). 뒤의 둘은 **사용자 축이라 slug가 없다** (PRODUCT §7.7).
  * 생성 경로에는 프로젝트가 없어 slug가 그 역할을 겸할 수 없다. 갈래를 **서명 안에** 두는 이유는
  * 쿼리로 실으면 공격자가 착지를 정해 open redirect 판정이 필요해지기 때문이다.
  */
@@ -89,7 +89,7 @@ describe("verifyState — 정상 왕복", () => {
   });
 
   /**
-   * `/account`도 사용자 축이라 slug가 없다 (SAAS §7.7). **생성 경로와 갈래를 합치지 않는 이유는
+   * `/account`도 사용자 축이라 slug가 없다 (PRODUCT §7.7). **생성 경로와 갈래를 합치지 않는 이유는
    * 착지가 다르기 때문**이다 — 합치면 계정 화면에서 연결을 누른 사람이 `/projects/new`에 떨어진다.
    */
   it("계정 경로의 dest도 slug가 없다 — 사용자 축이다 (6b-4)", () => {

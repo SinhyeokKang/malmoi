@@ -33,7 +33,7 @@ import { WorkflowBlock } from "./workflow-block";
  * ⚠️ **④가 지나면 행은 있다.** 그 뒤 새로고침·세션 만료로 ⑤⑥을 잃어도 프로젝트는 `/projects`에
  * "Waiting for first import"로 보이고 설정 화면의 상태 블록이 이어받는다 — **토큰 원문만 다시 못 본다.**
  *
- * ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3 · design §3.3). 라벨·경로 예시는 서버가
+ * ⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (PRODUCT §3 · design §3.3). 라벨·경로 예시는 서버가
  * `formatLabel`로 만들어 내려준다 — 그 표를 클라이언트에 복사하면 두 벌이 된다. **`lib/onboarding/detect`를
  * 값으로 import하지 않는 이유도 그것이다**: 그 모듈은 어댑터 전부(ts-morph 포함)를 문다.
  *

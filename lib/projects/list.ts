@@ -94,7 +94,7 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
   const readiness = planProjectReadiness(row);
   if (readiness !== "ready") return readiness;
   /**
-   * ⚠️ **`repositoryId`는 readiness의 축이 아니라 셋째 축이다** (SAAS §7.5). sec-audit-2 이전에
+   * ⚠️ **`repositoryId`는 readiness의 축이 아니라 셋째 축이다** (PRODUCT §7.5). sec-audit-2 이전에
    * 만들어진 행은 그 컬럼이 null이고, 결과는 **Publish만 조용히 거부되는 것**이다 — 야간 순회에서도
    * 빠지는데(`selectPullTargets`) 목록은 여태 `Active`를 보였다.
    *

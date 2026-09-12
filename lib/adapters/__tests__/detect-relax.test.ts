@@ -5,7 +5,7 @@ import type { FileProbe } from "../types";
 
 /**
  * 탐지 관문의 완화·감점·제외 — 전부 **오픈소스 109개 실측에서 나온 실패**에 대응한다
- * (`docs/ADAPTER-COVERAGE.md` §3·§1②, ARCHITECTURE §1.3).
+ * (`docs/ARCHITECTURE §1.9` §3·§1②, ARCHITECTURE §1.3).
  *
  * ⚠️ **완화한 것은 탐지 관문뿐이다.** `read`는 그대로 엄격하고, 여기서 통과시킨 값들은 여전히
  * `errors`로 보고된다 — 탐지가 리포 전체를 버리는 것과 read가 항목을 거르는 것은 다른 층이다.
@@ -141,7 +141,7 @@ describe("예제·픽스처 디렉터리는 순위에서 밀린다", () => {
   });
 });
 
-describe("ts-dict는 자동 탐지에서 빠진다 (ADAPTER-COVERAGE 판정 ③)", () => {
+describe("ts-dict는 자동 탐지에서 빠진다 (ARCHITECTURE §1.9 판정 ③)", () => {
   const TS = `
 const ko = { "a.b": "확인" } as const;
 const en = { "a.b": "OK" } satisfies Bundle;

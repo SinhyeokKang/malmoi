@@ -2,9 +2,9 @@
 
 편집 UI의 시각 규칙. **`~/code/bugshot-2`의 `docs/DESIGN.md`를 원본으로 이식했고**, 두 축이 다르다: Tailwind **v4**(그쪽은 v3)이고 **라이트 단일**(그쪽은 라이트/다크 양쪽)이다. 그 차이가 만드는 함정을 §1·§3에 적었다.
 
-**2026-09-07 — 레퍼런스를 Supabase → GitLab으로 바꿨다** (SaaS 6단계 `features/translation-ui/`). 가져오는 것은 **레이아웃·정보구조·컴포넌트 구성**(§5·§6.5~§6.7·§9)이고, **색 토큰·타입 스케일·간격·radius는 기존 것 그대로다**(§2·§4·§5 앞부분) — GitLab Pajamas의 팔레트·폰트를 들이지 않는다. 같은 날 컨트롤이 hand-rolled에서 **프리미티브(`components/ui/`)** 로 바뀌었다(§6.4·§7).
+**2026-09-07 — 레퍼런스를 Supabase → GitLab으로 바꿨다** (SaaS 6단계 PRODUCT §7.7). 가져오는 것은 **레이아웃·정보구조·컴포넌트 구성**(§5·§6.5~§6.7·§9)이고, **색 토큰·타입 스케일·간격·radius는 기존 것 그대로다**(§2·§4·§5 앞부분) — GitLab Pajamas의 팔레트·폰트를 들이지 않는다. 같은 날 컨트롤이 hand-rolled에서 **프리미티브(`components/ui/`)** 로 바뀌었다(§6.4·§7).
 
-무엇을 만드는지는 [SAAS.md](./SAAS.md)(현재)와 [MVP.md](./MVP.md)(PoC — 닫힘), 화면별 구성은 [features/translation-ui/user-stories.md](./features/translation-ui/user-stories.md), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
+무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)(화면별 구성은 §7.7), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## 0. ⚠️ 8단계 UI 재작성으로 바뀐 것 (2026-09-10)
 
@@ -33,8 +33,7 @@
 
 ⚠️ **앞의 여덟은 8-1b(로그인·초대)를 그리며 나왔고, 그다음 둘이 8-2(셸) · 그다음 셋이 8-3(사이드바·
 목록) · 마지막 셋이 8-4(번역 화면)다. 전 화면에 적용된다.**
-다음 화면을 옮길 때 여기부터 읽는다. 시안 자체의 작업 규약(에셋·1280px·shadcn 정착 등)은
-[features/ui-rework/README.md](./features/ui-rework/README.md)가 든다.
+다음 화면을 옮길 때 여기부터 읽는다.
 
 ⚠️ **base 치수 교체는 2026-09-11에 끝났다** — `md`가 36(`h-9`)이고 입력 셋도 같은 높이다. 미뤄 둔
 이유("소비자 26파일이 함께 움직인다")는 시안의 기본값이 36으로 드러나면서 해소됐다. `Button
@@ -258,7 +257,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 ⚠️ **셸 밖 화면의 골격은 `components/signin/auth-layout.tsx` 하나가 든다** (8-1b) — 바깥 padding 8 ·
 패널 간 gap 8 · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-low`, 바깥은 `--canvas`(아주
 연한 회색)이고 좌측 패널은 **true white**다. **그 대비가 없으면 흰 패널과 흰 배경이 붙어 경계가
-사라진다.** 시안 전체가 이 규칙이고 좌표로 검산했다 (`features/ui-rework/README.md` 규약 3.5).
+사라진다.** 시안 전체가 이 규칙이고 좌표로 검산했다 (DESIGN §6.5(규약 3).5).
 
 ## 6. 편집 UI 특화 규칙
 
@@ -281,9 +280,9 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **머리** | `PanelHeader` `flex flex-col gap-4 px-6 pt-6 pb-3` — `h1 text-xl font-medium`(**사이드바 라벨과 같은 키**) ⚠️ **여백·제목 크기가 `/projects` 목록과 같은 형이다** (2026-09-11 — 시안 `212:5074` 실측 `pt-24`·`gap-16`·`pb-12`·20px). 8-4가 `py-4 space-y-3` + `text-base`로 냈던 것을 되돌린 것이고, 근거는 **같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다**는 것이다 + 총계 `Badge neutral` + "Last sent …" + PR 링크, 우측에 **Publish 버튼**. ⚠️ **breadcrumb이 없다**(8-4 — 프로젝트 하위 화면 다섯에서 함께 지웠다; 위로 가는 길은 사이드바가 든다). ⚠️ **총계는 필터 *전*의 값이다**(§6.63과 같은 규칙) — 필터마다 흔들리면 "이 프로젝트에 키가 몇 개인가"에 답하지 못한다. 필터 후 건수는 섹션 헤딩의 배지가 든다. ⚠️ **숫자 배지는 `aria-hidden` 숫자 + `sr-only` 문장**이다 — 숫자만 그리면 접근 이름이 "Translations 1134"다 |
 | **툴바** | 네임스페이스 `Select w-40`(옵션 라벨은 갈래 둘이다 — pending이 있으면 `{name} ({pending}/{total})`, 0이면 `{name} ({total})`. native `<select>`라 옵션 안에 배지를 못 그리고, 남은 일이 0인 ns에 `0/12`를 적으면 분자가 무엇인지 매번 읽어야 한다) · 로케일 **다중 선택** `DropdownMenu w-32`(`DropdownMenuCheckboxItem`, ⚠️ **항목이 국기 + 코드다** — 2026-09-11 실물: 표의 배지엔 국기가 있는데 그것을 **고르는** 자리엔 없어서 같은 로케일이 두 자리에서 다르게 보였다. 조각은 `LocaleFlag`가 들고 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 메뉴로 오지 않는다) · 검색 `Input w-64 pl-8` + `Search` `absolute left-2`(우측 정렬). ⚠️ **상태 필터가 없다**(8-4 — 시안의 칩이 정확히 세 종류라 그 부재가 의도다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08). ⚠️ **왼쪽 네임스페이스 패널이 사라졌다** — 드롭다운이 그 역할을 가져갔고, 둘을 두면 같은 필터가 두 곳이고 하나가 낡는다 |
 | **칩 행** | 적용된 필터가 `bg-muted rounded-full` 칩이고 **종류가 셋**(`Namespace:` · `Languages:` · `Search:`). ⚠️ **로케일 칩은 코드마다가 아니라 하나로 묶는다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 **전체로 넓어지고**(제거가 넓힘이 된다), 6로케일에서 한 줄을 넘는다. ⚠️ **칩 전체가 링크가 아니다** — 라벨은 평문이고 제거만 `Button ghost sm`(중첩 상호작용 요소는 금지, POSTMORTEM 2026-09-09와 같은 모양이다). 칩은 **h-8**(시안 `Chip` 32)이고 `text-sm`이다 — 같은 줄의 컨트롤이 36인데 칩만 20이면 필터가 걸려 있다는 사실이 눈에 안 들어온다. 초기화는 칩이 하나라도 있을 때만 보이는 `ghost sm` 정사각이고 ⚠️ **칩 옆이 아니라 줄 오른쪽 끝, 글리프가 `RotateCcw`다** (2026-09-11 — 시안 `IconButton`이 x=1252의 `repeat-outlined`): 칩 옆이면 칩이 늘 때마다 버튼이 옮겨 다녀 **누를 자리가 화면마다 달라지고**, 깔때기(`FilterX`)면 이 버튼이 **검색까지** 되돌린다는 사실을 안 말한다(`/projects`의 [Clear filters]와 같은 글리프다). ⚠️ **기본 착지의 네임스페이스는 칩이 아니다** — 그것은 화면이 정한 착지점이지 사용자가 고른 필터가 아니다 |
-| **배너·결과 자리** | 칩 아래, **스크롤 영역 안**이다 — 배너 둘과 Publish 결과 `Alert`가 동시에 서면 고정 영역이 400px을 넘어 뷰포트의 40%를 먹는다. 순서는 **기준 로케일 대기 → 편집 손실 → Publish 결과**. ⚠️ **셋 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **결과는 나타날 때 `scrollIntoView`로 화면에 올린다** — 버튼은 고정 머리에 있으므로 표를 내린 채 누르면 그 문구가 뷰포트 밖이고, **실패는 다른 신호가 0이다**(SAAS 불변식 9) |
+| **배너·결과 자리** | 칩 아래, **스크롤 영역 안**이다 — 배너 둘과 Publish 결과 `Alert`가 동시에 서면 고정 영역이 400px을 넘어 뷰포트의 40%를 먹는다. 순서는 **기준 로케일 대기 → 편집 손실 → Publish 결과**. ⚠️ **셋 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **결과는 나타날 때 `scrollIntoView`로 화면에 올린다** — 버튼은 고정 머리에 있으므로 표를 내린 채 누르면 그 문구가 뷰포트 밖이고, **실패는 다른 신호가 0이다**(PRODUCT 불변식 9) |
 
-⚠️ **Publish 버튼과 결과 `Alert`는 8-P가 오른쪽 프로젝트 패널로 가져간다** (SAAS §8). 시안에 없는데
+⚠️ **Publish 버튼과 결과 `Alert`는 8-P가 오른쪽 프로젝트 패널로 가져간다** (PRODUCT). 시안에 없는데
 여기 있는 이유는 그 패널이 아직 골격뿐이고, **작동하는 능력을 "계획상 다른 곳으로 갈 것"이라는
 이유로 먼저 지우면 그 사이 배포가 기능 회귀**이기 때문이다 — 번역을 리포로 되돌려보낼 길이 앱에서
 사라진다. 되옮길 것은 `header.tsx` 한 파일의 슬롯 배선이다.
@@ -341,7 +340,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 **첫 적재 상태** (`planProjectReadiness`): 판정 자체는 셋이지만 **화면 문구는 목록의 `projectStatus`가 든다** (8-3 — `readinessLabel`은 삭제됐다). 목록에서는 `setup`·`awaiting_first_sync`가 **`Badge neutral`**로 `Setup`·`Pending`이고 `ready`는 **`Badge success`**(초록) `Active`다 (2026-09-11 정정 — 그 둘은 새 프로젝트가 지나가는 **정상 경로**라 amber로 칠하면 고장난 것처럼 보인다). amber는 `Disconnected` 하나뿐이다.
 
-**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(`PublishTone` 선례). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (SAAS 불변식 9).
+**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(`PublishTone` 선례). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
 **보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **프로젝트 스위처는 8-3에 사라졌다** — 프로젝트를 옮기는 길이 목록 하나로 통일됐다(§6.5).
 
@@ -358,7 +357,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · Publish "일부 미기록" · `repo-moved` |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
-⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (SAAS §3). 문구는 `messages/en.tsx`이 든다.
+⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
 
 **새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`). 그 밖은 없다.
 
@@ -371,8 +370,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 ### 6.25 토스트 — 피드백의 두 번째 표면 (8-1b, 2026-09-10)
 
 ⚠️ **2026-09-08이 `sonner`를 "사용 0"으로 제거하며 반대로 판정한 자리다.** 8단계가 **토스트로 통일**
-하기로 뒤집었고(사용자, 두 번 재확인), 그 결정이 요구한 **경계**는 `features/ui-rework/README.md`
-규약 8에 있다:
+하기로 뒤집었고(사용자, 두 번 재확인), 그 결정이 요구한 **경계**는 이렇다:
 
 | | 무엇 | 예 |
 |---|---|---|
@@ -458,8 +456,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 툴팁도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다). 소비자가 0이 되어 **2026-09-11에 `Tooltip` 프리미티브 자체를 걷었다** — 조상 provider를 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다는 교훈은 POSTMORTEM 2026-09-08에 남아 있고, 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다. ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
 | **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/[0.07]`, 비활성 hover `hover:bg-foreground/[0.03]` — 2026-09-11에 **둘 다 한 단계 내렸다**(사이드바는 배경 없이 캔버스 위에 얹혀 같은 알파도 흰 패널 위보다 진하다). **선택의 weight는 라벨 `<span>`이 든다.** Badge는 자체 `font-medium`(500)을 사용한다. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
 | 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) |
-| **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — SAAS §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
-| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (SAAS §7.7). 순서는 **사용자 축 먼저**(`Projects`·`Settings`) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 **함께** 대체했다. 라벨은 `<p>` `text-foreground py-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
+| **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
+| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (PRODUCT §7.7). 순서는 **사용자 축 먼저**(`Projects`·`Settings`) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 **함께** 대체했다. 라벨은 `<p>` `text-foreground py-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
 | **스위처가 없다** | ⚠️ 8-3이 지웠다 (시안). 프로젝트를 옮기는 길이 **목록 하나**로 통일됐고, `New project`를 사이드바에서 뺀 것과 같은 방향이다 — 진입점이 하나면 "어디서 눌렀나"에 따라 다른 곳에 착지할 수 없다. 그와 함께 `DropdownMenuItem asChild`의 실사용이 셸에서 사라졌다(규칙과 그 테스트는 그대로다) |
 | 사용자 축 항목 | **Projects**(`Box`, 개수 배지) · **Settings**(`CircleUser` → `/account`). ⚠️ **아이콘 둘이 2026-09-11에 바뀌었다**: Projects는 **목록 행 타일과 같은 글리프**(같은 대상을 두 글리프로 가리키지 않는다), Settings는 **헤더 서랍 안 같은 항목과 같은 글리프**(`Settings` 톱니는 프로젝트 설정이 쓰므로 사용자 축과 섞인다). ⚠️ **`New project`가 없다** (8-3) — 라우트는 그대로라 URL로는 열린다. ⚠️ **유저 메뉴도 같은 `Settings` 문구를 쓴다** — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다 |
 | 프로젝트 축 항목 | **Home**(`House`) · **Locales**(`Globe`) · **Translations**(`Languages`) · **Members**(`Users`) · **Logs**(`History`) · **Project settings**(`Settings`, `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **순서가 시안이다**: Locales가 Translations **앞**이다("어떤 언어가 있나"가 "그 언어를 채운다"보다 앞선 질문이다). ⚠️ **라벨이 8-3에 바뀌었다**: `Overview`→**Home** · `Languages`→**Locales** · `Settings`→**Project settings**. 6b-5가 적었던 "`locale`은 내부 낱말이라 화면에 쓰지 않는다"는 **시안이 뒤집었다** |
@@ -471,8 +469,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 `min-w-0`이 함께 있어야 번역 표의 가로 스크롤이 사이드바를 밀지 않는다. 실측에서 문서 자체는 세로로
 스크롤되지 않고 활성 스크롤러가 하나였다.
 
-GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 SAAS §4.2가 기능 밀도를 막는다.
-**Publish 버튼은 아직 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), SAAS §8이 그것을 §6.55의 패널로 옮긴다.
+GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 PRODUCT §4.2가 기능 밀도를 막는다.
+**Publish 버튼은 아직 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), PRODUCT이 그것을 §6.55의 패널로 옮긴다.
 
 ### 6.55 프로젝트 패널 (`w-80`, 2026-09-10 8-2 — **골격뿐이다**)
 
@@ -489,12 +487,12 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 | 접근 이름 | ⚠️ **랜드마크와 컨트롤의 이름이 달라야 한다**(`Project panel` / `Panel view`) — 같으면 스크린리더가 둘을 똑같이 읽고 구별할 단서가 role뿐이다 |
 
 ⚠️ **내용은 8-P다.** `Changes`가 보여줄 diff는 **UI가 아니라 새 서버 능력**이고(커밋 없이 렌더만 하는
-경로 + 접힌 상태에서 GitHub 0회 — SAAS §8), UI만 먼저 만들면 빈 껍데기를 두 번 그린다. 편집 손실 배너·
+경로 + 접힌 상태에서 GitHub 0회 — PRODUCT), UI만 먼저 만들면 빈 껍데기를 두 번 그린다. 편집 손실 배너·
 미배포 카운트·Publish 결과가 그때 번역 화면에서 이리로 옮겨온다.
 
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 여섯
 
-블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`) · **Archive project**(2026-09-10, 7단계 — **맨 아래**). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(SAAS §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
+블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`) · **Archive project**(2026-09-10, 7단계 — **맨 아래**). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(PRODUCT §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
 
 - ⚠️ **블록이 독립적으로 실패한다.** 건강성은 App 토큰, 계정 한 줄은 사용자 토큰 — 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다. 각 블록이 자기 오류를 `Alert danger`(in-block)로 낸다.
 - **push 토큰은 발급 응답에만 원문이 있다** — 값 칩 + [Copy] + "You won't see this again. Update the repository secret now."
@@ -529,14 +527,14 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 
 | 요소 | 규칙 |
 |---|---|
-| 머리 | **두 줄이다** — 제목 줄에 `h1` `text-xl font-medium` + **총계 `Badge neutral`**, 그 줄 **우측에 [New project] `primary`**(`Plus`). 아래 줄은 **보기를 좁히는 것들**(필터 탭 좌 · 검색 우)만 든다 — 화면당 하나인 primary가 제목과 같은 높이에 서는 것이 이 리포의 형이다(Home의 [Open translations]와 같다). ⚠️ **총계는 필터·검색 전의 값이다** — 어느 쪽을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에 답한다. 사이드바 카운트(SAAS §8 🔒)와 달리 이미 가진 배열의 길이라 왕복이 0이다 |
+| 머리 | **두 줄이다** — 제목 줄에 `h1` `text-xl font-medium` + **총계 `Badge neutral`**, 그 줄 **우측에 [New project] `primary`**(`Plus`). 아래 줄은 **보기를 좁히는 것들**(필터 탭 좌 · 검색 우)만 든다 — 화면당 하나인 primary가 제목과 같은 높이에 서는 것이 이 리포의 형이다(Home의 [Open translations]와 같다). ⚠️ **총계는 필터·검색 전의 값이다** — 어느 쪽을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에 답한다. 사이드바 카운트(PRODUCT 🔒)와 달리 이미 가진 배열의 길이라 왕복이 0이다 |
 | 필터 | `SegmentedLinks` — **링크다, 클라이언트 상태가 아니다.** 트랙에 고정 폭이 없다(`inline-flex gap-1 p-1` + 세그먼트 `min-w-11`). ⚠️ **칸이 여섯이다** — `PROJECT_FILTERS = ["all", ...PROJECT_STATUSES]`라 **필터 갈래 = 상태 갈래**이고(`lib/projects/list.ts`), 둘이 갈리면 배지가 말하는 상태 중 일부가 골라낼 수 없는 상태가 된다. 라벨은 `all`만 자기 문구(`All projects`)이고 나머지 다섯은 **행 배지와 같은 낱말**이다. ⚠️ **칸은 데이터와 무관하게 늘 여섯이다**(2026-09-11) — 있는 상태만 그리면 컨트롤의 자리가 매번 달라지고, "그 상태가 0건"이라는 사실도 정보다. `?filter=<status>`이고 기본값 `all`은 URL에 안 싣는다. 모르는 값은 `all`로 떨어진다(주소창 값이다 — `parseProjectFilter`) |
 | 검색 | `?q=` — 이름만 훑는다(`searchProjects`). 탭과 **직교하는 축**이라 탭을 옮겨도 질의가 남고, 반대로 질의를 바꿔도 탭이 남는다. placeholder는 `Search projects…`(§10의 줄임표 둘째 갈래)이고 **`aria-label`에는 줄임표가 없다** |
 | 행 | `py-3.5 pr-3.5 pl-3`, 좌측에 타일 + 2줄 / 우측 배지 하나. 이름 `text-base font-medium`(2026-09-10에 한 단계 내렸다가 **2026-09-11에 원복**), 메타 `text-sm text-muted-foreground` 한 줄: **`리포 URL · 역할 · N members`**. ⚠️ **리포가 맨 앞이다** — 그것이 이 행을 **식별**하는 값이고(이름이 비슷한 둘을 가르는 것이 리포다) 역할·멤버 수는 그 프로젝트에 대한 서술이다. hover는 `bg-foreground/[0.03]`(사이드바 비활성 hover와 같은 값이라 임의값이 늘지 않는다) |
 | 행 타일 | `size-7 rounded-sm` + **`toneFill(name)` 배경 + 흰 `Box` 16**(§6.2). ⚠️ **`Avatar` 프리미티브가 아니다** — 그쪽 폴백은 이니셜이고 여기 요구는 글리프다. ⚠️ **글리프가 사이드바 `Projects` 항목과 같다** — 같은 대상을 두 글리프로 가리키지 않는다(화면 **빈 상태**만 `FolderGit2`다: 거기서 말하는 것은 "프로젝트 하나"가 아니라 "아직 없다"이다). ⚠️ **표면을 따로 그리지 않는다** — 배경은 tone 하나이고 border·그림자가 없다. 자리(28)를 지금 잡아 두는 것이 요지다: **프로젝트 이미지가 붙는 날 행 높이·정렬이 안 흔들린다** |
 | 역할 | ⚠️ **배지가 아니라 메타 평문이다** (시안 개정). 배지로 만들면 우측에서 상태와 나란히 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다 |
 | 리포 | 전체 URL. ⚠️ **링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없고, 눌러도 GitHub이 아니라 프로젝트로 간다 |
-| 상태 배지 | **항상 하나**이고 갈래는 `projectStatus`가 정한다 — **다섯**: `Active` · `Archived` · `Setup` · `Pending` · **`Disconnected`**(2026-09-11 — `repositoryId === null`, Publish만 조용히 거부되던 상태다. SAAS §7.5). ⚠️ **라벨이 전부 한 낱말이고 동사가 없다** (2026-09-11 — `Setting up`·`Waiting for first import`·`Reconnect needed`에서 줄였다): 배지는 행 우측의 좁은 칸이라 문장이 이름·리포 URL과 폭을 다투고, 좁은 칸의 동사는 누를 수 있는 것처럼 읽힌다. 할 일은 그 프로젝트를 열면 `ProjectNotReady`와 설정의 `Alert`가 문장으로 말한다. ⚠️ **판정 순서가 절반이다**: 보관 → readiness → `repositoryId`. 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이 아니고, 첫 적재도 안 끝난 프로젝트에서 "다시 연결하라"도 아니다(그 컬럼이 막는 것은 **되돌려보내기**다) |
+| 상태 배지 | **항상 하나**이고 갈래는 `projectStatus`가 정한다 — **다섯**: `Active` · `Archived` · `Setup` · `Pending` · **`Disconnected`**(2026-09-11 — `repositoryId === null`, Publish만 조용히 거부되던 상태다. PRODUCT §7.5). ⚠️ **라벨이 전부 한 낱말이고 동사가 없다** (2026-09-11 — `Setting up`·`Waiting for first import`·`Reconnect needed`에서 줄였다): 배지는 행 우측의 좁은 칸이라 문장이 이름·리포 URL과 폭을 다투고, 좁은 칸의 동사는 누를 수 있는 것처럼 읽힌다. 할 일은 그 프로젝트를 열면 `ProjectNotReady`와 설정의 `Alert`가 문장으로 말한다. ⚠️ **판정 순서가 절반이다**: 보관 → readiness → `repositoryId`. 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이 아니고, 첫 적재도 안 끝난 프로젝트에서 "다시 연결하라"도 아니다(그 컬럼이 막는 것은 **되돌려보내기**다) |
 | 배지 색 | **§6.2 "목록 행 상태 5종"이 정본이다** — `Active` → **`success`**(초록) / `Archived`·`Setup`·`Pending` → **`neutral`** / `Disconnected` → **`warning`**(amber). ⚠️ **amber가 `Disconnected` 하나뿐이다** (2026-09-11 — `Setup`·`Pending`을 무색으로 내렸다): 축이 "덜 됐나"가 아니라 **"깨졌나"**다. 앞의 둘은 새 프로젝트가 지나가는 정상 경로라 저절로 `Active`가 되지만, `Disconnected`는 한때 돌던 것이 멈춘 것이라 사람이 손대야 풀린다 — 셋 다 amber면 온보딩 중인 프로젝트가 고장난 것처럼 보인다. ⚠️ **`Archived`를 amber로 칠하지 않는다** — 의도된 상태가 문제처럼 읽힌다. 색 선택은 **맵 + `satisfies`**다(`STATUS_VARIANT`) — 삼항이면 새 갈래가 사유 없이 기본값으로 떨어지고 `tsc`가 조용하다 |
 | **`Active`가 초록인 이유** | ⚠️ §6.1("가장 흔한 상태가 가장 조용하다")의 **예외다.** 근거는 **이 목록이 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어야 대비가 생긴다. 필터 탭이 행 배지와 **같은 낱말**을 쓰므로 "지금 무엇을 보고 있나"도 그 축으로 이어지고, 배지가 항상 하나라 행 우측 폭은 안 흔들린다 |
 | 빈 상태 (프로젝트 0개) | ⚠️ **필터와 [New project]를 그리지 않는다** (시안에서 그 줄이 `hidden`이다). 고를 것이 없는 탭 셋은 죽은 컨트롤이고, 만들기 버튼이 머리와 빈 상태에 둘 다 있으면 같은 행동이 한 화면에 두 번 나온다. `EmptyState`가 패널 **세로 중앙**에 선다 |
@@ -546,11 +544,11 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 
 ⚠️ **셸의 `loadMemberships`와 다른 로더를 쓴다**(`loadProjectList`). 멤버 수는 `_count` 서브쿼리라 왕복이
 +0이지만, 그것을 셸의 로더에 얹으면 `(edit)` 아래 **모든** 페이지가 목록 하나를 위한 집계를 문다 —
-SAAS §7.7 결정 5가 사이드바 카운트를 거절한 것과 같은 축이다.
+PRODUCT §7.7 결정 5가 사이드바 카운트를 거절한 것과 같은 축이다.
 
 ### 6.64 Home (`/projects/[slug]`) — 개요 (2026-09-09, 6b-6)
 
-**프로젝트 진입의 착지점이다** (SAAS §7.7 결정 1). 셸 안 `mx-auto max-w-4xl`(머리 `px-6 pt-6 pb-3` · 본문 `px-6 pt-3 pb-8` — §6.5),
+**프로젝트 진입의 착지점이다** (PRODUCT §7.7 결정 1). 셸 안 `mx-auto max-w-4xl`(머리 `px-6 pt-6 pb-3` · 본문 `px-6 pt-3 pb-8` — §6.5),
 **breadcrumb 없다**(이 화면이 프로젝트 루트다 — 위로 가는 길은 사이드바가 든다).
 
 ⚠️ **그 결정이 번역자에게 클릭 하나를 물렸고, 이 화면이 그것을 갚아야 한다.** 개요만 있고 링크가
@@ -643,7 +641,7 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 
 ### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수)
 
-**사용자 축의 유일한 화면이다** (SAAS §7.7). 셸 안 `mx-auto max-w-4xl`(머리 `px-6 pt-6 pb-3` · 본문 `px-6 pt-3 pb-8` — §6.5), 제목 `text-xl
+**사용자 축의 유일한 화면이다** (PRODUCT §7.7). 셸 안 `mx-auto max-w-4xl`(머리 `px-6 pt-6 pb-3` · 본문 `px-6 pt-3 pb-8` — §6.5), 제목 `text-xl
 font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올라갈 자리가 없다.
 
 카드 넷: **Profile** · **GitHub account** · **Sessions**(전체 로그아웃) · **Sign out**.
@@ -671,7 +669,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 - ⚠️ **값이 없는 칸은 빈 칸이 아니라 `—`다** — 빈 칸은 열이 깨진 것처럼 보인다. 실패의 변경 수가 `0`이 아닌 이유도 같다: 0은 "안 바뀌었다"는 **관측**이고 실패엔 관측이 없다.
 - **페이지네이션은 링크 하나다** — 서버 `?cursor=` + [Older](`ButtonLink`). 클라이언트 상태가 0이라 뒤로 가기·공유·새로고침이 그냥 된다. 무효 커서는 첫 페이지다(주소창 값이라 500이 아니다).
 - ⚠️ **`RUNNING` 행은 스냅샷이다** — 자동 갱신이 없다(이 리포에 폴링 0건). 갱신은 재방문이고, 줄임표는 **진행 중에만** 쓴다(§10).
-- ⚠️ **[Send changes]가 없다.** `logs` = 과거 이력 / 8단계 패널 = 지금 상태 + 행동 (SAAS §8 8단계 🔒). 섞으면 `logs`가 패널의 열등한 사본이 된다.
+- ⚠️ **[Send changes]가 없다.** `logs` = 과거 이력 / 8단계 패널 = 지금 상태 + 행동 (8단계 🔒). 섞으면 `logs`가 패널의 열등한 사본이 된다.
 - 빈 상태는 `EmptyState`("No syncs yet") — **표 대신** 반환한다. ⚠️ 그것이 나오는 것은 **조회가 성공했을 때뿐**이다(페이지에 `try`가 없다): 실패를 빈 표로 접으면 "아직 없다"와 "물어보지 못했다"가 같아진다 (POSTMORTEM 2026-09-03).
 
 ### 6.69 보관된 프로젝트 (2026-09-10, 7단계)
@@ -680,7 +678,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ### 6.7 새 프로젝트 (`/projects/new`)
 
-②~⑥이 한 라우트의 클라이언트 상태다 (`features/project-onboarding/design.md` §2 — 바꾸지 않는다). 형만 바뀐다:
+②~⑥이 한 라우트의 클라이언트 상태다. 형만 바뀐다:
 
 | 요소 | 규칙 |
 |---|---|
@@ -693,7 +691,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 | 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동** |
 | ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 "Imported N keys." + 상위 5건 "Could not read {path}" `text-xs` + `<details>` 안 `text-mono whitespace-pre-wrap` 진단(§4.1 — 파서 원문이 여러 줄이다) · [Start translating] `primary`. ⚠️ **tone은 `failed`가 정한다** — 진단 목록 길이로 고르면 목록이 빈 부분 실패가 success로 그려진다(불변식 9) |
 
-⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (SAAS §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
+⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (PRODUCT §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
 
 ### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
 
@@ -725,12 +723,12 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ⚠️ **`lucide-react` 1.x에 브랜드 아이콘이 없다** — `Github`·`Google`을 import하면 빌드가 죽는다(1.37.0 실측). GitHub 연결 버튼은 `Link2`이거나 아이콘 없이 라벨만이고, provider 로고가 필요하면 인라인 SVG를 그 컴포넌트 안에 둔다.
 
-⚠️ **아이콘 import는 `client-graph.test.ts`의 허용 목록을 지난다** — `lucide-react`가 거기 없으면 클라이언트 컴포넌트가 아이콘 하나만 써도 red다 (`features/translation-ui/tasks.md` T1이 넣는다).
+⚠️ **아이콘 import는 `client-graph.test.ts`의 허용 목록을 지난다** — `lucide-react`가 거기 없으면 클라이언트 컴포넌트가 아이콘 하나만 써도 red다.
 
 ## 7. 접근성
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 남은 자리는 **표 헤더**(`bg-muted/50`)·**값 칩**·**코드 블록**이다(사이드바는 8-2부터 캔버스 위라 이 목록에 없다).
-- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 `features/ui-rework/README.md` 규약 6·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
+- **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 DESIGN §6.5(규약 6)·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
   - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 프리미티브 다섯(`Button`·`Input`·`Textarea`·`Select`·`Radio`)이 각자의 태그에 셋을 **리터럴로** 적는다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
   - 스캐너는 **주석을 벗기고 센다** — 프리미티브가 자기 태그 이름을 docstring에 쓴다(`native \`<select>\`다`).
 - **`--ring`이 blue-400(`#60a5fa`)이다** (2026-09-11 사용자 — `app/globals.css`). ⚠️ **그 전엔 `--border`와 값이 같아** 흰 배경에서 대비가 **1.19:1**이었다: 프리미티브 여덟이 셋을 리터럴로 들고 위 스캐너가 전수로 세는 동안 **검사는 green이고 링은 화면에 없었다.** 이 절의 옛 문장은 그 사실을 "muted 표면 위에선 약하다"로 적고 호출부의 `ring-offset-1` 우회를 규칙으로 들고 있었는데, 고칠 자리는 토큰 한 줄이었다.
@@ -774,7 +772,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - **색 팔레트·시맨틱 토큰** (Pajamas neutral/blue/…). 토큰의 진실은 `app/globals.css`(**neutral** — §2)이고 새 raw 색을 늘리지 않는다(§6.2).
 - **타입 스케일·폰트**(GitLab Sans·GitLab Mono)·**간격·radius 값**. 우리 스케일로 반올림한다(§5.1).
 - **다크 모드** (§3).
-- **헤더의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). SAAS §4.2.
+- **헤더의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). PRODUCT §4.2.
 - **Vue 컴포넌트(`@gitlab/ui`)·아이콘 세트(`gitlab-svgs`)** — lucide 16px로 대응.
 - **일러스트**(빈 상태 SVG) — `EmptyState`는 여전히 아이콘 하나뿐이다.
   - ⚠️ **로그인 우측 장식은 예외가 됐다** (8-1b). 그전까지 "CSS dot-grid + 토큰만 쓴 정적 모형 카드"였는데, Figma 시안이 **래스터 키비주얼(`public/brand/malmoi-signin-kv.png`)과 Canvas 도트 필드**를 들여왔다. 셸 **밖** 화면 둘(로그인·초대 수락)에만 해당하고, 셸 안 화면에는 여전히 일러스트를 두지 않는다.

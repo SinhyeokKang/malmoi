@@ -4,7 +4,7 @@ import { summarize } from "../summarize";
 import { emptyChromeFields, emptyDiffCauses, emptyErrors, emptyJsonPresentation, type RepoSurvey, type SurveyInput } from "../types";
 
 /**
- * 키 순서 보존 기능(`docs/features/key-order-preservation/`)의 **태스크 0 — 측정** 지표.
+ * 키 순서 보존 기능(ARCHITECTURE §1.1)의 **태스크 0 — 측정** 지표.
  *
  * 이 지표들이 닫는 것은 설계 두 갈래다:
  *   - 로케일 간 순서 일치율 → `StringKey.sortIndex`(A안) vs `Translation.sortIndex`(대안 E)
@@ -39,7 +39,7 @@ const BASE_SCRAMBLED = {
  * 없앴고, 다음엔 4칸 들여쓰기였는데 **원본 포맷 보존이 그것도 없앴다** (2026-09-04). 지표
  * (`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면 안 보이는 격차**이고, 그 격차를 만드는
  * 원인은 시간이 지나며 하나씩 고쳐진다 — 그래서 **이 기능들이 고치지 않는 원인**으로 만들어야
- * 판별력이 남는다. 미번역 제외는 의도된 규칙이라 앞으로도 안 고친다 (MVP §4.1).
+ * 판별력이 남는다. 미번역 제외는 의도된 규칙이라 앞으로도 안 고친다 (ARCHITECTURE §1.1).
  */
 const BASE_EMPTY_ONLY = {
   "src/i18n/en.json": two({ a: "A", b: "B", gone: "" }),
@@ -309,7 +309,7 @@ describe("summarize — 어댑터별 diff", () => {
 
 describe("summarize — 표에 실린다", () => {
   it("포맷별 표에 비-base diff 열이 있다", () => {
-    // 태스크 0의 결과는 docs/ADAPTER-COVERAGE.md에 **표로** 기록된다. 표에 없는 숫자는
+    // 태스크 0의 결과는 docs/ARCHITECTURE §1.9에 **표로** 기록된다. 표에 없는 숫자는
     // --json에만 있어도 문서로 못 간다 — 지표를 만드는 것과 읽히는 것은 다른 일이다.
     const { formatTable } = summarize(
       [row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), diffRatio: 0.8, diffRatioNonBase: 0.2 })],
@@ -344,7 +344,7 @@ describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가
 
   it("**순서 외 원인이 없는 리포만**의 중앙값을 따로 낸다", () => {
     // 완료 조건의 분모다. 전체 코퍼스에 걸면 68%가 들여쓰기·chrome 필드 때문에 초과해서
-    // **어느 기능이 실패했는지 못 가른다** (spec §완료 조건, ADAPTER-COVERAGE §10.3).
+    // **어느 기능이 실패했는지 못 가른다** (spec §완료 조건, ARCHITECTURE §1.9).
     const rows = [
       row({ repo: "a/1", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
       row({ repo: "a/2", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.04, diffCauses: clean() }),

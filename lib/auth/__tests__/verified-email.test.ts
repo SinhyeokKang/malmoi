@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { verifiedEmailFrom } from "../email";
 
 /**
- * **provider가 검증한 이메일만 통과시킨다** (SAAS.md §5.6 — "초대 대상 이메일과 provider가 검증한
+ * **provider가 검증한 이메일만 통과시킨다** (ARCHITECTURE §6.02 — "초대 대상 이메일과 provider가 검증한
  * 이메일이 일치해야 수락된다"). 이 함수가 `null`을 내면 `signIn`이 로그인을 거부한다.
  *
  * ⚠️ **GitHub provider는 검증 여부를 알려주지 않는다** (2026-09-05 실측:

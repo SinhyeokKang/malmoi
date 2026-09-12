@@ -15,7 +15,7 @@ import { routes } from "@/lib/routes";
  *
  * ⚠️ **이건 차단이지 인가가 아니다.** 쿠키가 위조·만료됐는지 모르고 **프로젝트 접근 권한은 전혀
  * 모른다.** 진짜 판정은 페이지·Server Action이 `requireProjectAccess`/`getProjectAccess`로 한다
- * (SAAS §5.1 — SaaS에서 같은 실수의 형태는 "middleware가 로그인을 확인했으니 프로젝트 접근도
+ * (ARCHITECTURE §6.00 ① — SaaS에서 같은 실수의 형태는 "middleware가 로그인을 확인했으니 프로젝트 접근도
  * 됐겠지"다).
  *
  * 여전히 **렌더 전에** 막는 유일한 지점이다. 레이아웃의 조건부 반환은 차단이 아니다 — App Router가

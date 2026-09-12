@@ -105,7 +105,7 @@ function fail_wrapped(): unknown {
 }
 
 /**
- * **`AppError`가 선택 `code`를 든다** (`docs/features/sync-runs/design.md` §1.3).
+ * **`AppError`가 선택 `code`를 든다** (ARCHITECTURE §5.6).
  *
  * 던지는 자리가 코드를 들어야 `SyncRun.errorCode`가 안정적이다 — 잡는 쪽에서 메시지를 매칭하면
  * 문장 하나가 바뀔 때 분류가 조용히 무너진다. ⚠️ **`classifyFailure`는 이 필드를 안 본다** —

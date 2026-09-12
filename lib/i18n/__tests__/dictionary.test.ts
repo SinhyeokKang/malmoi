@@ -15,7 +15,7 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
     expect(m.translations.keys(2)).toBe("2 keys");
   });
 
-  it("첫 적재 헤드라인은 실패 0건일 때만 성공 문장이다 — 버린 값을 숨기지 않는다 (SAAS 불변식 9)", () => {
+  it("첫 적재 헤드라인은 실패 0건일 때만 성공 문장이다 — 버린 값을 숨기지 않는다 (ARCHITECTURE §0 불변식 9)", () => {
     expect(m.newProject.imported(4, 0)).toBe("Imported 4 keys.");
     expect(m.newProject.imported(1, 0)).toBe("Imported 1 key.");
     expect(m.newProject.imported(903, 2)).toContain("2 couldn't be read");

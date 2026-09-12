@@ -10,13 +10,13 @@ import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
 
 /**
- * CI → DB. **외부 진입점이라 Server Action이 아니라 Route Handler다** (MVP §5) — Actions는
+ * CI → DB. **외부 진입점이라 Server Action이 아니라 Route Handler다** (CLAUDE.md "데이터 변경 경로") — Actions는
  * 안정된 공개 계약이 아니다.
  *
- * `POST`인 이유와 `PATCH`가 불가능한 이유는 MVP §3.1에 있다: 전체 키 집합을 받아야
+ * `POST`인 이유와 `PATCH`가 불가능한 이유는 ARCHITECTURE §0 불변식 2에 있다: 전체 키 집합을 받아야
  * `orphaned`를 판정할 수 있고, 리소스 교체가 아니라 부수효과 있는 RPC다.
  *
- * **번역값은 리포 값으로 덮는다** (strict — MVP §3.1). 대가인 편집 손실 창도 거기 있다.
+ * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 대가인 편집 손실 창도 거기 있다.
  *
  * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, design §3.8). `sha256(원문)`으로
  * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을

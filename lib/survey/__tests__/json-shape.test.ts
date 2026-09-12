@@ -146,7 +146,7 @@ describe("jsonShape — 잔여 diff 원인", () => {
 
   it("미번역(빈 값)을 원인으로 표시한다 — write가 그 줄을 통째로 뺀다", () => {
     // zulip 실측: base가 `ar`이고 미번역이 `""`라 2285줄이 1378줄이 됐다. 순서 보존과 무관하고
-    // 고쳐서도 안 된다(빈 값을 남기면 크롬이 빈 문자열을 그대로 렌더한다 — MVP §4.1).
+    // 고쳐서도 안 된다(빈 값을 남기면 크롬이 빈 문자열을 그대로 렌더한다 — ARCHITECTURE §1.1).
     expect(jsonShape(two({ a: "A", b: "" })).causes.emptyValues).toBe(true);
     expect(jsonShape(two({ a: "A", b: "B" })).causes.emptyValues).toBe(false);
   });

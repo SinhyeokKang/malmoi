@@ -21,7 +21,7 @@ import { baseLocaleLine } from "@/lib/onboarding/workflow";
 import { routes } from "@/lib/routes";
 
 /**
- * 로케일 목록 + 기준 언어 (6b-5 — SAAS §7.7 결정 4).
+ * 로케일 목록 + 기준 언어 (6b-5 — PRODUCT §7.7 결정 4).
  *
  * ⚠️ **이 화면이 생긴 이유는 orphaned 로케일이다.** 지금까지 로케일은 **번역 표의 열로만** 존재해서,
  * 파일이 사라진 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 어디에도 없었다 —

@@ -4,7 +4,7 @@ import { SYNC_ERROR_CODES } from "../plan";
 import { decodeCursor, encodeCursor, syncRunView, type SyncRunRow } from "../view";
 
 /**
- * `logs` 화면의 순수 판정 (`docs/features/sync-runs/design.md` §6).
+ * `logs` 화면의 순수 판정 (ARCHITECTURE §5.6).
  *
  * ⚠️ **행 하나를 읽는 규칙이 전부 여기 있다.** 화면이 `status`로 삼항을 엮으면 갈래 넷이 JSX 안에
  * 흩어지고, 그 자리에는 누락을 잡는 장치가 없다 — `pullMessage`를 순수 함수로 둔 것과 같은 이유다.
