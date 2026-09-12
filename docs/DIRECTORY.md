@@ -108,7 +108,8 @@ components/
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
                         projects-screen · signin-screen · segmented-control(jsdom 렌더) · auth-toast ·
-                        multiline-detail · base-locale-screens · table-presets · manual-format-hint
+                        multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
+                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -149,6 +150,9 @@ lib/
                         "use client" 그래프에 들어가 타입-온리 제약이 이 모듈까지 따라온다
   onboarding/key-gap.ts ⚠️ 잎이다. ③(클라이언트)이 값으로 부르는데 detect.ts에 두면 그 그래프
                         (lib/adapters → ts-morph)가 번들에 7.2MB로 들어온다. detect.ts가 재수출한다
+  onboarding/sample-confirmation.ts
+                        재검증한 샘플 포맷의 HMAC 발급·검증. 사용자·리포 id·설치 id·ref·head에 묶는다.
+                        파일 내용과 서버 캐시는 없고, node:crypto를 쓰므로 클라이언트가 값으로 읽지 않는다.
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
