@@ -361,3 +361,39 @@ it("③의 기준 언어 그룹 이름이 한 번만 있다", async () => {
   );
   expect(found).toHaveLength(1);
 });
+
+/**
+ * ③의 기준 언어도 ②와 **같은 경계**로 접힌다 (2026-09-13 실물 관측). 57로케일 리포에서 ②는
+ * `Select`인데 ③이 라디오 57개를 펼쳤고, **되돌릴 수 없는 결정**을 그 스크롤에서 고르게 했다.
+ */
+it("기준 언어가 다섯 이상이면 목록으로 접힌다", async () => {
+  await files();
+  await click(button("Next"));
+
+  expect(document.body.querySelectorAll('input[name="baseLocale"]')).toHaveLength(0);
+  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
+  expect(picker.options).toHaveLength(5);
+  expect(picker.value).toBe("en");
+});
+
+it("접힌 목록에서도 `Most keys`가 보인다 — 배지 자리가 옵션 라벨로 간다", async () => {
+  await files();
+  await click(button("Next"));
+
+  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
+  expect([...picker.options].find((o) => o.value === "en")?.textContent).toContain("Most keys");
+  // 키 수를 모르는 언어에는 배지도 키 수도 안 붙는다 (결정 ⑥⑦).
+  expect([...picker.options].find((o) => o.value === "ko")?.textContent?.trim()).toBe("ko");
+});
+
+it("넷 이하면 라디오 그대로다 — 적은 목록까지 한 겹 더 누르게 하지 않는다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({
+    ok: true,
+    candidates: [{ ...candidate(), locales: ["en", "fr", "ko"] }],
+  });
+  await files();
+  await click(button("Next"));
+
+  expect(document.body.querySelector("#project-base-locale")).toBeNull();
+  expect(document.body.querySelectorAll('input[name="baseLocale"]')).toHaveLength(3);
+});
