@@ -59,6 +59,10 @@ async function manualReady() {
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
   expect(button("Next").disabled).toBe(false);
 }
+async function naming() {
+  await files();
+  await click(button("Next"));
+}
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => { resolve = done; });
@@ -322,4 +326,38 @@ it("수동 후보의 lazy 샘플도 옵션의 키 수를 갱신한다", async ()
   await manualReady();
   await select('select[aria-label="Language"]', "fr");
   expect(find<HTMLOptionElement>(document.body, 'option[value="fr"]').textContent).toContain("3 keys");
+});
+
+/**
+ * ⚠️ **탐지 중 우측이 "Nothing to preview yet"을 보이면 안 된다** (bugshot-qa 2026-09-13 실측).
+ * 그 문구는 **예외 E**(후보 0개)의 것이라, 탐지가 도는 동안 띄우면 "이 리포엔 로케일 파일이 없다"를
+ * 먼저 말해 놓고 몇 초 뒤 후보를 내놓는다. design §4는 그 자리에 **표 헤더 실물 + 행 스켈레톤**을
+ * 요구한다 — 다 차고 나서 레이아웃이 움직이지 않아야 한다.
+ */
+it("탐지 중에는 후보 0개 문구를 띄우지 않는다", async () => {
+  const gate = deferred<unknown>();
+  mocks.detectRepoFormats.mockReturnValue(gate.promise);
+  await mount();
+  await click(find(document.body, 'input[name="repo"]'));
+  await click(button("Next"));
+
+  const body = find<HTMLElement>(document.body, "[data-onboarding-body]");
+  expect(body.textContent).not.toContain("Nothing to preview yet");
+  expect(body.textContent).toContain("Key");
+  expect(body.textContent).toContain("Value");
+
+  await act(async () => { gate.resolve({ ok: true, candidates: [candidate()] }); });
+});
+
+/**
+ * ⚠️ **"Base language"가 두 번 읽히면 안 된다** (bugshot-qa 2026-09-13 실측). `sr-only` legend와
+ * 보이는 `<p>`가 같은 문장을 들고 있어 스크린리더가 그룹 이름을 두 번 말했다.
+ */
+it("③의 기준 언어 그룹 이름이 한 번만 있다", async () => {
+  await naming();
+
+  const found = [...document.body.querySelectorAll("*")].filter(
+    (node) => node.children.length === 0 && node.textContent?.trim() === "Base language",
+  );
+  expect(found).toHaveLength(1);
 });

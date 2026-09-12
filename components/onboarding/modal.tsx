@@ -2,7 +2,7 @@
 
 import { ArrowRight, X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
@@ -72,15 +72,35 @@ export function OnboardingModal({
   children,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  /**
+   * live 영역에 **지금 말할 것**만 담는다. 제목을 상시 들고 있으면 헤더와 합쳐 두 번 읽히고,
+   * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (bugshot-qa 2026-09-13 실측).
+   */
+  const [live, setLive] = useState("");
 
   /**
    * ⚠️ **단계가 바뀌면 포커스를 본문으로 옮긴다** (design §1.2.1). 안 하면 [Next]를 누른 뒤 포커스가
    * 바닥에 남아, 스크린리더 사용자가 새 단계의 본문을 만나려면 위로 거슬러 올라가야 한다. 여기서
    * 한 번 하므로 단계마다 다시 배선하지 않는다.
    */
+  const shown = useRef(step);
   useEffect(() => {
+    // ⚠️ **첫 렌더는 전이가 아니다.** 모달이 열릴 때 제목은 Radix가 `Dialog.Title`로 이미 말한다 —
+    // 여기서 또 담으면 같은 문장이 두 번 낭독된다 (bugshot-qa 2026-09-13).
+    if (shown.current === step) return;
+    shown.current = step;
     bodyRef.current?.focus();
+    // 단계가 바뀐 그 순간에만 제목을 말한다 — 그 전이가 스크린리더에 닿는 유일한 신호다.
+    setLive(typeof title === "string" ? title : "");
+    // ⚠️ `title`을 의존성에 넣지 않는다 — 같은 단계에서 제목만 바뀌는 경우(②의 예외 E)는 전이가
+    // 아니고, 넣으면 그때마다 다시 낭독된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // 비동기 완료는 단계 전이와 별개 신호다 — 도착한 순간에만 담는다.
+  useEffect(() => {
+    if (announce !== undefined) setLive(announce);
+  }, [announce]);
 
   return (
     <Primitive.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -108,10 +128,10 @@ export function OnboardingModal({
         >
           {/*
             ⚠️ **`sr-only` live 영역 하나다.** 단계 제목과 비동기 전이를 같은 자리에 쓴다 — 둘로
-            나누면 스크린리더가 순서를 보장하지 않는다.
+            나누면 스크린리더가 순서를 보장하지 않는다. **담기는 것은 전이뿐이다** (위 effect 둘).
           */}
           <div aria-live="polite" className="sr-only">
-            {announce ?? ""} {typeof title === "string" ? title : ""}
+            {live}
           </div>
 
           <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5">

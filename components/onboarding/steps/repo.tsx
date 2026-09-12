@@ -34,6 +34,8 @@ export type RepoStepState = {
   query: string;
   listError: string | undefined;
   installUrl: string | null;
+  /** 연결 왕복 뒤 되돌아올 목록 상태 — 없으면 돌아온 사용자가 다른 목록을 뒤에 두게 된다. */
+  backQuery: { filter?: string; q?: string };
   /** 서버가 만든 "지금" — 클라이언트에서 만들면 hydration이 어긋난다 (`lib/relative-time.ts`). */
   now: string;
   selected: string | undefined;
@@ -57,7 +59,7 @@ export function RepoStep({
 }) {
   const { repos, query, listError, installUrl, now, selected } = state;
 
-  if (listError !== undefined) return <Blocked error={listError} installUrl={installUrl} />;
+  if (listError !== undefined) return <Blocked error={listError} installUrl={installUrl} back={state.backQuery} />;
 
   // ① 로딩 — 스켈레톤 **셋**. 개수는 실제보다 적게 둔다: 몇 개가 올지를 예고하는 것이 아니다.
   if (repos === undefined) {
@@ -208,7 +210,15 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
  * 예외 A·B·C — 연결 전 / 설치 없음 / 리포 없음. **셋이 사용자에게 요구하는 일이 다르다**: 계정
  * 연결 · App 설치 · 설치 설정에서 리포 추가. 하나로 접으면 무엇을 해야 하는지 알 수 없다.
  */
-function Blocked({ error, installUrl }: { error: string; installUrl: string | null }) {
+function Blocked({
+  error,
+  installUrl,
+  back,
+}: {
+  error: string;
+  installUrl: string | null;
+  back: { filter?: string; q?: string };
+}) {
   if (error === "not-connected" || error === "reauthorize") {
     return (
       <EmptyState
@@ -219,6 +229,7 @@ function Blocked({ error, installUrl }: { error: string; installUrl: string | nu
         action={
           <ConnectGithubButton
             dest="new"
+            back={back}
             label={error === "not-connected" ? m.newProject.empty.connect.action : m.newProject.empty.connect.reauthorize}
           />
         }

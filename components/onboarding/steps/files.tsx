@@ -93,7 +93,12 @@ export function FilesStep({
   }
 
   const candidate = picked === null ? undefined : candidates[picked];
-  const manualMode = candidates.length === 0 || candidate === undefined;
+  /**
+   * ⚠️ **탐지 중은 수동 지정이 아니다** (bugshot-qa 2026-09-13). 후보가 아직 0개인 것은 "없다"가
+   * 아니라 "모른다"인데, 그때 예외 E의 "Nothing to preview yet"을 띄우면 화면이 먼저 "로케일
+   * 파일이 없다"를 말해 놓고 몇 초 뒤 후보를 내놓는다.
+   */
+  const manualMode = !detecting && (candidates.length === 0 || candidate === undefined);
 
   return (
     <div className="flex min-h-0 flex-1 gap-6">

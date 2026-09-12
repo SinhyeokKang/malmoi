@@ -21,7 +21,22 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
  * ⚠️ **뒤의 둘을 하나로 합치지 않는다.** 둘 다 slug가 없어 payload 모양이 같지만 **착지가 다르고**,
  * 합치면 계정 화면에서 연결을 누른 사람이 `/projects/new`에 떨어져 "내가 뭘 만들려던 게 아닌데"가 된다.
  */
-export type StateDest = { kind: "settings"; slug: string } | { kind: "new" } | { kind: "account" };
+export type StateDest =
+  | { kind: "settings"; slug: string }
+  /**
+   * ⚠️ **목록 상태 둘을 함께 나른다** (2026-09-13). `/projects/new`가 `/projects` 위의 모달 딥링크가
+   * 되면서 그 라우트가 `?filter=`·`?q=`를 받는데, 연결 왕복이 그것을 잃으면 돌아온 사용자가 **다른
+   * 목록**을 뒤에 두고 모달을 닫는다.
+   *
+   * 쿼리도 **서명 대상**이다 — GitHub이 돌려주는 값에서 읽으면 목적지를 공격자가 정한다. 경로는
+   * `landingPath`가 고정하므로 여기 실리는 것은 그 라우트가 이미 주소창에서 받는 값뿐이고,
+   * open redirect 판정이 새로 생기지 않는다.
+   */
+  | { kind: "new"; filter?: string; q?: string }
+  | { kind: "account" };
+
+/** 서명된 쿠키가 무한히 커지지 않게 한다 — 값이 사용자 자유 입력이다. 넘으면 **그 값만** 버린다. */
+const MAX_DEST_QUERY = 200;
 
 /** 서명 대상. 키를 늘리면 옛 쿠키가 통째로 `state-mismatch`가 된다 — 10분 만료라 감수한다. */
 type StatePayload = { userId: string; dest: StateDest; nonce: string; exp: number };
@@ -188,12 +203,23 @@ function parsePayload(encoded: string): StatePayload | null {
 function parseDest(dest: unknown): StateDest | null {
   if (typeof dest !== "object" || dest === null || Array.isArray(dest)) return null;
   const { kind, slug } = dest as Record<string, unknown>;
-  if (kind === "new") return { kind: "new" };
+  if (kind === "new") {
+    // ⚠️ **갈래를 거부하지 않는다** — 값 하나가 이상하다고 착지를 잃으면 사용자는 연결에 성공하고도
+    // 목록으로 떨어진다. 이상한 값만 뺀다.
+    const { filter, q } = dest as Record<string, unknown>;
+    return { kind: "new", ...pick("filter", filter), ...pick("q", q) };
+  }
   // 6b-4가 더한 갈래. **늘리는 방향은 안전하다** — 옛 쿠키 둘은 위·아래 줄이 그대로 받는다.
   if (kind === "account") return { kind: "account" };
   if (kind !== "settings") return null;
   if (typeof slug !== "string" || slug === "") return null;
   return { kind: "settings", slug };
+}
+
+/** 상한 안의 문자열만 남긴다. 비면 키 자체를 안 만든다 — 빈 문자열은 `withQuery`가 어차피 버린다. */
+function pick(key: "filter" | "q", value: unknown): { filter?: string } | { q?: string } | Record<string, never> {
+  if (typeof value !== "string" || value === "" || value.length > MAX_DEST_QUERY) return {};
+  return { [key]: value };
 }
 
 function equalConstantTime(a: string, b: string): boolean {

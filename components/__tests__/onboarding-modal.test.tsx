@@ -155,3 +155,24 @@ describe("OnboardingModal — 높이가 뷰포트에 물린다 (design §8)", ()
     expect(panel.className).not.toMatch(/\d+vh|-vh\b|\(100vh/);
   });
 });
+
+/**
+ * ⚠️ **live 영역이 제목을 **상시** 들고 있으면 안 된다** (bugshot-qa 2026-09-13 실측). 모달 텍스트에
+ * 제목이 두 번 나왔고 — 헤더의 `Dialog.Title`과 `sr-only` 영역 — 스크린리더가 그것을 두 번 읽는다.
+ * 게다가 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다. **말해야 할 때만 담는다.**
+ */
+describe("OnboardingModal — live 영역은 전이만 말한다", () => {
+  it("처음 열렸을 때는 비어 있다 — 제목은 헤더가 한 번 말한다", async () => {
+    await render(shell({ step: 1, title: "New project" }));
+
+    expect(find(document.body, '[aria-live="polite"]').textContent?.trim()).toBe("");
+    expect([...document.body.querySelectorAll("*")].filter((n) => n.textContent?.trim() === "New project" && n.children.length === 0)).toHaveLength(1);
+  });
+
+  it("같은 단계에서 다시 렌더돼도 다시 말하지 않는다", async () => {
+    const { rerender } = await render(shell({ step: 2, title: "Which files hold your strings?", nextDisabled: false }));
+    await rerender(shell({ step: 2, title: "Which files hold your strings?", nextDisabled: true }));
+
+    expect(find(document.body, '[aria-live="polite"]').textContent?.trim()).toBe("");
+  });
+});

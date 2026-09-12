@@ -474,6 +474,7 @@ export function NewProject({
             query: repoQuery,
             listError,
             installUrl,
+            backQuery,
             now,
             selected: repo?.fullName,
             branch,

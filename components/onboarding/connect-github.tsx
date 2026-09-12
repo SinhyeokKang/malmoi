@@ -23,7 +23,19 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
  *
  * 성공하면 Action이 GitHub으로 `redirect`하므로 이 컴포넌트는 실패만 그린다.
  */
-export function ConnectGithubButton({ dest, label }: { dest: UserConnectDest; label: string }) {
+export function ConnectGithubButton({
+  dest,
+  label,
+  back,
+}: {
+  dest: UserConnectDest;
+  label: string;
+  /**
+   * `/projects/new`로 돌아올 때 되돌려 줄 목록 상태 (2026-09-13). 없으면 맨몸 착지이고, 그러면
+   * 모달 뒤 목록이 연결을 누르기 직전과 **달라진다** — 그 상태로 닫으면 검색어가 사라진다.
+   */
+  back?: { filter?: string; q?: string };
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +48,7 @@ export function ConnectGithubButton({ dest, label }: { dest: UserConnectDest; la
         onClick={() => {
           setError(null);
           startTransition(async () => {
-            const result = await startGithubConnectForUser(dest);
+            const result = await startGithubConnectForUser(dest, back ?? {});
             // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
             if (!result.ok) setError(result.error);
           });

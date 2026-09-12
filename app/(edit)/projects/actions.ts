@@ -384,6 +384,11 @@ export type StartUserConnectResult = { ok: false; error: OnboardFailure };
  */
 const UserConnectDest = z.enum(["new", "account"]);
 export type UserConnectDest = z.infer<typeof UserConnectDest>;
+/**
+ * `/projects/new`로 돌아올 때 되돌려 줄 목록 상태 (2026-09-13). **`new` 갈래에만 쓰인다** —
+ * `/account`에는 대응물이 없다. 상한·형식은 `parseDest`가 서명을 풀 때 한 번 더 좁힌다.
+ */
+const ConnectBack = z.object({ filter: z.string().max(200).optional(), q: z.string().max(200).optional() });
 
 /**
  * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
@@ -399,11 +404,16 @@ export type UserConnectDest = z.infer<typeof UserConnectDest>;
  *
  * 성공하면 GitHub으로 `redirect`하므로 **반환하지 않는다.**
  */
-export async function startGithubConnectForUser(raw: UserConnectDest): Promise<StartUserConnectResult> {
+export async function startGithubConnectForUser(
+  raw: UserConnectDest,
+  rawBack: { filter?: string; q?: string } = {},
+): Promise<StartUserConnectResult> {
   // 입력이 인가보다 먼저다 — 모르는 갈래가 서명 payload에 실리면 착지가 `landingPath`의 사각지대가 된다.
   const parsed = UserConnectDest.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const dest = parsed.data;
+  // 목록 상태는 착지를 못 정한다 — 이상하면 그 값만 버리고 연결은 계속한다.
+  const back = ConnectBack.safeParse(rawBack);
 
   const { userId } = await requireUser();
 
@@ -422,7 +432,7 @@ export async function startGithubConnectForUser(raw: UserConnectDest): Promise<S
     signState({
       userId,
       // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
-      dest: { kind: dest },
+      dest: dest === "new" ? { kind: "new", ...(back.success ? back.data : {}) } : { kind: "account" },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),

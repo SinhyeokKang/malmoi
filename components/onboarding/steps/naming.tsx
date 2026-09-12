@@ -91,8 +91,11 @@ export function NamingStep({
       </FormGroup>
 
       <fieldset className="border-border-subtle flex flex-col gap-2 border-t pt-4">
-        <legend className="sr-only">{m.newProject.baseLocale.title}</legend>
-        <p className="text-sm font-medium">{m.newProject.baseLocale.title}</p>
+        {/*
+          ⚠️ **`legend`가 곧 보이는 제목이다** — 전에는 `sr-only` legend와 같은 문장의 `<p>`가 둘 다
+          있어 스크린리더가 그룹 이름을 두 번 읽었다 (bugshot-qa 2026-09-13).
+        */}
+        <legend className="text-sm font-medium">{m.newProject.baseLocale.title}</legend>
         <p className="text-muted-foreground text-xs">{m.newProject.baseLocale.hint}</p>
         <div className="flex flex-wrap gap-3 pt-1">
           {locales.map((code) => (
