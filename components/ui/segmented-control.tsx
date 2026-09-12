@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,14 @@ const UNSELECTED = "text-muted-foreground hover:text-foreground";
  */
 export type SegmentContent = {
   label: string;
+  /**
+   * 라벨 **맨 왼쪽** — `icon`보다도 앞이다.
+   *
+   * ⚠️ **`icon`으로 대신할 수 없다.** 그쪽은 `ComponentType`(lucide 컴포넌트)인데 국기는 컴포넌트가
+   * 아니라 인라인 `style`의 `background-image`다 (new-project-modal §8). 치수·`aria-hidden`은 호출부
+   * 책임이고, 여기서 주는 것은 자리뿐이다.
+   */
+  leading?: ReactNode;
   /** 라벨 **왼쪽**. `lucide-react` 컴포넌트를 그대로 넘긴다. */
   icon?: ComponentType<{ className?: string }>;
   /**
@@ -59,9 +67,10 @@ export type SegmentContent = {
  * ⚠️ **아이콘에 `aria-hidden`을 붙인다.** 라벨이 늘 옆에 있으므로 아이콘은 장식이다 — bugshot-2는
  * 이걸 한 곳도 안 붙이고 lucide 기본값에 기대고 있다.
  */
-function SegmentBody({ icon: Icon, label, badge }: SegmentContent) {
+function SegmentBody({ leading, icon: Icon, label, badge }: SegmentContent) {
   return (
     <>
+      {leading}
       {Icon !== undefined && <Icon className="size-4 shrink-0" aria-hidden />}
       <span className="min-w-0 truncate">{label}</span>
       {badge !== undefined && (
