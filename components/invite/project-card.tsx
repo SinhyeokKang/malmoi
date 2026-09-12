@@ -24,10 +24,19 @@ export function InviteProjectCard({
 }) {
   return (
     <div className="border-border flex w-full items-center gap-3 rounded-lg border p-3">
-      {/* 모양이 대상을 말한다 (DESIGN §6.4): 사람은 원, 프로젝트는 라운드 사각. */}
+      {/*
+        모양이 대상을 말한다 (DESIGN §6.4): 사람은 원, 프로젝트는 라운드 사각.
+
+        ⚠️ **radius가 `rounded-sm`(8)이다 — 프로젝트 목록 행의 아이콘과 같은 값이다** (2026-09-12 실측:
+        그쪽은 `size-7 rounded-sm`이고 여기가 `rounded-lg`(12)였다). 같은 대상을 가리키는 표식이
+        화면마다 다른 모서리를 가지면 그것이 같은 것이라는 신호가 죽는다. design §7의 표도 8을 적었다.
+
+        ⚠️ **`overflow-hidden`도 목록과 같다** — 프로젝트 이미지가 생기는 날 이 배경이 그대로 그
+        이미지의 자리가 된다(`app/(edit)/projects/page.tsx`의 같은 주석).
+      */}
       <span
         aria-hidden
-        className={`flex size-8 shrink-0 items-center justify-center rounded-lg text-white ${toneFill(name)}`}
+        className={`flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white ${toneFill(name)}`}
       >
         <Box className="size-4" />
       </span>
