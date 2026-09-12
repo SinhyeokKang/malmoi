@@ -44,14 +44,14 @@ neutral 토큰, 400·500 weight, 기본 컨트롤 36px, 셸과 패널 머리는 
 
 | 대상 | 이번 적용 방향 | 그대로 보존할 것 |
 |---|---|---|
-| `/signin`, `/invite/[token]` | 인증 화면 기준 표본, 회귀 비교 | `AuthLayout`, 인증 2열, 24px 제목·40px 버튼, 초대 상태 본문 |
+| `/signin`, `/invite/[token]` | 인증 화면 기준 표본, 회귀 비교 | `AuthLayout`, 인증 2열, 24px 제목·40px 버튼, 초대 상태 본문. ⚠️ **초대 화면이 2026-09-12에 바뀌었다**(account-linking): `h1`이 섰고(그때까지 이 칸이 비어 있던 유일한 화면이다) 로그인 상태에 **프로젝트 카드**가 붙었으며 비로그인은 카드가 없다. ⚠️ **셋째 인증 화면이 생겼다** — `/signin/link/[challenge]`도 같은 골격이다 |
 | `/projects` | 목록 기준 표본, 회귀 비교 | fluid, 총계, 상태 6탭, 검색, 링크 행, 빈 상태 2종 |
 | `/projects/[slug]/translations` | 편집 표 기준 표본, 회귀 비교 | fluid, 키·로케일 축, 입력 상태, 필터 URL, Publish 한시 배치 |
 | `/projects/[slug]` Home | 공통 머리·본문·섹션 표현 점검 | limited, 제목은 프로젝트명, 진행률과 최근 활동, 번역 이동 링크 |
 | `/projects/[slug]/locales` | 관리 표·기준 로케일 폼 점검 | limited, 원본/고아 상태, OWNER만 변경, CI 수정 대기 안내 |
 | `/projects/[slug]/members` | 관리 표·행 액션·초대 Dialog 점검 | limited, 멤버/초대 표 둘, 이메일 표시 범위, 행별 오류 |
 | `/projects/[slug]/logs` | 읽기 표·빈 상태·긴 사유 점검 | limited, UTC 시각, 경고, PR 링크, cursor·Older, 재실행 버튼 없음 |
-| `/account` | 기존 카드 안의 필드·조작·피드백 정렬 | limited, 카드 넷, 계정 연결과 세션 회수의 구별 |
+| `/account` | 기존 카드 안의 필드·조작·피드백 정렬 | limited, **카드 다섯**(2026-09-12에 account-linking이 `Sign-in methods`를 프로필 아래에 더했다), 계정 연결과 세션 회수의 구별. ⚠️ **같은 화면에 "GitHub"이 두 번 나온다** — 로그인 수단과 리포 쓰기 권한은 다른 축이고 그 구별이 화면에서 보여야 한다 |
 | `/projects/[slug]/settings` | 기존 카드 안의 필드·조작·피드백 정렬 | limited, 카드 여섯, 독립 실패, 토큰·YAML, 보관/복원 |
 | `/projects/new` | 기존 단계 안의 필드·선택·결과 정렬 | limited, breadcrumb, 탐지→선택→생성→적재, 수동 지정, 결과 진단 |
 

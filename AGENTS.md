@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). 프리미티브 **16개**(`components/ui/*.tsx` — **파일 단위로 센다**. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot**·**RadioGroup** 넷 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**. **RadioGroup은 2026-09-12에 붙었다** — `SegmentedControl`이 손으로 든 roving tabindex를 그쪽에 넘겼다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). 프리미티브 **17개**(`components/ui/*.tsx` — **파일 단위로 센다**. **`EntityCard`가 2026-09-12에 붙었다** — account-linking. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot**·**RadioGroup** 넷 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**. **RadioGroup은 2026-09-12에 붙었다** — `SegmentedControl`이 손으로 든 roving tabindex를 그쪽에 넘겼다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -297,6 +297,15 @@ app/
                         `pages.error`가 여기라 거부 사유를 `?error=`로 보인다.
                         ⚠️ **`?error=` 없이도 세션이 `unavailable`이면 문구를 띄운다** — 로그인 버튼만
                         보이면 사용자가 헛로그인한다. ⚠️ **matcher에 넣지 않는다**(자기 자신으로 307)
+  signin/link/[challenge]/page.tsx
+                        계정 병합 안내 (account-linking, 2026-09-12) — **인가가 없고 challenge가
+                        대신한다.** `AuthLayout` 320 컬럼 다섯 줄 + 구분선 아래 outlined 버튼.
+                        ⚠️ **matcher에 넣지 않는다** — 비로그인이 봐야 하는 화면이라 넣으면 그 순간
+                        challenge가 사라진다 (`/invite/[token]`과 같은 판단).
+                        ⚠️ **만료를 이 화면으로 말하지 않는다** — `/signin`으로 되돌린다(다시 그리면
+                        그 상태가 또 하나의 표면이 된다). 장애는 그것과 **다른 사유**로 간다.
+                        ⚠️ **[Confirm]이 일반 로그인 진입점 셋째다** — 버려진 회수 쿠키를 먼저 지운다
+                        (`normal-login.test.tsx`의 목록이 셋이 됐다)
   privacy/page.tsx      ⚠️ **placeholder** (8-1a) — 로그인 푸터가 가리켜서 라우트를 먼저 땄다.
   docs/page.tsx         출시 전에 채운다. 둘 다 `components/public-doc.tsx`를 쓰고 **돌아가는 링크가
                         있다**(셸 밖이라 없으면 뒤로가기 말고 길이 없다). Terms는 만들지 않는다
@@ -304,7 +313,8 @@ app/
                         영어라 `app/__tests__/screens.test.ts`가 그것을 고정한다 (2026-09-08 ship 4)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
   __tests__/            **셋이다.** entry-points — ⚠️ **진입점 소스 스캔**: app/ 아래 모든 page·route·actions가
-                        인가를 지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
+                        인가를 지나는지 fs로 센다. 예외 **아홉**(2026-09-12 — account-linking이 `signin/link/[challenge]`를
+                        더했다)을 **이름으로** 고정하고 그 이름이 실재하는지도
                         본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선. ⚠️ **쿼리 수신자
                         검사가 생성기 형태도 본다** (2026-09-08) — 화면이 경로를 `routes.*`로 옮기면서
                         `"/path?key="` 리터럴이 0건이 됐고 그 검사가 조용해졌다(자기 "0건 아님" 가드가 잡았다)
@@ -594,6 +604,17 @@ components/
                         `planPush`가 base 교체 push에서 전파를 건너뛰므로 그 일이 안 일어난다)
                         ⚠️ **filters는 `<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로
                         submit되지 않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
+  account/              `/account`의 클라이언트 조각 (account-linking T5) — login-methods 하나다.
+                        ⚠️ **[Connect]가 없다** — 로그인된 세션을 근거로 `Account`를 붙이는 경로는
+                        sec-audit-2 #31이 막은 자리이고, 그 문의 인가 조건을 이 화면에서는 못 적는다.
+                        같은 주소 연결은 병합 흐름이 이미 잡는다.
+                        ⚠️ **마지막 수단은 비활성 + 행 옆 인라인 사유**(POSTMORTEM 2026-09-06) ·
+                        해제에는 확인 `Dialog`가 있다(`DisconnectGithubButton`과 달리 되돌리려면
+                        OAuth 왕복 전체가 필요하다 — 멤버 제거와 같은 무게)
+  invite/               초대 화면의 프로젝트 카드 (account-linking T4) — `EntityCard`의 박스 규격을
+                        공유하되 **프리미티브가 아니다**: 아바타 폴백이 흰 `Box` 글리프이고
+                        DESIGN이 그 대체를 이미 거부했다. ⚠️ **숫자를 싣지 않는다**(키·멤버 수는
+                        수락 여부를 안 바꾸고 규모만 샌다) · 국기는 복수다
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
                         후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
@@ -658,7 +679,7 @@ components/
                         **Publish는 그대로 셸 밖**이다 — 번역 화면 제목 행 우측이고 8-P가 패널로 가져간다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
                         판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개 + 헬퍼 하나** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개 + 헬퍼 하나** (2026-09-08, 6a T5 — shadcn 생성물 4개는
                         삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
                         `Tooltip`이 빠지고**(8-3이 접기 레일을 지우면서 소비자가 0이 됐다) **같은 날 8-4가
                         `DropdownMenuCheckboxItem`을 더했다** — `role="menuitemcheckbox"`와 `aria-checked`를
@@ -666,7 +687,7 @@ components/
                         기억하게 하면 하나가 빠지고 그 하나는 "고를 때마다 메뉴가 닫힌다"로만 드러난다).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·**Table**(⚠️ **프리셋이 둘이고 구현은 하나다** — 2026-09-12에 shadcn 원본을 들이면서
+                        Dialog·**EntityCard**(account-linking 신설 — 대상 하나를 아바타·두 줄·우측 슬롯으로. ⚠️ **`kind`가 없다**: 소비자가 병합 화면 하나이고, 초대의 프로젝트 카드는 `components/invite/`의 화면 조각이다(아바타 폴백이 이니셜이 아니라 흰 글리프라 DESIGN이 그 대체를 이미 거부했다). ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 기능 디렉터리를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다)·**Table**(⚠️ **프리셋이 둘이고 구현은 하나다** — 2026-09-12에 shadcn 원본을 들이면서
                         `Th`·`Td`·`Tr`을 **`TableHead`·`TableCell`·`TableRow`를 감싼 프리셋**으로 내렸다.
                         되눌러야 하는 기본값(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`)이 각
                         프리셋 위에 적혀 있고 `table-presets.test.ts`가 **렌더해서** 센다 — 안 지워지면
@@ -1007,6 +1028,29 @@ lib/
                         ⚠️ `createUser`가 **lookup 존재를 증명한다**: R2가 NOT NULL을 안 걸어서
                         DB가 안 막는다) / access.ts / conversion.ts·migration.ts·command.ts·finalize.ts(전환 도구)
                         ⚠️ **로그인용 github/google 토큰은 아예 저장하지 않는다** — 로그인 뒤 안 쓴다
+  login-link/           계정 병합 (account-linking, 2026-09-12). `lib/session-revocation/`과 **같은 형이고
+                        목적이 반대다** (하나는 왕복을 멈추고, 하나는 진행시킨다) — 합치지 않는다.
+                        ⚠️ **이름이 `account-link`가 아닌 이유**: `lib/github-connect/account-link.ts`가
+                        **GitHub App 연결의 소유권**이라 축이 다르다. 파일은 여섯이다.
+                        policy.ts(⚠️ **잎에 가깝다 — import가 `lib/routes.ts` 하나다.** `/account`의
+                          수단 카드가 **클라이언트**라 이 파일의 그래프가 곧 번들이고, 해시를 여기
+                          두었더니 `node:crypto`가 따라 들어갔다(실측 — `client-graph.test.ts`가 잡았다).
+                          `Challenge` 조립·파싱 · 쿠키 이름 둘 · `checkChallenge` · `outcomeUrl`(⚠️ **갈래
+                          이름만 받는다** — 저장된 문자열을 리다이렉트에 쓰면 open redirect 판정이 생긴다)
+                          · `failureUrl`(⚠️ **돌아갈 challenge가 없는 갈래는 이 화면으로 안 보낸다** —
+                          `expired`·`invalid`는 화면이 사유 없이 한 번 더 튕겨 문구가 사라진다)
+                          · `pickLoginAccount`·`loginMethodRows`·`canUnlink`·`destFromCallbackUrl`)
+                        / plan.ts(planLinkOffer 3갈래 + planLinkConfirm 5갈래 — ⚠️ **`expired`가
+                          `wrong-account`보다 앞이다**(만료된 challenge가 누구 것이었는지 말하지 않는다) ·
+                          ⚠️ **`consume`이 `ok`에서만 참이다**(실패가 소비하면 훔친 URL 한 번으로 남의
+                          병합을 태운다))
+                        / message.ts(코드 → 문구, `?e=`라 `string`을 받는다) / store.ts(beginLink·
+                          finishLink·loadLinkOffer + `challengeTokenHash`. ⚠️ **모든 조회·삭제에 `userId`를
+                          건다** — `Account` PK가 `(provider, providerAccountId)`라 그 둘만으로 남의 행에
+                          닿는다) / http.ts(withLoginLink·authorizeLoginLink·withLinkStart — ⚠️ **`withRevocation`이
+                          바깥, 이것이 안쪽**이고 state 쿠키 이름·salt가 갈린다) / view.ts(loadChallengeView —
+                          **보일 값만**: 마스킹 이메일·provider·가입 월. 원문은 반환 타입에 없다)
+                        / clear-cookies.ts(일반 로그인 셋이 부른다 — 배타성은 **양방향** 정리가 만든다)
   session-revocation/   전체 세션 회수 (sec-audit-2 #38). `/account`에서 공급자 재왕복 뒤 **그 사용자의**
                         Session을 전부 지운다 — 확인 요청 소비와 삭제가 한 트랜잭션이다.
                         policy.ts(순수 — Challenge·nonce·state 해시) / store.ts(User 잠금 + 일회 소비) /
@@ -1274,7 +1318,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`sync`·`credentials`·`session-revocation`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`sync`·`credentials`·`session-revocation`·`login-link`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).

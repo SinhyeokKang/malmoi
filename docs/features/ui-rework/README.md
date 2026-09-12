@@ -15,6 +15,7 @@
 | **8-3 `/projects` 목록** | 2줄 행 · URL 필터(`?filter=`) · 상태 배지 하나 · fluid + **사이드바 시안 정렬**(접기·스위처·`New project` 제거, Help 추가) | ✅ dev (2026-09-10) |
 | **8-4** [`translations/`](./translations/) | 표의 축을 **로케일 = 행**으로 재작성 · `?focus=`→`?locales=` 다중 · `?state=` 폐기 · 툴바 + 칩 행 · 국기 폴백 계약 · **breadcrumb을 하위 화면 다섯에서 함께 삭제** | ✅ dev (2026-09-11) |
 | 8-5~ 나머지 페이지별 | `/projects/new` · `/account` · Home · locales · members · logs · settings | ⬜ |
+| (배송 밖) [`account-linking`](../account-linking/) | ⚠️ **이 배송 순서 밖에서 `/invite/[token]`과 `/account`를 건드렸다** (2026-09-12) — 초대 화면에 `h1`과 프로젝트 카드가 붙었고(규칙 위반의 교정이다: 셸 밖 폼 컬럼의 `h1`을 DESIGN이 이미 요구한다), `/account`에 카드가 하나 늘었으며, **셸 밖 화면이 셋**이 됐다(`/signin/link/[challenge]`). 8-5가 그 자리에 오면 **이미 옮겨진 상태**에서 시작한다 | ✅ dev |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
 
 **8-5~ 톤앤매너 통일 계획**: [page-patterns/spec.md](./page-patterns/spec.md) ·
