@@ -149,13 +149,13 @@ it("후보 변경은 이름·주소·기준 언어를 초기화한다", async ()
   await click(button("Next"));
   await input(field("project-name"), "Custom");
   await input(field("project-slug"), "custom");
-  await select("#project-base-locale", "fr");
+  await click(document.body.querySelectorAll<HTMLInputElement>('input[name="baseLocale"]')[1]!);
   await click(button("Back"));
   await click(document.body.querySelectorAll<HTMLInputElement>('input[name="candidate"]')[1]!);
   await click(button("Next"));
   expect(field("project-name").value).toBe("web");
   expect(field("project-slug").value).toBe("acme-web");
-  expect(find<HTMLSelectElement>(document.body, "#project-base-locale").value).toBe("en");
+  expect(find<HTMLInputElement>(document.body, 'input[name="baseLocale"]').checked).toBe(true);
 });
 
 it("리포 변경도 이전 이름·주소를 새 리포에 가져오지 않는다", async () => {
@@ -228,10 +228,8 @@ it("lazy 샘플을 받으면 언어 옵션과 다음 단계의 키 수도 갱신
   await select('select[aria-label="Language"]', "fr");
   expect(find<HTMLOptionElement>(document.body, 'option[value="fr"]').textContent).toContain("3 keys");
   await click(button("Next"));
-  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
-  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("3 keys");
-  // 키 수를 아는 둘 중 많은 쪽이 배지를 든다 — 모르는 언어에는 안 붙는다 (결정 ⑥⑦).
-  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("Most keys");
+  const french = [...document.body.querySelectorAll('input[name="baseLocale"]')].find((el) => el.parentElement?.textContent?.includes("fr"));
+  expect(french?.closest("span.inline-flex")?.textContent).toContain("Most keys");
 });
 
 it("목록 조회만 실패하면 응답의 defaultBranch로 계속 진행한다", async () => {
@@ -312,7 +310,7 @@ it("수동 지정 후 브랜치를 바꾸면 재검증한 기준 언어로 진�
   await click(button("Next"));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
   await click(button("Next"));
-  expect(find<HTMLSelectElement>(document.body, "#project-base-locale").value).toBe("en");
+  expect(find<HTMLInputElement>(document.body, 'input[name="baseLocale"]').checked).toBe(true);
 });
 
 it("리포 접근 거부 뒤 다른 리포를 고르면 그 리포의 인가로 진행한다", async () => {
@@ -365,39 +363,74 @@ it("③의 기준 언어 그룹 이름이 한 번만 있다", async () => {
 });
 
 /**
- * ③의 기준 언어도 ②와 **같은 경계**로 접힌다 (2026-09-13 실물 관측). 57로케일 리포에서 ②는
- * `Select`인데 ③이 라디오 57개를 펼쳤고, **되돌릴 수 없는 결정**을 그 스크롤에서 고르게 했다.
+ * ③의 기준 언어는 **열까지 펼치고 열하나부터 접는다** (2026-09-13 사용자). ②(넷)와 경계가 다른
+ * 근거는 `lib/onboarding/locale-picker.ts`가 든다 — 라디오는 감싸므로 줄만 늘고, 이 자리는
+ * **되돌릴 수 없는 결정**이라 보이는 편이 낫다. 그 위는 57로케일 리포에서 실제로 스크롤이 됐다.
  */
-it("기준 언어가 다섯 이상이면 목록으로 접힌다", async () => {
+const manyLocales = (n: number): string[] => Array.from({ length: n }, (_, i) => `l${String(i).padStart(2, "0")}`);
+
+it("기준 언어가 열까지는 라디오 그대로다 — 적은 목록에 한 겹 더 누르게 하지 않는다", async () => {
+  const locales = manyLocales(10);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales, baseLocale: locales[0] }] });
+  await files();
+  await click(button("Next"));
+
+  expect(document.body.querySelector("#project-base-locale")).toBeNull();
+  expect(document.body.querySelectorAll('input[name="baseLocale"]')).toHaveLength(10);
+});
+
+it("열하나부터 목록으로 접힌다", async () => {
+  const locales = manyLocales(11);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales, baseLocale: locales[0] }] });
   await files();
   await click(button("Next"));
 
   expect(document.body.querySelectorAll('input[name="baseLocale"]')).toHaveLength(0);
   const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
-  expect(picker.options).toHaveLength(5);
-  expect(picker.value).toBe("en");
+  expect(picker.options).toHaveLength(11);
+  expect(picker.value).toBe("l00");
 });
 
-it("접힌 목록에서도 `Most keys`가 보인다 — 배지 자리가 옵션 라벨로 간다", async () => {
+/**
+ * ⚠️ **컨트롤이 하나면 `fieldset`이 아니다.** 접힌 갈래에서 `legend`와 `Select`의 접근 이름이 둘 다
+ * "Base language"라 스크린리더가 "Base language 그룹, Base language 콤보박스"로 읽는다 — 2026-09-13에
+ * 고친 sr-only legend 중복과 같은 부류다. 묶을 것이 없으면 그냥 라벨 하나다.
+ */
+it("접힌 갈래는 그룹 이름을 한 번만 말한다", async () => {
+  const locales = manyLocales(11);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales, baseLocale: locales[0] }] });
   await files();
-  // 아는 언어가 하나뿐이면 비교할 것이 없어 배지가 안 선다 — 하나를 더 받아 둘로 만든다.
-  await select('select[aria-label="Language"]', "fr");
   await click(button("Next"));
 
-  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
-  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("Most keys");
-  // 키 수를 모르는 언어에는 배지도 키 수도 안 붙는다 (결정 ⑥⑦).
-  expect([...picker.options].find((o) => o.value === "ko")?.textContent?.trim()).toBe("ko");
+  const named = [...document.body.querySelectorAll("*")].filter(
+    (node) => node.children.length === 0 && node.textContent?.trim() === "Base language",
+  );
+  expect(named).toHaveLength(1);
+  // ⚠️ **`legend`가 있는 `fieldset`만 본다** — 제출 중 입력을 잠그는 `fieldset disabled`는 접근
+  // 이름을 만들지 않으므로 이 검사의 대상이 아니다.
+  expect(document.body.querySelector("fieldset > legend")).toBeNull();
+  expect(find<HTMLSelectElement>(document.body, "#project-base-locale").labels?.length).toBe(1);
 });
 
-it("넷 이하면 라디오 그대로다 — 적은 목록까지 한 겹 더 누르게 하지 않는다", async () => {
+/** 접혀도 키 수와 배지는 **아는 언어에만** 붙는다 (결정 ⑥⑦) — 배지 자리가 옵션 라벨로 간다. */
+it("접힌 목록의 옵션이 키 수와 `Most keys`를 든다", async () => {
+  const locales = manyLocales(11);
   mocks.detectRepoFormats.mockResolvedValue({
     ok: true,
-    candidates: [{ ...candidate(), locales: ["en", "fr", "ko"] }],
+    candidates: [{
+      ...candidate(), locales, baseLocale: locales[0],
+      samples: [
+        { locale: "l00", rows: [], total: 9 },
+        { locale: "l01", rows: [], total: 4 },
+      ],
+    }],
   });
   await files();
   await click(button("Next"));
 
-  expect(document.body.querySelector("#project-base-locale")).toBeNull();
-  expect(document.body.querySelectorAll('input[name="baseLocale"]')).toHaveLength(3);
+  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
+  const label = (value: string) => [...picker.options].find((o) => o.value === value)?.textContent?.trim();
+  expect(label("l00")).toBe("l00 · 9 keys · Most keys");
+  expect(label("l01")).toBe("l01 · 4 keys");
+  expect(label("l05")).toBe("l05");
 });

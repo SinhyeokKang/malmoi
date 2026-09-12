@@ -4,14 +4,23 @@
  * ⚠️ **잎이다 — import가 없어야 한다.** ②③이 둘 다 클라이언트 컴포넌트라 이 판정을 값으로 읽는다
  * (`key-gap.ts`와 같은 이유: `lib/onboarding/detect.ts`에 두면 그 그래프가 번들에 들어온다).
  *
- * ⚠️ **경계를 화면마다 적지 않는다.** 같은 값을 고르는 컨트롤이 단계마다 다른 형이면 사용자가 두
- * 번 배우고, 한쪽 임계값만 바뀌면 그 차이가 조용히 굳는다 — 실물 57로케일 리포에서 ②는 `Select`인데
- * ③이 라디오 57개를 펼쳤고, **되돌릴 수 없는 결정**을 그 스크롤에서 고르게 했다.
+ * ⚠️ **경계가 둘이고, 그것이 의도다** (2026-09-13 사용자). 처음엔 하나로 합쳤다가 뒤집었다 —
+ * 두 컨트롤이 넘치는 방식이 다르다:
+ *
+ * - **②의 세그먼트**는 가로 트랙 **한 줄**이라 칸이 늘면 각 칸이 좁아진다. 다섯이면 이미 로케일
+ *   코드가 잘리기 시작한다.
+ * - **③의 라디오**는 `flex-wrap`으로 **감싼다**. 줄이 늘 뿐 각 항목은 그대로라 열까지는 읽히고,
+ *   그 자리는 **되돌릴 수 없는 결정**이라 한눈에 보이는 편이 낫다.
+ *
+ * 그래서 숫자를 화면에 적지 않고 여기 둘을 둔다 — 한쪽만 바뀌면 그 차이가 조용히 굳는다.
  */
 
-/** 여기까지는 펼친다. 넷이면 한 줄에 들어가고, 다섯부터는 줄이 접히기 시작한다. */
-export const LOCALE_PICKER_INLINE_MAX = 4;
+/** ②의 세그먼트 트랙. 넷까지 한 줄에 든다. */
+export const LOCALE_SEGMENT_MAX = 4;
 
-export function collapseLocalePicker(count: number): boolean {
-  return count > LOCALE_PICKER_INLINE_MAX;
+/** ③의 기준 언어 라디오. 감싸므로 열까지 펼친다. */
+export const LOCALE_RADIO_MAX = 10;
+
+export function collapseLocalePicker(count: number, max: number): boolean {
+  return count > max;
 }

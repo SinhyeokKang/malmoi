@@ -8,7 +8,7 @@ import { Radio } from "@/components/ui/radio";
 import { Select } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { keyGap } from "@/lib/onboarding/key-gap";
-import { collapseLocalePicker } from "@/lib/onboarding/locale-picker";
+import { LOCALE_RADIO_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 
 import { failureText } from "../failure";
@@ -92,56 +92,69 @@ export function NamingStep({
         />
       </FormGroup>
 
-      <fieldset className="border-border-subtle flex flex-col gap-2 border-t pt-4">
-        {/*
-          ⚠️ **`legend`가 곧 보이는 제목이다** — 전에는 `sr-only` legend와 같은 문장의 `<p>`가 둘 다
-          있어 스크린리더가 그룹 이름을 두 번 읽었다 (bugshot-qa 2026-09-13).
-        */}
-        <legend className="text-sm font-medium">{m.newProject.baseLocale.title}</legend>
-        <p className="text-muted-foreground text-xs">{m.newProject.baseLocale.hint}</p>
-        {/*
-          ⚠️ **②의 세그먼트와 같은 경계로 접힌다** (`collapseLocalePicker`). 같은 값을 고르는 컨트롤이
-          단계마다 형이 다르면 사용자가 두 번 배우고, 57로케일 리포에서는 **되돌릴 수 없는 결정**을
-          라디오 57개의 스크롤에서 고르게 된다 (2026-09-13 실물 관측).
-        */}
-        {collapseLocalePicker(locales.length) ? (
-          <Select
-            id="project-base-locale"
-            aria-label={m.newProject.baseLocale.title}
-            value={state.baseLocale}
-            onChange={(e) => onChange({ baseLocale: e.target.value })}
-            className="w-full max-w-sm"
+      {/*
+        ⚠️ **갈래마다 껍데기가 다르다.** 접히면 컨트롤이 **하나**라 `fieldset`이 아니라 라벨 하나다 —
+        `legend`와 `Select`의 접근 이름이 둘 다 "Base language"면 스크린리더가 그룹 이름을 두 번
+        말한다(2026-09-13에 고친 sr-only legend 중복과 같은 부류). 라디오 갈래는 컨트롤이 여럿이라
+        `fieldset`/`legend`가 맞는 형이다.
+
+        ⚠️ **경계가 ②(넷)와 다르게 열이다** (2026-09-13 사용자 — `locale-picker.ts`가 근거를 든다).
+        라디오는 `flex-wrap`으로 감싸 줄만 늘 뿐 각 항목이 그대로라 열까지는 한눈에 읽히고, 이
+        자리는 **되돌릴 수 없는 결정**이라 보이는 편이 낫다. 그 위는 접는다 — 57로케일 리포에서
+        라디오 57개의 스크롤에서 고르게 됐다 (실물 관측).
+      */}
+      <div className="border-border-subtle border-t pt-4">
+        {collapseLocalePicker(locales.length, LOCALE_RADIO_MAX) ? (
+          <FormGroup
+            label={m.newProject.baseLocale.title}
+            htmlFor="project-base-locale"
+            help={m.newProject.baseLocale.hint}
           >
-            {locales.map((code) => (
-              <option key={code} value={code}>
-                {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
-                {m.newProject.naming.baseOption(
-                  code,
-                  keyCounts[code] === undefined ? undefined : m.newProject.files.keys(keyCounts[code]),
-                  code === leader && known.length > 1,
-                )}
-              </option>
-            ))}
-          </Select>
+            <Select
+              id="project-base-locale"
+              value={state.baseLocale}
+              onChange={(e) => onChange({ baseLocale: e.target.value })}
+              className="w-full max-w-sm"
+            >
+              {locales.map((code) => (
+                <option key={code} value={code}>
+                  {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
+                  {m.newProject.naming.baseOption(
+                    code,
+                    keyCounts[code] === undefined ? undefined : m.newProject.files.keys(keyCounts[code]),
+                    code === leader && known.length > 1,
+                  )}
+                </option>
+              ))}
+            </Select>
+          </FormGroup>
         ) : (
-          <div className="flex flex-wrap gap-3 pt-1">
-            {locales.map((code) => (
-              <span key={code} className="inline-flex items-center gap-1.5">
-                <Radio
-                  name="baseLocale"
-                  checked={state.baseLocale === code}
-                  onChange={() => onChange({ baseLocale: code })}
-                  label={<span className="text-sm">{code}</span>}
-                />
-                {code === leader && known.length > 1 && <Badge variant="neutral">{m.newProject.naming.mostKeys}</Badge>}
-              </span>
-            ))}
-          </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium">{m.newProject.baseLocale.title}</legend>
+            <p className="text-muted-foreground text-xs">{m.newProject.baseLocale.hint}</p>
+            <div className="flex flex-wrap gap-3 pt-1">
+              {locales.map((code) => (
+                <span key={code} className="inline-flex items-center gap-1.5">
+                  <Radio
+                    name="baseLocale"
+                    checked={state.baseLocale === code}
+                    onChange={() => onChange({ baseLocale: code })}
+                    label={<span className="text-sm">{code}</span>}
+                  />
+                  {code === leader && known.length > 1 && (
+                    <Badge variant="neutral">{m.newProject.naming.mostKeys}</Badge>
+                  )}
+                </span>
+              ))}
+            </div>
+          </fieldset>
         )}
         {gap !== undefined && leader !== undefined && (
-          <Alert variant="info">{m.newProject.naming.keyGap(state.baseLocale, gap, leader)}</Alert>
+          <Alert variant="info" className="mt-2">
+            {m.newProject.naming.keyGap(state.baseLocale, gap, leader)}
+          </Alert>
         )}
-      </fieldset>
+      </div>
     </div>
   );
 }
