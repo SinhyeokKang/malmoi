@@ -1,6 +1,6 @@
 import { adapterFor } from "@/lib/adapters";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
-import type { Adapter, AdapterName, DetectedFormat, FileProbe } from "@/lib/adapters/types";
+import type { Adapter, AdapterName, DetectedFormat, FileProbe, LocaleEntry, ReadLocale } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
 import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
 
@@ -75,7 +75,64 @@ export type CandidateSummary = {
   /** 기본 선택 — 사용자가 라디오로 바꾼다 (design §3.2). */
   baseLocale: string;
   keys: KeyCount;
+  /**
+   * ②의 키·값 미리보기. **`sampleOrder`가 고른 로케일만 든다 — 추가 blob이 0이다** (design §3.3):
+   * `probeTargets`가 이미 그 파일들을 내려받았고, 지금까지는 기준 로케일 하나만 풀고 나머지를 버렸다.
+   * 나머지 로케일은 사용자가 세그먼트를 누를 때 `loadCandidateSample`이 받는다.
+   *
+   * ⚠️ **multi-locale(`ts-dict`)만 예외로 처음부터 전 언어를 든다** — 한 파일에 전 언어가 있어
+   * read 한 번이 전부를 주므로 공짜다.
+   */
+  samples: LocaleSample[];
 };
+
+export type SampleRow = { key: string; value: string };
+
+export type LocaleSample = {
+  locale: string;
+  /** 앞 `SAMPLE_ROWS`개. `adapter.read`가 준 순서 그대로다 — 여기서 다시 정렬하지 않는다. */
+  rows: SampleRow[];
+  /** 그 로케일의 전체 엔트리 수. 표 바닥의 "N more keys"와 `Select` 옵션 라벨이 쓴다. */
+  total: number;
+};
+
+/** 표가 언어당 보이는 행 수. 화면은 `total - rows.length`로 "N more keys"를 만든다 (design §10). */
+export const SAMPLE_ROWS = 10;
+
+/**
+ * 한 로케일의 앞 N행 + 전체 수.
+ *
+ * ⚠️ **`read`가 준 순서를 다시 정렬하지 않는다.** 어댑터가 이미 키 기준으로 정렬해 주므로 언어를
+ * 바꿔도 같은 키가 같은 줄에 서고, 그것이 ②가 "ko 열이 비어 있다"를 보여 주는 화면인 이유다 (spec §1).
+ *
+ * 읽기 실패는 `{ rows: [], total: 0 }`이다 — **"정말 비었다"와 구별하지 않는다.** 그 구별은 호출부가
+ * 한다(빈 칸 vs "We couldn't read this file." — design §3.4): 여기는 순수 함수라 "왜 비었는지"를
+ * 아는 자리가 아니고, 어느 쪽이든 후보를 떨어뜨리지 않는 것이 규칙이다 (ARCHITECTURE §4).
+ */
+export function sampleRows(
+  adapter: Adapter,
+  format: DetectedFormat,
+  locale: string,
+  blobs: ReadonlyMap<string, string>,
+  limit: number = SAMPLE_ROWS,
+): { rows: SampleRow[]; total: number } {
+  return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale), locale), limit);
+}
+
+/**
+ * ③의 "145 keys fewer" (design §10).
+ *
+ * ⚠️ **키 수를 모르는 로케일에는 `undefined`다** (결정 ⑦). detect의 blob 예산(≤21) 안에서 키 수가
+ * 채워지는 것은 `sampleOrder`가 고른 로케일과 사용자가 눌러 본 로케일뿐이라, 모르는 언어까지 비교하면
+ * 되돌릴 수 없는 결정의 근거가 **"②에서 무엇을 눌렀는지"라는 우연한 이력**이 된다.
+ *
+ * 차이가 0이거나 오히려 많으면 `undefined`다 — 문구가 "fewer" 한 방향뿐이다.
+ */
+export function keyGap(base: number | undefined, other: number | undefined): number | undefined {
+  if (base === undefined || other === undefined) return undefined;
+  const gap = base - other;
+  return gap > 0 ? gap : undefined;
+}
 
 /**
  * 후보 + 내려받은 blob → 사용자 언어 요약. 키 수는 기준 로케일 파일을 **실제로 read한** 결과다 — 경로와
@@ -88,7 +145,6 @@ export function summarizeCandidates(
   candidates: readonly DetectedFormat[],
   blobs: ReadonlyMap<string, string>,
 ): CandidateSummary[] {
-  const probe = makeProbe(blobs);
   const out: CandidateSummary[] = [];
   for (const c of candidates) {
     // 탐지는 로케일 2개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
@@ -96,38 +152,90 @@ export function summarizeCandidates(
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);
     const { label } = formatLabel(c.adapter);
-    out.push({
-      adapter: c.adapter,
-      label,
-      pathTemplate: c.pathTemplate,
-      locales: c.locales.slice().sort(compareKeys),
-      baseLocale,
-      keys: countKeys(adapter, c, baseLocale, blobs, probe),
-    });
+    const locales = c.locales.slice().sort(compareKeys);
+    const { samples, keys } = sampleCandidate(adapter, c, locales, baseLocale, blobs);
+    out.push({ adapter: c.adapter, label, pathTemplate: c.pathTemplate, locales, baseLocale, keys, samples });
   }
   return out;
 }
 
-function countKeys(
+/**
+ * 한 후보의 미리보기와 키 수를 **같은 read에서** 얻는다.
+ *
+ * ⚠️ **`adapter.read` 호출 수가 이 함수의 예산이다.** 다운로드는 `probeTargets`가 이미 다 했으므로 여기서
+ * 늘어나는 것은 blob이 아니라 **파싱**이고, `ts-dict`는 호출 하나가 ts-morph 한 바퀴다. per-locale은
+ * `sampleOrder`가 고른 만큼(≤3), multi-locale은 **한 번**이다 — 한 파일에 전 언어가 있어 read 하나가
+ * 전부를 준다. 로케일 수만큼 부르면 903키 파일을 50번 파싱하고 `maxDuration`(60초)을 넘긴다.
+ *
+ * **내려받지 않은 로케일은 `samples`에 아예 넣지 않는다** — 빈 행으로 넣으면 화면이 "정말 비었다"와
+ * 구별할 수 없다. 내려받았는데 못 읽은 것만 `rows: []`로 남는다 (design §3.4).
+ */
+function sampleCandidate(
   adapter: Adapter,
   format: DetectedFormat,
+  locales: readonly string[],
   baseLocale: string,
   blobs: ReadonlyMap<string, string>,
-  probe: FileProbe,
-): KeyCount {
-  // 기준 로케일 파일만 읽는다 — per-locale은 locales를 base 하나로 좁혀 같은 선택 규칙을 지난다
-  // (`selectLocaleFiles`를 새로 짜지 않는다 — POSTMORTEM 2026-09-02). 있는 blob은 sampleOrder의 첫 파일과
-  // 같으므로(pickBaseLocale과 같은 en 우선) 항상 내려받은 것이다.
-  const narrowed = adapter.layout === "per-locale" ? { ...format, locales: [baseLocale] } : format;
-  const files = selectLocaleFiles(adapter.layout, narrowed, [...blobs.keys()], probe);
-  if (files.length === 0) return { status: "key-count-failed" };
-  try {
-    const entries = adapter.read(narrowed, files).locales.find((l) => l.locale === baseLocale)?.entries;
-    return entries === undefined ? { status: "key-count-failed" } : { status: "counted", count: entries.length };
-  } catch {
-    // read가 던지는 파일도 "키 수 확인 실패"다 — 후보 자체는 남긴다.
-    return { status: "key-count-failed" };
+): { samples: LocaleSample[]; keys: KeyCount } {
+  const samples: LocaleSample[] = [];
+  let baseEntries: LocaleEntry[] | undefined;
+
+  if (adapter.layout === "multi-locale") {
+    const read = readLocales(adapter, format, blobs, baseLocale);
+    if (read !== undefined) {
+      for (const locale of locales) samples.push({ locale, ...rowsOf(entriesOf(read, locale), SAMPLE_ROWS) });
+      baseEntries = entriesOf(read, baseLocale);
+    }
+  } else {
+    for (const locale of sampleOrder(new Set(locales))) {
+      const read = readLocales(adapter, format, blobs, locale);
+      if (read === undefined) continue;
+      const entries = entriesOf(read, locale);
+      samples.push({ locale, ...rowsOf(entries, SAMPLE_ROWS) });
+      if (locale === baseLocale) baseEntries = entries;
+    }
   }
+
+  return {
+    samples,
+    keys: baseEntries === undefined ? { status: "key-count-failed" } : { status: "counted", count: baseEntries.length },
+  };
+}
+
+/**
+ * 어댑터에게 파일을 먹여 로케일을 푼다. 세 결과가 다른 뜻이다:
+ * `undefined`는 **내려받지 않았다**(먹일 파일이 없다), `[]`는 **읽다 던졌다**, 그 외는 읽은 결과다.
+ *
+ * per-locale은 `locales`를 하나로 좁혀 `selectLocaleFiles`의 같은 선택 규칙을 지난다
+ * (규칙을 두 벌 만들지 않는다 — POSTMORTEM 2026-09-02). multi-locale은 글롭이라 좁히지 않는다.
+ */
+function readLocales(
+  adapter: Adapter,
+  format: DetectedFormat,
+  blobs: ReadonlyMap<string, string>,
+  locale: string,
+): ReadLocale[] | undefined {
+  const narrowed = adapter.layout === "per-locale" ? { ...format, locales: [locale] } : format;
+  const files = selectLocaleFiles(adapter.layout, narrowed, [...blobs.keys()], makeProbe(blobs));
+  if (files.length === 0) return undefined;
+  try {
+    return adapter.read(narrowed, files).locales;
+  } catch {
+    // read가 던지는 파일도 후보를 떨어뜨리지 않는다 — 남의 리포를 우리 파서 규칙으로 탈락시키지 않는다.
+    return [];
+  }
+}
+
+function entriesOf(read: readonly ReadLocale[] | undefined, locale: string): LocaleEntry[] | undefined {
+  return read?.find((l) => l.locale === locale)?.entries;
+}
+
+function rowsOf(entries: readonly LocaleEntry[] | undefined, limit: number): { rows: SampleRow[]; total: number } {
+  if (entries === undefined) return { rows: [], total: 0 };
+  return {
+    rows: entries.slice(0, limit).map((e) => ({ key: e.key, value: e.message })),
+    total: entries.length,
+  };
 }
 
 /**

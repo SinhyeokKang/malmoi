@@ -315,8 +315,8 @@ describe("sampleRows — blob 맵에서 그 로케일의 앞 N행", () => {
     const { rows, total } = sampleRows(tsDict, TS_FORMAT, "fr", new Map([[TS_PATH, TS_SOURCE]]));
     expect(total).toBe(2);
     expect(rows).toEqual([
-      { key: "common.ok", value: "OK" },
       { key: "common.close", value: "Fermer" },
+      { key: "common.ok", value: "OK" },
     ]);
   });
 });

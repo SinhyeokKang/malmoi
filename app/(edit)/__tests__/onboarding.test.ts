@@ -96,6 +96,9 @@ const TREE = [
 ];
 const CATALOG = `${JSON.stringify({ "a.greet": "Hello", "a.bye": "Bye" }, null, 2)}\n`;
 
+/** `probeTargets`가 고르는 셋 — en 우선 → 코드포인트 순. ②의 미리보기가 처음 드는 언어와 같다. */
+const SAMPLED_LOCALES = ["en", "fr", "ko"];
+
 const HEAD_SHA = "c0ffee";
 const HEAD_AT = "2026-09-07T00:00:00Z";
 
@@ -381,9 +384,25 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
           locales: ["en", "fr", "ko"],
           baseLocale: "en",
           keys: { status: "counted", count: 2 },
+          // ②의 미리보기 — `probeTargets`가 이미 받아 둔 blob만 쓴다 (추가 다운로드 0).
+          samples: SAMPLED_LOCALES.map((locale) => ({
+            locale,
+            rows: [
+              { key: "a.bye", value: "Bye" },
+              { key: "a.greet", value: "Hello" },
+            ],
+            total: 2,
+          })),
         },
       ],
     });
+  });
+
+  it("샘플은 `sampleOrder`가 고른 로케일만 든다 — 내려받지 않은 파일을 미리보기가 요구하지 않는다", async () => {
+    const result = await detectRepoFormats({ owner: "acme", repo: "web" });
+    const locales = result.ok ? result.candidates[0]?.samples.map((s) => s.locale) : undefined;
+
+    expect(locales).toEqual(SAMPLED_LOCALES);
   });
 
   it("리더는 probe가 준 설치·이름과 프로젝트의 default branch로 연다", async () => {
