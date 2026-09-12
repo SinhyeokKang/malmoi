@@ -99,6 +99,7 @@ export const en = {
    */
   signIn: {
     title: "Sign in to malmoi",
+    backToInvitation: "Back to invitation",
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
@@ -534,6 +535,7 @@ export const en = {
      * 채워진 셀이 이름 없는 입력이 된다. 903행 × 3로케일에서 그건 표 전체가 익명이라는 뜻이다.
      * live region이 같은 어휘(`키 · 로케일`)를 쓰므로 알림과 입력이 같은 이름을 가리킨다.
      */
+    columns: { key: "Key", locale: "Language", value: "Translation" },
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
 
     /**
@@ -901,21 +903,62 @@ export const en = {
   /** 초대 수락 화면 — **셸 밖 카드다** (design §3.14). 거부 문구는 `errors.invite`가 든다. */
   invite: {
     /**
-     * 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 갈린다.
+     * ⚠️ **`invitedTo`를 대체한다** (account-linking §6). 프로젝트 이름과 역할은 이제 **카드의 두
+     * 행**이라 합친 문자열의 소비자가 없다 — 있지도 않은 자리를 위해 사전 항목을 만들지 않는다.
+     * 역할 이름은 계속 `projects.role`에서 온다(화면 어휘가 두 벌이면 갈린다). 그 값에 관사를
+     * 붙이지 않는 규칙도 그대로다 — 2026-09-08에 "as a Editor"가 나왔다.
      *
-     * ⚠️ **관사를 붙이지 않는다** (2026-09-08 실물 검증 — "as a Editor"가 나왔다). 역할 이름은 데이터라
-     * a/an을 문장이 알 수 없고, 그것을 알려면 역할마다 관사 표를 두게 된다. 직함처럼 관사 없이 쓴다.
+     * ⚠️ **`"Welcome to malmoi"`를 쓰지 않는다** — 이미 멤버인 사람이 두 번째 프로젝트에 초대되는
+     * 경우가 있고 그때 거짓이다.
      */
-    invitedTo: (project: string, role: string): string => `You're invited to ${project} as ${role}.`,
+    title: "You're invited",
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
-    github: "Sign in with GitHub",
-    google: "Sign in with Google",
+    // ⚠️ **provider 버튼 문구가 여기 없다** (2026-09-12) — `/signin`과 같은 버튼을 쓰므로
+    // `signIn.github`·`signIn.google`이 든다. 사본을 두면 같은 버튼이 화면마다 다른 말을 한다.
     accept: "Accept invitation",
     otherAccount: "Sign in with another account",
-    sentTo: (email: string): string =>
-      `This invitation was sent to ${email}. Signing in with a different account won't accept it.`,
+    /**
+     * ⚠️ **`already-member`의 CTA다** (2026-09-12) — 그 갈래에 [Sign in with another account]를 주면
+     * 화면이 시키는 일(프로젝트를 연다)과 반대되는 버튼만 남는다. 이 화면은 셸 밖이라 사이드바가 없다.
+     */
+    openProject: "Open project",
+    /**
+     * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (account-linking §6). 지금까지의 값은
+     * *"…Signing in with a different account won't accept it."*이었는데 **그 문장이 병합으로
+     * 거짓이 된다** — 다른 수단으로 들어와도 같은 주소면 수락된다. 그리고 설명 자리로 올라오면
+     * 올바른 계정으로 온 사람이 경고부터 읽는다. 실제 거부는 `email-mismatch` 갈래가 말한다.
+     */
+    sentTo: (email: string): string => `This invitation was sent to ${email}.`,
     // ⚠️ 장애 문구를 여기 두지 않는다 — `errors.invite.unavailable`이 같은 상태를 말한다.
     // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
+  },
+
+  /**
+   * 병합 안내 화면 `/signin/link/[challenge]` (account-linking T2·T4) + `/account`의 수단 카드(T5).
+   *
+   * ⚠️ **provider 이름을 화면이 조립하지 않는다** — `providers`가 한 곳이라 같은 수단이 화면마다
+   * 다르게 읽히지 않는다.
+   */
+  link: {
+    providers: { github: "GitHub", google: "Google" },
+    title: "This email already has an account",
+    /** 무엇으로 들어왔고 무엇으로 만들어졌는지를 한 줄로 — 둘 다 말하지 않으면 다음 클릭을 못 고른다. */
+    description: (pending: string, have: string): string =>
+      `You just signed in with ${pending}, but this address was created with ${have}.`,
+    confirm: (have: string): string => `Confirm with ${have}`,
+    /** ⚠️ **되돌릴 수 있다고 약속하지 않는다** — 해제는 `/account`의 일이고 이 흐름의 문장이 아니다. */
+    footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
+    methods: {
+      title: "Sign-in methods",
+      description: "These are the accounts you can use to sign in. Adding one happens when you sign in with it at this same address.",
+      notConnected: "Not connected",
+      disconnect: "Disconnect",
+      /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
+      lastMethod: "This is your only way to sign in.",
+      confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
+      confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
+      disconnected: (provider: string): string => `${provider} is no longer a sign-in method.`,
+    },
   },
 
   errors: {
@@ -944,18 +987,37 @@ export const en = {
       // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 말하면 갇힌다.
       "email-mismatch": "Sign in with the account that was invited. The one you're using wasn't.",
       // 실패로 읽히지 않게 쓴다 — 원하는 상태는 이미 이뤄져 있다.
-      "already-member": "You're already a member of this project. Open it from your project list.",
+      // ⚠️ **"프로젝트 목록에서 열어라"가 아니다** (2026-09-12 실물 검증) — 그 목록으로 가는 길이
+      // 이 화면에 없었고, 지금은 버튼이 **그 프로젝트로 바로** 간다(착지 클릭 하나를 갚는다).
+      "already-member": "You're already a member of this project.",
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },
 
     /** `signInErrorMessage` — Auth.js `?error=` 코드. 코드를 그대로 노출하지 않는다 (SAAS §3). */
+    /**
+     * `linkErrorMessage` — 병합 확인 실패 여섯 + 폴백.
+     *
+     * ⚠️ **challenge는 살아 있다** (design ⑧) — 실패가 소비하지 않으므로 "다시 눌러라"가 참이다.
+     */
+    link: {
+      "wrong-account": "That's a different account. Choose the account this address was created with, then try again.",
+      "already-linked": "That sign-in method is already on this account. Try signing in with it.",
+      invalid: "We couldn't finish that confirmation. Start it again from the sign-in screen.",
+      cancelled: "Confirmation was cancelled. Nothing changed — try again when you're ready.",
+      unavailable: "Something went wrong. Try again in a moment.",
+      "last-method": "You can't disconnect your only sign-in method.",
+      fallback: "We couldn't finish that confirmation. Try again.",
+    },
+
     signIn: {
       // SAAS §5.5 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은 계정 탈취다.
       OAuthAccountNotLinked: "That email is already registered with a different sign-in method. Use the one you signed up with.",
       AccessDenied: "You can't sign in with this account. Its email may not be verified.",
       // 우리 코드다 — 세션을 못 읽었을 때 보낸다. "로그인에 실패"라고 말하지 않는다: 사용자는 편집 중이었다.
       Unavailable: "Something went wrong. Try opening this again in a moment.",
+      // 우리 코드다 — 만료된 병합 challenge를 그 화면으로 되돌리지 않고 여기로 보낸다 (완료 조건 5).
+      LinkExpired: "That confirmation is no longer valid. Sign in again to continue.",
       fallback: "Sign-in failed. Try again in a moment.",
     },
 

@@ -1,0 +1,75 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, it } from "vitest";
+
+const ROOT = process.cwd();
+const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+const CARD = strip(readFileSync(join(ROOT, "components/account/login-methods.tsx"), "utf8"));
+const PAGE = strip(readFileSync(join(ROOT, "app/(edit)/account/page.tsx"), "utf8"));
+const ACTIONS = strip(readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8"));
+
+/**
+ * `/account`의 로그인 수단 카드 (account-linking T5).
+ *
+ * ⚠️ **[Connect]를 두지 않는다** (design ⑨). 이유 둘: ① 로그인된 세션을 근거로 `Account`를 붙이는
+ * 경로는 **sec-audit-2 #31이 막은 바로 그 자리**이고, 그 문의 인가 조건(이메일 동등 + 두 provider
+ * 소유 증명 + 단일 사용 challenge)을 `/account`에서는 못 적는다. ② 같은 주소 연결은 흐름 ①이
+ * 이미 잡는다 — 로그아웃 후 그 provider로 로그인하면 된다.
+ */
+it("해제만 있고 연결 버튼이 없다", () => {
+  expect(CARD).toContain("unlinkLoginMethod");
+  expect(CARD).not.toMatch(/\bConnect\b/);
+  expect(CARD).not.toContain("startGithubConnectForUser");
+  expect(CARD).not.toContain("signIn(");
+});
+
+/**
+ * ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06) — 관용구는
+ * 멤버 화면의 **행 옆 인라인**이다.
+ */
+it("마지막 수단은 비활성이고 사유가 그 행 옆에 있다", () => {
+  expect(CARD).toContain("canUnlink");
+  expect(CARD).toContain("m.link.methods.lastMethod");
+  expect(CARD).toMatch(/disabled=\{/);
+});
+
+/**
+ * ⚠️ **해제에 확인 `Dialog`가 있다.** `DisconnectGithubButton`이 확인 없이 한 번 클릭인 것은 그쪽이
+ * **다시 누르면 복구되는** GitHub App 연결이어서다 — 로그인 수단 해제는 되돌리려면 OAuth 왕복
+ * 전체가 필요하고, spec §6이 그것을 알림 부재의 보상으로 든다. 멤버 제거와 같은 무게다.
+ */
+it("해제가 확인을 한 번 받는다", () => {
+  expect(CARD).toContain("DialogContent");
+  expect(CARD).toContain("m.link.methods.confirmDisconnect");
+});
+
+/** ⚠️ **`Account` PK가 `(provider, providerAccountId)`라 그 둘만으로 남의 행에 닿는다.** */
+it("해제 쿼리가 `userId`로 좁혀져 있다", () => {
+  const action = /export async function unlinkLoginMethod[\s\S]*?\n}/.exec(ACTIONS)?.[0] ?? "";
+  expect(action).toContain("requireUser(");
+  expect(action).toMatch(/deleteMany\(\{\s*where:\s*\{\s*userId/);
+  // 순수 판정이 먼저 거른다 — Action이 유일한 방어선이 아니다.
+  expect(action).toContain("canUnlink(");
+});
+
+/**
+ * ⚠️ **`entry-points.test.ts`의 "쿼리 짝" 단언만으로는 red가 안 난다** — 그 검사는
+ * `page.source.includes("searchParams")` 한 줄이고 `/account`는 이미 그것을 읽는다. 재는 문장을
+ * 바꾼다: **`Raw<…>`에 `"link"`가 있고 `firstQueryValues` 구조분해에도 있다.**
+ */
+it("결과를 보내는 쪽과 읽는 쪽이 같은 커밋에 있다", () => {
+  expect(ACTIONS).toContain("routes.account({ link:");
+  expect(PAGE).toMatch(/Raw<[^>]*"link"[^>]*>/);
+  expect(PAGE).toMatch(/const \{[^}]*link[^}]*\} = firstQueryValues/);
+  expect(PAGE).toContain("linkErrorMessage");
+});
+
+/**
+ * ⚠️ **같은 화면에 "GitHub"이 두 번 나온다** — 로그인 수단과 리포 쓰기 권한은 다른 축이고 그
+ * 구별이 화면에서 보여야 한다. 카드 제목·설명이 그 일을 한다.
+ */
+it("GitHub App 연결 카드와 제목이 갈린다", () => {
+  expect(PAGE).toContain("m.link.methods.title");
+  expect(PAGE).toContain("m.settings.account.title");
+  expect(PAGE.indexOf("m.link.methods.title")).toBeLessThan(PAGE.indexOf("m.settings.account.title"));
+});

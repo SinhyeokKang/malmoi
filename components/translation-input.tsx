@@ -52,8 +52,20 @@ export function TranslationInput({
   const ref = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState(initialValue);
   const [saved, setSaved] = useState(initialValue);
+  const [serverValue, setServerValue] = useState(initialValue);
   const [status, setStatus] = useState<"idle" | "saved" | { error: string }>("idle");
   const [pending, startTransition] = useTransition();
+
+  // 재검증은 미편집 셀만 바꾼다. 작성값은 남기고 Escape의 기준은 최신 서버 값으로 갱신한다.
+  // 저장 중에도 취소 기준은 갱신한다. 성공하면 응답이 확정하고, 실패하면 최신 기준이 남아야 한다.
+  if (serverValue !== initialValue) {
+    setServerValue(initialValue);
+    setSaved(initialValue);
+    if (!pending) {
+      if (value === saved) setValue(initialValue);
+      setStatus("idle");
+    }
+  }
 
   // "Saved"를 지우는 타이머. 언마운트·재저장에 정리하지 않으면 사라진 셀에 setState가 간다.
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,7 +81,8 @@ export function TranslationInput({
       // Action 시그니처는 `unknown`(직렬화 경계라 zod 재검증)이라 이 줄이 없으면 런타임 `invalid input`이
       // 유일한 신호다 (POSTMORTEM 2026-08-31).
       const input: SaveInputType = { slug, keyId, localeCode, value: next };
-      const result = await saveTranslation(input);
+      // 서버의 실패 반환뿐 아니라 전송 실패도 셀 안에 남겨 다른 작성 중 입력을 보존한다.
+      const result = await saveTranslation(input).catch(() => ({ ok: false as const, error: "unavailable" }));
       if (result.ok) {
         // 서버가 정규화한 값(공백만 → 빈 문자열)을 받아 화면을 맞춘다.
         setValue(result.value);

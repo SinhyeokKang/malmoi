@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import keyVisual from "@/public/brand/malmoi-signin-kv.png";
+import projectCard from "@/public/brand/malmoi-kv-1.png";
+import koreanCard from "@/public/brand/malmoi-kv-2.png";
+import englishCard from "@/public/brand/malmoi-kv-3.png";
+import japaneseCard from "@/public/brand/malmoi-kv-4.png";
 
 import { DotField } from "./dot-field";
 
@@ -91,7 +94,7 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  *
  * ⚠️ **패딩이 배치를 잡는다, 정적 폭이 아니다** (2026-09-10 사용자): **사방 80**(`p-20`).
  * 키비주얼은 `max-w-[768px]`이고 컨테이너에 맞춰 줄어들어, 1280px에서 우측 컬럼
- * 640 − 160 = 480px이라 **넘치지 않는다.**
+ * 628 − 160 = 468px이라 **넘치지 않는다.**
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
  * 폼 패널만 `border-subtle`을 든다.
@@ -107,28 +110,42 @@ function Decoration() {
 
       <p className="relative text-3xl font-medium">{m.signIn.hero.top}</p>
 
-      {/*
-        ⚠️ **`next/image`다.** `<img>`면 372KB PNG가 원본 그대로 나가고 LCP 요소가 된다 —
-        로그인은 첫 진입점이고 서버 시간이 짧아진 뒤라(`regions: ["hnd1"]`) 이 화면의 비용은
-        거의 전부 이 이미지다. `priority`가 없으면 발견도 늦다.
-
-        ⚠️ **`alt=""`의 근거는 위아래 문구 두 줄이다** — 이미지 안에 구운 텍스트가 말하는 것을
-        그 둘이 이미 말한다. 아니면 제품이 무엇을 하는지 보여주는 유일한 조각이 스크린리더에서
-        통째로 사라진다.
-
-        ⚠️ **그림자 여백을 보정하지 않는다** (2026-09-10 사용자). PNG(2172×996)가 3x(2088×936)보다
-        크고 그 차이가 아래쪽 그림자 몫이라 시각 중심이 살짝 위로 가는데, **폭이 컨테이너를 따라
-        변하므로 고정 보정값이 뷰포트마다 틀린다.** 여백째로 두는 것이 유일하게 일관된 상태다.
-      */}
-      <Image
-        src={keyVisual}
-        alt=""
-        priority
-        sizes="(min-width: 1856px) 768px, 50vw"
-        className="relative w-full max-w-[768px]"
-      />
+      <KeyVisual />
 
       <p className="relative text-3xl font-medium">{m.signIn.hero.bottom}</p>
+    </div>
+  );
+}
+
+/** 기존 합성 PNG의 724×332 좌표계를 유지해 그림자 여백까지 함께 축소한다. */
+function KeyVisual() {
+  return (
+    <div aria-hidden="true" className="relative aspect-[724/332] w-full max-w-[768px] shrink-0">
+      <Image
+        src={projectCard}
+        alt=""
+        priority
+        draggable={false}
+        sizes="(min-width: 1880px) 459px, (min-width: 1280px) calc(29.83425vw - 102.62982px), 280px"
+        className="absolute top-0 left-[20.1657%] h-auto w-[59.6685%] rounded-[3.7037%/5.3333%]"
+      />
+      {[
+        { src: koreanCard, position: "left-[1.9337%]" },
+        { src: englishCard, position: "left-[35.0829%]" },
+        { src: japaneseCard, position: "left-[68.2320%]" },
+      ].map(({ src, position }) => (
+        // 고정된 hover 영역을 남겨 카드 하단에서 이동이 반복되지 않게 한다.
+        <div key={src.src} className={`group absolute top-[34.3373%] w-[29.8343%] ${position}`}>
+          <Image
+            src={src}
+            alt=""
+            priority
+            draggable={false}
+            sizes="(min-width: 1880px) 230px, (min-width: 1280px) calc(14.91715vw - 51.315px), 140px"
+            className="h-auto w-full rounded-[7.4074%/7.9208%] opacity-90 shadow-low transition-[translate,box-shadow,opacity] duration-300 ease-out group-hover:opacity-100 group-hover:shadow-medium motion-safe:group-hover:-translate-y-2 motion-reduce:transition-none"
+          />
+        </div>
+      ))}
     </div>
   );
 }

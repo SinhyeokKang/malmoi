@@ -26,7 +26,7 @@ export function DropdownMenuContent({
       <Primitive.Content
         align={align}
         sideOffset={sideOffset}
-        className={cn("bg-popover border-border min-w-60 max-w-md rounded-lg border py-1 shadow-md", className)}
+        className={cn("bg-popover border-border z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-60 max-w-md overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md", className)}
         {...props}
       >
         {children}
@@ -60,7 +60,7 @@ export function DropdownMenuItem({
     <Primitive.Item
       className={cn(
         "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
-        "hover:bg-accent focus:bg-accent",
+        "hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         selected && "bg-muted",
         className,
       )}
@@ -99,7 +99,7 @@ export function DropdownMenuCheckboxItem({
     <Primitive.CheckboxItem
       className={cn(
         "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
-        "hover:bg-accent focus:bg-accent",
+        "hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         className,
       )}

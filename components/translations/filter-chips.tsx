@@ -1,12 +1,11 @@
 "use client";
 
 import { RotateCcw, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { activeFilters, clearedQuery, type FilterChip } from "@/lib/keys/filters";
-import { routes, type TranslationsQuery } from "@/lib/routes";
+import type { TranslationsQuery } from "@/lib/routes";
 
 /**
  * 적용된 필터의 칩 행 (8-4 design §1·§3.5).
@@ -19,18 +18,19 @@ import { routes, type TranslationsQuery } from "@/lib/routes";
  * `lib/keys/filters.ts`(잎)가 든다. 화면이 쿼리를 다시 조립하면 규칙이 두 벌이 된다.
  */
 export function FilterChips({
-  slug,
   query,
   selected,
   fallback,
+  pending,
+  onNavigate,
 }: {
-  slug: string;
   query: TranslationsQuery;
   /** 지금 보이는 로케일과 기본 — 둘을 견줘야 "사용자가 고른 것"인지 알 수 있다. */
   selected: readonly string[];
   fallback: readonly string[];
+  pending: boolean;
+  onNavigate: (query: TranslationsQuery) => void;
 }) {
-  const router = useRouter();
   const chips = activeFilters(query, { selected, fallback });
 
   // 칩이 없으면 초기화도 누를 것이 없다 — 죽은 컨트롤을 두지 않는다.
@@ -42,7 +42,7 @@ export function FilterChips({
       왼쪽, `IconButton`이 x=1252). 칩 옆에 두면 칩이 늘어날 때마다 그 버튼이 옮겨 다녀 **누를
       자리가 화면마다 달라진다** — 툴바의 검색이 오른쪽에 고정인 것과 같은 축이다.
     */
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-2" aria-busy={pending}>
       <div className="flex flex-wrap items-center gap-1">
         {chips.map((chip) => {
           const label = chipLabel(chip);
@@ -61,7 +61,8 @@ export function FilterChips({
                 variant="ghost"
                 size="sm"
                 aria-label={m.translations.chips.remove(label)}
-                onClick={() => router.push(routes.translations(slug, chip.next))}
+                disabled={pending}
+                onClick={() => onNavigate(chip.next)}
                 className="size-6 rounded-full p-0"
               >
                 <X className="size-3.5" aria-hidden />
@@ -82,7 +83,8 @@ export function FilterChips({
         variant="ghost"
         size="sm"
         aria-label={m.translations.filters.clear}
-        onClick={() => router.push(routes.translations(slug, clearedQuery(query)))}
+        disabled={pending}
+        onClick={() => onNavigate(clearedQuery(query))}
         className="size-7 shrink-0 rounded-full p-0"
       >
         <RotateCcw className="size-5" aria-hidden />

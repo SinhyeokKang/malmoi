@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import { describe, expect, it } from "vitest";
+import { AuthLayout } from "@/components/signin/auth-layout";
 
 /**
  * 로그인 화면의 배선을 **소스에서** 센다 (8-1b).
@@ -34,6 +37,36 @@ const ROOT_LAYOUT = "app/layout.tsx";
 const TOAST = "components/signin/auth-toast.tsx";
 const DOTS = "components/signin/dot-field.tsx";
 const ICONS = "components/signin/brand-icons.tsx";
+
+describe("키비주얼 — 개별 카드", () => {
+  const html = renderToStaticMarkup(createElement(AuthLayout, { children: null }));
+  const images = html.match(/<img\b[^>]*>/g) ?? [];
+
+  it("프로젝트와 번역 카드 세 장을 각각 장식 이미지로 렌더한다", () => {
+    expect(images).toHaveLength(4);
+    for (const number of [1, 2, 3, 4]) {
+      expect(images.filter((tag) => tag.includes(`malmoi-kv-${number}.png`))).toHaveLength(1);
+    }
+    for (const tag of images) expect(tag).toContain('alt=""');
+  });
+
+  it("기존 캔버스 비율과 최대 너비를 보존한다", () => {
+    expect(html).toContain("aspect-[724/332]");
+    expect(html).toContain("max-w-[768px]");
+  });
+
+  it("번역 카드만 움직이고 모션 줄이기 설정을 존중한다", () => {
+    expect(images.filter((tag) => tag.includes("motion-safe:group-hover:-translate-y-2"))).toHaveLength(3);
+    expect(images.filter((tag) => tag.includes("motion-reduce:transition-none"))).toHaveLength(3);
+    expect(html).not.toMatch(/tabindex|role="button"/i);
+  });
+
+  it("뒤쪽 프로젝트 카드에는 그림자가 없다", () => {
+    const project = images.find((tag) => tag.includes("malmoi-kv-1.png"));
+    expect(project).toBeDefined();
+    expect(project).not.toContain("shadow-");
+  });
+});
 
 describe("로그인 화면 — 레이아웃 계약", () => {
   /** 화면과 그 골격을 함께 본다 — 계약이 둘 중 어디에 있든 지켜지면 된다. */

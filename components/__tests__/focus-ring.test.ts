@@ -1,20 +1,28 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { createElement as h } from "react";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
+import { Radio } from "@/components/ui/radio";
+import { SegmentedControl, SegmentedLinks } from "@/components/ui/segmented-control";
+import { render } from "./helpers/dom";
+
 /**
- * hand-rolled 컨트롤이 포커스 링 셋을 들었는지 **소스에서** 센다 (DESIGN §7).
+ * 렌더된 클래스를 보므로 공유 스타일·Radix 래퍼가 가능하다. 소스 스캔은 **프리미티브 경계**와
+ * 픽스처 완전성에만 남는다.
  *
- * ⚠️ **화면이 늘 때마다 다시 샌다.** 2026-09-06에 버튼 4곳이 없어서 한 번 고쳤고, 2026-09-07
- * `/doc-check`이 설정 화면의 "연결 해제"에서 같은 것을 또 잡았다 — 그 사이 DESIGN §7은 규칙이
- * 지켜진 상태로 서술하고 있었다. **shadcn 생성 컴포넌트를 안 쓰므로 "기본값"이 지켜 주지 않고**,
- * 키보드 사용자에게만 보이는 결함이라 눈으로는 두 번 다 놓쳤다.
- *
- * `credential-separation`·`entry-points`·`globals-css`와 같은 계열의 상시 방어선이다.
+ * ⚠️ **`import.meta.url`로 루트를 잡을 수 없다** — 이 파일은 `@vitest-environment jsdom`이고 그
+ * 환경에서 그 값은 `file:`이 아니라 `http://localhost/…`라 `fileURLToPath`가 **"The URL must be of
+ * scheme file"로 던진다**(실측). `process.cwd()`가 남는 유일한 수단이고, 그것이 실행 위치에
+ * 묶이는 대가는 아래 "검사 대상 파일을 실제로 찾는다"가 받는다 — 글롭이 0건이면 red다.
  */
-const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const ROOT = process.cwd();
 
 /** DESIGN §7의 셋. 하나라도 빠지면 링이 안 보이거나 브라우저 기본 outline만 남는다. */
 const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
@@ -99,6 +107,14 @@ const FILES = [...tsxFiles(join(ROOT, "components")), ...tsxFiles(join(ROOT, "ap
 /** 리포 기준 상대 경로 — 허용 목록과 같은 표기로 맞춘다. */
 const rel = (file: string): string => file.slice(ROOT.length).replace(/^\//, "");
 
+const FIXTURES = {
+  "components/ui/button.tsx": h(Button, null, "Save"),
+  "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
+  "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
+  "components/ui/select.tsx": h(Select, { "aria-label": "Locale" }, h("option", null, "English")),
+  "components/ui/radio.tsx": h(Radio, { label: "English", name: "locale" }),
+};
+
 describe("포커스 링 (DESIGN §7)", () => {
   it("검사 대상 파일을 실제로 찾는다", () => {
     // 글롭이 조용히 0건이 되면 이 테스트가 항상 green이 된다 — 방어선이 아니라 장식이 된다.
@@ -107,17 +123,35 @@ describe("포커스 링 (DESIGN §7)", () => {
     expect(FILES.some((f) => rel(f).startsWith("components/ui/"))).toBe(true);
   });
 
-  it("네 태그 전부가 포커스 링 셋을 든다", () => {
-    const missing: string[] = [];
-    for (const file of FILES) {
-      const src = readFileSync(file, "utf8");
-      for (const tag of controls(src)) {
-        if (RING.every((cls) => tag.includes(cls))) continue;
-        const label = /className="([^"]*)"/.exec(tag)?.[1] ?? tag.slice(0, 60);
-        missing.push(`${rel(file)}: ${label}`);
+  it("every native primitive has a rendered focus fixture", () => {
+    const nativeFiles = FILES.filter((file) => rel(file).startsWith("components/ui/") && controls(readFileSync(file, "utf8")).length > 0).map(rel).sort();
+    expect(nativeFiles).toEqual(Object.keys(FIXTURES).sort());
+  });
+
+  it("네 태그 전부가 렌더된 포커스 링 셋을 든다", async () => {
+    for (const [file, fixture] of Object.entries(FIXTURES)) {
+      const { container } = await render(fixture);
+      const elements = [...container.querySelectorAll("button,input,select,textarea")];
+      expect(elements.length, file).toBeGreaterThan(0);
+      for (const element of elements) {
+        expect(RING.every((cls) => element.classList.contains(cls)), file).toBe(true);
       }
     }
-    expect(missing).toEqual([]);
+  });
+
+  it("Radix segments and navigation links keep rings on the visible focus target", async () => {
+    const options = [{ value: "one", label: "One", href: "/one" }];
+    const { container } = await render(h("div", null,
+      h(SegmentedControl, { label: "View", value: "one", options, onChange: () => {} }),
+      h(SegmentedLinks, { label: "Pages", current: "one", options }),
+      h(ButtonLink, { href: "/one", children: "Go" }),
+    ));
+    const targets = [...container.querySelectorAll('button[role="radio"],a')];
+    expect(targets).toHaveLength(3);
+    for (const target of targets) {
+      expect(RING.every((cls) => target.classList.contains(cls))).toBe(true);
+      expect(target.hasAttribute("hidden")).toBe(false);
+    }
   });
 
   /**

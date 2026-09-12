@@ -63,25 +63,16 @@ Publish 결과 `Alert`(`rounded-lg border p-4`)와 배너 둘이 동시에 서�
 ⚠️ **1280px에서 값 열이 ≈368px까지 준다** (spec 「1280px」). 키 셀 320은 고정이고 값 열이 줄어드는
 것을 받아들인다 — 키 이름이 잘리는 쪽이 더 나쁘다.
 
-## 1.5 마크업 — `<table>`이 아니라 `div` + `grid`
+## 1.5 마크업 — shadcn Table (2026-09-12 사용자 결정)
 
-**결정이다** (2026-09-11 리뷰 — 초안은 T5로 미뤄 뒀다).
+`components/ui/table.tsx`의 공식 shadcn 기반 구성 요소를 사용한다. 네임스페이스별 table 안에
+키별 tbody·로케일별 tr을 두고, 키 셀은 `scope="rowgroup"`·`rowSpan`으로 보이는 로케일 행을 묶는다.
+여러 줄 값의 높이는 브라우저가 계산한다. 기존의 "rowSpan이 다른 행 높이 때문에 정렬을 어긋나게 한다"는
+판단은 철회한다. colgroup은 키 320px·로케일 68px·가변 값 열을 유지한다.
 
-시안은 키 셀이 로케일 행들을 세로로 걸치는 구조라 `rowSpan`이 자연스러워 보이지만, **값이 여러
-줄일 때 행 높이가 로케일마다 달라 `rowSpan`이 정렬을 어긋나게 한다.** 이 화면의 값은 여러 줄일 수
-있다(`Textarea` + `field-sizing-content`).
-
-**대체 시맨틱을 여기서 정한다** — `<table>`을 버리면 무엇이 그 역할을 하는지가 문서에 있어야 한다:
-
-| 잃는 것 | 대신 |
-|---|---|
-| `<caption>`/열 헤더의 이름 | 각 입력의 `aria-label`이 `{키} · {로케일}`을 이미 든다 (기존 `cellLabel`) |
-| 행 그룹핑 | 키 그룹이 `<section>`이 아니다 — **평범한 `div`**다. 그룹의 이름은 키 셀의 텍스트이고 스크린리더는 입력 라벨로 같은 정보를 받는다 |
-| 섹션 구분 | ⚠️ **섹션 헤딩은 실제 `<h2>`여야 한다** — 네임스페이스 간 이동이 스크린리더의 heading 탐색으로만 가능하다 |
-| 본문 랜드마크 | ⚠️ **`<main>`을 새 구조가 계속 들어야 한다** (§8-7) |
-
-⚠️ **`components/ui/table.tsx`는 고아가 되지 않는다** — `locales`·`logs`·`members` 셋이 계속 쓴다.
-다만 이 화면이 더는 안 쓰므로 **DESIGN §6.4의 `Table | §6.1` 포인터가 끊긴다**(T12).
+숨긴 열 헤더·네임스페이스 h2와 연결한 표 이름·기존 입력 aria-label을 함께 둔다.
+translations는 `scrollable={false}`로 PanelBody의 스크롤을 사용하며 섹션 제목은 sticky다.
+언어·이력·멤버의 기존 Table API와 스크롤은 유지한다. 검증은 `translation-table.test.tsx`와 1280px 실측이다.
 
 ## 2. URL 계약 — `TranslationsQuery`가 바뀐다
 

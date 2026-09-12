@@ -55,24 +55,39 @@ describe("normalizeEmail — 정규화 범위", () => {
  */
 describe("planEmailRefresh — 재로그인 시 저장 이메일 갱신 판정", () => {
   it("같으면 keep", () => {
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: "a@x.com", takenByOther: false })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "a@x.com", takenByOther: false, loginMethods: 1 })).toBe("keep");
   });
 
   it("대소문자·공백만 다르면 keep — 정규화 뒤 같다", () => {
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: " A@X.com ", takenByOther: false })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: " A@X.com ", takenByOther: false, loginMethods: 1 })).toBe("keep");
   });
 
   it("다르고 비어 있지 않으면 update", () => {
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false })).toBe("update");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false, loginMethods: 1 })).toBe("update");
   });
 
   it("다른 User가 쓰는 주소면 conflict — 갱신도 병합도 하지 않는다", () => {
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: true })).toBe("conflict");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: true, loginMethods: 1 })).toBe("conflict");
+  });
+
+  /**
+   * ⚠️ **"같은 주소면 언제나 keep"은 병합 시점에만 참이었다** (account-linking design ⑦). 병합 뒤
+   * 한쪽 provider에서 주소를 바꾸면 로그인할 때마다 `User.email`이 뒤집히고, 초대 대조(SAAS §5.6)가
+   * 그 값 위에 선다. 대가는 병합한 사용자의 이메일이 provider를 안 따라가는 것이다.
+   */
+  it("로그인 수단이 둘 이상이면 주소가 갈려도 언제나 keep", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false, loginMethods: 2 })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: true, loginMethods: 2 })).toBe("keep");
+  });
+
+  it("수단이 하나면 동작이 그대로다", () => {
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false, loginMethods: 1 })).toBe("update");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "b@x.com", takenByOther: false, loginMethods: 0 })).toBe("update");
   });
 
   it("검증 이메일이 없으면(빈 값·null) keep — 부재를 갱신으로 읽지 않는다", () => {
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: "", takenByOther: false })).toBe("keep");
-    expect(planEmailRefresh({ stored: "a@x.com", fresh: null, takenByOther: false })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: "", takenByOther: false, loginMethods: 1 })).toBe("keep");
+    expect(planEmailRefresh({ stored: "a@x.com", fresh: null, takenByOther: false, loginMethods: 1 })).toBe("keep");
   });
 });
 

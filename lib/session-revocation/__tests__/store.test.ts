@@ -19,12 +19,28 @@ it("start rechecks current session and one login account, replaces only own chal
   expect(tx.verificationToken.deleteMany).toHaveBeenCalledWith({ where: { identifier: { startsWith: '["malmoi/session-revocation","v1","u",' } } });
   expect(tx.session.deleteMany).not.toHaveBeenCalled();
 });
-it.each(["missing-session", "wrong-account", "multiple-accounts"])("start rejects %s without mutation", async failure => {
+/**
+ * ⚠️ **`multiple-accounts`가 갈래에서 빠졌다** (account-linking T6) — 수단이 둘이 되는 순간 전체
+ * 세션 회수가 **항상 `invalid`로 멈추던** 조건이고, 그 거부를 정답으로 단언하던 것이 이 줄이다.
+ * 대신하는 것은 `pickLoginAccount`의 **결정성**이다: 서버가 고른 상대와 다른 provider로 시작하려
+ * 하면 여전히 거부한다(클라이언트가 확인 상대를 고르게 하면 공격자가 고른다).
+ */
+it.each(["missing-session", "no-account", "not-the-picked-account"])("start rejects %s without mutation", async failure => {
   const { db, tx } = fixture();
   if (failure === "missing-session") tx.session.findFirst.mockResolvedValue(null);
-  else tx.account.findMany.mockResolvedValue(failure === "multiple-accounts" ? [{ provider: "github", providerAccountId: "gh", userId: "u" }, { provider: "google", providerAccountId: "g", userId: "u" }] : []);
-  expect(await beginRevocation(db, { ...input, userId: "u" })).toBe("invalid");
+  else if (failure === "no-account") tx.account.findMany.mockResolvedValue([]);
+  else tx.account.findMany.mockResolvedValue([{ provider: "github", providerAccountId: "gh", userId: "u" }, { provider: "google", providerAccountId: "g", userId: "u" }]);
+  const proof = failure === "not-the-picked-account" ? { ...input, provider: "google" as const, providerAccountId: "g" } : input;
+  expect(await beginRevocation(db, { ...proof, userId: "u" })).toBe("invalid");
   expect(tx.verificationToken.create).not.toHaveBeenCalled();
+});
+
+/** 수단이 둘이어도 회수가 시작된다 — `github` 우선으로 고정된 상대를 서버가 고른다. */
+it("start succeeds with two sign-in methods and confirms against github", async () => {
+  const { db, tx } = fixture();
+  tx.account.findMany.mockResolvedValue([{ provider: "google", providerAccountId: "g", userId: "u" }, { provider: "github", providerAccountId: "gh", userId: "u" }]);
+  expect(await beginRevocation(db, { ...input, userId: "u" })).toBe("ready");
+  expect(tx.verificationToken.create).toHaveBeenCalledWith({ data: expect.objectContaining({ identifier: expect.stringContaining('"github"') }) });
 });
 it("finish consumes request before deleting only that user's sessions", async () => {
   const { db, tx } = fixture();

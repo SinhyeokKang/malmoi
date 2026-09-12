@@ -72,3 +72,31 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
     expect(AUTH_TS).not.toContain("session.user.login");
   });
 });
+
+/**
+ * 두 가로채기의 배타성은 **구조가 아니라 순서와 쿠키 정리가 만든다** (account-linking design 불변식 8).
+ *
+ * ⚠️ **`session-revocation/http.ts`의 intent 판정이 쿠키 셋의 OR이라 암호적 결합이 없다.** 회수를
+ * 중단한 사용자가 곧바로 병합을 시작하면 회수가 그 callback을 먹고 Location을
+ * `/account?sessionRevocation=invalid`로 **덮는다** — 사용자에겐 병합 버튼이 엉뚱한 화면을 낸
+ * 것으로 보인다. 그래서 계약 셋을 소스로 고정한다.
+ */
+describe("auth.ts — 회수와 병합이 서로를 먹지 않는다", () => {
+  it("래핑 순서는 회수가 바깥, 병합이 안쪽이다", () => {
+    expect(AUTH_TS).toMatch(/withRevocation\(request,\s*\(\)\s*=>\s*withLoginLink\(/);
+    expect(AUTH_TS).not.toMatch(/withLoginLink\([^)]*withRevocation\(/);
+  });
+
+  it("`authorizeRevocation`이 signIn 콜백의 첫 줄이고 병합 판정이 그 뒤다", () => {
+    const callback = /async signIn\(\{[\s\S]*?\n    \}/.exec(AUTH_TS)?.[0] ?? "";
+    expect(callback).toContain("authorizeRevocation(");
+    expect(callback).toContain("authorizeLoginLink(");
+    expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("authorizeLoginLink("));
+    // 이메일 검사·갱신보다도 앞이다 — 회수 왕복은 로그인이 아니다.
+    expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("refreshVerifiedEmail("));
+  });
+
+  it("state 쿠키 스코프를 두 가로채기에서 함께 읽는다", () => {
+    expect(AUTH_TS).toMatch(/revocationAuthCookies\(\)\s*\?\?\s*linkAuthCookies\(\)/);
+  });
+});

@@ -20,7 +20,7 @@ it("이메일 HMAC 조회 후 실제 복호화 주소까지 대조한다", async
 });
 it("기존 로그인 이메일의 동시 unique 충돌은 로그인 거부로 바꾸지 않는다", async () => {
   const row = { id: "u1", ...encodeUserFields("u1", { email: "old@x.com" }) };
-  const tx = { $executeRaw: vi.fn(), account: { findUnique: vi.fn().mockResolvedValue({ userId: "u1" }) }, user: {
+  const tx = { $executeRaw: vi.fn(), account: { findUnique: vi.fn().mockResolvedValue({ userId: "u1" }), count: vi.fn().mockResolvedValue(1) }, user: {
     findUnique: vi.fn().mockResolvedValueOnce(row).mockResolvedValueOnce(null),
     update: vi.fn().mockRejectedValue({ code: "P2002", message: "PRIVATE" }),
   } };

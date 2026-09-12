@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
+import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
@@ -11,8 +13,11 @@ import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { destFromCallbackUrl } from "@/lib/login-link/policy";
+import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -36,25 +41,33 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sessions?: string }>;
+  searchParams: Promise<Raw<"error" | "sessions">>;
 }) {
-  const { error, sessions } = await searchParams;
+  const { error, sessions } = firstQueryValues(await searchParams);
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
   // 세션을 못 읽었으면 `?error=`가 없어도 장애 문구를 보인다 — 로그인 버튼만 보이면 사용자가 헛로그인한다.
+  const jar = await cookies();
+  const dest = destFromCallbackUrl((jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value);
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
     <AuthLayout>
-      <div className="flex w-[320px] flex-col items-center gap-4">
+      <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
-        <h1 className="text-2xl font-medium">{m.signIn.title}</h1>
+        {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}
+        <AuthHeading title={m.signIn.title} />
 
         <div className="flex w-full flex-col gap-2">
           {/* ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 시안이 GitHub을 채움으로 그렸다. */}
           <ProviderButton provider="github" label={m.signIn.github} variant="primary" />
           <ProviderButton provider="google" label={m.signIn.google} variant="default" />
 
+          {dest.kind === "invite" && (
+            <Link href={routes.invite(dest.token)} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+              {m.signIn.backToInvitation}
+            </Link>
+          )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
             <Link
@@ -65,7 +78,7 @@ export default async function SignIn({
             </Link>
           </p>
         </div>
-      </div>
+      </AuthColumn>
 
       {/* 렌더하지 않는다 — `?error=`·`?sessions=`를 토스트로 옮기는 조각이다. */}
       <AuthToast error={shown === undefined ? undefined : signInErrorMessage(shown)} sessions={sessions} />
@@ -93,6 +106,7 @@ function ProviderButton({
       action={async () => {
         "use server";
         await clearRevocationCookies();
+        await clearLinkCookies();
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >

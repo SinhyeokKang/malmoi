@@ -1,8 +1,6 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
-
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 
 /**
  * provider 버튼의 **제출 상태**만 든다 (8-1b).
@@ -23,18 +21,14 @@ export function ProviderSubmit({
   variant: "primary" | "default";
   icon: React.ReactNode;
 }) {
-  const { pending } = useFormStatus();
   return (
-    <Button
-      type="submit"
+    <SubmitButton
+      icon={icon}
       variant={variant}
       size="lg"
       className="w-full"
-      loading={pending}
     >
-      {/* 스피너가 대신 서므로 진행 중엔 아이콘을 숨긴다 — 둘 다 있으면 좁은 버튼이 붐빈다. */}
-      {!pending && icon}
       {label}
-    </Button>
+    </SubmitButton>
   );
 }

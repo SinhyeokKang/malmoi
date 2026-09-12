@@ -15,7 +15,14 @@
 | **8-3 `/projects` 목록** | 2줄 행 · URL 필터(`?filter=`) · 상태 배지 하나 · fluid + **사이드바 시안 정렬**(접기·스위처·`New project` 제거, Help 추가) | ✅ dev (2026-09-10) |
 | **8-4** [`translations/`](./translations/) | 표의 축을 **로케일 = 행**으로 재작성 · `?focus=`→`?locales=` 다중 · `?state=` 폐기 · 툴바 + 칩 행 · 국기 폴백 계약 · **breadcrumb을 하위 화면 다섯에서 함께 삭제** | ✅ dev (2026-09-11) |
 | 8-5~ 나머지 페이지별 | `/projects/new` · `/account` · Home · locales · members · logs · settings | ⬜ |
+| (배송 밖) [`account-linking`](../account-linking/) | ⚠️ **이 배송 순서 밖에서 `/invite/[token]`과 `/account`를 건드렸다** (2026-09-12) — 초대 화면에 `h1`과 프로젝트 카드가 붙었고(규칙 위반의 교정이다: 셸 밖 폼 컬럼의 `h1`을 DESIGN이 이미 요구한다), `/account`에 카드가 하나 늘었으며, **셸 밖 화면이 셋**이 됐다(`/signin/link/[challenge]`). 8-5가 그 자리에 오면 **이미 옮겨진 상태**에서 시작한다 | ✅ dev |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
+
+**8-5~ 톤앤매너 통일 계획**: [page-patterns/spec.md](./page-patterns/spec.md) ·
+[design.md](./page-patterns/design.md) · [tasks.md](./page-patterns/tasks.md)
+(2026-09-12, 구현·두 해상도 런타임 비교 완료, 리뷰 대기). 로그인·목록·번역·셸의 색·서체·여백·선·컨트롤·상태 외형을
+나머지 화면에 맞춘다. 기존 정보 구조와 동작을 유지하며 새 본문 시안 없이 진행할 수 있다.
+구조 재설계·피드백 방식 변경·8-P는 포함하지 않는다.
 
 ⚠️ **8-1이 기반을 겸한다.** signin은 셸 **밖** 화면이라(`(edit)` 밖) 셸 없이 그릴 수 있고, 그래서
 토큰·프리미티브 배선을 여기서 시작한다. 셸을 먼저 세우면 그 위에 앉힐 토큰이 아직 없다.
@@ -106,7 +113,9 @@ top bar**이고 그 자리에 **전폭 48 헤더**가 온다 — 8-2가 그 문�
 4. `asChild`는 **실제로 필요한 자리만** 둔다. 두면 `{children}`을 `Slot.Slottable`로 감싼다
    (POSTMORTEM 2026-09-09 — 형제를 붙이면 Slot이 던져 셸이 죽는다)
 
-그 뒤 **`components/ui/`가 계속 소유한다.** CLI를 다시 돌려 덮어쓰지 않는다.
+그 뒤 **`components/ui/`가 계속 소유한다. 신규 컴포넌트는 CLI로 추가할 수 있지만 기존 파일 덮어쓰기는 금지한다.**
+추가 후 diff를 검토해 프로젝트 토큰·접근성·import 규칙에 맞춘다. 기존 파일의 변경은 검토 가능한 수동 수정으로 한다.
+공식 레지스트리 소스를 수동 설치해도 같은 규칙을 적용한다.
 
 ### 5. CSS는 Tailwind로 간다
 

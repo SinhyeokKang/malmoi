@@ -95,7 +95,23 @@ export const routes = {
    * `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를 통째로 회피했다. 갈래는 다섯이다
    * (`cancelled`·`wrong-account`·`expired`·`invalid`·`unavailable`).
    */
-  account: (query: { sessionRevocation?: string } = {}): string => withQuery("/account", query),
+  /**
+   * ⚠️ **`link`가 2026-09-12에 붙었다** (account-linking T5) — 로그인 수단 해제의 결과다. 갈래는
+   * 둘(`disconnected`·`last-method`)이고, 같은 이유로 `withQuery`를 지난다.
+   */
+  account: (query: { sessionRevocation?: string; link?: string } = {}): string => withQuery("/account", query),
+  /**
+   * 병합 안내 화면 (account-linking T2). **challenge는 경로에 있다** — 경로 토큰이라 "표시 전용
+   * 힌트"라는 애매한 층이 없고, `/invite/[token]`과 같은 부류다.
+   *
+   * ⚠️ **쿼리를 받는다** — 확인 실패가 `Alert` 문구를 이 화면에 전달해야 하고, 문자열 연결로
+   * 만들면 `entry-points.test.ts`의 "쿼리 수신자" 검사를 통째로 회피한다 (`signIn` 주석과 같은 이유).
+   *
+   * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** — 비로그인이 봐야 하는 화면이라 넣으면 그
+   * 순간 challenge가 사라진다 (`/invite/[token]`과 같은 판단).
+   */
+  signInLink: (challenge: string, query: { e?: string } = {}): string =>
+    withQuery(`/signin/link/${challenge}`, query),
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
   /**

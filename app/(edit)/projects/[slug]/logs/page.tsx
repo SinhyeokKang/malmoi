@@ -14,6 +14,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { loadSyncRuns } from "@/lib/sync/query";
 import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * sync 이력 (7단계 — sync-runs design §6). SAAS §7.7 라우트 표의 마지막 칸이다.
@@ -31,7 +32,7 @@ import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
  * ⚠️ **RUNNING 행은 스냅샷이다** — 자동 갱신이 없다. 이 리포에 폴링이 0건이고, 넣으면 "줄임표는
  * 진행 중에만"이라는 규칙 위에 타이머가 하나 더 붙는다. 갱신은 재방문이다.
  */
-type Search = { cursor?: string };
+type Search = Raw<"cursor">;
 
 /**
  * `2026-09-10 12:00 UTC`.
@@ -55,7 +56,7 @@ export default async function LogsPage({
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   if (archived) return <ProjectArchived slug={slug} role={role} />;
-  const { cursor } = await searchParams;
+  const { cursor } = firstQueryValues(await searchParams);
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });

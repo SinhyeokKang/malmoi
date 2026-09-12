@@ -33,7 +33,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(응답 스타일 + 범위 한 줄이고, 문서 전체의 요약이 아니다 — **그 범위 줄은 SAAS.md를 가리킨다**, 2026-09-07에 MVP.md에서 옮겼다)(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
 
-**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 PR [#32](https://github.com/SinhyeokKang/malmoi/pull/32) → squash `23f0f50`으로 **프로덕션에 나갔다**(2026-09-11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4**(번역 화면 재작성 — **표의 축이 로케일 = 행이 됐다**: `?focus=`·`?state=` 폐기 → `?locales=` 다중 · 툴바 + 칩 행 · 왼쪽 네임스페이스 패널 삭제 · **breadcrumb을 프로젝트 하위 화면 다섯에서 함께 삭제** · `lib/keys/flag.ts`·`filters.ts` 신설 — 프리미티브는 16 그대로다(`DropdownMenuCheckboxItem`이 기존 파일의 export라 파일이 안 늘었다))도 **프로덕션에 나갔다**(PR [#34](https://github.com/SinhyeokKang/malmoi/pull/34) → squash `77630c4`, 2026-09-11 — `docs/features/ui-rework/translations/`. 그 PR에 폴리싱 라운드와 아래 시안 정합 라운드가 함께 실렸다). **같은 날 시안 정합 라운드가 그 위에 얹혔다** — 시안 `212:937`을 좌표로 재서 머리 여백·제목 급·칩 높이(32)·초기화 버튼 자리(줄 오른쪽 끝 `RotateCcw`)·표의 선 구조(바깥 상자 없음 + 키 셀 `border-r`)·로케일 칸 68을 맞췄고, **`Textarea`에 `resize-none`**(셀마다 손잡이가 2,709개 서 있었다), **mono가 키 이름·로케일 코드에서 빠졌으며**(사용자 — mono는 8-P의 diff로 남긴다, DESIGN §4.1), **패널 머리를 라우트 아홉 전부에서 통일했다**(제목 `text-xl` + 줄 높이 36). **그 뒤 dev에 weight 라운드가 얹혔다** — 본문 기본이 300에서 **400**으로 올라가 쓰는 weight가 **400·500 둘뿐**이 됐고(`font-light` 소비자 0), 상한 500은 그대로다. ⚠️ **잔여 하나**: **903키 `?ns=*` 2초 실측**(T12). 국기 SVG는 2026-09-11에 도착해 `public/flags/`에 **253개가 커밋됐다**(T0 닫힘). **8단계의 전역 규칙은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
+**✅ MVP는 닫혔고 현재 단계는 SaaS화다** (2026-09-05). **SaaS는 단계로 쪼개져 있고 5단계(탐지 온보딩)까지 프로덕션에 나갔다** — 2단계(인증·인가)는 2026-09-06에, **4·5단계는 2026-09-07에**(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → squash `f595cc3`, `db:deploy`로 prod 마이그레이션 11개 반영). 5단계는 **잔여 없이 닫혔다** — 마지막이던 Vercel 옛 env 삭제도 2026-09-07에 끝났다(**Production+Preview 둘이었다** — Development엔 없었다). **6단계(번역 UI 재작성 + Publish)는 착수했다** — 2026-09-08에 **6a를 4번의 배송으로 쪼갰고**(`docs/features/translation-ui/tasks.md` 배송 단위), **ship 1**(기반 — 사전 `messages/en.tsx`·순수 판정·스키마 둘·프리미티브 16)이 PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → squash `46df51a`로 **프로덕션에 나갔고**(`db:deploy`로 prod 마이그레이션 12개), **ship 2**(셸)와 **ship 3**(T7 — 번역 화면·필터·Publish·편집 손실 배너)이 PR [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → squash `add099a` · PR [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → squash `ef9da44`로 **프로덕션에 나갔고**, **ship 4**(T8·T9 — 설정·새 프로젝트·초대 수락 + 문서·chore)가 PR [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → squash `695e441`로 **프로덕션에 나가 6a가 닫혔다.** **6b-1**(어댑터 오류 코드화 + survey 분류기 + 14차 재측정 — ADAPTER-COVERAGE §20)과 **6b-2**(멤버 화면)가 PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → squash `982cb42` · PR [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → squash `a00d380`으로 **프로덕션에 나갔고**, **6b-3**(설정의 기준 브랜치·기준 로케일 — `Project.declaredBaseLocale` 신설)이 PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → squash `7c975c0`, **6b-4**(`/account`)가 PR [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → squash `70e393b`, **6b-5**(`/projects/:slug/locales`)와 **6b-6**(`/projects/:slug` Home — 착지점)이 PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → squash `0d68d71`로 **프로덕션에 나가 6단계가 끝났다** (2026-09-09). **IA 정본은 SAAS §7.7**이고 **✅ 7단계(운영 안전성 — `SyncRun`·보관·`logs`)가 PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → squash `d0e8688`로 나가 라우트 여덟이 전부 섰다** (2026-09-10). **그 뒤 보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4` — `Project.repositoryId` 고정·글롭 DP·초대 취소 CAS·Publish 스냅샷) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`). **dev·prod 양쪽 전환이 끝났고 마이그레이션 17개가 둘 다 적용됐다.** **8단계(UI 재작성)는 착수했다** — `docs/features/ui-rework/`가 배송 단위이고, **8-1**(signin·초대 + neutral 팔레트·radius·weight·elevation 등 전역 토큰)이 PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → squash `718db80`으로 **프로덕션에 나갔다**. **8-2**(셸 — 전폭 48 헤더·투명 사이드바·흰 콘텐츠 패널·320 프로젝트 패널 골격 + `projects/[slug]/layout.tsx` 신설)와 **8-3**(사이드바를 Figma LNB로 재작성 — 접기 레일·프로젝트 스위처·`New project` 제거, `Tooltip` 프리미티브 삭제)이 PR [#32](https://github.com/SinhyeokKang/malmoi/pull/32) → squash `23f0f50`으로 **프로덕션에 나갔다**(2026-09-11). **그 뒤 2026-09-11에 폴리싱 라운드가 dev에 얹혔다**: 프로젝트 목록 재작성(이름 검색 `?q=` · 필터가 상태 다섯 + all로 확대 · `EmptyState` 둘 · `loading.tsx` 스켈레톤 · 행 타일) · **패널 머리 고정**(`ContentPanel`이 `<main>`이 되고 `PanelHeader`/`PanelBody`가 스크롤 경계를 가른다 — 라우트 아홉 전부) · 컨트롤 36px + size별 radius · **화면 제목이 사이드바 라벨 키를 공유** · `lib/tone.ts`(이름 해시 색 여덟). **8-4**(번역 화면 재작성 — **표의 축이 로케일 = 행이 됐다**: `?focus=`·`?state=` 폐기 → `?locales=` 다중 · 툴바 + 칩 행 · 왼쪽 네임스페이스 패널 삭제 · **breadcrumb을 프로젝트 하위 화면 다섯에서 함께 삭제** · `lib/keys/flag.ts`·`filters.ts` 신설 — 프리미티브는 16 그대로다(`DropdownMenuCheckboxItem`이 기존 파일의 export라 파일이 안 늘었다))도 **프로덕션에 나갔다**(PR [#34](https://github.com/SinhyeokKang/malmoi/pull/34) → squash `77630c4`, 2026-09-11 — `docs/features/ui-rework/translations/`. 그 PR에 폴리싱 라운드와 아래 시안 정합 라운드가 함께 실렸다). **같은 날 시안 정합 라운드가 그 위에 얹혔다** — 시안 `212:937`을 좌표로 재서 머리 여백·제목 급·칩 높이(32)·초기화 버튼 자리(줄 오른쪽 끝 `RotateCcw`)·표의 선 구조(바깥 상자 없음 + 키 셀 `border-r`)·로케일 칸 68을 맞췄고, **`Textarea`에 `resize-none`**(셀마다 손잡이가 2,709개 서 있었다), **mono가 키 이름·로케일 코드에서 빠졌으며**(사용자 — mono는 8-P의 diff로 남긴다, DESIGN §4.1), **패널 머리를 라우트 아홉 전부에서 통일했다**(제목 `text-xl` + 줄 높이 36). **그 뒤 dev에 weight 라운드가 얹혔다** — 본문 기본이 300에서 **400**으로 올라가 쓰는 weight가 **400·500 둘뿐**이 됐고(`font-light` 소비자 0), 상한 500은 그대로다. ✅ **T12(903키 `?ns=*` 2초)가 닫혔다** (2026-09-12 — 로컬 프로덕션 빌드 + dev DB의 `perf-903`(bugshot-2 · ts-dict · **907키**), FCP 3회). **FCP는 기본 착지·`?ns=*` 둘 다 0.3초대**이고 게이트를 통과했다. ⚠️ **그 게이트가 못 보는 축을 함께 쟀다** — `?ns=*`는 `<Textarea>` **2,721개** · DOM 노드 34,624 · 문서 1.44MB라 **`loadEventEnd`가 3.9초**다(FCP는 스트리밍이라 셸에서 난다). **그래도 가상화는 넣지 않는다**: 판정 조건이 게이트 미달인데 통과했고 `?ns=*`는 기본 경로가 아니다(기본 착지는 load까지 1초). 다음에 이 화면이 느리다는 제보가 오면 **FCP가 아니라 그 `loadEventEnd`부터** 본다 — 숫자는 `features/ui-rework/translations/tasks.md` 실측 기록에 있다. 국기 SVG는 2026-09-11에 도착해 `public/flags/`에 **253개가 커밋됐다**(T0 닫힘). **8단계의 전역 규칙은 DESIGN §0**, 작업 규약 아홉은 `features/ui-rework/README.md`다. **잔여는 없다** — 마지막이던 6b-3의 T6(실물 409 검증)도 2026-09-09에 프로덕션 `order-check`로 실측했고, 거기서 나온 선행 결함 둘(base 셀을 비우면 다음 push가 전 로케일에서 orphan한다 · DB가 base와 같아지면 sync PR이 옛 스냅샷을 든 채 남는다)은 `lib/pull/plan.ts`·`lib/pull/run.ts`에 반영됐다. **지금 무엇을 만드는지의 정본은 [docs/SAAS.md](./docs/SAAS.md)** 이고, `docs/MVP.md`·`docs/TASKS.md`는 **PoC 기록으로 닫혔다.** 경계가 이렇다: **MVP.md·TASKS.md = PoC(닫힘) / SAAS.md = 지금.** 아래는 그 PoC가 무엇이었는지다.
 
 **MVP 범위는 셋이었다** (2026-09-03 재정의 — MVP §8.1): **A** `lib/` 모듈이 각자 계약을 닫고 → **B** 세 흐름이 끝에서 끝까지 값을 안 잃고 → **C** Actions·Cron으로 자동으로 돈다. 여기까지가 MVP이고, 그다음이 SaaS화(인증·인가, 프로젝트 생성, 복수 멤버, **UI 시작**)다. **편집 UI는 동작 확인용으로 동결**한다 — SaaS에서 새로 만들 화면을 지금 다듬으면 버려진다 (§8.3).
 
@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App`을 쓴다 (`@octokit/auth-app` 별도 설치 불필요) | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** (2026-09-06, SaaS 4단계) — "이 사람이 이 설치를 볼 수 있는가"를 묻는 데만 쓰고 **GET만** 부른다. ⚠️ **`octokit`이 재수출하는 `OAuthApp`으로는 안 된다** — `clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접히고 `defaults`로도 못 되돌린다(실측). 그래서 이미 전이 의존성이던 것을 **직접 의존성으로 승격**했다 | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI를 다시 돌리지 않는다). 프리미티브 **16개**(`components/ui/*.tsx` — **파일 단위로 센다**. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot** 셋 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** (2026-09-08, 6a T5 — shadcn 생성물 4개는 삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다). 프리미티브 **17개**(`components/ui/*.tsx` — **파일 단위로 센다**. **`EntityCard`가 2026-09-12에 붙었다** — account-linking. 같은 디렉터리의 `tone.ts`는 프리미티브가 아니라 색 클래스 헬퍼라 이 수에 안 들어간다) + `radix-ui`에서 DropdownMenu·Dialog·**Slot**·**RadioGroup** 넷 (2026-09-11에 `Tooltip`을 걷었고 — 8-3이 접기 레일을 지우면서 소비자가 0이 됐다 — 같은 날 8-4가 `DropdownMenuCheckboxItem`을 더했는데 **그것은 `dropdown-menu.tsx`의 export라 파일이 안 늘었다**. **RadioGroup은 2026-09-12에 붙었다** — `SegmentedControl`이 손으로 든 roving tabindex를 그쪽에 넘겼다). **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지 — `@radix-ui/react-*` 개별 설치 아니다) · `class-variance-authority` |
 | 아이콘 | `lucide-react` 1.37.0 | |
 | 폰트 | **Pretendard Variable 동적 서브셋, 자사 호스트** | `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -87,7 +87,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | **키·원문 출처** | **리포의 로케일 파일** — 어댑터가 양방향으로 읽고 쓴다 (`lib/adapters/`) | — |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
 | 스크립트 실행 | `tsx` — `scripts/scan.ts` CLI 실행용 | `tsx` 4.23.13 |
-| 테스트 | Vitest (순수 함수 단위) | `vitest` 4.1.11 |
+| 테스트 | Vitest — **순수 함수 단위 + DOM** (2026-09-12에 뒤가 붙었다: 파일 머리의 `// @vitest-environment jsdom`으로 켜고 `components/__tests__/helpers/dom.tsx`가 `createRoot`+`act`를 감싼다. ⚠️ **`vitest.config.ts`의 기본은 그대로 `node`다** — 전역으로 켜면 순수 모듈 수백 개가 이유 없이 jsdom을 세운다) | `vitest` 4.1.11 · `jsdom` 27.4.0 · `@testing-library/user-event` 14.6.1 |
 | Node | `.nvmrc` **24** — `@types/node`를 이 메이저에 맞춘다(`^24`). **정본은 Vercel 프로젝트의 Node.js Version이다** (2026-09-03 실측 24.x): 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1` (도쿄). 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다** (`vercel.json`의 `regions: ["hnd1"]`, 2026-09-09) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
 
@@ -297,6 +297,21 @@ app/
                         `pages.error`가 여기라 거부 사유를 `?error=`로 보인다.
                         ⚠️ **`?error=` 없이도 세션이 `unavailable`이면 문구를 띄운다** — 로그인 버튼만
                         보이면 사용자가 헛로그인한다. ⚠️ **matcher에 넣지 않는다**(자기 자신으로 307)
+                        ⚠️ **초대에서 온 왕복이 여기서 끝나면 돌아가는 링크를 든다** (2026-09-12) —
+                        provider 화면에서 취소하면 Auth.js가 `?error=`를 달고 이 화면으로 보내는데,
+                        그 순간 사용자가 든 것은 초대 링크뿐이라 **토큰이 사라진다**. 자리를 아는
+                        것은 `authjs.callback-url` 쿠키 하나이고 `destFromCallbackUrl`이 읽는다
+                        (`__Secure-` 접두 유무를 둘 다 본다). ⚠️ **갈래가 `invite`일 때만 세운다** —
+                        저장된 문자열을 그대로 링크에 실으면 open redirect 판정이 생긴다
+  signin/link/[challenge]/page.tsx
+                        계정 병합 안내 (account-linking, 2026-09-12) — **인가가 없고 challenge가
+                        대신한다.** `AuthLayout` 320 컬럼 다섯 줄 + 구분선 아래 outlined 버튼.
+                        ⚠️ **matcher에 넣지 않는다** — 비로그인이 봐야 하는 화면이라 넣으면 그 순간
+                        challenge가 사라진다 (`/invite/[token]`과 같은 판단).
+                        ⚠️ **만료를 이 화면으로 말하지 않는다** — `/signin`으로 되돌린다(다시 그리면
+                        그 상태가 또 하나의 표면이 된다). 장애는 그것과 **다른 사유**로 간다.
+                        ⚠️ **[Confirm]이 일반 로그인 진입점 셋째다** — 버려진 회수 쿠키를 먼저 지운다
+                        (`normal-login.test.tsx`의 목록이 셋이 됐다)
   privacy/page.tsx      ⚠️ **placeholder** (8-1a) — 로그인 푸터가 가리켜서 라우트를 먼저 땄다.
   docs/page.tsx         출시 전에 채운다. 둘 다 `components/public-doc.tsx`를 쓰고 **돌아가는 링크가
                         있다**(셸 밖이라 없으면 뒤로가기 말고 길이 없다). Terms는 만들지 않는다
@@ -304,7 +319,8 @@ app/
                         영어라 `app/__tests__/screens.test.ts`가 그것을 고정한다 (2026-09-08 ship 4)
   globals.css           Tailwind 4 @theme + shadcn 토큰 (tailwind.config.js 없음)
   __tests__/            **셋이다.** entry-points — ⚠️ **진입점 소스 스캔**: app/ 아래 모든 page·route·actions가
-                        인가를 지나는지 fs로 센다. 예외 6개를 **이름으로** 고정하고 그 이름이 실재하는지도
+                        인가를 지나는지 fs로 센다. 예외 **아홉**(2026-09-12 — account-linking이 `signin/link/[challenge]`를
+                        더했다)을 **이름으로** 고정하고 그 이름이 실재하는지도
                         본다. `lib/adapters/__tests__/contract.ts`와 같은 상시 방어선. ⚠️ **쿼리 수신자
                         검사가 생성기 형태도 본다** (2026-09-08) — 화면이 경로를 `routes.*`로 옮기면서
                         `"/path?key="` 리터럴이 0건이 됐고 그 검사가 조용해졌다(자기 "0건 아님" 가드가 잡았다)
@@ -485,8 +501,19 @@ app/
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
                         게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
-    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
-                        email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
+    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. **알림과 CTA를 `planInviteView`가
+                        함께 고른다** (2026-09-12) — 화면이 조건을 다시 적지 않는다.
+                        ⚠️ **실패가 전부 인라인 `Alert`이고 `AuthToast`가 없다** — 이 초대의 지속되는
+                        조건이라 규약 8이 그쪽이다. 눌러서 난 거부(`?e=`)도 같은 자리다.
+                        ⚠️ **불일치를 버튼을 누르기 전에 말한다** — 렌더 시점에 User 행을 읽어
+                        대조하고, 그때 수락 버튼 대신 "다른 계정으로 로그인"(signOut → 같은 링크)
+                        **하나만** 세운다. 누를 수 없는 버튼을 남겨 두면 사용자가 그것부터 누른다.
+                        ⚠️ **이미 멤버인 사람의 출구는 반대다** — `[Open project]` 링크다(`project.slug`를
+                        select에 더한 유일한 이유). 그쪽에 로그아웃을 주면 문구가 시키는 일과 반대되는
+                        버튼만 남고, 셸 밖이라 사이드바가 없어 할 수단이 0이었다 (2026-09-12 실물 검증).
+                        ⚠️ **멤버·사용자 조회는 로그인 + 살아 있는 초대일 때만** 한다(비로그인에게
+                        멤버십을 조회할 이유가 없다). 그 조회가 실패하면 `unavailable` + 토큰을
+                        보존한 재시도로 닫는다 — 틀린 갈래를 보이는 것보다 낫다
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
     __tests__/          page — `renderToStaticMarkup`으로 **손상된 초대**가 unavailable + 링크를 보존한
                         재시도를 내고, **없는 초대**는 그런 재시도를 안 내는지 가른다.
@@ -523,6 +550,16 @@ components/
                         ⚠️ **두 Action이 서로 다른 파일에서 온다** — 해제(DisconnectGithubButton, export)는
                         사용자 수준이라 slug를 안 받는다. 소비자는 `/account` 하나다(6b-4가 옮겼다)
   public-doc.tsx        `/privacy`·`/docs`가 공유하는 껍데기 (8-1a) — **돌아가는 링크가 요지다**
+  search-input.tsx      검색 입력 (client, 2026-09-12) — 소비자 둘(프로젝트 목록·번역 툴바).
+                        ⚠️ **IME 조합 확정 Enter를 거른다** — `isComposing`과 `keyCode === 229`를 **둘 다**
+                        본다(브라우저마다 하나씩만 주는 경우가 있다). 그 전엔 한글 확정 Enter가 그대로
+                        검색으로 나갔다.
+                        ⚠️ **`<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로 submit되지
+                        않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
+                        ⚠️ **`w-64`는 인자가 아니다** — 두 툴바가 같아야 하는 값이라 프리미티브가 든다.
+                        `className`은 바깥 자리잡기(`ml-auto`)용이다
+  submit-button.tsx     `useFormStatus` + `Button loading` (client, 2026-09-12) — 로그인·초대의 폼 넷이 쓴다.
+                        ⚠️ **`<form>` 안에 있어야 pending이 참을 낸다** (그 훅의 계약이다)
   session-revocation.tsx
                         전체 세션 회수 버튼 (client, sec-audit-2 #38) — 소비자는 `/account` 하나다.
                         ⚠️ **provider를 안 보낸다** — 확인 상대를 서버가 고른다(`startSessionRevocation`).
@@ -553,8 +590,12 @@ components/
                         ⚠️ **breadcrumb이 없다** — 8-4가 하위 화면 다섯에서 함께 지웠다.
                         ⚠️ **결과 Alert에 `scrollIntoView`가 붙어 있다** — 버튼은 고정 머리, 결과는
                         스크롤 본문 맨 위라 표를 내린 채 누르면 뷰포트 밖이고 **실패는 다른 신호가 0이다**) /
-                        key-group(**서버 컴포넌트** — 키 셀 + 로케일 행들. `<table>`이 아니라 `div`+`grid`다:
-                        값이 여러 줄이면 `rowSpan`이 정렬을 어긋나게 한다.
+                        key-group(**서버 컴포넌트** — 키 셀 + 로케일 행들. ⚠️ **2026-09-12에 `div`+`grid`에서
+                        `<table>`로 돌아왔다** — 키별 `TableBody` + 키 셀 `th scope="rowgroup" rowSpan`이다.
+                        8-4가 그것을 거부한 근거("값이 여러 줄이면 `rowSpan`이 정렬을 어긋나게 한다")는
+                        **행 높이 배분에서는 틀렸고**(브라우저가 계산한다) **내부 블록에서는 맞았다** —
+                        전환 당일 값 칸의 `border-l`이 늘어난 td 높이를 못 따라가 선이 끊겼다
+                        (POSTMORTEM 2026-09-12). **행 전체를 나누는 선은 `td`가, 포커스 표시는 안쪽 div가** 든다.
                         ⚠️ **행에 고정 폭이 로케일 칸 하나뿐이다** — 배지·`Edited by`를 우측
                         `w-40` 슬롯에 두었더니 1280px에서 입력이 **28px**가 됐다(malmoi#33, 실물 실측).
                         메타는 저장 상태와 같은 자리(입력 **아래**)로 내려갔고, 그 예산을
@@ -580,6 +621,17 @@ components/
                         `planPush`가 base 교체 push에서 전파를 건너뛰므로 그 일이 안 일어난다)
                         ⚠️ **filters는 `<form>` 암시적 submit을 안 쓴다** — 제출 버튼 없는 폼은 Enter로
                         submit되지 않아 검색이 조용히 무효였다 (POSTMORTEM 2026-09-08)
+  account/              `/account`의 클라이언트 조각 (account-linking T5) — login-methods 하나다.
+                        ⚠️ **[Connect]가 없다** — 로그인된 세션을 근거로 `Account`를 붙이는 경로는
+                        sec-audit-2 #31이 막은 자리이고, 그 문의 인가 조건을 이 화면에서는 못 적는다.
+                        같은 주소 연결은 병합 흐름이 이미 잡는다.
+                        ⚠️ **마지막 수단은 비활성 + 행 옆 인라인 사유**(POSTMORTEM 2026-09-06) ·
+                        해제에는 확인 `Dialog`가 있다(`DisconnectGithubButton`과 달리 되돌리려면
+                        OAuth 왕복 전체가 필요하다 — 멤버 제거와 같은 무게)
+  invite/               초대 화면의 프로젝트 카드 (account-linking T4) — `EntityCard`의 박스 규격을
+                        공유하되 **프리미티브가 아니다**: 아바타 폴백이 흰 `Box` 글리프이고
+                        DESIGN이 그 대체를 이미 거부했다. ⚠️ **숫자를 싣지 않는다**(키·멤버 수는
+                        수락 여부를 안 바꾸고 규모만 샌다) · 국기는 복수다
   onboarding/           온보딩 UI (SaaS 5단계, 전부 client). new-project-flow(②~⑥ 상태 기계 — 리포 선택·
                         후보·기준 언어·수동 지정·확정·결과) / connect-github(사용자 수준 연결) /
                         first-ingest-retry · push-token-panel(설정 화면) / workflow-block · copy-button
@@ -644,21 +696,27 @@ components/
                         **Publish는 그대로 셸 밖**이다 — 번역 화면 제목 행 우측이고 8-P가 패널로 가져간다.
                         ⚠️ **항목 노출은 편의이고 차단이 아니다**(방어는 페이지의 requireProjectAccess) —
                         판정은 lib/shell/nav.ts의 순수 함수 넷이 한다
-  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 16개 + 헬퍼 하나** (2026-09-08, 6a T5 — shadcn 생성물 4개는
-                        삭제됐고 CLI를 다시 돌리지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
+  ui/                   ⚠️ **이 리포가 소유하는 프리미티브 17개 + 헬퍼 하나** (2026-09-08, 6a T5 — shadcn 생성물 4개는
+                        삭제됐고 CLI로 신규 컴포넌트 추가는 허용하되 기존 파일을 덮어쓰지 않는다. **8-2가 SegmentedControl을 더했고, 2026-09-11에
                         `Tooltip`이 빠지고**(8-3이 접기 레일을 지우면서 소비자가 0이 됐다) **같은 날 8-4가
                         `DropdownMenuCheckboxItem`을 더했다** — `role="menuitemcheckbox"`와 `aria-checked`를
                         Radix가 주고, `onSelect`의 `preventDefault()`를 **프리미티브가 든다**: 소비자마다
                         기억하게 하면 하나가 빠지고 그 하나는 "고를 때마다 메뉴가 닫힌다"로만 드러난다).
                         Button·Input·Textarea·Select(native)·Radio·
                         FormGroup·Badge·Alert·Card·Table·Breadcrumb·Avatar·EmptyState·DropdownMenu·
-                        Dialog·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
+                        Dialog·**EntityCard**(account-linking 신설 — 대상 하나를 아바타·두 줄·우측 슬롯으로. ⚠️ **`kind`가 없다**: 소비자가 병합 화면 하나이고, 초대의 프로젝트 카드는 `components/invite/`의 화면 조각이다(아바타 폴백이 이니셜이 아니라 흰 글리프라 DESIGN이 그 대체를 이미 거부했다). ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 기능 디렉터리를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다)·**Table**(⚠️ **프리셋이 둘이고 구현은 하나다** — 2026-09-12에 shadcn 원본을 들이면서
+                        `Th`·`Td`·`Tr`을 **`TableHead`·`TableCell`·`TableRow`를 감싼 프리셋**으로 내렸다.
+                        되눌러야 하는 기본값(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`)이 각
+                        프리셋 위에 적혀 있고 `table-presets.test.ts`가 **렌더해서** 센다 — 안 지워지면
+                        긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다.
+                        ⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0이다)·SegmentedControl(⚠️ **export가 둘이다** — `SegmentedControl`(버튼, `role="radiogroup"`)과
                         8-3이 더한 **`SegmentedLinks`**(링크, `<nav>` + `aria-current`). **상태가 URL이면 뒤엣것**이다.
                         ⚠️ `tablist`가 아닌 이유: ARIA 탭은 `aria-controls`와 화살표 이동이 계약인데 이 컨트롤은 그걸 안 든다.
-                        ⚠️ **대신 라디오의 계약은 든다** (2026-09-11) — `nextRovingIndex`가 방향키·Home·End를
-                        판정하고 **선택된 칸만 `tabIndex=0`**이다. 전엔 `onClick`만 있어 방향키가 죽었고 Tab이
-                        칸마다 멈췄다. 네이티브 radio로 안 바꾼 이유: 숨긴 `<input>`에 링을 얹게 되어
-                        `focus-ring.test.ts`가 **보이지 않는 링으로 green**이 된다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
+                        ⚠️ **라디오의 키보드 계약을 Radix가 든다** (2026-09-12 — 2026-09-11의 손수 구현
+                        `nextRovingIndex`를 대체했다). `RadioGroup`이 방향키·roving tabindex·`loop`를 주고,
+                        **Home/End만 이 파일이 얹는다**(Radix가 안 준다 — `focus()` + `click()`으로 선택까지
+                        옮긴다). 링 검사는 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이
+                        **보이지 않는 링으로 green**을 만들지 않는다). 치수·색은 DESIGN §6.4가 정본이고 `dark:`는 0곳이다.
                         ⚠️ **`tone.ts`는 그 열여섯에 안 들어간다** (2026-09-11) — 컴포넌트가 아니라 `toneFill(name)`
                         하나다(`lib/tone.ts`가 골라준 색 이름 → `bg-<tone>-600`). **판정은 `lib/`, 클래스는 여기**가
                         든다 — `lib/`가 Tailwind를 알면 그 규칙이 두 층에 걸친다. 소비자는 아바타 폴백과
@@ -679,8 +737,9 @@ components/
                         + translations-screen — 번역 화면의 배선을 소스로 센다(tone→Alert variant 항등 ·
                         `<details>` 파일 목록 · live region 1개 · `shouldRefocus` · 배너 마운트 게이트 ·
                         셀의 `aria-label` · 초대 링크가 `routes.invite`). 렌더 테스트가 없는 자리의 방어선이다
-                        + segmented-control — `nextRovingIndex` 순수 판정 + 프리미티브를 **함수로 불러**
-                        `tabIndex`와 `onKeyDown`을 잰다 (2026-09-11 회귀). ⚠️ `tooltip-provider`는 같은
+                        + segmented-control — 프리미티브를 **jsdom에 렌더해** `user-event`로 방향키·Home/End·
+                        Tab을 실제로 먹인다 (2026-09-11 회귀 → 2026-09-12에 Radix로 옮기며 렌더 테스트가 됐다.
+                        순수 판정 `nextRovingIndex`는 Radix가 그 일을 가져가며 함께 사라졌다). ⚠️ `tooltip-provider`는 같은
                         커밋에 `Tooltip`과 함께 지웠다 — 그 교훈(조상 provider를 요구하는 Radix 컴포넌트는
                         프리미티브가 자기 provider를 든다)은 POSTMORTEM 2026-09-08에 남아 있다
                         + auth-toast — 토스트의 **수명**을 잰다. `useEffect`를 가로채 효과를 실제로 돌리고
@@ -771,6 +830,16 @@ lib/
                         **크기와 알파가 같은 함수를 두 번 부른다** — 곡선이 갈리면 커서 주변에 링이 생긴다)
                         · autoCursor(커서가 없을 때의 ㄹ자 순회. ⚠️ **줄 사이에 세로 전환 구간이 있다** —
                         없으면 y가 줄 인덱스로만 정해져 줄바꿈이 순간이동한다)
+  search-params.ts      ⚠️ **잎, import 0** (2026-09-12) — `Raw<K>` 타입 + firstQueryValue·firstQueryValues.
+                        Next의 `searchParams`는 반복 파라미터를 **배열로** 주므로 `{ q?: string }`이라고
+                        적은 화면의 타입이 `?q=a&q=b`에서 거짓이 된다. **화면 여덟이 전부 이것을 지난다**
+                        (`type Search = Raw<"ns" | "locales" | "q">` 꼴) — 하나만 고치면 나머지 일곱이
+                        같은 거짓을 든 채 남는다.
+                        ⚠️ **`Object.create(null)`로 만든다** — 키를 주소창이 정하므로 평범한 `{}`에
+                        `out["__proto__"] = v`를 하면 그 키가 조용히 사라진다 (sec-audit 발견 1·17)
+                        ⚠️ **`entry-points.test.ts`가 이 형을 안다** — 그 검사가 `type X = { … }` 리터럴만
+                        읽던 시절엔 화면이 `Raw<…>`로 옮기는 순간 수신 키가 0건이 되어 **검사가 통째로
+                        무력해졌다**(2026-09-12 실측)
   routes.ts             앱 내부 링크의 단일 출처 (**잎, import 0**). ⚠️ **`ALL_NAMESPACES`가 2026-09-11에
                         `lib/keys/view.ts`에서 여기로 내려왔다** (8-4) — 칩 판정(`lib/keys/filters.ts`)이
                         그 값을 알아야 하는데 그 모듈은 잎이라 `view.ts`를 물 수 없다. URL 값이므로 이
@@ -976,6 +1045,32 @@ lib/
                         ⚠️ `createUser`가 **lookup 존재를 증명한다**: R2가 NOT NULL을 안 걸어서
                         DB가 안 막는다) / access.ts / conversion.ts·migration.ts·command.ts·finalize.ts(전환 도구)
                         ⚠️ **로그인용 github/google 토큰은 아예 저장하지 않는다** — 로그인 뒤 안 쓴다
+  login-link/           계정 병합 (account-linking, 2026-09-12). `lib/session-revocation/`과 **같은 형이고
+                        목적이 반대다** (하나는 왕복을 멈추고, 하나는 진행시킨다) — 합치지 않는다.
+                        ⚠️ **이름이 `account-link`가 아닌 이유**: `lib/github-connect/account-link.ts`가
+                        **GitHub App 연결의 소유권**이라 축이 다르다. 파일은 여섯이다.
+                        policy.ts(⚠️ **잎에 가깝다 — import가 `lib/routes.ts` 하나다.** `/account`의
+                          수단 카드가 **클라이언트**라 이 파일의 그래프가 곧 번들이고, 해시를 여기
+                          두었더니 `node:crypto`가 따라 들어갔다(실측 — `client-graph.test.ts`가 잡았다).
+                          `Challenge` 조립·파싱 · 쿠키 이름 둘 · `checkChallenge` · `outcomeUrl`(⚠️ **갈래
+                          이름만 받는다** — 저장된 문자열을 리다이렉트에 쓰면 open redirect 판정이 생긴다)
+                          · `failureUrl`(⚠️ **돌아갈 challenge가 없는 갈래는 이 화면으로 안 보낸다** —
+                          `expired`·`invalid`는 화면이 사유 없이 한 번 더 튕겨 문구가 사라진다)
+                          · `pickLoginAccount`·`loginMethodRows`·`canUnlink`·`destFromCallbackUrl`)
+                        / plan.ts(planLinkOffer 3갈래 + planLinkConfirm 5갈래 — ⚠️ **`expired`가
+                          `wrong-account`보다 앞이다**(만료된 challenge가 누구 것이었는지 말하지 않는다) ·
+                          ⚠️ **`consume`이 `ok`에서만 참이다**(실패가 소비하면 훔친 URL 한 번으로 남의
+                          병합을 태운다))
+                        / message.ts(코드 → 문구, `?e=`라 `string`을 받는다) / store.ts(beginLink·
+                          finishLink·loadLinkOffer + `challengeTokenHash`. ⚠️ **모든 조회·삭제에 `userId`를
+                          건다** — `Account` PK가 `(provider, providerAccountId)`라 그 둘만으로 남의 행에
+                          닿는다) / http.ts(withLoginLink·authorizeLoginLink·withLinkStart — ⚠️ **`withRevocation`이
+                          바깥, 이것이 안쪽**이고 state 쿠키 이름·salt가 갈린다) / view.ts(loadChallengeView —
+                          **보일 값만**: 마스킹 이메일·provider·가입 월·표시 이름·아바타 이미지.
+                          ⚠️ **이메일 원문은 반환 타입에 없고 계정 내용(프로젝트 수·멤버)도 안 싣는다** —
+                          이름·이미지는 2026-09-12에 열렸다(그 화면에 온 사람은 이미 주소를 검증받았고,
+                          가린 대가로 아바타가 셸과 다른 얼굴이 됐다))
+                        / clear-cookies.ts(일반 로그인 셋이 부른다 — 배타성은 **양방향** 정리가 만든다)
   session-revocation/   전체 세션 회수 (sec-audit-2 #38). `/account`에서 공급자 재왕복 뒤 **그 사용자의**
                         Session을 전부 지운다 — 확인 요청 소비와 삭제가 한 트랜잭션이다.
                         policy.ts(순수 — Challenge·nonce·state 해시) / store.ts(User 잠금 + 일회 소비) /
@@ -1030,6 +1125,14 @@ lib/
                         같은 형으로 **소비자 옆**이다. ⚠️ **대기 초대는 안 센다** — 세면 만료된 초대
                         때문에 못 부르는 상태가 생기고 그것을 설명할 화면이 없다).
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
+    invite-view.ts      planInviteView — 초대 화면의 **갈래 넷**(blocked·sign-in·accept·wrong-account)을
+                        한 자리에서 고른다 (2026-09-12). 이메일 대조를 다시 적지 않고
+                        `planInvitationAccept`를 **그대로 부른다** — 두 벌이면 화면과 Action이 서로
+                        다른 답을 낸다. ⚠️ **판정 순서가 계약이다**: `expired`가 `email-mismatch`보다
+                        앞이고(만료된 링크가 대상 주소를 암시하지 않는다) `email-mismatch`가
+                        `already-member`보다 앞이다(그 초대는 그 사람 것이 아니다).
+                        ⚠️ **`?e=`를 아는 문자열로만 좁힌다** — 주소창 값이라 그대로 넘기면
+                        프로토타입 키가 갈래로 샌다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
     email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
                         + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
@@ -1243,7 +1346,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 ## 아키텍처 원칙
 
-설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`sync`·`credentials`·`session-revocation`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
+설계 상세와 함정은 **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** 가 단일 출처다. `lib/` 아래 코어 모듈(`adapters`·`githash`·`github`·`github-connect`·`db`·`env`·`failure`·`scan`·`push`·`pull`·`keys`·`auth`·`cli`·`survey`·`onboarding`·`i18n`·`shell`·`home`·`settings`·`sync`·`credentials`·`session-revocation`·`login-link`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`)을 건드리기 전에 읽는다 — **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다** (2026-09-04 감사에서 셋이 전부 달랐다). 요약:
 
 - **export 결정성 3규칙 (재생성 방식)**: 키는 **`LocaleEntry.order`(원본 위치) 오름차순, 없으면 UTF-16 코드 유닛 `<` 비교**(2026-09-03 — `localeCompare` 금지), **들여쓰기는 원본 파일의 폭**(없으면 2칸 — 2026-09-04, ADAPTER-COVERAGE §14), 파일 끝 개행 정확히 1개. `orphaned` 키는 export에서 제외(DB엔 남으므로 되돌릴 수 있다). **수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 이 규칙을 지나지 않는다** — 원본 순서·공백·주석을 보존하는 것이 그 방식의 요지다 (ARCHITECTURE §1.1).
 - **변경 감지는 두 층이다**: **1층**(`Translation.updatedAt` vs `Project.lastPulledAt`)에서 편집이 없으면 GitHub API를 **한 번도** 부르지 않는다 — 야간 cron이 매일 도는데 변경이 없는 날이 대부분이라 이게 기본 경로다. **2층**은 ref·트리·파일별 blob을 읽어(2026-09-04부터 **모든 어댑터**가 — 수술적은 치환 대상, 재생성은 표현) 로컬 blob SHA와 비교하고, 전부 같으면 커밋을 만들지 않는다. "API 0회"는 1층의 성질이고 2층은 읽기 호출이 파일 수만큼 있다 (ARCHITECTURE §2·§3).
@@ -1303,7 +1406,7 @@ docs/features/          /feature 산출물. ⚠️ **스펙이 아니다** — �
 
 권장 흐름: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다.**
 
-**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-11 기준 56개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
+**`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고, `docs/POSTMORTEM.md` **전 항목**(2026-09-12 기준 59개 — `grep -c '^### 20'`으로 센다, 템플릿 헤딩은 제외)의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. **MVP를 닫고 SaaS화에 들어가기 전 부채 정리 라운드용**이고(MVP §8.1), 리포트 전용이라 배포 경로와 무관하다.
 
 - **무엇을 할지는 `docs/TASKS.md`에서 시작한다.** 단계별 태스크와 완료 조건이 거기 있고, `/tdd`는 그 "검증:" 줄을 테스트 케이스로 쓰고, `/push`는 통과한 것만 체크한다. `/feature`는 TASKS의 한 단계가 설계 문서를 요구할 만큼 클 때만 부르고, `/feature-review`는 그 산출물이 커서 4관점 크로스체크가 필요할 때만 부른다.
 

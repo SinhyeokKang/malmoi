@@ -32,10 +32,10 @@ export function DialogContent({
 }) {
   return (
     <Primitive.Portal>
-      <Primitive.Overlay className="bg-foreground/40 fixed inset-0" />
+      <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" />
       <Primitive.Content
         className={cn(
-          "bg-background border-border fixed top-1/2 left-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
+          "bg-background border-border fixed top-1/2 left-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2",
           "rounded-lg border shadow-lg",
           className,
         )}

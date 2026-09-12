@@ -45,6 +45,11 @@ const EXEMPT = new Set([
   "privacy/page.tsx",
   "docs/page.tsx",
   "invite/[token]/page.tsx",
+  /**
+   * 병합 안내 (account-linking T2). **인가가 없고 challenge가 대신한다** — 비로그인이 봐야 하는
+   * 화면이라 `middleware.ts`의 matcher에도 없다(아래 `PUBLIC` 부정 단언).
+   */
+  "signin/link/[challenge]/page.tsx",
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
@@ -63,6 +68,8 @@ const GUARDS = [...PROJECT_GUARDS, USER_GUARD];
 const USER_SCOPED_ACTIONS = new Set([
   // Session revocation affects only the authenticated user, including users without projects.
   "account/actions.ts#startSessionRevocation",
+  // `Account`는 사용자 소유다 — 프로젝트가 없는 사용자도 자기 로그인 수단을 해제할 수 있어야 한다.
+  "account/actions.ts#unlinkLoginMethod",
   // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",
@@ -455,18 +462,32 @@ describe("쿼리 파라미터의 수신자", () => {
   const PENDING_QUERY_KEYS: string[] = [];
 
   /**
-   * `type X = { ns?: string; … }` → 필드 이름들. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로
-   * 잡히면 이 검사가 자기 대상을 잘못 세고, 그건 조용한 오탐이다.
+   * 타입에서 쿼리 키 이름을 뽑는다. **주석을 먼저 벗긴다** — 설명 안의 `낱말:`이 필드로 잡히면
+   * 이 검사가 자기 대상을 잘못 세고, 그건 조용한 오탐이다.
+   *
+   * ⚠️ **형이 둘이다** (2026-09-12): 생성기 쪽은 `type X = { ns?: string; … }` 리터럴이고, 화면 쪽은
+   * 배열을 경계에서 접느라 `type X = Raw<"ns" | "locales">`다. **앞것만 읽으면** 화면이 `Raw`로
+   * 옮겨가는 순간 `ACCEPTED`가 빈 배열이 되어 이 검사가 **통째로 무력해진다**(실측: 그 커밋에서
+   * "생성기가 내는 키를 화면이 받는다"가 red가 아니라 **모든 키를 미수신으로** 보고했다).
    */
   function queryKeysOf(source: string, typeName: string): string[] {
     const bare = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
-    const body = new RegExp(`type ${typeName} = \\{([\\s\\S]*?)\\};`).exec(bare)?.[1] ?? "";
-    return [...body.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
+    const literal = new RegExp(`type ${typeName} = \\{([\\s\\S]*?)\\};`).exec(bare)?.[1];
+    if (literal !== undefined) return [...literal.matchAll(/(\w+)\??\s*:/g)].map((m) => m[1] ?? "");
+    const raw = new RegExp(`type ${typeName} = Raw<([^>]*)>;`).exec(bare)?.[1] ?? "";
+    return [...raw.matchAll(/"([^"]+)"/g)].map((m) => m[1] ?? "");
   }
 
   const TRANSLATIONS_PAGE = ENTRY_POINTS.find((e) => e.path === "projects/[slug]/translations/page.tsx");
   /** 번역 화면이 **실제로 받는** 쿼리 키. 그 페이지의 `type Search`가 계약이다. */
   const ACCEPTED = queryKeysOf(TRANSLATIONS_PAGE?.source ?? "", "Search");
+
+  /** ⚠️ 두 형을 각각 먹인다 — 하나를 못 집으면 그쪽이 조용히 빈 목록이 되고 검사가 장식이 된다. */
+  it("리터럴과 `Raw<…>` 두 형에서 키를 뽑는다", () => {
+    expect(queryKeysOf('type S = { ns?: string; q?: string };', "S")).toEqual(["ns", "q"]);
+    expect(queryKeysOf('type S = Raw<"ns" | "locales" | "q">;', "S")).toEqual(["ns", "locales", "q"]);
+    expect(queryKeysOf("const other = 1;", "S")).toEqual([]);
+  });
 
   it("양쪽 타입에서 쿼리 키를 읽어냈다 — 스캐너가 조용히 0건이 되지 않는다", () => {
     expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "locales", "q"]);
@@ -623,7 +644,9 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
    * (토큰이 `/`로 302되며 사라진다, design §4.1)·공개 문서 둘.
    */
   it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
-    const PUBLIC = ["/", "/signin", "/invite/sample", "/privacy", "/docs"];
+    // ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
+    // "matcher에 없다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
+    const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
     const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
     expect(covered).toEqual([]);
   });

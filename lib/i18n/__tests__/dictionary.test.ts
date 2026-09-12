@@ -65,9 +65,18 @@ describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
    * ⚠️ 2026-09-08 실물 검증에서 "as a Editor"가 나왔다. 역할 이름은 데이터라 문장이 a/an을 알 수 없고,
    * 알려면 역할마다 관사 표를 두게 된다 — 직함처럼 관사 없이 쓴다.
    */
-  it("초대 문장에 부정관사를 붙이지 않는다", () => {
-    expect(m.invite.invitedTo("bugshot-2", "Editor")).toBe("You're invited to bugshot-2 as Editor.");
-    expect(m.invite.invitedTo("bugshot-2", "Owner")).not.toMatch(/ an? /);
+  /**
+   * ⚠️ **초대 문장이 그 자리를 떠났다** (account-linking §6) — 프로젝트 이름과 역할은 이제 카드의
+   * 두 행이라 관사가 붙을 문장 자체가 없다. 규칙이 사라진 것이 아니라 **대상이 옮겨갔다**:
+   * 지금 데이터를 문장에 넣는 자리는 병합 화면의 provider 이름 둘이다.
+   */
+  it("데이터를 문장에 넣는 자리에 부정관사를 붙이지 않는다", () => {
+    expect(m.invite.title).not.toMatch(/ an? /);
+    expect(m.link.confirm("GitHub")).toBe("Confirm with GitHub");
+    for (const provider of ["GitHub", "Google"]) {
+      expect(m.link.confirm(provider)).not.toMatch(/ an? /);
+      expect(m.link.description(provider, "GitHub")).not.toMatch(/ an? /);
+    }
   });
 });
 

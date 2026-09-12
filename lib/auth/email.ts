@@ -111,7 +111,19 @@ export function planEmailRefresh(input: {
   stored: string;
   fresh: string | null;
   takenByOther: boolean;
+  /** 로그인 `Account` 행 수 (`github`·`google`만). `github-app`은 로그인 수단이 아니다. */
+  loginMethods: number;
 }): EmailRefresh {
+  /**
+   * ⚠️ **수단이 둘 이상이면 언제나 `keep`이다** (account-linking design ⑦). 병합 전에는 User당
+   * 로그인 수단이 하나라 이 경로가 원리적으로 없었다 — 병합이 그것을 만든다: 한쪽 provider에서
+   * 주소를 바꾸면 `User.email`이 **마지막으로 로그인한 provider에 따라 뒤집히고**, 초대 대조
+   * (SAAS §5.6)가 그 값 위에 서 있다. SAAS §5.5가 경고한 "정본 판정"이 한 로그인 뒤에 도착한다.
+   *
+   * ⚠️ **대가**: 병합한 사용자가 provider에서 주소를 바꿔도 malmoi의 이메일은 따라가지 않고,
+   * 초대 대조는 **병합 시점 주소** 기준으로 남는다.
+   */
+  if (input.loginMethods > 1) return "keep";
   const fresh = input.fresh === null ? "" : normalizeEmail(input.fresh);
   if (fresh === "" || fresh === normalizeEmail(input.stored)) return "keep";
   return input.takenByOther ? "conflict" : "update";

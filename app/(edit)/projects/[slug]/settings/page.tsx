@@ -28,6 +28,7 @@ import { basePending } from "@/lib/onboarding/base-pending";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import { routes } from "@/lib/routes";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 프로젝트 설정 — settings-block 넷 + 계정 (DESIGN §6.6). 기준 브랜치·기준 로케일 필드는 **6b**다.
@@ -53,13 +54,13 @@ export default async function SettingsPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ e?: string }>;
+  searchParams: Promise<Raw<"e">>;
 }) {
   const { slug } = await params;
   const { projectId, userId } = await requireProjectAccess({ slug, permission: "project:settings" });
 
   // callback이 실패 사유를 여기로 보낸다. 주소창 값이라 판정 함수로 거른다 — 모르는 값은 무시.
-  const { e } = await searchParams;
+  const { e } = firstQueryValues(await searchParams);
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
 
   const prisma = getPrisma();

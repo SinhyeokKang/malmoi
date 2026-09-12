@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useTransition } from "react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
+import { FilterChips } from "@/components/translations/filter-chips";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Select } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
@@ -38,6 +39,7 @@ import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 export function TranslationFilters({
   slug,
   query,
+  chipQuery,
   namespaces,
   locales,
   selected,
@@ -46,6 +48,7 @@ export function TranslationFilters({
   slug: string;
   /** 지금 URL의 값 — 하나를 바꿔도 나머지가 보존돼야 한다. */
   query: TranslationsQuery;
+  chipQuery: TranslationsQuery;
   /** 드롭다운 옵션. 순서·집계는 `namespaceCountsFor`가 정한 그대로다. */
   namespaces: readonly { namespace: string; pending: number; total: number }[];
   /** 프로젝트의 로케일 — base가 맨 앞이다. */
@@ -56,13 +59,16 @@ export function TranslationFilters({
   fallback: readonly string[];
 }) {
   const router = useRouter();
-  const [text, setText] = useState(query.q ?? "");
+  const [pending, startTransition] = useTransition();
 
-  // 뒤로 가기·다른 네임스페이스 이동으로 URL의 `q`가 바뀌면 입력도 따라간다.
-  useEffect(() => setText(query.q ?? ""), [query.q]);
+  // 툴바와 칩이 같은 잠금을 쓴다. 한쪽만 막으면 다른 쪽이 이전 URL을 다시 제출한다.
+  function navigate(next: TranslationsQuery) {
+    if (pending) return;
+    startTransition(() => router.push(routes.translations(slug, next)));
+  }
 
   function go(next: Partial<TranslationsQuery>) {
-    router.push(routes.translations(slug, { ...query, ...next }));
+    navigate({ ...query, ...next });
   }
 
   function toggleLocale(code: string) {
@@ -77,80 +83,69 @@ export function TranslationFilters({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Select
-        value={query.ns ?? ALL_NAMESPACES}
-        aria-label={m.translations.filters.namespace}
-        onChange={(e) => go({ ns: e.target.value })}
-        className="w-40"
-      >
-        <option value={ALL_NAMESPACES}>{m.translations.allNamespaces}</option>
-        {namespaces.map((ns) => (
-          <option key={ns.namespace} value={ns.namespace}>
-            {m.translations.filters.namespaceOption(ns.namespace, ns.pending, ns.total)}
-          </option>
-        ))}
-      </Select>
+    <>
+      <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
+        <Select
+          disabled={pending}
+          value={query.ns ?? ALL_NAMESPACES}
+          aria-label={m.translations.filters.namespace}
+          onChange={(e) => go({ ns: e.target.value })}
+          className="w-40"
+        >
+          <option value={ALL_NAMESPACES}>{m.translations.allNamespaces}</option>
+          {namespaces.map((ns) => (
+            <option key={ns.namespace} value={ns.namespace}>
+              {m.translations.filters.namespaceOption(ns.namespace, ns.pending, ns.total)}
+            </option>
+          ))}
+        </Select>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button className="w-32 justify-between">
-            {m.translations.filters.locales}
-            <ChevronDown aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {locales.map((locale) => {
-            const checked = selected.includes(locale.code);
-            return (
-              <DropdownMenuCheckboxItem
-                key={locale.code}
-                checked={checked}
-                /**
-                 * ⚠️ **마지막 하나는 뗄 수 없다.** 선택이 비면 `parseLocaleSelection`이 폴백으로
-                 * 되돌아가 **전체로 넓어지는데**, 그러면 "지우기"가 넓힘이 되어 사용자가 기대한
-                 * 것과 반대다. 전체로 돌아가는 길은 칩의 제거다.
-                 */
-                disabled={checked && selected.length === 1}
-                onCheckedChange={() => toggleLocale(locale.code)}
-              >
-                {/*
-                  ⚠️ **국기가 표의 배지와 같아야 한다** (2026-09-11 실물). 고르는 자리와 확인하는
-                  자리가 다르게 보이면 그 둘이 같은 로케일이라는 것을 사용자가 매번 대조하게 된다.
-                  조각은 `LocaleFlag`가 들고, 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 안 온다.
-                */}
-                <span className="flex items-center gap-1.5">
-                  <LocaleFlag code={locale.code} />
-                  {locale.code}
-                </span>
-              </DropdownMenuCheckboxItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="w-32 justify-between" disabled={pending}>
+              {m.translations.filters.locales}
+              <ChevronDown aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {locales.map((locale) => {
+              const checked = selected.includes(locale.code);
+              return (
+                <DropdownMenuCheckboxItem
+                  key={locale.code}
+                  checked={checked}
+                  /**
+                   * ⚠️ **마지막 하나는 뗄 수 없다.** 선택이 비면 `parseLocaleSelection`이 폴백으로
+                   * 되돌아가 **전체로 넓어지는데**, 그러면 "지우기"가 넓힘이 되어 사용자가 기대한
+                   * 것과 반대다. 전체로 돌아가는 길은 칩의 제거다.
+                   */
+                  disabled={pending || (checked && selected.length === 1)}
+                  onCheckedChange={() => toggleLocale(locale.code)}
+                >
+                  {/*
+                    ⚠️ **국기가 표의 배지와 같아야 한다** (2026-09-11 실물). 고르는 자리와 확인하는
+                    자리가 다르게 보이면 그 둘이 같은 로케일이라는 것을 사용자가 매번 대조하게 된다.
+                    조각은 `LocaleFlag`가 들고, 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 안 온다.
+                  */}
+                  <span className="flex items-center gap-1.5">
+                    <LocaleFlag code={locale.code} />
+                    {locale.code}
+                  </span>
+                </DropdownMenuCheckboxItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      {/*
-        ⚠️ **`<form>` + 암시적 submit을 쓰지 않는다** (2026-09-08 실물 검증). 제출 버튼이 없는 폼은
-        입력에서 Enter를 눌러도 submit이 일어나지 않아 검색이 조용히 무효였다 — CDP 원시 키까지
-        먹여 봐도 같았다. 필터에 [Search] 버튼을 두지 않는 것이 이 툴바의 형이므로 Enter를 직접 받는다.
-      */}
-      <div className="relative ml-auto">
-        <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2 size-4" aria-hidden />
-        <Input
-          type="search"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              go({ q: text.trim() });
-            }
-          }}
-          placeholder={m.translations.filters.search}
-          aria-label={m.translations.filters.search}
-          className="w-64 pl-8"
+        <SearchInput
+          value={query.q}
+          onSearch={(q) => go({ q })}
+          disabled={pending}
+          label={m.translations.filters.search}
+          className="ml-auto"
         />
       </div>
-    </div>
+      <FilterChips query={chipQuery} selected={selected} fallback={fallback} pending={pending} onNavigate={navigate} />
+    </>
   );
 }

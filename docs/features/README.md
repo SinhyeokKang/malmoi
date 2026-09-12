@@ -19,6 +19,11 @@
 🔵 **8단계 `ui-rework/`가 진행 중이다** — 8-1이 프로덕션(`718db80`), 8-2(셸)·8-3(프로젝트 목록)과 **2026-09-11 폴리싱 라운드**(패널 머리 고정 · 목록 검색·상태 필터 · `Tooltip` 제거 · 화면 제목이 사이드바 라벨 키 공유 · `lib/tone.ts`), 그리고 **8-4(번역 화면 — 표의 축을 로케일 = 행으로 재작성)**가 dev다.
 태스크와 완료 게이트는 SAAS §8에 있다.
 
+**2026-09-12 — 나머지 화면의 톤앤매너 통일**:
+[ui-rework/page-patterns](./ui-rework/page-patterns/spec.md)에 공통 패턴·예외·배송별 검증을 정리했다.
+초기 후보 둘과 Dialog 겹침 순서를 수정하고 두 해상도 런타임 비교를 완료했다. 기존 정보 구조·동작을 유지하며 시각 표현을 맞추는 8-5~ 계획이다.
+새 본문 시안은 선행 조건이 아니며 구조 재설계·피드백 방식 변경·8-P는 포함하지 않는다.
+
 ⚠️ **`ui-rework/`는 2단 구조다** — 축이 커서 디렉터리 안에 **배송별 하위 디렉터리**를 두고
 (`signin-auth/` · `translations/` — 뒤엣것이 8-4다), **아홉째 종류인 `README.md`**가 배송 순서와 **작업 규약 아홉**을 든다(SAAS §8과
 CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`tasks`가 필요한 것은 아니고,
@@ -68,7 +73,8 @@ CLAUDE.md가 규약 8을 직접 가리킨다). 배송마다 `spec`·`design`·`t
 | [sec-audit-2](./sec-audit-2/) | ✅ 프로덕션 반영 (2026-09-10, PR #27 → `ff5e8a4`) | ARCHITECTURE §9 · SAAS §11 · [작업 기록](./sec-audit-2/tasks.md) | #37은 **사용자 결정으로 제외**(가시성 기반 정책 유지). #38은 session-revocation으로 배송 |
 | [credential-storage](./credential-storage/) | ✅ **dev·prod 전환 완료** (2026-09-10, PR #28 → `9e6854e` · #29 → `f6933d7`) | [spec](./credential-storage/spec.md) · [design](./credential-storage/design.md) · [operations](./credential-storage/operations.md) · SAAS 저장 보호 · ARCHITECTURE §5.1·§6.6 | **실질 잔여는 리허설 둘** — 키 회전(P7) · 차단·drain(T11). ⚠️ **`tasks.md`의 열린 체크박스는 아홉이고 그 수가 잔여가 아니다** — **P2(nullable `emailLookup` additive migration)는 이미 배송됐고**(`prisma/migrations/20260910050000_add_email_lookup`) 나머지(T12·P2/P6·T4/T5/P3·P3/P4·P4/P5·T11 전환 경험)는 배송분의 미정리 항목이다. 체크박스를 세지 말고 이 칸을 본다 |
 | [session-revocation](./session-revocation/) | ✅ 프로덕션 반영 (2026-09-10, PR #28 → `9e6854e`) | SAAS 전체 세션 회수 · ARCHITECTURE §6.1.1 · [spec](./session-revocation/spec.md) | GitHub 왕복·두 세션 회수·타 사용자 보존은 실물 확인. 남은 것은 Google 왕복·취소 경로·키보드/포커스(S7) |
-| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3·8-4 + 폴리싱 dev) | SAAS §8 · DESIGN §0·**§6.1**·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | **8-4의 잔여는 T12 수동 검증 넷**([translations/](./ui-rework/translations/) `tasks.md:306-318`) — 1920에서 시안 좌표 대조 · 1280px에서 값 열 ≈368px 성립 · **903키 `?ns=*` 2초 실측** · `?locales=`로 하나만 남겼을 때 행 수 감소. ⚠️ **국기 SVG 에셋은 잔여가 아니다** — `public/flags/` 253개가 `af6acc7`로 **커밋됐다**(`public/brand/` 옆의 원본). ⚠️ **8-1의 `signin-auth/tasks.md`는 12/52만 체크된 채 남아 있다** — 배송은 프로덕션(`718db80`)이고 체크박스만 미정리라, 그 파일을 미완으로 읽지 않는다 / 나머지 페이지별(Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
+| [account-linking](./account-linking/) | 🔵 **dev — 실물 왕복(T7)만 남았다** (2026-09-12) | SAAS §4.3 ④·§5.5·§7.7 · ARCHITECTURE 계정 병합 절 · DESIGN `EntityCard` · [spec](./account-linking/spec.md) · [design](./account-linking/design.md) | T1~T6·T8 완료. ⚠️ **SAAS가 두 자리에서 비범위로 두었던 것을 사용자 재량으로 대체했다** — 2차 개방 조건(provider 접근 상실)을 충족한 것이 **아니고**, 연 근거는 **초대 단절**이다. ⚠️ **`safePrismaAdapter.linkAccount`는 한 줄도 안 바뀌었다** — 게이트 옆에 문이 하나 났고 그 인가 조건이 셋이다. ⚠️ **T7은 실물 OAuth 계정 둘이 필요해 자동화가 안 된다** — 시나리오 열하나가 [tasks.md](./account-linking/tasks.md)에 있고 dev(로컬)에서 돈다 |
+| [ui-rework](./ui-rework/) | 🔵 **진행 중** (8-1 프로덕션 `718db80` · 8-2·8-3·8-4 + 폴리싱 dev) | SAAS §8 · DESIGN §0·**§6.1**·§6.5·§6.55·§6.62·§6.63 · [배송·규약](./ui-rework/README.md) | ✅ **8-4의 T12가 닫혔다** (2026-09-12 — 수동 검증 넷이 전부 `[x]`다). 마지막이던 **903키 `?ns=*` 2초**를 로컬 프로덕션 빌드 + dev DB의 `perf-903`(907키)으로 쟀고 **FCP 0.3초대**로 통과했다. ⚠️ **그 회차가 게이트 밖을 함께 쟀다** — `?ns=*`의 `loadEventEnd`가 **3.9초**(textarea 2,721 · 노드 34,624 · 1.44MB)이고 FCP는 스트리밍이라 그것을 안 본다. 가상화는 **넣지 않았다**(판정 조건이 게이트 미달이고 `?ns=*`는 기본 경로가 아니다). 숫자는 [translations/tasks.md](./ui-rework/translations/tasks.md) 실측 기록. ⚠️ **국기 SVG 에셋은 잔여가 아니다** — `public/flags/` 253개가 `af6acc7`로 **커밋됐다**(`public/brand/` 옆의 원본). ⚠️ **8-1의 `signin-auth/tasks.md`는 12/52만 체크된 채 남아 있다** — 배송은 프로덕션(`718db80`)이고 체크박스만 미정리라, 그 파일을 미완으로 읽지 않는다 / 나머지 페이지별(Home·언어·멤버·이력·설정·온보딩·계정) · 8-P 패널 diff |
 | [saas-review.md](./saas-review.md) | 📄 **근거 문서** (기능 디렉터리가 아니다) | **SAAS.md** | 없음 — 원문 보관 |
 
 ⚠️ **`saas-review.md`는 예외적으로 파일 하나다.** `/feature` 산출물이 아니라 2026-09-04에 Codex가 낸

@@ -1122,3 +1122,87 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **`[manual]` 목측 항목에 뷰포트를 명시한다.** `tasks.md` T12가 "1280px에서 값 열이 ≈368px이어도
     성립하는지 본다"를 적어 뒀는데 **그 줄이 `/ship` 파이프라인의 검증에 안 들어간다** — 이 리포엔
     e2e가 없으므로 `[manual]`은 사람이 돌리는 것이고, 배송이 dev까지 간 뒤에 돌았다.
+
+### 2026-09-12 — 저장 중 서버 값을 수신 처리했지만 실패 후 취소 기준은 옛 값이었다
+
+- **영역**: `components/translation-input.tsx`
+- **증상**: DOM 회귀 테스트에서 초기값 A → B 저장 시작 → pending 중 서버 값 C 수신 → 저장 실패 후
+  Escape가 C 대신 A를 복원했다. A를 다시 저장하려 해도 `next === saved`라 요청을 생략한다.
+- **근본 원인**: 서버 값 수신 표식(`serverValue`)은 갱신하면서 취소 기준(`saved`) 갱신은 `!pending`에
+  묶었다. 실패 응답은 기준을 확정하지 않으며, pending이 끝나도 수신 표식이 같아 C를 다시 적용하지 않는다.
+- **그물**: 독립 code-review가 발견했고 `translation-interactions.test.tsx`의 오류 반환·전송 reject 두
+  회귀 테스트가 수정 전 red였다. 기존 테스트는 pending 중 props 변경과 성공 응답만 조합해 실패 교차를 놓쳤다.
+- **재발 방지**: pending 중에도 취소 기준을 갱신하되 draft는 보존하고, 성공 응답이 오면 그 값으로 확정한다.
+  회귀 테스트는 서버 값 연속 갱신·실패 문구 유지·Escape·옛 값 재저장을 함께 검사한다.
+  `rg -n 'setServerValue|setSaved\(initialValue\)' components --glob '!**/__tests__/**'`를 실제 실행했고
+  해당 패턴은 이 컴포넌트뿐이었다. 수신 표식과 적용 상태를 따로 두는 코드는 실패 후 재적용 여부도 검사한다.
+
+### 2026-09-12 — 필터 툴바만 잠가 칩이 이전 쿼리를 다시 제출할 수 있었다
+
+- **영역**: `components/translations/filters.tsx`·`filter-chips.tsx`·`header.tsx`
+- **증상**: namespace 변경 중 검색 칩 제거·초기화가 활성 상태였고, 칩에서 시작한 이동 중에는 툴바가
+  활성 상태였다. `?ns=a&q=hello`에서 b를 선택하고 검색 칩을 제거하면 옛 쿼리의 a를 다시 제출할 수 있었다.
+- **근본 원인**: 같은 URL을 바꾸는 툴바와 칩이 별개 라우터 호출을 갖고, pending은 툴바 안에서만 관리했다.
+- **그물**: 독립 code-review 후 실제 `TranslationsHeader`를 렌더하는 DOM 테스트로 세 시작점(namespace·
+  검색 칩·초기화)의 잠금 누락을 red로 확인했다. 기존 테스트는 툴바만 렌더해 형제 컨트롤을 보지 못했다.
+- **재발 방지**: `TranslationFilters`가 칩도 렌더하고 같은 pending·이동 함수를 공유한다. 테스트는 양쪽 잠금,
+  중복 요청 차단, 완료 후 잠금 해제, 새 namespace를 보존한 다음 칩 이동을 검사한다.
+  `rg -n 'router\.push\(routes\.translations|onNavigate=' components --glob '!**/__tests__/**'`를 실제 실행했고
+  번역 필터의 직접 이동은 `filters.tsx` 한 곳, 칩은 그 함수를 받는 한 곳으로 모였다.
+
+### 2026-09-12 — rowSpan으로 커진 행에서 내부 div의 세로선이 끊겼다
+
+- **영역**: `components/translations/key-group.tsx` — shadcn Table 전환 중 발견, 커밋 전 수정.
+- **증상**: 1280px 브라우저에서 키 설명을 DOM상으로 길게 만든 실험에서 로케일 행은 약 370·373·262px로
+  늘었지만, 값 내부 div는 66·66·46px였다. 그 div의 왼쪽 border가 셀 높이 전체를 덮지 못했다.
+- **근본 원인**: grid 시절의 내부 div에 있던 경계선을 그대로 두었다. table의 rowSpan은 행 높이를
+  배분하지만 td 내부 블록의 높이까지 늘리지 않는다.
+- **그물**: 전체 테스트와 타입 검사는 통과했다. 브라우저의 긴 설명 실측으로 잡았고,
+  `translation-table.test.tsx`에 경계선이 실제 td에 있는지 확인하는 DOM 회귀 테스트를 추가해 red→green을 확인했다.
+- **재발 방지**: 행 전체를 나누는 선은 td에, 입력·메타데이터의 포커스 표시는 내부 div에 둔다.
+  `rg -n 'border-l' components/translations/key-group.tsx components/translation-input.tsx`를 실제 실행했고
+  이 경계선은 TableCell 한 곳에만 남았다. 수정 후 같은 브라우저 실험에서 늘어난 세 행 모두 td의 1px 경계선을 확인했다.
+
+### 2026-09-12 — 테스트가 만든 `NextRequest`는 복사되고 런타임이 준 것은 던졌다
+
+- **영역**: `lib/login-link/http.ts` (`withLoginLink`)
+- **증상**: 계정 병합의 **확인 왕복 전체가 500**이었다 — 성공 갈래도, 다른 계정 갈래도. 화면에는
+  "페이지가 작동하지 않습니다 / HTTP ERROR 500"만 나왔다. `pnpm test` 2862개 · 격리 PostgreSQL 43개 ·
+  `pnpm build`가 전부 green인 상태에서 **dev 서버 첫 클릭에** 났다.
+- **근본 원인**: 확인 callback에서 다른 사용자의 세션 쿠키를 떼려고 `new NextRequest(request)`로
+  요청을 복사했다. Next 16 런타임이 핸들러에 넘기는 요청 객체를 그 생성자에 넣으면
+  `TypeError: Cannot read private member #state from an object whose class did not declare it`가
+  던져진다. **`withLoginLink`의 `try` 밖**(가로채기 판정 직후)이라 500이 그대로 나갔다.
+- **그물**: 없었다. 단위 스위트(`lib/login-link/__tests__/http.test.ts`)도 통합 스위트
+  (`lib/credentials/__tests__/postgres.integration.ts`)도 `new NextRequest("http://…", { headers })`로
+  **자기가 만든** 객체를 넘기므로 그 복사가 성립한다 — 두 스위트가 재는 것은 같은 클래스의 같은
+  생성 경로이고, 런타임이 주는 객체와 다르다는 사실은 **원리적으로 못 본다.** 잡은 것은
+  `/bugshot-qa`도 CI도 아니라 **실물 클릭**이었다(T7 시나리오 4를 밟다가).
+- **재발 방지**: 표준 `Request`로 조립한다 — `new Request(request.url, { method, headers })`이고
+  본문이 있는 메서드만 `body` + `duplex: "half"`를 얹는다. `next-auth`도 내부에서 `new Request(url, req)`만
+  하므로 이 모양이 라이브러리와 같은 계약이다. `rg -n 'new NextRequest\(' lib app --glob '!**/__tests__/**'`를
+  실제 실행했고 프로덕션 코드에 남은 것은 0건이다(테스트는 요청을 **만드는** 쪽이라 대상이 아니다).
+- **⚠️ 남는 교훈**: **"프레임워크가 준 객체를 우리 손으로 다시 만든다"는 테스트가 못 보는 부류다.**
+  같은 계보로 이 리포가 이미 두 번 밟았다 — 툴팁 provider(2026-09-08)와 `Slot.Slottable`
+  (2026-09-09)도 렌더되는 순간에만 드러났다. 그 셋의 공통점은 **우리 코드가 라이브러리 내부 규약에
+  닿는데 그 규약을 우리 픽스처가 흉내 낸다**는 것이다. 인증 경로에 그런 코드를 넣으면 실물 왕복을
+  한 번 밟기 전에는 green을 믿지 않는다.
+
+### 2026-09-12 — OAuth 오류 화면이 초대 복귀 지점을 표시하지 않았다
+
+- **영역**: `app/signin/page.tsx`, `app/invite/[token]/page.tsx`
+- **증상**: 로컬 초대 화면에서 GitHub OAuth를 시작하고, 실제 시작 URL의 state와 callback에
+  `error=access_denied`를 돌려 취소 응답을 재현했다. Auth.js는 `/signin` 오류 화면으로 보냈고,
+  그 화면에는 초대로 돌아갈 링크가 없었다. 공급자 UI에서 취소를 직접 누른 검증은 별도다.
+- **근본 원인**: 성공 목적지(`redirectTo`)와 오류 목적지(`pages.error`)가 별도다. 초대 화면이
+  성공 목적지를 보존해도 공통 로그인 오류 화면은 그 목적지를 표시하지 않았다.
+  **오류 리다이렉트 뒤에도 `authjs.callback-url` 쿠키에는 초대 URL이 남아 있었다.**
+- **그물**: 기존 일반 로그인 테스트는 `signIn`에 넘기는 성공 목적지와 쿠키 정리 순서만 봐서
+  오류 착지 뒤의 복귀 경로를 놓쳤다. 런타임 쿠키 관측으로 전제를 확인했고,
+  `app/signin/__tests__/invite-return.test.tsx`가 secure·로컬 이름과 초대 아닌 값의 거부를 센다.
+  구현 뒤 브라우저에서 복귀 링크를 눌러 원래 초대 화면으로 돌아오는 것까지 확인했다.
+- **재발 방지**: `rg -n 'pages:|destFromCallbackUrl|callback-url' auth.ts app/signin app/invite lib/login-link --glob '!**/__tests__/**'`
+  로 오류 착지와 목적지 소비자를 대조한다. 이번 전수에서 공통 오류 착지는 `/signin` 하나였고,
+  병합 시작은 이미 같은 쿠키를 `destFromCallbackUrl`로 읽었다. 새 목적지 쿠키 대신 이 파서를
+  재사용하고 `routes.invite`로 내부 링크를 만든다. 공급자 취소 실물 검증에는 성공 복귀와 별도로
+  **오류 착지에서 원래 작업으로 돌아갈 수 있는지**를 포함한다.

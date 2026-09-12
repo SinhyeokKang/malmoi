@@ -7,6 +7,7 @@ import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
 import { KeyGroup } from "@/components/translations/key-group";
+import { Table, TableHeader, TableRow, TableHead } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { relativeTime } from "@/lib/relative-time";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
+import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * 번역 화면 — **키 하나가 한 그룹이고 로케일이 그 아래 행으로 쌓인다** (8-4, 시안 `212:937`).
@@ -54,7 +56,7 @@ export const maxDuration = 60;
  * ⚠️ **옛 `focus`·`state`가 없다** (8-4). 옛 링크는 무시된다 — 기본 선택으로 떨어질 뿐 404도
  * 리다이렉트도 아니다.
  */
-type Search = { ns?: string; locales?: string; q?: string };
+type Search = Raw<"ns" | "locales" | "q">;
 
 export default async function TranslationsPage({
   params,
@@ -64,7 +66,7 @@ export default async function TranslationsPage({
   searchParams: Promise<Search>;
 }) {
   const { slug } = await params;
-  const search = await searchParams;
+  const search = firstQueryValues(await searchParams);
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라
   // RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB). `redirect()`는 렌더를 중단한다.
@@ -101,10 +103,13 @@ export default async function TranslationsPage({
     a.isBase === b.isBase ? (a.code < b.code ? -1 : 1) : a.isBase ? -1 : 1,
   );
 
-  const [rows, unpublished] = await Promise.all([
-    loadKeys(prisma, project.id),
-    countUnpublished(prisma, project.id, project.lastPulledAt),
-  ]);
+  /**
+   * ⚠️ **키만 먼저 읽는다 — 나머지 둘은 착지 redirect **뒤**다** (2026-09-12). 기본 착지는 URL을
+   * 고정하려고 아래에서 `redirect`하는데, 그 판정에 필요한 것은 `rows` 하나다. 집계·편집자를 여기서
+   * 함께 읽으면 **버려질 렌더가 그 둘까지 조회**하고, 사이드바에서 들어오는 가장 흔한 경로가 매번
+   * 그 값을 문다 (SAAS §8의 2초 게이트가 재는 것이 그 경로다).
+   */
+  const rows = await loadKeys(prisma, project.id);
 
   /**
    * 보일 로케일. **폴백은 "살아 있는 로케일 전체"다** — orphaned를 섞으면 그 빈 셀이 전부
@@ -117,6 +122,21 @@ export default async function TranslationsPage({
   const counts = namespaceCountsFor(rows, selected);
   const selection = resolveNamespace(search.ns, counts);
 
+  /**
+   * 기본 착지를 **URL에 고정한다** — 그 뒤로는 화면이 ns를 다시 고르지 않는다.
+   *
+   * ⚠️ **저장 재검증이 화면을 옮기는 것을 막는 것이 요지다.** `?ns=`가 없으면 매 렌더가
+   * `defaultNamespace`를 다시 계산하는데, 한 셀을 채워 그 네임스페이스의 pending이 0이 되면
+   * 다음 재검증이 **다른 네임스페이스로 착지해** 작성 중인 셀이 통째로 언마운트된다.
+   *
+   * ⚠️ **이 자리가 조회 둘보다 앞이어야 한다** (2026-09-12) — 버려질 렌더이므로 여기까지 온 비용이
+   * 그대로 낭비다. 그래도 `loadKeys` 한 번은 못 피한다: 착지할 네임스페이스를 `counts`가 정하고
+   * 그 출처가 `rows`다.
+   */
+  if (selection.kind === "one" && search.ns !== selection.namespace) {
+    redirect(routes.translations(slug, { ns: selection.namespace, locales: search.locales, q: search.q }));
+  }
+
   const scoped = selection.kind === "one" ? rows.filter((r) => r.namespace === selection.namespace) : rows;
   const filtered = selection.kind === "none" ? [] : filterRows(scoped, { locales: selected, q: search.q });
   /**
@@ -126,9 +146,17 @@ export default async function TranslationsPage({
   const visible = pendingFirst(filtered, selected);
   const groups = groupByNamespace(visible, counts);
 
-  // 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
-  // `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3). **렌더되는 행만** 모은다.
-  const actors = await loadActors(prisma, collectActorIds(visible));
+  /**
+   * 편집자 이름은 왕복 하나로 받는다 — 행마다 조회하면 903키 리포에서 그만큼의 쿼리가 된다.
+   * `updatedBy`를 그대로 찍으면 번역자에게 cuid가 보인다 (issue #3). **렌더되는 행만** 모은다.
+   *
+   * ⚠️ **미배포 집계와 병렬이다** — 위에서 `loadKeys`를 떼어내며 라운드가 하나 늘 뻔했다. 둘은
+   * 서로를 안 물므로 같은 라운드에 보낸다.
+   */
+  const [unpublished, actors] = await Promise.all([
+    countUnpublished(prisma, project.id, project.lastPulledAt),
+    loadActors(prisma, collectActorIds(visible)),
+  ]);
 
   /**
    * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (design §2).
@@ -204,53 +232,36 @@ export default async function TranslationsPage({
           <div>
             {groups.map((group) => (
               <section key={group.namespace}>
-                {/*
-                  ⚠️ **실제 `<h2>`여야 한다** — `div` + `grid`로 가면서 네임스페이스 간 이동이
-                  스크린리더의 heading 탐색으로만 가능해졌다 (design §1.5).
-                  ⚠️ **sticky로 만들지 않는다** — 시안이 스크롤 영역 안의 보통 블록이고, sticky는
-                  스크롤 컨테이너 기준이라 이 레이아웃에서 자리가 애매하다. 필요해지면 실측 뒤에.
-                */}
-                {/*
-                  ⚠️ **헤딩이 표의 첫 행이다 — 표를 감싸는 상자가 없다** (2026-09-11 — 시안
-                  `212:3815`). 전에는 `rounded-lg border` 상자에 표를 넣고 헤딩을 그 **위에** 띄웠는데,
-                  시안의 표는 **선만으로** 구조를 만든다: 바깥 테두리가 없고 헤딩 아래·키 그룹 사이의
-                  가로선과 키 셀의 세로선이 전부다. 상자를 두면 그 선들이 격자 안의 격자가 된다.
-
-                  ⚠️ **`px-2`가 키 셀과 같은 선이다** — 헤딩과 키 이름의 왼쪽이 맞아야 네임스페이스가
-                  그 아래 키들을 덮는 것으로 읽힌다.
-
-                  ⚠️ **`sticky top-0`이다** (2026-09-11 사용자 — DESIGN §6.1의 "sticky로 만들지
-                  않는다"를 뒤집었다). 그 판정의 근거는 *"sticky는 스크롤 컨테이너 기준이라 이
-                  레이아웃에서 자리가 애매하다"*였는데, 스크롤 경계가 `PanelBody` **하나로** 분명해진
-                  지금은 기준이 애매하지 않다 — 가장 가까운 스크롤 조상이 그것이고 `top-0`이 그
-                  상단이다. 섹션이 위로 빠져나가면 **다음 섹션의 헤딩이 밀어 올려 교체된다**(sticky의
-                  기본 동작이라 JS가 없다).
-
-                  ⚠️ **`bg-background`가 없으면 표 행이 헤딩을 뚫고 지나간다** — 붙어 있는 동안 뒤로
-                  값이 흐르는 자리다. 패널과 같은 흰색이라 색이 늘지 않는다.
-
-                  셀 상태 표시가 relative/absolute이므로 헤딩을 z-10으로 올린다.
-                  같은 층이면 뒤에 렌더된 셀이 sticky 제목 위에 칠해진다.
-                */}
+                {/* 섹션 제목은 PanelBody에 붙는다. Table은 별도 스크롤 경계를 만들지 않는다. */}
                 <div className="border-border bg-background sticky top-0 z-10 flex items-center gap-2 border-b px-2 py-3">
-                  <h2 className="text-sm font-medium">{group.namespace}</h2>
+                  <h2 id={`namespace-${encodeURIComponent(group.namespace)}`} className="text-sm font-medium">{group.namespace}</h2>
                   {/* 필터 **후** 건수다 — 제목 옆 총계가 필터 전이라 둘이 같은 값이 아니다. */}
                   <Badge variant="neutral">
                     <span aria-hidden>{group.rows.length}</span>
                     <span className="sr-only">{m.translations.keys(group.rows.length)}</span>
                   </Badge>
                 </div>
-                {group.rows.map((row) => (
-                  <KeyGroup
-                    key={row.id}
-                    slug={slug}
-                    row={row}
-                    locales={visibleLocales}
-                    project={project}
-                    actors={actors}
-                    lastPulledAt={project.lastPulledAt}
-                  />
-                ))}
+                <Table scrollable={false} className="table-fixed" aria-labelledby={`namespace-${encodeURIComponent(group.namespace)}`}>
+                  <colgroup><col className="w-80" /><col className="w-17" /><col /></colgroup>
+                  <TableHeader className="sr-only">
+                    <TableRow>
+                      <TableHead scope="col">{m.translations.columns.key}</TableHead>
+                      <TableHead scope="col">{m.translations.columns.locale}</TableHead>
+                      <TableHead scope="col">{m.translations.columns.value}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  {group.rows.map((row) => (
+                    <KeyGroup
+                      key={row.id}
+                      slug={slug}
+                      row={row}
+                      locales={visibleLocales}
+                      project={project}
+                      actors={actors}
+                      lastPulledAt={project.lastPulledAt}
+                    />
+                  ))}
+                </Table>
               </section>
             ))}
           </div>

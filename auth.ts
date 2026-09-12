@@ -8,6 +8,10 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 import { freshVerifiedEmail, verifiedEmailFrom } from "@/lib/auth/email";
+import { authorizeLoginLink, linkAuthCookies, withLoginLink } from "@/lib/login-link/http";
+import { destFromCallbackUrl, isLoginProvider } from "@/lib/login-link/policy";
+import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
+import { cookies } from "next/headers";
 import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
@@ -80,7 +84,12 @@ const google = Google({
  */
 const authConfig = NextAuth(async () => ({
   adapter: credentialAdapter(getPrisma()),
-  cookies: revocationAuthCookies(),
+  /**
+   * ⚠️ **두 스코프를 함께 본다** (account-linking design §5.4) — 회수와 병합이 각자 다른 이름·salt로
+   * state를 암호화하므로, 한쪽만 읽으면 그 왕복의 state 쿠키를 Auth.js가 못 찾는다. 둘은
+   * 배타적이라 `??`로 충분하다 (불변식 8).
+   */
+  cookies: revocationAuthCookies() ?? linkAuthCookies(),
   providers: [github, google],
   /**
    * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
@@ -145,6 +154,13 @@ const authConfig = NextAuth(async () => ({
     async signIn({ user, account, profile }) {
       const revocation = await authorizeRevocation(getPrisma(), account);
       if (revocation !== null) return revocation;
+      /**
+       * ⚠️ **회수 판정 뒤, 나머지 전부보다 앞이다** (design 불변식 8b). 확인 왕복은 **기존 계정으로
+       * 하는 평범한 로그인**이라 여기서 갈라놓지 않으면 그대로 로그인이 되고, 불일치 갈래에서
+       * **남의 GitHub으로 로그인된 세션이 이미 만들어진 채** 병합 화면을 보게 된다.
+       */
+      const link = await authorizeLoginLink(getPrisma(), account);
+      if (link !== null) return link;
       // provider 설정이 검증에 실패하면 email을 비워 보낸다 (`githubUserinfo`).
       if (typeof user.email !== "string" || user.email === "") return false;
 
@@ -158,7 +174,26 @@ const authConfig = NextAuth(async () => ({
       const providerAccountId = account?.providerAccountId;
       if (provider === undefined || providerAccountId === undefined) return true;
       try {
-        await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
+        const refresh = await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
+        /**
+         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (account-linking design §5.1) — 같은
+         * 주소가 다른 수단으로 이미 등록돼 있으면 `OAuthAccountNotLinked`로 떨어뜨리지 않고
+         * 안내 화면으로 보낸다. **여기서 합치지 않는다**: 이 반환은 문자열이라 Auth.js가
+         * `handleLoginOrRegister`를 통째로 건너뛰고 `User`·`Account`·`Session`이 0회 쓰인다.
+         */
+        if (refresh === "unlinked" && isLoginProvider(provider)) {
+          const offer = await loadLinkOffer(getPrisma(), { provider, providerAccountId, verifiedEmail: user.email });
+          if (offer.kind === "offer") {
+            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (design 불변식 9).
+            const jar = await cookies();
+            const dest = destFromCallbackUrl(
+              (jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value,
+            );
+            const token = await beginLink(getPrisma(), { userId: offer.userId, provider, providerAccountId, dest });
+            if (token === null) return routes.signIn({ error: "Unavailable" });
+            return routes.signInLink(token);
+          }
+        }
       } catch {
         // 장애는 사유를 실어 보낸다 — 그냥 로그인 화면이면 정당한 비로그인과 같은 응답이 된다.
         return routes.signIn({ error: "Unavailable" });
@@ -181,7 +216,12 @@ const authConfig = NextAuth(async () => ({
 }));
 
 export const { auth, signIn, signOut } = authConfig;
+/**
+ * ⚠️ **`withRevocation`이 바깥, `withLoginLink`가 안쪽이다** (account-linking design 불변식 8a) —
+ * 회수가 먼저 판정하고 자기 것이 아니면 통과시킨다. 뒤집으면 회수 왕복이 병합 가로채기를 먼저
+ * 만나고, 두 intent 판정이 쿠키 셋의 OR이라 결론이 흔들린다.
+ */
 export const handlers = {
-  GET: (request: NextRequest) => withRevocation(request, () => authConfig.handlers.GET(request)),
-  POST: (request: NextRequest) => withRevocation(request, () => authConfig.handlers.POST(request)),
+  GET: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest))),
+  POST: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest))),
 };

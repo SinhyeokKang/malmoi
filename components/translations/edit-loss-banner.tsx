@@ -18,18 +18,20 @@ const DISMISS_KEY = "malmoi:edit-loss-dismissed";
  * ⚠️ **클라이언트 마운트 뒤에만 렌더한다.** SSR은 `sessionStorage`를 모르므로, 먼저 그리면 닫아 둔
  * 사용자가 매 렌더에 한 프레임씩 배너를 본다.
  */
-export function EditLossBanner({ count, dismissKey }: { count: number; dismissKey: string }) {
+export function EditLossBanner({ slug, count, dismissKey }: { slug: string; count: number; dismissKey: string }) {
+  const storageKey = `${DISMISS_KEY}:${slug}`;
   const [mounted, setMounted] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     try {
-      setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === dismissKey);
+      setDismissed(window.sessionStorage.getItem(storageKey) === dismissKey);
     } catch {
       // 사생활 보호 모드 등에서 접근 자체가 던진다 — 보이는 쪽이 안전한 기본값이다.
+      setDismissed(false);
     }
-  }, [dismissKey]);
+  }, [storageKey, dismissKey]);
 
   if (!mounted || dismissed || count === 0) return null;
 
@@ -39,7 +41,7 @@ export function EditLossBanner({ count, dismissKey }: { count: number; dismissKe
       onDismiss={() => {
         setDismissed(true);
         try {
-          window.sessionStorage.setItem(DISMISS_KEY, dismissKey);
+          window.sessionStorage.setItem(storageKey, dismissKey);
         } catch {
           // 저장 못 해도 이번 화면의 닫기는 동작한다.
         }

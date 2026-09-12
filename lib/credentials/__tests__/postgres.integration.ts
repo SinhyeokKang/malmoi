@@ -20,6 +20,9 @@ import { noteAuthError, withOutageFlag } from "@/lib/auth/outage";
 import { publicSession } from "@/lib/auth/public-session";
 import { beginRevocation, finishRevocation } from "@/lib/session-revocation/store";
 import { authorizeRevocation, withRevocation, withRevocationStart, revocationAuthCookies } from "@/lib/session-revocation/http";
+import { authorizeLoginLink, linkAuthCookies, withLinkStart, withLoginLink } from "@/lib/login-link/http";
+import { beginLink, finishLink, loadLinkOffer } from "@/lib/login-link/store";
+import { isLoginProvider } from "@/lib/login-link/policy";
 
 // A fresh Unix-socket-only cluster; never reads DATABASE_URL/DIRECT_URL or a shared DB.
 const directory = mkdtempSync(join(tmpdir(), "malmoi-credentials-"));
@@ -168,24 +171,51 @@ it("PII/token rotation, partial reindex, missing-key recovery and backup restore
   expect(await convertCredentials(prisma, { mode: "verify" })).toMatchObject({ changes: 0 });
   expect(await prisma.projectMember.count()).toBe(1);
 });
-function fakeAuth(provider: "github" | "google", identity: string, revocation = false) {
+/**
+ * ⚠️ **이 함수는 프로덕션 `auth.ts`를 import하지 않고 `signIn` 콜백을 손으로 다시 적는다.** 그래서
+ * 아래 회귀들이 무엇을 검사하는지는 **이 사본이 무엇을 미러링하느냐**로 정해진다 — 갈래를 안
+ * 옮기면 스위트가 green이면서 새 코드를 한 줄도 안 돈다 (POSTMORTEM 2026-09-10).
+ * 지금 미러링하는 것은 셋이다: 회수 · 병합 확인 · 병합 제안.
+ */
+function fakeAuth(provider: "github" | "google", identity: string, revocation = false, link = false) {
+  const intercepted = revocation || link;
   const handlers = NextAuth(() => ({
-    cookies: revocationAuthCookies(),
+    cookies: revocationAuthCookies() ?? linkAuthCookies(),
     trustHost: true, secret: "fixture-secret-fixture-secret-fixture-secret", basePath: "/api/auth",
     adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 86400, updateAge: 3600, generateSessionToken: () => randomBytes(32).toString("base64url") },
-    providers: [{ id: provider, name: provider, type: "oauth", checks: revocation ? ["pkce", "state"] : ["none"], clientId: "fixture", clientSecret: "fixture",
+    providers: [{ id: provider, name: provider, type: "oauth", checks: intercepted ? ["pkce", "state"] : ["none"], clientId: "fixture", clientSecret: "fixture",
       authorization: "https://provider.invalid/authorize", token: "https://provider.invalid/token", userinfo: "https://provider.invalid/user",
       [customFetch]: async input => new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).pathname === "/token"
         ? Response.json({ access_token: "oauth-access", refresh_token: "oauth-refresh", token_type: "bearer", expires_in: 3600 })
         : Response.json({ id: identity, email: `${identity}@example.com`, name: "Fixture" }),
       profile: profile => ({ id: String(profile.id), email: String(profile.email), name: String(profile.name), image: null }),
     }],
-    callbacks: { session: ({ session, user }) => publicSession({ session, user }), signIn: async ({ account }) => revocation ? (await authorizeRevocation(prisma, account)) ?? true : true },
+    callbacks: {
+      session: ({ session, user }) => publicSession({ session, user }),
+      // 프로덕션과 **같은 순서**다: 회수 → 병합 확인 → 이메일 갱신 → 병합 제안.
+      signIn: async ({ user, account }) => {
+        if (revocation) {
+          const outcome = await authorizeRevocation(prisma, account);
+          if (outcome !== null) return outcome;
+        }
+        if (link) {
+          const outcome = await authorizeLoginLink(prisma, account);
+          if (outcome !== null) return outcome;
+        }
+        if (!link || !account || typeof user.email !== "string" || user.email === "") return true;
+        const refresh = await refreshVerifiedEmail(prisma, account.provider, account.providerAccountId, user.email);
+        if (refresh !== "unlinked" || !isLoginProvider(account.provider)) return true;
+        const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email });
+        if (offer.kind !== "offer") return true;
+        const token = await beginLink(prisma, { userId: offer.userId, provider: account.provider, providerAccountId: account.providerAccountId, dest: { kind: "projects" } });
+        return token === null ? "/signin?error=Unavailable" : `/signin/link/${token}`;
+      },
+    },
     logger: { error: noteAuthError },
   })).handlers;
-  return revocation ? {
-    GET: (req: NextRequest) => withRevocation(req, () => handlers.GET(req)),
-    POST: (req: NextRequest) => withRevocation(req, () => handlers.POST(req)),
+  return intercepted ? {
+    GET: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.GET(callbackRequest))),
+    POST: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.POST(callbackRequest))),
   } : handlers;
 }
 it.each(["github", "google"] as const)("installed Auth.js %s callback stores digest, rejects digest-cookie, renews and signs out", async provider => {
@@ -360,16 +390,36 @@ it("actual Prisma R1/R2 deploy records failed finalize and resumes only after ve
   expect(await prisma.projectMember.count()).toBe(1);
 });
 
-async function revocationFixture(provider: "github" | "google" = "github") {
+/**
+ * ⚠️ **`second`가 2026-09-12에 붙었다** (account-linking T6) — 이 픽스처가 계정을 **정확히 하나**만
+ * 붙여서, 수단이 둘인 계정의 성공 경로가 이 스위트에서 **원리적으로 안 밟혔다.**
+ */
+async function revocationFixture(provider: "github" | "google" = "github", second = false) {
   const adapter = credentialAdapter(prisma);
   const user = await adapter.createUser!({ id: "ignored", email: "revoke@example.com", emailVerified: null });
   const other = await adapter.createUser!({ id: "ignored", email: "other@example.com", emailVerified: null });
   await adapter.linkAccount!({ userId: user.id, provider, providerAccountId: "same", type: "oauth" });
+  // 어댑터는 둘째 로그인 수단을 거부한다(정책 그대로) — 병합이 쓰는 경로로 직접 넣는다.
+  if (second) await prisma.account.create({ data: { userId: user.id, type: "oauth", provider: provider === "github" ? "google" : "github", providerAccountId: "second" } });
   for (const raw of ["current", "second-device"]) await adapter.createSession!({ userId: user.id, sessionToken: raw, expires: new Date(Date.now() + 600000) });
   await adapter.createSession!({ userId: other.id, sessionToken: "other-device", expires: new Date(Date.now() + 600000) });
   const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url") };
   return { user, other, input, adapter };
 }
+/**
+ * ⚠️ **수단이 둘이면 회수가 통째로 죽던 자리다** (account-linking T6) — `accounts.length !== 1`이
+ * 그 조건이었고, 병합이 그 상태를 실제로 만든다. 확인 상대는 `pickLoginAccount`가 결정적으로 고른다.
+ */
+it("revocation still works for an account with two sign-in methods", async () => {
+  const { input, other } = await revocationFixture("github", true);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await beginRevocation(prisma, input)).toBe("ready");
+  expect(await finishRevocation(prisma, input)).toBe("revoked");
+  expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
+  // 회수는 세션만 지운다 — 로그인 수단은 그대로다.
+  expect(await prisma.account.count()).toBe(2);
+});
+
 it("revocation atomically consumes one challenge, preserves another user and rejects replay", async () => {
   const { input, other, adapter } = await revocationFixture();
   expect(await beginRevocation(prisma, input)).toBe("ready");
@@ -505,4 +555,181 @@ it.each(["/projects", "/invite/invite-token"])("normal OAuth login returns to %s
   expect(response.headers.get("location")).toBe(`http://localhost${destination}`);
   expect(await prisma.session.count()).toBe(4);
   expect(await prisma.user.count()).toBe(2);
+});
+
+/**
+ * 병합(account-linking) — **실 DB가 있어야만 답이 나오는 것들**: 조건부 소비의 경쟁, 행 증감,
+ * 그리고 "확인 왕복이 일반 로그인으로 변신하지 않는가".
+ */
+async function linkFixture() {
+  const adapter = credentialAdapter(prisma);
+  const owner = await adapter.createUser!({ id: "ignored", email: "merge@example.com", emailVerified: null });
+  await adapter.linkAccount!({ userId: owner.id, provider: "github", providerAccountId: "merge", type: "oauth" });
+  const stranger = await adapter.createUser!({ id: "ignored", email: "stranger@example.com", emailVerified: null });
+  await adapter.linkAccount!({ userId: stranger.id, provider: "github", providerAccountId: "stranger", type: "oauth" });
+  return { owner, stranger };
+}
+
+it("a second provider at the same address offers a merge instead of creating a user", async () => {
+  const { owner } = await linkFixture();
+  const handlers = fakeAuth("google", "merge", false, true);
+  // 평범한 google 로그인이다 — 병합 쿠키가 없으므로 가로채기는 통과하고 `signIn` 콜백이 갈래를 낸다.
+  const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
+  const csrfToken = (await csrf.json()).csrfToken;
+  const csrfCookies = csrf.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  const signin = await handlers.POST(new NextRequest("http://localhost/api/auth/signin/google", { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: "http://localhost/projects" }) }));
+  const state = new URL(signin.headers.get("location")!).searchParams.get("state")!;
+  const cookie = signin.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  const response = await handlers.GET(new NextRequest(`http://localhost/api/auth/callback/google?code=fixture&state=${encodeURIComponent(state)}`, { headers: { cookie } }));
+  const location = response.headers.get("location")!;
+  expect(location).toMatch(/^http:\/\/localhost\/signin\/link\/[\w-]{43}$/);
+  // 거부된 로그인은 행을 남기지 않는다 — `signIn`이 문자열을 내면 handleLoginOrRegister가 통째로 건너뛴다.
+  expect(await prisma.user.count()).toBe(2);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(0);
+  const rows = await prisma.verificationToken.findMany();
+  expect(rows).toHaveLength(1);
+  expect(rows[0]!.identifier).toContain(`"${owner.id}"`);
+  expect(rows[0]!.token).not.toBe(location.split("/").pop());
+});
+
+async function startLinkProof(identity: string, dest: { kind: "invite"; token: string } | { kind: "projects" }) {
+  const { owner, stranger } = await linkFixture();
+  const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest });
+  const handlers = fakeAuth("github", identity, false, true);
+  const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
+  const csrfToken = (await csrf.json()).csrfToken;
+  const csrfCookies = csrf.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  const landing = dest.kind === "invite" ? `/invite/${dest.token}` : "/projects";
+  const signin = await withLinkStart(false, () => handlers.POST(new NextRequest("http://localhost/api/auth/signin/github", { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: `http://localhost${landing}` }) })));
+  const issued = signin.headers.getSetCookie().map(c => c.split(";")[0]!);
+  // ⚠️ state가 **우리 이름**으로 저장돼야 이 왕복이 일반 로그인으로 개명될 수 없다 (design 불변식 3).
+  expect(issued.some(c => c.startsWith("malmoi-link-state="))).toBe(true);
+  expect(issued.some(c => c.startsWith("authjs.state="))).toBe(false);
+  const state = new URL(signin.headers.get("location")!).searchParams.get("state")!;
+  const cookie = [...issued, `malmoi-login-link=${token}`].join("; ");
+  const callback = (sentCookie = cookie) => handlers.GET(new NextRequest(`http://localhost/api/auth/callback/github?code=fixture&state=${encodeURIComponent(state)}`, { headers: { cookie: sentCookie } }));
+  return { owner, stranger, token: token!, cookie, callback, landing };
+}
+
+it("confirming with the account that owns the address links it and returns to the invite", async () => {
+  const { owner, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });
+  const response = await callback();
+  expect(response.headers.get("location")).toBe("http://localhost/invite/invite-token");
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+  expect(await prisma.account.findUniqueOrThrow({ where: { provider_providerAccountId: { provider: "google", providerAccountId: "merge" } } })).toMatchObject({ userId: owner.id, access_token: null });
+  // 성공은 세션을 만든다 — 그래야 초대 수락으로 이어진다.
+  const sessions = await prisma.session.findMany();
+  expect(sessions).toHaveLength(1);
+  expect(sessions[0]!.userId).toBe(owner.id);
+  expect(await prisma.verificationToken.count()).toBe(0);
+  // 단일 사용 — 행이 사라졌으므로 돌아갈 화면이 없다.
+  expect((await callback()).headers.get("location")).toBe("http://localhost/signin?error=LinkExpired");
+});
+
+it("confirming with a different account writes nothing, mints no session and keeps the challenge alive", async () => {
+  const { token, callback } = await startLinkProof("stranger", { kind: "projects" });
+  const before = await prisma.user.findMany();
+  const response = await callback();
+  expect(response.headers.get("location")).toBe(`http://localhost/signin/link/${token}?e=wrong-account`);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(0);
+  expect(await prisma.user.findMany()).toEqual(before);
+  // ⚠️ **실패는 소비하지 않는다** (design ⑧) — 훔친 URL 한 번으로 남의 병합을 태울 수 없다.
+  expect(await prisma.verificationToken.count()).toBe(1);
+});
+
+it("merge confirmation replaces a different browser identity with the freshly confirmed owner", async () => {
+  const { owner, stranger, cookie, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });
+  const adapter = credentialAdapter(prisma);
+  await adapter.createSession!({ userId: stranger.id, sessionToken: "stranger-session", expires: new Date(Date.now() + 600000) });
+  const response = await callback(`${cookie}; authjs.session-token=stranger-session`);
+  expect(response.headers.get("location")).toBe("http://localhost/invite/invite-token");
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+  const issued = response.headers.getSetCookie().find(c => c.startsWith("authjs.session-token="));
+  expect(issued).toBeDefined();
+  const raw = issued!.split(";")[0]!.slice("authjs.session-token=".length);
+  expect((await adapter.getSessionAndUser!(raw))?.user.id).toBe(owner.id);
+});
+
+it("a session insert failure after merge reports unavailable instead of successful invite return", async () => {
+  const { owner, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });
+  const create = vi.spyOn(prisma.session, "create").mockRejectedValueOnce(new Error("fixture session storage unavailable"));
+  try {
+    const response = await callback();
+    expect(response.headers.get("location")).toBe("http://localhost/signin?error=Unavailable");
+    expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+    expect(await prisma.verificationToken.count()).toBe(0);
+    expect(await prisma.session.count()).toBe(0);
+  } finally {
+    create.mockRestore();
+  }
+});
+
+it("concurrent merge consumers insert exactly one account without changing another user", async () => {
+  const { owner, stranger } = await linkFixture();
+  const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest: { kind: "projects" } });
+  const before = await prisma.account.findMany({ where: { userId: stranger.id } });
+  const input = { challengeToken: token!, confirming: { provider: "github", providerAccountId: "merge" } };
+  const results = await Promise.all([finishLink(prisma, input), finishLink(prisma, input)]);
+  expect(results.filter(r => r.outcome === "linked")).toHaveLength(1);
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+  expect(await prisma.verificationToken.count()).toBe(0);
+  expect(await prisma.account.findMany({ where: { userId: stranger.id } })).toEqual(before);
+});
+
+it("a failed account insert rolls back challenge consumption and permits a later retry", async () => {
+  const { owner } = await linkFixture();
+  const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest: { kind: "projects" } });
+  const input = { challengeToken: token!, confirming: { provider: "github", providerAccountId: "merge" } };
+  await pool.query(`CREATE FUNCTION fail_link_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture account storage unavailable'; END $$;
+    CREATE TRIGGER fail_link_insert BEFORE INSERT ON "Account" FOR EACH ROW EXECUTE FUNCTION fail_link_insert();`);
+  try {
+    expect((await finishLink(prisma, input)).outcome).toBe("unavailable");
+    expect(await prisma.verificationToken.count()).toBe(1);
+    expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(1);
+  } finally {
+    await pool.query('DROP TRIGGER fail_link_insert ON "Account"; DROP FUNCTION fail_link_insert()');
+  }
+  expect((await finishLink(prisma, input)).outcome).toBe("linked");
+});
+
+it("a merge roundtrip without its purpose cookies cannot become an ordinary signup", async () => {
+  const { cookie, callback } = await startLinkProof("newcomer", { kind: "projects" });
+  const before = await prisma.user.findMany();
+  await prisma.verificationToken.deleteMany();
+  const stripped = cookie.split("; ").filter(c => !c.startsWith("malmoi-login-link=") && !c.startsWith("malmoi-link-state=")).join("; ");
+  const response = await callback(stripped);
+  // 목적 쿠키가 사라지면 Auth.js가 자기 state 쿠키를 못 찾아 거부한다 — 새 계정이 생기지 않는다.
+  expect(response.headers.get("location")).toContain("error=");
+  expect(await prisma.user.findMany()).toEqual(before);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(0);
+});
+
+it("renaming the encrypted merge state to an ordinary state cookie cannot turn it into login", async () => {
+  const { cookie, callback } = await startLinkProof("newcomer", { kind: "projects" });
+  const before = await prisma.user.findMany();
+  await prisma.verificationToken.deleteMany();
+  const renamed = cookie.split("; ").filter(c => !c.startsWith("malmoi-login-link=")).map(c => c.replace(/^malmoi-link-state=/, "authjs.state=")).join("; ");
+  const response = await callback(renamed);
+  expect(response.headers.get("location")).toContain("error=");
+  expect(await prisma.user.findMany()).toEqual(before);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(0);
+});
+
+/**
+ * design §14-1 — **실물로만 알 수 있던 하나**: 회수를 중단한 직후 병합을 시작하면 누구의 callback인가.
+ * 시작하는 쪽이 상대의 쿠키를 지우므로 병합이 자기 것을 받는다 (불변식 8c).
+ */
+it("a merge started right after an abandoned revocation still receives its own callback", async () => {
+  const { cookie, callback, landing } = await startLinkProof("merge", { kind: "projects" });
+  // 회수를 시작만 하고 버린 상태를 흉내 낸다 — 병합 시작이 이 둘을 지우고 오므로 남아 있지 않다.
+  const abandoned = [...cookie.split("; ")].join("; ");
+  expect(abandoned).not.toContain("malmoi-session-revocation=");
+  expect(abandoned).not.toContain("malmoi-revocation-state=");
+  const response = await callback(abandoned);
+  expect(response.headers.get("location")).toBe(`http://localhost${landing}`);
+  expect(response.headers.get("location")).not.toContain("sessionRevocation=");
 });
