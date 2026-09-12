@@ -399,8 +399,6 @@ export const en = {
         ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
         : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
 
-    back: "Projects",
-
     /**
      * 모달 껍데기 (new-project-modal design §7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
      * 본문과 "다음으로 갈 수 있는가"만 넘긴다.
@@ -459,11 +457,8 @@ export const en = {
 
     /** ② 리포 고르기 */
     repo: {
-      title: "Repository",
       search: "Find a repository by name",
       none: "No repository matches that name.",
-      pick: "Select",
-      other: "Choose another repository",
       /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
       pushedAt: (rel: string): string => `Pushed ${rel}`,
       branch: "Branch",
@@ -483,12 +478,7 @@ export const en = {
 
     /** ③ 후보 · 기준 언어 · 수동 지정 */
     files: {
-      title: "Locale files",
-      /** 후보 줄의 요약 — 키 수를 못 셌으면 호출부가 `key-count-failed`를 넣는다. */
-      summary: (locales: readonly string[], keys: string): string =>
-        `${locales.length} languages (${locales.join(", ")}) · ${keys}`,
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
-      more: "There may be more — set the path yourself below if what you need isn't listed.",
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
       summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
       notListed: "Not listed?",
@@ -538,7 +528,6 @@ export const en = {
 
     /** ④ 이름·주소 */
     naming: {
-      title: "Name and address",
       name: "Name",
       slug: "Address",
       /** 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다. */
@@ -594,8 +583,6 @@ export const en = {
         ),
       },
       ingest: {
-        title: "First import",
-        running: "Importing…",
         retry: "Try again",
         /** 못 읽은 파일 — 건수만으로는 사용자가 할 일이 없다 (ARCHITECTURE §0 불변식 9). */
         couldNotRead: (path: string): string => `Could not read ${path}`,
