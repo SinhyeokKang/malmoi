@@ -46,3 +46,25 @@ export function normalizeProjectSlug(repoName: string): string {
       .replace(/[.-]+$/, "")
   );
 }
+
+/**
+ * 주소가 이미 쓰였을 때의 대안 하나 (design §3.5).
+ *
+ * ⚠️ **존재 확인이 없다.** 그래서 문구가 `Try another, such as <alt>.`이고 `<alt> is free`가 아니다 —
+ * 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09(문서가 단언한 통제를 코드가 안 했다)의 모양이 된다.
+ *
+ * 형식이 이미 깨진 값에는 제안하지 않는다 — 고쳐야 할 곳이 번호가 아니라 형식이라, 번호를 붙이면
+ * 사용자가 같은 오류를 한 번 더 만난다. `undefined`면 화면이 대안 문장을 통째로 뺀다.
+ */
+export function suggestAlternateSlug(slug: string): string | undefined {
+  if (planSlug(slug) === "format") return undefined;
+  const match = /^(.*?)-(\d+)$/.exec(slug);
+  const stem = match?.[1] ?? slug;
+  const next = String(Number(match?.[2] ?? 1) + 1);
+  const suffix = `-${next}`;
+  // 상한을 넘으면 **앞을** 자른다 — 번호가 잘리면 대안이 아니라 다른 이름이 된다. 자른 끝이 `.`·`-`면
+  // `REF_SAFE_SLUG`가 거부하므로 함께 턴다.
+  const head = stem.slice(0, PROJECT_SLUG_MAX - suffix.length).replace(/[.-]+$/, "");
+  const alt = `${head}${suffix}`;
+  return planSlug(alt) === "ok" ? alt : undefined;
+}
