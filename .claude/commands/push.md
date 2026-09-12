@@ -56,10 +56,19 @@ pnpm db:status     # dev를 본다
 
 - 다만 **마이그레이션이 포함된다는 사실은 리포트에 남긴다** — `/merge`가 그것을 받아 `db:deploy`를 요구한다.
 
-### 4. 문서 신선도 검사 (트라이아지 → 정밀)
+### 4. 문서 신선도 + 미러 게이트
+
+⚠️ **트랙이 둘이고 서로 독립이다** (2026-09-13 정정, Codex 하네스 검토 지적 5).
+
+| 트랙 | 무엇 | 언제 |
+|---|---|---|
+| **조건부** — 4a → 4b → 4d | 문서 신선도. diff에 걸린 문서만 읽는다 | 트라이아지 후보가 있을 때만 |
+| **상시** — 4c | `pnpm sync:agents:check` (기계 검사) | **항상.** 트라이아지 결과와 무관하다 |
+
+전에는 4a의 탈출구가 "바로 5단계"라 **문서 후보가 0개인 대부분의 푸시에서 4c를 건너뛰는 것으로 읽혔다** — 그런데 4c 본문은 "트라이아지와 무관하게 항상"이라고 적혀 있었다. 둘 중 하나는 반드시 틀린 지시였다.
 
 **4a. 트라이아지 (1회, 가볍게).** `git diff @{u}..HEAD`를 **한 번** 훑어 트리거에 걸리는 문서를 후보로 매핑한다. 이 단계에서 문서를 읽지 않는다.
-- **후보 0개면 검사 종료, 바로 5단계.** 대부분의 푸시가 여기서 통과한다.
+- **후보 0개면 4b·4d를 건너뛰고 4c로.** 대부분의 푸시가 여기서 통과한다. **4c는 건너뛰지 않는다.**
 
 트리거:
 - **기능 추가/삭제, 역할·권한표 변경, 비범위 항목을 범위로 끌어들임, 설계 결정이 뒤집힘, `docs/PRODUCT.md` §10이 결정됨 → docs/PRODUCT.md** (제품 판정의 정본이다 — `lib/auth/`·`app/`·`prisma/schema.prisma`의 변경이면 자주 걸린다)
@@ -75,6 +84,8 @@ pnpm db:status     # dev를 본다
 - **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ARCHITECTURE.md §1.9 + `pnpm adapter-survey` 재실행** (아래 4d)
 - `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
 - 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
+- **`lib/credentials/**`·`lib/session-revocation/**`·`lib/login-link/**` 변경, 암호화 키 env 추가·의미 변경, `pnpm credentials:*`·`test:credentials:postgres`의 동작 변경 → docs/OPERATIONS.md** (⚠️ **"나중에 다시 실행할 절차"의 정본이다.** 절차가 낡으면 그걸 발견하는 시점이 **키를 잃은 뒤**다 — 그때 PII 키면 회원 이메일·이름을 복구할 수 없다)
+- **`.github/actions/**` 변경, `lib/onboarding/workflow.ts`가 만드는 YAML 변경, action `inputs`·red 조건 변경, 태그(`l10n-push-v1`) 릴리스 → docs/ACTIONS.md** (⚠️ **외부 계약이다** — 남의 리포가 이 문서를 보고 붙인다. 이 스텝에 대상 리포의 `secrets.PUSH_TOKEN`이 들어가므로 참조·권한 서술이 틀리면 남의 리포의 보안 경계가 틀어진다)
 
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
 - **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
@@ -84,10 +95,18 @@ pnpm db:status     # dev를 본다
 - **CLAUDE.md** — 명령어 표, 스택 버전, 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`
 - **README.md** — 스택 한 줄·명령어 표·브랜치 정책이 CLAUDE.md와 맞는지. prefix `docs(README): ...`
+- **docs/OPERATIONS.md** — 키 목록·회전·복구·전면 재발급 절차가 `lib/credentials/`·`.env.example`과 맞는지. **절차의 명령을 실제로 돌리지는 않는다**(프로덕션 자격증명을 건드린다) — 명령 이름·인자·순서·전제만 대조한다. prefix `docs(OPERATIONS): ...`
+- **docs/ACTIONS.md** — 워크플로 예시가 `.github/actions/l10n-push`의 실제 `inputs`·red 조건과 맞는지, **참조가 불변 태그인지**, `permissions` 서술이 맞는지(`pull-requests: read`가 없으면 열린 PR 경고가 조용히 죽는다). `lib/onboarding/workflow.ts`가 만드는 YAML과 문서 예시가 **같은 것을 말하는지** 대조한다. prefix `docs(ACTIONS): ...`
 
 발견 시 확인 없이 바로 Edit으로 반영하고 **문서별 별도 커밋**. 변경 불필요하면 건너뜀.
 
 **⚠️ 문서를 고쳤으면 1단계 게이트를 다시 돌린다** — 문서 커밋이 코드에 영향을 줄 일은 없지만, 이 시점의 HEAD가 배포될 HEAD이므로 게이트가 통과한 상태와 배포되는 상태가 같아야 한다.
+
+**4c. Codex 미러 게이트 (기계 검사).** 트라이아지와 무관하게 항상 `pnpm sync:agents:check`.
+- 통과 → 한 줄 보고.
+- 드리프트 → `pnpm sync:agents` 재생성 후 `docs(AGENTS): sync codex mirror` 커밋을 얹고 계속 (순수 생성물이라 확인 불필요).
+- 스크립트가 **에러**로 죽으면 중단하고 원인 보고. 미러는 생성물이므로 `AGENTS.md`·`.agents/skills/`를 직접 편집해 맞추지 않는다.
+- ⚠️ **이 재생성은 `.agents/skills/`에서 orphan을 재귀 삭제한다.** 2026-09-13부터 그 대상이 **`source-command-*`로 좁혀졌다** — 전에는 손으로 둔 Codex 전용 스킬까지 지웠고, 이 단계가 확인 없이 도는 자리라 사람 눈을 한 번도 안 지났다 (`scripts/__tests__/sync-agents.test.ts`가 범위를 고정한다).
 
 **4d. 어댑터 실측 재측정 (사람 판단 — 사용자에게 묻는다).**
 
@@ -99,11 +118,6 @@ pnpm db:status     # dev를 본다
 - **재측정하지 않기로 했으면 그 사실을 리포트에 남긴다.** "안 걸렸다"와 "걸렸는데 미뤘다"는 다르다.
 
 ⚠️ **상시 방어선은 따로 있다.** `lib/adapters/__tests__/key-order-golden.test.ts`가 실측 리포 모양을 인라인 픽스처로 들고 `lib/survey/diff.ts`의 프로덕션 함수로 재므로, 순서·결정성 회귀는 네트워크 없이 `pnpm test`가 잡는다. 재측정이 답하는 것은 **일반화**(처음 보는 리포에서도 그런가)뿐이다.
-
-**4c. Codex 미러 게이트 (기계 검사).** 트라이아지와 무관하게 항상 `pnpm sync:agents:check`.
-- 통과 → 한 줄 보고.
-- 드리프트 → `pnpm sync:agents` 재생성 후 `docs(AGENTS): sync codex mirror` 커밋을 얹고 계속 (순수 생성물이라 확인 불필요).
-- 스크립트가 **에러**로 죽으면 중단하고 원인 보고. 미러는 생성물이므로 `AGENTS.md`·`.agents/skills/`를 직접 편집해 맞추지 않는다.
 
 ### 5. 푸시 실행 (= 배포 시작)
 
