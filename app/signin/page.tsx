@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
@@ -12,6 +13,7 @@ import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { destFromCallbackUrl } from "@/lib/login-link/policy";
 import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
@@ -45,6 +47,8 @@ export default async function SignIn({
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
   // 세션을 못 읽었으면 `?error=`가 없어도 장애 문구를 보인다 — 로그인 버튼만 보이면 사용자가 헛로그인한다.
+  const jar = await cookies();
+  const dest = destFromCallbackUrl((jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value);
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
@@ -59,6 +63,11 @@ export default async function SignIn({
           <ProviderButton provider="github" label={m.signIn.github} variant="primary" />
           <ProviderButton provider="google" label={m.signIn.google} variant="default" />
 
+          {dest.kind === "invite" && (
+            <Link href={routes.invite(dest.token)} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+              {m.signIn.backToInvitation}
+            </Link>
+          )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
             <Link

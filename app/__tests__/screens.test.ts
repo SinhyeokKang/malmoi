@@ -116,7 +116,10 @@ describe("초대 수락 — 갇히는 길을 남기지 않는다", () => {
    * 이 페이지는 `(edit)` 레이아웃 밖이라 셸의 sign out이 없다 (code-review 2026-09-06 🟡11).
    */
   it("`email-mismatch`에 다른 계정으로 로그인하는 길이 있다", () => {
-    expect(src).toMatch(/email-mismatch/);
+    // 판정은 순수 모듈로 이동했다. 화면 연결과 실제 CTA는 screen.test.tsx도 함께 센다.
+    expect(read("lib/auth/invite-view.ts")).toMatch(/email-mismatch/);
+    expect(src).toMatch(/planInviteView\(/);
+    expect(src).toMatch(/case "wrong-account"/);
     expect(src).toMatch(/signOut\(/);
   });
 

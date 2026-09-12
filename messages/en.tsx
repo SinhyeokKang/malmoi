@@ -99,6 +99,7 @@ export const en = {
    */
   signIn: {
     title: "Sign in to malmoi",
+    backToInvitation: "Back to invitation",
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
