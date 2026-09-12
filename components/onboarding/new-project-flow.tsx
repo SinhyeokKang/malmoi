@@ -417,7 +417,7 @@ function ConfirmStep({
                 onChange={(e) => setManual({ ...manual, baseLocale: e.target.value })}
                 onFocus={() => setPicked(null)}
                 placeholder="en"
-                className="text-mono w-full"
+                className="w-full"
               />
             </FormGroup>
             {/* ⚠️ 이 문장은 **블록 전체**를 설명한다 — 필드의 `help`로 매달면 그 필드의 설명으로 읽힌다 */}

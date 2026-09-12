@@ -94,12 +94,13 @@
 
 | 관측 근거 | 조치 | 검증 |
 |---|---|---|
-| ContentPanel 주석: 목록 `px-4`; 현재 목록과 loading: `px-6` | 실제 수정 배송에서 해당 주석만 현행화 | 목록·loading·DESIGN §5.1의 여백 대조 |
-| [new-project-flow](../../../../components/onboarding/new-project-flow.tsx)의 `manual-base`가 `text-mono` | 기준 로케일 입력 sans로 정렬; path·slug는 그대로 | 후보 로케일·수동 입력·로케일 목록 폰트 비교 |
-| 멤버 제목 행은 OWNER의 Invite 버튼에 높이를 의존 | 버튼 없는 EDITOR에서도 최소 36px를 명시 | 두 역할의 제목 중심·본문 시작점 실측 |
+| ContentPanel 주석: 목록 `px-4`; 현재 목록과 loading: `px-6` | 2026-09-12 주석 현행화 적용 | 목록·loading·DESIGN §5.1의 여백 대조 |
+| [new-project-flow](../../../../components/onboarding/new-project-flow.tsx)의 `manual-base`가 `text-mono`였음 | 2026-09-12 기준 로케일 입력 sans 적용; path·slug는 그대로 | 두 뷰포트에서 sans·36px 입력 확인; 최종 시각 캡처·입력·Tab 확인 |
+| 멤버 제목 행은 OWNER의 Invite 버튼에 높이를 의존했음 | 2026-09-12 `min-h-9` 적용 | 두 뷰포트에서 버튼 유무와 무관하게 36px 확인; 실제 EDITOR 세션·캡처 확인 |
 
-위 목록은 코드에서 확인한 초기 후보다. 실제 화면 비교에서 표면·타입·간격·컨트롤·상태 외형별로
-차이를 추가하고 기준 코드·수정값·전후 캡처를 붙인다. 이미 일치하는 화면은 수정하지 않는다.
+실물 비교에서 Dialog의 기본 z-auto가 관리 표 sticky z-10보다 낮아 표 머리가 모달을 덮는 결함을
+추가 확인했다. Overlay·Content에 기존 포털 메뉴와 같은 z-50을 적용했다. 구성·포커스·닫기 동작은
+그대로다. 나머지 화면은 기존 표면·타입·간격·컨트롤·상태 표현을 유지한다. 검증 기록은 [tasks](./tasks.md)에 있다.
 `/account`의 `sm:` 분기처럼 지원 뷰포트에서 시각 차이가 없는 코드 정리는 포함하지 않는다.
 
 ## 5. 기술 경계와 테스트 대상
