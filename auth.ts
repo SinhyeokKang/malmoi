@@ -8,6 +8,9 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 import { freshVerifiedEmail, verifiedEmailFrom } from "@/lib/auth/email";
+import { destFromCallbackUrl, isLoginProvider } from "@/lib/login-link/policy";
+import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
+import { cookies } from "next/headers";
 import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
@@ -158,7 +161,26 @@ const authConfig = NextAuth(async () => ({
       const providerAccountId = account?.providerAccountId;
       if (provider === undefined || providerAccountId === undefined) return true;
       try {
-        await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
+        const refresh = await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
+        /**
+         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (account-linking design §5.1) — 같은
+         * 주소가 다른 수단으로 이미 등록돼 있으면 `OAuthAccountNotLinked`로 떨어뜨리지 않고
+         * 안내 화면으로 보낸다. **여기서 합치지 않는다**: 이 반환은 문자열이라 Auth.js가
+         * `handleLoginOrRegister`를 통째로 건너뛰고 `User`·`Account`·`Session`이 0회 쓰인다.
+         */
+        if (refresh === "unlinked" && isLoginProvider(provider)) {
+          const offer = await loadLinkOffer(getPrisma(), { provider, providerAccountId, verifiedEmail: user.email });
+          if (offer.kind === "offer") {
+            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (design 불변식 9).
+            const jar = await cookies();
+            const dest = destFromCallbackUrl(
+              (jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value,
+            );
+            const token = await beginLink(getPrisma(), { userId: offer.userId, provider, providerAccountId, dest });
+            if (token === null) return routes.signIn({ error: "Unavailable" });
+            return routes.signInLink(token);
+          }
+        }
       } catch {
         // 장애는 사유를 실어 보낸다 — 그냥 로그인 화면이면 정당한 비로그인과 같은 응답이 된다.
         return routes.signIn({ error: "Unavailable" });

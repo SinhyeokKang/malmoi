@@ -919,6 +919,34 @@ export const en = {
     // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
   },
 
+  /**
+   * 병합 안내 화면 `/signin/link/[challenge]` (account-linking T2·T4) + `/account`의 수단 카드(T5).
+   *
+   * ⚠️ **provider 이름을 화면이 조립하지 않는다** — `providers`가 한 곳이라 같은 수단이 화면마다
+   * 다르게 읽히지 않는다.
+   */
+  link: {
+    providers: { github: "GitHub", google: "Google" },
+    title: "This email already has an account",
+    /** 무엇으로 들어왔고 무엇으로 만들어졌는지를 한 줄로 — 둘 다 말하지 않으면 다음 클릭을 못 고른다. */
+    description: (pending: string, have: string): string =>
+      `You just signed in with ${pending}, but this address was created with ${have}.`,
+    confirm: (have: string): string => `Confirm with ${have}`,
+    /** ⚠️ **되돌릴 수 있다고 약속하지 않는다** — 해제는 `/account`의 일이고 이 흐름의 문장이 아니다. */
+    footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
+    methods: {
+      title: "Sign-in methods",
+      description: "These are the accounts you can use to sign in. Adding one happens when you sign in with it at this same address.",
+      notConnected: "Not connected",
+      disconnect: "Disconnect",
+      /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
+      lastMethod: "This is your only way to sign in.",
+      confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
+      confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
+      disconnected: (provider: string): string => `${provider} is no longer a sign-in method.`,
+    },
+  },
+
   errors: {
     /** `accessErrorMessage` — `AccessError` 여섯. */
     access: {
@@ -951,12 +979,29 @@ export const en = {
     },
 
     /** `signInErrorMessage` — Auth.js `?error=` 코드. 코드를 그대로 노출하지 않는다 (SAAS §3). */
+    /**
+     * `linkErrorMessage` — 병합 확인 실패 여섯 + 폴백.
+     *
+     * ⚠️ **challenge는 살아 있다** (design ⑧) — 실패가 소비하지 않으므로 "다시 눌러라"가 참이다.
+     */
+    link: {
+      "wrong-account": "That's a different account. Choose the account this address was created with, then try again.",
+      "already-linked": "That sign-in method is already on this account. Try signing in with it.",
+      invalid: "We couldn't finish that confirmation. Start it again from the sign-in screen.",
+      cancelled: "Confirmation was cancelled. Nothing changed — try again when you're ready.",
+      unavailable: "Something went wrong. Try again in a moment.",
+      "last-method": "You can't disconnect your only sign-in method.",
+      fallback: "We couldn't finish that confirmation. Try again.",
+    },
+
     signIn: {
       // SAAS §5.5 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은 계정 탈취다.
       OAuthAccountNotLinked: "That email is already registered with a different sign-in method. Use the one you signed up with.",
       AccessDenied: "You can't sign in with this account. Its email may not be verified.",
       // 우리 코드다 — 세션을 못 읽었을 때 보낸다. "로그인에 실패"라고 말하지 않는다: 사용자는 편집 중이었다.
       Unavailable: "Something went wrong. Try opening this again in a moment.",
+      // 우리 코드다 — 만료된 병합 challenge를 그 화면으로 되돌리지 않고 여기로 보낸다 (완료 조건 5).
+      LinkExpired: "That confirmation expired. Sign in again to continue.",
       fallback: "Sign-in failed. Try again in a moment.",
     },
 

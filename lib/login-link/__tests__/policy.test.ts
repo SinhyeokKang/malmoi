@@ -9,6 +9,7 @@ import {
   challengePrefix,
   challengeTokenHash,
   checkChallenge,
+  destFromCallbackUrl,
   failureUrl,
   isLoginProvider,
   linkCookie,
@@ -121,6 +122,24 @@ it("성공 착지는 갈래 이름으로만 만들어진다 — 임의 URL을 �
   expect(outcomeUrl({ kind: "projects" })).toBe("/projects");
   // 저장된 identifier가 외부 URL을 물고 있어도 파싱 자체가 거부한다.
   expect(parseChallengeIdentifier(challengeIdentifier(challenge).replace('"invite"', '"https://evil.test"'))).toBeNull();
+});
+
+it("복귀 지점은 callback-url에서 갈래로만 읽는다 — 외부 URL은 목록으로 접는다", () => {
+  expect(destFromCallbackUrl("http://localhost/invite/abc")).toEqual({ kind: "invite", token: "abc" });
+  expect(destFromCallbackUrl("%2Finvite%2Fabc")).toEqual({ kind: "invite", token: "abc" });
+  for (const value of [
+    undefined,
+    "",
+    "http://localhost/projects",
+    "https://evil.test/invite/abc".replace("/invite/abc", ""),
+    "http://localhost/invite/abc/extra",
+    "http://localhost/invite/",
+    "::not a url::",
+  ]) {
+    expect(destFromCallbackUrl(value)).toEqual({ kind: "projects" });
+  }
+  // ⚠️ **외부 호스트여도 경로만 본다** — origin은 버리고 갈래만 남으므로 리다이렉트에 못 실린다.
+  expect(destFromCallbackUrl("https://evil.test/invite/abc")).toEqual({ kind: "invite", token: "abc" });
 });
 
 it("실패는 같은 화면으로 돌아가고, 토큰이 없으면 로그인 화면이다", () => {

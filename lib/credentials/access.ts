@@ -19,18 +19,26 @@ export async function findUserByEmail(prisma: Client, email: string) {
     return user;
   });
 }
-export async function refreshVerifiedEmail(prisma: PrismaClient, provider: string, providerAccountId: string, fresh: string | null): Promise<EmailRefresh> {
-  if (fresh === null) return "keep";
+/**
+ * ⚠️ **`"unlinked"`가 `"keep"`에서 갈라져 나왔다** (account-linking T2). 호출부(`signIn` 콜백)가
+ * "이 Account가 처음 보는 것인가"를 알아야 병합 안내를 **그때만** 조회한다 — 두 상태를 같은
+ * `"keep"`으로 접으면 재방문 로그인마다 이메일 조회가 한 번씩 더 돈다 (design §5.1).
+ */
+export async function refreshVerifiedEmail(prisma: PrismaClient, provider: string, providerAccountId: string, fresh: string | null): Promise<EmailRefresh | "unlinked"> {
   try {
     const linked = await prisma.account.findUnique({ where: { provider_providerAccountId: { provider, providerAccountId } }, select: { userId: true } });
-    if (linked === null) return "keep";
+    if (linked === null) return "unlinked";
+    if (fresh === null) return "keep";
     return await prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${linked.userId} FOR UPDATE`;
       const row = await tx.user.findUnique({ where: { id: linked.userId }, select: { id: true, email: true, emailLookup: true } });
       if (row === null) throw new CredentialError();
       const user = decodeUser(row);
       const taken = await findUserByEmail(tx, fresh);
-      const plan = planEmailRefresh({ stored: user.email, fresh, takenByOther: taken !== null && taken.id !== user.id });
+      // ⚠️ **수단이 둘 이상이면 주소를 옮기지 않는다** (account-linking design ⑦) — 병합한 계정에서
+      // `User.email`이 로그인한 provider에 따라 뒤집히면 초대 대조가 그 위에서 흔들린다.
+      const loginMethods = await tx.account.count({ where: { userId: user.id, provider: { in: ["github", "google"] } } });
+      const plan = planEmailRefresh({ stored: user.email, fresh, takenByOther: taken !== null && taken.id !== user.id, loginMethods });
       if (plan === "update") await tx.user.update({ where: { id: user.id }, data: encodeUserFields(user.id, { email: fresh }) });
       return plan;
     });

@@ -1,3 +1,4 @@
+import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import { decodeInvitation } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
@@ -185,6 +186,7 @@ function ProviderButton({
       action={async () => {
         "use server";
         await clearRevocationCookies();
+        await clearLinkCookies();
         await signIn(provider, { redirectTo: routes.invite(token) });
       }}
     >

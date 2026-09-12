@@ -45,6 +45,11 @@ const EXEMPT = new Set([
   "privacy/page.tsx",
   "docs/page.tsx",
   "invite/[token]/page.tsx",
+  /**
+   * 병합 안내 (account-linking T2). **인가가 없고 challenge가 대신한다** — 비로그인이 봐야 하는
+   * 화면이라 `middleware.ts`의 matcher에도 없다(아래 `PUBLIC` 부정 단언).
+   */
+  "signin/link/[challenge]/page.tsx",
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
@@ -637,7 +642,9 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
    * (토큰이 `/`로 302되며 사라진다, design §4.1)·공개 문서 둘.
    */
   it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
-    const PUBLIC = ["/", "/signin", "/invite/sample", "/privacy", "/docs"];
+    // ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
+    // "matcher에 없다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
+    const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
     const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
     expect(covered).toEqual([]);
   });

@@ -11,6 +11,7 @@ import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -94,6 +95,7 @@ function ProviderButton({
       action={async () => {
         "use server";
         await clearRevocationCookies();
+        await clearLinkCookies();
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >
