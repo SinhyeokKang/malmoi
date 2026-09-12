@@ -40,7 +40,7 @@ Use this skill when the user asks to run the migrated source command `implement`
 1. **불변식 관점** — export 결정성이 유지되는가? blob SHA 계산이 UTF-8 바이트를 쓰는가? `base_tree`를 넘기는가? `[skip-l10n]`이 붙는가? 인증 경계가 섞이지 않았는가? (ARCHITECTURE §1·2·3·6)
 2. **원칙 관점** — 머지 로직·양방향 동기화·충돌 해소가 슬며시 들어오지 않았는가? push가 번역 값을 건드리지 않는가? 삭제 대신 `orphaned`인가? (ARCHITECTURE §0)
 3. **타입·경계 관점** — `any`가 없는가? `noUncheckedIndexedAccess` 아래 인덱스 접근의 undefined를 처리했는가? 환경변수 누락 시 fail-closed인가? 에러가 조용히 삼켜지지 않는가?
-4. **단순성 관점** — 요청하지 않은 유연성·설정 가능성·추상화가 들어갔는가? 이 PoC에서 200줄이 50줄로 줄어드는가?
+4. **단순성 관점** — 요청하지 않은 유연성·설정 가능성·추상화가 들어갔는가? 200줄이 50줄로 줄어드는가?
 
 ### 4. 해소 루프 (최대 2회)
 

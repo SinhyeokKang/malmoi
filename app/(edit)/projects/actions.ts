@@ -1012,7 +1012,7 @@ async function checkRepoAccess(
 
   /**
    * ⚠️ **인가가 App 자격증명보다 앞이다** (2026-09-09, sec-audit 발견 5). 전에는 `probeRepo`가 먼저
-   * 돌았고, `RepoInput`은 `z.string().min(1)` 둘뿐이다 — 로그인은 검증 이메일만 요구하므로(PRODUCT §5,
+   * 돌았고, `RepoInput`은 `z.string().min(1)` 둘뿐이다 — 로그인은 검증 이메일만 요구하므로(ARCHITECTURE §6.00,
    * 의도된 성질) **낯선 사람이 임의 private 리포에 대해 "말모이 App이 설치돼 있는가"를 물을 수
    * 있었다.** 반환 갈래가 `repo-not-installed`(없다)와 `installation-forbidden`(있는데 못 본다)로
    * 갈려 그대로 화면 문구가 됐다 — **존재 오라클**이다. 부수로 App quota를 상한 없이 태운다.

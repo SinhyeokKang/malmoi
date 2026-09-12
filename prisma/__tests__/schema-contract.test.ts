@@ -125,7 +125,7 @@ describe("Auth.js 어댑터 계약 — where가 요구하는 unique", () => {
 
   it("어댑터가 부르는 델리게이트가 전부 스키마에 있다 — 버전이 올라 모델이 늘면 red가 된다", () => {
     // WebAuthn(`authenticator`)만 의도적 제외다. 우리는 그 provider를 쓰지 않으므로 그 네 메서드가
-    // 호출될 경로가 없다 — PRODUCT §6의 11테이블 셈도 그 모델을 빼고 있다.
+    // 호출될 경로가 없다 — ARCHITECTURE §5.1의 테이블 셈도 그 모델을 빼고 있다.
     const excluded = new Set(["authenticator"]);
     const used = new Set(
       [...ADAPTER_SOURCE.matchAll(/\bp\.([a-zA-Z]+)\./g)].map((m) => m[1] ?? ""),
