@@ -111,13 +111,16 @@ export async function listUserInstallations(accessToken: string): Promise<string
   return items.map((installation) => String(installation.id));
 }
 
+/** 그 설치에서 볼 수 있는 리포 하나. `pushedAt`은 같은 응답에 이미 있다 — **추가 호출이 0이다.** */
+export type InstallationRepo = { fullName: string; pushedAt: string | null };
+
 export async function listInstallationRepos(
   accessToken: string,
   installationId: string,
-): Promise<string[]> {
+): Promise<InstallationRepo[]> {
   const items = await userOctokit(accessToken).paginate(
     "GET /user/installations/{installation_id}/repositories",
     { installation_id: Number(installationId) },
   );
-  return items.map((repo) => repo.full_name);
+  return items.map((repo) => ({ fullName: repo.full_name, pushedAt: repo.pushed_at ?? null }));
 }

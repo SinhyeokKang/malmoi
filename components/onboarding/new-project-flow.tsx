@@ -40,16 +40,7 @@ import { WorkflowBlock } from "./workflow-block";
  * ⚠️ **대기는 버튼 라벨 교체다** (DESIGN §6.4) — 옆 문구는 폭을 흔든다.
  */
 
-/** 서버가 만들어 내려주는 리포 항목. `suggestedSlug`는 `normalizeProjectSlug`의 결과다. */
-export type RepoOption = { owner: string; repo: string; fullName: string; suggestedSlug: string };
-
-/**
- * 수동 지정 셀렉트의 선택지. `formatLabel`(design §3.3 표)이 만든다.
- *
- * ⚠️ **`layout`은 서버가 `Adapter.layout`에서 그대로 내려준다** — 이 파일이 `lib/adapters`를 값으로
- * 읽으면 ts-morph가 클라이언트 번들에 들어온다 (POSTMORTEM 2026-09-07, `client-graph.test.ts`).
- */
-export type AdapterChoice = { adapter: AdapterName; layout: Adapter["layout"]; label: string; example: string };
+export type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 
 /**
  * Path 힌트의 갈래 — 사전에 layout 전부가 있는지를 **여기서** 닫는다 (`lib/auth/message.ts`와 같은 관용구:
@@ -59,6 +50,8 @@ const PATH_HINTS = m.newProject.files.manual.pathHint satisfies Record<
   Adapter["layout"],
   (token: ReactNode) => ReactNode
 >;
+
+import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 
 type Manual = { adapter: AdapterName; pathTemplate: string; baseLocale: string };
 

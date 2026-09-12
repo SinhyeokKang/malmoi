@@ -36,7 +36,7 @@ import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
-import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import { authorizeUrl, type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
 import {
@@ -472,7 +472,8 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
   return { ok: true };
 }
 
-export type ConnectableRepo = { owner: string; repo: string; fullName: string };
+/** ①의 리포 행. `pushedAt`은 "이 리포가 아직 살아 있는가"를 말한다 — 목록이 길수록 그 신호가 는다. */
+export type ConnectableRepo = { owner: string; repo: string; fullName: string; pushedAt: string | null };
 export type ConnectableReposResult =
   | { ok: true; repos: ConnectableRepo[] }
   | { ok: false; error: OnboardFailure };
@@ -509,30 +510,38 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   const settled = await Promise.all(
     installations.map((id) =>
       listInstallationRepos(token.accessToken, id).then(
-        (repos): { repos: readonly string[] } => ({ repos }),
+        (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
         (error: unknown): { error: unknown } => ({ error }),
       ),
     ),
   );
   const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
-  // 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
-  const fullNames = [...new Set(settled.flatMap((r) => ("repos" in r ? r.repos : [])))].sort();
+  /**
+   * 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
+   *
+   * ⚠️ **`[...new Set(rows)].sort()`로 돌아가지 않는다.** 원소가 객체가 되면 `Set`은 참조로 비교해
+   * 중복을 못 접고, 기본 `.sort()`는 전부 `"[object Object]"`로 비교해 **정렬이 조용히 사라진다** —
+   * `tsc`가 못 보는 부류다. 키는 `fullName`이고 비교자를 명시한다.
+   */
+  const byName = new Map<string, { fullName: string; pushedAt: string | null }>();
+  for (const r of settled) if ("repos" in r) for (const row of r.repos) byName.set(row.fullName, row);
+  const rows = [...byName.values()].sort((a, b) => (a.fullName < b.fullName ? -1 : a.fullName > b.fullName ? 1 : 0));
 
   // 하나도 못 읽었는데 실패가 있었다면 빈 목록은 "리포가 없다"가 아니다 — 장애를 거부로 위장하지 않는다.
-  if (fullNames.length === 0 && failures.length > 0) return listFailure(failures);
+  if (rows.length === 0 && failures.length > 0) return listFailure(failures);
   // 일부만 실패했으면 원인은 로그에만 남는다 — 화면은 읽어낸 목록으로 진행한다.
   for (const error of failures) logFailure("onboard-repos", error);
 
-  if (fullNames.length === 0) return { ok: false, error: "no-repos" };
+  if (rows.length === 0) return { ok: false, error: "no-repos" };
 
   return {
     ok: true,
-    repos: fullNames.flatMap((fullName) => {
+    repos: rows.flatMap(({ fullName, pushedAt }) => {
       const [owner, repo] = fullName.split("/");
       // `owner/name`이 아닌 응답은 이해하지 못한 것이다 — 화면에 반쪽 값을 보내지 않는다.
       return owner === undefined || repo === undefined || owner === "" || repo === ""
         ? []
-        : [{ owner, repo, fullName }];
+        : [{ owner, repo, fullName, pushedAt }];
     }),
   };
 }
@@ -1032,19 +1041,19 @@ async function checkRepoAccess(
     const settled = await Promise.all(
       userInstallationIds.map((id) =>
         listInstallationRepos(token.accessToken, id).then(
-          (repos): { repos: readonly string[] } => ({ repos }),
-          (): { repos: readonly string[] } => ({ repos: [] }),
+          (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
+          (): { repos: readonly InstallationRepo[] } => ({ repos: [] }),
         ),
       ),
     );
     // 대소문자만 다른 이름을 거짓 거부하지 않는다 (`planRepoConnect`와 같은 규칙).
-    const holder = settled.find((r) => r.repos.some((name) => name.toLowerCase() === wanted));
+    const holder = settled.find((r) => r.repos.some((row) => row.fullName.toLowerCase() === wanted));
     if (holder === undefined) {
       // ⚠️ **여기서 갈래를 나누지 않는다** — "우리 App이 없다"와 "네가 못 본다"를 구별해 주는 것이
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };
     }
-    userRepoFullNames = holder.repos;
+    userRepoFullNames = holder.repos.map((row) => row.fullName);
   } catch (error) {
     if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
     logFailure("onboard-access", error);

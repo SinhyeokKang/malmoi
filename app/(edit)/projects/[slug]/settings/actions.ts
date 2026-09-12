@@ -160,7 +160,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
      */
     userRepoFullNames =
       probe.status === "ok" && userInstallationIds.includes(probe.installationId)
-        ? await listInstallationRepos(token.accessToken, probe.installationId)
+        ? (await listInstallationRepos(token.accessToken, probe.installationId)).map((r) => r.fullName)
         : [];
   } catch (error) {
     /**

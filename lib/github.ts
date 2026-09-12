@@ -118,6 +118,49 @@ export type RepoSnapshot =
   | { status: "unavailable" };
 
 /**
+ * ①의 브랜치 목록 (feature design §3.2). **installation 토큰이다** — 읽기이지만 리포 내용이고,
+ * user-to-server 토큰은 "어느 설치를 볼 수 있는가"에만 쓰인다 (ARCHITECTURE §6).
+ *
+ * ⚠️ **`openRepoReader`에 얹지 않는다.** 그 리더는 설치 토큰 캐시를 한 번만 만들려고 존재하는데
+ * 브랜치 조회는 스냅샷 **전에** 단독으로 돈다 — 대신 같은 규칙을 여기서 지킨다: `createApp()`이
+ * 한 번이다 (code-review 2026-09-07 🔴2).
+ *
+ * ⚠️ **`createApp()`은 try 밖이다** — 환경변수 누락은 값으로 접지 않고 던진다. 값으로 접으면 설정
+ * 오류가 화면에서 영원히 "잠시 뒤 다시"가 된다 (`probeRepo`와 같은 판단, POSTMORTEM 2026-09-06).
+ *
+ * 실패가 값인 이유는 **①을 막지 않기 위해서**다. 404도 마찬가지다 — GitHub은 권한 없는 리소스에도
+ * 404를 주므로 "브랜치가 없다"로 단정할 수 없다 (POSTMORTEM 2026-09-03).
+ */
+export type BranchList = { status: "ok"; names: string[]; truncated: boolean } | { status: "unavailable" };
+
+/** 한 페이지 100개 × 최대 3페이지. 넘으면 목록이 답이 아니므로 화면이 자유 입력으로 바꾼다. */
+const BRANCH_PAGES = 3;
+const BRANCH_PER_PAGE = 100;
+
+export async function listBranches(owner: string, repo: string, installationId: string): Promise<BranchList> {
+  const app = createApp();
+  try {
+    const octokit = await app.getInstallationOctokit(Number(installationId));
+    const names: string[] = [];
+    for (let page = 1; page <= BRANCH_PAGES; page += 1) {
+      const res = await octokit.request("GET /repos/{owner}/{repo}/branches", {
+        owner,
+        repo,
+        per_page: BRANCH_PER_PAGE,
+        page,
+      });
+      // 이름은 맨값으로 나른다 — `release/2.0`을 여기서 인코딩하면 octokit이 한 번 더 해서 조용한 404다.
+      names.push(...res.data.map((b) => b.name));
+      if (res.data.length < BRANCH_PER_PAGE) return { status: "ok", names, truncated: false };
+    }
+    return { status: "ok", names, truncated: true };
+  } catch (error) {
+    logFailure("list-branches", error);
+    return { status: "unavailable" };
+  }
+}
+
+/**
  * base 브랜치 head의 트리 전체.
  *
  * ⚠️ **`headCommittedAt`을 위해 `GET /git/commits/{sha}`를 한 번 더 부른다.** ref·tree 응답에 커밋 시각이
