@@ -20,7 +20,7 @@
 | **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
 | **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
 | **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
-| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8 | §5.1 |
+| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8. ⚠️ **셋이다** (2026-09-12): `/signin` · `/invite/[token]` · **`/signin/link/[challenge]`** | §5.1 |
 | **앱 셸** (8-2) | 사이드바 `bg-muted border-r` + top bar + `xl` 미만 오버레이 | **캔버스 위 패널 셋** — 전폭 48 헤더 · 투명 사이드바 · 흰 콘텐츠 패널 · 320 프로젝트 패널, 반응형 분기 0 | §5.1·§6.5 |
 | **캔버스 토큰** (8-2) | `--auth-canvas` | **`--canvas`** — 셸과 셸 밖 화면이 같은 값을 쓴다 | §2 |
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
@@ -38,7 +38,8 @@
 
 ⚠️ **base 치수 교체는 2026-09-11에 끝났다** — `md`가 36(`h-9`)이고 입력 셋도 같은 높이다. 미뤄 둔
 이유("소비자 26파일이 함께 움직인다")는 시안의 기본값이 36으로 드러나면서 해소됐다. `Button
-size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 수락 — §6.4).
+size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 수락·**계정 병합** — 2026-09-12에 셋이
+됐다, §6.4).
 
 ## 1. 기반 스택
 
@@ -431,7 +432,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | `max-w-lg rounded-lg border bg-background shadow-lg` · 제목 `text-base font-medium` · 본문 `p-4 text-sm` · 푸터 `p-4 pt-2 gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Overlay·Content 모두 `z-50`(관리 표 sticky `z-10` 위) · Esc·배경·X·Cancel 넷으로 닫힌다 |
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
-| **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. ⚠️ **`dropdown-menu.tsx`의 export이지 새 프리미티브가 아니다** — 이 리포는 **파일 단위로** 센다(`SegmentedControl`/`SegmentedLinks`가 한 행인 것이 그 근거다). 그래서 **프리미티브는 16 그대로다.** 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유) |
+| **EntityCard** | account-linking 신설 (2026-09-12) — **프리미티브 17**. "지금 다루는 대상 하나"를 보이는 자리이고 소비자는 **병합 화면 하나**다. 박스 `flex items-center gap-3 rounded-lg border p-3 w-full`(radius **12** — ⚠️ `rounded-xl`은 16이라 같은 화면의 `Card`·`Alert`·`Dialog`(전부 12) 사이에서 **작은 카드 하나만 더 둥글어진다**) · 본문 `min-w-0 flex-1 flex-col gap-px`, 1행 `text-sm truncate`, 2행 `text-xs text-muted-foreground` · 우측 슬롯(provider 마크 16, ⚠️ **브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다**). ⚠️ **`kind` prop이 없다** — 초대의 프로젝트 카드는 **같은 박스 규격**을 쓰지만 `components/invite/project-card.tsx`의 화면 조각이다: 아바타 폴백이 이니셜이 아니라 **흰 `Box` 글리프**이고 §6.63이 이미 그 대체를 거부해 뒀다(`Avatar`는 한 줄도 안 건드린다). ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 `components/translations/`를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다 |
+| **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. ⚠️ **`dropdown-menu.tsx`의 export이지 새 프리미티브가 아니다** — 이 리포는 **파일 단위로** 센다(`SegmentedControl`/`SegmentedLinks`가 한 행인 것이 그 근거다). 그래서 **프리미티브는 16 그대로였다** (2026-09-12에 `EntityCard`가 붙어 **17**이다 — 아래 행). 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유) |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
 | **Button `size` 셋** | `md` `h-9 rounded-md px-3`(기본 — 2026-09-11에 32에서 36으로 올렸다, 시안의 기본 버튼이 36이고 입력 셋도 같이 올라갔다) · `sm` `h-7 rounded-sm px-2 text-xs` · `lg` `h-10 rounded-lg px-4`(**셸 밖 카드 전용** — 로그인·초대 수락). ⚠️ **넷으로 늘리지 않는다** — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다. ⚠️ **radius가 base가 아니라 `size`에 붙어 있다**(§5) — base에 두고 size가 덮으면 cva가 충돌하는 클래스 둘을 내고 twMerge가 이기는 것에 기대게 된다. ⚠️ **`size="icon"`은 없다** — 정사각 아이콘 버튼은 `ghost` + 정사각 유틸이다(`user-menu.tsx`·칩 행의 초기화) |
@@ -509,12 +511,13 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 
 | 요소 | 규칙 |
 |---|---|
-| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-medium` · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4) |
+| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-medium` · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
 | 우측(장식) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-medium`**이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
 | 도트 필드 | Canvas 2D (`components/signin/dot-field.tsx` + 잎 `lib/signin/dot-field.ts`). ⚠️ **hex를 tsx에 박지 않는다** — `--signin-dot`을 `getComputedStyle`로 읽는다(§6.2). ⚠️ 커서가 없으면 `autoCursor`가 ㄹ자로 순회하고 `prefers-reduced-motion`이면 1회 렌더 |
 | 브랜드 아이콘 | GitHub·Google 인라인 SVG (`components/signin/brand-icons.tsx`) — ⚠️ `lucide-react`에 브랜드 글리프가 없고 **Google 4색은 §6.2의 예외다**(남의 브랜드 자산이라 토큰으로 접을 수 없다) |
 | 피드백 | `?error=`·`?sessions=` → **토스트** (§6.25). ⚠️ **`auth-toast`는 아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의 자리가 된다 |
-| 초대 수락 | 같은 골격. ⚠️ **Layer A(`not-found`·`expired`·`already-accepted`)는 인라인이다** — 페이지 콘텐츠 자체라 토스트로 옮기면 화면이 빈다(§6.25 경계표). 토스트는 `?e=`(버튼을 눌러서 난 거부)뿐 |
+| 초대 수락 | 같은 골격. ⚠️ **Layer A(`not-found`·`expired`·`already-accepted`)는 인라인이다** — 페이지 콘텐츠 자체라 토스트로 옮기면 화면이 빈다(§6.25 경계표). 토스트는 `?e=`(버튼을 눌러서 난 거부)뿐. ⚠️ **로그인 상태는 다섯 줄**(로고 · `h1` · 설명 · 프로젝트 카드 · 수락), **비로그인은 카드 없이** 세 줄 + provider 버튼 둘 — 이 화면은 matcher 밖이라 링크를 가진 누구에게나 열리고, 그때 고를 것은 "로그인할까"뿐이라 프로젝트 상세가 필요 없다 |
+| 계정 병합 (2026-09-12) | 같은 골격 · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
 
 ### 6.63 프로젝트 목록 (`/projects`) — 행 하나에 두 줄 (2026-09-10, 8-3)
 
