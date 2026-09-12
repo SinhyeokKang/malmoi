@@ -73,6 +73,8 @@ const USER_SCOPED_ACTIONS = new Set([
   // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",
+  "projects/actions.ts#listRepoBranches",
+  "projects/actions.ts#loadCandidateSample",
   "projects/actions.ts#createProject",
   // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
   "projects/actions.ts#startGithubConnectForUser",

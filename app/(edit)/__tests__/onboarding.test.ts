@@ -29,6 +29,7 @@ const hoisted = vi.hoisted(() => ({
   ensureUserToken: vi.fn(),
   probeRepo: vi.fn(),
   openRepoReader: vi.fn(),
+  listBranches: vi.fn(),
   createGitClient: vi.fn(),
   listUserInstallations: vi.fn(),
   listInstallationRepos: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/github", () => ({
   probeRepo: hoisted.probeRepo,
   openRepoReader: hoisted.openRepoReader,
+  listBranches: hoisted.listBranches,
   // `app/(edit)/actions.ts` → `lib/pull/trigger` 체인이 이 이름을 가져온다. 빠지면 import가 던진다.
   createGitClient: hoisted.createGitClient,
 }));
@@ -79,6 +81,8 @@ vi.mock("next/navigation", () => ({
 const {
   createProject,
   detectRepoFormats,
+  listRepoBranches,
+  loadCandidateSample,
   disconnectGithub,
   listConnectableRepos,
   rotatePushToken,
@@ -165,6 +169,7 @@ beforeEach(() => {
   hoisted.headerGet.mockImplementation((name: string) =>
     name.toLowerCase() === "host" ? "localhost:3000" : null,
   );
+  hoisted.listBranches.mockResolvedValue({ status: "ok", names: ["main", "develop"], truncated: false });
   hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [] });
   vi.stubEnv("AUTH_SECRET", "test-secret-0123456789abcdef");
 });
@@ -520,6 +525,117 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
       ok: false,
       error: "unavailable",
     });
+  });
+});
+
+describe("listRepoBranches — ①의 브랜치 목록 (design §3.2)", () => {
+  it("목록과 default branch를 함께 준다 — `defaultBranch`는 이미 손에 있으므로 GitHub을 한 번 더 부르지 않는다", async () => {
+    expect(await listRepoBranches({ owner: "acme", repo: "web" })).toEqual({
+      ok: true,
+      names: ["main", "develop"],
+      defaultBranch: "develop",
+      truncated: false,
+    });
+    expect(hoisted.listBranches).toHaveBeenCalledTimes(1);
+  });
+
+  it("`checkRepoAccess`를 그대로 지난다 — 내 설치에 없으면 브랜치를 읽지도 않는다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/other")]);
+
+    const result = await listRepoBranches({ owner: "someone", repo: "private-thing" });
+
+    expect(result).toEqual({ ok: false, error: "repo-not-installed" });
+    expect(hoisted.listBranches).not.toHaveBeenCalled();
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+  });
+
+  it("조회 실패는 값이다 — `unavailable`이고 ①을 막지 않는다 (예외 D)", async () => {
+    hoisted.listBranches.mockResolvedValue({ status: "unavailable" });
+
+    expect(await listRepoBranches({ owner: "acme", repo: "web" })).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("300개에서 끊겼으면 `truncated`를 그대로 나른다 — 화면이 자유 입력으로 바꾼다", async () => {
+    hoisted.listBranches.mockResolvedValue({ status: "ok", names: ["main"], truncated: true });
+
+    expect(await listRepoBranches({ owner: "acme", repo: "web" })).toMatchObject({ ok: true, truncated: true });
+  });
+});
+
+/**
+ * ②의 언어 전환 (design §3.4).
+ *
+ * ⚠️ **불변식 10이 걸리는 자리다** — 클라이언트가 보낸 `pathTemplate`·`locale`·`ref` 셋으로 리포를 읽는
+ * **새 경로**다. 방어 셋은 새로 만들지 않고 ARCHITECTURE §3.1이 그 값 쌍에 **지정한** 함수를 부른다:
+ * `planConfirmedFormat` · `isPathSafeLocale` · `isValidBranchName`. `templatePaths`로 대신하면 탐지용
+ * 판정을 적재 방어로 재사용하는 것이고, 그게 POSTMORTEM 2026-09-09의 모양이다.
+ */
+describe("loadCandidateSample — ②의 언어 샘플", () => {
+  const input = {
+    owner: "acme",
+    repo: "web",
+    ref: "develop",
+    adapter: "json-catalog",
+    pathTemplate: "i18n/{locale}.json",
+    locale: "ko",
+  };
+
+  it("그 로케일의 앞 N행과 전체 수를 준다", async () => {
+    expect(await loadCandidateSample(input)).toEqual({
+      ok: true,
+      rows: [
+        { key: "a.bye", value: "Bye" },
+        { key: "a.greet", value: "Hello" },
+      ],
+      total: 2,
+    });
+  });
+
+  it("고른 브랜치의 트리에서 읽는다 — ①의 선택이 여기까지 따라온다", async () => {
+    await loadCandidateSample({ ...input, ref: "release/2.0" });
+
+    const created = await hoisted.openRepoReader.mock.results[0]?.value;
+    expect(created.snapshot).toHaveBeenCalledWith("release/2.0");
+  });
+
+  it("인가 거부는 리포를 열지도 않는다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/other")]);
+
+    expect(await loadCandidateSample({ ...input, owner: "someone", repo: "private-thing" })).toEqual({
+      ok: false,
+      error: "repo-not-installed",
+    });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
+  it("조작된 `pathTemplate`은 `planConfirmedFormat`이 거부하고 blob을 한 개도 안 읽는다", async () => {
+    const result = await loadCandidateSample({ ...input, pathTemplate: "docs/{locale}.json" });
+
+    expect(result.ok).toBe(false);
+    const created = await hoisted.openRepoReader.mock.results[0]?.value;
+    expect(created.blob).not.toHaveBeenCalled();
+  });
+
+  it("`locale`에 `../`가 들어가면 `isPathSafeLocale`이 막고 GitHub을 안 부른다", async () => {
+    expect(await loadCandidateSample({ ...input, locale: "../../etc" })).toEqual({
+      ok: false,
+      error: "invalid input",
+    });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
+  it("형식이 깨진 `ref`는 GitHub에 나가지 않는다 — 잎 함수라 비용이 0이다", async () => {
+    expect(await loadCandidateSample({ ...input, ref: "bad ref" })).toEqual({
+      ok: false,
+      error: "invalid input",
+    });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
+  it("못 읽은 파일은 실패다 — 빈 결과로 위장하지 않는다 (빈 언어와 화면에서 갈린다)", async () => {
+    hoisted.openRepoReader.mockImplementation(async () => reader({ blobs: new Map() }));
+
+    expect((await loadCandidateSample(input)).ok).toBe(false);
   });
 });
 
