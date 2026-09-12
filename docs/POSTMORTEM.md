@@ -1187,3 +1187,22 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   (2026-09-09)도 렌더되는 순간에만 드러났다. 그 셋의 공통점은 **우리 코드가 라이브러리 내부 규약에
   닿는데 그 규약을 우리 픽스처가 흉내 낸다**는 것이다. 인증 경로에 그런 코드를 넣으면 실물 왕복을
   한 번 밟기 전에는 green을 믿지 않는다.
+
+### 2026-09-12 — OAuth 오류 화면이 초대 복귀 지점을 표시하지 않았다
+
+- **영역**: `app/signin/page.tsx`, `app/invite/[token]/page.tsx`
+- **증상**: 로컬 초대 화면에서 GitHub OAuth를 시작하고, 실제 시작 URL의 state와 callback에
+  `error=access_denied`를 돌려 취소 응답을 재현했다. Auth.js는 `/signin` 오류 화면으로 보냈고,
+  그 화면에는 초대로 돌아갈 링크가 없었다. 공급자 UI에서 취소를 직접 누른 검증은 별도다.
+- **근본 원인**: 성공 목적지(`redirectTo`)와 오류 목적지(`pages.error`)가 별도다. 초대 화면이
+  성공 목적지를 보존해도 공통 로그인 오류 화면은 그 목적지를 표시하지 않았다.
+  **오류 리다이렉트 뒤에도 `authjs.callback-url` 쿠키에는 초대 URL이 남아 있었다.**
+- **그물**: 기존 일반 로그인 테스트는 `signIn`에 넘기는 성공 목적지와 쿠키 정리 순서만 봐서
+  오류 착지 뒤의 복귀 경로를 놓쳤다. 런타임 쿠키 관측으로 전제를 확인했고,
+  `app/signin/__tests__/invite-return.test.tsx`가 secure·로컬 이름과 초대 아닌 값의 거부를 센다.
+  구현 뒤 브라우저에서 복귀 링크를 눌러 원래 초대 화면으로 돌아오는 것까지 확인했다.
+- **재발 방지**: `rg -n 'pages:|destFromCallbackUrl|callback-url' auth.ts app/signin app/invite lib/login-link --glob '!**/__tests__/**'`
+  로 오류 착지와 목적지 소비자를 대조한다. 이번 전수에서 공통 오류 착지는 `/signin` 하나였고,
+  병합 시작은 이미 같은 쿠키를 `destFromCallbackUrl`로 읽었다. 새 목적지 쿠키 대신 이 파서를
+  재사용하고 `routes.invite`로 내부 링크를 만든다. 공급자 취소 실물 검증에는 성공 복귀와 별도로
+  **오류 착지에서 원래 작업으로 돌아갈 수 있는지**를 포함한다.
