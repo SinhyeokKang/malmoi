@@ -21,7 +21,7 @@ import { publicSession } from "@/lib/auth/public-session";
 import { beginRevocation, finishRevocation } from "@/lib/session-revocation/store";
 import { authorizeRevocation, withRevocation, withRevocationStart, revocationAuthCookies } from "@/lib/session-revocation/http";
 import { authorizeLoginLink, linkAuthCookies, withLinkStart, withLoginLink } from "@/lib/login-link/http";
-import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
+import { beginLink, finishLink, loadLinkOffer } from "@/lib/login-link/store";
 import { isLoginProvider } from "@/lib/login-link/policy";
 
 // A fresh Unix-socket-only cluster; never reads DATABASE_URL/DIRECT_URL or a shared DB.
@@ -214,8 +214,8 @@ function fakeAuth(provider: "github" | "google", identity: string, revocation = 
     logger: { error: noteAuthError },
   })).handlers;
   return intercepted ? {
-    GET: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, () => handlers.GET(req))),
-    POST: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, () => handlers.POST(req))),
+    GET: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.GET(callbackRequest))),
+    POST: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.POST(callbackRequest))),
   } : handlers;
 }
 it.each(["github", "google"] as const)("installed Auth.js %s callback stores digest, rejects digest-cookie, renews and signs out", async provider => {
@@ -637,6 +637,61 @@ it("confirming with a different account writes nothing, mints no session and kee
   expect(await prisma.user.findMany()).toEqual(before);
   // ⚠️ **실패는 소비하지 않는다** (design ⑧) — 훔친 URL 한 번으로 남의 병합을 태울 수 없다.
   expect(await prisma.verificationToken.count()).toBe(1);
+});
+
+it("merge confirmation replaces a different browser identity with the freshly confirmed owner", async () => {
+  const { owner, stranger, cookie, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });
+  const adapter = credentialAdapter(prisma);
+  await adapter.createSession!({ userId: stranger.id, sessionToken: "stranger-session", expires: new Date(Date.now() + 600000) });
+  const response = await callback(`${cookie}; authjs.session-token=stranger-session`);
+  expect(response.headers.get("location")).toBe("http://localhost/invite/invite-token");
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+  const issued = response.headers.getSetCookie().find(c => c.startsWith("authjs.session-token="));
+  expect(issued).toBeDefined();
+  const raw = issued!.split(";")[0]!.slice("authjs.session-token=".length);
+  expect((await adapter.getSessionAndUser!(raw))?.user.id).toBe(owner.id);
+});
+
+it("a session insert failure after merge reports unavailable instead of successful invite return", async () => {
+  const { owner, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });
+  const create = vi.spyOn(prisma.session, "create").mockRejectedValueOnce(new Error("fixture session storage unavailable"));
+  try {
+    const response = await callback();
+    expect(response.headers.get("location")).toBe("http://localhost/signin?error=Unavailable");
+    expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+    expect(await prisma.verificationToken.count()).toBe(0);
+    expect(await prisma.session.count()).toBe(0);
+  } finally {
+    create.mockRestore();
+  }
+});
+
+it("concurrent merge consumers insert exactly one account without changing another user", async () => {
+  const { owner, stranger } = await linkFixture();
+  const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest: { kind: "projects" } });
+  const before = await prisma.account.findMany({ where: { userId: stranger.id } });
+  const input = { challengeToken: token!, confirming: { provider: "github", providerAccountId: "merge" } };
+  const results = await Promise.all([finishLink(prisma, input), finishLink(prisma, input)]);
+  expect(results.filter(r => r.outcome === "linked")).toHaveLength(1);
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+  expect(await prisma.verificationToken.count()).toBe(0);
+  expect(await prisma.account.findMany({ where: { userId: stranger.id } })).toEqual(before);
+});
+
+it("a failed account insert rolls back challenge consumption and permits a later retry", async () => {
+  const { owner } = await linkFixture();
+  const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest: { kind: "projects" } });
+  const input = { challengeToken: token!, confirming: { provider: "github", providerAccountId: "merge" } };
+  await pool.query(`CREATE FUNCTION fail_link_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture account storage unavailable'; END $$;
+    CREATE TRIGGER fail_link_insert BEFORE INSERT ON "Account" FOR EACH ROW EXECUTE FUNCTION fail_link_insert();`);
+  try {
+    expect((await finishLink(prisma, input)).outcome).toBe("unavailable");
+    expect(await prisma.verificationToken.count()).toBe(1);
+    expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(1);
+  } finally {
+    await pool.query('DROP TRIGGER fail_link_insert ON "Account"; DROP FUNCTION fail_link_insert()');
+  }
+  expect((await finishLink(prisma, input)).outcome).toBe("linked");
 });
 
 it("a merge roundtrip without its purpose cookies cannot become an ordinary signup", async () => {

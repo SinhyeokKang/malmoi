@@ -1,9 +1,10 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { requestOrigin } from "@/lib/github-connect/origin";
+import { routes } from "@/lib/routes";
 
 import { failureUrl, linkCookie, linkStateCookie, outcomeUrl, type LinkDest, type LinkOutcome } from "./policy";
 import { finishLink } from "./store";
@@ -60,9 +61,9 @@ export async function authorizeLoginLink(
   return failureUrl(attempt.token === "" ? null : attempt.token, result.outcome);
 }
 
-export async function withLoginLink(request: NextRequest, run: () => Promise<Response>): Promise<Response> {
+export async function withLoginLink(request: NextRequest, run: (request: NextRequest) => Promise<Response>): Promise<Response> {
   const url = new URL(request.url);
-  if (!/^\/api\/auth\/callback\/(github|google)$/.test(url.pathname)) return run();
+  if (!/^\/api\/auth\/callback\/(github|google)$/.test(url.pathname)) return run(request);
   const origin = requestOrigin({
     host: request.headers.get("host") ?? url.host,
     forwardedProto: request.headers.get("x-forwarded-proto") ?? url.protocol.slice(0, -1),
@@ -73,16 +74,25 @@ export async function withLoginLink(request: NextRequest, run: () => Promise<Res
     tokenCookie !== undefined ||
     request.cookies.has(linkStateCookie(true).name) ||
     request.cookies.has(linkStateCookie(false).name);
-  if (!intent) return run();
+  if (!intent) return run(request);
+
+  // 확인 OAuth의 신원으로 로그인한다. 다른 사용자의 기존 세션을 Auth.js에 넘기면
+  // finishLink가 커밋된 뒤 handleLoginOrRegister가 OAuthAccountNotLinked를 던진다.
+  // 요청 복사본에서만 제거한다: 실패하면 브라우저의 기존 세션은 그대로이고,
+  // 성공하면 Auth.js가 발급한 확인 사용자의 세션 쿠키로 교체된다.
+  const callbackRequest = new NextRequest(request);
+  for (const { name } of callbackRequest.cookies.getAll()) {
+    if (/^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/.test(name)) callbackRequest.cookies.delete(name);
+  }
 
   const attempt: Attempt = { token: tokenCookie?.value ?? "" };
   return stateScope.run(secure, () =>
     pending.run(attempt, async () => {
       let original: Response;
       try {
-        original = await run();
+        original = await run(callbackRequest);
       } catch {
-        original = new Response(null);
+        original = new Response(null, { status: 500 });
       }
       // signIn 앞에서 난 오류에도 결론이 있어야 한다 — 취소와 장애를 가른다.
       const outcome = attempt.outcome ?? (url.searchParams.get("error") === "access_denied" ? "cancelled" : "unavailable");
@@ -91,8 +101,13 @@ export async function withLoginLink(request: NextRequest, run: () => Promise<Res
        * ⚠️ **성공 착지를 challenge가 든다** — `callbackUrl` 쿠키가 아니라 저장된 **갈래**에서
        * 만든다 (design 불변식 9). 그 쿠키가 지워지거나 바뀌어도 초대로 돌아가는 길이 산다.
        */
-      const location =
-        outcome === "linked" && attempt.dest ? outcomeUrl(attempt.dest) : failureUrl(token, outcome);
+      // 연결 커밋과 Auth.js의 세션 생성은 별개다. 뒤쪽 실패를 성공으로 덮거나,
+      // 이미 소비된 challenge로 돌려보내 장애를 LinkExpired로 바꾸지 않는다.
+      const loginFailed = original.status >= 400 ||
+        new URL(original.headers.get("location") ?? request.url, request.url).searchParams.has("error");
+      const location = outcome === "linked" && loginFailed
+        ? routes.signIn({ error: "Unavailable" })
+        : outcome === "linked" && attempt.dest ? outcomeUrl(attempt.dest) : failureUrl(token, outcome);
 
       const headers = new Headers(original.headers);
       // 이 callback은 언제나 우리가 정한 목적지 하나에서 끝난다.

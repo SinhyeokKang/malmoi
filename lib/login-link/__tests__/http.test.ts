@@ -36,6 +36,18 @@ it("확인이 성공하면 로그인을 계속 진행시키고 challenge의 복�
   expect(response.headers.getSetCookie().some((c) => c.startsWith("malmoi-login-link=") && c.includes("Max-Age=0"))).toBe(true);
 });
 
+it.each(["redirect", "throw", "status"])("병합 뒤 로그인 실패(%s)를 성공 착지로 덮지 않는다", async (failure) => {
+  finish.mockResolvedValue({ outcome: "linked", dest });
+  const response = await withLoginLink(request(), async () => {
+    expect(await authorizeLoginLink(db, account)).toBe(true);
+    if (failure === "throw") throw new Error("session storage unavailable");
+    if (failure === "status") return new Response(null, { status: 500 });
+    return Response.redirect("http://localhost/signin?error=CallbackRouteError");
+  });
+  // 이미 소비된 challenge로 돌려보내면 LinkExpired가 장애 사유를 지운다.
+  expect(response.headers.get("location")).toBe("http://localhost/signin?error=Unavailable");
+});
+
 it("확인이 실패하면 세션을 만들지 않고 같은 화면으로 되돌린다", async () => {
   finish.mockResolvedValue({ outcome: "wrong-account", dest });
   const response = await withLoginLink(request(), async () => {

@@ -222,6 +222,6 @@ export const { auth, signIn, signOut } = authConfig;
  * 만나고, 두 intent 판정이 쿠키 셋의 OR이라 결론이 흔들린다.
  */
 export const handlers = {
-  GET: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, () => authConfig.handlers.GET(request))),
-  POST: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, () => authConfig.handlers.POST(request))),
+  GET: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest))),
+  POST: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest))),
 };

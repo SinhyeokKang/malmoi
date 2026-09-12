@@ -1065,6 +1065,12 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
   조회한 `Account.userId`가 challenge의 `userId`와 같아야 붙인다. ⚠️ **`user.id`를 쓰지 않는다** —
   처음 보는 계정일 때 그 값은 갓 만들어진 난수라 DB의 어떤 행과도 안 맞는다.
 
+확인 callback은 요청 복사본에서 기존 세션 쿠키를 제외하고 Auth.js에 전달한다. 기존에 다른 사용자로
+로그인돼 있어도 새 OAuth로 확인한 사용자의 세션을 발급하며, 실패하면 브라우저의 기존 세션은 유지한다.
+연결 트랜잭션과 Auth.js의 세션 생성은 별개이므로, **연결 뒤 로그인 실패를 성공 URL로 덮지 않는다**.
+이때 Account 추가는 남고 `/signin?error=Unavailable`에서 일반 로그인을 다시 시작한다
+(2026-09-12 리뷰 수정). 소비된 challenge로 보내면 `LinkExpired`가 장애 사유를 지운다.
+
 **challenge의 수명**: `VerificationToken`을 `malmoi/login-link` 접두로 재사용하고 **10분**이다. URL에
 싣는 것은 난수 원문, DB에 남는 것은 `hashInviteToken`의 해시다. **성공만 소비한다** — 실패가 소비하면
 훔친 URL 한 번으로 남의 병합을 태울 수 있고, 상한은 TTL이 든다. 소비는 조건부 `deleteMany`의 count가

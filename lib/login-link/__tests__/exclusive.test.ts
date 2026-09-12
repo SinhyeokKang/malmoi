@@ -30,7 +30,10 @@ it("병합 시작이 회수 쿠키를 먼저 지운다", () => {
  * 뜻만 좁아진다.
  */
 it("어댑터 게이트가 그대로이고 직접 쓰는 자리가 하나뿐이다", () => {
-  const adapter = readFileSync(join(ROOT, "lib/auth/safe-adapter.ts"), "utf8");
+  // 문서 주석의 경로 참조는 실행 의존성이 아니다. 게이트 코드는 계속 같은 조건으로 검사한다.
+  const adapter = readFileSync(join(ROOT, "lib/auth/safe-adapter.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
   expect(adapter).toContain("additional login accounts are disabled");
   expect(adapter).not.toContain("login-link");
 

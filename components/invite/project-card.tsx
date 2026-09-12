@@ -36,7 +36,7 @@ export function InviteProjectCard({
         <span className="text-muted-foreground truncate text-xs">{role}</span>
       </div>
       {/* ⚠️ 복수다 — 프로젝트의 로케일이 여럿이고, 매핑이 없는 코드는 `LocaleFlag`가 `null`을 낸다. */}
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex max-w-1/2 shrink-0 flex-wrap items-center justify-end gap-1">
         {locales.map((code) => (
           <LocaleFlag key={code} code={code} />
         ))}
