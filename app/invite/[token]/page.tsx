@@ -13,7 +13,7 @@ import { AuthLayout } from "@/components/signin/auth-layout";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
@@ -65,7 +65,8 @@ export default async function InvitePage({
         expiresAt: true,
         acceptedAt: true,
         // 수락 판단에는 살아 있는 로케일 코드만 필요하다. 규모를 노출하는 숫자는 싣지 않는다.
-        project: { select: { name: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
+        // `slug`는 **이미 멤버인 사람을 그 프로젝트로 보내는 데만** 쓴다 (2026-09-12).
+        project: { select: { name: true, slug: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
       },
     });
     return row === null ? null : decodeInvitation(row);
@@ -117,7 +118,14 @@ export default async function InvitePage({
       );
       break;
     case "wrong-account":
-      cta = (
+      // ⚠️ **두 갈래의 출구가 반대다** — 불일치는 **다른 계정**으로 들어와야 하고, 이미 멤버인 사람은
+      // **이미 들어와 있다.** 뒤엣것에 로그아웃 버튼을 주면 화면의 문구와 반대되는 행동만 남는다
+      // (셸 밖이라 사이드바가 없어 시키는 일을 할 수단이 0이었다 — 2026-09-12 실물 검증).
+      cta = view.notice === "already-member" && invitation != null ? (
+        <ButtonLink variant="primary" size="lg" className="w-full" href={routes.project(invitation.project.slug)}>
+          {m.invite.openProject}
+        </ButtonLink>
+      ) : (
         <form className="w-full" action={async () => {
           "use server";
           await signOut({ redirectTo: routes.invite(token) });

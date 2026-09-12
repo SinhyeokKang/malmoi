@@ -918,6 +918,11 @@ export const en = {
     accept: "Accept invitation",
     otherAccount: "Sign in with another account",
     /**
+     * ⚠️ **`already-member`의 CTA다** (2026-09-12) — 그 갈래에 [Sign in with another account]를 주면
+     * 화면이 시키는 일(프로젝트를 연다)과 반대되는 버튼만 남는다. 이 화면은 셸 밖이라 사이드바가 없다.
+     */
+    openProject: "Open project",
+    /**
      * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (account-linking §6). 지금까지의 값은
      * *"…Signing in with a different account won't accept it."*이었는데 **그 문장이 병합으로
      * 거짓이 된다** — 다른 수단으로 들어와도 같은 주소면 수락된다. 그리고 설명 자리로 올라오면
@@ -982,7 +987,9 @@ export const en = {
       // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 말하면 갇힌다.
       "email-mismatch": "Sign in with the account that was invited. The one you're using wasn't.",
       // 실패로 읽히지 않게 쓴다 — 원하는 상태는 이미 이뤄져 있다.
-      "already-member": "You're already a member of this project. Open it from your project list.",
+      // ⚠️ **"프로젝트 목록에서 열어라"가 아니다** (2026-09-12 실물 검증) — 그 목록으로 가는 길이
+      // 이 화면에 없었고, 지금은 버튼이 **그 프로젝트로 바로** 간다(착지 클릭 하나를 갚는다).
+      "already-member": "You're already a member of this project.",
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },
