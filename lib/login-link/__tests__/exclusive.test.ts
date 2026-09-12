@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
@@ -34,20 +34,23 @@ it("어댑터 게이트가 그대로이고 직접 쓰는 자리가 하나뿐이�
   expect(adapter).toContain("additional login accounts are disabled");
   expect(adapter).not.toContain("login-link");
 
-  const creators = ["lib/login-link/store.ts"];
-  const scan = (dir: string): string[] => {
-    const { readdirSync, statSync } = require("node:fs") as typeof import("node:fs");
-    return readdirSync(dir).flatMap((entry: string) => {
+  /**
+   * ⚠️ **`Account` 행을 만드는 자리의 허용 목록이다.** 셋의 축이 각각 다르다:
+   * 어댑터(Auth.js 경유 첫 로그인) · 병합(우리가 직접 쓰는 **로그인 수단**) ·
+   * GitHub App 연결(`github-app` — **로그인 수단이 아니라 리포 쓰기 권한**이다).
+   * 넷째가 생기면 "로그인 수단은 User당 하나"의 예외가 문서 없이 하나 더 생긴 것이다.
+   */
+  const creators = ["lib/login-link/store.ts", "lib/auth/safe-adapter.ts", "app/api/github/callback/route.ts"];
+  const scan = (dir: string): string[] =>
+    readdirSync(dir).flatMap((entry: string) => {
       if (entry === "node_modules" || entry === "generated" || entry.startsWith(".")) return [];
       const full = join(dir, entry);
       if (statSync(full).isDirectory()) return scan(full);
       return /\.tsx?$/.test(entry) ? [full] : [];
     });
-  };
   const writers = [...scan(join(ROOT, "lib")), ...scan(join(ROOT, "app"))]
     .filter((file) => !file.includes("__tests__"))
     .filter((file) => /\baccount\.create\(|\baccount:\s*\{\s*create\b/.test(readFileSync(file, "utf8")))
     .map((file) => file.slice(ROOT.length + 1));
-  // 어댑터는 자기 파일에서 만든다 — 그 둘 밖에 새 생성자가 생기면 정책이 조용히 샌다.
-  expect(writers.sort()).toEqual([...creators, "lib/auth/safe-adapter.ts"].sort());
+  expect(writers.sort()).toEqual([...creators].sort());
 });

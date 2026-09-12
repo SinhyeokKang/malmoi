@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
+import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
@@ -19,6 +20,8 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     const h = await headers();
     const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
     if (!origin) return { error: "unavailable" };
+    // ⚠️ **버려진 병합 왕복을 먼저 지운다** — 남아 있으면 그쪽이 이 callback을 먹는다 (불변식 8c).
+    await clearLinkCookies();
     const jar = await cookies();
     const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
     if (!sessionToken) return { error: "unavailable" };

@@ -174,7 +174,13 @@ export function outcomeUrl(dest: LinkDest): string {
  * 표면이 된다. 토큰이 없는 경우도 같은 곳으로 간다: 돌아갈 challenge가 없다.
  */
 export function failureUrl(challengeToken: string | null, outcome: LinkOutcome): string {
-  if (challengeToken === null || outcome === "expired" || outcome === "linked") {
+  /**
+   * ⚠️ **돌아갈 challenge가 없는 갈래는 이 화면으로 보내지 않는다.** `expired`·`invalid`(단일 사용
+   * 뒤의 재시도)는 행이 사라진 상태라, 링크 화면으로 보내면 그 화면이 **사유 없이** `/signin`으로
+   * 한 번 더 튕겨 **문구가 통째로 사라진다** — 사유를 보내놓고 아무도 안 읽는 것이 POSTMORTEM
+   * 2026-09-06의 사고다. 나머지 넷은 challenge가 살아 있어 다시 누를 버튼이 그 화면에 있다.
+   */
+  if (challengeToken === null || outcome === "expired" || outcome === "invalid" || outcome === "linked") {
     return routes.signIn({ error: "LinkExpired" });
   }
   return routes.signInLink(challengeToken, { e: outcome });

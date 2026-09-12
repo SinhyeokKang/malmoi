@@ -4,6 +4,8 @@ vi.mock("@/auth", () => ({ signIn: s.signIn }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: s.requireUser }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ account: { findMany: s.accounts } }) }));
 vi.mock("../store", () => ({ beginRevocation: s.begin }));
+// 병합 쿠키 정리는 이 테스트의 대상이 아니다 — `exclusive.test.ts`가 그 순서를 따로 센다.
+vi.mock("@/lib/login-link/clear-cookies", () => ({ clearLinkCookies: vi.fn() }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: s.get, set: s.set }), headers: s.headers }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
 import { startSessionRevocation } from "@/app/(edit)/account/actions";

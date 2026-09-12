@@ -14,6 +14,8 @@ const challenge = {
 const confirming = { provider: "github", providerAccountId: "gh1" };
 
 function fixture(overrides: { pending?: unknown; confirmed?: unknown; expires?: Date } = {}) {
+  // ⚠️ `??`로 기본값을 주면 `confirmed: null`(처음 보는 계정)이 기본값으로 되살아난다.
+  const confirmed = "confirmed" in overrides ? overrides.confirmed : { userId: "u" };
   const row = {
     identifier: challengeIdentifier(challenge),
     token: challengeTokenHash(TOKEN),
@@ -22,7 +24,7 @@ function fixture(overrides: { pending?: unknown; confirmed?: unknown; expires?: 
   const account = {
     findUnique: vi.fn(async ({ where }: { where: { provider_providerAccountId: { provider: string } } }) =>
       where.provider_providerAccountId.provider === "github"
-        ? (overrides.confirmed ?? { userId: "u" })
+        ? confirmed
         : (overrides.pending ?? null),
     ),
     findMany: vi.fn().mockResolvedValue([{ provider: "github" }]),

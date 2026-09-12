@@ -1001,7 +1001,7 @@ export const en = {
       // 우리 코드다 — 세션을 못 읽었을 때 보낸다. "로그인에 실패"라고 말하지 않는다: 사용자는 편집 중이었다.
       Unavailable: "Something went wrong. Try opening this again in a moment.",
       // 우리 코드다 — 만료된 병합 challenge를 그 화면으로 되돌리지 않고 여기로 보낸다 (완료 조건 5).
-      LinkExpired: "That confirmation expired. Sign in again to continue.",
+      LinkExpired: "That confirmation is no longer valid. Sign in again to continue.",
       fallback: "Sign-in failed. Try again in a moment.",
     },
 

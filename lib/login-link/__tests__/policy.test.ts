@@ -144,7 +144,11 @@ it("복귀 지점은 callback-url에서 갈래로만 읽는다 — 외부 URL은
 
 it("실패는 같은 화면으로 돌아가고, 토큰이 없으면 로그인 화면이다", () => {
   expect(failureUrl("abc", "wrong-account")).toBe("/signin/link/abc?e=wrong-account");
+  expect(failureUrl("abc", "already-linked")).toBe("/signin/link/abc?e=already-linked");
+  expect(failureUrl("abc", "cancelled")).toBe("/signin/link/abc?e=cancelled");
+  // ⚠️ 돌아갈 challenge가 없는 갈래는 그 화면으로 보내지 않는다 — 사유 없이 한 번 더 튕긴다.
   expect(failureUrl("abc", "expired")).toBe("/signin?error=LinkExpired");
+  expect(failureUrl("abc", "invalid")).toBe("/signin?error=LinkExpired");
   expect(failureUrl(null, "wrong-account")).toBe("/signin?error=LinkExpired");
 });
 

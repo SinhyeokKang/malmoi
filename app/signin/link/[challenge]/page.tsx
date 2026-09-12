@@ -11,6 +11,7 @@ import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
 import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
+import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib/login-link/policy";
 import { loadChallengeView } from "@/lib/login-link/view";
@@ -127,7 +128,8 @@ function ProviderButton({
         const cookie = linkCookie(origin?.secure ?? false);
         // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (design 불변식 4).
         (await cookies()).set(cookie.name, challenge, cookie.options);
-        await signIn(provider, { redirectTo: outcomeUrl(dest) });
+        // 시작 스코프 안에서 불러야 Auth.js가 state를 **우리 쿠키 이름**으로 저장한다 (불변식 3).
+        await withLinkStart(origin?.secure ?? false, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));
       }}
     >
       <SubmitButton variant="primary" size="lg" className="w-full">
