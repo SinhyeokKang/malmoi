@@ -378,7 +378,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 |---|---|---|
 | **토스트** | **전역 결과를 내는 이벤트** — 대상이 화면 전체이고 읽고 나면 사라져도 되는 것 | 로그인 거부 · 세션 회수 완료 |
 | 인라인 | **대상이 있는 판정** | 셀 저장 상태 · 멤버 행 옆 거부 |
-| 인라인 | **지속되는 조건** | 편집 손실 배너 · base 대기 배너 |
+| 인라인 | **지속되는 조건** | 편집 손실 배너 · base 대기 배너 · 초대 수락 실패 전체(`?e=unauthorized`·`unavailable` 포함) |
 | 인라인 | **페이지 콘텐츠 자체** | 초대의 `not-found`·`expired`·`already-accepted` |
 
 - **`<Toaster theme="light" />`가 `app/layout.tsx`에 있다.** ⚠️ `sonner`는 테마를 **스스로 감지**하므로
@@ -516,7 +516,7 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 | 도트 필드 | Canvas 2D (`components/signin/dot-field.tsx` + 잎 `lib/signin/dot-field.ts`). ⚠️ **hex를 tsx에 박지 않는다** — `--signin-dot`을 `getComputedStyle`로 읽는다(§6.2). ⚠️ 커서가 없으면 `autoCursor`가 ㄹ자로 순회하고 `prefers-reduced-motion`이면 1회 렌더 |
 | 브랜드 아이콘 | GitHub·Google 인라인 SVG (`components/signin/brand-icons.tsx`) — ⚠️ `lucide-react`에 브랜드 글리프가 없고 **Google 4색은 §6.2의 예외다**(남의 브랜드 자산이라 토큰으로 접을 수 없다) |
 | 피드백 | `?error=`·`?sessions=` → **토스트** (§6.25). ⚠️ **`auth-toast`는 아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의 자리가 된다 |
-| 초대 수락 | 같은 골격. ⚠️ **Layer A(`not-found`·`expired`·`already-accepted`)는 인라인이다** — 페이지 콘텐츠 자체라 토스트로 옮기면 화면이 빈다(§6.25 경계표). 토스트는 `?e=`(버튼을 눌러서 난 거부) **둘**(`already-member`·`unauthorized`)이다. ⚠️ **`email-mismatch`는 2026-09-12에 인라인으로 옮겼다** — **버튼을 누르기 전에 렌더에서** 판정하고(`planInvitationAccept` 그 함수를 부른다), 그 상태에서는 수락 버튼이 없고 [Sign in with another account] 하나만 남는다. 병합 화면과 같은 형이고 근거도 같다: 메시지와 조치가 한 자리에 있어야 하며, 눌러도 확실히 거부되는 버튼을 남기면 사용자가 그것부터 누른다. ⚠️ **로그인 상태는 다섯 줄**(로고 · `h1` · 설명 · 프로젝트 카드 · 수락), **비로그인은 카드 없이** 세 줄 + provider 버튼 둘 — ⚠️ **그 둘은 `/signin`의 버튼 그대로다**(`ProviderSubmit` + 브랜드 아이콘 + GitHub `primary` + 같은 문구, 2026-09-12): 같은 자리에서 같은 일을 하는 버튼이 화면마다 다르게 생기면 번역자에게 첫 얼굴인 이 화면이 다른 제품처럼 보이고, 로그인이 유일한 할 일인 화면에 primary가 0이면 §2가 그 화면에서 성립하지 않는다 — 이 화면은 matcher 밖이라 링크를 가진 누구에게나 열리고, 그때 고를 것은 "로그인할까"뿐이라 프로젝트 상세가 필요 없다 |
+| 초대 수락 | 같은 골격. **실패는 모두 인라인 `Alert`**다 — 이 초대의 지속되는 조건이므로 규약 8을 적용한다(예외 추가 아님). `planInviteView`의 `kind`가 알림과 CTA를 함께 고른다. `blocked`는 재시도 가능한 장애에만 토큰 보존 GET 버튼, `sign-in`은 provider 둘과 하단 캡션, `accept`는 프로젝트 카드와 수락, `wrong-account`는 프로젝트 카드와 [Sign in with another account] 하나다. 만료가 불일치보다 앞이고 불일치가 기존 멤버보다 앞이다. 알림은 설명 아래·카드 위, 비로그인에는 프로젝트 카드가 없다. provider 버튼은 `/signin`과 같은 `ProviderSubmit`·브랜드 아이콘·문구를 쓰고 GitHub이 `primary`다. |
 | 계정 병합 (2026-09-12) | 같은 골격 · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
 
 ### 6.63 프로젝트 목록 (`/projects`) — 행 하나에 두 줄 (2026-09-10, 8-3)
