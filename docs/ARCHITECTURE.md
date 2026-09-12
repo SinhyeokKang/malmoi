@@ -634,15 +634,18 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`confirm.ts`의 `planConfirmedFormat`** — ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 파일 재조회로
   재검증한다.** 이건 편의가 아니라 **보안 통제다**: 그 값이 그대로 저장되면 pull이 임의 경로를 겨눈다.
   저장하는 것은 `detectFormatWith`의 **반환값**이고 사용자가 보낸 문자열이 아니다.
-  - ⚠️ **소비자가 둘이다** (2026-09-13 — new-project-modal): `createProject`와 **`loadCandidateSample`**.
-    후자는 ②의 언어 미리보기라 저장하지 않지만 **같은 값 쌍으로 리포를 읽으므로** 같은 통제를 지난다 —
-    "저장 안 하니까 안 걸린다"는 틀렸다(읽는 경로 자체가 불변식 10의 대상이다). ⚠️ **`templatePaths`로
-    대신하지 않는다** — 그건 이 함수가 내부에서 부르는 **탐지 헬퍼**이고, 탐지용 판정을 방어로 재사용하는
-    것이 정확히 POSTMORTEM 2026-09-09의 모양이다. 같은 진입점이 `isPathSafeLocale`(locale)과
-    `isValidBranchName`(ref)도 함께 건다.
-- **`ref`는 세 진입점 전부 `isValidBranchName`을 지난다** (2026-09-13) — `detectRepoFormats` ·
-  `loadCandidateSample` · `createProject`. 잎이라 비용이 0인데, 그전에는 `createProject`에만 걸려 있어
-  나머지 둘이 맨값을 GitHub URL에 넣고 있었다.
+  - 온보딩 미리보기는 **확정과 조회를 분리**한다. `planConfirmedFormat`은 blob 내용이 필요하므로
+    다운로드 전 검증으로 쓸 수 없다. 탐지·`confirmManualFormat`이 재검증한 포맷에 `AUTH_SECRET`으로
+    용도를 구분한 HMAC 확인값을 발급한다. 확인값은 사용자·repositoryId·installationId·ref·headSha에
+    묶이고 파일 내용은 담지 않는다. `loadCandidateSample`은 현재 인가와 스냅샷을 다시 확인하고 서명을
+    대조한 뒤 경로를 트리와 교차한다. per-locale은 요청 언어의 blob **하나만** 읽는다.
+    확인값은 인가를 대신하지 않으며, 브랜치 head가 바뀌면 재탐지해야 한다. 서버 캐시는 없다.
+  - 직접 소비자는 `createProject`·`runFirstIngest`·`detectRepoFormats`·`confirmManualFormat`이다.
+    `loadCandidateSample`은 그중 탐지·수동 확정이 발급한 확인값을 검증한다. `templatePaths`는
+    초기 재검증에 필요한 다운로드 목록을 고르는 헬퍼이며 확인값 검증을 대신하지 않는다.
+- **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
+  `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
+  `baseLocale`은 `isPathSafeLocale`도 지난다.
 - **`workflow.ts`의 `renderWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
