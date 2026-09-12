@@ -297,6 +297,12 @@ app/
                         `pages.error`가 여기라 거부 사유를 `?error=`로 보인다.
                         ⚠️ **`?error=` 없이도 세션이 `unavailable`이면 문구를 띄운다** — 로그인 버튼만
                         보이면 사용자가 헛로그인한다. ⚠️ **matcher에 넣지 않는다**(자기 자신으로 307)
+                        ⚠️ **초대에서 온 왕복이 여기서 끝나면 돌아가는 링크를 든다** (2026-09-12) —
+                        provider 화면에서 취소하면 Auth.js가 `?error=`를 달고 이 화면으로 보내는데,
+                        그 순간 사용자가 든 것은 초대 링크뿐이라 **토큰이 사라진다**. 자리를 아는
+                        것은 `authjs.callback-url` 쿠키 하나이고 `destFromCallbackUrl`이 읽는다
+                        (`__Secure-` 접두 유무를 둘 다 본다). ⚠️ **갈래가 `invite`일 때만 세운다** —
+                        저장된 문자열을 그대로 링크에 실으면 open redirect 판정이 생긴다
   signin/link/[challenge]/page.tsx
                         계정 병합 안내 (account-linking, 2026-09-12) — **인가가 없고 challenge가
                         대신한다.** `AuthLayout` 320 컬럼 다섯 줄 + 구분선 아래 outlined 버튼.
@@ -495,8 +501,16 @@ app/
                         ⚠️ 하네스의 **시드 프로젝트는 `lastCommitSha`가 "적재 완료"**다 — readiness
                         게이트가 붙어서다. `project.create`는 그대로 null을 낸다(스키마 기본값)
   invite/               ⚠️ **(edit) 밖이고 matcher 밖이다** — 비로그인으로 열려야 토큰이 보존된다
-    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. 실패 분기를 각자 한 줄로.
-                        email-mismatch면 "다른 계정으로 로그인"(signOut → 같은 링크) — 없으면 갇힌다
+    [token]/page.tsx    마스킹한 이메일·프로젝트 이름·역할만 보인다. **알림과 CTA를 `planInviteView`가
+                        함께 고른다** (2026-09-12) — 화면이 조건을 다시 적지 않는다.
+                        ⚠️ **실패가 전부 인라인 `Alert`이고 `AuthToast`가 없다** — 이 초대의 지속되는
+                        조건이라 규약 8이 그쪽이다. 눌러서 난 거부(`?e=`)도 같은 자리다.
+                        ⚠️ **불일치를 버튼을 누르기 전에 말한다** — 렌더 시점에 User 행을 읽어
+                        대조하고, 그때 수락 버튼 대신 "다른 계정으로 로그인"(signOut → 같은 링크)
+                        **하나만** 세운다. 누를 수 없는 버튼을 남겨 두면 사용자가 그것부터 누른다.
+                        ⚠️ **멤버·사용자 조회는 로그인 + 살아 있는 초대일 때만** 한다(비로그인에게
+                        멤버십을 조회할 이유가 없다). 그 조회가 실패하면 `unavailable` + 토큰을
+                        보존한 재시도로 닫는다 — 틀린 갈래를 보이는 것보다 낫다
     actions.ts          acceptInvitation — **인가 예외**. 토큰이 인가를 대신한다 (단일 사용)
     __tests__/          page — `renderToStaticMarkup`으로 **손상된 초대**가 unavailable + 링크를 보존한
                         재시도를 내고, **없는 초대**는 그런 재시도를 안 내는지 가른다.
@@ -1108,6 +1122,14 @@ lib/
                         같은 형으로 **소비자 옆**이다. ⚠️ **대기 초대는 안 센다** — 세면 만료된 초대
                         때문에 못 부르는 상태가 생기고 그것을 설명할 화면이 없다).
                         ⚠️ not-found를 **가른다** — access.ts와 방향이 반대이고 축이 다르다
+    invite-view.ts      planInviteView — 초대 화면의 **갈래 넷**(blocked·sign-in·accept·wrong-account)을
+                        한 자리에서 고른다 (2026-09-12). 이메일 대조를 다시 적지 않고
+                        `planInvitationAccept`를 **그대로 부른다** — 두 벌이면 화면과 Action이 서로
+                        다른 답을 낸다. ⚠️ **판정 순서가 계약이다**: `expired`가 `email-mismatch`보다
+                        앞이고(만료된 링크가 대상 주소를 암시하지 않는다) `email-mismatch`가
+                        `already-member`보다 앞이다(그 초대는 그 사람 것이 아니다).
+                        ⚠️ **`?e=`를 아는 문자열로만 좁힌다** — 주소창 값이라 그대로 넘기면
+                        프로토타입 키가 갈래로 샌다
     membership.ts       planMemberChange — 마지막 OWNER 보호. 제거와 강등이 같은 판정이다
     email.ts            normalizeEmail(trim+소문자까지만 — gmail 점·+ 태그를 접지 않는다)
                         + verifiedEmailFrom — provider가 검증한 이메일만 통과 (fail-closed)
