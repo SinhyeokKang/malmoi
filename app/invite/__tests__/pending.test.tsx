@@ -3,14 +3,14 @@ import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { render, find } from "@/components/__tests__/helpers/dom";
 
-const state = vi.hoisted(() => ({ session: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), accept: vi.fn(), viewer: vi.fn() }));
+const state = vi.hoisted(() => ({ session: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), accept: vi.fn(), viewer: vi.fn(), member: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: state.signIn, signOut: state.signOut }));
 vi.mock("@/lib/session-revocation/clear-cookies", () => ({ clearRevocationCookies: vi.fn() }));
 vi.mock("@/lib/login-link/clear-cookies", () => ({ clearLinkCookies: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
 vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row, decodeUser: (row: unknown) => row }));
 vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ email: "person@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2099-01-01"), project: { name: "Demo", locales: [{ code: "ko" }] } }) }, user: { findUnique: state.viewer } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ projectId: "p1", email: "person@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2099-01-01"), project: { name: "Demo", locales: [{ code: "ko" }] } }) }, user: { findUnique: state.viewer }, projectMember: { findUnique: state.member } }) }));
 vi.mock("../actions", () => ({ acceptInvitation: state.accept }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
@@ -23,6 +23,7 @@ for (const action of ["signIn", "accept", "signOut"] as const) {
     state[action].mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
     state.session.mockResolvedValue({ status: action === "signIn" ? "none" : "ok", userId: "u1" });
     // ⚠️ **`signOut` 버튼은 이제 `?e=`가 아니라 렌더 판정이 세운다** — 초대받지 않은 계정일 때만 뜬다.
+    state.member.mockResolvedValue(null);
     state.viewer.mockResolvedValue({ id: "u1", email: action === "signOut" ? "someone-else@example.com" : "person@example.com" });
     const page = await Page({ params: Promise.resolve({ token: "token" }), searchParams: Promise.resolve(action === "signOut" ? { e: "email-mismatch" } : {}) });
     const { container } = await render(page);

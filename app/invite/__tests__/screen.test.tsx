@@ -1,10 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-const state = vi.hoisted(() => ({ row: vi.fn(), session: vi.fn(), viewer: vi.fn() }));
+const state = vi.hoisted(() => ({ row: vi.fn(), session: vi.fn(), viewer: vi.fn(), member: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: state.row }, user: { findUnique: state.viewer } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: state.row }, user: { findUnique: state.viewer }, projectMember: { findUnique: state.member } }) }));
 vi.mock("../actions", () => ({ acceptInvitation: vi.fn() }));
 // 저장 봉투 복호는 이 화면의 계약이 아니다 — `page.test.tsx`가 손상된 행의 갈래를 따로 센다.
 vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row, decodeUser: (row: unknown) => row }));
@@ -24,6 +24,7 @@ const invitation = {
 };
 
 async function html(status: "ok" | "none", viewerEmail = "person@example.com") {
+  state.member.mockResolvedValue(null);
   state.session.mockResolvedValue({ status, userId: "u1" });
   state.row.mockResolvedValue(invitation);
   state.viewer.mockResolvedValue({ id: "u1", email: viewerEmail });
@@ -81,4 +82,69 @@ it("프로젝트 카드가 규모를 노출하지 않는다", async () => {
     "utf8",
   );
   for (const forbidden of ["memberCount", "keyCount", "_count"]) expect(source).not.toContain(forbidden);
+});
+
+const renderPage = async (e?: string) => renderToStaticMarkup(await Page({ params: Promise.resolve({ token: "t" }), searchParams: Promise.resolve({ e }) }));
+const escaped = (value: string) => value.replace(/'/g, "&#x27;");
+
+it.each([
+  { name: "sign-in", status: "none", email: "person@example.com", member: false, other: 0, accept: 0 },
+  { name: "accept", status: "ok", email: "person@example.com", member: false, other: 0, accept: 1 },
+  { name: "wrong-account mismatch", status: "ok", email: "other@example.com", member: false, other: 1, accept: 0 },
+  { name: "wrong-account member", status: "ok", email: "person@example.com", member: true, other: 1, accept: 0 },
+  { name: "blocked", status: "unavailable", email: "person@example.com", member: false, other: 0, accept: 0 },
+])("$name의 CTA를 함께 고른다", async ({ status, email, member, other, accept }) => {
+  state.session.mockResolvedValue({ status, userId: "u1" });
+  state.row.mockResolvedValue(invitation);
+  state.viewer.mockResolvedValue({ id: "u1", email });
+  state.member.mockResolvedValue(member ? { userId: "u1" } : null);
+  const markup = await renderPage();
+  expect(markup.split(m.invite.otherAccount).length - 1).toBe(other);
+  expect(markup.split(m.invite.accept).length - 1).toBe(accept);
+  if (other) {
+    const notice = member ? "already-member" : "email-mismatch";
+    expect(markup).toContain(escaped(m.errors.invite[notice]));
+    expect(markup.indexOf('role="alert"')).toBeLessThan(markup.indexOf("bugshot-2"));
+  }
+});
+
+it("비로그인과 막힌 초대는 멤버를 조회하지 않는다", async () => {
+  for (const row of [invitation, null, { ...invitation, expiresAt: new Date(0) }, { ...invitation, acceptedAt: new Date() }]) {
+    for (const status of ["none", "ok"] as const) {
+      if (row === invitation && status === "ok") continue;
+      state.member.mockClear(); state.viewer.mockClear();
+      state.row.mockResolvedValue(row);
+      state.session.mockResolvedValue({ status, userId: "u1" });
+      await renderPage();
+      expect(state.member).not.toHaveBeenCalled();
+      expect(state.viewer).not.toHaveBeenCalled();
+    }
+  }
+});
+
+it("멤버 조회는 초대의 프로젝트와 세션 사용자 PK로 좁힌다", async () => {
+  await html("ok");
+  expect(state.member).toHaveBeenCalledWith({ where: { projectId_userId: { projectId: "p1", userId: "u1" } }, select: { userId: true } });
+});
+
+it("사용자 또는 멤버 조회 장애는 토큰 보존 재시도만 낸다", async () => {
+  for (const query of [state.viewer, state.member]) {
+    await html("ok");
+    query.mockRejectedValueOnce(new Error("offline"));
+    const markup = await renderPage();
+    expect(markup).toContain('action="/invite/t"');
+    expect(markup).toContain(m.common.retry);
+    expect(markup).not.toContain(m.invite.accept);
+    expect(markup).not.toContain(m.invite.otherAccount);
+    expect(markup).not.toContain("bugshot-2");
+  }
+});
+
+it.each(["unauthorized", "unavailable"] as const)("%s도 초대의 인라인 알림이다", async (e) => {
+  for (const status of ["none", "ok"] as const) {
+    await html(status);
+    const markup = await renderPage(e);
+    expect(markup).toContain('role="alert"');
+    expect(markup).toContain(escaped(m.errors.invite[e]));
+  }
 });
