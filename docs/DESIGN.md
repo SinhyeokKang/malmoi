@@ -361,6 +361,18 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 **새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`). 그 밖은 없다.
 
+⚠️ **온보딩 모달은 새 raw 색을 하나도 안 늘렸다** (2026-09-13 — new-project-modal §8.0). 핸드오프의
+raw 넷이 전부 기존 토큰으로 접혔다: `#f0f0f0`(바닥 border·구분선) → **`border-subtle`** · dim
+`rgba(10,10,10,0.32)` → **`bg-foreground/32`**(기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다 —
+이 모달은 뒤의 목록이 읽혀야 한다) · 스켈레톤 `rgba(10,10,10,0.07)` → **`bg-foreground/5`**
+(`EmptyState` 칩과 같은 값. 따로 만들면 회색 블록 값이 두 벌이 된다) · `#f5f6f7` → 이미
+**`--color-canvas`**다.
+
+⚠️ **`backdrop-blur-[6px]`가 리포 최초의 `backdrop-*`다** (2026-09-13). 색이 아니라 **필터**라 위
+목록에 들지 않지만 새 시각 관용구이므로 여기 적는다 — 쓰는 곳은 **온보딩 모달의 dim 하나**다.
+넓히려면 이 줄을 먼저 고친다: blur는 그 뒤의 것을 "읽지 말라"가 아니라 "지금 초점이 아니다"로
+만드는 수단이고, 그 말이 필요한 표면이 앱에 이것뿐이다(다른 모달들은 뒤가 읽힐 필요가 없다).
+
 **흑백 둘과 남의 자산은 이 규칙 밖이다** (2026-09-11 등재):
 
 - **`bg-white`** — 셸 밖 좌측 패널의 **true white** 하나뿐이다(`components/signin/auth-layout.tsx`). `--background`가 아닌 이유는 §6.62에 있다: 캔버스와의 대비가 그 화면의 골격이라 토큰이 움직여도 이 자리는 순백이어야 한다.
@@ -676,22 +688,38 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 `translation:write` 화면 **다섯**(Home·번역·언어·멤버·이력)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
 
-### 6.7 새 프로젝트 (`/projects/new`)
+### 6.7 새 프로젝트 (`/projects/new`) — **`/projects` 위의 모달 네 단계** (2026-09-13)
 
-②~⑥이 한 라우트의 클라이언트 상태다. 형만 바뀐다:
+⚠️ **라우트 하나를 대신하는 급의 모달이다** — 단계가 넷이고 실패 갈래가 열이라 "확인 대화상자"가
+아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 960 · 높이가 뷰포트에 물린 고정 · 본문만 스크롤.
+**뒤에 프로젝트 목록이 그대로 있고**, 닫으면 열기 직전의 `?q=`·`?filter=`를 들고 `/projects`로 간다.
+
+⚠️ **`components/ui/dialog.tsx`를 쓰지도 고치지도 않는다.** 그 프리미티브는 Overlay가 고정
+(`bg-foreground/40`)이고 머리·본문·바닥 padding이 박혀 있으며 바닥이 `justify-end`라 왼쪽
+`Step n of 4`를 못 넣는다 — 고치면 초대·확인·아카이브·로그인수단 모달 넷이 함께 움직인다.
+**Radix `Dialog.*`를 직접 조립한다**(`components/onboarding/modal.tsx`). 나머지 프리미티브는 그대로
+쓰고 필요한 만큼만 넓혔다: `skeleton` 신설 · `segmented-control`의 `leading` · `empty-state`의
+`className` · `alert`의 `role="status"`.
 
 | 요소 | 규칙 |
 |---|---|
-| ①①' 빈 상태 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator to install the app"으로 떨어진다 |
-| 섹션 셋 | `Card` 셋이 아래로 열린다 — Repository · Locale files · Name |
-| 리포 목록 | `divide-y divide-border` + 위 `Input`(필터). `owner/name`은 **mono**. 누른 행의 버튼만 "Detecting…" |
-| 후보 목록 | `Radio` 목록. 선택 행 `bg-muted font-medium`(`cn()`) |
-| 경로 템플릿 | **mono.** `{locale}` 자리를 "the language goes here"로 한 줄 |
-| 기준 언어 | `Radio`, 기본은 `pickBaseLocale`. 코드는 mono |
-| 수동 지정 | `<details>` — 후보가 있으면 접힘, `no-candidates`면 **펼친 채 주 행동** |
-| ⑤⑥ 결과 카드 | 토큰 값 칩 + [Copy] · YAML 코드 블록 + [Copy] 라벨 교체 "Copied" · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 "Imported N keys." + 상위 5건 "Could not read {path}" `text-xs` + `<details>` 안 `text-mono whitespace-pre-wrap` 진단(§4.1 — 파서 원문이 여러 줄이다) · [Start translating] `primary`. ⚠️ **tone은 `failed`가 정한다** — 진단 목록 길이로 고르면 목록이 빈 부분 실패가 success로 그려진다(불변식 9) |
+| 껍데기 | 폭 960 · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값에 물린다**: `min-h-[min(80svh,calc(100svh-96px))] max-h-[calc(100svh-96px)]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
+| 바닥 | 왼쪽 `Step n of 4`(`text-xs` muted) · 오른쪽 [Back]·[Next] `Button size="lg"`. ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. **①④에는 [Back]이 없다**(닫는 길은 X·Esc·backdrop / 되돌릴 것이 없다) |
+| 비활성 [Next] | **껍데기가 든다** — 흰 배경 + border + muted 글자 + `cursor-not-allowed`. 단계마다 다시 만들면 갈린다 |
+| ① 막힘 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator…"로 떨어진다. ⚠️ **검색 0건은 넷째 갈래다** — 요구하는 일이 다르다(검색어를 지워라) |
+| ① 리포 목록 | 한 테두리 안의 `Radio` 행 — 이름 `text-sm font-medium` + 보조 줄 `owner · pushed …`. ⚠️ **`owner/name`이 sans다**(mono가 아니다) |
+| ① 브랜치 | 고른 행 **아래로** 펼쳐지는 `Select`(기본값 default branch). 300개 초과면 `Input`, 조회 실패면 읽기 전용 한 줄 + "Using the repository's default branch." — ⚠️ **실패를 "브랜치가 없다"로 그리지 않는다** |
+| ② 2단 | 좌 **240** 후보 `Radio` / 우 키·값 표. ⚠️ **키 행만 스크롤한다** — 툴바·헤더·총량 줄은 고정 |
+| ② 후보 행 | 선택 행 `bg-muted font-medium`. ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
+| ② 세그먼트 | 후보의 **로케일 전부**. 다섯 이상이면 `Select`로 접힌다 |
+| ② 값 셀 | 정말 비었으면 **빈 칸**, 못 읽었으면 **"We couldn't read this file."** ⚠️ **둘을 가른다** — 이 화면의 목적이 "ko 열이 비어 있다"를 보이는 것이라 그 구별이 기능 자체에 걸린다 |
+| ③ 주소 오류 | 형식 넷(`empty`·`format`·`too-long`·`reserved`)은 **입력 중** 필드 아래 help, 중복은 **제출 뒤** 같은 자리에 `aria-invalid` + destructive. ⚠️ **배너를 세우지 않는다** |
+| ③ 기준 언어 | `Radio` + "Most keys" 배지 + 키 수 비교 info. ⚠️ **키 수를 아는 언어에만 단다** — 모르는 언어에 배지를 달면 근거가 "②에서 무엇을 눌렀는지"라는 우연이 된다 |
+| ④ 결과 | 토큰 값 칩 + [Copy] · YAML 블록 + [Copy] · 결과는 **`Alert`**(실패 0 → `success` / 부분 실패 → `warning`) 안에 헤드라인 + 상위 5건 "Could not read {path}" + `<details>` 안 `text-mono whitespace-pre-wrap` 진단(§4.1). **적재 중에도 토큰·YAML이 보이고 [Start translating]이 눌린다** — 비활성이면 토큰을 이미 옮긴 사용자가 60초를 갇힌다. ⚠️ **tone은 `failed`가 정한다**(불변식 9) |
+| 로딩 | **다음 단계 안의 스켈레톤**이다 — [Next]를 누른 자리에서 라벨만 바꾸면 화면이 멈춘 것으로 보인다. 개수는 실제보다 적게(① 셋, ② 둘). 전역 스피너·진행률 숫자가 없다. ⚠️ **예외 하나**: ③→④만 [Next]가 로딩이다(실패하면 ③에 머물러야 하므로 미리 넘어갈 수 없다) |
+| 접근성 | `sr-only aria-live="polite"` 하나가 단계 제목과 비동기 전이를 말하고, 단계가 바뀌면 포커스가 본문 컨테이너(`tabIndex={-1}`)로 간다. ④의 적재 중 info `Alert`는 `role="status"`다 — ⚠️ `Alert`의 `role="alert"`는 **`danger`일 때만** 붙는다 |
 
-⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (PRODUCT §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07).
+⚠️ **어댑터 내부 이름을 화면에 쓰지 않는다** (PRODUCT §3). 라벨은 서버가 `formatLabel`로 만들어 내려준다 — 그 모듈을 클라이언트가 **값으로** import하면 어댑터 전부(ts-morph)가 번들에 들어온다 (POSTMORTEM 2026-09-07). ⚠️ **같은 이유로 `keyGap`이 `lib/onboarding/key-gap.ts` 잎에 산다** — ③이 그것을 값으로 부른다.
 
 ### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
 
