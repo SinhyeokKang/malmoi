@@ -8,7 +8,8 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
  * `AccessError`를 낸다. **한쪽만 보면 그 사유가 통째로 무음이다** (POSTMORTEM 2026-09-06).
  * 모르는 값에 던지지 않는다: Action이 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-export function failureText(error: string): string {
+export function failureText(error: string, created = false): string {
+  if (error === "unauthorized") return created ? m.newProject.errors.sessionLostAfterCreate : m.newProject.errors.sessionLost;
   if (isOnboardError(error)) return onboardErrorMessage(error);
   if (isConnectError(error)) return connectErrorMessage(error);
   if (isAccessError(error)) return accessErrorMessage(error);
@@ -19,6 +20,7 @@ export function failureText(error: string): string {
  * 예외 J — 세션 만료·인가 거부. **모달을 닫지도 `router.refresh()`를 부르지도 않는다**: 모달이
  * 클라이언트 상태를 들고 있어 씻기면 ①~③의 입력이 통째로 사라진다 (POSTMORTEM 2026-09-08).
  */
-export function isSessionLost(error: string): boolean {
-  return error === "unauthorized" || (isAccessError(error) && error === "unauthorized");
+export function isAccessLost(error: string): boolean {
+  return ["unauthorized", "forbidden", "not-found", "not-connected", "reauthorize",
+    "repo-not-installed", "installation-forbidden", "repo-forbidden"].includes(error);
 }

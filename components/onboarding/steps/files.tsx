@@ -46,6 +46,7 @@ export type FilesStepState = {
   locale: string;
   preview: PreviewState;
   manual: ManualEntry;
+  manualCandidate?: CandidateSummary;
   manualMatched: boolean;
   adapters: AdapterChoice[];
   repoLabel: string;
@@ -144,7 +145,7 @@ export function FilesStep({
         {manualMode && !state.manualMatched ? (
           <EmptyState className="py-6" title={m.newProject.files.preview.none} />
         ) : (
-          <Preview state={state} candidate={candidate} onLocale={onLocale} />
+          <Preview state={state} candidate={candidate ?? state.manualCandidate} onLocale={onLocale} />
         )}
       </div>
     </div>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
   createProject,
+  confirmManualFormat,
   detectRepoFormats,
   listRepoBranches,
   loadCandidateSample,
@@ -19,6 +20,7 @@ import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
 
+import { isAccessLost } from "./failure";
 import { OnboardingModal } from "./modal";
 import { FilesStep, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
@@ -34,8 +36,8 @@ import { ResultStep, type Ingest } from "./steps/result";
  * ⚠️ **캐시 키가 `${owner}/${repo}@${ref}` + 후보 index + locale이다.** 모달은 단계가 껍데기를
  * 공유하므로 [Back]으로 돌아가도 상태가 **살아남는다** — 전에는 `ConfirmStep`이 언마운트돼 stale이
  * 원리적으로 안 생겼다. 무효화 경계는 넷이다: 브랜치 변경 · 리포 변경 · 후보 변경(→ `baseLocale`·
- * `name`·`slug`도 함께 무효) · 그리고 **[Back]은 리포 검색어를 남긴다**(단계 컴포넌트의 로컬 상태라
- * 껍데기가 살아 있는 동안 유지된다 — 되돌아가 다른 리포를 고르는 것이 [Back]의 용도이므로 의도다).
+ * `name`·`slug`도 함께 무효) · 그리고 **[Back]은 리포 검색어를 남긴다**(컨테이너가 소유한다).
+ * 수동 지정 키에는 adapter·pathTemplate도 들어간다 — 같은 언어라도 다른 파일의 검증은 무효다.
  */
 export function NewProject({
   repos,
@@ -57,12 +59,18 @@ export function NewProject({
   backQuery: { filter?: string; q?: string };
 }) {
   const router = useRouter();
+  // 같은 리포·후보로 돌아와도 이전 요청과 구별해야 하므로 값 비교 대신 세대를 센다.
+  const repoRequest = useRef(0);
+  const detectRequest = useRef(0);
+  const sampleGeneration = useRef(0);
   const [step, setStep] = useState<Step>(1);
   const [pending, startTransition] = useTransition();
+  const [accessLost, setAccessLost] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(initialError ?? null);
   const [announce, setAnnounce] = useState<string | undefined>(undefined);
 
   // ① 리포·브랜치
+  const [repoQuery, setRepoQuery] = useState("");
   const [repo, setRepo] = useState<RepoOption | undefined>(undefined);
   const [branch, setBranch] = useState<BranchChoice | undefined>(undefined);
   const [branchLoading, setBranchLoading] = useState(false);
@@ -75,6 +83,7 @@ export function NewProject({
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
   const [locale, setLocale] = useState("");
+  const [manualCandidate, setManualCandidate] = useState<CandidateSummary | undefined>(undefined);
   const [samples, setSamples] = useState<Record<string, PreviewState>>({});
   const [manual, setManual] = useState<ManualEntry>({
     adapter: adapters[0]?.adapter ?? "json-catalog",
@@ -96,11 +105,11 @@ export function NewProject({
   const usingManual = candidates.length === 0 || candidate === undefined;
   const pathTemplate = candidate?.pathTemplate ?? manual.pathTemplate.trim();
   /** 미리보기가 매칭을 확인해 준 것이 곧 수동 지정의 검증이다 (예외 E). */
-  const manualMatched = samples[sampleKey(locale)]?.status === "ready";
+  const manualMatched = manualCandidate !== undefined && samples[sampleKey(manual.baseLocale.trim())]?.status === "ready";
 
   const state: NextState = {
-    sessionExpired: banner === "unauthorized",
-    repoSelected: repo !== undefined,
+    sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
+    repoSelected: repo !== undefined && !branchLoading && repo.fullName.toLowerCase().includes(repoQuery.trim().toLowerCase()),
     repoAccessDenied: accessError !== undefined,
     repoListLoading: repos === undefined && listError === undefined,
     detecting,
@@ -115,11 +124,18 @@ export function NewProject({
   };
 
   function sampleKey(code: string): string {
-    return `${repo?.fullName}@${branchValue}#${picked ?? "manual"}:${code}`;
+    return JSON.stringify([repo?.fullName, branchValue, picked, candidate?.adapter ?? manual.adapter, pathTemplate, code]);
   }
 
   /** ① 리포 선택 — 브랜치 목록을 받고 그 자리에서 펼친다. 실패는 ①을 막지 않는다 (예외 D). */
   function selectRepo(next: RepoOption) {
+    const request = ++repoRequest.current;
+    // 리포 한 곳의 거부가 다른 리포까지 막지는 않는다. 계정·세션 거부는 유지한다.
+    if (accessLost !== "unauthorized" && accessLost !== "reauthorize" && accessLost !== "not-connected") {
+      setAccessLost(null);
+      setBanner(null);
+    }
+    setBranchValue("");
     setRepo(next);
     setAccessError(undefined);
     setBranch(undefined);
@@ -128,13 +144,17 @@ export function NewProject({
     resetDownstream();
     void listRepoBranches({ owner: next.owner, repo: next.repo }).then(
       (result) => {
+        if (request !== repoRequest.current) return;
         setBranchLoading(false);
         if (!result.ok) {
           // `unavailable`은 목록 조회만 실패한 것이다 — default branch 하나로 접고 계속 간다.
-          if (result.error === "unavailable") {
-            setBranch(planBranchChoice({ names: undefined, defaultBranch: "" }));
+          if (result.error === "unavailable" && result.defaultBranch !== undefined) {
+            const fallback = planBranchChoice({ names: undefined, defaultBranch: result.defaultBranch });
+            setBranch(fallback);
+            setBranchValue(fallback.selected);
             return;
           }
+          if (isAccessLost(result.error)) setAccessLost(result.error);
           setAccessError(result.error);
           return;
         }
@@ -143,31 +163,45 @@ export function NewProject({
         setBranchValue(choice.selected);
       },
       () => {
+        if (request !== repoRequest.current) return;
         setBranchLoading(false);
-        setBranch(planBranchChoice({ names: undefined, defaultBranch: "" }));
+        setAccessError("unavailable");
       },
     );
   }
 
   function resetDownstream() {
+    detectRequest.current += 1;
+    sampleGeneration.current += 1;
+    setDetecting(false);
     setCandidates([]);
+    setManualCandidate(undefined);
     setPicked(null);
     setLocale("");
     setSamples({});
     setDetectError(undefined);
     setBaseLocale("");
+    setName("");
+    setSlug("");
     setSlugTaken(false);
   }
 
   /** ①→② — **먼저 넘어간 뒤** 그 안이 스켈레톤으로 찬다 (design §4). */
   function detect() {
     if (repo === undefined) return;
+    const request = ++detectRequest.current;
+    sampleGeneration.current += 1;
+    setCandidates([]);
+    setManualCandidate(undefined);
+    setPicked(null);
+    setSamples({});
     setStep(2);
     setDetecting(true);
     setDetectError(undefined);
     setBanner(null);
     void detectRepoFormats({ owner: repo.owner, repo: repo.repo, ref: branchValue || undefined }).then(
       (result) => {
+        if (request !== detectRequest.current) return;
         setDetecting(false);
         /**
          * 후보가 0개여도 ②로 간다 — 수동 지정이 유일한 길이고 그것을 펼쳐 보여야 한다.
@@ -180,9 +214,11 @@ export function NewProject({
           return;
         }
         if (result.error === "no-candidates") return;
+        if (isAccessLost(result.error)) setAccessLost(result.error);
         setDetectError(result.error);
       },
       () => {
+        if (request !== detectRequest.current) return;
         setDetecting(false);
         setDetectError("unavailable");
       },
@@ -192,16 +228,21 @@ export function NewProject({
   function applyCandidate(list: CandidateSummary[], index: number) {
     const chosen = list[index];
     if (chosen === undefined) return;
+    sampleGeneration.current += 1;
     setPicked(index);
     setLocale(chosen.baseLocale);
     // ⚠️ **후보 변경은 `baseLocale`·`name`·`slug`의 무효화 경계다** (design §9) — 옛 후보의 기준
     // 언어가 남으면 그것이 다른 파일 집합의 결정이 된다.
     setBaseLocale(chosen.baseLocale);
+    if (candidate?.adapter !== chosen.adapter || candidate?.pathTemplate !== chosen.pathTemplate) {
+      setName("");
+      setSlug("");
+    }
     setSlugTaken(false);
     setSamples(
       Object.fromEntries(
         chosen.samples.map((s) => [
-          `${repo?.fullName}@${branchValue}#${index}:${s.locale}`,
+          JSON.stringify([repo?.fullName, branchValue, index, chosen.adapter, chosen.pathTemplate, s.locale]),
           { status: "ready", rows: s.rows, total: s.total } as PreviewState,
         ]),
       ),
@@ -213,6 +254,7 @@ export function NewProject({
     setLocale(code);
     const key = sampleKey(code);
     if (samples[key] !== undefined || repo === undefined) return;
+    const generation = sampleGeneration.current;
     setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
     void loadCandidateSample({
       owner: repo.owner,
@@ -221,8 +263,22 @@ export function NewProject({
       adapter: candidate?.adapter ?? manual.adapter,
       pathTemplate,
       locale: code,
+      confirmation: candidate?.confirmation ?? manualCandidate?.confirmation,
     }).then(
       (result) => {
+        if (generation !== sampleGeneration.current) return;
+        if (!result.ok && isAccessLost(result.error)) {
+          setAccessLost(result.error);
+          setBanner(result.error);
+        }
+        if (result.ok) {
+          const update = (item: CandidateSummary): CandidateSummary => ({
+            ...item,
+            samples: [...item.samples.filter((sample) => sample.locale !== code), { locale: code, rows: result.rows, total: result.total }],
+          });
+          if (picked === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
+          else setCandidates((prev) => prev.map((item, index) => index === picked ? update(item) : item));
+        }
         setAnnounce(result.ok ? undefined : m.newProject.files.preview.unavailable);
         setSamples((prev) => ({
           ...prev,
@@ -230,30 +286,67 @@ export function NewProject({
           [key]: result.ok ? { status: "ready", rows: result.rows, total: result.total } : { status: "unavailable" },
         }));
       },
-      () => setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } })),
+      () => {
+        if (generation === sampleGeneration.current) {
+          setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+        }
+      },
     );
   }
 
   /** 수동 지정은 경로를 칠 때마다 그 매칭이 곧 검증이다 (예외 E). */
   function changeManual(next: ManualEntry) {
+    sampleGeneration.current += 1;
+    setSamples({});
+    setManualCandidate(undefined);
     setManual(next);
+    setName("");
+    setSlug("");
+    setSlugTaken(false);
     setPicked(null);
-    if (next.pathTemplate.trim() !== "" && next.baseLocale.trim() !== "") {
-      setLocale(next.baseLocale.trim());
-      setBaseLocale(next.baseLocale.trim());
-    }
+    setLocale(next.baseLocale.trim());
+    setBaseLocale(next.baseLocale.trim());
   }
 
   useEffect(() => {
-    if (step !== 2 || !usingManual) return;
+    if (step !== 2 || !usingManual || repo === undefined) return;
     const code = manual.baseLocale.trim();
-    if (code === "" || manual.pathTemplate.trim() === "") return;
-    const key = sampleKey(code);
-    if (samples[key] !== undefined) return;
-    const timer = setTimeout(() => chooseLocale(code), 400);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, usingManual, manual.pathTemplate, manual.baseLocale]);
+    const template = manual.pathTemplate.trim();
+    if (code === "" || template === "") return;
+    const key = JSON.stringify([repo.fullName, branchValue, null, manual.adapter, template, code]);
+    let active = true;
+    const timer = setTimeout(() => {
+      setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
+      void confirmManualFormat({
+        owner: repo.owner, repo: repo.repo, ref: branchValue,
+        adapter: manual.adapter, pathTemplate: template, baseLocale: code,
+      }).then(
+        (result) => {
+          if (!active) return;
+          if (!result.ok && isAccessLost(result.error)) {
+            setAccessLost(result.error);
+            setBanner(result.error);
+          }
+          if (result.ok) {
+            setManualCandidate(result.candidate);
+            setBaseLocale((prev) => prev || result.candidate.baseLocale);
+            setLocale((prev) => prev || code);
+            setSamples(Object.fromEntries(result.candidate.samples.map((sample) => [
+              JSON.stringify([repo.fullName, branchValue, null, manual.adapter, template, sample.locale]),
+              { status: "ready", rows: sample.rows, total: sample.total } as PreviewState,
+            ])));
+          } else {
+            setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+          }
+        },
+        () => {
+          if (active) setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+        },
+      );
+    }, 400);
+    // 입력 변경·Back 뒤 도착한 응답은 새 입력의 검증 근거가 아니다.
+    return () => { active = false; clearTimeout(timer); };
+  }, [step, usingManual, repo, branchValue, manual.adapter, manual.pathTemplate, manual.baseLocale]);
 
   /** ②→③ — 이름·주소의 **제안**을 채운다. 지우는 선행 상태가 없다 (design §9). */
   function toNaming() {
@@ -277,8 +370,9 @@ export function NewProject({
         slug,
         name,
         baseBranch: branchValue,
-      });
+      }).catch(() => ({ ok: false, error: "unavailable" } as const));
       if (!result.ok) {
+        if (isAccessLost(result.error)) setAccessLost(result.error);
         if (result.error === "slug-taken") {
           setSlugTaken(true);
           return;
@@ -305,6 +399,7 @@ export function NewProject({
     setIngest({ status: "running" });
     void runFirstIngest({ slug: created }).then(
       (result) => {
+        if (!result.ok && isAccessLost(result.error)) setAccessLost(result.error);
         setIngest(
           result.ok
             ? { status: "done", count: result.count, failed: result.failed, errors: result.errors }
@@ -355,7 +450,13 @@ export function NewProject({
       bodyDirection={step === 2 ? "row" : "column"}
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}
       onBack={() => {
-        setBanner(null);
+        if (!accessLost) setBanner(null);
+        if (step === 2) {
+          detectRequest.current += 1;
+          sampleGeneration.current += 1;
+          setDetecting(false);
+          setSamples((prev) => Object.fromEntries(Object.entries(prev).filter(([, value]) => value.status !== "loading")));
+        }
         setStep(step === 3 ? 2 : 1);
       }}
       onNext={() => {
@@ -370,6 +471,7 @@ export function NewProject({
         <RepoStep
           state={{
             repos,
+            query: repoQuery,
             listError,
             installUrl,
             now,
@@ -378,10 +480,14 @@ export function NewProject({
             branchLoading,
             branchValue,
             accessError,
-            banner,
+            banner: accessLost ?? banner,
           }}
+          onQueryChange={setRepoQuery}
           onSelect={selectRepo}
-          onBranchChange={setBranchValue}
+          onBranchChange={(value) => {
+            setBranchValue(value);
+            resetDownstream();
+          }}
         />
       )}
 
@@ -395,11 +501,12 @@ export function NewProject({
             locale,
             preview: samples[sampleKey(locale)] ?? { status: "loading" },
             manual,
+            manualCandidate,
             manualMatched,
             adapters,
             repoLabel,
             branch: branchValue,
-            banner,
+            banner: accessLost ?? banner,
           }}
           onPick={(index) => applyCandidate(candidates, index)}
           onLocale={chooseLocale}
@@ -409,28 +516,30 @@ export function NewProject({
       )}
 
       {step === 3 && (
-        <NamingStep
-          state={{
-            name,
-            slug,
-            baseLocale,
-            locales: candidate?.locales ?? (baseLocale === "" ? [] : [baseLocale]),
-            keyCounts: Object.fromEntries(
-              (candidate?.samples ?? []).map((s) => [s.locale, s.total] as const),
-            ),
-            slugTakenAlt: suggestAlternateSlug(slug),
-            slugTaken,
-            pathTemplate,
-            branch: branchValue,
-            banner,
-          }}
-          onChange={(next) => {
-            if (next.name !== undefined) setName(next.name);
-            if (next.slug !== undefined) setSlug(next.slug);
-            if (next.baseLocale !== undefined) setBaseLocale(next.baseLocale);
-            if (next.slugTaken === false) setSlugTaken(false);
-          }}
-        />
+        <fieldset disabled={pending} className="contents">
+          <NamingStep
+            state={{
+              name,
+              slug,
+              baseLocale,
+              locales: (candidate ?? manualCandidate)?.locales ?? (baseLocale === "" ? [] : [baseLocale]),
+              keyCounts: Object.fromEntries(
+                ((candidate ?? manualCandidate)?.samples ?? []).map((s) => [s.locale, s.total] as const),
+              ),
+              slugTakenAlt: suggestAlternateSlug(slug),
+              slugTaken,
+              pathTemplate,
+              branch: branchValue,
+              banner: accessLost ?? banner,
+            }}
+            onChange={(next) => {
+              if (next.name !== undefined) setName(next.name);
+              if (next.slug !== undefined) setSlug(next.slug);
+              if (next.baseLocale !== undefined) setBaseLocale(next.baseLocale);
+              if (next.slugTaken === false) setSlugTaken(false);
+            }}
+          />
+        </fieldset>
       )}
 
       {step === 4 && created !== undefined && (

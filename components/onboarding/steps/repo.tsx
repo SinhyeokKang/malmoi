@@ -1,7 +1,6 @@
 "use client";
 
 import { ExternalLink, FolderGit2, Link2, Search } from "lucide-react";
-import { useState } from "react";
 
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
@@ -32,6 +31,7 @@ import { failureText } from "../failure";
  */
 export type RepoStepState = {
   repos: RepoOption[] | undefined;
+  query: string;
   listError: string | undefined;
   installUrl: string | null;
   /** 서버가 만든 "지금" — 클라이언트에서 만들면 hydration이 어긋난다 (`lib/relative-time.ts`). */
@@ -47,14 +47,15 @@ export type RepoStepState = {
 export function RepoStep({
   state,
   onSelect,
+  onQueryChange,
   onBranchChange,
 }: {
   state: RepoStepState;
   onSelect: (repo: RepoOption) => void;
+  onQueryChange: (query: string) => void;
   onBranchChange: (value: string) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const { repos, listError, installUrl, now, selected } = state;
+  const { repos, query, listError, installUrl, now, selected } = state;
 
   if (listError !== undefined) return <Blocked error={listError} installUrl={installUrl} />;
 
@@ -87,7 +88,7 @@ export function RepoStep({
 
       <Input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => onQueryChange(e.target.value)}
         placeholder={m.newProject.repo.search}
         aria-label={m.newProject.repo.search}
         className="w-full"
@@ -99,7 +100,7 @@ export function RepoStep({
           className="py-6"
           title={m.newProject.repo.searchEmpty(query.trim())}
           action={
-            <Button variant="default" onClick={() => setQuery("")}>
+            <Button variant="default" onClick={() => onQueryChange("")}>
               {m.newProject.repo.clearSearch}
             </Button>
           }

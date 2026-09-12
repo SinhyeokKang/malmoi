@@ -569,6 +569,7 @@ export const en = {
      */
     errors: {
       sessionLost: "Sign in again and come back — nothing has been created.",
+      sessionLostAfterCreate: "Sign in again and come back — your project is still in your list.",
     },
 
     /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */

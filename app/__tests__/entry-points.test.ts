@@ -77,11 +77,30 @@ const USER_SCOPED_ACTIONS = new Set([
   "projects/actions.ts#detectRepoFormats",
   "projects/actions.ts#listRepoBranches",
   "projects/actions.ts#loadCandidateSample",
+  "projects/actions.ts#confirmManualFormat",
   "projects/actions.ts#createProject",
   // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
   "projects/actions.ts#startGithubConnectForUser",
   "projects/actions.ts#disconnectGithub",
 ]);
+
+/** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
+function hasUserGuard(body: string): boolean {
+  if (body.includes("requireUser(")) return true;
+  return body.includes("await readSession()") &&
+    /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
+    /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
+}
+
+it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 인정하지 않는다", () => {
+  const read = "const session = await readSession();";
+  const none = 'if (session.status === "none") return { ok: false, error: "unauthorized" };';
+  const outage = 'if (session.status === "unavailable") return { ok: false, error: "unavailable" };';
+  expect(hasUserGuard(read)).toBe(false);
+  expect(hasUserGuard(read + none)).toBe(false);
+  expect(hasUserGuard(read + outage)).toBe(false);
+  expect(hasUserGuard(read + none + outage)).toBe(true);
+});
 
 /**
  * **인가를 아예 안 지나는 export.** 파일 단위였던 면제를 export 단위로 좁힌 자리다 —
@@ -171,8 +190,9 @@ describe("서버 진입점", () => {
         if (EXEMPT_ACTIONS.has(id)) continue;
         // ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프 Action이
         // 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
-        const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
-        if (!accepted.some((g) => body.includes(g))) unguarded.push(id);
+        const guarded = PROJECT_GUARDS.some((g) => body.includes(g)) ||
+          (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(body));
+        if (!guarded) unguarded.push(id);
       }
     }
     expect(unguarded).toEqual([]);

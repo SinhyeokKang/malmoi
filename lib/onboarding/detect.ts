@@ -68,6 +68,8 @@ export function formatLabel(adapter: AdapterName): { label: string; example: str
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
 
 export type CandidateSummary = {
+  /** 서버가 재검증한 포맷의 서명. 순수 요약에는 없고 Action이 발급한다. */
+  confirmation?: string;
   /** 확정 시 되돌려 보내는 값이다 — 화면에 쓰지 않는다. */
   adapter: AdapterName;
   label: string;

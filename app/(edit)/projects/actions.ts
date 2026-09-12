@@ -37,13 +37,14 @@ import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import { signSampleConfirmation, verifySampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
 import {
   ingestTargets,
   makeProbe,
   probeTargets,
-  sampleRows,
+  SAMPLE_ROWS,
   summarizeCandidates,
   type CandidateSummary,
   type SampleRow,
@@ -326,9 +327,8 @@ export async function changeMember(raw: {
  *
  * ⚠️ **인가가 GitHub 조회보다 먼저다** — 거부될 요청이 남의 레이트 리밋을 태우지 않는다.
  *
- * ⚠️ **프로젝트가 없는 넷은 `requireUser`다** (design §3.6 — `Account` 행은 사용자 소유이고,
- * 생성 경로에는 인가할 프로젝트가 없다). 세션이 끊기면 로그인 화면으로 보낸다: 중간 상태를
- * 저장하지 않으므로(§3.4) "처음부터"가 정확한 안내이고, blur 저장처럼 잃을 입력이 없다.
+ * 모달의 Action은 `readSession`으로 세션 거부를 값으로 돌려준다. redirect하면 모달의 입력이
+ * 사라진다(예외 J). 페이지·연결 이동의 `requireUser`와 구별한다.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -345,7 +345,9 @@ const SampleInput = z.object({
   adapter: z.string().min(1),
   pathTemplate: z.string().min(1),
   locale: z.string().min(1),
+  confirmation: z.string().max(65_536).optional(),
 });
+const ManualFormatInput = SampleInput.omit({ locale: true, confirmation: true }).extend({ baseLocale: z.string().min(1) });
 const CreateProjectInput = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
@@ -353,11 +355,8 @@ const CreateProjectInput = z.object({
   pathTemplate: z.string().min(1),
   baseLocale: z.string().min(1),
   slug: z.string().min(1),
-  /**
-   * ⚠️ **optional이다** (tasks T5). UI가 값을 주기 전에 필수로 조이면 유일한 프로덕션 호출부와
-   * 테스트의 입력 팩토리가 동시에 컴파일 에러라 이 커밋이 red다 — T8에서 조인다.
-   */
-  baseBranch: z.string().min(1).optional(),
+  // T8 이후에는 UI가 선택한 브랜치를 반드시 보낸다. 탐지와 다른 기본값으로 저장하지 않는다.
+  baseBranch: z.string().min(1),
   // ⚠️ 상한이 있는 이유는 **저장되는 유일한 자유 입력**이기 때문이다 — slug는 `planSlug`가 40자로
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
   // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
@@ -587,7 +586,11 @@ export async function detectRepoFormats(raw: {
   // 잎 판정이라 비용이 0이다 — 맨값을 GitHub URL에 넣기 전에 여기서 막는다.
   if (ref !== undefined && !isValidBranchName(ref)) return { ok: false, error: "invalid input" };
 
-  const { userId } = await requireUser();
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   const prisma = getPrisma();
   const access = await checkRepoAccess(prisma, userId, owner, repo);
@@ -612,13 +615,24 @@ export async function detectRepoFormats(raw: {
   const summaries = summarizeCandidates(detectCandidatesAcross(paths, makeProbe(blobs)), blobs);
   if (summaries.length === 0) return { ok: false, error: "no-candidates" };
 
-  return { ok: true, candidates: summaries };
+  const candidates = summaries.flatMap((summary) => {
+    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths));
+    const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
+    if (confirmed.status !== "ok") return [];
+    return [{ ...summary, confirmation: signSampleConfirmation({
+      userId, repositoryId: access.repositoryId, installationId: access.installationId,
+      ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
+      // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
+      format: { ...confirmed.format, locales: summary.locales },
+    }, requireEnv("AUTH_SECRET")) }];
+  });
+  return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
 }
 
 
 export type BranchesResult =
   | { ok: true; names: string[]; defaultBranch: string; truncated: boolean }
-  | { ok: false; error: OnboardFailure };
+  | { ok: false; error: OnboardFailure; defaultBranch?: string };
 
 /**
  * ①의 브랜치 목록 (design §3.2).
@@ -633,13 +647,17 @@ export async function listRepoBranches(raw: { owner: string; repo: string }): Pr
   const parsed = RepoInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
 
-  const { userId } = await requireUser();
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
   // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
-  if (list.status !== "ok") return { ok: false, error: "unavailable" };
+  if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
 
   return { ok: true, names: list.names, defaultBranch: access.defaultBranch, truncated: list.truncated };
 }
@@ -649,73 +667,117 @@ export type SampleResult =
   | { ok: false; error: OnboardFailure };
 
 /**
- * ②에서 언어를 바꿀 때의 추가 샘플 (design §3.4).
- *
- * ⚠️ **불변식 10이 걸리는 자리다** — 클라이언트가 보낸 `pathTemplate`·`locale`·`ref`로 리포를 읽는
- * **새 경로**다. 방어를 새로 만들지 않고 ARCHITECTURE §3.1이 그 값 쌍에 **지정한** 함수를 부른다:
- *
- * - `adapter` + `pathTemplate` → **`planConfirmedFormat`**. ⚠️ `templatePaths`로 대신하지 않는다 —
- *   그건 `planConfirmedFormat`이 내부에서 부르는 **탐지 헬퍼**이고, 탐지용 판정을 적재 방어로
- *   재사용하는 것이 POSTMORTEM 2026-09-09의 모양이다.
- * - `locale` → **`isPathSafeLocale`** (불변식 10이 잎 모듈에 한 벌로 두라고 못 박은 그 함수).
- * - `ref` → **`isValidBranchName`**.
- *
- * 예산은 blob ≤1이고 `checkDownloadBudget`·`checkContentBudget`를 그대로 지난다. 실패는 값이고
- * **[Next]를 막지 않는다** — 미리보기는 근거이지 게이트가 아니다.
+ * 재검증은 탐지·수동 확정에서 끝내고 확인값에 서명한다. 그 단계에는 내용이 필요하다.
+ * 여기서는 확인값과 현재 인가·head를 대조한 뒤에만 blob을 읽는다 — templatePaths는 방어가 아니다.
  */
 export async function loadCandidateSample(raw: {
-  owner: string;
-  repo: string;
-  ref: string;
-  adapter: string;
-  pathTemplate: string;
-  locale: string;
+  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; locale: string;
+  confirmation?: string;
 }): Promise<SampleResult> {
   const parsed = SampleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  // 잎 판정 둘을 먼저 건다 — 비용이 0이라 조작된 값이 GitHub에 한 번도 안 나간다.
-  if (!isValidBranchName(input.ref)) return { ok: false, error: "invalid input" };
-  if (!isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
-
-  const { userId } = await requireUser();
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
   if (access.status !== "ok") return { ok: false, error: access.error };
-
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
-  const paths = snapshot.files.map((f) => f.path);
-  // `createProject`와 **같은 관용구**로 스냅샷의 실제 경로와 교차시킨다 — 교집합 밖은 읽지 않으므로
-  // 임의 파일을 읽는 경로가 생기지 않는다.
-  // 모르는 어댑터는 어느 파일도 가리키지 못한다 — `templatePaths`에 넘기기 전에 좁힌다.
-  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
-  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  const verified = verifySampleConfirmation(input.confirmation ?? "", {
+    userId, repositoryId: access.repositoryId, installationId: access.installationId,
+    ref: input.ref, headSha: snapshot.headSha,
+  }, requireEnv("AUTH_SECRET"));
+  if (verified === null || !isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
+      verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
+    return { ok: false, error: "manual-no-match" };
+  }
+  const format = { ...verified, adapter: verified.adapter };
+  const adapter = adapterFor(format);
+  const paths = snapshot.files.map((file) => file.path);
+  const targets = adapter.layout === "per-locale"
+    ? [format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
+    : ingestTargets(format, adapter.layout, paths);
   if (targets.length === 0) return { ok: false, error: "manual-no-match" };
-
-  let files: AdapterFile[];
   try {
-    files = await readFiles(reader, snapshot, targets);
+    const files = await readFiles(reader, snapshot, targets);
+    if (files.length !== targets.length) return { ok: false, error: "unavailable" };
+    const read = adapter.read(format, files);
+    const locale = read.locales.find((item) => item.locale === input.locale);
+    /**
+     * 0행인 정상 로케일과 **못 읽은 파일**을 구별한다 — `sampleRows`는 둘을 같은 값으로 접으므로
+     * 여기서는 `read`를 직접 본다.
+     *
+     * ⚠️ **`errors.length`로 판정하지 않는다.** 그건 **엔트리 층 오류**(903키 중 하나가 문자열이
+     * 아니다)까지 포함해서, 하나만 이상해도 나머지 902개가 화면에서 사라진다 — 남의 리포를 우리
+     * 파서 규칙으로 탈락시키지 않는다는 규칙의 정반대다 (ARCHITECTURE §4). 파일을 못 읽으면
+     * 어댑터가 **그 로케일을 아예 안 낸다**: 그것이 "못 읽었다"의 신호다.
+     */
+    if (locale === undefined) return { ok: false, error: "unavailable" };
+    return { ok: true, rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })), total: locale.entries.length };
   } catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
+    logFailure("onboard-sample", error);
+    return { ok: false, error: "unavailable" };
   }
+}
 
-  const confirmed = planConfirmedFormat({ ...input, baseLocale: input.locale }, files);
-  // 거부 갈래 다섯을 한 문구로 접는다 — `createProject`와 같은 판단이고, 갈래를 화면에 보이면
-  // 조작된 입력에 "무엇이 틀렸는지"를 알려주는 셈이다.
-  if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
-
-  const sample = sampleRows(
-    adapterFor(confirmed.format),
-    confirmed.format,
-    input.locale,
-    new Map(files.map((f) => [f.path, f.content])),
-  );
-  // 읽었는데 그 로케일이 없으면 "못 읽었다"다 — 빈 언어(빈 칸)와 화면에서 갈린다 (design §3.4).
-  if (sample.total === 0 && sample.rows.length === 0) return { ok: false, error: "manual-no-match" };
-  return { ok: true, ...sample };
+/** 수동 입력은 처음부터 신뢰하지 않는다 — 내용 재탐지가 성공해야 확인값을 발급한다. */
+export async function confirmManualFormat(raw: {
+  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; baseLocale: string;
+}): Promise<{ ok: true; candidate: CandidateSummary } | { ok: false; error: OnboardFailure }> {
+  const parsed = ManualFormatInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isAdapterName(input.adapter)) {
+    return { ok: false, error: "invalid input" };
+  }
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const snapshot = await reader.snapshot(input.ref);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+  const paths = snapshot.files.map((file) => file.path);
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  try {
+    const files = await readFiles(reader, snapshot, targets);
+    if (files.length !== targets.length) return { ok: false, error: "unavailable" };
+    const confirmed = planConfirmedFormat(input, files);
+    if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+    const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
+    if (summary === undefined) return { ok: false, error: "manual-no-match" };
+    // 수동 기준 언어는 sampleOrder의 초기 셋 밖일 수 있다. 다운로드는 이미 끝났으므로 추가 blob은 없다.
+    if (!summary.samples.some((sample) => sample.locale === input.baseLocale)) {
+      const format = { ...confirmed.format, locales: [input.baseLocale] };
+      const adapter = adapterFor(format);
+      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths));
+      const read = adapter.read(format, files.filter((file) => selectedPaths.has(file.path)));
+      const locale = read.locales.find((item) => item.locale === input.baseLocale);
+      // 위와 같은 규칙 — 엔트리 층 오류는 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4).
+      if (locale === undefined) return { ok: false, error: "unavailable" };
+      summary.samples.push({ locale: input.baseLocale, total: locale.entries.length,
+        rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })),
+      });
+    }
+    return { ok: true, candidate: { ...summary, baseLocale: confirmed.baseLocale,
+      confirmation: signSampleConfirmation({
+        userId, repositoryId: access.repositoryId, installationId: access.installationId,
+        ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
+      }, requireEnv("AUTH_SECRET")),
+    } };
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    logFailure("onboard-confirm-sample", error);
+    return { ok: false, error: "unavailable" };
+  }
 }
 
 export type CreateProjectResult =
@@ -744,13 +806,17 @@ export async function createProject(raw: {
   baseLocale: string;
   slug: string;
   name: string;
-  baseBranch?: string;
+  baseBranch: string;
 }): Promise<CreateProjectResult> {
   const parsed = CreateProjectInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
 
-  const { userId } = await requireUser();
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   // ⚠️ **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`와 같은 정규식이다** — 갈리면 온보딩이
   // 만든 slug가 pull에서 `fail()`로 죽는다. 형식이 틀리면 GitHub을 부를 이유가 없다.
@@ -759,7 +825,7 @@ export async function createProject(raw: {
   if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
   const adapterName: AdapterName = input.adapter;
   // 설정 화면과 **같은 함수**다 (`lib/pull/branch-name.ts`). 형식이 틀리면 GitHub을 부를 이유가 없다.
-  if (input.baseBranch !== undefined && !isValidBranchName(input.baseBranch)) {
+  if (!isValidBranchName(input.baseBranch)) {
     return { ok: false, error: "invalid-branch" };
   }
 
@@ -794,7 +860,7 @@ export async function createProject(raw: {
 
   const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
-  const baseBranch = input.baseBranch ?? access.defaultBranch;
+  const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 

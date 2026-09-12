@@ -71,7 +71,7 @@ export function ResultStep({
         </Alert>
       ) : ingest.status === "failed" ? (
         <div className="flex flex-col gap-2">
-          <Alert variant="danger">{failureText(ingest.error)}</Alert>
+          <Alert variant="danger">{failureText(ingest.error, true)}</Alert>
           <p className="text-muted-foreground text-xs">{m.newProject.result.ingest.failedHint}</p>
           <div>
             <Button variant="default" onClick={onRetry}>
