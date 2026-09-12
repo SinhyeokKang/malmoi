@@ -70,10 +70,18 @@ if (projectSlug === undefined) {
 // 토큰은 **적재·스캔 전에** 확인한다 — 다 끝낸 뒤 stdout에 결과를 찍고 나서 죽으면 파이프 출력이
 // 잘릴 수 있고(POSTMORTEM 2026-08-31), 애초에 없는 토큰으로 일을 시작할 이유가 없다.
 // ⚠️ **`PUSH_TOKEN`은 그 프로젝트의 토큰 원문이다** — 서버 env와 같은 값이 아니다(그런 변수는 더 없다).
-// 프로젝트 설정 화면에서 발급한 값을 로컬 `.env.local`에 둔다.
+// 프로젝트 설정 화면에서 발급한다.
+//
+// ⚠️ **명령 앞에 붙이는 형태를 먼저 안내한다.** `.env.local`은 에이전트가 편집하지 않는 파일이고
+// (CLAUDE.md — 2026-09-04 전문 노출로 전면 재발급), 프로젝트를 바꿔 가며 검증할 때 파일을 고쳤다
+// 되돌리는 절차가 그 사고 경로였다 (2026-09-13, Codex 하네스 검토 지적 2). 위 `config()`가 쓰는
+// dotenv는 **이미 있는 `process.env`를 덮지 않으므로** 앞에 붙인 값이 이긴다.
 const token = optionalEnv("PUSH_TOKEN");
 if (token === undefined) {
-  console.error("PUSH_TOKEN이 없다 — 그 프로젝트의 토큰 원문을 .env.local에 넣는다(설정 화면에서 발급).");
+  console.error(
+    "PUSH_TOKEN이 없다 — 그 프로젝트의 토큰 원문을 명령 앞에 붙인다(설정 화면에서 발급):\n" +
+      "  PUSH_TOKEN='<토큰>' pnpm push:local <디렉터리> --project <slug>",
+  );
   process.exit(1);
 }
 
