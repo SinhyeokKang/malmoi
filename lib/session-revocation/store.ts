@@ -1,6 +1,7 @@
 import "server-only";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { hashSessionToken } from "@/lib/credentials/crypto";
+import { pickLoginAccount } from "@/lib/login-link/policy";
 import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, validNonce, type Outcome } from "./policy";
 
 type Proof = { nonce: string; sessionToken: string; state: string; provider: string; providerAccountId: string };
@@ -18,7 +19,14 @@ export async function beginRevocation(prisma: PrismaClient, input: Proof & { use
       const sessionDigest = hashSessionToken(input.sessionToken);
       const session = await tx.session.findFirst({ where: { userId: input.userId, sessionToken: sessionDigest, expires: { gt: now } } });
       const accounts = await tx.account.findMany({ where: { userId: input.userId, provider: { in: ["github", "google"] } }, select: { provider: true, providerAccountId: true } });
-      if (!session || accounts.length !== 1 || accounts[0]?.provider !== provider || accounts[0]?.providerAccountId !== input.providerAccountId) return "invalid";
+      /**
+       * ⚠️ **`accounts.length !== 1`이던 자리다** (account-linking T6). 그 조건은 로그인 수단이
+       * 둘이 되는 순간 회수를 **약하게 만드는 게 아니라 멈춰** 세웠고, 병합이 그 상태를 실제로
+       * 만든다. 대신 서버가 **결정적으로** 하나를 고른다(`github` 우선) — 클라이언트가 고르게
+       * 하면 공격자가 확인 상대를 고른다.
+       */
+      const chosen = pickLoginAccount(accounts);
+      if (!session || chosen === null || chosen.provider !== provider || chosen.providerAccountId !== input.providerAccountId) return "invalid";
       await tx.verificationToken.deleteMany({ where: { identifier: { startsWith: challengePrefix(input.userId) } } });
       await tx.verificationToken.create({ data: { identifier: challengeIdentifier({ userId: input.userId, provider, providerAccountId: input.providerAccountId, sessionDigest, stateDigest: stateHash(input.state) }), token: nonceHash(input.nonce), expires: new Date(now.getTime() + 300000) } });
       return "ready";

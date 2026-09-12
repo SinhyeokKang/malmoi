@@ -10,7 +10,7 @@ import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 import { revalidatePath } from "next/cache";
 import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
-import { canUnlink, LOGIN_PROVIDERS } from "@/lib/login-link/policy";
+import { canUnlink, isLoginProvider, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
@@ -28,9 +28,14 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
     if (!sessionToken) return { error: "unavailable" };
     const prisma = getPrisma();
-    const accounts = await prisma.account.findMany({ where: { userId, provider: { in: ["github", "google"] } }, select: { provider: true, providerAccountId: true } });
-    const account = accounts[0];
-    if (accounts.length !== 1 || !account || (account.provider !== "github" && account.provider !== "google")) return { error: "unavailable" };
+    const accounts = await prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true, providerAccountId: true } });
+    /**
+     * ⚠️ **`accounts.length !== 1`이던 자리다** (account-linking T6) — 화면에서 **먼저** 걸리는
+     * 조건이라 store의 같은 판정보다 이쪽이 사용자에게 보인다. 확인 상대는 서버가 결정적으로
+     * 고른다: 클라이언트가 고르게 하면 공격자가 확인 상대를 고른다.
+     */
+    const account = pickLoginAccount(accounts);
+    if (account === null || !isLoginProvider(account.provider)) return { error: "unavailable" };
     destination = await withRevocationStart(origin.secure, () => signIn(account.provider, { redirect: false, redirectTo: routes.account({ sessionRevocation: "expired" }) }, { prompt: "select_account" }));
     const state = new URL(destination).searchParams.get("state");
     if (!state) return { error: "unavailable" };
