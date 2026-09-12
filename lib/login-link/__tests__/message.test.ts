@@ -28,18 +28,13 @@ it("provider 이름은 사전이 든다 — 화면이 문자열을 조립하지 
  * ⚠️ **모듈 그래프를 센다** — `policy.ts`는 병합 화면(셸 밖, 비로그인)이 읽고 `plan.ts`는
  * `signIn` 콜백이 읽는다. 무거운 그래프가 붙으면 조용히 번들에 들어간다
  * (POSTMORTEM 2026-09-07). **"import 0"이 아니다**: `outcomeUrl` 때문에 `lib/routes.ts`를,
- * 해시 규칙을 한 곳에 두려고 `lib/auth/invitation.ts`(→ `lib/auth/email.ts`)를 문다.
+ * 문구 때문에 사전을 문다. ⚠️ **해시는 이 그래프에 없다** — `challengeTokenHash`를 `policy.ts`에
+ * 두었더니 `node:crypto`가 `/account`의 클라이언트 번들로 따라 들어갔다(실측).
  */
-it("순수 층의 import가 routes·사전·해시 규칙을 넘지 않는다", () => {
+it("순수 층의 import가 routes와 사전을 넘지 않는다", () => {
   const here = dirname(fileURLToPath(import.meta.url));
   /** 이 닫힘 밖으로 한 줄만 새도 셸 밖 화면이 무거운 그래프를 지고 나간다. */
-  const allowed = [
-    "lib/routes.ts",
-    "lib/auth/invitation.ts",
-    "lib/auth/email.ts",
-    "lib/i18n/index.ts",
-    "messages/en.tsx",
-  ].map((rel) => resolve(ROOT, rel));
+  const allowed = ["lib/routes.ts", "lib/i18n/index.ts", "messages/en.tsx"].map((rel) => resolve(ROOT, rel));
 
   const resolveImport = (from: string, raw: string): string | null => {
     if (raw.startsWith("node:") || !(raw.startsWith("@/") || raw.startsWith("."))) return null;

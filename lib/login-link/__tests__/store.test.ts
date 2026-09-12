@@ -1,8 +1,16 @@
 import { expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { beginLink, finishLink, loadLinkOffer } from "../store";
-import { challengeIdentifier, challengeTokenHash } from "../policy";
+import { hashInviteToken } from "@/lib/auth/invitation";
+
+import { beginLink, challengeTokenHash, finishLink, loadLinkOffer } from "../store";
+import { challengeIdentifier } from "../policy";
+
+/** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (design 불변식 4). */
+it("URL 토큰은 초대 토큰과 같은 해시 규칙을 쓴다", () => {
+  expect(challengeTokenHash("raw-challenge")).toBe(hashInviteToken("raw-challenge"));
+  expect(challengeTokenHash("raw-challenge")).not.toBe("raw-challenge");
+});
 
 const TOKEN = "raw-challenge";
 const challenge = {

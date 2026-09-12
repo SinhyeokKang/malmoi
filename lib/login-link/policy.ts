@@ -1,4 +1,3 @@
-import { hashInviteToken } from "@/lib/auth/invitation";
 import { routes } from "@/lib/routes";
 
 /**
@@ -9,6 +8,10 @@ import { routes } from "@/lib/routes";
  * 세션이 **없다** — 담는 것은 "무엇을 붙일 것인가"와 "성공하면 어디로 돌아가나"뿐이고, 왕복의
  * 진정성은 Auth.js가 **자기 이름·salt로 암호화한 state 쿠키**가 든다 (design 불변식 3). 훔친
  * challenge URL로 할 수 있는 일은 **기존 provider의 OAuth를 새로 통과하는 것**뿐이다.
+ *
+ * ⚠️ **잎에 가깝다 — import가 `lib/routes.ts` 하나다.** `/account`의 수단 카드가 **클라이언트**라
+ * 이 파일의 그래프가 곧 번들이고, 해시(`challengeTokenHash`)를 여기 두면 `node:crypto`가 따라
+ * 들어온다(실측 — `client-graph.test.ts`가 잡았다). 그래서 해시는 `store.ts`가 든다.
  *
  * ⚠️ **`lib/github-connect/account-link.ts`와 축이 다르다** — 그쪽은 GitHub App 연결의 소유권이고
  * 여기는 로그인 수단이다. 이름이 갈려 있어야 다음 사람이 매번 대조하지 않는다 (design ⑫).
@@ -91,14 +94,6 @@ export function parseChallengeIdentifier(identifier: string): Challenge | null {
   } catch {
     return null;
   }
-}
-
-/**
- * ⚠️ **초대 토큰과 **같은 함수**를 쓴다** (design 불변식 4) — URL 경로에 실리는 단일 사용 토큰이라
- * 규칙이 갈릴 이유가 없고, 해시 규칙이 두 곳이면 하나가 낡는다.
- */
-export function challengeTokenHash(raw: string): string {
-  return hashInviteToken(raw);
 }
 
 /**

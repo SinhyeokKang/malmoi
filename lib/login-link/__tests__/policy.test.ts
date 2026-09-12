@@ -1,13 +1,10 @@
 import { expect, it } from "vitest";
 
-import { hashInviteToken } from "@/lib/auth/invitation";
-
 import {
   CHALLENGE_TTL_MINUTES,
   canUnlink,
   challengeIdentifier,
   challengePrefix,
-  challengeTokenHash,
   checkChallenge,
   destFromCallbackUrl,
   failureUrl,
@@ -63,12 +60,6 @@ it("모호한 ID·다른 목적·알 수 없는 provider·여분 필드를 거�
   ]) {
     expect(parseChallengeIdentifier(value)).toBeNull();
   }
-});
-
-/** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (design 불변식 4). */
-it("URL 토큰은 초대 토큰과 같은 해시 규칙을 쓴다", () => {
-  expect(challengeTokenHash("raw-challenge")).toBe(hashInviteToken("raw-challenge"));
-  expect(challengeTokenHash("raw-challenge")).not.toBe("raw-challenge");
 });
 
 it("수명 판정: 만료가 provider 불일치보다 앞이고, 붙일 provider로는 확인할 수 없다", () => {

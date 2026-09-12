@@ -6,7 +6,6 @@ import { decodeUser } from "@/lib/credentials/records";
 
 import {
   challengePrefix,
-  challengeTokenHash,
   checkChallenge,
   LOGIN_PROVIDERS,
   parseChallengeIdentifier,
@@ -14,6 +13,7 @@ import {
   type LinkDest,
   type LoginProvider,
 } from "./policy";
+import { challengeTokenHash } from "./store";
 
 /**
  * 병합 화면이 **보일 값만** 만든다.

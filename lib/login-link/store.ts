@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { hashInviteToken } from "@/lib/auth/invitation";
 import { findUserByEmail } from "@/lib/credentials/access";
 
 import { planLinkConfirm, planLinkOffer, type LinkOffer } from "./plan";
@@ -9,7 +10,6 @@ import {
   CHALLENGE_TTL_MINUTES,
   challengeIdentifier,
   challengePrefix,
-  challengeTokenHash,
   LOGIN_PROVIDERS,
   parseChallengeIdentifier,
   type LinkDest,
@@ -27,6 +27,15 @@ import {
  * ⚠️ **모든 조회·삭제에 `userId`를 함께 건다** — `Account` PK가 `(provider, providerAccountId)`라
  * 그 둘만으로 남의 행에 닿는다 (POSTMORTEM 2026-09-06).
  */
+
+/**
+ * ⚠️ **초대 토큰과 같은 함수를 쓴다** (design 불변식 4) — URL 경로에 실리는 단일 사용 토큰이라
+ * 규칙이 갈릴 이유가 없다. **`policy.ts`가 아니라 여기 있는 이유**는 그 파일을 클라이언트가 읽어
+ * `node:crypto`가 번들로 따라 들어가기 때문이다.
+ */
+export function challengeTokenHash(raw: string): string {
+  return hashInviteToken(raw);
+}
 
 export async function lockUser(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
   const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
