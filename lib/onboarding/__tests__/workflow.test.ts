@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { isValidBranchName } from "@/lib/pull/branch-name";
+
 import { renderWorkflowYaml } from "../workflow";
 
 /**
@@ -104,5 +106,32 @@ describe("renderWorkflowYaml", () => {
     const a = renderWorkflowYaml({ slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
     const b = renderWorkflowYaml({ slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
     expect(a).toBe(b);
+  });
+});
+
+/**
+ * ⚠️ **온보딩이 브랜치를 묻기 시작하면서 `baseBranch`가 사용자 값이 됐다** (new-project-modal T5).
+ * 전에는 `probeRepo`의 default branch뿐이라 `main`·`develop` 같은 평범한 이름만 왔다 — 이제
+ * `release/2.0`·`feat/UI-1`이 그대로 flow sequence 안에 들어간다.
+ */
+describe("renderWorkflowYaml — 사용자가 고른 브랜치 이름", () => {
+  const line = (yaml: string): string => yaml.split("\n").find((l) => l.includes("branches:")) ?? "";
+
+  it("`/`가 든 이름이 한 항목으로 남는다 — YAML이 쪼개거나 잃지 않는다", () => {
+    const yaml = renderWorkflowYaml({ slug: "my-app", baseBranch: "release/2.0" });
+
+    expect(yaml).toContain("release/2.0");
+    expect(line(yaml)).toBe('    branches: ["release/2.0"]');
+  });
+
+  it("`,`가 든 이름도 한 항목이다 — 인용이 없으면 flow sequence가 둘로 갈린다", () => {
+    expect(line(renderWorkflowYaml({ slug: "my-app", baseBranch: "a,b" }))).toBe('    branches: ["a,b"]');
+  });
+
+  it("`isValidBranchName`을 지난 이름이면 인용이 깨질 문자가 없다 — `\\`·제어문자가 거부된다", () => {
+    for (const name of ["main", "release/2.0", "feat/UI-1", "v1.0", "a,b", "a'b"]) {
+      expect(isValidBranchName(name)).toBe(true);
+      expect(line(renderWorkflowYaml({ slug: "my-app", baseBranch: name }))).toBe(`    branches: ["${name}"]`);
+    }
   });
 });

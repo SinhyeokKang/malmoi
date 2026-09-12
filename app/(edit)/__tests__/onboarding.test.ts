@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProbeResult } from "@/lib/github-connect/health";
+import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
+import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import { hashPushToken } from "@/lib/push/token";
 
 import { createHarness, sessionFor } from "./harness";
@@ -438,6 +440,21 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
     expect(locales).toEqual(SAMPLED_LOCALES);
   });
 
+  it("`ref`를 주면 그 브랜치의 트리를 읽는다 — ①의 브랜치 선택이 ②의 후보를 바꾼다", async () => {
+    await detectRepoFormats({ owner: "acme", repo: "web", ref: "release/2.0" });
+
+    const created = await hoisted.openRepoReader.mock.results[0]?.value;
+    expect(created.snapshot).toHaveBeenCalledWith("release/2.0");
+  });
+
+  it("형식이 깨진 `ref`는 GitHub에 안 나간다 — 잎 함수라 비용이 0이다", async () => {
+    expect(await detectRepoFormats({ owner: "acme", repo: "web", ref: "bad ref" })).toEqual({
+      ok: false,
+      error: "invalid input",
+    });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
   it("리더는 probe가 준 설치·이름과 프로젝트의 default branch로 연다", async () => {
     await detectRepoFormats({ owner: "acme", repo: "web" });
 
@@ -666,15 +683,75 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     });
   });
 
-  it("baseBranch가 probe의 default branch다 — 안 채우면 pull이 main을 찾는다", async () => {
-    await createProject(createInput());
+  it("사용자가 고른 브랜치를 저장한다 — ①에서 정한 값이 여기까지 온다", async () => {
+    await createProject(createInput({ baseBranch: "release/2.0" }));
 
     expect(db.projects.find((p) => p.slug === "acme-web")).toMatchObject({
-      baseBranch: "develop",
+      baseBranch: "release/2.0",
       repoOwner: "acme",
       repoName: "web",
       installationId: "77",
     });
+  });
+
+  it("고른 브랜치의 트리를 읽는다 — 다른 ref로 탐지해 놓고 저장만 바꾸지 않는다", async () => {
+    await createProject(createInput({ baseBranch: "release/2.0" }));
+
+    const created = await hoisted.openRepoReader.mock.results[0]?.value;
+    expect(created.snapshot).toHaveBeenCalledWith("release/2.0");
+  });
+
+  it("`/`가 든 브랜치가 저장·조회·YAML 셋을 다 지난다 (POSTMORTEM 2026-09-01)", async () => {
+    const result = await createProject(createInput({ baseBranch: "release/2.0" }));
+
+    expect(result).toMatchObject({ ok: true, baseBranch: "release/2.0" });
+    expect(renderWorkflowYaml({ slug: "acme-web", baseBranch: "release/2.0" })).toContain("release/2.0");
+  });
+
+  it("브랜치를 안 주면 probe의 default branch로 떨어진다 — 안 채우면 pull이 main을 찾는다", async () => {
+    await createProject(createInput());
+
+    expect(db.projects.find((p) => p.slug === "acme-web")).toMatchObject({ baseBranch: "develop" });
+  });
+
+  it("없는 브랜치는 `base-branch-missing`이다 — 새 갈래를 만들지 않는다", async () => {
+    hoisted.openRepoReader.mockImplementation(async () =>
+      reader({ snapshot: { status: "base-branch-missing" } }),
+    );
+
+    expect(await createProject(createInput({ baseBranch: "gone" }))).toEqual({
+      ok: false,
+      error: "base-branch-missing",
+    });
+  });
+
+  /**
+   * ⚠️ **`invalid-branch`는 `OnboardError`에 **없었다** — `RepositorySettingsError` 전용이었다.
+   * "새 **검증**을 안 만든다"는 맞지만 "새 **갈래**를 안 만든다"는 틀렸다: union·`ONBOARD_ERRORS`·
+   * 사전 셋을 함께 늘려야 판정이 화면에 닿는다 (POSTMORTEM 2026-09-06 — 판정과 문구를 나눈 커밋).
+   */
+  it("형식이 깨진 브랜치는 `invalid-branch`이고 GitHub을 부르지 않는다", async () => {
+    expect(await createProject(createInput({ baseBranch: "bad branch" }))).toEqual({
+      ok: false,
+      error: "invalid-branch",
+    });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
+  it("`invalid-branch`가 온보딩 사전에 문구를 갖는다 — 판정만 있고 문구가 없으면 화면이 침묵한다", () => {
+    expect(isOnboardError("invalid-branch")).toBe(true);
+    expect(onboardErrorMessage("invalid-branch").length).toBeGreaterThan(0);
+  });
+
+  /**
+   * ⚠️ **`revalidatePath`가 접두가 아니라 경로 하나다** — 새로 생긴 "모달 뒤 목록"(`/projects/new`)을
+   * 안 덮는다 (POSTMORTEM 2026-09-09: 화면을 옮겼는데 무효화가 안 따라갔다).
+   */
+  it("`/projects/new`도 무효화한다 — 모달 뒤 목록이 방금 만든 프로젝트를 빠뜨리지 않는다", async () => {
+    await createProject(createInput());
+
+    const paths = hoisted.revalidatePath.mock.calls.map(([path]) => path);
+    expect(paths, JSON.stringify(hoisted.revalidatePath.mock.calls)).toContain("/projects/new");
   });
 
   it("첫 적재를 하지 않는다 — lastCommitSha가 null이라 awaiting_first_sync다 (Action 둘, §3.11)", async () => {
