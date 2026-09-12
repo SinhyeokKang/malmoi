@@ -156,23 +156,35 @@ IA 확정(§7.7)이 더했다. ⚠️ **한때 ③이 둘이고 ⑤가 없었다
 2차에 열 조건: **연결 화면의 두 번째 인가 클릭이 실제로 이탈을 만들 때.** 그때는 왕복 하나를 줄이는
 값이 가용성 리스크를 넘는다.
 
-#### ④ OAuth 계정 병합 → 뺀다
+#### ④ ~~OAuth 계정 병합 → 뺀다~~ → ✅ **열었다** (2026-09-12, `account-linking`)
 
-**같은 사람의 GitHub 계정과 Google 계정을 한 `User`로 합치는 기능을 1차에서 만들지 않는다.**
-로그인 Account의 추가 연결은 `safePrismaAdapter`가 거부한다. `planAccountLink`의
-`taken-by-other`는 별개인 GitHub App 연결의 소유권을 지킨다(§5.5).
+**같은 주소로 다른 provider에 들어온 사람을 거부하지 않고, 존재하는 계정을 보여주고 그 계정의
+provider로 인증시켜 병합한다.** 구현은 `lib/login-link/` · `/signin/link/[challenge]`이고 설계는
+`docs/features/account-linking/`다.
 
-근거: 병합은 UI가 아니라 **데이터 이관과 인증 경계**다 — 두 `Account` 행을 한 `User`로 옮기고
-`ProjectMember`·`Translation.updatedBy`·`ProjectInvitation.invitedBy`의 참조를 함께 옮겨야 하고,
-"어느 이메일이 정본인가"(§5.5의 `planEmailRefresh`)를 다시 정해야 한다. 되돌릴 수 없는 쓰기이고
-중간 실패가 **한 사람을 두 계정으로 쪼갠 상태**를 남긴다.
+⚠️ **2차 개방 조건을 충족한 것이 아니라 사용자 재량으로 대체했다.** 여기 적혀 있던 조건은
+*"한 사람이 provider를 바꿔야 하는 상황이 실제로 나올 때(회사 계정 폐쇄 등)"* 였는데, 연 근거는
+그것이 아니라 **초대 단절**이다: 초대 링크를 받은 비개발자가 자기 주소인데도 다른 provider로
+들어오면 `OAuthAccountNotLinked`에서 막혀 **수락할 길이 없다.** ⚠️ 그 시나리오(provider 접근을
+잃은 사람의 복구)는 **여전히 안 푼다** — [Confirm with GitHub]가 유일한 길이라 GitHub 계정을
+잃으면 이 흐름으로 아무것도 못 한다.
 
-⚠️ **증상은 이미 관측됐다** — GitHub으로 가입한 계정에 Google로 들어가려 하면 `OAuthAccountNotLinked`로
-거부된다(2026-09-09 실측). 그 거부는 **의도된 것이고 문구도 정확하다**("that email is already
-registered with a different sign-in method") — 막힌 것이 아니라 원래 방식으로 들어가면 된다.
+⚠️ **흐름의 모양도 뒤집혔다.** 여기 적혀 있던 것은 *"`/account`에서 명시적으로 요청하고 두 쪽
+소유를 각각 증명하는 흐름"*인데, 1차 진입점은 **로그인 시도 자체**다 — `/account`에서 시작하면
+초대 토큰이 사라져 이 기능을 연 근거가 통째로 죽는다. `/account`가 드는 것은 **목록과 해제**뿐이고
+**[Connect]는 없다**(그 문의 인가 조건을 그 화면에서는 적을 수 없다 — §5.5).
 
-2차에 열 조건: 한 사람이 **provider를 바꿔야 하는** 상황이 실제로 나올 때(회사 계정 폐쇄 등).
-그때도 자동 병합이 아니라 **`/account`에서 명시적으로 요청하고 두 쪽 소유를 각각 증명하는** 흐름이다.
+**"두 쪽 소유를 각각 증명한다"는 그대로 지켜진다**: challenge가 서려면 요청자가 이미 그 주소를
+IdP에서 검증받았어야 하고, 붙이려면 기존 provider의 OAuth를 **새로 통과**해야 한다.
+`allowDangerousEmailAccountLinking`은 계속 어느 provider에도 없다.
+
+⚠️ **병합이 만든 새 상태 둘**: ① 로그인 `Account`가 둘 이상인 User는 `planEmailRefresh`가 언제나
+`keep`이다 — 아니면 `User.email`이 마지막으로 로그인한 provider에 따라 뒤집히고 초대 대조(§5.6)가
+그 위에 선다. 대가는 그 사용자의 이메일이 provider를 안 따라간다는 것. ② 전체 세션 회수의 확인
+상대를 `pickLoginAccount`가 고른다(아래 절).
+
+**§4.2 비범위는 그대로다** — 여기서 연 것은 "같은 검증 이메일의 두 수단"뿐이고, **이메일이 다른
+두 수단의 병합**과 **이미 양쪽에 `User`가 따로 있는 경우**는 계속 비범위다.
 
 #### ⑤ MCP 토큰 — 전용 라우트를 만들지 않는다
 
@@ -252,7 +264,10 @@ getProjectAccess(prisma, { userId, slug, permission })            // Server Acti
   `Session.sessionToken`은 도메인 분리 SHA-256(`sha256:v1:<hex>`)이다 — DB가 새도 살아 있는 세션이
   그대로 넘어가지 않는다. ⚠️ **digest를 쿠키에 넣는 것도 통하지 않는다**(그 값을 다시 해싱한다).
 - **전체 세션 회수가 있다** (sec-audit-2 #38) — `/account`에서 공급자 재왕복을 거쳐 **그 사용자의**
-  Session을 전부 지운다. §5.7의 "제거된 멤버가 기존 세션으로 재접근"과 같은 축인데, 그쪽은 매 요청
+  Session을 전부 지운다. ⚠️ **확인 상대는 `pickLoginAccount`가 고른다**(2026-09-12, account-linking):
+  그전에는 "로그인 `Account`가 **정확히 하나**"를 요구했는데 병합이 그 전제를 깨서 회수가 약해지는
+  것이 아니라 **멈췄다**. 지금은 `github` 우선으로 **결정적으로** 하나를 고르고, 다른 provider로
+  시작하려는 요청은 여전히 거부한다 — 클라이언트가 고르게 하면 공격자가 확인 상대를 고른다. §5.7의 "제거된 멤버가 기존 세션으로 재접근"과 같은 축인데, 그쪽은 매 요청
   `ProjectMember` 조회가 막고 이쪽은 **세션 자체를 없애는** 수단이다(자격증명 유출 뒤의 회수 경로).
 - **`session` 콜백은 입력을 돌려주지 않는다** — DB 세션에서 그 입력은 `sessionToken`을 든 **행**이고
   반환값이 `/api/auth/session` 본문이다. `publicSession`이 허용 목록으로 새 객체를 만든다 (2026-09-06까지
@@ -345,9 +360,17 @@ Workflows 권한은 **연동 PR이 워크플로 파일을 쓸 때만** 필요하
 
 ### 5.5 계정 병합 — 자동으로 하지 않는다
 
+**"자동으로 하지 않는다"는 그대로 참이다. 2026-09-12에 바뀐 것은 "명시적 병합도 안 한다"뿐이다**
+(§4.3 ④ — `account-linking`). 같은 검증 이메일의 다른 provider는 이제 **거부가 아니라 안내**로 가고,
+붙이려면 **기존 provider의 OAuth를 새로 통과**해야 한다. 아래 방어선은 한 줄도 약해지지 않았다.
+
 Google과 GitHub가 **같은 이메일을 반환해도 자동으로 계정을 병합하지 않는다.** 기존 로그인 세션에서
 사용자가 명시적으로 "GitHub 연결"을 실행한 경우에만 같은 User에 `github-app` Account를 추가한다.
-로그인용 github/google Account의 추가 연결은 허용하지 않는다. `safePrismaAdapter`가 User 행을
+로그인용 github/google Account의 추가 연결은 **Auth.js 경유로는 허용하지 않는다** — ⚠️ **그 문장의
+뜻이 좁아졌다**: 병합이 붙이는 둘째 로그인 행은 `lib/login-link/store.ts`의 `finishLink`가 **직접**
+쓴다. 어댑터 게이트는 그대로 서 있고 **옆에 문이 하나 났으며**, 그 문의 인가 조건은 셋이다 —
+이메일 동등 · 두 provider의 소유 증명 · 단일 사용 10분 challenge. **그 조건을 적을 수 없는
+진입점은 만들지 않는다**(그래서 `/account`에 [Connect]가 없다). `safePrismaAdapter`가 User 행을
 잠근 뒤 검사하고, OAuth callback이 쓰는 세션 조회부터 만료를 검사한다. 신규 로그인 Account에는
 식별자 네 필드만 저장한다 — **토큰은 아예 남기지 않는다**(로그인 뒤 쓰지 않으므로 DB 유출 시 노출 범위만 넓어진다). 전환은 dev·prod 양쪽 완료됐고 실물 OAuth로 확인했다(같은 이메일의 다른 provider 로그인이 `OAuthAccountNotLinked`로 거부된다).
 
@@ -604,13 +627,14 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── 비로그인 (인가 없음 — matcher 밖) ─────────────────────────────
 /                              ✅ 랜딩 자리의 껍데기               ← 8-1a (2026-09-10)
 /signin                        ✅ 로그인                          ← 8-1a
+/signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
 /privacy · /docs               ✅ 공개 문서 (placeholder)          ← 8-1a
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  생성
-/account                       ✅ 프로필 · OAuth 연동/해제        ← 6b-4 (2026-09-09, 프로덕션)
+/account                       ✅ 프로필 · 로그인 수단 목록/해제 · GitHub App 연동/해제 ← 6b-4 · account-linking
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
@@ -882,7 +906,7 @@ SaaS 기능이 아니라 **다중 프로젝트가 서는 순간 터지는 것**�
 
 완료 게이트: §5.7의 공격 시나리오가 **전부 거부** ✅(`authorization.test.ts`·`membership.test.ts`·`edit-flow.test.ts`
 + preview 실측) / 멤버 제거가 기존 세션에 **즉시** 반영 ✅ / 프로젝트 인가 없이 실행되는 Server Action·
-Route Handler가 0 ✅(`entry-points.test.ts`가 예외를 이름으로 고정 — **그때 여섯, 8-1a가 `/signin`·`/privacy`·`/docs`를 더해 지금은 여덟**) / Google 사용자가 GitHub 계정
+Route Handler가 0 ✅(`entry-points.test.ts`가 예외를 이름으로 고정 — **그때 여섯, 8-1a가 `/signin`·`/privacy`·`/docs`를 더해 여덟, account-linking이 `/signin/link/[challenge]`를 더해 지금은 아홉**) / Google 사용자가 GitHub 계정
 없이 초대 수락과 편집이 가능 ✅ **실물로 밟았다**.
 
 **`[manual]` 넷을 preview에서 밟았다** (2026-09-05 — e2e가 없어 자동화할 수 없다): 비로그인 응답
@@ -1477,6 +1501,9 @@ R1은 nullable lookup·새 인덱스만 준비해 기존 평문 코드가 계속
 
 `/account`의 Sign out everywhere는 서버가 고른 기존 로그인 공급자의 새 OAuth 확인을 거친다. 같은 providerAccountId·기존 세션·state·5분 nonce가 일치해야 해당 사용자 Session 전부를 삭제한다. 현재 기기도 포함하며 확인 요청 소비와 삭제는 한 트랜잭션이다. 다른 사용자·멤버십·초대·GitHub 연결에는 손대지 않는다. DB 실패는 성공으로 표시하지 않는다.
 
-Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 두 화면(**`/signin`**, `/invite/[token]`)은 남은 회수 쿠키를 먼저 지운다 — ⚠️ **8-1a가 로그인을 `/`에서 갈라낸 뒤로 `/`는 세션 상태만 보는 redirect 껍데기라 provider 버튼이 없다** (2026-09-11 정정). 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
+Auth.js state를 별도 쿠키 이름/암호화 salt로 분리해 nonce 유실·DB 확인 요청 교체/소비 이후에도 일반 로그인으로 바뀌지 않는다. 검증된 callback의 signIn이 URL을 반환해 가입·이메일 갱신·새 세션 생성 전에 끝난다. 일반 로그인 **세 화면**(**`/signin`**, `/invite/[token]`, **`/signin/link/[challenge]`의 [Confirm]** —
+2026-09-12 account-linking)은 남은 회수 쿠키를 먼저 지운다. ⚠️ **반대 방향도 있다**: 회수 시작이
+병합 쿠키를 먼저 지운다 — 두 가로채기의 intent 판정이 각자 쿠키 셋의 **OR**이라 암호적 결합이 없고,
+배타성은 그 양방향 정리가 만든다 — ⚠️ **8-1a가 로그인을 `/`에서 갈라낸 뒤로 `/`는 세션 상태만 보는 redirect 껍데기라 provider 버튼이 없다** (2026-09-11 정정). 성공 후 현재 쿠키도 지우며 기존 세션은 다음 인증부터 거부한다. 이미 인증을 마친 요청 중단이나 회수 이후 새 로그인의 차단은 아니다.
 
 공급자 SSO는 허용한다. 계정 선택을 요청하지만 비밀번호/MFA 재입력 강제를 보장하지 않는다(GitHub·Google 둘 다 `prompt=select_account`를 지원한다 — 계정 선택기까지이고 자격증명 재입력이 아니다). 취소·만료·다른 계정·장애를 화면에서 구분하며 다시 시작할 수 있다. ✅ **PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`로 배송됐고** 프로덕션에서 실물 확인했다 — 그 사용자의 세션 둘이 지워지고 **다른 사용자의 세션은 남았으며** 새 세션은 생기지 않았다. 남은 것은 Google 왕복·취소 경로·키보드/포커스다. [스펙](features/session-revocation/spec.md)·[검증 기록](features/session-revocation/tasks.md)을 따른다.
