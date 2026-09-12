@@ -89,4 +89,23 @@ describe("SegmentedControl — rendered keyboard behavior", () => {
     expect(container.querySelectorAll('[role="radio"]')).toHaveLength(0);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  /**
+   * ⚠️ **국기는 컴포넌트가 아니라 인라인 `style`의 `background-image`다** — `icon`(lucide 컴포넌트)
+   * 자리에 들어가지 않는다. 그래서 `leading` 슬롯 하나를 넓힌다 (new-project-modal T7).
+   */
+  it("renders a leading slot before the label", async () => {
+    const { container } = await render(
+      <SegmentedControl
+        label="Language"
+        value="ko"
+        options={[{ value: "ko", label: "ko", leading: <span data-testid="flag" /> }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const radio = find(container, '[role="radio"]');
+    const flag = find(radio, '[data-testid="flag"]');
+    expect(radio.firstElementChild).toBe(flag);
+  });
 });
