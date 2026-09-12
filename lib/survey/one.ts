@@ -170,7 +170,7 @@ function filesForFormat(fmt: DetectedFormat, input: SurveyInput): AdapterFile[] 
  *
  * ⚠️ **옛 구현은 한국어 부분 문자열로 갈랐다** (`classify(message)`, 6b-1까지). 어댑터가 코드를
  * 내면서 사라졌지만 **분류 결과는 한 칸도 달라지지 않아야 한다** — 이 함수의 출력이
- * `docs/ADAPTER-COVERAGE.md`의 회차 간 대조 대상이라, 갈래가 움직이면 지표가 조용히 이동해
+ * `docs/ARCHITECTURE §1.9`의 회차 간 대조 대상이라, 갈래가 움직이면 지표가 조용히 이동해
  * "수정이 회귀를 만들었나"를 물을 수 없게 된다. `__tests__/classify.test.ts`가 옛 문구 스물둘과
  * 옛 분류기를 픽스처로 들고 이 표를 대조한다.
  *
@@ -258,7 +258,7 @@ function countSeparators(keys: ReadonlySet<string>): SeparatorCounts {
   return c;
 }
 
-/** ICU·치환자 빈도 — MVP §7 비범위라 **지원하지 않고 얼마나 흔한지만** 센다. */
+/** ICU·치환자 빈도 — PRODUCT §4.2 비범위라 **지원하지 않고 얼마나 흔한지만** 센다. */
 function countMessages(locales: readonly ReadLocale[], survey: RepoSurvey): void {
   const icu = new Set<string>();
   const ph = new Set<string>();
@@ -274,7 +274,7 @@ function countMessages(locales: readonly ReadLocale[], survey: RepoSurvey): void
 
 /**
  * 원본 **텍스트** 관측 — 키 순서 일치율·들여쓰기·잔여 diff 원인
- * (`docs/features/key-order-preservation/` 태스크 0).
+ * (ARCHITECTURE §1.1).
  *
  * ⚠️ **`read1`을 쓰지 않고 원본 파일을 다시 훑는다.** `read`가 엔트리를 정렬해 돌려주므로 파일
  * 순서가 거기서 사라진다 — 이 지표가 재려는 바로 그 값이다.

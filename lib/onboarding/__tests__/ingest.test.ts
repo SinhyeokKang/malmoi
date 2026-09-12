@@ -100,7 +100,7 @@ describe("ingestFirstSnapshot — 기존 경로를 그대로 지난다", () => {
     expect((columnsOf(insert!)["key"] ?? []).sort()).toEqual(["a.bye", "a.greet"]);
   });
 
-  it("번역은 base가 아닌 로케일도 함께 실린다 — base도 편집 가능하다 (MVP §3.2)", async () => {
+  it("번역은 base가 아닌 로케일도 함께 실린다 — base도 편집 가능하다", async () => {
     const { stub, result } = run();
     await result;
     const insert = stub.captured.find((c) => c.sql.includes('"Translation"'));

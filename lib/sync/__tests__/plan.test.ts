@@ -13,7 +13,7 @@ import {
 } from "../plan";
 
 /**
- * sync 실행의 순수 판정 셋 (`docs/features/sync-runs/design.md` §1).
+ * sync 실행의 순수 판정 셋 (ARCHITECTURE §5.6).
  *
  * **I/O가 0이라 여기서 전부 잴 수 있다.** 껍데기(`runSync`, ship 2)는 이 판정을 트랜잭션과
  * 행 쓰기로 감쌀 뿐이고, "돌려도 되는가"·"무엇으로 끝났는가"의 답은 전부 이 파일이 낸다.
@@ -170,7 +170,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
   });
 
   it("⚠️ warnings는 skipped에도 센다 — 어댑터 경고는 skipped로 끝날 수 있다", () => {
-    // 버린 값을 성공으로 접으면 SAAS 불변식 9 위반이다. 2층 스킵 + writer 경고가 그 모양이다.
+    // 버린 값을 성공으로 접으면 ARCHITECTURE §0 불변식 9 위반이다. 2층 스킵 + writer 경고가 그 모양이다.
     expect(
       planSyncFinish({ status: "skipped", reason: "no-changes", warnings: ["a.json: dropped"] }),
     ).toMatchObject({ status: "SKIPPED", warnings: 1 });

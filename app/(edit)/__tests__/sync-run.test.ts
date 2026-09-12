@@ -5,7 +5,7 @@ import { STALE_AFTER_SECONDS } from "@/lib/sync/plan";
 import { createHarness, type Seed } from "./harness";
 
 /**
- * **`runSync` — 게이트·행·잠금의 껍데기** (`docs/features/sync-runs/design.md` §3·§5).
+ * **`runSync` — 게이트·행·잠금의 껍데기** (ARCHITECTURE §5.6).
  *
  * ⚠️ **동시성을 `Promise.all`로 재지 않는다.** 하네스의 `$transaction`은 직렬화가 없고
  * `$executeRaw`는 no-op이라, 그렇게 재면 **하네스가 실제보다 관대해서** 통과하는 것인지

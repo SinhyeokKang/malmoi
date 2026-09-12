@@ -41,7 +41,7 @@ export function roundtripDiffRatio(original: string, written: string): number {
  * `roundtripDiffRatio`는 0.083(목표 통과)인데 hunk가 41개다 — 리뷰어는 3건을 찾으려고 41번
  * 스크롤한다. 구조 줄(`},` · `"name": {`)이 파일 전체에 반복돼 LCS가 그걸 서로 매칭하므로
  * **비율은 중첩 JSON의 리뷰 고통을 체계적으로 과소평가한다**
- * (`docs/features/key-order-preservation/spec.md` §왜 diff 비율 하나로는 부족한가).
+ *.
  *
  * 매칭 쌍이 예산을 넘으면 `undefined`다 — 근사로 세면 hunk를 **과소평가**하게 되고, 이 지표는
  * 작을수록 좋다고 읽히므로 과소평가가 곧 거짓 안심이다. `roundtripDiffRatio`가 그 경우를
@@ -139,7 +139,7 @@ function trimCommon(a: readonly string[], b: readonly string[]) {
  * ⚠️ **DP(`O(n·m)`)를 쓰지 않는 이유는 속도가 아니라 폴백의 오답이다.** 처음엔 큰 입력에서
  * "줄 다중집합 교집합"으로 근사했는데, 그 근사는 순서를 무시하므로 **전면 재정렬된 파일을
  * '동일'로 본다** — 12000줄 순열에 0을 냈다. 하필 그게 이 지표가 재려는 바로 그 현상이라
- * (MVP §4.1 키 정렬 개정 여부), 근사가 "개정 불필요"라는 정반대 결론을 낼 수 있었다.
+ * (ARCHITECTURE §1.1 키 정렬 개정 여부), 근사가 "개정 불필요"라는 정반대 결론을 낼 수 있었다.
  * Hunt–Szymanski는 크기와 무관하게 정확하므로 그 함정이 사라진다.
  */
 function lcsLength(a: readonly string[], b: readonly string[]): number {

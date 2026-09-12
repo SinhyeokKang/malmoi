@@ -50,7 +50,7 @@ export type ProjectContext = {
 /**
  * ⚠️ **slug가 아니라 `projectId`를 받는다** (2026-09-05). 호출부는 `requireProjectAccess`가
  * **멤버십 행에서 꺼낸** id를 갖고 있다 — 그것을 버리고 slug로 다시 찾으면 클라이언트가 준
- * 식별자를 두 번 믿는 것이 되고, "인가가 판정한 projectId로 좁힌다"는 규칙(SAAS §5.2)이
+ * 식별자를 두 번 믿는 것이 되고, "인가가 판정한 projectId로 좁힌다"는 규칙(ARCHITECTURE §6.00 ③)이
  * 이 화면에서만 깨진다. 왕복도 하나 준다.
  */
 export async function loadProject(prisma: PrismaClient, projectId: string): Promise<ProjectContext | null> {
@@ -221,7 +221,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 export type ProjectListRow = MembershipRow & {
   repoOwner: string;
   repoName: string;
-  /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, SAAS §7.5). */
+  /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, PRODUCT §7.5). */
   repositoryId: string | null;
   memberCount: number;
 };
@@ -231,7 +231,7 @@ export type ProjectListRow = MembershipRow & {
  *
  * ⚠️ **`loadMemberships`를 넓히지 않고 함수를 나눈 이유**: 그쪽은 **셸이 매 페이지에서** 부른다.
  * 거기에 `_count`와 리포 컬럼을 얹으면 모든 화면이 목록 하나를 위한 집계를 물게 되고, 그것이
- * SAAS §7.7 결정 5(사이드바 카운트 거절)가 막은 것과 같은 축이다.
+ * PRODUCT §7.7 결정 5(사이드바 카운트 거절)가 막은 것과 같은 축이다.
  *
  * ⚠️ **멤버 수는 `_count` 서브쿼리라 왕복이 +0이다** — 프로젝트마다 세면 N+1이 되고, 도쿄 리전
  * 왕복 하나가 그대로 붙는다(CLAUDE.md 가상화 절의 실측).
@@ -311,7 +311,7 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string):
  * Home의 최근 활동 재료 — **사람이 만진 편집만** (6b-6).
  *
  * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push는 그 컬럼을 비우면서 전 행의 `updatedAt`을
- * 올리므로(strict — MVP §3.1), 조건이 없으면 code push 직후 활동 목록이 **903건의 "편집"**으로 덮인다.
+ * 올리므로(strict — ARCHITECTURE §0 불변식 2), 조건이 없으면 code push 직후 활동 목록이 **903건의 "편집"**으로 덮인다.
  * `countUnpublished`가 같은 술어를 쓰는 것과 같은 이유다.
  *
  * ⚠️ **`take`가 인덱스 앞에 있다.** `@@index([projectId, updatedAt])`를 역방향으로 타 첫 N행에서

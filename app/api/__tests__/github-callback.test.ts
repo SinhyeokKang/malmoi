@@ -13,7 +13,7 @@ import { signState, type StateDest } from "@/lib/github-connect/state";
  *    이 요청이 우리가 시작한 흐름이 아니라는 뜻이다(CSRF).
  * 2. **거부 사유가 화면에 닿는다** — `?e=`를 실어 보내고, state를 믿을 수 없으면 `/projects`로 간다
  *    (POSTMORTEM 2026-09-06: 사유를 넘겨놓고 읽는 쪽을 안 만들어 거부가 통째로 무음이었다).
- * 3. **남의 Account 행을 건드리지 않는다** — `taken-by-other`는 토큰조차 갱신하지 않는다 (SAAS §5.5).
+ * 3. **남의 Account 행을 건드리지 않는다** — `taken-by-other`는 토큰조차 갱신하지 않는다 (ARCHITECTURE §6.2.1).
  */
 
 const SESSION_USER = "user-1";
@@ -233,7 +233,7 @@ describe("착지 갈래는 서명된 dest가 정한다 (design §3.6)", () => {
   });
 
   /**
-   * `/account`는 사용자 축이라 slug가 없다 (SAAS §7.7 — 6b-4). **읽는 쪽이 셋에서 넷이 됐다**:
+   * `/account`는 사용자 축이라 slug가 없다 (PRODUCT §7.7 — 6b-4). **읽는 쪽이 셋에서 넷이 됐다**:
    * 설정 화면 · `/projects/new` · `/projects` · `/account`. 사유를 실어 보내놓고 읽는 쪽을 안
    * 만들면 거부가 통째로 무음이다 (POSTMORTEM 2026-09-06).
    */
@@ -337,7 +337,7 @@ describe("이미 연결된 계정", () => {
     expect(Object.keys(args?.data ?? {})).not.toContain("userId");
   });
 
-  it("남의 것이면 taken-by-other이고 **아무것도 쓰지 않는다** (SAAS §5.5)", async () => {
+  it("남의 것이면 taken-by-other이고 **아무것도 쓰지 않는다** (ARCHITECTURE §6.2.1)", async () => {
     hoisted.account.findUnique.mockResolvedValue({ userId: "someone-else" });
 
     const res = await GET(request({ code: "abc", state: "nonce-1" }));

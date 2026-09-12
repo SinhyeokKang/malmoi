@@ -4,7 +4,7 @@ import { classifyFailure } from "@/lib/failure";
 import type { PullResult } from "@/lib/pull/run";
 
 /**
- * sync 실행의 순수 판정 (`docs/features/sync-runs/design.md` §1).
+ * sync 실행의 순수 판정 (ARCHITECTURE §5.6).
  *
  * **I/O가 0이다.** 껍데기(`lib/sync/run.ts`)가 이 판정을 트랜잭션·행 쓰기로 감쌀 뿐이고,
  * "돌려도 되는가"·"무엇으로 끝났는가"는 전부 여기서 결정된다. 그래서 동시 실행·stale 복구·
@@ -140,7 +140,7 @@ export type SyncFinish = {
  * `logs`가 "어제 밤엔 보낼 게 없었다"와 "어제 밤에 보냈다"를 가른다.
  *
  * ⚠️ **`warnings`는 `skipped`에도 센다** — 2층 스킵 + writer 경고가 그 모양이고, 버린 값을 조용히
- * 숨기면 SAAS 불변식 9 위반이다.
+ * 숨기면 ARCHITECTURE §0 불변식 9 위반이다.
  */
 export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFinish {
   if ("thrown" in result) {

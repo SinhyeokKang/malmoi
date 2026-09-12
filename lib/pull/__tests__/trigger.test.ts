@@ -115,7 +115,7 @@ describe("triggerPull — 조립", () => {
 
 /**
  * 브랜치 이름이 상수 `l10n/sync`였다. 한 리포에 번역 표면이 둘이면 Project가 둘이 되는데
- * (SAAS.md §7.1), 그 둘이 **같은 브랜치를 force update로 서로 덮는다** — TASKS §7에서
+ * (PRODUCT §7.1), 그 둘이 **같은 브랜치를 force update로 서로 덮는다** — 그때는
  * 순차 실행으로 피해 간 함정이고 bugshot-2가 정확히 그 모양이다(`_locales` 4키 +
  * `ts-dict` 903키).
  */

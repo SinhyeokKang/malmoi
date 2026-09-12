@@ -35,7 +35,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
       baseLocale: true,
       lastPulledAt: true,
       // ⚠️ **사라진 로케일은 빼고 읽는다.** 안 빼면 개발자가 지운 로케일 파일을 pull이 되살린다 —
-      // 행은 DB에 남아 있고 번역도 남아 있으므로 write가 내용을 만들어 커밋에 싣는다 (MVP §3.1).
+      // 행은 DB에 남아 있고 번역도 남아 있으므로 write가 내용을 만들어 커밋에 싣는다 (ARCHITECTURE §0 불변식 2).
       locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
     },
   });

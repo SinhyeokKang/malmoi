@@ -9,11 +9,11 @@ import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { createHarness, sessionFor, type Seed } from "./harness";
 
 /**
- * **편집 흐름을 끝에서 끝까지 본다** (TASKS §0 B-2): `saveTranslation` → DB →
+ * **편집 흐름을 끝에서 끝까지 본다**: `saveTranslation` → DB →
  * `loadPullState` → `runPull`이 커밋에 싣는 **파일 내용**.
  *
- * 편집 UI는 동작 확인용으로 동결됐지만(MVP §8.3) **이 경로는 살아 있어야 한다** — 저장이
- * 실제로 DB에 닿는 유일한 증거이고, pull이 그 값을 실어 나른다는 것이 MVP가 답해야 하는
+ * 편집 UI는 동작 확인용으로 동결됐지만(PoC 시절 동결) **이 경로는 살아 있어야 한다** — 저장이
+ * 실제로 DB에 닿는 유일한 증거이고, pull이 그 값을 실어 나른다는 것이 PoC가 답해야 했던
  * 질문 그 자체다.
  *
  * 메모리 DB를 쓴다. 저장과 조회가 **같은 상태**를 보므로 홉 사이에서 값이 사라지면 red다 —
@@ -32,7 +32,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: (path: string, type?: string) => hoisted.revalidated.push([path, type]),
 }));
 
-/** 편집자는 `acme`의 EDITOR다 — 저장·Publish 둘 다 그 역할로 통과해야 한다 (SAAS §3). */
+/** 편집자는 `acme`의 EDITOR다 — 저장·Publish 둘 다 그 역할로 통과해야 한다 (PRODUCT §3). */
 const EDITOR = "u-translator";
 
 function memoryDb(seed: Seed = {}) {

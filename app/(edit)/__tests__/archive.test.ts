@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHarness, sessionFor, type Seed } from "./harness";
 
 /**
- * **보관** (7단계 — `docs/features/sync-runs/design.md` §4).
+ * **보관** (7단계 — ARCHITECTURE §5.6).
  *
  * 보관은 상태 머신이 아니라 **되돌릴 수 있는 사실 하나**(`Project.archivedAt`)이고, 거부는
  * `planProjectAccess`의 갈래 하나로 모인다 — 그래서 화면·Action이 각자 `archivedAt`을 보지 않는다.

@@ -30,7 +30,7 @@ export type RenderKey = {
 
 /**
  * 로케일 하나분 행으로 접는다. **셀 부재(`null`)와 빈 문자열을 구별해야** base 폴백이 성립한다
- * — 행이 없으면 `sourceText`로 떨어지지만, 값을 지운 것은 미번역으로 남아야 한다 (MVP §3.2).
+ * — 행이 없으면 `sourceText`로 떨어지지만, 값을 지운 것은 미번역으로 남아야 한다.
  */
 export function rowsForLocale(
   keys: readonly RenderKey[],

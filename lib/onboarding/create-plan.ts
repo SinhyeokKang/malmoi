@@ -1,7 +1,7 @@
 import type { RepoConnect } from "@/lib/github-connect/connect-plan";
 
 /**
- * 프로젝트 생성 가부가 값으로 판정되는 한 자리 (design §5). `planRepoConnect`(SAAS §5.4 3중 검증)의 결과를
+ * 프로젝트 생성 가부가 값으로 판정되는 한 자리 (design §5). `planRepoConnect`(ARCHITECTURE §6 3중 검증)의 결과를
  * 받아 **그대로 흘리고**, 그 위에 OWNER 개수 제한과 slug 충돌을 얹는다. 순서: 연결 거부 → 제한 → 충돌 —
  * 거부될 요청에 다른 사유를 덧붙이지 않고, 슬롯이 없으면 slug를 바꿔도 소용없다.
  *
@@ -40,7 +40,7 @@ export function planProjectCreate(input: {
   if (ownerCount >= limit) return { status: "limit-reached" };
   if (slugTaken) return { status: "slug-taken" };
 
-  // installationId·이름은 **probe가 준 값**이다 — 클라이언트 입력이 아니다 (SAAS §5.2).
+  // installationId·이름은 **probe가 준 값**이다 — 클라이언트 입력이 아니다 (ARCHITECTURE §6.00 ③).
   const { installationId, repoOwner, repoName } = repoConnect;
   return { status: "ok", installationId, repoOwner, repoName };
 }

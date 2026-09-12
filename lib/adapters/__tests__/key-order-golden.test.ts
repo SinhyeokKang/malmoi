@@ -4,7 +4,7 @@ import { chromeLocales, jsonCatalog } from "../index";
 import type { Adapter, AdapterFile, DetectedFormat } from "../types";
 
 /**
- * **L2 — 골든 픽스처** (`docs/features/key-order-preservation/` 태스크 5-2).
+ * **L2 — 골든 픽스처** (ARCHITECTURE §1.1).
  *
  * 완료 조건의 diff 수치는 `pnpm adapter-survey`가 낸다. 그건 리포 129개를 clone하는 네트워크
  * 작업이라 `pnpm test`에도 CI에도 못 들어가고, **캐시가 없어 매 실행이 ~4분이다.** 그래서 한 번
@@ -220,7 +220,7 @@ describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모�
    * `nested`가 서고, 그러면 `"menu.open"`이 경로로 쪼개져 `{"menu": {"open": …}}`로 복원된다.
    *
    * 여기에 기대값을 박아 **기준선**으로 둔다 — 키 구분자를 계약으로 빼는 별 기능
-   * (`nested: boolean` → `tree: {style, separator}`, `docs/TASKS.md` §8 후속 1번)이 이걸 고치면
+   * (`nested: boolean` → `tree: {style, separator}`, 키 구분자 계약)이 이걸 고치면
    * 이 테스트가 red가 되고, 그때가 바로 이 한계가 사라지는 순간이다.
    */
   it("중첩과 공존하면 점 키가 경로로 쪼개진다 — 순서는 지켜지지만 구조가 바뀐다", () => {
@@ -244,7 +244,7 @@ describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모�
 });
 
 // ── 표현 축 픽스처 (원본 포맷 보존 태스크 6) ──────────────────────────────
-// 실측: 재생성 리포 71개 중 **30개**가 2칸이 아니다 (`ADAPTER-COVERAGE.md` §11.3).
+// 실측: 재생성 리포 71개 중 **30개**가 2칸이 아니다 (`ARCHITECTURE §1.9` §11.3).
 // 4칸 파일에 2칸을 쓰면 값 편집이 0건이어도 **모든 줄이 바뀐다.**
 
 /**
@@ -363,7 +363,7 @@ describe("L2 — 표현: 한 줄 컨테이너와 비ASCII 이스케이프가 원
 
 /**
  * ⑨ `description`이 `message`보다 먼저인 chrome — Midnight-Lizard 형태. 우리가 반대로 내면
- * 값 편집이 0건이어도 diff **0.456**이었다 (ADAPTER-COVERAGE §11.5·§15.3).
+ * 값 편집이 0건이어도 diff **0.456**이었다 (ARCHITECTURE §1.9·§15.3).
  */
 const DESCRIPTION_FIRST = [
   "{",
@@ -379,7 +379,7 @@ const DESCRIPTION_FIRST = [
   "",
 ].join("\n");
 
-/** ⑩ `/`를 `\\/`로 쓴 원본 — Midnight-Lizard의 마지막 잔여였다 (ADAPTER-COVERAGE §16). */
+/** ⑩ `/`를 `\\/`로 쓴 원본 — Midnight-Lizard의 마지막 잔여였다 (ARCHITECTURE §1.9). */
 const ESCAPED_SLASH = ["{", '  "hint": "tooltip\\/hint",', '  "plain": "no slash"', "}", ""].join("\n");
 
 describe("L2 — 표현: 슬래시 이스케이프가 원본대로 나온다", () => {

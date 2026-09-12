@@ -13,7 +13,7 @@ describe("routes — 정적 경로", () => {
   });
 
   /**
-   * ⚠️ **사용자 축이다** (SAAS §7.7 — 6b-4). slug를 받지 않고, `middleware.ts`의 matcher가
+   * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, `middleware.ts`의 matcher가
    * `/projects/:path*` 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —
    * `entry-points.test.ts`의 "보호 라우트가 미들웨어 matcher에 있다"가 그것을 잡는다.
    */
@@ -60,7 +60,7 @@ describe("routes — 정적 경로", () => {
  */
 /**
  * **`signIn`이 쿼리 생성기를 지나는 것이 8-1a에서 가장 중요한 한 줄이다**
- * (`features/ui-rework/signin-auth/design.md` §2.1).
+ *.
  *
  * ⚠️ `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사는 생성기 호출을
  * **`routes.foo(...)}?key=`** 모양(템플릿 리터럴의 `}`)으로 찾는다. 그래서 문자열 연결

@@ -3,7 +3,7 @@
  *
  * ⚠️ **trim과 소문자까지만 한다.** gmail의 점이나 `+` 태그를 접는 정규화를 넣지 않는다 —
  * 그건 provider가 준 주소를 우리가 재해석하는 것이고, 결과로 **다른 사람 앞으로 온 초대와
- * 일치시킬 수 있다.** 이메일 소유권 증명은 provider의 몫이고(SAAS §5.6) 우리는 그 값을 그대로 든다.
+ * 일치시킬 수 있다.** 이메일 소유권 증명은 provider의 몫이고(ARCHITECTURE §6.02) 우리는 그 값을 그대로 든다.
  */
 
 /**
@@ -46,7 +46,7 @@ export type EmailProof =
  *
  * **fail-closed**: 모르는 모양·빠진 값·미검증은 전부 `null`이고, 호출부(`signIn`)는 그때 로그인을
  * 거부한다. `checkProjectSlug`(`lib/push/guard.ts`)가 빈 slug를 막는 것과 같은 계보다 — 부재를 통과로 읽으면
- * 이메일 소유권 증명이 사라지고, 그 위에 선 초대 대조(SAAS §5.6)가 통째로 무의미해진다.
+ * 이메일 소유권 증명이 사라지고, 그 위에 선 초대 대조(ARCHITECTURE §6.02)가 통째로 무의미해진다.
  */
 export function verifiedEmailFrom(proof: EmailProof): string | null {
   if (proof.provider === "google") {
@@ -118,7 +118,7 @@ export function planEmailRefresh(input: {
    * ⚠️ **수단이 둘 이상이면 언제나 `keep`이다** (account-linking design ⑦). 병합 전에는 User당
    * 로그인 수단이 하나라 이 경로가 원리적으로 없었다 — 병합이 그것을 만든다: 한쪽 provider에서
    * 주소를 바꾸면 `User.email`이 **마지막으로 로그인한 provider에 따라 뒤집히고**, 초대 대조
-   * (SAAS §5.6)가 그 값 위에 서 있다. SAAS §5.5가 경고한 "정본 판정"이 한 로그인 뒤에 도착한다.
+   * (ARCHITECTURE §6.02)가 그 값 위에 서 있다. ARCHITECTURE §6.2.1가 경고한 "정본 판정"이 한 로그인 뒤에 도착한다.
    *
    * ⚠️ **대가**: 병합한 사용자가 provider에서 주소를 바꿔도 malmoi의 이메일은 따라가지 않고,
    * 초대 대조는 **병합 시점 주소** 기준으로 남는다.

@@ -2,7 +2,7 @@ import type { AdapterName } from "../adapters/types";
 import { emptyJsonDiffCauses, type IndentStyle, type JsonDiffCauses } from "./json-shape";
 
 /**
- * 어댑터 범용성 측정 실험의 결과 타입 (`docs/features/adapter-generality/`).
+ * 어댑터 범용성 측정 실험의 결과 타입.
  *
  * **생산자에 이 타입을 붙인다** (`const survey: RepoSurvey = { ... }`). 리터럴로 조립하면 지표를
  * 하나 늘렸을 때 `summarize`가 조용히 `undefined`를 센다 — `docs/POSTMORTEM.md` 2026-08-31
@@ -56,7 +56,7 @@ export type Roundtrip = {
 };
 
 /**
- * 첫 write diff의 **순서 외** 원인 (`docs/features/key-order-preservation/` 태스크 0).
+ * 첫 write diff의 **순서 외** 원인 (ARCHITECTURE §1.1).
  *
  * 순서 보존만으로 목표(diff ≤ 0.10)가 닫히는지는 여기 남는 것들이 정한다. 안 재면 목표 수치가
  * 근거 없는 희망값이 된다 — 그래서 원인을 세 두고, 지배 원인이 있으면 **별 기능으로 잘라낸다.**
@@ -221,7 +221,7 @@ export type RepoSurvey = {
   presentation: JsonPresentation;
 
   separators: SeparatorCounts;
-  /** ICU 복수형(`{n, plural, …}`)을 쓰는 키 수 — MVP §7 비범위라 **빈도만** 센다. */
+  /** ICU 복수형(`{n, plural, …}`)을 쓰는 키 수 — PRODUCT §4.2 비범위라 **빈도만** 센다. */
   icuPluralKeys: number;
   /** 단순 치환자(`{name}`)를 쓰는 키 수. */
   placeholderKeys: number;
@@ -245,7 +245,7 @@ export const emptyErrors = (): Record<ReadErrorKind, number> => ({
 });
 
 /**
- * 오탐 판정의 **유일한 정답 출처** (`docs/features/adapter-generality/verdicts.json`).
+ * 오탐 판정의 **유일한 정답 출처** (`docs/adapter-survey/verdicts.json`).
  *
  * `repos.md`의 "예상 포맷" 라벨을 쓰지 않는 이유: 관측된 오탐 전례(`public/search/{locale}.json`)가
  * **포맷은 맞고 경로가 틀린** 형태라 포맷 라벨 대조로는 원리적으로 못 잡는다. 판정 단위는 경로다.

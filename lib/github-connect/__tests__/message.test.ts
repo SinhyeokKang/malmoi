@@ -74,7 +74,7 @@ describe("connectErrorMessage — 갈래마다 다른 한국어 문구", () => {
     }
   });
 
-  it("영어 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자 동료다 (SAAS §3)", () => {
+  it("영어 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자 동료다 (PRODUCT §3)", () => {
     for (const error of ERRORS) {
       expect(connectErrorMessage(error)).not.toContain(error);
     }

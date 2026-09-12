@@ -56,7 +56,7 @@ export type CommitPayload = {
   tree: string;
   /**
    * **항상 base head 하나다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고,
-   * base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반이다 (MVP §2).
+   * base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반이다 (ARCHITECTURE §0).
    * 튜플로 둬서 둘째 parent가 들어올 여지를 타입으로 막는다.
    */
   parents: [string];

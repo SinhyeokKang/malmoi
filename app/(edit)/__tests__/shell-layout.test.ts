@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
  * 실물 확인은 `/bugshot-qa`가 계속 든다.
  *
  * **8-2(2026-09-10)가 골격을 시안으로 옮기면서 검사가 늘었다** — 셸이 "배경 위에 뜬 패널 셋"이 됐고
- * (`features/ui-rework/README.md` 규약 3.5), 그 구조는 padding·gap·배경 대비가 **함께** 있어야
+ * (DESIGN §6.5), 그 구조는 padding·gap·배경 대비가 **함께** 있어야
  * 성립한다. 8-1b가 그중 몇을 한꺼번에 빠뜨린 전례가 있어 하나씩 센다.
  */
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -128,7 +128,7 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
   });
 
   /**
-   * ⚠️ **top bar는 헤더가 흡수했다** — SAAS §8의 "top bar가 사라진다"는 *지금의* top bar 얘기이고
+   * ⚠️ **top bar는 헤더가 흡수했다** — PRODUCT의 "top bar가 사라진다"는 *지금의* top bar 얘기이고
    * 그 자리에 전폭 48 헤더가 온다. 파일이 남아 있으면 셸의 상단이 두 벌이 된다.
    */
   it("옛 top bar가 남아 있지 않다", () => {

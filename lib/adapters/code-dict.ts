@@ -29,7 +29,7 @@ import { localeFromPath } from "./chrome-locales";
  *
  * 오픈소스 109개에서 코드 딕셔너리를 쓰는 리포 12개가 **전부 이 형태**였다 (ant-design 73로케일·
  * element-plus 67·vuetify 43·payload 40·arco-design-vue 18·quasar 74는 `.js`).
- * `docs/ADAPTER-COVERAGE.md` 판정 ③.
+ * `docs/ARCHITECTURE §1.9` 판정 ③.
  *
  * ⚠️ **`ts-dict`와 다른 어댑터다.** 같은 ts-morph를 쓰지만 전제가 반대다:
  * - `ts-dict` — 한 파일 안에 로케일 객체가 여러 개(`const ko`, `const en`). bugshot-2의 관례.
@@ -242,7 +242,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
  *
  * **문자열 리터럴이 아닌 프로퍼티는 에러로 남긴다** — ant-design의 `Pagination`(import 참조
  * shorthand), `default: typeTemplate`(식별자), 템플릿 리터럴이 그렇다. 조용히 건너뛰면 부분 읽기가
- * `orphaned` 오인으로 번진다 (`docs/ADAPTER-COVERAGE.md` §3 계열).
+ * `orphaned` 오인으로 번진다 (`docs/ARCHITECTURE §1.9` §3 계열).
  */
 function collect(
   obj: ObjectLiteralExpression,

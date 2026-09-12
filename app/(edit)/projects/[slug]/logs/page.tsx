@@ -17,7 +17,7 @@ import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
- * sync 이력 (7단계 — sync-runs design §6). SAAS §7.7 라우트 표의 마지막 칸이다.
+ * sync 이력 (7단계 — sync-runs design §6). PRODUCT §7.7 라우트 표의 마지막 칸이다.
  *
  * ⚠️ **게이트가 `translation:write`다, OWNER 전용이 아니다.** "내가 보낸 게 실제로 갔나"를 묻는
  * 사람이 번역자이고, `project:settings` 뒤에 두면 그 질문에 답할 화면이 그 사람에게 없다.
@@ -26,7 +26,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * "아직 실행이 없다"와 "물어보지 못했다"가 **바이트 단위로 같아진다** (POSTMORTEM 2026-09-03).
  * 그래서 빈 상태는 조회가 성공했을 때만 나온다.
  *
- * ⚠️ **여기에 [Send changes]를 두지 않는다.** SAAS §8 8단계의 🔒 제안을 이 단계가 채택한다 —
+ * ⚠️ **여기에 [Send changes]를 두지 않는다.** 8단계의 🔒 제안을 이 단계가 채택한다 —
  * **`logs`는 과거 이력**이고 "지금 상태 + 행동"은 그 패널이다. 둘을 섞으면 첫날에 경계가 무너진다.
  *
  * ⚠️ **RUNNING 행은 스냅샷이다** — 자동 갱신이 없다. 이 리포에 폴링이 0건이고, 넣으면 "줄임표는
@@ -119,7 +119,7 @@ export default async function LogsPage({
                       </Td>
                       <Td>
                         <Badge variant={view.tone}>{view.label}</Badge>
-                        {/* 버린 값을 조용히 숨기지 않는다 (SAAS 불변식 9) — 성공한 행에도 붙는다. */}
+                        {/* 버린 값을 조용히 숨기지 않는다 (ARCHITECTURE §0 불변식 9) — 성공한 행에도 붙는다. */}
                         {row.warnings > 0 && (
                           <p className="mt-1">
                             <Badge variant="warning">{m.logs.warnings(row.warnings)}</Badge>

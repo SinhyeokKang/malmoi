@@ -4,7 +4,7 @@ import { rowsForLocale, type RenderKey } from "../render";
 
 /**
  * **`sortIndex`가 `LocaleEntry.order`까지 도달하는 배선**
- * (`docs/features/key-order-preservation/` 태스크 4-2).
+ * (ARCHITECTURE §1.1).
  *
  * ⚠️ **경로가 넷이고 하나만 빠져도 조용히 죽는다.** `orderedEntries`가 `order === undefined`를
  * 보고 코드 유닛 폴백으로 떨어지므로 **어댑터 테스트는 전부 green이고 기능만 멎는다** —

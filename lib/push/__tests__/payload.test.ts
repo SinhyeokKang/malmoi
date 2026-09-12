@@ -54,7 +54,7 @@ describe("pickBaseLocale", () => {
     expect(pickBaseLocale(["ko", "en", "fr"])).toBe("en");
   });
 
-  it("en이 없으면 사전순 첫 번째다 — 리포 관례라 추정이고, 정본은 TASKS §3a의 🔒 항목이다", () => {
+  it("en이 없으면 사전순 첫 번째다 — 리포 관례라 추정이고, 정본은 리포 관례가 아니라 사용자 지정이다", () => {
     expect(pickBaseLocale(["ko", "fr", "de"])).toBe("de");
   });
 

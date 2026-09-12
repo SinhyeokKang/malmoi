@@ -10,7 +10,7 @@ import { loadMemberships } from "@/lib/keys/query";
 
 /**
  * 편집 UI 셸 — **캔버스 위에 패널이 떠 있는 구조다** (8-2, 시안 `212:937`).
- * 바깥 padding 8 · 패널 간 gap 8이고 예외를 만들지 않는다 (`features/ui-rework/README.md` 규약 3.5).
+ * 바깥 padding 8 · 패널 간 gap 8이고 예외를 만들지 않는다 (DESIGN §6.5).
  *
  * ⚠️ **레이아웃의 조건부 반환은 차단이 아니다.** App Router는 레이아웃과 페이지를 병렬로
  * 렌더하므로, 여기서 `children`을 안 써도 페이지는 이미 실행돼 DB를 조회하고 RSC 페이로드를

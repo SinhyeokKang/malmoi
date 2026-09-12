@@ -81,7 +81,7 @@ const writeFormat = {
 };
 
 // base 로케일: --base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순).
-// detect가 base를 알 수 없다 — 어느 로케일이 기준인지는 리포의 관례이므로 미결이다 (TASKS §3a 🔒).
+// detect가 base를 알 수 없다 — 어느 로케일이 기준인지는 리포의 관례이므로 미결이다 (사용자 지정이 정본이다).
 const base = baseOverride ?? pickBaseLocale(format.locales);
 if (base === undefined) {
   console.error("로케일이 하나도 없다 — 연동 불가.");

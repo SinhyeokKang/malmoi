@@ -25,7 +25,7 @@ export type ConnectError =
   | "denied"
   /** code 교환이 실패했다 — 재사용·만료된 code(GitHub은 이것도 HTTP 200 body로 준다). */
   | "exchange-failed"
-  /** 그 GitHub 계정을 이미 다른 User가 연결했다 (SAAS §5.5 — 병합하지 않는다). */
+  /** 그 GitHub 계정을 이미 다른 User가 연결했다 (ARCHITECTURE §6.2.1 — 병합하지 않는다). */
   | "taken-by-other"
   // ── Server Action 쪽 ────────────────────────────────────────────────────
   /** 아직 GitHub 계정을 연결하지 않았다. */
@@ -34,7 +34,7 @@ export type ConnectError =
   | "reauthorize"
   /** 그 리포에 우리 App이 설치돼 있지 않다. */
   | "repo-not-installed"
-  /** 그 설치가 로그인 사용자의 설치 목록에 없다 (SAAS §5.4 둘째 조건). */
+  /** 그 설치가 로그인 사용자의 설치 목록에 없다 (ARCHITECTURE §6 둘째 조건). */
   | "installation-forbidden"
   /** 설치는 보이는데 그 안에서 이 리포를 볼 수 없다 (셋째 조건). */
   | "repo-forbidden"

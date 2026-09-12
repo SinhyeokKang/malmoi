@@ -26,7 +26,7 @@ export const en = {
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
-       * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(SAAS §7.7)에서
+       * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
        * 바뀐 것: `Your work` 구역 라벨이 **사용자 이름**으로, `All projects`→`Projects`,
        * `Your account`→`Settings`, `Overview`→`Home`, `Languages`→`Locales`,
        * `Settings`(프로젝트)→`Project settings`. `New project`는 사이드바에서 빠졌다.
@@ -115,7 +115,7 @@ export const en = {
   /**
    * Home(`/projects/:slug`) — 프로젝트 진입의 착지점 (6b-6).
    *
-   * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (SAAS §7.7 결정 2). 키 수·미배포 건수는 번역
+   * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (PRODUCT §7.7 결정 2). 키 수·미배포 건수는 번역
    * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
    */
   /**
@@ -203,7 +203,7 @@ export const en = {
      * 그건 관측이 있었다는 뜻이 된다. 사유가 없는 행도 같은 글자를 쓴다(빈 칸은 열이 깨진 것처럼 보인다).
      */
     none: "—",
-    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 SAAS 불변식 9 위반이다. */
+    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 ARCHITECTURE §0 불변식 9 위반이다. */
     warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count} dropped`),
     empty: {
       title: "No syncs yet",
@@ -228,7 +228,7 @@ export const en = {
 
   /**
    * 보관 (7단계 — sync-runs design §6.2). ⚠️ **"삭제"라고 쓰지 않는다** — 되돌릴 수 있고,
-   * 자동 영구 삭제는 비목표다 (SAAS §7.9).
+   * 자동 영구 삭제는 비목표다 (PRODUCT §7.9).
    */
   archive: {
     title: "Archive project",
@@ -240,7 +240,7 @@ export const en = {
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
       body: "Everyone stops editing, the nightly send stops, and pushes from your repository are refused.",
-      /** ⚠️ 열린 PR을 닫지 않는다 (SAAS §7.9) — 사람이 알고 판단해야 한다. */
+      /** ⚠️ 열린 PR을 닫지 않는다 (PRODUCT §7.9) — 사람이 알고 판단해야 한다. */
       openPr: "What you already sent stays open for your developers:",
       openPrLink: "See what's open",
       /** ⚠️ 조회 실패를 "없다"로 접지 않는다 (POSTMORTEM 2026-09-03). */
@@ -301,7 +301,7 @@ export const en = {
     },
     /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
     archived: "Archived",
-    /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (SAAS §3). */
+    /** 역할은 화면 어휘로 — `ProjectMember.role`의 내부 이름을 그대로 쓰지 않는다 (PRODUCT §3). */
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {
       title: "No projects yet",
@@ -311,7 +311,7 @@ export const en = {
      * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
      * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다.
      *
-     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (SAAS §3) — 번역자도 이 목록을 보고
+     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (PRODUCT §3) — 번역자도 이 목록을 보고
      * `awaiting_first_sync`는 그에게 아무것도 알려주지 않는다.
      */
     status: {
@@ -341,7 +341,7 @@ export const en = {
   },
 
   /**
-   * 계정 화면 (6b-4 — SAAS §7.7의 사용자 축). ⚠️ **컨트롤 라벨은 `settings.account`가 든다** —
+   * 계정 화면 (6b-4 — PRODUCT §7.7의 사용자 축). ⚠️ **컨트롤 라벨은 `settings.account`가 든다** —
    * `github-account.tsx`의 두 버튼이 그 키를 읽으므로 여기에 사본을 두면 같은 버튼이 화면마다
    * 다른 말을 한다. 여기 있는 것은 이 화면만 쓰는 문구다.
    */
@@ -350,7 +350,7 @@ export const en = {
       title: "Profile",
       /**
        * ⚠️ **읽기 전용인 이유를 화면이 말한다.** 이름·이메일은 provider가 소유하고 재로그인마다
-       * `planEmailRefresh`가 갱신한다 — 여기서 고칠 수 있게 하면 초대 대조(SAAS §5.6)가 검증되지
+       * `planEmailRefresh`가 갱신한다 — 여기서 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지
        * 않은 주소 위에 서게 된다.
        */
       description: "Your name and email come from the account you sign in with, and refresh when you sign in again.",
@@ -383,7 +383,7 @@ export const en = {
   },
 
   newProject: {
-    /** `formatLabel` — 어댑터 내부 이름을 화면에 쓰지 않는다 (SAAS §3). */
+    /** `formatLabel` — 어댑터 내부 이름을 화면에 쓰지 않는다 (PRODUCT §3). */
     formats: {
       "chrome-locales": { label: "Chrome extension messages", example: "_locales/{locale}/messages.json" },
       "json-catalog": { label: "JSON catalog", example: "src/locales/{locale}.json" },
@@ -392,7 +392,7 @@ export const en = {
       "ts-dict": { label: "Code dictionary (all languages in one file)", example: "src/i18n/namespaces/*.ts" },
     },
     /**
-     * 첫 적재 결과 헤드라인 — **0건이 아니면 성공 문구를 그대로 쓰지 않는다** (SAAS 불변식 9).
+     * 첫 적재 결과 헤드라인 — **0건이 아니면 성공 문구를 그대로 쓰지 않는다** (ARCHITECTURE §0 불변식 9).
      */
     imported: (count: number, failed: number): string =>
       failed === 0
@@ -447,7 +447,7 @@ export const en = {
          *
          * ⚠️ **갈래가 어댑터의 `layout`이다** — multi-locale(`ts-dict`)은 한 파일에 로케일이 나란히
          * 있어 경로에 로케일이 없다. 한 문장으로 두면 그 포맷에서 틀린 안내가 되고, 그것이
-         * 903키 딕셔너리로 가는 **유일한 길**이다(자동 탐지에서 빠져 있다 — ADAPTER-COVERAGE 판정 ③).
+         * 903키 딕셔너리로 가는 **유일한 길**이다(자동 탐지에서 빠져 있다 — ARCHITECTURE §1.9 판정 ③).
          * 갈래 누락은 소비자가 거는 `satisfies Record<Layout, …>`가 잡는다.
          */
         pathHint: {
@@ -496,7 +496,7 @@ export const en = {
         title: "First import",
         running: "Importing…",
         retry: "Try again",
-        /** 못 읽은 파일 — 건수만으로는 사용자가 할 일이 없다 (SAAS 불변식 9). */
+        /** 못 읽은 파일 — 건수만으로는 사용자가 할 일이 없다 (ARCHITECTURE §0 불변식 9). */
         couldNotRead: (path: string): string => `Could not read ${path}`,
         /** `<details>`의 요약 — 그 안은 어댑터가 준 원문이다 (6b-1이 코드화한다). */
         diagnostics: "Details",
@@ -508,7 +508,7 @@ export const en = {
   },
 
   translations: {
-    /** 카운터 — ICU가 아니라 삼항 하나다 (MVP §7). */
+    /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
 
     /** ⚠️ URL 값은 `"*"`다 — 이건 그 옵션의 라벨이다 (`ALL_NAMESPACES`). */
@@ -780,7 +780,7 @@ export const en = {
       email: "Email",
       help: "They'll be able to edit translations in this project.",
       create: "Create link",
-      /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (SAAS §5.6). */
+      /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (ARCHITECTURE §6.02). */
       linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
       alreadyMember: "That email is already a member of this project.",
       failed: (reason: string): string => `Couldn't create the link: ${reason}`,
@@ -832,7 +832,7 @@ export const en = {
 
       /**
        * 기준 브랜치 하나다 (6b-3이 언어와 한 폼에 뒀던 것을 **6b-5가 갈랐다** — 언어는
-       * `m.locales.field`이고 화면은 `/projects/:slug/locales`다, SAAS §7.7 결정 4).
+       * `m.locales.field`이고 화면은 `/projects/:slug/locales`다, PRODUCT §7.7 결정 4).
        *
        * ⚠️ **브랜치는 즉시 쓰인다** — pull의 커밋 parent와 PR base가 그것이고 대기 개념이 없다.
        * 선언만 쓰이는 축(base language)이 여기서 사라졌으므로 두 성질을 한 help 문구로 설명할
@@ -967,7 +967,7 @@ export const en = {
       unauthorized: "Your session ended. Sign in again to save your work.",
       // 무엇이 모자란지까지는 말하지 않는다 — 역할 이름은 내부 어휘다.
       forbidden: "You don't have permission for this. Ask the project owner.",
-      // "없다"와 "멤버가 아니다"를 가르지 않는다 — 프로젝트 존재를 노출하지 않는다 (SAAS §7.7).
+      // "없다"와 "멤버가 아니다"를 가르지 않는다 — 프로젝트 존재를 노출하지 않는다 (PRODUCT §7.7).
       "not-found": "You can't open this project. Check your invite link.",
       // 무엇을 하면 되는지 말한다 — 막힌 이유만 알려주면 사용자가 갇힌다.
       "last-owner": "A project needs at least one owner. Make someone else an owner first.",
@@ -994,7 +994,7 @@ export const en = {
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },
 
-    /** `signInErrorMessage` — Auth.js `?error=` 코드. 코드를 그대로 노출하지 않는다 (SAAS §3). */
+    /** `signInErrorMessage` — Auth.js `?error=` 코드. 코드를 그대로 노출하지 않는다 (PRODUCT §3). */
     /**
      * `linkErrorMessage` — 병합 확인 실패 여섯 + 폴백.
      *
@@ -1011,7 +1011,7 @@ export const en = {
     },
 
     signIn: {
-      // SAAS §5.5 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은 계정 탈취다.
+      // ARCHITECTURE §6.2.1 — 같은 이메일이라는 이유만으로 계정을 합치지 않는다. 잘못된 자동 병합은 계정 탈취다.
       OAuthAccountNotLinked: "That email is already registered with a different sign-in method. Use the one you signed up with.",
       AccessDenied: "You can't sign in with this account. Its email may not be verified.",
       // 우리 코드다 — 세션을 못 읽었을 때 보낸다. "로그인에 실패"라고 말하지 않는다: 사용자는 편집 중이었다.

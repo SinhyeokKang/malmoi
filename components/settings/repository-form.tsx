@@ -14,7 +14,7 @@ import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib
 
 /**
  * 기준 브랜치 (6b-3 — design §3.13. **6b-5가 기준 언어 필드를 `/projects/:slug/locales`로 옮겼다** —
- * SAAS §7.7 결정 4).
+ * PRODUCT §7.7 결정 4).
  *
  * ⚠️ **여기서 선언 컬럼을 건드리지 않는다.** 두 필드가 한 폼이던 동안, 대기 중에 화면을 새로 열면
  * 필드가 옛 언어를 보이고 **브랜치만 고친 저장이 그 선언을 지웠다**(malmoi#20). 자리를 가른 것이

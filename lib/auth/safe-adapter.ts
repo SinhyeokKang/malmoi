@@ -38,7 +38,7 @@ export function safePrismaAdapter(prisma: PrismaClient, now: () => Date = () => 
       return null;
     },
     /**
-     * ⚠️ **Auth.js 경유로는 로그인 수단이 User당 하나다.** SAAS §5.5가 OAuth 계정 통합을 비범위로
+     * ⚠️ **Auth.js 경유로는 로그인 수단이 User당 하나다.** ARCHITECTURE §6.2.1가 OAuth 계정 통합을 비범위로
      * 두었는데, 그 정책은 "첫 로그인"에만 서 있었다 — **로그인된 상태에서 provider를 추가하는
      * 경로**는 위 callback 분기로 라이브러리 기본 동작에 열려 있었다. 여기서 거부해야 정책이
      * 쓰기까지 닿는다.

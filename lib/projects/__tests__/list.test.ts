@@ -151,7 +151,7 @@ describe("projectStatus", () => {
   });
 
   /**
-   * ⚠️ **`repositoryId`는 readiness와 다른 축이다** (SAAS §7.5). sec-audit-2 이전에 만들어진 행이
+   * ⚠️ **`repositoryId`는 readiness와 다른 축이다** (PRODUCT §7.5). sec-audit-2 이전에 만들어진 행이
    * 이것이고, 그 상태에서 **Publish만 조용히 거부된다** — 목록이 여태 `Active`를 보였다.
    */
   it("준비됐는데 리포가 고정 안 됐으면 `needs_reconnect`다", () => {
@@ -176,7 +176,7 @@ describe("projectStatus", () => {
 
 /**
  * 문구 — `readinessLabel`이 들던 방어선이 여기로 따라왔다.
- * **번역자도 이 목록을 보므로 내부 이름이 화면에 뜨면 안 된다** (SAAS §3).
+ * **번역자도 이 목록을 보므로 내부 이름이 화면에 뜨면 안 된다** (PRODUCT §3).
  */
 describe("상태 문구", () => {
   const ALL = [

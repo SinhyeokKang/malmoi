@@ -138,7 +138,7 @@ async function linkAccountLocked(
 
   const plan = planAccountLink({ sessionUserId: userId, existing, current });
 
-  // 남의 행은 토큰조차 갱신하지 않는다 (SAAS §5.5 — 자동 병합 금지).
+  // 남의 행은 토큰조차 갱신하지 않는다 (ARCHITECTURE §6.2.1 — 자동 병합 금지).
   if (plan === "taken-by-other") return "taken-by-other";
 
   if (plan === "already-linked") {

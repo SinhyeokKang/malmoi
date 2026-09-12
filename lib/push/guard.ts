@@ -2,7 +2,7 @@
  * push 페이로드의 **오배송·역행 거부** (ARCHITECTURE §5.5.5).
  *
  * **둘 다 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff
- * 동기화이고 코어 원칙(MVP §2)을 깬다. 통과하지 못하면 409다.
+ * 동기화이고 코어 원칙(ARCHITECTURE §0)을 깬다. 통과하지 못하면 409다.
  *
  * ⚠️ **환경변수를 여기서 읽지 않는다.** 호출부가 넘긴다 — 모듈 최상위 평가가 "파일을
  * 읽기만 해도 죽는다"를 뜻해 CI를 red로 만든 전례가 있다 (POSTMORTEM 2026-08-31).
@@ -50,7 +50,7 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  *
  * - 자동 후보의 워크플로 YAML은 `adapter:`·`base-locale:`을 박지 않고(`renderWorkflowYaml`),
  *   `push:local`은 그때 `detectFormat`으로 **1순위**를 고른다 — 2순위를 확정한 프로젝트가 정확히
- *   그 경로로 덮인다 (한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 — SAAS §7.1).
+ *   그 경로로 덮인다 (한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 — PRODUCT §7.1).
  * - 결과는 strict 덮어쓰기라 **그 프로젝트의 키가 전부 orphan되고 이물 키가 삽입된다.** `PushPlan`에
  *   `toDelete`가 없고 `Translation`의 FK가 `RESTRICT`라 되돌릴 수 없다 — `checkProjectSlug`가 막는
  *   것과 같은 피해다.
@@ -66,7 +66,7 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  * 손실이 되돌릴 수 없는 방향이다.
  *
  * ⚠️ **그 409를 푸는 재설정 UI는 아직 없다** (2026-09-10 정정). 7단계가 `needs_configuration`을
- * **후속으로 미뤘고**(SAAS §8) 리포에 그 구현은 0건이다 — 지금 걸리면 사람이 DB의 포맷 컬럼을
+ * **후속으로 미뤘고**(PRODUCT) 리포에 그 구현은 0건이다 — 지금 걸리면 사람이 DB의 포맷 컬럼을
  * 직접 맞춰야 한다. `docs/ACTIONS.md`가 같은 문장을 들고 있어 함께 고쳤다.
  *
  * ⚠️ **`nested`·`nestedByPath`는 비교하지 않는다.** 그 둘은 "같은 파일이 지금 어떤 모양인가"의

@@ -3,7 +3,7 @@ import { chromeLocales, jsonCatalog } from "../index";
 import type { AdapterFile, DetectedFormat, LocaleEntry } from "../types";
 
 /**
- * 재생성 writer가 **원본 순서로 재조립한다** (`docs/features/key-order-preservation/` 태스크 2).
+ * 재생성 writer가 **원본 순서로 재조립한다** (ARCHITECTURE §1.1).
  *
  * 가장 중요한 검사는 **왕복 바이트 동일**이다 — 원본이 우리 정렬 규칙을 따르지 **않는** 파일을
  * 읽어서 다시 쓰면 원본과 바이트가 같아야 한다. 그게 "첫 pull PR이 파일을 통째로 재정렬하지
@@ -11,7 +11,7 @@ import type { AdapterFile, DetectedFormat, LocaleEntry } from "../types";
  *
  * ⚠️ **중첩은 층이 여럿이라 최상위만 맞으면 안 된다.** 실측 리포 중 중첩이 다수이고
  * (excalidraw·open-webui·outline·cal.com), 하위 층만 재정렬돼도 diff 비율은 낮은데 hunk가
- * 수십 개가 되어 리뷰가 불가능해진다 (`docs/ADAPTER-COVERAGE.md` §10, spec §왜 diff 비율
+ * 수십 개가 되어 리뷰가 불가능해진다 (`docs/ARCHITECTURE §1.9` §10, spec §왜 diff 비율
  * 하나로는 부족한가).
  */
 
@@ -145,7 +145,7 @@ describe("chrome-locales.write — 원본 순서와 placeholders를 되돌린다
   it("비-base의 description도 낸다 — 그 파일이 실제로 갖고 있던 값이다", () => {
     // 태스크 4에서 `Translation.description`이 생기며 `isBase` 가드를 풀었다. 로케일별 값이
     // 셀에서 오므로 base 값을 복제할 위험이 사라졌고, chrome 리포 33개 중 20개가 잃던 필드다
-    // (`docs/ADAPTER-COVERAGE.md` §10.3).
+    // (`docs/ARCHITECTURE §1.9` §10.3).
     const src = '{\n  "A": {\n    "message": "a",\n    "description": "d"\n  }\n}\n';
     expect(chromeRoundtrip(src)).toBe(src);
   });

@@ -20,7 +20,7 @@ import { routes } from "@/lib/routes";
  * 자리였고(`createInvitation`에 호출부가 없으면 그 판정이 실재하지 않는다 — POSTMORTEM 2026-09-03),
  * 이제 제자리인 멤버 화면이 있으므로 삭제됐다. 초대 수단이 둘이면 하나가 낡는다.
  *
- * **메일을 보내지 않는다** (SAAS §4.3 ①) — OWNER가 링크를 슬랙·메신저로 직접 전달한다.
+ * **메일을 보내지 않는다** (PRODUCT §4.3 ①) — OWNER가 링크를 슬랙·메신저로 직접 전달한다.
  */
 export function InviteDialog({ slug }: { slug: string }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +41,7 @@ export function InviteDialog({ slug }: { slug: string }) {
         role: "EDITOR",
       });
       if (result.ok) {
-        // 원문은 서버가 저장하지 않는다 — **이 화면을 벗어나면 다시 볼 수 없다** (SAAS §5.6).
+        // 원문은 서버가 저장하지 않는다 — **이 화면을 벗어나면 다시 볼 수 없다** (ARCHITECTURE §6.02).
         // ⚠️ 경로는 `lib/routes.ts` 한 곳이다 — 문자열로 조립하면 라우트를 옮겨도 아무것도 안 깨지고
         // 발급된 링크만 조용히 404가 된다 (POSTMORTEM 2026-09-05).
         setLink(`${window.location.origin}${routes.invite(result.token)}`);

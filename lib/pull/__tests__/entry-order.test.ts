@@ -9,7 +9,7 @@ import type { RenderKey } from "../render";
 import { createFakeGitClient } from "./fake-client";
 
 /**
- * **L1 — 진입점 회귀** (`docs/features/key-order-preservation/` 태스크 5-1).
+ * **L1 — 진입점 회귀** (ARCHITECTURE §1.1).
  *
  * ⚠️ **어댑터·render 단위 테스트로는 원리적으로 못 보는 층이다.** `sortIndex`가
  * `LocaleEntry.order`까지 가려면 홉 넷을 지나는데(`load.ts` select → `RenderKey` → `PullRow` →
@@ -237,7 +237,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
 });
 
 /**
- * **L1 — 표현 보존이 진입점까지 닿는가** (`docs/features/format-preservation/` 태스크 3).
+ * **L1 — 표현 보존이 진입점까지 닿는가** (ARCHITECTURE §1.1 태스크 3).
  *
  * 어댑터 단위 테스트는 원본이 write까지 도달하는 **배선이 끊겨도 전부 green이다** — 그게 이
  * 리포가 다섯 번 밟은 실패 유형이고, `nestedByPath`가 정확히 그 상태로 있었다. 여기서는

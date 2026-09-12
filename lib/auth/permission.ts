@@ -1,14 +1,14 @@
 /**
- * 역할별 권한 (SAAS.md §3).
+ * 역할별 권한 (PRODUCT §3).
  *
  * **역할은 둘뿐이다.** Viewer·Admin·Billing은 실제 요구가 생기기 전까지 만들지 않는다 —
- * MVP §7의 "세밀한 권한" 비범위가 SaaS에서도 유지된다.
+ * PRODUCT §4.2의 "세밀한 권한" 비범위가 SaaS에서도 유지된다.
  *
- * ⚠️ **Publish는 별도 permission이 아니라 `translation:write`에 들어 있다.** SAAS §3이 EDITOR에게
+ * ⚠️ **Publish는 별도 permission이 아니라 `translation:write`에 들어 있다.** PRODUCT §3이 EDITOR에게
  * Publish를 허용했고(PR 생성이지 base branch 직접 쓰기가 아니다), "개발자만 Publish"가 실제로
  * 필요해지면 그때 나눈다. 지금 넷째 permission을 두는 것은 쓰이지 않는 축을 미리 만드는 것이다.
  *
- * **로그인 provider가 권한을 정하지 않는다** — `ProjectMember.role`만 정한다 (SAAS §9 불변식 7).
+ * **로그인 provider가 권한을 정하지 않는다** — `ProjectMember.role`만 정한다 (ARCHITECTURE §0 불변식 7).
  */
 
 /**

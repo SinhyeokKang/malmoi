@@ -3,7 +3,7 @@ import { serializeJson } from "./json-style";
 import type { LocaleEntry, ReadResult } from "./types";
 
 /**
- * 모든 writer가 공유하는 결정성 규칙 (MVP §4.1).
+ * 모든 writer가 공유하는 결정성 규칙 (ARCHITECTURE §1.1).
  *
  * **불변식: 같은 입력 → 언제나 바이트 단위로 같은 출력.** 깨지면 pull의 blob SHA 비교가 매번
  * "변경됨"을 뱉어 야간 cron이 무의미한 커밋을 쌓고 PR diff가 노이즈로 덮인다.
@@ -83,7 +83,7 @@ export function serialize(value: unknown): string {
  * 빈 문자열도 미번역으로 취급한다(편집 UI에서 값을 지우면 그렇게 들어온다). 미번역 항목을
  * 남기면 그 값이 그대로 렌더되는데, 빼면 폴백한다.
  *
- * 정렬은 두 층이다 (`docs/features/key-order-preservation/`):
+ * 정렬은 두 층이다 (ARCHITECTURE §1.1):
  *
  * 1. `order`가 있는 것 먼저, `order` 오름차순 — 그 파일에서의 위치다.
  * 2. 없는 것은 뒤에, 코드 유닛 순. 순서를 모르는 키이고 개정 전 규칙이 그대로 폴백이 된다.
@@ -179,7 +179,7 @@ export const I18N_HINT = /(^|\/)(i18n|locale|locales|lang|langs|messages|transla
  * 실측 오탐 4건 중 2건이 여기서 나왔다: lokalise/i18n-ally는 `examples/by-frameworks/…/_locales`가
  * 도구 자신의 `locales/`를 눌렀고, payloadcms/payload는 `examples/localization/…`이 진짜
  * `packages/translations`를 눌렀다. ant-design은 `.dumi/theme/locales`(문서 사이트 테마 2로케일)가
- * 잡혔다 (`docs/ADAPTER-COVERAGE.md` §1②).
+ * 잡혔다 (`docs/ARCHITECTURE §1.9` §1②).
  *
  * **배제가 아니라 감점이다** — 예제 모음 자체가 산출물인 리포에서 그것만 있으면 잡아야 한다.
  */
@@ -320,7 +320,7 @@ export type CatalogVerdict = "yes" | "no" | "unknown";
  * 후보 파일이 메시지 카탈로그 모양인가. 경로 신호만으로는 취약하므로 **내용을 본다**.
  *
  * ⚠️ **판정이 3값이다** (2026-09-02). 전에는 boolean이었고 "최상위 값이 **전부** 문자열·객체"를
- * 요구했는데, 그 규칙이 지원 포맷 리포 3개를 통째로 버렸다 (`docs/ADAPTER-COVERAGE.md` §3):
+ * 요구했는데, 그 규칙이 지원 포맷 리포 3개를 통째로 버렸다 (`docs/ARCHITECTURE §1.9` §3):
  *
  * - esmBot — 샘플이 `{}`였다. 빈 스텁 로케일은 "아님"이 아니라 **정보 없음**이다 → `unknown`
  * - jsxc — 최상위에 `"Notifications": null`

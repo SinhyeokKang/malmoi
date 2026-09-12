@@ -57,7 +57,7 @@ export function pullMessage(outcome: PullOutcome): PullMessage {
     case "committed": {
       const dropped = outcome.warnings?.length ?? 0;
       return {
-        // ⚠️ **버린 값이 있으면 success가 아니다** (SAAS 불변식 9). 보내긴 했으므로 danger도 아니다.
+        // ⚠️ **버린 값이 있으면 success가 아니다** (ARCHITECTURE §0 불변식 9). 보내긴 했으므로 danger도 아니다.
         tone: dropped === 0 ? "success" : "warning",
         text:
           dropped === 0

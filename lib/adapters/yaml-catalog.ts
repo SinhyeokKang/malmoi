@@ -28,7 +28,7 @@ import { localeFromPath } from "./chrome-locales";
  * YAML 카탈로그 — `<dir>/{locale}.y(a)ml`.
  *
  * 오픈소스 109개에서 미지원 36개 중 **17개가 YAML**이었다 — 가장 큰 덩어리다 (mastodon 106로케일·
- * decidim 82·directus 69·redmine 50·misskey 42). `docs/ADAPTER-COVERAGE.md` §1①·§7.
+ * decidim 82·directus 69·redmine 50·misskey 42). `docs/ARCHITECTURE §1.9` §1①·§7.
  *
  * ⚠️ **`per-locale` + 수술적 치환이다.** 재생성으로 쓰면 Rails 로케일 파일의 주석·앵커·블록
  * 리터럴이 첫 pull에서 사라진다 — TS 딕셔너리에서 이미 겪은 구조 파괴다. `yaml` 패키지의

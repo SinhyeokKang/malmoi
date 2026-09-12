@@ -4,7 +4,7 @@ import { createHarness, sessionFor } from "./harness";
 
 /**
  * **기준 브랜치**(설정 화면)와 **기준 로케일**(로케일 화면) — 6b-3이 한 Action이던 것을 6b-5가
- * 갈랐다 (SAAS §7.7 결정 4: 기준 로케일의 소유자가 `settings` → `locales`로 옮겨졌다).
+ * 갈랐다 (PRODUCT §7.7 결정 4: 기준 로케일의 소유자가 `settings` → `locales`로 옮겨졌다).
  *
  * ⚠️ **화면이 갈리면 Action도 갈라야 한다.** 인자를 optional로 만들면 서버가 "무엇을 안 보냈나"를
  * 추측하게 되고, 그 추측이 곧 malmoi#20의 모양이다 — 화면이 기본값으로 채운 값과 사람이 고른 값을

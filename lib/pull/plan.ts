@@ -66,7 +66,7 @@ function nestedByPathOf(raw: unknown): Record<string, boolean> | undefined {
  * `Project` 컬럼 → `DetectedFormat`.
  *
  * **pull 경로엔 `read`가 없어 여기가 유일한 포맷 출처다.** push가 리포를 탐지해 저장한 값을
- * 그대로 되살린다 (MVP §5.1). 컬럼이 비어 있으면 아직 push를 받지 않은 프로젝트이므로 던진다 —
+ * 그대로 되살린다 (CLAUDE.md "데이터 변경 경로".1). 컬럼이 비어 있으면 아직 push를 받지 않은 프로젝트이므로 던진다 —
  * 조용히 기본값을 고르면 엉뚱한 경로의 파일을 덮는다.
  *
  * @param locales `Locale` 테이블의 코드 목록. `Project`엔 로케일이 없어 따로 받는다.
@@ -169,7 +169,7 @@ export type PullRow = {
  *
  * `ts-dict`는 `orderedEntries`를 지나지 않으므로(ARCHITECTURE §1.4) 빈 값이 여기서 새면 원본
  * 리터럴이 `""`로 치환되고, TS 딕셔너리엔 폴백이 없어 그대로 렌더된다. 재생성 어댑터는 내부에서
- * 한 번 더 거르지만, **두 방식에 똑같이 적용되는 지점은 여기뿐**이다 (MVP §4.1).
+ * 한 번 더 거르지만, **두 방식에 똑같이 적용되는 지점은 여기뿐**이다 (ARCHITECTURE §1.1).
  *
  * 정렬하지 않는다 — 재생성은 어댑터가 정렬하고, 수술적 치환은 원본 순서를 보존해야 한다.
  */
@@ -182,11 +182,11 @@ export function buildWriteEntries(
     // 코드에서 사라진 키. 재생성은 파일에서 빠지고, 수술적 치환은 값을 안 바꿔 원본이 남는다.
     if (row.orphaned) continue;
     /**
-     * base 파일은 값이 없으면 sourceText로 폴백한다 (MVP §3.2).
+     * base 파일은 값이 없으면 sourceText로 폴백한다.
      *
      * ⚠️ **빈 문자열도 "없음"으로 센다** (2026-09-09, T6 실측이 고쳤다). 옛 동작은 빈 값을
      * "지우기라는 정당한 조작"으로 읽어 그 키를 파일에서 뺐는데, **base 로케일에서는 그 조작의 뜻이
-     * 다르다**: 그 파일이 **키 집합의 진실**이라(MVP §3.1) 키가 빠진 base 파일이 머지되면 다음
+     * 다르다**: 그 파일이 **키 집합의 진실**이라(ARCHITECTURE §0 불변식 2) 키가 빠진 base 파일이 머지되면 다음
      * push가 그 키를 **전 로케일에서 orphan한다** — 번역자의 셀 편집 하나가 키를 지우고, 그 일이
      * 라운드트립 한 번 뒤에 조용히 일어난다. base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
      *
@@ -212,7 +212,7 @@ export function buildWriteEntries(
 // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
 
 /**
- * writer의 출력. `content`가 `null`이면 낼 항목이 0개라 파일을 만들지 않는다 (MVP §4.1).
+ * writer의 출력. `content`가 `null`이면 낼 항목이 0개라 파일을 만들지 않는다 (ARCHITECTURE §1.1).
  * `errors`는 writer가 **버린** 항목이다 — 값을 잃더라도 어느 키인지는 알려야 한다 (ARCHITECTURE §1.35).
  */
 export type LocalFile = { path: string; content: string | null; errors?: AdapterError[] };

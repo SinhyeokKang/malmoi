@@ -14,7 +14,7 @@ import type { SyncErrorCode } from "@/lib/sync/plan";
  */
 export class AppError extends Error {
   /**
-   * `SyncRun.errorCode`에 남을 안정적 이름 (`docs/features/sync-runs/design.md` §1.3).
+   * `SyncRun.errorCode`에 남을 안정적 이름 (ARCHITECTURE §5.6).
    *
    * ⚠️ **선택이다** — 코드가 붙는 자리는 sync가 가려야 하는 실패뿐이고, 불변식 위반(`unreachable:`)이나
    * readiness가 이미 막는 설정 부재에는 붙지 않는다("생산자 없는 코드는 두지 않는다").

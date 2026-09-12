@@ -84,7 +84,7 @@ const USER_SCOPED_ACTIONS = new Set([
  * 파일 면제는 그 파일에 export가 하나 늘면 조용히 검사 밖이었다.
  *
  * `acceptInvitation`은 `requireUser`도 안 부른다(`readSession`을 직접 읽는다): **수락 전엔 멤버가
- * 아니고**, 인가를 대신하는 것은 단일 사용 토큰과 provider가 검증한 이메일 대조다 (SAAS §5.6,
+ * 아니고**, 인가를 대신하는 것은 단일 사용 토큰과 provider가 검증한 이메일 대조다 (ARCHITECTURE §6.02,
  * membership.test.ts).
  */
 const EXEMPT_ACTIONS = new Set(["invite/actions.ts#acceptInvitation"]);

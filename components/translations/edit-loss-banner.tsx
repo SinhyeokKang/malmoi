@@ -9,7 +9,7 @@ import { m } from "@/lib/i18n";
 const DISMISS_KEY = "malmoi:edit-loss-dismissed";
 
 /**
- * 편집 손실 창 배너 (design §3.11). **MVP §3.1이 감수한 대가를 편집자가 보는 자리에 처음으로 적는다** —
+ * 편집 손실 창 배너 (design §3.11). **ARCHITECTURE §0 불변식 2이 감수한 대가를 편집자가 보는 자리에 처음으로 적는다** —
  * push가 strict로 덮으므로, 보낸 것이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다.
  *
  * ⚠️ **닫기 키가 세션이 아니라 `lastPulledAt`이다.** 세션 단위로 닫으면 건수가 3→7로 늘어도 닫힌

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planMemberChange, type MemberRow } from "../membership";
 
 /**
- * 마지막 OWNER 보호 (SAAS.md §5.6 — "Project에는 항상 OWNER가 한 명 이상").
+ * 마지막 OWNER 보호 (ARCHITECTURE §6.02 — "Project에는 항상 OWNER가 한 명 이상").
  *
  * ⚠️ **제거와 강등이 같은 판정을 지난다.** 강등을 별도 경로로 두면 "제거는 막고 강등은 통과"가
  * 되고, 결과는 같다 — OWNER 없는 프로젝트다. `nextRole: null`이 제거다.

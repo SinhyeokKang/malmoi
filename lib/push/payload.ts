@@ -16,7 +16,7 @@ import type { PushPayloadType } from "./plan";
 /**
  * base 로케일 판정. `en`이 있으면 `en`, 없으면 사전순 첫 번째다.
  *
- * ⚠️ **리포 관례를 추정하는 것이라 정본이 아니다** (TASKS §3a의 🔒 항목). 여기를 바꾸면
+ * ⚠️ **리포 관례를 추정하는 것이라 정본이 아니다** (사용자 지정이 정본이다). 여기를 바꾸면
  * 어느 파일의 description이 키 메타데이터가 되는지가 통째로 바뀐다.
  */
 export function pickBaseLocale(locales: readonly string[]): string | undefined {
@@ -77,7 +77,7 @@ function lastWins<T>(rows: readonly T[], keyOf: (row: T) => string): T[] {
 export type BuiltPushPayload = {
   payload: PushPayloadType;
   /**
-   * 로케일 파일에 없는 키를 코드가 참조한 수. **경고일 뿐 실패가 아니다** (MVP §3.1 5단계) —
+   * 로케일 파일에 없는 키를 코드가 참조한 수. **경고일 뿐 실패가 아니다** (ARCHITECTURE §0 불변식 2 5단계) —
    * 키의 진실은 로케일 파일이고 스캔은 사용처만 안다.
    */
   unknownRefs: number;
@@ -125,7 +125,7 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
       // ⚠️ `e.order ? …`로 쓰면 **0이 falsy라 파일의 첫 키가 순서를 잃는다.**
       ...(e.order === undefined ? {} : { order: e.order }),
     })),
-    // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다 (MVP §3.2).
+    // **base 로케일도 보낸다** — base도 편집 가능하고 Translation 행을 가져야 한다.
     translations: uniqueTranslations.map(({ locale, e }) => ({
       locale,
       key: e.key,

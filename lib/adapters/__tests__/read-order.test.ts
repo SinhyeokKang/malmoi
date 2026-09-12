@@ -3,12 +3,12 @@ import { chromeLocales, jsonCatalog } from "../index";
 import type { AdapterFile, LocaleEntry } from "../types";
 
 /**
- * `read`가 **버리던 두 가지를 관측한다** (`docs/features/key-order-preservation/` 태스크 1).
+ * `read`가 **버리던 두 가지를 관측한다** (ARCHITECTURE §1.1).
  *
  * 1. **파일에서의 키 순서** — `read`는 엔트리를 코드 유닛 순으로 정렬해 돌려주므로 원본 순서가
  *    그 지점에서 사라진다. 첫 pull PR이 파일을 통째로 재정렬하는 뿌리가 여기다.
  * 2. **chrome `placeholders`** — `LocaleEntry`에 필드가 없어 read가 아예 안 읽었다. 실측에서
- *    chrome 리포 33개 중 12개가 이 블록을 갖는다 (`docs/ADAPTER-COVERAGE.md` §10.3).
+ *    chrome 리포 33개 중 12개가 이 블록을 갖는다 (`docs/ARCHITECTURE §1.9` §10.3).
  *
  * ⚠️ **`read`는 계속 정렬해서 돌려준다.** 호출부가 그걸 전제하고, 순서는 `order` 필드로 따로
  * 나른다 — 배열 위치에 의존하는 설계로 바꾸면 회귀 범위가 어댑터 밖까지 번진다

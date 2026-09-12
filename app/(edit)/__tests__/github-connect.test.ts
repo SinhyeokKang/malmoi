@@ -11,7 +11,7 @@ import { createHarness, sessionFor } from "./harness";
  * 장애를 100% 리다이렉트로 보고 정상이라 읽었다). 그래서 성공 경로가 인자까지 대조한다.
  *
  * ⚠️ **`installationId`는 클라이언트에서 오지 않는다.** Action이 받는 것은 slug 하나이고, 설치 id는
- * `probeRepo`가 GitHub에 물어 얻는다 — SAAS §5.4가 걱정한 "브라우저가 보낸 값을 그대로 저장"의
+ * `probeRepo`가 GitHub에 물어 얻는다 — ARCHITECTURE §6가 걱정한 "브라우저가 보낸 값을 그대로 저장"의
  * 표면이 아예 없다.
  *
  * 별도 파일인 이유: GitHub 호출 셋을 mock해야 하는데 `authorization.test.ts`는 그것들을 지나지 않는다
@@ -155,7 +155,7 @@ describe("connectRepository — 계정 연결 상태", () => {
   });
 });
 
-describe("connectRepository — 3중 검증 (SAAS §5.4)", () => {
+describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
   it("사용자가 볼 수 없는 설치면 installation-forbidden이고 저장하지 않는다", async () => {
     hoisted.listUserInstallations.mockResolvedValue(["999"]);
 
@@ -189,7 +189,7 @@ describe("connectRepository — 3중 검증 (SAAS §5.4)", () => {
     expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
   });
 
-  it("목록을 **제출 시점에** 부른다 — 렌더 때 본 것을 믿지 않는다 (SAAS §5.2)", async () => {
+  it("목록을 **제출 시점에** 부른다 — 렌더 때 본 것을 믿지 않는다 (ARCHITECTURE §6.00 ③)", async () => {
     await connectRepository({ slug: "acme" });
 
     expect(hoisted.listUserInstallations).toHaveBeenCalledTimes(1);

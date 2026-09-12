@@ -14,7 +14,7 @@ import {
 } from "./plan";
 
 /**
- * sync 실행의 껍데기 (`docs/features/sync-runs/design.md` §3·§5).
+ * sync 실행의 껍데기 (ARCHITECTURE §5.6).
  *
  * 두 진입점(편집 UI의 [Send changes] · 야간 cron)이 **같은 이 함수를 지난다** — 게이트·행·오류
  * 분류가 한 벌이라야 `logs`가 둘을 같은 어휘로 보인다.

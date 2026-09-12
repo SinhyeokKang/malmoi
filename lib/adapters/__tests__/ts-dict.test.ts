@@ -49,7 +49,7 @@ const format = {
 const file = (content = SOURCE) => [{ path: "src/i18n/namespaces/common.ts", content }];
 
 /**
- * ⚠️ **`ts-dict`는 자동 탐지에서 빠졌다** (ADAPTER-COVERAGE 판정 ③ — 오픈소스 109개에서 후보에
+ * ⚠️ **`ts-dict`는 자동 탐지에서 빠졌다** (ARCHITECTURE §1.9 판정 ③ — 오픈소스 109개에서 후보에
  * 0회). 그래서 탐지는 `detectFormat`이 아니라 보관된 `tsDictDetectByContent`로 검사한다.
  * 명시 지정(`--adapter ts-dict`)이 실제 사용 경로이고, read·write는 아무것도 바뀌지 않았다.
  */

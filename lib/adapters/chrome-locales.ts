@@ -33,7 +33,7 @@ const DEFAULT_FIELD_ORDER: readonly EntryField[] = FIELDS;
  * 원본 엔트리들의 필드 등장 순서 **다수결**. 동률·관측 불가면 기본값이다 — **던지지 않는다**.
  *
  * Midnight-Lizard 실측: 전 엔트리가 `description` → `message`라, 우리가 반대로 내면 값 편집이
- * 0건이어도 diff **0.456**이다 (ADAPTER-COVERAGE §11.5·§15.3).
+ * 0건이어도 diff **0.456**이다 (ARCHITECTURE §1.9·§15.3).
  *
  * **결정성**: 다수결은 원본 텍스트의 함수이고 우리가 낸 파일은 그 순서로 **균일**해지므로 2차
  * 관측이 같은 답을 낸다. `dominantQuote`와 같은 논증이다 (ARCHITECTURE §1.4).

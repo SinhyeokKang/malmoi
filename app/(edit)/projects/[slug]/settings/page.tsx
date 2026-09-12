@@ -136,7 +136,7 @@ export default async function SettingsPage({
               (POSTMORTEM 2026-09-07, `FirstIngestRetry`와 같은 축).
 
               ⚠️ **기준 언어 필드와 대기 Alert는 여기 없다** — 6b-5가 `/projects/:slug/locales`로 옮겼다
-              (SAAS §7.7 결정 4). 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를
+              (PRODUCT §7.7 결정 4). 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를
               말할 자리가 생긴다. 이 화면은 그 선언을 **읽기만** 한다(아래 워크플로 YAML).
             */}
             <RepositoryForm slug={slug} baseBranch={project.baseBranch} />
@@ -291,7 +291,7 @@ function HealthRow({
 
 /**
  * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다** — 그 포맷은 자동 탐지에 참여하지 않으므로
- * (ADAPTER-COVERAGE 판정 ③) 고정하지 않으면 CI가 "로케일 파일을 못 찾았다"로 끝난다. 나머지는
+ * (ARCHITECTURE §1.9 판정 ③) 고정하지 않으면 CI가 "로케일 파일을 못 찾았다"로 끝난다. 나머지는
  * 탐지가 같은 답을 내므로 고정할 이유가 없다 (design §7).
  *
  * ⚠️ **대기 중에는 `base-locale:`을 무조건 박는다** (6b-3). 그 줄이 없으면 CI가 탐지 1순위를
@@ -325,7 +325,7 @@ function workflowYaml(
 
 /**
  * 열린 sync PR 하나. **보관 확인 Dialog가 그것을 링크로 싣는다** — 보관은 PR을 닫지 않으므로
- * (SAAS §7.9) 사람이 알고 판단해야 한다.
+ * (PRODUCT §7.9) 사람이 알고 판단해야 한다.
  *
  * ⚠️ **실패를 `null`("없다")로 접지 않는다** — `undefined`가 "확인하지 못했다"이고 화면이 그것을
  * 다른 문장으로 말한다 (POSTMORTEM 2026-09-03: 실패한 PR 조회를 "PR 없음"으로 읽어 경고가 사라졌다).

@@ -7,7 +7,7 @@ import { pullMessage, type PullOutcome } from "../message";
  * pull 결과 → 화면 문구. **순수 함수로 뽑은 이유는 케이스 누락을 컴파일 타임에 막는 것이다** —
  * JSX 안에 삼항으로 흩어지면 `PullResult`에 상태가 늘어도 아무도 알려주지 않는다.
  *
- * 특히 **no-op이 기본 경로다** (MVP §3.3 1.5 "여기서 대부분 끝난다"). 성공 직후 한 번 더 누르면
+ * 특히 **no-op이 기본 경로다** (ARCHITECTURE §2 "여기서 대부분 끝난다"). 성공 직후 한 번 더 누르면
  * 반드시 이 경로이고, 무반응이면 편집자가 고장으로 읽는다.
  *
  * **문구 일곱 · tone 넷이다** — success가 둘이고, 7단계가 게이트 거부 둘(`info`)을 더했다.
@@ -130,7 +130,7 @@ describe("pullMessage — 편집자가 읽는 문구다", () => {
 });
 
 /**
- * **버린 값을 성공으로 접지 않는다** (SAAS 불변식 9). warnings가 있으면 tone이 `warning`이고,
+ * **버린 값을 성공으로 접지 않는다** (ARCHITECTURE §0 불변식 9). warnings가 있으면 tone이 `warning`이고,
  * **스킵에도 그것이 붙는다** — 2층 스킵 + writer 경고가 같이 나올 수 있다.
  */
 describe("pullMessage — writer가 버린 항목", () => {

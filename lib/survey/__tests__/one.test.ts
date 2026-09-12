@@ -38,7 +38,7 @@ const BROKEN = {
  * 4. 어댑터 간 경합 — chrome `_locales`(2키)가 `code-dict`(3키)를 가린다.
  *
  * ant-design 실측이 이 형태였다: 부속 카탈로그가 진짜 코드 딕셔너리를 1순위에서 눌렀다.
- * (전에는 `ts-dict`로 이 케이스를 썼는데 자동 탐지에서 빠졌다 — ADAPTER-COVERAGE 판정 ③.)
+ * (전에는 `ts-dict`로 이 케이스를 썼는데 자동 탐지에서 빠졌다 — ARCHITECTURE §1.9 판정 ③.)
  */
 const CODE_SOURCE = `// 주석 보존
 export default {
@@ -202,7 +202,7 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.roundtrip.semantic).toBe("same");
     expect(s.roundtrip.byteFixpoint).toBe("same");
     // 원본이 정렬돼 있지 않아도 **재정렬 diff가 나지 않는다** — 재생성 writer가 `order`로
-    // 원본 순서를 되돌린다 (`docs/features/key-order-preservation/` 태스크 2). 전에는 이 줄이
+    // 원본 순서를 되돌린다 (ARCHITECTURE §1.1). 전에는 이 줄이
     // `toBeGreaterThan(0)`이었고, 그 값(중앙값 0.784)이 이 기능이 존재하는 이유였다.
     expect(s.diffRatio).toBe(0);
   });

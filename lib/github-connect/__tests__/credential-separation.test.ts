@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **두 GitHub 자격증명이 소스에서 섞이지 않는다** (SAAS §9-6 · CLAUDE.md "두 GitHub 자격증명을
+ * **두 GitHub 자격증명이 소스에서 섞이지 않는다** (ARCHITECTURE §0-6 · CLAUDE.md "두 GitHub 자격증명을
  * 섞지 않는다").
  *
  * - `lib/github.ts` — App **installation** 토큰. 커밋을 만든다. 개인키(`GITHUB_APP_PRIVATE_KEY`)를 문다.

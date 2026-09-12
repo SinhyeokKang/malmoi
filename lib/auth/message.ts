@@ -6,7 +6,7 @@ import { m, pick } from "@/lib/i18n";
  *
  * ⚠️ 이게 필요한 이유: DB 세션에서 "권한 회수가 즉시 반영된다"는 성질은 사용자에게
  * **blur 저장 실패 한 줄로만** 드러난다. 그 자리에 `unauthorized`라는 영어 토큰이 뜨면 번역
- * 편집자는 무슨 일이 일어났는지 알 수 없다 — 읽는 사람은 비개발자 동료다 (SAAS §3).
+ * 편집자는 무슨 일이 일어났는지 알 수 없다 — 읽는 사람은 비개발자 동료다 (PRODUCT §3).
  */
 
 export type AccessError =
@@ -68,7 +68,7 @@ export type InviteError =
   | "expired"
   /** 단일 사용을 이미 소진했다 (`updateMany … acceptedAt: null`의 count가 0). */
   | "already-accepted"
-  /** provider가 검증한 이메일이 초대 대상과 다르다 (SAAS §5.6). */
+  /** provider가 검증한 이메일이 초대 대상과 다르다 (ARCHITECTURE §6.02). */
   | "email-mismatch"
   /** 이미 그 프로젝트의 멤버다 — 실패지만 원하는 상태는 이미 이뤄져 있다. */
   | "already-member"
@@ -105,7 +105,7 @@ export function inviteErrorMessage(error: string): string {
  * 사용자가 같은 버튼을 반복해서 누른다 — 2026-09-05 preview 실측에서 `OAuthAccountNotLinked`가
  * 정확히 그 모양이었다. 원인이 고정된 거부는 **무엇을 하면 되는지**를 말해야 한다.
  *
- * ⚠️ **코드를 그대로 노출하지 않는다.** 읽는 사람은 비개발자 동료다 (SAAS §3).
+ * ⚠️ **코드를 그대로 노출하지 않는다.** 읽는 사람은 비개발자 동료다 (PRODUCT §3).
  */
 const SIGN_IN = m.errors.signIn;
 

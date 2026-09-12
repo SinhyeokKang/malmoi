@@ -112,9 +112,9 @@ export type ConnectResult = { ok: true } | { ok: false; error: ConnectError | Ac
  * 덮는가**와 리네임된 경우의 새 이름뿐이다.
  *
  * ⚠️ **클라이언트가 보내는 것은 slug 하나다.** `installationId`는 `probeRepo`가 GitHub에 물어 얻으므로
- * SAAS §5.4가 걱정한 "브라우저가 보낸 값을 그대로 저장"의 표면이 없다. 그래도 사용자 쪽 목록 둘을
+ * ARCHITECTURE §6가 걱정한 "브라우저가 보낸 값을 그대로 저장"의 표면이 없다. 그래도 사용자 쪽 목록 둘을
  * **제출 시점에 다시 부른다** — 렌더 때 본 것을 믿으면 클라이언트가 보낸 값을 인가 근거로 쓰는 것과
- * 같다 (SAAS §5.2).
+ * 같다 (ARCHITECTURE §6.00 ③).
  */
 export async function connectRepository(raw: { slug: string }): Promise<ConnectResult> {
   const parsed = Input.safeParse(raw);

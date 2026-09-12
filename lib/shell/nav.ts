@@ -10,7 +10,7 @@ import { routes } from "@/lib/routes";
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
  * `permission`·`routes`·`i18n`은 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
  *
- * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(SAAS §7.7)에서
+ * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
  * 바뀐 것 넷: 사용자 축이 **둘로** 줄었고(`Projects`·`Settings` — `New project`가 빠졌다),
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
@@ -68,7 +68,7 @@ export type NavSection = {
  */
 export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [
-    // 착지점이라 맨 앞이다 (SAAS §7.7 결정 1).
+    // 착지점이라 맨 앞이다 (PRODUCT §7.7 결정 1).
     { key: "home", label: m.common.nav.home, icon: House, href: (slug) => routes.project(slug), exact: true },
     { key: "locales", label: m.common.nav.locales, icon: Globe, href: (slug) => routes.locales(slug), exact: false },
     {
@@ -107,7 +107,7 @@ export type NavItem = {
    *
    * ⚠️ **여기 있는 것은 `Projects` 하나다.** 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라
    * 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든
-   * 페이지에 왕복을 더한다** — SAAS §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다.
+   * 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다.
    */
   badge?: number;
 };
@@ -118,7 +118,7 @@ export type NavItem = {
 export type NavZone = { key: "work" | "project"; label: string; items: NavItem[] };
 
 /**
- * **축이 둘이고 구역이 그것을 드러낸다** (SAAS §7.7 — IA 확정 2026-09-09, 8-3이 시안에 맞춰 조정).
+ * **축이 둘이고 구역이 그것을 드러낸다** (PRODUCT §7.7 — IA 확정 2026-09-09, 8-3이 시안에 맞춰 조정).
  *
  * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
  * 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.

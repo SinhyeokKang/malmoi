@@ -6,7 +6,7 @@ import { basePending } from "@/lib/onboarding/base-pending";
  * 기준 로케일 변경 대기 배너 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**
  *
  * base가 실제로 바뀌는 순간은 다음 CI push이고, 그 push는 strict라 리포 값으로 번역을 덮는다
- * (MVP §3.1). 편집자가 손실을 줄일 수 있는 유일한 수단이 그 전에 Publish하는 것이라 배너가
+ * (ARCHITECTURE §0 불변식 2). 편집자가 손실을 줄일 수 있는 유일한 수단이 그 전에 Publish하는 것이라 배너가
  * 그것만 말한다.
  *
  * ⚠️ **검토 표시를 예고하지 않는다** — `planPush`가 base 교체 push에서 `needsReview` 전파를

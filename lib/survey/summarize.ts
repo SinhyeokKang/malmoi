@@ -20,10 +20,10 @@ import {
  * 밖에 있으므로 `detect`를 고쳐 재실행해도 판정이 파괴되지 않는다.
  */
 
-const VERDICT_SOURCE = "사람 판정 — docs/features/adapter-generality/verdicts.json의 정답 경로와 대조";
+const VERDICT_SOURCE = "사람 판정 — docs/adapter-survey/verdicts.json의 정답 경로와 대조";
 
 /**
- * 완료 조건의 diff 목표 (`docs/features/key-order-preservation/spec.md`).
+ * 완료 조건의 diff 목표.
  *
  * 중앙값 하나로는 부족해서 **초과 리포 비율**을 함께 낸다 — 도입 판단은 코퍼스가 아니라 한
  * 리포에서 일어나고, 중앙값 0.10은 "절반은 0.10 이하"일 뿐이다.
@@ -85,7 +85,7 @@ export type SurveyMetrics = {
      * **순서 외 원인이 하나도 없는 재생성 리포**만의 diff — 키 순서 보존의 완료 조건 분모다.
      *
      * 전체 코퍼스에 목표를 걸면 68%가 들여쓰기·chrome 필드·이스케이프 때문에 초과해서
-     * **어느 기능이 실패했는지 못 가른다** (`docs/ADAPTER-COVERAGE.md` §10.3). 순서 보존이
+     * **어느 기능이 실패했는지 못 가른다** (`docs/ARCHITECTURE §1.9` §10.3). 순서 보존이
      * **자기 책임 범위에서** 0에 도달하는지를 재는 것이 정직하다.
      *
      * ⚠️ 수술적 어댑터는 분모에서 뺀다 — 이미 0.000이라 넣으면 중앙값을 끌어내려
@@ -97,7 +97,7 @@ export type SurveyMetrics = {
 
   /**
    * 로케일 간 키 순서 일치율 — `StringKey.sortIndex`(A안)와 `Translation.sortIndex`(대안 E)를
-   * 가르는 값이다 (`docs/features/key-order-preservation/tasks.md` 🔒: 중앙값 ≥ 0.9면 A안).
+   * 가르는 값이다 (중앙값 ≥ 0.9면 A안이었다).
    */
   localeOrder: { agreementMedian?: number; comparedRepos: number };
   /** 원본 들여쓰기 — 2칸 비율이 0.8 미만이면 들여쓰기 보존이 별 기능이 된다 (같은 🔒 표). */

@@ -261,7 +261,7 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
     expect(entries).toEqual([]);
   });
 
-  it("base 로케일은 행이 없을 때 sourceText로 폴백한다 (MVP §3.2)", () => {
+  it("base 로케일은 행이 없을 때 sourceText로 폴백한다", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: null })], { isBase: true });
     expect(entries).toEqual([{ key: "a.one", message: "src:a.one" }]);
   });
@@ -269,7 +269,7 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
   /**
    * ⚠️ **이 기대값이 2026-09-09에 뒤집혔다** (T6 실측). 옛 동작은 "행이 있는데 빈 값이면 폴백하지
    * 않는다 — 지우기는 정당한 조작이다"였는데, **base 로케일에서는 그 조작의 뜻이 다르다**:
-   * base 파일이 **키 집합의 진실**이므로(MVP §3.1) 키가 빠진 base 파일이 머지되면 다음 push가
+   * base 파일이 **키 집합의 진실**이므로(ARCHITECTURE §0 불변식 2) 키가 빠진 base 파일이 머지되면 다음 push가
    * 그 키를 **전 로케일에서 orphan한다.** 번역자의 셀 편집이 키를 지울 수 있으면 "소스 키는
    * 코드가 진실"이 깨진다 — base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
    *

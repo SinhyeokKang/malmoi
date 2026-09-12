@@ -12,7 +12,7 @@ import { isPathSafeLocale, isPathSafeRepoPath } from "../locale-code";
  *
  * ⚠️ **`looksLikeLocale`을 재사용하지 않는다** — 그 함수는 *탐지* 규칙이라 "우연히 로케일로 보이는
  * 디렉터리인가"를 묻고, 여기는 "이 문자열을 경로에 넣어도 되는가"를 묻는다. 축이 다르고, 무엇보다
- * 그 함수는 `lib/adapters/**`에 있어 import하면 ADAPTER-COVERAGE 재측정 트리거가 붙는다.
+ * 그 함수는 `lib/adapters/**`에 있어 import하면 ARCHITECTURE §1.9 재측정 트리거가 붙는다.
  */
 describe("isPathSafeLocale — 경로 조각으로 안전한 로케일 코드인가", () => {
   it("실제 로케일 코드를 통과시킨다", () => {

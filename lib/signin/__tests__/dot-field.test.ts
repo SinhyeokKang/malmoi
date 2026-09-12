@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { autoCursor, dotGrid, dotScale } from "@/lib/signin/dot-field";
 
 /**
- * 로그인 우측 장식의 판정 둘 (8-1b T8 — `features/ui-rework/signin-auth/design.md` §4).
+ * 로그인 우측 장식의 판정 둘 (8-1b).
  *
  * **Canvas인 이유가 여기 있다.** 시안은 커서 주변 도트가 스케일하는데, 지금 도트는
  * `background-image: radial-gradient`라 **개별 도트가 요소가 아니다** — 스케일 대상이 없다.

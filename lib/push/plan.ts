@@ -113,7 +113,7 @@ export const PushPayload = z
     // **키 0개를 거부한다.** 스캔이 조용히 아무것도 못 찾은 경우 전 프로젝트가 orphan된다.
     keys: z.array(IncomingKey).min(1).max(MAX_KEYS),
     /**
-     * 리포 파일에 있던 번역값. **DB를 덮는다** (strict — MVP §3.1). 변경 감지도 병합도 없다.
+     * 리포 파일에 있던 번역값. **DB를 덮는다** (strict — ARCHITECTURE §0 불변식 2). 변경 감지도 병합도 없다.
      * 대가는 편집 손실 창이다: pull PR이 머지되기 전의 편집은 다음 push가 지운다.
      */
     translations: z.array(z.object({
@@ -168,7 +168,7 @@ export type PlannedKey = {
 
 /**
  * **`toDelete`가 없는 것이 이 타입의 요지다.** 코드에서 사라진 키는 `orphaned`로 표시만 하고
- * 남긴다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다 (MVP §2).
+ * 남긴다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다 (ARCHITECTURE §0).
  */
 export type PushPlan = {
   toInsert: PlannedKey[];

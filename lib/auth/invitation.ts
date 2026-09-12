@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { normalizeEmail } from "./email";
 
 /**
- * 초대 토큰과 수락 판정 (SAAS.md §5.6).
+ * 초대 토큰과 수락 판정 (ARCHITECTURE §6.02).
  *
  * **원문을 DB에 저장하지 않는다** — 발급 시 한 번만 보여주고 해시만 남긴다. `Project.pushTokenHash`
- * (SAAS §7.8)가 같은 모델이라 해시 저장 규칙이 한 곳에 모인다.
+ * (PRODUCT §7.8)가 같은 모델이라 해시 저장 규칙이 한 곳에 모인다.
  */
 
 /** 판정에 필요한 것만 받는다 — projectId·role은 호출부가 이미 들고 있는 행에서 읽는다. */
@@ -64,7 +64,7 @@ export function planInvitationAccept(input: {
 }
 
 /**
- * 프로젝트당 멤버 상한 (`docs/features/sync-runs/design.md` §1.5).
+ * 프로젝트당 멤버 상한 (ARCHITECTURE §5.6).
  *
  * `PROJECT_LIMIT`(`lib/onboarding/create-plan.ts`)과 같은 형이다 — **상수는 소비자 옆**에 두고
  * 모음 파일을 만들지 않는다. 자율 가입의 대가로 건 고정 제한이 이로써 둘이다.

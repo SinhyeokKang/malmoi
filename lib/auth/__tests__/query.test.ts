@@ -8,7 +8,7 @@ import type { Role } from "../permission";
  * 인가 조회 껍데기. **판정은 `planProjectAccess`가 하고 여기는 두 번 조회한다** — slug로 프로젝트를,
  * 그 `projectId`와 `userId`로 멤버십을.
  *
- * ⚠️ **클라이언트가 보낸 값을 믿지 않는다** (SAAS §5.2). 반환되는 `projectId`는 URL의 slug가 아니라
+ * ⚠️ **클라이언트가 보낸 값을 믿지 않는다** (ARCHITECTURE §6.00 ③). 반환되는 `projectId`는 URL의 slug가 아니라
  * **멤버십 행이 가리키는 프로젝트**여야 하고, 멤버십 조회는 반드시 `projectId`로 좁혀야 한다 —
  * `userId`만으로 조회하면 남의 프로젝트 멤버십이 걸려 나올 수 있다 (CLAUDE.md 테넌트 규칙).
  */

@@ -3,7 +3,7 @@ import { PushPayload, planPush, sourceHash, type ExistingKey } from "../plan";
 
 /**
  * push가 **키 순서와 chrome 필드를 DB로 나른다**
- * (`docs/features/key-order-preservation/` 태스크 4-1).
+ * (ARCHITECTURE §1.1).
  *
  * ⚠️ **`order`가 없으면 `sortIndex`를 null로 남긴다 — 배열 인덱스로 채우지 않는다.**
  * `read`가 이미 코드 유닛 순으로 정렬해 돌려주므로(`json-catalog.ts`) 구 CI가 보내는 배열

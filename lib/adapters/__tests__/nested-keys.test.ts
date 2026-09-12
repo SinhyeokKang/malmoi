@@ -4,7 +4,7 @@ import type { AdapterFile, DetectedFormat } from "../types";
 
 /**
  * **키에 `.`이 들어 있을 때의 데이터 손실** — `json-catalog`의 유일한 손실 경로다
- * (ARCHITECTURE §1.35, `docs/ADAPTER-COVERAGE.md` §2).
+ * (ARCHITECTURE §1.35, `docs/ARCHITECTURE §1.9` §2).
  *
  * 오픈소스 109개에서 왕복 의미 불일치 2건이 났고 **둘 다 `read` 에러가 0**이었다. 뿌리는 하나다:
  * `.`가 우리 조인 구분자이면서 실제 키에 들어 있는 문자라 `flatten`/`setDeep`이 단사가 아니다.

@@ -3,10 +3,10 @@ import { DEFAULT_JSON_STYLE, indentOf, observeJsonStyle, pathKey, serializeJson 
 import { serialize } from "../shared";
 
 /**
- * **원본 포맷 보존 태스크 1a — 들여쓰기 축** (`docs/features/format-preservation/`).
+ * **원본 포맷 보존 태스크 1a — 들여쓰기 축** (ARCHITECTURE §1.1).
  *
  * `serialize`가 표현을 2칸으로 고정하는 것이 학습 코퍼스의 최대 잔여 diff 원인이다
- * (재생성 리포 71개 중 **30개**, `ADAPTER-COVERAGE.md` §11.3). 4칸 파일에 2칸을 쓰면 값 편집이
+ * (재생성 리포 71개 중 **30개**, `ARCHITECTURE §1.9` §11.3). 4칸 파일에 2칸을 쓰면 값 편집이
  * 0건이어도 **모든 줄이 바뀐다.**
  *
  * ⚠️ **이 태스크는 직렬화기를 직접 짜지 않는다.** `JSON.stringify`의 `space`가 문자열을 받고
@@ -279,7 +279,7 @@ describe("serializeJson — 슬래시를 되돌린다", () => {
 
 
 describe("원본 끝 개행이 없어도 출력은 정확히 1개다 — 원본과 무관한 불변식", () => {
-  // Midnight-Lizard 실측(ADAPTER-COVERAGE §16.1): 그 파일의 유일한 잔여 diff가 이 줄이었다.
+  // Midnight-Lizard 실측(ARCHITECTURE §1.9): 그 파일의 유일한 잔여 diff가 이 줄이었다.
   // 픽스처는 전부 개행이 있어서 이 축이 한 번도 검증되지 않았다 (2026-09-04 audit #25).
   it("한 번 정규화되고 그다음이 고정점이다", () => {
     const noNewline = '{\n  "a": "하나"\n}';

@@ -7,7 +7,7 @@ import type { AdapterFile, DetectedFormat } from "../types";
  *
  * 오픈소스 109개에서 코드 딕셔너리를 쓰는 리포 12개가 **전부 이 형태**였다 (ant-design 73로케일·
  * element-plus 67·vuetify 43·payload 40). `ts-dict`가 전제하는 "한 파일에 로케일 여러 개"는
- * bugshot-2의 관례이지 생태계의 관례가 아니었다 (`docs/ADAPTER-COVERAGE.md` 판정 ③).
+ * bugshot-2의 관례이지 생태계의 관례가 아니었다 (`docs/ARCHITECTURE §1.9` 판정 ③).
  */
 
 /** element-plus·vuetify·quasar 형태 — `export default { … }` + 줄 끝 주석 */

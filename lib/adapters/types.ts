@@ -13,7 +13,7 @@ export type DetectedFormat = {
    * `zh_CN` · `zh-CN` · `zh-Hans`가 리포마다 다르게 쓰이는데, `pathTemplate`의 `{locale}` 치환이
    * 이 문자열을 그대로 도로 끼우는 것으로 경로를 만든다. 어디서든 한 번 정규화하는 순간 write가
    * 존재하지 않는 경로를 만들어 조용히 빈 커밋이 되거나 새 파일을 만든다.
-   * (`docs/ADAPTER-COVERAGE.md` — 실측 109개 리포 1,888 로케일에서 이 가정이 유지됐다.)
+   * (`docs/ARCHITECTURE §1.9` — 실측 109개 리포 1,888 로케일에서 이 가정이 유지됐다.)
    */
   locales: string[];
   /**
@@ -22,7 +22,7 @@ export type DetectedFormat = {
    *   없으면 치환할 대상이 없어 파일을 안 낸다.
    * - 재생성(`chrome-locales`·`json-catalog`) — **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)만
    *   읽는다. 없으면 기본값으로 계속 만든다.
-   * 그래서 pull은 어댑터 종류와 무관하게 blob **내용**을 받는다 (MVP §3.3). 값은 어느 쪽도 안 읽는다.
+   * 그래서 pull은 어댑터 종류와 무관하게 blob **내용**을 받는다 (ARCHITECTURE §2). 값은 어느 쪽도 안 읽는다.
    */
   currentFiles?: readonly AdapterFile[];
 
@@ -62,7 +62,7 @@ export type LocaleEntry = {
    * 그 **파일 안에서의** 키 위치. 중첩이면 **평탄화 순서(첫 등장)** 다.
    *
    * `read`가 엔트리를 코드 유닛 순으로 정렬해 돌려주므로 원본 순서는 그 지점에서 사라진다 —
-   * 그게 첫 pull PR이 파일을 통째로 재정렬하는 뿌리다 (`docs/features/key-order-preservation/`).
+   * 그게 첫 pull PR이 파일을 통째로 재정렬하는 뿌리다 (ARCHITECTURE §1.1).
    * 순서를 **배열 위치가 아니라 필드로** 나르는 이유는 호출부가 "정렬된 배열"을 전제하기
    * 때문이다 (`__tests__/contract.ts`의 "입력 배열 순서 무관" 불변식).
    *
@@ -90,13 +90,13 @@ export type LocaleEntry = {
    *
    * ⚠️ **왕복 의미 게이트가 이 필드의 손실을 원리적으로 못 본다.** 전에는 `LocaleEntry`에
    * 없어서 read1·read2가 둘 다 무시했고, 손실이 있는데 지표가 "같다"고 말했다
-   * (`docs/ADAPTER-COVERAGE.md` §10.3 — chrome 33개 중 12개가 이 블록을 갖는다).
+   * (`docs/ARCHITECTURE §1.9` §10.3 — chrome 33개 중 12개가 이 블록을 갖는다).
    */
   placeholders?: unknown;
   /**
    * 코드에서 사라진 키. DB엔 남으므로 브랜치를 되돌리거나 기능을 복구하면 번역이 살아 돌아온다.
    *
-   * **처리가 writer 방식마다 다르다** (MVP §4.1):
+   * **처리가 writer 방식마다 다르다** (ARCHITECTURE §1.1):
    * - 재생성(`chrome-locales`·`json-catalog`) — 파일에서 **뺀다** (`orderedEntries`가 거른다).
    * - 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`) — 파일에 **남기고 값을 바꾸지 않는다.** 지우면 그 소스를 참조하는
    *   코드가 깨지고, 원본 보존이 이 방식의 요지다.
@@ -121,7 +121,7 @@ export type ReadLocale = {
  *
  * ⚠️ **갈래를 합치면 측정 지표가 조용히 움직인다.** `lib/survey/one.ts`의 `classify`가 이 코드로
  * 지표 ③(read 에러 유형별)을 가르므로, 옛 문구 기준으로 서로 다른 통에 있던 둘을 한 코드로
- * 묶으면 `docs/ADAPTER-COVERAGE.md`의 회차 간 대조가 무의미해진다 — `parse-failed`(구문 진단)와
+ * 묶으면 `docs/ARCHITECTURE §1.9`의 회차 간 대조가 무의미해진다 — `parse-failed`(구문 진단)와
  * `parse-crashed`(파서가 던졌다)가 정확히 그 쌍이다. `lib/survey/__tests__/classify.test.ts`가
  * 옛 문구 22개를 픽스처로 들고 대조한다.
  */
@@ -232,7 +232,7 @@ export type Adapter = {
    * `detect`(명시 지정)만 내용 탐지를 돈다 — `detect-candidates.test.ts`가 그 예외를 단언한다
    * (POSTMORTEM 2026-09-03). 후보 목록이 따로 필요한 이유는 **1순위가 틀렸을 때 정답이 몇 순위였는지**를 관측하기
    * 위해서다: 1순위만 보면 오탐이 났다는 사실은 알아도 탐지가 얼마나 가까웠는지는 알 수 없다
-   * (`docs/features/adapter-generality/spec.md` 완료 조건 ②).
+   * (ARCHITECTURE §1.9).
    *
    * ⚠️ **어댑터 *간* 순위는 여기에 없다.** 이 함수는 자기 어댑터의 후보만 낸다 — 어댑터를
    * 가로지르는 순위는 `index.ts`의 `detectCandidatesAcross`가 맡는다 (2026-09-02부터 프로덕션
@@ -240,7 +240,7 @@ export type Adapter = {
    */
   detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[];
   read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult;
-  /** @returns 파일 내용. 낼 항목이 0개면 `null` — 호출부가 그 로케일을 트리에서 뺀다 (MVP §4.1). */
+  /** @returns 파일 내용. 낼 항목이 0개면 `null` — 호출부가 그 로케일을 트리에서 뺀다 (ARCHITECTURE §1.1). */
   write(format: DetectedFormat, input: WriteInput): string | null;
   /**
    * `write`와 같되 **버린 항목을 에러로 함께 돌려준다.** 있는 어댑터만 구현한다.

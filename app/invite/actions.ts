@@ -12,7 +12,7 @@ import { getPrisma } from "@/lib/db";
  *
  * ⚠️ **이 Action은 `getProjectAccess`를 지나지 않는다 — spec 완료 조건 6의 명시된 예외다.**
  * 수락 전에는 멤버가 아니므로 지날 수가 없다. 대신 **토큰이 인가를 대신한다**: 해시로 행을 찾고,
- * 단일 사용이고, provider가 검증한 이메일과 대조한다 (SAAS §5.6). `requireUser` 자리에 해당하는
+ * 단일 사용이고, provider가 검증한 이메일과 대조한다 (ARCHITECTURE §6.02). `requireUser` 자리에 해당하는
  * 세션 확인은 그대로 한다 — 링크만으로는 들어올 수 없다.
  *
  * ⚠️ 이 파일이 `(edit)` 그룹 **밖**에 있는 이유: 그 레이아웃이 세션을 요구하고 미들웨어가

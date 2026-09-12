@@ -14,7 +14,7 @@ import type { AdapterFile } from "../adapters/types";
  *   `orphaned = true`가 되어 **정상 키가 export에서 빠진다**.
  *
  * 그래서 지표 ③의 에러 유형만으로는 유일하게 위험한 경로가 집계에서 원리적으로 빠진다
- * (`docs/features/adapter-generality/spec.md` 완료 조건 ③).
+ *.
  *
  * ⚠️ **`localeObjects` 판정을 여기서 다시 구현한다.** `ts-dict`가 내부용으로 갖고 있고, 진단
  * 하나를 위해 프로덕션 모듈의 export를 늘리는 것은 이 실험이 선언한 변경 범위(detect 확장 +

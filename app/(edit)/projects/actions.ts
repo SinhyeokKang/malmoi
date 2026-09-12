@@ -54,7 +54,7 @@ import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 /**
- * 멤버와 초대 (SAAS.md §5.6). **둘 다 OWNER 전용**이라 permission이 `member:manage`다.
+ * 멤버와 초대 (ARCHITECTURE §6.02). **둘 다 OWNER 전용**이라 permission이 `member:manage`다.
  *
  * ⚠️ 화면은 6단계다 — 지금 호출자는 테스트와 번역 화면의 임시 초대 폼뿐이다. 그래도 판정을
  * 여기 두는 이유는 **`planMemberChange`에 호출부가 없으면 그 보호가 실재하지 않기 때문**이다
@@ -129,7 +129,7 @@ export async function createInvitation(raw: {
       if (member !== null) return { ok: false, error: "already-member" };
     }
 
-    // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (SAAS §5.6).
+    // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (ARCHITECTURE §6.02).
     const token = randomBytes(32).toString("base64url");
     const now = new Date();
 
@@ -431,7 +431,7 @@ export type DisconnectResult = { ok: true } | { ok: false; error: "unavailable" 
  *
  * ⚠️ **인가가 `project:settings`면 도달할 수 없는 사람이 생긴다.** 연결은 5단계에서 사용자 수준으로
  * 열렸으므로(`startGithubConnectForUser`) **프로젝트를 하나도 안 만든 사용자**가 연결만 하고 남을 수
- * 있고, 그 사람에게는 설정 화면이 없다 — `taken-by-other`가 영구 잠금이 된다(SAAS §5.5는 자동 병합을
+ * 있고, 그 사람에게는 설정 화면이 없다 — `taken-by-other`가 영구 잠금이 된다(ARCHITECTURE §6.2.1는 자동 병합을
  * 금지하므로 다른 로그인 계정으로 옮길 길도 없다). `Account` 행은 **사용자 소유**라 프로젝트 권한을
  * 요구할 근거가 애초에 없었다.
  *
@@ -479,7 +479,7 @@ export type ConnectableReposResult =
 
 /**
  * 내 설치가 덮는 리포 목록 (화면 ②). **표시용이지만 인가 근거와 같은 목록이다** — `createProject`가
- * 제출 시점에 이것을 다시 부르고, 여기서 본 것을 믿지 않는다 (SAAS §5.2).
+ * 제출 시점에 이것을 다시 부르고, 여기서 본 것을 믿지 않는다 (ARCHITECTURE §6.00 ③).
  *
  * ⚠️ **빈 상태 둘을 가른다** (§3.12): 설치가 0개(`no-installations`)와 설치에 선택된 리포가
  * 0개(`no-repos`)는 사용자가 할 일이 다르다 — App 설치 대 설치 설정에서 리포 추가.
@@ -683,7 +683,7 @@ export async function createProject(raw: {
     return { ok: false, error: "manual-no-match" };
   }
 
-  // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (초대 토큰과 같은 모델 — SAAS §7.8).
+  // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (초대 토큰과 같은 모델 — PRODUCT §7.8).
   const pushToken = generatePushToken();
 
   try {
@@ -914,7 +914,7 @@ export type ArchiveResult = { ok: true } | { ok: false; error: string };
 /**
  * 프로젝트 보관 (7단계 — sync-runs design §4).
  *
- * **되돌릴 수 있는 사실 하나를 쓴다** — 상태 머신도 삭제도 아니다(SAAS §7.9의 자동 영구 삭제는
+ * **되돌릴 수 있는 사실 하나를 쓴다** — 상태 머신도 삭제도 아니다(PRODUCT §7.9의 자동 영구 삭제는
  * 비목표다). 그 사실 하나가 편집·Publish·야간 cron·CI push를 한꺼번에 멈춘다.
  *
  * ⚠️ **인가가 `project:settings`다** — 그래서 보관된 프로젝트에서도 이 Action이 지나간다
@@ -923,7 +923,7 @@ export type ArchiveResult = { ok: true } | { ok: false; error: string };
  * ⚠️ **`revalidatePath("/", "layout")`이다.** 보관은 목록·사이드바·Home·번역·설정을 다 바꾼다 —
  * 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다 (POSTMORTEM 2026-09-09, `disconnectGithub` 선례).
  *
- * ⚠️ **열린 PR을 닫지 않는다** (SAAS §7.9). 보관의 뜻은 "멈춘다"이고 GitHub 상태를 정리하는 일이
+ * ⚠️ **열린 PR을 닫지 않는다** (PRODUCT §7.9). 보관의 뜻은 "멈춘다"이고 GitHub 상태를 정리하는 일이
  * 아니다 — 설정 화면이 그 PR을 링크로 보여 사람이 판단한다.
  */
 export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
@@ -992,7 +992,7 @@ function listFailure(errors: readonly unknown[]): { ok: false; error: OnboardFai
 }
 
 /**
- * SAAS §5.4의 3중 검증 — **App 토큰으로 리포를 열기 전에** 이 사람이 그 설치를 볼 수 있는지 묻는다.
+ * ARCHITECTURE §6의 3중 검증 — **App 토큰으로 리포를 열기 전에** 이 사람이 그 설치를 볼 수 있는지 묻는다.
  * 이것이 없으면 로그인한 누구나 우리 App이 설치된 남의 리포를 우리 토큰으로 읽을 수 있다.
  *
  * 판정은 `planRepoConnect`가 한다 — `connectRepository`와 같은 함수이고, 그래서 §5.7의 공격
@@ -1012,7 +1012,7 @@ async function checkRepoAccess(
 
   /**
    * ⚠️ **인가가 App 자격증명보다 앞이다** (2026-09-09, sec-audit 발견 5). 전에는 `probeRepo`가 먼저
-   * 돌았고, `RepoInput`은 `z.string().min(1)` 둘뿐이다 — 로그인은 검증 이메일만 요구하므로(SAAS §5,
+   * 돌았고, `RepoInput`은 `z.string().min(1)` 둘뿐이다 — 로그인은 검증 이메일만 요구하므로(PRODUCT §5,
    * 의도된 성질) **낯선 사람이 임의 private 리포에 대해 "말모이 App이 설치돼 있는가"를 물을 수
    * 있었다.** 반환 갈래가 `repo-not-installed`(없다)와 `installation-forbidden`(있는데 못 본다)로
    * 갈려 그대로 화면 문구가 됐다 — **존재 오라클**이다. 부수로 App quota를 상한 없이 태운다.
