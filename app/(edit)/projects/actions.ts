@@ -13,7 +13,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { ADAPTERS, adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName } from "@/lib/adapters/types";
@@ -27,7 +27,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
-import { openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
+import { listBranches, openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/github-connect/health";
@@ -43,13 +43,17 @@ import {
   ingestTargets,
   makeProbe,
   probeTargets,
+  sampleRows,
   summarizeCandidates,
   type CandidateSummary,
+  type SampleRow,
 } from "@/lib/onboarding/detect";
 import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
+import { isPathSafeLocale } from "@/lib/locale-code";
+import { isValidBranchName } from "@/lib/pull/branch-name";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -333,6 +337,14 @@ type OnboardFailure = OnboardError | ConnectError | "invalid input";
 
 const RepoInput = z.object({ owner: z.string().min(1), repo: z.string().min(1) });
 const SlugOnlyInput = z.object({ slug: z.string().min(1) });
+const SampleInput = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  ref: z.string().min(1),
+  adapter: z.string().min(1),
+  pathTemplate: z.string().min(1),
+  locale: z.string().min(1),
+});
 const CreateProjectInput = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
@@ -588,6 +600,109 @@ export async function detectRepoFormats(raw: { owner: string; repo: string }): P
   if (summaries.length === 0) return { ok: false, error: "no-candidates" };
 
   return { ok: true, candidates: summaries };
+}
+
+
+export type BranchesResult =
+  | { ok: true; names: string[]; defaultBranch: string; truncated: boolean }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * ①의 브랜치 목록 (design §3.2).
+ *
+ * ⚠️ **인가는 `checkRepoAccess`를 그대로 지난다.** 그 함수가 ARCHITECTURE §6의 3중 검증이고, 존재
+ * 오라클을 막는 **순서**(사용자 토큰으로 먼저 보고 없으면 `repo-not-installed` 한 갈래로 접는다)가
+ * 거기 있다 — 여기서 갈래를 나누면 sec-audit 발견 5가 그대로 돌아온다.
+ *
+ * `defaultBranch`는 같은 호출이 이미 들고 있다 — **GitHub을 한 번 더 부르지 않는다.**
+ */
+export async function listRepoBranches(raw: { owner: string; repo: string }): Promise<BranchesResult> {
+  const parsed = RepoInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+
+  const { userId } = await requireUser();
+  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+
+  const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
+  // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
+  if (list.status !== "ok") return { ok: false, error: "unavailable" };
+
+  return { ok: true, names: list.names, defaultBranch: access.defaultBranch, truncated: list.truncated };
+}
+
+export type SampleResult =
+  | { ok: true; rows: SampleRow[]; total: number }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * ②에서 언어를 바꿀 때의 추가 샘플 (design §3.4).
+ *
+ * ⚠️ **불변식 10이 걸리는 자리다** — 클라이언트가 보낸 `pathTemplate`·`locale`·`ref`로 리포를 읽는
+ * **새 경로**다. 방어를 새로 만들지 않고 ARCHITECTURE §3.1이 그 값 쌍에 **지정한** 함수를 부른다:
+ *
+ * - `adapter` + `pathTemplate` → **`planConfirmedFormat`**. ⚠️ `templatePaths`로 대신하지 않는다 —
+ *   그건 `planConfirmedFormat`이 내부에서 부르는 **탐지 헬퍼**이고, 탐지용 판정을 적재 방어로
+ *   재사용하는 것이 POSTMORTEM 2026-09-09의 모양이다.
+ * - `locale` → **`isPathSafeLocale`** (불변식 10이 잎 모듈에 한 벌로 두라고 못 박은 그 함수).
+ * - `ref` → **`isValidBranchName`**.
+ *
+ * 예산은 blob ≤1이고 `checkDownloadBudget`·`checkContentBudget`를 그대로 지난다. 실패는 값이고
+ * **[Next]를 막지 않는다** — 미리보기는 근거이지 게이트가 아니다.
+ */
+export async function loadCandidateSample(raw: {
+  owner: string;
+  repo: string;
+  ref: string;
+  adapter: string;
+  pathTemplate: string;
+  locale: string;
+}): Promise<SampleResult> {
+  const parsed = SampleInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  // 잎 판정 둘을 먼저 건다 — 비용이 0이라 조작된 값이 GitHub에 한 번도 안 나간다.
+  if (!isValidBranchName(input.ref)) return { ok: false, error: "invalid input" };
+  if (!isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
+
+  const { userId } = await requireUser();
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const snapshot = await reader.snapshot(input.ref);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+
+  const paths = snapshot.files.map((f) => f.path);
+  // `createProject`와 **같은 관용구**로 스냅샷의 실제 경로와 교차시킨다 — 교집합 밖은 읽지 않으므로
+  // 임의 파일을 읽는 경로가 생기지 않는다.
+  // 모르는 어댑터는 어느 파일도 가리키지 못한다 — `templatePaths`에 넘기기 전에 좁힌다.
+  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  if (targets.length === 0) return { ok: false, error: "manual-no-match" };
+
+  let files: AdapterFile[];
+  try {
+    files = await readFiles(reader, snapshot, targets);
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    throw error;
+  }
+
+  const confirmed = planConfirmedFormat({ ...input, baseLocale: input.locale }, files);
+  // 거부 갈래 다섯을 한 문구로 접는다 — `createProject`와 같은 판단이고, 갈래를 화면에 보이면
+  // 조작된 입력에 "무엇이 틀렸는지"를 알려주는 셈이다.
+  if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+
+  const sample = sampleRows(
+    adapterFor(confirmed.format),
+    confirmed.format,
+    input.locale,
+    new Map(files.map((f) => [f.path, f.content])),
+  );
+  // 읽었는데 그 로케일이 없으면 "못 읽었다"다 — 빈 언어(빈 칸)와 화면에서 갈린다 (design §3.4).
+  if (sample.total === 0 && sample.rows.length === 0) return { ok: false, error: "manual-no-match" };
+  return { ok: true, ...sample };
 }
 
 export type CreateProjectResult =
