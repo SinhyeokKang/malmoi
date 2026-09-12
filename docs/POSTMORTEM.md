@@ -1206,3 +1206,19 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   병합 시작은 이미 같은 쿠키를 `destFromCallbackUrl`로 읽었다. 새 목적지 쿠키 대신 이 파서를
   재사용하고 `routes.invite`로 내부 링크를 만든다. 공급자 취소 실물 검증에는 성공 복귀와 별도로
   **오류 착지에서 원래 작업으로 돌아갈 수 있는지**를 포함한다.
+
+### 2026-09-13 — 🔁 모달로 이관한 상태가 이전 파일 검증과 늦은 응답을 재사용했다
+
+- **영역**: `components/onboarding/new-project.tsx`, `steps/repo.tsx`, `app/(edit)/projects/actions.ts`
+- **증상**: 수동 경로·어댑터를 바꿔도 이전 매칭이 Next를 열었다. 리포·후보 선택을 되돌리면 늦은 응답이 최신 선택을 덮었고, 검색어는 사라지는 반면 이전 이름·주소는 남았다. 세션 만료는 모달을 벗어나는 서버 redirect였고, 미리보기의 인가 거부는 Next를 막지 않았다.
+- **근본 원인**: 단계 언마운트에 기대던 무효화를 상태 컨테이너로 옮기지 않았다. 캐시 키가 파일을 식별하지 못했고, 디바운스 의존성에서 어댑터가 빠졌다. 응답의 리포 이름만 비교해도 A→B→A는 구별할 수 없다. 클라이언트에 refresh가 없다는 사실만 확인하고 Action의 requireUser가 던지는 redirect를 놓쳤다. 2026-09-08의 실패 문구·입력 소실 계열 재발이다.
+- **그물**: 기존 순수 게이트·모달 껍데기 테스트는 개별 상태만 검증했다. 실제 컨테이너의 DOM 테스트와 지연 Promise 응답 역전, 비로그인 Action 호출이 red를 냈고 수정 후 green을 확인했다. 수동 재검증의 기준 언어·생성 중 입력·④의 세션 문구도 같은 테스트에 고정했다.
+- **재발 방지**: `rg -n 'useEffect|eslint-disable|sampleKey|requireUser\(' components/onboarding 'app/(edit)/projects/actions.ts'`를 실행했다. 남은 requireUser는 연결 이동·계정 해제·서버 리포 목록 세 곳이다. 모달 Action은 readSession의 비로그인·장애 반환을 검사한다. 상태 컨테이너를 옮길 때는 키의 입력 전부와 A→B→A 응답 순서를 DOM 테스트로 함께 검증한다.
+
+### 2026-09-13 — 샘플 검증 테스트가 실제 트리에 없는 경로만 공격해 순서와 예산 위반을 놓쳤다
+
+- **영역**: `app/(edit)/projects/actions.ts#loadCandidateSample`, `lib/onboarding/sample-confirmation.ts`
+- **증상**: ko 샘플 한 번에 en·fr·ko blob 세 개를 읽었다. 다른 언어·거부될 포맷도 전체 파일을 받은 후에야 planConfirmedFormat이 거부했다. 기존 테스트 이름은 "planConfirmedFormat이 거부하고 blob 0"인데 실제로는 templatePaths의 빈 교집합에서 끝났다.
+- **근본 원인**: planConfirmedFormat은 내용을 재탐지하므로 다운로드 전 검증이 될 수 없다. 설계가 이 순서를 동시에 요구했고, 테스트는 트리에 없는 경로만 넣어 검증 단계에 도달하지 않았다. 2026-09-09의 탐지 헬퍼를 방어로 읽은 오류 및 2026-09-10의 도달하지 않은 단언 계열 재발이다.
+- **그물**: 정상 샘플의 blob 호출 목록을 정확히 비교하는 테스트가 3→1 위반을 잡았다. 새 확인값은 변조·다른 사용자·다른 리포/설치·ref·head를 순수 테스트로 거부하고, Action 테스트는 blob 전에 거부되는지 확인한다.
+- **재발 방지**: `rg -n 'planConfirmedFormat|templatePaths|verifySampleConfirmation|readFiles' 'app/(edit)/projects/actions.ts'`로 순서를 대조한다. 탐지·수동 확정은 내용을 재검증한 뒤 HMAC 확인값을 발급하고, lazy 조회는 현재 인가·스냅샷·서명을 대조한 뒤 요청 파일만 읽는다. 확인값은 인가를 대신하지 않고 파일 내용도 담지 않는다. 정상 성공 경로의 I/O 상한과 실제 트리에 있는 조작 경로를 함께 테스트한다.
