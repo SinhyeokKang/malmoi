@@ -305,6 +305,7 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 git ref-safe(`isRefSafeSlug` — 브랜치 이름 `l10n/sync-<slug>`에 그대로 들어간다) · 소문자만 ·
 `PROJECT_SLUG_MAX = 40` · **`new` 예약**. 마지막 것은 아래 URL 모양의 직접 파생이다 — `/projects/new`가
 라우트라서 그 이름의 프로젝트는 자기 설정 화면에 도달할 수 없다.
+⚠️ **그 예약의 근거는 모달화 뒤에도 그대로다** (2026-09-13) — 화면이 모달이 됐을 뿐 **라우트는 남는다**.
 
 **축이 둘이고 사이드바가 그것을 구역으로 드러낸다** (2026-09-09 IA 확정 — DESIGN §9의 GitLab
 super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드바는 프로젝트 컨텍스트를 `usePathname`으로
@@ -320,7 +321,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
-/projects/new                  생성
+/projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
 /account                       ✅ 프로필 · 로그인 수단 목록/해제 · GitHub App 연동/해제 ← 6b-4 · account-linking
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
@@ -429,7 +430,10 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·**`?locales=`**(8-4가 `?focus=`·`?state=` 둘을 폐기했다 — 로케일이 행이라 "기준 열"에 대응물이 없고, 상태 필터는 섹션 안 pending 우선 정렬이 갚는다)와 **목록의 `?filter=`(값 여섯 — `all` + 상태 다섯)와 `?q=`(이름 검색, 2026-09-11)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
 ⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 다섯: `projects`·`projects/new`·`account`·
-`settings`·`invite/[token]`). 그것을 만드는 자리가 `redirect()`의 문자열 연결이기 때문이고
+`settings`·`invite/[token]`). ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
+든다"이다** — 그 라우트가 목록 위의 모달 딥링크가 되면서, 사유는 페이지 머리가 아니라 ① 본문 맨 위
+배너로 선다. 그 라우트는 `?q=`·`?filter=`도 함께 받아 **뒤 목록에 반영**하고, 닫으면 그 값을 들고
+`/projects`로 돌아간다 (`routes.newProject({ filter, q })`). 그것을 만드는 자리가 `redirect()`의 문자열 연결이기 때문이고
 (`lib/auth/session.ts`·`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx`),
 **이 문서가 바로 위에서 경고한 그 형태다** — 위 목록의 키들과 달리 `?e=`는 생성기↔수신자 대조의
 바깥에 있다. 늘릴 일이 생기면 `routes.*`의 쿼리 인자로 먼저 옮긴다. `/signin`의 `?error=`·
