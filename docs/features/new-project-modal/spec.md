@@ -29,7 +29,7 @@ Artifact 도구로도 HTTP로도 못 읽는다(403). **`DesignSync` 도구가 �
 ## 1. 사용자
 
 **개발자(프로젝트를 만드는 사람) 하나다.** 번역 편집자는 이 흐름에 도달하지 않는다 — `createProject`는
-아직 프로젝트가 없는 경로라 인가가 `requireUser`뿐이고(`entry-points.test.ts`의 `USER_SCOPED_ACTIONS`),
+아직 프로젝트가 없는 경로라 사용자 세션을 검증하고(`readSession`, `entry-points.test.ts`의 `USER_SCOPED_ACTIONS`),
 초대받은 EDITOR는 목록에서 곧장 프로젝트로 들어간다.
 
 단 **온보딩의 결과물을 받는 사람은 편집자다**: ②의 키·값 표에서 "ko 열이 비어 있다"가 보이면 연결 전에

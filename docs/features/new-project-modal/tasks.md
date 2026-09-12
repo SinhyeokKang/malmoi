@@ -12,6 +12,16 @@
 그 대상이다. 무엇이 red였는지를 적지 않은 "green"은 판정이 아니다(POSTMORTEM 2026-09-10:
 `pnpm test`가 2553 green인데 단언 하나가 거짓이었고, 그 스위트는 애초에 안 돌아갔다).
 
+## 리뷰 후 계약 정정 (2026-09-13)
+
+- T4의 내용 재검증을 blob 전에 완료한다는 순서는 성립하지 않는다. `planConfirmedFormat`은
+  탐지·`confirmManualFormat`에서 실행하고 서명한 확인값을 발급한다. `loadCandidateSample`은
+  확인값과 현재 인가·스냅샷을 대조한 뒤 per-locale blob ≤1을 읽는다. 상세는 design §3.4다.
+- 수동 디바운스는 `confirmManualFormat`을 부른다. 캐시 키에는 경로·어댑터도 포함하고,
+  브랜치·리포·후보 변경 및 Back은 이전 비동기 응답을 무효화한다. 리포 검색어는 컨테이너가 보존한다.
+- 예외 J의 모달 Action은 `readSession` 거부를 값으로 돌려준다. `requireUser`의 redirect는
+  페이지·연결 이동에만 남긴다. T8의 `createProject.baseBranch` 필수 조건도 적용한다.
+
 ## T0. 확정된 결정 (완료)
 
 | # | 결정 |

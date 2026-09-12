@@ -308,13 +308,22 @@ export type CandidateSummary = {
 
 ### 3.4 언어 전환 시의 추가 샘플 — 신규
 
+**2026-09-13 리뷰 정정 — 검증의 선후관계.** 아래 초기 계약의 `planConfirmedFormat`은 내용을
+재탐지하므로 blob을 받기 전에는 완료할 수 없다. 기존 구현은 전 로케일을 먼저 내려받아 이 제약과
+blob ≤1을 모두 어겼다. 수정 계약은 탐지·수동 확정에서 재검증 후 서명한 `confirmation`을 발급하고,
+샘플 조회에서는 현재 사용자·리포 id·설치 id·브랜치·head SHA와 확인값을 먼저 대조한다.
+수동 지정은 `confirmManualFormat`으로 첫 검증과 초기 샘플을 받고, 이후 언어 전환만
+`loadCandidateSample`을 부른다. 첫 검증은 기존 다운로드 예산을 지키며, lazy 조회는 per-locale
+blob ≤1이다. 확인값은 파일 내용을 담지 않으며 서버 캐시도 아니다.
+
+
 세그먼트는 후보의 **로케일 전부**를 든다(그래서 "다섯 이상이면 `Select`로 접는다"가 성립한다).
 detect가 들고 있는 것은 3개뿐이므로 **나머지는 누를 때 받는다.**
 
 ```
 export async function loadCandidateSample(raw: {
   owner: string; repo: string; ref: string;
-  adapter: string; pathTemplate: string; locale: string;
+  adapter: string; pathTemplate: string; locale: string; confirmation: string;
 }): Promise<{ ok: true; rows: SampleRow[]; total: number } | { ok: false; error: OnboardFailure }>
 ```
 
@@ -325,7 +334,7 @@ export async function loadCandidateSample(raw: {
 
 | 값 | 통제 | 왜 그 함수인가 |
 |---|---|---|
-| `adapter` + `pathTemplate` | **`planConfirmedFormat`** | ARCHITECTURE §3.1이 그 값 쌍에 **지정한** 통제이고 그 자리에 *"편의가 아니라 **보안 통제다**"*라고 적혀 있다. ⚠️ **`templatePaths`로 대신하지 않는다** — 그건 `planConfirmedFormat`이 내부에서 부르는 **탐지 헬퍼**이고, 탐지용 판정을 적재 방어로 재사용하는 것이 정확히 POSTMORTEM 2026-09-09의 모양이다 |
+| `adapter` + `pathTemplate` | **`planConfirmedFormat` 후 발급한 `confirmation`** | 내용 재검증은 탐지·수동 확정에서 한다. 샘플 진입점은 현재 인가·head와 서명을 대조한다. `templatePaths`를 그 방어로 재사용하지 않는다 |
 | `locale` | **`isPathSafeLocale`** (`lib/locale-code.ts`) | 불변식 10이 **잎 모듈에 한 벌**로 두라고 못 박은 그 함수. `Locale.code`가 경로를 정하는 부류다 |
 | `ref` | **`isValidBranchName`** (`lib/pull/branch-name.ts`) | 잎이라 비용이 0인데 **지금 설계는 `createProject`에만 걸었다.** `detectRepoFormats(ref)`·`loadCandidateSample(ref)`이 맨값을 GitHub URL에 넣고 있었다 — **세 진입점 전부** 지난다 |
 
