@@ -401,6 +401,42 @@ export const en = {
 
     back: "Projects",
 
+    /**
+     * 모달 껍데기 (new-project-modal design §7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
+     * 본문과 "다음으로 갈 수 있는가"만 넘긴다.
+     */
+    modal: {
+      next: "Next",
+      back: "Back",
+      close: "Close",
+      /** ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. 진행은 이 한 줄이다. */
+      step: (n: number): string => `Step ${n} of 4`,
+    },
+
+    /** 단계 넷의 제목·설명. 제목이 모달 머리로 올라가면서 각 단계의 `title` 키가 여기로 모였다. */
+    steps: {
+      repo: {
+        title: "New project",
+        description: "Pick a repository and the branch malmoi should read.",
+      },
+      files: {
+        title: "Which files hold your strings?",
+        description: (n: number, repo: string, branch: string): string =>
+          `${n === 1 ? "1 set" : `${n} sets`} matched on ${repo} · ${branch}. Check the keys before you continue.`,
+        loading: (repo: string, branch: string): string => `Reading ${repo} · ${branch}…`,
+        /** 예외 E — 후보 0개. ①로 되돌리지 않고 여기서 수동 지정을 편다. */
+        emptyTitle: "Where are your locale files?",
+      },
+      naming: {
+        title: "Project details",
+        description: "The base language decides which keys exist. Name and address come from the repository.",
+      },
+      result: {
+        title: "malmoi is ready",
+        description: "Add the push token to the repository so CI can send translations back.",
+      },
+    },
+
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
     empty: {
       connect: {
@@ -428,6 +464,21 @@ export const en = {
       none: "No repository matches that name.",
       pick: "Select",
       other: "Choose another repository",
+      /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
+      pushedAt: (rel: string): string => `Pushed ${rel}`,
+      branch: "Branch",
+      branchHelp: "malmoi reads the locale files from this branch. You can change it later in project settings.",
+      /** 예외 D — 목록 조회만 실패했다. **"브랜치가 없다"가 아니다** (POSTMORTEM 2026-09-03). */
+      branchDefault: "Using the repository's default branch.",
+      branchTooMany: "This repository has too many branches to list — type the branch name.",
+      notListed: "Don't see a repository?",
+      loading: "Looking for repositories with the malmoi app installed…",
+      /**
+       * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
+       * 설치에 리포를 넣어라 (DESIGN §6.7).
+       */
+      searchEmpty: (q: string): string => `No repository matches "${q}".`,
+      clearSearch: "Clear search",
     },
 
     /** ③ 후보 · 기준 언어 · 수동 지정 */
@@ -438,6 +489,25 @@ export const en = {
         `${locales.length} languages (${locales.join(", ")}) · ${keys}`,
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
       more: "There may be more — set the path yourself below if what you need isn't listed.",
+      /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
+      summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
+      notListed: "Not listed?",
+      setPath: "Set the path yourself",
+      /** ② 우측 키·값 표. */
+      preview: {
+        key: "Key",
+        value: "Value",
+        more: (n: number): string => (n === 1 ? "1 more key" : `${n} more keys`),
+        language: "Language",
+        /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
+        option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
+        none: "Nothing to preview yet",
+        /**
+         * ⚠️ **빈 칸과 가른다.** 정말 비어 있으면 빈 칸이고, 못 읽었으면 이 문장이다 — ②가
+         * "ko 열이 비어 있다"를 말하는 화면이라 이 구별이 기능의 목적 자체에 걸린다 (design §3.4).
+         */
+        unavailable: "We couldn't read this file.",
+      },
       manual: {
         summary: "Can't find your files?",
         format: "File format",
@@ -479,6 +549,37 @@ export const en = {
         </>
       ),
       create: "Create project",
+      /** ③ info — **읽기 전용임을 말한다.** 리포에 아무것도 쓰지 않는다(불변식). */
+      info: (path: string, branch: string): string =>
+        `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,
+      mostKeys: "Most keys",
+      /** ⚠️ **키 수를 아는 언어에만 선다** (결정 ⑦). `keyGap`이 `undefined`면 화면이 이 문장을 뺀다. */
+      keyGap: (lang: string, n: number, base: string): string =>
+        `${lang} has ${n} keys fewer than ${base}. Those keys would be left out if ${lang} led.`,
+      /**
+       * 예외 G — 제출 뒤 그 필드에 선다.
+       *
+       * ⚠️ **`is free`라고 단언하지 않는다** — `suggestAlternateSlug`는 존재 확인을 하지 않는다
+       * (design §3.5). 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09의 모양이다.
+       */
+      slugTaken: (alt: string | undefined): string =>
+        alt === undefined
+          ? "That address is already in use. Try another."
+          : `That address is already in use. Try another, such as ${alt}.`,
+      /** `planSlug`의 나머지 갈래 넷 — **클라이언트 판정이라 왕복이 0이다.** */
+      slugEmpty: "Pick an address.",
+      slugFormat: "An address can use lowercase letters, numbers, '-', '.' and '_'.",
+      slugTooLong: (max: number): string => `An address can be up to ${max} characters.`,
+      /** ⚠️ **`new`가 여기다** — 그 예약의 근거가 바로 이 라우트다 (PRODUCT §7.7). */
+      slugReserved: "That address is reserved.",
+    },
+
+    /**
+     * 예외 J — 전 단계 공통. **모달을 닫지도 `router.refresh()`를 부르지도 않는다**: 모달이 클라이언트
+     * 상태를 들고 있어 씻기면 ①~③의 입력이 통째로 사라진다 (POSTMORTEM 2026-09-08).
+     */
+    errors: {
+      sessionLost: "Sign in again and come back — nothing has been created.",
     },
 
     /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */
@@ -502,7 +603,21 @@ export const en = {
         diagnostics: "Details",
         refsHint: "Code references arrive after your first CI push. You can start translating now.",
         open: "Start translating",
+        /** ④ 적재 중 info — `role="status"`다 (`Alert`의 `role="alert"`는 `danger`일 때만 붙는다). */
+        importing: (path: string, branch: string): string => `Importing… reading ${path} on ${branch}.`,
+        /** 예외 H — 토큰 블록은 그대로 보이고, 복구 경로 둘을 말한다. */
+        failedHint:
+          "The project is in your list as Waiting for first import. You can retry from project settings.",
       },
+      workflow: {
+        saveAs: "Save as",
+      },
+      /**
+       * ④ help 줄. ⚠️ **적재 생존을 약속하지 않는다** (design §1.4) — 닫으면 끝까지 안 돌 수 있고,
+       * 그 대신 복구 경로 둘(`first-ingest-retry` · `rotatePushToken`)이 실재한다는 사실을 말한다.
+       */
+      closeHint:
+        "You can close this — the project is already in your list. Importing may not finish, and you can retry it (and get a new token) from project settings.",
       failed: "We couldn't finish. Try again in a moment.",
     },
   },
