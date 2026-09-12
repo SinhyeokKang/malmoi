@@ -33,6 +33,7 @@ const ERRORS = [
   "slug-taken",
   "limit-reached",
   "invalid-slug",
+  "invalid-branch",
   // 다시 시도 · 첫 적재
   "not-awaiting",
   "ingest-failed",

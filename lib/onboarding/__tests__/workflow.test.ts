@@ -40,8 +40,8 @@ describe("renderWorkflowYaml", () => {
   });
 
   it("base 브랜치가 트리거에 박힌다 — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다", () => {
-    expect(renderWorkflowYaml({ slug: "x", baseBranch: "develop" })).toMatch(/branches: \[develop\]/);
-    expect(renderWorkflowYaml({ slug: "x", baseBranch: "main" })).toMatch(/branches: \[main\]/);
+    expect(renderWorkflowYaml({ slug: "x", baseBranch: "develop" })).toMatch(/branches: \["develop"\]/);
+    expect(renderWorkflowYaml({ slug: "x", baseBranch: "main" })).toMatch(/branches: \["main"\]/);
   });
 
   it("수동 지정이면 `adapter:`·`base-locale:`이 붙는다", () => {

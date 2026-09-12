@@ -50,6 +50,14 @@ export type OnboardError =
   | "slug-taken"
   | "limit-reached"
   | "invalid-slug"
+  /**
+   * ①에서 고른 브랜치 이름의 형식이 깨졌다.
+   *
+   * ⚠️ **`RepositorySettingsError`에도 같은 이름이 있고, 검증 함수도 같은 `isValidBranchName`이다** —
+   * 갈래만 여기 새로 선다. 온보딩이 브랜치를 묻기 시작하면서 이 판정이 두 화면에 생겼기 때문이고,
+   * 문구는 사전에 따로 있다(이 화면은 "고른 값"이고 저쪽은 "고친 값"이라 안내가 다르다).
+   */
+  | "invalid-branch"
   // ── 다시 시도 · 첫 적재 ──────────────────────────────────────────────────
   /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (design §3.7). */
   | "not-awaiting"
@@ -81,6 +89,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "slug-taken",
   "limit-reached",
   "invalid-slug",
+  "invalid-branch",
   "not-awaiting",
   "ingest-failed",
   "resource-limit",

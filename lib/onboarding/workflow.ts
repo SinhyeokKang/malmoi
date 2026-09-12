@@ -30,7 +30,10 @@ export function renderWorkflowYaml(input: {
     "",
     "on:",
     "  push:",
-    `    branches: [${baseBranch}]`,
+    // ⚠️ **인용한다.** 브랜치 이름이 사용자 선택이 된 뒤로(new-project-modal T5) `a,b`·`a"b`가 올 수
+    // 있고, 맨값이면 flow sequence가 쉼표에서 **조용히 둘로 갈린다**. `JSON.stringify`가 YAML 이중
+    // 인용과 같은 이스케이프 규칙이다.
+    `    branches: [${JSON.stringify(baseBranch)}]`,
     "  workflow_dispatch:",
     "",
     "concurrency:",

@@ -1061,6 +1061,8 @@ export const en = {
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
+      // 온보딩은 브랜치를 **고르는** 자리다 — 설정 화면(고치는 자리)과 안내가 갈린다.
+      "invalid-branch": "That branch name isn't valid. Pick another branch.",
       "not-awaiting": "The first import already finished. Importing again would overwrite edited translations, so it's blocked here.",
       "resource-limit": "These translation files are too large or too deeply nested to import. Reduce their size and try again.",
       "ingest-failed": "The first import failed. You can try again from settings.",

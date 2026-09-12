@@ -336,6 +336,7 @@ export async function changeMember(raw: {
 type OnboardFailure = OnboardError | ConnectError | "invalid input";
 
 const RepoInput = z.object({ owner: z.string().min(1), repo: z.string().min(1) });
+const DetectInput = RepoInput.extend({ ref: z.string().min(1).optional() });
 const SlugOnlyInput = z.object({ slug: z.string().min(1) });
 const SampleInput = z.object({
   owner: z.string().min(1),
@@ -352,6 +353,11 @@ const CreateProjectInput = z.object({
   pathTemplate: z.string().min(1),
   baseLocale: z.string().min(1),
   slug: z.string().min(1),
+  /**
+   * ⚠️ **optional이다** (tasks T5). UI가 값을 주기 전에 필수로 조이면 유일한 프로덕션 호출부와
+   * 테스트의 입력 팩토리가 동시에 컴파일 에러라 이 커밋이 red다 — T8에서 조인다.
+   */
+  baseBranch: z.string().min(1).optional(),
   // ⚠️ 상한이 있는 이유는 **저장되는 유일한 자유 입력**이기 때문이다 — slug는 `planSlug`가 40자로
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
   // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
@@ -569,10 +575,17 @@ export type DetectResult =
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
  */
-export async function detectRepoFormats(raw: { owner: string; repo: string }): Promise<DetectResult> {
-  const parsed = RepoInput.safeParse(raw);
+export async function detectRepoFormats(raw: {
+  owner: string;
+  repo: string;
+  /** ①에서 고른 브랜치. 미지정이면 그 리포의 default branch다. */
+  ref?: string;
+}): Promise<DetectResult> {
+  const parsed = DetectInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { owner, repo } = parsed.data;
+  const { owner, repo, ref } = parsed.data;
+  // 잎 판정이라 비용이 0이다 — 맨값을 GitHub URL에 넣기 전에 여기서 막는다.
+  if (ref !== undefined && !isValidBranchName(ref)) return { ok: false, error: "invalid input" };
 
   const { userId } = await requireUser();
 
@@ -581,7 +594,7 @@ export async function detectRepoFormats(raw: { owner: string; repo: string }): P
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
-  const snapshot = await reader.snapshot(access.defaultBranch);
+  const snapshot = await reader.snapshot(ref ?? access.defaultBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
@@ -731,6 +744,7 @@ export async function createProject(raw: {
   baseLocale: string;
   slug: string;
   name: string;
+  baseBranch?: string;
 }): Promise<CreateProjectResult> {
   const parsed = CreateProjectInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
@@ -744,6 +758,10 @@ export async function createProject(raw: {
   // 모르는 어댑터는 아무 파일도 가리키지 못한다 — 조작된 입력이라 리포를 읽지 않는다.
   if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
   const adapterName: AdapterName = input.adapter;
+  // 설정 화면과 **같은 함수**다 (`lib/pull/branch-name.ts`). 형식이 틀리면 GitHub을 부를 이유가 없다.
+  if (input.baseBranch !== undefined && !isValidBranchName(input.baseBranch)) {
+    return { ok: false, error: "invalid-branch" };
+  }
 
   const prisma = getPrisma();
   const access = await checkRepoAccess(prisma, userId, input.owner, input.repo);
@@ -775,7 +793,9 @@ export async function createProject(raw: {
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
   const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
-  const snapshot = await reader.snapshot(access.defaultBranch);
+  // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
+  const baseBranch = input.baseBranch ?? access.defaultBranch;
+  const snapshot = await reader.snapshot(baseBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
@@ -834,7 +854,7 @@ export async function createProject(raw: {
           repoName: plan.repoName,
           // ⚠️ default가 `"main"`이라 **반드시 채운다** — default branch가 `develop`인 리포의
           // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (design §4).
-          baseBranch: access.defaultBranch,
+          baseBranch,
           installationId: plan.installationId,
           repositoryId: access.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
@@ -857,7 +877,10 @@ export async function createProject(raw: {
   }
 
   revalidatePath("/projects");
-  return { ok: true, slug: input.slug, pushToken, baseBranch: access.defaultBranch };
+  // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
+  // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
+  revalidatePath("/projects/new");
+  return { ok: true, slug: input.slug, pushToken, baseBranch };
 }
 
 export type FirstIngestResultView =
@@ -989,6 +1012,8 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
      */
     revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
+    // 모달 뒤 목록의 `Waiting for first import` 배지가 적재 뒤에 사라져야 한다.
+    revalidatePath("/projects/new");
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고

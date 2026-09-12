@@ -27,7 +27,7 @@ name: l10n
 
 on:
   push:
-    branches: [main]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (ARCHITECTURE §0 불변식 2)
+    branches: ["main"]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (ARCHITECTURE §0 불변식 2)
                        # ⚠️ 설정 화면에서 기준 브랜치를 바꾸면 이 줄도 함께 고친다 —
                        #    안 고치면 CI가 영영 안 돌고 오류도 안 난다 (6b-3)
   workflow_dispatch:
