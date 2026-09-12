@@ -149,13 +149,13 @@ it("후보 변경은 이름·주소·기준 언어를 초기화한다", async ()
   await click(button("Next"));
   await input(field("project-name"), "Custom");
   await input(field("project-slug"), "custom");
-  await click(document.body.querySelectorAll<HTMLInputElement>('input[name="baseLocale"]')[1]!);
+  await select("#project-base-locale", "fr");
   await click(button("Back"));
   await click(document.body.querySelectorAll<HTMLInputElement>('input[name="candidate"]')[1]!);
   await click(button("Next"));
   expect(field("project-name").value).toBe("web");
   expect(field("project-slug").value).toBe("acme-web");
-  expect(find<HTMLInputElement>(document.body, 'input[name="baseLocale"]').checked).toBe(true);
+  expect(find<HTMLSelectElement>(document.body, "#project-base-locale").value).toBe("en");
 });
 
 it("리포 변경도 이전 이름·주소를 새 리포에 가져오지 않는다", async () => {
@@ -228,8 +228,10 @@ it("lazy 샘플을 받으면 언어 옵션과 다음 단계의 키 수도 갱신
   await select('select[aria-label="Language"]', "fr");
   expect(find<HTMLOptionElement>(document.body, 'option[value="fr"]').textContent).toContain("3 keys");
   await click(button("Next"));
-  const french = [...document.body.querySelectorAll('input[name="baseLocale"]')].find((el) => el.parentElement?.textContent?.includes("fr"));
-  expect(french?.closest("span.inline-flex")?.textContent).toContain("Most keys");
+  const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
+  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("3 keys");
+  // 키 수를 아는 둘 중 많은 쪽이 배지를 든다 — 모르는 언어에는 안 붙는다 (결정 ⑥⑦).
+  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("Most keys");
 });
 
 it("목록 조회만 실패하면 응답의 defaultBranch로 계속 진행한다", async () => {
@@ -310,7 +312,7 @@ it("수동 지정 후 브랜치를 바꾸면 재검증한 기준 언어로 진�
   await click(button("Next"));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
   await click(button("Next"));
-  expect(find<HTMLInputElement>(document.body, 'input[name="baseLocale"]').checked).toBe(true);
+  expect(find<HTMLSelectElement>(document.body, "#project-base-locale").value).toBe("en");
 });
 
 it("리포 접근 거부 뒤 다른 리포를 고르면 그 리포의 인가로 진행한다", async () => {
@@ -378,10 +380,12 @@ it("기준 언어가 다섯 이상이면 목록으로 접힌다", async () => {
 
 it("접힌 목록에서도 `Most keys`가 보인다 — 배지 자리가 옵션 라벨로 간다", async () => {
   await files();
+  // 아는 언어가 하나뿐이면 비교할 것이 없어 배지가 안 선다 — 하나를 더 받아 둘로 만든다.
+  await select('select[aria-label="Language"]', "fr");
   await click(button("Next"));
 
   const picker = find<HTMLSelectElement>(document.body, "#project-base-locale");
-  expect([...picker.options].find((o) => o.value === "en")?.textContent).toContain("Most keys");
+  expect([...picker.options].find((o) => o.value === "fr")?.textContent).toContain("Most keys");
   // 키 수를 모르는 언어에는 배지도 키 수도 안 붙는다 (결정 ⑥⑦).
   expect([...picker.options].find((o) => o.value === "ko")?.textContent?.trim()).toBe("ko");
 });

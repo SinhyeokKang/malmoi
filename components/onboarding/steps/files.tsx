@@ -15,6 +15,7 @@ import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
 import type { CandidateSummary, SampleRow } from "@/lib/onboarding/detect";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
+import { collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { cn } from "@/lib/utils";
 
@@ -167,8 +168,8 @@ function Preview({
   onLocale: (locale: string) => void;
 }) {
   const locales = candidate?.locales ?? [];
-  /** 다섯 이상이면 세그먼트가 아니라 `Select`로 접는다 (design §8). */
-  const collapsed = locales.length >= 5;
+  /** 다섯 이상이면 세그먼트가 아니라 `Select`로 접는다 — ③의 기준 언어와 **같은 경계**다. */
+  const collapsed = collapseLocalePicker(locales.length);
   const keysFor = (code: string): string | undefined => {
     const sample = candidate?.samples.find((s) => s.locale === code);
     return sample === undefined ? undefined : m.newProject.files.keys(sample.total);

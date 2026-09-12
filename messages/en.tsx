@@ -542,6 +542,13 @@ export const en = {
       info: (path: string, branch: string): string =>
         `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,
       mostKeys: "Most keys",
+      /**
+       * 접힌 기준 언어 목록의 옵션 하나 (2026-09-13). ⚠️ **조각을 화면에서 잇지 않는다** — 그러면
+       * `·`가 소스 리터럴이 되고 ko를 더할 때 어순을 못 바꾼다. 키 수와 배지는 **아는 언어에만**
+       * 붙으므로 둘 다 선택이다 (결정 ⑥⑦).
+       */
+      baseOption: (code: string, keys: string | undefined, mostKeys: boolean): string =>
+        [code, keys, mostKeys ? "Most keys" : undefined].filter((part) => part !== undefined).join(" · "),
       /** ⚠️ **키 수를 아는 언어에만 선다** (결정 ⑦). `keyGap`이 `undefined`면 화면이 이 문장을 뺀다. */
       keyGap: (lang: string, n: number, base: string): string =>
         `${lang} has ${n} keys fewer than ${base}. Those keys would be left out if ${lang} led.`,

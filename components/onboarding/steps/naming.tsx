@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { Radio } from "@/components/ui/radio";
+import { Select } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { keyGap } from "@/lib/onboarding/key-gap";
+import { collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 
 import { failureText } from "../failure";
@@ -97,19 +99,45 @@ export function NamingStep({
         */}
         <legend className="text-sm font-medium">{m.newProject.baseLocale.title}</legend>
         <p className="text-muted-foreground text-xs">{m.newProject.baseLocale.hint}</p>
-        <div className="flex flex-wrap gap-3 pt-1">
-          {locales.map((code) => (
-            <span key={code} className="inline-flex items-center gap-1.5">
-              <Radio
-                name="baseLocale"
-                checked={state.baseLocale === code}
-                onChange={() => onChange({ baseLocale: code })}
-                label={<span className="text-sm">{code}</span>}
-              />
-              {code === leader && known.length > 1 && <Badge variant="neutral">{m.newProject.naming.mostKeys}</Badge>}
-            </span>
-          ))}
-        </div>
+        {/*
+          ⚠️ **②의 세그먼트와 같은 경계로 접힌다** (`collapseLocalePicker`). 같은 값을 고르는 컨트롤이
+          단계마다 형이 다르면 사용자가 두 번 배우고, 57로케일 리포에서는 **되돌릴 수 없는 결정**을
+          라디오 57개의 스크롤에서 고르게 된다 (2026-09-13 실물 관측).
+        */}
+        {collapseLocalePicker(locales.length) ? (
+          <Select
+            id="project-base-locale"
+            aria-label={m.newProject.baseLocale.title}
+            value={state.baseLocale}
+            onChange={(e) => onChange({ baseLocale: e.target.value })}
+            className="w-full max-w-sm"
+          >
+            {locales.map((code) => (
+              <option key={code} value={code}>
+                {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
+                {m.newProject.naming.baseOption(
+                  code,
+                  keyCounts[code] === undefined ? undefined : m.newProject.files.keys(keyCounts[code]),
+                  code === leader && known.length > 1,
+                )}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <div className="flex flex-wrap gap-3 pt-1">
+            {locales.map((code) => (
+              <span key={code} className="inline-flex items-center gap-1.5">
+                <Radio
+                  name="baseLocale"
+                  checked={state.baseLocale === code}
+                  onChange={() => onChange({ baseLocale: code })}
+                  label={<span className="text-sm">{code}</span>}
+                />
+                {code === leader && known.length > 1 && <Badge variant="neutral">{m.newProject.naming.mostKeys}</Badge>}
+              </span>
+            ))}
+          </div>
+        )}
         {gap !== undefined && leader !== undefined && (
           <Alert variant="info">{m.newProject.naming.keyGap(state.baseLocale, gap, leader)}</Alert>
         )}
