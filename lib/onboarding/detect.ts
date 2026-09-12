@@ -5,6 +5,13 @@ import { m } from "@/lib/i18n";
 import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
 
 /**
+ * ⚠️ **`keyGap`은 잎 모듈에 산다** — ③(클라이언트)이 그것을 **값으로** 부르는데, 이 파일은
+ * `lib/adapters`를 물어 ts-morph 전체를 끌고 온다 (POSTMORTEM 2026-09-07, 7.2MB). 여기서
+ * 다시 내보내는 것은 서버 호출부의 import 자리를 바꾸지 않기 위해서다.
+ */
+export { keyGap } from "./key-gap";
+
+/**
  * 2패스 탐지의 순수 조각들 (design §3.1·§3.2·§3.3·§4). `FileProbe`가 동기라 서버는 경로만으로 1차 후보를
  * 얻고, 내려받을 파일을 고른 뒤, 내용을 들고 다시 돈다. 여기에는 I/O가 없다 — GitHub은 Server Action이 부른다.
  */
@@ -117,21 +124,6 @@ export function sampleRows(
   limit: number = SAMPLE_ROWS,
 ): { rows: SampleRow[]; total: number } {
   return rowsOf(entriesOf(readLocales(adapter, format, blobs, locale), locale), limit);
-}
-
-/**
- * ③의 "145 keys fewer" (design §10).
- *
- * ⚠️ **키 수를 모르는 로케일에는 `undefined`다** (결정 ⑦). detect의 blob 예산(≤21) 안에서 키 수가
- * 채워지는 것은 `sampleOrder`가 고른 로케일과 사용자가 눌러 본 로케일뿐이라, 모르는 언어까지 비교하면
- * 되돌릴 수 없는 결정의 근거가 **"②에서 무엇을 눌렀는지"라는 우연한 이력**이 된다.
- *
- * 차이가 0이거나 오히려 많으면 `undefined`다 — 문구가 "fewer" 한 방향뿐이다.
- */
-export function keyGap(base: number | undefined, other: number | undefined): number | undefined {
-  if (base === undefined || other === undefined) return undefined;
-  const gap = base - other;
-  return gap > 0 ? gap : undefined;
 }
 
 /**

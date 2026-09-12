@@ -24,16 +24,14 @@ it("`?e=`와 중복 `q`가 함께 와도 모달 라우트가 오류로 가지 �
 });
 
 it("`q`·`filter`가 뒤 목록에 실려 넘어간다 — 열기 직전과 같은 목록이다", async () => {
-  const listed: { q?: string; filter?: string }[] = [];
-  vi.doMock("@/components/projects/project-list", () => ({
-    ProjectList: (props: { q?: string; filter?: string }) => {
-      listed.push({ q: props.q, filter: props.filter });
-      return null;
-    },
-  }));
-  const { default: Page } = await import("../projects/new/page");
+  const tree = await NewPage({ searchParams: Promise.resolve({ q: "format", filter: "active" }) });
 
-  await Page({ searchParams: Promise.resolve({ q: "format", filter: "active" }) });
+  // 모달 뒤 목록은 `<ContentPanel>`의 첫 자식이다 — 렌더 없이 props만 본다.
+  const children = (tree as { props: { children: unknown[] } }).props.children;
+  const list = children.find(
+    (child): child is { props: { q?: string; filter?: string } } =>
+      typeof child === "object" && child !== null && "props" in child && "all" in (child as { props: object }).props,
+  );
 
-  expect(listed.at(-1)).toEqual({ q: "format", filter: "active" });
+  expect(list?.props).toMatchObject({ q: "format", filter: "active" });
 });

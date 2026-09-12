@@ -73,7 +73,7 @@ describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 �
   it("설정 화면도 온보딩 결과 화면과 같은 지표(`failed`)를 본다", () => {
     for (const path of [
       "components/onboarding/first-ingest-retry.tsx",
-      "components/onboarding/new-project-flow.tsx",
+      "components/onboarding/steps/result.tsx",
     ]) {
       expect(read(path), path).toMatch(/failed === 0 \? "success" : "warning"/);
       expect(read(path), path).not.toMatch(/errors\.length === 0 \? "success"/);

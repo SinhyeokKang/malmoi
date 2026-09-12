@@ -39,7 +39,7 @@ describe("manual format hint", () => {
   });
 
   it("폼이 선택된 포맷으로 힌트·예시를 고른다", () => {
-    const src = read("components/onboarding/new-project-flow.tsx");
+    const src = read("components/onboarding/steps/files.tsx");
     // 고정 호출(`pathHint(...)`)이면 `ts-dict`를 골라도 `{locale}` 문장이 그대로 남는다 —
     // 사전 값은 **layout으로 인덱스**해야 한다.
     expect(src).not.toMatch(/pathHint\(/);

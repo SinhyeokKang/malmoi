@@ -85,7 +85,15 @@ export const routes = {
    * (그쪽은 키 + 값, 여기는 프로젝트 이름 하나).
    */
   projects: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects", query),
-  newProject: (): string => "/projects/new",
+  /**
+   * 새 프로젝트 모달의 **딥링크** (new-project-modal §1.4). `/projects` 위에 모달이 열린 주소이고,
+   * 그래서 목록과 **같은 쿼리 둘**을 받는다 — 뒤 목록이 열기 직전과 같아야 하고, 닫으면 그 값을
+   * 들고 `/projects`로 돌아간다.
+   *
+   * ⚠️ **`withQuery`를 지난다** — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터
+   * 수신자" 검사를 통째로 회피한다 (위 `signIn` 주석과 같은 이유).
+   */
+  newProject: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects/new", query),
   /**
    * 사용자 축 (PRODUCT §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
    * 사람에 속하고, 그래서 프로젝트를 하나도 안 만든 사용자도 도달해야 한다.

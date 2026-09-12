@@ -21,7 +21,12 @@ const code = (rel: string): string =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^\s*\/\/.*$/gm, "");
 
-const PAGE = "app/(edit)/projects/page.tsx";
+/**
+ * ⚠️ **소스가 둘이다** (new-project-modal T8). 본문이 `components/projects/project-list.tsx`로
+ * 내려갔다 — `/projects/new`가 같은 목록을 모달 뒤에 그리기 때문이고, 라우트 페이지에는
+ * `<ContentPanel>`과 데이터 로드만 남았다. **단언은 그대로이고 읽는 자리만 늘린다.**
+ */
+const PAGE = ["app/(edit)/projects/page.tsx", "components/projects/project-list.tsx"];
 
 describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 아니다", () => {
   /**
@@ -29,12 +34,12 @@ describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 
    * 같은 판정이고(design 결정 14), 서버가 이미 필터된 목록을 그리므로 클라이언트 상태가 0이어야 한다.
    */
   it("페이지가 클라이언트 컴포넌트가 아니다", () => {
-    expect(code(PAGE)).not.toContain('"use client"');
-    expect(code(PAGE)).not.toContain("useState");
+    expect(PAGE.map(code).join("\n")).not.toContain('"use client"');
+    expect(PAGE.map(code).join("\n")).not.toContain("useState");
   });
 
   it("`?filter=`를 읽고 판정 함수로 거른다 — 주소창 값을 캐스팅하지 않는다", () => {
-    const src = code(PAGE);
+    const src = PAGE.map(code).join("\n");
     expect(src).toContain("searchParams");
     expect(src).toContain("parseProjectFilter");
     expect(src).not.toMatch(/as ProjectFilter/);
@@ -45,11 +50,11 @@ describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 
    * `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를 통째로 회피한다 (`lib/routes.ts` 주석).
    */
   it("탭 링크를 `routes.projects`가 만든다", () => {
-    expect(code(PAGE)).toMatch(/routes\.projects\(\s*\{/);
+    expect(PAGE.map(code).join("\n")).toMatch(/routes\.projects\(\s*\{/);
   });
 
   it("행 전체가 `routes.project(slug)` 링크다 — 착지점이 한 곳이다", () => {
-    expect(code(PAGE)).toContain("routes.project(");
+    expect(PAGE.map(code).join("\n")).toContain("routes.project(");
   });
 });
 
@@ -60,7 +65,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * 쓰면 그 순서가 두 벌이 되고, 그중 하나가 낡는다.
    */
   it("`projectStatus` 하나로 갈래를 정한다", () => {
-    const src = code(PAGE);
+    const src = PAGE.map(code).join("\n");
     expect(src).toContain("projectStatus(");
     // 옛 계약(`ready`면 배지 없음)이 남아 있으면 상태가 두 규칙으로 갈린다.
     expect(src).not.toContain("readinessLabel");
@@ -72,7 +77,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * 결정은 그대로다 — 배지가 없으면 `all`에서 보관된 프로젝트가 살아 있는 것과 구별되지 않는다.
    */
   it("상태 문구를 사전에서 읽는다 — 네 갈래가 전부 화면에 닿는다", () => {
-    expect(code(PAGE)).toMatch(/m\.projects\.status\[/);
+    expect(PAGE.map(code).join("\n")).toMatch(/m\.projects\.status\[/);
   });
 
   /**
@@ -81,7 +86,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * (`lib/auth/landing.ts`가 같은 이유로 맵 + `satisfies`를 쓴다 — 실측된 함정이다).
    */
   it("배지 색이 맵 + `satisfies`다", () => {
-    const src = code(PAGE);
+    const src = PAGE.map(code).join("\n");
     expect(src).toMatch(/satisfies Record<ProjectStatus,/);
     expect(src).toContain("STATUS_VARIANT[status]");
   });
@@ -97,7 +102,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * 조용하기 때문이다.
    */
   it("정상은 초록, amber는 `Disconnected` 하나, 나머지 셋은 무색이다", () => {
-    const map = /const STATUS_VARIANT = \{([\s\S]*?)\}/.exec(code(PAGE))?.[1] ?? "";
+    const map = /const STATUS_VARIANT = \{([\s\S]*?)\}/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
     expect(map).not.toBe("");
     expect(map).toMatch(/archived:\s*"neutral"/);
     expect(map).toMatch(/active:\s*"success"/);
@@ -116,8 +121,8 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
    */
   it("역할을 메타 줄이 든다", () => {
-    expect(code(PAGE)).toContain("m.projects.role[row.role]");
-    expect(code(PAGE)).not.toMatch(/<Badge[^>]*>\s*\{m\.projects\.role/);
+    expect(PAGE.map(code).join("\n")).toContain("m.projects.role[row.role]");
+    expect(PAGE.map(code).join("\n")).not.toMatch(/<Badge[^>]*>\s*\{m\.projects\.role/);
   });
 });
 
@@ -134,7 +139,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * 세고, 이 목록은 초대받은 것과 보관한 것까지 든다.
    */
   it("목록이 축소되지 않는다 — `<ul>`이 `shrink-0`을 든다", () => {
-    const ul = /<ul className="([^"]*)"/.exec(code(PAGE))?.[1] ?? "";
+    const ul = /<ul className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
     expect(ul).not.toBe("");
     expect(ul).toContain("shrink-0");
   });
@@ -150,8 +155,8 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * 넘긴다. 빈 상태의 세로 중앙 정렬은 그 위에서 성립한다.
    */
   it("본문이 스크롤 규칙을 다시 적지 않는다 — `PanelBody`가 든다", () => {
-    expect(code(PAGE)).toContain("<PanelBody");
-    expect(code(PAGE)).not.toContain("min-h-0");
-    expect(code(PAGE)).not.toContain("overflow-y-auto");
+    expect(PAGE.map(code).join("\n")).toContain("<PanelBody");
+    expect(PAGE.map(code).join("\n")).not.toContain("min-h-0");
+    expect(PAGE.map(code).join("\n")).not.toContain("overflow-y-auto");
   });
 });

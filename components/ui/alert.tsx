@@ -47,6 +47,7 @@ export function Alert({
   title,
   actions,
   onDismiss,
+  role,
   className,
   children,
 }: VariantProps<typeof alert> & {
@@ -56,13 +57,19 @@ export function Alert({
   actions?: ReactNode;
   /** 있으면 우상단에 닫기가 붙는다. */
   onDismiss?: () => void;
+  /**
+   * ⚠️ **`danger`는 이미 `role="alert"`다** — 이 prop은 **그 외 variant를 live 영역으로 올리는**
+   * 자리다. 비동기 진행을 말하는 info Alert가 그 부류다(온보딩 ④의 "Importing…"): 조용히 바뀌면
+   * 스크린리더 사용자에게는 아무 일도 안 일어난 화면이다. `danger`의 `alert`를 덮지는 않는다.
+   */
+  role?: "status";
   className?: string;
   children?: ReactNode;
 }) {
   const tone = variant ?? "info";
   const Icon = ICON[tone];
   return (
-    <div className={cn(alert({ variant }), className)} role={tone === "danger" ? "alert" : undefined}>
+    <div className={cn(alert({ variant }), className)} role={tone === "danger" ? "alert" : role}>
       <Icon className={cn("mt-0.5 size-4 shrink-0", ICON_CLASS[tone])} aria-hidden />
       <div className="min-w-0 flex-1 space-y-2">
         {title !== undefined && <p className="text-sm font-medium">{title}</p>}

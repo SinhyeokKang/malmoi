@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,6 +34,8 @@ import { describe, expect, it } from "vitest";
  */
 
 const APP = fileURLToPath(new URL("..", import.meta.url));
+/** 리포 루트 — `app/` 밖의 발신처를 읽는다 (아래 `EXTRA_EMITTERS`). */
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
@@ -403,7 +405,24 @@ describe("쿼리 파라미터의 수신자", () => {
    */
   const ROUTE_PATHS = routeShapes(ROUTES_SOURCE);
 
-  const EMITTED = ENTRY_POINTS.flatMap((e) => {
+  /**
+   * ⚠️ **진입점 밖에서도 쿼리를 실어 보낸다.** 목록 본문이 `components/projects/project-list.tsx`로
+   * 내려가면서(new-project-modal T8) `routes.projects({ filter, q })`·`routes.newProject({ … })`가
+   * `app/` 밖으로 나갔다 — 이 목록이 없으면 그 자리가 조용히 사각지대다. **옮기는 것 자체가 검사를
+   * 회피시키는 모양**이고, 그것이 이 절의 3번 패턴이 2026-09-11에 붙은 이유이기도 하다.
+   */
+  const EXTRA_EMITTERS = ["components/projects/project-list.tsx"];
+
+  const SOURCES = [
+    ...ENTRY_POINTS,
+    ...EXTRA_EMITTERS.map((rel) => ({ path: rel, source: readFileSync(join(ROOT, rel), "utf8") })),
+  ];
+
+  it("추가 발신처가 전부 실재한다 — 낡은 경로가 목록에 남지 않는다", () => {
+    for (const rel of EXTRA_EMITTERS) expect(existsSync(join(ROOT, rel)), rel).toBe(true);
+  });
+
+  const EMITTED = SOURCES.flatMap((e) => {
     const code = e.source
       .split("\n")
       .filter((l) => !/^\s*(\*|\/\/)/.test(l))
