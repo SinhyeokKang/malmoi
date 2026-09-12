@@ -25,7 +25,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 | 키워드 | 역할 | 검수 대상 | 관점 |
 |---|---|---|---|
-| `cpo` | **CPO** (Chief Product Officer) | `spec.md` | 스코프 적절성(MVP §7 + SAAS §4.2 비범위 대조), 두 사용자(개발자/번역 편집자)의 상충 해소, 완료 조건의 검증 가능성, 비목표 명확성 |
+| `cpo` | **CPO** (Chief Product Officer) | `spec.md` | 스코프 적절성(PRODUCT §4.2 비범위 대조), 두 사용자(개발자/번역 편집자)의 상충 해소, 완료 조건의 검증 가능성, 비목표 명확성 |
 | `cdo` | **CDO** (Chief Design Officer) | `spec.md` + `design.md` | 편집 UI 플로우, `docs/DESIGN.md` 시각 규칙 준수, 기존 컴포넌트 패턴 일관성, 빈/로딩/에러 상태, 접근성 |
 | `cto` | **CTO** (Chief Technology Officer) | `design.md` | 코어 원칙(병합 없음) 정합성, 불변식(export 결정성·blob SHA·인증 경계) 보존, 오버엔지니어링, 데이터 변경 경로 경계, 성능·보안 |
 | `qa` | **QA Lead** | `tasks.md` | 태스크별 "검증:" 줄이 실제로 판정 가능한가, 순수 함수 분리 여부, 엣지 케이스 누락, 태스크 의존 관계, 회귀 리스크, 마이그레이션 배포 순서 |
@@ -36,14 +36,14 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 - `docs/features/<slug>/`에서 `spec.md`, `design.md`, `tasks.md` 3개를 읽는다.
 - 하나라도 없으면 즉시 종료: "문서가 불완전합니다. `/feature`를 먼저 실행해주세요."
-- 컨텍스트용으로 `CLAUDE.md`, `docs/MVP.md`, `docs/ARCHITECTURE.md`도 읽는다 (에이전트에게 전달). CDO가 활성이면 `docs/DESIGN.md`도.
+- 컨텍스트용으로 `CLAUDE.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`도 읽는다 (에이전트에게 전달). CDO가 활성이면 `docs/DESIGN.md`도.
 - `docs/POSTMORTEM.md`를 이 기능이 건드릴 영역으로 grep해 결과를 에이전트에게 넘긴다 — 과거 함정을 재지적하지 못하면 그 로그는 죽은 로그다.
 
 ### 2. 병렬 검수
 
 활성화된 전문가 에이전트를 **동시에** 실행한다 (`subagent_type: general-purpose`). 각 에이전트에게 전달:
 - 담당 문서 전문 + 다른 문서 참고용
-- `CLAUDE.md` + `docs/MVP.md` + `docs/ARCHITECTURE.md` (+ CDO는 `docs/DESIGN.md`)
+- `CLAUDE.md` + `docs/PRODUCT.md` + `docs/ARCHITECTURE.md` (+ CDO는 `docs/DESIGN.md`)
 - POSTMORTEM grep 결과
 - 역할별 검수 관점 (아래 프롬프트 가이드)
 - 하위 검증 에이전트 분배 지침
@@ -84,8 +84,8 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 | 하위 에이전트 | 검증 목적 | 탐색 대상 |
 |---|---|---|
-| feature-precedent | 기존 feature 문서와 스코프 비교, 스코프 크리프 위험 | `docs/features/*/spec.md`, `docs/TASKS.md` |
-| goal-feasibility | 완료 조건이 push·편집 UI·pull 세 흐름의 현재 상태에서 도달 가능한지 | `app/api/push/`, `app/(edit)/`, `app/api/pull/`, `docs/TASKS.md` 체크 상태 |
+| feature-precedent | 기존 feature 문서와 스코프 비교, 스코프 크리프 위험 | `docs/features/*/spec.md` |
+| goal-feasibility | 완료 조건이 push·편집 UI·pull 세 흐름의 현재 상태에서 도달 가능한지 | `app/api/push/`, `app/(edit)/`, `app/api/pull/` |
 
 ---
 
@@ -147,7 +147,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 - 여러 에이전트가 같은 문제를 지적하면 하나로 합쳐 질문한다.
 - 문서 정확성 오류(존재하지 않는 경로, 틀린 라인 번호, 빠진 "검증:" 줄)는 명백한 수정 건이므로 **묶어서 일괄 수정 허락**을 구한다.
-- **비범위 승격이 필요한 항목이 나오면 여기서 분리해 묻는다** — 사용자가 승인하면 `docs/MVP.md` 갱신을 태스크로 남긴다 (이 스킬이 MVP.md를 직접 고치지 않는다).
+- **비범위 승격이 필요한 항목이 나오면 여기서 분리해 묻는다** — 사용자가 승인하면 `docs/PRODUCT.md` 갱신을 태스크로 남긴다 (이 스킬이 그 문서를 직접 고치지 않는다).
 
 ### 4. 문서 수정 적용
 
@@ -168,7 +168,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 - 문제가 **관측된 사실**로 쓰여 있는가? 추측이나 일반론이 아닌가?
 - 사용자가 개발자(나)인지 번역 편집자(비개발자 동료)인지 명시됐는가? 둘의 요구가 상충하면 어느 쪽을 우선하는지 밝혔는가?
 - 완료 조건이 **검증 가능한 문장**인가? "적절히", "더 나은" 같은 모호한 표현이 없는가?
-- `docs/MVP.md` §7 비범위에 걸리는 항목이 조용히 들어와 있지 않은가? 걸리면 MVP.md 갱신이 산출물에 포함됐는가?
+- `docs/PRODUCT.md` §4.2 비범위에 걸리는 항목이 조용히 들어와 있지 않은가? 걸리면 PRODUCT.md 갱신이 산출물에 포함됐는가?
 - 비목표가 충분한가? PoC 범위를 넘기는 스코프 크리프 후보가 빠져 있진 않은가?
 - **확장성을 위한 선반영이 있는가** — 이 프로젝트에선 그 자체가 결함이다.
 
@@ -185,7 +185,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 
 ### CTO 프롬프트 핵심
 
-- **코어 원칙 위반이 없는가** — 머지 로직·충돌 해소·양방향 동기화·3-way merge를 요구하는 설계인가 (MVP §2).
+- **코어 원칙 위반이 없는가** — 머지 로직·충돌 해소·양방향 동기화·3-way merge를 요구하는 설계인가 (ARCHITECTURE §0).
 - 불변식을 건드리는가: export 결정성 3규칙, blob SHA 비교 최적화, 커밋 parents·force update, `[skip-l10n]` 마커, 인증 차단은 `middleware.ts`뿐. 건드리면 보존 방법이 문서에 있는가.
 - **데이터 변경 경로 경계**가 맞는가 — 내부 쓰기는 Server Action, 외부 진입점만 Route Handler. 역방향이면 지적한다.
 - 모든 DB 쿼리가 `projectId`로 좁혀지는가? (테넌트 누출 + 풀스캔)
@@ -203,7 +203,7 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 - 순수 함수 → 껍데기 → UI **순서**인가? 역순이면 테스트 못 하는 코드를 먼저 쌓는 것이다.
 - 엣지 케이스 누락: 빈 키 목록, 대량 키, `orphaned` 키, 로케일 누락, 중복 키, 어댑터 왕복 실패, blob SHA 전부 동일(API 무호출 경로), 세션 만료 중 저장.
 - **왕복 검증**이 계획에 있는가 — 어댑터를 건드리면 read → write → read가 바이트 동일해야 한다.
-- 태스크 간 의존 관계가 정확한가? 의존 대상이 실제로 존재하는 상태인가 (`docs/TASKS.md` 체크 상태와 대조)?
+- 태스크 간 의존 관계가 정확한가? 의존 대상이 실제로 존재하는 상태인가?
 - 회귀 리스크가 충분히 식별됐는가? `docs/POSTMORTEM.md`에 같은 영역의 과거 회귀가 있으면 재발 방지 검증이 태스크에 있는가?
 - 마이그레이션이 있으면 **`pnpm db:deploy`를 push 전에** 돌리는 순서가 문서에 명시됐는가? `migrate dev`의 리셋 제안은 절대 금지라는 것이 반영됐는가?
 - **자동 검증(`pnpm test`·`pnpm typecheck`)과 수동 확인(`pnpm dev`로 눈으로 봄) 구분이 적절한가.** 이 프로젝트엔 e2e 프레임워크가 없으므로 UI 검증은 수동이다 — 자동화된 것처럼 쓰여 있으면 지적한다.
@@ -214,5 +214,5 @@ description: feature 산출물을 CPO·CDO·CTO·QA Lead 4명의 전문가 에�
 - **코드 수정 금지** — `lib/`, `app/`, `prisma/`, `scripts/`, `package.json` 등 프로덕션 코드를 변경하지 않는다.
 - **빌드·테스트·마이그레이션 실행 금지** — 읽기 전용.
 - **하위 에이전트가 직접 문서 수정 금지** — 에이전트는 피드백만 반환. 수정은 사용자 합의 후 메인 스레드에서만.
-- **`docs/MVP.md`·`docs/ARCHITECTURE.md`·`docs/DESIGN.md`·`docs/TASKS.md` 직접 수정 금지** — 필요를 태스크로 남긴다.
+- **`docs/PRODUCT.md`·`docs/ARCHITECTURE.md`·`docs/DESIGN.md` 직접 수정 금지** — 필요를 태스크로 남긴다.
 - **후속 액션 자동 실행 금지** — 문서 수정·커밋 후 종료.

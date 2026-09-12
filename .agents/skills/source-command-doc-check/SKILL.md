@@ -1,6 +1,6 @@
 ---
 name: "source-command-doc-check"
-description: "저장소 문서(CLAUDE/ARCHITECTURE/SAAS/MVP/TASKS/DESIGN/ACTIONS/ADAPTER-COVERAGE/README/features/env)를 문서별 전담 에이전트가 병렬로 코드베이스와 양방향 대조(사실오류 + 누락)해 stale 탐지 → 통합 리포트 → 항목별 확인 → 수정·문서별 커밋. POSTMORTEM은 제외(append-only). 빌드·푸시 안 함."
+description: "저장소 문서(CLAUDE/PRODUCT/ARCHITECTURE/DIRECTORY/DESIGN/OPERATIONS/ACTIONS/README/env)를 문서별 전담 에이전트가 병렬로 코드베이스와 양방향 대조(사실오류 + 누락)해 stale 탐지 → 통합 리포트 → 항목별 확인 → 수정·문서별 커밋. POSTMORTEM은 제외(append-only). 빌드·푸시 안 함."
 ---
 
 # source-command-doc-check
@@ -11,7 +11,7 @@ Use this skill when the user asks to run the migrated source command `doc-check`
 
 저장소의 문서를 **문서별 전담 에이전트**로 병렬 검사한다. 각 에이전트가 담당 문서 전문을 읽고 현재 코드베이스와 **양방향**으로 대조해 **어긋난 부분(stale)**을 찾는다. 메인 스레드가 결과를 통합 리포트로 제시하고, 사용자 확인을 거쳐 수정·커밋한다.
 
-**이 리포가 이 스킬을 오래 두지 않았던 이유는 "문서가 일곱 개뿐"이었다.** 2026-09-06에 열두 개(아래 표)가 됐고, 같은 날의 tenant-auth 리뷰가 전환 전 상태를 서술하는 주석·문서 여덟 곳을 잡았다 — 전부 **최근 diff에 걸리지 않아 `/push`가 지나간 것**이다. 그 부류가 이 스킬의 대상이다.
+**대상은 "최근 diff에 걸리지 않아 `/push`가 지나간 것"이다.** 2026-09-06 tenant-auth 리뷰가 전환 전 상태를 서술하는 문서 여덟 곳을 잡았고 전부 그 부류였다.
 
 ## `/push`와의 차이 (왜 따로 있나)
 
@@ -22,44 +22,42 @@ Use this skill when the user asks to run the migrated source command `doc-check`
 ## 검사하지 않는 것
 
 - **`docs/POSTMORTEM.md`** — append-only 회고다. 과거 시점의 사실을 담으므로 현재 코드와 어긋나는 것이 정상이고, `/postmortem`만 쓴다. 재발 방지 grep이 현재도 유효한지는 `/audit`이 본다.
-- **`docs/features/*/{spec,design,tasks}.md`** — 스펙이 아니라 근거 기록이다 (CLAUDE.md 디렉터리 구조). 결론이 MVP·ARCHITECTURE·SAAS로 올라갔는지는 `features` 키워드(README.md의 상태 표)가 본다.
+- **`docs/features/*/{spec,design,tasks}.md`** — 진행 중인 기능의 작업 문서다. 끝나면 결론이 정본으로 올라가고 디렉터리째 지워지므로(CLAUDE.md 워크플로우 절) 대조 대상이 아니다.
 - **코드 주석** — 문서가 아니다. `/code-review`·`/audit`의 몫이다.
 
 ## 사용
 
-- `/doc-check` — 12개 문서 전부 병렬 검사.
-- `/doc-check <doc> [doc...]` — 지정 문서만. 키워드: `claude`, `architecture`, `saas`, `mvp`, `tasks`, `design`, `actions`, `coverage`, `readme`, `features`, `env`.
+- `/doc-check` — 9개 문서 전부 병렬 검사.
+- `/doc-check <doc> [doc...]` — 지정 문서만. 키워드: `claude`, `product`, `architecture`, `directory`, `design`, `operations`, `actions`, `readme`, `env`.
 
 예시:
 
 ```
-/doc-check                        → 12개 전부
+/doc-check                        → 9개 전부
 /doc-check architecture           → docs/ARCHITECTURE.md만
 /doc-check architecture claude    → docs/ARCHITECTURE.md + CLAUDE.md
-/doc-check saas tasks             → 현재 단계 정본 + 체크리스트
+/doc-check product directory      → 제품 판정 + 트리
 ```
 
 ## 검사 대상 (문서별 에이전트)
 
 | 키워드 | 문서 | 대조 관점 |
 |---|---|---|
-| `claude` | **CLAUDE.md** | 스택 표(버전은 `package.json`·`pnpm-lock.yaml`), 명령어 표(`package.json` scripts), 디렉터리 구조(실제 트리 — 없는 파일·새 파일·옮긴 파일), 스킬 라인업(`.claude/commands/` 목록·개수·미러 제외 집합이 `scripts/sync-agents.mjs`의 `EXCLUDE`와 같은가), 브랜치·배포·CI 서술(`.github/workflows/ci.yml`·`vercel.json`), 코드 컨벤션의 예시 파일이 실재하는가, 프로젝트 상태 선언(MVP 닫힘·SaaS 단계)이 `docs/SAAS.md`와 같은가 |
+| `claude` | **CLAUDE.md** | 스택 표(버전은 `package.json`·`pnpm-lock.yaml`), 명령어 표(`package.json` scripts), 스킬 라인업(`.claude/commands/` 목록·개수·미러 제외 집합이 `scripts/sync-agents.mjs`의 `EXCLUDE`와 같은가), 브랜치·배포·CI 서술(`.github/workflows/ci.yml`·`vercel.json`), 코드 컨벤션의 예시 파일이 실재하는가, 문서 지도가 `docs/` 실제 파일과 같은가 |
 | `architecture` | **docs/ARCHITECTURE.md** | export 결정성 3규칙·`writeStrategy`/`layout` 매트릭스·변경 감지 두 층·커밋/PR 전략·스캐너 계약·스키마 서술·인증 경계(§6 — 미들웨어가 무엇을 막고 무엇을 지나는지, 세션 정책, 이메일 검증 자리, 거부와 장애의 구별)·Supabase/Vercel 함정이 `lib/`·`auth.ts`·`middleware.ts`·`prisma/schema.prisma`와 일치하는가. `(미구현)` 표시가 남았는데 구현된 것 |
-| `saas` | **docs/SAAS.md** | 범위·비범위(§4)·보안 모델(§5)·스키마 변화(§6)·설계 결정(§7)·단계별 체크리스트(§8 — `[x]`가 실제 코드·테스트로 뒷받침되는가, 완료 표시된 단계에 미구현이 남았는가)·불변식 9개(§9)·§10 "아직 안 정한 것"(결정됐는데 목록에 남은 것)이 코드와 일치하는가 |
-| `mvp` | **docs/MVP.md** (PoC 스펙 — 닫힘) | 코어 원칙·strict 정책·세 흐름의 계약·§7 비범위·§8 구현 순서·§10 미결이 코드와 맞는가. **닫힌 문서라 갱신은 최소다** — "닫힘"과 어긋나는 현재형 서술, §8.4의 SAAS 포인터, 비범위가 슬며시 열린 흔적만 본다 |
-| `tasks` | **docs/TASKS.md** | 앞쪽 두 절(§0 "지금 어디에 있나" + "전역 미결")이 살아 있는 부분이다 — 체크박스가 검증 조건 통과와 맞는가, 🔒 미결이 결정됐는데 남았는가, `← 현재 단계` 위치. `# 완료 기록`은 시간축 기록이라 **압축·정정하지 않는다** |
+| `product` | **docs/PRODUCT.md** | 완료 조건·포지셔닝·역할과 권한표(§3 — `lib/auth/permission.ts`의 `canPerform`과 칸이 같은가)·범위/비범위(§4)·설계 결정(§7 — 특히 §7.7 IA가 실제 라우트·`lib/routes.ts`와 같은가)·§10 "아직 안 정한 것"(결정됐는데 목록에 남은 것)이 코드와 일치하는가. ⚠️ **절 번호가 띄엄띄엄한 것은 정상이다**(코드 주석이 그 번호를 참조한다 — 재번호 금지) |
+| `directory` | **docs/DIRECTORY.md** | 트리가 실제 파일과 맞는가(없는 파일·새 파일·옮긴 파일), ⚠️ 항목이 가리키는 테스트·상수가 실재하는가, 프리미티브 개수가 `components/ui/*.tsx`와 맞는가 |
 | `design` | **docs/DESIGN.md** | 토큰 값(`app/globals.css` `@theme`)·라이트 단일 강제 장치(`@custom-variant dark`)·mono 표면 불변식·배지 3종·raw 색 등재(§6.2)·`components/ui/` 사용 상태·§9 레퍼런스 서술이 `app/globals.css`·`lib/utils.ts`·`components/`·`app/**/*.tsx`의 실제 클래스 사용과 일치하는가 |
+| `operations` | **docs/OPERATIONS.md** | 키 이름·명령 이름·플래그가 `.env.example`·`package.json` scripts·`scripts/credentials.ts`와 맞는가. **절차의 순서를 코드로 검증할 수는 없으므로** 이름과 존재만 대조하고, 순서가 의심되면 리포트에만 올린다 |
 | `actions` | **docs/ACTIONS.md** | 대상 리포 워크플로 예시·`inputs` 표·red 조건 표·경고 조건(열린 번역 PR — 브랜치 이름이 `lib/pull/trigger.ts`의 `syncBranchFor`와 같은가)이 `.github/actions/l10n-push/action.yml`과 일치하는가 |
-| `coverage` | **docs/ADAPTER-COVERAGE.md** | 지원 선언 포맷·탐지 규칙·제외 판정(`ts-dict`)·지표의 코퍼스 표기가 `lib/adapters/`·`lib/survey/`와 맞는가. **숫자는 재측정 없이 고치지 않는다** — 규칙·판정·파일 이름 서술만 대조하고, 숫자가 의심되면 "재측정 필요"로만 올린다 (`/push` 4d) |
 | `readme` | **README.md** | 스택 한 줄·명령어 표·브랜치 정책·게이트 서술이 CLAUDE.md의 요약 미러로서 같은 사실을 말하는가 (CLAUDE.md가 정본이다 — 둘이 다르면 README가 틀렸다) |
-| `features` | **docs/features/README.md** | 기능 문서 상태 표·백로그가 실제 디렉터리(`docs/features/*/`)와 맞는가. 완료로 표시된 기능의 결론이 MVP·ARCHITECTURE·SAAS에 올라갔는가(안 올라갔으면 누락). `tasks.md`가 전부 `[x]`인데 남아 있는가(지우는 규칙 — CLAUDE.md 디렉터리 구조) |
 | `env` | **.env.example** | 코드가 읽는 변수(`lib/env.ts`의 `requireEnv`/`optionalEnv` 호출 + `prisma.config.ts`)가 전부 있는가, 반대로 아무 코드도 읽지 않는 변수가 남았는가(미구현 기능용 선등록은 잉여가 아니다 — 주석으로 그 사실이 적혀 있어야 한다), 주석의 배선 설명(포트·스코프·OAuth 앱 수)이 CLAUDE.md와 같은가 |
 
 ## 절차
 
 ### 1. 대상 결정
 
-인자가 있으면 해당 키워드 문서만, 없으면 12개 전부. 존재하지 않는 키워드는 무시하고 보고에 명시. `postmortem`이 들어오면 "append-only라 대상이 아니다"로 안내.
+인자가 있으면 해당 키워드 문서만, 없으면 9개 전부. 존재하지 않는 키워드는 무시하고 보고에 명시. `postmortem`이 들어오면 "append-only라 대상이 아니다"로 안내.
 
 ### 2. 공통 컨텍스트 로드 (메인, 1회)
 
@@ -85,7 +83,7 @@ Use this skill when the user asks to run the migrated source command `doc-check`
 2. 항목별로 Explore 하위 에이전트를 **병렬** 생성 (`subagent_type: Explore`)해 실제 코드와 대조한다. ("이 파일/함수가 실재하는가", "이 컬럼이 스키마에 있는가", "이 표의 셀 값이 코드와 같은가", "이 '아직 ~않다'가 여전히 참인가").
 
 **Pass 2 — 코드→문서 (누락 커버리지 탐지)** ← 이게 한 방향 검사의 사각이다
-3. 문서가 **다루기로 선언한 주제 영역**을 식별한다 (그 문서의 섹션 제목·범위가 곧 책임 범위). 예: ARCHITECTURE는 "불변식·함정·계약", SAAS §8은 "단계별 완료 항목", `.env.example`은 "코드가 읽는 변수 전부".
+3. 문서가 **다루기로 선언한 주제 영역**을 식별한다 (그 문서의 섹션 제목·범위가 곧 책임 범위). 예: ARCHITECTURE는 "불변식·함정·계약", PRODUCT §4는 "범위와 비범위", `.env.example`은 "코드가 읽는 변수 전부".
 4. 그 영역의 **코드에 실재하는 핵심 동작·기본값·엣지케이스·하위 기능**을 Explore로 훑어, 문서에 **반영 안 된 것**을 찾는다. 두 종류를 본다:
    - **통째 누락**: 코드엔 있는 모듈·테이블·스킬·환경변수인데 문서에 섹션·항목 자체가 없음.
    - **섹션 내부 누락**(가장 놓치기 쉬움): 섹션은 있는데 그 안의 기본값·분기·예외가 빠짐. 예: "차단은 두 층"은 있는데 미들웨어가 POST를 통과시키는 예외가 없음, "세션은 DB에 있다"는 있는데 `updateAge` 서술이 없음.
@@ -119,7 +117,7 @@ stale이 없으면 "발견 0 — Pass1 N개 단언·Pass2 K개 주제 모두 일
 
 전 에이전트 결과를 **문서별 → 심각도순**으로 한 번에 정리해 제시한다. 사용자가 전체 그림을 먼저 본다. 심각도 집계(🔴 n / 🟡 n / ⚪ n)를 상단에.
 
-**같은 사실이 여러 문서에 있으면 묶어서 올린다** — 이 리포는 CLAUDE.md↔README.md, CLAUDE.md↔ARCHITECTURE.md, SAAS.md↔TASKS.md가 같은 결정을 반복 서술한다. 한 곳만 고치면 나머지가 반대 사실을 가르친다 (`/push` 4a의 "정책 반전" 경고와 같은 형태).
+**같은 사실이 여러 문서에 있으면 묶어서 올린다** — 이 리포는 CLAUDE.md↔README.md, CLAUDE.md↔ARCHITECTURE.md, PRODUCT.md↔ARCHITECTURE.md가 같은 결정을 반복 서술한다. 한 곳만 고치면 나머지가 반대 사실을 가르친다 (`/push` 4a의 "정책 반전" 경고와 같은 형태).
 
 ### 5. 항목별 확인 → 수정
 
@@ -127,15 +125,15 @@ stale이 없으면 "발견 0 — Pass1 N개 단언·Pass2 K개 주제 모두 일
 - 🔴 명백한 사실 오류는 묶어서 일괄 수정 허락을 구할 수 있다.
 - 🟡/⚪ 는 항목별로 적용/제외 선택지 제시.
 - 합의된 항목만 Edit으로 반영.
-- **`docs/TASKS.md`·`docs/SAAS.md`의 체크박스는 검증 조건이 실제로 통과한 것만 `[x]`로 바꾼다** — "코드를 썼다"는 완료가 아니다 (`/push` 4b와 같은 규칙).
-- **`docs/ADAPTER-COVERAGE.md`의 숫자는 고치지 않는다.** 재측정이 필요하면 "`pnpm adapter-survey` 학습+홀드아웃 재실행 필요"로 리포트에만 남긴다.
-- **`docs/MVP.md`는 닫힌 문서다** — 현재 상태를 새로 쓰지 않고, "닫힘"과 어긋나는 현재형 서술을 과거형으로 접거나 SAAS 포인터를 더하는 선에서 멈춘다.
+- **`docs/features/*/tasks.md`가 남아 있으면 체크박스는 검증 조건이 실제로 통과한 것만 `[x]`로 바꾼다** — "코드를 썼다"는 완료가 아니다 (`/push` 4b와 같은 규칙).
+- **`docs/ARCHITECTURE.md` §1.9의 숫자는 고치지 않는다.** 재측정이 필요하면 "`pnpm adapter-survey` 학습+홀드아웃 재실행 필요"로 리포트에만 남긴다.
+- **`docs/PRODUCT.md`의 절 번호를 재정렬하지 않는다** — 코드 주석과 테스트가 `PRODUCT §7.8` 같은 번호를 직접 참조한다. 빈 번호는 의도된 것이다.
 - CLAUDE.md를 고치면 **`pnpm sync:agents`를 돌려 미러(`AGENTS.md`)를 함께 커밋한다** — Claude Code 훅이 자동으로 돌리지만 결과 파일이 커밋에 들어갔는지 확인한다. 미러를 직접 편집하지 않는다.
 
 ### 6. 커밋
 
 수정된 문서를 **문서별 별도 커밋**으로 묶는다 (영문, CLAUDE.md 문서 신선도 절의 prefix):
-`docs(CLAUDE): ...` / `docs(ARCHITECTURE): ...` / `docs(SAAS): ...` / `docs(MVP): ...` / `docs(TASKS): ...` / `docs(DESIGN): ...` / `docs(ACTIONS): ...` / `docs(ADAPTER-COVERAGE): ...` / `docs(README): ...` / `docs(feature): ...` / `chore(env): ...` / `docs(AGENTS): sync codex mirror`
+`docs(CLAUDE): ...` / `docs(PRODUCT): ...` / `docs(ARCHITECTURE): ...` / `docs(DIRECTORY): ...` / `docs(DESIGN): ...` / `docs(OPERATIONS): ...` / `docs(ACTIONS): ...` / `docs(README): ...` / `chore(env): ...` / `docs(AGENTS): sync codex mirror`
 
 수정 없으면 커밋 없이 "변경 불필요" 보고.
 
@@ -157,7 +155,7 @@ stale이 없으면 "발견 0 — Pass1 N개 단언·Pass2 K개 주제 모두 일
 
 묶음: <같은 사실이 여러 문서에 걸린 항목 — 함께 고쳐야 하는 것>
 수정: <n>건 반영 (문서별 커밋 m개) / 제외: <n>건 (사용자 선택)
-재측정 필요: <ADAPTER-COVERAGE 숫자가 의심되는 항목 또는 "없음">
+재측정 필요: <ARCHITECTURE §1.9 숫자가 의심되는 항목 또는 "없음">
 ```
 
 ## 금지 사항
