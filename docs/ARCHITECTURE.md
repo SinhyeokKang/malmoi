@@ -1046,9 +1046,46 @@ SAAS §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 정
 
 ⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
 
-⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다.
+⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (SAAS §5.5 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다. ⚠️ **계정 병합(2026-09-12)이 그 옵션을 켜지 않는다** — 아래 절.
 
 ⚠️ **두 provider에 `checks: ["pkce", "state"]`를 건다** (2026-09-10, sec-audit-2). Google은 OIDC PKCE를 지원하고, **GitHub도 `code_challenge`를 받는다** — 실물 왕복으로 확인했다(`code_challenge_method=S256`이 authorize URL에 실려 나가고 토큰 교환이 통과한다). `lib/credentials/__tests__/sign-in.test.ts`가 그 설정을 고정한다.
+
+## 계정 병합 — `signIn` 콜백의 갈래 둘 (2026-09-12, account-linking)
+
+**`signIn` 콜백이 세 판정을 순서대로 지난다: 회수 → 병합 확인 → (이메일 갱신) → 병합 제안.** 순서가
+계약이다 — 앞의 둘은 로그인이 아니라 **다른 왕복**이고, 뒤에 두면 그 왕복이 세션을 만든 뒤에 판정하게
+된다.
+
+- **제안**(`planLinkOffer`): 처음 보는 `Account`인데 같은 **검증 이메일**의 User가 이미 다른 로그인
+  수단을 갖고 있으면, `OAuthAccountNotLinked`로 떨어뜨리지 않고 **문자열을 반환**해
+  `/signin/link/<challenge>`로 보낸다. ⚠️ **문자열 반환이 요지다** — `@auth/core`의 `callback/index.js`가
+  `handleLoginOrRegister`를 **통째로 건너뛰므로** `createUser`·`linkAccount`·`createSession`이 전부
+  0회다. 거부된 로그인이 고아 행을 남기지 않는 것과 같은 성질이다.
+- **확인**(`planLinkConfirm`): challenge 쿠키를 든 callback에서, `(provider, providerAccountId)`로
+  조회한 `Account.userId`가 challenge의 `userId`와 같아야 붙인다. ⚠️ **`user.id`를 쓰지 않는다** —
+  처음 보는 계정일 때 그 값은 갓 만들어진 난수라 DB의 어떤 행과도 안 맞는다.
+
+**challenge의 수명**: `VerificationToken`을 `malmoi/login-link` 접두로 재사용하고 **10분**이다. URL에
+싣는 것은 난수 원문, DB에 남는 것은 `hashInviteToken`의 해시다. **성공만 소비한다** — 실패가 소비하면
+훔친 URL 한 번으로 남의 병합을 태울 수 있고, 상한은 TTL이 든다. 소비는 조건부 `deleteMany`의 count가
+강제하므로 동시 요청 둘 중 **정확히 하나만** 성공한다.
+
+⚠️ **`safePrismaAdapter.linkAccount`의 게이트는 한 줄도 안 바뀌었다** — 확인 왕복은 **기존 계정으로 하는
+평범한 로그인**이라 그 메서드에 도달하지 않고(`handle-login.js`가 `getUserByAccount` 뒤 반환한다),
+붙일 행은 `finishLink`가 직접 쓴다. **그 게이트가 문서화한 정책의 뜻만 좁아졌다**: *"로그인 수단은
+User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. 옆문은 `finishLink` 하나이고 인가 조건이
+셋이다(이메일 동등 · 두 provider의 소유 증명 · 단일 사용 challenge). **그 조건을 적을 수 없는 진입점은
+만들지 않는다** — `/account`에 [Connect]가 없는 이유다.
+
+⚠️ **두 가로채기의 배타성은 구조가 아니라 순서와 쿠키 정리가 만든다.** `withRevocation`이 **바깥**,
+`withLoginLink`가 **안쪽**이고, 각자 state 쿠키를 **다른 이름·salt**로 쓰며, **시작하는 쪽이 상대의
+쿠키를 먼저 지운다**(양방향). intent 판정이 각자 쿠키 셋의 OR이라 암호적 결합이 없어서다 — 회수를
+중단한 사용자가 곧바로 병합을 시작하면 회수가 그 callback을 먹고 Location을 덮는다
+(POSTMORTEM 2026-09-10과 같은 계보).
+
+⚠️ **로그인 `Account`가 둘 이상이면 `planEmailRefresh`가 언제나 `keep`이다.** 아니면 `User.email`이
+**마지막으로 로그인한 provider에 따라 뒤집히고** 초대 대조가 그 값 위에 선다. 대가는 병합한 사용자의
+이메일이 provider를 안 따라간다는 것이다.
 
 **로그인된 세션에서 추가 provider를 연결하는 경로는 별도로 막는다** (sec-audit-2 #31).
 `safePrismaAdapter` 기반의 `credentialAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
