@@ -62,7 +62,8 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 17개 + tone.ts 헬퍼. CLI로 신규 추가는
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 18개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+                        붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
                         모으면 focus-ring 스캐너가 그 파일을 통째로 못 본다(Button에 asChild가 없는 것도 같은 이유)
@@ -86,6 +87,18 @@ components/
   locales/ members/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
+  onboarding/modal.tsx  새 프로젝트 모달의 껍데기. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고
+                        Radix Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
+                        고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
+                        넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유한다
+  onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
+                        단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
+                        명시돼 있어야 한다(브랜치·리포·후보 변경)
+  projects/project-list.tsx
+                        목록 본문. ⚠️ <ContentPanel>을 여기서 안 든다 — /projects와 /projects/new가
+                        둘 다 그리므로 공유 컴포넌트가 들면 shell-layout이 두 라우트에서 0을 센다
+                        ⚠️ routes.projects({filter,q})를 부르는 자리라 entry-points의 "쿼리 수신자"
+                        검사가 app/ 밖인 이 파일도 읽는다
   translation-input.tsx 셀 편집. 실패 시 포커스는 shouldRefocus가 정한다(다른 셀을 치고 있으면 안 뺏는다)
   publish-button.tsx    ⚠️ 실패에는 router.refresh()를 부르지 않는다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
@@ -129,6 +142,14 @@ lib/
                         반대다(하나는 왕복을 멈추고 하나는 진행시킨다) — 합치지 않는다
   onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
+  onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
+                        "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
+  onboarding/next-enabled.ts
+                        design §4의 상태 표를 코드로. ⚠️ lib/ 아래 잎이다 — components/ 아래면
+                        "use client" 그래프에 들어가 타입-온리 제약이 이 모듈까지 따라온다
+  onboarding/key-gap.ts ⚠️ 잎이다. ③(클라이언트)이 값으로 부르는데 detect.ts에 두면 그 그래프
+                        (lib/adapters → ts-morph)가 번들에 7.2MB로 들어온다. detect.ts가 재수출한다
+  onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
   search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 화면 여덟이 전부
