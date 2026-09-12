@@ -390,16 +390,36 @@ it("actual Prisma R1/R2 deploy records failed finalize and resumes only after ve
   expect(await prisma.projectMember.count()).toBe(1);
 });
 
-async function revocationFixture(provider: "github" | "google" = "github") {
+/**
+ * ⚠️ **`second`가 2026-09-12에 붙었다** (account-linking T6) — 이 픽스처가 계정을 **정확히 하나**만
+ * 붙여서, 수단이 둘인 계정의 성공 경로가 이 스위트에서 **원리적으로 안 밟혔다.**
+ */
+async function revocationFixture(provider: "github" | "google" = "github", second = false) {
   const adapter = credentialAdapter(prisma);
   const user = await adapter.createUser!({ id: "ignored", email: "revoke@example.com", emailVerified: null });
   const other = await adapter.createUser!({ id: "ignored", email: "other@example.com", emailVerified: null });
   await adapter.linkAccount!({ userId: user.id, provider, providerAccountId: "same", type: "oauth" });
+  // 어댑터는 둘째 로그인 수단을 거부한다(정책 그대로) — 병합이 쓰는 경로로 직접 넣는다.
+  if (second) await prisma.account.create({ data: { userId: user.id, type: "oauth", provider: provider === "github" ? "google" : "github", providerAccountId: "second" } });
   for (const raw of ["current", "second-device"]) await adapter.createSession!({ userId: user.id, sessionToken: raw, expires: new Date(Date.now() + 600000) });
   await adapter.createSession!({ userId: other.id, sessionToken: "other-device", expires: new Date(Date.now() + 600000) });
   const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url") };
   return { user, other, input, adapter };
 }
+/**
+ * ⚠️ **수단이 둘이면 회수가 통째로 죽던 자리다** (account-linking T6) — `accounts.length !== 1`이
+ * 그 조건이었고, 병합이 그 상태를 실제로 만든다. 확인 상대는 `pickLoginAccount`가 결정적으로 고른다.
+ */
+it("revocation still works for an account with two sign-in methods", async () => {
+  const { input, other } = await revocationFixture("github", true);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await beginRevocation(prisma, input)).toBe("ready");
+  expect(await finishRevocation(prisma, input)).toBe("revoked");
+  expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
+  // 회수는 세션만 지운다 — 로그인 수단은 그대로다.
+  expect(await prisma.account.count()).toBe(2);
+});
+
 it("revocation atomically consumes one challenge, preserves another user and rejects replay", async () => {
   const { input, other, adapter } = await revocationFixture();
   expect(await beginRevocation(prisma, input)).toBe("ready");
