@@ -7,7 +7,10 @@ import { render, find } from "@/components/__tests__/helpers/dom";
 import { EntityCard } from "@/components/ui/entity-card";
 
 const ROOT = process.cwd();
-const SOURCE = readFileSync(join(ROOT, "components/ui/entity-card.tsx"), "utf8");
+// ⚠️ **주석을 벗기고 센다** — 프리미티브가 자기 치수를 설명하므로 그 문장이 검사를 거짓으로 만든다.
+const SOURCE = readFileSync(join(ROOT, "components/ui/entity-card.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/\/\/.*$/gm, "");
 
 /**
  * `EntityCard` — "지금 다루는 대상 하나"를 보이는 프리미티브 (account-linking design §7).

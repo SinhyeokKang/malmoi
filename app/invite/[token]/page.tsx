@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { signIn, signOut } from "@/auth";
+import { InviteProjectCard } from "@/components/invite/project-card";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { Alert } from "@/components/ui/alert";
@@ -71,7 +72,11 @@ export default async function InvitePage({
       role: true,
       expiresAt: true,
       acceptedAt: true,
-      project: { select: { name: true } },
+      /**
+       * ⚠️ **국기는 번역자가 자기 언어가 있는지 보는 값이다** (account-linking §7) — orphaned는
+       * 리포에서 사라진 로케일이라 수락 판단의 재료가 아니다. **숫자는 싣지 않는다.**
+       */
+      project: { select: { name: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
     },
   });
     return row === null ? null : decodeInvitation(row);
@@ -82,8 +87,6 @@ export default async function InvitePage({
   if (invitation.acceptedAt !== null) return <Notice>{m.errors.invite["already-accepted"]}</Notice>;
   if (invitation.expiresAt.getTime() <= Date.now()) return <Notice>{m.errors.invite.expired}</Notice>;
 
-  // 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 같은 역할이 화면마다 다르게 읽힌다.
-  const invited = m.invite.invitedTo(invitation.project.name, m.projects.role[invitation.role]);
   const email = maskEmail(invitation.email);
 
   /**
@@ -96,14 +99,20 @@ export default async function InvitePage({
    */
   const failure = e === undefined ? null : <AuthToast error={inviteErrorMessage(e)} />;
 
+  /**
+   * ⚠️ **노출을 단계로 가르는 것이 요지다** (account-linking §6): 이 화면은 matcher 밖이라 링크를
+   * 가진 누구에게나 열리고, 그때 고를 것은 "로그인할까"뿐이라 **프로젝트 카드가 없다.**
+   */
   if (session.status === "none") {
     return (
       <Card>
-        <p className="text-sm">{invited}</p>
+        <h1 className="text-2xl font-medium">{m.invite.title}</h1>
+        <p className="text-muted-foreground text-center text-sm">{m.invite.sentTo(email)}</p>
         {failure}
-        <p className="text-muted-foreground text-xs">{m.invite.signInHint(email)}</p>
+        <p className="text-muted-foreground text-center text-xs">{m.invite.signInHint(email)}</p>
         <div className="flex w-full flex-col gap-2">
           {/* 로그인 뒤 이 페이지로 돌아온다 — 토큰이 URL에 있으므로 그대로 이어진다. */}
+          {/* ⚠️ **둘 다 `default`다** — 어느 쪽으로 가입했는지 화면이 모르므로 primary가 없다. */}
           <ProviderButton provider="github" label={m.invite.github} token={token} />
           <ProviderButton provider="google" label={m.invite.google} token={token} />
         </div>
@@ -113,9 +122,19 @@ export default async function InvitePage({
 
   return (
     <Card>
-      <p className="text-sm">{invited}</p>
+      <h1 className="text-2xl font-medium">{m.invite.title}</h1>
+      {/*
+        ⚠️ **각주에서 설명으로 올라왔다** — 누구의 초대인지는 수락 버튼 뒤의 단서가 아니라 읽는
+        순서의 둘째다 (account-linking §6).
+      */}
+      <p className="text-muted-foreground text-center text-sm">{m.invite.sentTo(email)}</p>
       {/* 수락 버튼을 눌러서 나는 실패는 이 줄이 유일한 통로다 — 없으면 아무 일도 안 일어난 것으로 보인다. */}
       {failure}
+      <InviteProjectCard
+        name={invitation.project.name}
+        role={m.projects.role[invitation.role]}
+        locales={invitation.project.locales.map((locale) => locale.code)}
+      />
       {/*
         "초대받은 주소의 계정으로 로그인해 주세요"라고 말해 놓고 로그아웃할 곳이 없으면 갇힌다 — 이
         페이지는 `(edit)` 레이아웃 밖이라 셸의 sign out이 없다 (code-review 2026-09-06 🟡11).
@@ -151,7 +170,6 @@ export default async function InvitePage({
           {m.invite.accept}
         </SubmitButton>
       </form>
-      <p className="text-muted-foreground text-xs">{m.invite.sentTo(email)}</p>
     </Card>
   );
 }

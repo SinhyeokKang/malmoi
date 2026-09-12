@@ -902,19 +902,27 @@ export const en = {
   /** 초대 수락 화면 — **셸 밖 카드다** (design §3.14). 거부 문구는 `errors.invite`가 든다. */
   invite: {
     /**
-     * 역할 이름은 `projects.role`에서 온다 — 화면 어휘가 두 벌이면 갈린다.
+     * ⚠️ **`invitedTo`를 대체한다** (account-linking §6). 프로젝트 이름과 역할은 이제 **카드의 두
+     * 행**이라 합친 문자열의 소비자가 없다 — 있지도 않은 자리를 위해 사전 항목을 만들지 않는다.
+     * 역할 이름은 계속 `projects.role`에서 온다(화면 어휘가 두 벌이면 갈린다). 그 값에 관사를
+     * 붙이지 않는 규칙도 그대로다 — 2026-09-08에 "as a Editor"가 나왔다.
      *
-     * ⚠️ **관사를 붙이지 않는다** (2026-09-08 실물 검증 — "as a Editor"가 나왔다). 역할 이름은 데이터라
-     * a/an을 문장이 알 수 없고, 그것을 알려면 역할마다 관사 표를 두게 된다. 직함처럼 관사 없이 쓴다.
+     * ⚠️ **`"Welcome to malmoi"`를 쓰지 않는다** — 이미 멤버인 사람이 두 번째 프로젝트에 초대되는
+     * 경우가 있고 그때 거짓이다.
      */
-    invitedTo: (project: string, role: string): string => `You're invited to ${project} as ${role}.`,
+    title: "You're invited",
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
     github: "Sign in with GitHub",
     google: "Sign in with Google",
     accept: "Accept invitation",
     otherAccount: "Sign in with another account",
-    sentTo: (email: string): string =>
-      `This invitation was sent to ${email}. Signing in with a different account won't accept it.`,
+    /**
+     * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (account-linking §6). 지금까지의 값은
+     * *"…Signing in with a different account won't accept it."*이었는데 **그 문장이 병합으로
+     * 거짓이 된다** — 다른 수단으로 들어와도 같은 주소면 수락된다. 그리고 설명 자리로 올라오면
+     * 올바른 계정으로 온 사람이 경고부터 읽는다. 실제 거부는 `email-mismatch` 갈래가 말한다.
+     */
+    sentTo: (email: string): string => `This invitation was sent to ${email}.`,
     // ⚠️ 장애 문구를 여기 두지 않는다 — `errors.invite.unavailable`이 같은 상태를 말한다.
     // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
   },

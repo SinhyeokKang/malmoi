@@ -10,7 +10,7 @@ vi.mock("@/lib/login-link/clear-cookies", () => ({ clearLinkCookies: vi.fn() }))
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
 vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row }));
 vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ email: "person@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2099-01-01"), project: { name: "Demo" } }) } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ email: "person@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2099-01-01"), project: { name: "Demo", locales: [{ code: "ko" }] } }) } }) }));
 vi.mock("../actions", () => ({ acceptInvitation: state.accept }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));

@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { SubmitButton } from "@/components/submit-button";
 import { AuthLayout } from "@/components/signin/auth-layout";
+import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
+import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
 import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
@@ -74,13 +76,16 @@ export default async function LinkAccountPage({
           </Alert>
         )}
 
-        {/* T4에서 `EntityCard`가 이 자리에 온다 — 지금은 같은 정보를 평문 두 줄로 둔다. */}
-        <div className="border-border flex w-full flex-col gap-px rounded-lg border p-3">
-          <span className="text-mono truncate text-sm">{view.emailLabel}</span>
-          <span className="text-muted-foreground text-xs">
-            {providerLabel(view.have)} · {joinedLabel(view.joined)}
-          </span>
-        </div>
+        {/*
+          ⚠️ **1행이 마스킹한 이메일이다** — 남의 계정이므로 이름·아바타 이미지를 싣지 않는다.
+          우측은 provider 마크 하나이고, 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를
+          그대로 받는다 (design §7).
+        */}
+        <EntityCard
+          name={view.emailLabel}
+          secondary={`${providerLabel(view.have)} · ${joinedLabel(view.joined)}`}
+          meta={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+        />
 
         <div className="flex w-full flex-col gap-2">
           <ProviderButton provider={view.have} challenge={challenge} dest={view.dest} />

@@ -6,6 +6,10 @@ vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: state.row } }) }));
 vi.mock("../actions", () => ({ acceptInvitation: vi.fn() }));
+// 저장 봉투 복호는 이 화면의 계약이 아니다 — `page.test.tsx`가 손상된 행의 갈래를 따로 센다.
+vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row }));
+vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
+vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 import Page from "../[token]/page";
 import { m } from "@/lib/i18n";
 
@@ -35,7 +39,8 @@ it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
   for (const status of ["ok", "none"] as const) {
     const markup = await html(status);
     expect(markup).toContain("<h1");
-    expect(markup).toContain(m.invite.title);
+    // `renderToStaticMarkup`이 아포스트로피를 이스케이프하므로 사전 값을 같은 규칙으로 접는다.
+    expect(markup).toContain(m.invite.title.replace(/'/g, "&#x27;"));
   }
 });
 
