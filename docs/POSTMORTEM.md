@@ -1162,3 +1162,28 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **재발 방지**: 행 전체를 나누는 선은 td에, 입력·메타데이터의 포커스 표시는 내부 div에 둔다.
   `rg -n 'border-l' components/translations/key-group.tsx components/translation-input.tsx`를 실제 실행했고
   이 경계선은 TableCell 한 곳에만 남았다. 수정 후 같은 브라우저 실험에서 늘어난 세 행 모두 td의 1px 경계선을 확인했다.
+
+### 2026-09-12 — 테스트가 만든 `NextRequest`는 복사되고 런타임이 준 것은 던졌다
+
+- **영역**: `lib/login-link/http.ts` (`withLoginLink`)
+- **증상**: 계정 병합의 **확인 왕복 전체가 500**이었다 — 성공 갈래도, 다른 계정 갈래도. 화면에는
+  "페이지가 작동하지 않습니다 / HTTP ERROR 500"만 나왔다. `pnpm test` 2862개 · 격리 PostgreSQL 43개 ·
+  `pnpm build`가 전부 green인 상태에서 **dev 서버 첫 클릭에** 났다.
+- **근본 원인**: 확인 callback에서 다른 사용자의 세션 쿠키를 떼려고 `new NextRequest(request)`로
+  요청을 복사했다. Next 16 런타임이 핸들러에 넘기는 요청 객체를 그 생성자에 넣으면
+  `TypeError: Cannot read private member #state from an object whose class did not declare it`가
+  던져진다. **`withLoginLink`의 `try` 밖**(가로채기 판정 직후)이라 500이 그대로 나갔다.
+- **그물**: 없었다. 단위 스위트(`lib/login-link/__tests__/http.test.ts`)도 통합 스위트
+  (`lib/credentials/__tests__/postgres.integration.ts`)도 `new NextRequest("http://…", { headers })`로
+  **자기가 만든** 객체를 넘기므로 그 복사가 성립한다 — 두 스위트가 재는 것은 같은 클래스의 같은
+  생성 경로이고, 런타임이 주는 객체와 다르다는 사실은 **원리적으로 못 본다.** 잡은 것은
+  `/bugshot-qa`도 CI도 아니라 **실물 클릭**이었다(T7 시나리오 4를 밟다가).
+- **재발 방지**: 표준 `Request`로 조립한다 — `new Request(request.url, { method, headers })`이고
+  본문이 있는 메서드만 `body` + `duplex: "half"`를 얹는다. `next-auth`도 내부에서 `new Request(url, req)`만
+  하므로 이 모양이 라이브러리와 같은 계약이다. `rg -n 'new NextRequest\(' lib app --glob '!**/__tests__/**'`를
+  실제 실행했고 프로덕션 코드에 남은 것은 0건이다(테스트는 요청을 **만드는** 쪽이라 대상이 아니다).
+- **⚠️ 남는 교훈**: **"프레임워크가 준 객체를 우리 손으로 다시 만든다"는 테스트가 못 보는 부류다.**
+  같은 계보로 이 리포가 이미 두 번 밟았다 — 툴팁 provider(2026-09-08)와 `Slot.Slottable`
+  (2026-09-09)도 렌더되는 순간에만 드러났다. 그 셋의 공통점은 **우리 코드가 라이브러리 내부 규약에
+  닿는데 그 규약을 우리 픽스처가 흉내 낸다**는 것이다. 인증 경로에 그런 코드를 넣으면 실물 왕복을
+  한 번 밟기 전에는 green을 믿지 않는다.

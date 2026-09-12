@@ -1,6 +1,6 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { NextResponse, NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { requestOrigin } from "@/lib/github-connect/origin";
@@ -61,6 +61,39 @@ export async function authorizeLoginLink(
   return failureUrl(attempt.token === "" ? null : attempt.token, result.outcome);
 }
 
+/**
+ * 확인 OAuth의 신원으로 로그인시키려고 **요청 복사본에서만** 세션 쿠키를 뗀다. 다른 사용자의
+ * 기존 세션을 Auth.js에 넘기면 `finishLink`가 커밋된 뒤 `handleLoginOrRegister`가
+ * `OAuthAccountNotLinked`를 던지고, 병합은 성공했는데 세션은 남의 것인 상태로 착지한다.
+ * 실패하면 브라우저의 기존 세션은 그대로이고, 성공하면 Auth.js가 발급한 쿠키로 교체된다.
+ *
+ * ⚠️ **`new NextRequest(request)`로 복사하지 않는다** (2026-09-12 실물). Next 16 런타임이 넘기는
+ * 요청 객체를 그 생성자에 넣으면 `TypeError: Cannot read private member #state`로 **500이 난다** —
+ * 확인 왕복 전체가 죽었다. **테스트는 이것을 원리적으로 못 봤다**: 단위·통합 스위트가
+ * `new NextRequest("http://…", { headers })`로 직접 만든 객체를 넘기므로 그 복사가 성립한다
+ * (POSTMORTEM 2026-09-12). 표준 `Request`로 조립하면 두 경로가 같아진다 — `next-auth`도
+ * 내부에서 `new Request(url, req)`만 한다.
+ */
+function withoutSessionCookie(request: NextRequest): NextRequest {
+  const headers = new Headers(request.headers);
+  const cookie = headers.get("cookie");
+  if (cookie !== null) {
+    const kept = cookie
+      .split(";")
+      .map((part) => part.trim())
+      .filter((part) => part !== "" && !/^(?:__Secure-)?authjs\.session-token(?:\.\d+)?=/.test(part));
+    if (kept.length === 0) headers.delete("cookie");
+    else headers.set("cookie", kept.join("; "));
+  }
+  const init: RequestInit & { duplex?: "half" } = { method: request.method, headers };
+  // GET·HEAD엔 본문이 없다. 그 밖에는 스트림을 그대로 넘긴다(`duplex`가 없으면 undici가 던진다).
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = request.body;
+    init.duplex = "half";
+  }
+  return new Request(request.url, init) as unknown as NextRequest;
+}
+
 export async function withLoginLink(request: NextRequest, run: (request: NextRequest) => Promise<Response>): Promise<Response> {
   const url = new URL(request.url);
   if (!/^\/api\/auth\/callback\/(github|google)$/.test(url.pathname)) return run(request);
@@ -76,14 +109,7 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
     request.cookies.has(linkStateCookie(false).name);
   if (!intent) return run(request);
 
-  // 확인 OAuth의 신원으로 로그인한다. 다른 사용자의 기존 세션을 Auth.js에 넘기면
-  // finishLink가 커밋된 뒤 handleLoginOrRegister가 OAuthAccountNotLinked를 던진다.
-  // 요청 복사본에서만 제거한다: 실패하면 브라우저의 기존 세션은 그대로이고,
-  // 성공하면 Auth.js가 발급한 확인 사용자의 세션 쿠키로 교체된다.
-  const callbackRequest = new NextRequest(request);
-  for (const { name } of callbackRequest.cookies.getAll()) {
-    if (/^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/.test(name)) callbackRequest.cookies.delete(name);
-  }
+  const callbackRequest = withoutSessionCookie(request);
 
   const attempt: Attempt = { token: tokenCookie?.value ?? "" };
   return stateScope.run(secure, () =>
