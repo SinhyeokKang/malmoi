@@ -30,6 +30,23 @@ describe("routes — 정적 경로", () => {
     expect(routes.project("bugshot-2")).toBe("/projects/bugshot-2");
   });
 
+  /**
+   * 병합 안내 화면 (account-linking T2). ⚠️ **쿼리를 `withQuery`로 받는다** — 확인 실패가 `Alert`
+   * 문구를 화면에 전달해야 하고, 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 수신자"
+   * 검사를 통째로 회피한다 (POSTMORTEM 2026-09-06).
+   */
+  it("병합 안내는 challenge를 경로로 들고 사유를 쿼리로 받는다", () => {
+    expect(routes.signInLink("abc123")).toBe("/signin/link/abc123");
+    expect(routes.signInLink("abc123", { e: "wrong-account" })).toBe("/signin/link/abc123?e=wrong-account");
+    expect(routes.signInLink("abc123", { e: undefined })).toBe("/signin/link/abc123");
+  });
+
+  /** `/account`의 로그인 수단 해제 결과 (account-linking T5). */
+  it("계정 화면이 해제 결과를 쿼리로 받는다", () => {
+    expect(routes.account({ link: "last-method" })).toBe("/account?link=last-method");
+    expect(routes.account({ sessionRevocation: "expired" })).toBe("/account?sessionRevocation=expired");
+  });
+
   it("프로젝트 경로는 slug를 그대로 든다", () => {
     expect(routes.locales("bugshot-2")).toBe("/projects/bugshot-2/locales");
     expect(routes.settings("bugshot-2")).toBe("/projects/bugshot-2/settings");
