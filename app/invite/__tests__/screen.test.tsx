@@ -1,13 +1,13 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-const state = vi.hoisted(() => ({ row: vi.fn(), session: vi.fn() }));
+const state = vi.hoisted(() => ({ row: vi.fn(), session: vi.fn(), viewer: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: state.row } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: state.row }, user: { findUnique: state.viewer } }) }));
 vi.mock("../actions", () => ({ acceptInvitation: vi.fn() }));
 // 저장 봉투 복호는 이 화면의 계약이 아니다 — `page.test.tsx`가 손상된 행의 갈래를 따로 센다.
-vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row }));
+vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row, decodeUser: (row: unknown) => row }));
 vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
 vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 import Page from "../[token]/page";
@@ -23,9 +23,10 @@ const invitation = {
   project: { name: "bugshot-2", locales: [{ code: "ko" }, { code: "ja" }] },
 };
 
-async function html(status: "ok" | "none") {
-  state.session.mockResolvedValue({ status });
+async function html(status: "ok" | "none", viewerEmail = "person@example.com") {
+  state.session.mockResolvedValue({ status, userId: "u1" });
   state.row.mockResolvedValue(invitation);
+  state.viewer.mockResolvedValue({ id: "u1", email: viewerEmail });
   return renderToStaticMarkup(
     await Page({ params: Promise.resolve({ token: "t" }), searchParams: Promise.resolve({}) }),
   );
@@ -51,7 +52,9 @@ it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
 it("비로그인에는 프로젝트 카드가 없고 로그인에는 있다", async () => {
   const signedOut = await html("none");
   expect(signedOut).not.toContain("bugshot-2");
-  expect(signedOut).toContain(m.invite.github);
+  // ⚠️ **`/signin`과 같은 문구·같은 버튼이다** — 이 화면만 다른 말을 쓰던 드리프트를 2026-09-12에 걷었다.
+  expect(signedOut).toContain(m.signIn.github);
+  expect(signedOut).toContain(m.signIn.google);
 
   const signedIn = await html("ok");
   expect(signedIn).toContain("bugshot-2");

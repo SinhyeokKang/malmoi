@@ -8,7 +8,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: "localhost:3000", "x-forwarded-proto": "http" }),
 }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique: async () => ({ id: "i", projectId: "p", email: "a@example.com", role: "EDITOR", acceptedAt: null, expiresAt: new Date("2030-01-01"), project: { name: "Test", locales: [] } }) } }) }));
-vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row }));
+vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row, decodeUser: (row: unknown) => row }));
 vi.mock("@/lib/login-link/view", () => ({
   loadChallengeView: async () => ({ emailLabel: "a***@example.com", have: "github", pending: "google", joined: new Date("2026-09-01"), dest: { kind: "projects" } }),
 }));

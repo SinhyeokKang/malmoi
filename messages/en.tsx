@@ -912,8 +912,8 @@ export const en = {
      */
     title: "You're invited",
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
-    github: "Sign in with GitHub",
-    google: "Sign in with Google",
+    // ⚠️ **provider 버튼 문구가 여기 없다** (2026-09-12) — `/signin`과 같은 버튼을 쓰므로
+    // `signIn.github`·`signIn.google`이 든다. 사본을 두면 같은 버튼이 화면마다 다른 말을 한다.
     accept: "Accept invitation",
     otherAccount: "Sign in with another account",
     /**

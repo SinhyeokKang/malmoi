@@ -304,8 +304,16 @@ challenge), **그 조건을 못 적는 진입점은 만들지 않는다**(⑨ �
    ⚠️ **`components/ui/`의 프리미티브가 아니라 `components/`의 화면 조각이다** (⑩) — §7.
 5. `SubmitButton variant="primary" size="lg" w-full` — `accept`
 
-**비로그인 상태**: 1–3은 같고 **카드가 없다.** 그 자리에 `signInHint` 한 줄 + provider 버튼 둘
-(**둘 다 `default`** — 어느 쪽으로 가입했는지 화면이 모르므로 primary가 없다).
+**비로그인 상태**: 1–3은 같고 **카드가 없다.** 그 자리에 `signInHint` 한 줄 + provider 버튼 둘.
+
+⚠️ **~~둘 다 `default`~~ → `/signin`과 **같은 버튼**을 쓴다** (2026-09-12 실물 대조에서 뒤집혔다).
+여기 적혀 있던 근거는 *"어느 쪽으로 가입했는지 화면이 모르므로 primary가 없다"*였는데, **그 말은
+`/signin`에도 똑같이 성립해 두 화면을 가르지 못한다.** 그리고 구현은 그보다 더 갈라져 있었다 —
+아이콘 없는 맨 `SubmitButton`에 `"Sign in with …"`이라는 다른 문구였다(사전 항목도 따로 있었다).
+결정이 아니라 드리프트였고, 번역자에게 **첫 얼굴인 화면**이 로그인 화면과 다른 제품처럼 보였다.
+지금은 `ProviderSubmit` + 브랜드 아이콘 + GitHub `primary` + `signIn.github`·`signIn.google`로
+`/signin`을 그대로 따른다 — 로그인이 유일한 할 일인 화면에 primary가 0이면 DESIGN §2의
+"primary는 화면당 하나"가 그 화면에서 성립하지 않는다.
 ⚠️ **노출을 단계로 가르는 것이 요지다**: 이 화면은 matcher 밖이라 링크를 가진 누구에게나 열리고,
 그때 고를 것은 "로그인할까"뿐이라 프로젝트 상세가 필요 없다.
 
