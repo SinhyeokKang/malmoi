@@ -1,29 +1,27 @@
 # 말모이 (malmoi)
 
-사내 로컬라이제이션 관리 도구(TMS) PoC. 크롬 확장의 `_locales/<locale>/messages.json`에서 출발했고, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). **지금은 어댑터 5종을 읽고 쓴다** — 크롬 `_locales` · JSON 카탈로그 · YAML 카탈로그 · TS/JS 딕셔너리 둘 ([docs/ADAPTER-COVERAGE.md](./docs/ADAPTER-COVERAGE.md)). **리포를 연결하면 로케일 파일을 탐지해 프로젝트를 만들고 첫 적재까지 웹에서 끝낸다**(`/projects/new`) — 대상 리포는 복사용 워크플로 YAML과 그 프로젝트의 push 토큰만 붙인다.
+사내 로컬라이제이션 관리 도구(TMS). 크롬 확장의 `_locales/<locale>/messages.json`에서 출발했고, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). **지금은 어댑터 5종을 읽고 쓴다** — 크롬 `_locales` · JSON 카탈로그 · YAML 카탈로그 · TS/JS 딕셔너리 둘. **리포를 연결하면 로케일 파일을 탐지해 프로젝트를 만들고 첫 적재까지 웹에서 끝낸다**(`/projects/new`) — 대상 리포는 복사용 워크플로 YAML과 그 프로젝트의 push 토큰만 붙인다.
 
 **코어 설계 원칙: 번역 값은 DB가 진실, 소스 키는 코드가 진실.** 각 축에 소유자가 하나뿐이므로 머지 로직이 아예 존재하지 않는다 — export가 DB에서 결정적으로 재생성되므로, git 브랜치가 갈라져도 base에서 다시 따서 파일을 새로 뽑으면 끝난다.
 
-Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이다. **MVP(PoC)는 2026-09-05에 닫혔고 지금은 SaaS화 단계다** — 인증·인가(2단계, 2026-09-06 프로덕션 반영), GitHub 설치 연결(4단계)과 탐지 온보딩(5단계)이 **2026-09-07에 프로덕션까지** 갔다(PR [#9](https://github.com/SinhyeokKang/malmoi/pull/9) → `f595cc3`). **6단계(번역 UI 재작성 + Publish)에 들어갔다** — 6a는 4번의 배송으로 **전부 프로덕션에 나가 닫혔고**(PR [#12](https://github.com/SinhyeokKang/malmoi/pull/12) → `46df51a` · [#14](https://github.com/SinhyeokKang/malmoi/pull/14) → `add099a` · [#15](https://github.com/SinhyeokKang/malmoi/pull/15) → `ef9da44` · [#16](https://github.com/SinhyeokKang/malmoi/pull/16) → `695e441`), 그 뒤 6b가 사이클로 돈다 — 6b-1(어댑터 오류 코드화)·6b-2(멤버 화면)가 프로덕션(PR [#17](https://github.com/SinhyeokKang/malmoi/pull/17) → `982cb42` · [#19](https://github.com/SinhyeokKang/malmoi/pull/19) → `a00d380`), 6b-3(기준 브랜치·기준 로케일)·6b-4(`/account` + 사이드바 2구역)도 프로덕션(PR [#21](https://github.com/SinhyeokKang/malmoi/pull/21) → `7c975c0` · [#22](https://github.com/SinhyeokKang/malmoi/pull/22) → `70e393b`), 6b-5(로케일 화면)·6b-6(프로젝트 Home — 착지점)도 프로덕션(PR [#23](https://github.com/SinhyeokKang/malmoi/pull/23) → `0d68d71`)이다. ✅ **6단계가 프로덕션까지 끝났다.** ✅ **7단계(운영 안전성)도 프로덕션까지 끝났다** (2026-09-10, PR [#26](https://github.com/SinhyeokKang/malmoi/pull/26) → `d0e8688`, 실물 검증 포함) — `SyncRun` 테이블과 동시 실행 차단·stale 복구·안정적 오류 코드·프로젝트 보관·변경 이력(`logs`) 화면이고, **이로써 화면 여덟이 전부 찼다.** 그 뒤 **보안 라운드 셋이 프로덕션까지 갔다** (2026-09-10): sec-audit-2 수정(PR [#27](https://github.com/SinhyeokKang/malmoi/pull/27) → `ff5e8a4`) · **자격증명·개인정보 저장 암호화 + 전체 세션 회수**(PR [#28](https://github.com/SinhyeokKang/malmoi/pull/28) → `9e6854e`) · 평문 email 인덱스 제거(PR [#29](https://github.com/SinhyeokKang/malmoi/pull/29) → `f6933d7`) — dev·prod 양쪽 DB 전환이 끝났다. 🔵 **8단계(UI 재작성)에 들어갔다** (2026-09-10) — Figma 시안 기반이고 배송 단위로 쪼갠다(`docs/features/ui-rework/`). **8-1(signin·초대)이 프로덕션에 나갔다** (PR [#31](https://github.com/SinhyeokKang/malmoi/pull/31) → `718db80`) — 랜딩 페이지가 `/`에 들어올 자리를 비우려고 로그인 화면을 **`/signin`으로 갈랐고**(목적지를 만드는 아홉 자리를 `lib/routes.ts` 하나로 모았다), 그 위에 시안을 입히면서 **전역 규칙 여덟**(neutral 팔레트 · weight 최대 500 · **자간을 크기 토큰이 든다** · radius 12 · elevation 토큰 둘 · 밑줄 없는 링크 · 토스트 피드백 · 2열 패널 골격)이 확정됐다. **8-2(셸)와 8-3(프로젝트 목록)도 프로덕션에 나갔다** (PR [#32](https://github.com/SinhyeokKang/malmoi/pull/32) → `23f0f50`) — 셸은 전폭 48 헤더 · 투명 사이드바 · 흰 콘텐츠 패널 · 320 프로젝트 패널 골격이고 `app/(edit)/projects/[slug]/layout.tsx`가 새로 생겼다. 목록은 2줄 행 · URL 필터(`?filter=`) · 상태 배지 하나 · fluid 폭이고, 사이드바가 시안에 맞춰 접기·스위처·`New project`를 잃었다. ✅ **그 둘도 프로덕션에 나갔다** (PR [#34](https://github.com/SinhyeokKang/malmoi/pull/34) → `77630c4`, 2026-09-11). ① **2026-09-11 폴리싱 라운드** — 목록에 이름 검색(`?q=`, 필터와 직교해 탭을 옮겨도 남는다)이 붙고 필터가 **상태 다섯 + all 여섯**으로 넓어졌으며, 패널 머리가 고정되고(`PanelHeader`/`PanelBody`가 스크롤 경계를 가른다), `Tooltip` 프리미티브가 소비자 0으로 빠졌고, 화면 제목이 사이드바 라벨 키를 공유하면서 하단 항목이 **Docs**가 됐고, `lib/tone.ts`(이름 해시 색 여덟)가 섰고, **fluid의 정의가 "제한 없음"에서 1280 상한으로** 바뀌었다. ② **8-4(번역 화면)** (2026-09-11) — 이 단계에서 유일하게 폴리싱이 아니라 재작성인 화면이고, **표의 축이 바뀌었다**: 로케일이 열이 아니라 **행**이라 키 하나가 그룹이고 그 아래 선택된 로케일마다 한 행이다. `?focus=`·`?state=`가 폐기되고 `?locales=` 다중 선택이 그 자리에 왔으며, 왼쪽 네임스페이스 패널이 드롭다운 + 섹션 헤딩으로 바뀌고 적용된 필터가 칩으로 선다. 상태 필터를 뺀 대가는 **섹션 안 pending 우선 정렬**이 갚고, breadcrumb은 프로젝트 하위 화면 다섯에서 함께 사라졌다(위로 가는 길은 사이드바가 든다). 로케일 행의 국기 세트(`public/flags/` — `public/brand/` 옆의 **커밋된 원본**)와 언어표도 이 배송이 들여왔다. 같은 PR에 **시안 정합 라운드**가 실렸다 — Figma `212:937`을 좌표로 재서 머리 여백·제목 급·칩·표의 선 구조를 맞추고, **패널 머리를 라우트 아홉 전부에서 통일**했으며(제목 20px), **mono가 키 이름·로케일 코드에서 빠졌다**(mono는 8-P의 diff 표면으로 남긴다). **dev에 남아 있는 것은 weight 라운드 하나다** — 본문 기본이 300 → 400이 되어 쓰는 weight가 **400·500 둘뿐**이다. 전역 규칙의 정본은 [docs/DESIGN.md](./docs/DESIGN.md) §0이다. 그 위에 **계정 병합**이 dev에 얹혔다 (2026-09-12, `docs/features/account-linking/`) — 같은 주소로 다른 provider에 들어온 사람을 거부하는 대신 존재하는 계정을 보여주고 **그 계정의 provider로 인증시켜** 합친다(`/signin/link/[challenge]`). SAAS가 두 자리에서 비범위로 두었던 것이고, 연 근거는 **초대 단절**이다 — 초대 링크를 받은 비개발자가 자기 주소인데도 수락할 길이 없었다. 자동 병합은 여전히 없고 `safePrismaAdapter`의 게이트도 그대로다. 같은 배송에 초대 화면 개편(`h1`·프로젝트 카드)과 `/account`의 로그인 수단 목록·해제가 들어갔다. 포트폴리오 마감이 9단계다. 화면 구조의 정본은 [docs/SAAS.md](./docs/SAAS.md) §7.7이다.
+Crowdin/Tolgee 대체가 목표가 아니라 학습·실험이고, 사내에서 실제로 써볼 수 있는 수준이 목표다. 무엇을 만들고 무엇을 안 만드는지는 [docs/PRODUCT.md](./docs/PRODUCT.md)가 정본이다.
 
 ## 문서
 
 | 문서 | 내용 |
 |---|---|
-| [docs/SAAS.md](./docs/SAAS.md) | **현재 단계 정본(SaaS화).** 범위·보안 모델·단계별 체크리스트·불변식 9개 |
-| [docs/MVP.md](./docs/MVP.md) | PoC 스펙 (닫힘). 코어 원칙의 원문·세 흐름의 계약 |
-| [docs/TASKS.md](./docs/TASKS.md) | PoC 태스크 기록 (닫힘) + 전역 미결. 지금 할 일은 SAAS.md §8 |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 불변식과 함정. 코어 로직 건드리기 전 필독 |
-| [docs/DESIGN.md](./docs/DESIGN.md) | 편집 UI 시각 규칙 (라이트 단일, 토큰, 대비 함정) |
+| [docs/PRODUCT.md](./docs/PRODUCT.md) | **제품 판정의 정본.** 완료 조건·역할과 권한표·범위/비범위·설계 결정·IA |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **불변식과 함정.** §0 불변식 열하나 · 결정성 · 어댑터 실측 근거 · 스키마 · 보안 모델. 코어 로직 건드리기 전 필독 |
+| [docs/DIRECTORY.md](./docs/DIRECTORY.md) | 어디에 무엇이 있고 왜 그렇게 생겼나 |
+| [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트 단일, 토큰, 대비 함정) |
+| [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 절차 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | 대상 리포에 붙이는 워크플로 |
-| [docs/ADAPTER-COVERAGE.md](./docs/ADAPTER-COVERAGE.md) | 어댑터 범용성 실측 — 어댑터·탐지 규칙 손대기 전 필독 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회귀·버그 회고 (append-only) |
-| [docs/features/README.md](./docs/features/README.md) | 기능 문서 인덱스 + 살아 있는 백로그. **스펙이 아니라 근거다** |
 | [CLAUDE.md](./CLAUDE.md) | 작업 규칙·명령어·컨벤션 (Codex는 `AGENTS.md` 미러) |
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 17개 — 파일 단위로 센다, Radix — DropdownMenu·Dialog·Slot·RadioGroup) + `sonner` 토스트(경계는 `docs/features/ui-rework/README.md` 규약 8) + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 17개, Radix — DropdownMenu·Dialog·Slot·RadioGroup) + `sonner` 토스트 + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
 
 ## 개발
 
@@ -45,15 +43,15 @@ pnpm dev
 | 테스트 | `pnpm test` |
 | 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 키 적재 → 왕복 검증 |
 | 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
-| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt>` — 읽기 전용, 네트워크 |
+| 어댑터 범용성 측정 | `pnpm adapter-survey docs/adapter-survey/repos.txt` — 읽기 전용, 네트워크 |
 | GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` / 브라우저: `pnpm db:studio` (dev) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
-| 자격증명 전환 | `pnpm credentials:dev` / `credentials:prod` (+ `credentials:finalize:dev`·`:prod`) — 기본 check-only. 절차는 [운영 문서](./docs/features/credential-storage/operations.md) |
+| 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 check-only. 절차는 [docs/OPERATIONS.md](./docs/OPERATIONS.md) |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ `pnpm test`에 **없다**. `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
 | Codex 미러 동기화 | `pnpm sync:agents` |
 
-**브랜치는 `main` / `dev` 둘이다** (2026-09-04 분리). 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
+**브랜치는 `main` / `dev` 둘이다.** 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
 
 **린터가 없다** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않고, 스타일 게이트가 곧 타입 체크와 테스트다. 게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). ⚠️ **둘 다 못 보는 스위트가 하나 있다** — `pnpm test:credentials:postgres`는 별도 config + 로컬 PostgreSQL이라 `pnpm test`에도 CI에도 없다. GitHub 브랜치 프로텍션은 Free 플랜 + private 조합이라 없으므로, PR CI가 게이트인 것은 `/merge`가 그것을 확인하기 때문이지 서버가 강제해서가 아니다.
 

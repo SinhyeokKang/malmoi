@@ -1,0 +1,100 @@
+# OPERATIONS — 운영 절차
+
+**나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
+[ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.
+
+## 1. 암호화 키 셋 — 섞지 않는다
+
+**저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
+셋이기 때문이고, `validateCredentialKeys`가 **키 값 셋이 서로 다른지** 검사한다(⚠️ `*_KEY_ID` 셋은
+안 본다 — keyring 안의 이름이라 겹쳐도 된다. 그리고 전환 CLI에서만 돈다).
+
+| 무엇 | 환경변수 | 무엇을 여나 |
+|---|---|---|
+| 토큰 | `TOKEN_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | GitHub App **연결 토큰**(access·refresh) |
+| 개인정보 | `PII_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | `User.email`·`name`·`image` · 초대 email |
+| 검색 | `EMAIL_LOOKUP_KEY`·`_KEY_ID` | 정확 일치 조회용 HMAC (**복호화가 아니다** — 되돌릴 수 없다) |
+
+- **세션은 키가 없다** — `sha256:v1:` digest는 도메인 분리 해시라 대조만 한다.
+- ⚠️ **형식이 갈린다**: `*_ENCRYPTION_KEYS`는 keyring JSON, `EMAIL_LOOKUP_KEY`는 **원시 base64 하나**.
+  섞으면 base64 디코드가 조용히 깨진다.
+- ⚠️ **dev와 prod가 다른 키다** — dev 키가 새도 프로덕션 회원 데이터가 안 열려야 한다. 도구는
+  *어느 DB*만 검사하고 **키는 target에 안 묶여 있으므로**, prod 명령은 `.env.prod.local`을 셸로
+  source해 덮는다(`set -a; . ./.env.prod.local; set +a;`). 그 파일에 넣을 수 없는 이유는 이름이 같아
+  한 파일에 두 벌이 안 들어가고 dotenv가 셸 env를 override하지 않아서다.
+- ⚠️ **PII 키를 잃으면 회원 이메일·이름을 복구할 수 없다** — DB 백업을 되살려도 그 시점의 키가 있어야
+  열린다. **키와 백업을 쌍으로** 보관하고 회전할 때 옛 키를 지우지 않는다.
+
+## 2. 키 회전
+
+**각 회전에도 전체 차단·drain이 필요하다.** 새 키를 keyring에 추가하고 **기존 키를 보존한 채** 도구
+환경의 active kid를 새 키로 설정한다. 기본은 check-only이고 `--apply`는 `--traffic-blocked
+--writers-drained`를 함께 요구한다(운영자 확인 표식이지 차단 기능이 아니다).
+
+```sh
+pnpm credentials:dev --mode=rotate-token --apply --traffic-blocked --writers-drained
+pnpm credentials:dev --mode=rotate-pii   --apply --traffic-blocked --writers-drained
+pnpm credentials:dev --mode=verify
+```
+
+- **토큰과 PII 회전은 별개다.** `expires_at`과 `emailLookup`을 바꾸지 않는다.
+- 새 active kid를 앱에 반영하기 **전에** 전건 복호화와 `verify` 보고의 `oldTokenKey`·`oldPiiKey`가
+  각각 0인지 확인한다.
+- **운영 DB뿐 아니라 보존된 백업이 요구하는 키도 폐기하면 안 된다.**
+- prod는 명령 이름만 `credentials:prod`로 바꾼다. ⚠️ **그 명령은 prod DB를 직접 겨눈다**(`db:deploy`와
+  같은 부류). 도구는 dev/prod 각각 고정 Supabase ref·5432·DB 이름을 검증하고, DB URL을 CLI 인자로
+  받지 않으며 URL query는 `sslmode=verify-full`만 허용한다.
+
+**검색 키 교체**는 개인정보 키를 그대로 두고 `EMAIL_LOOKUP_KEY`/`_KEY_ID`만 새 것으로 설정한 뒤 돌린다.
+전 행을 복호화해 재색인하므로 **옛 검색 키가 없어도 가능하다.**
+
+```sh
+pnpm credentials:dev --mode=reindex --apply --traffic-blocked --writers-drained
+pnpm credentials:dev --mode=verify
+```
+
+**부분 교체 상태에서 서비스를 재개하지 않는다.** 재실행 뒤 전 행 동일 세대 · 이메일 중복 없음을
+확인하고 새 키를 설정한 앱을 활성화한다.
+
+⚠️ **이 절차 둘은 아직 리허설하지 않았다** (2026-09-13 현재). 2026-09-10 전환에서 **미룬 항목이고
+실패한 항목이 아니다** — 전환 자체(backfill·전건 검증·평문 인덱스 제거)는 dev·prod 양쪽에서 끝났다.
+
+| 미완 | 무엇을 확인해야 하나 |
+|---|---|
+| **키 회전 리허설** | 전체 트래픽 차단 상태에서 **부분 실패·재개·키 유실·백업 복원**까지 밟아 본다. `--apply`가 도는 것만 확인한 상태다 |
+| **차단·drain 리허설** | 이전 배포 URL·OAuth callback·cron·CI·로컬 writer를 **실제로** 막고, 차단 중 refresh/API 호출이 0인지 확인한다. ⚠️ **이 저장소에는 그 차단을 자동으로 증명하는 수단이 없다** — 수단·증거가 없으면 회전을 **중단**한다 |
+
+**둘 다 실제 회전이 필요해지기 전에 한 번 밟아 본다.** 처음 밟는 자리가 운영 사고 한가운데면
+"차단됐는지 모르는 채로 `--apply`를 누르는" 상태가 된다.
+
+## 3. 복구
+
+- **PII 키 유실 시 계정을 재생성하지 않는다 — 백업 키를 복원한다.**
+- 암호화 백업 복원 후에도 **트래픽을 차단한 상태에서** 해당 keyring으로 `verify`를 끝낸다.
+- **평문 코드로 rollback하지 않는다.**
+- 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
+  검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
+  reset으로 통과시키지 않는다.**
+
+## 4. 재현 가능한 검증
+
+- `pnpm test` — 암호 도구·저장 경계·인가·초대·토큰 refresh 회귀.
+- `pnpm typecheck` — 타입 계약.
+- `pnpm test:credentials:postgres` — 임시 Unix socket 전용 PostgreSQL 클러스터를 만들고 제거한다.
+  공유 DB URL을 읽지 않는다. 기본 바이너리는 `/opt/homebrew/opt/postgresql@17/bin`이고 다른 환경은
+  `CREDENTIAL_PG_BIN`에 로컬 PostgreSQL bin 디렉터리를 지정한다. initdb/pg_ctl/pg_dump/psql이 필요하며
+  테스트용 프로세스가 root이면 실행할 수 없다.
+  ⚠️ **`pnpm test`에 없다**(별도 config). `/push` 게이트가 안 돌리므로 `lib/credentials/**`를
+  건드렸으면 손으로 돌린다.
+- 격리 테스트는 실제 Auth.js 핸들러와 **가짜** OAuth 응답, 실제 DB unique/잠금/CAS, 중단·재개·백업
+  복원을 검사한다. **실제 공급자·배포 차단·키보드/포커스 검증을 대신하지 않는다.**
+
+## 5. 자격증명 전면 재발급
+
+순서가 있다 (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → Vercel env → 재배포
+(`vercel redeploy <최근 prod URL>`). 상세와 함정은 [CLAUDE.md](../CLAUDE.md)의 "새 머신 셋업" 절이다.
+
+⚠️ **GitHub App 개인키는 여러 개를 동시에 가질 수 있지만, 지우면 그 키를 쓰던 네 곳이 동시에 끊긴다** —
+로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가
+넷이 다 죽었고 **증상이 "App이 설치돼 있지 않다"로 보였다.** 지우기 전에 그 키를 누가 들고 있는지 세고,
+넷을 전부 옮긴 뒤에 지운다.

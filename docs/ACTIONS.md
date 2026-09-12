@@ -16,7 +16,7 @@
 
 ⚠️ **말모이 서버의 공유 env와 같은 값이 아니다.** 전에는 배포 전체가 토큰 하나를 들었고 그 값이 비면 500(`server misconfigured`)이었는데, 지금은 토큰이 곧 프로젝트라 서버에 그런 변수가 없다.
 
-⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **이름 규칙은 아직 안 정했다** (SAAS §10).
+⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **이름 규칙은 아직 안 정했다** (PRODUCT §10).
 
 **워크플로** `.github/workflows/l10n.yml`:
 
@@ -27,7 +27,7 @@ name: l10n
 
 on:
   push:
-    branches: [main]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (MVP §3.1)
+    branches: [main]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (ARCHITECTURE §0 불변식 2)
                        # ⚠️ 설정 화면에서 기준 브랜치를 바꾸면 이 줄도 함께 고친다 —
                        #    안 고치면 CI가 영영 안 돌고 오류도 안 난다 (6b-3)
   workflow_dispatch:
@@ -36,7 +36,7 @@ on:
 # strict라 마지막 상태가 진실이고, 중간 결과를 남길 이유가 없다.
 #
 # ⚠️ **그룹 이름에 프로젝트 slug가 들어간다.** 한 리포에 번역 표면이 둘이면 Project도 둘이고
-# (SAAS.md §7.1) 워크플로 스텝도 둘인데, `github.ref`만 쓰면 그 둘이 같은 그룹에 들어가
+# (PRODUCT §7.1) 워크플로 스텝도 둘인데, `github.ref`만 쓰면 그 둘이 같은 그룹에 들어가
 # `cancel-in-progress`가 한쪽을 죽인다 — 그 표면은 영영 적재되지 않고 취소는 실패로 보이지 않는다.
 # `l10n/sync-<slug>` 브랜치 이름에 slug를 넣은 것과 같은 이유다.
 concurrency:
@@ -151,11 +151,11 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 
 ⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
 
-응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 넷이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 셋은 판정 순서대로 slug 오배송(`expected/got`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, SAAS §8),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 넷이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 셋은 판정 순서대로 slug 오배송(`expected/got`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 
-번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (MVP §3.1의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `l10n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
+번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `l10n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
 
 **막지 않는 이유**: 막으면 "어느 쪽이 이기는지"를 CI가 판정하게 되고, 그건 병합 로직이라 코어 원칙을 깬다. 개발자가 볼 재료만 남기고 판단은 사람이 한다.
 
