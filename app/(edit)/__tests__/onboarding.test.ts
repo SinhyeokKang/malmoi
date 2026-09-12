@@ -99,6 +99,9 @@ const CATALOG = `${JSON.stringify({ "a.greet": "Hello", "a.bye": "Bye" }, null, 
 /** `probeTargets`가 고르는 셋 — en 우선 → 코드포인트 순. ②의 미리보기가 처음 드는 언어와 같다. */
 const SAMPLED_LOCALES = ["en", "fr", "ko"];
 
+/** `listInstallationRepos`가 주는 행. `pushed_at`은 같은 응답에 이미 있다 — 추가 호출 0. */
+const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z") => ({ fullName, pushedAt });
+
 const HEAD_SHA = "c0ffee";
 const HEAD_AT = "2026-09-07T00:00:00Z";
 
@@ -156,7 +159,7 @@ beforeEach(() => {
   hoisted.ensureUserToken.mockResolvedValue({ status: "ok", accessToken: "user-token" });
   hoisted.probeRepo.mockResolvedValue(PROBE_OK);
   hoisted.listUserInstallations.mockResolvedValue(["77"]);
-  hoisted.listInstallationRepos.mockResolvedValue(["acme/web"]);
+  hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web")]);
   hoisted.openRepoReader.mockImplementation(async () => reader());
   hoisted.authorizeUrl.mockReturnValue("https://github.com/login/oauth/authorize?client_id=x");
   hoisted.headerGet.mockImplementation((name: string) =>
@@ -262,15 +265,40 @@ describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한�
 
 describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
   it("설치와 리포를 전 페이지로 읽어 owner/repo로 준다", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue(["acme/web", "acme/ext"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web"), repoRow("acme/ext")]);
 
     expect(await listConnectableRepos()).toEqual({
       ok: true,
       repos: [
-        { owner: "acme", repo: "ext", fullName: "acme/ext" },
-        { owner: "acme", repo: "web", fullName: "acme/web" },
+        { owner: "acme", repo: "ext", fullName: "acme/ext", pushedAt: "2026-09-01T00:00:00Z" },
+        { owner: "acme", repo: "web", fullName: "acme/web", pushedAt: "2026-09-01T00:00:00Z" },
       ],
     });
+  });
+
+  it("`pushedAt`을 함께 실어 준다 — 같은 응답에 이미 있어 추가 호출이 0이다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", "2026-08-30T10:00:00Z")]);
+
+    const result = await listConnectableRepos();
+
+    expect(result.ok && result.repos[0]?.pushedAt).toBe("2026-08-30T10:00:00Z");
+    expect(hoisted.listInstallationRepos).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * ⚠️ **객체가 되면 기본 `.sort()`가 조용히 죽는다.** 전에는 `[...new Set(names)].sort()`였는데 원소가
+   * 객체가 되면 전부 `"[object Object]"`로 비교돼 **정렬이 사라진다** — `tsc`가 못 보는 부류라 이 단언이
+   * 유일한 방어선이다.
+   */
+  it("같은 리포가 두 설치에 있어도 한 번만 나오고, 이름순으로 정렬돼 있다", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) =>
+      id === "77" ? [repoRow("acme/web"), repoRow("acme/zeta")] : [repoRow("acme/web"), repoRow("acme/alpha")],
+    );
+
+    const result = await listConnectableRepos();
+
+    expect(result.ok && result.repos.map((r) => r.fullName)).toEqual(["acme/alpha", "acme/web", "acme/zeta"]);
   });
 
   /**
@@ -287,7 +315,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
    * ⚠️ **`planRepoConnect`의 3중 검증은 그대로다** — 순서만 바꾼다.
    */
   it("내 설치에 없는 리포면 App 자격증명을 한 번도 안 쓴다 (sec-audit 5)", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue(["acme/other"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/other")]);
 
     const result = await detectRepoFormats({ owner: "someone", repo: "private-thing" });
     expect(result.ok).toBe(false);
@@ -295,7 +323,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
   });
 
   it("내 설치에 있으면 그때 probe한다 — 순서만 바뀌고 성공 경로는 같다", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue(["acme/web"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web")]);
 
     const result = await detectRepoFormats({ owner: "acme", repo: "web" });
     expect(result.ok).toBe(true);
@@ -344,12 +372,12 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
     hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
     hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) => {
       if (id === "88") throw Object.assign(new Error("suspended"), { status: 403 });
-      return ["acme/web"];
+      return [repoRow("acme/web")];
     });
 
     expect(await listConnectableRepos()).toEqual({
       ok: true,
-      repos: [{ owner: "acme", repo: "web", fullName: "acme/web" }],
+      repos: [{ owner: "acme", repo: "web", fullName: "acme/web", pushedAt: "2026-09-01T00:00:00Z" }],
     });
   });
 
@@ -474,7 +502,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
      * 재연결 경로에 그대로 살아 있다 — 거기서는 리포가 `Project` 행에 고정이라 오라클이 아니다.
      */
     hoisted.listUserInstallations.mockResolvedValue(["77"]);
-    hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("someone/else")]);
     hoisted.probeRepo.mockClear();
     expect(await detectRepoFormats({ owner: "acme", repo: "web" })).toEqual({
       ok: false,
@@ -720,7 +748,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
       users: [{ id: OWNER, email: "o@a.com" }],
     });
     hoisted.prisma = db.prisma;
-    hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("someone/else")]);
 
     // 내 설치에 없는 리포는 한 갈래로 접힌다 (sec-audit 발견 5) — 위 describe의 주석이 근거다.
     expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-not-installed" });
@@ -735,7 +763,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   });
 
   it("3중 검증 거부는 행을 만들지 않는다", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue(["someone/else"]);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("someone/else")]);
 
     expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-not-installed" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
