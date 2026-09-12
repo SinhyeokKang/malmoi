@@ -20,7 +20,7 @@ const invitation = {
   role: "EDITOR",
   acceptedAt: null,
   expiresAt: new Date("2099-01-01"),
-  project: { name: "bugshot-2", locales: [{ code: "ko" }, { code: "ja" }] },
+  project: { name: "bugshot-2", slug: "bugshot-2", locales: [{ code: "ko" }, { code: "ja" }] },
 };
 
 async function html(status: "ok" | "none", viewerEmail = "person@example.com") {
@@ -91,7 +91,7 @@ it.each([
   { name: "sign-in", status: "none", email: "person@example.com", member: false, other: 0, accept: 0 },
   { name: "accept", status: "ok", email: "person@example.com", member: false, other: 0, accept: 1 },
   { name: "wrong-account mismatch", status: "ok", email: "other@example.com", member: false, other: 1, accept: 0 },
-  { name: "wrong-account member", status: "ok", email: "person@example.com", member: true, other: 1, accept: 0 },
+  { name: "wrong-account member", status: "ok", email: "person@example.com", member: true, other: 0, accept: 0 },
   { name: "blocked", status: "unavailable", email: "person@example.com", member: false, other: 0, accept: 0 },
 ])("$name의 CTA를 함께 고른다", async ({ status, email, member, other, accept }) => {
   state.session.mockResolvedValue({ status, userId: "u1" });
@@ -101,11 +101,29 @@ it.each([
   const markup = await renderPage();
   expect(markup.split(m.invite.otherAccount).length - 1).toBe(other);
   expect(markup.split(m.invite.accept).length - 1).toBe(accept);
-  if (other) {
+  if (other || member) {
     const notice = member ? "already-member" : "email-mismatch";
     expect(markup).toContain(escaped(m.errors.invite[notice]));
     expect(markup.indexOf('role="alert"')).toBeLessThan(markup.indexOf("bugshot-2"));
   }
+});
+
+/**
+ * ⚠️ **이미 멤버인 사람에게 로그아웃 버튼을 주지 않는다** (2026-09-12 실물 검증) — 문구는 "프로젝트를
+ * 열어라"인데 화면의 유일한 버튼이 **세션을 끊는 것**이었다. 이 화면은 셸 밖이라 사이드바가 없고,
+ * 그러면 시키는 일을 할 수단이 없는 채로 반대되는 버튼만 남는다(`screens.test.ts`의 "갇히는 길을
+ * 남기지 않는다"와 같은 축이다).
+ */
+it("already-member는 프로젝트로 가는 링크를 준다 — 로그아웃이 아니다", async () => {
+  state.session.mockResolvedValue({ status: "ok", userId: "u1" });
+  state.row.mockResolvedValue(invitation);
+  state.viewer.mockResolvedValue({ id: "u1", email: "person@example.com" });
+  state.member.mockResolvedValue({ userId: "u1" });
+  const markup = await renderPage();
+  expect(markup).toContain('href="/projects/bugshot-2"');
+  expect(markup).toContain(m.invite.openProject);
+  expect(markup).not.toContain(m.invite.otherAccount);
+  expect(markup).not.toContain(m.invite.accept);
 });
 
 it("비로그인과 막힌 초대는 멤버를 조회하지 않는다", async () => {
