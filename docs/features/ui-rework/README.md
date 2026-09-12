@@ -17,6 +17,12 @@
 | 8-5~ 나머지 페이지별 | `/projects/new` · `/account` · Home · locales · members · logs · settings | ⬜ |
 | 8-P 패널 diff | **UI가 아니라 새 서버 능력** — 커밋 없이 렌더만 하는 경로 (SAAS §8) | ⬜ |
 
+**8-5~ 톤앤매너 통일 계획**: [page-patterns/spec.md](./page-patterns/spec.md) ·
+[design.md](./page-patterns/design.md) · [tasks.md](./page-patterns/tasks.md)
+(2026-09-12, 검토·설계 초안). 로그인·목록·번역·셸의 색·서체·여백·선·컨트롤·상태 외형을
+나머지 화면에 맞춘다. 기존 정보 구조와 동작을 유지하며 새 본문 시안 없이 진행할 수 있다.
+구조 재설계·피드백 방식 변경·8-P는 포함하지 않는다.
+
 ⚠️ **8-1이 기반을 겸한다.** signin은 셸 **밖** 화면이라(`(edit)` 밖) 셸 없이 그릴 수 있고, 그래서
 토큰·프리미티브 배선을 여기서 시작한다. 셸을 먼저 세우면 그 위에 앉힐 토큰이 아직 없다.
 
