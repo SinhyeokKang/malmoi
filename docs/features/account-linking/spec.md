@@ -9,18 +9,45 @@ Claude Design 프로젝트 `Mal-moi 로그인 디자인`(`b99d54cd-3034-44f1-844
 1a·1b·1c + 병합 상태 둘 + `EntityCard` 규격)이 있고, `/design-login` 뒤 `DesignSync get_file`로 읽는다.
 **옮겨 붙이지 않는다** — 가져오는 것은 레이아웃·정보구조·치수·문구이고 색과 컴포넌트는 기존
 토큰(`app/globals.css`)·프리미티브로 번역한다 (design §9.4).
+⚠️ **초안은 근거이고 정본이 아니다** — 치수의 정본은 **design.md §7의 표**다. 그 도구가 없는
+세션(Codex 미러·다른 머신)에서도 착수할 수 있어야 한다 (design §9.0).
 
 ## 0. 범위 게이트
 
-⚠️ **`docs/SAAS.md` §5.5가 이것을 비범위로 두었고, 2026-09-12에 사용자가 그 제약을 무시하기로
-확정했다.** 이 기능이 그 절을 대체한다(T8).
+⚠️ **`docs/SAAS.md`가 이것을 두 자리에서 비범위로 두었고, 2026-09-12에 사용자가 그 제약을
+무시하기로 확정했다.** 이 기능이 **두 절을 함께** 대체한다(T8).
 
-§5.5가 든 근거 둘과 이 설계의 답:
+- **§4.3 ④ — 판정 자체가 여기 있다.** 제목이 "OAuth 계정 병합 → 뺀다"이고 근거·2차 개방 조건·
+  **흐름의 모양**까지 거기 적혀 있다: *"그때도 자동 병합이 아니라 `/account`에서 명시적으로
+  요청하고 두 쪽 소유를 각각 증명하는 흐름"*. ⚠️ **이 설계는 그 모양을 뒤집는다** — 1차 진입점이
+  `/account`가 아니라 **로그인 시도 자체**이고, `/account`는 목록·해제만 든다. 근거는 초대
+  경로(design §2)다. ⚠️ **개방 조건도 아직 안 왔다** — 그 절은 "provider를 바꿔야 하는 상황이
+  실제로 나올 때"를 조건으로 걸었는데, 여는 근거는 그것이 아니라 **초대 단절**(§1)이다.
+  조건을 충족한 것이 아니라 **사용자 재량으로 대체**한다.
+- **§5.5 — 그 판정이 만든 방어선의 서술이다.** 든 근거 둘과 이 설계의 답:
 
 | §5.5의 근거 | 이 설계에서 |
 |---|---|
-| "두 `Account` 행을 한 `User`로 옮기고 `ProjectMember`·`Translation.updatedBy`·`ProjectInvitation.invitedBy`를 함께 옮겨야 한다" | **해당 없음.** 거부된 로그인은 `User`·`Account`를 **만들지 않는다**(`signIn` 콜백이 `handleLoginOrRegister`보다 먼저 돈다) — 옮길 행이 0이고, 하는 일은 기존 User에 `Account` **한 줄 추가**다 |
-| "어느 이메일이 정본인가를 다시 정해야 한다" | **정하지 않는다.** 이메일이 **같을 때만** 병합한다 — `planEmailRefresh`가 언제나 `keep`이라 정본 판정이 생기지 않는다 |
+| "두 `Account` 행을 한 `User`로 옮기고 `ProjectMember`·`Translation.updatedBy`·`ProjectInvitation.invitedBy`를 함께 옮겨야 한다" | **해당 없음.** 거부된 로그인은 `User`·`Account`를 **남기지 않는다** — 옮길 행이 0이고, 하는 일은 기존 User에 `Account` **한 줄 추가**다 (근거는 아래 ⚠️ — 흔히 적는 것과 다르다) |
+| "어느 이메일이 정본인가를 다시 정해야 한다" | **정하지 않는다 — 단 그것을 규칙으로 박아야 한다.** 이메일이 **같을 때만** 병합하지만 `planEmailRefresh`는 **언제나 `keep`이 아니다** (아래 ⚠️) |
+
+⚠️ **첫 행의 근거를 정확히 적는다.** `signIn` 콜백이 `handleLoginOrRegister`보다 먼저 도는 것은
+참이지만, **`OAuthAccountNotLinked`를 던지는 자리는 그 콜백이 아니다** — 콜백은 `true`를 내고
+거부는 `@auth/core`의 `handle-login.js`에서 **뒤에** 난다. 행이 0인 진짜 이유는 **어댑터가 생성
+대신 던지기 때문**이다(`lib/auth/safe-adapter.ts`).
+그래서 **일반형은 거짓이다**: `createUser`와 `linkAccount`는 **한 트랜잭션이 아니라서**, 어댑터가
+`linkAccount`에서 던지면 **고아 `User` 행**이 남고 그 행은 이후 그 주소의 모든 로그인을 영구히
+막는다. **이 기능은 그 창을 넓히지도 좁히지도 않고 인지하지도 않는다** — §5 비목표.
+
+⚠️ **`planEmailRefresh`가 "언제나 `keep`"인 것은 병합 시점뿐이다.** 그 함수는 `fresh === stored`
+일 때만 `keep`이고 다르면 `update`다(`lib/auth/email.ts`). 병합 **이후** 한쪽 provider의 검증
+주소가 바뀌면 `User.email`이 **마지막으로 로그인한 provider에 따라 뒤집히고**, 초대 대조
+(SAAS §5.6)가 그 값 위에 서 있다 — §5.5가 경고한 "정본 판정"이 **한 로그인 뒤에** 도착한다.
+지금은 `User`당 로그인 `Account`가 하나라 이 경로가 원리적으로 없고, **이 기능이 그것을 만든다.**
+
+**그래서 규칙을 하나 더한다 — 로그인 `Account`가 둘 이상인 User는 `planEmailRefresh`가 언제나
+`keep`이다.** 순수 판정이라 T1에 들어간다. ⚠️ **대가를 명시한다**: 병합한 사용자가 provider에서
+주소를 바꿔도 malmoi의 이메일은 따라가지 않고, 초대 대조는 **병합 시점 주소** 기준으로 남는다.
 
 ⚠️ **§5.5가 지키려던 것은 그대로 남는다**: *"잘못된 자동 병합은 불편이 아니라 계정 탈취다."*
 자동 병합은 **여전히 없다** — `allowDangerousEmailAccountLinking`은 계속 꺼져 있고, 병합은
@@ -40,10 +67,14 @@ Claude Design 프로젝트 `Mal-moi 로그인 디자인`(`b99d54cd-3034-44f1-844
 
 - 2026-09-09 실측: 같은 주소의 다른 provider는 `?error=OAuthAccountNotLinked`로 거부된다.
   문구는 정확하지만 **어느 수단인지 말하지 않고 해결 경로도 없다.** 이 상태는 영구적이다.
-- **초대 흐름이 그 벽에서 끊긴다.** 초대는 `User.email`과 대조하는데(SAAS §5.6), 다른 provider로
-  들어온 사람은 로그인 자체가 안 되므로 대조까지 가지도 못한다.
+- **초대 흐름이 그 벽에서 끊긴다** (⚠️ **실측이 아니라 코드에서 따라간 추론이다** — 비개발자
+  동료가 실제로 밟은 기록은 없다. 이 기능의 주 사용자 정의(§1)가 이 줄에 걸려 있다).
+  초대는 `User.email`과 대조하는데(SAAS §5.6), 다른 provider로 들어온 사람은 로그인 자체가
+  안 되므로 대조까지 가지도 못한다.
 - `/invite/[token]`은 **320 컬럼의 제목 칸이 비어 있는 유일한 화면**이다 — 로고 48 아래
-  `invitedTo`가 `text-sm` 평문으로 와서 제목 역할을 겸한다. 다른 셸 밖 화면 둘은 `h1`이 있다.
+  `invitedTo`가 `text-sm` 평문으로 와서 제목 역할을 겸한다. `AuthLayout`을 쓰는 **다른 화면
+  하나**(`/signin`)는 `h1`이 있다. ⚠️ **새 결정이 아니라 기존 규칙 위반의 교정이다** —
+  `docs/DESIGN.md`가 셸 밖 폼 컬럼에 `h1 text-2xl font-medium`을 **이미 요구한다**.
 - 화면에 **로그인 수단을 보여주는 자리가 없다.** `/account`의 "GitHub 계정" 섹션은
   **GitHub App 연결**(리포 쓰기 권한)이고 로그인 수단이 아니다 — 다른 축이다.
 
@@ -58,18 +89,27 @@ Claude Design 프로젝트 `Mal-moi 로그인 디자인`(`b99d54cd-3034-44f1-844
    수락이 이어진다.
 4. **다른 계정으로 확인하면 아무것도 안 쓴다** — challenge의 User와 다른 GitHub으로 확인하면
    `Account` 행 증가 0, **세션도 만들어지지 않고**, 같은 화면에 `Alert` 한 장이 뜬다.
+   ⚠️ **실패는 challenge를 소비하지 않는다 — 소비는 성공에서만이다** (design §3 불변식 5).
+   상한은 10분 TTL이 든다. 소비하게 하면 훔친 URL 한 번으로 **남의 병합을 태울 수 있다.**
 5. **만료는 `/signin`으로** — 10분이 지난 challenge는 이 화면을 다시 그리지 않는다.
 6. **이메일이 다르면 병합하지 않는다** — challenge가 애초에 만들어지지 않는다.
 7. **일반 로그인이 병합으로 변신하지 않는다** — `safePrismaAdapter.linkAccount`의 현재 거부가
    **한 줄도 바뀌지 않는다**(design §5.3).
+   ⚠️ **그 게이트가 문서화한 정책은 *"로그인 수단은 User당 하나"*이고 `finishLink`가 둘째 행을
+   직접 쓴다** — 게이트는 안 약해지지만 **유일한 경로가 아니게 된다.** 그래서 재는 것이 둘이다:
+   Auth.js 경유 연결은 **여전히 거부되고**, 직접 쓰는 자리가 **`finishLink` 한 곳뿐이다.**
+   `safe-adapter.ts`의 주석도 그 사실로 갱신한다(T8) — 안 하면 주석이 DB와 모순한다.
 8. **병합 왕복이 일반 로그인으로 변신하지 않는다** — 목적 쿠키·DB 행을 지우고 유효한 state/PKCE만
    들고 callback해도 새 `User`·`Account`·`Session`이 생기지 않는다 (POSTMORTEM 2026-09-10).
 9. **세션 회수가 계속 동작한다** — 로그인 수단이 둘인 계정에서도 성공한다
    (지금은 `accounts.length !== 1`이라 **불가능하다**).
 10. **초대 화면에 `h1`이 선다** — 로그인 상태는 다섯 줄(로고 · 제목 · 설명 · `EntityCard` · 수락),
     비로그인은 **카드 없이** 세 줄 + provider 버튼 둘.
-11. **`/account`에 로그인 수단 목록이 있다** — 연결·해제가 되고 **마지막 하나는 비활성**이다.
-12. `pnpm test` green + `pnpm test:credentials:postgres` green.
+11. **`/account`에 로그인 수단 목록이 있다** — **해제**가 되고 마지막 하나는 **비활성 + 사유
+    인라인**이다. ⚠️ **[Connect]는 없다** (design §5.5).
+12. **로그인 수단이 둘이면 `User.email`이 움직이지 않는다** — 어느 provider로 들어와도
+    `planEmailRefresh`가 `keep`이다 (§0 ⚠️).
+13. `pnpm test` green + `pnpm test:credentials:postgres` green.
 
 ## 4. 지금 코드가 막고 있는 것 (착수 전 실측)
 
@@ -77,9 +117,9 @@ Claude Design 프로젝트 `Mal-moi 로그인 디자인`(`b99d54cd-3034-44f1-844
 |---|---|---|
 | `auth.ts` `signIn` 콜백 | Auth.js 기본 `OAuthAccountNotLinked`로 떨어진다 | 같은 주소의 기존 User를 감지해 challenge를 굽고 `/signin/link/…`로 보낸다 |
 | `lib/auth/safe-adapter.ts` `linkAccount` | 두 번째 로그인 provider를 **무조건 던진다** | **그대로 둔다** — 병합은 우리가 직접 쓴다 (design §5.3) |
-| `lib/session-revocation/store.ts` `beginRevocation` | `accounts.length !== 1`이면 `invalid` | **수단이 둘이면 회수가 통째로 죽는다** — 결정적 선택으로 |
+| `lib/session-revocation/store.ts` `beginRevocation` **+ `app/(edit)/account/actions.ts` `startSessionRevocation`** | `accounts.length !== 1`이면 `invalid` — ⚠️ **조건이 두 벌이고 화면에서 먼저 걸리는 것은 뒤엣것**이다 | **수단이 둘이면 회수가 통째로 죽는다** — 결정적 선택으로 |
 | `app/invite/[token]/page.tsx` | `h1` 없음 · `invitedTo` 한 줄이 제목을 겸한다 | 제목·설명·`EntityCard`로 갈린다 |
-| `components/ui/` 프리미티브 **16** | — | `EntityCard` 추가 → **17** |
+| `components/ui/` 프리미티브 **16** | — | `EntityCard` 추가 → **17**. ⚠️ **`kind` prop이 없다** — 이 배송의 소비자는 병합 화면 하나이고, 초대의 프로젝트 카드는 `components/`의 화면 조각이다 (design §7) |
 | `middleware.ts` matcher | `/projects/:path*`·`/account` | `/signin/link/…`는 **넣지 않는다** |
 
 ## 5. 비목표
@@ -91,15 +131,31 @@ Claude Design 프로젝트 `Mal-moi 로그인 디자인`(`b99d54cd-3034-44f1-844
 - **병합을 되돌리는 화면을 이 흐름 안에 두는 것.** 해제는 `/account`의 일이고, 이 흐름에
   "나중에 풀 수 있다"를 적으면 **그 문장이 없는 기능을 약속한다**(핸드오프 README).
 - **알림 메일.** 발송 경로가 없다 — §6.
-- **`/invite` 실패 여섯의 표면 변경.** Layer A 넷은 인라인 `Alert`, Layer B 셋은 토스트 그대로다.
+- **provider 접근을 잃은 사람의 복구.** [Confirm with GitHub]가 유일한 길이라 GitHub 계정을
+  잃으면 이 흐름으로 아무것도 못 한다. ⚠️ **SAAS §4.3 ④가 2차 개방 조건으로 든 원래 시나리오가
+  정확히 이것이다** — 이 배송은 그것을 풀지 않고 **초대 단절만** 푼다.
+- **병합 이력·감사.** 누가 언제 무엇을 붙였는지 남기지 않는다 — `Account`에 `createdAt`이 없고,
+  더하면 기존 행이 전부 null이라 폴백 규칙이 또 필요하다 (design §8과 같은 이유).
+- **고아 `User` 행의 복구.** §0 ⚠️ — 어댑터가 `linkAccount`에서 던져 남은 행이다. 이 기능
+  이전부터 있었고 이 기능이 건드리지 않는다.
+- **`/invite` 실패 **일곱**의 표면 변경.** Layer A 넷은 인라인 `Alert`, Layer B 셋은 토스트
+  그대로다. ⚠️ **리포 소스의 "여섯"이 틀린 수다** (`app/invite/[token]/page.tsx`) — 넷 + 셋이다.
+  T4가 그 주석도 함께 고친다.
 - **`--mono-size` 판정.** `--text-xs` 13px는 이미 나갔고(`10ce111`), mono와 같은 값이 된 것은
   **8-P에서** 판단한다.
 
 ## 6. 알림 부재의 대가 — 명시
 
 보통 이 기능을 여는 서비스는 "새 로그인 수단이 추가되었습니다" 메일로 무단 연결을 알린다.
-이 앱에는 그 경로가 없다(SAAS §4.3). 그래서 **되돌릴 수단을 같은 배송에** 넣는 것이 조건이다:
-`/account`의 로그인 수단 목록 + 해제 + 그 아래 이미 있는 전체 세션 회수.
+이 앱에는 그 경로가 없다(SAAS **§4.2** — 이메일 발송 자체를 1차에서 뺐다).
+
+⚠️ **그런데 이 흐름에는 무단 연결 경로가 없다.** 병합은 언제나 **기존 provider의 OAuth를
+사용자가 직접 통과**해야 성립하고, challenge가 서려면 요청자가 이미 그 주소를 IdP에서
+검증받았어야 한다(design §0). 그래서 알림이 갚아야 할 부채가 이 설계에서는 작다 — 남는 것은
+**피싱으로 두 수단을 모두 통과당한 경우**이고, 그때 필요한 것은 알림이 아니라 **되돌릴 수단**이다.
+
+**되돌릴 수단은 같은 배송에 넣는다**: `/account`의 로그인 수단 **목록 + 해제**
+(⚠️ **[Connect]는 두지 않는다** — design §5.5) + 그 아래 이미 있는 전체 세션 회수.
 
 ⚠️ **완화이지 대체가 아니다.** 사용자가 `/account`를 보지 않으면 모른다. 이메일 provider가
 붙는 시점에 이 절을 다시 본다.
