@@ -68,7 +68,13 @@ export function DialogContent({
             {description}
           </Primitive.Description>
         )}
-        <div className="space-y-2 p-4 text-sm">{children}</div>
+        {/*
+          ⚠️ **본문이 없으면 그리지 않는다** (2026-09-13). 빈 `<div>`도 `p-4`를 들어 설명문과 푸터
+          사이에 **32px의 죽은 공간**이 생겼다 — 확인 Dialog는 대부분 본문이 없어서 그 상태가
+          기본이었다. 아래 `padding:16 16 0`은 푸터가 자기 16을 갖기 때문이다.
+          ⚠️ `Boolean`으로 거른다 — 호출부가 `cond && <x/>`를 그대로 넘기므로 `false`도 부재다.
+        */}
+        {Boolean(children) && <div className="space-y-2 p-4 pb-0 text-sm">{children}</div>}
         {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
         {footer !== undefined && <footer className="flex justify-end gap-2 p-4">{footer}</footer>}
       </Primitive.Content>

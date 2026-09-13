@@ -451,14 +451,10 @@ export const en = {
     profile: {
       title: "Profile",
       /**
-       * ⚠️ **두 칸의 소유자가 다르다는 것이 이 문장이 말하는 전부다.** 이름은 사용자 소유이고
-       * (멤버 목록·초대에서 **남이 나를 알아보는 이름**이다) 이메일은 provider 소유다 — 초대
-       * 대조가 검증된 주소 위에 서기 때문이다 (ARCHITECTURE §6.02).
-       *
-       * ⚠️ **"재로그인마다 갱신된다"가 여기 있었고 이름 축에서는 거짓이었다.** 갱신 통로인
-       * `planEmailRefresh`는 입력 넷이 전부 이메일이고 이름을 애초에 안 건드린다.
+       * ⚠️ **카드 설명문이 없어졌다** (2026-09-13). 머리 블록에는 설명 슬롯이 없고, 두 칸의
+       * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
+       * 화면 위쪽의 산문보다 필드 옆의 한 줄이 실제로 읽힌다.
        */
-      description: "Your name is yours to change. Your email comes from the account you sign in with.",
       name: "Name",
       email: "Email",
       /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
@@ -480,9 +476,35 @@ export const en = {
     github: {
       description: "Connect GitHub to see which repositories you can add.",
       notConnected: "Not connected.",
+      /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
+      rowName: "GitHub",
+      confirmDisconnect: "Disconnect your GitHub account?",
+      confirmHint: "malmoi won't be able to read your repositories or open pull requests until you connect again.",
+      /**
+       * ⚠️ **이 줄이 해제 Dialog를 붙인 논거다** — 되돌리기가 쉬운 것과 결과가 가벼운 것은 다른
+       * 일이고, 이 해제는 내가 OWNER인 모든 프로젝트의 발송을 멈춘다.
+       * ⚠️ **조회가 실패하면 이 줄을 그리지 않는다** — 0은 말할 수 있는 정보이므로 0과 실패를
+       * 같은 값으로 접지 않는다.
+       */
+      usage: (count: number): string =>
+        count === 1 ? "1 project uses this connection." : `${count} projects use this connection.`,
+    },
+    /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
+    sessionsSection: {
+      title: "Sessions",
+      description: "Sign out here or on every device.",
     },
     sessions: {
       title: "Sign out everywhere",
+      confirmTitle: "Sign out on all devices?",
+      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out -- including this one.",
+      /**
+       * ⚠️ **확정 라벨이 결과를 말한다** — 이 버튼은 일을 **끝내지 않는다.** 누르면 provider로
+       * 나가고 거기서 확인해야 로그아웃이 일어난다. "Sign out everywhere"라 적으면 그 왕복이
+       * 사용자에게 예고 없이 닥친다. 확인 상대는 서버가 결정적으로 고르므로(`pickLoginAccount`)
+       * 화면이 그 이름을 안다.
+       */
+      confirmAction: (provider: string): string => `Continue to ${provider}`,
       description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
@@ -494,6 +516,20 @@ export const en = {
     signOut: {
       title: "Sign out",
       description: "You'll need to sign in again to open your projects.",
+      /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
+      confirmTitle: "Sign out of malmoi?",
+      confirmHint: "You'll need to sign in again to open your projects.",
+    },
+    picture: {
+      upload: "Image upload",
+      delete: "Delete",
+      /**
+       * ⚠️ **"as-is"가 EXIF를 안 벗긴다는 판정을 말하는 자리다** (2026-09-13 사용자). 빼면 그
+       * 판정이 화면에서 사라지고, 위치 정보가 실린 사진을 올린 사람이 그 사실을 알 길이 없다.
+       */
+      caption: "PNG or JPEG, up to 800 KB. Uploaded as-is.",
+      /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
+      noPicture: "You haven't added one yet.",
     },
   },
 
@@ -1224,18 +1260,41 @@ export const en = {
     methods: {
       title: "Sign-in methods",
       description: "Add another account with the same verified email to use it as a sign-in method.",
-      add: (provider: string): string => `Add ${provider}`,
+      /**
+       * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
+       * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**
+       * 대상을 든다 — 음성 입력이 라벨로 컨트롤을 찾으므로 그 이름이 보이는 텍스트를 **포함**해야
+       * 한다 (WCAG 2.5.3).
+       */
+      connect: "Connect",
+      connectLabel: (provider: string): string => `Connect ${provider}`,
       notConnected: "Not connected",
       disconnect: "Disconnect",
       /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
+      /** ⚠️ **`m.members.cancel`을 빌려 오지 않는다** — 구역이 다른 문구를 가져다 쓰면 한쪽을 고칠 때 다른 쪽이 조용히 따라 움직인다. */
+      cancel: "Cancel",
       disconnected: (provider: string): string => `${provider} is no longer a sign-in method.`,
     },
   },
 
   errors: {
+    /**
+     * 프로필 사진 업로드 거부 — `UploadReject` 넷 + Action의 `unavailable` + 폴백.
+     *
+     * ⚠️ **갈래마다 문구가 갈려야 한다** — 하나로 접으면 "무엇을 고치면 되는가"가 사라지고
+     * 사용자는 같은 파일을 다시 고른다.
+     */
+    upload: {
+      "too-large": "That picture is over 800 KB. Choose a smaller one.",
+      "unsupported-type": "That file isn't a PNG or JPEG. Choose one of those.",
+      "not-a-file": "No picture was received. Choose a file and try again.",
+      empty: "That file is empty. Choose another one.",
+      unavailable: "We couldn't save that picture. Try again in a moment.",
+      fallback: "We couldn't use that picture. Choose a PNG or JPEG under 800 KB.",
+    },
     connectMethod: {
       connected: "Sign-in method added. You can use it next time you sign in.",
       "email-mismatch": "The email doesn't match this account. Try an account with the same verified email.",

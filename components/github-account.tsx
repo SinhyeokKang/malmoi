@@ -2,6 +2,7 @@
 
 import { Link2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 import { disconnectGithub } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
@@ -74,36 +75,69 @@ function ConnectForm({ slug, label }: { slug: string; label: string }) {
  * ⚠️ 2026-09-09까지 앞의 자리는 `/projects` 목록의 카드였다 — 갈 곳이 없어 거기 얹혀 있었고
  * 6b-4가 사용자 축 라우트를 만들어 옮겼다. `disconnectGithub`의 무효화 범위가 그 이동을 따라간다.
  */
-export function DisconnectGithubButton() {
+export function DisconnectGithubButton({ usage = null, onFailure }: {
+  /**
+   * `N projects use this connection.` — **되돌릴 수 없는 결과를 확인 화면에서 말하는 줄**이다.
+   * ⚠️ **`null`이면 그리지 않는다.** 조회 실패와 0을 같은 값으로 접지 않는 것이 이 타입의 요지이고
+   * (0은 말할 수 있는 정보다), 여기 오는 `null`은 **"모른다"**뿐이다.
+   */
+  usage?: number | null;
+  /**
+   * 실패 문구를 바깥이 든다. ⚠️ **`/account`에서 이 버튼은 리스트 항목의 우측 컨트롤이라** 실패
+   * Alert를 형제로 두면 버튼 옆에 서서 행이 무너진다 — 그 화면은 구역 Alert 자리로 올린다.
+   * 안 주면 기존처럼 바로 아래에 그린다(설정 화면).
+   */
+  onFailure?: (message: string) => void;
+} = {}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  function fail(message: string) {
+    if (onFailure === undefined) setError(message);
+    else onFailure(message);
+  }
+
   return (
     <>
-      {/*
-        ⚠️ **`danger`가 아니라 `default`다** (2026-09-13 핸드오프). 붉은 글자는 `/account`에서
-        되돌릴 수 없는 넷과 같은 무게로 읽히는데, 이 해제는 확인 Dialog가 그 무게를 든다 —
-        **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
-      */}
-      <Button
-        variant="default"
-        loading={pending}
-        onClick={() => {
-          setError(null);
-          startTransition(async () => {
-            const result = await disconnectGithub();
-            if (!result.ok) {
-              setError(
-                isAccessError(result.error)
-                  ? accessErrorMessage(result.error)
-                  : m.settings.account.disconnectFailed,
-              );
-            }
-          });
-        }}
-      >
-        {m.settings.account.disconnect}
-      </Button>
+      <Dialog>
+        <DialogTrigger asChild>
+          {/*
+            ⚠️ **`danger`가 아니라 `default`다** (2026-09-13 핸드오프). 붉은 글자는 `/account`에서
+            되돌릴 수 없는 넷과 같은 무게로 읽히는데, 그 무게는 이제 확인 Dialog가 든다 —
+            **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
+          */}
+          <Button variant="default" loading={pending}>{m.settings.account.disconnect}</Button>
+        </DialogTrigger>
+        <DialogContent
+          title={m.account.github.confirmDisconnect}
+          description={m.account.github.confirmHint}
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button variant="default">{m.link.methods.cancel}</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setError(null);
+                    startTransition(async () => {
+                      const result = await disconnectGithub();
+                      if (!result.ok) {
+                        fail(isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
+                      }
+                    });
+                  }}
+                >
+                  {m.settings.account.disconnect}
+                </Button>
+              </DialogClose>
+            </>
+          }
+        >
+          {usage !== null && m.account.github.usage(usage)}
+        </DialogContent>
+      </Dialog>
       {error !== null && <Alert variant="danger">{error}</Alert>}
     </>
   );

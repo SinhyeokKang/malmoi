@@ -29,7 +29,7 @@ function reasonMessage(reason: Reason): string {
  * `repository-form.tsx`·`base-locale-form.tsx`와 같은 형). 저장 결과를 토스트로 내는 자리가
  * 이 리포에 0이고, 여기서 시작하면 같은 일에 형이 둘이 된다.
  */
-export function ProfileNameForm({ name }: { name: string }) {
+export function ProfileNameForm({ name, inputId }: { name: string; inputId: string }) {
   /**
    * ⚠️ **제출값을 지우지 않는다** — 실패 뒤에 필드가 저장된 값으로 되돌아가면 방금 친 이름이
    * 사라지고 사용자는 무엇을 고쳤는지 다시 떠올려야 한다.
@@ -45,10 +45,10 @@ export function ProfileNameForm({ name }: { name: string }) {
     <form action={submit} className="space-y-2">
       <div className="flex items-center gap-2">
         <Input
+          id={inputId}
           name="name"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          aria-label={m.account.profile.name}
           className="w-80"
         />
         <Button type="submit" variant="default" loading={pending}>

@@ -1,22 +1,23 @@
 import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
+import { DismissibleAlert } from "@/components/account/dismissible-alert";
+import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";
-import { SessionRevocation } from "@/components/session-revocation";
+import { ProfilePicture } from "@/components/account/profile-picture";
+import { SessionsSection } from "@/components/account/sessions-section";
 import { signOut } from "@/auth";
-import { DisconnectGithubButton } from "@/components/github-account";
-import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
+import { loadConnectionUsage } from "@/lib/account/connection-usage";
 import { getPrisma } from "@/lib/db";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
-import { linkErrorMessage } from "@/lib/login-link/message";
-import { loginMethodRows, LOGIN_PROVIDERS } from "@/lib/login-link/policy";
+import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
+import { isLoginProvider, loginMethodRows, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
@@ -28,6 +29,10 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  *
  * ⚠️ **`middleware.ts`의 matcher에 `/account`를 따로 넣어야 했다** — 패턴이 `/projects/:path*` 하나라
  * 사용자 축은 1차 차단 밖에서 태어난다 (`entry-points.test.ts`가 그것을 센다).
+ *
+ * ⚠️ **머리 하나 + 리스트 셋이다** (2026-09-13). 그 전엔 `Card` 다섯이 `space-y-6`으로 평평하게
+ * 쌓여 축이 안 보였고, **같은 화면에 "GitHub"이 세 군데** 나오는데 그 구별을 카드 설명문 두 줄에
+ * 맡기고 있었다 — 설명문은 읽은 사람에게만 작동한다.
  *
  * ⚠️ **이름은 사용자 소유이고 이메일만 provider 소유다** (PRODUCT §4.1, 2026-09-13 판정).
  * 이메일을 고칠 수 없는 근거는 초대 대조가 **검증된 주소** 위에 선다는 것이고(ARCHITECTURE §6.02),
@@ -47,12 +52,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * 실어 보내놓고 안 읽으면 거부가 통째로 무음이고, 사용자에게는 버튼이 안 눌린 것으로 보인다
    * (POSTMORTEM 2026-09-06). **판정 함수로 거른다** — 주소창 값을 캐스팅하면 프로토타입 키가 문자열
    * 자리에 함수를 넣어 화면이 죽는다 (POSTMORTEM 2026-09-08).
+   *
+   * ⚠️ **셋이 같은 자리에 서지 않는다** — `?e=`·`?link=`는 머리 Alert이고 `?sessionRevocation=`는
+   * Sessions 구역 **안**이다. 그 값이 말하는 것이 화면 전체가 아니라 그 구역의 일이기 때문이다.
    */
   const { e, sessionRevocation, link, connect } = firstQueryValues(await searchParams);
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
   /**
    * ⚠️ **보내는 쪽과 읽는 쪽이 같은 커밋에 있어야 한다** — 사유를 실어 보내놓고 아무도 안 읽으면
-   * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 성공은 카드가 바뀌는 것이
+   * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 성공은 화면이 바뀌는 것이
    * 피드백이라 문구를 내지 않는다 — 실패만 말한다.
    */
   const unlinkFailure = isUnlinkOutcome(link) && link !== "disconnected" ? linkErrorMessage(link) : null;
@@ -62,18 +70,26 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **프로필을 세션이 아니라 `User` 행에서 읽는다.** 세션에도 이름·이메일이 있지만, 초대 대조가
    * 보는 값은 저장된 `User.email`이다 (ARCHITECTURE §6.02) — 이 화면이 보여야 하는 것은 그쪽이다.
    *
-   * ⚠️ **두 블록이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
+   * ⚠️ **넷이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [storedProfile, account, methods] = await Promise.all([
+  const [storedProfile, account, methods, usage] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
     loadAccountView(prisma, userId),
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
+    loadConnectionUsage(prisma, userId),
   ]);
 
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
+  const name = profile?.name ?? "";
+  /**
+   * 전체 로그아웃의 확인 상대는 **서버가 결정적으로 고른다** — 클라이언트가 고르게 하면 공격자가
+   * 확인 상대를 고른다. 화면은 같은 판정을 다시 돌려 **이름만** 쓴다(확정 라벨이 결과를 말해야 한다).
+   */
+  const confirming = pickLoginAccount(methods);
+  const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? providerLabel(confirming.provider) : null;
 
-  // Server Action을 클라이언트 컴포넌트가 아니라 폼에 직접 넘긴다 — 셸의 로그아웃과 같은 형이다.
+  // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 셸의 로그아웃과 같은 형이다.
   // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자): 로그아웃은 랜딩으로 간다.
   async function signOutAction() {
     "use server";
@@ -89,78 +105,63 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       */}
       <PanelHeader>
         <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
+          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.settings}</h1>
           {/*
-            페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
+            페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
             ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
             버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
+            ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 왕복에서 돌아온 일회성 사유라 치울 수 있다.
+            구역 Alert는 그 구역의 현재 상태라 치우면 상태가 사라진 것처럼 보인다.
           */}
-          {notice !== null && <Alert variant="danger">{notice}</Alert>}
-          {unlinkFailure !== null && <Alert variant="danger">{unlinkFailure}</Alert>}
-          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.settings}</h1>
+          {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
+          {unlinkFailure !== null && <DismissibleAlert>{unlinkFailure}</DismissibleAlert>}
         </div>
       </PanelHeader>
 
       <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          <Card title={m.account.profile.title} description={m.account.profile.description}>
-            <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
-              <dt className="text-muted-foreground text-xs">{m.account.profile.name}</dt>
-              <dd>
-                <ProfileNameForm name={profile?.name ?? ""} />
-              </dd>
-              <dt className="text-muted-foreground text-xs">{m.account.profile.email}</dt>
+        <div className="mx-auto w-full max-w-4xl space-y-7 px-6 pt-3 pb-8">
+          {/*
+            머리 블록 — **Profile 카드가 여기로 흡수됐다.** 라벨 열이 128이고 값 열이 나머지다.
+            아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
+          */}
+          <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
+            <div className="col-span-2 flex items-center gap-4">
+              {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
+              <Avatar name={name || (profile?.email ?? "?")} src={profile?.image} size={56} />
+              <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
+            </div>
+
+            <label className="text-muted-foreground text-xs" htmlFor="account-name">{m.account.profile.name}</label>
+            <ProfileNameForm name={name} inputId="account-name" />
+
+            <label className="text-muted-foreground text-xs" htmlFor="account-email">{m.account.profile.email}</label>
+            <div className="flex items-center gap-3">
               {/*
-                ⚠️ **주소가 sans다 — mono가 아니다** (2026-09-13). mono의 근거는 식별자 판독
-                (l/1/I · _/.)인데 이메일은 **읽는 값**이고, 같은 주소가 화면마다 다른 폰트면 그
-                자체가 결함이다 (DESIGN §4.1의 로케일 코드와 같은 판정). **자기 주소라 마스킹하지 않는다.**
+                ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져
+                스크린리더가 자기 주소를 못 읽는다. 키보드 순서에서만 뺀다.
+                ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
+                ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
               */}
-              <dd>{profile?.email ?? m.account.profile.none}</dd>
-            </dl>
-          </Card>
+              <Input
+                id="account-email"
+                value={profile?.email ?? m.account.profile.none}
+                readOnly
+                tabIndex={-1}
+                className="bg-muted w-80 cursor-default"
+              />
+              <p className="text-muted-foreground text-xs">{m.account.profile.emailSource}</p>
+            </div>
+          </div>
 
           {/*
-            ⚠️ **같은 화면에 "GitHub"이 두 번 나온다** — 위는 **로그인 수단**, 아래는 **리포 쓰기
-            권한**(GitHub App 연결)이다. 다른 축이고 그 구별이 화면에서 보여야 한다.
-            로그인 수단의 [Add]는 account-connect challenge를 쓰며 아래 리포 접근 연결과 다르다.
+            ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체
+            로그아웃의 확인 상대다. 구역 제목이 그 축을 말하는 것이 이 재편의 요지다.
           */}
-          <Card title={m.link.methods.title} description={m.link.methods.description}>
-            <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
-          </Card>
+          <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
 
-          <Card title={m.settings.account.title} description={m.account.github.description}>
-            {account.status === "reauthorize" ? (
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs">{m.settings.account.reauthorize}</p>
-                {/* 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다 */}
-                <ConnectGithubButton dest="account" label={m.settings.account.reconnect} />
-              </div>
-            ) : account.status === "unavailable" ? (
-              <p className="text-muted-foreground text-xs">{m.settings.account.unavailable}</p>
-            ) : account.login === null ? (
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs">{m.account.github.notConnected}</p>
-                <ConnectGithubButton dest="account" label={m.settings.account.connect} />
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                {/* ⚠️ 핸들도 sans다 — 위 이메일과 같은 판정으로 여섯 자리를 한 번에 걷었다. */}
-                <span className="bg-muted rounded px-2 py-1 text-sm">@{account.login}</span>
-                <DisconnectGithubButton />
-              </div>
-            )}
-          </Card>
+          <GithubSection account={account} usage={usage} />
 
-          <Card title={m.account.sessions.title} description={m.account.sessions.description}>
-            <SessionRevocation outcome={sessionRevocation} />
-          </Card>
-
-          <Card title={m.account.signOut.title} description={m.account.signOut.description}>
-            <form action={signOutAction}>
-              <Button type="submit" size="sm">
-                {m.common.nav.signOut}
-              </Button>
-            </form>
-          </Card>
+          <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />
         </div>
       </PanelBody>
     </>

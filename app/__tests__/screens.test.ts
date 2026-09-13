@@ -190,9 +190,14 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
    * 연결만 있으면 `taken-by-other`가 영구 잠금이다 (ARCHITECTURE §6.2.1는 자동 병합을 금지한다).
    */
   it("연결과 해제가 둘 다 있다", () => {
-    const src = read(ACCOUNT);
-    expect(src).toContain("ConnectGithubButton");
-    expect(src).toContain("DisconnectGithubButton");
+    /**
+     * ⚠️ **둘이 화면 파일에서 구역 컴포넌트로 내려갔다** (2026-09-13 — 머리 하나 + 리스트 셋).
+     * 재는 자리를 안 옮기면 이 단언이 **화면에서 버튼이 사라져도 green**이 된다.
+     */
+    const section = read("components/account/github-section.tsx");
+    expect(read(ACCOUNT)).toContain("GithubSection");
+    expect(section).toContain("ConnectGithubButton");
+    expect(section).toContain("DisconnectGithubButton");
   });
 
   it("계정 카드가 `/projects` 목록에서 사라졌다 — 이동이지 복제가 아니다", () => {

@@ -7,6 +7,7 @@ const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replac
 const CARD = strip(readFileSync(join(ROOT, "components/account/login-methods.tsx"), "utf8"));
 const PAGE = strip(readFileSync(join(ROOT, "app/(edit)/account/page.tsx"), "utf8"));
 const ACTIONS = strip(readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8"));
+const GITHUB_SECTION = strip(readFileSync(join(ROOT, "components/account/github-section.tsx"), "utf8"));
 
 /** 로그인 수단 추가는 별도 challenge 경로를 쓴다. GitHub App 연결과 섞지 않는다. */
 it("로그인 수단 추가는 GitHub App 연결과 분리된다", () => {
@@ -64,7 +65,13 @@ it("결과를 보내는 쪽과 읽는 쪽이 같은 커밋에 있다", () => {
  * 구별이 화면에서 보여야 한다. 카드 제목·설명이 그 일을 한다.
  */
 it("GitHub App 연결 카드와 제목이 갈린다", () => {
-  expect(PAGE).toContain("m.link.methods.title");
-  expect(PAGE).toContain("m.settings.account.title");
-  expect(PAGE.indexOf("m.link.methods.title")).toBeLessThan(PAGE.indexOf("m.settings.account.title"));
+  /**
+   * ⚠️ **제목이 화면 파일에서 구역 컴포넌트로 내려갔다** (2026-09-13 — 머리 하나 + 리스트 셋).
+   * 구별을 카드 설명문에 맡기던 것이 이 재편의 원인이었으므로, 지금 그 일을 하는 것은 **구역
+   * 제목**이다. 순서는 화면이 정하므로 그쪽에서 잰다.
+   */
+  expect(CARD).toContain("m.link.methods.title");
+  expect(GITHUB_SECTION).toContain("m.settings.account.title");
+  expect(PAGE.indexOf("<LoginMethods")).toBeLessThan(PAGE.indexOf("<GithubSection"));
+  expect(PAGE.indexOf("<LoginMethods")).toBeGreaterThan(-1);
 });
