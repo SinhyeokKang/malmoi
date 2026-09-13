@@ -43,6 +43,10 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
    * ⚠️ **성공해도 `value`를 안 건드린다.** 필드는 pending 중에도 편집되므로, 돌아온 값으로 덮으면
    * **그 사이에 이어 친 글자가 사라진다** — 위 "제출값을 지우지 않는다"가 금지하는 것과 같은 피해다.
    * 트림 차이는 표시 조건이 `value.trim()`을 보는 것으로 흡수한다.
+   *
+   * ⚠️ **그래서 저장 뒤 필드가 트림 **전** 문자열을 유지한다 — 의도다.** `"  Jane  "`을 저장하면
+   * 저장된 값·셸 아바타·사용자 메뉴는 `"Jane"`인데 필드에는 앞공백이 들여쓰기로 보인다. 이것을
+   * 버그로 읽고 `setValue(result.name)`을 되돌리면 **전송 중 편집을 덮는 쪽**으로 돌아간다.
    */
   const [state, submit, pending] = useActionState<Reason | { saved: string } | null, FormData>(async (_previous, form) => {
     const result = await updateProfileName(String(form.get("name") ?? ""));

@@ -151,20 +151,31 @@ it.each([
   ["마지막 수단", [{ provider: "github" }]],
 ])("%s 상태에서 버튼의 접근 이름이 전부 다르다", async (_name, methods) => {
   const container = await screen({}, methods);
-  const names = [...container.querySelectorAll("section li button")]
-    .map((button) => button.getAttribute("aria-label") ?? button.textContent ?? "");
-  expect(names.length).toBeGreaterThan(1);
-  expect(new Set(names).size).toBe(names.length);
-  for (const name of names.filter((n) => n.includes(m.link.methods.disconnect))) {
-    // 보이는 텍스트를 **포함**해야 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
-    expect(name.startsWith(m.link.methods.disconnect)).toBe(true);
+  /**
+   * ⚠️ **보이는 라벨과 접근 이름을 갈라서 든다.** 접힌 이름으로 거르면 라벨을 바꾸는 변경이
+   * **필터에서 빠져나간다** — `aria-label`을 `"Revoke repository access"`로 고치면 보이는 텍스트는
+   * 여전히 `Disconnect`라 진짜 2.5.3 위반인데 이 검사는 조용하다.
+   */
+  const controls = [...container.querySelectorAll("section li button")].map((button) => ({
+    visible: (button.textContent ?? "").trim(),
+    name: button.getAttribute("aria-label") ?? (button.textContent ?? "").trim(),
+  }));
+  expect(controls.length).toBeGreaterThan(1);
+  expect(new Set(controls.map((c) => c.name)).size).toBe(controls.length);
+
+  const disconnects = controls.filter((c) => c.visible === m.link.methods.disconnect);
+  // ⚠️ **루프가 0회면 아래 둘이 통째로 증발한다** — 라벨이 바뀌면 그 순간 검사가 사라진다.
+  expect(disconnects.length).toBeGreaterThan(1);
+  for (const control of disconnects) {
+    // 접근 이름이 보이는 텍스트를 **포함**해야 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
+    expect(control.name.startsWith(control.visible)).toBe(true);
     /**
      * ⚠️ **`"Disconnect"` 단독으로 끝나는 이름이 0이다.** 충돌만 세면 부족하다 — 다른 [Disconnect]가
      * 마침 축을 들고 있으면 **이쪽이 맨몸이어도 두 문자열은 다르다.** 실제로 비활성 [Disconnect]의
      * `aria-label`을 지우는 뮤테이션이 그 이유로 green이었다(2026-09-13). 세야 하는 것은 "둘이
      * 다른가"가 아니라 **"저마다 무엇의 해제인지 말하는가"**다.
      */
-    expect(name).not.toBe(m.link.methods.disconnect);
+    expect(control.name).not.toBe(control.visible);
   }
 });
 
@@ -239,14 +250,20 @@ it.each([
  */
 it("사유 없는 disabled가 0이다", async () => {
   const container = await screen({}, [{ provider: "github" }]);
-  const disabled = [...container.querySelectorAll("button[disabled], input[disabled]")].filter((el) => !el.hasAttribute("aria-hidden"));
+  /**
+   * ⚠️ **도는 버튼을 빼야 한다.** `Button`이 `disabled={disabled === true || loading}`이라
+   * pending 중인 컨트롤이 전부 이 선택자에 들어온다 — 그것들은 **사유가 없는 것이 아니라 도는
+   * 중**이고, 걸리면 "[Delete]에 사유가 없다"라는 오해하기 쉬운 red가 난다.
+   */
+  const disabled = [...container.querySelectorAll("button[disabled], input[disabled]")]
+    .filter((el) => !el.hasAttribute("aria-hidden") && el.querySelector(".animate-spin") === null);
   expect(disabled.length).toBeGreaterThan(0);
   for (const control of disabled) {
-    const reason = [...(control.parentElement?.children ?? [])]
+    const nearby = [...(control.parentElement?.children ?? [])]
       .filter((sibling) => sibling !== control)
       .map((sibling) => sibling.textContent ?? "")
       .join(" ");
-    expect(reason.trim(), control.textContent ?? "").not.toBe("");
+    expect(nearby.trim(), control.textContent ?? "").not.toBe("");
     /**
      * ⚠️ **옆에 있는 것으로는 절반만 지킨 것이다.** `aria-describedby`로 묶지 않으면 스크린리더는
      * *"…, 버튼, 사용 불가"*까지만 읽고 **왜인지는 못 읽는다** — 이 리포가 반복해 밟은 "사유 없는
@@ -254,6 +271,14 @@ it("사유 없는 disabled가 0이다", async () => {
      */
     const describedBy = control.getAttribute("aria-describedby");
     expect(describedBy, control.textContent ?? "").not.toBeNull();
-    expect(container.ownerDocument.getElementById(describedBy!)?.textContent?.trim()).not.toBe("");
+    /**
+     * ⚠️ **참조가 끊긴 것을 먼저 센다.** `getElementById(...)?.textContent?.trim()`은 대상이 없으면
+     * `undefined`를 내고 **`expect(undefined).not.toBe("")`는 통과한다** — 이 단언이 존재하는 이유가
+     * 정확히 그 자리로 빠져나간다. ⚠️ **도달 가능하다**: `profile-picture.tsx`가 속성과 `<span>`을
+     * **서로 독립인 조건 둘**로 그리므로, 캡션을 무조건 렌더로 바꾸는 순간 id가 뜬다.
+     */
+    const reason = container.ownerDocument.getElementById(describedBy!);
+    expect(reason, control.textContent ?? "").not.toBeNull();
+    expect(reason!.textContent!.trim()).not.toBe("");
   }
 });
