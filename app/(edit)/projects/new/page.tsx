@@ -47,7 +47,7 @@ export default async function NewProjectPage({
 
   const { e, q } = firstQueryValues(await searchParams);
 
-  const all = await loadProjectList(getPrisma(), userId);
+  const view = await loadProjectList(getPrisma(), userId);
   // ⚠️ `layout`은 **어댑터에서 그대로** 온다 — 수동 지정의 Path 힌트·예시가 이 값으로 갈리므로
   // 리터럴로 적으면 어댑터를 더할 때 화면이 조용히 틀린 안내를 한다.
   const adapters: AdapterChoice[] = ADAPTERS.map((adapter) => ({
@@ -58,7 +58,7 @@ export default async function NewProjectPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={all} q={q} />
+      <ProjectList all={view.rows} q={q} />
       {/*
         ⚠️ **리포 목록을 `<Suspense>`로 감싼다.** 안 그러면 §4의 "① 로딩" 행도
         `newProject.repo.loading` 키도 **도달 불가**다 — 페이지가 목록을 기다리느라 모달 자체가

@@ -6,6 +6,16 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // ⚠️ `Role`은 **생성물이 아니라 도메인 층**에서 온다 — 그 파일이 "Prisma의 `enum Role`과 두 벌인 것은
 // 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
 import type { Role } from "@/lib/auth/permission";
+import { isImportFailureCode } from "@/lib/projects/import-status";
+import {
+  rowLocaleProgress,
+  summaryQueue,
+  type LiveLocale,
+  type LocaleCellCount,
+  type ProjectEvents,
+  type RowLocaleProgress,
+  type SummaryQueue,
+} from "@/lib/projects/list";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -216,7 +226,10 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 }
 
 /**
- * 목록 화면의 한 행 (8-3). `MembershipRow`에 **그 화면만 쓰는 셋**이 더 붙는다.
+ * 목록 화면의 한 행 (8-3 · projects-list §3). `MembershipRow`에 **그 화면만 쓰는 것들**이 붙는다.
+ *
+ * ⚠️ **`Project.id`를 싣지 않는다** — 화면이 아는 식별자는 slug 하나로 남긴다. 내부 id는 집계를
+ * 묶는 서버 안의 값이고, 그것을 RSC 페이로드에 흘리면 URL이 아닌 경로로 새는 식별자가 하나 는다.
  */
 export type ProjectListRow = MembershipRow & {
   repoOwner: string;
@@ -224,27 +237,41 @@ export type ProjectListRow = MembershipRow & {
   /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, PRODUCT §7.5). */
   repositoryId: string | null;
   memberCount: number;
+  /** `repo_ahead` 띠의 compare 링크와 문구가 쓴다 — **`main`을 하드코딩하지 않는다**. */
+  baseBranch: string;
+  /** `pr_open` 띠의 목적지. 번호는 여기서 파싱한다. */
+  lastPrUrl: string | null;
+  /** 행의 Meter — **정렬 후 최대 셋**이다 (design §3.1). */
+  meters: RowLocaleProgress[];
+  /** 띠·그룹 판정의 입력. GitHub 조회가 실패하면 원격 둘이 "없음"으로 온다. */
+  events: ProjectEvents;
 };
 
+/** 목록 한 화면분. **Summary는 검색 전 전체 멤버십의 값**이라 행 배열과 함께 온다. */
+export type ProjectListView = { rows: ProjectListRow[]; summary: SummaryQueue };
+
 /**
- * `/projects` 목록 전용 조회 (8-3).
+ * `/projects` 목록 전용 조회 (8-3 · projects-list §3).
  *
  * ⚠️ **`loadMemberships`를 넓히지 않고 함수를 나눈 이유**: 그쪽은 **셸이 매 페이지에서** 부른다.
- * 거기에 `_count`와 리포 컬럼을 얹으면 모든 화면이 목록 하나를 위한 집계를 물게 되고, 그것이
+ * 거기에 `_count`와 집계를 얹으면 모든 화면이 목록 하나를 위한 왕복을 물게 되고, 그것이
  * PRODUCT §7.7 결정 5(사이드바 카운트 거절)가 막은 것과 같은 축이다.
  *
  * ⚠️ **멤버 수는 `_count` 서브쿼리라 왕복이 +0이다** — 프로젝트마다 세면 N+1이 되고, 도쿄 리전
  * 왕복 하나가 그대로 붙는다(CLAUDE.md 가상화 절의 실측).
  *
- * ⚠️ **`userId`로 좁힌다** — 목록의 단위가 "내 멤버십"이다 (POSTMORTEM 2026-09-06).
+ * ⚠️ **`userId`로 좁힌다** — 목록의 단위가 "내 멤버십"이다 (POSTMORTEM 2026-09-06). 그 결과의
+ * `id` 집합이 아래 집계의 테넌트 경계가 된다: 다른 출처에서 만들지 않는다 (불변식 5).
  */
-export async function loadProjectList(prisma: PrismaClient, userId: string): Promise<ProjectListRow[]> {
+export async function loadProjectList(prisma: PrismaClient, userId: string): Promise<ProjectListView> {
   const rows = await prisma.projectMember.findMany({
     where: { userId },
     select: {
       role: true,
       project: {
         select: {
+          // ⚠️ **서버 안에서만 쓴다** — 집계를 묶는 키이고 `ProjectListRow`에는 안 나간다.
+          id: true,
           slug: true,
           name: true,
           installationId: true,
@@ -253,6 +280,11 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
           repoOwner: true,
           repoName: true,
           repositoryId: true,
+          baseBranch: true,
+          lastPrUrl: true,
+          // 임포트 진행·결과 (projects-list design §3.35) — 띠와 Meter 자리가 이 둘로 갈린다.
+          lastImportStartedAt: true,
+          lastImportError: true,
           _count: { select: { members: true } },
         },
       },
@@ -260,18 +292,56 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
     orderBy: { project: { slug: "asc" } },
   });
-  return rows.map((r) => ({
-    slug: r.project.slug,
-    name: r.project.name,
-    role: r.role,
-    installationId: r.project.installationId,
-    lastCommitSha: r.project.lastCommitSha,
-    archivedAt: r.project.archivedAt,
-    repoOwner: r.project.repoOwner,
-    repoName: r.project.repoName,
-    repositoryId: r.project.repositoryId,
-    memberCount: r.project._count.members,
-  }));
+
+  // 멤버십이 0이면 집계도 0회다 — 빈 `in`으로 왕복을 만들지 않는다.
+  const ids = rows.map((r) => r.project.id);
+  const aggregates = await loadProjectListAggregates(prisma, ids);
+  const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
+
+  const review = new Map<string, number>();
+  const live = new Set(aggregates.locales.map((l) => `${l.projectId}/${l.code}`));
+  for (const cell of aggregates.cells) {
+    if (!cell.needsReview) continue;
+    // ③은 orphaned 로케일의 셀을 포함할 수 있다 — ①에 없는 것은 버린다 (design §3.1).
+    if (!live.has(`${cell.projectId}/${cell.localeCode}`)) continue;
+    review.set(cell.projectId, (review.get(cell.projectId) ?? 0) + cell.count);
+  }
+
+  return {
+    rows: rows.map((r) => ({
+      slug: r.project.slug,
+      name: r.project.name,
+      role: r.role,
+      installationId: r.project.installationId,
+      lastCommitSha: r.project.lastCommitSha,
+      archivedAt: r.project.archivedAt,
+      repoOwner: r.project.repoOwner,
+      repoName: r.project.repoName,
+      repositoryId: r.project.repositoryId,
+      memberCount: r.project._count.members,
+      baseBranch: r.project.baseBranch,
+      lastPrUrl: r.project.lastPrUrl,
+      meters: meters.get(r.project.id) ?? [],
+      events: {
+        review: review.get(r.project.id) ?? 0,
+        unsent: aggregates.unsent.get(r.project.id) ?? 0,
+        /** ⚠️ **원격 둘은 T3b가 채운다** — 그때까지 "신호 없음"이고, 그것이 조회 실패 시의 값이기도 하다. */
+        openPr: null,
+        repoAheadFiles: 0,
+        // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
+        importError: isImportFailureCode(r.project.lastImportError) ? r.project.lastImportError : null,
+        importing: r.project.lastImportStartedAt !== null,
+      },
+    })),
+    summary: summaryQueue({
+      projects: rows.map((r) => ({ projectId: r.project.id, archived: r.project.archivedAt !== null })),
+      locales: aggregates.locales,
+      keyTotals: aggregates.keyTotals,
+      cells: aggregates.cells,
+      newKeys: aggregates.newKeys,
+      unsent: aggregates.unsent,
+    }),
+  };
 }
 
 /**
@@ -363,4 +433,107 @@ export async function loadRecentEdits(
           updatedBy: row.updatedBy,
         }],
   );
+}
+
+/**
+ * 목록 집계 다섯 — **왕복 수가 프로젝트 수와 무관하다** (projects-list design §3).
+ *
+ * ⚠️ **`Promise.all`로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 다섯 번 쌓이고, 그 고정 비용은
+ * 이미 실측돼 있다 (POSTMORTEM 2026-09-09 — 3.3초의 원인이 함수 리전이었다).
+ *
+ * ⚠️ **`loadLocaleCounts`를 재사용하지 않는다** — 그쪽은 프로젝트 하나 전용이고 셀을 **행으로**
+ * 전부 가져온다. 여기 필요한 것은 개수뿐이라 `groupBy`가 맞고, 그래서 `value`가 애초에 안 딸려온다.
+ */
+export type ProjectListAggregates = {
+  /** ① 살아 있는 로케일. */
+  locales: LiveLocale[];
+  /** ② 살아 있는 키 수 — 전 로케일 공통 분모다. */
+  keyTotals: Map<string, number>;
+  /** ③ 값이 있는 셀의 (로케일 × 검토여부) 개수. */
+  cells: LocaleCellCount[];
+  /** ④ 마지막 pull 이후 추가된 활성 키 수. */
+  newKeys: Map<string, number>;
+  /** ⑤ 안 보낸 편집 수. */
+  unsent: Map<string, number>;
+};
+
+export async function loadProjectListAggregates(
+  prisma: PrismaClient,
+  projectIds: readonly string[],
+): Promise<ProjectListAggregates> {
+  // 빈 `in`으로 왕복을 만들지 않는다 — `loadActors`가 같은 이유로 같은 가드를 든다.
+  if (projectIds.length === 0) {
+    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map() };
+  }
+  const ids = [...projectIds];
+
+  const [locales, keyRows, cellRows, newRows, unsentRows] = await Promise.all([
+    prisma.locale.findMany({
+      where: { projectId: { in: ids }, orphaned: false },
+      select: { projectId: true, code: true, isBase: true },
+    }),
+    // `@@index([projectId, orphaned])`를 그대로 탄다.
+    prisma.stringKey.groupBy({
+      by: ["projectId"],
+      where: { projectId: { in: ids }, orphaned: false },
+      _count: { _all: true },
+    }),
+    /**
+     * `@@index([projectId, localeCode, needsReview])`를 탄다.
+     *
+     * ⚠️ **orphaned 로케일의 번역이 섞여 올 수 있다** — 로케일의 생사는 여기 조건에 없다. 접기에서
+     * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`rowLocaleProgress`의 `foldCells`).
+     */
+    prisma.translation.groupBy({
+      by: ["projectId", "localeCode", "needsReview"],
+      where: { projectId: { in: ids }, value: { not: "" }, stringKey: { orphaned: false } },
+      _count: { _all: true },
+    }),
+    /**
+     * ④ 신규 키 — **기준은 임포트가 아니라 pull이다** (design §3.2). `lastPulledAt`은 성공한 pull이
+     * 처리한 번역 스냅샷의 기준 시각이고, 첫 pull 전에는 활성 키 전체가 신규다(승인된 정의).
+     *
+     * ⚠️ **파라미터화한 `ANY`다** — 문자열 연결·`$queryRawUnsafe`를 쓰지 않는다.
+     */
+    prisma.$queryRaw<{ projectId: string; n: number }[]>`
+      SELECT k."projectId", COUNT(*)::int AS n
+      FROM "StringKey" k JOIN "Project" p ON p."id" = k."projectId"
+      WHERE k."projectId" = ANY(${ids}::text[])
+        AND k."orphaned" = false
+        AND p."archivedAt" IS NULL
+        AND (p."lastPulledAt" IS NULL OR k."createdAt" > p."lastPulledAt")
+      GROUP BY k."projectId"`,
+    /**
+     * ⑤ 미발송 — **`countUnpublished`·`isUnpublished`와 같은 술어의 세 번째 자리다**
+     * (`lib/keys/query.ts`의 `countUnpublished` · `lib/keys/view.ts`의 `isUnpublished`).
+     *
+     * ⚠️ **`updatedBy IS NOT NULL`이 빠지면 안 된다.** push가 전 행의 `updatedAt`을 올리므로
+     * (strict — ARCHITECTURE §0 불변식 2) 조건이 없으면 code push 직후 903키 전부가
+     * "안 보낸 편집"이 된다.
+     *
+     * ⚠️ **활성 로케일 필터를 덧붙이지 않는다** — 미발송의 기존 계약과 진행률의 분모는 다른 문제다.
+     * `p."archivedAt" IS NULL`은 목록 Summary의 **프로젝트 선택 조건**이지 셀 술어가 아니다.
+     */
+    prisma.$queryRaw<{ projectId: string; n: number }[]>`
+      SELECT t."projectId", COUNT(*)::int AS n
+      FROM "Translation" t JOIN "Project" p ON p."id" = t."projectId"
+      WHERE t."projectId" = ANY(${ids}::text[])
+        AND t."updatedBy" IS NOT NULL
+        AND p."archivedAt" IS NULL
+        AND (p."lastPulledAt" IS NULL OR t."updatedAt" > p."lastPulledAt")
+      GROUP BY t."projectId"`,
+  ]);
+
+  return {
+    locales,
+    keyTotals: new Map(keyRows.map((r) => [r.projectId, r._count._all])),
+    cells: cellRows.map((r) => ({
+      projectId: r.projectId,
+      localeCode: r.localeCode,
+      needsReview: r.needsReview,
+      count: r._count._all,
+    })),
+    newKeys: new Map(newRows.map((r) => [r.projectId, r.n])),
+    unsent: new Map(unsentRows.map((r) => [r.projectId, r.n])),
+  };
 }

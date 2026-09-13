@@ -47,11 +47,11 @@ export default async function ProjectsPage({
   /**
    * ⚠️ **셸의 `loadMemberships`와 다른 함수다** — 그쪽에 목록 전용 집계를 얹으면 모든 페이지가 문다.
    */
-  const all = await loadProjectList(getPrisma(), userId);
+  const view = await loadProjectList(getPrisma(), userId);
 
   return (
     <ContentPanel>
-      <ProjectList all={all} q={q} message={message} />
+      <ProjectList all={view.rows} q={q} message={message} />
     </ContentPanel>
   );
 }
