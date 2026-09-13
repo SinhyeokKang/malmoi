@@ -48,8 +48,9 @@ export function EmptyState({
         읽혀 **어느 쪽이 답인지** 안 보인다. 이 블록은 화면에 그것 하나뿐이라 위계가 스스로 서야 한다.
       */}
       <p className="mb-1 text-lg font-medium">{title}</p>
+      {/* ⚠️ **46ch다** — `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다 (시안). */}
       {description !== undefined && (
-        <p className="text-muted-foreground max-w-prose text-sm">{description}</p>
+        <p className="text-muted-foreground max-w-[46ch] text-sm">{description}</p>
       )}
       {action !== undefined && <div className="mt-4">{action}</div>}
     </div>

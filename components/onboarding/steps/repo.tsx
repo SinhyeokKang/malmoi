@@ -1,15 +1,14 @@
 "use client";
 
-import { ExternalLink, FolderGit2, Link2, Search } from "lucide-react";
+import { ExternalLink, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
 
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
-import { Radio } from "@/components/ui/radio";
-import { Select } from "@/components/ui/select";
+import { Radio, RadioGroup } from "@/components/ui/radio";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
@@ -65,18 +64,23 @@ export function RepoStep({
   if (repos === undefined) {
     return (
       <div className="flex flex-col gap-3">
-        <ul className="divide-border border-border divide-y overflow-hidden rounded-lg border" aria-hidden>
+        {/*
+          ⚠️ **행의 형이 실물과 같아야 한다** — 디바이더 색·행 padding·칩 자리가 어긋나면 목록이
+          도착하는 순간 레이아웃이 움직인다(핸드오프: "다 차고 나서 레이아웃이 움직이지 않아야 한다").
+        */}
+        <ul className="divide-divider border-border divide-y overflow-hidden rounded-md border" aria-hidden>
           {[0, 1, 2].map((i) => (
-            <li key={i} className="flex items-center gap-2.5 px-3 py-3.5">
-              <Skeleton className="size-7 rounded-sm" />
-              <div className="flex flex-1 flex-col gap-1">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-4 w-72" />
+            <li key={i} className="flex items-center gap-3 p-3">
+              <Skeleton className="size-4 rounded-full" />
+              <Skeleton className="size-10 rounded-md" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3.5 w-72" />
               </div>
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground text-xs">{m.newProject.repo.loading}</p>
+        <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.repo.loading}</p>
       </div>
     );
   }
@@ -88,13 +92,21 @@ export function RepoStep({
     <div className="flex flex-col gap-4">
       {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
 
-      <Input
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        placeholder={m.newProject.repo.search}
-        aria-label={m.newProject.repo.search}
-        className="w-full"
-      />
+      {/*
+        ⚠️ **`SearchInput`을 쓰지 않는다** — 그 프리미티브는 Enter 제출형이고 폭을 `w-64`로 못 박았다
+        ("폭을 인자로 열면 툴바마다 검색창이 달라진다"). 여기는 입력 중 즉시 거르는 폭 100% 필드라
+        계약이 다르다. **글리프 자리잡기 관용구만 그 파일에서 그대로 가져온다.**
+      */}
+      <div className="relative shrink-0">
+        <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" aria-hidden />
+        <Input
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder={m.newProject.repo.search}
+          aria-label={m.newProject.repo.search}
+          className="w-full pr-2.5 pl-8"
+        />
+      </div>
 
       {shown.length === 0 ? (
         <EmptyState
@@ -108,36 +120,89 @@ export function RepoStep({
           }
         />
       ) : (
-        <ul className="divide-border-subtle border-border divide-y overflow-hidden rounded-lg border">
-          {shown.map((repo) => {
+        /*
+          ⚠️ **`asChild`를 쓰지 않는다** (2026-09-13 리뷰). `<ul>`에 얹으면 Radix가 그 태그의 role을
+          `radiogroup`으로 **덮어써서** `<li>`들이 부모 list를 잃은 고아 listitem이 된다("list, N items"
+          안내가 사라지고 axe가 `aria-required-children`으로 잡는다). Root가 div 한 겹을 세우면
+          라디오는 여전히 그 후손이라 소유되고, **리스트와 radiogroup이 둘 다 산다.**
+        */
+        <RadioGroup
+          className="shrink-0"
+          aria-label={m.newProject.repo.list}
+          value={selected ?? ""}
+          onValueChange={(fullName) => {
+            const picked = shown.find((r) => r.fullName === fullName);
+            if (picked !== undefined) onSelect(picked);
+          }}
+        >
+        <ul className="border-border overflow-hidden rounded-md border">
+          {shown.map((repo, index) => {
             const active = selected === repo.fullName;
+            /*
+              ⚠️ **`divide-y`가 아니다** — 구분선 색이 두 벌이기 때문이다: **선택 행(muted 면)에 접한
+              경계는 `border`(#e5e5e5)**이고 비선택끼리는 한 단계 연한 `divider`(#f0f0f0)다. 한 값으로
+              두면 muted 면의 위아래 가장자리가 면 안에서 풀린다 (핸드오프 1a).
+            */
+            const prevActive = index > 0 && selected === shown[index - 1]?.fullName;
             return (
-              <li key={repo.fullName} className={cn("px-3 py-2.5", active && "bg-muted")}>
-                <Radio
-                  name="repo"
-                  checked={active}
-                  onChange={() => onSelect(repo)}
-                  label={
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{repo.repo}</span>
-                      <span className="text-muted-foreground block truncate text-xs">
-                        {repo.owner}
-                        {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now)))}`}
-                      </span>
-                    </span>
-                  }
-                />
+              /*
+                ⚠️ **padding이 `<li>`가 아니라 안쪽 둘에 붙는다** — 브랜치 줄의 `border-top`이 행 끝까지
+                가야 하는데, `<li>`가 padding을 들면 그 선이 좌우로 12씩 들여써진다.
+              */
+              <li
+                key={repo.fullName}
+                className={cn(
+                  index > 0 && "border-t",
+                  index > 0 && (active || prevActive ? "border-border" : "border-divider"),
+                  active ? "bg-muted" : "hover:bg-foreground/3",
+                )}
+              >
+                <div className="p-3">
+                  <Radio
+                    value={repo.fullName}
+                    labelClassName="gap-3"
+                    label={
+                      <>
+                        {/*
+                          ⚠️ **글리프에 톤 색을 주지 않는다** — 아직 프로젝트가 아니라 후보다
+                          (`/projects` 목록의 `toneFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
+                          muted 면 위에서 떠오른다.
+                        */}
+                        <span
+                          className={cn(
+                            "flex size-10 shrink-0 items-center justify-center rounded-md",
+                            active ? "bg-background" : "bg-muted",
+                          )}
+                        >
+                          <FolderGit2 className="text-muted-foreground size-5" aria-hidden />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="block truncate text-base font-medium">{repo.repo}</span>
+                          {/*
+                            ⚠️ **선택 행에서 색이 바뀐다** — muted 면 위에서 `muted-foreground`는
+                            4.34:1로 AA 미달이다 (핸드오프 · DESIGN §2.2).
+                          */}
+                          <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
+                            {repo.owner}
+                            {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now)))}`}
+                          </span>
+                        </span>
+                      </>
+                    }
+                  />
+                </div>
                 {active && <BranchRow state={state} onChange={onBranchChange} />}
               </li>
             );
           })}
         </ul>
+        </RadioGroup>
       )}
 
       {installUrl !== null && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
           {m.newProject.repo.notListed}{" "}
-          <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-1 text-blue-600">
+          <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
             {m.newProject.empty.addRepos}
             <ExternalLink className="size-3" aria-hidden />
           </a>
@@ -156,53 +221,90 @@ export function RepoStep({
 function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value: string) => void }) {
   if (state.accessError !== undefined) {
     return (
-      <div className="pt-2 pl-6">
+      <BranchShell>
         <Alert variant="danger">{failureText(state.accessError)}</Alert>
-      </div>
+      </BranchShell>
     );
   }
   if (state.branchLoading || state.branch === undefined) {
     return (
-      <div className="pt-2 pl-6">
-        <Skeleton className="h-9 w-64" />
-      </div>
+      <BranchShell>
+        <BranchLabel />
+        <Skeleton className="h-9 w-[220px] shrink-0 rounded-md" />
+      </BranchShell>
     );
   }
 
   const { branch } = state;
+  const help =
+    branch.mode === "fixed"
+      ? m.newProject.repo.branchDefault
+      : branch.mode === "input"
+        ? m.newProject.repo.branchTooMany
+        : m.newProject.repo.branchHelp;
+
   return (
-    <div className="pt-2 pl-6">
-      <FormGroup
-        label={m.newProject.repo.branch}
-        htmlFor="repo-branch"
-        help={
-          branch.mode === "fixed"
-            ? m.newProject.repo.branchDefault
-            : branch.mode === "input"
-              ? m.newProject.repo.branchTooMany
-              : m.newProject.repo.branchHelp
-        }
-      >
+    /* 라벨·컨트롤·설명이 **한 줄**이다 — 세로로 쌓으면 행 하나가 세 줄이 되어 목록의 리듬이 깨진다. */
+    <BranchShell>
+      <BranchLabel htmlFor={branch.mode === "fixed" ? undefined : "repo-branch"} />
+      <>
         {branch.mode === "select" ? (
-          <Select id="repo-branch" value={state.branchValue} onChange={(e) => onChange(e.target.value)} className="w-full max-w-sm">
-            {branch.names.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
+          <Select value={state.branchValue} onValueChange={onChange}>
+            {/* ⚠️ **자기 id를 `aria-labelledby`에 함께 넣는다** — 트리거는 `<button>`이라 접근 값이
+                없어서, 라벨만 이으면 스크린리더가 "Branch"까지만 말하고 고른 브랜치를 말하지 않는다. */}
+            <SelectTrigger id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="w-[220px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {branch.names.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         ) : branch.mode === "input" ? (
           <Input
             id="repo-branch"
             value={state.branchValue}
             onChange={(e) => onChange(e.target.value)}
-            className="text-mono w-full max-w-sm"
+            className="w-[220px]"
           />
         ) : (
-          <p className="text-mono text-sm">{state.branchValue}</p>
+          /* ⚠️ **mono가 아니다** — 브랜치는 읽는 값이다 (핸드오프 1a의 `Select` 값이 sans다). */
+          <p className="text-sm">{state.branchValue}</p>
         )}
-      </FormGroup>
-    </div>
+        {/*
+          ⚠️ **`text-foreground/60`이다** — 이 줄은 muted 면 위에 서므로 `muted-foreground`면 4.34:1로
+          AA 미달이다 (핸드오프 · DESIGN §2.2). 같은 이유로 `FormGroup`을 쓰지 않는다 — 그 프리미티브의
+          help는 흰 면 전용 색이고, 고치면 다른 화면의 모든 폼이 함께 움직인다.
+        */}
+        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-[1.6]">{help}</p>
+      </>
+    </BranchShell>
+  );
+}
+
+/**
+ * 브랜치 줄의 껍데기 — 행의 muted 면 위에 `border-top`으로 얹힌다.
+ *
+ * ⚠️ **`pl-20`(80)이 우연이 아니다** — 라디오 16 + gap 12 + 칩 40 + gap 12 = 80이라 **리포 이름과
+ * 정확히 같은 세로선**에서 시작한다. 칩 치수를 바꾸면 이 값도 같이 움직여야 한다.
+ */
+function BranchShell({ children }: { children: React.ReactNode }) {
+  return <div className="border-border flex items-center gap-3 border-t p-3 pl-20">{children}</div>;
+}
+
+/**
+ * ⚠️ **`htmlFor`가 갈래를 탄다** — 조회 실패(`fixed`)와 로딩에는 가리킬 컨트롤이 아예 없다. 항상
+ * 달면 존재하지 않는 id를 가리키는 라벨이 남는다.
+ */
+function BranchLabel({ htmlFor }: { htmlFor?: string }) {
+  return (
+    <label id="repo-branch-label" htmlFor={htmlFor} className="flex shrink-0 items-center gap-1.5 text-sm font-medium">
+      <GitBranch className="size-3.5" aria-hidden />
+      {m.newProject.repo.branch}
+    </label>
   );
 }
 
@@ -254,7 +356,7 @@ function Blocked({
               m.newProject.empty.noLink
             ) : (
               <>
-                <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-1 text-blue-600">
+                <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
                   {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
                   <ExternalLink className="size-3" aria-hidden />
                 </a>{" "}

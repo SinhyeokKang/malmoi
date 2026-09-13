@@ -38,6 +38,14 @@
    * **배경과 거의 같은 톤**이다 — border는 경계를 만드는 게 아니라 가장자리를 정리한다.
    */
   --color-border-subtle: var(--border-subtle);
+  /**
+   * ⚠️ **`--border`(#e5e5e5)보다 한 단계 연한 **그룹 안**의 선** (2026-09-13 — 새 프로젝트 모달
+   * 핸드오프). 시안의 선이 셋이다: **구조 `#e5e5e5`** · **그룹 안 `#f0f0f0`** · **패널 가장자리
+   * `#e9ecef`**(`--border-subtle`). 앞의 둘은 목록·표 **안에서** 행을 가르고, 마지막은 떠 있는
+   * 표면의 **바깥 윤곽**이라 쓰임이 다르다 — `border-subtle`로 대신하면 muted 면에 접한 경계와
+   * 그렇지 않은 경계의 구별이 사라진다 (DESIGN §6.2).
+   */
+  --color-divider: var(--divider);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
@@ -174,6 +182,7 @@
    * (`#e2e8f0`)보다는 연해서 선이 도드라지지는 않는다.
    */
   --border-subtle: rgb(233 236 239);
+  --divider: rgb(240 240 240);
   --input: hsl(0 0% 89.8%);
 
   /**

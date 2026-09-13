@@ -12,6 +12,7 @@ import {
   runFirstIngest,
 } from "@/app/(edit)/projects/actions";
 import { m } from "@/lib/i18n";
+import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { nextEnabled, type NextState, type Step } from "@/lib/onboarding/next-enabled";
@@ -428,9 +429,22 @@ export function NewProject({
     1: m.newProject.steps.repo.description,
     2: detecting
       ? m.newProject.steps.files.loading(repoLabel, branchValue)
-      : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
+      : candidates.length === 0
+        ? m.newProject.steps.files.emptyDescription(repoLabel, branchValue)
+        : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
-    4: m.newProject.steps.result.description,
+    /*
+      ⚠️ **④의 설명이 적재 결과를 든다** (핸드오프 1d·4f·4g). 성공은 "Imported N keys."가 제목 아래에
+      서고 본문에는 아무 그릇도 없다 — 부분 실패·실패만 `Alert`를 든다.
+    */
+    4:
+      ingest === null || ingest.status === "running"
+        ? m.newProject.steps.result.description
+        : ingest.status === "failed"
+          ? m.newProject.steps.result.descriptionFailed
+          : ingest.failed === 0
+            ? `${ingestHeadline(ingest.count, ingest.failed)} ${m.newProject.steps.result.description}`
+            : ingestHeadline(ingest.count, ingest.failed),
   } as const;
 
   return (

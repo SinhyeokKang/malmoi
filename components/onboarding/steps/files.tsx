@@ -1,5 +1,6 @@
 "use client";
 
+import { FileCode2, FileJson2, FileSearch2 } from "lucide-react";
 import { useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -7,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
-import { Radio } from "@/components/ui/radio";
-import { Select } from "@/components/ui/select";
+import { Radio, RadioGroup } from "@/components/ui/radio";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableHeader, TableRow, Td, Th, Tr } from "@/components/ui/table";
+import { LocaleFlag } from "@/components/translations/locale-badge";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
 import type { CandidateSummary, SampleRow } from "@/lib/onboarding/detect";
@@ -102,59 +105,104 @@ export function FilesStep({
   const manualMode = !detecting && (candidates.length === 0 || candidate === undefined);
 
   return (
-    <div className="flex min-h-0 flex-1 gap-6">
+    /*
+      ⚠️ **래퍼를 세우지 않는다** — 껍데기 본문이 이미 `bodyDirection="row"`로 2단이고 `gap-4`(16)를
+      든다. 여기서 또 감싸면 좌우 간격이 두 곳에서 정해지고, 껍데기를 고쳐도 이 화면만 안 따라온다.
+    */
+    <>
       {/* 좌 240 — 후보 라디오 또는 수동 지정 폼. */}
       <div className="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
-          <div className="flex flex-col gap-2" aria-hidden>
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-14 w-full" />
-          </div>
+          <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
+            {[0, 1].map((i) => (
+              <li key={i} className={cn("flex items-center gap-3 p-3", i > 0 && "border-divider border-t")}>
+                <Skeleton className="size-4 rounded-full" />
+                <Skeleton className="size-10 rounded-md" />
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3.5 w-24" />
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : candidates.length === 0 ? (
           <ManualForm state={state} onManual={onManual} />
         ) : (
           <>
-            <ul className="divide-border-subtle border-border divide-y overflow-hidden rounded-lg border">
-              {candidates.map((c, index) => (
-                <li key={c.pathTemplate} className={cn("px-3 py-2", picked === index && "bg-muted font-medium")}>
-                  <Radio
-                    name="candidate"
-                    checked={picked === index}
-                    onChange={() => onPick(index)}
-                    label={
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm">{c.label}</span>
-                        {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 (design §3.3) */}
-                        <span className="text-muted-foreground block truncate text-xs">{c.pathTemplate}</span>
-                        <span className="text-muted-foreground block text-xs">
-                          {m.newProject.files.summaryShort(
-                            c.locales.length,
-                            c.keys.status === "counted"
-                              ? m.newProject.files.keys(c.keys.count)
-                              : onboardErrorMessage("key-count-failed"),
-                          )}
-                        </span>
-                      </span>
-                    }
-                  />
-                </li>
-              ))}
+            {/* ⚠️ `asChild`를 쓰지 않는 이유는 ①과 같다 — `<ul>`의 list role이 덮이면 `<li>`가 고아가 된다. */}
+            <RadioGroup
+              className="shrink-0"
+              aria-label={m.newProject.files.candidates}
+              value={picked === null ? "" : String(picked)}
+              onValueChange={(v) => onPick(Number(v))}
+            >
+            <ul className="border-border overflow-hidden rounded-md border">
+              {candidates.map((c, index) => {
+                const active = picked === index;
+                const prevActive = index > 0 && picked === index - 1;
+                /*
+                  ⚠️ **글리프가 파일 종류로 갈린다** — 어댑터 이름이 아니라 **경로의 확장자**로 판정한다
+                  (PRODUCT §3: 어댑터 내부 이름은 화면에 안 쓴다). 값이 아니라 모양만 가르는 자리다.
+                */
+                const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
+                return (
+                  <li
+                    key={c.pathTemplate}
+                    className={cn(
+                      index > 0 && "border-t",
+                      index > 0 && (active || prevActive ? "border-border" : "border-divider"),
+                      active ? "bg-muted" : "hover:bg-foreground/3",
+                    )}
+                  >
+                    <div className="p-3">
+                      <Radio
+                        value={String(index)}
+                        labelClassName="gap-3"
+                        label={
+                          <>
+                            <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
+                              <Glyph className="text-muted-foreground size-5" aria-hidden />
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
+                              <span className="block truncate text-base font-medium">{c.pathTemplate}</span>
+                              <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
+                                {m.newProject.files.summaryShort(
+                                  c.locales.length,
+                                  c.keys.status === "counted"
+                                    ? m.newProject.files.keys(c.keys.count)
+                                    : onboardErrorMessage("key-count-failed"),
+                                )}
+                              </span>
+                            </span>
+                          </>
+                        }
+                      />
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
+            </RadioGroup>
             <ManualToggle state={state} onManual={onManual} />
           </>
         )}
       </div>
 
-      {/* 우 — 키·값 표. */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-        {manualMode && !state.manualMatched ? (
-          <EmptyState className="py-6" title={m.newProject.files.preview.none} />
-        ) : (
-          <Preview state={state} candidate={candidate ?? state.manualCandidate} onLocale={onLocale} />
-        )}
-      </div>
-    </div>
+      {/*
+        우 — 키·값 표. 껍데기는 `Preview`가 든다.
+
+        ⚠️ **후보 0개에도 껍데기를 버리지 않는다** (핸드오프 3a). 경로를 쳐서 매칭되는 순간 빈 박스가
+        통째로 툴바+헤더+행으로 갈리면 화면이 튄다 — 로딩에 헤더를 세워 두는 것과 **같은 규칙**이다.
+      */}
+      <Preview
+        state={state}
+        candidate={candidate ?? state.manualCandidate}
+        onLocale={onLocale}
+        empty={manualMode && !state.manualMatched}
+      />
+    </>
   );
 }
 
@@ -162,10 +210,13 @@ function Preview({
   state,
   candidate,
   onLocale,
+  empty = false,
 }: {
   state: FilesStepState;
   candidate: CandidateSummary | undefined;
   onLocale: (locale: string) => void;
+  /** 예외 E — 보여 줄 후보가 아직 없다. **헤더는 그대로 서고 본문 자리만 빈다.** */
+  empty?: boolean;
 }) {
   const locales = candidate?.locales ?? [];
   /**
@@ -179,73 +230,147 @@ function Preview({
   };
 
   return (
-    <>
-      {/* 툴바 — 고정. */}
-      <div className="flex shrink-0 items-center justify-between gap-2">
+    /*
+      ⚠️ **표가 자기 테두리 안에서 산다** — 툴바·헤더·총량 줄이 고정이고 **키 행만** 스크롤하므로
+      껍데기의 `bodyScroll="hidden"`과 짝이다. 스크롤을 바깥이 들면 헤더의 `sticky`가 붙을 대상을
+      잃는다 (`table.tsx`의 컨테이너 주석과 같은 규칙).
+    */
+    <div className="border-border flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border">
+      {/*
+        툴바 — 고정. ⚠️ **빈 상태에는 아예 없다** (핸드오프 3a는 헤더부터 시작한다). 남겨 두면
+        고를 로케일도 읽을 파일도 없는 자리에 **트랙 자리 회색 블록이 영구히** 서서, 탐지 중 화면과
+        픽셀 단위로 같아 보인다 — 사용자는 그것을 "로딩이 멈췄다"로 읽는다.
+      */}
+      {!empty && (
+      <div className="border-border flex shrink-0 items-center gap-2 border-b p-2">
         {collapsed ? (
-          <Select
-            aria-label={m.newProject.files.preview.language}
-            value={state.locale}
-            onChange={(e) => onLocale(e.target.value)}
-            className="w-48"
-          >
-            {locales.map((code) => (
-              <option key={code} value={code}>
-                {m.newProject.files.preview.option(code, keysFor(code))}
-              </option>
-            ))}
+          <Select value={state.locale} onValueChange={onLocale}>
+            {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
+            <span id="preview-language-label" className="sr-only">{m.newProject.files.preview.language}</span>
+            <SelectTrigger id="preview-language" aria-labelledby="preview-language-label preview-language" className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {locales.map((code) => (
+                <SelectItem key={code} value={code}>
+                  {/* ⚠️ 세그먼트 칸에는 국기가 있다 — 접혔다고 빠지면 같은 로케일이 두 가지로 보인다. */}
+                  <LocaleFlag code={code} />
+                  {m.newProject.files.preview.option(code, keysFor(code))}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
+        ) : locales.length === 0 ? (
+          /*
+            ⚠️ **칸 수를 모르는 동안은 트랙 자리만 남긴다** (핸드오프 2b). 칸 0개짜리 세그먼트를
+            그대로 세우면 툴바가 빈 채로 있다가 값이 도착하는 순간 높이가 튄다.
+          */
+          <div className="bg-canvas h-9 w-[150px] rounded-lg" aria-hidden />
         ) : (
           <SegmentedControl
             label={m.newProject.files.preview.language}
             value={state.locale}
             onChange={onLocale}
-            options={locales.map((code) => ({ value: code, label: code }))}
+            /* 칸마다 국기가 앞에 선다 — `leading`이 그 자리다 (`SegmentContent`는 아이콘 컴포넌트만 받는다). */
+            options={locales.map((code) => ({ value: code, label: code, leading: <LocaleFlag code={code} /> }))}
           />
         )}
-        <span className="text-muted-foreground truncate text-xs">{candidate?.pathTemplate}</span>
+        <span className="text-muted-foreground min-w-0 flex-1 truncate text-right text-xs">{candidate?.pathTemplate}</span>
       </div>
+      )}
 
-      {/* 헤더 — 고정. */}
-      <div className="border-border-subtle text-muted-foreground grid shrink-0 grid-cols-[1fr_2fr] gap-3 border-b pb-2 text-xs">
-        <span>{m.newProject.files.preview.key}</span>
-        <span>{m.newProject.files.preview.value}</span>
-      </div>
+      {/*
+        키 행 — **여기만** 스크롤한다. 헤더는 `Th`의 `sticky`가 세운다.
 
-      {/* 키 행 — **여기만** 스크롤한다. */}
+        ⚠️ **헤더는 로딩에도 서 있는다** — 스켈레톤이 `<tbody>` 안에서만 차야 값이 도착할 때
+        레이아웃이 움직이지 않는다(핸드오프: "행 높이·디바이더·표 헤더 글자는 실물 그대로").
+      */}
+      {/*
+        ⚠️ **컨테이너가 `tabIndex={0}`과 이름을 든다** — 이 안에 포커스 가능한 것이 하나도 없어서
+        (읽기 전용 텍스트뿐) 없으면 키보드로 목록을 밀 수 없다. Chrome 127+의 keyboard-focusable
+        scrollers가 가려 주지만 Firefox·Safari에는 없다.
+      */}
       <div
+        /* ⚠️ **`role`이 있어야 이름이 붙는다** — role 없는 div는 `generic`이고 ARIA 1.2가 naming을 **금지**한다. */
+        role="region"
         tabIndex={0}
-        aria-label={m.newProject.files.preview.value}
-        className="focus-visible:ring-ring min-h-0 flex-1 overflow-y-auto focus-visible:ring-2 focus-visible:outline-none"
+        aria-label={m.newProject.files.preview.rows}
+        className="focus-visible:ring-ring min-h-0 flex-1 overflow-auto focus-visible:ring-2 focus-visible:outline-none"
       >
-        {state.preview.status === "loading" ? (
-          <div className="flex flex-col gap-2 pt-2" aria-hidden>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-5 w-full" />
-            ))}
-          </div>
-        ) : state.preview.status === "unavailable" ? (
-          <p className="text-muted-foreground pt-2 text-sm">{m.newProject.files.preview.unavailable}</p>
-        ) : (
-          <dl className="grid grid-cols-[1fr_2fr] gap-x-3 gap-y-1 pt-2 text-sm">
-            {state.preview.rows.map((row) => (
-              <div key={row.key} className="contents">
-                <dt className="text-mono truncate">{row.key}</dt>
-                {/* 정말 비었으면 **빈 칸**이다 — 못 읽은 것과 화면에서 갈린다. */}
-                <dd className="truncate">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        {/* ⚠️ **`scrollable={false}`다** — 스크롤을 이 div가 들어야 `Th`의 `sticky`가 그것을 기준으로 붙는다. */}
+        <Table scrollable={false} className="table-fixed">
+          {/*
+            ⚠️ **`[&_tr]:border-b-0`이 `TableRow`가 아니라 여기 있다.** 프리셋과 **같은 요소·같은
+            변형**이라 twMerge가 뒤엣것만 남기고 프리셋은 CSS로 나가지도 않는다. 행에 `border-b-0`을
+            주던 앞 판은 **아무 효과가 없었다** — 자손 선택자 `[&_tr]:border-b`(0,1,1)가 행의
+            `border-b-0`(0,1,0)을 특정도로 이기고, 두 클래스가 다른 요소에 있어 twMerge도 못 봤다.
+            그때 선이 안 보인 것은 `border-collapse`가 셀 테두리를 우선한 우연이다.
+            선은 첫 `Td`의 `border-t`가 든다.
+          */}
+          <TableHeader className="[&_tr]:border-b-0">
+            {/*
+              ⚠️ **헤더 배경이 불투명이다.** 핸드오프의 `rgba(10,10,10,0.02)`는 흰 패널 위 **한 겹**으로
+              그린 값인데, 여기 헤더는 `sticky`라 **뒤로 키 행이 지나간다** — 98% 투과면 글자가 그대로
+              비친다. 흰 위 2%에 해당하는 불투명 값이 `#fafafa`이고 그것이 이미 토큰으로 있다
+              (DESIGN §6.2에 등재. 이름에 primary가 붙은 것은 그 토큰의 첫 소비자가 버튼이어서지
+              의미가 primary라서가 아니다).
+            */}
+            <TableRow>
+              <Th className="bg-primary-foreground w-1/3 text-xs">{m.newProject.files.preview.key}</Th>
+              <Th className="bg-primary-foreground text-xs">{m.newProject.files.preview.value}</Th>
+            </TableRow>
+          </TableHeader>
+          {!empty && (
+          <TableBody>
+            {state.preview.status === "loading" ? (
+              [0, 1, 2, 3, 4].map((i) => (
+                <Tr key={i} aria-hidden className="hover:bg-transparent">
+                  <Td className={cn("py-3", i === 0 ? "border-border" : "border-divider")}>
+                    <Skeleton className="h-4 w-full" />
+                  </Td>
+                  <Td className={cn("py-3", i === 0 ? "border-border" : "border-divider")}>
+                    <Skeleton className="h-4 w-full" />
+                  </Td>
+                </Tr>
+              ))
+            ) : state.preview.status === "unavailable" ? (
+              <Tr className="hover:bg-transparent">
+                <Td colSpan={2} className="border-border text-muted-foreground py-3">
+                  {m.newProject.files.preview.unavailable}
+                </Td>
+              </Tr>
+            ) : (
+              state.preview.rows.map((row, index) => (
+                <Tr key={row.key} className="hover:bg-transparent">
+                  {/* ⚠️ **키가 sans다** — mono는 사람이 그대로 옮겨 적는 값에만 남는다 (핸드오프 공통). */}
+                  {/*
+                    ⚠️ **`whitespace-nowrap`을 명시한다.** `Td`의 기본이 `whitespace-normal`이고
+                    `truncate`(= overflow-hidden + ellipsis + nowrap)와 **그룹이 달라** twMerge가
+                    둘을 함께 남긴다 — 그러면 값이 두 줄로 흘러 행 높이가 제각각이 된다(실물 관측).
+                  */}
+                  <Td className={cn("text-muted-foreground truncate py-3 whitespace-nowrap", index === 0 ? "border-border" : "border-divider")}>
+                    {row.key}
+                  </Td>
+                  {/* 정말 비었으면 **빈 칸**이다 — 못 읽은 것과 화면에서 갈린다. */}
+                  <Td className={cn("truncate py-3 whitespace-nowrap", index === 0 ? "border-border" : "border-divider")}>
+                    {row.value}
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </TableBody>
+          )}
+        </Table>
+        {empty && <EmptyState icon={FileSearch2} className="py-8" title={m.newProject.files.preview.none} />}
       </div>
 
-      {/* 총량 줄 — 고정. */}
+      {/* 총량 줄 — 스크롤 밖에 남는다. */}
       {state.preview.status === "ready" && state.preview.total > state.preview.rows.length && (
-        <p className="text-muted-foreground shrink-0 text-xs">
+        <p className="border-border text-muted-foreground shrink-0 border-t px-4 py-3 text-center text-xs">
           {m.newProject.files.preview.more(state.preview.total - state.preview.rows.length)}
         </p>
       )}
-    </>
+    </div>
   );
 }
 
@@ -272,18 +397,18 @@ function ManualForm({ state, onManual }: { state: FilesStepState; onManual: (nex
 
   return (
     <div className="flex flex-col gap-3">
-      <FormGroup label={m.newProject.files.manual.format} htmlFor="manual-format">
-        <Select
-          id="manual-format"
-          value={manual.adapter}
-          onChange={(e) => onManual({ ...manual, adapter: e.target.value as AdapterName })}
-          className="w-full"
-        >
-          {adapters.map((c) => (
-            <option key={c.adapter} value={c.adapter}>
-              {c.label}
-            </option>
-          ))}
+      <FormGroup label={m.newProject.files.manual.format} labelId="manual-format-label" htmlFor="manual-format">
+        <Select value={manual.adapter} onValueChange={(value) => onManual({ ...manual, adapter: value as AdapterName })}>
+          <SelectTrigger id="manual-format" aria-labelledby="manual-format-label manual-format" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {adapters.map((c) => (
+              <SelectItem key={c.adapter} value={c.adapter}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </FormGroup>
       <FormGroup

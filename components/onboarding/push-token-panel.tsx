@@ -49,8 +49,12 @@ export function PushTokenPanel({ slug }: { slug: string }) {
       {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}
       {token !== null && (
         <div className="space-y-1">
-          <p className="text-muted-foreground text-xs">
-            <strong>{m.settings.token.warning}</strong>
+          {/*
+            ⚠️ **굵게 "보이지" 않되 `<strong>`은 남긴다** (2026-09-13 사용자 + 리뷰). 토큰을 다시 못
+            본다는 경고라 색만으로 말하면 스크린리더와 고대비 모드에서 사라진다.
+          */}
+          <p className="text-xs leading-[1.7]">
+            <strong className="text-foreground font-normal">{m.settings.token.warning}</strong>
           </p>
           <div className="flex items-center gap-2">
             {/* 토큰은 식별자라 mono다 (DESIGN §4.1) */}

@@ -41,28 +41,31 @@ export function ResultStep({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      <section className="flex flex-col gap-2">
+    /* ⚠️ **본문이 스크롤하지 않는다** — 껍데기가 `bodyScroll="hidden"`이고 YAML 블록이 자기 스크롤을 든다. */
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <section className="flex shrink-0 flex-col gap-2">
         <p className="text-sm font-medium">{m.newProject.result.token.title}</p>
-        <p className="text-muted-foreground text-xs">
-          {m.newProject.result.token.description(<span className="text-mono">PUSH_TOKEN</span>)}
-        </p>
+        {/*
+          ⚠️ **값 칩이 필드와 같은 형이다** — 높이 36 · radius 10 · border · 안쪽 여백 10 (핸드오프 1d).
+          토큰은 사람이 그대로 옮겨 적는 값이라 여기와 YAML **둘만** mono다.
+        */}
         <div className="flex items-center gap-2">
-          <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1">{pushToken}</code>
+          <code className="text-mono border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5">
+            {pushToken}
+          </code>
           <CopyButton value={pushToken} />
         </div>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <p className="text-sm font-medium">
-          {m.newProject.result.workflow.saveAs}{" "}
-          <span className="text-mono font-normal">.github/workflows/l10n.yml</span>
+        {/* ⚠️ `PUSH_TOKEN`은 **읽는 값**이라 mono가 아니다 — 색만 올린다 (1d). */}
+        <p className="text-muted-foreground text-xs leading-[1.7]">
+          {m.newProject.result.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p>
-        <WorkflowBlock yaml={yaml} />
       </section>
 
       {/*
         ⚠️ **tone을 `failed`가 정한다** — 0건이 아니면 성공 문구를 그대로 쓰지 않는다 (불변식 9).
+
+        ⚠️ **성공한 적재에는 그릇이 없다** (핸드오프 1d). 결과는 모달의 **설명 줄**이 말하고, 본문에
+        `Alert`를 세우는 것은 적재 중·부분 실패·실패 셋뿐이다 — 가장 흔한 상태가 가장 조용하다.
       */}
       {ingest === null || ingest.status === "running" ? (
         // ⚠️ `Alert`의 `role="alert"`는 `danger`일 때만 붙는다 — 적재 중은 `role="status"`다.
@@ -79,8 +82,8 @@ export function ResultStep({
             </Button>
           </div>
         </div>
-      ) : (
-        <Alert variant={ingest.failed === 0 ? "success" : "warning"}>
+      ) : ingest.failed === 0 ? null : (
+        <Alert variant="warning">
           <p>{ingestHeadline(ingest.count, ingest.failed)}</p>
           {/* 같은 파일에 에러가 둘 나올 수 있어 index를 섞는다 — 표시 전용 목록이다 */}
           {ingest.errors.slice(0, 5).map((e, index) => (
@@ -98,10 +101,22 @@ export function ResultStep({
         </Alert>
       )}
 
-      <p className="text-muted-foreground text-xs">{m.newProject.result.ingest.refsHint}</p>
+      {/* ⚠️ **워크플로 블록이 남은 높이를 먹는다** — 그래서 토큰 칩이 늘 화면에 남는다. */}
+      <WorkflowBlock
+        yaml={yaml}
+        saveAs={
+          <>
+            {m.newProject.result.workflow.saveAs}{" "}
+            <span className="text-mono text-foreground">.github/workflows/l10n.yml</span>
+          </>
+        }
+        copyLabel={m.common.copy}
+      />
+
+      <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">{m.newProject.result.ingest.refsHint}</p>
       {/* ⚠️ **적재 생존을 약속하지 않는다** — 복구 경로 둘을 미리 말한다 (design §1.4). */}
       {/* [Start translating]은 **껍데기의 [Next]**다 — 바닥 버튼을 단계가 다시 그리지 않는다. */}
-      <p className="text-muted-foreground text-xs">{m.newProject.result.closeHint}</p>
+      <p className="text-muted-foreground shrink-0 text-xs leading-[1.7]">{m.newProject.result.closeHint}</p>
     </div>
   );
 }

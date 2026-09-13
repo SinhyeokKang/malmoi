@@ -424,6 +424,13 @@ export const en = {
         loading: (repo: string, branch: string): string => `Reading ${repo} · ${branch}…`,
         /** 예외 E — 후보 0개. ①로 되돌리지 않고 여기서 수동 지정을 편다. */
         emptyTitle: "Where are your locale files?",
+        /**
+         * ⚠️ **후보 0개에 "Check the keys before you continue"를 쓰지 않는다** (2026-09-13 실물).
+         * 확인할 키가 없는 화면이 키를 확인하라고 말한다 — 설명은 **지금 할 일**(경로를 치면 확인해
+         * 준다)을 말해야 한다 (핸드오프 3a).
+         */
+        emptyDescription: (repo: string, branch: string): string =>
+          `malmoi didn't find any on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
@@ -432,6 +439,12 @@ export const en = {
       result: {
         title: "malmoi is ready",
         description: "Add the push token to the repository so CI can send translations back.",
+        /**
+         * ⚠️ **결과는 설명 줄이 말한다** (핸드오프 1d·4f·4g). 성공한 적재에 `Alert`를 세우지 않는
+         * 것이 요지다 — 가장 흔한 상태가 가장 조용해야 한다(DESIGN §6.1). 실패·부분 실패만 본문에
+         * 그릇을 든다.
+         */
+        descriptionFailed: "The project exists. The first import didn't finish.",
       },
     },
 
@@ -457,6 +470,8 @@ export const en = {
 
     /** ② 리포 고르기 */
     repo: {
+      /** 리포 목록의 그룹 이름 — `RadioGroup`이 접근 이름 없이 서면 "라디오 그룹"으로만 읽힌다. */
+      list: "Repositories",
       search: "Find a repository by name",
       none: "No repository matches that name.",
       /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
@@ -478,6 +493,8 @@ export const en = {
 
     /** ③ 후보 · 기준 언어 · 수동 지정 */
     files: {
+      /** ② 좌측 후보 목록의 그룹 이름. */
+      candidates: "Locale file candidates",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
       summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
@@ -492,6 +509,8 @@ export const en = {
         /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
         option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
         none: "Nothing to preview yet",
+        /** 키 행만 스크롤하는 영역의 이름 — 그 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다. */
+        rows: "Preview rows",
         /**
          * ⚠️ **빈 칸과 가른다.** 정말 비어 있으면 빈 칸이고, 못 읽었으면 이 문장이다 — ②가
          * "ko 열이 비어 있다"를 말하는 화면이라 이 구별이 기능의 목적 자체에 걸린다 (design §3.4).
@@ -522,6 +541,11 @@ export const en = {
     },
 
     baseLocale: {
+      /**
+       * ③ 기준 언어 행의 보조 줄 — 경로와 키 수. ⚠️ **키 수는 아는 언어에만** 붙는다(결정 ⑦):
+       * 모르는 언어에 숫자를 지어내면 되돌릴 수 없는 결정의 근거가 거짓이 된다.
+       */
+      row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "Base language",
       hint: "This language's file decides which keys exist. Pick the wrong one and keys that live only in another language are left out.",
     },
@@ -530,11 +554,19 @@ export const en = {
     naming: {
       name: "Name",
       slug: "Address",
-      /** 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다. */
+      /**
+       * 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다.
+       *
+       * ⚠️ **캡션 안에서 굵게 "보이지" 않는다** (2026-09-13 사용자). 필드 아래 설명은 13px 한
+       * 덩어리라 굵기를 섞으면 그 조각이 **제목처럼** 읽혀 라벨과 경쟁한다 — 보이는 강조는 색까지다.
+       * ⚠️ **그래도 `<strong>`은 남긴다**: 요청은 굵기였지 시맨틱이 아니었고, 이 문장은 **되돌릴 수
+       * 없음**을 말한다. 색만 남기면 스크린리더가 평평하게 읽고 고대비 모드에서도 사라진다
+       * (`LocaleBadge`가 색에 `sr-only`를 딸려 보내는 것과 같은 규칙 — DESIGN §7).
+       */
       hint: (address: ReactNode, branch: ReactNode): ReactNode => (
         <>
           Opens at {address}. Translations come back as a pull request on {branch}.{" "}
-          <strong>The address can't be changed later.</strong>
+          <strong className="text-foreground font-normal">The address can't be changed later.</strong>
         </>
       ),
       create: "Create project",
@@ -583,10 +615,15 @@ export const en = {
     result: {
       token: {
         title: "Push token",
+        /**
+         * ⚠️ **굵게 "보이지" 않되 `<strong>`은 남긴다** (2026-09-13 사용자 + 리뷰). 토큰이 한 번만
+         * 보인다는 경고라 색만으로 말하면 스크린리더에서 사라진다.
+         */
         description: (secret: ReactNode): ReactNode => (
           <>
             Add this to the repository's Actions secret {secret}.{" "}
-            <strong>You won't see it again after you leave this page.</strong> If you lose it, rotate it in settings.
+            <strong className="text-foreground font-normal">You won't see it again after you leave this page.</strong> If you lose it,
+            rotate it in settings.
           </>
         ),
       },

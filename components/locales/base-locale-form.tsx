@@ -6,7 +6,7 @@ import { updateBaseLocale } from "@/app/(edit)/projects/[slug]/locales/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormGroup } from "@/components/ui/form-group";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { baseLocaleFieldValue } from "@/lib/onboarding/base-pending";
@@ -66,19 +66,18 @@ export function BaseLocaleForm({
         });
       }}
     >
-      <FormGroup label={m.locales.field.label} htmlFor="base-locale" help={m.locales.field.help}>
-        <Select
-          id="base-locale"
-          name="baseLocale"
-          value={locale}
-          disabled={noLocales}
-          onChange={(event) => setLocale(event.target.value)}
-        >
-          {locales.map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
+      <FormGroup label={m.locales.field.label} labelId="base-locale-label" htmlFor="base-locale" help={m.locales.field.help}>
+        <Select name="baseLocale" value={locale} disabled={noLocales} onValueChange={setLocale}>
+          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" className="w-full max-w-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {locales.map((code) => (
+              <SelectItem key={code} value={code}>
+                {code}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </FormGroup>
 

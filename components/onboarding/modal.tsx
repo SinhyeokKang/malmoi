@@ -135,7 +135,7 @@ export function OnboardingModal({
           </div>
 
           <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5">
-            <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Primitive.Title className="text-xl font-medium tracking-[0.005em]">{title}</Primitive.Title>
               {description !== undefined && (
                 <Primitive.Description className="text-muted-foreground text-sm text-pretty">
@@ -175,8 +175,8 @@ export function OnboardingModal({
             {children}
           </div>
 
-          <footer className="border-border-subtle flex items-center justify-between gap-2 border-t px-8 py-6">
-            <span className="text-muted-foreground text-xs">{m.newProject.modal.step(step)}</span>
+          <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
+            <span className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.modal.step(step)}</span>
             <div className="flex items-center gap-2">
               {showBack && (
                 <Button type="button" size="lg" onClick={onBack} disabled={nextPending}>

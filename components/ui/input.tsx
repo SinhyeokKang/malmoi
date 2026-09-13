@@ -5,11 +5,15 @@ import { cn } from "@/lib/utils";
 /**
  * 입력 셋(Input·Textarea·Select)의 공통 형 — DESIGN §6.4의 한 행이다.
  *
+ * ⚠️ **좌우 padding이 10이다** (2026-09-13 — 핸드오프 실측). 8이면 모달의 검색 필드만 시안대로
+ * 10이 되어 **같은 화면에서 필드 안쪽 여백이 둘로 갈린다.** 시안이 입력 전부를 10으로 그리므로
+ * 프리미티브를 옮겼다 — 그래서 다른 화면의 필드도 2px 넓어진다.
+ *
  * ⚠️ **포커스 링은 여기 없다.** 셋은 각자의 **여는 태그에 리터럴로** 적는다 — `focus-ring.test.ts`가
  * 태그의 소스를 읽으므로 상수에 넣는 순간 그 방어선이 이 파일들을 못 본다 (§7).
  */
 export const fieldClass = cn(
-  "border-input bg-background rounded-md border px-2 text-sm",
+  "border-input bg-background rounded-md border px-2.5 text-sm",
   "disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed",
   "aria-[invalid=true]:border-destructive",
 );

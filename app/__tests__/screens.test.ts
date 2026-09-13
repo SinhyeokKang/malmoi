@@ -70,13 +70,36 @@ describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 �
    * ARCHITECTURE §0 불변식 9(버린 값을 숨기지 않는다)가 정확히 그 자리에서 깨진다. 같은 커밋의 온보딩 결과
    * 화면은 처음부터 `failed`를 봤다: **두 화면이 같은 지표를 봐야 한다.**
    */
-  it("설정 화면도 온보딩 결과 화면과 같은 지표(`failed`)를 본다", () => {
+  it("세 자리가 같은 지표(`failed`)를 본다", () => {
+    /*
+      ⚠️ **자리가 셋이다** (2026-09-13). 성공 문구가 ④의 본문에서 **모달의 설명 줄**로 옮겨가면서
+      `new-project.tsx`가 세 번째 소비자가 됐다 — 목록을 안 늘리면 그 자리가 방어선 밖이다.
+    */
     for (const path of [
       "components/onboarding/first-ingest-retry.tsx",
       "components/onboarding/steps/result.tsx",
+      "components/onboarding/new-project.tsx",
     ]) {
-      expect(read(path), path).toMatch(/failed === 0 \? "success" : "warning"/);
-      expect(read(path), path).not.toMatch(/errors\.length === 0 \? "success"/);
+      expect(read(path), path).toMatch(/failed === 0\s*\?/);
+      /*
+        ⚠️ **`errors.length`로 갈리면 안 된다 — 철자를 가리지 않는다.** `failed`는
+        `errors.length + duplicateKeys`(ARCHITECTURE)라 **중복 키만 있는 부분 실패는
+        `errors.length === 0`**이다. `? "success"`만 막으면 `? null`·`? <></>`가 그대로 지나간다.
+      */
+      expect(read(path), path).not.toMatch(/errors\.length === 0\s*\?/);
+    }
+  });
+
+  it("버린 값이 있는 결과는 `warning`을 실제로 그린다", () => {
+    /*
+      ⚠️ **지표만 박으면 절반이다.** `failed === 0 ? null : null`도 위 검사를 통과한다 — 불변식 9가
+      막는 것은 "지표를 잘못 고르는 것"이 아니라 **"버린 값을 조용히 넘기는 것"**이다. 그릇을 그리는
+      두 자리는 그 그릇이 실제로 `warning`인지 함께 센다. (`new-project.tsx`는 그릇이 아니라 설명
+      문구를 바꾸므로 이 목록에 없다 — 그쪽은 `ingestHeadline`이 `failed`를 지나는 것으로 족하다.)
+    */
+    for (const path of ["components/onboarding/first-ingest-retry.tsx", "components/onboarding/steps/result.tsx"]) {
+      // 한쪽은 `variant={… : "warning"}`이고 다른 쪽은 `variant="warning"`이다 — 그리는 값만 센다.
+      expect(read(path), path).toMatch(/"warning"/);
     }
   });
 });
