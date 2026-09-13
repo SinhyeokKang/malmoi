@@ -651,11 +651,11 @@ snapshot → ingestTargets(순수) → readBlob × M
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
-Action에 적용되지 않으므로 **세 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
-`[slug]/settings/page.tsx` · **`[slug]/translations/page.tsx`**(7단계). **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
+Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
+`app/(edit)/projects/@modal/(.)new/page.tsx` · `[slug]/settings/page.tsx` · **`[slug]/translations/page.tsx`**(7단계). **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다.
 
-⚠️ **셋째의 이유는 시간이 아니라 판정이다** (§5.6.2) — 번역 화면의 [Send changes]가 그 세그먼트를 쓰고,
+⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — 번역 화면의 [Send changes]가 그 세그먼트를 쓰고,
 선언이 없으면 기본값 300이 `STALE_AFTER_SECONDS`(300)와 **같아져 정상 실행이 스스로를 stale로 본다.**
 즉 이 줄을 지우면 첫 적재가 아니라 **동시 실행 방어가** 깨진다.
 
