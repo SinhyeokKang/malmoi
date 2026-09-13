@@ -51,9 +51,13 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             form.set("image", file);
             setRunning("upload");
             startTransition(async () => {
-              const result = await uploadProfileImage(form);
-              setFailure(result.ok ? null : uploadRejectMessage(result.reason));
-              setRunning(null);
+              // ⚠️ **`finally`다** — 던지면(`requireUser`의 redirect 등) 스피너가 영구히 돈다.
+              try {
+                const result = await uploadProfileImage(form);
+                setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              } finally {
+                setRunning(null);
+              }
             });
           }}
         >
@@ -67,9 +71,12 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             setFailure(null);
             setRunning("delete");
             startTransition(async () => {
-              const result = await deleteProfileImage();
-              setFailure(result.ok ? null : uploadRejectMessage(result.reason));
-              setRunning(null);
+              try {
+                const result = await deleteProfileImage();
+                setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              } finally {
+                setRunning(null);
+              }
             });
           }}
         >

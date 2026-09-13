@@ -28,3 +28,18 @@ export function planNameSave(raw: string): NameSave {
   if ([...name].length > NAME_MAX_CHARS) return { ok: false, reason: "too-long" };
   return { ok: true, name };
 }
+
+/**
+ * 아바타·사용자 메뉴가 보이는 이름 — **셸과 `/account`가 같은 규칙을 쓴다.**
+ *
+ * ⚠️ **폴백이 두 자리에 인라인으로 복제돼 있었고 연산자가 갈렸다** (2026-09-13): 셸이 `??`,
+ * 계정이 `||`였다. `User.name`이 **빈 문자열**인 행에서 한쪽은 `"?"`, 다른 쪽은 이메일 첫 글자를
+ * 이니셜로 냈고, 색이 이름에서 오므로(`toneOf`) **같은 계정이 두 얼굴**이 된다 — 아바타 56의
+ * 존재 이유가 "셸의 32와 같은 판정·같은 입력"이라는 것이므로 그 근거가 자기 손으로 깨진다.
+ *
+ * ⚠️ **`??`가 아니라 트림 후 빈 문자열 검사다** — 공백만 든 이름은 이니셜을 못 내고, provider가
+ * 그런 값을 주는 경우가 있다(`planNameSave` 이전에 만들어진 행도 같다).
+ */
+export function displayName(name: string | null | undefined, email: string | null | undefined): string {
+  return name?.trim() || email?.trim() || "?";
+}

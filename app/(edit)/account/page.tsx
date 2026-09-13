@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
 import { loadConnectionUsage } from "@/lib/account/connection-usage";
+import { displayName } from "@/lib/account/plan";
 import { getPrisma } from "@/lib/db";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
@@ -127,7 +128,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
             <div className="col-span-2 flex items-center gap-4">
               {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
-              <Avatar name={name || (profile?.email ?? "?")} src={profile?.image} size={56} />
+              <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
               <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
             </div>
 

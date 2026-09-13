@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/auth";
 import { Header } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
+import { displayName } from "@/lib/account/plan";
 import { rejectTarget } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
@@ -39,7 +40,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
 
   // GitHub 핸들이 사라진 자리다 — Google로 로그인한 사용자에게는 핸들이 없다.
   // `User.id`는 사람이 읽을 값이 아니므로 이름·이메일 순으로 떨어진다.
-  const name = session.name ?? session.email ?? "?";
+  // ⚠️ **`/account`의 아바타 56과 같은 함수를 지난다** — 규칙이 갈리면 같은 계정이 두 얼굴이 된다.
+  const name = displayName(session.name, session.email);
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 그래야 사이드바가 `@/auth`를 물지 않는다.
   // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자). **로그아웃은 랜딩으로 간다**:
