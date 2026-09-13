@@ -31,7 +31,12 @@ app/
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
     actions.ts          saveTranslation · triggerPullAction. ⚠️ 무효화는 /projects/<slug> 서브트리다 —
                         그 행을 읽는 화면이 셋이라 경로를 나열하면 넷째가 조용히 빠진다
-    projects/           목록(?filter=·?q=) · loading.tsx 스켈레톤 · new/(온보딩) · actions.ts
+    projects/           목록(?q=) · loading.tsx 스켈레톤 · new/(온보딩 딥링크) · actions.ts
+      layout.tsx        children·modal을 마크업 없이 나란히 렌더 — [slug] 하위 패널을 중첩하지 않는다
+      new-project-modal.tsx  두 생성 진입점의 서버 공통 모달. 리포 조회는 Suspense 뒤이고 목록은 읽지 않는다
+      @modal/(.)new/    클라이언트 네비게이션용 모달. requireUser 후 모달만, 닫기는 router.back()
+      @modal/default.tsx · @modal/page.tsx · @modal/[...rest]/page.tsx
+                        기본 복원·목록 복귀·다른 프로젝트 경로에서 null. 활성 슬롯이 이동 후 남는 것을 막는다
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
                         ⚠️ 온보딩 다섯은 requireUser뿐이다(인가할 프로젝트가 없다)
     account/            사용자 축의 유일한 화면. requireUser만 지난다
