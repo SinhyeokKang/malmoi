@@ -512,3 +512,59 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
     expect(has(stub.captured, 'UPDATE "Locale"')).toBe(false);
   });
 });
+
+/**
+ * **키 생성 시각과 임포트 결과** (projects-list design §3.35·§8).
+ *
+ * 둘 다 `applyPush`의 **같은 트랜잭션**에 실린다. 결과를 뒤에 따로 쓰면 데이터는 들어갔는데 목록만
+ * 실패로 남는 창이 생기고, 그 창에서 사용자가 보는 것은 "적재가 깨졌다"인데 실제로는 끝난 상태다.
+ */
+describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
+  const run = async (importOutcome: "partial-import" | null = null) => {
+    const payload = payloadFromFiles();
+    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, payload, {
+      previousBaseLocale: payload.format.baseLocale,
+      importOutcome,
+    });
+    return stub;
+  };
+
+  it("신규 키 INSERT가 createdAt을 싣는다 — 목록의 `New from GitHub`가 이 값을 센다", async () => {
+    const { captured } = await run();
+    const cols = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'));
+    expect(Object.keys(cols)).toContain("createdAt");
+    expect(cols["createdAt"]?.length).toBe(cols["key"]?.length);
+  });
+
+  /**
+   * ⚠️ **UPDATE가 건드리면 살아 돌아온 키가 매번 "새 키"로 잡힌다.** orphan 복구는 같은 문장이 하므로
+   * 이 단언이 그 갈래까지 덮는다.
+   */
+  it("기존 키 UPDATE는 createdAt을 쓰지 않는다", async () => {
+    const payload = payloadFromFiles();
+    const existing = payload.keys.map((k) => ({ key: k.key, id: `id-${k.key}`, sourceHash: "stale", orphaned: false }));
+    const stub = stubPrisma(existing as never, payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, payload, { previousBaseLocale: payload.format.baseLocale });
+    expect(stmt(stub.captured, 'UPDATE "StringKey" AS s').sql).not.toContain("createdAt");
+  });
+
+  it("완전 성공이 이전 실패와 진행 표시를 같이 비운다", async () => {
+    const { projectUpdates } = await run(null);
+    expect(projectUpdates[0]).toMatchObject({
+      data: expect.objectContaining({ lastImportError: null, lastImportStartedAt: null }),
+    });
+  });
+
+  it("부분 실패는 코드를 남기고 진행 표시만 비운다 — 데이터는 이미 들어갔다", async () => {
+    const { projectUpdates } = await run("partial-import");
+    expect(projectUpdates[0]).toMatchObject({
+      data: expect.objectContaining({ lastImportError: "partial-import", lastImportStartedAt: null }),
+    });
+  });
+
+  it("트랜잭션은 여전히 하나다 — 결과 표시가 별도 왕복이 되면 그 창이 생긴다", async () => {
+    const { txCount } = await run("partial-import");
+    expect(txCount()).toBe(1);
+  });
+});
