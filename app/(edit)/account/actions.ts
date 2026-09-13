@@ -21,10 +21,42 @@ import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
 import { decodeUser, encodeUserFields, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys, validatePiiWriteKey } from "@/lib/credentials/storage";
+import { planNameSave } from "@/lib/account/plan";
 import { imageObjectKey, planImageDelete, planImageUpload, type UploadReject } from "@/lib/upload/image";
 import { putImage, deleteImage } from "@/lib/upload/store";
 
 type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
+
+type NameResult = { ok: true } | { ok: false; reason: "empty" | "too-long" | "unavailable" };
+
+/**
+ * 표시 이름 저장 (account-settings 태스크 2).
+ *
+ * ⚠️⚠️ **`prisma.user.update({ data: { name } })`를 직접 쓰지 않는다.** `User.name`은 PII 봉투
+ * 대상이라(`lib/credentials/storage.ts`의 `PiiContext` · `records.ts`의 `["name","image"]` 루프)
+ * 평문을 넣으면 **다음 `decodeUser`가 `CredentialError`로 죽는다** — 그 사람의 로그인·멤버 조회가
+ * 통째로 막힌다. `prisma/schema.prisma`가 그 사실을 말하지 않아 스키마만 읽고 구현하면 틀린다.
+ *
+ * ⚠️ **키 검증이 쓰기보다 앞이다** — 키가 없는 채로 `sealPii`에 들어가면 던지는 자리가 봉인
+ * 한가운데라 사유가 `unavailable`로 뭉개진다 (POSTMORTEM 2026-09-13).
+ */
+export async function updateProfileName(raw: string): Promise<NameResult> {
+  const { userId } = await requireUser();
+  // 판정은 순수 함수가 한다 — Action이 유일한 방어선이 아니다.
+  const plan = planNameSave(raw);
+  if (!plan.ok) return plan;
+  try {
+    validatePiiWriteKey();
+    await getPrisma().user.update({ where: { id: userId }, data: encodeUserFields(userId, { name: plan.name }) });
+  } catch {
+    // 사유에 이름을 싣지 않는다 — 로그가 PII를 나르면 봉투가 무의미해진다.
+    console.error("Profile name update failed.", { userId });
+    return { ok: false, reason: "unavailable" };
+  }
+  // 셸 아바타·사용자 메뉴가 같은 값을 읽는다 — 경로를 나열하면 다음 소비자가 조용히 빠진다.
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
 
 async function cleanImage(url: string | null, userId: string): Promise<void> {
   const key = planImageDelete(url);

@@ -451,18 +451,31 @@ export const en = {
     profile: {
       title: "Profile",
       /**
-       * ⚠️ **읽기 전용인 이유를 화면이 말한다.** 이름·이메일은 provider가 소유하고 재로그인마다
-       * `planEmailRefresh`가 갱신한다 — 여기서 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지
-       * 않은 주소 위에 서게 된다.
+       * ⚠️ **두 칸의 소유자가 다르다는 것이 이 문장이 말하는 전부다.** 이름은 사용자 소유이고
+       * (멤버 목록·초대에서 **남이 나를 알아보는 이름**이다) 이메일은 provider 소유다 — 초대
+       * 대조가 검증된 주소 위에 서기 때문이다 (ARCHITECTURE §6.02).
+       *
+       * ⚠️ **"재로그인마다 갱신된다"가 여기 있었고 이름 축에서는 거짓이었다.** 갱신 통로인
+       * `planEmailRefresh`는 입력 넷이 전부 이메일이고 이름을 애초에 안 건드린다.
        */
-      description: "Your name and email come from the account you sign in with, and refresh when you sign in again.",
+      description: "Your name is yours to change. Your email comes from the account you sign in with.",
       name: "Name",
       email: "Email",
+      /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
+      emailSource: "Managed by the account you sign in with.",
       /**
        * ⚠️ **이름 칸과 이메일 칸이 같은 문구를 쓴다.** 이메일은 검증된 주소 없이 로그인 자체가
        * 막히므로 사실상 안 나오고, 이름은 provider가 안 줄 수 있다 — 어느 쪽도 빈 칸을 남기지 않는다.
        */
       none: "None",
+      save: "Save",
+      /** ⚠️ **토스트가 아니다** — 이 리포에서 저장 결과를 토스트로 내는 자리는 0이다. */
+      saved: "Saved",
+      errors: {
+        empty: "Enter a name so people can recognize you.",
+        tooLong: (max: number): string => `Use ${max} characters or fewer.`,
+        unavailable: "We couldn't save your name. Try again in a moment.",
+      },
     },
     github: {
       description: "Connect GitHub to see which repositories you can add.",

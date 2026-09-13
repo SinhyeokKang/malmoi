@@ -82,6 +82,8 @@ const USER_SCOPED_ACTIONS = new Set([
   // Profile images belong to the authenticated User, not a project.
   "account/actions.ts#uploadProfileImage",
   "account/actions.ts#deleteProfileImage",
+  // The display name is the user's own — a person with no project still owns it.
+  "account/actions.ts#updateProfileName",
   // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",

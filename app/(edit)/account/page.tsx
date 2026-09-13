@@ -1,6 +1,7 @@
 import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
 import { LoginMethods } from "@/components/account/login-methods";
+import { ProfileNameForm } from "@/components/account/profile-name-form";
 import { SessionRevocation } from "@/components/session-revocation";
 import { signOut } from "@/auth";
 import { DisconnectGithubButton } from "@/components/github-account";
@@ -28,8 +29,15 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * ⚠️ **`middleware.ts`의 matcher에 `/account`를 따로 넣어야 했다** — 패턴이 `/projects/:path*` 하나라
  * 사용자 축은 1차 차단 밖에서 태어난다 (`entry-points.test.ts`가 그것을 센다).
  *
- * ⚠️ **프로필은 읽기 전용이다.** 이름·이메일은 provider가 소유하고 재로그인마다 `planEmailRefresh`가
- * 갱신한다 — 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지 않은 주소 위에 선다.
+ * ⚠️ **이름은 사용자 소유이고 이메일만 provider 소유다** (PRODUCT §4.1, 2026-09-13 판정).
+ * 이메일을 고칠 수 없는 근거는 초대 대조가 **검증된 주소** 위에 선다는 것이고(ARCHITECTURE §6.02),
+ * 그 논증은 이메일 축에서만 성립한다 — 이름은 멤버 목록·초대에서 **남이 나를 알아보는 이름**이라
+ * provider의 표시 이름이 그 자리에 맞지 않을 수 있다.
+ *
+ * ⚠️ **"재로그인마다 `planEmailRefresh`가 이름을 갱신한다"가 여기 적혀 있었고 거짓이었다** —
+ * 그 함수는 입력 넷이 전부 이메일이고 반환도 `keep | update | conflict`뿐이라 이름 축이 없다.
+ * 이름을 덮을 수 있는 통로는 `lib/credentials/adapter.ts`의 `updateUser` 하나이고, **OAuth
+ * 재로그인은 그 메서드를 부르지 않는다** — 그 계약을 `lib/credentials/__tests__`의 둘이 든다.
  */
 export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation" | "link" | "connect">> }) {
   const { userId } = await requireUser();
@@ -97,7 +105,9 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <Card title={m.account.profile.title} description={m.account.profile.description}>
             <dl className="grid gap-2 text-sm sm:grid-cols-[8rem_1fr]">
               <dt className="text-muted-foreground text-xs">{m.account.profile.name}</dt>
-              <dd>{profile?.name ?? m.account.profile.none}</dd>
+              <dd>
+                <ProfileNameForm name={profile?.name ?? ""} />
+              </dd>
               <dt className="text-muted-foreground text-xs">{m.account.profile.email}</dt>
               {/* 주소는 식별자라 mono다 (DESIGN §4.1). **자기 주소라 마스킹하지 않는다** */}
               <dd className="text-mono">{profile?.email ?? m.account.profile.none}</dd>
