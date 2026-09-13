@@ -1,3 +1,4 @@
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -14,8 +15,6 @@ import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
-import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
-import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -105,8 +104,7 @@ function ProviderButton({
     <form
       action={async () => {
         "use server";
-        await clearRevocationCookies();
-        await clearLinkCookies();
+        await clearAuthRoundtripCookies();
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >

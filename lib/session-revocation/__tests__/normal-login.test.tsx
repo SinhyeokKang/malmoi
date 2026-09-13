@@ -39,7 +39,7 @@ const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-stat
 const ENTRIES = [
   { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK], destination: "/projects" },
   { entry: "invite", buttons: 2, cleared: [...REVOCATION, ...LINK], destination: "/invite/invite-token" },
-  { entry: "link", buttons: 1, cleared: REVOCATION, destination: "/projects" },
+  { entry: "link", buttons: 1, cleared: [...REVOCATION, ...LINK], destination: "/projects" },
 ] as const;
 
 async function render(entry: (typeof ENTRIES)[number]["entry"]) {

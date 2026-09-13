@@ -1,5 +1,4 @@
-import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
-import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeInvitation, decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
 import Image from "next/image";
@@ -201,8 +200,7 @@ function ProviderButton({ provider, token }: { provider: "github" | "google"; to
       className="w-full"
       action={async () => {
         "use server";
-        await clearRevocationCookies();
-        await clearLinkCookies();
+        await clearAuthRoundtripCookies();
         await signIn(provider, { redirectTo: routes.invite(token) });
       }}
     >

@@ -12,14 +12,14 @@ const ROOT = process.cwd();
  */
 it("회수 시작이 병합 쿠키를 먼저 지운다", () => {
   const source = readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8");
-  expect(source).toContain("clearLinkCookies(");
-  expect(source.indexOf("clearLinkCookies(")).toBeLessThan(source.indexOf("beginRevocation("));
+  expect(source).toContain("clearAuthRoundtripCookies(");
+  expect(source.indexOf("clearAuthRoundtripCookies(")).toBeLessThan(source.indexOf("beginRevocation("));
 });
 
 it("병합 시작이 회수 쿠키를 먼저 지운다", () => {
   const source = readFileSync(join(ROOT, "app/signin/link/[challenge]/page.tsx"), "utf8");
-  expect(source).toContain("clearRevocationCookies(");
-  expect(source.indexOf("clearRevocationCookies(")).toBeLessThan(source.lastIndexOf("signIn("));
+  expect(source).toContain("clearAuthRoundtripCookies(");
+  expect(source.indexOf("clearAuthRoundtripCookies(")).toBeLessThan(source.lastIndexOf("signIn("));
   // 시작 스코프 안에서 signIn을 불러야 state가 우리 쿠키 이름으로 저장된다.
   expect(source).toMatch(/withLinkStart\(/);
 });

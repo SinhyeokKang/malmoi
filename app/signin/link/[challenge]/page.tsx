@@ -1,3 +1,4 @@
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import Image from "next/image";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -13,7 +14,6 @@ import { ButtonLink } from "@/components/ui/button";
 import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
-import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib/login-link/policy";
@@ -131,7 +131,7 @@ function ProviderButton({
       className="w-full"
       action={async () => {
         "use server";
-        await clearRevocationCookies();
+        await clearAuthRoundtripCookies();
         const h = await headers();
         const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
         const cookie = linkCookie(origin?.secure ?? false);

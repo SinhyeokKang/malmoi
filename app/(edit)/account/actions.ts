@@ -1,5 +1,7 @@
 "use server";
 
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
+
 import { randomBytes } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -9,7 +11,6 @@ import { getPrisma } from "@/lib/db";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 import { revalidatePath } from "next/cache";
-import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
 import { canUnlink, isLoginProvider, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
@@ -98,7 +99,7 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
     if (!origin) return { error: "unavailable" };
     // ⚠️ **버려진 병합 왕복을 먼저 지운다** — 남아 있으면 그쪽이 이 callback을 먹는다 (불변식 8c).
-    await clearLinkCookies();
+    await clearAuthRoundtripCookies();
     const jar = await cookies();
     const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
     if (!sessionToken) return { error: "unavailable" };
