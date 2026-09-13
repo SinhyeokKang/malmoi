@@ -15,17 +15,17 @@ import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
 import { decodeUser, encodeUserFields, readable } from "@/lib/credentials/records";
-import { validatePiiReadKeys } from "@/lib/credentials/storage";
+import { validatePiiReadKeys, validatePiiWriteKey } from "@/lib/credentials/storage";
 import { imageObjectKey, planImageDelete, planImageUpload, type UploadReject } from "@/lib/upload/image";
 import { putImage, deleteImage } from "@/lib/upload/store";
 
 type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
 
-async function cleanImage(url: string | null): Promise<void> {
+async function cleanImage(url: string | null, userId: string): Promise<void> {
   const key = planImageDelete(url);
-  if (key === null) return;
+  if (key === null || !key.startsWith(`avatars/${userId}/`)) return;
   try { await deleteImage(key); }
-  catch { console.warn("Profile image cleanup failed; an orphan may remain."); }
+  catch { console.warn("Profile image cleanup failed; an orphan may remain.", { userId }); }
 }
 
 export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
@@ -34,15 +34,20 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
   if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };
   let uploaded: string | null = null;
   let previous: string | null;
+  let stage = "file-validation";
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const plan = planImageUpload(bytes);
     if (!plan.ok) return plan;
-    validatePiiReadKeys();
+    stage = "pii-write-key";
+    validatePiiWriteKey();
     const key = imageObjectKey(userId, plan.ext, randomBytes(24).toString("base64url"));
     // Network I/O stays outside the row lock and Prisma's transaction timeout.
+    stage = "blob-upload";
     uploaded = await putImage(key, bytes, plan.ext);
+    stage = "image-encryption";
     const image = encodeUserFields(userId, { image: uploaded });
+    stage = "database-update";
     previous = await getPrisma().$transaction(async (tx) => {
       // Upload and delete serialize the read/write pair on the same user row.
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -52,11 +57,12 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
       return prev;
     });
   } catch {
-    await cleanImage(uploaded);
+    console.error("Profile image upload failed.", { stage, userId });
+    await cleanImage(uploaded, userId);
     return { ok: false, reason: "unavailable" };
   }
   // Only clean the previous image after commit; rollback must leave its URL usable.
-  await cleanImage(previous);
+  await cleanImage(previous, userId);
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -64,8 +70,10 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
 export async function deleteProfileImage(): Promise<ImageResult> {
   const { userId } = await requireUser();
   let previous: string | null;
+  let stage = "pii-read-key";
   try {
     validatePiiReadKeys();
+    stage = "database-update";
     previous = await getPrisma().$transaction(async (tx) => {
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
       const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, image: true } });
@@ -73,8 +81,11 @@ export async function deleteProfileImage(): Promise<ImageResult> {
       await tx.user.update({ where: { id: userId }, data: encodeUserFields(userId, { image: null }) });
       return prev;
     });
-  } catch { return { ok: false, reason: "unavailable" }; }
-  await cleanImage(previous);
+  } catch {
+    console.error("Profile image deletion failed.", { stage, userId });
+    return { ok: false, reason: "unavailable" };
+  }
+  await cleanImage(previous, userId);
   revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -52,6 +52,7 @@ it("주입된 userId를 무시하고 세션 행을 잠가 봉투로 저장한 �
   expect(tx.user.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: "owner" }, select: { id: true, image: true } });
   expect(tx.user.update).toHaveBeenCalledWith({ where: { id: "owner" }, data: { image: expect.stringMatching(/^enc:v1:/) } });
   expect(decodeUser(row).image).toBe(newUrl);
+  expect(mocks.putImage).toHaveBeenCalledWith(expect.stringMatching(/^avatars\/owner\/[A-Za-z0-9_-]+\.png$/), expect.any(Uint8Array), "png");
   expect(mocks.deleteImage).toHaveBeenCalledWith("avatars/owner/old.png");
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/", "layout");
 });
@@ -116,4 +117,29 @@ it("동시 업로드는 직렬화된 이전 값을 정리하고 마지막 파일
   expect(decodeUser(row).image).toBe(lastUrl);
   expect(mocks.deleteImage.mock.calls.map(([key]) => key).sort()).toEqual(["avatars/owner/new.png", "avatars/owner/old.png"]);
   expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+});
+it.each(["", "missing-key"])("PII 쓰기 키 %s가 없으면 Blob에 바이트를 보내지 않는다", async (kid) => {
+  vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", kid);
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(await uploadProfileImage(form())).toEqual({ ok: false, reason: "unavailable" });
+  expect(mocks.putImage).not.toHaveBeenCalled();
+});
+it("실패 단계는 남기되 저장소 오류의 토큰과 URL은 기록하지 않는다", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.putImage.mockRejectedValue(new Error("secret-token " + oldUrl));
+  expect(await uploadProfileImage(form())).toEqual({ ok: false, reason: "unavailable" });
+  expect(error).toHaveBeenCalledWith("Profile image upload failed.", { stage: "blob-upload", userId: "owner" });
+  expect(JSON.stringify(error.mock.calls)).not.toContain("secret-token");
+  expect(JSON.stringify(error.mock.calls)).not.toContain(oldUrl);
+});
+it("삭제 DB 실패도 안전한 단계 로그를 남긴다", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  tx.user.update.mockRejectedValue(new Error("private database URL"));
+  expect(await deleteProfileImage()).toEqual({ ok: false, reason: "unavailable" });
+  expect(error).toHaveBeenCalledWith("Profile image deletion failed.", { stage: "database-update", userId: "owner" });
+});
+it("자기 행에 다른 사용자 URL이 들어 있어도 다른 사용자의 파일을 삭제하지 않는다", async () => {
+  row = { id: "owner", ...encodeUserFields("owner", { image: "https://store.public.blob.vercel-storage.com/avatars/victim/old.png" }) };
+  expect(await deleteProfileImage()).toEqual({ ok: true });
+  expect(mocks.deleteImage).not.toHaveBeenCalled();
 });

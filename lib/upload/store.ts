@@ -1,4 +1,5 @@
-// The smoke script imports this production I/O path directly.
+// The smoke script uses the react-server condition to exercise this production path.
+import "server-only";
 import { del, list, put, type ListBlobResultBlob } from "@vercel/blob";
 import { requireEnv } from "@/lib/env";
 import type { ImageType } from "./image";

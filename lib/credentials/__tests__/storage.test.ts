@@ -36,3 +36,11 @@ it("이메일 조회 키는 프로젝트별로 분리한다", () => {
   expect(lookupEmail(" A@X.COM ")).toBe(lookupEmail("a@x.com"));
   expect(lookupEmail("a@x.com", "p1")).not.toBe(lookupEmail("a@x.com", "p2"));
 });
+it("PII 쓰기 사전 검증은 활성 키가 실제 keyring에 있어야 통과한다", async () => {
+  const { validatePiiWriteKey } = await import("../storage");
+  expect(() => validatePiiWriteKey()).not.toThrow();
+  for (const kid of ["", "missing"]) {
+    vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", kid);
+    expect(() => validatePiiWriteKey()).toThrow();
+  }
+});
