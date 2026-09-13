@@ -111,7 +111,13 @@ export function FilesStep({
     */
     <>
       {/* 좌 240 — 후보 라디오 또는 수동 지정 폼. */}
-      <div className="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto">
+      {/*
+        ⚠️ **좌측에 `overflow-y-auto`를 두지 않는다** (2026-09-13 사용자 관측). CSS는 한 축이 `auto`면
+        **다른 축의 `visible`을 `auto`로 강제**하므로, 폭 240 고정 안에서 `w-full` 필드의 포커스 링
+        (바깥 2px)이 좌우로 잘린다. 스크롤이 필요한 것은 **후보 목록**뿐이라 그쪽으로 내린다 —
+        수동 지정 폼은 필드 셋이라 넘치지 않는다.
+      */}
+      <div className="flex w-60 shrink-0 flex-col gap-3">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -132,7 +138,7 @@ export function FilesStep({
           <>
             {/* ⚠️ `asChild`를 쓰지 않는 이유는 ①과 같다 — `<ul>`의 list role이 덮이면 `<li>`가 고아가 된다. */}
             <RadioGroup
-              className="shrink-0"
+              className="min-h-0 overflow-y-auto"
               aria-label={m.newProject.files.candidates}
               value={picked === null ? "" : String(picked)}
               onValueChange={(v) => onPick(Number(v))}

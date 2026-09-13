@@ -24,6 +24,13 @@ import { cn } from "@/lib/utils";
  * ⚠️ **[Back]·[Next]를 껍데기가 소유한다.** 단계는 본문과 "다음으로 갈 수 있는가"만 넘긴다 —
  * 비활성 모양을 단계마다 다시 만들면 갈린다.
  *
+ * ⚠️ **폭이 880이다** (2026-09-13 사용자). 핸드오프는 800이고 한때 960이었다 — 960의 근거는 "800이면
+ * ②의 값 셀이 ≈188px라 24자에서 잘린다"였는데 **그 계산의 전제가 좌측 300 + 표 `1fr 1fr`**이었다.
+ * 좌측 240 + `1fr 2fr`인 지금 값 셀은 **800에서 ≈291 / 880에서 ≈344 / 960에서 ≈397**이라 셋 다 그
+ * 문제를 넘겼고, 880은 시안에 가까우면서 ②의 표가 가장 덜 답답한 지점으로 고른 값이다.
+ * ⚠️ **좌측 240과 `1fr 2fr`은 유지한다** — 그 둘까지 시안으로 되돌리면(300 · `1fr 1fr`) 값 셀이
+ * ≈244로 내려가 960으로 올렸던 이유가 되살아난다.
+ *
  * ⚠️ **바닥 버튼이 `Button size="lg"`다.** 그 크기의 주석이 "셸 밖 카드 전용(로그인·초대 수락 둘)"인데
  * **이 모달을 그 예외에 넣었다** — dim 위에 뜬 표면이라 셸 안이 아니고, 핸드오프의 40/radius 12가
  * `lg`와 **정확히 같다**. 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다 (design §8). 
@@ -121,7 +128,7 @@ export function OnboardingModal({
            */
           data-onboarding-panel
           className={cn(
-            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[960px] -translate-x-1/2 -translate-y-1/2",
+            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[880px] -translate-x-1/2 -translate-y-1/2",
             "flex-col overflow-hidden rounded-xl shadow-medium",
             "min-h-[min(80svh,calc(100svh-96px))] max-h-[calc(100svh-96px)]",
           )}
