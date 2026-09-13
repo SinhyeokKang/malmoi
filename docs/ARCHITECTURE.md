@@ -1381,8 +1381,12 @@ Account가 있으면 거부한다. 신규 로그인 Account는 식별자 네 필
 GitHub App 연결은 별도 callback이며 User 행 잠금으로 직렬화하고 UPDATE/DELETE에 `userId`를
 포함한다. P2002 재조회는 실패한 트랜잭션 밖에서 수행한다.
 
-⚠️ **그 거부 위에 [Connect] 경로를 세운다** (판정 2026-09-13 · **아직 안 만들었다** —
-PRODUCT §4.1). `/account`에서 로그인 수단을 붙이는 문이 생겨도 **`linkAccount`의 거부는 그대로다**:
+⚠️ **그 거부 위에 [Connect] 경로가 섰다** (2026-09-13 — `lib/account-connect/`). 셋을 드는 자리가
+각각이다: ①·②는 `finishConnect`가 세션의 `User.email`과 provider가 검증한 이메일을 대조하고,
+③은 `VerificationToken`의 **세 번째 접두**를 쓰는 단일 사용 challenge다(`beginConnect`). 화면 쪽
+버튼은 `components/account/login-methods.tsx`의 미연결 행에 선다. ⚠️ **여기 "아직 안 만들었다"가
+남아 있었다** — PRODUCT §4.1의 같은 표기는 **프로덕션 기준**이라 그대로지만, 이 문서는 코드 기준이다.
+`/account`에서 로그인 수단을 붙이는 문이 생겨도 **`linkAccount`의 거부는 그대로다**:
 그것은 Auth.js 콜백을 지나는 **모든** 로그인에 걸린 방어선이고, 예외를 뚫어 통과시키면 sec-audit-2
 #31이 막은 모양이 그대로 돌아온다. 새 경로가 통과해야 하는 것 셋 — ① 현재 세션의 `User.email`과 새
 provider가 **검증한** 이메일이 같을 것 ② 새 provider의 소유를 그 왕복에서 증명할 것 ③ **단일 사용
