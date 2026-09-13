@@ -902,7 +902,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 ## 10. UI 문장 규칙 (en — design.gitlab.com/content에서 가져온 것, 2026-09-07)
 
-문자열은 `messages/en.tsx`에 있고 화면은 **`@/lib/i18n`의 `m`** 으로 읽는다(design §3.1 — 그 모듈은 잎이라 `client-graph.test.ts`가 무게를 센다). 이 절이 그 문체이고, **`lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 고정한다**(`focus-ring`·`globals-css`와 같은 계열).
+문자열은 `messages/en.tsx`에 있고 화면은 **`@/lib/i18n`의 `m`** 으로 읽는다(design §3.1 — 그 모듈은 잎이라 `client-graph.test.ts`가 무게를 센다). 이 절이 그 문체이고, **`lib/i18n/__tests__/no-korean-ui.test.ts`가 화면 소스의 한글 리터럴을 축소형 허용 목록으로 고정한다**(`focus-ring`·`globals-css`와 같은 계열). ⚠️ **제품 이름은 문장 첫 자리에서도 `malmoi`다** — 도메인(`mal-moi.com`)과 같은 형이라 문장 위치가 표기를 바꾸지 않는다. `brand-spelling.test.ts`가 그 표기를 상시로 센다(2026-09-13 — 계정 화면에서 `malmoi`와 `Malmoi`가 한 화면에 같이 섰다).
 
 - **Sentence case.** 라벨·열 제목·버튼·제목 전부.
 - **UI 요소 라벨에 마침표 없음**(버튼·라벨·제목·배지). help text·Alert 본문 같은 완전 문장에는 있음. **느낌표 금지.**
