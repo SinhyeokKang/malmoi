@@ -710,7 +710,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 ### 6.7 새 프로젝트 (`/projects/new`) — **`/projects` 위의 모달 네 단계** (2026-09-13)
 
 ⚠️ **라우트 하나를 대신하는 급의 모달이다** — 단계가 넷이고 실패 갈래가 열이라 "확인 대화상자"가
-아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 960 · 높이가 뷰포트에 물린 고정 · 본문만 스크롤.
+아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 **880** · 높이가 뷰포트에 물린 고정 · 본문만 스크롤.
 **뒤에 프로젝트 목록이 그대로 있고**, 닫으면 열기 직전의 `?q=`·`?filter=`를 들고 `/projects`로 간다.
 
 ⚠️ **`components/ui/dialog.tsx`를 쓰지도 고치지도 않는다.** 그 프리미티브는 Overlay가 고정
@@ -722,7 +722,7 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 | 요소 | 규칙 |
 |---|---|
-| 껍데기 | 폭 960 · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값에 물린다**: `min-h-[min(80svh,calc(100svh-96px))] max-h-[calc(100svh-96px)]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
+| 껍데기 | 폭 **880** (2026-09-13 사용자 — 핸드오프 800과 한때의 960 사이). 960의 근거였던 "800이면 ②의 값 셀이 ≈188px라 24자에서 잘린다"는 **좌측 300 + 표 `1fr 1fr`** 기준이었고, 좌측 240 + `1fr 2fr`인 지금 값 셀은 **800→≈291 / 880→≈344 / 960→≈397**이라 셋 다 그 문제를 넘긴다. ⚠️ **좌측 240과 `1fr 2fr`은 시안으로 되돌리지 않는다** — 그 둘까지 300·`1fr 1fr`로 가면 값 셀이 ≈244로 내려가 960으로 올렸던 이유가 되살아난다. · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값에 물린다**: `min-h-[min(80svh,calc(100svh-96px))] max-h-[calc(100svh-96px)]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
 | 바닥 | 왼쪽 `Step n of 4`(`text-xs leading-[1.6]` muted) · `border-t`는 **`border-divider`**(#f0f0f0, §6.2) · 오른쪽 [Back]·[Next] `Button size="lg"`. ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. **①④에는 [Back]이 없다**(닫는 길은 X·Esc·backdrop / 되돌릴 것이 없다) |
 | 비활성 [Next] | **껍데기가 든다** — 흰 배경 + border + muted 글자 + `cursor-not-allowed`. 단계마다 다시 만들면 갈린다 |
 | ① 막힘 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator…"로 떨어진다. ⚠️ **검색 0건은 넷째 갈래다** — 요구하는 일이 다르다(검색어를 지워라) |
