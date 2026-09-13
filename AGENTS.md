@@ -225,6 +225,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`.** 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
 - **`/doc-check`은 문서 전수 대조다.** `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 양방향(틀린 단언 + 누락)으로 대조한다. `POSTMORTEM.md`(append-only)는 대상이 아니다.
 - ⚠️ **로케일이 많은 리포가 하나 필요하다 — `i18n-many-locales`다** (2026-09-13, excalidraw 포크 · `packages/excalidraw/locales/{locale}.json` **59로케일** · json-catalog). 폐기용 셋은 전부 **로케일이 3개**라 `sampleOrder`가 처음부터 전부 실어서, 온보딩 ②의 **lazy load**(누른 언어만 받는 경로)와 **세그먼트→`Select` 접힘**(다섯 이상)이 **한 번도 안 밟힌다**. 그 둘을 보려면 이 리포다. ⚠️ **쓰기 검증에는 쓰지 않는다** — 포크라 PR 흔적이 남고, `/l10n-roundtrip`의 "폐기용 리포만" 규칙은 그대로다.
+- ⚠️ **로케일이 하나도 없는 리포도 하나 필요하다 — `i18n-none`이다** (2026-09-13, `sindresorhus/p-map` 포크 · 74KB · MIT). 온보딩 ②의 **후보 0개**(예외 E — 좌측이 수동 지정 폼이 되고 우측이 "Nothing to preview yet"인 갈래)는 **설치된 다른 다섯이 전부 로케일 리포라 브라우저로 영영 못 밟는다.** 그 갈래는 되돌릴 수 없는 결정 직전의 화면인데 단위 테스트로만 고정돼 있었다. **74KB를 고른 이유는 트리 조회가 즉시 끝나서다** — `i18n-many-locales`는 탐지에 30초가 넘는다. ⚠️ **쓰기 검증에는 쓰지 않는다**(포크라 PR 흔적이 남는다).
 - **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** — `pnpm test`가 값은 보지만 화면은 못 보는 축(라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지)이 대상이다. **리포트+이슈 전용**이고 preview가 아니라 **로컬**을 쓴다.
 - **`/l10n-roundtrip`은 어댑터 실물 검증 전담이다** — 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돈다. **값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다.** 대상은 **폐기용 리포만**이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 재생성 어댑터를 고쳤으면 `i18n-order-check`다(그 리포가 표현 5축이 섞이도록 재포맷돼 있다).
 
@@ -272,7 +273,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** stable은 `prev` 태그다. `pnpm add prisma`로 무심코 깔면 RC가 들어오므로 **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
 - **Vercel Cron은 Hobby 플랜에서 하루 1회다.** **cron은 프로덕션 배포에서만 돈다** — preview가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다.
-- ⚠️ **App 설치가 `Only select repositories`다.** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 다섯**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check` · **`i18n-many-locales`**.
+- ⚠️ **App 설치가 `Only select repositories`다.** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 여섯**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check` · **`i18n-many-locales`** · **`i18n-none`**(2026-09-13 추가, 앱 목록에서 실물 확인). ⚠️ **이 줄을 리포 생성 시점이 아니라 설치 목록에 실제로 든 뒤에 올린다** — 앞서가면 `not-installed`를 만난 사람이 설치 목록을 의심 대상에서 빼고 엉뚱한 곳을 디버깅한다.
 - **GitHub App 개인키는 개행이 들어간 PEM이다.** Vercel env에서 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다. **`.pem`은 `.gitignore`에 있다.**
 - ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다. `onlyBuiltDependencies`는 빌드 스크립트 화이트리스트이고 **목록은 셋뿐이다** — 스크립트가 **없는** 패키지를 넣으면 업스트림이 나중에 추가할 때 자동 승인되어 화이트리스트의 요지가 사라진다. **둘 다 증상이 원인을 안 가리킨다.**
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.
