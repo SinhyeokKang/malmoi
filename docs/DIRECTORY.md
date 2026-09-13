@@ -153,6 +153,12 @@ lib/
   onboarding/sample-confirmation.ts
                         재검증한 샘플 포맷의 HMAC 발급·검증. 사용자·리포 id·설치 id·ref·head에 묶는다.
                         파일 내용과 서버 캐시는 없고, node:crypto를 쓰므로 클라이언트가 값으로 읽지 않는다.
+  onboarding/language-name.ts
+                        로케일 코드 → 영어 언어 이름(③의 기준 언어 행). ⚠️ 자국어가 아니다 —
+                        Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
+                        언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
+                        (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
+                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
