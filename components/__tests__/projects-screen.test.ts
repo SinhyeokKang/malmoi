@@ -217,3 +217,99 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
     expect(METER).not.toMatch(/\bLocaleBadge\b/);
   });
 });
+
+/**
+ * **목록 본문의 치수는 시안이 정본이다** (projects-list design §11.2·§11.3·§11.5).
+ *
+ * ⚠️ **주석을 벗기고 센다** — 이 파일 위쪽의 `code()`가 그 일을 한다. 주석이 자기가 피하는 것을
+ * 리터럴로 적는 부류라, 안 벗기면 주석만으로 green이 된다.
+ */
+describe("목록 본문 — 캔버스 값 그대로", () => {
+  const BODY = code("components/projects/project-list.tsx");
+
+  it.each([
+    ["이름 칸 420", "w-[420px]"],
+    ["행 글리프 radius 4", "rounded-[4px]"],
+    ["행 요소 gap 16", "gap-4"],
+    ["행 padding 14/14/12", "py-3.5"],
+    ["행 hover 2%", "hover:bg-foreground/[0.02]"],
+    ["Summary 칸 200", "w-50"],
+    ["Summary gap 24", "gap-6"],
+    ["hairline #f0f0f0", "border-foreground/[0.06]"],
+    ["띠 좌측 들여쓰기 56", "pl-14"],
+    ["Meter 대체 문장 332", "w-[332px]"],
+    ["본문 아래 여백 20", "pb-5"],
+    ["카드 radius 12", "rounded-lg"],
+  ])("%s", (_label, literal) => {
+    expect(BODY).toContain(literal);
+  });
+
+  /**
+   * ⚠️ **`divide-y`를 쓰면 띠와 행 사이에도 `#e5e5e5` 선이 생긴다.** 시안은 거기가 `#f0f0f0`이고
+   * 행 사이만 `#e5e5e5`다 — 행마다 `border-t`를 직접 준다(첫 행 제외).
+   */
+  it("`divide-y`를 쓰지 않는다", () => {
+    expect(BODY).not.toContain("divide-y");
+    expect(BODY).not.toContain("divide-border");
+  });
+
+  /** ⚠️ **행 hover는 2%다** — 3%로 두면 시안보다 진하다. */
+  it("옛 hover 3%가 남아 있지 않다", () => {
+    expect(BODY).not.toContain("hover:bg-foreground/[0.03]");
+  });
+
+  /**
+   * ⚠️ **Summary는 표시 전용이다** (열린 결정 1). 계정 단위 큐 화면이 생기기 전까지 링크로 만들면
+   * 아직 없는 화면을 가리키게 된다.
+   */
+  it("Summary 블록 안에 링크가 없다", () => {
+    const block = /function SummaryRow[\s\S]*?\n}/.exec(BODY)?.[0] ?? "";
+    expect(block).not.toContain("<a");
+    expect(block).not.toContain("<Link");
+    expect(block).not.toContain("href");
+    expect(block.length).toBeGreaterThan(100);
+  });
+
+  /**
+   * ⚠️ **띠는 행의 형제다** — `<a>` 안에 넣으면 링크가 중첩되고, 그 안의 [Review]는 누를 수 없다.
+   */
+  it("띠가 행 링크 밖에 있다", () => {
+    expect(BODY).toMatch(/<\/Link>\s*\n\s*\{banner !== null && <BannerLine/);
+  });
+
+  it("그룹 헤더 셋을 사전에서 가져온다 — 배지 낱말과 두 벌이 되지 않는다", () => {
+    expect(BODY).toContain("m.projects.group.needsAttention");
+    expect(BODY).toContain("m.projects.group.allSet");
+    expect(BODY).toContain("archived: m.projects.archived");
+  });
+
+  it("띠 갈래를 `rowBanner`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
+    expect(BODY).toContain("rowBanner(row)");
+    expect(BODY).toContain("meterSlot(row, row.meters)");
+    expect(BODY).toContain("groupProjects(rows, q)");
+  });
+
+  /**
+   * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다** (design §4 F) — `project:settings` 뒤라 EDITOR에게
+   * 보여 주면 눌러서 거절당하는 경험이 된다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
+   */
+  it("세 링크가 `project:settings`로 갈린다", () => {
+    expect(BODY).toContain('canPerform(row.role, "project:settings")');
+    expect(BODY).toContain("m.projects.banner.askOwner.reconnect");
+    expect(BODY).toContain("m.projects.banner.askOwner.setup");
+    expect(BODY).toContain("m.projects.importFailure.contactOwner");
+  });
+
+  /** 외부로 나가는 둘만 `ExternalLink` 12를 단다 (DESIGN §6.3). */
+  it("외부 링크가 새 탭과 글리프를 든다", () => {
+    expect(BODY).toContain('target="_blank"');
+    expect(BODY).toContain('rel="noreferrer"');
+    expect(BODY).toContain('<ExternalLink className="size-3"');
+  });
+
+  /** ⚠️ **`main`을 하드코딩하지 않는다** — 실제 base 브랜치 이름이 문구와 링크에 들어간다. */
+  it("compare 링크와 문구가 base 브랜치를 쓴다", () => {
+    expect(BODY).toContain("row.baseBranch");
+    expect(BODY).not.toMatch(/compare\/[^`]*\.\.\.main/);
+  });
+});

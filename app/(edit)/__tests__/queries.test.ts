@@ -380,7 +380,8 @@ describe("loadProjectList", () => {
     // p1은 키 2 × 로케일 2 = 4칸이고 값이 있는 것은 둘 — 남는 미번역이 둘이다.
     // ⚠️ p2는 남의 멤버십이라 어느 값에도 안 들어간다.
     expect(summary).toMatchObject({ toTranslate: 2, toReview: 1, toSend: 1 });
-    expect(rows[0]?.events).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0, importing: false });
+    // ⚠️ 사건은 **행에 펼쳐져 있다** — 판정 셋이 그 모양을 그대로 받는다.
+    expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0, importing: false });
     // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
     expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
     expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
@@ -400,7 +401,7 @@ describe("loadProjectList", () => {
 
     const { rows } = await loadProjectList(h.prisma, "u1", { loadRemote });
 
-    expect(rows[0]?.events).toMatchObject({ openPr: { number: 7 }, repoAheadFiles: 3 });
+    expect(rows[0]).toMatchObject({ openPr: { number: 7 }, repoAheadFiles: 3 });
     expect(loadRemote).toHaveBeenCalledWith([
       expect.objectContaining({ archived: false, storedLocales: expect.arrayContaining(["en", "ko"]) }),
     ]);

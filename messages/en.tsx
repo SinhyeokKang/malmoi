@@ -297,7 +297,85 @@ export const en = {
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {
       title: "No projects yet",
-      description: "Connect a repository to create one, or open an invite link you were sent.",
+      /** ⚠️ **초대 경로를 함께 말한다** — 번역자는 프로젝트를 만들지 않고 초대를 받아 들어온다. */
+      description: "Connect a GitHub repository to start, or open an invite link someone sent you.",
+    },
+    /**
+     * 머리의 Summary 넷 (projects-list design §11.3). **내 멤버십 중 보관하지 않은 프로젝트 전체**의
+     * 값이고 검색·그룹에 흔들리지 않는다.
+     *
+     * ⚠️ **누를 수 없다** — 계정 단위 큐 화면이 생기기 전까지는 표시 전용이다(열린 결정 1).
+     * 링크로 만들면 아직 없는 화면을 가리키게 된다.
+     */
+    summary: {
+      /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
+      newFromGithub: "New from GitHub",
+      toTranslate: "To translate",
+      toReview: "To review",
+      toSend: "To send",
+    },
+    /**
+     * 그룹 헤더 셋. **`Archived`는 `projects.archived`를 그대로 쓴다** — 행 배지와 같은 낱말이라야
+     * "지금 무엇을 보고 있나"가 이어지고, 두 벌로 두면 하나가 낡는다.
+     */
+    group: { needsAttention: "Needs attention", allSet: "All set" },
+    /** 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다. */
+    searchResult: (n: number, total: number, q: string): string =>
+      `${n} of ${total} project${total === 1 ? "" : "s"} match ${q}`,
+    /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
+    clearSearch: "Clear search",
+    /**
+     * Meter 자리에 **바 대신 서는 문장** (design §5). 값이 없는 상태에서 0% 바를 그리면
+     * "0% 번역됨"으로 읽히는데, 그 프로젝트는 아직 셀 것이 없는 상태다.
+     */
+    meter: {
+      note: {
+        waiting: "Waiting for the first import.",
+        importing: "Importing locale data.",
+        failed: "No data imported.",
+        setup: "Connect the GitHub App to continue.",
+      },
+    },
+    /**
+     * 행 아래 띠 — **다음 한 수**를 말한다 (design §5). 겹치면 하나만 그리고 우선순위는
+     * `rowBanner`가 정한다.
+     *
+     * ⚠️ **복수형을 함수가 든다** — 시안 문구가 전부 복수형이지만 `1 strings`는 틀렸다
+     * (`memberCount`가 같은 이유로 이미 함수다).
+     *
+     * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다**(`Reconnect`·`Continue setup`·`View details`) —
+     * 그 셋은 `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다.
+     * 문장 자체는 역할과 무관하다 (PRODUCT §3: EDITOR도 Publish한다).
+     */
+    banner: {
+      review: (n: number): string =>
+        `${n} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+      unsent: (n: number): string =>
+        `${n} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
+      prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
+      /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
+      repoAhead: (n: number, baseBranch: string): string =>
+        `${n} locale file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last import.`,
+      setup: "Finish setup to start translating.",
+      needsReconnect:
+        "GitHub App access was revoked — pushes and pull requests stop until it is reconnected.",
+      /** 실패 사유(`importFailure.*`) 뒤에 붙는다 — 설정 화면이 그 상세를 든다. */
+      checkDetails: "Check the import details.",
+      /** EDITOR 갈래. 링크를 뺀 자리에 "누가 할 수 있는지"를 말한다. */
+      askOwner: {
+        reconnect: "Ask a project owner to reconnect it.",
+        setup: "Ask a project owner to finish setup.",
+      },
+      action: {
+        review: "Review",
+        /** ⚠️ **Publish가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다 (PRODUCT §7.7). */
+        send: "Send changes",
+        viewPr: "View on GitHub",
+        reviewChanges: "Review changes",
+        viewDetails: "View details",
+        continueSetup: "Continue setup",
+        reconnect: "Reconnect",
+      },
     },
     /**
      * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은

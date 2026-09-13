@@ -232,7 +232,13 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
  * ⚠️ **`Project.id`를 싣지 않는다** — 화면이 아는 식별자는 slug 하나로 남긴다. 내부 id는 집계를
  * 묶는 서버 안의 값이고, 그것을 RSC 페이로드에 흘리면 URL이 아닌 경로로 새는 식별자가 하나 는다.
  */
-export type ProjectListRow = MembershipRow & {
+export type ProjectListRow = MembershipRow &
+  /**
+   * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
+   * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를
+   * 새로 만들어야 하고 그 합성이 판정의 입력이 된다.
+   */
+  ProjectEvents & {
   repoOwner: string;
   repoName: string;
   /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, PRODUCT §7.5). */
@@ -244,8 +250,6 @@ export type ProjectListRow = MembershipRow & {
   lastPrUrl: string | null;
   /** 행의 Meter — **정렬 후 최대 셋**이다 (design §3.1). */
   meters: RowLocaleProgress[];
-  /** 띠·그룹 판정의 입력. GitHub 조회가 실패하면 원격 둘이 "없음"으로 온다. */
-  events: ProjectEvents;
 };
 
 /** 목록 한 화면분. **Summary는 검색 전 전체 멤버십의 값**이라 행 배열과 함께 온다. */
@@ -364,16 +368,14 @@ export async function loadProjectList(
       baseBranch: r.project.baseBranch,
       lastPrUrl: r.project.lastPrUrl,
       meters: meters.get(r.project.id) ?? [],
-      events: {
-        review: review.get(r.project.id) ?? 0,
-        unsent: aggregates.unsent.get(r.project.id) ?? 0,
-        // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
-        openPr: remote.get(r.project.id)?.openPr ?? null,
-        repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
-        // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-        importError: isImportFailureCode(r.project.lastImportError) ? r.project.lastImportError : null,
-        importing: r.project.lastImportStartedAt !== null,
-      },
+      review: review.get(r.project.id) ?? 0,
+      unsent: aggregates.unsent.get(r.project.id) ?? 0,
+      // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
+      openPr: remote.get(r.project.id)?.openPr ?? null,
+      repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
+      // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
+      importError: isImportFailureCode(r.project.lastImportError) ? r.project.lastImportError : null,
+      importing: r.project.lastImportStartedAt !== null,
     })),
     summary: summaryQueue({
       projects: rows.map((r) => ({ projectId: r.project.id, archived: r.project.archivedAt !== null })),

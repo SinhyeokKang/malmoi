@@ -37,6 +37,8 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
+// 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 vi.mock("@/lib/push/apply", () => ({ applyPush: hoisted.applyPush }));
 

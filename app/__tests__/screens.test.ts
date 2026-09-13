@@ -296,3 +296,23 @@ describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
     expect(src).toContain("importRerun");
   });
 });
+
+/**
+ * **목록 둘이 새 집계 소비자다** (projects-list design §3).
+ *
+ * 쓰기는 성공했는데 목록만 옛 숫자를 보이는 부류를 막는다 — 이 리포가 이름으로 적어 둔 사고이고
+ * (POSTMORTEM 2026-09-09), `/projects`가 **접두가 아니라 경로 하나**라 `/projects/new`가 매번
+ * 따로 필요하다는 것이 그 회고의 요지다.
+ */
+describe("쓰기 경로가 목록 둘을 무효화한다", () => {
+  it.each([
+    ["번역 저장·Publish", "app/(edit)/actions.ts"],
+    ["CI push", "app/api/push/route.ts"],
+    ["CI 실패 보고", "app/api/push/failure/route.ts"],
+    ["첫 적재", "app/(edit)/projects/actions.ts"],
+  ])("%s", (_label, path) => {
+    const src = read(path);
+    expect(src).toContain('revalidatePath("/projects")');
+    expect(src).toContain('revalidatePath("/projects/new")');
+  });
+});

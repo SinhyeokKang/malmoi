@@ -58,7 +58,7 @@ export default async function NewProjectPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={view.rows} q={q} />
+      <ProjectList all={view.rows} summary={view.summary} q={q} />
       {/*
         ⚠️ **리포 목록을 `<Suspense>`로 감싼다.** 안 그러면 §4의 "① 로딩" 행도
         `newProject.repo.loading` 키도 **도달 불가**다 — 페이지가 목록을 기다리느라 모달 자체가

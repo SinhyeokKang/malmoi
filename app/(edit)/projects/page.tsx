@@ -51,7 +51,7 @@ export default async function ProjectsPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={view.rows} q={q} message={message} />
+      <ProjectList all={view.rows} summary={view.summary} q={q} message={message} />
     </ContentPanel>
   );
 }

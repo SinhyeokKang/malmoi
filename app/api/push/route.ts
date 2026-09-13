@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
@@ -179,6 +180,18 @@ export async function POST(request: Request): Promise<NextResponse> {
       await finishImportRun(prisma, { projectId: project.id, startedAt, code: "import-failed" });
       throw error;
     }
+
+    /**
+     * ⚠️ **목록 둘이 push의 새 소비자다** (projects-list §3). 적재가 키·번역·`lastCommitSha`를
+     * 한꺼번에 움직이므로 Summary 넷과 행의 Meter·띠가 전부 낡는다 — `/projects`가 접두가 아니라
+     * 경로 하나라 `/projects/new`를 따로 지운다 (POSTMORTEM 2026-09-09).
+     *
+     * ⚠️ **프로젝트 서브트리도 지운다** — 첫 push가 `lastCommitSha`를 세워 readiness를 넘긴다.
+     */
+    revalidatePath(`/projects/${project.slug}`, "layout");
+    revalidatePath("/projects");
+    revalidatePath("/projects/new");
+
     return NextResponse.json({
       projectId: project.id,
       commitSha: parsed.data.commitSha,
