@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageObjectKey, planImageDelete, planImageUpload, sniffImageType } from "../image";
+import { imageObjectKey, IMAGE_MAX_BYTES, planImageDelete, planImagePick, planImageUpload, sniffImageType } from "../image";
 
 const png = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10);
 describe("이미지 형식과 크기", () => {
@@ -46,5 +46,32 @@ describe("이미지 키와 삭제 소유권", () => {
   });
   it.each([null, "bad-url", "https://avatars.githubusercontent.com/u/1", "https://lh3.googleusercontent.com/a/1", "https://store.public.blob.vercel-storage.com.evil.test/avatars/u/n.png", "https://store.public.blob.vercel-storage.com/other/u/n.png", "http://store.public.blob.vercel-storage.com/avatars/u/n.png", "https://store.public.blob.vercel-storage.com/avatars/"])("외부 또는 잘못된 URL %s는 지우지 않는다", (url) => {
     expect(planImageDelete(url)).toBeNull();
+  });
+});
+
+/**
+ * 클라이언트 선검사 (account-settings 태스크 4b).
+ *
+ * ⚠️ **서버 판정이 정본이고 이쪽은 바이트를 안 보내기 위한 1차 방어다.** 브라우저의 `File.type`은
+ * 확장자에서 오므로 여기서 형식을 증명할 수 없다 — 증명하는 것은 서버의 `sniffImageType`이다.
+ */
+describe("클라이언트 선검사", () => {
+  it("빈 파일과 상한 초과를 제출 전에 사유로 거부한다", () => {
+    expect(planImagePick({ size: 0, type: "image/png" })).toEqual({ ok: false, reason: "empty" });
+    expect(planImagePick({ size: IMAGE_MAX_BYTES + 1, type: "image/png" })).toEqual({ ok: false, reason: "too-large" });
+    expect(planImagePick({ size: IMAGE_MAX_BYTES, type: "image/png" })).toEqual({ ok: true });
+    expect(planImagePick({ size: 1, type: "image/jpeg" })).toEqual({ ok: true });
+  });
+  it.each(["image/svg+xml", "image/gif", "image/webp", "application/pdf", ""])("MIME %s는 고르는 즉시 거부한다", (type) => {
+    expect(planImagePick({ size: 1, type })).toEqual({ ok: false, reason: "unsupported-type" });
+  });
+  /**
+   * ⚠️ **이름만 `.png`로 바꾼 SVG는 여기서 안 걸린다 — 걸려서도 안 된다.** 그 거부는 **서버 사유**로
+   * 화면에 닿아야 하고(완료 조건 4②), 클라이언트가 잡는 척하면 서버 사유가 도달하는 경로가 검증되지
+   * 않은 채 남는다.
+   */
+  it("이름만 바꾼 SVG는 통과시키고 서버에 맡긴다", () => {
+    expect(planImagePick({ size: 10, type: "image/png" })).toEqual({ ok: true });
+    expect(planImageUpload(new TextEncoder().encode("<svg/>"))).toEqual({ ok: false, reason: "unsupported-type" });
   });
 });
