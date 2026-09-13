@@ -1,3 +1,4 @@
+import { authorizeConnect, withConnect, connectAuthCookies } from "@/lib/account-connect/http";
 import { credentialAdapter } from "@/lib/credentials/adapter";
 import { refreshVerifiedEmail } from "@/lib/credentials/access";
 import { randomBytes } from "node:crypto";
@@ -85,11 +86,11 @@ const google = Google({
 const authConfig = NextAuth(async () => ({
   adapter: credentialAdapter(getPrisma()),
   /**
-   * ⚠️ **두 스코프를 함께 본다** (account-linking design §5.4) — 회수와 병합이 각자 다른 이름·salt로
-   * state를 암호화하므로, 한쪽만 읽으면 그 왕복의 state 쿠키를 Auth.js가 못 찾는다. 둘은
+   * ⚠️ **세 스코프를 함께 본다** — 회수·연결·병합이 각자 다른 이름·salt로
+   * state를 암호화하므로, 한쪽만 읽으면 그 왕복의 state 쿠키를 Auth.js가 못 찾는다. 셋은
    * 배타적이라 `??`로 충분하다 (불변식 8).
    */
-  cookies: revocationAuthCookies() ?? linkAuthCookies(),
+  cookies: revocationAuthCookies() ?? connectAuthCookies() ?? linkAuthCookies(),
   providers: [github, google],
   /**
    * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
@@ -159,6 +160,8 @@ const authConfig = NextAuth(async () => ({
        * 하는 평범한 로그인**이라 여기서 갈라놓지 않으면 그대로 로그인이 되고, 불일치 갈래에서
        * **남의 GitHub으로 로그인된 세션이 이미 만들어진 채** 병합 화면을 보게 된다.
        */
+      const connect = await authorizeConnect(getPrisma(), account, account ? freshVerifiedEmail(account.provider, profile) : null);
+      if (connect !== null) return connect;
       const link = await authorizeLoginLink(getPrisma(), account);
       if (link !== null) return link;
       // provider 설정이 검증에 실패하면 email을 비워 보낸다 (`githubUserinfo`).
@@ -217,11 +220,10 @@ const authConfig = NextAuth(async () => ({
 
 export const { auth, signIn, signOut } = authConfig;
 /**
- * ⚠️ **`withRevocation`이 바깥, `withLoginLink`가 안쪽이다** (account-linking design 불변식 8a) —
- * 회수가 먼저 판정하고 자기 것이 아니면 통과시킨다. 뒤집으면 회수 왕복이 병합 가로채기를 먼저
- * 만나고, 두 intent 판정이 쿠키 셋의 OR이라 결론이 흔들린다.
+ * 회수 → 연결 → 병합 순서다. 연결은 현재 세션을 증명에 쓰므로,
+ * 세션 쿠키를 뗀 요청 사본을 만드는 withLoginLink보다 먼저 판정해야 한다.
  */
 export const handlers = {
-  GET: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest))),
-  POST: (request: NextRequest) => withRevocation(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest))),
+  GET: (request: NextRequest) => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest)))),
+  POST: (request: NextRequest) => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest)))),
 };

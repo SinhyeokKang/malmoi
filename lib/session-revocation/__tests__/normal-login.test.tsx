@@ -26,6 +26,7 @@ function providers(node: ReactNode): ReactElement[] {
 }
 
 const REVOCATION = ["malmoi-session-revocation", "__Host-malmoi-session-revocation", "malmoi-revocation-state", "__Secure-malmoi-revocation-state"];
+const CONNECT = ["malmoi-account-connect", "__Host-malmoi-account-connect", "malmoi-connect-state", "__Secure-malmoi-connect-state"];
 const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-state", "__Secure-malmoi-link-state"];
 
 /**
@@ -37,9 +38,9 @@ const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-stat
  * callback을 가로채면 그 로그인이 병합 실패 화면으로 샌다 (design 불변식 8c).
  */
 const ENTRIES = [
-  { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK], destination: "/projects" },
-  { entry: "invite", buttons: 2, cleared: [...REVOCATION, ...LINK], destination: "/invite/invite-token" },
-  { entry: "link", buttons: 1, cleared: [...REVOCATION, ...LINK], destination: "/projects" },
+  { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
+  { entry: "invite", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/invite/invite-token" },
+  { entry: "link", buttons: 1, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
 ] as const;
 
 async function render(entry: (typeof ENTRIES)[number]["entry"]) {

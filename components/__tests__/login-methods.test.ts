@@ -8,16 +8,11 @@ const CARD = strip(readFileSync(join(ROOT, "components/account/login-methods.tsx
 const PAGE = strip(readFileSync(join(ROOT, "app/(edit)/account/page.tsx"), "utf8"));
 const ACTIONS = strip(readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8"));
 
-/**
- * `/account`의 로그인 수단 카드 (account-linking T5).
- *
- * ⚠️ **[Connect]를 두지 않는다** (design ⑨). 이유 둘: ① 로그인된 세션을 근거로 `Account`를 붙이는
- * 경로는 **sec-audit-2 #31이 막은 바로 그 자리**이고, 그 문의 인가 조건(이메일 동등 + 두 provider
- * 소유 증명 + 단일 사용 challenge)을 `/account`에서는 못 적는다. ② 같은 주소 연결은 흐름 ①이
- * 이미 잡는다 — 로그아웃 후 그 provider로 로그인하면 된다.
- */
-it("해제만 있고 연결 버튼이 없다", () => {
+/** 로그인 수단 추가는 별도 challenge 경로를 쓴다. GitHub App 연결과 섞지 않는다. */
+it("로그인 수단 추가는 GitHub App 연결과 분리된다", () => {
   expect(CARD).toContain("unlinkLoginMethod");
+  expect(CARD).toContain("startLoginMethodConnect.bind");
+  expect(CARD).toContain("useFormStatus");
   expect(CARD).not.toMatch(/\bConnect\b/);
   expect(CARD).not.toContain("startGithubConnectForUser");
   expect(CARD).not.toContain("signIn(");

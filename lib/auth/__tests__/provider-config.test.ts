@@ -83,7 +83,7 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
  */
 describe("auth.ts — 회수와 병합이 서로를 먹지 않는다", () => {
   it("래핑 순서는 회수가 바깥, 병합이 안쪽이다", () => {
-    expect(AUTH_TS).toMatch(/withRevocation\(request,\s*\(\)\s*=>\s*withLoginLink\(/);
+    expect(AUTH_TS).toMatch(/withRevocation\(request,\s*\(\)\s*=>\s*withConnect\(request,\s*\(\)\s*=>\s*withLoginLink\(/);
     expect(AUTH_TS).not.toMatch(/withLoginLink\([^)]*withRevocation\(/);
   });
 
@@ -91,12 +91,15 @@ describe("auth.ts — 회수와 병합이 서로를 먹지 않는다", () => {
     const callback = /async signIn\(\{[\s\S]*?\n    \}/.exec(AUTH_TS)?.[0] ?? "";
     expect(callback).toContain("authorizeRevocation(");
     expect(callback).toContain("authorizeLoginLink(");
+    expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("authorizeConnect("));
+    expect(callback.indexOf("authorizeConnect(")).toBeLessThan(callback.indexOf("authorizeLoginLink("));
+    expect(callback).toContain("freshVerifiedEmail(account.provider, profile)");
     expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("authorizeLoginLink("));
     // 이메일 검사·갱신보다도 앞이다 — 회수 왕복은 로그인이 아니다.
     expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("refreshVerifiedEmail("));
   });
 
   it("state 쿠키 스코프를 두 가로채기에서 함께 읽는다", () => {
-    expect(AUTH_TS).toMatch(/revocationAuthCookies\(\)\s*\?\?\s*linkAuthCookies\(\)/);
+    expect(AUTH_TS).toMatch(/revocationAuthCookies\(\)\s*\?\?\s*connectAuthCookies\(\)\s*\?\?\s*linkAuthCookies\(\)/);
   });
 });

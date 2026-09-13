@@ -108,9 +108,9 @@ export const routes = {
    */
   /**
    * ⚠️ **`link`가 2026-09-12에 붙었다** (account-linking T5) — 로그인 수단 해제의 결과다. 갈래는
-   * 둘(`disconnected`·`last-method`)이고, 같은 이유로 `withQuery`를 지난다.
+   * 셋(`disconnected`·`last-method`·`unavailable`)이고, 같은 이유로 `withQuery`를 지난다.
    */
-  account: (query: { sessionRevocation?: string; link?: string } = {}): string => withQuery("/account", query),
+  account: (query: { sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
   /**
    * 병합 안내 화면 (account-linking T2). **challenge는 경로에 있다** — 경로 토큰이라 "표시 전용
    * 힌트"라는 애매한 층이 없고, `/invite/[token]`과 같은 부류다.

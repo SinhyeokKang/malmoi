@@ -131,7 +131,7 @@ export function pickLoginAccount<T extends { provider: string }>(accounts: reado
   return null;
 }
 
-/** `/account`의 수단 카드 — **행이 언제나 둘이고 순서가 고정**이다. [Connect]는 없다 (design ⑨). */
+/** `/account`의 수단 카드 — **행이 언제나 둘이고 순서가 고정**이다. 미연결 행의 추가는 account-connect가 담당한다. */
 export function loginMethodRows(
   accounts: readonly { provider: string }[],
 ): { provider: LoginProvider; connected: boolean }[] {

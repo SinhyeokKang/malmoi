@@ -77,6 +77,8 @@ const USER_SCOPED_ACTIONS = new Set([
   "account/actions.ts#startSessionRevocation",
   // `Account`는 사용자 소유다 — 프로젝트가 없는 사용자도 자기 로그인 수단을 해제할 수 있어야 한다.
   "account/actions.ts#unlinkLoginMethod",
+  // Login-method challenges belong to the authenticated User.
+  "account/actions.ts#startLoginMethodConnect",
   // Profile images belong to the authenticated User, not a project.
   "account/actions.ts#uploadProfileImage",
   "account/actions.ts#deleteProfileImage",

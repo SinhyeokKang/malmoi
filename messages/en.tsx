@@ -1210,7 +1210,8 @@ export const en = {
     footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
     methods: {
       title: "Sign-in methods",
-      description: "These are the accounts you can use to sign in. Adding one happens when you sign in with it at this same address.",
+      description: "Add another account with the same verified email to use it as a sign-in method.",
+      add: (provider: string): string => `Add ${provider}`,
       notConnected: "Not connected",
       disconnect: "Disconnect",
       /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
@@ -1222,6 +1223,17 @@ export const en = {
   },
 
   errors: {
+    connectMethod: {
+      connected: "Sign-in method added. You can use it next time you sign in.",
+      "email-mismatch": "The email doesn't match this account. Try an account with the same verified email.",
+      "already-connected": "This sign-in method is already added. You can use it to sign in.",
+      "taken-by-other": "This sign-in method belongs to another malmoi account. Try a different account.",
+      expired: "This request expired or was replaced. Start again from this card.",
+      cancelled: "Adding the sign-in method was cancelled. Start again when you're ready.",
+      unverified: "No verified email was provided. Verify your email with the provider before trying again.",
+      "wrong-user": "Your session changed during this request. Start again from this card.",
+      failed: "The sign-in method couldn't be added. Try again in a moment.",
+    },
     /** `accessErrorMessage` — `AccessError` 여섯. */
     access: {
       unauthorized: "Your session ended. Sign in again to save your work.",

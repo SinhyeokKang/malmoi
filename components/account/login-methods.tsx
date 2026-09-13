@@ -1,8 +1,11 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
+import { Alert } from "@/components/ui/alert";
+import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { useTransition } from "react";
 
-import { unlinkLoginMethod } from "@/app/(edit)/account/actions";
+import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -10,52 +13,34 @@ import { m } from "@/lib/i18n";
 import { canUnlink, type LoginProvider } from "@/lib/login-link/policy";
 import { providerLabel } from "@/lib/login-link/message";
 
-/**
- * 로그인 수단 목록 — **목록 + 해제만이다** (account-linking design ⑨).
- *
- * ⚠️ **[Connect]가 없다.** 로그인된 세션을 근거로 `Account`를 붙이는 경로는 sec-audit-2 #31이 막은
- * 자리이고, 그 문의 인가 조건(이메일 동등 + 두 provider 소유 증명 + 단일 사용 challenge)을 이
- * 화면에서는 못 적는다. 같은 주소 연결은 흐름 ①이 이미 잡는다 — 로그아웃 후 그 provider로
- * 로그인하면 병합 화면이 뜬다.
- *
- * ⚠️ **마지막 수단은 비활성 + 행 옆 인라인 사유다** — 사유 없는 disabled는 이 리포가 반복해 밟은
- * 부류이고(POSTMORTEM 2026-09-06), 관용구는 멤버 화면의 행 옆 인라인이다.
- */
-export function LoginMethods({ rows }: { rows: readonly { provider: LoginProvider; connected: boolean }[] }) {
-  const connected = rows.filter((row) => row.connected).map((row) => row.provider);
-  const [pending, startTransition] = useTransition();
-
-  return (
+/** Add uses the live session plus an isolated OAuth challenge; each row owns its pending state. */
+export function LoginMethods({ rows, outcome = null }: { rows: readonly { provider: LoginProvider; connected: boolean }[]; outcome?: ConnectOutcome | null }) {
+  const connected = rows.filter(row => row.connected).map(row => row.provider);
+  return <div className="space-y-3">
+    {outcome !== null && <Alert variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>}
     <ul className="divide-border divide-y">
-      {rows.map((row) => {
-        const label = providerLabel(row.provider);
-        const removable = canUnlink(connected, row.provider);
-        return (
-          <li key={row.provider} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
-            {/* 브랜드 마크는 무채색 위계의 대상이 아니다 — `--foreground`를 그대로 받는다. */}
-            {row.provider === "github" ? <GithubIcon className="size-4 shrink-0" /> : <GoogleIcon className="size-4 shrink-0" />}
-            <span className="flex-1 text-sm">{label}</span>
-            {!row.connected ? (
-              <span className="text-muted-foreground text-xs">{m.link.methods.notConnected}</span>
-            ) : removable ? (
-              <DisconnectButton
-                label={label}
-                pending={pending}
-                onConfirm={() => startTransition(async () => { await unlinkLoginMethod(row.provider); })}
-              />
-            ) : (
-              <>
-                <span className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-                <Button variant="ghost" disabled={true}>
-                  {m.link.methods.disconnect}
-                </Button>
-              </>
-            )}
-          </li>
-        );
-      })}
+      {rows.map(row => <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} />)}
     </ul>
-  );
+  </div>;
+}
+function MethodRow({ row, removable }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean }) {
+  const [pending, startTransition] = useTransition();
+  const label = providerLabel(row.provider);
+  return <li className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+    {row.provider === "github" ? <GithubIcon className="size-4 shrink-0" /> : <GoogleIcon className="size-4 shrink-0" />}
+    <span className="flex-1 text-sm">{label}</span>
+    {!row.connected ? <>
+      <span className="text-muted-foreground text-xs">{m.link.methods.notConnected}</span>
+      <form action={startLoginMethodConnect.bind(null, row.provider)}><AddButton label={label} /></form>
+    </> : removable ? <DisconnectButton label={label} pending={pending} onConfirm={() => startTransition(async () => { await unlinkLoginMethod(row.provider); })} /> : <>
+      <span className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
+      <Button variant="ghost" disabled={true}>{m.link.methods.disconnect}</Button>
+    </>}
+  </li>;
+}
+function AddButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return <Button type="submit" variant="ghost" loading={pending}>{m.link.methods.add(label)}</Button>;
 }
 
 /**

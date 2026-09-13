@@ -1,3 +1,4 @@
+import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
 import { LoginMethods } from "@/components/account/login-methods";
 import { SessionRevocation } from "@/components/session-revocation";
@@ -30,7 +31,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * ⚠️ **프로필은 읽기 전용이다.** 이름·이메일은 provider가 소유하고 재로그인마다 `planEmailRefresh`가
  * 갱신한다 — 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지 않은 주소 위에 선다.
  */
-export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation" | "link">> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation" | "link" | "connect">> }) {
   const { userId } = await requireUser();
 
   /**
@@ -39,14 +40,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * (POSTMORTEM 2026-09-06). **판정 함수로 거른다** — 주소창 값을 캐스팅하면 프로토타입 키가 문자열
    * 자리에 함수를 넣어 화면이 죽는다 (POSTMORTEM 2026-09-08).
    */
-  const { e, sessionRevocation, link } = firstQueryValues(await searchParams);
+  const { e, sessionRevocation, link, connect } = firstQueryValues(await searchParams);
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
   /**
    * ⚠️ **보내는 쪽과 읽는 쪽이 같은 커밋에 있어야 한다** — 사유를 실어 보내놓고 아무도 안 읽으면
    * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 성공은 카드가 바뀌는 것이
    * 피드백이라 문구를 내지 않는다 — 실패만 말한다.
    */
-  const unlinkFailure = link === undefined || link === "disconnected" ? null : linkErrorMessage(link);
+  const unlinkFailure = isUnlinkOutcome(link) && link !== "disconnected" ? linkErrorMessage(link) : null;
 
   const prisma = getPrisma();
   /**
@@ -106,10 +107,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           {/*
             ⚠️ **같은 화면에 "GitHub"이 두 번 나온다** — 위는 **로그인 수단**, 아래는 **리포 쓰기
             권한**(GitHub App 연결)이다. 다른 축이고 그 구별이 화면에서 보여야 한다.
-            ⚠️ **[Connect]가 없다** (design ⑨) — 붙이는 문은 `finishLink` 하나뿐이다.
+            로그인 수단의 [Add]는 account-connect challenge를 쓰며 아래 리포 접근 연결과 다르다.
           */}
           <Card title={m.link.methods.title} description={m.link.methods.description}>
-            <LoginMethods rows={loginMethodRows(methods)} />
+            <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
           </Card>
 
           <Card title={m.settings.account.title} description={m.account.github.description}>

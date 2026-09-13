@@ -1,5 +1,9 @@
 "use server";
 
+import { withConnectStart } from "@/lib/account-connect/http";
+import { beginConnect } from "@/lib/account-connect/store";
+import { connectCookie } from "@/lib/account-connect/policy";
+import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 
 import { randomBytes } from "node:crypto";
@@ -131,8 +135,7 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
  * ⚠️ **`Account` PK가 `(provider, providerAccountId)`라 그 둘만으로 남의 행에 닿는다** —
  * 모든 조회·삭제에 `userId`를 함께 건다 (POSTMORTEM 2026-09-06).
  *
- * ⚠️ **[Connect]의 짝이 아니다** — 붙이는 문은 `finishLink` 하나뿐이고 여기는 **되돌릴 수단**이다
- * (spec §6 — 알림 부재의 보상).
+ * 붙이는 문은 finishLink와 finishConnect이고, 여기는 마지막 수단을 남기는 해제 경로다.
  */
 export async function unlinkLoginMethod(provider: string): Promise<void> {
   const { userId } = await requireUser();
@@ -157,4 +160,40 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
   revalidatePath("/", "layout");
   // Next의 redirect는 던진다 — 실패 처리 밖에 둔다.
   redirect(routes.account({ link: outcome }));
+}
+
+/** The live session replaces re-proving the existing method; the new provider still needs OAuth proof. */
+export async function startLoginMethodConnect(provider: string): Promise<void> {
+  const { userId } = await requireUser();
+  let destination = routes.account({ connect: "failed" });
+  try {
+    if (isLoginProvider(provider)) {
+      const prisma = getPrisma();
+      const existing = await prisma.account.count({ where: { userId, provider } });
+      if (existing > 0) destination = routes.account({ connect: "already-connected" });
+      else {
+        const h = await headers();
+        const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
+        if (origin) {
+          await clearAuthRoundtripCookies();
+          const jar = await cookies();
+          const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
+          if (sessionToken) {
+            const url = await withConnectStart(origin.secure, () => signIn(provider, { redirect: false, redirectTo: routes.account({ connect: "expired" }) }, { prompt: "select_account" }));
+            const state = new URL(url).searchParams.get("state");
+            if (state) {
+              const nonce = randomBytes(32).toString("base64url");
+              const outcome = await beginConnect(prisma, { userId, provider, nonce, sessionToken, state });
+              if (outcome === "ready") {
+                const cookie = connectCookie(origin.secure);
+                jar.set(cookie.name, nonce, cookie.options);
+                destination = url;
+              } else destination = routes.account({ connect: outcome satisfies ConnectOutcome });
+            }
+          }
+        }
+      }
+    }
+  } catch { destination = routes.account({ connect: "failed" }); }
+  redirect(destination);
 }
