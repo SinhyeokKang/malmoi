@@ -516,3 +516,75 @@ it.each(["back", "list"] as const)("호출부가 정한 닫기 경로를 따른�
     expect(mocks.router.back).not.toHaveBeenCalled();
   }
 });
+
+/**
+ * ⚠️ **모달의 빈 상태가 본문 세로 중앙이다** (2026-09-13 사용자 실물 · 핸드오프 1·3a). 껍데기가
+ * `min-h`로 세로를 잡아 놓아서, 빈 상태를 그냥 반환하면 칩·제목·설명이 **헤더 바로 아래 한 덩어리**로
+ * 뜨고 그 아래 600px이 통째로 빈다. `EmptyState`는 수직 중앙을 하지 않는다(DESIGN §6.4) — **`flex-1`은
+ * 호출부가 든다**는 그 계약을 지키는 자리가 여기다.
+ *
+ * ⚠️ **클래스로 센다.** 이 축은 jsdom이 레이아웃을 계산하지 않아 실측이 불가능하고, 화면에만 있으면
+ * 다음 리팩터가 조용히 지운다.
+ */
+/** `EmptyState` 루트 — 제목 `p.text-lg`의 부모다 (모달 헤더 제목은 `text-xl`이라 겹치지 않는다). */
+function emptyWrapper(): HTMLElement {
+  const root = find<HTMLElement>(document.body, "p.text-lg").parentElement;
+  if (root?.parentElement == null) throw new Error("Missing EmptyState wrapper");
+  return root.parentElement;
+}
+function expectCentered(wrapper: HTMLElement) {
+  for (const cls of ["flex-1", "items-center", "justify-center"]) expect(wrapper.className).toContain(cls);
+}
+
+it("① 계정 미연결 빈 상태가 본문 세로 중앙에 선다", async () => {
+  await render(<NewProject repos={undefined} listError="not-connected" installUrl={null} now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(document.body.textContent).toContain("Connect your GitHub account");
+  expectCentered(emptyWrapper());
+});
+
+it("① 설치에 리포가 없는 빈 상태도 같은 자리다", async () => {
+  await render(<NewProject repos={undefined} listError="no-installations" installUrl={null} now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expectCentered(emptyWrapper());
+});
+
+it("① 검색 0건도 세로 중앙이다 — 검색 필드는 위에 남는다", async () => {
+  await mount();
+  await input(find<HTMLInputElement>(document.body, 'input[aria-label="Find a repository by name"]'), "zzz");
+
+  expect(document.body.textContent).toContain('No repository matches "zzz".');
+  expectCentered(emptyWrapper());
+});
+
+/**
+ * ⚠️ **②의 빈 상태는 표 헤더 **아래** 남은 높이의 중앙이다** (핸드오프 3a). 헤더는 그대로 서고
+ * 본문 자리만 비므로, 중앙을 잡는 것은 스크롤 컨테이너여야 한다 — 바깥 박스가 잡으면 헤더까지
+ * 포함한 중앙이 되어 블록이 위로 밀린다.
+ */
+it("② 후보 0개 미리보기의 빈 상태가 표 헤더 아래 중앙에 선다", async () => {
+  await files(true);
+
+  const wrapper = emptyWrapper();
+  expectCentered(wrapper);
+  expect(wrapper.parentElement?.className).toContain("overflow-auto");
+  expect(wrapper.parentElement?.querySelector("thead")).not.toBeNull();
+});
+
+/**
+ * ⚠️ **②의 빈 상태가 제목 + 설명 둘 다 든다** (시안 3a). 2026-09-13까지 **제목 한 줄뿐**이었고 —
+ * `preview.none`이 처음 들어올 때부터 그랬다 — 우측이 "지금 뭘 해야 하나"를 아무도 말하지 않았다.
+ * ⚠️ **겹치던 뒷문장을 좌측 수동 지정 힌트에서 뺐다**: 같은 문장을 한 화면에 두 번 두지 않는다.
+ */
+it("② 후보 0개 빈 상태가 설명을 든다 — 그 문장이 좌측 힌트와 겹치지 않는다", async () => {
+  await files(true);
+  const body = find<HTMLElement>(document.body, "[data-onboarding-body]");
+  const text = body.textContent ?? "";
+
+  expect(text).toContain("Set a path and malmoi will show the keys it finds.");
+  expect(text).toContain("Setting a path clears the selection above.");
+  // 뒷문장은 우측에만 있다 — 좌측 힌트가 그것을 다시 들면 두 번 나온다.
+  expect(text.split("If no file matches, the project isn't created.")).toHaveLength(2);
+});

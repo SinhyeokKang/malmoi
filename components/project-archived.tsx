@@ -25,8 +25,13 @@ export function ProjectArchived({ slug, role }: { slug: string; role: Role }) {
       ⚠️ **`PanelHeader`가 없다 — 이 갈래엔 제목이 없다.** 본문만 있으므로 `PanelBody` 하나이고,
       `max-w-4xl`은 안쪽 래퍼가 든다(스크롤 컨테이너를 좁히면 스크롤바가 콘텐츠 옆에 생긴다).
     */
-    <PanelBody>
-      <div className="mx-auto w-full max-w-4xl px-6 py-6">
+    <PanelBody className="flex flex-col">
+      {/*
+        ⚠️ **세로 중앙은 `flex-1`이 든다** (DESIGN §6.4 — 번역 화면 빈 상태 넷과 같은 형). 위에 붙여
+        두면 1080 화면에서 문구가 한 줄로 떠 있고 그 아래가 통째로 빈다. `EmptyState`가 수직 중앙을
+        안 하므로(표 안에서도 쓰인다) 이 자리가 그것을 잡는 유일한 곳이다.
+      */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 items-center justify-center px-6 py-6">
         <EmptyState
           icon={Archive}
           title={m.archive.empty.title}

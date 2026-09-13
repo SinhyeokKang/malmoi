@@ -611,6 +611,13 @@ export const en = {
         /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
         option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
         none: "Nothing to preview yet",
+        /**
+         * ⚠️ **시안(3a)에 있던 설명이 2026-09-13까지 빠져 있었다** — `preview.none`이 처음 들어올
+         * 때부터 제목만이었고(eeff006), 우측이 제목 한 줄만 든 채로 "지금 뭘 해야 하나"를 아무도
+         * 말하지 않았다. 뒷문장이 좌측 `manual.hint`와 겹쳤으므로 **그쪽에서 뺐다** — 같은 문장을
+         * 화면에 두 번 두지 않는다.
+         */
+        noneDescription: "Set a path and malmoi will show the keys it finds. If no file matches, the project isn't created.",
         /** 키 행만 스크롤하는 영역의 이름 — 그 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다. */
         rows: "Preview rows",
         /**
@@ -638,7 +645,8 @@ export const en = {
           ),
         },
         baseLocale: "Base language",
-        hint: "Setting a path clears the selection above. If no file matches, the project isn't created.",
+        /** ⚠️ 뒷문장("If no file matches…")은 **우측 빈 상태**가 든다 — 둘 다 두면 한 화면에 두 번이다. */
+        hint: "Setting a path clears the selection above.",
       },
     },
 
