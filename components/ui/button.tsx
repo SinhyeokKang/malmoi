@@ -41,9 +41,19 @@ export const buttonClass = cva(
     variants: {
       variant: {
         // **화면당 하나**다 — 확정 액션 (§6.4).
-        primary: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-70",
+        /**
+         * ⚠️ **hover에서 어두워진다** (2026-09-13 — 계정 화면 핸드오프 실측). 코드는
+         * `bg-primary/90`(≈#2e2e2e)이라 **밝아지고** 있었고, 캔버스는 `--foreground`(#0a0a0a)로
+         * 내려간다. 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는 부류이므로 computed style로 잰다.
+         */
+        primary: "bg-primary text-primary-foreground hover:bg-foreground disabled:opacity-70",
+        /**
+         * ⚠️ **hover가 `--accent`(#f5f5f5)가 아니라 `--primary-foreground`(#fafafa)다**
+         * (2026-09-13 — 같은 실측). 그 토큰이 **역할을 하나 더 든다**는 뜻이고 DESIGN §6.2가
+         * 그것을 등재한다 — 새 raw 색을 늘리는 대신 기존 토큰에 역할을 더하는 쪽이다.
+         */
         default: cn(
-          "border-input bg-background text-foreground hover:bg-accent border",
+          "border-input bg-background text-foreground hover:bg-primary-foreground border",
           "disabled:text-muted-foreground disabled:hover:bg-transparent",
         ),
         // ⚠️ `bg-destructive`가 없다 — destructive는 **글자색 전용**이다 (§2.3).

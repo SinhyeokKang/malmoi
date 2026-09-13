@@ -26,8 +26,8 @@ export function GithubAccount({ slug, login }: { slug: string; login: string | n
 
   return (
     <div className="flex items-center gap-3">
-      {/* GitHub 핸들은 식별자라 mono다 (DESIGN §4.1) */}
-      <span className="text-mono bg-muted rounded px-2 py-1">@{login}</span>
+      {/* ⚠️ 핸들은 sans다 (2026-09-13) — `/account`만 걷으면 같은 값이 화면마다 갈린다. */}
+      <span className="bg-muted rounded px-2 py-1 text-sm">@{login}</span>
       <DisconnectGithubButton />
     </div>
   );
@@ -80,9 +80,13 @@ export function DisconnectGithubButton() {
 
   return (
     <>
+      {/*
+        ⚠️ **`danger`가 아니라 `default`다** (2026-09-13 핸드오프). 붉은 글자는 `/account`에서
+        되돌릴 수 없는 넷과 같은 무게로 읽히는데, 이 해제는 확인 Dialog가 그 무게를 든다 —
+        **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
+      */}
       <Button
-        variant="danger"
-        size="sm"
+        variant="default"
         loading={pending}
         onClick={() => {
           setError(null);

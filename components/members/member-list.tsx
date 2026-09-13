@@ -84,7 +84,8 @@ export function MemberList({
               )}
             </Td>
             {/* 주소는 식별자라 mono다 (DESIGN §4.1) — 한 줄이므로 개행 보존이 필요 없다. */}
-            <Td className="text-mono">{member.emailLabel ?? "—"}</Td>
+            {/* ⚠️ 주소는 sans다 (2026-09-13) — 마스킹된 값이라 더욱 읽는 값이다. */}
+            <Td>{member.emailLabel ?? "—"}</Td>
             <Td>
               {manage ? (
                 <Select

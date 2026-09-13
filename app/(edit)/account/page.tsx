@@ -109,8 +109,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
                 <ProfileNameForm name={profile?.name ?? ""} />
               </dd>
               <dt className="text-muted-foreground text-xs">{m.account.profile.email}</dt>
-              {/* 주소는 식별자라 mono다 (DESIGN §4.1). **자기 주소라 마스킹하지 않는다** */}
-              <dd className="text-mono">{profile?.email ?? m.account.profile.none}</dd>
+              {/*
+                ⚠️ **주소가 sans다 — mono가 아니다** (2026-09-13). mono의 근거는 식별자 판독
+                (l/1/I · _/.)인데 이메일은 **읽는 값**이고, 같은 주소가 화면마다 다른 폰트면 그
+                자체가 결함이다 (DESIGN §4.1의 로케일 코드와 같은 판정). **자기 주소라 마스킹하지 않는다.**
+              */}
+              <dd>{profile?.email ?? m.account.profile.none}</dd>
             </dl>
           </Card>
 
@@ -139,8 +143,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               </div>
             ) : (
               <div className="flex items-center gap-3">
-                {/* GitHub 핸들은 식별자라 mono다 (DESIGN §4.1) */}
-                <span className="text-mono bg-muted rounded px-2 py-1">@{account.login}</span>
+                {/* ⚠️ 핸들도 sans다 — 위 이메일과 같은 판정으로 여섯 자리를 한 번에 걷었다. */}
+                <span className="bg-muted rounded px-2 py-1 text-sm">@{account.login}</span>
                 <DisconnectGithubButton />
               </div>
             )}
