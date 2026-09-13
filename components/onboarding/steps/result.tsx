@@ -114,9 +114,13 @@ export function ResultStep({
       />
 
       <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">{m.newProject.result.ingest.refsHint}</p>
-      {/* ⚠️ **적재 생존을 약속하지 않는다** — 복구 경로 둘을 미리 말한다 (design §1.4). */}
-      {/* [Start translating]은 **껍데기의 [Next]**다 — 바닥 버튼을 단계가 다시 그리지 않는다. */}
-      <p className="text-muted-foreground shrink-0 text-xs leading-[1.7]">{m.newProject.result.closeHint}</p>
+      {/*
+        ⚠️ **"닫아도 된다"를 성공 화면이 말하지 않는다** (2026-09-13 사용자 — 핸드오프 1d의 `<pre>`
+        아래는 한 줄뿐이다). 적재 생존을 약속하지 않는다는 판정(결정 ⑩)은 그대로지만, **그 말이
+        필요한 시점은 적재가 실패했을 때**이고 그 자리에는 `ingest.failedHint`가 이미 서 있다 —
+        성공 화면에서 미리 말하면 방금 된 일을 의심하게 만든다.
+        [Start translating]은 **껍데기의 [Next]**다 — 바닥 버튼을 단계가 다시 그리지 않는다.
+      */}
     </div>
   );
 }

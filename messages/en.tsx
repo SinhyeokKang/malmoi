@@ -644,12 +644,6 @@ export const en = {
       workflow: {
         saveAs: "Save as",
       },
-      /**
-       * ④ help 줄. ⚠️ **적재 생존을 약속하지 않는다** (design §1.4) — 닫으면 끝까지 안 돌 수 있고,
-       * 그 대신 복구 경로 둘(`first-ingest-retry` · `rotatePushToken`)이 실재한다는 사실을 말한다.
-       */
-      closeHint:
-        "You can close this — the project is already in your list. Importing may not finish, and you can retry it (and get a new token) from project settings.",
       failed: "We couldn't finish. Try again in a moment.",
     },
   },

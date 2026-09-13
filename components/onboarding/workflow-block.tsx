@@ -11,9 +11,11 @@ import { CopyButton } from "./copy-button";
  * ⚠️ **`overflow-x-auto`가 `<pre>` 자신에 붙는다.** 없으면 긴 줄(`${{ secrets.PUSH_TOKEN }}`이 들어간
  * 줄)이 페이지 본문을 좌우로 흔든다 — 넓은 표를 자기 컨테이너에서만 스크롤하게 하는 것과 같은 규칙이다.
  *
- * ⚠️ **`wrapper` input이 이 YAML에 없다.** 훅 기반 리포(`useTranslations()` 류)는 그것 없이는 코드
- * 참조가 조용히 0이므로 화면이 그 사실을 한 줄로 말한다 — 계약은 `docs/ACTIONS.md`가 든다.
- * ⚠️ **핸드오프 1d에는 이 줄이 없다**: 시안이 모르는 빚이라 화면이 대신 말하는 자리다.
+ * ⚠️ **훅 안내(`wrapper` input)를 이 컴포넌트가 들지 않는다** (2026-09-13 사용자 — 핸드오프 1d의
+ * `<pre>` 아래는 **한 줄뿐**이다). 훅 기반 리포(`useTranslations()` 류)가 코드 참조 0을 받는 것은
+ * 실재하는 빚이지만, **그 사실이 드러나는 시점은 첫 CI push 뒤**다 — 아직 아무것도 안 돌린 ④에서
+ * 미리 말하면 그 화면이 읽어야 할 것(토큰·YAML) 옆에 지금 할 수 없는 일이 나란히 선다.
+ * **설정 화면이 든다** — 거기는 참조가 0인 것을 이미 볼 수 있는 자리다.
  */
 export function WorkflowBlock({
   yaml,
@@ -46,13 +48,6 @@ export function WorkflowBlock({
         스크롤하면 ④의 토큰 칩이 화면 밖으로 밀려, 토큰을 옮기려는 사용자가 위로 되돌아가야 한다.
       */}
       <pre className="text-mono bg-muted min-h-0 flex-1 overflow-auto rounded-md p-3">{yaml}</pre>
-      <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
-        {m.settings.workflow.hookHint(
-          <span className="text-mono">useTranslations()</span>,
-          <span className="text-mono">wrapper</span>,
-          <span className="text-mono">docs/ACTIONS.md</span>,
-        )}
-      </p>
     </div>
   );
 }

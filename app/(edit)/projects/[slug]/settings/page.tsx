@@ -166,6 +166,17 @@ export default async function SettingsPage({
 
           <Card title={m.settings.workflow.title}>
             <WorkflowBlock yaml={workflowYaml(slug, project)} />
+            {/*
+              ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
+              참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
+            */}
+            <p className="text-muted-foreground mt-2 text-xs leading-[1.6]">
+              {m.settings.workflow.hookHint(
+                <span className="text-mono">useTranslations()</span>,
+                <span className="text-mono">wrapper</span>,
+                <span className="text-mono">docs/ACTIONS.md</span>,
+              )}
+            </p>
           </Card>
 
           <Card title={m.settings.account.title}>
