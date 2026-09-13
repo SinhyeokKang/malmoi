@@ -1276,7 +1276,6 @@ export const en = {
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
       /** ⚠️ **`m.members.cancel`을 빌려 오지 않는다** — 구역이 다른 문구를 가져다 쓰면 한쪽을 고칠 때 다른 쪽이 조용히 따라 움직인다. */
       cancel: "Cancel",
-      disconnected: (provider: string): string => `${provider} is no longer a sign-in method.`,
     },
   },
 
