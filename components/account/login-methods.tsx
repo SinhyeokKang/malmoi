@@ -49,7 +49,7 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
       glyph={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
       name={label}
-      detail={row.connected ? undefined : m.link.methods.notConnected}
+      detail={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
     >
       {!row.connected ? (
         <form action={startLoginMethodConnect.bind(null, row.provider)}>
@@ -65,7 +65,8 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
         <>
           {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
           <span className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-          <Button variant="default" disabled={true}>{m.link.methods.disconnect}</Button>
+          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 GitHub App 해제와 글자까지 같다. */}
+          <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} disabled={true}>{m.link.methods.disconnect}</Button>
         </>
       )}
     </AccountRow>
@@ -96,7 +97,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" aria-label={`${m.link.methods.disconnect} ${label}`} loading={pending}>
+        <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} loading={pending}>
           {m.link.methods.disconnect}
         </Button>
       </DialogTrigger>
@@ -107,7 +108,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.link.methods.cancel}</Button>
+              <Button variant="default">{m.common.cancel}</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>

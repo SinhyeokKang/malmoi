@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 /**
  * `/account`의 **구역 규격 하나** (account-settings 태스크 4).
@@ -22,11 +22,17 @@ export function AccountSection({
   notice?: ReactNode;
   children: ReactNode;
 }) {
+  /**
+   * ⚠️ **구역에 접근 이름을 건다.** 이 화면의 요지가 *"같은 화면에 GitHub이 세 군데"*를 **구역
+   * 제목**으로 가르는 것인데, 이름이 없으면 스크린리더에 region 셋이 이름 없이 온다 — 화면에서
+   * 하는 구별이 그 사용자에게만 사라진다.
+   */
+  const titleId = useId();
   return (
-    <section className="flex flex-col gap-3">
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
       {/* 제목과 부제가 한 줄에 서므로 baseline으로 맞춘다 — center면 13과 14의 밑선이 어긋난다. */}
       <div className="flex items-baseline gap-2">
-        <h2 className="text-sm font-medium">{title}</h2>
+        <h2 id={titleId} className="text-sm font-medium">{title}</h2>
         <p className="text-muted-foreground text-xs">{subtitle}</p>
       </div>
       {notice}

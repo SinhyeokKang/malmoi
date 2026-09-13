@@ -23,6 +23,16 @@ export const en = {
   common: {
     retry: "Try again",
     appName: "malmoi",
+    /**
+     * ⚠️ **구역이 다른 문구를 가져다 쓰지 않는다** (2026-09-13 리뷰). Sessions·GitHub 구역이
+     * `link.methods.cancel`을 빌려 쓰고 있었고, 그러면 Sign-in methods를 고칠 때 나머지 둘이
+     * 조용히 따라 움직인다. **공용으로 선언한 것을 쓰는 것은 빌려 쓰는 것이 아니다.**
+     * ⚠️ 기존 `members.cancel`·`archive.confirm.cancel`은 이번 범위 밖이라 그대로 둔다.
+     */
+    cancel: "Cancel",
+    /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
+    close: "Close",
+    dismiss: "Dismiss",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -449,7 +459,6 @@ export const en = {
    */
   account: {
     profile: {
-      title: "Profile",
       /**
        * ⚠️ **카드 설명문이 없어졌다** (2026-09-13). 머리 블록에는 설명 슬롯이 없고, 두 칸의
        * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
@@ -458,7 +467,7 @@ export const en = {
       name: "Name",
       email: "Email",
       /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
-      emailSource: "Managed by the account you sign in with.",
+      emailSource: "Comes from the account you sign in with.",
       /**
        * ⚠️ **이름 칸과 이메일 칸이 같은 문구를 쓴다.** 이메일은 검증된 주소 없이 로그인 자체가
        * 막히므로 사실상 안 나오고, 이름은 provider가 안 줄 수 있다 — 어느 쪽도 빈 칸을 남기지 않는다.
@@ -474,11 +483,26 @@ export const en = {
       },
     },
     github: {
-      description: "Connect GitHub to see which repositories you can add.",
+      /**
+       * ⚠️ **이 문장이 드는 것은 기능이 아니라 축이다** — 같은 화면에 "GitHub"이 세 군데 나오고,
+       * 바로 위 구역이 **로그인 수단**이다. 전 문장(`Connect GitHub to see which repositories you
+       * can add.`)은 무엇을 할 수 있는지만 말해 그 구별을 못 했다.
+       */
+      description: "This is write access to your repositories, not a way to sign in.",
       notConnected: "Not connected.",
+      /**
+       * 연결된 행의 보조 줄. ⚠️ **집계가 여기와 Dialog 둘에 같은 값으로 선다** — 누르기 전에 이미
+       * 본 숫자라 확인 화면이 새 정보를 들이밀지 않는다.
+       * ⚠️ **`null`이면 숫자 없이 "Connected"만** — 조회 실패와 0을 같은 값으로 접지 않는다.
+       */
+      connected: (count: number | null): string =>
+        count === null ? "Connected"
+        : count === 1 ? "Connected · 1 project uses this connection"
+        : `Connected · ${count} projects use this connection`,
       /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
       rowName: "GitHub",
-      confirmDisconnect: "Disconnect your GitHub account?",
+      // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
+      confirmDisconnect: "Disconnect GitHub from malmoi?",
       confirmHint: "malmoi won't be able to read your repositories or open pull requests until you connect again.",
       /**
        * ⚠️ **이 줄이 해제 Dialog를 붙인 논거다** — 되돌리기가 쉬운 것과 결과가 가벼운 것은 다른
@@ -492,12 +516,12 @@ export const en = {
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
     sessionsSection: {
       title: "Sessions",
-      description: "Sign out here or on every device.",
+      description: "Close what's open right now.",
     },
     sessions: {
       title: "Sign out everywhere",
       confirmTitle: "Sign out on all devices?",
-      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out -- including this one.",
+      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out — including this one.",
       /**
        * ⚠️ **확정 라벨이 결과를 말한다** — 이 버튼은 일을 **끝내지 않는다.** 누르면 provider로
        * 나가고 거기서 확인해야 로그아웃이 일어난다. "Sign out everywhere"라 적으면 그 왕복이
@@ -505,6 +529,11 @@ export const en = {
        * 화면이 그 이름을 안다.
        */
       confirmAction: (provider: string): string => `Continue to ${provider}`,
+      /**
+       * Dialog의 **검은 줄** — *지금 참인 값*을 말한다(회색 설명문은 *무엇을 잃나*를 말한다).
+       * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
+       */
+      confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
       description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
@@ -517,8 +546,12 @@ export const en = {
       title: "Sign out",
       description: "You'll need to sign in again to open your projects.",
       /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
-      confirmTitle: "Sign out of malmoi?",
-      confirmHint: "You'll need to sign in again to open your projects.",
+      confirmTitle: "Sign out?",
+      /**
+       * ⚠️ **앞 문장이 신규다** — 되돌릴 수 없는 넷 중 이것만 잃는 것이 없다는 사실을 그 자리에서
+       * 말한다. 편집 중에 눌릴 수 있는 버튼이라 "저장 안 한 것이 날아가나"가 첫 질문이다.
+       */
+      confirmHint: "Unsent edits stay saved on malmoi. You'll need to sign in again to open your projects.",
     },
     picture: {
       upload: "Image upload",
@@ -1205,6 +1238,13 @@ export const en = {
       reauthorize: "Your GitHub authorization expired.",
       unavailable: "We couldn't load your account. Open this page again in a moment.",
       disconnect: "Disconnect",
+      /**
+       * ⚠️ **`"Disconnect GitHub"`으로는 부족하다** — 로그인 수단 해제의 접근 이름이 정확히 그
+       * 문자열이라 둘이 또 같아진다(2026-09-13 리뷰 뒤 실제로 한 번 그랬다). **이름이 구별해야 하는
+       * 것은 대상이 아니라 축이다**: 같은 "GitHub"이 이 화면에서 로그인 수단이기도 하고 리포 쓰기
+       * 권한이기도 하다. `aria-label`이 보이는 텍스트를 **포함**한다 (WCAG 2.5.3).
+       */
+      disconnectLabel: "Disconnect GitHub repository access",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
     },
   },
@@ -1268,14 +1308,16 @@ export const en = {
        */
       connect: "Connect",
       connectLabel: (provider: string): string => `Connect ${provider}`,
+      /** 연결된 행의 보조 줄 — 미연결 행의 `notConnected`와 짝이다. 한쪽만 있으면 행 높이가 갈린다. */
+      connected: "Connected",
       notConnected: "Not connected",
       disconnect: "Disconnect",
+      /** 같은 이유로 축을 든다 — 아래 `GitHub account` 구역의 [Disconnect]와 글자가 같다. */
+      disconnectLabel: (provider: string): string => `Disconnect ${provider} as a sign-in method`,
       /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
-      /** ⚠️ **`m.members.cancel`을 빌려 오지 않는다** — 구역이 다른 문구를 가져다 쓰면 한쪽을 고칠 때 다른 쪽이 조용히 따라 움직인다. */
-      cancel: "Cancel",
     },
   },
 

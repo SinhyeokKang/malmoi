@@ -87,12 +87,13 @@ export function DisconnectGithubButton({ usage = null, onFailure }: {
    * Alert를 형제로 두면 버튼 옆에 서서 행이 무너진다 — 그 화면은 구역 Alert 자리로 올린다.
    * 안 주면 기존처럼 바로 아래에 그린다(설정 화면).
    */
-  onFailure?: (message: string) => void;
+  onFailure?: (message: string | null) => void;
 } = {}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function fail(message: string) {
+  /** ⚠️ **성공도 보고한다** — `null`을 안 보내면 한 번 실패한 뒤 성공해도 그 Alert가 그대로 선다. */
+  function report(message: string | null) {
     if (onFailure === undefined) setError(message);
     else onFailure(message);
   }
@@ -106,7 +107,7 @@ export function DisconnectGithubButton({ usage = null, onFailure }: {
             되돌릴 수 없는 넷과 같은 무게로 읽히는데, 그 무게는 이제 확인 Dialog가 든다 —
             **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
           */}
-          <Button variant="default" loading={pending}>{m.settings.account.disconnect}</Button>
+          <Button variant="default" aria-label={m.settings.account.disconnectLabel} loading={pending}>{m.settings.account.disconnect}</Button>
         </DialogTrigger>
         <DialogContent
           title={m.account.github.confirmDisconnect}
@@ -114,18 +115,16 @@ export function DisconnectGithubButton({ usage = null, onFailure }: {
           footer={
             <>
               <DialogClose asChild>
-                <Button variant="default">{m.link.methods.cancel}</Button>
+                <Button variant="default">{m.common.cancel}</Button>
               </DialogClose>
               <DialogClose asChild>
                 <Button
                   variant="danger"
                   onClick={() => {
-                    setError(null);
+                    report(null);
                     startTransition(async () => {
                       const result = await disconnectGithub();
-                      if (!result.ok) {
-                        fail(isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
-                      }
+                      report(result.ok ? null : isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
                     });
                   }}
                 >

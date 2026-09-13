@@ -35,11 +35,17 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
    * 사라지고 사용자는 무엇을 고쳤는지 다시 떠올려야 한다.
    */
   const [value, setValue] = useState(name);
-  const [state, submit, pending] = useActionState<Reason | "saved" | null, FormData>(async (_previous, form) => {
+  /**
+   * ⚠️ **성공 상태가 "마지막으로 저장된 값"이다.** `"저장했다"`는 불리언으로 두고 필드 값과
+   * `name` prop을 견주면, 서버가 트림한 경우(`"Jane "` → `"Jane"`) 둘이 영영 안 같아 **성공도
+   * 실패도 안 보이는 무음**이 된다. 저장된 값을 들고 그것과 견준다.
+   */
+  const [state, submit, pending] = useActionState<Reason | { saved: string } | null, FormData>(async (_previous, form) => {
     const result = await updateProfileName(String(form.get("name") ?? ""));
-    return result.ok ? "saved" : result.reason;
+    if (result.ok) setValue(result.name);
+    return result.ok ? { saved: result.name } : result.reason;
   }, null);
-  const failure = state === null || state === "saved" ? null : reasonMessage(state);
+  const failure = state === null || typeof state === "object" ? null : reasonMessage(state);
 
   return (
     <form action={submit} className="space-y-2">
@@ -54,8 +60,8 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
         <Button type="submit" variant="default" loading={pending}>
           {m.account.profile.save}
         </Button>
-        {/* 저장 직후에만 선다 — 다시 고치기 시작하면 `state`가 아니라 이 조건이 지운다. */}
-        {state === "saved" && value === name && (
+        {/* 저장된 값과 같을 때만 선다 — 다시 고치기 시작하면 이 조건이 지운다. */}
+        {typeof state === "object" && state !== null && value === state.saved && (
           <span className="text-muted-foreground text-xs">{m.account.profile.saved}</span>
         )}
       </div>

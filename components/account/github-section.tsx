@@ -1,5 +1,6 @@
 "use client";
 
+import { Link2 } from "lucide-react";
 import { useState } from "react";
 
 import { AccountRow, AccountSection } from "@/components/account/account-section";
@@ -22,6 +23,7 @@ import { m } from "@/lib/i18n";
  */
 export function GithubSection({ account, usage }: { account: AccountView; usage: number | null }) {
   const [failure, setFailure] = useState<string | null>(null);
+  const connected = account.status === "ok" && account.login !== null;
 
   return (
     <AccountSection
@@ -29,27 +31,35 @@ export function GithubSection({ account, usage }: { account: AccountView; usage:
       subtitle={m.account.github.description}
       notice={failure !== null ? <Alert variant="danger">{failure}</Alert> : undefined}
     >
+      {/*
+        ⚠️ **브랜드 마크는 연결됐을 때뿐이다** — 붙어 있는 것이 그 계정이기 때문이다. 미연결·장애는
+        대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
+      */}
       <AccountRow
-        glyph={<GithubIcon className="size-4" />}
-        name={account.status === "ok" && account.login !== null ? `@${account.login}` : m.account.github.rowName}
+        glyph={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
+        name={connected ? `@${account.login}` : m.account.github.rowName}
         detail={
           account.status === "reauthorize" ? m.settings.account.reauthorize
           : account.status === "unavailable" ? m.settings.account.unavailable
-          : account.login === null ? m.account.github.notConnected
-          : undefined
+          : !connected ? m.account.github.notConnected
+          // 누르기 전에 이미 보이는 숫자다 — Dialog가 새 정보를 들이밀지 않는다.
+          : m.account.github.connected(usage)
         }
       >
         {/*
-          ⚠️ **장애일 때는 컨트롤을 주지 않는다** — 연결 상태를 모르는 채로 [Connect]를 세우면
-          이미 연결된 사용자에게 왕복을 한 번 더 시킨다. 사유는 보조 문구가 든다.
+          ⚠️ **`unavailable`에만 컨트롤이 없다.** 조회가 실패한 상태에서 [Connect]를 세우면 이미
+          연결된 사용자에게 왕복을 한 번 더 시킨다 — 그 자리의 재시도는 페이지 새로고침이다.
+          `reauthorize`는 장애가 아니라 **인가가 만료된 것**이라 다시 연결할 문이 필요하다.
+          ⚠️ **실패 문구를 셋 다 구역 Alert로 올린다** (`onResult`·`onFailure`) — 여기는 리스트
+          항목의 우측 컨트롤이고 그 클러스터가 `shrink-0`이라, Alert를 형제로 두면 행이 밀려난다.
         */}
         {account.status === "reauthorize" ? (
           // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
-          <ConnectGithubButton dest="account" label={m.settings.account.reconnect} />
-        ) : account.status === "ok" && account.login === null ? (
-          <ConnectGithubButton dest="account" label={m.settings.account.connect} />
-        ) : account.status === "ok" ? (
+          <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
+        ) : connected ? (
           <DisconnectGithubButton usage={usage} onFailure={setFailure} />
+        ) : account.status === "ok" ? (
+          <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
         ) : undefined}
       </AccountRow>
     </AccountSection>

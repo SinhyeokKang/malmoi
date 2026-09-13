@@ -27,6 +27,7 @@ export function ConnectGithubButton({
   dest,
   label,
   back,
+  onResult,
 }: {
   dest: UserConnectDest;
   label: string;
@@ -35,9 +36,17 @@ export function ConnectGithubButton({
    * 모달 뒤 목록이 연결을 누르기 직전과 **달라진다** — 그 상태로 닫으면 검색어가 사라진다.
    */
   back?: { filter?: string; q?: string };
+  /**
+   * 실패 문구를 바깥이 든다. ⚠️ **`/account`에서 이 버튼은 리스트 항목의 우측 컨트롤이라**
+   * 실패 Alert를 형제로 두면 그 클러스터가 `shrink-0`이라 압축되지 않고 **행이 패널 밖으로
+   * 밀린다** (2026-09-13 — `DisconnectGithubButton`이 같은 이유로 먼저 받은 처방이다).
+   * 안 주면 기존처럼 바로 아래에 그린다(온보딩·설정 화면).
+   */
+  onResult?: (message: string | null) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const report = (message: string | null) => { if (onResult === undefined) setError(message); else onResult(message); };
 
   return (
     <div className="space-y-2">
@@ -46,11 +55,11 @@ export function ConnectGithubButton({
         loading={pending}
         // ⚠️ 라벨과 같게 두면 대기 상태가 안 보인다 — GitHub으로 나가는 왕복이라 문구가 "이동"이다.
         onClick={() => {
-          setError(null);
+          report(null);
           startTransition(async () => {
             const result = await startGithubConnectForUser(dest, back ?? {});
             // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
-            if (!result.ok) setError(result.error);
+            if (!result.ok) report(messageFor(result.error));
           });
         }}
       >
@@ -58,7 +67,7 @@ export function ConnectGithubButton({
         <Link2 aria-hidden />
         {label}
       </Button>
-      {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}
+      {error !== null && <Alert variant="danger">{error}</Alert>}
     </div>
   );
 }

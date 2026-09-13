@@ -27,7 +27,12 @@ import { putImage, deleteImage } from "@/lib/upload/store";
 
 type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
 
-type NameResult = { ok: true } | { ok: false; reason: "empty" | "too-long" | "unavailable" };
+/**
+ * ⚠️ **저장된 값을 돌려준다** — 판정이 트림하므로 사용자가 친 문자열과 다를 수 있고, 화면이
+ * 자기 입력을 기준으로 "저장됐다"를 판정하면 `"Jane "`을 저장한 뒤 **아무 표시도 안 뜬다**
+ * (성공 문구도 실패 Alert도 아닌 무음).
+ */
+type NameResult = { ok: true; name: string } | { ok: false; reason: "empty" | "too-long" | "unavailable" };
 
 /**
  * 표시 이름 저장 (account-settings 태스크 2).
@@ -55,7 +60,7 @@ export async function updateProfileName(raw: string): Promise<NameResult> {
   }
   // 셸 아바타·사용자 메뉴가 같은 값을 읽는다 — 경로를 나열하면 다음 소비자가 조용히 빠진다.
   revalidatePath("/", "layout");
-  return { ok: true };
+  return { ok: true, name: plan.name };
 }
 
 async function cleanImage(url: string | null, userId: string): Promise<void> {

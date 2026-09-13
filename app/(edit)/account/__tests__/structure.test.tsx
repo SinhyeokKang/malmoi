@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { act } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
@@ -15,7 +16,8 @@ vi.mock("@/app/(edit)/account/actions", () => ({
   updateProfileName: vi.fn(), uploadProfileImage: vi.fn(), deleteProfileImage: vi.fn(),
   startSessionRevocation: vi.fn(), unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(),
 }));
-vi.mock("@/app/(edit)/projects/actions", () => ({ disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn() }));
+const actions = vi.hoisted(() => ({ disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => actions);
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn() }));
 
 import AccountPage from "../page";
@@ -30,9 +32,13 @@ import AccountPage from "../page";
  * ⚠️ **화면을 실제로 렌더한다.** 요소 트리를 순회하는 소스 스캔은 이 부류를 못 본다 —
  * 조건부 갈래 하나가 통째로 빠져도 파일에는 그 코드가 남아 있다 (POSTMORTEM 2026-09-11).
  */
-async function screen(params: Record<string, string> = {}, methods = [{ provider: "github" }, { provider: "google" }]) {
+async function screen(
+  params: Record<string, string> = {},
+  methods = [{ provider: "github" }, { provider: "google" }],
+  view: unknown = { status: "ok", login: "octocat" },
+) {
   mocks.requireUser.mockResolvedValue({ userId: "owner" });
-  mocks.loadAccountView.mockResolvedValue({ status: "ok", login: "octocat" });
+  mocks.loadAccountView.mockResolvedValue(view);
   mocks.loadConnectionUsage.mockResolvedValue(2);
   mocks.getPrisma.mockReturnValue({
     user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image: null }) }) },
@@ -78,12 +84,18 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
    * 수단이 하나만 연결된 화면에서 이 단언이 거짓이 되므로, **어느 것이 확인을 지나는가**를 센다.
    */
   expect(labels).toEqual([
-    `${m.link.methods.disconnect} ${m.link.providers.github}`,
-    `${m.link.methods.disconnect} ${m.link.providers.google}`,
+    m.link.methods.disconnectLabel(m.link.providers.github),
+    m.link.methods.disconnectLabel(m.link.providers.google),
     m.account.sessions.title,
     m.common.nav.signOut,
-    m.settings.account.disconnect,
+    m.settings.account.disconnectLabel,
   ].sort());
+  /**
+   * ⚠️ **접근 이름이 서로 달라야 한다.** 보이는 라벨은 셋이 전부 `Disconnect`이고, 이름까지 같으면
+   * 브라우즈 모드의 컨트롤 목록과 음성 입력에서 **유일한 로그인 수단 해제**와 **모든 프로젝트의
+   * 발송을 멈추는 해제**가 구별되지 않는다. 2026-09-13에 대상만 붙였다가 둘이 또 같아졌다.
+   */
+  expect(new Set(labels).size).toBe(labels.length);
 
   /**
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
@@ -98,8 +110,10 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
   const container = await screen({}, [{ provider: "github" }]);
   const labels = [...container.querySelectorAll('[aria-haspopup="dialog"]')]
     .map((trigger) => trigger.getAttribute("aria-label") ?? trigger.textContent ?? "");
-  expect(labels).not.toContain(`${m.link.methods.disconnect} ${m.link.providers.github}`);
+  // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 대상을 든다(위 검사).
+  expect(labels).not.toContain(m.link.methods.disconnectLabel(m.link.providers.github));
   expect(labels).toHaveLength(3);
+  expect(new Set(labels).size).toBe(labels.length);
 });
 
 /**
@@ -124,6 +138,70 @@ it("`?sessionRevocation=`는 Sessions 구역 안에 닿는다", async () => {
   expect(section!.querySelector("h2")?.textContent).toBe(m.account.sessionsSection.title);
   // 구역 Alert는 헤더 아래·리스트 위다 — 리스트 안으로 들어가면 항목 하나처럼 읽힌다.
   expect(section!.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+});
+
+/**
+ * ⚠️ **GitHub 구역의 세 갈래를 실제로 렌더한다** (2026-09-13 리뷰 🔴1). 이 파일의 `loadAccountView`
+ * mock이 `{status:"ok", login}` 하나로 고정이라 미연결·`reauthorize`·`unavailable`이 **한 번도
+ * 안 그려졌다** — 브라우저도 연결된 계정뿐이라 그 셋은 어느 그물에도 안 걸렸다.
+ *
+ * 세는 것은 **실패 문구가 우측 컨트롤 자리에 없다**는 것이다. 그 클러스터는 `shrink-0`이라
+ * 압축되지 않고, Alert를 형제로 두면 좌측 본문이 truncate로 사라진 뒤 **행이 패널 밖으로 밀린다**
+ * (spec 완료 조건 1의 "우측 컨트롤이 줄바꿈되지 않는다"가 그 순간 깨진다).
+ */
+it.each([
+  ["ok-not-connected", { status: "ok", login: null }, m.settings.account.connect],
+  ["reauthorize", { status: "reauthorize" }, m.settings.account.reconnect],
+  ["unavailable", { status: "unavailable" }, null],
+])("GitHub %s 갈래의 컨트롤이 우측 클러스터 하나뿐이다", async (_name, view, label) => {
+  const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
+  const row = container.querySelectorAll("ul")[1]!.querySelector("li")!;
+  const right = row.querySelector(":scope > div:last-child");
+  if (label === null) {
+    // 조회 실패에는 컨트롤을 주지 않는다 — 그 자리의 재시도는 페이지 새로고침이다.
+    expect(row.querySelector("button")).toBeNull();
+  } else {
+    expect(right?.textContent).toContain(label);
+    // 실패 문구가 여기 살면 행이 무너진다 — 구역 Alert 자리로 올라가야 한다.
+    expect(right?.querySelector("[role='alert']")).toBeNull();
+    expect(right?.querySelectorAll(":scope > *")).toHaveLength(1);
+  }
+  // 사유는 보조 줄이 든다 — 컨트롤이 없어도 무엇이 일어났는지가 화면에 있다.
+  expect(row.textContent).not.toBe("");
+});
+
+/**
+ * ⚠️ **거부를 실제로 일으켜서 잰다.** Action을 mock한 채 쉬는 상태만 세면 "우측에 Alert가 없다"가
+ * **영원히 참**이고 방어선이 아니라 장식이 된다 — 실제로 그 상태로 한 번 통과했다.
+ */
+it.each([
+  ["connect", { status: "ok", login: null }],
+  ["disconnect", { status: "ok", login: "octocat" }],
+])("GitHub %s 실패는 행이 아니라 구역 Alert에 선다", async (kind, view) => {
+  actions.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
+  actions.disconnectGithub.mockResolvedValue({ ok: false, error: "unavailable" });
+  const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
+  const section = container.querySelectorAll("section")[1]!;
+  const row = section.querySelector("li")!;
+  const trigger = row.querySelector("button")!;
+  await act(async () => { trigger.click(); });
+  /**
+   * ⚠️ **해제는 확인을 지나므로 제출 버튼이 Dialog 안이다** — Radix가 그것을 `document.body`로
+   * portal하므로 `container` 안에서는 안 잡힌다. 여기를 빼먹으면 Action이 아예 안 돌고, 그래도
+   * "Alert가 행 안에 없다"가 참이라 **검사가 조용히 통과한다.**
+   */
+  if (trigger.getAttribute("aria-haspopup") === "dialog") {
+    const confirm = [...document.querySelectorAll("[role='dialog'] footer button")].at(-1) as HTMLButtonElement;
+    await act(async () => { confirm.click(); });
+  }
+  await act(async () => { await Promise.resolve(); });
+
+  const alert = section.querySelector("[role='alert']");
+  expect(alert, kind).not.toBeNull();
+  // 행 **밖**이다 — 안에 있으면 `shrink-0` 클러스터가 넓어져 행이 패널 밖으로 밀린다.
+  expect(row.contains(alert), kind).toBe(false);
+  // 그리고 리스트 **위**다 — 구역 Alert의 자리는 헤더 아래·래퍼 앞이다.
+  expect(section.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 });
 
 /**

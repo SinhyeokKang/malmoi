@@ -44,7 +44,8 @@ it("빈 이름과 상한 초과는 DB에 닿기 전에 값으로 거부한다", 
  * 2026-09-13까지 그 사실을 말하지 않아 스키마만 읽고 구현하면 틀리는 자리였다.
  */
 it("트림한 이름을 봉투로 저장하고 다시 열어 같은 값을 낸다", async () => {
-  expect(await updateProfileName("  Jane Doe  ")).toEqual({ ok: true });
+  // ⚠️ **저장된 값을 돌려준다** — 화면이 자기 입력으로 성공을 판정하면 트림된 경우가 무음이 된다.
+  expect(await updateProfileName("  Jane Doe  ")).toEqual({ ok: true, name: "Jane Doe" });
   const written = update.mock.calls[0]![0] as { where: { id: string }; data: { name: string } };
   // 세션이 정한 주체로만 쓴다 — 인자로 온 값이 대상을 정하지 않는다.
   expect(written.where).toEqual({ id: "owner" });

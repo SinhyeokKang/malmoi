@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 
+import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
@@ -57,14 +58,19 @@ export function DialogContent({
               `size="icon"`을 만들지 않는다(DESIGN §6.4가 size를 셋으로 묶었다) — `md`의 높이·radius를
               그대로 쓰고 정사각 유틸로 폭만 맞춘다. 음수 마진은 캔버스의 `-6px -8px 0 0`이다.
             */}
-            <Button variant="ghost" aria-label="Close" className="-mt-1.5 -mr-2 size-9 rounded-md p-0">
+            <Button variant="ghost" aria-label={m.common.close} className="-mt-1.5 -mr-2 size-9 rounded-md p-0">
               <X aria-hidden />
             </Button>
           </DialogClose>
         </header>
-        {/* ⚠️ 설명문은 13(`text-xs`)이다 — 제목 15와 본문 14 사이에 한 단계를 둔다. */}
+        {/*
+          ⚠️ 설명문은 13(`text-xs`)이다 — 제목 15와 한 단계 차이를 둔다.
+          ⚠️ **행간 1.6이 임의값이다** — 타입 스케일에 1.6이 없다(`leading-normal` 1.5 ·
+          `leading-relaxed` 1.625). DESIGN §4.2가 "스케일에 대응값이 없을 때만" 임의값을 허용하고
+          여기가 그 경우다. 기본값(`text-xs`의 1.333 = 17.33px)이면 두 줄짜리 질문이 붙어 읽힌다.
+        */}
         {description !== undefined && (
-          <Primitive.Description className="text-muted-foreground px-4 text-xs">
+          <Primitive.Description className="text-muted-foreground px-4 text-xs leading-[1.6]">
             {description}
           </Primitive.Description>
         )}
@@ -74,7 +80,18 @@ export function DialogContent({
           기본이었다. 아래 `padding:16 16 0`은 푸터가 자기 16을 갖기 때문이다.
           ⚠️ `Boolean`으로 거른다 — 호출부가 `cond && <x/>`를 그대로 넘기므로 `false`도 부재다.
         */}
-        {Boolean(children) && <div className="space-y-2 p-4 pb-0 text-sm">{children}</div>}
+        {/*
+          ⚠️ **본문의 형이 푸터 유무를 따라간다.** 캔버스가 재는 것은 확인 Dialog의 **검은 줄**
+          (`16 16 0` · 13/1.6)이고, 그 값은 **푸터가 자기 16을 갖는다**는 전제 위에 선다. 푸터 없는
+          소비자(초대 폼)는 본문이 곧 폼이라 둘 다 틀린다 — 실측에서 본문이 바닥에 붙었고(1px),
+          `FormGroup`의 help와 초대 링크까지 13으로 내려갔다. 이 루프가 만든 회귀이고 화면에도
+          테스트에도 안 나타나는 부류다.
+        */}
+        {Boolean(children) && (
+          <div className={cn("space-y-2 p-4", footer !== undefined ? "pb-0 text-xs leading-[1.6]" : "text-sm")}>
+            {children}
+          </div>
+        )}
         {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
         {footer !== undefined && <footer className="flex justify-end gap-2 p-4">{footer}</footer>}
       </Primitive.Content>

@@ -62,7 +62,11 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
       >
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button variant="default" loading={pending}>{m.account.sessions.title}</Button>
+            {/*
+              ⚠️ **넷 중 이것만 행에서도 붉다** — 되돌리려면 모든 기기에서 다시 로그인해야 하고,
+              바로 위의 [Sign out]과 **같은 리스트의 이웃**이라 무게 차이를 그 자리에서 말해야 한다.
+            */}
+            <Button variant="danger" disabled={pending}>{m.account.sessions.title}</Button>
           </DialogTrigger>
           <DialogContent
             title={m.account.sessions.confirmTitle}
@@ -70,7 +74,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
             footer={
               <>
                 <DialogClose asChild>
-                  <Button variant="default">{m.link.methods.cancel}</Button>
+                  <Button variant="default">{m.common.cancel}</Button>
                 </DialogClose>
                 {/*
                   ⚠️ **제출 지점이 Dialog 안이다.** 실패 Alert는 구역에 남으므로 Dialog가 닫힌 뒤에도
@@ -78,13 +82,20 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
                   provider로 나간다.
                 */}
                 <form action={submit}>
-                  <Button type="submit" variant="danger">
-                    {confirmProvider === null ? m.account.sessions.button : m.account.sessions.confirmAction(confirmProvider)}
-                  </Button>
+                  {/*
+                    ⚠️ **`pending`이 이 버튼에 서야 한다** — 트리거는 overlay 뒤에 있어 보이지 않는다.
+                    이 Action은 쿠키 정리 → 조회 → `signIn` → challenge 생성을 지난 뒤에야 redirect하고,
+                    그동안 화면이 안 바뀌면 사용자가 다시 누른다. 두 번째 `beginRevocation`이 **첫
+                    challenge를 지우므로** 돌아온 첫 callback이 `?sessionRevocation=invalid`가 된다.
+                  */}
+                  <SubmitRevocation label={confirmProvider === null ? m.account.sessions.button : m.account.sessions.confirmAction(confirmProvider)} />
                 </form>
               </>
             }
-          />
+          >
+            {/* 검은 줄 — *지금 참인 값*이다. 확인 상대를 모르면 그리지 않는다(없으면 안 그린다). */}
+            {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
+          </DialogContent>
         </Dialog>
       </AccountRow>
     </AccountSection>
@@ -107,7 +118,7 @@ function SignOutButton({ signOut }: { signOut: () => void }) {
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.link.methods.cancel}</Button>
+              <Button variant="default">{m.common.cancel}</Button>
             </DialogClose>
             <form action={signOut}>
               <SubmitSignOut />
@@ -117,6 +128,11 @@ function SignOutButton({ signOut }: { signOut: () => void }) {
       />
     </Dialog>
   );
+}
+
+function SubmitRevocation({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return <Button type="submit" variant="danger" loading={pending}>{label}</Button>;
 }
 
 function SubmitSignOut() {
