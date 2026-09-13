@@ -237,3 +237,43 @@ it("한 신호가 거부돼도 다른 신호가 끝날 때까지 워커 자리�
   expect(afterOne).toBe(4);
   expect(createClient).toHaveBeenCalledTimes(7);
 });
+
+/**
+ * ⚠️ **try/catch는 에러만 값으로 접고 지연은 못 접는다** (2026-09-13 리뷰). GitHub이 응답을 영영
+ * 안 주면 `signalsFor`의 catch에 닿지 않아 페이지가 그대로 매달리고, 이 화면은 로그인 직후의
+ * 착지점이라 그 매달림이 곧 빈 화면이다.
+ *
+ * ⚠️ **실제 시간을 기다리지 않는다** — 가짜 타이머로 마감만 당긴다.
+ */
+it("응답이 영영 안 오면 마감에서 신호 없이 돌려준다", async () => {
+  vi.useFakeTimers();
+  try {
+    const hang = () => new Promise<never>(() => {});
+    const createClient = async () =>
+      ({ compareToBase: hang, isPullRequestOpen: hang }) as unknown as GitClient;
+
+    const pending = loadRemoteSignals([target(), target({ projectId: "p2" })], { createClient });
+    await vi.advanceTimersByTimeAsync(8_000);
+
+    const got = await pending;
+    // 행은 목록에 남고 두 띠만 빠진다 — 지연도 실패와 같은 갈래다.
+    expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
+    expect(got.get("p2")).toEqual({ openPr: null, repoAheadFiles: 0 });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+/** ⚠️ **타이머를 안 끄면 그 핸들이 이벤트 루프를 붙잡아 정상 경로가 마감만큼 늦게 끝난다.** */
+it("정상 완료는 마감을 기다리지 않는다", async () => {
+  vi.useFakeTimers();
+  try {
+    const { createClient } = fakes();
+    // 타이머를 전혀 당기지 않아도 끝나야 한다.
+    const got = await loadRemoteSignals([target()], { createClient });
+    expect(got.get("p1")?.repoAheadFiles).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});

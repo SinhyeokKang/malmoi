@@ -10,6 +10,7 @@ import { isImportFailureCode } from "@/lib/projects/import-status";
 import { loadRemoteSignals } from "@/lib/projects/remote";
 import {
   rowLocaleProgress,
+  rowReviewCounts,
   summaryQueue,
   type LiveLocale,
   type LocaleCellCount,
@@ -344,14 +345,8 @@ export async function loadProjectList(
   ]);
   const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
 
-  const review = new Map<string, number>();
-  const live = new Set(aggregates.locales.map((l) => `${l.projectId}/${l.code}`));
-  for (const cell of aggregates.cells) {
-    if (!cell.needsReview) continue;
-    // ③은 orphaned 로케일의 셀을 포함할 수 있다 — ①에 없는 것은 버린다 (design §3.1).
-    if (!live.has(`${cell.projectId}/${cell.localeCode}`)) continue;
-    review.set(cell.projectId, (review.get(cell.projectId) ?? 0) + cell.count);
-  }
+  // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
+  const review = rowReviewCounts(aggregates.locales, aggregates.cells);
 
   return {
     rows: rows.map((r) => ({

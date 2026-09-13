@@ -117,7 +117,7 @@ type RowInput = ProjectStatusInput & ProjectEvents;
  * 실행이 시작됐다는 뜻이고, 남아 있는 코드는 이전 실행의 것이다 — 끝나면 성공이 비우거나 실패가
  * 덮어쓴다. 이 한 줄이 그룹·띠·Meter 셋에서 같은 뜻으로 쓰인다.
  */
-function failing(row: RowInput): boolean {
+export function failing(row: { importError: ImportFailureCode | null; importing: boolean }): boolean {
   return row.importError !== null && !row.importing;
 }
 
@@ -291,6 +291,23 @@ export function rowLocaleProgress(
     byProject.set(projectId, list.slice(0, 3));
   }
   return byProject;
+}
+
+/**
+ * 프로젝트별 **검토 대기 셀 수**. `rowLocaleProgress`와 같은 접기를 쓰므로 "살아 있는 로케일만"이라는
+ * 규칙이 한 벌로 남는다 — 호출부가 그 필터를 손으로 다시 짜면 구분자까지 두 벌이 된다.
+ */
+export function rowReviewCounts(
+  locales: readonly LiveLocale[],
+  cells: readonly LocaleCellCount[],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [key, cell] of foldCells(locales, cells)) {
+    if (cell.review === 0) continue;
+    const projectId = key.slice(0, key.indexOf("\u0000"));
+    out.set(projectId, (out.get(projectId) ?? 0) + cell.review);
+  }
+  return out;
 }
 
 export type SummaryQueue = { newFromGithub: number; toTranslate: number; toReview: number; toSend: number };

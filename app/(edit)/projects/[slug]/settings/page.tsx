@@ -23,6 +23,7 @@ import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connec
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-status";
+import { failing } from "@/lib/projects/list";
 // ⚠️ **필드와 대기 Alert는 6b-5가 `/locales`로 옮겼지만 이 조건은 남는다** — 아래 `workflowYaml`이
 // 대기 중 `base-locale:`을 박고, 그 줄이 없으면 CI가 옛 base를 계속 보내 변경이 영영 안 일어난다.
 import { basePending } from "@/lib/onboarding/base-pending";
@@ -86,6 +87,12 @@ export default async function SettingsPage({
        * 상세 진단은 대상 리포의 Actions 로그에 있다.
        */
       lastImportError: true,
+      /**
+       * ⚠️ **목록과 같은 술어를 써야 한다** (`failing`). 이 컬럼을 안 읽으면 [다시 시도]를 누른
+       * 직후의 화면이 목록은 "Importing", 여기는 빨간 실패 Alert가 되어 **같은 두 컬럼에서 정반대
+       * 사실**을 말한다.
+       */
+      lastImportStartedAt: true,
       // 보관 카드 (7단계). ⚠️ **이 화면만 보관된 프로젝트를 연다** — `project:settings`가 그 갈래를
       // 통과하는 유일한 permission이고, 그것이 되돌리는 길이다.
       archivedAt: true,
@@ -111,7 +118,11 @@ export default async function SettingsPage({
    * ⚠️ **DB 컬럼의 문자열이라 판정 함수로 거른다** — 모르는 값은 무시한다. 직접 인덱싱하면
    * `Object.prototype`에서 찾아진 값이 문장 자리에 온다 (POSTMORTEM 2026-09-08).
    */
-  const importFailure = isImportFailureCode(project.lastImportError) ? project.lastImportError : null;
+  const stored = isImportFailureCode(project.lastImportError) ? project.lastImportError : null;
+  // 돌고 있는 실행이 있으면 남아 있는 코드는 **이전 실행의 것**이다 — 목록과 같은 판정을 쓴다.
+  const importFailure = failing({ importError: stored, importing: project.lastImportStartedAt !== null })
+    ? stored
+    : null;
 
   return (
     <>

@@ -169,12 +169,19 @@ export function OnboardingModal({
             ⚠️ **`min-h-0 flex-1`이 짝이다** — 껍데기가 `overflow-hidden`이라 이게 없으면 본문이
             바닥을 밀어낸다 (`PanelBody`와 같은 관용구).
           */}
+          {/*
+            ⚠️ **`pt-0.5`가 포커스 링 자리다** (2026-09-13 실측). 이 컨테이너가 스크롤·클리핑을 겸하는데
+            위쪽 여백이 0이면 **맨 위 요소의 링 2px이 통째로 잘린다** — 1단계 리포 검색 필드에서
+            상단만 잘려 보였다. 링은 box-shadow라 요소 밖으로 퍼지고, 스크롤 때문에 `overflow`는
+            뗄 수 없다. 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내주는 이유는 **네 단계의
+            첫 요소가 전부 같은 자리**여서다.
+          */}
           <div
             ref={bodyRef}
             data-onboarding-body
             tabIndex={-1}
             className={cn(
-              "flex min-h-0 flex-1 gap-4 px-8 pb-6 focus:outline-none",
+              "flex min-h-0 flex-1 gap-4 px-8 pt-0.5 pb-6 focus:outline-none",
               bodyDirection === "row" ? "flex-row" : "flex-col",
               bodyScroll === "hidden" ? "overflow-hidden" : "overflow-y-auto",
             )}

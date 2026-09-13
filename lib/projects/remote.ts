@@ -45,6 +45,19 @@ const NONE: RemoteSignals = { openPr: null, repoAheadFiles: 0 };
 /** 동시에 도는 **프로젝트** 수. 전체 요청 수도, 처리할 프로젝트 수도 아니다 (design ⊕). */
 const CONCURRENCY = 3;
 
+/**
+ * 전체 조회의 **마감 시각**.
+ *
+ * ⚠️ **try/catch는 에러만 값으로 접고 지연은 못 접는다.** GitHub이 응답을 영영 안 주면
+ * `signalsFor`의 catch에 닿지 않으므로 페이지가 그대로 매달리고, 이 화면은 로그인 직후의
+ * 착지점이라 그 매달림이 곧 빈 화면이다 (design §7.5의 "GitHub이 실패해도 목록이 뜬다"를
+ * **지연**까지 넓힌 것).
+ *
+ * ⚠️ **넘긴 요청을 취소하지는 않는다** — octokit에 그 손잡이가 없다. 페이지가 안 기다릴 뿐이고,
+ * 남은 작업은 자기 속도로 끝나며 그 결과는 버려진다.
+ */
+const DEADLINE_MS = 8_000;
+
 export async function loadRemoteSignals(
   targets: readonly RemoteTarget[],
   options: {
@@ -57,10 +70,11 @@ export async function loadRemoteSignals(
     ((target: RemoteTarget) =>
       createGitClient(target.repoOwner, target.repoName, target.installationId ?? "", target.repositoryId ?? ""));
 
-  const signals = await mapWithLimit(targets, CONCURRENCY, (target) =>
-    signalsFor(target, createClient),
+  const signals = await withDeadline(
+    mapWithLimit(targets, CONCURRENCY, (target) => signalsFor(target, createClient)),
   );
   // 완료 순서가 결과 매핑을 바꾸지 않는다 — 인덱스로 되돌려 붙인다.
+  // 마감에 걸렸으면 `signals`가 비어 모든 행이 "신호 없음"이 된다 — 실패와 같은 갈래다.
   return new Map(targets.map((target, index) => [target.projectId, signals[index] ?? NONE]));
 }
 
@@ -104,6 +118,20 @@ async function signalsFor(
      * 것이고, 여기서 생략되는 것은 판정이 아니라 표시다. 다른 띠(발송·검토)는 DB만으로 선다.
      */
     return NONE;
+  }
+}
+
+/** 마감을 넘기면 빈 배열로 접는다. `signalsFor`가 던지지 않으므로 race가 거부될 일은 없다. */
+async function withDeadline(work: Promise<RemoteSignals[]>): Promise<RemoteSignals[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<RemoteSignals[]>((resolve) => {
+    timer = setTimeout(() => resolve([]), DEADLINE_MS);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    // ⚠️ 타이머를 안 끄면 그 핸들이 이벤트 루프를 붙잡아 함수가 마감만큼 늦게 끝난다.
+    clearTimeout(timer);
   }
 }
 

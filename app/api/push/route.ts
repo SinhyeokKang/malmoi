@@ -181,7 +181,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       await finishImportRun(prisma, { projectId: project.id, startedAt, code: "import-failed" });
       throw error;
     } finally {
-      // 실패도 결과 표시를 바꾼다 — 성공 때만 지우면 목록에 캐시된 상태가 남는다.
+      /**
+       * 실패도 결과 표시를 바꾼다 — 성공 때만 지우면 목록에 캐시된 상태가 남는다.
+       *
+       * ⚠️ **`/projects`는 접두가 아니라 경로 하나다** — 모달 뒤에 같은 목록을 그리는
+       * `/projects/new`를 따로 지운다 (POSTMORTEM 2026-09-09).
+       * ⚠️ **프로젝트 서브트리도 지운다** — 첫 push가 `lastCommitSha`를 세워 readiness를 넘긴다.
+       */
       revalidatePath(`/projects/${project.slug}`, "layout");
       revalidatePath("/projects");
       revalidatePath("/projects/new");

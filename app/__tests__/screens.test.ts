@@ -316,3 +316,34 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
     expect(src).toContain('revalidatePath("/projects/new")');
   });
 });
+
+/**
+ * **설정 화면과 목록이 같은 술어를 쓴다** (projects-list design §3.35).
+ *
+ * 두 화면이 같은 두 컬럼에서 정반대 사실을 말하면(목록 "Importing" / 설정 "실패"), 사용자는 어느
+ * 쪽도 못 믿는다 — [다시 시도]를 누른 직후가 정확히 그 창이다 (2026-09-13 리뷰).
+ */
+describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
+  const src = read(SETTINGS);
+
+  it("진행 표시 컬럼을 함께 읽는다", () => {
+    expect(src).toContain("lastImportStartedAt: true");
+  });
+
+  it("목록과 같은 판정 함수를 쓴다 — 술어를 두 벌로 만들지 않는다", () => {
+    expect(src).toContain("failing({");
+    expect(src).toContain('from "@/lib/projects/list"');
+  });
+});
+
+/**
+ * **모달 본문이 맨 위 요소의 포커스 링을 자르지 않는다** (2026-09-13 실측).
+ *
+ * 그 컨테이너는 스크롤·클리핑을 겸해 `overflow`를 뗄 수 없고, 링은 box-shadow라 요소 **밖으로**
+ * 2px 퍼진다 — 위쪽 여백이 0이면 1단계 검색 필드의 링 상단이 통째로 잘린다. 네 단계의 첫 요소가
+ * 전부 같은 자리라 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내준다.
+ */
+it("온보딩 모달 본문이 포커스 링 자리를 남긴다", () => {
+  const src = read("components/onboarding/modal.tsx");
+  expect(src).toContain("px-8 pt-0.5 pb-6");
+});

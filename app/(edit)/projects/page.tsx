@@ -21,6 +21,15 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 드는데, 이 화면은 `projects/` 디렉터리를 `[slug]`와 공유해서 그 층에 레이아웃을 두면 프로젝트
  * 화면이 **두 겹**으로 감싸인다.
  */
+
+/**
+ * ⚠️ **이 화면은 2026-09-13부터 GitHub도 기다린다** (보관 제외 전 프로젝트의 compare·PR, 동시 3).
+ * 형제 라우트(`/projects/new`)가 같은 조회를 돌면서 60을 들고 있는데 **여기만 빠져 있었다** —
+ * 로그인 직후의 착지점이자 인가 거부의 리다이렉트 목적지가 플랫폼 기본값에서 잘리면 그 거부 사유가
+ * 통째로 사라진다. 지연 자체는 `loadRemoteSignals`의 마감이 먼저 접고, 이 값은 그 바깥의 상한이다.
+ */
+export const maxDuration = 60;
+
 export default async function ProjectsPage({
   searchParams,
 }: {
