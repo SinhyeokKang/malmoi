@@ -173,7 +173,16 @@ export function rowBanner(row: RowInput): RowBanner {
   return null;
 }
 
-/** 한 로케일의 두 구간. ⚠️ **`done`에 검토 대기가 없다** — 바의 두 폭이 겹치면 합이 100%를 넘는다. */
+/**
+ * 한 로케일의 두 구간.
+ *
+ * ⚠️ **`done`에 검토 대기가 없다** — 바의 두 폭이 겹치면 합이 100%를 넘는다.
+ *
+ * ⚠️ **`percent`는 그 둘의 합이다** (캔버스 `1c`: `done 84 + review 8 → 92%`). 라벨이 답하는 질문은
+ * "이 언어가 얼마나 채워졌나"이고, 검토 대기도 **값이 들어 있는 칸**이다 — 바가 그중 얼마가 아직
+ * 검토 전인지를 amber로 말한다. 라벨을 `done`만으로 내면 검토를 기다리는 값이 화면에서 미번역과
+ * 구별되지 않는다.
+ */
 export type RowLocaleProgress = {
   code: string;
   isBase: boolean;
@@ -271,7 +280,8 @@ export function rowLocaleProgress(
       total,
       done,
       review,
-      percent: total === 0 ? 0 : Math.floor((done / total) * 100),
+      // ⚠️ **내림이다** — 902/903이 100%로 보이면 안 된다 (`localeProgress`와 같은 규칙).
+      percent: total === 0 ? 0 : Math.floor(((done + review) / total) * 100),
     });
     byProject.set(locale.projectId, list);
   }
@@ -368,4 +378,31 @@ export function groupProjects<T extends RowInput>(
       return list === undefined || list.length === 0 ? [] : [[group, list] as [ProjectGroup, T[]]];
     }),
   };
+}
+
+/**
+ * 검색 일치 구간을 가른다 (캔버스 `3a`).
+ *
+ * ⚠️ **이름만 대상이다** — `searchProjects`가 `row.name` 하나를 보므로, 리포 줄까지 칠하면 화면이
+ * 실제보다 넓게 찾은 것처럼 말한다. 그리고 **같은 규칙으로 대소문자를 무시한다**: 찾은 행인데
+ * 칠해진 자리가 없으면 "왜 이 행이 나왔나"에 답할 것이 화면에 없다.
+ *
+ * ⚠️ **빈 조각을 내지 않는다** — 렌더가 빈 `<span>`을 만들면 그 padding이 글자 사이를 벌린다.
+ */
+export function highlightName(name: string, q: string | undefined): { text: string; match: boolean }[] {
+  const needle = (q ?? "").trim().toLowerCase();
+  if (needle === "") return [{ text: name, match: false }];
+
+  const parts: { text: string; match: boolean }[] = [];
+  const haystack = name.toLowerCase();
+  let cursor = 0;
+  for (;;) {
+    const at = haystack.indexOf(needle, cursor);
+    if (at === -1) break;
+    if (at > cursor) parts.push({ text: name.slice(cursor, at), match: false });
+    parts.push({ text: name.slice(at, at + needle.length), match: true });
+    cursor = at + needle.length;
+  }
+  if (cursor < name.length) parts.push({ text: name.slice(cursor), match: false });
+  return parts;
 }

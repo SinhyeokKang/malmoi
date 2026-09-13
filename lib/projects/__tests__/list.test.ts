@@ -4,6 +4,7 @@ import { m } from "@/lib/i18n";
 
 import {
   groupProjects,
+  highlightName,
   meterSlot,
   projectGroup,
   projectStatus,
@@ -297,16 +298,17 @@ describe("rowLocaleProgress", () => {
   });
 
   /**
-   * ⚠️ **검토 대기를 완료로 세지 않는다.** 두 구간이 겹치면 바의 폭 합이 100%를 넘고, "다 됐다"는
-   * 판정도 검토를 기다리는 값까지 끌어안는다.
+   * ⚠️ **두 구간은 겹치지 않고, 라벨은 그 둘의 합이다** (캔버스 `1c`: `done 84 + review 8 → 92%`).
+   * 바의 폭이 겹치면 트랙을 넘어 흐르고, 라벨을 `done`만으로 내면 검토를 기다리는 값이 화면에서
+   * 미번역과 구별되지 않는다.
    */
-  it("done과 review가 겹치지 않는다 — 바 두 구간이 그대로 폭이다", () => {
+  it("두 구간이 겹치지 않고 라벨이 그 합이다", () => {
     const cells = [
       { projectId: "p", localeCode: "en", needsReview: false, count: 7 },
       { projectId: "p", localeCode: "en", needsReview: true, count: 2 },
     ];
     const en = rowLocaleProgress(locales, totals, cells).get("p")?.[0];
-    expect(en).toMatchObject({ code: "en", total: 10, done: 7, review: 2, percent: 70 });
+    expect(en).toMatchObject({ code: "en", total: 10, done: 7, review: 2, percent: 90 });
   });
 
   it("내림이다 — 902/903이 100%로 보이면 안 된다", () => {
@@ -316,6 +318,19 @@ describe("rowLocaleProgress", () => {
       [{ projectId: "p", localeCode: "en", needsReview: false, count: 902 }],
     );
     expect(got.get("p")?.[0]?.percent).toBe(99);
+  });
+
+  /** 캔버스의 값 그대로 — 84 + 8이 92로 읽힌다. */
+  it("캔버스 `1c`의 en 행을 재현한다", () => {
+    const got = rowLocaleProgress(
+      [{ projectId: "p", code: "en", isBase: true }],
+      new Map([["p", 100]]),
+      [
+        { projectId: "p", localeCode: "en", needsReview: false, count: 84 },
+        { projectId: "p", localeCode: "en", needsReview: true, count: 8 },
+      ],
+    );
+    expect(got.get("p")?.[0]).toMatchObject({ done: 84, review: 8, percent: 92 });
   });
 
   it("분모가 0이면 비율도 0이다 — 0으로 나누지 않는다", () => {
@@ -466,5 +481,48 @@ describe("groupProjects — 검색 중에는 평평하다 (design §4)", () => {
     const original = [...rows];
     groupProjects(rows, undefined);
     expect(rows).toEqual(original);
+  });
+});
+
+/**
+ * **검색 일치 구간은 이름에서만 칠한다** (캔버스 `3a`). `searchProjects`의 대상이 `row.name` 하나라
+ * 리포 줄을 칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
+ */
+describe("highlightName", () => {
+  it("질의가 없으면 조각 하나다 — 칠할 것이 없다", () => {
+    expect(highlightName("chrome-extension", "")).toEqual([{ text: "chrome-extension", match: false }]);
+    expect(highlightName("chrome-extension", "   ")).toEqual([{ text: "chrome-extension", match: false }]);
+  });
+
+  it("일치 구간을 가른다", () => {
+    expect(highlightName("chrome-extension", "chrome")).toEqual([
+      { text: "chrome", match: true },
+      { text: "-extension", match: false },
+    ]);
+  });
+
+  /** `searchProjects`가 대소문자를 무시하므로 칠하는 쪽도 같아야 한다 — 아니면 찾았는데 안 칠해진다. */
+  it("대소문자를 무시하되 원문 표기를 보존한다", () => {
+    expect(highlightName("BugShot Web", "bugshot")).toEqual([
+      { text: "BugShot", match: true },
+      { text: " Web", match: false },
+    ]);
+  });
+
+  it("여러 번 나오면 전부 칠한다", () => {
+    expect(highlightName("a-b-a", "a")).toEqual([
+      { text: "a", match: true },
+      { text: "-b-", match: false },
+      { text: "a", match: true },
+    ]);
+  });
+
+  it("일치가 없으면 통째로 하나다", () => {
+    expect(highlightName("chrome", "figma")).toEqual([{ text: "chrome", match: false }]);
+  });
+
+  /** ⚠️ **빈 조각을 내지 않는다** — 렌더가 빈 `<span>`을 만들면 padding이 붙어 글자 사이가 벌어진다. */
+  it("앞뒤가 딱 맞아도 빈 조각이 없다", () => {
+    expect(highlightName("chrome", "chrome")).toEqual([{ text: "chrome", match: true }]);
   });
 });

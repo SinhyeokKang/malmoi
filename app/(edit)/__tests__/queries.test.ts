@@ -385,8 +385,8 @@ describe("loadProjectList", () => {
     // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
     expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
     expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
-    // 검토 대기는 완료로 안 센다 — 두 구간이 겹치면 바의 폭 합이 100%를 넘는다.
-    expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 0 });
+    // 두 구간은 겹치지 않고 라벨은 그 합이다 — 검토 대기도 값이 들어 있는 칸이다 (캔버스 `1c`).
+    expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 50 });
   });
 
   /**

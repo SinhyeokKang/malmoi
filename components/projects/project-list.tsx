@@ -1,11 +1,11 @@
 import {
+  ArrowDownToLine,
   Box,
   ChevronRight,
   CircleDashed,
   ExternalLink,
   Eye,
   FolderGit2,
-  GitBranch,
   GitMerge,
   GitPullRequest,
   GitPullRequestArrow,
@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { EmptyProjects } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/projects/locale-meter";
 import { ProjectSearch } from "@/components/projects/search-input";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
@@ -33,6 +34,7 @@ import type { ProjectListRow } from "@/lib/keys/query";
 import { importFailureMessage } from "@/lib/projects/import-status";
 import {
   groupProjects,
+  highlightName,
   meterSlot,
   projectStatus,
   rowBanner,
@@ -78,13 +80,18 @@ import { cn } from "@/lib/utils";
  * ⚠️ **삼항이 아니라 맵 + `satisfies`다** (`lib/auth/landing.ts`와 같은 관용구). 갈래가 늘면 키가
  * 없어 컴파일 에러가 나는데, 삼항이면 새 갈래가 **사유 없이** 기본값으로 떨어지고 `tsc`가 조용하다.
  */
-const STATUS_VARIANT = {
-  active: "success",
-  archived: "neutral",
-  setup: "neutral",
-  awaiting_first_sync: "neutral",
-  needs_reconnect: "warning",
-} as const satisfies Record<ProjectStatus, "neutral" | "warning" | "success">;
+const STATUS_CHIP = {
+  active: { variant: "success", tone: "" },
+  /**
+   * ⚠️ **보관만 `#737373`이고 나머지 무색 둘은 `#525252`다** (캔버스 `1c`). `Badge neutral`의 기본
+   * 글자색은 foreground(`#0a0a0a`)이므로 셋 다 호출부에서 내린다 — 프리미티브를 바꾸면 이 루프가
+   * 보지 않은 화면의 배지가 함께 움직인다.
+   */
+  archived: { variant: "neutral", tone: "text-muted-foreground" },
+  setup: { variant: "neutral", tone: "text-neutral-600" },
+  awaiting_first_sync: { variant: "neutral", tone: "text-neutral-600" },
+  needs_reconnect: { variant: "warning", tone: "" },
+} as const satisfies Record<ProjectStatus, { variant: "neutral" | "warning" | "success"; tone: string }>;
 
 const GROUP_LABEL = {
   needs_attention: m.projects.group.needsAttention,
@@ -156,21 +163,14 @@ export function ProjectList({
         ⚠️ **`flex-1`을 여기서 다시 주지 않는다** — `PanelBody`가 이미 `min-h-0 flex-1`을 든다.
         빈 상태가 패널 세로 중앙에 서는 것(시안)은 그 `flex-1`이 만든다.
       */}
-      <PanelBody className="flex flex-col gap-5 px-6 pt-3 pb-5">
+      {/*
+        ⚠️ **0건일 때 본문 여백이 다르다** (캔버스 `1a`: `0 12 12`) — 그라데이션 면이 패널 안쪽에
+        12를 두고 앉아야 패널의 radius 16 안에 카드의 12가 겹친다. 목록이 설 때의 `12 24 20`을
+        그대로 쓰면 그 면이 안쪽으로 밀려 패널 테두리와 사이가 벌어진다.
+      */}
+      <PanelBody className={hasProjects ? "flex flex-col gap-5 px-6 pt-3 pb-5" : "flex px-3 pt-0 pb-3"}>
         {!hasProjects ? (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={FolderGit2}
-              title={m.projects.empty.title}
-              description={m.projects.empty.description}
-              action={
-                <ButtonLink variant="primary" href={routes.newProject()}>
-                  <Plus aria-hidden />
-                  {m.common.nav.newProject}
-                </ButtonLink>
-              }
-            />
-          </div>
+          <EmptyProjects />
         ) : rows.length === 0 ? (
           /*
             ⚠️ **"프로젝트가 없다"와 다른 상태다** — 질의를 되돌리면 있다. 같은 빈 화면을 내면
@@ -209,13 +209,15 @@ export function ProjectList({
             사용자가 더해야 하고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다.
           */
           <div className="flex flex-col gap-2">
-            <p className="text-muted-foreground flex items-center gap-2 text-sm">
-              {m.projects.searchResult(rows.length, all.length, query)}
-              <Link href={routes.projects()} className="text-blue-600">
+            <p className="text-muted-foreground flex items-center gap-2 text-xs">
+              {m.projects.searchResult(rows.length, all.length)}{" "}
+              {/* ⚠️ **질의만 foreground다** — 무엇으로 좁혔는지가 이 줄에서 유일하게 가변인 값이다. */}
+              <span className="text-foreground">{query}</span>
+              <Link href={routes.projects()} className="ml-1 text-blue-600">
                 {m.projects.clearSearch}
               </Link>
             </p>
-            <ProjectCard rows={grouped.rows} />
+            <ProjectCard rows={grouped.rows} q={q} />
           </div>
         ) : (
           grouped.groups.map(([group, list]) => (
@@ -243,8 +245,24 @@ export function ProjectList({
  * 서지 않는다.
  */
 function SummaryRow({ summary }: { summary: SummaryQueue }) {
+  /**
+   * ⚠️ **순서가 파이프라인이다** — GitHub에서 유입 → 번역 → 검토 → 발송. 왼쪽에서 오른쪽이 실제
+   * 작업 순서라 **순서 자체가 정보**다.
+   *
+   * ⚠️ **첫 칸만 파랑이다** (`#2563eb` — 아이콘과 숫자 둘 다). 넷 중 유일하게 **내가 만들지 않은
+   * 변화**라서다. 나머지 셋은 내가 쌓아 둔 일이고 색이 필요 없다.
+   */
   const cells = [
-    { icon: GitBranch, label: m.projects.summary.newFromGithub, value: summary.newFromGithub, tone: "" },
+    {
+      icon: ArrowDownToLine,
+      label: m.projects.summary.newFromGithub,
+      /**
+       * ⚠️ **0이면 부호를 붙이지 않는다.** `+0`은 "새로 들어온 것이 있다"를 말하게 되는데 그 값이
+       * 뜻하는 것은 반대다. 캔버스에 0 갈래가 없어 여기서 정한다.
+       */
+      value: summary.newFromGithub > 0 ? `+${summary.newFromGithub}` : "0",
+      tone: summary.newFromGithub > 0 ? "text-blue-600" : "",
+    },
     { icon: Languages, label: m.projects.summary.toTranslate, value: summary.toTranslate, tone: "" },
     // ⚠️ **`amber-700`이고 배지의 amber-800과 다르다** (DESIGN §6.2에 등재). 알파를 쓰지 않는다 —
     // lucide는 다중 요소라 색 알파가 획 접점에서 누적된다.
@@ -262,7 +280,7 @@ function SummaryRow({ summary }: { summary: SummaryQueue }) {
               <cell.icon aria-hidden className={cn("size-3.5", cell.tone)} />
               {cell.label}
             </span>
-            <span className="text-xl font-medium">{cell.value}</span>
+            <span className={cn("text-xl font-medium", cell.tone)}>{cell.value}</span>
           </div>
         </div>
       ))}
@@ -283,7 +301,7 @@ function SummaryRow({ summary }: { summary: SummaryQueue }) {
  * minimum size가 적용되지 않아 축소 하한이 0이다 — 넘친 행은 카드 **안에** 감춰져 바깥 패널에
  * 스크롤조차 생기지 않는다 (실측 2026-09-11).
  */
-function ProjectCard({ rows }: { rows: readonly ProjectListRow[] }) {
+function ProjectCard({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
     /**
      * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바 240,
@@ -294,15 +312,16 @@ function ProjectCard({ rows }: { rows: readonly ProjectListRow[] }) {
     <ul className="border-border bg-background @container shrink-0 overflow-hidden rounded-lg border">
       {rows.map((row, index) => (
         <li key={row.slug} className={index === 0 ? "" : "border-border border-t"}>
-          <ProjectRow row={row} />
+          <ProjectRow row={row} q={q} />
         </li>
       ))}
     </ul>
   );
 }
 
-function ProjectRow({ row }: { row: ProjectListRow }) {
+function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
   const status = projectStatus(row);
+  const chip = STATUS_CHIP[status];
   const slot = meterSlot(row, row.meters);
   const banner = rowBanner(row);
 
@@ -345,7 +364,24 @@ function ProjectRow({ row }: { row: ProjectListRow }) {
           그러면 훑는 눈이 열로 읽지 못한다. 흔들리는 것은 **빈 공간뿐**이어야 한다.
         */}
         <span className="flex w-[420px] min-w-0 shrink-0 flex-col gap-0.5">
-          <span className="truncate text-base font-medium">{row.name}</span>
+          {/*
+            ⚠️ **보관은 이름까지 회색이다** (캔버스 `1c`의 `muted: true`) — 숨기지 않는 대신 훑는
+            눈에서만 멀어진다. 배지 하나로는 그 행이 여전히 같은 무게로 읽힌다.
+
+            ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
+            칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
+          */}
+          <span className={cn("truncate text-base font-medium", status === "archived" && "text-muted-foreground")}>
+            {highlightName(row.name, q).map((part, index) =>
+              part.match ? (
+                <mark key={index} className="rounded-[3px] bg-blue-600/[0.14] px-px text-inherit">
+                  {part.text}
+                </mark>
+              ) : (
+                part.text
+              ),
+            )}
+          </span>
           {/*
             메타 한 줄 — **owner/repo · 역할 · 멤버 수**. ⚠️ **`https://github.com/`를 뗀다**(시안):
             행 폭의 3분의 1을 모든 행이 같은 문자열로 쓰는 것이 그 접두다.
@@ -390,7 +426,7 @@ function ProjectRow({ row }: { row: ProjectListRow }) {
         */}
         <span className="ml-auto flex shrink-0 items-center gap-3">
           {/* ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다. */}
-          <Badge variant={STATUS_VARIANT[status]} className="px-2">
+          <Badge variant={chip.variant} className={cn("px-2", chip.tone)}>
             {m.projects.status[status]}
           </Badge>
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />

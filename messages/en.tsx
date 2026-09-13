@@ -297,8 +297,13 @@ export const en = {
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {
       title: "No projects yet",
-      /** ⚠️ **초대 경로를 함께 말한다** — 번역자는 프로젝트를 만들지 않고 초대를 받아 들어온다. */
-      description: "Connect a GitHub repository to start, or open an invite link someone sent you.",
+      /**
+       * ⚠️ **약속과 안전을 한 문장씩 말한다** (캔버스 `1a`). 앞은 "무엇을 해주나", 뒤는 "무엇을
+       * 안 하나"다 — 남의 리포에 연결을 요구하는 화면이라 되돌릴 수 없는 쓰기가 없다는 사실이
+       * 시작 버튼 옆에 있어야 한다.
+       */
+      description:
+        "Connect a repository and malmoi will find the locale files for you. Nothing is written back until you send changes.",
     },
     /**
      * 머리의 Summary 넷 (projects-list design §11.3). **내 멤버십 중 보관하지 않은 프로젝트 전체**의
@@ -319,9 +324,15 @@ export const en = {
      * "지금 무엇을 보고 있나"가 이어지고, 두 벌로 두면 하나가 낡는다.
      */
     group: { needsAttention: "Needs attention", allSet: "All set" },
-    /** 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다. */
-    searchResult: (n: number, total: number, q: string): string =>
-      `${n} of ${total} project${total === 1 ? "" : "s"} match ${q}`,
+    /**
+     * 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다 — 배지가 `1`로
+     * 바뀌면 "프로젝트가 하나 남았다"로 오읽히므로, 좁혀진 수는 여기가 들고 분모가 그 옆에 선다.
+     *
+     * ⚠️ **질의가 문구 안에 없다** — 캔버스가 그 낱말만 foreground로 칠하므로 화면이 별개 노드로
+     * 그린다. 문자열에 넣으면 그 강조를 만들 자리가 사라진다.
+     */
+    searchResult: (n: number, total: number): string =>
+      `${n} of ${total} project${total === 1 ? "" : "s"} match`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**

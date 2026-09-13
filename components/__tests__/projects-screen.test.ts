@@ -95,7 +95,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   it("배지 색이 맵 + `satisfies`다", () => {
     const src = PAGE.map(code).join("\n");
     expect(src).toMatch(/satisfies Record<ProjectStatus,/);
-    expect(src).toContain("STATUS_VARIANT[status]");
+    expect(src).toContain("STATUS_CHIP[status]");
   });
 
   /**
@@ -109,18 +109,30 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * 조용하기 때문이다.
    */
   it("정상은 초록, amber는 `Disconnected` 하나, 나머지 셋은 무색이다", () => {
-    const map = /const STATUS_VARIANT = \{([\s\S]*?)\}/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
+    const map = /const STATUS_CHIP = \{([\s\S]*?)\n\} as const/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
     expect(map).not.toBe("");
-    expect(map).toMatch(/archived:\s*"neutral"/);
-    expect(map).toMatch(/active:\s*"success"/);
+    expect(map).toMatch(/archived:\s*\{ variant: "neutral"/);
+    expect(map).toMatch(/active:\s*\{ variant: "success"/);
     /**
      * ⚠️ **온보딩 중인 둘은 amber가 아니다** (2026-09-11 사용자). 새 프로젝트가 지나가는 정상
      * 경로이고 시간이 지나면 저절로 `Active`가 된다 — amber로 칠하면 고장난 것처럼 보인다.
      */
-    expect(map).toMatch(/setup:\s*"neutral"/);
-    expect(map).toMatch(/awaiting_first_sync:\s*"neutral"/);
+    expect(map).toMatch(/setup:\s*\{ variant: "neutral"/);
+    expect(map).toMatch(/awaiting_first_sync:\s*\{ variant: "neutral"/);
     /** ⚠️ **한때 돌던 것이 멈춘 것**이라 사람이 손대야 풀린다 — amber가 여기 하나만 남았다. */
-    expect(map).toMatch(/needs_reconnect:\s*"warning"/);
+    expect(map).toMatch(/needs_reconnect:\s*\{ variant: "warning"/);
+  });
+
+  /**
+   * ⚠️ **무색 배지의 글자색이 셋으로 갈린다** (캔버스 `1c`): 보관은 `#737373`, 온보딩 중인 둘은
+   * `#525252`, 총계·그룹 카운트는 foreground 그대로다. `Badge neutral`의 기본이 foreground이므로
+   * **호출부에서 내린다** — 프리미티브를 바꾸면 이 루프가 보지 않은 화면의 배지가 함께 움직인다.
+   */
+  it("무색 배지의 글자색을 호출부가 내린다", () => {
+    const map = /const STATUS_CHIP = \{([\s\S]*?)\n\} as const/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
+    expect(map).toMatch(/archived:[^\n]*tone: "text-muted-foreground"/);
+    expect(map).toMatch(/setup:[^\n]*tone: "text-neutral-600"/);
+    expect(map).toMatch(/awaiting_first_sync:[^\n]*tone: "text-neutral-600"/);
   });
 
   /**
@@ -389,5 +401,68 @@ describe("Meter 폭 축소 — 컨테이너 기준", () => {
    */
   it("Meter 대체 문장이 줄어들 수 있다", () => {
     expect(BODY).toContain('className="text-muted-foreground w-[332px] min-w-0 shrink truncate text-sm"');
+  });
+});
+
+/**
+ * **캔버스 대조(2026-09-13 `/design-sync` 1차)가 잡은 다섯을 고정한다.**
+ *
+ * 전부 `pnpm test` 3,300개가 green인 채로 시안과 갈려 있던 자리다 — 값이 맞고 **표현만** 틀린 부류는
+ * 단위 테스트가 원리적으로 못 본다. 실측은 그때 한 번이고 이 검사는 다음에도 돈다.
+ */
+describe("캔버스 대조로 잡은 자리", () => {
+  const BODY = code("components/projects/project-list.tsx");
+  const EMPTY = code("components/projects/empty-projects.tsx");
+
+  /**
+   * ⚠️ **프로젝트 0건은 `EmptyState`가 아니다** (캔버스 `1a`). 첫 로그인의 착지점이고 할 수 있는 일이
+   * 하나뿐이라 패널이 비면 **그 자리를 KV가 든다** — 검색 0건(`3b`)만 `EmptyState` 규격이다.
+   */
+  it("0건 빈 상태가 KV 합성이다", () => {
+    expect(BODY).toContain("<EmptyProjects />");
+    expect(EMPTY).toContain("KeyVisual");
+    expect(EMPTY).toContain("DotField");
+    // KV를 새로 그리지 않는다 — 로그인의 그 합성에서 상한만 줄인다.
+    expect(EMPTY).toContain('className="max-w-[620px]"');
+    expect(EMPTY).toContain("from-auth-hero-from");
+    // 셸 밖 규격 — 이 화면에서 그것이 사용자가 할 수 있는 유일한 일이다.
+    expect(EMPTY).toContain('size="lg"');
+  });
+
+  /** ⚠️ **0건일 때 본문 여백이 다르다**(`0 12 12`) — 그라데이션 면이 패널 radius 안에 겹쳐 앉는다. */
+  it("0건 본문 여백이 목록과 다르다", () => {
+    expect(BODY).toContain('"flex px-3 pt-0 pb-3"');
+  });
+
+  /**
+   * ⚠️ **첫 칸만 파랑이고 부호가 붙는다** — 넷 중 유일하게 **내가 만들지 않은 변화**라서다.
+   * 0이면 부호를 떼는 것은 이 구현의 판정이다(캔버스에 0 갈래가 없다).
+   */
+  it("`New from GitHub`이 파랑이고 부호를 든다", () => {
+    expect(BODY).toContain("ArrowDownToLine");
+    expect(BODY).toContain('`+${summary.newFromGithub}`');
+    expect(BODY).toContain('"text-blue-600"');
+  });
+
+  /** ⚠️ **보관은 이름까지 회색이다** — 숨기지 않는 대신 훑는 눈에서만 멀어진다. */
+  it("보관 행의 이름이 muted다", () => {
+    expect(BODY).toContain('status === "archived" && "text-muted-foreground"');
+  });
+
+  /**
+   * ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
+   * 칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
+   */
+  it("검색 일치를 이름 칸에서만 칠한다", () => {
+    expect(BODY).toContain("highlightName(row.name, q)");
+    expect(BODY).toContain("rounded-[3px] bg-blue-600/[0.14] px-px");
+    // 메타 줄은 원문 그대로다.
+    expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
+  });
+
+  /** ⚠️ **결과 줄의 질의만 foreground다** — 그 줄에서 유일하게 가변인 값이다. */
+  it("결과 줄이 13px이고 질의를 별개 노드로 그린다", () => {
+    expect(BODY).toContain("m.projects.searchResult(rows.length, all.length)");
+    expect(BODY).toContain('<span className="text-foreground">{query}</span>');
   });
 });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
 import projectCard from "@/public/brand/malmoi-kv-1.png";
 import koreanCard from "@/public/brand/malmoi-kv-2.png";
@@ -117,10 +118,17 @@ function Decoration() {
   );
 }
 
-/** 기존 합성 PNG의 724×332 좌표계를 유지해 그림자 여백까지 함께 축소한다. */
-function KeyVisual() {
+/**
+ * 기존 합성 PNG의 724×332 좌표계를 유지해 그림자 여백까지 함께 축소한다.
+ *
+ * ⚠️ **2026-09-13에 export가 됐다** (projects-list `1a`) — 프로젝트 0건 화면이 **같은 합성**을 쓴다.
+ * 핸드오프가 새 KV를 그리지 않은 근거가 "로그인 우측의 넷이 이미 그 문장을 그리고 있다"였고,
+ * 바뀌는 것은 상한 하나(768 → 620)라 `className`으로 내린다. **기본값은 로그인 그대로다** —
+ * 여기서 768을 바꾸면 이 루프가 보지 않은 화면이 함께 움직인다.
+ */
+export function KeyVisual({ className }: { className?: string } = {}) {
   return (
-    <div aria-hidden="true" className="relative aspect-[724/332] w-full max-w-[768px] shrink-0">
+    <div aria-hidden="true" className={cn("relative aspect-[724/332] w-full max-w-[768px] shrink-0", className)}>
       <Image
         src={projectCard}
         alt=""
