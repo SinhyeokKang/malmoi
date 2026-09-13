@@ -144,6 +144,8 @@ lib/
                         read-session · outage · public-session · permission · access · invitation ·
                         invite-view · membership · email · cookie · message · landing · invite-label
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
+  upload/               사용자 프로필 사진 전용. image(형식·크기·키·삭제 allowlist 판정) ·
+                        store(server-only Vercel Blob I/O). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
                         plan · run · render · load · client · targets · trigger · branch-name · ref-slug /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan
