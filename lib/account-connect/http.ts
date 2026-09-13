@@ -35,7 +35,10 @@ export async function withConnect(request: NextRequest, run: () => Promise<Respo
   const attempt: Attempt = { nonce: nonce?.value ?? "", sessionToken: request.cookies.get(secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value ?? "", state: url.searchParams.get("state") ?? "" };
   return stateScope.run(secure, () => pending.run(attempt, async () => {
     let original: Response;
-    try { original = await run(); } catch { original = new Response(null); }
+    try { original = await run(); } catch {
+      console.error("Account connect callback failed.");
+      original = new Response(null);
+    }
     const outcome = attempt.outcome ?? (url.searchParams.get("error") === "access_denied" ? "cancelled" : "failed");
     const headers = new Headers(original.headers);
     headers.delete("content-length"); headers.delete("content-type");

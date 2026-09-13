@@ -26,6 +26,8 @@ it.each(["app/signin/page.tsx", "app/invite/[token]/page.tsx", "app/signin/link/
   const source = readFileSync(path, "utf8");
   expect(clearedBeforeStart(source)).toBe(true);
   for (const call of source.matchAll(/await clearAuthRoundtripCookies\(\)/g)) {
+    // Failure cleanup after the final signIn is checked by the Action's behavior tests.
+    if (call.index > source.lastIndexOf("signIn(")) continue;
     expect(clearedBeforeStart(source.slice(0, call.index) + source.slice(call.index + call[0].length))).toBe(false);
   }
 });

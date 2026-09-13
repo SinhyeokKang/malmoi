@@ -88,7 +88,7 @@ export default async function SignIn({
 /**
  * ⚠️ **함수 이름을 바꾸지 않는다.** `lib/session-revocation/__tests__/normal-login.test.tsx`가
  * `child.type.name === "ProviderButton"`으로 이것을 찾고, 그 테스트는 **POSTMORTEM 2026-09-10의
- * 유일한 방어선**이다 — `clearRevocationCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다.
+ * 유일한 방어선**이다 — `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다.
  * `redirectTo: "/projects"`도 같은 이유로 그대로다.
  */
 function ProviderButton({

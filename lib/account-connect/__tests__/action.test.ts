@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const s = vi.hoisted(() => ({ requireUser: vi.fn(), signIn: vi.fn(), begin: vi.fn(), count: vi.fn(), clear: vi.fn(), set: vi.fn(), get: vi.fn(), headers: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: s.requireUser }));
@@ -9,6 +9,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: s.get, set: s.set 
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
 import { startLoginMethodConnect } from "@/app/(edit)/account/actions";
 import { connectAuthCookies } from "../http";
+afterEach(() => vi.restoreAllMocks());
 beforeEach(() => {
   vi.resetAllMocks();
   s.requireUser.mockResolvedValue({ userId: "u" });
@@ -49,4 +50,17 @@ it.each(["invalid-provider", "missing-session", "missing-state", "store-failure"
   if (failure === "db-error") s.count.mockRejectedValue(new Error("private details"));
   await expect(startLoginMethodConnect(failure === "invalid-provider" ? "github-app" : "google")).rejects.toThrow("REDIRECT:/account?connect=failed");
   expect(s.set).not.toHaveBeenCalled();
+  if (failure === "missing-state" || failure === "store-failure") expect(s.clear).toHaveBeenCalledTimes(2);
+});
+it("OAuth failure after writing state clears the abandoned purpose again", async () => {
+  s.signIn.mockRejectedValue(new Error("provider secret"));
+  await expect(startLoginMethodConnect("google")).rejects.toThrow("REDIRECT:/account?connect=failed");
+  expect(s.clear).toHaveBeenCalledTimes(2);
+  expect(s.set).not.toHaveBeenCalled();
+});
+it("failed OAuth initiation records only the fixed stage", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  s.signIn.mockRejectedValue(new Error("provider secret"));
+  await expect(startLoginMethodConnect("google")).rejects.toThrow("REDIRECT:/account?connect=failed");
+  expect(log).toHaveBeenCalledExactlyOnceWith("Account connect start failed.", { stage: "oauth" });
 });

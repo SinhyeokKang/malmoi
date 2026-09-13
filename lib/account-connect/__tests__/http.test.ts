@@ -1,10 +1,11 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { withConnect, withConnectStart, connectAuthCookies, authorizeConnect } from "../http";
 const finish = vi.hoisted(() => vi.fn());
 vi.mock("../store", () => ({ finishConnect: finish }));
 const request = (query = "code=ok&state=state", cookie = "malmoi-account-connect=nonce; authjs.session-token=raw") => new NextRequest(`http://localhost/api/auth/callback/google?${query}`, { headers: { cookie } });
 beforeEach(() => { vi.clearAllMocks(); finish.mockResolvedValue("connected"); });
+afterEach(() => vi.restoreAllMocks());
 it("일반 로그인은 그대로 통과하며 state 스코프가 새지 않는다", async () => {
   const run = vi.fn().mockResolvedValue(new Response("ordinary"));
   expect(await (await withConnect(request("", ""), run)).text()).toBe("ordinary");
@@ -32,4 +33,9 @@ it.each([["error=access_denied", "cancelled"], ["state=wrong", "failed"]])("sign
 it("nonce가 사라져도 state 쿠키는 연결 목적을 유지한다", async () => {
   const response = await withConnect(request("", "malmoi-connect-state=encrypted"), async () => new Response());
   expect(response.headers.get("location")).toBe("http://localhost/account?connect=failed");
+});
+it("callback crashes leave a fixed diagnostic without OAuth exception details", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  await withConnect(request(), async () => { throw new Error("OAuth secret"); });
+  expect(log).toHaveBeenCalledExactlyOnceWith("Account connect callback failed.");
 });

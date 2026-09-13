@@ -166,34 +166,54 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
 export async function startLoginMethodConnect(provider: string): Promise<void> {
   const { userId } = await requireUser();
   let destination = routes.account({ connect: "failed" });
+  let oauthStarted = false;
+  let ready = false;
+  let stage = "provider-check";
   try {
     if (isLoginProvider(provider)) {
       const prisma = getPrisma();
       const existing = await prisma.account.count({ where: { userId, provider } });
       if (existing > 0) destination = routes.account({ connect: "already-connected" });
       else {
+        stage = "origin";
         const h = await headers();
         const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
         if (origin) {
+          stage = "cookies";
           await clearAuthRoundtripCookies();
           const jar = await cookies();
           const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
           if (sessionToken) {
+            oauthStarted = true;
+            stage = "oauth";
             const url = await withConnectStart(origin.secure, () => signIn(provider, { redirect: false, redirectTo: routes.account({ connect: "expired" }) }, { prompt: "select_account" }));
             const state = new URL(url).searchParams.get("state");
             if (state) {
+              stage = "challenge";
               const nonce = randomBytes(32).toString("base64url");
               const outcome = await beginConnect(prisma, { userId, provider, nonce, sessionToken, state });
               if (outcome === "ready") {
+                stage = "nonce-cookie";
                 const cookie = connectCookie(origin.secure);
                 jar.set(cookie.name, nonce, cookie.options);
                 destination = url;
+                ready = true;
               } else destination = routes.account({ connect: outcome satisfies ConnectOutcome });
             }
           }
         }
       }
     }
-  } catch { destination = routes.account({ connect: "failed" }); }
+  } catch {
+    console.error("Account connect start failed.", { stage });
+    destination = routes.account({ connect: "failed" });
+  }
+  // signIn writes state before the DB challenge exists. A failed start must not claim a later callback.
+  if (oauthStarted && !ready) {
+    try { await clearAuthRoundtripCookies(); } catch {
+      console.error("Account connect start failed.", { stage: "cleanup" });
+      destination = routes.account({ connect: "failed" });
+    }
+  }
   redirect(destination);
 }
