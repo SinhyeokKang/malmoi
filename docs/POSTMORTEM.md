@@ -1262,3 +1262,18 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 직접 진입에 필요한 배경 재구성을 클라이언트 네비게이션에도 적용했다. 모달의 리포 조회를 Suspense로 감싸도 그보다 먼저 기다리는 배경 목록 조회는 분리되지 않았다.
 - **그물**: 기존 페이지·DOM 테스트는 모달의 상태와 props를 검사했지만 두 진입 방식의 목록 조회 횟수를 구별하지 않았다. 인터셉트는 목록 조회 0회, 직접 진입은 인가된 사용자로 조회한다는 테스트와 로딩 전후 닫기 문맥 테스트를 추가했다. 패널 검사는 일반 페이지 1개·슬롯 추가 패널 0개를 검사하며 인가 전수 검사에 슬롯을 포함한다. 빌드의 인터셉트 매핑은 확인했고 브라우저 프레임 재측정은 사용자가 진행한다.
 - **재발 방지**: `rg -n 'loadProjectList|NewProjectModal|requireUser|maxDuration' 'app/(edit)/projects/@modal' 'app/(edit)/projects/new/page.tsx' 'app/(edit)/projects/new-project-modal.tsx'`를 실행했다. 목록 조회는 직접 진입에만 남았다. 모달 라우트를 추가할 때는 딥링크·soft navigation·닫기·다른 화면으로 이동을 각각 검사한다. default 슬롯만으로는 soft navigation 뒤 활성 모달을 지울 수 없어 목록용 page와 하위 경로용 catch-all이 null을 반환한다.
+
+### 2026-09-13 — 이미지 쓰기 키 오류를 외부 업로드 뒤에 발견했다
+
+- **영역**: `app/(edit)/account/actions.ts` · `lib/credentials/storage.ts` · `scripts/smoke-blob.ts`
+- **증상**: 구현 리뷰 후 회귀 테스트에서 PII 활성 키가 없거나 keyring에 없는 경우에도 `putImage`가
+  호출됨을 확인했다. Blob에 쓴 뒤 암호화가 실패해 다시 삭제하는 순서였다. 실 Blob에서는 아직
+  재현하지 않았다(로컬 토큰 부재). Action과 스모크의 catch는 실패 단계도 남기지 않았다.
+- **근본 원인**: 읽기 keyring 유효성과 활성 쓰기 키 유효성을 같은 조건으로 취급했다. 오류 원문을
+  로그에서 배제하는 과정에서 안전하게 남길 수 있는 작업 단계까지 지웠다.
+- **그물**: 최초 테스트는 정상 쓰기 키와 업로드 후 DB 실패만 검증했다. Claude 정적 리뷰가 순서를
+  지적했고, 활성 키 누락·불일치와 안전한 단계 로그 회귀 테스트에서 red→green을 확인했다.
+- **재발 방지**: `rg -n 'validate.*WriteKey|putImage\(|console\.error|stage =' 'app/(edit)/account/actions.ts' lib/credentials/storage.ts scripts/smoke-blob.ts`
+  로 외부 쓰기 전에 키 검증이 있는지, 실패 로그가 SDK·DB 오류 원문 대신 단계를 남기는지 확인했다.
+  기존 GitHub 토큰 쓰기는 `validateTokenWriteKey`를 사용한다. 같은 축의 새 외부 쓰기를 추가할 때
+  활성 키가 잘못된 테스트에서 외부 I/O가 호출되지 않음을 단언한다.
