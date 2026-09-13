@@ -22,7 +22,7 @@ export const en = {
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
     retry: "Try again",
-    appName: "Malmoi",
+    appName: "malmoi",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -59,7 +59,7 @@ export const en = {
       newProject: "New project",
       userMenu: "Account menu",
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
-      appHome: "Malmoi home",
+      appHome: "malmoi home",
     },
     /**
      * 프로젝트 화면 오른쪽의 320px 패널 (8-2). **탭 둘만 세우고 내용은 8-P가 채운다** —
@@ -476,7 +476,7 @@ export const en = {
       failed: "We could not sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
-      wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
+      wrongAccount: "Choose the same account you use to sign in to malmoi, then try again.",
     },
     signOut: {
       title: "Sign out",
@@ -554,7 +554,7 @@ export const en = {
     empty: {
       connect: {
         title: "Connect your GitHub account",
-        description: "The connection is only used to see which repositories have the Malmoi app installed.",
+        description: "The connection is only used to see which repositories have the malmoi app installed.",
         action: "Connect GitHub",
         reauthorize: "Reconnect GitHub",
       },
@@ -564,7 +564,7 @@ export const en = {
       install: "Install the app",
       addRepos: "Add repositories to the installation",
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the Malmoi app on the repository.",
+      noLink: "Ask your administrator to install the malmoi app on the repository.",
       afterInstall: "Refresh this page once you're done.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
@@ -1307,10 +1307,10 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "No GitHub account has the Malmoi app installed. Install the app first.",
+      "no-installations": "No GitHub account has the malmoi app installed. Install the app first.",
       "no-repos": "This installation has no repositories selected. Add one in your GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      "no-candidates": "We couldn't find locale files. Malmoi needs locale files in 2 or more languages.",
+      "no-candidates": "We couldn't find locale files. malmoi needs locale files in 2 or more languages.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       "tree-truncated": "This repository has too many files to search. Setting the path yourself hits the same limit.",
       "base-branch-missing": "We can't read the default branch. Check that the repository has commits.",
