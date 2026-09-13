@@ -1,7 +1,7 @@
 "use client";
 
 import { LogOut, MonitorSmartphone } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startSessionRevocation } from "@/app/(edit)/account/actions";
@@ -28,8 +28,15 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   /** 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 이름만 쓴다. */
   confirmProvider: string | null;
 }) {
+  /**
+   * ⚠️ **성공하면 여기서 돌아오지 않는다** — Action이 provider로 `redirect`한다. 그래서 **다음 줄에
+   * 도달했다는 것 자체가 실패**이고, 그때 Dialog를 닫아야 구역 Alert가 보인다. 안 닫으면 실패
+   * 사유가 자기를 띄운 Dialog 뒤에 가려진다.
+   */
+  const [open, setOpen] = useState(false);
   const [failed, submit, pending] = useActionState(async () => {
     await startSessionRevocation();
+    setOpen(false);
     return true;
   }, false);
   // 제출 실패는 `?sessionRevocation=invalid`·`=unavailable`과 같은 문구로 접힌다 — 할 일이 같다.
@@ -53,7 +60,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
         name={m.account.sessions.title}
         detail={m.account.sessions.description}
       >
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button variant="default" loading={pending}>{m.account.sessions.title}</Button>
           </DialogTrigger>

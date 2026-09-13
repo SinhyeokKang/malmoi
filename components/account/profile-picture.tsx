@@ -25,13 +25,19 @@ import { uploadRejectMessage } from "@/lib/upload/message";
 export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  /**
+   * ⚠️ **`useTransition`의 `pending` 하나를 둘이 나눠 쓰면 스피너가 엉뚱한 버튼에 선다** —
+   * [Delete]를 눌렀는데 [Image upload]가 도는 것처럼 보인다. 도는 것이 무엇인지는 **스피너 위치**가
+   * 말하는 유일한 신호이므로(`Button`이 라벨을 안 바꾼다) 어느 쪽인지를 따로 기억한다.
+   */
+  const [running, setRunning] = useState<"upload" | "delete" | null>(null);
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
         <FileInput
           accept="image/png,image/jpeg"
-          loading={pending}
+          loading={pending && running === "upload"}
           onPick={(file) => {
             setFailure(null);
             if (file === null) return;
@@ -43,9 +49,11 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             }
             const form = new FormData();
             form.set("image", file);
+            setRunning("upload");
             startTransition(async () => {
               const result = await uploadProfileImage(form);
               setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              setRunning(null);
             });
           }}
         >
@@ -54,12 +62,14 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
         <Button
           variant="ghost"
           disabled={!hasPicture}
-          loading={pending && hasPicture}
+          loading={pending && running === "delete"}
           onClick={() => {
             setFailure(null);
+            setRunning("delete");
             startTransition(async () => {
               const result = await deleteProfileImage();
               setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              setRunning(null);
             });
           }}
         >
