@@ -143,13 +143,19 @@ function walk(dir: string, base = ""): string[] {
   return out;
 }
 
-/** 라우트 그룹 `(edit)`은 URL에 없고 예외 목록도 URL 기준이라 지운다. */
+/** 그룹·슬롯은 URL에 없고 (.) 인터셉트는 같은 층의 경로다 — 파일 경로로 matcher를 검사하면 오판한다. */
 function normalize(rel: string): string {
   return rel
     .split("/")
-    .filter((part) => !(part.startsWith("(") && part.endsWith(")")))
+    .filter((part) => !part.startsWith("@") && !(part.startsWith("(") && part.endsWith(")")))
+    .map((part) => part.replace(/^\(\.\)/, ""))
     .join("/");
 }
+
+it("인터셉트와 직접 진입을 같은 공개 경로로 판정한다", () => {
+  expect(normalize("(edit)/projects/@modal/(.)new/page.tsx")).toBe("projects/new/page.tsx");
+  expect(normalize("(edit)/projects/new/page.tsx")).toBe("projects/new/page.tsx");
+});
 
 const ENTRY_POINTS = walk(APP).map((rel) => ({
   rel,
@@ -395,7 +401,9 @@ describe("죽은 라우트 링크", () => {
  */
 describe("쿼리 파라미터의 수신자", () => {
   const ROUTES_SOURCE = readFileSync(join(APP, "../lib/routes.ts"), "utf8");
-  const PAGES = ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) => ({
+  // 링크·쿼리의 수신자는 직접 진입 페이지다. 같은 URL의 null 슬롯을 고르면 수신 계약이 없는 것으로 오판한다.
+  // 슬롯의 인가 검사는 위 ENTRY_POINTS 전수 검사에 그대로 남는다.
+  const PAGES = ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx") && !e.rel.split("/").some((part) => part.startsWith("@"))).map((e) => ({
     shape: shape("/" + e.path.replace(/\/?page\.tsx$/, "")),
     source: e.source,
     path: e.path,

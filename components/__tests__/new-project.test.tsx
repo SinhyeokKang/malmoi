@@ -33,7 +33,7 @@ const user = userEvent.setup();
 const mocks = vi.hoisted(() => ({
   listRepoBranches: vi.fn(), detectRepoFormats: vi.fn(), loadCandidateSample: vi.fn(),
   createProject: vi.fn(), confirmManualFormat: vi.fn(), runFirstIngest: vi.fn(),
-  router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
+  router: { back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
 }));
 vi.mock("@/app/(edit)/projects/actions", () => mocks);
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router }));
@@ -63,9 +63,9 @@ async function select(trigger: string, optionText: string) {
   if (!option) throw new Error(`Missing option: ${optionText}`);
   await act(async () => { await user.click(option); });
 }
-async function mount() {
+async function mount(closeMode: "back" | "list" = "list") {
   await render(<NewProject repos={repos} listError={undefined} installUrl={null} now="2026-09-13T00:00:00Z"
-    initialError={undefined} backQuery={{}} adapters={[
+    initialError={undefined} backQuery={{ q: "format" }} closeMode={closeMode} adapters={[
       { adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "i18n/{locale}.json" },
       { adapter: "yaml-catalog", layout: "per-locale", label: "YAML", example: "i18n/{locale}.yaml" },
     ]} />);
@@ -502,4 +502,17 @@ it("접힌 목록의 옵션이 키 수와 `Most keys`를 든다", async () => {
   expect(label("l00")).toBe("l00 · 9 keys · Most keys");
   expect(label("l01")).toBe("l01 · 4 keys");
   expect(label("l05")).toBe("l05");
+});
+
+
+it.each(["back", "list"] as const)("호출부가 정한 닫기 경로를 따른다: %s", async (closeMode) => {
+  await mount(closeMode);
+  await click(find(document.body, 'button[aria-label="Close"]'));
+  if (closeMode === "back") {
+    expect(mocks.router.back).toHaveBeenCalledOnce();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+  } else {
+    expect(mocks.router.replace).toHaveBeenCalledWith("/projects?q=format");
+    expect(mocks.router.back).not.toHaveBeenCalled();
+  }
 });

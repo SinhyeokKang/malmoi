@@ -244,13 +244,14 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
     expect(nested).toEqual([]);
   });
 
-  it("각 페이지의 체인에 콘텐츠 패널이 정확히 하나다", () => {
+  it("일반 페이지는 패널 하나, 모달 슬롯은 기존 화면에 패널을 추가하지 않는다", () => {
     const wrong = found
       .map((rel) => ({
         rel,
         count: chain(rel).filter((f) => readFileSync(f, "utf8").includes("<ContentPanel")).length,
       }))
-      .filter((r) => r.count !== 1);
+      // 슬롯은 독립 화면이 아니라 children의 기존 패널에 겹친다. 여기서 1을 요구하면 패널이 중첩된다.
+      .filter((r) => r.count !== (r.rel.startsWith("projects/@modal/") ? 0 : 1));
     expect(wrong).toEqual([]);
   });
 });
