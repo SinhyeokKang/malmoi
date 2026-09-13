@@ -1647,6 +1647,29 @@ PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. �
 대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
 실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
 
+### 6.8 표시 이름의 소유권 (2026-09-13)
+
+`User.name`은 **사용자 소유**이고 `User.email`은 provider 소유다. 이메일을 고칠 수 없는 근거는
+초대 대조가 검증된 주소 위에 선다는 것이고(§6.02), **그 논증은 이메일 축에서만 성립한다** — 이름은
+멤버 목록·초대에서 남이 나를 알아보는 값이라 provider의 표시 이름이 그 자리에 맞지 않을 수 있다.
+
+`updateProfileName`은 세션의 `userId`로만 행을 쓰고, `requireUser` 뒤에 `planNameSave`(트림 · 빈
+문자열 거부 · 코드포인트 상한)를 지난다. 거부는 **값**으로 돌아온다 — 던지면 사유가 `unavailable`로
+뭉개져 화면이 무엇을 고치라고 말하지 못한다. 무효화는 `revalidatePath("/", "layout")`이다(셸
+아바타·사용자 메뉴가 같은 값을 읽는다).
+
+⚠️ **`User.name`·`User.image`는 `User.email`과 같은 PII 봉투 대상이다** — `encodeUserFields` /
+`decodeUser`의 `["name","image"]` 루프가 그 둘을 봉인·복호한다. **평문을 직접 쓰면 다음
+`decodeUser`가 `CredentialError`로 죽고 그 사용자의 로그인·멤버 조회가 통째로 막힌다.**
+`prisma/schema.prisma`가 2026-09-13까지 그 사실을 `email`에만 적어 두어 스키마만 읽고 구현하면
+틀리는 자리였고, 지금은 세 컬럼 모두 주석을 든다.
+
+⚠️ **그 값을 덮을 수 있는 통로는 `credentialAdapter.updateUser` 하나이고, OAuth 재로그인은 그
+메서드를 부르지 않는다**(§6.6의 `planEmailRefresh` 문단과 같은 사실). 이름을 지키는 것이 그 계약
+하나뿐이므로 **양쪽을 따로 고정한다** — `adapter.test.ts`가 "부르면 덮는다", `access.test.ts`가
+"재로그인의 쓰기는 `email`·`emailLookup` 둘뿐"이다. **둘이 한 왕복에서 만나는 것을 보는 자리는
+`postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
+
 ## 7. Supabase / Prisma
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
