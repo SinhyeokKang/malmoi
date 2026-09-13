@@ -1626,6 +1626,20 @@ GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한�
 
 `credentialIO`는 Prisma/crypto 예외를 원인 객체 없는 고정 오류로 바꾼다. `auth.ts`는 오류 타입만, `logFailure`는 HTTP 상태 또는 **오류 생성자 이름**만 기록한다(§6.5.1). 메시지·cause·암호문·lookup·키를 로그에 남기지 않는다. Auth.js SessionTokenError를 통한 readSession 장애 판정은 유지한다.
 
+### 6.7 프로필 이미지 저장 경계 (2026-09-13, 구현 완료·실 Blob 검증/배포 대기)
+
+`lib/upload/`는 사용자 프로필 사진 전용이다. `uploadProfileImage`·`deleteProfileImage`는 세션의
+`userId`로만 User 행을 읽고 쓰며, 프로젝트 멤버십을 요구하지 않는다. **검증된 이메일로 가입한
+비멤버도 공개 Vercel Blob 쓰기에 접근할 수 있고, 호출 빈도 제한은 없다.** 파일당 800,000바이트
+상한은 요청 횟수·비용 상한이 아니다. 화면 소비자 유무를 인가로 간주하지 않는다. 이번 구현에는
+쿨다운·추가 스키마를 넣지 않았으며, 배포 시 이 노출과 저장소 사용량을 확인한다.
+
+PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. 난수 키로 교체마다 URL이 바뀌며
+`User.image`는 PII 봉투에 넣는다. 쓰기 키 검증은 Blob 업로드보다 먼저다. 사용자 행 잠금 안에서
+이전 URL 조회와 DB 갱신을 직렬화하고, 이전 파일은 커밋 이후에만 지운다. 삭제는 복호화된 URL에
+대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
+실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
+
 ## 7. Supabase / Prisma
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
@@ -1701,4 +1715,3 @@ GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한�
   plain/block scalar 의미가 따옴표 스캐너와 달라 직접 구문을 추정하면 우회와 오탐이 함께 났고
   (POSTMORTEM 2026-09-10), 실제 Lexer·CST로 옮기면서 내부 구조에 붙었다. 버전을 올릴 때 red를
   내는 것은 `budget.test.ts`뿐이라 스택 표에 그 사실을 적었다.
-
