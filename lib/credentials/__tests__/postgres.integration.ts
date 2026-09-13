@@ -85,7 +85,7 @@ it("backfill preserves IDs, FKs, invitations and expiry; a second run is a no-op
   await convertCredentials(prisma, { mode: "backfill", ...cutover });
   const users = await prisma.user.findMany();
   expect(users.map(u => u.id).sort()).toEqual([ids.u1, ids.u2]);
-  expect(decodeUser(users.find(u => u.id === ids.u1)!)).toMatchObject({ email: "alice@example.com", name: "Alice" });
+  expect(decodeUser(users.find(u => u.id === ids.u1)!)).toMatchObject({ email: "alice@example.com", name: "Alice", image: "https://images.example/alice" });
   expect(await prisma.projectInvitation.findUnique({ where: { id: ids.i1 } })).toMatchObject({ tokenHash: "unchanged-hash", projectId: ids.p1, invitedBy: ids.u1 });
   expect(await prisma.projectMember.count()).toBe(1);
   expect(await prisma.session.findMany()).toHaveLength(1);
