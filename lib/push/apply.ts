@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
 import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
@@ -67,6 +68,18 @@ export type ApplyOptions = {
    * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
    */
   previousBaseLocale: string | null;
+  /**
+   * 이 적재의 **결과** — 완전 성공이면 생략(또는 null), 일부가 빠졌으면 `"partial-import"`
+   * (projects-list design §3.35).
+   *
+   * ⚠️ **같은 트랜잭션에서 확정되는 것이 요지다.** `applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데
+   * 목록만 실패로 남는 창이 생긴다.
+   *
+   * ⚠️ **`previousBaseLocale`과 달리 optional이다** — 빠졌을 때의 기본이 **성공**이고 그것이
+   * 안전한 쪽이기 때문이다(이전 실패를 비운다). 저쪽은 빠지면 전 키에 검토 표시가 붙어 기본값이
+   * 존재할 수 없다.
+   */
+  importOutcome?: ImportFailureCode | null;
 };
 
 export async function applyPush(
@@ -139,7 +152,7 @@ export async function applyPush(
     // StringKey insert — id를 JS에서 만든다. cuid() 기본값은 Prisma 클라이언트가 적용하는
     // 것이라 raw SQL에는 오지 않는다.
     ...(plan.toInsert.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "updatedAt")
+      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "createdAt", "updatedAt")
       SELECT * FROM unnest(
         ${insertIds}::text[],
         ${plan.toInsert.map(() => projectId)}::text[],
@@ -150,6 +163,9 @@ export async function applyPush(
         ${plan.toInsert.map((k) => k.description ?? null)}::text[],
         ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
+        -- ⚠️ createdAt은 INSERT에만 있다 — 아래 UPDATE가 건드리면 살아 돌아온 키가 매번
+        -- "새 키"로 다시 잡힌다 (projects-list design §8). 시계가 하나인 이유는 위 주석과 같다.
+        ${plan.toInsert.map(() => now)}::timestamp[],
         ${plan.toInsert.map(() => now)}::timestamp[]
       )`]),
 
@@ -269,6 +285,11 @@ export async function applyPush(
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),
+        /**
+         * **임포트 결과를 데이터와 같은 트랜잭션에서 확정한다** (projects-list design §3.35).
+         * 진행 표시는 어느 쪽이든 비운다 — 적재가 끝났으므로 돌고 있는 것이 없다.
+         */
+        ...importOutcomeFields(options.importOutcome ?? null),
       },
     }),
   ];

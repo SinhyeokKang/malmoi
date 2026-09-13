@@ -51,6 +51,7 @@ import {
 } from "@/lib/onboarding/detect";
 import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
 import type { OnboardError } from "@/lib/onboarding/message";
+import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
 import { isPathSafeLocale } from "@/lib/locale-code";
@@ -1017,9 +1018,24 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     return { ok: false, error: "ingest-failed" };
   }
 
+  /**
+   * **여기서부터가 "돌고 있다"** (projects-list design §3.35) — 인가·준비 확인을 지났고 다음 줄이
+   * 리포를 읽는다. 그 앞에서 세우면 거부된 호출까지 목록에 진행 중으로 뜬다.
+   *
+   * ⚠️ **끝내는 것은 시작한 쪽이다.** 조기 반환이 여섯이라 하나라도 빠지면 그 프로젝트가 영영
+   * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
+   */
+  const startedAt = new Date();
+  await markImportStarted(prisma, projectId, startedAt);
+  const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
+    finishImportRun(prisma, { projectId, startedAt, code });
+
   const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
   const snapshot = await reader.snapshot(project.baseBranch);
-  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+  if (snapshot.status !== "ok") {
+    await failRun();
+    return { ok: false, error: snapshotError(snapshot) };
+  }
 
   const paths = snapshot.files.map((f) => f.path);
   /**
@@ -1033,12 +1049,14 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   let files: AdapterFile[];
   try { files = await readFiles(reader, snapshot, attempted); }
   catch (error) {
+    await failRun();
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
     throw error;
   }
   const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
   if (confirmed.status !== "ok") {
     logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
+    await failRun();
     return { ok: false, error: "ingest-failed" };
   }
 
@@ -1057,6 +1075,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       blobs.set(extra.path, extra.content);
     }
   } catch (error) {
+    await failRun();
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
     throw error;
   }
@@ -1086,6 +1105,12 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
      * 경로를 나열하지 않는 이유는 POSTMORTEM 2026-09-09과 같다 — 다음에 생기는 화면이 조용히 빠진다.
      * `saveTranslation`이 이미 이 형이다.
      */
+    /**
+     * ⚠️ **키가 0이면 `applyPush`를 타지 않았다** — 그쪽 트랜잭션이 결과를 확정하므로, 안 탄 갈래만
+     * 여기서 정리한다. 그때 `failed`는 최소 1이라(`ingest.ts`) 이 경우가 곧 부분 실패다.
+     */
+    if (result.count === 0) await failRun("partial-import");
+
     revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
     // 모달 뒤 목록의 `Waiting for first import` 배지가 적재 뒤에 사라져야 한다.
@@ -1095,6 +1120,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
+    await failRun();
     return { ok: false, error: "ingest-failed" };
   }
 }

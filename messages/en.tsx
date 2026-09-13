@@ -338,6 +338,27 @@ export const en = {
        */
       needs_reconnect: "Disconnected",
     },
+    /**
+     * 마지막 임포트가 실패했을 때의 **사유 문장** (projects-list design §3.35).
+     *
+     * ⚠️ **저장된 것은 코드 하나다** — 파서 원문·파일 경로·행 번호는 DB에 들어가지 않는다.
+     * `AdapterError`가 모든 포맷에 행 번호를 주지 않으므로 `line 41` 같은 값을 지어낼 수도 없고,
+     * 이 문장은 **번역자도 보는 목록**에 나가므로 파서 어휘를 쓰지 않는다 (DESIGN §10).
+     * 상세 진단은 CI 로그에 남아 있고 화면은 그리로 보낸다.
+     *
+     * ⚠️ **`contactOwner`가 EDITOR 갈래다** — `View details`가 `project:settings` 뒤라
+     * 그 링크를 보여주면 눌러서 거절당하는 경험이 된다 (PRODUCT §3).
+     */
+    importFailure: {
+      parseFailed: "Locale files could not be parsed.",
+      parseCrashed: "A locale file stopped the parser.",
+      invalidLocaleData: "Some locale entries could not be read.",
+      prepareFailed: "The locale format could not be read on the last import.",
+      /** 데이터는 들어갔다 — "실패"가 아니라 "일부가 빠졌다"여야 사용자가 목록의 숫자를 믿는다. */
+      partialImport: "Some locale files were left out of the last import.",
+      importFailed: "The last import did not finish.",
+      contactOwner: "Ask a project owner to check the import.",
+    },
   },
 
   /**
@@ -1000,6 +1021,15 @@ export const en = {
       run: "Run first import",
       running: "Importing…",
       failed: "The import didn't finish. Try again in a moment.",
+      /**
+       * 마지막 임포트가 남긴 실패의 **복구 안내** (projects-list design §3.35). 사유 문장은
+       * `m.projects.importFailure`가 내고 여기는 "그래서 뭘 하면 되나"만 말한다.
+       *
+       * ⚠️ **갈래가 둘인 이유는 고칠 자리가 다르기 때문이다** — 첫 적재 전이면 이 화면의 버튼이
+       * 다시 돌리고, 이미 적재된 뒤면 그 버튼이 `not-awaiting`이라 고칠 곳이 대상 리포의 CI다.
+       */
+      importRetry: "Fix the locale files in the repository, then run the first import again.",
+      importRerun: "Fix the locale files in the repository and re-run the workflow there.",
     },
 
     token: {

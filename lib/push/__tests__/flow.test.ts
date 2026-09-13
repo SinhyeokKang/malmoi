@@ -301,6 +301,10 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         // ⚠️ `declaredBaseLocale`이 **없다** — base가 안 바뀐 push는 허가를 쓰지 않았다 (위 두 케이스).
         lastCommitSha: "a".repeat(40),
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
+        // 임포트 결과도 **같은 문장**에 실린다 (projects-list design §3.35) — 뒤에 따로 쓰면
+        // 데이터는 들어갔는데 목록만 실패로 남는 창이 생긴다.
+        lastImportError: null,
+        lastImportStartedAt: null,
       },
     }]);
   });

@@ -25,7 +25,14 @@ const hoisted = vi.hoisted(() => ({
   applyPush: vi.fn(),
   prisma: {
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
-    project: { findUnique: vi.fn(), findMany: vi.fn() },
+    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
+    // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
+    project: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   },
 }));
 

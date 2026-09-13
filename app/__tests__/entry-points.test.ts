@@ -40,6 +40,11 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
   "api/push/route.ts",
+  /**
+   * CI 파싱 실패 보고 (projects-list design §3.35). **세션 인가가 아니라 그 프로젝트의 push 토큰이
+   * 대신한다** — `/api/push`와 같은 계보이고, 호출자가 사람이 아니라 GitHub Actions다.
+   */
+  "api/push/failure/route.ts",
   "api/pull/route.ts",
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",

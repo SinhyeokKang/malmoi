@@ -271,3 +271,28 @@ describe("보관 — 다섯 화면이 같은 갈래를 그린다 (7단계)", () 
     }
   });
 });
+
+/**
+ * **마지막 임포트 실패가 설정 화면에 닿는다** (projects-list design §3.35).
+ *
+ * 코드를 저장해 놓고 읽는 쪽을 안 만들면 실패가 통째로 무음이다 — 이 리포가 정확히 그 사고를
+ * 밟았다 (POSTMORTEM 2026-09-06: 사유를 쿼리로 넘겨놓고 읽는 쪽이 없어 거부가 조용했다).
+ */
+describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
+  const src = read(SETTINGS);
+
+  it("컬럼을 select하고 판정 함수로 거른다 — DB 문자열을 직접 인덱싱하지 않는다", () => {
+    expect(src).toContain("lastImportError");
+    expect(src).toContain("isImportFailureCode");
+  });
+
+  it("사유를 사전이 낸 문장으로 그린다 — 파서 원문을 화면에 복제하지 않는다", () => {
+    expect(src).toContain("importFailureMessage");
+  });
+
+  /** 첫 적재 전이면 이 화면의 버튼이, 이미 적재된 뒤면 대상 리포의 CI가 고칠 자리다. */
+  it("복구 안내가 readiness로 갈린다", () => {
+    expect(src).toContain("importRetry");
+    expect(src).toContain("importRerun");
+  });
+});
