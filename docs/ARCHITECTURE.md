@@ -1364,11 +1364,11 @@ callback 네 곳이며, Auth.js의 추가 Account 거부와 GitHub App 자격증
 연결 가로채기는 회수와 병합 사이에 놓고, 모든 시작점이 `clearAuthRoundtripCookies()`로 세 목적의
 nonce/state 쿠키를 먼저 지운다. 제품 완료 표식과 정본 전면 반영은 프로덕션 반영 뒤에 한다.
 
-⚠️ **두 가로채기의 배타성은 구조가 아니라 순서와 쿠키 정리가 만든다.** `withRevocation`이 **바깥**,
-`withLoginLink`가 **안쪽**이고, 각자 state 쿠키를 **다른 이름·salt**로 쓰며, **시작하는 쪽이 상대의
-쿠키를 먼저 지운다**(양방향). intent 판정이 각자 쿠키 셋의 OR이라 암호적 결합이 없어서다 — 회수를
-중단한 사용자가 곧바로 병합을 시작하면 회수가 그 callback을 먹고 Location을 덮는다
-(POSTMORTEM 2026-09-10과 같은 계보).
+⚠️ **세 가로채기의 배타성은 순서와 쿠키 정리가 만든다.** 로컬 구현의 중첩 순서는
+`withRevocation(withConnect(withLoginLink(...)))`이며 각자 state 쿠키의 이름·salt를 가른다.
+시작점은 인자 없는 `clearAuthRoundtripCookies()` 한 자리에서 세 목적의 쿠키를 전부 지운다.
+intent는 쿠키 존재로도 켜지므로, 연결 시작이 OAuth state를 쓴 뒤 실패하면 같은 정리를 다시 한다.
+버려진 왕복이 다음 callback을 먹는 POSTMORTEM 2026-09-10 계열을 막기 위한 계약이다.
 
 ⚠️ **로그인 `Account`가 둘 이상이면 `planEmailRefresh`가 언제나 `keep`이다.** 아니면 `User.email`이
 **마지막으로 로그인한 provider에 따라 뒤집히고** 초대 대조가 그 값 위에 선다. 대가는 병합한 사용자의
