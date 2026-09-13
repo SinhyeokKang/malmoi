@@ -167,3 +167,53 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
     expect(PAGE.map(code).join("\n")).not.toContain("overflow-y-auto");
   });
 });
+
+/**
+ * **Meter의 치수는 시안이 정본이다** (projects-list design §11.3·§11.5).
+ *
+ * ⚠️ **이전 사이클(`new-project-modal`)에서 같은 캔버스를 주고도 구현이 시안과 갈렸다.** 원인은
+ * "비슷한 유틸리티로 옮긴 것"이다 — `gap-2.5`(10)로 `gap 16`을, `rounded-sm`(8)로 `radius 4`를
+ * 옮기면 `tsc`도 `pnpm test`도 조용하다. 그래서 리터럴을 **전수로 센다.**
+ *
+ * ⚠️ **소스 검사만으로는 부족하다** — 클래스가 맞아도 부모의 flex 규칙이 그것을 이긴다
+ * (POSTMORTEM 2026-09-11: 게이트 셋과 소스 스캔 여섯이 green인데 입력이 28px였다). 실측은
+ * `/design-sync`가 든다.
+ */
+describe("로케일 Meter — 캔버스 값 그대로", () => {
+  const METER = code("components/projects/locale-meter.tsx");
+
+  it.each([
+    ["칸 폭 100", "w-25"],
+    ["라벨↔바 6", "gap-1.5"],
+    ["바 높이 4", "h-1"],
+    ["바 radius 999", "rounded-full"],
+    ["트랙 8%", "bg-foreground/[0.08]"],
+    ["완료 rgba(10,10,10,0.85)", "bg-foreground/85"],
+    ["검토 대기 #f59e0b", "bg-amber-500"],
+  ])("%s", (_label, literal) => {
+    expect(METER).toContain(literal);
+  });
+
+  /** 폭만 데이터다 — 나머지 치수를 인라인 스타일로 만들면 그 값이 검사 밖으로 나간다. */
+  it("인라인 스타일은 폭 둘뿐이다", () => {
+    expect([...METER.matchAll(/style=\{\{/g)]).toHaveLength(2);
+    expect(METER).toContain("width: `${done}%`");
+    expect(METER).toContain("width: `${review}%`");
+  });
+
+  /**
+   * ⚠️ **국기는 `LocaleFlag`를 재사용한다** (design §11.35) — 리포에 253개가 이미 있고 치수·radius가
+   * 시안과 같다. 새 자산도, 새 매핑도, `rounded-[2px]`도 만들지 않는다.
+   */
+  it("국기를 새로 만들지 않는다", () => {
+    expect(METER).toContain("LocaleFlag");
+    expect(METER).not.toContain("rounded-[2px]");
+    expect(METER).not.toContain("flagFor");
+    expect(METER).not.toContain("/flags/");
+  });
+
+  /** ⚠️ **알약(`LocaleBadge`)은 쓰지 않는다** — 배경과 orphaned 갈래가 Meter 라벨에 따라온다. */
+  it("LocaleBadge를 쓰지 않는다", () => {
+    expect(METER).not.toMatch(/\bLocaleBadge\b/);
+  });
+});
