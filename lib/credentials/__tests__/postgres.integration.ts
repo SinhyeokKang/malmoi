@@ -242,8 +242,23 @@ it.each(["github", "google"] as const)("installed Auth.js %s callback stores dig
   const publicResponse = await read(raw);
   expect(await publicResponse.json()).toMatchObject({ user: { id: session.userId, email: `${provider}@example.com` } });
   expect(await (await read(session.sessionToken)).json()).toBeNull();
+  /**
+   * ⚠️ **사용자가 고친 이름이 재로그인을 넘긴다** (account-settings 태스크 2·10b). `/account`의
+   * `updateProfileName`이 `User.name`을 사용자 소유로 만들었고, 그 값을 덮을 수 있는 통로는
+   * 어댑터의 `updateUser` 하나다 — **OAuth 재로그인은 그 메서드를 부르지 않는다**는 것이 계약이다.
+   *
+   * ⚠️ **단위 테스트가 그 계약의 양쪽을 따로 든다**(`adapter.test.ts`가 "부르면 덮는다",
+   * `access.test.ts`가 "재로그인의 쓰기는 이메일 둘뿐"). **둘이 실제로 한 왕복에서 만나는 것을
+   * 보는 자리가 여기뿐이다** — provider가 profile을 어떻게 주든 봉투 안의 이름이 살아남는지는
+   * 실 Auth.js 핸들러를 지나야만 알 수 있다.
+   */
+  await prisma.user.update({ where: { id: session.userId }, data: encodeUserFields(session.userId, { name: "Edited by the user" }) });
   const relogin = await handlers.GET(new NextRequest(`http://localhost/api/auth/callback/${provider}?code=fixture`, { headers: { cookie: `authjs.session-token=${raw}` } }));
   expect(relogin.headers.get("location")).toBe("http://localhost");
+  const afterRelogin = decodeUser(await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { id: true, name: true, email: true } }));
+  expect(afterRelogin.name).toBe("Edited by the user");
+  // 저장된 것은 평문이 아니다 — 봉투를 지나지 않으면 다음 `decodeUser`가 통째로 죽는다.
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { name: true } })).name).toMatch(/^enc:v1:/);
   expect(await prisma.user.count()).toBe(1);
   expect(await prisma.account.count({ where: { userId: session.userId } })).toBe(1);
   await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: new Date(Date.now() + 10000) } });
