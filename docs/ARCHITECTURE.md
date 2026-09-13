@@ -1353,9 +1353,16 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 ⚠️ **`safePrismaAdapter.linkAccount`의 게이트는 한 줄도 안 바뀌었다** — 확인 왕복은 **기존 계정으로 하는
 평범한 로그인**이라 그 메서드에 도달하지 않고(`handle-login.js`가 `getUserByAccount` 뒤 반환한다),
 붙일 행은 `finishLink`가 직접 쓴다. **그 게이트가 문서화한 정책의 뜻만 좁아졌다**: *"로그인 수단은
-User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. 옆문은 `finishLink` 하나이고 인가 조건이
-셋이다(이메일 동등 · 두 provider의 소유 증명 · 단일 사용 challenge). **그 조건을 적을 수 없는 진입점은
-만들지 않는다** — `/account`에 [Connect]가 없는 이유다.
+User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. `finishLink`의 인가 조건은
+이메일 동등 · 두 provider의 소유 증명 · 단일 사용 challenge다.
+
+**account-connect 로컬 구현 · 배포 대기**: 둘째 옆문 `lib/account-connect/store.ts`의 `finishConnect`는
+살아 있는 기존 세션 · 새 provider의 검증된 동일 이메일 · 세션/state에 묶인 일회용 challenge를 요구한다.
+User 락 뒤 challenge를 다시 읽고 조건부 소비와 Account 생성을 한 트랜잭션으로 처리한다.
+`account.create` 허용 목록은 `safe-adapter` · `login-link/store` · `account-connect/store` · GitHub App
+callback 네 곳이며, Auth.js의 추가 Account 거부와 GitHub App 자격증명 경계는 그대로다.
+연결 가로채기는 회수와 병합 사이에 놓고, 모든 시작점이 `clearAuthRoundtripCookies()`로 세 목적의
+nonce/state 쿠키를 먼저 지운다. 제품 완료 표식과 정본 전면 반영은 프로덕션 반영 뒤에 한다.
 
 ⚠️ **두 가로채기의 배타성은 구조가 아니라 순서와 쿠키 정리가 만든다.** `withRevocation`이 **바깥**,
 `withLoginLink`가 **안쪽**이고, 각자 state 쿠키를 **다른 이름·salt**로 쓰며, **시작하는 쪽이 상대의
