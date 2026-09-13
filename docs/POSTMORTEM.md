@@ -1291,3 +1291,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   를 실행했다. 기존 병합·회수에도 락 전 소유자 조회가 있으며 조건부 소비가 중복 쓰기를 막는다.
   그 경로의 기존 실패 어휘는 바꾸지 않았다. 새 일회용 경로는 중복 쓰기뿐 아니라 동시 재사용의
   반환 사유도 단언하고, 소유자 발견용 조회와 락 안의 유효성 조회를 구별한다.
+
+- **🔁 2026-09-13 — 2026-09-10 OAuth 목적 수명 항목 보강(account-connect 리뷰)**: `signIn`은
+  DB challenge 생성보다 먼저 state 쿠키를 쓴다. 그 뒤 URL에 state가 없거나 저장이 실패하면
+  nonce를 안 쓰는 것만으로는 정리가 끝나지 않았다. Claude 리뷰 후 세 실패 분기에서 공통 정리가
+  두 번 호출돼야 한다는 테스트가 red였고, 시작 실패 시 다시 정리하도록 바꿔 green을 확인했다.
+  정상 다음 callback 가로채기는 정적 분석에서 발견했으며 실 브라우저의 DB 장애 주입은 하지 않았다.
+  `rg -n 'signIn\(|beginConnect|clearAuthRoundtripCookies|console.error' 'app/(edit)/account/actions.ts' lib/account-connect/http.ts lib/account-connect/store.ts`
+  로 시작 전·실패 후 정리와 고정 단계 로그를 확인했다. 기존 `startSessionRevocation`의 같은 실패
+  잔존 형태는 이번 연결 기능 밖의 후속 후보로 남긴다. 예외 로그는 오류 원문·OAuth URL·토큰 없이
+  작업/단계만 기록한다. 저장 경계의 락 실패·락 뒤 소실·소비 count·쓰기 순서도 기본 `pnpm test`에
+  추가해 2026-09-10의 "격리 스위트만 검사한다" 공백을 줄였다.
