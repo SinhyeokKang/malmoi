@@ -288,6 +288,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 사라진다. 되옮길 것은 `header.tsx` 한 파일의 슬롯 배선이다.
 
 **빈 상태 넷**: 준비 전(readiness — OWNER는 설정으로 보낸다) · 로케일 없음 · 키 없음 · 필터 0행.
+⚠️ **준비 전만 이 파일 밖이다** — `components/project-not-ready.tsx`가 Home과 공유하는 정책·문구를 들고,
+2026-09-13까지 **혼자 중앙이 아니었다**(같은 날 보관 화면과 함께 맞췄다).
 전부 `EmptyState`이고 ⚠️ **패널 세로 중앙이다** (2026-09-11 — `PanelBody`가 `flex flex-col`, 빈 상태가
 `flex flex-1 items-center justify-center`. `/projects`와 같은 형이다): 위에 붙여 두면 1080 화면에서
 문구가 배너 바로 아래 한 줄로 뜨고 그 아래가 통째로 빈다. **표가 올 때는 아무 일도 안 한다** —
@@ -476,7 +478,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32 · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다 |
 | **Button `size` 셋** | `md` `h-9 rounded-md px-3`(기본 — 2026-09-11에 32에서 36으로 올렸다, 시안의 기본 버튼이 36이고 입력 셋도 같이 올라갔다) · `sm` `h-7 rounded-sm px-2 text-xs` · `lg` `h-10 rounded-lg px-4`(**셸 밖 카드 전용** — 로그인·초대 수락). ⚠️ **넷으로 늘리지 않는다** — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다. ⚠️ **radius가 base가 아니라 `size`에 붙어 있다**(§5) — base에 두고 size가 덮으면 cva가 충돌하는 클래스 둘을 내고 twMerge가 이기는 것에 기대게 된다. ⚠️ **`size="icon"`은 없다** — 정사각 아이콘 버튼은 `ghost` + 정사각 유틸이다(`user-menu.tsx`·칩 행의 초기화) |
-| **EmptyState** | ⚠️ **아이콘이 48px 원형 칩 안이다** (8-3 — `bg-foreground/5` + 아이콘 16). 맨 아이콘은 텍스트에 붙어 제목의 일부처럼 읽히는데 칩이 그것을 **그림 자리**로 만든다(시안은 아이콘 20인데 §6.8이 크기를 셋으로 고정한다). 제목 **`text-lg font-medium` + `mb-1`** (2026-09-11 — `--text-base`가 15px로 내려가 설명 14와 1px 차이가 됐다) ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` **`max-w-[46ch]`** 완전 문장 (2026-09-13 — 시안값. `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다) · 액션 **버튼 하나** · 일러스트 없음. ⚠️ **수직 중앙을 컴포넌트가 하지 않는다** — 표 안(`logs`·대기 초대)에서도 쓰여서 자리마다 다르다. `flex-1`은 호출부가 든다. ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11) — 칩 `mb-3` · 제목 `mb-1` · 액션 `mt-4`가 각자 여백을 들어 gap이 **거기에 더해지고**, 그러면 하나를 건드릴 때 세 간격이 함께 움직인다. 구조는 shadcn `Empty`와 1:1이고 **CLI를 돌리지 않는다**(Radix 없는 순수 마크업이다) |
+| **EmptyState** | ⚠️ **아이콘이 48px 원형 칩 안이다** (8-3 — `bg-foreground/5` + 아이콘 16). 맨 아이콘은 텍스트에 붙어 제목의 일부처럼 읽히는데 칩이 그것을 **그림 자리**로 만든다(시안은 아이콘 20인데 §6.8이 크기를 셋으로 고정한다). 제목 **`text-lg font-medium` + `mb-1`** (2026-09-11 — `--text-base`가 15px로 내려가 설명 14와 1px 차이가 됐다) ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` **`max-w-[46ch]`** 완전 문장 (2026-09-13 — 시안값. `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다) · 액션 **버튼 하나** · 일러스트 없음. ⚠️ **액션 래퍼가 `mt-4 flex flex-wrap items-center justify-center gap-2`다** (2026-09-13 사용자 실물) — 액션 둘(검색 0건, 아래 예외 2)을 호출부가 `<>`로 넘기므로 사이를 벌릴 자리가 거기뿐이고, `mt-4`만 들고 있으면 버튼 둘이 **간격 0으로 맞붙는다**. 바로 아래 "컨테이너 `gap` 금지"와 충돌하지 않는다: 그쪽은 칩·제목·설명·액션 **사이**의 수직 간격이고 이것은 액션 **안**의 수평 간격이다. ⚠️ **수직 중앙을 컴포넌트가 하지 않는다** — 표 안(`logs`·대기 초대)에서도 쓰여서 자리마다 다르다. `flex-1`은 호출부가 든다. ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11) — 칩 `mb-3` · 제목 `mb-1` · 액션 `mt-4`가 각자 여백을 들어 gap이 **거기에 더해지고**, 그러면 하나를 건드릴 때 세 간격이 함께 움직인다. 구조는 shadcn `Empty`와 1:1이고 **CLI를 돌리지 않는다**(Radix 없는 순수 마크업이다) |
 | **값 칩** | `text-mono bg-muted rounded px-2 py-1` — `text-xs`를 겹치지 않는다(§4.2). 블록 요소면 `inline-block` |
 | **코드 블록** | `<pre className="text-mono bg-muted overflow-x-auto rounded-md p-3">` + **블록 위 한 줄의 오른쪽**에 [Copy] `default`(아이콘 `Copy` → `Check`) → 라벨 교체 "Copied", 실패는 "Copy failed"(삼키면 사용자가 복사된 줄 알고 떠난다) |
 
@@ -769,12 +771,12 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ### 6.69 보관된 프로젝트 (2026-09-10, 7단계)
 
-`translation:write` 화면 **다섯**(Home·번역·언어·멤버·이력)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
+`translation:write` 화면 **다섯**(Home·번역·언어·멤버·이력)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. ⚠️ **패널 세로 중앙이다**(2026-09-13 — readiness(`project-not-ready.tsx`)와 함께 §6.4의 형으로 맞췄다: `PanelBody className="flex flex-col"` + 안쪽 래퍼 `flex-1 items-center justify-center`). 이 갈래엔 `PanelHeader`가 없어 화면에 그 블록 하나뿐인데, 위에 붙여 두면 1080에서 한 줄만 뜨고 그 아래가 통째로 빈다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
 
 ### 6.7 새 프로젝트 (`/projects/new`) — **`/projects` 위의 모달 네 단계** (2026-09-13)
 
 ⚠️ **라우트 하나를 대신하는 급의 모달이다** — 단계가 넷이고 실패 갈래가 열이라 "확인 대화상자"가
-아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 **880** · 높이가 뷰포트에 물린 고정 · 본문만 스크롤.
+아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 **800** · 높이가 뷰포트와 **800**에 물린 고정 · 본문만 스크롤.
 **뒤에 프로젝트 목록이 그대로 있고**, 닫으면 열기 직전의 `?q=`·`?filter=`를 들고 `/projects`로 간다.
 
 ⚠️ **`components/ui/dialog.tsx`를 쓰지도 고치지도 않는다.** 그 프리미티브는 Overlay가 고정
@@ -786,16 +788,16 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 | 요소 | 규칙 |
 |---|---|
-| 껍데기 | 폭 **880** (2026-09-13 사용자 — 핸드오프 800과 한때의 960 사이). 960의 근거였던 "800이면 ②의 값 셀이 ≈188px라 24자에서 잘린다"는 **좌측 300 + 표 `1fr 1fr`** 기준이었고, 좌측 240 + `1fr 2fr`인 지금 값 셀은 **800→≈291 / 880→≈344 / 960→≈397**이라 셋 다 그 문제를 넘긴다. ⚠️ **좌측 240과 `1fr 2fr`은 시안으로 되돌리지 않는다** — 그 둘까지 300·`1fr 1fr`로 가면 값 셀이 ≈244로 내려가 960으로 올렸던 이유가 되살아난다. · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값에 물린다**: `min-h-[min(80svh,calc(100svh-96px))] max-h-[calc(100svh-96px)]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
+| 껍데기 | 폭 **800 — 핸드오프 값** (2026-09-13 사용자. 880을 거쳐 돌아왔고 **②의 값이 덜 보이는 것을 감수한 결정이다**). 한때 960으로 올렸던 근거 "800이면 ②의 값 셀이 ≈188px라 24자에서 잘린다"는 **좌측 300 + 표 `1fr 1fr`** 기준이었고, 좌측 240 + `1fr 2fr`인 지금 값 셀은 **800→≈291 / 880→≈344**라 그 문제로 돌아가지 않는다. ⚠️ **좌측 240과 `1fr 2fr`은 시안으로 되돌리지 않는다** — 그 둘까지 300·`1fr 1fr`로 가면 값 셀이 ≈244로 내려가 그 이유가 정말로 되살아난다. · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값과 800에 물린다**: `min-h-[min(80svh,800px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **800이 `min-h`에도 들어간다**: CSS는 `min-height`가 `max-height`를 이기므로 상한만 막으면 1,100px 화면에서 하한이 이겨 상한이 없는 것과 같아진다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
 | 바닥 | 왼쪽 `Step n of 4`(`text-xs leading-[1.6]` muted) · `border-t`는 **`border-divider`**(#f0f0f0, §6.2) · 오른쪽 [Back]·[Next] `Button size="lg"`. ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. **①④에는 [Back]이 없다**(닫는 길은 X·Esc·backdrop / 되돌릴 것이 없다) |
 | 비활성 [Next] | **껍데기가 든다** — 흰 배경 + border + muted 글자 + `cursor-not-allowed`. 단계마다 다시 만들면 갈린다 |
-| ① 막힘 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator…"로 떨어진다. ⚠️ **검색 0건은 넷째 갈래다** — 요구하는 일이 다르다(검색어를 지워라) |
+| ① 막힘 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator…"로 떨어진다. ⚠️ **검색 0건은 넷째 갈래다** — 요구하는 일이 다르다(검색어를 지워라). ⚠️ **넷 다 본문 세로 중앙이다**(2026-09-13 사용자 실물 — `flex flex-1 items-center justify-center`): 껍데기가 `min-h`로 세로를 잡아 두므로 그냥 반환하면 칩·제목·설명이 헤더 바로 아래 뭉치고 그 아래 수백 px이 빈다. **검색 0건은 검색 필드를 위에 남기고** 그 아래 남은 높이의 중앙이라, 중앙을 잡는 것은 단계 루트(`flex-1`)다. ⚠️ **조회 실패(`Alert`)는 중앙이 아니다** — 폭 100% 배너라 빈 상태와 같은 자리에 서면 둘이 같은 부류로 읽힌다 |
 | ① 리포 목록 | 한 테두리(**r10**) 안의 `Radio` 행 — `padding:12` gap 12 = 라디오 16 + **글리프 칩 40 r10**(`folder-git-2` 20) + 텍스트열 `gap-0.5`(이름 **15/500** + 보조 줄 **14** `owner · pushed …`). 선택 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60`(muted 면에서 `muted-foreground`는 AA 미달) · 비선택 hover `bg-foreground/3`. 구분선은 **선택 행에 접하면 `border`(#e5e5e5), 아니면 `divider`(#f0f0f0)** — 그래서 `divide-y`가 아니라 행마다 `border-t`다. ⚠️ **`owner/name`이 sans다**(mono가 아니다). ⚠️ **`RadioGroup`에 `asChild`를 쓰지 않는다** — `<ul>`의 list role이 덮여 `<li>`가 고아가 된다(§6.4) |
 | ① 브랜치 | 고른 행 **아래로** 펼쳐지는 한 줄 — `border-t`(#e5e5e5) · `padding:12 12 12 80`(라디오 16 + 12 + 칩 40 + 12이라 **이름과 같은 세로선**) · gap 12로 [라벨 14/500 + `git-branch` 14][`Select` **220**×36][캡션 13/1.6 `text-foreground/60`]가 나란히 선다. 값은 **sans**다(mono가 아니다 — 읽는 값이다). `Select`(기본값 default branch). 300개 초과면 `Input`, 조회 실패면 읽기 전용 한 줄 + "Using the repository's default branch." — ⚠️ **실패를 "브랜치가 없다"로 그리지 않는다** |
 | ② 2단 | 좌 **240** 후보 `Radio` / 우 키·값 표. ⚠️ **키 행만 스크롤한다** — 툴바·헤더·총량 줄은 고정. 거터 16은 **껍데기 본문의 `gap-4`가 유일한 출처**다(안에서 또 래퍼를 세우지 않는다) |
 | ② 후보 행 형 | ①과 **같은 행 형**이다 — `padding:12` · gap 12 · 라디오 16 + **글리프 칩 40 r10**(`file-json-2`/`file-code-2` 20, ⚠️ **경로의 확장자로 가른다** — 어댑터 이름을 화면에 쓰지 않는다) + 텍스트열 `gap-0.5`(이름=**경로** 15/500 · 보조 14). 선택 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60` |
 | ② 표 | `Table` 프리미티브다 — `scrollable={false}` + 바깥 `role="region" tabIndex={0}`(안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다)가 스크롤을 들고, 그래야 `Th`의 `sticky`가 거기 붙는다. `Th` 배경은 **불투명 `bg-primary-foreground`**(§6.2) · 열 `1fr 2fr`(`table-fixed`) · `Td` 12/16 + **`whitespace-nowrap` 명시**(프리셋의 `whitespace-normal`과 twMerge 그룹이 달라 둘 다 살아남는다) · `Tr`에 `hover:bg-transparent`(읽기 전용이라 hover 신호를 주지 않는다) |
-| ② 예외 E | 후보 0개에도 **표 껍데기를 버리지 않는다** — 헤더는 서 있고 `TableBody`만 빠진다(매칭 순간 레이아웃이 안 튄다). ⚠️ **툴바는 통째로 없다** — 고를 로케일이 없는데 트랙 자리를 남기면 탐지 중 화면과 픽셀 단위로 같아 "멈췄다"로 읽힌다 |
+| ② 예외 E | 후보 0개에도 **표 껍데기를 버리지 않는다** — 헤더는 서 있고 `TableBody`만 빠진다(매칭 순간 레이아웃이 안 튄다). ⚠️ **툴바는 통째로 없다** — 고를 로케일이 없는데 트랙 자리를 남기면 탐지 중 화면과 픽셀 단위로 같아 "멈췄다"로 읽힌다. ⚠️ **빈 상태는 제목 + 설명 둘 다 든다**(시안 3a — 2026-09-13까지 제목만이었다. 겹치던 뒷문장은 좌측 수동 지정 힌트에서 뺐다: 같은 문장을 한 화면에 두 번 두지 않는다). ⚠️ **표 헤더 *아래* 남은 높이의 중앙이다**(핸드오프 3a): 중앙을 잡는 것이 **스크롤 컨테이너**(`flex flex-col` + 자식 `flex-1`)여야 하고, 바깥 박스가 잡으면 헤더까지 포함한 중앙이 되어 블록이 위로 밀린다. 그 전환의 대가로 **표에 `shrink-0`이 붙는다** — flex 아이템의 기본 `shrink:1`이 행 많은 표를 누른다 |
 | ② 후보 행 | 선택 행 `bg-muted font-medium`. ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
 | ② 세그먼트 | 후보의 **로케일 전부**. **다섯 이상이면 `Select`로 접힌다** |
 | ② 값 셀 | 정말 비었으면 **빈 칸**, 못 읽었으면 **"We couldn't read this file."** ⚠️ **둘을 가른다** — 이 화면의 목적이 "ko 열이 비어 있다"를 보이는 것이라 그 구별이 기능 자체에 걸린다 |
