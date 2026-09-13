@@ -253,6 +253,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
 - **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 서버 로그). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
+- **⚠️ 제품 이름은 화면에서도 `malmoi`다 — 문장 첫 자리도 소문자다.** `lib/i18n/__tests__/brand-spelling.test.ts`가 같은 범위를 훑어 `malmoi` 아닌 표기(`Malmoi`·`MALMOI` …)를 0으로 고정한다. ⚠️ **2026-09-13에 한 화면에 둘이 같이 섰다** — 확인 Dialog가 `…from malmoi?`인데 바로 아래 Alert가 `…sign in to Malmoi…`였고, **둘 다 같은 사전에서 나온 값**이라 서로 다른 절에 살아 리뷰로는 안 걸렸다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
