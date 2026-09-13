@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 
-import { projectStatus, searchProjects, type ProjectStatus } from "../list";
+import {
+  groupProjects,
+  meterSlot,
+  projectGroup,
+  projectStatus,
+  rowBanner,
+  rowLocaleProgress,
+  searchProjects,
+  summaryQueue,
+  type ProjectStatus,
+} from "../list";
 
 describe("searchProjects", () => {
   const rows = [
@@ -126,5 +136,335 @@ describe("상태 문구", () => {
 
   it("다섯이 서로 다르다 — 한 문구로 접히면 상태를 구별할 수 없다", () => {
     expect(new Set(ALL.map((s) => m.projects.status[s])).size).toBe(ALL.length);
+  });
+});
+
+/**
+ * **목록 재설계의 판정 여섯** (projects-list design §4·§5). 전부 I/O가 없는 잎이고, 그래서
+ * `components/__tests__/client-graph.test.ts`가 이 모듈을 클라이언트 번들 밖에 둔다.
+ *
+ * ⚠️ **상태표(design §5)가 정본이다.** 캔버스 `1c`에서 그대로 옮긴 표이고, 아래 매트릭스는 그 행과
+ * 1:1이다 — 표에 없는 조합을 여기서 발명하지 않는다.
+ */
+
+const READY = { installationId: "i", lastCommitSha: "s", repositoryId: "r", archivedAt: null } as const;
+const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, importError: null, importing: false } as const;
+const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
+
+describe("projectGroup — 상태표의 그룹 열과 1:1 (design §5)", () => {
+  it.each([
+    ["active · all set", {}],
+    ["review pending", { review: 88 }],
+    ["pull request open", { openPr: { number: 142, url: "https://github.com/o/r/pull/142" } }],
+  ])("%s은 All set이다 — 손댈 것이 없거나 읽기만 하면 된다", (_label, over) => {
+    expect(projectGroup(row(over))).toBe("all_set");
+  });
+
+  it.each([
+    ["unsent edits", { unsent: 24 }],
+    ["repo moved ahead", { repoAheadFiles: 3 }],
+    ["awaiting first sync", { lastCommitSha: null }],
+    ["setup", { installationId: null }],
+    ["needs reconnect", { repositoryId: null }],
+    ["import failed", { importError: "parse-failed" as const }],
+  ])("%s은 Needs attention이다", (_label, over) => {
+    expect(projectGroup(row(over))).toBe("needs_attention");
+  });
+
+  /** 보관은 사건과 무관하다 — 멈춘 프로젝트에 "지금 뭘 하면 되나"는 답할 질문이 아니다. */
+  it("보관은 어떤 사건이 겹쳐도 Archived다", () => {
+    const archived = { archivedAt: new Date("2026-09-01T00:00:00Z") };
+    expect(projectGroup(row({ ...archived, unsent: 24, review: 9, repoAheadFiles: 3 }))).toBe("archived");
+  });
+});
+
+describe("rowBanner — 겹치면 하나만 (design §4 우선순위)", () => {
+  it("보관 행에는 액션이 없다", () => {
+    expect(rowBanner(row({ archivedAt: new Date(), unsent: 24, review: 9 }))).toBeNull();
+  });
+
+  /** 끊긴 연결은 모든 것을 덮는다 — 그 밑의 사건은 전부 손댈 수 없는 상태다. */
+  it("needs_reconnect가 사건 전부를 덮는다", () => {
+    expect(rowBanner(row({ repositoryId: null, unsent: 24, review: 9, repoAheadFiles: 3 }))).toEqual({
+      kind: "needs_reconnect",
+    });
+  });
+
+  it("임포트 실패가 사건을 덮는다 — 적재된 프로젝트에서도 뜬다", () => {
+    expect(rowBanner(row({ importError: "parse-failed", review: 9 }))).toEqual({
+      kind: "import_failed",
+      reason: "parse-failed",
+    });
+  });
+
+  /**
+   * ⚠️ **지금 돌고 있으면 지난 실패를 외치지 않는다.** `lastImportStartedAt`이 서 있다는 것은 새
+   * 실행이 시작됐다는 뜻이고, 남아 있는 코드는 **이전 실행의 것**이다 — 끝나면 성공이 비우거나
+   * 실패가 덮어쓴다.
+   */
+  it("적재가 도는 중에는 옛 실패 띠를 그리지 않는다", () => {
+    expect(rowBanner(row({ importError: "parse-failed", importing: true }))).toBeNull();
+  });
+
+  it("setup은 자기 띠를 갖고, 첫 적재 대기는 안 갖는다 — 그 문장은 Meter 자리가 든다", () => {
+    expect(rowBanner(row({ installationId: null }))).toEqual({ kind: "setup" });
+    expect(rowBanner(row({ lastCommitSha: null }))).toBeNull();
+  });
+
+  /** E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다. */
+  it("안 보낸 편집이 열린 PR을 이긴다", () => {
+    const pr = { number: 142, url: "https://github.com/o/r/pull/142" };
+    expect(rowBanner(row({ unsent: 24, openPr: pr }))).toEqual({ kind: "unsent", count: 24 });
+    expect(rowBanner(row({ openPr: pr }))).toEqual({ kind: "pr_open", number: 142, url: pr.url });
+  });
+
+  it("원격 변경이 검토를 이긴다 — C′는 키가 아니라 파일 수다", () => {
+    expect(rowBanner(row({ repoAheadFiles: 3, review: 88 }))).toEqual({ kind: "repo_ahead", files: 3 });
+    expect(rowBanner(row({ review: 88 }))).toEqual({ kind: "review", count: 88 });
+  });
+
+  it("사건이 없으면 띠도 없다", () => {
+    expect(rowBanner(row())).toBeNull();
+  });
+
+  /** GitHub 조회가 실패하면 그 둘만 빠진다 — 0과 null이 "그 신호 없음"이다. */
+  it("원격 신호가 없으면 그 띠만 사라지고 DB 사건은 남는다", () => {
+    expect(rowBanner(row({ openPr: null, repoAheadFiles: 0, review: 88 }))).toEqual({ kind: "review", count: 88 });
+  });
+
+  /**
+   * ⚠️ **역할을 받지 않는다** (F). 링크가 역할로 갈리는 셋(`Reconnect`·`Continue setup`·
+   * `View details`)의 판정은 **호출부**가 `row.role`로 한다 — 띠를 순수하게 유지하는 것이
+   * 이 매트릭스를 반으로 줄인다.
+   */
+  it("입력에 역할이 없다", () => {
+    expect(Object.keys(row())).not.toContain("role");
+  });
+});
+
+describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)", () => {
+  it("값이 있는 상태는 바를 그린다", () => {
+    const locales = [{ code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
+    expect(meterSlot(row(), locales)).toEqual({ kind: "meters", locales });
+  });
+
+  it.each([
+    ["setup", { installationId: null }, "setup"],
+    ["첫 적재 대기", { lastCommitSha: null }, "waiting"],
+    ["적재 진행 중", { lastCommitSha: null, importing: true }, "importing"],
+    ["첫 적재 실패", { lastCommitSha: null, importError: "parse-failed" as const }, "failed"],
+  ])("%s은 바가 아니라 문장이다", (_label, over, note) => {
+    expect(meterSlot(row(over), [])).toEqual({ kind: "note", note });
+  });
+
+  /**
+   * ⚠️ **이미 적재된 프로젝트의 실패는 Meter를 지우지 않는다** (design §5) — 데이터가 있는데
+   * 문장으로 덮으면 "번역이 사라졌다"로 읽힌다. 그 사실은 띠가 말한다.
+   */
+  it("적재된 뒤의 실패는 바를 유지한다", () => {
+    const locales = [{ code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
+    expect(meterSlot(row({ importError: "partial-import" }), locales)).toEqual({ kind: "meters", locales });
+  });
+
+  /** 진행 중이 더 최신 사실이다 — 남아 있는 코드는 이전 실행의 것이다. */
+  it("첫 적재 대기에서 진행이 실패를 이긴다", () => {
+    expect(meterSlot(row({ lastCommitSha: null, importError: "parse-failed", importing: true }), [])).toEqual({
+      kind: "note",
+      note: "importing",
+    });
+  });
+});
+
+/**
+ * **행의 Meter 재료** (design §3.1). ①②③의 조회 결과를 프로젝트별로 접는다.
+ *
+ * ⚠️ **`localeProgress`(`lib/keys/view.ts`)와 합치지 않는다** — 저쪽은 `untranslated`·orphaned 꼬리까지
+ * 드는 화면 계약이고 여기 필요한 것은 두 구간 비율뿐이다. **`percent`의 내림 규칙만 그대로 쓴다**
+ * (902/903이 100%로 보이면 안 된다).
+ */
+describe("rowLocaleProgress", () => {
+  const locales = [
+    { projectId: "p", code: "ko", isBase: false },
+    { projectId: "p", code: "en", isBase: true },
+    { projectId: "p", code: "ja", isBase: false },
+    { projectId: "p", code: "de", isBase: false },
+  ];
+  const totals = new Map([["p", 10]]);
+
+  it("base가 먼저, 나머지는 코드순, 그리고 셋까지다", () => {
+    const got = rowLocaleProgress(locales, totals, []);
+    expect(got.get("p")?.map((l) => l.code)).toEqual(["en", "de", "ja"]);
+  });
+
+  /**
+   * ⚠️ **검토 대기를 완료로 세지 않는다.** 두 구간이 겹치면 바의 폭 합이 100%를 넘고, "다 됐다"는
+   * 판정도 검토를 기다리는 값까지 끌어안는다.
+   */
+  it("done과 review가 겹치지 않는다 — 바 두 구간이 그대로 폭이다", () => {
+    const cells = [
+      { projectId: "p", localeCode: "en", needsReview: false, count: 7 },
+      { projectId: "p", localeCode: "en", needsReview: true, count: 2 },
+    ];
+    const en = rowLocaleProgress(locales, totals, cells).get("p")?.[0];
+    expect(en).toMatchObject({ code: "en", total: 10, done: 7, review: 2, percent: 70 });
+  });
+
+  it("내림이다 — 902/903이 100%로 보이면 안 된다", () => {
+    const got = rowLocaleProgress(
+      [{ projectId: "p", code: "en", isBase: true }],
+      new Map([["p", 903]]),
+      [{ projectId: "p", localeCode: "en", needsReview: false, count: 902 }],
+    );
+    expect(got.get("p")?.[0]?.percent).toBe(99);
+  });
+
+  it("분모가 0이면 비율도 0이다 — 0으로 나누지 않는다", () => {
+    const got = rowLocaleProgress([{ projectId: "p", code: "en", isBase: true }], new Map(), []);
+    expect(got.get("p")?.[0]).toMatchObject({ total: 0, done: 0, review: 0, percent: 0 });
+  });
+
+  /** ③은 orphaned 로케일의 번역을 포함할 수 있다 — ①에 없는 셀은 먼저 버린다. */
+  it("살아 있는 로케일 목록에 없는 셀은 버린다", () => {
+    const cells = [{ projectId: "p", localeCode: "fr", needsReview: false, count: 5 }];
+    const got = rowLocaleProgress(locales, totals, cells);
+    expect(got.get("p")?.map((l) => l.code)).toEqual(["en", "de", "ja"]);
+    expect(got.get("p")?.every((l) => l.done === 0)).toBe(true);
+  });
+
+  it("다른 프로젝트의 값이 섞이지 않는다", () => {
+    const got = rowLocaleProgress(
+      [...locales, { projectId: "q", code: "en", isBase: true }],
+      new Map([["p", 10], ["q", 4]]),
+      [{ projectId: "q", localeCode: "en", needsReview: false, count: 4 }],
+    );
+    expect(got.get("q")?.[0]).toMatchObject({ total: 4, done: 4, percent: 100 });
+    expect(got.get("p")?.[0]?.done).toBe(0);
+  });
+});
+
+/**
+ * **계정 합계 넷** (design §3.2). 검색 전 전체 멤버십 중 **보관하지 않은** 프로젝트의 값이다.
+ */
+describe("summaryQueue", () => {
+  const base = {
+    projects: [{ projectId: "p", archived: false }],
+    locales: [
+      { projectId: "p", code: "en", isBase: true },
+      { projectId: "p", code: "ko", isBase: false },
+    ],
+    keyTotals: new Map([["p", 10]]),
+    cells: [
+      { projectId: "p", localeCode: "en", needsReview: false, count: 10 },
+      { projectId: "p", localeCode: "ko", needsReview: false, count: 4 },
+      { projectId: "p", localeCode: "ko", needsReview: true, count: 3 },
+    ],
+    newKeys: new Map([["p", 2]]),
+    unsent: new Map([["p", 5]]),
+  };
+
+  it("네 값을 낸다 — 미번역은 살아 있는 키 × 살아 있는 로케일 − 값이 있는 셀이다", () => {
+    // 10키 × 2로케일 = 20칸, 값이 있는 것은 10 + 4 + 3 = 17 → 3칸이 남는다.
+    expect(summaryQueue(base)).toEqual({ newFromGithub: 2, toTranslate: 3, toReview: 3, toSend: 5 });
+  });
+
+  /**
+   * ⚠️ **Meter의 셋 제한을 집계에 적용하지 않는다** — 59로케일 리포에서 넷째 로케일부터의 미번역이
+   * 통째로 사라진다 (`i18n-many-locales`가 그 실물이다).
+   */
+  it("로케일이 59개여도 전부 센다", () => {
+    const codes = Array.from({ length: 59 }, (_, i) => `l${String(i).padStart(2, "0")}`);
+    const got = summaryQueue({
+      ...base,
+      locales: codes.map((code, i) => ({ projectId: "p", code, isBase: i === 0 })),
+      cells: [],
+      newKeys: new Map(),
+      unsent: new Map(),
+    });
+    expect(got.toTranslate).toBe(10 * 59);
+  });
+
+  /** 보관은 네 값 모두에서 빠진다 — 행과 Meter는 목록에 남는다(2026-09-13 사용자). */
+  it("보관 프로젝트는 네 값 모두에서 빠진다", () => {
+    const got = summaryQueue({
+      ...base,
+      projects: [{ projectId: "p", archived: true }],
+    });
+    expect(got).toEqual({ newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: 0 });
+  });
+
+  it("보관과 활성이 섞이면 활성 것만 센다", () => {
+    const got = summaryQueue({
+      ...base,
+      projects: [{ projectId: "p", archived: false }, { projectId: "q", archived: true }],
+      locales: [...base.locales, { projectId: "q", code: "en", isBase: true }],
+      keyTotals: new Map([["p", 10], ["q", 100]]),
+      newKeys: new Map([["p", 2], ["q", 50]]),
+      unsent: new Map([["p", 5], ["q", 70]]),
+    });
+    expect(got).toEqual({ newFromGithub: 2, toTranslate: 3, toReview: 3, toSend: 5 });
+  });
+
+  it("orphaned 로케일의 셀은 미번역·검토 어느 쪽에도 안 들어간다", () => {
+    const got = summaryQueue({
+      ...base,
+      cells: [...base.cells, { projectId: "p", localeCode: "fr", needsReview: true, count: 9 }],
+    });
+    expect(got.toReview).toBe(3);
+    expect(got.toTranslate).toBe(3);
+  });
+
+  it.each([
+    ["키 0", { keyTotals: new Map() }],
+    ["로케일 0", { locales: [] }],
+  ])("%s이면 미번역도 0이다 — 음수를 내지 않는다", (_label, over) => {
+    expect(summaryQueue({ ...base, ...over, cells: [] }).toTranslate).toBe(0);
+  });
+
+  it("집계에 없는 프로젝트의 수치는 0이다", () => {
+    const got = summaryQueue({ ...base, newKeys: new Map(), unsent: new Map() });
+    expect(got).toMatchObject({ newFromGithub: 0, toSend: 0 });
+  });
+});
+
+describe("groupProjects — 검색 중에는 평평하다 (design §4)", () => {
+  const rows = [
+    { slug: "b", ...READY, ...QUIET, archivedAt: new Date("2026-09-01T00:00:00Z") },
+    { slug: "a", ...READY, ...QUIET },
+    { slug: "c", ...READY, ...QUIET, unsent: 3 },
+  ];
+
+  it("질의가 없으면 그룹 순서가 고정이다 — 손볼 것이 먼저다", () => {
+    const got = groupProjects(rows, undefined);
+    expect(got.flat).toBe(false);
+    if (got.flat) return;
+    expect(got.groups.map(([group, list]) => [group, list.map((r) => r.slug)])).toEqual([
+      ["needs_attention", ["c"]],
+      ["all_set", ["a"]],
+      ["archived", ["b"]],
+    ]);
+  });
+
+  it("빈 그룹은 헤더를 만들지 않는다", () => {
+    const got = groupProjects([rows[1]!], "");
+    expect(got.flat).toBe(false);
+    if (got.flat) return;
+    expect(got.groups.map(([group]) => group)).toEqual(["all_set"]);
+  });
+
+  it.each(["chrome", "  chrome  "])("질의 %o가 있으면 평평한 목록 하나다", (q) => {
+    const got = groupProjects(rows, q);
+    expect(got.flat).toBe(true);
+    if (!got.flat) return;
+    expect(got.rows.map((r) => r.slug)).toEqual(["b", "a", "c"]);
+  });
+
+  it("공백만인 질의는 질의가 없는 것과 같다", () => {
+    expect(groupProjects(rows, "   ").flat).toBe(false);
+  });
+
+  it("입력 배열을 건드리지 않는다 — 호출부가 같은 배열로 총계도 센다", () => {
+    const original = [...rows];
+    groupProjects(rows, undefined);
+    expect(rows).toEqual(original);
   });
 });
