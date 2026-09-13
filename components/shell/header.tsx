@@ -22,10 +22,12 @@ import { UserMenu } from "./user-menu";
 export function Header({
   name,
   email,
+  image,
   signOut,
 }: {
   name: string;
   email: string | null;
+  image: string | null;
   signOut: () => void;
 }) {
   return (
@@ -39,7 +41,7 @@ export function Header({
         {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
         <Image src={logo} alt="" width={32} height={32} priority />
       </Link>
-      <UserMenu name={name} email={email} signOut={signOut} />
+      <UserMenu name={name} email={email} image={image} signOut={signOut} />
     </header>
   );
 }

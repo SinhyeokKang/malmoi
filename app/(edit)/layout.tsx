@@ -61,7 +61,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      * 스크롤이 아니라 flex가 압축돼 **콘텐츠가 잘린다** — 둘은 다르다.
      */
     <div className="bg-canvas flex h-svh min-w-[1280px] flex-col gap-2 overflow-hidden p-2">
-      <Header name={name} email={session.email} signOut={signOutAction} />
+      {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
+      <Header name={name} email={session.email} image={session.image} signOut={signOutAction} />
       <div className="flex min-h-0 flex-1 gap-2">
         {/*
           ⚠️ **넷만 넘긴다** (2026-09-09, sec-audit 발견 23 — 7단계가 `archived`를 더했다). `memberships`는 `MembershipRow`(여섯 필드)이고
