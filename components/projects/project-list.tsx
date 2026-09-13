@@ -285,7 +285,13 @@ function SummaryRow({ summary }: { summary: SummaryQueue }) {
  */
 function ProjectCard({ rows }: { rows: readonly ProjectListRow[] }) {
   return (
-    <ul className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
+    /**
+     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바 240,
+     * 바깥 padding, 오른쪽 패널 320을 뺀 값이라 **같은 뷰포트가 두 폭을 만들고**, 셸이
+     * `min-w-[1280px]`을 들어서 뷰포트 브레이크포인트로는 1120·940·760이 **영영 안 밟힌다**
+     * (가로 스크롤이 먼저 생긴다). 실제로 변하는 것은 이 카드의 폭이다.
+     */
+    <ul className="border-border bg-background @container shrink-0 overflow-hidden rounded-lg border">
       {rows.map((row, index) => (
         <li key={row.slug} className={index === 0 ? "" : "border-border border-t"}>
           <ProjectRow row={row} />
@@ -356,7 +362,13 @@ function ProjectRow({ row }: { row: ProjectListRow }) {
         </span>
 
         {slot.kind === "meters" ? (
-          <span className="flex shrink-0 gap-4">
+          /*
+            ⚠️ **앞에서부터 자른다.** 정렬이 base 먼저라(§3.1) `nth-child`로 뒤를 숨기면
+            "하나만 남으면 base"가 공짜로 성립한다 — 서버는 정렬된 셋만 주고 고르는 일을 하지 않는다.
+
+            1120 / 940 / 760은 **컨테이너(카드) 폭**이고 DESIGN §6.63의 치수표에 등재한다.
+          */
+          <span className="@max-[760px]:hidden @max-[940px]:[&>*:nth-child(n+2)]:hidden @max-[1120px]:[&>*:nth-child(n+3)]:hidden flex shrink-0 gap-4">
             {slot.locales.map((locale) => (
               <LocaleMeter key={locale.code} locale={locale} />
             ))}

@@ -313,3 +313,81 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).not.toMatch(/compare\/[^`]*\.\.\.main/);
   });
 });
+
+/**
+ * **스켈레톤이 실물 골격을 따라간다** (projects-list design §11.3 · tasks T6).
+ *
+ * ⚠️ **이 화면은 GitHub을 기다린다** (design §3.4 ⊕) — 스켈레톤이 서 있는 시간이 전보다 길어졌고,
+ * 골격이 실물과 어긋나면 그만큼 오래 어긋나 보인다. 데이터가 도착하는 순간의 튐이 로딩 표시보다
+ * 더 눈에 띈다.
+ */
+describe("목록 스켈레톤 — 실물과 같은 골격", () => {
+  const SKELETON = code("app/(edit)/projects/loading.tsx");
+
+  it.each([
+    ["머리 padding", "px-6 pt-6 pb-3"],
+    ["본문 padding", "gap-5 px-6 pt-3 pb-5"],
+    ["Summary 칸 200", "w-50"],
+    ["Summary hairline", "border-foreground/[0.06]"],
+    ["이름 칸 420", "w-[420px]"],
+    ["행 글리프 radius 4", "rounded-[4px]"],
+    ["행 gap 16", "gap-4"],
+  ])("%s가 실물과 같다", (_label, literal) => {
+    expect(SKELETON).toContain(literal);
+  });
+
+  /** Summary 넷 + 그룹 헤더 + 행 둘. */
+  it("Summary 칸 넷과 행 둘을 그린다", () => {
+    expect(SKELETON).toContain("[0, 1, 2, 3].map");
+    expect(SKELETON).toContain("[0, 1].map");
+  });
+
+  /** ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** */
+  it("`motion-safe:`를 유지한다", () => {
+    expect(SKELETON).toContain("motion-safe:animate-pulse");
+  });
+
+  /** ⚠️ **스크린리더가 회색 블록을 읽지 않는다** — 머리와 본문 둘 다 가린다. */
+  it("머리와 본문이 각각 `aria-hidden`이다", () => {
+    expect([...SKELETON.matchAll(/aria-hidden/g)]).toHaveLength(2);
+  });
+
+  it("옛 `divide-y` 골격이 남아 있지 않다", () => {
+    expect(SKELETON).not.toContain("divide-y");
+  });
+});
+
+/**
+ * **폭 축소는 컨테이너 쿼리다** (design §6).
+ *
+ * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-[1280px]`을 들어 가로 스크롤이 먼저
+ * 생기고, 패널 폭은 같은 뷰포트에서도 오른쪽 패널 유무로 두 값이 된다 — 실제로 변하는 것은 카드 폭이다.
+ */
+describe("Meter 폭 축소 — 컨테이너 기준", () => {
+  const BODY = code("components/projects/project-list.tsx");
+
+  it("카드가 컨테이너다", () => {
+    expect(BODY).toMatch(/<ul className="[^"]*@container/);
+  });
+
+  it.each([
+    ["1120 미만에서 셋째를 숨긴다", "@max-[1120px]:[&>*:nth-child(n+3)]:hidden"],
+    ["940 미만에서 둘째를 숨긴다", "@max-[940px]:[&>*:nth-child(n+2)]:hidden"],
+    ["760 미만에서 묶음을 숨긴다", "@max-[760px]:hidden"],
+  ])("%s", (_label, literal) => {
+    expect(BODY).toContain(literal);
+  });
+
+  /** ⚠️ **뷰포트 variant를 쓰지 않는다** — `lg:`·`xl:`이 섞이면 그 축이 영영 안 밟힌다. */
+  it("뷰포트 브레이크포인트를 쓰지 않는다", () => {
+    expect(BODY).not.toMatch(/\b(sm|md|lg|xl|2xl):/);
+  });
+
+  /**
+   * ⚠️ **대체 문장은 `shrink-0`으로 되돌리지 않는다** (design §9-I). Meter 개수만 줄여 놓고 문장을
+   * 고정 폭으로 두면 좁은 화면에서 그 문장이 우측 배지를 밀어낸다.
+   */
+  it("Meter 대체 문장이 줄어들 수 있다", () => {
+    expect(BODY).toContain('className="text-muted-foreground w-[332px] min-w-0 shrink truncate text-sm"');
+  });
+});
