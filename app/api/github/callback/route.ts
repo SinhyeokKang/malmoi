@@ -217,7 +217,7 @@ function landingPath(dest: StateDest | null): string {
   switch (dest.kind) {
     case "new":
       // ⚠️ **목록 상태를 되돌려준다** — 모달 뒤 목록이 연결을 누르기 직전과 같아야 한다 (2026-09-13).
-      return routes.newProject({ filter: dest.filter, q: dest.q });
+      return routes.newProject({ q: dest.q });
     case "account":
       return routes.account();
     case "settings":

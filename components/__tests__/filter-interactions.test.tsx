@@ -125,7 +125,7 @@ async function pickNamespace(trigger: HTMLElement, namespace: string) {
 for (const name of ["projects", "translations"] as const) {
   it(`${name} 검색은 조합 확정 Enter를 무시하고 일반 Enter만 제출한다`, async () => {
     navigation.push.mockReset();
-    const ui = name === "projects" ? <ProjectSearch filter="active" q="" /> :
+    const ui = name === "projects" ? <ProjectSearch q="" /> :
       <TranslationFilters slug="demo" query={{ ns: "a" }} chipQuery={{}} namespaces={[]} locales={[]} selected={[]} fallback={[]} />;
     const { container } = await render(ui);
     const search = find<HTMLInputElement>(container, 'input[type="search"]');

@@ -24,7 +24,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<Raw<"e" | "filter" | "q">>;
+  searchParams: Promise<Raw<"e" | "q">>;
 }) {
   const { userId } = await requireUser();
   /**
@@ -35,7 +35,9 @@ export default async function ProjectsPage({
    * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 두 union은 `unavailable`
    * 하나만 겹치고 뜻이 같으므로 먼저 보는 쪽이 이겨도 문제가 없다.
    */
-  const { e, filter, q } = firstQueryValues(await searchParams);
+  // ⚠️ **옛 `?filter=`는 읽지 않는다** — 그 키가 있어도 조용히 무시되고 전체 목록이 뜬다
+  // (projects-list §1.2). 리다이렉트를 만들지 않는 것이 옛 `?focus=`와 같은 관용구다.
+  const { e, q } = firstQueryValues(await searchParams);
   const message = isAccessError(e)
     ? accessErrorMessage(e)
     : isConnectError(e)
@@ -49,7 +51,7 @@ export default async function ProjectsPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={all} filter={filter} q={q} message={message} />
+      <ProjectList all={all} q={q} message={message} />
     </ContentPanel>
   );
 }

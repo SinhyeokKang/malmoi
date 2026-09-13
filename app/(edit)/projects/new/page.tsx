@@ -19,8 +19,8 @@ import { listConnectableRepos } from "../actions";
  * 새 프로젝트 온보딩 — **`/projects` 위의 모달 딥링크**다 (new-project-modal §1).
  *
  * ⚠️ **목록을 뒤에 그린다.** 그래서 이 라우트가 `loadProjectList`를 한 번 더 돈다 — 지금은 안 도는
- * 조회 하나가 느는 대가로 새로고침·공유·뒤로가기가 **구조로** 성립한다. `?q=`·`?filter=`도 함께
- * 받으므로 열기 직전과 같은 목록이 뒤에 남고, 닫으면 그 값을 들고 `/projects`로 돌아간다.
+ * 조회 하나가 느는 대가로 새로고침·공유·뒤로가기가 **구조로** 성립한다. `?q=`도 함께 받으므로
+ * 열기 직전과 같은 목록이 뒤에 남고, 닫으면 그 값을 들고 `/projects`로 돌아간다.
  *
  * ⚠️ **`maxDuration`이 여기 있어야 한다.** Server Action에는 `app/api/*`의 세그먼트 config가 붙지
  * 않고 Action은 **자기를 부른 페이지 세그먼트**의 값을 쓴다 — design §3.1·§4의 예산(blob ≤21,
@@ -41,11 +41,11 @@ export const maxDuration = 60;
 export default async function NewProjectPage({
   searchParams,
 }: {
-  searchParams: Promise<Raw<"e" | "filter" | "q">>;
+  searchParams: Promise<Raw<"e" | "q">>;
 }) {
   const { userId } = await requireUser();
 
-  const { e, filter, q } = firstQueryValues(await searchParams);
+  const { e, q } = firstQueryValues(await searchParams);
 
   const all = await loadProjectList(getPrisma(), userId);
   // ⚠️ `layout`은 **어댑터에서 그대로** 온다 — 수동 지정의 Path 힌트·예시가 이 값으로 갈리므로
@@ -58,7 +58,7 @@ export default async function NewProjectPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={all} filter={filter} q={q} />
+      <ProjectList all={all} q={q} />
       {/*
         ⚠️ **리포 목록을 `<Suspense>`로 감싼다.** 안 그러면 §4의 "① 로딩" 행도
         `newProject.repo.loading` 키도 **도달 불가**다 — 페이지가 목록을 기다리느라 모달 자체가
@@ -73,11 +73,11 @@ export default async function NewProjectPage({
             installUrl={installUrl()}
             now={new Date().toISOString()}
             initialError={e}
-            backQuery={{ filter, q }}
+            backQuery={{ q }}
           />
         }
       >
-        <RepoLoader adapters={adapters} initialError={e} backQuery={{ filter, q }} />
+        <RepoLoader adapters={adapters} initialError={e} backQuery={{ q }} />
       </Suspense>
     </ContentPanel>
   );
@@ -90,7 +90,7 @@ async function RepoLoader({
 }: {
   adapters: AdapterChoice[];
   initialError: string | undefined;
-  backQuery: { filter?: string; q?: string };
+  backQuery: { q?: string };
 }) {
   const listed = await listConnectableRepos();
 

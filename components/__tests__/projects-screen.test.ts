@@ -38,19 +38,26 @@ describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 
     expect(PAGE.map(code).join("\n")).not.toContain("useState");
   });
 
-  it("`?filter=`를 읽고 판정 함수로 거른다 — 주소창 값을 캐스팅하지 않는다", () => {
+  /**
+   * ⚠️ **필터 축이 사라졌다** (projects-list §1). 좁히는 것은 `?q=` 하나이고, 옛 `?filter=`는
+   * **조용히 무시된다** — 읽는 코드가 목록 경로에 하나도 없어야 그 계약이 성립한다.
+   */
+  it("좁히는 축이 검색 하나다 — `?filter=`를 읽는 코드가 없다", () => {
     const src = PAGE.map(code).join("\n");
     expect(src).toContain("searchParams");
-    expect(src).toContain("parseProjectFilter");
+    expect(src).not.toContain("parseProjectFilter");
+    expect(src).not.toContain("filterProjects");
     expect(src).not.toMatch(/as ProjectFilter/);
   });
 
   /**
-   * ⚠️ **탭이 `routes.projects({ filter })`를 지나야 한다.** 문자열 연결로 만들면
+   * ⚠️ **검색이 `routes.projects({ q })`를 지나야 한다.** 문자열 연결로 만들면
    * `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를 통째로 회피한다 (`lib/routes.ts` 주석).
+   * 전에는 탭 링크가 이 자리를 지켰는데, 그것이 사라지면서 검색창이 유일한 생산자가 됐다.
    */
-  it("탭 링크를 `routes.projects`가 만든다", () => {
-    expect(PAGE.map(code).join("\n")).toMatch(/routes\.projects\(\s*\{/);
+  it("검색 링크를 `routes.projects`가 만든다", () => {
+    const src = read("components/projects/search-input.tsx");
+    expect(src).toMatch(/routes\.projects\(\s*\{/);
   });
 
   it("행 전체가 `routes.project(slug)` 링크다 — 착지점이 한 곳이다", () => {

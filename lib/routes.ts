@@ -74,26 +74,29 @@ export const routes = {
    */
   signIn: (query: { error?: string; sessions?: string } = {}): string => withQuery("/signin", query),
   /**
-   * 내 프로젝트 목록. **`filter`는 URL 상태다** (8-3) — 세그먼트가 링크라 뒤로가기·공유·새로고침이
-   * 그냥 되고, 서버가 이미 걸러 그리므로 클라이언트 상태가 0이다.
+   * 내 프로젝트 목록. **좁히는 축은 검색 하나다** — 서버가 이미 걸러 그리므로 클라이언트 상태가 0이고,
+   * 뒤로가기·공유·새로고침이 그냥 된다.
+   *
+   * ⚠️ **`filter`가 2026-09-13에 사라졌다** (projects-list §1.2). 옛 링크의 `?filter=`는 **조용히
+   * 무시된다** — 404도 리다이렉트도 아니고, 더 넓게 보일 뿐이다. 옛 `?focus=`를 폐기했을 때와 같은
+   * 관용구다(위 `TranslationsQuery` 주석).
    *
    * ⚠️ **`withQuery`를 지나야 한다** — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터
-   * 수신자" 검사를 통째로 회피한다(위 `signIn` 주석과 같은 이유). 기본값 `all`은 안 싣는다.
-   */
-  /**
+   * 수신자" 검사를 통째로 회피한다(위 `signIn` 주석과 같은 이유).
+   *
    * ⚠️ **`q`는 이름 검색이다** (2026-09-11) — 번역 화면의 `q`와 이름은 같지만 대상이 다르다
    * (그쪽은 키 + 값, 여기는 프로젝트 이름 하나).
    */
-  projects: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects", query),
+  projects: (query: { q?: string } = {}): string => withQuery("/projects", query),
   /**
    * 새 프로젝트 모달의 **딥링크** (new-project-modal §1.4). `/projects` 위에 모달이 열린 주소이고,
-   * 그래서 목록과 **같은 쿼리 둘**을 받는다 — 뒤 목록이 열기 직전과 같아야 하고, 닫으면 그 값을
-   * 들고 `/projects`로 돌아간다.
+   * 그래서 목록과 **같은 쿼리**를 받는다 — 뒤 목록이 열기 직전과 같아야 하고, 닫으면 그 값을 들고
+   * `/projects`로 돌아간다.
    *
    * ⚠️ **`withQuery`를 지난다** — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터
    * 수신자" 검사를 통째로 회피한다 (위 `signIn` 주석과 같은 이유).
    */
-  newProject: (query: { filter?: string; q?: string } = {}): string => withQuery("/projects/new", query),
+  newProject: (query: { q?: string } = {}): string => withQuery("/projects/new", query),
   /**
    * 사용자 축 (PRODUCT §7.7 — 6b-4). **slug를 받지 않는다** — 프로필과 GitHub 연결은 프로젝트가 아니라
    * 사람에 속하고, 그래서 프로젝트를 하나도 안 만든 사용자도 도달해야 한다.

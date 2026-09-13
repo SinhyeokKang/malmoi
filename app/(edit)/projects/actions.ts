@@ -389,7 +389,7 @@ export type UserConnectDest = z.infer<typeof UserConnectDest>;
  * `/projects/new`로 돌아올 때 되돌려 줄 목록 상태 (2026-09-13). **`new` 갈래에만 쓰인다** —
  * `/account`에는 대응물이 없다. 상한·형식은 `parseDest`가 서명을 풀 때 한 번 더 좁힌다.
  */
-const ConnectBack = z.object({ filter: z.string().max(200).optional(), q: z.string().max(200).optional() });
+const ConnectBack = z.object({ q: z.string().max(200).optional() });
 
 /**
  * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
@@ -407,7 +407,7 @@ const ConnectBack = z.object({ filter: z.string().max(200).optional(), q: z.stri
  */
 export async function startGithubConnectForUser(
   raw: UserConnectDest,
-  rawBack: { filter?: string; q?: string } = {},
+  rawBack: { q?: string } = {},
 ): Promise<StartUserConnectResult> {
   // 입력이 인가보다 먼저다 — 모르는 갈래가 서명 payload에 실리면 착지가 `landingPath`의 사각지대가 된다.
   const parsed = UserConnectDest.safeParse(raw);

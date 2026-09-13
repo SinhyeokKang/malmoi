@@ -424,7 +424,7 @@ describe("쿼리 파라미터의 수신자", () => {
    * 가드가 없었으면 "쿼리를 보내놓고 읽는 쪽이 없다"는 부류(issue #2)가 다시 사각지대로 들어갔다.
    *
    * ⚠️ **3번은 2026-09-11에 붙었다.** 그전까지 앞의 둘은 **문자열 보간 안의 `?key=`만** 봤는데,
-   * `routes.*`가 쿼리를 인자로 받기 시작하면서(`signIn({ error })`·`projects({ filter })`·
+   * `routes.*`가 쿼리를 인자로 받기 시작하면서(`signIn({ error })`·`projects({ q })`·
    * `account({ sessionRevocation })`·`logs({ cursor })`) 그 형태가 **네 자리 전부 검사 밖**이었다 —
    * 옮기는 것 자체가 검사를 회피시키는 모양이었고, `routes.ts` 주석은 반대로 적고 있었다.
    */
@@ -432,11 +432,19 @@ describe("쿼리 파라미터의 수신자", () => {
 
   /**
    * ⚠️ **진입점 밖에서도 쿼리를 실어 보낸다.** 목록 본문이 `components/projects/project-list.tsx`로
-   * 내려가면서(new-project-modal T8) `routes.projects({ filter, q })`·`routes.newProject({ … })`가
+   * 내려가면서(new-project-modal T8) `routes.projects({ q })`·`routes.newProject({ … })`가
    * `app/` 밖으로 나갔다 — 이 목록이 없으면 그 자리가 조용히 사각지대다. **옮기는 것 자체가 검사를
    * 회피시키는 모양**이고, 그것이 이 절의 3번 패턴이 2026-09-11에 붙은 이유이기도 하다.
    */
-  const EXTRA_EMITTERS = ["components/projects/project-list.tsx"];
+  const EXTRA_EMITTERS = [
+    "components/projects/project-list.tsx",
+    /**
+     * ⚠️ **2026-09-13에 들어왔다** (projects-list §1). 필터 탭이 사라지면서 `routes.projects({ q })`의
+     * **유일한 발신처**가 이 파일이 됐다 — 목록 본문에는 인자 없는 `routes.projects()`만 남는다.
+     * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 스스로 반복한다.
+     */
+    "components/projects/search-input.tsx",
+  ];
 
   const SOURCES = [
     ...ENTRY_POINTS,
@@ -494,7 +502,9 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
     // 3번 — 인자 객체. 이 셋이 2026-09-11까지 전부 검사 밖이었다.
     expect(EMITTED.some((x) => x.target === "/account" && x.key === "sessionRevocation")).toBe(true);
-    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "filter")).toBe(true);
+    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(projects-list §1),
+    // 그것을 실어 보내던 자리가 검색창 하나로 줄었다.
+    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "q")).toBe(true);
   });
 
   /**

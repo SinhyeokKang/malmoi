@@ -3,62 +3,32 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 /**
  * 프로젝트 목록의 순수 판정 (8-3).
  *
- * 필터는 URL에 산다(`?filter=`) — 클라이언트 상태가 아니라 서버가 이미 걸러 그린다. 그래야
+ * 좁히는 축은 **검색 하나**다(`?q=`) — 클라이언트 상태가 아니라 서버가 이미 걸러 그린다. 그래야
  * 뒤로가기·공유·새로고침이 그냥 되고, `logs`의 `?cursor=`와 같은 관용구다.
+ *
+ * ⚠️ **필터 탭 여섯이 2026-09-13에 사라졌다** (projects-list §1). 상태는 이제 **그룹**이 말한다 —
+ * 탭은 "무엇을 숨길까"를 사용자에게 물었고, 그 질문의 답이 대개 "아무것도"였다. 되돌아올 조건은
+ * 정해져 있다: `Archived`가 쌓이면 `All / Archived` **둘로만**이고 상태 다섯을 되살리지 않는다.
  */
 
 /**
- * 상태 다섯 — **순서가 탭 순서다** (2026-09-11 사용자).
+ * 상태 다섯. **순서는 그대로 "가장 흔한 것이 먼저"다** — 탭이 사라지면서 이 배열이 UI 순서를 정하는
+ * 자리는 아니게 됐지만(그 일은 이제 그룹이 한다), 갈래의 정본이라는 뜻은 남는다.
  *
  * ⚠️ **`Active`가 앞이고 `Archived`가 끝이다.** 가운데 셋은 "손볼 것"이고, 보관은 의도적으로 멈춘
- * 것이라 훑는 눈에서 가장 멀어야 한다. 생애주기 순(setup → 적재 → active)이 아닌 이유는 이 목록이
- * **훑어보는 화면**이어서다 — 가장 흔한 것이 먼저다.
+ * 것이라 훑는 눈에서 가장 멀어야 한다.
  */
 export const PROJECT_STATUSES = ["active", "setup", "awaiting_first_sync", "needs_reconnect", "archived"] as const;
 
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
-/**
- * ⚠️ **필터 갈래가 곧 상태 갈래다** (2026-09-11 사용자 — 전엔 `all`·`active`·`archived` 셋이었다).
- * 둘이 갈리면 배지가 말하는 상태 중 일부는 **골라낼 수 없는 상태**가 되고, 그 비대칭은 화면에서
- * 안 보인다.
- */
-export const PROJECT_FILTERS = ["all", ...PROJECT_STATUSES] as const;
-
-export type ProjectFilter = (typeof PROJECT_FILTERS)[number];
-
-/** `projectStatus`가 보는 네 컬럼. 필터도 같은 것을 받는다 — 판정이 한 곳이라야 한다. */
+/** `projectStatus`가 보는 네 컬럼. 그룹·띠 판정도 같은 것을 받는다 — 판정이 한 곳이라야 한다. */
 export type ProjectStatusInput = {
   archivedAt: Date | null;
   installationId: string | null;
   lastCommitSha: string | null;
   repositoryId: string | null;
 };
-
-/**
- * 주소창 값 → 갈래. **모르는 값은 `all`이다** — 빈 화면을 주지 않는다.
- *
- * ⚠️ **객체 조회로 바꾸지 않는다.** 남이 정한 문자열이라 `constructor`·`__proto__`가 값으로
- * 찾아지는 부류이고, 이 리포는 그것을 두 번 밟았다 (POSTMORTEM 2026-09-08·09). 배열 `includes`는
- * 프로토타입 체인을 보지 않는다.
- */
-export function parseProjectFilter(raw: string | undefined): ProjectFilter {
-  return PROJECT_FILTERS.find((f) => f === raw) ?? "all";
-}
-
-/**
- * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 세므로, 제자리에서 잘라내면 제목 옆
- * 숫자가 탭에 따라 달라진다(총계는 필터 전의 값이어야 한다).
- */
-export function filterProjects<T extends ProjectStatusInput>(rows: readonly T[], filter: ProjectFilter): T[] {
-  if (filter === "all") return [...rows];
-  /**
-   * ⚠️ **`archivedAt` 비교가 아니라 `projectStatus` 판정이다** (2026-09-11). 그 전엔 보관 여부만
-   * 봤는데 필터가 상태 다섯으로 넓어지면서, 규칙이 둘이면 **배지와 탭이 같은 행을 다르게 가른다** —
-   * 그 어긋남은 화면에서 안 보인다.
-   */
-  return rows.filter((row) => projectStatus(row) === filter);
-}
 
 /**
  * 이름으로 좁힌다 (2026-09-11 사용자 — 목록 툴바의 검색).
@@ -70,7 +40,8 @@ export function filterProjects<T extends ProjectStatusInput>(rows: readonly T[],
  * ⚠️ **빈 질의는 전부다** — `undefined`와 `""`와 공백만인 문자열이 같은 뜻이라야, 검색창을 비우는
  * 것과 URL에서 키를 빼는 것이 같은 화면을 준다.
  *
- * ⚠️ **원본을 건드리지 않는다** — `filterProjects`와 같은 이유(총계는 필터 전의 값이다).
+ * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 세므로, 제자리에서 잘라내면 제목 옆
+ * 숫자가 질의에 따라 달라진다(총계는 좁히기 전의 값이어야 한다).
  */
 export function searchProjects<T extends { name: string }>(rows: readonly T[], q: string | undefined): T[] {
   const needle = (q ?? "").trim().toLowerCase();
@@ -82,9 +53,11 @@ export function searchProjects<T extends { name: string }>(rows: readonly T[], q
  * 행 우측 배지의 갈래 (8-3 시안 개정).
  *
  * ⚠️ **`ready`가 침묵이 아니라 `Active`다.** DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고
- * 근거는 **필터 탭이 같은 낱말을 쓴다**는 것 — `All / Active / Archived`를 보고 있는 사람에게 행의
- * 배지가 그 축을 그대로 되비추면 "지금 무엇을 보고 있나"가 이어진다. 배지가 항상 하나라 행 우측
- * 폭도 흔들리지 않는다.
+ * 근거는 **이 목록이 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어
+ * 대비가 생겨야 한다. 배지가 항상 하나라 행 우측 폭도 흔들리지 않는다.
+ *
+ * ⚠️ 전 근거는 "필터 탭이 같은 낱말을 쓴다"였는데 **그 탭이 2026-09-13에 사라졌다.** 판정은 그대로
+ * 두고 근거만 고친다 — 배지가 말하는 축은 이제 그룹 헤더가 되비춘다.
  *
  * ⚠️ **보관이 readiness보다 앞이다** — 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이
  * 아니다 (`planProjectAccess`가 권한 → 보관 순으로 보는 것과 같은 결).

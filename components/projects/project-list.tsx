@@ -8,19 +8,10 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SegmentedLinks } from "@/components/ui/segmented-control";
 import { toneFill } from "@/components/ui/tone";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
-import {
-  filterProjects,
-  parseProjectFilter,
-  PROJECT_FILTERS,
-  projectStatus,
-  searchProjects,
-  type ProjectFilter,
-  type ProjectStatus,
-} from "@/lib/projects/list";
+import { projectStatus, searchProjects, type ProjectStatus } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +22,7 @@ import { cn } from "@/lib/utils";
  * 그리는데, 공유 컴포넌트가 패널을 들면 `shell-layout.test.ts`의 "라우트마다 정확히 하나"가 두
  * 페이지 모두에서 **0**이 된다 — 패널은 페이지가 각자 든다.
  *
- * ⚠️ **서버 컴포넌트다.** 필터는 URL이고 클라이언트 상태가 아니라(8-3) `"use client"`가 없고,
+ * ⚠️ **서버 컴포넌트다.** 검색은 URL이고 클라이언트 상태가 아니라(8-3) `"use client"`가 없고,
  * 그래야 뒤로가기·공유·새로고침이 그냥 된다.
  *
  * ⚠️ **fluid다** — `max-w-4xl`이 아니다 (8-3, DESIGN §5.1). 행이 2줄이고 메타에 리포 URL이 들어가
@@ -61,35 +52,25 @@ const STATUS_VARIANT = {
   needs_reconnect: "warning",
 } as const satisfies Record<ProjectStatus, "neutral" | "warning" | "success">;
 
-/**
- * 탭 라벨 — `all`만 자기 문구를 갖고 나머지 다섯은 **행 배지와 같은 낱말**을 쓴다 (2026-09-11).
- * 두 벌로 두면 "지금 무엇을 보고 있나"가 탭과 행에서 다르게 읽힌다.
- */
-function filterLabel(filter: ProjectFilter): string {
-  return filter === "all" ? m.projects.filter.all : m.projects.status[filter];
-}
-
 export function ProjectList({
   all,
-  filter: rawFilter,
   q,
   message = null,
 }: {
   all: readonly ProjectListRow[];
-  /** 주소창 값 그대로 받는다 — 판정은 여기서 한다(캐스팅하지 않는다). */
-  filter?: string;
   q?: string;
   /** 페이지 수준 거부. 모달 라우트는 사유를 모달 안에서 말하므로 여기로 안 넘긴다. */
   message?: ReactNode;
 }) {
-  const filter = parseProjectFilter(rawFilter);
-  // ⚠️ **필터 → 검색 순이다.** 두 축이 직교하므로 순서가 결과를 바꾸지는 않지만, 빈 결과의 문구가
-  // "검색 0건"인지 "탭 0건"인지는 아래에서 `q`를 먼저 보고 가른다.
-  const rows = searchProjects(filterProjects(all, filter), q);
   /**
-   * ⚠️ **프로젝트가 하나도 없으면 필터와 [New project]를 그리지 않는다** (시안: 그 줄이 `hidden`).
-   * 고를 것이 없는 탭 셋은 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 안에 하나만 있어야 한다 —
-   * 둘을 다 두면 같은 행동이 한 화면에 두 번 나온다 (§6.4 "액션은 버튼 하나").
+   * ⚠️ **좁히는 축이 하나다** (projects-list §1). 필터 탭 여섯이 사라지면서 빈 결과의 사유도 하나가
+   * 됐다 — 전에는 "검색 0건"인지 "탭 0건"인지를 화면이 갈라 말해야 했다.
+   */
+  const rows = searchProjects(all, q);
+  /**
+   * ⚠️ **프로젝트가 하나도 없으면 [New project]를 그리지 않는다** (시안: 그 줄이 `hidden`).
+   * 만들기 버튼은 그때 빈 상태 안에 하나만 있어야 한다 — 둘을 다 두면 같은 행동이 한 화면에 두 번
+   * 나온다 (§6.4 "액션은 버튼 하나").
    */
   const hasProjects = all.length > 0;
 
@@ -102,19 +83,19 @@ export function ProjectList({
       {/*
         ⚠️ **[New project]가 제목 줄에 있다** (2026-09-11 사용자). 화면당 하나인 primary는 제목과
         같은 높이에 서는 것이 이 리포의 형이고(Home의 [Open translations]와 같다), 아래 줄은
-        **보기를 좁히는 것들**(탭·검색)만 남아 두 줄의 역할이 갈린다.
+        **보기를 좁히는 것**만 남아 두 줄의 역할이 갈린다.
       */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-medium">{m.common.nav.projects}</h1>
           {/*
-            ⚠️ **총계는 필터 전의 값이다** — 탭·검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
+            ⚠️ **총계는 좁히기 전의 값이다** — 검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
             답한다. 사이드바 카운트 배지(PRODUCT 🔒)와 달리 이건 이미 가진 배열의 길이다.
           */}
           <Badge variant="neutral">{all.length}</Badge>
         </div>
         {hasProjects && (
-          <ButtonLink variant="primary" href={routes.newProject({ filter: filter === "all" ? undefined : filter, q })}>
+          <ButtonLink variant="primary" href={routes.newProject({ q })}>
             <Plus aria-hidden />
             {m.common.nav.newProject}
           </ButtonLink>
@@ -122,28 +103,8 @@ export function ProjectList({
       </div>
 
       {hasProjects && (
-        <div className="flex items-center justify-between gap-2">
-          {/*
-            ⚠️ **여섯 칸이 늘 그대로다** (2026-09-11 사용자 — 존재하는 상태만 그리던 것을 되돌렸다).
-            칸이 데이터에 따라 생겼다 사라지면 컨트롤의 자리가 매번 달라지고, "그 상태가 0건"이라는
-            사실 자체도 정보다 — 누르면 빈 상태가 그것을 문장으로 말한다.
-          */}
-          <SegmentedLinks
-            label={m.projects.filter.label}
-            current={filter}
-            options={PROJECT_FILTERS.map((value) => ({
-              value,
-              label: filterLabel(value),
-              /**
-               * 기본값을 URL에 안 싣는다 — `/projects`와 `/projects?filter=all`이 같은 화면이다.
-               *
-               * ⚠️ **탭을 옮겨도 `q`가 남는다** — 검색이 탭과 직교하는 축이라, 여기서 떨어뜨리면
-               * 탭을 누르는 순간 질의가 조용히 사라진다.
-               */
-              href: routes.projects({ filter: value === "all" ? undefined : value, q }),
-            }))}
-          />
-          <ProjectSearch filter={filter === "all" ? undefined : filter} q={q} />
+        <div className="flex items-center justify-end gap-2">
+          <ProjectSearch q={q} />
         </div>
       )}
     </PanelHeader>
@@ -161,7 +122,7 @@ export function ProjectList({
             title={m.projects.empty.title}
             description={m.projects.empty.description}
             action={
-              <ButtonLink variant="primary" href={routes.newProject({ filter: filter === "all" ? undefined : filter, q })}>
+              <ButtonLink variant="primary" href={routes.newProject({ q })}>
                 <Plus aria-hidden />
                 {m.common.nav.newProject}
               </ButtonLink>
@@ -170,32 +131,23 @@ export function ProjectList({
         </div>
       ) : rows.length === 0 ? (
         /*
-          ⚠️ **"프로젝트가 없다"와 다른 상태다** — 탭이나 질의를 되돌리면 있다. 같은 빈 화면을
-          내면 사용자가 프로젝트를 잃었다고 읽는다. 그래서 **형은 같고 액션이 반대다**:
-          그쪽은 primary로 만들라 하고, 여기는 outlined(`default`)로 되돌리라 한다. ghost가 아닌
+          ⚠️ **"프로젝트가 없다"와 다른 상태다** — 질의를 되돌리면 있다. 같은 빈 화면을 내면
+          사용자가 프로젝트를 잃었다고 읽는다. 그래서 **형은 같고 액션이 반대다**: 그쪽은
+          primary로 만들라 하고, 여기는 outlined(`default`)로 되돌리라 한다. ghost가 아닌
           이유는 이 화면에 **버튼이 그것 하나뿐**이어서다 — 유일한 출구가 배경 없는 글자면
           누를 것으로 안 보인다.
-
-          ⚠️ **설명이 검색을 먼저 본다** — 질의가 있으면 되돌릴 것은 탭이 아니라 그 질의다.
-          탭 문구를 내면 사용자가 엉뚱한 컨트롤을 만진다.
-
-          ⚠️ **[Clear filters]가 둘 다 지운다** — 어느 쪽이 걸렸는지 사용자가 판정하게 하지 않는다.
-          `routes.projects()`가 인자 없이 곧 초기 상태라, 화면이 무엇을 비울지 나열하지 않는다.
         */
         <div className="flex flex-1 items-center justify-center">
           <EmptyState
             icon={Search}
             title={m.projects.narrowed.title}
-            description={
-              q !== undefined && q.trim() !== ""
-                ? m.projects.narrowed.bySearch(q.trim())
-                : m.projects.narrowed.byFilter
-            }
+            description={m.projects.narrowed.bySearch((q ?? "").trim())}
             action={
               <ButtonLink variant="default" href={routes.projects()}>
                 {/*
-                  ⚠️ **`RotateCcw`이고 `FilterX`가 아니다** — 이 버튼은 필터만이 아니라 검색까지
-                  **둘 다** 되돌린다. 깔때기 글리프면 지워지는 것이 필터뿐이라고 말하게 된다.
+                  ⚠️ **`RotateCcw`이고 `FilterX`가 아니다** — 되돌릴 축이 질의 하나뿐이라 깔때기
+                  글리프가 가리킬 대상이 없다 (projects-list §1.4). 이 버튼이 말하는 것은 "필터를
+                  비운다"가 아니라 **"질의를 되돌린다"**다.
                 */}
                 <RotateCcw aria-hidden />
                 {m.projects.narrowed.reset}
@@ -296,7 +248,7 @@ export function ProjectList({
                   {/*
                     ⚠️ **배지가 항상 하나다** — 갈래는 `projectStatus`가 정한다(보관이 readiness보다
                     앞이다). 보관을 목록에서 숨기지 않는 7단계 결정은 그대로다: 숨기면 OWNER가
-                    되돌릴 링크에 도달할 길이 없어지고, `Archived` 탭이 생겨도 기본은 `all`이다.
+                    되돌릴 링크에 도달할 길이 없어진다.
                   */}
                   <Badge variant={STATUS_VARIANT[status]} className="shrink-0">
                     {m.projects.status[status]}

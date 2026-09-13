@@ -23,7 +23,11 @@ it("`?e=`와 중복 `q`가 함께 와도 모달 라우트가 오류로 가지 �
   ).resolves.toBeDefined();
 });
 
-it("`q`·`filter`가 뒤 목록에 실려 넘어간다 — 열기 직전과 같은 목록이다", async () => {
+/**
+ * ⚠️ **`filter`는 더 이상 넘어가지 않는다** (projects-list §1.2) — 그 키가 주소에 있어도 조용히
+ * 무시되고, 뒤 목록은 `q`만 들고 열기 직전과 같은 상태로 남는다.
+ */
+it("`q`가 뒤 목록에 실려 넘어간다 — 열기 직전과 같은 목록이다", async () => {
   const tree = await NewPage({ searchParams: Promise.resolve({ q: "format", filter: "active" }) });
 
   // 모달 뒤 목록은 `<ContentPanel>`의 첫 자식이다 — 렌더 없이 props만 본다.
@@ -33,5 +37,6 @@ it("`q`·`filter`가 뒤 목록에 실려 넘어간다 — 열기 직전과 같�
       typeof child === "object" && child !== null && "props" in child && "all" in (child as { props: object }).props,
   );
 
-  expect(list?.props).toMatchObject({ q: "format", filter: "active" });
+  expect(list?.props).toMatchObject({ q: "format" });
+  expect(list?.props).not.toHaveProperty("filter");
 });

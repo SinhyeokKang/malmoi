@@ -57,7 +57,7 @@ export function NewProject({
   now: string;
   /** `?e=` — callback이 실어 보낸 사유. ① 본문 맨 위 배너로 선다. */
   initialError: string | undefined;
-  backQuery: { filter?: string; q?: string };
+  backQuery: { q?: string };
 }) {
   const router = useRouter();
   // 같은 리포·후보로 돌아와도 이전 요청과 구별해야 하므로 값 비교 대신 세대를 센다.
