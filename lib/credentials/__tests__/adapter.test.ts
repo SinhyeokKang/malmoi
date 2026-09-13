@@ -11,6 +11,13 @@ beforeEach(() => {
   vi.stubEnv("EMAIL_LOOKUP_KEY_ID", "k1");
 });
 afterEach(() => vi.unstubAllEnvs());
+it.each([null, "https://store.public.blob.vercel-storage.com/avatars/u1/n.png"])("재로그인은 사용자 사진 %s를 덮지 않는다", async (image) => {
+  const row = { id: "u1", emailVerified: null, ...encodeUserFields("u1", { email: "a@x.com", image }) };
+  const update = vi.fn(async ({ data }) => ({ ...row, ...data }));
+  const adapter = credentialAdapter({ user: { update } } as unknown as PrismaClient);
+  expect(await adapter.updateUser!({ id: "u1", image: "https://avatars.githubusercontent.com/u/1", emailVerified: new Date(0) })).toMatchObject({ image, emailVerified: new Date(0) });
+  expect(update.mock.calls[0]![0].data).not.toHaveProperty("image");
+});
 it("세션 생성은 DB에 해시, Auth.js에는 원문을 반환한다", async () => {
   const create = vi.fn(async ({ data }) => data);
   const adapter = credentialAdapter({ session: { create } } as unknown as PrismaClient);
