@@ -1277,3 +1277,17 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   로 외부 쓰기 전에 키 검증이 있는지, 실패 로그가 SDK·DB 오류 원문 대신 단계를 남기는지 확인했다.
   기존 GitHub 토큰 쓰기는 `validateTokenWriteKey`를 사용한다. 같은 축의 새 외부 쓰기를 추가할 때
   활성 키가 잘못된 테스트에서 외부 I/O가 호출되지 않음을 단언한다.
+
+### 2026-09-13 — 일회용 연결 요청을 락 전에 읽어 재사용 결과가 달라졌다
+
+- **영역**: `lib/account-connect/store.ts` · `lib/credentials/__tests__/postgres.integration.ts`
+- **증상**: 같은 nonce를 동시에 완료하면 두 번째 요청이 `expired` 대신 `already-connected`를
+  반환했다. Account 중복 생성은 차단됐지만 재사용 결과가 실행 순서에 따라 달랐다.
+- **근본 원인**: 소유자 발견용 challenge 조회가 User 락보다 앞이었다. 락을 기다리는 동안 첫
+  요청이 challenge를 소비해도 메모리의 옛 행으로 Account 존재 판정을 먼저 했다.
+- **그물**: 순수 판정 테스트는 DB 대기 중 삭제를 보지 못했다. 격리 PostgreSQL 동시 요청 테스트와
+  보안 리뷰가 잡았다. 락 뒤 같은 identifier/token을 다시 조회한 뒤 판정하도록 수정해 57건이 통과했다.
+- **재발 방지**: `rg -n 'findFirst|lockUser' lib/login-link/store.ts lib/session-revocation/store.ts lib/account-connect/store.ts`
+  를 실행했다. 기존 병합·회수에도 락 전 소유자 조회가 있으며 조건부 소비가 중복 쓰기를 막는다.
+  그 경로의 기존 실패 어휘는 바꾸지 않았다. 새 일회용 경로는 중복 쓰기뿐 아니라 동시 재사용의
+  반환 사유도 단언하고, 소유자 발견용 조회와 락 안의 유효성 조회를 구별한다.
