@@ -1254,3 +1254,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `İ`의 소문자 변환은 `i`와 결합 점 두 코드 유닛이다. 변환 후의 검색 위치를 길이가 다른 원문에 그대로 적용했다.
 - **그물**: 기존 영문 검색 테스트는 소문자화 전후 길이가 같았다. 길이가 늘어나는 문자의 앞·뒤 일치 회귀 테스트에서 red를 확인했고 변환 오프셋을 원문 경계에 대응시켜 수정했다. 검색은 전체 문자열을 소문자화하는 기존 규칙을 유지한다.
 - **재발 방지**: `rg -n 'toLowerCase\(\)|indexOf\(' lib/projects/list.ts lib/keys/view.ts`를 실행했다. 다른 검색은 포함 여부만 판단하며 그 인덱스로 원문을 자르지 않는다. 문자열 변환 뒤 원문을 자르는 코드에서는 UTF-16 길이 보존을 전제하지 않는다.
+
+### 2026-09-13 — 모달 딥링크가 배경 목록의 원격 조회를 다시 기다렸다
+
+- **영역**: `app/(edit)/projects/new/page.tsx`, 새 `projects/@modal` 슬롯, `components/onboarding/new-project.tsx`.
+- **증상**: 사용자 브라우저 실측에서 New project 클릭 뒤 목록 행 4개가 93프레임(약 1.6초) 동안 0개가 됐고, 모달은 4초 안에 뜨지 않았다. 기존 딥링크 페이지가 배경 목록의 DB·GitHub 집계를 처음부터 다시 조회했다.
+- **근본 원인**: 직접 진입에 필요한 배경 재구성을 클라이언트 네비게이션에도 적용했다. 모달의 리포 조회를 Suspense로 감싸도 그보다 먼저 기다리는 배경 목록 조회는 분리되지 않았다.
+- **그물**: 기존 페이지·DOM 테스트는 모달의 상태와 props를 검사했지만 두 진입 방식의 목록 조회 횟수를 구별하지 않았다. 인터셉트는 목록 조회 0회, 직접 진입은 인가된 사용자로 조회한다는 테스트와 로딩 전후 닫기 문맥 테스트를 추가했다. 패널 검사는 일반 페이지 1개·슬롯 추가 패널 0개를 검사하며 인가 전수 검사에 슬롯을 포함한다. 빌드의 인터셉트 매핑은 확인했고 브라우저 프레임 재측정은 사용자가 진행한다.
+- **재발 방지**: `rg -n 'loadProjectList|NewProjectModal|requireUser|maxDuration' 'app/(edit)/projects/@modal' 'app/(edit)/projects/new/page.tsx' 'app/(edit)/projects/new-project-modal.tsx'`를 실행했다. 목록 조회는 직접 진입에만 남았다. 모달 라우트를 추가할 때는 딥링크·soft navigation·닫기·다른 화면으로 이동을 각각 검사한다. default 슬롯만으로는 soft navigation 뒤 활성 모달을 지울 수 없어 목록용 page와 하위 경로용 catch-all이 null을 반환한다.
