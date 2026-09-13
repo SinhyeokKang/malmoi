@@ -1307,7 +1307,14 @@ export const en = {
        * 한다 (WCAG 2.5.3).
        */
       connect: "Connect",
-      connectLabel: (provider: string): string => `Connect ${provider}`,
+      /**
+       * ⚠️ **`Connect ${provider}`였고 그것이 `m.settings.account.connect`(`"Connect GitHub"`)와
+       * 접근 이름까지 같았다** (2026-09-13). **Google로만 로그인하고 App을 한 번도 연결하지 않은
+       * 계정**에서 둘이 나란히 서고, 그것이 PRODUCT가 말하는 **비개발자 동료의 기본 상태**다 —
+       * GitHub으로 로그인하면 수단 행이 연결됨이라 이 조합이 안 생기고, 개발자 계정으로 보면
+       * 영영 안 밟는다. **이름이 드는 것은 대상이 아니라 축이다**(아래 `disconnectLabel`과 같다).
+       */
+      connectLabel: (provider: string): string => `Connect ${provider} as a sign-in method`,
       /** 연결된 행의 보조 줄 — 미연결 행의 `notConnected`와 짝이다. 한쪽만 있으면 행 높이가 갈린다. */
       connected: "Connected",
       notConnected: "Not connected",

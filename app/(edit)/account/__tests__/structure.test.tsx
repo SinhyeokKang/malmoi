@@ -147,10 +147,17 @@ it("`?sessionRevocation=`는 Sessions 구역 안에 닿는다", async () => {
  * 리포 쓰기 권한이다.
  */
 it.each([
-  ["둘 다 연결됨", [{ provider: "github" }, { provider: "google" }]],
-  ["마지막 수단", [{ provider: "github" }]],
-])("%s 상태에서 버튼의 접근 이름이 전부 다르다", async (_name, methods) => {
-  const container = await screen({}, methods);
+  ["둘 다 연결됨", [{ provider: "github" }, { provider: "google" }], { status: "ok", login: "octocat" }],
+  ["마지막 수단", [{ provider: "github" }], { status: "ok", login: "octocat" }],
+  /**
+   * ⚠️ **Google로만 로그인하고 App을 한 번도 연결하지 않은 계정** — PRODUCT가 말하는 **비개발자
+   * 동료의 기본 상태**이고, 앞의 둘로는 **구조적으로 안 나온다**(GitHub이 로그인 수단이면 그 행에
+   * [Connect]가 안 선다). 이 갈래에서만 `Connect GitHub`이 두 축에 나란히 서고, 개발자 계정으로
+   * 브라우저를 열면 영영 안 밟는다.
+   */
+  ["Google 전용 + App 미연결", [{ provider: "google" }], { status: "ok", login: null }],
+])("%s 상태에서 버튼의 접근 이름이 전부 다르다", async (_name, methods, view) => {
+  const container = await screen({}, methods, view);
   /**
    * ⚠️ **보이는 라벨과 접근 이름을 갈라서 든다.** 접힌 이름으로 거르면 라벨을 바꾸는 변경이
    * **필터에서 빠져나간다** — `aria-label`을 `"Revoke repository access"`로 고치면 보이는 텍스트는
@@ -163,9 +170,15 @@ it.each([
   expect(controls.length).toBeGreaterThan(1);
   expect(new Set(controls.map((c) => c.name)).size).toBe(controls.length);
 
+  /**
+   * ⚠️ **충돌은 위 전역 유일성이 잡는다** — 보이는 글자가 **달라도** 접근 이름이 같아질 수 있다:
+   * 수단 추가의 `Connect`(이름 `Connect GitHub as a sign-in method`)와 리포 권한의
+   * `Connect GitHub`이 그 쌍이었고, 보이는 글자로 거르면 **둘이 같은 그룹에 안 들어와** 이 루프가
+   * 통째로 못 본다. 아래가 보는 것은 충돌이 아니라 **"저마다 무엇의 해제인지 말하는가"**다.
+   * ⚠️ **루프가 0회면 두 단언이 증발한다** — 라벨이 바뀌면 그 순간 검사가 사라진다.
+   */
   const disconnects = controls.filter((c) => c.visible === m.link.methods.disconnect);
-  // ⚠️ **루프가 0회면 아래 둘이 통째로 증발한다** — 라벨이 바뀌면 그 순간 검사가 사라진다.
-  expect(disconnects.length).toBeGreaterThan(1);
+  expect(disconnects.length).toBeGreaterThan(0);
   for (const control of disconnects) {
     // 접근 이름이 보이는 텍스트를 **포함**해야 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
     expect(control.name.startsWith(control.visible)).toBe(true);
