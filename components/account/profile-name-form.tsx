@@ -39,10 +39,13 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
    * ⚠️ **성공 상태가 "마지막으로 저장된 값"이다.** `"저장했다"`는 불리언으로 두고 필드 값과
    * `name` prop을 견주면, 서버가 트림한 경우(`"Jane "` → `"Jane"`) 둘이 영영 안 같아 **성공도
    * 실패도 안 보이는 무음**이 된다. 저장된 값을 들고 그것과 견준다.
+   *
+   * ⚠️ **성공해도 `value`를 안 건드린다.** 필드는 pending 중에도 편집되므로, 돌아온 값으로 덮으면
+   * **그 사이에 이어 친 글자가 사라진다** — 위 "제출값을 지우지 않는다"가 금지하는 것과 같은 피해다.
+   * 트림 차이는 표시 조건이 `value.trim()`을 보는 것으로 흡수한다.
    */
   const [state, submit, pending] = useActionState<Reason | { saved: string } | null, FormData>(async (_previous, form) => {
     const result = await updateProfileName(String(form.get("name") ?? ""));
-    if (result.ok) setValue(result.name);
     return result.ok ? { saved: result.name } : result.reason;
   }, null);
   const failure = state === null || typeof state === "object" ? null : reasonMessage(state);
@@ -61,7 +64,7 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
           {m.account.profile.save}
         </Button>
         {/* 저장된 값과 같을 때만 선다 — 다시 고치기 시작하면 이 조건이 지운다. */}
-        {typeof state === "object" && state !== null && value === state.saved && (
+        {typeof state === "object" && state !== null && value.trim() === state.saved && (
           <span className="text-muted-foreground text-xs">{m.account.profile.saved}</span>
         )}
       </div>

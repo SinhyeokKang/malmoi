@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 import { deleteProfileImage, uploadProfileImage } from "@/app/(edit)/account/actions";
 import { Alert } from "@/components/ui/alert";
@@ -31,6 +31,8 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
    * 말하는 유일한 신호이므로(`Button`이 라벨을 안 바꾼다) 어느 쪽인지를 따로 기억한다.
    */
   const [running, setRunning] = useState<"upload" | "delete" | null>(null);
+  /** ⚠️ 위와 같은 이유 — 사유를 `aria-describedby`로 묶지 않으면 "왜 못 누르나"가 안 읽힌다. */
+  const reasonId = useId();
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -66,6 +68,7 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
         <Button
           variant="ghost"
           disabled={!hasPicture}
+          aria-describedby={hasPicture ? undefined : reasonId}
           loading={pending && running === "delete"}
           onClick={() => {
             setFailure(null);
@@ -83,7 +86,7 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
           {m.account.picture.delete}
         </Button>
         {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** — 왜 못 누르는지가 옆에 선다. */}
-        {!hasPicture && <span className="text-muted-foreground text-xs">{m.account.picture.noPicture}</span>}
+        {!hasPicture && <span id={reasonId} className="text-muted-foreground text-xs">{m.account.picture.noPicture}</span>}
       </div>
       <p className="text-muted-foreground text-xs">{m.account.picture.caption}</p>
       {failure !== null && <Alert variant="danger">{failure}</Alert>}

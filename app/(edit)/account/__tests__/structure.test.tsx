@@ -90,12 +90,7 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
     m.common.nav.signOut,
     m.settings.account.disconnectLabel,
   ].sort());
-  /**
-   * ⚠️ **접근 이름이 서로 달라야 한다.** 보이는 라벨은 셋이 전부 `Disconnect`이고, 이름까지 같으면
-   * 브라우즈 모드의 컨트롤 목록과 음성 입력에서 **유일한 로그인 수단 해제**와 **모든 프로젝트의
-   * 발송을 멈추는 해제**가 구별되지 않는다. 2026-09-13에 대상만 붙였다가 둘이 또 같아졌다.
-   */
-  expect(new Set(labels).size).toBe(labels.length);
+  // 접근 이름 충돌은 아래 전용 검사가 든다 — 여기서 세면 비활성 컨트롤이 빠진다.
 
   /**
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
@@ -110,10 +105,9 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
   const container = await screen({}, [{ provider: "github" }]);
   const labels = [...container.querySelectorAll('[aria-haspopup="dialog"]')]
     .map((trigger) => trigger.getAttribute("aria-label") ?? trigger.textContent ?? "");
-  // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 대상을 든다(위 검사).
+  // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 축을 든다(아래 검사).
   expect(labels).not.toContain(m.link.methods.disconnectLabel(m.link.providers.github));
   expect(labels).toHaveLength(3);
-  expect(new Set(labels).size).toBe(labels.length);
 });
 
 /**
@@ -138,6 +132,40 @@ it("`?sessionRevocation=`는 Sessions 구역 안에 닿는다", async () => {
   expect(section!.querySelector("h2")?.textContent).toBe(m.account.sessionsSection.title);
   // 구역 Alert는 헤더 아래·리스트 위다 — 리스트 안으로 들어가면 항목 하나처럼 읽힌다.
   expect(section!.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+});
+
+/**
+ * ⚠️ **행 안의 모든 버튼을 센다 — Dialog를 지나는 것만이 아니다.**
+ *
+ * 보이는 라벨이 `Disconnect`인 컨트롤이 셋이고 그중 **마지막 수단의 것은 비활성이라
+ * `DialogTrigger`가 아니다** — `aria-haspopup`으로 세면 그 하나가 목록에서 통째로 빠지고,
+ * 그 줄의 `aria-label`을 지워도 검사가 green이다(2026-09-13 2차 리뷰가 그 구멍을 잡았다).
+ * 비활성은 탭 순서에서만 빠지고 **접근성 트리에는 남는다.**
+ *
+ * ⚠️ **대상만 붙이면 부족하다** — `"Disconnect GitHub"`이 수단 해제와 연결 해제 양쪽에서 나온다.
+ * 이름이 들어야 하는 것은 **축**이다: 같은 "GitHub"이 한 구역에선 로그인 수단이고 다음 구역에선
+ * 리포 쓰기 권한이다.
+ */
+it.each([
+  ["둘 다 연결됨", [{ provider: "github" }, { provider: "google" }]],
+  ["마지막 수단", [{ provider: "github" }]],
+])("%s 상태에서 버튼의 접근 이름이 전부 다르다", async (_name, methods) => {
+  const container = await screen({}, methods);
+  const names = [...container.querySelectorAll("section li button")]
+    .map((button) => button.getAttribute("aria-label") ?? button.textContent ?? "");
+  expect(names.length).toBeGreaterThan(1);
+  expect(new Set(names).size).toBe(names.length);
+  for (const name of names.filter((n) => n.includes(m.link.methods.disconnect))) {
+    // 보이는 텍스트를 **포함**해야 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
+    expect(name.startsWith(m.link.methods.disconnect)).toBe(true);
+    /**
+     * ⚠️ **`"Disconnect"` 단독으로 끝나는 이름이 0이다.** 충돌만 세면 부족하다 — 다른 [Disconnect]가
+     * 마침 축을 들고 있으면 **이쪽이 맨몸이어도 두 문자열은 다르다.** 실제로 비활성 [Disconnect]의
+     * `aria-label`을 지우는 뮤테이션이 그 이유로 green이었다(2026-09-13). 세야 하는 것은 "둘이
+     * 다른가"가 아니라 **"저마다 무엇의 해제인지 말하는가"**다.
+     */
+    expect(name).not.toBe(m.link.methods.disconnect);
+  }
 });
 
 /**
@@ -176,6 +204,7 @@ it.each([
  */
 it.each([
   ["connect", { status: "ok", login: null }],
+  ["reauthorize", { status: "reauthorize" }],
   ["disconnect", { status: "ok", login: "octocat" }],
 ])("GitHub %s 실패는 행이 아니라 구역 Alert에 선다", async (kind, view) => {
   actions.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
@@ -218,5 +247,13 @@ it("사유 없는 disabled가 0이다", async () => {
       .map((sibling) => sibling.textContent ?? "")
       .join(" ");
     expect(reason.trim(), control.textContent ?? "").not.toBe("");
+    /**
+     * ⚠️ **옆에 있는 것으로는 절반만 지킨 것이다.** `aria-describedby`로 묶지 않으면 스크린리더는
+     * *"…, 버튼, 사용 불가"*까지만 읽고 **왜인지는 못 읽는다** — 이 리포가 반복해 밟은 "사유 없는
+     * `disabled`"가 그 사용자에게만 그대로 남는다 (POSTMORTEM 2026-09-06).
+     */
+    const describedBy = control.getAttribute("aria-describedby");
+    expect(describedBy, control.textContent ?? "").not.toBeNull();
+    expect(container.ownerDocument.getElementById(describedBy!)?.textContent?.trim()).not.toBe("");
   }
 });

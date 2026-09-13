@@ -83,9 +83,10 @@ export function DisconnectGithubButton({ usage = null, onFailure }: {
    */
   usage?: number | null;
   /**
-   * 실패 문구를 바깥이 든다. ⚠️ **`/account`에서 이 버튼은 리스트 항목의 우측 컨트롤이라** 실패
-   * Alert를 형제로 두면 버튼 옆에 서서 행이 무너진다 — 그 화면은 구역 Alert 자리로 올린다.
-   * 안 주면 기존처럼 바로 아래에 그린다(설정 화면).
+   * 결과 문구를 바깥이 든다 — **실패는 문자열, 성공은 `null`이다.**
+   * ⚠️ **`/account`에서 이 버튼은 리스트 항목의 우측 컨트롤이라** Alert를 형제로 두면 그 클러스터가
+   * `shrink-0`이라 압축되지 않고 행이 패널 밖으로 밀린다 — 그 화면은 구역 Alert 자리로 올린다.
+   * 안 주면 기존처럼 바로 아래에 그린다(설정 화면). `ConnectGithubButton`의 `onResult`가 같은 계약이다.
    */
   onFailure?: (message: string | null) => void;
 } = {}) {

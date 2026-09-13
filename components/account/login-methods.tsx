@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { useTransition } from "react";
+import { useId, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
 import { AccountRow, AccountSection } from "@/components/account/account-section";
@@ -44,6 +44,12 @@ export function LoginMethods({ rows, outcome = null }: {
 function MethodRow({ row, removable }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean }) {
   const [pending, startTransition] = useTransition();
   const label = providerLabel(row.provider);
+  /**
+   * ⚠️ **사유가 화면에만 있으면 절반만 지킨 것이다.** 옆에 선 문구를 `aria-describedby`로 묶지
+   * 않으면 스크린리더는 *"…, 버튼, 사용 불가"*까지만 읽고 **왜인지는 못 읽는다** — "사유 없는
+   * `disabled`를 만들지 않는다"(POSTMORTEM 2026-09-06)가 그 사용자에게만 안 지켜진다.
+   */
+  const reasonId = useId();
   return (
     <AccountRow
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
@@ -64,9 +70,9 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
       ) : (
         <>
           {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
-          <span className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 GitHub App 해제와 글자까지 같다. */}
-          <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} disabled={true}>{m.link.methods.disconnect}</Button>
+          <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
+          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다. */}
+          <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} disabled={true}>{m.link.methods.disconnect}</Button>
         </>
       )}
     </AccountRow>
