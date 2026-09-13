@@ -785,6 +785,21 @@ it("a taken provider is rejected before writes and never moved", async () => {
   expect(await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: proof.providerAccountId } } })).toMatchObject({ userId: other.id });
   expect(await prisma.verificationToken.count()).toBe(1);
 });
+it("a session revoked during the connect roundtrip cannot authorize a write", async () => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  await prisma.session.deleteMany({ where: { userId: proof.userId } });
+  expect(await finishConnect(prisma, proof)).toBe("wrong-user");
+  expect(await prisma.account.count()).toBe(1);
+});
+it("a changed current email cannot reuse an older matching provider proof", async () => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  await prisma.user.update({ where: { id: proof.userId }, data: encodeUserFields(proof.userId, { email: "changed@example.com" }) });
+  expect(await finishConnect(prisma, proof)).toBe("email-mismatch");
+  expect(await prisma.account.count()).toBe(1);
+  expect(await prisma.verificationToken.count()).toBe(1);
+});
 it("database failure rolls back connect consumption", async () => {
   const { proof } = await connectFixture();
   await beginConnect(prisma, proof);
@@ -818,9 +833,11 @@ it.each(["github", "google"] as const)("real Auth.js %s connects without changin
   expect(await prisma.account.count()).toBe(2);
   expect(await prisma.user.count()).toBe(2);
 });
-it.each(["missing", "renamed", "nonce-only"] as const)("connect intent %s cannot become a normal login", async mode => {
-  const { jar, callback } = await connectOAuth("google", "new-stranger");
-  let sent = jar.split("; ").filter(c => !c.startsWith("malmoi-account-connect="));
+it.each((["github", "google"] as const).flatMap(provider => (["missing", "renamed", "nonce-only", "state-only"] as const).map(mode => ({ provider, mode }))))("connect intent $provider/$mode cannot become a normal login", async ({ provider, mode }) => {
+  const { jar, callback } = await connectOAuth(provider, "new-stranger");
+  let sent = jar.split("; ");
+  if (mode !== "nonce-only") sent = sent.filter(c => !c.startsWith("malmoi-account-connect="));
+  if (mode === "nonce-only") sent = sent.filter(c => !c.startsWith("malmoi-connect-state="));
   if (mode === "missing") sent = sent.filter(c => !c.startsWith("malmoi-connect-state="));
   if (mode === "renamed") sent = sent.map(c => c.replace(/^malmoi-connect-state=/, "authjs.state="));
   const response = await callback(sent.join("; "));
