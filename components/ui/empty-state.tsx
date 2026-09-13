@@ -1,5 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
+
 /**
  * 빈 상태 (DESIGN §6.4·§10): 제목은 마침표 없는 짧은 구, 설명은 완전 문장 하나, **액션은 버튼 하나.**
  * 일러스트는 없고 아이콘 하나만 허용한다 (§6.8).
@@ -19,11 +21,14 @@ export function EmptyState({
   title,
   description,
   action,
+  className,
 }: {
   icon?: ComponentType<{ className?: string }>;
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
+  /** ⚠️ **여백만 조정하라고 연 자리다** — 모달 본문은 패널보다 낮아 `py-12`가 바닥을 밀어낸다. */
+  className?: string;
 }) {
   return (
     /**
@@ -31,7 +36,7 @@ export function EmptyState({
      * 있어서 gap이 **거기에 더해진다** — 세 간격이 서로 다른 수단으로 잡히고, gap을 건드리면
      * 의도치 않게 셋이 함께 움직인다. 간격의 출처를 margin 하나로 남긴다.
      */
-    <div className="flex flex-col items-center py-12 text-center">
+    <div className={cn("flex flex-col items-center py-12 text-center", className)}>
       {Icon !== undefined && (
         <span className="bg-foreground/5 mb-3 flex size-12 items-center justify-center rounded-full">
           <Icon className="text-muted-foreground size-4" aria-hidden />
@@ -43,8 +48,9 @@ export function EmptyState({
         읽혀 **어느 쪽이 답인지** 안 보인다. 이 블록은 화면에 그것 하나뿐이라 위계가 스스로 서야 한다.
       */}
       <p className="mb-1 text-lg font-medium">{title}</p>
+      {/* ⚠️ **46ch다** — `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다 (시안). */}
       {description !== undefined && (
-        <p className="text-muted-foreground max-w-prose text-sm">{description}</p>
+        <p className="text-muted-foreground max-w-[46ch] text-sm">{description}</p>
       )}
       {action !== undefined && <div className="mt-4">{action}</div>}
     </div>

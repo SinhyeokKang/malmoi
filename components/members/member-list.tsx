@@ -6,7 +6,7 @@ import { changeMember } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, Td, Th } from "@/components/ui/table";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -88,13 +88,25 @@ export function MemberList({
             <Td>
               {manage ? (
                 <Select
-                  aria-label={m.members.changeRole(who)}
                   value={member.role}
                   disabled={pendingId === member.userId}
-                  onChange={(e) => apply(member.userId, e.target.value as Role)}
+                  onValueChange={(value) => apply(member.userId, value as Role)}
                 >
-                  <option value="OWNER">{m.projects.role.OWNER}</option>
-                  <option value="EDITOR">{m.projects.role.EDITOR}</option>
+                  {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
+                  <span id={`role-${member.userId}-label`} className="sr-only">
+                    {m.members.changeRole(who)}
+                  </span>
+                  <SelectTrigger
+                    id={`role-${member.userId}`}
+                    aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OWNER">{m.projects.role.OWNER}</SelectItem>
+                    <SelectItem value="EDITOR">{m.projects.role.EDITOR}</SelectItem>
+                  </SelectContent>
                 </Select>
               ) : (
                 m.projects.role[member.role]

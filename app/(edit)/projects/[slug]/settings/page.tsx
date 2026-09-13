@@ -22,6 +22,8 @@ import { loadAccountView } from "@/lib/github-connect/account-view";
 import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connect/health";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-status";
+import { failing } from "@/lib/projects/list";
 // ⚠️ **필드와 대기 Alert는 6b-5가 `/locales`로 옮겼지만 이 조건은 남는다** — 아래 `workflowYaml`이
 // 대기 중 `base-locale:`을 박고, 그 줄이 없으면 CI가 옛 base를 계속 보내 변경이 영영 안 일어난다.
 import { basePending } from "@/lib/onboarding/base-pending";
@@ -79,6 +81,18 @@ export default async function SettingsPage({
       baseLocale: true,
       // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       declaredBaseLocale: true,
+      /**
+       * 마지막 임포트가 남긴 실패 (projects-list design §3.35). **코드 하나이고 이력이 아니다** —
+       * 파서 원문은 저장되지 않으므로 이 화면이 보여줄 수 있는 것은 사유 문장과 복구 안내뿐이고,
+       * 상세 진단은 대상 리포의 Actions 로그에 있다.
+       */
+      lastImportError: true,
+      /**
+       * ⚠️ **목록과 같은 술어를 써야 한다** (`failing`). 이 컬럼을 안 읽으면 [다시 시도]를 누른
+       * 직후의 화면이 목록은 "Importing", 여기는 빨간 실패 Alert가 되어 **같은 두 컬럼에서 정반대
+       * 사실**을 말한다.
+       */
+      lastImportStartedAt: true,
       // 보관 카드 (7단계). ⚠️ **이 화면만 보관된 프로젝트를 연다** — `project:settings`가 그 갈래를
       // 통과하는 유일한 permission이고, 그것이 되돌리는 길이다.
       archivedAt: true,
@@ -100,6 +114,15 @@ export default async function SettingsPage({
     loadOpenPrUrl(slug, project),
   ]);
   const readiness = planProjectReadiness(project);
+  /**
+   * ⚠️ **DB 컬럼의 문자열이라 판정 함수로 거른다** — 모르는 값은 무시한다. 직접 인덱싱하면
+   * `Object.prototype`에서 찾아진 값이 문장 자리에 온다 (POSTMORTEM 2026-09-08).
+   */
+  const stored = isImportFailureCode(project.lastImportError) ? project.lastImportError : null;
+  // 돌고 있는 실행이 있으면 남아 있는 코드는 **이전 실행의 것**이다 — 목록과 같은 판정을 쓴다.
+  const importFailure = failing({ importError: stored, importing: project.lastImportStartedAt !== null })
+    ? stored
+    : null;
 
   return (
     <>
@@ -157,6 +180,22 @@ export default async function SettingsPage({
               문구도 사라진다 — 부분 실패의 "N couldn't be read"가 아무에게도 닿지 않는다(불변식 9).
               같은 자리에 남겨 두면 클라이언트 상태가 서버 재렌더를 넘어간다 (POSTMORTEM 2026-09-07).
             */}
+            {/*
+              ⚠️ **in-block `Alert`다** — 페이지 수준 거부가 아니라 이 블록의 사실이고, 머리로 올리면
+              "설정을 열 수 없다"와 같은 층으로 읽힌다 (DESIGN §6.6).
+
+              ⚠️ **`FirstIngestRetry` 위에 선다** — 사유를 읽기 전에 버튼부터 보이면 같은 실패를 그대로
+              다시 돌린다. 첫 적재 전이면 그 버튼이 복구 경로이고, 이미 적재된 뒤면 그 버튼은
+              `not-awaiting`이라 고칠 자리가 대상 리포의 CI다 — 문구가 그것을 가른다.
+            */}
+            {importFailure !== null && (
+              <Alert variant="danger">
+                {importFailureMessage(importFailure)}{" "}
+                {readiness === "awaiting_first_sync"
+                  ? m.settings.status.importRetry
+                  : m.settings.status.importRerun}
+              </Alert>
+            )}
             <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
           </Card>
 
@@ -166,6 +205,17 @@ export default async function SettingsPage({
 
           <Card title={m.settings.workflow.title}>
             <WorkflowBlock yaml={workflowYaml(slug, project)} />
+            {/*
+              ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
+              참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
+            */}
+            <p className="text-muted-foreground mt-2 text-xs leading-[1.6]">
+              {m.settings.workflow.hookHint(
+                <span className="text-mono">useTranslations()</span>,
+                <span className="text-mono">wrapper</span>,
+                <span className="text-mono">docs/ACTIONS.md</span>,
+              )}
+            </p>
           </Card>
 
           <Card title={m.settings.account.title}>

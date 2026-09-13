@@ -1,3 +1,5 @@
+import "server-only";
+
 import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
@@ -39,6 +41,7 @@ export async function ingestFirstSnapshot(
   prisma: PrismaClient,
   input: {
     projectId: string;
+    startedAt: Date;
     projectSlug: string;
     format: DetectedFormat;
     baseLocale: string;
@@ -85,18 +88,28 @@ export async function ingestFirstSnapshot(
   if (payload.keys.length === 0) return { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors };
   if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 
-  // 첫 적재라 base가 바뀔 수 없다 — 이 프로젝트는 아직 `baseLocale`이 null이다 (design §3.13).
-  await applyPush(prisma, input.projectId, payload, { previousBaseLocale: null });
-
   const errors = [
     ...read.errors,
     ...missing.map((path): AdapterError => ({ path, code: "download-failed" })),
   ];
+  const failed = errors.length + duplicateKeys;
+
+  // 첫 적재라 base가 바뀔 수 없다 — 이 프로젝트는 아직 `baseLocale`이 null이다 (design §3.13).
+  //
+  // ⚠️ **결과를 같은 트랜잭션에 싣는다** (projects-list design §3.35). 빠진 파일이 있으면 데이터는
+  // 들어간 채로 `partial-import`가 남는다 — throw가 없어도 성공 문구를 쓰지 않는 것과 같은 축이다
+  // (불변식 9). 그래서 `failed`를 applyPush **앞에서** 센다.
+  await applyPush(prisma, input.projectId, payload, {
+    previousBaseLocale: null,
+    startedAt: input.startedAt,
+    importOutcome: failed === 0 ? null : "partial-import",
+  });
+
   return {
     count: payload.keys.length,
     // **단위가 셋이라 각각 센다** — 파일(read 실패·다운로드 실패)과 엔트리(중복). 한 숫자로 합치는 것은
     // 화면 문구가 "M건을 읽지 못했어요" 하나라서다.
-    failed: errors.length + duplicateKeys,
+    failed,
     errors,
   };
 }

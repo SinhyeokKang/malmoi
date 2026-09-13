@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,10 +34,17 @@ import { describe, expect, it } from "vitest";
  */
 
 const APP = fileURLToPath(new URL("..", import.meta.url));
+/** 리포 루트 — `app/` 밖의 발신처를 읽는다 (아래 `EXTRA_EMITTERS`). */
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
   "api/push/route.ts",
+  /**
+   * CI 파싱 실패 보고 (projects-list design §3.35). **세션 인가가 아니라 그 프로젝트의 push 토큰이
+   * 대신한다** — `/api/push`와 같은 계보이고, 호출자가 사람이 아니라 GitHub Actions다.
+   */
+  "api/push/failure/route.ts",
   "api/pull/route.ts",
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",
@@ -73,11 +80,32 @@ const USER_SCOPED_ACTIONS = new Set([
   // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",
+  "projects/actions.ts#listRepoBranches",
+  "projects/actions.ts#loadCandidateSample",
+  "projects/actions.ts#confirmManualFormat",
   "projects/actions.ts#createProject",
   // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
   "projects/actions.ts#startGithubConnectForUser",
   "projects/actions.ts#disconnectGithub",
 ]);
+
+/** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
+function hasUserGuard(body: string): boolean {
+  if (body.includes("requireUser(")) return true;
+  return body.includes("await readSession()") &&
+    /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
+    /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
+}
+
+it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 인정하지 않는다", () => {
+  const read = "const session = await readSession();";
+  const none = 'if (session.status === "none") return { ok: false, error: "unauthorized" };';
+  const outage = 'if (session.status === "unavailable") return { ok: false, error: "unavailable" };';
+  expect(hasUserGuard(read)).toBe(false);
+  expect(hasUserGuard(read + none)).toBe(false);
+  expect(hasUserGuard(read + outage)).toBe(false);
+  expect(hasUserGuard(read + none + outage)).toBe(true);
+});
 
 /**
  * **인가를 아예 안 지나는 export.** 파일 단위였던 면제를 export 단위로 좁힌 자리다 —
@@ -167,8 +195,9 @@ describe("서버 진입점", () => {
         if (EXEMPT_ACTIONS.has(id)) continue;
         // ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프 Action이
         // 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
-        const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
-        if (!accepted.some((g) => body.includes(g))) unguarded.push(id);
+        const guarded = PROJECT_GUARDS.some((g) => body.includes(g)) ||
+          (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(body));
+        if (!guarded) unguarded.push(id);
       }
     }
     expect(unguarded).toEqual([]);
@@ -395,13 +424,38 @@ describe("쿼리 파라미터의 수신자", () => {
    * 가드가 없었으면 "쿼리를 보내놓고 읽는 쪽이 없다"는 부류(issue #2)가 다시 사각지대로 들어갔다.
    *
    * ⚠️ **3번은 2026-09-11에 붙었다.** 그전까지 앞의 둘은 **문자열 보간 안의 `?key=`만** 봤는데,
-   * `routes.*`가 쿼리를 인자로 받기 시작하면서(`signIn({ error })`·`projects({ filter })`·
+   * `routes.*`가 쿼리를 인자로 받기 시작하면서(`signIn({ error })`·`projects({ q })`·
    * `account({ sessionRevocation })`·`logs({ cursor })`) 그 형태가 **네 자리 전부 검사 밖**이었다 —
    * 옮기는 것 자체가 검사를 회피시키는 모양이었고, `routes.ts` 주석은 반대로 적고 있었다.
    */
   const ROUTE_PATHS = routeShapes(ROUTES_SOURCE);
 
-  const EMITTED = ENTRY_POINTS.flatMap((e) => {
+  /**
+   * ⚠️ **진입점 밖에서도 쿼리를 실어 보낸다.** 목록 본문이 `components/projects/project-list.tsx`로
+   * 내려가면서(new-project-modal T8) `routes.projects({ q })`·`routes.newProject({ … })`가
+   * `app/` 밖으로 나갔다 — 이 목록이 없으면 그 자리가 조용히 사각지대다. **옮기는 것 자체가 검사를
+   * 회피시키는 모양**이고, 그것이 이 절의 3번 패턴이 2026-09-11에 붙은 이유이기도 하다.
+   */
+  const EXTRA_EMITTERS = [
+    "components/projects/project-list.tsx",
+    /**
+     * ⚠️ **2026-09-13에 들어왔다** (projects-list §1). 필터 탭이 사라지면서 `routes.projects({ q })`의
+     * **유일한 발신처**가 이 파일이 됐다 — 목록 본문에는 인자 없는 `routes.projects()`만 남는다.
+     * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 스스로 반복한다.
+     */
+    "components/projects/search-input.tsx",
+  ];
+
+  const SOURCES = [
+    ...ENTRY_POINTS,
+    ...EXTRA_EMITTERS.map((rel) => ({ path: rel, source: readFileSync(join(ROOT, rel), "utf8") })),
+  ];
+
+  it("추가 발신처가 전부 실재한다 — 낡은 경로가 목록에 남지 않는다", () => {
+    for (const rel of EXTRA_EMITTERS) expect(existsSync(join(ROOT, rel)), rel).toBe(true);
+  });
+
+  const EMITTED = SOURCES.flatMap((e) => {
     const code = e.source
       .split("\n")
       .filter((l) => !/^\s*(\*|\/\/)/.test(l))
@@ -448,7 +502,9 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
     // 3번 — 인자 객체. 이 셋이 2026-09-11까지 전부 검사 밖이었다.
     expect(EMITTED.some((x) => x.target === "/account" && x.key === "sessionRevocation")).toBe(true);
-    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "filter")).toBe(true);
+    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(projects-list §1),
+    // 그것을 실어 보내던 자리가 검색창 하나로 줄었다.
+    expect(EMITTED.some((x) => x.target === "/projects" && x.key === "q")).toBe(true);
   });
 
   /**

@@ -1206,3 +1206,51 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   병합 시작은 이미 같은 쿠키를 `destFromCallbackUrl`로 읽었다. 새 목적지 쿠키 대신 이 파서를
   재사용하고 `routes.invite`로 내부 링크를 만든다. 공급자 취소 실물 검증에는 성공 복귀와 별도로
   **오류 착지에서 원래 작업으로 돌아갈 수 있는지**를 포함한다.
+
+### 2026-09-13 — 🔁 모달로 이관한 상태가 이전 파일 검증과 늦은 응답을 재사용했다
+
+- **영역**: `components/onboarding/new-project.tsx`, `steps/repo.tsx`, `app/(edit)/projects/actions.ts`
+- **증상**: 수동 경로·어댑터를 바꿔도 이전 매칭이 Next를 열었다. 리포·후보 선택을 되돌리면 늦은 응답이 최신 선택을 덮었고, 검색어는 사라지는 반면 이전 이름·주소는 남았다. 세션 만료는 모달을 벗어나는 서버 redirect였고, 미리보기의 인가 거부는 Next를 막지 않았다.
+- **근본 원인**: 단계 언마운트에 기대던 무효화를 상태 컨테이너로 옮기지 않았다. 캐시 키가 파일을 식별하지 못했고, 디바운스 의존성에서 어댑터가 빠졌다. 응답의 리포 이름만 비교해도 A→B→A는 구별할 수 없다. 클라이언트에 refresh가 없다는 사실만 확인하고 Action의 requireUser가 던지는 redirect를 놓쳤다. 2026-09-08의 실패 문구·입력 소실 계열 재발이다.
+- **그물**: 기존 순수 게이트·모달 껍데기 테스트는 개별 상태만 검증했다. 실제 컨테이너의 DOM 테스트와 지연 Promise 응답 역전, 비로그인 Action 호출이 red를 냈고 수정 후 green을 확인했다. 수동 재검증의 기준 언어·생성 중 입력·④의 세션 문구도 같은 테스트에 고정했다.
+- **재발 방지**: `rg -n 'useEffect|eslint-disable|sampleKey|requireUser\(' components/onboarding 'app/(edit)/projects/actions.ts'`를 실행했다. 남은 requireUser는 연결 이동·계정 해제·서버 리포 목록 세 곳이다. 모달 Action은 readSession의 비로그인·장애 반환을 검사한다. 상태 컨테이너를 옮길 때는 키의 입력 전부와 A→B→A 응답 순서를 DOM 테스트로 함께 검증한다.
+
+### 2026-09-13 — 샘플 검증 테스트가 실제 트리에 없는 경로만 공격해 순서와 예산 위반을 놓쳤다
+
+- **영역**: `app/(edit)/projects/actions.ts#loadCandidateSample`, `lib/onboarding/sample-confirmation.ts`
+- **증상**: ko 샘플 한 번에 en·fr·ko blob 세 개를 읽었다. 다른 언어·거부될 포맷도 전체 파일을 받은 후에야 planConfirmedFormat이 거부했다. 기존 테스트 이름은 "planConfirmedFormat이 거부하고 blob 0"인데 실제로는 templatePaths의 빈 교집합에서 끝났다.
+- **근본 원인**: planConfirmedFormat은 내용을 재탐지하므로 다운로드 전 검증이 될 수 없다. 설계가 이 순서를 동시에 요구했고, 테스트는 트리에 없는 경로만 넣어 검증 단계에 도달하지 않았다. 2026-09-09의 탐지 헬퍼를 방어로 읽은 오류 및 2026-09-10의 도달하지 않은 단언 계열 재발이다.
+- **그물**: 정상 샘플의 blob 호출 목록을 정확히 비교하는 테스트가 3→1 위반을 잡았다. 새 확인값은 변조·다른 사용자·다른 리포/설치·ref·head를 순수 테스트로 거부하고, Action 테스트는 blob 전에 거부되는지 확인한다.
+- **재발 방지**: `rg -n 'planConfirmedFormat|templatePaths|verifySampleConfirmation|readFiles' 'app/(edit)/projects/actions.ts'`로 순서를 대조한다. 탐지·수동 확정은 내용을 재검증한 뒤 HMAC 확인값을 발급하고, lazy 조회는 현재 인가·스냅샷·서명을 대조한 뒤 요청 파일만 읽는다. 확인값은 인가를 대신하지 않고 파일 내용도 담지 않는다. 정상 성공 경로의 I/O 상한과 실제 트리에 있는 조작 경로를 함께 테스트한다.
+
+### 2026-09-13 — Radix 이관이 테스트를 실시간 지연에 묶어 전체 실행만 간헐 red가 됐다
+
+- **영역**: `components/ui/{select,radio}.tsx` 이관에 따른 `components/__tests__/{new-project,filter-interactions}.test.tsx`
+- **증상**: 단독 실행은 green인데 `pnpm test` 전체에서 **실행마다 다른 2~10개**가 `Test timed out in 5000ms`로 죽었다. 실패 목록이 매번 달라 원인이 특정 테스트로 안 보였다.
+- **근본 원인**: native `<select>`·`<input type="radio">`를 Radix로 옮기면서 값 대입이 불가능해져 `@testing-library/user-event`를 들였는데, 그 라이브러리는 포인터 이벤트 사이에 **실시간 지연**을 끼운다. 스위트가 병렬로 돌 때 워커 경합으로 그 큐가 밀려 기본 5초 천장을 넘었다. 코드 결함이 아니라 **테스트 실행 환경의 경합**이다.
+- **그물**: 없었다 — 게이트가 red를 냈지만 그 red가 가리키는 곳이 매번 달라 진단이 늦었다. `delay: null`은 **역효과였다**(이벤트가 `act` 밖에서 동기로 몰려 35개가 죽는다) — 지연 자체가 Radix가 여는 순서의 일부다.
+- **재발 방지**: `rg -n 'userEvent.setup|vi.setConfig' components/__tests__`로 짝을 확인한다. `user-event`를 쓰는 파일은 **그 파일 머리에만** `vi.setConfig({ testTimeout: 20_000 })`을 둔다 — 전역으로 올리면 순수 함수 3,000개까지 20초 천장을 갖고, 무한 루프로 퇴행한 모듈 하나가 로컬 게이트에서 그만큼을 태운다. ⚠️ **천장을 더 올려 해결하려 하지 않는다**: 경합은 상한이 없어 보장이 안 되고, 잃는 것("이만큼 걸리면 이상하다"는 신호)은 확정적이다. **로컬 게이트를 dev 서버·브라우저와 겹쳐 돌리지 않는다** — 완화 뒤에도 그 상태의 한 번이 red였고 안 띄운 3회는 연속 green이었다. CI는 그 부하를 지지 않는다.
+
+### 2026-09-13 — 원격 신호 하나의 실패가 워커 풀의 동시 제한을 풀었다
+
+- **영역**: `lib/projects/remote.ts` (`signalsFor` · `mapWithLimit`).
+- **증상**: PR 조회가 즉시 실패하고 compare가 아직 대기하면 동시 프로젝트 상한 3인데 7개 전부의 compare가 시작됐다. 제어 가능한 promise로 재현했으며 외부 GitHub에는 요청하지 않았다.
+- **근본 원인**: `Promise.all`은 하나가 거부되면 먼저 거부되지만 다른 요청을 취소하지 않는다. 바깥 catch가 기본값을 반환하자 워커는 프로젝트가 끝났다고 판단하고 다음 대상을 시작했다.
+- **그물**: 기존 테스트는 정상 완료의 동시 제한과 클라이언트 생성 실패만 따로 검사했다. PR 거부와 compare 대기를 겹친 회귀 테스트가 7 ≠ 3으로 red였다. `Promise.allSettled`로 두 요청의 종료까지 자리를 유지한 뒤, 하나라도 실패했으면 기존 계약대로 두 신호를 모두 생략한다.
+- **재발 방지**: `rg -n 'Promise.all\(' lib --glob '*.ts' --glob '!**/__tests__/**'`를 실행했다. 다른 병렬 호출은 DB 조회나 pull의 묶음 처리이며 같은 워커 반납 구조는 없었다. 동시성 테스트에는 성공·실패뿐 아니라 **다른 작업이 아직 대기하는 실패**를 함께 넣는다.
+
+### 2026-09-13 — 임포트 종료의 소유권과 실패 캐시 무효화가 빠졌다
+
+- **영역**: `lib/push/apply.ts`, `app/(edit)/projects/actions.ts`, `app/api/push/route.ts`, 온보딩 테스트 하네스.
+- **증상**: A 적재 시작 → B 시작 → A 성공에서 B의 진행 시각이 null이 됐고, B 실패는 시작 시각 조건에서 탈락해 기록되지 않았다. 첫 적재의 리포 클라이언트 생성 예외는 진행 표시를 남기고 던졌다. 스냅샷 실패 반환·CI 적재 실패는 DB 결과를 바꿔도 목록 캐시를 무효화하지 않았다. 전부 로컬 회귀 테스트에서 확인했다.
+- **근본 원인**: 실패 종료만 시작 시각을 대조했고 성공은 무조건 비웠다. 첫 적재의 try가 리포 읽기보다 뒤에서 시작했으며, 캐시 무효화는 성공 반환 앞에만 있었다. 2026-09-09의 상태 소비자와 무효화 범위 불일치가 실패 경로에서 재발했다.
+- **그물**: 기존 단위 테스트는 UPDATE 인자만 확인했고 온보딩 하네스에는 `project.updateMany`가 없어 `finishImportRun`의 catch가 하네스 결함까지 숨겼다. 격리 PostgreSQL의 A/B 실행 교차 테스트, 클라이언트 생성 예외와 실패 반환 테스트, CI 실패 시 목록 무효화 테스트가 각각 red였다. 성공도 같은 트랜잭션의 시작 시각 조건부 UPDATE로 종료하고, 첫 적재 전체를 try로 감싸며, 무효화는 finally에 둔다. 실제 FK 오류에서 데이터·결과가 모두 롤백되는 것도 검증했다.
+- **재발 방지**: `rg -n 'lastImportStartedAt|markImportStarted|finishImportRun|revalidatePath' lib/projects lib/push/apply.ts 'app/(edit)/projects/actions.ts' app/api/push/route.ts`를 실행했다. 표시를 세우는 두 경로와 결과를 쓰는 세 경로를 대조했다. 프로세스 강제 종료나 상태 기록 자체의 DB 장애는 finally로 보장할 수 없으므로, 이번 수정이 그 경우까지 복구한다고 해석하지 않는다.
+
+### 2026-09-13 — 소문자화한 위치로 원래 이름을 잘라 검색 강조가 어긋났다
+
+- **영역**: `lib/projects/list.ts`의 `highlightName`.
+- **증상**: `İabc`에서 `a`를 검색하면 `b`가 강조됐고, `İİ`에서 `i`를 검색하면 두 번째 글자가 강조되지 않고 빈 일치 조각이 생겼다.
+- **근본 원인**: `İ`의 소문자 변환은 `i`와 결합 점 두 코드 유닛이다. 변환 후의 검색 위치를 길이가 다른 원문에 그대로 적용했다.
+- **그물**: 기존 영문 검색 테스트는 소문자화 전후 길이가 같았다. 길이가 늘어나는 문자의 앞·뒤 일치 회귀 테스트에서 red를 확인했고 변환 오프셋을 원문 경계에 대응시켜 수정했다. 검색은 전체 문자열을 소문자화하는 기존 규칙을 유지한다.
+- **재발 방지**: `rg -n 'toLowerCase\(\)|indexOf\(' lib/projects/list.ts lib/keys/view.ts`를 실행했다. 다른 검색은 포함 여부만 판단하며 그 인덱스로 원문을 자르지 않는다. 문자열 변환 뒤 원문을 자르는 코드에서는 UTF-16 길이 보존을 전제하지 않는다.

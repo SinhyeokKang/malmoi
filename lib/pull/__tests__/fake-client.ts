@@ -80,6 +80,15 @@ export function createFakeGitClient(opts: FakeGitOptions): {
       record("createPr", [headBranch, baseBranch, title, body]);
       return `https://github.com/fake/repo/pull/1`;
     },
+    // 목록 전용 둘 (projects-list §3.4). pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
+    async compareToBase(baseSha, branch) {
+      record("compareToBase", [baseSha, branch]);
+      return { ahead: false, files: [] };
+    },
+    async isPullRequestOpen(pullNumber) {
+      record("isPullRequestOpen", [pullNumber]);
+      return false;
+    },
   };
 
   return { client, calls };

@@ -33,14 +33,13 @@ it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar
   }
   navigation.push.mockReset();
   const { container } = await render(<Harness />);
-  const select = find<HTMLSelectElement>(container, "select");
+  const select = find<HTMLButtonElement>(container, '[role="combobox"]');
   const search = find<HTMLInputElement>(container, 'input[type="search"]');
   const searchChip = find<HTMLButtonElement>(container, `button[aria-label="${m.translations.chips.remove(m.translations.chips.search("hello"))}"]`);
   const clear = find<HTMLButtonElement>(container, `button[aria-label="${m.translations.filters.clear}"]`);
   await act(async () => {
     if (source === "namespace") {
-      select.value = "b";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
+      await pickNamespace(select, "b");
     } else (source === "search chip" ? searchChip : clear).click();
   });
   expect(select.disabled).toBe(true);
@@ -52,7 +51,11 @@ it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar
   await act(async () => { ready = true; complete(); await waiting; });
   expect(select.disabled).toBe(false);
   expect(search.disabled).toBe(false);
-  expect(select.value).toBe(source === "namespace" ? "b" : source === "clear" ? "*" : "a");
+  // Radix 트리거는 값을 속성이 아니라 **표시 텍스트**로 든다 — 네임스페이스 옵션은 코드로 시작한다.
+  const shownNamespace = source === "namespace" ? "b" : source === "clear" ? m.translations.allNamespaces : "a";
+  // 트리거 안의 첫 span은 접근 이름용 `sr-only`다 — 값은 그 다음 span(`SelectValue`)이 든다.
+  const shown = select.querySelector("span:not(.sr-only)")?.textContent?.trim() ?? "";
+  expect(shown.startsWith(shownNamespace)).toBe(true);
   expect(search.value).toBe(source === "namespace" ? "hello" : "");
   if (source === "namespace") {
     expect(searchChip.disabled).toBe(false);
@@ -77,22 +80,52 @@ it("필터 이동이 끝나기 전에는 다음 필터가 이전 URL 상태로 �
   }
   navigation.push.mockClear();
   const { container } = await render(<Harness />);
-  const select = find<HTMLSelectElement>(container, "select");
-  await act(async () => { select.value = "b"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  const select = find<HTMLButtonElement>(container, '[role="combobox"]');
+  await act(async () => { await pickNamespace(select, "b"); });
   expect(select.disabled).toBe(true);
-  expect(find<HTMLButtonElement>(container, "button").disabled).toBe(true);
+  expect(find<HTMLButtonElement>(container, 'button:not([role="combobox"])').disabled).toBe(true);
   expect(find<HTMLInputElement>(container, "input").disabled).toBe(true);
   await act(async () => { ready = true; complete(); await waiting; });
-  expect(find<HTMLSelectElement>(container, "select").disabled).toBe(false);
+  expect(find<HTMLButtonElement>(container, '[role="combobox"]').disabled).toBe(false);
 });
 
 import { ProjectSearch } from "@/components/projects/search-input";
+import userEvent from "@testing-library/user-event";
+
 import { input, key } from "./helpers/dom";
+
+/**
+ * ⚠️ **Radix Select는 값을 대입해 못 바꾼다** (2026-09-13 리워크) — 트리거를 열고 옵션을 누른다.
+ */
+/**
+ * ⚠️ **`testTimeout`을 이 파일에서만 올린다** (2026-09-13 실측). `user-event`가 포인터 이벤트 사이에
+ * **실시간 지연**을 끼우는데, 스위트 전체가 병렬로 돌 때 워커 경합으로 그 큐가 밀린다 — 단독 실행은
+ * green이고 전체 실행에서 **실행마다 다른 2~10개**가 red였다.
+ *
+ * ⚠️ **`delay: null`로는 못 고친다** — 그러면 이벤트가 `act` 밖에서 동기로 몰려 35개가 죽는다(실측).
+ * 지연 자체가 Radix가 여는 순서의 일부다.
+ *
+ *
+ * ⚠️ **로컬에서 dev 서버·브라우저가 함께 돌면 더 밀린다** (2026-09-13 관찰) — 이 완화 뒤에도 그 상태의
+ * 한 번이 red였고, 그것들을 안 띄운 3회는 연속 green이었다. CI는 그 부하가 없다.
+ *
+ * ⚠️ **전역으로 올리지 않는다** — 흔들리는 것은 Radix를 누르는 몇 파일인데 순수 함수 3,000개까지
+ * 20초 천장을 가지면, 무한 루프로 퇴행한 모듈 하나가 로컬 게이트에서 5초가 아니라 20초를 태운다.
+ */
+vi.setConfig({ testTimeout: 20_000 });
+
+const user = userEvent.setup();
+async function pickNamespace(trigger: HTMLElement, namespace: string) {
+  await user.click(trigger);
+  const option = [...document.querySelectorAll('[role="option"]')].find((o) => o.textContent?.trim().startsWith(namespace));
+  if (!option) throw new Error(`Missing option: ${namespace}`);
+  await user.click(option);
+}
 
 for (const name of ["projects", "translations"] as const) {
   it(`${name} 검색은 조합 확정 Enter를 무시하고 일반 Enter만 제출한다`, async () => {
     navigation.push.mockReset();
-    const ui = name === "projects" ? <ProjectSearch filter="active" q="" /> :
+    const ui = name === "projects" ? <ProjectSearch q="" /> :
       <TranslationFilters slug="demo" query={{ ns: "a" }} chipQuery={{}} namespaces={[]} locales={[]} selected={[]} fallback={[]} />;
     const { container } = await render(ui);
     const search = find<HTMLInputElement>(container, 'input[type="search"]');

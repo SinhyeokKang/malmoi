@@ -91,7 +91,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
-| adapters | `lib/adapters/**` | **재생성 3규칙**(코드포인트 정렬·2칸·끝 개행 1개)이 `shared.ts`를 지나는가 / `localeCompare` 사용 / **`writeStrategy`가 아니라 `layout`으로 "원본이 필요한가"를 판단하는 코드** / 수술적 어댑터가 값 무변경 시 원본을 바이트 그대로 돌려주는가 / **표현(인용 부호·블록 스타일)을 원본에서 읽는가**(§1.4) / `orphaned` 제외가 재생성에만 적용되는가 / 계약 테스트(`__tests__/contract.ts`) 매트릭스와 실제 어댑터 일치 |
+| adapters | `lib/adapters/**` | **재생성 규칙이 `shared.ts`를 지나는가** — 코드포인트 정렬(`orderedEntries`)·끝 개행 1개. ⚠️ **들여쓰기는 이 목록에 없다**: 재생성 어댑터도 **표현을 원본에서 읽고**(`observeJsonStyle`) 2칸은 원본이 없을 때의 폴백이다(신규 로케일 파일). "2칸 고정"을 검사하면 §1.4를 지키는 구현이 🔴가 된다 (2026-09-13 정정) / `localeCompare` 사용 / **`writeStrategy`가 아니라 `layout`으로 "원본이 필요한가"를 판단하는 코드** / 수술적 어댑터가 값 무변경 시 원본을 바이트 그대로 돌려주는가 / **표현(인용 부호·블록 스타일)을 원본에서 읽는가**(§1.4) / `orphaned` 제외가 재생성에만 적용되는가 / 계약 테스트(`__tests__/contract.ts`) 매트릭스와 실제 어댑터 일치 |
 | pull-git | `lib/pull/**`, `lib/githash.ts`, `lib/github.ts` | blob SHA가 **UTF-8 바이트 길이**를 쓰는가(`content.length` 금지) / `base_tree` 전달 / parents가 **base head** / 커밋 메시지 `[skip-l10n]` / 브랜치 force update / **열린 PR 재사용** / 1층(`updatedAt` 스킵)·2층(blob 비교) 판정 순서 / `sortIndex → order` 4홉(§1.1의 a~d)이 끊기지 않았는가 |
 | push-survey | `lib/push/**`, `lib/survey/**` | **페이로드 생산자가 `lib/push/payload.ts` 하나인가**(리터럴 조립이 다시 생겼는지) / `unnest` 컬럼 수 = 값 배열 수 / 오배송·역행 가드(409) / survey가 프로덕션 판정 함수를 쓰는가(자체 재구현 여부) |
 
@@ -110,7 +110,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 |---|---|---|
 | merge-free | `lib/push/**`, `lib/pull/**` | **머지 로직·3-way·충돌 해소·"누가 이겼나" 판정이 슬며시 들어왔는가** / push가 `ON CONFLICT DO UPDATE`(strict)를 유지하는가 / pull이 기존 파일 값과 DB 값을 견줘 고르는 코드가 있는가 / **키 삭제(`DELETE`) 대신 `orphaned`인가** |
 | write-owners | `app/(edit)/**`, `lib/keys/**` | **`Translation.value` 쓰기 주체가 둘인가**(편집 UI `saveTranslation` + push strict). 셋째가 생겼으면 판정이 필요해진 것 / 저장이 `updatedAt`을 올려 pull 1층 스킵을 푸는가 / 같은 값 재저장이 noop인가(빈 PR 방지) |
-| scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — PRODUCT §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / 스키마가 5테이블을 넘었는가 |
+| scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — PRODUCT §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / **새 모델이 코어 원칙에서 파생되는가** — `prisma/schema.prisma`는 현재 12모델(도메인 6 + Auth.js 4 + 멤버십 2)이고, ⚠️ **숫자 상한을 기준으로 쓰지 않는다**(2026-09-13 정정: "5테이블을 넘었는가"가 남아 있어 감사를 돌릴 때마다 걸렸다). 묻는 것은 개수가 아니라 **그 모델이 §0의 어느 불변식에서 나오는가**다 |
 
 **전문가 통합 점검**
 - **"병합 없음"이 실제로 지켜지는 경로 전수** — 값을 고르는 분기가 어디에도 없어야 한다
@@ -124,7 +124,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
-| authz | `middleware.ts`, `auth.ts`, `lib/auth/**`, `app/api/**` | **보호 라우트가 전부 `matcher`에 있는가**(레이아웃 조건부 렌더는 차단이 아니다 — RSC 페이로드가 실린다) / 레이아웃이 `redirect()`를 던지는가 / `AUTH_ALLOWED_LOGINS`가 비면 **fail-closed**인가 / `/api/push`의 `PUSH_TOKEN`·`/api/pull`의 `CRON_SECRET` 검증 / **OAuth 토큰으로 커밋하거나 App 토큰으로 사용자 식별하는 코드**(두 자격증명 혼입) |
+| authz | `middleware.ts`, `auth.ts`, `lib/auth/**`, `app/api/**` | **보호 라우트가 전부 `matcher`에 있는가**(레이아웃 조건부 렌더는 차단이 아니다 — RSC 페이로드가 실린다) / 레이아웃이 `redirect()`를 던지는가 / **인가가 `ProjectMember`인가** — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. ⚠️ **허용 핸들 목록(`AUTH_ALLOWED_LOGINS`)은 2026-09-05에 사라졌다**(ARCHITECTURE §6): 로그인은 검증된 이메일만 요구하고 그것이 아무것도 열지 않는다. **그 변수가 코드에 다시 보이면 그것이 결함이고**, `app/__tests__/entry-points.test.ts`가 부재를 상시로 센다 / `/api/push`의 `PUSH_TOKEN`·`/api/pull`의 `CRON_SECRET` 검증 / **OAuth 토큰으로 커밋하거나 App 토큰으로 사용자 식별하는 코드**(두 자격증명 혼입) |
 | tenancy-env | `lib/db.ts`, `lib/env.ts`, `lib/keys/query.ts`, `prisma/**` | **모든 DB 쿼리가 `projectId`로 좁혀졌는가**(RLS 없음 — 애플리케이션이 유일한 방어선) / Server Action이 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인하는가 / **환경변수를 모듈 최상위에서 평가하는 코드**(파일을 읽기만 해도 죽는다 — 두 번 밟은 함정) / `process.env` 산발 접근 / 코드가 읽는 변수가 `.env.example`에 전부 있는가 / ⚠️ **DB에 닿는 경로가 앱 하나인가** — 아래 |
 
 ⚠️ **`tenancy-env` 차원은 2026-09-09에 축이 하나 늘었다: "DB에 도달하는 경로를 전수로 센다."**

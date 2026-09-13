@@ -87,7 +87,8 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
    * 부정 단언이 그 축이고, 긍정 단언의 대상은 `ROOT_LINK_SITES` 둘로 줄었다.
    */
   const SITES = [
-    "app/(edit)/projects/page.tsx",
+    // 목록 본문은 `components/projects/project-list.tsx`로 내려갔다 (new-project-modal T8).
+    "components/projects/project-list.tsx",
     "components/translations/header.tsx",
     "app/(edit)/projects/[slug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
@@ -102,7 +103,7 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
    *
    * ⚠️ **8-4에서 둘로 줄었다** — breadcrumb 다섯이 사라졌고, 위로 가는 길은 사이드바가 든다.
    */
-  const ROOT_LINK_SITES = ["app/(edit)/projects/page.tsx", "lib/shell/nav.ts"];
+  const ROOT_LINK_SITES = ["components/projects/project-list.tsx", "lib/shell/nav.ts"];
 
   it("두 자리가 전부 `routes.project`를 쓴다", () => {
     for (const path of ROOT_LINK_SITES) {

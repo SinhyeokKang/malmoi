@@ -1,7 +1,10 @@
+import "server-only";
+
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
 import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
@@ -21,8 +24,7 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
  * `Project.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
  * (`randomUUID` — `@default(cuid())`는 raw SQL에 오지 않는다) 그 값을 들고 있으면 조회가 없어진다.
  *
- * 클라이언트를 **주입받는다** — `lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에
- * 스크립트·테스트에서 이 모듈을 열 수조차 없다. 라우트가 `getPrisma()`를 넘긴다.
+ * 클라이언트를 **주입받는다** — DB 연결은 진입점이 소유하고 이 층은 같은 트랜잭션에 실을 쓰기만 정한다.
  */
 
 /**
@@ -59,6 +61,8 @@ export type PushOutcome = {
 };
 
 export type ApplyOptions = {
+  /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
+  startedAt: Date;
   /**
    * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
    * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
@@ -67,6 +71,18 @@ export type ApplyOptions = {
    * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
    */
   previousBaseLocale: string | null;
+  /**
+   * 이 적재의 **결과** — 완전 성공이면 생략(또는 null), 일부가 빠졌으면 `"partial-import"`
+   * (projects-list design §3.35).
+   *
+   * ⚠️ **같은 트랜잭션에서 확정되는 것이 요지다.** `applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데
+   * 목록만 실패로 남는 창이 생긴다.
+   *
+   * ⚠️ **`previousBaseLocale`과 달리 optional이다** — 빠졌을 때의 기본이 **성공**이고 그것이
+   * 안전한 쪽이기 때문이다(이전 실패를 비운다). 저쪽은 빠지면 전 키에 검토 표시가 붙어 기본값이
+   * 존재할 수 없다.
+   */
+  importOutcome?: ImportFailureCode | null;
 };
 
 export async function applyPush(
@@ -139,7 +155,7 @@ export async function applyPush(
     // StringKey insert — id를 JS에서 만든다. cuid() 기본값은 Prisma 클라이언트가 적용하는
     // 것이라 raw SQL에는 오지 않는다.
     ...(plan.toInsert.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "updatedAt")
+      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "createdAt", "updatedAt")
       SELECT * FROM unnest(
         ${insertIds}::text[],
         ${plan.toInsert.map(() => projectId)}::text[],
@@ -150,6 +166,9 @@ export async function applyPush(
         ${plan.toInsert.map((k) => k.description ?? null)}::text[],
         ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
+        -- ⚠️ createdAt은 INSERT에만 있다 — 아래 UPDATE가 건드리면 살아 돌아온 키가 매번
+        -- "새 키"로 다시 잡힌다 (projects-list design §8). 시계가 하나인 이유는 위 주석과 같다.
+        ${plan.toInsert.map(() => now)}::timestamp[],
         ${plan.toInsert.map(() => now)}::timestamp[]
       )`]),
 
@@ -270,6 +289,12 @@ export async function applyPush(
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),
       },
+    }),
+    // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
+    // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
+    prisma.project.updateMany({
+      where: { id: projectId, lastImportStartedAt: options.startedAt },
+      data: importOutcomeFields(options.importOutcome ?? null),
     }),
   ];
 

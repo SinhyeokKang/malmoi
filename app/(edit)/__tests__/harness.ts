@@ -108,6 +108,11 @@ export type KeySeed = {
   description: string | null;
   sortIndex: number | null;
   orphaned: boolean;
+  /**
+   * 키가 처음 들어온 시각 (projects-list §8). **목록의 `New from GitHub`가 `lastPulledAt`과 견준다** —
+   * 시드가 안 주면 아래에서 기준선 이전의 값을 심는다(기존 키는 신규가 아니다).
+   */
+  createdAt?: Date;
 };
 
 export type TranslationSeed = {
@@ -139,6 +144,11 @@ const FORMAT = {
   repoName: "r",
   baseBranch: "main",
   installationId: "1",
+  /**
+   * ⚠️ **기본이 null이다** — sec-audit-2 이전에 만들어진 행이 그 상태이고, `connectRepository`가
+   * "아직 고정되지 않았다"를 정상 입력으로 받는다. 값이 필요한 테스트는 시드에서 준다.
+   */
+  repositoryId: null as string | null,
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
@@ -156,6 +166,12 @@ const FORMAT = {
    */
   lastPublishedAt: new Date("2026-09-01T00:00:00Z") as Date | null,
   lastPrUrl: "https://github.com/o/r/pull/7" as string | null,
+  /**
+   * 임포트 진행·결과 (projects-list §3.35). **기본이 "돌고 있지 않고 실패도 없다"**여야 목록의
+   * 평범한 행이 시드 하나로 만들어진다.
+   */
+  lastImportStartedAt: null as Date | null,
+  lastImportError: null as string | null,
   archivedAt: null as Date | null,
 };
 
@@ -193,10 +209,11 @@ export function createHarness(seed: Seed = {}) {
   }));
   const users = seed.users ?? [];
   const invitations = seed.invitations ?? [];
-  const keys = seed.keys ?? [
+  const keys = (seed.keys ?? [
     { id: "k-greet", projectId: "p1", key: "a.greet", sourceText: "Hello", description: null, sortIndex: 0, orphaned: false },
     { id: "k-bye", projectId: "p1", key: "a.bye", sourceText: "Bye", description: null, sortIndex: 1, orphaned: false },
-  ];
+  // 시드가 안 주면 **기준선보다 앞**이다 — 마이그레이션의 backfill이 기존 키를 그렇게 취급한다.
+  ]).map((k) => ({ createdAt: new Date("2020-01-01T00:00:00Z"), ...k }));
   const locales = seed.locales ?? [
     { projectId: "p1", code: "en", isBase: true, orphaned: false },
     { projectId: "p1", code: "ko", isBase: false, orphaned: false },
@@ -327,6 +344,28 @@ export function createHarness(seed: Seed = {}) {
           if (inner["archivedAt"] === true) p["archivedAt"] = project?.archivedAt ?? null;
           if (inner["repoOwner"] === true) p["repoOwner"] = project?.repoOwner ?? "";
           if (inner["repoName"] === true) p["repoName"] = project?.repoName ?? "";
+          /**
+           * ⚠️ **`id`는 서버 안에서만 쓴다** (projects-list §3.0) — 집계를 프로젝트별로 묶는 키이고
+           * `ProjectListRow`에는 안 나간다. 여기서 안 내면 그 묶기가 통째로 `undefined` 키가 되어
+           * **Summary가 조용히 0이 된다.**
+           */
+          if (inner["id"] === true) p["id"] = project?.id ?? "";
+          if (inner["repositoryId"] === true) p["repositoryId"] = project?.repositoryId ?? null;
+          if (inner["baseBranch"] === true) p["baseBranch"] = project?.baseBranch ?? "main";
+          if (inner["lastPrUrl"] === true) p["lastPrUrl"] = project?.lastPrUrl ?? null;
+          if (inner["lastImportStartedAt"] === true) p["lastImportStartedAt"] = project?.lastImportStartedAt ?? null;
+          if (inner["lastImportError"] === true) p["lastImportError"] = project?.lastImportError ?? null;
+          if (inner["adapterName"] === true) p["adapterName"] = project?.adapterName ?? null;
+          if (inner["pathTemplate"] === true) p["pathTemplate"] = project?.pathTemplate ?? null;
+          /**
+           * 원격 경로 판정의 입력 (projects-list §3.4). ⚠️ **orphaned를 거르지 않는다** — 사라진
+           * 로케일의 파일도 리포에서는 변경될 수 있고, 그 변경이 `repo_ahead`의 근거다.
+           */
+          if (inner["locales"] !== undefined) {
+            p["locales"] = locales
+              .filter((l) => l.projectId === m.projectId)
+              .map((l) => ({ code: l.code }));
+          }
           /**
            * ⚠️ **`_count`는 시드가 아니라 `members` 배열에서 센다** — 시드에 숫자를 두면 가짜가
            * 실제와 어긋난 채 고정되고, 멤버를 더한 뒤에도 옛 숫자를 낸다.
@@ -784,7 +823,52 @@ export function createHarness(seed: Seed = {}) {
       update: updateSyncRun,
       updateMany: updateManySyncRuns,
     },
-    project: { findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject },
+    /**
+     * ④⑤ raw 집계 (projects-list §3.2). **SQL을 해석하지 않고 대상 테이블로 갈래만 가른다** —
+     * 이 하네스가 재는 것은 "조회가 배선됐나"이고, **결과가 진짜 SQL과 같은지는 격리 Postgres**가
+     * 본다 (`pnpm test:projects:postgres`). 가짜의 호출 수만으로 raw 결과를 판정하지 않는다.
+     */
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const sql = strings.join(" ");
+      const ids = (values.find((v): v is string[] => Array.isArray(v)) ?? []) as string[];
+      const byId = new Map(projects.map((p) => [p.id, p]));
+      const live = (projectId: string) => {
+        const project = byId.get(projectId);
+        return project !== undefined && project.archivedAt === null && ids.includes(projectId);
+      };
+      const after = (projectId: string, at: Date) => {
+        const pulled = byId.get(projectId)?.lastPulledAt ?? null;
+        return pulled === null || at > pulled;
+      };
+      const counted = new Map<string, number>();
+      if (sql.includes('"StringKey"')) {
+        for (const k of keys) {
+          if (!live(k.projectId) || (k.orphaned ?? false)) continue;
+          if (!after(k.projectId, k.createdAt)) continue;
+          counted.set(k.projectId, (counted.get(k.projectId) ?? 0) + 1);
+        }
+      } else {
+        const byKey = new Map(keys.map((k) => [k.id, k]));
+        for (const t of translations) {
+          const key = byKey.get(t.keyId);
+          if (key === undefined || !live(key.projectId)) continue;
+          if (t.updatedBy === null) continue;
+          if (!after(key.projectId, t.updatedAt)) continue;
+          counted.set(key.projectId, (counted.get(key.projectId) ?? 0) + 1);
+        }
+      }
+      return [...counted].map(([projectId, n]) => ({ projectId, n }));
+    },
+    project: {
+      findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject,
+      async updateMany(args: { where: { id: string; lastImportStartedAt: Date }; data: Record<string, unknown> }) {
+        const row = projects.find((p) => p.id === args.where.id &&
+          p.lastImportStartedAt?.getTime() === args.where.lastImportStartedAt.getTime());
+        if (row === undefined) return { count: 0 };
+        Object.assign(row, args.data);
+        return { count: 1 };
+      },
+    },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -825,6 +909,16 @@ export function createHarness(seed: Seed = {}) {
             k.projectId === where.projectId &&
             (where.orphaned === undefined || (k.orphaned ?? false) === where.orphaned),
         ).length,
+      /** ② 살아 있는 키 수 — 전 로케일 공통 분모다 (projects-list §3.1). */
+      groupBy: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } }) => {
+        const counted = new Map<string, number>();
+        for (const k of keys) {
+          if (!where.projectId.in.includes(k.projectId)) continue;
+          if (where.orphaned !== undefined && (k.orphaned ?? false) !== where.orphaned) continue;
+          counted.set(k.projectId, (counted.get(k.projectId) ?? 0) + 1);
+        }
+        return [...counted].map(([projectId, n]) => ({ projectId, _count: { _all: n } }));
+      },
       findMany: async ({ where }: { where: { projectId: string } }) =>
         keys
           .filter((k) => k.projectId === where.projectId)
@@ -843,6 +937,20 @@ export function createHarness(seed: Seed = {}) {
           })),
     },
     locale: {
+      /**
+       * ① 살아 있는 로케일 (projects-list §3.1).
+       *
+       * ⚠️ **`orphaned`를 실제로 본다** — 무시하면 사라진 로케일이 Meter에 열로 서고, 그 셀의
+       * 번역이 분자에 들어가 **분모보다 커진다.**
+       */
+      findMany: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } }) =>
+        locales
+          .filter(
+            (l) =>
+              where.projectId.in.includes(l.projectId) &&
+              (where.orphaned === undefined || (l.orphaned ?? false) === where.orphaned),
+          )
+          .map((l) => ({ projectId: l.projectId, code: l.code, isBase: l.isBase ?? false })),
       findUnique: async ({
         where,
       }: {
@@ -920,6 +1028,37 @@ export function createHarness(seed: Seed = {}) {
           if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
           return true;
         }).length;
+      },
+      /**
+       * ③ 값이 있는 셀의 (로케일 × 검토여부) 개수 (projects-list §3.1).
+       *
+       * ⚠️ **`projectId`가 시드 행에 없다** — 키를 통해 되짚는다(위 `count`와 같은 이유).
+       * ⚠️ **필터 둘을 실제로 적용한다**: 빈 값은 미번역이고, 죽은 키의 번역은 분자에서 빠진다.
+       */
+      groupBy: async ({
+        where,
+      }: {
+        where: { projectId: { in: string[] }; value?: { not: string }; stringKey?: { orphaned?: boolean } };
+      }) => {
+        const byKey = new Map(keys.map((k) => [k.id, k]));
+        const counted = new Map<string, { projectId: string; localeCode: string; needsReview: boolean; n: number }>();
+        for (const t of translations) {
+          const key = byKey.get(t.keyId);
+          if (key === undefined) continue;
+          if (!where.projectId.in.includes(key.projectId)) continue;
+          if (where.value !== undefined && t.value === where.value.not) continue;
+          if (where.stringKey?.orphaned !== undefined && (key.orphaned ?? false) !== where.stringKey.orphaned) continue;
+          const id = `${key.projectId}|${t.localeCode}|${String(t.needsReview)}`;
+          const acc = counted.get(id) ?? { projectId: key.projectId, localeCode: t.localeCode, needsReview: t.needsReview, n: 0 };
+          acc.n += 1;
+          counted.set(id, acc);
+        }
+        return [...counted.values()].map((c) => ({
+          projectId: c.projectId,
+          localeCode: c.localeCode,
+          needsReview: c.needsReview,
+          _count: { _all: c.n },
+        }));
       },
       /**
        * 진행률의 **분자** (6b-5). 값이 있는 셀만 `{ localeCode, needsReview }`로 준다.

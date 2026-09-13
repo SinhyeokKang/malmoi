@@ -348,23 +348,78 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
 describe("loadProjectList", () => {
   it("내 멤버십만 낸다 — 남의 프로젝트가 섞이지 않는다", async () => {
     const h = createHarness(seed());
-    const rows = await loadProjectList(h.prisma, "u1");
+    const { rows } = await loadProjectList(h.prisma, "u1");
     expect(rows.map((r) => r.slug)).toEqual(["acme"]);
   });
 
   it("멤버 수를 센다 — 시드의 숫자가 아니라 실제 행이다", async () => {
     const base = seed();
     const h = createHarness({ ...base, members: [...(base.members ?? []), { projectId: "p1", userId: "u2", role: "EDITOR" }] });
-    const [row] = await loadProjectList(h.prisma, "u1");
-    expect(row?.memberCount).toBe(2);
+    const { rows } = await loadProjectList(h.prisma, "u1");
+    expect(rows[0]?.memberCount).toBe(2);
+  });
+
+  /**
+   * **집계가 행까지 닿는다** (projects-list §3). 조회가 배선됐다는 것과 그 값이 행에 실린다는 것은
+   * 다른 사실이고, 후자가 빠지면 화면이 조용히 0을 그린다 — 이 리포가 반복해 밟은 부류다.
+   */
+  it("Meter와 사건과 Summary를 함께 낸다", async () => {
+    const base = seed();
+    const h = createHarness({
+      ...base,
+      // p1에 키를 하나 더 둔다 — 셀이 칸을 다 채우면 "미번역"이라는 축 자체가 안 보인다.
+      keys: [...(base.keys ?? []), { id: "k3", projectId: "p1", key: "b", sourceText: "B", description: null, sortIndex: 1, orphaned: false }],
+      translations: [
+        { keyId: "k1", localeCode: "en", value: "Hello", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01T00:00:00Z") },
+        { keyId: "k1", localeCode: "ko", value: "안녕", description: null, placeholders: null, needsReview: true, updatedBy: "u1", updatedAt: new Date("2026-09-02T00:00:00Z") },
+      ],
+    });
+
+    const { rows, summary } = await loadProjectList(h.prisma, "u1");
+
+    // p1은 키 2 × 로케일 2 = 4칸이고 값이 있는 것은 둘 — 남는 미번역이 둘이다.
+    // ⚠️ p2는 남의 멤버십이라 어느 값에도 안 들어간다.
+    expect(summary).toMatchObject({ toTranslate: 2, toReview: 1, toSend: 1 });
+    // ⚠️ 사건은 **행에 펼쳐져 있다** — 판정 셋이 그 모양을 그대로 받는다.
+    expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0, importing: false });
+    // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
+    expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
+    expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });
+    // 두 구간은 겹치지 않고 라벨은 그 합이다 — 검토 대기도 값이 들어 있는 칸이다 (캔버스 `1c`).
+    expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 50 });
+  });
+
+  /**
+   * **원격 신호가 행까지 닿는다** (projects-list §3.4). 주입한 로더가 받는 입력도 함께 본다 —
+   * 보관 여부와 저장 로케일이 빠지면 그쪽 판정이 통째로 어긋난다.
+   */
+  it("원격 신호를 행에 붙이고, 조회 입력에 보관과 저장 로케일을 싣는다", async () => {
+    const h = createHarness(seed());
+    const loadRemote = vi.fn(async (targets: readonly { projectId: string }[]) =>
+      new Map(targets.map((t) => [t.projectId, { openPr: { number: 7, url: "https://github.com/o/r/pull/7" }, repoAheadFiles: 3 }])),
+    );
+
+    const { rows } = await loadProjectList(h.prisma, "u1", { loadRemote });
+
+    expect(rows[0]).toMatchObject({ openPr: { number: 7 }, repoAheadFiles: 3 });
+    expect(loadRemote).toHaveBeenCalledWith([
+      expect.objectContaining({ archived: false, storedLocales: expect.arrayContaining(["en", "ko"]) }),
+    ]);
+  });
+
+  /** ⚠️ **내부 id를 화면에 흘리지 않는다** — 화면이 아는 식별자는 slug 하나다. */
+  it("행에 `Project.id`가 없다", async () => {
+    const h = createHarness(seed());
+    const { rows } = await loadProjectList(h.prisma, "u1");
+    expect(rows[0]).not.toHaveProperty("id");
   });
 
   it("리포와 보관 시각을 함께 낸다 — 행 메타와 필터의 재료다", async () => {
     const h = createHarness(seed());
-    const [row] = await loadProjectList(h.prisma, "u1");
-    expect(row?.repoOwner).toBe("o");
-    expect(row?.repoName).toBe("r");
-    expect(row?.archivedAt).toBeNull();
+    const { rows } = await loadProjectList(h.prisma, "u1");
+    expect(rows[0]?.repoOwner).toBe("o");
+    expect(rows[0]?.repoName).toBe("r");
+    expect(rows[0]?.archivedAt).toBeNull();
   });
 
   /**

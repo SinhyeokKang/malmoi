@@ -64,16 +64,25 @@ gh pr merge <n> --squash --delete-branch=false
 - **`--delete-branch=false`** — `dev`는 상시 브랜치다. 지우면 다음 작업이 브랜치를 다시 만들어야 한다.
 - squash로 linear history를 유지한다.
 
-### 6. dev 동기화
-
-```
-git fetch origin
-git checkout dev
-git reset --hard origin/main
-git push --force-with-lease origin dev
-```
+### 6. dev 동기화 — **`/sync`와 같은 안전 절차를 쓴다**
 
 squash 머지로 main의 커밋 해시가 dev와 달라지므로, 동기화하지 않으면 다음 PR diff에 이전 변경이 다시 나타난다.
+
+```
+git fetch origin                                  # ← 검사보다 먼저
+git status --porcelain                            # 비어야 한다
+git log origin/dev..dev --oneline                 # 비어야 한다
+git diff --quiet origin/main origin/dev           # exit 0이어야 한다
+LEASE=$(git rev-parse origin/dev)                 # 검사한 그 상태
+git checkout dev
+git reset --hard origin/main
+git push --force-with-lease=dev:$LEASE origin dev
+```
+
+⚠️ **여기도 파괴적이고, 창이 좁을 뿐 없지 않다** (2026-09-13, Codex 하네스 검토 지적 1). 4단계 CI 대기가 분 단위이므로 그 사이에 다른 머신이 `dev`에 푸시할 수 있다. `fetch`를 검사보다 먼저 돌리고 lease에 SHA를 박는 이유·`git log`가 아니라 `git diff`로 미머지를 판정하는 이유는 `.claude/commands/sync.md` 1·2단계에 있다 — **두 곳이 갈리면 안 되므로 절차를 고칠 때 양쪽을 같이 고친다.**
+
+- `git diff --quiet`가 실패하면 **중단.** 방금 머지한 내용 말고 다른 것이 `origin/dev`에 들어왔다는 뜻이다. 머지 자체는 이미 끝났으므로 되돌릴 것은 없고, 동기화만 보류하고 리포트에 남긴다.
+- lease가 거부되면 **`--force`로 뚫지 않는다.** `/sync`를 손으로 다시 돌린다.
 
 ### 7. 프로덕션 배포 확인 (논블로킹)
 
@@ -83,7 +92,10 @@ main 머지로 Vercel 프로덕션 배포가 트리거된다. **기다리지 않
 
 배포가 실패하면 사용자가 알게 되고, 그때 후속 픽스를 만든다. **되돌리는 유일한 방법은 다음 배포다** — revert 커밋을 dev에 얹어 같은 경로로 다시 보낸다.
 
-⚠️ **대상 리포가 참조하는 composite action이 main을 가리킨다** (`SinhyeokKang/malmoi/.github/actions/l10n-push@main`, docs/ACTIONS.md). 이 머지에 `.github/actions/` 변경이 들어 있으면 **머지 순간 대상 리포의 CI 동작이 바뀐다** — dev에 있는 동안에는 그 리포가 옛 action을 쓰고 있었다. 리포트에 명시한다.
+⚠️ **대상 리포는 불변 태그 `@l10n-push-v1`을 참조한다** (`SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1`, docs/ACTIONS.md가 정본). **그래서 이 머지는 대상 리포의 CI를 바꾸지 않는다** — `.github/actions/` 변경이 들어 있어도 태그를 옮기기 전까지 소비자는 옛 커밋을 쓴다.
+
+- **태그를 옮기는 것이 릴리스이고, 이 스킬 밖의 별도 판단이다.** 머지에 `.github/actions/` 변경이 있으면 리포트에 "태그 이동 대기 중"으로 남겨 잊지 않게 한다. 호환이 깨지는 변경이면 `-v2`를 새로 끊는다(옛 태그는 그대로 둔다).
+- ⚠️ **전에 이 자리에 `@main`과 "머지 순간 CI가 바뀐다"가 적혀 있었다** (2026-09-13에 정정). 그 서술은 ACTIONS.md가 2026-09-09 sec-audit 발견 3으로 **이미 폐기한 논거**였다 — 이 스텝에는 대상 리포의 `secrets.PUSH_TOKEN`이 들어가므로, 가변 참조였다면 말모이 `main`에 닿는 커밋 하나가 남의 리포 러너에서 리뷰도 롤백 창도 없이 즉시 돈다. 정본은 docs/ACTIONS.md다.
 
 ## 리포트
 
@@ -94,8 +106,8 @@ dev CI: success (<url>)
 PR: #<n> (<url>) — 신규/재사용
 PR CI: success   ← 프로덕션 앞의 게이트
 머지: squash <해시>
-composite action: 변경 없음 / ⚠️ 변경 포함 — 대상 리포 CI 동작이 지금 바뀐다
-dev 동기화: origin/main으로 reset + force push 완료
+composite action: 변경 없음 / 변경 포함 — 소비자는 @l10n-push-v1 그대로, **태그 이동 대기 중**
+dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사유>)
 프로덕션 배포: Vercel이 진행 중 — 결과는 <확인 경로>에서 확인
 ```
 
@@ -105,5 +117,6 @@ dev 동기화: origin/main으로 reset + force push 완료
 - **마이그레이션이 미적용인 채 머지 금지.**
 - **CI 실패·진행 중 상태에서 머지 금지.**
 - **merge commit·rebase 머지 금지** — squash만.
+- **6단계에서 인자 없는 `--force-with-lease` 금지** — `=dev:<SHA>` 형태만. 이유는 `/sync` 4단계.
 - **`dev` 브랜치 삭제 금지.**
 - **main에 직접 push 금지.**

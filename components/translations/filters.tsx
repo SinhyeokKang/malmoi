@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchInput } from "@/components/search-input";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 
@@ -85,19 +85,25 @@ export function TranslationFilters({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
-        <Select
-          disabled={pending}
-          value={query.ns ?? ALL_NAMESPACES}
-          aria-label={m.translations.filters.namespace}
-          onChange={(e) => go({ ns: e.target.value })}
-          className="w-40"
-        >
-          <option value={ALL_NAMESPACES}>{m.translations.allNamespaces}</option>
-          {namespaces.map((ns) => (
-            <option key={ns.namespace} value={ns.namespace}>
-              {m.translations.filters.namespaceOption(ns.namespace, ns.pending, ns.total)}
-            </option>
-          ))}
+        <Select disabled={pending} value={query.ns ?? ALL_NAMESPACES} onValueChange={(ns) => go({ ns })}>
+          {/*
+            ⚠️ **라벨이 트리거 **밖**이다** (2026-09-13 리뷰). `role="combobox"`에는 name-from-content가
+            없어 이름을 따로 줘야 하는데, 그 span을 트리거 **안**에 두면 자기 참조를 브라우저가 내용으로
+            풀 때 라벨이 두 번 읽힐 수 있다. 밖에 두면 보이는 라벨이 있는 자리(`#repo-branch`)와 형이
+            같아지고, 그 형은 실브라우저에서 "이름 + 고른 값"으로 확인됐다.
+          */}
+          <span id="namespace-filter-label" className="sr-only">{m.translations.filters.namespace}</span>
+          <SelectTrigger id="namespace-filter" aria-labelledby="namespace-filter-label namespace-filter" className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_NAMESPACES}>{m.translations.allNamespaces}</SelectItem>
+            {namespaces.map((ns) => (
+              <SelectItem key={ns.namespace} value={ns.namespace}>
+                {m.translations.filters.namespaceOption(ns.namespace, ns.pending, ns.total)}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
 
         <DropdownMenu>

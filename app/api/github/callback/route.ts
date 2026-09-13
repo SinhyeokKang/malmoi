@@ -10,6 +10,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { stateCookieNames, verifyState, type StateDest } from "@/lib/github-connect/state";
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
+import { routes } from "@/lib/routes";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 /**
@@ -195,7 +196,8 @@ function landing(
   error: ConnectError | null,
 ): NextResponse {
   const path = landingPath(dest);
-  const target = error === null ? path : `${path}?e=${error}`;
+  // ⚠️ **경로에 이미 쿼리가 있을 수 있다** (`new` 갈래가 목록 상태를 나른다) — `?`를 두 번 쓰지 않는다.
+  const target = error === null ? path : `${path}${path.includes("?") ? "&" : "?"}e=${error}`;
   const res = NextResponse.redirect(new URL(target, request.url));
   // 같은 state로 두 번 들어오지 못하게 한다. 실패 경로에서도 지운다 — 남겨 두면 다음 시도가
   // 옛 nonce와 대조된다. **읽을 때와 같이 두 이름을 다 지운다.**
@@ -211,13 +213,14 @@ function landing(
  * 더할 때 어느 조건이 기본값인지가 보이지 않는다. `null`은 "state를 못 믿는다"이고 그때만 목록이다.
  */
 function landingPath(dest: StateDest | null): string {
-  if (dest === null) return "/projects";
+  if (dest === null) return routes.projects();
   switch (dest.kind) {
     case "new":
-      return "/projects/new";
+      // ⚠️ **목록 상태를 되돌려준다** — 모달 뒤 목록이 연결을 누르기 직전과 같아야 한다 (2026-09-13).
+      return routes.newProject({ q: dest.q });
     case "account":
-      return "/account";
+      return routes.account();
     case "settings":
-      return `/projects/${dest.slug}/settings`;
+      return routes.settings(dest.slug);
   }
 }

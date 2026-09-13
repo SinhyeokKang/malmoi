@@ -160,7 +160,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
      */
     userRepoFullNames =
       probe.status === "ok" && userInstallationIds.includes(probe.installationId)
-        ? await listInstallationRepos(token.accessToken, probe.installationId)
+        ? (await listInstallationRepos(token.accessToken, probe.installationId)).map((r) => r.fullName)
         : [];
   } catch (error) {
     /**
@@ -248,7 +248,19 @@ export async function updateRepositorySettings(raw: {
   if (access.status !== "ok") return { ok: false, error: access.status };
   const { projectId } = access;
 
-  // 형식은 저장 전에 본다 — GitHub을 부르지 않는다(브랜치의 실존은 pull이 시끄럽게 말한다, design §3.13).
+  /**
+   * 형식은 저장 전에 본다 — **여기서는** GitHub을 부르지 않는다(브랜치의 실존은 pull이 시끄럽게
+   * 말한다, design §3.13).
+   *
+   * ⚠️ **온보딩은 반대로 묻는다** (2026-09-13, new-project-modal): ①이 `listRepoBranches`로 목록을
+   * 받아 `Select`에 넣는다. 같은 컬럼에 UI가 두 벌로 갈리는 것이 **의도다** — 온보딩은 **처음 고르는
+   * 자리**라 무엇이 있는지 보여 줘야 하고(안 보여 주면 default branch가 기본값으로 굳는다), 설정은
+   * **이미 아는 값을 고치는 자리**라 목록이 필요 없다. 맞춘다면 설정을 온보딩 쪽으로 올린다 —
+   * 반대 방향은 온보딩이 브랜치를 묻기 시작한 목적을 되돌린다.
+   *
+   * ⚠️ **검증 함수는 한 벌이다** — 양쪽 다 `isValidBranchName`이고, 갈리면 온보딩이 통과시킨 이름을
+   * 설정이 거부한다.
+   */
   if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
 
   // ⚠️ **인가가 준 projectId로 읽는다** — slug로 다시 찾으면 인가한 행과 조회한 행이 갈릴 수 있다.

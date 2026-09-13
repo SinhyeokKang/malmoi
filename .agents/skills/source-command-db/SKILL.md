@@ -20,7 +20,7 @@ Use this skill when the user asks to run the migrated source command `db`.
 
 **2026-09-04부터 Supabase 프로젝트가 둘이다** — prod(`malmoi`) / dev(`malmoi-dev`). `pnpm db:migrate`는 **dev**를 치고 프로덕션에 닿을 수 없다. `pnpm db:deploy`·`pnpm db:status:prod`만 prod를 겨눈다(`PRISMA_TARGET=prod`).
 
-⚠️ **분리가 만든 새 실패 모드**: dev에만 적용하고 `db:deploy`를 잊으면 배포 순간 프로덕션이 없는 컬럼을 조회한다. 그래서 `/push` 3단계 확인은 `db:status:prod`다 — `db:status`는 dev를 본다.
+⚠️ **분리가 만든 새 실패 모드**: dev에만 적용하고 `db:deploy`를 잊으면 **프로덕션 배포 순간** 프로덕션이 없는 컬럼을 조회한다. 그래서 **`/merge` 1단계가 `db:status:prod`를 확인한다** — `db:status`는 dev를 본다.
 
 **dev에서는 리셋을 승인해도 된다** — 그 DB에 번역 데이터가 없다(폐기용 리포 적재분뿐이고 `pnpm push:local`로 복구된다). 분리 전에는 같은 제안이 프로덕션 데이터를 날리는 것이었다.
 
@@ -36,7 +36,18 @@ Use this skill when the user asks to run the migrated source command `db`.
 | 마이그레이션·CLI | `prisma.config.ts` | `DIRECT_URL` | 5432 (session) |
 | 런타임 쿼리 | `lib/db.ts`의 driver adapter | `DATABASE_URL` | 6543 (transaction) |
 
-**transaction 모드로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 **main 단일 브랜치라 push가 곧 프로덕션 배포**여서 스키마 적용 타이밍이 배포와 직접 얽힌다. 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
+**transaction 모드로 마이그레이션하면 DDL 세션을 못 잡아 실패한다.** 게다가 **스키마 적용 타이밍이 배포와 직접 얽힌다** — 매번 즉흥으로 판단하지 않기 위해 규칙을 박아둔다.
+
+### ⚠️ 두 DB를 넓히는 시점이 다르다 (브랜치 둘 — `dev` / `main`)
+
+| 무엇 | 언제 | 무엇이 배포되나 |
+|---|---|---|
+| **dev DB** (`pnpm db:migrate`) | **`/push` 전** — 이 스킬에서 | dev push = Vercel **preview** |
+| **prod DB** (`pnpm db:deploy`) | **`/merge` 1단계** — 머지 직전 | main 머지 = Vercel **프로덕션** |
+
+⚠️ **`db:deploy`를 `/push` 시점으로 당기지 않는다.** dev push는 프로덕션에 아무것도 배포하지 않으므로 거기서 prod를 넓힐 이유가 없고, 넓히면 **프로덕션 스키마가 코드보다 앞서 있는 창을 필요 이상으로 길게 연다.** additive-first는 "항상 먼저"가 아니라 **"그 코드가 나가기 직전에 먼저"**다.
+
+⚠️ **이 문서가 2026-09-13까지 `/push` 전에 `db:deploy`를 지시하고 있었다** (Codex 하네스 검토 지적 4). 브랜치가 `main` 하나였고 push가 곧 프로덕션 배포이던 시절의 규칙이 2026-09-04 브랜치 분리 뒤에도 남아 있었다 — 그대로 따르면 매 preview 배포마다 프로덕션 스키마가 먼저 움직인다.
 
 ## 절차
 
@@ -76,7 +87,7 @@ git status --porcelain prisma/
 한 번에 하지 않는다. 순서:
 
 1. **1차 마이그레이션 (additive)**: 새 컬럼을 nullable로 추가. 코드는 양쪽(구·신)을 다 읽게 쓴다
-2. **코드 배포** (`/push` — main 푸시가 곧 배포다)
+2. **코드 배포** (`/push`로 dev·preview → `/merge`로 프로덕션. **프로덕션에 닿는 것은 후자다**)
 3. **백필** — 필요하면 스크립트로
 4. **2차 마이그레이션 (destructive)**: 구 컬럼 삭제 / NOT NULL 승격
 
@@ -164,7 +175,10 @@ npx prisma migrate diff \
 
 ### 7. 배포 순서 안내 (리포트에 필수)
 
-프로덕션 적용은 **`/push` 전에 `pnpm db:deploy`** 로 한다 (additive-first). `/push` 3단계가 마이그레이션을 감지해 확인을 요구하지만, 그건 안전망이고 순서를 아는 건 이쪽 책임이다 — 잊으면 배포 직후 프로덕션이 없는 컬럼을 조회한다.
+**dev DB는 지금(4단계 `db:migrate`)** 넓혔고, **prod DB는 `/merge` 1단계에서** `pnpm db:deploy`로 넓힌다 (additive-first — 프로덕션 배포 직전).
+
+- `/push` 3단계는 **마이그레이션이 포함된다는 사실을 리포트에 남기는** 일만 한다. 그것이 `/merge` 1단계의 입력이다.
+- `/merge` 1단계가 게이트이고 확인은 **`pnpm db:status:prod`**다. 순서를 아는 건 이쪽 책임이므로 리포트에 명시한다 — 잊으면 프로덕션 배포 직후 없는 컬럼을 조회한다.
 
 ## 리포트
 
@@ -178,9 +192,11 @@ anon 권한: dev 0건 / prod 0건  ← 새 테이블을 만들었으면 필수
 커밋: <해시> (스키마+마이그레이션만)
 
 배포 순서:
-1. pnpm db:deploy   ← /push **전에** 실행 (프로덕션 스키마 먼저 넓힌다)
-2. /push            ← main 푸시 = 프로덕션 배포
-3. <destructive 2단계가 남았으면: 다음 /db 호출로 구 컬럼 정리>
+1. dev DB          ← 이 스킬이 방금 db:migrate로 넓혔다
+2. /push           ← dev 푸시 = preview 배포 (리포트에 "마이그레이션 포함"을 남긴다)
+3. pnpm db:deploy  ← **/merge 1단계** — 프로덕션 배포 직전에 prod 스키마를 넓힌다
+4. /merge          ← main 머지 = 프로덕션 배포
+5. <destructive 2단계가 남았으면: 다음 /db 호출로 구 컬럼 정리>
 ```
 
 ## 금지 사항
@@ -189,6 +205,6 @@ anon 권한: dev 0건 / prod 0건  ← 새 테이블을 만들었으면 필수
 - **데이터가 있는 DB에 `migrate dev` 금지** — `--create-only` + `db:deploy`로 쪼갠다.
 - **transaction 모드(6543)로 마이그레이션 금지** — `prisma.config.ts`가 `DIRECT_URL`(5432)을 쓴다. 이 파일을 `DATABASE_URL`로 바꾸지 않는다.
 - **destructive를 한 번에 처리 금지** — 2단계로 쪼갠다.
-- **`db:deploy`를 이 스킬에서 자동 실행 금지** — 프로덕션 DB를 바꾸는 일이라 사용자가 명시적으로 돌린다.
+- **`db:deploy`를 이 스킬에서 자동 실행 금지** — 프로덕션 DB를 바꾸는 일이라 사용자가 명시적으로 돌린다. **그 자리는 `/merge` 1단계이지 `/push` 전이 아니다.**
 - **마이그레이션 SQL을 읽지 않고 넘어가기 금지.**
 - **생성된 마이그레이션 파일 사후 편집 금지** — 이미 적용된 마이그레이션을 고치면 체크섬이 깨진다. 새 마이그레이션을 추가한다.

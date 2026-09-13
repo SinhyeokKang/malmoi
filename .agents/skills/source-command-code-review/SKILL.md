@@ -39,7 +39,8 @@ Use this skill when the user asks to run the migrated source command `code-revie
 - **`[skip-l10n]` 누락**: push↔pull 무한 루프
 - **parents가 base head가 아님**: 3-way merge가 필요해져 코어 원칙이 무너진다
 - **인증 경계 혼입**: OAuth 토큰으로 커밋, App 토큰으로 사용자 식별, `PUSH_TOKEN`·`CRON_SECRET` 미검증 엔드포인트
-- **fail-open 인가**: `AUTH_ALLOWED_LOGINS`가 비었을 때 통과시키는 코드
+- **fail-open 인가**: 멤버십 조회가 실패·공백일 때 통과시키는 코드. 인가의 정본은 `ProjectMember`이고 진입점은 `requireProjectAccess`(페이지)·`getProjectAccess`(Server Action)다
+  - ⚠️ **`AUTH_ALLOWED_LOGINS`는 기준이 아니다** — 2026-09-05에 제거됐고(ARCHITECTURE §6) 이 줄이 2026-09-13까지 그것을 가리키고 있었다. **그 이름이 코드에 다시 나타나면 그게 결함이다**: 목록을 남긴 채 멤버십을 붙이면 두 인가가 AND로 걸려 초대받은 비개발자가 핸들이 없어 로그인에서 막힌다
 - **레이아웃·페이지의 조건부 렌더로 인증을 막음**: 차단이 아니다. App Router가 병렬 렌더하므로 페이지가 이미 실행돼 RSC 페이로드에 데이터가 실린다(실측 1.3MB 노출). 차단은 `middleware.ts`, 레이아웃은 `redirect()`. **새 보호 라우트가 `matcher`에 있는지 본다** (POSTMORTEM 2026-08-31)
 - **`projectId`로 좁히지 않은 쿼리**: 테넌트 간 데이터가 새는 경로다. RLS가 없어 애플리케이션이 유일한 방어선이고, Server Action은 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인해야 한다
   - ⚠️ **"앱이 유일한 방어선"은 앱이 유일한 *경로*일 때만 참이다.** 2026-09-09까지 Supabase 데이터 API가 `anon` 롤로 전 테이블에 열려 있었고 그 전제가 거짓이었다(POSTMORTEM 2026-09-09). **스키마를 늘리는 변경에서는 "이 테이블에 닿는 경로가 앱 하나인가"를 묻는다** — `pg_default_acl`이 새 테이블을 자동으로 열 수 있다

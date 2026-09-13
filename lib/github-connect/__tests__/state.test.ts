@@ -376,3 +376,60 @@ describe("verifyState — 오염된 쿠키가 던지지 않는다 (sec-audit 6)"
     expect(verifyState({ cookie: base(), query: "n1", userId: "u1", now, secret: SECRET }).status).toBe("ok");
   });
 });
+
+/**
+ * ⚠️ **`/projects/new`가 목록 위의 모달 딥링크가 되면서 착지가 쿼리를 잃으면 안 된다**
+ * (bugshot-qa 2026-09-13 실측): 검색어를 넣은 목록에서 [New project] → [Connect GitHub]을 누르면
+ * 왕복 뒤 `/projects/new`로 맨몸 착지했고, 닫으면 필터 없는 목록으로 돌아갔다.
+ *
+ * ⚠️ **쿼리도 서명 대상이다.** GitHub이 돌려주는 값에서 읽으면 목적지를 공격자가 정한다 — 경로는
+ * `landingPath`가 고정하고 여기 실리는 것은 그 라우트가 이미 주소창에서 받는 값뿐이다.
+ */
+describe("StateDest — `new` 갈래가 목록 상태를 나른다", () => {
+  it("서명·검증 왕복에서 `q`가 그대로 돌아온다", () => {
+    const cookie = sign({ dest: { kind: "new", q: "merge" } });
+
+    expect(verify({ cookie, query: "nonce-1" })).toEqual({
+      status: "ok",
+      dest: { kind: "new", q: "merge" },
+    });
+  });
+
+  /**
+   * ⚠️ **옛 state의 `filter`는 조용히 떨어진다** (projects-list §1.2). 필터 탭이 사라지기 전에 시작된
+   * 왕복이 돌아올 수 있고, 그때 갈래 자체를 거부하면 연결을 마친 사용자가 착지에 실패한다 —
+   * 더 넓은 목록을 보는 것이 맞는 대가다.
+   */
+  it("옛 `filter`는 버리고 `q`는 지킨다 — 갈래를 거부하지 않는다", () => {
+    const legacy = sign({ dest: { kind: "new", filter: "setup", q: "merge" } as never });
+
+    expect(verify({ cookie: legacy, query: "nonce-1" })).toEqual({
+      status: "ok",
+      dest: { kind: "new", q: "merge" },
+    });
+  });
+
+  it("없으면 없는 채로 돌아온다 — 빈 문자열을 만들어 넣지 않는다", () => {
+    expect(verify({ cookie: sign({ dest: { kind: "new" } }), query: "nonce-1" })).toEqual({
+      status: "ok",
+      dest: { kind: "new" },
+    });
+  });
+
+  it("쿼리가 다르면 서명도 다르다 — 값이 서명 밖에 있지 않다", () => {
+    expect(sign({ dest: { kind: "new", q: "a" } })).not.toBe(sign({ dest: { kind: "new", q: "b" } }));
+  });
+
+  /** 서명된 쿠키가 무한히 커지지 않게 상한을 둔다 — 값은 사용자 자유 입력이다. */
+  it("상한을 넘는 값은 실어 보내지 않는다", () => {
+    const result = verify({ cookie: sign({ dest: { kind: "new", q: "x".repeat(500) } }), query: "nonce-1" });
+
+    expect(result).toEqual({ status: "ok", dest: { kind: "new" } });
+  });
+
+  it("문자열이 아닌 값은 버린다 — 갈래 자체를 거부하지는 않는다", () => {
+    const forged = sign({ dest: { kind: "new", q: 7 as unknown as string } });
+
+    expect(verify({ cookie: forged, query: "nonce-1" })).toEqual({ status: "ok", dest: { kind: "new" } });
+  });
+});

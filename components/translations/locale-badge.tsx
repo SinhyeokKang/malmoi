@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
 import { flagFor } from "@/lib/keys/flag";
+import { cn } from "@/lib/utils";
 
 /**
  * 로케일 행의 왼쪽 칸 — **국기(있으면) + 코드** (8-4 design §4).
@@ -57,12 +58,17 @@ import { flagFor } from "@/lib/keys/flag";
  * 안 덮은 Tailwind 기본값이고, 남의 나라 깃발을 우리 스케일로 재단하지 않는 가장 작은 처리다.
  * 배경은 border-box에 클립되므로 `overflow-hidden`이 필요 없다.
  */
-export function LocaleFlag({ code }: { code: string }) {
+export function LocaleFlag({ code, size = "sm" }: { code: string; size?: "sm" | "md" }) {
   const flag = flagFor(code);
   if (flag === null) return null;
   return (
     <span
-      className="h-[11px] w-4 shrink-0 rounded-xs bg-cover bg-center"
+      /*
+        ⚠️ **`md`(24×17)는 온보딩 ③의 글리프 칩 안 전용이다** (2026-09-13 사용자 — 핸드오프 1c).
+        칩이 40이라 16×11을 넣으면 가운데가 비어 보인다. **다른 곳에 번지게 하지 않는다** — 표·배지·
+        메뉴는 전부 `sm`이고, 그 값이 리포의 국기 치수다.
+      */
+      className={cn("shrink-0 rounded-xs bg-cover bg-center", size === "md" ? "h-[17px] w-6" : "h-[11px] w-4")}
       style={{ backgroundImage: `url(/flags/${flag}.svg)` }}
       aria-hidden
     />

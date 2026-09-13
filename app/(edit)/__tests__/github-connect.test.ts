@@ -91,7 +91,7 @@ beforeEach(() => {
   hoisted.ensureUserToken.mockResolvedValue({ status: "ok", accessToken: "user-token" });
   hoisted.probeRepo.mockResolvedValue(PROBE_OK);
   hoisted.listUserInstallations.mockResolvedValue(["1"]);
-  hoisted.listInstallationRepos.mockResolvedValue(["o/r"]);
+  hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/r", pushedAt: "2026-09-01T00:00:00Z" }]);
   hoisted.authorizeUrl.mockReturnValue("https://github.com/login/oauth/authorize?client_id=x");
   hoisted.headerGet.mockImplementation((name: string) =>
     name.toLowerCase() === "host" ? "localhost:3000" : null,
@@ -167,7 +167,7 @@ describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
   });
 
   it("설치는 보이는데 그 리포를 못 보면 repo-forbidden이고 저장하지 않는다", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue(["o/other"]);
+    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/other", pushedAt: "2026-09-01T00:00:00Z" }]);
 
     expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "repo-forbidden" });
     expect(db.spies.updateProject).not.toHaveBeenCalled();
@@ -290,7 +290,7 @@ describe("connectRepository — 저장", () => {
 
   it("리네임된 리포면 새 owner/name도 함께 저장한다 — 이름이 갱신되는 유일한 경로다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website", defaultBranch: "main", repositoryId: "100" } satisfies ProbeResult);
-    hoisted.listInstallationRepos.mockResolvedValue(["newco/website"]);
+    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "newco/website", pushedAt: "2026-09-01T00:00:00Z" }]);
 
     await connectRepository({ slug: "acme" });
 

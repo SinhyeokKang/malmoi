@@ -8,8 +8,8 @@ import { createElement as h } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
-import { Radio } from "@/components/ui/radio";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Radio, RadioGroup } from "@/components/ui/radio";
 import { SegmentedControl, SegmentedLinks } from "@/components/ui/segmented-control";
 import { render } from "./helpers/dom";
 
@@ -111,9 +111,32 @@ const FIXTURES = {
   "components/ui/button.tsx": h(Button, null, "Save"),
   "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
-  "components/ui/select.tsx": h(Select, { "aria-label": "Locale" }, h("option", null, "English")),
-  "components/ui/radio.tsx": h(Radio, { label: "English", name: "locale" }),
 };
+
+/**
+ * ⚠️ **Radix로 옮긴 프리미티브는 위 목록에 안 잡힌다** — 소스에 raw 태그가 없기 때문이다
+ * (`<select>`·`<input type="radio">`를 2026-09-13에 걷어냈다). 그래도 **렌더되면 포커스를 받는
+ * `<button>`**이라 링은 여기서 본다. 이 자리를 비우면 Radix 프리미티브의 링이 방어선 밖이 된다.
+ */
+const RADIX_FIXTURES = {
+  "components/ui/select.tsx": h(
+    Select,
+    { defaultValue: "en" },
+    h(SelectTrigger, { "aria-label": "Locale" }, h(SelectValue, null)),
+    h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
+  ),
+  "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
+};
+
+/**
+ * 이 파일의 픽스처를 **면제**받는 `ui/` 파일. ⚠️ **둘의 사정이 다르다** (2026-09-13 리뷰 실측):
+ * `segmented-control.tsx`는 자기 테스트가 링을 실제로 보고, **`dropdown-menu.tsx`는 아무 데서도
+ * 안 본다** — 뒤엣것은 기존 dead zone이고 Radix 이관이 만든 구멍이 아니다. `dialog.tsx`는 애초에
+ * 링을 든 태그가 없다(닫기 버튼이 `Button`이다).
+ *
+ * ⚠️ **목록에 더 얹지 않는다** — 새로 Radix로 옮기는 프리미티브는 픽스처를 들고 와야 한다.
+ */
+const RING_FIXTURE_EXEMPT = ["components/ui/dropdown-menu.tsx", "components/ui/segmented-control.tsx", "components/ui/dialog.tsx"];
 
 describe("포커스 링 (DESIGN §7)", () => {
   it("검사 대상 파일을 실제로 찾는다", () => {
@@ -128,8 +151,40 @@ describe("포커스 링 (DESIGN §7)", () => {
     expect(nativeFiles).toEqual(Object.keys(FIXTURES).sort());
   });
 
+  /**
+   * ⚠️ **Radix로 옮긴 프리미티브가 조용히 방어선 밖으로 나가지 않게 센다** (2026-09-13 리뷰).
+   * 위 `nativeFiles` 검사는 **raw 태그가 있는 파일만** 본다 — 링을 들었는데 태그가 없는 파일은
+   * `RADIX_FIXTURES`에 있어야 한다. 이 검사가 없으면 다음에 `textarea.tsx`를 Radix로 옮기는 순간
+   * 그 링을 **아무 테스트도 안 본다**(그리고 red도 안 난다).
+   */
+  it("링을 든 Radix 프리미티브도 픽스처를 갖는다", () => {
+    const radixFiles = FILES.filter((file) => rel(file).startsWith("components/ui/"))
+      .filter((file) => {
+        const source = readFileSync(file, "utf8");
+        return source.includes("focus-visible:ring-ring") && controls(source).length === 0;
+      })
+      .map(rel)
+      .filter((file) => !RING_FIXTURE_EXEMPT.includes(file))
+      .sort();
+    expect(radixFiles).toEqual(Object.keys(RADIX_FIXTURES).sort());
+  });
+
+  /**
+   * ⚠️ **반대 방향도 막는다** (2026-09-13 리뷰 #5). 위 검사는 `focus-visible:ring-ring`이 **있는**
+   * 파일만 세므로 **링을 아예 빼먹은** 신규 Radix 프리미티브는 어디에도 안 걸린다(raw 태그가 없어
+   * `nativeFiles`에도 안 잡힌다). Radix를 들이는 `ui/` 파일은 픽스처를 갖거나 면제 목록에 있어야 한다.
+   */
+  it("Radix를 들이는 프리미티브는 픽스처를 갖거나 명시적으로 면제된다", () => {
+    const radixImporters = FILES.filter((file) => rel(file).startsWith("components/ui/"))
+      .filter((file) => readFileSync(file, "utf8").includes('from "radix-ui"'))
+      .map(rel)
+      .sort();
+    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...RING_FIXTURE_EXEMPT];
+    expect(radixImporters.filter((file) => !accounted.includes(file))).toEqual([]);
+  });
+
   it("네 태그 전부가 렌더된 포커스 링 셋을 든다", async () => {
-    for (const [file, fixture] of Object.entries(FIXTURES)) {
+    for (const [file, fixture] of Object.entries({ ...FIXTURES, ...RADIX_FIXTURES })) {
       const { container } = await render(fixture);
       const elements = [...container.querySelectorAll("button,input,select,textarea")];
       expect(elements.length, file).toBeGreaterThan(0);

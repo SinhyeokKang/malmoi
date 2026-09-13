@@ -52,6 +52,9 @@ app/
   invite/[token]/       ⚠️ (edit) 밖이고 matcher 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
   api/push/             CI → DB. Bearer가 그 프로젝트의 토큰 원문이다(서버 env가 아니다)
+  api/push/failure/     CI가 **적재에 실패했다는 사실**만 남긴다(2026-09-13). 파싱이 깨지면 /api/push는
+                        아예 안 불려서 그 실패가 대상 리포 로그에만 있었다. 같은 토큰 · 코드 넷 ·
+                        본문 4 KiB · 키/번역/커밋 기준점을 건드리지 않는다
   api/pull/             DB → PR. cron 전용(CRON_SECRET)
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다
 middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/projects/:path* · /account).
@@ -62,7 +65,8 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 17개 + tone.ts 헬퍼. CLI로 신규 추가는
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 18개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+                        붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
                         모으면 focus-ring 스캐너가 그 파일을 통째로 못 본다(Button에 asChild가 없는 것도 같은 이유)
@@ -86,6 +90,25 @@ components/
   locales/ members/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
+  onboarding/modal.tsx  새 프로젝트 모달의 껍데기. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고
+                        Radix Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
+                        고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
+                        넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유한다
+  onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
+                        단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
+                        명시돼 있어야 한다(브랜치·리포·후보 변경)
+  projects/locale-meter.tsx
+                        행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
+                        (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
+  projects/empty-projects.tsx
+                        프로젝트 0건의 착지점. ⚠️ EmptyState가 아니라 KV 합성이다 — 장식이 패널
+                        **안**으로 들어오는 유일한 경우다(DESIGN §6.4 예외 1). 로그인의 KeyVisual을
+                        상한만 바꿔 재사용한다
+  projects/project-list.tsx
+                        목록 본문. ⚠️ <ContentPanel>을 여기서 안 든다 — /projects와 /projects/new가
+                        둘 다 그리므로 공유 컴포넌트가 들면 shell-layout이 두 라우트에서 0을 센다
+                        ⚠️ routes.projects({filter,q})를 부르는 자리라 entry-points의 "쿼리 수신자"
+                        검사가 app/ 밖인 이 파일도 읽는다
   translation-input.tsx 셀 편집. 실패 시 포커스는 shouldRefocus가 정한다(다른 셀을 치고 있으면 안 뺏는다)
   publish-button.tsx    ⚠️ 실패에는 router.refresh()를 부르지 않는다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
@@ -95,7 +118,8 @@ components/
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
                         projects-screen · signin-screen · segmented-control(jsdom 렌더) · auth-toast ·
-                        multiline-detail · base-locale-screens · table-presets · manual-format-hint
+                        multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
+                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -118,7 +142,8 @@ lib/
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
                         plan · run · render · load · client · targets · trigger · branch-name · ref-slug /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan
-  keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회) ·
+  keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
+                        loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save · refocus · filters · flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
@@ -129,6 +154,36 @@ lib/
                         반대다(하나는 왕복을 멈추고 하나는 진행시킨다) — 합치지 않는다
   onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
+  projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
+                        Meter 자리·진행률 접기·계정 합계·그룹 나누기·검색 강조. 오케스트레이션
+                        파일에 두면 클라이언트 번들이 그 그래프를 따라온다
+  projects/import-status.ts
+                        임포트 결과의 순수 계약(닫힌 보고 스키마 · 대표 코드 · 화면 문장). ⚠️ 잎이라
+                        @/lib/adapters/types를 **타입만** 가져온다
+  projects/import-status-store.ts
+                        그 결과의 쓰기 껍데기. ⚠️ 조건부 UPDATE가 방어선이고 선조회는 진단용이다
+  projects/remote.ts    목록의 원격 신호 둘(열린 PR · base 드리프트). installation 토큰이고,
+                        보관 제외 전부를 동시 3으로 돈다. ⚠️ 실패도 지연도 값으로 흐른다
+  projects/remote-plan.ts
+                        그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
+                        아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
+  onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
+                        "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
+  onboarding/next-enabled.ts
+                        design §4의 상태 표를 코드로. ⚠️ lib/ 아래 잎이다 — components/ 아래면
+                        "use client" 그래프에 들어가 타입-온리 제약이 이 모듈까지 따라온다
+  onboarding/key-gap.ts ⚠️ 잎이다. ③(클라이언트)이 값으로 부르는데 detect.ts에 두면 그 그래프
+                        (lib/adapters → ts-morph)가 번들에 7.2MB로 들어온다. detect.ts가 재수출한다
+  onboarding/sample-confirmation.ts
+                        재검증한 샘플 포맷의 HMAC 발급·검증. 사용자·리포 id·설치 id·ref·head에 묶는다.
+                        파일 내용과 서버 캐시는 없고, node:crypto를 쓰므로 클라이언트가 값으로 읽지 않는다.
+  onboarding/language-name.ts
+                        로케일 코드 → 영어 언어 이름(③의 기준 언어 행). ⚠️ 자국어가 아니다 —
+                        Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
+                        언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
+                        (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
+                        한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
+  onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
   search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 화면 여덟이 전부
@@ -164,6 +219,11 @@ vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수�
 next.config.ts          ⚠️ 보안 응답 헤더가 여기 있다(enforce 셋 + CSP 본체 Report-Only).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
 vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다
+vitest.projects.config.ts
+                        목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
+                        ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미발송 술어가 세 벌이 된 뒤로
+                        "셋이 같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
+                        건드렸으면 손으로 돌린다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
                         세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
 ```

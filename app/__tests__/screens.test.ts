@@ -70,13 +70,36 @@ describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 �
    * ARCHITECTURE §0 불변식 9(버린 값을 숨기지 않는다)가 정확히 그 자리에서 깨진다. 같은 커밋의 온보딩 결과
    * 화면은 처음부터 `failed`를 봤다: **두 화면이 같은 지표를 봐야 한다.**
    */
-  it("설정 화면도 온보딩 결과 화면과 같은 지표(`failed`)를 본다", () => {
+  it("세 자리가 같은 지표(`failed`)를 본다", () => {
+    /*
+      ⚠️ **자리가 셋이다** (2026-09-13). 성공 문구가 ④의 본문에서 **모달의 설명 줄**로 옮겨가면서
+      `new-project.tsx`가 세 번째 소비자가 됐다 — 목록을 안 늘리면 그 자리가 방어선 밖이다.
+    */
     for (const path of [
       "components/onboarding/first-ingest-retry.tsx",
-      "components/onboarding/new-project-flow.tsx",
+      "components/onboarding/steps/result.tsx",
+      "components/onboarding/new-project.tsx",
     ]) {
-      expect(read(path), path).toMatch(/failed === 0 \? "success" : "warning"/);
-      expect(read(path), path).not.toMatch(/errors\.length === 0 \? "success"/);
+      expect(read(path), path).toMatch(/failed === 0\s*\?/);
+      /*
+        ⚠️ **`errors.length`로 갈리면 안 된다 — 철자를 가리지 않는다.** `failed`는
+        `errors.length + duplicateKeys`(ARCHITECTURE)라 **중복 키만 있는 부분 실패는
+        `errors.length === 0`**이다. `? "success"`만 막으면 `? null`·`? <></>`가 그대로 지나간다.
+      */
+      expect(read(path), path).not.toMatch(/errors\.length === 0\s*\?/);
+    }
+  });
+
+  it("버린 값이 있는 결과는 `warning`을 실제로 그린다", () => {
+    /*
+      ⚠️ **지표만 박으면 절반이다.** `failed === 0 ? null : null`도 위 검사를 통과한다 — 불변식 9가
+      막는 것은 "지표를 잘못 고르는 것"이 아니라 **"버린 값을 조용히 넘기는 것"**이다. 그릇을 그리는
+      두 자리는 그 그릇이 실제로 `warning`인지 함께 센다. (`new-project.tsx`는 그릇이 아니라 설명
+      문구를 바꾸므로 이 목록에 없다 — 그쪽은 `ingestHeadline`이 `failed`를 지나는 것으로 족하다.)
+    */
+    for (const path of ["components/onboarding/first-ingest-retry.tsx", "components/onboarding/steps/result.tsx"]) {
+      // 한쪽은 `variant={… : "warning"}`이고 다른 쪽은 `variant="warning"`이다 — 그리는 값만 센다.
+      expect(read(path), path).toMatch(/"warning"/);
     }
   });
 });
@@ -247,4 +270,80 @@ describe("보관 — 다섯 화면이 같은 갈래를 그린다 (7단계)", () 
       expect(read(path), path).not.toContain("archive.empty");
     }
   });
+});
+
+/**
+ * **마지막 임포트 실패가 설정 화면에 닿는다** (projects-list design §3.35).
+ *
+ * 코드를 저장해 놓고 읽는 쪽을 안 만들면 실패가 통째로 무음이다 — 이 리포가 정확히 그 사고를
+ * 밟았다 (POSTMORTEM 2026-09-06: 사유를 쿼리로 넘겨놓고 읽는 쪽이 없어 거부가 조용했다).
+ */
+describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
+  const src = read(SETTINGS);
+
+  it("컬럼을 select하고 판정 함수로 거른다 — DB 문자열을 직접 인덱싱하지 않는다", () => {
+    expect(src).toContain("lastImportError");
+    expect(src).toContain("isImportFailureCode");
+  });
+
+  it("사유를 사전이 낸 문장으로 그린다 — 파서 원문을 화면에 복제하지 않는다", () => {
+    expect(src).toContain("importFailureMessage");
+  });
+
+  /** 첫 적재 전이면 이 화면의 버튼이, 이미 적재된 뒤면 대상 리포의 CI가 고칠 자리다. */
+  it("복구 안내가 readiness로 갈린다", () => {
+    expect(src).toContain("importRetry");
+    expect(src).toContain("importRerun");
+  });
+});
+
+/**
+ * **목록 둘이 새 집계 소비자다** (projects-list design §3).
+ *
+ * 쓰기는 성공했는데 목록만 옛 숫자를 보이는 부류를 막는다 — 이 리포가 이름으로 적어 둔 사고이고
+ * (POSTMORTEM 2026-09-09), `/projects`가 **접두가 아니라 경로 하나**라 `/projects/new`가 매번
+ * 따로 필요하다는 것이 그 회고의 요지다.
+ */
+describe("쓰기 경로가 목록 둘을 무효화한다", () => {
+  it.each([
+    ["번역 저장·Publish", "app/(edit)/actions.ts"],
+    ["CI push", "app/api/push/route.ts"],
+    ["CI 실패 보고", "app/api/push/failure/route.ts"],
+    ["첫 적재", "app/(edit)/projects/actions.ts"],
+  ])("%s", (_label, path) => {
+    const src = read(path);
+    expect(src).toContain('revalidatePath("/projects")');
+    expect(src).toContain('revalidatePath("/projects/new")');
+  });
+});
+
+/**
+ * **설정 화면과 목록이 같은 술어를 쓴다** (projects-list design §3.35).
+ *
+ * 두 화면이 같은 두 컬럼에서 정반대 사실을 말하면(목록 "Importing" / 설정 "실패"), 사용자는 어느
+ * 쪽도 못 믿는다 — [다시 시도]를 누른 직후가 정확히 그 창이다 (2026-09-13 리뷰).
+ */
+describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
+  const src = read(SETTINGS);
+
+  it("진행 표시 컬럼을 함께 읽는다", () => {
+    expect(src).toContain("lastImportStartedAt: true");
+  });
+
+  it("목록과 같은 판정 함수를 쓴다 — 술어를 두 벌로 만들지 않는다", () => {
+    expect(src).toContain("failing({");
+    expect(src).toContain('from "@/lib/projects/list"');
+  });
+});
+
+/**
+ * **모달 본문이 맨 위 요소의 포커스 링을 자르지 않는다** (2026-09-13 실측).
+ *
+ * 그 컨테이너는 스크롤·클리핑을 겸해 `overflow`를 뗄 수 없고, 링은 box-shadow라 요소 **밖으로**
+ * 2px 퍼진다 — 위쪽 여백이 0이면 1단계 검색 필드의 링 상단이 통째로 잘린다. 네 단계의 첫 요소가
+ * 전부 같은 자리라 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내준다.
+ */
+it("온보딩 모달 본문이 포커스 링 자리를 남긴다", () => {
+  const src = read("components/onboarding/modal.tsx");
+  expect(src).toContain("px-8 pt-0.5 pb-6");
 });

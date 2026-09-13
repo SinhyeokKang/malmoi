@@ -27,7 +27,7 @@ name: l10n
 
 on:
   push:
-    branches: [main]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (ARCHITECTURE §0 불변식 2)
+    branches: ["main"]   # 대상 리포의 base 브랜치. bugshot-2는 dev다 (ARCHITECTURE §0 불변식 2)
                        # ⚠️ 설정 화면에서 기준 브랜치를 바꾸면 이 줄도 함께 고친다 —
                        #    안 고치면 CI가 영영 안 돌고 오류도 안 난다 (6b-3)
   workflow_dispatch:
@@ -146,6 +146,26 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 | **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales`에 그 로케일 — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
 | 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
+
+### 적재 실패는 말모이에도 남는다 (2026-09-13)
+
+**파싱에 실패하면 `/api/push`는 아예 안 불린다** — 그래서 그 실패는 오랫동안 이 리포의 Actions
+로그에만 있었고, 말모이 쪽 목록에서는 그 프로젝트가 그냥 조용했다. 지금은 스크립트가 종료 전에
+**`POST /api/push/failure`**로 사실 하나를 보낸다.
+
+| 무엇 | 값 |
+|---|---|
+| 인증 | **같은 `PUSH_TOKEN`** — 새 토큰도 새 input도 없다 |
+| 본문 | `{ projectSlug, commitSha, commitAt, code }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`) |
+| 제한 | **5초 · 재시도 없음**. 비정상 응답·네트워크 실패는 경고 한 줄로 남고 **원래 진단과 exit 1은 그대로다** |
+| 안 보내는 것 | 파서 원문 · 소스 문자열 · 로컬 절대경로 · 토큰 |
+
+⚠️ **보고가 red를 대신하지 않는다.** 이 요청이 404를 받든 타임아웃이 나든 CI는 여전히 실패한다 —
+보고는 부가 신호이고, 그것이 CI의 판정을 바꾸면 "말모이가 조용하면 괜찮은 것"이라는 잘못된 신호가 된다.
+
+⚠️ **서버를 먼저 릴리스한다.** 기존 Action은 이 endpoint를 몰라도 정상 push가 계속되고, 새 스크립트가
+옛 서버의 404를 받으면 위 규칙대로 경고만 남긴다. **대상 리포가 쓰는 `@l10n-push-v1`은 서버 배포만으로
+새 스크립트를 받지 않는다** — 그 태그를 옮기는 것이 릴리스다(CLAUDE.md).
 
 **red일 때 어디를 보나.**
 

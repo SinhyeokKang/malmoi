@@ -13,7 +13,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { ADAPTERS, adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName } from "@/lib/adapters/types";
@@ -27,7 +27,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
-import { openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
+import { listBranches, openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/github-connect/health";
@@ -36,20 +36,26 @@ import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
-import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import { authorizeUrl, type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import { signSampleConfirmation, verifySampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
 import {
   ingestTargets,
   makeProbe,
   probeTargets,
+  SAMPLE_ROWS,
   summarizeCandidates,
   type CandidateSummary,
+  type SampleRow,
 } from "@/lib/onboarding/detect";
 import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
 import type { OnboardError } from "@/lib/onboarding/message";
+import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
+import { isPathSafeLocale } from "@/lib/locale-code";
+import { isValidBranchName } from "@/lib/pull/branch-name";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -322,9 +328,8 @@ export async function changeMember(raw: {
  *
  * ⚠️ **인가가 GitHub 조회보다 먼저다** — 거부될 요청이 남의 레이트 리밋을 태우지 않는다.
  *
- * ⚠️ **프로젝트가 없는 넷은 `requireUser`다** (design §3.6 — `Account` 행은 사용자 소유이고,
- * 생성 경로에는 인가할 프로젝트가 없다). 세션이 끊기면 로그인 화면으로 보낸다: 중간 상태를
- * 저장하지 않으므로(§3.4) "처음부터"가 정확한 안내이고, blur 저장처럼 잃을 입력이 없다.
+ * 모달의 Action은 `readSession`으로 세션 거부를 값으로 돌려준다. redirect하면 모달의 입력이
+ * 사라진다(예외 J). 페이지·연결 이동의 `requireUser`와 구별한다.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -332,7 +337,18 @@ export async function changeMember(raw: {
 type OnboardFailure = OnboardError | ConnectError | "invalid input";
 
 const RepoInput = z.object({ owner: z.string().min(1), repo: z.string().min(1) });
+const DetectInput = RepoInput.extend({ ref: z.string().min(1).optional() });
 const SlugOnlyInput = z.object({ slug: z.string().min(1) });
+const SampleInput = z.object({
+  owner: z.string().min(1),
+  repo: z.string().min(1),
+  ref: z.string().min(1),
+  adapter: z.string().min(1),
+  pathTemplate: z.string().min(1),
+  locale: z.string().min(1),
+  confirmation: z.string().max(65_536).optional(),
+});
+const ManualFormatInput = SampleInput.omit({ locale: true, confirmation: true }).extend({ baseLocale: z.string().min(1) });
 const CreateProjectInput = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
@@ -340,6 +356,8 @@ const CreateProjectInput = z.object({
   pathTemplate: z.string().min(1),
   baseLocale: z.string().min(1),
   slug: z.string().min(1),
+  // T8 이후에는 UI가 선택한 브랜치를 반드시 보낸다. 탐지와 다른 기본값으로 저장하지 않는다.
+  baseBranch: z.string().min(1),
   // ⚠️ 상한이 있는 이유는 **저장되는 유일한 자유 입력**이기 때문이다 — slug는 `planSlug`가 40자로
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
   // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
@@ -367,6 +385,11 @@ export type StartUserConnectResult = { ok: false; error: OnboardFailure };
  */
 const UserConnectDest = z.enum(["new", "account"]);
 export type UserConnectDest = z.infer<typeof UserConnectDest>;
+/**
+ * `/projects/new`로 돌아올 때 되돌려 줄 목록 상태 (2026-09-13). **`new` 갈래에만 쓰인다** —
+ * `/account`에는 대응물이 없다. 상한·형식은 `parseDest`가 서명을 풀 때 한 번 더 좁힌다.
+ */
+const ConnectBack = z.object({ q: z.string().max(200).optional() });
 
 /**
  * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
@@ -382,11 +405,16 @@ export type UserConnectDest = z.infer<typeof UserConnectDest>;
  *
  * 성공하면 GitHub으로 `redirect`하므로 **반환하지 않는다.**
  */
-export async function startGithubConnectForUser(raw: UserConnectDest): Promise<StartUserConnectResult> {
+export async function startGithubConnectForUser(
+  raw: UserConnectDest,
+  rawBack: { q?: string } = {},
+): Promise<StartUserConnectResult> {
   // 입력이 인가보다 먼저다 — 모르는 갈래가 서명 payload에 실리면 착지가 `landingPath`의 사각지대가 된다.
   const parsed = UserConnectDest.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const dest = parsed.data;
+  // 목록 상태는 착지를 못 정한다 — 이상하면 그 값만 버리고 연결은 계속한다.
+  const back = ConnectBack.safeParse(rawBack);
 
   const { userId } = await requireUser();
 
@@ -405,7 +433,7 @@ export async function startGithubConnectForUser(raw: UserConnectDest): Promise<S
     signState({
       userId,
       // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
-      dest: { kind: dest },
+      dest: dest === "new" ? { kind: "new", ...(back.success ? back.data : {}) } : { kind: "account" },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),
@@ -472,7 +500,8 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
   return { ok: true };
 }
 
-export type ConnectableRepo = { owner: string; repo: string; fullName: string };
+/** ①의 리포 행. `pushedAt`은 "이 리포가 아직 살아 있는가"를 말한다 — 목록이 길수록 그 신호가 는다. */
+export type ConnectableRepo = { owner: string; repo: string; fullName: string; pushedAt: string | null };
 export type ConnectableReposResult =
   | { ok: true; repos: ConnectableRepo[] }
   | { ok: false; error: OnboardFailure };
@@ -509,30 +538,38 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   const settled = await Promise.all(
     installations.map((id) =>
       listInstallationRepos(token.accessToken, id).then(
-        (repos): { repos: readonly string[] } => ({ repos }),
+        (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
         (error: unknown): { error: unknown } => ({ error }),
       ),
     ),
   );
   const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
-  // 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
-  const fullNames = [...new Set(settled.flatMap((r) => ("repos" in r ? r.repos : [])))].sort();
+  /**
+   * 같은 리포가 두 설치에 걸릴 수 있다 — 목록에 두 번 보이지 않게 접는다.
+   *
+   * ⚠️ **`[...new Set(rows)].sort()`로 돌아가지 않는다.** 원소가 객체가 되면 `Set`은 참조로 비교해
+   * 중복을 못 접고, 기본 `.sort()`는 전부 `"[object Object]"`로 비교해 **정렬이 조용히 사라진다** —
+   * `tsc`가 못 보는 부류다. 키는 `fullName`이고 비교자를 명시한다.
+   */
+  const byName = new Map<string, { fullName: string; pushedAt: string | null }>();
+  for (const r of settled) if ("repos" in r) for (const row of r.repos) byName.set(row.fullName, row);
+  const rows = [...byName.values()].sort((a, b) => (a.fullName < b.fullName ? -1 : a.fullName > b.fullName ? 1 : 0));
 
   // 하나도 못 읽었는데 실패가 있었다면 빈 목록은 "리포가 없다"가 아니다 — 장애를 거부로 위장하지 않는다.
-  if (fullNames.length === 0 && failures.length > 0) return listFailure(failures);
+  if (rows.length === 0 && failures.length > 0) return listFailure(failures);
   // 일부만 실패했으면 원인은 로그에만 남는다 — 화면은 읽어낸 목록으로 진행한다.
   for (const error of failures) logFailure("onboard-repos", error);
 
-  if (fullNames.length === 0) return { ok: false, error: "no-repos" };
+  if (rows.length === 0) return { ok: false, error: "no-repos" };
 
   return {
     ok: true,
-    repos: fullNames.flatMap((fullName) => {
+    repos: rows.flatMap(({ fullName, pushedAt }) => {
       const [owner, repo] = fullName.split("/");
       // `owner/name`이 아닌 응답은 이해하지 못한 것이다 — 화면에 반쪽 값을 보내지 않는다.
       return owner === undefined || repo === undefined || owner === "" || repo === ""
         ? []
-        : [{ owner, repo, fullName }];
+        : [{ owner, repo, fullName, pushedAt }];
     }),
   };
 }
@@ -548,19 +585,30 @@ export type DetectResult =
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
  */
-export async function detectRepoFormats(raw: { owner: string; repo: string }): Promise<DetectResult> {
-  const parsed = RepoInput.safeParse(raw);
+export async function detectRepoFormats(raw: {
+  owner: string;
+  repo: string;
+  /** ①에서 고른 브랜치. 미지정이면 그 리포의 default branch다. */
+  ref?: string;
+}): Promise<DetectResult> {
+  const parsed = DetectInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { owner, repo } = parsed.data;
+  const { owner, repo, ref } = parsed.data;
+  // 잎 판정이라 비용이 0이다 — 맨값을 GitHub URL에 넣기 전에 여기서 막는다.
+  if (ref !== undefined && !isValidBranchName(ref)) return { ok: false, error: "invalid input" };
 
-  const { userId } = await requireUser();
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   const prisma = getPrisma();
   const access = await checkRepoAccess(prisma, userId, owner, repo);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
-  const snapshot = await reader.snapshot(access.defaultBranch);
+  const snapshot = await reader.snapshot(ref ?? access.defaultBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
@@ -578,7 +626,169 @@ export async function detectRepoFormats(raw: { owner: string; repo: string }): P
   const summaries = summarizeCandidates(detectCandidatesAcross(paths, makeProbe(blobs)), blobs);
   if (summaries.length === 0) return { ok: false, error: "no-candidates" };
 
-  return { ok: true, candidates: summaries };
+  const candidates = summaries.flatMap((summary) => {
+    const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths));
+    const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
+    if (confirmed.status !== "ok") return [];
+    return [{ ...summary, confirmation: signSampleConfirmation({
+      userId, repositoryId: access.repositoryId, installationId: access.installationId,
+      ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
+      // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
+      format: { ...confirmed.format, locales: summary.locales },
+    }, requireEnv("AUTH_SECRET")) }];
+  });
+  return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
+}
+
+
+export type BranchesResult =
+  | { ok: true; names: string[]; defaultBranch: string; truncated: boolean }
+  | { ok: false; error: OnboardFailure; defaultBranch?: string };
+
+/**
+ * ①의 브랜치 목록 (design §3.2).
+ *
+ * ⚠️ **인가는 `checkRepoAccess`를 그대로 지난다.** 그 함수가 ARCHITECTURE §6의 3중 검증이고, 존재
+ * 오라클을 막는 **순서**(사용자 토큰으로 먼저 보고 없으면 `repo-not-installed` 한 갈래로 접는다)가
+ * 거기 있다 — 여기서 갈래를 나누면 sec-audit 발견 5가 그대로 돌아온다.
+ *
+ * `defaultBranch`는 같은 호출이 이미 들고 있다 — **GitHub을 한 번 더 부르지 않는다.**
+ */
+export async function listRepoBranches(raw: { owner: string; repo: string }): Promise<BranchesResult> {
+  const parsed = RepoInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+
+  const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
+  // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
+  if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
+
+  return { ok: true, names: list.names, defaultBranch: access.defaultBranch, truncated: list.truncated };
+}
+
+export type SampleResult =
+  | { ok: true; rows: SampleRow[]; total: number }
+  | { ok: false; error: OnboardFailure };
+
+/**
+ * 재검증은 탐지·수동 확정에서 끝내고 확인값에 서명한다. 그 단계에는 내용이 필요하다.
+ * 여기서는 확인값과 현재 인가·head를 대조한 뒤에만 blob을 읽는다 — templatePaths는 방어가 아니다.
+ */
+export async function loadCandidateSample(raw: {
+  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; locale: string;
+  confirmation?: string;
+}): Promise<SampleResult> {
+  const parsed = SampleInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const snapshot = await reader.snapshot(input.ref);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+
+  const verified = verifySampleConfirmation(input.confirmation ?? "", {
+    userId, repositoryId: access.repositoryId, installationId: access.installationId,
+    ref: input.ref, headSha: snapshot.headSha,
+  }, requireEnv("AUTH_SECRET"));
+  if (verified === null || !isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
+      verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
+    return { ok: false, error: "manual-no-match" };
+  }
+  const format = { ...verified, adapter: verified.adapter };
+  const adapter = adapterFor(format);
+  const paths = snapshot.files.map((file) => file.path);
+  const targets = adapter.layout === "per-locale"
+    ? [format.pathTemplate.replaceAll("{locale}", input.locale)].filter((path) => paths.includes(path))
+    : ingestTargets(format, adapter.layout, paths);
+  if (targets.length === 0) return { ok: false, error: "manual-no-match" };
+  try {
+    const files = await readFiles(reader, snapshot, targets);
+    if (files.length !== targets.length) return { ok: false, error: "unavailable" };
+    const read = adapter.read(format, files);
+    const locale = read.locales.find((item) => item.locale === input.locale);
+    /**
+     * 0행인 정상 로케일과 **못 읽은 파일**을 구별한다 — `sampleRows`는 둘을 같은 값으로 접으므로
+     * 여기서는 `read`를 직접 본다.
+     *
+     * ⚠️ **`errors.length`로 판정하지 않는다.** 그건 **엔트리 층 오류**(903키 중 하나가 문자열이
+     * 아니다)까지 포함해서, 하나만 이상해도 나머지 902개가 화면에서 사라진다 — 남의 리포를 우리
+     * 파서 규칙으로 탈락시키지 않는다는 규칙의 정반대다 (ARCHITECTURE §4). 파일을 못 읽으면
+     * 어댑터가 **그 로케일을 아예 안 낸다**: 그것이 "못 읽었다"의 신호다.
+     */
+    if (locale === undefined) return { ok: false, error: "unavailable" };
+    return { ok: true, rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })), total: locale.entries.length };
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    logFailure("onboard-sample", error);
+    return { ok: false, error: "unavailable" };
+  }
+}
+
+/** 수동 입력은 처음부터 신뢰하지 않는다 — 내용 재탐지가 성공해야 확인값을 발급한다. */
+export async function confirmManualFormat(raw: {
+  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; baseLocale: string;
+}): Promise<{ ok: true; candidate: CandidateSummary } | { ok: false; error: OnboardFailure }> {
+  const parsed = ManualFormatInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isAdapterName(input.adapter)) {
+    return { ok: false, error: "invalid input" };
+  }
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const snapshot = await reader.snapshot(input.ref);
+  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+  const paths = snapshot.files.map((file) => file.path);
+  const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+  try {
+    const files = await readFiles(reader, snapshot, targets);
+    if (files.length !== targets.length) return { ok: false, error: "unavailable" };
+    const confirmed = planConfirmedFormat(input, files);
+    if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+    const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
+    if (summary === undefined) return { ok: false, error: "manual-no-match" };
+    // 수동 기준 언어는 sampleOrder의 초기 셋 밖일 수 있다. 다운로드는 이미 끝났으므로 추가 blob은 없다.
+    if (!summary.samples.some((sample) => sample.locale === input.baseLocale)) {
+      const format = { ...confirmed.format, locales: [input.baseLocale] };
+      const adapter = adapterFor(format);
+      const selectedPaths = new Set(ingestTargets(format, adapter.layout, paths));
+      const read = adapter.read(format, files.filter((file) => selectedPaths.has(file.path)));
+      const locale = read.locales.find((item) => item.locale === input.baseLocale);
+      // 위와 같은 규칙 — 엔트리 층 오류는 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4).
+      if (locale === undefined) return { ok: false, error: "unavailable" };
+      summary.samples.push({ locale: input.baseLocale, total: locale.entries.length,
+        rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })),
+      });
+    }
+    return { ok: true, candidate: { ...summary, baseLocale: confirmed.baseLocale,
+      confirmation: signSampleConfirmation({
+        userId, repositoryId: access.repositoryId, installationId: access.installationId,
+        ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
+      }, requireEnv("AUTH_SECRET")),
+    } };
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    logFailure("onboard-confirm-sample", error);
+    return { ok: false, error: "unavailable" };
+  }
 }
 
 export type CreateProjectResult =
@@ -607,12 +817,17 @@ export async function createProject(raw: {
   baseLocale: string;
   slug: string;
   name: string;
+  baseBranch: string;
 }): Promise<CreateProjectResult> {
   const parsed = CreateProjectInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
 
-  const { userId } = await requireUser();
+  // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
 
   // ⚠️ **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`와 같은 정규식이다** — 갈리면 온보딩이
   // 만든 slug가 pull에서 `fail()`로 죽는다. 형식이 틀리면 GitHub을 부를 이유가 없다.
@@ -620,6 +835,10 @@ export async function createProject(raw: {
   // 모르는 어댑터는 아무 파일도 가리키지 못한다 — 조작된 입력이라 리포를 읽지 않는다.
   if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
   const adapterName: AdapterName = input.adapter;
+  // 설정 화면과 **같은 함수**다 (`lib/pull/branch-name.ts`). 형식이 틀리면 GitHub을 부를 이유가 없다.
+  if (!isValidBranchName(input.baseBranch)) {
+    return { ok: false, error: "invalid-branch" };
+  }
 
   const prisma = getPrisma();
   const access = await checkRepoAccess(prisma, userId, input.owner, input.repo);
@@ -651,7 +870,9 @@ export async function createProject(raw: {
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
   const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
-  const snapshot = await reader.snapshot(access.defaultBranch);
+  // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
+  const baseBranch = input.baseBranch;
+  const snapshot = await reader.snapshot(baseBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
@@ -710,7 +931,7 @@ export async function createProject(raw: {
           repoName: plan.repoName,
           // ⚠️ default가 `"main"`이라 **반드시 채운다** — default branch가 `develop`인 리포의
           // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (design §4).
-          baseBranch: access.defaultBranch,
+          baseBranch,
           installationId: plan.installationId,
           repositoryId: access.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
@@ -733,7 +954,10 @@ export async function createProject(raw: {
   }
 
   revalidatePath("/projects");
-  return { ok: true, slug: input.slug, pushToken, baseBranch: access.defaultBranch };
+  // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
+  // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
+  revalidatePath("/projects/new");
+  return { ok: true, slug: input.slug, pushToken, baseBranch };
 }
 
 export type FirstIngestResultView =
@@ -794,53 +1018,78 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     return { ok: false, error: "ingest-failed" };
   }
 
-  const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
-  const snapshot = await reader.snapshot(project.baseBranch);
-  if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
-
-  const paths = snapshot.files.map((f) => f.path);
   /**
-   * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
-   * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
-   * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
-   * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
-   * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
+   * **여기서부터가 "돌고 있다"** (projects-list design §3.35) — 인가·준비 확인을 지났고 다음 줄이
+   * 리포를 읽는다. 그 앞에서 세우면 거부된 호출까지 목록에 진행 중으로 뜬다.
+   *
+   * ⚠️ **끝내는 것은 시작한 쪽이다.** 조기 반환이 여섯이라 하나라도 빠지면 그 프로젝트가 영영
+   * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
    */
-  const attempted = templatePaths(adapterName, pathTemplate, paths);
-  let files: AdapterFile[];
-  try { files = await readFiles(reader, snapshot, attempted); }
-  catch (error) {
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
-  }
-  const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
-  if (confirmed.status !== "ok") {
-    logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
-    return { ok: false, error: "ingest-failed" };
-  }
+  const startedAt = new Date();
+  await markImportStarted(prisma, projectId, startedAt);
+  const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
+    finishImportRun(prisma, { projectId, startedAt, code });
 
-  const adapter = adapterFor(confirmed.format);
-  // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
-  // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
-  // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
-  // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
-  const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
-    compareKeys,
-  );
-  const blobs = new Map(files.map((f) => [f.path, f.content]));
-  // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
   try {
-    for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
-      blobs.set(extra.path, extra.content);
+    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
+    const snapshot = await reader.snapshot(project.baseBranch);
+    if (snapshot.status !== "ok") {
+      await failRun();
+      return { ok: false, error: snapshotError(snapshot) };
     }
-  } catch (error) {
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
-  }
 
-  try {
+    const paths = snapshot.files.map((f) => f.path);
+    /**
+     * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
+     * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
+     * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
+     * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
+     * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
+     */
+    const attempted = templatePaths(adapterName, pathTemplate, paths);
+    let files: AdapterFile[];
+    try { files = await readFiles(reader, snapshot, attempted); }
+    catch (error) {
+      if (error instanceof IngestBudgetError) {
+        await failRun();
+        return { ok: false, error: "resource-limit" };
+      }
+      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
+      throw error;
+    }
+    const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
+    if (confirmed.status !== "ok") {
+      logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
+      await failRun();
+      return { ok: false, error: "ingest-failed" };
+    }
+
+    const adapter = adapterFor(confirmed.format);
+    // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
+    // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
+    // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
+    // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
+    const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
+      compareKeys,
+    );
+    const blobs = new Map(files.map((f) => [f.path, f.content]));
+    // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
+    try {
+      for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
+        blobs.set(extra.path, extra.content);
+      }
+    } catch (error) {
+      if (error instanceof IngestBudgetError) {
+        await failRun();
+        return { ok: false, error: "resource-limit" };
+      }
+      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
+      throw error;
+    }
+
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
+      startedAt,
       projectSlug: slug,
       format: confirmed.format,
       baseLocale: confirmed.baseLocale,
@@ -863,14 +1112,24 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
      * 경로를 나열하지 않는 이유는 POSTMORTEM 2026-09-09과 같다 — 다음에 생기는 화면이 조용히 빠진다.
      * `saveTranslation`이 이미 이 형이다.
      */
-    revalidatePath(`/projects/${slug}`, "layout");
-    revalidatePath("/projects");
+    /**
+     * ⚠️ **키가 0이면 `applyPush`를 타지 않았다** — 그쪽 트랜잭션이 결과를 확정하므로, 안 탄 갈래만
+     * 여기서 정리한다. 그때 `failed`는 최소 1이라(`ingest.ts`) 이 경우가 곧 부분 실패다.
+     */
+    if (result.count === 0) await failRun("partial-import");
+
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
+    await failRun();
     return { ok: false, error: "ingest-failed" };
+  } finally {
+    // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.
+    revalidatePath(`/projects/${slug}`, "layout");
+    revalidatePath("/projects");
+    revalidatePath("/projects/new");
   }
 }
 
@@ -1032,19 +1291,19 @@ async function checkRepoAccess(
     const settled = await Promise.all(
       userInstallationIds.map((id) =>
         listInstallationRepos(token.accessToken, id).then(
-          (repos): { repos: readonly string[] } => ({ repos }),
-          (): { repos: readonly string[] } => ({ repos: [] }),
+          (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
+          (): { repos: readonly InstallationRepo[] } => ({ repos: [] }),
         ),
       ),
     );
     // 대소문자만 다른 이름을 거짓 거부하지 않는다 (`planRepoConnect`와 같은 규칙).
-    const holder = settled.find((r) => r.repos.some((name) => name.toLowerCase() === wanted));
+    const holder = settled.find((r) => r.repos.some((row) => row.fullName.toLowerCase() === wanted));
     if (holder === undefined) {
       // ⚠️ **여기서 갈래를 나누지 않는다** — "우리 App이 없다"와 "네가 못 본다"를 구별해 주는 것이
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };
     }
-    userRepoFullNames = holder.repos;
+    userRepoFullNames = holder.repos.map((row) => row.fullName);
   } catch (error) {
     if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
     logFailure("onboard-access", error);

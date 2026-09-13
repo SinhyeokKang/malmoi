@@ -59,7 +59,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 17개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 18개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). ⚠️ **고정 이유가 둘이다**: `lib/onboarding/budget.ts`가 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀌고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |
@@ -133,6 +133,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미발송 술어가 세 벌이라**(`isUnpublished` · `countUnpublished` · 목록 집계의 raw SQL) "셋이 같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 
@@ -193,11 +194,11 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **17개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa` 넷은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, `/bugshot-qa`는 Codex에 ego-browser 런타임이 없다).
+스킬 **18개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/bugshot-qa`·`/design-sync` 다섯은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 둘은 Codex에 런타임이 없다: `/bugshot-qa`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓴다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa` · `/design-sync`
 
-**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
+**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션). ⚠️ **`/design-sync`는 시안이 있는 화면을 건드렸을 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 2026-09-13에 그렇게 쌓인 15디렉터리 14,929줄을 걷어냈고, 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
@@ -205,7 +206,11 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정도 거기서 한다. **프로덕션 반영은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`.** 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
 - **`/doc-check`은 문서 전수 대조다.** `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 양방향(틀린 단언 + 누락)으로 대조한다. `POSTMORTEM.md`(append-only)는 대상이 아니다.
+- ⚠️ **로케일이 많은 리포가 하나 필요하다 — `i18n-many-locales`다** (2026-09-13, excalidraw 포크 · `packages/excalidraw/locales/{locale}.json` **59로케일** · json-catalog). 폐기용 셋은 전부 **로케일이 3개**라 `sampleOrder`가 처음부터 전부 실어서, 온보딩 ②의 **lazy load**(누른 언어만 받는 경로)와 **세그먼트→`Select` 접힘**(다섯 이상)이 **한 번도 안 밟힌다**. 그 둘을 보려면 이 리포다. ⚠️ **쓰기 검증에는 쓰지 않는다** — 포크라 PR 흔적이 남고, `/l10n-roundtrip`의 "폐기용 리포만" 규칙은 그대로다.
+- ⚠️ **로케일이 하나도 없는 리포도 하나 필요하다 — `i18n-none`이다** (2026-09-13, `sindresorhus/p-map` 포크 · 74KB · MIT). 온보딩 ②의 **후보 0개**(예외 E — 좌측이 수동 지정 폼이 되고 우측이 "Nothing to preview yet"인 갈래)는 **설치된 다른 다섯이 전부 로케일 리포라 브라우저로 영영 못 밟는다.** 그 갈래는 되돌릴 수 없는 결정 직전의 화면인데 단위 테스트로만 고정돼 있었다. **74KB를 고른 이유는 트리 조회가 즉시 끝나서다** — `i18n-many-locales`는 탐지에 30초가 넘는다. ⚠️ **쓰기 검증에는 쓰지 않는다**(포크라 PR 흔적이 남는다).
+- ⚠️ **dev DB의 `bugshot-i18n-test-qa`는 지우지 않는다** (2026-09-13 사용자 — **프로젝트 생성 검증용 상주**). ④(결과 화면)는 **프로젝트를 실제로 만들어야만** 도달하므로, 그 화면을 볼 때마다 새로 만들면 dev DB에 일회용 프로젝트가 쌓인다. 리포는 폐기용(`bugshot-i18n-test`)이고 **생성은 리포에 아무것도 쓰지 않는다**(③의 info가 그 사실을 말한다) — 남겨도 외부 흔적이 없다.
 - **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** — `pnpm test`가 값은 보지만 화면은 못 보는 축(라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지)이 대상이다. **리포트+이슈 전용**이고 preview가 아니라 **로컬**을 쓴다.
+- ⚠️ **`/design-sync`는 Claude Design 핸드오프를 SoT로 삼는 루프다** — **시안이 정본이고 구현이 따라간다.** 수정→**실측**→(불일치면 수정)→**리뷰**→(지적이면 수정)을 일치할 때까지 돌고, 실측은 눈이 아니라 **computed style + CDP 접근성 트리**다. 2026-09-13에 새 프로젝트 모달이 핸드오프와 **29곳** 어긋난 채 `pnpm test` 3,000개가 green이었고, 그 루프가 **자기가 만든 회귀 넷**(list role 소실·접근 이름 0·반투명 sticky 헤더·`<strong>` 제거)을 추가로 잡았다 — **전부 화면에도 테스트에도 안 나타나는 부류다.** `/bugshot-qa`가 "동작하나"를 보는 자리라면 이쪽은 **"시안과 같은가"**다.
 - **`/l10n-roundtrip`은 어댑터 실물 검증 전담이다** — 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돈다. **값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다.** 대상은 **폐기용 리포만**이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 재생성 어댑터를 고쳤으면 `i18n-order-check`다(그 리포가 표현 5축이 섞이도록 재포맷돼 있다).
 
 ## 문서 지도
@@ -252,7 +257,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** stable은 `prev` 태그다. `pnpm add prisma`로 무심코 깔면 RC가 들어오므로 **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
 - **Vercel Cron은 Hobby 플랜에서 하루 1회다.** **cron은 프로덕션 배포에서만 돈다** — preview가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다.
-- ⚠️ **App 설치가 `Only select repositories`다.** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 넷**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check`.
+- ⚠️ **App 설치가 `Only select repositories`다.** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. **현재 목록은 여섯**: `bugshot-2` · `bugshot-i18n-test` · `i18n-format-check` · `i18n-order-check` · **`i18n-many-locales`** · **`i18n-none`**(2026-09-13 추가, 앱 목록에서 실물 확인). ⚠️ **이 줄을 리포 생성 시점이 아니라 설치 목록에 실제로 든 뒤에 올린다** — 앞서가면 `not-installed`를 만난 사람이 설치 목록을 의심 대상에서 빼고 엉뚱한 곳을 디버깅한다.
 - **GitHub App 개인키는 개행이 들어간 PEM이다.** Vercel env에서 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다. **`.pem`은 `.gitignore`에 있다.**
 - ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다. `onlyBuiltDependencies`는 빌드 스크립트 화이트리스트이고 **목록은 셋뿐이다** — 스크립트가 **없는** 패키지를 넣으면 업스트림이 나중에 추가할 때 자동 승인되어 화이트리스트의 요지가 사라진다. **둘 다 증상이 원인을 안 가리킨다.**
 - **`orphaned`는 삭제가 아니다.** export에서만 빠지고 DB엔 남는다. "번역이 사라졌다"는 제보를 받으면 먼저 이 플래그를 본다. **`StringKey`와 `Locale` 둘 다 갖는다** — "로케일 열이 사라졌다"·"지운 로케일 파일이 PR에서 돌아온다"는 둘 다 이 플래그가 답이다.

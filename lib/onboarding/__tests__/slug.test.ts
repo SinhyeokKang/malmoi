@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { REF_SAFE_SLUG, syncBranchFor } from "@/lib/pull/trigger";
 
-import { PROJECT_SLUG_MAX, normalizeProjectSlug, planSlug } from "../slug";
+import { PROJECT_SLUG_MAX, normalizeProjectSlug, planSlug, suggestAlternateSlug } from "../slug";
 
 /**
  * 프로젝트 slug 판정 (design §5). **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`를 import한다** —
@@ -128,5 +128,46 @@ describe("normalizeProjectSlug — 리포명 → slug 후보", () => {
   it("전부 비허용 문자면 빈 문자열이다 — 사용자가 직접 친다", () => {
     expect(normalizeProjectSlug("한글리포")).toBe("");
     expect(normalizeProjectSlug("!!!")).toBe("");
+  });
+});
+
+/**
+ * ③ 예외 G의 대안 제안 (feature design §3.5·§10).
+ *
+ * ⚠️ **존재 확인이 없다** — 그래서 문구가 `Try another, such as <alt>.`이고 `<alt> is free`가 아니다.
+ * 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09(문서가 단언한 통제를 코드가 안 했다)의 모양이 된다.
+ */
+describe("suggestAlternateSlug — 주소 중복 시의 대안 하나", () => {
+  it("뒤에 번호를 붙인다", () => {
+    expect(suggestAlternateSlug("web")).toBe("web-2");
+  });
+
+  it("이미 번호가 붙어 있으면 올린다 — `web-2-2`를 만들지 않는다", () => {
+    expect(suggestAlternateSlug("web-2")).toBe("web-3");
+    expect(suggestAlternateSlug("web-9")).toBe("web-10");
+  });
+
+  it("`planSlug`를 통과하는 값만 낸다 — 제안이 또 거부되면 제안이 아니다", () => {
+    for (const slug of ["web", "web-2", "a", "x".repeat(PROJECT_SLUG_MAX), "my.app", "new"]) {
+      const alt = suggestAlternateSlug(slug);
+      expect(alt).toBeDefined();
+      expect(planSlug(alt as string)).toBe("ok");
+    }
+  });
+
+  it("상한을 넘지 않도록 앞을 자른다 — 자른 끝이 `.`·`-`로 끝나지 않는다", () => {
+    const alt = suggestAlternateSlug("x".repeat(PROJECT_SLUG_MAX - 1) + "-");
+    expect(alt).toBeDefined();
+    expect((alt as string).length).toBeLessThanOrEqual(PROJECT_SLUG_MAX);
+    expect(alt).not.toMatch(/[.-]$/);
+  });
+
+  it("예약어에도 대안이 선다 — `new`가 그 갈래다", () => {
+    expect(suggestAlternateSlug("new")).toBe("new-2");
+  });
+
+  it("형식이 이미 깨진 값에는 제안하지 않는다 — 고칠 곳이 번호가 아니다", () => {
+    expect(suggestAlternateSlug("Web Site")).toBeUndefined();
+    expect(suggestAlternateSlug("")).toBeUndefined();
   });
 });

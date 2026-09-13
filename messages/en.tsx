@@ -255,18 +255,6 @@ export const en = {
 
   projects: {
     /**
-     * 목록 필터 (8-3). **탭이 링크라 라벨이 목적지의 이름이다** — `Active`가 "보관하지 않은 것"이다.
-     */
-    filter: {
-      label: "Filter projects",
-      all: "All projects",
-      /**
-       * ⚠️ **나머지 다섯은 `projects.status`를 그대로 쓴다** (2026-09-11 사용자 — 필터 축이 상태
-       * 다섯으로 넓어졌다). 탭 라벨과 행 배지가 같은 낱말이라야 "지금 무엇을 보고 있나"가 이어지고,
-       * 두 벌로 두면 하나가 낡는다.
-       */
-    },
-    /**
      * 툴바 우측의 이름 검색 (2026-09-11).
      *
      * ⚠️ **검색 필드의 placeholder는 `…`로 끝난다** (2026-09-11 사용자 — 앞으로 이 패턴이다).
@@ -282,22 +270,26 @@ export const en = {
     search: { label: "Search projects", placeholder: "Search projects…" },
     /** 행 메타 — 리포와 멤버 수 둘뿐이다. ⚠️ **복수형을 함수가 든다**(시안의 "1 members"는 틀렸다). */
     memberCount: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
-    /** 필터가 걸러 0건인 상태. **"프로젝트가 없다"와 다르다** — 탭을 바꾸면 있다. */
     /**
-     * 좁혀서 0건일 때의 빈 상태 (2026-09-11 사용자 — `EmptyState` 형으로 올렸다).
+     * 검색이 걸러 0건일 때의 빈 상태 (2026-09-11 사용자 — `EmptyState` 형으로 올렸다).
      *
      * ⚠️ **"프로젝트가 없다"(`empty`)와 같은 형이되 액션이 반대다.** 그쪽은 만들라고 하고(primary),
-     * 여기는 **되돌리라고** 한다(ghost) — 프로젝트는 이미 있고 화면이 좁혀져 있을 뿐이다.
+     * 여기는 **되돌리라고** 한다 — 프로젝트는 이미 있고 화면이 좁혀져 있을 뿐이다.
      *
      * ⚠️ **제목이 질의를 안 싣는다** — 긴 질의가 제목을 밀어내고, 무엇을 쳤는지는 검색창이 이미
-     * 보여준다. 설명이 갈래를 가른다.
+     * 보여준다. 설명이 그것을 말한다.
+     *
+     * ⚠️ **`byFilter`가 2026-09-13에 사라졌다** (projects-list §1.4). 좁히는 축이 검색 하나가 되면서
+     * "탭 0건"이라는 갈래 자체가 없어졌다 — 남겨 두면 탭이 있던 시절의 화석이 사전에 남는다.
      */
     narrowed: {
       title: "No results",
-      /** ⚠️ 되돌릴 것이 질의인지 탭인지 갈라 말한다 — 아니면 엉뚱한 컨트롤을 만진다. */
       bySearch: (q: string) => `No project matches "${q}".`,
-      byFilter: "No project in this view.",
-      reset: "Clear filters",
+      /**
+       * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 줄의 같은 동작도
+       * 같은 낱말을 써야 한다: 한 화면에서 같은 동작이 두 이름을 갖지 않는다.
+       */
+      reset: "Clear search",
     },
     /** 목록·스위처의 보관 표시. 숨기는 대신 배지로 남는다 — 숨기면 되돌릴 링크가 사라진다. */
     archived: "Archived",
@@ -305,7 +297,96 @@ export const en = {
     role: { OWNER: "Owner", EDITOR: "Editor" },
     empty: {
       title: "No projects yet",
-      description: "Connect a repository to create one, or open an invite link you were sent.",
+      /**
+       * ⚠️ **약속과 안전을 한 문장씩 말한다** (캔버스 `1a`). 앞은 "무엇을 해주나", 뒤는 "무엇을
+       * 안 하나"다 — 남의 리포에 연결을 요구하는 화면이라 되돌릴 수 없는 쓰기가 없다는 사실이
+       * 시작 버튼 옆에 있어야 한다.
+       */
+      description:
+        "Connect a repository and malmoi will find the locale files for you. Nothing is written back until you send changes.",
+    },
+    /**
+     * 머리의 Summary 넷 (projects-list design §11.3). **내 멤버십 중 보관하지 않은 프로젝트 전체**의
+     * 값이고 검색·그룹에 흔들리지 않는다.
+     *
+     * ⚠️ **누를 수 없다** — 계정 단위 큐 화면이 생기기 전까지는 표시 전용이다(열린 결정 1).
+     * 링크로 만들면 아직 없는 화면을 가리키게 된다.
+     */
+    summary: {
+      /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
+      newFromGithub: "New from GitHub",
+      toTranslate: "To translate",
+      toReview: "To review",
+      toSend: "To send",
+    },
+    /**
+     * 그룹 헤더 셋. **`Archived`는 `projects.archived`를 그대로 쓴다** — 행 배지와 같은 낱말이라야
+     * "지금 무엇을 보고 있나"가 이어지고, 두 벌로 두면 하나가 낡는다.
+     */
+    group: { needsAttention: "Needs attention", allSet: "All set" },
+    /**
+     * 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다 — 배지가 `1`로
+     * 바뀌면 "프로젝트가 하나 남았다"로 오읽히므로, 좁혀진 수는 여기가 들고 분모가 그 옆에 선다.
+     *
+     * ⚠️ **질의가 문구 안에 없다** — 캔버스가 그 낱말만 foreground로 칠하므로 화면이 별개 노드로
+     * 그린다. 문자열에 넣으면 그 강조를 만들 자리가 사라진다.
+     */
+    searchResult: (n: number, total: number): string =>
+      `${n} of ${total} project${total === 1 ? "" : "s"} match`,
+    /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
+    clearSearch: "Clear search",
+    /**
+     * Meter 자리에 **바 대신 서는 문장** (design §5). 값이 없는 상태에서 0% 바를 그리면
+     * "0% 번역됨"으로 읽히는데, 그 프로젝트는 아직 셀 것이 없는 상태다.
+     */
+    meter: {
+      note: {
+        waiting: "Waiting for the first import.",
+        importing: "Importing locale data.",
+        failed: "No data imported.",
+        setup: "Connect the GitHub App to continue.",
+      },
+    },
+    /**
+     * 행 아래 띠 — **다음 한 수**를 말한다 (design §5). 겹치면 하나만 그리고 우선순위는
+     * `rowBanner`가 정한다.
+     *
+     * ⚠️ **복수형을 함수가 든다** — 시안 문구가 전부 복수형이지만 `1 strings`는 틀렸다
+     * (`memberCount`가 같은 이유로 이미 함수다).
+     *
+     * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다**(`Reconnect`·`Continue setup`·`View details`) —
+     * 그 셋은 `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다.
+     * 문장 자체는 역할과 무관하다 (PRODUCT §3: EDITOR도 Publish한다).
+     */
+    banner: {
+      review: (n: number): string =>
+        `${n} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+      unsent: (n: number): string =>
+        `${n} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
+      prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
+      /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
+      repoAhead: (n: number, baseBranch: string): string =>
+        `${n} locale file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last import.`,
+      setup: "Finish setup to start translating.",
+      needsReconnect:
+        "GitHub App access was revoked — pushes and pull requests stop until it is reconnected.",
+      /** 실패 사유(`importFailure.*`) 뒤에 붙는다 — 설정 화면이 그 상세를 든다. */
+      checkDetails: "Check the import details.",
+      /** EDITOR 갈래. 링크를 뺀 자리에 "누가 할 수 있는지"를 말한다. */
+      askOwner: {
+        reconnect: "Ask a project owner to reconnect it.",
+        setup: "Ask a project owner to finish setup.",
+      },
+      action: {
+        review: "Review",
+        /** ⚠️ **Publish가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다 (PRODUCT §7.7). */
+        send: "Send changes",
+        viewPr: "View on GitHub",
+        reviewChanges: "Review changes",
+        viewDetails: "View details",
+        continueSetup: "Continue setup",
+        reconnect: "Reconnect",
+      },
     },
     /**
      * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
@@ -337,6 +418,27 @@ export const en = {
        * 할 일은 설정 화면의 `Alert`가 말한다 — 좁은 칸에 동사를 넣으면 누를 수 있는 것처럼 읽힌다.
        */
       needs_reconnect: "Disconnected",
+    },
+    /**
+     * 마지막 임포트가 실패했을 때의 **사유 문장** (projects-list design §3.35).
+     *
+     * ⚠️ **저장된 것은 코드 하나다** — 파서 원문·파일 경로·행 번호는 DB에 들어가지 않는다.
+     * `AdapterError`가 모든 포맷에 행 번호를 주지 않으므로 `line 41` 같은 값을 지어낼 수도 없고,
+     * 이 문장은 **번역자도 보는 목록**에 나가므로 파서 어휘를 쓰지 않는다 (DESIGN §10).
+     * 상세 진단은 CI 로그에 남아 있고 화면은 그리로 보낸다.
+     *
+     * ⚠️ **`contactOwner`가 EDITOR 갈래다** — `View details`가 `project:settings` 뒤라
+     * 그 링크를 보여주면 눌러서 거절당하는 경험이 된다 (PRODUCT §3).
+     */
+    importFailure: {
+      parseFailed: "Locale files could not be parsed.",
+      parseCrashed: "A locale file stopped the parser.",
+      invalidLocaleData: "Some locale entries could not be read.",
+      prepareFailed: "The locale format could not be read on the last import.",
+      /** 데이터는 들어갔다 — "실패"가 아니라 "일부가 빠졌다"여야 사용자가 목록의 숫자를 믿는다. */
+      partialImport: "Some locale files were left out of the last import.",
+      importFailed: "The last import did not finish.",
+      contactOwner: "Ask a project owner to check the import.",
     },
   },
 
@@ -399,7 +501,54 @@ export const en = {
         ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
         : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
 
-    back: "Projects",
+    /**
+     * 모달 껍데기 (new-project-modal design §7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
+     * 본문과 "다음으로 갈 수 있는가"만 넘긴다.
+     */
+    modal: {
+      next: "Next",
+      back: "Back",
+      close: "Close",
+      /** ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. 진행은 이 한 줄이다. */
+      step: (n: number): string => `Step ${n} of 4`,
+    },
+
+    /** 단계 넷의 제목·설명. 제목이 모달 머리로 올라가면서 각 단계의 `title` 키가 여기로 모였다. */
+    steps: {
+      repo: {
+        title: "New project",
+        description: "Pick a repository and the branch malmoi should read.",
+      },
+      files: {
+        title: "Which files hold your strings?",
+        description: (n: number, repo: string, branch: string): string =>
+          `${n === 1 ? "1 set" : `${n} sets`} matched on ${repo} · ${branch}. Check the keys before you continue.`,
+        loading: (repo: string, branch: string): string => `Reading ${repo} · ${branch}…`,
+        /** 예외 E — 후보 0개. ①로 되돌리지 않고 여기서 수동 지정을 편다. */
+        emptyTitle: "Where are your locale files?",
+        /**
+         * ⚠️ **후보 0개에 "Check the keys before you continue"를 쓰지 않는다** (2026-09-13 실물).
+         * 확인할 키가 없는 화면이 키를 확인하라고 말한다 — 설명은 **지금 할 일**(경로를 치면 확인해
+         * 준다)을 말해야 한다 (핸드오프 3a).
+         */
+        emptyDescription: (repo: string, branch: string): string =>
+          `malmoi didn't find any on ${repo} · ${branch}. Set the path and it will check.`,
+      },
+      naming: {
+        title: "Project details",
+        description: "The base language decides which keys exist. Name and address come from the repository.",
+      },
+      result: {
+        title: "malmoi is ready",
+        description: "Add the push token to the repository so CI can send translations back.",
+        /**
+         * ⚠️ **결과는 설명 줄이 말한다** (핸드오프 1d·4f·4g). 성공한 적재에 `Alert`를 세우지 않는
+         * 것이 요지다 — 가장 흔한 상태가 가장 조용해야 한다(DESIGN §6.1). 실패·부분 실패만 본문에
+         * 그릇을 든다.
+         */
+        descriptionFailed: "The project exists. The first import didn't finish.",
+      },
+    },
 
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
     empty: {
@@ -423,21 +572,53 @@ export const en = {
 
     /** ② 리포 고르기 */
     repo: {
-      title: "Repository",
+      /** 리포 목록의 그룹 이름 — `RadioGroup`이 접근 이름 없이 서면 "라디오 그룹"으로만 읽힌다. */
+      list: "Repositories",
       search: "Find a repository by name",
       none: "No repository matches that name.",
-      pick: "Select",
-      other: "Choose another repository",
+      /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
+      pushedAt: (rel: string): string => `Pushed ${rel}`,
+      branch: "Branch",
+      branchHelp: "malmoi reads the locale files from this branch. You can change it later in project settings.",
+      /** 예외 D — 목록 조회만 실패했다. **"브랜치가 없다"가 아니다** (POSTMORTEM 2026-09-03). */
+      branchDefault: "Using the repository's default branch.",
+      branchTooMany: "This repository has too many branches to list — type the branch name.",
+      notListed: "Don't see a repository?",
+      loading: "Looking for repositories with the malmoi app installed…",
+      /**
+       * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
+       * 설치에 리포를 넣어라 (DESIGN §6.7).
+       */
+      searchEmpty: (q: string): string => `No repository matches "${q}".`,
+      clearSearch: "Clear search",
     },
 
     /** ③ 후보 · 기준 언어 · 수동 지정 */
     files: {
-      title: "Locale files",
-      /** 후보 줄의 요약 — 키 수를 못 셌으면 호출부가 `key-count-failed`를 넣는다. */
-      summary: (locales: readonly string[], keys: string): string =>
-        `${locales.length} languages (${locales.join(", ")}) · ${keys}`,
+      /** ② 좌측 후보 목록의 그룹 이름. */
+      candidates: "Locale file candidates",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
-      more: "There may be more — set the path yourself below if what you need isn't listed.",
+      /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
+      summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
+      notListed: "Not listed?",
+      setPath: "Set the path yourself",
+      /** ② 우측 키·값 표. */
+      preview: {
+        key: "Key",
+        value: "Value",
+        more: (n: number): string => (n === 1 ? "1 more key" : `${n} more keys`),
+        language: "Language",
+        /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
+        option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
+        none: "Nothing to preview yet",
+        /** 키 행만 스크롤하는 영역의 이름 — 그 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다. */
+        rows: "Preview rows",
+        /**
+         * ⚠️ **빈 칸과 가른다.** 정말 비어 있으면 빈 칸이고, 못 읽었으면 이 문장이다 — ②가
+         * "ko 열이 비어 있다"를 말하는 화면이라 이 구별이 기능의 목적 자체에 걸린다 (design §3.4).
+         */
+        unavailable: "We couldn't read this file.",
+      },
       manual: {
         summary: "Can't find your files?",
         format: "File format",
@@ -462,39 +643,93 @@ export const en = {
     },
 
     baseLocale: {
+      /**
+       * ③ 기준 언어 행의 보조 줄 — 경로와 키 수. ⚠️ **키 수는 아는 언어에만** 붙는다(결정 ⑦):
+       * 모르는 언어에 숫자를 지어내면 되돌릴 수 없는 결정의 근거가 거짓이 된다.
+       */
+      row: (path: string, keys: string | undefined): string => (keys === undefined ? path : `${path} · ${keys}`),
       title: "Base language",
       hint: "This language's file decides which keys exist. Pick the wrong one and keys that live only in another language are left out.",
     },
 
     /** ④ 이름·주소 */
     naming: {
-      title: "Name and address",
       name: "Name",
       slug: "Address",
-      /** 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다. */
+      /**
+       * 문장이 링크·mono 조각 둘을 물고 있어 노드를 받는다.
+       *
+       * ⚠️ **캡션 안에서 굵게 "보이지" 않는다** (2026-09-13 사용자). 필드 아래 설명은 13px 한
+       * 덩어리라 굵기를 섞으면 그 조각이 **제목처럼** 읽혀 라벨과 경쟁한다 — 보이는 강조는 색까지다.
+       * ⚠️ **그래도 `<strong>`은 남긴다**: 요청은 굵기였지 시맨틱이 아니었고, 이 문장은 **되돌릴 수
+       * 없음**을 말한다. 색만 남기면 스크린리더가 평평하게 읽고 고대비 모드에서도 사라진다
+       * (`LocaleBadge`가 색에 `sr-only`를 딸려 보내는 것과 같은 규칙 — DESIGN §7).
+       */
       hint: (address: ReactNode, branch: ReactNode): ReactNode => (
         <>
           Opens at {address}. Translations come back as a pull request on {branch}.{" "}
-          <strong>The address can't be changed later.</strong>
+          <strong className="text-foreground font-normal">The address can't be changed later.</strong>
         </>
       ),
       create: "Create project",
+      /** ③ info — **읽기 전용임을 말한다.** 리포에 아무것도 쓰지 않는다(불변식). */
+      info: (path: string, branch: string): string =>
+        `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,
+      mostKeys: "Most keys",
+      /**
+       * 접힌 기준 언어 목록의 옵션 하나 (2026-09-13). ⚠️ **조각을 화면에서 잇지 않는다** — 그러면
+       * `·`가 소스 리터럴이 되고 ko를 더할 때 어순을 못 바꾼다. 키 수와 배지는 **아는 언어에만**
+       * 붙으므로 둘 다 선택이다 (결정 ⑥⑦).
+       */
+      baseOption: (code: string, keys: string | undefined, mostKeys: boolean): string =>
+        [code, keys, mostKeys ? "Most keys" : undefined].filter((part) => part !== undefined).join(" · "),
+      /** ⚠️ **키 수를 아는 언어에만 선다** (결정 ⑦). `keyGap`이 `undefined`면 화면이 이 문장을 뺀다. */
+      keyGap: (lang: string, n: number, base: string): string =>
+        `${lang} has ${n} keys fewer than ${base}. Those keys would be left out if ${lang} led.`,
+      /**
+       * 예외 G — 제출 뒤 그 필드에 선다.
+       *
+       * ⚠️ **`is free`라고 단언하지 않는다** — `suggestAlternateSlug`는 존재 확인을 하지 않는다
+       * (design §3.5). 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09의 모양이다.
+       */
+      slugTaken: (alt: string | undefined): string =>
+        alt === undefined
+          ? "That address is already in use. Try another."
+          : `That address is already in use. Try another, such as ${alt}.`,
+      /** `planSlug`의 나머지 갈래 넷 — **클라이언트 판정이라 왕복이 0이다.** */
+      slugEmpty: "Pick an address.",
+      slugFormat: "An address can use lowercase letters, numbers, '-', '.' and '_'.",
+      slugTooLong: (max: number): string => `An address can be up to ${max} characters.`,
+      /** ⚠️ **`new`가 여기다** — 그 예약의 근거가 바로 이 라우트다 (PRODUCT §7.7). */
+      slugReserved: "That address is reserved.",
+    },
+
+    /**
+     * 예외 J — 전 단계 공통. **모달을 닫지도 `router.refresh()`를 부르지도 않는다**: 모달이 클라이언트
+     * 상태를 들고 있어 씻기면 ①~③의 입력이 통째로 사라진다 (POSTMORTEM 2026-09-08).
+     */
+    errors: {
+      sessionLost: "Sign in again and come back — nothing has been created.",
+      sessionLostAfterCreate: "Sign in again and come back — your project is still in your list.",
     },
 
     /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */
     result: {
       token: {
         title: "Push token",
+        /**
+         * ⚠️ **굵게 "보이지" 않되 `<strong>`은 남긴다** (2026-09-13 사용자 + 리뷰). 토큰이 한 번만
+         * 보인다는 경고라 색만으로 말하면 스크린리더에서 사라진다.
+         */
         description: (secret: ReactNode): ReactNode => (
           <>
             Add this to the repository's Actions secret {secret}.{" "}
-            <strong>You won't see it again after you leave this page.</strong> If you lose it, rotate it in settings.
+            <strong className="text-foreground font-normal">You won't see it again after you leave this page.</strong> If you lose it,
+            rotate it in settings.
           </>
         ),
       },
       ingest: {
-        title: "First import",
-        running: "Importing…",
         retry: "Try again",
         /** 못 읽은 파일 — 건수만으로는 사용자가 할 일이 없다 (ARCHITECTURE §0 불변식 9). */
         couldNotRead: (path: string): string => `Could not read ${path}`,
@@ -502,6 +737,14 @@ export const en = {
         diagnostics: "Details",
         refsHint: "Code references arrive after your first CI push. You can start translating now.",
         open: "Start translating",
+        /** ④ 적재 중 info — `role="status"`다 (`Alert`의 `role="alert"`는 `danger`일 때만 붙는다). */
+        importing: (path: string, branch: string): string => `Importing… reading ${path} on ${branch}.`,
+        /** 예외 H — 토큰 블록은 그대로 보이고, 복구 경로 둘을 말한다. */
+        failedHint:
+          "The project is in your list as Waiting for first import. You can retry from project settings.",
+      },
+      workflow: {
+        saveAs: "Save as",
       },
       failed: "We couldn't finish. Try again in a moment.",
     },
@@ -859,6 +1102,15 @@ export const en = {
       run: "Run first import",
       running: "Importing…",
       failed: "The import didn't finish. Try again in a moment.",
+      /**
+       * 마지막 임포트가 남긴 실패의 **복구 안내** (projects-list design §3.35). 사유 문장은
+       * `m.projects.importFailure`가 내고 여기는 "그래서 뭘 하면 되나"만 말한다.
+       *
+       * ⚠️ **갈래가 둘인 이유는 고칠 자리가 다르기 때문이다** — 첫 적재 전이면 이 화면의 버튼이
+       * 다시 돌리고, 이미 적재된 뒤면 그 버튼이 `not-awaiting`이라 고칠 곳이 대상 리포의 CI다.
+       */
+      importRetry: "Fix the locale files in the repository, then run the first import again.",
+      importRerun: "Fix the locale files in the repository and re-run the workflow there.",
     },
 
     token: {
@@ -1061,6 +1313,8 @@ export const en = {
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
+      // 온보딩은 브랜치를 **고르는** 자리다 — 설정 화면(고치는 자리)과 안내가 갈린다.
+      "invalid-branch": "That branch name isn't valid. Pick another branch.",
       "not-awaiting": "The first import already finished. Importing again would overwrite edited translations, so it's blocked here.",
       "resource-limit": "These translation files are too large or too deeply nested to import. Reduce their size and try again.",
       "ingest-failed": "The first import failed. You can try again from settings.",

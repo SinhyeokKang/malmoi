@@ -21,15 +21,25 @@ import { createHarness } from "../../(edit)/__tests__/harness";
  */
 
 const hoisted = vi.hoisted(() => ({
+  revalidatePath: vi.fn(),
   runSync: vi.fn(),
   applyPush: vi.fn(),
   prisma: {
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
-    project: { findUnique: vi.fn(), findMany: vi.fn() },
+    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
+    // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
+    project: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
   },
 }));
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
+// 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
+vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 vi.mock("@/lib/push/apply", () => ({ applyPush: hoisted.applyPush }));
 
@@ -392,10 +402,13 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   it("applyPush가 던지면 ref가 담긴 500이다", async () => {
     hoisted.prisma.project.findUnique.mockResolvedValue(project());
     hoisted.applyPush.mockRejectedValue(new Error("unnest 인자 개수 불일치"));
+    hoisted.revalidatePath.mockClear();
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: "internal" });
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
     spy.mockRestore();
   });
 

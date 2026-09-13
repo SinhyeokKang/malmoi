@@ -634,6 +634,18 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`confirm.ts`의 `planConfirmedFormat`** — ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 파일 재조회로
   재검증한다.** 이건 편의가 아니라 **보안 통제다**: 그 값이 그대로 저장되면 pull이 임의 경로를 겨눈다.
   저장하는 것은 `detectFormatWith`의 **반환값**이고 사용자가 보낸 문자열이 아니다.
+  - 온보딩 미리보기는 **확정과 조회를 분리**한다. `planConfirmedFormat`은 blob 내용이 필요하므로
+    다운로드 전 검증으로 쓸 수 없다. 탐지·`confirmManualFormat`이 재검증한 포맷에 `AUTH_SECRET`으로
+    용도를 구분한 HMAC 확인값을 발급한다. 확인값은 사용자·repositoryId·installationId·ref·headSha에
+    묶이고 파일 내용은 담지 않는다. `loadCandidateSample`은 현재 인가와 스냅샷을 다시 확인하고 서명을
+    대조한 뒤 경로를 트리와 교차한다. per-locale은 요청 언어의 blob **하나만** 읽는다.
+    확인값은 인가를 대신하지 않으며, 브랜치 head가 바뀌면 재탐지해야 한다. 서버 캐시는 없다.
+  - 직접 소비자는 `createProject`·`runFirstIngest`·`detectRepoFormats`·`confirmManualFormat`이다.
+    `loadCandidateSample`은 그중 탐지·수동 확정이 발급한 확인값을 검증한다. `templatePaths`는
+    초기 재검증에 필요한 다운로드 목록을 고르는 헬퍼이며 확인값 검증을 대신하지 않는다.
+- **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
+  `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
+  `baseLocale`은 `isPathSafeLocale`도 지난다.
 - **`workflow.ts`의 `renderWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
@@ -1092,6 +1104,7 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `l10n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
+| `/api/push/failure` 호출 | Bearer **같은 프로젝트별 토큰** (2026-09-13) | CI가 **적재에 실패했다는 사실**만 남긴다. 로케일 파일을 파싱하지 못하면 `/api/push`는 아예 안 불리므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다. ⚠️ **새 토큰을 만들지 않았다** — 같은 `PUSH_TOKEN`이고, 그래서 인증 경로가 하나 더 늘지 않는다. ⚠️ **아무것도 적재하지 않는다**: 키·번역은 물론 `lastCommitSha`·`lastCommitAt`도 안 움직인다(전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를 받는다). 본문은 **4 KiB 상한 + `strictObject`**이고 코드 넷만 받는다 — 파서 원문·소스 문자열·로컬 절대경로는 보고에도 DB에도 들어가지 않는다 |
 | `/api/push` 호출 | Bearer **프로젝트별 토큰** (생성·해싱은 `lib/push/token.ts`, **조회는 `app/api/push/route.ts`**) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
 
@@ -1193,6 +1206,18 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 ⚠️ **첫 구현은 `MissingEnvError` 하나만 안전으로 봤고 그게 진단을 한 단계 늦췄다** (2026-09-04 실측). 프로덕션이 `프로젝트를 찾을 수 없다: order-check`로 죽었을 때 본문이 `{error:"internal",ref}`뿐이어서 Vercel 로그를 뒤져야 원인(Production `DATABASE_URL`이 dev를 가리킴)을 알았다. 우리가 문구를 정한 오류는 slug·경로 템플릿·어댑터 이름만 담고 그건 CI가 이미 입력으로 아는 값이다 — `lib/pull/**`의 `throw`를 전부 `fail()`로 바꿔 그 자리들이 본문에 남는다.
 
 ⚠️ **`fail(String(err))`로 남의 오류를 감싸지 않는다.** 감싸면 그 순간 이 방어가 무의미해진다 — 판정이 막을 수 없고 규율로만 지켜진다.
+
+⚠️ **`/api/push/failure`의 쓰기는 조건부다** (2026-09-13). 위 검사 셋(보관·오배송·커밋 역행)을
+통과해도 **무조건 쓰지 않는다** — 그 사이에 성공한 push가 들어왔으면 오래된 실패가 그것을 덮는다.
+같은 조건(`id` · 인증에 쓴 토큰 해시 · `archivedAt IS NULL` · `lastCommitAt <= commitAt`)을 UPDATE의
+`where`에 다시 싣고 **갱신 건수로 판정한다**. 앞의 검사는 진단 가능한 409를 만들기 위한 것이고,
+실제 방어선은 그 조건부 쓰기다. **수신 순서의 의미는 "마지막으로 받은 실패"** 하나이고 실행 이력이
+아니다 — 같은 커밋의 재실행 실패도 표시하며, 같은 커밋의 성공 뒤 늦게 도착한 실패는 표시될 수 있다.
+
+⚠️ **성공의 원자성도 같은 축이다.** 완전 성공이면 이전 실패를 **적재와 같은 트랜잭션에서** 비운다 —
+`applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데 목록만 실패로 남는 창이 생긴다. 그 비움은 **자기 실행의
+시작 시각을 대조해서만** 일어난다: 먼저 끝난 실행이 나중에 시작한 실행의 진행 표시를 지우면, 그 나중
+실행의 실패 기록이 조건부 쓰기에서 탈락한다 (POSTMORTEM 2026-09-13).
 
 ⚠️ **`/api/push`에는 대응하는 사건이 없다** (2026-09-07). 전에는 같은 사건("그 slug의 `Project` 행이 없다")을 404 + 본문(`project '<slug>' not found`)으로 냈는데, 프로젝트를 **토큰이 정하게** 되면서 그 갈래가 사라졌다 — 조회되지 않으면 무효 토큰과 구별하지 않고 **401 하나**다(프로젝트 존재를 노출하지 않는다, §5.5.5). pull이 5xx인 것은 그대로다: 그쪽은 **자기 설정**을 읽는다.
 

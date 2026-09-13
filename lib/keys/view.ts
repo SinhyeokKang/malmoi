@@ -143,7 +143,7 @@ export type LocaleOption = { code: string; orphaned: boolean };
  * 있어야 한다.
  *
  * ⚠️ **배열 `includes`로 거른다.** 주소창 값이라 객체 조회는 프로토타입 키가 갈래로 새고,
- * 이 리포가 그 부류를 두 번 밟았다 (`parseProjectFilter`와 같은 관용구).
+ * 이 리포가 그 부류를 두 번 밟았다 (POSTMORTEM 2026-09-08·09 — `isImportFailureCode`가 같은 관용구다).
  *
  * ⚠️ **순서가 URL이 아니라 인자 순서다** — 같은 선택이 두 링크에서 다르게 보이면 안 된다.
  * `columns`가 base를 맨 앞에 두므로 원문이 위에 온다.

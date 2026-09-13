@@ -29,6 +29,7 @@ const FILES: Record<string, string> = {
 };
 
 const PROJECT_ID = "proj-1";
+const STARTED_AT = new Date("2026-09-13T00:00:00Z");
 
 /** `$executeRaw`가 실제로 받은 SQL과 값. */
 type Captured = { sql: string; values: unknown[] };
@@ -69,6 +70,10 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
           : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key }))),
     },
     project: {
+      updateMany: async (args: unknown) => {
+        projectUpdates.push(args);
+        return { count: 1 };
+      },
       update: async (args: unknown) => {
         projectUpdates.push(args);
         return {};
@@ -155,6 +160,7 @@ async function runFlow(options: {
   const payload = options.locales === undefined ? built : { ...built, locales: options.locales };
   const stub = stubPrisma(options.existing ?? [], payload.keys.map((k) => k.key));
   const outcome = await applyPush(stub.prisma, PROJECT_ID, payload, {
+    startedAt: STARTED_AT,
     previousBaseLocale:
       options.previousBaseLocale === undefined ? payload.format.baseLocale : options.previousBaseLocale,
   });
@@ -302,6 +308,10 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         lastCommitSha: "a".repeat(40),
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },
+    }, {
+      // 결과는 같은 트랜잭션의 조건부 문장이다 — 나중 실행의 표시를 지우지 않는다.
+      where: { id: PROJECT_ID, lastImportStartedAt: STARTED_AT },
+      data: { lastImportError: null, lastImportStartedAt: null },
     }]);
   });
 
@@ -422,7 +432,7 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
       scanRefs: [],
     }).payload;
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, PROJECT_ID, payload, { previousBaseLocale: payload.format.baseLocale });
+    await applyPush(stub.prisma, PROJECT_ID, payload, { previousBaseLocale: payload.format.baseLocale, startedAt: STARTED_AT });
     return { ...stub, payload };
   }
 
@@ -475,6 +485,7 @@ describe("push 흐름 — 중복 키를 페이로드가 접는다", () => {
     const dup = { ...first, value: "나중 값이 이긴다" };
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
     await applyPush(stub.prisma, PROJECT_ID, { ...payload, translations: [...payload.translations, dup] }, {
+      startedAt: STARTED_AT,
       previousBaseLocale: payload.format.baseLocale,
     });
     const cols = columnsOf(stmt(stub.captured, 'INSERT INTO "Translation"'));
@@ -507,8 +518,68 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
     const payload = payloadFromFiles();
     const stub = stubPrisma([], payload.keys.map((k) => k.key));
     await applyPush(stub.prisma, PROJECT_ID, { ...payload, locales: [] }, {
+      startedAt: STARTED_AT,
       previousBaseLocale: payload.format.baseLocale,
     });
     expect(has(stub.captured, 'UPDATE "Locale"')).toBe(false);
+  });
+});
+
+/**
+ * **키 생성 시각과 임포트 결과** (projects-list design §3.35·§8).
+ *
+ * 둘 다 `applyPush`의 **같은 트랜잭션**에 실린다. 결과를 뒤에 따로 쓰면 데이터는 들어갔는데 목록만
+ * 실패로 남는 창이 생기고, 그 창에서 사용자가 보는 것은 "적재가 깨졌다"인데 실제로는 끝난 상태다.
+ */
+describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
+  const run = async (importOutcome: "partial-import" | null = null) => {
+    const payload = payloadFromFiles();
+    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, payload, {
+      startedAt: STARTED_AT,
+      previousBaseLocale: payload.format.baseLocale,
+      importOutcome,
+    });
+    return stub;
+  };
+
+  it("신규 키 INSERT가 createdAt을 싣는다 — 목록의 `New from GitHub`가 이 값을 센다", async () => {
+    const { captured } = await run();
+    const cols = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'));
+    expect(Object.keys(cols)).toContain("createdAt");
+    expect(cols["createdAt"]?.length).toBe(cols["key"]?.length);
+  });
+
+  /**
+   * ⚠️ **UPDATE가 건드리면 살아 돌아온 키가 매번 "새 키"로 잡힌다.** orphan 복구는 같은 문장이 하므로
+   * 이 단언이 그 갈래까지 덮는다.
+   */
+  it("기존 키 UPDATE는 createdAt을 쓰지 않는다", async () => {
+    const payload = payloadFromFiles();
+    const existing = payload.keys.map((k) => ({ key: k.key, id: `id-${k.key}`, sourceHash: "stale", orphaned: false }));
+    const stub = stubPrisma(existing as never, payload.keys.map((k) => k.key));
+    await applyPush(stub.prisma, PROJECT_ID, payload, { previousBaseLocale: payload.format.baseLocale, startedAt: STARTED_AT });
+    expect(stmt(stub.captured, 'UPDATE "StringKey" AS s').sql).not.toContain("createdAt");
+  });
+
+  it("완전 성공이 이전 실패와 진행 표시를 같이 비운다", async () => {
+    const { projectUpdates } = await run(null);
+    expect(projectUpdates[1]).toMatchObject({
+      where: { id: PROJECT_ID, lastImportStartedAt: STARTED_AT },
+      data: expect.objectContaining({ lastImportError: null, lastImportStartedAt: null }),
+    });
+  });
+
+  it("부분 실패는 코드를 남기고 진행 표시만 비운다 — 데이터는 이미 들어갔다", async () => {
+    const { projectUpdates } = await run("partial-import");
+    expect(projectUpdates[1]).toMatchObject({
+      where: { id: PROJECT_ID, lastImportStartedAt: STARTED_AT },
+      data: expect.objectContaining({ lastImportError: "partial-import", lastImportStartedAt: null }),
+    });
+  });
+
+  it("트랜잭션은 여전히 하나다 — 결과 표시가 별도 왕복이 되면 그 창이 생긴다", async () => {
+    const { txCount } = await run("partial-import");
+    expect(txCount()).toBe(1);
   });
 });
