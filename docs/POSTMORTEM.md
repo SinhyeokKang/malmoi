@@ -1222,3 +1222,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: planConfirmedFormat은 내용을 재탐지하므로 다운로드 전 검증이 될 수 없다. 설계가 이 순서를 동시에 요구했고, 테스트는 트리에 없는 경로만 넣어 검증 단계에 도달하지 않았다. 2026-09-09의 탐지 헬퍼를 방어로 읽은 오류 및 2026-09-10의 도달하지 않은 단언 계열 재발이다.
 - **그물**: 정상 샘플의 blob 호출 목록을 정확히 비교하는 테스트가 3→1 위반을 잡았다. 새 확인값은 변조·다른 사용자·다른 리포/설치·ref·head를 순수 테스트로 거부하고, Action 테스트는 blob 전에 거부되는지 확인한다.
 - **재발 방지**: `rg -n 'planConfirmedFormat|templatePaths|verifySampleConfirmation|readFiles' 'app/(edit)/projects/actions.ts'`로 순서를 대조한다. 탐지·수동 확정은 내용을 재검증한 뒤 HMAC 확인값을 발급하고, lazy 조회는 현재 인가·스냅샷·서명을 대조한 뒤 요청 파일만 읽는다. 확인값은 인가를 대신하지 않고 파일 내용도 담지 않는다. 정상 성공 경로의 I/O 상한과 실제 트리에 있는 조작 경로를 함께 테스트한다.
+
+### 2026-09-13 — Radix 이관이 테스트를 실시간 지연에 묶어 전체 실행만 간헐 red가 됐다
+
+- **영역**: `components/ui/{select,radio}.tsx` 이관에 따른 `components/__tests__/{new-project,filter-interactions}.test.tsx`
+- **증상**: 단독 실행은 green인데 `pnpm test` 전체에서 **실행마다 다른 2~10개**가 `Test timed out in 5000ms`로 죽었다. 실패 목록이 매번 달라 원인이 특정 테스트로 안 보였다.
+- **근본 원인**: native `<select>`·`<input type="radio">`를 Radix로 옮기면서 값 대입이 불가능해져 `@testing-library/user-event`를 들였는데, 그 라이브러리는 포인터 이벤트 사이에 **실시간 지연**을 끼운다. 스위트가 병렬로 돌 때 워커 경합으로 그 큐가 밀려 기본 5초 천장을 넘었다. 코드 결함이 아니라 **테스트 실행 환경의 경합**이다.
+- **그물**: 없었다 — 게이트가 red를 냈지만 그 red가 가리키는 곳이 매번 달라 진단이 늦었다. `delay: null`은 **역효과였다**(이벤트가 `act` 밖에서 동기로 몰려 35개가 죽는다) — 지연 자체가 Radix가 여는 순서의 일부다.
+- **재발 방지**: `rg -n 'userEvent.setup|vi.setConfig' components/__tests__`로 짝을 확인한다. `user-event`를 쓰는 파일은 **그 파일 머리에만** `vi.setConfig({ testTimeout: 20_000 })`을 둔다 — 전역으로 올리면 순수 함수 3,000개까지 20초 천장을 갖고, 무한 루프로 퇴행한 모듈 하나가 로컬 게이트에서 그만큼을 태운다. ⚠️ **천장을 더 올려 해결하려 하지 않는다**: 경합은 상한이 없어 보장이 안 되고, 잃는 것("이만큼 걸리면 이상하다"는 신호)은 확정적이다. **로컬 게이트를 dev 서버·브라우저와 겹쳐 돌리지 않는다** — 완화 뒤에도 그 상태의 한 번이 red였고 안 띄운 3회는 연속 green이었다. CI는 그 부하를 지지 않는다.
