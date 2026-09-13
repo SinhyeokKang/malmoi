@@ -39,7 +39,9 @@ app/
                         기본 복원·목록 복귀·다른 프로젝트 경로에서 null. 활성 슬롯이 이동 후 남는 것을 막는다
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
                         ⚠️ 온보딩 다섯은 requireUser뿐이다(인가할 프로젝트가 없다)
-    account/            사용자 축의 유일한 화면. requireUser만 지난다
+    account/            사용자 축의 유일한 화면. requireUser만 지난다 · loading.tsx 스켈레톤
+                        (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
+                        페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel + ProjectPanel을 든다
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
@@ -70,7 +72,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 18개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 19개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
