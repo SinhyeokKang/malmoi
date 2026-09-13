@@ -57,7 +57,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
   const [storedProfile, account, methods] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
     loadAccountView(prisma, userId),
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
   ]);

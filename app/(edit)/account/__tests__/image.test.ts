@@ -84,3 +84,36 @@ it("provider 이미지 삭제는 DB만 비운다", async () => {
   expect(await deleteProfileImage()).toEqual({ ok: true });
   expect(mocks.deleteImage).not.toHaveBeenCalled();
 });
+it("저장소 실패는 DB를 바꾸지 않는다", async () => {
+  mocks.putImage.mockRejectedValue(new Error("store failed"));
+  expect(await uploadProfileImage(form())).toEqual({ ok: false, reason: "unavailable" });
+  expect(mocks.getPrisma).not.toHaveBeenCalled();
+  expect(mocks.deleteImage).not.toHaveBeenCalled();
+});
+it("삭제 DB 실패는 아직 참조하는 파일을 지우지 않는다", async () => {
+  tx.user.update.mockRejectedValue(new Error("db failed"));
+  expect(await deleteProfileImage()).toEqual({ ok: false, reason: "unavailable" });
+  expect(mocks.deleteImage).not.toHaveBeenCalled();
+  expect(mocks.revalidatePath).not.toHaveBeenCalled();
+});
+it("삭제 I/O가 실패해도 DB의 삭제를 유지한다", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  mocks.deleteImage.mockRejectedValue(new Error("store failed"));
+  expect(await deleteProfileImage()).toEqual({ ok: true });
+  expect(row.image).toBeNull();
+});
+it("동시 업로드는 직렬화된 이전 값을 정리하고 마지막 파일을 남긴다", async () => {
+  let tail = Promise.resolve();
+  mocks.getPrisma.mockReturnValue({ $transaction: async (fn: (t: typeof tx) => unknown) => {
+    let unlock!: () => void;
+    const before = tail; tail = new Promise<void>((resolve) => { unlock = resolve; });
+    await before;
+    try { return await fn(tx); } finally { unlock(); }
+  } });
+  const lastUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/last.png";
+  mocks.putImage.mockResolvedValueOnce(newUrl).mockResolvedValueOnce(lastUrl);
+  expect(await Promise.all([uploadProfileImage(form()), uploadProfileImage(form())])).toEqual([{ ok: true }, { ok: true }]);
+  expect(decodeUser(row).image).toBe(lastUrl);
+  expect(mocks.deleteImage.mock.calls.map(([key]) => key).sort()).toEqual(["avatars/owner/new.png", "avatars/owner/old.png"]);
+  expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+});

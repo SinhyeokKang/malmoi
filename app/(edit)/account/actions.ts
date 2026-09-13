@@ -14,6 +14,70 @@ import { canUnlink, isLoginProvider, LOGIN_PROVIDERS, pickLoginAccount } from "@
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
 import { revocationCookie } from "@/lib/session-revocation/policy";
+import { decodeUser, encodeUserFields, readable } from "@/lib/credentials/records";
+import { validatePiiReadKeys } from "@/lib/credentials/storage";
+import { imageObjectKey, planImageDelete, planImageUpload, type UploadReject } from "@/lib/upload/image";
+import { putImage, deleteImage } from "@/lib/upload/store";
+
+type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
+
+async function cleanImage(url: string | null): Promise<void> {
+  const key = planImageDelete(url);
+  if (key === null) return;
+  try { await deleteImage(key); }
+  catch { console.warn("Profile image cleanup failed; an orphan may remain."); }
+}
+
+export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
+  const { userId } = await requireUser();
+  const file = form.get("image");
+  if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };
+  let uploaded: string | null = null;
+  let previous: string | null;
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const plan = planImageUpload(bytes);
+    if (!plan.ok) return plan;
+    validatePiiReadKeys();
+    const key = imageObjectKey(userId, plan.ext, randomBytes(24).toString("base64url"));
+    // Network I/O stays outside the row lock and Prisma's transaction timeout.
+    uploaded = await putImage(key, bytes, plan.ext);
+    const image = encodeUserFields(userId, { image: uploaded });
+    previous = await getPrisma().$transaction(async (tx) => {
+      // Upload and delete serialize the read/write pair on the same user row.
+      await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, image: true } });
+      const prev = readable(() => decodeUser(row))?.image ?? null;
+      await tx.user.update({ where: { id: userId }, data: image });
+      return prev;
+    });
+  } catch {
+    await cleanImage(uploaded);
+    return { ok: false, reason: "unavailable" };
+  }
+  // Only clean the previous image after commit; rollback must leave its URL usable.
+  await cleanImage(previous);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function deleteProfileImage(): Promise<ImageResult> {
+  const { userId } = await requireUser();
+  let previous: string | null;
+  try {
+    validatePiiReadKeys();
+    previous = await getPrisma().$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, image: true } });
+      const prev = readable(() => decodeUser(row))?.image ?? null;
+      await tx.user.update({ where: { id: userId }, data: encodeUserFields(userId, { image: null }) });
+      return prev;
+    });
+  } catch { return { ok: false, reason: "unavailable" }; }
+  await cleanImage(previous);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
 
 export async function startSessionRevocation(): Promise<{ error: "unavailable" }> {
   const { userId } = await requireUser();
