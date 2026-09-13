@@ -7,6 +7,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
 import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
+import { loadRemoteSignals } from "@/lib/projects/remote";
 import {
   rowLocaleProgress,
   summaryQueue,
@@ -263,7 +264,16 @@ export type ProjectListView = { rows: ProjectListRow[]; summary: SummaryQueue };
  * ⚠️ **`userId`로 좁힌다** — 목록의 단위가 "내 멤버십"이다 (POSTMORTEM 2026-09-06). 그 결과의
  * `id` 집합이 아래 집계의 테넌트 경계가 된다: 다른 출처에서 만들지 않는다 (불변식 5).
  */
-export async function loadProjectList(prisma: PrismaClient, userId: string): Promise<ProjectListView> {
+export async function loadProjectList(
+  prisma: PrismaClient,
+  userId: string,
+  /**
+   * **테스트 주입 전용이다.** 기본은 installation 토큰으로 실제 GitHub을 친다 — 인자를 둔 이유는
+   * `lib/pull/client.ts`가 인터페이스를 갈라 둔 것과 같다: 그렇지 않으면 하네스 테스트가 조용히
+   * 실 네트워크를 잡으려 든다. **화면이 이 값을 넘기지 않는다.**
+   */
+  options: { loadRemote?: typeof loadRemoteSignals } = {},
+): Promise<ProjectListView> {
   const rows = await prisma.projectMember.findMany({
     where: { userId },
     select: {
@@ -285,6 +295,14 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
           // 임포트 진행·결과 (projects-list design §3.35) — 띠와 Meter 자리가 이 둘로 갈린다.
           lastImportStartedAt: true,
           lastImportError: true,
+          // 원격 경로 판정의 입력 (projects-list §3.4).
+          adapterName: true,
+          pathTemplate: true,
+          /**
+           * ⚠️ **orphaned도 포함한 전체 저장 로케일이다** — 탐지 정규식이 거르는 코드(`es-419`·
+           * `zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
+           */
+          locales: { select: { code: true } },
           _count: { select: { members: true } },
         },
       },
@@ -293,9 +311,33 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
     orderBy: { project: { slug: "asc" } },
   });
 
-  // 멤버십이 0이면 집계도 0회다 — 빈 `in`으로 왕복을 만들지 않는다.
+  // 멤버십이 0이면 집계도 원격도 0회다 — 빈 `in`으로 왕복을 만들지 않는다.
   const ids = rows.map((r) => r.project.id);
-  const aggregates = await loadProjectListAggregates(prisma, ids);
+  /**
+   * ⚠️ **DB 집계와 원격 조회를 함께 시작한다** (design §3.4). 순서가 있는 것이 아니라 둘 다 끝나야
+   * 행이 완성되는 것이고, 순차로 보내면 GitHub 왕복이 DB 왕복 **뒤에** 붙는다.
+   *
+   * ⚠️ **원격은 실패해도 목록을 죽이지 않는다** — 그 함수가 실패를 값으로 접는다.
+   */
+  const [aggregates, remote] = await Promise.all([
+    loadProjectListAggregates(prisma, ids),
+    (options.loadRemote ?? loadRemoteSignals)(
+      rows.map((r) => ({
+        projectId: r.project.id,
+        repoOwner: r.project.repoOwner,
+        repoName: r.project.repoName,
+        installationId: r.project.installationId,
+        repositoryId: r.project.repositoryId,
+        baseBranch: r.project.baseBranch,
+        lastCommitSha: r.project.lastCommitSha,
+        lastPrUrl: r.project.lastPrUrl,
+        adapterName: r.project.adapterName,
+        pathTemplate: r.project.pathTemplate,
+        storedLocales: r.project.locales.map((l) => l.code),
+        archived: r.project.archivedAt !== null,
+      })),
+    ),
+  ]);
   const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
 
   const review = new Map<string, number>();
@@ -325,9 +367,9 @@ export async function loadProjectList(prisma: PrismaClient, userId: string): Pro
       events: {
         review: review.get(r.project.id) ?? 0,
         unsent: aggregates.unsent.get(r.project.id) ?? 0,
-        /** ⚠️ **원격 둘은 T3b가 채운다** — 그때까지 "신호 없음"이고, 그것이 조회 실패 시의 값이기도 하다. */
-        openPr: null,
-        repoAheadFiles: 0,
+        // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
+        openPr: remote.get(r.project.id)?.openPr ?? null,
+        repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
         // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
         importError: isImportFailureCode(r.project.lastImportError) ? r.project.lastImportError : null,
         importing: r.project.lastImportStartedAt !== null,

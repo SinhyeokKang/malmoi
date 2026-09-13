@@ -388,6 +388,24 @@ describe("loadProjectList", () => {
     expect(rows[0]?.meters[1]).toMatchObject({ code: "ko", total: 2, done: 0, review: 1, percent: 0 });
   });
 
+  /**
+   * **원격 신호가 행까지 닿는다** (projects-list §3.4). 주입한 로더가 받는 입력도 함께 본다 —
+   * 보관 여부와 저장 로케일이 빠지면 그쪽 판정이 통째로 어긋난다.
+   */
+  it("원격 신호를 행에 붙이고, 조회 입력에 보관과 저장 로케일을 싣는다", async () => {
+    const h = createHarness(seed());
+    const loadRemote = vi.fn(async (targets: readonly { projectId: string }[]) =>
+      new Map(targets.map((t) => [t.projectId, { openPr: { number: 7, url: "https://github.com/o/r/pull/7" }, repoAheadFiles: 3 }])),
+    );
+
+    const { rows } = await loadProjectList(h.prisma, "u1", { loadRemote });
+
+    expect(rows[0]?.events).toMatchObject({ openPr: { number: 7 }, repoAheadFiles: 3 });
+    expect(loadRemote).toHaveBeenCalledWith([
+      expect.objectContaining({ archived: false, storedLocales: expect.arrayContaining(["en", "ko"]) }),
+    ]);
+  });
+
   /** ⚠️ **내부 id를 화면에 흘리지 않는다** — 화면이 아는 식별자는 slug 하나다. */
   it("행에 `Project.id`가 없다", async () => {
     const h = createHarness(seed());

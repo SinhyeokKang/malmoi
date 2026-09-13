@@ -381,6 +381,33 @@ export async function createGitClient(
       return res.data[0]?.html_url ?? null;
     },
 
+    /**
+     * ⚠️ **`basehead`는 `base...head`다** — 여기서 base가 **마지막으로 적재한 커밋**이고 head가
+     * base 브랜치다. 뒤집으면 "우리가 앞섰다"를 재게 되고, 그건 이 화면이 묻는 것이 아니다.
+     */
+    async compareToBase(baseSha, branch) {
+      const res = await octokit.request("GET /repos/{owner}/{repo}/compare/{basehead}", {
+        ...base,
+        basehead: `${baseSha}...${branch}`,
+      });
+      const status = res.data.status;
+      return {
+        ahead: status === "ahead" || status === "diverged",
+        files: (res.data.files ?? []).map((f) => ({
+          filename: f.filename,
+          ...(f.previous_filename === undefined ? {} : { previous_filename: f.previous_filename }),
+        })),
+      };
+    },
+
+    async isPullRequestOpen(pullNumber) {
+      const res = await octokit.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+        ...base,
+        pull_number: pullNumber,
+      });
+      return res.data.state === "open";
+    },
+
     async createPr(headBranch, baseBranch, title, body) {
       const res = await octokit.request("POST /repos/{owner}/{repo}/pulls", {
         ...base,

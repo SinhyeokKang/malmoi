@@ -144,6 +144,11 @@ const FORMAT = {
   repoName: "r",
   baseBranch: "main",
   installationId: "1",
+  /**
+   * ⚠️ **기본이 null이다** — sec-audit-2 이전에 만들어진 행이 그 상태이고, `connectRepository`가
+   * "아직 고정되지 않았다"를 정상 입력으로 받는다. 값이 필요한 테스트는 시드에서 준다.
+   */
+  repositoryId: null as string | null,
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
@@ -350,6 +355,17 @@ export function createHarness(seed: Seed = {}) {
           if (inner["lastPrUrl"] === true) p["lastPrUrl"] = project?.lastPrUrl ?? null;
           if (inner["lastImportStartedAt"] === true) p["lastImportStartedAt"] = project?.lastImportStartedAt ?? null;
           if (inner["lastImportError"] === true) p["lastImportError"] = project?.lastImportError ?? null;
+          if (inner["adapterName"] === true) p["adapterName"] = project?.adapterName ?? null;
+          if (inner["pathTemplate"] === true) p["pathTemplate"] = project?.pathTemplate ?? null;
+          /**
+           * 원격 경로 판정의 입력 (projects-list §3.4). ⚠️ **orphaned를 거르지 않는다** — 사라진
+           * 로케일의 파일도 리포에서는 변경될 수 있고, 그 변경이 `repo_ahead`의 근거다.
+           */
+          if (inner["locales"] !== undefined) {
+            p["locales"] = locales
+              .filter((l) => l.projectId === m.projectId)
+              .map((l) => ({ code: l.code }));
+          }
           /**
            * ⚠️ **`_count`는 시드가 아니라 `members` 배열에서 센다** — 시드에 숫자를 두면 가짜가
            * 실제와 어긋난 채 고정되고, 멤버를 더한 뒤에도 옛 숫자를 낸다.
