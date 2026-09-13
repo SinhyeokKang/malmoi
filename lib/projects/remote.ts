@@ -50,7 +50,6 @@ export async function loadRemoteSignals(
   options: {
     /** 테스트가 fake를 넘긴다. 기본은 installation 토큰 클라이언트다. */
     createClient?: (target: RemoteTarget) => Promise<GitClient>;
-    concurrency?: number;
   } = {},
 ): Promise<Map<string, RemoteSignals>> {
   const createClient =
@@ -58,7 +57,7 @@ export async function loadRemoteSignals(
     ((target: RemoteTarget) =>
       createGitClient(target.repoOwner, target.repoName, target.installationId ?? "", target.repositoryId ?? ""));
 
-  const signals = await mapWithLimit(targets, options.concurrency ?? CONCURRENCY, (target) =>
+  const signals = await mapWithLimit(targets, CONCURRENCY, (target) =>
     signalsFor(target, createClient),
   );
   // 완료 순서가 결과 매핑을 바꾸지 않는다 — 인덱스로 되돌려 붙인다.
@@ -86,10 +85,14 @@ async function signalsFor(
     // 프로젝트당 클라이언트 하나를 두 신호가 공유한다 — 토큰 발급·리포 확인도 이 작업 안이다.
     const client = await createClient(target);
     // 프로젝트 **안에서는** 병렬이다. 바깥의 제한은 프로젝트 수이지 요청 수가 아니다.
-    const [compare, open] = await Promise.all([
+    const [compared, opened] = await Promise.allSettled([
       format === null || target.lastCommitSha === null ? null : client.compareToBase(target.lastCommitSha, target.baseBranch),
       pullNumber === null ? null : client.isPullRequestOpen(pullNumber),
     ]);
+    // 한쪽이 실패해도 나머지 요청이 끝나야 워커 자리를 반납한다 — Promise.all은 먼저 거부된다.
+    if (compared.status === "rejected" || opened.status === "rejected") return NONE;
+    const compare = compared.value;
+    const open = opened.value;
     return {
       openPr: open === true && pullNumber !== null && target.lastPrUrl !== null ? { number: pullNumber, url: target.lastPrUrl } : null,
       // base가 앞서지 않았으면 파일을 세지 않는다 — 같은 커밋에서 갈라진 변경은 이 띠가 말할 것이 아니다.

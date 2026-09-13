@@ -172,6 +172,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       outcome = await applyPush(prisma, project.id, parsed.data, {
         previousBaseLocale: project.baseLocale,
+        startedAt,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
       });
@@ -179,18 +180,12 @@ export async function POST(request: Request): Promise<NextResponse> {
       // ⚠️ **자기 시작 시각을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
       await finishImportRun(prisma, { projectId: project.id, startedAt, code: "import-failed" });
       throw error;
+    } finally {
+      // 실패도 결과 표시를 바꾼다 — 성공 때만 지우면 목록에 캐시된 상태가 남는다.
+      revalidatePath(`/projects/${project.slug}`, "layout");
+      revalidatePath("/projects");
+      revalidatePath("/projects/new");
     }
-
-    /**
-     * ⚠️ **목록 둘이 push의 새 소비자다** (projects-list §3). 적재가 키·번역·`lastCommitSha`를
-     * 한꺼번에 움직이므로 Summary 넷과 행의 Meter·띠가 전부 낡는다 — `/projects`가 접두가 아니라
-     * 경로 하나라 `/projects/new`를 따로 지운다 (POSTMORTEM 2026-09-09).
-     *
-     * ⚠️ **프로젝트 서브트리도 지운다** — 첫 push가 `lastCommitSha`를 세워 readiness를 넘긴다.
-     */
-    revalidatePath(`/projects/${project.slug}`, "layout");
-    revalidatePath("/projects");
-    revalidatePath("/projects/new");
 
     return NextResponse.json({
       projectId: project.id,

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
@@ -39,6 +41,7 @@ export async function ingestFirstSnapshot(
   prisma: PrismaClient,
   input: {
     projectId: string;
+    startedAt: Date;
     projectSlug: string;
     format: DetectedFormat;
     baseLocale: string;
@@ -98,6 +101,7 @@ export async function ingestFirstSnapshot(
   // (불변식 9). 그래서 `failed`를 applyPush **앞에서** 센다.
   await applyPush(prisma, input.projectId, payload, {
     previousBaseLocale: null,
+    startedAt: input.startedAt,
     importOutcome: failed === 0 ? null : "partial-import",
   });
 

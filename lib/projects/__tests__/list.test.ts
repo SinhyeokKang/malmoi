@@ -526,3 +526,11 @@ describe("highlightName", () => {
     expect(highlightName("chrome", "chrome")).toEqual([{ text: "chrome", match: true }]);
   });
 });
+
+it.each([
+  ["İabc", "a", [{ text: "İ", match: false }, { text: "a", match: true }, { text: "bc", match: false }]],
+  ["İabc", "i", [{ text: "İ", match: true }, { text: "abc", match: false }]],
+  ["İİ", "i", [{ text: "İ", match: true }, { text: "İ", match: true }]],
+])("소문자 변환이 길이를 늘려도 원래 이름의 일치 구간을 보존한다: %s / %s", (name, q, expected) => {
+  expect(highlightName(name, q)).toEqual(expected);
+});

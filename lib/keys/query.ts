@@ -155,7 +155,7 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
 
 /**
  * 아직 안 보낸 편집의 **수**. `isUnpublished`(`./view`)의 집계 형태다 — 술어가 두 벌이 되지 않게
- * 조건을 같은 문장으로 적는다.
+ * 조건을 같은 문장으로 적는다. 목록의 `loadProjectListAggregates` raw ⑤도 같은 술어다.
  *
  * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push가 전 행의 `updatedAt`을 올리므로 그 조건이
  * 없으면 push 직후 야간 pull 전까지 903키 전부가 "안 보낸 편집"으로 나오고, 편집 손실 배너가 매번 뜬다

@@ -1030,59 +1030,66 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
     finishImportRun(prisma, { projectId, startedAt, code });
 
-  const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
-  const snapshot = await reader.snapshot(project.baseBranch);
-  if (snapshot.status !== "ok") {
-    await failRun();
-    return { ok: false, error: snapshotError(snapshot) };
-  }
-
-  const paths = snapshot.files.map((f) => f.path);
-  /**
-   * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
-   * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
-   * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
-   * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
-   * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
-   */
-  const attempted = templatePaths(adapterName, pathTemplate, paths);
-  let files: AdapterFile[];
-  try { files = await readFiles(reader, snapshot, attempted); }
-  catch (error) {
-    await failRun();
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
-  }
-  const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
-  if (confirmed.status !== "ok") {
-    logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
-    await failRun();
-    return { ok: false, error: "ingest-failed" };
-  }
-
-  const adapter = adapterFor(confirmed.format);
-  // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
-  // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
-  // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
-  // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
-  const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
-    compareKeys,
-  );
-  const blobs = new Map(files.map((f) => [f.path, f.content]));
-  // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
   try {
-    for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
-      blobs.set(extra.path, extra.content);
+    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
+    const snapshot = await reader.snapshot(project.baseBranch);
+    if (snapshot.status !== "ok") {
+      await failRun();
+      return { ok: false, error: snapshotError(snapshot) };
     }
-  } catch (error) {
-    await failRun();
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
-  }
 
-  try {
+    const paths = snapshot.files.map((f) => f.path);
+    /**
+     * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
+     * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
+     * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
+     * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
+     * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
+     */
+    const attempted = templatePaths(adapterName, pathTemplate, paths);
+    let files: AdapterFile[];
+    try { files = await readFiles(reader, snapshot, attempted); }
+    catch (error) {
+      if (error instanceof IngestBudgetError) {
+        await failRun();
+        return { ok: false, error: "resource-limit" };
+      }
+      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
+      throw error;
+    }
+    const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
+    if (confirmed.status !== "ok") {
+      logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
+      await failRun();
+      return { ok: false, error: "ingest-failed" };
+    }
+
+    const adapter = adapterFor(confirmed.format);
+    // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
+    // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
+    // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
+    // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
+    const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
+      compareKeys,
+    );
+    const blobs = new Map(files.map((f) => [f.path, f.content]));
+    // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
+    try {
+      for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
+        blobs.set(extra.path, extra.content);
+      }
+    } catch (error) {
+      if (error instanceof IngestBudgetError) {
+        await failRun();
+        return { ok: false, error: "resource-limit" };
+      }
+      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
+      throw error;
+    }
+
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
+      startedAt,
       projectSlug: slug,
       format: confirmed.format,
       baseLocale: confirmed.baseLocale,
@@ -1111,10 +1118,6 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
      */
     if (result.count === 0) await failRun("partial-import");
 
-    revalidatePath(`/projects/${slug}`, "layout");
-    revalidatePath("/projects");
-    // 모달 뒤 목록의 `Waiting for first import` 배지가 적재 뒤에 사라져야 한다.
-    revalidatePath("/projects/new");
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
@@ -1122,6 +1125,11 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     logFailure("onboard-ingest", error);
     await failRun();
     return { ok: false, error: "ingest-failed" };
+  } finally {
+    // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.
+    revalidatePath(`/projects/${slug}`, "layout");
+    revalidatePath("/projects");
+    revalidatePath("/projects/new");
   }
 }
 

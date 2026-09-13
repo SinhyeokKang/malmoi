@@ -1,3 +1,5 @@
+import "server-only";
+
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
@@ -22,8 +24,7 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
  * `Project.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
  * (`randomUUID` — `@default(cuid())`는 raw SQL에 오지 않는다) 그 값을 들고 있으면 조회가 없어진다.
  *
- * 클라이언트를 **주입받는다** — `lib/db.ts`를 직접 import하면 그 파일의 `server-only` 때문에
- * 스크립트·테스트에서 이 모듈을 열 수조차 없다. 라우트가 `getPrisma()`를 넘긴다.
+ * 클라이언트를 **주입받는다** — DB 연결은 진입점이 소유하고 이 층은 같은 트랜잭션에 실을 쓰기만 정한다.
  */
 
 /**
@@ -60,6 +61,8 @@ export type PushOutcome = {
 };
 
 export type ApplyOptions = {
+  /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
+  startedAt: Date;
   /**
    * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
    * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
@@ -285,12 +288,13 @@ export async function applyPush(
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),
-        /**
-         * **임포트 결과를 데이터와 같은 트랜잭션에서 확정한다** (projects-list design §3.35).
-         * 진행 표시는 어느 쪽이든 비운다 — 적재가 끝났으므로 돌고 있는 것이 없다.
-         */
-        ...importOutcomeFields(options.importOutcome ?? null),
       },
+    }),
+    // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
+    // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
+    prisma.project.updateMany({
+      where: { id: projectId, lastImportStartedAt: options.startedAt },
+      data: importOutcomeFields(options.importOutcome ?? null),
     }),
   ];
 

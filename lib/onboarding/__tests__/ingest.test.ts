@@ -55,6 +55,7 @@ function stubPrisma() {
         args.select["sourceHash"] ? [] : [],
     },
     project: {
+      updateMany: async () => ({ count: 1 }),
       update: async (args: unknown) => {
         projectUpdates.push(args);
         return {};
@@ -70,6 +71,7 @@ const run = (over: Partial<Parameters<typeof ingestFirstSnapshot>[1]> = {}) => {
     stub,
     result: ingestFirstSnapshot(stub.prisma, {
       projectId: "p1",
+      startedAt: new Date("2026-09-13T00:00:00Z"),
       projectSlug: "acme",
       // 내려받기를 시도한 경로. 여기 있는데 `blobs`에 없으면 **실패**다 — "리포에 없음"과 구별한다.
       targets: PATHS.filter((p) => p.startsWith("src/locales/")),

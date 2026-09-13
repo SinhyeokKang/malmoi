@@ -7,7 +7,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 
+import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
+import { applyPush } from "@/lib/push/apply";
+import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
 import { countUnpublished, loadProjectListAggregates } from "../query";
 
@@ -26,7 +29,7 @@ import { countUnpublished, loadProjectListAggregates } from "../query";
 
 // Unix 소켓 전용 새 클러스터. DATABASE_URL·DIRECT_URL을 절대 읽지 않는다.
 const directory = mkdtempSync(join(tmpdir(), "malmoi-projects-"));
-const binaries = process.env["CREDENTIAL_PG_BIN"] ?? "/opt/homebrew/opt/postgresql@17/bin";
+let binaries: string;
 const PORT = 55483;
 let pool: Pool;
 let prisma: PrismaClient;
@@ -41,6 +44,7 @@ async function resetSchema() {
 }
 
 beforeAll(async () => {
+  binaries = optionalEnv("CREDENTIAL_PG_BIN") ?? "/opt/homebrew/opt/postgresql@17/bin";
   execFileSync(join(binaries, "initdb"), ["-D", join(directory, "data"), "--no-locale", "--encoding=UTF8", "--auth=trust", "-U", "postgres"], { stdio: "pipe" });
   execFileSync(join(binaries, "pg_ctl"), ["-D", join(directory, "data"), "-l", join(directory, "postgres.log"), "-o", `-k ${directory} -h '' -p ${PORT} -F`, "-w", "start"], { stdio: "pipe" });
   started = true;
@@ -185,4 +189,95 @@ it("인가 집합 밖의 프로젝트는 섞이지 않는다", async () => {
   expect(got.unsent.get("p2")).toBeUndefined();
   expect(got.locales.every((l) => l.projectId === "p1")).toBe(true);
   expect(got.cells.every((c) => c.projectId === "p1")).toBe(true);
+});
+
+
+it("먼저 시작한 적재가 성공해도 나중 실행의 진행 표시와 실패 기록을 빼앗지 않는다", async () => {
+  await seed({ id: "p1", lastPulledAt: null, archived: false });
+  await markImportStarted(prisma, "p1", AFTER);
+  const options = { previousBaseLocale: "en", startedAt: BEFORE };
+  await applyPush(prisma, "p1", {
+    projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    keys: [], locales: ["en", "ko"], translations: [], refs: [],
+  }, options);
+  expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).lastImportStartedAt).toEqual(AFTER);
+  await finishImportRun(prisma, { projectId: "p1", startedAt: AFTER, code: "import-failed" });
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+    lastImportStartedAt: null, lastImportError: "import-failed",
+  });
+});
+
+it.each(["newer-success", "rotated-token", "archived", "same-commit"])(
+  "실패 보고의 UPDATE가 현재 DB 조건을 대조한다: %s", async (scenario) => {
+    await seed({ id: "p1", lastPulledAt: null, archived: false });
+    await seed({ id: "p2", lastPulledAt: null, archived: false });
+    await prisma.project.update({ where: { id: "p1" }, data: {
+      pushTokenHash: scenario === "rotated-token" ? "new" : "original",
+      archivedAt: scenario === "archived" ? AFTER : null,
+      lastCommitAt: scenario === "newer-success" ? AFTER : PULLED,
+      lastCommitSha: "b".repeat(40), lastImportStartedAt: AFTER,
+    } });
+    expect(await recordReportedFailure(prisma, {
+      projectId: "p1", tokenHash: "original", commitAt: PULLED, code: "parse-failed",
+    })).toBe(scenario === "same-commit" ? "recorded" : "rejected");
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+      lastImportError: scenario === "same-commit" ? "parse-failed" : null,
+      lastImportStartedAt: AFTER, lastCommitSha: "b".repeat(40),
+    });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p2" } })).lastImportError).toBeNull();
+  },
+);
+
+it.each([null, "partial-import"] as const)("자기 실행의 적재 결과 %s가 데이터와 함께 확정된다", async (importOutcome) => {
+  await seed({ id: "p1", lastPulledAt: null, archived: false });
+  await prisma.project.update({ where: { id: "p1" }, data: { lastImportError: "parse-failed" } });
+  await markImportStarted(prisma, "p1", AFTER);
+  await applyPush(prisma, "p1", {
+    projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    keys: [{ key: "added", sourceText: "Added", namespace: "_root" }],
+    locales: ["en", "ko"], translations: [{ key: "added", locale: "ko", value: "추가" }], refs: [],
+  }, { previousBaseLocale: "en", startedAt: AFTER, importOutcome });
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+    lastImportStartedAt: null, lastImportError: importOutcome, lastCommitSha: "a".repeat(40),
+  });
+  expect(await prisma.translation.count({ where: { projectId: "p1", value: "추가", updatedBy: null } })).toBe(1);
+});
+
+it("적재 트랜잭션이 실패하면 진행·오류와 기존 데이터도 함께 보존된다", async () => {
+  await seed({ id: "p1", lastPulledAt: null, archived: false });
+  await prisma.project.update({ where: { id: "p1" }, data: { lastImportError: "parse-failed" } });
+  await markImportStarted(prisma, "p1", AFTER);
+  await expect(applyPush(prisma, "p1", {
+    projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    keys: [{ key: "added", sourceText: "Added", namespace: "_root" }],
+    // 없는 로케일의 번역은 실제 FK 위반이다 — 가짜의 성공 응답으로 원자성을 판단하지 않는다.
+    locales: ["en"], translations: [{ key: "added", locale: "missing", value: "x" }], refs: [],
+  }, { previousBaseLocale: "en", startedAt: AFTER })).rejects.toThrow();
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+    lastImportStartedAt: AFTER, lastImportError: "parse-failed", lastCommitSha: null,
+  });
+  expect(await prisma.stringKey.count({ where: { projectId: "p1", key: "added" } })).toBe(0);
+  expect(await prisma.stringKey.count({ where: { projectId: "p1", orphaned: false } })).toBe(3);
+});
+
+it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아 로케일 경계를 대조한다: %s", async (lastPulledAt) => {
+  await seed({ id: "p1", lastPulledAt, archived: false });
+  await prisma.translation.deleteMany({ where: { projectId: "p1" } });
+  await prisma.locale.update({ where: { projectId_code: { projectId: "p1", code: "ko" } }, data: { orphaned: true } });
+  for (const updatedBy of [null, "user"]) {
+    for (const [index, updatedAt] of [BEFORE, PULLED, AFTER].entries()) {
+      await prisma.translation.create({ data: {
+        projectId: "p1", keyId: `p1-${["old", "same", "new"][index]}`,
+        localeCode: updatedBy === null ? "en" : "ko", value: "", updatedBy, updatedAt,
+      } });
+    }
+  }
+  const cells = await prisma.translation.findMany({ where: { projectId: "p1" } });
+  const expected = lastPulledAt === null ? 3 : 1;
+  expect(cells.filter((cell) => isUnpublished(cell, lastPulledAt))).toHaveLength(expected);
+  expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(expected);
+  expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
 });

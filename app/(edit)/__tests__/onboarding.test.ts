@@ -1092,6 +1092,21 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
     expect(await runFirstIngest({ slug: "acme" })).toEqual({ ok: false, error: "not-found" });
   });
 
+  it("리포 클라이언트 생성 예외도 진행 표시를 정리하고 목록 캐시를 지운다", async () => {
+    hoisted.openRepoReader.mockRejectedValue(new Error("token unavailable"));
+    await expect(runFirstIngest({ slug: "acme" })).resolves.toEqual({ ok: false, error: "ingest-failed" });
+    expect(db.projects[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
+  });
+
+  it("스냅샷 실패 반환도 실패를 저장하고 목록 캐시를 지운다", async () => {
+    hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "unavailable" } }));
+    await runFirstIngest({ slug: "acme" });
+    expect(db.projects[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
+  });
+
   it("적재가 던지면 ingest-failed이고 행은 그대로 남는다 — [다시 시도]가 같은 Action이다", async () => {
     hoisted.ingestFirstSnapshot.mockRejectedValue(new Error("boom"));
 

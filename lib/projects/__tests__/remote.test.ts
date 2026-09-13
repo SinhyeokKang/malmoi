@@ -211,3 +211,29 @@ it("대상이 없으면 빈 Map이다", async () => {
   expect((await loadRemoteSignals([], { createClient })).size).toBe(0);
   expect(counts.created).toBe(0);
 });
+
+it("한 신호가 거부돼도 다른 신호가 끝날 때까지 워커 자리를 유지한다", async () => {
+  const gates: (() => void)[] = [];
+  const createClient = vi.fn(async () => ({
+    async compareToBase() {
+      await new Promise<void>((resolve) => gates.push(resolve));
+      return { ahead: false, files: [] };
+    },
+    async isPullRequestOpen() { throw new Error("PR unavailable"); },
+  }) as unknown as GitClient);
+  const pending = loadRemoteSignals(
+    Array.from({ length: 7 }, (_, i) => target({ projectId: `p${i}` })),
+    { createClient },
+  );
+  const settle = async () => { for (let i = 0; i < 40; i += 1) await Promise.resolve(); };
+  await settle();
+  const initial = createClient.mock.calls.length;
+  gates.shift()?.();
+  await settle();
+  const afterOne = createClient.mock.calls.length;
+  while (gates.length > 0) { gates.shift()?.(); await settle(); }
+  await pending;
+  expect(initial).toBe(3);
+  expect(afterOne).toBe(4);
+  expect(createClient).toHaveBeenCalledTimes(7);
+});

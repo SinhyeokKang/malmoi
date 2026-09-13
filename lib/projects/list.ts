@@ -395,13 +395,27 @@ export function highlightName(name: string, q: string | undefined): { text: stri
 
   const parts: { text: string; match: boolean }[] = [];
   const haystack = name.toLowerCase();
+  // İ → i̇처럼 길이가 늘어나는 변환의 오프셋을 원문에 대응시킨다. 검색 자체는 전체 소문자화
+  // 결과를 써야 그리스어 끝 시그마처럼 문맥에 따라 바뀌는 글자도 searchProjects와 일치한다.
+  const offsets: { start: number; end: number }[] = [];
+  let original = 0;
+  for (const char of name) {
+    const end = original + char.length;
+    for (let i = 0; i < char.toLowerCase().length; i += 1) offsets.push({ start: original, end });
+    original = end;
+  }
   let cursor = 0;
+  let searchAt = 0;
   for (;;) {
-    const at = haystack.indexOf(needle, cursor);
+    const at = haystack.indexOf(needle, searchAt);
     if (at === -1) break;
-    if (at > cursor) parts.push({ text: name.slice(cursor, at), match: false });
-    parts.push({ text: name.slice(at, at + needle.length), match: true });
-    cursor = at + needle.length;
+    searchAt = at + needle.length;
+    const start = offsets[at]?.start;
+    const end = offsets[searchAt - 1]?.end;
+    if (start === undefined || end === undefined || end <= cursor) continue;
+    if (start > cursor) parts.push({ text: name.slice(cursor, start), match: false });
+    parts.push({ text: name.slice(Math.max(cursor, start), end), match: true });
+    cursor = end;
   }
   if (cursor < name.length) parts.push({ text: name.slice(cursor), match: false });
   return parts;

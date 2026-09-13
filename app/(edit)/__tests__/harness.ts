@@ -859,7 +859,16 @@ export function createHarness(seed: Seed = {}) {
       }
       return [...counted].map(([projectId, n]) => ({ projectId, n }));
     },
-    project: { findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject },
+    project: {
+      findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject,
+      async updateMany(args: { where: { id: string; lastImportStartedAt: Date }; data: Record<string, unknown> }) {
+        const row = projects.find((p) => p.id === args.where.id &&
+          p.lastImportStartedAt?.getTime() === args.where.lastImportStartedAt.getTime());
+        if (row === undefined) return { count: 0 };
+        Object.assign(row, args.data);
+        return { count: 1 };
+      },
+    },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,

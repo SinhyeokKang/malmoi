@@ -109,7 +109,7 @@ export function importFailureMessage(code: ImportFailureCode): string {
  *
  * ⚠️ **적재와 같은 트랜잭션이어야 한다.** 뒤에 따로 쓰면 데이터는 들어갔는데 목록만 실패로 남는 창이
  * 생기고, 그 창에서 사용자가 보는 것은 "적재가 깨졌다"인데 실제로는 끝난 상태다.
- * 진행 표시는 어느 쪽이든 비운다 — 적재가 끝났으므로 돌고 있는 것이 없다.
+ * 호출부가 시작 시각을 대조한 실행만 비운다 — 나중 실행이 돌고 있다면 그 표시를 보존한다.
  */
 export function importOutcomeFields(code: ImportFailureCode | null): {
   lastImportError: ImportFailureCode | null;

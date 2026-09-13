@@ -21,6 +21,7 @@ import { createHarness } from "../../(edit)/__tests__/harness";
  */
 
 const hoisted = vi.hoisted(() => ({
+  revalidatePath: vi.fn(),
   runSync: vi.fn(),
   applyPush: vi.fn(),
   prisma: {
@@ -38,7 +39,7 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 // 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 vi.mock("@/lib/push/apply", () => ({ applyPush: hoisted.applyPush }));
 
@@ -401,10 +402,13 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   it("applyPush가 던지면 ref가 담긴 500이다", async () => {
     hoisted.prisma.project.findUnique.mockResolvedValue(project());
     hoisted.applyPush.mockRejectedValue(new Error("unnest 인자 개수 불일치"));
+    hoisted.revalidatePath.mockClear();
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: "internal" });
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
     spy.mockRestore();
   });
 
