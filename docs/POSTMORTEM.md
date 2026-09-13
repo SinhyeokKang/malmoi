@@ -1302,3 +1302,105 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   잔존 형태는 이번 연결 기능 밖의 후속 후보로 남긴다. 예외 로그는 오류 원문·OAuth URL·토큰 없이
   작업/단계만 기록한다. 저장 경계의 락 실패·락 뒤 소실·소비 count·쓰기 순서도 기본 `pnpm test`에
   추가해 2026-09-10의 "격리 스위트만 검사한다" 공백을 줄였다.
+
+---
+
+### 2026-09-14 — 접근성 방어선 셋을 세웠는데 셋 다 지워도 green이었다 (뮤테이션이 세 번 교정했다)
+
+- **영역**: `app/(edit)/account/__tests__/structure.test.tsx` · `components/account/login-methods.tsx` ·
+  `components/account/profile-picture.tsx` · `components/account/github-section.tsx`.
+  **dev에도 안 나갔다** — `/design-sync`의 리뷰 라운드가 잡았고 뮤테이션으로 red를 본 뒤 고쳤다.
+- **증상**: 없다. 계정 화면 재편이 "같은 라벨의 컨트롤이 접근 이름으로 구별된다"·"사유 없는
+  `disabled`가 0이다"·"실패 Alert가 행 밖에 선다" 셋을 새 불변식으로 세우고 테스트를 박았는데,
+  **그 불변식을 지키는 프로덕션 코드를 지워도 세 검사가 전부 통과했다.** 각각:
+  1. **세는 자리가 대상을 안 덮었다.** 이름 충돌을 `[aria-haspopup="dialog"]`로 모았는데 **마지막
+     수단의 비활성 [Disconnect]는 `DialogTrigger`가 아니라** 목록에 영영 안 들어왔다. 그 줄의
+     `aria-label`을 지워도 green.
+  2. **단언이 실패할 수 없는 모양이었다.** `expect(getElementById(id)?.textContent?.trim()).not.toBe("")`는
+     **참조가 끊기면 `undefined`를 비교하고 통과한다** — 그 단언이 존재하는 이유가 정확히 그 자리로
+     빠져나간다.
+  3. **거부를 실제로 일으키지 않았다.** Action이 mock이라 실패 경로가 한 번도 안 돌았고, "우측
+     컨트롤 자리에 Alert가 없다"가 **영원히 참**이었다.
+- **근본 원인**: **"검사를 썼다"가 "검사가 그 결함에 도달한다"를 대신했다.** 셋 다 조건이 다르다:
+  - ①은 **필터가 불변식보다 좁았다.** 대상 집합을 `aria-haspopup`처럼 *구현 수단*으로 좁히면
+    같은 불변식을 지는 다른 구현(비활성 버튼)이 빠진다. **불변식이 "모든 Disconnect 버튼"이면
+    세는 것도 그것이어야 한다.**
+  - ②는 **optional chaining이 단언의 전제를 조용히 만족시킨다.** `?.`가 부재를 `undefined`로 바꾸고
+    `not.toBe("")`·`not.toBeNull()`·`not.toContain(x)`은 `undefined`에 대해 **전부 통과**한다 —
+    "대상이 존재한다"를 별도로 세지 않으면 부재가 성공으로 접힌다.
+  - ③은 **상태를 안 만들고 상태를 쟀다.** mock이 기본값을 돌려주는 한 그 갈래는 렌더되지 않는다.
+  - ⚠️ **리뷰가 낸 진단도 두 번 한 칸씩 틀렸고 뮤테이션이 교정했다.** (a) "비활성 `aria-label`을
+    지우면 충돌이 난다"는 **거짓**이었다 — 다른 [Disconnect]가 마침 축을 들고 있어 맨몸 쪽이
+    남아도 두 문자열은 다르다. 세야 하는 것은 충돌이 아니라 **"저마다 무엇의 해제인지 말하는가"**
+    였다. (b) 그 교정으로 "보이는 글자로 그룹핑"으로 옮겼더니 이번엔 **`Connect`/`Connect GitHub`
+    쌍이 같은 그룹에 안 들어와** 접근 이름이 같은 그 둘을 못 봤다. **두 불변식은 키가 다르다** —
+    충돌은 접근 이름, 자기 설명은 보이는 글자다. 둘을 하나로 합치려 한 것이 두 번의 오진이었다.
+- **그물**:
+  - 잡은 것: **뮤테이션 하나뿐이다.** 프로덕션 코드의 그 줄을 지우고 테스트를 돌리는 것 — 셋 다
+    그때 처음 red가 됐다. `/design-sync`의 리뷰 서브에이전트가 ①·③의 **가능성**을 지적했지만,
+    지적이 맞는지는 뮤테이션이 판정했고 실제로 두 번 뒤집혔다.
+  - 놓친 것: `pnpm typecheck` · `pnpm test` 3,553건 · `pnpm build` · **computed style·CDP 접근성
+    트리 실측** — 전부 원리적으로 못 본다. 실측은 **고친 뒤의 상태**를 재므로 "그 줄을 지우면
+    깨지는가"를 묻지 않는다.
+  - ⚠️ **2026-09-08(도달 불가한 오류 갈래) · 2026-09-10(안 도는 스위트) · 2026-09-10(우연히 green)과
+    같은 계보이고 축이 넷째다**: 그 셋은 *스위트가 안 돈다* · *단언이 낡았다* · *green의 이유가
+    우연이다*였고, 이번은 **단언이 원리적으로 실패할 수 없다**이다.
+- **재발 방지**:
+  - **규칙: 방어선을 새로 만들면 그 자리에서 뮤테이션을 돌린다.** 지키는 프로덕션 코드를 지우고
+    red를 본 뒤에야 그 검사가 존재한다고 적는다. 값 고정이 아니라 **구조**를 세는 검사일수록
+    필요하다 — 구조는 "없어도 형태가 유지되는" 경우가 많다.
+  - **`?.` 뒤에 부정 단언을 두지 않는다.** 대상 존재를 먼저 센다:
+    `const x = find(); expect(x).not.toBeNull(); expect(x!.text).not.toBe("")`.
+    grep (실제로 돌렸다):
+    `grep -rnE '\?\.[A-Za-z(]' --include='*.test.ts' --include='*.test.tsx' --include='*.integration.ts' app components lib | grep -E "not\.toBe|not\.toEqual|not\.toContain"`
+    → **다른 곳 10건**이고 전부 같은 부류다. 위험 순:
+    - ⚠️ **`lib/pull/__tests__/render.test.ts:105,214,223,270` · `run.test.ts:605`** — `files.find(…)?.content`
+      또는 `out[0]?.content`에 `not.toContain`이다. **파일을 못 찾으면 "그 값이 export에 없다"가
+      참이 된다** — 재생성 어댑터의 값 손실·`orphaned` 제외를 보는 자리라 이 리포에서 가장 비싼
+      단언 축이다(ARCHITECTURE §0 불변식). 후속 작업 후보 1순위.
+    - `app/api/__tests__/github-callback.test.ts:307,337` · `lib/github-connect/__tests__/token-store.test.ts:144`
+      — `Object.keys(args?.data ?? {})`에 `not.toContain("clientSecret")`. **호출이 아예 안 일어나면
+      "시크릿이 안 실렸다"가 참이다.**
+    - `components/__tests__/new-project.test.tsx:573` — `parentElement?.querySelector(...)` +
+      `not.toBeNull()`. `parentElement`가 없으면 `undefined`이고 **`not.toBeNull()`은 통과한다.**
+    - `lib/onboarding/__tests__/detect.test.ts:189,361`.
+  - **대상 집합을 구현 수단으로 좁히지 않는다.** 불변식이 "모든 X"면 세는 선택자도 "모든 X"여야
+    한다 — `[aria-haspopup]`·`[disabled]` 같은 부수적 속성으로 모으면 같은 불변식의 다른 구현이 빠진다.
+  - **필터로 좁힌 뒤 도는 루프에는 개수 가드를 둔다.** `expect(subset.length).toBeGreaterThan(0)`이
+    없으면 라벨 하나가 바뀌는 순간 루프가 0회 돌고 **그 안의 단언이 통째로 증발한다.**
+  - **거부 경로를 세는 검사는 거부를 실제로 일으킨다.** mock을 실패로 돌리고, 확인 Dialog를
+    지나는 동작이면 **portal의 확정 버튼까지 클릭한다**(닫힌 Dialog는 트리에 없어서, 안 누르면
+    Action이 안 돌고 그래도 "Alert가 행 안에 없다"가 참이다).
+
+### 2026-09-14 — 프리미티브의 여백 하나가 그 슬롯을 안 쓰는 소비자에게만 깨졌다
+
+- **영역**: `components/ui/dialog.tsx`의 본문 `<div>` · 소비자 `components/members/invite-dialog.tsx`.
+  **dev에도 안 나갔다** — `/design-sync` 4단계 실측이 잡았다.
+- **증상**: 계정 화면 핸드오프가 확인 Dialog의 "검은 줄"을 `padding:16 16 0`·13/1.6로 못 박아 본문에
+  그 값을 넣었다. **푸터가 없는 소비자 하나**(초대 폼)에서 본문 아래 여백이 **1px**(테두리)이 되어
+  폼이 바닥에 붙었고, `FormGroup`의 help와 초대 링크까지 13으로 내려갔다.
+- **근본 원인**: **캔버스가 잰 값이 다른 슬롯의 존재를 전제하고 있었다.** `16 16 0`의 `0`은
+  "아래 여백이 없다"가 아니라 **"아래 여백을 푸터가 자기 16으로 든다"**이고, 그 전제는 시안이 그린
+  네 Dialog가 전부 확인 대화라 **암묵적**이었다. 프리미티브에 그 값을 그대로 옮기면 전제가 없는
+  소비자에게 전제만 사라진 값이 간다. ⚠️ **같은 커밋에서 "본문이 없으면 그리지 않는다"를 넣어
+  빈 블록의 죽은 32px을 없앴는데, 그 변경은 옳았고 이쪽이 그 옆에서 반대 방향으로 틀렸다** —
+  둘 다 "슬롯의 유무가 여백을 정한다"는 같은 사실을 다루면서 한쪽만 조건을 달았다.
+- **그물**:
+  - 잡은 것: **computed style 실측.** `/account`가 아니라 **소비자를 다시 세다가** 초대 Dialog를
+    열어 본 것이 전부다(`design.md`가 "프리미티브를 만질 때마다 소비자를 다시 센다"고 적어 둔 절차).
+  - 놓친 것: `pnpm test` 3,500건(Dialog를 여는 테스트가 값이 아니라 존재만 본다) · `pnpm build` ·
+    `pnpm typecheck` · 코드 리뷰(값이 캔버스와 같으므로 "맞다"로 읽힌다).
+  - ⚠️ **소비자 수가 세 번 틀렸다** — 넷 → 다섯 → 여섯. 그 수가 곧 "실측 대상 화면"이라 틀린 동안
+    빠진 소비자가 검증 밖이었고, 빠졌던 하나(`sessions-section`)가 하필 이 변경의 소비자였다.
+- **재발 방지**:
+  - **프리미티브의 여백·크기를 옮길 때 그 값이 전제하는 형제 슬롯을 적는다.** 조건이 있으면
+    코드에 조건으로 쓴다(`footer !== undefined ? … : …`) — 주석으로만 적으면 다음 소비자가 안 읽는다.
+  - **소비자를 세는 명령을 문서에 박는다.** DESIGN §6.4가
+    `grep -rln "DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`를 든다 —
+    ⚠️ **프리미티브 자신을 빼는 `grep -v`가 빠져 그 명령이 처음엔 7을 냈다**(본문은 6). 세는
+    명령을 적을 때 **그 명령을 실제로 돌려 본문과 맞춘다.**
+  - grep (실제로 돌렸다): `grep -rn "!== undefined" components/ui/*.tsx`
+    → **소비자 형태로 갈리는 슬롯이 11건**(alert 넷 · card 둘 · dialog 셋 · entity-card 둘 ·
+    breadcrumb 하나). **그중 여백·타입스케일까지 가르는 것은 `dialog.tsx:91` 하나뿐이고**
+    나머지는 "그리거나 안 그린다"라 이 부류가 아니다. 새로 조건부 **스타일**을 만들면 그때
+    소비자 전수를 연다.
