@@ -40,9 +40,9 @@
 
 **`lib/upload/store.ts`** — `putImage` · `deleteImage` · `listImages`(고아 조회용) 얇은 껍데기.
 ⚠️ **판정을 여기 두지 않는다** — 껍데기는 I/O만 든다.
-⚠️ **`import "server-only"`를 붙이지 않는다.** 4번의 `pnpm smoke:blob`이 이 모듈을 직접 열어야 한다 —
-`lib/github.ts:1-3`이 **정확히 그 이유로** 안 붙인다(붙이면 스모크가 프로덕션 경로가 아닌 **사본**을
-검증한다). 클라이언트 차단은 그래프 상류(`requireUser` → `lib/auth/session.ts`)가 든다.
+**`import "server-only"`를 붙인다.** `smoke:blob`은 PII 복호화 모듈도 직접 읽으므로
+`NODE_OPTIONS=--conditions=react-server`로 실행한다. 이 조건이 저장소 껍데기도 열어 주므로
+스모크를 위해 클라이언트 그래프 차단을 뺄 이유가 없다(2026-09-13 구현 리뷰 반영).
 
 **환경변수** — `lib/env.ts`의 `requireEnv`를 지나고 **`.env.example` 갱신**(같은 커밋).
 ⚠️ **모듈 최상위 평가 금지** — 함수 안에서 읽고, 그 함수를 최상위 `const`가 부르지 않는다.
