@@ -156,9 +156,12 @@ lib/
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id
-  credentials/ session-revocation/ login-link/
-                        저장 시 암호화 / 전체 세션 회수 / 계정 병합. ⚠️ 뒤의 둘은 같은 형이고 목적이
-                        반대다(하나는 왕복을 멈추고 하나는 진행시킨다) — 합치지 않는다
+  credentials/ session-revocation/ login-link/ account-connect/
+                        저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
+                        ⚠️ 뒤의 셋은 같은 형이고 목적이 다르다(회수는 왕복을 멈추고, 병합은
+                        진행시키고, 추가는 살아 있는 세션 위에서 Account만 쓴다) — 합치지 않는다.
+                        ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
+                        policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
   projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
