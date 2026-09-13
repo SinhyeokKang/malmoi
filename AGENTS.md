@@ -216,7 +216,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 `/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/l10n-roundtrip` · `/bugshot-qa` · `/design-sync`
 
-**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/db`) → `/push`(dev) → `/merge`(프로덕션). 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
+**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션). ⚠️ **`/design-sync`는 시안이 있는 화면을 건드렸을 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 2026-09-13에 그렇게 쌓인 15디렉터리 14,929줄을 걷어냈고, 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
