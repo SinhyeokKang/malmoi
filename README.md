@@ -45,6 +45,7 @@ pnpm dev
 | 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
 | 어댑터 범용성 측정 | `pnpm adapter-survey docs/adapter-survey/repos.txt` — 읽기 전용, 네트워크 |
 | GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
+| Blob 저장소 스모크 | `pnpm smoke:blob` — 실 API. 고아 후보는 목록만 내고 지우지 않는다 |
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` / 브라우저: `pnpm db:studio` (dev) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 check-only. 절차는 [docs/OPERATIONS.md](./docs/OPERATIONS.md) |
