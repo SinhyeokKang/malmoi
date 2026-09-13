@@ -13,9 +13,14 @@
 
 ## 1. 의존 둘이 선다
 
-`docs/features/file-upload/tasks.md` 4번 · `docs/features/account-connect/tasks.md` 4번까지.
+`docs/features/file-upload/tasks.md` 3번 · `docs/features/account-connect/tasks.md` 4번까지.
 ⚠️ **버튼만 먼저 세우지 않는다** — 뒤가 없는 [Connect]는 리포가 막은 바로 그 모양이다.
-검증: 두 Action이 `app/(edit)/__tests__/authorization.test.ts`에 들어 있다.
+검증: 네 Action이 `app/__tests__/entry-points.test.ts`의 `USER_SCOPED_ACTIONS`에 등재돼 있고
+`pnpm test`가 green이다.
+⚠️ **`app/(edit)/__tests__/authorization.test.ts`가 아니다** — 그 파일은 `saveTranslation`·
+`triggerPullAction`만 명시 import하고 파일 스캔을 안 해서, 계정 축 Action을 새로 만들어도 **영원히
+green**이다. 사용자 소유 행을 쓰는 Action을 실제로 강제하는 것은 `entry-points.test.ts`의 그 목록이고,
+이름을 손으로 등재하지 않으면 `requireUser`만으로는 `unguarded`에 실려 red다.
 
 ## 2. 이름 저장 — `/tdd interface`
 
@@ -46,6 +51,32 @@
 검증: `pnpm build` green(RSC 경계는 `tsc`가 못 본다) + 1440×900에서 접힘 0.
 
 *커밋 경계* — `feat(account): one header and three lists`
+
+## 4b. 사진 컨트롤 — `file-upload`가 넘긴 자리
+
+`docs/features/file-upload/tasks.md` 7번이 이름으로 넘긴 여섯을 여기서 전부 든다. **하나라도 빠지면
+거부 사유가 값으로 돌아와도 화면에 안 닿는다** (POSTMORTEM 2026-09-06).
+
+- **`components/ui/`에 `FileInput` 프리미티브**(19번째). `accept="image/png,image/jpeg"`.
+  ⚠️ **raw `<input type="file">`을 화면 파일에 두지 않는다** — `focus-ring.test.ts:43`의
+  `RAW_TAG_ALLOWED = []`가 전면 방어선이고 주석이 *"다시 채우지 않는다"*로 못 박았다.
+  ⚠️ **`sr-only` + 라벨 관용구라 포커스 링이 사라진다** — `peer-focus-visible`로 라벨에 옮긴다.
+- **클라이언트 `File.size` 선검사(800 KB)** — 서버 판정이 정본이고 이쪽은 바이트를 안 보내기 위한
+  1차 방어다. ⚠️ **Next의 Server Action 본문 기본 상한이 1 MB라 그 위는 프레임워크가 던진다** —
+  상한을 그 아래로 둔 이유가 그것이다(`file-upload/spec.md` 완료 조건 1).
+- **`messages/en.tsx`의 `errors.upload.*`** — 능력 쪽은 `UploadReject` union의 **갈래 이름만**
+  정의한다. ⚠️ **문구를 `lib/upload/`에 두면 `no-korean-ui.test.ts`가 한글만 세므로 green인 채
+  사전을 통째로 우회한다.**
+- **캡션** `"PNG or JPEG, up to 800 KB. Uploaded as-is."` — ⚠️ **"as-is"가 EXIF를 안 벗긴다는
+  판정을 말하는 자리다**(2026-09-13, 사용자). 빼면 그 판정이 화면에서 사라진다.
+- **pending** — `Button`의 `loading`. ⚠️ **진행률 바를 만들지 않는다**(DESIGN: 전역 스피너·진행률
+  숫자가 없다).
+- **[Delete]의 `disabled` 옆 사유 캡션** — 사진이 없을 때다. 시안이 캡션으로 그렇게 그렸고,
+  POSTMORTEM 2026-09-06이 *"사유 없는 `disabled`를 만들지 않는다"*로 못 박은 자리다.
+
+⚠️ **4번(화면 재편)과 같은 커밋이거나 그 뒤다** — 아바타 56이 먼저 서야 미리보기가 들어갈 자리가 있다.
+검증: `pnpm test` green + `pnpm dev`에서 ① 900 KB PNG를 고르면 **제출 전에** 사유가 보이고
+② `.png`로 이름만 바꾼 SVG가 **서버 사유**로 거절되며 ③ 사진이 없을 때 [Delete] 옆에 사유가 선다.
 
 ## 5. Dialog 넷
 
