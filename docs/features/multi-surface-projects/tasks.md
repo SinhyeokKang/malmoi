@@ -40,10 +40,11 @@
   ③ 세션 쿠키를 지운 채 [Check files]: "Sign in again and come back" Alert + **입력 유지**, 쿠키 복원 확인.
   그 과정에서 결함 둘을 잡았다 — `checkout` 뒤 빈 줄 소실(테스트 3,657 green이었다)과
   Alert가 가리키는 버튼 이름 불일치. 둘 다 red→green + POSTMORTEM.
-- [ ] 시안 대조: 미수행. 기존 T16의 시안 부재 판정을 새 화면의 통과로 재사용하지 않는다.
-  ⚠️ **새 화면(Add surface·표면 not-found·Settings의 표면 카드)에도 Claude Design 핸드오프가 없다** —
-  `/design-sync`의 SoT가 존재하지 않으므로 그 루프를 돌 수 없다. 시안을 만들거나, T16처럼 건너뛰기로
-  판정하거나 둘 중 하나가 필요하다(사용자 결정).
+- [x] 시안 대조는 **건너뛴다** (2026-09-14 사용자 판정, T16과 같은 근거).
+  새 화면(Add surface·표면 not-found·Settings의 표면 카드)에도 Claude Design 핸드오프가 없어
+  `/design-sync`의 SoT가 존재하지 않는다 — 비교 대상이 없으므로 그 루프를 돌 수 없다.
+  ⚠️ **이 판정은 "시안과 같다"가 아니라 "시안이 없다"다.** 나중에 이 화면들의 핸드오프가 생기면
+  `/design-sync`를 한 번은 돌려야 하고, 그때의 불일치는 회귀가 아니라 첫 대조다.
 - [x] **prod 실물 두 표면 왕복 완료** (2026-09-14, `SinhyeokKang/bugshot-i18n-test` · prod 배포 `89266ed`).
   프로젝트 생성(903키 `namespaces`) → Add surface(`_locales` 4키) → Settings의 두 step workflow를
   대상 리포에 설치 → CI push 두 표면 200/200 → 각 표면 1건 편집 → 단일 PR
@@ -54,14 +55,17 @@
   (SyncRun 1건 "Nothing to send / 0 files") → 한 번 더 누르면 **1층 `no-edits`**(SyncRun 생성 없이
   "Nothing to send — everything is up to date."). 토큰은 검증 뒤 **두 번 회전**했고 마지막 값은
   트랜스크립트에 남지 않는다(대상 리포 secret 갱신 + CI success로 확인).
-- [ ] ⚠️ **prod에 상주 프로젝트가 하나 생겼다** — `bugshot-i18n-test`(폐기용 리포). 대상 리포에
-  workflow가 설치된 상태라 그 리포의 dev push마다 prod로 적재된다. 유지할지 보관할지 판단이 필요하다.
+- [x] **prod의 상주 프로젝트 `bugshot-i18n-test`는 그대로 둔다** (2026-09-14 사용자 판정).
+  폐기용 리포라 적재되는 내용에 가치도 위험도 없고, workflow가 설치된 채로 남아 있어
+  **다음 실물 왕복 검증의 배선이 이미 서 있는 상태**가 된다. 대상 리포의 dev push마다 prod로 적재된다.
+  ⚠️ **prod 프로젝트 목록이 비어 있지 않다는 뜻이다** — "프로덕션은 깨끗하다"를 전제로 한 판정을
+  쓰지 않는다. 영구 삭제는 UI가 없고(PRODUCT §7.9) 지우려면 손으로 DB를 건드려야 한다.
 
 DB 현황: dev 20 migrations / drift 없음, Project 1·Surface 2·Translation 2,721.
 `bugshot-i18n-test-qa`는 namespaces(903키/3언어)·_locales(4키/3언어)로 복구했고 보존한다.
-prod는 19 migrations, Project/Surface/Translation 0. 단계 B migration 1건 pending은 의도된 상태다.
+prod는 20 migrations / drift 없음(2026-09-14 `pnpm db:status:prod` 실측). 단계 B migration은 적용됐다.
 양쪽 null 자식·교차 key/locale FK·잘못된 기본 표면·공개 권한 0건.
-**dev Preview는 아직 baseline 코드이므로 B writer 배포 전 쓰기 요청을 재개하지 않는다.**
+dev Preview는 단계 B를 싣고 있다 — `origin/dev`가 #41(`89266ed`)을 포함한다. 그 제약은 해제됐다.
 
 Claude Code 인계 순서: 같은 체크아웃과 HEAD 확인(중복 cherry-pick 금지) → 전수 검토·필요 수정 →
 dev `/push`/Preview SHA 검증 → 브라우저·시안 QA → `/merge` 1단계에서 prod B migration과 writer 동시 전환 →
