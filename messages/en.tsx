@@ -23,7 +23,7 @@ export const en = {
     description: "Choose another set of translation files from this repository.",
     workflow: "Add this step to your existing workflow. It uses the same PUSH_TOKEN.",
     baseLocale: "Source language", confirm: "Check files", cancel: "Cancel", settings: "Back to settings",
-    open: "Open translations", connect: "Connect GitHub", conflict: "These files already belong to another translation surface:",
+    open: "Open translations", conflict: "These files already belong to another translation surface:",
     failed: "We couldn't add this surface. Your existing translations are unchanged. Try again.",
     missingTitle: "Translation surface unavailable",
     missingDescription: "This page may have moved or the surface may no longer be active. Open your projects to continue.",

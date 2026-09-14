@@ -76,7 +76,10 @@ export function AddSurface({ slug, owner, repo, branch, adapters, initial, initi
       } catch { setDetectError("unavailable"); }
     });
   }
-  const needsConnect = [error, detectError].some(value => value === "reauthorize" || value === "not-connected");
+  // ⚠️ **라벨을 거부 사유가 정한다** — 두 문장이 서로 다른 버튼 이름을 지시하므로 하나로 고정하면
+  // 한쪽은 없는 버튼을 가리킨다 (`steps/repo.tsx`가 같은 자리에서 같은 쌍을 든다).
+  const connectFor = [error, detectError].find(value => value === "reauthorize" || value === "not-connected");
+  const connectLabel = connectFor === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action;
   return <>
     <PanelHeader className="px-6 py-5">
       <h1 className="text-xl font-medium">{m.surfaces.add}</h1>
@@ -95,10 +98,10 @@ export function AddSurface({ slug, owner, repo, branch, adapters, initial, initi
         {error && <Alert variant="danger">{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "ingest-failed" ? m.surfaces.failed : error === "path-conflict" ? m.surfaces.conflict : failureText(error)}
           {conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}
         </Alert>}
-        {needsConnect && <Button loading={pending} onClick={() => startTransition(async () => {
+        {connectFor && <Button loading={pending} onClick={() => startTransition(async () => {
           const connected = await startGithubConnect({ slug, returnTo: "add-surface" });
           if (!connected.ok) setError(connected.error);
-        })}>{m.surfaces.connect}</Button>}
+        })}>{connectLabel}</Button>}
         <fieldset disabled={pending} className="flex min-h-0 flex-1 gap-4">
           <FilesStep state={{ detecting: false, detectError, candidates, picked, locale, preview, manual,
             manualCandidate, manualMatched: manualCandidate !== undefined, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}

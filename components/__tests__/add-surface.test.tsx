@@ -79,3 +79,21 @@ it("0후보는 수동 입력을 열고 검사 실패 뒤 경로를 보존한다"
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
   expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(true);
 });
+
+/**
+ * ⚠️ **거부 문구가 가리키는 버튼 이름이 화면에 실재해야 한다.** `reauthorize`의 문장은
+ * "Use Reconnect GitHub."이고 `not-connected`는 "use Connect GitHub below."다 — 버튼 라벨을 하나로
+ * 고정하면 둘 중 하나는 **없는 버튼을 가리킨다.** 첫 프로젝트 화면이 같은 이유로 이미 갈라 든다
+ * (`steps/repo.tsx`). 2026-09-14에 실물 화면에서 "Use Reconnect GitHub"가 `Connect GitHub` 버튼 위에
+ * 섰다.
+ */
+it.each([
+  ["reauthorize", "Reconnect GitHub"],
+  ["not-connected", "Connect GitHub"],
+])("%s면 버튼 라벨이 그 문구가 말하는 이름이다", async (error, label) => {
+  const { container } = await render(<AddSurface {...props} initialError={error} />);
+  const alert = container.querySelector('[role="alert"]')?.textContent ?? "";
+  expect(alert).toContain(label);
+  const buttons = [...container.querySelectorAll("button")].map(b => b.textContent?.trim());
+  expect(buttons).toContain(label);
+});
