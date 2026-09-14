@@ -612,8 +612,14 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 - **내려받는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
   `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
   다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
-- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = **blob ≤ 21**.
-  온보딩 한 번의 호출은 `ref 1 + commit 1 + tree 1 + blob ≤21`이다.
+- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 +
+  **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
+  `ref 1 + commit 1 + tree 1 + blob ≤37`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
+  그대로 응답 시간이고, `maxDuration`이 60초다.
+- ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
+  내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
+  `tsDictProbePaths`로 씨앗을 만든다. 그 인자는 **기본값이 없다**: 있으면 안 넘긴 호출부가 조용히
+  통과하고 그 경로에서만 후보가 사라진다(`scripts/smoke-github.ts`가 실제로 그 상태였다).
 
 **첫 적재는 기존 push 경로를 그대로 지난다** (`lib/onboarding/ingest.ts`):
 
