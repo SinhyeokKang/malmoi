@@ -1039,11 +1039,11 @@ export function createHarness(seed: Seed = {}) {
       findUnique: async ({
         where,
       }: {
-        where: { projectId_code: { projectId: string; code: string } } & ScopedWhere;
+        where: { projectId_surfaceId_code: { projectId: string; surfaceId: string; code: string } } & ScopedWhere;
       }) => {
         const row = locales.find(
           (l) =>
-            l.projectId === where.projectId_code.projectId && l.code === where.projectId_code.code && matchesScope(l, where),
+            l.projectId === where.projectId_surfaceId_code.projectId && l.code === where.projectId_surfaceId_code.code && l.surfaceId === where.projectId_surfaceId_code.surfaceId && matchesScope(l, where),
         );
         return row === undefined ? null : { code: row.code, orphaned: row.orphaned ?? false };
       },

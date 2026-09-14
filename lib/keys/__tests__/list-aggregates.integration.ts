@@ -109,27 +109,37 @@ it("단계 B는 null 자식을 거부하고 Surface의 앞선 상태를 재백�
   } finally { client.release(); }
 });
 
+it.each(["null", "archived"])("단계 B는 유효한 기본 표면이 없는 Project를 거부한다: %s", async (state) => {
+  await resetSchema(true);
+  await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","updatedAt") VALUES ('invalid','invalid','Invalid','o','r',now())`);
+  if (state === "archived") await pool.query(`INSERT INTO "TranslationSurface" (id,"projectId",slug,"archivedAt") VALUES ('invalid-s','invalid','default',now()); UPDATE "Project" SET "defaultSurfaceId"='invalid-s' WHERE id='invalid'`);
+  const client = await pool.connect();
+  try {
+    await expect(client.query(readFileSync("prisma/migrations/20260914070000_finalize_translation_surfaces/migration.sql", "utf8"))).rejects.toThrow(/precondition failed/);
+    await client.query("ROLLBACK");
+    expect((await client.query(`SELECT count(*)::int n FROM information_schema.columns WHERE table_name='Project' AND column_name='pathTemplate'`)).rows).toEqual([{ n: 1 }]);
+  } finally { client.release(); }
+});
+
 it("backfills an existing project into exactly one default surface", async () => {
   await resetSchema(true);
-  await prisma.project.create({ data: { id: "old", slug: "old", name: "Old", repoOwner: "o", repoName: "r",
-    adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastCommitSha: "old-sha" }, select: { id: true } });
-  await prisma.locale.create({ data: { projectId: "old", code: "en", name: "English" }, select: { code: true } });
-  await prisma.stringKey.create({ data: { id: "old-key", projectId: "old", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" }, select: { id: true } });
-  await prisma.translation.create({ data: { projectId: "old", keyId: "old-key", localeCode: "en", value: "Hello" }, select: { keyId: true } });
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","adapterName","pathTemplate","baseLocale","lastCommitSha","updatedAt")
+    VALUES ('old','old','Old','o','r','json-catalog','i18n/{locale}.json','en','old-sha',now());
+    INSERT INTO "Locale" ("projectId",code,name) VALUES ('old','en','English');
+    INSERT INTO "StringKey" (id,"projectId",key,namespace,"sourceText","sourceHash","updatedAt") VALUES ('old-key','old','hello','_root','Hello','hash',now());
+    INSERT INTO "Translation" (id,"projectId","keyId","localeCode",value,"updatedAt") VALUES ('old-t','old','old-key','en','Hello',now())`);
   await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: "old" }, include: { surfaces: true, locales: true, keys: true } });
-  expect(project.surfaces).toHaveLength(1);
-  expect(project.surfaces[0]).toMatchObject({ id: project.defaultSurfaceId, slug: "default", lastCommitSha: "old-sha", pathTemplate: "i18n/{locale}.json" });
-  const translations = await prisma.translation.findMany({ where: { projectId: "old" } });
-  expect([...project.locales, ...project.keys, ...translations].every(r => r.surfaceId === project.defaultSurfaceId)).toBe(true);
-  // An old server can still write nullable children after migration A, before deployment.
-  await prisma.locale.create({ data: { projectId: "old", code: "ko", name: "Korean" } });
-  await prisma.project.update({ where: { id: "old" }, data: { lastCommitSha: "late-old-writer", lastCommitAt: AFTER } });
+  expect((await pool.query(`SELECT id,slug,"lastCommitSha","pathTemplate" FROM "TranslationSurface" WHERE "projectId"='old'`)).rows)
+    .toEqual([{ id: "surface-old", slug: "default", lastCommitSha: "old-sha", pathTemplate: "i18n/{locale}.json" }]);
+  await pool.query(`INSERT INTO "Locale" ("projectId",code,name) VALUES ('old','ko','Korean');
+    UPDATE "Project" SET "lastCommitSha"='late-old-writer',"lastCommitAt"='2026-09-11' WHERE id='old'`);
   const catchup = readFileSync("prisma/maintenance/backfill-surfaces.sql", "utf8");
   await pool.query(catchup);
   await pool.query(catchup);
-  expect(await prisma.locale.count({ where: { surfaceId: null } })).toBe(0);
-  expect(await prisma.translationSurface.findUnique({ where: { id: project.defaultSurfaceId! } })).toMatchObject({ lastCommitSha: "late-old-writer" });
+  expect((await pool.query(`SELECT count(*)::int n FROM "Locale" WHERE "surfaceId" IS NULL`)).rows).toEqual([{ n: 0 }]);
+  expect((await pool.query(`SELECT "lastCommitSha" FROM "TranslationSurface" WHERE id='surface-old'`)).rows)
+    .toEqual([{ lastCommitSha: "late-old-writer" }]);
 });
 
 it("A push leaves B locales, keys, translations, refs and import state untouched", async () => {
@@ -145,7 +155,7 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
     projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
     locales: ["en", "fr"], keys: [], translations: [], refs: [],
-  }, { previousBaseLocale: "en", startedAt: AFTER })).rejects.toThrow(/surface/i);
+  }, { previousBaseLocale: "en", startedAt: AFTER })).resolves.toMatchObject({ translationsFilled: 0 });
   expect(await readB()).toEqual(before);
   await applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
     projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
@@ -381,7 +391,7 @@ it("적재 트랜잭션이 실패하면 진행·오류와 기존 데이터도 �
 it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아 로케일 경계를 대조한다: %s", async (lastPulledAt) => {
   await seed({ id: "p1", lastPulledAt, archived: false });
   await prisma.translation.deleteMany({ where: { projectId: "p1" } });
-  await prisma.locale.update({ where: { projectId_code: { projectId: "p1", code: "ko" } }, data: { orphaned: true } });
+  await prisma.locale.update({ where: { projectId_surfaceId_code: { projectId: "p1", surfaceId: "surface-p1", code: "ko" } }, data: { orphaned: true } });
   for (const updatedBy of [null, "user"]) {
     for (const [index, updatedAt] of [BEFORE, PULLED, AFTER].entries()) {
       await prisma.translation.create({ data: {

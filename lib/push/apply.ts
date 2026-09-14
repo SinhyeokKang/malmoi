@@ -2,7 +2,6 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
-import { fail } from "@/lib/failure";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
@@ -93,11 +92,6 @@ export async function applyPush(
   options: ApplyOptions,
 ): Promise<PushOutcome> {
   const { projectId, surfaceId } = scope;
-  // Phase A retains Locale(projectId, code). Fail before any writes instead of silently
-  // ignoring a foreign owner. Add surface stays closed until phase B replaces this PK.
-  const collision = await prisma.locale.findFirst({ where: { projectId, code: { in: payload.locales },
-    OR: [{ surfaceId: null }, { surfaceId: { not: surfaceId } }] }, select: { code: true } });
-  if (collision) fail(`Locale surface ownership mismatch: ${collision.code}`);
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
   const existing: ExistingKey[] = await prisma.stringKey.findMany({
     where: { projectId, surfaceId },
@@ -142,11 +136,10 @@ export async function applyPush(
         ${localeRows.map((r) => r.name)}::text[],
         ${localeRows.map((r) => r.isBase)}::boolean[]
       )
-      ON CONFLICT ("projectId", "code") DO UPDATE SET
+      ON CONFLICT ("projectId", "surfaceId", "code") DO UPDATE SET
         "isBase" = EXCLUDED."isBase",
         -- 파일이 돌아오면 그 자리에서 되살아난다 (키의 unorphan과 같은 축).
-        "orphaned" = false
-      WHERE "Locale"."surfaceId" = EXCLUDED."surfaceId"`,
+        "orphaned" = false`,
 
     // 리포에서 사라진 로케일을 표시한다. **행은 지우지 않는다** — 되살리면 번역이 돌아와야 하고,
     // Translation의 FK가 Restrict라 지우려면 번역을 먼저 지워야 한다.
