@@ -95,6 +95,27 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
   });
 
   /**
+   * ⚠️ **큰 디렉터리가 이긴다 — 얕은 쪽이 아니다** (2026-09-14 2차 리뷰 🟡6). 상한이 2라 셋째부터는
+   * "검증 실패"가 아니라 **미검증으로 조용히** 사라지는데, 깊이로 정렬하면 그 손실이 하필 진짜
+   * 딕셔너리에 걸린다: 네임스페이스 디렉터리는 보통 **더 깊고 더 크다.** 파일 수는 경로만 보고 셀 수
+   * 있고 "작은 표면이 큰 표면을 가린다"는 이 기능의 원래 문제와 같은 축이다.
+   */
+  it("모노레포에서 파일이 많은 디렉터리가 얕은 유틸 디렉터리를 이긴다", () => {
+    const monorepo = [
+      // ⚠️ **얕은 후보가 상한만큼 있어야 경쟁이 생긴다** — 둘뿐이면 상한 2에 둘 다 들어가 검사가 공회전한다.
+      "src/i18n/format.ts",
+      "src/i18n/helpers.ts",
+      "src/locales/codes.ts",
+      "src/locales/names.ts",
+      // 깊지만 네임스페이스 여섯 — 진짜 딕셔너리다.
+      ...["ai", "app", "common", "editor", "issue", "settings"].map((n) => `packages/app/src/i18n/namespaces/${n}.ts`),
+    ];
+    const dirs = new Set(tsDictProbePaths(monorepo).map((p) => p.slice(0, p.lastIndexOf("/"))));
+    expect(dirs).toContain("packages/app/src/i18n/namespaces");
+    expect(dirs.size).toBe(2);
+  });
+
+  /**
    * ⚠️ **상한이 실제로 걸리는 입력을 준다** (2026-09-14 2차 리뷰). 디렉터리당 파일이 상한보다 적으면
    * `slice`가 no-op이라 **상한을 올리는 뮤테이션이 통과한다** — 전 판본이 디렉터리당 2파일이었다.
    */

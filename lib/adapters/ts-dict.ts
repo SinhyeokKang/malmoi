@@ -133,8 +133,16 @@ export function tsDictProbePaths(paths: readonly string[]): string[] {
   const dirs = [...byDir.entries()]
     // 파일이 하나뿐이면 딕셔너리가 아니다 — `detectByContent`도 로케일 객체 2개 이상을 요구한다.
     .filter(([, files]) => files.length >= 2)
-    // 얕은 쪽이 진짜일 가능성이 높다(`pathSignals`의 같은 신호), 같으면 경로순으로 결정적이게.
-    .sort(([a], [b]) => pathSignals(a).depth - pathSignals(b).depth || compareKeys(a, b))
+    /**
+     * ⚠️ **파일이 많은 쪽이 이긴다 — 얕은 쪽이 아니다** (2026-09-14 2차 리뷰 🟡6). 다른 어댑터의
+     * "얕은 쪽이 진짜"(`pathSignals.depth`)를 여기 그대로 쓰면 **하필 진짜가 진다**: 네임스페이스
+     * 디렉터리는 보통 더 깊고 더 크고(bugshot-2는 `src/i18n`(6) 옆의 `src/i18n/namespaces`(8)),
+     * 모노레포에서는 얕은 유틸 디렉터리 둘이 상한을 채워 깊은 딕셔너리를 **조용히** 밀어낸다.
+     * 파일 수는 경로만 보고 셀 수 있고, "작은 표면이 큰 표면을 가린다"는 이 기능의 원래 문제와
+     * 같은 축이다. 같으면 경로순으로 결정적이게 — 순서가 흔들리면 같은 리포가 실행마다 다른
+     * 후보를 낸다.
+     */
+    .sort(([a, fa], [b, fb]) => fb.length - fa.length || compareKeys(a, b))
     .slice(0, SEED_DIRS);
 
   return dirs.flatMap(([, files]) => files.slice().sort(compareKeys).slice(0, SEED_FILES));
