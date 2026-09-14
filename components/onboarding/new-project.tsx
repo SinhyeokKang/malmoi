@@ -9,7 +9,6 @@ import {
   detectRepoFormats,
   listRepoBranches,
   loadCandidateSample,
-  runFirstIngest,
 } from "@/app/(edit)/projects/actions";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
@@ -17,16 +16,18 @@ import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { nextEnabled, type NextState, type Step } from "@/lib/onboarding/next-enabled";
 import { suggestAlternateSlug } from "@/lib/onboarding/slug";
-import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
 
-import { isAccessLost } from "./failure";
+import { Alert } from "@/components/ui/alert";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
+import { failureText, isAccessLost } from "./failure";
 import { OnboardingModal } from "./modal";
 import { FilesStep, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
-import { ResultStep, type Ingest } from "./steps/result";
+import { ResultStep } from "./steps/result";
 
 /**
  * 새 프로젝트 온보딩 모달의 **상태 컨테이너** (new-project-modal design §2·§9).
@@ -102,8 +103,8 @@ export function NewProject({
   const [slugTaken, setSlugTaken] = useState(false);
 
   // ④ 결과
-  const [created, setCreated] = useState<{ slug: string; pushToken: string; yaml: string } | undefined>(undefined);
-  const [ingest, setIngest] = useState<Ingest | null>(null);
+  const [created, setCreated] = useState<Extract<CreateProjectResult, { ok: true }> | undefined>(undefined);
+  const [creationFailure, setCreationFailure] = useState<Extract<CreateProjectResult, { ok: false }> | "unknown" | null>(null);
 
   const candidate = picked === null ? undefined : candidates[picked];
   const usingManual = candidates.length === 0 || candidate === undefined;
@@ -363,59 +364,36 @@ export function NewProject({
   /** ③→④ — **예외 I가 ③에 머문다**: 실패하면 넘어가지 않고 입력이 전부 남는다. */
   function create() {
     if (repo === undefined) return;
+    if (pending) return;
     setBanner(null);
+    setCreationFailure(null);
     startTransition(async () => {
-      const result = await createProject({
+      let result: CreateProjectResult;
+      try { result = await createProject({
         owner: repo.owner,
         repo: repo.repo,
-        adapter: candidate?.adapter ?? manual.adapter,
-        pathTemplate,
-        baseLocale,
+        manual: usingManual,
+        surfaces: [{ adapter: candidate?.adapter ?? manual.adapter, pathTemplate, baseLocale }],
         slug,
         name,
         baseBranch: branchValue,
-      }).catch(() => ({ ok: false, error: "unavailable" } as const));
+      }); } catch {
+        setCreationFailure("unknown");
+        return;
+      }
       if (!result.ok) {
         if (isAccessLost(result.error)) setAccessLost(result.error);
         if (result.error === "slug-taken") {
           setSlugTaken(true);
           return;
         }
-        setBanner(result.error);
+        setCreationFailure(result);
         return;
       }
-      setCreated({
-        slug: result.slug,
-        pushToken: result.pushToken,
-        // 수동 지정만 어댑터·기준 언어를 YAML에 고정한다 — 자동 후보는 탐지가 같은 답을 낸다 (design §7).
-        yaml: renderWorkflowYaml({
-          slug: result.slug,
-          surfaceSlug: result.surfaceSlug,
-          pathTemplate,
-          baseBranch: result.baseBranch,
-          ...(usingManual ? { adapter: manual.adapter, baseLocale } : {}),
-        }),
-      });
+      setCreated(result);
+      setAnnounce(m.newProject.imported(result.count, 0));
       setStep(4);
-      startIngest(result.slug);
     });
-  }
-
-  function startIngest(created: string) {
-    setIngest({ status: "running" });
-    void runFirstIngest({ slug: created }).then(
-      (result) => {
-        if (!result.ok && isAccessLost(result.error)) setAccessLost(result.error);
-        setIngest(
-          result.ok
-            ? { status: "done", count: result.count, failed: result.failed, errors: result.errors }
-            : { status: "failed", error: result.error },
-        );
-        setAnnounce(result.ok ? m.newProject.imported(result.count, result.failed) : undefined);
-      },
-      // 던지는 경로는 직렬화 실패·네트워크뿐이다. 화면이 멈춰 있으면 사용자가 무엇을 기다리는지 모른다.
-      () => setIngest({ status: "failed", error: "unavailable" }),
-    );
   }
 
   function close() {
@@ -439,18 +417,8 @@ export function NewProject({
         ? m.newProject.steps.files.emptyDescription(repoLabel, branchValue)
         : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
-    /*
-      ⚠️ **④의 설명이 적재 결과를 든다** (핸드오프 1d·4f·4g). 성공은 "Imported N keys."가 제목 아래에
-      서고 본문에는 아무 그릇도 없다 — 부분 실패·실패만 `Alert`를 든다.
-    */
-    4:
-      ingest === null || ingest.status === "running"
-        ? m.newProject.steps.result.description
-        : ingest.status === "failed"
-          ? m.newProject.steps.result.descriptionFailed
-          : ingest.failed === 0
-            ? `${ingestHeadline(ingest.count, ingest.failed)} ${m.newProject.steps.result.description}`
-            : ingestHeadline(ingest.count, ingest.failed),
+    4: created === undefined ? m.newProject.steps.result.description
+      : `${ingestHeadline(created.count, 0)} ${m.newProject.steps.result.description}`,
   } as const;
 
   return (
@@ -471,6 +439,7 @@ export function NewProject({
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}
       onBack={() => {
         if (!accessLost) setBanner(null);
+        setCreationFailure(null);
         if (step === 2) {
           detectRequest.current += 1;
           sampleGeneration.current += 1;
@@ -538,6 +507,17 @@ export function NewProject({
 
       {step === 3 && (
         <fieldset disabled={pending} className="contents">
+          {pending && <p role="status" className="text-muted-foreground text-sm">{m.newProject.naming.creating}</p>}
+          {creationFailure !== null && <Alert variant="danger">
+            {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
+              <p>{m.newProject.naming.nothingCreated} {failureText(creationFailure.error)}</p>
+              {creationFailure.surface && <>
+                <p>{m.newProject.naming.failedSurface(creationFailure.surface.pathTemplate, creationFailure.surface.failed)}</p>
+                {creationFailure.surface.errors.slice(0, 5).map((error, index) => <p key={index} className="whitespace-pre-wrap text-xs">{adapterErrorMessage(error)}</p>)}
+              </>}
+              {creationFailure.conflicts?.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
+            </>}
+          </Alert>}
           <NamingStep
             state={{
               name,
@@ -567,10 +547,6 @@ export function NewProject({
         <ResultStep
           pushToken={created.pushToken}
           yaml={created.yaml}
-          pathTemplate={pathTemplate}
-          branch={branchValue}
-          ingest={ingest}
-          onRetry={() => startIngest(created.slug)}
         />
       )}
     </OnboardingModal>

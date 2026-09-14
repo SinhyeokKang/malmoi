@@ -778,6 +778,10 @@ export const en = {
         </>
       ),
       create: "Create project",
+      creating: "Creating project and importing all selected files…",
+      nothingCreated: "Nothing was created.",
+      resultUnknown: "We couldn't confirm the result. Check your project list before trying again. If the project exists, generate a new push token in Settings.",
+      failedSurface: (path: string, failed: number) => `${path}: ${failed} import issues.`,
       /** ③ info — **읽기 전용임을 말한다.** 리포에 아무것도 쓰지 않는다(불변식). */
       info: (path: string, branch: string): string =>
         `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,

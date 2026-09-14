@@ -118,7 +118,7 @@ const SAMPLED_LOCALES = ["en", "fr", "ko"];
 /** `listInstallationRepos`가 주는 행. `pushed_at`은 같은 응답에 이미 있다 — 추가 호출 0. */
 const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z") => ({ fullName, pushedAt });
 
-const HEAD_SHA = "c0ffee";
+const HEAD_SHA = "c".repeat(40);
 const HEAD_AT = "2026-09-07T00:00:00Z";
 
 /**
@@ -143,7 +143,7 @@ function reader(over: { snapshot?: unknown; blobs?: Map<string, string> } = {}) 
 }
 
 /** 확정 입력 — 화면이 후보에서 되돌려 보내는 값과 같은 모양이다. */
-function createInput(over: Record<string, unknown> = {}) {
+function createInput(over: Record<string, unknown> & { adapter?: string; pathTemplate?: string; baseLocale?: string } = {}) {
   const { adapter = "json-catalog", pathTemplate = "i18n/{locale}.json", baseLocale = "en", ...rest } = over;
   return { owner: "acme", repo: "web", surfaces: [{ adapter, pathTemplate, baseLocale }],
     slug: "acme-web", name: "Acme Web", baseBranch: "develop", ...rest };
@@ -1535,4 +1535,10 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
     await expect(createProject(createInput({ slug: "second-project" }))).rejects.toThrow("cache failure");
   });
+});
+
+it("수동 지정의 확정 어댑터와 기본 언어도 성공 YAML에 고정한다", async () => {
+  const result = await createProject(createInput({ manual: true }));
+  expect(result.ok && result.yaml).toContain("adapter: json-catalog");
+  expect(result.ok && result.yaml).toContain("base-locale: en");
 });

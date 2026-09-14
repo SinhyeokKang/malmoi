@@ -1,7 +1,7 @@
 "use server";
 
 import { findUserByEmail } from "@/lib/credentials/access";
-import { planSurfaceSlug } from "@/lib/surfaces/plan";
+import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
@@ -51,8 +51,11 @@ import {
   type CandidateSummary,
   type SampleRow,
 } from "@/lib/onboarding/detect";
-import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
-import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
+import { applyPushInTransaction } from "@/lib/push/apply";
+import { resolveLocalePaths } from "@/lib/pull/plan";
+import { pickBaseLocale } from "@/lib/push/payload";
+import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
+import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -355,9 +358,8 @@ const ManualFormatInput = SampleInput.omit({ locale: true, confirmation: true })
 const CreateProjectInput = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
-  adapter: z.string().min(1),
-  pathTemplate: z.string().min(1),
-  baseLocale: z.string().min(1),
+  manual: z.boolean().optional(),
+  surfaces: z.array(z.object({ adapter: z.string().min(1), pathTemplate: z.string().min(1), baseLocale: z.string().min(1) })).min(1),
   slug: z.string().min(1),
   // T8 이후에는 UI가 선택한 브랜치를 반드시 보낸다. 탐지와 다른 기본값으로 저장하지 않는다.
   baseBranch: z.string().min(1),
@@ -795,30 +797,19 @@ export async function confirmManualFormat(raw: {
   }
 }
 
+export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; adapter: AdapterName; baseLocale: string };
 export type CreateProjectResult =
-  /**
-   * `baseBranch`는 **결과 화면의 워크플로 YAML용**이다 (T7). `on.push.branches`를 `main`으로 고정하면
-   * base가 `develop`인 리포에서 CI가 영영 안 돌고, 그 값을 아는 것은 probe를 부른 서버뿐이다.
-   */
-  | { ok: true; slug: string; surfaceSlug: string; pushToken: string; baseBranch: string }
-  | { ok: false; error: OnboardFailure };
+  | { ok: true; slug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
+  | { ok: false; error: OnboardFailure | "path-conflict";
+      surface?: { pathTemplate: string; failed: number; errors: AdapterError[] };
+      conflicts?: { path: string; surfaceSlugs: string[] }[] };
 
-/**
- * 확정 (화면 ④) — 행 + OWNER 멤버십 + push 토큰 해시를 **한 트랜잭션**으로 만들고 **원문을 한 번**
- * 돌려준다 (design §3.11). 첫 적재는 하지 않는다: 60초를 넘기면 행은 커밋됐는데 응답이 사라져
- * 토큰 원문을 아무도 못 본다.
- *
- * ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 그대로 저장하지 않는다** (design §3.4). 임의의
- * 템플릿을 저장할 수 있으면 pull이 그 리포의 아무 파일이나 덮어쓰는 커밋을 만든다 — 파일을 다시
- * 읽어 `detectFormatWith`를 돌리고 **그 반환값을** 저장한다 (POSTMORTEM 2026-09-05: 검증한 값을
- * 저장하지 않으면 검증이 장식이다).
- */
+/** 모든 표면의 읽기·파싱을 끝낸 뒤 생성과 첫 적재를 같은 트랜잭션에 저장한다. */
 export async function createProject(raw: {
   owner: string;
   repo: string;
-  adapter: string;
-  pathTemplate: string;
-  baseLocale: string;
+  manual?: boolean;
+  surfaces: { adapter: string; pathTemplate: string; baseLocale: string }[];
   slug: string;
   name: string;
   baseBranch: string;
@@ -837,8 +828,7 @@ export async function createProject(raw: {
   // 만든 slug가 pull에서 `fail()`로 죽는다. 형식이 틀리면 GitHub을 부를 이유가 없다.
   if (planSlug(input.slug) !== "ok") return { ok: false, error: "invalid-slug" };
   // 모르는 어댑터는 아무 파일도 가리키지 못한다 — 조작된 입력이라 리포를 읽지 않는다.
-  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
-  const adapterName: AdapterName = input.adapter;
+  if (input.surfaces.some(surface => !isAdapterName(surface.adapter))) return { ok: false, error: "invalid input" };
   // 설정 화면과 **같은 함수**다 (`lib/pull/branch-name.ts`). 형식이 틀리면 GitHub을 부를 이유가 없다.
   if (!isValidBranchName(input.baseBranch)) {
     return { ok: false, error: "invalid-branch" };
@@ -879,37 +869,56 @@ export async function createProject(raw: {
   const snapshot = await reader.snapshot(baseBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
-  const paths = snapshot.files.map((f) => f.path);
-  const attempted = templatePaths(adapterName, input.pathTemplate, paths);
-  let files: AdapterFile[];
-  try { files = await readFiles(reader, snapshot, attempted); }
-  catch (error) {
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    throw error;
-  }
-  const confirmed = planConfirmedFormat(
-    { adapter: adapterName, pathTemplate: input.pathTemplate, baseLocale: input.baseLocale },
-    files,
-  );
-  if (confirmed.status !== "ok") {
-    /**
-     * ⚠️ **못 받은 파일이 있으면 장애다** (2026-09-07 리뷰 🟡4). `readFiles`가 실패한 blob을 조용히
-     * 빼므로 그 상태가 "템플릿이 아무 파일도 가리키지 않는다"와 구별되지 않는데, 문구는 "경로와
-     * 형식을 다시 확인해 주세요"라 **사용자가 맞는 입력을 고치려 든다** (POSTMORTEM 2026-09-03).
-     */
-    if (files.length < attempted.length) {
-      logFailure(
-        "onboard-confirm",
-        new Error(`could not download re-check files: ${attempted.length - files.length}/${attempted.length}`),
-      );
-      return { ok: false, error: "unavailable" };
+  const paths = snapshot.files.map(f => f.path);
+  const projectId = randomUUID();
+  const startedAt = new Date();
+  const prepared: { id: string; surface: CreatedSurface; payload: NonNullable<ReturnType<typeof prepareFirstSnapshot>["payload"]>; targets: string[]; workflow: { adapter?: AdapterName; baseLocale?: string } }[] = [];
+  for (const requested of input.surfaces) {
+    if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
+    const attempted = templatePaths(requested.adapter, requested.pathTemplate, paths);
+    try {
+      const files = await readFiles(reader, snapshot, attempted);
+      const confirmed = planConfirmedFormat(requested, files);
+      if (confirmed.status !== "ok") {
+        const missing = attempted.filter(path => !files.some(file => file.path === path));
+        return { ok: false, error: missing.length ? "unavailable" : "manual-no-match",
+          surface: { pathTemplate: requested.pathTemplate, failed: Math.max(1, missing.length),
+            errors: missing.map(path => ({ path, code: "download-failed" })) } };
+      }
+      const format = confirmed.format;
+      const targets = [...new Set([...attempted, ...ingestTargets(format, adapterFor(format).layout, paths)])];
+      const extra = targets.filter(path => !attempted.includes(path));
+      if (extra.length) files.push(...await readFiles(reader, snapshot, extra));
+      const id = randomUUID();
+      const surfaceSlug = planSurfaceSlug(format.pathTemplate, prepared.map(s => s.surface.surfaceSlug));
+      const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt,
+        projectSlug: input.slug, format, baseLocale: confirmed.baseLocale,
+        headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt, paths, targets,
+        blobs: new Map(files.map(file => [file.path, file.content])),
+      });
+      if (first.payload === null || first.result.failed > 0) return { ok: false, error: "ingest-failed",
+        surface: { pathTemplate: format.pathTemplate, failed: first.result.failed, errors: first.result.errors } };
+      const resolved = resolveLocalePaths({ ...format, locales: first.payload.locales }, adapterFor(format).layout, paths);
+      prepared.push({ id, surface: { surfaceSlug, adapter: format.adapter, pathTemplate: format.pathTemplate, baseLocale: confirmed.baseLocale },
+        payload: first.payload, targets: [...targets, ...resolved.map(item => item.path)],
+        workflow: input.manual || format.adapter === "ts-dict" ? { adapter: format.adapter, baseLocale: confirmed.baseLocale }
+          : confirmed.baseLocale !== pickBaseLocale(format.locales) ? { baseLocale: confirmed.baseLocale } : {},
+      });
+    } catch (error) {
+      logFailure("onboard-prepare", error);
+      return { ok: false, error: error instanceof IngestBudgetError ? "resource-limit" : "ingest-failed",
+        surface: { pathTemplate: requested.pathTemplate, failed: 1, errors: [] } };
     }
-    // 나머지 갈래 넷은 한 문구로 접는다 — 사용자가 할 일이 같다(다른 후보를 고르거나 경로를 고친다).
-    return { ok: false, error: "manual-no-match" };
   }
-
-  // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (초대 토큰과 같은 모델 — PRODUCT §7.8).
+  const ownership = surfaceOwnership(prepared.map(s => ({ surfaceId: s.id, surfaceSlug: s.surface.surfaceSlug, paths: s.targets })));
+  if (!ownership.ok) return { ok: false, error: "path-conflict", conflicts: ownership.conflicts };
+  const defaultSurface = selectDefaultSurface(prepared);
+  if (defaultSurface === null) return { ok: false, error: "invalid input" };
+  const yaml = renderProjectWorkflowYaml({ slug: input.slug, baseBranch, surfaces: prepared.map(s => ({
+    surfaceSlug: s.surface.surfaceSlug, pathTemplate: s.surface.pathTemplate, ...s.workflow,
+  })) });
   const pushToken = generatePushToken();
+  let writingPath = defaultSurface.surface.pathTemplate;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -929,7 +938,7 @@ export async function createProject(raw: {
       const project = await tx.project.create({
         data: {
           // id가 nullable defaultSurface 복합 FK에도 쓰여 Prisma 7.10이 cuid 기본값을 누락한다.
-          id: randomUUID(),
+          id: projectId,
           slug: input.slug,
           name: input.name,
           // 이름은 **probe가 준 현재 값**이다 — 리네임된 리포도 지금 이름으로 붙는다.
@@ -945,28 +954,35 @@ export async function createProject(raw: {
         },
         select: { id: true },
       });
-      const surface = await tx.translationSurface.create({ data: {
-        projectId: project.id, slug: planSurfaceSlug(confirmed.format.pathTemplate, []),
-        adapterName: confirmed.format.adapter, pathTemplate: confirmed.format.pathTemplate,
-        baseLocale: confirmed.baseLocale,
-      } });
-      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: surface.id } });
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
-    });
+      for (const item of prepared) {
+        writingPath = item.surface.pathTemplate;
+        await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
+          slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
+          baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt,
+        } });
+        await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
+          previousBaseLocale: null, startedAt, importOutcome: null,
+        });
+      }
+      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
+    }, { maxWait: 10_000, timeout: 30_000 });
   } catch (error) {
     // 잠금 안에서 센 결과가 넘쳤다 — 쓰기는 되돌아갔고 사용자에게는 선조회와 같은 사유가 간다.
     if (error instanceof ProjectLimitRollback) return { ok: false, error: "limit-reached" };
     // ⚠️ **선조회를 지난 뒤의 경합이다** — 둘이 같은 slug로 동시에 들어오면 여기서 P2002가 난다.
     // 처리하지 않으면 digest만 있는 일반 오류가 되고 `planProjectCreate`가 만들어 둔 사유가 사라진다.
     if (isUniqueViolation(error)) return { ok: false, error: "slug-taken" };
-    throw error;
+    logFailure("onboard-create", error);
+    return { ok: false, error: "ingest-failed", surface: { pathTemplate: writingPath, failed: 1, errors: [] } };
   }
 
   revalidatePath("/projects");
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
-  return { ok: true, slug: input.slug, surfaceSlug: planSurfaceSlug(confirmed.format.pathTemplate, []), pushToken, baseBranch };
+  return { ok: true, slug: input.slug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
+    count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
 }
 
 export type AddSurfaceResult =
