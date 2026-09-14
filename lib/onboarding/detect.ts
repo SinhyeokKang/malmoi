@@ -1,4 +1,5 @@
 import { adapterFor } from "@/lib/adapters";
+import { tsDictProbePaths } from "@/lib/adapters/ts-dict";
 import { compareKeys, sampleOrder } from "@/lib/adapters/shared";
 import type { Adapter, AdapterName, DetectedFormat, FileProbe, LocaleEntry, ReadLocale } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
@@ -21,7 +22,8 @@ export type TemplateGroup = { pathTemplate: string; locales: Iterable<string> };
 
 /**
  * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (design §2).
- * JSON류 5 × 3파일 + code-dict 2 × 3파일 = blob ≤ 21.
+ * JSON류 5 × 3파일 + code-dict 2 × 3파일 + **ts-dict 씨앗 2 × 8파일**(2026-09-14) = blob ≤ 37.
+ * ⚠️ **다운로드가 순차다**(secondary rate limit) — 늘린 몫이 그대로 응답 시간이다.
  */
 export const PROBE_LIMITS = { jsonLike: 5, codeDict: 2 } as const;
 
@@ -35,6 +37,12 @@ export const PROBE_LIMITS = { jsonLike: 5, codeDict: 2 } as const;
 export function probeTargets(
   jsonLike: readonly TemplateGroup[],
   codeDict: readonly TemplateGroup[],
+  /**
+   * 리포 경로 **전체** (2026-09-14). ⚠️ **앞의 둘과 성격이 다르다** — 그쪽은 1패스가 만든 후보
+   * 그룹인데 `ts-dict`는 내용을 봐야 알 수 있어 1패스 후보가 0이다. 그래서 경로를 직접 받아
+   * 씨앗을 고른다. **안 주면 그 어댑터는 화면에 영영 안 뜬다.**
+   */
+  repoPaths: readonly string[] = [],
   limits: { jsonLike: number; codeDict: number } = PROBE_LIMITS,
 ): string[] {
   const out = new Set<string>();
@@ -45,6 +53,7 @@ export function probeTargets(
   };
   take(jsonLike, limits.jsonLike);
   take(codeDict, limits.codeDict);
+  for (const path of tsDictProbePaths(repoPaths)) out.add(path);
   return [...out];
 }
 

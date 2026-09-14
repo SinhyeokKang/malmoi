@@ -613,7 +613,8 @@ export async function detectRepoFormats(raw: {
 
   const paths = snapshot.files.map((f) => f.path);
   // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
-  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths));
+  // ⚠️ 세 번째 인자가 **경로 전체**다 — ts-dict는 1패스 후보가 0이라 씨앗을 여기서만 만들 수 있다.
+  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
   let files: AdapterFile[];
   try { files = await readFiles(reader, snapshot, targets); }
   catch (error) {

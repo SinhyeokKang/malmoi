@@ -135,13 +135,13 @@ describe("probeTargets — 내려받을 blob 경로", () => {
 
   /**
    * ⚠️ **예산은 비용이 아니라 응답 시간이다** — 페이지 `maxDuration`이 60초다. 씨앗이 늘린 몫까지
-   * 합쳐 상한을 넘지 않는 것을 여기서 고정한다(JSON류 5×3 + code-dict 2×3 + ts-dict 2×4 = 29).
+   * 합쳐 상한을 넘지 않는 것을 여기서 고정한다(JSON류 5×3 + code-dict 2×3 + ts-dict 2×8 = 37).
    */
   it("씨앗을 더해도 blob 상한을 넘지 않는다", () => {
     const jsonLike = Array.from({ length: 9 }, (_, i) => json(`a${i}/{locale}.json`, ["en", "ko", "ja", "fr"]));
     const codeDict = Array.from({ length: 5 }, (_, i) => ({ pathTemplate: `c${i}/{locale}.ts`, locales: new Set(["en", "ko", "ja"]) }));
     const repo = Array.from({ length: 9 }, (_, i) => [`src/i18n/g${i}/a.ts`, `src/i18n/g${i}/b.ts`, `src/i18n/g${i}/c.ts`, `src/i18n/g${i}/d.ts`, `src/i18n/g${i}/e.ts`]).flat();
-    expect(probeTargets(jsonLike, codeDict, repo).length).toBeLessThanOrEqual(29);
+    expect(probeTargets(jsonLike, codeDict, repo).length).toBeLessThanOrEqual(37);
   });
 });
 

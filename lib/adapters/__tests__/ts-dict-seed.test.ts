@@ -69,11 +69,11 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
     expect(picked.some((p) => p.includes("__tests__"))).toBe(false);
   });
 
-  it("디렉터리당 4개까지만, 경로순으로 고른다", () => {
+  it("디렉터리당 8개까지만, 경로순으로 고른다", () => {
     const picked = tsDictProbePaths(BUGSHOT2);
     const ns = picked.filter((p) => p.startsWith("src/i18n/namespaces/"));
     /**
-     * ⚠️ **내용 탐지가 읽는 4개와 같아야 한다** — 다른 4개를 받으면 후보가 "검증 실패"가 아니라
+     * ⚠️ **내용 탐지가 읽는 것과 같은 8개여야 한다** — 다른 파일을 받으면 후보가 "검증 실패"가 아니라
      * **미검증으로 통째로** 떨어진다 (`probeTargets`의 같은 경고와 한 쌍이다).
      */
     expect(ns).toEqual([
@@ -81,6 +81,10 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
       "src/i18n/namespaces/app.ts",
       "src/i18n/namespaces/common.ts",
       "src/i18n/namespaces/editor.ts",
+      "src/i18n/namespaces/integrations.ts",
+      "src/i18n/namespaces/issue.ts",
+      "src/i18n/namespaces/logs.ts",
+      "src/i18n/namespaces/settings.ts",
     ]);
   });
 
@@ -92,8 +96,8 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
     const many = Array.from({ length: 12 }, (_, i) =>
       [`src/i18n/g${i}/a.ts`, `src/i18n/g${i}/b.ts`],
     ).flat();
-    // 디렉터리 2개 × 파일 4개.
-    expect(tsDictProbePaths(many).length).toBeLessThanOrEqual(8);
+    // 디렉터리 2개 × 파일 8개 (이 픽스처는 디렉터리당 2파일이라 4를 넘지 않는다).
+    expect(tsDictProbePaths(many).length).toBeLessThanOrEqual(16);
   });
 });
 

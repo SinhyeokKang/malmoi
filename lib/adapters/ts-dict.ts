@@ -1,7 +1,7 @@
 import { Project, SyntaxKind, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
 
 import { quoteLiteral, quoteOf } from "./quote-style";
-import { compareKeys, looksLikeLocale } from "./shared";
+import { compareKeys, looksLikeLocale, pathSignals } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
 /**
@@ -90,8 +90,58 @@ function pairs(
  * `--adapter ts-dict`가 "해당 포맷을 찾지 못했다"로 죽었다** — 위 문장이 코드와 어긋나 있었고,
  * "ADAPTERS에 남아 있다"만 검사하는 테스트가 그걸 가렸다 (2026-09-03).
  */
-function detectCandidates(_paths: readonly string[], _probe?: (p: string) => string | undefined): DetectedFormat[] {
-  return [];
+/**
+ * 디렉터리당 내려받아 볼 파일 수. `detectByContent`가 읽는 수와 **같아야 한다**.
+ *
+ * ⚠️ **8인 이유는 미리보기 숫자다** (2026-09-14 실측). 4였을 때 bugshot-2의 네임스페이스 8개 중
+ * 절반만 읽어 화면이 **267키**를 보였는데 첫 적재는 **907키**였다 — 사용자가 후보를 고르는 근거가
+ * 그 숫자인데 절반이면 "4키"만큼은 아니어도 여전히 거짓이다. 더 큰 리포에서는 표본이 남는다.
+ */
+const SEED_FILES = 8;
+/** 씨앗으로 고를 디렉터리 수. blob 예산은 비용이 아니라 응답 시간이다 (온보딩 `maxDuration` 60초). */
+const SEED_DIRS = 2;
+
+/**
+ * **경로만 보는 씨앗** — 내려받아 볼 `.ts` 파일을 고른다 (2026-09-14).
+ *
+ * ⚠️ **이것이 없으면 `detectCandidates`를 켜도 화면에 안 뜬다.** 온보딩은 2패스이고 1패스는 경로만
+ * 보는데 이 어댑터는 **내용을 봐야** 판단할 수 있어 1패스 후보가 0이다 → 그 파일이 내려받을 목록에
+ * 안 실리고 → 2패스에도 내용이 없어 또 0이다. `code-dict`의 `codeDictCandidatePaths`와 같은 자리다.
+ *
+ * ⚠️ **씨앗은 후보가 아니다 — 판정은 내용이 한다.** bugshot-2의 `src/i18n/`이 그 증거다: 씨앗에는
+ * 들어오지만 파일마다 로케일 객체가 하나뿐이라 2패스에서 스스로 떨어진다.
+ *
+ * ⚠️ **`I18N_HINT`로 좁히는 것이 예산의 전부다.** `.ts` 디렉터리는 어디에나 있어서(bugshot-2에 40여 개)
+ * 신호 없이 고르면 blob이 수십 개가 된다. 곁가지(`__tests__`·`examples`)는 `aside`가 걷어낸다.
+ */
+export function tsDictProbePaths(paths: readonly string[], limits = { dirs: SEED_DIRS, files: SEED_FILES }): string[] {
+  const byDir = new Map<string, string[]>();
+  for (const path of paths) {
+    const m = NS_DIR.exec(path);
+    const dir = m?.[1];
+    if (dir === undefined) continue;
+    const { hint, aside } = pathSignals(path);
+    if (!hint || aside) continue;
+    (byDir.get(dir) ?? byDir.set(dir, []).get(dir)!).push(path);
+  }
+
+  const dirs = [...byDir.entries()]
+    // 파일이 하나뿐이면 딕셔너리가 아니다 — `detectByContent`도 로케일 객체 2개 이상을 요구한다.
+    .filter(([, files]) => files.length >= 2)
+    // 얕은 쪽이 진짜일 가능성이 높다(`pathSignals`의 같은 신호), 같으면 경로순으로 결정적이게.
+    .sort(([a], [b]) => pathSignals(a).depth - pathSignals(b).depth || compareKeys(a, b))
+    .slice(0, limits.dirs);
+
+  return dirs.flatMap(([, files]) => files.slice().sort(compareKeys).slice(0, limits.files));
+}
+
+/**
+ * ⚠️ **2026-09-14에 되살렸다 — 내용 탐지를 그대로 부른다.** 자동 탐지와 명시 지정이 갈리면 "후보에는
+ * 있는데 고르면 안 되는 포맷"이 생긴다. probe가 없으면 `detectByContent`가 빈 배열을 내므로
+ * **1패스(경로만)에서는 여전히 아무것도 안 낸다** — 그 자리를 메우는 것이 위 `tsDictProbePaths`다.
+ */
+function detectCandidates(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
+  return detectByContent(paths, probe);
 }
 
 function detectByContent(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
@@ -110,7 +160,9 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
   for (const [dir, files] of dirs) {
     const locales = new Set<string>();
     let matched = 0;
-    for (const path of files.slice(0, 4)) {
+    // ⚠️ **씨앗이 내려받은 4개와 같은 것을 읽어야 한다** — 다른 4개를 보면 후보가 "검증 실패"가
+    // 아니라 **미검증으로 통째로** 떨어진다. 그래서 정렬을 `tsDictProbePaths`와 맞춘다.
+    for (const path of files.slice().sort(compareKeys).slice(0, SEED_FILES)) {
       const content = probe(path);
       if (content === undefined) continue;
       const sf = newProject().createSourceFile(path, content, { overwrite: true });

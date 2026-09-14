@@ -141,7 +141,13 @@ describe("예제·픽스처 디렉터리는 순위에서 밀린다", () => {
   });
 });
 
-describe("ts-dict는 자동 탐지에서 빠진다 (ARCHITECTURE §1.9 판정 ③)", () => {
+/**
+ * ⚠️ **2026-09-14에 뒤집혔다 (판정 ③).** 제외의 근거는 *"오픈소스 109개에서 후보에 0회"*였고 비용은
+ * `.ts` 디렉터리마다 ts-morph를 돌리는 probe였는데, 그 대가로 **bugshot-2에서 903키 딕셔너리가
+ * 4키 `_locales` 뒤에 숨어 화면에 아예 안 떴다**(PRODUCT §7.3이 그 상황을 이미 적어 뒀다).
+ * probe 비용은 `tsDictProbePaths`의 `I18N_HINT` 좁힘이 대신 든다.
+ */
+describe("ts-dict도 자동 탐지에 참여한다 (ARCHITECTURE §1.9 판정 ③ 뒤집기)", () => {
   const TS = `
 const ko = { "a.b": "확인" } as const;
 const en = { "a.b": "OK" } satisfies Bundle;
@@ -149,12 +155,20 @@ export const ns = { ko, en };
 `;
   const paths = ["src/i18n/namespaces/a.ts", "src/i18n/namespaces/b.ts"];
 
-  it("detectCandidates가 항상 빈 배열이다 — 자동 탐지의 진입점은 이쪽이다", () => {
-    expect(tsDict.detectCandidates(paths, () => TS)).toEqual([]);
+  it("detectCandidates가 후보를 낸다 — 자동 탐지의 진입점은 이쪽이다", () => {
+    expect(tsDict.detectCandidates(paths, () => TS).map((c) => c.pathTemplate)).toEqual(["src/i18n/namespaces/*.ts"]);
   });
 
-  it("detectFormat도 ts-dict를 고르지 않는다", () => {
-    expect(detectFormat(paths, () => TS)).toBeUndefined();
+  it("다른 후보가 없으면 detectFormat이 그것을 고른다", () => {
+    expect(detectFormat(paths, () => TS)?.adapter).toBe("ts-dict");
+  });
+
+  /**
+   * ⚠️ **probe가 없으면 여전히 아무것도 안 낸다.** 경로만으로는 `.ts` 디렉터리가 딕셔너리인지 알 수
+   * 없고, 그 성질이 1패스에서 이 어댑터가 조용한 이유다 — 그 자리를 `tsDictProbePaths`가 맡는다.
+   */
+  it("probe 없이는 후보가 0이다 — 경로만으로는 판단하지 않는다", () => {
+    expect(tsDict.detectCandidates(paths)).toEqual([]);
   });
 
   it("ADAPTERS에는 남아 있다", () => {
