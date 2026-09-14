@@ -37,8 +37,9 @@ export function renderSurfaceWorkflowStep(input: {
 export type WorkflowSurface = {
   surfaceSlug: string;
   pathTemplate: string;
-  /** 수동 지정한 경우에만 — 자동 후보면 탐지가 같은 답을 내므로 고정할 이유가 없다. */
+  /** 수동 지정과 `ts-dict`에만 — 나머지는 탐지가 같은 어댑터를 낸다. */
   adapter?: AdapterName;
+  /** 확정한 기준 언어. **생산자 둘 다 언제나 넣는다** — 생략하면 CI가 탐지 1순위를 보낸다. */
   baseLocale?: string;
 };
 
@@ -86,6 +87,11 @@ export function renderProjectWorkflowYaml(input: {
  * 표면 행 → step 입력. **6b-3의 대기 규칙이 여기 산다** — 선언이 대기 중이면 어댑터와 무관하게
  * `base-locale:`을 박는다. 그 줄이 없으면 CI가 탐지 1순위(= 옛 base)를 보내고 `checkFormat`이
  * 통과시켜, 사용자가 요청한 base 변경이 **영영 일어나지 않는다.** 조용하다.
+ *
+ * ⚠️ **선언이 없어도 저장된 base를 박는다** (2026-09-14 실물 검증). "자동 후보는 탐지가 같은 답을
+ * 낸다"는 전제가 **온보딩 ③에서 사용자가 기준 언어를 고르기 시작한 순간 거짓이 됐다** — 1순위가
+ * 아닌 base를 확정한 표면의 CI는 탐지 1순위를 보내고 `checkFormat`이 409를 낸다. ④는 그 값을
+ * 박는데 이 함수가 생략하면 **같은 프로젝트의 두 화면이 다른 워크플로를 권한다.**
  */
 export function workflowSurfaceOf(surface: {
   slug: string;
@@ -95,7 +101,7 @@ export function workflowSurfaceOf(surface: {
   declaredBaseLocale: string | null;
 }): WorkflowSurface {
   const pending = basePending({ baseLocale: surface.baseLocale, declaredBaseLocale: surface.declaredBaseLocale });
-  const baseLocale = pending ? surface.declaredBaseLocale : surface.adapterName === "ts-dict" ? surface.baseLocale : null;
+  const baseLocale = pending ? surface.declaredBaseLocale : surface.baseLocale;
   return {
     surfaceSlug: surface.slug,
     // 첫 push 전이면 비어 있다 — 그 프로젝트는 아직 CI를 붙이기 전이고 화면이 그렇게 말한다.

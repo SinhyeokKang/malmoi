@@ -53,7 +53,6 @@ import {
 } from "@/lib/onboarding/detect";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
-import { pickBaseLocale } from "@/lib/push/payload";
 import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
@@ -901,8 +900,10 @@ export async function createProject(raw: {
       const resolved = resolveLocalePaths({ ...format, locales: first.payload.locales }, adapterFor(format).layout, paths);
       prepared.push({ id, surface: { surfaceSlug, adapter: format.adapter, pathTemplate: format.pathTemplate, baseLocale: confirmed.baseLocale },
         payload: first.payload, targets: [...targets, ...resolved.map(item => item.path)],
-        workflow: input.manual || format.adapter === "ts-dict" ? { adapter: format.adapter, baseLocale: confirmed.baseLocale }
-          : confirmed.baseLocale !== pickBaseLocale(format.locales) ? { baseLocale: confirmed.baseLocale } : {},
+        // ⚠️ **base는 언제나 박는다** — 설정 화면(`workflowSurfaceOf`)과 같은 규칙이어야 한 프로젝트의
+        // 두 화면이 다른 워크플로를 권하지 않는다. 어댑터는 탐지가 못 맞히는 둘에서만 고정한다.
+        workflow: { ...(input.manual || format.adapter === "ts-dict" ? { adapter: format.adapter } : {}),
+          baseLocale: confirmed.baseLocale },
       });
     } catch (error) {
       logFailure("onboard-prepare", error);
