@@ -109,6 +109,40 @@ describe("probeTargets — 내려받을 blob 경로", () => {
   it("후보가 없으면 빈 배열이다", () => {
     expect(probeTargets([], [])).toEqual([]);
   });
+
+  /**
+   * `ts-dict` 씨앗 (2026-09-14). ⚠️ **앞의 둘과 입력의 성격이 다르다** — jsonLike·codeDict는 1패스가
+   * 만든 **후보 그룹**인데, ts-dict는 1패스에 후보가 없어(내용을 봐야 안다) **리포 경로 전체**를 받아
+   * 여기서 씨앗을 고른다. 이 인자가 없으면 그 어댑터는 화면에 영영 안 뜬다.
+   */
+  it("리포 경로를 주면 ts-dict 씨앗이 목록에 더해진다", () => {
+    const repo = [
+      "src/i18n/namespaces/common.ts",
+      "src/i18n/namespaces/app.ts",
+      "src/sidepanel/lib/util.ts",
+      "src/sidepanel/lib/other.ts",
+    ];
+    const targets = probeTargets([], [], repo);
+    expect(targets).toContain("src/i18n/namespaces/app.ts");
+    expect(targets).toContain("src/i18n/namespaces/common.ts");
+    // i18n 신호가 없는 디렉터리는 안 받는다 — `.ts`는 어디에나 있다.
+    expect(targets.some((p) => p.startsWith("src/sidepanel/"))).toBe(false);
+  });
+
+  it("리포 경로를 안 주면 동작이 그대로다 — 기존 호출부가 안 깨진다", () => {
+    expect(probeTargets([], [])).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **예산은 비용이 아니라 응답 시간이다** — 페이지 `maxDuration`이 60초다. 씨앗이 늘린 몫까지
+   * 합쳐 상한을 넘지 않는 것을 여기서 고정한다(JSON류 5×3 + code-dict 2×3 + ts-dict 2×4 = 29).
+   */
+  it("씨앗을 더해도 blob 상한을 넘지 않는다", () => {
+    const jsonLike = Array.from({ length: 9 }, (_, i) => json(`a${i}/{locale}.json`, ["en", "ko", "ja", "fr"]));
+    const codeDict = Array.from({ length: 5 }, (_, i) => ({ pathTemplate: `c${i}/{locale}.ts`, locales: new Set(["en", "ko", "ja"]) }));
+    const repo = Array.from({ length: 9 }, (_, i) => [`src/i18n/g${i}/a.ts`, `src/i18n/g${i}/b.ts`, `src/i18n/g${i}/c.ts`, `src/i18n/g${i}/d.ts`, `src/i18n/g${i}/e.ts`]).flat();
+    expect(probeTargets(jsonLike, codeDict, repo).length).toBeLessThanOrEqual(29);
+  });
 });
 
 describe("makeProbe — Map을 동기 FileProbe로", () => {
