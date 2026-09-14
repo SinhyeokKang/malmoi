@@ -110,7 +110,12 @@ export const routes = {
    * ⚠️ **`link`가 2026-09-12에 붙었다** (account-linking T5) — 로그인 수단 해제의 결과다. 갈래는
    * 셋(`disconnected`·`last-method`·`unavailable`)이고, 같은 이유로 `withQuery`를 지난다.
    */
-  account: (query: { sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
+  /**
+   * ⚠️ **`e`가 2026-09-14에 붙었다** — 연결 callback이 문자열 연결로 실어 보내던 키이고 이 화면이
+   * 이미 읽고 있었다. 여기 없으면 **머리 Alert의 닫기가 자기 쿼리만 지운 주소를 만들 수 없다**
+   * (하나를 닫을 때 다른 하나까지 지워진다).
+   */
+  account: (query: { e?: string; sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
   /**
    * 병합 안내 화면 (account-linking T2). **challenge는 경로에 있다** — 경로 토큰이라 "표시 전용
    * 힌트"라는 애매한 층이 없고, `/invite/[token]`과 같은 부류다.

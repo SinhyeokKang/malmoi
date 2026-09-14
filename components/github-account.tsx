@@ -75,13 +75,7 @@ function ConnectForm({ slug, label }: { slug: string; label: string }) {
  * ⚠️ 2026-09-09까지 앞의 자리는 `/projects` 목록의 카드였다 — 갈 곳이 없어 거기 얹혀 있었고
  * 6b-4가 사용자 축 라우트를 만들어 옮겼다. `disconnectGithub`의 무효화 범위가 그 이동을 따라간다.
  */
-export function DisconnectGithubButton({ usage = null, onFailure }: {
-  /**
-   * `N projects use this connection.` — **되돌릴 수 없는 결과를 확인 화면에서 말하는 줄**이다.
-   * ⚠️ **`null`이면 그리지 않는다.** 조회 실패와 0을 같은 값으로 접지 않는 것이 이 타입의 요지이고
-   * (0은 말할 수 있는 정보다), 여기 오는 `null`은 **"모른다"**뿐이다.
-   */
-  usage?: number | null;
+export function DisconnectGithubButton({ onFailure }: {
   /**
    * 결과 문구를 바깥이 든다 — **실패는 문자열, 성공은 `null`이다.**
    * ⚠️ **`/account`에서 이 버튼은 리스트 항목의 우측 컨트롤이라** Alert를 형제로 두면 그 클러스터가
@@ -134,9 +128,7 @@ export function DisconnectGithubButton({ usage = null, onFailure }: {
               </DialogClose>
             </>
           }
-        >
-          {usage !== null && m.account.github.usage(usage)}
-        </DialogContent>
+        />
       </Dialog>
       {error !== null && <Alert variant="danger">{error}</Alert>}
     </>

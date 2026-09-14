@@ -21,7 +21,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **해제 실패가 구역 Alert로 올라온다** — 이 버튼은 리스트 항목의 우측 컨트롤이라 형제로 두면
  * 버튼 옆에 서서 행이 무너진다 (`DisconnectGithubButton`의 `onFailure`).
  */
-export function GithubSection({ account, usage }: { account: AccountView; usage: number | null }) {
+export function GithubSection({ account }: { account: AccountView }) {
   const [failure, setFailure] = useState<string | null>(null);
   const connected = account.status === "ok" && account.login !== null;
 
@@ -42,8 +42,7 @@ export function GithubSection({ account, usage }: { account: AccountView; usage:
           account.status === "reauthorize" ? m.settings.account.reauthorize
           : account.status === "unavailable" ? m.settings.account.unavailable
           : !connected ? m.account.github.notConnected
-          // 누르기 전에 이미 보이는 숫자다 — Dialog가 새 정보를 들이밀지 않는다.
-          : m.account.github.connected(usage)
+          : m.account.github.connected
         }
       >
         {/*
@@ -57,7 +56,7 @@ export function GithubSection({ account, usage }: { account: AccountView; usage:
           // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
           <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
         ) : connected ? (
-          <DisconnectGithubButton usage={usage} onFailure={setFailure} />
+          <DisconnectGithubButton onFailure={setFailure} />
         ) : account.status === "ok" ? (
           <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
         ) : undefined}

@@ -491,27 +491,26 @@ export const en = {
       description: "This is write access to your repositories, not a way to sign in.",
       notConnected: "Not connected.",
       /**
-       * 연결된 행의 보조 줄. ⚠️ **집계가 여기와 Dialog 둘에 같은 값으로 선다** — 누르기 전에 이미
-       * 본 숫자라 확인 화면이 새 정보를 들이밀지 않는다.
-       * ⚠️ **`null`이면 숫자 없이 "Connected"만** — 조회 실패와 0을 같은 값으로 접지 않는다.
+       * 연결된 행의 보조 줄.
+       *
+       * ⚠️ **프로젝트 수를 말하지 않는다** (2026-09-14 리뷰 🔴1). 전에는 `Connected · N projects use
+       * this connection`이었는데, 그 N이 세던 것은 **내가 OWNER인 모든 프로젝트**였고 그중 이 연결에
+       * 실제로 의존하는 것은 없었다 — 야간 pull·PR은 App **설치 토큰**이 내고 사용자 토큰을 한 줄도
+       * 안 읽는다. 숫자가 근거가 될 수 없어 걷었다.
        */
-      connected: (count: number | null): string =>
-        count === null ? "Connected"
-        : count === 1 ? "Connected · 1 project uses this connection"
-        : `Connected · ${count} projects use this connection`,
+      connected: "Connected",
       /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
       rowName: "GitHub",
       // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
       confirmDisconnect: "Disconnect GitHub from malmoi?",
-      confirmHint: "malmoi won't be able to read your repositories or open pull requests until you connect again.",
       /**
-       * ⚠️ **이 줄이 해제 Dialog를 붙인 논거다** — 되돌리기가 쉬운 것과 결과가 가벼운 것은 다른
-       * 일이고, 이 해제는 내가 OWNER인 모든 프로젝트의 발송을 멈춘다.
-       * ⚠️ **조회가 실패하면 이 줄을 그리지 않는다** — 0은 말할 수 있는 정보이므로 0과 실패를
-       * 같은 값으로 접지 않는다.
+       * ⚠️ **이 문장이 해제 Dialog를 붙인 논거이고, 2026-09-14까지 거짓이었다** (리뷰 🔴1).
+       * 전 문장은 *"won't be able to read your repositories or open pull requests"* 였는데 **PR은 계속
+       * 열린다** — `selectPullTargets`가 고르고 `lib/github.ts`의 **설치 토큰**이 커밋·PR을 내며,
+       * `ensureUserToken`은 `lib/pull`·`lib/push` 어디에도 없다. 해제가 실제로 막는 것은 **새
+       * 프로젝트에서 리포를 고르는 일과 (재)연결**뿐이고, 그래서 문장이 그 둘만 말한다.
        */
-      usage: (count: number): string =>
-        count === 1 ? "1 project uses this connection." : `${count} projects use this connection.`,
+      confirmHint: "You won't be able to add or reconnect repositories until you connect again. Projects that are already connected keep syncing.",
     },
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
     sessionsSection: {
@@ -1348,10 +1347,10 @@ export const en = {
       "email-mismatch": "The email doesn't match this account. Try an account with the same verified email.",
       "already-connected": "This sign-in method is already added. You can use it to sign in.",
       "taken-by-other": "This sign-in method belongs to another malmoi account. Try a different account.",
-      expired: "This request expired or was replaced. Start again from this card.",
+      expired: "This request expired or was replaced. Start again from the Sign-in methods list.",
       cancelled: "Adding the sign-in method was cancelled. Start again when you're ready.",
       unverified: "No verified email was provided. Verify your email with the provider before trying again.",
-      "wrong-user": "Your session changed during this request. Start again from this card.",
+      "wrong-user": "Your session changed during this request. Start again from the Sign-in methods list.",
       failed: "The sign-in method couldn't be added. Try again in a moment.",
     },
     /** `accessErrorMessage` — `AccessError` 여섯. */
