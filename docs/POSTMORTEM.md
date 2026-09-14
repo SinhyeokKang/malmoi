@@ -1616,3 +1616,19 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: native fieldset의 disabled 전파를 Radix의 이벤트·Portal 상태까지 전파되는 것으로 보았다. Select는 자기 `disabled` 값으로 열기를 막는다. NamingStep에서 Select·RadioGroup으로 `disabled`를 직접 전달했다.
 - **그물**: 병렬 경계 리뷰와 실제 `pointerType: "mouse"`를 붙인 DOM 이벤트가 red→green을 냈다. 기존 `:disabled` 필드 검사와 pointerType 없는 MouseEvent는 둘 다 green이었다 — Radix가 mouse 갈래를 검사하므로 이벤트 이름만 맞춘 테스트는 그 분기에 도달하지 않았다.
 - **재발 방지**: `rg -n 'fieldset|<Select|disabled=' components/onboarding`으로 부모 fieldset와 Radix 컨트롤의 직접 disabled 전달을 대조한다. 새 DOM 케이스 `생성 중 Portal 언어 선택도 열리지 않는다`를 유지한다. 같은 모양의 후속 확인 후보는 기존 Add surface의 fieldset 아래 FilesStep(미리보기·수동 어댑터 Select)이며, 이번 신규 생성 변경에서는 그 정책을 바꾸지 않았다.
+
+### 2026-09-14 — 다중 선택 화면의 "무엇을 읽는가" 안내가 첫 경로만 들었다
+
+- **영역**: `components/onboarding/new-project.tsx` (③ `NamingStep`에 넘기는 `pathTemplate`) · `messages/en.tsx`의 `newProject.naming.info`
+- **증상**: 후보 둘을 체크하고 ③에 들어가면 info가 `Creating the project reads public/_locales/{locale}/messages.json on dev once.` 한 경로만 말했다.
+  실제로는 두 표면을 모두 읽고 두 표면을 모두 적재한다. **틀린 값이 아니라 모자란 값이라 화면만 봐서는 정상으로 읽힌다.**
+- **근본 원인**: ②를 라디오(하나)에서 체크박스(여럿)로 바꾸면서 **상세(`detail`)와 선택(`checked`) 두 축으로 갈랐는데**,
+  컨테이너가 ③에 넘기는 `pathTemplate`은 상세 축(`chosenCandidate?.pathTemplate`)에 그대로 붙어 있었다.
+  두 축을 나눈 커밋이 **"선택"을 읽어야 할 소비자를 전수로 훑지 않았다** — `NamingStep`은 `baseLocale`·`locales`만 표면별로 갈랐다.
+- **그물**: `pnpm test` 3,686건 green — DOM 테스트가 ③의 **라디오 그룹 수·접근 이름·제출 payload**는 세면서 info 문장은 안 봤다.
+  `pnpm typecheck`는 타입이 `string`으로 같아 아무것도 못 본다. **브라우저 실물 검증(T11)에서만 드러났다.**
+- **재발 방지**: 화면 문구가 단수 인자를 받는 자리를 전수로 본다 —
+  `grep -rn "surfaces\[0\]\|candidates\[0\]\|\.pathTemplate ??" components app --include="*.tsx" --include="*.ts" | grep -v __tests__`.
+  2026-09-14 실행 결과 나머지 넷은 전부 단수가 맞다(`add-surface.tsx`는 한 번에 표면 하나가 계약, `surface-selector`·설정 목록은 행 단위,
+  `new-project.tsx:114`는 수동 지정·`sampleKey` 전용). **`naming.info`에는 선택 경로 전부를 요구하는 DOM 테스트를 박았다**
+  (`components/__tests__/new-project.test.tsx` — "③ info는 체크한 모든 경로를 말한다").
