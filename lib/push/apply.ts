@@ -12,8 +12,14 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * Add surface에서는 생성과 적재가 같은 트랜잭션이어야 한다. 이미 열린 TransactionClient를
- * 받으면 중첩 트랜잭션을 열지 않고 그 연결에서 문장을 순서대로 실행한다.
+ * ⚠️ **진입점이 둘이고, 트랜잭션을 여는 쪽은 하나다.** `applyPush`는 배열형 `$transaction([...])`으로
+ * 한 번에 배치를 보낸다 — 왕복이 문장 수만큼 쌓이지 않는다(도쿄 리전 고정 비용, POSTMORTEM 2026-09-09).
+ * `applyPushInTransaction`은 **이미 열린 tx**를 받아 그 연결에서 문장을 순서대로 실행한다. Add surface가
+ * Surface 생성과 첫 적재를 한 트랜잭션에 묶어야 해서다(첫 적재가 실패하면 표면이 안 생긴다 — 완료 조건 1).
+ *
+ * ⚠️ **`"$transaction" in prisma` 같은 런타임 판별로 둘을 합치지 않는다.** proxy를 오판해 중첩
+ * 트랜잭션을 열었고, 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다려 멈췄다
+ * (POSTMORTEM 2026-09-14). 어느 모양인지는 **호출부가 안다** — 그래서 함수를 나눈다.
  *
  * ⚠️ **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨
  * 문장 하나가 전체를 처리한다.

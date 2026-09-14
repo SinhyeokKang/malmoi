@@ -979,11 +979,9 @@ export async function addSurface(raw: {
 }): Promise<AddSurfaceResult> {
   const parsed = z.object({ slug: z.string().min(1).max(40), adapter: z.string(),
     pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) }).safeParse(raw);
-  if (!parsed.success || !isAdapterName(parsed.data.adapter) || !isPathSafeLocale(parsed.data.baseLocale)) {
-    return { ok: false, error: "invalid input" };
-  }
+  if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
+  if (!isAdapterName(input.adapter) || !isPathSafeLocale(input.baseLocale)) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
   const prisma = getPrisma();

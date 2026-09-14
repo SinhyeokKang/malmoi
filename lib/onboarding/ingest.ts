@@ -38,26 +38,26 @@ export type FirstIngestResult = {
 };
 
 export type FirstSnapshotInput = {
-    projectId: string;
-    surfaceId: string;
-    surfaceSlug: string;
-    startedAt: Date;
-    projectSlug: string;
-    format: DetectedFormat;
-    baseLocale: string;
-    headSha: string;
-    /** base head 커밋의 시각. ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4). */
-    headCommittedAt: string;
-    /** 스냅샷의 트리 경로 전부. `selectLocaleFiles`가 여기서 실재하는 파일만 고른다. */
-    paths: readonly string[];
-    /**
-     * **내려받기를 시도한 로케일 파일 경로**(`ingestTargets`의 결과). 여기 있는데 `blobs`에 없으면
-     * 다운로드가 실패한 것이고, 그것은 "리포에 없음"과 **다르다** — 접으면 12개 중 3개가 5xx로 빠져도
-     * 화면이 "N개 키를 적재했어요"를 쓴다 (code-review 2026-09-07 🔴1 · 불변식 9).
-     */
-    targets: readonly string[];
-    /** 내려받은 로케일 파일의 내용. */
-    blobs: ReadonlyMap<string, string>;
+  projectId: string;
+  surfaceId: string;
+  surfaceSlug: string;
+  startedAt: Date;
+  projectSlug: string;
+  format: DetectedFormat;
+  baseLocale: string;
+  headSha: string;
+  /** base head 커밋의 시각. ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4). */
+  headCommittedAt: string;
+  /** 스냅샷의 트리 경로 전부. `selectLocaleFiles`가 여기서 실재하는 파일만 고른다. */
+  paths: readonly string[];
+  /**
+   * **내려받기를 시도한 로케일 파일 경로**(`ingestTargets`의 결과). 여기 있는데 `blobs`에 없으면
+   * 다운로드가 실패한 것이고, 그것은 "리포에 없음"과 **다르다** — 접으면 12개 중 3개가 5xx로 빠져도
+   * 화면이 "N개 키를 적재했어요"를 쓴다 (code-review 2026-09-07 🔴1 · 불변식 9).
+   */
+  targets: readonly string[];
+  /** 내려받은 로케일 파일의 내용. */
+  blobs: ReadonlyMap<string, string>;
 };
 
 export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
@@ -69,7 +69,14 @@ export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnap
   return prepared.result;
 }
 
-/** 파싱·예산 판정은 순수 준비 단계이고, 호출부가 생성과 적재의 트랜잭션 범위를 정한다. */
+/**
+ * 파싱·예산 판정은 순수 준비 단계이고, 호출부가 생성과 적재의 트랜잭션 범위를 정한다 —
+ * Add surface는 Surface 생성과 같은 tx에 실어야 한다 (`lib/surfaces/create.ts`).
+ *
+ * ⚠️ **`failed`를 적재 *앞에서* 센다.** 결과가 적재와 **같은 트랜잭션**에 실려야 빠진 파일이 있을 때
+ * 데이터는 들어간 채 `partial-import`가 남는다 (projects-list design §3.35 · 불변식 9는 "숨기지 마라"이지
+ * "지워라"가 아니다). 그래서 이 함수는 판정만 하고 `importOutcome` 결정을 호출부에 넘긴다.
+ */
 export function prepareFirstSnapshot(input: FirstSnapshotInput) {
   // 내려받지 못한 파일은 **실패로 센다.** 빈 내용을 먹이면 그 로케일의 키를 통째로 잃고, 조용히 빼면
   // 성공 문구가 나간다 — 둘 다 값이 사라진 것을 사용자가 모른다.
