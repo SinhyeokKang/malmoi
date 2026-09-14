@@ -331,7 +331,12 @@ it("수단 해제의 확정 버튼이 Action에 닿는다", async () => {
  * 먼저 끝난 쪽의 `finally`가 **남의 스피너까지 끈다** — 둘 다 쉬는 것처럼 보이는 채로 삭제가 돈다.
  */
 it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => {
-  accountActions.uploadProfileImage.mockReturnValue(new Promise(() => {}));
+  /**
+   * ⚠️ **`Once`다** — `beforeEach`의 `clearAllMocks`는 호출 기록만 지우고 구현은 되돌리지 않아서,
+   * 영영 안 풀리는 promise를 `mockReturnValue`로 두면 뒤따르는 테스트가 그것을 물려받아 **실패가
+   * 아니라 행으로** 멈춘다 (2026-09-14 2차 리뷰 R6).
+   */
+  accountActions.uploadProfileImage.mockReturnValueOnce(new Promise(() => {}));
   // 사진이 있어야 [Delete]가 애초에 활성이다 — 없으면 `hasPicture`만으로 비활성이라 검사가 공회전한다.
   const container = await screen({}, undefined, undefined, "https://images.example/a.png");
   const file = container.querySelector<HTMLInputElement>("input[type='file']")!;
@@ -341,6 +346,30 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
   const remove = [...container.querySelectorAll("button")]
     .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
   expect(remove.hasAttribute("disabled")).toBe(true);
+  /**
+   * ⚠️ **막기만 하면 절반이다** — 스피너가 이 버튼에 없으므로, 사유가 없으면 스크린리더에는
+   * *"…, 버튼, 사용 불가"*까지만 들린다. 참조가 **끊기지 않았는지**까지 센다.
+   */
+  const reason = container.ownerDocument.getElementById(remove.getAttribute("aria-describedby")!);
+  expect(reason?.textContent).toBe(m.account.picture.busy);
+});
+
+/**
+ * ⚠️ **반대 방향도 같은 `pending`을 공유한다.** 구현상 대칭이지만 방어선이 한쪽만 들면 다음
+ * 리팩터가 한쪽을 되돌려도 green이다 (2026-09-14 2차 리뷰 R5).
+ */
+it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => {
+  accountActions.deleteProfileImage.mockReturnValueOnce(new Promise(() => {}));
+  const container = await screen({}, undefined, undefined, "https://images.example/a.png");
+  const remove = [...container.querySelectorAll("button")]
+    .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
+  await act(async () => { remove.click(); });
+
+  const upload = [...container.querySelectorAll("button")]
+    .find((button) => (button.textContent ?? "").trim() === m.account.picture.upload)!;
+  expect(upload.hasAttribute("disabled")).toBe(true);
+  // 숨은 `<input>`도 함께 막힌다 — 버튼만 막으면 키보드로 파일 대화상자가 열린다.
+  expect(container.querySelector("input[type='file']")!.hasAttribute("disabled")).toBe(true);
 });
 
 /**
@@ -352,15 +381,23 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
  * 닫을 때 **그 쿼리만 지운 주소로 replace**하면 다음 실패가 `/account` → `/account?link=…`라는
  * 실제 이동이 되어 컴포넌트가 새로 마운트된다.
  */
-it("머리 Alert를 닫으면 그 쿼리만 지운 주소로 replace한다", async () => {
+it("수단 해제 실패를 닫으면 그 쿼리만 지운 주소로 replace한다", async () => {
   const container = await screen({ e: "unavailable", link: "unavailable" });
-  const dismiss = container.querySelector<HTMLButtonElement>("[role='alert'] button")!;
-  await act(async () => { dismiss.click(); });
+  const [first, second] = [...container.querySelectorAll<HTMLButtonElement>("[role='alert'] button")];
+  /**
+   * ⚠️ **`?e=`는 `replace`를 타지 않는다** — 연결 callback의 하드 내비게이션으로만 오므로 지역
+   * 상태로 충분하고, 붙이면 닫기가 서버 재렌더를 태워 GitHub 조회가 한 번 더 돈다
+   * (2026-09-14 2차 리뷰 R4). 여기서 그 비대칭을 고정한다.
+   */
+  await act(async () => { first!.click(); });
+  expect(router.replace).not.toHaveBeenCalled();
+
+  await act(async () => { second!.click(); });
   expect(router.replace).toHaveBeenCalledTimes(1);
   const [target] = router.replace.mock.calls[0] as [string];
   // 자기 쿼리만 지운다 — 둘이 함께 왔을 때 하나를 닫으면 다른 하나가 화면에서 사라진다.
-  expect(target).toContain("link=unavailable");
-  expect(target).not.toContain("e=unavailable");
+  expect(target).toContain("e=unavailable");
+  expect(target).not.toContain("link=");
 });
 
 /**

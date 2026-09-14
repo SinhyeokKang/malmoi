@@ -116,10 +116,13 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
             ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
             버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
-            ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 왕복에서 돌아온 일회성 사유라 치울 수 있다.
-            구역 Alert는 그 구역의 현재 상태라 치우면 상태가 사라진 것처럼 보인다.
+            ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 위 판정 주석의 축 그대로다: 여기 서는 둘은
+            **다시 시도할 컨트롤이 이 화면에 없다.** 구역 Alert는 바로 옆 컨트롤을 다시 누르는 것이
+            다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
+            않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
           */}
-          {notice !== null && <DismissibleAlert href={routes.account({ sessionRevocation, link, connect })}>{notice}</DismissibleAlert>}
+          {/* ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다. */}
+          {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
           {unlinkFailure !== null && <DismissibleAlert href={routes.account({ e, sessionRevocation, connect })}>{unlinkFailure}</DismissibleAlert>}
         </div>
       </PanelHeader>

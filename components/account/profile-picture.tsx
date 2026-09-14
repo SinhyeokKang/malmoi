@@ -75,7 +75,12 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
           variant="ghost"
           // 위와 같은 이유 — 업로드가 도는 동안 [Delete]가 활성이면 스피너가 자리를 옮긴다.
           disabled={!hasPicture || pending}
-          aria-describedby={hasPicture ? undefined : reasonId}
+          /**
+           * ⚠️ **막는 이유가 둘이고 둘 다 사유를 들어야 한다.** `hasPicture`만 보면 **업로드가 도는
+           * 동안 비활성 + 스피너 없음 + 사유 없음**이 되고, 그 상태는 `structure.test.tsx`의 감사가
+           * 도는 버튼을 `.animate-spin`으로 거르는 필터에도 안 걸린다 (2026-09-14 2차 리뷰 R5).
+           */
+          aria-describedby={hasPicture && !pending ? undefined : reasonId}
           loading={pending && running === "delete"}
           onClick={() => {
             setFailure(null);
@@ -92,8 +97,16 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
         >
           {m.account.picture.delete}
         </Button>
-        {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** — 왜 못 누르는지가 옆에 선다. */}
-        {!hasPicture && <span id={reasonId} className="text-muted-foreground text-xs">{m.account.picture.noPicture}</span>}
+        {/*
+          ⚠️ **사유 없는 `disabled`를 만들지 않는다** — 왜 못 누르는지가 옆에 선다.
+          ⚠️ **속성과 이 `<span>`이 같은 조건을 봐야 한다** — 갈리면 `aria-describedby`가 없는 id를
+          가리키고, 그 참조는 접근성 트리에서 **조용히 아무것도 아니다**.
+        */}
+        {(!hasPicture || pending) && (
+          <span id={reasonId} className="text-muted-foreground text-xs">
+            {hasPicture ? m.account.picture.busy : m.account.picture.noPicture}
+          </span>
+        )}
       </div>
       <p className="text-muted-foreground text-xs">{m.account.picture.caption}</p>
       {failure !== null && <Alert variant="danger">{failure}</Alert>}

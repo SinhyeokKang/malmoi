@@ -562,6 +562,12 @@ export const en = {
       caption: "PNG or JPEG, up to 800 KB. Uploaded as-is.",
       /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
       noPicture: "You haven't added one yet.",
+      /**
+       * ⚠️ **막는 이유가 둘이라 문구도 둘이다** (2026-09-14 2차 리뷰 R5). 둘은 **사진이 없다**와
+       * **다른 하나가 돌고 있다**이고, 뒤의 것은 스피너가 **이 버튼에 없으므로** 화면에도 접근성
+       * 트리에도 아무 설명이 없었다 — 스크린리더에는 *"…, 버튼, 사용 불가"*까지만 들린다.
+       */
+      busy: "Wait for the current upload to finish.",
     },
   },
 
