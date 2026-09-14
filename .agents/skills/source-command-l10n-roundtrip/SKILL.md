@@ -13,7 +13,8 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 ## 사용
 
-- `/l10n-roundtrip <project-slug>` — 그 프로젝트로 한 바퀴.
+- `/l10n-roundtrip <project-slug> --surface <slug> --path-template <template>` — 지정 표면으로 한 바퀴.
+- 두 표면 검증은 `--surface`·`--path-template` 쌍을 둘 지정하고, 각 표면 push·편집 뒤 Publish를 **한 번만** 한다.
 - `/l10n-roundtrip <project-slug> --dry` — **PR을 만들지 않고** 렌더 결과만 원본과 비교한다 (1·2단계까지).
 
 ## 언제 쓰나
@@ -28,7 +29,10 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
 2. **`Project` 행이 있고 `installationId`가 채워져 있다.** GitHub App이 계정 전체(`all`)에 설치돼 있어도 설치 id는 컬럼에 있어야 한다.
-3. **그 리포를 가리키는 `Project`가 하나뿐이다.** 둘이면 `malmoi-i18n/sync`를 force update로 다툰다 — 한 리포에 두 포맷이 있으면 **순차로** 검증한다.
+3. **대상 Project와 활성 Surface의 소유권을 확인한다.** 한 리포에 Project가 여럿 있어도 sync branch는
+   `malmoi-i18n/sync-<project-slug>`로 분리된다. 이번 검증에 다른 프로젝트의 cron·Publish가 끼어 같은
+   base 파일을 바꾸지 않게 하고, 한 Project의 두 표면은 비중첩 path-template으로 등록한다.
+   동일 key/locale 이름은 허용한다. 권한·토큰·PR은 Project, 적재·편집 대상은 Surface다.
 4. **워킹 트리가 clean하고 `pnpm test`가 green이다.** 깨진 코드로 실물 PR을 내지 않는다.
 
 ## 절차
@@ -40,7 +44,7 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 - **`PUSH_TOKEN`은 그 명령에만 넘긴다 — `.env.local`을 편집하지 않는다.**
 
   ```
-  PUSH_TOKEN='<대상 프로젝트의 토큰 원문>' pnpm push:local <리포 경로> --adapter <name> --project <slug>
+  PUSH_TOKEN='<대상 프로젝트의 토큰 원문>' pnpm push:local <리포 경로> --adapter <name> --project <slug> --surface <surface-slug> --path-template <template>
   ```
 
   ⚠️ **`.env.local`은 에이전트가 편집하지 않는다** (CLAUDE.md 새 머신 셋업 3). 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다 — 2026-09-04에 실제로 유출돼 전면 재발급했다. **이 스킬이 전에 그 편집과 원복을 지시하고 있었다**(2026-09-13, Codex 하네스 검토 지적 2). 원복을 잊으면 파일이 틀린 값으로 남는 문제까지 덤이었다.
@@ -50,14 +54,14 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 - 토큰 원문은 프로젝트 설정 화면에서 발급한다. **페이로드 slug가 그 토큰의 프로젝트와 다르면 409다.**
 - 값을 셸 변수로 export하지 않는다 — 그 세션의 다른 명령까지 따라간다. **명령 하나 앞에만 붙인다.**
 - **프로덕션 env를 검증 때문에 바꾸지 않는다** — 애초에 바꿀 변수가 없다.
-- `pnpm push:local`은 `--project <slug>`가 **필수**다.
+- `pnpm push:local` 검증 명령은 project·surface·path-template 셋을 모두 명시한다. 최초 표면도 default라고 추정하지 않는다.
 
 `pnpm smoke:github <slug>`로 App 토큰 → base head → 트리 → 글롭 매칭을 먼저 확인한다. 여기서 실패하면 나머지가 무의미하다.
 
 ### 1. push — 리포 → DB
 
 ```
-PUSH_TOKEN='<대상 프로젝트의 토큰 원문>' pnpm push:local <리포 경로> --adapter <name> --project <slug>
+PUSH_TOKEN='<대상 프로젝트의 토큰 원문>' pnpm push:local <리포 경로> --adapter <name> --project <slug> --surface <surface-slug> --path-template <template>
 ```
 
 ⚠️ **`--adapter`를 명시한다.** 자동 탐지는 후보 중 하나를 고르고 **조용히 작은 쪽으로 떨어진다** — `bugshot-i18n-test`에서 `_locales`(4키)가 `ts-dict`(903키)를 이겼다(2026-09-03 실측). 에러가 나지 않으므로 키 수를 눈으로 확인한다.
@@ -78,7 +82,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 - **`committed`가 나오면 중단한다.** write가 원본을 정규화하고 있다 — 그 상태로 진행하면 PR이 전 파일 재작성으로 나온다.
 - `no-edits`는 1층 스킵이라 이 게이트를 통과한 게 아니다. `lastPulledAt`이 이미 최신이면 그렇게 나오므로, 그때는 아래 드라이런으로 확인한다.
 
-**드라이런**(PR 없이 확인, `--dry`는 여기까지): `loadPullState` → `formatFromProject` → `resolveLocalePaths` → `renderLocaleFiles`를 로컬 파일을 원본으로 삼아 부르고 `blobSha`로 원본과 비교한다. 파일별로 `=`/`≠`와 `lib/survey/diff.ts`의 `changedHunks`를 찍는다. 스크립트는 `.scratch/`에 쓴다(gitignore).
+**드라이런**(PR 없이 확인, `--dry`는 여기까지): `loadPullState` → 활성 표면별 `formatFromProject` → `resolveLocalePaths` → `renderLocaleFiles` → `planMultiSurfacePull`을 로컬 파일을 원본으로 삼아 부르고 `blobSha`로 원본과 비교한다. 파일별로 `=`/`≠`와 `lib/survey/diff.ts`의 `changedHunks`를 찍는다. 스크립트는 `.scratch/`에 쓴다(gitignore).
 
 ### 3. 편집 → pull
 
@@ -86,10 +90,11 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 
 **보존이 깨지기 쉬운 자리를 일부러 고른다**: 여러 줄로 감긴 값, YAML 접힌 스칼라(`>`), 주석 바로 옆 줄, 작은따옴표 리터럴. 값에 `'`·`"`·백슬래시를 섞으면 이스케이프까지 본다.
 
-편집은 Prisma 직접 쓰기로 한다 (`saveTranslation` 경로는 `app/(edit)/__tests__/edit-flow.test.ts`가 덮는다). **원래 값을 파일로 남겨** 되돌릴 수 있게 한다.
+두 표면이면 각각 최소 1건을 편집하고 같은 key/locale의 상대 표면 값은 그대로인지 확인한다.
+편집은 projectId + surfaceId + keyId + localeCode로 좁힌 Prisma 직접 쓰기로 한다 (`saveTranslation` 경로는 `app/(edit)/__tests__/edit-flow.test.ts`가 덮는다). **원래 값을 파일로 남겨** 되돌릴 수 있게 한다.
 
 **게이트 셋**:
-1. `changed` 배열에 **편집한 키가 속한 파일만** 있다
+1. 두 표면도 tree·commit·PR·SyncRun이 프로젝트당 하나이며 `changed` 배열에 **편집한 키가 속한 파일만** 있다
 2. PR이 `+N -N` 대칭이고 **hunk 수 = 편집한 키 수**
 3. diff를 눈으로 본다 — 주석·빈 줄·키 순서·인용 부호·블록 스타일이 살아 있는가
 
@@ -105,12 +110,13 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 
 머지 뒤 확인할 것:
 - `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다)
-- `malmoi-i18n/sync` 브랜치가 삭제됐다
-- **재pull이 `no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다
+- `malmoi-i18n/sync-<project-slug>` 브랜치가 삭제됐다
+- checkout을 merge head로 갱신하고 두 표면을 각각 다시 push해 편집 값·구조·표현이 유지되는지 확인한다
+- 값 불변 재push 뒤 첫 pull은 `no-changes`(2층), 즉시 재pull은 **`no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다
 
 ### 5. (선택) CI 방향 — 대상 리포에 워크플로가 붙어 있을 때만
 
-`docs/ACTIONS.md`를 따라 붙인다. `[skip-malmoi-i18n]` 커밋이 스킵되는지, 열린 `malmoi-i18n/sync` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
+`docs/ACTIONS.md`를 따라 붙인다. `[skip-malmoi-i18n]` 커밋이 스킵되는지, 열린 `malmoi-i18n/sync-<project-slug>` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
 
 ✅ **두 리포의 CI를 동시에 받을 수 있다** (2026-09-07 — 토큰이 프로젝트를 정한다). 각 대상 리포의 secret `PUSH_TOKEN`이 **그 프로젝트의 토큰**이면 된다. CI 층 자체는 어댑터와 무관하므로, 어댑터 검증이 목적이면 이 단계를 건너뛴다.
 
@@ -119,10 +125,11 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 - **`.env.local` 원복은 할 일이 없다** — 토큰을 명령 앞에만 붙였으므로 그 프로세스와 함께 사라진다. 원복 단계가 있었다는 것은 파일을 고쳤다는 뜻이고, 그 자체가 지적 2의 사고 경로다.
 - 검증용으로 발급한 토큰을 **회수한다** — 설정 화면에서 재발급하면 옛 토큰이 즉시 무효다
 - **셸 히스토리를 확인한다.** 명령 앞에 토큰을 붙였으므로 `HISTFILE`에 원문이 남는다. 회수했으면 무효한 문자열이지만, 회수 전에 세션이 끝나면 유효한 값이 파일로 남는다 — 회수를 이 단계에서 **먼저** 한다.
-- 검증용으로 만든 `Project` 행·키·번역을 지운다
+- 이번에 만든 일회성 `Project`만 정리한다. **상주 `bugshot-i18n-test-qa`와 그 표면·번역은 보존한다.**
+  TRUNCATE 또는 프로젝트 전건 삭제는 하지 않는다.
 - dev 서버 종료
 - 편집을 되돌릴지 판단: PR을 머지했으면 DB와 리포가 일치하므로 그대로 둔다. **머지하지 않았으면 원복한다**
-- 실물 리포에 실수로 낸 PR이 있으면 닫고 `malmoi-i18n/sync`를 삭제한다
+- 실물 리포에 실수로 낸 PR이 있으면 닫고 `malmoi-i18n/sync-<project-slug>`를 삭제한다
 - `.scratch/` 임시 스크립트 정리
 - `next-env.d.ts`가 `pnpm dev`로 바뀌었으면 `git checkout`
 
@@ -130,7 +137,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 
 ```
 🔄 l10n-roundtrip: <slug> (<adapter>, <키>키 <로케일>로케일)
-전제: 폐기용 리포 <repo> / Project 단일 / smoke:github OK
+전제: 폐기용 리포 <repo> / Project·Surface·경로 소유권 확인 / smoke:github OK
 1 push:       200 — <n>키 / <n>번역 / <n>refs
 2 바이트 고정점: no-changes ✅ / ❌ (committed — 중단)
 3 편집 <n>건:  PR #<n> +<a> -<b> / <n>파일, hunk <n>
