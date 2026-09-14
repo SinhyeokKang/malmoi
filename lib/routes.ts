@@ -132,6 +132,7 @@ export const routes = {
     withQuery(`/projects/${slug}/translations`, query),
   surfaceTranslations: (slug: string, surfaceSlug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/surfaces/${surfaceSlug}/translations`, query),
+  addSurface: (slug: string): string => `/projects/${slug}/surfaces/new`,
   surfaceLocales: (slug: string, surfaceSlug: string): string => `/projects/${slug}/surfaces/${surfaceSlug}/locales`,
   /**
    * 프로젝트 진입의 **착지점** (PRODUCT §7.7 결정 1 — 6b-6). "프로젝트로 간다"를 뜻하는 자리가 전부

@@ -14,6 +14,7 @@ export type KeyRefRow = {
 
 /** 한 로케일의 번역 셀. 테이블의 한 칸이다. */
 export type Cell = {
+  surfaceArchivedAt?: Date | null;
   value: string | null;
   needsReview: boolean;
   updatedBy: string | null;

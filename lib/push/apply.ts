@@ -20,7 +20,7 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
  *
  * ⚠️ **트랜잭션은 하나다.** 전에는 둘이었다 — 키 id를 확보하려고 중간에 `findMany`를 한 번 더
  * 쳤기 때문이다. 두 번째가 실패하면 키·orphaned·needsReview만 새 상태이고 번역·refs·
- * `Project.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
+ * `TranslationSurface.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
  * (`randomUUID` — `@default(cuid())`는 raw SQL에 오지 않는다) 그 값을 들고 있으면 조회가 없어진다.
  *
  * 클라이언트를 **주입받는다** — DB 연결은 진입점이 소유하고 이 층은 같은 트랜잭션에 실을 쓰기만 정한다.
@@ -63,7 +63,7 @@ export type ApplyOptions = {
   /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
   startedAt: Date;
   /**
-   * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
+   * 이 push **전의** `TranslationSurface.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
    * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
    *
    * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를

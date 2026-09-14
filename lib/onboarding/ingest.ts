@@ -17,7 +17,7 @@ import { makeProbe } from "./detect";
  * ```
  * assemblePushInput  → selectLocaleFiles + adapter.read + base 판정 (CLI와 같은 함수)
  * buildPushPayload   → 페이로드의 유일한 생산자
- * applyPush          → 키·번역·refs·lastCommit* 를 한 배열형 트랜잭션으로
+ * applyPush / applyPushInTransaction → 키·번역·refs·lastCommit* 를 한 트랜잭션으로
  * ```
  *
  * ⚠️ **셋을 우회하지 않는다.** 리터럴로 조립했다가 필수 필드가 늘어도 컴파일러가 침묵한 전례가 있고

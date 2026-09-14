@@ -10,6 +10,7 @@ import { ReconnectButton } from "@/components/reconnect-button";
 import { RepositoryForm } from "@/components/settings/repository-form";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -193,6 +194,15 @@ export default async function SettingsPage({
               </Alert>
             )}
             <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
+          </Card>
+
+          <Card title={m.surfaces.title}>
+            <div className="space-y-3">
+              {project.surfaces.map(surface => <div key={surface.id} className="flex items-center justify-between gap-3">
+                <ButtonLink variant="link" className="text-mono" href={routes.surfaceTranslations(slug, surface.slug)}>{surface.pathTemplate ?? surface.slug}</ButtonLink>
+              </div>)}
+              {project.archivedAt === null && <ButtonLink href={routes.addSurface(slug)}>{m.surfaces.add}</ButtonLink>}
+            </div>
           </Card>
 
           <Card title={m.settings.token.title}>

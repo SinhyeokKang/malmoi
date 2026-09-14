@@ -587,7 +587,7 @@ export function createHarness(seed: Seed = {}) {
    * slug 충돌·토큰 조회 경로를 **재현할 수조차 없다** (POSTMORTEM 2026-09-05). NULL은 unique에 걸리지 않는다.
    */
   const createProject = vi.fn(async (args: { data: Omit<ProjectSeed, "id"> & { id?: string } & Record<string, unknown> }) => {
-    // `id @default(cuid())` — 실 호출은 id를 생략한다. 가짜가 undefined를 저장하면 이어지는 `projectMember.create({ projectId })`도
+    // 실 호출은 defaultSurface 복합 FK의 공유 id를 명시한다. 가짜도 undefined를 저장하면 `projectMember.create({ projectId })`가
     // undefined가 되고 `findMember`의 대조가 `undefined === undefined`로 항상 참이다 (code-review 2026-09-07 🟡1).
     const id = args.data.id ?? `p-${projects.length + 1}`;
     const hash = args.data.pushTokenHash ?? null;
@@ -1011,6 +1011,7 @@ export function createHarness(seed: Seed = {}) {
           .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
           .map((k) => ({
             ...k,
+            surface: surfaces.find(s => s.id === k.surfaceId),
             translations: translations
               .filter((t) => t.keyId === k.id)
               .map((t) => ({

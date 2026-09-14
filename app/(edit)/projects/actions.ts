@@ -928,6 +928,8 @@ export async function createProject(raw: {
 
       const project = await tx.project.create({
         data: {
+          // id가 nullable defaultSurface 복합 FK에도 쓰여 Prisma 7.10이 cuid 기본값을 누락한다.
+          id: randomUUID(),
           slug: input.slug,
           name: input.name,
           // 이름은 **probe가 준 현재 값**이다 — 리네임된 리포도 지금 이름으로 붙는다.
