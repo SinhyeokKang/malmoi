@@ -236,14 +236,15 @@ it("세션 만료 후 Back을 눌러도 차단 상태를 지우지 않는다", a
   expect(document.body.textContent).toContain("Sign in again");
 });
 
-it("④의 적재 세션 만료는 토큰을 보존하고 이동을 막는다", async () => {
-  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main" });
-  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "unauthorized" });
-  await files();
-  await click(button("Next"));
+it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적재를 호출하지 않는다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main", count: 2, surfaces: [], yaml: "server-workflow" });
+  await naming();
   await click(button("Create project"));
   expect(document.body.textContent).toContain("test-token");
-  expect(button("Start translating").disabled).toBe(true);
+  expect(document.body.textContent).toContain("Imported 2 keys.");
+  expect(document.body.textContent).toContain("server-workflow");
+  expect(button("Start translating").disabled).toBe(false);
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled();
   expect(mocks.router.refresh).not.toHaveBeenCalled();
 });
 
@@ -313,14 +314,13 @@ it("생성 중 입력을 바꿔 이전 제출의 거부를 새 입력에 붙이�
   expect(field("project-slug").matches(":disabled")).toBe(false);
 });
 
-it("생성 후 세션 만료 문구는 프로젝트가 없다고 말하지 않는다", async () => {
-  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main" });
-  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "unauthorized" });
-  await files();
-  await click(button("Next"));
+it("응답 유실은 미생성을 단정하지 않고 목록 확인을 안내한다", async () => {
+  mocks.createProject.mockRejectedValue(new Error("response lost"));
+  await naming();
   await click(button("Create project"));
   expect(document.body.textContent).not.toContain("nothing has been created");
-  expect(document.body.textContent).toContain("Sign in again");
+  expect(document.body.textContent).toContain("Check your project list");
+  expect(mocks.createProject).toHaveBeenCalledTimes(1);
 });
 
 it("인가 거부 판정은 일시 장애·입력 오류와 구별된다", () => {
@@ -587,4 +587,16 @@ it("② 후보 0개 빈 상태가 설명을 든다 — 그 문장이 좌측 힌�
   expect(text).toContain("Setting a path clears the selection above.");
   // 뒷문장은 우측에만 있다 — 좌측 힌트가 그것을 다시 들면 두 번 나온다.
   expect(text.split("If no file matches, the project isn't created.")).toHaveLength(2);
+});
+
+it("생성 거부는 경로와 실패 수를 보이고 생성 완료 전에는 ③에 머문다", async () => {
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming(); await input(field("project-name"), "Keep me"); await click(button("Create project"));
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(document.body.querySelector('[role="status"]')).not.toBeNull();
+  await act(async () => pending.resolve({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json", failed: 2, errors: [] } }));
+  expect(field("project-name").value).toBe("Keep me");
+  expect(document.body.textContent).toContain("Nothing was created");
+  expect(document.body.textContent).toContain("2");
+  expect(document.body.textContent).toContain("i18n/{locale}.json");
 });
