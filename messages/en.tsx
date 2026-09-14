@@ -44,6 +44,12 @@ export const en = {
     /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
     close: "Close",
     dismiss: "Dismiss",
+    /**
+     * 셸의 패널 구분선 — 글자가 하나도 없는 컨트롤이라 이름이 여기서만 나온다.
+     * ⚠️ `role="separator"`는 이름이 없으면 스크린리더에 "separator"로만 읽혀 좌우 어느 쪽을
+     * 움직이는지 말하지 못한다. 라이브러리는 이름을 만들어 주지 않는다.
+     */
+    resizeSidebar: "Resize sidebar",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -689,6 +695,8 @@ export const en = {
     files: {
       /** ② 좌측 후보 목록의 그룹 이름. */
       candidates: "Locale file candidates",
+      /** ② 좌 후보 목록 ↔ 우 미리보기 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다. */
+      resize: "Resize file list",
       include: (path: string) => `Include ${path}`,
       previewCandidate: (path: string) => `Preview ${path}`,
       conflicts: "These selections write to the same files. Uncheck a selection to continue.",
