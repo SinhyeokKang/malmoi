@@ -141,6 +141,8 @@ components/
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
                         projects-screen · signin-screen · segmented-control(jsdom 렌더) · auth-toast ·
+                        settings-screen(워크플로 YAML이 활성 표면 전부를 드는지 — 비기본 표면의
+                        step을 다시 볼 자리가 그 화면뿐이다) ·
                         multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
                         new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
 ```
