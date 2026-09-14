@@ -76,7 +76,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 19개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 20개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -87,6 +87,7 @@ components/
                         ⚠️ file-input(19번째)의 <input type="file">은 tabIndex={-1} + aria-hidden이다 —
                         type="hidden"이 될 수 없는 태그라 포커스 대상에서 빼고 보이는 컨트롤을 Button에
                         맡긴다. 링을 숨은 input에 붙이면 보이지도 않는 요소가 링을 들고 검사만 green이다
+  ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
                         ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
@@ -119,7 +120,7 @@ components/
   onboarding/add-surface.tsx  FilesStep 재사용·수동 확인·추가 step 결과, 입력 실패 보존
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
-                        명시돼 있어야 한다(브랜치·리포·후보 변경)
+                        명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
   projects/locale-meter.tsx
                         행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
@@ -220,6 +221,8 @@ lib/
                         아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
                         "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
+  onboarding/select-surfaces.ts
+                        체크 후보를 탐지 순서로 제출하고 slug·출력 충돌을 계산하는 클라이언트 잎
   onboarding/next-enabled.ts
                         design §4의 상태 표를 코드로. ⚠️ lib/ 아래 잎이다 — components/ 아래면
                         "use client" 그래프에 들어가 타입-온리 제약이 이 모듈까지 따라온다
