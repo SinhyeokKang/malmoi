@@ -168,6 +168,14 @@ async function runFlow(options: {
 }
 
 describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
+  it("every inserted child receives the authorized surface id", async () => {
+    const { captured } = await runFlow();
+    for (const table of ["Locale", "StringKey", "Translation"]) {
+      const cols = columnsOf(stmt(captured, `INSERT INTO "${table}"`));
+      expect(cols["surfaceId"]).toBeDefined();
+      expect(new Set(cols["surfaceId"])).toEqual(new Set(["surface-1"]));
+    }
+  });
   it("키의 모든 필드가 SQL 인자까지 도착한다", async () => {
     const { captured } = await runFlow();
     const cols = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'));
