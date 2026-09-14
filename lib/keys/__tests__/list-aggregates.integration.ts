@@ -14,6 +14,7 @@ import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib
 import { isUnpublished } from "@/lib/keys/view";
 import { countUnpublished, loadProjectListAggregates } from "../query";
 import { loadPullState } from "@/lib/pull/load";
+import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
 /**
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (projects-list design §3.2 · tasks T3).
@@ -67,6 +68,69 @@ afterAll(async () => {
 const PULLED = new Date("2026-09-10T00:00:00Z");
 const BEFORE = new Date("2026-09-09T00:00:00Z");
 const AFTER = new Date("2026-09-11T00:00:00Z");
+
+async function addFixture() {
+  await seed({ id: "add", lastPulledAt: PULLED, archived: false });
+  await prisma.user.create({ data: { id: "owner", email: "fixture" } });
+  await prisma.projectMember.create({ data: { projectId: "add", userId: "owner", role: "OWNER" } });
+  const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+  await prisma.project.update({ where: { id: "add" }, data: repository });
+  return { projectId: "add", userId: "owner", repository,
+    format: { adapter: "json-catalog" as const, pathTemplate: "second/{locale}.json", locales: ["en", "ko"] },
+    baseLocale: "en", headSha: "c".repeat(40), headCommittedAt: AFTER.toISOString(),
+    paths: ["i18n/en.json", "i18n/ko.json", "second/en.json", "second/ko.json"],
+    targets: ["second/en.json", "second/ko.json"],
+    blobs: new Map([["second/en.json", '{"old":"Hello"}'], ["second/ko.json", '{"old":"Translated"}']]),
+  };
+}
+
+async function existingSurface() {
+  return prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-add" },
+    include: { locales: true, keys: { include: { refs: true } }, translations: true } });
+}
+
+it("Add surface는 첫 적재와 생성이 원자적이며 같은 경로 동시 요청은 하나만 성공한다", async () => {
+  const input = await addFixture();
+  const before = await existingSurface();
+  const results = await Promise.allSettled([addSurfaceFromSnapshot(prisma, input), addSurfaceFromSnapshot(prisma, input)]);
+  expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+  const rejected = results.find(r => r.status === "rejected");
+  expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({ code: "path-conflict" });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(2);
+  expect(await existingSurface()).toEqual(before);
+  expect(await prisma.translation.count({ where: { projectId: "add", surfaceId: { not: "surface-add" } } })).toBe(2);
+});
+
+it.each(["TranslationSurface", "Locale", "StringKey", "Translation", "KeyRef"])("Add surface는 %s 쓰기 실패 때 새 표면 전부를 롤백한다", async (table) => {
+  const input = await addFixture();
+  const before = await existingSurface();
+  await pool.query(`CREATE FUNCTION reject_add() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected write failure'; END $$;
+    CREATE TRIGGER reject_add BEFORE INSERT OR UPDATE OR DELETE ON "${table}" FOR EACH STATEMENT EXECUTE FUNCTION reject_add()`);
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow();
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it.each(["repo-replaced", "path-conflict", "forbidden", "archived", "ingest-failed"])("Add surface는 %s 거부에서 기존 표면을 보존한다", async (reason) => {
+  const input = await addFixture();
+  if (reason === "repo-replaced") input.repository.repositoryId = "other";
+  if (reason === "path-conflict") { input.format.pathTemplate = "i18n/{locale}.json"; input.targets = ["i18n/en.json"]; input.blobs = new Map([["i18n/en.json", '{"old":"Hello"}']]); }
+  if (reason === "forbidden") await prisma.projectMember.update({ where: { projectId_userId: { projectId: "add", userId: "owner" } }, data: { role: "EDITOR" } });
+  if (reason === "archived") await prisma.project.update({ where: { id: "add" }, data: { archivedAt: AFTER } });
+  if (reason === "ingest-failed") input.blobs = new Map([["second/en.json", "{}"]]);
+  const before = await existingSurface();
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toMatchObject({ code: reason });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it("Add surface는 일부 파일 실패를 partial-import로 남기고 성공으로 숨기지 않는다", async () => {
+  const input = await addFixture();
+  input.blobs.delete("second/ko.json");
+  const result = await addSurfaceFromSnapshot(prisma, input);
+  expect(result).toMatchObject({ count: 1, failed: 1, surfaceSlug: "second" });
+  expect(await prisma.translationSurface.findUnique({ where: { id: result.surfaceId } })).toMatchObject({ lastImportError: "partial-import" });
+});
 
 it("같은 key와 locale 이름이 두 표면에 공존하고 재push가 이웃 표면을 바꾸지 않는다", async () => {
   await seed({ id: "same", lastPulledAt: PULLED, archived: false });
