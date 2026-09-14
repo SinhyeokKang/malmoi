@@ -59,7 +59,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   if (key.orphaned) return { ok: false, error: "key is no longer in the code" };
 
   const locale = await prisma.locale.findUnique({
-    where: { projectId_code: { projectId, code: localeCode }, surfaceId },
+    where: { projectId_surfaceId_code: { projectId, surfaceId, code: localeCode } },
     select: { code: true, orphaned: true },
   });
   if (!locale) return { ok: false, error: "locale not found in this project" };

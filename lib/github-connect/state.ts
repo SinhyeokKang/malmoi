@@ -23,6 +23,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
  */
 export type StateDest =
   | { kind: "settings"; slug: string }
+  | { kind: "add-surface"; slug: string }
   /**
    * ⚠️ **목록의 검색어를 함께 나른다** (2026-09-13). `/projects/new`가 `/projects` 위의 모달 딥링크가
    * 되면서 그 라우트가 `?q=`를 받는데, 연결 왕복이 그것을 잃으면 돌아온 사용자가 **다른 목록**을 뒤에
@@ -214,9 +215,9 @@ function parseDest(dest: unknown): StateDest | null {
   }
   // 6b-4가 더한 갈래. **늘리는 방향은 안전하다** — 옛 쿠키 둘은 위·아래 줄이 그대로 받는다.
   if (kind === "account") return { kind: "account" };
-  if (kind !== "settings") return null;
+  if (kind !== "settings" && kind !== "add-surface") return null;
   if (typeof slug !== "string" || slug === "") return null;
-  return { kind: "settings", slug };
+  return { kind, slug };
 }
 
 /** 상한 안의 문자열만 남긴다. 비면 키 자체를 안 만든다 — 빈 문자열은 `withQuery`가 어차피 버린다. */

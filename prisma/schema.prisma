@@ -36,68 +36,6 @@ model Project {
   /// 각각 막는다. OWNER가 설정에서 [다시 연결]을 한 번 누르면 채워진다.
   repositoryId   String?
 
-  // ── 로케일 포맷 (온보딩이 확정하고 pull이 읽는다) ─────────────────────────
-  // 원래는 push가 채우는 값이었다(CI가 리포를 탐지한다). 2026-09-07 온보딩이 **사용자에게 확정받아**
-  // 재검증한 값을 생성 시점에 심으므로, 그 뒤의 push는 **같은 표면일 때만** 통과한다
-  // (`lib/push/guard.ts`의 `checkFormat` — 409). 셋이 다 null인 행에는 첫 push가 그대로 채운다.
-  // ⚠️ **셋은 항상 함께 쓰인다** — 일부만 채워진 상태를 만드는 코드 경로가 없고, 그런 행은
-  // fail-closed로 거부된다. 아직 아무 push도 받지 않은 프로젝트를 표현해야 해서 전부 nullable이다.
-
-  /// 어댑터 이름 — `lib/adapters/types.ts`의 `AdapterName` 5종(`chrome-locales`·`json-catalog`·`yaml-catalog`·`code-dict`·`ts-dict`).
-  /// 문자열 컬럼이라 DB가 제약하지 않는다 — pull이 `isAdapterName`으로 거른다.
-  adapterName        String?
-  /// per-locale 어댑터는 `{locale}`을 치환하면 실제 경로가 된다(`src/lib/i18n/{locale}.json`).
-  /// **multi-locale 어댑터(`ts-dict`)는 한 파일에 로케일이 여러 개라 글롭이다** (`src/i18n/namespaces/*.ts`).
-  pathTemplate       String?
-  /// 원본이 중첩 JSON이었는지. **경로만으로는 알 수 없어** read가 관측한 값을 push가 전달한다.
-  ///
-  /// ⚠️ **거친 값이다** — 로케일 파일 하나라도 중첩이면 true다. 정확한 값은 아래 nestedByPath이고,
-  /// write는 그쪽을 먼저 본다. 이 컬럼은 폴백용이자 하위 호환용으로 남는다.
-  nested             Boolean?
-  /// 로케일 파일 경로 → 그 파일이 중첩이었는지 (`{"i18n/th.json": false}`).
-  ///
-  /// 포맷 단위 boolean만 두면 형제 파일 하나 때문에 **평평한 파일의 점 포함 키가 쪼개지고 값이
-  /// 사라진다** — musicblocks 84로케일 중 81개에서 각 4키가 그렇게 없어졌다 (ARCHITECTURE §1.35).
-  /// Json인 이유: 로케일 수가 리포마다 다르고(실측 최대 106개) 조회 조건이 아니라 write 입력이다.
-  nestedByPath       Json?
-  /// 키 집합을 정의하는 기준 로케일 — **현실**이다. CI가 보낸 값을 저장한다(소유자는 `applyPush`) —
-  /// 고르는 규칙(`pickBaseLocale`: en 우선, 없으면 사전순)은 리포 관례를 추정한 것이고 정본은
-  /// 미결이다 (TASKS §3a 🔒 / MVP §10). **pull과 `checkFormat`이 이 값을 읽는다.**
-  baseLocale         String?
-  /// 기준 로케일 변경의 **선언** — "다음 CI push가 이 base를 가져오면 받아들이겠다"는 OWNER의
-  /// **일회용 허가**다 (6b-3 — translation-ui design §3.13).
-  ///
-  /// ⚠️ **소유자와 읽는 곳이 위 컬럼과 다르다**: 쓰는 것은 설정 화면(`updateRepositorySettings`)이고
-  /// 읽는 것은 `checkFormat`(선언과 같은 base도 통과시킨다)과 두 화면의 대기 배너(`basePending`)다.
-  /// **pull은 이 컬럼을 보지 않는다** — 그래서 대기 중에도 옛 base로 정상 동작하고 어느 단계도
-  /// 멈추지 않는다. 같은 컬럼에 선언을 쓰면 pull이 그것을 즉시 진실로 읽어 옛 base의 원문이 새
-  /// base 파일에 실린 PR을 낸다(그 안을 기각한 근거다).
-  ///
-  /// `applyPush`가 push 성공 시 **null로 비운다** — 안 비우면 한 번 허가한 base가 영구 예외가 된다.
-  declaredBaseLocale String?
-
-  /// 마지막 push의 커밋 SHA. 편집 UI의 코드 참조 permalink 기준이다.
-  /// `KeyRef`가 push마다 전체 교체되므로 프로젝트당 값 하나로 충분하다 — ref마다 들 필요가 없다.
-  lastCommitSha String?
-
-  /// 마지막 push의 **커밋 시각**. 다음 push가 이보다 과거면 409로 거부한다 (ARCHITECTURE §5.5.5).
-  /// strict라 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는데 복구 경로가 없다.
-  /// SHA로는 순서를 알 수 없어 시각을 따로 든다.
-  lastCommitAt DateTime?
-
-  /// 서버 적재가 **지금 돌고 있나**. 시작에서 세우고, 종료는 **자기 시작 시각을 대조해서만** 지운다 —
-  /// 대조 없이 비우면 나중 실행이 앞선 실행의 진행 표시를 치운다 (projects-list design §3.35).
-  /// ⚠️ **CI 파싱 실패 보고는 이 컬럼을 건드리지 않는다** — 서버가 돌린 적이 없는 구간이라 지울 진행이 없다.
-  lastImportStartedAt DateTime?
-
-  /// 마지막으로 **수신한** 임포트 실패의 코드. 이력이 아니라 하나다 — `SyncRun`은 pull 전용이고
-  /// push를 거기 넣는 것은 idempotency 판정이 딸린 별도 feature다 (PRODUCT §4.1).
-  /// 완전 성공은 적재와 **같은 트랜잭션에서** 비운다. 따로 비우면 데이터는 들어갔는데 목록만 실패로 남는
-  /// 창이 생긴다.
-  /// ⚠️ **원문 오류를 넣지 않는다** — 화면에 나가는 문장이라 코드로 저장하고 문구는 `messages/en.tsx`가
-  /// 든다. 500 본문이 우리 메시지만 담는 것과 같은 계보다 (ARCHITECTURE §6.0).
-  lastImportError String?
-
   /// CI가 `/api/push`를 부를 때 쓰는 토큰의 sha256. **원문은 저장하지 않는다** (SAAS §7.8 —
   /// `ProjectInvitation.tokenHash`와 같은 모델, 같은 해시 규칙 `lib/push/token.ts`). 인증은 이 값으로 행을
   /// **조회**한다 — 토큰이 프로젝트를 정하고 slug는 그 뒤에 대조된다. 페이로드 slug로 행을 찾으면 오배송
@@ -161,6 +99,7 @@ model TranslationSurface {
   nested              Boolean?
   nestedByPath        Json?
   baseLocale          String?
+  /// 일회용 선언: checkFormat만 허용 판정에 쓰고 pull은 읽지 않는다. applyPush가 소비 후 비운다.
   declaredBaseLocale  String?
   lastCommitSha       String?
   lastCommitAt        DateTime?
@@ -176,10 +115,10 @@ model TranslationSurface {
   @@unique([projectId, id])
 }
 
-/// 표면별 지원 로케일. 단계 A에서는 옛 프로젝트 단위 PK를 유지하고 단계 B에서 교체한다.
+/// 표면별 지원 로케일. 같은 이름은 다른 표면에서도 독립적으로 존재한다.
 model Locale {
   projectId String
-  surfaceId String?
+  surfaceId String
   code      String
   name      String
   isBase    Boolean @default(false)
@@ -195,18 +134,16 @@ model Locale {
   /// 번역을 조용히 날린다. 프로젝트 삭제가 필요해지면 soft delete로 푼다.
   project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   translations        Translation[]
-  surface             TranslationSurface? @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
-  surfaceTranslations Translation[]       @relation("SurfaceLocale")
+  surface             TranslationSurface  @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
 
-  @@id([projectId, code])
-  @@unique([projectId, surfaceId, code])
+  @@id([projectId, surfaceId, code])
 }
 
 /// 소스 키. **코드가 진실**이므로 push만 이 테이블을 쓴다.
 model StringKey {
   id        String  @id @default(cuid())
   projectId String
-  surfaceId String?
+  surfaceId String
   key       String
 
   /// 키에서 파생되는 값이지만 컬럼으로 저장한다 — 사이드바 쿼리가 이 컬럼 하나로 끝나고,
@@ -242,17 +179,10 @@ model StringKey {
   project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   refs                KeyRef[]
   translations        Translation[]
-  surface             TranslationSurface? @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
-  surfaceTranslations Translation[]       @relation("SurfaceKey")
+  surface             TranslationSurface  @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, surfaceId, id])
   @@unique([projectId, surfaceId, key])
-  /// 키 이름은 **프로젝트 안에서만** 유일하다. 전역 unique면 두 고객이 `common.ok`를 동시에
-  /// 못 쓴다. 나중에 바꾸면 비싼 두 지점 중 나머지 하나다.
-  @@unique([projectId, key])
-  /// Translation이 복합 FK로 이걸 참조해 **테넌트 간 참조를 DB가 막는다** (아래 Translation 주석).
-  /// id가 이미 PK라 중복처럼 보이지만, 복합 FK의 대상이 되려면 이 unique가 필요하다.
-  @@unique([projectId, id])
   @@index([projectId, surfaceId, namespace])
   @@index([projectId, surfaceId, orphaned])
   /// 모든 조회가 프로젝트로 먼저 좁혀지므로 선두 컬럼이 projectId여야 인덱스를 탄다.
@@ -287,7 +217,7 @@ model Translation {
   /// keyId와 localeCode를 독립 FK로 두면 프로젝트 A의 키에 프로젝트 B의 로케일을 붙인 행을
   /// DB가 허용한다. 두 FK가 같은 projectId 컬럼을 공유하게 만들어 그 조합을 불가능하게 한다.
   projectId  String
-  surfaceId  String?
+  surfaceId  String
   keyId      String
   localeCode String
   value      String
@@ -318,11 +248,9 @@ model Translation {
 
   /// 두 관계가 projectId를 공유한다 — 이것이 테넌트 간 참조를 막는 장치다.
   /// onDelete: Restrict — "키를 삭제하지 않고 orphaned로 둔다"는 코어 불변식을 DB가 강제한다.
-  stringKey     StringKey           @relation(fields: [projectId, keyId], references: [projectId, id], onDelete: Restrict)
-  locale        Locale              @relation(fields: [projectId, localeCode], references: [projectId, code], onDelete: Restrict)
-  surface       TranslationSurface? @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
-  surfaceKey    StringKey?          @relation("SurfaceKey", fields: [projectId, surfaceId, keyId], references: [projectId, surfaceId, id], onDelete: Restrict)
-  surfaceLocale Locale?             @relation("SurfaceLocale", fields: [projectId, surfaceId, localeCode], references: [projectId, surfaceId, code], onDelete: Restrict)
+  stringKey     StringKey           @relation(fields: [projectId, surfaceId, keyId], references: [projectId, surfaceId, id], onDelete: Restrict)
+  locale        Locale              @relation(fields: [projectId, surfaceId, localeCode], references: [projectId, surfaceId, code], onDelete: Restrict)
+  surface       TranslationSurface  @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
 
   /// 이 제약이 없으면 중복 행이 생겨 export가 비결정적이 된다 — ARCHITECTURE §1 불변식이
   /// 스키마에 의존하는 지점이다. projectId는 keyId에 함수 종속이라 키에 넣지 않는다.

@@ -557,6 +557,15 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 - **(7단계) Archive 블록은 결과 Alert를 두지 않는다** — 성공하면 `revalidatePath("/", "layout")`이 이 화면을 다시 그려 **방금 받은 문구를 언마운트한다**(POSTMORTEM 2026-09-07과 같은 함정). **카드가 [Restore project]로 바뀌는 것 자체가 피드백**이다(`reconnect-button` 선례). 확인은 `Dialog`(전 멤버의 편집이 멈춘다) + `danger` "Archive project"이고, **되돌리기는 묻지 않는다**(잃는 것이 없다). Dialog 본문에 **열린 PR 링크**가 실리고 조회 실패는 "확인하지 못했다" 한 줄이다(POSTMORTEM 2026-09-03). ⚠️ **readiness 분기 밖의 형제다** — 첫 적재가 실패한 프로젝트도 멈출 수 있어야 한다.
 - 페이지 수준 거부(`?e=`)는 **global Alert**, 컨트롤의 실패는 **in-block Alert** — 두 층을 섞지 않는다.
 
+### Add surface (`/projects/:slug/surfaces/new`)
+
+Settings의 활성 표면 목록 아래에서 진입한다. OWNER만 열며 리포·브랜치는 기존 프로젝트 값이다.
+본문은 FilesStep의 후보 240px + 미리보기 가로 2단(gap 16)을 재사용한다. 수동 지정과 언어별 지연 미리보기를
+유지하고, [Check files] 뒤 [Add surface]로 확정한다. 실패 뒤 입력은 유지하며 새로고침은 다시 탐지한다.
+결과는 현재 화면에 남아 부분 실패와 추가 workflow step을 보인다. 새 토큰은 발급하지 않는다.
+없는 표면은 프로젝트 범위 not-found 화면에서 안내와 Projects 링크를 제공한다.
+브라우저 QA와 시안 일치는 별도 판정이며 DOM 테스트 통과로 대체하지 않는다.
+
 ### 6.62 로그인·초대 수락 — 셸 밖 2열 (2026-09-10, 8-1)
 
 **골격을 `components/signin/auth-layout.tsx` 하나가 든다.** 캔버스(`--canvas`) 위에 패널 둘이
@@ -863,12 +872,13 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ## 7. 접근성
 
-### 표면 선택기 (T16)
+### 표면 선택기
 
 Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이드바에는 두지 않는다.
 활성 표면이 하나면 렌더하지 않고, 둘 이상이면 빈 표면에서도 남겨 전환할 수 있게 한다.
 표시는 경로의 마지막 고정 디렉터리 조각을 **sans**로 낸다(`default`·충돌 suffix는 라벨이 아니다).
-전체 path template은 tooltip, 항목별 미발송 수는 배지다. 접근 이름은 `Translation surface`.
+닫힌 선택기는 짧은 라벨과 tooltip을, 열린 목록은 전체 path template 보조 줄을 함께 낸다.
+같은 이름의 `apps/*/locales`도 경로로 구별한다. 항목별 미발송 수는 배지다. 접근 이름은 `Translation surface`.
 선택기는 번역 툴바·칩과 같은 pending·이동 함수를 공유한다. 유효한 ns/locales/q는 보존하고
 유효하지 않은 필터는 URL에서도 제거한다. Publish는 표면과 무관한 프로젝트 전체 `Send changes (N)`이다.
 

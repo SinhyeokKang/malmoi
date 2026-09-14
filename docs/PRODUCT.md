@@ -248,9 +248,10 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**현재 구현 경계는 T16(배포 1)**이다. 표면 단위 읽기·push·편집과 프로젝트 단위 Publish는 이관했지만
-Add surface는 닫혀 있다. 옛 Locale PK·StringKey unique를 보존하므로 같은 이름의 키·로케일을 가진
-표면 추가는 T17 제약 교체 뒤에만 가능하다. T17–T21은 별도 검토·배포 라운드다.
+**단계 B 코드에서 OWNER의 Settings → Add surface가 열린다.** 기존 리포의 후보 하나 또는 수동 경로를
+골라 표면 생성과 첫 적재를 원자적으로 끝낸다. 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는
+겹칠 수 없다. 실패하면 기존 입력을 유지하고, 성공하면 기존 PUSH_TOKEN을 쓰는 추가 workflow step을 준다.
+표면 보관·복원과 다중 후보 일괄 추가는 다음 라운드다. 원격 배포·실물 왕복 완료 전까지 기능 문서를 유지한다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 

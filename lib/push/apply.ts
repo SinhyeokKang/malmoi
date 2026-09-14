@@ -2,9 +2,8 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
-import { fail } from "@/lib/failure";
 
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
 import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
@@ -13,16 +12,21 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * ⚠️ **대화형 트랜잭션을 쓸 수 없다.** 런타임이 transaction 모드 pooler(6543)라
- * `$transaction(async tx => …)`은 문장마다 다른 백엔드로 갈 수 있어 세션을 못 잡는다.
- * 배열형 `$transaction([...])`은 한 번에 배치로 보내므로 pgbouncer에서도 원자적이다.
+ * ⚠️ **진입점이 둘이고, 트랜잭션을 여는 쪽은 하나다.** `applyPush`는 배열형 `$transaction([...])`으로
+ * 한 번에 배치를 보낸다 — 왕복이 문장 수만큼 쌓이지 않는다(도쿄 리전 고정 비용, POSTMORTEM 2026-09-09).
+ * `applyPushInTransaction`은 **이미 열린 tx**를 받아 그 연결에서 문장을 순서대로 실행한다. Add surface가
+ * Surface 생성과 첫 적재를 한 트랜잭션에 묶어야 해서다(첫 적재가 실패하면 표면이 안 생긴다 — 완료 조건 1).
+ *
+ * ⚠️ **`"$transaction" in prisma` 같은 런타임 판별로 둘을 합치지 않는다.** proxy를 오판해 중첩
+ * 트랜잭션을 열었고, 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다려 멈췄다
+ * (POSTMORTEM 2026-09-14). 어느 모양인지는 **호출부가 안다** — 그래서 함수를 나눈다.
  *
  * ⚠️ **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨
  * 문장 하나가 전체를 처리한다.
  *
  * ⚠️ **트랜잭션은 하나다.** 전에는 둘이었다 — 키 id를 확보하려고 중간에 `findMany`를 한 번 더
  * 쳤기 때문이다. 두 번째가 실패하면 키·orphaned·needsReview만 새 상태이고 번역·refs·
- * `Project.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
+ * `TranslationSurface.lastCommit*`은 옛 상태인 **혼합 DB**가 남는다. 삽입 id는 이미 JS에서 만들므로
  * (`randomUUID` — `@default(cuid())`는 raw SQL에 오지 않는다) 그 값을 들고 있으면 조회가 없어진다.
  *
  * 클라이언트를 **주입받는다** — DB 연결은 진입점이 소유하고 이 층은 같은 트랜잭션에 실을 쓰기만 정한다.
@@ -65,7 +69,7 @@ export type ApplyOptions = {
   /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
   startedAt: Date;
   /**
-   * 이 push **전의** `Project.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
+   * 이 push **전의** `TranslationSurface.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
    * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
    *
    * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
@@ -86,18 +90,28 @@ export type ApplyOptions = {
   importOutcome?: ImportFailureCode | null;
 };
 
-export async function applyPush(
-  prisma: PrismaClient,
-  scope: { projectId: string; surfaceId: string },
+type PushScope = { projectId: string; surfaceId: string };
+
+export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  return applyWith(prisma, scope, payload, options, statements => prisma.$transaction(statements));
+}
+
+export function applyPushInTransaction(tx: Prisma.TransactionClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  return applyWith(tx, scope, payload, options, async statements => {
+    const results: unknown[] = [];
+    for (const statement of statements) results.push(await statement);
+    return results;
+  });
+}
+
+async function applyWith(
+  prisma: Prisma.TransactionClient,
+  scope: PushScope,
   payload: PushPayloadType,
   options: ApplyOptions,
+  execute: (statements: Prisma.PrismaPromise<unknown>[]) => Promise<unknown[]>,
 ): Promise<PushOutcome> {
   const { projectId, surfaceId } = scope;
-  // Phase A retains Locale(projectId, code). Fail before any writes instead of silently
-  // ignoring a foreign owner. Add surface stays closed until phase B replaces this PK.
-  const collision = await prisma.locale.findFirst({ where: { projectId, code: { in: payload.locales },
-    OR: [{ surfaceId: null }, { surfaceId: { not: surfaceId } }] }, select: { code: true } });
-  if (collision) fail(`Locale surface ownership mismatch: ${collision.code}`);
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
   const existing: ExistingKey[] = await prisma.stringKey.findMany({
     where: { projectId, surfaceId },
@@ -142,11 +156,10 @@ export async function applyPush(
         ${localeRows.map((r) => r.name)}::text[],
         ${localeRows.map((r) => r.isBase)}::boolean[]
       )
-      ON CONFLICT ("projectId", "code") DO UPDATE SET
+      ON CONFLICT ("projectId", "surfaceId", "code") DO UPDATE SET
         "isBase" = EXCLUDED."isBase",
         -- 파일이 돌아오면 그 자리에서 되살아난다 (키의 unorphan과 같은 축).
-        "orphaned" = false
-      WHERE "Locale"."surfaceId" = EXCLUDED."surfaceId"`,
+        "orphaned" = false`,
 
     // 리포에서 사라진 로케일을 표시한다. **행은 지우지 않는다** — 되살리면 번역이 돌아와야 하고,
     // Translation의 FK가 Restrict라 지우려면 번역을 먼저 지워야 한다.
@@ -320,7 +333,7 @@ export async function applyPush(
     (plan.toOrphan.length === 0 ? 0 : 1);
   const filledAt = staleAt + (plan.staleKeyIds.length === 0 ? 0 : 1);
 
-  const results = await prisma.$transaction([...statements, ...rest]);
+  const results = await execute([...statements, ...rest]);
   const staleTranslations = plan.staleKeyIds.length === 0 ? 0 : numberAt(results, staleAt);
   const translationsFilled = uniqueTranslations.length === 0 ? 0 : numberAt(results, filledAt);
   const orphanedLocales = liveLocales.length === 0 ? 0 : numberAt(results, 1);

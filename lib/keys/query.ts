@@ -106,6 +106,7 @@ export async function loadKeys(
     orderBy: { key: "asc" },
     select: {
       id: true, key: true, namespace: true, description: true, orphaned: true,
+      surface: { select: { archivedAt: true } },
       translations: {
         select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true },
       },
@@ -121,6 +122,7 @@ export async function loadKeys(
         needsReview: t.needsReview,
         updatedBy: t.updatedBy,
         updatedAt: t.updatedAt,
+        surfaceArchivedAt: k.surface.archivedAt,
       };
     }
     return {

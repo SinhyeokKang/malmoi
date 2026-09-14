@@ -683,6 +683,13 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`workflow.ts`의 `renderWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
+  - **step 생산자는 `renderSurfaceWorkflowStep` 하나다.** 파일 전체는 `renderProjectWorkflowYaml`이
+    그것을 **활성 표면 수만큼** 이어 붙이고, `renderWorkflowYaml`은 표면 하나짜리 래퍼다(온보딩 ④).
+    설정 화면이 전자를 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
+    표면의 step을 다시 볼 자리가 그 화면뿐이고**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
+    `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
+  - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
+    무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
@@ -1720,18 +1727,29 @@ PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. �
 
 ## 7. Supabase / Prisma
 
-### Multi-surface 단계 A (T16, 2026-09-14)
+### Multi-surface 단계 B (T17–T19)
 
-현재는 `TranslationSurface`와 nullable `surfaceId`, `Project.defaultSurfaceId`를 더하고 기존 데이터를
-`default` 표면으로 backfill했다. Project 옛 포맷·적재 컬럼과 Locale PK·StringKey unique·Translation unique는
-그대로 남는다. 런타임은 Surface만 읽고 쓰며 dual-write하지 않는다. **Add surface는 닫혀 있다.**
-동일 키·언어 코드의 표면 공존은 단계 B(T17)의 NOT NULL·제약 교체 뒤에만 가능하다.
+`Locale`·`StringKey`·`Translation.surfaceId`는 NOT NULL이고 Locale PK는 `(projectId, surfaceId, code)`,
+StringKey unique는 `(projectId, surfaceId, key)`다. Translation의 key·locale FK는 같은 projectId와 surfaceId를
+공유한다. `(keyId, localeCode)` unique는 유지한다. Project의 옛 포맷·적재 열은 제거했고 Surface만 읽고 쓴다.
 
-단계 A → 코드 배포 → 단계 B로 나누는 이유는 옛 서버가 살아 있는 동안 옛 제약·nullable 쓰기를
-보존하기 위해서다. 단, **A 직후부터 새 코드 활성화 전까지 옛 writer를 반드시 멈추고 drain한다**.
-그 창에 옛 writer가 남긴 null 행은 새 쿼리에서 빠지고, 옛 Project 상태도 Surface보다 앞설 수 있다.
-재백필은 T17까지 미루지 않고 새 writer 재개 전에 수행한다(OPERATIONS의 표면 전환 절차).
-dev 스키마는 `/push` 전, prod 스키마는 해당 `/merge` 직전에 적용한다.
+A(additive) → Surface writer 배포 → B(제약 교체) 순서다. **B에서 Project 값을 다시 복사하지 않는다.**
+마이그레이션은 테이블 잠금 후 null 자식·잘못된 기본 표면에서 중단한다. 기존 Surface 상태를 덮는
+재백필은 새 writer 활성화 이전에만 허용한다. dev는 `/push` 전, prod는 해당 `/merge` 직전에 적용한다.
+
+Add surface는 GitHub snapshot과 파일을 먼저 읽고, Project `FOR UPDATE` 후 멤버십·보관·리포 identity와
+활성 표면의 출력 경로를 다시 검사한다. 경로는 현재 tree와 저장 Locale에서 다음 Publish가 만들 경로를
+함께 센다. Surface 생성과 첫 적재는 같은 callback transaction(30초)에 들어가고, 외부 API는 그 밖이다.
+`applyPushInTransaction`은 이미 열린 연결에서 순서대로 실행하며 중첩 트랜잭션을 만들지 않는다.
+일부 파일 실패는 `partial-import`, 0키·쓰기 실패·예산 초과는 새 표면 전체 rollback이다.
+
+`Project.defaultSurfaceId`는 생성 순환 참조 때문에 nullable을 유지한다. 생성 Action이 Project → Surface →
+기본 포인터를 한 트랜잭션으로 확정한다. **Project id는 randomUUID로 명시한다**: 공유 id를 포함한 nullable
+복합 FK에서 Prisma 7.10의 cuid 기본값이 누락되는 것을 실 DB에서 재현했다. 하네스가 id를 자동 보충하는
+테스트만으로는 보이지 않아, 격리 PostgreSQL에서 실제 createProject Action을 실행한다.
+
+격리 40표면·20,000키/번역 fixture의 자연 EXPLAIN에서 표면 목록·미발송 범위가 복합 인덱스를 사용한다.
+이는 해당 규모·선택도의 근거이며 모든 계획에 Seq Scan이 없다는 보장은 아니다.
 
 Publish는 활성 표면을 slug 코드포인트 순으로 처리하고 하나의 base snapshot을 공유한다.
 resolved path 소유권 충돌은 렌더·GitHub 쓰기 전에 거부하며 파일은 path 순으로 평탄화한다.
@@ -1742,7 +1760,10 @@ tree·commit·PR·SyncRun·`lastPulledAt`은 프로젝트당 하나다. 표면 �
 2026-09-14 로컬 `lib/pull/__tests__/surfaces.test.ts` 실측: JSON 2표면·각 1키 fixture의
 정방향/역방향 렌더·해시 비교와 충돌 거부까지 합계 **8.81ms**, 두 번째 blob 실패 경로 **0.63ms**.
 GitHub은 fake이므로 **네트워크·대량 데이터·60초 예산 통과의 근거가 아니다**. 실제 blob 읽기 수는
-표면 합산이고 동시성 8·route `maxDuration = 60`은 유지한다. 실물 왕복/예산 검증은 T20에서 수행한다.
+표면 합산이고 동시성 8·route `maxDuration = 60`은 유지한다.
+2026-09-14 실제 dev QA DB(903키+4키)와 GitHub base snapshot을 읽어 두 표면 11파일을 렌더·비교한
+시간은 **100.57ms**, 바이트 변경·경로 충돌·경고는 0이었다. 네트워크 시간은 포함하지 않으며
+PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
 

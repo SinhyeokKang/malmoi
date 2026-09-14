@@ -5,15 +5,16 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
-import { countUnpublished, loadProjectListAggregates } from "../query";
+import { countUnpublished, loadKeys, loadProjectListAggregates } from "../query";
 import { loadPullState } from "@/lib/pull/load";
+import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
 /**
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (projects-list design §3.2 · tasks T3).
@@ -68,27 +69,151 @@ const PULLED = new Date("2026-09-10T00:00:00Z");
 const BEFORE = new Date("2026-09-09T00:00:00Z");
 const AFTER = new Date("2026-09-11T00:00:00Z");
 
+it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한다", async () => {
+  await seed({ id: "archived-cell", lastPulledAt: PULLED, archived: false });
+  await prisma.translationSurface.update({ where: { id: "surface-archived-cell" }, data: { archivedAt: AFTER } });
+  const rows = await loadKeys(prisma, "archived-cell", "surface-archived-cell");
+  const cells = rows.flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
+  expect(cells.length).toBeGreaterThan(0);
+  expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
+  expect(cells.some(cell => isUnpublished(cell, PULLED))).toBe(false);
+});
+
+async function addFixture() {
+  await seed({ id: "add", lastPulledAt: PULLED, archived: false });
+  await prisma.user.create({ data: { id: "owner", email: "fixture" } });
+  await prisma.projectMember.create({ data: { projectId: "add", userId: "owner", role: "OWNER" } });
+  const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+  await prisma.project.update({ where: { id: "add" }, data: repository });
+  return { projectId: "add", userId: "owner", repository,
+    format: { adapter: "json-catalog" as const, pathTemplate: "second/{locale}.json", locales: ["en", "ko"] },
+    baseLocale: "en", headSha: "c".repeat(40), headCommittedAt: AFTER.toISOString(),
+    paths: ["i18n/en.json", "i18n/ko.json", "second/en.json", "second/ko.json"],
+    targets: ["second/en.json", "second/ko.json"],
+    blobs: new Map([["second/en.json", '{"old":"Hello"}'], ["second/ko.json", '{"old":"Translated"}']]),
+  };
+}
+
+async function existingSurface() {
+  return prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-add" },
+    include: { locales: true, keys: { include: { refs: true } }, translations: true } });
+}
+
+it("Add surface는 첫 적재와 생성이 원자적이며 같은 경로 동시 요청은 하나만 성공한다", async () => {
+  const input = await addFixture();
+  const before = await existingSurface();
+  const results = await Promise.allSettled([addSurfaceFromSnapshot(prisma, input), addSurfaceFromSnapshot(prisma, input)]);
+  expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+  const rejected = results.find(r => r.status === "rejected");
+  expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({ code: "path-conflict" });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(2);
+  expect(await existingSurface()).toEqual(before);
+  expect(await prisma.translation.count({ where: { projectId: "add", surfaceId: { not: "surface-add" } } })).toBe(2);
+});
+
+it.each(["TranslationSurface", "Locale", "StringKey", "Translation", "KeyRef"])("Add surface는 %s 쓰기 실패 때 새 표면 전부를 롤백한다", async (table) => {
+  const input = await addFixture();
+  const before = await existingSurface();
+  await pool.query(`CREATE FUNCTION reject_add() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected write failure'; END $$;
+    CREATE TRIGGER reject_add BEFORE INSERT OR UPDATE OR DELETE ON "${table}" FOR EACH STATEMENT EXECUTE FUNCTION reject_add()`);
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow();
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it.each(["repo-replaced", "path-conflict", "forbidden", "archived", "ingest-failed"])("Add surface는 %s 거부에서 기존 표면을 보존한다", async (reason) => {
+  const input = await addFixture();
+  if (reason === "repo-replaced") input.repository.repositoryId = "other";
+  if (reason === "path-conflict") { input.format.pathTemplate = "i18n/{locale}.json"; input.targets = ["i18n/en.json"]; input.blobs = new Map([["i18n/en.json", '{"old":"Hello"}']]); }
+  if (reason === "forbidden") await prisma.projectMember.update({ where: { projectId_userId: { projectId: "add", userId: "owner" } }, data: { role: "EDITOR" } });
+  if (reason === "archived") await prisma.project.update({ where: { id: "add" }, data: { archivedAt: AFTER } });
+  if (reason === "ingest-failed") input.blobs = new Map([["second/en.json", "{}"]]);
+  const before = await existingSurface();
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toMatchObject({ code: reason });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it("Add surface는 일부 파일 실패를 partial-import로 남기고 성공으로 숨기지 않는다", async () => {
+  const input = await addFixture();
+  input.blobs.delete("second/ko.json");
+  const result = await addSurfaceFromSnapshot(prisma, input);
+  expect(result).toMatchObject({ count: 1, failed: 1, surfaceSlug: "second" });
+  expect(await prisma.translationSurface.findUnique({ where: { id: result.surfaceId } })).toMatchObject({ lastImportError: "partial-import" });
+});
+
+it("같은 key와 locale 이름이 두 표면에 공존하고 재push가 이웃 표면을 바꾸지 않는다", async () => {
+  await seed({ id: "same", lastPulledAt: PULLED, archived: false });
+  await prisma.translationSurface.create({ data: { id: "same-b", projectId: "same", slug: "b" } });
+  const payload = {
+    projectSlug: "same", surfaceSlug: "b", commitSha: "b".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog" as const, pathTemplate: "b/{locale}.json", baseLocale: "en", nested: false },
+    locales: ["en", "ko"], keys: [{ key: "old", namespace: "_root", sourceText: "B" }],
+    translations: [{ key: "old", locale: "ko", value: "B translation" }], refs: [],
+  };
+  const readA = () => prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-same" },
+    include: { locales: true, keys: { include: { refs: true } }, translations: true } });
+  const before = await readA();
+  await applyPush(prisma, { projectId: "same", surfaceId: "same-b" }, payload, { previousBaseLocale: null, startedAt: AFTER });
+  await applyPush(prisma, { projectId: "same", surfaceId: "same-b" }, payload, { previousBaseLocale: "en", startedAt: AFTER });
+  expect(await readA()).toEqual(before);
+  expect(await prisma.locale.count({ where: { projectId: "same", code: "ko" } })).toBe(2);
+  expect(await prisma.stringKey.count({ where: { projectId: "same", key: "old" } })).toBe(2);
+  await expect(prisma.translation.create({ data: { projectId: "same", surfaceId: "same-b",
+    keyId: "same-old", localeCode: "en", value: "crossed key" } })).rejects.toThrow();
+});
+
+it("단계 B는 null 자식을 거부하고 Surface의 앞선 상태를 재백필하지 않는다", async () => {
+  const sql = readFileSync("prisma/migrations/20260914070000_finalize_translation_surfaces/migration.sql", "utf8");
+  await resetSchema(true);
+  await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","updatedAt") VALUES ('guard','guard','Guard','o','r',now());
+    INSERT INTO "TranslationSurface" (id,"projectId",slug,"lastCommitSha") VALUES ('guard-s','guard','default','new-surface');
+    UPDATE "Project" SET "defaultSurfaceId"='guard-s',"lastCommitSha"='stale-project' WHERE id='guard';
+    INSERT INTO "Locale" ("projectId",code,name) VALUES ('guard','en','English')`);
+  const client = await pool.connect();
+  try {
+    await expect(client.query(sql)).rejects.toThrow(/precondition failed/);
+    await client.query("ROLLBACK");
+    await client.query(`UPDATE "Locale" SET "surfaceId"='guard-s' WHERE "projectId"='guard'`);
+    await client.query(sql);
+    expect((await client.query(`SELECT "lastCommitSha" FROM "TranslationSurface" WHERE id='guard-s'`)).rows)
+      .toEqual([{ lastCommitSha: "new-surface" }]);
+    await expect(client.query(`INSERT INTO "Locale" ("projectId",code,name) VALUES ('guard','ko','Korean')`)).rejects.toThrow(/null/);
+  } finally { client.release(); }
+});
+
+it.each(["null", "archived"])("단계 B는 유효한 기본 표면이 없는 Project를 거부한다: %s", async (state) => {
+  await resetSchema(true);
+  await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","updatedAt") VALUES ('invalid','invalid','Invalid','o','r',now())`);
+  if (state === "archived") await pool.query(`INSERT INTO "TranslationSurface" (id,"projectId",slug,"archivedAt") VALUES ('invalid-s','invalid','default',now()); UPDATE "Project" SET "defaultSurfaceId"='invalid-s' WHERE id='invalid'`);
+  const client = await pool.connect();
+  try {
+    await expect(client.query(readFileSync("prisma/migrations/20260914070000_finalize_translation_surfaces/migration.sql", "utf8"))).rejects.toThrow(/precondition failed/);
+    await client.query("ROLLBACK");
+    expect((await client.query(`SELECT count(*)::int n FROM information_schema.columns WHERE table_name='Project' AND column_name='pathTemplate'`)).rows).toEqual([{ n: 1 }]);
+  } finally { client.release(); }
+});
+
 it("backfills an existing project into exactly one default surface", async () => {
   await resetSchema(true);
-  await prisma.project.create({ data: { id: "old", slug: "old", name: "Old", repoOwner: "o", repoName: "r",
-    adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastCommitSha: "old-sha" }, select: { id: true } });
-  await prisma.locale.create({ data: { projectId: "old", code: "en", name: "English" }, select: { code: true } });
-  await prisma.stringKey.create({ data: { id: "old-key", projectId: "old", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" }, select: { id: true } });
-  await prisma.translation.create({ data: { projectId: "old", keyId: "old-key", localeCode: "en", value: "Hello" }, select: { keyId: true } });
+  await pool.query(`INSERT INTO "Project" (id,slug,name,"repoOwner","repoName","adapterName","pathTemplate","baseLocale","lastCommitSha","updatedAt")
+    VALUES ('old','old','Old','o','r','json-catalog','i18n/{locale}.json','en','old-sha',now());
+    INSERT INTO "Locale" ("projectId",code,name) VALUES ('old','en','English');
+    INSERT INTO "StringKey" (id,"projectId",key,namespace,"sourceText","sourceHash","updatedAt") VALUES ('old-key','old','hello','_root','Hello','hash',now());
+    INSERT INTO "Translation" (id,"projectId","keyId","localeCode",value,"updatedAt") VALUES ('old-t','old','old-key','en','Hello',now())`);
   await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: "old" }, include: { surfaces: true, locales: true, keys: true } });
-  expect(project.surfaces).toHaveLength(1);
-  expect(project.surfaces[0]).toMatchObject({ id: project.defaultSurfaceId, slug: "default", lastCommitSha: "old-sha", pathTemplate: "i18n/{locale}.json" });
-  const translations = await prisma.translation.findMany({ where: { projectId: "old" } });
-  expect([...project.locales, ...project.keys, ...translations].every(r => r.surfaceId === project.defaultSurfaceId)).toBe(true);
-  // An old server can still write nullable children after migration A, before deployment.
-  await prisma.locale.create({ data: { projectId: "old", code: "ko", name: "Korean" } });
-  await prisma.project.update({ where: { id: "old" }, data: { lastCommitSha: "late-old-writer", lastCommitAt: AFTER } });
+  expect((await pool.query(`SELECT id,slug,"lastCommitSha","pathTemplate" FROM "TranslationSurface" WHERE "projectId"='old'`)).rows)
+    .toEqual([{ id: "surface-old", slug: "default", lastCommitSha: "old-sha", pathTemplate: "i18n/{locale}.json" }]);
+  await pool.query(`INSERT INTO "Locale" ("projectId",code,name) VALUES ('old','ko','Korean');
+    UPDATE "Project" SET "lastCommitSha"='late-old-writer',"lastCommitAt"='2026-09-11' WHERE id='old'`);
   const catchup = readFileSync("prisma/maintenance/backfill-surfaces.sql", "utf8");
   await pool.query(catchup);
   await pool.query(catchup);
-  expect(await prisma.locale.count({ where: { surfaceId: null } })).toBe(0);
-  expect(await prisma.translationSurface.findUnique({ where: { id: project.defaultSurfaceId! } })).toMatchObject({ lastCommitSha: "late-old-writer" });
+  expect((await pool.query(`SELECT count(*)::int n FROM "Locale" WHERE "surfaceId" IS NULL`)).rows).toEqual([{ n: 0 }]);
+  expect((await pool.query(`SELECT "lastCommitSha" FROM "TranslationSurface" WHERE id='surface-old'`)).rows)
+    .toEqual([{ lastCommitSha: "late-old-writer" }]);
 });
 
 it("A push leaves B locales, keys, translations, refs and import state untouched", async () => {
@@ -104,7 +229,7 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
     projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
     locales: ["en", "fr"], keys: [], translations: [], refs: [],
-  }, { previousBaseLocale: "en", startedAt: AFTER })).rejects.toThrow(/surface/i);
+  }, { previousBaseLocale: "en", startedAt: AFTER })).resolves.toMatchObject({ translationsFilled: 0 });
   expect(await readB()).toEqual(before);
   await applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
     projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
@@ -340,7 +465,7 @@ it("적재 트랜잭션이 실패하면 진행·오류와 기존 데이터도 �
 it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아 로케일 경계를 대조한다: %s", async (lastPulledAt) => {
   await seed({ id: "p1", lastPulledAt, archived: false });
   await prisma.translation.deleteMany({ where: { projectId: "p1" } });
-  await prisma.locale.update({ where: { projectId_code: { projectId: "p1", code: "ko" } }, data: { orphaned: true } });
+  await prisma.locale.update({ where: { projectId_surfaceId_code: { projectId: "p1", surfaceId: "surface-p1", code: "ko" } }, data: { orphaned: true } });
   for (const updatedBy of [null, "user"]) {
     for (const [index, updatedAt] of [BEFORE, PULLED, AFTER].entries()) {
       await prisma.translation.create({ data: {
@@ -354,4 +479,60 @@ it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아
   expect(cells.filter((cell) => isUnpublished(cell, lastPulledAt))).toHaveLength(expected);
   expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(expected);
   expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
+});
+
+it("단계 B 복합 인덱스는 표면 목록과 미발송 범위를 자연 계획으로 좁힌다", async () => {
+  await seed({ id: "plans", lastPulledAt: PULLED, archived: false });
+  await pool.query(`INSERT INTO "TranslationSurface" (id,"projectId",slug)
+    SELECT 's-'||i,'plans','s-'||i FROM generate_series(1,40) i;
+    INSERT INTO "Locale" ("projectId","surfaceId",code,name,"isBase") SELECT 'plans','s-'||i,'ko','ko',false FROM generate_series(1,40) i;
+    INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash","updatedAt")
+    SELECT 'k-'||s||'-'||k,'plans','s-'||s,'key-'||k,'a','v','h',now() FROM generate_series(1,40) s CROSS JOIN generate_series(1,500) k;
+    INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"updatedBy","updatedAt")
+    SELECT 't-'||id,"projectId","surfaceId",id,'ko','v','u',now() FROM "StringKey" WHERE "surfaceId" LIKE 's-%';
+    ANALYZE "StringKey"; ANALYZE "Translation";`);
+  const plans = [];
+  for (const sql of [
+    `SELECT id,key FROM "StringKey" WHERE "projectId"='plans' AND "surfaceId"='s-20' AND namespace='a' ORDER BY key`,
+    `SELECT count(*) FROM "Translation" WHERE "projectId"='plans' AND "surfaceId"='s-20' AND "updatedAt">'2026-01-01' AND "updatedBy" IS NOT NULL`,
+  ]) {
+    const result = await pool.query(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}`);
+    const plan = JSON.stringify(result.rows[0]["QUERY PLAN"]);
+    expect(plan).not.toContain('"Node Type":"Seq Scan"');
+    expect(plan).toMatch(/projectId_surfaceId/);
+    plans.push(result.rows[0]["QUERY PLAN"]);
+  }
+  console.info("surface index plans", JSON.stringify(plans));
+});
+
+it("적재 예산 초과도 생성한 표면과 자식을 전부 롤백한다", async () => {
+  const input = await addFixture(); const before = await existingSurface();
+  input.blobs.set("second/en.json", '"' + 'a'.repeat(2_000_001) + '"');
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow("resource limits");
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it("실제 createProject Action이 단계 B DB에 기본 표면과 OWNER를 원자적으로 만든다", async () => {
+  await prisma.user.create({ data: { id: "create-owner", email: "fixture" } });
+  vi.doMock("@/auth", () => ({ auth: async () => ({ user: { id: "create-owner" } }) }));
+  vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
+  vi.doMock("@/lib/auth/session", () => ({ readSession: async () => ({ status: "ok", userId: "create-owner" }) }));
+  vi.doMock("next/cache", () => ({ revalidatePath: () => {} }));
+  vi.doMock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "fixture" }) }));
+  vi.doMock("@/lib/github-connect/user", () => ({ listUserInstallations: async () => ["77"],
+    listInstallationRepos: async () => [{ fullName: "acme/web" }] }));
+  vi.doMock("@/lib/github", () => ({
+    probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
+    openRepoReader: async () => ({ snapshot: async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),
+      files: [{ path: "i18n/en.json", sha: "en", size: 20 }, { path: "i18n/ko.json", sha: "ko", size: 20 }] }), blob: async () => '{"hello":"Hello"}' }),
+  }));
+  const { createProject } = await import("@/app/(edit)/projects/actions");
+  const result = await createProject({ slug: "create-action", name: "Create", owner: "acme", repo: "web", baseBranch: "main",
+    adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" });
+  expect(result).toMatchObject({ ok: true });
+  const project = await prisma.project.findUniqueOrThrow({ where: { slug: "create-action" }, include: { defaultSurface: true, members: true } });
+  expect(project.id).toBeTruthy();
+  expect(project.defaultSurface).toMatchObject({ projectId: project.id, pathTemplate: "i18n/{locale}.json" });
+  expect(project.members).toMatchObject([{ userId: "create-owner", role: "OWNER" }]);
 });

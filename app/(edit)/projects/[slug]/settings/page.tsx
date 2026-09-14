@@ -10,6 +10,7 @@ import { ReconnectButton } from "@/components/reconnect-button";
 import { RepositoryForm } from "@/components/settings/repository-form";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -24,11 +25,8 @@ import { connectErrorMessage, isConnectError } from "@/lib/github-connect/messag
 import { m } from "@/lib/i18n";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-status";
 import { failing } from "@/lib/projects/list";
-// ⚠️ **필드와 대기 Alert는 6b-5가 `/locales`로 옮겼지만 이 조건은 남는다** — 아래 `workflowYaml`이
-// 대기 중 `base-locale:`을 박고, 그 줄이 없으면 CI가 옛 base를 계속 보내 변경이 영영 안 일어난다.
-import { basePending } from "@/lib/onboarding/base-pending";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -75,8 +73,9 @@ export default async function SettingsPage({
       installationId: true,
       repositoryId: true,
       // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
+      // ⚠️ **활성 표면 전부다.** 워크플로 파일은 표면마다 step 하나를 들고, 그것을 다시 볼 자리가
+      // 이 화면뿐이다 — Add surface 결과 화면은 새로고침 한 번에 사라진다.
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } },
-      defaultSurface: true,
       baseBranch: true,
       // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       /**
@@ -195,12 +194,23 @@ export default async function SettingsPage({
             <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
           </Card>
 
+          <Card title={m.surfaces.title}>
+            <div className="space-y-3">
+              {project.surfaces.map(surface => <div key={surface.id} className="flex items-center justify-between gap-3">
+                <ButtonLink variant="link" className="text-mono" href={routes.surfaceTranslations(slug, surface.slug)}>{surface.pathTemplate ?? surface.slug}</ButtonLink>
+              </div>)}
+              {project.archivedAt === null && <ButtonLink href={routes.addSurface(slug)}>{m.surfaces.add}</ButtonLink>}
+            </div>
+          </Card>
+
           <Card title={m.settings.token.title}>
             <PushTokenPanel slug={slug} />
           </Card>
 
           <Card title={m.settings.workflow.title}>
-            {project.defaultSurface && <WorkflowBlock yaml={workflowYaml(slug, { ...project.defaultSurface, baseBranch: project.baseBranch })} />}
+            {project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({
+              slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf),
+            })} />}
             {/*
               ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
               참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
@@ -332,45 +342,6 @@ function HealthRow({
       // 조회 실패를 "제거됨"으로 접지 않는다 (design §3.3) — 그러면 사용자가 멀쩡한 설치를 다시 만든다.
       return <p className="text-muted-foreground text-xs">{m.settings.repository.health.unknown}</p>;
   }
-}
-
-
-/**
- * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다.**
- *
- * ⚠️ **근거가 2026-09-14에 바뀌었다.** 전에는 *"그 포맷은 자동 탐지에 참여하지 않으므로"* 였는데
- * 이제 참여한다(§1.9 판정 ③ 뒤집기). 그래도 고정하는 이유는 **1순위가 그것이라는 보장이 없어서**다 —
- * bugshot-2가 그 예다: `_locales`가 크롬 버킷이라 언제나 앞서므로, 고정하지 않으면 CI가 4키
- * 표면을 적재해 903키가 통째로 orphan된다. 나머지는 탐지가 같은 답을 낸다 (design §7).
- *
- * ⚠️ **대기 중에는 `base-locale:`을 무조건 박는다** (6b-3). 그 줄이 없으면 CI가 탐지 1순위를
- * 보내는데 그것은 옛 base라 `checkFormat`이 통과시키고, 사용자가 원한 변경은 **영영 일어나지
- * 않는다** — 조용하다. 그래서 선언이 있으면 어댑터와 무관하게 고정한다.
- */
-function workflowYaml(
-  slug: string,
-  project: {
-    slug: string;
-    pathTemplate: string | null;
-    baseBranch: string;
-    adapterName: string | null;
-    baseLocale: string | null;
-    declaredBaseLocale: string | null;
-  },
-): string {
-  const pending = basePending({
-    baseLocale: project.baseLocale,
-    declaredBaseLocale: project.declaredBaseLocale,
-  });
-  const baseLocale = pending ? project.declaredBaseLocale : project.adapterName === "ts-dict" ? project.baseLocale : null;
-  // 두 호출로 가른다 — 스프레드로 합치면 `adapter`가 `string`으로 넓어져 인자 타입과 어긋난다.
-  if (baseLocale === null) {
-    return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch });
-  }
-  if (project.adapterName !== "ts-dict") {
-    return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch, baseLocale });
-  }
-  return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch, adapter: "ts-dict", baseLocale });
 }
 
 

@@ -53,29 +53,44 @@ async function main(): Promise<void> {
         baseBranch: true,
         installationId: true,
         repositoryId: true,
-        adapterName: true,
-        pathTemplate: true,
-        nested: true,
-        nestedByPath: true,
-        baseLocale: true,
-        lastCommitSha: true,
+        // ⚠️ **포맷 컬럼은 `Project`에 없다** — 다중 표면 단계 B가 전부 `TranslationSurface`로 옮겼다.
+        // 이 스모크는 프로젝트 하나를 보는 도구라 **기본 표면**을 본다. 표면이 여럿이면 나머지는
+        // `/projects/<slug>/settings`가 든다 — 여기서 표면마다 pull 경로를 도는 것은 이 도구의 면적이 아니다.
+        defaultSurface: {
+          select: {
+            slug: true,
+            adapterName: true,
+            pathTemplate: true,
+            nested: true,
+            nestedByPath: true,
+            baseLocale: true,
+            lastCommitSha: true,
+          },
+        },
       },
     });
     if (!project) throw new Error(`프로젝트를 찾을 수 없다: ${slug}`);
     if (project.installationId === null) {
       throw new Error(`Project.installationId가 비어 있다 (${slug}) — App을 설치하고 값을 채운다`);
     }
+    const surface = project.defaultSurface;
+    if (surface === null) {
+      throw new Error(`Project.defaultSurfaceId가 비어 있다 (${slug}) — 마이그레이션이 기본 표면을 만들지 못했다`);
+    }
 
+    // ⚠️ **표면으로 좁힌다.** 프로젝트 전체로 읽으면 다른 표면의 로케일이 섞여 들어와 아래
+    // `formatFromProject`가 그 표면에 없는 파일 경로를 만든다.
     const locales = await prisma.locale.findMany({
-      where: { projectId: project.id },
+      where: { projectId: project.id, surface: { slug: surface.slug } },
       select: { code: true, orphaned: true },
     });
 
     console.log(`프로젝트: ${project.slug} → ${project.repoOwner}/${project.repoName}@${project.baseBranch}`);
-    console.log(`어댑터: ${project.adapterName} (${project.pathTemplate})`);
+    console.log(`기본 표면: ${surface.slug}`);
+    console.log(`어댑터: ${surface.adapterName} (${surface.pathTemplate})`);
     // orphaned를 함께 찍는다 — pull이 그 로케일을 건너뛰는 이유가 로그에 없으면 오진한다.
     console.log(
-      `로케일: ${locales.map((l) => `${l.code}${l.orphaned ? "(orphaned)" : ""}`).join(", ")} (base ${project.baseLocale})`,
+      `로케일: ${locales.map((l) => `${l.code}${l.orphaned ? "(orphaned)" : ""}`).join(", ")} (base ${surface.baseLocale})`,
     );
 
     // ⚠️ **I/O 껍데기에는 스모크를 만든다** (POSTMORTEM 2026-09-01 — 이중 인코딩의 조용한 404를
@@ -139,9 +154,9 @@ async function main(): Promise<void> {
     const headSha = await client.getRefSha(`heads/${project.baseBranch}`);
     if (headSha === null) throw new Error(`base 브랜치가 없다: ${project.baseBranch}`);
     console.log(`\nbase head: ${headSha}`);
-    if (project.lastCommitSha !== null) {
-      const same = headSha === project.lastCommitSha;
-      console.log(`lastCommitSha 일치: ${same ? "예" : `아니오 (DB=${project.lastCommitSha})`}`);
+    if (surface.lastCommitSha !== null) {
+      const same = headSha === surface.lastCommitSha;
+      console.log(`lastCommitSha 일치: ${same ? "예" : `아니오 (DB=${surface.lastCommitSha})`}`);
     }
 
     const tree = await client.getTree(headSha);
@@ -157,13 +172,13 @@ async function main(): Promise<void> {
 
     // ⚠️ 아직 적재되지 않은 프로젝트는 포맷 컬럼도 로케일 행도 없다 — 그게 온보딩이 도는 상태다.
     // 여기서 던지면 위 온보딩 확인까지 exit 1이 되어 "설정이 틀렸다"로 오진한다.
-    if (locales.length === 0 || project.adapterName === null) {
+    if (locales.length === 0 || surface.adapterName === null) {
       console.log("\n(pull 경로 생략 — 아직 적재되지 않은 프로젝트다)");
       return;
     }
 
     const format = formatFromProject(
-      project,
+      surface,
       locales.map((l) => l.code),
     );
     const { layout } = adapterFor(format);

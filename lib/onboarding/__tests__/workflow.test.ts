@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { SKIP_MARKER } from "@/lib/pull/payload";
 
-import { renderSurfaceWorkflowStep, renderWorkflowYaml } from "../workflow";
+import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, renderWorkflowYaml, workflowSurfaceOf } from "../workflow";
 
 /**
  * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
@@ -148,5 +148,110 @@ describe("renderWorkflowYaml — 사용자가 고른 브랜치 이름", () => {
       expect(isValidBranchName(name)).toBe(true);
       expect(line(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: name }))).toBe(`    branches: ["${name}"]`);
     }
+  });
+});
+
+/**
+ * **워크플로 파일 하나에 표면마다 step 하나** (multi-surface spec §5.2 · 대상 리포 계약).
+ *
+ * ⚠️ **Add surface 결과 화면을 벗어나면 그 step을 다시 볼 자리가 여기뿐이다.** 결과 화면은 한 번
+ * 지나가고 새로고침하면 draft가 초기화된다 — 설정 화면이 활성 표면 전부를 렌더하지 않으면 두 번째
+ * 표면의 `surface:`·`path-template:`을 사람이 손으로 조립해야 하고, 그것이 틀리면 CI가 409로
+ * 거부하는 것이 아니라 **다른 표면을 덮어쓴다**(토큰은 프로젝트 단위다).
+ */
+describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
+  const one = { surfaceSlug: "web", pathTemplate: "web/{locale}.json" };
+  const two = { surfaceSlug: "_locales", pathTemplate: "_locales/{locale}/messages.json" };
+  const render = (surfaces: readonly { surfaceSlug: string; pathTemplate: string }[]) =>
+    renderProjectWorkflowYaml({ slug: "order-check", baseBranch: "main", surfaces });
+
+  it("표면 하나면 `renderWorkflowYaml`과 바이트가 같다 — 표면이 하나인 화면은 움직이지 않는다", () => {
+    expect(render([one])).toBe(renderWorkflowYaml({ slug: "order-check", baseBranch: "main", ...one }));
+  });
+
+  /**
+   * ⚠️ **step 하나짜리 렌더러와 대조하는 것만으로는 모양을 못 잰다** — 둘이 같은 구현이라 그 단언은
+   * 공허하다. 2026-09-14에 `checkout` 뒤의 빈 줄이 사라진 것을 `pnpm test`가 통과시켰고(주석·빈 줄을
+   * 벗기고 문서와 대조하므로) **브라우저의 실물 YAML**이 잡았다. 그래서 빈 줄 자체를 여기서 잰다.
+   */
+  it.each([["표면 하나", [one]], ["표면 둘", [one, two]]])("%s — `- uses:`마다 앞에 빈 줄이 하나다", (_label, surfaces) => {
+    const lines = render(surfaces).split("\n");
+    const uses = lines.flatMap((l, i) => (l.trimStart().startsWith("- uses:") ? [i] : []));
+    expect(uses.length).toBe(surfaces.length + 1);
+    // 첫 step(checkout)은 `steps:` 바로 아래다 — 거기만 빈 줄이 없다.
+    expect(lines[uses[0]! - 1]?.trim()).toBe("steps:");
+    for (const at of uses.slice(1)) {
+      expect(lines[at - 1]).toBe("");
+      expect(lines[at - 2]).not.toBe("");
+    }
+  });
+
+  it("빈 줄이 연달아 둘인 자리가 없다 — 붙여넣은 파일에 구멍이 보인다", () => {
+    expect(render([one, two])).not.toMatch(/\n\n\n/);
+  });
+
+  it("표면 둘이면 push step이 둘이고 checkout은 하나다", () => {
+    const yml = render([one, two]);
+    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v1").length - 1).toBe(2);
+    expect(yml.split("actions/checkout@").length - 1).toBe(1);
+  });
+
+  it("각 step이 자기 surface와 path-template을 든다", () => {
+    const yml = render([one, two]);
+    expect(yml).toMatch(/^\s+surface: web$/m);
+    expect(yml).toMatch(/^\s+surface: _locales$/m);
+    expect(yml).toContain('path-template: "web/{locale}.json"');
+    expect(yml).toContain('path-template: "_locales/{locale}/messages.json"');
+  });
+
+  it("파일 끝 개행이 정확히 하나다", () => {
+    const yml = render([one, two]);
+    expect(yml.endsWith("\n")).toBe(true);
+    expect(yml.endsWith("\n\n")).toBe(false);
+  });
+
+  it("표면이 없으면 던진다 — step 없는 workflow는 red 없이 조용히 아무것도 안 한다", () => {
+    expect(() => render([])).toThrow();
+  });
+
+  it("같은 입력은 같은 문자열이다", () => {
+    expect(render([one, two])).toBe(render([one, two]));
+  });
+
+  it("표면 순서가 그대로 step 순서다 — 호출부가 정렬을 소유한다", () => {
+    const order = (yml: string) => yml.split("\n").filter(l => l.trim().startsWith("surface:")).map(l => l.trim());
+    expect(order(render([one, two]))).toEqual(["surface: web", "surface: _locales"]);
+    expect(order(render([two, one]))).toEqual(["surface: _locales", "surface: web"]);
+  });
+});
+
+/**
+ * 표면 행 → step 입력. **설정 화면에 있던 분기를 그대로 옮긴 것이고 규칙을 바꾸지 않았다** —
+ * 화면 안에 있으면 렌더 없이는 잴 수 없어 6b-3의 대기 규칙이 테스트 밖에 있었다.
+ */
+describe("workflowSurfaceOf", () => {
+  const row = (over: Partial<Parameters<typeof workflowSurfaceOf>[0]> = {}) => workflowSurfaceOf({
+    slug: "web", pathTemplate: "web/{locale}.json", adapterName: "json-catalog",
+    baseLocale: "en", declaredBaseLocale: null, ...over,
+  });
+
+  it("자동 후보면 `adapter`·`baseLocale` 둘 다 붙지 않는다 — 탐지가 같은 답을 낸다", () => {
+    expect(row()).toEqual({ surfaceSlug: "web", pathTemplate: "web/{locale}.json" });
+  });
+
+  it("선언이 대기 중이면 어댑터와 무관하게 선언한 base를 고정한다 (6b-3)", () => {
+    expect(row({ declaredBaseLocale: "ko" }).baseLocale).toBe("ko");
+  });
+
+  it("`ts-dict`는 base를 고정한다 — 한 파일 안에 로케일이 여럿이라 탐지가 정하지 못한다", () => {
+    expect(row({ adapterName: "ts-dict" })).toMatchObject({ adapter: "ts-dict", baseLocale: "en" });
+  });
+
+  it("`ts-dict`가 아니고 선언도 없으면 `adapter`를 박지 않는다", () => {
+    expect(row({ adapterName: "chrome-locales" }).adapter).toBeUndefined();
+  });
+
+  it("첫 push 전이라 `pathTemplate`이 없으면 빈 문자열이다", () => {
+    expect(row({ pathTemplate: null }).pathTemplate).toBe("");
   });
 });

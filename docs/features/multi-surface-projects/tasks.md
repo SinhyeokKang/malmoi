@@ -1,9 +1,69 @@
 # Multi-surface projects — Tasks
 
+## T17–T21 인계 체크포인트 (2026-09-14)
+
+**구현·자동 검증·커밋까지. 원격 push 앞에서 중단하며 기능 완료로 통합·삭제하지 않는다.**
+
+- [x] 착수 게이트: baseline `8511d37`(PR #40), 해당 SHA의 CI·Preview/Production 배포 success와
+  dev/prod 각 19 migration을 직접 확인했다. 이전 완료 주장만으로 진행하지 않았다.
+- [x] T17: NOT NULL·Locale PK·StringKey unique·Translation 복합 FK 교체와 writer 변경을 같은 커밋에 반영.
+  locale 임시 ownership preflight 제거. 새 Surface 상태를 덮는 재백필 실행 0회.
+- [x] T18: Project 잠금 후 인가·리포·경로 재검사, 표면 생성+첫 적재 원자성, 부분 실패 보존.
+  동일 경로 동시 요청의 Project 잠금을 제거하면 P2002로 새어 red, 복원 뒤 path-conflict green.
+- [x] T19: Settings 목록·고유 Add URL·수동 확인·결과 step·서명된 OAuth 복귀, 제품 not-found.
+  셀 surfaceArchivedAt 생산과 선택기 경로 보조 줄, 추가 화면의 죽은 sidebar 링크도 수정.
+- [x] T20 자동: typecheck·전체 Vitest **3,638 passed**·build·격리 PostgreSQL. PostgreSQL은 38 tests이며 실제 createProject
+  Action도 실행한다. 기존 fixture가 ID를 직접 넣어 놓친 Prisma 기본 ID 누락을 브라우저에서 발견해 수정.
+- [x] 다섯 adapter 계약, 동일 key/locale 공존·A/B push 격리·교차 FK 거부·다섯 쓰기 단계 rollback·예산 초과.
+  40표면·20,000키/번역 EXPLAIN에서 목록·미발송 범위가 자연스럽게 새 복합 인덱스를 사용한다.
+- [x] 브라우저 로컬 QA: 상주 QA 정상 재생성, 기존 903키 표면의 중복 추가 거부/입력 유지,
+  4키 표면 추가·결과 유지, 두 표면 전환, Add 직접 진입·새로고침 draft 초기화·취소 Settings 복귀,
+  제품 404 안내. 캡처: `/tmp/malmoi-add-surface-before.png`, `/tmp/malmoi-selector.png`, `/tmp/malmoi-surface-not-found.png`.
+- [x] 실제 GitHub 읽기 전용 검증: base `e778cdbaed82b9a6d3651b320e7bf4c8313e3022`,
+  namespaces 8파일 + _locales 3파일, 바이트 변경 0·경로 충돌 0·경고 0, 렌더/비교 100.57ms.
+  DB/원격 쓰기 0이며 실물 PR 왕복의 대체 근거가 아니다.
+- [x] T21: 정본의 현재 구현 경계·운영 순서·왕복 입력을 최신화하고 Codex 미러 동기화.
+- [x] Claude Code 인계 검토(2026-09-14): 같은 체크아웃·HEAD 확인, 16커밋 전수 대조.
+  **단계 B가 뗀 `Project` 열 여섯을 `scripts/smoke-github.ts`가 그대로 고르고 있었다** —
+  `pnpm smoke:github`이 첫 쿼리에서 죽는데 게이트 넷이 전부 green이었다(`tsc`는 Prisma `select` 키를
+  검증하지 않고 `scripts/`는 `pnpm test` 밖이다). red 테스트 → 기본 표면 조회로 수정 → POSTMORTEM.
+  나머지 세 자리(트랜잭션 두 진입점의 근거 주석, 첫 적재의 `failed` 선계산 근거, 중복 adapter 검사)는
+  표현 수정이다. 떨어진 컬럼·옛 복합키(`projectId_code`·`projectId_key`)·삭제된 관계의 전수 검색은 0건.
+- [x] **비기본 표면의 workflow step 회수 경로**(2026-09-14 사용자 승인). Settings의 workflow 블록이
+  `renderProjectWorkflowYaml`로 **활성 표면마다 step 하나**를 낸다. step 생산자는
+  `renderSurfaceWorkflowStep` 하나로 모았고, 표면 행 → step 입력 변환은 `workflowSurfaceOf`가 받아
+  6b-3의 대기 규칙이 화면 밖에서 측정된다. 실물 확인: dev DB의 QA 프로젝트가 `_locales`·`namespaces`
+  두 step을 낸다.
+- [x] **브라우저 게이트 셋**(2026-09-14, 로컬·dev DB, ego-browser):
+  ① `reauthorize` → [Reconnect GitHub] → GitHub authorize → `/surfaces/new` 복귀, 후보 재탐지 정상.
+  ② Settings → Add → 초안 입력 → 뒤로(Settings) → 앞으로: 초안이 초기화되고 화면은 정상.
+  ③ 세션 쿠키를 지운 채 [Check files]: "Sign in again and come back" Alert + **입력 유지**, 쿠키 복원 확인.
+  그 과정에서 결함 둘을 잡았다 — `checkout` 뒤 빈 줄 소실(테스트 3,657 green이었다)과
+  Alert가 가리키는 버튼 이름 불일치. 둘 다 red→green + POSTMORTEM.
+- [ ] 시안 대조: 미수행. 기존 T16의 시안 부재 판정을 새 화면의 통과로 재사용하지 않는다.
+  ⚠️ **새 화면(Add surface·표면 not-found·Settings의 표면 카드)에도 Claude Design 핸드오프가 없다** —
+  `/design-sync`의 SoT가 존재하지 않으므로 그 루프를 돌 수 없다. 시안을 만들거나, T16처럼 건너뛰기로
+  판정하거나 둘 중 하나가 필요하다(사용자 결정).
+- [ ] 실물 두 표면 push→각 편집→단일 PR→merge→두 표면 재push→값 유지→2층/1층 skip.
+  이번 세션은 원격 push·태그·대상 workflow·prod 배포를 수행하지 않는다.
+
+DB 현황: dev 20 migrations / drift 없음, Project 1·Surface 2·Translation 2,721.
+`bugshot-i18n-test-qa`는 namespaces(903키/3언어)·_locales(4키/3언어)로 복구했고 보존한다.
+prod는 19 migrations, Project/Surface/Translation 0. 단계 B migration 1건 pending은 의도된 상태다.
+양쪽 null 자식·교차 key/locale FK·잘못된 기본 표면·공개 권한 0건.
+**dev Preview는 아직 baseline 코드이므로 B writer 배포 전 쓰기 요청을 재개하지 않는다.**
+
+Claude Code 인계 순서: 같은 체크아웃과 HEAD 확인(중복 cherry-pick 금지) → 전수 검토·필요 수정 →
+dev `/push`/Preview SHA 검증 → 브라우저·시안 QA → `/merge` 1단계에서 prod B migration과 writer 동시 전환 →
+태그 실제 생산 코드 확인/필요 시 릴리스 → 대상 workflow의 실제 surface/path-template 전환 → 실물 왕복.
+모든 완료 조건을 충족한 뒤에만 기능 문서를 정본으로 통합하고 제거한다.
+
+---
+
 ## T16 체크포인트 (2026-09-14)
 
-사용자 요청으로 **T1–T16 구현·정본 최신화 뒤 중단**한다. 다음 세션에서 전수 검토·수정·dev 배포한 뒤 T17–T21을 진행한다.
-기능 디렉터리는 아직 지우지 않는다. Add surface, 단계 B 제약 교체, action 태그 릴리스, 실물 다중 표면 왕복은 미진행이다.
+아래는 배포 1 당시 기록이다. 이후 상태와 잔여 게이트는 위 T17–T21 체크포인트가 우선한다.
+배포 1 시점에는 Add surface·단계 B·실물 다중 표면 왕복이 미진행이었다.
 
 - [x] T1–T2: 정본 계약과 red 순수 인터페이스 테스트.
 - [x] T3–T4: dev additive migration/backfill·drift·권한 검사, 실제 PostgreSQL과 하네스 계약.
@@ -24,8 +84,7 @@
 들여왔고, URL에 `surfaceSlug` 세그먼트가 생기면서 임의 값으로 도달할 수 있게 됐다. 그전
 `/projects/<slug>/translations`는 slug가 틀리면 `requireProjectAccess`가 redirect로 처리했다.
 
-⚠️ **지금은 URL을 손으로 친 사람만 보지만, T17이 archive를 여는 순간 정상 경로가 된다** — 표면 화면을
-열어 둔 채 그것이 보관되면 새로고침이 이 화면이다. 그래서 배포 1에 넣지 않고 T17로 넘긴다:
+⚠️ **표면 보관 UI는 2라운드다.** 이번 라운드는 직접 입력한 미지 표면의 복구 경로를 완성한다:
 `getSurfaceAccess`의 거부 모양(이미 union 반환으로 고쳤다)과 `not-found` UI를 **한 벌로** 설계해야
 같은 자리를 두 번 만지지 않는다. 이 리포의 거부 문구는 전부 `messages/en.tsx`를 지나며 "무엇을 하면
 되는지"를 말하는데(`access`·`invite`·`connect` 사전) 이 화면만 사전을 안 지나고 돌아갈 길도 없다.
@@ -267,7 +326,8 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 
 ### T17. NOT NULL·제약 교체·옛 컬럼 제거
 
-- backfill을 **한 번 더 돌린다** — 배포 1과 2 사이에 도착한 CI push가 null 행을 새로 만들 수 있다.
+- **재백필을 무조건 재실행하지 않는다.** 새 writer는 Surface만 쓰므로 옛 Project 값은 정본이 아니다.
+  null 행·기본 포인터 불일치가 있으면 migration을 중단하고 소유권을 조사한다.
 - 마이그레이션 안에서 사전조건을 검사한다: `LOCK TABLE` + `DO $$ … RAISE EXCEPTION 'precondition failed'`로
   `surfaceId` null 0건·모든 Project의 default 표면 1건·`defaultSurfaceId` 비어 있지 않음.
   (선례: `20260910060000_finalize_credential_storage`)
@@ -324,10 +384,10 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 
 - `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:projects:postgres`를 통과한다.
 - 다섯 adapter 계약을 모두 재검한다.
-- ⚠️ **`@malmoi-i18n-push-v1` 태그를 옮긴다.** 대상 리포는 불변 태그를 보므로 그 전까지 `surface` input이 도달하지 않는다.
-  릴리스 뒤 대상 리포 여섯의 workflow에 `surface`를 명시한다. **기본값 `default`는 새 action에서만 존재한다.**
-  기존 태그는 필수 `surfaceSlug`를 보내지 않아 새 서버에서 400이다. 배포 1을 prod로 보낸다면 호환성 전환을
-  이 단계까지 미루지 않고 서버와 함께 조율한다. 현재 dev 체크포인트는 새 체크아웃 CLI로 검증하고 태그는 유지한다.
+- action 태그의 **실제 생산 코드**를 확인하고 서버 필수 계약과 맞춘다. 2026-09-14 확인: 삭제된 옛
+  `l10n-push-v1`(bc3615c4)은 surfaceSlug를 생산하지 않았고 새 `malmoi-i18n-push-v1`(8511d37)은 생산한다.
+  무조건 태그를 옮기지 않는다. 필요 시 서버 배포 → 릴리스 검증 → 실제 등록 surface/path-template으로
+  대상 workflow 전환 순서를 따른다. 이번 세션은 원격 작업 없이 인계한다.
 - `/l10n-roundtrip`의 **전제 3("그 리포를 가리키는 Project가 하나뿐")을 개정**하고 스킬 입력에 surface/pathTemplate을
   추가한다. Codex 미러(`.agents/skills/source-command-l10n-roundtrip/SKILL.md`)도 같이 고친다.
 - 폐기용 다중 표면 리포(`bugshot-i18n-test` — ts-dict 903키 + `_locales` 4키)에서 두 Surface push → 각 편집 →

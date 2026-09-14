@@ -220,6 +220,8 @@ function landingPath(dest: StateDest | null): string {
       return routes.newProject({ q: dest.q });
     case "account":
       return routes.account();
+    case "add-surface":
+      return routes.addSurface(dest.slug);
     case "settings":
       return routes.settings(dest.slug);
   }

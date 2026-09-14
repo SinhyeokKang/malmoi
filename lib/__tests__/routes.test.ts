@@ -7,6 +7,9 @@ import { routes } from "@/lib/routes";
  * `entry-points.test.ts`의 "죽은 라우트 링크"가 함께 든다 — 이쪽은 모양을, 그쪽은 실재를 본다.
  */
 describe("routes — 정적 경로", () => {
+  it("Add surface는 직접 진입 가능한 프로젝트 URL이다", () => {
+    expect(routes.addSurface("acme")).toBe("/projects/acme/surfaces/new");
+  });
   it("목록과 생성", () => {
     expect(routes.projects()).toBe("/projects");
     expect(routes.newProject()).toBe("/projects/new");

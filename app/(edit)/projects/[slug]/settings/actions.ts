@@ -44,8 +44,8 @@ export type StartConnectResult = { ok: false; error: string };
  * 성공하면 GitHub으로 `redirect`하므로 **반환하지 않는다.** 실패만 값으로 돌아온다 —
  * 거부는 값으로 흐른다 (ARCHITECTURE §6.3).
  */
-export async function startGithubConnect(raw: { slug: string }): Promise<StartConnectResult> {
-  const parsed = Input.safeParse(raw);
+export async function startGithubConnect(raw: { slug: string; returnTo?: "add-surface" }): Promise<StartConnectResult> {
+  const parsed = Input.extend({ returnTo: z.literal("add-surface").optional() }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const { slug } = parsed.data;
 
@@ -84,7 +84,7 @@ export async function startGithubConnect(raw: { slug: string }): Promise<StartCo
     signState({
       userId,
       // 이 Action은 설정 화면 전용이다 — 생성 경로는 `{kind:"new"}`로 서명한다 (design §3.6).
-      dest: { kind: "settings", slug },
+      dest: { kind: parsed.data.returnTo ?? "settings", slug },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
       secret: requireEnv("AUTH_SECRET"),

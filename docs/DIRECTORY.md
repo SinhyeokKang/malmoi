@@ -52,6 +52,8 @@ app/
                         ⚠️ 헤더를 무조건 렌더한다 — Publish 결과 Alert가 그 안이라 조건부 분기에 두면
                         router.refresh()가 방금 받은 결과를 언마운트한다
       surfaces/[surfaceSlug]/locales/  로케일·base 선언. requireSurfaceAccess 뒤 projectId + surfaceId로 조회
+      surfaces/new/    OWNER 전용 Add surface. 기존 리포 재탐지·직접 URL·OAuth 복귀 (maxDuration 60)
+      not-found.tsx    없는 표면의 제품 안내와 Projects 복귀
       members/ logs/ settings/
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
@@ -114,6 +116,7 @@ components/
                         Radix Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
                         고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
                         넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유한다
+  onboarding/add-surface.tsx  FilesStep 재사용·수동 확인·추가 step 결과, 입력 실패 보존
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·후보 변경)
@@ -138,6 +141,8 @@ components/
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
                         projects-screen · signin-screen · segmented-control(jsdom 렌더) · auth-toast ·
+                        settings-screen(워크플로 YAML이 활성 표면 전부를 드는지 — 비기본 표면의
+                        step을 다시 볼 자리가 그 화면뿐이다) ·
                         multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
                         new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
 ```
@@ -184,6 +189,7 @@ lib/
                         계약은 실패했을 때 코드만 그리는 것이다)
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
+  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 생성+첫 적재 원자적 확정
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -255,7 +261,9 @@ prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다
 prisma/credential-cutover/  ⚠️ 마이그레이션이 아니라 스테이징 자리다 — Prisma가 이 디렉터리를 안 본다
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
                         smoke-github · credentials · finalize-credentials
-                        __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다
+                        __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
+                        __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
+                        대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
 public/brand/ flags/    ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다)
 generated/prisma/ public/fonts/   ⚠️ 생성물(gitignore)

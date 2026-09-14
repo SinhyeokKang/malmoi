@@ -31,6 +31,7 @@ const LOCALES_FORM = "components/locales/base-locale-form.tsx";
 const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const BASE_BANNER = "components/translations/base-pending-banner.tsx";
+const WORKFLOW = "lib/onboarding/workflow.ts";
 const EDIT_LOSS_BANNER = "components/translations/edit-loss-banner.tsx";
 
 describe("대기 조건은 한 벌이다 — 두 화면이 `basePending`을 부른다", () => {
@@ -44,15 +45,22 @@ describe("대기 조건은 한 벌이다 — 두 화면이 `basePending`을 부�
    * ⚠️ **옮겨간 것은 "고칠 줄 + Copy" UI다.** 필드가 없는 화면에 그 UI만 남으면 사용자가 고칠 곳을
    * 찾아 두 화면을 오간다 — §7.7 결정 4가 그 왕복을 없애려고 자리를 합친 것이다.
    *
-   * ⚠️ **`basePending` 자체는 설정에 남는다** — 워크플로 YAML이 **대기 중** `base-locale:`을 박기
+   * ⚠️ **`basePending` 판정 자체는 살아 있다** — 워크플로 YAML이 **대기 중** `base-locale:`을 박기
    * 때문이다(그 줄이 없으면 CI가 옛 base를 계속 보내고 변경이 영영 안 일어난다). 그래서 이 컬럼의
    * 소비자가 셋이고, `updateBaseLocale`의 무효화 범위가 그 셋을 다 덮어야 한다 (POSTMORTEM 2026-09-09).
+   *
+   * ⚠️ **다만 그 판정은 화면이 아니라 `workflowSurfaceOf`에 산다** (multi-surface). 표면이 여럿이면
+   * 화면 안의 분기는 표면마다 반복되고, 화면 안에 있으면 렌더 없이는 잴 수 없다.
    */
   it("설정 화면이 고칠 줄을 더는 보이지 않는다 — 필드와 같은 자리로 갔다", () => {
     const src = read(SETTINGS_PAGE);
     expect(src).not.toMatch(/baseLocaleLine\(/);
-    // 조건은 여전히 읽는다 — 워크플로 YAML이 그것으로 `base-locale:`을 고정한다.
-    expect(src).toMatch(/basePending\(/);
+    // 판정을 화면이 손으로 다시 쓰지 않는다 — 표면 행을 그대로 변환 함수에 넘긴다.
+    expect(src).not.toMatch(/basePending\(/);
+    expect(src).toMatch(/surfaces:\s*project\.surfaces\.map\(workflowSurfaceOf\)/);
+    // 그리고 그 함수가 조건의 유일한 소비자다.
+    expect(read(WORKFLOW)).toMatch(/from "\.\/base-pending"/);
+    expect(read(WORKFLOW)).toMatch(/basePending\(/);
   });
 
   it("번역 화면의 배너가 `basePending`을 읽는다", () => {
@@ -212,8 +220,16 @@ describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
    * ⚠️ **워크플로 YAML은 그대로 둔다** (§7.7 결정 4) — 대기 중 `base-locale:`을 박는 동작도
    * 유지한다. 그 줄이 없으면 CI가 탐지 1순위(옛 base)를 보내고 `checkFormat`이 통과시켜 사용자가
    * 원한 변경이 **영영 일어나지 않는다.** 그래서 이 화면은 선언 컬럼을 **읽기만** 한다.
+   *
+   * ⚠️ **화면은 컬럼을 이름으로 부르지 않는다** (multi-surface) — 표면 행 전체를 `workflowSurfaceOf`에
+   * 넘기고 그 함수가 선언을 읽는다. 그래서 여기서 재는 것은 "행이 통째로 넘어가는가"와
+   * "그 함수가 선언을 읽는가" 둘이다.
    */
   it("설정 화면이 선언을 워크플로 YAML에는 여전히 넘긴다", () => {
-    expect(read(SETTINGS_PAGE)).toMatch(/declaredBaseLocale/);
+    const src = read(SETTINGS_PAGE);
+    // 표면 행에서 컬럼을 골라 넘기면 선언이 조용히 빠질 수 있다 — 행 전체를 넘긴다.
+    expect(src).toMatch(/surfaces:\s*\{\s*where:\s*\{\s*archivedAt:\s*null\s*\},\s*orderBy/);
+    expect(src).toMatch(/surfaces:\s*project\.surfaces\.map\(workflowSurfaceOf\)/);
+    expect(read(WORKFLOW)).toMatch(/declaredBaseLocale/);
   });
 });

@@ -47,6 +47,10 @@ function verify(over: Partial<Parameters<typeof verifyState>[0]> = {}) {
 }
 
 describe("signState — 결정적이고 payload를 그대로 들고 있다", () => {
+  it("Add surface OAuth 복귀가 프로젝트와 고유 화면을 보존한다", () => {
+    const dest = { kind: "add-surface" as const, slug: "acme" };
+    expect(verify({ cookie: sign({ dest }) })).toEqual({ status: "ok", dest });
+  });
   it("같은 입력이면 같은 문자열이다 — 쿠키 값이 요청마다 흔들리면 대조가 불가능하다", () => {
     expect(sign()).toBe(sign());
   });

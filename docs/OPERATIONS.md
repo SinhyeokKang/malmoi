@@ -24,33 +24,55 @@ WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
   AND grantee IN ('anon', 'authenticated');
 ```
 
-**action 릴리스는 서버 계약과 함께 전환해야 한다.** ⚠️ **`surfaceSlug`가 없는 것은 옛 태그
-`@l10n-push-v1`이다** — 그 구현이 보내는 페이로드를 새 서버가 400으로 거부한다. `action.yml`의
-`surface: default` 기본값은 **새 action 코드에서만** 작동하므로, 대상 리포가 옛 태그를 가리키는 동안은
-그 기본값이 존재하지 않는 것과 같다.
+## 다중 표면 배포 2 — 제약과 writer 동시 전환
 
-**2026-09-14에 이름을 함께 갈았다** (외부 계약 전부): 브랜치 `malmoi-i18n/sync-<slug>` · PR·커밋 접두
-`malmoi-i18n:` · 마커 `[skip-malmoi-i18n]` · action 경로 `.github/actions/malmoi-i18n-push` ·
-태그 `malmoi-i18n-push-v1` · env `MALMOI_I18N_*` · 생성 파일명 `.github/workflows/malmoi-i18n.yml`.
-대상 리포가 보는 이름 어디에도 제품 이름이 없어 그 브랜치·PR이 무엇인지 알 수 없었던 것이 이유다.
+1. 배포 1의 commit·CI·Vercel 성공 SHA와 dev/prod 마이그레이션 상태를 각각 확인한다.
+   Surface writer가 활성화된 DB에서 옛 Project 값을 복사하는 재백필은 실행하지 않는다.
+2. 대상 환경의 push·첫 적재·추가·편집 요청을 멈추고 진행 중 요청을 drain한다. 단계 A writer의
+   Locale `ON CONFLICT (projectId, code)`는 단계 B에서 유효하지 않다. **B SQL만 적용하고 A 서버를 재개하지 않는다.**
+3. `20260914070000_finalize_translation_surfaces`와 대응 writer를 함께 전환한다.
+   dev는 `/push` 직전, prod는 Claude Code `/merge` 1단계다. Codex는 커밋까지 수행한다.
+   precondition 실패 시 SQL을 우회하거나 TRUNCATE하지 말고 누락된 surface/default 소유권을 조사한다.
+4. `pnpm db:status` / `pnpm db:status:prod`, drift, 아래 정합성 SQL과 공개 권한을 확인한다.
+   새 코드 배포 성공 SHA 확인 뒤 요청을 재개한다. Add surface·동일 key/locale 공존·교차 FK 거부는
+   격리 PostgreSQL에서도 검사한다. 빈 DB의 0건 결과만으로 migration 방어가 검증됐다고 쓰지 않는다.
+5. 기존 URL·첫 온보딩·Add surface·두 표면의 단일 Publish 왕복을 검증한다.
+   dev의 `bugshot-i18n-test-qa`는 상주 프로젝트이므로 삭제·TRUNCATE하지 않는다.
 
-**마커 변경은 원래 루프를 만든다** — 이미 설치된 workflow는 `[skip-l10n]`을 검사하므로 새 pull이 만든
-커밋을 못 알아보고 push를 다시 돌린다. 같은 라운드에서 **prod 프로젝트를 전부 초기화**해 그 workflow의
-push 토큰이 먼저 죽었고, 그래서 전환 창이 닫혔다. **이 순서를 지키지 않으면 그 창이 열린다.**
+```sql
+SELECT 'key' AS model, count(*) FROM "Translation" t
+LEFT JOIN "StringKey" k ON k.id=t."keyId" AND k."projectId"=t."projectId" AND k."surfaceId"=t."surfaceId"
+WHERE k.id IS NULL
+UNION ALL SELECT 'locale', count(*) FROM "Translation" t
+LEFT JOIN "Locale" l ON l."projectId"=t."projectId" AND l."surfaceId"=t."surfaceId" AND l.code=t."localeCode"
+WHERE l.code IS NULL;
+SELECT count(*) FROM "Project" p LEFT JOIN "TranslationSurface" s
+ON s.id=p."defaultSurfaceId" AND s."projectId"=p.id AND s."archivedAt" IS NULL WHERE s.id IS NULL;
+SELECT count(*) FROM information_schema.role_column_grants
+WHERE table_schema='public' AND table_name IN ('Project','TranslationSurface','Locale','StringKey','Translation','KeyRef')
+AND grantee IN ('anon','authenticated');
+```
 
-전환 순서:
+null 자식·잘못된 부모/default·공개 권한은 모두 0이어야 한다. 활성 표면의 출력 경로는
+`loadPullState` → `planMultiSurfacePull`에 같은 base snapshot 경로를 넘겨 `surfaceOwnership` 충돌 0건을
+확인한다. per-locale은 저장 Locale의 생성 예정 경로도 포함한다. prefix 비교만으로 대신하지 않는다.
 
-1. prod 프로젝트 데이터 초기화(옛 workflow의 push가 401이 된다) → `pnpm db:deploy`.
-2. `/merge`로 코드를 프로덕션에 올린다.
-3. **머지 직후** `malmoi-i18n-push-v1`을 그 main 커밋에 붙인다. 2와 3 사이에는 옛 태그를 쓰는 리포가
-   400을 받지만, 프로젝트가 없어 실제로 도달하는 리포는 없다.
-4. 프로젝트를 다시 만들고 결과 화면이 주는 새 YAML을 대상 리포에 붙인다. 옛
-   `.github/workflows/l10n.yml`·`l10n/sync-*` 브랜치·열린 PR은 그때 정리한다.
-5. 옛 태그 `l10n-push-v1`은 참조하는 리포가 0이 된 뒤에 지운다.
+### Action 릴리스와 대상 workflow
 
-dev 검증은 이 체크아웃의 `pnpm push:local … --surface default --path-template '…'`을 쓴다 — 생성 YAML은
-릴리스 태그를 가리키므로 **태그 갱신 전에 그대로 실행해 호환된다고 판정하지 않는다.**
+현재 외부 계약은 `.github/actions/malmoi-i18n-push` · `malmoi-i18n-push-v1` · `MALMOI_I18N_*` ·
+`.github/workflows/malmoi-i18n.yml` · `malmoi-i18n/sync-<slug>` · `[skip-malmoi-i18n]`이다.
+기존 `l10n-push-v1` 구현은 surfaceSlug를 생산하지 않았고 삭제됐다. 현재 새 태그의 코드(8511d37)는
+`surface` 기본값 default와 `path-template`을 생산자에게 전달한다. **새로 만든 첫 표면도 slug가 default라는
+가정은 금지**다. 등록된 실제 slug와 path-template을 생성 YAML에서 그대로 가져온다.
 
+서버 필수 계약과 릴리스 순서는 서버 writer 배포 → action 태그의 실제 payload 생산 코드 확인/필요 시 릴리스 →
+대상 리포별 새 YAML 전환 → smoke/왕복이다. 호환되지 않는 기존 workflow는 전환 동안 중지한다.
+태그 이동·대상 리포 변경은 Claude Code 담당이며 이번 Codex 세션은 수행하지 않는다.
+새 태그가 이미 필드를 생산하면 T17이라는 이유만으로 태그를 다시 옮기지 않는다. 다만 Project 생성 ID 수정처럼
+새 서버 코드가 필요한 변경은 서버 배포를 완료한 뒤 재검증한다.
+
+dev 검증은 현재 체크아웃 CLI의 `--project <slug> --surface <등록 slug> --path-template '<등록 경로>'`를
+명시한다. 토큰은 로그·화면 캡처에 남기지 않는다.
 
 **나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
 [ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.

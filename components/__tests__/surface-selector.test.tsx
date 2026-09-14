@@ -30,3 +30,15 @@ it("locks the control while navigation is pending", async () => {
   const { container } = await render(<SurfaceSelector value="default" surfaces={surfaces} pending onChange={() => {}} />);
   expect(find(container, '[role="combobox"]').hasAttribute("disabled")).toBe(true);
 });
+
+it("같은 마지막 디렉터리 이름의 표면은 전체 경로로 구별한다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<SurfaceSelector value="a" pending={false} onChange={() => {}} surfaces={[
+    { slug: "a", pathTemplate: "apps/a/locales/{locale}.json", unpublished: 0 },
+    { slug: "b", pathTemplate: "apps/b/locales/{locale}.json", unpublished: 0 },
+  ]} />);
+  await act(async () => user.click(find(container, '[role="combobox"]')));
+  const options = [...document.querySelectorAll('[role="option"]')];
+  expect(options[0]?.textContent).toContain("apps/a/locales/{locale}.json");
+  expect(options[1]?.textContent).toContain("apps/b/locales/{locale}.json");
+});

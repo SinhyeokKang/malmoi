@@ -1541,3 +1541,70 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   `rg -n 'ON CONFLICT' lib app --glob '*.ts' --glob '!**/__tests__/**'` — 실제 upsert는 `lib/push/apply.ts` 두 곳뿐이다.
   두 번째 Translation upsert는 `keyId` 단위 unique와 복합 FK가 경계를 지킨다. 이 모듈을 바꾸면
   `pnpm test`뿐 아니라 `pnpm test:projects:postgres`의 빈 행·교차 FK·B snapshot 검증까지 돌린다.
+
+
+### 2026-09-14 — 표면 복합 FK 추가 뒤 새 프로젝트 생성이 Project.id NULL로 실패했다
+
+- **영역**: `prisma/schema.prisma` Project.defaultSurface · `app/(edit)/projects/actions.ts` createProject
+- **증상**: 상주 QA 재생성의 실제 온보딩이 P2011, PostgreSQL 23502(`Project.id` null)로 실패했다. dev/prod URL 혼선은 아니었고 재생성한 Prisma client에서도 같았다.
+- **근본 원인**: Project.id가 nullable defaultSurface 복합 FK의 공유 열인 현재 Prisma 7.10 조합에서 create의 cuid 기본값이 누락됐다. nullable defaultSurfaceId만 보고 생성이 가능하다고 판단했지만 id 생성까지 확인하지 않았다. 생성 Action이 randomUUID를 명시하도록 수정했다.
+- **그물**: 브라우저가 발견했고, 격리 PostgreSQL에서 실제 createProject Action을 실행해 같은 P2011 red→green을 확인했다. 기존 PG fixture는 Project id를 직접 지정했고 하네스는 생략된 id를 자동 보충해 놓쳤다.
+- **재발 방지**: `rg -n 'project\.create\(' app lib scripts --glob '*.ts' --glob '!**/__tests__/**'`의 생산자는 Action 하나다. 복합 관계·기본값 변경 때 실제 생성 Action을 격리 PG에서 실행한다. `pnpm test:projects:postgres`의 생성→기본 표면→OWNER 계약을 유지한다.
+
+### 2026-09-14 — TransactionClient를 런타임 속성으로 구별해 첫 적재가 자기 잠금을 기다렸다
+
+- **영역**: `lib/push/apply.ts` · `lib/surfaces/create.ts`
+- **증상**: Add surface 구현 중 Surface 생성 tx 안에서 적재가 끝나지 않았다. 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다렸다.
+- **근본 원인**: PrismaClient와 TransactionClient union을 `"$transaction" in prisma`로 구별한 구현이 proxy 객체를 잘못 판정해 중첩된 별도 트랜잭션을 열었다. 동일 클라이언트처럼 보이는 것이 동일 DB 연결이라는 보장은 아니었다.
+- **그물**: 격리 PostgreSQL과 pg_stat_activity 잠금 대기로 발견했다. 호출을 기록하는 가짜 DB는 연결 간 FK 대기를 재현하지 못한다. `applyPush`와 `applyPushInTransaction` 진입점을 명시적으로 나눠 열린 tx에서는 문장만 순서대로 실행한다.
+- **재발 방지**: `rg -n '\$transaction.*in|in.*\$transaction' lib app --glob '*.ts'`로 런타임 client 판별을 검사한다(현재 0건). Add surface의 다섯 쓰기 단계 rollback·동일 경로 동시성 검사를 실제 PG에서 유지한다. Project 잠금을 빼는 mutation은 안내 가능한 path-conflict 대신 P2002를 내며 red다.
+
+### 2026-09-14 — 컬럼을 뗀 마이그레이션이 스모크 스크립트를 죽였고, typecheck가 `select`를 안 본다
+
+- **영역**: `scripts/smoke-github.ts` · `prisma/migrations/20260914070000_finalize_translation_surfaces`
+- **증상**: 단계 B가 `Project`에서 포맷·적재 열 열 개를 떼어낸 뒤 `pnpm smoke:github <slug>`이
+  `adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`·`lastCommitSha` 여섯을 그대로 골라
+  첫 쿼리에서 `PrismaClientValidationError`로 죽는다. **게이트 넷(typecheck·test·build·격리 PG)이 전부 green이었다.**
+- **근본 원인**: **`tsc`가 Prisma `select`의 키를 검증하지 않는다**(실측 — 없는 이름을 넣어도 `pnpm typecheck`가
+  0으로 끝난다. 읽는 쪽 `row.zzz`는 TS2339로 잡히지만 `select: { zzz: true }`는 안 잡힌다). 여기에
+  `scripts/`가 `pnpm test`의 대상이 아니라는 사실이 겹쳐, 컬럼을 떼는 마이그레이션의 소비자 전수 검색이
+  **타입이 잡아 줄 것이라는 가정** 위에서 끝났다.
+- **그물**: 없었다. `git grep`으로 떨어진 컬럼 이름을 훑다가 발견했고, 그 뒤 `select`에 가짜 키를 넣어
+  typecheck가 침묵하는 것을 직접 확인했다. `scripts/__tests__/prisma-select-columns.test.ts`가
+  `schema.prisma`의 모델 필드와 `scripts/`의 select 키를 대조하는 red→green으로 남았다.
+- **재발 방지**: **컬럼을 떼는 마이그레이션은 이름 전수 검색이 필수다** —
+  `rg -n '(^|[^A-Za-z])<컬럼>\s*:' lib app scripts components --glob '*.ts' --glob '*.tsx'`.
+  typecheck green을 소비자 검색의 대체로 쓰지 않는다. ⚠️ **위 테스트는 `scripts/`만 본다** — `lib`·`app`의
+  select는 여전히 어느 게이트도 키를 검증하지 않고, 그쪽은 실 DB를 치는 경로(`/l10n-roundtrip`·격리 PG)가
+  대신 드러낸다. 스모크는 프로젝트 하나의 **기본 표면**을 보며, 로케일 조회도 그 표면으로 좁힌다.
+
+### 2026-09-14 — 내가 쓴 "바이트가 같다" 테스트가 자기 자신과 비교해 공허했다
+
+- **영역**: `lib/onboarding/workflow.ts` · `lib/onboarding/__tests__/workflow.test.ts`
+- **증상**: 워크플로 파일을 표면 수만큼의 step으로 바꾸면서 `checkout` 줄과 첫 push step 사이의
+  **빈 줄이 사라졌다**. `pnpm test` 3,657개가 green이었고, 실물 화면의 YAML을 브라우저로 읽어 잡았다.
+- **근본 원인**: 배열 마지막의 `""`가 "줄을 끝내는 개행"과 "빈 줄"을 겸하던 것을 분해하면서 하나를
+  잃었다. 그물이 둘 다 못 봤다: ① `docs/ACTIONS.md` 대조 테스트가 `bare()`로 **빈 줄을 벗기고** 센다
+  ② 내가 새로 쓴 "표면 하나면 바이트가 같다"는 `renderWorkflowYaml`과 비교하는데 **그것이 새 함수의
+  래퍼**라 항상 참이다. 리팩터의 before/after를 재려면 비교 대상이 리팩터 밖에 있어야 한다.
+- **그물**: ego-browser가 실제 설정 화면의 `<pre>`를 읽었다. 재발 방지로 빈 줄 자체를 재는 테스트를
+  넣었다 — `- uses:`마다 앞이 빈 줄 하나이고(첫 checkout만 예외) 연속 빈 줄이 없다.
+- **재발 방지**: **같은 모듈의 다른 export와 비교하는 "동치" 테스트는 근거가 아니다** — 한쪽이 다른
+  쪽을 부르는지 먼저 본다. 사람이 복사해 붙이는 산출물은 `bare()` 같은 정규화 대조 **옆에** 공백·줄
+  구조를 직접 재는 단언을 둔다. 정규화가 지우는 축이 곧 그 테스트의 사각지대다.
+
+### 2026-09-14 — 거부 문구가 화면에 없는 버튼 이름을 가리켰다
+
+- **영역**: `components/onboarding/add-surface.tsx` · `messages/en.tsx`
+- **증상**: Add surface 화면의 `reauthorize` Alert가 "Use **Reconnect GitHub**."인데 바로 아래 버튼은
+  `Connect GitHub`이었다. 사전이 두 문장(`not-connected`·`reauthorize`)을 각각 다른 버튼 이름으로
+  지시하는데 화면은 라벨을 하나로 고정했다.
+- **근본 원인**: 첫 프로젝트 화면(`steps/repo.tsx`)은 이미 `error === "not-connected"`로 라벨을 갈라
+  들고 있었다. 새 화면이 그 쌍을 모르고 `m.surfaces.connect` 하나를 새로 만들었다 — **같은 자리의
+  선례를 찾지 않고 사전 항목을 늘린 것**이 원인이다.
+- **그물**: ego-browser가 실제 화면의 Alert와 버튼 라벨을 함께 읽어 잡았다. `no-korean-ui`·
+  `brand-spelling` 같은 소스 스캔은 **문장 사이의 모순**을 볼 수 없다(2026-09-13의 `malmoi`/`Malmoi`가
+  같은 계보다 — 둘 다 같은 사전에서 나와 서로 다른 절에 산다). `add-surface.test.tsx`에 두 갈래의
+  Alert 본문과 버튼 라벨을 대조하는 red→green을 남겼다.
+- **재발 방지**: **"무엇을 누르라"고 말하는 문구를 새로 쓸 때 그 이름의 컨트롤이 같은 화면에 있는지
+  본다.** 사전 항목을 늘리기 전에 `rg -n '"(Re)?[Cc]onnect GitHub"' messages/en.tsx`로 기존 쌍을 찾는다.

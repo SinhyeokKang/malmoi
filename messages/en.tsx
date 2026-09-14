@@ -18,7 +18,17 @@ import type { ReactNode } from "react";
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
 export const en = {
-  surfaces: { label: "Translation surface" },
+  surfaces: {
+    label: "Translation surface", title: "Translation surfaces", add: "Add surface",
+    description: "Choose another set of translation files from this repository.",
+    workflow: "Add this step to your existing workflow. It uses the same PUSH_TOKEN.",
+    baseLocale: "Source language", confirm: "Check files", cancel: "Cancel", settings: "Back to settings",
+    open: "Open translations", conflict: "These files already belong to another translation surface:",
+    failed: "We couldn't add this surface. Your existing translations are unchanged. Try again.",
+    missingTitle: "Translation surface unavailable",
+    missingDescription: "This page may have moved or the surface may no longer be active. Open your projects to continue.",
+    projects: "Open projects",
+  },
   // ⚠️ 화면 섹션은 **그 화면을 만드는 커밋이 더한다** — 빈 껍데기를 미리 두지 않는다("만든 것이 실제로
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
