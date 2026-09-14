@@ -86,8 +86,7 @@ export function AddSurface({ slug, owner, repo, branch, adapters, initial, initi
       {result ? <div className="space-y-4">
         {result.failed > 0 ? <Alert variant="warning" role="status">{ingestHeadline(result.count, result.failed)}</Alert>
           : <p>{ingestHeadline(result.count, 0)}</p>}
-        <p className="text-sm text-muted-foreground">{m.surfaces.workflow}</p>
-        <WorkflowBlock yaml={result.yaml} />
+        <WorkflowBlock yaml={result.yaml} saveAs={m.surfaces.workflow} />
         <div className="flex gap-2">
           <ButtonLink href={routes.surfaceTranslations(slug, result.surfaceSlug)} variant="primary">{m.surfaces.open}</ButtonLink>
           <ButtonLink href={routes.settings(slug)}>{m.surfaces.settings}</ButtonLink>

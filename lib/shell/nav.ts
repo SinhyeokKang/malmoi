@@ -37,7 +37,7 @@ export function activeProject(pathname: string, memberships: readonly NavProject
   const member = memberships.find((m) => m.slug === slug);
   if (!member) return null;
   const parts = pathname.split("/");
-  return parts[3] === "surfaces" && parts[4] ? { ...member, surfaceSlug: parts[4] } : member;
+  return parts[3] === "surfaces" && parts[4] && (parts[5] === "translations" || parts[5] === "locales") ? { ...member, surfaceSlug: parts[4] } : member;
 }
 
 export type NavSection = {
