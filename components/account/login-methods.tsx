@@ -95,9 +95,12 @@ function ConnectButton({ label }: { label: string }) {
  * 그 전엔 이 자리만 Dialog가 있었고 주석이 그 비대칭을 *"`DisconnectGithubButton`과 달리 확인을
  * 받는다 — 그쪽은 **다시 누르면 복구되는** GitHub App 연결이고, 로그인 수단 해제는 되돌리려면
  * OAuth 왕복 전체가 필요하다"*로 정당화했다. **그 판단을 뒤집었다**: 복구가 쉬운 것과 결과가
- * 가벼운 것은 다른 일이고, GitHub 연결 해제는 **내가 OWNER인 모든 프로젝트의 발송을 멈춘다** —
- * 그 결과를 화면에서 말하는 것이 `N projects use this connection.` 한 줄이고, 그 줄이 있어야 할
- * 자리가 확인 Dialog다.
+ * 가벼운 것은 다른 축이고, **되돌리는 비용이 양쪽 다 OAuth 왕복 전체**다.
+ *
+ * ⚠️ **2026-09-14 정정** — 뒤집는 근거로 *"GitHub 연결 해제는 내가 OWNER인 모든 프로젝트의 발송을
+ * 멈춘다"*와 그 화면 쪽 짝인 `N projects use this connection.` 한 줄을 들었는데 **둘 다 폐기됐다**:
+ * 야간 pull·PR은 App **설치 토큰**이 내므로 해제 뒤에도 그대로 돌고, 그 집계 줄은 이 연결에
+ * 의존하지 않는 프로젝트까지 세고 있어 함께 걷었다. **Dialog는 남는다** — 근거가 위의 왕복 비용이다.
  */
 function DisconnectButton({ label, pending, onConfirm }: { label: string; pending: boolean; onConfirm: () => void }) {
   return (
