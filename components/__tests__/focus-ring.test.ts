@@ -146,7 +146,18 @@ const RADIX_FIXTURES = {
  *
  * ⚠️ **목록에 더 얹지 않는다** — 새로 Radix로 옮기는 프리미티브는 픽스처를 들고 와야 한다.
  */
-const RING_FIXTURE_EXEMPT = ["components/ui/dropdown-menu.tsx", "components/ui/segmented-control.tsx", "components/ui/dialog.tsx"];
+const RING_FIXTURE_EXEMPT = [
+  "components/ui/dropdown-menu.tsx",
+  "components/ui/segmented-control.tsx",
+  "components/ui/dialog.tsx",
+  /**
+   * ⚠️ **`segmented-control.tsx`와 같은 사정이다** — `resizable.test.tsx`가 렌더해서 링 셋을
+   * **실제로** 본다. 여기 픽스처로 둘 수 없는 이유는 아래 렌더 검사가
+   * `querySelectorAll("button,input,select,textarea")`로 대상을 찾는데, 리사이즈 핸들은 포커스를
+   * 받는 `<div role="separator" tabindex="0">`이라 그 넷 중 어느 것도 아니어서다.
+   */
+  "components/ui/resizable.tsx",
+];
 
 describe("포커스 링 (DESIGN §7)", () => {
   it("검사 대상 파일을 실제로 찾는다", () => {
