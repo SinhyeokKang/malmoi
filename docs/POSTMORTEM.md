@@ -1608,3 +1608,54 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   Alert 본문과 버튼 라벨을 대조하는 red→green을 남겼다.
 - **재발 방지**: **"무엇을 누르라"고 말하는 문구를 새로 쓸 때 그 이름의 컨트롤이 같은 화면에 있는지
   본다.** 사전 항목을 늘리기 전에 `rg -n '"(Re)?[Cc]onnect GitHub"' messages/en.tsx`로 기존 쌍을 찾는다.
+
+### 2026-09-14 — fieldset 비활성만으로 Radix Portal의 언어 선택을 잠그지 못했다
+
+- **영역**: `components/onboarding/steps/naming.tsx` · `new-project.tsx` · `components/__tests__/new-project.test.tsx`
+- **증상**: 프로젝트 생성 요청 중 입력 필드는 비활성이었지만, 기준 언어 Select의 마우스 pointerdown이 목록을 열었다. Portal 옵션은 fieldset 밖이라 제출 뒤 선택값을 바꿀 수 있었다.
+- **근본 원인**: native fieldset의 disabled 전파를 Radix의 이벤트·Portal 상태까지 전파되는 것으로 보았다. Select는 자기 `disabled` 값으로 열기를 막는다. NamingStep에서 Select·RadioGroup으로 `disabled`를 직접 전달했다.
+- **그물**: 병렬 경계 리뷰와 실제 `pointerType: "mouse"`를 붙인 DOM 이벤트가 red→green을 냈다. 기존 `:disabled` 필드 검사와 pointerType 없는 MouseEvent는 둘 다 green이었다 — Radix가 mouse 갈래를 검사하므로 이벤트 이름만 맞춘 테스트는 그 분기에 도달하지 않았다.
+- **재발 방지**: `rg -n 'fieldset|<Select|disabled=' components/onboarding`으로 부모 fieldset와 Radix 컨트롤의 직접 disabled 전달을 대조한다. 새 DOM 케이스 `생성 중 Portal 언어 선택도 열리지 않는다`를 유지한다. 같은 모양의 후속 확인 후보는 기존 Add surface의 fieldset 아래 FilesStep(미리보기·수동 어댑터 Select)이며, 이번 신규 생성 변경에서는 그 정책을 바꾸지 않았다.
+
+### 2026-09-14 — 다중 선택 화면의 "무엇을 읽는가" 안내가 첫 경로만 들었다
+
+- **영역**: `components/onboarding/new-project.tsx` (③ `NamingStep`에 넘기는 `pathTemplate`) · `messages/en.tsx`의 `newProject.naming.info`
+- **증상**: 후보 둘을 체크하고 ③에 들어가면 info가 `Creating the project reads public/_locales/{locale}/messages.json on dev once.` 한 경로만 말했다.
+  실제로는 두 표면을 모두 읽고 두 표면을 모두 적재한다. **틀린 값이 아니라 모자란 값이라 화면만 봐서는 정상으로 읽힌다.**
+- **근본 원인**: ②를 라디오(하나)에서 체크박스(여럿)로 바꾸면서 **상세(`detail`)와 선택(`checked`) 두 축으로 갈랐는데**,
+  컨테이너가 ③에 넘기는 `pathTemplate`은 상세 축(`chosenCandidate?.pathTemplate`)에 그대로 붙어 있었다.
+  두 축을 나눈 커밋이 **"선택"을 읽어야 할 소비자를 전수로 훑지 않았다** — `NamingStep`은 `baseLocale`·`locales`만 표면별로 갈랐다.
+- **그물**: `pnpm test` 3,686건 green — DOM 테스트가 ③의 **라디오 그룹 수·접근 이름·제출 payload**는 세면서 info 문장은 안 봤다.
+  `pnpm typecheck`는 타입이 `string`으로 같아 아무것도 못 본다. **브라우저 실물 검증(T11)에서만 드러났다.**
+- **재발 방지**: 화면 문구가 단수 인자를 받는 자리를 전수로 본다 —
+  `grep -rn "surfaces\[0\]\|candidates\[0\]\|\.pathTemplate ??" components app --include="*.tsx" --include="*.ts" | grep -v __tests__`.
+  2026-09-14 실행 결과 나머지 넷은 전부 단수가 맞다(`add-surface.tsx`는 한 번에 표면 하나가 계약, `surface-selector`·설정 목록은 행 단위,
+  `new-project.tsx:114`는 수동 지정·`sampleKey` 전용). **`naming.info`에는 선택 경로 전부를 요구하는 DOM 테스트를 박았다**
+  (`components/__tests__/new-project.test.tsx` — "③ info는 체크한 모든 경로를 말한다").
+
+### 2026-09-14 — 설정 YAML이 확정 어댑터를 생략해 CI가 다른 포맷을 보냈다
+
+- **영역**: `lib/onboarding/workflow.ts` · `app/(edit)/projects/actions.ts`
+- **증상**: 수동으로 지정한 비-ts-dict 표면의 설정 YAML에는 `adapter:`가 없어, CI가 다른 탐지 1순위 어댑터를 고르면 `checkFormat`이 409로 거부한다. 같은 YAML로 재실행해도 해소되지 않는다. 코드와 함수 테스트로 확인했으며 브라우저 재현은 아니다.
+- **근본 원인**: 생성 결과는 수동 지정 여부로, 설정 화면은 ts-dict 여부로 출력 조건을 나눴다. 렌더러를 공유해도 그 입력을 만드는 정책은 달랐다. 필요한 것은 선택 이력이 아니라 확정 포맷의 재현이다.
+- **그물**: 기존 테스트는 비-ts-dict 어댑터 생략을 정상으로 단언했고 기준 언어 줄만 비교했다. 전체 YAML 일치 테스트와 실제 createProject의 자동·수동 결과 대조가 누락을 잡았다.
+- **재발 방지**: `rg -n 'workflow:|renderSurfaceWorkflowStep\(|adapterName === "ts-dict"' lib/onboarding/workflow.ts 'app/(edit)/projects/actions.ts'`로 생산 경로를 대조했다. 생성·설정·표면 추가 모두 확정 adapter와 base를 출력하고, 기준 언어 변경 대기만 선언값을 우선한다. 전체 YAML 일치 테스트를 유지한다.
+
+### 2026-09-15 — 비활성 primary가 호출부에 따라 다른 형으로 보였다
+
+- **영역**: `components/ui/button.tsx` · `components/onboarding/modal.tsx`
+- **증상**: 공통 primary는 검정 면의 opacity만 낮췄고, 온보딩 [Next]는 흰 외곽선 형으로 덮어써 입력·셀렉트의 muted 비활성 어휘와 갈렸다.
+- **근본 원인**: variant 대신 모달 호출부가 비활성 색·테두리·불투명도를 소유했다. 정본에도 두 규칙이 각각 있어 비활성 형의 분기를 허용했다.
+- **그물**: 기존 disabled 여부·focus-ring 검사는 색의 일치를 보지 못했다. primary와 온보딩 ① 막힘 세 상태의 클래스 회귀 테스트 5건이 수정 전 red를 냈다. 실제 컴포넌트 렌더 DOM + 프로젝트 CSS의 브라우저 실측에서 세 상태 모두 hover 포함 `#f5f5f5` 면·`#737373` 글자·`not-allowed`·opacity `1`을 확인했다. 활성 면 `#171717`·hover `#0a0a0a`도 확인했다.
+- **재발 방지**: `pnpm exec vitest run components/__tests__/onboarding-modal.test.tsx components/__tests__/new-project.test.tsx components/__tests__/focus-ring.test.ts`로 공유 형과 포커스를 검사한다. `rg -n 'disabled:opacity-|disabled:bg-background' components app`로 호출부 예외를 찾는다. 수정 후 남은 opacity는 checkbox·radio 프리미티브뿐이며 primary 호출부에는 없다. CSS 순서가 바뀌면 computed style을 다시 잰다.
+
+### 2026-09-15 — Settings → Projects 전환 중 콘텐츠 패널 폭 분할
+
+- **영역**: `components/shell/{shell-panels,content-panel,project-panel}.tsx`
+- **증상**: 사용자가 전환 깜빡임을 관측했다. 로컬 dev 1440 측정에서는 셸 우측의 직계 자식 `<main>` 둘이 52ms 동안 폭을 나눴다. 해당 실행의 rAF 샘플에는 잡히지 않았으나, 이것만으로 미페인트를 확정할 수 없다.
+- **근본 원인**: 라우트별 패널이 하나라는 정적 구조를 전환 중 DOM에도 적용했다. 공존하는 두 콘텐츠가 flex 항목이 되어 폭을 나눴다. 두 DOM이 공존하는 프레임워크 내부 원인은 미확정이다.
+- **그물**: 기존 라우트 체인 검사는 전환 중 공존을 놓쳤다. 두 ContentPanel과 선택적 ProjectPanel을 렌더하는 DOM 테스트를 추가해 기존 배치에서 2건 실패를 확인했다. grid의 동일 셀 배치와 프로젝트 패널의 8px 간격을 검사한다. jsdom은 실제 배치·페인트를 검증하지 않으며 수정 후 실물 검증은 사용자 담당이다.
+- **재발 방지**: `rg -n 'flex min-w-0 gap-2|grid-cols-\[minmax\(0,1fr\)_auto\]' components app`로 셸 배치를 확인한다. 현재 구현은 ShellPanels 한 곳이며 대응 검사는 shell-panels.test.tsx에 있다. rAF 미관측을 사용자 관측의 반증으로 사용하지 않는다.
+
+- **후속 관측·수정 (같은 날)**: 사용자가 grid 변경 후 스켈레톤이 진했다 연해지는 깜빡임을 보고했다. 콘텐츠 패널에 stacking context가 없어 opacity 애니메이션 자식이 다른 패널 배경 위에 그려질 수 있다는 CSS 규칙을 근거로 `isolate`를 추가했다. 원인 추정에 따른 수정이며 실물 해소 여부는 아직 미검증이다. DOM 테스트에 패널별 `isolate` 계약을 추가해 실패를 먼저 확인했다. `rg -n 'isolate|animate-pulse' components/shell/content-panel.tsx components/ui/skeleton.tsx 'app/(edit)/projects/loading.tsx'`로 경계와 소비자를 함께 확인한다.
+- **사용자 실물 검증 완료 (같은 날)**: `isolate` 추가 후 사용자가 폭 분할과 스켈레톤 농도 변화에 따른 깜빡임 모두 해소됐다고 확인했다. 위의 실물 미검증 상태를 이 확인으로 종료한다. 에이전트는 요청에 따라 실물 검증을 수행하지 않았다. 자동 검증은 타입 검사와 253파일·3,732개 테스트 통과이며, DOM 테스트는 배치·격리 클래스 계약을 검사하고 실제 페인트를 재현하지는 않는다.

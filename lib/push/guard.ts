@@ -48,9 +48,11 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  * 온보딩은 후보를 사용자에게 확정받아 재검증한 값을 저장하는데(`planConfirmedFormat`), `applyPush`는
  * 페이로드의 포맷으로 그 컬럼 셋을 **덮어쓴다**. 그래서 CI가 다른 표면을 보내면 확정이 조용히 뒤집힌다:
  *
- * - 자동 후보의 워크플로 YAML은 `adapter:`·`base-locale:`을 박지 않고(`renderWorkflowYaml`),
- *   `push:local`은 그때 `detectFormat`으로 **1순위**를 고른다 — 2순위를 확정한 프로젝트가 정확히
- *   그 경로로 덮인다 (한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 — PRODUCT §7.1).
+ * - 워크플로 YAML에 `adapter:`가 없으면(자동 후보) `push:local`은 `detectFormat`으로 **1순위**를
+ *   고른다 — 2순위를 확정한 프로젝트가 정확히 그 경로로 덮인다 (한 리포에 표면이 둘인
+ *   `i18n-format-check`가 실물이다 — PRODUCT §7.1). ⚠️ **`base-locale:`은 2026-09-14부터 두 생산자
+ *   (`createProject`·`workflowSurfaceOf`)가 언제나 박는다** — ③에서 사용자가 기준 언어를 고르기
+ *   시작하면서 "탐지가 같은 답을 낸다"가 base 축에서 거짓이 됐다.
  * - 결과는 strict 덮어쓰기라 **그 프로젝트의 키가 전부 orphan되고 이물 키가 삽입된다.** `PushPlan`에
  *   `toDelete`가 없고 `Translation`의 FK가 `RESTRICT`라 되돌릴 수 없다 — `checkProjectSlug`가 막는
  *   것과 같은 피해다.

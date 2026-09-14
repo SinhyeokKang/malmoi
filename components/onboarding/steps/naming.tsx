@@ -1,5 +1,8 @@
 "use client";
 
+import { FileCode2, FileJson2 } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
+
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
@@ -44,25 +47,18 @@ export type NamingStepState = {
 export function NamingStep({
   state,
   onChange,
+  surfaces,
+  onBaseLocale,
+  disabled = false,
 }: {
   state: NamingStepState;
+  disabled?: boolean;
+  surfaces?: Pick<NamingStepState, "pathTemplate" | "baseLocale" | "locales" | "keyCounts">[];
+  onBaseLocale?: (index: number, value: string) => void;
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
-  const { slug, locales, keyCounts } = state;
-  const verdict = planSlug(slug);
-  /** 키 수를 **아는** 언어 중 가장 많은 것. 모르면 배지가 아예 안 선다. */
-  /*
-    ⚠️ **`Object.hasOwn`이다** — `keyCounts`는 평범한 `{}`이고 키가 **리포에서 온 로케일 코드**다.
-    `keyCounts[code] !== undefined`로 보면 `constructor`·`toString` 같은 코드에서 `Object.prototype`의
-    함수가 잡혀 "키 수를 안다"로 통과하고, 그 언어에 `Most keys` 배지가 선다 (CLAUDE.md).
-  */
-  const countOf = (code: string): number | undefined => (Object.hasOwn(keyCounts, code) ? keyCounts[code] : undefined);
-  const known = locales.filter((code) => countOf(code) !== undefined);
-  const leader = known.reduce<string | undefined>(
-    (best, code) => (best === undefined || (countOf(code) ?? 0) > (countOf(best) ?? 0) ? code : best),
-    undefined,
-  );
-  const gap = leader === undefined ? undefined : keyGap(countOf(leader), countOf(state.baseLocale));
+  const verdict = planSlug(state.slug);
+  const { slug } = state;
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,6 +117,49 @@ export function NamingStep({
       */}
       <div className="bg-divider my-2 h-px shrink-0" />
 
+      {surfaces ? surfaces.map((surface, index) => (
+        <Fragment key={surface.pathTemplate}>
+          {index > 0 && <div className="bg-divider my-2 h-px shrink-0" />}
+          <BaseLocaleFields disabled={disabled} state={{ ...state, ...surface }}
+            label={
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{m.newProject.baseLocale.title}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {surface.pathTemplate.endsWith(".json")
+                    ? <FileJson2 aria-hidden="true" className="size-4 shrink-0" />
+                    : <FileCode2 aria-hidden="true" className="size-4 shrink-0" />}
+                  <span className="break-all">{surface.pathTemplate}</span>
+                </span>
+              </span>
+            } id={`surface-base-${index}`}
+            onChange={next => { if (next.baseLocale !== undefined) onBaseLocale?.(index, next.baseLocale); }} />
+        </Fragment>
+      )) : <BaseLocaleFields disabled={disabled} state={state} onChange={onChange} />}
+
+    </div>
+  );
+}
+
+function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newProject.baseLocale.title, disabled }: {
+  state: NamingStepState; onChange: (next: Partial<NamingStepState>) => void; id?: string; label?: ReactNode; disabled: boolean;
+}) {
+  const { locales, keyCounts } = state;
+  const selectId = id === "base-locale" ? "project-base-locale" : `${id}-select`;
+  /** 키 수를 **아는** 언어 중 가장 많은 것. 모르면 배지가 아예 안 선다. */
+  /*
+    ⚠️ **`Object.hasOwn`이다** — `keyCounts`는 평범한 `{}`이고 키가 **리포에서 온 로케일 코드**다.
+    `keyCounts[code] !== undefined`로 보면 `constructor`·`toString` 같은 코드에서 `Object.prototype`의
+    함수가 잡혀 "키 수를 안다"로 통과하고, 그 언어에 `Most keys` 배지가 선다 (CLAUDE.md).
+  */
+  const countOf = (code: string): number | undefined => (Object.hasOwn(keyCounts, code) ? keyCounts[code] : undefined);
+  const known = locales.filter((code) => countOf(code) !== undefined);
+  const leader = known.reduce<string | undefined>(
+    (best, code) => (best === undefined || (countOf(code) ?? 0) > (countOf(best) ?? 0) ? code : best),
+    undefined,
+  );
+  const gap = leader === undefined ? undefined : keyGap(countOf(leader), countOf(state.baseLocale));
+
+  return <div className="flex flex-col gap-4">
       {/*
         ⚠️ **갈래마다 껍데기가 다르다.** 접히면 컨트롤이 **하나**라 `FormGroup`이 라벨과 help를 들고,
         펼치면 컨트롤이 여럿이라 `RadioGroup`이 그룹이 되고 라벨을 `aria-labelledby`로 잇는다 —
@@ -132,15 +171,15 @@ export function NamingStep({
       */}
       {collapseLocalePicker(locales.length, LOCALE_RADIO_MAX) ? (
         <FormGroup
-          label={m.newProject.baseLocale.title}
-          labelId="project-base-locale-label"
-          htmlFor="project-base-locale"
+          label={label}
+          labelId={`${id}-select-label`}
+          htmlFor={selectId}
           help={m.newProject.baseLocale.hint}
         >
-          <Select value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
+          <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
             <SelectTrigger
-              id="project-base-locale"
-              aria-labelledby="project-base-locale-label project-base-locale"
+              id={`${selectId}`}
+              aria-labelledby={`${id}-select-label ${selectId}`}
               className="w-full max-w-sm"
             >
               <SelectValue />
@@ -167,13 +206,16 @@ export function NamingStep({
         </FormGroup>
       ) : (
         <div className="flex flex-col gap-2">
-          <p id="base-locale-label" className="text-sm font-medium">
-            {m.newProject.baseLocale.title}
-          </p>
-          <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+          <div className="flex flex-col gap-1">
+            <p id={`${id}-label`} className="text-sm font-medium">
+              {label}
+            </p>
+            <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+          </div>
           {/* ⚠️ **①②와 같은 행 형이다** — 글리프 칩 자리에 국기가 들어간다 (핸드오프 1c). */}
           <RadioGroup
-            aria-labelledby="base-locale-label"
+            disabled={disabled}
+            aria-labelledby={`${id}-label`}
             value={state.baseLocale}
             onValueChange={(baseLocale) => onChange({ baseLocale })}
           >
@@ -241,8 +283,7 @@ export function NamingStep({
       {gap !== undefined && leader !== undefined && (
         <Alert variant="info">{m.newProject.naming.keyGap(state.baseLocale, gap, leader)}</Alert>
       )}
-    </div>
-  );
+  </div>;
 }
 
 /** `planSlug`의 갈래 넷 → 필드 아래 help. `ok`면 `undefined`라 기본 안내가 선다. */

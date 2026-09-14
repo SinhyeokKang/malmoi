@@ -79,7 +79,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 19개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 21개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| 패널 리사이즈 | `resizable.tsx` 하나가 쓴다 — 셸 LNB와 새 프로젝트 모달 ②. ⚠️ **`minSize`·`defaultSize`·`maxSize`가 % 전용이라** 셸은 `ResizeObserver`로 재고 px→%로 환산한다(`lib/shell/panel-size.ts`). ⚠️ **커서는 라이브러리가 `document.head`에 꽂는 `<style>`이 건다** — 핸들에 `cursor-*`를 쓰면 안 먹는다. ⚠️ **jsdom에서는 이 라이브러리가 화면의 모든 클릭을 삼킨다** — document 레벨 `pointerdown`이 핸들 rect ± 마진으로 히트 판정하는데 jsdom은 모든 rect가 `0×0 @ (0,0)`이다. `vitest.setup.ts`가 핸들 rect만 화면 밖으로 밀어 막는다(실 브라우저에는 없는 조건이라 프로덕션 코드를 비틀지 않는다). 시각 규칙은 DESIGN §6.56 | `react-resizable-panels` 2.1.9 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). ⚠️ **고정 이유가 둘이다**: `lib/onboarding/budget.ts`가 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀌고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |

@@ -1,9 +1,9 @@
 "use client";
 
-import { Link2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { startGithubConnectForUser, type UserConnectDest } from "@/app/(edit)/projects/actions";
+import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
@@ -63,8 +63,7 @@ export function ConnectGithubButton({
           });
         }}
       >
-        {/* ⚠️ `lucide-react` 1.x에 브랜드 아이콘이 없다 (DESIGN §6.8) */}
-        <Link2 aria-hidden />
+        <GithubIcon className="size-4" />
         {label}
       </Button>
       {error !== null && <Alert variant="danger">{error}</Alert>}

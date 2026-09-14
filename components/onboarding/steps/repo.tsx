@@ -1,7 +1,8 @@
 "use client";
 
-import { ExternalLink, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import { ExternalLink, FolderGit2, GitBranch, Search } from "lucide-react";
 
+import { GithubIcon } from "@/components/signin/brand-icons";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -344,7 +345,7 @@ function Blocked({
     return (
       <Centered>
         <EmptyState
-          icon={Link2}
+          icon={GithubIcon}
           title={m.newProject.empty.connect.title}
           description={m.newProject.empty.connect.description}
           action={
@@ -363,7 +364,7 @@ function Blocked({
     return (
       <Centered>
         <EmptyState
-          icon={FolderGit2}
+          icon={GithubIcon}
           /**
            * ⚠️ **제목에 판정층 문구를 넣지 않는다** (code-review 2026-09-08). `onboardErrorMessage`는
            * "무엇이 없다 + 무엇을 하라"의 두 문장이고, 빈 상태의 제목은 마침표 없는 짧은 구다.

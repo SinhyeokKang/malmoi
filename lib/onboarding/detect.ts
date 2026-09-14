@@ -81,6 +81,8 @@ export function formatLabel(adapter: AdapterName): { label: string; example: str
 export type KeyCount = { status: "counted"; count: number } | { status: "key-count-failed" };
 
 export type CandidateSummary = {
+  /** 전체 snapshot에서 계산한 출력 경로. 표본 미리보기와 독립이다. */
+  outputPaths: string[];
   /** 서버가 재검증한 포맷의 서명. 순수 요약에는 없고 Action이 발급한다. */
   confirmation?: string;
   /** 확정 시 되돌려 보내는 값이다 — 화면에 쓰지 않는다. */
@@ -151,8 +153,8 @@ export function sampleRows(
 export function summarizeCandidates(
   candidates: readonly DetectedFormat[],
   blobs: ReadonlyMap<string, string>,
-): CandidateSummary[] {
-  const out: CandidateSummary[] = [];
+): Omit<CandidateSummary, "outputPaths">[] {
+  const out: Omit<CandidateSummary, "outputPaths">[] = [];
   for (const c of candidates) {
     // 탐지는 로케일 2개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
     const baseLocale = pickBaseLocale(c.locales);

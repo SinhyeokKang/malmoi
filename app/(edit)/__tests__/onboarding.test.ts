@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "@/lib/github-connect/health";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
-import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, renderWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { hashPushToken } from "@/lib/push/token";
 
 import { createHarness, sessionFor } from "./harness";
@@ -38,6 +38,7 @@ const hoisted = vi.hoisted(() => ({
   listInstallationRepos: vi.fn(),
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
+  applyPushInTransaction: vi.fn(),
   addSurfaceFromSnapshot: vi.fn(),
   triggerPull: vi.fn(),
   revalidatePath: vi.fn(),
@@ -67,7 +68,8 @@ vi.mock("@/lib/github-connect/user", () => ({
   listInstallationRepos: hoisted.listInstallationRepos,
   authorizeUrl: hoisted.authorizeUrl,
 }));
-vi.mock("@/lib/onboarding/ingest", () => ({ ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
+vi.mock("@/lib/onboarding/ingest", async original => ({ ...(await original<typeof import("@/lib/onboarding/ingest")>()), ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
+vi.mock("@/lib/push/apply", async original => ({ ...(await original<typeof import("@/lib/push/apply")>()), applyPushInTransaction: hoisted.applyPushInTransaction }));
 // ⚠️ **부분 mock이다.** 통째로 가리면 `isRefSafeSlug`가 사라지고 `planSlug`가 그것을 부른다 —
 // slug 형식 규칙이 pull과 **같은 함수**여야 한다는 것이 T1의 판정이었다 (design §5).
 vi.mock("@/lib/pull/trigger", async (importOriginal) => ({
@@ -116,7 +118,7 @@ const SAMPLED_LOCALES = ["en", "fr", "ko"];
 /** `listInstallationRepos`가 주는 행. `pushed_at`은 같은 응답에 이미 있다 — 추가 호출 0. */
 const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z") => ({ fullName, pushedAt });
 
-const HEAD_SHA = "c0ffee";
+const HEAD_SHA = "c".repeat(40);
 const HEAD_AT = "2026-09-07T00:00:00Z";
 
 /**
@@ -141,18 +143,10 @@ function reader(over: { snapshot?: unknown; blobs?: Map<string, string> } = {}) 
 }
 
 /** 확정 입력 — 화면이 후보에서 되돌려 보내는 값과 같은 모양이다. */
-function createInput(over: Record<string, unknown> = {}) {
-  return {
-    owner: "acme",
-    repo: "web",
-    adapter: "json-catalog",
-    pathTemplate: "i18n/{locale}.json",
-    baseLocale: "en",
-    slug: "acme-web",
-    name: "Acme Web",
-    baseBranch: "develop",
-    ...over,
-  };
+function createInput(over: Record<string, unknown> & { adapter?: string; pathTemplate?: string; baseLocale?: string } = {}) {
+  const { adapter = "json-catalog", pathTemplate = "i18n/{locale}.json", baseLocale = "en", ...rest } = over;
+  return { owner: "acme", repo: "web", surfaces: [{ adapter, pathTemplate, baseLocale }],
+    slug: "acme-web", name: "Acme Web", baseBranch: "develop", ...rest };
 }
 
 let db: ReturnType<typeof createHarness>;
@@ -426,6 +420,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
           confirmation: expect.any(String),
           label: "JSON catalog",
           pathTemplate: "i18n/{locale}.json",
+          outputPaths: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
           locales: ["en", "fr", "ko"],
           baseLocale: "en",
           keys: { status: "counted", count: 2 },
@@ -764,17 +759,18 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     expect(paths, JSON.stringify(hoisted.revalidatePath.mock.calls)).toContain("/projects/new");
   });
 
-  it("첫 적재를 하지 않는다 — lastCommitSha가 null이라 awaiting_first_sync다 (Action 둘, §3.11)", async () => {
+  it("생성과 같은 트랜잭션에 첫 적재를 싣고 별도 적재를 호출하지 않는다", async () => {
     await createProject(createInput());
 
-    expect(db.projects.find((p) => p.slug === "acme-web")?.lastCommitSha).toBeNull();
+    expect(hoisted.applyPushInTransaction).toHaveBeenCalledTimes(1);
+    expect(hoisted.applyPushInTransaction.mock.calls[0]?.[2]).toMatchObject({ commitSha: HEAD_SHA, keys: expect.any(Array) });
     expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
   });
 
   it("클라이언트가 보낸 pathTemplate이 그 리포에서 성립하지 않으면 거부한다", async () => {
     const result = await createProject(createInput({ pathTemplate: "secrets/{locale}.json" }));
 
-    expect(result).toEqual({ ok: false, error: "manual-no-match" });
+    expect(result).toMatchObject({ ok: false, error: "manual-no-match" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
@@ -787,12 +783,12 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   it("재검증할 파일을 내려받지 못하면 unavailable이다 — 장애를 입력 오류로 말하지 않는다", async () => {
     hoisted.openRepoReader.mockImplementation(async () => reader({ blobs: new Map() }));
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "unavailable" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
   it("기준 로케일이 재탐지된 로케일에 없으면 거부한다 — 진짜 base의 키가 orphaned로 떨어진다", async () => {
-    expect(await createProject(createInput({ baseLocale: "de" }))).toEqual({
+    expect(await createProject(createInput({ baseLocale: "de" }))).toMatchObject({
       ok: false,
       error: "manual-no-match",
     });
@@ -975,7 +971,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   it("probe 장애는 unavailable로 통과한다 — planProjectCreate가 그것을 거부로 접지 않는다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "error" });
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "unavailable" });
   });
 });
 
@@ -1486,4 +1482,98 @@ describe("Add surface 요청 경계", () => {
     expect(hoisted.addSurfaceFromSnapshot).not.toHaveBeenCalled();
     expect({ projects: db.projects, surfaces: db.surfaces, translations: db.translations }).toEqual(before);
   });
+});
+
+
+describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () => {
+  const formats = [
+    { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "ko" },
+    { adapter: "json-catalog", pathTemplate: "other/{locale}.json", baseLocale: "fr" },
+  ];
+  function twoReader(change?: (blobs: Map<string, string>) => void) {
+    const files = [...TREE, ...TREE.filter(f => f.path.startsWith("i18n/")).map(f => ({ ...f, path: f.path.replace("i18n/", "other/"), sha: `other-${f.sha}` }))];
+    const blobs = new Map(files.map(f => [f.sha, CATALOG]));
+    change?.(blobs);
+    const result = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs });
+    hoisted.openRepoReader.mockResolvedValue(result);
+    return result;
+  }
+  it("두 표면은 하나의 snapshot과 각자 선택한 기준 언어를 사용한다", async () => {
+    const opened = twoReader();
+    const result = await createProject(createInput({ surfaces: formats }));
+    expect(result).toMatchObject({ ok: true, count: 4, surfaces: [
+      { surfaceSlug: "i18n", baseLocale: "ko" }, { surfaceSlug: "other", baseLocale: "fr" },
+    ] });
+    expect(opened.snapshot).toHaveBeenCalledTimes(1);
+    expect(hoisted.applyPushInTransaction.mock.calls.map(c => c[2].format.baseLocale)).toEqual(["ko", "fr"]);
+    expect(hoisted.applyPushInTransaction.mock.calls.every(c => c[2].commitSha === HEAD_SHA)).toBe(true);
+    expect(result.ok && result.yaml).toContain("base-locale: ko");
+    expect(result.ok && result.yaml).toContain("base-locale: fr");
+    expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
+  });
+  it.each(["missing", "parse", "empty", "duplicate", "budget"])("둘째 표면의 %s는 DB 쓰기 전에 전체 거부다", async reason => {
+    twoReader(blobs => {
+      if (reason === "missing") blobs.delete("other-sha-fr");
+      if (reason === "parse") blobs.set("other-sha-fr", "{invalid");
+      if (reason === "empty") for (const key of ["other-sha-en", "other-sha-fr", "other-sha-ko"]) blobs.set(key, "{}");
+      if (reason === "duplicate") blobs.set("other-sha-fr", '{"a":{"greet":"Nested"},"a.greet":"Flat"}');
+      if (reason === "budget") blobs.set("other-sha-fr", '"' + "a".repeat(2_000_001) + '"');
+    });
+    const result = await createProject(createInput({ surfaces: formats }));
+    expect(result).toMatchObject({ ok: false, surface: { pathTemplate: "other/{locale}.json", failed: expect.any(Number) } });
+    if (reason === "duplicate") expect(!result.ok && result.surface?.errors).toEqual([]);
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+    expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
+  });
+  it("조작된 클라이언트 경로 목록과 무관하게 서버 snapshot의 출력 충돌을 거부한다", async () => {
+    twoReader();
+    const result = await createProject(createInput({ surfaces: [formats[0], { ...formats[0], outputPaths: [] }] }));
+    expect(result).toMatchObject({ ok: false, error: "path-conflict", conflicts: expect.arrayContaining([expect.objectContaining({ path: "i18n/en.json" })]) });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+  });
+  it("DB 실패는 롤백 결과이고 커밋 뒤 캐시 실패는 생성 거부가 아니다", async () => {
+    hoisted.applyPushInTransaction.mockRejectedValueOnce(new Error("write failure"));
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json" } });
+    hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
+    await expect(createProject(createInput({ slug: "second-project" }))).rejects.toThrow("cache failure");
+  });
+});
+
+it("수동 지정의 확정 어댑터와 기본 언어도 성공 YAML에 고정한다", async () => {
+  const result = await createProject(createInput({ manual: true }));
+  expect(result.ok && result.yaml).toContain("adapter: json-catalog");
+  expect(result.ok && result.yaml).toContain("base-locale: en");
+});
+
+it("탐지 후보 outputPaths는 표본 밖 언어도 포함하며 추가 읽기가 없다", async () => {
+  const files = [...TREE, { path: "i18n/ja.json", sha: "sha-ja", size: 20 }];
+  const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) });
+  hoisted.openRepoReader.mockResolvedValue(opened);
+  const result = await detectRepoFormats({ owner: "acme", repo: "web" });
+  expect(result.ok && result.candidates[0]?.outputPaths).toEqual(["i18n/en.json", "i18n/fr.json", "i18n/ja.json", "i18n/ko.json"]);
+  expect(opened.snapshot).toHaveBeenCalledTimes(1); expect(opened.blob).toHaveBeenCalledTimes(3);
+});
+
+/**
+ * ⚠️ **확정한 base가 탐지 1순위와 같아도 박는다** (2026-09-14). 설정 화면(`workflowSurfaceOf`)이
+ * 같은 규칙이라 두 화면이 같은 파일을 권한다 — 갈리면 ④를 떠난 뒤 설정에서 복사한 YAML이
+ * 탐지 1순위를 보내고 `checkFormat`이 재실행으로 안 풀리는 409를 낸다.
+ */
+it("단일 자동 후보 성공 YAML은 확정 base를 박은 고정 문자열과 바이트 동일하다", async () => {
+  const result = await createProject(createInput());
+  expect(result.ok && result.yaml).toBe("name: malmoi-i18n\n\non:\n  push:\n    branches: [\"develop\"]\n  workflow_dispatch:\n\nconcurrency:\n  group: malmoi-i18n-acme-web-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  push:\n    # Keeps the workflow from re-running when a translation PR is merged \u2014 without it, push and pull call each other.\n    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n\n      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1\n        with:\n          push-token: ${{ secrets.PUSH_TOKEN }}\n          project: acme-web\n          surface: i18n\n          path-template: \"i18n/{locale}.json\"\n          adapter: json-catalog\n          base-locale: en\n          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)\n");
+});
+
+
+it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정 adapter를 동일하게 출력한다 (manual=%s)", async (manual) => {
+  const result = await createProject(createInput({ manual, baseLocale: "ko" }));
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const settingsYaml = renderProjectWorkflowYaml({ slug: result.slug, baseBranch: result.baseBranch,
+    surfaces: result.surfaces.map(surface => workflowSurfaceOf({ slug: surface.surfaceSlug,
+      pathTemplate: surface.pathTemplate, adapterName: surface.adapter, baseLocale: surface.baseLocale,
+      declaredBaseLocale: null })) });
+  expect(result.yaml).toContain("adapter: json-catalog");
+  expect(result.yaml).toContain("base-locale: ko");
+  expect(settingsYaml).toBe(result.yaml);
 });

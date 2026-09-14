@@ -236,7 +236,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **사이드바 폭** | `w-60` (240px) — ⚠️ **8-2부터 배경도 border도 없다**(캔버스 위에 얹힌다) | `$super-sidebar-width: 15rem` |
 | **헤더 높이** | `h-12` (48px) — ⚠️ **8-2가 top bar를 대체했다**: 전폭이고 border가 없으며 로고를 든다 | `$header-height: 3rem + 1px` |
 | 사이드바 항목 높이 | `p-1.5` + `text-sm` = 32px, 아이콘 16 (8-2 시안 치수: `p-6`·`gap-8`·`radius-8`) | nav item ≈ 32px |
-| **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 gap 8(`gap-2`) — 규약 3.5, 예외 없음 | — |
+| **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 간격 8(LNB↔콘텐츠는 8px 리사이저, 콘텐츠↔프로젝트는 `ProjectPanel`의 `ml-2`, 나머지는 `gap-2`) — 규약 3.5, 예외 없음 | — |
 | **프로젝트 패널 폭** | `w-80` (320px) — 프로젝트 축 라우트에만 (§6.55) | — |
 | **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — 폼·설정·계정·온보딩 · Home·언어·멤버·**이력** (⚠️ **프로젝트 목록은 8-3에 fluid로 갔다**, ⚠️ **초대 수락은 8-1b에 셸 밖 2열로 갔다** — 폼 컬럼이 `w-[320px]`다, §6.62) | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
 | 콘텐츠 fluid | 번역 표 · **프로젝트 목록**(8-3) — 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**, 표만 자기 컨테이너 안에서 가로 스크롤 | 표 화면은 fluid |
@@ -460,14 +460,15 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |
 | **Button** `link` | `text-blue-600` 인라인 (밑줄 없음) — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
-| **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:opacity-70`(primary) — 옛 규칙 그대로 |
+| **Button** `disabled` | `disabled:text-muted-foreground disabled:cursor-not-allowed disabled:hover:bg-transparent`(default·ghost) / `disabled:bg-muted disabled:text-muted-foreground`(primary). primary는 불투명한 muted 면을 쓰며 호출부에서 `disabled:opacity-*`나 비활성 형을 덧씌우지 않는다 |
 | **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
 | **Input·Select** | `h-9 px-2.5 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
 | **FileInput** | account-settings 신설 (2026-09-13) — **프리미티브 19**. 보이는 것은 `Button`(`default` `md`)이고 `<input type="file">`은 `sr-only` + **`tabIndex={-1}` + `aria-hidden`**이다. ⚠️ **`sr-only` + `<label>` 관용구를 쓰지 않는다** — 그 형은 포커스를 **숨은 input**이 받아 보이는 것에 아무 표시가 없고, 링을 `peer-focus-visible`로 옮겨 붙이면 **포커스 링 검사가 보는 자리(여는 태그)와 링이 사는 자리가 갈린다.** 대신 input을 포커스 대상에서 통째로 빼고 링은 `Button`이 든다(§7). ⚠️ **`focus-ring.test.ts`의 면제가 그래서 넓어졌다** — `type="hidden"`이 될 수 없는 태그라 **`tabIndex={-1}`와 `aria-hidden`을 함께** 든 것만 면제하고, 하나만으로는 안 빠지는 것을 메타 테스트가 센다. ⚠️ **`change` 뒤 `value`를 비운다** — 거부된 파일을 고쳐 같은 이름으로 다시 고르는 것이 흔한 경로인데, 안 비우면 같은 파일에서 이벤트가 안 난다. ⚠️ **`accept`는 대화상자 필터이고 방어선이 아니다**(사용자가 "모든 파일"을 고를 수 있다) — 판정은 `planImagePick`(클라이언트)과 `planImageUpload`(서버 시그니처)가 든다. ⚠️ **`disabled`가 `loading`과 갈라져 있다** (2026-09-14) — 짝이 되는 컨트롤([Delete])이 도는 동안 이 자리를 막되 **스피너는 그쪽에 세워야** 하기 때문이다. 하나로 합치면 도는 쪽이 둘로 보이고, 안 막으면 둘이 동시에 돌아 먼저 끝난 쪽이 남의 스피너를 끈다 |
 | **캡션 강조** | ⚠️ **필드 아래 캡션(help·hint·경고 한 줄)에서 굵게 쓰지 않는다** (2026-09-13 사용자). 13px 한 덩어리에 굵기를 섞으면 그 조각이 **제목처럼** 읽혀 바로 위 라벨과 경쟁한다 — **보이는** 강조는 `text-foreground`까지다(바탕이 `text-muted-foreground`라 그것만으로 충분히 뜬다). ⚠️ **`<strong>`은 지우지 않는다 — `font-normal`로 되누른다**: 되돌릴 수 없음을 말하는 문장(주소 확정·토큰 1회 노출)이 색만 남으면 스크린리더가 평평하게 읽고 고대비 모드에서도 사라진다. 색에 시맨틱을 딸려 보내는 것은 `LocaleBadge`의 `sr-only`와 같은 규칙이다(§7). `(optional)`이 `font-normal`로 라벨의 500을 되누르는 관용구가 이미 있다 |
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground **leading-[1.7]**` · error `text-xs text-destructive **leading-[1.7]**` (2026-09-13 — 시안. 필드 아래 설명은 두세 줄이 되는 자리라 기본 행간 1.33이면 줄이 붙어 한 덩어리로 읽힌다. ⚠️ **`text-xs`에 `line-height`를 짝으로 안 주는 것이 `@theme`의 결정**이라 이 값은 소비자가 든다) · `labelId`(Radix `Select` 트리거가 `aria-labelledby="{labelId} {triggerId}"`로 라벨+값을 잇는다) · "(optional)" `text-muted-foreground font-normal`(⚠️ label이 500이라 **되눌러야 한다** — §4의 기본 400) |
-| **Radio** | **Radix `RadioGroup.Item`이다** (2026-09-13 — 그 전엔 native `<input type="radio">`였다). 16 원 · 비선택 테두리 **`neutral-300`**(#d4d4d4) · 선택 테두리 `foreground` + 안쪽 점 **8**(`Indicator`) · label `text-sm`. ⚠️ **`Radio`는 `RadioGroup` 안에서만 선다** — Radix `Item`이 Root 컨텍스트를 읽으므로 홀로 쓰면 던진다. 목록을 그리는 쪽이 `RadioGroup`을 감싸고 `aria-label`로 그룹 이름을 준다. ⚠️ **`asChild`로 `<ul>`에 얹지 않는다** (2026-09-13 실측) — Radix가 그 태그의 role을 `radiogroup`으로 덮어써 `<li>`가 부모 list를 잃은 고아가 된다. Root의 div 한 겹을 받아들이면 리스트와 radiogroup이 둘 다 산다. ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 그룹이 둘이 되어 이름이 두 번 읽힌다. ⚠️ **`labelClassName`이 행의 gap을 연다** — 온보딩 행이 "라디오 16 + 칩 40 + 텍스트"이고 셋 사이가 전부 12인데, `className`은 지시자로 가므로 그 자리로는 바깥 `<label>`의 `gap-2`를 못 덮는다. **`Checkbox`는 없다** — 와이어 여덟에서 사용 0회라 필요해질 때 만든다 |
+| **Radio** | **Radix `RadioGroup.Item`이다** (2026-09-13 — 그 전엔 native `<input type="radio">`였다). 16 원 · 비선택 테두리 **`neutral-300`**(#d4d4d4) · 선택 테두리 `foreground` + 안쪽 점 **8**(`Indicator`) · label `text-sm`. ⚠️ **`Radio`는 `RadioGroup` 안에서만 선다** — Radix `Item`이 Root 컨텍스트를 읽으므로 홀로 쓰면 던진다. 목록을 그리는 쪽이 `RadioGroup`을 감싸고 `aria-label`로 그룹 이름을 준다. ⚠️ **`asChild`로 `<ul>`에 얹지 않는다** (2026-09-13 실측) — Radix가 그 태그의 role을 `radiogroup`으로 덮어써 `<li>`가 부모 list를 잃은 고아가 된다. Root의 div 한 겹을 받아들이면 리스트와 radiogroup이 둘 다 산다. ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 그룹이 둘이 되어 이름이 두 번 읽힌다. ⚠️ **`labelClassName`이 행의 gap을 연다** — 온보딩 행이 "라디오 16 + 칩 40 + 텍스트"이고 셋 사이가 전부 12인데, `className`은 지시자로 가므로 그 자리로는 바깥 `<label>`의 `gap-2`를 못 덮는다. **`Checkbox`는 아래 별도 행이다** |
+| **Checkbox** | Radix `Checkbox.Root` · 16 사각 · 비선택 `neutral-300`, 선택 `foreground` + 체크 12. Radio와 같은 포커스 링·disabled. 시각 label은 필수가 아니며 `aria-label` 또는 `aria-labelledby`로 이름을 준다. 포함 체크와 상세 버튼은 형제다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** — 2026-09-12부터 **Radix `RadioGroup`이** 방향키·roving tabindex·`loop`를 들고, **Home/End만 프리미티브가 얹는다**(Radix가 안 준다). 2026-09-11의 손수 구현(`nextRovingIndex` + `tabIndex={selected ? 0 : -1}`)을 대체했고, 링 검사가 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이 보이지 않는 링으로 green을 만들지 않는다 |
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
@@ -528,6 +529,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 PRODUCT §4.2가 기능 밀도를 막는다.
 **Publish 버튼은 아직 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), PRODUCT이 그것을 §6.55의 패널로 옮긴다.
 
+전환 중 콘텐츠 패널 둘이 공존해도 폭을 나누지 않도록 셸 우측은 `grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]`이다. 콘텐츠는 `isolate col-start-1 row-start-1`(스켈레톤 opacity 애니메이션의 쌓임을 패널 내부로 제한), 프로젝트 패널은 `col-start-2 row-start-1 ml-2`로 배치한다. 프로젝트 패널이 없을 때 빈 열의 간격이 남지 않도록 grid 자체에는 gap을 두지 않는다. 패널 사이 간격은 8px 그대로다.
+
 ### 6.55 프로젝트 패널 (`w-80`, 2026-09-10 8-2 — **골격뿐이다**)
 
 프로젝트 축 라우트 여섯 전부에 붙는 320px 흰 패널. `app/(edit)/projects/[slug]/layout.tsx`가 마운트한다.
@@ -545,6 +548,36 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 ⚠️ **내용은 8-P다.** `Changes`가 보여줄 diff는 **UI가 아니라 새 서버 능력**이고(커밋 없이 렌더만 하는
 경로 + 접힌 상태에서 GitHub 0회 — PRODUCT), UI만 먼저 만들면 빈 껍데기를 두 번 그린다. 편집 손실 배너·
 미배포 카운트·Publish 결과가 그때 번역 화면에서 이리로 옮겨온다.
+
+### 6.56 패널 리사이저 (2026-09-14)
+
+**드래그로 폭을 바꾸는 구분선 둘** — 셸의 LNB ↔ 콘텐츠, 새 프로젝트 모달 ②의 후보 목록 ↔ 미리보기.
+프리미티브는 `components/ui/resizable.tsx`이고 라이브러리는 `react-resizable-panels`다.
+원본은 bugshot-2 로그 뷰어의 메인 리사이저이고, **시각·동작을 거의 그대로 가져왔다.**
+
+| 요소 | 규칙 |
+|---|---|
+| **핸들 자체** | ⚠️ **투명하다** (`bg-transparent`). shadcn 기본은 `bg-border`라 1px 선이 **상시로** 보이는데, 이 화면들의 패널 경계는 이미 흰 패널의 border가 만들어 선이 두 겹이 된다. 보이는 것은 `::after` 하나뿐이다 |
+| **시각 바** | `::after` **4px**(`after:w-1`), 스트립 한가운데(`after:left-1/2 after:-translate-x-1/2`), 위아래 끝이 페이드(`after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent`) |
+| **색** | ⚠️ **`via-ring`이다 — 원본의 `via-blue-300`이 아니다.** blue-300은 리포 전수 0건의 **미등재 raw 색**이고, `app/globals.css`가 그것을 **흰 배경 1.80:1이라 목측 뒤 버린** 색으로 기록하고 있다. 같은 색을 뒷문으로 들이지 않는다. `--ring`(blue-400)은 이미 등재된 토큰이라 **§6.2에 색이 늘지 않는다** |
+| **표시 트리거** | ⚠️ **React state가 아니라 `data-*`다.** 라이브러리가 DOM에 쓰는 `data-resize-handle-state`(`inactive`/`hover`/`drag`)를 CSS가 직접 읽는다: `after:opacity-0 data-[resize-handle-state=hover]:after:opacity-100 data-[resize-handle-state=drag]:after:opacity-100` |
+| **폭** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다. **둘 다 `w-2`(8)다** — 셸은 옛 `gap-2`와 같아 간격이 그대로이고, **모달 ②는 옛 `gap-4`(16)에서 8로 좁혔다**(2026-09-14 사용자 확정). ⚠️ **`files.tsx`의 `FILES_PANEL_WIDTH = 736 − 8`이 이 값을 따라간다** — 16으로 두면 좌측 기본이 240이 아니라 242로 서고, 그 3px은 화면에서 안 보인다 |
+| **히트 영역** | ⚠️ **CSS가 아니다.** 라이브러리가 document의 pointermove에서 핸들 rect에 마진을 얹어 판정한다(기본 `fine: 5px` / `coarse: 15px`). 그래서 시각 4px이어도 잡히고, `hitAreaMargins`를 **덮지 않는다** |
+| **커서** | ⚠️ **핸들에 `cursor-*`를 쓰지 않는다.** 드래그가 시작되면 라이브러리가 `document.head`에 `<style>`을 꽂아 `*{cursor: ew-resize !important}`를 건다 — 포인터가 핸들을 벗어나도 커서가 유지되는 이유가 이것이고, 클래스는 먹지도 않으면서 "여기가 커서의 출처"라는 거짓 단서만 남긴다 |
+| **포커스** | 핸들은 `role="separator" tabindex="0"`이라 포커스를 받는다 — §7의 링 셋을 그대로 든다. ⚠️ **접근 이름을 붙인다**(`m.common.resizeSidebar` · `m.newProject.files.resize`) — 라이브러리는 이름을 만들어 주지 않아 스크린리더가 "separator"로만 읽는다 |
+| **치수** | 둘 다 **min 200 / default 240 / max 320**. 상한 320은 우측 `ProjectPanel`(§6.55)과 **같은 값**이다 — 한 화면의 보조 패널 둘이 서로 다른 임의 치수를 갖지 않는다(규약 6) |
+| **폭 영속화 없음** | `autoSaveId`(localStorage)를 쓰지 않는다 — SSR에서 첫 페인트가 `defaultSize`로 그려지고 저장값으로 점프한다. **세션 내 리사이즈만** 하고, 필요해지면 쿠키로 붙인다 |
+
+⚠️ **`minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2에 px 짝이 없다). 셸은 그룹 폭이 뷰포트를
+따르므로 **`ResizeObserver`로 재고 px→%로 환산한다**(`lib/shell/panel-size.ts` — 순수 함수) —
+고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 728**이라
+(`max-w-[800px]` − `px-8` 64 − 핸들 8) 재지 않고 모듈 상수로 굳힌다.
+
+⚠️ **분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다** — 라이브러리는 패널에 `flex-basis: 0` +
+`flex-grow: <size>`를 걸고 핸들은 **자기 폭을 가진 별도 flex 항목**이다.
+
+⚠️ **재기 전에는 LNB를 px로 못박는다** — SSR은 뷰포트를 모르므로 %가 거짓이고, 그 상태로 그리면
+큰 모니터에서 LNB가 **하이드레이션이 끝날 때까지** 부풀어 있는다(한 프레임이 아니다).
 
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 여섯
 
@@ -816,23 +849,24 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 |---|---|
 | 껍데기 | 폭 **800 — 핸드오프 값** (2026-09-13 사용자. 880을 거쳐 돌아왔고 **②의 값이 덜 보이는 것을 감수한 결정이다**). 한때 960으로 올렸던 근거 "800이면 ②의 값 셀이 ≈188px라 24자에서 잘린다"는 **좌측 300 + 표 `1fr 1fr`** 기준이었고, 좌측 240 + `1fr 2fr`인 지금 값 셀은 **800→≈291 / 880→≈344**라 그 문제로 돌아가지 않는다. ⚠️ **좌측 240과 `1fr 2fr`은 시안으로 되돌리지 않는다** — 그 둘까지 300·`1fr 1fr`로 가면 값 셀이 ≈244로 내려가 그 이유가 정말로 되살아난다. · `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + **`backdrop-blur-[6px]`**(§6.2). 높이는 **dim padding을 뺀 값과 800에 물린다**: `min-h-[min(80svh,800px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]` — `min-height:80vh`를 그대로 쓰면 1280×720에서 바닥의 [Back]·[Next]가 화면 밖이다. ⚠️ **800이 `min-h`에도 들어간다**: CSS는 `min-height`가 `max-height`를 이기므로 상한만 막으면 1,100px 화면에서 하한이 이겨 상한이 없는 것과 같아진다. ⚠️ **`vh`가 아니라 `svh`다**(셸 관용구) |
 | 바닥 | 왼쪽 `Step n of 4`(`text-xs leading-[1.6]` muted) · `border-t`는 **`border-divider`**(#f0f0f0, §6.2) · 오른쪽 [Back]·[Next] `Button size="lg"`. ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. **①④에는 [Back]이 없다**(닫는 길은 X·Esc·backdrop / 되돌릴 것이 없다) |
-| 비활성 [Next] | **껍데기가 든다** — 흰 배경 + border + muted 글자 + `cursor-not-allowed`. 단계마다 다시 만들면 갈린다 |
+| 비활성 [Next] | **primary variant가 든다** — muted 면 + muted 글자 + `cursor-not-allowed`. 껍데기와 단계는 비활성 형을 덧씌우지 않는다 |
 | ① 막힘 3갈래 | `EmptyState` — 계정 미연결 → `primary` [Connect GitHub] / 설치 없음 → 외부 링크 "Install the app" / 리포 없음 → "Add repositories to the installation". ⚠️ `GITHUB_APP_SLUG`가 없으면 링크가 사라지고 "Ask your administrator…"로 떨어진다. ⚠️ **검색 0건은 넷째 갈래다** — 요구하는 일이 다르다(검색어를 지워라). ⚠️ **넷 다 본문 세로 중앙이다**(2026-09-13 사용자 실물 — `flex flex-1 items-center justify-center`): 껍데기가 `min-h`로 세로를 잡아 두므로 그냥 반환하면 칩·제목·설명이 헤더 바로 아래 뭉치고 그 아래 수백 px이 빈다. **검색 0건은 검색 필드를 위에 남기고** 그 아래 남은 높이의 중앙이라, 중앙을 잡는 것은 단계 루트(`flex-1`)다. ⚠️ **조회 실패(`Alert`)는 중앙이 아니다** — 폭 100% 배너라 빈 상태와 같은 자리에 서면 둘이 같은 부류로 읽힌다 |
-| ① 리포 목록 | 한 테두리(**r10**) 안의 `Radio` 행 — `padding:12` gap 12 = 라디오 16 + **글리프 칩 40 r10**(`folder-git-2` 20) + 텍스트열 `gap-0.5`(이름 **15/500** + 보조 줄 **14** `owner · pushed …`). 선택 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60`(muted 면에서 `muted-foreground`는 AA 미달) · 비선택 hover `bg-foreground/3`. 구분선은 **선택 행에 접하면 `border`(#e5e5e5), 아니면 `divider`(#f0f0f0)** — 그래서 `divide-y`가 아니라 행마다 `border-t`다. ⚠️ **`owner/name`이 sans다**(mono가 아니다). ⚠️ **`RadioGroup`에 `asChild`를 쓰지 않는다** — `<ul>`의 list role이 덮여 `<li>`가 고아가 된다(§6.4) |
+| ① 리포 목록 | 한 테두리(**r10**) 안의 `Radio` 행 — `padding:12` gap 12 = 라디오 16 + **글리프 칩 40 r10**(`folder-git-2` 20) + 텍스트열 `gap-0.5`(이름 **15/500** + 보조 줄 **14** `owner · pushed …`). 상세 대상 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60`. 체크는 포함 여부만 표시하고 버튼은 미리보기만 바꾼다. 접근 이름은 `Include {path}` / `Preview {path}`이며 `<ul>`의 list role을 보존한다(muted 면에서 `muted-foreground`는 AA 미달) · 비선택 hover `bg-foreground/3`. 구분선은 **선택 행에 접하면 `border`(#e5e5e5), 아니면 `divider`(#f0f0f0)** — 그래서 `divide-y`가 아니라 행마다 `border-t`다. ⚠️ **`owner/name`이 sans다**(mono가 아니다). ⚠️ **`RadioGroup`에 `asChild`를 쓰지 않는다** — `<ul>`의 list role이 덮여 `<li>`가 고아가 된다(§6.4) |
 | ① 브랜치 | 고른 행 **아래로** 펼쳐지는 한 줄 — `border-t`(#e5e5e5) · `padding:12 12 12 80`(라디오 16 + 12 + 칩 40 + 12이라 **이름과 같은 세로선**) · gap 12로 [라벨 14/500 + `git-branch` 14][`Select` **220**×36][캡션 13/1.6 `text-foreground/60`]가 나란히 선다. 값은 **sans**다(mono가 아니다 — 읽는 값이다). `Select`(기본값 default branch). 300개 초과면 `Input`, 조회 실패면 읽기 전용 한 줄 + "Using the repository's default branch." — ⚠️ **실패를 "브랜치가 없다"로 그리지 않는다** |
-| ② 2단 | 좌 **240** 후보 `Radio` / 우 키·값 표. ⚠️ **키 행만 스크롤한다** — 툴바·헤더·총량 줄은 고정. 거터 16은 **껍데기 본문의 `gap-4`가 유일한 출처**다(안에서 또 래퍼를 세우지 않는다) |
-| ② 후보 행 형 | ①과 **같은 행 형**이다 — `padding:12` · gap 12 · 라디오 16 + **글리프 칩 40 r10**(`file-json-2`/`file-code-2` 20, ⚠️ **경로의 확장자로 가른다** — 어댑터 이름을 화면에 쓰지 않는다) + 텍스트열 `gap-0.5`(이름=**경로** 15/500 · 보조 14). 선택 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60` |
+| ② 2단 | 좌 **240** 후보 `Checkbox` + 형제 상세 버튼 / 우 키·값 표. ⚠️ **키 행만 스크롤한다** — 툴바·헤더·총량 줄은 고정. 거터 16은 **껍데기 본문의 `gap-4`가 유일한 출처**다(안에서 또 래퍼를 세우지 않는다) |
+| ② 후보 행 형 | ①과 **같은 행 형**이다 — `padding:12` · gap 12 · 체크박스 16 + **글리프 칩 40 r10**(`file-json-2`/`file-code-2` 20, ⚠️ **경로의 확장자로 가른다** — 어댑터 이름을 화면에 쓰지 않는다) + 텍스트열 `gap-0.5`(이름=**경로** 15/500 · 보조 14). 상세 대상 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60`. 체크는 포함 여부만 표시하고 버튼은 미리보기만 바꾼다. 접근 이름은 `Include {path}` / `Preview {path}`이며 `<ul>`의 list role을 보존한다 |
 | ② 표 | `Table` 프리미티브다 — `scrollable={false}` + 바깥 `role="region" tabIndex={0}`(안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다)가 스크롤을 들고, 그래야 `Th`의 `sticky`가 거기 붙는다. `Th` 배경은 **불투명 `bg-primary-foreground`**(§6.2) · 열 `1fr 2fr`(`table-fixed`) · `Td` 12/16 + **`whitespace-nowrap` 명시**(프리셋의 `whitespace-normal`과 twMerge 그룹이 달라 둘 다 살아남는다) · `Tr`에 `hover:bg-transparent`(읽기 전용이라 hover 신호를 주지 않는다) |
 | ② 예외 E | 후보 0개에도 **표 껍데기를 버리지 않는다** — 헤더는 서 있고 `TableBody`만 빠진다(매칭 순간 레이아웃이 안 튄다). ⚠️ **툴바는 통째로 없다** — 고를 로케일이 없는데 트랙 자리를 남기면 탐지 중 화면과 픽셀 단위로 같아 "멈췄다"로 읽힌다. ⚠️ **빈 상태는 제목 + 설명 둘 다 든다**(시안 3a — 2026-09-13까지 제목만이었다. 겹치던 뒷문장은 좌측 수동 지정 힌트에서 뺐다: 같은 문장을 한 화면에 두 번 두지 않는다). ⚠️ **표 헤더 *아래* 남은 높이의 중앙이다**(핸드오프 3a): 중앙을 잡는 것이 **스크롤 컨테이너**(`flex flex-col` + 자식 `flex-1`)여야 하고, 바깥 박스가 잡으면 헤더까지 포함한 중앙이 되어 블록이 위로 밀린다. 그 전환의 대가로 **표에 `shrink-0`이 붙는다** — flex 아이템의 기본 `shrink:1`이 행 많은 표를 누른다 |
-| ② 후보 행 | 선택 행 `bg-muted font-medium`. ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
+| ② 후보 행 | 상세 대상 행 `bg-muted`, 포함 여부는 체크박스다. 초기 체크·상세는 탐지 1순위 하나. 체크 0개 또는 출력 충돌이면 Next를 막는다. 수동 지정은 검증된 후보 하나만 제출한다. ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
 | ② 세그먼트 | 후보의 **로케일 전부**. **다섯 이상이면 `Select`로 접힌다** |
 | ② 값 셀 | 정말 비었으면 **빈 칸**, 못 읽었으면 **"We couldn't read this file."** ⚠️ **둘을 가른다** — 이 화면의 목적이 "ko 열이 비어 있다"를 보이는 것이라 그 구별이 기능 자체에 걸린다 |
 | ③ 주소 오류 | 형식 넷(`empty`·`format`·`too-long`·`reserved`)은 **입력 중** 필드 아래 help, 중복은 **제출 뒤** 같은 자리에 `aria-invalid` + destructive. ⚠️ **배너를 세우지 않는다** |
-| ③ 기준 언어 | ①②와 **같은 행 형** — 한 테두리(r10) 안의 행, 글리프 칩 자리에 **국기 `md`(24×17)**, 이름이 **영어 언어명**(`languageName`) — ⚠️ **자국어가 아니다** (2026-09-13 실측 뒤 뒤집었다): `Intl.DisplayNames([code])`는 그 로케일 데이터가 없으면 **보는 사람의 시스템 언어**로 떨어져 Chrome(ko)에서 `az-AZ`가 `azərbaycan (아제르바이잔)`이 됐고, 같은 코드가 Node에서는 `azərbaycan (Azərbaycan)`이었다. 팀원마다 다른 화면을 보고 SSR에 실리면 hydration이 깨진다. ⚠️ **하위태그를 떼지 않는다** — `zh-Hans`/`zh-Hant`가 같은 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다, 보조가 `{경로} · {키 수}`(⚠️ `{locale}`은 **`replaceAll`**로 전부 치환한다), 행 오른쪽 끝에 `Badge neutral` "Most keys". 그 아래 키 수 비교 info. ⚠️ **키 수를 아는 언어에만 단다** — 모르는 언어에 배지를 달면 근거가 "②에서 무엇을 눌렀는지"라는 우연이 된다. ⚠️ **열하나 이상이면 `Select`로 접히고, 그때 배지는 옵션 라벨로 들어간다**(`fieldset`을 버린다 — 컨트롤이 하나면 묶을 것이 없고 `legend`가 `Select`의 이름과 겹쳐 두 번 읽힌다) |
-| ④ 결과 | ⚠️ **결과를 모달의 설명 줄이 말한다** (핸드오프 1d·4f·4g): 성공은 `Imported N keys. Add the push token…`이고 **본문에 그릇이 없다**(가장 흔한 상태가 가장 조용하다). 본문 `Alert`는 셋뿐 — 적재 중 `info`(`role="status"`) · 부분 실패 `warning` · 실패 `danger`. ⚠️ **tone은 `failed`가 정한다**(불변식 9 — `failed = errors.length + duplicateKeys`라 `errors.length`로 갈리면 **중복 키만 있는 부분 실패가 조용히 성공**이 된다. `screens.test.ts`가 지표·`warning` 표현·소비자 셋을 모두 센다) |
-| ④ 토큰·워크플로 | 토큰 값 칩은 **필드 형**(h36 · r10 · border · `px-2.5` · `bg-muted` · mono 13 · truncate) + [Copy] **36**. YAML 상단 줄 13/muted + 파일명 mono + [Copy] **28(sm)**. `<pre>`는 `bg-muted` r10 p12 mono 13/18 **border 없음** + **`min-h-0 flex-1 overflow-auto`로 블록 자신이 스크롤한다**(본문이 스크롤하면 토큰 칩이 화면 밖으로 밀린다). ⚠️ **mono는 토큰과 YAML 둘뿐** — `PUSH_TOKEN`·주소·브랜치는 읽는 값이라 sans다. 부분 실패의 상위 5건 "Could not read {path}"와 `<details>` 안 `text-mono whitespace-pre-wrap` 진단(§4.1)은 그대로. **적재 중에도 토큰·YAML이 보이고 [Start translating]이 눌린다** — 비활성이면 토큰을 이미 옮긴 사용자가 60초를 갇힌다 |
+| ③ 기준 언어 | 체크한 표면마다 경로로 구별된 선택기를 표시한다. 미리보기와 독립이고 체크 해제·재선택에서는 유지하며 리포·브랜치 변경·재탐지 때 초기화한다. 표면 하나면 기존 UI다. ①②와 **같은 행 형** — 한 테두리(r10) 안의 행, 글리프 칩 자리에 **국기 `md`(24×17)**, 이름이 **영어 언어명**(`languageName`) — ⚠️ **자국어가 아니다** (2026-09-13 실측 뒤 뒤집었다): `Intl.DisplayNames([code])`는 그 로케일 데이터가 없으면 **보는 사람의 시스템 언어**로 떨어져 Chrome(ko)에서 `az-AZ`가 `azərbaycan (아제르바이잔)`이 됐고, 같은 코드가 Node에서는 `azərbaycan (Azərbaycan)`이었다. 팀원마다 다른 화면을 보고 SSR에 실리면 hydration이 깨진다. ⚠️ **하위태그를 떼지 않는다** — `zh-Hans`/`zh-Hant`가 같은 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다, 보조가 `{경로} · {키 수}`(⚠️ `{locale}`은 **`replaceAll`**로 전부 치환한다), 행 오른쪽 끝에 `Badge neutral` "Most keys". 그 아래 키 수 비교 info. ⚠️ **키 수를 아는 언어에만 단다** — 모르는 언어에 배지를 달면 근거가 "②에서 무엇을 눌렀는지"라는 우연이 된다. ⚠️ **열하나 이상이면 `Select`로 접히고, 그때 배지는 옵션 라벨로 들어간다**(`fieldset`을 버린다 — 컨트롤이 하나면 묶을 것이 없고 `legend`가 `Select`의 이름과 겹쳐 두 번 읽힌다) |
+| ③ 생성·실패 | 모든 표면의 준비와 첫 적재를 기다린다. 입력·Back·생성 버튼을 잠그고 `role="status"`로 알린다. Radix Select·RadioGroup에는 `disabled`를 직접 전달한다(Portal은 fieldset 밖이다). 확인된 거부는 전체 미생성·경로·실패 수·상위 5건 진단을 danger Alert에 표시한다. 응답 유실은 목록 확인을 안내하며 미생성을 단정하지 않는다 |
+| ④ 결과 | 모든 저장이 끝난 성공 상태만 표시한다. 설명 줄은 `Imported N keys. Add the push token…`이며 성공 Alert는 없다. 별도 적재·부분 실패·재시도 UI는 기존 Settings의 몫이다 |
+| ④ 토큰·워크플로 | 토큰 칩 h36 · r10 · border · px-2.5 · bg-muted · mono 13 + Copy 36. YAML은 서버가 반환한 활성 표면 전체의 step을 표시한다. 상단 줄 13/muted + 파일명 mono + Copy 28(sm). `<pre>`는 bg-muted r10 p12 mono 13/18 · border 없음 · min-h-0 flex-1 overflow-auto. 완료 후 토큰·YAML·Start translating을 제공한다 |
 | 로딩 | **다음 단계 안의 스켈레톤**이다 — [Next]를 누른 자리에서 라벨만 바꾸면 화면이 멈춘 것으로 보인다. 개수는 실제보다 적게(① 셋, ② 둘). ⚠️ **행의 형이 실물과 같아야 한다** — 디바이더 색·행 padding·칩 자리가 어긋나면 도착하는 순간 레이아웃이 움직인다. ②는 **표 헤더를 세운 채 `<tbody>`만 스켈레톤**이고, 세그먼트는 칸 수를 모르므로 **트랙 자리(150×36 `bg-canvas`)만** 남긴다. 전역 스피너·진행률 숫자가 없다. ⚠️ **예외 하나**: ③→④만 [Next]가 로딩이다(실패하면 ③에 머물러야 하므로 미리 넘어갈 수 없다) |
-| 접근성 | `sr-only aria-live="polite"` 하나가 단계 제목과 비동기 전이를 말하고, 단계가 바뀌면 포커스가 본문 컨테이너(`tabIndex={-1}`)로 간다. ④의 적재 중 info `Alert`는 `role="status"`다 — ⚠️ `Alert`의 `role="alert"`는 **`danger`일 때만** 붙는다 |
+| 접근성 | `sr-only aria-live="polite"` 하나가 단계 제목과 비동기 전이를 말하고, 단계가 바뀌면 포커스가 본문 컨테이너(`tabIndex={-1}`)로 간다. ③의 생성 중 안내는 `role="status"`다 — ⚠️ `Alert`의 `role="alert"`는 **`danger`일 때만** 붙는다 |
 
 ⚠️ **②와 ③의 접힘 경계가 다르고 그것이 의도다** (2026-09-13 사용자 — 정본은 `lib/onboarding/locale-picker.ts`의 상수 둘). ②는 **넷**, ③은 **열**이다: 세그먼트는 가로 트랙 **한 줄**이라 칸이 늘면 로케일 코드가 잘리고, 라디오는 `flex-wrap`으로 **감싸** 줄만 늘 뿐 각 항목이 그대로다. ③이 더 늦게 접히는 것은 그 자리가 **되돌릴 수 없는 결정**이라 한눈에 보이는 편이 낫기 때문이다. **숫자를 화면에 적지 않는다** — 한쪽만 바뀌면 그 차이가 조용히 굳는다.
 
@@ -900,7 +934,7 @@ Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이�
 
 - 조건부 클래스는 **항상 `cn()`** 을 지난다 (§4.2의 twMerge 등록 때문에 특히). 삼항으로 문자열을 고르는 것도 조건부 클래스다.
 - 변형이 셋 이상이면 `class-variance-authority`(Button·Badge·Alert). 둘 이하면 인라인 삼항이 낫다.
-- 프리미티브는 `className`을 받아 **끝에** 병합한다(`cn(base, variants, className)`) — 호출부가 폭·여백만 덧댄다. 색·높이를 호출부에서 덮으면 형이 갈린다. ⚠️ 2026-09-08 `/doc-check`이 로그인 provider 버튼의 `h-9`를 잡았고 **규칙이 아니라 코드를 고쳤다** — 지금 높이를 덮는 자리는 사이드바의 `h-auto`(§6.5가 그 형을 적어 둔다) 하나다.
+- 프리미티브는 `className`을 받아 **끝에** 병합한다(`cn(base, variants, className)`) — 호출부가 폭·여백만 덧댄다. 색·높이를 호출부에서 덮으면 형이 갈린다. ⚠️ 2026-09-08 `/doc-check`이 로그인 provider 버튼의 `h-9`를 잡았고 **규칙이 아니라 코드를 고쳤다** — 높이를 덮는 자리는 사이드바의 `h-auto`(§6.5)와 ②의 상세 버튼이다. 상세 버튼은 행 안 글리프·텍스트 높이를 따르므로 ghost 버튼에 `h-auto p-0`을 사용한다.
 
 ## 9. SaaS UI 레퍼런스 — GitLab (2026-09-07 결정, Supabase에서 변경)
 

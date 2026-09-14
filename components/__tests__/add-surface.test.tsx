@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { find, render } from "./helpers/dom";
 import { AddSurface } from "../onboarding/add-surface";
 import NotFound from "@/app/(edit)/projects/[slug]/not-found";
+import { m } from "@/lib/i18n";
 
 const mocks = vi.hoisted(() => ({ add: vi.fn(), detect: vi.fn(), sample: vi.fn(), confirm: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ addSurface: mocks.add, detectRepoFormats: mocks.detect,
@@ -14,7 +15,7 @@ const props = {
   slug: "acme", owner: "o", repo: "r", branch: "main",
   adapters: [{ adapter: "json-catalog" as const, layout: "per-locale" as const, label: "JSON", example: "locales/{locale}.json" }],
   initial: { ok: true as const, candidates: [{ adapter: "json-catalog" as const, pathTemplate: "second/{locale}.json",
-    baseLocale: "en", locales: ["en", "ko"], label: "JSON", keys: { status: "counted" as const, count: 1 },
+    outputPaths: ["second/en.json", "second/ko.json"], baseLocale: "en", locales: ["en", "ko"], label: "JSON", keys: { status: "counted" as const, count: 1 },
     samples: [{ locale: "en", total: 1, rows: [{ key: "old", value: "Hello" }] }], confirmation: "signed" }] },
 };
 beforeEach(() => { vi.clearAllMocks(); });
@@ -82,14 +83,14 @@ it("0후보는 수동 입력을 열고 검사 실패 뒤 경로를 보존한다"
 
 /**
  * ⚠️ **거부 문구가 가리키는 버튼 이름이 화면에 실재해야 한다.** `reauthorize`의 문장은
- * "Use Reconnect GitHub."이고 `not-connected`는 "use Connect GitHub below."다 — 버튼 라벨을 하나로
+ * `reauthorize`의 문장과 `not-connected`의 문장이 **각자 다른 버튼 이름**을 부른다 — 버튼 라벨을 하나로
  * 고정하면 둘 중 하나는 **없는 버튼을 가리킨다.** 첫 프로젝트 화면이 같은 이유로 이미 갈라 든다
  * (`steps/repo.tsx`). 2026-09-14에 실물 화면에서 "Use Reconnect GitHub"가 `Connect GitHub` 버튼 위에
  * 섰다.
  */
 it.each([
-  ["reauthorize", "Reconnect GitHub"],
-  ["not-connected", "Connect GitHub"],
+  ["reauthorize", m.newProject.empty.connect.reauthorize],
+  ["not-connected", m.newProject.empty.connect.action],
 ])("%s면 버튼 라벨이 그 문구가 말하는 이름이다", async (error, label) => {
   const { container } = await render(<AddSurface {...props} initialError={error} />);
   const alert = container.querySelector('[role="alert"]')?.textContent ?? "";

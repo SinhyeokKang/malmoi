@@ -76,7 +76,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 19개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 21개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -87,6 +87,9 @@ components/
                         ⚠️ file-input(19번째)의 <input type="file">은 tabIndex={-1} + aria-hidden이다 —
                         type="hidden"이 될 수 없는 태그라 포커스 대상에서 빼고 보이는 컨트롤을 Button에
                         맡긴다. 링을 숨은 input에 붙이면 보이지도 않는 요소가 링을 들고 검사만 green이다
+                        ⚠️ resizable(21번째)만 radix-ui가 아니라 react-resizable-panels를 쓴다 —
+                        포인터 히트 판정·전역 커서가 document 레벨이라 CSS로 대신할 수 없다
+  ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
                         ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
@@ -95,6 +98,11 @@ components/
                         "지금 보고 있는 것"을 말할 것이 사라진다
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
+                        shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
+                        "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
+                        ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
+                        고정 폭이 드래그를 덮어 "핸들만 움직인다"가 된다
+                        ⚠️ 행의 gap-2가 핸들 폭(w-2)으로 옮겨 갔다 — gap 안에 핸들을 끼우면 8+8+8이다
   translations/         번역 화면 조각. key-group(서버 컴포넌트 — 키별 TableBody + rowSpan 키 셀)
                         ⚠️ 행에 고정 폭이 로케일 칸 하나뿐이다 — 우측 w-40 슬롯에 메타를 두었더니
                         1280px에서 입력이 28px가 됐다(malmoi#33). 폭은 렌더 결과라 스캔이 못 보지만
@@ -119,7 +127,7 @@ components/
   onboarding/add-surface.tsx  FilesStep 재사용·수동 확인·추가 step 결과, 입력 실패 보존
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
-                        명시돼 있어야 한다(브랜치·리포·후보 변경)
+                        명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
   projects/locale-meter.tsx
                         행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
@@ -144,7 +152,9 @@ components/
                         settings-screen(워크플로 YAML이 활성 표면 전부를 드는지 — 비기본 표면의
                         step을 다시 볼 자리가 그 화면뿐이다) ·
                         multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
-                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
+                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀) ·
+                        resizable · shell-panels · files-step-panels(패널 구분선 — 핸들이 옛 gap을
+                        흡수하는지, 재기 전 px 폴백, Panel의 인라인 overflow 되돌리기)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -205,6 +215,9 @@ lib/
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
+  shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
+                        — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
+                        ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
   projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
                         Meter 자리·진행률 접기·계정 합계·그룹 나누기·검색 강조. 오케스트레이션
                         파일에 두면 클라이언트 번들이 그 그래프를 따라온다
@@ -220,6 +233,8 @@ lib/
                         아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
                         "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
+  onboarding/select-surfaces.ts
+                        체크 후보를 탐지 순서로 제출하고 slug·출력 충돌을 계산하는 클라이언트 잎
   onboarding/next-enabled.ts
                         design §4의 상태 표를 코드로. ⚠️ lib/ 아래 잎이다 — components/ 아래면
                         "use client" 그래프에 들어가 타입-온리 제약이 이 모듈까지 따라온다
@@ -271,7 +286,10 @@ vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수�
                         홉당 ~375ms였고 이 앱의 비용은 페이로드가 아니라 홉 개수다(요청당 일곱)
 next.config.ts          ⚠️ 보안 응답 헤더가 여기 있다(enforce 셋 + CSP 본체 Report-Only).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
-vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다
+vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다.
+                        ⚠️ 셋째가 있다 — 리사이즈 핸들의 getBoundingClientRect를 화면 밖으로 민다.
+                        jsdom은 모든 rect가 0×0@(0,0)이라 react-resizable-panels의 히트 판정이
+                        **화면의 모든 클릭**을 핸들로 보고 삼켰다(폼 입력이 빈 값으로 남는다)
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미발송 술어가 세 벌이 된 뒤로

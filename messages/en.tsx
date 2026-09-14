@@ -44,6 +44,12 @@ export const en = {
     /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
     close: "Close",
     dismiss: "Dismiss",
+    /**
+     * 셸의 패널 구분선 — 글자가 하나도 없는 컨트롤이라 이름이 여기서만 나온다.
+     * ⚠️ `role="separator"`는 이름이 없으면 스크린리더에 "separator"로만 읽혀 좌우 어느 쪽을
+     * 움직이는지 말하지 못한다. 라이브러리는 이름을 만들어 주지 않는다.
+     */
+    resizeSidebar: "Resize sidebar",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -639,30 +645,24 @@ export const en = {
       result: {
         title: "malmoi is ready",
         description: "Add the push token to the repository so CI can send translations back.",
-        /**
-         * ⚠️ **결과는 설명 줄이 말한다** (핸드오프 1d·4f·4g). 성공한 적재에 `Alert`를 세우지 않는
-         * 것이 요지다 — 가장 흔한 상태가 가장 조용해야 한다(DESIGN §6.1). 실패·부분 실패만 본문에
-         * 그릇을 든다.
-         */
-        descriptionFailed: "The project exists. The first import didn't finish.",
       },
     },
 
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
     empty: {
       connect: {
-        title: "Connect your GitHub account",
-        description: "The connection is only used to see which repositories have the malmoi app installed.",
-        action: "Connect GitHub",
-        reauthorize: "Reconnect GitHub",
+        title: "Connect GitHub repositories",
+        description: "Authorize the malmoi GitHub App to access your repositories. This is separate from signing in to malmoi.",
+        action: "Authorize GitHub App",
+        reauthorize: "Reauthorize GitHub App",
       },
       /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
-      noInstallations: "No installation found",
-      noRepos: "No repositories selected",
-      install: "Install the app",
-      addRepos: "Add repositories to the installation",
+      noInstallations: "Install the malmoi GitHub App",
+      noRepos: "Choose repositories for the GitHub App",
+      install: "Install GitHub App",
+      addRepos: "Choose repositories",
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the malmoi app on the repository.",
+      noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
       afterInstall: "Refresh this page once you're done.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
@@ -695,6 +695,11 @@ export const en = {
     files: {
       /** ② 좌측 후보 목록의 그룹 이름. */
       candidates: "Locale file candidates",
+      /** ② 좌 후보 목록 ↔ 우 미리보기 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다. */
+      resize: "Resize file list",
+      include: (path: string) => `Include ${path}`,
+      previewCandidate: (path: string) => `Preview ${path}`,
+      conflicts: "These selections write to the same files. Uncheck a selection to continue.",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
       summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
@@ -778,6 +783,10 @@ export const en = {
         </>
       ),
       create: "Create project",
+      creating: "Creating project and importing all selected files…",
+      nothingCreated: "Nothing was created.",
+      resultUnknown: "We couldn't confirm the result. Check your project list before trying again. If the project exists, generate a new push token in Settings.",
+      failedSurface: (path: string, failed: number) => `${path}: ${failed} import issues.`,
       /** ③ info — **읽기 전용임을 말한다.** 리포에 아무것도 쓰지 않는다(불변식). */
       info: (path: string, branch: string): string =>
         `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,
@@ -843,11 +852,6 @@ export const en = {
         diagnostics: "Details",
         refsHint: "Code references arrive after your first CI push. You can start translating now.",
         open: "Start translating",
-        /** ④ 적재 중 info — `role="status"`다 (`Alert`의 `role="alert"`는 `danger`일 때만 붙는다). */
-        importing: (path: string, branch: string): string => `Importing… reading ${path} on ${branch}.`,
-        /** 예외 H — 토큰 블록은 그대로 보이고, 복구 경로 둘을 말한다. */
-        failedHint:
-          "The project is in your list as Waiting for first import. You can retry from project settings.",
       },
       workflow: {
         saveAs: "Save as",
@@ -1249,8 +1253,13 @@ export const en = {
 
     account: {
       title: "GitHub account",
-      connect: "Connect GitHub",
-      reconnect: "Reconnect GitHub",
+      /**
+        * ⚠️ **온보딩과 같은 이름이어야 한다** (2026-09-15). 같은 일(말모이 GitHub App 인가)을 두
+        * 화면이 다른 이름으로 부르면, 그 이름을 가리키는 `connectError`의 문장이 한쪽에서 **없는
+        * 버튼**을 가리킨다 — `add-surface.test.tsx`가 그 쌍을 센다.
+        */
+      connect: "Authorize GitHub App",
+      reconnect: "Reauthorize GitHub App",
       reauthorize: "Your GitHub authorization expired.",
       unavailable: "We couldn't load your account. Open this page again in a moment.",
       disconnect: "Disconnect",
@@ -1438,8 +1447,8 @@ export const en = {
       "exchange-failed": "We couldn't finish connecting to GitHub. Start it again.",
       // 해제는 그 계정의 주인만 할 수 있다 — 무엇을 하면 되는지 말한다.
       "taken-by-other": "That GitHub account is already connected to another user. They can disconnect it to free it up.",
-      "not-connected": "Connect your GitHub account first — use Connect GitHub below.",
-      reauthorize: "Your GitHub authorization expired. Use Reconnect GitHub.",
+      "not-connected": "Authorize the malmoi GitHub App first — use Authorize GitHub App below.",
+      reauthorize: "Your GitHub App authorization expired. Use Reauthorize GitHub App.",
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
       "repo-forbidden": "This account can't reach that repository. Ask the repository owner for access.",
@@ -1455,8 +1464,8 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "No GitHub account has the malmoi app installed. Install the app first.",
-      "no-repos": "This installation has no repositories selected. Add one in your GitHub installation settings.",
+      "no-installations": "Your GitHub account is connected. Install the malmoi GitHub App on your personal account or organization to choose repositories.",
+      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the malmoi GitHub App can access in GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
       "no-candidates": "We couldn't find locale files. malmoi needs locale files in 2 or more languages.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.

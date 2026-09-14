@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { signOut } from "@/auth";
 import { Header } from "@/components/shell/header";
+import { ShellPanels } from "@/components/shell/shell-panels";
 import { Sidebar } from "@/components/shell/sidebar";
 import { displayName } from "@/lib/account/plan";
 import { rejectTarget } from "@/lib/auth/landing";
@@ -65,20 +66,31 @@ export default async function EditLayout({ children }: { children: React.ReactNo
     <div className="bg-canvas flex h-svh min-w-[1280px] flex-col gap-2 overflow-hidden p-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
       <Header name={name} email={session.email} image={session.image} signOut={signOutAction} />
-      <div className="flex min-h-0 flex-1 gap-2">
-        {/*
-          ⚠️ **넷만 넘긴다** (2026-09-09, sec-audit 발견 23 — 7단계가 `archived`를 더했다). `memberships`는 `MembershipRow`(여섯 필드)이고
-          prop 타입은 `NavProject`(셋)인데, **신선한 리터럴이 아니라 초과 프로퍼티 검사가 안 걸렸다** —
-          `installationId`·`lastCommitSha`가 `(edit)` 아래 **모든** 페이지의 RSC 페이로드에 실렸다.
-          비밀은 아니지만 `lib/shell/nav.ts`가 좁힌 계약이 무의미해진다.
-        */}
-        <Sidebar
-          memberships={memberships.map(({ slug, name, role, archivedAt }) => ({ slug, name, role, archived: archivedAt !== null }))}
-          userName={name}
-          signOut={signOutAction}
-        />
+      {/*
+        ⚠️ **행의 `gap-2`가 리사이즈 핸들로 옮겨 갔다.** flex `gap` 안에 핸들을 형제로 끼우면 간격이
+        `gap + 핸들 + gap`이 되므로, 핸들이 그 8px을 투명 스트립으로 든다
+        (`components/shell/shell-panels.tsx`). 패널 간 gap 8은 그대로다 — 자리만 바뀌었다.
+
+        ⚠️ **`PanelGroup`이 클라이언트 전용이라 래퍼가 하나 선다.** `children`은 prop으로 통과하므로
+        이 레이아웃의 서버 데이터 조회는 그대로 서버에 남는다.
+      */}
+      <ShellPanels
+        sidebar={
+          /*
+            ⚠️ **넷만 넘긴다** (2026-09-09, sec-audit 발견 23 — 7단계가 `archived`를 더했다). `memberships`는 `MembershipRow`(여섯 필드)이고
+            prop 타입은 `NavProject`(셋)인데, **신선한 리터럴이 아니라 초과 프로퍼티 검사가 안 걸렸다** —
+            `installationId`·`lastCommitSha`가 `(edit)` 아래 **모든** 페이지의 RSC 페이로드에 실렸다.
+            비밀은 아니지만 `lib/shell/nav.ts`가 좁힌 계약이 무의미해진다.
+          */
+          <Sidebar
+            memberships={memberships.map(({ slug, name, role, archivedAt }) => ({ slug, name, role, archived: archivedAt !== null }))}
+            userName={name}
+            signOut={signOutAction}
+          />
+        }
+      >
         {children}
-      </div>
+      </ShellPanels>
     </div>
   );
 }

@@ -31,3 +31,26 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     disconnect() {}
   } as unknown as typeof ResizeObserver;
 }
+
+/**
+ * **jsdom에서만 필요한 보정** — `react-resizable-panels`의 히트 판정을 무력화한다.
+ *
+ * 그 라이브러리는 document 레벨 `pointerdown`에서 **핸들 rect ± 히트 마진** 안에 포인터가 있으면
+ * `preventDefault()` + `stopImmediatePropagation()`을 건다(핸들 밖을 눌렀을 때). jsdom은 모든
+ * `getBoundingClientRect()`가 `0×0 @ (0,0)`이고 `user-event`의 포인터 좌표도 `(0,0)`이라, **화면의
+ * 모든 클릭이 핸들 위로 판정되어** 그 아래 폼이 통째로 먹통이 된다(`add-surface.test.tsx`에서
+ * `#manual-path` 입력이 빈 값으로 남았다).
+ *
+ * ⚠️ **실제 브라우저에는 없는 조건이다** — 거기서는 rect가 진짜 값이라 8px·16px 스트립 근처에서만
+ * 걸린다. 그래서 프로덕션 코드를 비트는 대신 핸들의 rect만 화면 밖으로 민다. **드래그 자체를
+ * jsdom에서 검증할 수는 없다** — 그건 `/bugshot-qa`와 실물 확인이 든다.
+ */
+if (typeof Element !== "undefined") {
+  const rect = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function getBoundingClientRectForTests(this: Element): DOMRect {
+    if (this.hasAttribute("data-resize-handle")) {
+      return { x: -9999, y: -9999, top: -9999, left: -9999, right: -9999, bottom: -9999, width: 0, height: 0, toJSON: () => ({}) } as DOMRect;
+    }
+    return rect.call(this);
+  };
+}

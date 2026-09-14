@@ -48,7 +48,10 @@ export function Sidebar({
   return (
     <aside
       // 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다 (malmoi#13).
-      className="flex w-60 shrink-0 flex-col gap-2 overflow-y-auto p-1"
+      //
+      // ⚠️ **폭이 여기 없다.** 옛 `w-60 shrink-0` 자리는 `components/shell/shell-panels.tsx`의
+      // `Panel`이 든다(200~320, 기본 240) — 폭이 두 곳에 있으면 드래그가 고정 폭에 덮인다.
+      className="flex h-full flex-col gap-2 overflow-y-auto p-1"
     >
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은

@@ -30,6 +30,7 @@ const header = read("components/shell/header.tsx");
 const contentPanel = read("components/shell/content-panel.tsx");
 const projectLayout = read("app/(edit)/projects/[slug]/layout.tsx");
 const projectPanel = read("components/shell/project-panel.tsx");
+const shellPanels = read("components/shell/shell-panels.tsx");
 
 describe("셸 레이아웃 — 뷰포트 고정", () => {
   it("셸 루트가 뷰포트 높이에 **고정**된다 — `min-h-svh`는 문서를 늘린다", () => {
@@ -136,8 +137,22 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(layout).not.toContain("TopBar");
   });
 
-  it("사이드바가 240이다", () => {
-    expect(sidebar).toMatch(/\bw-60\b/);
+  /**
+   * ⚠️ **폭이 `aside`가 아니라 `Panel`에 있다** (2026-09-14 — 패널 구분선). 드래그가 들어오면서
+   * 240은 **기본값**이 됐고 200~320 사이에서 움직인다. `aside`에 `w-60`이 남아 있으면 고정 폭이
+   * `Panel`이 계산한 폭을 덮어 **핸들은 움직이는데 사이드바는 안 움직인다** — 눈으로는 "드래그가
+   * 안 먹는다"로 보이고 원인이 두 파일에 걸쳐 있다.
+   */
+  it("사이드바 폭을 `Panel`이 든다 — `aside`에 고정 폭이 없다", () => {
+    // ⚠️ 주석을 벗긴다 — 그 자리 주석이 **옛 클래스 이름을 적어** 왜 여기 없는지를 말한다
+    // (`focus-ring.test.ts`와 같은 벗기기). 안 벗기면 통과시키려고 그 설명을 지우게 된다.
+    const code = sidebar.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+    expect(code).not.toMatch(/\bw-60\b/);
+    // `shrink-0`은 안쪽 아이콘·배지가 여전히 쓰므로 **`aside`의 className만** 본다.
+    const aside = /<aside\b[\s\S]*?className="([^"]*)"/.exec(code)?.[1] ?? "";
+    expect(aside).not.toMatch(/\bshrink-0\b/);
+    expect(aside).toMatch(/\bh-full\b/);
+    expect(shellPanels).toMatch(/min: 200, default: 240, max: 320/);
   });
 
   /**

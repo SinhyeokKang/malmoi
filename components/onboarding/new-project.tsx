@@ -9,24 +9,26 @@ import {
   detectRepoFormats,
   listRepoBranches,
   loadCandidateSample,
-  runFirstIngest,
 } from "@/app/(edit)/projects/actions";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { nextEnabled, type NextState, type Step } from "@/lib/onboarding/next-enabled";
+import { planSurfaceSelection } from "@/lib/onboarding/select-surfaces";
 import { suggestAlternateSlug } from "@/lib/onboarding/slug";
-import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
 
-import { isAccessLost } from "./failure";
+import { Alert } from "@/components/ui/alert";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
+import { failureText, isAccessLost } from "./failure";
 import { OnboardingModal } from "./modal";
 import { FilesStep, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
-import { ResultStep, type Ingest } from "./steps/result";
+import { ResultStep } from "./steps/result";
 
 /**
  * 새 프로젝트 온보딩 모달의 **상태 컨테이너** (new-project-modal design §2·§9).
@@ -36,8 +38,8 @@ import { ResultStep, type Ingest } from "./steps/result";
  *
  * ⚠️ **캐시 키가 `${owner}/${repo}@${ref}` + 후보 index + locale이다.** 모달은 단계가 껍데기를
  * 공유하므로 [Back]으로 돌아가도 상태가 **살아남는다** — 전에는 `ConfirmStep`이 언마운트돼 stale이
- * 원리적으로 안 생겼다. 무효화 경계는 넷이다: 브랜치 변경 · 리포 변경 · 후보 변경(→ `baseLocale`·
- * `name`·`slug`도 함께 무효) · 그리고 **[Back]은 리포 검색어를 남긴다**(컨테이너가 소유한다).
+ * 원리적으로 안 생겼다. 리포·브랜치 변경과 재탐지는 체크·기준 언어를 초기화한다. 상세 전환과 체크 해제는
+ * 기준 언어를 보존한다. **[Back]은 리포 검색어를 남긴다**(컨테이너가 소유한다).
  * 수동 지정 키에는 adapter·pathTemplate도 들어간다 — 같은 언어라도 다른 파일의 검증은 무효다.
  */
 export function NewProject({
@@ -85,7 +87,9 @@ export function NewProject({
   const [detecting, setDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | undefined>(undefined);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [detail, setDetail] = useState<number | null>(null);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [baseLocales, setBaseLocales] = useState<Record<number, string>>({});
   const [locale, setLocale] = useState("");
   const [manualCandidate, setManualCandidate] = useState<CandidateSummary | undefined>(undefined);
   const [samples, setSamples] = useState<Record<string, PreviewState>>({});
@@ -102,14 +106,21 @@ export function NewProject({
   const [slugTaken, setSlugTaken] = useState(false);
 
   // ④ 결과
-  const [created, setCreated] = useState<{ slug: string; pushToken: string; yaml: string } | undefined>(undefined);
-  const [ingest, setIngest] = useState<Ingest | null>(null);
+  const [created, setCreated] = useState<Extract<CreateProjectResult, { ok: true }> | undefined>(undefined);
+  const [creationFailure, setCreationFailure] = useState<Extract<CreateProjectResult, { ok: false }> | "unknown" | null>(null);
 
-  const candidate = picked === null ? undefined : candidates[picked];
+  const candidate = detail === null ? undefined : candidates[detail];
   const usingManual = candidates.length === 0 || candidate === undefined;
   const pathTemplate = candidate?.pathTemplate ?? manual.pathTemplate.trim();
   /** 미리보기가 매칭을 확인해 준 것이 곧 수동 지정의 검증이다 (예외 E). */
   const manualMatched = manualCandidate !== undefined && samples[sampleKey(manual.baseLocale.trim())]?.status === "ready";
+
+  const selection = planSurfaceSelection(candidates, checked, baseLocales);
+  const selectedCandidates = candidates.flatMap((item, index) => checked.has(index) ? [{ item, index }] : []);
+  const chosenCandidate = usingManual ? manualCandidate : selectedCandidates[0]?.item;
+  const chosenBase = usingManual ? baseLocale : baseLocales[selectedCandidates[0]?.index ?? -1] ?? "";
+  const validBases = usingManual ? manualMatched && !!manualCandidate?.locales.includes(baseLocale)
+    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => item.locales.includes(baseLocales[index] ?? ""));
 
   const state: NextState = {
     sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
@@ -118,17 +129,17 @@ export function NewProject({
     repoListLoading: repos === undefined && listError === undefined,
     detecting,
     detectFailed: detectError !== undefined,
-    candidateSelected: candidate !== undefined,
+    candidateSelected: selection.formats.length > 0 && selection.conflicts.length === 0,
     manualEntry: usingManual,
     manualMatched,
     name,
     slug,
-    baseLocale,
+    baseLocale: validBases ? chosenBase : "",
     slugTaken,
   };
 
   function sampleKey(code: string): string {
-    return JSON.stringify([repo?.fullName, branchValue, picked, candidate?.adapter ?? manual.adapter, pathTemplate, code]);
+    return JSON.stringify([repo?.fullName, branchValue, detail, candidate?.adapter ?? manual.adapter, pathTemplate, code]);
   }
 
   /** ① 리포 선택 — 브랜치 목록을 받고 그 자리에서 펼친다. 실패는 ①을 막지 않는다 (예외 D). */
@@ -179,8 +190,10 @@ export function NewProject({
     sampleGeneration.current += 1;
     setDetecting(false);
     setCandidates([]);
+    setChecked(new Set());
+    setBaseLocales({});
     setManualCandidate(undefined);
-    setPicked(null);
+    setDetail(null);
     setLocale("");
     setSamples({});
     setDetectError(undefined);
@@ -196,8 +209,10 @@ export function NewProject({
     const request = ++detectRequest.current;
     sampleGeneration.current += 1;
     setCandidates([]);
+    setChecked(new Set());
+    setBaseLocales({});
     setManualCandidate(undefined);
-    setPicked(null);
+    setDetail(null);
     setSamples({});
     setStep(2);
     setDetecting(true);
@@ -214,6 +229,8 @@ export function NewProject({
          */
         if (result.ok) {
           setCandidates(result.candidates);
+          setChecked(new Set(result.candidates.length ? [0] : []));
+          setBaseLocales(Object.fromEntries(result.candidates.map((item, index) => [index, item.baseLocale])));
           applyCandidate(result.candidates, 0);
           return;
         }
@@ -233,15 +250,8 @@ export function NewProject({
     const chosen = list[index];
     if (chosen === undefined) return;
     sampleGeneration.current += 1;
-    setPicked(index);
+    setDetail(index);
     setLocale(chosen.baseLocale);
-    // ⚠️ **후보 변경은 `baseLocale`·`name`·`slug`의 무효화 경계다** (design §9) — 옛 후보의 기준
-    // 언어가 남으면 그것이 다른 파일 집합의 결정이 된다.
-    setBaseLocale(chosen.baseLocale);
-    if (candidate?.adapter !== chosen.adapter || candidate?.pathTemplate !== chosen.pathTemplate) {
-      setName("");
-      setSlug("");
-    }
     setSlugTaken(false);
     setSamples(
       Object.fromEntries(
@@ -280,8 +290,8 @@ export function NewProject({
             ...item,
             samples: [...item.samples.filter((sample) => sample.locale !== code), { locale: code, rows: result.rows, total: result.total }],
           });
-          if (picked === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
-          else setCandidates((prev) => prev.map((item, index) => index === picked ? update(item) : item));
+          if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
+          else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
         }
         setAnnounce(result.ok ? undefined : m.newProject.files.preview.unavailable);
         setSamples((prev) => ({
@@ -307,7 +317,7 @@ export function NewProject({
     setName("");
     setSlug("");
     setSlugTaken(false);
-    setPicked(null);
+    setDetail(null);
     setLocale(next.baseLocale.trim());
     setBaseLocale(next.baseLocale.trim());
   }
@@ -363,59 +373,36 @@ export function NewProject({
   /** ③→④ — **예외 I가 ③에 머문다**: 실패하면 넘어가지 않고 입력이 전부 남는다. */
   function create() {
     if (repo === undefined) return;
+    if (pending || !validBases || (!usingManual && selection.conflicts.length > 0)) return;
     setBanner(null);
+    setCreationFailure(null);
     startTransition(async () => {
-      const result = await createProject({
+      let result: CreateProjectResult;
+      try { result = await createProject({
         owner: repo.owner,
         repo: repo.repo,
-        adapter: candidate?.adapter ?? manual.adapter,
-        pathTemplate,
-        baseLocale,
+        manual: usingManual,
+        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale }] : selection.formats,
         slug,
         name,
         baseBranch: branchValue,
-      }).catch(() => ({ ok: false, error: "unavailable" } as const));
+      }); } catch {
+        setCreationFailure("unknown");
+        return;
+      }
       if (!result.ok) {
         if (isAccessLost(result.error)) setAccessLost(result.error);
         if (result.error === "slug-taken") {
           setSlugTaken(true);
           return;
         }
-        setBanner(result.error);
+        setCreationFailure(result);
         return;
       }
-      setCreated({
-        slug: result.slug,
-        pushToken: result.pushToken,
-        // 수동 지정만 어댑터·기준 언어를 YAML에 고정한다 — 자동 후보는 탐지가 같은 답을 낸다 (design §7).
-        yaml: renderWorkflowYaml({
-          slug: result.slug,
-          surfaceSlug: result.surfaceSlug,
-          pathTemplate,
-          baseBranch: result.baseBranch,
-          ...(usingManual ? { adapter: manual.adapter, baseLocale } : {}),
-        }),
-      });
+      setCreated(result);
+      setAnnounce(m.newProject.imported(result.count, 0));
       setStep(4);
-      startIngest(result.slug);
     });
-  }
-
-  function startIngest(created: string) {
-    setIngest({ status: "running" });
-    void runFirstIngest({ slug: created }).then(
-      (result) => {
-        if (!result.ok && isAccessLost(result.error)) setAccessLost(result.error);
-        setIngest(
-          result.ok
-            ? { status: "done", count: result.count, failed: result.failed, errors: result.errors }
-            : { status: "failed", error: result.error },
-        );
-        setAnnounce(result.ok ? m.newProject.imported(result.count, result.failed) : undefined);
-      },
-      // 던지는 경로는 직렬화 실패·네트워크뿐이다. 화면이 멈춰 있으면 사용자가 무엇을 기다리는지 모른다.
-      () => setIngest({ status: "failed", error: "unavailable" }),
-    );
   }
 
   function close() {
@@ -439,18 +426,8 @@ export function NewProject({
         ? m.newProject.steps.files.emptyDescription(repoLabel, branchValue)
         : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
-    /*
-      ⚠️ **④의 설명이 적재 결과를 든다** (핸드오프 1d·4f·4g). 성공은 "Imported N keys."가 제목 아래에
-      서고 본문에는 아무 그릇도 없다 — 부분 실패·실패만 `Alert`를 든다.
-    */
-    4:
-      ingest === null || ingest.status === "running"
-        ? m.newProject.steps.result.description
-        : ingest.status === "failed"
-          ? m.newProject.steps.result.descriptionFailed
-          : ingest.failed === 0
-            ? `${ingestHeadline(ingest.count, ingest.failed)} ${m.newProject.steps.result.description}`
-            : ingestHeadline(ingest.count, ingest.failed),
+    4: created === undefined ? m.newProject.steps.result.description
+      : `${ingestHeadline(created.count, 0)} ${m.newProject.steps.result.description}`,
   } as const;
 
   return (
@@ -471,6 +448,7 @@ export function NewProject({
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}
       onBack={() => {
         if (!accessLost) setBanner(null);
+        setCreationFailure(null);
         if (step === 2) {
           detectRequest.current += 1;
           sampleGeneration.current += 1;
@@ -518,7 +496,7 @@ export function NewProject({
             detecting,
             detectError,
             candidates,
-            picked,
+            picked: detail,
             locale,
             preview: samples[sampleKey(locale)] ?? { status: "loading" },
             manual,
@@ -529,6 +507,13 @@ export function NewProject({
             branch: branchValue,
             banner: accessLost ?? banner,
           }}
+          selection={{ checked, conflicts: selection.conflicts, onToggle: index => {
+            setChecked(previous => {
+              const next = new Set(previous);
+              if (next.has(index)) next.delete(index); else next.add(index);
+              return next;
+            });
+          } }}
           onPick={(index) => applyCandidate(candidates, index)}
           onLocale={chooseLocale}
           onManual={changeManual}
@@ -538,25 +523,53 @@ export function NewProject({
 
       {step === 3 && (
         <fieldset disabled={pending} className="contents">
+          {pending && <p role="status" className="text-muted-foreground text-sm">{m.newProject.naming.creating}</p>}
+          {creationFailure !== null && <Alert variant="danger">
+            {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
+              <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(creationFailure.error)}</p>
+              {creationFailure.surface && <>
+                <p>{m.newProject.naming.failedSurface(creationFailure.surface.pathTemplate, creationFailure.surface.failed)}</p>
+                {creationFailure.surface.errors.slice(0, 5).map((error, index) => <p key={index} className="whitespace-pre-wrap text-xs">{adapterErrorMessage(error)}</p>)}
+              </>}
+              {creationFailure.conflicts?.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
+            </>}
+          </Alert>}
           <NamingStep
+            disabled={pending}
+            surfaces={!usingManual && selectedCandidates.length > 1 ? selectedCandidates.map(({ item, index }) => ({
+              pathTemplate: item.pathTemplate, locales: item.locales, baseLocale: baseLocales[index] ?? "",
+              keyCounts: Object.fromEntries(item.samples.map(sample => [sample.locale, sample.total])),
+            })) : undefined}
+            onBaseLocale={(index, value) => {
+              const selected = selectedCandidates[index];
+              if (selected) setBaseLocales(previous => ({ ...previous, [selected.index]: value }));
+            }}
             state={{
               name,
               slug,
-              baseLocale,
-              locales: (candidate ?? manualCandidate)?.locales ?? (baseLocale === "" ? [] : [baseLocale]),
+              baseLocale: chosenBase,
+              locales: chosenCandidate?.locales ?? [],
               keyCounts: Object.fromEntries(
-                ((candidate ?? manualCandidate)?.samples ?? []).map((s) => [s.locale, s.total] as const),
+                (chosenCandidate?.samples ?? []).map((s) => [s.locale, s.total] as const),
               ),
               slugTakenAlt: suggestAlternateSlug(slug),
               slugTaken,
-              pathTemplate,
+              // ③의 info가 "무엇을 읽는가"를 말한다 — 표면이 여럿이면 그 경로도 전부 들어야 한다.
+              pathTemplate: usingManual ? pathTemplate
+                : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
               banner: accessLost ?? banner,
             }}
             onChange={(next) => {
               if (next.name !== undefined) setName(next.name);
               if (next.slug !== undefined) setSlug(next.slug);
-              if (next.baseLocale !== undefined) setBaseLocale(next.baseLocale);
+              if (next.baseLocale !== undefined) {
+                if (usingManual) setBaseLocale(next.baseLocale);
+                else {
+                  const selected = selectedCandidates[0];
+                  if (selected) setBaseLocales(previous => ({ ...previous, [selected.index]: next.baseLocale! }));
+                }
+              }
               if (next.slugTaken === false) setSlugTaken(false);
             }}
           />
@@ -567,10 +580,6 @@ export function NewProject({
         <ResultStep
           pushToken={created.pushToken}
           yaml={created.yaml}
-          pathTemplate={pathTemplate}
-          branch={branchValue}
-          ingest={ingest}
-          onRetry={() => startIngest(created.slug)}
         />
       )}
     </OnboardingModal>

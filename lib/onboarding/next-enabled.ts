@@ -44,7 +44,7 @@ export function nextEnabled(step: Step, s: NextState): boolean {
     case 3:
       return !s.slugTaken && s.name.trim() !== "" && s.baseLocale !== "" && planSlug(s.slug) === "ok";
     case 4:
-      // 적재 중에도 활성이다 — 비활성이면 토큰을 이미 옮긴 사용자가 60초를 갇힌다.
+      // ④는 모든 첫 적재가 커밋된 성공 상태다.
       return true;
   }
 }

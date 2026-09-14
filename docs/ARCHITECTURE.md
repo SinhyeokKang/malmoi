@@ -227,7 +227,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
 
-**`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML이 이 포맷에만 어댑터를 고정하는 이유도 그대로다: 1순위가 그것이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
+**`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML은 이 포맷을 포함해 모든 확정 어댑터를 명시한다. 자동 탐지의 1순위가 저장된 포맷이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
 
 **base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `TranslationSurface.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
 
@@ -650,6 +650,18 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`Project.baseBranch`는 `ProbeResult.defaultBranch`로 채운다.** 스키마 기본값이 `"main"`이라 안 채우면
   default branch가 `develop`인 리포의 pull이 `main`을 찾아 죽는다.
 
+**신규 생성은 모든 표면의 준비·첫 적재가 성공해야 커밋한다** (2026-09-14).
+`createProject`는 표면 배열을 받고 snapshot 한 번에서 파일·포맷·payload·YAML을 준비한다.
+GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === null` 또는 `failed > 0`이면 저장하지 않는다.
+클라이언트의 `outputPaths`는 체크 충돌 안내용이다. 생성은 새 snapshot·서버 확정 포맷으로 출력 경로를 다시 계산한다.
+`manual`은 YAML에 어댑터·기준 언어를 명시할지 정하는 표시 메타데이터일 뿐 경로 재검증을 완화하지 않는다.
+
+기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
+`applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
+중간 쓰기·커밋 실패는 밖으로 전파해 모두 롤백한다. 캐시 무효화는 커밋 뒤라 그 실패를 롤백으로 보고하지 않는다.
+신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Settings 재시도와 Add surface의 정책은 그대로다.
+별도 연결의 부분 행 가시성·동시 한도·slug 경합·둘째 표면·마지막 쓰기·시간 초과 롤백은 격리 PG 검사가 지킨다.
+
 #### 온보딩의 쓰기 쪽 판정층 넷 — 순서가 판정이다
 
 읽기(탐지)와 달리 이쪽은 **거부 순서 자체가 계약**이다.
@@ -690,6 +702,11 @@ snapshot → ingestTargets(순수) → readBlob × M
     `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
   - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
     무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
+  - ⚠️ **`base-locale:`은 선언이 없어도 언제나 박는다** (2026-09-14 실물 검증). ④(`createProject`)와
+    설정(`workflowSurfaceOf`)이 **같은 규칙이어야 한다** — ③에서 1순위가 아닌 기준 언어를 확정한
+    표면에서 한쪽만 박으면, 그쪽을 못 본 사용자의 CI가 탐지 1순위를 보내고 `checkFormat`이 **재실행으로
+    안 풀리는 409**를 낸다(워크플로에 그 줄을 손으로 넣어야 풀린다). 두 경로의 일치는
+    `lib/onboarding/__tests__/workflow.test.ts`가 매트릭스로 고정한다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
@@ -984,7 +1001,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
 `TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
 후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
-`adapter:`·`base-locale:`을 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
+`adapter:`를 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
 그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
 strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
 이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).

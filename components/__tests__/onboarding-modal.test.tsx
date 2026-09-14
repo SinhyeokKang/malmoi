@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { OnboardingModal } from "@/components/onboarding/modal";
+import { Button } from "@/components/ui/button";
 
 import { render, find } from "./helpers/dom";
 
@@ -191,5 +192,18 @@ describe("OnboardingModal — live 영역은 전이만 말한다", () => {
     await rerender(shell({ step: 2, title: "Which files hold your strings?", nextDisabled: true }));
 
     expect(find(document.body, '[aria-live="polite"]').textContent?.trim()).toBe("");
+  });
+});
+
+describe("primary button state styles", () => {
+  it.each([false, true])("keeps active colors and uses opaque muted disabled colors (disabled=%s)", async (disabled) => {
+    const { container } = await render(<Button variant="primary" disabled={disabled}>Save</Button>);
+    const button = find<HTMLButtonElement>(container, "button");
+    expect(button.disabled).toBe(disabled);
+    for (const cls of ["bg-primary", "text-primary-foreground", "hover:bg-foreground",
+      "disabled:bg-muted", "disabled:text-muted-foreground", "disabled:cursor-not-allowed"]) {
+      expect(button.classList.contains(cls)).toBe(true);
+    }
+    expect(button.className).not.toMatch(/disabled:opacity-/);
   });
 });

@@ -43,6 +43,7 @@ const repos: RepoOption[] = ["web", "mobile"].map((repo) => ({
 }));
 const candidate = (path = "i18n/{locale}.json"): CandidateSummary => ({
   adapter: "json-catalog", label: "JSON", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
+  outputPaths: [path.replace("{locale}", "en")],
   baseLocale: "en", keys: { status: "counted", count: 2 },
   samples: [{ locale: "en", rows: [{ key: "hello", value: path }], total: 2 }],
 });
@@ -156,30 +157,21 @@ it("Back 뒤 다른 브랜치 탐지보다 늦게 끝난 탐지는 버린다", a
 });
 
 it("후보를 바꿨다 돌아와도 옛 미리보기 응답이 새 샘플을 덮지 않는다", async () => {
-  const old = deferred<unknown>();
-  mocks.loadCandidateSample.mockReturnValueOnce(old.promise);
-  await files();
-  await select('[role="combobox"]', "fr");
-  await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
-  await click(find(document.body, '[role="radio"]'));
+  const old = deferred<unknown>(); mocks.loadCandidateSample.mockReturnValueOnce(old.promise);
+  await files(); await select('[role="combobox"]', "fr");
+  await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
+  await click(find(document.body, '[aria-label="Preview i18n/{locale}.json"]'));
   await select('[role="combobox"]', "fr");
   await act(async () => old.resolve({ ok: true, rows: [{ key: "hello", value: "STALE" }], total: 1 }));
-  expect(document.body.textContent).not.toContain("STALE");
-  expect(document.body.textContent).toContain("Hello");
+  expect(document.body.textContent).not.toContain("STALE"); expect(document.body.textContent).toContain("Hello");
 });
-
-it("후보 변경은 이름·주소·기준 언어를 초기화한다", async () => {
-  await files();
-  await click(button("Next"));
-  await input(field("project-name"), "Custom");
-  await input(field("project-slug"), "custom");
+it("미체크 후보의 상세는 이름·주소·선택 언어를 바꾸지 않는다", async () => {
+  await naming(); await input(field("project-name"), "Custom"); await input(field("project-slug"), "custom");
   await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
-  await click(button("Back"));
-  await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(button("Back")); await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
   await click(button("Next"));
-  expect(field("project-name").value).toBe("web");
-  expect(field("project-slug").value).toBe("acme-web");
-  expect(find(document.body, '[role="radio"]').getAttribute("aria-checked")).toBe("true");
+  expect(field("project-name").value).toBe("Custom"); expect(field("project-slug").value).toBe("custom");
+  expect(document.body.querySelectorAll('[role="radio"]')[1]?.getAttribute("aria-checked")).toBe("true");
 });
 
 it("리포 변경도 이전 이름·주소를 새 리포에 가져오지 않는다", async () => {
@@ -236,14 +228,15 @@ it("세션 만료 후 Back을 눌러도 차단 상태를 지우지 않는다", a
   expect(document.body.textContent).toContain("Sign in again");
 });
 
-it("④의 적재 세션 만료는 토큰을 보존하고 이동을 막는다", async () => {
-  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main" });
-  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "unauthorized" });
-  await files();
-  await click(button("Next"));
+it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적재를 호출하지 않는다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main", count: 2, surfaces: [], yaml: "server-workflow" });
+  await naming();
   await click(button("Create project"));
   expect(document.body.textContent).toContain("test-token");
-  expect(button("Start translating").disabled).toBe(true);
+  expect(document.body.textContent).toContain("Imported 2 keys.");
+  expect(document.body.textContent).toContain("server-workflow");
+  expect(button("Start translating").disabled).toBe(false);
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled();
   expect(mocks.router.refresh).not.toHaveBeenCalled();
 });
 
@@ -313,14 +306,13 @@ it("생성 중 입력을 바꿔 이전 제출의 거부를 새 입력에 붙이�
   expect(field("project-slug").matches(":disabled")).toBe(false);
 });
 
-it("생성 후 세션 만료 문구는 프로젝트가 없다고 말하지 않는다", async () => {
-  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main" });
-  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "unauthorized" });
-  await files();
-  await click(button("Next"));
+it("응답 유실은 미생성을 단정하지 않고 목록 확인을 안내한다", async () => {
+  mocks.createProject.mockRejectedValue(new Error("response lost"));
+  await naming();
   await click(button("Create project"));
   expect(document.body.textContent).not.toContain("nothing has been created");
-  expect(document.body.textContent).toContain("Sign in again");
+  expect(document.body.textContent).toContain("Check your project list");
+  expect(mocks.createProject).toHaveBeenCalledTimes(1);
 });
 
 it("인가 거부 판정은 일시 장애·입력 오류와 구별된다", () => {
@@ -540,7 +532,7 @@ it("① 계정 미연결 빈 상태가 본문 세로 중앙에 선다", async ()
   await render(<NewProject repos={undefined} listError="not-connected" installUrl={null} now="2026-09-13T00:00:00Z"
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
 
-  expect(document.body.textContent).toContain("Connect your GitHub account");
+  expect(document.body.textContent).toContain("Connect GitHub repositories");
   expectCentered(emptyWrapper());
 });
 
@@ -587,4 +579,136 @@ it("② 후보 0개 빈 상태가 설명을 든다 — 그 문장이 좌측 힌�
   expect(text).toContain("Setting a path clears the selection above.");
   // 뒷문장은 우측에만 있다 — 좌측 힌트가 그것을 다시 들면 두 번 나온다.
   expect(text.split("If no file matches, the project isn't created.")).toHaveLength(2);
+});
+
+it("생성 거부는 경로와 실패 수를 보이고 생성 완료 전에는 ③에 머문다", async () => {
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming(); await input(field("project-name"), "Keep me"); await click(button("Create project"));
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(document.body.querySelector('[role="status"]')).not.toBeNull();
+  await act(async () => pending.resolve({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json", failed: 2, errors: [] } }));
+  expect(field("project-name").value).toBe("Keep me");
+  expect(document.body.textContent).toContain("Nothing was created");
+  expect(document.body.textContent).toContain("2");
+  expect(document.body.textContent).toContain("i18n/{locale}.json");
+});
+
+const include = (path: string) => find<HTMLElement>(document.body, `[role="checkbox"][aria-label="Include ${path}"]`);
+it("체크와 상세는 형제이며 리스트 시맨틱과 독립 동작을 보존한다", async () => {
+  await files();
+  const checkbox = include("i18n/{locale}.json");
+  const preview = find<HTMLElement>(document.body, '[aria-label="Preview i18n/{locale}.json"]');
+  expect(checkbox.parentElement).toBe(preview.parentElement);
+  expect(checkbox.closest("label")).toBeNull();
+  const list = checkbox.closest("ul"); expect(list).not.toBeNull();
+  expect(list?.getAttribute("role")).toBeNull();
+  expect(list?.getAttribute("aria-label")).toBe("Locale file candidates");
+  expect(document.body.querySelector('button button, label button button')).toBeNull();
+  await click(include("other/{locale}.json"));
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(preview.closest("li")?.className).toContain("bg-muted");
+  await click(checkbox); await click(include("other/{locale}.json"));
+  expect(button("Next").disabled).toBe(true);
+  await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
+  expect(button("Next").disabled).toBe(true);
+});
+it("출력 충돌은 체크 시 경고하고 해제하면 Next가 열린다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate(), { ...candidate("other/{locale}.json"), outputPaths: ["i18n/en.json"] }] });
+  await files(); await click(include("other/{locale}.json"));
+  expect(button("Next").disabled).toBe(true);
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("i18n/en.json");
+  await click(include("other/{locale}.json")); expect(button("Next").disabled).toBe(false);
+});
+it("각 표면의 언어를 제출하고 체크 해제·재선택에서 보존한다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [
+    { ...candidate(), locales: ["en", "ko"] }, { ...candidate("other/{locale}.json"), locales: ["en", "fr"] },
+  ] });
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  const groups = document.body.querySelectorAll('[role="radiogroup"]');
+  expect(groups).toHaveLength(2);
+  expect(groups[0]?.getAttribute("aria-labelledby")).not.toBe(groups[1]?.getAttribute("aria-labelledby"));
+  await click(groups[0]!.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(groups[1]!.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(button("Back")); await click(include("other/{locale}.json")); await click(include("other/{locale}.json"));
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [
+    expect.objectContaining({ pathTemplate: "i18n/{locale}.json", baseLocale: "ko" }),
+    expect.objectContaining({ pathTemplate: "other/{locale}.json", baseLocale: "fr" }),
+  ] }));
+});
+/**
+ * ⚠️ **③의 info가 읽는 경로를 전부 든다** — 그 줄의 일이 "리포에서 무엇을 읽고 무엇을 안 쓰는가"를
+ * 말하는 것인데, 표면이 여럿일 때 첫 경로만 세우면 나머지 읽기가 화면에서 사라진다.
+ */
+it("③ info는 체크한 모든 경로를 말한다", async () => {
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  const text = document.body.textContent ?? "";
+  const sentence = text.slice(text.indexOf("Creating the project reads"), text.indexOf("Nothing is written back"));
+  expect(sentence).toContain("i18n/{locale}.json");
+  expect(sentence).toContain("other/{locale}.json");
+});
+it("새 탐지는 체크와 각 언어 선택을 초기화한다", async () => {
+  await files(); await click(include("other/{locale}.json")); await click(button("Back"));
+  await select("#repo-branch", "develop"); await click(button("Next"));
+  expect(include("i18n/{locale}.json").getAttribute("aria-checked")).toBe("true");
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("false");
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [expect.objectContaining({ baseLocale: "en" })] }));
+});
+it("선택 언어가 후보 목록 밖이면 생성할 수 없다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), baseLocale: "xx" }] });
+  await files(); await click(button("Next")); expect(button("Create project").disabled).toBe(true);
+});
+it("수동 지정은 이전 탐지 체크를 섞지 않고 선택 언어를 보존한다", async () => {
+  await files(); await click(include("other/{locale}.json"));
+  await click(button("Set the path yourself"));
+  await input(field("manual-path"), "manual/{locale}.json"); await input(field("manual-base"), "ko");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ manual: true, surfaces: [
+    { adapter: "json-catalog", pathTemplate: "manual/{locale}.json", baseLocale: "ko" },
+  ] }));
+});
+
+it("생성 중 Portal 언어 선택도 열리지 않는다", async () => {
+  const locales = ["en", "fr", "ko", "de", "ja", "es", "pt", "it", "nl", "sv", "da"];
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales }] });
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming(); await click(button("Create project"));
+  const trigger = find<HTMLElement>(document.body, '[role="combobox"]');
+  await act(async () => { const event = new MouseEvent("pointerdown", { bubbles: true, button: 0 });
+    Object.defineProperty(event, "pointerType", { value: "mouse" }); trigger.dispatchEvent(event); });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(document.body.querySelector('[role="option"]')).toBeNull();
+  await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+});
+
+it("두 표면 완료 응답까지 ③에 머문 뒤 서버 YAML과 합산 결과만 보인다", async () => {
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  await click(button("Create project"));
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(button("Create project").disabled).toBe(true);
+  await act(async () => pending.resolve({ ok: true, slug: "acme-web", pushToken: "saved-token", baseBranch: "main", count: 4,
+    surfaces: [{ surfaceSlug: "i18n" }, { surfaceSlug: "other" }], yaml: "surface: i18n\nsurface: other\n" }));
+  expect(document.body.textContent).toContain("Step 4 of 4");
+  expect(document.body.textContent).toContain("Imported 4 keys.");
+  expect(document.body.textContent).toContain("saved-token");
+  expect(document.body.querySelector("pre")?.textContent?.match(/surface:/g)).toHaveLength(2);
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled(); expect(mocks.createProject).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  { name: "disconnected account", repos: undefined, listError: "not-connected" },
+  { name: "installation without repositories", repos: [], listError: undefined },
+  { name: "repository listing failure", repos: undefined, listError: "unavailable" },
+])("blocked Next uses the shared muted primary style: $name", async ({ repos, listError }) => {
+  await render(<NewProject repos={repos} listError={listError} installUrl={null}
+    now="2026-09-15T00:00:00Z" initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  const next = button("Next");
+  expect(next.disabled).toBe(true);
+  expect([...next.classList].filter((cls) => cls.startsWith("disabled:")).sort()).toEqual([
+    "disabled:bg-muted", "disabled:cursor-not-allowed", "disabled:text-muted-foreground",
+  ]);
 });

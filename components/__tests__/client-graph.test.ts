@@ -60,6 +60,13 @@ const ALLOWED = [
    * ⚠️ 그래서 아래 메타 반례에서 **빠졌다** — 목록과 반례에 동시에 있으면 한 파일 안에서 모순이다.
    */
   "sonner",
+  /**
+   * ⚠️ **`components/ui/resizable.tsx`가 쓴다** (2026-09-14, 패널 구분선). 셸의 LNB와 새 프로젝트
+   * 모달 ②가 드래그로 폭을 바꾸는데, 그 판정(포인터 히트 영역·전역 커서·`data-resize-handle-state`)이
+   * 전부 document 레벨이라 CSS로 대신할 수 없다. **9KB 남짓이고 의존성이 없다** — 이 목록이 막는
+   * 부류(7.2MB `ts-morph`)와 다르지만, **그 판단을 여기서 한 번 한다**는 것이 이 목록의 요지다.
+   */
+  "react-resizable-panels",
 ];
 
 function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean {
@@ -212,8 +219,8 @@ describe("클라이언트 그래프", () => {
    * ⚠️ **의도된 확장이 실제로 필요한지, 그리고 그 셋만인지 센다.** 목록을 넓히는 것은 결정이므로
    * 그 결정이 지워졌을 때(누가 셋 중 하나를 지웠을 때) 검사가 조용해지면 안 된다.
    */
-  it("의도적으로 허용된 넷 — 하나씩 빼면 걸린다", () => {
-    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react", "sonner"]) {
+  it("의도적으로 허용된 다섯 — 하나씩 빼면 걸린다", () => {
+    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react", "sonner", "react-resizable-panels"]) {
       expect(allowed(pkg), pkg).toBe(true);
       expect(allowed(pkg, ALLOWED.filter((ok) => ok !== pkg)), pkg).toBe(false);
     }
@@ -251,6 +258,14 @@ describe("클라이언트 그래프", () => {
 
     const flag = walk([join(ROOT, "lib/keys/flag.ts")]);
     expect([...flag.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/keys/flag.ts"]);
+  });
+
+  it("새 표면 선택 모듈을 소비자 연결 전에도 직접 검사한다", () => {
+    const entry = join(ROOT, "lib/onboarding/select-surfaces.ts");
+    const { files, packages } = walk([entry]);
+    expect(files.has(entry)).toBe(true);
+    expect([...packages].filter(name => !allowed(name))).toEqual([]);
+    expect([...files].some(file => file.includes("/adapters/") || file.includes("/push/"))).toBe(false);
   });
 
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
