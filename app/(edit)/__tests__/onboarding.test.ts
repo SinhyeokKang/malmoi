@@ -38,6 +38,7 @@ const hoisted = vi.hoisted(() => ({
   listInstallationRepos: vi.fn(),
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
+  applyPushInTransaction: vi.fn(),
   addSurfaceFromSnapshot: vi.fn(),
   triggerPull: vi.fn(),
   revalidatePath: vi.fn(),
@@ -67,7 +68,8 @@ vi.mock("@/lib/github-connect/user", () => ({
   listInstallationRepos: hoisted.listInstallationRepos,
   authorizeUrl: hoisted.authorizeUrl,
 }));
-vi.mock("@/lib/onboarding/ingest", () => ({ ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
+vi.mock("@/lib/onboarding/ingest", async original => ({ ...(await original<typeof import("@/lib/onboarding/ingest")>()), ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
+vi.mock("@/lib/push/apply", async original => ({ ...(await original<typeof import("@/lib/push/apply")>()), applyPushInTransaction: hoisted.applyPushInTransaction }));
 // ⚠️ **부분 mock이다.** 통째로 가리면 `isRefSafeSlug`가 사라지고 `planSlug`가 그것을 부른다 —
 // slug 형식 규칙이 pull과 **같은 함수**여야 한다는 것이 T1의 판정이었다 (design §5).
 vi.mock("@/lib/pull/trigger", async (importOriginal) => ({
@@ -142,17 +144,9 @@ function reader(over: { snapshot?: unknown; blobs?: Map<string, string> } = {}) 
 
 /** 확정 입력 — 화면이 후보에서 되돌려 보내는 값과 같은 모양이다. */
 function createInput(over: Record<string, unknown> = {}) {
-  return {
-    owner: "acme",
-    repo: "web",
-    adapter: "json-catalog",
-    pathTemplate: "i18n/{locale}.json",
-    baseLocale: "en",
-    slug: "acme-web",
-    name: "Acme Web",
-    baseBranch: "develop",
-    ...over,
-  };
+  const { adapter = "json-catalog", pathTemplate = "i18n/{locale}.json", baseLocale = "en", ...rest } = over;
+  return { owner: "acme", repo: "web", surfaces: [{ adapter, pathTemplate, baseLocale }],
+    slug: "acme-web", name: "Acme Web", baseBranch: "develop", ...rest };
 }
 
 let db: ReturnType<typeof createHarness>;
@@ -764,17 +758,18 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     expect(paths, JSON.stringify(hoisted.revalidatePath.mock.calls)).toContain("/projects/new");
   });
 
-  it("첫 적재를 하지 않는다 — lastCommitSha가 null이라 awaiting_first_sync다 (Action 둘, §3.11)", async () => {
+  it("생성과 같은 트랜잭션에 첫 적재를 싣고 별도 적재를 호출하지 않는다", async () => {
     await createProject(createInput());
 
-    expect(db.projects.find((p) => p.slug === "acme-web")?.lastCommitSha).toBeNull();
+    expect(hoisted.applyPushInTransaction).toHaveBeenCalledTimes(1);
+    expect(hoisted.applyPushInTransaction.mock.calls[0]?.[2]).toMatchObject({ commitSha: HEAD_SHA, keys: expect.any(Array) });
     expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
   });
 
   it("클라이언트가 보낸 pathTemplate이 그 리포에서 성립하지 않으면 거부한다", async () => {
     const result = await createProject(createInput({ pathTemplate: "secrets/{locale}.json" }));
 
-    expect(result).toEqual({ ok: false, error: "manual-no-match" });
+    expect(result).toMatchObject({ ok: false, error: "manual-no-match" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
@@ -787,12 +782,12 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   it("재검증할 파일을 내려받지 못하면 unavailable이다 — 장애를 입력 오류로 말하지 않는다", async () => {
     hoisted.openRepoReader.mockImplementation(async () => reader({ blobs: new Map() }));
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "unavailable" });
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
   it("기준 로케일이 재탐지된 로케일에 없으면 거부한다 — 진짜 base의 키가 orphaned로 떨어진다", async () => {
-    expect(await createProject(createInput({ baseLocale: "de" }))).toEqual({
+    expect(await createProject(createInput({ baseLocale: "de" }))).toMatchObject({
       ok: false,
       error: "manual-no-match",
     });
@@ -975,7 +970,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   it("probe 장애는 unavailable로 통과한다 — planProjectCreate가 그것을 거부로 접지 않는다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "error" });
 
-    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "unavailable" });
   });
 });
 
@@ -1485,5 +1480,59 @@ describe("Add surface 요청 경계", () => {
     expect(await addSurface(input)).toEqual({ ok: false, error: reason });
     expect(hoisted.addSurfaceFromSnapshot).not.toHaveBeenCalled();
     expect({ projects: db.projects, surfaces: db.surfaces, translations: db.translations }).toEqual(before);
+  });
+});
+
+
+describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () => {
+  const formats = [
+    { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "ko" },
+    { adapter: "json-catalog", pathTemplate: "other/{locale}.json", baseLocale: "fr" },
+  ];
+  function twoReader(change?: (blobs: Map<string, string>) => void) {
+    const files = [...TREE, ...TREE.filter(f => f.path.startsWith("i18n/")).map(f => ({ ...f, path: f.path.replace("i18n/", "other/"), sha: `other-${f.sha}` }))];
+    const blobs = new Map(files.map(f => [f.sha, CATALOG]));
+    change?.(blobs);
+    const result = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs });
+    hoisted.openRepoReader.mockResolvedValue(result);
+    return result;
+  }
+  it("두 표면은 하나의 snapshot과 각자 선택한 기준 언어를 사용한다", async () => {
+    const opened = twoReader();
+    const result = await createProject(createInput({ surfaces: formats }));
+    expect(result).toMatchObject({ ok: true, count: 4, surfaces: [
+      { surfaceSlug: "i18n", baseLocale: "ko" }, { surfaceSlug: "other", baseLocale: "fr" },
+    ] });
+    expect(opened.snapshot).toHaveBeenCalledTimes(1);
+    expect(hoisted.applyPushInTransaction.mock.calls.map(c => c[2].format.baseLocale)).toEqual(["ko", "fr"]);
+    expect(hoisted.applyPushInTransaction.mock.calls.every(c => c[2].commitSha === HEAD_SHA)).toBe(true);
+    expect(result.ok && result.yaml).toContain("base-locale: ko");
+    expect(result.ok && result.yaml).toContain("base-locale: fr");
+    expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
+  });
+  it.each(["missing", "parse", "empty", "duplicate", "budget"])("둘째 표면의 %s는 DB 쓰기 전에 전체 거부다", async reason => {
+    twoReader(blobs => {
+      if (reason === "missing") blobs.delete("other-sha-fr");
+      if (reason === "parse") blobs.set("other-sha-fr", "{invalid");
+      if (reason === "empty") for (const key of ["other-sha-en", "other-sha-fr", "other-sha-ko"]) blobs.set(key, "{}");
+      if (reason === "duplicate") blobs.set("other-sha-fr", '{"a":{"greet":"Nested"},"a.greet":"Flat"}');
+      if (reason === "budget") blobs.set("other-sha-fr", '"' + "a".repeat(2_000_001) + '"');
+    });
+    const result = await createProject(createInput({ surfaces: formats }));
+    expect(result).toMatchObject({ ok: false, surface: { pathTemplate: "other/{locale}.json", failed: expect.any(Number) } });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+    expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
+  });
+  it("조작된 클라이언트 경로 목록과 무관하게 서버 snapshot의 출력 충돌을 거부한다", async () => {
+    twoReader();
+    const result = await createProject(createInput({ surfaces: [formats[0], { ...formats[0], outputPaths: [] }] }));
+    expect(result).toMatchObject({ ok: false, error: "path-conflict", conflicts: expect.arrayContaining([expect.objectContaining({ path: "i18n/en.json" })]) });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+  });
+  it("DB 실패는 롤백 결과이고 커밋 뒤 캐시 실패는 생성 거부가 아니다", async () => {
+    hoisted.applyPushInTransaction.mockRejectedValueOnce(new Error("write failure"));
+    expect(await createProject(createInput())).toMatchObject({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json" } });
+    hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
+    await expect(createProject(createInput({ slug: "second-project" }))).rejects.toThrow("cache failure");
   });
 });

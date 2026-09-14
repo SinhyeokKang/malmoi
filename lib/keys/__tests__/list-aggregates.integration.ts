@@ -513,26 +513,85 @@ it("적재 예산 초과도 생성한 표면과 자식을 전부 롤백한다", 
   expect(await existingSurface()).toEqual(before);
 });
 
-it("실제 createProject Action이 단계 B DB에 기본 표면과 OWNER를 원자적으로 만든다", async () => {
+async function creationFixture() {
+  vi.resetModules();
   await prisma.user.create({ data: { id: "create-owner", email: "fixture" } });
   vi.doMock("@/auth", () => ({ auth: async () => ({ user: { id: "create-owner" } }) }));
   vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
-  vi.doMock("@/lib/auth/session", () => ({ readSession: async () => ({ status: "ok", userId: "create-owner" }) }));
   vi.doMock("next/cache", () => ({ revalidatePath: () => {} }));
   vi.doMock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "fixture" }) }));
   vi.doMock("@/lib/github-connect/user", () => ({ listUserInstallations: async () => ["77"],
     listInstallationRepos: async () => [{ fullName: "acme/web" }] }));
+  const paths = ["i18n/en.json", "i18n/ko.json", "second/en.json", "second/ko.json"];
+  const blobs = new Map(paths.map(path => [path, '{"hello":"Hello"}']));
+  const snapshot = vi.fn(async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),
+    files: paths.map(path => ({ path, sha: path, size: 20 })) }));
   vi.doMock("@/lib/github", () => ({
     probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
-    openRepoReader: async () => ({ snapshot: async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),
-      files: [{ path: "i18n/en.json", sha: "en", size: 20 }, { path: "i18n/ko.json", sha: "ko", size: 20 }] }), blob: async () => '{"hello":"Hello"}' }),
+    openRepoReader: async () => ({ snapshot, blob: async (sha: string) => blobs.get(sha) }),
   }));
   const { createProject } = await import("@/app/(edit)/projects/actions");
-  const result = await createProject({ slug: "create-action", name: "Create", owner: "acme", repo: "web", baseBranch: "main",
-    adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" });
-  expect(result).toMatchObject({ ok: true });
-  const project = await prisma.project.findUniqueOrThrow({ where: { slug: "create-action" }, include: { defaultSurface: true, members: true } });
+  const input = { slug: "create-action", name: "Create", owner: "acme", repo: "web", baseBranch: "main",
+    surfaces: [
+      { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
+      { adapter: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "ko" },
+    ] };
+  return { createProject, input, blobs, snapshot };
+}
+async function expectNoCreation() {
+  for (const table of ["Project", "ProjectMember", "TranslationSurface", "Locale", "StringKey", "Translation", "KeyRef"]) {
+    expect((await pool.query(`SELECT count(*)::int AS count FROM "${table}"`)).rows[0].count, table).toBe(0);
+  }
+}
+it("실제 생성 Action은 두 표면의 모든 적재와 기본 포인터를 함께 커밋한다", async () => {
+  const { createProject, input, snapshot } = await creationFixture();
+  expect(await createProject(input)).toMatchObject({ ok: true, count: 2 });
+  expect(snapshot).toHaveBeenCalledTimes(1);
+  const project = await prisma.project.findUniqueOrThrow({ where: { slug: input.slug }, include: {
+    defaultSurface: true, members: true, surfaces: { orderBy: { slug: "asc" }, include: { locales: true, keys: true, translations: true } },
+  } });
   expect(project.id).toBeTruthy();
-  expect(project.defaultSurface).toMatchObject({ projectId: project.id, pathTemplate: "i18n/{locale}.json" });
+  expect(project.defaultSurface).toMatchObject({ projectId: project.id, slug: "i18n" });
   expect(project.members).toMatchObject([{ userId: "create-owner", role: "OWNER" }]);
+  expect(project.surfaces.map(s => s.baseLocale)).toEqual(["en", "ko"]);
+  for (const surface of project.surfaces) {
+    expect(surface.lastCommitSha).toBe("a".repeat(40));
+    expect(surface.lastImportError).toBeNull();
+    expect(surface.keys).toHaveLength(1); expect(surface.locales).toHaveLength(2); expect(surface.translations).toHaveLength(2);
+    expect(surface.locales.find(l => l.isBase)?.code).toBe(surface.baseLocale);
+  }
+});
+it.each(["second-write", "last-write", "timeout"])("실제 생성의 %s 실패는 토큰 해시와 모든 자식까지 롤백한다", async kind => {
+  const { createProject, input } = await creationFixture();
+  if (kind === "timeout") {
+    await pool.query(`CREATE FUNCTION fail_create() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(31); RETURN NEW; END $$;
+      CREATE TRIGGER fail_create BEFORE INSERT ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION fail_create()`);
+  } else if (kind === "second-write") {
+    await pool.query(`CREATE FUNCTION fail_create() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF EXISTS(SELECT 1 FROM "TranslationSurface" WHERE id=NEW."surfaceId" AND slug='second') THEN RAISE EXCEPTION 'second write'; END IF;
+      RETURN NEW; END $$; CREATE TRIGGER fail_create BEFORE INSERT ON "Translation" FOR EACH ROW EXECUTE FUNCTION fail_create()`);
+  } else {
+    await pool.query(`CREATE FUNCTION fail_create() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'deferred last write'; END $$;
+      CREATE CONSTRAINT TRIGGER fail_create AFTER INSERT ON "ProjectMember" DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION fail_create()`);
+  }
+  expect(await createProject(input)).toMatchObject({ ok: false, error: "ingest-failed" });
+  await expectNoCreation();
+}, 45_000);
+it.each(["missing", "partial", "conflict"])("실제 Action의 %s 준비 거부는 PG에 아무 행도 남기지 않는다", async kind => {
+  const { createProject, input, blobs } = await creationFixture();
+  if (kind === "missing") blobs.delete("second/ko.json");
+  if (kind === "partial") blobs.set("second/ko.json", '{"hello":"Hello","bad":12}');
+  if (kind === "conflict") input.surfaces[1] = input.surfaces[0]!;
+  expect(await createProject(input)).toMatchObject({ ok: false });
+  await expectNoCreation();
+});
+it("같은 사용자의 동시 생성은 OWNER 한도를 넘지 않고 같은 slug는 하나만 성공한다", async () => {
+  const { createProject, input } = await creationFixture();
+  const same = await Promise.all([createProject(input), createProject(input)]);
+  expect(same.filter(r => r.ok)).toHaveLength(1);
+  expect(same.find(r => !r.ok)).toMatchObject({ error: "slug-taken" });
+  const results = await Promise.all([1, 2, 3].map(n => createProject({ ...input, slug: `project-${n}` })));
+  expect(results.filter(r => r.ok)).toHaveLength(2);
+  expect(results.find(r => !r.ok)).toMatchObject({ error: "limit-reached" });
+  expect(await prisma.project.count()).toBe(3);
 });
