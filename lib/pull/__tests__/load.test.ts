@@ -52,7 +52,7 @@ describe("saveLastPulledAt", () => {
 it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다", async () => {
   const { loadPullState } = await import("../load");
   const tx = {
-    project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", locales: [] })) },
+    project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", surfaces: [] })) },
     stringKey: { findMany: vi.fn(async () => []) },
     translation: { aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })) },
   };

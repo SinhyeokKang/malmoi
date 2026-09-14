@@ -1,6 +1,67 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+import { loadProjectListAggregates } from "@/lib/keys/query";
 
 import { createHarness } from "./harness";
+
+describe("harness — surface aggregate contract", () => {
+  it("excludes inactive and unassigned surfaces and selects the first unsent surface slug", async () => {
+    const at = new Date("2026-09-14T00:00:00Z");
+    const h = createHarness({
+      projects: [{ id: "p", slug: "p" }, { id: "other", slug: "other" }],
+      surfaces: [
+        { id: "z", projectId: "p", slug: "zeta" },
+        { id: "a", projectId: "p", slug: "alpha" },
+        { id: "dead", projectId: "p", slug: "aaa", archivedAt: at },
+        { id: "o", projectId: "other", slug: "other" },
+      ],
+      keys: ["z", "a", "dead", "o", "unassigned"].map(id => ({
+        id, projectId: id === "o" ? "other" : "p", surfaceId: id === "unassigned" ? null : id,
+        key: id, sourceText: id, description: null, sortIndex: 0, orphaned: false, createdAt: at,
+      })),
+      locales: [],
+      translations: ["z", "a", "dead", "o", "unassigned"].map(keyId => ({
+        keyId, localeCode: "en", value: "Edited", description: null, placeholders: null,
+        needsReview: false, updatedBy: "human", updatedAt: at,
+      })),
+    });
+    h.projects.forEach(project => { project.lastPulledAt = null; });
+    const result = await loadProjectListAggregates(h.prisma, ["p"]);
+    expect([...result.newKeys]).toEqual([["p", 2]]);
+    expect([...result.unsent]).toEqual([["p", 2]]);
+    expect([...result.unsentSurfaces]).toEqual([["p", "alpha"]]);
+    await h.prisma.translationSurface.update({ where: { id: "a" }, data: { archivedAt: at } });
+    const remaining = await loadProjectListAggregates(h.prisma, ["p"]);
+    expect([...remaining.newKeys]).toEqual([["p", 1]]);
+    expect([...remaining.unsent]).toEqual([["p", 1]]);
+    expect([...remaining.unsentSurfaces]).toEqual([["p", "zeta"]]);
+  });
+});
+
+describe("harness — TranslationSurface delegate", () => {
+  it("enforces project FK and project-scoped slug uniqueness", async () => {
+    const h = createHarness();
+    await expect(h.prisma.translationSurface.create({ data: { id: "bad", projectId: "missing", slug: "default" } })).rejects.toMatchObject({ code: "P2003" });
+    await expect(h.prisma.translationSurface.create({ data: { id: "dup", projectId: "p1", slug: "default" } })).rejects.toMatchObject({ code: "P2002" });
+    expect(await h.prisma.translationSurface.findUnique({ where: { projectId_slug: { projectId: "p1", slug: "default" } } })).toMatchObject({ id: "surface-p1", projectId: "p1" });
+    expect(await h.prisma.translationSurface.findFirst({ where: { id: "surface-p1", projectId: "missing" } })).toBeNull();
+  });
+
+  it("scopes updates and rolls back surface creation and archival", async () => {
+    const h = createHarness();
+    expect(await h.prisma.translationSurface.updateMany({ where: { id: "surface-p1", projectId: "missing" }, data: { archivedAt: new Date() } })).toEqual({ count: 0 });
+    await expect(h.prisma.$transaction(async tx => {
+      await tx.translationSurface.create({ data: { id: "new", projectId: "p1", slug: "new" } });
+      await tx.translationSurface.update({ where: { id: "surface-p1" }, data: { archivedAt: new Date() } });
+      throw new Error("rollback surfaces");
+    })).rejects.toThrow("rollback surfaces");
+    const rows = await h.prisma.translationSurface.findMany({ where: { projectId: "p1", archivedAt: null } });
+    expect(rows.map(s => s.id)).toEqual(["surface-p1"]);
+    expect(await h.prisma.translationSurface.findFirst({ where: { id: "new" } })).toBeNull();
+  });
+});
 
 /**
  * 하네스 자체의 계약 — **가짜가 실제 제약보다 관대하면 결함을 원리적으로 못 본다** (POSTMORTEM 2026-09-05).

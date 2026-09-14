@@ -98,8 +98,8 @@ describe("triggerPull — 조립", () => {
         baseLocale: "en",
         lastPulledAt: null,
       },
-      localeCodes: ["en"],
-      keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { en: { value: "one" } } }],
+      surfaces: [{ id: "s1", slug: "default", adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en",
+        localeCodes: ["en"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { en: { value: "one" } } }] }],
       maxUpdatedAt: new Date("2026-09-04T00:00:00Z"),
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});

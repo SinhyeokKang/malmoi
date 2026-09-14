@@ -13,6 +13,7 @@ import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
 import { countUnpublished, loadProjectListAggregates } from "../query";
+import { loadPullState } from "@/lib/pull/load";
 
 /**
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (projects-list design §3.2 · tasks T3).
@@ -35,10 +36,11 @@ let pool: Pool;
 let prisma: PrismaClient;
 let started = false;
 
-async function resetSchema() {
+async function resetSchema(beforeSurface = false) {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
   for (const name of readdirSync("prisma/migrations").sort()) {
     if (name === "migration_lock.toml") continue;
+    if (beforeSurface && name === "20260914042000_add_translation_surfaces") break;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
 }
@@ -53,7 +55,7 @@ beforeAll(async () => {
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
 });
 
-beforeEach(resetSchema);
+beforeEach(() => resetSchema());
 
 afterAll(async () => {
   await prisma?.$disconnect();
@@ -65,6 +67,68 @@ afterAll(async () => {
 const PULLED = new Date("2026-09-10T00:00:00Z");
 const BEFORE = new Date("2026-09-09T00:00:00Z");
 const AFTER = new Date("2026-09-11T00:00:00Z");
+
+it("backfills an existing project into exactly one default surface", async () => {
+  await resetSchema(true);
+  await prisma.project.create({ data: { id: "old", slug: "old", name: "Old", repoOwner: "o", repoName: "r",
+    adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastCommitSha: "old-sha" }, select: { id: true } });
+  await prisma.locale.create({ data: { projectId: "old", code: "en", name: "English" }, select: { code: true } });
+  await prisma.stringKey.create({ data: { id: "old-key", projectId: "old", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" }, select: { id: true } });
+  await prisma.translation.create({ data: { projectId: "old", keyId: "old-key", localeCode: "en", value: "Hello" }, select: { keyId: true } });
+  await pool.query(readFileSync("prisma/migrations/20260914042000_add_translation_surfaces/migration.sql", "utf8"));
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: "old" }, include: { surfaces: true, locales: true, keys: true } });
+  expect(project.surfaces).toHaveLength(1);
+  expect(project.surfaces[0]).toMatchObject({ id: project.defaultSurfaceId, slug: "default", lastCommitSha: "old-sha", pathTemplate: "i18n/{locale}.json" });
+  const translations = await prisma.translation.findMany({ where: { projectId: "old" } });
+  expect([...project.locales, ...project.keys, ...translations].every(r => r.surfaceId === project.defaultSurfaceId)).toBe(true);
+  // An old server can still write nullable children after migration A, before deployment.
+  await prisma.locale.create({ data: { projectId: "old", code: "ko", name: "Korean" } });
+  await prisma.project.update({ where: { id: "old" }, data: { lastCommitSha: "late-old-writer", lastCommitAt: AFTER } });
+  const catchup = readFileSync("prisma/maintenance/backfill-surfaces.sql", "utf8");
+  await pool.query(catchup);
+  await pool.query(catchup);
+  expect(await prisma.locale.count({ where: { surfaceId: null } })).toBe(0);
+  expect(await prisma.translationSurface.findUnique({ where: { id: project.defaultSurfaceId! } })).toMatchObject({ lastCommitSha: "late-old-writer" });
+});
+
+it("A push leaves B locales, keys, translations, refs and import state untouched", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await prisma.translationSurface.create({ data: { id: "b", projectId: "p1", slug: "b", pathTemplate: "other/{locale}.json", adapterName: "json-catalog", baseLocale: "fr", declaredBaseLocale: "de", lastCommitSha: "b-sha" } });
+  await prisma.locale.create({ data: { projectId: "p1", surfaceId: "b", code: "fr", name: "French" } });
+  await prisma.stringKey.create({ data: { id: "b-key", projectId: "p1", surfaceId: "b", key: "b.key", namespace: "b", sourceText: "B", sourceHash: "b" } });
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "fr", value: "B", updatedBy: "human", updatedAt: AFTER } });
+  await prisma.keyRef.create({ data: { keyId: "b-key", path: "b.ts", line: 1 } });
+  const readB = () => prisma.translationSurface.findUniqueOrThrow({ where: { id: "b" }, include: { locales: true, keys: { include: { refs: true } }, translations: true } });
+  const before = await readB();
+  await expect(applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
+    projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    locales: ["en", "fr"], keys: [], translations: [], refs: [],
+  }, { previousBaseLocale: "en", startedAt: AFTER })).rejects.toThrow(/surface/i);
+  expect(await readB()).toEqual(before);
+  await applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
+    projectSlug: "p1", surfaceSlug: "default", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    keys: [{ key: "old", sourceText: "Changed", namespace: "a" }], locales: ["en", "ko"],
+    translations: [{ key: "old", locale: "ko", value: "Repository" }], refs: [{ key: "old", path: "a.ts", line: 1 }],
+  }, { previousBaseLocale: "en", startedAt: AFTER });
+  expect(await readB()).toEqual(before);
+  expect(await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p1-old", localeCode: "ko" } } })).toMatchObject({ value: "Repository", updatedBy: null });
+  // Phase A retains the old PK, but it must never allow a cell to cross surface ownership.
+  await expect(prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "en", value: "wrong surface" } })).rejects.toThrow();
+  const unpublished = await countUnpublished(prisma, "p1", PULLED);
+  await prisma.translationSurface.update({ where: { id: "b" }, data: { archivedAt: AFTER } });
+  expect(await countUnpublished(prisma, "p1", PULLED)).toBe(unpublished - 1);
+  const aggregate = await loadProjectListAggregates(prisma, ["p1"]);
+  expect(aggregate.locales.some(l => l.surfaceId === "b")).toBe(false);
+  expect(aggregate.unsent.get("p1") ?? 0).toBe(await countUnpublished(prisma, "p1", PULLED));
+  const newest = new Date("2099-01-01T00:00:00Z");
+  await prisma.translation.update({ where: { keyId_localeCode: { keyId: "b-key", localeCode: "fr" } }, data: { updatedAt: newest } });
+  const state = await loadPullState(prisma, "p1");
+  expect(state.surfaces.map(s => s.slug)).toEqual(["default"]);
+  expect(state.maxUpdatedAt).toEqual(newest);
+  expect(isUnpublished({ updatedAt: newest, updatedBy: "human", surfaceArchivedAt: AFTER }, PULLED)).toBe(false);
+});
 
 /**
  * 프로젝트 하나 + 키 셋 + 번역 넷. **경계의 세 시각을 전부 심는다** — 기준 시각 이전·동일·이후이고,
@@ -80,9 +144,12 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
       repoName: "r",
       lastPulledAt: input.lastPulledAt,
       archivedAt: input.archived ? new Date("2026-09-01T00:00:00Z") : null,
-      locales: { create: [{ code: "en", name: "en", isBase: true }, { code: "ko", name: "ko" }] },
     },
   });
+  await prisma.translationSurface.create({ data: { id: `surface-${input.id}`, projectId: input.id, slug: "default",
+    adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" } });
+  await prisma.project.update({ where: { id: input.id }, data: { defaultSurfaceId: `surface-${input.id}` } });
+  await prisma.locale.createMany({ data: ["en", "ko"].map(code => ({ projectId: input.id, surfaceId: `surface-${input.id}`, code, name: code, isBase: code === "en" })) });
   for (const [index, spec] of [
     { key: "old", createdAt: BEFORE, orphaned: false },
     { key: "same", createdAt: PULLED, orphaned: false },
@@ -93,6 +160,7 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
       data: {
         id: `${input.id}-${spec.key}`,
         projectId: input.id,
+        surfaceId: `surface-${input.id}`,
         key: spec.key,
         namespace: "a",
         sourceText: spec.key,
@@ -105,6 +173,7 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
     await prisma.translation.create({
       data: {
         projectId: input.id,
+        surfaceId: `surface-${input.id}`,
         keyId: `${input.id}-${spec.key}`,
         localeCode: "ko",
         value: `v${index}`,
@@ -175,7 +244,7 @@ it("보관 프로젝트는 ④⑤에 기여하지 않는다", async () => {
   expect(unsent.get("p1")).toBeUndefined();
   // ①②는 보관 행의 Meter를 위해 전체 멤버십으로 조회한다 — 여기서 빠지면 보관 행이 빈 바가 된다.
   expect(locales.map((l) => l.code).sort()).toEqual(["en", "ko"]);
-  expect(keyTotals.get("p1")).toBe(3);
+  expect(keyTotals.get("surface-p1")).toBe(3);
 });
 
 /** `in`이 테넌트 경계다 — 인가 집합 밖의 프로젝트는 어느 집계에도 안 들어온다. */
@@ -194,16 +263,17 @@ it("인가 집합 밖의 프로젝트는 섞이지 않는다", async () => {
 
 it("먼저 시작한 적재가 성공해도 나중 실행의 진행 표시와 실패 기록을 빼앗지 않는다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
-  await markImportStarted(prisma, "p1", AFTER);
+  await markImportStarted(prisma, { projectId: "p1", surfaceId: "surface-p1" }, AFTER);
   const options = { previousBaseLocale: "en", startedAt: BEFORE };
-  await applyPush(prisma, "p1", {
+  await applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
     projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    surfaceSlug: "default",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
     keys: [], locales: ["en", "ko"], translations: [], refs: [],
   }, options);
-  expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).lastImportStartedAt).toEqual(AFTER);
-  await finishImportRun(prisma, { projectId: "p1", startedAt: AFTER, code: "import-failed" });
-  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+  expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p1" } })).lastImportStartedAt).toEqual(AFTER);
+  await finishImportRun(prisma, { projectId: "p1", surfaceId: "surface-p1", startedAt: AFTER, code: "import-failed" });
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p1" } })).toMatchObject({
     lastImportStartedAt: null, lastImportError: "import-failed",
   });
 });
@@ -215,31 +285,34 @@ it.each(["newer-success", "rotated-token", "archived", "same-commit"])(
     await prisma.project.update({ where: { id: "p1" }, data: {
       pushTokenHash: scenario === "rotated-token" ? "new" : "original",
       archivedAt: scenario === "archived" ? AFTER : null,
+    } });
+    await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: {
       lastCommitAt: scenario === "newer-success" ? AFTER : PULLED,
       lastCommitSha: "b".repeat(40), lastImportStartedAt: AFTER,
     } });
     expect(await recordReportedFailure(prisma, {
-      projectId: "p1", tokenHash: "original", commitAt: PULLED, code: "parse-failed",
+      projectId: "p1", surfaceId: "surface-p1", tokenHash: "original", commitAt: PULLED, code: "parse-failed",
     })).toBe(scenario === "same-commit" ? "recorded" : "rejected");
-    expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p1" } })).toMatchObject({
       lastImportError: scenario === "same-commit" ? "parse-failed" : null,
       lastImportStartedAt: AFTER, lastCommitSha: "b".repeat(40),
     });
-    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p2" } })).lastImportError).toBeNull();
+    expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p2" } })).lastImportError).toBeNull();
   },
 );
 
 it.each([null, "partial-import"] as const)("자기 실행의 적재 결과 %s가 데이터와 함께 확정된다", async (importOutcome) => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
-  await prisma.project.update({ where: { id: "p1" }, data: { lastImportError: "parse-failed" } });
-  await markImportStarted(prisma, "p1", AFTER);
-  await applyPush(prisma, "p1", {
+  await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: { lastImportError: "parse-failed" } });
+  await markImportStarted(prisma, { projectId: "p1", surfaceId: "surface-p1" }, AFTER);
+  await applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
     projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    surfaceSlug: "default",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
     keys: [{ key: "added", sourceText: "Added", namespace: "_root" }],
     locales: ["en", "ko"], translations: [{ key: "added", locale: "ko", value: "추가" }], refs: [],
   }, { previousBaseLocale: "en", startedAt: AFTER, importOutcome });
-  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p1" } })).toMatchObject({
     lastImportStartedAt: null, lastImportError: importOutcome, lastCommitSha: "a".repeat(40),
   });
   expect(await prisma.translation.count({ where: { projectId: "p1", value: "추가", updatedBy: null } })).toBe(1);
@@ -247,16 +320,17 @@ it.each([null, "partial-import"] as const)("자기 실행의 적재 결과 %s가
 
 it("적재 트랜잭션이 실패하면 진행·오류와 기존 데이터도 함께 보존된다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
-  await prisma.project.update({ where: { id: "p1" }, data: { lastImportError: "parse-failed" } });
-  await markImportStarted(prisma, "p1", AFTER);
-  await expect(applyPush(prisma, "p1", {
+  await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: { lastImportError: "parse-failed" } });
+  await markImportStarted(prisma, { projectId: "p1", surfaceId: "surface-p1" }, AFTER);
+  await expect(applyPush(prisma, { projectId: "p1", surfaceId: "surface-p1" }, {
     projectSlug: "p1", commitSha: "a".repeat(40), commitAt: AFTER.toISOString(),
+    surfaceSlug: "default",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
     keys: [{ key: "added", sourceText: "Added", namespace: "_root" }],
     // 없는 로케일의 번역은 실제 FK 위반이다 — 가짜의 성공 응답으로 원자성을 판단하지 않는다.
     locales: ["en"], translations: [{ key: "added", locale: "missing", value: "x" }], refs: [],
   }, { previousBaseLocale: "en", startedAt: AFTER })).rejects.toThrow();
-  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).toMatchObject({
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p1" } })).toMatchObject({
     lastImportStartedAt: AFTER, lastImportError: "parse-failed", lastCommitSha: null,
   });
   expect(await prisma.stringKey.count({ where: { projectId: "p1", key: "added" } })).toBe(0);
@@ -270,7 +344,7 @@ it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아
   for (const updatedBy of [null, "user"]) {
     for (const [index, updatedAt] of [BEFORE, PULLED, AFTER].entries()) {
       await prisma.translation.create({ data: {
-        projectId: "p1", keyId: `p1-${["old", "same", "new"][index]}`,
+        projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${["old", "same", "new"][index]}`,
         localeCode: updatedBy === null ? "en" : "ko", value: "", updatedBy, updatedAt,
       } });
     }

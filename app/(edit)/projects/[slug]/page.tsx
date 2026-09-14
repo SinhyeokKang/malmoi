@@ -56,13 +56,11 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       name: true,
       // readiness 판정의 재료 둘 (`planProjectReadiness`) — 컬럼을 새로 만들지 않는다.
       installationId: true,
-      lastCommitSha: true,
+      surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true, isBase: true, orphaned: true } } } },
       // 활동의 세 출처 중 둘. ⚠️ `lastPulledAt`은 읽지 않는다 — 그것은 미배포 집계의 기준선이고
       // 툴바의 것이다 (결정 2).
-      lastCommitAt: true,
       lastPublishedAt: true,
       lastPrUrl: true,
-      locales: { select: { code: true, isBase: true, orphaned: true } },
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
@@ -75,20 +73,18 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
   if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
 
   const [counts, edits] = await Promise.all([
-    loadLocaleCounts(prisma, projectId),
+    Promise.all(project.surfaces.map(s => loadLocaleCounts(prisma, projectId, s.id))),
     loadRecentEdits(prisma, projectId, ACTIVITY_LIMIT),
   ]);
   // **렌더되는 행만** 지난다 — 903키 리포에서 전 행의 편집자를 조회하지 않는다.
   const actors = await loadActors(prisma, [...new Set(edits.map((e) => e.updatedBy))]);
 
-  const locales = activeLocaleProgress({
-    locales: project.locales,
-    total: counts.total,
-    cells: counts.cells,
-  });
+  const locales = project.surfaces.flatMap((surface, index) => activeLocaleProgress({
+    locales: surface.locales, total: counts[index]!.total, cells: counts[index]!.cells,
+  }).map(locale => ({ ...locale, surfaceSlug: surface.slug })));
   const activity = recentActivity({
     edits: edits.map((e) => ({ ...e, actor: actorLabel(e.updatedBy, actors) })),
-    lastCommitAt: project.lastCommitAt,
+    lastCommitAt: project.surfaces.map(s => s.lastCommitAt).filter((at): at is Date => at !== null).sort((a, b) => b.getTime() - a.getTime())[0] ?? null,
     lastPublishedAt: project.lastPublishedAt,
     lastPrUrl: project.lastPrUrl,
     limit: ACTIVITY_LIMIT,
@@ -141,7 +137,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
             ) : (
               <ul className="divide-border border-border divide-y rounded-lg border">
                 {locales.map((locale) => (
-                  <li key={locale.code}>
+                  <li key={`${locale.surfaceSlug}:${locale.code}`}>
                     {/*
                       ⚠️ **행 전체가 링크다.** 그 로케일만 보이는 번역 화면에 착지시키는 것이 개요가 일로
                       이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
@@ -149,11 +145,11 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
                       "기준 열"이 아니라 **보일 로케일**이다. 단일 선택이라 동작은 같다.)
                     */}
                     <Link
-                      href={routes.translations(slug, { locales: locale.code })}
+                      href={routes.surfaceTranslations(slug, locale.surfaceSlug, { locales: locale.code })}
                       className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
                     >
                       {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
-                      <span>{locale.code}</span>
+                      <span>{project.surfaces.length > 1 ? `${locale.surfaceSlug} · ${locale.code}` : locale.code}</span>
                       {locale.isBase && <Badge>{m.locales.base}</Badge>}
                       <span className="ml-auto flex items-baseline gap-2">
                         {locale.needsReview > 0 && (
@@ -207,7 +203,7 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
           이어지는 자리다. 키 하나를 가리키는 URL은 없으므로 그 키가 사는 화면 상태를 준다.
         */}
         <Link
-          href={routes.translations(slug, { ns: item.namespace, locales: item.locale })}
+          href={routes.surfaceTranslations(slug, item.surfaceSlug, { ns: item.namespace, locales: item.locale })}
           className="focus-visible:ring-ring text-sm focus-visible:ring-2 focus-visible:outline-none"
         >
           {m.home.activity.edit(item.actor, item.key, item.locale)}
@@ -256,5 +252,5 @@ function ActivityRow({ item, slug, now }: { item: ActivityItem; slug: string; no
  */
 function activityKey(item: ActivityItem): string {
   const at = item.at.toISOString();
-  return item.kind === "edit" ? `edit:${at}:${item.key}:${item.locale}` : `${item.kind}:${at}`;
+  return item.kind === "edit" ? `edit:${at}:${item.surfaceSlug}:${item.key}:${item.locale}` : `${item.kind}:${at}`;
 }

@@ -1,5 +1,22 @@
 import type { AdapterName } from "@/lib/adapters/types";
 
+export function renderSurfaceWorkflowStep(input: {
+  slug: string; surfaceSlug: string; pathTemplate: string; adapter?: AdapterName; baseLocale?: string;
+}): string {
+  return [
+    "      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1",
+    "        with:",
+    "          push-token: ${{ secrets.PUSH_TOKEN }}",
+    `          project: ${input.slug}`,
+    `          surface: ${input.surfaceSlug}`,
+    `          path-template: ${JSON.stringify(input.pathTemplate)}`,
+    ...(input.adapter === undefined ? [] : [`          adapter: ${input.adapter}`]),
+    ...(input.baseLocale === undefined ? [] : [baseLocaleLine(input.baseLocale)]),
+    "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
+    "",
+  ].join("\n");
+}
+
 /**
  * 결과 화면의 복사용 `.github/workflows/l10n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
  * 사용자가 붙인다 — 설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운 문장이고, 로케일 파일
@@ -13,6 +30,8 @@ import type { AdapterName } from "@/lib/adapters/types";
  */
 export function renderWorkflowYaml(input: {
   slug: string;
+  surfaceSlug: string;
+  pathTemplate: string;
   /** `Project.baseBranch` — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다. */
   baseBranch: string;
   /** 수동 지정한 경우에만 — 자동 후보면 탐지가 같은 답을 내므로 고정할 이유가 없다. */
@@ -64,6 +83,8 @@ export function renderWorkflowYaml(input: {
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${slug}`,
+    `          surface: ${input.surfaceSlug}`,
+    `          path-template: ${JSON.stringify(input.pathTemplate)}`,
     ...extra,
     "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
     "",

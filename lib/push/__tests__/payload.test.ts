@@ -38,6 +38,7 @@ const read: ReadResult = {
 
 const input = {
   projectSlug: "acme",
+  surfaceSlug: "default",
   commitSha: "a".repeat(40),
   commitAt: "2026-09-03T00:00:00+09:00",
   format,

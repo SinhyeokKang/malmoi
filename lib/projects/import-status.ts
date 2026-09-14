@@ -47,6 +47,7 @@ export type ImportFailureCode = (typeof IMPORT_FAILURE_CODES)[number];
  */
 export const ImportFailureReport = z.strictObject({
   projectSlug: z.string().min(1),
+  surfaceSlug: z.string().min(1).max(40),
   commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha must be 40 lowercase hex characters"),
   commitAt: z.iso.datetime({ offset: true }),
   code: z.enum(REPORTED_IMPORT_FAILURES),

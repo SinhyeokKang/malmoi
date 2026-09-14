@@ -35,7 +35,7 @@ const fixedWidths = (source: string): number[] =>
     .filter((cls) => /\bshrink-0\b/.test(cls))
     .flatMap((cls) => [...cls.matchAll(/(?:^|\s)w-(\d+)(?:\s|$)/g)].map((w) => Number(w[1]) * 4));
 
-const PAGE = "app/(edit)/projects/[slug]/translations/page.tsx";
+const PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const ANNOUNCER = "components/translations/announcer.tsx";
 const BANNER = "components/translations/edit-loss-banner.tsx";
@@ -273,7 +273,7 @@ describe("행 축 (8-4)", () => {
     expect(read(LOCALE_BADGE)).not.toMatch(/m\.locales\.base/);
     expect(read(KEY_GROUP)).not.toMatch(/isBase/);
     // 사전 키는 남는다 — `/locales`·Home이 계속 쓴다.
-    expect(read("app/(edit)/projects/[slug]/locales/page.tsx")).toMatch(/m\.locales\.base/);
+    expect(read("app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx")).toMatch(/m\.locales\.base/);
     expect(read("app/(edit)/projects/[slug]/page.tsx")).toMatch(/m\.locales\.base/);
   });
 

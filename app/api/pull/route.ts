@@ -54,7 +54,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         slug: true,
         installationId: true,
         repositoryId: true,
-        lastCommitSha: true,
+        surfaces: { select: { archivedAt: true, lastCommitSha: true } },
         // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
         archivedAt: true,
         // ⚠️ **정렬 재료다** — 마지막 실행이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import type { AccessError } from "@/lib/auth/message";
-import { getProjectAccess } from "@/lib/auth/query";
+import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
@@ -22,7 +22,7 @@ import type { RepositorySettingsError } from "@/lib/settings/message";
  * 관용구이고, 노출을 차단으로 착각하면 그 차이가 구멍이 된다 (ARCHITECTURE §6.1).
  */
 
-const Input = z.object({ slug: z.string().min(1), baseLocale: z.string().min(1) });
+const Input = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), baseLocale: z.string().min(1) });
 
 export type BaseLocaleResult =
   | { ok: true }
@@ -38,28 +38,30 @@ export type BaseLocaleResult =
  */
 export async function updateBaseLocale(raw: {
   slug: string;
+  surfaceSlug: string;
   baseLocale: string;
 }): Promise<BaseLocaleResult> {
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug, baseLocale } = parsed.data;
+  const { slug, surfaceSlug, baseLocale } = parsed.data;
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
 
   const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
+  const access = await getSurfaceAccess(prisma, {
     userId: session.userId,
     slug,
+    surfaceSlug,
     permission: "project:settings",
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId } = access;
+  const { projectId, surfaceId } = access;
 
   // ⚠️ **인가가 준 projectId로 읽는다** — slug로 다시 찾으면 인가한 행과 조회한 행이 갈릴 수 있다.
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.translationSurface.findUnique({
+    where: { id: surfaceId, projectId },
     select: {
       baseLocale: true,
       declaredBaseLocale: true,
@@ -79,14 +81,14 @@ export async function updateBaseLocale(raw: {
   if (plan === "unknown-locale" || plan === "orphaned-locale") return { ok: false, error: plan };
 
   if (plan === "ok") {
-    await prisma.project.update({ where: { id: projectId }, data: { declaredBaseLocale: baseLocale } });
+    await prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: baseLocale } });
   } else if (project.declaredBaseLocale !== null) {
     /**
      * `noop`인데 선언이 남아 있다 — **되돌리는 경로다** (design §3.13: "B로 선언했다가 A로 다시
      * 저장하면 대기가 사라진다"). 별도 취소 버튼을 두지 않는 근거가 이 한 줄이고, `null`로 비우는
      * 것이 현실과 같은 값을 넣는 것보다 낫다 — `checkFormat`에 남는 예외가 아예 없다.
      */
-    await prisma.project.update({ where: { id: projectId }, data: { declaredBaseLocale: null } });
+    await prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: null } });
   }
   // 나머지 `noop`은 쓸 것이 없다 — 빈 update는 `Project.updatedAt`만 올린다.
 

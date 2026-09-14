@@ -58,7 +58,7 @@ describe("searchProjects", () => {
 });
 
 describe("projectStatus", () => {
-  const READY = { archivedAt: null, installationId: "1", lastCommitSha: "a".repeat(40), repositoryId: "42" };
+  const READY = { archivedAt: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
 
   it("준비된 프로젝트는 `active`다 — 이 화면에서만 `ready`가 침묵이 아니다", () => {
     expect(projectStatus(READY)).toBe("active");
@@ -72,13 +72,13 @@ describe("projectStatus", () => {
   it("보관이 readiness를 이긴다", () => {
     expect(projectStatus({ ...READY, archivedAt: new Date() })).toBe("archived");
     expect(
-      projectStatus({ archivedAt: new Date(), installationId: null, lastCommitSha: null, repositoryId: null }),
+      projectStatus({ archivedAt: new Date(), installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null }),
     ).toBe("archived");
   });
 
   it("연결 전은 `setup`, 첫 적재 전은 `awaiting_first_sync`다", () => {
     expect(projectStatus({ ...READY, installationId: null })).toBe("setup");
-    expect(projectStatus({ ...READY, lastCommitSha: null })).toBe("awaiting_first_sync");
+    expect(projectStatus({ ...READY, surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
   });
 
   /**
@@ -96,7 +96,7 @@ describe("projectStatus", () => {
    */
   it("readiness가 `needs_reconnect`보다 앞이다", () => {
     expect(projectStatus({ ...READY, installationId: null, repositoryId: null })).toBe("setup");
-    expect(projectStatus({ ...READY, lastCommitSha: null, repositoryId: null })).toBe("awaiting_first_sync");
+    expect(projectStatus({ ...READY, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null })).toBe("awaiting_first_sync");
   });
 
   /** 보관은 그 셋 전부를 이긴다. */
@@ -148,7 +148,7 @@ describe("상태 문구", () => {
  * 1:1이다 — 표에 없는 조합을 여기서 발명하지 않는다.
  */
 
-const READY = { installationId: "i", lastCommitSha: "s", repositoryId: "r", archivedAt: null } as const;
+const READY = { installationId: "i", surfaces: [{ archivedAt: null, lastCommitSha: "s" }], repositoryId: "r", archivedAt: null } as const;
 const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, importError: null, importing: false } as const;
 const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
 
@@ -164,7 +164,7 @@ describe("projectGroup — 상태표의 그룹 열과 1:1 (design §5)", () => {
   it.each([
     ["unsent edits", { unsent: 24 }],
     ["repo moved ahead", { repoAheadFiles: 3 }],
-    ["awaiting first sync", { lastCommitSha: null }],
+    ["awaiting first sync", { surfaces: [{ archivedAt: null, lastCommitSha: null }] }],
     ["setup", { installationId: null }],
     ["needs reconnect", { repositoryId: null }],
     ["import failed", { importError: "parse-failed" as const }],
@@ -209,7 +209,7 @@ describe("rowBanner — 겹치면 하나만 (design §4 우선순위)", () => {
 
   it("setup은 자기 띠를 갖고, 첫 적재 대기는 안 갖는다 — 그 문장은 Meter 자리가 든다", () => {
     expect(rowBanner(row({ installationId: null }))).toEqual({ kind: "setup" });
-    expect(rowBanner(row({ lastCommitSha: null }))).toBeNull();
+    expect(rowBanner(row({ surfaces: [{ archivedAt: null, lastCommitSha: null }] }))).toBeNull();
   });
 
   /** E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다. */
@@ -245,15 +245,15 @@ describe("rowBanner — 겹치면 하나만 (design §4 우선순위)", () => {
 
 describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)", () => {
   it("값이 있는 상태는 바를 그린다", () => {
-    const locales = [{ code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
+    const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
     expect(meterSlot(row(), locales)).toEqual({ kind: "meters", locales });
   });
 
   it.each([
     ["setup", { installationId: null }, "setup"],
-    ["첫 적재 대기", { lastCommitSha: null }, "waiting"],
-    ["적재 진행 중", { lastCommitSha: null, importing: true }, "importing"],
-    ["첫 적재 실패", { lastCommitSha: null, importError: "parse-failed" as const }, "failed"],
+    ["첫 적재 대기", { surfaces: [{ archivedAt: null, lastCommitSha: null }] }, "waiting"],
+    ["적재 진행 중", { surfaces: [{ archivedAt: null, lastCommitSha: null }], importing: true }, "importing"],
+    ["첫 적재 실패", { surfaces: [{ archivedAt: null, lastCommitSha: null }], importError: "parse-failed" as const }, "failed"],
   ])("%s은 바가 아니라 문장이다", (_label, over, note) => {
     expect(meterSlot(row(over), [])).toEqual({ kind: "note", note });
   });
@@ -263,13 +263,13 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)"
    * 문장으로 덮으면 "번역이 사라졌다"로 읽힌다. 그 사실은 띠가 말한다.
    */
   it("적재된 뒤의 실패는 바를 유지한다", () => {
-    const locales = [{ code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
+    const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
     expect(meterSlot(row({ importError: "partial-import" }), locales)).toEqual({ kind: "meters", locales });
   });
 
   /** 진행 중이 더 최신 사실이다 — 남아 있는 코드는 이전 실행의 것이다. */
   it("첫 적재 대기에서 진행이 실패를 이긴다", () => {
-    expect(meterSlot(row({ lastCommitSha: null, importError: "parse-failed", importing: true }), [])).toEqual({
+    expect(meterSlot(row({ surfaces: [{ archivedAt: null, lastCommitSha: null }], importError: "parse-failed", importing: true }), [])).toEqual({
       kind: "note",
       note: "importing",
     });
@@ -285,10 +285,10 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)"
  */
 describe("rowLocaleProgress", () => {
   const locales = [
-    { projectId: "p", code: "ko", isBase: false },
-    { projectId: "p", code: "en", isBase: true },
-    { projectId: "p", code: "ja", isBase: false },
-    { projectId: "p", code: "de", isBase: false },
+    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "ko", isBase: false },
+    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true },
+    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "ja", isBase: false },
+    { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "de", isBase: false },
   ];
   const totals = new Map([["p", 10]]);
 
@@ -304,18 +304,18 @@ describe("rowLocaleProgress", () => {
    */
   it("두 구간이 겹치지 않고 라벨이 그 합이다", () => {
     const cells = [
-      { projectId: "p", localeCode: "en", needsReview: false, count: 7 },
-      { projectId: "p", localeCode: "en", needsReview: true, count: 2 },
+      { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 7 },
+      { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: true, count: 2 },
     ];
     const en = rowLocaleProgress(locales, totals, cells).get("p")?.[0];
-    expect(en).toMatchObject({ code: "en", total: 10, done: 7, review: 2, percent: 90 });
+    expect(en).toMatchObject({ surfaceSlug: "default", code: "en", total: 10, done: 7, review: 2, percent: 90 });
   });
 
   it("내림이다 — 902/903이 100%로 보이면 안 된다", () => {
     const got = rowLocaleProgress(
-      [{ projectId: "p", code: "en", isBase: true }],
+      [{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }],
       new Map([["p", 903]]),
-      [{ projectId: "p", localeCode: "en", needsReview: false, count: 902 }],
+      [{ projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 902 }],
     );
     expect(got.get("p")?.[0]?.percent).toBe(99);
   });
@@ -323,24 +323,24 @@ describe("rowLocaleProgress", () => {
   /** 캔버스의 값 그대로 — 84 + 8이 92로 읽힌다. */
   it("캔버스 `1c`의 en 행을 재현한다", () => {
     const got = rowLocaleProgress(
-      [{ projectId: "p", code: "en", isBase: true }],
+      [{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }],
       new Map([["p", 100]]),
       [
-        { projectId: "p", localeCode: "en", needsReview: false, count: 84 },
-        { projectId: "p", localeCode: "en", needsReview: true, count: 8 },
+        { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 84 },
+        { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: true, count: 8 },
       ],
     );
     expect(got.get("p")?.[0]).toMatchObject({ done: 84, review: 8, percent: 92 });
   });
 
   it("분모가 0이면 비율도 0이다 — 0으로 나누지 않는다", () => {
-    const got = rowLocaleProgress([{ projectId: "p", code: "en", isBase: true }], new Map(), []);
+    const got = rowLocaleProgress([{ projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true }], new Map(), []);
     expect(got.get("p")?.[0]).toMatchObject({ total: 0, done: 0, review: 0, percent: 0 });
   });
 
   /** ③은 orphaned 로케일의 번역을 포함할 수 있다 — ①에 없는 셀은 먼저 버린다. */
   it("살아 있는 로케일 목록에 없는 셀은 버린다", () => {
-    const cells = [{ projectId: "p", localeCode: "fr", needsReview: false, count: 5 }];
+    const cells = [{ projectId: "p", surfaceId: "p", localeCode: "fr", needsReview: false, count: 5 }];
     const got = rowLocaleProgress(locales, totals, cells);
     expect(got.get("p")?.map((l) => l.code)).toEqual(["en", "de", "ja"]);
     expect(got.get("p")?.every((l) => l.done === 0)).toBe(true);
@@ -348,9 +348,9 @@ describe("rowLocaleProgress", () => {
 
   it("다른 프로젝트의 값이 섞이지 않는다", () => {
     const got = rowLocaleProgress(
-      [...locales, { projectId: "q", code: "en", isBase: true }],
+      [...locales, { projectId: "q", surfaceId: "q", surfaceSlug: "default", code: "en", isBase: true }],
       new Map([["p", 10], ["q", 4]]),
-      [{ projectId: "q", localeCode: "en", needsReview: false, count: 4 }],
+      [{ projectId: "q", surfaceId: "q", localeCode: "en", needsReview: false, count: 4 }],
     );
     expect(got.get("q")?.[0]).toMatchObject({ total: 4, done: 4, percent: 100 });
     expect(got.get("p")?.[0]?.done).toBe(0);
@@ -364,14 +364,14 @@ describe("summaryQueue", () => {
   const base = {
     projects: [{ projectId: "p", archived: false }],
     locales: [
-      { projectId: "p", code: "en", isBase: true },
-      { projectId: "p", code: "ko", isBase: false },
+      { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "en", isBase: true },
+      { projectId: "p", surfaceId: "p", surfaceSlug: "default", code: "ko", isBase: false },
     ],
     keyTotals: new Map([["p", 10]]),
     cells: [
-      { projectId: "p", localeCode: "en", needsReview: false, count: 10 },
-      { projectId: "p", localeCode: "ko", needsReview: false, count: 4 },
-      { projectId: "p", localeCode: "ko", needsReview: true, count: 3 },
+      { projectId: "p", surfaceId: "p", localeCode: "en", needsReview: false, count: 10 },
+      { projectId: "p", surfaceId: "p", localeCode: "ko", needsReview: false, count: 4 },
+      { projectId: "p", surfaceId: "p", localeCode: "ko", needsReview: true, count: 3 },
     ],
     newKeys: new Map([["p", 2]]),
     unsent: new Map([["p", 5]]),
@@ -390,7 +390,7 @@ describe("summaryQueue", () => {
     const codes = Array.from({ length: 59 }, (_, i) => `l${String(i).padStart(2, "0")}`);
     const got = summaryQueue({
       ...base,
-      locales: codes.map((code, i) => ({ projectId: "p", code, isBase: i === 0 })),
+      locales: codes.map((code, i) => ({ projectId: "p", surfaceId: "p", surfaceSlug: "default", code, isBase: i === 0 })),
       cells: [],
       newKeys: new Map(),
       unsent: new Map(),
@@ -411,7 +411,7 @@ describe("summaryQueue", () => {
     const got = summaryQueue({
       ...base,
       projects: [{ projectId: "p", archived: false }, { projectId: "q", archived: true }],
-      locales: [...base.locales, { projectId: "q", code: "en", isBase: true }],
+      locales: [...base.locales, { projectId: "q", surfaceId: "q", surfaceSlug: "default", code: "en", isBase: true }],
       keyTotals: new Map([["p", 10], ["q", 100]]),
       newKeys: new Map([["p", 2], ["q", 50]]),
       unsent: new Map([["p", 5], ["q", 70]]),
@@ -422,7 +422,7 @@ describe("summaryQueue", () => {
   it("orphaned 로케일의 셀은 미번역·검토 어느 쪽에도 안 들어간다", () => {
     const got = summaryQueue({
       ...base,
-      cells: [...base.cells, { projectId: "p", localeCode: "fr", needsReview: true, count: 9 }],
+      cells: [...base.cells, { projectId: "p", surfaceId: "p", localeCode: "fr", needsReview: true, count: 9 }],
     });
     expect(got.toReview).toBe(3);
     expect(got.toTranslate).toBe(3);

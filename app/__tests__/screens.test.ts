@@ -234,8 +234,8 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
 describe("보관 — 다섯 화면이 같은 갈래를 그린다 (7단계)", () => {
   const SITES = [
     "app/(edit)/projects/[slug]/page.tsx",
-    "app/(edit)/projects/[slug]/translations/page.tsx",
-    "app/(edit)/projects/[slug]/locales/page.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
   ];
@@ -332,7 +332,8 @@ describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
   const src = read(SETTINGS);
 
   it("진행 표시 컬럼을 함께 읽는다", () => {
-    expect(src).toContain("lastImportStartedAt: true");
+    expect(src).toContain("surfaces: { where: { archivedAt: null }");
+    expect(src).toContain("s.lastImportStartedAt");
   });
 
   it("목록과 같은 판정 함수를 쓴다 — 술어를 두 벌로 만들지 않는다", () => {

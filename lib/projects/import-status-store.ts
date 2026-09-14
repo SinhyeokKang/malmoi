@@ -15,8 +15,8 @@ import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
  * 서버 적재가 시작됐다고 표시한다. **인증·가드를 지난 뒤**에 부른다 — 거부된 요청까지 표시하면
  * 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
  */
-export async function markImportStarted(prisma: PrismaClient, projectId: string, startedAt: Date): Promise<void> {
-  await prisma.project.update({ where: { id: projectId }, data: { lastImportStartedAt: startedAt } });
+export async function markImportStarted(prisma: PrismaClient, scope: { projectId: string; surfaceId: string }, startedAt: Date): Promise<void> {
+  await prisma.translationSurface.update({ where: { id: scope.surfaceId, projectId: scope.projectId }, data: { lastImportStartedAt: startedAt } });
 }
 
 /**
@@ -30,11 +30,11 @@ export async function markImportStarted(prisma: PrismaClient, projectId: string,
  */
 export async function finishImportRun(
   prisma: PrismaClient,
-  input: { projectId: string; startedAt: Date; code: ImportFailureCode },
+  input: { projectId: string; surfaceId: string; startedAt: Date; code: ImportFailureCode },
 ): Promise<void> {
   try {
-    await prisma.project.updateMany({
-      where: { id: input.projectId, lastImportStartedAt: input.startedAt },
+    await prisma.translationSurface.updateMany({
+      where: { id: input.surfaceId, projectId: input.projectId, lastImportStartedAt: input.startedAt },
       data: { lastImportStartedAt: null, lastImportError: input.code },
     });
   } catch {
@@ -57,12 +57,13 @@ export async function finishImportRun(
  */
 export async function recordReportedFailure(
   prisma: PrismaClient,
-  input: { projectId: string; tokenHash: string; commitAt: Date; code: ReportedImportFailure },
+  input: { projectId: string; surfaceId: string; tokenHash: string; commitAt: Date; code: ReportedImportFailure },
 ): Promise<"recorded" | "rejected"> {
-  const { count } = await prisma.project.updateMany({
+  const { count } = await prisma.translationSurface.updateMany({
     where: {
-      id: input.projectId,
-      pushTokenHash: input.tokenHash,
+      id: input.surfaceId,
+      projectId: input.projectId,
+      project: { pushTokenHash: input.tokenHash, archivedAt: null },
       archivedAt: null,
       // 같은 커밋의 재실행 실패는 받는다 — `checkCommitOrder`가 동일 시각을 통과시키는 것과 같은 규칙이다.
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: input.commitAt } }],

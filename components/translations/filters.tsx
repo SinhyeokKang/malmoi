@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchInput } from "@/components/search-input";
+import { SurfaceSelector, type SurfaceOption } from "@/components/surface-selector";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
@@ -38,6 +39,8 @@ import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
  */
 export function TranslationFilters({
   slug,
+  surfaceSlug,
+  surfaces,
   query,
   chipQuery,
   namespaces,
@@ -46,6 +49,8 @@ export function TranslationFilters({
   fallback,
 }: {
   slug: string;
+  surfaceSlug: string;
+  surfaces: readonly SurfaceOption[];
   /** 지금 URL의 값 — 하나를 바꿔도 나머지가 보존돼야 한다. */
   query: TranslationsQuery;
   chipQuery: TranslationsQuery;
@@ -62,9 +67,9 @@ export function TranslationFilters({
   const [pending, startTransition] = useTransition();
 
   // 툴바와 칩이 같은 잠금을 쓴다. 한쪽만 막으면 다른 쪽이 이전 URL을 다시 제출한다.
-  function navigate(next: TranslationsQuery) {
+  function navigate(next: TranslationsQuery, nextSurface = surfaceSlug) {
     if (pending) return;
-    startTransition(() => router.push(routes.translations(slug, next)));
+    startTransition(() => router.push(routes.surfaceTranslations(slug, nextSurface, next)));
   }
 
   function go(next: Partial<TranslationsQuery>) {
@@ -85,6 +90,7 @@ export function TranslationFilters({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
+        <SurfaceSelector value={surfaceSlug} surfaces={surfaces} pending={pending} onChange={next => navigate(query, next)} />
         <Select disabled={pending} value={query.ns ?? ALL_NAMESPACES} onValueChange={(ns) => go({ ns })}>
           {/*
             ⚠️ **라벨이 트리거 **밖**이다** (2026-09-13 리뷰). `role="combobox"`에는 name-from-content가

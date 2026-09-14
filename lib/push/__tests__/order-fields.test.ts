@@ -14,6 +14,7 @@ import { PushPayload, planPush, sourceHash, type ExistingKey } from "../plan";
 
 const base = {
   projectSlug: "acme",
+  surfaceSlug: "default",
   commitSha: "a".repeat(40),
   commitAt: "2026-09-03T00:00:00+09:00",
   format: { adapter: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: false, baseLocale: "en" },

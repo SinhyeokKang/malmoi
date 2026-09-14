@@ -1,6 +1,7 @@
 "use server";
 
 import { findUserByEmail } from "@/lib/credentials/access";
+import { planSurfaceSlug } from "@/lib/surfaces/plan";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -797,7 +798,7 @@ export type CreateProjectResult =
    * `baseBranch`는 **결과 화면의 워크플로 YAML용**이다 (T7). `on.push.branches`를 `main`으로 고정하면
    * base가 `develop`인 리포에서 CI가 영영 안 돌고, 그 값을 아는 것은 probe를 부른 서버뿐이다.
    */
-  | { ok: true; slug: string; pushToken: string; baseBranch: string }
+  | { ok: true; slug: string; surfaceSlug: string; pushToken: string; baseBranch: string }
   | { ok: false; error: OnboardFailure };
 
 /**
@@ -936,13 +937,16 @@ export async function createProject(raw: {
           installationId: plan.installationId,
           repositoryId: access.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
-          adapterName: confirmed.format.adapter,
-          pathTemplate: confirmed.format.pathTemplate,
-          baseLocale: confirmed.baseLocale,
           pushTokenHash: hashPushToken(pushToken),
         },
         select: { id: true },
       });
+      const surface = await tx.translationSurface.create({ data: {
+        projectId: project.id, slug: planSurfaceSlug(confirmed.format.pathTemplate, []),
+        adapterName: confirmed.format.adapter, pathTemplate: confirmed.format.pathTemplate,
+        baseLocale: confirmed.baseLocale,
+      } });
+      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: surface.id } });
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
     });
   } catch (error) {
@@ -958,7 +962,7 @@ export async function createProject(raw: {
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
-  return { ok: true, slug: input.slug, pushToken, baseBranch };
+  return { ok: true, slug: input.slug, surfaceSlug: planSurfaceSlug(confirmed.format.pathTemplate, []), pushToken, baseBranch };
 }
 
 export type FirstIngestResultView =
@@ -998,16 +1002,16 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       repoName: true,
       baseBranch: true,
       installationId: true,
-      adapterName: true,
-      pathTemplate: true,
-      baseLocale: true,
-      lastCommitSha: true,
+      defaultSurface: true,
     },
   });
   if (project === null) return { ok: false, error: "not-found" };
 
-  if (planProjectReadiness(project) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
-  const { installationId, adapterName, pathTemplate, baseLocale } = project;
+  const surface = project.defaultSurface;
+  if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
+  if (planProjectReadiness({ installationId: project.installationId, surfaces: [surface] }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
+  const { installationId } = project;
+  const { adapterName, pathTemplate, baseLocale } = surface;
   // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
   // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다.
   if (installationId === null || adapterName === null || pathTemplate === null || baseLocale === null) {
@@ -1027,9 +1031,10 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
    */
   const startedAt = new Date();
-  await markImportStarted(prisma, projectId, startedAt);
+  const scope = { projectId, surfaceId: surface.id };
+  await markImportStarted(prisma, scope, startedAt);
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
-    finishImportRun(prisma, { projectId, startedAt, code });
+    finishImportRun(prisma, { ...scope, startedAt, code });
 
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
@@ -1090,6 +1095,8 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
 
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
+      surfaceId: surface.id,
+      surfaceSlug: surface.slug,
       startedAt,
       projectSlug: slug,
       format: confirmed.format,

@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { runPull } from "../run";
 import { createFakeGitClient } from "./fake-client";
 
@@ -27,4 +27,19 @@ it("publishes both surfaces from one snapshot and rejects overlap before writes"
   }
   expect(await run(false)).toEqual(await run(true));
   await run(false, true);
+});
+
+it("does not publish or advance the watermark when the second surface blob fails", async () => {
+  const { client, calls } = createFakeGitClient({ refSha: { "heads/main": "base" }, tree: { base: [
+    { path: "a/en.json", sha: "a" },
+    { path: "b/en.json", sha: "b" },
+  ] }, blobs: { a: '{"hello":"old"}' } });
+  const saveLastPulledAt = vi.fn();
+  await expect(runPull({ loadState: async () => ({
+    project: { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastPulledAt: null },
+    surfaces: ["a", "b"].map(id => ({ id, slug: id, adapterName: "json-catalog", pathTemplate: `${id}/{locale}.json`, baseLocale: "en", nested: false, nestedByPath: null,
+      localeCodes: ["en"], keys: [{ key: "hello", sourceText: id, orphaned: false, cells: { en: { value: id } } }] })), maxUpdatedAt: new Date(),
+  }), createClient: async () => client, saveLastPulledAt, syncBranch: "l10n/sync-demo" })).rejects.toThrow();
+  expect(calls.filter(c => c.method.startsWith("create") || c.method === "updateRefForce")).toEqual([]);
+  expect(saveLastPulledAt).not.toHaveBeenCalled();
 });

@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { compareSurfaces, planSurfaceSlug, selectDefaultSurface, surfaceOwnership } from "../plan";
+import { compareSurfaces, planSurfaceSlug, selectDefaultSurface, surfaceOwnership, surfaceLabel } from "../plan";
 import { planMultiSurfacePull } from "@/lib/pull/surfaces";
 import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
 
 describe("surface identity", () => {
+  it("labels the original path fragment, not the default or collision slug", () => {
+    expect(surfaceLabel("public/_locales/{locale}/messages.json")).toBe("_locales");
+    expect(surfaceLabel("src/My Labels/{locale}.json")).toBe("My Labels");
+  });
   it.each([
     ["_locales/{locale}/messages.json", "_locales"],
     ["src/i18n/{locale}.json", "i18n"],

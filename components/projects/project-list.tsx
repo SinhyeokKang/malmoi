@@ -406,7 +406,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
           */
           <span className="@max-[760px]:hidden @max-[940px]:[&>*:nth-child(n+2)]:hidden @max-[1120px]:[&>*:nth-child(n+3)]:hidden flex shrink-0 gap-4">
             {slot.locales.map((locale) => (
-              <LocaleMeter key={locale.code} locale={locale} />
+              <LocaleMeter key={`${locale.surfaceSlug}:${locale.code}`} locale={locale} />
             ))}
           </span>
         ) : (
@@ -520,16 +520,16 @@ function BannerAction({
   switch (banner.kind) {
     case "review":
       // ⚠️ **`?state=`가 없다** — 검토 대기만 걸러 보내는 쿼리는 8-4가 폐기했다.
-      return internal(routes.translations(row.slug), m.projects.banner.action.review);
+      return row.reviewSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.reviewSurfaceSlug), m.projects.banner.action.review);
     case "unsent":
       // ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다.
-      return internal(routes.translations(row.slug), m.projects.banner.action.send);
+      return row.unsentSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.unsentSurfaceSlug), m.projects.banner.action.send);
     case "pr_open":
       return external(banner.url, m.projects.banner.action.viewPr);
     case "repo_ahead":
       // compare 범위는 원격 조회가 이미 계산한 것과 같다 — 화면이 그 범위를 그대로 연다.
       return external(
-        `https://github.com/${row.repoOwner}/${row.repoName}/compare/${row.lastCommitSha ?? ""}...${row.baseBranch}`,
+        `https://github.com/${row.repoOwner}/${row.repoName}/compare/${row.repoAheadFrom ?? ""}...${row.baseBranch}`,
         m.projects.banner.action.reviewChanges,
       );
     case "setup":

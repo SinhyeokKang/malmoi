@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const tokenHash = hashPushToken(rawToken);
     const project = await prisma.project.findUnique({
       where: { pushTokenHash: tokenHash },
-      select: { id: true, slug: true, archivedAt: true, lastCommitAt: true },
+      select: { id: true, slug: true, archivedAt: true },
     });
     // 미발급·오타·폐기 토큰이 전부 같은 401이다 — 404를 내면 프로젝트 존재가 샌다.
     if (!project) {
@@ -87,11 +87,15 @@ export async function POST(request: Request): Promise<NextResponse> {
         { status: guardStatus(routing) },
       );
     }
+    const surface = await prisma.translationSurface.findFirst({
+      where: { projectId: project.id, slug: parsed.data.surfaceSlug, archivedAt: null },
+    });
+    if (!surface) return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
     const commitAt = new Date(parsed.data.commitAt);
-    const order = checkCommitOrder(commitAt, project.lastCommitAt);
+    const order = checkCommitOrder(commitAt, surface.lastCommitAt);
     if (order !== "ok") {
       return NextResponse.json(
-        { error: "stale commit", commitAt: parsed.data.commitAt, lastCommitAt: project.lastCommitAt?.toISOString() ?? null },
+        { error: "stale commit", commitAt: parsed.data.commitAt, lastCommitAt: surface.lastCommitAt?.toISOString() ?? null },
         { status: guardStatus(order) },
       );
     }
@@ -103,6 +107,7 @@ export async function POST(request: Request): Promise<NextResponse> {
      */
     const recorded = await recordReportedFailure(prisma, {
       projectId: project.id,
+      surfaceId: surface.id,
       tokenHash,
       commitAt,
       code: parsed.data.code,

@@ -23,6 +23,14 @@ inputs:
       대상 Project.slug. **push-token이 정한 프로젝트와 다르면 409다** — 토큰이 먼저 프로젝트를
       정하고 이 값은 그 뒤에 대조된다(오배송 거부).
     required: true
+  surface:
+    description: Translation surface slug within the project
+    required: false
+    default: "default"
+  path-template:
+    description: Registered locale path template
+    required: false
+    default: ""
   api-url:
     description: |
       말모이 배포 URL. ⚠️ **`.vercel.app`을 쓰지 않는다** — Vercel 프로젝트 이름을 바꾸면 그
@@ -159,13 +167,18 @@ runs:
         PUSH_TOKEN: ${{ inputs.push-token }}
         L10N_API_URL: ${{ inputs.api-url }}
         L10N_PROJECT: ${{ inputs.project }}
+        L10N_SURFACE: ${{ inputs.surface }}
+        L10N_PATH_TEMPLATE: ${{ inputs.path-template }}
         L10N_ADAPTER: ${{ inputs.adapter }}
         L10N_BASE: ${{ inputs.base-locale }}
         L10N_WRAPPER: ${{ inputs.wrapper }}
         L10N_TARGET: ${{ inputs.target }}
       run: |
         set -euo pipefail
-        args=(--url "$L10N_API_URL" --project "$L10N_PROJECT")
+        args=(--url "$L10N_API_URL" --project "$L10N_PROJECT" --surface "$L10N_SURFACE")
+        if [ -n "$L10N_PATH_TEMPLATE" ]; then
+          args+=(--path-template "$L10N_PATH_TEMPLATE")
+        fi
         if [ -n "$L10N_ADAPTER" ]; then
           args+=(--adapter "$L10N_ADAPTER")
         fi

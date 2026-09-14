@@ -29,16 +29,13 @@ export type RemoteTarget = {
   /** ⚠️ **리포의 정체성은 이름이 아니라 id다** (불변식 11). null이면 호출 자체를 건너뛴다. */
   repositoryId: string | null;
   baseBranch: string;
-  lastCommitSha: string | null;
   lastPrUrl: string | null;
-  adapterName: string | null;
-  pathTemplate: string | null;
   /** **전체 저장 로케일**(orphaned 포함) — 탐지 정규식이 거르는 코드의 경로를 지킨다 (§3.4). */
-  storedLocales: readonly string[];
+  surfaces: readonly { lastCommitSha: string | null; adapterName: string | null; pathTemplate: string | null; storedLocales: readonly string[] }[];
   archived: boolean;
 };
 
-export type RemoteSignals = { openPr: { number: number; url: string } | null; repoAheadFiles: number };
+export type RemoteSignals = { openPr: { number: number; url: string } | null; repoAheadFiles: number; repoAheadFrom?: string };
 
 const NONE: RemoteSignals = { openPr: null, repoAheadFiles: 0 };
 
@@ -88,29 +85,31 @@ async function signalsFor(
   if (target.installationId === null || target.repositoryId === null) return NONE;
 
   const pullNumber = pullNumberFrom(target.lastPrUrl);
-  const format =
-    target.lastCommitSha !== null && target.adapterName !== null && target.pathTemplate !== null && isAdapterName(target.adapterName)
-      ? { adapter: target.adapterName, pathTemplate: target.pathTemplate, storedLocales: target.storedLocales }
-      : null;
+  const formats = target.surfaces.flatMap(s =>
+    s.lastCommitSha !== null && s.adapterName !== null && s.pathTemplate !== null && isAdapterName(s.adapterName)
+      ? [{ adapter: s.adapterName, pathTemplate: s.pathTemplate, storedLocales: s.storedLocales, lastCommitSha: s.lastCommitSha }]
+      : []);
   // **두 신호 모두 입력이 없으면 요청이 0이다** — 클라이언트도 만들지 않는다(토큰 발급 왕복이 따라온다).
-  if (format === null && pullNumber === null) return NONE;
+  if (formats.length === 0 && pullNumber === null) return NONE;
 
   try {
     // 프로젝트당 클라이언트 하나를 두 신호가 공유한다 — 토큰 발급·리포 확인도 이 작업 안이다.
     const client = await createClient(target);
     // 프로젝트 **안에서는** 병렬이다. 바깥의 제한은 프로젝트 수이지 요청 수가 아니다.
     const [compared, opened] = await Promise.allSettled([
-      format === null || target.lastCommitSha === null ? null : client.compareToBase(target.lastCommitSha, target.baseBranch),
+      Promise.all(formats.map(async format => ({ format, compare: await client.compareToBase(format.lastCommitSha, target.baseBranch) }))),
       pullNumber === null ? null : client.isPullRequestOpen(pullNumber),
     ]);
     // 한쪽이 실패해도 나머지 요청이 끝나야 워커 자리를 반납한다 — Promise.all은 먼저 거부된다.
     if (compared.status === "rejected" || opened.status === "rejected") return NONE;
-    const compare = compared.value;
+    const comparisons = compared.value;
     const open = opened.value;
     return {
       openPr: open === true && pullNumber !== null && target.lastPrUrl !== null ? { number: pullNumber, url: target.lastPrUrl } : null,
       // base가 앞서지 않았으면 파일을 세지 않는다 — 같은 커밋에서 갈라진 변경은 이 띠가 말할 것이 아니다.
-      repoAheadFiles: compare !== null && compare.ahead && format !== null ? changedLocaleFileCount(format, compare.files) : 0,
+      repoAheadFiles: comparisons.reduce((sum, { format, compare }) => sum + (compare.ahead ? changedLocaleFileCount(format, compare.files) : 0), 0),
+      ...(() => { const changed = comparisons.find(({ format, compare }) => compare.ahead && changedLocaleFileCount(format, compare.files) > 0);
+        return changed ? { repoAheadFrom: changed.format.lastCommitSha } : {}; })(),
     };
   } catch {
     /**

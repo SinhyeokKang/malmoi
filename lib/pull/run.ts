@@ -11,6 +11,8 @@ import {
   type ProjectFormatColumns,
 } from "./plan";
 import { renderLocaleFiles, type RenderKey } from "./render";
+import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
+import { planMultiSurfacePull } from "./surfaces";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -20,7 +22,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
  * ⚠️ `server-only`를 붙이지 않는다 — 테스트가 직접 import한다.
  */
 
-export type PullProject = ProjectFormatColumns & {
+export type PullProject = {
   id: string;
   slug: string;
   repoOwner: string;
@@ -33,8 +35,7 @@ export type PullProject = ProjectFormatColumns & {
 
 export type PullState = {
   project: PullProject;
-  localeCodes: string[];
-  keys: RenderKey[];
+  surfaces: (ProjectFormatColumns & { id: string; slug: string; localeCodes: string[]; keys: RenderKey[] })[];
   /** 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`. */
   maxUpdatedAt: Date | null;
 };
@@ -74,7 +75,7 @@ export type PullResult =
 const BLOB_CONCURRENCY = 8;
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, localeCodes, keys, maxUpdatedAt } = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt } = await deps.loadState();
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
   if (shouldSkipPull(maxUpdatedAt, project.lastPulledAt)) {
@@ -92,12 +93,11 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
 
-  const format = formatFromProject(project, localeCodes);
-  // `formatFromProject`가 null이면 이미 던졌다 — 여기선 non-null이므로 좁혀서 쓴다.
-  // 빈 문자열로 폴백하면 base 판정이 전부 false가 되어 base 파일이 조용히 폴백을 잃는다.
-  const { baseLocale } = project;
-  if (baseLocale === null) fail("unreachable: passed formatFromProject but baseLocale is null");
-  const { layout } = adapterFor(format);
+  const formats = [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
+    const format = formatFromProject(surface, surface.localeCodes);
+    if (surface.baseLocale === null) fail("surface base locale is empty");
+    return { surface, format, baseLocale: surface.baseLocale, layout: adapterFor(format).layout };
+  });
   const client = await deps.createClient(project);
 
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
@@ -113,11 +113,14 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
 
   const tree = await client.getTree(baseHead);
-  const paths = resolveLocalePaths(
-    format,
-    layout,
-    tree.map((t) => t.path),
-  );
+  const resolved = formats.map(item => ({ ...item,
+    paths: resolveLocalePaths(item.format, item.layout, tree.map(t => t.path)),
+  }));
+  const ownership = surfaceOwnership(resolved.map(item => ({
+    surfaceId: item.surface.id, surfaceSlug: item.surface.slug, paths: item.paths.map(p => p.path),
+  })));
+  if (!ownership.ok) fail(ownership.conflicts.map(c => `Surface path conflict: ${c.path} (${c.surfaceSlugs.join(", ")})`).join("; "));
+  const paths = resolved.flatMap(item => item.paths);
 
   // **어댑터 종류와 무관하게 원본을 읽는다.** 두 방식이 원본을 쓰는 이유가 다르다:
   //   - 수술적 치환 — write에 **필수**다. 없으면 치환할 대상이 없어 파일을 안 낸다 (§1.4)
@@ -138,8 +141,12 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     chunk.forEach((p, j) => current.set(p.path, texts[j]!));
   }
 
-  const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);
-  const warnings = local.flatMap((f) => (f.errors ?? []).map((e) => `${e.path}: ${adapterErrorMessage(e)}`));
+  const rendered = resolved.map(item => ({
+    surfaceId: item.surface.id, surfaceSlug: item.surface.slug,
+    files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
+  }));
+  const local = planMultiSurfacePull(rendered);
+  const warnings = rendered.flatMap(p => p.files.flatMap(f => (f.errors ?? []).map(e => `${p.surfaceSlug}: ${e.path}: ${adapterErrorMessage(e)}`)));
   const withWarnings = warnings.length === 0 ? {} : { warnings };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────

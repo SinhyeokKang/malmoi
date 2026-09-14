@@ -17,6 +17,7 @@ export const SaveInput = z.object({
    * 꺼낸 `projectId`다 (ARCHITECTURE §6.00 ③·§7.7). 환경변수 기본값으로 떨어지지 않는 것이 요지다.
    */
   slug: z.string().min(1),
+  surfaceSlug: z.string().min(1),
   keyId: z.string().min(1),
   localeCode: z.string().min(1),
   // 빈 값을 허용한다 — 지우기가 정당한 조작이다. 상한은 임의 크기 페이로드를 막는다.

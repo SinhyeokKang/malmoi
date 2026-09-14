@@ -17,7 +17,7 @@ const project = (
     slug: string;
     installationId: string | null;
     repositoryId: string | null;
-    lastCommitSha: string | null;
+    surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
     syncRuns: { startedAt: Date }[];
   }> = {},
@@ -25,7 +25,7 @@ const project = (
   slug: "acme",
   installationId: "1",
   repositoryId: "1035512",
-  lastCommitSha: "a".repeat(40),
+  surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
   // 라우트가 `take: 1, orderBy: { startedAt: desc }`로 읽는 모양 그대로다 — 판정층이 재조립하지 않는다.
   syncRuns: [] as { startedAt: Date }[],
@@ -49,12 +49,12 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
   });
 
   it("`lastCommitSha`가 null이면 뺀다 — 첫 적재 전이라 포맷 컬럼도 비어 있다", () => {
-    expect(selectPullTargets([project({ lastCommitSha: null })], 50).targets).toEqual([]);
+    expect(selectPullTargets([project({ surfaces: [{ archivedAt: null, lastCommitSha: null }] })], 50).targets).toEqual([]);
   });
 
   it("`skillflo-web` 모양(설치 없음 + 더미 SHA)은 **의도적으로** 빠진다 (spec §5)", () => {
     const rows = [
-      project({ slug: "skillflo-web", installationId: null, lastCommitSha: "deadbeef" }),
+      project({ slug: "skillflo-web", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
       project({ slug: "order-check" }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["order-check"]);

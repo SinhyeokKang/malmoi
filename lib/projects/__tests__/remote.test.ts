@@ -20,11 +20,8 @@ const target = (over: Partial<RemoteTarget> = {}): RemoteTarget => ({
   installationId: "1",
   repositoryId: "9001",
   baseBranch: "release",
-  lastCommitSha: "a".repeat(40),
   lastPrUrl: "https://github.com/o/r/pull/142",
-  adapterName: "json-catalog",
-  pathTemplate: "i18n/{locale}.json",
-  storedLocales: ["en", "ko"],
+  surfaces: [{ lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }],
   archived: false,
   ...over,
 });
@@ -125,7 +122,7 @@ it("하나가 실패해도 나머지를 끝까지 처리하고, 그 행은 두 �
 
   expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
   for (const id of ["p0", "p2"]) {
-    expect(got.get(id)).toEqual({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" }, repoAheadFiles: 1 });
+    expect(got.get(id)).toEqual({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" }, repoAheadFiles: 1, repoAheadFrom: "a".repeat(40) });
   }
 });
 
@@ -163,7 +160,7 @@ it.each([
   ["보관", { archived: true }],
   ["설치 ID 없음", { installationId: null }],
   ["리포 id 없음", { repositoryId: null }],
-  ["신호 입력 없음", { lastCommitSha: null, lastPrUrl: null }],
+  ["신호 입력 없음", { surfaces: [], lastPrUrl: null }],
 ])("%s이면 요청이 0이다 — 클라이언트도 만들지 않는다", async (_label, over) => {
   const { counts, createClient } = fakes();
   const got = await loadRemoteSignals([target(over)], { createClient });
@@ -175,7 +172,7 @@ it.each([
 
 it("마지막 커밋이 없으면 compare만 건너뛴다", async () => {
   const { counts, createClient } = fakes();
-  const got = await loadRemoteSignals([target({ lastCommitSha: null })], { createClient });
+  const got = await loadRemoteSignals([target({ surfaces: [] })], { createClient });
   expect(counts).toMatchObject({ compare: 0, pr: 1 });
   expect(got.get("p1")?.openPr?.number).toBe(142);
 });

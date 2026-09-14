@@ -390,6 +390,8 @@ export function NewProject({
         // 수동 지정만 어댑터·기준 언어를 YAML에 고정한다 — 자동 후보는 탐지가 같은 답을 낸다 (design §7).
         yaml: renderWorkflowYaml({
           slug: result.slug,
+          surfaceSlug: result.surfaceSlug,
+          pathTemplate,
           baseBranch: result.baseBranch,
           ...(usingManual ? { adapter: manual.adapter, baseLocale } : {}),
         }),

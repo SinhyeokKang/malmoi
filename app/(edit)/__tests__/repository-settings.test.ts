@@ -35,7 +35,7 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ set: () => {} }), heade
 vi.mock("next/navigation", () => ({ redirect: () => { throw new Error("NEXT_REDIRECT"); } }));
 
 const { updateRepositorySettings } = await import("../projects/[slug]/settings/actions");
-const { updateBaseLocale } = await import("../projects/[slug]/locales/actions");
+const { updateBaseLocale } = await import("../projects/[slug]/surfaces/[surfaceSlug]/locales/actions");
 
 function seeded() {
   return createHarness({
@@ -120,11 +120,11 @@ describe("updateRepositorySettings — 기준 브랜치만 받는다 (6b-5에서
    * 대기 중에 브랜치만 고친 저장이 그 선언을 지우고, 그것이 정확히 malmoi#20이다.
    */
   it("선언 컬럼을 건드리지 않는다 — 대기 중에 브랜치만 고쳐도 선언이 살아 있다", async () => {
-    db.projects[0]!.declaredBaseLocale = "ko";
+    db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale = "ko";
 
     expect(await updateRepositorySettings({ slug: "alpha", baseBranch: "dev" })).toEqual({ ok: true });
 
-    expect(alpha().declaredBaseLocale).toBe("ko");
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBe("ko");
     expect(alpha().baseLocale).toBe("en");
   });
 
@@ -144,26 +144,26 @@ describe("updateRepositorySettings — 기준 브랜치만 받는다 (6b-5에서
 describe("updateBaseLocale — 인가", () => {
   it("EDITOR는 forbidden이다 — 페이지는 들어오지만 판정은 Action이 한다", async () => {
     hoisted.session = sessionFor("u-editor");
-    const result = await updateBaseLocale({ slug: "alpha", baseLocale: "ko" });
+    const result = await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" });
     expect(result).toEqual({ ok: false, error: "forbidden" });
-    expect(alpha().declaredBaseLocale).toBeNull();
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBeNull();
   });
 
   it("남의 프로젝트는 not-found다 — 존재 여부를 말하지 않는다", async () => {
-    const result = await updateBaseLocale({ slug: "beta", baseLocale: "ko" });
+    const result = await updateBaseLocale({ surfaceSlug: "default", slug: "beta", baseLocale: "ko" });
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
   it("비로그인은 unauthorized다", async () => {
     hoisted.session = sessionFor(null);
-    expect(await updateBaseLocale({ slug: "alpha", baseLocale: "ko" })).toEqual({
+    expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" })).toEqual({
       ok: false,
       error: "unauthorized",
     });
   });
 
   it("빈 입력은 invalid input이다", async () => {
-    expect(await updateBaseLocale({ slug: "alpha", baseLocale: "" })).toEqual({
+    expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "" })).toEqual({
       ok: false,
       error: "invalid input",
     });
@@ -172,9 +172,9 @@ describe("updateBaseLocale — 인가", () => {
 
 describe("updateBaseLocale — 판정", () => {
   it("리포에 없는 로케일은 unknown-locale이다", async () => {
-    const result = await updateBaseLocale({ slug: "alpha", baseLocale: "ja" });
+    const result = await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ja" });
     expect(result).toEqual({ ok: false, error: "unknown-locale" });
-    expect(alpha().declaredBaseLocale).toBeNull();
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBeNull();
   });
 
   /**
@@ -182,27 +182,27 @@ describe("updateBaseLocale — 판정", () => {
    * 있던 키 전부가 orphaned로 떨어진다. 화면은 그것을 목록에서 빼지만 방어는 여기다.
    */
   it("orphaned 로케일은 orphaned-locale이다 — 목록에서 감추는 것은 편의일 뿐이다", async () => {
-    const result = await updateBaseLocale({ slug: "alpha", baseLocale: "fr" });
+    const result = await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "fr" });
     expect(result).toEqual({ ok: false, error: "orphaned-locale" });
-    expect(alpha().declaredBaseLocale).toBeNull();
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBeNull();
   });
 });
 
 describe("updateBaseLocale — 저장", () => {
   it("선언에만 쓴다 — 현실은 push가 소유한다", async () => {
-    expect(await updateBaseLocale({ slug: "alpha", baseLocale: "ko" })).toEqual({ ok: true });
-    expect(alpha().declaredBaseLocale).toBe("ko");
+    expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" })).toEqual({ ok: true });
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBe("ko");
     // ⚠️ **현실은 그대로다.** 바꾸면 pull이 옛 base의 원문을 새 base 파일에 실어 보낸다 (design §3.13).
     expect(alpha().baseLocale).toBe("en");
   });
 
   it("`baseBranch`를 건드리지 않는다 — 갈라진 뒤로 이 Action은 브랜치를 모른다", async () => {
-    await updateBaseLocale({ slug: "alpha", baseLocale: "ko" });
+    await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" });
     expect(alpha().baseBranch).toBe("main");
   });
 
   it("`Locale.isBase`도 건드리지 않는다 — 편집 화면의 base 열은 push가 옮긴다", async () => {
-    await updateBaseLocale({ slug: "alpha", baseLocale: "ko" });
+    await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" });
     expect(db.locales.map((l) => [l.code, l.isBase ?? false])).toEqual([
       ["en", true],
       ["ko", false],
@@ -217,13 +217,13 @@ describe("updateBaseLocale — 저장", () => {
    * 그 세그먼트의 레이아웃을 무효화해 하나도 빠뜨리지 않는다.
    */
   it("무효화가 세 화면을 덮는다 — 설정의 워크플로 YAML도 이 값을 읽는다", async () => {
-    await updateBaseLocale({ slug: "alpha", baseLocale: "ko" });
+    await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" });
     expect(hoisted.revalidated).toContain("/projects/alpha");
   });
 
   /** `noop` — 현재 값을 다시 저장했다. 거부가 아니고, 쓸 것도 없다. */
   it("현재 base를 그대로 고르면 ok이지만 쓰지 않는다", async () => {
-    expect(await updateBaseLocale({ slug: "alpha", baseLocale: "en" })).toEqual({ ok: true });
+    expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "en" })).toEqual({ ok: true });
     expect(db.spies.updateProject).not.toHaveBeenCalled();
   });
 
@@ -232,10 +232,10 @@ describe("updateBaseLocale — 저장", () => {
    * 별도 취소 버튼을 두지 않는 근거가 이 케이스다.
    */
   it("대기 중에 현재 base를 다시 저장하면 선언이 비워진다 — 취소 버튼이 없는 이유다", async () => {
-    await updateBaseLocale({ slug: "alpha", baseLocale: "ko" });
-    expect(alpha().declaredBaseLocale).toBe("ko");
+    await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" });
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBe("ko");
 
-    expect(await updateBaseLocale({ slug: "alpha", baseLocale: "en" })).toEqual({ ok: true });
-    expect(alpha().declaredBaseLocale).toBeNull();
+    expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "en" })).toEqual({ ok: true });
+    expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBeNull();
   });
 });

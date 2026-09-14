@@ -53,7 +53,7 @@ describe("planSave — 값을 지우는 경우", () => {
 });
 
 describe("SaveInput 검증 — Server Action은 공개 엔드포인트다", () => {
-  const valid = {
+  const valid = { surfaceSlug: "default",
     // slug는 "무엇을 열려고 하는가"다 — 서버는 이 값을 믿지 않고 멤버십 행에서 projectId를 꺼낸다.
     slug: "acme", keyId: "c".repeat(25), localeCode: "ko", value: "값" };
 

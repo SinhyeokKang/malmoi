@@ -28,23 +28,20 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
       baseBranch: true,
       installationId: true,
       repositoryId: true,
-      adapterName: true,
-      pathTemplate: true,
-      nested: true,
-      nestedByPath: true,
-      baseLocale: true,
       lastPulledAt: true,
       // ⚠️ **사라진 로케일은 빼고 읽는다.** 안 빼면 개발자가 지운 로케일 파일을 pull이 되살린다 —
       // 행은 DB에 남아 있고 번역도 남아 있으므로 write가 내용을 만들어 커밋에 싣는다 (ARCHITECTURE §0 불변식 2).
-      locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
+      surfaces: { where: { archivedAt: null }, include: {
+        locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } },
+      } },
     },
   });
   if (!project) fail(`project not found: ${slug}`);
 
-  const { locales, ...rest } = project;
+  const { surfaces, ...rest } = project;
 
   const keys = await prisma.stringKey.findMany({
-    where: { projectId: project.id },
+    where: { projectId: project.id, surfaceId: { in: surfaces.map(s => s.id) } },
     // ⚠️ **가독성·디버깅 목적이다, 결정성의 근거가 아니다.** `orderedEntries`가 동률을 키로 갈라
     // 전순서를 만들므로 DB 순서는 바이트에 영향을 줄 수 없다. 조회 결과와 파일 순서가 눈으로
     // 대응해야 순서 문제를 진단할 수 있어서 맞춰 둔다.
@@ -52,6 +49,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     //    출처라 절대 바꾸지 않는다.** grep하면 둘 다 잡힌다.
     orderBy: [{ sortIndex: "asc" }, { key: "asc" }],
     select: {
+      surfaceId: true,
       key: true,
       sourceText: true,
       description: true,
@@ -71,8 +69,9 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
 
   return {
     project: rest,
-    localeCodes: locales.map((l) => l.code),
-    keys: keys.map((k) => ({
+    surfaces: surfaces.map(surface => ({ ...surface,
+    localeCodes: surface.locales.map((l) => l.code),
+    keys: keys.filter(k => k.surfaceId === surface.id).map((k) => ({
       key: k.key,
       sourceText: k.sourceText,
       description: k.description,
@@ -91,6 +90,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
           },
         ]),
       ),
+    })),
     })),
     maxUpdatedAt: agg._max.updatedAt,
   };

@@ -31,7 +31,7 @@ const SAVED_MS = 1500;
  * 사용자는 이미 다음 셀을 치고 있을 수 있다.
  */
 export function TranslationInput({
-  slug,
+  slug, surfaceSlug,
   keyId,
   keyName,
   localeCode,
@@ -40,6 +40,7 @@ export function TranslationInput({
 }: {
   /** 어느 프로젝트인가. **서버는 이 값을 믿지 않는다** — 인가가 멤버십 행에서 다시 꺼낸다. */
   slug: string;
+  surfaceSlug: string;
   keyId: string;
   /** 알림 문구가 "무엇을 저장했는지" 말하려면 키 이름이 필요하다 — id는 사람이 읽을 값이 아니다. */
   keyName: string;
@@ -80,7 +81,7 @@ export function TranslationInput({
       // 생산자에 스키마 타입을 붙인다 — `SaveInput`에 필수 필드가 늘면 여기서 컴파일 에러가 난다.
       // Action 시그니처는 `unknown`(직렬화 경계라 zod 재검증)이라 이 줄이 없으면 런타임 `invalid input`이
       // 유일한 신호다 (POSTMORTEM 2026-08-31).
-      const input: SaveInputType = { slug, keyId, localeCode, value: next };
+      const input: SaveInputType = { slug, surfaceSlug, keyId, localeCode, value: next };
       // 서버의 실패 반환뿐 아니라 전송 실패도 셀 안에 남겨 다른 작성 중 입력을 보존한다.
       const result = await saveTranslation(input).catch(() => ({ ok: false as const, error: "unavailable" }));
       if (result.ok) {

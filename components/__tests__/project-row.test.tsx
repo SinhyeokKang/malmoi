@@ -23,11 +23,11 @@ import { m } from "@/lib/i18n";
  */
 
 const BASE: ProjectListRow = {
-  slug: "acme",
+  slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
   role: "OWNER",
   installationId: "i",
-  lastCommitSha: "s",
+  surfaces: [{ archivedAt: null, lastCommitSha: "s" }],
   archivedAt: null,
   repoOwner: "o",
   repoName: "r",
@@ -55,8 +55,8 @@ const links = (container: HTMLElement) =>
   [...container.querySelectorAll("a")].map((a) => ({ text: a.textContent?.trim() ?? "", href: a.getAttribute("href") }));
 
 it.each([
-  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/translations"],
-  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/translations"],
+  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/default/translations"],
+  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/default/translations"],
 ])("%s 띠가 번역 화면으로 보낸다", async (_label, over, label, href) => {
   const found = links(await draw(over)).find((a) => a.text === label);
   expect(found?.href).toBe(href);

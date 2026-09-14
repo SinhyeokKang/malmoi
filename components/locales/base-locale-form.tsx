@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { updateBaseLocale } from "@/app/(edit)/projects/[slug]/locales/actions";
+import { updateBaseLocale } from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormGroup } from "@/components/ui/form-group";
@@ -26,12 +26,13 @@ import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib
  * 이 화면에는 그 슬롯이 없다(보내는 자리가 0이다 — 멤버 화면과 같다).
  */
 export function BaseLocaleForm({
-  slug,
+  slug, surfaceSlug,
   baseLocale,
   declaredBaseLocale,
   locales,
 }: {
   slug: string;
+  surfaceSlug: string;
   /** 현실 — 첫 push 전이면 null이다. */
   baseLocale: string | null;
   /**
@@ -61,7 +62,7 @@ export function BaseLocaleForm({
         event.preventDefault();
         setResult("idle");
         startTransition(async () => {
-          const next = await updateBaseLocale({ slug, baseLocale: locale });
+          const next = await updateBaseLocale({ slug, surfaceSlug, baseLocale: locale });
           setResult(next.ok ? "saved" : { error: next.error });
         });
       }}

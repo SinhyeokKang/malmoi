@@ -58,8 +58,8 @@ function makeDeps(
   const deps: PullDeps = {
     loadState: async (): Promise<PullState> => ({
       project: { ...PROJECT },
-      localeCodes: ["en", "ko"],
-      keys: KEYS,
+
+      surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
       maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
     }),
     createClient: async () => client,
@@ -78,8 +78,8 @@ describe("runPull — 1층 DB 측 스킵", () => {
     const result = await runPull({
       loadState: async () => ({
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
-        localeCodes: ["en", "ko"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -96,8 +96,8 @@ describe("runPull — 1층 DB 측 스킵", () => {
     await runPull({
       loadState: async () => ({
         project: { ...PROJECT },
-        localeCodes: ["en", "ko"],
-        keys: [],
+
+        surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [] }],
         maxUpdatedAt: null,
       }),
       createClient: async () => client,
@@ -113,8 +113,8 @@ describe("runPull — 1층 DB 측 스킵", () => {
     await runPull({
       loadState: async () => ({
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
-        localeCodes: ["en"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -387,8 +387,8 @@ describe("runPull — 실패 처리", () => {
     const deps: PullDeps = {
       loadState: async () => ({
         project: { ...PROJECT, installationId: null },
-        localeCodes: ["en"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, installationId: null }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -431,8 +431,8 @@ ko:
     await runPull({
       loadState: async () => ({
         project: yamlProject,
-        localeCodes: ["ko"],
-        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+
+        surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -451,8 +451,8 @@ ko:
     await runPull({
       loadState: async () => ({
         project: yamlProject,
-        localeCodes: ["ko"],
-        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+
+        surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -508,15 +508,15 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
             orphaned: false,
             cells: { ko: { value: "하나!" }, en: { value: "one!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -542,8 +542,8 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
@@ -556,7 +556,7 @@ export const ns = { ko, en };
             orphaned: false,
             cells: { ko: { value: "비!" }, en: { value: "bee!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -582,15 +582,15 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
             orphaned: false,
             cells: { ko: { value: "" }, en: { value: "one!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
@@ -610,19 +610,19 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
   it("json-catalog 접두 충돌로 빠진 키가 warnings로 나온다 — survey만 보던 것을 프로덕션 경로가 본다", async () => {
     const { deps } = makeDeps({
       loadState: async (): Promise<PullState> => ({
-        project: { ...PROJECT, nested: true },
-        localeCodes: ["en"],
-        keys: [
+        project: { ...PROJECT },
+
+        surfaces: [{ ...({ ...PROJECT, nested: true }), id: "s1", slug: "default", localeCodes: ["en"], keys: [
           { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
           { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
     });
     const result = await runPull(deps);
     expect(result.status).toBe("committed");
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
-    expect(result.warnings?.[0]).toMatch(/^i18n\/en\.json: /);
+    expect(result.warnings?.[0]).toMatch(/^default: i18n\/en\.json: /);
   });
 
   it("버린 항목이 없으면 warnings 필드 자체가 없다 — 없는 것과 같아야 한다", async () => {

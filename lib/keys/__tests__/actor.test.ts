@@ -85,7 +85,7 @@ describe("actorLabel — User.id를 사람으로, 옛 핸들은 그대로", () =
  */
 describe("번역 화면이 원문 대신 해석한 라벨을 넘긴다", () => {
   const source = readFileSync(
-    join(process.cwd(), "app/(edit)/projects/[slug]/translations/page.tsx"),
+    join(process.cwd(), "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx"),
     "utf8",
   );
 

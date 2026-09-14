@@ -51,7 +51,7 @@ it.each([1, 5, 40])("프로젝트가 %i개여도 집계는 다섯 번이다", as
 it("프로젝트가 0개면 아무것도 조회하지 않는다", async () => {
   const got = await loadProjectListAggregates(db, []);
   expect(calls()).toBe(0);
-  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map() });
+  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() });
 });
 
 it("모든 조회가 인가된 id 집합으로 좁혀진다 — 테넌트 간 유출 경로가 여기다", async () => {
@@ -93,15 +93,15 @@ it("orphaned를 양쪽에서 뺀다", async () => {
 it("번역 집계는 세 축으로 묶는다 — 행을 가져오지 않는다", async () => {
   await loadProjectListAggregates(db, ["p1"]);
   expect(hoisted.translation.groupBy).toHaveBeenCalledWith(
-    expect.objectContaining({ by: ["projectId", "localeCode", "needsReview"] }),
+    expect.objectContaining({ by: ["projectId", "surfaceId", "localeCode", "needsReview"] }),
   );
 });
 
 it("결과를 프로젝트별 Map으로 접는다", async () => {
-  hoisted.locale.findMany.mockResolvedValue([{ projectId: "p1", code: "en", isBase: true }]);
-  hoisted.stringKey.groupBy.mockResolvedValue([{ projectId: "p1", _count: { _all: 10 } }]);
+  hoisted.locale.findMany.mockResolvedValue([{ projectId: "p1", surfaceId: "s1", surface: { slug: "default" }, code: "en", isBase: true }]);
+  hoisted.stringKey.groupBy.mockResolvedValue([{ projectId: "p1", surfaceId: "s1", _count: { _all: 10 } }]);
   hoisted.translation.groupBy.mockResolvedValue([
-    { projectId: "p1", localeCode: "en", needsReview: false, _count: { _all: 7 } },
+    { projectId: "p1", surfaceId: "s1", localeCode: "en", needsReview: false, _count: { _all: 7 } },
   ]);
   hoisted.queryRaw
     .mockResolvedValueOnce([{ projectId: "p1", n: 2 }])
@@ -109,9 +109,9 @@ it("결과를 프로젝트별 Map으로 접는다", async () => {
 
   const got = await loadProjectListAggregates(db, ["p1"]);
 
-  expect(got.locales).toEqual([{ projectId: "p1", code: "en", isBase: true }]);
-  expect(got.keyTotals.get("p1")).toBe(10);
-  expect(got.cells).toEqual([{ projectId: "p1", localeCode: "en", needsReview: false, count: 7 }]);
+  expect(got.locales).toEqual([{ projectId: "p1", surfaceId: "s1", surfaceSlug: "default", code: "en", isBase: true }]);
+  expect(got.keyTotals.get("s1")).toBe(10);
+  expect(got.cells).toEqual([{ projectId: "p1", surfaceId: "s1", localeCode: "en", needsReview: false, count: 7 }]);
   expect(got.newKeys.get("p1")).toBe(2);
   expect(got.unsent.get("p1")).toBe(5);
 });
@@ -126,7 +126,7 @@ it("집계에 없는 프로젝트의 수치는 조회되지 않은 채로 남는
 /** 59로케일 리포(`i18n-many-locales`)에서도 조회 수는 그대로다. */
 it("로케일이 59개여도 왕복이 늘지 않는다", async () => {
   hoisted.locale.findMany.mockResolvedValue(
-    Array.from({ length: 59 }, (_, i) => ({ projectId: "p1", code: `l${i}`, isBase: i === 0 })),
+    Array.from({ length: 59 }, (_, i) => ({ projectId: "p1", surfaceId: "s1", surface: { slug: "default" }, code: `l${i}`, isBase: i === 0 })),
   );
   await loadProjectListAggregates(db, ["p1"]);
   expect(calls()).toBe(5);

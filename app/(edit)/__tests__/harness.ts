@@ -103,6 +103,7 @@ export type InvitationSeed = {
 export type KeySeed = {
   id: string;
   projectId: string;
+  surfaceId?: string | null;
   key: string;
   sourceText: string;
   description: string | null;
@@ -116,6 +117,8 @@ export type KeySeed = {
 };
 
 export type TranslationSeed = {
+  projectId?: string;
+  surfaceId?: string | null;
   keyId: string;
   localeCode: string;
   value: string;
@@ -126,7 +129,7 @@ export type TranslationSeed = {
   updatedAt: Date;
 };
 
-export type LocaleSeed = { projectId: string; code: string; isBase?: boolean; orphaned?: boolean };
+export type LocaleSeed = { projectId: string; surfaceId?: string | null; code: string; isBase?: boolean; orphaned?: boolean };
 
 /** `Account(provider: "github-app")`. 로그인용 `github` 행과 같은 테이블이라 provider로 갈린다. */
 export type AccountSeed = {
@@ -177,6 +180,7 @@ const FORMAT = {
 
 export type Seed = {
   projects?: ProjectSeed[];
+  surfaces?: SurfaceSeed[];
   accounts?: AccountSeed[];
   members?: MemberSeed[];
   users?: UserSeed[];
@@ -189,6 +193,9 @@ export type Seed = {
 
 /** 시드 프로젝트의 기본 `lastCommitSha` — "첫 적재가 끝났다"의 증거다 (`ProjectSeed` 주석). */
 const SEEDED_SHA = "a".repeat(40);
+export type SurfaceSeed = { id: string; projectId: string; slug: string } & Partial<Pick<typeof FORMAT,
+  "adapterName" | "pathTemplate" | "nested" | "nestedByPath" | "baseLocale" | "declaredBaseLocale" |
+  "lastCommitSha" | "lastCommitAt" | "lastImportStartedAt" | "lastImportError" | "archivedAt">>;
 
 export function createHarness(seed: Seed = {}) {
   const seededProjects = seed.projects ?? [{ id: "p1", slug: "acme", name: "Acme" }];
@@ -198,7 +205,9 @@ export function createHarness(seed: Seed = {}) {
    * Action에도 통과한다** — 거부만 보는 검증의 함정이다 (POSTMORTEM 2026-09-06). `FORMAT`을 행마다
    * 복제해 두고 update가 그것을 갱신한다.
    */
-  const projects = seededProjects.map((p) => ({ ...FORMAT, lastCommitSha: SEEDED_SHA, ...p }));
+  const projects = seededProjects.map((p) => ({ ...FORMAT, lastCommitSha: SEEDED_SHA, defaultSurfaceId: `surface-${p.id}` as string | null, ...p }));
+  const surfaces = (seed.surfaces ?? projects.map(p => ({ ...p, id: `surface-${p.id}`, projectId: p.id, slug: "default", archivedAt: null })))
+    .map(s => ({ ...FORMAT, ...s }));
   const accounts = (seed.accounts ?? []).map((a) => ({
     access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
   }));
@@ -213,12 +222,15 @@ export function createHarness(seed: Seed = {}) {
     { id: "k-greet", projectId: "p1", key: "a.greet", sourceText: "Hello", description: null, sortIndex: 0, orphaned: false },
     { id: "k-bye", projectId: "p1", key: "a.bye", sourceText: "Bye", description: null, sortIndex: 1, orphaned: false },
   // 시드가 안 주면 **기준선보다 앞**이다 — 마이그레이션의 backfill이 기존 키를 그렇게 취급한다.
-  ]).map((k) => ({ createdAt: new Date("2020-01-01T00:00:00Z"), ...k }));
-  const locales = seed.locales ?? [
+  ]).map((k) => ({ createdAt: new Date("2020-01-01T00:00:00Z"), surfaceId: `surface-${k.projectId}`, ...k }));
+  const locales = (seed.locales ?? [
     { projectId: "p1", code: "en", isBase: true, orphaned: false },
     { projectId: "p1", code: "ko", isBase: false, orphaned: false },
-  ];
-  const translations = seed.translations ?? [];
+  ]).map(l => ({ surfaceId: `surface-${l.projectId}`, ...l }));
+  const translations: TranslationSeed[] = (seed.translations ?? []).map(t => {
+    const key = keys.find(k => k.id === t.keyId);
+    return { projectId: key?.projectId, surfaceId: key?.surfaceId, ...t };
+  });
   // 스키마 기본값을 시드가 안 준 자리에 채운다 — 가짜가 실제보다 좁으면 호출부의 null 처리가 검증되지 않는다.
   const syncRuns = (seed.syncRuns ?? []).map((r) => ({
     trigger: "MANUAL" as const,
@@ -238,10 +250,57 @@ export function createHarness(seed: Seed = {}) {
     return now;
   };
 
+  type ScopedWhere = { surfaceId?: string | { in: string[] }; surface?: { archivedAt?: null } };
+  function matchesScope(row: { surfaceId?: string | null }, where: ScopedWhere) {
+    if (typeof where.surfaceId === "string" && row.surfaceId !== where.surfaceId) return false;
+    if (typeof where.surfaceId === "object" && !where.surfaceId.in.includes(row.surfaceId ?? "")) return false;
+    if (where.surface?.archivedAt === null && !surfaces.some(s => s.id === row.surfaceId && s.archivedAt === null)) return false;
+    return true;
+  }
+
+  type SurfaceWhere = { id?: string; projectId?: string; slug?: string; archivedAt?: null;
+    projectId_slug?: { projectId: string; slug: string }; lastImportStartedAt?: Date;
+    project?: { pushTokenHash?: string; archivedAt?: null }; OR?: { lastCommitAt: null | { lte: Date } }[] };
+  function surfaceMatches(s: typeof surfaces[number], where: SurfaceWhere) {
+    const project = projects.find(p => p.id === s.projectId);
+    return (where.id === undefined || s.id === where.id) && (where.projectId === undefined || s.projectId === where.projectId) &&
+      (where.slug === undefined || s.slug === where.slug) && (where.archivedAt === undefined || s.archivedAt === null) &&
+      (!where.projectId_slug || s.projectId === where.projectId_slug.projectId && s.slug === where.projectId_slug.slug) &&
+      (!where.lastImportStartedAt || s.lastImportStartedAt?.getTime() === where.lastImportStartedAt.getTime()) &&
+      (!where.project || project !== undefined && project.pushTokenHash === where.project.pushTokenHash && project.archivedAt === null) &&
+      (!where.OR || where.OR.some(c => c.lastCommitAt === null ? s.lastCommitAt === null : s.lastCommitAt !== null && s.lastCommitAt <= c.lastCommitAt.lte));
+  }
+  function surfaceRow(s: typeof surfaces[number]) {
+    return { ...s, locales: locales.filter(l => l.projectId === s.projectId && l.surfaceId === s.id)
+      .map(l => ({ ...l, name: l.code, isBase: l.isBase ?? false, orphaned: l.orphaned ?? false })) };
+  }
+  const findSurface = vi.fn(async ({ where }: { where: SurfaceWhere }) => {
+    const row = surfaces.find(s => surfaceMatches(s, where));
+    return row ? surfaceRow(row) : null;
+  });
+  const createSurface = vi.fn(async ({ data }: { data: SurfaceSeed }) => {
+    if (!projects.some(p => p.id === data.projectId)) throw Object.assign(new Error("surface project FK"), { code: "P2003" });
+    if (surfaces.some(s => s.projectId === data.projectId && s.slug === data.slug)) throw Object.assign(new Error("surface slug unique"), { code: "P2002" });
+    const row = { ...FORMAT, ...data, id: data.id ?? `surface-${data.projectId}` };
+    surfaces.push(row);
+    return surfaceRow(row);
+  });
+  const updateSurface = vi.fn(async ({ where, data }: { where: SurfaceWhere; data: Record<string, unknown> }) => {
+    const row = surfaces.find(s => surfaceMatches(s, where));
+    if (!row) throw Object.assign(new Error("surface not found"), { code: "P2025" });
+    Object.assign(row, data);
+    return surfaceRow(row);
+  });
+  const updateManySurfaces = vi.fn(async ({ where, data }: { where: SurfaceWhere; data: Record<string, unknown> }) => {
+    const rows = surfaces.filter(s => surfaceMatches(s, where));
+    rows.forEach(row => Object.assign(row, data));
+    return { count: rows.length };
+  });
+
   const findProject = vi.fn(
     async (args: {
       where: { slug?: string; id?: string; pushTokenHash?: string | null };
-      select?: { locales?: { where?: { orphaned?: boolean } } };
+      select?: { locales?: { where?: { orphaned?: boolean } }; surfaces?: { include?: { locales?: { where?: { orphaned?: boolean } } } } };
     }) => {
       // 실 Prisma는 unique where의 null을 PrismaClientValidationError로 거부한다 — 가짜도 던진다. 조용히 null을
       // 돌려주면 "미발급 프로젝트가 인증에 걸리는" fail-open을 테스트가 못 본다 (design §3.8).
@@ -261,6 +320,12 @@ export function createHarness(seed: Seed = {}) {
         id: found.id,
         slug: found.slug,
         name: found.name ?? found.slug,
+        surfaces: surfaces.filter(s => s.projectId === found.id && s.archivedAt === null).map(s => {
+          const row = surfaceRow(s);
+          return args.select?.surfaces?.include?.locales?.where?.orphaned === false
+            ? { ...row, locales: row.locales.filter(l => !l.orphaned) } : row;
+        }),
+        defaultSurface: surfaces.find(s => s.projectId === found.id && s.id === found.defaultSurfaceId) ? surfaceRow(surfaces.find(s => s.projectId === found.id && s.id === found.defaultSurfaceId)!) : null,
         locales: locales
           .filter((l) => l.projectId === found.id && (onlyLive ? l.orphaned !== true : true))
           .map((l) => ({ code: l.code, name: l.code, isBase: l.isBase ?? false, orphaned: l.orphaned ?? false })),
@@ -337,6 +402,11 @@ export function createHarness(seed: Seed = {}) {
            */
           const inner = (args.select.project as { select?: Record<string, unknown> }).select ?? {};
           const p: Record<string, unknown> = {};
+          if (inner["surfaces"] !== undefined) {
+            const spec = inner["surfaces"] as { select?: Record<string, true>; where?: { archivedAt?: null } };
+            p["surfaces"] = surfaces.filter(s => s.projectId === m.projectId && (spec.where?.archivedAt !== null || s.archivedAt === null))
+              .map(s => spec.select ? Object.fromEntries(Object.keys(spec.select).map(k => [k, (s as Record<string, unknown>)[k]])) : surfaceRow(s));
+          }
           if (inner["slug"] === true) p["slug"] = project?.slug ?? "";
           if (inner["name"] === true) p["name"] = project?.name ?? project?.slug ?? "";
           if (inner["installationId"] === true) p["installationId"] = project?.installationId ?? null;
@@ -525,7 +595,7 @@ export function createHarness(seed: Seed = {}) {
       (p) => p.slug === args.data.slug || p.id === id || (hash !== null && p.pushTokenHash === hash),
     );
     if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
-    const row = { ...FORMAT, ...args.data, id, pushTokenHash: hash };
+    const row = { ...FORMAT, defaultSurfaceId: null as string | null, ...args.data, id, pushTokenHash: hash };
     projects.push(row);
     return row;
   });
@@ -544,7 +614,7 @@ export function createHarness(seed: Seed = {}) {
           if (keys.length === 1 && keys[0] === "not") return value !== (v as { not: unknown }).not;
           throw new Error(`harness findMany: 지원하지 않는 where 연산자 ${k}: ${JSON.stringify(v)}`);
         }),
-      ),
+      ).map(p => ({ ...p, surfaces: surfaces.filter(s => s.projectId === p.id && s.archivedAt === null).map(surfaceRow) })),
   );
 
   /** `Account`의 unique는 `@@id([provider, providerAccountId])` 하나뿐 — userId로는 findFirst다. */
@@ -643,6 +713,7 @@ export function createHarness(seed: Seed = {}) {
       invitations: snapshot(invitations),
       translations: snapshot(translations),
       projects: snapshot(projects),
+      surfaces: snapshot(surfaces),
       accounts: snapshot(accounts),
       // ⚠️ **빠뜨리면 롤백 테스트가 공허하다** — 트랜잭션 안에서 만든 `RUNNING` 행이 예외 뒤에도
       // 남아 있는데 아무도 그것을 보지 않게 된다 (7단계).
@@ -655,6 +726,7 @@ export function createHarness(seed: Seed = {}) {
       restore(invitations, saved.invitations);
       restore(translations, saved.translations);
       restore(projects, saved.projects);
+      restore(surfaces, saved.surfaces);
       restore(accounts, saved.accounts);
       restore(syncRuns, saved.syncRuns);
       throw error;
@@ -841,23 +913,31 @@ export function createHarness(seed: Seed = {}) {
         return pulled === null || at > pulled;
       };
       const counted = new Map<string, number>();
+      const unsentSurfaces = new Map<string, string>();
+      const activeSurface = (projectId: string, surfaceId: string | null | undefined) =>
+        surfaces.find(s => s.projectId === projectId && s.id === surfaceId && s.archivedAt === null);
       if (sql.includes('"StringKey"')) {
         for (const k of keys) {
           if (!live(k.projectId) || (k.orphaned ?? false)) continue;
+          if (!activeSurface(k.projectId, k.surfaceId)) continue;
           if (!after(k.projectId, k.createdAt)) continue;
           counted.set(k.projectId, (counted.get(k.projectId) ?? 0) + 1);
         }
       } else {
-        const byKey = new Map(keys.map((k) => [k.id, k]));
         for (const t of translations) {
-          const key = byKey.get(t.keyId);
-          if (key === undefined || !live(key.projectId)) continue;
+          const projectId = t.projectId;
+          if (projectId === undefined || !live(projectId)) continue;
+          const surface = activeSurface(projectId, t.surfaceId);
+          if (!surface) continue;
           if (t.updatedBy === null) continue;
-          if (!after(key.projectId, t.updatedAt)) continue;
-          counted.set(key.projectId, (counted.get(key.projectId) ?? 0) + 1);
+          if (!after(projectId, t.updatedAt)) continue;
+          counted.set(projectId, (counted.get(projectId) ?? 0) + 1);
+          const first = unsentSurfaces.get(projectId);
+          if (first === undefined || surface.slug < first) unsentSurfaces.set(projectId, surface.slug);
         }
       }
-      return [...counted].map(([projectId, n]) => ({ projectId, n }));
+      return [...counted].map(([projectId, n]) => ({ projectId, n,
+        ...(unsentSurfaces.has(projectId) ? { surfaceSlug: unsentSurfaces.get(projectId) } : {}) }));
     },
     project: {
       findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject,
@@ -879,6 +959,9 @@ export function createHarness(seed: Seed = {}) {
       deleteMany: deleteManyMembers,
       updateMany: updateManyMembers,
     },
+    translationSurface: { findFirst: findSurface, findUnique: findSurface,
+      findMany: async ({ where }: { where: SurfaceWhere }) => surfaces.filter(s => surfaceMatches(s, where)).map(surfaceRow),
+      create: createSurface, update: updateSurface, updateMany: updateManySurfaces },
     projectInvitation: {
       findUnique: findInvitation,
       findMany: findManyInvitations,
@@ -896,32 +979,34 @@ export function createHarness(seed: Seed = {}) {
       deleteMany: deleteManyAccounts,
     },
     stringKey: {
-      findFirst: async ({ where }: { where: { id: string; projectId: string } }) =>
-        keys.find((k) => k.id === where.id && k.projectId === where.projectId) ?? null,
+      findFirst: async ({ where }: { where: { id: string; projectId: string } & ScopedWhere }) =>
+        keys.find((k) => k.id === where.id && k.projectId === where.projectId && matchesScope(k, where)) ?? null,
       /**
        * 로케일별 진행률의 **분모** (6b-5). ⚠️ **`orphaned`를 실제로 본다** — 무시하면 코드에서
        * 사라진 키가 분모에 남아 진행률이 영구히 100%에 못 닿고, 그건 페이크가 스키마보다 느슨해
        * 아무 값이나 맞는 것처럼 보이는 부류다 (POSTMORTEM 2026-09-06 하네스 자기검사).
        */
-      count: async ({ where }: { where: { projectId: string; orphaned?: boolean } }) =>
+      count: async ({ where }: { where: { projectId: string; orphaned?: boolean } & ScopedWhere }) =>
         keys.filter(
           (k) =>
-            k.projectId === where.projectId &&
+            k.projectId === where.projectId && matchesScope(k, where) &&
             (where.orphaned === undefined || (k.orphaned ?? false) === where.orphaned),
         ).length,
       /** ② 살아 있는 키 수 — 전 로케일 공통 분모다 (projects-list §3.1). */
-      groupBy: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } }) => {
+      groupBy: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } & ScopedWhere }) => {
         const counted = new Map<string, number>();
         for (const k of keys) {
           if (!where.projectId.in.includes(k.projectId)) continue;
+          if (!matchesScope(k, where)) continue;
           if (where.orphaned !== undefined && (k.orphaned ?? false) !== where.orphaned) continue;
-          counted.set(k.projectId, (counted.get(k.projectId) ?? 0) + 1);
+          const group = `${k.projectId}|${k.surfaceId}`;
+          counted.set(group, (counted.get(group) ?? 0) + 1);
         }
-        return [...counted].map(([projectId, n]) => ({ projectId, _count: { _all: n } }));
+        return [...counted].map(([group, n]) => { const [projectId, surfaceId] = group.split("|"); return { projectId, surfaceId, _count: { _all: n } }; });
       },
-      findMany: async ({ where }: { where: { projectId: string } }) =>
+      findMany: async ({ where }: { where: { projectId: string; orphaned?: boolean } & ScopedWhere }) =>
         keys
-          .filter((k) => k.projectId === where.projectId)
+          .filter((k) => k.projectId === where.projectId && matchesScope(k, where) && (where.orphaned === undefined || k.orphaned === where.orphaned))
           .slice()
           .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
           .map((k) => ({
@@ -943,22 +1028,22 @@ export function createHarness(seed: Seed = {}) {
        * ⚠️ **`orphaned`를 실제로 본다** — 무시하면 사라진 로케일이 Meter에 열로 서고, 그 셀의
        * 번역이 분자에 들어가 **분모보다 커진다.**
        */
-      findMany: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } }) =>
+      findMany: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } & ScopedWhere }) =>
         locales
           .filter(
             (l) =>
-              where.projectId.in.includes(l.projectId) &&
+              where.projectId.in.includes(l.projectId) && matchesScope(l, where) &&
               (where.orphaned === undefined || (l.orphaned ?? false) === where.orphaned),
           )
-          .map((l) => ({ projectId: l.projectId, code: l.code, isBase: l.isBase ?? false })),
+          .map((l) => ({ projectId: l.projectId, surfaceId: l.surfaceId, surface: surfaces.find(s => s.id === l.surfaceId) ?? null, code: l.code, isBase: l.isBase ?? false })),
       findUnique: async ({
         where,
       }: {
-        where: { projectId_code: { projectId: string; code: string } };
+        where: { projectId_code: { projectId: string; code: string } } & ScopedWhere;
       }) => {
         const row = locales.find(
           (l) =>
-            l.projectId === where.projectId_code.projectId && l.code === where.projectId_code.code,
+            l.projectId === where.projectId_code.projectId && l.code === where.projectId_code.code && matchesScope(l, where),
         );
         return row === undefined ? null : { code: row.code, orphaned: row.orphaned ?? false };
       },
@@ -967,19 +1052,19 @@ export function createHarness(seed: Seed = {}) {
       findUnique: async ({
         where,
       }: {
-        where: { keyId_localeCode: { keyId: string; localeCode: string } };
+        where: { keyId_localeCode: { keyId: string; localeCode: string }; projectId?: string } & ScopedWhere;
       }) =>
         translations.find(
           (t) =>
             t.keyId === where.keyId_localeCode.keyId &&
-            t.localeCode === where.keyId_localeCode.localeCode,
+            t.localeCode === where.keyId_localeCode.localeCode && matchesScope(t, where) && (where.projectId === undefined || t.projectId === where.projectId),
         ) ?? null,
       upsert: async ({
         where,
         create,
         update,
       }: {
-        where: { keyId_localeCode: { keyId: string; localeCode: string } };
+        where: { keyId_localeCode: { keyId: string; localeCode: string }; projectId?: string } & ScopedWhere;
         create: Record<string, unknown>;
         update: Record<string, unknown>;
       }) => {
@@ -987,7 +1072,7 @@ export function createHarness(seed: Seed = {}) {
         const found = translations.find(
           (t) =>
             t.keyId === where.keyId_localeCode.keyId &&
-            t.localeCode === where.keyId_localeCode.localeCode,
+            t.localeCode === where.keyId_localeCode.localeCode && matchesScope(t, where) && (where.projectId === undefined || t.projectId === where.projectId),
         );
         if (found) {
           Object.assign(found, update, { updatedAt: at });
@@ -1004,6 +1089,10 @@ export function createHarness(seed: Seed = {}) {
           ...create,
           updatedAt: at,
         } as TranslationSeed;
+        if (!keys.some(k => k.id === row.keyId && k.projectId === row.projectId && k.surfaceId === row.surfaceId) ||
+          !locales.some(l => l.projectId === row.projectId && l.surfaceId === row.surfaceId && l.code === row.localeCode)) {
+          throw Object.assign(new Error("translation composite FK"), { code: "P2003" });
+        }
         translations.push(row);
         return row;
       },
@@ -1019,11 +1108,12 @@ export function createHarness(seed: Seed = {}) {
           projectId: string;
           updatedBy?: { not: null };
           updatedAt?: { gt: Date };
-        };
+        } & ScopedWhere;
       }) => {
         const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));
         return translations.filter((t) => {
           if (!ids.has(t.keyId)) return false;
+          if (!matchesScope(t, where)) return false;
           if (where.updatedBy !== undefined && t.updatedBy === null) return false;
           if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
           return true;
@@ -1038,23 +1128,25 @@ export function createHarness(seed: Seed = {}) {
       groupBy: async ({
         where,
       }: {
-        where: { projectId: { in: string[] }; value?: { not: string }; stringKey?: { orphaned?: boolean } };
+        where: { projectId: { in: string[] }; value?: { not: string }; stringKey?: { orphaned?: boolean } } & ScopedWhere;
       }) => {
         const byKey = new Map(keys.map((k) => [k.id, k]));
-        const counted = new Map<string, { projectId: string; localeCode: string; needsReview: boolean; n: number }>();
+        const counted = new Map<string, { projectId: string; surfaceId: string | null; localeCode: string; needsReview: boolean; n: number }>();
         for (const t of translations) {
           const key = byKey.get(t.keyId);
           if (key === undefined) continue;
           if (!where.projectId.in.includes(key.projectId)) continue;
+          if (!matchesScope(t, where)) continue;
           if (where.value !== undefined && t.value === where.value.not) continue;
           if (where.stringKey?.orphaned !== undefined && (key.orphaned ?? false) !== where.stringKey.orphaned) continue;
-          const id = `${key.projectId}|${t.localeCode}|${String(t.needsReview)}`;
-          const acc = counted.get(id) ?? { projectId: key.projectId, localeCode: t.localeCode, needsReview: t.needsReview, n: 0 };
+          const id = `${key.projectId}|${t.surfaceId}|${t.localeCode}|${String(t.needsReview)}`;
+          const acc = counted.get(id) ?? { projectId: key.projectId, surfaceId: t.surfaceId ?? null, localeCode: t.localeCode, needsReview: t.needsReview, n: 0 };
           acc.n += 1;
           counted.set(id, acc);
         }
         return [...counted.values()].map((c) => ({
           projectId: c.projectId,
+          surfaceId: c.surfaceId,
           localeCode: c.localeCode,
           needsReview: c.needsReview,
           _count: { _all: c.n },
@@ -1076,13 +1168,14 @@ export function createHarness(seed: Seed = {}) {
           projectId: string;
           value?: { not: string };
           stringKey?: { orphaned?: boolean };
-        };
+        } & ScopedWhere;
         select?: { localeCode?: boolean; needsReview?: boolean };
       }) => {
         const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
         const rows = translations.filter((t) => {
           const key = live.get(t.keyId);
           if (key === undefined) return false;
+          if (!matchesScope(t, where)) return false;
           if (where.value !== undefined && t.value === where.value.not) return false;
           const wantOrphaned = where.stringKey?.orphaned;
           if (wantOrphaned !== undefined && (key.orphaned ?? false) !== wantOrphaned) return false;
@@ -1110,6 +1203,7 @@ export function createHarness(seed: Seed = {}) {
   return {
     prisma: prisma as unknown as PrismaClient,
     projects,
+    surfaces,
     members,
     users,
     invitations,
@@ -1119,6 +1213,7 @@ export function createHarness(seed: Seed = {}) {
     accounts,
     syncRuns,
     spies: {
+      findSurface, createSurface, updateSurface, updateManySurfaces,
       createSyncRun,
       findFirstSyncRun,
       findManySyncRuns,

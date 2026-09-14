@@ -50,8 +50,8 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
   const deps: PullDeps = {
     loadState: async (): Promise<PullState> => ({
       project: { ...PROJECT },
-      localeCodes: ["en", "ko"],
-      keys: [...keys],
+
+      surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [...keys] }],
       maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
     }),
     createClient: async () => client,
@@ -118,7 +118,7 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
     project: {
       findUnique: async () => ({
         ...PROJECT,
-        locales: [{ code: "en" }, { code: "ko" }],
+        surfaces: [{ ...PROJECT, id: "s1", slug: "default", locales: [{ code: "en" }, { code: "ko" }] }],
       }),
     },
     stringKey: { findMany },
@@ -195,9 +195,9 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
       deps: {
         loadState: async (): Promise<PullState> => ({
           // 포맷 전체는 중첩이다 — 다른 로케일 파일 하나가 객체를 갖고 있었다.
-          project: { ...PROJECT, nested: true, nestedByPath, baseLocale: "th" },
-          localeCodes: ["th"],
-          keys: [...DOTTED],
+          project: { ...PROJECT },
+
+          surfaces: [{ ...({ ...PROJECT, nested: true, nestedByPath, baseLocale: "th" }), id: "s1", slug: "default", localeCodes: ["th"], keys: [...DOTTED] }],
           maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
         }),
         createClient: async () => client,
@@ -256,12 +256,12 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
     return {
       deps: {
         loadState: async (): Promise<PullState> => ({
-          project: { ...PROJECT, baseLocale: "en" },
-          localeCodes: ["en", "ko"],
-          keys: [
+          project: { ...PROJECT },
+
+          surfaces: [{ ...({ ...PROJECT, baseLocale: "en" }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
             { key: "a.one", sourceText: "one", sortIndex: 0, orphaned: false, cells: { en: { value: "one" }, ko: { value: "하나" } } },
             { key: "a.two", sourceText: "two", sortIndex: 1, orphaned: false, cells: { en: { value: "two" }, ko: { value: "둘" } } },
-          ],
+          ] }],
           maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
         }),
         createClient: async () => client,

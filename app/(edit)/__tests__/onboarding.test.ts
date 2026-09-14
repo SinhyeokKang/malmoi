@@ -710,7 +710,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
     const result = await createProject(createInput({ baseBranch: "release/2.0" }));
 
     expect(result).toMatchObject({ ok: true, baseBranch: "release/2.0" });
-    expect(renderWorkflowYaml({ slug: "acme-web", baseBranch: "release/2.0" })).toContain("release/2.0");
+    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "acme-web", baseBranch: "release/2.0" })).toContain("release/2.0");
   });
 
   it("브랜치를 안 주면 거부한다 — T8 이후에는 선택한 브랜치가 필수다", async () => {
@@ -977,12 +977,12 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
   beforeEach(() => {
     // 하네스 기본 프로젝트는 포맷이 json-catalog이고, 시드는 "적재 완료"가 기본이다 —
     // 첫 적재 전 상태를 보려면 명시적으로 되돌린다 (`harness.ts`의 `ProjectSeed` 주석).
-    db.projects[0]!.lastCommitSha = null;
+    db.surfaces[0]!.lastCommitSha = null;
     db.projects[0]!.repoOwner = "acme";
     db.projects[0]!.repoName = "web";
     db.projects[0]!.baseBranch = "develop";
     db.projects[0]!.installationId = "77";
-    db.projects[0]!.pathTemplate = "i18n/{locale}.json";
+    db.surfaces[0]!.pathTemplate = "i18n/{locale}.json";
   });
 
   /**
@@ -1014,6 +1014,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
     expect(input).toMatchObject({
       projectId: "p1",
       projectSlug: "acme",
+      surfaceSlug: "default",
       baseLocale: "en",
       headSha: HEAD_SHA,
       // ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4).
@@ -1067,7 +1068,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
   });
 
   it("이미 ready면 not-awaiting이다 — strict push라 번역자 편집을 버튼 하나로 덮는다", async () => {
-    db.projects[0]!.lastCommitSha = "deadbeef";
+    db.surfaces[0]!.lastCommitSha = "deadbeef";
 
     expect(await runFirstIngest({ slug: "acme" })).toEqual({ ok: false, error: "not-awaiting" });
     expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
@@ -1095,7 +1096,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
   it("리포 클라이언트 생성 예외도 진행 표시를 정리하고 목록 캐시를 지운다", async () => {
     hoisted.openRepoReader.mockRejectedValue(new Error("token unavailable"));
     await expect(runFirstIngest({ slug: "acme" })).resolves.toEqual({ ok: false, error: "ingest-failed" });
-    expect(db.projects[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
+    expect(db.surfaces[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
   });
@@ -1103,7 +1104,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
   it("스냅샷 실패 반환도 실패를 저장하고 목록 캐시를 지운다", async () => {
     hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "unavailable" } }));
     await runFirstIngest({ slug: "acme" });
-    expect(db.projects[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
+    expect(db.surfaces[0]).toMatchObject({ lastImportStartedAt: null, lastImportError: "import-failed" });
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
   });
 
@@ -1111,7 +1112,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
     hoisted.ingestFirstSnapshot.mockRejectedValue(new Error("boom"));
 
     expect(await runFirstIngest({ slug: "acme" })).toEqual({ ok: false, error: "ingest-failed" });
-    expect(db.projects[0]!.lastCommitSha).toBeNull();
+    expect(db.surfaces[0]!.lastCommitSha).toBeNull();
   });
 
   it("스냅샷 실패는 그 갈래로 나간다", async () => {
@@ -1121,7 +1122,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
   });
 
   it("저장된 템플릿이 그 리포에서 더 이상 성립하지 않으면 ingest-failed다", async () => {
-    db.projects[0]!.pathTemplate = "moved/{locale}.json";
+    db.surfaces[0]!.pathTemplate = "moved/{locale}.json";
 
     expect(await runFirstIngest({ slug: "acme" })).toEqual({ ok: false, error: "ingest-failed" });
     expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
@@ -1299,12 +1300,12 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
    * (POSTMORTEM 2026-09-06).
    */
   beforeEach(() => {
-    db.projects[0]!.lastCommitSha = null;
+    db.surfaces[0]!.lastCommitSha = null;
   });
 
   it("saveTranslation이 거부하고 아무것도 쓰지 않는다", async () => {
     expect(
-      await saveTranslation({ slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
+      await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
     ).toEqual({ ok: false, error: "not-ready" });
     expect(db.translations).toEqual([]);
   });
@@ -1315,12 +1316,12 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
   });
 
   it("ready면 둘 다 지나간다 — 판정이 항상 거부하지 않는다", async () => {
-    db.projects[0]!.lastCommitSha = "deadbeef";
+    db.surfaces[0]!.lastCommitSha = "deadbeef";
     hoisted.triggerPull.mockResolvedValue({ status: "skipped" });
 
 
     expect(
-      await saveTranslation({ slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
+      await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
     ).toEqual({ ok: true, value: "안녕" });
     expect(await triggerPullAction("acme")).toEqual({ status: "skipped" });
   });
