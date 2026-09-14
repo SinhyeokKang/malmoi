@@ -1,5 +1,8 @@
 "use client";
 
+import { FileCode2, FileJson2 } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
+
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
@@ -115,9 +118,22 @@ export function NamingStep({
       <div className="bg-divider my-2 h-px shrink-0" />
 
       {surfaces ? surfaces.map((surface, index) => (
-        <BaseLocaleFields disabled={disabled} key={surface.pathTemplate} state={{ ...state, ...surface }}
-          label={`${m.newProject.baseLocale.title} — ${surface.pathTemplate}`} id={`surface-base-${index}`}
-          onChange={next => { if (next.baseLocale !== undefined) onBaseLocale?.(index, next.baseLocale); }} />
+        <Fragment key={surface.pathTemplate}>
+          {index > 0 && <div className="bg-divider my-2 h-px shrink-0" />}
+          <BaseLocaleFields disabled={disabled} state={{ ...state, ...surface }}
+            label={
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>{m.newProject.baseLocale.title}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {surface.pathTemplate.endsWith(".json")
+                    ? <FileJson2 aria-hidden="true" className="size-4 shrink-0" />
+                    : <FileCode2 aria-hidden="true" className="size-4 shrink-0" />}
+                  <span className="break-all">{surface.pathTemplate}</span>
+                </span>
+              </span>
+            } id={`surface-base-${index}`}
+            onChange={next => { if (next.baseLocale !== undefined) onBaseLocale?.(index, next.baseLocale); }} />
+        </Fragment>
       )) : <BaseLocaleFields disabled={disabled} state={state} onChange={onChange} />}
 
     </div>
@@ -125,7 +141,7 @@ export function NamingStep({
 }
 
 function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newProject.baseLocale.title, disabled }: {
-  state: NamingStepState; onChange: (next: Partial<NamingStepState>) => void; id?: string; label?: string; disabled: boolean;
+  state: NamingStepState; onChange: (next: Partial<NamingStepState>) => void; id?: string; label?: ReactNode; disabled: boolean;
 }) {
   const { locales, keyCounts } = state;
   const selectId = id === "base-locale" ? "project-base-locale" : `${id}-select`;
@@ -190,10 +206,12 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
         </FormGroup>
       ) : (
         <div className="flex flex-col gap-2">
-          <p id={`${id}-label`} className="text-sm font-medium">
-            {label}
-          </p>
-          <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+          <div className="flex flex-col gap-1">
+            <p id={`${id}-label`} className="text-sm font-medium">
+              {label}
+            </p>
+            <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+          </div>
           {/* ⚠️ **①②와 같은 행 형이다** — 글리프 칩 자리에 국기가 들어간다 (핸드오프 1c). */}
           <RadioGroup
             disabled={disabled}
