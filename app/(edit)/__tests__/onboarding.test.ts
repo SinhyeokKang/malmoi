@@ -38,6 +38,7 @@ const hoisted = vi.hoisted(() => ({
   listInstallationRepos: vi.fn(),
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
+  addSurfaceFromSnapshot: vi.fn(),
   triggerPull: vi.fn(),
   revalidatePath: vi.fn(),
   cookieSet: vi.fn(),
@@ -45,6 +46,10 @@ const hoisted = vi.hoisted(() => ({
   redirect: vi.fn(),
 }));
 
+vi.mock("@/lib/surfaces/create", async (original) => ({
+  ...(await original<typeof import("@/lib/surfaces/create")>()),
+  addSurfaceFromSnapshot: hoisted.addSurfaceFromSnapshot,
+}));
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
@@ -83,6 +88,7 @@ vi.mock("next/navigation", () => ({
 
 const {
   createProject,
+  addSurface,
   detectRepoFormats,
   listRepoBranches,
   loadCandidateSample,
@@ -1450,4 +1456,34 @@ it("수동 확정도 세션이 없거나 리포 접근이 거부되면 blob을 �
   hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/other")]);
   expect(await confirmManualFormat(raw)).toEqual({ ok: false, error: "repo-not-installed" });
   expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+});
+
+describe("Add surface 요청 경계", () => {
+  const input = { slug: "acme", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" };
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", repositoryId: "1035512", installationId: "77", baseBranch: "develop" });
+    hoisted.addSurfaceFromSnapshot.mockResolvedValue({ surfaceSlug: "i18n", count: 2, failed: 0 });
+  });
+  it("후보와 수동 입력은 저장된 리포 snapshot을 재검증한 뒤 같은 원자적 생성에 들어간다", async () => {
+    const result = await addSurface(input);
+    expect(result).toMatchObject({ ok: true, surfaceSlug: "i18n", count: 2 });
+    expect(hoisted.addSurfaceFromSnapshot).toHaveBeenCalledWith(db.prisma, expect.objectContaining({
+      projectId: "p1", userId: OWNER, headSha: HEAD_SHA,
+      repository: expect.objectContaining({ baseBranch: "develop", repositoryId: "1035512" }),
+      targets: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
+    }));
+    expect(db.projects).toHaveLength(1);
+    expect(result.ok && result.yaml).toContain("surface: i18n");
+  });
+  it.each(["unauthorized", "forbidden", "repo-replaced", "manual-no-match", "resource-limit"])("%s는 생성 전에 거부한다", async reason => {
+    if (reason === "unauthorized") hoisted.session = sessionFor(null);
+    if (reason === "forbidden") hoisted.session = sessionFor(EDITOR);
+    if (reason === "repo-replaced") db.projects[0]!.repositoryId = "other";
+    if (reason === "manual-no-match") hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [] } }));
+    if (reason === "resource-limit") hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{ path: "i18n/en.json", sha: "en", size: 2_000_001 }] } }));
+    const before = structuredClone({ projects: db.projects, surfaces: db.surfaces, translations: db.translations });
+    expect(await addSurface(input)).toEqual({ ok: false, error: reason });
+    expect(hoisted.addSurfaceFromSnapshot).not.toHaveBeenCalled();
+    expect({ projects: db.projects, surfaces: db.surfaces, translations: db.translations }).toEqual(before);
+  });
 });

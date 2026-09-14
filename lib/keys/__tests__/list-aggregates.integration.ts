@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -73,7 +73,7 @@ it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한�
   await seed({ id: "archived-cell", lastPulledAt: PULLED, archived: false });
   await prisma.translationSurface.update({ where: { id: "surface-archived-cell" }, data: { archivedAt: AFTER } });
   const rows = await loadKeys(prisma, "archived-cell", "surface-archived-cell");
-  const cells = rows.flatMap(row => Object.values(row.cells));
+  const cells = rows.flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
   expect(cells.length).toBeGreaterThan(0);
   expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
   expect(cells.some(cell => isUnpublished(cell, PULLED))).toBe(false);
@@ -479,4 +479,60 @@ it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아
   expect(cells.filter((cell) => isUnpublished(cell, lastPulledAt))).toHaveLength(expected);
   expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(expected);
   expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
+});
+
+it("단계 B 복합 인덱스는 표면 목록과 미발송 범위를 자연 계획으로 좁힌다", async () => {
+  await seed({ id: "plans", lastPulledAt: PULLED, archived: false });
+  await pool.query(`INSERT INTO "TranslationSurface" (id,"projectId",slug)
+    SELECT 's-'||i,'plans','s-'||i FROM generate_series(1,40) i;
+    INSERT INTO "Locale" ("projectId","surfaceId",code,name,"isBase") SELECT 'plans','s-'||i,'ko','ko',false FROM generate_series(1,40) i;
+    INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash","updatedAt")
+    SELECT 'k-'||s||'-'||k,'plans','s-'||s,'key-'||k,'a','v','h',now() FROM generate_series(1,40) s CROSS JOIN generate_series(1,500) k;
+    INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"updatedBy","updatedAt")
+    SELECT 't-'||id,"projectId","surfaceId",id,'ko','v','u',now() FROM "StringKey" WHERE "surfaceId" LIKE 's-%';
+    ANALYZE "StringKey"; ANALYZE "Translation";`);
+  const plans = [];
+  for (const sql of [
+    `SELECT id,key FROM "StringKey" WHERE "projectId"='plans' AND "surfaceId"='s-20' AND namespace='a' ORDER BY key`,
+    `SELECT count(*) FROM "Translation" WHERE "projectId"='plans' AND "surfaceId"='s-20' AND "updatedAt">'2026-01-01' AND "updatedBy" IS NOT NULL`,
+  ]) {
+    const result = await pool.query(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}`);
+    const plan = JSON.stringify(result.rows[0]["QUERY PLAN"]);
+    expect(plan).not.toContain('"Node Type":"Seq Scan"');
+    expect(plan).toMatch(/projectId_surfaceId/);
+    plans.push(result.rows[0]["QUERY PLAN"]);
+  }
+  console.info("surface index plans", JSON.stringify(plans));
+});
+
+it("적재 예산 초과도 생성한 표면과 자식을 전부 롤백한다", async () => {
+  const input = await addFixture(); const before = await existingSurface();
+  input.blobs.set("second/en.json", '"' + 'a'.repeat(2_000_001) + '"');
+  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow("resource limits");
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
+  expect(await existingSurface()).toEqual(before);
+});
+
+it("실제 createProject Action이 단계 B DB에 기본 표면과 OWNER를 원자적으로 만든다", async () => {
+  await prisma.user.create({ data: { id: "create-owner", email: "fixture" } });
+  vi.doMock("@/auth", () => ({ auth: async () => ({ user: { id: "create-owner" } }) }));
+  vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
+  vi.doMock("@/lib/auth/session", () => ({ readSession: async () => ({ status: "ok", userId: "create-owner" }) }));
+  vi.doMock("next/cache", () => ({ revalidatePath: () => {} }));
+  vi.doMock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "fixture" }) }));
+  vi.doMock("@/lib/github-connect/user", () => ({ listUserInstallations: async () => ["77"],
+    listInstallationRepos: async () => [{ fullName: "acme/web" }] }));
+  vi.doMock("@/lib/github", () => ({
+    probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
+    openRepoReader: async () => ({ snapshot: async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),
+      files: [{ path: "i18n/en.json", sha: "en", size: 20 }, { path: "i18n/ko.json", sha: "ko", size: 20 }] }), blob: async () => '{"hello":"Hello"}' }),
+  }));
+  const { createProject } = await import("@/app/(edit)/projects/actions");
+  const result = await createProject({ slug: "create-action", name: "Create", owner: "acme", repo: "web", baseBranch: "main",
+    adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" });
+  expect(result).toMatchObject({ ok: true });
+  const project = await prisma.project.findUniqueOrThrow({ where: { slug: "create-action" }, include: { defaultSurface: true, members: true } });
+  expect(project.id).toBeTruthy();
+  expect(project.defaultSurface).toMatchObject({ projectId: project.id, pathTemplate: "i18n/{locale}.json" });
+  expect(project.members).toMatchObject([{ userId: "create-owner", role: "OWNER" }]);
 });

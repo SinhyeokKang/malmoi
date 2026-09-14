@@ -51,10 +51,10 @@ it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", 
 it("탐지 후보가 있어도 수동 경로를 검사하고 원래 후보로 돌아간다", async () => {
   const user = userEvent.setup();
   const { container } = await render(<AddSurface {...props} />);
-  await act(async () => user.click(find(container, '[data-manual-surface]')));
-  expect(container.querySelector('input')).not.toBeNull();
+  await act(async () => user.click([...container.querySelectorAll('button')].find(b => b.textContent === 'Set the path yourself')!));
+  await act(async () => user.type(find(container, '#manual-path'), 'other/{locale}.json'));
   expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(true);
-  await act(async () => user.click(find(container, '[data-detected-surfaces]')));
+  await act(async () => user.click(find(container, '[role=radio]')));
   expect(container.textContent).toContain("second/{locale}.json");
   expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(false);
 });
