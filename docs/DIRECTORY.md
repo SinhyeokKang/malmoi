@@ -259,7 +259,9 @@ prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다
 prisma/credential-cutover/  ⚠️ 마이그레이션이 아니라 스테이징 자리다 — Prisma가 이 디렉터리를 안 본다
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
                         smoke-github · credentials · finalize-credentials
-                        __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다
+                        __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
+                        __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
+                        대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
 public/brand/ flags/    ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다)
 generated/prisma/ public/fonts/   ⚠️ 생성물(gitignore)
