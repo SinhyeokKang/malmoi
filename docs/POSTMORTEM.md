@@ -1558,3 +1558,22 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: PrismaClient와 TransactionClient union을 `"$transaction" in prisma`로 구별한 구현이 proxy 객체를 잘못 판정해 중첩된 별도 트랜잭션을 열었다. 동일 클라이언트처럼 보이는 것이 동일 DB 연결이라는 보장은 아니었다.
 - **그물**: 격리 PostgreSQL과 pg_stat_activity 잠금 대기로 발견했다. 호출을 기록하는 가짜 DB는 연결 간 FK 대기를 재현하지 못한다. `applyPush`와 `applyPushInTransaction` 진입점을 명시적으로 나눠 열린 tx에서는 문장만 순서대로 실행한다.
 - **재발 방지**: `rg -n '\$transaction.*in|in.*\$transaction' lib app --glob '*.ts'`로 런타임 client 판별을 검사한다(현재 0건). Add surface의 다섯 쓰기 단계 rollback·동일 경로 동시성 검사를 실제 PG에서 유지한다. Project 잠금을 빼는 mutation은 안내 가능한 path-conflict 대신 P2002를 내며 red다.
+
+### 2026-09-14 — 컬럼을 뗀 마이그레이션이 스모크 스크립트를 죽였고, typecheck가 `select`를 안 본다
+
+- **영역**: `scripts/smoke-github.ts` · `prisma/migrations/20260914070000_finalize_translation_surfaces`
+- **증상**: 단계 B가 `Project`에서 포맷·적재 열 열 개를 떼어낸 뒤 `pnpm smoke:github <slug>`이
+  `adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`·`lastCommitSha` 여섯을 그대로 골라
+  첫 쿼리에서 `PrismaClientValidationError`로 죽는다. **게이트 넷(typecheck·test·build·격리 PG)이 전부 green이었다.**
+- **근본 원인**: **`tsc`가 Prisma `select`의 키를 검증하지 않는다**(실측 — 없는 이름을 넣어도 `pnpm typecheck`가
+  0으로 끝난다. 읽는 쪽 `row.zzz`는 TS2339로 잡히지만 `select: { zzz: true }`는 안 잡힌다). 여기에
+  `scripts/`가 `pnpm test`의 대상이 아니라는 사실이 겹쳐, 컬럼을 떼는 마이그레이션의 소비자 전수 검색이
+  **타입이 잡아 줄 것이라는 가정** 위에서 끝났다.
+- **그물**: 없었다. `git grep`으로 떨어진 컬럼 이름을 훑다가 발견했고, 그 뒤 `select`에 가짜 키를 넣어
+  typecheck가 침묵하는 것을 직접 확인했다. `scripts/__tests__/prisma-select-columns.test.ts`가
+  `schema.prisma`의 모델 필드와 `scripts/`의 select 키를 대조하는 red→green으로 남았다.
+- **재발 방지**: **컬럼을 떼는 마이그레이션은 이름 전수 검색이 필수다** —
+  `rg -n '(^|[^A-Za-z])<컬럼>\s*:' lib app scripts components --glob '*.ts' --glob '*.tsx'`.
+  typecheck green을 소비자 검색의 대체로 쓰지 않는다. ⚠️ **위 테스트는 `scripts/`만 본다** — `lib`·`app`의
+  select는 여전히 어느 게이트도 키를 검증하지 않고, 그쪽은 실 DB를 치는 경로(`/l10n-roundtrip`·격리 PG)가
+  대신 드러낸다. 스모크는 프로젝트 하나의 **기본 표면**을 보며, 로케일 조회도 그 표면으로 좁힌다.
