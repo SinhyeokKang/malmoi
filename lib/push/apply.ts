@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
 import { isBaseLocaleChange } from "./guard";
 import type { PushPayloadType } from "./plan";
@@ -12,9 +12,8 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * ⚠️ **대화형 트랜잭션을 쓸 수 없다.** 런타임이 transaction 모드 pooler(6543)라
- * `$transaction(async tx => …)`은 문장마다 다른 백엔드로 갈 수 있어 세션을 못 잡는다.
- * 배열형 `$transaction([...])`은 한 번에 배치로 보내므로 pgbouncer에서도 원자적이다.
+ * Add surface에서는 생성과 적재가 같은 트랜잭션이어야 한다. 이미 열린 TransactionClient를
+ * 받으면 중첩 트랜잭션을 열지 않고 그 연결에서 문장을 순서대로 실행한다.
  *
  * ⚠️ **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨
  * 문장 하나가 전체를 처리한다.
@@ -85,11 +84,26 @@ export type ApplyOptions = {
   importOutcome?: ImportFailureCode | null;
 };
 
-export async function applyPush(
-  prisma: PrismaClient,
-  scope: { projectId: string; surfaceId: string },
+type PushScope = { projectId: string; surfaceId: string };
+
+export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  return applyWith(prisma, scope, payload, options, statements => prisma.$transaction(statements));
+}
+
+export function applyPushInTransaction(tx: Prisma.TransactionClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  return applyWith(tx, scope, payload, options, async statements => {
+    const results: unknown[] = [];
+    for (const statement of statements) results.push(await statement);
+    return results;
+  });
+}
+
+async function applyWith(
+  prisma: Prisma.TransactionClient,
+  scope: PushScope,
   payload: PushPayloadType,
   options: ApplyOptions,
+  execute: (statements: Prisma.PrismaPromise<unknown>[]) => Promise<unknown[]>,
 ): Promise<PushOutcome> {
   const { projectId, surfaceId } = scope;
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
@@ -313,7 +327,7 @@ export async function applyPush(
     (plan.toOrphan.length === 0 ? 0 : 1);
   const filledAt = staleAt + (plan.staleKeyIds.length === 0 ? 0 : 1);
 
-  const results = await prisma.$transaction([...statements, ...rest]);
+  const results = await execute([...statements, ...rest]);
   const staleTranslations = plan.staleKeyIds.length === 0 ? 0 : numberAt(results, staleAt);
   const translationsFilled = uniqueTranslations.length === 0 ? 0 : numberAt(results, filledAt);
   const orphanedLocales = liveLocales.length === 0 ? 0 : numberAt(results, 1);

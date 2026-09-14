@@ -37,9 +37,7 @@ export type FirstIngestResult = {
   errors: AdapterError[];
 };
 
-export async function ingestFirstSnapshot(
-  prisma: PrismaClient,
-  input: {
+export type FirstSnapshotInput = {
     projectId: string;
     surfaceId: string;
     surfaceSlug: string;
@@ -60,8 +58,19 @@ export async function ingestFirstSnapshot(
     targets: readonly string[];
     /** 내려받은 로케일 파일의 내용. */
     blobs: ReadonlyMap<string, string>;
-  },
-): Promise<FirstIngestResult> {
+};
+
+export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
+  const prepared = prepareFirstSnapshot(input);
+  if (prepared.payload !== null) await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, prepared.payload, {
+    previousBaseLocale: null, startedAt: input.startedAt,
+    importOutcome: prepared.result.failed === 0 ? null : "partial-import",
+  });
+  return prepared.result;
+}
+
+/** 파싱·예산 판정은 순수 준비 단계이고, 호출부가 생성과 적재의 트랜잭션 범위를 정한다. */
+export function prepareFirstSnapshot(input: FirstSnapshotInput) {
   // 내려받지 못한 파일은 **실패로 센다.** 빈 내용을 먹이면 그 로케일의 키를 통째로 잃고, 조용히 빼면
   // 성공 문구가 나간다 — 둘 다 값이 사라진 것을 사용자가 모른다.
   let totalBytes = 0;
@@ -88,7 +97,7 @@ export async function ingestFirstSnapshot(
     scanRefs: [],
   });
 
-  if (payload.keys.length === 0) return { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors };
+  if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors } };
   if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 
   const errors = [
@@ -97,22 +106,5 @@ export async function ingestFirstSnapshot(
   ];
   const failed = errors.length + duplicateKeys;
 
-  // 첫 적재라 base가 바뀔 수 없다 — 이 프로젝트는 아직 `baseLocale`이 null이다 (design §3.13).
-  //
-  // ⚠️ **결과를 같은 트랜잭션에 싣는다** (projects-list design §3.35). 빠진 파일이 있으면 데이터는
-  // 들어간 채로 `partial-import`가 남는다 — throw가 없어도 성공 문구를 쓰지 않는 것과 같은 축이다
-  // (불변식 9). 그래서 `failed`를 applyPush **앞에서** 센다.
-  await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
-    previousBaseLocale: null,
-    startedAt: input.startedAt,
-    importOutcome: failed === 0 ? null : "partial-import",
-  });
-
-  return {
-    count: payload.keys.length,
-    // **단위가 셋이라 각각 센다** — 파일(read 실패·다운로드 실패)과 엔트리(중복). 한 숫자로 합치는 것은
-    // 화면 문구가 "M건을 읽지 못했어요" 하나라서다.
-    failed,
-    errors,
-  };
+  return { payload, result: { count: payload.keys.length, failed, errors } };
 }

@@ -2,6 +2,7 @@
 
 import { findUserByEmail } from "@/lib/credentials/access";
 import { planSurfaceSlug } from "@/lib/surfaces/plan";
+import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -51,6 +52,7 @@ import {
   type SampleRow,
 } from "@/lib/onboarding/detect";
 import { ingestFirstSnapshot } from "@/lib/onboarding/ingest";
+import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -963,6 +965,64 @@ export async function createProject(raw: {
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
   return { ok: true, slug: input.slug, surfaceSlug: planSurfaceSlug(confirmed.format.pathTemplate, []), pushToken, baseBranch };
+}
+
+export type AddSurfaceResult =
+  | { ok: true; surfaceSlug: string; count: number; failed: number; yaml: string }
+  | { ok: false; error: string; conflicts?: { path: string; surfaceSlugs: string[] }[] };
+
+/** 리포·토큰은 기존 Project가 소유한다. 요청은 새 표면의 후보만 고른다. */
+export async function addSurface(raw: {
+  slug: string; adapter: string; pathTemplate: string; baseLocale: string;
+}): Promise<AddSurfaceResult> {
+  const parsed = z.object({ slug: z.string().min(1).max(40), adapter: z.string(),
+    pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) }).safeParse(raw);
+  if (!parsed.success || !isAdapterName(parsed.data.adapter) || !isPathSafeLocale(parsed.data.baseLocale)) {
+    return { ok: false, error: "invalid input" };
+  }
+  const input = parsed.data;
+  if (!isAdapterName(input.adapter)) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: input.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const project = await prisma.project.findUnique({ where: { id: access.projectId } });
+  if (project === null) return { ok: false, error: "not-found" };
+  if (project.archivedAt !== null) return { ok: false, error: "archived" };
+  try {
+    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    if (repo.status !== "ok") return { ok: false, error: repo.error };
+    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) {
+      return { ok: false, error: "repo-replaced" };
+    }
+    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
+    const snapshot = await reader.snapshot(project.baseBranch);
+    if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+    const paths = snapshot.files.map(f => f.path);
+    const targets = templatePaths(input.adapter, input.pathTemplate, paths);
+    // 예산은 이 표면의 호출 하나에 적용한다. 기존 표면과 합산하지 않는다.
+    const files = await readFiles(reader, snapshot, targets);
+    const confirmed = planConfirmedFormat(input, files);
+    if (confirmed.status !== "ok") return { ok: false, error: files.length < targets.length ? "unavailable" : "manual-no-match" };
+    const result = await addSurfaceFromSnapshot(prisma, {
+      projectId: access.projectId, userId: session.userId,
+      repository: { repositoryId: repo.repositoryId, installationId: repo.installationId,
+        repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+      format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets,
+      blobs: new Map(files.map(f => [f.path, f.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt,
+    });
+    revalidatePath(`/projects/${input.slug}`, "layout");
+    revalidatePath("/projects");
+    return { ok: true, surfaceSlug: result.surfaceSlug, count: result.count, failed: result.failed,
+      yaml: renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug,
+        pathTemplate: confirmed.format.pathTemplate, adapter: confirmed.format.adapter, baseLocale: confirmed.baseLocale }) };
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
+    logFailure("onboard-add-surface", error);
+    return { ok: false, error: "ingest-failed" };
+  }
 }
 
 export type FirstIngestResultView =
