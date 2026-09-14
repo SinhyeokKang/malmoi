@@ -23,6 +23,15 @@
   namespaces 8파일 + _locales 3파일, 바이트 변경 0·경로 충돌 0·경고 0, 렌더/비교 100.57ms.
   DB/원격 쓰기 0이며 실물 PR 왕복의 대체 근거가 아니다.
 - [x] T21: 정본의 현재 구현 경계·운영 순서·왕복 입력을 최신화하고 Codex 미러 동기화.
+- [x] Claude Code 인계 검토(2026-09-14): 같은 체크아웃·HEAD 확인, 16커밋 전수 대조.
+  **단계 B가 뗀 `Project` 열 여섯을 `scripts/smoke-github.ts`가 그대로 고르고 있었다** —
+  `pnpm smoke:github`이 첫 쿼리에서 죽는데 게이트 넷이 전부 green이었다(`tsc`는 Prisma `select` 키를
+  검증하지 않고 `scripts/`는 `pnpm test` 밖이다). red 테스트 → 기본 표면 조회로 수정 → POSTMORTEM.
+  나머지 세 자리(트랜잭션 두 진입점의 근거 주석, 첫 적재의 `failed` 선계산 근거, 중복 adapter 검사)는
+  표현 수정이다. 떨어진 컬럼·옛 복합키(`projectId_code`·`projectId_key`)·삭제된 관계의 전수 검색은 0건.
+- [ ] **결과 화면을 벗어나면 비기본 표면의 workflow step을 다시 볼 자리가 없다.** spec §5.2는 결과
+  화면만 규정하므로 구현 결함이 아니라 **범위 판정 대상**이다 — Settings의 workflow 블록은 기본 표면
+  하나만 낸다. 대상 리포 전환 전에 사용자 판단이 필요하다.
 - [ ] 실제 OAuth 재인증→Add 복귀, 뒤로가기·세션 만료 중 저장의 브라우저 검증.
 - [ ] 시안 대조: 미수행. 기존 T16의 시안 부재 판정을 새 화면의 통과로 재사용하지 않는다.
 - [ ] 실물 두 표면 push→각 편집→단일 PR→merge→두 표면 재push→값 유지→2층/1층 skip.
