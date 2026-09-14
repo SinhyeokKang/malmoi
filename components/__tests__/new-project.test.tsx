@@ -650,11 +650,39 @@ it("선택 언어가 후보 목록 밖이면 생성할 수 없다", async () => 
 });
 it("수동 지정은 이전 탐지 체크를 섞지 않고 선택 언어를 보존한다", async () => {
   await files(); await click(include("other/{locale}.json"));
-  await click(button("Set manually"));
+  await click(button("Set the path yourself"));
   await input(field("manual-path"), "manual/{locale}.json"); await input(field("manual-base"), "ko");
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
   await click(button("Next")); await click(button("Create project"));
   expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ manual: true, surfaces: [
     { adapter: "json-catalog", pathTemplate: "manual/{locale}.json", baseLocale: "ko" },
   ] }));
+});
+
+it("생성 중 Portal 언어 선택도 열리지 않는다", async () => {
+  const locales = ["en", "fr", "ko", "de", "ja", "es", "pt", "it", "nl", "sv", "da"];
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales }] });
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming(); await click(button("Create project"));
+  const trigger = find<HTMLElement>(document.body, '[role="combobox"]');
+  await act(async () => { const event = new MouseEvent("pointerdown", { bubbles: true, button: 0 });
+    Object.defineProperty(event, "pointerType", { value: "mouse" }); trigger.dispatchEvent(event); });
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(document.body.querySelector('[role="option"]')).toBeNull();
+  await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+});
+
+it("두 표면 완료 응답까지 ③에 머문 뒤 서버 YAML과 합산 결과만 보인다", async () => {
+  const pending = deferred<unknown>(); mocks.createProject.mockReturnValueOnce(pending.promise);
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  await click(button("Create project"));
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(button("Create project").disabled).toBe(true);
+  await act(async () => pending.resolve({ ok: true, slug: "acme-web", pushToken: "saved-token", baseBranch: "main", count: 4,
+    surfaces: [{ surfaceSlug: "i18n" }, { surfaceSlug: "other" }], yaml: "surface: i18n\nsurface: other\n" }));
+  expect(document.body.textContent).toContain("Step 4 of 4");
+  expect(document.body.textContent).toContain("Imported 4 keys.");
+  expect(document.body.textContent).toContain("saved-token");
+  expect(document.body.querySelector("pre")?.textContent?.match(/surface:/g)).toHaveLength(2);
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled(); expect(mocks.createProject).toHaveBeenCalledTimes(1);
 });

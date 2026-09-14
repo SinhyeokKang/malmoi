@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -73,8 +74,10 @@ export function FilesStep({
   onLocale,
   onManual,
   onRetry,
+  selection,
 }: {
   state: FilesStepState;
+  selection?: { checked: ReadonlySet<number>; conflicts: readonly { path: string }[]; onToggle: (index: number) => void };
   onPick: (index: number) => void;
   onLocale: (locale: string) => void;
   onManual: (next: ManualEntry) => void;
@@ -104,13 +107,66 @@ export function FilesStep({
    */
   const manualMode = !detecting && (candidates.length === 0 || candidate === undefined);
 
+  const candidateList = (
+    <ul className="border-border min-h-0 overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
+      {candidates.map((c, index) => {
+        const active = picked === index;
+        const prevActive = index > 0 && picked === index - 1;
+        /*
+          ⚠️ **글리프가 파일 종류로 갈린다** — 어댑터 이름이 아니라 **경로의 확장자**로 판정한다
+          (PRODUCT §3: 어댑터 내부 이름은 화면에 안 쓴다). 값이 아니라 모양만 가르는 자리다.
+        */
+        const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
+        const content = (
+                  <>
+                    <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
+                      <Glyph className="text-muted-foreground size-5" aria-hidden />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
+                      <span className="block truncate text-base font-medium">{c.pathTemplate}</span>
+                      <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
+                        {m.newProject.files.summaryShort(
+                          c.locales.length,
+                          c.keys.status === "counted"
+                            ? m.newProject.files.keys(c.keys.count)
+                            : onboardErrorMessage("key-count-failed"),
+                        )}
+                      </span>
+                    </span>
+                  </>
+        );
+        return (
+          <li
+            key={c.pathTemplate}
+            className={cn(
+              index > 0 && "border-t",
+              index > 0 && (active || prevActive ? "border-border" : "border-divider"),
+              active ? "bg-muted" : "hover:bg-foreground/3",
+            )}
+          >
+            <div className={cn("p-3", selection && "flex items-center gap-3")}>
+              {selection ? <>
+                <Checkbox aria-label={m.newProject.files.include(c.pathTemplate)} checked={selection.checked.has(index)}
+                  onCheckedChange={() => selection.onToggle(index)} />
+                <Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
+                  className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
+                  onClick={() => onPick(index)}>{content}</Button>
+              </> : <Radio value={String(index)} labelClassName="gap-3" label={content} />}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   return (
     /*
       ⚠️ **래퍼를 세우지 않는다** — 껍데기 본문이 이미 `bodyDirection="row"`로 2단이고 `gap-4`(16)를
       든다. 여기서 또 감싸면 좌우 간격이 두 곳에서 정해지고, 껍데기를 고쳐도 이 화면만 안 따라온다.
     */
     <>
-      {/* 좌 240 — 후보 라디오 또는 수동 지정 폼. */}
+      {/* 좌 240 — 후보 목록 또는 수동 지정 폼. */}
       {/*
         ⚠️ **좌측에 `overflow-y-auto`를 두지 않는다** (2026-09-13 사용자 관측). CSS는 한 축이 `auto`면
         **다른 축의 `visible`을 `auto`로 강제**하므로, 폭 240 고정 안에서 `w-full` 필드의 포커스 링
@@ -136,61 +192,13 @@ export function FilesStep({
           <ManualForm state={state} onManual={onManual} />
         ) : (
           <>
-            {/* ⚠️ `asChild`를 쓰지 않는 이유는 ①과 같다 — `<ul>`의 list role이 덮이면 `<li>`가 고아가 된다. */}
-            <RadioGroup
-              className="min-h-0 overflow-y-auto"
-              aria-label={m.newProject.files.candidates}
-              value={picked === null ? "" : String(picked)}
-              onValueChange={(v) => onPick(Number(v))}
-            >
-            <ul className="border-border overflow-hidden rounded-md border">
-              {candidates.map((c, index) => {
-                const active = picked === index;
-                const prevActive = index > 0 && picked === index - 1;
-                /*
-                  ⚠️ **글리프가 파일 종류로 갈린다** — 어댑터 이름이 아니라 **경로의 확장자**로 판정한다
-                  (PRODUCT §3: 어댑터 내부 이름은 화면에 안 쓴다). 값이 아니라 모양만 가르는 자리다.
-                */
-                const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
-                return (
-                  <li
-                    key={c.pathTemplate}
-                    className={cn(
-                      index > 0 && "border-t",
-                      index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                      active ? "bg-muted" : "hover:bg-foreground/3",
-                    )}
-                  >
-                    <div className="p-3">
-                      <Radio
-                        value={String(index)}
-                        labelClassName="gap-3"
-                        label={
-                          <>
-                            <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
-                              <Glyph className="text-muted-foreground size-5" aria-hidden />
-                            </span>
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
-                              <span className="block truncate text-base font-medium">{c.pathTemplate}</span>
-                              <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
-                                {m.newProject.files.summaryShort(
-                                  c.locales.length,
-                                  c.keys.status === "counted"
-                                    ? m.newProject.files.keys(c.keys.count)
-                                    : onboardErrorMessage("key-count-failed"),
-                                )}
-                              </span>
-                            </span>
-                          </>
-                        }
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            </RadioGroup>
+            {selection ? candidateList : <RadioGroup aria-label={m.newProject.files.candidates}
+              value={picked === null ? "" : String(picked)} onValueChange={value => onPick(Number(value))}
+              className="min-h-0 overflow-y-auto">{candidateList}</RadioGroup>}
+            {selection && selection.conflicts.length > 0 && <Alert variant="danger">
+              <p>{m.newProject.files.conflicts}</p>
+              {selection.conflicts.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
+            </Alert>}
             <ManualToggle state={state} onManual={onManual} />
           </>
         )}

@@ -14,7 +14,7 @@ const props = {
   slug: "acme", owner: "o", repo: "r", branch: "main",
   adapters: [{ adapter: "json-catalog" as const, layout: "per-locale" as const, label: "JSON", example: "locales/{locale}.json" }],
   initial: { ok: true as const, candidates: [{ adapter: "json-catalog" as const, pathTemplate: "second/{locale}.json",
-    baseLocale: "en", locales: ["en", "ko"], label: "JSON", keys: { status: "counted" as const, count: 1 },
+    outputPaths: ["second/en.json", "second/ko.json"], baseLocale: "en", locales: ["en", "ko"], label: "JSON", keys: { status: "counted" as const, count: 1 },
     samples: [{ locale: "en", total: 1, rows: [{ key: "old", value: "Hello" }] }], confirmation: "signed" }] },
 };
 beforeEach(() => { vi.clearAllMocks(); });

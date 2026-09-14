@@ -18,7 +18,7 @@ import { z } from "zod";
 import { ADAPTERS, adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
-import type { AdapterError, AdapterFile, AdapterName } from "@/lib/adapters/types";
+import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
 import type { AccessError } from "@/lib/auth/message";
@@ -636,7 +636,7 @@ export async function detectRepoFormats(raw: {
     const selectedPaths = new Set(templatePaths(summary.adapter, summary.pathTemplate, paths));
     const confirmed = planConfirmedFormat({ ...summary, baseLocale: summary.baseLocale }, files.filter((file) => selectedPaths.has(file.path)));
     if (confirmed.status !== "ok") return [];
-    return [{ ...summary, confirmation: signSampleConfirmation({
+    return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths), confirmation: signSampleConfirmation({
       userId, repositoryId: access.repositoryId, installationId: access.installationId,
       ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
@@ -784,7 +784,7 @@ export async function confirmManualFormat(raw: {
         rows: locale.entries.slice(0, SAMPLE_ROWS).map((entry) => ({ key: entry.key, value: entry.message })),
       });
     }
-    return { ok: true, candidate: { ...summary, baseLocale: confirmed.baseLocale,
+    return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths), baseLocale: confirmed.baseLocale,
       confirmation: signSampleConfirmation({
         userId, repositoryId: access.repositoryId, installationId: access.installationId,
         ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
@@ -1464,4 +1464,14 @@ function snapshotError(snapshot: Exclude<RepoSnapshot, { status: "ok" }>): Onboa
 
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
+/** 추가 읽기 없이 확정 포맷과 같은 snapshot의 전체 경로로 소유 범위를 계산한다. */
+function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]): string[] {
+  const layout = adapterFor(format).layout;
+  return [...new Set([
+    ...templatePaths(format.adapter, format.pathTemplate, paths),
+    ...ingestTargets(format, layout, paths),
+    ...resolveLocalePaths(format, layout, paths).map(item => item.path),
+  ])].sort(compareKeys);
 }

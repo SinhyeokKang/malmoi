@@ -595,3 +595,27 @@ it("같은 사용자의 동시 생성은 OWNER 한도를 넘지 않고 같은 sl
   expect(results.find(r => !r.ok)).toMatchObject({ error: "limit-reached" });
   expect(await prisma.project.count()).toBe(3);
 });
+
+it("별도 연결에는 적재 중인 부분 프로젝트가 보이지 않는다", async () => {
+  const { createProject, input } = await creationFixture();
+  const blocker = await pool.connect();
+  await blocker.query("SELECT pg_advisory_lock(718241)");
+  await pool.query(`CREATE FUNCTION wait_create() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+    PERFORM pg_advisory_xact_lock(718241); RETURN NEW; END $$;
+    CREATE TRIGGER wait_create BEFORE INSERT ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION wait_create()`);
+  const pending = createProject(input);
+  try {
+    let waiting = false;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const state = await pool.query("SELECT 1 FROM pg_stat_activity WHERE wait_event = 'advisory'");
+      if (state.rowCount) { waiting = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    expect(waiting).toBe(true);
+    await expectNoCreation();
+  } finally {
+    await blocker.query("SELECT pg_advisory_unlock(718241)"); blocker.release();
+  }
+  expect(await pending).toMatchObject({ ok: true });
+  expect(await prisma.translation.count()).toBe(4);
+});

@@ -420,6 +420,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
           confirmation: expect.any(String),
           label: "JSON catalog",
           pathTemplate: "i18n/{locale}.json",
+          outputPaths: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
           locales: ["en", "fr", "ko"],
           baseLocale: "en",
           keys: { status: "counted", count: 2 },
@@ -1520,6 +1521,7 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     });
     const result = await createProject(createInput({ surfaces: formats }));
     expect(result).toMatchObject({ ok: false, surface: { pathTemplate: "other/{locale}.json", failed: expect.any(Number) } });
+    if (reason === "duplicate") expect(!result.ok && result.surface?.errors).toEqual([]);
     expect(db.spies.createProject).not.toHaveBeenCalled();
     expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
   });
@@ -1550,4 +1552,9 @@ it("탐지 후보 outputPaths는 표본 밖 언어도 포함하며 추가 읽기
   const result = await detectRepoFormats({ owner: "acme", repo: "web" });
   expect(result.ok && result.candidates[0]?.outputPaths).toEqual(["i18n/en.json", "i18n/fr.json", "i18n/ja.json", "i18n/ko.json"]);
   expect(opened.snapshot).toHaveBeenCalledTimes(1); expect(opened.blob).toHaveBeenCalledTimes(3);
+});
+
+it("기존 단일 자동 후보 성공 YAML은 고정 문자열과 바이트 동일하다", async () => {
+  const result = await createProject(createInput());
+  expect(result.ok && result.yaml).toBe("name: malmoi-i18n\n\non:\n  push:\n    branches: [\"develop\"]\n  workflow_dispatch:\n\nconcurrency:\n  group: malmoi-i18n-acme-web-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  push:\n    # Keeps the workflow from re-running when a translation PR is merged \u2014 without it, push and pull call each other.\n    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n\n      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1\n        with:\n          push-token: ${{ secrets.PUSH_TOKEN }}\n          project: acme-web\n          surface: i18n\n          path-template: \"i18n/{locale}.json\"\n          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)\n");
 });

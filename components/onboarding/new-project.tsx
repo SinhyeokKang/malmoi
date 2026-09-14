@@ -15,6 +15,7 @@ import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { nextEnabled, type NextState, type Step } from "@/lib/onboarding/next-enabled";
+import { planSurfaceSelection } from "@/lib/onboarding/select-surfaces";
 import { suggestAlternateSlug } from "@/lib/onboarding/slug";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
@@ -37,8 +38,8 @@ import { ResultStep } from "./steps/result";
  *
  * ⚠️ **캐시 키가 `${owner}/${repo}@${ref}` + 후보 index + locale이다.** 모달은 단계가 껍데기를
  * 공유하므로 [Back]으로 돌아가도 상태가 **살아남는다** — 전에는 `ConfirmStep`이 언마운트돼 stale이
- * 원리적으로 안 생겼다. 무효화 경계는 넷이다: 브랜치 변경 · 리포 변경 · 후보 변경(→ `baseLocale`·
- * `name`·`slug`도 함께 무효) · 그리고 **[Back]은 리포 검색어를 남긴다**(컨테이너가 소유한다).
+ * 원리적으로 안 생겼다. 리포·브랜치 변경과 재탐지는 체크·기준 언어를 초기화한다. 상세 전환과 체크 해제는
+ * 기준 언어를 보존한다. **[Back]은 리포 검색어를 남긴다**(컨테이너가 소유한다).
  * 수동 지정 키에는 adapter·pathTemplate도 들어간다 — 같은 언어라도 다른 파일의 검증은 무효다.
  */
 export function NewProject({
@@ -86,7 +87,9 @@ export function NewProject({
   const [detecting, setDetecting] = useState(false);
   const [detectError, setDetectError] = useState<string | undefined>(undefined);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [detail, setDetail] = useState<number | null>(null);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const [baseLocales, setBaseLocales] = useState<Record<number, string>>({});
   const [locale, setLocale] = useState("");
   const [manualCandidate, setManualCandidate] = useState<CandidateSummary | undefined>(undefined);
   const [samples, setSamples] = useState<Record<string, PreviewState>>({});
@@ -106,11 +109,18 @@ export function NewProject({
   const [created, setCreated] = useState<Extract<CreateProjectResult, { ok: true }> | undefined>(undefined);
   const [creationFailure, setCreationFailure] = useState<Extract<CreateProjectResult, { ok: false }> | "unknown" | null>(null);
 
-  const candidate = picked === null ? undefined : candidates[picked];
+  const candidate = detail === null ? undefined : candidates[detail];
   const usingManual = candidates.length === 0 || candidate === undefined;
   const pathTemplate = candidate?.pathTemplate ?? manual.pathTemplate.trim();
   /** 미리보기가 매칭을 확인해 준 것이 곧 수동 지정의 검증이다 (예외 E). */
   const manualMatched = manualCandidate !== undefined && samples[sampleKey(manual.baseLocale.trim())]?.status === "ready";
+
+  const selection = planSurfaceSelection(candidates, checked, baseLocales);
+  const selectedCandidates = candidates.flatMap((item, index) => checked.has(index) ? [{ item, index }] : []);
+  const chosenCandidate = usingManual ? manualCandidate : selectedCandidates[0]?.item;
+  const chosenBase = usingManual ? baseLocale : baseLocales[selectedCandidates[0]?.index ?? -1] ?? "";
+  const validBases = usingManual ? manualMatched && !!manualCandidate?.locales.includes(baseLocale)
+    : selectedCandidates.length > 0 && selectedCandidates.every(({ item, index }) => item.locales.includes(baseLocales[index] ?? ""));
 
   const state: NextState = {
     sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
@@ -119,17 +129,17 @@ export function NewProject({
     repoListLoading: repos === undefined && listError === undefined,
     detecting,
     detectFailed: detectError !== undefined,
-    candidateSelected: candidate !== undefined,
+    candidateSelected: selection.formats.length > 0 && selection.conflicts.length === 0,
     manualEntry: usingManual,
     manualMatched,
     name,
     slug,
-    baseLocale,
+    baseLocale: validBases ? chosenBase : "",
     slugTaken,
   };
 
   function sampleKey(code: string): string {
-    return JSON.stringify([repo?.fullName, branchValue, picked, candidate?.adapter ?? manual.adapter, pathTemplate, code]);
+    return JSON.stringify([repo?.fullName, branchValue, detail, candidate?.adapter ?? manual.adapter, pathTemplate, code]);
   }
 
   /** ① 리포 선택 — 브랜치 목록을 받고 그 자리에서 펼친다. 실패는 ①을 막지 않는다 (예외 D). */
@@ -180,8 +190,10 @@ export function NewProject({
     sampleGeneration.current += 1;
     setDetecting(false);
     setCandidates([]);
+    setChecked(new Set());
+    setBaseLocales({});
     setManualCandidate(undefined);
-    setPicked(null);
+    setDetail(null);
     setLocale("");
     setSamples({});
     setDetectError(undefined);
@@ -197,8 +209,10 @@ export function NewProject({
     const request = ++detectRequest.current;
     sampleGeneration.current += 1;
     setCandidates([]);
+    setChecked(new Set());
+    setBaseLocales({});
     setManualCandidate(undefined);
-    setPicked(null);
+    setDetail(null);
     setSamples({});
     setStep(2);
     setDetecting(true);
@@ -215,6 +229,8 @@ export function NewProject({
          */
         if (result.ok) {
           setCandidates(result.candidates);
+          setChecked(new Set(result.candidates.length ? [0] : []));
+          setBaseLocales(Object.fromEntries(result.candidates.map((item, index) => [index, item.baseLocale])));
           applyCandidate(result.candidates, 0);
           return;
         }
@@ -234,15 +250,8 @@ export function NewProject({
     const chosen = list[index];
     if (chosen === undefined) return;
     sampleGeneration.current += 1;
-    setPicked(index);
+    setDetail(index);
     setLocale(chosen.baseLocale);
-    // ⚠️ **후보 변경은 `baseLocale`·`name`·`slug`의 무효화 경계다** (design §9) — 옛 후보의 기준
-    // 언어가 남으면 그것이 다른 파일 집합의 결정이 된다.
-    setBaseLocale(chosen.baseLocale);
-    if (candidate?.adapter !== chosen.adapter || candidate?.pathTemplate !== chosen.pathTemplate) {
-      setName("");
-      setSlug("");
-    }
     setSlugTaken(false);
     setSamples(
       Object.fromEntries(
@@ -281,8 +290,8 @@ export function NewProject({
             ...item,
             samples: [...item.samples.filter((sample) => sample.locale !== code), { locale: code, rows: result.rows, total: result.total }],
           });
-          if (picked === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
-          else setCandidates((prev) => prev.map((item, index) => index === picked ? update(item) : item));
+          if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
+          else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
         }
         setAnnounce(result.ok ? undefined : m.newProject.files.preview.unavailable);
         setSamples((prev) => ({
@@ -308,7 +317,7 @@ export function NewProject({
     setName("");
     setSlug("");
     setSlugTaken(false);
-    setPicked(null);
+    setDetail(null);
     setLocale(next.baseLocale.trim());
     setBaseLocale(next.baseLocale.trim());
   }
@@ -364,7 +373,7 @@ export function NewProject({
   /** ③→④ — **예외 I가 ③에 머문다**: 실패하면 넘어가지 않고 입력이 전부 남는다. */
   function create() {
     if (repo === undefined) return;
-    if (pending) return;
+    if (pending || !validBases || (!usingManual && selection.conflicts.length > 0)) return;
     setBanner(null);
     setCreationFailure(null);
     startTransition(async () => {
@@ -373,7 +382,7 @@ export function NewProject({
         owner: repo.owner,
         repo: repo.repo,
         manual: usingManual,
-        surfaces: [{ adapter: candidate?.adapter ?? manual.adapter, pathTemplate, baseLocale }],
+        surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale }] : selection.formats,
         slug,
         name,
         baseBranch: branchValue,
@@ -487,7 +496,7 @@ export function NewProject({
             detecting,
             detectError,
             candidates,
-            picked,
+            picked: detail,
             locale,
             preview: samples[sampleKey(locale)] ?? { status: "loading" },
             manual,
@@ -498,6 +507,13 @@ export function NewProject({
             branch: branchValue,
             banner: accessLost ?? banner,
           }}
+          selection={{ checked, conflicts: selection.conflicts, onToggle: index => {
+            setChecked(previous => {
+              const next = new Set(previous);
+              if (next.has(index)) next.delete(index); else next.add(index);
+              return next;
+            });
+          } }}
           onPick={(index) => applyCandidate(candidates, index)}
           onLocale={chooseLocale}
           onManual={changeManual}
@@ -510,7 +526,7 @@ export function NewProject({
           {pending && <p role="status" className="text-muted-foreground text-sm">{m.newProject.naming.creating}</p>}
           {creationFailure !== null && <Alert variant="danger">
             {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
-              <p>{m.newProject.naming.nothingCreated} {failureText(creationFailure.error)}</p>
+              <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(creationFailure.error)}</p>
               {creationFailure.surface && <>
                 <p>{m.newProject.naming.failedSurface(creationFailure.surface.pathTemplate, creationFailure.surface.failed)}</p>
                 {creationFailure.surface.errors.slice(0, 5).map((error, index) => <p key={index} className="whitespace-pre-wrap text-xs">{adapterErrorMessage(error)}</p>)}
@@ -519,24 +535,39 @@ export function NewProject({
             </>}
           </Alert>}
           <NamingStep
+            disabled={pending}
+            surfaces={!usingManual && selectedCandidates.length > 1 ? selectedCandidates.map(({ item, index }) => ({
+              pathTemplate: item.pathTemplate, locales: item.locales, baseLocale: baseLocales[index] ?? "",
+              keyCounts: Object.fromEntries(item.samples.map(sample => [sample.locale, sample.total])),
+            })) : undefined}
+            onBaseLocale={(index, value) => {
+              const selected = selectedCandidates[index];
+              if (selected) setBaseLocales(previous => ({ ...previous, [selected.index]: value }));
+            }}
             state={{
               name,
               slug,
-              baseLocale,
-              locales: (candidate ?? manualCandidate)?.locales ?? (baseLocale === "" ? [] : [baseLocale]),
+              baseLocale: chosenBase,
+              locales: chosenCandidate?.locales ?? [],
               keyCounts: Object.fromEntries(
-                ((candidate ?? manualCandidate)?.samples ?? []).map((s) => [s.locale, s.total] as const),
+                (chosenCandidate?.samples ?? []).map((s) => [s.locale, s.total] as const),
               ),
               slugTakenAlt: suggestAlternateSlug(slug),
               slugTaken,
-              pathTemplate,
+              pathTemplate: chosenCandidate?.pathTemplate ?? pathTemplate,
               branch: branchValue,
               banner: accessLost ?? banner,
             }}
             onChange={(next) => {
               if (next.name !== undefined) setName(next.name);
               if (next.slug !== undefined) setSlug(next.slug);
-              if (next.baseLocale !== undefined) setBaseLocale(next.baseLocale);
+              if (next.baseLocale !== undefined) {
+                if (usingManual) setBaseLocale(next.baseLocale);
+                else {
+                  const selected = selectedCandidates[0];
+                  if (selected) setBaseLocales(previous => ({ ...previous, [selected.index]: next.baseLocale! }));
+                }
+              }
               if (next.slugTaken === false) setSlugTaken(false);
             }}
           />

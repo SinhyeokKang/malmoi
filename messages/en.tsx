@@ -695,6 +695,9 @@ export const en = {
     files: {
       /** ② 좌측 후보 목록의 그룹 이름. */
       candidates: "Locale file candidates",
+      include: (path: string) => `Include ${path}`,
+      previewCandidate: (path: string) => `Preview ${path}`,
+      conflicts: "These selections write to the same files. Uncheck a selection to continue.",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
       summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,

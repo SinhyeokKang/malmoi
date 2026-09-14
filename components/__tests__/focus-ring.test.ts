@@ -9,6 +9,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 import { SegmentedControl, SegmentedLinks } from "@/components/ui/segmented-control";
 import { render } from "./helpers/dom";
@@ -133,6 +134,7 @@ const RADIX_FIXTURES = {
     h(SelectTrigger, { "aria-label": "Locale" }, h(SelectValue, null)),
     h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
   ),
+  "components/ui/checkbox.tsx": h(Checkbox, { "aria-label": "Include files" }),
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
 };
 
