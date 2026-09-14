@@ -36,6 +36,7 @@ it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 
   const { container } = await render(<AddSurface {...props} />);
   await act(async () => user.click(find(container, '[data-add-surface]')));
   expect(container.textContent).toContain("surface: second");
+  expect(container.textContent).not.toContain("Save this in your repository as");
   expect(container.textContent).toContain("1");
   expect(container.querySelector('[role="status"]')).not.toBeNull();
   expect(container.querySelector('input[type="password"]')).toBeNull();
