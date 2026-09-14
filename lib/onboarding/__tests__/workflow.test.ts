@@ -169,6 +169,27 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
     expect(render([one])).toBe(renderWorkflowYaml({ slug: "order-check", baseBranch: "main", ...one }));
   });
 
+  /**
+   * ⚠️ **step 하나짜리 렌더러와 대조하는 것만으로는 모양을 못 잰다** — 둘이 같은 구현이라 그 단언은
+   * 공허하다. 2026-09-14에 `checkout` 뒤의 빈 줄이 사라진 것을 `pnpm test`가 통과시켰고(주석·빈 줄을
+   * 벗기고 문서와 대조하므로) **브라우저의 실물 YAML**이 잡았다. 그래서 빈 줄 자체를 여기서 잰다.
+   */
+  it.each([["표면 하나", [one]], ["표면 둘", [one, two]]])("%s — `- uses:`마다 앞에 빈 줄이 하나다", (_label, surfaces) => {
+    const lines = render(surfaces).split("\n");
+    const uses = lines.flatMap((l, i) => (l.trimStart().startsWith("- uses:") ? [i] : []));
+    expect(uses.length).toBe(surfaces.length + 1);
+    // 첫 step(checkout)은 `steps:` 바로 아래다 — 거기만 빈 줄이 없다.
+    expect(lines[uses[0]! - 1]?.trim()).toBe("steps:");
+    for (const at of uses.slice(1)) {
+      expect(lines[at - 1]).toBe("");
+      expect(lines[at - 2]).not.toBe("");
+    }
+  });
+
+  it("빈 줄이 연달아 둘인 자리가 없다 — 붙여넣은 파일에 구멍이 보인다", () => {
+    expect(render([one, two])).not.toMatch(/\n\n\n/);
+  });
+
   it("표면 둘이면 push step이 둘이고 checkout은 하나다", () => {
     const yml = render([one, two]);
     expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v1").length - 1).toBe(2);
@@ -181,13 +202,6 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
     expect(yml).toMatch(/^\s+surface: _locales$/m);
     expect(yml).toContain('path-template: "web/{locale}.json"');
     expect(yml).toContain('path-template: "_locales/{locale}/messages.json"');
-  });
-
-  it("step 사이가 빈 줄 하나다 — 사람이 붙여넣고 읽는 파일이다", () => {
-    const lines = render([one, two]).split("\n");
-    const at = lines.findIndex((l, i) => i > 0 && l.includes("malmoi-i18n-push@") && lines.slice(0, i).some(p => p.includes("malmoi-i18n-push@")));
-    expect(lines[at - 1]).toBe("");
-    expect(lines[at - 2]).not.toBe("");
   });
 
   it("파일 끝 개행이 정확히 하나다", () => {

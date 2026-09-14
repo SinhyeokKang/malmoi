@@ -76,10 +76,10 @@ export function renderProjectWorkflowYaml(input: {
   // 그 침묵의 비용이 크다. 활성 표면이 0인 프로젝트는 마이그레이션 precondition이 이미 막는다.
   if (surfaces.length === 0) fail("a workflow needs at least one surface");
 
-  return [
-    ...header(slug, baseBranch),
-    "",
-  ].join("\n") + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface })).join("\n");
+  // ⚠️ **`""` 둘이 빈 줄 하나다.** 앞의 하나가 checkout 줄을 끝내고 뒤의 하나가 빈 줄을 만든다 —
+  // step 사이의 `join("\n")`과 같은 간격이라 표면 수와 무관하게 모양이 같다.
+  return [...header(slug, baseBranch), "", ""].join("\n")
+    + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface })).join("\n");
 }
 
 /**
