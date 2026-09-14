@@ -58,3 +58,11 @@ it("탐지 후보가 있어도 수동 경로를 검사하고 원래 후보로 �
   expect(container.textContent).toContain("second/{locale}.json");
   expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(false);
 });
+
+it("리포 정체성 변경은 재시도로 고칠 수 없는 원인을 안내한다", async () => {
+  mocks.add.mockResolvedValue({ ok: false, error: "repo-replaced" });
+  const user = userEvent.setup();
+  const { container } = await render(<AddSurface {...props} />);
+  await act(async () => user.click(find(container, '[data-add-surface]')));
+  expect(container.textContent).toContain("different repository");
+});
