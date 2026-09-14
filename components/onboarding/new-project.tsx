@@ -48,6 +48,7 @@ export function NewProject({
   now,
   initialError,
   backQuery,
+  closeMode,
 }: {
   repos: RepoOption[] | undefined;
   listError: string | undefined;
@@ -58,6 +59,8 @@ export function NewProject({
   /** `?e=` — callback이 실어 보낸 사유. ① 본문 맨 위 배너로 선다. */
   initialError: string | undefined;
   backQuery: { q?: string };
+  /** 경로가 문맥을 지정한다 — 인터셉트 뒤의 목록은 보존하고 딥링크는 목록 주소로 복귀한다. */
+  closeMode: "back" | "list";
 }) {
   const router = useRouter();
   // 같은 리포·후보로 돌아와도 이전 요청과 구별해야 하므로 값 비교 대신 세대를 센다.
@@ -414,7 +417,8 @@ export function NewProject({
   }
 
   function close() {
-    router.replace(routes.projects(backQuery));
+    if (closeMode === "back") router.back();
+    else router.replace(routes.projects(backQuery));
   }
 
   const titles = {

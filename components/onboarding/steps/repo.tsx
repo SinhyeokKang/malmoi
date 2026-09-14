@@ -89,7 +89,13 @@ export function RepoStep({
   const shown = needle === "" ? repos : repos.filter((r) => r.fullName.toLowerCase().includes(needle));
 
   return (
-    <div className="flex flex-col gap-4">
+    /*
+      ⚠️ **루트가 `flex-1`이다** (2026-09-13 사용자 실물). 검색 0건이 남은 높이의 **중앙**에 서려면
+      그 높이가 여기서 내려와야 한다 — 없으면 빈 상태가 검색 필드 바로 아래 붙고 그 밑이 통째로 빈다.
+      ⚠️ **`min-h-0`은 주지 않는다**: 자식이 전부 `shrink-0`이라 `min-height:auto`가 내용 높이를
+      지켜야 목록이 길 때 본문(`overflow-y-auto`)이 그것을 스크롤한다.
+    */
+    <div className="flex flex-1 flex-col gap-4">
       {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
 
       {/*
@@ -109,16 +115,23 @@ export function RepoStep({
       </div>
 
       {shown.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          className="py-6"
-          title={m.newProject.repo.searchEmpty(query.trim())}
-          action={
-            <Button variant="default" onClick={() => onQueryChange("")}>
-              {m.newProject.repo.clearSearch}
-            </Button>
-          }
-        />
+        /*
+          ⚠️ **설치 힌트가 이 안으로 들어온다** (2026-09-13 ego 실측). 밖에 형제로 두면 빈 상태의
+          `flex-1`이 남은 높이를 먹어 **힌트만 모달 바닥으로 200px 넘게 밀려** 고아로 뜬다 —
+          "리포가 안 보이면 설치에 추가하라"는 지금 화면의 두 번째 출구라 블록에 붙어야 한다.
+        */
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <EmptyState
+            icon={Search}
+            title={m.newProject.repo.searchEmpty(query.trim())}
+            action={
+              <Button variant="default" onClick={() => onQueryChange("")}>
+                {m.newProject.repo.clearSearch}
+              </Button>
+            }
+          />
+          <InstallHint installUrl={installUrl} />
+        </div>
       ) : (
         /*
           ⚠️ **`asChild`를 쓰지 않는다** (2026-09-13 리뷰). `<ul>`에 얹으면 Radix가 그 태그의 role을
@@ -199,16 +212,22 @@ export function RepoStep({
         </RadioGroup>
       )}
 
-      {installUrl !== null && (
-        <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
-          {m.newProject.repo.notListed}{" "}
-          <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
-            {m.newProject.empty.addRepos}
-            <ExternalLink className="size-3" aria-hidden />
-          </a>
-        </p>
-      )}
+      {shown.length > 0 && <InstallHint installUrl={installUrl} />}
     </div>
+  );
+}
+
+/** 목록에 없는 리포로 가는 길 — 목록 아래, 검색 0건에서는 빈 상태 블록 아래. `GITHUB_APP_SLUG`가 없으면 사라진다. */
+function InstallHint({ installUrl }: { installUrl: string | null }) {
+  if (installUrl === null) return null;
+  return (
+    <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
+      {m.newProject.repo.notListed}{" "}
+      <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+        {m.newProject.empty.addRepos}
+        <ExternalLink className="size-3" aria-hidden />
+      </a>
+    </p>
   );
 }
 
@@ -323,55 +342,72 @@ function Blocked({
 }) {
   if (error === "not-connected" || error === "reauthorize") {
     return (
-      <EmptyState
-        icon={Link2}
-        className="py-6"
-        title={m.newProject.empty.connect.title}
-        description={m.newProject.empty.connect.description}
-        action={
-          <ConnectGithubButton
-            dest="new"
-            back={back}
-            label={error === "not-connected" ? m.newProject.empty.connect.action : m.newProject.empty.connect.reauthorize}
-          />
-        }
-      />
+      <Centered>
+        <EmptyState
+          icon={Link2}
+          title={m.newProject.empty.connect.title}
+          description={m.newProject.empty.connect.description}
+          action={
+            <ConnectGithubButton
+              dest="new"
+              back={back}
+              label={error === "not-connected" ? m.newProject.empty.connect.action : m.newProject.empty.connect.reauthorize}
+            />
+          }
+        />
+      </Centered>
     );
   }
 
   if (error === "no-installations" || error === "no-repos") {
     return (
-      <EmptyState
-        icon={FolderGit2}
-        className="py-6"
-        /**
-         * ⚠️ **제목에 판정층 문구를 넣지 않는다** (code-review 2026-09-08). `onboardErrorMessage`는
-         * "무엇이 없다 + 무엇을 하라"의 두 문장이고, 빈 상태의 제목은 마침표 없는 짧은 구다.
-         */
-        title={error === "no-installations" ? m.newProject.empty.noInstallations : m.newProject.empty.noRepos}
-        description={
-          <>
-            {onboardErrorMessage(error)}{" "}
-            {installUrl === null ? (
-              m.newProject.empty.noLink
-            ) : (
-              <>
-                <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
-                  {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
-                  <ExternalLink className="size-3" aria-hidden />
-                </a>{" "}
-                — {m.newProject.empty.afterInstall}
-              </>
-            )}
-          </>
-        }
-      />
+      <Centered>
+        <EmptyState
+          icon={FolderGit2}
+          /**
+           * ⚠️ **제목에 판정층 문구를 넣지 않는다** (code-review 2026-09-08). `onboardErrorMessage`는
+           * "무엇이 없다 + 무엇을 하라"의 두 문장이고, 빈 상태의 제목은 마침표 없는 짧은 구다.
+           */
+          title={error === "no-installations" ? m.newProject.empty.noInstallations : m.newProject.empty.noRepos}
+          description={
+            <>
+              {onboardErrorMessage(error)}{" "}
+              {installUrl === null ? (
+                m.newProject.empty.noLink
+              ) : (
+                <>
+                  <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+                    {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
+                    <ExternalLink className="size-3" aria-hidden />
+                  </a>{" "}
+                  — {m.newProject.empty.afterInstall}
+                </>
+              )}
+            </>
+          }
+        />
+      </Centered>
     );
   }
 
+  /*
+    ⚠️ **오류는 중앙에 두지 않는다** — `Alert`는 폭 100% 배너라 세로 중앙에 띄우면 "무엇이
+    비었다"를 말하는 빈 상태와 같은 자리에 서서 둘이 같은 부류로 읽힌다. 배너는 위에 붙는다.
+  */
   return (
     <Alert variant="danger" title={m.newProject.empty.listFailed}>
       {failureText(error)}
     </Alert>
   );
+}
+
+/**
+ * 빈 상태가 본문의 **남은 높이 중앙**에 서는 자리 (핸드오프 1 · DESIGN §6.4).
+ *
+ * ⚠️ **`EmptyState`가 수직 중앙을 하지 않는다** — 표 안에서도 쓰여서 자리마다 다르고, `flex-1`은
+ * 호출부가 든다는 것이 그 컴포넌트의 계약이다. 껍데기가 `min-h`로 세로를 잡아 두므로 여기서
+ * 안 잡으면 칩·제목·설명이 헤더 바로 아래 뭉치고 그 아래 수백 px이 빈다 (2026-09-13 사용자 실물).
+ */
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-1 items-center justify-center">{children}</div>;
 }

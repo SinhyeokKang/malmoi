@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { CircleCheck, CircleX, Info, TriangleAlert, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
+import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { Button } from "./button";
@@ -76,8 +77,9 @@ export function Alert({
         {children !== undefined && <div className="text-sm">{children}</div>}
         {actions !== undefined && <div className="flex gap-2">{actions}</div>}
       </div>
+      {/* ⚠️ Dialog의 닫기와 **같은 36 정방**이다 (2026-09-13 핸드오프). 음수 마진만 `-8 -8`로 다르다. */}
       {onDismiss !== undefined && (
-        <Button variant="ghost" size="sm" onClick={onDismiss} aria-label="Dismiss" className="-mt-1 -mr-1 shrink-0">
+        <Button variant="ghost" onClick={onDismiss} aria-label={m.common.dismiss} className="-mt-2 -mr-2 size-9 shrink-0 rounded-md p-0">
           <X aria-hidden />
         </Button>
       )}

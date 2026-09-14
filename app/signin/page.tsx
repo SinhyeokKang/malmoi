@@ -1,3 +1,4 @@
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -14,8 +15,6 @@ import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
-import { clearLinkCookies } from "@/lib/login-link/clear-cookies";
-import { clearRevocationCookies } from "@/lib/session-revocation/clear-cookies";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -89,7 +88,7 @@ export default async function SignIn({
 /**
  * ⚠️ **함수 이름을 바꾸지 않는다.** `lib/session-revocation/__tests__/normal-login.test.tsx`가
  * `child.type.name === "ProviderButton"`으로 이것을 찾고, 그 테스트는 **POSTMORTEM 2026-09-10의
- * 유일한 방어선**이다 — `clearRevocationCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다.
+ * 유일한 방어선**이다 — `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다.
  * `redirectTo: "/projects"`도 같은 이유로 그대로다.
  */
 function ProviderButton({
@@ -105,8 +104,7 @@ function ProviderButton({
     <form
       action={async () => {
         "use server";
-        await clearRevocationCookies();
-        await clearLinkCookies();
+        await clearAuthRoundtripCookies();
         await signIn(provider, { redirectTo: "/projects" });
       }}
     >

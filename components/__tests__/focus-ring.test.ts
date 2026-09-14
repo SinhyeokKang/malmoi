@@ -91,13 +91,21 @@ function stripComments(source: string): string {
  *
  * ⚠️ **네 태그를 본다.** `button|input`만 보던 시절 온보딩의 `<select>`가 방어선 밖이었다
  * (2026-09-07). 포커스를 받는 태그가 늘면 여기에 더한다 — 아래 메타 테스트가 목록을 고정한다.
+ *
+ * ⚠️ **`tabIndex={-1}` + `aria-hidden`도 포커스 대상이 아니다** (2026-09-13 — `file-input.tsx`).
+ * `<input type="file">`은 `type="hidden"`이 될 수 없는데, 파일 대화상자를 여는 것 말고 아무
+ * 역할이 없는 그 input에 링을 붙이면 **보이지도 않는 요소가 링을 들고 검사만 green이 된다.**
+ * 둘을 **함께** 요구하는 것이 요지다 — 키보드 순서에서도 빠지고 접근성 트리에서도 빠진 것만
+ * 면제된다. 보이는 컨트롤은 `Button`이고 링은 그쪽이 든다. 아래 메타 테스트가 하나만으로는
+ * 면제되지 않는 것을 센다.
  */
 function controls(source: string): string[] {
   const src = stripComments(source);
   const found: string[] = [];
   for (const m of src.matchAll(/<(?:button|input|select|textarea)[\s>]/g)) {
     const tag = openingTag(src, m.index);
-    if (!tag.includes('type="hidden"')) found.push(tag);
+    const unfocusable = tag.includes('type="hidden"') || (tag.includes("tabIndex={-1}") && tag.includes("aria-hidden"));
+    if (!unfocusable) found.push(tag);
   }
   return found;
 }
@@ -260,6 +268,17 @@ describe("포커스 링 (DESIGN §7)", () => {
    * 포커스를 받는 컨트롤이 늘 때마다 이 목록이 낡으므로, 아래가 **네 태그를 각각 먹여** 스캐너가
    * 실제로 집는지 본다.
    */
+  /**
+   * ⚠️ **면제를 넓힌 만큼 그 면제가 좁은지 센다** (2026-09-13). `tabIndex={-1}`만으로 빠지면
+   * 화면이 그것 하나를 붙여 링 검사를 통째로 우회할 수 있다.
+   */
+  it("포커스에서 빠지는 면제는 `tabIndex={-1}`와 `aria-hidden`을 함께 요구한다", () => {
+    expect(controls('<input tabIndex={-1} className="a" />')).toHaveLength(1);
+    expect(controls('<input aria-hidden className="b" />')).toHaveLength(1);
+    expect(controls('<input tabIndex={-1} aria-hidden className="c" />')).toEqual([]);
+    expect(controls('<input type="hidden" className="d" />')).toEqual([]);
+  });
+
   it("포커스를 받는 네 태그를 다 집는다 — button·input·select·textarea", () => {
     const fake = [
       `<button className="a">x</button>`,

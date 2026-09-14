@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline'",
               // 폰트는 자사 호스트다 (`public/fonts/` — CLAUDE.md 폰트 절).
               "font-src 'self'",
-              "img-src 'self' data: https://avatars.githubusercontent.com",
+              "img-src 'self' data: https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com",
               // GitHub 왕복은 브라우저 이동(navigation)이라 `connect-src`가 아니라 `form-action`이다.
               "connect-src 'self'",
               "form-action 'self' https://github.com",

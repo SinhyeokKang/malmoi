@@ -301,10 +301,19 @@ function Preview({
         role="region"
         tabIndex={0}
         aria-label={m.newProject.files.preview.rows}
-        className="focus-visible:ring-ring min-h-0 flex-1 overflow-auto focus-visible:ring-2 focus-visible:outline-none"
+        /*
+          ⚠️ **`flex flex-col`이다** — 예외 E의 빈 상태가 **표 헤더 아래 남은 높이의 중앙**에 서야 하고
+          (핸드오프 3a), 그 높이를 주는 것이 이 컨테이너뿐이다. 바깥 박스가 중앙을 잡으면 헤더까지
+          포함한 중앙이 되어 블록이 위로 밀린다.
+        */
+        className="focus-visible:ring-ring flex min-h-0 flex-1 flex-col overflow-auto focus-visible:ring-2 focus-visible:outline-none"
       >
         {/* ⚠️ **`scrollable={false}`다** — 스크롤을 이 div가 들어야 `Th`의 `sticky`가 그것을 기준으로 붙는다. */}
-        <Table scrollable={false} className="table-fixed">
+        {/*
+          ⚠️ **`shrink-0`이 flex 전환의 대가다** — flex 아이템은 기본이 `shrink:1`이라, 행이 많아
+          내용이 컨테이너를 넘으면 표가 눌릴 수 있다. 넘치는 만큼은 스크롤이 받는다.
+        */}
+        <Table scrollable={false} className="table-fixed shrink-0">
           {/*
             ⚠️ **`[&_tr]:border-b-0`이 `TableRow`가 아니라 여기 있다.** 프리셋과 **같은 요소·같은
             변형**이라 twMerge가 뒤엣것만 남기고 프리셋은 CSS로 나가지도 않는다. 행에 `border-b-0`을
@@ -367,7 +376,15 @@ function Preview({
           </TableBody>
           )}
         </Table>
-        {empty && <EmptyState icon={FileSearch2} className="py-8" title={m.newProject.files.preview.none} />}
+        {empty && (
+          <div className="flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={FileSearch2}
+              title={m.newProject.files.preview.none}
+              description={m.newProject.files.preview.noneDescription}
+            />
+          </div>
+        )}
       </div>
 
       {/* 총량 줄 — 스크롤 밖에 남는다. */}

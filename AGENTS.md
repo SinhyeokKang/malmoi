@@ -77,8 +77,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3` 고정) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
+| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 18개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 19개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). ⚠️ **고정 이유가 둘이다**: `lib/onboarding/budget.ts`가 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀌고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |
@@ -149,6 +150,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>]` (읽기 전용, exit 0) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
+| Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. 업로드·다운로드·삭제·404를 한 바퀴 돌고 **고아 후보를 삭제 없이 목록으로만** 낸다. ⚠️ `NODE_OPTIONS=--conditions=react-server`가 붙어 있다 — PII 복호 모듈이 `server-only`라서다) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
@@ -253,6 +255,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
 - **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 서버 로그). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
+- **⚠️ 제품 이름은 화면에서도 `malmoi`다 — 문장 첫 자리도 소문자다.** `lib/i18n/__tests__/brand-spelling.test.ts`가 같은 범위를 훑어 `malmoi` 아닌 표기(`Malmoi`·`MALMOI` …)를 0으로 고정한다. ⚠️ **2026-09-13에 한 화면에 둘이 같이 섰다** — 확인 Dialog가 `…from malmoi?`인데 바로 아래 Alert가 `…sign in to Malmoi…`였고, **둘 다 같은 사전에서 나온 값**이라 서로 다른 절에 살아 리뷰로는 안 걸렸다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.

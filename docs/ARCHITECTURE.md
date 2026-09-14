@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -651,11 +651,11 @@ snapshot → ingestTargets(순수) → readBlob × M
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
-Action에 적용되지 않으므로 **세 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
-`[slug]/settings/page.tsx` · **`[slug]/translations/page.tsx`**(7단계). **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
+Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
+`app/(edit)/projects/@modal/(.)new/page.tsx` · `[slug]/settings/page.tsx` · **`[slug]/translations/page.tsx`**(7단계). **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다.
 
-⚠️ **셋째의 이유는 시간이 아니라 판정이다** (§5.6.2) — 번역 화면의 [Send changes]가 그 세그먼트를 쓰고,
+⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — 번역 화면의 [Send changes]가 그 세그먼트를 쓰고,
 선언이 없으면 기본값 300이 `STALE_AFTER_SECONDS`(300)와 **같아져 정상 실행이 스스로를 stale로 본다.**
 즉 이 줄을 지우면 첫 적재가 아니라 **동시 실행 방어가** 깨진다.
 
@@ -1353,15 +1353,22 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 ⚠️ **`safePrismaAdapter.linkAccount`의 게이트는 한 줄도 안 바뀌었다** — 확인 왕복은 **기존 계정으로 하는
 평범한 로그인**이라 그 메서드에 도달하지 않고(`handle-login.js`가 `getUserByAccount` 뒤 반환한다),
 붙일 행은 `finishLink`가 직접 쓴다. **그 게이트가 문서화한 정책의 뜻만 좁아졌다**: *"로그인 수단은
-User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. 옆문은 `finishLink` 하나이고 인가 조건이
-셋이다(이메일 동등 · 두 provider의 소유 증명 · 단일 사용 challenge). **그 조건을 적을 수 없는 진입점은
-만들지 않는다** — `/account`에 [Connect]가 없는 이유다.
+User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. `finishLink`의 인가 조건은
+이메일 동등 · 두 provider의 소유 증명 · 단일 사용 challenge다.
 
-⚠️ **두 가로채기의 배타성은 구조가 아니라 순서와 쿠키 정리가 만든다.** `withRevocation`이 **바깥**,
-`withLoginLink`가 **안쪽**이고, 각자 state 쿠키를 **다른 이름·salt**로 쓰며, **시작하는 쪽이 상대의
-쿠키를 먼저 지운다**(양방향). intent 판정이 각자 쿠키 셋의 OR이라 암호적 결합이 없어서다 — 회수를
-중단한 사용자가 곧바로 병합을 시작하면 회수가 그 callback을 먹고 Location을 덮는다
-(POSTMORTEM 2026-09-10과 같은 계보).
+**account-connect 로컬 구현 · 배포 대기**: 둘째 옆문 `lib/account-connect/store.ts`의 `finishConnect`는
+살아 있는 기존 세션 · 새 provider의 검증된 동일 이메일 · 세션/state에 묶인 일회용 challenge를 요구한다.
+User 락 뒤 challenge를 다시 읽고 조건부 소비와 Account 생성을 한 트랜잭션으로 처리한다.
+`account.create` 허용 목록은 `safe-adapter` · `login-link/store` · `account-connect/store` · GitHub App
+callback 네 곳이며, Auth.js의 추가 Account 거부와 GitHub App 자격증명 경계는 그대로다.
+연결 가로채기는 회수와 병합 사이에 놓고, 모든 시작점이 `clearAuthRoundtripCookies()`로 세 목적의
+nonce/state 쿠키를 먼저 지운다. 제품 완료 표식과 정본 전면 반영은 프로덕션 반영 뒤에 한다.
+
+⚠️ **세 가로채기의 배타성은 순서와 쿠키 정리가 만든다.** 로컬 구현의 중첩 순서는
+`withRevocation(withConnect(withLoginLink(...)))`이며 각자 state 쿠키의 이름·salt를 가른다.
+시작점은 인자 없는 `clearAuthRoundtripCookies()` 한 자리에서 세 목적의 쿠키를 전부 지운다.
+intent는 쿠키 존재로도 켜지므로, 연결 시작이 OAuth state를 쓴 뒤 실패하면 같은 정리를 다시 한다.
+버려진 왕복이 다음 callback을 먹는 POSTMORTEM 2026-09-10 계열을 막기 위한 계약이다.
 
 ⚠️ **로그인 `Account`가 둘 이상이면 `planEmailRefresh`가 언제나 `keep`이다.** 아니면 `User.email`이
 **마지막으로 로그인한 provider에 따라 뒤집히고** 초대 대조가 그 값 위에 선다. 대가는 병합한 사용자의
@@ -1373,6 +1380,20 @@ User당 하나"* → *"Auth.js 경유로 둘째 행이 생기지 않는다"*. �
 Account가 있으면 거부한다. 신규 로그인 Account는 식별자 네 필드만 저장해 OAuth 토큰을 남기지 않는다.
 GitHub App 연결은 별도 callback이며 User 행 잠금으로 직렬화하고 UPDATE/DELETE에 `userId`를
 포함한다. P2002 재조회는 실패한 트랜잭션 밖에서 수행한다.
+
+⚠️ **그 거부 위에 [Connect] 경로가 섰다** (2026-09-13 — `lib/account-connect/`). 셋을 드는 자리가
+각각이다: ①·②는 `finishConnect`가 세션의 `User.email`과 provider가 검증한 이메일을 대조하고,
+③은 `VerificationToken`의 **세 번째 접두**를 쓰는 단일 사용 challenge다(`beginConnect`). 화면 쪽
+버튼은 `components/account/login-methods.tsx`의 미연결 행에 선다. ⚠️ **여기 "아직 안 만들었다"가
+남아 있었다** — PRODUCT §4.1의 같은 표기는 **프로덕션 기준**이라 그대로지만, 이 문서는 코드 기준이다.
+`/account`에서 로그인 수단을 붙이는 문이 생겨도 **`linkAccount`의 거부는 그대로다**:
+그것은 Auth.js 콜백을 지나는 **모든** 로그인에 걸린 방어선이고, 예외를 뚫어 통과시키면 sec-audit-2
+#31이 막은 모양이 그대로 돌아온다. 새 경로가 통과해야 하는 것 셋 — ① 현재 세션의 `User.email`과 새
+provider가 **검증한** 이메일이 같을 것 ② 새 provider의 소유를 그 왕복에서 증명할 것 ③ **단일 사용
+challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`를 쓰고, 쓰는 것은 식별자 네 필드뿐이다
+(토큰을 남기지 않는 것은 같다). ⚠️ **`lib/login-link`의 challenge를 그대로 재사용할 수 있다고
+전제하지 않는다** — 그쪽은 세션이 **없는** 흐름이라 challenge가 담는 것이 다르다(누구를 인증시킬
+것인가 vs 누구에게 붙일 것인가).
 
 **인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
@@ -1616,6 +1637,43 @@ GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한�
 
 `credentialIO`는 Prisma/crypto 예외를 원인 객체 없는 고정 오류로 바꾼다. `auth.ts`는 오류 타입만, `logFailure`는 HTTP 상태 또는 **오류 생성자 이름**만 기록한다(§6.5.1). 메시지·cause·암호문·lookup·키를 로그에 남기지 않는다. Auth.js SessionTokenError를 통한 readSession 장애 판정은 유지한다.
 
+### 6.7 프로필 이미지 저장 경계 (2026-09-13, 구현 완료·실 Blob 검증/배포 대기)
+
+`lib/upload/`는 사용자 프로필 사진 전용이다. `uploadProfileImage`·`deleteProfileImage`는 세션의
+`userId`로만 User 행을 읽고 쓰며, 프로젝트 멤버십을 요구하지 않는다. **검증된 이메일로 가입한
+비멤버도 공개 Vercel Blob 쓰기에 접근할 수 있고, 호출 빈도 제한은 없다.** 파일당 800,000바이트
+상한은 요청 횟수·비용 상한이 아니다. 화면 소비자 유무를 인가로 간주하지 않는다. 이번 구현에는
+쿨다운·추가 스키마를 넣지 않았으며, 배포 시 이 노출과 저장소 사용량을 확인한다.
+
+PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. 난수 키로 교체마다 URL이 바뀌며
+`User.image`는 PII 봉투에 넣는다. 쓰기 키 검증은 Blob 업로드보다 먼저다. 사용자 행 잠금 안에서
+이전 URL 조회와 DB 갱신을 직렬화하고, 이전 파일은 커밋 이후에만 지운다. 삭제는 복호화된 URL에
+대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
+실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
+
+### 6.8 표시 이름의 소유권 (2026-09-13)
+
+`User.name`은 **사용자 소유**이고 `User.email`은 provider 소유다. 이메일을 고칠 수 없는 근거는
+초대 대조가 검증된 주소 위에 선다는 것이고(§6.02), **그 논증은 이메일 축에서만 성립한다** — 이름은
+멤버 목록·초대에서 남이 나를 알아보는 값이라 provider의 표시 이름이 그 자리에 맞지 않을 수 있다.
+
+`updateProfileName`은 세션의 `userId`로만 행을 쓰고, `requireUser` 뒤에 `planNameSave`(트림 · 빈
+문자열 거부 · 코드포인트 상한)를 지난다. 거부는 **값**으로 돌아온다 — 던지면 사유가 `unavailable`로
+뭉개져 화면이 무엇을 고치라고 말하지 못한다. 무효화는 `revalidatePath("/", "layout")`이다(셸
+아바타·사용자 메뉴가 같은 값을 읽는다).
+
+⚠️ **`User.name`·`User.image`는 `User.email`과 같은 PII 봉투 대상이다** — `encodeUserFields` /
+`decodeUser`의 `["name","image"]` 루프가 그 둘을 봉인·복호한다. **평문을 직접 쓰면 다음
+`decodeUser`가 `CredentialError`로 죽고 그 사용자의 로그인·멤버 조회가 통째로 막힌다.**
+`prisma/schema.prisma`가 2026-09-13까지 그 사실을 `email`에만 적어 두어 스키마만 읽고 구현하면
+틀리는 자리였고, 지금은 세 컬럼 모두 주석을 든다.
+
+⚠️ **그 값을 덮을 수 있는 통로는 `credentialAdapter.updateUser` 하나이고, OAuth 재로그인은 그
+메서드를 부르지 않는다**(§6.6의 `planEmailRefresh` 문단과 같은 사실). 이름을 지키는 것이 그 계약
+하나뿐이므로 **양쪽을 따로 고정한다** — `adapter.test.ts`가 "부르면 덮는다", `access.test.ts`가
+"재로그인의 쓰기는 `email`·`emailLookup` 둘뿐"이다. **둘이 한 왕복에서 만나는 것을 보는 자리는
+`postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
+
 ## 7. Supabase / Prisma
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
@@ -1691,4 +1749,3 @@ GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한�
   plain/block scalar 의미가 따옴표 스캐너와 달라 직접 구문을 추정하면 우회와 오탐이 함께 났고
   (POSTMORTEM 2026-09-10), 실제 Lexer·CST로 옮기면서 내부 구조에 붙었다. 버전을 올릴 때 red를
   내는 것은 `budget.test.ts`뿐이라 스택 표에 그 사실을 적었다.
-

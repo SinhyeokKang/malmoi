@@ -22,7 +22,17 @@ export const en = {
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
     retry: "Try again",
-    appName: "Malmoi",
+    appName: "malmoi",
+    /**
+     * ⚠️ **구역이 다른 문구를 가져다 쓰지 않는다** (2026-09-13 리뷰). Sessions·GitHub 구역이
+     * `link.methods.cancel`을 빌려 쓰고 있었고, 그러면 Sign-in methods를 고칠 때 나머지 둘이
+     * 조용히 따라 움직인다. **공용으로 선언한 것을 쓰는 것은 빌려 쓰는 것이 아니다.**
+     * ⚠️ 기존 `members.cancel`·`archive.confirm.cancel`은 이번 범위 밖이라 그대로 둔다.
+     */
+    cancel: "Cancel",
+    /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
+    close: "Close",
+    dismiss: "Dismiss",
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -59,7 +69,7 @@ export const en = {
       newProject: "New project",
       userMenu: "Account menu",
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
-      appHome: "Malmoi home",
+      appHome: "malmoi home",
     },
     /**
      * 프로젝트 화면 오른쪽의 320px 패널 (8-2). **탭 둘만 세우고 내용은 8-P가 채운다** —
@@ -449,38 +459,115 @@ export const en = {
    */
   account: {
     profile: {
-      title: "Profile",
       /**
-       * ⚠️ **읽기 전용인 이유를 화면이 말한다.** 이름·이메일은 provider가 소유하고 재로그인마다
-       * `planEmailRefresh`가 갱신한다 — 여기서 고칠 수 있게 하면 초대 대조(ARCHITECTURE §6.02)가 검증되지
-       * 않은 주소 위에 서게 된다.
+       * ⚠️ **카드 설명문이 없어졌다** (2026-09-13). 머리 블록에는 설명 슬롯이 없고, 두 칸의
+       * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
+       * 화면 위쪽의 산문보다 필드 옆의 한 줄이 실제로 읽힌다.
        */
-      description: "Your name and email come from the account you sign in with, and refresh when you sign in again.",
       name: "Name",
       email: "Email",
+      /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
+      emailSource: "Comes from the account you sign in with.",
       /**
        * ⚠️ **이름 칸과 이메일 칸이 같은 문구를 쓴다.** 이메일은 검증된 주소 없이 로그인 자체가
        * 막히므로 사실상 안 나오고, 이름은 provider가 안 줄 수 있다 — 어느 쪽도 빈 칸을 남기지 않는다.
        */
       none: "None",
+      save: "Save",
+      /** ⚠️ **토스트가 아니다** — 이 리포에서 저장 결과를 토스트로 내는 자리는 0이다. */
+      saved: "Saved",
+      errors: {
+        empty: "Enter a name so people can recognize you.",
+        tooLong: (max: number): string => `Use ${max} characters or fewer.`,
+        unavailable: "We couldn't save your name. Try again in a moment.",
+      },
     },
     github: {
-      description: "Connect GitHub to see which repositories you can add.",
+      /**
+       * ⚠️ **이 문장이 드는 것은 기능이 아니라 축이다** — 같은 화면에 "GitHub"이 세 군데 나오고,
+       * 바로 위 구역이 **로그인 수단**이다. 전 문장(`Connect GitHub to see which repositories you
+       * can add.`)은 무엇을 할 수 있는지만 말해 그 구별을 못 했다.
+       */
+      description: "This is write access to your repositories, not a way to sign in.",
       notConnected: "Not connected.",
+      /**
+       * 연결된 행의 보조 줄.
+       *
+       * ⚠️ **프로젝트 수를 말하지 않는다** (2026-09-14 리뷰 🔴1). 전에는 `Connected · N projects use
+       * this connection`이었는데, 그 N이 세던 것은 **내가 OWNER인 모든 프로젝트**였고 그중 이 연결에
+       * 실제로 의존하는 것은 없었다 — 야간 pull·PR은 App **설치 토큰**이 내고 사용자 토큰을 한 줄도
+       * 안 읽는다. 숫자가 근거가 될 수 없어 걷었다.
+       */
+      connected: "Connected",
+      /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
+      rowName: "GitHub",
+      // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
+      confirmDisconnect: "Disconnect GitHub from malmoi?",
+      /**
+       * ⚠️ **이 문장이 해제 Dialog를 붙인 논거이고, 2026-09-14까지 거짓이었다** (리뷰 🔴1).
+       * 전 문장은 *"won't be able to read your repositories or open pull requests"* 였는데 **PR은 계속
+       * 열린다** — `selectPullTargets`가 고르고 `lib/github.ts`의 **설치 토큰**이 커밋·PR을 내며,
+       * `ensureUserToken`은 `lib/pull`·`lib/push` 어디에도 없다. 해제가 실제로 막는 것은 **새
+       * 프로젝트에서 리포를 고르는 일과 (재)연결**뿐이고, 그래서 문장이 그 둘만 말한다.
+       */
+      confirmHint: "You won't be able to add or reconnect repositories until you connect again. Projects that are already connected keep syncing.",
+    },
+    /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
+    sessionsSection: {
+      title: "Sessions",
+      description: "Close what's open right now.",
     },
     sessions: {
       title: "Sign out everywhere",
+      confirmTitle: "Sign out on all devices?",
+      confirmHint: "You'll confirm with the account you sign in with, then every device is signed out — including this one.",
+      /**
+       * ⚠️ **확정 라벨이 결과를 말한다** — 이 버튼은 일을 **끝내지 않는다.** 누르면 provider로
+       * 나가고 거기서 확인해야 로그아웃이 일어난다. "Sign out everywhere"라 적으면 그 왕복이
+       * 사용자에게 예고 없이 닥친다. 확인 상대는 서버가 결정적으로 고르므로(`pickLoginAccount`)
+       * 화면이 그 이름을 안다.
+       */
+      confirmAction: (provider: string): string => `Continue to ${provider}`,
+      /**
+       * Dialog의 **검은 줄** — *지금 참인 값*을 말한다(회색 설명문은 *무엇을 잃나*를 말한다).
+       * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
+       */
+      confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
       description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
-      wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
+      wrongAccount: "Choose the same account you use to sign in to malmoi, then try again.",
     },
     signOut: {
       title: "Sign out",
       description: "You'll need to sign in again to open your projects.",
+      /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
+      confirmTitle: "Sign out?",
+      /**
+       * ⚠️ **앞 문장이 신규다** — 되돌릴 수 없는 넷 중 이것만 잃는 것이 없다는 사실을 그 자리에서
+       * 말한다. 편집 중에 눌릴 수 있는 버튼이라 "저장 안 한 것이 날아가나"가 첫 질문이다.
+       */
+      confirmHint: "Unsent edits stay saved on malmoi. You'll need to sign in again to open your projects.",
+    },
+    picture: {
+      upload: "Image upload",
+      delete: "Delete",
+      /**
+       * ⚠️ **"as-is"가 EXIF를 안 벗긴다는 판정을 말하는 자리다** (2026-09-13 사용자). 빼면 그
+       * 판정이 화면에서 사라지고, 위치 정보가 실린 사진을 올린 사람이 그 사실을 알 길이 없다.
+       */
+      caption: "PNG or JPEG, up to 800 KB. Uploaded as-is.",
+      /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
+      noPicture: "You haven't added one yet.",
+      /**
+       * ⚠️ **막는 이유가 둘이라 문구도 둘이다** (2026-09-14 2차 리뷰 R5). 둘은 **사진이 없다**와
+       * **다른 하나가 돌고 있다**이고, 뒤의 것은 스피너가 **이 버튼에 없으므로** 화면에도 접근성
+       * 트리에도 아무 설명이 없었다 — 스크린리더에는 *"…, 버튼, 사용 불가"*까지만 들린다.
+       */
+      busy: "Wait for the current upload to finish.",
     },
   },
 
@@ -554,7 +641,7 @@ export const en = {
     empty: {
       connect: {
         title: "Connect your GitHub account",
-        description: "The connection is only used to see which repositories have the Malmoi app installed.",
+        description: "The connection is only used to see which repositories have the malmoi app installed.",
         action: "Connect GitHub",
         reauthorize: "Reconnect GitHub",
       },
@@ -564,7 +651,7 @@ export const en = {
       install: "Install the app",
       addRepos: "Add repositories to the installation",
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the Malmoi app on the repository.",
+      noLink: "Ask your administrator to install the malmoi app on the repository.",
       afterInstall: "Refresh this page once you're done.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
@@ -611,6 +698,13 @@ export const en = {
         /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
         option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
         none: "Nothing to preview yet",
+        /**
+         * ⚠️ **시안(3a)에 있던 설명이 2026-09-13까지 빠져 있었다** — `preview.none`이 처음 들어올
+         * 때부터 제목만이었고(eeff006), 우측이 제목 한 줄만 든 채로 "지금 뭘 해야 하나"를 아무도
+         * 말하지 않았다. 뒷문장이 좌측 `manual.hint`와 겹쳤으므로 **그쪽에서 뺐다** — 같은 문장을
+         * 화면에 두 번 두지 않는다.
+         */
+        noneDescription: "Set a path and malmoi will show the keys it finds. If no file matches, the project isn't created.",
         /** 키 행만 스크롤하는 영역의 이름 — 그 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다. */
         rows: "Preview rows",
         /**
@@ -638,7 +732,8 @@ export const en = {
           ),
         },
         baseLocale: "Base language",
-        hint: "Setting a path clears the selection above. If no file matches, the project isn't created.",
+        /** ⚠️ 뒷문장("If no file matches…")은 **우측 빈 상태**가 든다 — 둘 다 두면 한 화면에 두 번이다. */
+        hint: "Setting a path clears the selection above.",
       },
     },
 
@@ -1148,6 +1243,13 @@ export const en = {
       reauthorize: "Your GitHub authorization expired.",
       unavailable: "We couldn't load your account. Open this page again in a moment.",
       disconnect: "Disconnect",
+      /**
+       * ⚠️ **`"Disconnect GitHub"`으로는 부족하다** — 로그인 수단 해제의 접근 이름이 정확히 그
+       * 문자열이라 둘이 또 같아진다(2026-09-13 리뷰 뒤 실제로 한 번 그랬다). **이름이 구별해야 하는
+       * 것은 대상이 아니라 축이다**: 같은 "GitHub"이 이 화면에서 로그인 수단이기도 하고 리포 쓰기
+       * 권한이기도 하다. `aria-label`이 보이는 텍스트를 **포함**한다 (WCAG 2.5.3).
+       */
+      disconnectLabel: "Disconnect GitHub repository access",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
     },
   },
@@ -1202,18 +1304,61 @@ export const en = {
     footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
     methods: {
       title: "Sign-in methods",
-      description: "These are the accounts you can use to sign in. Adding one happens when you sign in with it at this same address.",
+      description: "Add another account with the same verified email to use it as a sign-in method.",
+      /**
+       * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
+       * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**
+       * 대상을 든다 — 음성 입력이 라벨로 컨트롤을 찾으므로 그 이름이 보이는 텍스트를 **포함**해야
+       * 한다 (WCAG 2.5.3).
+       */
+      connect: "Connect",
+      /**
+       * ⚠️ **`Connect ${provider}`였고 그것이 `m.settings.account.connect`(`"Connect GitHub"`)와
+       * 접근 이름까지 같았다** (2026-09-13). **Google로만 로그인하고 App을 한 번도 연결하지 않은
+       * 계정**에서 둘이 나란히 서고, 그것이 PRODUCT가 말하는 **비개발자 동료의 기본 상태**다 —
+       * GitHub으로 로그인하면 수단 행이 연결됨이라 이 조합이 안 생기고, 개발자 계정으로 보면
+       * 영영 안 밟는다. **이름이 드는 것은 대상이 아니라 축이다**(아래 `disconnectLabel`과 같다).
+       */
+      connectLabel: (provider: string): string => `Connect ${provider} as a sign-in method`,
+      /** 연결된 행의 보조 줄 — 미연결 행의 `notConnected`와 짝이다. 한쪽만 있으면 행 높이가 갈린다. */
+      connected: "Connected",
       notConnected: "Not connected",
       disconnect: "Disconnect",
+      /** 같은 이유로 축을 든다 — 아래 `GitHub account` 구역의 [Disconnect]와 글자가 같다. */
+      disconnectLabel: (provider: string): string => `Disconnect ${provider} as a sign-in method`,
       /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
-      disconnected: (provider: string): string => `${provider} is no longer a sign-in method.`,
     },
   },
 
   errors: {
+    /**
+     * 프로필 사진 업로드 거부 — `UploadReject` 넷 + Action의 `unavailable` + 폴백.
+     *
+     * ⚠️ **갈래마다 문구가 갈려야 한다** — 하나로 접으면 "무엇을 고치면 되는가"가 사라지고
+     * 사용자는 같은 파일을 다시 고른다.
+     */
+    upload: {
+      "too-large": "That picture is over 800 KB. Choose a smaller one.",
+      "unsupported-type": "That file isn't a PNG or JPEG. Choose one of those.",
+      "not-a-file": "No picture was received. Choose a file and try again.",
+      empty: "That file is empty. Choose another one.",
+      unavailable: "We couldn't save that picture. Try again in a moment.",
+      fallback: "We couldn't use that picture. Choose a PNG or JPEG under 800 KB.",
+    },
+    connectMethod: {
+      connected: "Sign-in method added. You can use it next time you sign in.",
+      "email-mismatch": "The email doesn't match this account. Try an account with the same verified email.",
+      "already-connected": "This sign-in method is already added. You can use it to sign in.",
+      "taken-by-other": "This sign-in method belongs to another malmoi account. Try a different account.",
+      expired: "This request expired or was replaced. Start again from the Sign-in methods list.",
+      cancelled: "Adding the sign-in method was cancelled. Start again when you're ready.",
+      unverified: "No verified email was provided. Verify your email with the provider before trying again.",
+      "wrong-user": "Your session changed during this request. Start again from the Sign-in methods list.",
+      failed: "The sign-in method couldn't be added. Try again in a moment.",
+    },
     /** `accessErrorMessage` — `AccessError` 여섯. */
     access: {
       unauthorized: "Your session ended. Sign in again to save your work.",
@@ -1299,10 +1444,10 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "No GitHub account has the Malmoi app installed. Install the app first.",
+      "no-installations": "No GitHub account has the malmoi app installed. Install the app first.",
       "no-repos": "This installation has no repositories selected. Add one in your GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      "no-candidates": "We couldn't find locale files. Malmoi needs locale files in 2 or more languages.",
+      "no-candidates": "We couldn't find locale files. malmoi needs locale files in 2 or more languages.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       "tree-truncated": "This repository has too many files to search. Setting the path yourself hits the same limit.",
       "base-branch-missing": "We can't read the default branch. Check that the repository has commits.",

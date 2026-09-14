@@ -12,14 +12,14 @@ const ROOT = process.cwd();
  */
 it("회수 시작이 병합 쿠키를 먼저 지운다", () => {
   const source = readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8");
-  expect(source).toContain("clearLinkCookies(");
-  expect(source.indexOf("clearLinkCookies(")).toBeLessThan(source.indexOf("beginRevocation("));
+  expect(source).toContain("clearAuthRoundtripCookies(");
+  expect(source.indexOf("clearAuthRoundtripCookies(")).toBeLessThan(source.indexOf("beginRevocation("));
 });
 
 it("병합 시작이 회수 쿠키를 먼저 지운다", () => {
   const source = readFileSync(join(ROOT, "app/signin/link/[challenge]/page.tsx"), "utf8");
-  expect(source).toContain("clearRevocationCookies(");
-  expect(source.indexOf("clearRevocationCookies(")).toBeLessThan(source.lastIndexOf("signIn("));
+  expect(source).toContain("clearAuthRoundtripCookies(");
+  expect(source.indexOf("clearAuthRoundtripCookies(")).toBeLessThan(source.lastIndexOf("signIn("));
   // 시작 스코프 안에서 signIn을 불러야 state가 우리 쿠키 이름으로 저장된다.
   expect(source).toMatch(/withLinkStart\(/);
 });
@@ -41,9 +41,9 @@ it("어댑터 게이트가 그대로이고 직접 쓰는 자리가 하나뿐이�
    * ⚠️ **`Account` 행을 만드는 자리의 허용 목록이다.** 셋의 축이 각각 다르다:
    * 어댑터(Auth.js 경유 첫 로그인) · 병합(우리가 직접 쓰는 **로그인 수단**) ·
    * GitHub App 연결(`github-app` — **로그인 수단이 아니라 리포 쓰기 권한**이다).
-   * 넷째가 생기면 "로그인 수단은 User당 하나"의 예외가 문서 없이 하나 더 생긴 것이다.
+   * 넷째는 account-connect다: 살아 있는 세션과 새 provider의 검증된 이메일·OAuth 증명을 묶는다.
    */
-  const creators = ["lib/login-link/store.ts", "lib/auth/safe-adapter.ts", "app/api/github/callback/route.ts"];
+  const creators = ["lib/account-connect/store.ts", "lib/login-link/store.ts", "lib/auth/safe-adapter.ts", "app/api/github/callback/route.ts"];
   const scan = (dir: string): string[] =>
     readdirSync(dir).flatMap((entry: string) => {
       if (entry === "node_modules" || entry === "generated" || entry.startsWith(".")) return [];

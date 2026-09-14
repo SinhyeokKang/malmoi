@@ -32,7 +32,7 @@ describe("manual format hint", () => {
   });
 
   it("서버가 어댑터의 layout을 그대로 내려준다", () => {
-    const src = read("app/(edit)/projects/new/page.tsx");
+    const src = read("app/(edit)/projects/new-project-modal.tsx");
     // 리터럴로 적으면 어댑터를 더할 때 조용히 틀린다 — 값의 출처가 `Adapter.layout` 하나여야 한다.
     expect(src).toMatch(/layout:\s*adapter\.layout/);
     expect(src).not.toMatch(/layout:\s*"(per|multi)-locale"/);

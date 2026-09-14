@@ -14,7 +14,12 @@ export function Avatar({
 }: {
   name: string;
   src?: string | null;
-  size?: 16 | 24 | 32;
+  /**
+   * ⚠️ **56은 `/account` 머리 하나다** (2026-09-13). 유니온을 넓힌 것은 그 자리 때문이고,
+   * **글자 크기가 `size`를 따라간다** — 56에 13px 이니셜은 점처럼 보인다.
+   * ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 이미 받아 `<img>`를 그린다.
+   */
+  size?: 16 | 24 | 32 | 56;
   shape?: "circle" | "square";
   className?: string;
 }) {
@@ -36,7 +41,8 @@ export function Avatar({
          *
          * ⚠️ **글자가 흰색이다** — 채워진 배경 위라 `text-foreground/60`은 안 읽힌다.
          */
-        "inline-flex shrink-0 items-center justify-center text-xs font-medium text-white",
+        "inline-flex shrink-0 items-center justify-center font-medium text-white",
+        size === 56 ? "text-xl" : "text-xs",
         toneFill(name),
         shapeClass,
         className,

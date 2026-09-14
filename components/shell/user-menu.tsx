@@ -20,9 +20,16 @@ import { routes } from "@/lib/routes";
  * top bar 우측. **항목 둘이다** — 계정과 로그아웃. 앞의 것은 6b-4가 `/account`를 만들면서 붙었다
  * (6a 시점에는 갈 곳이 없어 로그아웃 하나였다).
  *
- * ⚠️ **아바타 이미지를 싣지 않는다** — `SessionRead`가 `name`·`email`만 든다. GitHub 아바타를 넣으려면
- * `publicSession`이 필드를 하나 더 실어야 하고, 그건 모든 요청의 세션 페이로드를 넓히는 결정이다.
- * 이니셜 폴백으로 충분하다.
+ * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
+ * 이니셜뿐이었고, **여기 적혀 있던 근거의 뒷문장이 거짓이었다**: *"`publicSession`이 필드를 하나 더
+ * 실어야 하고 그건 모든 요청의 세션 페이로드를 넓히는 결정이다."*
+ *
+ * `lib/auth/public-session.ts`의 허용 목록에는 **`image`가 이미 있었다** — `/api/auth/session` 본문은
+ * 전부터 사진 URL을 실었고, 떨어뜨리던 것은 `lib/auth/read-session.ts`의 `SessionRead` 하나였다.
+ * **세션 페이로드는 안 커진다.** 남겨 두면 다음 사람이 같은 비용을 다시 계산한다.
+ *
+ * ⚠️ **셸 32와 `/account` 56이 같은 얼굴이어야 한다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 되고,
+ * 아바타 56의 존재 이유(*"셸의 32와 같은 판정·같은 입력"*)가 자기 손으로 깨진다.
  *
  * ⚠️ 이메일을 마스킹하지 않는다 — **자기 주소**다. 남의 주소를 보이는 자리(초대 화면·셀 메타)만
  * `maskEmail`을 지난다.
@@ -30,10 +37,12 @@ import { routes } from "@/lib/routes";
 export function UserMenu({
   name,
   email,
+  image,
   signOut,
 }: {
   name: string;
   email: string | null;
+  image: string | null;
   signOut: () => void;
 }) {
   return (
@@ -44,7 +53,7 @@ export function UserMenu({
           위아래로 2px씩 삐져나왔고, 시안의 헤더는 딱 32 정사각이다.
         */}
         <Button variant="ghost" aria-label={m.common.nav.userMenu} className="size-8 rounded-full p-0">
-          <Avatar name={name} size={32} />
+          <Avatar name={name} src={image} size={32} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

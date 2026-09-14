@@ -7,17 +7,13 @@ const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replac
 const CARD = strip(readFileSync(join(ROOT, "components/account/login-methods.tsx"), "utf8"));
 const PAGE = strip(readFileSync(join(ROOT, "app/(edit)/account/page.tsx"), "utf8"));
 const ACTIONS = strip(readFileSync(join(ROOT, "app/(edit)/account/actions.ts"), "utf8"));
+const GITHUB_SECTION = strip(readFileSync(join(ROOT, "components/account/github-section.tsx"), "utf8"));
 
-/**
- * `/account`의 로그인 수단 카드 (account-linking T5).
- *
- * ⚠️ **[Connect]를 두지 않는다** (design ⑨). 이유 둘: ① 로그인된 세션을 근거로 `Account`를 붙이는
- * 경로는 **sec-audit-2 #31이 막은 바로 그 자리**이고, 그 문의 인가 조건(이메일 동등 + 두 provider
- * 소유 증명 + 단일 사용 challenge)을 `/account`에서는 못 적는다. ② 같은 주소 연결은 흐름 ①이
- * 이미 잡는다 — 로그아웃 후 그 provider로 로그인하면 된다.
- */
-it("해제만 있고 연결 버튼이 없다", () => {
+/** 로그인 수단 추가는 별도 challenge 경로를 쓴다. GitHub App 연결과 섞지 않는다. */
+it("로그인 수단 추가는 GitHub App 연결과 분리된다", () => {
   expect(CARD).toContain("unlinkLoginMethod");
+  expect(CARD).toContain("startLoginMethodConnect.bind");
+  expect(CARD).toContain("useFormStatus");
   expect(CARD).not.toMatch(/\bConnect\b/);
   expect(CARD).not.toContain("startGithubConnectForUser");
   expect(CARD).not.toContain("signIn(");
@@ -34,9 +30,12 @@ it("마지막 수단은 비활성이고 사유가 그 행 옆에 있다", () => 
 });
 
 /**
- * ⚠️ **해제에 확인 `Dialog`가 있다.** `DisconnectGithubButton`이 확인 없이 한 번 클릭인 것은 그쪽이
- * **다시 누르면 복구되는** GitHub App 연결이어서다 — 로그인 수단 해제는 되돌리려면 OAuth 왕복
- * 전체가 필요하고, spec §6이 그것을 알림 부재의 보상으로 든다. 멤버 제거와 같은 무게다.
+ * ⚠️ **해제에 확인 `Dialog`가 있다.** 되돌리려면 OAuth 왕복 전체가 필요하고, spec §6이 그것을 알림
+ * 부재의 보상으로 든다 — 멤버 제거와 같은 무게다.
+ *
+ * ⚠️ **"`DisconnectGithubButton`은 확인 없이 한 번 클릭"이라는 옛 근거를 지웠다** (2026-09-13에
+ * 그쪽에도 Dialog가 붙었다). **복구가 쉬운 것과 결과가 가벼운 것은 다른 축이다** — 프로덕션 주석은
+ * 그때 고쳤는데 이 사본이 남아 다음 사람에게 비대칭을 정당화하고 있었다 (2026-09-14 리뷰 🟢6).
  */
 it("해제가 확인을 한 번 받는다", () => {
   expect(CARD).toContain("DialogContent");
@@ -69,7 +68,13 @@ it("결과를 보내는 쪽과 읽는 쪽이 같은 커밋에 있다", () => {
  * 구별이 화면에서 보여야 한다. 카드 제목·설명이 그 일을 한다.
  */
 it("GitHub App 연결 카드와 제목이 갈린다", () => {
-  expect(PAGE).toContain("m.link.methods.title");
-  expect(PAGE).toContain("m.settings.account.title");
-  expect(PAGE.indexOf("m.link.methods.title")).toBeLessThan(PAGE.indexOf("m.settings.account.title"));
+  /**
+   * ⚠️ **제목이 화면 파일에서 구역 컴포넌트로 내려갔다** (2026-09-13 — 머리 하나 + 리스트 셋).
+   * 구별을 카드 설명문에 맡기던 것이 이 재편의 원인이었으므로, 지금 그 일을 하는 것은 **구역
+   * 제목**이다. 순서는 화면이 정하므로 그쪽에서 잰다.
+   */
+  expect(CARD).toContain("m.link.methods.title");
+  expect(GITHUB_SECTION).toContain("m.settings.account.title");
+  expect(PAGE.indexOf("<LoginMethods")).toBeLessThan(PAGE.indexOf("<GithubSection"));
+  expect(PAGE.indexOf("<LoginMethods")).toBeGreaterThan(-1);
 });

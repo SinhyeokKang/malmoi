@@ -31,7 +31,8 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
       const row = await prisma.user.create({ data: { id, emailVerified: user.emailVerified, ...rest, email, emailLookup } });
       return decodeUser(row);
     },
-    async updateUser({ id, ...fields }) {
+    async updateUser({ id, image: _providerImage, ...fields }) {
+      // Provider updates must preserve the user's uploaded picture, including an explicit deletion.
       const row = await prisma.user.update({ where: { id }, data: { ...encodeUserFields(id, fields), ...(fields.emailVerified !== undefined ? { emailVerified: fields.emailVerified } : {}) } });
       return decodeUser(row);
     },

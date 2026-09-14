@@ -382,12 +382,17 @@ model SyncRun {
 /// (design §2.1) — 이 컬럼을 그 판정의 근거로 읽으면 안 된다.
 model User {
   id            String    @id @default(cuid())
+  /// ⚠️ **email과 같은 AES-GCM envelope 대상이다** — `encodeUserFields`/`decodeUser`의 `["name","image"]`
+  /// 루프가 이 둘을 봉인·복호한다. **평문을 직접 쓰면 다음 `decodeUser`가 `CredentialError`로 죽고**
+  /// 그 사람의 로그인·멤버 조회가 통째로 막힌다. 쓰는 자리는 반드시 `encodeUserFields`를 지난다.
   name          String?
   /// 정규화한 주소의 AES-GCM envelope. 정확 일치 조회는 별도 HMAC emailLookup을 쓴다.
   email         String
   /// R1 준비 단계 nullable. 차단 backfill·검증 후 R2에서 NOT NULL로 전환한다.
   emailLookup   String?   @unique
   emailVerified DateTime?
+  /// ⚠️ **name과 같은 envelope 대상이다** (위 주석). 값은 Vercel Blob의 공개 URL이고 그 URL 자체가
+  /// 사용자 식별자를 담으므로 봉투를 지난다.
   image         String?
   createdAt     DateTime  @default(now())
 

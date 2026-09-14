@@ -80,7 +80,8 @@ export function PendingInvitations({
         {invitations.map((invitation) => (
           <tr key={invitation.id}>
             {/* 라벨은 서버가 목록 전체를 보고 만든다 — 원문은 여기 오지 않는다 (sec-audit 발견 4). */}
-            <Td className="text-mono">{invitation.emailLabel}</Td>
+            {/* ⚠️ 주소는 sans다 (2026-09-13) — `member-list.tsx`와 같은 자리다. */}
+            <Td>{invitation.emailLabel}</Td>
             <Td>{m.projects.role[invitation.role]}</Td>
             <Td className="text-muted-foreground text-xs">{relativeTime(invitation.expiresAt, now)}</Td>
             <Td className="text-muted-foreground text-xs">

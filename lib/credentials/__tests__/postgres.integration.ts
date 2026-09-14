@@ -1,3 +1,5 @@
+import { beginConnect, finishConnect } from "@/lib/account-connect/store";
+import { authorizeConnect, withConnect, withConnectStart, connectAuthCookies } from "@/lib/account-connect/http";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, mkdirSync, cpSync, writeFileSync } from "node:fs";
@@ -85,7 +87,7 @@ it("backfill preserves IDs, FKs, invitations and expiry; a second run is a no-op
   await convertCredentials(prisma, { mode: "backfill", ...cutover });
   const users = await prisma.user.findMany();
   expect(users.map(u => u.id).sort()).toEqual([ids.u1, ids.u2]);
-  expect(decodeUser(users.find(u => u.id === ids.u1)!)).toMatchObject({ email: "alice@example.com", name: "Alice" });
+  expect(decodeUser(users.find(u => u.id === ids.u1)!)).toMatchObject({ email: "alice@example.com", name: "Alice", image: "https://images.example/alice" });
   expect(await prisma.projectInvitation.findUnique({ where: { id: ids.i1 } })).toMatchObject({ tokenHash: "unchanged-hash", projectId: ids.p1, invitedBy: ids.u1 });
   expect(await prisma.projectMember.count()).toBe(1);
   expect(await prisma.session.findMany()).toHaveLength(1);
@@ -177,10 +179,10 @@ it("PII/token rotation, partial reindex, missing-key recovery and backup restore
  * 옮기면 스위트가 green이면서 새 코드를 한 줄도 안 돈다 (POSTMORTEM 2026-09-10).
  * 지금 미러링하는 것은 셋이다: 회수 · 병합 확인 · 병합 제안.
  */
-function fakeAuth(provider: "github" | "google", identity: string, revocation = false, link = false) {
-  const intercepted = revocation || link;
+function fakeAuth(provider: "github" | "google", identity: string, revocation = false, link = false, connect = false) {
+  const intercepted = revocation || link || connect;
   const handlers = NextAuth(() => ({
-    cookies: revocationAuthCookies() ?? linkAuthCookies(),
+    cookies: revocationAuthCookies() ?? connectAuthCookies() ?? linkAuthCookies(),
     trustHost: true, secret: "fixture-secret-fixture-secret-fixture-secret", basePath: "/api/auth",
     adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 86400, updateAge: 3600, generateSessionToken: () => randomBytes(32).toString("base64url") },
     providers: [{ id: provider, name: provider, type: "oauth", checks: intercepted ? ["pkce", "state"] : ["none"], clientId: "fixture", clientSecret: "fixture",
@@ -193,9 +195,13 @@ function fakeAuth(provider: "github" | "google", identity: string, revocation = 
     callbacks: {
       session: ({ session, user }) => publicSession({ session, user }),
       // 프로덕션과 **같은 순서**다: 회수 → 병합 확인 → 이메일 갱신 → 병합 제안.
-      signIn: async ({ user, account }) => {
+      signIn: async ({ user, account, profile }) => {
         if (revocation) {
           const outcome = await authorizeRevocation(prisma, account);
+          if (outcome !== null) return outcome;
+        }
+        if (connect) {
+          const outcome = await authorizeConnect(prisma, account, typeof profile?.email === "string" ? profile.email : null);
           if (outcome !== null) return outcome;
         }
         if (link) {
@@ -214,8 +220,8 @@ function fakeAuth(provider: "github" | "google", identity: string, revocation = 
     logger: { error: noteAuthError },
   })).handlers;
   return intercepted ? {
-    GET: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.GET(callbackRequest))),
-    POST: (req: NextRequest) => withRevocation(req, () => withLoginLink(req, callbackRequest => handlers.POST(callbackRequest))),
+    GET: (req: NextRequest) => withRevocation(req, () => withConnect(req, () => withLoginLink(req, callbackRequest => handlers.GET(callbackRequest)))),
+    POST: (req: NextRequest) => withRevocation(req, () => withConnect(req, () => withLoginLink(req, callbackRequest => handlers.POST(callbackRequest)))),
   } : handlers;
 }
 it.each(["github", "google"] as const)("installed Auth.js %s callback stores digest, rejects digest-cookie, renews and signs out", async provider => {
@@ -236,8 +242,23 @@ it.each(["github", "google"] as const)("installed Auth.js %s callback stores dig
   const publicResponse = await read(raw);
   expect(await publicResponse.json()).toMatchObject({ user: { id: session.userId, email: `${provider}@example.com` } });
   expect(await (await read(session.sessionToken)).json()).toBeNull();
+  /**
+   * ⚠️ **사용자가 고친 이름이 재로그인을 넘긴다** (account-settings 태스크 2·10b). `/account`의
+   * `updateProfileName`이 `User.name`을 사용자 소유로 만들었고, 그 값을 덮을 수 있는 통로는
+   * 어댑터의 `updateUser` 하나다 — **OAuth 재로그인은 그 메서드를 부르지 않는다**는 것이 계약이다.
+   *
+   * ⚠️ **단위 테스트가 그 계약의 양쪽을 따로 든다**(`adapter.test.ts`가 "부르면 덮는다",
+   * `access.test.ts`가 "재로그인의 쓰기는 이메일 둘뿐"). **둘이 실제로 한 왕복에서 만나는 것을
+   * 보는 자리가 여기뿐이다** — provider가 profile을 어떻게 주든 봉투 안의 이름이 살아남는지는
+   * 실 Auth.js 핸들러를 지나야만 알 수 있다.
+   */
+  await prisma.user.update({ where: { id: session.userId }, data: encodeUserFields(session.userId, { name: "Edited by the user" }) });
   const relogin = await handlers.GET(new NextRequest(`http://localhost/api/auth/callback/${provider}?code=fixture`, { headers: { cookie: `authjs.session-token=${raw}` } }));
   expect(relogin.headers.get("location")).toBe("http://localhost");
+  const afterRelogin = decodeUser(await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { id: true, name: true, email: true } }));
+  expect(afterRelogin.name).toBe("Edited by the user");
+  // 저장된 것은 평문이 아니다 — 봉투를 지나지 않으면 다음 `decodeUser`가 통째로 죽는다.
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { name: true } })).name).toMatch(/^enc:v1:/);
   expect(await prisma.user.count()).toBe(1);
   expect(await prisma.account.count({ where: { userId: session.userId } })).toBe(1);
   await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: new Date(Date.now() + 10000) } });
@@ -732,4 +753,116 @@ it("a merge started right after an abandoned revocation still receives its own c
   const response = await callback(abandoned);
   expect(response.headers.get("location")).toBe(`http://localhost${landing}`);
   expect(response.headers.get("location")).not.toContain("sessionRevocation=");
+});
+
+async function connectFixture(provider: "github" | "google" = "google") {
+  const fixture = await revocationFixture(provider === "google" ? "github" : "google");
+  return { ...fixture, proof: { ...fixture.input, provider, providerAccountId: "new-method", verifiedEmail: "revoke@example.com" } };
+}
+it("connect consumes exactly once and preserves sessions and other purposes", async () => {
+  const { proof } = await connectFixture();
+  await prisma.verificationToken.create({ data: { identifier: "other-purpose", token: "untouched", expires: new Date(Date.now() + 300000) } });
+  expect(await beginConnect(prisma, proof)).toBe("ready");
+  expect((await Promise.all([finishConnect(prisma, proof), finishConnect(prisma, proof)])).sort()).toEqual(["connected", "expired"]);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(3);
+  expect(await prisma.user.count()).toBe(2);
+  expect(await prisma.verificationToken.findMany()).toEqual([expect.objectContaining({ identifier: "other-purpose" })]);
+  expect(await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: "new-method" } } })).toMatchObject({ userId: proof.userId, access_token: null, refresh_token: null, id_token: null });
+});
+it("a replaced connect challenge cannot delete or consume another purpose", async () => {
+  const { proof, input } = await connectFixture();
+  await beginRevocation(prisma, input);
+  await beginConnect(prisma, proof);
+  const next = { ...proof, nonce: randomBytes(32).toString("base64url") };
+  await beginConnect(prisma, next);
+  expect(await finishConnect(prisma, proof)).toBe("expired");
+  expect(await finishConnect(prisma, next)).toBe("connected");
+  expect(await prisma.verificationToken.count()).toBe(1);
+});
+it.each([
+  [{ verifiedEmail: "other@example.com" }, "email-mismatch"],
+  [{ verifiedEmail: null }, "unverified"],
+  [{ sessionToken: "other-device" }, "wrong-user"],
+  [{ state: "wrong" }, "failed"],
+] as const)("rejected connect proof %j keeps the challenge", async (change, outcome) => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  expect(await finishConnect(prisma, { ...proof, ...change })).toBe(outcome);
+  expect(await prisma.verificationToken.count()).toBe(1);
+  expect(await prisma.account.count()).toBe(1);
+});
+it("a taken provider is rejected before writes and never moved", async () => {
+  const { proof, other } = await connectFixture();
+  await prisma.account.create({ data: { userId: other.id, provider: "google", providerAccountId: proof.providerAccountId, type: "oauth" } });
+  await beginConnect(prisma, proof);
+  expect(await finishConnect(prisma, proof)).toBe("taken-by-other");
+  expect(await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: proof.providerAccountId } } })).toMatchObject({ userId: other.id });
+  expect(await prisma.verificationToken.count()).toBe(1);
+});
+it("a session revoked during the connect roundtrip cannot authorize a write", async () => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  await prisma.session.deleteMany({ where: { userId: proof.userId } });
+  expect(await finishConnect(prisma, proof)).toBe("wrong-user");
+  expect(await prisma.account.count()).toBe(1);
+});
+it("a changed current email cannot reuse an older matching provider proof", async () => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  await prisma.user.update({ where: { id: proof.userId }, data: encodeUserFields(proof.userId, { email: "changed@example.com" }) });
+  expect(await finishConnect(prisma, proof)).toBe("email-mismatch");
+  expect(await prisma.account.count()).toBe(1);
+  expect(await prisma.verificationToken.count()).toBe(1);
+});
+it("database failure rolls back connect consumption", async () => {
+  const { proof } = await connectFixture();
+  await beginConnect(prisma, proof);
+  await pool.query(`CREATE FUNCTION fail_connect_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'private'; END $$; CREATE TRIGGER fail_connect_insert BEFORE INSERT ON "Account" FOR EACH ROW EXECUTE FUNCTION fail_connect_insert();`);
+  expect(await finishConnect(prisma, proof)).toBe("failed");
+  expect(await prisma.verificationToken.count()).toBe(1);
+  expect(await prisma.account.count()).toBe(1);
+});
+async function connectOAuth(provider: "github" | "google", identity = "revoke") {
+  const fixture = await connectFixture(provider);
+  const handlers = fakeAuth(provider, identity, true, true, true);
+  const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
+  const csrfToken = (await csrf.json()).csrfToken;
+  const cookie = csrf.headers.getSetCookie().map(c => c.split(";")[0]).join("; ");
+  const signin = await withConnectStart(false, () => handlers.POST(new NextRequest(`http://localhost/api/auth/signin/${provider}`, { method: "POST", headers: { cookie, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: "http://localhost/account?connect=expired" }) })));
+  const state = new URL(signin.headers.get("location")!).searchParams.get("state")!;
+  expect(state).toBeTruthy();
+  expect(signin.headers.getSetCookie().join(";")).toContain("malmoi-connect-state=");
+  const proof = { ...fixture.proof, state, providerAccountId: identity };
+  expect(await beginConnect(prisma, proof)).toBe("ready");
+  const jar = [...signin.headers.getSetCookie().map(c => c.split(";")[0]), "authjs.session-token=current", `malmoi-account-connect=${proof.nonce}`].join("; ");
+  const callback = (sentCookie = jar, query = `code=fixture&state=${encodeURIComponent(state)}`) => handlers.GET(new NextRequest(`http://localhost/api/auth/callback/${provider}?${query}`, { headers: { cookie: sentCookie } }));
+  return { ...fixture, jar, callback };
+}
+it.each(["github", "google"] as const)("real Auth.js %s connects without changing sessions or signing up", async provider => {
+  const { callback } = await connectOAuth(provider);
+  const before = await prisma.session.findMany();
+  const response = await callback();
+  expect(response.headers.get("location")).toBe("http://localhost/account?connect=connected");
+  expect(await prisma.session.findMany()).toEqual(before);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.user.count()).toBe(2);
+});
+it.each((["github", "google"] as const).flatMap(provider => (["missing", "renamed", "nonce-only", "state-only"] as const).map(mode => ({ provider, mode }))))("connect intent $provider/$mode cannot become a normal login", async ({ provider, mode }) => {
+  const { jar, callback } = await connectOAuth(provider, "new-stranger");
+  let sent = jar.split("; ");
+  if (mode !== "nonce-only") sent = sent.filter(c => !c.startsWith("malmoi-account-connect="));
+  if (mode === "nonce-only") sent = sent.filter(c => !c.startsWith("malmoi-connect-state="));
+  if (mode === "missing") sent = sent.filter(c => !c.startsWith("malmoi-connect-state="));
+  if (mode === "renamed") sent = sent.map(c => c.replace(/^malmoi-connect-state=/, "authjs.state="));
+  const response = await callback(sent.join("; "));
+  expect(response.headers.get("location")).not.toContain("connect=connected");
+  expect(await prisma.user.count()).toBe(2);
+  expect(await prisma.account.count()).toBe(1);
+  expect(await prisma.session.count()).toBe(3);
+});
+it("provider cancellation returns a connect reason", async () => {
+  const { callback, jar } = await connectOAuth("google");
+  expect((await callback(jar, "error=access_denied")).headers.get("location")).toBe("http://localhost/account?connect=cancelled");
+  expect(await prisma.account.count()).toBe(1);
 });

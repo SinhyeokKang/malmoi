@@ -55,6 +55,7 @@ describe("보안 응답 헤더 (sec-audit 9)", () => {
     expect(report).toContain("base-uri 'self'");
     // 폰트는 자사 호스트다 — 서브셋을 `public/fonts/`에서 낸다 (CLAUDE.md).
     expect(report).toContain("font-src 'self'");
+    expect(report?.split("; ").find((directive) => directive.startsWith("img-src "))).toBe("img-src 'self' data: https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com");
   });
 
   it("enforce 쪽에 `default-src`를 넣지 않는다 — Report-Only와 섞이면 그게 곧 enforce다", async () => {

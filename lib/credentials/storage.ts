@@ -27,6 +27,10 @@ export function validateCredentialKeys(): void {
  */
 export function validatePiiReadKeys(): void { keys("PII"); }
 
+export function validatePiiWriteKey(): void {
+  if (!keys("PII").has(requireEnv("PII_ENCRYPTION_ACTIVE_KEY_ID"))) throw new CredentialError();
+}
+
 export function validateTokenWriteKey(): void {
   if (!keys("TOKEN").has(requireEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID"))) throw new CredentialError();
 }

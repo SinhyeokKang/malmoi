@@ -147,6 +147,23 @@ describe("OnboardingModal — 높이가 뷰포트에 물린다 (design §8)", ()
     expect(body.className).not.toContain("overflow-y-auto");
   });
 
+  /**
+   * ⚠️ **폭 800 · 최대 높이 800이다** (2026-09-13 사용자). 폭은 핸드오프 값으로 돌아왔고 — ②의 값 셀이
+   * 덜 보이는 것을 감수한 결정이다 — 높이는 **뷰포트만이 아니라 절대값에도** 물린다: 세로로 긴
+   * 화면에서 80svh가 800px을 넘어가면 네 단계 중 어느 것도 그 높이를 채우지 못해 빈 판이 된다.
+   *
+   * ⚠️ **`min-h`에도 800이 들어간다** — CSS에서 `min-height`가 `max-height`를 이기므로, 상한만
+   * 800으로 막고 하한을 80svh로 두면 1,100px 화면에서 하한이 이겨 상한이 없는 것과 같아진다.
+   */
+  it("폭 800 · 높이 상한 800에 물린다", async () => {
+    await render(shell());
+
+    const panel = find<HTMLElement>(document.body, "[data-onboarding-panel]");
+    expect(panel.className).toContain("max-w-[800px]");
+    expect(panel.className).toContain("max-h-[min(800px,");
+    expect(panel.className).toContain("min-h-[min(80svh,800px,");
+  });
+
   it("`vh`가 아니라 `svh`다 — 리포 관용구가 `svh`이고 셸이 `h-svh`다", async () => {
     await render(shell());
 

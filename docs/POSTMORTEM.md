@@ -1254,3 +1254,276 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `İ`의 소문자 변환은 `i`와 결합 점 두 코드 유닛이다. 변환 후의 검색 위치를 길이가 다른 원문에 그대로 적용했다.
 - **그물**: 기존 영문 검색 테스트는 소문자화 전후 길이가 같았다. 길이가 늘어나는 문자의 앞·뒤 일치 회귀 테스트에서 red를 확인했고 변환 오프셋을 원문 경계에 대응시켜 수정했다. 검색은 전체 문자열을 소문자화하는 기존 규칙을 유지한다.
 - **재발 방지**: `rg -n 'toLowerCase\(\)|indexOf\(' lib/projects/list.ts lib/keys/view.ts`를 실행했다. 다른 검색은 포함 여부만 판단하며 그 인덱스로 원문을 자르지 않는다. 문자열 변환 뒤 원문을 자르는 코드에서는 UTF-16 길이 보존을 전제하지 않는다.
+
+### 2026-09-13 — 모달 딥링크가 배경 목록의 원격 조회를 다시 기다렸다
+
+- **영역**: `app/(edit)/projects/new/page.tsx`, 새 `projects/@modal` 슬롯, `components/onboarding/new-project.tsx`.
+- **증상**: 사용자 브라우저 실측에서 New project 클릭 뒤 목록 행 4개가 93프레임(약 1.6초) 동안 0개가 됐고, 모달은 4초 안에 뜨지 않았다. 기존 딥링크 페이지가 배경 목록의 DB·GitHub 집계를 처음부터 다시 조회했다.
+- **근본 원인**: 직접 진입에 필요한 배경 재구성을 클라이언트 네비게이션에도 적용했다. 모달의 리포 조회를 Suspense로 감싸도 그보다 먼저 기다리는 배경 목록 조회는 분리되지 않았다.
+- **그물**: 기존 페이지·DOM 테스트는 모달의 상태와 props를 검사했지만 두 진입 방식의 목록 조회 횟수를 구별하지 않았다. 인터셉트는 목록 조회 0회, 직접 진입은 인가된 사용자로 조회한다는 테스트와 로딩 전후 닫기 문맥 테스트를 추가했다. 패널 검사는 일반 페이지 1개·슬롯 추가 패널 0개를 검사하며 인가 전수 검사에 슬롯을 포함한다. 빌드의 인터셉트 매핑은 확인했고 브라우저 프레임 재측정은 사용자가 진행한다.
+- **재발 방지**: `rg -n 'loadProjectList|NewProjectModal|requireUser|maxDuration' 'app/(edit)/projects/@modal' 'app/(edit)/projects/new/page.tsx' 'app/(edit)/projects/new-project-modal.tsx'`를 실행했다. 목록 조회는 직접 진입에만 남았다. 모달 라우트를 추가할 때는 딥링크·soft navigation·닫기·다른 화면으로 이동을 각각 검사한다. default 슬롯만으로는 soft navigation 뒤 활성 모달을 지울 수 없어 목록용 page와 하위 경로용 catch-all이 null을 반환한다.
+
+### 2026-09-13 — 이미지 쓰기 키 오류를 외부 업로드 뒤에 발견했다
+
+- **영역**: `app/(edit)/account/actions.ts` · `lib/credentials/storage.ts` · `scripts/smoke-blob.ts`
+- **증상**: 구현 리뷰 후 회귀 테스트에서 PII 활성 키가 없거나 keyring에 없는 경우에도 `putImage`가
+  호출됨을 확인했다. Blob에 쓴 뒤 암호화가 실패해 다시 삭제하는 순서였다. 실 Blob에서는 아직
+  재현하지 않았다(로컬 토큰 부재). Action과 스모크의 catch는 실패 단계도 남기지 않았다.
+- **근본 원인**: 읽기 keyring 유효성과 활성 쓰기 키 유효성을 같은 조건으로 취급했다. 오류 원문을
+  로그에서 배제하는 과정에서 안전하게 남길 수 있는 작업 단계까지 지웠다.
+- **그물**: 최초 테스트는 정상 쓰기 키와 업로드 후 DB 실패만 검증했다. Claude 정적 리뷰가 순서를
+  지적했고, 활성 키 누락·불일치와 안전한 단계 로그 회귀 테스트에서 red→green을 확인했다.
+- **재발 방지**: `rg -n 'validate.*WriteKey|putImage\(|console\.error|stage =' 'app/(edit)/account/actions.ts' lib/credentials/storage.ts scripts/smoke-blob.ts`
+  로 외부 쓰기 전에 키 검증이 있는지, 실패 로그가 SDK·DB 오류 원문 대신 단계를 남기는지 확인했다.
+  기존 GitHub 토큰 쓰기는 `validateTokenWriteKey`를 사용한다. 같은 축의 새 외부 쓰기를 추가할 때
+  활성 키가 잘못된 테스트에서 외부 I/O가 호출되지 않음을 단언한다.
+
+### 2026-09-13 — 일회용 연결 요청을 락 전에 읽어 재사용 결과가 달라졌다
+
+- **영역**: `lib/account-connect/store.ts` · `lib/credentials/__tests__/postgres.integration.ts`
+- **증상**: 같은 nonce를 동시에 완료하면 두 번째 요청이 `expired` 대신 `already-connected`를
+  반환했다. Account 중복 생성은 차단됐지만 재사용 결과가 실행 순서에 따라 달랐다.
+- **근본 원인**: 소유자 발견용 challenge 조회가 User 락보다 앞이었다. 락을 기다리는 동안 첫
+  요청이 challenge를 소비해도 메모리의 옛 행으로 Account 존재 판정을 먼저 했다.
+- **그물**: 순수 판정 테스트는 DB 대기 중 삭제를 보지 못했다. 격리 PostgreSQL 동시 요청 테스트와
+  보안 리뷰가 잡았다. 락 뒤 같은 identifier/token을 다시 조회한 뒤 판정하도록 수정해 57건이 통과했다.
+- **재발 방지**: `rg -n 'findFirst|lockUser' lib/login-link/store.ts lib/session-revocation/store.ts lib/account-connect/store.ts`
+  를 실행했다. 기존 병합·회수에도 락 전 소유자 조회가 있으며 조건부 소비가 중복 쓰기를 막는다.
+  그 경로의 기존 실패 어휘는 바꾸지 않았다. 새 일회용 경로는 중복 쓰기뿐 아니라 동시 재사용의
+  반환 사유도 단언하고, 소유자 발견용 조회와 락 안의 유효성 조회를 구별한다.
+
+- **🔁 2026-09-13 — 2026-09-10 OAuth 목적 수명 항목 보강(account-connect 리뷰)**: `signIn`은
+  DB challenge 생성보다 먼저 state 쿠키를 쓴다. 그 뒤 URL에 state가 없거나 저장이 실패하면
+  nonce를 안 쓰는 것만으로는 정리가 끝나지 않았다. Claude 리뷰 후 세 실패 분기에서 공통 정리가
+  두 번 호출돼야 한다는 테스트가 red였고, 시작 실패 시 다시 정리하도록 바꿔 green을 확인했다.
+  정상 다음 callback 가로채기는 정적 분석에서 발견했으며 실 브라우저의 DB 장애 주입은 하지 않았다.
+  `rg -n 'signIn\(|beginConnect|clearAuthRoundtripCookies|console.error' 'app/(edit)/account/actions.ts' lib/account-connect/http.ts lib/account-connect/store.ts`
+  로 시작 전·실패 후 정리와 고정 단계 로그를 확인했다. 기존 `startSessionRevocation`의 같은 실패
+  잔존 형태는 이번 연결 기능 밖의 후속 후보로 남긴다. 예외 로그는 오류 원문·OAuth URL·토큰 없이
+  작업/단계만 기록한다. 저장 경계의 락 실패·락 뒤 소실·소비 count·쓰기 순서도 기본 `pnpm test`에
+  추가해 2026-09-10의 "격리 스위트만 검사한다" 공백을 줄였다.
+
+---
+
+### 2026-09-14 — 접근성 방어선 셋을 세웠는데 셋 다 지워도 green이었다 (뮤테이션이 세 번 교정했다)
+
+- **영역**: `app/(edit)/account/__tests__/structure.test.tsx` · `components/account/login-methods.tsx` ·
+  `components/account/profile-picture.tsx` · `components/account/github-section.tsx`.
+  **dev에도 안 나갔다** — `/design-sync`의 리뷰 라운드가 잡았고 뮤테이션으로 red를 본 뒤 고쳤다.
+- **증상**: 없다. 계정 화면 재편이 "같은 라벨의 컨트롤이 접근 이름으로 구별된다"·"사유 없는
+  `disabled`가 0이다"·"실패 Alert가 행 밖에 선다" 셋을 새 불변식으로 세우고 테스트를 박았는데,
+  **그 불변식을 지키는 프로덕션 코드를 지워도 세 검사가 전부 통과했다.** 각각:
+  1. **세는 자리가 대상을 안 덮었다.** 이름 충돌을 `[aria-haspopup="dialog"]`로 모았는데 **마지막
+     수단의 비활성 [Disconnect]는 `DialogTrigger`가 아니라** 목록에 영영 안 들어왔다. 그 줄의
+     `aria-label`을 지워도 green.
+  2. **단언이 실패할 수 없는 모양이었다.** `expect(getElementById(id)?.textContent?.trim()).not.toBe("")`는
+     **참조가 끊기면 `undefined`를 비교하고 통과한다** — 그 단언이 존재하는 이유가 정확히 그 자리로
+     빠져나간다.
+  3. **거부를 실제로 일으키지 않았다.** Action이 mock이라 실패 경로가 한 번도 안 돌았고, "우측
+     컨트롤 자리에 Alert가 없다"가 **영원히 참**이었다.
+- **근본 원인**: **"검사를 썼다"가 "검사가 그 결함에 도달한다"를 대신했다.** 셋 다 조건이 다르다:
+  - ①은 **필터가 불변식보다 좁았다.** 대상 집합을 `aria-haspopup`처럼 *구현 수단*으로 좁히면
+    같은 불변식을 지는 다른 구현(비활성 버튼)이 빠진다. **불변식이 "모든 Disconnect 버튼"이면
+    세는 것도 그것이어야 한다.**
+  - ②는 **optional chaining이 단언의 전제를 조용히 만족시킨다.** `?.`가 부재를 `undefined`로 바꾸고
+    `not.toBe("")`·`not.toBeNull()`·`not.toContain(x)`은 `undefined`에 대해 **전부 통과**한다 —
+    "대상이 존재한다"를 별도로 세지 않으면 부재가 성공으로 접힌다.
+  - ③은 **상태를 안 만들고 상태를 쟀다.** mock이 기본값을 돌려주는 한 그 갈래는 렌더되지 않는다.
+  - ⚠️ **리뷰가 낸 진단도 두 번 한 칸씩 틀렸고 뮤테이션이 교정했다.** (a) "비활성 `aria-label`을
+    지우면 충돌이 난다"는 **거짓**이었다 — 다른 [Disconnect]가 마침 축을 들고 있어 맨몸 쪽이
+    남아도 두 문자열은 다르다. 세야 하는 것은 충돌이 아니라 **"저마다 무엇의 해제인지 말하는가"**
+    였다. (b) 그 교정으로 "보이는 글자로 그룹핑"으로 옮겼더니 이번엔 **`Connect`/`Connect GitHub`
+    쌍이 같은 그룹에 안 들어와** 접근 이름이 같은 그 둘을 못 봤다. **두 불변식은 키가 다르다** —
+    충돌은 접근 이름, 자기 설명은 보이는 글자다. 둘을 하나로 합치려 한 것이 두 번의 오진이었다.
+- **그물**:
+  - 잡은 것: **뮤테이션 하나뿐이다.** 프로덕션 코드의 그 줄을 지우고 테스트를 돌리는 것 — 셋 다
+    그때 처음 red가 됐다. `/design-sync`의 리뷰 서브에이전트가 ①·③의 **가능성**을 지적했지만,
+    지적이 맞는지는 뮤테이션이 판정했고 실제로 두 번 뒤집혔다.
+  - 놓친 것: `pnpm typecheck` · `pnpm test` 3,553건 · `pnpm build` · **computed style·CDP 접근성
+    트리 실측** — 전부 원리적으로 못 본다. 실측은 **고친 뒤의 상태**를 재므로 "그 줄을 지우면
+    깨지는가"를 묻지 않는다.
+  - ⚠️ **2026-09-08(도달 불가한 오류 갈래) · 2026-09-10(안 도는 스위트) · 2026-09-10(우연히 green)과
+    같은 계보이고 축이 넷째다**: 그 셋은 *스위트가 안 돈다* · *단언이 낡았다* · *green의 이유가
+    우연이다*였고, 이번은 **단언이 원리적으로 실패할 수 없다**이다.
+- **재발 방지**:
+  - **규칙: 방어선을 새로 만들면 그 자리에서 뮤테이션을 돌린다.** 지키는 프로덕션 코드를 지우고
+    red를 본 뒤에야 그 검사가 존재한다고 적는다. 값 고정이 아니라 **구조**를 세는 검사일수록
+    필요하다 — 구조는 "없어도 형태가 유지되는" 경우가 많다.
+  - **`?.` 뒤에 부정 단언을 두지 않는다.** 대상 존재를 먼저 센다:
+    `const x = find(); expect(x).not.toBeNull(); expect(x!.text).not.toBe("")`.
+    grep (실제로 돌렸다):
+    `grep -rnE '\?\.[A-Za-z(]' --include='*.test.ts' --include='*.test.tsx' --include='*.integration.ts' app components lib | grep -E "not\.toBe|not\.toEqual|not\.toContain"`
+    → **다른 곳 10건**이고 전부 같은 부류다. 위험 순:
+    - ⚠️ **`lib/pull/__tests__/render.test.ts:105,214,223,270` · `run.test.ts:605`** — `files.find(…)?.content`
+      또는 `out[0]?.content`에 `not.toContain`이다. **파일을 못 찾으면 "그 값이 export에 없다"가
+      참이 된다** — 재생성 어댑터의 값 손실·`orphaned` 제외를 보는 자리라 이 리포에서 가장 비싼
+      단언 축이다(ARCHITECTURE §0 불변식). 후속 작업 후보 1순위.
+    - `app/api/__tests__/github-callback.test.ts:307,337` · `lib/github-connect/__tests__/token-store.test.ts:144`
+      — `Object.keys(args?.data ?? {})`에 `not.toContain("clientSecret")`. **호출이 아예 안 일어나면
+      "시크릿이 안 실렸다"가 참이다.**
+    - `components/__tests__/new-project.test.tsx:573` — `parentElement?.querySelector(...)` +
+      `not.toBeNull()`. `parentElement`가 없으면 `undefined`이고 **`not.toBeNull()`은 통과한다.**
+    - `lib/onboarding/__tests__/detect.test.ts:189,361`.
+  - **대상 집합을 구현 수단으로 좁히지 않는다.** 불변식이 "모든 X"면 세는 선택자도 "모든 X"여야
+    한다 — `[aria-haspopup]`·`[disabled]` 같은 부수적 속성으로 모으면 같은 불변식의 다른 구현이 빠진다.
+  - **필터로 좁힌 뒤 도는 루프에는 개수 가드를 둔다.** `expect(subset.length).toBeGreaterThan(0)`이
+    없으면 라벨 하나가 바뀌는 순간 루프가 0회 돌고 **그 안의 단언이 통째로 증발한다.**
+  - **거부 경로를 세는 검사는 거부를 실제로 일으킨다.** mock을 실패로 돌리고, 확인 Dialog를
+    지나는 동작이면 **portal의 확정 버튼까지 클릭한다**(닫힌 Dialog는 트리에 없어서, 안 누르면
+    Action이 안 돌고 그래도 "Alert가 행 안에 없다"가 참이다).
+  - 🔁 **같은 날 오후에 두 번 더 났다** (`/design-sync` 5단계 리뷰 라운드 둘).
+    - **픽스처 기본값이 단언을 공회전시켰다.** "업로드가 도는 동안 [Delete]를 못 누른다"를 새로
+      박았는데 `screen()`의 `image`가 **`null` 고정**이라 그 버튼은 `hasPicture`만으로 이미 비활성이었다
+      — 결함과 무관하게 green이고, 처음 돌렸을 때 **red가 안 나서** 알았다. ②(단언이 실패할 수 없다)의
+      입력 쪽 판본이다: **헬퍼의 기본값이 그 검사가 재려는 조건을 미리 만족시키면 단언은 아무것도 안
+      센다.** 새 갈래를 세우면 **헬퍼에 그 갈래를 만드는 인자부터 더한다.**
+    - **guard의 예외 필터가 새 상태를 못 봤다.** "사유 없는 `disabled`가 0이다"가 도는 버튼을
+      `.animate-spin` 유무로 거르는데, **남이 도는 동안 막힌 버튼**은 스피너가 없어 그 필터에 안
+      걸리고 사유도 없었다. 지금 green인 이유는 그 감사가 **pending 상태를 한 번도 안 그리기**
+      때문이다 — ③(상태를 안 만들고 상태를 쟀다)이 감사 쪽에 그대로 남아 있었다.
+
+### 2026-09-14 — 프리미티브의 여백 하나가 그 슬롯을 안 쓰는 소비자에게만 깨졌다
+
+- **영역**: `components/ui/dialog.tsx`의 본문 `<div>` · 소비자 `components/members/invite-dialog.tsx`.
+  **dev에도 안 나갔다** — `/design-sync` 4단계 실측이 잡았다.
+- **증상**: 계정 화면 핸드오프가 확인 Dialog의 "검은 줄"을 `padding:16 16 0`·13/1.6로 못 박아 본문에
+  그 값을 넣었다. **푸터가 없는 소비자 하나**(초대 폼)에서 본문 아래 여백이 **1px**(테두리)이 되어
+  폼이 바닥에 붙었고, `FormGroup`의 help와 초대 링크까지 13으로 내려갔다.
+- **근본 원인**: **캔버스가 잰 값이 다른 슬롯의 존재를 전제하고 있었다.** `16 16 0`의 `0`은
+  "아래 여백이 없다"가 아니라 **"아래 여백을 푸터가 자기 16으로 든다"**이고, 그 전제는 시안이 그린
+  네 Dialog가 전부 확인 대화라 **암묵적**이었다. 프리미티브에 그 값을 그대로 옮기면 전제가 없는
+  소비자에게 전제만 사라진 값이 간다. ⚠️ **같은 커밋에서 "본문이 없으면 그리지 않는다"를 넣어
+  빈 블록의 죽은 32px을 없앴는데, 그 변경은 옳았고 이쪽이 그 옆에서 반대 방향으로 틀렸다** —
+  둘 다 "슬롯의 유무가 여백을 정한다"는 같은 사실을 다루면서 한쪽만 조건을 달았다.
+- **그물**:
+  - 잡은 것: **computed style 실측.** `/account`가 아니라 **소비자를 다시 세다가** 초대 Dialog를
+    열어 본 것이 전부다(`design.md`가 "프리미티브를 만질 때마다 소비자를 다시 센다"고 적어 둔 절차).
+  - 놓친 것: `pnpm test` 3,500건(Dialog를 여는 테스트가 값이 아니라 존재만 본다) · `pnpm build` ·
+    `pnpm typecheck` · 코드 리뷰(값이 캔버스와 같으므로 "맞다"로 읽힌다).
+  - ⚠️ **소비자 수가 세 번 틀렸다** — 넷 → 다섯 → 여섯. 그 수가 곧 "실측 대상 화면"이라 틀린 동안
+    빠진 소비자가 검증 밖이었고, 빠졌던 하나(`sessions-section`)가 하필 이 변경의 소비자였다.
+- **재발 방지**:
+  - **프리미티브의 여백·크기를 옮길 때 그 값이 전제하는 형제 슬롯을 적는다.** 조건이 있으면
+    코드에 조건으로 쓴다(`footer !== undefined ? … : …`) — 주석으로만 적으면 다음 소비자가 안 읽는다.
+  - **소비자를 세는 명령을 문서에 박는다.** DESIGN §6.4가
+    `grep -rln "DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`를 든다 —
+    ⚠️ **프리미티브 자신을 빼는 `grep -v`가 빠져 그 명령이 처음엔 7을 냈다**(본문은 6). 세는
+    명령을 적을 때 **그 명령을 실제로 돌려 본문과 맞춘다.**
+  - grep (실제로 돌렸다): `grep -rn "!== undefined" components/ui/*.tsx`
+    → **소비자 형태로 갈리는 슬롯이 11건**(alert 넷 · card 둘 · dialog 셋 · entity-card 둘 ·
+    breadcrumb 하나). **그중 여백·타입스케일까지 가르는 것은 `dialog.tsx:91` 하나뿐이고**
+    나머지는 "그리거나 안 그린다"라 이 부류가 아니다. 새로 조건부 **스타일**을 만들면 그때
+    소비자 전수를 연다.
+
+
+### 2026-09-14 — 확인 Dialog의 유일한 논거가 반대 방향으로 거짓이었다
+
+- **영역**: `messages/en.tsx`(`account.github.confirmHint`·`usage`) · `lib/account/connection-usage.ts`
+  (삭제) · `components/github-account.tsx` · `docs/DESIGN.md` §6.67 · `spec.md`·`design.md`·`tasks.md`.
+  **프로덕션에 안 나갔다** — dev에도 안 나갔고 `/design-sync` 5단계 리뷰가 잡았다.
+- **증상**: GitHub 연결 해제 Dialog가 *"malmoi won't be able to read your repositories or open pull
+  requests until you connect again."* 라고 말하고, 그 아래 `N projects use this connection.`이 규모를
+  댔다. **둘 다 거짓이다.** 해제는 `Account`의 `github-app` 행(**사용자 토큰**) 하나를 지우는데, 야간
+  pull은 그 행을 한 줄도 읽지 않는다 — `selectPullTargets`가 `Project.installationId`로 고르고 커밋·PR은
+  **설치 토큰**이 낸다. 확정한 그날 밤 cron이 평소대로 PR을 연다. 집계 쪽은 기준이 *"내가 OWNER이고
+  보관되지 않은 프로젝트"*라 **`installationId`가 `null`인**(= 이 연결을 애초에 안 쓰는) 프로젝트까지 셌다.
+- **근본 원인**: **자격증명 셋의 경계가 코드에서는 지켜졌는데 문구에서는 무너졌다.** 이 리포는 OAuth
+  토큰 / 사용자 토큰 / 설치 토큰을 갈라 두고 `credential-separation.test.ts`가 **소스에서 상시로** 센다 —
+  그 그물은 "어느 토큰이 어느 경로에 들어갔나"를 보지, **"화면이 그 경로에 대해 무엇을 약속하나"** 는
+  보지 않는다. 기능 문서가 *"이 해제는 내가 OWNER인 모든 프로젝트의 발송을 멈춘다"*를 **확인 Dialog를
+  붙이는 논거**로 세웠고, 그 문장이 spec → design → tasks → 코드 주석 → 사전 문구 → `DESIGN.md` 순으로
+  **여섯 자리에 복제되는 동안 아무도 `ensureUserToken`의 소비자를 세지 않았다.**
+  ⚠️ **거짓이 비싼 이유는 자리 때문이다** — 되돌릴 수 없는 동작의 확인 화면은 사용자가 **그 문장만
+  읽고** 판단하는 자리이고, 여기서는 무해한 조작을 위험하게(발송이 멈춘다) 그리고 위험한 조작을
+  무해하게(리포 연결이 끊긴다는 말이 없다) 만들었다.
+- **그물**:
+  - 잡은 것: **리뷰 서브에이전트 하나.** 문구가 주장하는 결과를 **코드로 되짚어** `ensureUserToken`
+    소비자를 센 것이 전부다(`lib/pull`·`lib/push`에 0건).
+  - 놓친 것: `pnpm typecheck` · `pnpm test` 3,554건 · `pnpm build` · **computed style·접근성 트리 실측** ·
+    `no-korean-ui`·`brand-spelling` 같은 사전 스캐너 — 전부 **문구가 참인지**를 묻지 않는다.
+    `/design-sync` 4단계도 못 본다: 실측은 **그 문장이 거기 있는지**를 재지 **그 문장이 맞는지**는 안 잰다.
+- **재발 방지**:
+  - **결과를 단언하는 문구는 그 결과를 내는 코드를 지목한다.** 사전 주석에 소비자 심볼을 적는다 —
+    지금 `confirmHint` 주석이 `selectPullTargets`·`ensureUserToken`을 이름으로 든다.
+  - **전수 grep (실제로 돌렸다)**:
+    `grep -nE "won't be able|will stop|stops |no longer|until you" messages/en.tsx`
+    → **다른 곳 1건**: `archive.confirm.body`(*"Everyone stops editing, the nightly send stops, and pushes
+    from your repository are refused."*). **셋 다 검증했고 전부 참이다** — 편집은 `lib/auth/access.ts`의
+    보관 판정, 야간 발송은 `targets.ts:46`의 `archivedAt === null` 필터, push는 `guard.ts`의
+    `checkArchived`가 막는다. 나머지 넷은 결과가 아니라 조건을 말하는 문장이라 대상이 아니다.
+  - **집계를 근거로 세울 때 "그 수가 세는 것"과 "그 동작이 바꾸는 것"이 같은 집합인지 먼저 센다.**
+    이 건은 전자가 후자의 **상위집합**이었고, 상위집합은 확인 화면에서 거짓말이 된다.
+
+### 2026-09-14 — 닫은 알림이 같은 주소로 돌아온 두 번째 실패에서 무음이었다
+
+- **영역**: `components/account/dismissible-alert.tsx` · `app/(edit)/account/actions.ts`의
+  `unlinkLoginMethod` · `app/(edit)/account/page.tsx`. **프로덕션·dev에 안 나갔다** — 리뷰가 잡았다.
+- **증상**: 로그인 수단 해제가 DB 장애로 실패해 `?link=unavailable`로 돌아오고, 사용자가 그 머리
+  Alert를 [Dismiss]로 닫는다. **다시 [Disconnect]를 누르면 아무 것도 안 뜬다** — 서버는 같은 사유를
+  실어 보내고 화면은 조용하다. 사용자에게는 "버튼이 안 눌린다"로 보인다.
+- **근본 원인**: **`redirect()`가 자기가 온 URL과 같은 주소를 가리키면 그것은 이동이 아니라 재렌더다.**
+  `unlinkLoginMethod`는 `redirect(routes.account({ link: outcome }))`이고 현재 주소가 이미 그것이므로,
+  Next는 같은 세그먼트를 소프트 내비게이션으로 다시 그리고 React는 **같은 자리의 컴포넌트를 재사용**한다
+  — `useState(true)`로 든 `shown=false`가 그대로 살아남는다. 첫 실패에서 보인 것은 **그때가 마운트
+  시점이었기 때문**이고, 그 우연이 "닫기는 지역 상태면 충분하다"를 참으로 보이게 했다.
+  ⚠️ **같은 화면의 `?e=`는 같은 코드인데 안 걸린다** — 그쪽은 연결 callback의 **하드 내비게이션**으로만
+  오므로 매번 새로 마운트된다. **한 컴포넌트가 두 진입 경로를 받는데 한쪽에서만 깨지는 부류**다.
+- **그물**:
+  - 잡은 것: 리뷰 서브에이전트. `redirect` 대상과 현재 주소가 같을 수 있다는 것을 **경로로** 확인했다.
+  - 놓친 것: `pnpm test`(그 컴포넌트를 렌더하는 테스트가 **한 번 닫고 끝난다** — 두 번째 실패를
+    만들지 않는다) · 브라우저 수동 확인(같은 실패를 두 번 일으켜야 보인다) · `/design-sync` 실측.
+  - ⚠️ **POSTMORTEM 2026-09-06("거부가 화면에 닿지 않으면 사용자에겐 버튼이 안 눌린 것으로 보인다")의
+    재발이고 축이 다르다** — 그때는 *보내는 쪽과 읽는 쪽이 갈렸고*, 이번은 **읽는 쪽이 살아 있는데
+    지역 상태가 렌더를 막았다.**
+- **재발 방지**:
+  - **Server Action이 자기가 온 주소로 `redirect`하면 그 화면의 일회성 UI 상태는 지역 상태로 두지
+    않는다.** 사유를 지우는 쪽(`router.replace`로 그 쿼리만 제거)이 다음 도착을 실제 이동으로 만든다.
+  - **grep (실제로 돌렸다)**: `grep -rn "redirect(routes\." app --include='*.ts' --include='*.tsx' | grep -v __tests__`
+    → **6건**이고 자기 주소로 가는 것은 `account/actions.ts:199` 하나다(나머지 다섯은 `/signin`·
+    `/projects`로 **떠나는** 리다이렉트라 이 부류가 아니다).
+    `grep -rln "onDismiss" components app --include='*.tsx' | grep -v __tests__`
+    → **3건**: `ui/alert.tsx`(프리미티브) · 이 파일 · `translations/edit-loss-banner.tsx`.
+    **뒤의 것은 안전하다** — 닫힘 키가 `lastPulledAt`이라 상태가 바뀌면 키가 바뀌어 다시 보인다.
+    **그 형(닫힘을 "무엇에 대해 닫았는가"로 키잉)이 이 부류의 일반해**다.
+  - **되돌릴 수 없는 동작의 실패는 두 번 일으켜서 본다.** 한 번만 재현하면 마운트 시점이 결함을 가린다.
+
+### 2026-09-14 — 낡은 Prisma 클라이언트가 로그인만 죽였고, 삼킨 catch 둘이 원인을 두 단계 감췄다
+
+- **영역**: `generated/prisma`(gitignore된 산출물) · `lib/credentials/access.ts`의 `credentialIO`·
+  `refreshVerifiedEmail` · `auth.ts`의 `signIn` 콜백. **로컬 dev 전용 사고**이고 배포와 무관하다.
+- **증상**: 하드 리셋으로 79커밋을 받은 뒤 `pnpm dev`를 띄우고 GitHub 로그인을 하면 **콜백이
+  `/signin?error=Unavailable`로 튕긴다.** 서버 로그에는 아무 것도 안 남는다. 이미 세션 쿠키가 있는
+  브라우저는 멀쩡하게 열려서 **"ego-browser 환경 문제"로 오진했다**(실제로 그렇게 한 번 보고했다).
+  진짜 원인은 `Unknown field 'emailLookup' for select statement on model 'User'` — **dev 서버가 낡은
+  Prisma 클라이언트를 메모리에 들고 있었다.**
+- **근본 원인**: 두 겹이다.
+  1. **산출물 셋(`node_modules`·`generated/prisma`·`public/fonts`)이 전부 gitignore라 하드 리셋이
+     코드만 바꾼다.** `pnpm db:generate`를 돌려도 **이미 떠 있는 dev 서버**는 모듈을 다시 읽지 않는다 —
+     "재생성했으니 됐다"가 참인 동안 프로세스만 낡아 있다.
+  2. **실패가 로그인 **콜백 경로에만** 나타난다.** `refreshVerifiedEmail`은 재로그인마다 도는데
+     `pnpm test` 3,554건은 그 select를 실 DB에 안 보내고, 세션이 있는 요청은 그 경로를 안 지난다 —
+     **가장 드물게 도는 경로 하나만 죽어서** 앱 전체가 정상으로 보였다.
+  - ⚠️ **진단 비용은 catch 둘이 만들었다.** `refreshVerifiedEmail`의 `catch`가 원인을 버리고
+    `CredentialError`를 던지고(`access.ts:47`), `signIn` 콜백의 `catch`가 그것을 다시 버리고
+    `routes.signIn({ error: "Unavailable" })`를 돌려준다(`auth.ts:202`). **둘 다 의도된 설계다** —
+    Prisma 인자와 crypto 입력이 예외로 새는 것을 막는다 — 그러나 **서버 로그에도 안 남기므로**
+    원인을 보려면 임시 `console.error`를 두 자리에 **차례로** 심어야 했다(왕복 2회).
+- **그물**:
+  - 잡은 것: **임시 계측 두 번.** `pnpm test:credentials:postgres`도 잡긴 했다 — 64건 **전부**
+    같은 `CredentialError`로 red였는데, **그 메시지가 한 줄이라 원인을 안 가리켰다**(`db:generate` 뒤
+    64/64 green으로 사후 확인됐다).
+  - 놓친 것: `pnpm typecheck`(생성된 타입이 낡아도 **자기들끼리는 맞다**) · `pnpm test` 3,554건 ·
+    `pnpm build`(빌드는 재생성을 자기가 돌린다 — 그래서 **빌드는 통과하고 dev만 죽는다**) ·
+    `pnpm db:status`(마이그레이션은 18개 up to date다 — DB는 멀쩡했다).
+- **재발 방지**:
+  - **원격에서 코드를 받은 뒤 dev 서버를 재시작한다.** `pnpm install` → `pnpm db:generate`까지
+    했더라도 **떠 있던 서버는 그 결과를 모른다.** `git pull`·하드 리셋 뒤의 순서는
+    `pnpm install && pnpm db:generate && (dev 서버 재시작)`이다.
+  - **`CredentialError`를 던지는 자리는 서버 로그에 갈래 이름을 남긴다** — 지금은 전부 무음이다.
+    grep (실제로 돌렸다): `grep -rnE "\} catch \{" lib app --include='*.ts' --include='*.tsx' | grep -v __tests__`
+    → **catch 91개 중 원인을 안 남기고 던지는 자리 3건**: `lib/credentials/access.ts:11`(`credentialIO`,
+    모든 자격증명 I/O가 지난다) · `storage.ts:7` · `command.ts:35`. **`lib/github-connect/log.ts`의
+    `logFailure`가 이미 그 형(갈래 이름만 남기고 원문은 안 싣는다)이므로 그것을 재사용하는 것이
+    후속 작업 후보다** — 비밀을 안 찍는 성질을 유지한 채 진단만 되살린다.
+  - **한 경로만 죽는 사고는 "그 경로가 언제 도는가"로 찾는다.** 재로그인 콜백·야간 cron·초대 수락처럼
+    **드물게 도는 경로**는 일상 사용으로 안 밟히므로, 앱이 정상으로 보이는 것이 무죄의 근거가 아니다.

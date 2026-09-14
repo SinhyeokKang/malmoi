@@ -79,7 +79,10 @@ const GITHUB_TS = readFileSync(join(ROOT, "lib/github.ts"), "utf8");
  * App 개인키도 사용자 토큰도 **그리고 `lib/github.ts`도** import하지 않는다 — 두 토큰이 만나는 자리는
  * Server Action 하나여야 한다. 여기에 루트를 더하지 않으면 이 방어선이 새 디렉터리를 자동으로 덮지 않는다.
  */
-const ONBOARDING_SOURCES = sourcesIn(join(ROOT, "lib/onboarding"), "lib/onboarding");
+const ONBOARDING_SOURCES = [
+  ...sourcesIn(join(ROOT, "lib/onboarding"), "lib/onboarding"),
+  ...sourcesIn(join(ROOT, "lib/account-connect"), "lib/account-connect"),
+];
 /** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
 const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
 

@@ -52,7 +52,16 @@ export function EmptyState({
       {description !== undefined && (
         <p className="text-muted-foreground max-w-[46ch] text-sm">{description}</p>
       )}
-      {action !== undefined && <div className="mt-4">{action}</div>}
+      {/*
+        ⚠️ **래퍼가 flex다** (2026-09-13 사용자 실물). 액션 둘(검색 0건 — §6.4에 등재된 예외)을 호출부가
+        `<>`로 넘기므로 **사이를 벌릴 자리가 여기밖에 없다**: `mt-4`만 들고 있으면 inline-flex 버튼
+        둘이 간격 0으로 맞붙어 한 덩어리로 읽힌다. 버튼 하나일 때는 아무것도 바뀌지 않는다.
+        ⚠️ **컨테이너 `gap` 금지 규칙과 충돌하지 않는다** — 그 규칙은 칩·제목·설명·액션 **사이**의
+        수직 간격이 margin 하나에서 나와야 한다는 것이고, 여기 gap은 액션 **안**의 수평 간격이다.
+      */}
+      {action !== undefined && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{action}</div>
+      )}
     </div>
   );
 }

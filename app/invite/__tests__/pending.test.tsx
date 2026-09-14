@@ -5,8 +5,7 @@ import { render, find } from "@/components/__tests__/helpers/dom";
 
 const state = vi.hoisted(() => ({ session: vi.fn(), signIn: vi.fn(), signOut: vi.fn(), accept: vi.fn(), viewer: vi.fn(), member: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: state.signIn, signOut: state.signOut }));
-vi.mock("@/lib/session-revocation/clear-cookies", () => ({ clearRevocationCookies: vi.fn() }));
-vi.mock("@/lib/login-link/clear-cookies", () => ({ clearLinkCookies: vi.fn() }));
+vi.mock("@/lib/auth/roundtrip-cookies", () => ({ clearAuthRoundtripCookies: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: state.session }));
 vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) => row, decodeUser: (row: unknown) => row }));
 vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
