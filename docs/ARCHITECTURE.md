@@ -702,6 +702,11 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
     `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
   - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
     무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
+  - ⚠️ **`base-locale:`은 선언이 없어도 언제나 박는다** (2026-09-14 실물 검증). ④(`createProject`)와
+    설정(`workflowSurfaceOf`)이 **같은 규칙이어야 한다** — ③에서 1순위가 아닌 기준 언어를 확정한
+    표면에서 한쪽만 박으면, 그쪽을 못 본 사용자의 CI가 탐지 1순위를 보내고 `checkFormat`이 **재실행으로
+    안 풀리는 409**를 낸다(워크플로에 그 줄을 손으로 넣어야 풀린다). 두 경로의 일치는
+    `lib/onboarding/__tests__/workflow.test.ts`가 매트릭스로 고정한다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
@@ -996,7 +1001,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
 `TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
 후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
-`adapter:`·`base-locale:`을 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
+`adapter:`를 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
 그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
 strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
 이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
