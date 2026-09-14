@@ -190,7 +190,7 @@ async function main(): Promise<void> {
     }
 
     // sync 브랜치의 부재는 정상이다 — 첫 실행 경로(createRef)를 태운다. 이름은 프로젝트별이라 생성 함수로
-    // 만든다 — 옛 상수 `l10n/sync`를 읽으면 항상 "없음"이다 (Codex 감사 2026-09-06 #8).
+    // 만든다 — 옛 상수 `malmoi-i18n/sync`를 읽으면 항상 "없음"이다 (Codex 감사 2026-09-06 #8).
     const syncBranch = syncBranchFor(project.slug);
     const syncSha = await client.getRefSha(`heads/${syncBranch}`);
     console.log(`\n${syncBranch}: ${syncSha ?? "없음 (첫 실행 경로)"}`);

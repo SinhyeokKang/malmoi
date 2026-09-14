@@ -92,7 +92,7 @@ export function NamingStep({
         help={m.newProject.naming.hint(
           <span className="text-foreground">mal-moi.com/projects/{slug || "…"}</span>,
           // 브랜치 이름의 정본은 `syncBranchFor`다 — 여기 있는 것은 그 규칙의 설명이다
-          <span className="text-foreground">l10n/sync-{slug || "…"}</span>,
+          <span className="text-foreground">malmoi-i18n/sync-{slug || "…"}</span>,
         )}
       >
         <Input

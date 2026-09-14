@@ -107,7 +107,7 @@ export function ResultStep({
         saveAs={
           <>
             {m.newProject.result.workflow.saveAs}{" "}
-            <span className="text-mono text-foreground">.github/workflows/l10n.yml</span>
+            <span className="text-mono text-foreground">.github/workflows/malmoi-i18n.yml</span>
           </>
         }
         copyLabel={m.common.copy}

@@ -25,7 +25,7 @@
 `_locales` 4키, prod의 `i18n-format-check` → `format-check-code`/`format-check-yaml`). 그 결과:
 
 - 같은 리포·설치·멤버십·push secret을 프로젝트마다 다시 관리한다.
-- 같은 리포에 `l10n/sync-<project-slug>` 브랜치와 열린 PR이 표면 수만큼 생긴다.
+- 같은 리포에 `malmoi-i18n/sync-<project-slug>` 브랜치와 열린 PR이 표면 수만큼 생긴다.
 - 번역 편집자는 프로젝트 이름만으로 어느 표면인지 구별해야 한다.
 - 프로젝트 상한 3개가 번역 표면 수에 소모된다. ⚠️ **상한은 리포 수가 아니라 OWNER의 `Project` 행 수다**
   (`lib/onboarding/create-plan.ts`) — 이 기능은 그 집계를 바꾸지 않으므로 이 근거는 "같은 리포가 상한을 두 칸
@@ -52,7 +52,7 @@ orphan 처리하므로(`lib/push/apply.ts`의 키 조회가 `where: { projectId 
    ⚠️ 한 표면 안의 **일부 파일 실패는 현행 `partial-import` 그대로**다 — 롤백이 아니라 화면에 드러낸다
    (불변식 9는 "숨기지 마라"이지 "지워라"가 아니다).
 2. A 표면을 다시 push해도 B 표면의 키·로케일·번역·참조·적재 상태가 바이트와 행 단위로 변하지 않는다.
-3. 두 표면의 번역을 수정한 뒤 Publish하면 `l10n/sync-<project-slug>`의 열린 PR 하나에 두 표면의 파일이 함께 반영된다.
+3. 두 표면의 번역을 수정한 뒤 Publish하면 `malmoi-i18n/sync-<project-slug>`의 열린 PR 하나에 두 표면의 파일이 함께 반영된다.
 4. 같은 DB 상태와 같은 원본 파일에서 표면 등록 순서와 무관하게 같은 tree payload와 blob SHA가 나온다.
 5. 두 표면이 같은 출력 파일을 소유하면 추가 또는 Publish 전에 fail-closed로 거부하고 어느 경로가 충돌했는지 보여준다.
 6. 표면이 둘 이상인 프로젝트의 번역·로케일 화면에서 현재 표면을 확인하고 다른 표면으로 이동할 수 있다.

@@ -5,14 +5,14 @@ import { describe, expect, it } from "vitest";
 /**
  * **워크플로 참조는 불변이어야 한다** (sec-audit 발견 3 · 13).
  *
- * `.github/actions/l10n-push`는 **남의 리포에서** 돈다 — 소비자 job이 그 스텝에
+ * `.github/actions/malmoi-i18n-push`는 **남의 리포에서** 돈다 — 소비자 job이 그 스텝에
  * `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`을 넘긴다. 그 action이 움직일 수 있는 태그를 쓰면
  * 업스트림 태그 재지정 하나로(2025년 `tj-actions/changed-files` 패턴) **모든 소비자 job에서** 코드가
  * 즉시 실행되고, 소비자 측 리뷰도 롤백 창도 없다.
  *
  * ⚠️ **말모이 `main`도 같은 축이다.** Free + private에서 브랜치 프로텍션이 거부되므로(403 실측)
  * `main` 직접 푸시를 막는 것은 `/merge` 관행뿐이다 — 소비자가 `@main`을 참조하면 그 관행이
- * 남의 리포의 보안 경계가 된다. 그래서 참조는 **불변 태그**(`l10n-push-v1`)다.
+ * 남의 리포의 보안 경계가 된다. 그래서 참조는 **불변 태그**(`malmoi-i18n-push-v1`)다.
  *
  * ⚠️ **렌더가 아니라 소스 스캔인 이유**: 이 결함은 CI가 green인 채로 열려 있고, 실행해서는
  * 관측되지 않는다. 같은 이유로 `focus-ring`·`credential-separation`이 소스를 센다.
@@ -82,7 +82,7 @@ describe("ci.yml — 권한을 트리 안에서 선언한다 (sec-audit 13)", ()
 describe("소비자가 참조하는 ref — 불변 태그다 (sec-audit 3)", () => {
   it("`docs/ACTIONS.md`가 `@main`을 안내하지 않는다", () => {
     const doc = readFileSync(join("docs", "ACTIONS.md"), "utf8");
-    expect(doc).not.toMatch(/l10n-push@main/);
-    expect(doc).toMatch(/l10n-push@l10n-push-v1/);
+    expect(doc).not.toMatch(/malmoi-i18n-push@main/);
+    expect(doc).toMatch(/malmoi-i18n-push@malmoi-i18n-push-v1/);
   });
 });

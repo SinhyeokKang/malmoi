@@ -39,7 +39,7 @@ export function isPathSafeLocale(code: string): boolean {
  * 이 경로가 리포 안에 머무는가 — 템플릿(`{locale}`·`*` 포함)과 치환 결과 **둘 다**에 건다.
  *
  * 슬래시는 정당하다(`public/_locales/{locale}/messages.json`). 막는 것은 **디렉터리를 거슬러
- * 오르는 것**과 절대 경로다. `..` 하나면 `l10n/sync-<slug>` 브랜치의 커밋이 워크플로 파일을
+ * 오르는 것**과 절대 경로다. `..` 하나면 `malmoi-i18n/sync-<slug>` 브랜치의 커밋이 워크플로 파일을
  * 만들 수 있고, 그 브랜치 push가 대상 리포의 secret과 함께 그것을 실행시킨다.
  */
 export function isPathSafeRepoPath(path: string): boolean {

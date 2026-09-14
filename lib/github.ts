@@ -293,7 +293,7 @@ export async function createGitClient(
         });
         return res.data.object.sha;
       } catch (error) {
-        // 브랜치 부재는 정상 입력이다 — `l10n/sync`가 없으면 첫 실행 경로를 탄다.
+        // 브랜치 부재는 정상 입력이다 — `malmoi-i18n/sync`가 없으면 첫 실행 경로를 탄다.
         if (isNotFound(error)) return null;
         throw error;
       }

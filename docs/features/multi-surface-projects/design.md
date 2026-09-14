@@ -283,7 +283,7 @@ ordered surfaces
 ```
 
 표면 A가 만든 content를 표면 B의 original로 넘기지 않는다. 그렇게 하면 두 표면의 값을 병합하는 셈이다.
-충돌은 렌더 전에 거부한다. `base_tree`, UTF-8 blob SHA, base head parent, `[skip-l10n]`, force update와 열린 PR
+충돌은 렌더 전에 거부한다. `base_tree`, UTF-8 blob SHA, base head parent, `[skip-malmoi-i18n]`, force update와 열린 PR
 재사용 규칙은 그대로다. 모든 렌더 결과의 blob SHA가 base와 같으면 stale sync branch를 base head로
 force-update한 뒤 기존 2층 판정대로 `skipped`이며 새 commit과 PR 갱신을 하지 않는다. 이 성공 뒤에만 캡처한
 `lastPulledAt`을 전진시킨다. 즉시 다시 실행하면 1층에서 GitHub API 0회로 끝나고, 값 불변 push가 `updatedAt`을
@@ -314,12 +314,12 @@ tree를 만들지 않고 전체 Publish를 실패 처리한다.
 `renderWorkflowYaml`은 최초 전체 파일과 추가 surface step을 별도 순수 함수로 만든다.
 
 ⚠️ **GitHub Actions의 `concurrency`는 워크플로/잡 단위이고 step 단위가 아니다.** `lib/onboarding/workflow.ts`가
-이미 `group: l10n-${slug}-${{ github.ref }}`를 내므로, 정확한 문장은 "step을 추가해도 워크플로의 concurrency
+이미 `group: malmoi-i18n-${slug}-${{ github.ref }}`를 내므로, 정확한 문장은 "step을 추가해도 워크플로의 concurrency
 group은 그대로"다. ⚠️ `docs/ACTIONS.md`의 예시는 group이 하드코딩돼 렌더러와 다르고, 줄 단위 대조 테스트
 (`lib/onboarding/__tests__/workflow.test.ts`)의 대상이 **첫 ```yaml 블록**이라 step renderer를 추가하면 그 블록도
 같이 움직인다. **추가 step이 낼 YAML은 지금 대조 상대가 없다** — 대조 대상을 만든다.
 
-⚠️ **대상 리포는 `@l10n-push-v1` 불변 태그를 본다.** `surface` input을 늘려도 **태그를 옮기기 전까지 도달하지
+⚠️ **대상 리포는 `@malmoi-i18n-push-v1` 불변 태그를 본다.** `surface` input을 늘려도 **태그를 옮기기 전까지 도달하지
 않는다.** 태그를 옮기는 것이 릴리스이고, 그 절차가 tasks에 있다.
 
 ## 7. 순수 함수 — `/tdd interface` 대상

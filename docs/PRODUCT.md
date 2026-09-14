@@ -159,9 +159,9 @@ IA 확정(§7.7)이 더했다. ⚠️ **한때 ③이 둘이고 ⑤가 없었다
 
 #### ② GitHub push webhook → 뺀다
 
-**1차는 지금의 Actions 경로를 유지한다** (`.github/actions/l10n-push` → `/api/push`).
+**1차는 지금의 Actions 경로를 유지한다** (`.github/actions/malmoi-i18n-push` → `/api/push`).
 
-근거: 위 "push 웹훅"이 명시적 비범위이고, Actions 경로는 **실물로 검증돼 있다**(`[skip-l10n]`
+근거: 위 "push 웹훅"이 명시적 비범위이고, Actions 경로는 **실물로 검증돼 있다**(`[skip-malmoi-i18n]`
 스킵, 열린 PR 경고, 적재 실패만 red). 웹훅으로 얻는 것은 "워크플로 파일 없이 연결"
 하나인데, 서명 검증·delivery 중복 방지·이벤트 allowlist·재시도 원자성이 통째로 딸려온다.
 
@@ -246,7 +246,7 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 §7.3의 탐지기 순위는 그대로다. 기본 선택은 1순위이고 키 수로 재정렬하지 않는다.
 기존 프로젝트는 `default` 표면으로 이관하고 새 프로젝트는 확정 경로에서 slug를 유도한다.
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
-sync 브랜치는 계속 `l10n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
+sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
 **현재 구현 경계는 T16(배포 1)**이다. 표면 단위 읽기·push·편집과 프로젝트 단위 Publish는 이관했지만
 Add surface는 닫혀 있다. 옛 Locale PK·StringKey unique를 보존하므로 같은 이름의 키·로케일을 가진
@@ -334,7 +334,7 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 ### 7.7 URL과 정보 구조 — 축이 둘이다 (IA 확정: 2026-09-09)
 
 ⚠️ **slug에 규칙이 넷 있다** (5단계 `lib/onboarding/slug.ts`의 `planSlug`가 생성 시점에 거른다):
-git ref-safe(`isRefSafeSlug` — 브랜치 이름 `l10n/sync-<slug>`에 그대로 들어간다) · 소문자만 ·
+git ref-safe(`isRefSafeSlug` — 브랜치 이름 `malmoi-i18n/sync-<slug>`에 그대로 들어간다) · 소문자만 ·
 `PROJECT_SLUG_MAX = 40` · **`new` 예약**. 마지막 것은 아래 URL 모양의 직접 파생이다 — `/projects/new`가
 라우트라서 그 이름의 프로젝트는 자기 설정 화면에 도달할 수 없다.
 ⚠️ **그 예약의 근거는 모달화 뒤에도 그대로다** (2026-09-13) — 화면이 모달이 됐을 뿐 **라우트는 남는다**.
@@ -556,7 +556,7 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
-- **열린 `l10n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
+- **열린 `malmoi-i18n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
   가정하지 않는다. ✅ 설정 화면의 보관 **확인 Dialog**가 그 PR을 링크로 싣는다 (2026-09-10).
   ⚠️ **조회 실패는 "없다"가 아니라 "확인하지 못했다"다** — 접으면 그 정보가 조용히 사라진다
   (POSTMORTEM 2026-09-03).

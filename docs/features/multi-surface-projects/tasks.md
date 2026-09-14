@@ -180,7 +180,7 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 
 ### T12. skip 두 층과 해시 골든
 
-- 기존 blob SHA, `base_tree`, parent, `[skip-l10n]`, force branch, 열린 PR 재사용 함수를 그대로 쓴다.
+- 기존 blob SHA, `base_tree`, parent, `[skip-malmoi-i18n]`, force branch, 열린 PR 재사용 함수를 그대로 쓴다.
 - 검증: 모든 표면의 blob이 base와 같으면 stale sync branch를 base head로 되돌린 뒤 commit·PR 갱신 없이
   `skipped`이고, 성공 뒤에만 `lastPulledAt`이 전진한다.
 - 검증: 즉시 재실행은 1층 GitHub API **0회**(`expect(calls).toEqual([])`), 값 불변 push 뒤 재실행은 2층 blob skip이다.
@@ -305,7 +305,7 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 
 - `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:projects:postgres`를 통과한다.
 - 다섯 adapter 계약을 모두 재검한다.
-- ⚠️ **`@l10n-push-v1` 태그를 옮긴다.** 대상 리포는 불변 태그를 보므로 그 전까지 `surface` input이 도달하지 않는다.
+- ⚠️ **`@malmoi-i18n-push-v1` 태그를 옮긴다.** 대상 리포는 불변 태그를 보므로 그 전까지 `surface` input이 도달하지 않는다.
   릴리스 뒤 대상 리포 여섯의 workflow에 `surface`를 명시한다. **기본값 `default`는 새 action에서만 존재한다.**
   기존 태그는 필수 `surfaceSlug`를 보내지 않아 새 서버에서 400이다. 배포 1을 prod로 보낸다면 호환성 전환을
   이 단계까지 미루지 않고 서버와 함께 조율한다. 현재 dev 체크포인트는 새 체크아웃 CLI로 검증하고 태그는 유지한다.

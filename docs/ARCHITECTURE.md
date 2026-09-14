@@ -515,7 +515,7 @@ sha1("blob " + byteLength + "\0" + content)
 ⚠️ **그 인덱스의 소비자는 셋이다** (2026-09-11 정정 — 전엔 둘로 적혀 있었다): 1층 판정 · 미배포 집계(`countUnpublished`) · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
 
-⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `l10n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
+⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `malmoi-i18n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
 
 1층이 어댑터 방식과 무관하게 성립하는 것이 요지다 — 편집이 없는 날이 대부분이므로 기본 경로가 여기서 끝나고, 재생성 어댑터도 트리 조회 한 번을 아낀다. **대가**: 리포 파일을 직접 고치고 push를 안 돌린 경우를 놓친다(정상 흐름에선 push가 strict로 DB에 반영하므로 `updatedAt`이 움직인다).
 
@@ -538,8 +538,8 @@ clone하지 않는다.
 2.5 **여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — 어느 방식이든 write에 원본이 필요하다. 수술적은 **치환 대상**이(§1.4), 재생성은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프)이 거기서 온다(§1.1). **2026-09-04까지 재생성은 이 단계를 건너뛰었고**, 그 대가가 재생성 리포 71개 중 30개의 "값 편집 0건인데 모든 줄이 바뀌는" diff였다 (§14)
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
-5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-l10n]`
-6. `PATCH /git/refs/heads/{l10n/sync-<slug>}` — `force: true`
+5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-malmoi-i18n]`
+6. `PATCH /git/refs/heads/{malmoi-i18n/sync-<slug>}` — `force: true`
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
@@ -555,21 +555,21 @@ clone하지 않는다.
 
 ### 함정
 
-- **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
-- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (`syncBranchFor`). 같은 리포를 가리키는 기존 Project 둘은 계속 별도 브랜치를 쓴다. 새 다중 표면 모델은 Project 하나의 활성 표면을 같은 snapshot에서 렌더해 tree·commit·PR 하나로 보낸다(PRODUCT §7.1). 표면별 브랜치는 만들지 않고 기존 Project도 자동 병합하지 않는다.
+- **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `malmoi-i18n/sync`가 있으므로 이 층은 항상 걸린다.
+- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `malmoi-i18n/sync-<slug>`** (`syncBranchFor`). 같은 리포를 가리키는 기존 Project 둘은 계속 별도 브랜치를 쓴다. 새 다중 표면 모델은 Project 하나의 활성 표면을 같은 snapshot에서 렌더해 tree·commit·PR 하나로 보낸다(PRODUCT §7.1). 표면별 브랜치는 만들지 않고 기존 Project도 자동 병합하지 않는다.
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
-  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: l10n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
-  - 아래 서술의 `l10n/sync`는 전부 이 이름을 가리킨다.
+  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: malmoi-i18n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
+  - 아래 서술의 `malmoi-i18n/sync`는 전부 이 이름을 가리킨다.
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
-- **parents는 항상 base head다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
-- **force update는 의도된 것이다.** `l10n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
+- **parents는 항상 base head다.** `malmoi-i18n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
+- **force update는 의도된 것이다.** `malmoi-i18n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
   - ⚠️ **그 불변식을 지키는 코드가 커밋 경로에만 있었다** (2026-09-09, 6b-3 T6이 프로덕션에서 찾았다). 2층이 비교하는 것은 **base 트리**이므로 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경 0건이 되고, 그때 커밋을 만들지 않으니 **브랜치는 직전 스냅샷을 그대로 들었다** — 그 PR을 머지하면 되돌린 편집이 리포에 적용된다. **"변경 0건"은 base 대비 0건이고 브랜치 대비 0건이 아니다.** 지금은 그 경로가 sync ref를 읽어 base보다 앞서 있으면 **base head로 되돌린다**(PR은 재사용 규칙대로 열린 채 diff만 0이 된다). 읽기 1회가 늘지만 **편집이 있었던 실행만** 그 줄에 닿으므로 1층 스킵의 "API 0회"는 그대로다.
   - ⚠️ 화면 문구는 아직 그 경우를 구별하지 않는다 — `skipped/no-changes`가 "Nothing to send"라 **사용자의 열린 PR이 방금 비워진 사실을 말하지 않는다** (미해결).
-- **`[skip-l10n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다.
-- **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:l10n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
+- **`[skip-malmoi-i18n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다.
+- **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:malmoi-i18n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
 - **⚠️ `multi-locale`의 write는 파일 × 로케일 이중 루프다** (2026-09-01 발견 — 그전 서술은 "파일별"까지만 말했다). `ts-dict.write`는 `currentFiles[0]`만 보고 **`input.locale`로 로케일 객체 하나를 고르므로**, 파일 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 PR에 ko만 바뀐 채 나간다.
-- **⚠️ `l10n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
-- **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `l10n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
+- **⚠️ `malmoi-i18n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
+- **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `malmoi-i18n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
 
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
@@ -863,8 +863,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 동안 push 토큰 하나가 리포의 임의 파일에 쓰는 원시체였다.
 
 ⚠️ **`..`가 필요 없다.** `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 그 경로가
-그대로 나가고, `l10n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
-(`[skip-l10n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
+그대로 나가고, `malmoi-i18n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
+(`[skip-malmoi-i18n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
 목록에 리포가 보이는 것만 요구하므로 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을 받는다.
 
 판정은 `lib/locale-code.ts`의 `isPathSafeLocale`·`isPathSafeRepoPath`이고 **import가 0인 잎**이다 —
@@ -1137,7 +1137,7 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
-| `l10n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
+| `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
 | `/api/push/failure` 호출 | Bearer **같은 프로젝트별 토큰** (2026-09-13) | CI가 **적재에 실패했다는 사실**만 남긴다. 로케일 파일을 파싱하지 못하면 `/api/push`는 아예 안 불리므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다. ⚠️ **새 토큰을 만들지 않았다** — 같은 `PUSH_TOKEN`이고, 그래서 인증 경로가 하나 더 늘지 않는다. ⚠️ **아무것도 적재하지 않는다**: 키·번역은 물론 `lastCommitSha`·`lastCommitAt`도 안 움직인다(전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를 받는다). 본문은 **4 KiB 상한 + `strictObject`**이고 코드 넷만 받는다 — 파서 원문·소스 문자열·로컬 절대경로는 보고에도 DB에도 들어가지 않는다 |
 | `/api/push` 호출 | Bearer **프로젝트별 토큰** (생성·해싱은 `lib/push/token.ts`, **조회는 `app/api/push/route.ts`**) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
@@ -1266,7 +1266,7 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 ⚠️ **`/api/push`에는 대응하는 사건이 없다** (2026-09-07). 전에는 같은 사건("그 slug의 `Project` 행이 없다")을 404 + 본문(`project '<slug>' not found`)으로 냈는데, 프로젝트를 **토큰이 정하게** 되면서 그 갈래가 사라졌다 — 조회되지 않으면 무효 토큰과 구별하지 않고 **401 하나**다(프로젝트 존재를 노출하지 않는다, §5.5.5). pull이 5xx인 것은 그대로다: 그쪽은 **자기 설정**을 읽는다.
 
 전에는 전부 그대로 실었고, 근거는 POSTMORTEM 2026-09-03의 **"본문 없는 500이 원인을 지웠다"** 였다.
-그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/l10n-push`는 임의의 대상
+그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/malmoi-i18n-push`는 임의의 대상
 리포에서 돌고** `scripts/push-local.ts`가 응답 본문을 stdout에 찍는다 — 대상이 public이면 Prisma
 접속 오류 한 번이 pooler 호스트와 DB 유저를 **공개 Actions 로그**에 박는다(`bugshot-2`가 public이다).
 회고의 요구("원인이 남는다")는 `ref`로 지킨다: 운영자가 그 값으로 Vercel 로그를 찾는다.

@@ -48,7 +48,7 @@ describe("createFakeGitClient — 응답 주입", () => {
 
   it("주입되지 않은 브랜치는 null이다 — 첫 실행 경로(POST /git/refs)를 태우는 입력이다", async () => {
     const { client } = createFakeGitClient({ refSha: {} });
-    await expect(client.getRefSha("heads/l10n/sync")).resolves.toBeNull();
+    await expect(client.getRefSha("heads/malmoi-i18n/sync")).resolves.toBeNull();
   });
 
   it("주입한 트리를 돌려준다", async () => {
@@ -81,7 +81,7 @@ describe("createFakeGitClient — 쓰기 경로", () => {
     expect(calls.find((c) => c.method === "createTree")?.args[0]).toEqual(payload);
   });
 
-  it("createCommit이 받은 페이로드를 기록한다 — [skip-l10n]과 parents를 여기서 본다", async () => {
+  it("createCommit이 받은 페이로드를 기록한다 — [skip-malmoi-i18n]과 parents를 여기서 본다", async () => {
     const { client, calls } = createFakeGitClient({});
     await client.createCommit(buildCommitPayload("tree", "basehead", "1 file"));
     const arg = calls.find((c) => c.method === "createCommit")?.args[0];
@@ -105,19 +105,19 @@ describe("createFakeGitClient — 쓰기 경로", () => {
 describe("createFakeGitClient — PR", () => {
   it("열린 PR이 있으면 그 URL을 준다", async () => {
     const { client } = createFakeGitClient({ openPrUrl: "https://github.com/o/r/pull/1" });
-    await expect(client.findOpenPrUrl("o:l10n/sync", "dev")).resolves.toBe(
+    await expect(client.findOpenPrUrl("o:malmoi-i18n/sync", "dev")).resolves.toBe(
       "https://github.com/o/r/pull/1",
     );
   });
 
   it("열린 PR이 없으면 null이다 — 생성 경로를 태우는 입력이다", async () => {
     const { client } = createFakeGitClient({});
-    await expect(client.findOpenPrUrl("o:l10n/sync", "dev")).resolves.toBeNull();
+    await expect(client.findOpenPrUrl("o:malmoi-i18n/sync", "dev")).resolves.toBeNull();
   });
 
   it("createPr이 URL을 돌려주고 호출이 기록된다", async () => {
     const { client, calls } = createFakeGitClient({});
-    const url = await client.createPr("l10n/sync", "dev", "제목", "본문");
+    const url = await client.createPr("malmoi-i18n/sync", "dev", "제목", "본문");
     expect(url).toMatch(/^https:\/\//);
     expect(calls.map((c) => c.method)).toContain("createPr");
   });

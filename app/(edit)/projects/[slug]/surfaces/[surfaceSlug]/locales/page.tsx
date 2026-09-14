@@ -160,7 +160,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
             */}
             {pendingLine !== null && (
               <Alert variant="warning" title={m.locales.pending.title}>
-                <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/l10n.yml</span>)}</p>
+                <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>)}</p>
                 {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
                 <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{pendingLine}</pre>
                 <p className="mt-2">

@@ -10,7 +10,7 @@
  * **import이 없어야 한다.** 여기에 무엇이든 더하는 순간 그것이 클라이언트 번들의 일부가 된다.
  */
 
-/** `git check-ref-format`이 받아주는 문자만. 슬래시를 빼는 것은 `l10n/sync-<slug>`의 세그먼트를 하나로 두려는 것이다. */
+/** `git check-ref-format`이 받아주는 문자만. 슬래시를 빼는 것은 `malmoi-i18n/sync-<slug>`의 세그먼트를 하나로 두려는 것이다. */
 export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 /**

@@ -4,11 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { SKIP_MARKER } from "@/lib/pull/payload";
 
 import { renderSurfaceWorkflowStep, renderWorkflowYaml } from "../workflow";
 
 /**
- * 결과 화면의 복사용 `.github/workflows/l10n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
+ * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
  * 사용자가 붙인다.
  *
  * ⚠️ **`docs/ACTIONS.md`의 예시와 같은 모양이어야 한다** — 문서가 정본이고 이 함수는 그것을 slug만 바꿔 낸다.
@@ -87,13 +88,20 @@ describe("renderWorkflowYaml", () => {
     expect(a).toContain("github.ref");
   });
 
-  it("무한 루프 가드 `[skip-l10n]`과 `PUSH_TOKEN` secret 참조가 있다", () => {
+  /**
+   * ⚠️ **마커를 리터럴로 적지 않는다 — `SKIP_MARKER`를 import해 단언한다.** 이 값은 자리가 둘이고
+   * (`payload.ts`가 커밋 메시지에 넣는 값 · 여기가 YAML `if:`에 박는 값) **둘이 갈리면 pull이 만든
+   * 커밋을 대상 리포 워크플로가 못 알아봐 push가 다시 돌고 무한 루프가 된다.** 세 자리를 각자
+   * 리터럴로 두면 하나만 바꿔도 이 테스트가 통과한다 — 2026-09-14의 `l10n` → `malmoi-i18n` 치환이
+   * 정확히 그 상태를 지나갔다(셋을 함께 바꿔 우연히 green이었다).
+   */
+  it("무한 루프 가드(SKIP_MARKER)와 `PUSH_TOKEN` secret 참조가 있다", () => {
     const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
-    expect(yml).toContain("[skip-l10n]");
+    expect(yml).toContain(SKIP_MARKER);
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
     // `secrets.PUSH_TOKEN`을 든 대상 리포 러너에서 즉시 돈다.
-    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1");
+    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1");
   });
 
   it("docs/ACTIONS.md의 예시와 같은 모양이다 — 주석·빈 줄을 빼면 줄 단위로 같다", () => {

@@ -103,7 +103,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
   // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
-  // (`l10n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
+  // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
   if (baseHead === null) {
     // ⚠️ **브랜치 부재와 접근 상실이 같은 `null`로 온다** — 코드가 그 둘을 가르지 않는 것이 정직하다.
     fail(
@@ -159,7 +159,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * ⚠️ **sync 브랜치가 base보다 앞서 있으면 되돌린다** (2026-09-09, T6 실측 발견 B).
      *
      * 2층이 비교하는 것은 **base 트리**다 — 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경
-     * 0건이라 커밋을 만들지 않고, 그때 `l10n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다. 그 PR을
+     * 0건이라 커밋을 만들지 않고, 그때 `malmoi-i18n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다. 그 PR을
      * 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB 상태의
      * 스냅샷"이라 부르는데, 이 경로에서 그 불변식이 깨져 있었다.
      *
@@ -196,7 +196,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
   const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
 
-  // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `l10n/sync`는 누적 히스토리가 아니라
+  // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라
   // "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).
   const syncHead = await client.getRefSha(`heads/${deps.syncBranch}`);
   if (syncHead === null) {
@@ -214,7 +214,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     (await client.createPr(
       deps.syncBranch,
       project.baseBranch,
-      "l10n: sync translations",
+      "malmoi-i18n: sync translations",
       // 영문이다 — 대상 리포에 남는 문자열이고 CLAUDE.md가 PR title/body를 영문으로 못 박았다.
       `Updated ${summary} from the translation DB.\n\n${changes.map((c) => `- \`${c.path}\``).join("\n")}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`,
     ));

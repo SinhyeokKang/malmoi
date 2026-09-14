@@ -26,9 +26,9 @@ Use this skill when the user asks to run the migrated source command `l10n-round
 
 ## 전제 조건 (착수 전 확인 — 하나라도 어긋나면 중단)
 
-1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `l10n/sync` 삭제, DB 원복). 현재 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
+1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
 2. **`Project` 행이 있고 `installationId`가 채워져 있다.** GitHub App이 계정 전체(`all`)에 설치돼 있어도 설치 id는 컬럼에 있어야 한다.
-3. **그 리포를 가리키는 `Project`가 하나뿐이다.** 둘이면 `l10n/sync`를 force update로 다툰다 — 한 리포에 두 포맷이 있으면 **순차로** 검증한다.
+3. **그 리포를 가리키는 `Project`가 하나뿐이다.** 둘이면 `malmoi-i18n/sync`를 force update로 다툰다 — 한 리포에 두 포맷이 있으면 **순차로** 검증한다.
 4. **워킹 트리가 clean하고 `pnpm test`가 green이다.** 깨진 코드로 실물 PR을 내지 않는다.
 
 ## 절차
@@ -104,13 +104,13 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 ```
 
 머지 뒤 확인할 것:
-- `dev` head의 커밋 메시지에 **`[skip-l10n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다)
-- `l10n/sync` 브랜치가 삭제됐다
+- `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다)
+- `malmoi-i18n/sync` 브랜치가 삭제됐다
 - **재pull이 `no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다
 
 ### 5. (선택) CI 방향 — 대상 리포에 워크플로가 붙어 있을 때만
 
-`docs/ACTIONS.md`를 따라 붙인다. `[skip-l10n]` 커밋이 스킵되는지, 열린 `l10n/sync` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
+`docs/ACTIONS.md`를 따라 붙인다. `[skip-malmoi-i18n]` 커밋이 스킵되는지, 열린 `malmoi-i18n/sync` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
 
 ✅ **두 리포의 CI를 동시에 받을 수 있다** (2026-09-07 — 토큰이 프로젝트를 정한다). 각 대상 리포의 secret `PUSH_TOKEN`이 **그 프로젝트의 토큰**이면 된다. CI 층 자체는 어댑터와 무관하므로, 어댑터 검증이 목적이면 이 단계를 건너뛴다.
 
@@ -122,7 +122,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 - 검증용으로 만든 `Project` 행·키·번역을 지운다
 - dev 서버 종료
 - 편집을 되돌릴지 판단: PR을 머지했으면 DB와 리포가 일치하므로 그대로 둔다. **머지하지 않았으면 원복한다**
-- 실물 리포에 실수로 낸 PR이 있으면 닫고 `l10n/sync`를 삭제한다
+- 실물 리포에 실수로 낸 PR이 있으면 닫고 `malmoi-i18n/sync`를 삭제한다
 - `.scratch/` 임시 스크립트 정리
 - `next-env.d.ts`가 `pnpm dev`로 바뀌었으면 `git checkout`
 
@@ -135,7 +135,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 2 바이트 고정점: no-changes ✅ / ❌ (committed — 중단)
 3 편집 <n>건:  PR #<n> +<a> -<b> / <n>파일, hunk <n>
    보존:      주석 · 빈 줄 · 키 순서 · 인용 부호 · <포맷별 항목>
-4 머지 후:    dev head [skip-l10n] ✅ / 재pull no-edits ✅
+4 머지 후:    dev head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅
 5 CI:         스킵(사유) / green
 6 정리:       토큰 회수 ✅ (.env.local 미편집 — 원복 불필요) / 검증용 행 삭제 ✅ / dev 종료 ✅ / <기타>
 ```

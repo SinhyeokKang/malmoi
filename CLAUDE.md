@@ -177,7 +177,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
 | `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
 
-- **GitHub default branch는 `dev`다.** ⚠️ **대상 리포의 composite action 참조는 `@l10n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
+- **GitHub default branch는 `dev`다.** ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
 - **`main`에 직접 커밋·푸시하지 않는다.**
 - **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다(2026-09-14, Vercel 도메인을 `dev` 브랜치에 묶었다 · 가비아 CNAME). ⚠️ **로그인은 이 URL에서만 된다** — Vercel 대시보드의 "Visit"이 주는 **배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어** OAuth에 등록할 수 없고, Auth.js가 `AUTH_URL` 없이 요청 헤더로 origin을 만들기 때문에 그 URL이 그대로 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 그건 자격증명이 아니라 URL 문제다**(두 공급자의 공통분모는 origin뿐이다). ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다** — 빠뜨리면 `requestOrigin`이 `null`을 주고, 그 `null`의 폴백이 시작(`?? false`)과 콜백(`?? https`)에서 갈려 state 쿠키 이름이 어긋난다. 증상은 로그인이 아니라 **계정 병합이 "Something went wrong"으로 죽는 것**이고 서버 로그엔 minify된 `[auth] k` 한 줄뿐이다(2026-09-14 실측). ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.

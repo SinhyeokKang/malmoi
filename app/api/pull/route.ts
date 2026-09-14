@@ -10,7 +10,7 @@ import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/t
 import { runSync } from "@/lib/sync/run";
 
 /**
- * DB → `l10n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
+ * DB → `malmoi-i18n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
  * 직접 부른다 (CLAUDE.md "데이터 변경 경로", 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
  * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 현재 matcher는

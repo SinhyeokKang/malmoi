@@ -24,7 +24,7 @@ WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
   AND grantee IN ('anon', 'authenticated');
 ```
 
-**action 릴리스는 서버 계약과 함께 전환해야 한다.** 기존 `@l10n-push-v1` 구현에는 `surfaceSlug`가 없어 새 서버가
+**action 릴리스는 서버 계약과 함께 전환해야 한다.** 기존 `@malmoi-i18n-push-v1` 구현에는 `surfaceSlug`가 없어 새 서버가
 400으로 거부한다. `action.yml`의 `surface: default` 기본값은 **새 action 코드에서만** 작동한다.
 현재 T16 dev 검증은 이 체크아웃의 `pnpm push:local … --surface default --path-template '…'` 또는 검토된 새 action
 커밋을 사용한다. 생성 YAML은 릴리스 태그를 가리키므로 태그 갱신 전 그대로 실행해 호환된다고 판정하지 않는다.

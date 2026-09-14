@@ -24,7 +24,7 @@ export function WorkflowBlock({
     그 화면은 이번 작업에서 실물로 안 봤고, 안 본 화면의 표현을 기본값으로 바꾸지 않는다
     (`Th`의 `bg-muted/50`을 그대로 둔 것과 같은 기준).
   */
-  saveAs = m.settings.workflow.saveAs(<span className="text-mono">.github/workflows/l10n.yml</span>),
+  saveAs = m.settings.workflow.saveAs(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>),
   copyLabel = m.settings.workflow.copy,
 }: {
   yaml: string;

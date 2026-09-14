@@ -56,7 +56,7 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
     }),
     createClient: async () => client,
     saveLastPulledAt: async () => {},
-    syncBranch: "l10n/sync",
+    syncBranch: "malmoi-i18n/sync",
   };
   const trees: TreePayload[] = [];
   // `calls`는 실행 후에 채워지므로 getter로 넘긴다.
@@ -202,7 +202,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
-        syncBranch: "l10n/sync",
+        syncBranch: "malmoi-i18n/sync",
       },
       get trees() {
         trees.length = 0;
@@ -266,7 +266,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
-        syncBranch: "l10n/sync",
+        syncBranch: "malmoi-i18n/sync",
       },
       get trees() {
         trees.length = 0;

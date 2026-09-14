@@ -4,7 +4,7 @@ export function renderSurfaceWorkflowStep(input: {
   slug: string; surfaceSlug: string; pathTemplate: string; adapter?: AdapterName; baseLocale?: string;
 }): string {
   return [
-    "      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1",
+    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1",
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${input.slug}`,
@@ -18,7 +18,7 @@ export function renderSurfaceWorkflowStep(input: {
 }
 
 /**
- * 결과 화면의 복사용 `.github/workflows/l10n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
+ * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
  * 사용자가 붙인다 — 설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운 문장이고, 로케일 파일
  * 하나 쓰려고 CI 정의를 통째로 바꿀 수 있는 권한을 드는 것이 면적에 맞지 않는다.
  *
@@ -45,7 +45,7 @@ export function renderWorkflowYaml(input: {
   ].flat();
 
   return [
-    "name: l10n",
+    "name: malmoi-i18n",
     "",
     "on:",
     "  push:",
@@ -57,7 +57,7 @@ export function renderWorkflowYaml(input: {
     "",
     "concurrency:",
     // ⚠️ slug가 들어가는 것이 요지다 — 한 리포에 프로젝트가 둘이면 같은 그룹에서 서로를 취소한다.
-    `  group: l10n-${slug}-\${{ github.ref }}`,
+    `  group: malmoi-i18n-${slug}-\${{ github.ref }}`,
     "  cancel-in-progress: true",
     "",
     "permissions:",
@@ -68,7 +68,7 @@ export function renderWorkflowYaml(input: {
     "  push:",
     // ⚠️ 사용자 리포에 복사되는 줄이라 영어다 — 이 파일의 주석(한국어)과 성격이 다르다.
     "    # Keeps the workflow from re-running when a translation PR is merged — without it, push and pull call each other.",
-    "    if: \"!contains(github.event.head_commit.message, '[skip-l10n]')\"",
+    "    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"",
     "    runs-on: ubuntu-latest",
     "    steps:",
     // ⚠️ **가변 태그를 쓰지 않는다** — 이 스텝은 대상 리포에서 `secrets.PUSH_TOKEN`을 든 job 안에
@@ -79,7 +79,7 @@ export function renderWorkflowYaml(input: {
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3). 이 스텝에 `secrets.PUSH_TOKEN`이 들어가므로
     // `@main`이면 말모이 `main`의 커밋 하나가 **대상 리포 러너에서 즉시** 돈다 — 소비자 측 리뷰도
     // 롤백 창도 없다. `docs/ACTIONS.md`의 예시와 줄 단위로 대조되므로 둘이 함께 움직인다.
-    "      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1",
+    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1",
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${slug}`,

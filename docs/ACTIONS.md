@@ -2,7 +2,7 @@
 
 **이 문서는 *대상 리포*(번역할 리포)에 무엇을 넣는지 다룬다.** 말모이 자신의 CI는 CLAUDE.md의 CI 섹션에 있다.
 
-대상 리포는 워크플로 하나만 갖고, 실제 일은 말모이의 composite action(`.github/actions/l10n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
+대상 리포는 워크플로 하나만 갖고, 실제 일은 말모이의 composite action(`.github/actions/malmoi-i18n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
 
 ## 1. 말모이 쪽 설정 (한 번만)
 
@@ -18,12 +18,12 @@
 
 ⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **이름 규칙은 아직 안 정했다** (PRODUCT §10).
 
-**워크플로** `.github/workflows/l10n.yml`:
+**워크플로** `.github/workflows/malmoi-i18n.yml`:
 
 ⚠️ **아래 블록이 정본이다.** 말모이의 온보딩 결과 화면이 같은 스니펫을 slug만 바꿔 복사용으로 내고(`lib/onboarding/workflow.ts`의 `renderWorkflowYaml`), **`lib/onboarding/__tests__/workflow.test.ts`가 이 문서의 첫 YAML 코드 블록을 읽어 줄 단위로 대조한다**(그 스캐너가 여는 펜스를 정규식으로 찾으므로 이 문서의 산문에 그 펜스 문자열을 쓰지 않는다) — 한쪽만 고치면 `pnpm test`가 red이고, 통과시키면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
 
 ```yaml
-name: l10n
+name: malmoi-i18n
 
 on:
   push:
@@ -38,9 +38,9 @@ on:
 # ⚠️ **그룹 이름에 프로젝트 slug가 들어간다.** 기존 동일 리포의 별도 Project가 있으면
 # (PRODUCT §7.1) 워크플로 스텝도 둘인데, `github.ref`만 쓰면 그 둘이 같은 그룹에 들어가
 # `cancel-in-progress`가 한쪽을 죽인다 — 그 표면은 영영 적재되지 않고 취소는 실패로 보이지 않는다.
-# `l10n/sync-<slug>` 브랜치 이름에 slug를 넣은 것과 같은 이유다.
+# `malmoi-i18n/sync-<slug>` 브랜치 이름에 slug를 넣은 것과 같은 이유다.
 concurrency:
-  group: l10n-order-check-${{ github.ref }}
+  group: malmoi-i18n-order-check-${{ github.ref }}
   cancel-in-progress: true
 
 # ⚠️ **`pull-requests: read`가 없으면 열린 PR 경고가 뜨지 않는다.**
@@ -55,12 +55,12 @@ jobs:
     # ⚠️ **이 조건이 1차 방어다.** pull이 만든 커밋이 머지되면 push가 돌고, 그 push가 DB를 리포
     # 값으로 덮고, 다음 pull이 또 PR을 만든다 (ARCHITECTURE §3). action 안에도 같은 가드가 있어
     # 빠뜨려도 루프는 막히지만, 그때는 러너가 말모이 clone·pnpm install까지 한 뒤에야 멈춘다.
-    if: "!contains(github.event.head_commit.message, '[skip-l10n]')"
+    if: "!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -69,7 +69,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **참조는 `@l10n-push-v1`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3). 이 스텝에는
+⚠️ **참조는 `@malmoi-i18n-push-v1`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
 대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. Free + private에서
 브랜치 프로텍션이 거부되므로(403 실측) `main`을 지키는 것은 `/merge` 관행뿐이고, 그 관행이 남의
@@ -79,7 +79,7 @@ jobs:
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
 **가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
 
-**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 `l10n-push-v1`을 그 커밋으로
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 `malmoi-i18n-push-v1`을 그 커밋으로
 옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v2`를 새로 끊고 이 문서의 예시를
 바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다).
 
@@ -110,7 +110,7 @@ T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -162,11 +162,11 @@ T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 넷 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 셋과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
-| 커밋 메시지에 `[skip-l10n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
+| 커밋 메시지에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
 | **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales`에 그 로케일 — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
-| 열린 번역 PR(`l10n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
+| 열린 번역 PR(`malmoi-i18n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
 ### 적재 실패는 말모이에도 남는다 (2026-09-13)
@@ -186,7 +186,7 @@ T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필
 보고는 부가 신호이고, 그것이 CI의 판정을 바꾸면 "말모이가 조용하면 괜찮은 것"이라는 잘못된 신호가 된다.
 
 ⚠️ **서버를 먼저 릴리스한다.** 기존 Action은 이 endpoint를 몰라도 정상 push가 계속되고, 새 스크립트가
-옛 서버의 404를 받으면 위 규칙대로 경고만 남긴다. **대상 리포가 쓰는 `@l10n-push-v1`은 서버 배포만으로
+옛 서버의 404를 받으면 위 규칙대로 경고만 남긴다. **대상 리포가 쓰는 `@malmoi-i18n-push-v1`은 서버 배포만으로
 새 스크립트를 받지 않는다** — 그 태그를 옮기는 것이 릴리스다(CLAUDE.md).
 
 **red일 때 어디를 보나.**
@@ -197,7 +197,7 @@ T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필
 
 ### 열린 PR 경고는 차단이 아니다
 
-번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `l10n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
+번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `malmoi-i18n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
 
 **막지 않는 이유**: 막으면 "어느 쪽이 이기는지"를 CI가 판정하게 되고, 그건 병합 로직이라 코어 원칙을 깬다. 개발자가 볼 재료만 남기고 판단은 사람이 한다.
 
