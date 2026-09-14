@@ -1,4 +1,5 @@
 import type { AdapterName } from "@/lib/adapters/types";
+import { isAdapterName } from "@/lib/adapters";
 import { fail } from "@/lib/failure";
 import { basePending } from "./base-pending";
 
@@ -37,7 +38,7 @@ export function renderSurfaceWorkflowStep(input: {
 export type WorkflowSurface = {
   surfaceSlug: string;
   pathTemplate: string;
-  /** 수동 지정과 `ts-dict`에만 — 나머지는 탐지가 같은 어댑터를 낸다. */
+  /** 확정한 어댑터 — 생성 경로와 무관하게 CI가 같은 포맷을 사용한다. */
   adapter?: AdapterName;
   /** 확정한 기준 언어. **생산자 둘 다 언제나 넣는다** — 생략하면 CI가 탐지 1순위를 보낸다. */
   baseLocale?: string;
@@ -102,13 +103,15 @@ export function workflowSurfaceOf(surface: {
 }): WorkflowSurface {
   const pending = basePending({ baseLocale: surface.baseLocale, declaredBaseLocale: surface.declaredBaseLocale });
   const baseLocale = pending ? surface.declaredBaseLocale : surface.baseLocale;
+  const adapter = surface.adapterName;
+  if (adapter !== null && !isAdapterName(adapter)) fail("unknown workflow adapter");
   return {
     surfaceSlug: surface.slug,
     // 첫 push 전이면 비어 있다 — 그 프로젝트는 아직 CI를 붙이기 전이고 화면이 그렇게 말한다.
     pathTemplate: surface.pathTemplate ?? "",
     ...(baseLocale === null ? {} : { baseLocale }),
-    // ⚠️ `ts-dict`만 고정한다 — 한 파일에 로케일이 여럿이라 탐지가 base를 정하지 못한다.
-    ...(baseLocale !== null && surface.adapterName === "ts-dict" ? { adapter: "ts-dict" as const } : {}),
+    // 수동 지정 이력은 필요 없다 — 저장된 포맷을 재현하고 탐지 순위에 맡기지 않는다.
+    ...(adapter === null ? {} : { adapter }),
   };
 }
 

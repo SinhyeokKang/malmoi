@@ -900,10 +900,8 @@ export async function createProject(raw: {
       const resolved = resolveLocalePaths({ ...format, locales: first.payload.locales }, adapterFor(format).layout, paths);
       prepared.push({ id, surface: { surfaceSlug, adapter: format.adapter, pathTemplate: format.pathTemplate, baseLocale: confirmed.baseLocale },
         payload: first.payload, targets: [...targets, ...resolved.map(item => item.path)],
-        // ⚠️ **base는 언제나 박는다** — 설정 화면(`workflowSurfaceOf`)과 같은 규칙이어야 한 프로젝트의
-        // 두 화면이 다른 워크플로를 권하지 않는다. 어댑터는 탐지가 못 맞히는 둘에서만 고정한다.
-        workflow: { ...(input.manual || format.adapter === "ts-dict" ? { adapter: format.adapter } : {}),
-          baseLocale: confirmed.baseLocale },
+        // 설정 화면과 동일하게 확정한 포맷을 재현한다 — CI의 탐지 순위에 맡기지 않는다.
+        workflow: { adapter: format.adapter, baseLocale: confirmed.baseLocale },
       });
     } catch (error) {
       logFailure("onboard-prepare", error);

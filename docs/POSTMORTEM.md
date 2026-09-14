@@ -1632,3 +1632,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   2026-09-14 실행 결과 나머지 넷은 전부 단수가 맞다(`add-surface.tsx`는 한 번에 표면 하나가 계약, `surface-selector`·설정 목록은 행 단위,
   `new-project.tsx:114`는 수동 지정·`sampleKey` 전용). **`naming.info`에는 선택 경로 전부를 요구하는 DOM 테스트를 박았다**
   (`components/__tests__/new-project.test.tsx` — "③ info는 체크한 모든 경로를 말한다").
+
+### 2026-09-14 — 설정 YAML이 확정 어댑터를 생략해 CI가 다른 포맷을 보냈다
+
+- **영역**: `lib/onboarding/workflow.ts` · `app/(edit)/projects/actions.ts`
+- **증상**: 수동으로 지정한 비-ts-dict 표면의 설정 YAML에는 `adapter:`가 없어, CI가 다른 탐지 1순위 어댑터를 고르면 `checkFormat`이 409로 거부한다. 같은 YAML로 재실행해도 해소되지 않는다. 코드와 함수 테스트로 확인했으며 브라우저 재현은 아니다.
+- **근본 원인**: 생성 결과는 수동 지정 여부로, 설정 화면은 ts-dict 여부로 출력 조건을 나눴다. 렌더러를 공유해도 그 입력을 만드는 정책은 달랐다. 필요한 것은 선택 이력이 아니라 확정 포맷의 재현이다.
+- **그물**: 기존 테스트는 비-ts-dict 어댑터 생략을 정상으로 단언했고 기준 언어 줄만 비교했다. 전체 YAML 일치 테스트와 실제 createProject의 자동·수동 결과 대조가 누락을 잡았다.
+- **재발 방지**: `rg -n 'workflow:|renderSurfaceWorkflowStep\(|adapterName === "ts-dict"' lib/onboarding/workflow.ts 'app/(edit)/projects/actions.ts'`로 생산 경로를 대조했다. 생성·설정·표면 추가 모두 확정 adapter와 base를 출력하고, 기준 언어 변경 대기만 선언값을 우선한다. 전체 YAML 일치 테스트를 유지한다.

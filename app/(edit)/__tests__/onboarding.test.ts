@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "@/lib/github-connect/health";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
-import { renderWorkflowYaml } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, renderWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { hashPushToken } from "@/lib/push/token";
 
 import { createHarness, sessionFor } from "./harness";
@@ -1561,5 +1561,19 @@ it("탐지 후보 outputPaths는 표본 밖 언어도 포함하며 추가 읽기
  */
 it("단일 자동 후보 성공 YAML은 확정 base를 박은 고정 문자열과 바이트 동일하다", async () => {
   const result = await createProject(createInput());
-  expect(result.ok && result.yaml).toBe("name: malmoi-i18n\n\non:\n  push:\n    branches: [\"develop\"]\n  workflow_dispatch:\n\nconcurrency:\n  group: malmoi-i18n-acme-web-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  push:\n    # Keeps the workflow from re-running when a translation PR is merged \u2014 without it, push and pull call each other.\n    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n\n      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1\n        with:\n          push-token: ${{ secrets.PUSH_TOKEN }}\n          project: acme-web\n          surface: i18n\n          path-template: \"i18n/{locale}.json\"\n          base-locale: en\n          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)\n");
+  expect(result.ok && result.yaml).toBe("name: malmoi-i18n\n\non:\n  push:\n    branches: [\"develop\"]\n  workflow_dispatch:\n\nconcurrency:\n  group: malmoi-i18n-acme-web-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  push:\n    # Keeps the workflow from re-running when a translation PR is merged \u2014 without it, push and pull call each other.\n    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n\n      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1\n        with:\n          push-token: ${{ secrets.PUSH_TOKEN }}\n          project: acme-web\n          surface: i18n\n          path-template: \"i18n/{locale}.json\"\n          adapter: json-catalog\n          base-locale: en\n          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)\n");
+});
+
+
+it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정 adapter를 동일하게 출력한다 (manual=%s)", async (manual) => {
+  const result = await createProject(createInput({ manual, baseLocale: "ko" }));
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const settingsYaml = renderProjectWorkflowYaml({ slug: result.slug, baseBranch: result.baseBranch,
+    surfaces: result.surfaces.map(surface => workflowSurfaceOf({ slug: surface.surfaceSlug,
+      pathTemplate: surface.pathTemplate, adapterName: surface.adapter, baseLocale: surface.baseLocale,
+      declaredBaseLocale: null })) });
+  expect(result.yaml).toContain("adapter: json-catalog");
+  expect(result.yaml).toContain("base-locale: ko");
+  expect(settingsYaml).toBe(result.yaml);
 });

@@ -23,7 +23,7 @@ const actionsDoc = readFileSync(fileURLToPath(new URL("docs/ACTIONS.md", root)),
 it("matches the documented additional surface step line by line", () => {
   const section = actionsDoc.split("<!-- additional-surface-step -->")[1];
   expect(section).toBeDefined();
-  expect(bare(renderSurfaceWorkflowStep({ slug: "order-check", surfaceSlug: "web", pathTemplate: "web/{locale}.json", baseLocale: "en" })))
+  expect(bare(renderSurfaceWorkflowStep({ slug: "order-check", surfaceSlug: "web", pathTemplate: "web/{locale}.json", adapter: "json-catalog", baseLocale: "en" })))
     .toEqual(bare(firstYamlBlock(section!)));
 });
 
@@ -58,7 +58,7 @@ describe("renderWorkflowYaml", () => {
     expect(yml).toMatch(/^\s+base-locale: ko$/m);
   });
 
-  it("자동 후보면 둘 다 붙지 않는다 — 탐지가 같은 답을 내므로 고정할 이유가 없다", () => {
+  it("미확정 값은 렌더러가 임의로 채우지 않는다", () => {
     const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
     expect(yml).not.toMatch(/adapter:/);
     expect(yml).not.toMatch(/base-locale:/);
@@ -107,7 +107,7 @@ describe("renderWorkflowYaml", () => {
   it("docs/ACTIONS.md의 예시와 같은 모양이다 — 주석·빈 줄을 빼면 줄 단위로 같다", () => {
     const doc = bare(firstYamlBlock(actionsDoc));
     // 문서 예시는 `project: order-check`·`branches: [main]`이다 — 같은 값으로 렌더해 대조한다.
-    const ours = bare(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "order-check", baseBranch: "main", baseLocale: "en" }));
+    const ours = bare(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "order-check", baseBranch: "main", adapter: "json-catalog", baseLocale: "en" }));
     expect(ours).toEqual(doc);
   });
 
@@ -236,7 +236,7 @@ describe("workflowSurfaceOf", () => {
   });
 
   it("자동 후보도 저장된 base를 고정한다 — 탐지가 같은 답을 낸다는 전제가 사용자 선택으로 깨졌다", () => {
-    expect(row()).toEqual({ surfaceSlug: "web", pathTemplate: "web/{locale}.json", baseLocale: "en" });
+    expect(row()).toEqual({ surfaceSlug: "web", pathTemplate: "web/{locale}.json", adapter: "json-catalog", baseLocale: "en" });
     expect(row({ adapterName: "chrome-locales", baseLocale: "ko" }).baseLocale).toBe("ko");
   });
 
@@ -247,27 +247,36 @@ describe("workflowSurfaceOf", () => {
    * 워크플로에 그 줄을 다시 넣어야 한다. 두 경로가 같은 줄을 내는지 여기서 고정한다.
    */
   it.each([
-    ["json-catalog", "en"], ["json-catalog", "ko"], ["chrome-locales", "fr"], ["ts-dict", "ko"],
-  ] as const)("설정 YAML의 base-locale이 ④가 고정한 값과 같다 (%s, %s)", (adapterName, baseLocale) => {
+    ["json-catalog", "en"], ["json-catalog", "ko"], ["chrome-locales", "fr"], ["ts-dict", "ko"], ["code-dict", "ko"], ["yaml-catalog", "ko"],
+  ] as const)("설정 YAML이 ④의 확정 adapter와 base를 모두 보존한다 (%s, %s)", (adapterName, baseLocale) => {
     const fromSettings = renderProjectWorkflowYaml({ slug: "x", baseBranch: "main",
       surfaces: [workflowSurfaceOf({ slug: "web", pathTemplate: "web/{locale}.json", adapterName, baseLocale, declaredBaseLocale: null })] });
     const fromOnboarding = renderWorkflowYaml({ slug: "x", baseBranch: "main", surfaceSlug: "web",
-      pathTemplate: "web/{locale}.json", baseLocale, ...(adapterName === "ts-dict" ? { adapter: "ts-dict" as const } : {}) });
+      pathTemplate: "web/{locale}.json", baseLocale, adapter: adapterName });
     const baseLine = (yaml: string) => yaml.split("\n").filter(line => line.includes("base-locale:"));
     expect(baseLine(fromSettings)).toEqual([`          base-locale: ${baseLocale}`]);
     expect(baseLine(fromSettings)).toEqual(baseLine(fromOnboarding));
+    expect(fromSettings).toBe(fromOnboarding);
   });
 
   it("선언이 대기 중이면 어댑터와 무관하게 선언한 base를 고정한다 (6b-3)", () => {
-    expect(row({ declaredBaseLocale: "ko" }).baseLocale).toBe("ko");
+    expect(row({ declaredBaseLocale: "ko" })).toMatchObject({ adapter: "json-catalog", baseLocale: "ko" });
   });
 
   it("`ts-dict`는 base를 고정한다 — 한 파일 안에 로케일이 여럿이라 탐지가 정하지 못한다", () => {
     expect(row({ adapterName: "ts-dict" })).toMatchObject({ adapter: "ts-dict", baseLocale: "en" });
   });
 
-  it("`ts-dict`가 아니고 선언도 없으면 `adapter`를 박지 않는다", () => {
-    expect(row({ adapterName: "chrome-locales" }).adapter).toBeUndefined();
+  it("수동 지정 이력 없이도 저장된 adapter를 고정한다", () => {
+    expect(row({ adapterName: "code-dict" }).adapter).toBe("code-dict");
+  });
+
+  it("미확정 포맷에는 값을 지어내지 않는다", () => {
+    expect(row({ adapterName: null, baseLocale: null })).toEqual({ surfaceSlug: "web", pathTemplate: "web/{locale}.json" });
+  });
+
+  it("알 수 없는 저장 어댑터는 복사용 YAML로 내보내지 않는다", () => {
+    expect(() => row({ adapterName: "unknown" })).toThrow("unknown workflow adapter");
   });
 
   it("첫 push 전이라 `pathTemplate`이 없으면 빈 문자열이다", () => {
