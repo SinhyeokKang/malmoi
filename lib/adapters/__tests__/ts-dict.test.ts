@@ -49,11 +49,11 @@ const format = {
 const file = (content = SOURCE) => [{ path: "src/i18n/namespaces/common.ts", content }];
 
 /**
- * ⚠️ **`ts-dict`는 자동 탐지에서 빠졌다** (ARCHITECTURE §1.9 판정 ③ — 오픈소스 109개에서 후보에
- * 0회). 그래서 탐지는 `detectFormat`이 아니라 보관된 `tsDictDetectByContent`로 검사한다.
- * 명시 지정(`--adapter ts-dict`)이 실제 사용 경로이고, read·write는 아무것도 바뀌지 않았다.
+ * ⚠️ **2026-09-14부터 자동 탐지에도 참여한다** (§1.9 판정 ③ 뒤집기). 여기서 `tsDictDetectByContent`를
+ * 직접 부르는 것은 이제 "보관된 로직이라서"가 아니라 **다른 어댑터의 순위와 섞이지 않게** 이 어댑터의
+ * 판정만 재기 위해서다 — 어댑터 간 순위는 `detect-candidates.test.ts`가 본다.
  */
-describe("detect — ts-dict (자동 탐지 제외, 로직은 보관)", () => {
+describe("detect — ts-dict (이 어댑터의 판정만 잰다)", () => {
   it("namespaces 디렉터리의 .ts 파일들을 찾는다", () => {
     const d = tsDictDetectByContent([
       "src/i18n/namespaces/common.ts",

@@ -73,7 +73,7 @@
 |---|---|---|---|---|---|
 | `chrome-locales` | `<root>/_locales/{locale}/messages.json` | `{message, description?}` | per-locale | regenerate | bugshot-2 (4키 × ko/en/fr), 오픈소스 34개 |
 | `json-catalog` | `<dir>/{locale}.json` (flat 또는 중첩) | `string` | per-locale | regenerate | bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6**), 오픈소스 38개 |
-| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지 제외 — 명시 지정 전용** |
+| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 
@@ -183,7 +183,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. 비교 함수는 `shared.compareTemplates` **하나**이고 어댑터 내부와 어댑터 간이 그것을 공유한다
 - **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
-- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **예외는 `ts-dict` 하나**(아래 — 자동 탐지 제외라 `detectCandidates`는 `[]`, 명시 지정용 `detect`만 내용 탐지를 돈다). 예외가 둘로 늘면 `detect-candidates.test.ts`가 red다
+- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을 진다. 단 그 어댑터는 **probe가 없으면 `[]`** 이고(경로만으로는 판단하지 않는다), 예외가 생기면 `detect-candidates.test.ts`가 red다
 
 #### ⚠️ 예제·픽스처 디렉터리가 진짜 카탈로그를 가린다 (2026-09-02 실측)
 
@@ -217,11 +217,15 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 `read`는 그대로 엄격하다 — 그 값들은 여전히 `errors`(leaf-type)로 보고된다. 완화한 것은 **탐지 관문뿐**이다.
 - **`nested`는 `detect`가 알 수 없다** — 내용의 성질이므로 `read`가 관측해 `ReadResult.nested`로 돌려주고, 호출부가 write 전에 `DetectedFormat.nested`에 실어준다
 
-#### ⚠️ `ts-dict`는 자동 탐지 후보에서 빠져 있다 (2026-09-02)
+#### ⚠️ `ts-dict`는 2026-09-02에 자동 탐지에서 빠졌다가 2026-09-14에 돌아왔다
 
-`ADAPTERS`에는 남아 있지만 `detectCandidates`가 항상 빈 배열을 낸다. 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
+**뺐던 이유**: 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
 
-**`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — bugshot-2가 실전 검증 대상이므로 이 경로가 그 리포의 공식 온보딩 경로다. `read`·`write`는 아무것도 바뀌지 않았다.
+**되돌린 이유**: 그 대가를 실물이 냈다 — bugshot-2의 온보딩 ②에 **4키 `_locales`만** 뜨고 903키 딕셔너리는 목록에 없었다. 명시 지정은 **그 포맷을 아는 사람에게만** 길이고, PRODUCT §7.3이 그 상황을 *"작은 `_locales`(4키)가 실제 UI 딕셔너리(903키)를 가렸고 조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 이미 적어 두고 있었다.
+
+**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
+
+**`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML이 이 포맷에만 어댑터를 고정하는 이유도 그대로다: 1순위가 그것이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
 
 **base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `Project.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
 
@@ -252,7 +256,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | grafana/grafana | `public/app/plugins/datasource/azuremonitor/dashboards/{locale}.json` (대시보드 정의, read 에러 1,799) | `adx`·`arg` |
 | n8n-io/n8n | `packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/{locale}.json` (JSON 스키마) | `add`·`get` |
 
-**자동 탐지에 참여하는 네 어댑터의 후보 그룹은 `hasStrongLocale`을 통과해야 한다** (`ts-dict`는 자동 탐지 밖이라 부르지 않는다) — 2글자(`en`)·지역 서브태그(`zh-CN`·`fil-PH`)·camelCase(`koKR`) 중 하나가 그룹에 있어야 한다. 3글자 로케일(`fil`·`ceb`)을 버리는 게 아니라 **강한 것 옆에 있을 것**만 요구한다: 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인 3글자 영단어 디렉터리에는 그게 없다. **모든 어댑터의 그룹 필터가 이 규칙을 지난다.**
+**자동 탐지에 참여하는 **다섯** 어댑터의 후보 그룹이 `hasStrongLocale`을 통과해야 한다** (⚠️ `ts-dict`는 2026-09-14에 들어왔다 — 그 전까지 이 관문 밖이었고, 들어오자마자 `fmt`·`map` 같은 유틸 상수가 로케일로 잡혔다) — 2글자(`en`)·지역 서브태그(`zh-CN`·`fil-PH`)·camelCase(`koKR`) 중 하나가 그룹에 있어야 한다. 3글자 로케일(`fil`·`ceb`)을 버리는 게 아니라 **강한 것 옆에 있을 것**만 요구한다: 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인 3글자 영단어 디렉터리에는 그게 없다. **모든 어댑터의 그룹 필터가 이 규칙을 지난다.**
 
 #### ⚠️ 순위 픽스는 파이프라인의 **마지막** 층에 넣어야 한다 (2026-09-02 3차)
 
@@ -355,7 +359,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 ### 1.9 어댑터 범용성 실측 — 근거와 재측정 규칙
 
 **어댑터·탐지 규칙을 손대기 전에 이 절을 읽는다.** 오픈소스 리포 **학습 109개 + 홀드아웃 20개**에
-`detect`→`read`→왕복을 돌려 17회차까지 쟀다(입력은 `docs/adapter-survey/`).
+`detect`→`read`→왕복을 돌려 18회차까지 쟀다(입력은 `docs/adapter-survey/`).
 
 ```sh
 pnpm adapter-survey docs/adapter-survey/repos.txt          --verdicts docs/adapter-survey/verdicts.json
@@ -363,15 +367,21 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 ```
 회차별 로그는 지웠고 — `git log`가 든다 — 여기 남는 것은 **판정과 그 근거**다.
 
-**최종 지표 (17차, 2026-09-11 — 16차와 한 칸도 다르지 않다)**
+**최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다)**
 
 | 지표 | 학습 109 | 홀드아웃 20 |
 |---|---|---|
 | 지원 포맷 탐지 | 100/101 (99.0%) | 16/17 (94.1%) |
-| **오탐** | 0/100 (0.0%) | **1/16 (6.3%)** |
+| **오탐** | 0/100 (0.0%) | **2/16 (12.5%)** |
 | 왕복 의미 동일 | 99/100 | 16/16 |
 | **바이트 고정점(결정성)** | **100/100** | **16/16** |
 | 조용한 손실 | **0건** | **0건** |
+| **`ts-dict`가 1순위인 리포** | **0** | **0** |
+
+⚠️ **홀드아웃 오탐이 1건 늘었는데 코퍼스 드리프트다** — 새로 틀린 것은 mattermost(1순위
+`i18n/glossary/{locale}.json`, 정답 2순위)이고 그 리포에 용어집 디렉터리가 생겼다. **변경 전
+코드(`765c20f`)로 같은 리포를 다시 재서 같은 결과를 확인했다** — 탐지 규칙 변경의 영향이 아니다.
+17차(2026-09-11)의 값은 학습 쪽이 한 칸도 다르지 않고 홀드아웃 오탐만 1/16 → 2/16이다.
 
 **판정 넷**
 
@@ -381,11 +391,24 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **② 키 정렬 규칙은 개정됐다** — `LocaleEntry.order` 오름차순(없으면 `<` 비교)이다(§1.1). 알파벳
   정렬이던 시절 첫 write diff 중앙값이 **0.784**였고 순서 보존 뒤 **0.001**이다. 수술적 치환 어댑터가
   diff 0.000을 내는 것이 그 판정의 대조군이었다.
-- **③ `ts-dict`는 자동 탐지에서 제외한다** — 109개에서 후보 **0회**였고, 코드 딕셔너리 리포는 전부
-  로케일당 파일 하나여서 `code-dict`가 11개를 왕복 100%·diff 0.000으로 덮었다. `--adapter ts-dict`
-  명시 지정만 남기고 탐지 로직은 `tsDictDetectByContent`에 보관돼 있다. bugshot-2가 그 경로의 유일한
-  사용자다. ⚠️ **그래서 온보딩의 "수동 지정" 힌트가 그 포맷으로 가는 유일한 길이다.**
-- **④ 무인 탐지는 가능하되 보고할 오탐률은 6.3%다** — 학습 코퍼스의 0.0%는 **과적합이다**(처음 보는
+- **③ `ts-dict`도 자동 탐지에 참여한다** (2026-09-14 — 2026-09-02 판정을 뒤집었다). 뺐던 근거는
+  *"109개에서 후보 0회"* 와 *"`.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용"* 이었다. **그 대가가
+  실물에서 드러났다**: bugshot-2에서 4키 `_locales`가 903키 딕셔너리를 가렸고, 그 상황을 PRODUCT §7.3이
+  이미 *"조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 적어 두고 있었다. 수동 지정은 그 포맷을
+  **아는 사람에게만** 길이다.
+  - **되돌린 뒤에도 남의 리포는 안 건드린다** (18차): 학습 109·홀드아웃 20 어디에서도 `ts-dict`가
+    1순위가 되지 않았고 오탐률이 그대로다. 그것을 지키는 것이 규칙 둘이다 — **`hasStrongLocale`**
+    (유틸 파일의 `fmt`·`map`이 로케일로 잡히는 것을 막는다. 나머지 넷은 원래 지나고 있었다)과
+    **글롭 승격 차단**(`liftAncestors`가 `{locale}` 없는 템플릿을 조상이라는 이유로 올리지 않는다 —
+    실측에서 2로케일 글롭이 3로케일 카탈로그를 눌렀다).
+  - **probe 비용은 `tsDictProbePaths`가 든다** — 경로만 보고 `I18N_HINT` 통과 · 곁가지 제외 ·
+    **파일이 많은 디렉터리 2개 × 8파일**만 내려받는다(blob 21 → 37). ⚠️ **얕은 순이 아니라 큰 순이다**:
+    네임스페이스 디렉터리는 보통 더 깊고 더 커서, 깊이로 고르면 모노레포에서 진짜가 유틸 디렉터리에
+    밀려 **조용히** 빠진다.
+  - ⚠️ **셋째 이후 디렉터리는 여전히 흔적 없이 빠진다.** 상한이 2이고 다운로드가 순차라 넓히면 그대로
+    응답 시간이다 — 그때의 길이 수동 지정이다.
+- **④ 무인 탐지는 가능하되 보고할 오탐률은 12.5%다** (18차 — 17차까지 6.3%였고 늘어난 1건은 코퍼스
+  드리프트다) — 학습 코퍼스의 0.0%는 **과적합이다**(처음 보는
   20개에서 수정 전 40%였다). ⚠️ **"사람 확인 한 단계"를 없애지 않는 근거가 그 실패의 성질이다**:
   read/write는 처음 보는 리포에서도 100%였고 **무너진 것은 탐지뿐**이다. 위험은 "값을 잘못 쓴다"가
   아니라 **"엉뚱한 파일을 대상으로 삼는다"** 이고, 그건 사람이 경로 하나 보면 즉시 안다
@@ -402,10 +425,13 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 | `I18N_HINT` | `{dir}/{locale}/<name>.json` 모양이 경로에 i18n 계열 디렉터리 이름을 요구한다 — 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다 |
 | 버킷별 순위 | 어댑터 가로지르는 순위를 크롬 버킷과 `rest`에 **따로** 돌린다. 가로질러 적용하면 "크롬 최우선"이 무너진다 |
 
-**남은 오탐 1건은 고치지 않는다** — discourse가 플러그인 쪽 로케일 파일을 고른다(그쪽이 로케일 파일이
+**남은 오탐 둘 다 고치지 않는다** — ① discourse가 플러그인 쪽 로케일 파일을 고른다(그쪽이 로케일 파일이
 하나 더 많고 다른 서브트리라 조상 승격이 안 닿는다). `plugins/` 감점을 넣으면 잡히지만 **관측이 1건뿐이라
 만들지 않았다**: 근거 없는 규칙 추가가 이 프로젝트에서 결함이고, `packages/`에 진짜 카탈로그를 두는
-리포(Ghost·payload)가 있어 "하위 디렉터리 감점"은 일반화할 수도 없다.
+리포(Ghost·payload)가 있어 "하위 디렉터리 감점"은 일반화할 수도 없다. ② mattermost가 용어집
+(`i18n/glossary/{locale}.json`, 22로케일)을 고른다 — 진짜 카탈로그(`i18n/{locale}.json`)보다 로케일이
+많고 같은 서브트리의 자손이라 조상 승격이 닿지 않는다. **2026-09-14에 새로 관측됐고 탐지 규칙 변경이
+아니라 그 리포가 그 디렉터리를 새로 만든 결과다**(변경 전 코드로 재확인했다).
 
 ⚠️ **재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를
 **학습과 홀드아웃 둘 다** 돌린다 — 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 **그중 하나는 학습

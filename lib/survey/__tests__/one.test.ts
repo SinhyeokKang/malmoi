@@ -38,7 +38,8 @@ const BROKEN = {
  * 4. 어댑터 간 경합 — chrome `_locales`(2키)가 `code-dict`(3키)를 가린다.
  *
  * ant-design 실측이 이 형태였다: 부속 카탈로그가 진짜 코드 딕셔너리를 1순위에서 눌렀다.
- * (전에는 `ts-dict`로 이 케이스를 썼는데 자동 탐지에서 빠졌다 — ARCHITECTURE §1.9 판정 ③.)
+ * (전에는 `ts-dict`로 썼는데 그것이 자동 탐지에서 빠졌던 동안 `code-dict`로 옮겼다. 2026-09-14에
+ * 다시 참여하게 됐지만 **이 케이스는 그대로 둔다** — 재는 것이 어댑터 간 경합이지 특정 어댑터가 아니다.)
  */
 const CODE_SOURCE = `// 주석 보존
 export default {
