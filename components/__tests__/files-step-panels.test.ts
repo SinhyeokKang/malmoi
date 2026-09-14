@@ -29,25 +29,29 @@ describe("② 파일 선택 — 패널 구분선", () => {
   });
 
   /**
-   * ⚠️ **핸들 폭이 껍데기의 `gap-4`를 흡수한다.** 껍데기 본문은 `bodyDirection="row"`에서 `gap-4`를
-   * 드는데, 그 **안에** 핸들을 형제로 끼우면 간격이 16+16+16이 된다. 그래서 좌·우·핸들을 하나의
-   * `ResizablePanelGroup`으로 묶어 본문의 **자식 하나**로 만든다 — 자식이 하나면 `gap`이 아무것도
-   * 하지 않으므로 껍데기는 손대지 않는다(`bodyDirection="row"` 소비자는 이 화면 하나뿐이지만,
-   * 그 `gap`은 두 자식을 놓는 다음 화면의 계약이라 지우지 않는다).
+   * ⚠️ **핸들 폭이 셸과 같은 8px이다** (2026-09-14 사용자 확정 — 옛 16에서 내렸다). 껍데기 본문은
+   * `bodyDirection="row"`에서 `gap-4`를 드는데, 그 **안에** 핸들을 형제로 끼우면 간격이 16+8+16이
+   * 된다. 그래서 좌·우·핸들을 하나의 `ResizablePanelGroup`으로 묶어 본문의 **자식 하나**로 만든다 —
+   * 자식이 하나면 `gap`이 아무것도 하지 않으므로 껍데기는 손대지 않는다(`bodyDirection="row"`
+   * 소비자는 이 화면 하나뿐이지만, 그 `gap`은 두 자식을 놓는 다음 화면의 계약이라 지우지 않는다).
    */
-  it("핸들이 16px이고, 껍데기의 `gap-4`는 그대로 둔다", () => {
-    expect(files).toMatch(/<ResizableHandle[^>]*className="w-4"/s);
+  it("핸들이 8px이고, 껍데기의 `gap-4`는 그대로 둔다", () => {
+    expect(files).toMatch(/<ResizableHandle[^>]*className="w-2"/s);
     expect(modal).toMatch(/bodyDirection === "row"/);
     expect(modal).toMatch(/\bgap-4\b/);
   });
 
-  /** 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이고, 720 위에서 %로 굳는다. */
-  it("좌측이 200 / 240 / 320을 720 기준 %로 든다", () => {
-    const expected = panelConstraints(720, { min: 200, default: 240, max: 320 });
+  /**
+   * 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이고, 728 위에서 %로 굳는다.
+   * ⚠️ **분모가 핸들과 함께 움직인다** — 736 − 8이다. 핸들을 8로 내리고 여기를 16으로 두면
+   * 240이 242로 서고, 그 3px은 화면에서 안 보이므로 이 숫자가 유일한 방어선이다.
+   */
+  it("좌측이 200 / 240 / 320을 728 기준 %로 든다", () => {
+    const expected = panelConstraints(728, { min: 200, default: 240, max: 320 });
     expect(expected).not.toBeNull();
-    expect(expected?.defaultSize).toBeCloseTo(33.3333, 4);
+    expect((expected?.defaultSize ?? 0) * 728 / 100).toBeCloseTo(240, 6);
     expect(files).toMatch(/panelConstraints\(\s*FILES_PANEL_WIDTH\s*,/);
-    expect(files).toMatch(/const FILES_PANEL_WIDTH = 736 - 16/);
+    expect(files).toMatch(/const FILES_PANEL_WIDTH = 736 - 8/);
     expect(files).toMatch(/min: 200, default: 240, max: 320/);
   });
 

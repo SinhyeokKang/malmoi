@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { m } from "@/lib/i18n";
-import { panelConstraints, type PanelPx } from "@/lib/shell/panel-size";
+import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-size";
 
 /**
  * LNB의 px 치수. **하한 200**은 nav 항목의 아이콘+라벨+배지가 유지되는 자리, **기본 240**은 시안
@@ -59,28 +60,64 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
 
   const constraints = available === null ? null : panelConstraints(available, SHELL_SIDEBAR_PX);
 
+  /**
+   * ⚠️ **`defaultSize`를 다시 줘도 이미 놓인 패널은 안 움직인다** (2026-09-15 실물 검증 — 1440에서
+   * LNB가 270, 1920에서 상한 320이었다). 그래서 잰 폭이 바뀔 때마다 **명령형으로** 되돌린다.
+   * 지키는 것은 %가 아니라 px이고, 사용자가 창을 넓혔다고 LNB가 같이 넓어지지 않는다.
+   */
+  const groupRef = useRef<ImperativePanelGroupHandle>(null);
+  /** 지금 지켜야 할 LNB의 px. 시안 값에서 시작하고 **사용자의 드래그만** 이 값을 바꾼다. */
+  const sidebarPx = useRef(SHELL_SIDEBAR_PX.default);
+  const dragging = useRef(false);
+
+  useEffect(() => {
+    if (available === null) return;
+    const layout = panelLayout(available, sidebarPx.current);
+    if (layout !== null) groupRef.current?.setLayout(layout);
+  }, [available]);
+
   return (
     <div ref={measure} className="flex min-h-0 flex-1">
-      <ResizablePanelGroup direction="horizontal">
+      {/*
+        ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ProjectPanel`의 오른쪽
+        그림자가 그룹 경계에서 잘린다. 셸 바깥의 `p-2`가 그 여백을 이미 들고 있다.
+      */}
+      <ResizablePanelGroup ref={groupRef} direction="horizontal" style={{ overflow: "visible" }}>
         <ResizablePanel
           {...(constraints ?? FALLBACK)}
+          /**
+           * ⚠️ **드래그일 때만 받는다.** 폭 변화로 우리가 부른 `setLayout`도 여기로 돌아오는데, 그것을
+           * 새 의사로 읽으면 px가 그때그때의 반올림을 따라 흘러간다.
+           */
+          onResize={(size) => {
+            if (dragging.current && available !== null) sidebarPx.current = (size / 100) * available;
+          }}
           /**
            * ⚠️ **재기 전에는 %가 거짓이라 px로 못박는다.** 그룹 폭이 뷰포트를 따르는데 SSR은 그것을
            * 모른다 — 1264 기준 %를 그대로 그리면 2560 디스플레이에서 LNB가 486px인 채로 **하이드레이션이
            * 끝날 때까지** 서 있는다(한 프레임이 아니다). `styleFromProps`가 라이브러리 스타일 뒤에
            * 펼쳐지므로 이 override가 이긴다. 재고 나면 떼고 %에 맡긴다.
            */
+          /**
+           * ⚠️ **`overflow`를 되돌린다** — 라이브러리의 `getPanelStyle`이 인라인으로 `hidden`을 걸어
+           * 안쪽 패널의 `shadow-low`(4px 12px 4px)가 패널 경계에서 잘린다(2026-09-14 사용자 관측).
+           * 스크롤은 안쪽 `ContentPanel`이 자기 `overflow-hidden`으로 들고 있어 여기는 필요 없다.
+           */
           style={
             constraints === null
-              ? { flexGrow: 0, flexShrink: 0, flexBasis: `${SHELL_SIDEBAR_PX.default}px` }
-              : undefined
+              ? { overflow: "visible", flexGrow: 0, flexShrink: 0, flexBasis: `${SHELL_SIDEBAR_PX.default}px` }
+              : { overflow: "visible" }
           }
         >
           {sidebar}
         </ResizablePanel>
-        <ResizableHandle aria-label={m.common.resizeSidebar} className="w-2" />
+        <ResizableHandle
+          aria-label={m.common.resizeSidebar}
+          className="w-2"
+          onDragging={(isDragging) => { dragging.current = isDragging; }}
+        />
         {/* `ContentPanel` + `ProjectPanel`이 이 안에서 gap 8로 나란하다 (`[slug]` 레이아웃이 둘을 낸다). */}
-        <ResizablePanel className="flex min-w-0 gap-2">{children}</ResizablePanel>
+        <ResizablePanel style={{ overflow: "visible" }} className="flex min-w-0 gap-2">{children}</ResizablePanel>
       </ResizablePanelGroup>
     </div>
   );

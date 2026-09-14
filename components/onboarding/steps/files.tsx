@@ -41,10 +41,13 @@ export type ManualEntry = { adapter: AdapterName; pathTemplate: string; baseLoca
 
 /**
  * ② 좌측 패널이 나눠 가질 폭 — **여기는 뷰포트를 따라 변하지 않는다.** 모달이 `max-w-[800px]`이고
- * 본문이 `px-8`(64)이라 720 = 736 − 핸들 16이고, 셸이 `min-w-[1280px]`이라 1280 뷰포트에서도 800이
+ * 본문이 `px-8`(64)이라 728 = 736 − 핸들 8이고, 셸이 `min-w-[1280px]`이라 1280 뷰포트에서도 800이
  * 그대로 산다. 그래서 `ShellPanels`와 달리 재는 훅이 없다.
+ *
+ * ⚠️ **핸들 폭과 같이 움직인다** — 여기가 핸들보다 크면 좌측이 계산한 240보다 넓게 선다(`w-4`
+ * 시절의 16이 남아 있어 실측 242였다).
  */
-const FILES_PANEL_WIDTH = 736 - 16;
+const FILES_PANEL_WIDTH = 736 - 8;
 
 /**
  * 좌측 치수는 셸 LNB와 **같은 200 / 240 / 320**이다. 하한 200은 후보 행의 40px 글리프와 2줄 경로가
@@ -196,7 +199,13 @@ export function FilesStep({
         `getPanelStyle`이라 Tailwind로 못 덮는다. 그대로 두면 위와 **같은 잘림이 다시 생기므로**
         `style`로 되돌린다(`styleFromProps`가 라이브러리 스타일 뒤에 펼쳐져 이긴다).
       */}
-      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex flex-col gap-3">
+      {/*
+        ⚠️ **`min-w-0`이 없으면 핸들이 아무것도 못 움직인다** (2026-09-14 실물 검증). flex 항목의 기본
+        `min-width: auto`는 **min-content 아래로 못 줄이는 바닥**이라, 경로 텍스트가 든 후보 행의
+        min-content(≈379)가 `flex-grow`를 이긴다 — `data-panel-size`는 33.3→44.4로 바뀌는데 폭은
+        379에 붙박이고, 쉬는 폭도 240이 아니라 379다. 우측도 같은 이유로 함께 푼다.
+      */}
+      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col gap-3">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -227,7 +236,7 @@ export function FilesStep({
         )}
       </ResizablePanel>
 
-      <ResizableHandle aria-label={m.newProject.files.resize} className="w-4" />
+      <ResizableHandle aria-label={m.newProject.files.resize} className="w-2" />
 
       {/*
         우 — 키·값 표. 껍데기는 `Preview`가 든다.
@@ -235,7 +244,7 @@ export function FilesStep({
         ⚠️ **후보 0개에도 껍데기를 버리지 않는다** (핸드오프 3a). 경로를 쳐서 매칭되는 순간 빈 박스가
         통째로 툴바+헤더+행으로 갈리면 화면이 튄다 — 로딩에 헤더를 세워 두는 것과 **같은 규칙**이다.
       */}
-      <ResizablePanel className="flex">
+      <ResizablePanel className="flex min-w-0">
         <Preview
           state={state}
           candidate={candidate ?? state.manualCandidate}

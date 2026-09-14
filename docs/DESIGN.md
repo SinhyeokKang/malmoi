@@ -559,7 +559,7 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 | **시각 바** | `::after` **4px**(`after:w-1`), 스트립 한가운데(`after:left-1/2 after:-translate-x-1/2`), 위아래 끝이 페이드(`after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent`) |
 | **색** | ⚠️ **`via-ring`이다 — 원본의 `via-blue-300`이 아니다.** blue-300은 리포 전수 0건의 **미등재 raw 색**이고, `app/globals.css`가 그것을 **흰 배경 1.80:1이라 목측 뒤 버린** 색으로 기록하고 있다. 같은 색을 뒷문으로 들이지 않는다. `--ring`(blue-400)은 이미 등재된 토큰이라 **§6.2에 색이 늘지 않는다** |
 | **표시 트리거** | ⚠️ **React state가 아니라 `data-*`다.** 라이브러리가 DOM에 쓰는 `data-resize-handle-state`(`inactive`/`hover`/`drag`)를 CSS가 직접 읽는다: `after:opacity-0 data-[resize-handle-state=hover]:after:opacity-100 data-[resize-handle-state=drag]:after:opacity-100` |
-| **폭 = 옛 `gap`** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다 — 셸 `w-2`(옛 `gap-2`), 모달 ② `w-4`(껍데기의 `gap-4`). **변경 전후로 눈에 보이는 간격이 같다** |
+| **폭** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다. **둘 다 `w-2`(8)다** — 셸은 옛 `gap-2`와 같아 간격이 그대로이고, **모달 ②는 옛 `gap-4`(16)에서 8로 좁혔다**(2026-09-14 사용자 확정). ⚠️ **`files.tsx`의 `FILES_PANEL_WIDTH = 736 − 8`이 이 값을 따라간다** — 16으로 두면 좌측 기본이 240이 아니라 242로 서고, 그 3px은 화면에서 안 보인다 |
 | **히트 영역** | ⚠️ **CSS가 아니다.** 라이브러리가 document의 pointermove에서 핸들 rect에 마진을 얹어 판정한다(기본 `fine: 5px` / `coarse: 15px`). 그래서 시각 4px이어도 잡히고, `hitAreaMargins`를 **덮지 않는다** |
 | **커서** | ⚠️ **핸들에 `cursor-*`를 쓰지 않는다.** 드래그가 시작되면 라이브러리가 `document.head`에 `<style>`을 꽂아 `*{cursor: ew-resize !important}`를 건다 — 포인터가 핸들을 벗어나도 커서가 유지되는 이유가 이것이고, 클래스는 먹지도 않으면서 "여기가 커서의 출처"라는 거짓 단서만 남긴다 |
 | **포커스** | 핸들은 `role="separator" tabindex="0"`이라 포커스를 받는다 — §7의 링 셋을 그대로 든다. ⚠️ **접근 이름을 붙인다**(`m.common.resizeSidebar` · `m.newProject.files.resize`) — 라이브러리는 이름을 만들어 주지 않아 스크린리더가 "separator"로만 읽는다 |
@@ -568,8 +568,8 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 
 ⚠️ **`minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2에 px 짝이 없다). 셸은 그룹 폭이 뷰포트를
 따르므로 **`ResizeObserver`로 재고 px→%로 환산한다**(`lib/shell/panel-size.ts` — 순수 함수) —
-고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 720**이라
-(`max-w-[800px]` − `px-8` 64 − 핸들 16) 재지 않고 모듈 상수로 굳힌다.
+고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 728**이라
+(`max-w-[800px]` − `px-8` 64 − 핸들 8) 재지 않고 모듈 상수로 굳힌다.
 
 ⚠️ **분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다** — 라이브러리는 패널에 `flex-basis: 0` +
 `flex-grow: <size>`를 걸고 핸들은 **자기 폭을 가진 별도 flex 항목**이다.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { panelConstraints, panelPercent } from "../panel-size";
+import { panelConstraints, panelLayout, panelPercent } from "../panel-size";
 
 /**
  * **`react-resizable-panels`의 `minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2 `Panel.d.ts`:
@@ -63,5 +63,33 @@ describe("panelConstraints — 세 치수를 한 번에", () => {
       expect(c!.defaultSize).toBeLessThanOrEqual(c!.maxSize);
       expect(c!.maxSize).toBeLessThanOrEqual(100);
     }
+  });
+});
+
+/**
+ * ⚠️ **`defaultSize`는 마운트 시점에만 쓰인다** (2026-09-15 실물 검증). 재고 나서 prop을 고쳐도
+ * 이미 놓인 패널은 움직이지 않아, LNB가 1280에서 240 · 1440에서 270 · 1920에서 320(상한)으로
+ * **뷰포트를 따라 커졌다.** 그래서 폭이 바뀔 때마다 이 함수로 %를 다시 내 `setLayout`에 넘긴다 —
+ * 지키는 것은 %가 아니라 **px**다.
+ */
+describe("panelLayout", () => {
+  it("폭이 달라져도 같은 px를 낸다", () => {
+    for (const available of [1256, 1416, 1896, 2536]) {
+      const layout = panelLayout(available, 240);
+      expect(layout).not.toBeNull();
+      expect(((layout?.[0] ?? 0) / 100) * available).toBeCloseTo(240, 6);
+    }
+  });
+
+  it("두 몫의 합이 언제나 100이다 — 라이브러리가 그것을 요구한다", () => {
+    for (const px of [0, 200, 240, 320, 99_999]) {
+      const layout = panelLayout(1416, px);
+      expect((layout?.[0] ?? 0) + (layout?.[1] ?? 0)).toBeCloseTo(100, 10);
+    }
+  });
+
+  it("못 잰 폭에는 null이다 — 0으로 나누면 100%가 된다", () => {
+    expect(panelLayout(0, 240)).toBeNull();
+    expect(panelLayout(Number.NaN, 240)).toBeNull();
   });
 });

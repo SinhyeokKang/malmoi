@@ -37,3 +37,19 @@ export function panelConstraints(
     maxSize: panelPercent(available, px.max),
   };
 }
+
+/**
+ * 그룹의 두 몫(%) — **지키는 것은 %가 아니라 `px`다.**
+ *
+ * ⚠️ **`defaultSize`로는 안 된다** (2026-09-15 실물 검증). 그 값은 **마운트 시점에만** 읽히고,
+ * 재고 나서 prop을 고쳐도 이미 놓인 패널은 움직이지 않는다 — LNB가 1280에서 240 · 1440에서 270 ·
+ * 1920에서 320(상한)으로 **뷰포트를 따라 커졌다.** 살아 있던 것은 `minSize`/`maxSize`뿐이라 증상이
+ * "큰 화면에서 상한에 붙는다"로만 보였다. 그래서 폭이 바뀔 때마다 이 값을 `setLayout`에 넘긴다.
+ *
+ * **못 잰 폭에는 `null`** — `panelConstraints`와 같은 이유다.
+ */
+export function panelLayout(available: number, px: number): [number, number] | null {
+  if (!Number.isFinite(available) || available <= 0) return null;
+  const first = panelPercent(available, px);
+  return [first, 100 - first];
+}
