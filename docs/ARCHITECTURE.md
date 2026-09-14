@@ -650,6 +650,18 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`Project.baseBranch`는 `ProbeResult.defaultBranch`로 채운다.** 스키마 기본값이 `"main"`이라 안 채우면
   default branch가 `develop`인 리포의 pull이 `main`을 찾아 죽는다.
 
+**신규 생성은 모든 표면의 준비·첫 적재가 성공해야 커밋한다** (2026-09-14).
+`createProject`는 표면 배열을 받고 snapshot 한 번에서 파일·포맷·payload·YAML을 준비한다.
+GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === null` 또는 `failed > 0`이면 저장하지 않는다.
+클라이언트의 `outputPaths`는 체크 충돌 안내용이다. 생성은 새 snapshot·서버 확정 포맷으로 출력 경로를 다시 계산한다.
+`manual`은 YAML에 어댑터·기준 언어를 명시할지 정하는 표시 메타데이터일 뿐 경로 재검증을 완화하지 않는다.
+
+기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
+`applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
+중간 쓰기·커밋 실패는 밖으로 전파해 모두 롤백한다. 캐시 무효화는 커밋 뒤라 그 실패를 롤백으로 보고하지 않는다.
+신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Settings 재시도와 Add surface의 정책은 그대로다.
+별도 연결의 부분 행 가시성·동시 한도·slug 경합·둘째 표면·마지막 쓰기·시간 초과 롤백은 격리 PG 검사가 지킨다.
+
 #### 온보딩의 쓰기 쪽 판정층 넷 — 순서가 판정이다
 
 읽기(탐지)와 달리 이쪽은 **거부 순서 자체가 계약**이다.
