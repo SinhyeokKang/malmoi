@@ -149,7 +149,7 @@ lib/
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
                         index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 22) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
-                        chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(자동 탐지 제외)
+                        chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·

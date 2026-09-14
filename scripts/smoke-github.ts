@@ -105,7 +105,9 @@ async function main(): Promise<void> {
 
       const jsonLike = detectCandidatesAcross(paths);
       const codeDict = codeDictCandidatePaths(paths);
-      const targets = probeTargets(jsonLike, codeDict);
+      // ⚠️ **경로 전체를 함께 넘긴다** — ts-dict 씨앗이 여기서만 만들어진다. 안 넘기면 스모크가
+      // 프로덕션과 다른 후보 목록을 낸다(그 리포에서 ts-dict가 통째로 빠진다).
+      const targets = probeTargets(jsonLike, codeDict, paths);
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length}개`);
 
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));

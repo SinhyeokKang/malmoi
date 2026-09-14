@@ -40,9 +40,13 @@ export function probeTargets(
   /**
    * 리포 경로 **전체** (2026-09-14). ⚠️ **앞의 둘과 성격이 다르다** — 그쪽은 1패스가 만든 후보
    * 그룹인데 `ts-dict`는 내용을 봐야 알 수 있어 1패스 후보가 0이다. 그래서 경로를 직접 받아
-   * 씨앗을 고른다. **안 주면 그 어댑터는 화면에 영영 안 뜬다.**
+   * 씨앗을 고른다.
+   *
+   * ⚠️ **기본값을 두지 않는다** (2026-09-14 2차 리뷰). `= []`로 두면 안 넘긴 호출부가 **조용히**
+   * 통과하고 그 경로에서만 ts-dict가 영영 안 뜬다 — 실제로 `scripts/smoke-github.ts`가 그 상태였다.
+   * 필수 인자면 컴파일러가 잡는다. 후보가 없는 호출은 `[]`를 **명시적으로** 넘긴다.
    */
-  repoPaths: readonly string[] = [],
+  repoPaths: readonly string[],
   limits: { jsonLike: number; codeDict: number } = PROBE_LIMITS,
 ): string[] {
   const out = new Set<string>();

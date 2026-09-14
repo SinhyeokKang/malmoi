@@ -1,7 +1,7 @@
 import { Project, SyntaxKind, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
 
 import { quoteLiteral, quoteOf } from "./quote-style";
-import { compareKeys, looksLikeLocale, pathSignals } from "./shared";
+import { compareKeys, hasStrongLocale, looksLikeLocale, pathSignals } from "./shared";
 import type { Adapter, AdapterError, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
 
 /**
@@ -75,20 +75,17 @@ function pairs(
 }
 
 /**
- * ⚠️ **항상 빈 배열이다 — 자동 탐지에서 빠졌다** (2026-09-02, ARCHITECTURE §1.9 판정 ③).
+ * ⚠️ **자동 탐지 참여 여부가 2026-09-14에 뒤집혔다** (ARCHITECTURE §1.9 판정 ③).
  *
- * 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일
- * 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가
- * 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
+ * 2026-09-02에 자동 탐지에서 뺐던 근거는 *"오픈소스 109개에서 후보에 0회"* 와 *"`.ts` 디렉터리마다
+ * ts-morph를 돌리는 probe 비용"* 이었다. **2026-09-14에 되돌렸다** — 그 대가로 bugshot-2에서 903키
+ * 딕셔너리가 4키 `_locales` 뒤에 숨어 화면에 아예 안 떴고(PRODUCT §7.3이 그 상황을 적어 뒀다),
+ * probe 비용은 아래 `tsDictProbePaths`의 `I18N_HINT` 좁힘이 대신 든다.
  *
- * **`--adapter ts-dict` / `Project.adapterName` 명시 지정은 그대로 동작한다** — bugshot-2가 실전
- * 검증 대상이고, `read`·`write`는 아무것도 바뀌지 않았다.
- *
- * ⚠️ **그래서 `detect`와 `detectCandidates`가 갈린다.** 자동 탐지는 `detectCandidatesAcross`가
- * `detectCandidates`를 부르므로 빈 배열이면 참여하지 않고, 명시 지정은 `detectFormatWith`가
- * `detect`를 부르므로 그쪽은 내용 탐지를 그대로 쓴다. **전에는 `detect`도 빈 배열을 거쳐서
- * `--adapter ts-dict`가 "해당 포맷을 찾지 못했다"로 죽었다** — 위 문장이 코드와 어긋나 있었고,
- * "ADAPTERS에 남아 있다"만 검사하는 테스트가 그걸 가렸다 (2026-09-03).
+ * ⚠️ **`detect`와 `detectCandidates`가 같은 함수를 지난다.** 갈라 두면 "후보에는 있는데 고르면 안
+ * 되는 포맷"이 생긴다. 2026-09-03에는 반대 방향으로 갈려 있었다 — `detect`도 빈 배열을 거쳐
+ * `--adapter ts-dict`가 "해당 포맷을 찾지 못했다"로 죽었고, "ADAPTERS에 남아 있다"만 검사하는
+ * 테스트가 그걸 가렸다.
  */
 /**
  * 디렉터리당 내려받아 볼 파일 수. `detectByContent`가 읽는 수와 **같아야 한다**.
@@ -98,7 +95,15 @@ function pairs(
  * 그 숫자인데 절반이면 "4키"만큼은 아니어도 여전히 거짓이다. 더 큰 리포에서는 표본이 남는다.
  */
 const SEED_FILES = 8;
-/** 씨앗으로 고를 디렉터리 수. blob 예산은 비용이 아니라 응답 시간이다 (온보딩 `maxDuration` 60초). */
+/**
+ * 씨앗으로 고를 디렉터리 수. blob 예산은 비용이 아니라 응답 시간이다 (온보딩 `maxDuration` 60초,
+ * 다운로드가 **순차**다).
+ *
+ * ⚠️ **셋째 이후 디렉터리는 "검증 실패"가 아니라 미검증으로 사라진다** — 화면에도 로그에도 흔적이
+ * 없다 (2026-09-14 2차 리뷰 🟡6). 정렬이 얕은 쪽 우선이라 모노레포에서 깊은 진짜 딕셔너리가
+ * 체계적으로 진다: `src/i18n/*.ts`(유틸) + `src/locales/*.ts`(상수)가 앞서면
+ * `packages/app/src/i18n/namespaces/*.ts`는 안 뜬다. **그때의 길은 수동 지정이다.**
+ */
 const SEED_DIRS = 2;
 
 /**
@@ -114,7 +119,7 @@ const SEED_DIRS = 2;
  * ⚠️ **`I18N_HINT`로 좁히는 것이 예산의 전부다.** `.ts` 디렉터리는 어디에나 있어서(bugshot-2에 40여 개)
  * 신호 없이 고르면 blob이 수십 개가 된다. 곁가지(`__tests__`·`examples`)는 `aside`가 걷어낸다.
  */
-export function tsDictProbePaths(paths: readonly string[], limits = { dirs: SEED_DIRS, files: SEED_FILES }): string[] {
+export function tsDictProbePaths(paths: readonly string[]): string[] {
   const byDir = new Map<string, string[]>();
   for (const path of paths) {
     const m = NS_DIR.exec(path);
@@ -130,9 +135,9 @@ export function tsDictProbePaths(paths: readonly string[], limits = { dirs: SEED
     .filter(([, files]) => files.length >= 2)
     // 얕은 쪽이 진짜일 가능성이 높다(`pathSignals`의 같은 신호), 같으면 경로순으로 결정적이게.
     .sort(([a], [b]) => pathSignals(a).depth - pathSignals(b).depth || compareKeys(a, b))
-    .slice(0, limits.dirs);
+    .slice(0, SEED_DIRS);
 
-  return dirs.flatMap(([, files]) => files.slice().sort(compareKeys).slice(0, limits.files));
+  return dirs.flatMap(([, files]) => files.slice().sort(compareKeys).slice(0, SEED_FILES));
 }
 
 /**
@@ -160,8 +165,8 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
   for (const [dir, files] of dirs) {
     const locales = new Set<string>();
     let matched = 0;
-    // ⚠️ **씨앗이 내려받은 4개와 같은 것을 읽어야 한다** — 다른 4개를 보면 후보가 "검증 실패"가
-    // 아니라 **미검증으로 통째로** 떨어진다. 그래서 정렬을 `tsDictProbePaths`와 맞춘다.
+    // ⚠️ **씨앗이 내려받은 것과 같은 파일을 읽어야 한다**(`SEED_FILES`개, 같은 정렬) — 다른 것을
+    // 보면 후보가 "검증 실패"가 아니라 **미검증으로 통째로** 떨어진다.
     for (const path of files.slice().sort(compareKeys).slice(0, SEED_FILES)) {
       const content = probe(path);
       if (content === undefined) continue;
@@ -172,21 +177,31 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
       matched += 1;
       for (const name of objs.keys()) locales.add(name);
     }
-    if (matched === 0 || locales.size < 2) continue;
+    /**
+     * ⚠️ **강한 로케일이 하나는 있어야 한다** (2026-09-14 — 자동 탐지에 들어오면서 필요해졌다).
+     * `localeObjects`는 변수명을 `looksLikeLocale`(2~3자 소문자)로만 거르는데, i18n 디렉터리의 유틸
+     * 파일에는 `fmt`·`map`·`ctx`·`raw` 같은 상수가 흔하다 — 그 둘이 잡히면 **기준 언어 라디오에
+     * `fmt`/`map`이 뜬다.** 나머지 네 어댑터의 그룹 필터는 전부 이 관문을 지나고, 명시 지정
+     * 전용이던 동안에는 사람이 경로를 보고 골라서 이 어댑터만 밖에 있어도 무해했다.
+     */
+    if (matched === 0 || locales.size < 2 || !hasStrongLocale(locales)) continue;
     found.push({ adapter: "ts-dict", pathTemplate: `${dir}*.ts`, locales: [...locales] });
   }
   return found;
 }
 
 /**
- * **명시 지정 전용 진입점이다.** `detectCandidates`(자동 탐지)와 달리 내용 탐지를 그대로 쓴다 —
- * `detectFormatWith("ts-dict", …)`가 이걸 부른다.
+ * 명시 지정(`detectFormatWith("ts-dict", …)`)의 1순위. **`detectCandidates`와 같은 내용 탐지를
+ * 지난다** — 2026-09-14 전에는 이쪽만 그랬다(그때 자동 탐지는 빈 배열이었다).
  */
 function detect(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat | undefined {
   return detectByContent(paths, probe)[0];
 }
 
-/** 자동 탐지에서 빠진 로직. 되살리려면 `detectCandidates`가 이걸 부르면 된다. */
+/**
+ * 내용 탐지 그 자체. ⚠️ **`detectCandidates`가 이 함수를 부른다** — 별칭이라 두 진입점이 갈릴 수
+ * 없다. 2026-09-14 전에는 "자동 탐지에서 빠진 로직, 되살리려면 부를 것"이었다.
+ */
 export const tsDictDetectByContent = detectByContent;
 
 /** 첫 구문 진단 메시지. 타입 진단은 lib 로드가 필요하고 여기선 의미가 없다 — 구문만 본다. */

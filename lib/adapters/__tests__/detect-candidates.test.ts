@@ -58,14 +58,16 @@ describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
   });
 
   /**
-   * ⚠️ **2026-09-14에 되살렸다.** `tsDictDetectByContent`는 그때까지 "보관된 로직"이었고 지금은
-   * `detectCandidates`가 **그것을 그대로 부른다** — 두 진입점이 갈리면 명시 지정과 자동 탐지가
-   * 서로 다른 답을 내고, 그 차이는 화면에서 "후보에는 있는데 고르면 안 되는 포맷"으로 나타난다.
+   * ⚠️ **같은 함수를 두 번 부르는 단언을 쓰지 않는다** (2026-09-14 2차 리뷰 — `detectCandidates`가
+   * `detectByContent`의 별칭이라 그 비교는 **어떤 구현에서도 참**이었다). 세야 하는 것은 두 진입점의
+   * 항등이 아니라 **자동 탐지가 실제로 내는 값**이다.
    */
-  it("ts-dict: 자동 탐지와 명시 지정이 같은 로직을 지난다", () => {
+  it("ts-dict: 자동 탐지가 내는 후보가 명시 지정의 답과 같다", () => {
     const paths = ["a/i18n/x.ts", "b/i18n/y.ts"];
-    expect(tsDict.detectCandidates(paths, () => TS_SOURCE))
-      .toEqual(tsDictDetectByContent(paths, () => TS_SOURCE));
+    expect(tsDict.detectCandidates(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
+      .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
+    expect(tsDictDetectByContent(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
+      .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
   });
 
   it("못 찾으면 빈 배열이다 (undefined가 아니다)", () => {
@@ -129,8 +131,22 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
     expect(tsDict.detect(paths, () => TS_SOURCE)?.pathTemplate).toBe("a/i18n/*.ts");
   });
 
-  it("자동 탐지 밖에 남은 어댑터가 0이다 — 다시 빼면 이 줄이 거짓이 된다", () => {
-    expect(ADAPTERS.length - AUTO_DETECTED.length).toBe(0);
+  /**
+   * ⚠️ **`X.length - X.length`를 세지 않는다** (2026-09-14 2차 리뷰). 그렇게 쓰면 ts-dict를 다시 빼도
+   * green이다 — **어댑터마다 후보를 실제로 내게 해서** 센다.
+   */
+  it("다섯 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
+    const cases: Record<string, { paths: string[]; probe: FileProbe }> = {
+      "chrome-locales": { paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], probe: () => '{"a":{"message":"A"}}' },
+      "json-catalog": { paths: ["locales/en.json", "locales/ko.json"], probe: () => '{"a":"A"}' },
+      "yaml-catalog": { paths: ["config/locales/en.yml", "config/locales/ko.yml"], probe: () => "en:\n  a: A\n" },
+      "code-dict": { paths: ["src/locale/en.ts", "src/locale/ko.ts"], probe: () => 'export default { "a": "A" };' },
+      "ts-dict": { paths: ["src/i18n/x.ts", "src/i18n/y.ts"], probe: () => TS_SOURCE },
+    };
+    for (const adapter of ADAPTERS) {
+      const c = cases[adapter.name]!;
+      expect(adapter.detectCandidates(c.paths, c.probe).length, adapter.name).toBeGreaterThan(0);
+    }
   });
 
   it("detectFormat(어댑터 간 첫 매치)도 그대로다", () => {

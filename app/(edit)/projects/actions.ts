@@ -580,7 +580,7 @@ export type DetectResult =
 
 /**
  * 탐지 (화면 ③) — **2패스다** (design §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
- * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤21), 내용을 들고 다시 돈다.
+ * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤37 — ts-dict 씨앗이 2026-09-14에 16을 더했다), 내용을 들고 다시 돈다.
  *
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
@@ -1353,7 +1353,7 @@ async function readFiles(
   let totalBytes = 0;
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];
-  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤21개(탐지) 또는
+  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤37개(탐지) 또는
   // 로케일 파일 수(첫 적재)라 `maxDuration=60` 안에 든다 (design §3.1·§4).
   for (const path of paths) {
     const sha = shaByPath.get(path);

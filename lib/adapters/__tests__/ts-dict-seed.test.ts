@@ -70,7 +70,9 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
   });
 
   it("디렉터리당 8개까지만, 경로순으로 고른다", () => {
-    const picked = tsDictProbePaths(BUGSHOT2);
+    // ⚠️ 9번째를 더해 `slice`가 **실제로 자르는지** 본다 — bugshot-2가 마침 8개라 그것만으로는
+    // 상한이 no-op이고, 올리는 뮤테이션이 통과한다 (2026-09-14 2차 리뷰).
+    const picked = tsDictProbePaths([...BUGSHOT2, "src/i18n/namespaces/zzz.ts"]);
     const ns = picked.filter((p) => p.startsWith("src/i18n/namespaces/"));
     /**
      * ⚠️ **내용 탐지가 읽는 것과 같은 8개여야 한다** — 다른 파일을 받으면 후보가 "검증 실패"가 아니라
@@ -92,12 +94,18 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
     expect(tsDictProbePaths(["src/i18n/only.ts"])).toEqual([]);
   });
 
+  /**
+   * ⚠️ **상한이 실제로 걸리는 입력을 준다** (2026-09-14 2차 리뷰). 디렉터리당 파일이 상한보다 적으면
+   * `slice`가 no-op이라 **상한을 올리는 뮤테이션이 통과한다** — 전 판본이 디렉터리당 2파일이었다.
+   */
   it("상한을 넘지 않는다 — blob 예산이 응답 시간이다", () => {
-    const many = Array.from({ length: 12 }, (_, i) =>
-      [`src/i18n/g${i}/a.ts`, `src/i18n/g${i}/b.ts`],
+    const many = Array.from({ length: 12 }, (_, d) =>
+      Array.from({ length: 12 }, (_, f) => `src/i18n/g${d}/f${String(f).padStart(2, "0")}.ts`),
     ).flat();
-    // 디렉터리 2개 × 파일 8개 (이 픽스처는 디렉터리당 2파일이라 4를 넘지 않는다).
-    expect(tsDictProbePaths(many).length).toBeLessThanOrEqual(16);
+    const picked = tsDictProbePaths(many);
+    // 디렉터리 2개 × 파일 8개. `toHaveLength`라 올리는 뮤테이션도 red다.
+    expect(picked).toHaveLength(16);
+    expect(new Set(picked.map((p) => p.slice(0, p.lastIndexOf("/")))).size).toBe(2);
   });
 });
 
@@ -123,5 +131,48 @@ describe("자동 탐지에 ts-dict가 후보로 오른다", () => {
   it("`_locales`가 1순위를 유지한다 — 기본 착지가 바뀌지 않는다", () => {
     const found = detectCandidatesAcross(BUGSHOT2, probe);
     expect(found[0]?.adapter).toBe("chrome-locales");
+  });
+});
+
+/**
+ * ⚠️ **자동 탐지에 들어오면서 생긴 결함 둘** (2026-09-14 리뷰 🔴1·🔴2). 명시 지정 전용일 때는
+ * 사람이 경로를 보고 골랐으므로 둘 다 무해했다 — 후보로 나가는 순간 성격이 바뀐다.
+ */
+describe("자동 탐지가 만든 오탐 경로를 막는다", () => {
+  /** i18n 디렉터리의 유틸 파일 — 2~3자 소문자 상수는 어디에나 있다. */
+  const UTIL_SOURCE = `
+const fmt = { "a": "x" };
+const map = { "a": "y" };
+export const helpers = { fmt, map };
+`;
+
+  it("강한 로케일이 없으면 후보가 아니다 — fmt·map은 로케일이 아니다", () => {
+    const found = detectCandidatesAcross(["src/i18n/helpers.ts", "src/i18n/format.ts"], () => UTIL_SOURCE);
+    expect(found).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **글롭은 조상 승격의 대상이 아니다.** `liftAncestors`의 근거는 *"자손은 같은 카탈로그의
+   * 하위 조각"*인데(DMPRoadmap), 글롭 템플릿은 경로에 로케일이 아예 없어 그 관계를 말할 수 없다.
+   * 막지 않으면 **로케일 수에서 지고도 1순위를 가져간다** — 온보딩 ②의 기본 선택이 뒤집힌다.
+   */
+  it("ts-dict 글롭이 조상이라는 이유로 진짜 카탈로그를 누르지 않는다", () => {
+    const paths = [
+      "src/i18n/dict.ts",
+      "src/i18n/base.ts",
+      "src/i18n/locales/en.json",
+      "src/i18n/locales/ko.json",
+      "src/i18n/locales/fr.json",
+    ];
+    // 이쪽 딕셔너리는 **진짜다** — 강한 로케일 둘이라 위 게이트를 통과한다.
+    const DICT_SOURCE = `
+const en = { "a": "A" };
+const ko = { "a": "가" };
+export const dict = { en, ko };
+`;
+    const found = detectCandidatesAcross(paths, (p) => (p.endsWith(".ts") ? DICT_SOURCE : '{"a":"A","b":"B"}'));
+    expect(found.map((c) => c.pathTemplate)).toContain("src/i18n/*.ts");
+    // 로케일이 셋인 카탈로그가 1순위다 — 조상이라는 이유만으로 뒤집히지 않는다.
+    expect(found[0]?.pathTemplate).toBe("src/i18n/locales/{locale}.json");
   });
 });

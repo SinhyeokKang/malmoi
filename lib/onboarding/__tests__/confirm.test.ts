@@ -13,7 +13,7 @@ import { planConfirmedFormat, templatePaths } from "../confirm";
  * ⚠️ **저장하는 것은 `detectFormatWith`의 반환값이다** — 클라이언트 입력이 아니다. 검증한 값을 저장하지
  * 않으면 검증이 장식이다 (POSTMORTEM 2026-09-05).
  *
- * 자동 후보와 수동 지정이 **한 경로**다 — `ts-dict`는 `detect`가 그 디렉터리 `.ts` 최대 4개를 읽어야
+ * 자동 후보와 수동 지정이 **한 경로**다 — `ts-dict`는 `detect`가 그 디렉터리 `.ts` 최대 8개를 읽어야
  * 매치하므로 이 경로가 아니면 수동 지정이 항상 거부된다 (design §3.5).
  */
 
