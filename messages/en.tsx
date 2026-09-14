@@ -1253,8 +1253,13 @@ export const en = {
 
     account: {
       title: "GitHub account",
-      connect: "Connect GitHub",
-      reconnect: "Reconnect GitHub",
+      /**
+        * ⚠️ **온보딩과 같은 이름이어야 한다** (2026-09-15). 같은 일(말모이 GitHub App 인가)을 두
+        * 화면이 다른 이름으로 부르면, 그 이름을 가리키는 `connectError`의 문장이 한쪽에서 **없는
+        * 버튼**을 가리킨다 — `add-surface.test.tsx`가 그 쌍을 센다.
+        */
+      connect: "Authorize GitHub App",
+      reconnect: "Reauthorize GitHub App",
       reauthorize: "Your GitHub authorization expired.",
       unavailable: "We couldn't load your account. Open this page again in a moment.",
       disconnect: "Disconnect",
@@ -1442,8 +1447,8 @@ export const en = {
       "exchange-failed": "We couldn't finish connecting to GitHub. Start it again.",
       // 해제는 그 계정의 주인만 할 수 있다 — 무엇을 하면 되는지 말한다.
       "taken-by-other": "That GitHub account is already connected to another user. They can disconnect it to free it up.",
-      "not-connected": "Connect your GitHub account first — use Connect GitHub below.",
-      reauthorize: "Your GitHub authorization expired. Use Reconnect GitHub.",
+      "not-connected": "Authorize the malmoi GitHub App first — use Authorize GitHub App below.",
+      reauthorize: "Your GitHub App authorization expired. Use Reauthorize GitHub App.",
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
       "repo-forbidden": "This account can't reach that repository. Ask the repository owner for access.",
