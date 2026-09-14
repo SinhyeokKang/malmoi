@@ -76,7 +76,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 20개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 21개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -87,6 +87,8 @@ components/
                         ⚠️ file-input(19번째)의 <input type="file">은 tabIndex={-1} + aria-hidden이다 —
                         type="hidden"이 될 수 없는 태그라 포커스 대상에서 빼고 보이는 컨트롤을 Button에
                         맡긴다. 링을 숨은 input에 붙이면 보이지도 않는 요소가 링을 들고 검사만 green이다
+                        ⚠️ resizable(21번째)만 radix-ui가 아니라 react-resizable-panels를 쓴다 —
+                        포인터 히트 판정·전역 커서가 document 레벨이라 CSS로 대신할 수 없다
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
@@ -96,6 +98,11 @@ components/
                         "지금 보고 있는 것"을 말할 것이 사라진다
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
+                        shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
+                        "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
+                        ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
+                        고정 폭이 드래그를 덮어 "핸들만 움직인다"가 된다
+                        ⚠️ 행의 gap-2가 핸들 폭(w-2)으로 옮겨 갔다 — gap 안에 핸들을 끼우면 8+8+8이다
   translations/         번역 화면 조각. key-group(서버 컴포넌트 — 키별 TableBody + rowSpan 키 셀)
                         ⚠️ 행에 고정 폭이 로케일 칸 하나뿐이다 — 우측 w-40 슬롯에 메타를 두었더니
                         1280px에서 입력이 28px가 됐다(malmoi#33). 폭은 렌더 결과라 스캔이 못 보지만
@@ -145,7 +152,9 @@ components/
                         settings-screen(워크플로 YAML이 활성 표면 전부를 드는지 — 비기본 표면의
                         step을 다시 볼 자리가 그 화면뿐이다) ·
                         multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
-                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀)
+                        new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀) ·
+                        resizable · shell-panels · files-step-panels(패널 구분선 — 핸들이 옛 gap을
+                        흡수하는지, 재기 전 px 폴백, Panel의 인라인 overflow 되돌리기)
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -206,6 +215,9 @@ lib/
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
+  shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
+                        — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
+                        ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
   projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
                         Meter 자리·진행률 접기·계정 합계·그룹 나누기·검색 강조. 오케스트레이션
                         파일에 두면 클라이언트 번들이 그 그래프를 따라온다
