@@ -554,7 +554,9 @@ export function NewProject({
               ),
               slugTakenAlt: suggestAlternateSlug(slug),
               slugTaken,
-              pathTemplate: chosenCandidate?.pathTemplate ?? pathTemplate,
+              // ③의 info가 "무엇을 읽는가"를 말한다 — 표면이 여럿이면 그 경로도 전부 들어야 한다.
+              pathTemplate: usingManual ? pathTemplate
+                : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
               banner: accessLost ?? banner,
             }}

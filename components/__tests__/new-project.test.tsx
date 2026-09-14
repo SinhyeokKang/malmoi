@@ -636,6 +636,17 @@ it("각 표면의 언어를 제출하고 체크 해제·재선택에서 보존�
     expect.objectContaining({ pathTemplate: "other/{locale}.json", baseLocale: "fr" }),
   ] }));
 });
+/**
+ * ⚠️ **③의 info가 읽는 경로를 전부 든다** — 그 줄의 일이 "리포에서 무엇을 읽고 무엇을 안 쓰는가"를
+ * 말하는 것인데, 표면이 여럿일 때 첫 경로만 세우면 나머지 읽기가 화면에서 사라진다.
+ */
+it("③ info는 체크한 모든 경로를 말한다", async () => {
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  const text = document.body.textContent ?? "";
+  const sentence = text.slice(text.indexOf("Creating the project reads"), text.indexOf("Nothing is written back"));
+  expect(sentence).toContain("i18n/{locale}.json");
+  expect(sentence).toContain("other/{locale}.json");
+});
 it("새 탐지는 체크와 각 언어 선택을 초기화한다", async () => {
   await files(); await click(include("other/{locale}.json")); await click(button("Back"));
   await select("#repo-branch", "develop"); await click(button("Next"));
