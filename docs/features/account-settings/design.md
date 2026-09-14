@@ -14,6 +14,7 @@
 | 보조 문구 `text-xs`(**12**) → 13 | `app/globals.css`의 **`--text-xs: 13px`**(2026-09-12) | **이탈이 아니다.** 대조표에서 뺀다 |
 | `User`에 이미지 컬럼이 없다 | `prisma/schema.prisma`에 **있다**(PII 봉투 대상) | 스키마 변경 없음 — `file-upload` 참조 |
 | 버튼 "**전부 `md`(36)**"(§4 표) vs 본문의 `default **sm**` | ✅ **캔버스가 `md`로 갈랐다**(2026-09-13 실독) — `1a`·`2b`·`2c`·`2d`의 렌더된 버튼이 전부 `height:36px; border-radius:10px; padding:0 12px; font-size:14px`다 | §4 표가 맞고 **본문의 `sm`이 전부 오기**다 |
+| pending 스피너가 **CSS 링**(`border:2px` + `border-top-color:transparent` + `spin .7s`) | `components/ui/button.tsx`의 `loading`이 **`Loader2` + `animate-spin`(1s)** 이고 **앱 전역**이다. `docs/DESIGN.md` §6.4가 그 형을 2026-09-10에 규칙으로 박았다(`loadingLabel` 제거와 같은 결정) | **대조 대상에서 뺀다**(2026-09-14 실측 판정). 캔버스가 잰 것은 `2d` 한 화면이고, 바꾸면 온보딩·번역·설정의 모든 pending이 함께 움직인다. 캔버스의 pending 규격 중 **의미 있는 절반**(라벨 불변 · default·danger는 글자만 `#737373` · primary는 `opacity:.7`)은 이미 일치한다 |
 
 ## 캔버스 실측값 (`Account.dc.html`, 2026-09-13 실독)
 
@@ -206,7 +207,11 @@ radius는 **자리를 따라간다** — 글자 4 · 버튼·필드 10 · 글리
   시안 재확인 대상으로 표시한다.
   - ⚠️ **blur 저장이 아니다.** 이 리포의 blur 저장은 `components/translation-input.tsx` 하나이고
     903행 × 3로케일이라는 규모가 그 근거다. 필드 하나에 그것을 쓰는 쪽이 이탈이다.
-- **`N projects use this connection` 집계**(신규 조회). ⚠️ **`loadAccountView`를 넓히지 않는다** —
+- ~~**`N projects use this connection` 집계**(신규 조회)~~ → ❌ **2026-09-14에 걷었다** (실측 후
+  리뷰 🔴1). 그 숫자가 세던 것은 **내가 OWNER인 모든 프로젝트**인데 그중 이 연결에 의존하는 것은
+  없다 — 야간 pull·PR은 App **설치 토큰**이 내고 `ensureUserToken`은 `lib/pull`·`lib/push` 어디에도
+  없다. 확인 화면의 근거가 될 수 없어 `lib/account/connection-usage.ts`와 행·Dialog의 두 자리를 함께
+  지웠다. 아래 문단은 그때의 설계 기록이다. ⚠️ **`loadAccountView`를 넓히지 않는다** —
   프로젝트 설정 화면이 같은 함수를 쓴다. 세는 기준은 **내가 OWNER이고 보관되지 않은 프로젝트**를
   추천한다(발송이 실제로 멈추는 대상이 그것이다).
   - ✅ **조회 실패면 그 줄을 숨긴다** (결정 2026-09-13, 사용자). Dialog 형이 이미 *"없으면 그리지
