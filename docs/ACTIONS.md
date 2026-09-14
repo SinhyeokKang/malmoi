@@ -105,7 +105,8 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 CLI의 대응 옵션은 `--surface`·`--path-template`이다. 서버의 `surfaceSlug`는 성공·실패 보고 모두 필수이며 기본값이 없다.
 없는·비활성·다른 프로젝트 표면은 동일한 `409 {"error":"surface mismatch"}`다. 따라서 409 가드는 보관 → 프로젝트 slug
 → 표면 → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
-T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필드를 보내지 않는다.
+Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은 step을 복사한다.
+현재 `malmoi-i18n-push-v1`(8511d37)은 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
 [배포 1 writer 전환](./OPERATIONS.md#다중-표면-배포-1--additive-migration과-writer-전환) 뒤에만 이 예시를 실행한다.
 
 <!-- additional-surface-step -->

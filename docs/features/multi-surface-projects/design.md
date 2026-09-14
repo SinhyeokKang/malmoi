@@ -144,7 +144,8 @@ prod 데이터는 버려도 되지만 **야간 cron과 대상 리포 CI는 마�
 #### 배포 2 — 단계 B(제약 교체) + Add surface 개방
 
 1. `surfaceId`를 NOT NULL로 바꾼다. ⚠️ **사전조건은 "null 0건"이고 마이그레이션 안에서 검사한다** — 배포 1과
-   배포 2 사이에 도착한 CI push가 null 행을 새로 만들 수 있으므로 **backfill을 여기서 한 번 더 돌린다**.
+   배포 2 사이의 새 writer는 Surface만 쓴다. **여기서 옛 Project 값을 다시 복사하지 않는다**.
+   null 행이 있으면 old-writer 창과 현재 Surface 상태를 조사해 안전한 복구안을 먼저 정한다.
    선례: `20260910060000_finalize_credential_storage`의 `LOCK TABLE` + `DO $$ … RAISE EXCEPTION 'precondition failed'`.
 2. 복수 Surface의 같은 locale code·key가 공존하도록 옛 제약을 교체한다. **순서가 있다** — `Locale` PK는
    `Translation_projectId_localeCode_fkey`의 대상이므로 **그 FK를 먼저 DROP**하지 않으면 PK 교체가
@@ -245,7 +246,7 @@ Publish 버튼 문구는 `Send changes (N)` 그대로다(사전 주석: git 어�
 
 ### 4.3 `[2라운드]` 표면 관리
 
-Settings에 활성·비활성 Surface 목록과 [Add surface]를 둔다. 비활성화와 **되돌리기**를 같은 목록에서 제공한다
+1라운드는 Settings에 활성 Surface 목록과 [Add surface]를 둔다. **[2라운드]** 비활성 표면 목록·비활성화·되돌리기를 제공한다
 (PRODUCT §7.9: 되돌릴 링크에 도달할 길이 없으면 보관이 편도가 된다). 확인 Dialog의 세 문장은 spec §5.6에 있고,
 그중 미발송 건수는 Dialog가 실제로 조회해서 싣는다 — 근거가 거짓인 Dialog를 만들지 않는다
 (POSTMORTEM 2026-09-14 1419행).

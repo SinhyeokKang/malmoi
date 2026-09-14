@@ -1541,3 +1541,20 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   `rg -n 'ON CONFLICT' lib app --glob '*.ts' --glob '!**/__tests__/**'` — 실제 upsert는 `lib/push/apply.ts` 두 곳뿐이다.
   두 번째 Translation upsert는 `keyId` 단위 unique와 복합 FK가 경계를 지킨다. 이 모듈을 바꾸면
   `pnpm test`뿐 아니라 `pnpm test:projects:postgres`의 빈 행·교차 FK·B snapshot 검증까지 돌린다.
+
+
+### 2026-09-14 — 표면 복합 FK 추가 뒤 새 프로젝트 생성이 Project.id NULL로 실패했다
+
+- **영역**: `prisma/schema.prisma` Project.defaultSurface · `app/(edit)/projects/actions.ts` createProject
+- **증상**: 상주 QA 재생성의 실제 온보딩이 P2011, PostgreSQL 23502(`Project.id` null)로 실패했다. dev/prod URL 혼선은 아니었고 재생성한 Prisma client에서도 같았다.
+- **근본 원인**: Project.id가 nullable defaultSurface 복합 FK의 공유 열인 현재 Prisma 7.10 조합에서 create의 cuid 기본값이 누락됐다. nullable defaultSurfaceId만 보고 생성이 가능하다고 판단했지만 id 생성까지 확인하지 않았다. 생성 Action이 randomUUID를 명시하도록 수정했다.
+- **그물**: 브라우저가 발견했고, 격리 PostgreSQL에서 실제 createProject Action을 실행해 같은 P2011 red→green을 확인했다. 기존 PG fixture는 Project id를 직접 지정했고 하네스는 생략된 id를 자동 보충해 놓쳤다.
+- **재발 방지**: `rg -n 'project\.create\(' app lib scripts --glob '*.ts' --glob '!**/__tests__/**'`의 생산자는 Action 하나다. 복합 관계·기본값 변경 때 실제 생성 Action을 격리 PG에서 실행한다. `pnpm test:projects:postgres`의 생성→기본 표면→OWNER 계약을 유지한다.
+
+### 2026-09-14 — TransactionClient를 런타임 속성으로 구별해 첫 적재가 자기 잠금을 기다렸다
+
+- **영역**: `lib/push/apply.ts` · `lib/surfaces/create.ts`
+- **증상**: Add surface 구현 중 Surface 생성 tx 안에서 적재가 끝나지 않았다. 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다렸다.
+- **근본 원인**: PrismaClient와 TransactionClient union을 `"$transaction" in prisma`로 구별한 구현이 proxy 객체를 잘못 판정해 중첩된 별도 트랜잭션을 열었다. 동일 클라이언트처럼 보이는 것이 동일 DB 연결이라는 보장은 아니었다.
+- **그물**: 격리 PostgreSQL과 pg_stat_activity 잠금 대기로 발견했다. 호출을 기록하는 가짜 DB는 연결 간 FK 대기를 재현하지 못한다. `applyPush`와 `applyPushInTransaction` 진입점을 명시적으로 나눠 열린 tx에서는 문장만 순서대로 실행한다.
+- **재발 방지**: `rg -n '\$transaction.*in|in.*\$transaction' lib app --glob '*.ts'`로 런타임 client 판별을 검사한다(현재 0건). Add surface의 다섯 쓰기 단계 rollback·동일 경로 동시성 검사를 실제 PG에서 유지한다. Project 잠금을 빼는 mutation은 안내 가능한 path-conflict 대신 P2002를 내며 red다.
