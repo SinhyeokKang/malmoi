@@ -53,7 +53,7 @@ it("탐지 후보가 있어도 수동 경로를 검사하고 원래 후보로 �
   const user = userEvent.setup();
   const { container } = await render(<AddSurface {...props} />);
   await act(async () => user.click([...container.querySelectorAll('button')].find(b => b.textContent === 'Set the path yourself')!));
-  await act(async () => user.type(find(container, '#manual-path'), 'other/{locale}.json'));
+  await act(async () => user.type(find(container, '#manual-path'), 'other/{{locale}.json'));
   expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(true);
   await act(async () => user.click(find(container, '[role=radio]')));
   expect(container.textContent).toContain("second/{locale}.json");
@@ -66,4 +66,16 @@ it("리포 정체성 변경은 재시도로 고칠 수 없는 원인을 안내�
   const { container } = await render(<AddSurface {...props} />);
   await act(async () => user.click(find(container, '[data-add-surface]')));
   expect(container.textContent).toContain("different repository");
+});
+
+it("0후보는 수동 입력을 열고 검사 실패 뒤 경로를 보존한다", async () => {
+  mocks.confirm.mockResolvedValue({ ok: false, error: "manual-no-match" });
+  const user = userEvent.setup();
+  const { container } = await render(<AddSurface {...props} initial={{ ok: false, error: "no-candidates" }} />);
+  await act(async () => user.type(find(container, '#manual-path'), 'manual/{{locale}.json'));
+  await act(async () => user.type(find(container, '#manual-base'), 'en'));
+  await act(async () => user.click([...container.querySelectorAll('button')].find(b => b.textContent === 'Check files')!));
+  expect(find<HTMLInputElement>(container, '#manual-path').value).toBe('manual/{locale}.json');
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  expect(find<HTMLButtonElement>(container, '[data-add-surface]').disabled).toBe(true);
 });
