@@ -124,6 +124,7 @@ describe("requestOrigin — 허용 목록 (sec-audit 25)", () => {
 
   it("세 환경의 호스트를 통과시킨다", () => {
     expect(https("mal-moi.com")?.origin).toBe("https://mal-moi.com");
+    expect(https("dev.mal-moi.com")?.origin).toBe("https://dev.mal-moi.com");
     expect(https("malmoi-git-dev-ox501501-1046s-projects.vercel.app")?.origin).toBe(
       "https://malmoi-git-dev-ox501501-1046s-projects.vercel.app",
     );
