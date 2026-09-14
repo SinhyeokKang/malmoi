@@ -286,7 +286,10 @@ vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수�
                         홉당 ~375ms였고 이 앱의 비용은 페이로드가 아니라 홉 개수다(요청당 일곱)
 next.config.ts          ⚠️ 보안 응답 헤더가 여기 있다(enforce 셋 + CSP 본체 Report-Only).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
-vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다
+vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다.
+                        ⚠️ 셋째가 있다 — 리사이즈 핸들의 getBoundingClientRect를 화면 밖으로 민다.
+                        jsdom은 모든 rect가 0×0@(0,0)이라 react-resizable-panels의 히트 판정이
+                        **화면의 모든 클릭**을 핸들로 보고 삼켰다(폼 입력이 빈 값으로 남는다)
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미발송 술어가 세 벌이 된 뒤로
