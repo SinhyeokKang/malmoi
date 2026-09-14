@@ -1577,3 +1577,34 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   typecheck green을 소비자 검색의 대체로 쓰지 않는다. ⚠️ **위 테스트는 `scripts/`만 본다** — `lib`·`app`의
   select는 여전히 어느 게이트도 키를 검증하지 않고, 그쪽은 실 DB를 치는 경로(`/l10n-roundtrip`·격리 PG)가
   대신 드러낸다. 스모크는 프로젝트 하나의 **기본 표면**을 보며, 로케일 조회도 그 표면으로 좁힌다.
+
+### 2026-09-14 — 내가 쓴 "바이트가 같다" 테스트가 자기 자신과 비교해 공허했다
+
+- **영역**: `lib/onboarding/workflow.ts` · `lib/onboarding/__tests__/workflow.test.ts`
+- **증상**: 워크플로 파일을 표면 수만큼의 step으로 바꾸면서 `checkout` 줄과 첫 push step 사이의
+  **빈 줄이 사라졌다**. `pnpm test` 3,657개가 green이었고, 실물 화면의 YAML을 브라우저로 읽어 잡았다.
+- **근본 원인**: 배열 마지막의 `""`가 "줄을 끝내는 개행"과 "빈 줄"을 겸하던 것을 분해하면서 하나를
+  잃었다. 그물이 둘 다 못 봤다: ① `docs/ACTIONS.md` 대조 테스트가 `bare()`로 **빈 줄을 벗기고** 센다
+  ② 내가 새로 쓴 "표면 하나면 바이트가 같다"는 `renderWorkflowYaml`과 비교하는데 **그것이 새 함수의
+  래퍼**라 항상 참이다. 리팩터의 before/after를 재려면 비교 대상이 리팩터 밖에 있어야 한다.
+- **그물**: ego-browser가 실제 설정 화면의 `<pre>`를 읽었다. 재발 방지로 빈 줄 자체를 재는 테스트를
+  넣었다 — `- uses:`마다 앞이 빈 줄 하나이고(첫 checkout만 예외) 연속 빈 줄이 없다.
+- **재발 방지**: **같은 모듈의 다른 export와 비교하는 "동치" 테스트는 근거가 아니다** — 한쪽이 다른
+  쪽을 부르는지 먼저 본다. 사람이 복사해 붙이는 산출물은 `bare()` 같은 정규화 대조 **옆에** 공백·줄
+  구조를 직접 재는 단언을 둔다. 정규화가 지우는 축이 곧 그 테스트의 사각지대다.
+
+### 2026-09-14 — 거부 문구가 화면에 없는 버튼 이름을 가리켰다
+
+- **영역**: `components/onboarding/add-surface.tsx` · `messages/en.tsx`
+- **증상**: Add surface 화면의 `reauthorize` Alert가 "Use **Reconnect GitHub**."인데 바로 아래 버튼은
+  `Connect GitHub`이었다. 사전이 두 문장(`not-connected`·`reauthorize`)을 각각 다른 버튼 이름으로
+  지시하는데 화면은 라벨을 하나로 고정했다.
+- **근본 원인**: 첫 프로젝트 화면(`steps/repo.tsx`)은 이미 `error === "not-connected"`로 라벨을 갈라
+  들고 있었다. 새 화면이 그 쌍을 모르고 `m.surfaces.connect` 하나를 새로 만들었다 — **같은 자리의
+  선례를 찾지 않고 사전 항목을 늘린 것**이 원인이다.
+- **그물**: ego-browser가 실제 화면의 Alert와 버튼 라벨을 함께 읽어 잡았다. `no-korean-ui`·
+  `brand-spelling` 같은 소스 스캔은 **문장 사이의 모순**을 볼 수 없다(2026-09-13의 `malmoi`/`Malmoi`가
+  같은 계보다 — 둘 다 같은 사전에서 나와 서로 다른 절에 산다). `add-surface.test.tsx`에 두 갈래의
+  Alert 본문과 버튼 라벨을 대조하는 red→green을 남겼다.
+- **재발 방지**: **"무엇을 누르라"고 말하는 문구를 새로 쓸 때 그 이름의 컨트롤이 같은 화면에 있는지
+  본다.** 사전 항목을 늘리기 전에 `rg -n '"(Re)?[Cc]onnect GitHub"' messages/en.tsx`로 기존 쌍을 찾는다.
