@@ -10,8 +10,27 @@
 - [x] T5–T9: 도메인·인가·필수 payload 생산자·표면 가드·push 격리.
 - [x] T10–T13: 활성 표면 pull, 단일 snapshot/tree/commit/PR, 프로젝트 단위 run·skip 유지.
 - [x] T14–T16: route 이관·legacy redirect·표면 범위 저장/집계·선택기·Home/목록 링크.
-- [ ] 수동 게이트: 시안 대조, 직접 진입·새로고침·뒤로가기·브라우저 QA. Claude Code에서 수행한다.
-- [ ] push 게이트: build 포함 전체 검증과 dev 배포. 이 체크포인트는 커밋까지만 수행한다.
+- [x] 수동 게이트: `/bugshot-qa` 5/5 통과 (2026-09-14, 로컬·dev DB). 시안 대조는 **건너뛴다** —
+      이 화면들에 Claude Design 핸드오프가 없어 `/design-sync`의 SoT가 존재하지 않는다(사용자 판정).
+- [x] push 게이트: typecheck·test 3,622·build green으로 dev 배포.
+
+**QA에서 나온 결함 하나 — T17이 받는다 (2026-09-14, 이슈 미제출).**
+
+존재하지 않는 표면 URL(`/projects/<slug>/surfaces/nope/translations`)이 **제품 문구 없는 빈 404**를 낸다.
+셸 사이드바만 남고 본문은 Next 기본 `404 | This page could not be found.`이며(`main`의 `innerHTML` 47자,
+`innerText` 빈 문자열) `app/not-found.tsx`가 리포에 없다.
+
+⚠️ **T16이 연 경로다** — `git grep -n "notFound()" 99fd556`이 0건이다. `notFound()`는 이 기능이 처음
+들여왔고, URL에 `surfaceSlug` 세그먼트가 생기면서 임의 값으로 도달할 수 있게 됐다. 그전
+`/projects/<slug>/translations`는 slug가 틀리면 `requireProjectAccess`가 redirect로 처리했다.
+
+⚠️ **지금은 URL을 손으로 친 사람만 보지만, T17이 archive를 여는 순간 정상 경로가 된다** — 표면 화면을
+열어 둔 채 그것이 보관되면 새로고침이 이 화면이다. 그래서 배포 1에 넣지 않고 T17로 넘긴다:
+`getSurfaceAccess`의 거부 모양(이미 union 반환으로 고쳤다)과 `not-found` UI를 **한 벌로** 설계해야
+같은 자리를 두 번 만지지 않는다. 이 리포의 거부 문구는 전부 `messages/en.tsx`를 지나며 "무엇을 하면
+되는지"를 말하는데(`access`·`invite`·`connect` 사전) 이 화면만 사전을 안 지나고 돌아갈 길도 없다.
+
+자리: `lib/surfaces/access.ts:14`(페이지 래퍼) · `app/(edit)/projects/[slug]/{translations,locales}/page.tsx`.
 
 **검증 범위 보정:** 단계 A의 옛 Locale PK·StringKey unique 때문에 T15의 동일 key/locale 이름 공존은
 실 DB에서 아직 불가능하다. 이번 PostgreSQL 검증은 이름이 다른 A/B의 격리와 교차 FK 거부이며,
