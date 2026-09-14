@@ -639,12 +639,6 @@ export const en = {
       result: {
         title: "malmoi is ready",
         description: "Add the push token to the repository so CI can send translations back.",
-        /**
-         * ⚠️ **결과는 설명 줄이 말한다** (핸드오프 1d·4f·4g). 성공한 적재에 `Alert`를 세우지 않는
-         * 것이 요지다 — 가장 흔한 상태가 가장 조용해야 한다(DESIGN §6.1). 실패·부분 실패만 본문에
-         * 그릇을 든다.
-         */
-        descriptionFailed: "The project exists. The first import didn't finish.",
       },
     },
 
@@ -850,11 +844,6 @@ export const en = {
         diagnostics: "Details",
         refsHint: "Code references arrive after your first CI push. You can start translating now.",
         open: "Start translating",
-        /** ④ 적재 중 info — `role="status"`다 (`Alert`의 `role="alert"`는 `danger`일 때만 붙는다). */
-        importing: (path: string, branch: string): string => `Importing… reading ${path} on ${branch}.`,
-        /** 예외 H — 토큰 블록은 그대로 보이고, 복구 경로 둘을 말한다. */
-        failedHint:
-          "The project is in your list as Waiting for first import. You can retry from project settings.",
       },
       workflow: {
         saveAs: "Save as",
