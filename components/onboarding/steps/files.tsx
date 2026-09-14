@@ -10,6 +10,7 @@ import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Radio, RadioGroup } from "@/components/ui/radio";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +18,7 @@ import { Table, TableBody, TableHeader, TableRow, Td, Th, Tr } from "@/component
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
+import { panelConstraints } from "@/lib/shell/panel-size";
 import type { CandidateSummary, SampleRow } from "@/lib/onboarding/detect";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
 import { LOCALE_SEGMENT_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-picker";
@@ -36,6 +38,20 @@ import { failureText } from "../failure";
  * 목적 자체에 걸린다.
  */
 export type ManualEntry = { adapter: AdapterName; pathTemplate: string; baseLocale: string };
+
+/**
+ * ② 좌측 패널이 나눠 가질 폭 — **여기는 뷰포트를 따라 변하지 않는다.** 모달이 `max-w-[800px]`이고
+ * 본문이 `px-8`(64)이라 720 = 736 − 핸들 16이고, 셸이 `min-w-[1280px]`이라 1280 뷰포트에서도 800이
+ * 그대로 산다. 그래서 `ShellPanels`와 달리 재는 훅이 없다.
+ */
+const FILES_PANEL_WIDTH = 736 - 16;
+
+/**
+ * 좌측 치수는 셸 LNB와 **같은 200 / 240 / 320**이다. 하한 200은 후보 행의 40px 글리프와 2줄 경로가
+ * 유지되는 자리, 상한 320은 우측이 400 아래로 안 내려가는 자리다 — 표가 `table-fixed` + key `w-1/3`
+ * 이라 400에서 key 133 / value 267이고, 거기가 값이 읽히는 경계다.
+ */
+const FILES_LEFT = panelConstraints(FILES_PANEL_WIDTH, { min: 200, default: 240, max: 320 }) ?? undefined;
 
 /** 언어별 미리보기 — 표시 상태 셋을 값으로 가른다. */
 export type PreviewState =
@@ -162,18 +178,25 @@ export function FilesStep({
 
   return (
     /*
-      ⚠️ **래퍼를 세우지 않는다** — 껍데기 본문이 이미 `bodyDirection="row"`로 2단이고 `gap-4`(16)를
-      든다. 여기서 또 감싸면 좌우 간격이 두 곳에서 정해지고, 껍데기를 고쳐도 이 화면만 안 따라온다.
+      ⚠️ **래퍼가 `PanelGroup` 하나다** — 좌·핸들·우를 껍데기 본문의 **자식 하나**로 묶는다. 껍데기가
+      `bodyDirection="row"`에서 드는 `gap-4`(16) **안에** 핸들을 형제로 끼우면 간격이 16+16+16이 되기
+      때문이다. 자식이 하나면 그 `gap`은 아무것도 하지 않으므로 껍데기는 손대지 않는다 — 그 값은
+      "두 자식을 놓는 다음 화면"의 계약이라 지울 것이 아니다. (2026-09-14에 이 자리가
+      "래퍼를 세우지 않는다"였고, 간격을 핸들이 들게 되면서 그 전제가 뒤집혔다.)
     */
-    <>
-      {/* 좌 240 — 후보 목록 또는 수동 지정 폼. */}
+    <ResizablePanelGroup direction="horizontal" className="min-w-0 flex-1">
+      {/* 좌 240(200~320) — 후보 목록 또는 수동 지정 폼. */}
       {/*
         ⚠️ **좌측에 `overflow-y-auto`를 두지 않는다** (2026-09-13 사용자 관측). CSS는 한 축이 `auto`면
-        **다른 축의 `visible`을 `auto`로 강제**하므로, 폭 240 고정 안에서 `w-full` 필드의 포커스 링
-        (바깥 2px)이 좌우로 잘린다. 스크롤이 필요한 것은 **후보 목록**뿐이라 그쪽으로 내린다 —
-        수동 지정 폼은 필드 셋이라 넘치지 않는다.
+        **다른 축의 `visible`을 `auto`로 강제**하므로, `w-full` 필드의 포커스 링(바깥 2px)이 좌우로
+        잘린다. 스크롤이 필요한 것은 **후보 목록**뿐이라 그쪽으로 내린다 — 수동 지정 폼은 필드
+        셋이라 넘치지 않는다.
+
+        ⚠️ **`Panel`은 `overflow: hidden`을 인라인으로 건다** — 클래스가 아니라 라이브러리의
+        `getPanelStyle`이라 Tailwind로 못 덮는다. 그대로 두면 위와 **같은 잘림이 다시 생기므로**
+        `style`로 되돌린다(`styleFromProps`가 라이브러리 스타일 뒤에 펼쳐져 이긴다).
       */}
-      <div className="flex w-60 shrink-0 flex-col gap-3">
+      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex flex-col gap-3">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -202,7 +225,9 @@ export function FilesStep({
             <ManualToggle state={state} onManual={onManual} />
           </>
         )}
-      </div>
+      </ResizablePanel>
+
+      <ResizableHandle aria-label={m.newProject.files.resize} className="w-4" />
 
       {/*
         우 — 키·값 표. 껍데기는 `Preview`가 든다.
@@ -210,13 +235,15 @@ export function FilesStep({
         ⚠️ **후보 0개에도 껍데기를 버리지 않는다** (핸드오프 3a). 경로를 쳐서 매칭되는 순간 빈 박스가
         통째로 툴바+헤더+행으로 갈리면 화면이 튄다 — 로딩에 헤더를 세워 두는 것과 **같은 규칙**이다.
       */}
-      <Preview
-        state={state}
-        candidate={candidate ?? state.manualCandidate}
-        onLocale={onLocale}
-        empty={manualMode && !state.manualMatched}
-      />
-    </>
+      <ResizablePanel className="flex">
+        <Preview
+          state={state}
+          candidate={candidate ?? state.manualCandidate}
+          onLocale={onLocale}
+          empty={manualMode && !state.manualMatched}
+        />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
 
