@@ -7,6 +7,24 @@ GitHub 읽기·파싱은 DB 트랜잭션 밖, 프로젝트 생성·모든 표면
 **스키마 변경 0건이라 `/db`를 지나지 않는다.** 마이그레이션·환경변수 추가도 없다.
 새 순수 판정 테스트 → 원자적 저장 → Action과 호출부의 동시 전환 → 다중 선택 UI 순서다.
 
+## 구현 인계 상태 (2026-09-14, Codex → 지정 Claude Code 터미널)
+
+- 구현 커밋: `ebd5eae`(T1~T3 원자적 생성) · `4d021e1`(T4~T9 다중 선택).
+- 테스트 선행 커밋: `1a4ab8b` · `6601f19` · `a9bc8c3`. 각 계약의 red를 확인한 뒤 구현했다.
+- 자동 검증: 전체 3,685건 통과 후 추가 DOM 케이스 포함 해당 2파일 60건 통과. 타입 검사 통과.
+  격리 PostgreSQL 46건 통과(둘째 표면·마지막 쓰기·30초 timeout 롤백, 별도 연결 부분 가시성,
+  동시 OWNER 한도·slug 충돌). 접근 이름·role 뮤테이션 5건 모두 red 후 복원했다.
+- 수동 포맷의 기존 YAML을 보존하기 위해 생성 입력에 선택적 `manual: boolean` 메타데이터를 추가했다.
+  이 값은 어댑터·기준 언어를 YAML에 고정할지만 정한다. 서버 경로·포맷 재검증은 항상 동일하다.
+- T10: PRODUCT·ARCHITECTURE·DESIGN·DIRECTORY 갱신. **CLAUDE.md의 프리미티브 19→20,
+  Radix 넷→다섯과 `pnpm sync:agents`는 Claude Code 담당으로 남긴다.**
+- **T11 실물 검증·시간 계측·build·push 게이트는 아직 실행하지 않았다.** 사용자 지정 터미널
+  `term_79165e31-5fa4-4189-982a-60a752cd7add`에서 검증하고 마무리한다.
+  dev/prod DB와 외부 리포에 쓰지 않았고 브라우저 QA 프로젝트도 생성하지 않았다.
+- 시안 대조: 해당 없음(새 행 형의 핸드오프 부재, 아래 사용자 확정). 시안 일치 판정이 아니다.
+- 알려진 후속 확인 후보: 기존 Add surface의 fieldset 안 FilesStep Select는 직접 disabled가 없다.
+  신규 생성의 Portal 입력 잠금 회귀는 수정·기록했고 기존 Add surface는 이번 범위 밖이다.
+
 ## T1. 전체 적재 준비의 거부 조건 — `/tdd interface`
 
 `lib/onboarding/ingest.ts`의 기존 `prepareFirstSnapshot`을 사용한다. 신규 생성의 준비 단계는
