@@ -27,7 +27,7 @@
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 21개, Radix — DropdownMenu·Dialog·Slot·RadioGroup, `react-resizable-panels` — 패널 구분선) + `sonner` 토스트 + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 21개, Radix — DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select, `react-resizable-panels` — 패널 구분선) + `sonner` 토스트 + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
 
 ## 개발
 
