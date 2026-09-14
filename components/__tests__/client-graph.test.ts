@@ -253,6 +253,14 @@ describe("클라이언트 그래프", () => {
     expect([...flag.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/keys/flag.ts"]);
   });
 
+  it("새 표면 선택 모듈을 소비자 연결 전에도 직접 검사한다", () => {
+    const entry = join(ROOT, "lib/onboarding/select-surfaces.ts");
+    const { files, packages } = walk([entry]);
+    expect(files.has(entry)).toBe(true);
+    expect([...packages].filter(name => !allowed(name))).toEqual([]);
+    expect([...files].some(file => file.includes("/adapters/") || file.includes("/push/"))).toBe(false);
+  });
+
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
     const { files, packages } = walk(CLIENT_ENTRIES);
     const offenders = [...packages].filter((name) => !allowed(name));

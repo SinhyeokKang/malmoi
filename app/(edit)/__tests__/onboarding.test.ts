@@ -1542,3 +1542,12 @@ it("수동 지정의 확정 어댑터와 기본 언어도 성공 YAML에 고정�
   expect(result.ok && result.yaml).toContain("adapter: json-catalog");
   expect(result.ok && result.yaml).toContain("base-locale: en");
 });
+
+it("탐지 후보 outputPaths는 표본 밖 언어도 포함하며 추가 읽기가 없다", async () => {
+  const files = [...TREE, { path: "i18n/ja.json", sha: "sha-ja", size: 20 }];
+  const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) });
+  hoisted.openRepoReader.mockResolvedValue(opened);
+  const result = await detectRepoFormats({ owner: "acme", repo: "web" });
+  expect(result.ok && result.candidates[0]?.outputPaths).toEqual(["i18n/en.json", "i18n/fr.json", "i18n/ja.json", "i18n/ko.json"]);
+  expect(opened.snapshot).toHaveBeenCalledTimes(1); expect(opened.blob).toHaveBeenCalledTimes(3);
+});

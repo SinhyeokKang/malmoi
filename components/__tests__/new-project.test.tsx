@@ -43,6 +43,7 @@ const repos: RepoOption[] = ["web", "mobile"].map((repo) => ({
 }));
 const candidate = (path = "i18n/{locale}.json"): CandidateSummary => ({
   adapter: "json-catalog", label: "JSON", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
+  outputPaths: [path.replace("{locale}", "en")],
   baseLocale: "en", keys: { status: "counted", count: 2 },
   samples: [{ locale: "en", rows: [{ key: "hello", value: path }], total: 2 }],
 });
@@ -156,30 +157,21 @@ it("Back 뒤 다른 브랜치 탐지보다 늦게 끝난 탐지는 버린다", a
 });
 
 it("후보를 바꿨다 돌아와도 옛 미리보기 응답이 새 샘플을 덮지 않는다", async () => {
-  const old = deferred<unknown>();
-  mocks.loadCandidateSample.mockReturnValueOnce(old.promise);
-  await files();
-  await select('[role="combobox"]', "fr");
-  await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
-  await click(find(document.body, '[role="radio"]'));
+  const old = deferred<unknown>(); mocks.loadCandidateSample.mockReturnValueOnce(old.promise);
+  await files(); await select('[role="combobox"]', "fr");
+  await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
+  await click(find(document.body, '[aria-label="Preview i18n/{locale}.json"]'));
   await select('[role="combobox"]', "fr");
   await act(async () => old.resolve({ ok: true, rows: [{ key: "hello", value: "STALE" }], total: 1 }));
-  expect(document.body.textContent).not.toContain("STALE");
-  expect(document.body.textContent).toContain("Hello");
+  expect(document.body.textContent).not.toContain("STALE"); expect(document.body.textContent).toContain("Hello");
 });
-
-it("후보 변경은 이름·주소·기준 언어를 초기화한다", async () => {
-  await files();
-  await click(button("Next"));
-  await input(field("project-name"), "Custom");
-  await input(field("project-slug"), "custom");
+it("미체크 후보의 상세는 이름·주소·선택 언어를 바꾸지 않는다", async () => {
+  await naming(); await input(field("project-name"), "Custom"); await input(field("project-slug"), "custom");
   await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
-  await click(button("Back"));
-  await click(document.body.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(button("Back")); await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
   await click(button("Next"));
-  expect(field("project-name").value).toBe("web");
-  expect(field("project-slug").value).toBe("acme-web");
-  expect(find(document.body, '[role="radio"]').getAttribute("aria-checked")).toBe("true");
+  expect(field("project-name").value).toBe("Custom"); expect(field("project-slug").value).toBe("custom");
+  expect(document.body.querySelectorAll('[role="radio"]')[1]?.getAttribute("aria-checked")).toBe("true");
 });
 
 it("리포 변경도 이전 이름·주소를 새 리포에 가져오지 않는다", async () => {
@@ -599,4 +591,70 @@ it("생성 거부는 경로와 실패 수를 보이고 생성 완료 전에는 �
   expect(document.body.textContent).toContain("Nothing was created");
   expect(document.body.textContent).toContain("2");
   expect(document.body.textContent).toContain("i18n/{locale}.json");
+});
+
+const include = (path: string) => find<HTMLElement>(document.body, `[role="checkbox"][aria-label="Include ${path}"]`);
+it("체크와 상세는 형제이며 리스트 시맨틱과 독립 동작을 보존한다", async () => {
+  await files();
+  const checkbox = include("i18n/{locale}.json");
+  const preview = find<HTMLElement>(document.body, '[aria-label="Preview i18n/{locale}.json"]');
+  expect(checkbox.parentElement).toBe(preview.parentElement);
+  expect(checkbox.closest("label")).toBeNull();
+  const list = checkbox.closest("ul"); expect(list).not.toBeNull();
+  expect(list?.getAttribute("role")).toBeNull();
+  expect(list?.getAttribute("aria-label")).toBe("Locale file candidates");
+  expect(document.body.querySelector('button button, label button button')).toBeNull();
+  await click(include("other/{locale}.json"));
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(preview.closest("li")?.className).toContain("bg-muted");
+  await click(checkbox); await click(include("other/{locale}.json"));
+  expect(button("Next").disabled).toBe(true);
+  await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
+  expect(button("Next").disabled).toBe(true);
+});
+it("출력 충돌은 체크 시 경고하고 해제하면 Next가 열린다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate(), { ...candidate("other/{locale}.json"), outputPaths: ["i18n/en.json"] }] });
+  await files(); await click(include("other/{locale}.json"));
+  expect(button("Next").disabled).toBe(true);
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toContain("i18n/en.json");
+  await click(include("other/{locale}.json")); expect(button("Next").disabled).toBe(false);
+});
+it("각 표면의 언어를 제출하고 체크 해제·재선택에서 보존한다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [
+    { ...candidate(), locales: ["en", "ko"] }, { ...candidate("other/{locale}.json"), locales: ["en", "fr"] },
+  ] });
+  await files(); await click(include("other/{locale}.json")); await click(button("Next"));
+  const groups = document.body.querySelectorAll('[role="radiogroup"]');
+  expect(groups).toHaveLength(2);
+  expect(groups[0]?.getAttribute("aria-labelledby")).not.toBe(groups[1]?.getAttribute("aria-labelledby"));
+  await click(groups[0]!.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(groups[1]!.querySelectorAll<HTMLElement>('[role="radio"]')[1]!);
+  await click(button("Back")); await click(include("other/{locale}.json")); await click(include("other/{locale}.json"));
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [
+    expect.objectContaining({ pathTemplate: "i18n/{locale}.json", baseLocale: "ko" }),
+    expect.objectContaining({ pathTemplate: "other/{locale}.json", baseLocale: "fr" }),
+  ] }));
+});
+it("새 탐지는 체크와 각 언어 선택을 초기화한다", async () => {
+  await files(); await click(include("other/{locale}.json")); await click(button("Back"));
+  await select("#repo-branch", "develop"); await click(button("Next"));
+  expect(include("i18n/{locale}.json").getAttribute("aria-checked")).toBe("true");
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("false");
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ surfaces: [expect.objectContaining({ baseLocale: "en" })] }));
+});
+it("선택 언어가 후보 목록 밖이면 생성할 수 없다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), baseLocale: "xx" }] });
+  await files(); await click(button("Next")); expect(button("Create project").disabled).toBe(true);
+});
+it("수동 지정은 이전 탐지 체크를 섞지 않고 선택 언어를 보존한다", async () => {
+  await files(); await click(include("other/{locale}.json"));
+  await click(button("Set manually"));
+  await input(field("manual-path"), "manual/{locale}.json"); await input(field("manual-base"), "ko");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ manual: true, surfaces: [
+    { adapter: "json-catalog", pathTemplate: "manual/{locale}.json", baseLocale: "ko" },
+  ] }));
 });
