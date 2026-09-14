@@ -1648,3 +1648,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: variant 대신 모달 호출부가 비활성 색·테두리·불투명도를 소유했다. 정본에도 두 규칙이 각각 있어 비활성 형의 분기를 허용했다.
 - **그물**: 기존 disabled 여부·focus-ring 검사는 색의 일치를 보지 못했다. primary와 온보딩 ① 막힘 세 상태의 클래스 회귀 테스트 5건이 수정 전 red를 냈다. 실제 컴포넌트 렌더 DOM + 프로젝트 CSS의 브라우저 실측에서 세 상태 모두 hover 포함 `#f5f5f5` 면·`#737373` 글자·`not-allowed`·opacity `1`을 확인했다. 활성 면 `#171717`·hover `#0a0a0a`도 확인했다.
 - **재발 방지**: `pnpm exec vitest run components/__tests__/onboarding-modal.test.tsx components/__tests__/new-project.test.tsx components/__tests__/focus-ring.test.ts`로 공유 형과 포커스를 검사한다. `rg -n 'disabled:opacity-|disabled:bg-background' components app`로 호출부 예외를 찾는다. 수정 후 남은 opacity는 checkbox·radio 프리미티브뿐이며 primary 호출부에는 없다. CSS 순서가 바뀌면 computed style을 다시 잰다.
+
+### 2026-09-15 — Settings → Projects 전환 중 콘텐츠 패널 폭 분할
+
+- **영역**: `components/shell/{shell-panels,content-panel,project-panel}.tsx`
+- **증상**: 사용자가 전환 깜빡임을 관측했다. 로컬 dev 1440 측정에서는 셸 우측의 직계 자식 `<main>` 둘이 52ms 동안 폭을 나눴다. 해당 실행의 rAF 샘플에는 잡히지 않았으나, 이것만으로 미페인트를 확정할 수 없다.
+- **근본 원인**: 라우트별 패널이 하나라는 정적 구조를 전환 중 DOM에도 적용했다. 공존하는 두 콘텐츠가 flex 항목이 되어 폭을 나눴다. 두 DOM이 공존하는 프레임워크 내부 원인은 미확정이다.
+- **그물**: 기존 라우트 체인 검사는 전환 중 공존을 놓쳤다. 두 ContentPanel과 선택적 ProjectPanel을 렌더하는 DOM 테스트를 추가해 기존 배치에서 2건 실패를 확인했다. grid의 동일 셀 배치와 프로젝트 패널의 8px 간격을 검사한다. jsdom은 실제 배치·페인트를 검증하지 않으며 수정 후 실물 검증은 사용자 담당이다.
+- **재발 방지**: `rg -n 'flex min-w-0 gap-2|grid-cols-\[minmax\(0,1fr\)_auto\]' components app`로 셸 배치를 확인한다. 현재 구현은 ShellPanels 한 곳이며 대응 검사는 shell-panels.test.tsx에 있다. rAF 미관측을 사용자 관측의 반증으로 사용하지 않는다.
+
+- **후속 관측·수정 (같은 날)**: 사용자가 grid 변경 후 스켈레톤이 진했다 연해지는 깜빡임을 보고했다. 콘텐츠 패널에 stacking context가 없어 opacity 애니메이션 자식이 다른 패널 배경 위에 그려질 수 있다는 CSS 규칙을 근거로 `isolate`를 추가했다. 원인 추정에 따른 수정이며 실물 해소 여부는 아직 미검증이다. DOM 테스트에 패널별 `isolate` 계약을 추가해 실패를 먼저 확인했다. `rg -n 'isolate|animate-pulse' components/shell/content-panel.tsx components/ui/skeleton.tsx 'app/(edit)/projects/loading.tsx'`로 경계와 소비자를 함께 확인한다.
+- **사용자 실물 검증 완료 (같은 날)**: `isolate` 추가 후 사용자가 폭 분할과 스켈레톤 농도 변화에 따른 깜빡임 모두 해소됐다고 확인했다. 위의 실물 미검증 상태를 이 확인으로 종료한다. 에이전트는 요청에 따라 실물 검증을 수행하지 않았다. 자동 검증은 타입 검사와 253파일·3,732개 테스트 통과이며, DOM 테스트는 배치·격리 클래스 계약을 검사하고 실제 페인트를 재현하지는 않는다.

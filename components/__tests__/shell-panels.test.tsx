@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { createElement as h } from "react";
+import { Fragment, createElement as h } from "react";
 import { describe, expect, it } from "vitest";
 
 import { SHELL_HANDLE_PX, SHELL_SIDEBAR_PX, ShellPanels } from "@/components/shell/shell-panels";
+
+import { ContentPanel } from "@/components/shell/content-panel";
+import { ProjectPanel } from "@/components/shell/project-panel";
 
 import { find, render } from "./helpers/dom";
 
@@ -68,10 +71,37 @@ describe("ShellPanels — LNB 구분선", () => {
     expect(container.textContent).toContain("content");
   });
 
-  /** 콘텐츠 패널과 오른쪽 `ProjectPanel`은 여전히 gap 8로 나란하다 — 그 둘은 한 Panel 안의 형제다. */
-  it("콘텐츠 쪽 패널이 자기 안에서 gap 8을 든다", async () => {
-    const { container } = await mount();
-    const content = find<HTMLElement>(container, "main").parentElement;
-    expect(content?.classList.contains("gap-2")).toBe(true);
+  // jsdom cannot measure layout; assert the placement contract for overlapping route trees.
+  it.each([false, true])("전환 중 콘텐츠는 같은 셀, 프로젝트 패널만 간격을 든다 (project=%s)", async (withProject) => {
+    const { container } = await render(h(ShellPanels, {
+      sidebar: h("aside", null, "nav"),
+      children: h(Fragment, null,
+        h(ContentPanel, null, "outgoing"),
+        h(ContentPanel, null, "incoming"),
+        withProject ? h(ProjectPanel) : null,
+      ),
+    }));
+    const mains = [...container.querySelectorAll("main")];
+    expect(mains).toHaveLength(2);
+    const parent = mains[0]?.parentElement;
+    expect(parent).toBe(mains[1]?.parentElement);
+    expect(parent?.classList.contains("grid")).toBe(true);
+    expect(parent?.classList.contains("grid-cols-[minmax(0,1fr)_auto]")).toBe(true);
+    expect(parent?.classList.contains("grid-rows-[minmax(0,1fr)]")).toBe(true);
+    expect(parent?.classList.contains("gap-2")).toBe(false);
+    for (const main of mains) {
+      expect(main.classList.contains("isolate")).toBe(true);
+      expect(main.classList.contains("col-start-1")).toBe(true);
+      expect(main.classList.contains("row-start-1")).toBe(true);
+    }
+    const project = parent?.querySelector("aside");
+    if (withProject) {
+      expect(project?.classList.contains("col-start-2")).toBe(true);
+      expect(project?.classList.contains("row-start-1")).toBe(true);
+      expect(project?.classList.contains("ml-2")).toBe(true);
+      expect(project?.classList.contains("w-80")).toBe(true);
+    } else {
+      expect(project).toBeNull();
+    }
   });
 });

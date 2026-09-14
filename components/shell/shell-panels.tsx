@@ -35,8 +35,8 @@ const FALLBACK = panelConstraints(1280 - 16 - SHELL_HANDLE_PX, SHELL_SIDEBAR_PX)
  * 컴포넌트의 자식으로 넘기는 것은 유효하고, 그래야 셸의 서버 데이터 조회가 이쪽으로 끌려오지 않는다.
  *
  * ⚠️ **행의 `gap-2`가 사라지고 핸들 폭이 그 자리를 든다** — flex `gap` 안에 핸들을 끼우면 간격이
- * `8 + 8 + 8`이 된다. 콘텐츠 쪽 패널 **안**의 `gap-2`는 그대로다: `ContentPanel`과 `ProjectPanel`은
- * 여전히 gap 8로 나란한 형제다.
+ * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치하고 `ProjectPanel`의 `ml-2`가 간격 8을 든다.
+ * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
  */
 export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
   const [available, setAvailable] = useState<number | null>(null);
@@ -116,8 +116,8 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
           className="w-2"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
         />
-        {/* `ContentPanel` + `ProjectPanel`이 이 안에서 gap 8로 나란하다 (`[slug]` 레이아웃이 둘을 낸다). */}
-        <ResizablePanel style={{ overflow: "visible" }} className="flex min-w-0 gap-2">{children}</ResizablePanel>
+        {/* Keep transitioning content trees in one cell; the optional project panel owns the 8px spacing. */}
+        <ResizablePanel style={{ overflow: "visible" }} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]">{children}</ResizablePanel>
       </ResizablePanelGroup>
     </div>
   );
