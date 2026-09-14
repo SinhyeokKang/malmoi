@@ -165,14 +165,14 @@ lib/
                         ⚠️ **클라이언트 선검사는 방어선이 아니다** — File.type이 확장자에서 오므로
                         이름만 .png로 바꾼 SVG는 통과한다. 그 거부는 서버 시그니처 판정이 낸다
   account/              사용자 축의 순수 판정. plan(planNameSave — 트림·빈 문자열·코드포인트 상한 /
-                        displayName — 아바타 이름 폴백) · connection-usage(내가 OWNER인 보관되지 않은
-                        프로젝트 수)
+                        displayName — 아바타 이름 폴백)
                         ⚠️ **displayName이 한 자리에 있는 이유**: 셸 32와 /account 56이 같은 얼굴이어야
                         하는데 폴백이 두 자리에 복제돼 연산자가 갈려 있었다(?? vs ||) — 빈 이름에서
                         toneOf가 다른 색을 냈다
-                        ⚠️ **connection-usage는 loadAccountView를 안 넓힌다** — 프로젝트 설정 화면이
-                        같은 함수를 쓰고 그 화면은 이 숫자가 필요 없다. 0과 실패를 같은 값으로 접지
-                        않는다(number | null)
+                        ⚠️ **connection-usage는 2026-09-14에 삭제됐다** — GitHub 해제 Dialog의 근거로
+                        `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
+                        **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
+                        막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
                         plan · run · render · load · client · targets · trigger · branch-name · ref-slug /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan

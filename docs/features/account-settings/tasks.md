@@ -149,21 +149,17 @@ OWNER인 모든 프로젝트의 발송을 멈춘다(6번의 집계 한 줄이 �
 
 *커밋 경계* — `feat(account): confirm the four irreversible actions`
 
-## 6. 집계 한 줄
+## ~~6. 집계 한 줄~~ — ❌ **만들었다가 걷었다** (2026-09-14)
 
-`N projects use this connection.` — **`loadAccountView`를 넓히지 않는다.** `/account` 전용 조회.
-기준은 **내가 OWNER이고 보관되지 않은 프로젝트**(design.md).
-✅ **조회 실패면 그 줄을 숨긴다**(2026-09-13, 사용자). 반환은 `number | null`이고 **0과 실패를 같은
-값으로 접지 않는다** — 0은 말할 수 있는 정보다.
-⚠️ **실패는 화면에서 무음이므로 서버 로그에 남긴다.** 남기지 않으면 "0이라 안 보인다"와 "죽어서 안
-보인다"를 나중에 구별할 흔적이 없다.
-⚠️ **`projectId`가 아니라 `userId`로 좁히는 조회다** — 이 축의 소유자는 `User`다.
-검증: 순수 집계 함수에 단위 테스트(0 · N · 실패 셋) + 실패 시 Dialog에 검은 줄이 **없다**.
-⚠️ **5번(Dialog)과 같은 커밋이거나 그 앞이다** — 이 줄이 GitHub 해제 Dialog를 붙이는 논거다.
-⚠️ **`lib/keys/**`의 raw 집계를 건드리면 `pnpm test:projects:postgres`를 손으로 돌린다.**
-`/account` 전용 조회로 새로 두면 해당 없다.
+`N projects use this connection.`을 `lib/account/connection-usage.ts`로 만들어 행과 Dialog 두 자리에
+세웠고, **9번 실측 뒤 리뷰가 그 숫자를 무너뜨렸다**: 기준이 *"내가 OWNER이고 보관되지 않은 프로젝트"*라
+**이 연결에 의존하지 않는 것까지 셌다**(`installationId`가 `null`인 프로젝트도 들어간다). 해제가 실제로
+막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 App **설치 토큰**이 낸다 — 숫자가 근거가 될 수 없어
+모듈·테스트·두 자리를 함께 지웠다.
 
-*커밋 경계* — `feat(account): say how many projects use this connection`
+⚠️ **그 판정이 5번(Dialog)을 무효로 만들지는 않는다** — Dialog는 남고, 근거가 *"되돌리려면 OAuth 왕복
+전체"*로 바뀌었다(`spec.md`). **이 절을 지우지 않고 남기는 이유**가 그것이다: 다음 사람이 같은 집계를
+다시 제안할 때 "왜 걷었나"가 여기 있어야 한다.
 
 ## 7. 셸 아바타가 사진을 받는다 — ✅ 결정됨 (2026-09-13, 사용자)
 
