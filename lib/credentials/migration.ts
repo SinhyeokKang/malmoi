@@ -1,5 +1,6 @@
 import "server-only";
 import { normalizeEmail } from "@/lib/auth/email";
+import { requireEnv } from "@/lib/env";
 import { CredentialError } from "./crypto";
 import { lookupEmail, openPii, openToken, sealPii, sealToken } from "./storage";
 
@@ -32,7 +33,7 @@ export function planCredentialMigration(row: AccountFields, mode: MigrationMode)
     const legacy = classifyCredential(value) === "legacy";
     if (legacy && mode !== "backfill") throw new CredentialError();
     const plain = legacy ? value : openToken(value, ctx)!;
-    if (legacy || (mode === "rotate-token" && value.split(":")[2] !== process.env.TOKEN_ENCRYPTION_ACTIVE_KEY_ID)) result[field] = sealToken(plain, ctx);
+    if (legacy || (mode === "rotate-token" && value.split(":")[2] !== requireEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID"))) result[field] = sealToken(plain, ctx);
   }
   return result.access_token === row.access_token && result.refresh_token === row.refresh_token ? null : result;
 }
@@ -73,7 +74,7 @@ export function planPersonalFields(row: PersonalFields, table: "User" | "Project
     if (legacy && mode !== "backfill") throw new CredentialError();
     const ctx = table === "User" ? { table, id: row.id, field } : { table, id: row.id, projectId: row.projectId!, field: "email" as const };
     const plain = field === "email" ? email : legacy ? value : openPii(value, ctx)!;
-    if (legacy || (mode === "rotate-pii" && value.split(":")[2] !== process.env.PII_ENCRYPTION_ACTIVE_KEY_ID)) result[field] = sealPii(plain, ctx)!;
+    if (legacy || (mode === "rotate-pii" && value.split(":")[2] !== requireEnv("PII_ENCRYPTION_ACTIVE_KEY_ID"))) result[field] = sealPii(plain, ctx)!;
   }
   return Object.keys(result).length === 0 ? null : result;
 }

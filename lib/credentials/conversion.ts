@@ -1,5 +1,6 @@
 import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { requireEnv } from "@/lib/env";
 import { credentialIO } from "./access";
 import { CredentialError } from "./crypto";
 import { assertUniqueEmails, isHashedSession, planCredentialMigration, planPersonalFields, type MigrationMode } from "./migration";
@@ -49,7 +50,7 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
       if ((options.mode === "rotate-token" && verified.oldTokenKey !== 0) || (options.mode === "rotate-pii" && verified.oldPiiKey !== 0)) throw new CredentialError();
       return { ...verified, changes: writes.length, applied };
     }
-    const oldKey = (value: string | null | undefined, kind: "PII" | "TOKEN") => typeof value === "string" && value.startsWith("enc:") && value.split(":")[2] !== process.env[`${kind}_ENCRYPTION_ACTIVE_KEY_ID`];
+    const oldKey = (value: string | null | undefined, kind: "PII" | "TOKEN") => typeof value === "string" && value.startsWith("enc:") && value.split(":")[2] !== requireEnv(`${kind}_ENCRYPTION_ACTIVE_KEY_ID`);
     return { users: users.length, invitations: invitations.length, accounts: accounts.length, sessions: sessions.length,
       loginAccounts: accounts.filter(a => a.provider === "github" || a.provider === "google").length,
       appAccounts: owners.size,
