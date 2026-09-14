@@ -29,11 +29,21 @@
   검증하지 않고 `scripts/`는 `pnpm test` 밖이다). red 테스트 → 기본 표면 조회로 수정 → POSTMORTEM.
   나머지 세 자리(트랜잭션 두 진입점의 근거 주석, 첫 적재의 `failed` 선계산 근거, 중복 adapter 검사)는
   표현 수정이다. 떨어진 컬럼·옛 복합키(`projectId_code`·`projectId_key`)·삭제된 관계의 전수 검색은 0건.
-- [ ] **결과 화면을 벗어나면 비기본 표면의 workflow step을 다시 볼 자리가 없다.** spec §5.2는 결과
-  화면만 규정하므로 구현 결함이 아니라 **범위 판정 대상**이다 — Settings의 workflow 블록은 기본 표면
-  하나만 낸다. 대상 리포 전환 전에 사용자 판단이 필요하다.
-- [ ] 실제 OAuth 재인증→Add 복귀, 뒤로가기·세션 만료 중 저장의 브라우저 검증.
+- [x] **비기본 표면의 workflow step 회수 경로**(2026-09-14 사용자 승인). Settings의 workflow 블록이
+  `renderProjectWorkflowYaml`로 **활성 표면마다 step 하나**를 낸다. step 생산자는
+  `renderSurfaceWorkflowStep` 하나로 모았고, 표면 행 → step 입력 변환은 `workflowSurfaceOf`가 받아
+  6b-3의 대기 규칙이 화면 밖에서 측정된다. 실물 확인: dev DB의 QA 프로젝트가 `_locales`·`namespaces`
+  두 step을 낸다.
+- [x] **브라우저 게이트 셋**(2026-09-14, 로컬·dev DB, ego-browser):
+  ① `reauthorize` → [Reconnect GitHub] → GitHub authorize → `/surfaces/new` 복귀, 후보 재탐지 정상.
+  ② Settings → Add → 초안 입력 → 뒤로(Settings) → 앞으로: 초안이 초기화되고 화면은 정상.
+  ③ 세션 쿠키를 지운 채 [Check files]: "Sign in again and come back" Alert + **입력 유지**, 쿠키 복원 확인.
+  그 과정에서 결함 둘을 잡았다 — `checkout` 뒤 빈 줄 소실(테스트 3,657 green이었다)과
+  Alert가 가리키는 버튼 이름 불일치. 둘 다 red→green + POSTMORTEM.
 - [ ] 시안 대조: 미수행. 기존 T16의 시안 부재 판정을 새 화면의 통과로 재사용하지 않는다.
+  ⚠️ **새 화면(Add surface·표면 not-found·Settings의 표면 카드)에도 Claude Design 핸드오프가 없다** —
+  `/design-sync`의 SoT가 존재하지 않으므로 그 루프를 돌 수 없다. 시안을 만들거나, T16처럼 건너뛰기로
+  판정하거나 둘 중 하나가 필요하다(사용자 결정).
 - [ ] 실물 두 표면 push→각 편집→단일 PR→merge→두 표면 재push→값 유지→2층/1층 skip.
   이번 세션은 원격 push·태그·대상 workflow·prod 배포를 수행하지 않는다.
 
