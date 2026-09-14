@@ -50,7 +50,13 @@ const FILE_BUDGET = 1200;
 const MAX_SHAPE_GROUPS = 8;
 /** 그룹당 읽을 파일 수. probe는 3개만 보고, 왕복 측정도 로케일 몇 개면 판정이 선다. */
 const MAX_PER_SHAPE_GROUP = 12;
-/** ts-dict `detect`가 디렉터리당 최대 4개를 probe한다. read까지 감안해 조금 더 준다. */
+/**
+ * ts-dict `detect`가 디렉터리당 `SEED_FILES`(8)개를 probe한다. read까지 감안해 같은 수를 준다.
+ *
+ * ⚠️ **이 층은 프로덕션보다 넓다** (2026-09-14). 프로덕션 씨앗(`tsDictProbePaths`)은 **디렉터리 2개**만
+ * 고르고 `aside`를 걷어내는데 여기는 i18n 신호가 있는 디렉터리를 전부 담는다 — 그래서 실측의
+ * ts-dict 후보 수는 **상한**이고 프로덕션이 그보다 적게 본다. 지표를 읽을 때 그 방향을 전제한다.
+ */
 const TS_PER_DIR = 8;
 /** 로케일 이름 소스 파일이 모인 디렉터리(= `code-dict` 후보)는 조금 더 본다 — 로케일 수가 지표다. */
 const LOCALE_CODE_PER_DIR = 12;

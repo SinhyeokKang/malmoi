@@ -52,6 +52,7 @@ export function selectLocaleFiles(
 
 export type PushPayloadInput = {
   projectSlug: string;
+  surfaceSlug: string;
   commitSha: string;
   /** `git show -s --format=%cI` — offset이 붙은 ISO 8601. 역행 판정의 근거다. */
   commitAt: string;
@@ -103,6 +104,7 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
 
   const payload: PushPayloadType = {
     projectSlug: input.projectSlug,
+    surfaceSlug: input.surfaceSlug,
     commitSha: input.commitSha,
     commitAt: input.commitAt,
     format: {

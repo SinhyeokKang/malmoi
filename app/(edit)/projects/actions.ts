@@ -1,6 +1,7 @@
 "use server";
 
 import { findUserByEmail } from "@/lib/credentials/access";
+import { planSurfaceSlug } from "@/lib/surfaces/plan";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -580,7 +581,7 @@ export type DetectResult =
 
 /**
  * 탐지 (화면 ③) — **2패스다** (design §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
- * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤21), 내용을 들고 다시 돈다.
+ * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤37 — ts-dict 씨앗이 2026-09-14에 16을 더했다), 내용을 들고 다시 돈다.
  *
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
@@ -613,7 +614,8 @@ export async function detectRepoFormats(raw: {
 
   const paths = snapshot.files.map((f) => f.path);
   // 1패스: probe 없이 경로 모양만. code-dict는 여기서 후보가 0개이고 probe가 그것을 **만든다**.
-  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths));
+  // ⚠️ 세 번째 인자가 **경로 전체**다 — ts-dict는 1패스 후보가 0이라 씨앗을 여기서만 만들 수 있다.
+  const targets = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
   let files: AdapterFile[];
   try { files = await readFiles(reader, snapshot, targets); }
   catch (error) {
@@ -796,7 +798,7 @@ export type CreateProjectResult =
    * `baseBranch`는 **결과 화면의 워크플로 YAML용**이다 (T7). `on.push.branches`를 `main`으로 고정하면
    * base가 `develop`인 리포에서 CI가 영영 안 돌고, 그 값을 아는 것은 probe를 부른 서버뿐이다.
    */
-  | { ok: true; slug: string; pushToken: string; baseBranch: string }
+  | { ok: true; slug: string; surfaceSlug: string; pushToken: string; baseBranch: string }
   | { ok: false; error: OnboardFailure };
 
 /**
@@ -935,13 +937,16 @@ export async function createProject(raw: {
           installationId: plan.installationId,
           repositoryId: access.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
-          adapterName: confirmed.format.adapter,
-          pathTemplate: confirmed.format.pathTemplate,
-          baseLocale: confirmed.baseLocale,
           pushTokenHash: hashPushToken(pushToken),
         },
         select: { id: true },
       });
+      const surface = await tx.translationSurface.create({ data: {
+        projectId: project.id, slug: planSurfaceSlug(confirmed.format.pathTemplate, []),
+        adapterName: confirmed.format.adapter, pathTemplate: confirmed.format.pathTemplate,
+        baseLocale: confirmed.baseLocale,
+      } });
+      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: surface.id } });
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
     });
   } catch (error) {
@@ -957,7 +962,7 @@ export async function createProject(raw: {
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
-  return { ok: true, slug: input.slug, pushToken, baseBranch };
+  return { ok: true, slug: input.slug, surfaceSlug: planSurfaceSlug(confirmed.format.pathTemplate, []), pushToken, baseBranch };
 }
 
 export type FirstIngestResultView =
@@ -997,16 +1002,16 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       repoName: true,
       baseBranch: true,
       installationId: true,
-      adapterName: true,
-      pathTemplate: true,
-      baseLocale: true,
-      lastCommitSha: true,
+      defaultSurface: true,
     },
   });
   if (project === null) return { ok: false, error: "not-found" };
 
-  if (planProjectReadiness(project) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
-  const { installationId, adapterName, pathTemplate, baseLocale } = project;
+  const surface = project.defaultSurface;
+  if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
+  if (planProjectReadiness({ installationId: project.installationId, surfaces: [surface] }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
+  const { installationId } = project;
+  const { adapterName, pathTemplate, baseLocale } = surface;
   // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
   // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다.
   if (installationId === null || adapterName === null || pathTemplate === null || baseLocale === null) {
@@ -1026,9 +1031,10 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
    */
   const startedAt = new Date();
-  await markImportStarted(prisma, projectId, startedAt);
+  const scope = { projectId, surfaceId: surface.id };
+  await markImportStarted(prisma, scope, startedAt);
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
-    finishImportRun(prisma, { projectId, startedAt, code });
+    finishImportRun(prisma, { ...scope, startedAt, code });
 
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
@@ -1089,6 +1095,8 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
 
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
+      surfaceId: surface.id,
+      surfaceSlug: surface.slug,
       startedAt,
       projectSlug: slug,
       format: confirmed.format,
@@ -1352,7 +1360,7 @@ async function readFiles(
   let totalBytes = 0;
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];
-  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤21개(탐지) 또는
+  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤37개(탐지) 또는
   // 로케일 파일 수(첫 적재)라 `maxDuration=60` 안에 든다 (design §3.1·§4).
   for (const path of paths) {
     const sha = shaByPath.get(path);

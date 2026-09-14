@@ -18,6 +18,14 @@ const memberships: NavProject[] = [
 ];
 
 describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
+  it("keeps surface B in both editing links without adding a sidebar section", () => {
+    const current = activeProject("/projects/acme/surfaces/web/translations", memberships);
+    expect(current).toMatchObject({ slug: "acme", surfaceSlug: "web" });
+    const items = navZones(current, { userName: "Shin", projectCount: 2 })[1]!.items;
+    expect(items.find(item => item.key === "translations")!.href).toBe("/projects/acme/surfaces/web/translations");
+    expect(items.find(item => item.key === "locales")!.href).toBe("/projects/acme/surfaces/web/locales");
+    expect(items).toHaveLength(6);
+  });
   it("프로젝트 라우트면 그 멤버십을 낸다", () => {
     expect(activeProject("/projects/acme/translations", memberships)).toEqual(memberships[0]);
     expect(activeProject("/projects/beta/settings", memberships)).toEqual(memberships[1]);

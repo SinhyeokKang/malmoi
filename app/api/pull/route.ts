@@ -10,7 +10,7 @@ import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/t
 import { runSync } from "@/lib/sync/run";
 
 /**
- * DB → `l10n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
+ * DB → `malmoi-i18n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
  * 직접 부른다 (CLAUDE.md "데이터 변경 경로", 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
  * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 현재 matcher는
@@ -54,7 +54,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         slug: true,
         installationId: true,
         repositoryId: true,
-        lastCommitSha: true,
+        surfaces: { select: { archivedAt: true, lastCommitSha: true } },
         // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
         archivedAt: true,
         // ⚠️ **정렬 재료다** — 마지막 실행이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이

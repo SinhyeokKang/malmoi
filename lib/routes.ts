@@ -130,6 +130,9 @@ export const routes = {
     withQuery(`/signin/link/${challenge}`, query),
   translations: (slug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/translations`, query),
+  surfaceTranslations: (slug: string, surfaceSlug: string, query: TranslationsQuery = {}): string =>
+    withQuery(`/projects/${slug}/surfaces/${surfaceSlug}/translations`, query),
+  surfaceLocales: (slug: string, surfaceSlug: string): string => `/projects/${slug}/surfaces/${surfaceSlug}/locales`,
   /**
    * 프로젝트 진입의 **착지점** (PRODUCT §7.7 결정 1 — 6b-6). "프로젝트로 간다"를 뜻하는 자리가 전부
    * 이것이다: 목록 행 · 사이드바 스위처 · 각 화면의 breadcrumb · 초대 수락. 하나라도 다른 곳을

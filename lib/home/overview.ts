@@ -23,6 +23,7 @@ export function activeLocaleProgress(input: Parameters<typeof localeProgress>[0]
 
 /** 사람이 만진 편집 한 건. `actor`는 `actorLabel`이 이미 라벨로 바꾼 값이다(못 찾으면 원문·`null`). */
 export type RecentEdit = {
+  surfaceSlug: string;
   at: Date;
   key: string;
   namespace: string;
@@ -86,6 +87,7 @@ export function recentActivity(input: {
  */
 function compareEdit(a: ActivityItem, b: ActivityItem): number {
   if (a.kind !== "edit" || b.kind !== "edit") return 0;
+  if (a.surfaceSlug !== b.surfaceSlug) return a.surfaceSlug < b.surfaceSlug ? -1 : 1;
   if (a.key !== b.key) return a.key < b.key ? -1 : 1;
   if (a.locale === b.locale) return 0;
   return a.locale < b.locale ? -1 : 1;

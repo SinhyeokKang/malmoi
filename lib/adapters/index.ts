@@ -23,8 +23,9 @@ export * from "./types";
  * JSON을 YAML·코드보다 앞에 두는 이유: 한 리포에 둘이 공존하면(mastodon이 프런트엔드 JSON +
  * Rails YAML을 둘 다 갖는다) **재생성 어댑터가 다루기 쉬운 쪽**이고, 실측에서 그쪽이 앱 UI였다.
  *
- * ⚠️ **`ts-dict`는 목록에 있지만 자동 탐지에 참여하지 않는다** — `detectCandidates`가 항상 빈
- * 배열이다. 명시 지정(`--adapter`·`Project.adapterName`)으로만 쓴다 (ARCHITECTURE §1.9 판정 ③).
+ * ⚠️ **`ts-dict`도 2026-09-14부터 자동 탐지에 참여한다** (ARCHITECTURE §1.9 판정 ③ 뒤집기).
+ * 단 **경로만으로는 후보를 못 낸다** — 내용을 봐야 알 수 있어서, 1패스에서 내려받을 파일을 고르는
+ * `tsDictProbePaths`가 그 자리를 맡는다.
  */
 export const ADAPTERS: readonly Adapter[] = [chromeLocales, jsonCatalog, yamlCatalog, codeDict, tsDict];
 

@@ -36,7 +36,7 @@ Use this skill when the user asks to run the migrated source command `code-revie
 - **export 결정성 붕괴**: `localeCompare` 사용, 끝 개행 누락/중복, DB 순서 의존(`ORDER BY` 없는 쿼리 결과로 객체 조립), `orphaned` 키가 export에 섞임
 - **blob SHA 오산**: `content.length`(문자 수)를 바이트 수로 사용 — 한글·프랑스어에서 즉시 틀린다
 - **`base_tree` 누락**: 리포의 나머지 파일이 전부 삭제된 커밋이 만들어진다
-- **`[skip-l10n]` 누락**: push↔pull 무한 루프
+- **`[skip-malmoi-i18n]` 누락**: push↔pull 무한 루프
 - **parents가 base head가 아님**: 3-way merge가 필요해져 코어 원칙이 무너진다
 - **인증 경계 혼입**: OAuth 토큰으로 커밋, App 토큰으로 사용자 식별, `PUSH_TOKEN`·`CRON_SECRET` 미검증 엔드포인트
 - **fail-open 인가**: 멤버십 조회가 실패·공백일 때 통과시키는 코드. 인가의 정본은 `ProjectMember`이고 진입점은 `requireProjectAccess`(페이지)·`getProjectAccess`(Server Action)다

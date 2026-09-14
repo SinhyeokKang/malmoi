@@ -302,6 +302,13 @@ export function liftAncestors<T extends { pathTemplate: string }>(ranked: readon
     const head = out[0];
     const at = out[i];
     if (head === undefined || at === undefined) continue;
+    /**
+     * ⚠️ **글롭(`dir/*.ts`)은 끌어올리지 않는다** (2026-09-14 — `ts-dict`가 자동 탐지에 들어오면서).
+     * 이 규칙의 근거는 *"자손은 같은 카탈로그의 하위 조각"*인데, 경로에 `{locale}`이 없는 템플릿은
+     * 그 관계를 말할 수 없다 — 한 디렉터리 안의 **다른 표면**이다. 막지 않으면 로케일 수에서 지고도
+     * 1순위를 가져간다(실측: 3로케일 `src/i18n/locales/{locale}.json`이 2순위로 밀렸다).
+     */
+    if (!at.pathTemplate.includes("{locale}")) continue;
     const headDir = dirOf(head.pathTemplate);
     const dir = dirOf(at.pathTemplate);
     if (dir.length < headDir.length && headDir.startsWith(dir)) {

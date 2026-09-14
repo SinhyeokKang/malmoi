@@ -6,7 +6,7 @@ import { AppError, MissingEnvError, classifyFailure, fail } from "../failure";
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
  *
  * POSTMORTEM 2026-09-03이 "본문 없는 500"을 결함으로 박았고, 그래서 두 라우트는 던진 메시지를
- * 그대로 실었다. 그 결정의 전제는 "로그를 읽는 사람이 우리뿐"이었는데 `.github/actions/l10n-push`는
+ * 그대로 실었다. 그 결정의 전제는 "로그를 읽는 사람이 우리뿐"이었는데 `.github/actions/malmoi-i18n-push`는
  * **임의의 대상 리포**에서 돌고 그중 하나(`bugshot-2`)가 public이다 — public 리포의 Actions 로그는
  * 누구나 읽는다. Prisma 접속 오류 한 번이 pooler 호스트와 DB 유저를 거기 박는다.
  *

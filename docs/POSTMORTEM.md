@@ -1527,3 +1527,17 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     후속 작업 후보다** — 비밀을 안 찍는 성질을 유지한 채 진단만 되살린다.
   - **한 경로만 죽는 사고는 "그 경로가 언제 도는가"로 찾는다.** 재로그인 콜백·야간 cron·초대 수락처럼
     **드물게 도는 경로**는 일상 사용으로 안 밟히므로, 앱이 정상으로 보이는 것이 무죄의 근거가 아니다.
+
+### 2026-09-14 — nullable 경계 추가만으로 옛 upsert의 소유권 충돌이 사라지지 않는다
+
+- **영역**: `lib/push/apply.ts`, 단계 A Locale PK, `lib/keys/__tests__/list-aggregates.integration.ts`.
+- **증상**: A 표면이 B의 locale code를 보내고 번역 행은 비어 있을 때, Locale 충돌을 건너뛰고도 push가 성공했다.
+- **근본 원인**: additive 단계는 옛 `(projectId, code)` PK를 유지한다. `ON CONFLICT DO UPDATE`에 surface 조건을
+  넣어도 조건 불일치는 예외가 아니라 0행 갱신이며, 후속 Translation이 없으면 복합 FK도 검증할 행이 없다.
+- **그물**: 실제 PostgreSQL의 빈 Translation fixture가 red를 냈다. SQL 문자열/인자 테스트와 정상 A/B fixture는
+  이 무음 성공을 놓쳤다. 하네스의 raw 집계 역시 비활성 표면을 포함해 실제 SQL보다 관대했던 것을 별도 red로 잡았다.
+- **재발 방지**: 단계 A는 쓰기 전에 다른/null 표면의 locale 소유권을 거부하고, upsert WHERE도 유지한다.
+  T17의 PK 교체 때 이 임시 사전검사와 conflict target을 함께 검토한다. 실행한 전수 검색:
+  `rg -n 'ON CONFLICT' lib app --glob '*.ts' --glob '!**/__tests__/**'` — 실제 upsert는 `lib/push/apply.ts` 두 곳뿐이다.
+  두 번째 Translation upsert는 `keyId` 단위 unique와 복합 FK가 경계를 지킨다. 이 모듈을 바꾸면
+  `pnpm test`뿐 아니라 `pnpm test:projects:postgres`의 빈 행·교차 FK·B snapshot 검증까지 돌린다.

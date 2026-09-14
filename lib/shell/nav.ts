@@ -20,7 +20,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **`archived`가 boolean이지 `Date`가 아니다** — 사이드바가 시각을 쓸 일이 없고, 셸이 넘기는
  * prop은 필요한 것만이라야 초과 프로퍼티가 안 샌다 (sec-audit 발견 23).
  */
-export type NavProject = { slug: string; name: string; role: Role; archived: boolean };
+export type NavProject = { slug: string; name: string; role: Role; archived: boolean; surfaceSlug?: string };
 
 /**
  * pathname → 지금 보고 있는 프로젝트.
@@ -34,7 +34,10 @@ export function activeProject(pathname: string, memberships: readonly NavProject
   if (base !== "projects" || slug === undefined || slug === "") return null;
   // `new`는 온보딩이 예약어로 막는 이름이라 프로젝트일 수 없다 (`lib/onboarding/slug.ts`).
   if (slug === "new") return null;
-  return memberships.find((m) => m.slug === slug) ?? null;
+  const member = memberships.find((m) => m.slug === slug);
+  if (!member) return null;
+  const parts = pathname.split("/");
+  return parts[3] === "surfaces" && parts[4] ? { ...member, surfaceSlug: parts[4] } : member;
 }
 
 export type NavSection = {
@@ -173,7 +176,9 @@ export function navZones(
         key: section.key,
         label: section.label,
         icon: section.icon,
-        href: section.href(project.slug),
+        href: project.surfaceSlug && section.key === "translations" ? routes.surfaceTranslations(project.slug, project.surfaceSlug)
+          : project.surfaceSlug && section.key === "locales" ? routes.surfaceLocales(project.slug, project.surfaceSlug)
+          : section.href(project.slug),
         exact: section.exact,
       })),
     },

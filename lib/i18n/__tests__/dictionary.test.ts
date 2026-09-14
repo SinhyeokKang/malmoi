@@ -82,7 +82,7 @@ describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
 
 describe("사전 — 노드를 삽입하는 값", () => {
   it("받은 노드를 그대로(참조 동일성) 문장 안에 둔다 — 문장은 사전이 소유한다", () => {
-    const path = createElement("code", null, ".github/workflows/l10n.yml");
+    const path = createElement("code", null, ".github/workflows/malmoi-i18n.yml");
     const sentence = m.settings.workflow.saveAs(path);
 
     expect(isValidElement(sentence)).toBe(true);

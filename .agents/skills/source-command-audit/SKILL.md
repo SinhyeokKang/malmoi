@@ -92,7 +92,7 @@ Use this skill when the user asks to run the migrated source command `audit`.
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | adapters | `lib/adapters/**` | **재생성 규칙이 `shared.ts`를 지나는가** — 코드포인트 정렬(`orderedEntries`)·끝 개행 1개. ⚠️ **들여쓰기는 이 목록에 없다**: 재생성 어댑터도 **표현을 원본에서 읽고**(`observeJsonStyle`) 2칸은 원본이 없을 때의 폴백이다(신규 로케일 파일). "2칸 고정"을 검사하면 §1.4를 지키는 구현이 🔴가 된다 (2026-09-13 정정) / `localeCompare` 사용 / **`writeStrategy`가 아니라 `layout`으로 "원본이 필요한가"를 판단하는 코드** / 수술적 어댑터가 값 무변경 시 원본을 바이트 그대로 돌려주는가 / **표현(인용 부호·블록 스타일)을 원본에서 읽는가**(§1.4) / `orphaned` 제외가 재생성에만 적용되는가 / 계약 테스트(`__tests__/contract.ts`) 매트릭스와 실제 어댑터 일치 |
-| pull-git | `lib/pull/**`, `lib/githash.ts`, `lib/github.ts` | blob SHA가 **UTF-8 바이트 길이**를 쓰는가(`content.length` 금지) / `base_tree` 전달 / parents가 **base head** / 커밋 메시지 `[skip-l10n]` / 브랜치 force update / **열린 PR 재사용** / 1층(`updatedAt` 스킵)·2층(blob 비교) 판정 순서 / `sortIndex → order` 4홉(§1.1의 a~d)이 끊기지 않았는가 |
+| pull-git | `lib/pull/**`, `lib/githash.ts`, `lib/github.ts` | blob SHA가 **UTF-8 바이트 길이**를 쓰는가(`content.length` 금지) / `base_tree` 전달 / parents가 **base head** / 커밋 메시지 `[skip-malmoi-i18n]` / 브랜치 force update / **열린 PR 재사용** / 1층(`updatedAt` 스킵)·2층(blob 비교) 판정 순서 / `sortIndex → order` 4홉(§1.1의 a~d)이 끊기지 않았는가 |
 | push-survey | `lib/push/**`, `lib/survey/**` | **페이로드 생산자가 `lib/push/payload.ts` 하나인가**(리터럴 조립이 다시 생겼는지) / `unnest` 컬럼 수 = 값 배열 수 / 오배송·역행 가드(409) / survey가 프로덕션 판정 함수를 쓰는가(자체 재구현 여부) |
 
 **전문가 통합 점검**
@@ -186,7 +186,7 @@ Supabase 대시보드의 **Advisors → Security**가 0 errors인지도 같은 �
 
 ### 4. 시급도 분류 + 보고
 
-- **🔴 심각** — 조용히 깨지는 것, 데이터 유출·손실, 코어 불변식 위반. 예: `projectId` 없는 쿼리, `matcher` 누락, blob SHA 문자 길이, `base_tree` 누락, `[skip-l10n]` 누락, 머지 로직 유입, 키 `DELETE`, fail-open 인가.
+- **🔴 심각** — 조용히 깨지는 것, 데이터 유출·손실, 코어 불변식 위반. 예: `projectId` 없는 쿼리, `matcher` 누락, blob SHA 문자 길이, `base_tree` 누락, `[skip-malmoi-i18n]` 누락, 머지 로직 유입, 키 `DELETE`, fail-open 인가.
 - **🟡 권장** — 컨벤션 위반, 회귀 위험, 부분 일관성 깨짐. 예: `layout`으로 원본 필요 여부 판단, 테스트 없는 순수 모듈, 문서-코드 드리프트, `any`, 순수 함수에 I/O.
 - **⚪ 사소** — 정리 거리. 데드 코드, 잉여 주석, 미세 중복.
 

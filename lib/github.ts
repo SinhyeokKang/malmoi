@@ -181,7 +181,7 @@ export async function openRepoReader(
 ): Promise<RepoReader> {
   // ⚠️ **App을 한 번만 만든다.** `@octokit/auth-app`의 설치 토큰 캐시는 인스턴스마다 새로 생기므로,
   // 읽기마다 `createApp()`을 부르면 **매 호출에 `POST /app/installations/{id}/access_tokens`가 하나씩
-  // 더 붙는다** — design §3.1의 예산(`ref 1 + tree 1 + blob ≤21`)이 2배가 되고, 50로케일 리포의 첫
+  // 더 붙는다** — design §3.1의 예산(`ref 1 + tree 1 + blob ≤37`)이 2배가 되고, 50로케일 리포의 첫
   // 적재는 100회가 되어 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴2). `createGitClient`가
   // 클로저를 돌려주는 것과 같은 이유다.
   const app = createApp();
@@ -293,7 +293,7 @@ export async function createGitClient(
         });
         return res.data.object.sha;
       } catch (error) {
-        // 브랜치 부재는 정상 입력이다 — `l10n/sync`가 없으면 첫 실행 경로를 탄다.
+        // 브랜치 부재는 정상 입력이다 — `malmoi-i18n/sync`가 없으면 첫 실행 경로를 탄다.
         if (isNotFound(error)) return null;
         throw error;
       }

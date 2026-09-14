@@ -26,9 +26,9 @@ const read = (path: string): string =>
 
 const SETTINGS_PAGE = "app/(edit)/projects/[slug]/settings/page.tsx";
 const SETTINGS_FORM = "components/settings/repository-form.tsx";
-const LOCALES_PAGE = "app/(edit)/projects/[slug]/locales/page.tsx";
+const LOCALES_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx";
 const LOCALES_FORM = "components/locales/base-locale-form.tsx";
-const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/translations/page.tsx";
+const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const BASE_BANNER = "components/translations/base-pending-banner.tsx";
 const EDIT_LOSS_BANNER = "components/translations/edit-loss-banner.tsx";
@@ -204,7 +204,8 @@ describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
     const src = read(SETTINGS_PAGE);
     expect(src).not.toMatch(/locales:\s*\{/);
     // 로케일 화면은 반대다 — orphaned 행을 **보여주는 것**이 그 화면의 요지라 걸러 오지도 않는다.
-    expect(read(LOCALES_PAGE)).toMatch(/locales:\s*\{/);
+    expect(read(LOCALES_PAGE)).toContain("loadProject(prisma, projectId, surfaceId)");
+    expect(read("lib/keys/query.ts")).toMatch(/locales:\s*\{/);
   });
 
   /**

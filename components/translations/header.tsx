@@ -37,6 +37,8 @@ import type { TranslationsQuery } from "@/lib/routes";
  */
 export function TranslationsHeader({
   slug,
+  surfaceSlug,
+  surfaces,
   totalCount,
   query,
   chipQuery,
@@ -53,6 +55,8 @@ export function TranslationsHeader({
   children,
 }: {
   slug: string;
+  surfaceSlug: string;
+  surfaces: readonly import("@/components/surface-selector").SurfaceOption[];
   /**
    * ⚠️ **필터 전의 총계다** (`/projects` 목록과 같은 규칙). 필터를 걸 때마다 흔들리면 "이
    * 프로젝트에 키가 몇 개인가"에 답하지 못한다 — 필터 후 건수는 섹션 헤딩의 배지가 든다.
@@ -163,6 +167,8 @@ export function TranslationsHeader({
 
         <TranslationFilters
           slug={slug}
+          surfaceSlug={surfaceSlug}
+          surfaces={surfaces}
           query={query}
           chipQuery={chipQuery}
           namespaces={namespaces}

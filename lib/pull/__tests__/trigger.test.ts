@@ -98,8 +98,8 @@ describe("triggerPull — 조립", () => {
         baseLocale: "en",
         lastPulledAt: null,
       },
-      localeCodes: ["en"],
-      keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { en: { value: "one" } } }],
+      surfaces: [{ id: "s1", slug: "default", adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en",
+        localeCodes: ["en"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { en: { value: "one" } } }] }],
       maxUpdatedAt: new Date("2026-09-04T00:00:00Z"),
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -114,14 +114,14 @@ describe("triggerPull — 조립", () => {
 });
 
 /**
- * 브랜치 이름이 상수 `l10n/sync`였다. 한 리포에 번역 표면이 둘이면 Project가 둘이 되는데
+ * 브랜치 이름이 상수 `malmoi-i18n/sync`였다. 한 리포에 번역 표면이 둘이면 Project가 둘이 되는데
  * (PRODUCT §7.1), 그 둘이 **같은 브랜치를 force update로 서로 덮는다** — 그때는
  * 순차 실행으로 피해 간 함정이고 bugshot-2가 정확히 그 모양이다(`_locales` 4키 +
  * `ts-dict` 903키).
  */
 describe("syncBranchFor — 프로젝트마다 다른 브랜치", () => {
   it("slug를 이름에 넣는다", () => {
-    expect(syncBranchFor("bugshot-2")).toBe("l10n/sync-bugshot-2");
+    expect(syncBranchFor("bugshot-2")).toBe("malmoi-i18n/sync-bugshot-2");
   });
 
   it("**다른 프로젝트는 다른 브랜치를 받는다** — 이 함수가 존재하는 이유다", () => {

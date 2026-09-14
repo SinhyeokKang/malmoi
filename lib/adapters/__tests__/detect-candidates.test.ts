@@ -52,13 +52,22 @@ describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
     ]);
   });
 
-  it("ts-dict: 자동 탐지에서 빠져 있어 항상 빈 배열이다 (ARCHITECTURE §1.9 판정 ③)", () => {
-    expect(tsDict.detectCandidates(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE)).toEqual([]);
+  it("ts-dict: 자동 탐지 후보를 낸다 (2026-09-14 — ARCHITECTURE §1.9 판정 ③ 뒤집기)", () => {
+    expect(tsDict.detectCandidates(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE).map((c) => c.pathTemplate))
+      .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
   });
 
-  it("ts-dict: 탐지 로직은 보관돼 있다 — 되살릴 때 이걸 부른다", () => {
-    const found = tsDictDetectByContent(["a/i18n/x.ts", "b/i18n/y.ts"], () => TS_SOURCE);
-    expect(found.map((c) => c.pathTemplate)).toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
+  /**
+   * ⚠️ **같은 함수를 두 번 부르는 단언을 쓰지 않는다** (2026-09-14 2차 리뷰 — `detectCandidates`가
+   * `detectByContent`의 별칭이라 그 비교는 **어떤 구현에서도 참**이었다). 세야 하는 것은 두 진입점의
+   * 항등이 아니라 **자동 탐지가 실제로 내는 값**이다.
+   */
+  it("ts-dict: 자동 탐지가 내는 후보가 명시 지정의 답과 같다", () => {
+    const paths = ["a/i18n/x.ts", "b/i18n/y.ts"];
+    expect(tsDict.detectCandidates(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
+      .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
+    expect(tsDictDetectByContent(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
+      .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
   });
 
   it("못 찾으면 빈 배열이다 (undefined가 아니다)", () => {
@@ -98,15 +107,12 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
   ];
 
   /**
-   * ⚠️ **`ts-dict`는 이 계약의 의도적 예외다.**
-   *
-   * 두 함수의 역할이 다르다: `detectCandidates`는 **자동 탐지에 내놓는 후보**이고, `detect`는
-   * **명시 지정(`--adapter`·`Project.adapterName`)됐을 때 고르는 것**이다. 자동 탐지에 참여하는
-   * 어댑터에서는 둘이 같아야 하지만, `ts-dict`는 후보를 하나도 안 내놓기로 했으므로
-   * (ARCHITECTURE §1.9 판정 ③) 일치 자체가 성립하지 않는다 — 일치를 강요하면 명시 지정이
-   * 불가능해진다. 실제로 그 상태였고 `--adapter ts-dict`가 죽어 있었다 (2026-09-03).
+   * ⚠️ **예외가 0이 됐다** (2026-09-14 — 판정 ③ 뒤집기). 2026-09-02부터 `ts-dict`만 이 계약 밖이었다:
+   * `detectCandidates`가 항상 빈 배열이라 `detect`(명시 지정)와 일치시킬 수가 없었다. 후보를
+   * 내기 시작하면서 다섯이 같은 계약을 진다 — **일치를 강요하면 명시 지정이 죽는다**는 옛 경고는
+   * 후보가 0일 때의 이야기였다.
    */
-  const AUTO_DETECTED = ADAPTERS.filter((a) => a.name !== "ts-dict");
+  const AUTO_DETECTED = ADAPTERS;
 
   for (const adapter of AUTO_DETECTED) {
     for (const c of CASES) {
@@ -120,14 +126,27 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
     }
   }
 
-  it("ts-dict만 예외다 — 후보는 안 내고 명시 지정은 받는다", () => {
+  it("명시 지정은 그대로 받는다 — 후보를 내기 시작해도 1순위 계약은 같다", () => {
     const paths = ["a/i18n/x.ts", "b/i18n/y.ts"];
-    expect(tsDict.detectCandidates(paths, () => TS_SOURCE)).toEqual([]);
     expect(tsDict.detect(paths, () => TS_SOURCE)?.pathTemplate).toBe("a/i18n/*.ts");
   });
 
-  it("예외는 ts-dict 하나뿐이다 — 늘어나면 이 목록이 거짓이 된다", () => {
-    expect(ADAPTERS.length - AUTO_DETECTED.length).toBe(1);
+  /**
+   * ⚠️ **`X.length - X.length`를 세지 않는다** (2026-09-14 2차 리뷰). 그렇게 쓰면 ts-dict를 다시 빼도
+   * green이다 — **어댑터마다 후보를 실제로 내게 해서** 센다.
+   */
+  it("다섯 어댑터가 전부 자동 탐지에 참여한다 — 하나라도 빠지면 red다", () => {
+    const cases: Record<string, { paths: string[]; probe: FileProbe }> = {
+      "chrome-locales": { paths: ["_locales/en/messages.json", "_locales/ko/messages.json"], probe: () => '{"a":{"message":"A"}}' },
+      "json-catalog": { paths: ["locales/en.json", "locales/ko.json"], probe: () => '{"a":"A"}' },
+      "yaml-catalog": { paths: ["config/locales/en.yml", "config/locales/ko.yml"], probe: () => "en:\n  a: A\n" },
+      "code-dict": { paths: ["src/locale/en.ts", "src/locale/ko.ts"], probe: () => 'export default { "a": "A" };' },
+      "ts-dict": { paths: ["src/i18n/x.ts", "src/i18n/y.ts"], probe: () => TS_SOURCE },
+    };
+    for (const adapter of ADAPTERS) {
+      const c = cases[adapter.name]!;
+      expect(adapter.detectCandidates(c.paths, c.probe).length, adapter.name).toBeGreaterThan(0);
+    }
   });
 
   it("detectFormat(어댑터 간 첫 매치)도 그대로다", () => {

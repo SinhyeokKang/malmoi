@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getProjectAccess } from "@/lib/auth/query";
+import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { SaveInput, planSave } from "@/lib/keys/save";
@@ -34,12 +35,12 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   // 입력 검증이 인가보다 먼저다 — slug가 없으면 무엇을 인가할지 정할 수 없다.
   const parsed = SaveInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug, keyId, localeCode, value } = parsed.data;
+  const { slug, surfaceSlug, keyId, localeCode, value } = parsed.data;
 
   const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
+  const access = await getSurfaceAccess(prisma, { userId, slug, surfaceSlug, permission: "translation:write" });
   if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId } = access;
+  const { projectId, surfaceId } = access;
 
   // 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**을 막는다
   // (design §3.7). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
@@ -50,7 +51,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   // "이 프로젝트에 들어올 자격"이지 "이 keyId가 그 프로젝트 것"이 아니다 — RLS가 없어
   // 애플리케이션이 유일한 방어선이다.
   const key = await prisma.stringKey.findFirst({
-    where: { id: keyId, projectId },
+    where: { id: keyId, projectId, surfaceId },
     select: { id: true, orphaned: true },
   });
   if (!key) return { ok: false, error: "key not found in this project" };
@@ -58,7 +59,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   if (key.orphaned) return { ok: false, error: "key is no longer in the code" };
 
   const locale = await prisma.locale.findUnique({
-    where: { projectId_code: { projectId, code: localeCode } },
+    where: { projectId_code: { projectId, code: localeCode }, surfaceId },
     select: { code: true, orphaned: true },
   });
   if (!locale) return { ok: false, error: "locale not found in this project" };
@@ -67,7 +68,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   if (locale.orphaned) return { ok: false, error: "locale is no longer in the repo" };
 
   const existing = await prisma.translation.findUnique({
-    where: { keyId_localeCode: { keyId, localeCode } },
+    where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
     select: { value: true },
   });
   const plan = planSave(existing?.value ?? null, value);
@@ -75,8 +76,8 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
 
   // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
   await prisma.translation.upsert({
-    where: { keyId_localeCode: { keyId, localeCode } },
-    create: { projectId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId },
+    where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
+    create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId },
     update: { value: plan.value, needsReview: false, updatedBy: userId },
   });
 
@@ -164,7 +165,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
 async function isReady(prisma: ReturnType<typeof getPrisma>, projectId: string): Promise<boolean> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { installationId: true, lastCommitSha: true },
+    select: { installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } } },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 준비된 것으로 읽지 않는다.
   if (project === null) return false;

@@ -101,6 +101,7 @@ export const PushPayload = z
      * 이 필드로 행을 찾지 않는다 — 그러면 오배송 페이로드가 인증 대상을 고르게 된다 (design §3.8).
      */
     projectSlug: z.string().min(1),
+    surfaceSlug: z.string().min(1).max(40),
     // 40자 hex — permalink 기준이라 형태가 틀리면 링크가 전부 깨진다.
     commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha must be 40 lowercase hex characters"),
     /**

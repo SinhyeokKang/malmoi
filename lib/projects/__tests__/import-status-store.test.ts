@@ -8,13 +8,13 @@ const commitAt = new Date("2026-09-13T01:00:00.000Z");
 
 function fixture(count = 1) {
   const project = { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count }) };
-  return { db: { project } as unknown as PrismaClient, project };
+  return { db: { translationSurface: project } as unknown as PrismaClient, project };
 }
 
 it("marks a run as started on the authorized project only", async () => {
   const { db, project } = fixture();
-  await markImportStarted(db, "p1", startedAt);
-  expect(project.update).toHaveBeenCalledWith({ where: { id: "p1" }, data: { lastImportStartedAt: startedAt } });
+  await markImportStarted(db, { projectId: "p1", surfaceId: "s1" }, startedAt);
+  expect(project.update).toHaveBeenCalledWith({ where: { id: "s1", projectId: "p1" }, data: { lastImportStartedAt: startedAt } });
 });
 
 /**
@@ -23,9 +23,9 @@ it("marks a run as started on the authorized project only", async () => {
  */
 it("clears only its own running marker when a run fails", async () => {
   const { db, project } = fixture();
-  await finishImportRun(db, { projectId: "p1", startedAt, code: "import-failed" });
+  await finishImportRun(db, { projectId: "p1", surfaceId: "s1", startedAt, code: "import-failed" });
   expect(project.updateMany).toHaveBeenCalledWith({
-    where: { id: "p1", lastImportStartedAt: startedAt },
+    where: { id: "s1", projectId: "p1", lastImportStartedAt: startedAt },
     data: { lastImportStartedAt: null, lastImportError: "import-failed" },
   });
 });
@@ -34,7 +34,7 @@ it("clears only its own running marker when a run fails", async () => {
 it("swallows its own write failure", async () => {
   const { db, project } = fixture();
   project.updateMany.mockRejectedValue(new Error("connection lost"));
-  await expect(finishImportRun(db, { projectId: "p1", startedAt, code: "import-failed" })).resolves.toBeUndefined();
+  await expect(finishImportRun(db, { projectId: "p1", surfaceId: "s1", startedAt, code: "import-failed" })).resolves.toBeUndefined();
 });
 
 /**
@@ -43,11 +43,12 @@ it("swallows its own write failure", async () => {
  */
 it("carries authentication, archive, and commit order into the update itself", async () => {
   const { db, project } = fixture();
-  expect(await recordReportedFailure(db, { projectId: "p1", tokenHash: "h", commitAt, code: "parse-failed" })).toBe("recorded");
+  expect(await recordReportedFailure(db, { projectId: "p1", surfaceId: "s1", tokenHash: "h", commitAt, code: "parse-failed" })).toBe("recorded");
   expect(project.updateMany).toHaveBeenCalledWith({
     where: {
-      id: "p1",
-      pushTokenHash: "h",
+      id: "s1",
+      projectId: "p1",
+      project: { pushTokenHash: "h", archivedAt: null },
       archivedAt: null,
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: commitAt } }],
     },
@@ -62,7 +63,7 @@ it("carries authentication, archive, and commit order into the update itself", a
  */
 it("touches neither the commit baseline nor another run's progress", async () => {
   const { db, project } = fixture();
-  await recordReportedFailure(db, { projectId: "p1", tokenHash: "h", commitAt, code: "parse-failed" });
+  await recordReportedFailure(db, { projectId: "p1", surfaceId: "s1", tokenHash: "h", commitAt, code: "parse-failed" });
   const data = project.updateMany.mock.calls[0]?.[0].data;
   expect(Object.keys(data)).toEqual(["lastImportError"]);
 });
@@ -70,5 +71,5 @@ it("touches neither the commit baseline nor another run's progress", async () =>
 /** 조건이 안 맞으면 0건이다 — 오배송·보관·역행·회전된 토큰이 전부 여기로 접힌다. */
 it("reports rejected when the conditional update matches nothing", async () => {
   const { db } = fixture(0);
-  expect(await recordReportedFailure(db, { projectId: "p1", tokenHash: "h", commitAt, code: "parse-failed" })).toBe("rejected");
+  expect(await recordReportedFailure(db, { projectId: "p1", surfaceId: "s1", tokenHash: "h", commitAt, code: "parse-failed" })).toBe("rejected");
 });

@@ -11,6 +11,7 @@ import {
 
 const valid = {
   projectSlug: "acme",
+  surfaceSlug: "default",
   commitSha: "a".repeat(40),
   commitAt: "2026-09-13T00:00:00+09:00",
   code: "parse-failed",

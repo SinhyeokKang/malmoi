@@ -152,6 +152,7 @@ describe("planPush — 중복 키", () => {
 describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키지 않는다", () => {
   const valid = {
     projectSlug: "skillflo",
+    surfaceSlug: "default",
     commitSha: "a".repeat(40),
     commitAt: "2026-08-31T16:38:15+09:00",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },
@@ -280,6 +281,7 @@ describe("planPush — base 변경 push의 stale 전파", () => {
 describe("PushPayload — 로케일·템플릿 charset (sec-audit 2)", () => {
   const valid = {
     projectSlug: "skillflo",
+    surfaceSlug: "default",
     commitSha: "a".repeat(40),
     commitAt: "2026-08-31T16:38:15+09:00",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },
@@ -337,6 +339,7 @@ describe("PushPayload — 로케일·템플릿 charset (sec-audit 2)", () => {
 describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
   const base = {
     projectSlug: "skillflo",
+    surfaceSlug: "default",
     commitSha: "a".repeat(40),
     commitAt: "2026-08-31T16:38:15+09:00",
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en" },

@@ -17,10 +17,10 @@ export type ProjectReadiness = "setup" | "awaiting_first_sync" | "ready";
 
 export function planProjectReadiness(project: {
   installationId: string | null;
-  lastCommitSha: string | null;
+  surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
 }): ProjectReadiness {
   // 연결이 먼저다 — 더미 SHA가 있어도 설치가 없으면 pull이 돌 수 없다.
   if (project.installationId === null) return "setup";
-  if (project.lastCommitSha === null) return "awaiting_first_sync";
+  if (!project.surfaces.some(surface => surface.archivedAt === null && surface.lastCommitSha !== null)) return "awaiting_first_sync";
   return "ready";
 }

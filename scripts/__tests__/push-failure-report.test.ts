@@ -44,7 +44,7 @@ async function fakeServer(reply: number | undefined): Promise<string> {
     req.on("end", () => {
       received.push({ path: req.url ?? "", body, auth: req.headers.authorization });
       if (reply === undefined) return;
-      res.writeHead(reply).end();
+      res.writeHead(reply).end(reply === 200 ? JSON.stringify({ ok: true }) : undefined);
     });
   });
   await new Promise<void>((resolve) => server?.listen(0, "127.0.0.1", resolve));
@@ -71,9 +71,9 @@ function fixtureRepo(files: Record<string, string>): string {
 const BROKEN = '{ "greeting": "hello",, }';
 const GOOD = '{\n  "greeting": "hello"\n}\n';
 
-async function push(dir: string, url: string) {
+async function push(dir: string, url: string, extra: string[] = []) {
   try {
-    const { stdout, stderr } = await run("pnpm", ["exec", "tsx", "scripts/push-local.ts", dir, "--project", "acme", "--url", url], {
+    const { stdout, stderr } = await run("pnpm", ["exec", "tsx", "scripts/push-local.ts", dir, "--project", "acme", "--url", url, ...extra], {
       cwd: root,
       env: { ...process.env, PUSH_TOKEN: "fixture-token" },
     });
@@ -96,6 +96,18 @@ it("reports a parse failure and still exits 1, without calling /api/push", async
   expect(received[0]!.auth).toBe("Bearer fixture-token");
 }, 60000);
 
+it("pins a lower-ranked surface and carries its identity through both producers", async () => {
+  const url = await fakeServer(200);
+  const dir = fixtureRepo({ "a/en.json": GOOD, "a/ko.json": GOOD, "b/en.json": '{"chosen":"Selected"}', "b/ko.json": '{"chosen":"Selected"}' });
+  const result = await push(dir, url, ["--surface", "web", "--path-template", "b/{locale}.json"]);
+  expect(result.code, result.out).toBe(0);
+  expect(JSON.parse(received[0]!.body)).toMatchObject({ surfaceSlug: "web", format: { pathTemplate: "b/{locale}.json" }, keys: [expect.objectContaining({ key: "chosen" })] });
+  received.length = 0;
+  const broken = fixtureRepo({ "b/en.json": GOOD, "b/ko.json": BROKEN });
+  expect((await push(broken, url, ["--surface", "web", "--path-template", "b/{locale}.json"])).code).toBe(1);
+  expect(JSON.parse(received[0]!.body)).toMatchObject({ surfaceSlug: "web", code: "parse-failed" });
+}, 60000);
+
 /** 깨진 파일 하나뿐이면 탐지가 후보를 못 만든다 — 그 갈래가 무음이던 자리다. */
 it("reports prepare-failed when detection itself finds nothing", async () => {
   const url = await fakeServer(204);
@@ -116,7 +128,7 @@ it("never carries the parser detail, the token, or a source string", async () =>
   expect(body).not.toContain("fixture-token");
   expect(body).not.toContain("hello");
   expect(body).not.toMatch(/SyntaxError|Unexpected|position \d/i);
-  expect(Object.keys(JSON.parse(body)).sort()).toEqual(["code", "commitAt", "commitSha", "projectSlug"]);
+  expect(Object.keys(JSON.parse(body)).sort()).toEqual(["code", "commitAt", "commitSha", "projectSlug", "surfaceSlug"]);
 }, 60000);
 
 /**

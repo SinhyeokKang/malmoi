@@ -61,13 +61,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       select: {
         id: true,
         slug: true,
-        lastCommitAt: true,
-        adapterName: true,
-        pathTemplate: true,
-        baseLocale: true,
         // ⚠️ **optional로 두지 않는다** — 껍데기가 빼면 `checkFormat`이 선언을 못 보고 base 변경이
         // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (design §3.13).
-        declaredBaseLocale: true,
         // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
         archivedAt: true,
       },
@@ -117,20 +112,24 @@ export async function POST(request: Request): Promise<NextResponse> {
      * `applyPush`가 페이로드 포맷으로 그 컬럼들을 덮으므로, 자동 후보의 YAML로 도는 CI가 1순위 표면을
      * 보내면 확정이 조용히 뒤집히고 그 프로젝트의 키가 전부 orphan된다.
      */
-    const surface = checkFormat(parsed.data.format, project);
-    if (surface !== "ok") {
+    const surface = await prisma.translationSurface.findFirst({
+      where: { projectId: project.id, slug: parsed.data.surfaceSlug, archivedAt: null },
+    });
+    if (!surface) return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
+    const formatCheck = checkFormat(parsed.data.format, surface);
+    if (formatCheck !== "ok") {
       // 무엇을 고쳐야 하는지 보여준다 — `expected`는 이미 그 프로젝트의 토큰을 든 호출자에게만 간다.
       // 고치는 방법은 워크플로에 `adapter:`·`base-locale:`을 박는 것이고 화면이 그 YAML을 낸다.
       return NextResponse.json(
         {
           error: "format mismatch",
           expected: {
-            adapter: project.adapterName,
-            pathTemplate: project.pathTemplate,
-            baseLocale: project.baseLocale,
+            adapter: surface.adapterName,
+            pathTemplate: surface.pathTemplate,
+            baseLocale: surface.baseLocale,
             // ⚠️ **선언도 보인다** (6b-3). 없으면 대기 중인 프로젝트의 CI 로그가 "expected en, got fr"만
             // 보여, 실제로는 `ko`도 받아들여진다는 사실이 진단에서 사라진다. 비밀이 아니라 라우팅 정보다.
-            declaredBaseLocale: project.declaredBaseLocale,
+            declaredBaseLocale: surface.declaredBaseLocale,
           },
           got: {
             adapter: parsed.data.format.adapter,
@@ -138,19 +137,19 @@ export async function POST(request: Request): Promise<NextResponse> {
             baseLocale: parsed.data.format.baseLocale,
           },
         },
-        { status: guardStatus(surface) },
+        { status: guardStatus(formatCheck) },
       );
     }
 
     // 역행 거부 — 오래된 run의 Re-run이 DB를 그 시점으로 되돌리는 것을 막는다 (ARCHITECTURE §5.5.5).
     const commitAt = new Date(parsed.data.commitAt);
-    const order = checkCommitOrder(commitAt, project.lastCommitAt);
+    const order = checkCommitOrder(commitAt, surface.lastCommitAt);
     if (order !== "ok") {
       return NextResponse.json(
         {
           error: "stale commit",
           commitAt: parsed.data.commitAt,
-          lastCommitAt: project.lastCommitAt?.toISOString() ?? null,
+          lastCommitAt: surface.lastCommitAt?.toISOString() ?? null,
         },
         { status: guardStatus(order) },
       );
@@ -166,19 +165,20 @@ export async function POST(request: Request): Promise<NextResponse> {
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
     const startedAt = new Date();
-    await markImportStarted(prisma, project.id, startedAt);
+    const scope = { projectId: project.id, surfaceId: surface.id };
+    await markImportStarted(prisma, scope, startedAt);
 
     let outcome;
     try {
-      outcome = await applyPush(prisma, project.id, parsed.data, {
-        previousBaseLocale: project.baseLocale,
+      outcome = await applyPush(prisma, scope, parsed.data, {
+        previousBaseLocale: surface.baseLocale,
         startedAt,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
       });
     } catch (error) {
       // ⚠️ **자기 시작 시각을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
-      await finishImportRun(prisma, { projectId: project.id, startedAt, code: "import-failed" });
+      await finishImportRun(prisma, { ...scope, startedAt, code: "import-failed" });
       throw error;
     } finally {
       /**
@@ -219,4 +219,3 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "internal", ref }, { status: 500 });
   }
 }
-

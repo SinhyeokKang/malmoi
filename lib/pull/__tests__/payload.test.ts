@@ -38,7 +38,7 @@ describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", 
 });
 
 describe("buildCommitPayload — parents가 항상 base head다", () => {
-  it("parents가 base head 하나뿐이다 — l10n/sync의 기존 head를 쓰면 3-way merge가 필요해진다", () => {
+  it("parents가 base head 하나뿐이다 — malmoi-i18n/sync의 기존 head를 쓰면 3-way merge가 필요해진다", () => {
     expect(buildCommitPayload("tree-sha", "basehead-sha", "3 files").parents).toEqual([
       "basehead-sha",
     ]);
@@ -48,7 +48,7 @@ describe("buildCommitPayload — parents가 항상 base head다", () => {
     expect(buildCommitPayload("tree-sha", "basehead-sha", "3 files").tree).toBe("tree-sha");
   });
 
-  it("메시지에 [skip-l10n]이 들어간다 — 없으면 머지된 커밋이 push를 다시 돌려 무한 루프다", () => {
+  it("메시지에 [skip-malmoi-i18n]이 들어간다 — 없으면 머지된 커밋이 push를 다시 돌려 무한 루프다", () => {
     expect(buildCommitPayload("t", "b", "3 files").message).toContain(SKIP_MARKER);
   });
 

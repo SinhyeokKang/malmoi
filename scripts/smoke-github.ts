@@ -105,7 +105,9 @@ async function main(): Promise<void> {
 
       const jsonLike = detectCandidatesAcross(paths);
       const codeDict = codeDictCandidatePaths(paths);
-      const targets = probeTargets(jsonLike, codeDict);
+      // ⚠️ **경로 전체를 함께 넘긴다** — ts-dict 씨앗이 여기서만 만들어진다. 안 넘기면 스모크가
+      // 프로덕션과 다른 후보 목록을 낸다(그 리포에서 ts-dict가 통째로 빠진다).
+      const targets = probeTargets(jsonLike, codeDict, paths);
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length}개`);
 
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));
@@ -188,7 +190,7 @@ async function main(): Promise<void> {
     }
 
     // sync 브랜치의 부재는 정상이다 — 첫 실행 경로(createRef)를 태운다. 이름은 프로젝트별이라 생성 함수로
-    // 만든다 — 옛 상수 `l10n/sync`를 읽으면 항상 "없음"이다 (Codex 감사 2026-09-06 #8).
+    // 만든다 — 옛 상수 `malmoi-i18n/sync`를 읽으면 항상 "없음"이다 (Codex 감사 2026-09-06 #8).
     const syncBranch = syncBranchFor(project.slug);
     const syncSha = await client.getRefSha(`heads/${syncBranch}`);
     console.log(`\n${syncBranch}: ${syncSha ?? "없음 (첫 실행 경로)"}`);

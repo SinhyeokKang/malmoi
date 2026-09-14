@@ -61,13 +61,13 @@ const TS_FORMAT: DetectedFormat = {
 describe("probeTargets — 내려받을 blob 경로", () => {
   it("후보마다 `sampleOrder(locales)`와 같은 파일을 고른다 — en 우선, 코드포인트 순, 3개", () => {
     const c = json("src/locales/{locale}.json", ["ko", "en", "ja", "fr"]);
-    const targets = probeTargets([c], []);
+    const targets = probeTargets([c], [], []);
     expect(targets).toEqual(sampleOrder(new Set(c.locales)).map((l) => `src/locales/${l}.json`));
     expect(targets).toEqual(["src/locales/en.json", "src/locales/fr.json", "src/locales/ja.json"]);
   });
 
   it("en이 없으면 코드포인트 순 앞 3개다", () => {
-    expect(probeTargets([json("i18n/{locale}.json", ["zh", "ko", "ja", "de"])], [])).toEqual([
+    expect(probeTargets([json("i18n/{locale}.json", ["zh", "ko", "ja", "de"])], [], [])).toEqual([
       "i18n/de.json",
       "i18n/ja.json",
       "i18n/ko.json",
@@ -75,12 +75,12 @@ describe("probeTargets — 내려받을 blob 경로", () => {
   });
 
   it("로케일이 3개 미만이면 있는 만큼만이다", () => {
-    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
+    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
   it("code-dict 그룹도 같은 규칙으로 고른다 — `{locale}` 치환에 확장자가 따라온다", () => {
     const group = { pathTemplate: "src/locale/{locale}.ts", locales: new Set(["ko", "en", "ja", "fr"]) };
-    expect(probeTargets([], [group])).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);
+    expect(probeTargets([], [group], [])).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);
   });
 
   it("상한: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = 21이다 (design §3.1)", () => {
@@ -91,7 +91,7 @@ describe("probeTargets — 내려받을 blob 경로", () => {
       pathTemplate: `code${i}/{locale}.ts`,
       locales: new Set(locales),
     }));
-    const targets = probeTargets(jsonLike, codeDict);
+    const targets = probeTargets(jsonLike, codeDict, []);
     expect(targets).toHaveLength(21);
     // 순위 밖 후보의 파일은 하나도 없다 — 내려받지 않은 후보는 5)에서 미검증 탈락이고, 그 사실을 화면이 말한다.
     expect(targets.some((p) => p.startsWith("dir5/") || p.startsWith("dir6/") || p.startsWith("code2/"))).toBe(false);
@@ -102,12 +102,57 @@ describe("probeTargets — 내려받을 blob 경로", () => {
 
   it("같은 경로는 한 번만 낸다", () => {
     const a = json("i18n/{locale}.json", ["en", "ko"]);
-    const targets = probeTargets([a, { ...a }], []);
+    const targets = probeTargets([a, { ...a }], [], []);
     expect(targets).toEqual(["i18n/en.json", "i18n/ko.json"]);
   });
 
   it("후보가 없으면 빈 배열이다", () => {
-    expect(probeTargets([], [])).toEqual([]);
+    expect(probeTargets([], [], [])).toEqual([]);
+  });
+
+  /**
+   * `ts-dict` 씨앗 (2026-09-14). ⚠️ **앞의 둘과 입력의 성격이 다르다** — jsonLike·codeDict는 1패스가
+   * 만든 **후보 그룹**인데, ts-dict는 1패스에 후보가 없어(내용을 봐야 안다) **리포 경로 전체**를 받아
+   * 여기서 씨앗을 고른다. 이 인자가 없으면 그 어댑터는 화면에 영영 안 뜬다.
+   */
+  it("리포 경로를 주면 ts-dict 씨앗이 목록에 더해진다", () => {
+    const repo = [
+      "src/i18n/namespaces/common.ts",
+      "src/i18n/namespaces/app.ts",
+      "src/sidepanel/lib/util.ts",
+      "src/sidepanel/lib/other.ts",
+    ];
+    const targets = probeTargets([], [], repo);
+    expect(targets).toContain("src/i18n/namespaces/app.ts");
+    expect(targets).toContain("src/i18n/namespaces/common.ts");
+    // i18n 신호가 없는 디렉터리는 안 받는다 — `.ts`는 어디에나 있다.
+    expect(targets.some((p) => p.startsWith("src/sidepanel/"))).toBe(false);
+  });
+
+  it("경로가 비면 씨앗도 없다 — 다른 어댑터의 동작은 그대로다", () => {
+    expect(probeTargets([], [], [])).toEqual([]);
+    expect(probeTargets([json("i18n/{locale}.json", ["en", "ko"])], [], [])).toEqual(["i18n/en.json", "i18n/ko.json"]);
+  });
+
+  /**
+   * ⚠️ **예산은 비용이 아니라 응답 시간이다** — 페이지 `maxDuration`이 60초다. 씨앗이 늘린 몫까지
+   * 합쳐 상한을 넘지 않는 것을 여기서 고정한다(JSON류 5×3 + code-dict 2×3 + ts-dict 2×8 = 37).
+   */
+  it("씨앗을 더해도 blob 상한을 넘지 않는다", () => {
+    const jsonLike = Array.from({ length: 9 }, (_, i) => json(`a${i}/{locale}.json`, ["en", "ko", "ja", "fr"]));
+    const codeDict = Array.from({ length: 5 }, (_, i) => ({ pathTemplate: `c${i}/{locale}.ts`, locales: new Set(["en", "ko", "ja"]) }));
+    /**
+     * ⚠️ **상한이 실제로 걸리는 입력이어야 한다** (2026-09-14 2차 리뷰). 디렉터리당 파일이 상한보다
+     * 적으면 `slice`가 no-op이라 **상한을 올리는 뮤테이션이 통과한다** — 그래서 디렉터리 9개 ×
+     * 파일 12개를 준다(씨앗은 2 × 8 = 16만 가져가야 한다).
+     */
+    const repo = Array.from({ length: 9 }, (_, d) =>
+      Array.from({ length: 12 }, (_, f) => `src/i18n/g${d}/f${String(f).padStart(2, "0")}.ts`),
+    ).flat();
+    const targets = probeTargets(jsonLike, codeDict, repo);
+    expect(targets).toHaveLength(37);
+    // 씨앗 몫이 정확히 16이다 — 디렉터리 2개를 넘거나 파일 8개를 넘으면 여기서 red다.
+    expect(targets.filter((p) => p.startsWith("src/i18n/")).length).toBe(16);
   });
 });
 
@@ -348,7 +393,7 @@ describe("summarizeCandidates — `samples` 확장 (design §3.3)", () => {
 
   /** `probeTargets`가 실제로 내려받는 것만 담는다 — 그 밖의 파일을 쓰면 이 맵에 없어서 red다. */
   const downloaded = (): Map<string, string> =>
-    new Map(probeTargets([c], []).map((p) => [p, body(p)] as const));
+    new Map(probeTargets([c], [], []).map((p) => [p, body(p)] as const));
 
   afterEach(() => {
     vi.restoreAllMocks();

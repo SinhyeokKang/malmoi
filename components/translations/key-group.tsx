@@ -22,7 +22,7 @@ import {
  * 값으로 읽어도 그 그래프가 번들에 안 간다 (`client-graph.test.ts`가 상시로 센다).
  */
 export function KeyGroup({
-  slug,
+  slug, surfaceSlug,
   row,
   locales,
   project,
@@ -30,6 +30,7 @@ export function KeyGroup({
   lastPulledAt,
 }: {
   slug: string;
+  surfaceSlug: string;
   row: KeyRow;
   /**
    * 보이는 로케일 — base가 맨 앞이다. 원문이 위에 있어야 그 아래를 채운다.
@@ -67,7 +68,7 @@ export function KeyGroup({
   return (
     <TableBody className="border-border border-b">
       {locales.map((locale, index) => (
-        <LocaleRow key={locale.code} slug={slug} row={row} locale={locale} actors={actors}
+        <LocaleRow key={locale.code} slug={slug} surfaceSlug={surfaceSlug} row={row} locale={locale} actors={actors}
           lastPulledAt={lastPulledAt} keyCell={index === 0 ? keyCell : null} />
       ))}
     </TableBody>
@@ -77,7 +78,7 @@ export function KeyGroup({
 /** Metadata expands only for the active cell so completed rows retain the design's density. */
 function LocaleRow({
   keyCell,
-  slug,
+  slug, surfaceSlug,
   row,
   locale,
   actors,
@@ -85,6 +86,7 @@ function LocaleRow({
 }: {
   keyCell: ReactNode;
   slug: string;
+  surfaceSlug: string;
   row: KeyRow;
   /** ⚠️ `isBase`가 없다 — 배지가 그 라벨을 안 들고, 이 표에서 base는 **순서**가 말한다. */
   locale: { code: string; orphaned: boolean };
@@ -115,7 +117,7 @@ function LocaleRow({
       <TableCell className="border-border border-l p-0 align-top whitespace-normal">
         <div className="group/cell relative min-w-0 has-[textarea:focus-visible]:after:pointer-events-none has-[textarea:focus-visible]:after:absolute has-[textarea:focus-visible]:after:inset-px has-[textarea:focus-visible]:after:left-0 has-[textarea:focus-visible]:after:z-20 has-[textarea:focus-visible]:after:ring-ring has-[textarea:focus-visible]:after:ring-2">
           <TranslationInput
-            slug={slug}
+            slug={slug} surfaceSlug={surfaceSlug}
             keyId={row.id}
             keyName={row.key}
             localeCode={locale.code}

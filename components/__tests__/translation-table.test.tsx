@@ -10,7 +10,7 @@ import { find, input, render } from "./helpers/dom";
 const save = vi.hoisted(() => vi.fn());
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslation: save }));
 const project: ProjectContext = {
-  id: "p", slug: "demo", name: "Demo", repoOwner: "owner", repoName: "repo",
+  surfaceId: "s1", surfaceSlug: "default", surfaces: [], id: "p", slug: "demo", name: "Demo", repoOwner: "owner", repoName: "repo",
   installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en",
   lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [],
 };
@@ -22,7 +22,7 @@ const locales = [{ code: "en", orphaned: false }, { code: "ko", orphaned: false 
 function View({ rows = [row], visible = locales }: { rows?: KeyRow[]; visible?: typeof locales }) {
   return <Table scrollable={false} aria-label="Common translations" className="table-fixed">
     <colgroup><col className="w-80" /><col className="w-17" /><col /></colgroup>
-    {rows.map((item) => <KeyGroup key={item.id} slug="demo" row={item} locales={visible} project={project} actors={new Map()} lastPulledAt={null} />)}
+    {rows.map((item) => <KeyGroup surfaceSlug="default" key={item.id} slug="demo" row={item} locales={visible} project={project} actors={new Map()} lastPulledAt={null} />)}
   </Table>;
 }
 
@@ -51,7 +51,7 @@ it("로케일 필터에 맞춰 rowspan을 줄이고 보존되는 셀의 draft와
   expect(area.value).toBe("작성 중");
   save.mockResolvedValueOnce({ ok: true, value: "작성 중" });
   await act(async () => area.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
-  expect(save).toHaveBeenLastCalledWith({ slug: "demo", keyId: "key-one", localeCode: "ko", value: "작성 중" });
+  expect(save).toHaveBeenLastCalledWith({ surfaceSlug: "default", slug: "demo", keyId: "key-one", localeCode: "ko", value: "작성 중" });
 });
 
 it("키 설명이 행 높이를 늘려도 값 열의 경계선은 전체 td 높이를 따른다", async () => {

@@ -41,6 +41,8 @@ export async function ingestFirstSnapshot(
   prisma: PrismaClient,
   input: {
     projectId: string;
+    surfaceId: string;
+    surfaceSlug: string;
     startedAt: Date;
     projectSlug: string;
     format: DetectedFormat;
@@ -75,6 +77,7 @@ export async function ingestFirstSnapshot(
 
   const { payload, duplicateKeys } = buildPushPayload({
     projectSlug: input.projectSlug,
+    surfaceSlug: input.surfaceSlug,
     commitSha: input.headSha,
     commitAt: input.headCommittedAt,
     format: input.format,
@@ -99,7 +102,7 @@ export async function ingestFirstSnapshot(
   // ⚠️ **결과를 같은 트랜잭션에 싣는다** (projects-list design §3.35). 빠진 파일이 있으면 데이터는
   // 들어간 채로 `partial-import`가 남는다 — throw가 없어도 성공 문구를 쓰지 않는 것과 같은 축이다
   // (불변식 9). 그래서 `failed`를 applyPush **앞에서** 센다.
-  await applyPush(prisma, input.projectId, payload, {
+  await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
     previousBaseLocale: null,
     startedAt: input.startedAt,
     importOutcome: failed === 0 ? null : "partial-import",

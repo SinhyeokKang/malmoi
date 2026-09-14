@@ -16,7 +16,7 @@ import type { PullChange } from "./plan";
  * (ARCHITECTURE §3). ⚠️ **push 측 스킵 판정은 이 상수를 import하지 못한다** — 대상 리포 워크플로의
  * YAML `if:`(`docs/ACTIONS.md`)에 리터럴로 박혀 있다. 이 값을 바꾸면 그쪽도 함께 바꾼다.
  */
-export const SKIP_MARKER = "[skip-l10n]";
+export const SKIP_MARKER = "[skip-malmoi-i18n]";
 
 export type TreeEntry = {
   path: string;
@@ -55,7 +55,7 @@ export type CommitPayload = {
   message: string;
   tree: string;
   /**
-   * **항상 base head 하나다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고,
+   * **항상 base head 하나다.** `malmoi-i18n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고,
    * base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반이다 (ARCHITECTURE §0).
    * 튜플로 둬서 둘째 parent가 들어올 여지를 타입으로 막는다.
    */
@@ -73,7 +73,7 @@ export function buildCommitPayload(
 
   const body = summary === "" ? "sync translations" : `sync translations (${summary})`;
   return {
-    message: `l10n: ${body} ${SKIP_MARKER}`,
+    message: `malmoi-i18n: ${body} ${SKIP_MARKER}`,
     tree: treeSha,
     parents: [parentSha],
   };

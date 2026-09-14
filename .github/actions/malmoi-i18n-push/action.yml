@@ -9,7 +9,7 @@
 # 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
 #
 # 대상 리포의 워크플로 예시는 docs/ACTIONS.md에 있다.
-name: l10n push
+name: malmoi-i18n push
 description: 로케일 파일을 DB로 올린다 (적재 + 사용처 스캔 → /api/push)
 
 inputs:
@@ -23,6 +23,14 @@ inputs:
       대상 Project.slug. **push-token이 정한 프로젝트와 다르면 409다** — 토큰이 먼저 프로젝트를
       정하고 이 값은 그 뒤에 대조된다(오배송 거부).
     required: true
+  surface:
+    description: Translation surface slug within the project
+    required: false
+    default: "default"
+  path-template:
+    description: Registered locale path template
+    required: false
+    default: ""
   api-url:
     description: |
       말모이 배포 URL. ⚠️ **`.vercel.app`을 쓰지 않는다** — Vercel 프로젝트 이름을 바꾸면 그
@@ -55,7 +63,7 @@ inputs:
     default: ""
   github-token:
     description: |
-      열린 번역 PR(`l10n/sync-<project>`)을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
+      열린 번역 PR(`malmoi-i18n/sync-<project>`)을 경고하는 데만 쓴다. 주지 않으면 그 단계를 건너뛴다.
       **쓰기에는 쓰지 않는다** — 리포 쓰기는 말모이의 GitHub App이 맡는다.
     required: false
     default: ""
@@ -64,24 +72,24 @@ runs:
   using: composite
   steps:
     # ⚠️ **무한 루프 차단을 action 안에도 둔다.** 대상 리포 워크플로의 `if:`가 1차 방어지만 그건
-    # 복붙 스니펫(docs/ACTIONS.md)이라 빠뜨릴 수 있다. pull이 만든 `[skip-l10n]` 커밋이 머지될 때
+    # 복붙 스니펫(docs/ACTIONS.md)이라 빠뜨릴 수 있다. pull이 만든 `[skip-malmoi-i18n]` 커밋이 머지될 때
     # push가 다시 돌면 DB를 리포 값으로 덮고 다음 pull이 또 PR을 만든다 (2026-09-04 audit #16).
     # composite action은 job-level if가 없어 스텝마다 `steps.guard.outputs.skip`으로 건너뛴다.
-    - name: "[skip-l10n] 가드"
+    - name: "[skip-malmoi-i18n] 가드"
       id: guard
       shell: bash
       env:
         HEAD_MESSAGE: ${{ github.event.head_commit.message }}
       run: |
-        if [[ "$HEAD_MESSAGE" == *"[skip-l10n]"* ]]; then
+        if [[ "$HEAD_MESSAGE" == *"[skip-malmoi-i18n]"* ]]; then
           echo "skip=true" >> "$GITHUB_OUTPUT"
-          echo "::notice::[skip-l10n] 커밋 — pull이 만든 변경이라 push하지 않는다"
+          echo "::notice::[skip-malmoi-i18n] 커밋 — pull이 만든 변경이라 push하지 않는다"
         else
           echo "skip=false" >> "$GITHUB_OUTPUT"
         fi
 
     # composite action은 자기 리포를 러너에 clone해 준다. `action_path`는 이 파일의
-    # 디렉터리(`<clone>/.github/actions/l10n-push`)이므로 **리포 루트는 `../../..`다.**
+    # 디렉터리(`<clone>/.github/actions/malmoi-i18n-push`)이므로 **리포 루트는 `../../..`다.**
     #
     # ⚠️ **버전을 파일에서 읽어 값으로 넘긴다.** `pnpm/action-setup`의 `package_json_file`과
     # `setup-node`의 `node-version-file`은 **워크스페이스 기준 상대경로**로 해석돼서, 절대경로를
@@ -124,8 +132,8 @@ runs:
     # ⚠️ **조회 실패를 "PR 없음"으로 읽지 않는다.** `2>/dev/null || true`가 그렇게 만들어서
     # 경고가 존재하지 않는 것과 구별되지 않았다. 실패는 실패로 보고한다(단 red는 아니다 —
     # 이 스텝은 경고 전용이고 적재를 막을 근거가 없다).
-    # ⚠️ 브랜치는 **프로젝트별**이다 — `lib/pull/trigger.ts`의 `syncBranchFor`가 `l10n/sync-<slug>`를 낸다
-    # (한 리포에 Project가 둘이면 서로 덮지 않게). 옛 상수 `l10n/sync`를 조회하면 이 경고가 항상 "없음"을
+    # ⚠️ 브랜치는 **프로젝트별**이다 — `lib/pull/trigger.ts`의 `syncBranchFor`가 `malmoi-i18n/sync-<slug>`를 낸다
+    # (한 리포에 Project가 둘이면 서로 덮지 않게). 옛 상수 `malmoi-i18n/sync`를 조회하면 이 경고가 항상 "없음"을
     # 찍어 손실 창의 유일한 신호가 죽는다 (Codex 감사 2026-09-06 #8). 이름 규칙은
     # `lib/pull/__tests__/sync-branch-consumers.test.ts`가 대조한다.
     - name: 열린 번역 PR 경고
@@ -134,7 +142,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ github.repository }}
-        SYNC_BRANCH: l10n/sync-${{ inputs.project }}
+        SYNC_BRANCH: malmoi-i18n/sync-${{ inputs.project }}
       run: |
         if ! out=$(gh pr list --repo "$REPO" --head "$SYNC_BRANCH" --state open --json url --jq '.[0].url // ""' 2>&1); then
           echo "::warning title=번역 PR 조회 실패::$out — 열린 PR이 있는지 확인하지 못했다"
@@ -157,25 +165,30 @@ runs:
       # 이벤트 데이터를 input에 연결했을 때 스크립트 인젝션 경로가 된다.
       env:
         PUSH_TOKEN: ${{ inputs.push-token }}
-        L10N_API_URL: ${{ inputs.api-url }}
-        L10N_PROJECT: ${{ inputs.project }}
-        L10N_ADAPTER: ${{ inputs.adapter }}
-        L10N_BASE: ${{ inputs.base-locale }}
-        L10N_WRAPPER: ${{ inputs.wrapper }}
-        L10N_TARGET: ${{ inputs.target }}
+        MALMOI_I18N_API_URL: ${{ inputs.api-url }}
+        MALMOI_I18N_PROJECT: ${{ inputs.project }}
+        MALMOI_I18N_SURFACE: ${{ inputs.surface }}
+        MALMOI_I18N_PATH_TEMPLATE: ${{ inputs.path-template }}
+        MALMOI_I18N_ADAPTER: ${{ inputs.adapter }}
+        MALMOI_I18N_BASE: ${{ inputs.base-locale }}
+        MALMOI_I18N_WRAPPER: ${{ inputs.wrapper }}
+        MALMOI_I18N_TARGET: ${{ inputs.target }}
       run: |
         set -euo pipefail
-        args=(--url "$L10N_API_URL" --project "$L10N_PROJECT")
-        if [ -n "$L10N_ADAPTER" ]; then
-          args+=(--adapter "$L10N_ADAPTER")
+        args=(--url "$MALMOI_I18N_API_URL" --project "$MALMOI_I18N_PROJECT" --surface "$MALMOI_I18N_SURFACE")
+        if [ -n "$MALMOI_I18N_PATH_TEMPLATE" ]; then
+          args+=(--path-template "$MALMOI_I18N_PATH_TEMPLATE")
         fi
-        if [ -n "$L10N_BASE" ]; then
-          args+=(--base "$L10N_BASE")
+        if [ -n "$MALMOI_I18N_ADAPTER" ]; then
+          args+=(--adapter "$MALMOI_I18N_ADAPTER")
+        fi
+        if [ -n "$MALMOI_I18N_BASE" ]; then
+          args+=(--base "$MALMOI_I18N_BASE")
         fi
         # 줄바꿈으로 나뉜 wrapper 스펙을 각각 플래그로 전개한다.
         while IFS= read -r spec; do
           spec="$(echo "$spec" | tr -d '[:space:]')"
           [ -n "$spec" ] && args+=(--wrapper "$spec")
-        done <<< "$L10N_WRAPPER"
-        echo "pnpm push:local $L10N_TARGET ${args[*]}"
-        pnpm push:local "$L10N_TARGET" "${args[@]}"
+        done <<< "$MALMOI_I18N_WRAPPER"
+        echo "pnpm push:local $MALMOI_I18N_TARGET ${args[*]}"
+        pnpm push:local "$MALMOI_I18N_TARGET" "${args[@]}"

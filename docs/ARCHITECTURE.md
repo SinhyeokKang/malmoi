@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -14,6 +14,8 @@
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다.
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
+   표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
+   포맷·base 선언·적재 상태·키·로케일·번역은 TranslationSurface가 소유한다. 표면별 역할은 없다.
    ⚠️ **"애플리케이션이 유일한 방어선"이라는 전제가 한때 거짓이었다** (2026-09-09, sec-audit 발견 8 —
    ARCHITECTURE §6.6·CLAUDE.md). Supabase의 데이터 API가 기본으로 켜져 있고 `public` default ACL이 `anon`에 전 권한을 줘서,
    이 불변식을 100% 지켜도 **앱을 통하지 않는 경로**가 열려 있었다. REVOKE로 닫았지만 `supabase_admin`
@@ -73,7 +75,7 @@
 |---|---|---|---|---|---|
 | `chrome-locales` | `<root>/_locales/{locale}/messages.json` | `{message, description?}` | per-locale | regenerate | bugshot-2 (4키 × ko/en/fr), 오픈소스 34개 |
 | `json-catalog` | `<dir>/{locale}.json` (flat 또는 중첩) | `string` | per-locale | regenerate | bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6**), 오픈소스 38개 |
-| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지 제외 — 명시 지정 전용** |
+| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 
@@ -183,7 +185,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. 비교 함수는 `shared.compareTemplates` **하나**이고 어댑터 내부와 어댑터 간이 그것을 공유한다
 - **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
-- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **예외는 `ts-dict` 하나**(아래 — 자동 탐지 제외라 `detectCandidates`는 `[]`, 명시 지정용 `detect`만 내용 탐지를 돈다). 예외가 둘로 늘면 `detect-candidates.test.ts`가 red다
+- **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을 진다. 단 그 어댑터는 **probe가 없으면 `[]`** 이고(경로만으로는 판단하지 않는다), 예외가 생기면 `detect-candidates.test.ts`가 red다
 
 #### ⚠️ 예제·픽스처 디렉터리가 진짜 카탈로그를 가린다 (2026-09-02 실측)
 
@@ -217,13 +219,17 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 `read`는 그대로 엄격하다 — 그 값들은 여전히 `errors`(leaf-type)로 보고된다. 완화한 것은 **탐지 관문뿐**이다.
 - **`nested`는 `detect`가 알 수 없다** — 내용의 성질이므로 `read`가 관측해 `ReadResult.nested`로 돌려주고, 호출부가 write 전에 `DetectedFormat.nested`에 실어준다
 
-#### ⚠️ `ts-dict`는 자동 탐지 후보에서 빠져 있다 (2026-09-02)
+#### ⚠️ `ts-dict`는 2026-09-02에 자동 탐지에서 빠졌다가 2026-09-14에 돌아왔다
 
-`ADAPTERS`에는 남아 있지만 `detectCandidates`가 항상 빈 배열을 낸다. 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
+**뺐던 이유**: 오픈소스 109개에서 후보에 **0회** 올랐고, 코드 딕셔너리를 쓰는 12개 리포는 **전부 로케일당 파일 하나**(`code-dict`)였다 — "한 파일에 로케일 여러 개"는 bugshot-2의 관례이지 생태계의 관례가 아니다. 남겨두는 대가가 `.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용뿐이라 뺐다.
 
-**`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — bugshot-2가 실전 검증 대상이므로 이 경로가 그 리포의 공식 온보딩 경로다. `read`·`write`는 아무것도 바뀌지 않았다.
+**되돌린 이유**: 그 대가를 실물이 냈다 — bugshot-2의 온보딩 ②에 **4키 `_locales`만** 뜨고 903키 딕셔너리는 목록에 없었다. 명시 지정은 **그 포맷을 아는 사람에게만** 길이고, PRODUCT §7.3이 그 상황을 *"작은 `_locales`(4키)가 실제 UI 딕셔너리(903키)를 가렸고 조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 이미 적어 두고 있었다.
 
-**base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `Project.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
+**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
+
+**`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML이 이 포맷에만 어댑터를 고정하는 이유도 그대로다: 1순위가 그것이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
+
+**base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `TranslationSurface.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
 
 #### ⚠️ 경로 모양이 셋이고, `layout`·`writeStrategy`와 또 다른 축이다 (2026-09-02 3차 실측)
 
@@ -240,7 +246,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 세 가지 함정:
 
 1. **로케일 디렉터리 형태만 경로에 i18n 신호를 요구한다.** 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다 — n8n의 `packages/@n8n/{ai,di,db}/package.json`이 4로케일 후보로 1순위가 됐다. 실측에서 이 형태의 진짜 카탈로그 7개는 **전부** 경로에 `locale(s)`·`i18n`을 갖는다. 편향이 한 방향이라 과소 탐지일 뿐 오탐을 만들지 않는다.
-2. **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 낸다** (`PRIMARY_NAMES` = `translation`·`translations`·`common`·`messages`·`default`, 그다음 로케일 수, 그다음 알파벳순). 알파벳순만 쓰면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집는다. `Project`가 포맷을 하나만 들기 때문이고, Ghost의 네임스페이스 5개 중 1개만 덮는 것은 그 대가다.
+2. **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 낸다** (`PRIMARY_NAMES` = `translation`·`translations`·`common`·`messages`·`default`, 그다음 로케일 수, 그다음 알파벳순). 알파벳순만 쓰면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집는다. 탐지 후보 하나가 포맷 하나를 들기 때문이고, Ghost의 네임스페이스 5개 중 1개만 덮는 것은 그 대가다.
 3. **접두사는 오른쪽 구분자부터 시도한다** (`shared.splitLocaleSuffix`). `client.bs_BA`는 마지막 `_`에서 자르면 `BA`(대문자라 탈락)이고 그다음 `.`에서 `bs_BA`가 나온다 — 왼쪽부터 자르면 `bs_BA`를 `_`로 다시 쪼갠다.
 
 #### ⚠️ 맨 3글자 이름은 로케일 앵커가 되지 못한다 (2026-09-02 3차 실측)
@@ -252,7 +258,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | grafana/grafana | `public/app/plugins/datasource/azuremonitor/dashboards/{locale}.json` (대시보드 정의, read 에러 1,799) | `adx`·`arg` |
 | n8n-io/n8n | `packages/nodes-base/nodes/Jira/__schema__/v1.0.0/issueAttachment/{locale}.json` (JSON 스키마) | `add`·`get` |
 
-**자동 탐지에 참여하는 네 어댑터의 후보 그룹은 `hasStrongLocale`을 통과해야 한다** (`ts-dict`는 자동 탐지 밖이라 부르지 않는다) — 2글자(`en`)·지역 서브태그(`zh-CN`·`fil-PH`)·camelCase(`koKR`) 중 하나가 그룹에 있어야 한다. 3글자 로케일(`fil`·`ceb`)을 버리는 게 아니라 **강한 것 옆에 있을 것**만 요구한다: 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인 3글자 영단어 디렉터리에는 그게 없다. **모든 어댑터의 그룹 필터가 이 규칙을 지난다.**
+**자동 탐지에 참여하는 **다섯** 어댑터의 후보 그룹이 `hasStrongLocale`을 통과해야 한다** (⚠️ `ts-dict`는 2026-09-14에 들어왔다 — 그 전까지 이 관문 밖이었고, 들어오자마자 `fmt`·`map` 같은 유틸 상수가 로케일로 잡혔다) — 2글자(`en`)·지역 서브태그(`zh-CN`·`fil-PH`)·camelCase(`koKR`) 중 하나가 그룹에 있어야 한다. 3글자 로케일(`fil`·`ceb`)을 버리는 게 아니라 **강한 것 옆에 있을 것**만 요구한다: 실제 카탈로그는 거의 항상 `en` 옆에 있고, 우연히 모인 3글자 영단어 디렉터리에는 그게 없다. **모든 어댑터의 그룹 필터가 이 규칙을 지난다.**
 
 #### ⚠️ 순위 픽스는 파이프라인의 **마지막** 층에 넣어야 한다 (2026-09-02 3차)
 
@@ -285,7 +291,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 |---|---|---|
 | a | `json-catalog.read` | `ReadResult.nestedByPath` (파일별 관측) |
 | b | `buildPushPayload` | `format.nestedByPath` — 없으면 **필드를 만들지 않는다**(빈 객체는 "전부 flat"으로 읽힌다) |
-| c | `applyPush` | `Project.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
+| c | `applyPush` | `TranslationSurface.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
 | d | `loadPullState`의 `select` → `formatFromProject` | `DetectedFormat.nestedByPath`. Json 컬럼이라 **boolean이 아닌 값은 버린다** |
 | e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백 |
 
@@ -355,7 +361,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 ### 1.9 어댑터 범용성 실측 — 근거와 재측정 규칙
 
 **어댑터·탐지 규칙을 손대기 전에 이 절을 읽는다.** 오픈소스 리포 **학습 109개 + 홀드아웃 20개**에
-`detect`→`read`→왕복을 돌려 17회차까지 쟀다(입력은 `docs/adapter-survey/`).
+`detect`→`read`→왕복을 돌려 18회차까지 쟀다(입력은 `docs/adapter-survey/`).
 
 ```sh
 pnpm adapter-survey docs/adapter-survey/repos.txt          --verdicts docs/adapter-survey/verdicts.json
@@ -363,15 +369,21 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 ```
 회차별 로그는 지웠고 — `git log`가 든다 — 여기 남는 것은 **판정과 그 근거**다.
 
-**최종 지표 (17차, 2026-09-11 — 16차와 한 칸도 다르지 않다)**
+**최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다)**
 
 | 지표 | 학습 109 | 홀드아웃 20 |
 |---|---|---|
 | 지원 포맷 탐지 | 100/101 (99.0%) | 16/17 (94.1%) |
-| **오탐** | 0/100 (0.0%) | **1/16 (6.3%)** |
+| **오탐** | 0/100 (0.0%) | **2/16 (12.5%)** |
 | 왕복 의미 동일 | 99/100 | 16/16 |
 | **바이트 고정점(결정성)** | **100/100** | **16/16** |
 | 조용한 손실 | **0건** | **0건** |
+| **`ts-dict`가 1순위인 리포** | **0** | **0** |
+
+⚠️ **홀드아웃 오탐이 1건 늘었는데 코퍼스 드리프트다** — 새로 틀린 것은 mattermost(1순위
+`i18n/glossary/{locale}.json`, 정답 2순위)이고 그 리포에 용어집 디렉터리가 생겼다. **변경 전
+코드(`765c20f`)로 같은 리포를 다시 재서 같은 결과를 확인했다** — 탐지 규칙 변경의 영향이 아니다.
+17차(2026-09-11)의 값은 학습 쪽이 한 칸도 다르지 않고 홀드아웃 오탐만 1/16 → 2/16이다.
 
 **판정 넷**
 
@@ -381,11 +393,24 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **② 키 정렬 규칙은 개정됐다** — `LocaleEntry.order` 오름차순(없으면 `<` 비교)이다(§1.1). 알파벳
   정렬이던 시절 첫 write diff 중앙값이 **0.784**였고 순서 보존 뒤 **0.001**이다. 수술적 치환 어댑터가
   diff 0.000을 내는 것이 그 판정의 대조군이었다.
-- **③ `ts-dict`는 자동 탐지에서 제외한다** — 109개에서 후보 **0회**였고, 코드 딕셔너리 리포는 전부
-  로케일당 파일 하나여서 `code-dict`가 11개를 왕복 100%·diff 0.000으로 덮었다. `--adapter ts-dict`
-  명시 지정만 남기고 탐지 로직은 `tsDictDetectByContent`에 보관돼 있다. bugshot-2가 그 경로의 유일한
-  사용자다. ⚠️ **그래서 온보딩의 "수동 지정" 힌트가 그 포맷으로 가는 유일한 길이다.**
-- **④ 무인 탐지는 가능하되 보고할 오탐률은 6.3%다** — 학습 코퍼스의 0.0%는 **과적합이다**(처음 보는
+- **③ `ts-dict`도 자동 탐지에 참여한다** (2026-09-14 — 2026-09-02 판정을 뒤집었다). 뺐던 근거는
+  *"109개에서 후보 0회"* 와 *"`.ts` 디렉터리마다 ts-morph를 돌리는 probe 비용"* 이었다. **그 대가가
+  실물에서 드러났다**: bugshot-2에서 4키 `_locales`가 903키 딕셔너리를 가렸고, 그 상황을 PRODUCT §7.3이
+  이미 *"조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 적어 두고 있었다. 수동 지정은 그 포맷을
+  **아는 사람에게만** 길이다.
+  - **되돌린 뒤에도 남의 리포는 안 건드린다** (18차): 학습 109·홀드아웃 20 어디에서도 `ts-dict`가
+    1순위가 되지 않았고 오탐률이 그대로다. 그것을 지키는 것이 규칙 둘이다 — **`hasStrongLocale`**
+    (유틸 파일의 `fmt`·`map`이 로케일로 잡히는 것을 막는다. 나머지 넷은 원래 지나고 있었다)과
+    **글롭 승격 차단**(`liftAncestors`가 `{locale}` 없는 템플릿을 조상이라는 이유로 올리지 않는다 —
+    실측에서 2로케일 글롭이 3로케일 카탈로그를 눌렀다).
+  - **probe 비용은 `tsDictProbePaths`가 든다** — 경로만 보고 `I18N_HINT` 통과 · 곁가지 제외 ·
+    **파일이 많은 디렉터리 2개 × 8파일**만 내려받는다(blob 21 → 37). ⚠️ **얕은 순이 아니라 큰 순이다**:
+    네임스페이스 디렉터리는 보통 더 깊고 더 커서, 깊이로 고르면 모노레포에서 진짜가 유틸 디렉터리에
+    밀려 **조용히** 빠진다.
+  - ⚠️ **셋째 이후 디렉터리는 여전히 흔적 없이 빠진다.** 상한이 2이고 다운로드가 순차라 넓히면 그대로
+    응답 시간이다 — 그때의 길이 수동 지정이다.
+- **④ 무인 탐지는 가능하되 보고할 오탐률은 12.5%다** (18차 — 17차까지 6.3%였고 늘어난 1건은 코퍼스
+  드리프트다) — 학습 코퍼스의 0.0%는 **과적합이다**(처음 보는
   20개에서 수정 전 40%였다). ⚠️ **"사람 확인 한 단계"를 없애지 않는 근거가 그 실패의 성질이다**:
   read/write는 처음 보는 리포에서도 100%였고 **무너진 것은 탐지뿐**이다. 위험은 "값을 잘못 쓴다"가
   아니라 **"엉뚱한 파일을 대상으로 삼는다"** 이고, 그건 사람이 경로 하나 보면 즉시 안다
@@ -402,10 +427,13 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 | `I18N_HINT` | `{dir}/{locale}/<name>.json` 모양이 경로에 i18n 계열 디렉터리 이름을 요구한다 — 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다 |
 | 버킷별 순위 | 어댑터 가로지르는 순위를 크롬 버킷과 `rest`에 **따로** 돌린다. 가로질러 적용하면 "크롬 최우선"이 무너진다 |
 
-**남은 오탐 1건은 고치지 않는다** — discourse가 플러그인 쪽 로케일 파일을 고른다(그쪽이 로케일 파일이
+**남은 오탐 둘 다 고치지 않는다** — ① discourse가 플러그인 쪽 로케일 파일을 고른다(그쪽이 로케일 파일이
 하나 더 많고 다른 서브트리라 조상 승격이 안 닿는다). `plugins/` 감점을 넣으면 잡히지만 **관측이 1건뿐이라
 만들지 않았다**: 근거 없는 규칙 추가가 이 프로젝트에서 결함이고, `packages/`에 진짜 카탈로그를 두는
-리포(Ghost·payload)가 있어 "하위 디렉터리 감점"은 일반화할 수도 없다.
+리포(Ghost·payload)가 있어 "하위 디렉터리 감점"은 일반화할 수도 없다. ② mattermost가 용어집
+(`i18n/glossary/{locale}.json`, 22로케일)을 고른다 — 진짜 카탈로그(`i18n/{locale}.json`)보다 로케일이
+많고 같은 서브트리의 자손이라 조상 승격이 닿지 않는다. **2026-09-14에 새로 관측됐고 탐지 규칙 변경이
+아니라 그 리포가 그 디렉터리를 새로 만든 결과다**(변경 전 코드로 재확인했다).
 
 ⚠️ **재측정 트리거: `lib/adapters/**`·`lib/survey/**`의 실질 변경.** 그때 `pnpm adapter-survey`를
 **학습과 홀드아웃 둘 다** 돌린다 — 3차에서 수정 4건 중 2건이 수정이 만든 회귀였고 **그중 하나는 학습
@@ -416,7 +444,7 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 
 ⏸️ **보류 중인 후속 하나 — 키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {separator, style}`).
 2026-09-04에 보류했고 근거는 **실측이 고칠 대상을 줄였다는 것**이다: 손실 2건 중 musicblocks는
-`Project.nestedByPath` 배선으로 해소됐고 **도입 대상 bugshot-2는 `ts-dict`라 효과가 0이다**(구분자 고정).
+`TranslationSurface.nestedByPath` 배선으로 해소됐고 **도입 대상 bugshot-2는 `ts-dict`라 효과가 0이다**(구분자 고정).
 남은 것은 siyuan 하나인데 대가가 스키마 컬럼 + 5홉 배선 + 신규 모듈 + 어댑터 8개 파일이다.
 **되살릴 조건은 비-점 구분자 리포가 실제 도입 대상이 될 때**다(i18next의 `:` namespace 구분자가 같은
 축이고 코퍼스에 8개 있다).
@@ -487,7 +515,7 @@ sha1("blob " + byteLength + "\0" + content)
 ⚠️ **그 인덱스의 소비자는 셋이다** (2026-09-11 정정 — 전엔 둘로 적혀 있었다): 1층 판정 · 미배포 집계(`countUnpublished`) · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
 
-⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `l10n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
+⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `malmoi-i18n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
 
 1층이 어댑터 방식과 무관하게 성립하는 것이 요지다 — 편집이 없는 날이 대부분이므로 기본 경로가 여기서 끝나고, 재생성 어댑터도 트리 조회 한 번을 아낀다. **대가**: 리포 파일을 직접 고치고 push를 안 돌린 경우를 놓친다(정상 흐름에선 push가 strict로 DB에 반영하므로 `updatedAt`이 움직인다).
 
@@ -506,12 +534,12 @@ clone하지 않는다.
 순서 — ⚠️ **0단계가 GitHub 앞에 있다**: `Project.installationId`가 `null`이면 부르기 전에 던진다(`lib/pull/run.ts`·`trigger.ts`). App이 설치되지 않은 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 값이 `createGitClient`의 인자다.
 
 1. `GET /repos/{o}/{r}/git/ref/heads/{base}` → base head SHA
-2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `Project.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
+2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `TranslationSurface.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
 2.5 **여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — 어느 방식이든 write에 원본이 필요하다. 수술적은 **치환 대상**이(§1.4), 재생성은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프)이 거기서 온다(§1.1). **2026-09-04까지 재생성은 이 단계를 건너뛰었고**, 그 대가가 재생성 리포 71개 중 30개의 "값 편집 0건인데 모든 줄이 바뀌는" diff였다 (§14)
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
-5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-l10n]`
-6. `PATCH /git/refs/heads/{l10n/sync-<slug>}` — `force: true`
+5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-malmoi-i18n]`
+6. `PATCH /git/refs/heads/{malmoi-i18n/sync-<slug>}` — `force: true`
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
@@ -527,21 +555,21 @@ clone하지 않는다.
 
 ### 함정
 
-- **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
-- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (2026-09-05, `syncBranchFor`). 상수 `l10n/sync` 하나였을 때는 **같은 리포를 가리키는 Project 둘이 서로를 force update로 덮었다.** 한 리포에 번역 표면이 둘이면 Project가 둘이 되는 것이 정책이고(PRODUCT §7.1) bugshot-2가 정확히 그 모양이라(`_locales` 4키 + `ts-dict` 903키), 이 이름이 갈리지 않으면 첫 다중 프로젝트에서 터진다. 그때의 실물 검증은 순차 실행으로 피해 갔다.
+- **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `malmoi-i18n/sync`가 있으므로 이 층은 항상 걸린다.
+- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `malmoi-i18n/sync-<slug>`** (`syncBranchFor`). 같은 리포를 가리키는 기존 Project 둘은 계속 별도 브랜치를 쓴다. 새 다중 표면 모델은 Project 하나의 활성 표면을 같은 snapshot에서 렌더해 tree·commit·PR 하나로 보낸다(PRODUCT §7.1). 표면별 브랜치는 만들지 않고 기존 Project도 자동 병합하지 않는다.
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
-  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: l10n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
-  - 아래 서술의 `l10n/sync`는 전부 이 이름을 가리킨다.
+  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: malmoi-i18n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
+  - 아래 서술의 `malmoi-i18n/sync`는 전부 이 이름을 가리킨다.
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
-- **parents는 항상 base head다.** `l10n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
-- **force update는 의도된 것이다.** `l10n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
+- **parents는 항상 base head다.** `malmoi-i18n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
+- **force update는 의도된 것이다.** `malmoi-i18n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
   - ⚠️ **그 불변식을 지키는 코드가 커밋 경로에만 있었다** (2026-09-09, 6b-3 T6이 프로덕션에서 찾았다). 2층이 비교하는 것은 **base 트리**이므로 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경 0건이 되고, 그때 커밋을 만들지 않으니 **브랜치는 직전 스냅샷을 그대로 들었다** — 그 PR을 머지하면 되돌린 편집이 리포에 적용된다. **"변경 0건"은 base 대비 0건이고 브랜치 대비 0건이 아니다.** 지금은 그 경로가 sync ref를 읽어 base보다 앞서 있으면 **base head로 되돌린다**(PR은 재사용 규칙대로 열린 채 diff만 0이 된다). 읽기 1회가 늘지만 **편집이 있었던 실행만** 그 줄에 닿으므로 1층 스킵의 "API 0회"는 그대로다.
   - ⚠️ 화면 문구는 아직 그 경우를 구별하지 않는다 — `skipped/no-changes`가 "Nothing to send"라 **사용자의 열린 PR이 방금 비워진 사실을 말하지 않는다** (미해결).
-- **`[skip-l10n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다.
-- **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:l10n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
+- **`[skip-malmoi-i18n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다.
+- **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:malmoi-i18n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
 - **⚠️ `multi-locale`의 write는 파일 × 로케일 이중 루프다** (2026-09-01 발견 — 그전 서술은 "파일별"까지만 말했다). `ts-dict.write`는 `currentFiles[0]`만 보고 **`input.locale`로 로케일 객체 하나를 고르므로**, 파일 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 PR에 ko만 바뀐 채 나간다.
-- **⚠️ `l10n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
-- **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `l10n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
+- **⚠️ `malmoi-i18n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
+- **base 브랜치 조회가 `null`이면 던진다.** GitHub은 권한 없는 리소스에 404를 주므로 설치 취소·권한 누락도 `null`로 온다. `malmoi-i18n/sync`의 `null`만 정상 입력이다(첫 실행 경로).
 
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
@@ -586,8 +614,14 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 - **내려받는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
   `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
   다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
-- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = **blob ≤ 21**.
-  온보딩 한 번의 호출은 `ref 1 + commit 1 + tree 1 + blob ≤21`이다.
+- **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 +
+  **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
+  `ref 1 + commit 1 + tree 1 + blob ≤37`이다. ⚠️ **다운로드가 순차라**(secondary rate limit) 늘린 몫이
+  그대로 응답 시간이고, `maxDuration`이 60초다.
+- ⚠️ **`ts-dict` 씨앗만 입력의 성격이 다르다.** 앞의 둘은 1패스가 만든 **후보 그룹**인데 그 어댑터는
+  내용을 봐야 판단할 수 있어 1패스 후보가 0이다 — `probeTargets`가 **리포 경로 전체**를 받아
+  `tsDictProbePaths`로 씨앗을 만든다. 그 인자는 **기본값이 없다**: 있으면 안 넘긴 호출부가 조용히
+  통과하고 그 경로에서만 후보가 사라진다(`scripts/smoke-github.ts`가 실제로 그 상태였다).
 
 **첫 적재는 기존 push 경로를 그대로 지난다** (`lib/onboarding/ingest.ts`):
 
@@ -815,7 +849,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 `buildPushPayload`·`selectLocaleFiles`·`pickBaseLocale`이 **호출부가 아니라 `lib/`에 있다.** 전에는 `scripts/push-local.ts`의 리터럴이라 계약이 넓어져도 컴파일러가 붙잡을 지점이 없었고, 필수 필드 둘이 늘었는데 typecheck·test가 전부 green이었다 (POSTMORTEM 2026-08-31). **스키마(zod)와 소비자(`applyPush`)는 타입으로 이어져 있었는데 생산자만 끊겨 있었다.**
 
 - **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write 방식과 원본 부재 시 처리를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
-- **`pickBaseLocale`은 추정이고 정본이 아니다** — `en` 우선, 없으면 사전순 첫 번째. 🔒는 2026-09-07에 해소됐다: 온보딩이 사용자에게 확정받아 `Project.baseLocale`에 저장하고 push가 `input.baseLocale ?? pickBaseLocale(...)`로 그것을 우선한다. 이 함수는 **후보 화면의 기본값**으로 남았다.
+- **`pickBaseLocale`은 추정이고 정본이 아니다** — `en` 우선, 없으면 사전순 첫 번째. 🔒는 2026-09-07에 해소됐다: 온보딩이 사용자에게 확정받아 `TranslationSurface.baseLocale`에 저장하고 push가 `input.baseLocale ?? pickBaseLocale(...)`로 그것을 우선한다. 이 함수는 **후보 화면의 기본값**으로 남았다.
 - ⚠️ **그 위에 층이 하나 더 있다** — `lib/push/assemble.ts`의 `assemblePushInput`이 `selectLocaleFiles` →
   `adapter.read` → base 판정을 한 묶음으로 들고, `scripts/push-local.ts`와 온보딩의 첫 적재가 **둘 다 이걸
   지난다**(셋을 직접 부르지 않는다). 생산자가 하나인 이유와 같은 이유로 그 입구도 하나여야 한다.
@@ -829,8 +863,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 동안 push 토큰 하나가 리포의 임의 파일에 쓰는 원시체였다.
 
 ⚠️ **`..`가 필요 없다.** `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 그 경로가
-그대로 나가고, `l10n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
-(`[skip-l10n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
+그대로 나가고, `malmoi-i18n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
+(`[skip-malmoi-i18n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
 목록에 리포가 보이는 것만 요구하므로 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을 받는다.
 
 판정은 `lib/locale-code.ts`의 `isPathSafeLocale`·`isPathSafeRepoPath`이고 **import가 0인 잎**이다 —
@@ -866,7 +900,7 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 **배열형 `$transaction` 하나가 Locale·StringKey·Translation·KeyRef·Project를 전부 커밋한다.**
 전에는 둘이었다 — 키 id를 확보하려고 중간에 `stringKey.findMany`를 한 번 더 쳤기 때문이다. 두 번째가
-실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`Project.lastCommit*`은 옛 상태인
+실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`TranslationSurface.lastCommit*`은 옛 상태인
 혼합 DB**가 남는다.
 
 - **삽입 id를 JS에서 만들어 들고 있으면 그 조회가 없어진다.** 이미 `randomUUID()`로 만들고 있었고
@@ -930,17 +964,18 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
-**네 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 전부 **409**로 떨어뜨린다.
+**다섯 검사 모두 거부이지 병합이 아니다.** 전부 **409**로 떨어뜨린다. 표면을 조회한 뒤 포맷·역행을 검사한다.
 
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
 | `Project.archivedAt` ≠ null | DB 컬럼 | **보관.** ⚠️ **판정이 넷 중 맨 앞이다**(7단계, `checkArchived`) — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 나머지 셋과 달리 "워크플로를 뗀다"다 |
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
+| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트·비활성 모두 동일 본문 `{"error":"surface mismatch"}`. 목록을 노출하지 않는다 |
 | `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
-| `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
+| `commitAt` < `TranslationSurface.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
-`Project.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
+`TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
 후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
 `adapter:`·`base-locale:`을 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
 그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
@@ -949,7 +984,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 - **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
   키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
-- ⚠️ **`baseLocale`은 `Project.declaredBaseLocale`과도 대조한다** (2026-09-09, 6b-3).
+- ⚠️ **`baseLocale`은 `TranslationSurface.declaredBaseLocale`과도 대조한다** (2026-09-09, 6b-3).
   그 컬럼은 OWNER가 설정 화면에서 세운 **일회용 허가**("다음 CI push가 이 base를 가져오면 받아들이겠다")이고,
   없으면 기준 로케일을 바꾸는 순간 그 리포의 push가 **영영 409**다 — 워크플로를 고쳐도 저장값은 옛 base라
   되돌릴 경로가 DB 직접 수정뿐이다. **느슨해지는 것은 base 하나이고** `adapter`·`pathTemplate`은 그대로
@@ -1102,7 +1137,7 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
-| `l10n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
+| `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
 | `/api/push/failure` 호출 | Bearer **같은 프로젝트별 토큰** (2026-09-13) | CI가 **적재에 실패했다는 사실**만 남긴다. 로케일 파일을 파싱하지 못하면 `/api/push`는 아예 안 불리므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다. ⚠️ **새 토큰을 만들지 않았다** — 같은 `PUSH_TOKEN`이고, 그래서 인증 경로가 하나 더 늘지 않는다. ⚠️ **아무것도 적재하지 않는다**: 키·번역은 물론 `lastCommitSha`·`lastCommitAt`도 안 움직인다(전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를 받는다). 본문은 **4 KiB 상한 + `strictObject`**이고 코드 넷만 받는다 — 파서 원문·소스 문자열·로컬 절대경로는 보고에도 DB에도 들어가지 않는다 |
 | `/api/push` 호출 | Bearer **프로젝트별 토큰** (생성·해싱은 `lib/push/token.ts`, **조회는 `app/api/push/route.ts`**) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
@@ -1134,7 +1169,16 @@ Route Handler가 **각각 자기 경계에서** 확인한다 (§6.1). SaaS에서
 ```ts
 requireProjectAccess({ slug, permission: "translation:write" })   // 페이지 — 실패하면 redirect
 getProjectAccess(prisma, { userId, slug, permission })            // Server Action — union 반환
+
+requireSurfaceAccess({ slug, surfaceSlug, permission })           // 페이지 — 표면이 없으면 notFound
+getSurfaceAccess(prisma, { userId, slug, surfaceSlug, ... })      // Server Action — union 반환
 ```
+
+⚠️ **표면 래퍼도 같은 두 모양을 지킨다** (T16). 프로젝트 인가를 먼저 지나고 활성 표면으로 좁히는데,
+**거부 모양은 래퍼마다 다르다** — 페이지는 `notFound()`, Server Action은 `{ status: "not-found" }`다.
+표면 래퍼가 던지면 아래 "저장 Action에서 `redirect()`를 쓰지 않는다"와 같은 이유로 깨진다: 404 렌더가
+입력 중인 셀을 날린다. 사유로 `not-found`를 재사용하는 것은 프로젝트 부재와 같은 이유이고
+(표면 존재를 노출하지 않는다), 그래야 `ACCESS_ERRORS`를 손으로 늘리지 않는다.
 
 ⚠️ **인자가 `projectId`가 아니라 `slug`다.** 프로젝트를 정하는 것이 URL이므로 호출부가 아는 것은
 slug뿐이고, `projectId`는 **판정이 돌려주는 값**이다 — 그 뒤의 모든 쿼리가 그 `projectId`로 좁혀지고,
@@ -1222,7 +1266,7 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 ⚠️ **`/api/push`에는 대응하는 사건이 없다** (2026-09-07). 전에는 같은 사건("그 slug의 `Project` 행이 없다")을 404 + 본문(`project '<slug>' not found`)으로 냈는데, 프로젝트를 **토큰이 정하게** 되면서 그 갈래가 사라졌다 — 조회되지 않으면 무효 토큰과 구별하지 않고 **401 하나**다(프로젝트 존재를 노출하지 않는다, §5.5.5). pull이 5xx인 것은 그대로다: 그쪽은 **자기 설정**을 읽는다.
 
 전에는 전부 그대로 실었고, 근거는 POSTMORTEM 2026-09-03의 **"본문 없는 500이 원인을 지웠다"** 였다.
-그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/l10n-push`는 임의의 대상
+그 결정의 전제가 "로그를 읽는 사람이 우리뿐"이었는데 **`.github/actions/malmoi-i18n-push`는 임의의 대상
 리포에서 돌고** `scripts/push-local.ts`가 응답 본문을 stdout에 찍는다 — 대상이 public이면 Prisma
 접속 오류 한 번이 pooler 호스트와 DB 유저를 **공개 Actions 로그**에 박는다(`bugshot-2`가 public이다).
 회고의 요구("원인이 남는다")는 `ref`로 지킨다: 운영자가 그 값으로 Vercel 로그를 찾는다.
@@ -1436,7 +1480,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - `disconnectGithub` → `/` **layout**. slug를 모르는 자리이므로 좁힐 수단이 없다.
 - `archiveProject`·`unarchiveProject` → `/` **layout** (7단계). 보관은 목록 행의 배지·사이드바·Home·번역 화면을 **한꺼번에** 바꾼다 — 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다.
 
-- `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `Project.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
+- `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `TranslationSurface.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
   - ⚠️ **접두로는 못 덮는다** (2026-09-11 등재). `/projects/<slug>/settings` + `/projects` 둘만 무효화하면 **Home과 번역 화면이 캐시된 "준비 안 됨"으로 남는다** — 사용자는 방금 "N개 키를 적재했어요"를 읽고 들어가서 빈 화면을 본다. 목록 화면은 `/projects` 접두라 갱신되므로 **증상이 화면마다 갈려** 캐시 문제로 안 보이고 적재 실패로 읽힌다. 이 절의 첫 문장이 말하는 부류 그대로다: 무효화 범위는 경로가 아니라 **"이 값을 보이는 화면 집합"**이고, readiness는 그 집합이 `/projects/<slug>` 서브트리 전체다.
 
 **나머지는 좁힌 채 둔다** — 멤버·초대 셋은 그 상태를 멤버 화면만 보이고, `rotatePushToken`·`connectRepository`·`updateRepositorySettings`는 설정만 보이며, `createProject`는 아직 그 프로젝트의 화면이 없어 `/projects`(목록) 하나다. **화면을 옮기거나 새로 만들면 그 화면이 보이는 상태를 쓰는 Action의 범위를 함께 본다**(grep: `revalidatePath(`).
@@ -1675,6 +1719,30 @@ PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. �
 `postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
 
 ## 7. Supabase / Prisma
+
+### Multi-surface 단계 A (T16, 2026-09-14)
+
+현재는 `TranslationSurface`와 nullable `surfaceId`, `Project.defaultSurfaceId`를 더하고 기존 데이터를
+`default` 표면으로 backfill했다. Project 옛 포맷·적재 컬럼과 Locale PK·StringKey unique·Translation unique는
+그대로 남는다. 런타임은 Surface만 읽고 쓰며 dual-write하지 않는다. **Add surface는 닫혀 있다.**
+동일 키·언어 코드의 표면 공존은 단계 B(T17)의 NOT NULL·제약 교체 뒤에만 가능하다.
+
+단계 A → 코드 배포 → 단계 B로 나누는 이유는 옛 서버가 살아 있는 동안 옛 제약·nullable 쓰기를
+보존하기 위해서다. 단, **A 직후부터 새 코드 활성화 전까지 옛 writer를 반드시 멈추고 drain한다**.
+그 창에 옛 writer가 남긴 null 행은 새 쿼리에서 빠지고, 옛 Project 상태도 Surface보다 앞설 수 있다.
+재백필은 T17까지 미루지 않고 새 writer 재개 전에 수행한다(OPERATIONS의 표면 전환 절차).
+dev 스키마는 `/push` 전, prod 스키마는 해당 `/merge` 직전에 적용한다.
+
+Publish는 활성 표면을 slug 코드포인트 순으로 처리하고 하나의 base snapshot을 공유한다.
+resolved path 소유권 충돌은 렌더·GitHub 쓰기 전에 거부하며 파일은 path 순으로 평탄화한다.
+tree·commit·PR·SyncRun·`lastPulledAt`은 프로젝트당 하나다. 표면 하나가 실패해도 완료 기준을 전진시키지 않는다.
+1층 최대 `updatedAt`은 **비활성 표면 포함 프로젝트 전체**이고, 화면 미발송·진행률·신규 키는 비활성 표면을 뺀다.
+`pnpm test:projects:postgres`가 backfill·복합 FK·A push 전후 B snapshot·미발송 술어 일치를 실제 DB에서 검사한다.
+
+2026-09-14 로컬 `lib/pull/__tests__/surfaces.test.ts` 실측: JSON 2표면·각 1키 fixture의
+정방향/역방향 렌더·해시 비교와 충돌 거부까지 합계 **8.81ms**, 두 번째 blob 실패 경로 **0.63ms**.
+GitHub은 fake이므로 **네트워크·대량 데이터·60초 예산 통과의 근거가 아니다**. 실제 blob 읽기 수는
+표면 합산이고 동시성 8·route `maxDuration = 60`은 유지한다. 실물 왕복/예산 검증은 T20에서 수행한다.
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
 

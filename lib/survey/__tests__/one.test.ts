@@ -38,7 +38,8 @@ const BROKEN = {
  * 4. 어댑터 간 경합 — chrome `_locales`(2키)가 `code-dict`(3키)를 가린다.
  *
  * ant-design 실측이 이 형태였다: 부속 카탈로그가 진짜 코드 딕셔너리를 1순위에서 눌렀다.
- * (전에는 `ts-dict`로 이 케이스를 썼는데 자동 탐지에서 빠졌다 — ARCHITECTURE §1.9 판정 ③.)
+ * (전에는 `ts-dict`로 썼는데 그것이 자동 탐지에서 빠졌던 동안 `code-dict`로 옮겼다. 2026-09-14에
+ * 다시 참여하게 됐지만 **이 케이스는 그대로 둔다** — 재는 것이 어댑터 간 경합이지 특정 어댑터가 아니다.)
  */
 const CODE_SOURCE = `// 주석 보존
 export default {
@@ -348,8 +349,16 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect({ ...a, ms: 0 }).toEqual({ ...b, ms: 0 });
   });
 
-  it("ADAPTERS가 5개다 — ts-dict만 자동 탐지에서 빠져 있다", () => {
+  /**
+   * ⚠️ **옛 이름은 "ts-dict만 자동 탐지에서 빠져 있다"였고 본문이 그것을 안 쟀다** (2026-09-14 2차
+   * 리뷰): 빈 문자열 probe면 다섯이 전부 0을 내므로 `> 0`이 **어떤 구현에서도 참**이었다.
+   */
+  it("ADAPTERS가 5개이고 ts-dict도 내용이 맞으면 후보를 낸다", () => {
     expect(ADAPTERS).toHaveLength(5);
-    expect(ADAPTERS.filter((a) => a.detectCandidates(["a/i18n/x.ts"], () => "").length === 0).length).toBeGreaterThan(0);
+    const tsDict = ADAPTERS.find((a) => a.name === "ts-dict")!;
+    const source = 'const en = { "a": "A" };\nconst ko = { "a": "B" };\nexport const ns = { en, ko };';
+    expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"], () => source)).toHaveLength(1);
+    // probe가 없으면 경로만으로는 판단하지 않는다 — 1패스가 조용한 이유다.
+    expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"])).toEqual([]);
   });
 });

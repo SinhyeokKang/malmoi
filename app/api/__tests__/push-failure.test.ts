@@ -25,13 +25,18 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: hoisted.project }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: hoisted.project, translationSurface: {
+  updateMany: hoisted.project.updateMany,
+  findFirst: async () => { const project = await hoisted.project.findUnique.mock.results.at(-1)?.value;
+    return project ? { ...project, id: "surface-p1", projectId: project.id, slug: "default" } : null; },
+} }) }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 
 const { POST } = await import("../push/failure/route");
 
 const body = {
   projectSlug: "acme",
+  surfaceSlug: "default",
   commitSha: "a".repeat(40),
   commitAt: "2026-09-13T10:00:00+09:00",
   code: "parse-failed",

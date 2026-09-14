@@ -42,7 +42,7 @@ describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
    * 화면의 대응물이 없어졌다. 단일 선택이라 이 링크의 동작은 같다.
    */
   it("진행률 행이 `?locales=`를 실은 번역 화면 링크다", () => {
-    expect(src).toMatch(/routes\.translations\([^)]*locales/);
+    expect(src).toMatch(/routes\.surfaceTranslations\([^)]*surfaceSlug[^)]*locales/);
   });
 
   /** 활동 항목은 그 편집이 있던 네임스페이스와 로케일로 데려간다 — "무엇이 바뀌었나"에서 "고치자"로. */
@@ -90,7 +90,7 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
     // 목록 본문은 `components/projects/project-list.tsx`로 내려갔다 (new-project-modal T8).
     "components/projects/project-list.tsx",
     "components/translations/header.tsx",
-    "app/(edit)/projects/[slug]/locales/page.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",

@@ -13,7 +13,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   static getDerivedStateFromError() { return { failed: true }; }
   render() { return this.state.failed ? <p>Page failed</p> : this.props.children; }
 }
-const props = { slug: "demo", keyId: "k", keyName: "title", localeCode: "ko", initialValue: "original" };
+const props = { surfaceSlug: "default", slug: "demo", keyId: "k", keyName: "title", localeCode: "ko", initialValue: "original" };
 beforeEach(() => { actions.save.mockReset(); actions.publish.mockReset(); });
 afterEach(() => { vi.restoreAllMocks(); });
 

@@ -35,6 +35,9 @@ export type LocaleRow = {
 
 export type ProjectContext = {
   id: string;
+  surfaceId: string;
+  surfaceSlug: string;
+  surfaces: { id: string; slug: string; archivedAt: Date | null; lastCommitSha: string | null; pathTemplate: string | null }[];
   slug: string;
   name: string;
   repoOwner: string;
@@ -65,17 +68,22 @@ export type ProjectContext = {
  * 식별자를 두 번 믿는 것이 되고, "인가가 판정한 projectId로 좁힌다"는 규칙(ARCHITECTURE §6.00 ③)이
  * 이 화면에서만 깨진다. 왕복도 하나 준다.
  */
-export async function loadProject(prisma: PrismaClient, projectId: string): Promise<ProjectContext | null> {
+export async function loadProject(prisma: PrismaClient, projectId: string, surfaceId: string): Promise<ProjectContext | null> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true,
-      installationId: true, lastCommitSha: true, baseLocale: true, declaredBaseLocale: true,
+      installationId: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
-      locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
+      surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: {
+        locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
+      } },
     },
   });
-  return project;
+  const surface = project?.surfaces.find(s => s.id === surfaceId);
+  if (!project || !surface) return null;
+  return { ...project, surfaceId, surfaceSlug: surface.slug, lastCommitSha: surface.lastCommitSha,
+    baseLocale: surface.baseLocale, declaredBaseLocale: surface.declaredBaseLocale, locales: surface.locales };
 }
 
 /**
@@ -91,9 +99,10 @@ export async function loadProject(prisma: PrismaClient, projectId: string): Prom
 export async function loadKeys(
   prisma: PrismaClient,
   projectId: string,
+  surfaceId: string,
 ): Promise<KeyRow[]> {
   const keys = await prisma.stringKey.findMany({
-    where: { projectId },
+    where: { projectId, surfaceId },
     orderBy: { key: "asc" },
     select: {
       id: true, key: true, namespace: true, description: true, orphaned: true,
@@ -168,10 +177,13 @@ export async function countUnpublished(
   prisma: PrismaClient,
   projectId: string,
   lastPulledAt: Date | null,
+  surfaceId?: string,
 ): Promise<number> {
   return prisma.translation.count({
     where: {
       projectId,
+      surfaceId,
+      surface: { archivedAt: null },
       updatedBy: { not: null },
       // 한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다 — 비교 대상이 없다.
       ...(lastPulledAt === null ? {} : { updatedAt: { gt: lastPulledAt } }),
@@ -191,7 +203,7 @@ export type MembershipRow = {
   name: string;
   role: Role;
   installationId: string | null;
-  lastCommitSha: string | null;
+  surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
   /**
    * 보관 시각 (7단계). **목록에서 숨기는 대신 배지로 남긴다** — 숨기면 OWNER가 되돌릴 링크에
    * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (sync-runs design §4).
@@ -211,7 +223,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     select: {
       role: true,
       project: {
-        select: { slug: true, name: true, installationId: true, lastCommitSha: true, archivedAt: true },
+        select: { slug: true, name: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
       },
     },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
@@ -222,7 +234,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     name: r.project.name,
     role: r.role,
     installationId: r.project.installationId,
-    lastCommitSha: r.project.lastCommitSha,
+    surfaces: r.project.surfaces,
     archivedAt: r.project.archivedAt,
   }));
 }
@@ -251,6 +263,9 @@ export type ProjectListRow = MembershipRow &
   lastPrUrl: string | null;
   /** 행의 Meter — **정렬 후 최대 셋**이다 (design §3.1). */
   meters: RowLocaleProgress[];
+  reviewSurfaceSlug: string | null;
+  unsentSurfaceSlug: string | null;
+  repoAheadFrom: string | null;
 };
 
 /** 목록 한 화면분. **Summary는 검색 전 전체 멤버십의 값**이라 행 배열과 함께 온다. */
@@ -290,7 +305,7 @@ export async function loadProjectList(
           slug: true,
           name: true,
           installationId: true,
-          lastCommitSha: true,
+          surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
           archivedAt: true,
           repoOwner: true,
           repoName: true,
@@ -298,16 +313,11 @@ export async function loadProjectList(
           baseBranch: true,
           lastPrUrl: true,
           // 임포트 진행·결과 (projects-list design §3.35) — 띠와 Meter 자리가 이 둘로 갈린다.
-          lastImportStartedAt: true,
-          lastImportError: true,
           // 원격 경로 판정의 입력 (projects-list §3.4).
-          adapterName: true,
-          pathTemplate: true,
           /**
            * ⚠️ **orphaned도 포함한 전체 저장 로케일이다** — 탐지 정규식이 거르는 코드(`es-419`·
            * `zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
            */
-          locales: { select: { code: true } },
           _count: { select: { members: true } },
         },
       },
@@ -334,11 +344,9 @@ export async function loadProjectList(
         installationId: r.project.installationId,
         repositoryId: r.project.repositoryId,
         baseBranch: r.project.baseBranch,
-        lastCommitSha: r.project.lastCommitSha,
+        surfaces: r.project.surfaces.map(s => ({ lastCommitSha: s.lastCommitSha, adapterName: s.adapterName,
+          pathTemplate: s.pathTemplate, storedLocales: s.locales.map(l => l.code) })),
         lastPrUrl: r.project.lastPrUrl,
-        adapterName: r.project.adapterName,
-        pathTemplate: r.project.pathTemplate,
-        storedLocales: r.project.locales.map((l) => l.code),
         archived: r.project.archivedAt !== null,
       })),
     ),
@@ -354,7 +362,7 @@ export async function loadProjectList(
       name: r.project.name,
       role: r.role,
       installationId: r.project.installationId,
-      lastCommitSha: r.project.lastCommitSha,
+      surfaces: r.project.surfaces.map(s => ({ archivedAt: s.archivedAt, lastCommitSha: s.lastCommitSha })),
       archivedAt: r.project.archivedAt,
       repoOwner: r.project.repoOwner,
       repoName: r.project.repoName,
@@ -363,14 +371,17 @@ export async function loadProjectList(
       baseBranch: r.project.baseBranch,
       lastPrUrl: r.project.lastPrUrl,
       meters: meters.get(r.project.id) ?? [],
+      reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
+      unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
+      repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
       review: review.get(r.project.id) ?? 0,
       unsent: aggregates.unsent.get(r.project.id) ?? 0,
       // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
       openPr: remote.get(r.project.id)?.openPr ?? null,
       repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
       // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-      importError: isImportFailureCode(r.project.lastImportError) ? r.project.lastImportError : null,
-      importing: r.project.lastImportStartedAt !== null,
+      importError: r.project.surfaces.map(s => s.lastImportError).find(isImportFailureCode) ?? null,
+      importing: r.project.surfaces.some(s => s.lastImportStartedAt !== null),
     })),
     summary: summaryQueue({
       projects: rows.map((r) => ({ projectId: r.project.id, archived: r.project.archivedAt !== null })),
@@ -405,11 +416,11 @@ export type LocaleCounts = {
   cells: { localeCode: string; needsReview: boolean }[];
 };
 
-export async function loadLocaleCounts(prisma: PrismaClient, projectId: string): Promise<LocaleCounts> {
+export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, surfaceId: string): Promise<LocaleCounts> {
   const [total, cells] = await Promise.all([
-    prisma.stringKey.count({ where: { projectId, orphaned: false } }),
+    prisma.stringKey.count({ where: { projectId, surfaceId, orphaned: false, surface: { archivedAt: null } } }),
     prisma.translation.findMany({
-      where: { projectId, value: { not: "" }, stringKey: { orphaned: false } },
+      where: { projectId, surfaceId, surface: { archivedAt: null }, value: { not: "" }, stringKey: { orphaned: false } },
       select: { localeCode: true, needsReview: true },
     }),
   ]);
@@ -430,6 +441,7 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string):
  * 실으면 번역 본문 전체가 이 화면에 따라온다.
  */
 export type RecentEditRow = {
+  surfaceSlug: string;
   at: Date;
   key: string;
   namespace: string;
@@ -445,7 +457,7 @@ export async function loadRecentEdits(
 ): Promise<RecentEditRow[]> {
   const rows = await prisma.translation.findMany({
     // ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
-    where: { projectId, updatedBy: { not: null } },
+    where: { projectId, surface: { archivedAt: null }, updatedBy: { not: null } },
     /**
      * ⚠️ **보조 키가 있어야 어느 N건이 오는지 결정적이다.** 경계 시각을 공유하는 행이 셋인데
      * `take`가 둘만 받으면, 보조 키 없이는 그 셋 중 무엇이 오는지가 요청마다 달라진다. 화면 순서의
@@ -457,14 +469,16 @@ export async function loadRecentEdits(
       updatedAt: true,
       updatedBy: true,
       localeCode: true,
+      surface: { select: { slug: true } },
       stringKey: { select: { key: true, namespace: true } },
     },
   });
   return rows.flatMap((row) =>
     // `updatedBy`는 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
-    row.updatedBy === null
+    row.updatedBy === null || row.surface === null
       ? []
       : [{
+          surfaceSlug: row.surface.slug,
           at: row.updatedAt,
           key: row.stringKey.key,
           namespace: row.stringKey.namespace,
@@ -494,6 +508,7 @@ export type ProjectListAggregates = {
   newKeys: Map<string, number>;
   /** ⑤ 안 보낸 편집 수. */
   unsent: Map<string, number>;
+  unsentSurfaces: Map<string, string>;
 };
 
 export async function loadProjectListAggregates(
@@ -502,19 +517,19 @@ export async function loadProjectListAggregates(
 ): Promise<ProjectListAggregates> {
   // 빈 `in`으로 왕복을 만들지 않는다 — `loadActors`가 같은 이유로 같은 가드를 든다.
   if (projectIds.length === 0) {
-    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map() };
+    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() };
   }
   const ids = [...projectIds];
 
   const [locales, keyRows, cellRows, newRows, unsentRows] = await Promise.all([
     prisma.locale.findMany({
-      where: { projectId: { in: ids }, orphaned: false },
-      select: { projectId: true, code: true, isBase: true },
+      where: { projectId: { in: ids }, orphaned: false, surface: { archivedAt: null } },
+      select: { projectId: true, surfaceId: true, surface: { select: { slug: true } }, code: true, isBase: true },
     }),
     // `@@index([projectId, orphaned])`를 그대로 탄다.
     prisma.stringKey.groupBy({
-      by: ["projectId"],
-      where: { projectId: { in: ids }, orphaned: false },
+      by: ["projectId", "surfaceId"],
+      where: { projectId: { in: ids }, orphaned: false, surface: { archivedAt: null } },
       _count: { _all: true },
     }),
     /**
@@ -524,8 +539,8 @@ export async function loadProjectListAggregates(
      * ①의 활성 (projectId, code) 집합에 없는 그룹을 버린다 (`rowLocaleProgress`의 `foldCells`).
      */
     prisma.translation.groupBy({
-      by: ["projectId", "localeCode", "needsReview"],
-      where: { projectId: { in: ids }, value: { not: "" }, stringKey: { orphaned: false } },
+      by: ["projectId", "surfaceId", "localeCode", "needsReview"],
+      where: { projectId: { in: ids }, surface: { archivedAt: null }, value: { not: "" }, stringKey: { orphaned: false } },
       _count: { _all: true },
     }),
     /**
@@ -537,8 +552,10 @@ export async function loadProjectListAggregates(
     prisma.$queryRaw<{ projectId: string; n: number }[]>`
       SELECT k."projectId", COUNT(*)::int AS n
       FROM "StringKey" k JOIN "Project" p ON p."id" = k."projectId"
+      JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s."id" = k."surfaceId"
       WHERE k."projectId" = ANY(${ids}::text[])
         AND k."orphaned" = false
+        AND s."archivedAt" IS NULL
         AND p."archivedAt" IS NULL
         AND (p."lastPulledAt" IS NULL OR k."createdAt" > p."lastPulledAt")
       GROUP BY k."projectId"`,
@@ -553,26 +570,31 @@ export async function loadProjectListAggregates(
      * ⚠️ **활성 로케일 필터를 덧붙이지 않는다** — 미발송의 기존 계약과 진행률의 분모는 다른 문제다.
      * `p."archivedAt" IS NULL`은 목록 Summary의 **프로젝트 선택 조건**이지 셀 술어가 아니다.
      */
-    prisma.$queryRaw<{ projectId: string; n: number }[]>`
-      SELECT t."projectId", COUNT(*)::int AS n
+    prisma.$queryRaw<{ projectId: string; surfaceSlug: string; n: number }[]>`
+      SELECT t."projectId", MIN(s."slug") AS "surfaceSlug", COUNT(*)::int AS n
       FROM "Translation" t JOIN "Project" p ON p."id" = t."projectId"
+      JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
       WHERE t."projectId" = ANY(${ids}::text[])
         AND t."updatedBy" IS NOT NULL
+        AND s."archivedAt" IS NULL
         AND p."archivedAt" IS NULL
         AND (p."lastPulledAt" IS NULL OR t."updatedAt" > p."lastPulledAt")
       GROUP BY t."projectId"`,
   ]);
 
   return {
-    locales,
-    keyTotals: new Map(keyRows.map((r) => [r.projectId, r._count._all])),
-    cells: cellRows.map((r) => ({
+    locales: locales.flatMap(l => l.surfaceId === null || l.surface === null ? [] : [{ projectId: l.projectId,
+      surfaceId: l.surfaceId, surfaceSlug: l.surface.slug, code: l.code, isBase: l.isBase }]),
+    keyTotals: new Map(keyRows.flatMap(r => r.surfaceId === null ? [] : [[r.surfaceId, r._count._all] as const])),
+    cells: cellRows.flatMap((r) => r.surfaceId === null ? [] : [{
       projectId: r.projectId,
+      surfaceId: r.surfaceId,
       localeCode: r.localeCode,
       needsReview: r.needsReview,
       count: r._count._all,
-    })),
+    }]),
     newKeys: new Map(newRows.map((r) => [r.projectId, r.n])),
     unsent: new Map(unsentRows.map((r) => [r.projectId, r.n])),
+    unsentSurfaces: new Map(unsentRows.map((r) => [r.projectId, r.surfaceSlug])),
   };
 }

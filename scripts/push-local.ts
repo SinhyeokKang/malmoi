@@ -17,7 +17,7 @@ import { join } from "node:path";
 
 import { config } from "dotenv";
 
-import { detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
+import { detectCandidatesAcross, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
@@ -26,6 +26,7 @@ import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import {
   representativeFailureCode,
   type ReportedImportFailure,
+  type ImportFailureReportType,
 } from "../lib/projects/import-status";
 import { assemblePushInput } from "../lib/push/assemble";
 import { buildPushPayload } from "../lib/push/payload";
@@ -41,10 +42,10 @@ config({ path: ".env.local", quiet: true });
 
 const argv = process.argv.slice(2);
 /** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
-const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base"]);
+const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base", "--surface", "--path-template"]);
 
 const USAGE =
-  "사용법: pnpm push:local <대상 디렉터리> --project <slug> [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--base <locale>]";
+  "사용법: pnpm push:local <대상 디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--base <locale>]";
 
 const target = findTarget(argv, VALUE_FLAGS);
 if (!target) {
@@ -65,6 +66,8 @@ const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : s
 // **대상 프로젝트는 인자로만 온다.** 폴백을 두면 값이 어디서 왔는지 진단할 수 없고, 기본값 인자 위치의
 // 평가가 "플래그를 줬는데 환경변수가 없어 죽는" 실패를 만든 전례가 있다 (POSTMORTEM 2026-08-31 🔁).
 const projectSlug = flagValue(argv, "--project");
+const surfaceSlug = flagValue(argv, "--surface") ?? "default";
+const pathTemplate = flagValue(argv, "--path-template");
 if (projectSlug === undefined) {
   console.error("--project <slug>가 필요하다 — 서버는 이 slug를 토큰이 정한 프로젝트와 대조한다(다르면 409).");
   console.error(USAGE);
@@ -108,7 +111,7 @@ async function reportFailure(code: ReportedImportFailure): Promise<void> {
     const res = await fetch(`${baseUrl}/api/push/failure`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ projectSlug, commitSha, commitAt, code }),
+      body: JSON.stringify({ projectSlug: projectSlug!, surfaceSlug, commitSha, commitAt, code } satisfies ImportFailureReportType),
       // 재시도 없음 — 실패 보고를 기다리느라 CI 러너를 붙잡지 않는다.
       signal: AbortSignal.timeout(5000),
     });
@@ -145,7 +148,9 @@ if (adapterName !== undefined && !isAdapterName(adapterName)) {
   console.error(`--adapter ${adapterName}: 등록되지 않은 어댑터다.`);
   process.exit(2);
 }
-const format = adapterName === undefined
+const format = pathTemplate !== undefined
+  ? detectCandidatesAcross(paths, probe).find(candidate => candidate.pathTemplate === pathTemplate && (adapterName === undefined || candidate.adapter === adapterName))
+  : adapterName === undefined
   ? detectFormat(paths, probe)
   : detectFormatWith(adapterName, paths, probe);
 if (adapterName !== undefined && !format) {
@@ -200,6 +205,7 @@ const scan = scanSources(sources, wrappers);
 // (POSTMORTEM 2026-08-31). 7단계의 Actions 워크플로도 같은 함수를 지나야 한다.
 const { payload, unknownRefs, duplicateKeys } = buildPushPayload({
   projectSlug,
+  surfaceSlug,
   commitSha,
   commitAt,
   format,

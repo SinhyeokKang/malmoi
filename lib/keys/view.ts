@@ -376,10 +376,10 @@ export function groupByNamespace(
  * 정확히 센다.
  */
 export function isUnpublished(
-  cell: { updatedBy: string | null; updatedAt: Date },
+  cell: { updatedBy: string | null; updatedAt: Date; surfaceArchivedAt?: Date | null },
   lastPulledAt: Date | null,
 ): boolean {
-  if (cell.updatedBy === null) return false;
+  if (cell.updatedBy === null || cell.surfaceArchivedAt != null) return false;
   // 경계는 배타적이다 — 판정 시각과 같은 행은 그 판정에 이미 들어갔다.
   return lastPulledAt === null || cell.updatedAt > lastPulledAt;
 }

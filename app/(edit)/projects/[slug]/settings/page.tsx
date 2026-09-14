@@ -75,24 +75,20 @@ export default async function SettingsPage({
       installationId: true,
       repositoryId: true,
       // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
-      lastCommitSha: true,
+      surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } },
+      defaultSurface: true,
       baseBranch: true,
-      adapterName: true,
-      baseLocale: true,
       // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
-      declaredBaseLocale: true,
       /**
        * 마지막 임포트가 남긴 실패 (projects-list design §3.35). **코드 하나이고 이력이 아니다** —
        * 파서 원문은 저장되지 않으므로 이 화면이 보여줄 수 있는 것은 사유 문장과 복구 안내뿐이고,
        * 상세 진단은 대상 리포의 Actions 로그에 있다.
        */
-      lastImportError: true,
       /**
        * ⚠️ **목록과 같은 술어를 써야 한다** (`failing`). 이 컬럼을 안 읽으면 [다시 시도]를 누른
        * 직후의 화면이 목록은 "Importing", 여기는 빨간 실패 Alert가 되어 **같은 두 컬럼에서 정반대
        * 사실**을 말한다.
        */
-      lastImportStartedAt: true,
       // 보관 카드 (7단계). ⚠️ **이 화면만 보관된 프로젝트를 연다** — `project:settings`가 그 갈래를
       // 통과하는 유일한 permission이고, 그것이 되돌리는 길이다.
       archivedAt: true,
@@ -118,9 +114,9 @@ export default async function SettingsPage({
    * ⚠️ **DB 컬럼의 문자열이라 판정 함수로 거른다** — 모르는 값은 무시한다. 직접 인덱싱하면
    * `Object.prototype`에서 찾아진 값이 문장 자리에 온다 (POSTMORTEM 2026-09-08).
    */
-  const stored = isImportFailureCode(project.lastImportError) ? project.lastImportError : null;
+  const stored = project.surfaces.map(s => s.lastImportError).find(isImportFailureCode) ?? null;
   // 돌고 있는 실행이 있으면 남아 있는 코드는 **이전 실행의 것**이다 — 목록과 같은 판정을 쓴다.
-  const importFailure = failing({ importError: stored, importing: project.lastImportStartedAt !== null })
+  const importFailure = failing({ importError: stored, importing: project.surfaces.some(s => s.lastImportStartedAt !== null) })
     ? stored
     : null;
 
@@ -204,7 +200,7 @@ export default async function SettingsPage({
           </Card>
 
           <Card title={m.settings.workflow.title}>
-            <WorkflowBlock yaml={workflowYaml(slug, project)} />
+            {project.defaultSurface && <WorkflowBlock yaml={workflowYaml(slug, { ...project.defaultSurface, baseBranch: project.baseBranch })} />}
             {/*
               ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
               참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
@@ -340,9 +336,12 @@ function HealthRow({
 
 
 /**
- * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다** — 그 포맷은 자동 탐지에 참여하지 않으므로
- * (ARCHITECTURE §1.9 판정 ③) 고정하지 않으면 CI가 "로케일 파일을 못 찾았다"로 끝난다. 나머지는
- * 탐지가 같은 답을 내므로 고정할 이유가 없다 (design §7).
+ * 복사용 워크플로 YAML. **`ts-dict`만 어댑터를 고정한다.**
+ *
+ * ⚠️ **근거가 2026-09-14에 바뀌었다.** 전에는 *"그 포맷은 자동 탐지에 참여하지 않으므로"* 였는데
+ * 이제 참여한다(§1.9 판정 ③ 뒤집기). 그래도 고정하는 이유는 **1순위가 그것이라는 보장이 없어서**다 —
+ * bugshot-2가 그 예다: `_locales`가 크롬 버킷이라 언제나 앞서므로, 고정하지 않으면 CI가 4키
+ * 표면을 적재해 903키가 통째로 orphan된다. 나머지는 탐지가 같은 답을 낸다 (design §7).
  *
  * ⚠️ **대기 중에는 `base-locale:`을 무조건 박는다** (6b-3). 그 줄이 없으면 CI가 탐지 1순위를
  * 보내는데 그것은 옛 base라 `checkFormat`이 통과시키고, 사용자가 원한 변경은 **영영 일어나지
@@ -351,6 +350,8 @@ function HealthRow({
 function workflowYaml(
   slug: string,
   project: {
+    slug: string;
+    pathTemplate: string | null;
     baseBranch: string;
     adapterName: string | null;
     baseLocale: string | null;
@@ -364,12 +365,12 @@ function workflowYaml(
   const baseLocale = pending ? project.declaredBaseLocale : project.adapterName === "ts-dict" ? project.baseLocale : null;
   // 두 호출로 가른다 — 스프레드로 합치면 `adapter`가 `string`으로 넓어져 인자 타입과 어긋난다.
   if (baseLocale === null) {
-    return renderWorkflowYaml({ slug, baseBranch: project.baseBranch });
+    return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch });
   }
   if (project.adapterName !== "ts-dict") {
-    return renderWorkflowYaml({ slug, baseBranch: project.baseBranch, baseLocale });
+    return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch, baseLocale });
   }
-  return renderWorkflowYaml({ slug, baseBranch: project.baseBranch, adapter: "ts-dict", baseLocale });
+  return renderWorkflowYaml({ slug, surfaceSlug: project.slug, pathTemplate: project.pathTemplate ?? "", baseBranch: project.baseBranch, adapter: "ts-dict", baseLocale });
 }
 
 

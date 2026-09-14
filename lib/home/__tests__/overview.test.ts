@@ -98,9 +98,14 @@ describe("activeLocaleProgress — 일거리인 로케일만 (6b-6)", () => {
  * **그것은 "변경 이력"이 아니라 그 부분집합**이고, `SyncRun`이 서면 이 블록이 그 테이블로 갈아탄다.
  */
 describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
+  it("breaks otherwise identical edit ties by surface", () => {
+    const a = { at: new Date(0), key: "same", namespace: "_root", locale: "en", actor: null, surfaceSlug: "a" };
+    const input = { lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 5 };
+    expect(recentActivity({ ...input, edits: [{ ...a, surfaceSlug: "b" }, a] })).toEqual(recentActivity({ ...input, edits: [a, { ...a, surfaceSlug: "b" }] }));
+  });
   const edits = [
-    { at: at("2026-09-09T10:00:00Z"), key: "a.greet", namespace: "a", locale: "ko", actor: "Kim" },
-    { at: at("2026-09-09T08:00:00Z"), key: "a.bye", namespace: "a", locale: "ja", actor: null },
+    { at: at("2026-09-09T10:00:00Z"), key: "a.greet", surfaceSlug: "default", namespace: "a", locale: "ko", actor: "Kim" },
+    { at: at("2026-09-09T08:00:00Z"), key: "a.bye", surfaceSlug: "default", namespace: "a", locale: "ja", actor: null },
   ];
 
   it("시각 내림차순으로 병합한다", () => {
@@ -126,7 +131,7 @@ describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
       kind: "edit",
       at: at("2026-09-09T10:00:00Z"),
       key: "a.greet",
-      namespace: "a",
+      surfaceSlug: "default", namespace: "a",
       locale: "ko",
       actor: "Kim",
     });
@@ -198,9 +203,9 @@ describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
    */
   it("같은 시각의 편집은 키·로케일 순으로 결정적이다 — 입력 순서가 뒤바뀌어도 같다", () => {
     const same = at("2026-09-09T10:00:00Z");
-    const a = { at: same, key: "a.one", namespace: "a", locale: "ko", actor: null };
-    const b = { at: same, key: "a.one", namespace: "a", locale: "ja", actor: null };
-    const c = { at: same, key: "b.two", namespace: "b", locale: "ko", actor: null };
+    const a = { at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ko", actor: null };
+    const b = { at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ja", actor: null };
+    const c = { at: same, key: "b.two", surfaceSlug: "default", namespace: "b", locale: "ko", actor: null };
 
     const order = (edits: typeof a[]) =>
       recentActivity({ edits, lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 }).map(
@@ -221,7 +226,7 @@ describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
   it("같은 시각이면 publish → push → edit 순이고 두 번 불러도 같다", () => {
     const same = at("2026-09-09T10:00:00Z");
     const input = {
-      edits: [{ at: same, key: "a.one", namespace: "a", locale: "ko", actor: null }],
+      edits: [{ at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ko", actor: null }],
       lastCommitAt: same,
       lastPublishedAt: same,
       lastPrUrl: null,

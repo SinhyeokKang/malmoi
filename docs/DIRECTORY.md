@@ -45,12 +45,14 @@ app/
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel + ProjectPanel을 든다
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
-      translations/     번역 표(로케일 = 행). URL 계약은 ns·locales·q
+      translations/ locales/  저장된 defaultSurfaceId로 보내는 legacy redirect
+      surfaces/[surfaceSlug]/translations/  번역 표(로케일 = 행). URL 계약은 ns·locales·q
                         ⚠️ maxDuration=60이 여기 있어야 한다 — 없으면 기본 300이 STALE_AFTER_SECONDS와
                         같아져 정상 실행이 스스로를 stale로 본다
                         ⚠️ 헤더를 무조건 렌더한다 — Publish 결과 Alert가 그 안이라 조건부 분기에 두면
                         router.refresh()가 방금 받은 결과를 언마운트한다
-      locales/ members/ logs/ settings/
+      surfaces/[surfaceSlug]/locales/  로케일·base 선언. requireSurfaceAccess 뒤 projectId + surfaceId로 조회
+      members/ logs/ settings/
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
                         ⚠️ logs에 try가 없다 — 조회 실패는 던져야 "없음"과 다른 화면이 된다
@@ -149,7 +151,7 @@ lib/
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
                         index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 22) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
-                        chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(자동 탐지 제외)
+                        chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
@@ -180,6 +182,9 @@ lib/
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save · refocus · filters · flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
+  surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
+                        push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
+  pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id
@@ -201,7 +206,7 @@ lib/
                         임포트 결과의 순수 계약(닫힌 보고 스키마 · 대표 코드 · 화면 문장). ⚠️ 잎이라
                         @/lib/adapters/types를 **타입만** 가져온다
   projects/import-status-store.ts
-                        그 결과의 쓰기 껍데기. ⚠️ 조건부 UPDATE가 방어선이고 선조회는 진단용이다
+                        Surface 결과의 쓰기 껍데기. ⚠️ 조건부 UPDATE가 방어선이고 선조회는 진단용이다
   projects/remote.ts    목록의 원격 신호 둘(열린 PR · base 드리프트). installation 토큰이고,
                         보관 제외 전부를 동시 3으로 돈다. ⚠️ 실패도 지연도 값으로 흐른다
   projects/remote-plan.ts

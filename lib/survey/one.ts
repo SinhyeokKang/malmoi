@@ -106,7 +106,8 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   //
   // ⚠️ **`silentSkips`는 `ts-dict`에서만 0이 아니다.** `code-dict`는 shorthand·비리터럴 값을
   // `read`가 `errors`로 보고하므로(그게 개선점이다) 무증상 skip이 구조적으로 생기지 않는다.
-  // `ts-dict`는 자동 탐지에서 빠졌으니 실측 표본에서 이 카운터는 사실상 항상 0이다.
+  // ⚠️ **2026-09-14부터 0이 아닐 수 있다** — `ts-dict`가 자동 탐지에 들어왔다. 그 전에는 실측
+  // 표본에서 이 카운터가 사실상 항상 0이었고, "조용한 손실 0건"이 그 사실 위에 서 있었다.
   if (adapter.name === "ts-dict" || adapter.name === "code-dict") {
     const shape = tsShape(adapterFiles);
     if (adapter.name === "ts-dict") survey.silentSkips = shape.silentSkips;

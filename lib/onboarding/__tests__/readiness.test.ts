@@ -11,23 +11,27 @@ import { planProjectReadiness } from "../readiness";
  */
 
 describe("planProjectReadiness", () => {
+  it("requires one successful active surface, not the legacy project baseline", () => {
+    expect(planProjectReadiness({ installationId: "1", surfaces: [{ archivedAt: new Date(0), lastCommitSha: "sha" }, { archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
+    expect(planProjectReadiness({ installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: null }, { archivedAt: null, lastCommitSha: "sha" }] })).toBe("ready");
+  });
   it("installationId가 null이면 `setup`이다 — 연결 전. skillflo-web이 여기다", () => {
-    expect(planProjectReadiness({ installationId: null, lastCommitSha: null })).toBe("setup");
+    expect(planProjectReadiness({ installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("setup");
   });
 
   it("installationId가 null이면 lastCommitSha가 있어도 `setup`이다 — 더미 SHA가 준비 상태를 만들지 않는다", () => {
-    expect(planProjectReadiness({ installationId: null, lastCommitSha: "deadbeef" })).toBe("setup");
+    expect(planProjectReadiness({ installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] })).toBe("setup");
   });
 
   it("연결됐는데 lastCommitSha가 null이면 `awaiting_first_sync`다", () => {
-    expect(planProjectReadiness({ installationId: "123", lastCommitSha: null })).toBe("awaiting_first_sync");
+    expect(planProjectReadiness({ installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
   });
 
   it("설정만 저장된 프로젝트는 `ready`가 아니다 (불변식 8) — 어댑터·경로가 있어도 적재 증거가 없다", () => {
     // Project 행 모양 — 판정 함수는 두 컬럼만 보지만, 행 전체를 넘겨도 된다는 것을 고정한다.
     const configured = {
       installationId: "123",
-      lastCommitSha: null,
+      surfaces: [{ archivedAt: null, lastCommitSha: null }],
       adapterName: "json-catalog",
       pathTemplate: "src/locales/{locale}.json",
       baseLocale: "en",
@@ -36,7 +40,7 @@ describe("planProjectReadiness", () => {
   });
 
   it("lastCommitSha가 있어야만 `ready`다", () => {
-    expect(planProjectReadiness({ installationId: "123", lastCommitSha: "abc123" })).toBe("ready");
+    expect(planProjectReadiness({ installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: "abc123" }] })).toBe("ready");
   });
 });
 

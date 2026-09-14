@@ -60,7 +60,7 @@ const EXEMPT = new Set([
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
-const PROJECT_GUARDS = ["requireProjectAccess", "getProjectAccess"];
+const PROJECT_GUARDS = ["requireProjectAccess", "getProjectAccess", "requireSurfaceAccess", "getSurfaceAccess"];
 /** 로그인만 확인한다 — **프로젝트 인가가 아니다.** 아래 목록의 export에서만 충분하다. */
 const USER_GUARD = "requireUser";
 /** 파일·페이지 수준에서 인정하는 호출 전부. 페이지는 export 단위 검사를 안 받는다. */

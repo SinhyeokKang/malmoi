@@ -193,7 +193,7 @@ Use this skill when the user asks to run the migrated source command `feature-re
 ### CTO 프롬프트 핵심
 
 - **코어 원칙 위반이 없는가** — 머지 로직·충돌 해소·양방향 동기화·3-way merge를 요구하는 설계인가 (ARCHITECTURE §0).
-- 불변식을 건드리는가: export 결정성 3규칙, blob SHA 비교 최적화, 커밋 parents·force update, `[skip-l10n]` 마커, 인증 차단은 `middleware.ts`뿐. 건드리면 보존 방법이 문서에 있는가.
+- 불변식을 건드리는가: export 결정성 3규칙, blob SHA 비교 최적화, 커밋 parents·force update, `[skip-malmoi-i18n]` 마커, 인증 차단은 `middleware.ts`뿐. 건드리면 보존 방법이 문서에 있는가.
 - **데이터 변경 경로 경계**가 맞는가 — 내부 쓰기는 Server Action, 외부 진입점만 Route Handler. 역방향이면 지적한다.
 - 모든 DB 쿼리가 `projectId`로 좁혀지는가? (테넌트 누출 + 풀스캔)
 - 두 GitHub 자격증명(로그인 OAuth / 쓰기 App)을 섞지 않는가?

@@ -27,7 +27,7 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type ProjectStatusInput = {
   archivedAt: Date | null;
   installationId: string | null;
-  lastCommitSha: string | null;
+  surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
   repositoryId: string | null;
 };
 
@@ -184,6 +184,7 @@ export function rowBanner(row: RowInput): RowBanner {
  * 구별되지 않는다.
  */
 export type RowLocaleProgress = {
+  surfaceSlug: string;
   code: string;
   isBase: boolean;
   total: number;
@@ -218,13 +219,13 @@ export function meterSlot(
 }
 
 /** ③의 groupBy 결과 한 줄. */
-export type LocaleCellCount = { projectId: string; localeCode: string; needsReview: boolean; count: number };
+export type LocaleCellCount = { projectId: string; surfaceId: string; localeCode: string; needsReview: boolean; count: number };
 
 /** ①의 한 줄 — 살아 있는 로케일만 온다. */
-export type LiveLocale = { projectId: string; code: string; isBase: boolean };
+export type LiveLocale = { projectId: string; surfaceId: string; surfaceSlug: string; code: string; isBase: boolean };
 
 /** 프로젝트와 로케일을 한 키로. **구분자가 값에 못 들어가는 문자**라야 두 축이 섞이지 않는다. */
-const cellKey = (projectId: string, code: string): string => `${projectId}\u0000${code}`;
+const cellKey = (projectId: string, surfaceId: string, code: string): string => `${projectId}\u0000${surfaceId}\u0000${code}`;
 
 /**
  * ③을 ①의 **살아 있는 (projectId, code)** 로 거른 뒤 접는다.
@@ -236,10 +237,10 @@ function foldCells(
   locales: readonly LiveLocale[],
   cells: readonly LocaleCellCount[],
 ): Map<string, { done: number; review: number }> {
-  const live = new Set(locales.map((l) => cellKey(l.projectId, l.code)));
+  const live = new Set(locales.map((l) => cellKey(l.projectId, l.surfaceId, l.code)));
   const out = new Map<string, { done: number; review: number }>();
   for (const cell of cells) {
-    const key = cellKey(cell.projectId, cell.localeCode);
+    const key = cellKey(cell.projectId, cell.surfaceId, cell.localeCode);
     if (!live.has(key)) continue;
     const acc = out.get(key) ?? { done: 0, review: 0 };
     // 검토 대기를 완료로 세지 않는다 — 두 구간이 겹치면 바의 폭 합이 100%를 넘는다.
@@ -268,13 +269,14 @@ export function rowLocaleProgress(
   const counted = foldCells(locales, cells);
   const byProject = new Map<string, RowLocaleProgress[]>();
   for (const locale of locales) {
-    const total = keyTotals.get(locale.projectId) ?? 0;
-    const cell = counted.get(cellKey(locale.projectId, locale.code));
+    const total = keyTotals.get(locale.surfaceId) ?? 0;
+    const cell = counted.get(cellKey(locale.projectId, locale.surfaceId, locale.code));
     const done = cell?.done ?? 0;
     const review = cell?.review ?? 0;
     const list = byProject.get(locale.projectId) ?? [];
     // 분모가 0이면 비율도 0이다 — 0으로 나누지 않는다.
     list.push({
+      surfaceSlug: locale.surfaceSlug,
       code: locale.code,
       isBase: locale.isBase,
       total,
@@ -287,7 +289,7 @@ export function rowLocaleProgress(
   }
   for (const [projectId, list] of byProject) {
     // base 먼저 → 코드순. 앞에서부터 자르므로 "하나만 남으면 base"가 공짜로 성립한다 (design §6 근거 ③).
-    list.sort((a, b) => (a.isBase === b.isBase ? a.code.localeCompare(b.code) : a.isBase ? -1 : 1));
+    list.sort((a, b) => a.surfaceSlug < b.surfaceSlug ? -1 : a.surfaceSlug > b.surfaceSlug ? 1 : a.isBase === b.isBase ? (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) : a.isBase ? -1 : 1);
     byProject.set(projectId, list.slice(0, 3));
   }
   return byProject;
@@ -345,7 +347,7 @@ export function summaryQueue(input: {
   }
 
   const localeCount = new Map<string, number>();
-  for (const locale of locales) localeCount.set(locale.projectId, (localeCount.get(locale.projectId) ?? 0) + 1);
+  for (const locale of locales) localeCount.set(locale.surfaceId, (localeCount.get(locale.surfaceId) ?? 0) + 1);
 
   let cells = 0;
   for (const [projectId, count] of localeCount) cells += (input.keyTotals.get(projectId) ?? 0) * count;

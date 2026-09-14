@@ -85,7 +85,7 @@ describe("loadMemberships", () => {
         name: "Acme",
         role: "OWNER",
         installationId: "1",
-        lastCommitSha: "a".repeat(40),
+        surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
         archivedAt: null,
       },
     ]);
@@ -403,7 +403,7 @@ describe("loadProjectList", () => {
 
     expect(rows[0]).toMatchObject({ openPr: { number: 7 }, repoAheadFiles: 3 });
     expect(loadRemote).toHaveBeenCalledWith([
-      expect.objectContaining({ archived: false, storedLocales: expect.arrayContaining(["en", "ko"]) }),
+      expect.objectContaining({ archived: false, surfaces: [expect.objectContaining({ storedLocales: expect.arrayContaining(["en", "ko"]) })] }),
     ]);
   });
 

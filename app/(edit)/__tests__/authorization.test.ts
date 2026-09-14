@@ -86,7 +86,7 @@ describe("세션을 못 읽은 경우 — 거부가 아니라 장애다", () => 
   });
 
   it("저장이 unauthorized가 아니라 unavailable이다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(result).toEqual({ ok: false, error: "unavailable" });
   });
 
@@ -96,7 +96,7 @@ describe("세션을 못 읽은 경우 — 거부가 아니라 장애다", () => 
   });
 
   it("값이 저장되지 않는다", async () => {
-    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(db.translations).toHaveLength(0);
   });
 });
@@ -107,7 +107,7 @@ describe("비로그인 사용자", () => {
   });
 
   it("저장이 거부된다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(result).toEqual({ ok: false, error: "unauthorized" });
   });
 
@@ -117,7 +117,7 @@ describe("비로그인 사용자", () => {
   });
 
   it("거부가 DB에 닿기 전에 일어난다 — 인가 조회조차 하지 않는다", async () => {
-    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(db.spies.findMember).not.toHaveBeenCalled();
   });
 });
@@ -128,7 +128,7 @@ describe("로그인했지만 멤버가 아닌 사용자", () => {
   });
 
   it("저장이 not-found다 — 프로젝트가 있다는 사실을 알려주지 않는다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
@@ -138,13 +138,13 @@ describe("로그인했지만 멤버가 아닌 사용자", () => {
   });
 
   it("없는 slug와 멤버가 아닌 slug가 **같은 응답**이다", async () => {
-    const missing = await saveTranslation({ slug: "nope", keyId: "kA", localeCode: "ko", value: "x" });
-    const notMember = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    const missing = await saveTranslation({ surfaceSlug: "default", slug: "nope", keyId: "kA", localeCode: "ko", value: "x" });
+    const notMember = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(missing).toEqual(notMember);
   });
 
   it("값이 저장되지 않는다", async () => {
-    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(db.translations).toHaveLength(0);
   });
 });
@@ -152,14 +152,14 @@ describe("로그인했지만 멤버가 아닌 사용자", () => {
 describe("제거된 멤버 — spec 완료 조건 2의 자동 절반", () => {
   it("세션이 살아 있어도 ProjectMember 행이 사라지면 거부된다", async () => {
     hoisted.session = sessionFor("u-editor");
-    const before = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "먼저" });
+    const before = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "먼저" });
     expect(before).toMatchObject({ ok: true });
 
     // 세션은 그대로 두고 멤버십만 없앤다 — JWT였다면 최대 24시간 살아 있었다.
     const at = db.members.findIndex((m) => m.userId === "u-editor");
     db.members.splice(at, 1);
 
-    const after = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "나중" });
+    const after = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "나중" });
     expect(after).toEqual({ ok: false, error: "not-found" });
   });
 });
@@ -170,18 +170,18 @@ describe("교차 테넌트 — A 멤버가 B를 겨눈다", () => {
   });
 
   it("B의 slug를 직접 보내면 거부된다", async () => {
-    const result = await saveTranslation({ slug: "beta", keyId: "kB", localeCode: "fr", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "beta", keyId: "kB", localeCode: "fr", value: "x" });
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
   it("자기 slug에 B의 keyId를 실으면 거부된다 — 인가된 projectId로 다시 확인한다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kB", localeCode: "ko", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kB", localeCode: "ko", value: "x" });
     expect(result).toMatchObject({ ok: false });
     expect(db.translations).toHaveLength(0);
   });
 
   it("자기 slug에 B의 localeCode를 실으면 거부된다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "fr", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "fr", value: "x" });
     expect(result).toMatchObject({ ok: false });
     expect(db.translations).toHaveLength(0);
   });
@@ -198,7 +198,7 @@ describe("EDITOR의 권한 — PRODUCT §3 권한표", () => {
   });
 
   it("번역을 저장한다", async () => {
-    const result = await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "하나" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "하나" });
     expect(result).toEqual({ ok: true, value: "하나" });
   });
 
@@ -212,7 +212,7 @@ describe("EDITOR의 권한 — PRODUCT §3 권한표", () => {
 describe("인가된 projectId로 좁혀 조회한다", () => {
   it("멤버십 조회에 slug가 아니라 projectId가 들어간다", async () => {
     hoisted.session = sessionFor("u-editor");
-    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(db.spies.findMember).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { projectId_userId: { projectId: "pA", userId: "u-editor" } },
@@ -222,7 +222,7 @@ describe("인가된 projectId로 좁혀 조회한다", () => {
 
   it("저장된 행의 updatedBy가 User.id다 — GitHub 핸들이 아니다", async () => {
     hoisted.session = sessionFor("u-editor");
-    await saveTranslation({ slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
+    await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "x" });
     expect(db.translations[0]).toMatchObject({ updatedBy: "u-editor" });
   });
 });
@@ -242,7 +242,7 @@ describe("입력 검증", () => {
 
   it("slug가 빈 문자열이어도 거부한다", async () => {
     hoisted.session = sessionFor("u-editor");
-    const result = await saveTranslation({ slug: "", keyId: "kA", localeCode: "ko", value: "x" });
+    const result = await saveTranslation({ surfaceSlug: "default", slug: "", keyId: "kA", localeCode: "ko", value: "x" });
     expect(result).toMatchObject({ ok: false });
   });
 });

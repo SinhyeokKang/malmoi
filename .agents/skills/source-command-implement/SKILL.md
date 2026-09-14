@@ -37,7 +37,7 @@ Use this skill when the user asks to run the migrated source command `implement`
 
 구현이 끝나면 아래 4관점으로 자기 코드를 검토한다. 각 발견을 🔴(반드시 수정) / 🟡(수정 권장) / ⚪(참고)로 분류한다.
 
-1. **불변식 관점** — export 결정성이 유지되는가? blob SHA 계산이 UTF-8 바이트를 쓰는가? `base_tree`를 넘기는가? `[skip-l10n]`이 붙는가? 인증 경계가 섞이지 않았는가? (ARCHITECTURE §1·2·3·6)
+1. **불변식 관점** — export 결정성이 유지되는가? blob SHA 계산이 UTF-8 바이트를 쓰는가? `base_tree`를 넘기는가? `[skip-malmoi-i18n]`이 붙는가? 인증 경계가 섞이지 않았는가? (ARCHITECTURE §1·2·3·6)
 2. **원칙 관점** — 머지 로직·양방향 동기화·충돌 해소가 슬며시 들어오지 않았는가? **push가 리포 값으로 덮고 `updatedBy`를 비우는가**(strict — `ON CONFLICT DO UPDATE`)? 삭제 대신 `orphaned`인가? (ARCHITECTURE §0)
    - ⚠️ **이 줄은 전에 "push가 번역 값을 건드리지 않는가?"였다** (2026-09-13에 정정). 2026-08-31 strict 전환으로 **정반대가 계약이 됐는데** 이 자가 검증만 옛 정책을 가르치고 있었다 — 지키는 구현을 🔴로 잡는 기준은 없느니만 못하다. 지키는 것은 "단일 소유자"가 아니라 **"병합 없음"**이다.
 3. **타입·경계 관점** — `any`가 없는가? `noUncheckedIndexedAccess` 아래 인덱스 접근의 undefined를 처리했는가? 환경변수 누락 시 fail-closed인가? 에러가 조용히 삼켜지지 않는가?

@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
+import { fail } from "@/lib/failure";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
@@ -87,13 +88,19 @@ export type ApplyOptions = {
 
 export async function applyPush(
   prisma: PrismaClient,
-  projectId: string,
+  scope: { projectId: string; surfaceId: string },
   payload: PushPayloadType,
   options: ApplyOptions,
 ): Promise<PushOutcome> {
+  const { projectId, surfaceId } = scope;
+  // Phase A retains Locale(projectId, code). Fail before any writes instead of silently
+  // ignoring a foreign owner. Add surface stays closed until phase B replaces this PK.
+  const collision = await prisma.locale.findFirst({ where: { projectId, code: { in: payload.locales },
+    OR: [{ surfaceId: null }, { surfaceId: { not: surfaceId } }] }, select: { code: true } });
+  if (collision) fail(`Locale surface ownership mismatch: ${collision.code}`);
   // 1) 현재 키 상태를 한 번에 읽는다. 계획은 순수 함수가 세운다.
   const existing: ExistingKey[] = await prisma.stringKey.findMany({
-    where: { projectId },
+    where: { projectId, surfaceId },
     select: { id: true, key: true, sourceHash: true, orphaned: true },
   });
   const baseChanged = isBaseLocaleChange(payload.format.baseLocale, options.previousBaseLocale);
@@ -127,9 +134,10 @@ export async function applyPush(
   const statements = [
     // Locale: 이름은 처음 만들 때만 넣는다(사용자가 고쳤을 수 있다). isBase는 항상 맞춘다.
     prisma.$executeRaw`
-      INSERT INTO "Locale" ("projectId", "code", "name", "isBase")
+      INSERT INTO "Locale" ("projectId", "surfaceId", "code", "name", "isBase")
       SELECT * FROM unnest(
         ${localeRows.map((r) => r.projectId)}::text[],
+        ${localeRows.map(() => surfaceId)}::text[],
         ${localeRows.map((r) => r.code)}::text[],
         ${localeRows.map((r) => r.name)}::text[],
         ${localeRows.map((r) => r.isBase)}::boolean[]
@@ -137,7 +145,8 @@ export async function applyPush(
       ON CONFLICT ("projectId", "code") DO UPDATE SET
         "isBase" = EXCLUDED."isBase",
         -- 파일이 돌아오면 그 자리에서 되살아난다 (키의 unorphan과 같은 축).
-        "orphaned" = false`,
+        "orphaned" = false
+      WHERE "Locale"."surfaceId" = EXCLUDED."surfaceId"`,
 
     // 리포에서 사라진 로케일을 표시한다. **행은 지우지 않는다** — 되살리면 번역이 돌아와야 하고,
     // Translation의 FK가 Restrict라 지우려면 번역을 먼저 지워야 한다.
@@ -149,16 +158,18 @@ export async function applyPush(
     ...(liveLocales.length === 0 ? [] : [prisma.$executeRaw`
       UPDATE "Locale" SET "orphaned" = true, "isBase" = false
       WHERE "projectId" = ${projectId}
+        AND "surfaceId" = ${surfaceId}
         AND "orphaned" = false
         AND "code" <> ALL(${liveLocales}::text[])`]),
 
     // StringKey insert — id를 JS에서 만든다. cuid() 기본값은 Prisma 클라이언트가 적용하는
     // 것이라 raw SQL에는 오지 않는다.
     ...(plan.toInsert.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "StringKey" ("id", "projectId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "createdAt", "updatedAt")
+      INSERT INTO "StringKey" ("id", "projectId", "surfaceId", "key", "namespace", "sourceText", "sourceHash", "description", "sortIndex", "orphaned", "createdAt", "updatedAt")
       SELECT * FROM unnest(
         ${insertIds}::text[],
         ${plan.toInsert.map(() => projectId)}::text[],
+        ${plan.toInsert.map(() => surfaceId)}::text[],
         ${plan.toInsert.map((k) => k.key)}::text[],
         ${plan.toInsert.map((k) => k.namespace)}::text[],
         ${plan.toInsert.map((k) => k.sourceText)}::text[],
@@ -192,18 +203,19 @@ export async function applyPush(
         ${plan.toUpdate.map((k) => k.description ?? null)}::text[],
         ${plan.toUpdate.map((k) => k.sortIndex ?? null)}::int[]
       ) AS v("key", "namespace", "sourceText", "sourceHash", "description", "sortIndex")
-      WHERE s."projectId" = ${projectId} AND s."key" = v."key"`]),
+      WHERE s."projectId" = ${projectId} AND s."surfaceId" = ${surfaceId} AND s."key" = v."key"`]),
 
     // orphaned 표시. **삭제하지 않는다** — 되돌릴 수 있어야 한다 (ARCHITECTURE §0).
     ...(plan.toOrphan.length === 0 ? [] : [prisma.$executeRaw`
       UPDATE "StringKey" SET "orphaned" = true, "updatedAt" = ${now}
-      WHERE "projectId" = ${projectId} AND "id" = ANY(${plan.toOrphan}::text[])`]),
+      WHERE "projectId" = ${projectId} AND "surfaceId" = ${surfaceId} AND "id" = ANY(${plan.toOrphan}::text[])`]),
 
     // 원문이 바뀐 키 → base 아닌 번역에 needsReview 전파.
     // base 로케일 번역은 제외한다 — 원문 자체라 검토 대상이 아니다.
     ...(plan.staleKeyIds.length === 0 ? [] : [prisma.$executeRaw`
       UPDATE "Translation" SET "needsReview" = true, "updatedAt" = ${now}
       WHERE "projectId" = ${projectId}
+        AND "surfaceId" = ${surfaceId}
         AND "keyId" = ANY(${plan.staleKeyIds}::text[])
         AND "localeCode" <> ${payload.format.baseLocale}`]),
   ];
@@ -224,11 +236,12 @@ export async function applyPush(
     //    pull 주기가 곧 데이터 손실 창이다. 스펙에 감수하는 대가로 명시돼 있다.
     // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
     ...(uniqueTranslations.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "Translation" ("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
-      SELECT v."id", v."projectId", v."keyId", v."localeCode", v."value", v."description", v."placeholders"::jsonb, v."needsReview", v."updatedAt"
+      INSERT INTO "Translation" ("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
+      SELECT v."id", v."projectId", v."surfaceId", v."keyId", v."localeCode", v."value", v."description", v."placeholders"::jsonb, v."needsReview", v."updatedAt"
       FROM unnest(
         ${uniqueTranslations.map(() => randomUUID())}::text[],
         ${uniqueTranslations.map(() => projectId)}::text[],
+        ${uniqueTranslations.map(() => surfaceId)}::text[],
         ${uniqueTranslations.map((t) => t.keyId)}::text[],
         ${uniqueTranslations.map((t) => t.locale)}::text[],
         ${uniqueTranslations.map((t) => t.value)}::text[],
@@ -238,7 +251,7 @@ export async function applyPush(
         ${uniqueTranslations.map((t) => (t.placeholders === undefined ? null : JSON.stringify(t.placeholders)))}::text[],
         ${uniqueTranslations.map(() => false)}::boolean[],
         ${uniqueTranslations.map(() => now)}::timestamp[]
-      ) AS v("id", "projectId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
+      ) AS v("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
       ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
         "value" = EXCLUDED."value",
         -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
@@ -251,7 +264,7 @@ export async function applyPush(
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
     prisma.$executeRaw`
-      DELETE FROM "KeyRef" WHERE "keyId" IN (SELECT "id" FROM "StringKey" WHERE "projectId" = ${projectId})`,
+      DELETE FROM "KeyRef" WHERE "keyId" IN (SELECT "id" FROM "StringKey" WHERE "projectId" = ${projectId} AND "surfaceId" = ${surfaceId})`,
     ...(refs.length === 0 ? [] : [prisma.$executeRaw`
       INSERT INTO "KeyRef" ("id", "keyId", "path", "line")
       SELECT * FROM unnest(
@@ -262,8 +275,8 @@ export async function applyPush(
       )`]),
 
     // 포맷과 커밋 SHA는 pull이 읽는다.
-    prisma.project.update({
-      where: { id: projectId },
+    prisma.translationSurface.update({
+      where: { id: surfaceId, projectId },
       data: {
         adapterName: payload.format.adapter,
         pathTemplate: payload.format.pathTemplate,
@@ -292,8 +305,8 @@ export async function applyPush(
     }),
     // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
     // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
-    prisma.project.updateMany({
-      where: { id: projectId, lastImportStartedAt: options.startedAt },
+    prisma.translationSurface.updateMany({
+      where: { id: surfaceId, projectId, lastImportStartedAt: options.startedAt },
       data: importOutcomeFields(options.importOutcome ?? null),
     }),
   ];

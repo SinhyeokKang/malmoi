@@ -25,6 +25,7 @@ const hoisted = vi.hoisted(() => ({
   runSync: vi.fn(),
   applyPush: vi.fn(),
   prisma: {
+    translationSurface: { findFirst: vi.fn(), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
     // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
     // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
@@ -53,6 +54,7 @@ const TOKEN = "push-token-original-value";
 /** 스키마를 통과하는 최소 페이로드. */
 const payload = (over: Record<string, unknown> = {}) => ({
   projectSlug: "acme",
+  surfaceSlug: "default",
   commitSha: "a".repeat(40),
   commitAt: "2026-09-03T00:00:00+09:00",
   format: { adapter: "chrome-locales", pathTemplate: "_locales/{locale}/messages.json", nested: false, baseLocale: "en" },
@@ -112,6 +114,10 @@ beforeEach(() => {
   // 인증을 공짜로 통과하고, 그게 이 리포가 두 번 밟은 "가짜가 실제보다 관대하다"의 형태다
   // (POSTMORTEM 2026-09-05·2026-09-06). 인증이 필요한 케이스가 **명시적으로** 행을 준다.
   hoisted.prisma.project.findUnique.mockResolvedValue(null);
+  hoisted.prisma.translationSurface.findFirst.mockImplementation(async () => {
+    const row = await hoisted.prisma.project.findUnique.mock.results.at(-1)?.value;
+    return row ? { ...row, id: "surface-p1", projectId: row.id, slug: "default" } : null;
+  });
   // pull 순회의 기본값도 fail-closed다 — 대상을 안 준 케이스가 남의 프로젝트를 돌리지 않는다.
   hoisted.prisma.project.findMany.mockResolvedValue([]);
 });
@@ -126,7 +132,7 @@ const ready = (slug: string) => ({
   id: `id-${slug}`,
   slug,
   installationId: "1",
-  lastCommitSha: "a".repeat(40),
+  surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
   syncRuns: [] as { startedAt: Date }[],
 });

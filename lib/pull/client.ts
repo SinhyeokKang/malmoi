@@ -25,7 +25,7 @@ export type ChangedFile = { filename: string; previous_filename?: string };
 export type GitClient = {
   /**
    * ref의 커밋 SHA. **브랜치가 없으면 `null`** — 404를 던지지 않는 것이 요지다.
-   * `l10n/sync`의 부재가 첫 실행 경로(`createRef`)를 태우는 정상 입력이기 때문이다.
+   * `malmoi-i18n/sync`의 부재가 첫 실행 경로(`createRef`)를 태우는 정상 입력이기 때문이다.
    *
    * ⚠️ **`null`은 "권한이 없다"일 수도 있다.** GitHub은 접근 권한이 없는 리소스에 존재를 숨기려
    * 404를 준다 — App 설치가 취소되거나 Contents 권한이 빠지면 base 브랜치도 `null`로 온다.
@@ -56,7 +56,7 @@ export type GitClient = {
   /** 브랜치 신규 생성. `getRefSha`가 `null`을 준 경우다. */
   createRef(branch: string, sha: string): Promise<void>;
   /**
-   * 브랜치를 강제로 옮긴다. **force가 의도된 것이다** — `l10n/sync`는 누적 히스토리가 아니라
+   * 브랜치를 강제로 옮긴다. **force가 의도된 것이다** — `malmoi-i18n/sync`는 누적 히스토리가 아니라
    * "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).
    */
   updateRefForce(branch: string, sha: string): Promise<void>;

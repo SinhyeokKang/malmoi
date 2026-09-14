@@ -1,4 +1,5 @@
 import { compareKeys } from "@/lib/adapters/shared";
+import { planProjectReadiness } from "@/lib/onboarding/readiness";
 
 import type { PullResult } from "./run";
 
@@ -36,14 +37,14 @@ export function selectPullTargets(
      * 화면이 `not-connected`로 할 일을 말하는 동안 `/logs`는 실패로 채워진다.
      */
     repositoryId: string | null;
-    lastCommitSha: string | null;
+    surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
     syncRuns: readonly { startedAt: Date }[];
   }[],
   limit: number,
 ): { targets: string[]; unprocessed: number } {
   const ready = projects
-    .filter((p) => p.installationId !== null && p.repositoryId !== null && p.lastCommitSha !== null && p.archivedAt === null)
+    .filter((p) => planProjectReadiness(p) === "ready" && p.repositoryId !== null && p.archivedAt === null)
     .slice()
     .sort((a, b) => {
       // 한 번도 안 돈 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.

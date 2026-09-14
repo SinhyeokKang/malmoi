@@ -43,7 +43,7 @@ const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
  */
 const UNCODED: readonly string[] = [
   "unreachable: passed the layer-1 check",
-  "unreachable: passed formatFromProject",
+  "surface base locale is empty", "Surface path conflict:",
   "Project.adapterName is empty",
   "Project.pathTemplate is empty",
   "Project.baseLocale is empty",

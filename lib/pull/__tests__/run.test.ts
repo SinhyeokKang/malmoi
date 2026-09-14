@@ -58,15 +58,15 @@ function makeDeps(
   const deps: PullDeps = {
     loadState: async (): Promise<PullState> => ({
       project: { ...PROJECT },
-      localeCodes: ["en", "ko"],
-      keys: KEYS,
+
+      surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
       maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
     }),
     createClient: async () => client,
     saveLastPulledAt: async (_projectId, at) => {
       writes.push(at);
     },
-    syncBranch: "l10n/sync",
+    syncBranch: "malmoi-i18n/sync",
     ...over,
   };
   return { deps, writes, calls };
@@ -78,13 +78,13 @@ describe("runPull — 1층 DB 측 스킵", () => {
     const result = await runPull({
       loadState: async () => ({
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
-        localeCodes: ["en", "ko"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
 
     expect(calls).toEqual([]);
@@ -96,13 +96,13 @@ describe("runPull — 1층 DB 측 스킵", () => {
     await runPull({
       loadState: async () => ({
         project: { ...PROJECT },
-        localeCodes: ["en", "ko"],
-        keys: [],
+
+        surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [] }],
         maxUpdatedAt: null,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
     expect(calls).toEqual([]);
   });
@@ -113,13 +113,13 @@ describe("runPull — 1층 DB 측 스킵", () => {
     await runPull({
       loadState: async () => ({
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
-        localeCodes: ["en"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
     expect(writes).toEqual([]);
   });
@@ -194,7 +194,7 @@ describe("runPull — 2층 blob SHA 스킵", () => {
  * **2층이 변경 0건일 때 sync 브랜치를 base로 되돌린다** (T6 실측 발견 B, 2026-09-09).
  *
  * ⚠️ `planPullChanges`가 비교하는 것은 **base 트리**다. 사용자가 편집을 되돌려 렌더가 base와
- * 같아지면 변경 0건이라 커밋을 만들지 않고, `l10n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다 —
+ * 같아지면 변경 0건이라 커밋을 만들지 않고, `malmoi-i18n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다 —
  * 그 PR을 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB
  * 상태의 스냅샷"이라 부르는데 이 경우 그 불변식이 깨져 있었다. 실측으로 정확히 그 상태를 만났다.
  *
@@ -217,12 +217,12 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
   }
 
   it("브랜치가 base보다 앞서 있으면 base head로 되돌린다", async () => {
-    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
     const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
 
     const forced = calls.filter((c) => c.method === "updateRefForce");
-    expect(forced).toEqual([{ method: "updateRefForce", args: ["l10n/sync", "basehead"] }]);
+    expect(forced).toEqual([{ method: "updateRefForce", args: ["malmoi-i18n/sync", "basehead"] }]);
     // 되돌리는 것뿐이다 — 커밋·트리·PR 경로로 가지 않는다.
     expect(calls.map((c) => c.method)).not.toContain("createCommit");
     expect(calls.map((c) => c.method)).not.toContain("createPr");
@@ -230,7 +230,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
   });
 
   it("브랜치가 이미 base head면 건드리지 않는다 — 무의미한 force가 매일 밤 나가면 안 된다", async () => {
-    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "basehead" });
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "basehead" });
     const { deps } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(calls.map((c) => c.method)).not.toContain("updateRefForce");
@@ -246,7 +246,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
   });
 
   it("되돌린 뒤에도 lastPulledAt은 갱신한다 — export == base가 검증된 순간이다", async () => {
-    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
     const { deps, writes } = makeDeps({}, { client, calls });
     await runPull(deps);
     expect(writes).toEqual([new Date("2026-09-01T10:00:00Z")]);
@@ -255,7 +255,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
   /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4). */
   it("되돌리기는 published로 세지 않는다", async () => {
     const published: unknown[] = [];
-    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/l10n/sync": "stale" });
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
     const { deps } = makeDeps(
       { saveLastPulledAt: async (_id, _at, pub) => { published.push(pub); } },
       { client, calls },
@@ -306,7 +306,7 @@ describe("runPull — 커밋·PR 경로", () => {
     });
   });
 
-  it("커밋 parents가 base head 하나이고 메시지에 [skip-l10n]이 있다", async () => {
+  it("커밋 parents가 base head 하나이고 메시지에 [skip-malmoi-i18n]이 있다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
     const payload = calls.find((c) => c.method === "createCommit")?.args[0] as {
@@ -317,9 +317,9 @@ describe("runPull — 커밋·PR 경로", () => {
     expect(payload.message).toContain(SKIP_MARKER);
   });
 
-  it("l10n/sync가 없으면 createRef, 있으면 updateRefForce다", async () => {
+  it("malmoi-i18n/sync가 없으면 createRef, 있으면 updateRefForce다", async () => {
     const { client, calls } = createFakeGitClient({
-      refSha: { "heads/dev": "basehead", "heads/l10n/sync": "oldsync" },
+      refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync": "oldsync" },
       tree: { basehead: [] },
     });
     const { deps } = makeDeps({}, { client, calls });
@@ -343,7 +343,7 @@ describe("runPull — 커밋·PR 경로", () => {
   it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPrUrl")?.args).toEqual(["o:l10n/sync", "dev"]);
+    expect(calls.find((c) => c.method === "findOpenPrUrl")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
   });
 
   it("성공하면 lastPulledAt을 캡처 값으로 갱신한다", async () => {
@@ -387,13 +387,13 @@ describe("runPull — 실패 처리", () => {
     const deps: PullDeps = {
       loadState: async () => ({
         project: { ...PROJECT, installationId: null },
-        localeCodes: ["en"],
-        keys: KEYS,
+
+        surfaces: [{ ...({ ...PROJECT, installationId: null }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     };
     await expect(runPull(deps)).rejects.toThrow(/installationId/);
     expect(calls).toEqual([]);
@@ -431,13 +431,13 @@ ko:
     await runPull({
       loadState: async () => ({
         project: yamlProject,
-        localeCodes: ["ko"],
-        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+
+        surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
     expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(1);
   });
@@ -451,13 +451,13 @@ ko:
     await runPull({
       loadState: async () => ({
         project: yamlProject,
-        localeCodes: ["ko"],
-        keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }],
+
+        surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
     const created = calls.find((c) => c.method === "createTree");
     const body = JSON.stringify(created?.args ?? {});
@@ -508,20 +508,20 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
             orphaned: false,
             cells: { ko: { value: "하나!" }, en: { value: "one!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
 
     expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(2);
@@ -542,8 +542,8 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
@@ -556,12 +556,12 @@ export const ns = { ko, en };
             orphaned: false,
             cells: { ko: { value: "비!" }, en: { value: "bee!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
 
     const tree = calls.find((c) => c.method === "createTree")?.args[0] as {
@@ -582,20 +582,20 @@ export const ns = { ko, en };
     await runPull({
       loadState: async () => ({
         project: tsProject,
-        localeCodes: ["en", "ko"],
-        keys: [
+
+        surfaces: [{ ...(tsProject), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
           {
             key: "a.one",
             sourceText: "one",
             orphaned: false,
             cells: { ko: { value: "" }, en: { value: "one!" } },
           },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
-      syncBranch: "l10n/sync",
+      syncBranch: "malmoi-i18n/sync",
     });
 
     const tree = calls.find((c) => c.method === "createTree")?.args[0] as {
@@ -610,19 +610,19 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
   it("json-catalog 접두 충돌로 빠진 키가 warnings로 나온다 — survey만 보던 것을 프로덕션 경로가 본다", async () => {
     const { deps } = makeDeps({
       loadState: async (): Promise<PullState> => ({
-        project: { ...PROJECT, nested: true },
-        localeCodes: ["en"],
-        keys: [
+        project: { ...PROJECT },
+
+        surfaces: [{ ...({ ...PROJECT, nested: true }), id: "s1", slug: "default", localeCodes: ["en"], keys: [
           { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
           { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
-        ],
+        ] }],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
       }),
     });
     const result = await runPull(deps);
     expect(result.status).toBe("committed");
     expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
-    expect(result.warnings?.[0]).toMatch(/^i18n\/en\.json: /);
+    expect(result.warnings?.[0]).toMatch(/^default: i18n\/en\.json: /);
   });
 
   it("버린 항목이 없으면 warnings 필드 자체가 없다 — 없는 것과 같아야 한다", async () => {

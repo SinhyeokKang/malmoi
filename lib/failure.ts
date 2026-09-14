@@ -67,7 +67,7 @@ export type Failure =
  * 반대로 우리 문구가 바뀌어도 판정이 흔들리지 않는다.
  *
  * 왜 필요한가: POSTMORTEM 2026-09-03이 "본문 없는 500"을 결함으로 박아 두 라우트가 던진 메시지를
- * 그대로 실었다. 그 전제("로그를 읽는 사람이 우리뿐")가 틀렸다 — `.github/actions/l10n-push`는
+ * 그대로 실었다. 그 전제("로그를 읽는 사람이 우리뿐")가 틀렸다 — `.github/actions/malmoi-i18n-push`는
  * **임의의 대상 리포**에서 돌고 `scripts/push-local.ts`가 응답 본문을 stdout에 찍는다. 대상이
  * public이면 Prisma 접속 오류 한 번이 pooler 호스트와 DB 유저를 공개 Actions 로그에 박는다.
  */

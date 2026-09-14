@@ -78,7 +78,7 @@ describe("planSlug ↔ syncBranchFor — 교차 검증 (갈리면 pull이 죽는
   it("planSlug가 `ok`인 slug는 syncBranchFor가 던지지 않는다", () => {
     for (const slug of SAMPLES.filter((s) => planSlug(s) === "ok")) {
       expect(() => syncBranchFor(slug)).not.toThrow();
-      expect(syncBranchFor(slug)).toBe(`l10n/sync-${slug}`);
+      expect(syncBranchFor(slug)).toBe(`malmoi-i18n/sync-${slug}`);
     }
   });
 

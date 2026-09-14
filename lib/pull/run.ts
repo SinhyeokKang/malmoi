@@ -11,6 +11,8 @@ import {
   type ProjectFormatColumns,
 } from "./plan";
 import { renderLocaleFiles, type RenderKey } from "./render";
+import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
+import { planMultiSurfacePull } from "./surfaces";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -20,7 +22,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
  * ⚠️ `server-only`를 붙이지 않는다 — 테스트가 직접 import한다.
  */
 
-export type PullProject = ProjectFormatColumns & {
+export type PullProject = {
   id: string;
   slug: string;
   repoOwner: string;
@@ -33,8 +35,7 @@ export type PullProject = ProjectFormatColumns & {
 
 export type PullState = {
   project: PullProject;
-  localeCodes: string[];
-  keys: RenderKey[];
+  surfaces: (ProjectFormatColumns & { id: string; slug: string; localeCodes: string[]; keys: RenderKey[] })[];
   /** 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`. */
   maxUpdatedAt: Date | null;
 };
@@ -74,7 +75,7 @@ export type PullResult =
 const BLOB_CONCURRENCY = 8;
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, localeCodes, keys, maxUpdatedAt } = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt } = await deps.loadState();
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
   if (shouldSkipPull(maxUpdatedAt, project.lastPulledAt)) {
@@ -92,18 +93,17 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
 
-  const format = formatFromProject(project, localeCodes);
-  // `formatFromProject`가 null이면 이미 던졌다 — 여기선 non-null이므로 좁혀서 쓴다.
-  // 빈 문자열로 폴백하면 base 판정이 전부 false가 되어 base 파일이 조용히 폴백을 잃는다.
-  const { baseLocale } = project;
-  if (baseLocale === null) fail("unreachable: passed formatFromProject but baseLocale is null");
-  const { layout } = adapterFor(format);
+  const formats = [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
+    const format = formatFromProject(surface, surface.localeCodes);
+    if (surface.baseLocale === null) fail("surface base locale is empty");
+    return { surface, format, baseLocale: surface.baseLocale, layout: adapterFor(format).layout };
+  });
   const client = await deps.createClient(project);
 
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
   // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
-  // (`l10n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
+  // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
   if (baseHead === null) {
     // ⚠️ **브랜치 부재와 접근 상실이 같은 `null`로 온다** — 코드가 그 둘을 가르지 않는 것이 정직하다.
     fail(
@@ -113,11 +113,14 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
 
   const tree = await client.getTree(baseHead);
-  const paths = resolveLocalePaths(
-    format,
-    layout,
-    tree.map((t) => t.path),
-  );
+  const resolved = formats.map(item => ({ ...item,
+    paths: resolveLocalePaths(item.format, item.layout, tree.map(t => t.path)),
+  }));
+  const ownership = surfaceOwnership(resolved.map(item => ({
+    surfaceId: item.surface.id, surfaceSlug: item.surface.slug, paths: item.paths.map(p => p.path),
+  })));
+  if (!ownership.ok) fail(ownership.conflicts.map(c => `Surface path conflict: ${c.path} (${c.surfaceSlugs.join(", ")})`).join("; "));
+  const paths = resolved.flatMap(item => item.paths);
 
   // **어댑터 종류와 무관하게 원본을 읽는다.** 두 방식이 원본을 쓰는 이유가 다르다:
   //   - 수술적 치환 — write에 **필수**다. 없으면 치환할 대상이 없어 파일을 안 낸다 (§1.4)
@@ -138,8 +141,12 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     chunk.forEach((p, j) => current.set(p.path, texts[j]!));
   }
 
-  const local = renderLocaleFiles(format, layout, paths, keys, baseLocale, current);
-  const warnings = local.flatMap((f) => (f.errors ?? []).map((e) => `${e.path}: ${adapterErrorMessage(e)}`));
+  const rendered = resolved.map(item => ({
+    surfaceId: item.surface.id, surfaceSlug: item.surface.slug,
+    files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
+  }));
+  const local = planMultiSurfacePull(rendered);
+  const warnings = rendered.flatMap(p => p.files.flatMap(f => (f.errors ?? []).map(e => `${p.surfaceSlug}: ${e.path}: ${adapterErrorMessage(e)}`)));
   const withWarnings = warnings.length === 0 ? {} : { warnings };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
@@ -152,7 +159,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * ⚠️ **sync 브랜치가 base보다 앞서 있으면 되돌린다** (2026-09-09, T6 실측 발견 B).
      *
      * 2층이 비교하는 것은 **base 트리**다 — 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경
-     * 0건이라 커밋을 만들지 않고, 그때 `l10n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다. 그 PR을
+     * 0건이라 커밋을 만들지 않고, 그때 `malmoi-i18n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다. 그 PR을
      * 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB 상태의
      * 스냅샷"이라 부르는데, 이 경로에서 그 불변식이 깨져 있었다.
      *
@@ -189,7 +196,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
   const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
 
-  // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `l10n/sync`는 누적 히스토리가 아니라
+  // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라
   // "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).
   const syncHead = await client.getRefSha(`heads/${deps.syncBranch}`);
   if (syncHead === null) {
@@ -207,7 +214,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     (await client.createPr(
       deps.syncBranch,
       project.baseBranch,
-      "l10n: sync translations",
+      "malmoi-i18n: sync translations",
       // 영문이다 — 대상 리포에 남는 문자열이고 CLAUDE.md가 PR title/body를 영문으로 못 박았다.
       `Updated ${summary} from the translation DB.\n\n${changes.map((c) => `- \`${c.path}\``).join("\n")}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`,
     ));
