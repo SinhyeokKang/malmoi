@@ -547,6 +547,36 @@ breadcrumb과 Publish가 지금 셸에 없는 이유가 정확히 그것이고, 
 경로 + 접힌 상태에서 GitHub 0회 — PRODUCT), UI만 먼저 만들면 빈 껍데기를 두 번 그린다. 편집 손실 배너·
 미배포 카운트·Publish 결과가 그때 번역 화면에서 이리로 옮겨온다.
 
+### 6.56 패널 리사이저 (2026-09-14)
+
+**드래그로 폭을 바꾸는 구분선 둘** — 셸의 LNB ↔ 콘텐츠, 새 프로젝트 모달 ②의 후보 목록 ↔ 미리보기.
+프리미티브는 `components/ui/resizable.tsx`이고 라이브러리는 `react-resizable-panels`다.
+원본은 bugshot-2 로그 뷰어의 메인 리사이저이고, **시각·동작을 거의 그대로 가져왔다.**
+
+| 요소 | 규칙 |
+|---|---|
+| **핸들 자체** | ⚠️ **투명하다** (`bg-transparent`). shadcn 기본은 `bg-border`라 1px 선이 **상시로** 보이는데, 이 화면들의 패널 경계는 이미 흰 패널의 border가 만들어 선이 두 겹이 된다. 보이는 것은 `::after` 하나뿐이다 |
+| **시각 바** | `::after` **4px**(`after:w-1`), 스트립 한가운데(`after:left-1/2 after:-translate-x-1/2`), 위아래 끝이 페이드(`after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent`) |
+| **색** | ⚠️ **`via-ring`이다 — 원본의 `via-blue-300`이 아니다.** blue-300은 리포 전수 0건의 **미등재 raw 색**이고, `app/globals.css`가 그것을 **흰 배경 1.80:1이라 목측 뒤 버린** 색으로 기록하고 있다. 같은 색을 뒷문으로 들이지 않는다. `--ring`(blue-400)은 이미 등재된 토큰이라 **§6.2에 색이 늘지 않는다** |
+| **표시 트리거** | ⚠️ **React state가 아니라 `data-*`다.** 라이브러리가 DOM에 쓰는 `data-resize-handle-state`(`inactive`/`hover`/`drag`)를 CSS가 직접 읽는다: `after:opacity-0 data-[resize-handle-state=hover]:after:opacity-100 data-[resize-handle-state=drag]:after:opacity-100` |
+| **폭 = 옛 `gap`** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다 — 셸 `w-2`(옛 `gap-2`), 모달 ② `w-4`(껍데기의 `gap-4`). **변경 전후로 눈에 보이는 간격이 같다** |
+| **히트 영역** | ⚠️ **CSS가 아니다.** 라이브러리가 document의 pointermove에서 핸들 rect에 마진을 얹어 판정한다(기본 `fine: 5px` / `coarse: 15px`). 그래서 시각 4px이어도 잡히고, `hitAreaMargins`를 **덮지 않는다** |
+| **커서** | ⚠️ **핸들에 `cursor-*`를 쓰지 않는다.** 드래그가 시작되면 라이브러리가 `document.head`에 `<style>`을 꽂아 `*{cursor: ew-resize !important}`를 건다 — 포인터가 핸들을 벗어나도 커서가 유지되는 이유가 이것이고, 클래스는 먹지도 않으면서 "여기가 커서의 출처"라는 거짓 단서만 남긴다 |
+| **포커스** | 핸들은 `role="separator" tabindex="0"`이라 포커스를 받는다 — §7의 링 셋을 그대로 든다. ⚠️ **접근 이름을 붙인다**(`m.common.resizeSidebar` · `m.newProject.files.resize`) — 라이브러리는 이름을 만들어 주지 않아 스크린리더가 "separator"로만 읽는다 |
+| **치수** | 둘 다 **min 200 / default 240 / max 320**. 상한 320은 우측 `ProjectPanel`(§6.55)과 **같은 값**이다 — 한 화면의 보조 패널 둘이 서로 다른 임의 치수를 갖지 않는다(규약 6) |
+| **폭 영속화 없음** | `autoSaveId`(localStorage)를 쓰지 않는다 — SSR에서 첫 페인트가 `defaultSize`로 그려지고 저장값으로 점프한다. **세션 내 리사이즈만** 하고, 필요해지면 쿠키로 붙인다 |
+
+⚠️ **`minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2에 px 짝이 없다). 셸은 그룹 폭이 뷰포트를
+따르므로 **`ResizeObserver`로 재고 px→%로 환산한다**(`lib/shell/panel-size.ts` — 순수 함수) —
+고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 720**이라
+(`max-w-[800px]` − `px-8` 64 − 핸들 16) 재지 않고 모듈 상수로 굳힌다.
+
+⚠️ **분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다** — 라이브러리는 패널에 `flex-basis: 0` +
+`flex-grow: <size>`를 걸고 핸들은 **자기 폭을 가진 별도 flex 항목**이다.
+
+⚠️ **재기 전에는 LNB를 px로 못박는다** — SSR은 뷰포트를 모르므로 %가 거짓이고, 그 상태로 그리면
+큰 모니터에서 LNB가 **하이드레이션이 끝날 때까지** 부풀어 있는다(한 프레임이 아니다).
+
 ### 6.6 설정 (`/projects/[slug]/settings`) — settings-block 여섯
 
 블록 = `Card` 한 장(제목 + 한 줄 설명 `text-xs text-muted-foreground` + 본문). 위에서 아래로 **Repository**(mono 리포 칩 + 연결 상태 + [Connect]/[Reconnect]) · **Import status** · **Push token** · **Workflow** · **GitHub account**(mono `@handle` 칩 + [Disconnect] `danger sm`) · **Archive project**(2026-09-10, 7단계 — **맨 아래**). ✅ **Base branch 폼이 Repository 카드에 있다**(6b-3). ⚠️ **Base language 필드와 대기 Alert는 6b-5가 `/projects/[slug]/locales`로 옮겼다**(PRODUCT §7.7 결정 4 — 아래 §6.66). 이 화면이 그 컬럼에 대해 하는 일은 **워크플로 YAML에 `base-locale:` 한 줄을 박는 것뿐**이고, 그래서 로케일 목록을 조회하지도 않는다(`base-locale-screens.test.ts`가 양방향으로 센다). ⚠️ **GitHub account 블록은 `/account`(6b-4)와 같은 상태를 보인다** — 같은 로더(`lib/github-connect/account-view.ts`)를 부르고 다른 것은 연결 버튼의 착지뿐이다. **여기서 그 블록을 지우지 않는다**: 재인가 안내가 리포 재연결의 맥락에서 필요하고, 그 자리에서 "Manage in Account"로 링크하면 고치려고 두 화면을 오간다(§7.7 결정 4와 같은 판단).
