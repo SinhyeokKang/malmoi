@@ -12,7 +12,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
-import { countUnpublished, loadProjectListAggregates } from "../query";
+import { countUnpublished, loadKeys, loadProjectListAggregates } from "../query";
 import { loadPullState } from "@/lib/pull/load";
 import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
@@ -68,6 +68,16 @@ afterAll(async () => {
 const PULLED = new Date("2026-09-10T00:00:00Z");
 const BEFORE = new Date("2026-09-09T00:00:00Z");
 const AFTER = new Date("2026-09-11T00:00:00Z");
+
+it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한다", async () => {
+  await seed({ id: "archived-cell", lastPulledAt: PULLED, archived: false });
+  await prisma.translationSurface.update({ where: { id: "surface-archived-cell" }, data: { archivedAt: AFTER } });
+  const rows = await loadKeys(prisma, "archived-cell", "surface-archived-cell");
+  const cells = rows.flatMap(row => Object.values(row.cells));
+  expect(cells.length).toBeGreaterThan(0);
+  expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
+  expect(cells.some(cell => isUnpublished(cell, PULLED))).toBe(false);
+});
 
 async function addFixture() {
   await seed({ id: "add", lastPulledAt: PULLED, archived: false });
