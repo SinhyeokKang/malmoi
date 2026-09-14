@@ -683,6 +683,13 @@ snapshot → ingestTargets(순수) → readBlob × M
 - **`workflow.ts`의 `renderWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
+  - **step 생산자는 `renderSurfaceWorkflowStep` 하나다.** 파일 전체는 `renderProjectWorkflowYaml`이
+    그것을 **활성 표면 수만큼** 이어 붙이고, `renderWorkflowYaml`은 표면 하나짜리 래퍼다(온보딩 ④).
+    설정 화면이 전자를 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
+    표면의 step을 다시 볼 자리가 그 화면뿐이고**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
+    `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
+  - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
+    무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **네 페이지가 각자** `export const maxDuration = 60`을 든다 — `app/(edit)/projects/new/page.tsx` ·
