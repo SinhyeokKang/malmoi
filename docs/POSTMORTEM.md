@@ -1608,3 +1608,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   Alert 본문과 버튼 라벨을 대조하는 red→green을 남겼다.
 - **재발 방지**: **"무엇을 누르라"고 말하는 문구를 새로 쓸 때 그 이름의 컨트롤이 같은 화면에 있는지
   본다.** 사전 항목을 늘리기 전에 `rg -n '"(Re)?[Cc]onnect GitHub"' messages/en.tsx`로 기존 쌍을 찾는다.
+
+### 2026-09-14 — fieldset 비활성만으로 Radix Portal의 언어 선택을 잠그지 못했다
+
+- **영역**: `components/onboarding/steps/naming.tsx` · `new-project.tsx` · `components/__tests__/new-project.test.tsx`
+- **증상**: 프로젝트 생성 요청 중 입력 필드는 비활성이었지만, 기준 언어 Select의 마우스 pointerdown이 목록을 열었다. Portal 옵션은 fieldset 밖이라 제출 뒤 선택값을 바꿀 수 있었다.
+- **근본 원인**: native fieldset의 disabled 전파를 Radix의 이벤트·Portal 상태까지 전파되는 것으로 보았다. Select는 자기 `disabled` 값으로 열기를 막는다. NamingStep에서 Select·RadioGroup으로 `disabled`를 직접 전달했다.
+- **그물**: 병렬 경계 리뷰와 실제 `pointerType: "mouse"`를 붙인 DOM 이벤트가 red→green을 냈다. 기존 `:disabled` 필드 검사와 pointerType 없는 MouseEvent는 둘 다 green이었다 — Radix가 mouse 갈래를 검사하므로 이벤트 이름만 맞춘 테스트는 그 분기에 도달하지 않았다.
+- **재발 방지**: `rg -n 'fieldset|<Select|disabled=' components/onboarding`으로 부모 fieldset와 Radix 컨트롤의 직접 disabled 전달을 대조한다. 새 DOM 케이스 `생성 중 Portal 언어 선택도 열리지 않는다`를 유지한다. 같은 모양의 후속 확인 후보는 기존 Add surface의 fieldset 아래 FilesStep(미리보기·수동 어댑터 Select)이며, 이번 신규 생성 변경에서는 그 정책을 바꾸지 않았다.
