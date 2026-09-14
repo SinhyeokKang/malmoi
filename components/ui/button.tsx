@@ -48,7 +48,7 @@ export const buttonClass = cva(
          * `bg-primary/90`(≈#2e2e2e)이라 **밝아지고** 있었고, 캔버스는 `--foreground`(#0a0a0a)로
          * 내려간다. 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는 부류이므로 computed style로 잰다.
          */
-        primary: "bg-primary text-primary-foreground hover:bg-foreground disabled:opacity-70",
+        primary: "bg-primary text-primary-foreground hover:bg-foreground disabled:bg-muted disabled:text-muted-foreground",
         /**
          * ⚠️ **hover가 `--accent`(#f5f5f5)가 아니라 `--primary-foreground`(#fafafa)다**
          * (2026-09-13 — 같은 실측). 그 토큰이 **역할을 하나 더 든다**는 뜻이고 DESIGN §6.2가

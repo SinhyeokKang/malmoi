@@ -697,3 +697,18 @@ it("두 표면 완료 응답까지 ③에 머문 뒤 서버 YAML과 합산 결�
   expect(document.body.querySelector("pre")?.textContent?.match(/surface:/g)).toHaveLength(2);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled(); expect(mocks.createProject).toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  { name: "disconnected account", repos: undefined, listError: "not-connected" },
+  { name: "installation without repositories", repos: [], listError: undefined },
+  { name: "repository listing failure", repos: undefined, listError: "unavailable" },
+])("blocked Next uses the shared muted primary style: $name", async ({ repos, listError }) => {
+  await render(<NewProject repos={repos} listError={listError} installUrl={null}
+    now="2026-09-15T00:00:00Z" initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  const next = button("Next");
+  expect(next.disabled).toBe(true);
+  expect([...next.classList].filter((cls) => cls.startsWith("disabled:")).sort()).toEqual([
+    "disabled:bg-muted", "disabled:cursor-not-allowed", "disabled:text-muted-foreground",
+  ]);
+});

@@ -213,7 +213,6 @@ export function OnboardingModal({
                 onClick={onNext}
                 disabled={nextDisabled}
                 loading={nextPending}
-                className="disabled:bg-background disabled:border-border disabled:text-muted-foreground disabled:border disabled:opacity-100"
               >
                 {nextLabel ?? m.newProject.modal.next}
                 {nextArrow && <ArrowRight className="size-4" aria-hidden />}

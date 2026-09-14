@@ -1640,3 +1640,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 생성 결과는 수동 지정 여부로, 설정 화면은 ts-dict 여부로 출력 조건을 나눴다. 렌더러를 공유해도 그 입력을 만드는 정책은 달랐다. 필요한 것은 선택 이력이 아니라 확정 포맷의 재현이다.
 - **그물**: 기존 테스트는 비-ts-dict 어댑터 생략을 정상으로 단언했고 기준 언어 줄만 비교했다. 전체 YAML 일치 테스트와 실제 createProject의 자동·수동 결과 대조가 누락을 잡았다.
 - **재발 방지**: `rg -n 'workflow:|renderSurfaceWorkflowStep\(|adapterName === "ts-dict"' lib/onboarding/workflow.ts 'app/(edit)/projects/actions.ts'`로 생산 경로를 대조했다. 생성·설정·표면 추가 모두 확정 adapter와 base를 출력하고, 기준 언어 변경 대기만 선언값을 우선한다. 전체 YAML 일치 테스트를 유지한다.
+
+### 2026-09-15 — 비활성 primary가 호출부에 따라 다른 형으로 보였다
+
+- **영역**: `components/ui/button.tsx` · `components/onboarding/modal.tsx`
+- **증상**: 공통 primary는 검정 면의 opacity만 낮췄고, 온보딩 [Next]는 흰 외곽선 형으로 덮어써 입력·셀렉트의 muted 비활성 어휘와 갈렸다.
+- **근본 원인**: variant 대신 모달 호출부가 비활성 색·테두리·불투명도를 소유했다. 정본에도 두 규칙이 각각 있어 비활성 형의 분기를 허용했다.
+- **그물**: 기존 disabled 여부·focus-ring 검사는 색의 일치를 보지 못했다. primary와 온보딩 ① 막힘 세 상태의 클래스 회귀 테스트 5건이 수정 전 red를 냈다. 실제 컴포넌트 렌더 DOM + 프로젝트 CSS의 브라우저 실측에서 세 상태 모두 hover 포함 `#f5f5f5` 면·`#737373` 글자·`not-allowed`·opacity `1`을 확인했다. 활성 면 `#171717`·hover `#0a0a0a`도 확인했다.
+- **재발 방지**: `pnpm exec vitest run components/__tests__/onboarding-modal.test.tsx components/__tests__/new-project.test.tsx components/__tests__/focus-ring.test.ts`로 공유 형과 포커스를 검사한다. `rg -n 'disabled:opacity-|disabled:bg-background' components app`로 호출부 예외를 찾는다. 수정 후 남은 opacity는 checkbox·radio 프리미티브뿐이며 primary 호출부에는 없다. CSS 순서가 바뀌면 computed style을 다시 잰다.
