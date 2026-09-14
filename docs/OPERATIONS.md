@@ -24,12 +24,32 @@ WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
   AND grantee IN ('anon', 'authenticated');
 ```
 
-**action 릴리스는 서버 계약과 함께 전환해야 한다.** 기존 `@malmoi-i18n-push-v1` 구현에는 `surfaceSlug`가 없어 새 서버가
-400으로 거부한다. `action.yml`의 `surface: default` 기본값은 **새 action 코드에서만** 작동한다.
-현재 T16 dev 검증은 이 체크아웃의 `pnpm push:local … --surface default --path-template '…'` 또는 검토된 새 action
-커밋을 사용한다. 생성 YAML은 릴리스 태그를 가리키므로 태그 갱신 전 그대로 실행해 호환된다고 판정하지 않는다.
-prod 배포 1을 진행한다면 T20의 action 릴리스 작업 중 이 호환성 전환을 앞당겨 조율해야 한다.
-이 체크포인트에서는 태그·대상 리포 workflow·prod DB를 변경하지 않는다.
+**action 릴리스는 서버 계약과 함께 전환해야 한다.** ⚠️ **`surfaceSlug`가 없는 것은 옛 태그
+`@l10n-push-v1`이다** — 그 구현이 보내는 페이로드를 새 서버가 400으로 거부한다. `action.yml`의
+`surface: default` 기본값은 **새 action 코드에서만** 작동하므로, 대상 리포가 옛 태그를 가리키는 동안은
+그 기본값이 존재하지 않는 것과 같다.
+
+**2026-09-14에 이름을 함께 갈았다** (외부 계약 전부): 브랜치 `malmoi-i18n/sync-<slug>` · PR·커밋 접두
+`malmoi-i18n:` · 마커 `[skip-malmoi-i18n]` · action 경로 `.github/actions/malmoi-i18n-push` ·
+태그 `malmoi-i18n-push-v1` · env `MALMOI_I18N_*` · 생성 파일명 `.github/workflows/malmoi-i18n.yml`.
+대상 리포가 보는 이름 어디에도 제품 이름이 없어 그 브랜치·PR이 무엇인지 알 수 없었던 것이 이유다.
+
+**마커 변경은 원래 루프를 만든다** — 이미 설치된 workflow는 `[skip-l10n]`을 검사하므로 새 pull이 만든
+커밋을 못 알아보고 push를 다시 돌린다. 같은 라운드에서 **prod 프로젝트를 전부 초기화**해 그 workflow의
+push 토큰이 먼저 죽었고, 그래서 전환 창이 닫혔다. **이 순서를 지키지 않으면 그 창이 열린다.**
+
+전환 순서:
+
+1. prod 프로젝트 데이터 초기화(옛 workflow의 push가 401이 된다) → `pnpm db:deploy`.
+2. `/merge`로 코드를 프로덕션에 올린다.
+3. **머지 직후** `malmoi-i18n-push-v1`을 그 main 커밋에 붙인다. 2와 3 사이에는 옛 태그를 쓰는 리포가
+   400을 받지만, 프로젝트가 없어 실제로 도달하는 리포는 없다.
+4. 프로젝트를 다시 만들고 결과 화면이 주는 새 YAML을 대상 리포에 붙인다. 옛
+   `.github/workflows/l10n.yml`·`l10n/sync-*` 브랜치·열린 PR은 그때 정리한다.
+5. 옛 태그 `l10n-push-v1`은 참조하는 리포가 0이 된 뒤에 지운다.
+
+dev 검증은 이 체크아웃의 `pnpm push:local … --surface default --path-template '…'`을 쓴다 — 생성 YAML은
+릴리스 태그를 가리키므로 **태그 갱신 전에 그대로 실행해 호환된다고 판정하지 않는다.**
 
 
 **나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
