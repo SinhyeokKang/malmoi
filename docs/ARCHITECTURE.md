@@ -14,6 +14,8 @@
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다.
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
+   표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
+   포맷·base 선언·적재 상태·키·로케일·번역은 TranslationSurface가 소유한다. 표면별 역할은 없다.
    ⚠️ **"애플리케이션이 유일한 방어선"이라는 전제가 한때 거짓이었다** (2026-09-09, sec-audit 발견 8 —
    ARCHITECTURE §6.6·CLAUDE.md). Supabase의 데이터 API가 기본으로 켜져 있고 `public` default ACL이 `anon`에 전 권한을 줘서,
    이 불변식을 100% 지켜도 **앱을 통하지 않는 경로**가 열려 있었다. REVOKE로 닫았지만 `supabase_admin`
@@ -225,9 +227,9 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
 
-**`--adapter ts-dict` / `Project.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML이 이 포맷에만 어댑터를 고정하는 이유도 그대로다: 1순위가 그것이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
+**`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML이 이 포맷에만 어댑터를 고정하는 이유도 그대로다: 1순위가 그것이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
 
-**base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `Project.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
+**base 로케일의 기본값은 추정이고 정본은 사용자 확정이다** (2026-09-07, SaaS 5단계). `pickBaseLocale`(`en` 우선, 없으면 사전순 첫 번째)이 **후보 화면의 기본값**을 주고, 온보딩이 키 수와 함께 보여 사용자가 고른 값을 `lib/onboarding/confirm.ts`가 재검증해(`base-locale-missing`) `TranslationSurface.baseLocale`에 저장한다. push는 `input.baseLocale ?? pickBaseLocale(...)`로 명시값을 우선한다.
 
 #### ⚠️ 경로 모양이 셋이고, `layout`·`writeStrategy`와 또 다른 축이다 (2026-09-02 3차 실측)
 
@@ -244,7 +246,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 세 가지 함정:
 
 1. **로케일 디렉터리 형태만 경로에 i18n 신호를 요구한다.** 디렉터리 이름이 로케일처럼 보이는 일이 파일 이름보다 훨씬 흔하다 — n8n의 `packages/@n8n/{ai,di,db}/package.json`이 4로케일 후보로 1순위가 됐다. 실측에서 이 형태의 진짜 카탈로그 7개는 **전부** 경로에 `locale(s)`·`i18n`을 갖는다. 편향이 한 방향이라 과소 탐지일 뿐 오탐을 만들지 않는다.
-2. **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 낸다** (`PRIMARY_NAMES` = `translation`·`translations`·`common`·`messages`·`default`, 그다음 로케일 수, 그다음 알파벳순). 알파벳순만 쓰면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집는다. `Project`가 포맷을 하나만 들기 때문이고, Ghost의 네임스페이스 5개 중 1개만 덮는 것은 그 대가다.
+2. **로케일 디렉터리에 파일이 여럿이면 디렉터리당 하나만 낸다** (`PRIMARY_NAMES` = `translation`·`translations`·`common`·`messages`·`default`, 그다음 로케일 수, 그다음 알파벳순). 알파벳순만 쓰면 zulip이 `legacy_stream_translations.json`을, automa가 `blocks.json`을 집는다. 탐지 후보 하나가 포맷 하나를 들기 때문이고, Ghost의 네임스페이스 5개 중 1개만 덮는 것은 그 대가다.
 3. **접두사는 오른쪽 구분자부터 시도한다** (`shared.splitLocaleSuffix`). `client.bs_BA`는 마지막 `_`에서 자르면 `BA`(대문자라 탈락)이고 그다음 `.`에서 `bs_BA`가 나온다 — 왼쪽부터 자르면 `bs_BA`를 `_`로 다시 쪼갠다.
 
 #### ⚠️ 맨 3글자 이름은 로케일 앵커가 되지 못한다 (2026-09-02 3차 실측)
@@ -289,7 +291,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 |---|---|---|
 | a | `json-catalog.read` | `ReadResult.nestedByPath` (파일별 관측) |
 | b | `buildPushPayload` | `format.nestedByPath` — 없으면 **필드를 만들지 않는다**(빈 객체는 "전부 flat"으로 읽힌다) |
-| c | `applyPush` | `Project.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
+| c | `applyPush` | `TranslationSurface.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
 | d | `loadPullState`의 `select` → `formatFromProject` | `DetectedFormat.nestedByPath`. Json 컬럼이라 **boolean이 아닌 값은 버린다** |
 | e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백 |
 
@@ -442,7 +444,7 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 
 ⏸️ **보류 중인 후속 하나 — 키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {separator, style}`).
 2026-09-04에 보류했고 근거는 **실측이 고칠 대상을 줄였다는 것**이다: 손실 2건 중 musicblocks는
-`Project.nestedByPath` 배선으로 해소됐고 **도입 대상 bugshot-2는 `ts-dict`라 효과가 0이다**(구분자 고정).
+`TranslationSurface.nestedByPath` 배선으로 해소됐고 **도입 대상 bugshot-2는 `ts-dict`라 효과가 0이다**(구분자 고정).
 남은 것은 siyuan 하나인데 대가가 스키마 컬럼 + 5홉 배선 + 신규 모듈 + 어댑터 8개 파일이다.
 **되살릴 조건은 비-점 구분자 리포가 실제 도입 대상이 될 때**다(i18next의 `:` namespace 구분자가 같은
 축이고 코퍼스에 8개 있다).
@@ -532,7 +534,7 @@ clone하지 않는다.
 순서 — ⚠️ **0단계가 GitHub 앞에 있다**: `Project.installationId`가 `null`이면 부르기 전에 던진다(`lib/pull/run.ts`·`trigger.ts`). App이 설치되지 않은 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 값이 `createGitClient`의 인자다.
 
 1. `GET /repos/{o}/{r}/git/ref/heads/{base}` → base head SHA
-2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `Project.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
+2. `GET /repos/{o}/{r}/git/trees/{sha}?recursive=1` → 기존 로케일 파일의 blob SHA. 경로는 `TranslationSurface.pathTemplate`이 정한다(`per-locale`은 `{locale}` 치환, `multi-locale`은 글롭 매칭 — §1.1)
 2.5 **여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — 어느 방식이든 write에 원본이 필요하다. 수술적은 **치환 대상**이(§1.4), 재생성은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프)이 거기서 온다(§1.1). **2026-09-04까지 재생성은 이 단계를 건너뛰었고**, 그 대가가 재생성 리포 71개 중 30개의 "값 편집 0건인데 모든 줄이 바뀌는" diff였다 (§14)
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
@@ -554,7 +556,7 @@ clone하지 않는다.
 ### 함정
 
 - **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `l10n/sync`가 있으므로 이 층은 항상 걸린다.
-- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (2026-09-05, `syncBranchFor`). 상수 `l10n/sync` 하나였을 때는 **같은 리포를 가리키는 Project 둘이 서로를 force update로 덮었다.** 한 리포에 번역 표면이 둘이면 Project가 둘이 되는 것이 정책이고(PRODUCT §7.1) bugshot-2가 정확히 그 모양이라(`_locales` 4키 + `ts-dict` 903키), 이 이름이 갈리지 않으면 첫 다중 프로젝트에서 터진다. 그때의 실물 검증은 순차 실행으로 피해 갔다.
+- **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `l10n/sync-<slug>`** (`syncBranchFor`). 같은 리포를 가리키는 기존 Project 둘은 계속 별도 브랜치를 쓴다. 새 다중 표면 모델은 Project 하나의 활성 표면을 같은 snapshot에서 렌더해 tree·commit·PR 하나로 보낸다(PRODUCT §7.1). 표면별 브랜치는 만들지 않고 기존 Project도 자동 병합하지 않는다.
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
   - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: l10n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
   - 아래 서술의 `l10n/sync`는 전부 이 이름을 가리킨다.
@@ -847,7 +849,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 `buildPushPayload`·`selectLocaleFiles`·`pickBaseLocale`이 **호출부가 아니라 `lib/`에 있다.** 전에는 `scripts/push-local.ts`의 리터럴이라 계약이 넓어져도 컴파일러가 붙잡을 지점이 없었고, 필수 필드 둘이 늘었는데 typecheck·test가 전부 green이었다 (POSTMORTEM 2026-08-31). **스키마(zod)와 소비자(`applyPush`)는 타입으로 이어져 있었는데 생산자만 끊겨 있었다.**
 
 - **`selectLocaleFiles`가 "어댑터에게 무엇을 먹이는가"를 정한다.** 축은 `layout`이다(`writeStrategy`가 아니다 — 그쪽은 write 방식과 원본 부재 시 처리를 정한다). 먹이지 않으면 어댑터는 없는 것과 같다 (POSTMORTEM 2026-09-02).
-- **`pickBaseLocale`은 추정이고 정본이 아니다** — `en` 우선, 없으면 사전순 첫 번째. 🔒는 2026-09-07에 해소됐다: 온보딩이 사용자에게 확정받아 `Project.baseLocale`에 저장하고 push가 `input.baseLocale ?? pickBaseLocale(...)`로 그것을 우선한다. 이 함수는 **후보 화면의 기본값**으로 남았다.
+- **`pickBaseLocale`은 추정이고 정본이 아니다** — `en` 우선, 없으면 사전순 첫 번째. 🔒는 2026-09-07에 해소됐다: 온보딩이 사용자에게 확정받아 `TranslationSurface.baseLocale`에 저장하고 push가 `input.baseLocale ?? pickBaseLocale(...)`로 그것을 우선한다. 이 함수는 **후보 화면의 기본값**으로 남았다.
 - ⚠️ **그 위에 층이 하나 더 있다** — `lib/push/assemble.ts`의 `assemblePushInput`이 `selectLocaleFiles` →
   `adapter.read` → base 판정을 한 묶음으로 들고, `scripts/push-local.ts`와 온보딩의 첫 적재가 **둘 다 이걸
   지난다**(셋을 직접 부르지 않는다). 생산자가 하나인 이유와 같은 이유로 그 입구도 하나여야 한다.
@@ -898,7 +900,7 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 **배열형 `$transaction` 하나가 Locale·StringKey·Translation·KeyRef·Project를 전부 커밋한다.**
 전에는 둘이었다 — 키 id를 확보하려고 중간에 `stringKey.findMany`를 한 번 더 쳤기 때문이다. 두 번째가
-실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`Project.lastCommit*`은 옛 상태인
+실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`TranslationSurface.lastCommit*`은 옛 상태인
 혼합 DB**가 남는다.
 
 - **삽입 id를 JS에서 만들어 들고 있으면 그 조회가 없어진다.** 이미 `randomUUID()`로 만들고 있었고
@@ -962,17 +964,18 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
-**네 검사 모두 거부이지 병합이 아니다** — 어긋난 요청을 어떻게든 반영하려 들면 그게 diff 동기화가 되어 코어 원칙을 깬다. 전부 **409**로 떨어뜨린다.
+**다섯 검사 모두 거부이지 병합이 아니다.** 전부 **409**로 떨어뜨린다. 표면을 조회한 뒤 포맷·역행을 검사한다.
 
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
 | `Project.archivedAt` ≠ null | DB 컬럼 | **보관.** ⚠️ **판정이 넷 중 맨 앞이다**(7단계, `checkArchived`) — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 나머지 셋과 달리 "워크플로를 뗀다"다 |
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
+| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트·비활성 모두 동일 본문 `{"error":"surface mismatch"}`. 목록을 노출하지 않는다 |
 | `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
-| `commitAt` < `Project.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
+| `commitAt` < `TranslationSurface.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
-`Project.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
+`TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
 후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
 `adapter:`·`base-locale:`을 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
 그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
@@ -981,7 +984,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 - **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
   키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
-- ⚠️ **`baseLocale`은 `Project.declaredBaseLocale`과도 대조한다** (2026-09-09, 6b-3).
+- ⚠️ **`baseLocale`은 `TranslationSurface.declaredBaseLocale`과도 대조한다** (2026-09-09, 6b-3).
   그 컬럼은 OWNER가 설정 화면에서 세운 **일회용 허가**("다음 CI push가 이 base를 가져오면 받아들이겠다")이고,
   없으면 기준 로케일을 바꾸는 순간 그 리포의 push가 **영영 409**다 — 워크플로를 고쳐도 저장값은 옛 base라
   되돌릴 경로가 DB 직접 수정뿐이다. **느슨해지는 것은 base 하나이고** `adapter`·`pathTemplate`은 그대로
@@ -1468,7 +1471,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - `disconnectGithub` → `/` **layout**. slug를 모르는 자리이므로 좁힐 수단이 없다.
 - `archiveProject`·`unarchiveProject` → `/` **layout** (7단계). 보관은 목록 행의 배지·사이드바·Home·번역 화면을 **한꺼번에** 바꾼다 — 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다.
 
-- `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `Project.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
+- `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `TranslationSurface.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
   - ⚠️ **접두로는 못 덮는다** (2026-09-11 등재). `/projects/<slug>/settings` + `/projects` 둘만 무효화하면 **Home과 번역 화면이 캐시된 "준비 안 됨"으로 남는다** — 사용자는 방금 "N개 키를 적재했어요"를 읽고 들어가서 빈 화면을 본다. 목록 화면은 `/projects` 접두라 갱신되므로 **증상이 화면마다 갈려** 캐시 문제로 안 보이고 적재 실패로 읽힌다. 이 절의 첫 문장이 말하는 부류 그대로다: 무효화 범위는 경로가 아니라 **"이 값을 보이는 화면 집합"**이고, readiness는 그 집합이 `/projects/<slug>` 서브트리 전체다.
 
 **나머지는 좁힌 채 둔다** — 멤버·초대 셋은 그 상태를 멤버 화면만 보이고, `rotatePushToken`·`connectRepository`·`updateRepositorySettings`는 설정만 보이며, `createProject`는 아직 그 프로젝트의 화면이 없어 `/projects`(목록) 하나다. **화면을 옮기거나 새로 만들면 그 화면이 보이는 상태를 쓰는 Action의 범위를 함께 본다**(grep: `revalidatePath(`).
@@ -1707,6 +1710,30 @@ PNG/JPEG 시그니처만 검사하고 본문·EXIF는 그대로 저장한다. �
 `postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
 
 ## 7. Supabase / Prisma
+
+### Multi-surface 단계 A (T16, 2026-09-14)
+
+현재는 `TranslationSurface`와 nullable `surfaceId`, `Project.defaultSurfaceId`를 더하고 기존 데이터를
+`default` 표면으로 backfill했다. Project 옛 포맷·적재 컬럼과 Locale PK·StringKey unique·Translation unique는
+그대로 남는다. 런타임은 Surface만 읽고 쓰며 dual-write하지 않는다. **Add surface는 닫혀 있다.**
+동일 키·언어 코드의 표면 공존은 단계 B(T17)의 NOT NULL·제약 교체 뒤에만 가능하다.
+
+단계 A → 코드 배포 → 단계 B로 나누는 이유는 옛 서버가 살아 있는 동안 옛 제약·nullable 쓰기를
+보존하기 위해서다. 단, **A 직후부터 새 코드 활성화 전까지 옛 writer를 반드시 멈추고 drain한다**.
+그 창에 옛 writer가 남긴 null 행은 새 쿼리에서 빠지고, 옛 Project 상태도 Surface보다 앞설 수 있다.
+재백필은 T17까지 미루지 않고 새 writer 재개 전에 수행한다(OPERATIONS의 표면 전환 절차).
+dev 스키마는 `/push` 전, prod 스키마는 해당 `/merge` 직전에 적용한다.
+
+Publish는 활성 표면을 slug 코드포인트 순으로 처리하고 하나의 base snapshot을 공유한다.
+resolved path 소유권 충돌은 렌더·GitHub 쓰기 전에 거부하며 파일은 path 순으로 평탄화한다.
+tree·commit·PR·SyncRun·`lastPulledAt`은 프로젝트당 하나다. 표면 하나가 실패해도 완료 기준을 전진시키지 않는다.
+1층 최대 `updatedAt`은 **비활성 표면 포함 프로젝트 전체**이고, 화면 미발송·진행률·신규 키는 비활성 표면을 뺀다.
+`pnpm test:projects:postgres`가 backfill·복합 FK·A push 전후 B snapshot·미발송 술어 일치를 실제 DB에서 검사한다.
+
+2026-09-14 로컬 `lib/pull/__tests__/surfaces.test.ts` 실측: JSON 2표면·각 1키 fixture의
+정방향/역방향 렌더·해시 비교와 충돌 거부까지 합계 **8.81ms**, 두 번째 blob 실패 경로 **0.63ms**.
+GitHub은 fake이므로 **네트워크·대량 데이터·60초 예산 통과의 근거가 아니다**. 실제 blob 읽기 수는
+표면 합산이고 동시성 8·route `maxDuration = 60`은 유지한다. 실물 왕복/예산 검증은 T20에서 수행한다.
 
 **Prisma 7은 접속 URL이 스키마에 없다.** `url`·`directUrl` 모두 제거됐고 두 곳으로 갈렸다 — 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432 session), 런타임은 `lib/db.ts`의 driver adapter(`DATABASE_URL`, 6543 transaction). 클라이언트는 `generated/prisma/`로 생성되며 gitignore된 산출물이라 CI가 typecheck 전에 `db:generate`를 돌린다.
 

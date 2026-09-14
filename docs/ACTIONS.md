@@ -35,7 +35,7 @@ on:
 # 같은 프로젝트에 두 push가 동시에 들어오면 뒤가 이기는 것이 맞다 —
 # strict라 마지막 상태가 진실이고, 중간 결과를 남길 이유가 없다.
 #
-# ⚠️ **그룹 이름에 프로젝트 slug가 들어간다.** 한 리포에 번역 표면이 둘이면 Project도 둘이고
+# ⚠️ **그룹 이름에 프로젝트 slug가 들어간다.** 기존 동일 리포의 별도 Project가 있으면
 # (PRODUCT §7.1) 워크플로 스텝도 둘인데, `github.ref`만 쓰면 그 둘이 같은 그룹에 들어가
 # `cancel-in-progress`가 한쪽을 죽인다 — 그 표면은 영영 적재되지 않고 취소는 실패로 보이지 않는다.
 # `l10n/sync-<slug>` 브랜치 이름에 slug를 넣은 것과 같은 이유다.
@@ -64,6 +64,8 @@ jobs:
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
+          surface: default
+          path-template: "i18n/{locale}.json"
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
@@ -96,6 +98,26 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 ⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
 대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다).
+
+### 표면별 입력과 추가 step
+
+`surface`는 서버에 등록된 slug이며 action 기본값은 `default`다. `path-template`은 등록된 후보를 정확히 고른다.
+CLI의 대응 옵션은 `--surface`·`--path-template`이다. 서버의 `surfaceSlug`는 성공·실패 보고 모두 필수이며 기본값이 없다.
+없는·비활성·다른 프로젝트 표면은 동일한 `409 {"error":"surface mismatch"}`다. 따라서 409 가드는 보관 → 프로젝트 slug
+→ 표면 → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
+T16에서는 Add surface UI가 닫혀 있고, 기존 릴리스 태그는 새 필드를 보내지 않는다.
+[배포 1 writer 전환](./OPERATIONS.md#다중-표면-배포-1--additive-migration과-writer-전환) 뒤에만 이 예시를 실행한다.
+
+<!-- additional-surface-step -->
+```yaml
+      - uses: SinhyeokKang/malmoi/.github/actions/l10n-push@l10n-push-v1
+        with:
+          push-token: ${{ secrets.PUSH_TOKEN }}
+          project: order-check
+          surface: web
+          path-template: "web/{locale}.json"
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
+```
 
 ### 리포마다 달라지는 것
 
@@ -171,7 +193,7 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 
 ⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
 
-응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 넷이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 셋은 판정 순서대로 slug 오배송(`expected/got`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 열린 PR 경고는 차단이 아니다
 

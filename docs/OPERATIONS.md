@@ -1,5 +1,37 @@
 # OPERATIONS — 운영 절차
 
+## 다중 표면 배포 1 — additive migration과 writer 전환
+
+T16은 Add surface를 열지 않는다. 옛 Locale PK·StringKey unique와 nullable `surfaceId`는 T17에서 교체한다.
+dev는 `/push` 전, prod는 별도 `/merge` 1단계에서 해당 DB 마이그레이션을 적용한다. prod를 dev 푸시 때 미리 바꾸지 않는다.
+
+1. 대상 환경의 CI push·첫 적재·편집 등 옛 writer를 중지하고 진행 중 요청이 끝난 것을 확인한다.
+2. `20260914042000_add_translation_surfaces`를 적용한다. 기존 Project마다 `default` 표면과 자식 FK가 생긴다.
+3. 마이그레이션과 코드 전환 사이에 옛 writer가 실행됐다면, **새 writer를 활성화하기 전에**
+   `prisma/maintenance/backfill-surfaces.sql`을 같은 DB에서 실행한다. 이 파일은 테이블을 잠그고 옛 Project의
+   포맷·적재 상태 및 null 자식을 재백필한다. 새 Surface 상태가 Project보다 앞섰거나 기본 외 표면이 있으면 중단한다.
+   새 코드 활성화 뒤에는 실행하지 않는다 — dual-write가 아니므로 Project의 옛 값이 더 이상 정본이 아니다.
+4. 아래 SQL 결과가 모두 0인지, 마이그레이션 drift가 없는지 확인한 뒤 새 코드와 새 payload 생산자를 활성화한다.
+5. 기존 URL redirect, 편집, 프로젝트 단위 Publish를 dev에서 검토한다. T17의 파괴적 제약 교체는 별도 배포다.
+
+```sql
+SELECT 'Locale' AS model, count(*) FROM "Locale" WHERE "surfaceId" IS NULL
+UNION ALL SELECT 'StringKey', count(*) FROM "StringKey" WHERE "surfaceId" IS NULL
+UNION ALL SELECT 'Translation', count(*) FROM "Translation" WHERE "surfaceId" IS NULL
+UNION ALL SELECT 'Project', count(*) FROM "Project" WHERE "defaultSurfaceId" IS NULL;
+SELECT count(*) FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
+  AND grantee IN ('anon', 'authenticated');
+```
+
+**action 릴리스는 서버 계약과 함께 전환해야 한다.** 기존 `@l10n-push-v1` 구현에는 `surfaceSlug`가 없어 새 서버가
+400으로 거부한다. `action.yml`의 `surface: default` 기본값은 **새 action 코드에서만** 작동한다.
+현재 T16 dev 검증은 이 체크아웃의 `pnpm push:local … --surface default --path-template '…'` 또는 검토된 새 action
+커밋을 사용한다. 생성 YAML은 릴리스 태그를 가리키므로 태그 갱신 전 그대로 실행해 호환된다고 판정하지 않는다.
+prod 배포 1을 진행한다면 T20의 action 릴리스 작업 중 이 호환성 전환을 앞당겨 조율해야 한다.
+이 체크포인트에서는 태그·대상 리포 workflow·prod DB를 변경하지 않는다.
+
+
 **나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
 [ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.
 

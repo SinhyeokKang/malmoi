@@ -68,7 +68,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 
 ⚠️ **뒤의 둘은 화면도 Action도 갈려 있다** (6b-5, 2026-09-09). base branch는 `/settings`의
 `updateRepositorySettings`가 `Project.baseBranch`를 **즉시** 쓰고, 기준 로케일은 `/locales`의
-`updateBaseLocale`이 **선언**(`Project.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때
+`updateBaseLocale`이 **선언**(`TranslationSurface.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때
 현실이 된다 (design §3.13). 인가는 둘 다 `project:settings`다 — ⚠️ **`updateRepositorySettings`는
 선언 컬럼을 아예 모른다**: 인자를 optional로 두면 서버가 "무엇을 안 보냈나"를 추측하게 되고
 그것이 malmoi#20의 모양이다.
@@ -85,6 +85,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 
 번역 편집자가 **알 필요 없는 것**: `adapterName` · `pathTemplate` · `layout` · `writeStrategy` ·
 `nestedByPath` · blob SHA · Git Data API · OAuth 토큰과 installation token의 차이.
+단, 표면이 둘 이상이면 `pathTemplate`은 표면 선택기의 보조 정보·tooltip으로 노출된다.
 
 ## 4. 범위
 
@@ -235,15 +236,21 @@ IdP에서 검증받았어야 하고, 붙이려면 기존 provider의 OAuth를 **
 
 ## 7. 설계 결정
 
-### 7.1 1 Project = 1 repository + 1 translation surface
+### 7.1 1 Project = 1 repository + N non-overlapping surfaces
 
-한 리포에 번역 표면이 둘이면 **Project를 둘로** 만든다. 하나의 Project가 여러 어댑터·여러 브랜치를
-관리하면 단일 소유자·결정성·고정 PR 모델이 빠르게 무너진다.
+Project는 리포·base 브랜치·멤버·push 토큰·Publish를 소유한다. `TranslationSurface`는 어댑터·경로·
+기준 로케일·적재 상태와 키·번역·로케일을 소유한다. 표면별 역할과 토큰은 만들지 않는다.
+Publish는 모든 활성 표면을 같은 base snapshot에서 렌더하고 **tree 하나·commit 하나·PR 하나**로 보낸다.
+resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합·표면별 PR은 없다.
 
-⚠️ **그래서 sync 브랜치가 프로젝트별이다** — `syncBranchFor(slug)` → `l10n/sync-<slug>` (2026-09-05). 그 전엔 `lib/pull/trigger.ts`의 상수 `"l10n/sync"` 하나라 같은 리포를 가리키는 두 Project가
-**force update로 서로를 덮었다.** 그때는 순차로 돌려 피했다. bugshot-2가 정확히 그
-모양이다(`_locales` 4키 + `ts-dict` 903키). 소비자(composite action·스모크·ACTIONS.md)는 2026-09-06에
-따라왔다 — 하루 동안 action의 PR 경고가 옛 이름을 조회해 항상 "없음"이었다.
+§7.3의 탐지기 순위는 그대로다. 기본 선택은 1순위이고 키 수로 재정렬하지 않는다.
+기존 프로젝트는 `default` 표면으로 이관하고 새 프로젝트는 확정 경로에서 slug를 유도한다.
+기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
+sync 브랜치는 계속 `l10n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
+
+**현재 구현 경계는 T16(배포 1)**이다. 표면 단위 읽기·push·편집과 프로젝트 단위 Publish는 이관했지만
+Add surface는 닫혀 있다. 옛 Locale PK·StringKey unique를 보존하므로 같은 이름의 키·로케일을 가진
+표면 추가는 T17 제약 교체 뒤에만 가능하다. T17–T21은 별도 검토·배포 라운드다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
@@ -412,7 +419,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
    것"뿐이다 — 로케일별 진행률 대비, 그리고 최근 활동.
 3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (§6). ✅ **그래서 `Home`이 그 부분집합으로 먼저
    섰다** (6b-6) — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
-   `Project.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
+   `TranslationSurface.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
    "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
 4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
    화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
@@ -443,7 +450,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      바꾼 직후 사이드바가 옛 숫자를 보이면 **방금 워크플로를 돌린 개발자가 적재 실패로 읽는다**(이 리포가
      반복해 밟은 "조용히 틀린다"다). 게다가 갱신 트리거의 자연스러운 정의(`applyPush`의 끝 ·
      `saveTranslation` · `revalidatePath`)가 곧 쓰기 경로여서 위쪽 갈래의 캐시 무효화와 같아진다.
-   - ⚠️ **파생값의 사본을 늘리는 것은 코어 원칙과 마찰한다.** `Project.nestedByPath`는 **관측값**이라
+   - ⚠️ **파생값의 사본을 늘리는 것은 코어 원칙과 마찰한다.** `TranslationSurface.nestedByPath`는 **관측값**이라
      사본이 아니지만(ARCHITECTURE §1.35), 카운트는 진실에서 계산되는 값이라 **갈릴 수 있는 자리를 새로
      만드는 것**이다.
    - **정당해지는 조건 셋** — 이 중 하나가 관측되면 다시 본다: ① 카운트가 **행 수에 비례해** 느려지는
@@ -500,8 +507,8 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 무효 토큰·미발급·없는 프로젝트가 전부 **401 하나**다 (⚠️ 인증을 통과한 뒤의 slug 오배송은 **409이고 본문에 `expected` slug가 실린다** — 그 시점엔 이미 그 프로젝트의 토큰을 든 호출자이므로 새로 새는 정보가 없다)(404 없음 — 프로젝트 존재를 노출하지 않는다).
 
 - **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(§5.6) 해시 저장 규칙이 한 곳에 모인다.
-- 대상 리포의 composite action은 **이미 `project`·`push-token` input을 갖는다**(`docs/ACTIONS.md`) —
-  **서버 쪽만 바꾸면 되고 대상 리포는 secret 값만 교체**한다.
+- composite action은 `project`·`push-token`에 `surface`(기본 `default`)·`path-template`을 더한다.
+  서버의 `surfaceSlug`는 필수다. 첫 workflow와 추가 step 모두 확정된 표면·경로를 싣는다.
 - GitHub OIDC는 쓰지 않는다. 공유 시크릿이 사라지는 것은 매력적이지만 JWKS 검증 + claim 대조
   (`repository`가 그 Project의 리포인가) 구현이 늘고, 대상 리포 워크플로에 `id-token: write` 권한이
   필요해진다. **토큰 유출이 실제 문제가 되면** 그때 옮긴다.
@@ -510,12 +517,10 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 "서버가 아는 프로젝트와 다른가"였고 지금은 **"이 토큰이 그 프로젝트의 것인가"** 다. 역행 거부
 (`commitAt`)는 그대로다.
 
-⚠️ **거부가 넷이고 호출 순서가 이렇다 — `checkArchived`(7단계, 맨 앞) · 오배송 · `checkFormat`(2026-09-07) · 역행.** 같은 프로젝트인데 **다른 번역 표면**을 보내는
-push도 409다. `applyPush`가 페이로드 포맷으로 포맷 컬럼 셋을 덮으므로, 자동 후보의 YAML(=`adapter:`를
-박지 않는다)로 도는 CI가 1순위 표면을 보내면 **2순위를 확정한 프로젝트의 키가 전부 orphan된다.** 전제
-"자동 후보면 탐지가 같은 답을 낸다"는 1순위에만 참이고, 한 리포에 표면이 둘인 `i18n-format-check`가
-실물이다(§7.1). 상세와 대가는 ARCHITECTURE §5.5.5에 있다 — **정당한 이전도 409가 되는데 그 재설정 UI는
-아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다). 복구는 손으로 포맷 컬럼을 고치는 것뿐이다.
+인증 뒤 보관·프로젝트 오배송·표면 조회·`checkFormat`·커밋 역행 순으로 거부한다.
+없는·다른 프로젝트의·비활성 표면은 모두 동일한 **409 `surface mismatch`**다. 목록을 노출하지 않는다.
+포맷·커밋 기준·base 변경 선언·실패 보고는 대상 Surface에만 적용한다. `path-template`을 고정해
+탐지 2순위를 선택해도 CI가 1순위로 바꾸지 않게 한다. 정당한 경로 이전도 409이며 재설정 UI는 아직 없다.
 
 ### 7.9 프로젝트 수명주기 — 보관까지만 만든다
 
@@ -573,14 +578,6 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
   ⚠️ **"권한을 더하면 재승인 대기 중 기존 설치의 pull이 죽는다"는 미실측이라 근거로 쓰지 않았다** —
   GitHub은 승인 전까지 옛 권한으로 계속 동작하는 것으로 알려져 있다
 - **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
-- **한 리포에 프로젝트가 둘일 때 Actions secret 배선** (2026-09-07, 5단계 T8이 남겼다) — 토큰이
-  프로젝트를 정하므로 `PUSH_TOKEN` secret 하나로 둘을 먹일 수 없다. 워크플로에 **스텝 둘 + secret 둘**이
-  필요하고, prod에 그 모양이 실재한다(`i18n-format-check` → `format-check-code`·`format-check-yaml` —
-  §7.1의 "한 리포에 표면이 둘"이다). **그 리포에 워크플로를 붙이는 시점에 결정한다** — 지금 정하면
-  실제 필요 없는 이름 규칙을 먼저 박는다
-  - ✅ **그 모양에서 이미 닫은 것 둘** (2026-09-07 리뷰): ① `concurrency.group`에 slug가 들어간다 —
-    `github.ref`만 쓰면 같은 커밋의 두 스텝이 같은 그룹에서 `cancel-in-progress`로 서로를 죽이고
-    **그 표면은 영영 적재되지 않는데 취소는 실패로 보이지 않는다.** ② 스텝 둘이 서로의 포맷을 보내는
-    오설정은 `checkFormat`이 409로 막는다(§7.8) — 전에는 조용히 키를 전부 orphan시켰다
-
-
+- **표면 여러 개의 Actions 배선은 확정했다** — 한 Project의 여러 step이 `PUSH_TOKEN` 하나를
+  공유하고 각각 `surface`·`path-template`을 명시한다. concurrency는 프로젝트 단위다.
+  기존에 같은 리포를 가리키던 여러 Project는 자동 통합하지 않으며, 그 상태를 유지하면 토큰도 각각이다.

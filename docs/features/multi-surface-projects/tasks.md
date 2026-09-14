@@ -1,5 +1,29 @@
 # Multi-surface projects — Tasks
 
+## T16 체크포인트 (2026-09-14)
+
+사용자 요청으로 **T1–T16 구현·정본 최신화 뒤 중단**한다. 다음 세션에서 전수 검토·수정·dev 배포한 뒤 T17–T21을 진행한다.
+기능 디렉터리는 아직 지우지 않는다. Add surface, 단계 B 제약 교체, action 태그 릴리스, 실물 다중 표면 왕복은 미진행이다.
+
+- [x] T1–T2: 정본 계약과 red 순수 인터페이스 테스트.
+- [x] T3–T4: dev additive migration/backfill·drift·권한 검사, 실제 PostgreSQL과 하네스 계약.
+- [x] T5–T9: 도메인·인가·필수 payload 생산자·표면 가드·push 격리.
+- [x] T10–T13: 활성 표면 pull, 단일 snapshot/tree/commit/PR, 프로젝트 단위 run·skip 유지.
+- [x] T14–T16: route 이관·legacy redirect·표면 범위 저장/집계·선택기·Home/목록 링크.
+- [ ] 수동 게이트: 시안 대조, 직접 진입·새로고침·뒤로가기·브라우저 QA. Claude Code에서 수행한다.
+- [ ] push 게이트: build 포함 전체 검증과 dev 배포. 이 체크포인트는 커밋까지만 수행한다.
+
+**검증 범위 보정:** 단계 A의 옛 Locale PK·StringKey unique 때문에 T15의 동일 key/locale 이름 공존은
+실 DB에서 아직 불가능하다. 이번 PostgreSQL 검증은 이름이 다른 A/B의 격리와 교차 FK 거부이며,
+동일 이름 공존은 T17에서 검증한다. 별도 PostgreSQL 스위트/include를 늘리지 않고 기존 integration 파일에 넣었다.
+배포 1 old-writer 창의 재백필은 T17까지 미루지 않는다. `prisma/maintenance/backfill-surfaces.sql`의 실행 전제와
+태그 호환성 전환은 OPERATIONS의 배포 1 절을 따른다. dev만 배포하고 prod는 별도 `/merge` 요청 전까지 유지한다.
+
+최종 자동 검증: Vitest **3,622 passed / 0 failed**, `tsc --noEmit --incremental false` 통과,
+격리 PostgreSQL **18 passed**, `sync:agents:check`·`git diff --check` 통과.
+dev는 **19 migrations up to date / empty drift**, null 자식·null 기본 표면·새 테이블 공개 권한 모두 0.
+`pnpm build`, push, 브라우저 시안 대조와 실물 다중 표면 왕복은 실행하지 않았다.
+
 각 단계는 앞 단계의 검증이 끝난 뒤 진행한다. 스키마 변경은 `/db`, 순수 인터페이스는 `/tdd interface`, 구현은
 `/implement`가 받는다.
 
@@ -123,7 +147,7 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 
 - 모든 ORM/raw SQL 조건, unnest 열과 FK 입력에 `projectId` + `surfaceId`를 넣는다.
 - orphan/unorphan, strict Translation overwrite, KeyRef 교체가 대상 표면만 바꾸게 한다.
-- ⚠️ 이 커밋에서 **Project 옛 컬럼을 지우지 않는다.** 제거는 배포 2의 T15다. 그때까지 Project 컬럼은 읽지 않을 뿐
+- ⚠️ 이 커밋에서 **Project 옛 컬럼을 지우지 않는다.** 제거는 배포 2의 T17이다. 그때까지 Project 컬럼은 읽지 않을 뿐
   남아 있고, dual-write는 하지 않는다(backfill된 Surface 행이 정본이다).
 - 검증: `lib/push/__tests__/flow.test.ts`의 SQL 인자 캡처가 **먼저 red**였고, unnest 컬럼 목록과 값 배열 개수가
   새 열 하나만큼 늘어난 것을 단언한다.
@@ -282,7 +306,9 @@ destructive)을 지키려면 제약 교체가 코드 뒤에 와야 하고, 두 �
 - `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:projects:postgres`를 통과한다.
 - 다섯 adapter 계약을 모두 재검한다.
 - ⚠️ **`@l10n-push-v1` 태그를 옮긴다.** 대상 리포는 불변 태그를 보므로 그 전까지 `surface` input이 도달하지 않는다.
-  릴리스 뒤 대상 리포 여섯의 workflow에 `surface`를 명시한다(기본값이 `default`라 그 전에도 깨지지 않는다).
+  릴리스 뒤 대상 리포 여섯의 workflow에 `surface`를 명시한다. **기본값 `default`는 새 action에서만 존재한다.**
+  기존 태그는 필수 `surfaceSlug`를 보내지 않아 새 서버에서 400이다. 배포 1을 prod로 보낸다면 호환성 전환을
+  이 단계까지 미루지 않고 서버와 함께 조율한다. 현재 dev 체크포인트는 새 체크아웃 CLI로 검증하고 태그는 유지한다.
 - `/l10n-roundtrip`의 **전제 3("그 리포를 가리키는 Project가 하나뿐")을 개정**하고 스킬 입력에 surface/pathTemplate을
   추가한다. Codex 미러(`.agents/skills/source-command-l10n-roundtrip/SKILL.md`)도 같이 고친다.
 - 폐기용 다중 표면 리포(`bugshot-i18n-test` — ts-dict 903키 + `_locales` 4키)에서 두 Surface push → 각 편집 →

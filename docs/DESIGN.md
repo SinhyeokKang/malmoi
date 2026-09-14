@@ -863,6 +863,15 @@ font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올
 
 ## 7. 접근성
 
+### 표면 선택기 (T16)
+
+Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이드바에는 두지 않는다.
+활성 표면이 하나면 렌더하지 않고, 둘 이상이면 빈 표면에서도 남겨 전환할 수 있게 한다.
+표시는 경로의 마지막 고정 디렉터리 조각을 **sans**로 낸다(`default`·충돌 suffix는 라벨이 아니다).
+전체 path template은 tooltip, 항목별 미발송 수는 배지다. 접근 이름은 `Translation surface`.
+선택기는 번역 툴바·칩과 같은 pending·이동 함수를 공유한다. 유효한 ns/locales/q는 보존하고
+유효하지 않은 필터는 URL에서도 제거한다. Publish는 표면과 무관한 프로젝트 전체 `Send changes (N)`이다.
+
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 남은 자리는 **표 헤더**(`bg-muted/50`)·**값 칩**·**코드 블록**이다(사이드바는 8-2부터 캔버스 위라 이 목록에 없다).
 - **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 DESIGN §6.5(규약 6)·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
   - ⚠️ **"상수에 숨기지 말 것"은 사라지지 않았다 — 자리가 `ui/` 안으로 옮겨졌을 뿐이다** (2026-09-08 실측). 스캐너는 **여는 태그의 소스**를 읽으므로 링을 `cva` 베이스나 공유 `fieldClass`에 모으면 그 파일이 통째로 검사 밖이 된다. 그래서 raw 태그를 쓰는 프리미티브 셋(`Button`·`Input`·`Textarea`)이 각자의 태그에 셋을 **리터럴로** 적는다. ⚠️ **`Select`·`Radio`는 2026-09-13에 Radix로 옮겨 소스에 raw 태그가 없다** — 그 둘은 스캐너가 못 보므로 `focus-ring.test.ts`가 `RADIX_FIXTURES`라는 **두 번째 목록**을 들고 렌더된 트리거의 `classList`로 링을 본다. 그 목록이 비면 Radix 프리미티브의 링이 통째로 방어선 밖이 된다. 같은 이유로 `Button`에 `asChild`(Slot)를 두지 않는다 — 그 한 겹이 태그를 지운다.
