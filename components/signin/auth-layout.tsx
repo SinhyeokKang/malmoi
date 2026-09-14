@@ -93,9 +93,9 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
 /**
  * 우측 장식 — 도트 필드 + 문구 둘 + 키비주얼.
  *
- * ⚠️ **패딩이 배치를 잡는다, 정적 폭이 아니다** (2026-09-10 사용자): **사방 80**(`p-20`).
- * 키비주얼은 `max-w-[768px]`이고 컨테이너에 맞춰 줄어들어, 1280px에서 우측 컬럼
- * 628 − 160 = 468px이라 **넘치지 않는다.**
+ * ⚠️ **패딩이 배치를 잡는다, 정적 폭이 아니다** (2026-09-10 사용자): **좌우 64 · 상하 80**
+ * (`px-16 py-20`, 좌우는 2026-09-14에 80에서 줄였다). 키비주얼은 `max-w-[768px]`이고 컨테이너에
+ * 맞춰 줄어들어, 1280px에서 우측 컬럼 628 − 128 = 500px이라 **넘치지 않는다.**
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
  * 폼 패널만 `border-subtle`을 든다.
@@ -106,7 +106,7 @@ function FooterLink({ href, label, external = false }: { href: string; label: st
  */
 function Decoration() {
   return (
-    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b p-20">
+    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-medium">{m.signIn.hero.top}</p>
