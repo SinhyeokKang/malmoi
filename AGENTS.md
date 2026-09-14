@@ -79,7 +79,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 19개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup 넷. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 20개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox 다섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). ⚠️ **고정 이유가 둘이다**: `lib/onboarding/budget.ts`가 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀌고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |
