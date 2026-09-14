@@ -651,18 +651,18 @@ export const en = {
     /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
     empty: {
       connect: {
-        title: "Connect your GitHub account",
-        description: "The connection is only used to see which repositories have the malmoi app installed.",
-        action: "Connect GitHub",
-        reauthorize: "Reconnect GitHub",
+        title: "Connect GitHub repositories",
+        description: "Authorize the malmoi GitHub App to access your repositories. This is separate from signing in to malmoi.",
+        action: "Authorize GitHub App",
+        reauthorize: "Reauthorize GitHub App",
       },
       /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
-      noInstallations: "No installation found",
-      noRepos: "No repositories selected",
-      install: "Install the app",
-      addRepos: "Add repositories to the installation",
+      noInstallations: "Install the malmoi GitHub App",
+      noRepos: "Choose repositories for the GitHub App",
+      install: "Install GitHub App",
+      addRepos: "Choose repositories",
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the malmoi app on the repository.",
+      noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
       afterInstall: "Refresh this page once you're done.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
@@ -1459,8 +1459,8 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "No GitHub account has the malmoi app installed. Install the app first.",
-      "no-repos": "This installation has no repositories selected. Add one in your GitHub installation settings.",
+      "no-installations": "Your GitHub account is connected. Install the malmoi GitHub App on your personal account or organization to choose repositories.",
+      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the malmoi GitHub App can access in GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
       "no-candidates": "We couldn't find locale files. malmoi needs locale files in 2 or more languages.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.

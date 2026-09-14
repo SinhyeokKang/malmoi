@@ -532,7 +532,7 @@ it("① 계정 미연결 빈 상태가 본문 세로 중앙에 선다", async ()
   await render(<NewProject repos={undefined} listError="not-connected" installUrl={null} now="2026-09-13T00:00:00Z"
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
 
-  expect(document.body.textContent).toContain("Connect your GitHub account");
+  expect(document.body.textContent).toContain("Connect GitHub repositories");
   expectCentered(emptyWrapper());
 });
 
