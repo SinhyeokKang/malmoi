@@ -1,5 +1,21 @@
 import type { AdapterName } from "@/lib/adapters/types";
+import { fail } from "@/lib/failure";
+import { basePending } from "./base-pending";
 
+/**
+ * push step 하나 — **워크플로 파일의 유일한 step 생산자다**. Add surface 결과 화면은 이것만 보이고
+ * (기존 파일에 덧붙인다), 파일 전체는 `renderProjectWorkflowYaml`이 이것을 표면 수만큼 잇는다.
+ *
+ * ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3). 이 스텝에 대상 리포의 `secrets.PUSH_TOKEN`이
+ * 들어가므로 `@main`이면 말모이 `main`의 커밋 하나가 **남의 러너에서 즉시** 돈다 — 소비자 측 리뷰도
+ * 롤백 창도 없다. ⚠️ `workflow-pins.test.ts`는 `.github/`만 훑어 **이 줄을 못 본다**
+ * (`docs/ACTIONS.md`의 핀 문단이 그 구멍을 적는다).
+ *
+ * ⚠️ **`docs/ACTIONS.md`의 예시가 정본이다** — 두 벌이 갈리면 문서를 보고 붙인 리포와 화면을 보고
+ * 붙인 리포가 다르게 동작한다. `__tests__/workflow.test.ts`가 주석·빈 줄을 뺀 채 줄 단위로 대조한다.
+ *
+ * `wrapper`는 넣지 않는다 — 훅 기반 리포는 `docs/ACTIONS.md`를 보라고 화면이 따로 말한다.
+ */
 export function renderSurfaceWorkflowStep(input: {
   slug: string; surfaceSlug: string; pathTemplate: string; adapter?: AdapterName; baseLocale?: string;
 }): string {
@@ -17,33 +33,80 @@ export function renderSurfaceWorkflowStep(input: {
   ].join("\n");
 }
 
-/**
- * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
- * 사용자가 붙인다 — 설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운 문장이고, 로케일 파일
- * 하나 쓰려고 CI 정의를 통째로 바꿀 수 있는 권한을 드는 것이 면적에 맞지 않는다.
- *
- * ⚠️ **`docs/ACTIONS.md`의 예시가 정본이다.** 이 함수는 그것을 slug만 바꿔 낸다 — 두 벌이 갈리면 문서를 보고
- * 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다. `__tests__/workflow.test.ts`가 주석·빈 줄을 뺀 채
- * 줄 단위로 대조한다. 문서의 예시를 고치면 여기도 고친다.
- *
- * `wrapper`는 넣지 않는다 — 훅 기반 리포는 `docs/ACTIONS.md`를 보라고 화면이 따로 말한다.
- */
-export function renderWorkflowYaml(input: {
-  slug: string;
+/** 워크플로 step 하나가 필요로 하는 전부. 표면 행에서 만드는 것은 `workflowSurfaceOf`다. */
+export type WorkflowSurface = {
   surfaceSlug: string;
   pathTemplate: string;
-  /** `Project.baseBranch` — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다. */
-  baseBranch: string;
   /** 수동 지정한 경우에만 — 자동 후보면 탐지가 같은 답을 내므로 고정할 이유가 없다. */
   adapter?: AdapterName;
   baseLocale?: string;
-}): string {
-  const { slug, baseBranch, adapter, baseLocale } = input;
-  const extra = [
-    adapter === undefined ? [] : [`          adapter: ${adapter}`],
-    baseLocale === undefined ? [] : [baseLocaleLine(baseLocale)],
-  ].flat();
+};
 
+/**
+ * 표면 하나짜리 워크플로 파일. 온보딩 ④는 표면이 **항상 하나**라 이 모양으로 부른다 —
+ * 아래 `renderProjectWorkflowYaml`의 얇은 래퍼이고 구현은 한 벌이다.
+ */
+export function renderWorkflowYaml(input: { slug: string; baseBranch: string } & WorkflowSurface): string {
+  const { slug, baseBranch, ...surface } = input;
+  return renderProjectWorkflowYaml({ slug, baseBranch, surfaces: [surface] });
+}
+
+/**
+ * **프로젝트의 워크플로 파일 — 활성 표면마다 step 하나다** (spec §5.2 · 대상 리포 계약).
+ *
+ * 복사용 `.github/workflows/malmoi-i18n.yml`이다 (design §7). App 권한(`workflows: write`)을 늘리지
+ * 않고 사용자가 붙인다 — 설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운
+ * 문장이고, 로케일 파일 하나 쓰려고 CI 정의를 통째로 바꿀 권한을 드는 것이 면적에 맞지 않는다.
+ *
+ * ⚠️ **Add surface 결과 화면을 벗어나면 두 번째 표면의 step을 다시 볼 자리가 설정 화면뿐이다.**
+ * 그 화면이 기본 표면 하나만 렌더하면 사람이 `surface:`·`path-template:`을 손으로 조립하는데,
+ * push 토큰은 **프로젝트 단위**라 틀린 `surface:`는 401도 409도 아니고 **다른 표면을 덮어쓴다.**
+ *
+ * ⚠️ **정렬을 여기서 하지 않는다** — 호출부가 표면 순서를 소유한다(설정 화면은 slug asc). 여기서
+ * 다시 정렬하면 두 벌이 갈리고, 화면의 목록 순서와 YAML의 step 순서가 어긋난다.
+ */
+export function renderProjectWorkflowYaml(input: {
+  slug: string;
+  /** `Project.baseBranch` — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다. */
+  baseBranch: string;
+  surfaces: readonly WorkflowSurface[];
+}): string {
+  const { slug, baseBranch, surfaces } = input;
+  // step이 없는 워크플로는 red 없이 **조용히 아무것도 안 한다** — 화면이 붙여넣기를 권한 파일이라
+  // 그 침묵의 비용이 크다. 활성 표면이 0인 프로젝트는 마이그레이션 precondition이 이미 막는다.
+  if (surfaces.length === 0) fail("a workflow needs at least one surface");
+
+  return [
+    ...header(slug, baseBranch),
+    "",
+  ].join("\n") + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface })).join("\n");
+}
+
+/**
+ * 표면 행 → step 입력. **6b-3의 대기 규칙이 여기 산다** — 선언이 대기 중이면 어댑터와 무관하게
+ * `base-locale:`을 박는다. 그 줄이 없으면 CI가 탐지 1순위(= 옛 base)를 보내고 `checkFormat`이
+ * 통과시켜, 사용자가 요청한 base 변경이 **영영 일어나지 않는다.** 조용하다.
+ */
+export function workflowSurfaceOf(surface: {
+  slug: string;
+  pathTemplate: string | null;
+  adapterName: string | null;
+  baseLocale: string | null;
+  declaredBaseLocale: string | null;
+}): WorkflowSurface {
+  const pending = basePending({ baseLocale: surface.baseLocale, declaredBaseLocale: surface.declaredBaseLocale });
+  const baseLocale = pending ? surface.declaredBaseLocale : surface.adapterName === "ts-dict" ? surface.baseLocale : null;
+  return {
+    surfaceSlug: surface.slug,
+    // 첫 push 전이면 비어 있다 — 그 프로젝트는 아직 CI를 붙이기 전이고 화면이 그렇게 말한다.
+    pathTemplate: surface.pathTemplate ?? "",
+    ...(baseLocale === null ? {} : { baseLocale }),
+    // ⚠️ `ts-dict`만 고정한다 — 한 파일에 로케일이 여럿이라 탐지가 base를 정하지 못한다.
+    ...(baseLocale !== null && surface.adapterName === "ts-dict" ? { adapter: "ts-dict" as const } : {}),
+  };
+}
+
+function header(slug: string, baseBranch: string): string[] {
   return [
     "name: malmoi-i18n",
     "",
@@ -75,20 +138,7 @@ export function renderWorkflowYaml(input: {
     // 돌므로 태그가 옮겨지면 남의 커밋이 그 토큰 옆에서 즉시 실행된다. `workflow-pins.test.ts`는
     // `.github/`만 훑어 **이 줄을 못 본다**(docs/ACTIONS.md의 핀 문단이 그 구멍을 적는다).
     "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4",
-    "",
-    // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3). 이 스텝에 `secrets.PUSH_TOKEN`이 들어가므로
-    // `@main`이면 말모이 `main`의 커밋 하나가 **대상 리포 러너에서 즉시** 돈다 — 소비자 측 리뷰도
-    // 롤백 창도 없다. `docs/ACTIONS.md`의 예시와 줄 단위로 대조되므로 둘이 함께 움직인다.
-    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1",
-    "        with:",
-    "          push-token: ${{ secrets.PUSH_TOKEN }}",
-    `          project: ${slug}`,
-    `          surface: ${input.surfaceSlug}`,
-    `          path-template: ${JSON.stringify(input.pathTemplate)}`,
-    ...extra,
-    "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
-    "",
-  ].join("\n");
+  ];
 }
 
 /**
