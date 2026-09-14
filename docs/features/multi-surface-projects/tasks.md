@@ -44,8 +44,18 @@
   ⚠️ **새 화면(Add surface·표면 not-found·Settings의 표면 카드)에도 Claude Design 핸드오프가 없다** —
   `/design-sync`의 SoT가 존재하지 않으므로 그 루프를 돌 수 없다. 시안을 만들거나, T16처럼 건너뛰기로
   판정하거나 둘 중 하나가 필요하다(사용자 결정).
-- [ ] 실물 두 표면 push→각 편집→단일 PR→merge→두 표면 재push→값 유지→2층/1층 skip.
-  이번 세션은 원격 push·태그·대상 workflow·prod 배포를 수행하지 않는다.
+- [x] **prod 실물 두 표면 왕복 완료** (2026-09-14, `SinhyeokKang/bugshot-i18n-test` · prod 배포 `89266ed`).
+  프로젝트 생성(903키 `namespaces`) → Add surface(`_locales` 4키) → Settings의 두 step workflow를
+  대상 리포에 설치 → CI push 두 표면 200/200 → 각 표면 1건 편집 → 단일 PR
+  [#11](https://github.com/SinhyeokKang/bugshot-i18n-test/pull/11)에 두 파일
+  (`public/_locales/ko/messages.json` 재생성 · `src/i18n/namespaces/logs.ts` 수술적 치환, 각 1줄,
+  키 순서·들여쓰기·주변 줄 변화 0) → 머지 → 머지 커밋의 push run이 `[skip-malmoi-i18n]`으로 **skipped**
+  → 재push 200/200 → 두 표면의 편집값 유지·키 수 903/4 유지·미발송 0 → Publish가 **2층 `no-changes`**
+  (SyncRun 1건 "Nothing to send / 0 files") → 한 번 더 누르면 **1층 `no-edits`**(SyncRun 생성 없이
+  "Nothing to send — everything is up to date."). 토큰은 검증 뒤 **두 번 회전**했고 마지막 값은
+  트랜스크립트에 남지 않는다(대상 리포 secret 갱신 + CI success로 확인).
+- [ ] ⚠️ **prod에 상주 프로젝트가 하나 생겼다** — `bugshot-i18n-test`(폐기용 리포). 대상 리포에
+  workflow가 설치된 상태라 그 리포의 dev push마다 prod로 적재된다. 유지할지 보관할지 판단이 필요하다.
 
 DB 현황: dev 20 migrations / drift 없음, Project 1·Surface 2·Translation 2,721.
 `bugshot-i18n-test-qa`는 namespaces(903키/3언어)·_locales(4키/3언어)로 복구했고 보존한다.
