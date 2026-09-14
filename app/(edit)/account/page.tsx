@@ -11,12 +11,12 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
-import { loadConnectionUsage } from "@/lib/account/connection-usage";
 import { displayName } from "@/lib/account/plan";
 import { getPrisma } from "@/lib/db";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { isLoginProvider, loginMethodRows, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -54,8 +54,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * (POSTMORTEM 2026-09-06). **판정 함수로 거른다** — 주소창 값을 캐스팅하면 프로토타입 키가 문자열
    * 자리에 함수를 넣어 화면이 죽는다 (POSTMORTEM 2026-09-08).
    *
-   * ⚠️ **셋이 같은 자리에 서지 않는다** — `?e=`·`?link=`는 머리 Alert이고 `?sessionRevocation=`는
-   * Sessions 구역 **안**이다. 그 값이 말하는 것이 화면 전체가 아니라 그 구역의 일이기 때문이다.
+   * ⚠️ **넷이 같은 자리에 서지 않고, 가르는 축은 "구역"이 아니라 "다시 시도할 자리가 어디인가"다**
+   * (2026-09-14 리뷰 🟢8에서 규칙을 고쳤다). `?e=`·`?link=`는 **머리**다 — 연결 왕복이 화면 밖에서
+   * 깨졌거나(`e`) 마지막 수단이라 거절된 것(`link`)이고, 둘 다 그 구역의 컨트롤을 다시 눌러서는
+   * 풀리지 않는다. `?connect=`·`?sessionRevocation=`은 **그 구역 안**이다 — 바로 옆 컨트롤을 다시
+   * 누르는 것이 다음 행동이라 사유가 그 자리에 붙어 있어야 한다.
+   *
+   * ⚠️ **[Dismiss]도 같은 축을 따른다** — 머리 둘만 닫힌다. 구역 Alert를 치우면 다시 누를 컨트롤
+   * 옆에서 사유만 사라진다.
    */
   const { e, sessionRevocation, link, connect } = firstQueryValues(await searchParams);
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
@@ -74,11 +80,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **넷이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [storedProfile, account, methods, usage] = await Promise.all([
+  const [storedProfile, account, methods] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
     loadAccountView(prisma, userId),
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
-    loadConnectionUsage(prisma, userId),
   ]);
 
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
@@ -114,8 +119,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 왕복에서 돌아온 일회성 사유라 치울 수 있다.
             구역 Alert는 그 구역의 현재 상태라 치우면 상태가 사라진 것처럼 보인다.
           */}
-          {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
-          {unlinkFailure !== null && <DismissibleAlert>{unlinkFailure}</DismissibleAlert>}
+          {notice !== null && <DismissibleAlert href={routes.account({ sessionRevocation, link, connect })}>{notice}</DismissibleAlert>}
+          {unlinkFailure !== null && <DismissibleAlert href={routes.account({ e, sessionRevocation, connect })}>{unlinkFailure}</DismissibleAlert>}
         </div>
       </PanelHeader>
 
@@ -160,7 +165,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           */}
           <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
 
-          <GithubSection account={account} usage={usage} />
+          <GithubSection account={account} />
 
           <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />
         </div>

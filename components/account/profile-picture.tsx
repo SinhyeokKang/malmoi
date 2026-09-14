@@ -40,6 +40,12 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
         <FileInput
           accept="image/png,image/jpeg"
           loading={pending && running === "upload"}
+          /**
+           * ⚠️ **도는 쪽만 막으면 둘이 동시에 돈다** (2026-09-14 리뷰). `loading`은 스피너 자리를
+           * 정할 뿐이라 다른 하나는 활성으로 남고, 먼저 끝난 쪽의 `finally`가 **남의 스피너까지**
+           * 끈다 — 둘 다 쉬는 것처럼 보이는 채로 나머지 하나가 계속 돈다. 막는 것은 `pending`이다.
+           */
+          disabled={pending}
           onPick={(file) => {
             setFailure(null);
             if (file === null) return;
@@ -67,7 +73,8 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
         </FileInput>
         <Button
           variant="ghost"
-          disabled={!hasPicture}
+          // 위와 같은 이유 — 업로드가 도는 동안 [Delete]가 활성이면 스피너가 자리를 옮긴다.
+          disabled={!hasPicture || pending}
           aria-describedby={hasPicture ? undefined : reasonId}
           loading={pending && running === "delete"}
           onClick={() => {

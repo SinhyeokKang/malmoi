@@ -6,16 +6,18 @@ import { render } from "@/components/__tests__/helpers/dom";
 import { m } from "@/lib/i18n";
 import { encodeUserFields } from "@/lib/credentials/records";
 
-const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn(), loadConnectionUsage: vi.fn() }));
+const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn() }));
 vi.mock("@/auth", () => ({ signOut: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: mocks.requireUser }));
 vi.mock("@/lib/db", () => ({ getPrisma: mocks.getPrisma }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: mocks.loadAccountView }));
-vi.mock("@/lib/account/connection-usage", () => ({ loadConnectionUsage: mocks.loadConnectionUsage }));
-vi.mock("@/app/(edit)/account/actions", () => ({
+const accountActions = vi.hoisted(() => ({
   updateProfileName: vi.fn(), uploadProfileImage: vi.fn(), deleteProfileImage: vi.fn(),
   startSessionRevocation: vi.fn(), unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(),
 }));
+vi.mock("@/app/(edit)/account/actions", () => accountActions);
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 const actions = vi.hoisted(() => ({ disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => actions);
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn() }));
@@ -36,12 +38,17 @@ async function screen(
   params: Record<string, string> = {},
   methods = [{ provider: "github" }, { provider: "google" }],
   view: unknown = { status: "ok", login: "octocat" },
+  /**
+   * ⚠️ **기본이 `null`이라 사진이 있는 갈래가 한 번도 안 그려졌다.** 그 상태에서는 [Delete]가
+   * `hasPicture`만으로 비활성이라, "업로드 중에는 못 누른다"를 세는 검사가 **결함과 무관하게**
+   * 통과한다(2026-09-14에 실제로 그렇게 한 번 green이었다).
+   */
+  image: string | null = null,
 ) {
   mocks.requireUser.mockResolvedValue({ userId: "owner" });
   mocks.loadAccountView.mockResolvedValue(view);
-  mocks.loadConnectionUsage.mockResolvedValue(2);
   mocks.getPrisma.mockReturnValue({
-    user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image: null }) }) },
+    user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image }) }) },
     account: { findMany: async () => methods },
   });
   const { container } = await render(await AccountPage({ searchParams: Promise.resolve(params) }));
@@ -294,4 +301,76 @@ it("사유 없는 disabled가 0이다", async () => {
     expect(reason, control.textContent ?? "").not.toBeNull();
     expect(reason!.textContent!.trim()).not.toBe("");
   }
+});
+
+/**
+ * ⚠️ **수단 해제의 확정 경로가 어느 그물에도 없었다** (2026-09-14 리뷰 🟡4). 이 파일의 확정 클릭은
+ * **GitHub account 구역**만 대상이었고, `lib/account-connect/__tests__/ui.test.tsx`는 Action을
+ * mock한 채 Dialog를 열지 않는다. `components/__tests__/login-methods.test.ts`는 소스 스캔이다 —
+ * 셋 중 어느 것도 **"확정 버튼이 Action에 닿는가"** 를 묻지 않았다.
+ *
+ * POSTMORTEM 2026-09-14가 같은 파일에 세운 규칙(*"거부를 실제로 일으킨다 — 확인 Dialog를 지나면
+ * portal의 확정 버튼까지 클릭한다"*)을 이 갈래에도 적용한다.
+ */
+it("수단 해제의 확정 버튼이 Action에 닿는다", async () => {
+  const container = await screen();
+  const section = container.querySelector("section")!;
+  const trigger = [...section.querySelectorAll("li button")]
+    .find((button) => button.getAttribute("aria-haspopup") === "dialog") as HTMLButtonElement;
+  await act(async () => { trigger.click(); });
+  // Radix가 `document.body`로 portal하므로 container 안에서는 안 잡힌다.
+  const confirm = [...document.querySelectorAll("[role='dialog'] footer button")].at(-1) as HTMLButtonElement;
+  await act(async () => { confirm.click(); });
+  await act(async () => { await Promise.resolve(); });
+  expect(accountActions.unlinkLoginMethod).toHaveBeenCalledTimes(1);
+});
+
+/**
+ * ⚠️ **하나가 도는 동안 다른 하나를 누를 수 있으면 스피너가 거짓말을 한다** (2026-09-14 리뷰 🟡2).
+ * `running` 한 칸을 둘이 나눠 쓰므로, 업로드 중 [Delete]를 누르면 스피너가 [Delete]로 **옮겨가고**
+ * 먼저 끝난 쪽의 `finally`가 **남의 스피너까지 끈다** — 둘 다 쉬는 것처럼 보이는 채로 삭제가 돈다.
+ */
+it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => {
+  accountActions.uploadProfileImage.mockReturnValue(new Promise(() => {}));
+  // 사진이 있어야 [Delete]가 애초에 활성이다 — 없으면 `hasPicture`만으로 비활성이라 검사가 공회전한다.
+  const container = await screen({}, undefined, undefined, "https://images.example/a.png");
+  const file = container.querySelector<HTMLInputElement>("input[type='file']")!;
+  Object.defineProperty(file, "files", { value: [new File([new Uint8Array(8)], "a.png", { type: "image/png" })] });
+  await act(async () => { file.dispatchEvent(new Event("change", { bubbles: true })); });
+
+  const remove = [...container.querySelectorAll("button")]
+    .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
+  expect(remove.hasAttribute("disabled")).toBe(true);
+});
+
+/**
+ * ⚠️ **닫은 뒤 같은 사유가 다시 오면 무음이었다** (2026-09-14 리뷰 🟡3). `shown`이 컴포넌트 지역
+ * 상태이고 `unlinkLoginMethod`의 `redirect`가 **같은 URL로 가는 소프트 내비게이션**이라, 두 번째
+ * 실패에서 React가 같은 자리의 컴포넌트를 재사용하고 `shown=false`가 살아남는다 — 사용자에게는
+ * "버튼이 안 눌린다"로 보인다(POSTMORTEM 2026-09-06의 부류).
+ *
+ * 닫을 때 **그 쿼리만 지운 주소로 replace**하면 다음 실패가 `/account` → `/account?link=…`라는
+ * 실제 이동이 되어 컴포넌트가 새로 마운트된다.
+ */
+it("머리 Alert를 닫으면 그 쿼리만 지운 주소로 replace한다", async () => {
+  const container = await screen({ e: "unavailable", link: "unavailable" });
+  const dismiss = container.querySelector<HTMLButtonElement>("[role='alert'] button")!;
+  await act(async () => { dismiss.click(); });
+  expect(router.replace).toHaveBeenCalledTimes(1);
+  const [target] = router.replace.mock.calls[0] as [string];
+  // 자기 쿼리만 지운다 — 둘이 함께 왔을 때 하나를 닫으면 다른 하나가 화면에서 사라진다.
+  expect(target).toContain("link=unavailable");
+  expect(target).not.toContain("e=unavailable");
+});
+
+/**
+ * ⚠️ **집계 줄이 세던 것은 이 연결에 의존하지 않는 프로젝트였다** (2026-09-14 리뷰 🔴1).
+ * `loadConnectionUsage`는 내가 OWNER인 프로젝트를 전부 셌는데, 해제가 실제로 막는 것은 새 프로젝트
+ * 생성과 리포 (재)연결뿐이다 — 야간 pull·PR은 App **설치 토큰**이 낸다. 숫자가 근거가 될 수 없어
+ * 줄을 걷었다.
+ */
+it("연결된 행이 프로젝트 수를 말하지 않는다", async () => {
+  const container = await screen();
+  const row = container.querySelectorAll("ul")[1]!.querySelector("li")!;
+  expect(row.textContent).not.toMatch(/\d+\s+projects?/);
 });
