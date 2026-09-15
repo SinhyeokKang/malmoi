@@ -187,7 +187,7 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, pull, setPull, setSyncOpen } = useHomeActions();
+  const { outcome, setOutcome, pull, setPull, setSyncOpen, publishPending } = useHomeActions();
   const owner = role === "OWNER";
 
   return (
@@ -202,7 +202,9 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
           title={m.home.banner.syncFailed.title}
           /* ⚠️ **원인 문장은 `importFailureMessage`가 든다** — 사전을 직접 인덱싱하면 그 폴백을 우회한다. */
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
-          actions={owner ? <Button onClick={() => setSyncOpen(true)}>{m.home.banner.syncFailed.action}</Button> : undefined}
+          /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
+             "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
+          actions={owner ? <Button disabled={publishPending} onClick={() => setSyncOpen(true)}>{m.home.banner.syncFailed.action}</Button> : undefined}
         >
           {/*
             ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면
@@ -246,6 +248,7 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
         branch={branch}
         outcome={outcome}
         onDismiss={() => setOutcome(null)}
+        retryDisabled={publishPending}
         onRetry={() => setSyncOpen(true)}
       />
       {pull !== null && <PublishResult outcome={pull} />}

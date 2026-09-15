@@ -123,7 +123,13 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   const view = await render(<HomeActions><Host /></HomeActions>);
   await click("Publish");
 
-  // 배너의 [Try again]과 같은 경로 — Action을 직접 부르지 않고 확인 창을 연다.
+  /*
+    ⚠️ **무반응이 아니라 비활성이어야 한다** (라운드 3 🟡3). 같은 Action을 여는 머리의 `[Sync]`는
+    그때 `disabled`로 서서 이유를 표시하는데, 이 버튼만 활성인 채 눌려도 아무 일이 없으면 세 자리가
+    "같은 라벨·같은 Action"이라는 규칙이 화면에서 깨진다 — 비활성 버튼도 이유를 말하지 못하지만
+    **비활성조차 아닌 버튼**은 그보다 한 단계 아래다.
+  */
+  expect(locked(button("Try again"))).toBe(true);
   await click("Try again");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 
@@ -131,4 +137,12 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   await view.rerender(<HomeActions><Host /></HomeActions>);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(mocks.run).not.toHaveBeenCalled();
+
+  /*
+    ⚠️ **긍정 대조** (라운드 3 ⚪) — 위 셋만 있으면 `setSyncOpen`이 **영영 안 열리게** 망가져도
+    전부 green이다. 잠금이 풀린 뒤 같은 버튼이 실제로 확인 창을 여는 것까지 세야 방어선이 된다.
+  */
+  expect(locked(button("Try again"))).toBe(false);
+  await click("Try again");
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 });

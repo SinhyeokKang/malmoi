@@ -99,7 +99,7 @@ export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; s
               </Link>
             </li>
           );
-          })}
+        })}
       </ul>
     </div>
   );

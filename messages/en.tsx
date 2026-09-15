@@ -114,6 +114,16 @@ export const en = {
       "no-surfaces": "There's nothing to sync — this project has no active surfaces",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
+       * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리다** — `onboardErrorMessage("ingest-failed")`는
+       * "The first import failed. You can try again from settings."이고, 첫 적재가 아닌데 그렇게 말하며
+       * 가리키는 `FirstIngestRetry`는 `awaiting_first_sync`에서만 선다. `accessErrorMessage("unavailable")`의
+       * 꼬리 "— your text is kept"는 `[Sync]`에 입력이 없어 지킬 text가 없고, 하필 이 동작은 **리포 값으로
+       * 번역을 덮고 저자까지 비운다** — 그 절이 "내 번역은 안전하다"로 읽히면 불변식의 정반대다.
+       * 둘은 같은 사건("요청이 못 갔다")이라 같은 문장을 쓴다.
+       */
+      "ingest-failed": "malmoi could not finish reading the repository",
+      "unavailable": "malmoi could not finish reading the repository",
+      /**
        * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는
        * 생성 시점 고정이라 `connectRepository`가 재고정을 거부한다. 눌러도 실패할 버튼이므로
        * tone도 warning이 아니라 **danger**다: 이 거부는 이 화면에서 풀리지 않는다.
@@ -303,7 +313,8 @@ export const en = {
       acrossSurfaces: (n: number): string => (n === 1 ? "in this repository" : `across ${n} surfaces`),
       /** `5 en, 3 ja` — 많은 쪽이 앞이다. 폭에 따라 뒤부터 잘리므로 큰 수가 남아야 한다. */
       reviewByLocale: (parts: string): string => parts,
-      localeCount: (code: string, n: number): string => `${n} ${code}`,
+      // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
+      localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
       lastPublish: (when: string): string => `last publish ${when}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
       nothingPending: "nothing pending",

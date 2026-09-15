@@ -139,14 +139,55 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
  * `[Publish]` 배지가 `1,207`을 단다 — 같은 수가 두 표기로 서면 같은 수인지부터 다시 읽어야 한다.
  * `008efce`가 `home` 절 넷을 고쳤지만 같은 화면의 `repositorySync` 절은 안 건드렸다.
  */
-it("같은 화면의 수는 전부 같은 천단위 표기를 쓴다", () => {
-  const formatted = [
-    m.repositorySync.unsentCount(1207),
-    m.repositorySync.completed(1207, "main"),
-    m.repositorySync.syncedKeys(1207),
-    m.repositorySync.partial(1207),
-    m.home.cards.allFilled(1207),
-  ];
-  expect(formatted.filter((line) => line.includes("1,207"))).toHaveLength(formatted.length);
-  expect(formatted.filter((line) => /(?<![\d,])1207(?![\d,])/.test(line))).toEqual([]);
+/**
+ * ⚠️ **고정 목록으로 세지 않는다** (라운드 3 🟡4 — 첫 판이 다섯을 손으로 적어 `home.cards.localeCount`를
+ * 원리적으로 못 봤다). **소스에서 "수를 받는 사전 함수"를 전부 뽑아** 그 자리마다 판정하므로, 새로
+ * 늘어나는 함수는 목록에 오르거나 red가 된다.
+ *
+ * ⚠️ **모든 수에 구분자를 넣는 것이 아니다.** 세는 것이 아닌 수가 둘 있고 **그쪽에 넣으면 거짓이 된다**:
+ * PR 번호(`#1,207`은 그런 PR이 아니다)와 활성 표면 수(한 자리다 — 규칙이 아니라 장식이 된다).
+ */
+const NOT_A_COUNT: Record<string, string> = {
+  openPr: "PR 번호 — `#1,207`은 그런 PR이 아니다",
+  unreadable: "표면 수 — 활성 표면은 한 자리다",
+  notReplaced: "표면 수 — 활성 표면은 한 자리다",
+  acrossSurfaces: "표면 수 — 활성 표면은 한 자리다",
+  // 수를 직접 찍지 않는다 — 보이는 수는 인자로 받은 `unsentCount(n)` 노드가 만들고, `n`은 단복수에만 쓴다.
+  unsent: "수를 찍지 않는다 — 단복수 판정에만 쓴다",
+};
+
+/** `messages/en.tsx`의 한 사전 블록에서 `n: number`를 받는 항목 이름과 그 본문. */
+function numberTakers(dictionary: string): Map<string, string> {
+  const source = readFileSync(join(ROOT, "messages/en.tsx"), "utf8");
+  const open = source.indexOf(`${dictionary}: {`);
+  if (open < 0) throw new Error(`Missing dictionary block: ${dictionary}`);
+  let depth = 0, end = open;
+  for (let i = source.indexOf("{", open); i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    else if (source[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
+  }
+  const block = source.slice(open, end);
+  const out = new Map<string, string>();
+  for (const match of block.matchAll(/^\s{4,}(\w+): \(([^)]*)\)[^\n]*$/gm)) {
+    const [line, name, args] = [match[0], match[1] ?? "", match[2] ?? ""];
+    if (/:\s*number/.test(args)) out.set(name, line);
+  }
+  return out;
+}
+
+it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => {
+  const offenders: string[] = [];
+  let checked = 0;
+  for (const dictionary of ["cards", "repositorySync"]) {
+    const takers = numberTakers(dictionary);
+    // ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다.
+    expect(takers.size).toBeGreaterThan(2);
+    for (const [name, line] of takers) {
+      if (Object.hasOwn(NOT_A_COUNT, name)) continue;
+      checked += 1;
+      if (!line.includes("toLocaleString")) offenders.push(`${dictionary}.${name}: ${line.trim()}`);
+    }
+  }
+  expect(checked).toBeGreaterThan(4);
+  expect(offenders).toEqual([]);
 });

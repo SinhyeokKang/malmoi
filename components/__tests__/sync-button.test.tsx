@@ -171,12 +171,26 @@ it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실�
  * ⚠️ **거부 문구가 이 화면에 없는 컨트롤을 가리키면 안 된다.** `SyncResult`까지 먹여 봐야 드러나는
  * 층이다 — `onResult`의 인자만 보는 테스트는 그 값이 화면에서 무엇이 되는지 모른다.
  */
-it("통신 실패 거부가 존재하지 않는 컨트롤을 가리키지 않는다", async () => {
-  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unavailable" }} />);
+/**
+ * ⚠️ **생산자가 둘이고 서버 쪽이 더 흔하다** (2026-09-15 라운드 3 🔴1). 클라이언트 `catch`는 **Action
+ * 호출 자체가 못 간 경우**만 잡고, `runRepositoryImport`의 서버 `catch`는 `openRepoReader`·적재 안에서
+ * **던지는 모든 것**(GitHub 5xx · blob 다운로드 throw · pooler 끊김 · 어댑터 예외)을 잡는다.
+ * 그래서 **둘 다** 이 화면이 그릴 수 있는 값이어야 한다 — 한쪽만 고치면 증상이 그대로 재생된다.
+ *
+ * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리를 센다**: `onboardErrorMessage`의 "first import"·
+ * "from settings"(가리키는 `FirstIngestRetry`가 이 화면에 없다) · `accessErrorMessage`의 "your text is
+ * kept"(`[Sync]`에는 입력이 없고, 하필 이 동작은 **리포 값으로 번역을 덮고 저자까지 비운다** — 그
+ * 절이 "내 번역은 안전하다"로 읽히면 불변식이 말하는 것의 정반대다).
+ */
+it.each(["unavailable", "ingest-failed"] as const)("요청이 못 간 거부(%s)가 닫히고 거짓 문장을 안 쓴다", async (error) => {
+  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error }} onDismiss={() => {}} />);
   const alert = document.querySelector('[role="status"], [role="alert"]');
-  expect(alert?.textContent ?? "").not.toContain("first import");
-  expect(alert?.textContent ?? "").not.toContain("from settings");
-  expect(alert?.textContent ?? "").toContain("Try again");
+  const text = alert?.textContent ?? "";
+  expect(text).not.toContain("first import");
+  expect(text).not.toContain("from settings");
+  expect(text).not.toContain("your text is kept");
+  // 닫을 수 있어야 한다 — 일시적 실패는 "닫아도 같은 거부가 반복된다"에 해당하지 않는다.
+  expect(alert?.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
 });
 
 /**

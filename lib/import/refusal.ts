@@ -43,6 +43,16 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
    */
   "reauthorize": { tone: "warning", dismissible: false, action: "settings" },
   "repo-not-installed": { tone: "warning", dismissible: false, action: "settings" },
+  /**
+   * ⚠️ **"요청이 못 갔다"는 생산자가 둘이다** — `runRepositoryImport`의 서버 `catch`가 `ingest-failed`를,
+   * 클라이언트 `catch`가 `unavailable`을 낸다. **둘 다 등재한다**: 한쪽만 고치면 다른 쪽이 폴백으로
+   * 떨어져 같은 증상이 재생된다 (2026-09-15 라운드 3 — 실제로 클라이언트만 고쳤다가 다시 잡혔다).
+   * ⚠️ **닫을 수 있다** — 이 파일의 기준은 *"닫아도 같은 버튼이 같은 거부를 반복하는 갈래에는 닫기를
+   * 주지 않는다"*이고, 일시적 실패는 그 갈래가 아니다. 다음 행동은 머리의 `[Sync]`를 다시 누르는
+   * 것이라 액션 버튼도 두지 않는다(보낼 곳이 자기 자신이면 버튼이 둘로 보인다).
+   */
+  "ingest-failed": { tone: "danger", dismissible: true, action: null },
+  "unavailable": { tone: "danger", dismissible: true, action: null },
 };
 
 /**

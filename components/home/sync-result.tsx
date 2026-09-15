@@ -42,12 +42,14 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * ⚠️ **진행 표시를 여기 세우지 않는다** — 이 자리는 결과의 자리이고, 진행 Alert를 세웠다가 결과
  * Alert로 바꾸면 같은 자리에서 뜻이 두 번 바뀐다. 진행은 트리거가 든다 (`sync-button.tsx`).
  */
-export function SyncResult({ outcome, slug, branch, onRetry, onDismiss }: {
+export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = false, onDismiss }: {
   outcome: RepositoryImportOutcome | null;
   slug: string;
   branch: string;
   /** 읽기 실패·`superseded`에만 선다. Home의 실패 배너와 **같은 라벨·같은 Action**이다. */
   onRetry?: () => void;
+  /** ⚠️ 그 Action이 지금 잠겨 있나 (Publish 진행 중) — 같은 자리 셋이 같이 움직여야 한다. */
+  retryDisabled?: boolean;
   onDismiss?: () => void;
 }) {
   if (outcome === null) return null;
@@ -94,7 +96,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, onDismiss }: {
       </div>)}
   </>;
   return <Alert variant={summary.tone} role="status" title={title} onDismiss={onDismiss}
-    actions={retry && onRetry ? <Button onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
+    actions={retry && onRetry ? <Button disabled={retryDisabled} onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
     {details}
   </Alert>;
 }

@@ -50,20 +50,37 @@ describe("planImportRefusal", () => {
   });
 
   it("남은 갈래는 warning으로 떨어지고 닫기를 주지 않는다 — 모르는 값을 성공처럼 보이게 하지 않는다", () => {
-    for (const error of ["ingest-failed", "invalid input", "base-branch-missing"] as const) {
+    for (const error of ["invalid input", "base-branch-missing"] as const) {
       expect(planImportRefusal(error)).toEqual({ tone: "warning", dismissible: false, action: null });
     }
   });
 
   /**
-   * ⚠️ **닫기는 `already-running` 하나뿐이다** — 나머지는 닫아도 같은 버튼이 같은 거부를 반복하고,
-   * 그러면 사람이 "무엇이 막혔는지"를 다시 눌러서 알아내야 한다.
+   * ⚠️ **"요청이 못 갔다"는 생산자가 둘이다** (2026-09-15 라운드 3) — 서버 `catch`가 `ingest-failed`를,
+   * 클라이언트 `catch`가 `unavailable`을 낸다. **둘이 같은 계획이어야 한다**: 한쪽만 등재하면 다른 쪽이
+   * 폴백으로 떨어져 닫기도 액션도 없는 채 남의 화면 문구를 띄운다(실제로 한 번 그렇게 났다).
    */
-  it("닫히는 거부는 하나뿐이다", () => {
-    const errors: RepositoryImportError[] = [
-      "already-running", "not-ready", "not-connected", "no-surfaces", "repo-replaced",
-      "unauthorized", "unavailable", "forbidden", "not-found", "archived", "ingest-failed", "invalid input",
+  it("요청이 못 간 두 코드가 같은 계획을 받는다", () => {
+    const plan = { tone: "danger", dismissible: true, action: null };
+    expect(planImportRefusal("ingest-failed")).toEqual(plan);
+    expect(planImportRefusal("unavailable")).toEqual(plan);
+  });
+
+  /**
+   * ⚠️ **기준은 수가 아니라 "닫아도 같은 거부가 반복되나"다.** 반복되는 갈래에 닫기를 주면 사람이
+   * "무엇이 막혔는지"를 다시 눌러서 알아내야 한다 — 그래서 상태가 안 바뀌는 거부에는 닫기가 없다.
+   * 반대로 **일시적 실패는 반복되지 않으므로** 닫을 수 있어야 한다. 처음에는 이 검사가 "하나뿐이다"로
+   * 수를 박아 두었는데, 그 형은 기준이 바뀌었는지와 목록이 늘었는지를 구별하지 못한다.
+   */
+  it("닫기는 상태가 바뀌어야 풀리는 거부에만 없다", () => {
+    /** 다시 눌러도 같은 답이 나온다 — 리포·설정·권한이 바뀌어야 풀린다. */
+    const repeats: RepositoryImportError[] = [
+      "not-ready", "not-connected", "no-surfaces", "repo-replaced",
+      "unauthorized", "forbidden", "not-found", "archived", "invalid input",
     ];
-    expect(errors.filter(error => planImportRefusal(error).dismissible)).toEqual(["already-running"]);
+    /** 기다리거나 다시 누르면 답이 달라진다. */
+    const transient: RepositoryImportError[] = ["already-running", "ingest-failed", "unavailable"];
+    expect(repeats.filter(error => planImportRefusal(error).dismissible)).toEqual([]);
+    expect(transient.filter(error => !planImportRefusal(error).dismissible)).toEqual([]);
   });
 });
