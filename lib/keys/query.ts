@@ -628,6 +628,11 @@ export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count:
  *
  * ⚠️ **`ORDER BY`에 보조 키가 있다** — 같은 시각의 편집 둘이 있으면 어느 행의 `updatedBy`가 뽑힐지가
  * 요청마다 달라지고, 그러면 같은 DB 상태가 다른 이름을 낸다.
+ *
+ * ⚠️ **`Locale`을 join해 orphaned 로케일을 뺀다 — `foldCells`와 같은 술어여야 한다.** 그 파일은
+ * 리포에서 사라졌고 번역 화면에서 그 행의 입력이 `disabled`다(ARCHITECTURE §5.5.16): 항목으로
+ * 세우면 번역자를 **편집할 수 없는 행**으로 데려가고, 카드의 수는 그것을 빼므로 **pill과 카드가
+ * 같은 화면에서 어긋난다** (code-review 2026-09-15 🔴1).
  */
 export async function loadReviewAttention(prisma: PrismaClient, projectId: string): Promise<ReviewAttentionRow[]> {
   const rows = await prisma.$queryRaw<{ surfaceId: string; localeCode: string; at: Date; updatedBy: string | null; n: number }[]>`
@@ -637,9 +642,11 @@ export async function loadReviewAttention(prisma: PrismaClient, projectId: strin
     FROM "Translation" t
     JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
     JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."id" = t."keyId"
+    JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode"
     WHERE t."projectId" = ${projectId}
       AND s."archivedAt" IS NULL
       AND k."orphaned" = false
+      AND l."orphaned" = false
       AND t."needsReview" = true
       AND t."value" <> ''
     ORDER BY t."surfaceId", t."localeCode", t."updatedAt" DESC, t."keyId" ASC`;

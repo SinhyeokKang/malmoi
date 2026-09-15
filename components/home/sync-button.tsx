@@ -23,11 +23,17 @@ import { routes } from "@/lib/routes";
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, name, branch, role, unsent, onResult, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
+  /**
+   * 미연결·보관 — **비활성이고 부재가 아니다** (project-home spec §8의 `2c`·`2d`). 부재는 역할
+   * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
+   * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
+   */
+  paused?: boolean;
   onResult: (outcome: RepositoryImportOutcome) => void;
 }) {
   const router = useRouter();
@@ -42,7 +48,7 @@ export function SyncButton({ slug, name, branch, role, unsent, onResult, open, o
   useEffect(() => {
     const id = ++request.current;
     setOpenPr(undefined);
-    if (!open || role !== "OWNER") return;
+    if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -69,6 +75,19 @@ export function SyncButton({ slug, name, branch, role, unsent, onResult, open, o
     router.refresh();
   }
   if (role !== "OWNER") return null;
+  /*
+    ⚠️ **멈춘 동안은 Dialog 자체를 세우지 않는다** — 트리거만 `disabled`로 두면 `open`이 밖에서
+    바뀔 때(배너의 `[Try again]`) 확인 창이 열려 실행까지 간다. 보이는 것은 같은 자리의 같은 버튼이고
+    누를 수 없을 뿐이다.
+  */
+  if (paused) {
+    return (
+      <Button disabled>
+        <ArrowDownToLine className="size-3.5" aria-hidden />
+        {m.repositorySync.action}
+      </Button>
+    );
+  }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
     <DialogTrigger asChild>
       {/*

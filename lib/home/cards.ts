@@ -76,7 +76,7 @@ export function countCards(input: {
   /** 검토 대기의 로케일별 분해 — `8 cells · 5 en, 3 ja`의 뒤쪽이다. */
   reviewByLocale: readonly { code: string; count: number }[];
 }): HomeCard[] {
-  const { state, counts } = input;
+  const { counts } = input;
   return CARD_KEYS.map((key) => ({
     key,
     value: counts[key],

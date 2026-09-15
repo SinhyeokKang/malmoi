@@ -162,6 +162,15 @@ describe("recentActivity — 네 출처를 한 줄로", () => {
     ]);
   });
 
+  /**
+   * ⚠️ **`CI synced 0 new keys into web`은 정보가 아니다.** 들여온 키가 없는 Sync는 로그에서
+   * 말할 것이 없고(`lastCommitAt`이 표면마다 상시로 서 있으므로 그 줄이 영구히 남는다), 그 사실을
+   * 알아야 하는 자리는 메타 열의 `Last sync`다.
+   */
+  it("들여온 키가 0인 Sync는 줄을 만들지 않는다", () => {
+    expect(recentActivity({ ...empty, pushes: [{ surfaceSlug: "web", at: at("2026-09-15T09:00:00Z"), newKeys: 0 }] })).toEqual([]);
+  });
+
   it("Sync 실패도 사건이다 — 어느 표면을 못 읽었는지 든다", () => {
     expect(recentActivity({ ...empty, syncFailures: [{ surfaceSlug: "emails", at: at("2026-09-15T11:00:00Z") }] })).toEqual([
       { kind: "sync_failed", at: at("2026-09-15T11:00:00Z"), surfaceSlug: "emails" },

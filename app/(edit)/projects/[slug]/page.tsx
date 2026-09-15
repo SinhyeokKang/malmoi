@@ -11,10 +11,11 @@ import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { loadConnectionHealth } from "@/lib/github";
+import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
-import { ACTIVITY_LIMIT, ACTIVITY_WINDOW_DAYS, activeLocaleProgress, recentActivity } from "@/lib/home/overview";
+import { ACTIVITY_LIMIT, ACTIVITY_WINDOW_DAYS, recentActivity } from "@/lib/home/overview";
 import { planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadLastSyncNewKeys, loadProjectListAggregates, loadRecentEdits, loadRecentPublishes, loadReviewAttention,
@@ -110,7 +111,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
    * 라운드의 결과에 의존해서**다.
    *
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
-   * 가드를 든다. 실패는 값(`unknown`)으로 오므로 이 화면이 GitHub 장애에 통째로 죽지 않는다.
+   * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
   const [aggregates, edits, review, newKeys, publishes, health] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
@@ -118,7 +119,18 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
     loadReviewAttention(prisma, projectId),
     loadLastSyncNewKeys(prisma, projectId),
     loadRecentPublishes(prisma, projectId, since, ACTIVITY_LIMIT),
-    loadConnectionHealth(project),
+    /**
+     * ⚠️ **여기서만 던지는 것을 삼킨다** (code-review 2026-09-15 🟡4). `probeRepo`는 GitHub 실패를
+     * 값으로 주지만 `createApp()`은 `GITHUB_APP_ID`·PEM이 깨졌을 때 **던진다** — 설정 화면에서는
+     * 그것이 의도지만(설정 오류를 일시 장애로 접으면 영원히 "잠시 뒤 다시"가 뜬다), 여기는
+     * **모든 프로젝트의 착지 화면**이라 같은 조건에서 앱 전체가 500이 된다.
+     * **시끄러운 신호는 설정 화면 하나에 남긴다** — 그 화면이 OWNER가 고치러 가는 자리다.
+     * 여기서는 `unknown`이라 배너가 안 서고, 원인은 로그에만 남는다.
+     */
+    loadConnectionHealth(project).catch((error: unknown) => {
+      logFailure("home-connection-health", error);
+      return { status: "unknown" } as const;
+    }),
   ]);
   // **렌더되는 항목만** 지난다 — 903키 리포에서 전 행의 편집자를 조회하지 않는다.
   const actors = await loadActors(prisma, [
@@ -149,24 +161,25 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
   const bySurface = new Map(surfaces.map((s) => [s.id, s]));
 
   /**
-   * 한 번도 안 채워진 로케일 — **`activeLocaleProgress`가 이미 세는 값이다.** orphaned는 그 함수가
-   * 빼 준다: 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
+   * 한 번도 안 채워진 로케일 — 그 로케일에 **값이 있는 셀이 하나도 없는** 경우다.
    *
-   * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 할 일이
-   * 아니다(채울 것이 없다).
+   * ⚠️ **`activeLocaleProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
+   * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
+   * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
+   *
+   * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
+   * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 채울
+   * 것이 없다.
    */
+  const filled = new Set(
+    aggregates.cells.filter((cell) => cell.count > 0).map((cell) => `${cell.surfaceId} ${cell.localeCode}`),
+  );
   const neverFilled = surfaces.flatMap((surface) => {
     const total = aggregates.keyTotals.get(surface.id) ?? 0;
     if (total === 0) return [];
-    const cells = aggregates.cells
-      .filter((c) => c.surfaceId === surface.id)
-      .flatMap((c) => Array.from({ length: c.count }, () => ({ localeCode: c.localeCode, needsReview: c.needsReview })));
-    return activeLocaleProgress({ locales: surface.locales, total, cells })
-      .filter((locale) => locale.translated + locale.needsReview === 0)
-      .flatMap((locale) => {
-        const row = surface.locales.find((l) => l.code === locale.code);
-        return row === undefined ? [] : [{ surfaceSlug: surface.slug, code: row.code, name: row.name, keys: total, at: row.createdAt }];
-      });
+    return surface.locales
+      .filter((locale) => !locale.orphaned && !filled.has(`${surface.id} ${locale.code}`))
+      .map((locale) => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
   });
 
   const items = attentionItems({

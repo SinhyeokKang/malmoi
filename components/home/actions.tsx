@@ -82,25 +82,27 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
   branch: string;
   role: "OWNER" | "EDITOR";
   unsent: number;
-  /** 미연결·보관 — 둘 다 보낼 곳이 없다. */
+  /**
+   * 미연결·보관 — 둘 다 보낼 곳이 없다. **버튼 둘이 비활성이고 부재가 아니다** (spec §8) —
+   * 부재는 역할 갈래의 규칙이다.
+   */
   paused: boolean;
 }) {
   const { syncOpen, setSyncOpen, setOutcome, setPull, titleRef } = useHomeActions();
   return (
     <div className="flex items-center gap-2">
-      {!paused && (
-        <SyncButton
-          slug={slug}
-          name={name}
-          branch={branch}
-          role={role}
-          unsent={unsent}
-          open={syncOpen}
-          onOpenChange={setSyncOpen}
-          onResult={setOutcome}
-          fallbackFocusRef={titleRef}
-        />
-      )}
+      <SyncButton
+        slug={slug}
+        name={name}
+        branch={branch}
+        role={role}
+        unsent={unsent}
+        paused={paused}
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        onResult={setOutcome}
+        fallbackFocusRef={titleRef}
+      />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
       <PublishButton slug={slug} count={unsent} disabled={paused || unsent === 0} onResult={setPull} />
     </div>

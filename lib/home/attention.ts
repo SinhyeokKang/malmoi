@@ -88,9 +88,12 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
  * 낸다. `recentActivity`의 `compareEdit`·export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
  */
 function compare(a: AttentionItem, b: AttentionItem): number {
-  const at = (item: AttentionItem): number => (item.at === null ? -Infinity : item.at.getTime());
-  const gap = at(b) - at(a);
-  if (gap !== 0 && !Number.isNaN(gap)) return gap;
+  // 시각 없는 항목끼리는 아래 보조 키로 갈린다 — 뺄셈으로 접으면 `-Infinity - -Infinity`가 NaN이다.
+  if (a.at === null || b.at === null) {
+    if (a.at !== b.at) return a.at === null ? 1 : -1;
+  } else if (a.at.getTime() !== b.at.getTime()) {
+    return b.at.getTime() - a.at.getTime();
+  }
   if (a.surfaceSlug !== b.surfaceSlug) return a.surfaceSlug < b.surfaceSlug ? -1 : 1;
   // 파서 실패에는 로케일이 없다 — 빈 문자열이 같은 표면의 로케일 항목들보다 앞에 온다.
   const code = (item: AttentionItem): string => ("code" in item ? item.code : "");

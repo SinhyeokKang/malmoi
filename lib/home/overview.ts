@@ -79,7 +79,12 @@ export function recentActivity(input: {
 }): ActivityItem[] {
   const items: ActivityItem[] = [
     ...input.edits.map((edit): ActivityItem => ({ kind: "edit", ...edit })),
-    ...input.pushes.map((push): ActivityItem => ({ kind: "push", ...push })),
+    /**
+     * ⚠️ **들여온 키가 0이면 사건이 아니다.** `lastCommitAt`은 표면마다 상시로 서 있어 그 줄이
+     * 영구히 남는데, `CI synced 0 new keys into web`은 아무것도 말하지 않는다 — 마지막 Sync 시각을
+     * 알아야 하는 자리는 메타 열의 `Last sync`다.
+     */
+    ...input.pushes.flatMap((push): ActivityItem[] => (push.newKeys === 0 ? [] : [{ kind: "push", ...push }])),
     ...input.publishes.map((publish): ActivityItem => ({ kind: "publish", ...publish })),
     ...input.syncFailures.map((failure): ActivityItem => ({ kind: "sync_failed", ...failure })),
   ];

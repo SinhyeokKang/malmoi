@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { ALL_NAMESPACES } from "@/lib/routes";
+
 import { activeFilters, clearedQuery } from "../filters";
 
 /**
@@ -92,5 +94,41 @@ describe("clearedQuery — 초기화 버튼", () => {
 
   it("이미 전체면 전체 그대로다", () => {
     expect(clearedQuery({ ns: "*" })).toEqual({ ns: "*", locales: undefined, q: undefined });
+  });
+});
+
+/**
+ * 넷째 칩 — Home의 카운트 카드가 실어 보낸 좁힘 (project-home §9.7).
+ *
+ * ⚠️ **칩이 없으면 되돌릴 수단이 화면에 없다.** 카드에서 착지한 사용자에게 남는 출구가 주소창뿐인데,
+ * 그 사람이 이 화면의 주 사용자다.
+ */
+describe("activeFilters — `state` 칩", () => {
+  const ctx = { selected: ["en", "ko"], fallback: ["en", "ko"] };
+
+  it("값이 있으면 칩이 서고, 떼면 그 키만 빠진다", () => {
+    const chips = activeFilters({ ns: "common", state: "review" }, ctx);
+    const chip = chips.find((c) => c.key === "state");
+    expect(chip?.value).toBe("review");
+    // 다른 좁힘은 보존된다 — 하나를 떼도 나머지가 남는 것이 이 모듈의 계약이다.
+    expect(chip?.next).toEqual({ ns: "common", state: undefined });
+  });
+
+  it("값이 없으면 칩도 없다", () => {
+    expect(activeFilters({}, ctx).some((c) => c.key === "state")).toBe(false);
+  });
+
+  /** 칩 넷이 전부 서는 순서를 고정한다 — 화면이 렌더마다 순서를 바꾸면 근육 기억이 안 선다. */
+  it("네임스페이스 → 로케일 → 검색 → 상태 순이다", () => {
+    const chips = activeFilters({ ns: "common", locales: "ko", q: "auth", state: "unsent" }, { selected: ["ko"], fallback: ["en", "ko"] });
+    expect(chips.map((c) => c.key)).toEqual(["namespace", "locales", "search", "state"]);
+  });
+});
+
+describe("clearedQuery — `state`도 함께 떨어진다", () => {
+  it("초기화가 상태 좁힘을 남기지 않는다", () => {
+    expect(clearedQuery({ ns: "common", locales: "ko", q: "auth", state: "new" })).toEqual({
+      ns: ALL_NAMESPACES, locales: undefined, q: undefined, state: undefined,
+    });
   });
 });

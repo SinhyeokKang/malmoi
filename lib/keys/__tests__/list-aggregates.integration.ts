@@ -12,7 +12,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
-import { countUnpublished, loadKeys, loadProjectListAggregates } from "../query";
+import { reviewByLocale } from "@/lib/projects/list";
+import { countUnpublished, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
 import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
@@ -618,4 +619,45 @@ it("별도 연결에는 적재 중인 부분 프로젝트가 보이지 않는다
   }
   expect(await pending).toMatchObject({ ok: true });
   expect(await prisma.translation.count()).toBe(4);
+});
+
+/**
+ * **Home의 할 일 항목과 `To review` 카드가 같은 로케일 집합을 센다** (project-home — code-review 🔴1).
+ *
+ * ⚠️ **orphaned 로케일은 일이 아니다.** 그 파일은 리포에서 사라졌고 번역 화면에서 그 행의 입력이
+ * `disabled`다(ARCHITECTURE §5.5.16) — 항목으로 세우면 번역자를 **편집할 수 없는 행**으로 데려간다.
+ * `foldCells`는 이미 그것을 빼므로, 이 조회가 안 빼면 **pill의 수와 카드의 수가 어긋난다.**
+ */
+it("검토 항목이 orphaned 로케일을 빼고 `reviewByLocale`과 같은 답을 낸다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  // `ko`는 살아 있고 `fr`은 리포에서 사라졌다 — 둘 다 검토 대기 셀을 든다.
+  await prisma.locale.create({ data: { projectId: "p1", surfaceId: "surface-p1", code: "fr", name: "French", isBase: false, orphaned: true } });
+  for (const key of ["old", "same", "new"]) {
+    await prisma.translation.create({ data: { projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${key}`,
+      localeCode: "fr", value: "valeur", needsReview: true, updatedBy: "u1", updatedAt: AFTER } });
+  }
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" }, data: { needsReview: true } });
+
+  const rows = await loadReviewAttention(prisma, "p1");
+  const aggregates = await loadProjectListAggregates(prisma, ["p1"]);
+  const byLocale = reviewByLocale(aggregates.locales, aggregates.cells).get("p1") ?? [];
+
+  expect(rows.map((r) => r.localeCode)).toEqual(["ko"]);
+  expect(rows.map((r) => r.count)).toEqual(byLocale.map((l) => l.count));
+  expect(byLocale.map((l) => l.code)).toEqual(["ko"]);
+});
+
+/** ⚠️ 보조 키가 없으면 같은 시각의 편집 둘 중 어느 저자가 뽑힐지가 요청마다 달라진다. */
+it("검토 항목의 대표 행이 결정적이다 — 같은 시각이면 keyId 순이다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" },
+    data: { needsReview: true, updatedAt: AFTER, updatedBy: "u-late" } });
+  await prisma.translation.update({ where: { keyId_localeCode: { keyId: "p1-new", localeCode: "ko" } },
+    data: { updatedBy: "u-first" } });
+
+  const first = await loadReviewAttention(prisma, "p1");
+  const again = await loadReviewAttention(prisma, "p1");
+  expect(first).toEqual(again);
+  // `p1-gone`·`p1-new`·`p1-old`·`p1-same` 중 orphaned 키는 빠지고 남은 셋의 최소 keyId가 `p1-new`다.
+  expect(first[0]).toMatchObject({ localeCode: "ko", updatedBy: "u-first", count: 3 });
 });
