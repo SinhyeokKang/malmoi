@@ -78,6 +78,34 @@ Home의 핸드오프가 아니다 — 그 둘은 파랑 규칙도 다르다(`doc
 **다음 세션의 첫 일**: `components/home/**`·`app/(edit)/projects/[slug]/{page,loading}.tsx`에
 리뷰를 한 번 더 건다. 브라우저 실측은 `2a`에서 이미 통과했으므로 **소스 리뷰만** 다시 돌면 된다.
 
+### `/design-sync` 재리뷰 라운드 2 — 2026-09-15 저녁 (17건 중 9건 남았다)
+
+tasks.md가 "다음 세션의 첫 일"로 적어둔 소스 재리뷰를 돌렸다. **🔴 셋과 🟡 셋을 닫았고**(커밋
+`31b7167`·`999ce07`·`1243ae4`) 아래가 남았다. **라운드 3 재리뷰는 안 걸었다** — 이번 수정이 또
+회귀를 만들었을 가능성이 1·2라운드와 같은 크기로 남아 있다. **집 세션의 첫 일이 그것이다.**
+
+**닫은 것**
+
+| # | 무엇 | 어떻게 |
+|---|---|---|
+| 🔴1 | 카운트 카드가 **어떤 폭에서도 2×2**였다 — `@container/cards`와 `@[672px]/cards:`가 같은 요소라 그 변형이 영영 참이 안 된다 | 컨테이너를 한 겹 올렸다. 908px 실측 4열 ✓ · `container-query.test.ts`가 소스에서 센다 |
+| 🔴2 | 거부 직후 `router.refresh()`가 방금 세운 거부 Alert를 씻어 갔다 (**POSTMORTEM 2026-09-08 재발** — 그 항목의 grep이 "한 곳뿐"이라 적혀 있는데 두 곳이었다) | `if (outcome.ok)` |
+| 🔴3 | 통신 실패가 온보딩 코드 `ingest-failed`로 떨어져 **존재하지 않는 컨트롤**을 가리킨 막다른 amber가 됐다 | 캔버스 tone 표의 `unavailable`로. 기존 테스트가 `onResult` 인자만 봐서 못 잡았다 |
+| 🟡4 | **상호 잠금이 스스로 연 갈래** — Publish 중 `[Try again]`이 확인 창을 예약해 Publish 종료 시점에 혼자 열렸다 | Provider의 setter 한 자리에서 막는다(여는 자리가 셋이라 호출부마다 달면 넷째가 빠진다) |
+| 🟡8 | 같은 화면에서 `+1,207` 위에 `Synced 1207 keys` | `repositorySync` 넷에 `toLocaleString` |
+| 🟡9 | `[slug]`가 param만 바뀌어 **A의 결과 Alert가 B의 Home에 남았다**(A의 브랜치 이름을 단 채로) | `<HomeActions key={slug}>` · 소스 단언으로 센다(렌더 테스트가 자기 key를 넘기면 공허하다) |
+
+**남은 것 — 🟡 다섯 · ⚪ 여섯**
+
+| # | 자리 | 무엇 | 비고 |
+|---|---|---|---|
+| 🟡6 | `components/home/meta-column.tsx:86` | 1라운드가 분기를 `href === null` → `disconnected`로 바꾸며 `href={row.href ?? undefined}`가 생겼다. 타입이 두 필드의 어긋남을 허용하므로 **파랑 글자 + `ExternalLink`를 단 `href` 없는 요소**가 설 수 있다 — 링크로 보이는데 포커스를 못 받는다 | 지금은 `metaRows`가 한 삼항에서 만들어 도달 불가. 판별 유니온으로 접는 것이 답 |
+| 🟡7 | `app/(edit)/projects/[slug]/loading.tsx` | 골격 치수가 실물과 여전히 다르다(할 일 행 -14×3 · 로그 행 -8.5×5 · 메타 행 -6×9 · 메타 구역 -29 · **메타 바닥 `[Project settings ›]`가 통째로 없다 -45**). 오른쪽 열이 도착 순간 ~130px 늘어난다 | ⚠️ **아트보드 `2e`는 한 번도 실측 안 됐다** — 브라우저에서 확인하고 고친다 |
+| 🟡10 | `messages/en.tsx` `home.banner.archived.body` | `"The open pull request was left alone."`가 **무조건** 선다 — 열린 PR 없이 보관한 프로젝트에서 거짓이다. 같은 사실을 다루는 `ArchiveCard`는 `openPrUrl`을 셋으로 가른다 | POSTMORTEM 2026-09-03("조회 실패를 부재로 접지 않는다")과 같은 축 |
+| 🟡11 | `loading.tsx:26` · `sync-result.tsx` | `role="status"`가 **내용을 이미 품은 채** 트리에 들어오고 제거로 사라진다 — live 영역은 내용이 **바뀌어야** 알리므로 주석이 약속하는 보장이 성립하지 않는다 | `HomeNotices`의 `<div>`가 항상 마운트돼 있으니 **빈 `role="status"` 래퍼를 상시로 세우고 안쪽만 갈아끼우면** 보장이 실재한다 |
+| 🟡— | `lib/import/confirm.ts` | `unavailable` 문구의 꼬리 *"— your text is kept"*가 이 화면에서는 뜻이 없다(편집기 문구다). 캔버스가 `errors.access.*` 재사용을 지시해 받아들였다 | 화면 전용으로 다시 쓸지는 T13 판정 |
+| ⚪ | — | `m.home.banner.archived.action` 소비자 0 · `HomeState`의 `"empty"` 소비자 0 · `confirm.ts`의 `{...input}` 되돌림 미사용 · `loading.tsx`의 로컬 `Block`이 `skeleton.tsx` 사본 · `HomeNotices`가 `onRetry`를 role 무관하게 넘긴다(EDITOR는 도달 불가) · `home-vocabulary.test.ts:80`의 "여섯"이 실제로 일곱 | |
+
 ### POSTMORTEM이 낸 후속 후보 다섯 (2026-09-15, grep을 실제로 돌린 결과)
 
 | 자리 | 무엇 | 왜 지금 안 고쳤나 |
