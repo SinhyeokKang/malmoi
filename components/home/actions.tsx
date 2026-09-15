@@ -32,6 +32,18 @@ import { relativeTime } from "@/lib/relative-time";
 type HomeActionsValue = {
   syncOpen: boolean;
   setSyncOpen: (open: boolean) => void;
+  /**
+   * ⚠️ **두 방향을 따로 센다** (시안 `4f`) — Sync는 리포로 DB를 덮고 Publish는 DB로 리포를 덮으므로,
+   * 겹치면 남는 값이 두 요청의 도착 순서에 달린다. 화면이 약속할 수 없는 근거라 **한쪽이 도는 동안
+   * 다른 쪽을 잠근다.** 각 버튼은 자기 연타만 막고 서로의 존재를 모르므로 이 판정은 호스트의 몫이다.
+   *
+   * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 `Syncing…` 트리거가 native
+   * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (spec §12-9).
+   */
+  syncPending: boolean;
+  setSyncPending: (pending: boolean) => void;
+  publishPending: boolean;
+  setPublishPending: (pending: boolean) => void;
   outcome: RepositoryImportOutcome | null;
   setOutcome: (outcome: RepositoryImportOutcome | null) => void;
   pull: PullOutcome | null;
@@ -50,11 +62,13 @@ function useHomeActions(): HomeActionsValue {
 
 export function HomeActions({ children }: { children: ReactNode }) {
   const [syncOpen, setSyncOpen] = useState(false);
+  const [syncPending, setSyncPending] = useState(false);
+  const [publishPending, setPublishPending] = useState(false);
   const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
   const [pull, setPull] = useState<PullOutcome | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, outcome, setOutcome, pull, setPull, titleRef }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, setPublishPending, outcome, setOutcome, pull, setPull, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -112,7 +126,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
    */
   paused: boolean;
 }) {
-  const { syncOpen, setSyncOpen, setOutcome, setPull, titleRef } = useHomeActions();
+  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, setPublishPending, setOutcome, setPull, titleRef } = useHomeActions();
   return (
     <div className="flex items-center gap-2">
       <SyncButton
@@ -121,14 +135,20 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
         branch={branch}
         role={role}
         unsent={unsent}
-        paused={paused}
+        /*
+          ⚠️ **Publish가 도는 동안도 멈춘 상태다** — 뜻이 `paused`와 같다(OWNER가 가진 동작이 지금
+          멈춰 있다). 같은 뜻에 프롭을 하나 더 만들지 않는다. **자기 자신의 진행은 넣지 않는다**:
+          넣으면 `Syncing…` 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
+        */
+        paused={paused || publishPending}
         open={syncOpen}
         onOpenChange={setSyncOpen}
+        onPendingChange={setSyncPending}
         onResult={setOutcome}
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton slug={slug} count={unsent} label={m.home.publish} badge disabled={paused || unsent === 0} onResult={setPull} />
+      <PublishButton slug={slug} count={unsent} label={m.home.publish} badge disabled={paused || unsent === 0 || syncPending} onPendingChange={setPublishPending} onResult={setPull} />
     </div>
   );
 }

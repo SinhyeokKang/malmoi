@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, Send } from "lucide-react";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { Alert } from "@/components/ui/alert";
@@ -30,6 +30,7 @@ export function PublishButton({
   badge = false,
   label,
   onResult,
+  onPendingChange,
 }: {
   slug: string;
   /** 미배포 건수 — 라벨이 든다. 0이면 숫자가 붙지 않는다. */
@@ -48,8 +49,15 @@ export function PublishButton({
   badge?: boolean;
   label?: string;
   onResult: (outcome: PullOutcome) => void;
+  /**
+   * ⚠️ **Home이 `[Sync]`를 잠그려고 듣는다** (sync-repository 시안 `4f`) — Publish는 DB로 리포를 덮고
+   * Sync는 리포로 DB를 덮으므로, 겹치면 남는 값이 두 요청의 도착 순서에 달린다. 번역 화면은 이 프롭을
+   * 안 넘긴다(그 툴바에 반대 방향 버튼이 없다).
+   */
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [pending, startTransition] = useTransition();
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
 
   return (
     <Button

@@ -23,7 +23,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
@@ -35,6 +35,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
    */
   paused?: boolean;
   onResult: (outcome: RepositoryImportOutcome) => void;
+  /**
+   * ⚠️ **호스트가 `[Publish]`를 잠그려고 듣는다** (시안 `4f`) — 두 방향이 동시에 돌면 어느 쪽 값이
+   * 남는지 화면이 설명할 수 없다. 이 컴포넌트는 **자기 연타만** 막으므로 형제의 존재는 호스트가 안다.
+   */
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const router = useRouter();
   const triggerId = useId();
@@ -56,6 +61,12 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     );
     return () => { request.current++; };
   }, [open, slug, role]); // onOpenChange only closes an externally reopened pending dialog.
+  /*
+    ⚠️ **`pending`을 호스트로 끌어올리지 않고 알리기만 한다** — 이 값은 `open && !pending`과 트리거
+    라벨이 쓰는 지역 상태이고, 올리면 프롭이 controlled 쌍으로 늘어난다. 이 effect가 그 하나의
+    근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
+  */
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
   const plan = planImportConfirmation({ unsent, openPr });
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
