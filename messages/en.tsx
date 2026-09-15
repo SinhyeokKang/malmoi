@@ -18,31 +18,107 @@ import type { ReactNode } from "react";
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
 export const en = {
+  /**
+   * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
+   * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
+   *
+   * ⚠️ **코드 식별자는 `import`이고 화면만 `Sync`다** (spec §12). 여기서만 낱말이 갈린다.
+   */
   repositorySync: {
-    action: "Sync", confirm: "Sync from repository", title: "Sync from repository?",
-    body: "Replace translations in every active surface with the repository versions. Edits made here can be lost.",
-    unsent: (n: number): string => `${n} change${n === 1 ? " has" : "s have"} not been sent. This count may not include every edit at risk.`,
+    /**
+     * Home 머리의 트리거.
+     *
+     * ⚠️ **확인 버튼(`confirm`)과 이름이 달라야 한다** — 같으면 접근성 트리·자동화에서 두 버튼이
+     * 구별되지 않는다. 2026-09-15에 Archive Dialog가 정확히 그 모양(트리거·확인 둘 다
+     * `Archive project`)이라 셀렉터가 모호해진 클릭이 확인 버튼을 눌러 프로젝트를 실제로 보관시켰다.
+     */
+    action: "Sync",
+    /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
+    pending: "Syncing…",
+    confirm: "Sync from repository",
+    /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
+    title: (name: string): string => `Sync ${name} from the repository?`,
+    /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
+    body: (branch: ReactNode): ReactNode => (
+      <>malmoi will read the locale files on {branch} and replace what's in the app with them.</>
+    ),
+    /**
+     * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
+     * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
+     */
+    unsentCount: (n: number): string => `${n} edit${n === 1 ? "" : "s"}`,
+    /**
+     * ⚠️ **덮이는 값의 저자가 리포가 된다** — `lib/push/apply.ts`가 `"updatedBy" = NULL`로 저자를
+     * 비우므로, 이 문장이 말하는 "replaced"는 사람 이름까지 사라지는 것을 포함한다.
+     */
+    unsent: (n: number, edits: ReactNode): ReactNode => (
+      <>{edits} that {n === 1 ? "hasn't" : "haven't"} been sent yet will be replaced.</>
+    ),
+    /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
+    openPr: (n: number, branch: string): string =>
+      `Edits in pull request #${n} are not in ${branch} yet — they will be replaced too.`,
+    /**
+     * ⚠️ **조회 시작부터 선다** — `undefined`가 초기값이자 실패값이라 화면은 "조회 중"과 "조회 실패"를
+     * 구별하지 않는다. 성공한 조회가 `null`을 줄 때만 사라지므로 **블록은 줄어드는 방향**이다:
+     * 반대로 두면 미발송 0 + 조회 중이 `4a`와 픽셀 단위로 같아져 경고를 한 번도 못 본 채 실행된다.
+     * ⚠️ 확인된 경고와 **같은 amber**에 둔다 — muted 한 줄이면 부재(줄이 서지 않는 것)와 같은
+     * 신호로 읽힌다 (POSTMORTEM 2026-09-03).
+     */
+    prUnknown: "We couldn't check whether anything is still waiting in a pull request.",
+    /** ⚠️ 라벨이 `Send changes first`로 고정이다 — 그 화면의 실제 버튼 이름이 `Send changes`다. */
     sendFirst: "Send changes first",
-    mergeHint: "Sending changes alone does not protect them. Wait until the pull request is merged before syncing.",
-    prUnknown: "We couldn't confirm whether a pull request is open. Changes in an unmerged pull request can be lost.",
-    openPr: (n: number): string => `Pull request #${n} is open`,
-    pending: "Syncing from the repository…",
-    // runRepositoryImportFromReader preserves refs; the next CI applyPush replaces them.
-    refsHint: "Code references are kept until your next automatic import.",
-    completed: (n: number): string => `Synced ${n} key${n === 1 ? "" : "s"} from the repository`,
+    /** 링크가 앱 안(번역 화면)으로 간다는 것을 문장이 말한다 — `ExternalLink` 글리프를 붙이지 않는다. */
+    sendHint: (link: ReactNode): ReactNode => <>Your translators can {link} — it opens the translation screen.</>,
+    /**
+     * 미발송 0 ∧ 열린 PR — `Send changes first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
+     * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.
+     */
+    nothingUnsent: "Nothing is waiting to be sent.",
+    /**
+     * ⚠️ **구역이 다른 문구를 빌려 쓰지 않는다** — `archive.confirm.openPrLink`가 같은 문자열이지만
+     * 그것을 참조하면 Archive를 고칠 때 이 화면이 조용히 따라 움직인다 (2026-09-13 리뷰).
+     */
+    seeOpen: "See what's open",
+    /** ⚠️ `Alert.title`은 **구두점 없는 문장 조각**이다 (DESIGN §10) — 헤드라인에서 마침표를 뗀다. */
+    completed: (n: number, branch: string): string => `Synced ${n} key${n === 1 ? "" : "s"} from ${branch}`,
+    /**
+     * ⚠️ **사고가 붙는 헤드라인에는 브랜치가 없다** (시안 `4e`) — `Synced 640 keys, but 1 surface …`.
+     * 한 문장에 출처와 사고를 함께 얹으면 `from main, but …`으로 절이 셋이 되어 사고가 뒤로 밀린다.
+     */
+    syncedKeys: (n: number): string => `Synced ${n} key${n === 1 ? "" : "s"}`,
     unreadable: (n: number): string => `${n} surface${n === 1 ? " could" : "s could"} not be read`,
+    /** ⚠️ `could not be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
     notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
     partial: (n: number): string => `${n} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
+    cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
+    /** 거부 Alert의 액션 둘. 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
+    openSettings: "Open settings",
+    reconnect: "Reconnect",
+    /**
+     * **`Alert`의 어느 자리에 서는지가 구두점을 정한다.** 앞의 셋은 표면별 사고의 **원인 줄**(본문이라
+     * 문장이고 마침표를 유지한다), 뒤의 다섯은 거부 Alert의 **제목**(문장 조각이라 마침표가 없다).
+     *
+     * ⚠️ **`invalid input`만 제목 자리인데 문장이다** — 고칠 방법이 "새로고침"이라 조각으로는 말할 수
+     * 없다. 슬러그가 깨져야 닿는 갈래라 화면에서 사실상 안 보인다(DESIGN §10의 "다음 행동" 쪽을 든다).
+     */
     errors: {
-      "invalid-format": "The file format is missing. Check this surface in project settings.",
-      "superseded": "Newer repository data or changed settings took precedence. Try again to use the current version.",
+      "invalid-format": "This surface has no valid import format.",
+      "superseded": "New repository data arrived while syncing. This surface was not replaced. Try again if needed.",
       "lease-lost": "This sync no longer owns the import. Wait for the current import to finish before trying again.",
-      "repo-replaced": "This connection points to a different repository. Reconnect it in project settings.",
-      "already-running": "An import is already running. Wait for it to finish before trying again.",
-      "no-surfaces": "There are no active translation surfaces. Add a surface in project settings.",
+      "not-ready": "This project hasn't finished its first import yet",
+      "not-connected": "malmoi is not connected to this repository",
+      "already-running": "A sync is already running",
+      "no-surfaces": "There's nothing to sync — this project has no active surfaces",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
+      /**
+       * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는
+       * 생성 시점 고정이라 `connectRepository`가 재고정을 거부한다. 눌러도 실패할 버튼이므로
+       * tone도 warning이 아니라 **danger**다: 이 거부는 이 화면에서 풀리지 않는다.
+       */
+      "repo-replaced": "This connection points to a different repository",
     },
   },
   surfaces: {
