@@ -1696,3 +1696,19 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     (**차 46**) · `Th` 19 / `Td` 22 · `SegmentedControl` 2 / `SegmentedLinks` 0 ·
     `SelectTrigger` 9 / `SelectContent` 9. ⚠️ **`Button`↔`ButtonLink`가 가장 위험하다** — 높이·radius를
     한쪽에서만 옮기면 링크형 버튼 14곳이 조용히 어긋나고, 그 둘은 화면에서 나란히 선다.
+
+### 2026-09-15 — 읽힌 엔트리 0개를 정상 빈 카탈로그로 판정하면 기존 키를 전부 고아로 만든다
+
+- **영역**: `lib/import/empty.ts`, `lib/import/surface.ts`, YAML·JSON·TS 딕셔너리 어댑터.
+- **증상**: Sync 준비 단계의 회귀 테스트에서 YAML alias/복합 키/null과 JSON null이 정상 빈 카탈로그로 통과했다. 이 판정으로 적용하면 파일에 내용이 있는데도 기존 키 전체에 `orphaned`를 세운다. 배포 전 테스트에서 차단했다.
+- **근본 원인**: 어댑터의 `read`는 지원하지 않거나 번역이 없는 일부 노드를 오류 없이 건너뛴다. `entries.length === 0`과 `errors.length === 0`은 읽어낸 번역이 없다는 뜻이지, 원본 컨테이너가 비었다는 증거가 아니다. TS shorthand/spread에도 같은 문제가 있다.
+- **그물**: 정상 `{}`·깨진 파싱·base 부재 테스트만으로는 놓쳤다. 실제 어댑터를 거치는 YAML/JSON 반례가 red를 냈고, 원본 구조 검증과 TS 선언 검사 뒤 green이 됐다. 격리 PG도 잘못된 빈 판정이 키 상태를 바꾸지 않는지 검사한다.
+- **재발 방지**: `rg -n 'entries\.length|errors\.length|empty' lib/import lib/onboarding`으로 0건 성공 판정을 찾고 `pnpm exec vitest run lib/import/__tests__/empty.test.ts lib/import/__tests__/prepare.test.ts`와 `pnpm test:projects:postgres`를 실행한다. 전수 확인에서 첫 적재의 `prepareFirstSnapshot`은 여전히 0키를 실패로 반환하며, 정상 0키 성공은 `verifyEmptyCatalog`를 통과한 Sync에만 있다. JSON 스타일의 0엔트리 분기는 출력 형식 선택이라 데이터 적용 판정이 아니다.
+
+### 2026-09-15 — 설정 변경으로 Sync 적용을 거부한 뒤 자기 진행 표시가 남았다
+
+- **영역**: `lib/import/run.ts`의 표면 종료와 프로젝트 실행권 해제.
+- **증상**: blob 다운로드를 기다리는 동안 표면 설정을 바꾸면 적용은 `superseded`로 거부됐지만 이미 세운 `lastImportToken/lastImportStartedAt`은 남았다. 프로젝트 실행권만 해제돼 다음 Sync가 진행 중 표면으로 오인했다.
+- **근본 원인**: 데이터 적용·실패 기록의 조건과 진행 표시 정리의 조건을 하나로 취급했다. 설정이 바뀌면 앞의 두 동작은 금지해야 하지만, 아직 유효한 자기 실행권에 속한 표시는 정리해야 한다. 역으로 stale 실행은 자기 토큰이 남아 있어도 종료 권한이 없다.
+- **그물**: 설정 변경을 다운로드 전으로만 배치한 테스트는 표시가 세워진 창을 놓쳤다. 실제 PG의 blob barrier 회귀 테스트와 stale 자기 해제 금지 테스트가 각각 red를 냈다. 종료 시 Project 잠금→자기 토큰·유효기간 확인→자기 표면 표시만 정리하도록 고친 뒤 통과했다.
+- **재발 방지**: `rg -n 'lastImportStartedAt: null|lastImportToken|repositoryImportToken' lib/import lib/projects lib/push`로 종료 경계를 점검한다. 적용·실패 기록은 revision/설정까지 검사하고, finally 정리는 유효한 자기 프로젝트 토큰과 자기 표면 토큰만 허용한다. 전수 확인한 기존 `finishImportRun`도 표면 토큰으로 종료를 제한하며, CI와 새 Sync의 표시를 덮지 않는지는 `pnpm test:projects:postgres`가 검증한다.
