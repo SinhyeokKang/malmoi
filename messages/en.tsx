@@ -286,6 +286,11 @@ export const en = {
    */
   home: {
     /**
+     * 머리의 primary. ⚠️ **번역 화면의 `Send changes`와 다른 낱말이다** — 이 화면의 낱말은
+     * `Sync`(리포 → 앱)·`Publish`(앱 → 리포) 둘뿐이라는 규칙 때문이고, 그 규칙은 Home에만 산다.
+     */
+    publish: "Publish",
+    /**
      * 보조 줄 — `{unit} · {근거}` 두 토막이다 (spec §10). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
      * `New`에도 `To translate`에도 세므로 넷이 같은 모집단이 아니고, 그 사실을 말하는 자리가 여기다.
      */
@@ -298,7 +303,7 @@ export const en = {
       reviewByLocale: (parts: string): string => parts,
       localeCount: (code: string, n: number): string => `${n} ${code}`,
       lastPublish: (when: string): string => `last publish ${when}`,
-      allFilled: (n: number): string => `${n} keys all filled`,
+      allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
       nothingPending: "nothing pending",
       /** `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다. */
       lastGoodSync: (when: string | null): string => (when === null ? "no good sync yet" : `last good sync ${when}`),
@@ -355,10 +360,25 @@ export const en = {
         /** 첫 Sync 전에는 갈래가 다르다 — 비어 있는 것이 아니라 아직 시작 전이다. */
         beforeFirstSync: "Nothing yet. The first sync from your repository shows up here.",
       },
-      sync: (n: number, surface: string): string => `CI synced ${n} new ${n === 1 ? "key" : "keys"} into ${surface}`,
-      /** 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다. */
-      edit: (who: string | null, key: string, locale: string, surface: string): string =>
-        `${who === null ? `${key} was edited` : `${who} edited ${key}`} in ${locale} · ${surface}`,
+      /**
+       * ⚠️ **키 수가 노드다** — 파랑 다섯 자리 중 하나가 그 조각이고, 문장으로 접으면 줄 전체가
+       * 파래져 "이 줄이 링크"로 읽힌다 (spec §3.3-9).
+       */
+      sync: (keys: ReactNode, surface: string): ReactNode => (
+        <>CI synced {keys} into {surface}</>
+      ),
+      newKeys: (n: number): string => `${n} new ${n === 1 ? "key" : "keys"}`,
+      /**
+       * 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다.
+       *
+       * ⚠️ **키 이름과 표면이 노드다** — 키는 500 굵기로만 구분하고(mono를 쓰지 않는다) 표면은
+       * 한 단계 물러난다. 문자열로 접으면 그 둘을 가를 자리가 없다.
+       */
+      edit: (who: string | null, key: ReactNode, locale: string, surface: ReactNode): ReactNode => (
+        <>
+          {who === null ? <>{key} was edited</> : <>{who} edited {key}</>} in {locale} · {surface}
+        </>
+      ),
       /**
        * ⚠️ **`{n} files changed`다** — `SyncRun.changed`가 파일 수이고 칸 수가 아니다.
        *
@@ -391,6 +411,8 @@ export const en = {
       /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
       failedAt: (when: string): string => `failed ${when}`,
       never: "Never",
+      /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
+      pullRequest: "Pull request",
       /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
       pr: (n: number): string => `#${n}`,
     },

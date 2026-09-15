@@ -622,9 +622,16 @@ export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count:
  * 통째로 빠질 수 있다. 여기 필요한 것은 "그 로케일에서 마지막으로 만진 사람"이고, 그것은 창과
  * 무관하게 존재한다.
  *
- * ⚠️ **한 왕복이다.** 창(window) 함수로 개수를 세고 `DISTINCT ON`으로 대표 행을 고른다 —
- * 로케일마다 조회하면 59로케일 리포에서 그만큼 왕복이 붙는다 (POSTMORTEM 2026-09-05 — 병목이
- * 행 수가 아니라 함수 리전이었다).
+ * ⚠️ **저자를 검토 대기 행에서 뽑지 않는다** (2026-09-15 Codex 리뷰 🟡3). `needsReview = true`는
+ * **push가 세우는 플래그**이고 같은 쓰기가 `updatedBy`를 비운다(불변식 2) — 그 행에서 저자를
+ * 찾으면 **거의 언제나 `null`이라 `— last edited by …` 절이 영영 안 뜬다.** 파티션을 그 로케일의
+ * **값이 있는 셀 전체**로 두고, 대표 행은 `updatedBy IS NOT NULL` 중 최신을 고른다.
+ *
+ * ⚠️ **정렬 키(`at`)는 대표 행의 시각이 아니라 파티션의 `MAX`다** — 항목이 서는 축은 "그 로케일에
+ * 마지막으로 무슨 일이 있었나"이고, 사람이 안 만진 로케일에서도 push 시각이 그 답이다.
+ *
+ * ⚠️ **한 왕복이다.** 창(window) 함수로 세고 `DISTINCT ON`으로 대표 행을 고른다 — 로케일마다
+ * 조회하면 59로케일 리포에서 그만큼 왕복이 붙는다 (POSTMORTEM 2026-09-05).
  *
  * ⚠️ **`ORDER BY`에 보조 키가 있다** — 같은 시각의 편집 둘이 있으면 어느 행의 `updatedBy`가 뽑힐지가
  * 요청마다 달라지고, 그러면 같은 DB 상태가 다른 이름을 낸다.
@@ -637,8 +644,10 @@ export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count:
 export async function loadReviewAttention(prisma: PrismaClient, projectId: string): Promise<ReviewAttentionRow[]> {
   const rows = await prisma.$queryRaw<{ surfaceId: string; localeCode: string; at: Date; updatedBy: string | null; n: number }[]>`
     SELECT DISTINCT ON (t."surfaceId", t."localeCode")
-      t."surfaceId", t."localeCode", t."updatedAt" AS "at", t."updatedBy",
-      COUNT(*) OVER (PARTITION BY t."surfaceId", t."localeCode")::int AS n
+      t."surfaceId", t."localeCode",
+      MAX(t."updatedAt") OVER (PARTITION BY t."surfaceId", t."localeCode") AS "at",
+      CASE WHEN t."updatedBy" IS NULL THEN NULL ELSE t."updatedBy" END AS "updatedBy",
+      COUNT(*) FILTER (WHERE t."needsReview") OVER (PARTITION BY t."surfaceId", t."localeCode")::int AS n
     FROM "Translation" t
     JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
     JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."id" = t."keyId"
@@ -647,10 +656,12 @@ export async function loadReviewAttention(prisma: PrismaClient, projectId: strin
       AND s."archivedAt" IS NULL
       AND k."orphaned" = false
       AND l."orphaned" = false
-      AND t."needsReview" = true
       AND t."value" <> ''
-    ORDER BY t."surfaceId", t."localeCode", t."updatedAt" DESC, t."keyId" ASC`;
-  return rows.map((row) => ({ surfaceId: row.surfaceId, localeCode: row.localeCode, count: row.n, at: row.at, updatedBy: row.updatedBy }));
+    ORDER BY t."surfaceId", t."localeCode", (t."updatedBy" IS NOT NULL) DESC, t."updatedAt" DESC, t."keyId" ASC`;
+  // 검토 대기가 0인 로케일은 항목이 아니다 — 파티션이 그 로케일 전체라 여기서 거른다.
+  return rows.flatMap((row) => (row.n === 0 ? [] : [{
+    surfaceId: row.surfaceId, localeCode: row.localeCode, count: row.n, at: row.at, updatedBy: row.updatedBy,
+  }]));
 }
 
 /**

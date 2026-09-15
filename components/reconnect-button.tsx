@@ -17,12 +17,21 @@ import { m } from "@/lib/i18n";
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로
  * 바뀌는 것이 곧 성공 신호다 — 문구를 하나 더 두면 그 상태와 어긋날 수 있다.
  */
-export function ReconnectButton({ slug, label }: { slug: string; label: string }) {
+export function ReconnectButton({ slug, label, variant }: {
+  slug: string;
+  label: string;
+  /**
+   * ⚠️ **Home의 미연결 배너에서만 `primary`다** (캔버스 `2c`) — 그 화면에서 할 수 있는 일이 이것
+   * 하나라 검정이 Publish가 아니다. 설정 화면은 블록이 여럿이라 기본형을 쓴다.
+   */
+  variant?: "primary";
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="space-y-2">
       <Button
+        variant={variant}
         loading={pending}
         onClick={() => {
           setError(null);

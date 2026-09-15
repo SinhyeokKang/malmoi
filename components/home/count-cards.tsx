@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { CARD_STATE, type CardSubline, type HomeCard } from "@/lib/home/cards";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
-import { routes } from "@/lib/routes";
+import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,7 +27,16 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
 
 export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; slug: string; now: Date }) {
   return (
-    <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    /*
+      카드 넷 사이만 8이다 — 블록 사이(20)보다 좁아야 넷이 **한 덩어리**로 읽힌다 (캔버스 `2a`).
+
+      ⚠️ **뷰포트가 아니라 컨테이너로 접는다.** 캔버스는 칸 폭 240을 전제하고 4열을 못 박았는데,
+      그 전제가 성립하는 것은 **오른쪽 프로젝트 패널이 닫혔을 때**뿐이다(캔버스가 `panel="none"`으로
+      그렸다). 패널이 열리면 1440에서도 콘텐츠가 531이라 칸이 127이 되고, 그때 `New from GitHub`이
+      두 줄로 접혀 **카드마다 수치의 세로 위치가 어긋난다**(2026-09-15 실물). 임계값 672는 가장 긴
+      제목(14px) + 글리프 16 + gap 8 + padding 28 = 162를 네 칸 세운 값이다.
+    */
+    <ul className="@container/cards grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
       {cards.map((card) => {
         const Glyph = GLYPH[card.key];
         return (
@@ -38,25 +47,45 @@ export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; s
               선다: 안쪽에 버튼을 넣지 않는 것이 그 조건이다.
             */}
             <Link
-              href={routes.translations(slug, { state: CARD_STATE[card.key] })}
-              className="focus-visible:ring-ring border-border hover:bg-foreground/[0.02] flex flex-col gap-3 rounded-xl border p-3.5 focus-visible:ring-2 focus-visible:outline-none"
+              /*
+                ⚠️ **`ns`를 명시한다** (2026-09-15 Codex 리뷰 🟡1). 안 실으면 번역 화면이 `?ns=`
+                부재를 "기본 착지"로 읽어 **남은 일이 있는 첫 네임스페이스**를 고르는데, 그 판정은
+                상태를 안 본다 — `To review 12`를 눌렀는데 그 네임스페이스엔 미번역만 있어 **0건**이
+                나온다. 구간을 보러 온 사람에게 네임스페이스 좁힘은 교집합을 비우는 축이다.
+              */
+              href={routes.translations(slug, { ns: ALL_NAMESPACES, state: CARD_STATE[card.key] })}
+              className="focus-visible:ring-ring border-border hover:bg-foreground/[0.02] flex flex-col gap-3 rounded-lg border p-3.5 focus-visible:ring-2 focus-visible:outline-none"
             >
               <span className="flex items-center gap-2">
                 <span className="text-sm font-medium">{m.projects.summary[card.key]}</span>
                 {/*
-                  ⚠️ **0이면 글리프도 함께 흐려진다** (design §5.2) — 목록 화면은 라벨이 이미 muted라
-                  글리프가 그 색을 상속하지만, 카드는 수치가 크고 기본색이 짙어 규칙이 새로 필요하다.
+                  ⚠️ **기본 글리프가 `neutral-400`이고 `muted-foreground`가 아니다** (캔버스 `#a3a3a3`).
+                  카드 안에서 글리프는 제목의 보조이지 읽을 것이 아니라, 보조 줄(`#737373`)보다 한
+                  단계 더 물러나야 넷이 나란히 섰을 때 색을 든 둘이 튀어나온다.
                 */}
                 <Glyph
                   className={cn(
                     "ml-auto size-4",
-                    card.tone === "accent" ? "text-blue-600" : card.tone === "warning" ? "text-amber-700" : "text-muted-foreground",
+                    card.tone === "accent" ? "text-blue-600" : card.tone === "warning" ? "text-amber-700" : "text-neutral-400",
                   )}
                   aria-hidden
                 />
               </span>
               <span className="flex flex-col gap-0.5">
-                <span className={cn("text-2xl font-medium", card.muted && "text-muted-foreground")}>{card.value}</span>
+                {/*
+                  ⚠️ **숫자에 색을 쓰는 유일한 자리다** (DESIGN §6.2 — 이미 등재돼 있다). 넷 중
+                  `New from GitHub`만 **내가 만들지 않은 변화**라 그 하나가 색을 든다.
+                  ⚠️ **0이면 `neutral-400`이다** — 값을 지우지 않는 것이 규칙이고(0이 곧 정보다)
+                  대신 무게를 뺀다.
+                */}
+                <span
+                  className={cn(
+                    "text-2xl font-medium",
+                    card.muted ? "text-neutral-400" : card.tone === "accent" ? "text-blue-600" : undefined,
+                  )}
+                >
+                  {value(card)}
+                </span>
                 <span className="text-muted-foreground text-xs">
                   {m.home.cards.unit[card.unit]} · {sublineText(card.subline, now)}
                 </span>
@@ -67,6 +96,18 @@ export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; s
       })}
     </ul>
   );
+}
+
+/**
+ * ⚠️ **유입만 `+` 접두다** (캔버스 `+12`) — 목록 화면의 띠와 같은 관용구이고, 그 칸만 **늘어난 양**을
+ * 말하기 때문이다. 나머지 셋은 **남아 있는 양**이라 부호가 뜻을 바꾼다.
+ *
+ * ⚠️ **로케일을 고정한다** — `toLocaleString()`은 서버 로케일에 따라 구분자가 갈리고, 그러면 같은 DB
+ * 상태가 다른 화면을 낸다 (export 결정성과 같은 축).
+ */
+function value(card: HomeCard): string {
+  const formatted = card.value.toLocaleString("en-US");
+  return card.key === "newFromGithub" && card.value > 0 ? `+${formatted}` : formatted;
 }
 
 /** 문장은 사전이 소유한다 — 판정(`countCards`)은 갈래와 재료만 낸다. */

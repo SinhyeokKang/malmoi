@@ -30,6 +30,7 @@ const bare = (source: string): string =>
  */
 const HOME_GRAPH = [
   "app/(edit)/projects/[slug]/page.tsx",
+  "app/(edit)/projects/[slug]/loading.tsx",
   "components/home/actions.tsx",
   "components/home/count-cards.tsx",
   "components/home/attention-card.tsx",
@@ -91,28 +92,41 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
 
 describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
   /**
-   * 유입 카드 · 로그의 sync 줄 · 로그의 PR 번호 · 메타의 리포 주소 · 메타의 PR 번호.
+   * 화면의 다섯 자리: 유입 카드 · 로그의 sync 줄 · 로그의 PR 번호 · 메타의 리포 주소 · 메타의 PR 번호.
+   *
+   * ⚠️ **소스 리터럴은 일곱이고 화면 자리는 다섯이다.** 유입 카드는 글리프와 수치가 **한 요소로**
+   * 읽히지만 색을 두 곳에 적어야 하고(`tone` 분기 + 수치 분기), 로그의 sync 줄도 점의 테두리와
+   * 키 수 조각 둘이 한 줄을 이룬다. 그래서 총합이 아니라 **파일별 분해**를 고정한다 — 총합만
+   * 맞추면 자리가 옮겨가도 green이다.
    *
    * ⚠️ **파랑은 링크색이 아니라 "리포 트래픽"이다.** 카드 넷이 전부 링크인데 파란 것은 첫 칸
-   * 하나이고, 로그의 두 자리는 링크가 아니다 — 그래서 `<a>`를 세는 것으로는 이 규칙을 못 센다.
+   * 하나이고, 로그의 두 자리는 링크가 아니다 — `<a>`를 세는 것으로는 이 규칙을 못 센다.
    *
-   * ⚠️ **색 이름을 하드코딩하지 않는다.** DESIGN §6.2에 등재된 raw 파랑 하나(`blue-600`)를 세는
-   * 것이고, 그 값이 바뀌면 이 배열 한 줄이 함께 바뀐다.
+   * ⚠️ **색 이름을 하드코딩하지 않는다.** DESIGN §6.2에 등재된 raw 파랑(`blue-600`)을 세는 것이고,
+   * 그 값이 바뀌면 이 정규식 한 줄이 함께 바뀐다.
    */
   const BLUE = /\bblue-\d{2,3}\b/g;
+  const count = (path: string): number => [...bare(read(path)).matchAll(BLUE)].length;
 
-  it("그래프 전체에서 다섯 번 쓰인다", () => {
-    const sites = HOME_GRAPH.flatMap((path) => [...bare(read(path)).matchAll(BLUE)].map(() => path));
-    expect(sites).toHaveLength(5);
+  it("유입 카드가 글리프와 수치 둘을 든다", () => {
+    expect(count("components/home/count-cards.tsx")).toBe(2);
   });
 
-  it("어느 파일이 몇 자리인지 고정한다 — 총합만 맞추면 자리가 옮겨가도 green이다", () => {
-    const count = (path: string): number => [...bare(read(path)).matchAll(BLUE)].length;
-    expect(count("components/home/count-cards.tsx")).toBe(1);
-    expect(count("components/home/logs-card.tsx")).toBe(2);
+  it("로그가 sync 줄(점 + 키 수)과 PR 번호로 셋을 든다", () => {
+    expect(count("components/home/logs-card.tsx")).toBe(3);
+  });
+
+  it("메타가 리포 주소와 PR 번호로 둘을 든다", () => {
     expect(count("components/home/meta-column.tsx")).toBe(2);
-    expect(count("app/(edit)/projects/[slug]/page.tsx")).toBe(0);
-    expect(count("components/home/actions.tsx")).toBe(0);
-    expect(count("components/home/attention-card.tsx")).toBe(0);
+  });
+
+  it("나머지 그래프에는 파랑이 없다", () => {
+    for (const path of ["app/(edit)/projects/[slug]/page.tsx", "app/(edit)/projects/[slug]/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
+      expect(count(path), path).toBe(0);
+    }
+  });
+
+  it("그래프 전체의 합이 일곱이다 — 자리가 늘면 위 분해도 함께 바뀐다", () => {
+    expect(HOME_GRAPH.reduce((sum, path) => sum + count(path), 0)).toBe(7);
   });
 });

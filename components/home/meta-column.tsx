@@ -11,54 +11,71 @@ import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 
 /**
- * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · design §3.5).
+ * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · design §3.5).
+ *
+ * ⚠️ **구역이 둘이다** — 리포의 모양(주소·브랜치·표면·로케일·키·멤버)과 **시각**(마지막 Sync·
+ * 마지막 Publish·생성·보관). 한 덩어리로 두면 아홉 행이 균질한 표가 되어 "언제"를 찾는 눈이
+ * 위에서부터 훑어야 한다.
  *
  * ⚠️ **`[Project settings ›]`의 노출은 편의이고 차단이 아니다** — `/settings`의
  * `requireProjectAccess({ permission: "project:settings" })`가 실제 방어선이다 (CLAUDE.md).
  */
+
+/** 시각을 드는 행들 — 아래 구역으로 내려간다. */
+const TIMES: readonly MetaRow["kind"][] = ["lastSync", "lastPublish", "created", "archived"];
+
 export function MetaColumn({ rows, slug, now, canOpenSettings }: {
   rows: readonly MetaRow[];
   slug: string;
   now: Date;
   canOpenSettings: boolean;
 }) {
+  const facts = rows.filter((row) => !TIMES.includes(row.kind));
+  const times = rows.filter((row) => TIMES.includes(row.kind));
+
   return (
-    <aside className="border-border h-fit rounded-xl border" aria-labelledby="home-meta-title">
-      <h2 id="home-meta-title" className="border-border border-b p-3.5 text-sm font-medium">
+    <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
+      <h2 id="home-meta-title" className="p-4 text-base font-medium">
         {m.home.meta.title}
       </h2>
-      <dl className="flex flex-col gap-2.5 p-3.5 text-xs">
-        {rows.map((row) => (
-          <div key={row.kind} className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted-foreground shrink-0">{label(row)}</dt>
-            <dd className="min-w-0 text-right">{value(row, now)}</dd>
-          </div>
-        ))}
-      </dl>
+      <MetaGroup rows={facts} now={now} />
+      <MetaGroup rows={times} now={now} />
       {canOpenSettings && (
-        <div className="border-border border-t p-3.5">
-          <Link
-            href={routes.settings(slug)}
-            className="focus-visible:ring-ring text-muted-foreground inline-flex items-center gap-0.5 text-xs focus-visible:ring-2 focus-visible:outline-none"
-          >
-            {m.home.meta.settings}
-            <ChevronRight className="size-3.5" aria-hidden />
-          </Link>
-        </div>
+        <Link
+          href={routes.settings(slug)}
+          className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center justify-center gap-0.5 border-t px-4 py-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {m.home.meta.settings}
+          <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+        </Link>
       )}
     </aside>
   );
 }
 
-function label(row: MetaRow): string {
-  return m.home.meta[row.kind];
+/**
+ * ⚠️ **라벨 폭이 96으로 고정이다** — `justify-between`으로 벌리면 값의 시작 위치가 라벨 길이를 따라
+ * 행마다 달라지고, 아홉 행이 한 열로 안 읽힌다.
+ */
+function MetaGroup({ rows, now }: { rows: readonly MetaRow[]; now: Date }) {
+  if (rows.length === 0) return null;
+  return (
+    <dl className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
+      {rows.map((row) => (
+        <div key={row.kind} className="flex items-baseline gap-3">
+          <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>
+          <dd className="min-w-0 flex-1 text-sm">{value(row, now)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 function value(row: MetaRow, now: Date): ReactNode {
   switch (row.kind) {
     case "repository":
       return row.href === null ? (
-        <span className="flex items-center justify-end gap-1.5">
+        <span className="flex flex-wrap items-center gap-1.5">
           {`${row.owner}/${row.name}`}
           {/* ⚠️ **링크가 사라지고 pill이 선다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. */}
           <Badge variant="warning">{m.home.meta.notConnected}</Badge>
@@ -81,15 +98,19 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "locales":
       /* ⚠️ 매핑이 없는 코드는 `LocaleFlag`가 `null`을 낸다 — 물음표·지구본을 대신 그리지 않는다. */
       return (
-        <span className="flex flex-wrap items-center justify-end gap-1">
+        <span className="flex flex-wrap items-center gap-2.5">
           {row.codes.map((code) => (
-            <LocaleFlag key={code} code={code} />
+            <span key={code} className="inline-flex items-center gap-1.5">
+              <LocaleFlag code={code} />
+              {code}
+            </span>
           ))}
         </span>
       );
     case "keys":
     case "members":
-      return row.count;
+      // 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
+      return row.count.toLocaleString("en-US");
     case "lastSync":
       return (
         <span>
@@ -103,22 +124,22 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "lastPublish": {
       // ⚠️ 번호를 못 뽑으면 링크를 만들지 않는다 — 주소를 그대로 이름으로 읽히지 않는다.
       const pr = pullNumberFrom(row.prUrl);
-      return (
+      if (row.at === null) return m.home.meta.never;
+      return pr === null || row.prUrl === null ? (
+        relativeTime(row.at, now)
+      ) : (
+        /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
         <span>
-          {row.at === null ? m.home.meta.never : relativeTime(row.at, now)}
-          {pr !== null && row.prUrl !== null && (
-            <>
-              {" · "}
-              <a
-                href={row.prUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
-              >
-                {m.home.meta.pr(pr)}
-              </a>
-            </>
-          )}
+          {m.home.meta.pullRequest}{" "}
+          <a
+            href={row.prUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {m.home.meta.pr(pr)}
+          </a>
+          {` · ${relativeTime(row.at, now)}`}
         </span>
       );
     }

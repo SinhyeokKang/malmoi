@@ -27,6 +27,8 @@ export function PublishButton({
   slug,
   count,
   disabled = false,
+  badge = false,
+  label,
   onResult,
 }: {
   slug: string;
@@ -37,6 +39,14 @@ export function PublishButton({
    * (project-home spec §8). 번역 화면은 이 값을 넘기지 않는다: 그쪽 툴바는 상태 갈래를 안 든다.
    */
   disabled?: boolean;
+  /**
+   * Home의 머리만 쓴다 — 번역 화면 툴바는 라벨이 그 수를 이미 든다.
+   *
+   * ⚠️ **Home은 라벨도 다르다** — 그 화면의 낱말은 `Sync`·`Publish` 둘뿐이라는 규칙이 있고
+   * (project-home spec §3.3-7), `Send changes`는 그 규칙 밖의 툴바 문구다.
+   */
+  badge?: boolean;
+  label?: string;
   onResult: (outcome: PullOutcome) => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -56,7 +66,16 @@ export function PublishButton({
       disabled={disabled}
     >
       <Send aria-hidden />
-      {m.translations.publish.button(count)}
+      {label ?? m.translations.publish.button(count)}
+      {/*
+        ⚠️ **수가 배지로 나온다** (project-home 캔버스 `2a`) — 라벨 안에 넣으면 버튼 폭이 자릿수에
+        따라 흔들리고, 0일 때는 배지 자체가 없어야 한다. 번역 화면은 이 prop을 안 넘긴다.
+      */}
+      {badge && count > 0 && (
+        <span className="bg-background/20 inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px text-xs">
+          {count.toLocaleString("en-US")}
+        </span>
+      )}
     </Button>
   );
 }

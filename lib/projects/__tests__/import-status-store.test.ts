@@ -26,7 +26,11 @@ it("clears only its own running marker when a run fails", async () => {
   await finishImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" });
   expect(project.updateMany).toHaveBeenCalledWith({
     where: { id: "s1", projectId: "p1", lastImportToken: "run-token" },
-    data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: "import-failed" },
+    /**
+     * ⚠️ **종료 필드 셋을 `importOutcomeFields`가 한 벌로 낸다** (2026-09-15) — 나열하면 컬럼이 늘
+     * 때마다 종료 경로 다섯 중 몇이 조용히 빠진다. `lastImportFailedAt`이 실제로 그렇게 둘에만 붙었다.
+     */
+    data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: "import-failed", lastImportFailedAt: expect.any(Date) },
   });
 });
 

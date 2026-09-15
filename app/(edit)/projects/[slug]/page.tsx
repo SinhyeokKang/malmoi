@@ -221,7 +221,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-          <HomeTitle>{project.name}</HomeTitle>
+          <HomeTitle archived={state === "archived"}>{project.name}</HomeTitle>
           <HomeHeaderActions
             slug={slug}
             name={project.name}
@@ -233,11 +233,15 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
         </div>
       </PanelHeader>
 
-      <PanelBody width="fluid" className="flex flex-col gap-4">
-        {/*
-          ⚠️ **무조건 렌더한다** — 결과 Alert가 이 안에 있고, 조건부 분기에 두면 `revalidatePath`가
-          방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
-        */}
+      {/*
+        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d` — `margin:0 24px 20px`).
+        본문 안에 두면 스크롤과 함께 밀려 올라가고, 그러면 "왜 버튼이 안 눌리나"를 말하는 문장이
+        화면 밖으로 나간다 (POSTMORTEM 2026-09-06).
+
+        ⚠️ **무조건 렌더한다** — 결과 Alert가 이 안에 있고, 조건부 분기에 두면 `revalidatePath`가
+        방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+      */}
+      <div className="mx-auto w-full max-w-7xl px-4 pb-4 empty:hidden">
         <HomeNotices
           slug={slug}
           name={project.name}
@@ -249,49 +253,53 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
           lastSyncAt={lastSyncAt}
           now={now}
         />
+      </div>
 
-        <div className="flex flex-col gap-4 lg:flex-row">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <CountCards
-              cards={countCards({
-                state, counts,
-                surfaces: surfaces.length,
-                keys,
-                lastSyncAt,
-                lastPublishedAt: project.lastPublishedAt,
-                reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
-              })}
-              slug={slug}
-              now={now}
-            />
-            <AttentionCard items={items} slug={slug} state={state} />
-            <LogsCard items={activity} slug={slug} now={now} syncedBefore={lastSyncAt !== null} />
-          </div>
-
-          <div className="lg:w-80 lg:shrink-0">
-            <MetaColumn
-              rows={metaRows({
-                state,
-                repoOwner: project.repoOwner,
-                repoName: project.repoName,
-                baseBranch: project.baseBranch,
-                surfaces: surfaces.length,
-                locales: [...new Set(surfaces.flatMap((s) => s.locales.filter((l) => !l.orphaned).map((l) => l.code)))].sort(),
-                keys,
-                members: project._count.members,
-                lastSyncAt,
-                lastImportFailedAt: failed?.lastImportFailedAt ?? null,
-                lastPublishedAt: project.lastPublishedAt,
-                lastPrUrl: project.lastPrUrl,
-                createdAt: project.createdAt,
-                archivedAt: project.archivedAt,
-              })}
-              slug={slug}
-              now={now}
-              canOpenSettings={canPerform(role, "project:settings")}
-            />
-          </div>
+      {/*
+        ⚠️ **오른쪽 열이 320 고정이고 왼쪽이 `minmax(0,1fr)`이다** (캔버스). `flex-1`로 두면 카드
+        안의 긴 문장이 왼쪽 열을 밀어 오른쪽이 좁아진다 — `min-width:auto`가 기본이라서다.
+        ⚠️ **간격이 20이다** — 블록 사이도 같은 20이라 세로·가로가 한 격자로 읽힌다. 카드 넷 사이만
+        8이고, 그 차이가 넷을 한 덩어리로 묶는다.
+      */}
+      <PanelBody width="fluid" className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
+          <CountCards
+            cards={countCards({
+              state, counts,
+              surfaces: surfaces.length,
+              keys,
+              lastSyncAt,
+              lastPublishedAt: project.lastPublishedAt,
+              reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
+            })}
+            slug={slug}
+            now={now}
+          />
+          <AttentionCard items={items} slug={slug} state={state} now={now} />
+          <LogsCard items={activity} slug={slug} now={now} syncedBefore={lastSyncAt !== null} />
         </div>
+
+        <MetaColumn
+          rows={metaRows({
+            state,
+            repoOwner: project.repoOwner,
+            repoName: project.repoName,
+            baseBranch: project.baseBranch,
+            surfaces: surfaces.length,
+            locales: [...new Set(surfaces.flatMap((s) => s.locales.filter((l) => !l.orphaned).map((l) => l.code)))].sort(),
+            keys,
+            members: project._count.members,
+            lastSyncAt,
+            lastImportFailedAt: failed?.lastImportFailedAt ?? null,
+            lastPublishedAt: project.lastPublishedAt,
+            lastPrUrl: project.lastPrUrl,
+            createdAt: project.createdAt,
+            archivedAt: project.archivedAt,
+          })}
+          slug={slug}
+          now={now}
+          canOpenSettings={canPerform(role, "project:settings")}
+        />
       </PanelBody>
     </HomeActions>
   );

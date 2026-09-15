@@ -1,5 +1,6 @@
 "use client";
 
+import { Box } from "lucide-react";
 import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SyncButton } from "@/components/home/sync-button";
@@ -8,6 +9,7 @@ import { PublishButton, PublishResult } from "@/components/publish-button";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
@@ -58,13 +60,35 @@ export function HomeActions({ children }: { children: ReactNode }) {
   );
 }
 
-/** 제목 — 권한이 바뀌어 트리거가 사라졌을 때 Dialog가 포커스를 되돌릴 자리다 (`SyncButton`의 계약). */
-export function HomeTitle({ children }: { children: ReactNode }) {
+/**
+ * 제목 — 타일 28 + 이름 + (보관이면) pill.
+ *
+ * ⚠️ **포커스를 받는 자리다** — 권한이 바뀌어 `[Sync]` 트리거가 사라졌을 때 Dialog가 포커스를
+ * 되돌릴 대상이 필요하다 (`SyncButton`의 계약).
+ *
+ * ⚠️ **이름이 18px이고 캔버스의 20이 아니다** (2026-09-15 사용자 판정). 리포의 패널 머리 `h1`이
+ * 전부 `text-lg`이고, 한 화면만 다른 크기를 쓰면 화면을 옮길 때마다 제목이 뛴다 — 프리미티브가
+ * 이기는 자리다. **의도된 이탈이고 `docs/DESIGN.md`에 있다.**
+ *
+ * ⚠️ **머리에 리포·브랜치·멤버 수를 적지 않는다** — 오른쪽 `Project` 카드가 그 사실의 소유자다.
+ */
+export function HomeTitle({ archived, children }: { archived: boolean; children: ReactNode }) {
   const { titleRef } = useHomeActions();
   return (
-    <h1 ref={titleRef} tabIndex={-1} className="text-lg font-medium">
-      {children}
-    </h1>
+    <span className="flex min-w-0 items-center gap-2.5">
+      {/*
+        타일은 **이름의 일부**이지 링크가 아니다 — 프로젝트 안이라 자기 자신으로 가는 링크가 될
+        자리이고, 그것은 죽은 컨트롤이다. 색은 셸 스위처의 프로젝트 아바타와 같은 축이다.
+      */}
+      <span className="bg-foreground text-background flex size-7 shrink-0 items-center justify-center rounded" aria-hidden>
+        <Box className="size-4" />
+      </span>
+      <h1 ref={titleRef} tabIndex={-1} className="truncate text-lg font-medium">
+        {children}
+      </h1>
+      {/* 보관은 **머리에서** 말한다 — 배너는 스크롤되지만 이 pill은 제목과 함께 남는다. */}
+      {archived && <Badge>{m.home.meta.archived}</Badge>}
+    </span>
   );
 }
 
@@ -104,7 +128,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton slug={slug} count={unsent} disabled={paused || unsent === 0} onResult={setPull} />
+      <PublishButton slug={slug} count={unsent} label={m.home.publish} badge disabled={paused || unsent === 0} onResult={setPull} />
     </div>
   );
 }
@@ -115,6 +139,12 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
  * ⚠️ **배너와 결과가 같은 자리를 다투지 않는다.** 배너는 "지금 이 프로젝트가 어떤 상태인가"이고
  * 결과는 "방금 누른 것이 어떻게 됐나"라, 둘 다 서 있는 순간이 정상이다.
  */
+/*
+  ⚠️ **`role="alert"`을 셋에 다 주지 않는다** — 캔버스는 셋 다 그렇게 적었지만 프리미티브의
+  `danger`가 **이미** `role="alert"`이고(`alert.tsx`), 나머지 둘(미연결·보관)은 **화면에 처음부터
+  있는 상태**이지 방금 일어난 사건이 아니다. assertive live 영역을 상시 상태에 쓰면 그 화면에
+  들어올 때마다 스크린리더가 읽던 것을 끊는다. 의도된 이탈이고 `docs/DESIGN.md`에 있다.
+*/
 export function HomeNotices({ slug, name, state, role, branch, failedSurface, reason, lastSyncAt, now }: {
   slug: string;
   name: string;
@@ -139,9 +169,16 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
           actions={owner ? <Button onClick={() => setSyncOpen(true)}>{m.home.banner.syncFailed.action}</Button> : undefined}
         >
-          {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-          {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
-          {!owner && <> {m.home.banner.syncFailed.editor}</>}
+          {/*
+            ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면
+            "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로
+            읽혀서, 이 배너가 하는 일의 절반이 사라진다.
+          */}
+          <span className="text-muted-foreground">
+            {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+            {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
+            {!owner && <> {m.home.banner.syncFailed.editor}</>}
+          </span>
         </Alert>
       )}
 
@@ -149,7 +186,8 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
         <Alert
           variant="warning"
           title={m.home.banner.notConnected.title}
-          actions={owner ? <ReconnectButton slug={slug} label={m.home.banner.notConnected.action} /> : undefined}
+          /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
+          actions={owner ? <ReconnectButton slug={slug} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
         >
           {m.home.banner.notConnected.body}
           {!owner && <> {m.home.banner.notConnected.editor}</>}

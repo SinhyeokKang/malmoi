@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { importOutcomeFields } from "./import-status";
 import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
 
 /**
@@ -35,7 +36,12 @@ export async function finishImportRun(
   try {
     await prisma.translationSurface.updateMany({
       where: { id: input.surfaceId, projectId: input.projectId, lastImportToken: input.token },
-      data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: input.code },
+      /**
+       * ⚠️ **종료 필드를 손으로 나열하지 않는다** — `importOutcomeFields`가 셋(코드·진행·실패
+       * 시각)을 한 벌로 낸다. 나열하면 컬럼이 늘 때마다 경로 다섯 중 몇이 조용히 빠진다
+       * (2026-09-15에 `lastImportFailedAt`이 실제로 그렇게 둘에만 붙었다).
+       */
+      data: { ...importOutcomeFields(input.code, new Date()), lastImportToken: null },
     });
   } catch {
     // 삼킨다 — 위 주석.
