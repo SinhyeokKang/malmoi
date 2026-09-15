@@ -98,6 +98,13 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
   if (key === "newFromGithub") {
     if (state === "import_failed") return { kind: "lastGoodSync", at: lastSyncAt };
     if (state === "not_connected") return { kind: "asOf", at: lastSyncAt };
+    /**
+     * ⚠️ **보관에서는 첫 칸도 상태를 말한다** (2026-09-15 리뷰 🟡5). 이 칸의 값은 보관된 프로젝트에서
+     * 0이 되는데(raw 집계가 SQL에서 보관을 거른다 — `page.tsx`), `synced 6 days ago`를 붙이면 그
+     * 0이 **지금 관측한 값**처럼 읽힌다. 나머지 셋이 `frozen at archive`·`never sent`라고 말하는
+     * 화면에서 첫 칸만 현재형이면 그 수를 믿게 된다.
+     */
+    if (state === "archived") return { kind: "frozenAtArchive" };
     return { kind: "synced", at: lastSyncAt };
   }
 

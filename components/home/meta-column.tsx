@@ -74,7 +74,7 @@ function MetaGroup({ rows, now }: { rows: readonly MetaRow[]; now: Date }) {
 function value(row: MetaRow, now: Date): ReactNode {
   switch (row.kind) {
     case "repository":
-      return row.href === null ? (
+      return row.disconnected ? (
         <span className="flex flex-wrap items-center gap-1.5">
           {`${row.owner}/${row.name}`}
           {/* ⚠️ **링크가 사라지고 pill이 선다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. */}
@@ -82,7 +82,7 @@ function value(row: MetaRow, now: Date): ReactNode {
         </span>
       ) : (
         <a
-          href={row.href}
+          href={row.href ?? undefined}
           target="_blank"
           rel="noreferrer"
           className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
@@ -131,13 +131,18 @@ function value(row: MetaRow, now: Date): ReactNode {
         /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
         <span>
           {m.home.meta.pullRequest}{" "}
+          {/*
+            ⚠️ **리포 밖으로 나가는 링크는 전부 색 + `ExternalLink` 12px이다** (DESIGN §6.3이 이 자리를
+            이름으로 든다). 아이콘이 빠지면 예고 없이 새 탭이 열리고, 접근 이름도 `#127` 하나가 된다.
+          */}
           <a
             href={row.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
           >
             {m.home.meta.pr(pr)}
+            <ExternalLink className="size-3" aria-hidden />
           </a>
           {` · ${relativeTime(row.at, now)}`}
         </span>

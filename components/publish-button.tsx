@@ -72,7 +72,7 @@ export function PublishButton({
         따라 흔들리고, 0일 때는 배지 자체가 없어야 한다. 번역 화면은 이 prop을 안 넘긴다.
       */}
       {badge && count > 0 && (
-        <span className="bg-background/20 inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-px text-xs">
+        <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">
           {count.toLocaleString("en-US")}
         </span>
       )}

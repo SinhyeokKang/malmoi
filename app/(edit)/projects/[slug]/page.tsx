@@ -182,8 +182,12 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       .map((locale) => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
   });
 
+  // 배너가 지목하는 표면 하나 — slug 오름차순의 첫째다. 나머지 실패는 항목으로 남는다.
+  const failed = surfaces.find((s) => failing(s)) ?? null;
+
   const items = attentionItems({
     state,
+    bannerSurface: failed?.slug ?? null,
     surfaces: surfaces.map((s) => ({ slug: s.slug, importError: s.importError, importing: s.importing, lastImportFailedAt: s.lastImportFailedAt })),
     review: review.flatMap((row) => {
       const surface = bySurface.get(row.surfaceId);
@@ -207,8 +211,6 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
     now, windowDays: ACTIVITY_WINDOW_DAYS, limit: ACTIVITY_LIMIT,
   });
 
-  // 배너가 지목하는 표면 하나 — 여럿이면 `bySlug` 순서(slug 오름차순)의 첫째다.
-  const failed = surfaces.find((s) => failing(s)) ?? null;
   const paused = state === "not_connected" || state === "archived";
 
   return (
@@ -240,20 +242,23 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
 
         ⚠️ **무조건 렌더한다** — 결과 Alert가 이 안에 있고, 조건부 분기에 두면 `revalidatePath`가
         방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+
+        ⚠️ **여백을 바깥 래퍼에 두지 않는다** (2026-09-15 리뷰 🔴1). `:empty`는 자식 **요소**가
+        하나라도 있으면 거짓인데 `HomeNotices`는 배너가 0개여도 자기 `<div>`를 언제나 렌더한다 —
+        래퍼에 `empty:hidden`을 걸면 안쪽만 숨고 바깥 `pb-4`가 남아 **가장 흔한 화면에 16px 유령
+        띠**가 선다. 로딩 골격엔 그 띠가 없어 데이터가 도착하는 순간 본문이 그만큼 튄다.
       */}
-      <div className="mx-auto w-full max-w-7xl px-4 pb-4 empty:hidden">
-        <HomeNotices
-          slug={slug}
-          name={project.name}
-          state={state}
-          role={role}
-          branch={project.baseBranch}
-          failedSurface={failed?.slug ?? null}
-          reason={failed?.importError ?? null}
-          lastSyncAt={lastSyncAt}
-          now={now}
-        />
-      </div>
+      <HomeNotices
+        slug={slug}
+        name={project.name}
+        state={state}
+        role={role}
+        branch={project.baseBranch}
+        failedSurface={failed?.slug ?? null}
+        reason={failed?.importError ?? null}
+        lastSyncAt={lastSyncAt}
+        now={now}
+      />
 
       {/*
         ⚠️ **오른쪽 열이 320 고정이고 왼쪽이 `minmax(0,1fr)`이다** (캔버스). `flex-1`로 두면 카드

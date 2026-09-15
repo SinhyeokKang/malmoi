@@ -64,7 +64,7 @@ export function collectActorIds(rows: KeyRow[]): string[] {
  * 읽고, 호출부의 `{actor && …}`가 빈 문자열을 falsy로 접어 **셀 메타가 통째로 사라진다** —
  * 배지까지 함께 없어지는데 화면엔 오류가 없다.
  */
-export function actorLabel(updatedBy: string | null, actors: Map<string, Actor>): string | null {
+export function actorLabel(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): string | null {
   if (!updatedBy) return null;
   const actor = actors.get(updatedBy);
   if (!actor) return updatedBy;

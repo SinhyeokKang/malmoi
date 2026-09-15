@@ -42,21 +42,24 @@ export function attentionItems(input: {
   neverFilled: readonly { surfaceSlug: string; code: string; name: string; keys: number; at: Date }[];
   /** `actorLabel`이 보는 그 맵 그대로다 — 폴백 판정이 **키의 존재**를 봐야 한다. */
   actors: ReadonlyMap<string, Actor>;
+  /** `2b`에서 배너가 지목한 표면. 그 하나만 목록에서 빠진다 — 나머지 실패는 남는다. */
+  bannerSurface?: string | null;
 }): AttentionList {
   // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (spec §8).
   if (input.state === "archived") return { shown: [], more: [], count: 0 };
 
   const items: AttentionItem[] = [];
   /**
-   * ⚠️ **`2b`에서는 배너가 이 사실의 소유자다** — 같은 화면에서 두 번 말하지 않는다. 그 대신
-   * 카운트가 함께 준다: 항목 수가 배너와 무관하게 남으면 "셋 중 둘만 보인다"가 된다.
+   * ⚠️ **배너가 지목한 표면 하나만 뺀다** (2026-09-15 리뷰 🟡6). 전에는 `2b`에서 파서 항목을 **전부**
+   * 버렸는데, 배너는 표면 하나만 말한다 — 표면 둘이 같은 Sync에서 깨지면 둘째가 배너에도 항목에도
+   * 없고 로그 한 줄로만 남았다. 그 줄에는 `[Try again]`도 설정 링크도 없고 7일 창 밖이면 사라진다.
    */
-  if (input.state !== "import_failed") {
-    for (const surface of input.surfaces) {
-      // 돌고 있는 중이면 남은 코드는 이전 실행의 것이다 — 목록·설정과 **같은 술어**다.
-      if (!failing(surface) || surface.importError === null) continue;
-      items.push({ kind: "import_failed", at: surface.lastImportFailedAt, surfaceSlug: surface.slug, reason: surface.importError });
-    }
+  for (const surface of input.surfaces) {
+    // 돌고 있는 중이면 남은 코드는 이전 실행의 것이다 — 목록·설정과 **같은 술어**다.
+    if (!failing(surface) || surface.importError === null) continue;
+    // 배너가 이미 말한 표면은 같은 화면에서 두 번 말하지 않는다.
+    if (input.state === "import_failed" && surface.slug === input.bannerSurface) continue;
+    items.push({ kind: "import_failed", at: surface.lastImportFailedAt, surfaceSlug: surface.slug, reason: surface.importError });
   }
   for (const row of input.review) {
     items.push({ kind: "review", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, count: row.count, who: who(row.updatedBy, input.actors) });
@@ -76,8 +79,8 @@ export function attentionItems(input: {
  * 있는지**뿐이다. 없으면 `— last edited by …` 절을 통째로 뺀다.
  */
 function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): string | null {
-  if (updatedBy === null || !actors.has(updatedBy)) return null;
-  return actorLabel(updatedBy, new Map(actors));
+  // ⚠️ 맵을 복사하지 않는다 — 행마다 돌아 59로케일 × 표면 수만큼 복사가 생겼다 (2026-09-15 리뷰).
+  return updatedBy === null || !actors.has(updatedBy) ? null : actorLabel(updatedBy, actors);
 }
 
 /**

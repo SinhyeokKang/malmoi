@@ -290,6 +290,8 @@ export const en = {
      * `Sync`(리포 → 앱)·`Publish`(앱 → 리포) 둘뿐이라는 규칙 때문이고, 그 규칙은 Home에만 산다.
      */
     publish: "Publish",
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** — 없으면 로딩이 무음이다. */
+    loading: "Loading project",
     /**
      * 보조 줄 — `{unit} · {근거}` 두 토막이다 (spec §10). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
      * `New`에도 `To translate`에도 세므로 넷이 같은 모집단이 아니고, 그 사실을 말하는 자리가 여기다.
@@ -329,14 +331,21 @@ export const en = {
       },
       review: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
-        body: (n: number): string => `${n} ${n === 1 ? "cell is" : "cells are"} waiting for review`,
-        /** ⚠️ **이름을 못 찾으면 이 절이 통째로 빠진다** (spec §9.11) — 호출부가 `null`로 갈린다. */
-        tail: (who: string): string => ` — last edited by ${who}.`,
+        body: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "cell is" : "cells are"} waiting for review`,
+        /**
+         * ⚠️ **`in this locale`이 술어에 맞춘 말이다** (2026-09-15 리뷰 🟡9). 저자는 **그 로케일에서
+         * 마지막으로 사람이 만진 셀**의 것이고, 그 셀은 검토 대기 칸이 아닐 공산이 크다 —
+         * `needsReview`는 push가 세우고 같은 쓰기가 `updatedBy`를 비운다(불변식 2). 그냥
+         * `last edited by Kim`이면 "Kim이 그 8칸을 만졌다"로 읽히는데 그것은 거짓이다.
+         *
+         * ⚠️ **이름을 못 찾으면 이 절이 통째로 빠진다** (spec §9.11) — 호출부가 `null`로 갈린다.
+         */
+        tail: (who: string): string => ` — last edited in this locale by ${who}.`,
       },
       neverFilled: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
         body: (locale: string): string => `${locale} has never been filled here`,
-        tail: (n: number): string => ` — ${n} keys, none translated.`,
+        tail: (n: number): string => ` — ${n.toLocaleString("en-US")} keys, none translated.`,
       },
       empty: {
         title: "Nothing needs you",
@@ -367,7 +376,8 @@ export const en = {
       sync: (keys: ReactNode, surface: string): ReactNode => (
         <>CI synced {keys} into {surface}</>
       ),
-      newKeys: (n: number): string => `${n} new ${n === 1 ? "key" : "keys"}`,
+      /** ⚠️ **로케일 고정이다** — 같은 화면의 카드와 구분자가 갈리면 위아래 숫자 모양이 달라진다. */
+      newKeys: (n: number): string => `${n.toLocaleString("en-US")} new ${n === 1 ? "key" : "keys"}`,
       /**
        * 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다.
        *
@@ -388,7 +398,7 @@ export const en = {
       publish: (pr: ReactNode | null, changed: number | null): ReactNode => (
         <>
           {pr === null ? "Published translations" : <>Published pull request {pr}</>}
-          {changed !== null && ` · ${changed} ${changed === 1 ? "file" : "files"} changed`}
+          {changed !== null && ` · ${changed.toLocaleString("en-US")} ${changed === 1 ? "file" : "files"} changed`}
         </>
       ),
       syncFailed: (surface: string): string => `Sync failed · ${surface} could not be read`,

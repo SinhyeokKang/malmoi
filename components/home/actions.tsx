@@ -160,7 +160,11 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
   const owner = role === "OWNER";
 
   return (
-    <div className="empty:hidden flex flex-col gap-3">
+    /*
+      ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
+      자식으로 보고 영원히 거짓이 되어, 배너가 0개인 **가장 흔한 화면**에 그 여백이 유령으로 남는다.
+    */
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-4 empty:hidden">
       {state === "import_failed" && failedSurface !== null && reason !== null && (
         <Alert
           variant="danger"

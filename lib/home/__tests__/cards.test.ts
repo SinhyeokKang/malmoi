@@ -106,15 +106,21 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
     ]);
   });
 
-  it("보관에서는 값이 그 시점에 얼어붙었다고 말한다", () => {
-    const archived = { ...base, state: "archived" as const };
-    expect(countCards(archived).map((c) => c.value)).toEqual([3, 12, 8, 24]);
+  /**
+   * ⚠️ **첫 칸도 상태를 말한다** (2026-09-15 리뷰 🟡5). 보관된 프로젝트에서 그 칸의 **값은 0이 된다**
+   * (raw 집계가 SQL에서 보관을 거른다) — `synced 1d ago`를 붙이면 그 0이 지금 관측한 값처럼 읽히고,
+   * 나머지 셋이 얼어붙었다고 말하는 화면에서 그 칸만 현재형이 된다.
+   */
+  it("보관에서는 넷 다 그 시점에 얼어붙었다고 말한다", () => {
+    const archived = { ...base, state: "archived" as const, counts: { ...counts, newFromGithub: 0, toSend: 0 } };
     expect(countCards(archived).map((c) => c.subline)).toEqual([
-      { kind: "synced", at: at("2026-09-14T00:00:00Z") },
+      { kind: "frozenAtArchive" },
       { kind: "frozenAtArchive" },
       { kind: "frozenAtArchive" },
       { kind: "neverSent" },
     ]);
+    // 값은 지우지 않는다 — 셀 구간 둘은 보관 뒤에도 마지막 값을 유지한다.
+    expect(countCards(archived).map((c) => c.value)).toEqual([0, 12, 8, 0]);
   });
 
   /** 상태가 근거를 덮으므로 0이어도 `nothing pending`으로 떨어지지 않는다 — 그 말은 거짓이 된다. */

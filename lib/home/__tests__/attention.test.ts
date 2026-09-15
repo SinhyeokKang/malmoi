@@ -98,13 +98,32 @@ describe("attentionItems — 3행 + `+2 more`(상한 5)", () => {
 });
 
 describe("attentionItems — 상태가 항목을 덜어낸다", () => {
-  /** `2b`에서 배너가 그 사실의 소유자가 된다 — 같은 화면에 두 번 쓰지 않는다. */
-  it("Sync 실패에서는 파서 항목이 빠지고 카운트가 준다", () => {
+  /** `2b`에서 배너가 그 표면의 소유자가 된다 — 같은 화면에 두 번 쓰지 않는다. */
+  it("Sync 실패에서는 배너가 지목한 표면만 빠지고 카운트가 준다", () => {
     const normal = attentionItems(base);
-    const failed = attentionItems({ ...base, state: "import_failed" });
+    const failed = attentionItems({ ...base, state: "import_failed", bannerSurface: "emails" });
     expect(normal.count).toBe(3);
     expect(failed.count).toBe(2);
     expect(failed.shown.map((i) => i.kind)).toEqual(["review", "never_filled"]);
+  });
+
+  /**
+   * ⚠️ **배너는 표면 하나만 말한다** (2026-09-15 리뷰 🟡6). 전에는 `2b`에서 파서 항목을 전부 버려서,
+   * 표면 둘이 같은 Sync에서 깨지면 둘째가 배너에도 항목에도 없고 로그 한 줄로만 남았다 — 그 줄에는
+   * `[Try again]`도 설정 링크도 없고 7일 창 밖이면 그것도 사라진다.
+   */
+  it("배너가 안 말한 실패는 항목으로 남는다", () => {
+    const items = attentionItems({
+      ...base,
+      state: "import_failed",
+      bannerSurface: "emails",
+      surfaces: [
+        { slug: "emails", importError: "parse-failed", importing: false, lastImportFailedAt: at("2026-09-15T09:00:00Z") },
+        { slug: "web", importError: "parse-crashed", importing: false, lastImportFailedAt: at("2026-09-15T09:30:00Z") },
+      ],
+    });
+    expect(items.shown.map((i) => i.kind)).toEqual(["review", "import_failed", "never_filled"]);
+    expect(items.shown[1]).toMatchObject({ surfaceSlug: "web", reason: "parse-crashed" });
   });
 
   /** `2d`: 할 수 있는 일이 없다 — 항목 카드가 통째로 `EmptyState`다 (spec §8). */

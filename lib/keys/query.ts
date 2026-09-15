@@ -646,7 +646,7 @@ export async function loadReviewAttention(prisma: PrismaClient, projectId: strin
     SELECT DISTINCT ON (t."surfaceId", t."localeCode")
       t."surfaceId", t."localeCode",
       MAX(t."updatedAt") OVER (PARTITION BY t."surfaceId", t."localeCode") AS "at",
-      CASE WHEN t."updatedBy" IS NULL THEN NULL ELSE t."updatedBy" END AS "updatedBy",
+      t."updatedBy",
       COUNT(*) FILTER (WHERE t."needsReview") OVER (PARTITION BY t."surfaceId", t."localeCode")::int AS n
     FROM "Translation" t
     JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
