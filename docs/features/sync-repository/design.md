@@ -85,6 +85,7 @@ export type SurfaceImportInput = {
    오래된 실행권은 교체한다. 포맷이 빠진 표면도 이름·사유를 보고하기 위해 목록에 남긴다.
 3. tx 밖에서 reader·snapshot을 각각 한 번 열고 표면별로 준비한다. 표면 진행 표시는
    자기 실행권·revision을 확인한 짧은 tx에서 시작하며, CI의 새 진행 표시를 무조건 덮지 않는다.
+   ⚠️ **표면 진행 표시의 주인도 토큰이다** (§7.1) — 시작 시각 동일성으로 판단하지 않는다.
 4. 각 표면 적용 tx의 **첫 단계**에서 Project → TranslationSurface 순서로 행을 잠근다.
    현재 토큰·유효기간·인가·보관·설정·revision을 재검사한 뒤 준비 결과를 적용한다.
    기존 키 조회와 계획 생성도 이 잠금 뒤이며 같은 tx다.
@@ -93,7 +94,13 @@ export type SurfaceImportInput = {
 6. 토큰이 바뀌거나 stale이면 이전 실행은 이후 쓰기를 하지 못한다. 아직 처리하지 않은 대상도
    `lease-lost` 사유와 함께 반환한다. 종료 시 토큰이 자기 것인 경우에만 실행권을 비운다.
 
-**CI도 같은 적용 잠금에 참여한다.** `applyPush`의 기존 배열형 tx를 짧은 interactive tx로 바꾸고,
+**CI도 같은 적용 잠금에 참여한다.** ⚠️ **측정된 결정을 뒤집으므로 실측이 조건이다** (2026-09-15 판정 A):
+지금 `lib/push/apply.ts`의 주석이 배열형을 고른 이유를 *"왕복이 문장 수만큼 쌓이지 않는다(도쿄 리전
+고정 비용, POSTMORTEM 2026-09-09)"*로 명시한다. **전환 전후로 `/api/push`를 1446키급으로 재고 그 수를
+그 주석에 남긴다** — 안 그러면 그 문장이 거짓이 되고, 나중에 push가 느려졌을 때 이 변경이 용의선상에
+안 오른다. (함수와 DB가 같은 리전이라 문장당 비용이 작을 것으로 **예상**하지만 그것은 추측이다.)
+
+`applyPush`의 기존 배열형 tx를 짧은 interactive tx로 바꾸고,
 `applyPushInTransaction`의 공용 적용 경계가 Project → Surface 잠금을 기존 키 조회보다 먼저 잡도록 한다.
 이후 쓰기와 `importRevision` 증가는 같은 tx다. 이미 열린 tx를 받은 경로는 그 tx를 그대로 쓰며
 런타임 속성으로 PrismaClient/TransactionClient를 구별하거나 중첩 tx를 열지 않는다.
@@ -174,10 +181,19 @@ export type ImportSummary = {
   keys: number;
   imported: number;
   partial: number;
+  /** 읽기 실패 — 헤드라인 `could not be read` · 액션 `Try again`. */
   unreadable: readonly string[];
+  /** CI 우선·실행권 상실 — 헤드라인 `were not replaced` · 액션 `Try again`. */
   superseded: readonly string[];
+  /** 포맷 누락 — 헤드라인은 위와 **같고** 액션만 **없다**. */
+  invalidFormat: readonly string[];
 };
 ```
+
+⚠️ **목록이 셋인 이유는 문구가 아니라 액션이다** (2026-09-15, 핸드오프 §6 4e). 헤드라인은 **둘로**
+묶이고(`could not be read` / `were not replaced`) `superseded`와 `invalidFormat`이 같은 문장을 쓰는데,
+**액션이 갈린다** — 앞의 둘은 `Try again`, 포맷 누락은 없다(고치기 전엔 결과가 같다). 둘을 한 목록에
+접으면 화면이 그 갈림을 원결과에서 다시 파야 하고, 그러면 판정이 두 층에 걸린다.
 
 `imported`는 정상 0키도 포함한다. tone은 다음 순서로 판정한다.
 
@@ -215,13 +231,50 @@ Dialog가 열릴 때만 호출하며 `project:settings`로 인가한다. `loadOp
 성공 URL에서 검증된 PR 번호를 얻어 `{number,url}`로 변환하고 파싱 실패도 undefined로 반환한다.
 기존 설정 화면에는 URL 삼상태를 유지한다. 반환: 객체 / null(조회 성공, 없음) / undefined(미확인).
 
+## 5.5 실측한 값 — 2026-09-15, Archive 확인 Dialog (dev)
+
+**T8이 이 값을 다시 캐내지 않게 적어 둔다.** 브라우저 computed style이고 시안 §5와 대조해 확인했다.
+
+```
+Dialog  폭 360 · radius 12 · shadow rgba(22,24,27,.15) 0 6px 16px 2px · border #e5e5e5
+머리    padding 16/16/8 · gap 8
+제목    15 / 500 / 0.225px(0.015em) / line-height 22.5px
+설명문  13 / 20.8px(1.6) / 0.26px(0.02em) / padding 0 16 / #737373
+바닥    padding 16 · gap 8 · flex-end
+버튼 md 36 · radius 10 · padding-left 12 · 14 / 0.28px(0.02em)
+        danger  #dc2626 글자 · bg #fff · border destructive/40  (채운 빨강이 아니다)
+        default #0a0a0a 글자 · bg #fff · border #e5e5e5
+PanelHeader 안쪽 padding 16 · gap 12 · border-bottom #e5e5e5 · 페이지 제목 18/500/0.18px
+```
+
+✅ **시안 §5가 틀렸던 자리 셋 — 2026-09-15에 핸드오프가 `✅실측` 표기로 정정했다:**
+
+| 시안 | 실제 | 근거 |
+|---|---|---|
+| Dialog 본문 블록 사이 12 | **8** | `dialog.tsx`의 `space-y-2`. 12로 가려면 프리미티브가 움직이고 **소비자 넷이 함께 간다** |
+| Alert 본문 14/1.6 | **14 / 20px(1.43)** | `--text-sm`에 line-height 토큰이 **없다** → Tailwind 기본 |
+| 버튼 disabled 글자 #a3a3a3 | **#737373** | `disabled:text-muted-foreground` |
+
+✅ **시안이 안 적었던 것 하나도 들어갔다** — `PanelHeader`·`PanelBody`의 안쪽 래퍼가
+**`max-w-4xl`(896) 중앙 정렬**이고 Home이 기본값 `limited`를 쓴다. 캔버스 판은 패널 1180 크롭이지만
+**결과 Alert의 실제 폭은 896**이다(핸드오프 §2·§5·4e).
+
+⚠️ **아직 실물로 확인 못 한 것 하나** — 핸드오프 §4가 *"`design_handoff_project_home` 캔버스의 실패
+배너 여백을 16으로 함께 고쳤다"*고 적었는데 **그 캔버스를 읽지 않았다.** T8에서 `.dc.html`을 받을 때
+같이 확인한다 — **확인 전까지 "고쳐졌다"를 사실로 쓰지 않는다.**
+
 ## 6. 컴포넌트 연결 계약
 
 `sync-button.tsx`는 `ArchiveCard`의 Dialog 패턴을 사용한다. 프리미티브 자체는 고치지 않는다.
 
 - OWNER만 렌더한다. Action 둘도 같은 permission을 검사한다.
 - 열릴 때마다 PR 상태를 undefined로 초기화해 즉시 경고한다. 요청 식별자로 이전 응답을 무시한다.
-- 실행 중 `loading={pending}`으로 연타를 막는다. 서버 동시성 보장은 §3.3이 맡는다.
+- 실행 중 연타를 막되 ⚠️ **`disabled`가 아니라 `aria-disabled`다** (2026-09-15, 핸드오프 §4·§8).
+  `disabled`면 그 버튼이 **DOM에서 포커스를 못 받아** Radix가 Dialog를 닫은 뒤 돌려보낼 대상이
+  사라진다 — `spec.md` §12-9가 요구하는 포커스 복귀가 성립하지 않는다. **겉모습은 그대로이고
+  바뀌는 것은 포커스 가능성뿐이며, 클릭·Enter는 핸들러가 막는다.** 서버 동시성 보장은 §3.3이 맡는다.
+  ⚠️ **`Button`의 `loading` prop이 지금 `disabled`를 건다** — 이 화면만 다른 길을 쓰므로 프리미티브를
+  고치지 말고 호출부에서 처리한다(안 본 화면을 움직이지 않는다).
 - `Send changes first`는 `routes.translations(slug)` 링크다. 발송만으로 편집이 보호됐다고 말하지 않는다.
 - 경고 갱신은 `aria-live="polite"`, 성공·warning 결과는 `role="status"`, danger는 `role="alert"`로 알린다.
 - 취소·완료 후 Dialog를 닫으면 Sync 트리거로 포커스를 돌린다. 트리거가 사라진 경우 머리의 적절한
@@ -240,8 +293,44 @@ Home·재시도 버튼에 연결한다. 실제 Dialog·결과·접근성·시안
 | `Project.repositoryImportToken String?` | Sync 실행 소유권. 다른 실행과 stale 실행을 구분 |
 | `Project.repositoryImportStartedAt DateTime?` | 실행권 stale 판정. 표면별 진행 표시와 별개 |
 | `TranslationSurface.importRevision Int @default(0)` | 성공한 데이터 적재마다 같은 tx에서 증가. CI와 Sync 경쟁 감지 |
+| `TranslationSurface.lastImportToken String?` | **표면 진행 표시의 주인** (2026-09-15 판정 D). 아래 §7.1 |
 
-기존 행은 token/start null, revision 0으로 시작한다. 신규 테이블·실행 이력·환경변수는 없다.
+기존 행은 token/start null, revision 0, lastImportToken null로 시작한다.
+신규 테이블·실행 이력·환경변수는 없다.
+
+### 7.1 ⚠️ 실행 식별자를 **토큰 한 벌로 통일한다** (2026-09-15 판정 D)
+
+지금 표면의 "내 실행인가"는 **`lastImportStartedAt` 동일성**이 답한다(`finishImportRun`의 `where`,
+`applyPush`의 조건부 UPDATE). 프로젝트 실행권이 토큰을 들면 **같은 질문에 답하는 방식이 두 벌**이 되고,
+그때 어느 쪽이 진실인지는 아무 데도 안 적혀 있다. 그래서 표면도 토큰을 든다.
+
+**바뀌는 자리 다섯 (여섯 줄)** — 전부 한 줄짜리지만 **둘이 CI 경로다**:
+
+| 자리 | 지금 | 뒤 |
+|---|---|---|
+| `lib/projects/import-status-store.ts` | `markImportStarted(prisma, scope, startedAt)` · `finishImportRun({…startedAt})` | 둘 다 `token`을 받고 `where`가 토큰을 본다 |
+| `app/api/push/route.ts:169·181` | CI 적재의 시작·실패 종료 | ⚠️ **CI 경로다** — 토큰을 발급해 넘긴다 |
+| `app/(edit)/projects/actions.ts:1110·1112` | `runFirstIngest` | 같음 |
+| `app/(edit)/projects/actions.ts:961` · `lib/surfaces/create.ts:57` | `lastImportStartedAt`을 **직접 create에 싣는다** | `lastImportToken`도 함께 싣는다 |
+| `lib/push/apply.ts:322` | `where: { …, lastImportStartedAt: options.startedAt }` | 토큰 조건으로 바꾸고 `ApplyOptions`가 토큰을 받는다 |
+
+- ⚠️ **읽는 쪽은 안 바뀐다** — `failing()`·`meterSlot`·`loadProjectSummaries`·설정 화면은 전부
+  `lastImportStartedAt !== null`만 보므로 컬럼이 하나 늘어도 그대로다. **진행 표시의 시각은 그대로
+  `lastImportStartedAt`이 들고**, 토큰은 소유권만 든다.
+- ⚠️ **`recordReportedFailure`는 대상이 아니다** — 그 경로는 `lastImportStartedAt`을 일부러 안 건드린다
+  (서버가 돌린 적 없는 구간이라 뺏을 진행이 없다). 그 규칙을 토큰에도 그대로 적용한다.
+- ⚠️ **A(대화형 전환)와 같은 파일에 같은 사이클에 들어간다** — `/api/push`가 두 변경을 동시에 받는다.
+  **커밋을 가른다**: 토큰 통일이 먼저, 대화형 전환이 뒤다. 둘을 한 커밋에 넣으면 CI push가 느려졌을 때
+  어느 쪽인지 못 가른다.
+
+### 7.2 기각한 대안 둘 — 근거를 남긴다
+
+**근거 없이 값만 남으면 다음 사람이 같은 결정을 다시 한다.**
+
+| 대안 | 왜 기각했나 |
+|---|---|
+| `importRevision` 대신 **`lastCommitSha` 비교** | 마이그레이션이 한 컬럼 줄지만, **동일 커밋 CI 재실행을 못 가른다.** 그 경우 값이 같아 무해하다는 반론이 있었으나, 경쟁 판정이 "무해할 때만 맞는 검사"가 되면 나중에 적재 내용이 커밋에만 의존하지 않게 되는 순간(예: 스캐너 결과 반영) 조용히 틀린다. **판정이 "내가 읽은 뒤 누가 썼나" 하나로 서는 쪽을 고른다** (2026-09-15) |
+| **정상 0키를 계속 실패로 두기** | 이번 범위가 어댑터 다섯의 빈 컨테이너 대조만큼 는다. 그래도 넣는 이유: 지금은 로케일을 정말로 비운 리포가 **영원히 실패로 남고 키가 orphan도 안 된다** — 화면이 "읽지 못했다"라고 말하는데 실제로는 읽었고 비어 있었다. 불변식 9가 금지하는 것은 숨김이지만, **거짓 실패도 같은 축에서 나쁘다** (2026-09-15) |
 표면 실패 시각은 project-home의 별도 작업이며 이 기능의 선행조건은 아니다.
 
 마이그레이션 SQL을 검토하고 dev에 적용한 뒤 preview 코드를 배포한다. prod는 `/merge` 전에

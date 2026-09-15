@@ -55,6 +55,9 @@ PRODUCT §3 OWNER 전용 행·§7.5 재적재 readiness 설명, project-home spe
 - `lib/import/__tests__/result.test.ts`: 전체 성공·정상 0키·부분 파싱 실패·표면 실패·포맷 누락·
   CI 미적용·실행권 상실. 전부 partial, imported + partial, failed + superseded의 tone 순서도 단언한다.
   원결과 사유 보존, 안정된 slug 순서, no changes 전용 분기 부재.
+  ⚠️ **목록이 셋으로 갈린다** — `unreadable` / `superseded` / `invalidFormat` (핸드오프 §6 4e).
+  헤드라인은 둘로 묶이지만 **액션이 갈리므로**(앞의 둘만 `Try again`) 요약이 셋을 구별해야 한다.
+  `invalidFormat`이 `superseded`에 접히지 않는 것을 단언한다.
 - `lib/import/__tests__/empty.test.ts`: 다섯 어댑터별 정상 빈 컨테이너와 깨진 파싱/잘못된 컨테이너/
   대상 미발견/base 부재/다운로드 실패를 구별. 재탐지 실패를 무조건 정상 0키로 바꾸지 않는다.
 - `lib/import/__tests__/apply-plan.test.ts`: 캡처 revision 불일치, 다른 실행 토큰, stale 토큰,
@@ -67,7 +70,8 @@ PRODUCT §3 OWNER 전용 행·§7.5 재적재 readiness 설명, project-home spe
 ## T4. 순수 구현 + additive 스키마
 
 1. 순수 판정 모듈을 구현한다. 테스트가 import하는 순수 파일에는 `server-only`를 붙이지 않는다.
-2. Project 실행 token/start nullable 둘, TranslationSurface.importRevision default 0을 추가한다.
+2. Project 실행 token/start nullable 둘, TranslationSurface.importRevision default 0,
+   **TranslationSurface.lastImportToken nullable 하나**(판정 D — `design.md` §7.1)를 추가한다.
 3. `/db`에서 마이그레이션 SQL 생성·검토·dev 적용 순서를 확인한다. 기존 행을 삭제하거나 reset하지 않는다.
    prod 적용은 `/merge` 앞이며 이 단계에서 prod를 변경하지 않는다.
 
@@ -105,9 +109,17 @@ Action 하네스에는 OWNER 성공·EDITOR forbidden·세션 만료, 게이트 
 
 ## T6. 적용 경계·Server Action — green
 
+0. **먼저 실행 식별자를 토큰으로 통일한다** (판정 D · `design.md` §7.1) — `markImportStarted` ·
+   `finishImportRun` · `ApplyOptions` 시그니처와 호출부 다섯(`/api/push` 둘 · `runFirstIngest` 둘 ·
+   `createProject` · `addSurfaceFromSnapshot` · `apply.ts`의 조건부 UPDATE). **읽는 쪽은 안 바꾼다** —
+   전부 `lastImportStartedAt !== null`만 본다. ⚠️ **1번과 별도 커밋이다**: 둘 다 `/api/push`를 건드리므로
+   한 커밋이면 push가 느려졌을 때 어느 쪽인지 못 가른다.
 1. `applyPush`/`applyPushInTransaction`의 공통 적용 경계를 잠금 → 최신 키 조회 → 계획 → 쓰기로
    바꾼다. CI와 Sync가 Project→Surface 잠금을 같은 순서로 잡고 revision 증가까지 같은 tx로 확정한다.
    기존 열린 tx 경로는 새 tx를 만들지 않는다. 기존 CI 커밋 순서·포맷·보관도 tx 안에서 재확인한다.
+   ⚠️ **전환 전후로 `/api/push`를 1446키급으로 실측하고 그 수를 `apply.ts` 주석에 남긴다** (판정 A).
+   지금 그 주석이 배열형을 POSTMORTEM 2026-09-09으로 정당화하므로, 수를 안 갈아 끼우면 그 문장이
+   거짓이 된다.
 2. 필수 `refsMode`를 추가한다. 기존 소비자는 replace, Sync만 preserve. preserve는 refs SQL 자체를 생략한다.
 3. 검증된 정상 0키용 내부 적용을 추가한다. 외부 PushPayload의 최소 키 수 제약은 유지한다.
 4. 프로젝트 실행권의 원자적 선점·조건부 해제와 표면별 경쟁 판정을 구현한다. reader/blob 호출은 tx 밖이다.
@@ -122,13 +134,20 @@ Action 하네스에는 OWNER 성공·EDITOR forbidden·세션 만료, 게이트 
 
 - **검증**: T5 전체 green, `pnpm test`·`pnpm typecheck`·`pnpm test:projects:postgres` green.
   lib/push·keys·surfaces에 영향이 있으므로 격리 PG를 생략하지 않는다.
+  **`/api/push` 실측치 둘(전·후)이 `apply.ts` 주석에 있다** — 없으면 이 태스크는 안 끝났다.
 
+`─── refactor(import): identify import runs by token instead of start time ───`
 `─── feat(import): implement repository sync with CI precedence ───`
 
 ## T7. 문구
 
 `messages/en.tsx`에서 기존 AccessError/OnboardError/importFailureMessage를 재사용한다.
 새 문장은 정상 0키를 포함한 완료, 포맷 누락, CI 우선 미적용, 사용처 보존 안내다.
+⚠️ **헤드라인이 둘이다** — `… but {k} surfaces could not be read`(읽기 실패)와
+`… but {k} surfaces were not replaced`(`superseded`·`invalid-format`). **뒤 둘에 `could not be read`를
+쓰지 않는다** — 그 표면은 읽혔고 적용만 안 됐다(핸드오프가 잡은 자리).
+⚠️ **`Alert.title`에서 마침표를 뗀다** (DESIGN §10 — 구두점 없는 문장 조각). 원인 줄은 유지한다.
+⚠️ **`Try again`은 Home `2b` 배너의 기존 라벨을 재사용한다** — 새로 만들지 않는다.
 미발송 집계는 정확한 손실 개수로 보장하지 않고 열린 PR·미확인 경고를 함께 둔다.
 `Everything already matched the repository` 분기는 만들지 않는다. 파일 일부 실패와 표면 전체 실패를 구분한다.
 결과 문장을 단언하는 사전 주석은 실제 적용 코드의 심볼을 가리킨다.
@@ -147,6 +166,12 @@ Home 페이지 재작성은 이 태스크에 넣지 않는다.
 먼저 `components/__tests__/sync-button.test.tsx`와 결과 테스트를 작성한다.
 
 - EDITOR 버튼 부재, OWNER 실행, 연타 방지, 위험이 없어도 Dialog와 danger 버튼 유지.
+- ⚠️ **실행 중 `[Sync]`는 `aria-disabled`이고 `disabled`가 아니다** — `disabled`면 포커스를 못 받아
+  Dialog 닫은 뒤 복귀 대상이 사라진다(`design.md` §6). 클릭·Enter는 핸들러가 막는다.
+  **`Button`의 `loading`이 `disabled`를 거는 것을 호출부에서 우회한다** — 프리미티브를 고치지 않는다.
+- ⚠️ **확인 버튼 라벨이 트리거와 다르다** — 트리거 `Sync` / 확인 `Sync from repository`.
+  접근 이름이 같으면 두 버튼이 구별되지 않는다(2026-09-15에 Archive Dialog의 그 모양으로
+  프로젝트가 실제로 보관됐다). **접근 이름으로 두 버튼을 각각 찾는 단언을 둔다.**
 - PR 조회 중 즉시 미확인 경고, 성공 null일 때만 해제, 실패 유지, 닫기→재오픈에서 이전 응답 무시.
 - Send changes 링크 목적지, 취소·완료 후 트리거 포커스 복귀, 경고·결과의 live region.
 - 원결과의 표면 이름·사유·오류 경로 유지, 정상 0키 완료, refresh 후 결과 유지용 호스트 계약.

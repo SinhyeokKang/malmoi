@@ -275,6 +275,13 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 표면별 진행 표시에도 같은 stale 기준을 적용한다. 구체적인 필드와 저장 경계는 `design.md` §3.3·§7.
 `SyncRun`은 계속 Publish 전용이고 적재 이력은 만들지 않는다.
 
+⚠️ **실행 식별자는 토큰 한 벌이다** (2026-09-15 판정 D). 표면의 "내 실행인가"도 시작 시각 동일성이
+아니라 토큰으로 답한다 — 두 벌로 두면 같은 질문에 답하는 방식이 둘이 되고 어느 쪽이 진실인지가
+어디에도 안 적힌다. **대가는 기존 호출부 다섯이고 둘이 CI 경로다** (`design.md` §7.1).
+
+⚠️ **A와 D가 `/api/push` 한 파일에 같은 사이클로 들어간다** — **커밋을 가른다**(토큰 통일 먼저,
+대화형 전환 뒤). 한 커밋이면 CI push가 느려졌을 때 어느 쪽인지 못 가른다.
+
 #### 2. `too-soon`(최소 간격)을 만들지 않는다
 
 `PUBLISH_MIN_INTERVAL_SECONDS`의 정의가 *"리포에 쓴 뒤 쉬는 간격"*이다. **재적재는 리포에 안 쓴다** —
@@ -381,18 +388,44 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<{ url
 - 열린 PR 줄 — `Edits in pull request #{n} are not in {branch} yet — they will be replaced too.`
 - PR 조회 실패 줄 — `We haven't confirmed whether anything is still waiting in a pull request.`
 - 권유 링크 — `Send changes first` ⚠️ **`Send changes`가 그 화면의 실제 버튼 이름이다**
-- 확인 버튼 — `Sync` (variant `danger`) · 취소 — `Cancel`
+- 확인 버튼 — ⚠️ **머리의 트리거와 같은 이름을 쓰지 않는다** (2026-09-15 실측 사고). Archive Dialog가
+  트리거·확인 둘 다 `Archive project`라, 셀렉터가 모호해진 재시도 클릭이 **확인 버튼을 눌러
+  `bugshot-i18n-test-qa`를 실제로 보관시켰다**(복원함). 접근성 트리에서도 두 버튼이 구별되지 않는다.
+  후보: `Sync from repository` (variant `danger`) · 취소 — `Cancel`
+  ⚠️ **Archive Dialog도 같은 모양이다** — 고칠지는 별도 판단이고, 고친다면 **안 본 화면을 움직이는
+  것이므로 별도 커밋**이다.
 
-### 결과 Alert
-- 전부 성공 — `Synced {n} keys from {branch}.`
-- 성공 표면 하나뿐일 때도 같은 완료 문장. 실패·미적용은 표면 이름과 사유를 표시한다 (§11.3).
-- 부분 — `Synced {n} keys, but {m} surfaces could not be read.`
-  기존 `ImportFailureCode`는 `importFailureMessage`를 재사용하고, 신규 포맷 누락·CI 미적용은 전용 문장을 둔다.
-- 변경이 없는 재적재도 같은 완료 문구를 쓴다. 동일 여부를 별도로 비교하거나 단언하지 않는다.
-- 정상 0키 — `Synced 0 keys from {branch}.` (기존 키는 orphaned 처리)
-- CI 우선으로 미적용 — `New repository data arrived while syncing. This surface was not replaced. Try again if needed.`
-- 포맷 누락 — 표면 이름과 `This surface has no valid import format.`을 표시한다.
-- 파일 일부 실패와 표면 전체 실패는 구분한다. 부분 실패를 `0 surfaces could not be read`로 표현하지 않는다.
+### 결과 Alert — **다섯 갈래이고 형은 둘** (핸드오프 §6 4e 확정)
+
+⚠️ **`Alert.title`은 구두점 없는 문장 조각이다** (DESIGN §10) — **헤드라인에서 마침표를 뗀다.**
+원인 줄은 문장이라 마침표를 유지한다.
+
+**한 줄 — 성공 둘** (`success`)
+- `Synced {n} keys from {branch}`
+- **정상 0키도 같은 형이다** — `Synced 0 keys from {branch}` (기존 키는 orphaned 처리)
+- 성공 표면이 하나뿐일 때도 같은 문장이다. 표면 이름을 헤드라인에 넣지 않는다 (§11.3).
+
+**두 줄 — 표면별 사고 셋** (`warning`, 헤드라인 = 수 · 둘째 줄 = `{slug} — {message}`)
+
+| 갈래 | 헤드라인 | 원인 줄 | 액션 |
+|---|---|---|---|
+| 읽기 실패 | `Synced {n} keys, but {k} surfaces could not be read` | `importFailureMessage` (6종 재사용) | `Try again` |
+| `superseded` (CI 우선 미적용) | `Synced {n} keys, but {k} surfaces were not replaced` | `New repository data arrived while syncing. This surface was not replaced. Try again if needed.` | `Try again` |
+| `invalid-format` (포맷 누락) | 같음 (`were not replaced`) | `This surface has no valid import format.` | **없음** |
+
+⚠️ **`could not be read`를 뒤 둘에 쓰지 않는다** — 그 표면은 **읽혔고 적용만 안 됐다.** 한 문장으로
+접으면 사용자가 리포의 파일을 의심한다. (핸드오프가 잡은 자리다.)
+
+⚠️ **`Try again`은 Home `2b` 실패 배너와 같은 라벨·같은 Action이다** — 두 자리의 규칙을 하나로 둔다.
+`invalid-format`만 액션이 없다: 포맷을 고치기 전에는 다시 눌러도 결과가 같다.
+
+**없애는 것**
+- ❌ `Everything already matched the repository` 류 — §12-7이 닫았고 **화면이 그 값을 만들 수도 없다**
+  (strict라 `applyPush`의 `translationsFilled`가 재전송에서도 언제나 전 행이다 — 그 필드 주석이
+  그렇게 적혀 있다). 변경이 없어도 `Synced {n} keys from {branch}`로 말한다. **사전에 만들지 않는다.**
+
+⚠️ **파일 일부 실패(`partial`)와 표면 전체 실패를 구분한다** — 부분 실패를 `0 surfaces could not be read`로
+표현하지 않는다.
 
 ### 거부
 - `not-ready` — `This project hasn't finished its first import yet.`
