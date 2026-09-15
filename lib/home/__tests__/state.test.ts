@@ -45,7 +45,7 @@ describe("planHomeState — 우선순위가 곧 순서다", () => {
   it("표면 여럿 중 하나만 실패해도 실패다 — 나머지는 들어왔다", () => {
     expect(planHomeState({ ...base, surfaces: [
       { importError: null, importing: false },
-      { importError: "invalid-format", importing: false },
+      { importError: "parse-crashed", importing: false },
     ] })).toBe("import_failed");
   });
 
