@@ -71,103 +71,98 @@ export default async function LogsPage({
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
-      <PanelHeader>
+      <PanelHeader description={m.logs.description}>
         {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
-              위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.logs}</h1>
-          <p className="text-muted-foreground text-xs">{m.logs.description}</p>
-        </div>
+            위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
+        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          {/* ⚠️ **표는 Card 밖이다** (로케일·멤버 화면과 같은 관용구) — Card의 `p-4`와 셀의 `px-4`가 겹친다. */}
-          {page.rows.length === 0 ? (
-            <EmptyState icon={History} title={m.logs.empty.title} description={m.logs.empty.description} />
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{m.logs.columns.when}</Th>
-                  <Th>{m.logs.columns.trigger}</Th>
-                  <Th>{m.logs.columns.result}</Th>
-                  <Th>{m.logs.columns.changed}</Th>
-                  <Th>{m.logs.columns.reason}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {page.rows.map((row) => {
-                  const view = syncRunView(row);
-                  return (
-                    <Tr key={row.id}>
-                      <Td>
-                        {/*
-                          ⚠️ **절대 시각이 `dateTime`에 있다.** 이력에서 "2 days ago"만으로는 어느 밤인지
-                          못 가른다 — 상대 시각은 보조이고, 브라우저·스크린리더가 정확한 값을 들어야 한다.
-                        */}
-                        <time dateTime={row.startedAt.toISOString()} className="text-sm">
-                          {utcMinute(row.startedAt)}
-                        </time>
-                        <p className="text-muted-foreground text-xs">{relativeTime(row.startedAt, now)}</p>
-                      </Td>
-                      <Td>
-                        <span className="text-sm">{view.triggerLabel}</span>
-                      </Td>
-                      <Td>
-                        <Badge variant={view.tone}>{view.label}</Badge>
-                        {/* 버린 값을 조용히 숨기지 않는다 (ARCHITECTURE §0 불변식 9) — 성공한 행에도 붙는다. */}
-                        {row.warnings > 0 && (
-                          <p className="mt-1">
-                            <Badge variant="warning">{m.logs.warnings(row.warnings)}</Badge>
-                          </p>
-                        )}
-                      </Td>
-                      <Td>
-                        <span className="text-sm">{row.changed === null ? m.logs.none : row.changed}</span>
-                        {row.prUrl !== null && (
-                          <p className="mt-1">
-                            <a
-                              href={row.prUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
-                            >
-                              {m.translations.publish.viewLink}
-                              <ExternalLink className="size-3" aria-hidden />
-                            </a>
-                          </p>
-                        )}
-                      </Td>
-                      <Td>
-                        {view.reasonKey === null ? (
-                          <span className="text-muted-foreground text-xs">{m.logs.none}</span>
-                        ) : (
-                          <span className="text-xs">{syncReasonMessage(view.reasonKey)}</span>
-                        )}
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-          )}
+      <PanelBody className="space-y-6">
+        {/* ⚠️ **표는 Card 밖이다** (로케일·멤버 화면과 같은 관용구) — Card의 `p-4`와 셀의 `px-4`가 겹친다. */}
+        {page.rows.length === 0 ? (
+          <EmptyState icon={History} title={m.logs.empty.title} description={m.logs.empty.description} />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{m.logs.columns.when}</Th>
+                <Th>{m.logs.columns.trigger}</Th>
+                <Th>{m.logs.columns.result}</Th>
+                <Th>{m.logs.columns.changed}</Th>
+                <Th>{m.logs.columns.reason}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {page.rows.map((row) => {
+                const view = syncRunView(row);
+                return (
+                  <Tr key={row.id}>
+                    <Td>
+                      {/*
+                        ⚠️ **절대 시각이 `dateTime`에 있다.** 이력에서 "2 days ago"만으로는 어느 밤인지
+                        못 가른다 — 상대 시각은 보조이고, 브라우저·스크린리더가 정확한 값을 들어야 한다.
+                      */}
+                      <time dateTime={row.startedAt.toISOString()} className="text-sm">
+                        {utcMinute(row.startedAt)}
+                      </time>
+                      <p className="text-muted-foreground text-xs">{relativeTime(row.startedAt, now)}</p>
+                    </Td>
+                    <Td>
+                      <span className="text-sm">{view.triggerLabel}</span>
+                    </Td>
+                    <Td>
+                      <Badge variant={view.tone}>{view.label}</Badge>
+                      {/* 버린 값을 조용히 숨기지 않는다 (ARCHITECTURE §0 불변식 9) — 성공한 행에도 붙는다. */}
+                      {row.warnings > 0 && (
+                        <p className="mt-1">
+                          <Badge variant="warning">{m.logs.warnings(row.warnings)}</Badge>
+                        </p>
+                      )}
+                    </Td>
+                    <Td>
+                      <span className="text-sm">{row.changed === null ? m.logs.none : row.changed}</span>
+                      {row.prUrl !== null && (
+                        <p className="mt-1">
+                          <a
+                            href={row.prUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+                          >
+                            {m.translations.publish.viewLink}
+                            <ExternalLink className="size-3" aria-hidden />
+                          </a>
+                        </p>
+                      )}
+                    </Td>
+                    <Td>
+                      {view.reasonKey === null ? (
+                        <span className="text-muted-foreground text-xs">{m.logs.none}</span>
+                      ) : (
+                        <span className="text-xs">{syncReasonMessage(view.reasonKey)}</span>
+                      )}
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        )}
 
-          {/*
-            ⚠️ **페이지네이션이 링크 하나다** (design 결정 14) — 클라이언트 상태가 0이라 뒤로 가기·공유·
-            새로고침이 전부 그냥 된다. `SYNC_LOG_PAGE_SIZE`는 조회와 화면이 같은 상수를 본다.
-          */}
-          {page.nextCursor !== null && (
-            <div>
-              <ButtonLink href={routes.logs(slug, { cursor: encodeCursor(page.nextCursor) })} variant="default">
-                {m.logs.older}
-              </ButtonLink>
-            </div>
-          )}
-        </div>
+        {/*
+          ⚠️ **페이지네이션이 링크 하나다** (design 결정 14) — 클라이언트 상태가 0이라 뒤로 가기·공유·
+          새로고침이 전부 그냥 된다. `SYNC_LOG_PAGE_SIZE`는 조회와 화면이 같은 상수를 본다.
+        */}
+        {page.nextCursor !== null && (
+          <div>
+            <ButtonLink href={routes.logs(slug, { cursor: encodeCursor(page.nextCursor) })} variant="default">
+              {m.logs.older}
+            </ButtonLink>
+          </div>
+        )}
       </PanelBody>
     </>
   );

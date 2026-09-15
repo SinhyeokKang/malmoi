@@ -99,6 +99,7 @@ README의 대조표가 *"요약 넷 · 할 일 셋 · 표면 셋 · 로그 여�
 - **`/logs` 화면 개편.** `All logs`의 목적지는 지금 그대로다.
 - **`archivedBy` 컬럼.** 메타의 `Archived … · by Sinhyeok`에서 **`· by …`를 뺀다** (§9.4 판정).
 - **[Sync]의 재적재 Server Action.** 별도 `/feature`의 선과제다 (§9.6) — Home은 버튼만 그린다.
+  ⚠️ **그 선과제가 역할 갈래를 정해 돌아왔다**: `[Sync]`·`[Try again]`은 **OWNER 전용**이다 (§8).
 - **primary 비활성 스타일** — 커밋 `25d3a9e`가 이미 처리했다. 핸드오프 §11은 **닫힌 항목**이다.
 - **표면 목록 블록의 부활 · 요약 줄 복원 · 항목의 미루기/지우기 · Home의 필터 · pull/push 낱말** —
   핸드오프가 닫은 결정이다. 다시 열지 않는다.
@@ -205,9 +206,9 @@ prompt §10이 그것을 [Sync]에 붙였는데, 그 자리에 옮겨 붙이려�
 
 | | 머리 버튼 | 배너 | 카드 넷 | 항목 카드 | 로그 카드 | 메타 열 |
 |---|---|---|---|---|---|---|
-| **`2a` 기본** | `[Sync]` default · `[Publish]` primary + 개수 배지 | 없음 | 값 + 보조 줄. 첫 칸 파랑, `To review` 글리프 amber | 머리 + 카운트 pill + 항목 3행 | 레일 5줄 + `[All logs ›]` 중앙 | 9행 + `[Project settings ›]` |
-| **`2a` 빈** | `[Sync]` 활성 · `[Publish]` **muted 비활성**, 배지 없음 | 없음 | **0으로 남는다**. 수치·글리프 `#737373`, 보조 줄이 근거를 바꿔 댄다 | `EmptyState`(글리프 check · 액션 없음). **pill 없음** | `EmptyState`. 설명문이 **"지난 7일"**을 적는다 | 그대로. `Last sync`·`Last publish` 시각만 다르다 |
-| **`2b` Sync 실패** | 둘 다 활성 (**publish를 막지 않는다**) | **danger**, `[Try again]` default | **마지막 성공 값 유지.** 첫 칸 보조 줄 `last good sync 1d ago` | 파서 항목을 **뺀다** → 카운트 3 → 2 | 첫 줄 점만 `#dc2626`. 배너가 자리를 먹어 **4~3줄** | `Last sync`가 성공 시각 + 실패 시각 둘 |
+| **`2a` 기본** | `[Sync]` default (**OWNER만**) · `[Publish]` primary + 개수 배지 | 없음 | 값 + 보조 줄. 첫 칸 파랑, `To review` 글리프 amber | 머리 + 카운트 pill + 항목 3행 | 레일 5줄 + `[All logs ›]` 중앙 | 9행 + `[Project settings ›]` |
+| **`2a` 빈** | `[Sync]` 활성 (**OWNER만**) · `[Publish]` **muted 비활성**, 배지 없음 | 없음 | **0으로 남는다**. 수치·글리프 `#737373`, 보조 줄이 근거를 바꿔 댄다 | `EmptyState`(글리프 check · 액션 없음). **pill 없음** | `EmptyState`. 설명문이 **"지난 7일"**을 적는다 | 그대로. `Last sync`·`Last publish` 시각만 다르다 |
+| **`2b` Sync 실패** | 둘 다 활성 (**publish를 막지 않는다**) | **danger**, `[Try again]` default (**OWNER만** — `[Sync]`와 같은 Action이다) | **마지막 성공 값 유지.** 첫 칸 보조 줄 `last good sync 1d ago` | 파서 항목을 **뺀다** → 카운트 3 → 2 | 첫 줄 점만 `#dc2626`. 배너가 자리를 먹어 **4~3줄** | `Last sync`가 성공 시각 + 실패 시각 둘 |
 | **`2c` 미연결** | 둘 다 **비활성**. `[Reconnect]`가 primary (**OWNER만**) | **amber** | 값 유지, 보조 줄이 `as of …` / `cannot be sent while paused` | **그대로** (번역·검토는 연결과 무관) | 그대로, 줄 수만 줄어든다 | 리포 행에 `Not connected` pill + **링크 사라짐** |
 | **`2d` 보관** | 둘 다 비활성. `[Restore project]` primary (**확인 없음**) | **amber** | 값 유지, 보조 줄 `frozen at archive` / `never sent` | `EmptyState`(글리프 **archive**, 문장은 "할 수 없다") | 그대로 | **`Archived` 행이 는다** |
 | **`2e` 로딩** | 둘 다 비활성 | 없음 | 골격 + 막대 | 골격 3행 | 골격 5줄, `All logs`는 `#737373` | 골격 9행 |
@@ -220,6 +221,14 @@ prompt §10이 그것을 [Sync]에 붙였는데, 그 자리에 옮겨 붙이려�
   (CLAUDE.md — 조건부 렌더는 차단이 아니다).
 - `[Publish]`는 **EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다
   (`lib/auth/permission.ts` 주석). 목록 화면의 `rowBanner`가 같은 이유로 역할을 받지 않는다.
+- ⚠️ **`[Sync]`는 반대다 — EDITOR에게 없다** (2026-09-15, `docs/features/sync-repository/` §7 결정 1).
+  재적재는 **리포 값으로 번역을 덮는 동작**이라(`applyPush`의 `"updatedBy" = NULL`) 손실되는 편집의
+  당사자가 그 창을 스스로 열게 두지 않는다. 인가는 `project:settings`다.
+  - **비활성이 아니라 부재다** — 누를 수 없는 버튼을 주지 않는다(`ProjectArchived`의 [Open settings]가
+    같은 규칙, DESIGN §6.69).
+  - ⚠️ **`2b`의 `[Try again]`도 같이 사라진다** — 같은 Action을 부른다. **배너 본문은 남는다**:
+    EDITOR도 "이 표면이 못 들어왔다"는 알아야 하고, 문장만 `2c`·`2d`처럼 "관리자에게 요청"으로 바뀐다.
+  - **차단은 Action이 든다** — 감추는 것은 편의다 (CLAUDE.md — 조건부 렌더는 차단이 아니다).
 
 **보관 판정 순서**: `planProjectAccess`가 권한 → 보관 순이고, `requireProjectAccess`는
 **보관을 redirect하지 않고 `archived: true`로 돌려준다**. 지금 `page.tsx`는 그것을 받아

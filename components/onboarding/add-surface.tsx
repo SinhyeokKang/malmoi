@@ -81,11 +81,10 @@ export function AddSurface({ slug, owner, repo, branch, adapters, initial, initi
   const connectFor = [error, detectError].find(value => value === "reauthorize" || value === "not-connected");
   const connectLabel = connectFor === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action;
   return <>
-    <PanelHeader className="px-6 py-5">
-      <h1 className="text-xl font-medium">{m.surfaces.add}</h1>
-      <p className="text-sm text-muted-foreground">{m.surfaces.description}</p>
+    <PanelHeader width="fluid" description={m.surfaces.description}>
+      <h1 className="text-lg font-medium">{m.surfaces.add}</h1>
     </PanelHeader>
-    <PanelBody className="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6">
+    <PanelBody width="fluid" className="flex min-h-0 flex-1 flex-col gap-4">
       {result ? <div className="space-y-4">
         {result.failed > 0 ? <Alert variant="warning" role="status">{ingestHeadline(result.count, result.failed)}</Alert>
           : <p>{ingestHeadline(result.count, 0)}</p>}

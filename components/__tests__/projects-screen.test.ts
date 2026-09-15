@@ -157,10 +157,15 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * ⚠️ 주석의 "행이 최대 셋"은 계약이 아니다 — `PROJECT_LIMIT`은 **내가 OWNER인 살아 있는** 프로젝트만
    * 세고, 이 목록은 초대받은 것과 보관한 것까지 든다.
    */
-  it("목록이 축소되지 않는다 — `<ul>`이 `shrink-0`을 든다", () => {
-    const ul = /<ul className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
-    expect(ul).not.toBe("");
-    expect(ul).toContain("shrink-0");
+  /**
+   * ⚠️ **2026-09-15에 그 자리가 `<section>`으로 옮겨졌다** — 그룹 헤더가 카드 안으로 들어오면서
+   * `PanelBody`의 flex 자식이 `<ul>`이 아니라 카드가 됐다. **불변식은 그대로이고 요소만 바뀐다.**
+   */
+  it("목록이 축소되지 않는다 — 카드가 `shrink-0`을 든다", () => {
+    const card = /<section className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
+    expect(card).not.toBe("");
+    expect(card).toContain("shrink-0");
+    expect(card).toContain("overflow-hidden");
   });
 
   /**
@@ -245,13 +250,13 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     ["행 요소 gap 16", "gap-4"],
     ["행 padding 14/14/12", "py-3.5"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
-    ["Summary 칸 200", "w-50"],
-    ["Summary gap 24", "gap-6"],
-    ["hairline #f0f0f0", "border-foreground/[0.06]"],
+    ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
     ["Meter 대체 문장 332", "w-[332px]"],
-    ["본문 아래 여백 20", "pb-5"],
     ["카드 radius 12", "rounded-lg"],
+    ["카드 헤더 padding 16", "p-4"],
+    ["카드 헤더 15/500", "text-base font-medium"],
+    ["본문 카드 사이 16", "gap-4"],
   ])("%s", (_label, literal) => {
     expect(BODY).toContain(literal);
   });
@@ -271,15 +276,23 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **Summary는 표시 전용이다** (열린 결정 1). 계정 단위 큐 화면이 생기기 전까지 링크로 만들면
-   * 아직 없는 화면을 가리키게 된다.
+   * ⚠️ **Summary 넷이 목록 화면에서 사라진다** (projects-panel-rework §2-6). 계정 합계는 "어느
+   * 프로젝트를 열지"에 쓰이지 않고, 같은 값을 프로젝트별로 쪼갠 것이 이미 행의 Meter와 아래 띠다.
+   *
+   * ⚠️ **`summaryQueue`·raw ④·`m.projects.summary.*`는 지우지 않는다** — `project-home`이 받는다
+   * (`spec.md` §5). 여기서 재는 것은 **목록 경로**뿐이다.
    */
-  it("Summary 블록 안에 링크가 없다", () => {
-    const block = /function SummaryRow[\s\S]*?\n}/.exec(BODY)?.[0] ?? "";
-    expect(block).not.toContain("<a");
-    expect(block).not.toContain("<Link");
-    expect(block).not.toContain("href");
-    expect(block.length).toBeGreaterThan(100);
+  it("목록이 Summary를 그리지 않는다", () => {
+    expect(BODY).not.toContain("SummaryRow");
+    expect(BODY).not.toContain("SummaryQueue");
+    expect(BODY).not.toContain("m.projects.summary");
+    expect(BODY).not.toContain("view.summary");
+  });
+
+  /** ⚠️ **본문의 갈래를 `listBody` 하나가 정한다** — 화면이 `hasProjects`·질의·건수를 다시 섞지 않는다. */
+  it("본문 갈래를 `listBody`가 정한다", () => {
+    expect(BODY).toContain("listBody(all, q)");
+    expect(BODY).not.toContain("const hasProjects");
   });
 
   /**
@@ -298,7 +311,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it("띠 갈래를 `rowBanner`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
     expect(BODY).toContain("rowBanner(row)");
     expect(BODY).toContain("meterSlot(row, row.meters)");
-    expect(BODY).toContain("groupProjects(rows, q)");
+    expect(BODY).toContain("listBody(all, q)");
   });
 
   /**
@@ -337,10 +350,8 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
   const SKELETON = code("app/(edit)/projects/loading.tsx");
 
   it.each([
-    ["머리 padding", "px-6 pt-6 pb-3"],
-    ["본문 padding", "gap-5 px-6 pt-3 pb-5"],
-    ["Summary 칸 200", "w-50"],
-    ["Summary hairline", "border-foreground/[0.06]"],
+    ["본문 카드 사이 16", "gap-4"],
+    ["카드 헤더 hairline", "border-foreground/[0.06]"],
     ["이름 칸 420", "w-[420px]"],
     ["행 글리프 radius 4", "rounded-[4px]"],
     ["행 gap 16", "gap-4"],
@@ -348,10 +359,21 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     expect(SKELETON).toContain(literal);
   });
 
-  /** Summary 넷 + 그룹 헤더 + 행 둘. */
-  it("Summary 칸 넷과 행 둘을 그린다", () => {
-    expect(SKELETON).toContain("[0, 1, 2, 3].map");
+  /**
+   * 카드 헤더 하나 + 행 둘.
+   *
+   * ⚠️ **Summary 줄이 사라진다** — 골격이 실물보다 90px 길면 데이터가 도착하는 순간 목록이 그만큼 튄다.
+   */
+  it("카드 헤더와 행 둘을 그리고 Summary 줄이 없다", () => {
     expect(SKELETON).toContain("[0, 1].map");
+    expect(SKELETON).not.toContain("[0, 1, 2, 3].map");
+    expect(SKELETON).not.toContain("w-50");
+  });
+
+  /** ⚠️ **선이 스켈레톤에도 있다** — 뒤늦게 생기면 본문이 1px 밀린다. 그 선은 프리미티브가 든다. */
+  it("머리 여백·선을 프리미티브에 맡긴다", () => {
+    expect(SKELETON).not.toMatch(/<PanelHeader[^>]*\b(px|py|pt|pb)-\d/);
+    expect(SKELETON).not.toMatch(/<PanelBody[^>]*\b(px|py|pt|pb)-\d/);
   });
 
   /** ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** */
@@ -415,33 +437,27 @@ describe("캔버스 대조로 잡은 자리", () => {
   const EMPTY = code("components/projects/empty-projects.tsx");
 
   /**
-   * ⚠️ **프로젝트 0건은 `EmptyState`가 아니다** (캔버스 `1a`). 첫 로그인의 착지점이고 할 수 있는 일이
-   * 하나뿐이라 패널이 비면 **그 자리를 KV가 든다** — 검색 0건(`3b`)만 `EmptyState` 규격이다.
+   * ⚠️ **빈 상태가 카드 규격으로 내려온다** (캔버스 `1b`). 다른 블록이 전부 `border 1 · radius 12 ·
+   * 흰 배경`인데 한 면만 그라데이션 + 점 필드 + KV면 **빈 상태가 화면 중 가장 화려해진다.**
+   * 원칙 5(장식은 패널 안에 살지 않는다)의 예외를 **되돌리는** 판단이다.
    */
-  it("0건 빈 상태가 KV 합성이다", () => {
-    expect(BODY).toContain("<EmptyProjects />");
-    expect(EMPTY).toContain("KeyVisual");
-    expect(EMPTY).toContain("DotField");
-    // KV를 새로 그리지 않는다 — 로그인의 그 합성에서 상한만 줄인다.
-    expect(EMPTY).toContain('className="max-w-[620px]"');
-    expect(EMPTY).toContain("from-auth-hero-from");
-    // 셸 밖 규격 — 이 화면에서 그것이 사용자가 할 수 있는 유일한 일이다.
-    expect(EMPTY).toContain('size="lg"');
+  it("0건 빈 상태에서 장식이 사라진다", () => {
+    expect(EMPTY).not.toContain("KeyVisual");
+    expect(EMPTY).not.toContain("DotField");
+    expect(EMPTY).not.toContain("from-auth-hero-from");
+    // 셸 밖 규격(40 · radius 12)에서 셸 안 규격(36 · radius 10)으로 내려온다.
+    expect(EMPTY).not.toContain('size="lg"');
   });
 
-  /** ⚠️ **0건일 때 본문 여백이 다르다**(`0 12 12`) — 그라데이션 면이 패널 radius 안에 겹쳐 앉는다. */
-  it("0건 본문 여백이 목록과 다르다", () => {
-    expect(BODY).toContain('"flex px-3 pt-0 pb-3"');
-  });
-
-  /**
-   * ⚠️ **첫 칸만 파랑이고 부호가 붙는다** — 넷 중 유일하게 **내가 만들지 않은 변화**라서다.
-   * 0이면 부호를 떼는 것은 이 구현의 판정이다(캔버스에 0 갈래가 없다).
-   */
-  it("`New from GitHub`이 파랑이고 부호를 든다", () => {
-    expect(BODY).toContain("ArrowDownToLine");
-    expect(BODY).toContain('`+${summary.newFromGithub}`');
-    expect(BODY).toContain('"text-blue-600"');
+  /** 아이콘 칩 36 · radius 8 · 제목 15/500 · 설명 14/1.6 46ch (캔버스 `1b`). */
+  it.each([
+    ["아이콘 칩 36", "size-9"],
+    ["칩 radius 8", "rounded-sm"],
+    ["제목 15/500", "text-base font-medium"],
+    ["설명 46ch", "max-w-[46ch]"],
+    ["카드 radius 12", "rounded-lg"],
+  ])("빈 상태 카드 — %s", (_label, literal) => {
+    expect(EMPTY).toContain(literal);
   });
 
   /** ⚠️ **보관은 이름까지 회색이다** — 숨기지 않는 대신 훑는 눈에서만 멀어진다. */
@@ -460,9 +476,13 @@ describe("캔버스 대조로 잡은 자리", () => {
     expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
   });
 
-  /** ⚠️ **결과 줄의 질의만 foreground다** — 그 줄에서 유일하게 가변인 값이다. */
-  it("결과 줄이 13px이고 질의를 별개 노드로 그린다", () => {
-    expect(BODY).toContain("m.projects.searchResult(rows.length, all.length)");
-    expect(BODY).toContain('<span className="text-foreground">{query}</span>');
+  /**
+   * ⚠️ **결과 줄이 카드 헤더가 됐다** (캔버스 `1c`). 문장에 수를 두면 카운트 배지와 두 번 말하므로
+   * `searchResult(n, total)`은 사라지고 `resultsFor(q)`가 그 자리를 든다.
+   */
+  it("결과가 카드 헤더이고 옛 결과 줄이 없다", () => {
+    expect(BODY).toContain("m.projects.resultsFor(");
+    expect(BODY).not.toContain("m.projects.searchResult");
+    expect(BODY).toContain("m.projects.clearSearch");
   });
 });

@@ -8,7 +8,7 @@ export default function PageError({ reset }: { reset: () => void }) {
   return (
     <ContentPanel>
       <PanelBody>
-        <div className="mx-auto max-w-4xl space-y-4 px-6 py-6">
+        <div className="space-y-4">
           <Alert variant="danger">{m.errors.access.unavailable}</Alert>
           <Button type="button" onClick={reset}>{m.common.retry}</Button>
         </div>

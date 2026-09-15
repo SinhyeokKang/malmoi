@@ -54,30 +54,26 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
         {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
-              위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
-          <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
-            <h1 className="text-xl font-medium">{m.common.nav.members}</h1>
-            {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
-          </div>
+            위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
+        {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
+        <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
+          <h1 className="text-lg font-medium">{m.common.nav.members}</h1>
+          {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
         </div>
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} />
+      <PanelBody className="space-y-6">
+        <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} />
 
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
-            <PendingInvitations slug={slug} invitations={pending} role={role} now={now} />
-          </section>
-        </div>
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium">{m.members.pending.title}</h2>
+          <PendingInvitations slug={slug} invitations={pending} role={role} now={now} />
+        </section>
       </PanelBody>
     </>
   );

@@ -1,0 +1,181 @@
+// @vitest-environment jsdom
+import { act, useState } from "react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { SyncButton as Control } from "@/components/home/sync-button";
+import { SyncResult } from "@/components/home/sync-result";
+import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { render } from "./helpers/dom";
+
+const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+const success: RepositoryImportOutcome = { ok: true, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
+const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
+function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
+  const [open, setOpen] = useState(false);
+  return <Control {...props} open={open} onOpenChange={setOpen} />;
+}
+function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
+function button(name: string) {
+  const node = [...document.querySelectorAll("button")].find(b => (b.getAttribute("aria-label") ?? b.textContent?.trim()) === name);
+  if (!node) throw new Error(`Missing accessible button: ${name}`);
+  return node;
+}
+function dialog() { return document.querySelector('[role="dialog"]'); }
+async function click(name: string) { await act(async () => userEvent.setup().click(button(name))); }
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); });
+
+it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확인을 거친다", async () => {
+  const view = await render(<SyncButton {...props} role="EDITOR" />);
+  expect(document.querySelector("button")).toBeNull();
+  await view.rerender(<SyncButton {...props} />);
+  await click("Sync");
+  expect(button("Sync")).not.toBe(button("Sync from repository"));
+  expect(button("Sync from repository").className).toContain("text-destructive");
+  expect(mocks.run).not.toHaveBeenCalled();
+  await click("Sync from repository");
+  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme" });
+  expect(props.onResult).toHaveBeenCalledWith(success);
+  expect(mocks.refresh).toHaveBeenCalledOnce();
+});
+
+/**
+ * 시안 `4a` — 지울 것이 없으면 **본문 자체가 없다**. "없음"을 한 줄로 세우면 부재가 정보라는 규칙이
+ * 깨지고, 빈 본문 블록은 설명문과 푸터 사이에 죽은 공간을 만든다.
+ */
+it("조용한 갈래는 제목과 설명문뿐이고 포커스가 Cancel에 선다", async () => {
+  await render(<SyncButton {...props} />);
+  await click("Sync");
+  await vi.waitFor(() => expect(document.activeElement).toBe(button("Cancel")));
+  expect(dialog()?.textContent).toContain("Sync malmoi web from the repository?");
+  expect(dialog()?.textContent).toContain("locale files on main");
+  expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
+  expect(button("Sync from repository").className).toContain("text-destructive");
+});
+
+/**
+ * ⚠️ **열릴 때 읽히는 것에 경고가 들어 있어야 한다.** Radix는 `aria-describedby`를 설명문 하나에만
+ * 걸어서, 이 Dialog가 유일한 방어선인데도 "무엇이 지워지는지"가 자동 낭독에서 빠져 있었다.
+ */
+it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", async () => {
+  mocks.pr.mockResolvedValue({ number: 42, url: "https://github.com/o/r/pull/42" });
+  const view = await render(<SyncButton {...props} unsent={7} />);
+  await click("Sync");
+  const described = (dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+  expect(described).toHaveLength(2);
+  const text = described.map(id => document.getElementById(id)?.textContent ?? "").join(" ");
+  expect(text).toContain("replace what's in the app with them");
+  expect(text).toContain("7 edits");
+  expect(text).toContain("pull request #42");
+
+  // 조용한 갈래에는 경고 블록이 없으므로 설명문 하나만 남는다.
+  await click("Cancel");
+  await view.rerender(<SyncButton {...props} unsent={0} />);
+  mocks.pr.mockResolvedValue(null);
+  await click("Sync");
+  await vi.waitFor(() => expect((dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean)).toHaveLength(1));
+  const only = dialog()?.getAttribute("aria-describedby") ?? "";
+  expect(document.getElementById(only)?.textContent).toContain("locale files on main");
+});
+
+it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {
+  const run = deferred<RepositoryImportOutcome>(); mocks.run.mockReturnValue(run.promise);
+  await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
+  const trigger = button("Syncing…");
+  expect(trigger.disabled).toBe(false); expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(trigger);
+  await click("Syncing…"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
+  expect(dialog()).toBeNull(); expect(mocks.run).toHaveBeenCalledOnce();
+  await act(async () => run.resolve(success));
+  expect(trigger.getAttribute("aria-disabled")).toBe("false"); expect(document.activeElement).toBe(trigger);
+  expect(trigger.textContent?.trim()).toBe("Sync");
+});
+
+it("PR은 조회 즉시 미확인이며 성공 null만 경고를 지운다", async () => {
+  const pr = deferred<null>(); mocks.pr.mockReturnValue(pr.promise);
+  await render(<SyncButton {...props} />); expect(mocks.pr).not.toHaveBeenCalled(); await click("Sync");
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("couldn't check");
+  await act(async () => pr.resolve(null));
+  expect(dialog()?.textContent).not.toContain("couldn't check");
+  expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
+  await click("Cancel"); expect(document.activeElement).toBe(button("Sync"));
+});
+
+it("PR 실패도 미확인이고 닫기→재열기에서는 늦은 이전 응답을 무시한다", async () => {
+  const old = deferred<{ number: number; url: string }>();
+  mocks.pr.mockReturnValueOnce(old.promise).mockRejectedValueOnce(new Error("offline"));
+  await render(<SyncButton {...props} />); await click("Sync"); await click("Cancel"); await click("Sync");
+  await act(async () => old.resolve({ number: 42, url: "https://github.com/o/r/pull/42" }));
+  expect(dialog()?.textContent).toContain("couldn't check");
+  expect(document.querySelector('a[href*="pull/42"]')).toBeNull();
+});
+
+/**
+ * 시안 `4b`·`4c` 왼쪽 — 미발송과 열린 PR은 **한 블록 안의 두 줄**이고 각각 서거나 빠진다. 수 하나로
+ * 요약하면 거짓이 된다: 앱은 "보냈다"까지만 알고 "머지됐다"를 저장하지 않는다.
+ */
+it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면 링크다", async () => {
+  mocks.pr.mockResolvedValue({ number: 42, url: "https://github.com/o/r/pull/42" });
+  await render(<SyncButton {...props} unsent={7} />); await click("Sync");
+  const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
+  expect(lines).toHaveLength(2);
+  expect(lines[0]).toContain("7 edits that haven't been sent yet");
+  expect(lines[1]).toContain("pull request #42 are not in main yet");
+  expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Send changes first");
+});
+
+/**
+ * 시안 `4c` 오른쪽 — **미발송 0 ∧ 열린 PR이 함정이다.** 셀 수 있는 것이 0이라는 말이 위험이 0이라는
+ * 말로 읽히므로 `0 edits …` 줄을 세우지 않고, `Send changes first`가 거짓이라 권유가 갈린다.
+ */
+it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외부 링크로 갈린다", async () => {
+  mocks.pr.mockResolvedValue({ number: 42, url: "https://github.com/o/r/pull/42" });
+  await render(<SyncButton {...props} unsent={0} />); await click("Sync");
+  const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
+  expect(lines).toHaveLength(1);
+  expect(lines[0]).toContain("pull request #42");
+  expect(dialog()?.textContent).not.toContain("0 edits");
+  expect(document.querySelector('a[href="/projects/acme/translations"]')).toBeNull();
+  const link = document.querySelector('a[href*="pull/42"]');
+  expect(link?.textContent).toContain("See what's open");
+  expect(link?.getAttribute("target")).toBe("_blank");
+});
+
+it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보존한다", async () => {
+  function Host({ refreshed }: { refreshed: number }) {
+    const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
+    return <div data-refreshed={refreshed}><SyncButton {...props} onResult={setOutcome} /><SyncResult slug="acme" branch="main" outcome={outcome} /></div>;
+  }
+  const view = await render(<Host refreshed={0} />); await click("Sync"); await click("Sync from repository");
+  await view.rerender(<Host refreshed={1} />);
+  expect(document.querySelector('[role="status"]')?.textContent).toContain("Synced 0 keys from main");
+});
+
+it("Action 통신 실패는 실패 원결과를 호스트로 전달하고 다시 실행할 수 있다", async () => {
+  mocks.run.mockRejectedValue(new Error("offline"));
+  await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
+  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "ingest-failed" });
+  expect(button("Sync").getAttribute("aria-disabled")).toBe("false");
+});
+
+it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
+  function Host() {
+    const [open, setOpen] = useState(false);
+    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
+  }
+  await render(<Host />); await click("Try again");
+  expect(dialog()).not.toBeNull();
+  expect(mocks.pr).toHaveBeenCalledOnce(); expect(mocks.run).not.toHaveBeenCalled();
+  await click("Sync from repository"); expect(mocks.run).toHaveBeenCalledOnce();
+});
+
+it("권한 변경으로 트리거가 사라지면 Home의 대체 포커스로 복귀한다", async () => {
+  const fallback = { current: document.createElement("h2") };
+  fallback.current.tabIndex = -1; document.body.append(fallback.current);
+  const view = await render(<SyncButton {...props} fallbackFocusRef={fallback} />);
+  await click("Sync"); await view.rerender(<SyncButton {...props} role="EDITOR" fallbackFocusRef={fallback} />);
+  // Radix restores focus in its deferred unmount callback.
+  await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
+  fallback.current.remove();
+});

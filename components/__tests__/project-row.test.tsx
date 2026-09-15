@@ -44,10 +44,8 @@ const BASE: ProjectListRow = {
   importing: false,
 };
 
-const SUMMARY = { newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: 0 };
-
 const draw = async (over: Partial<ProjectListRow>) => {
-  const { container } = await render(<ProjectList all={[{ ...BASE, ...over }]} summary={SUMMARY} />);
+  const { container } = await render(<ProjectList all={[{ ...BASE, ...over }]} />);
   return container;
 };
 

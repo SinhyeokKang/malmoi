@@ -42,6 +42,7 @@ export type FirstSnapshotInput = {
   surfaceId: string;
   surfaceSlug: string;
   startedAt: Date;
+  token: string;
   projectSlug: string;
   format: DetectedFormat;
   baseLocale: string;
@@ -63,7 +64,7 @@ export type FirstSnapshotInput = {
 export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
   const prepared = prepareFirstSnapshot(input);
   if (prepared.payload !== null) await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, prepared.payload, {
-    previousBaseLocale: null, startedAt: input.startedAt,
+    refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
     importOutcome: prepared.result.failed === 0 ? null : "partial-import",
   });
   return prepared.result;

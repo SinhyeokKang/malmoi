@@ -6,7 +6,7 @@ import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/cre
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
-import { checkDownloadBudget, checkContentBudget, IngestBudgetError } from "@/lib/onboarding/budget";
+import { IngestBudgetError } from "@/lib/onboarding/budget";
 
 import { randomBytes, randomUUID } from "node:crypto";
 
@@ -29,7 +29,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
-import { listBranches, openRepoReader, probeRepo, type RepoReader, type RepoSnapshot } from "@/lib/github";
+import { listBranches, openRepoReader, probeRepo, type RepoSnapshot } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/github-connect/health";
@@ -53,6 +53,12 @@ import {
 } from "@/lib/onboarding/detect";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
+import { runRepositoryImportFromReader } from "@/lib/import/run";
+import { loadOpenPrUrl } from "@/lib/projects/open-pr";
+import type { RepositoryImportOutcome } from "@/lib/import/result";
+import type { OpenImportPr } from "@/lib/import/confirm";
+import { readFiles, snapshotError } from "@/lib/import/read";
+import { readSurfaceSnapshot } from "@/lib/import/surface";
 import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
@@ -871,6 +877,7 @@ export async function createProject(raw: {
   const paths = snapshot.files.map(f => f.path);
   const projectId = randomUUID();
   const startedAt = new Date();
+  const token = randomUUID();
   const prepared: { id: string; surface: CreatedSurface; payload: NonNullable<ReturnType<typeof prepareFirstSnapshot>["payload"]>; targets: string[]; workflow: { adapter?: AdapterName; baseLocale?: string } }[] = [];
   for (const requested of input.surfaces) {
     if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
@@ -890,7 +897,7 @@ export async function createProject(raw: {
       if (extra.length) files.push(...await readFiles(reader, snapshot, extra));
       const id = randomUUID();
       const surfaceSlug = planSurfaceSlug(format.pathTemplate, prepared.map(s => s.surface.surfaceSlug));
-      const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt,
+      const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt, token,
         projectSlug: input.slug, format, baseLocale: confirmed.baseLocale,
         headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt, paths, targets,
         blobs: new Map(files.map(file => [file.path, file.content])),
@@ -958,10 +965,10 @@ export async function createProject(raw: {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
           slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
-          baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt,
+          baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
         await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
-          previousBaseLocale: null, startedAt, importOutcome: null,
+          refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
       }
       await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
@@ -1106,10 +1113,11 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
    */
   const startedAt = new Date();
+  const token = randomUUID();
   const scope = { projectId, surfaceId: surface.id };
-  await markImportStarted(prisma, scope, startedAt);
+  await markImportStarted(prisma, scope, startedAt, token);
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
-    finishImportRun(prisma, { ...scope, startedAt, code });
+    finishImportRun(prisma, { ...scope, token, code });
 
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
@@ -1119,63 +1127,29 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       return { ok: false, error: snapshotError(snapshot) };
     }
 
-    const paths = snapshot.files.map((f) => f.path);
-    /**
-     * ⚠️ **내려받기를 "시도한" 목록은 여기서 나온다 — `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2).
-     * 그쪽은 `confirmed.format.locales`를 순회하고 그 locales는 **성공한 blob에서 나온 값**이라,
-     * 내려받지 못한 로케일이 목록에서 함께 사라져 `ingest.ts`의 `missing`이 0이 된다 — 화면이
-     * "N개 키를 적재했어요"를 쓰고 `ready`가 서면 [다시 시도]도 `not-awaiting`이다 (불변식 9).
-     * 템플릿이 가리키는 파일은 트리에서 나오므로 다운로드 성공과 무관하다.
-     */
-    const attempted = templatePaths(adapterName, pathTemplate, paths);
-    let files: AdapterFile[];
-    try { files = await readFiles(reader, snapshot, attempted); }
-    catch (error) {
-      if (error instanceof IngestBudgetError) {
-        await failRun();
-        return { ok: false, error: "resource-limit" };
-      }
-      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
-      throw error;
+    let prepared: Awaited<ReturnType<typeof readSurfaceSnapshot>>;
+    try {
+      prepared = await readSurfaceSnapshot(reader, snapshot, { adapter: adapterName, pathTemplate, baseLocale });
+    } catch (error) {
+      if (!(error instanceof IngestBudgetError)) throw error;
+      await failRun();
+      return { ok: false, error: "resource-limit" };
     }
-    const confirmed = planConfirmedFormat({ adapter: adapterName, pathTemplate, baseLocale }, files);
-    if (confirmed.status !== "ok") {
-      logFailure("onboard-ingest", new Error(`stored format no longer holds: ${confirmed.reason}`));
+    if (prepared.status !== "ok") {
+      logFailure("onboard-ingest", new Error(`stored format no longer holds: ${prepared.reason}`));
       await failRun();
       return { ok: false, error: "ingest-failed" };
     }
-
-    const adapter = adapterFor(confirmed.format);
-    // ⚠️ **`selectLocaleFiles`를 새로 짜지 않는다** — 껍데기가 파일을 안 골라 어댑터가 "존재하지
-    // 않았던" 전례가 있다 (POSTMORTEM 2026-09-02). `ingestTargets`가 그 함수를 지난 경로 목록이다.
-    // **합집합을 넘긴다**: 시도한 것(다운로드 실패를 세는 근거)과 적재가 원하는 것(그쪽에만 있는
-    // 경로가 생기면 그것도 실패다) 둘 다 `blobs`에 있어야 정상이다.
-    const targets = [...new Set([...attempted, ...ingestTargets(confirmed.format, adapter.layout, paths)])].sort(
-      compareKeys,
-    );
-    const blobs = new Map(files.map((f) => [f.path, f.content]));
-    // 이미 받은 것은 다시 받지 않는다 — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
-    try {
-      for (const extra of await readFiles(reader, snapshot, targets.filter((p) => !blobs.has(p)))) {
-        blobs.set(extra.path, extra.content);
-      }
-    } catch (error) {
-      if (error instanceof IngestBudgetError) {
-        await failRun();
-        return { ok: false, error: "resource-limit" };
-      }
-      // 예외 종료 기록은 바깥 catch가 맡는다 — 같은 조건부 UPDATE를 두 번 보내지 않는다.
-      throw error;
-    }
+    const { paths, targets, blobs } = prepared;
 
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
       surfaceId: surface.id,
       surfaceSlug: surface.slug,
-      startedAt,
+      startedAt, token,
       projectSlug: slug,
-      format: confirmed.format,
-      baseLocale: confirmed.baseLocale,
+      format: prepared.format,
+      baseLocale: prepared.baseLocale,
       headSha: snapshot.headSha,
       // ⚠️ **base head 커밋의 시각이다.** `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4).
       headCommittedAt: snapshot.headCommittedAt,
@@ -1213,6 +1187,66 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
     revalidatePath("/projects/new");
+  }
+}
+
+export type { RepositoryImportOutcome, SurfaceImportResult, SurfaceImportReason, RepositoryImportError } from "@/lib/import/result";
+
+export async function runRepositoryImport(raw: { slug: string }): Promise<RepositoryImportOutcome> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug } = parsed.data;
+  const session = await readSession();
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  try {
+    const project = await prisma.project.findUnique({ where: { id: access.projectId }, include: { surfaces: true } });
+    if (project === null) return { ok: false, error: "not-found" };
+    if (project.archivedAt !== null) return { ok: false, error: "archived" };
+    if (planProjectReadiness(project) !== "ready") return { ok: false, error: "not-ready" };
+    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
+    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    if (connected.status !== "ok") return { ok: false, error: connected.error };
+    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    const installationId = project.installationId;
+    return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId,
+      repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+    }, () => openRepoReader(project.repoOwner, project.repoName, installationId));
+  } catch (error) {
+    logFailure("repository-import-action", error);
+    return { ok: false, error: "ingest-failed" };
+  } finally {
+    revalidatePath(`/projects/${slug}`, "layout");
+    revalidatePath("/projects");
+    revalidatePath("/projects/new");
+  }
+}
+
+export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenImportPr> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const session = await readSession();
+  if (session.status !== "ok") return undefined;
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return undefined;
+  try {
+    const project = await prisma.project.findUnique({ where: { id: access.projectId } });
+    if (project === null) return undefined;
+    const rawUrl = await loadOpenPrUrl(parsed.data.slug, project);
+    if (rawUrl === null || rawUrl === undefined) return rawUrl;
+    const url = new URL(rawUrl);
+    if (url.origin !== "https://github.com" || url.username || url.password) return undefined;
+    const parts = url.pathname.split("/");
+    if (parts.length !== 5 || parts[1]?.toLowerCase() !== project.repoOwner.toLowerCase() || parts[2]?.toLowerCase() !== project.repoName.toLowerCase() || parts[3] !== "pull" || !/^[1-9][0-9]*$/.test(parts[4] ?? "")) return undefined;
+    const number = Number(parts[4]);
+    return Number.isSafeInteger(number) ? { number, url: rawUrl } : undefined;
+  } catch (error) {
+    logFailure("repository-import-pr", error);
+    return undefined;
   }
 }
 
@@ -1420,46 +1454,6 @@ async function checkRepoAccess(
   };
 }
 
-/**
- * 트리 항목의 `sha`로 내려받는다 — contents API는 1MB에서 잘려 조용히 빈 내용을 준다.
- *
- * 못 읽은 파일은 **빠진다.** 탐지에서는 그 후보가 "키 수 확인 실패"로 남고(ARCHITECTURE §4의 연장),
- * 첫 적재에서는 `targets`와 대조해 **실패로 센다** — 조용히 빼면 성공 문구가 나간다 (불변식 9).
- */
-async function readFiles(
-  reader: RepoReader,
-  snapshot: Extract<RepoSnapshot, { status: "ok" }>,
-  paths: readonly string[],
-): Promise<AdapterFile[]> {
-  checkDownloadBudget(paths, snapshot.files);
-  let totalBytes = 0;
-  const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
-  const out: AdapterFile[] = [];
-  // 순차로 받는다 — 한 번에 던지면 secondary rate limit에 걸리고, 예산이 ≤37개(탐지) 또는
-  // 로케일 파일 수(첫 적재)라 `maxDuration=60` 안에 든다 (design §3.1·§4).
-  for (const path of paths) {
-    const sha = shaByPath.get(path);
-    if (sha === undefined) continue;
-    const content = await reader.blob(sha);
-    if (content === undefined) continue;
-    totalBytes = checkContentBudget(path, content, totalBytes);
-    out.push({ path, content });
-  }
-  return out;
-}
-
-/**
- * 스냅샷의 비-ok 갈래 → 화면 문구가 있는 사유.
- *
- * ⚠️ **`truncated`에는 수동 지정으로 가는 길이 없다** (2026-09-07 정정 — 전 주석은 반대로 적혀 있었다).
- * 확정의 재검증(`planConfirmedFormat`)이 **같은 잘린 스냅샷**을 읽으므로 같은 갈래를 다시 낸다.
- * 문구도 그렇게 말한다 (`onboardErrorMessage`).
- */
-function snapshotError(snapshot: Exclude<RepoSnapshot, { status: "ok" }>): OnboardError {
-  if (snapshot.status === "truncated") return "tree-truncated";
-  if (snapshot.status === "base-branch-missing") return "base-branch-missing";
-  return "unavailable";
-}
 
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor, isAdapterName } from "@/lib/adapters";
 import { templatePaths } from "@/lib/onboarding/confirm";
@@ -15,7 +17,7 @@ export class SurfaceCreationError extends Error {
   }
 }
 
-export type AddSurfaceSnapshot = Omit<FirstSnapshotInput, "surfaceId" | "surfaceSlug" | "startedAt" | "projectSlug"> & {
+export type AddSurfaceSnapshot = Omit<FirstSnapshotInput, "surfaceId" | "surfaceSlug" | "startedAt" | "token" | "projectSlug"> & {
   userId: string;
   repository: { repositoryId: string; installationId: string; repoOwner: string; repoName: string; baseBranch: string };
 };
@@ -52,14 +54,15 @@ export async function addSurfaceFromSnapshot(prisma: PrismaClient, input: AddSur
       paths: [...input.targets, ...resolveLocalePaths(input.format, adapterFor(input.format).layout, input.paths).map(p => p.path)] }]);
     if (!ownership.ok) throw new SurfaceCreationError("path-conflict", ownership.conflicts);
     const startedAt = new Date();
+    const token = randomUUID();
     const surface = await tx.translationSurface.create({ data: { projectId: input.projectId, slug,
       adapterName: input.format.adapter, pathTemplate: input.format.pathTemplate, baseLocale: input.baseLocale,
-      lastImportStartedAt: startedAt } });
+      lastImportStartedAt: startedAt, lastImportToken: token } });
     const prepared = prepareFirstSnapshot({ ...input, surfaceId: surface.id, surfaceSlug: slug,
-      projectSlug: project.slug, startedAt });
+      projectSlug: project.slug, startedAt, token });
     if (prepared.payload === null) throw new SurfaceCreationError("ingest-failed");
     await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: surface.id }, prepared.payload, {
-      previousBaseLocale: null, startedAt, importOutcome: prepared.result.failed === 0 ? null : "partial-import",
+      refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: prepared.result.failed === 0 ? null : "partial-import",
     });
     const result = prepared.result;
     return { ...result, surfaceId: surface.id, surfaceSlug: slug };

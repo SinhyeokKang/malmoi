@@ -5,6 +5,7 @@ import { m } from "@/lib/i18n";
 import {
   groupProjects,
   highlightName,
+  listBody,
   meterSlot,
   projectGroup,
   projectStatus,
@@ -533,4 +534,86 @@ it.each([
   ["İİ", "i", [{ text: "İ", match: true }, { text: "İ", match: true }]],
 ])("소문자 변환이 길이를 늘려도 원래 이름의 일치 구간을 보존한다: %s / %s", (name, q, expected) => {
   expect(highlightName(name, q)).toEqual(expected);
+});
+
+/**
+ * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (projects-panel-rework design §3.1).
+ *
+ * ⚠️ **지금은 `hasProjects`·`query`·`rows.length` 셋이 JSX 안에서 섞여 판정된다.** 넷을 한 자리에
+ * 모아야 갈래를 그대로 단언할 수 있다.
+ */
+describe("listBody — 아트보드 넷과 1:1", () => {
+  const all = [
+    { slug: "b", name: "old-landing", ...READY, ...QUIET, archivedAt: new Date("2026-09-01T00:00:00Z") },
+    { slug: "a", name: "admin-console", ...READY, ...QUIET },
+    { slug: "c", name: "chrome-extension", ...READY, ...QUIET, unsent: 24 },
+  ];
+
+  it("`1a` — 질의가 없으면 그룹 카드가 순서대로 선다", () => {
+    const body = listBody(all, undefined);
+    expect(body.kind).toBe("groups");
+    if (body.kind !== "groups") return;
+    expect(body.cards.map((card) => [card.group, card.rows.map((r) => r.slug)])).toEqual([
+      ["needs_attention", ["c"]],
+      ["all_set", ["a"]],
+      ["archived", ["b"]],
+    ]);
+  });
+
+  it("`1b` — 프로젝트가 하나도 없으면 빈 상태다", () => {
+    expect(listBody([], undefined)).toEqual({ kind: "empty" });
+  });
+
+  /**
+   * ⚠️ **결과를 그룹으로 쪼개지 않는다** — 1건에 헤더 셋이면 둘이 빈 카드가 된다. 상태는 행의 칩이
+   * 계속 말한다.
+   */
+  it("`1c` — 질의가 맞으면 결과 하나이고 그룹이 아니다", () => {
+    const body = listBody(all, "chrome");
+    expect(body.kind).toBe("results");
+    if (body.kind !== "results") return;
+    expect(body.query).toBe("chrome");
+    expect(body.rows.map((r) => r.slug)).toEqual(["c"]);
+  });
+
+  it("`1d` — 질의가 0건이면 되돌리는 갈래다", () => {
+    expect(listBody(all, "stripe")).toEqual({ kind: "no-results", query: "stripe" });
+  });
+
+  /** ⚠️ **앞뒤 공백을 떼고 화면에 싣는다** — 제목이 `Results for “ chrome ”`이 되면 안 된다. */
+  it("질의의 앞뒤 공백을 떼고 낸다", () => {
+    const body = listBody(all, "  chrome  ");
+    expect(body.kind).toBe("results");
+    if (body.kind !== "results") return;
+    expect(body.query).toBe("chrome");
+  });
+
+  it.each(["", "   ", undefined])("질의 %o는 질의가 없는 것과 같다 — 그룹이다", (q) => {
+    expect(listBody(all, q).kind).toBe("groups");
+  });
+
+  /**
+   * ⚠️ **보관만 있어도 `empty`가 아니다** (PRODUCT §7.9). 보관은 삭제가 아니라 세 번째 그룹이고,
+   * 빈 화면으로 바뀌면 사용자가 프로젝트를 잃었다고 읽는다.
+   */
+  it("보관만 남아도 그룹 카드다 — 빈 화면이 아니다", () => {
+    const body = listBody([all[0]!], undefined);
+    expect(body.kind).toBe("groups");
+    if (body.kind !== "groups") return;
+    expect(body.cards.map((card) => card.group)).toEqual(["archived"]);
+  });
+
+  /**
+   * ⚠️ **프로젝트가 0건이면 질의가 있어도 `empty`다.** 머리가 검색을 그리지 않으므로 질의는 주소창으로만
+   * 오는데, 그 사람에게 줄 출구는 "검색을 되돌려라"가 아니라 **"만들어라"**다.
+   */
+  it("프로젝트가 0건이면 질의가 있어도 빈 상태다", () => {
+    expect(listBody([], "chrome")).toEqual({ kind: "empty" });
+  });
+
+  it("입력 배열을 건드리지 않는다 — 호출부가 같은 배열로 총계도 센다", () => {
+    const original = [...all];
+    listBody(all, "chrome");
+    expect(all).toEqual(original);
+  });
 });

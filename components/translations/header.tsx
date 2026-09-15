@@ -104,19 +104,20 @@ export function TranslationsHeader({
   return (
     <>
       {/*
-        ⚠️ **여백이 `/projects` 목록과 같은 형이다** (2026-09-11 — 시안 `212:5074` 실측: `pt-24`
-        `gap-16` `pb-12`). 전에는 `py-4 space-y-3`이라 제목이 패널 위에 붙고 툴바 간격이 한 칸
-        좁았다 — 같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다.
+        ⚠️ **여백·폭 등급·아래 선을 `PanelHeader`가 든다** (2026-09-15 — projects-panel-rework).
+        전에는 이 화면이 `px-6 pt-6 pb-3`을 직접 넘겼고 라우트 아홉이 같은 값을 각자 적었다.
+        같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다 — 그것을 이제 구조가 막는다.
       */}
-      <PanelHeader className="flex flex-col gap-4 px-6 pt-6 pb-3">
+      <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center gap-2">
           {/*
             화면 제목이 사이드바 라벨과 **같은 키**다 (8-3) — 두 벌이면 하나가 낡는다.
 
-            ⚠️ **`text-xl`이고 `text-base`가 아니다** (2026-09-11 — 시안 20px). `/projects` 목록의
-            제목과 같은 급이어야 하고, 그 둘이 갈리면 어느 쪽이 페이지 제목인지가 화면마다 달라진다.
+            ⚠️ **`text-lg`(18)이고 20이 아니다** (2026-09-15 — 캔버스 `Projects v2`). 20은 카드 헤더
+            15와 5px 차라 위계가 과했다. **라우트 아홉이 같은 급이어야 하고**, 갈리면 어느 쪽이 페이지
+            제목인지가 화면마다 달라진다. letter-spacing은 `--text-lg--letter-spacing`이 든다.
           */}
-          <h1 className="text-xl font-medium">{m.common.nav.translations}</h1>
+          <h1 className="text-lg font-medium">{m.common.nav.translations}</h1>
           {/*
             ⚠️ **숫자만 그리면 접근 이름이 "Translations 1134"다.** 시안이 숫자 배지라 보이는 것은
             그대로 두고, 스크린리더에는 완전한 문장을 준다.
@@ -179,14 +180,13 @@ export function TranslationsHeader({
       </PanelHeader>
 
       {/*
-        시안의 `scroll area`가 머리 바로 아래에서 12로 시작한다 — 머리의 `pb-3`과 짝이다.
-
-        ⚠️ **`flex flex-col`이 빈 상태를 패널 세로 중앙에 세우는 장치다** (2026-09-11 — `/projects`와
-        같은 형). 래퍼가 `min-h-full`을 들고 있으므로(`content-panel.tsx`) 이 열이 패널 높이를 받고,
+        ⚠️ **`flex flex-col`이 빈 상태를 패널 세로 중앙에 세우는 장치다** (2026-09-11 —
+        `ProjectArchived`·`ProjectNotReady`가 같은 형이다. ⚠️ **`/projects`는 2026-09-15에 이 형에서
+        빠졌다** — 그쪽 빈 상태는 카드가 되어 본문 맨 위에 붙는다). 래퍼가 `min-h-full`을 들고 있으므로(`content-panel.tsx`) 이 열이 패널 높이를 받고,
         그 안의 빈 상태가 `flex-1`로 남은 높이를 먹는다. 표가 올 때는 아무 일도 안 한다 — 표는
         `flex-1`이 아니라 자연 높이다.
       */}
-      <PanelBody className="flex flex-col px-6 pt-3 pb-8">
+      <PanelBody width="fluid" className="flex flex-col">
         {/*
           배너가 위, 결과가 아래다 (design §3.11) — 결과는 방금 누른 것에 대한 답이라 더 가까이 둔다.
           ⚠️ **셋 다 조건부 분기 밖의 고정 슬롯이다** (DESIGN §6.1) — 안에 두면 `router.refresh()`가

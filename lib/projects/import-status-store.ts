@@ -15,14 +15,14 @@ import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
  * 서버 적재가 시작됐다고 표시한다. **인증·가드를 지난 뒤**에 부른다 — 거부된 요청까지 표시하면
  * 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
  */
-export async function markImportStarted(prisma: PrismaClient, scope: { projectId: string; surfaceId: string }, startedAt: Date): Promise<void> {
-  await prisma.translationSurface.update({ where: { id: scope.surfaceId, projectId: scope.projectId }, data: { lastImportStartedAt: startedAt } });
+export async function markImportStarted(prisma: PrismaClient, scope: { projectId: string; surfaceId: string }, startedAt: Date, token: string): Promise<void> {
+  await prisma.translationSurface.update({ where: { id: scope.surfaceId, projectId: scope.projectId }, data: { lastImportStartedAt: startedAt, lastImportToken: token } });
 }
 
 /**
  * 서버 적재의 **실패 종료**. 완전 성공·부분 실패는 `applyPush`의 트랜잭션이 확정하므로 여기 오지 않는다.
  *
- * ⚠️ **자기 시작 시각을 대조한다.** 무조건 비우면 나중 실행이 앞선 실행의 진행 표시를 치우고,
+ * ⚠️ **자기 실행 토큰을 대조한다.** 무조건 비우면 나중 실행이 앞선 실행의 진행 표시를 치우고,
  * 화면은 아직 돌고 있는 적재를 "끝났는데 실패"로 그린다.
  *
  * ⚠️ **자기 쓰기 실패를 삼킨다** — 호출부는 이 뒤에 **원래 오류**를 던지거나 500을 낸다. 여기서
@@ -30,12 +30,12 @@ export async function markImportStarted(prisma: PrismaClient, scope: { projectId
  */
 export async function finishImportRun(
   prisma: PrismaClient,
-  input: { projectId: string; surfaceId: string; startedAt: Date; code: ImportFailureCode },
+  input: { projectId: string; surfaceId: string; token: string; code: ImportFailureCode },
 ): Promise<void> {
   try {
     await prisma.translationSurface.updateMany({
-      where: { id: input.surfaceId, projectId: input.projectId, lastImportStartedAt: input.startedAt },
-      data: { lastImportStartedAt: null, lastImportError: input.code },
+      where: { id: input.surfaceId, projectId: input.projectId, lastImportToken: input.token },
+      data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: input.code },
     });
   } catch {
     // 삼킨다 — 위 주석.

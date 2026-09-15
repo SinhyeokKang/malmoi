@@ -11,12 +11,10 @@ import { loadRemoteSignals } from "@/lib/projects/remote";
 import {
   rowLocaleProgress,
   rowReviewCounts,
-  summaryQueue,
   type LiveLocale,
   type LocaleCellCount,
   type ProjectEvents,
   type RowLocaleProgress,
-  type SummaryQueue,
 } from "@/lib/projects/list";
 import type { Actor, KeyRow } from "./view";
 
@@ -270,8 +268,13 @@ export type ProjectListRow = MembershipRow &
   repoAheadFrom: string | null;
 };
 
-/** 목록 한 화면분. **Summary는 검색 전 전체 멤버십의 값**이라 행 배열과 함께 온다. */
-export type ProjectListView = { rows: ProjectListRow[]; summary: SummaryQueue };
+/**
+ * 목록 한 화면분.
+ *
+ * ⚠️ **2026-09-15에 `summary`가 빠졌다** (projects-panel-rework) — 계정 단위 큐 넷이 화면에서
+ * 사라졌고, 그 집계는 `project-home`이 받는다(`summaryQueue`·raw ④는 그대로 있다).
+ */
+export type ProjectListView = { rows: ProjectListRow[] };
 
 /**
  * `/projects` 목록 전용 조회 (8-3 · projects-list §3).
@@ -385,14 +388,6 @@ export async function loadProjectList(
       importError: r.project.surfaces.map(s => s.lastImportError).find(isImportFailureCode) ?? null,
       importing: r.project.surfaces.some(s => s.lastImportStartedAt !== null),
     })),
-    summary: summaryQueue({
-      projects: rows.map((r) => ({ projectId: r.project.id, archived: r.project.archivedAt !== null })),
-      locales: aggregates.locales,
-      keyTotals: aggregates.keyTotals,
-      cells: aggregates.cells,
-      newKeys: aggregates.newKeys,
-      unsent: aggregates.unsent,
-    }),
   };
 }
 
@@ -595,6 +590,14 @@ export async function loadProjectListAggregates(
       needsReview: r.needsReview,
       count: r._count._all,
     }]),
+    /**
+     * ⚠️ **소비자가 지금 없다 — 지우지 않는다** (2026-09-15). 목록의 Summary가 사라지면서 이 raw
+     * 집계(④)를 읽는 화면이 0이 됐고, `project-home`의 `New from GitHub`이 그것을 받는다
+     * (`docs/features/project-home/design.md` §3.1).
+     *
+     * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 명시적으로
+     * 금지하고, `pnpm test:projects:postgres`가 "셋이 같은 행을 세나"를 재는 유일한 자리다.
+     */
     newKeys: new Map(newRows.map((r) => [r.projectId, r.n])),
     unsent: new Map(unsentRows.map((r) => [r.projectId, r.n])),
     unsentSurfaces: new Map(unsentRows.map((r) => [r.projectId, r.surfaceSlug])),

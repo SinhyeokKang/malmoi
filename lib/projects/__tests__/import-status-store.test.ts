@@ -13,8 +13,8 @@ function fixture(count = 1) {
 
 it("marks a run as started on the authorized project only", async () => {
   const { db, project } = fixture();
-  await markImportStarted(db, { projectId: "p1", surfaceId: "s1" }, startedAt);
-  expect(project.update).toHaveBeenCalledWith({ where: { id: "s1", projectId: "p1" }, data: { lastImportStartedAt: startedAt } });
+  await markImportStarted(db, { projectId: "p1", surfaceId: "s1" }, startedAt, "run-token");
+  expect(project.update).toHaveBeenCalledWith({ where: { id: "s1", projectId: "p1" }, data: { lastImportStartedAt: startedAt, lastImportToken: "run-token" } });
 });
 
 /**
@@ -23,10 +23,10 @@ it("marks a run as started on the authorized project only", async () => {
  */
 it("clears only its own running marker when a run fails", async () => {
   const { db, project } = fixture();
-  await finishImportRun(db, { projectId: "p1", surfaceId: "s1", startedAt, code: "import-failed" });
+  await finishImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" });
   expect(project.updateMany).toHaveBeenCalledWith({
-    where: { id: "s1", projectId: "p1", lastImportStartedAt: startedAt },
-    data: { lastImportStartedAt: null, lastImportError: "import-failed" },
+    where: { id: "s1", projectId: "p1", lastImportToken: "run-token" },
+    data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: "import-failed" },
   });
 });
 
@@ -34,7 +34,7 @@ it("clears only its own running marker when a run fails", async () => {
 it("swallows its own write failure", async () => {
   const { db, project } = fixture();
   project.updateMany.mockRejectedValue(new Error("connection lost"));
-  await expect(finishImportRun(db, { projectId: "p1", surfaceId: "s1", startedAt, code: "import-failed" })).resolves.toBeUndefined();
+  await expect(finishImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" })).resolves.toBeUndefined();
 });
 
 /**

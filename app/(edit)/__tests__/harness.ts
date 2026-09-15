@@ -174,6 +174,7 @@ const FORMAT = {
    * 평범한 행이 시드 하나로 만들어진다.
    */
   lastImportStartedAt: null as Date | null,
+  lastImportToken: null as string | null,
   lastImportError: null as string | null,
   archivedAt: null as Date | null,
 };
@@ -259,13 +260,14 @@ export function createHarness(seed: Seed = {}) {
   }
 
   type SurfaceWhere = { id?: string; projectId?: string; slug?: string; archivedAt?: null;
-    projectId_slug?: { projectId: string; slug: string }; lastImportStartedAt?: Date;
+    projectId_slug?: { projectId: string; slug: string }; lastImportStartedAt?: Date; lastImportToken?: string;
     project?: { pushTokenHash?: string; archivedAt?: null }; OR?: { lastCommitAt: null | { lte: Date } }[] };
   function surfaceMatches(s: typeof surfaces[number], where: SurfaceWhere) {
     const project = projects.find(p => p.id === s.projectId);
     return (where.id === undefined || s.id === where.id) && (where.projectId === undefined || s.projectId === where.projectId) &&
       (where.slug === undefined || s.slug === where.slug) && (where.archivedAt === undefined || s.archivedAt === null) &&
       (!where.projectId_slug || s.projectId === where.projectId_slug.projectId && s.slug === where.projectId_slug.slug) &&
+      (where.lastImportToken === undefined || s.lastImportToken === where.lastImportToken) &&
       (!where.lastImportStartedAt || s.lastImportStartedAt?.getTime() === where.lastImportStartedAt.getTime()) &&
       (!where.project || project !== undefined && project.pushTokenHash === where.project.pushTokenHash && project.archivedAt === null) &&
       (!where.OR || where.OR.some(c => c.lastCommitAt === null ? s.lastCommitAt === null : s.lastCommitAt !== null && s.lastCommitAt <= c.lastCommitAt.lte));

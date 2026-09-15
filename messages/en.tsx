@@ -18,6 +18,109 @@ import type { ReactNode } from "react";
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
 export const en = {
+  /**
+   * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
+   * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
+   *
+   * ⚠️ **코드 식별자는 `import`이고 화면만 `Sync`다** (spec §12). 여기서만 낱말이 갈린다.
+   */
+  repositorySync: {
+    /**
+     * Home 머리의 트리거.
+     *
+     * ⚠️ **확인 버튼(`confirm`)과 이름이 달라야 한다** — 같으면 접근성 트리·자동화에서 두 버튼이
+     * 구별되지 않는다. 2026-09-15에 Archive Dialog가 정확히 그 모양(트리거·확인 둘 다
+     * `Archive project`)이라 셀렉터가 모호해진 클릭이 확인 버튼을 눌러 프로젝트를 실제로 보관시켰다.
+     */
+    action: "Sync",
+    /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
+    pending: "Syncing…",
+    confirm: "Sync from repository",
+    /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
+    title: (name: string): string => `Sync ${name} from the repository?`,
+    /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
+    body: (branch: ReactNode): ReactNode => (
+      <>malmoi will read the locale files on {branch} and replace what's in the app with them.</>
+    ),
+    /**
+     * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
+     * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
+     */
+    unsentCount: (n: number): string => `${n} edit${n === 1 ? "" : "s"}`,
+    /**
+     * ⚠️ **덮이는 값의 저자가 리포가 된다** — `lib/push/apply.ts`가 `"updatedBy" = NULL`로 저자를
+     * 비우므로, 이 문장이 말하는 "replaced"는 사람 이름까지 사라지는 것을 포함한다.
+     */
+    unsent: (n: number, edits: ReactNode): ReactNode => (
+      <>{edits} that {n === 1 ? "hasn't" : "haven't"} been sent yet will be replaced.</>
+    ),
+    /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
+    openPr: (n: number, branch: string): string =>
+      `Edits in pull request #${n} are not in ${branch} yet — they will be replaced too.`,
+    /**
+     * ⚠️ **조회 시작부터 선다** — `undefined`가 초기값이자 실패값이라 화면은 "조회 중"과 "조회 실패"를
+     * 구별하지 않는다. 성공한 조회가 `null`을 줄 때만 사라지므로 **블록은 줄어드는 방향**이다:
+     * 반대로 두면 미발송 0 + 조회 중이 `4a`와 픽셀 단위로 같아져 경고를 한 번도 못 본 채 실행된다.
+     * ⚠️ 확인된 경고와 **같은 amber**에 둔다 — muted 한 줄이면 부재(줄이 서지 않는 것)와 같은
+     * 신호로 읽힌다 (POSTMORTEM 2026-09-03).
+     */
+    prUnknown: "We couldn't check whether anything is still waiting in a pull request.",
+    /** ⚠️ 라벨이 `Send changes first`로 고정이다 — 그 화면의 실제 버튼 이름이 `Send changes`다. */
+    sendFirst: "Send changes first",
+    /** 링크가 앱 안(번역 화면)으로 간다는 것을 문장이 말한다 — `ExternalLink` 글리프를 붙이지 않는다. */
+    sendHint: (link: ReactNode): ReactNode => <>Your translators can {link} — it opens the translation screen.</>,
+    /**
+     * 미발송 0 ∧ 열린 PR — `Send changes first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
+     * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.
+     */
+    nothingUnsent: "Nothing is waiting to be sent.",
+    /**
+     * ⚠️ **구역이 다른 문구를 빌려 쓰지 않는다** — `archive.confirm.openPrLink`가 같은 문자열이지만
+     * 그것을 참조하면 Archive를 고칠 때 이 화면이 조용히 따라 움직인다 (2026-09-13 리뷰).
+     */
+    seeOpen: "See what's open",
+    /** ⚠️ `Alert.title`은 **구두점 없는 문장 조각**이다 (DESIGN §10) — 헤드라인에서 마침표를 뗀다. */
+    completed: (n: number, branch: string): string => `Synced ${n} key${n === 1 ? "" : "s"} from ${branch}`,
+    /**
+     * ⚠️ **사고가 붙는 헤드라인에는 브랜치가 없다** (시안 `4e`) — `Synced 640 keys, but 1 surface …`.
+     * 한 문장에 출처와 사고를 함께 얹으면 `from main, but …`으로 절이 셋이 되어 사고가 뒤로 밀린다.
+     */
+    syncedKeys: (n: number): string => `Synced ${n} key${n === 1 ? "" : "s"}`,
+    unreadable: (n: number): string => `${n} surface${n === 1 ? " could" : "s could"} not be read`,
+    /** ⚠️ `could not be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
+    notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
+    withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
+    partial: (n: number): string => `${n} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
+    cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
+    failedTitle: "Sync could not finish",
+    /** 거부 Alert의 액션 둘. 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
+    openSettings: "Open settings",
+    reconnect: "Reconnect",
+    /**
+     * **`Alert`의 어느 자리에 서는지가 구두점을 정한다.** 앞의 셋은 표면별 사고의 **원인 줄**(본문이라
+     * 문장이고 마침표를 유지한다), 뒤의 다섯은 거부 Alert의 **제목**(문장 조각이라 마침표가 없다).
+     *
+     * ⚠️ **`invalid input`만 제목 자리인데 문장이다** — 고칠 방법이 "새로고침"이라 조각으로는 말할 수
+     * 없다. 슬러그가 깨져야 닿는 갈래라 화면에서 사실상 안 보인다(DESIGN §10의 "다음 행동" 쪽을 든다).
+     */
+    errors: {
+      "invalid-format": "This surface has no valid import format.",
+      "superseded": "New repository data arrived while syncing. This surface was not replaced. Try again if needed.",
+      "lease-lost": "This sync no longer owns the import. Wait for the current import to finish before trying again.",
+      "not-ready": "This project hasn't finished its first import yet",
+      "not-connected": "malmoi is not connected to this repository",
+      "already-running": "A sync is already running",
+      "no-surfaces": "There's nothing to sync — this project has no active surfaces",
+      "invalid input": "The project could not be identified. Refresh the page and try again.",
+      /**
+       * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는
+       * 생성 시점 고정이라 `connectRepository`가 재고정을 거부한다. 눌러도 실패할 버튼이므로
+       * tone도 warning이 아니라 **danger**다: 이 거부는 이 화면에서 풀리지 않는다.
+       */
+      "repo-replaced": "This connection points to a different repository",
+    },
+  },
   surfaces: {
     label: "Translation surface", title: "Translation surfaces", add: "Add surface",
     description: "Choose another set of translation files from this repository.",
@@ -310,10 +413,28 @@ export const en = {
      * "탭 0건"이라는 갈래 자체가 없어졌다 — 남겨 두면 탭이 있던 시절의 화석이 사전에 남는다.
      */
     narrowed: {
-      title: "No results",
-      bySearch: (q: string) => `No project matches "${q}".`,
       /**
-       * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 줄의 같은 동작도
+       * ⚠️ **제목이 질의를 든다** (2026-09-15 캔버스 `1d` — 전엔 상수 `No results`였고 질의는 설명이
+       * 들었다). 카드 하나에 문장이 둘뿐이라 제목이 "무엇을 못 찾았나"를 답하고, 설명은 그 다음
+       * 질문("검색이 무엇을 보나")으로 넘어간다.
+       *
+       * ⚠️ **곡선 따옴표다**(`“ ”`) — 캔버스 값이고 `resultsFor`와 같은 표기여야 한 화면에서 같은
+       * 것이 두 모양으로 보이지 않는다.
+       */
+      title: (q: string): string => `No projects match “${q}”`,
+      /**
+       * ⚠️ **0건을 본 사람의 다음 질문이 늘 "무엇으로 찾나"다.**
+       *
+       * ⚠️ **캔버스 문장 둘을 다 못 쓴다.** 원문은 *"Search looks at the project name and the
+       * repository. Check the spelling, or clear the search to see all three projects."*이고 둘 다
+       * 거짓이다: 뒤 문장은 총계 **셋**을 문자열에 박아 프로젝트가 셋이 아닌 계정에서 틀리고,
+       * 앞 문장의 **`and the repository`는 코드와 반대다** — `searchProjects`는 `row.name` 하나만
+       * 본다(그 함수의 주석이 그 판정을 박아 뒀고, 이 기능의 비목표가 그것을 안 건드리는 것이다).
+       * **0건을 본 사람에게 리포 이름으로 찾아진다고 말하면 그 사람은 또 0건을 만난다.**
+       */
+      description: "Search looks at the project name.",
+      /**
+       * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 카드의 같은 동작도
        * 같은 낱말을 써야 한다: 한 화면에서 같은 동작이 두 이름을 갖지 않는다.
        */
       reset: "Clear search",
@@ -333,11 +454,13 @@ export const en = {
         "Connect a repository and malmoi will find the locale files for you. Nothing is written back until you send changes.",
     },
     /**
-     * 머리의 Summary 넷 (projects-list design §11.3). **내 멤버십 중 보관하지 않은 프로젝트 전체**의
-     * 값이고 검색·그룹에 흔들리지 않는다.
+     * 큐 넷의 제목.
      *
-     * ⚠️ **누를 수 없다** — 계정 단위 큐 화면이 생기기 전까지는 표시 전용이다(열린 결정 1).
-     * 링크로 만들면 아직 없는 화면을 가리키게 된다.
+     * ⚠️ **2026-09-15에 목록 화면에서 내려왔다** (projects-panel-rework §2-6) — 못 누르는 숫자 넷이
+     * 머리 90px을 차지했고, 같은 값을 프로젝트별로 쪼갠 것이 이미 행의 Meter와 아래 띠다.
+     *
+     * ⚠️ **지우지 않는다 — `project-home`이 카운트 카드 넷으로 받는다**(`project-home/tasks.md`:189
+     * *"카드 넷의 제목은 새로 만들지 않는다"*). 그때까지 **소비자가 없는 채로 남는다.**
      */
     summary: {
       /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
@@ -352,14 +475,24 @@ export const en = {
      */
     group: { needsAttention: "Needs attention", allSet: "All set" },
     /**
-     * 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다 — 배지가 `1`로
-     * 바뀌면 "프로젝트가 하나 남았다"로 오읽히므로, 좁혀진 수는 여기가 들고 분모가 그 옆에 선다.
+     * 검색 결과 카드의 헤더 (캔버스 `1c`).
      *
-     * ⚠️ **질의가 문구 안에 없다** — 캔버스가 그 낱말만 foreground로 칠하므로 화면이 별개 노드로
-     * 그린다. 문자열에 넣으면 그 강조를 만들 자리가 사라진다.
+     * ⚠️ **수를 넣지 않는다** — 옛 `searchResult(n, total)`은 `1 of 3 projects match`였는데, 카운트
+     * 배지가 바로 옆에서 건수를 들므로 문장에 수를 두면 같은 것을 두 번 말한다.
+     *
+     * ⚠️ **질의가 문구 **안**으로 들어왔다** — 전엔 캔버스가 그 낱말만 foreground로 칠해 화면이
+     * 별개 노드로 그렸는데, 카드 헤더에서는 제목 전체가 같은 급이라 강조할 자리가 없다.
      */
-    searchResult: (n: number, total: number): string =>
-      `${n} of ${total} project${total === 1 ? "" : "s"} match`,
+    resultsFor: (q: string): string => `Results for “${q}”`,
+    /**
+     * 카운트 배지의 **스크린리더 문장** — 제목 옆 총계와 카드 헤더 넷이 같은 것을 쓴다.
+     *
+     * ⚠️ **숫자만 그리면 접근 이름이 `Results for “chrome” 2`다** — 옛 결과 줄(`1 of 3 projects match`)이
+     * 완전한 문장이었는데 카드로 옮기며 맨 숫자가 됐다. 번역 화면 머리가 같은 자리에서 같은 처방을
+     * 이미 쓴다(`m.translations.keys`). ⚠️ **CDP 접근성 트리로 `h2`의 이름만 보면 통과한다** —
+     * 배지가 별개 노드라서다.
+     */
+    count: (n: number): string => `${n} project${n === 1 ? "" : "s"}`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**
@@ -935,7 +1068,7 @@ export const en = {
        */
       unsent: (n: number): string =>
         `${n === 1 ? "1 change" : `${n} changes`} not yet sent. ` +
-        "They can be lost if your developers push code first — send them when you're done.",
+        "They can be lost when repository changes are imported automatically or with Sync. Send them and wait for the pull request to be merged before syncing.",
 
       /**
        * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**

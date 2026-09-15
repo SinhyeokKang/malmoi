@@ -9,7 +9,7 @@
 
 | # | 결정 |
 |---|---|
-| 9.6 | [Sync] 재적재 경로를 **만든다 — 별도 `/feature`의 선과제** |
+| 9.6 | [Sync] 재적재 경로를 **만든다 — 별도 `/feature`의 선과제** (✅ `sync-repository`. **OWNER 전용**으로 돌아왔다 — §8) |
 | 9.7 | 카드 목적지 = `state=new\|untranslated\|review\|unsent` + 기존 공가 라우트(기본 표면) |
 | 9.1 | 항목 정렬 = **시간순(최신)** + 3행 + `+2 more`(상한 5). 동점은 `surfaceSlug` → 로케일 코드 |
 | 9.10 | `TranslationSurface.lastImportFailedAt DateTime?` **추가** |
@@ -30,9 +30,11 @@
 
 - 그 스펙이 **불변식 2를 정면으로 다룬다** — push가 리포 값으로 번역을 덮고 저자를 비우므로,
   편집 손실 창을 번역 편집자가 버튼으로 열 수 있게 된다. **확인 Dialog와 그 문구는 그쪽 몫.**
-- **T2~T7은 이것과 병렬로 갈 수 있다** — Home은 `[Sync]` 버튼을 §8 표대로 **그리기만** 하고
-  `onClick` 배선만 선과제를 기다린다.
-- **검증**: `docs/features/<선과제>/`가 서고, Home의 `[Sync]`가 부를 Action 시그니처가 정해졌다.
+- **T2~T5·T7~T8은 이것과 병렬로 갈 수 있다** — `[Sync]`가 걸린 것은 **T6 하나**다.
+- ✅ **선과제가 섰다 — `docs/features/sync-repository/`** (2026-09-15). Action 시그니처는
+  `runRepositoryImport(raw: { slug: string })`이고 권한은 **`project:settings`(OWNER 전용)**이다.
+  ⚠️ **그 판정이 §8 표를 바꿨다** — `[Sync]`·`[Try again]`이 EDITOR에게 **없다**.
+- **검증**: T6이 돌 때 그 Action·Dialog·결과 컴포넌트가 실재한다.
 
 ---
 
@@ -135,7 +137,18 @@
 (카운트 카드 · 항목 카드 · 로그 카드 · 메타 열).
 
 - **블록 셋 + 메타 열.** `Languages` 블록과 `[Open translations]` primary가 사라진다.
-- **`[Sync]`는 그리되 `onClick`은 T1의 산출물을 기다린다.**
+- **`[Sync]`를 그리고 `onClick`도 여기서 배선한다** (2026-09-15 — T1의 선과제가 끝나면 그쪽이
+  Action·Dialog·결과 컴포넌트를 **다 주고 화면 배선만 남긴다**. 같은 파일을 두 번 고치지 않는다).
+  선과제가 넘긴 요구 넷:
+  1. ⚠️ **`export const maxDuration = 60`을 이 파일에 더한다 — 지금 없다.** Server Action은 자기를
+     부른 페이지 세그먼트의 값을 쓰고, 없으면 프로젝트 기본값(300)이다 (ARCHITECTURE §3.1).
+     **빠뜨리면 증상이 "큰 리포에서만 실패"라 재현이 어렵다.**
+  2. ⚠️ **`[Sync]`와 `2b`의 `[Try again]`은 OWNER에게만 렌더한다** (§8 — 같은 Action이다).
+     **부재이지 비활성이 아니다.** EDITOR는 배너 본문만 보고 문장이 "관리자에게 요청"으로 바뀐다.
+  3. `onClick` → 확인 Dialog → `runRepositoryImport`.
+  4. **결과 Alert 자리는 머리가 든다** — `revalidatePath`가 다시 그리는 분기 안에 두면 방금 받은
+     결과가 언마운트된다 (POSTMORTEM 2026-09-07).
+  ⚠️ **선과제가 아직 안 끝났으면 이 태스크를 그만큼 미룬다** — 죽은 버튼을 그리지 않는다.
 - **`2d`가 전면 교체에서 배너로 바뀐다** → `ProjectArchived`의 소비자가 하나 준다.
   ⚠️ **그 컴포넌트를 지우지 않는다** — 번역 화면이 계속 쓴다.
 - **`+2 more`는 `<details>`/`<summary>`** — `"use client"`를 만들지 않는다.

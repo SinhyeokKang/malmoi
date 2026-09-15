@@ -36,6 +36,10 @@ model Project {
   /// 각각 막는다. OWNER가 설정에서 [다시 연결]을 한 번 누르면 채워진다.
   repositoryId   String?
 
+  /// Manual repository import ownership spans all surfaces and network preparation.
+  repositoryImportToken     String?
+  repositoryImportStartedAt DateTime?
+
   /// CI가 `/api/push`를 부를 때 쓰는 토큰의 sha256. **원문은 저장하지 않는다** (SAAS §7.8 —
   /// `ProjectInvitation.tokenHash`와 같은 모델, 같은 해시 규칙 `lib/push/token.ts`). 인증은 이 값으로 행을
   /// **조회**한다 — 토큰이 프로젝트를 정하고 slug는 그 뒤에 대조된다. 페이로드 slug로 행을 찾으면 오배송
@@ -104,6 +108,8 @@ model TranslationSurface {
   lastCommitSha       String?
   lastCommitAt        DateTime?
   lastImportStartedAt DateTime?
+  lastImportToken     String?
+  importRevision      Int           @default(0)
   lastImportError     String?
   project             Project       @relation("ProjectSurfaces", fields: [projectId], references: [id], onDelete: Restrict)
   defaultFor          Project[]     @relation("DefaultSurface")

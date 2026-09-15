@@ -51,7 +51,9 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 
   it("배너는 편집자가 할 수 있는 일로 끝난다 — 막힌 사실만 말하면 갇힌다", () => {
-    expect(m.translations.banner.unsent(2)).toMatch(/send them/);
+    expect(m.translations.banner.unsent(2)).toMatch(/send them/i);
+    expect(m.translations.banner.unsent(2)).toContain("Sync");
+    expect(m.translations.banner.unsent(2)).toContain("merged");
   });
 
   it("Publish 버튼 라벨이 미배포 건수를 든다 — 0이면 숫자를 붙이지 않는다", () => {

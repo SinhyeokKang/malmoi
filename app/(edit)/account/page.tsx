@@ -106,72 +106,68 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.settings}</h1>
-          {/*
-            페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
-            ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
-            버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
-            ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 위 판정 주석의 축 그대로다: 여기 서는 둘은
-            **다시 시도할 컨트롤이 이 화면에 없다.** 구역 Alert는 바로 옆 컨트롤을 다시 누르는 것이
-            다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
-            않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
-          */}
-          {/* ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다. */}
-          {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
-          {unlinkFailure !== null && <DismissibleAlert href={routes.account({ e, sessionRevocation, connect })}>{unlinkFailure}</DismissibleAlert>}
-        </div>
+        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.settings}</h1>
+        {/*
+          페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
+          ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
+          버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
+          ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 위 판정 주석의 축 그대로다: 여기 서는 둘은
+          **다시 시도할 컨트롤이 이 화면에 없다.** 구역 Alert는 바로 옆 컨트롤을 다시 누르는 것이
+          다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
+          않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
+        */}
+        {/* ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다. */}
+        {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
+        {unlinkFailure !== null && <DismissibleAlert href={routes.account({ e, sessionRevocation, connect })}>{unlinkFailure}</DismissibleAlert>}
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-7 px-6 pt-3 pb-8">
-          {/*
-            머리 블록 — **Profile 카드가 여기로 흡수됐다.** 라벨 열이 128이고 값 열이 나머지다.
-            아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
-          */}
-          <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
-            <div className="col-span-2 flex items-center gap-4">
-              {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
-              <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
-              <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
-            </div>
-
-            <label className="text-muted-foreground text-xs" htmlFor="account-name">{m.account.profile.name}</label>
-            <ProfileNameForm name={name} inputId="account-name" />
-
-            <label className="text-muted-foreground text-xs" htmlFor="account-email">{m.account.profile.email}</label>
-            <div className="flex items-center gap-3">
-              {/*
-                ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져
-                스크린리더가 자기 주소를 못 읽는다. 키보드 순서에서만 뺀다.
-                ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
-                ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
-              */}
-              <Input
-                id="account-email"
-                value={profile?.email ?? m.account.profile.none}
-                readOnly
-                tabIndex={-1}
-                className="bg-muted w-80 cursor-default"
-              />
-              <p className="text-muted-foreground text-xs">{m.account.profile.emailSource}</p>
-            </div>
+      <PanelBody className="space-y-7">
+        {/*
+          머리 블록 — **Profile 카드가 여기로 흡수됐다.** 라벨 열이 128이고 값 열이 나머지다.
+          아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
+        */}
+        <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
+          <div className="col-span-2 flex items-center gap-4">
+            {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
+            <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
+            <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
           </div>
 
-          {/*
-            ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체
-            로그아웃의 확인 상대다. 구역 제목이 그 축을 말하는 것이 이 재편의 요지다.
-          */}
-          <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
+          <label className="text-muted-foreground text-xs" htmlFor="account-name">{m.account.profile.name}</label>
+          <ProfileNameForm name={name} inputId="account-name" />
 
-          <GithubSection account={account} />
-
-          <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />
+          <label className="text-muted-foreground text-xs" htmlFor="account-email">{m.account.profile.email}</label>
+          <div className="flex items-center gap-3">
+            {/*
+              ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져
+              스크린리더가 자기 주소를 못 읽는다. 키보드 순서에서만 뺀다.
+              ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
+              ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
+            */}
+            <Input
+              id="account-email"
+              value={profile?.email ?? m.account.profile.none}
+              readOnly
+              tabIndex={-1}
+              className="bg-muted w-80 cursor-default"
+            />
+            <p className="text-muted-foreground text-xs">{m.account.profile.emailSource}</p>
+          </div>
         </div>
+
+        {/*
+          ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체
+          로그아웃의 확인 상대다. 구역 제목이 그 축을 말하는 것이 이 재편의 요지다.
+        */}
+        <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
+
+        <GithubSection account={account} />
+
+        <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />
       </PanelBody>
     </>
   );

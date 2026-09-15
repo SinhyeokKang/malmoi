@@ -1,55 +1,48 @@
 import {
-  ArrowDownToLine,
   Box,
   ChevronRight,
   CircleDashed,
   ExternalLink,
   Eye,
-  FolderGit2,
   GitMerge,
   GitPullRequest,
   GitPullRequestArrow,
-  Languages,
   Plus,
-  RotateCcw,
-  Search,
   TriangleAlert,
   Unplug,
 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { EmptyProjects } from "@/components/projects/empty-projects";
+import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/projects/locale-meter";
 import { ProjectSearch } from "@/components/projects/search-input";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { toneFill } from "@/components/ui/tone";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { importFailureMessage } from "@/lib/projects/import-status";
 import {
-  groupProjects,
   highlightName,
+  listBody,
   meterSlot,
   projectStatus,
   rowBanner,
-  searchProjects,
   type ProjectGroup,
   type ProjectStatus,
   type RowBanner,
-  type SummaryQueue,
 } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
- * 프로젝트 목록의 **본문** — 머리와 그룹 셋. 시안은 Claude Design `design_handoff_projects_list/`의
- * `Projects.dc.html`(아트보드 `1a`·`1b`·`1c`·`3a`·`3b`)이고 치수표는 DESIGN §6.63이다.
+ * 프로젝트 목록의 **본문** — 머리와 그룹 카드 셋. 시안은 Claude Design
+ * `design_handoff_projects_panel_rework/Projects v2.dc.html`(아트보드 `1a`~`1d`)이고 치수표는
+ * DESIGN §6.63이다. **행(`ProjectRow`)의 규격은 앞선 핸드오프 그대로다** — 바뀐 것은 그릇뿐이다.
  *
  * ⚠️ **`<ContentPanel>`을 여기서 들지 않는다.** 두 라우트(`/projects`·`/projects/new`)가 이것을
  * 그리는데, 공유 컴포넌트가 패널을 들면 `shell-layout.test.ts`의 "라우트마다 정확히 하나"가 두
@@ -102,40 +95,46 @@ const GROUP_LABEL = {
 
 export function ProjectList({
   all,
-  summary,
   q,
   message = null,
 }: {
   all: readonly ProjectListRow[];
-  /** 검색 전 전체 멤버십(보관 제외)의 합계 넷. **검색·그룹에 흔들리지 않는다.** */
-  summary: SummaryQueue;
   q?: string;
   /** 페이지 수준 거부. 모달 라우트는 사유를 모달 안에서 말하므로 여기로 안 넘긴다. */
   message?: ReactNode;
 }) {
-  const query = (q ?? "").trim();
-  const rows = searchProjects(all, q);
-  const grouped = groupProjects(rows, q);
   /**
-   * ⚠️ **프로젝트가 하나도 없으면 검색·Summary·[New project]를 그리지 않는다** (시안 `1a`).
-   * 좁힐 것이 없는 검색창과 0만 넷인 Summary는 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 안에
-   * 하나만 있어야 한다 (§6.4 "액션은 버튼 하나").
+   * ⚠️ **갈래 넷을 순수 함수가 정한다** (`lib/projects/list.ts`). 전에는 `hasProjects`·질의·건수가
+   * 여기 JSX 안에서 섞여 판정됐고, 그러면 넷 중 하나를 바꿀 때 나머지 셋이 어떤 모양이 되는지를
+   * 화면을 읽어야만 알 수 있었다.
    */
-  const hasProjects = all.length > 0;
+  const body = listBody(all, q);
 
   return (
     <>
-      <PanelHeader className="flex flex-col gap-4 px-6 pt-6 pb-3">
-        <div className="flex items-center gap-3">
+      <PanelHeader width="fluid">
+        {/*
+          ⚠️ **`min-h-9`가 제목 행에 있다** (DESIGN §5.1). 버튼이 없는 갈래(`1b` — 프로젝트 0건)에서
+          줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다.
+        */}
+        <div className="flex min-h-9 items-center gap-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-medium">{m.common.nav.projects}</h1>
+            <h1 className="text-lg font-medium">{m.common.nav.projects}</h1>
             {/*
               ⚠️ **총계는 좁히기 전의 값이다** — 검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
-              답한다. 사이드바 카운트 배지(PRODUCT 🔒)와 달리 이건 이미 가진 배열의 길이다.
+              답한다. 좁혀진 수는 결과 카드의 카운트가 든다 (캔버스 `1c`: 배지 3 · 카드 1).
             */}
-            <Badge variant="neutral">{all.length}</Badge>
+            {/* ⚠️ **카드 배지와 같은 처방이다** — 셋만 문장을 들면 같은 화면 두 줄 안에서 갈린다. */}
+            <Badge variant="neutral">
+              <span aria-hidden>{all.length}</span>
+              <span className="sr-only">{m.projects.count(all.length)}</span>
+            </Badge>
           </div>
-          {hasProjects && (
+          {/*
+            ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).
+            좁힐 것이 없는 검색창은 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 카드 안에 하나만 선다.
+          */}
+          {body.kind !== "empty" && (
             <>
               {/* ⚠️ **`ml-auto`가 검색에 붙는다** — 제목과 컨트롤 사이의 빈 공간이 흔들리는 자리다. */}
               <div className="ml-auto">
@@ -151,84 +150,50 @@ export function ProjectList({
 
         {/*
           페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
-          ⚠️ **제목 줄 아래·Summary 위다** — 목록은 그대로 살아 있고, 거부 사유가 화면 밖으로 밀려나면
-          사용자는 버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
+          ⚠️ **제목 줄 아래이고 머리 안이다** — 본문으로 내리면 스크롤로 사라지고, 사용자는 버튼이
+          안 눌린 것으로 본다 (POSTMORTEM 2026-09-06). 세로로 쌓는 것은 `PanelHeader`의 열 레이아웃이다.
         */}
         {message !== null && <Alert variant="danger">{message}</Alert>}
-
-        {hasProjects && <SummaryRow summary={summary} />}
       </PanelHeader>
 
-      {/*
-        ⚠️ **`flex-1`을 여기서 다시 주지 않는다** — `PanelBody`가 이미 `min-h-0 flex-1`을 든다.
-        빈 상태가 패널 세로 중앙에 서는 것(시안)은 그 `flex-1`이 만든다.
-      */}
-      {/*
-        ⚠️ **0건일 때 본문 여백이 다르다** (캔버스 `1a`: `0 12 12`) — 그라데이션 면이 패널 안쪽에
-        12를 두고 앉아야 패널의 radius 16 안에 카드의 12가 겹친다. 목록이 설 때의 `12 24 20`을
-        그대로 쓰면 그 면이 안쪽으로 밀려 패널 테두리와 사이가 벌어진다.
-      */}
-      <PanelBody className={hasProjects ? "flex flex-col gap-5 px-6 pt-3 pb-5" : "flex px-3 pt-0 pb-3"}>
-        {!hasProjects ? (
-          <EmptyProjects />
-        ) : rows.length === 0 ? (
+      <PanelBody width="fluid" className="flex flex-col gap-4">
+        {body.kind === "groups" ? (
+          body.cards.map((card) => (
+            <ProjectCard key={card.group} title={GROUP_LABEL[card.group]} count={card.rows.length}>
+              <RowList rows={card.rows} />
+            </ProjectCard>
+          ))
+        ) : body.kind === "results" ? (
           /*
-            ⚠️ **"프로젝트가 없다"와 다른 상태다** — 질의를 되돌리면 있다. 같은 빈 화면을 내면
-            사용자가 프로젝트를 잃었다고 읽는다. 그래서 **형은 같고 액션이 반대다**: 그쪽은
-            primary로 만들라 하고, 여기는 되돌리라 한다.
+            ⚠️ **결과를 그룹으로 쪼개지 않는다** (캔버스 `1c`). 결과 1건에 헤더 셋이면 둘이 빈 카드가
+            되고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다. 상태는 행의 칩이 말한다.
+          */
+          <ProjectCard
+            title={m.projects.resultsFor(body.query)}
+            count={body.rows.length}
+            /*
+              나가는 길은 헤더 오른쪽 하나다 — 지금 좁혀진 것이 **이 카드**라는 사실이 그 자리에서 읽힌다.
 
-            ⚠️ **액션이 둘이다** (시안 `3b` — DESIGN §6.4의 "버튼 하나"에 등재할 예외). 검색을
-            되돌리는 것과 새로 만드는 것은 **다른 출구**이고, 여기까지 온 사람에게 둘 다 말이 된다.
-          */
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyState
-              icon={Search}
-              title={m.projects.narrowed.title}
-              description={m.projects.narrowed.bySearch(query)}
-              action={
-                <>
-                  <ButtonLink variant="default" href={routes.projects()}>
-                    {/*
-                      ⚠️ **`RotateCcw`이고 `FilterX`가 아니다** — 되돌릴 축이 질의 하나뿐이라 깔때기
-                      글리프가 가리킬 대상이 없다. 이 버튼이 말하는 것은 **"질의를 되돌린다"**다.
-                    */}
-                    <RotateCcw aria-hidden />
-                    {m.projects.narrowed.reset}
-                  </ButtonLink>
-                  <ButtonLink variant="primary" href={routes.newProject()}>
-                    <Plus aria-hidden />
-                    {m.common.nav.newProject}
-                  </ButtonLink>
-                </>
-              }
-            />
-          </div>
-        ) : grouped.flat ? (
-          /*
-            ⚠️ **검색 중에는 평평하다** (design §2). 결과가 그룹 셋으로 흩어지면 "몇 개 찾았나"를
-            사용자가 더해야 하고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다.
-          */
-          <div className="flex flex-col gap-2">
-            <p className="text-muted-foreground flex items-center gap-2 text-xs">
-              {m.projects.searchResult(rows.length, all.length)}{" "}
-              {/* ⚠️ **질의만 foreground다** — 무엇으로 좁혔는지가 이 줄에서 유일하게 가변인 값이다. */}
-              <span className="text-foreground">{query}</span>
-              <Link href={routes.projects()} className="ml-1 text-blue-600">
+              ⚠️ **`1d`의 같은 `Clear search`와 링 처리가 같아야 한다** — 한 화면에서 같은 동작이 두
+              모양을 갖지 않는다. ⚠️ **링이 바깥인데 카드가 `overflow-hidden`이다**: 이 링크는 헤더의
+              padding 16 안쪽에 앉아 2px이 잘리지 않는다. **행 링크는 그렇지 않아 `ring-inset`이다**
+              (2026-09-11 실측 — 카드 모서리를 자르는 `overflow-hidden`이 바깥 링을 통째로 먹었다).
+            */
+            action={
+              <Link
+                href={routes.projects()}
+                className="focus-visible:ring-ring ml-auto text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+              >
                 {m.projects.clearSearch}
               </Link>
-            </p>
-            <ProjectCard rows={grouped.rows} q={q} />
-          </div>
+            }
+          >
+            <RowList rows={body.rows} q={q} />
+          </ProjectCard>
+        ) : body.kind === "empty" ? (
+          <EmptyProjects />
         ) : (
-          grouped.groups.map(([group, list]) => (
-            <section key={group} className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-medium">{GROUP_LABEL[group]}</h2>
-                <Badge variant="neutral">{list.length}</Badge>
-              </div>
-              <ProjectCard rows={list} />
-            </section>
-          ))
+          <NoProjectsMatch query={body.query} />
         )}
       </PanelBody>
     </>
@@ -236,72 +201,59 @@ export function ProjectList({
 }
 
 /**
- * 머리의 합계 넷 (시안 `1b`).
- *
- * ⚠️ **누를 수 없다** — hover도, cursor도, 테두리도 없다. 계정 단위 큐 화면이 생기기 전까지는
- * 표시 전용이고(열린 결정 1), 링크로 만들면 아직 없는 화면을 가리키게 된다.
- *
- * ⚠️ **구분선이 별개 요소다** — `divide-x`로 만들면 칸의 padding에 붙어 시안의 `gap 24` 한가운데에
- * 서지 않는다.
- */
-function SummaryRow({ summary }: { summary: SummaryQueue }) {
-  /**
-   * ⚠️ **순서가 파이프라인이다** — GitHub에서 유입 → 번역 → 검토 → 발송. 왼쪽에서 오른쪽이 실제
-   * 작업 순서라 **순서 자체가 정보**다.
-   *
-   * ⚠️ **첫 칸만 파랑이다** (`#2563eb` — 아이콘과 숫자 둘 다). 넷 중 유일하게 **내가 만들지 않은
-   * 변화**라서다. 나머지 셋은 내가 쌓아 둔 일이고 색이 필요 없다.
-   */
-  const cells = [
-    {
-      icon: ArrowDownToLine,
-      label: m.projects.summary.newFromGithub,
-      /**
-       * ⚠️ **0이면 부호를 붙이지 않는다.** `+0`은 "새로 들어온 것이 있다"를 말하게 되는데 그 값이
-       * 뜻하는 것은 반대다. 캔버스에 0 갈래가 없어 여기서 정한다.
-       */
-      value: summary.newFromGithub > 0 ? `+${summary.newFromGithub}` : "0",
-      tone: summary.newFromGithub > 0 ? "text-blue-600" : "",
-    },
-    { icon: Languages, label: m.projects.summary.toTranslate, value: summary.toTranslate, tone: "" },
-    // ⚠️ **`amber-700`이고 배지의 amber-800과 다르다** (DESIGN §6.2에 등재). 알파를 쓰지 않는다 —
-    // lucide는 다중 요소라 색 알파가 획 접점에서 누적된다.
-    { icon: Eye, label: m.projects.summary.toReview, value: summary.toReview, tone: "text-amber-700" },
-    { icon: GitPullRequestArrow, label: m.projects.summary.toSend, value: summary.toSend, tone: "" },
-  ];
-
-  return (
-    <div className="border-foreground/[0.06] flex items-stretch gap-6 border-y py-3.5">
-      {cells.map((cell, index) => (
-        <div key={cell.label} className="contents">
-          {index > 0 && <span aria-hidden className="bg-border w-px shrink-0 self-stretch" />}
-          <div className="flex w-50 flex-col gap-1">
-            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <cell.icon aria-hidden className={cn("size-3.5", cell.tone)} />
-              {cell.label}
-            </span>
-            <span className={cn("text-xl font-medium", cell.tone)}>{cell.value}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * 행을 담는 카드.
+ * 그룹 카드 — **헤더가 카드 안에 있다** (캔버스 `1a`). `Project Home`이 이미 이 문법이고(카드가 자기
+ * 제목을 든다), 같은 앱이 같은 것을 두 문법으로 말할 이유가 없다.
  *
  * ⚠️ **radius가 12이고 패널의 16이 아니다** — `rounded-lg`.
  *
- * ⚠️ **`divide-y`를 쓰지 않는다.** 띠가 행의 형제라 그 규칙이 **띠와 행 사이에도** `#e5e5e5` 선을
- * 넣는데, 시안은 거기가 `#f0f0f0`이고 행 사이만 `#e5e5e5`다. 그래서 행마다 `border-t`를 직접 준다
- * (첫 행 제외).
+ * ⚠️ **헤더는 누를 수 없다** — hover도 링크도 없다. 링크가 서는 것은 결과 카드의 `Clear search`
+ * 하나뿐이고 그것은 `action` 슬롯이다.
+ *
+ * ⚠️ **카드 바닥에 더 보기 링크를 두지 않는다** — `Project Home`의 `All logs`는 잘린 목록의 나머지로
+ * 가는 출구지만, 이 카드는 그룹 전체를 이미 그린다.
  *
  * ⚠️ **`shrink-0`이 없으면 아래 행이 잘린다.** `overflow-hidden`을 든 flex 자식은 CSS의 automatic
  * minimum size가 적용되지 않아 축소 하한이 0이다 — 넘친 행은 카드 **안에** 감춰져 바깥 패널에
  * 스크롤조차 생기지 않는다 (실측 2026-09-11).
  */
-function ProjectCard({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
+function ProjectCard({ title, count, action, children }: {
+  title: string;
+  count: number;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
+      <div className="flex items-center gap-2 p-4">
+        <h2 className="text-base font-medium">{title}</h2>
+        {/*
+          ⚠️ **숫자만 그리면 접근 이름이 "Needs attention 1"이다.** 시안이 숫자 배지라 보이는 것은
+          그대로 두고 스크린리더에는 완전한 문장을 준다 — 번역 화면 머리가 같은 관용구다.
+        */}
+        <Badge variant="neutral">
+          <span aria-hidden>{count}</span>
+          <span className="sr-only">{m.projects.count(count)}</span>
+        </Badge>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * 카드 안의 행 목록.
+ *
+ * ⚠️ **선의 급이 둘이다** (캔버스 `1a`). 헤더↔첫 행은 `#f0f0f0`(`border-foreground/[0.06]`),
+ * 행↔행은 `#e5e5e5`(`border-border`)다 — **헤더 divider가 행 구분선보다 약해야 "헤더 + 행들"로
+ * 읽힌다.** 두 색은 압축된 PNG에서 구별되지 않으므로 스크린샷으로 판정하지 않는다.
+ *
+ * ⚠️ **`divide-y`를 쓰지 않는다.** 띠가 행의 형제라 그 규칙이 **띠와 행 사이에도** `#e5e5e5` 선을
+ * 넣는데, 시안은 거기가 `#f0f0f0`이다. 그래서 행마다 `border-t`를 직접 준다.
+ *
+ * ⚠️ **`<ul>`로 남는다** — 카드로 감싸면서 list role을 잃으면 스크린리더가 개수를 못 읽는다.
+ */
+function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
     /**
      * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바 240,
@@ -309,9 +261,9 @@ function ProjectCard({ rows, q }: { rows: readonly ProjectListRow[]; q?: string 
      * `min-w-[1280px]`을 들어서 뷰포트 브레이크포인트로는 1120·940·760이 **영영 안 밟힌다**
      * (가로 스크롤이 먼저 생긴다). 실제로 변하는 것은 이 카드의 폭이다.
      */
-    <ul className="border-border bg-background @container shrink-0 overflow-hidden rounded-lg border">
+    <ul className="@container">
       {rows.map((row, index) => (
-        <li key={row.slug} className={index === 0 ? "" : "border-border border-t"}>
+        <li key={row.slug} className={index === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}>
           <ProjectRow row={row} q={q} />
         </li>
       ))}
