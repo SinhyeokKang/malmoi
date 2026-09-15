@@ -95,9 +95,11 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
   });
 
   /**
-   * ⚠️ **본문 래퍼가 `min-h-full`을 든다** — `/projects`가 `flex flex-col`을 넘겨 빈 상태를
-   * `flex-1`로 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가
-   * 위에 붙는다. 데이터가 0건일 때만 드러나는 부류다.
+   * ⚠️ **본문 래퍼가 `min-h-full`을 든다** — 소비자가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로
+   * 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가 위에 붙는다.
+   * 데이터가 0건일 때만 드러나는 부류다.
+   * ⚠️ **소비자 셋은 `ProjectArchived`·`ProjectNotReady`·번역 화면이다** — `/projects`는 2026-09-15에
+   * 빠졌다(빈 상태가 카드가 됐다).
    */
   it("본문 래퍼가 패널 높이를 이어받는다", () => {
     expect(contentPanel).toMatch(/min-h-full/);

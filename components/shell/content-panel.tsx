@@ -113,8 +113,10 @@ export function PanelHeader({
  * 그래서 등급은 안쪽 래퍼가 들고 스크롤은 바깥이 든다. 눈으로는 "폭이 맞네"로 보이고, 콘텐츠가
  * 넘칠 때만 드러나는 부류다.
  *
- * ⚠️ **래퍼가 `min-h-full`을 든다** — `/projects`가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로
- * 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가 위에 붙는다.
+ * ⚠️ **래퍼가 `min-h-full`을 든다** — 소비자가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로 세로
+ * 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가 위에 붙는다.
+ * ⚠️ **소비자는 `ProjectArchived`·`ProjectNotReady`·번역 화면 셋이다** — `/projects`는 2026-09-15에
+ * 빠졌다(빈 상태가 카드가 되어 본문 맨 위에 붙는다). 그 사실을 근거로 이 클래스를 떼면 남은 셋이 깨진다.
  */
 export function PanelBody({
   width = "limited",
