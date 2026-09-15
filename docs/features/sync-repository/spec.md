@@ -318,7 +318,7 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 
 ```ts
 // app/(edit)/projects/actions.ts
-export type SurfaceImportReason = ImportFailureCode | "invalid-format" | "superseded" | "lease-lost";
+export type SurfaceImportReason = ImportFailureCode | "resource-limit" | "invalid-format" | "superseded" | "lease-lost";
 export type SurfaceImportResult = {
   surfaceSlug: string;
   status: "imported" | "partial" | "failed" | "superseded";
@@ -344,7 +344,8 @@ export type RepositoryImportError =
   | "repo-replaced"
   | "already-running"
   | "no-surfaces"
-  | OnboardError;                  // tree-truncated | base-branch-missing | resource-limit | …
+  | OnboardError                   // tree-truncated | base-branch-missing | resource-limit | …
+  | ConnectError;                  // checkRepoAccess preserves connection/reauthorization errors
 
 export async function runRepositoryImport(raw: { slug: string }): Promise<RepositoryImportOutcome>;
 ```
