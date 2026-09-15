@@ -199,6 +199,12 @@ lib/
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
                         plan · run · render · load · client · targets · trigger · branch-name · ref-slug /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan
+  import/               리포 재적재(화면 이름 `Sync`) — read(파일 읽기·스냅샷 오류) · surface(읽기·준비
+                        추출) · empty(정상 빈 카탈로그와 깨진 파싱을 가른다) · plan(거부 순서·실행권) ·
+                        apply-plan(revision·실행 토큰 대조) · run(진입점 껍데기) · confirm·result·refusal
+                        ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
+                        줄이 서는지, result는 결과 요약, refusal은 거부의 tone·닫기·액션을 정한다.
+                        판정을 컴포넌트에 두면 "형이 둘"(성공 한 줄 · 사고 두 줄)이 테스트 밖으로 나간다
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save · refocus · filters · flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
