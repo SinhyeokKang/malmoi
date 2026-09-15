@@ -274,31 +274,150 @@ export const en = {
     },
   },
 
+  /**
+   * 프로젝트 Home — **카드 넷 · 할 일 · 로그 · 메타 열** (project-home §10).
+   *
+   * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (spec §3.3-7). 표시는 `Sync`(리포 → 앱)와
+   * `Publish`(앱 → 리포) 둘뿐이고 **코드 식별자는 그대로다** — 읽는 사람이 비개발자라 저장소
+   * 방향을 말하는 낱말이 둘이면 어느 쪽이 자기 일인지 매번 다시 판단해야 한다.
+   *
+   * ⚠️ **카드 제목은 여기 없다** — `m.projects.summary.*` 넷을 목록 화면과 **같은 키로** 쓴다.
+   * 두 벌이 되면 하나가 낡는다 (design §2).
+   */
   home: {
-    /** ⚠️ **착지 클릭 하나를 갚는 주된 동작이다** (결정 1의 대가) — 화면당 하나인 primary가 이것이다. */
-    openTranslations: "Open translations",
-    progress: {
-      title: "Languages",
-      /** orphaned 로케일은 이 목록에 없다 — 그 열은 편집이 막혀 있어 일이 아니다. */
-      description: "Pick a language to start from. Values waiting for review don't count as translated.",
-      /**
-       * ⚠️ **도달 가능한 상태다** — 적재는 끝났는데 살아 있는 로케일이 0인 경우(파일이 전부
-       * 사라졌다). 로케일 화면의 "첫 적재 뒤에 나타난다" 문구를 빌려 쓰면 **이 상태에선 거짓**이라
-       * 따로 쓰고, 사유가 사는 자리로 보낸다.
-       */
-      empty: "No languages to translate — their files are missing from the repository.",
-      emptyLink: "See languages",
+    /**
+     * 보조 줄 — `{unit} · {근거}` 두 토막이다 (spec §10). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
+     * `New`에도 `To translate`에도 세므로 넷이 같은 모집단이 아니고, 그 사실을 말하는 자리가 여기다.
+     */
+    cards: {
+      unit: { keys: "keys", cells: "cells" },
+      /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */
+      synced: (when: string | null): string => (when === null ? "not synced yet" : `synced ${when}`),
+      acrossSurfaces: (n: number): string => (n === 1 ? "in this repository" : `across ${n} surfaces`),
+      /** `5 en, 3 ja` — 많은 쪽이 앞이다. 폭에 따라 뒤부터 잘리므로 큰 수가 남아야 한다. */
+      reviewByLocale: (parts: string): string => parts,
+      localeCount: (code: string, n: number): string => `${n} ${code}`,
+      lastPublish: (when: string): string => `last publish ${when}`,
+      allFilled: (n: number): string => `${n} keys all filled`,
+      nothingPending: "nothing pending",
+      /** `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다. */
+      lastGoodSync: (when: string | null): string => (when === null ? "no good sync yet" : `last good sync ${when}`),
+      asOf: (when: string | null): string => (when === null ? "never synced" : `as of ${when}`),
+      asOfLastSync: "as of the last sync",
+      cannotSend: "cannot be sent while paused",
+      frozen: "frozen at archive",
+      neverSent: "never sent",
     },
-    activity: {
-      title: "Recent activity",
-      /** ⚠️ 첫 적재 뒤에도 한동안 비어 있다 — 실패가 아니라 아직 아무 일도 없는 것이다. */
-      empty: "Nothing yet. Edits, CI pushes and what you send back all show up here.",
+
+    attention: {
+      title: "Needs your attention",
+      /** `<summary>`의 라벨. **접힌 수만 말한다** — 전체 수는 머리의 pill이 든다. */
+      more: (n: number): string => `+${n} more`,
+      /**
+       * ⚠️ **로케일을 모른다** — `lastImportError`가 표면 단위 컬럼이라 캔버스의 `{surface} · {locale}
+       * file`에서 문장을 **표면까지로 낮췄다** (design §3.3).
+       */
+      importFailed: {
+        title: (surface: string): string => `${surface} surface`,
+        body: "The last sync could not read this surface",
+        tail: " — its keys did not come in.",
+      },
+      review: {
+        title: (surface: string, locale: string): string => `${surface} · ${locale}`,
+        body: (n: number): string => `${n} ${n === 1 ? "cell is" : "cells are"} waiting for review`,
+        /** ⚠️ **이름을 못 찾으면 이 절이 통째로 빠진다** (spec §9.11) — 호출부가 `null`로 갈린다. */
+        tail: (who: string): string => ` — last edited by ${who}.`,
+      },
+      neverFilled: {
+        title: (surface: string, locale: string): string => `${surface} · ${locale}`,
+        body: (locale: string): string => `${locale} has never been filled here`,
+        tail: (n: number): string => ` — ${n} keys, none translated.`,
+      },
+      empty: {
+        title: "Nothing needs you",
+        description: "Items appear here when a sync fails, cells wait for review, or a locale falls behind.",
+      },
+      /** `2d` — 문장이 "할 수 없다"로 갈린다. 복원하면 돌아온다는 사실이 출구다. */
+      archived: {
+        title: "Nothing to act on",
+        description:
+          "Attention items come back when the project is restored. The numbers above are frozen at the moment it was archived.",
+      },
+    },
+
+    logs: {
+      title: "Recent logs",
+      all: "All logs",
+      /** ⚠️ **기간을 문장이 그대로 말한다** — 상한이 건수였을 때는 "오늘 조용했다"와 구별되지 않았다. */
+      empty: {
+        title: "No activity yet",
+        description: "Edits, syncs and publishes from the last 7 days show up here.",
+        /** 첫 Sync 전에는 갈래가 다르다 — 비어 있는 것이 아니라 아직 시작 전이다. */
+        beforeFirstSync: "Nothing yet. The first sync from your repository shows up here.",
+      },
+      sync: (n: number, surface: string): string => `CI synced ${n} new ${n === 1 ? "key" : "keys"} into ${surface}`,
       /** 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다. */
-      edit: (who: string | null, key: string, locale: string): string =>
-        who === null ? `${key} was edited in ${locale}` : `${who} edited ${key} in ${locale}`,
-      push: "CI pushed source strings from the repository",
-      publish: "Translations were sent back for review",
-      pr: "Open pull request",
+      edit: (who: string | null, key: string, locale: string, surface: string): string =>
+        `${who === null ? `${key} was edited` : `${who} edited ${key}`} in ${locale} · ${surface}`,
+      /** ⚠️ **`{n} files changed`다** — `SyncRun.changed`가 파일 수이고 칸 수가 아니다. */
+      publish: (pr: number | null, changed: number | null): string => {
+        const head = pr === null ? "Published translations" : `Published pull request #${pr}`;
+        return changed === null ? head : `${head} · ${changed} ${changed === 1 ? "file" : "files"} changed`;
+      },
+      syncFailed: (surface: string): string => `Sync failed · ${surface} could not be read`,
+    },
+
+    meta: {
+      title: "Project",
+      repository: "Repository",
+      branch: "Branch",
+      surfaces: "Surfaces",
+      locales: "Locales",
+      keys: "Keys",
+      members: "Members",
+      lastSync: "Last sync",
+      lastPublish: "Last publish",
+      created: "Created",
+      archived: "Archived",
+      settings: "Project settings",
+      notConnected: "Not connected",
+      /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
+      failedAt: (when: string): string => `failed ${when}`,
+      never: "Never",
+      /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
+      pr: (n: number): string => `#${n}`,
+    },
+
+    banner: {
+      syncFailed: {
+        title: "The last sync could not finish",
+        /**
+         * ⚠️ **원인 문장은 `importFailureMessage`가 든다** (spec §7.2) — 그 함수가 `Object.hasOwn`과
+         * 폴백을 이미 가지고 있다. 여기서 사전을 직접 인덱싱하면 그 방어선을 우회한다.
+         */
+        body: (surface: string, branch: string, reason: string): string =>
+          `malmoi could not read ${surface} on ${branch}. ${reason}`,
+        /** 값이 사라진 것이 아니라는 사실이 이 배너의 절반이다. */
+        safe: (when: string | null): string =>
+          when === null
+            ? "Nothing was lost — the cells you see are from before this sync."
+            : `Nothing was lost — the cells you see are from the last good sync, ${when}.`,
+        action: "Try again",
+        /** ⚠️ **EDITOR는 본문만 본다** — 같은 Action이라 버튼이 통째로 없다 (spec §8). */
+        editor: "Ask an owner of this project to run the sync again.",
+      },
+      notConnected: {
+        title: "malmoi is not connected to this repository",
+        body: "The GitHub App installation is gone, so syncs and publishes are paused. Everything already translated is safe — reconnect and the next sync picks up where it left off.",
+        action: "Reconnect",
+        editor: "Ask an owner of this project to reconnect it.",
+      },
+      archived: {
+        title: "This project is archived",
+        body: "Editing, syncing and publishing are off, and CI pushes are rejected. The open pull request was left alone. Restore it to work on it again.",
+        action: "Restore project",
+        editor: "Ask an owner of this project to restore it.",
+      },
     },
   },
 
