@@ -159,6 +159,29 @@ it("Action 통신 실패는 실패 원결과를 호스트로 전달하고 다시
   expect(button("Sync").getAttribute("aria-disabled")).toBe("false");
 });
 
+/**
+ * ⚠️ **실패에는 `router.refresh()`를 부르지 않는다** (POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰
+ * 🔴2). 그 항목의 증상은 *"버튼을 눌렀더니 로그아웃됐고 왜 실패했는지는 어디에도 없다"*였다:
+ * `unauthorized`로 거부된 직후의 refresh가 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고, 방금
+ * 세운 거부 Alert를 그대로 씻어 간다. 성공에만 필요하다 — 갱신할 값이 거기에만 있다.
+ */
+it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른다", async () => {
+  mocks.run.mockResolvedValue({ ok: false, error: "unauthorized" });
+  const view = await render(<SyncButton {...props} />);
+  await click("Sync"); await click("Sync from repository");
+  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unauthorized" });
+  expect(mocks.refresh).not.toHaveBeenCalled();
+
+  mocks.run.mockRejectedValue(new Error("offline"));
+  await click("Sync"); await click("Sync from repository");
+  expect(mocks.refresh).not.toHaveBeenCalled();
+
+  mocks.run.mockResolvedValue(success);
+  await view.rerender(<SyncButton {...props} />);
+  await click("Sync"); await click("Sync from repository");
+  expect(mocks.refresh).toHaveBeenCalledOnce();
+});
+
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
   function Host() {
     const [open, setOpen] = useState(false);

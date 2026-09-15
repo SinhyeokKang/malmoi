@@ -3,7 +3,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-import { HomeActions, HomeHeaderActions } from "@/components/home/actions";
+import { HomeActions, HomeHeaderActions, HomeNotices } from "@/components/home/actions";
 import { render } from "./helpers/dom";
 
 /**
@@ -48,6 +48,14 @@ function locked(node: Element) {
 
 async function click(name: string) {
   await act(async () => { await userEvent.setup().click(button(name)); });
+}
+
+/** 머리의 버튼 둘과 **본문의 실패 배너**를 한 Provider 안에 세운다 — 실제 Home의 배치다. */
+function Host() {
+  return <>
+    <HomeHeaderActions {...props} />
+    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
+  </>;
 }
 
 beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); });
@@ -100,4 +108,27 @@ it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", as
   expect([...document.querySelectorAll("button")].some(b => (b.textContent ?? "").includes("Sync"))).toBe(false);
 
   await act(async () => { pull.resolve({ status: "ok" }); await pull.promise; });
+});
+
+/**
+ * ⚠️ **잠금이 확인 Dialog를 "예약"하면 안 된다** (2026-09-15 재리뷰 🟡4 — 잠금을 넣은 변경이 스스로
+ * 만든 갈래다). `SyncButton`은 `paused`인 동안 Dialog를 아예 세우지 않으므로, 배너의 `[Try again]`이
+ * 그때 `syncOpen`을 참으로 만들면 **화면에는 아무 일도 안 일어나고** Publish가 끝나는 순간 되돌릴 수
+ * 없는 동작의 확인 창이 **혼자 열린다.** 기존 `paused` 둘(미연결·보관)에는 그 자리에 `[Try again]`이
+ * 없어 밟히지 않던 자리다.
+ */
+it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼자 열리지 않는다", async () => {
+  const pull = deferred<{ status: "ok" }>();
+  mocks.pull.mockReturnValue(pull.promise);
+  const view = await render(<HomeActions><Host /></HomeActions>);
+  await click("Publish");
+
+  // 배너의 [Try again]과 같은 경로 — Action을 직접 부르지 않고 확인 창을 연다.
+  await click("Try again");
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+  await act(async () => { pull.resolve({ status: "ok" }); await pull.promise; });
+  await view.rerender(<HomeActions><Host /></HomeActions>);
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(mocks.run).not.toHaveBeenCalled();
 });
