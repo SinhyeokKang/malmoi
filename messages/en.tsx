@@ -1054,8 +1054,29 @@ export const en = {
       namespace: (value: string): string => `Namespace: ${value}`,
       locales: (value: string): string => `Languages: ${value}`,
       search: (value: string): string => `Search: ${value}`,
+      /**
+       * Home의 카운트 카드가 실어 보낸 좁힘 (project-home §9.7).
+       *
+       * ⚠️ **카드의 제목을 그대로 쓰지 않는다** — 카드는 `To review`(할 일)이고 칩은 "지금 무엇으로
+       * 좁혀져 있나"라 `Showing: waiting for review`가 맞는 말이다. 같은 낱말을 쓰면 칩이 할 일
+       * 목록의 일부처럼 읽힌다.
+       */
+      state: (value: string): string => `Showing: ${value}`,
       /** 제거 버튼은 X 하나다 — 어느 칩을 떼는지가 접근 이름에만 있다. */
       remove: (label: string): string => `Remove ${label}`,
+    },
+
+    /**
+     * `?state=`의 네 어휘 (project-home §9.7).
+     *
+     * ⚠️ **URL의 값으로 직접 인덱싱하지 않는다** — 남이 정한 키다. 호출부가 `isKeyState`로 거른 뒤
+     * 읽는다 (POSTMORTEM 2026-09-08·09).
+     */
+    states: {
+      new: "new from GitHub",
+      untranslated: "not translated yet",
+      review: "waiting for review",
+      unsent: "not sent yet",
     },
 
     /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */

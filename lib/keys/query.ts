@@ -103,7 +103,7 @@ export async function loadKeys(
     where: { projectId, surfaceId },
     orderBy: { key: "asc" },
     select: {
-      id: true, key: true, namespace: true, description: true, orphaned: true,
+      id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
       surface: { select: { archivedAt: true } },
       translations: {
         select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true },
@@ -129,6 +129,7 @@ export async function loadKeys(
       namespace: k.namespace,
       description: k.description,
       orphaned: k.orphaned,
+      createdAt: k.createdAt,
       cells,
       refs: k.refs,
     };

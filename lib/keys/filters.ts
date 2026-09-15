@@ -14,8 +14,14 @@ import { ALL_NAMESPACES, type TranslationsQuery } from "@/lib/routes";
  * 여기서 `m`을 읽으면 이 모듈이 사전 그래프까지 물게 되고, 잎이라는 성질을 지킬 이유가 흐려진다.
  */
 
-/** 시안의 칩 종류 — `namespaceName` · `localeName` · `searchKeyword` 셋이다. 넷째는 시안 개정이 먼저다. */
-export type FilterChipKey = "namespace" | "locales" | "search";
+/**
+ * 시안의 칩 종류 셋 + **`state` 하나** (project-home §9.7).
+ *
+ * ⚠️ **넷째가 시안 개정 없이 늘었다.** 근거는 목적지 쪽이다 — Home의 카운트 카드가 `?state=`로
+ * 착지시키는데 칩이 없으면 **사용자가 그 좁힘을 되돌릴 수단이 화면에 없다.** 주소창을 고치라고
+ * 할 수 없는 사용자가 이 화면의 주 사용자다.
+ */
+export type FilterChipKey = "namespace" | "locales" | "search" | "state";
 
 export type FilterChip = {
   key: FilterChipKey;
@@ -55,6 +61,11 @@ export function activeFilters(
     chips.push({ key: "search", value: query.q, next: { ...query, q: undefined } });
   }
 
+  // 값은 URL의 낱말 그대로다 — 라벨은 사전이 붙인다(이 모듈은 잎이라 `m`을 물지 않는다).
+  if (query.state !== undefined) {
+    chips.push({ key: "state", value: query.state, next: { ...query, state: undefined } });
+  }
+
   return chips;
 }
 
@@ -72,5 +83,5 @@ function sameSelection(a: readonly string[], b: readonly string[]): boolean {
  */
 export function clearedQuery(query: TranslationsQuery): TranslationsQuery {
   const ns = query.ns === undefined || query.ns === "" ? query.ns : ALL_NAMESPACES;
-  return { ...query, ns, locales: undefined, q: undefined };
+  return { ...query, ns, locales: undefined, q: undefined, state: undefined };
 }

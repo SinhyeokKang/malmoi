@@ -1,6 +1,6 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { maskEmail } from "@/lib/auth/email";
-import { ALL_NAMESPACES } from "@/lib/routes";
+import { ALL_NAMESPACES, type KeyState } from "@/lib/routes";
 
 /**
  * 키 리스트 화면의 순수 판정. DB 조회 결과를 받아 사이드바 집계·배지·permalink를 만든다.
@@ -80,6 +80,8 @@ export type KeyRow = {
   id: string;
   key: string;
   namespace: string;
+  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다 (project-home §9.7). */
+  createdAt: Date;
 
   description?: string | null;
   orphaned: boolean;
@@ -302,6 +304,39 @@ export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[]
   return rows.filter((row) => {
     const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
     return haystack.some((text) => text.toLowerCase().includes(needle));
+  });
+}
+
+/**
+ * 파이프라인 구간으로 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (project-home §9.7).
+ *
+ * ⚠️ **술어를 새로 쓰지 않는다.** `unsent`는 `isUnpublished`, `review`·`untranslated`는
+ * `cellState`다 — 카드의 수와 표의 행이 다른 규칙을 쓰면 "24라더니 9개뿐"이 **좁힘 때문인지
+ * 정의 차이 때문인지** 화면에서 구별되지 않는다.
+ *
+ * ⚠️ **`new`만 로케일을 안 본다** — 단위가 셀이 아니라 키다 (spec §7.1). 나머지 셋은 **보고 있는
+ * 로케일**에서만 판정한다: 안 보이는 로케일 때문에 걸린 행은 왜 걸렸는지 화면에 근거가 없다.
+ *
+ * ⚠️ **orphaned 키는 어느 구간도 아니다** — 편집이 막혀 있어 일이 아니고, `cellState`가 그것을
+ * `orphaned`로 접어 자동으로 빠진다. `new`는 그 접기를 안 지나므로 여기서 직접 뺀다.
+ *
+ * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 센다.
+ */
+export function filterByState(
+  rows: readonly KeyRow[],
+  ctx: { state: KeyState; locales: readonly string[]; lastPulledAt: Date | null },
+): KeyRow[] {
+  return rows.filter((row) => {
+    if (row.orphaned) return false;
+    if (ctx.state === "new") return ctx.lastPulledAt === null || row.createdAt > ctx.lastPulledAt;
+    return ctx.locales.some((code) => {
+      if (ctx.state === "unsent") {
+        const cell = row.cells[code];
+        return cell !== undefined && isUnpublished(cell, ctx.lastPulledAt);
+      }
+      const state = cellState(row, code);
+      return ctx.state === "review" ? state === "needsReview" : state === "untranslated";
+    });
   });
 }
 

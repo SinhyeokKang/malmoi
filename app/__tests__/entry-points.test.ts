@@ -528,7 +528,8 @@ describe("쿼리 파라미터의 수신자", () => {
    * 조용히 0건을 낸다. 그래서 그 파일은 **타입에서** 키를 읽어 대상 페이지와 대조한다.
    *
    * 아직 수신자가 없는 키는 **이름으로 고정한다**(축소형 — `no-korean-ui`·`focus-ring`과 같은 형).
-   * T7이 번역 화면에 필터를 붙이면 목록에서 빼야 하고, 안 빼면 아래 둘째 단언이 red다.
+   *
+   * ⚠️ **2026-09-15에 비었다** — `state`가 번역 화면에 실제로 붙었다 (project-home T7).
    */
   const PENDING_QUERY_KEYS: string[] = [];
 
@@ -561,7 +562,7 @@ describe("쿼리 파라미터의 수신자", () => {
   });
 
   it("양쪽 타입에서 쿼리 키를 읽어냈다 — 스캐너가 조용히 0건이 되지 않는다", () => {
-    expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "locales", "q"]);
+    expect(queryKeysOf(ROUTES_SOURCE, "TranslationsQuery")).toEqual(["ns", "locales", "q", "state"]);
     expect(ACCEPTED.length).toBeGreaterThan(0);
   });
 
