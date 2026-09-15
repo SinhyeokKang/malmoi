@@ -320,11 +320,16 @@ export const en = {
        */
       title: (q: string): string => `No projects match “${q}”`,
       /**
-       * ⚠️ **0건을 본 사람의 다음 질문이 늘 "무엇으로 찾나"다.** 캔버스는 뒤에 한 문장을 더 붙이는데
-       * (*"…clear the search to see all three projects."*) 그 문장이 총계 **셋**을 문자열에 박아
-       * 넣는다 — 프로젝트가 셋이 아닌 계정에서 거짓말이 되므로 앞 문장만 쓴다.
+       * ⚠️ **0건을 본 사람의 다음 질문이 늘 "무엇으로 찾나"다.**
+       *
+       * ⚠️ **캔버스 문장 둘을 다 못 쓴다.** 원문은 *"Search looks at the project name and the
+       * repository. Check the spelling, or clear the search to see all three projects."*이고 둘 다
+       * 거짓이다: 뒤 문장은 총계 **셋**을 문자열에 박아 프로젝트가 셋이 아닌 계정에서 틀리고,
+       * 앞 문장의 **`and the repository`는 코드와 반대다** — `searchProjects`는 `row.name` 하나만
+       * 본다(그 함수의 주석이 그 판정을 박아 뒀고, 이 기능의 비목표가 그것을 안 건드리는 것이다).
+       * **0건을 본 사람에게 리포 이름으로 찾아진다고 말하면 그 사람은 또 0건을 만난다.**
        */
-      description: "Search looks at the project name and the repository.",
+      description: "Search looks at the project name.",
       /**
        * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 카드의 같은 동작도
        * 같은 낱말을 써야 한다: 한 화면에서 같은 동작이 두 이름을 갖지 않는다.
@@ -376,6 +381,15 @@ export const en = {
      * 별개 노드로 그렸는데, 카드 헤더에서는 제목 전체가 같은 급이라 강조할 자리가 없다.
      */
     resultsFor: (q: string): string => `Results for “${q}”`,
+    /**
+     * 카드 헤더 카운트 배지의 **스크린리더 문장**.
+     *
+     * ⚠️ **숫자만 그리면 접근 이름이 `Results for “chrome” 2`다** — 옛 결과 줄(`1 of 3 projects match`)이
+     * 완전한 문장이었는데 카드로 옮기며 맨 숫자가 됐다. 번역 화면 머리가 같은 자리에서 같은 처방을
+     * 이미 쓴다(`m.translations.keys`). ⚠️ **CDP 접근성 트리로 `h2`의 이름만 보면 통과한다** —
+     * 배지가 별개 노드라서다.
+     */
+    cardCount: (n: number): string => `${n} project${n === 1 ? "" : "s"}`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**

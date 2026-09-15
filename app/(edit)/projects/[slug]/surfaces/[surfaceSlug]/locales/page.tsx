@@ -72,7 +72,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader description={m.locales.description}>
-      {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.locales}</h1>
         <LocaleSurfaceSelector slug={slug} surfaceSlug={surfaceSlug} surfaces={surfaces} />
@@ -140,30 +140,30 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         같은 문장이 화면에 두 번 나온다(실물로 확인했다). Card는 경계선만 든다.
         */}
         {canManage && (
-        <Card>
-          <BaseLocaleForm
-            slug={slug}
-            surfaceSlug={surfaceSlug}
-            baseLocale={project.baseLocale}
-            declaredBaseLocale={project.declaredBaseLocale}
-            locales={selectable}
-          />
-          {/*
-            ⚠️ **고칠 줄을 이 화면에서 직접 보인다** (§7.7 결정 4의 경계). 설정 화면으로 링크하면
-            "고치려면 두 화면을 오간다"가 되고, 자리를 합친 이유가 사라진다. 워크플로 YAML 전체는
-            설정에 남는다 — 여기 필요한 것은 한 줄이다.
-          */}
-          {pendingLine !== null && (
-            <Alert variant="warning" title={m.locales.pending.title}>
-              <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>)}</p>
-              {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
-              <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{pendingLine}</pre>
-              <p className="mt-2">
-                <CopyButton value={pendingLine} label={m.locales.pending.copy} />
-              </p>
-            </Alert>
-          )}
-        </Card>
+          <Card>
+            <BaseLocaleForm
+              slug={slug}
+              surfaceSlug={surfaceSlug}
+              baseLocale={project.baseLocale}
+              declaredBaseLocale={project.declaredBaseLocale}
+              locales={selectable}
+            />
+            {/*
+              ⚠️ **고칠 줄을 이 화면에서 직접 보인다** (§7.7 결정 4의 경계). 설정 화면으로 링크하면
+              "고치려면 두 화면을 오간다"가 되고, 자리를 합친 이유가 사라진다. 워크플로 YAML 전체는
+              설정에 남는다 — 여기 필요한 것은 한 줄이다.
+            */}
+            {pendingLine !== null && (
+              <Alert variant="warning" title={m.locales.pending.title}>
+                <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>)}</p>
+                {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
+                <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{pendingLine}</pre>
+                <p className="mt-2">
+                  <CopyButton value={pendingLine} label={m.locales.pending.copy} />
+                </p>
+              </Alert>
+            )}
+          </Card>
         )}
       </PanelBody>
     </>

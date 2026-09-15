@@ -38,10 +38,14 @@ function EmptyCard({ icon: Icon, title, description, action }: {
       <span className="bg-foreground/[0.04] flex size-9 items-center justify-center rounded-sm text-neutral-600">
         <Icon className="size-4" aria-hidden />
       </span>
+      {/*
+        ⚠️ **`<p>` 둘이다 — `<span>`으로 두면 문단 경계가 0이 된다.** `flex flex-col`이 시각적으로는
+        같은 결과를 내서 화면에도 테스트에도 안 나타난다. `EmptyState` 프리미티브도 `<p>` 둘이다.
+      */}
       <span className="flex flex-col items-center gap-1.5">
-        <span className="text-base font-medium">{title}</span>
+        <p className="text-base font-medium">{title}</p>
         {/* ⚠️ **46ch다** — `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다. */}
-        <span className="text-muted-foreground max-w-[46ch] text-sm leading-relaxed text-pretty">{description}</span>
+        <p className="text-muted-foreground max-w-[46ch] text-sm leading-relaxed text-pretty">{description}</p>
       </span>
       {action}
     </div>
@@ -87,8 +91,16 @@ export function NoProjectsMatch({ query }: { query: string }) {
       icon={SearchX}
       title={m.projects.narrowed.title(query)}
       description={m.projects.narrowed.description}
+      /*
+        ⚠️ **링을 직접 든다** — 전엔 `ButtonLink`가 그것을 들었는데 캔버스가 출구를 링크로 내렸다.
+        이 카드의 **유일한 인터랙티브 요소**이고, `focus-ring.test.ts`는 `button|input|select|textarea`
+        넷만 훑으므로 `<a>`는 그 방어선 밖이다.
+      */
       action={
-        <Link href={routes.projects()} className="text-sm text-blue-600">
+        <Link
+          href={routes.projects()}
+          className="focus-visible:ring-ring rounded-sm text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+        >
           {m.projects.narrowed.reset}
         </Link>
       }

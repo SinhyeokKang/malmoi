@@ -72,12 +72,20 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
     ]);
   });
 
-  /** 카운트 배지는 그 카드의 행 수다 — 헤더가 목차이므로 숫자도 그 카드의 것이어야 한다. */
-  it("카드 헤더가 자기 행 수를 든다", async () => {
+  /**
+   * 카운트 배지는 그 카드의 행 수다 — 헤더가 목차이므로 숫자도 그 카드의 것이어야 한다.
+   *
+   * ⚠️ **보이는 숫자와 읽히는 문장을 따로 단언한다.** 숫자만 그리면 접근 이름이 "Needs attention 1"이
+   * 되는데, 그것은 **CDP 접근성 트리로 `h2`만 봐도 통과한다**(배지가 별개 노드다). 번역 화면 머리가
+   * 같은 자리에서 같은 처방을 쓴다.
+   */
+  it("카드 헤더가 자기 행 수를 들고, 스크린리더에는 문장을 준다", async () => {
     const container = await draw();
     for (const card of cards(container)) {
-      const count = find<HTMLElement>(card, "h2 + span").textContent;
-      expect(count).toBe(String(card.querySelectorAll("li").length));
+      const rows = card.querySelectorAll("li").length;
+      const badge = find<HTMLElement>(card, "h2 + span");
+      expect(find<HTMLElement>(badge, "[aria-hidden]").textContent).toBe(String(rows));
+      expect(find<HTMLElement>(badge, ".sr-only").textContent).toBe(m.projects.cardCount(rows));
     }
   });
 
@@ -133,7 +141,7 @@ describe("`1c` 검색 결과 — 결과 카드 하나", () => {
   it("제목 배지는 3이고 카드 카운트는 1이다", async () => {
     const container = await draw({ q: "chrome" });
     expect(find<HTMLElement>(container, "h1 + span").textContent).toBe("3");
-    expect(find<HTMLElement>(container, "section h2 + span").textContent).toBe("1");
+    expect(find<HTMLElement>(container, "section h2 + span [aria-hidden]").textContent).toBe("1");
   });
 
   /** 나가는 길은 헤더 오른쪽 하나다 — 링크이고 버튼이 아니다. */

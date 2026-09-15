@@ -180,7 +180,6 @@ export function TranslationsHeader({
       </PanelHeader>
 
       {/*
-
         ⚠️ **`flex flex-col`이 빈 상태를 패널 세로 중앙에 세우는 장치다** (2026-09-11 —
         `ProjectArchived`·`ProjectNotReady`가 같은 형이다. ⚠️ **`/projects`는 2026-09-15에 이 형에서
         빠졌다** — 그쪽 빈 상태는 카드가 되어 본문 맨 위에 붙는다). 래퍼가 `min-h-full`을 들고 있으므로(`content-panel.tsx`) 이 열이 패널 높이를 받고,

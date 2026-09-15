@@ -58,7 +58,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-      {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">

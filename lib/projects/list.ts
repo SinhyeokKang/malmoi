@@ -322,9 +322,11 @@ export type SummaryQueue = { newFromGithub: number; toTranslate: number; toRevie
  * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 금지하고,
  * `pnpm test:projects:postgres`가 셋이 같은 행을 세는지 재는 유일한 자리다. `/code-review`·`/audit`이
  * 이것을 "미사용"으로 올릴 것을 예상한다: **의도된 상태다.**
- */
-/**
- * 계정 합계 넷 (design §3.2). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
+ *
+ * ⚠️ **블록을 둘로 나누지 않는다** — TS는 선언 바로 앞 **마지막** 블록만 붙이므로, 위 경고를 별도
+ * 블록으로 두면 hover·IntelliSense에 아래 설명만 뜬다. 그 경고를 읽어야 하는 사람이 보는 자리가 거기다.
+ *
+ * ── 계정 합계 넷 (design §3.2). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
  * 검색·그룹에 흔들리지 않는다.
  *
  * ⚠️ **Meter의 셋 제한을 적용하지 않는다** — 59로케일 리포에서 넷째 로케일부터의 미번역이 통째로
@@ -445,8 +447,13 @@ export function listBody<T extends RowInput & { name: string }>(
   }
 
   const grouped = groupProjects(all, undefined);
-  // 질의를 `undefined`로 넘겼으므로 `flat`일 수 없다 — 런타임 갈래가 아니라 타입만 좁힌다.
-  return { kind: "groups", cards: grouped.flat ? [] : grouped.groups.map(([group, rows]) => ({ group, rows })) };
+  /**
+   * ⚠️ **질의를 `undefined`로 넘겼으므로 `flat`일 수 없다.** 타입을 좁히는 자리인데 `?? []`로 접으면
+   * `groupProjects`가 언젠가 flat을 내는 날 **카드도 빈 상태도 없는 백지**가 조용히 나온다 —
+   * 아무도 red를 못 본다. 도달 불가를 시끄럽게 둔다.
+   */
+  if (grouped.flat) throw new Error("listBody: groupProjects returned a flat list without a query");
+  return { kind: "groups", cards: grouped.groups.map(([group, rows]) => ({ group, rows })) };
 }
 
 /**

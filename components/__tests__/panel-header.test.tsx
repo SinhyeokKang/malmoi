@@ -54,7 +54,10 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
 
   /** ⚠️ **스크롤 여부와 무관하게 늘 있다** — 스크롤할 때만 나타나는 선은 "무언가 숨어 있다"는 신호다. */
   it("선이 조건부가 아니다", () => {
-    expect(SOURCE).not.toMatch(/scroll|useState|useEffect/);
+    // 상태가 없으면 조건부일 수 없다. ⚠️ `scroll`을 문자열로 세지 않는다 — `overflow-y-auto`를
+    // `overflow-y-scroll`로 바꾸기만 해도 "선이 조건부다"라며 red가 난다.
+    expect(SOURCE).not.toMatch(/\buseState\b|\buseEffect\b|"use client"/);
+    expect(SOURCE).not.toMatch(/border-b[^"]*\?|\?[^"]*border-b/);
   });
 
   it.each([

@@ -167,9 +167,19 @@ export function ProjectList({
           <ProjectCard
             title={m.projects.resultsFor(body.query)}
             count={body.rows.length}
-            /* 나가는 길은 헤더 오른쪽 하나다 — 지금 좁혀진 것이 **이 카드**라는 사실이 그 자리에서 읽힌다. */
+            /*
+              나가는 길은 헤더 오른쪽 하나다 — 지금 좁혀진 것이 **이 카드**라는 사실이 그 자리에서 읽힌다.
+
+              ⚠️ **`1d`의 같은 `Clear search`와 링 처리가 같아야 한다** — 한 화면에서 같은 동작이 두
+              모양을 갖지 않는다. ⚠️ **링이 바깥인데 카드가 `overflow-hidden`이다**: 이 링크는 헤더의
+              padding 16 안쪽에 앉아 2px이 잘리지 않는다. **행 링크는 그렇지 않아 `ring-inset`이다**
+              (2026-09-11 실측 — 카드 모서리를 자르는 `overflow-hidden`이 바깥 링을 통째로 먹었다).
+            */
             action={
-              <Link href={routes.projects()} className="ml-auto text-sm text-blue-600">
+              <Link
+                href={routes.projects()}
+                className="focus-visible:ring-ring ml-auto rounded-sm text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+              >
                 {m.projects.clearSearch}
               </Link>
             }
@@ -212,7 +222,14 @@ function ProjectCard({ title, count, action, children }: {
     <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
       <div className="flex items-center gap-2 p-4">
         <h2 className="text-base font-medium">{title}</h2>
-        <Badge variant="neutral">{count}</Badge>
+        {/*
+          ⚠️ **숫자만 그리면 접근 이름이 "Needs attention 1"이다.** 시안이 숫자 배지라 보이는 것은
+          그대로 두고 스크린리더에는 완전한 문장을 준다 — 번역 화면 머리가 같은 관용구다.
+        */}
+        <Badge variant="neutral">
+          <span aria-hidden>{count}</span>
+          <span className="sr-only">{m.projects.cardCount(count)}</span>
+        </Badge>
         {action}
       </div>
       {children}

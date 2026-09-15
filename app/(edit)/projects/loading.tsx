@@ -11,8 +11,8 @@ import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content
  * 도착하는 순간 레이아웃이 튀고, 그 튐이 로딩 표시보다 더 눈에 띈다. **2026-09-15에 Summary 줄이
  * 빠졌다** — 골격이 실물보다 90px 길면 목록이 그만큼 밀려 올라온다 (projects-panel-rework).
  *
- * ⚠️ **머리 아래 선도 스켈레톤에 있다** — `PanelHeader`가 들므로 여기서 할 일이 없지만, 선이
- * 뒤늦게 생기면 본문이 1px 밀린다는 사실은 그 프리미티브 쪽에 적혀 있다.
+ * ⚠️ **머리 아래 선도 스켈레톤에 있다** — `PanelHeader`가 늘 들기 때문이고 여기서 할 일이 없다.
+ * 선이 뒤늦게 생기면 본문이 1px 밀린다.
  *
  * ⚠️ **이 화면은 GitHub을 기다린다** (projects-list §3.4 ⊕). 목록이 DB 집계와 원격 신호를 함께
  * 기다리므로 스켈레톤이 서 있는 시간이 전보다 길다 — 골격이 실물과 어긋나면 그만큼 오래 어긋나 보인다.
@@ -45,7 +45,7 @@ export default function ProjectsLoading() {
 
       {/* 본문 — 그룹 헤더 하나 + 카드 안의 행 둘. */}
       <PanelBody width="fluid" className="flex flex-col gap-4" aria-hidden>
-        <section className="border-border shrink-0 overflow-hidden rounded-lg border">
+        <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `p-4`라야 첫 행의 y가 안 튄다. */}
           <div className="flex items-center gap-2 p-4">
             <Block className="h-5 w-32" />
