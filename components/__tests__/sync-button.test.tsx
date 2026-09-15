@@ -152,11 +152,31 @@ it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보�
   expect(document.querySelector('[role="status"]')?.textContent).toContain("Synced 0 keys from main");
 });
 
-it("Action 통신 실패는 실패 원결과를 호스트로 전달하고 다시 실행할 수 있다", async () => {
+/**
+ * ⚠️ **통신 실패에 온보딩 코드를 쓰지 않는다** (2026-09-15 재리뷰 🔴3). `ingest-failed`는 `PLANS`에도
+ * `m.repositorySync.errors`에도 없어 **두 폴백을 동시에 탄다**: 계획은 `{warning, 닫기 없음, 액션
+ * 없음}`이고 문구는 `onboardErrorMessage`의 *"The first import failed. You can try again from
+ * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, 가리키는 설정 화면의 컨트롤(`FirstIngestRetry`)은
+ * `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨 채 굳는다.
+ * 캔버스 §6 `4f`의 tone 표가 이 부류에 `unavailable`을 배정했다(danger · 기존 `errors.access.*`).
+ */
+it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실행할 수 있다", async () => {
   mocks.run.mockRejectedValue(new Error("offline"));
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
-  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "ingest-failed" });
+  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unavailable" });
   expect(button("Sync").getAttribute("aria-disabled")).toBe("false");
+});
+
+/**
+ * ⚠️ **거부 문구가 이 화면에 없는 컨트롤을 가리키면 안 된다.** `SyncResult`까지 먹여 봐야 드러나는
+ * 층이다 — `onResult`의 인자만 보는 테스트는 그 값이 화면에서 무엇이 되는지 모른다.
+ */
+it("통신 실패 거부가 존재하지 않는 컨트롤을 가리키지 않는다", async () => {
+  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unavailable" }} />);
+  const alert = document.querySelector('[role="status"], [role="alert"]');
+  expect(alert?.textContent ?? "").not.toContain("first import");
+  expect(alert?.textContent ?? "").not.toContain("from settings");
+  expect(alert?.textContent ?? "").toContain("Try again");
 });
 
 /**

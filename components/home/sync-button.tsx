@@ -79,7 +79,14 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     changeOpen(false);
     let outcome: RepositoryImportOutcome;
     try { outcome = await runRepositoryImport({ slug }); }
-    catch { outcome = { ok: false, error: "ingest-failed" }; }
+    /*
+      ⚠️ **온보딩 코드를 쓰지 않는다** — `ingest-failed`는 `PLANS`에도 `m.repositorySync.errors`에도
+      없어 **두 폴백을 동시에 타서**, 닫을 수도 갈 곳도 없는 amber가 *"The first import failed. You can
+      try again from settings."*를 띄운다. 첫 적재가 아닌데 그렇게 말하고, 그 설정 화면의 컨트롤은
+      `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨다. 캔버스 §6 `4f`의 tone 표가
+      이 부류(요청이 못 갔다)에 배정한 것은 `unavailable`이다.
+    */
+    catch { outcome = { ok: false, error: "unavailable" }; }
     busy.current = false;
     setPending(false);
     onResult(outcome);
