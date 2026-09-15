@@ -18,6 +18,33 @@ import type { ReactNode } from "react";
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
 export const en = {
+  repositorySync: {
+    action: "Sync", confirm: "Sync from repository", title: "Sync from repository?",
+    body: "Replace translations in every active surface with the repository versions. Edits made here can be lost.",
+    unsent: (n: number): string => `${n} change${n === 1 ? " has" : "s have"} not been sent. This count may not include every edit at risk.`,
+    sendFirst: "Send changes first",
+    mergeHint: "Sending changes alone does not protect them. Wait until the pull request is merged before syncing.",
+    prUnknown: "We couldn't confirm whether a pull request is open. Changes in an unmerged pull request can be lost.",
+    openPr: (n: number): string => `Pull request #${n} is open`,
+    pending: "Syncing from the repository…",
+    // runRepositoryImportFromReader preserves refs; the next CI applyPush replaces them.
+    refsHint: "Code references are kept until your next automatic import.",
+    completed: (n: number): string => `Synced ${n} key${n === 1 ? "" : "s"} from the repository`,
+    unreadable: (n: number): string => `${n} surface${n === 1 ? " could" : "s could"} not be read`,
+    notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
+    withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
+    partial: (n: number): string => `${n} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    failedTitle: "Sync could not finish",
+    errors: {
+      "invalid-format": "The file format is missing. Check this surface in project settings.",
+      "superseded": "Newer repository data or changed settings took precedence. Try again to use the current version.",
+      "lease-lost": "This sync no longer owns the import. Wait for the current import to finish before trying again.",
+      "repo-replaced": "This connection points to a different repository. Reconnect it in project settings.",
+      "already-running": "An import is already running. Wait for it to finish before trying again.",
+      "no-surfaces": "There are no active translation surfaces. Add a surface in project settings.",
+      "invalid input": "The project could not be identified. Refresh the page and try again.",
+    },
+  },
   surfaces: {
     label: "Translation surface", title: "Translation surfaces", add: "Add surface",
     description: "Choose another set of translation files from this repository.",
@@ -965,7 +992,7 @@ export const en = {
        */
       unsent: (n: number): string =>
         `${n === 1 ? "1 change" : `${n} changes`} not yet sent. ` +
-        "They can be lost if your developers push code first — send them when you're done.",
+        "They can be lost when repository changes are imported automatically or with Sync. Send them and wait for the pull request to be merged before syncing.",
 
       /**
        * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**
