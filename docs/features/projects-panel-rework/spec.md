@@ -180,3 +180,67 @@ README 열린 결정 2가 `Project settings`를 지목했는데 **그 화면엔 
 
 → **슬롯은 만들되 크기는 시안값 13으로 통일한다.** 셋 중 둘이 재작업 예정이라 지금 값을 맞추는 비용이
 작고, 남는 하나(`add-surface`)가 재작업 밖이라 **그 하나 때문에라도 슬롯이 규격을 가져야 한다.**
+
+## 9. 캔버스 치수표 — T0에서 확정 (2026-09-15)
+
+**`Projects v2.dc.html`의 아트보드 `1a`~`1d` 넷을 전부 읽었다.** 아래는 그 인라인 스타일에서 인용한
+값이고, §1의 *"README와 캔버스가 어긋나면 캔버스가 이긴다"*를 여기서 집행한다.
+
+### 9.1 패널 머리 (넷 다 같다)
+
+| 자리 | 캔버스 | 코드로 옮기면 |
+|---|---|---|
+| 머리 컨테이너 | `flex · align-items:center · gap:12 · padding:16 · border-bottom:1px #e5e5e5 · flex-shrink:0` | `border-b border-border` + `p-4`, 행은 `flex items-center gap-3` |
+| 제목 묶음 | `inline-flex · gap:8` | `flex items-center gap-2` |
+| PageTitle | `h1 18/500/0.01em` | **`text-lg font-medium`** — ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다**: `--text-lg--letter-spacing`이 이미 `0.01em`이다 (`app/globals.css`). tasks.md T3의 *"+ `tracking-[0.01em]`"*은 그래서 **불필요**하다 |
+| 카운트 배지 | `min-width:20 · radius:999 · padding:2px 6px · 13/500 · bg rgba(10,10,10,0.05)` | `Badge variant="neutral"` **그대로** (`min-w-5 px-1.5 py-0.5 text-xs`, `--text-xs`가 13px) |
+| 검색 | `36 × 220 · radius 10 · border #e5e5e5` | `SearchInput` 그대로 — **폭만 256이다**(DESIGN §6.63에 이미 등재된 유일한 예외) |
+| [New project] | `36 · radius 10 · bg #171717` | `ButtonLink variant="primary"` 그대로 |
+| 선의 폭 | 패널 **전폭**이다 — 아트보드 넷 모두 `border-bottom`이 머리 컨테이너에 있고 그 안에 여백이 든다 | ⚠️ **선을 `CONTENT_MAX` 안쪽에 두면 1280 상한에서 잘린다.** 바깥 `shrink-0` div가 선을, 안쪽 래퍼가 padding을 든다 |
+
+### 9.2 본문 · 그룹 카드
+
+| 자리 | 캔버스 | 코드 |
+|---|---|---|
+| 본문 | `flex-column · gap:16 · padding:16` | `p-4` + `flex flex-col gap-4` |
+| 카드 | `border:1px #e5e5e5 · radius:12 · bg #fff · overflow:hidden · flex-shrink:0` | 기존 `ProjectCard`의 `<ul>`과 같다 |
+| 카드 헤더 | `flex · align-items:center · gap:8 · padding:16`, `h2 15/500/0.015em` | `text-base font-medium` — ⚠️ letter-spacing도 `--text-base--letter-spacing`(0.015em)이 준다 |
+| 헤더↔첫 행 | `border-top:1px #f0f0f0` | **`border-foreground/[0.06]`** — 흰 배경에서 `rgba(10,10,10,0.06)`이 곧 `#f0f0f0`이다. 띠가 이미 같은 표현을 쓰므로 새 raw 색이 아니다 (DESIGN §6.2) |
+| 행↔행 | `border-top:1px #e5e5e5` | `border-border` — 지금 그대로 |
+| hover | 행만 `rgba(10,10,10,0.02)`. **카드 헤더·띠는 없다** | 지금 그대로 |
+
+### 9.3 빈 상태 카드 (`1b` = `1d`, 부품이 같다)
+
+| 자리 | 캔버스 |
+|---|---|
+| 카드 | `flex-column · align-items:center · gap:14 · border 1 #e5e5e5 · radius 12 · bg #fff · padding:48px 24px · text-align:center` |
+| 아이콘 칩 | `36 × 36 · radius 8 · bg rgba(10,10,10,0.04) · color #525252`, 글리프 **18** |
+| 제목·설명 묶음 | `flex-column · gap:6 · align-items:center` |
+| 제목 | `15/500/0.015em` |
+| 설명 | `14/1.6 · max-width:46ch · #737373 · text-wrap:pretty` |
+| 출구 (`1b`) | 채운 버튼 `36 · radius 10` |
+| 출구 (`1d`) | **링크** `14 · #2563eb` |
+| 글리프 | `1b` `box` · `1d` `search-x` |
+
+### 9.4 ⚠️ 캔버스를 그대로 못 옮기는 자리 셋 — 근거와 함께 남긴다
+
+1. **아이콘 칩의 글리프가 18이다.** DESIGN §6.8이 아이콘 크기를 **셋(16·12·24)으로 고정**하므로
+   18은 넷째 값이 된다. **16으로 간다** — 36 칩 안의 2px이고, 검색 폭(220 vs 256)이 이미 같은 부류의
+   등재된 예외다. ⚠️ **T9의 실측에서 이 항목이 뜰 것을 예상한다** — 결함이 아니라 등재된 차이다.
+2. **`1d`의 설명이 두 문장이고 뒤 문장이 총계를 문자열에 박는다** —
+   *"Check the spelling, or clear the search to see all three projects."* 의 `three`가 그것이다.
+   프로젝트가 셋이 아닌 계정에서 **거짓말이 된다.** 앞 문장만 쓴다
+   (`Search looks at the project name and the repository.` — README의 신규 문구와 같다).
+3. **`1d`의 제목이 질의를 든다** — `No projects match “stripe”`. 지금 `narrowed.title`은 상수
+   `No results`이고 질의는 `bySearch`가 들었다. **캔버스를 따라 제목이 함수가 되고** 설명이 검색 대상
+   문장을 든다. ⚠️ **`messages/en.tsx`의 *"제목이 질의를 안 싣는다"* 주석이 이 판정으로 뒤집힌다** —
+   주석도 같이 고친다. 따옴표는 캔버스대로 **곡선 따옴표**(`“ ”`)다.
+
+### 9.5 캔버스가 확인해 준 것 (§7의 열린 항목)
+
+- **Summary 넷은 아트보드 넷 어디에도 없다.** `1b`(0건)에서도 머리는 제목 + 배지뿐이다.
+- **`1b`의 머리에 검색·[New project]가 없다** — 지금 코드의 `hasProjects` 판정 그대로다. **배지 `0`은 남는다.**
+- **`1c`의 총계 배지가 `3`이고 카드 카운트가 `1`이다** — 완료 조건 9가 캔버스로 확인됐다.
+- **`Clear search`가 결과 카드 헤더의 `margin-left:auto` 자리**이고 `14 · #2563eb` 링크다.
+- **거부 `Alert`는 아트보드에 없다.** 기존 판정(*"제목 줄 아래"*)을 유지하고 **머리 안에 남긴다** —
+  본문으로 내리면 스크롤로 사라진다 (POSTMORTEM 2026-09-06).
