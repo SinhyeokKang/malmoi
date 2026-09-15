@@ -165,20 +165,21 @@ export async function POST(request: Request): Promise<NextResponse> {
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
     const startedAt = new Date();
+    const token = randomUUID();
     const scope = { projectId: project.id, surfaceId: surface.id };
-    await markImportStarted(prisma, scope, startedAt);
+    await markImportStarted(prisma, scope, startedAt, token);
 
     let outcome;
     try {
       outcome = await applyPush(prisma, scope, parsed.data, {
         previousBaseLocale: surface.baseLocale,
-        startedAt,
+        startedAt, token,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
       });
     } catch (error) {
-      // ⚠️ **자기 시작 시각을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
-      await finishImportRun(prisma, { ...scope, startedAt, code: "import-failed" });
+      // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
+      await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
       throw error;
     } finally {
       /**

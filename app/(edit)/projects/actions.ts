@@ -873,6 +873,7 @@ export async function createProject(raw: {
   const paths = snapshot.files.map(f => f.path);
   const projectId = randomUUID();
   const startedAt = new Date();
+  const token = randomUUID();
   const prepared: { id: string; surface: CreatedSurface; payload: NonNullable<ReturnType<typeof prepareFirstSnapshot>["payload"]>; targets: string[]; workflow: { adapter?: AdapterName; baseLocale?: string } }[] = [];
   for (const requested of input.surfaces) {
     if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
@@ -892,7 +893,7 @@ export async function createProject(raw: {
       if (extra.length) files.push(...await readFiles(reader, snapshot, extra));
       const id = randomUUID();
       const surfaceSlug = planSurfaceSlug(format.pathTemplate, prepared.map(s => s.surface.surfaceSlug));
-      const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt,
+      const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt, token,
         projectSlug: input.slug, format, baseLocale: confirmed.baseLocale,
         headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt, paths, targets,
         blobs: new Map(files.map(file => [file.path, file.content])),
@@ -960,10 +961,10 @@ export async function createProject(raw: {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
           slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
-          baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt,
+          baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
         await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
-          previousBaseLocale: null, startedAt, importOutcome: null,
+          previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
       }
       await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
@@ -1108,10 +1109,11 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    * "적재 중"으로 남는다 — 화면에 그것을 지울 버튼이 없다.
    */
   const startedAt = new Date();
+  const token = randomUUID();
   const scope = { projectId, surfaceId: surface.id };
-  await markImportStarted(prisma, scope, startedAt);
+  await markImportStarted(prisma, scope, startedAt, token);
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
-    finishImportRun(prisma, { ...scope, startedAt, code });
+    finishImportRun(prisma, { ...scope, token, code });
 
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
@@ -1140,7 +1142,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       projectId,
       surfaceId: surface.id,
       surfaceSlug: surface.slug,
-      startedAt,
+      startedAt, token,
       projectSlug: slug,
       format: prepared.format,
       baseLocale: prepared.baseLocale,

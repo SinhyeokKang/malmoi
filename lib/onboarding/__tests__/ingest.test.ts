@@ -72,7 +72,7 @@ const run = (over: Partial<Parameters<typeof ingestFirstSnapshot>[1]> = {}) => {
     stub,
     result: ingestFirstSnapshot(stub.prisma, {
       projectId: "p1", surfaceId: "s1",
-      startedAt: new Date("2026-09-13T00:00:00Z"),
+      token: "fixture-run", startedAt: new Date("2026-09-13T00:00:00Z"),
       projectSlug: "acme",
       surfaceSlug: "default",
       // 내려받기를 시도한 경로. 여기 있는데 `blobs`에 없으면 **실패**다 — "리포에 없음"과 구별한다.

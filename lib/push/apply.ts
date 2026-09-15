@@ -66,6 +66,7 @@ export type PushOutcome = {
 };
 
 export type ApplyOptions = {
+  token: string;
   /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
   startedAt: Date;
   /**
@@ -319,8 +320,8 @@ async function applyWith(
     // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
     // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
     prisma.translationSurface.updateMany({
-      where: { id: surfaceId, projectId, lastImportStartedAt: options.startedAt },
-      data: importOutcomeFields(options.importOutcome ?? null),
+      where: { id: surfaceId, projectId, lastImportToken: options.token },
+      data: { ...importOutcomeFields(options.importOutcome ?? null), lastImportToken: null },
     }),
   ];
 
