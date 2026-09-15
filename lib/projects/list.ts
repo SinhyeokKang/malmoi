@@ -315,6 +315,15 @@ export function rowReviewCounts(
 export type SummaryQueue = { newFromGithub: number; toTranslate: number; toReview: number; toSend: number };
 
 /**
+ * ⚠️ **소비자가 지금 없다 — 지우지 않는다** (2026-09-15). 목록 머리의 Summary 넷이 사라지면서
+ * 이 함수를 부르는 화면이 0이 됐고, `project-home`의 카운트 카드 넷이 그것을 받는다
+ * (`docs/features/project-home/tasks.md` T4 — *"`summaryQueue`를 고치지 않는다"*).
+ *
+ * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 금지하고,
+ * `pnpm test:projects:postgres`가 셋이 같은 행을 세는지 재는 유일한 자리다. `/code-review`·`/audit`이
+ * 이것을 "미사용"으로 올릴 것을 예상한다: **의도된 상태다.**
+ */
+/**
  * 계정 합계 넷 (design §3.2). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
  * 검색·그룹에 흔들리지 않는다.
  *
@@ -397,6 +406,47 @@ export function groupProjects<T extends RowInput>(
       return list === undefined || list.length === 0 ? [] : [[group, list] as [ProjectGroup, T[]]];
     }),
   };
+}
+
+/**
+ * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (projects-panel-rework design §3.1).
+ *
+ * ⚠️ **갈래를 한 자리에 모은다.** 전에는 `hasProjects`·질의·건수가 JSX 안에서 섞여 판정됐고, 그러면
+ * 넷 중 하나가 바뀔 때 나머지 셋이 어떤 모양이 되는지를 화면을 읽어야만 알 수 있었다.
+ *
+ * ⚠️ **`empty`와 `no-results`를 한 갈래로 합치지 않는다** — 출구의 무게가 반대다. 프로젝트가 없을
+ * 때의 출구는 **만들기**(채운 버튼)이고 검색이 빈 것의 출구는 **되돌리기**(링크)다. 합치면 그 차이를
+ * 그리는 자리가 사라진다.
+ *
+ * ⚠️ **`results`는 그룹을 나누지 않는다** — 결과 1건에 헤더 셋이면 둘이 빈 카드가 된다. 상태는
+ * 행의 칩이 계속 말한다.
+ */
+export type ListBody<T> =
+  | { kind: "groups"; cards: { group: ProjectGroup; rows: T[] }[] }
+  | { kind: "empty" }
+  | { kind: "results"; query: string; rows: T[] }
+  | { kind: "no-results"; query: string };
+
+export function listBody<T extends RowInput & { name: string }>(
+  all: readonly T[],
+  q: string | undefined,
+): ListBody<T> {
+  /**
+   * ⚠️ **프로젝트가 0건이면 질의보다 앞선다.** 머리가 검색을 그리지 않으므로 질의는 주소창으로만
+   * 오는데, 그 사람에게 줄 출구는 "검색을 되돌려라"가 아니라 **"만들어라"**다.
+   */
+  if (all.length === 0) return { kind: "empty" };
+
+  // 빈 문자열·공백만·`undefined`가 같은 뜻이라야 검색창을 비우는 것과 URL에서 키를 빼는 것이 같다.
+  const query = (q ?? "").trim();
+  if (query !== "") {
+    const rows = searchProjects(all, query);
+    return rows.length === 0 ? { kind: "no-results", query } : { kind: "results", query, rows };
+  }
+
+  const grouped = groupProjects(all, undefined);
+  // 질의를 `undefined`로 넘겼으므로 `flat`일 수 없다 — 런타임 갈래가 아니라 타입만 좁힌다.
+  return { kind: "groups", cards: grouped.flat ? [] : grouped.groups.map(([group, rows]) => ({ group, rows })) };
 }
 
 /**

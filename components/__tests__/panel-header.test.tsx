@@ -173,8 +173,33 @@ describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
     "app/(edit)/account/loading.tsx",
   ];
 
-  it("소비자가 열하나다 — 수가 바뀌면 다시 센다", () => {
+  /**
+   * ⚠️ **`PanelBody`만 쓰는 소비자 셋이 이 수 밖에 있다** — `<PanelHeader`로 세면 안 잡히는데
+   * `PanelBody`의 여백도 같은 커밋에서 프리미티브로 올라갔으므로 **같은 이중 여백을 만든다.**
+   * 실제로 구현 중 그 셋이 `16 + 24 = 40`이 됐다 (POSTMORTEM 2026-09-14: 소비자 수가 세 번 틀렸고
+   * 빠졌던 하나가 하필 그 변경의 소비자였다).
+   *
+   * 세는 명령 (돌려서 맞췄다):
+   * `grep -rn "<PanelHeader" components app | grep -v __tests__` → **11**
+   * `grep -rn "<PanelBody" components app | grep -v __tests__` → **14**
+   */
+  const BODY_ONLY = [
+    "components/project-archived.tsx",
+    "components/project-not-ready.tsx",
+    "app/(edit)/error.tsx",
+  ];
+
+  it("소비자가 열하나 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
     expect(CONSUMERS).toHaveLength(11);
+    expect(BODY_ONLY).toHaveLength(3);
+  });
+
+  it.each(BODY_ONLY)("%s도 여백·폭을 다시 정하지 않는다", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    expect(source).not.toContain("max-w-4xl");
+    const tags = [...source.matchAll(/<PanelBody\b[^>]*>/g)].map((match) => match[0]);
+    expect(tags.length).toBeGreaterThan(0);
+    for (const tag of tags) expect(tag).not.toMatch(/\b(px|py|pt|pb|pl|pr)-\d/);
   });
 
   it.each(CONSUMERS)("%s가 `PanelHeader`에 padding을 넘기지 않는다", (path) => {

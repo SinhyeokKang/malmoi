@@ -157,10 +157,15 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * ⚠️ 주석의 "행이 최대 셋"은 계약이 아니다 — `PROJECT_LIMIT`은 **내가 OWNER인 살아 있는** 프로젝트만
    * 세고, 이 목록은 초대받은 것과 보관한 것까지 든다.
    */
-  it("목록이 축소되지 않는다 — `<ul>`이 `shrink-0`을 든다", () => {
-    const ul = /<ul className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
-    expect(ul).not.toBe("");
-    expect(ul).toContain("shrink-0");
+  /**
+   * ⚠️ **2026-09-15에 그 자리가 `<section>`으로 옮겨졌다** — 그룹 헤더가 카드 안으로 들어오면서
+   * `PanelBody`의 flex 자식이 `<ul>`이 아니라 카드가 됐다. **불변식은 그대로이고 요소만 바뀐다.**
+   */
+  it("목록이 축소되지 않는다 — 카드가 `shrink-0`을 든다", () => {
+    const card = /<section className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
+    expect(card).not.toBe("");
+    expect(card).toContain("shrink-0");
+    expect(card).toContain("overflow-hidden");
   });
 
   /**
@@ -306,7 +311,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it("띠 갈래를 `rowBanner`가 정한다 — 화면이 상태를 다시 판정하지 않는다", () => {
     expect(BODY).toContain("rowBanner(row)");
     expect(BODY).toContain("meterSlot(row, row.meters)");
-    expect(BODY).toContain("groupProjects(rows, q)");
+    expect(BODY).toContain("listBody(all, q)");
   });
 
   /**
@@ -447,7 +452,7 @@ describe("캔버스 대조로 잡은 자리", () => {
   /** 아이콘 칩 36 · radius 8 · 제목 15/500 · 설명 14/1.6 46ch (캔버스 `1b`). */
   it.each([
     ["아이콘 칩 36", "size-9"],
-    ["칩 radius 8", "rounded-md"],
+    ["칩 radius 8", "rounded-sm"],
     ["제목 15/500", "text-base font-medium"],
     ["설명 46ch", "max-w-[46ch]"],
     ["카드 radius 12", "rounded-lg"],

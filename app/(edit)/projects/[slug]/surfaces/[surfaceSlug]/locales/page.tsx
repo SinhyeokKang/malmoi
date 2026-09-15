@@ -68,109 +68,103 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
-      <PanelHeader>
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
-              위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.locales}</h1>
-          <LocaleSurfaceSelector slug={slug} surfaceSlug={surfaceSlug} surfaces={surfaces} />
-          {/* 설명은 제목 아래 한 줄이다 — 표 Card에 제목을 또 달면 같은 낱말이 연달아 나온다. */}
-          <p className="text-muted-foreground text-xs">{m.locales.description}</p>
-        </div>
+      <PanelHeader description={m.locales.description}>
+      {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+            위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
+        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.locales}</h1>
+        <LocaleSurfaceSelector slug={slug} surfaceSlug={surfaceSlug} surfaces={surfaces} />
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          {/*
-            ⚠️ **표는 Card 밖이다** (멤버 화면과 같은 관용구). Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐
-            표만 16px 더 들여쓰였다 — 실측으로 확인했다. 행 구분은 `Td`의 `border-t`가 든다.
-          */}
-          {rows.length === 0 ? (
-            <EmptyState
-              icon={Globe}
-              title={m.locales.empty.title}
-              description={m.locales.empty.description}
-            />
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{m.locales.columns.code}</Th>
-                  <Th>{m.locales.columns.progress}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <Tr key={row.code}>
-                    <Td>
-                      <span className="flex flex-wrap items-baseline gap-2">
-                        {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
-                        <span>{row.code}</span>
-                        {row.isBase && <Badge>{m.locales.base}</Badge>}
-                        {/* orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 — 배경 없는 danger (§6.2) */}
-                        {row.orphaned && <Badge variant="danger">{m.locales.orphaned.badge}</Badge>}
-                      </span>
-                      {/*
-                        ⚠️ **사유와 되살리는 방법을 둘 다 말한다.** 배지만 달면 "왜"와 "어떻게"가 없고,
-                        그 둘이 이 화면이 존재하는 이유다 (ARCHITECTURE §5.5.16).
-                      */}
-                      {row.orphaned && (
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          {m.locales.orphaned.reason(row.code)} {m.locales.orphaned.restore}
-                        </p>
-                      )}
-                    </Td>
-                    <Td>
-                      <span className="text-sm">
-                        {m.locales.progress(row.percent, row.translated, row.total)}
-                      </span>
-                      {/* 검토 필요는 번역된 것이 아니다 — 따로 보인다 (`localeProgress`) */}
-                      {row.needsReview > 0 && (
-                        <p className="mt-1">
-                          <Badge variant="warning">{m.locales.needsReview(row.needsReview)}</Badge>
-                        </p>
-                      )}
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+      <PanelBody className="space-y-6">
+        {/*
+          ⚠️ **표는 Card 밖이다** (멤버 화면과 같은 관용구). Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐
+          표만 16px 더 들여쓰였다 — 실측으로 확인했다. 행 구분은 `Td`의 `border-t`가 든다.
+        */}
+        {rows.length === 0 ? (
+          <EmptyState
+            icon={Globe}
+            title={m.locales.empty.title}
+            description={m.locales.empty.description}
+          />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{m.locales.columns.code}</Th>
+                <Th>{m.locales.columns.progress}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <Tr key={row.code}>
+                  <Td>
+                    <span className="flex flex-wrap items-baseline gap-2">
+                      {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
+                      <span>{row.code}</span>
+                      {row.isBase && <Badge>{m.locales.base}</Badge>}
+                      {/* orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 — 배경 없는 danger (§6.2) */}
+                      {row.orphaned && <Badge variant="danger">{m.locales.orphaned.badge}</Badge>}
+                    </span>
+                    {/*
+                      ⚠️ **사유와 되살리는 방법을 둘 다 말한다.** 배지만 달면 "왜"와 "어떻게"가 없고,
+                      그 둘이 이 화면이 존재하는 이유다 (ARCHITECTURE §5.5.16).
+                    */}
+                    {row.orphaned && (
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {m.locales.orphaned.reason(row.code)} {m.locales.orphaned.restore}
+                      </p>
+                    )}
+                  </Td>
+                  <Td>
+                    <span className="text-sm">
+                      {m.locales.progress(row.percent, row.translated, row.total)}
+                    </span>
+                    {/* 검토 필요는 번역된 것이 아니다 — 따로 보인다 (`localeProgress`) */}
+                    {row.needsReview > 0 && (
+                      <p className="mt-1">
+                        <Badge variant="warning">{m.locales.needsReview(row.needsReview)}</Badge>
+                      </p>
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
 
+        {/*
+        ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 이미 라벨과 help를 들고, 둘을 다 두면
+        같은 문장이 화면에 두 번 나온다(실물로 확인했다). Card는 경계선만 든다.
+        */}
+        {canManage && (
+        <Card>
+          <BaseLocaleForm
+            slug={slug}
+            surfaceSlug={surfaceSlug}
+            baseLocale={project.baseLocale}
+            declaredBaseLocale={project.declaredBaseLocale}
+            locales={selectable}
+          />
           {/*
-          ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 이미 라벨과 help를 들고, 둘을 다 두면
-          같은 문장이 화면에 두 번 나온다(실물로 확인했다). Card는 경계선만 든다.
+            ⚠️ **고칠 줄을 이 화면에서 직접 보인다** (§7.7 결정 4의 경계). 설정 화면으로 링크하면
+            "고치려면 두 화면을 오간다"가 되고, 자리를 합친 이유가 사라진다. 워크플로 YAML 전체는
+            설정에 남는다 — 여기 필요한 것은 한 줄이다.
           */}
-          {canManage && (
-          <Card>
-            <BaseLocaleForm
-              slug={slug}
-              surfaceSlug={surfaceSlug}
-              baseLocale={project.baseLocale}
-              declaredBaseLocale={project.declaredBaseLocale}
-              locales={selectable}
-            />
-            {/*
-              ⚠️ **고칠 줄을 이 화면에서 직접 보인다** (§7.7 결정 4의 경계). 설정 화면으로 링크하면
-              "고치려면 두 화면을 오간다"가 되고, 자리를 합친 이유가 사라진다. 워크플로 YAML 전체는
-              설정에 남는다 — 여기 필요한 것은 한 줄이다.
-            */}
-            {pendingLine !== null && (
-              <Alert variant="warning" title={m.locales.pending.title}>
-                <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>)}</p>
-                {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
-                <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{pendingLine}</pre>
-                <p className="mt-2">
-                  <CopyButton value={pendingLine} label={m.locales.pending.copy} />
-                </p>
-              </Alert>
-            )}
-          </Card>
+          {pendingLine !== null && (
+            <Alert variant="warning" title={m.locales.pending.title}>
+              <p>{m.locales.pending.body(<span className="text-mono">.github/workflows/malmoi-i18n.yml</span>)}</p>
+              {/* ⚠️ 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */}
+              <pre className="text-mono bg-muted mt-2 overflow-x-auto rounded-md p-3">{pendingLine}</pre>
+              <p className="mt-2">
+                <CopyButton value={pendingLine} label={m.locales.pending.copy} />
+              </p>
+            </Alert>
           )}
-        </div>
+        </Card>
+        )}
       </PanelBody>
     </>
   );

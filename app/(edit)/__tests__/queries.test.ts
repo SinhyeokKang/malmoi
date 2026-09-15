@@ -363,7 +363,7 @@ describe("loadProjectList", () => {
    * **집계가 행까지 닿는다** (projects-list §3). 조회가 배선됐다는 것과 그 값이 행에 실린다는 것은
    * 다른 사실이고, 후자가 빠지면 화면이 조용히 0을 그린다 — 이 리포가 반복해 밟은 부류다.
    */
-  it("Meter와 사건과 Summary를 함께 낸다", async () => {
+  it("Meter와 사건을 함께 낸다", async () => {
     const base = seed();
     const h = createHarness({
       ...base,
@@ -375,11 +375,13 @@ describe("loadProjectList", () => {
       ],
     });
 
-    const { rows, summary } = await loadProjectList(h.prisma, "u1");
+    const { rows } = await loadProjectList(h.prisma, "u1");
 
-    // p1은 키 2 × 로케일 2 = 4칸이고 값이 있는 것은 둘 — 남는 미번역이 둘이다.
-    // ⚠️ p2는 남의 멤버십이라 어느 값에도 안 들어간다.
-    expect(summary).toMatchObject({ toTranslate: 2, toReview: 1, toSend: 1 });
+    /*
+      ⚠️ **계정 합계(`summary`)를 여기서 더는 안 센다** (2026-09-15) — 목록이 그것을 안 그리므로
+      `loadProjectList`가 `summaryQueue`를 부르지 않는다. 그 함수 자체의 검사는
+      `lib/projects/__tests__/list.test.ts`에 그대로 있고, `project-home`이 새 호출부가 된다.
+    */
     // ⚠️ 사건은 **행에 펼쳐져 있다** — 판정 셋이 그 모양을 그대로 받는다.
     expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0, importing: false });
     // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.

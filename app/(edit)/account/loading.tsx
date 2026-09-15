@@ -27,64 +27,60 @@ export default function AccountLoading() {
   return (
     <>
       <PanelHeader>
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          {/* 제목 줄은 실물과 같은 min-h-9다 — 머리 높이가 안 튄다. */}
-          <div className="flex min-h-9 items-center">
-            <Skeleton className="h-7 w-32" />
-          </div>
+        {/* 제목 줄은 실물과 같은 min-h-9다 — 머리 높이가 안 튄다. */}
+        <div className="flex min-h-9 items-center">
+          <Skeleton className="h-7 w-32" />
         </div>
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-7 px-6 pt-3 pb-8">
-          {/* 머리 블록 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
-          <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
-            <div className="col-span-2 flex items-center gap-4">
-              <Skeleton className="size-14 rounded-full" />
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <Skeleton className="h-9 w-32 rounded-md" />
-                  <Skeleton className="h-9 w-20 rounded-md" />
-                </div>
-                <Skeleton className="h-4 w-64" />
+      <PanelBody className="space-y-7">
+        {/* 머리 블록 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
+        <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
+          <div className="col-span-2 flex items-center gap-4">
+            <Skeleton className="size-14 rounded-full" />
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-9 w-32 rounded-md" />
+                <Skeleton className="h-9 w-20 rounded-md" />
               </div>
-            </div>
-
-            <Skeleton className="h-4 w-12" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-80 rounded-md" />
-              <Skeleton className="h-9 w-16 rounded-md" />
-            </div>
-
-            <Skeleton className="h-4 w-12" />
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-80 rounded-md" />
-              <Skeleton className="h-4 w-56" />
+              <Skeleton className="h-4 w-64" />
             </div>
           </div>
 
-          {/* 구역 둘 — 수단(항목 둘) · GitHub(항목 하나). Sessions는 위 주석대로 없다. */}
-          {[2, 1].map((rows, section) => (
-            <div key={section} className="flex flex-col gap-3">
-              <div className="flex items-baseline gap-2">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-48" />
-              </div>
-              <div className="border-border overflow-hidden rounded-lg border">
-                {Array.from({ length: rows }, (_, row) => (
-                  <div key={row} className={`flex items-center gap-3 p-3 ${row === 0 ? "" : "border-border border-t"}`}>
-                    <Skeleton className="size-8 rounded-sm" />
-                    <div className="flex flex-1 flex-col gap-px">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-4 w-40" />
-                    </div>
-                    <Skeleton className="h-9 w-24 rounded-md" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+          <Skeleton className="h-4 w-12" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-80 rounded-md" />
+            <Skeleton className="h-9 w-16 rounded-md" />
+          </div>
+
+          <Skeleton className="h-4 w-12" />
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-80 rounded-md" />
+            <Skeleton className="h-4 w-56" />
+          </div>
         </div>
+
+        {/* 구역 둘 — 수단(항목 둘) · GitHub(항목 하나). Sessions는 위 주석대로 없다. */}
+        {[2, 1].map((rows, section) => (
+          <div key={section} className="flex flex-col gap-3">
+            <div className="flex items-baseline gap-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            <div className="border-border overflow-hidden rounded-lg border">
+              {Array.from({ length: rows }, (_, row) => (
+                <div key={row} className={`flex items-center gap-3 p-3 ${row === 0 ? "" : "border-border border-t"}`}>
+                  <Skeleton className="size-8 rounded-sm" />
+                  <div className="flex flex-1 flex-col gap-px">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <Skeleton className="h-9 w-24 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </PanelBody>
     </>
   );

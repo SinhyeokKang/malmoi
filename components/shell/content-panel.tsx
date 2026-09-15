@@ -39,35 +39,66 @@ export function ContentPanel({ children }: { children: ReactNode }) {
 }
 
 /**
- * **콘텐츠의 최대 폭** (2026-09-11 사용자). 패널은 남은 폭을 다 쓰지만 **그 안의 내용은 1280에서
- * 멈춘다** — `max-w-7xl`이 Tailwind 스케일의 그 값이라 임의 치수를 늘리지 않는다(규약 6 — ⚠️ **2026-09-11에
- * 링이 `ring-2`가 되며 리포의 임의 치수가 0이 됐다**, 그때까지는 `ring-[3px]` 하나였다).
+ * **콘텐츠의 최대 폭 — 등급 둘** (2026-09-11 사용자 · 2026-09-15에 prop으로 올렸다).
+ * 패널은 남은 폭을 다 쓰지만 **그 안의 내용은 1280 또는 896에서 멈춘다** — 둘 다 Tailwind 스케일의
+ * 값이라 임의 치수를 늘리지 않는다(규약 6).
  *
- * ⚠️ **등급을 셋으로 늘린 것이 아니다** (DESIGN §5.1). 폼·설정이 쓰는 `max-w-4xl`(896)은 그대로이고,
- * 바뀐 것은 **fluid의 정의**다 — "제한 없음"에서 "1280 상한"으로. fluid 화면은 둘뿐이다
- * (번역 · 프로젝트 목록). 화면이 고르는 것은 여전히 둘이다.
+ * ⚠️ **등급을 셋으로 늘린 것이 아니다** (DESIGN §5.1). 화면이 고르던 둘을 **프리미티브의 prop**으로
+ * 올렸을 뿐이다 — 전에는 fluid가 여기 상수였고 limited 일곱은 **안쪽 래퍼**가 `max-w-4xl`을 다시
+ * 씌웠다. 그 이중구조가 여백도 두 벌로 만들었고(`px-6 pt-6 pb-3`을 열한 곳이 각자 적었다),
+ * **여백만 프리미티브로 올리면 limited 일곱이 `16 + 24 = 40`이 된다.** 두 값은 한 층에서 같이 정해진다.
  *
- * ⚠️ **최소 폭과 같은 숫자다** — 셸 루트가 `min-w-[1280px]`이므로 "콘텐츠는 1280에서 1280까지"가
- * 한 문장이 된다. 1440을 고르지 않은 이유는 그것이 **뷰포트 2032px부터** 걸려서다: 1920 디스플레이
- * (패널 1328)에서는 아무 일도 안 한다.
+ * ⚠️ **fluid의 1280은 최소 폭과 같은 숫자다** — 셸 루트가 `min-w-[1280px]`이므로 "콘텐츠는 1280에서
+ * 1280까지"가 한 문장이 된다. 1440을 고르지 않은 이유는 그것이 **뷰포트 2032px부터** 걸려서다:
+ * 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다.
  */
-const CONTENT_MAX = "mx-auto w-full max-w-7xl";
+const CONTENT_MAX = {
+  fluid: "mx-auto w-full max-w-7xl",
+  limited: "mx-auto w-full max-w-4xl",
+} as const;
 
 /**
- * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · 전역 `Alert`.
+ * ⚠️ **기본이 `limited`다** — 소비자 열하나 중 일곱이고, 빠뜨렸을 때 좁아지는 쪽이 넘치는 쪽보다
+ * 눈에 띈다. fluid 넷은 번역 표 · 프로젝트 목록(+ 그 스켈레톤) · 표면 추가다.
+ */
+type PanelWidth = keyof typeof CONTENT_MAX;
+
+/**
+ * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · 전역 `Alert` · (선택) 설명 한 줄.
  *
  * ⚠️ **`shrink-0`이 없으면 본문이 길 때 머리가 눌린다.** flex 자식의 축소 하한은 콘텐츠 높이가
  * 아니라 0이다.
  *
- * ⚠️ **여백은 화면이 정한다** — 현재 좌우 여백은 `px-6`이지만 limited 화면은 안쪽 래퍼가 든다.
- * 이 프리미티브에도 padding을 넣으면 그 화면들만 두 번 적용된다.
+ * ⚠️ **여백을 이제 이쪽이 든다** (projects-panel-rework · 캔버스 `1a`~`1d`의 `padding:16`).
+ * 전엔 열한 곳이 각자 `px-6 pt-6 pb-3`을 적었고 그중 하나(`add-surface`)가 이미 `px-6 py-5`로
+ * 어긋나 있었다. **폭 등급을 함께 든 것이 그것을 가능하게 한 조건이다** — `CONTENT_MAX` 주석 참조.
+ *
+ * ⚠️ **아래 선이 바깥에 있다.** 선은 패널 **전폭**이라 폭 상한 안쪽에 두면 1280을 넘는 화면에서
+ * 잘린다 — 그 화면에서만 제목 줄이 다시 "떠 있는 요소"로 읽힌다.
+ *
+ * ⚠️ **선은 조건부가 아니다.** 스크롤할 때만 나타나는 선은 "무언가 숨어 있다"는 신호인데, 여기서는
+ * 구조가 이미 그것을 말한다.
+ *
+ * ⚠️ **여백 16의 전제는 "제목 줄 하나"다** (POSTMORTEM 2026-09-14 — 프리미티브의 여백이 그 슬롯을
+ * 안 쓰는 소비자에게만 깨졌다). 설명 한 줄이 붙는 화면 셋(`logs`·`locales`·`surfaces/new`)은 머리가
+ * 세로로 늘어야 하므로 **그 조건을 주석이 아니라 슬롯으로 든다** — 크기(13)도 여기서 정해지고,
+ * 호출부에 맡겼을 때 그것이 12와 14 두 벌로 갈려 있었다.
  *
  * ⚠️ **`className`이 안쪽 래퍼로 간다** — 여백이 상한 **안**에 있어야 머리와 본문의 왼쪽이 맞는다.
  */
-export function PanelHeader({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
+export function PanelHeader({
+  width = "limited",
+  description,
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"div"> & { width?: PanelWidth; description?: ReactNode }) {
   return (
-    <div className="shrink-0" {...props}>
-      <div className={cn(CONTENT_MAX, className)}>{children}</div>
+    <div className="border-border shrink-0 border-b" {...props}>
+      <div className={cn(CONTENT_MAX[width], "flex flex-col gap-3 p-4", className)}>
+        {children}
+        {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
+      </div>
     </div>
   );
 }
@@ -79,16 +110,21 @@ export function PanelHeader({ children, className, ...props }: ComponentPropsWit
  * 통째로 늘어나고, 스크롤이 여기가 아니라 바깥에 생긴다 — 그러면 머리가 다시 같이 올라간다.
  *
  * ⚠️ **폭 상한을 스크롤 컨테이너에 직접 주지 않는다** — 그러면 **스크롤바가 콘텐츠 옆에** 생긴다.
- * 화면 다섯이 `max-w-4xl`을 안쪽 래퍼에 두는 이유가 그것이고, 여기가 그 래퍼를 프리미티브로
- * 올린 자리다(그 다섯은 안쪽에서 더 좁히므로 그대로 동작한다).
+ * 그래서 등급은 안쪽 래퍼가 들고 스크롤은 바깥이 든다. 눈으로는 "폭이 맞네"로 보이고, 콘텐츠가
+ * 넘칠 때만 드러나는 부류다.
  *
  * ⚠️ **래퍼가 `min-h-full`을 든다** — `/projects`가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로
  * 세로 중앙에 세운다. 래퍼 높이가 auto면 그 `flex-1`이 먹을 높이가 없어 빈 상태가 위에 붙는다.
  */
-export function PanelBody({ children, className, ...props }: ComponentPropsWithoutRef<"div">) {
+export function PanelBody({
+  width = "limited",
+  children,
+  className,
+  ...props
+}: ComponentPropsWithoutRef<"div"> & { width?: PanelWidth }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" {...props}>
-      <div className={cn(CONTENT_MAX, "min-h-full", className)}>{children}</div>
+      <div className={cn(CONTENT_MAX[width], "min-h-full p-4", className)}>{children}</div>
     </div>
   );
 }

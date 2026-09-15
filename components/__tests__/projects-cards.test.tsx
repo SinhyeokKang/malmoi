@@ -149,9 +149,9 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
   /** ⚠️ **장식이 패널 안으로 들어오는 예외를 되돌린다** — 다른 블록이 전부 카드인데 한 면만 화려하면 안 된다. */
   it("0건이 카드 하나이고 그라데이션·점 필드가 없다", async () => {
     const container = await draw({ all: [] });
+    // 점 필드는 `<canvas>`이고 그라데이션 면은 `from-auth-hero-*` 토큰이다 — 둘 다 자취가 없어야 한다.
     expect(container.querySelector("canvas")).toBeNull();
     expect(container.innerHTML).not.toContain("from-auth-hero-from");
-    expect(find(container, "main, [data-empty], p")).toBeTruthy();
     expect(container.textContent).toContain(m.projects.empty.title);
     expect(container.textContent).toContain(m.projects.empty.description);
   });

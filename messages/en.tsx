@@ -310,10 +310,23 @@ export const en = {
      * "탭 0건"이라는 갈래 자체가 없어졌다 — 남겨 두면 탭이 있던 시절의 화석이 사전에 남는다.
      */
     narrowed: {
-      title: "No results",
-      bySearch: (q: string) => `No project matches "${q}".`,
       /**
-       * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 줄의 같은 동작도
+       * ⚠️ **제목이 질의를 든다** (2026-09-15 캔버스 `1d` — 전엔 상수 `No results`였고 질의는 설명이
+       * 들었다). 카드 하나에 문장이 둘뿐이라 제목이 "무엇을 못 찾았나"를 답하고, 설명은 그 다음
+       * 질문("검색이 무엇을 보나")으로 넘어간다.
+       *
+       * ⚠️ **곡선 따옴표다**(`“ ”`) — 캔버스 값이고 `resultsFor`와 같은 표기여야 한 화면에서 같은
+       * 것이 두 모양으로 보이지 않는다.
+       */
+      title: (q: string): string => `No projects match “${q}”`,
+      /**
+       * ⚠️ **0건을 본 사람의 다음 질문이 늘 "무엇으로 찾나"다.** 캔버스는 뒤에 한 문장을 더 붙이는데
+       * (*"…clear the search to see all three projects."*) 그 문장이 총계 **셋**을 문자열에 박아
+       * 넣는다 — 프로젝트가 셋이 아닌 계정에서 거짓말이 되므로 앞 문장만 쓴다.
+       */
+      description: "Search looks at the project name and the repository.",
+      /**
+       * ⚠️ **`Clear filters`에서 바뀌었다** — 되돌릴 축이 질의 하나뿐이다. 결과 카드의 같은 동작도
        * 같은 낱말을 써야 한다: 한 화면에서 같은 동작이 두 이름을 갖지 않는다.
        */
       reset: "Clear search",
@@ -333,11 +346,13 @@ export const en = {
         "Connect a repository and malmoi will find the locale files for you. Nothing is written back until you send changes.",
     },
     /**
-     * 머리의 Summary 넷 (projects-list design §11.3). **내 멤버십 중 보관하지 않은 프로젝트 전체**의
-     * 값이고 검색·그룹에 흔들리지 않는다.
+     * 큐 넷의 제목.
      *
-     * ⚠️ **누를 수 없다** — 계정 단위 큐 화면이 생기기 전까지는 표시 전용이다(열린 결정 1).
-     * 링크로 만들면 아직 없는 화면을 가리키게 된다.
+     * ⚠️ **2026-09-15에 목록 화면에서 내려왔다** (projects-panel-rework §2-6) — 못 누르는 숫자 넷이
+     * 머리 90px을 차지했고, 같은 값을 프로젝트별로 쪼갠 것이 이미 행의 Meter와 아래 띠다.
+     *
+     * ⚠️ **지우지 않는다 — `project-home`이 카운트 카드 넷으로 받는다**(`project-home/tasks.md`:189
+     * *"카드 넷의 제목은 새로 만들지 않는다"*). 그때까지 **소비자가 없는 채로 남는다.**
      */
     summary: {
       /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
@@ -352,14 +367,15 @@ export const en = {
      */
     group: { needsAttention: "Needs attention", allSet: "All set" },
     /**
-     * 검색 중의 결과 줄. ⚠️ **총계는 좁히기 전의 값**이라 "n of total"이 성립한다 — 배지가 `1`로
-     * 바뀌면 "프로젝트가 하나 남았다"로 오읽히므로, 좁혀진 수는 여기가 들고 분모가 그 옆에 선다.
+     * 검색 결과 카드의 헤더 (캔버스 `1c`).
      *
-     * ⚠️ **질의가 문구 안에 없다** — 캔버스가 그 낱말만 foreground로 칠하므로 화면이 별개 노드로
-     * 그린다. 문자열에 넣으면 그 강조를 만들 자리가 사라진다.
+     * ⚠️ **수를 넣지 않는다** — 옛 `searchResult(n, total)`은 `1 of 3 projects match`였는데, 카운트
+     * 배지가 바로 옆에서 건수를 들므로 문장에 수를 두면 같은 것을 두 번 말한다.
+     *
+     * ⚠️ **질의가 문구 **안**으로 들어왔다** — 전엔 캔버스가 그 낱말만 foreground로 칠해 화면이
+     * 별개 노드로 그렸는데, 카드 헤더에서는 제목 전체가 같은 급이라 강조할 자리가 없다.
      */
-    searchResult: (n: number, total: number): string =>
-      `${n} of ${total} project${total === 1 ? "" : "s"} match`,
+    resultsFor: (q: string): string => `Results for “${q}”`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**

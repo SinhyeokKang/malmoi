@@ -123,130 +123,126 @@ export default async function SettingsPage({
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        <div className="mx-auto w-full max-w-4xl space-y-3 px-6 pt-6 pb-3">
-          {/*
-            페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
-            ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
-            버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
-          */}
-          {notice !== null && <Alert variant="danger">{notice}</Alert>}
-          {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
-              위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
-          <h1 className="flex min-h-9 items-center text-xl font-medium">{m.common.nav.projectSettings}</h1>
-        </div>
+        {/*
+          페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
+          ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
+          버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
+        */}
+        {notice !== null && <Alert variant="danger">{notice}</Alert>}
+        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+            위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
+        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1>
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          <Card title={m.settings.repository.title} description={m.settings.repository.description}>
-            {/* owner/name은 식별자라 mono다 (DESIGN §4.1) */}
-            <p className="text-mono bg-muted inline-block rounded px-2 py-1">
-              {project.repoOwner}/{project.repoName}
-            </p>
-            <HealthRow health={health} slug={slug} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
-            {/*
-              기준 브랜치 (6b-3 — design §3.13). ⚠️ **readiness 분기 밖이다** — 안에 두면 첫 적재가
-              끝나는 순간 `revalidatePath`가 폼을 언마운트해 방금 받은 저장 결과가 사라진다
-              (POSTMORTEM 2026-09-07, `FirstIngestRetry`와 같은 축).
-
-              ⚠️ **기준 언어 필드와 대기 Alert는 여기 없다** — 6b-5가 `/projects/:slug/locales`로 옮겼다
-              (PRODUCT §7.7 결정 4). 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를
-              말할 자리가 생긴다. 이 화면은 그 선언을 **읽기만** 한다(아래 워크플로 YAML).
-            */}
-            <RepositoryForm slug={slug} baseBranch={project.baseBranch} />
-          </Card>
-
-          <Card title={m.settings.status.title}>
-            {/* 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1) — 초록도 배지도 늘리지 않는다. */}
-            <p className="text-muted-foreground text-xs">
-              {readiness === "ready"
-                ? m.settings.status.ready
-                : readiness === "setup"
-                  ? m.settings.status.setup
-                  : m.settings.status.awaiting}
-            </p>
-            {/*
-              ⚠️ **`FirstIngestRetry`를 readiness 분기 밖에 둔다.** 성공하면 `revalidatePath`가 이 블록을 다시
-              렌더하고 readiness가 `ready`로 바뀌는데, 그때 컴포넌트가 분기와 함께 사라지면 방금 받은 결과
-              문구도 사라진다 — 부분 실패의 "N couldn't be read"가 아무에게도 닿지 않는다(불변식 9).
-              같은 자리에 남겨 두면 클라이언트 상태가 서버 재렌더를 넘어간다 (POSTMORTEM 2026-09-07).
-            */}
-            {/*
-              ⚠️ **in-block `Alert`다** — 페이지 수준 거부가 아니라 이 블록의 사실이고, 머리로 올리면
-              "설정을 열 수 없다"와 같은 층으로 읽힌다 (DESIGN §6.6).
-
-              ⚠️ **`FirstIngestRetry` 위에 선다** — 사유를 읽기 전에 버튼부터 보이면 같은 실패를 그대로
-              다시 돌린다. 첫 적재 전이면 그 버튼이 복구 경로이고, 이미 적재된 뒤면 그 버튼은
-              `not-awaiting`이라 고칠 자리가 대상 리포의 CI다 — 문구가 그것을 가른다.
-            */}
-            {importFailure !== null && (
-              <Alert variant="danger">
-                {importFailureMessage(importFailure)}{" "}
-                {readiness === "awaiting_first_sync"
-                  ? m.settings.status.importRetry
-                  : m.settings.status.importRerun}
-              </Alert>
-            )}
-            <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
-          </Card>
-
-          <Card title={m.surfaces.title}>
-            <div className="space-y-3">
-              {project.surfaces.map(surface => <div key={surface.id} className="flex items-center justify-between gap-3">
-                <ButtonLink variant="link" className="text-mono" href={routes.surfaceTranslations(slug, surface.slug)}>{surface.pathTemplate ?? surface.slug}</ButtonLink>
-              </div>)}
-              {project.archivedAt === null && <ButtonLink href={routes.addSurface(slug)}>{m.surfaces.add}</ButtonLink>}
-            </div>
-          </Card>
-
-          <Card title={m.settings.token.title}>
-            <PushTokenPanel slug={slug} />
-          </Card>
-
-          <Card title={m.settings.workflow.title}>
-            {project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({
-              slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf),
-            })} />}
-            {/*
-              ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
-              참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
-            */}
-            <p className="text-muted-foreground mt-2 text-xs leading-[1.6]">
-              {m.settings.workflow.hookHint(
-                <span className="text-mono">useTranslations()</span>,
-                <span className="text-mono">wrapper</span>,
-                <span className="text-mono">docs/ACTIONS.md</span>,
-              )}
-            </p>
-          </Card>
-
-          <Card title={m.settings.account.title}>
-            {account.status === "reauthorize" ? (
-              <ReauthorizePrompt slug={slug} />
-            ) : account.status === "unavailable" ? (
-              <p className="text-muted-foreground text-xs">{m.settings.account.unavailable}</p>
-            ) : (
-              <GithubAccount slug={slug} login={account.login} />
-            )}
-          </Card>
-
+      <PanelBody className="space-y-6">
+        <Card title={m.settings.repository.title} description={m.settings.repository.description}>
+          {/* owner/name은 식별자라 mono다 (DESIGN §4.1) */}
+          <p className="text-mono bg-muted inline-block rounded px-2 py-1">
+            {project.repoOwner}/{project.repoName}
+          </p>
+          <HealthRow health={health} slug={slug} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
           {/*
-            보관 (7단계 — design §6.2). **맨 아래이고 readiness 분기 밖의 형제다** — 첫 적재가 실패한
-            프로젝트도 멈출 수 있어야 하고, 분기 안에 두면 그 상태에서 카드가 사라진다.
+            기준 브랜치 (6b-3 — design §3.13). ⚠️ **readiness 분기 밖이다** — 안에 두면 첫 적재가
+            끝나는 순간 `revalidatePath`가 폼을 언마운트해 방금 받은 저장 결과가 사라진다
+            (POSTMORTEM 2026-09-07, `FirstIngestRetry`와 같은 축).
+
+            ⚠️ **기준 언어 필드와 대기 Alert는 여기 없다** — 6b-5가 `/projects/:slug/locales`로 옮겼다
+            (PRODUCT §7.7 결정 4). 로케일 목록과 base 지정이 한 화면에 있어야 orphaned 로케일의 사유를
+            말할 자리가 생긴다. 이 화면은 그 선언을 **읽기만** 한다(아래 워크플로 YAML).
           */}
-          <Card title={m.archive.title} description={m.archive.description}>
-            <ArchiveCard
-              slug={slug}
-              name={project.name}
-              archived={project.archivedAt !== null}
-              openPrUrl={openPrUrl}
-            />
-          </Card>
-        </div>
+          <RepositoryForm slug={slug} baseBranch={project.baseBranch} />
+        </Card>
+
+        <Card title={m.settings.status.title}>
+          {/* 가장 흔한 상태가 가장 조용해야 한다 (DESIGN §6.1) — 초록도 배지도 늘리지 않는다. */}
+          <p className="text-muted-foreground text-xs">
+            {readiness === "ready"
+              ? m.settings.status.ready
+              : readiness === "setup"
+                ? m.settings.status.setup
+                : m.settings.status.awaiting}
+          </p>
+          {/*
+            ⚠️ **`FirstIngestRetry`를 readiness 분기 밖에 둔다.** 성공하면 `revalidatePath`가 이 블록을 다시
+            렌더하고 readiness가 `ready`로 바뀌는데, 그때 컴포넌트가 분기와 함께 사라지면 방금 받은 결과
+            문구도 사라진다 — 부분 실패의 "N couldn't be read"가 아무에게도 닿지 않는다(불변식 9).
+            같은 자리에 남겨 두면 클라이언트 상태가 서버 재렌더를 넘어간다 (POSTMORTEM 2026-09-07).
+          */}
+          {/*
+            ⚠️ **in-block `Alert`다** — 페이지 수준 거부가 아니라 이 블록의 사실이고, 머리로 올리면
+            "설정을 열 수 없다"와 같은 층으로 읽힌다 (DESIGN §6.6).
+
+            ⚠️ **`FirstIngestRetry` 위에 선다** — 사유를 읽기 전에 버튼부터 보이면 같은 실패를 그대로
+            다시 돌린다. 첫 적재 전이면 그 버튼이 복구 경로이고, 이미 적재된 뒤면 그 버튼은
+            `not-awaiting`이라 고칠 자리가 대상 리포의 CI다 — 문구가 그것을 가른다.
+          */}
+          {importFailure !== null && (
+            <Alert variant="danger">
+              {importFailureMessage(importFailure)}{" "}
+              {readiness === "awaiting_first_sync"
+                ? m.settings.status.importRetry
+                : m.settings.status.importRerun}
+            </Alert>
+          )}
+          <FirstIngestRetry slug={slug} canRun={readiness === "awaiting_first_sync"} />
+        </Card>
+
+        <Card title={m.surfaces.title}>
+          <div className="space-y-3">
+            {project.surfaces.map(surface => <div key={surface.id} className="flex items-center justify-between gap-3">
+              <ButtonLink variant="link" className="text-mono" href={routes.surfaceTranslations(slug, surface.slug)}>{surface.pathTemplate ?? surface.slug}</ButtonLink>
+            </div>)}
+            {project.archivedAt === null && <ButtonLink href={routes.addSurface(slug)}>{m.surfaces.add}</ButtonLink>}
+          </div>
+        </Card>
+
+        <Card title={m.settings.token.title}>
+          <PushTokenPanel slug={slug} />
+        </Card>
+
+        <Card title={m.settings.workflow.title}>
+          {project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({
+            slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf),
+          })} />}
+          {/*
+            ⚠️ **훅 안내가 여기 산다** (2026-09-13). 온보딩 ④는 아직 CI를 한 번도 안 돌린 자리라
+            참조가 0인지 알 수 없다 — 이 화면은 그것을 이미 볼 수 있다.
+          */}
+          <p className="text-muted-foreground mt-2 text-xs leading-[1.6]">
+            {m.settings.workflow.hookHint(
+              <span className="text-mono">useTranslations()</span>,
+              <span className="text-mono">wrapper</span>,
+              <span className="text-mono">docs/ACTIONS.md</span>,
+            )}
+          </p>
+        </Card>
+
+        <Card title={m.settings.account.title}>
+          {account.status === "reauthorize" ? (
+            <ReauthorizePrompt slug={slug} />
+          ) : account.status === "unavailable" ? (
+            <p className="text-muted-foreground text-xs">{m.settings.account.unavailable}</p>
+          ) : (
+            <GithubAccount slug={slug} login={account.login} />
+          )}
+        </Card>
+
+        {/*
+          보관 (7단계 — design §6.2). **맨 아래이고 readiness 분기 밖의 형제다** — 첫 적재가 실패한
+          프로젝트도 멈출 수 있어야 하고, 분기 안에 두면 그 상태에서 카드가 사라진다.
+        */}
+        <Card title={m.archive.title} description={m.archive.description}>
+          <ArchiveCard
+            slug={slug}
+            name={project.name}
+            archived={project.archivedAt !== null}
+            openPrUrl={openPrUrl}
+          />
+        </Card>
       </PanelBody>
     </>
   );

@@ -97,90 +97,86 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        `max-w-4xl`은 **안쪽 래퍼**가 든다: `PanelBody`에 직접 주면 스크롤 컨테이너가 좁아져
-        스크롤바가 패널 가장자리가 아니라 콘텐츠 옆에 생긴다.
+        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        <div className="mx-auto w-full max-w-4xl px-6 pt-6 pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-            <h1 className="text-xl font-medium">{project.name}</h1>
-            <ButtonLink variant="primary" href={routes.translations(slug)}>
-              <Languages aria-hidden />
-              {m.home.openTranslations}
-            </ButtonLink>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
+          <h1 className="text-lg font-medium">{project.name}</h1>
+          <ButtonLink variant="primary" href={routes.translations(slug)}>
+            <Languages aria-hidden />
+            {m.home.openTranslations}
+          </ButtonLink>
         </div>
       </PanelHeader>
 
-      <PanelBody>
-        <div className="mx-auto w-full max-w-4xl space-y-6 px-6 pt-3 pb-8">
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-sm font-medium">{m.home.progress.title}</h2>
-              <p className="text-muted-foreground mt-1 text-xs">{m.home.progress.description}</p>
-            </div>
-            {locales.length === 0 ? (
-              /*
-                ⚠️ **적재는 끝났는데 살아 있는 로케일이 0인 상태다** — 파일이 전부 사라졌다. 사유와
-                되살리는 방법은 로케일 화면이 들고 있으므로(6b-5) 그리로 보낸다.
-              */
-              <p className="text-muted-foreground text-xs">
-                {m.home.progress.empty}{" "}
-                <Link
-                  href={routes.locales(slug)}
-                  className="focus-visible:ring-ring text-foreground focus-visible:ring-2 focus-visible:outline-none"
-                >
-                  {m.home.progress.emptyLink}
-                </Link>
-              </p>
-            ) : (
-              <ul className="divide-border border-border divide-y rounded-lg border">
-                {locales.map((locale) => (
-                  <li key={`${locale.surfaceSlug}:${locale.code}`}>
-                    {/*
-                      ⚠️ **행 전체가 링크다.** 그 로케일만 보이는 번역 화면에 착지시키는 것이 개요가 일로
-                      이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
-                      (8-4에서 `?focus=`가 `?locales=`로 바뀌었다 — 로케일이 열이 아니라 행이라
-                      "기준 열"이 아니라 **보일 로케일**이다. 단일 선택이라 동작은 같다.)
-                    */}
-                    <Link
-                      href={routes.surfaceTranslations(slug, locale.surfaceSlug, { locales: locale.code })}
-                      className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
-                    >
-                      {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
-                      <span>{project.surfaces.length > 1 ? `${locale.surfaceSlug} · ${locale.code}` : locale.code}</span>
-                      {locale.isBase && <Badge>{m.locales.base}</Badge>}
-                      <span className="ml-auto flex items-baseline gap-2">
-                        {locale.needsReview > 0 && (
-                          <Badge variant="warning">{m.locales.needsReview(locale.needsReview)}</Badge>
-                        )}
-                        <span className="text-sm">
-                          {m.locales.progress(locale.percent, locale.translated, locale.total)}
-                        </span>
+      <PanelBody className="space-y-6">
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-sm font-medium">{m.home.progress.title}</h2>
+            <p className="text-muted-foreground mt-1 text-xs">{m.home.progress.description}</p>
+          </div>
+          {locales.length === 0 ? (
+            /*
+              ⚠️ **적재는 끝났는데 살아 있는 로케일이 0인 상태다** — 파일이 전부 사라졌다. 사유와
+              되살리는 방법은 로케일 화면이 들고 있으므로(6b-5) 그리로 보낸다.
+            */
+            <p className="text-muted-foreground text-xs">
+              {m.home.progress.empty}{" "}
+              <Link
+                href={routes.locales(slug)}
+                className="focus-visible:ring-ring text-foreground focus-visible:ring-2 focus-visible:outline-none"
+              >
+                {m.home.progress.emptyLink}
+              </Link>
+            </p>
+          ) : (
+            <ul className="divide-border border-border divide-y rounded-lg border">
+              {locales.map((locale) => (
+                <li key={`${locale.surfaceSlug}:${locale.code}`}>
+                  {/*
+                    ⚠️ **행 전체가 링크다.** 그 로케일만 보이는 번역 화면에 착지시키는 것이 개요가 일로
+                    이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
+                    (8-4에서 `?focus=`가 `?locales=`로 바뀌었다 — 로케일이 열이 아니라 행이라
+                    "기준 열"이 아니라 **보일 로케일**이다. 단일 선택이라 동작은 같다.)
+                  */}
+                  <Link
+                    href={routes.surfaceTranslations(slug, locale.surfaceSlug, { locales: locale.code })}
+                    className="hover:bg-muted/40 focus-visible:ring-ring flex flex-wrap items-baseline gap-2 px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    {/* ⚠️ sans다 — 2026-09-11에 로케일 코드가 mono 표면에서 빠졌다 (DESIGN §4.1) */}
+                    <span>{project.surfaces.length > 1 ? `${locale.surfaceSlug} · ${locale.code}` : locale.code}</span>
+                    {locale.isBase && <Badge>{m.locales.base}</Badge>}
+                    <span className="ml-auto flex items-baseline gap-2">
+                      {locale.needsReview > 0 && (
+                        <Badge variant="warning">{m.locales.needsReview(locale.needsReview)}</Badge>
+                      )}
+                      <span className="text-sm">
+                        {m.locales.progress(locale.percent, locale.translated, locale.total)}
                       </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium">{m.home.activity.title}</h2>
-            {activity.length === 0 ? (
-              <p className="text-muted-foreground text-xs">{m.home.activity.empty}</p>
-            ) : (
-              <ul className="divide-border border-border divide-y rounded-lg border">
-                {activity.map((item) => (
-                  <li key={activityKey(item)} className="px-4 py-3">
-                    <ActivityRow item={item} slug={slug} now={now} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium">{m.home.activity.title}</h2>
+          {activity.length === 0 ? (
+            <p className="text-muted-foreground text-xs">{m.home.activity.empty}</p>
+          ) : (
+            <ul className="divide-border border-border divide-y rounded-lg border">
+              {activity.map((item) => (
+                <li key={activityKey(item)} className="px-4 py-3">
+                  <ActivityRow item={item} slug={slug} now={now} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </PanelBody>
     </>
   );
