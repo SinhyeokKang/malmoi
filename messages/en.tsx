@@ -359,11 +359,18 @@ export const en = {
       /** 편집자 이름이 없을 수도 있다 — `actorLabel`이 못 찾으면 원문이거나 `null`이다. */
       edit: (who: string | null, key: string, locale: string, surface: string): string =>
         `${who === null ? `${key} was edited` : `${who} edited ${key}`} in ${locale} · ${surface}`,
-      /** ⚠️ **`{n} files changed`다** — `SyncRun.changed`가 파일 수이고 칸 수가 아니다. */
-      publish: (pr: number | null, changed: number | null): string => {
-        const head = pr === null ? "Published translations" : `Published pull request #${pr}`;
-        return changed === null ? head : `${head} · ${changed} ${changed === 1 ? "file" : "files"} changed`;
-      },
+      /**
+       * ⚠️ **`{n} files changed`다** — `SyncRun.changed`가 파일 수이고 칸 수가 아니다.
+       *
+       * ⚠️ **번호가 노드다** — 파랑 다섯 자리 중 하나가 그 조각이라 문자열로 접으면 화면이 색을 줄
+       * 자리를 잃는다 (spec §3.3-9).
+       */
+      publish: (pr: ReactNode | null, changed: number | null): ReactNode => (
+        <>
+          {pr === null ? "Published translations" : <>Published pull request {pr}</>}
+          {changed !== null && ` · ${changed} ${changed === 1 ? "file" : "files"} changed`}
+        </>
+      ),
       syncFailed: (surface: string): string => `Sync failed · ${surface} could not be read`,
     },
 
@@ -414,7 +421,12 @@ export const en = {
       },
       archived: {
         title: "This project is archived",
-        body: "Editing, syncing and publishing are off, and CI pushes are rejected. The open pull request was left alone. Restore it to work on it again.",
+        /**
+         * ⚠️ **캔버스의 `CI pushes are rejected`를 바꿨다** — 이 화면에 `push` 낱말이 0이라는 것이
+         * 완료 조건이고(spec §3.3-7), `home-vocabulary.test.ts`가 그것을 센다. 뜻은 같다: 거절되는
+         * 것은 리포에서 들어오는 Sync다.
+         */
+        body: "Editing and publishing are off, and syncs from your repository are refused. The open pull request was left alone. Restore it to work on it again.",
         action: "Restore project",
         editor: "Ask an owner of this project to restore it.",
       },

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import type { ReactNode } from "react";
+
 import type { ActivityItem } from "@/lib/home/overview";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -67,14 +69,22 @@ export function LogsCard({ items, slug, now, syncedBefore }: {
   );
 }
 
-function line(item: ActivityItem): string {
+/**
+ * ⚠️ **파랑은 링크색이 아니라 "리포 트래픽"이다** (spec §3.3-9 — 화면에 다섯 자리). 들어오는 Sync
+ * 줄과 되돌려보낸 PR 번호가 그중 둘이고, 둘 다 여기서는 **링크가 아니다**: 이 카드는 요약이고
+ * 목적지는 바닥의 `All logs`다.
+ */
+function line(item: ActivityItem): ReactNode {
   switch (item.kind) {
     case "edit":
       return m.home.logs.edit(item.actor, item.key, item.locale, item.surfaceSlug);
     case "push":
-      return m.home.logs.sync(item.newKeys, item.surfaceSlug);
+      return <span className="text-blue-600">{m.home.logs.sync(item.newKeys, item.surfaceSlug)}</span>;
     case "publish":
-      return m.home.logs.publish(item.prNumber, item.changed);
+      return m.home.logs.publish(
+        item.prNumber === null ? null : <span className="text-blue-600">{m.home.meta.pr(item.prNumber)}</span>,
+        item.changed,
+      );
     case "sync_failed":
       return m.home.logs.syncFailed(item.surfaceSlug);
   }
