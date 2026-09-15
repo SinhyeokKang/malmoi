@@ -41,12 +41,17 @@ function EmptyCard({ icon: Icon, title, description, action }: {
       {/*
         ⚠️ **`<p>` 둘이다 — `<span>`으로 두면 문단 경계가 0이 된다.** `flex flex-col`이 시각적으로는
         같은 결과를 내서 화면에도 테스트에도 안 나타난다. `EmptyState` 프리미티브도 `<p>` 둘이다.
+
+        ⚠️ **래퍼가 `<div>`여야 한다** — `<span>`은 phrasing content라 flow content인 `<p>`를 담을 수
+        없다. 파서가 `<span>`을 자동으로 닫지 않고 React의 `validateDOMNesting`도 `<p>`에 대해
+        `pTagInButtonScope`만 보므로 **화면에도 콘솔에도 테스트에도 안 나타난다.** 여백은 안 바뀐다
+        (부모와 이 래퍼가 둘 다 `flex flex-col`이다).
       */}
-      <span className="flex flex-col items-center gap-1.5">
+      <div className="flex flex-col items-center gap-1.5">
         <p className="text-base font-medium">{title}</p>
         {/* ⚠️ **46ch다** — `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다. */}
         <p className="text-muted-foreground max-w-[46ch] text-sm leading-relaxed text-pretty">{description}</p>
-      </span>
+      </div>
       {action}
     </div>
   );
@@ -99,7 +104,7 @@ export function NoProjectsMatch({ query }: { query: string }) {
       action={
         <Link
           href={routes.projects()}
-          className="focus-visible:ring-ring rounded-sm text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+          className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
         >
           {m.projects.narrowed.reset}
         </Link>

@@ -85,7 +85,7 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
       const rows = card.querySelectorAll("li").length;
       const badge = find<HTMLElement>(card, "h2 + span");
       expect(find<HTMLElement>(badge, "[aria-hidden]").textContent).toBe(String(rows));
-      expect(find<HTMLElement>(badge, ".sr-only").textContent).toBe(m.projects.cardCount(rows));
+      expect(find<HTMLElement>(badge, ".sr-only").textContent).toBe(m.projects.count(rows));
     }
   });
 
@@ -140,7 +140,9 @@ describe("`1c` 검색 결과 — 결과 카드 하나", () => {
    */
   it("제목 배지는 3이고 카드 카운트는 1이다", async () => {
     const container = await draw({ q: "chrome" });
-    expect(find<HTMLElement>(container, "h1 + span").textContent).toBe("3");
+    const total = find<HTMLElement>(container, "h1 + span");
+    expect(find<HTMLElement>(total, "[aria-hidden]").textContent).toBe("3");
+    expect(find<HTMLElement>(total, ".sr-only").textContent).toBe(m.projects.count(3));
     expect(find<HTMLElement>(container, "section h2 + span [aria-hidden]").textContent).toBe("1");
   });
 
@@ -167,7 +169,7 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
   /** ⚠️ **머리가 검색·[New project]를 그리지 않는다**(`hasProjects === false`). 배지 `0`은 남는다. */
   it("0건의 머리가 제목과 배지 0뿐이다", async () => {
     const container = await draw({ all: [] });
-    expect(find<HTMLElement>(container, "h1 + span").textContent).toBe("0");
+    expect(find<HTMLElement>(container, "h1 + span [aria-hidden]").textContent).toBe("0");
     expect(container.querySelector("input")).toBeNull();
   });
 

@@ -382,14 +382,14 @@ export const en = {
      */
     resultsFor: (q: string): string => `Results for “${q}”`,
     /**
-     * 카드 헤더 카운트 배지의 **스크린리더 문장**.
+     * 카운트 배지의 **스크린리더 문장** — 제목 옆 총계와 카드 헤더 넷이 같은 것을 쓴다.
      *
      * ⚠️ **숫자만 그리면 접근 이름이 `Results for “chrome” 2`다** — 옛 결과 줄(`1 of 3 projects match`)이
      * 완전한 문장이었는데 카드로 옮기며 맨 숫자가 됐다. 번역 화면 머리가 같은 자리에서 같은 처방을
      * 이미 쓴다(`m.translations.keys`). ⚠️ **CDP 접근성 트리로 `h2`의 이름만 보면 통과한다** —
      * 배지가 별개 노드라서다.
      */
-    cardCount: (n: number): string => `${n} project${n === 1 ? "" : "s"}`,
+    count: (n: number): string => `${n} project${n === 1 ? "" : "s"}`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**

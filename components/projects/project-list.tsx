@@ -124,7 +124,11 @@ export function ProjectList({
               ⚠️ **총계는 좁히기 전의 값이다** — 검색을 바꿔도 안 흔들려야 "내 프로젝트가 몇 개인가"에
               답한다. 좁혀진 수는 결과 카드의 카운트가 든다 (캔버스 `1c`: 배지 3 · 카드 1).
             */}
-            <Badge variant="neutral">{all.length}</Badge>
+            {/* ⚠️ **카드 배지와 같은 처방이다** — 셋만 문장을 들면 같은 화면 두 줄 안에서 갈린다. */}
+            <Badge variant="neutral">
+              <span aria-hidden>{all.length}</span>
+              <span className="sr-only">{m.projects.count(all.length)}</span>
+            </Badge>
           </div>
           {/*
             ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).
@@ -178,7 +182,7 @@ export function ProjectList({
             action={
               <Link
                 href={routes.projects()}
-                className="focus-visible:ring-ring ml-auto rounded-sm text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+                className="focus-visible:ring-ring ml-auto text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
               >
                 {m.projects.clearSearch}
               </Link>
@@ -228,7 +232,7 @@ function ProjectCard({ title, count, action, children }: {
         */}
         <Badge variant="neutral">
           <span aria-hidden>{count}</span>
-          <span className="sr-only">{m.projects.cardCount(count)}</span>
+          <span className="sr-only">{m.projects.count(count)}</span>
         </Badge>
         {action}
       </div>
