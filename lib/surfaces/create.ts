@@ -62,7 +62,7 @@ export async function addSurfaceFromSnapshot(prisma: PrismaClient, input: AddSur
       projectSlug: project.slug, startedAt, token });
     if (prepared.payload === null) throw new SurfaceCreationError("ingest-failed");
     await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: surface.id }, prepared.payload, {
-      previousBaseLocale: null, startedAt, token, importOutcome: prepared.result.failed === 0 ? null : "partial-import",
+      refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: prepared.result.failed === 0 ? null : "partial-import",
     });
     const result = prepared.result;
     return { ...result, surfaceId: surface.id, surfaceSlug: slug };

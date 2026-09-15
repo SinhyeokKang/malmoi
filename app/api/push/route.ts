@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
-import { applyPush } from "@/lib/push/apply";
+import { applyPush, ApplyGuardError } from "@/lib/push/apply";
 import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
@@ -172,7 +172,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     let outcome;
     try {
       outcome = await applyPush(prisma, scope, parsed.data, {
-        previousBaseLocale: surface.baseLocale,
+        refsMode: "replace", previousBaseLocale: surface.baseLocale,
         startedAt, token,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
@@ -180,6 +180,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     } catch (error) {
       // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
       await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
+      if (error instanceof ApplyGuardError) {
+        const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
+        return NextResponse.json({ error: message }, { status: guardStatus(error.code) });
+      }
       throw error;
     } finally {
       /**

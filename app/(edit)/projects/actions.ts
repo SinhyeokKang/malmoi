@@ -53,6 +53,10 @@ import {
 } from "@/lib/onboarding/detect";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
+import { runRepositoryImportFromReader } from "@/lib/import/run";
+import { loadOpenPrUrl } from "@/lib/projects/open-pr";
+import type { RepositoryImportOutcome } from "@/lib/import/result";
+import type { OpenImportPr } from "@/lib/import/confirm";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { readSurfaceSnapshot } from "@/lib/import/surface";
 import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
@@ -964,7 +968,7 @@ export async function createProject(raw: {
           baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
         await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
-          previousBaseLocale: null, startedAt, token, importOutcome: null,
+          refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
       }
       await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
@@ -1183,6 +1187,66 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
     revalidatePath("/projects/new");
+  }
+}
+
+export type { RepositoryImportOutcome, SurfaceImportResult, SurfaceImportReason, RepositoryImportError } from "@/lib/import/result";
+
+export async function runRepositoryImport(raw: { slug: string }): Promise<RepositoryImportOutcome> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug } = parsed.data;
+  const session = await readSession();
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  try {
+    const project = await prisma.project.findUnique({ where: { id: access.projectId }, include: { surfaces: true } });
+    if (project === null) return { ok: false, error: "not-found" };
+    if (project.archivedAt !== null) return { ok: false, error: "archived" };
+    if (planProjectReadiness(project) !== "ready") return { ok: false, error: "not-ready" };
+    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
+    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    if (connected.status !== "ok") return { ok: false, error: connected.error };
+    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    const installationId = project.installationId;
+    return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId,
+      repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+    }, () => openRepoReader(project.repoOwner, project.repoName, installationId));
+  } catch (error) {
+    logFailure("repository-import-action", error);
+    return { ok: false, error: "ingest-failed" };
+  } finally {
+    revalidatePath(`/projects/${slug}`, "layout");
+    revalidatePath("/projects");
+    revalidatePath("/projects/new");
+  }
+}
+
+export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenImportPr> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const session = await readSession();
+  if (session.status !== "ok") return undefined;
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return undefined;
+  try {
+    const project = await prisma.project.findUnique({ where: { id: access.projectId } });
+    if (project === null) return undefined;
+    const rawUrl = await loadOpenPrUrl(parsed.data.slug, project);
+    if (rawUrl === null || rawUrl === undefined) return rawUrl;
+    const url = new URL(rawUrl);
+    if (url.origin !== "https://github.com" || url.username || url.password) return undefined;
+    const parts = url.pathname.split("/");
+    if (parts.length !== 5 || parts[1]?.toLowerCase() !== project.repoOwner.toLowerCase() || parts[2]?.toLowerCase() !== project.repoName.toLowerCase() || parts[3] !== "pull" || !/^[1-9][0-9]*$/.test(parts[4] ?? "")) return undefined;
+    const number = Number(parts[4]);
+    return Number.isSafeInteger(number) ? { number, url: rawUrl } : undefined;
+  } catch (error) {
+    logFailure("repository-import-pr", error);
+    return undefined;
   }
 }
 

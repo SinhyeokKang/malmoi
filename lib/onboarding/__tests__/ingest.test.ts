@@ -37,25 +37,27 @@ function format(): DetectedFormat {
 type Captured = { sql: string; values: unknown[] };
 
 /**
- * `lib/push/__tests__/flow.test.ts`의 스텁과 같은 형이다 — 배열형 `$transaction`을 지원하고 SQL 인자를
+ * `lib/push/__tests__/flow.test.ts`의 스텁과 같은 형이다 — 대화형 `$transaction`을 지원하고 SQL 인자를
  * 캡처한다. `applyPush`를 mock하지 않는 이유: **그 함수를 실제로 지나는지**가 이 테스트의 요지다.
  */
 function stubPrisma() {
   const captured: Captured[] = [];
   const projectUpdates: unknown[] = [];
   const prisma = {
+    project: { findUnique: async () => ({ slug: "acme", archivedAt: null }) },
     locale: { findFirst: async () => null },
     $executeRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
       const c = { sql: strings.join(" ? "), values };
       captured.push(c);
-      return c;
+      return Promise.resolve(1);
     },
-    $transaction: async (arr: readonly unknown[]) => arr.map(() => 1),
+    $transaction: async (run: (tx: unknown) => Promise<unknown>): Promise<unknown> => run(prisma),
     stringKey: {
       findMany: async (args: { select: Record<string, boolean> }) =>
         args.select["sourceHash"] ? [] : [],
     },
     translationSurface: {
+      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: null, pathTemplate: null, baseLocale: null, declaredBaseLocale: null, lastCommitAt: null }),
       updateMany: async () => ({ count: 1 }),
       update: async (args: unknown) => {
         projectUpdates.push(args);

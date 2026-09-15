@@ -5,17 +5,17 @@ import { compareKeys } from "@/lib/adapters/shared";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
-import { isBaseLocaleChange } from "./guard";
+import { isBaseLocaleChange, checkFormat, checkCommitOrder, checkProjectSlug } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
 
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * ⚠️ **진입점이 둘이고, 트랜잭션을 여는 쪽은 하나다.** `applyPush`는 배열형 `$transaction([...])`으로
- * 한 번에 배치를 보낸다 — 왕복이 문장 수만큼 쌓이지 않는다(도쿄 리전 고정 비용, POSTMORTEM 2026-09-09).
- * `applyPushInTransaction`은 **이미 열린 tx**를 받아 그 연결에서 문장을 순서대로 실행한다. Add surface가
- * Surface 생성과 첫 적재를 한 트랜잭션에 묶어야 해서다(첫 적재가 실패하면 표면이 안 생긴다 — 완료 조건 1).
+ * Both entry points lock Project → Surface before reading keys. Existing transactions stay on their connection.
+ * Local isolated /api/push baseline (1446 keys × 6 locales, 2026-09-15): cold 743ms; warm 240/242/243ms.
+ * After locking + revision: cold 1716ms; warm 689/677/543ms (same local isolated handler fixture).
+ * These include handler/DB work, not deployed network latency; the added reads cost more locally.
  *
  * ⚠️ **`"$transaction" in prisma` 같은 런타임 판별로 둘을 합치지 않는다.** proxy를 오판해 중첩
  * 트랜잭션을 열었고, 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다려 멈췄다
@@ -67,6 +67,7 @@ export type PushOutcome = {
 
 export type ApplyOptions = {
   token: string;
+  refsMode: "replace" | "preserve";
   /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
   startedAt: Date;
   /**
@@ -93,12 +94,25 @@ export type ApplyOptions = {
 
 type PushScope = { projectId: string; surfaceId: string };
 
-export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
-  return applyWith(prisma, scope, payload, options, statements => prisma.$transaction(statements));
+export class ApplyGuardError extends Error {
+  constructor(readonly code: "archived" | "wrong-format" | "stale-commit" | "wrong-project") { super(code); }
 }
 
-export function applyPushInTransaction(tx: Prisma.TransactionClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
-  return applyWith(tx, scope, payload, options, async statements => {
+export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  return prisma.$transaction(tx => applyPushInTransaction(tx, scope, payload, options), { maxWait: 10_000, timeout: 30_000 });
+}
+
+export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
+  await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
+  await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${scope.projectId} AND "id" = ${scope.surfaceId} FOR UPDATE`;
+  const project = await tx.project.findUnique({ where: { id: scope.projectId } });
+  const surface = await tx.translationSurface.findUnique({ where: { id: scope.surfaceId, projectId: scope.projectId } });
+  if (project === null || surface === null || project.archivedAt !== null || surface.archivedAt !== null) throw new ApplyGuardError("archived");
+  if (checkProjectSlug(payload.projectSlug, project.slug) !== "ok" || surface.slug !== payload.surfaceSlug) throw new ApplyGuardError("wrong-project");
+  if (checkFormat(payload.format, surface) !== "ok") throw new ApplyGuardError("wrong-format");
+  // Repository Sync accepts the current base even after a force-push; CI keeps its existing order guard.
+  if (options.refsMode === "replace" && checkCommitOrder(new Date(payload.commitAt), surface.lastCommitAt) !== "ok") throw new ApplyGuardError("stale-commit");
+  return applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale }, async statements => {
     const results: unknown[] = [];
     for (const statement of statements) results.push(await statement);
     return results;
@@ -277,9 +291,9 @@ async function applyWith(
         "updatedAt" = ${now}`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
-    prisma.$executeRaw`
-      DELETE FROM "KeyRef" WHERE "keyId" IN (SELECT "id" FROM "StringKey" WHERE "projectId" = ${projectId} AND "surfaceId" = ${surfaceId})`,
-    ...(refs.length === 0 ? [] : [prisma.$executeRaw`
+    ...(options.refsMode === "preserve" ? [] : [prisma.$executeRaw`
+      DELETE FROM "KeyRef" WHERE "keyId" IN (SELECT "id" FROM "StringKey" WHERE "projectId" = ${projectId} AND "surfaceId" = ${surfaceId})`]),
+    ...(options.refsMode === "preserve" || refs.length === 0 ? [] : [prisma.$executeRaw`
       INSERT INTO "KeyRef" ("id", "keyId", "path", "line")
       SELECT * FROM unnest(
         ${refs.map(() => randomUUID())}::text[],
@@ -312,6 +326,7 @@ async function applyWith(
          * `basePending`이 false라 배너가 없고, `checkFormat`의 그 갈래도 현실과 같은 값이라 예외가 아니다.
          */
         ...(baseChanged ? { declaredBaseLocale: null } : {}),
+        importRevision: { increment: 1 },
         lastCommitSha: payload.commitSha,
         // 다음 push의 역행 판정 기준이 된다 (ARCHITECTURE §5.5.5).
         lastCommitAt: new Date(payload.commitAt),
@@ -346,7 +361,7 @@ async function applyWith(
     orphaned: plan.toOrphan.length,
     unorphaned: plan.toUnorphan.length,
     staleTranslations,
-    refs: refs.length,
+    refs: options.refsMode === "preserve" ? 0 : refs.length,
     translationsFilled,
     orphanedLocales,
   };

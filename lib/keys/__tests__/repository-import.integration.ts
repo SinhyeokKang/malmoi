@@ -96,7 +96,7 @@ function deferred() {
 }
 function reader(content = '{"hello":"Repository"}', pause?: { entered: ReturnType<typeof deferred>; release: ReturnType<typeof deferred> }): RepoReader {
   return {
-    snapshot: vi.fn(async () => {
+    snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (pause) { pause.entered.resolve(); await pause.release.promise; }
       return { status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt, files: ["en", "ko", "fr"].map(locale => ({ path: `i18n/${locale}.json`, sha: locale, size: 100 })) };
     }),
@@ -110,11 +110,11 @@ const values = () => prisma.translation.findMany({ where: { projectId: "p" }, or
 it("편집 뒤 Sync는 리포 값과 무저자를 쓰고 lastPulledAt·refs를 보존한다", async () => {
   await seed(); await ci();
   await prisma.translation.updateMany({ where: { projectId: "p" }, data: { value: "Edited", updatedBy: "owner" } });
-  const refs = await prisma.keyRef.findMany({ where: { projectId: "p" } });
+  const refs = await prisma.keyRef.findMany({ where: { stringKey: { projectId: "p" } } });
   const repo = reader('{"key0":"Repository"}');
   expect(await run(repo)).toMatchObject({ ok: true, surfaces: [{ status: "imported", count: 1 }] });
   expect(await prisma.translation.findMany({ where: { projectId: "p", localeCode: { in: ["en", "ko", "fr"] } } })).toEqual(expect.arrayContaining([expect.objectContaining({ value: "Repository", updatedBy: null })]));
-  expect(await prisma.keyRef.findMany({ where: { projectId: "p" } })).toEqual(refs);
+  expect(await prisma.keyRef.findMany({ where: { stringKey: { projectId: "p" } } })).toEqual(refs);
   expect(await prisma.project.findUnique({ where: { id: "p" } })).toMatchObject({ lastPulledAt: pulled, repositoryImportToken: null });
   expect(repo.snapshot).toHaveBeenCalledTimes(1);
   await ci("Next CI");
@@ -124,11 +124,11 @@ it("편집 뒤 Sync는 리포 값과 무저자를 쓰고 lastPulledAt·refs를 �
 it("정상 0키는 기존 키만 orphan 표시하고 번역·사용처·포맷을 보존한다", async () => {
   await seed(); await ci();
   const before = await values();
-  const refs = await prisma.keyRef.findMany({ where: { projectId: "p" } });
+  const refs = await prisma.keyRef.findMany({ where: { stringKey: { projectId: "p" } } });
   expect(await run(reader("{}"))).toMatchObject({ ok: true, surfaces: [{ status: "imported", count: 0, failed: 0 }] });
   expect(await prisma.stringKey.count({ where: { projectId: "p", orphaned: true } })).toBe(1);
   expect(await values()).toEqual(before);
-  expect(await prisma.keyRef.findMany({ where: { projectId: "p" } })).toEqual(refs);
+  expect(await prisma.keyRef.findMany({ where: { stringKey: { projectId: "p" } } })).toEqual(refs);
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ importRevision: 2, lastCommitSha: "c".repeat(40), lastImportError: null, baseLocale: "en" });
 });
 
@@ -210,4 +210,70 @@ it("실제 쓰기 실패는 키·revision까지 rollback한다", async () => {
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ importRevision: 0 });
   await expect(ci()).rejects.toThrow();
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ importRevision: 0 });
+});
+
+it("설정 변경으로 거부돼도 자기 진행 표시는 정리한다", async () => {
+  await seed(); const entered = deferred(); const release = deferred();
+  const repo = reader();
+  repo.blob = vi.fn(async () => { entered.resolve(); await release.promise; return '{"hello":"Hello"}'; });
+  const pending = run(repo); await entered.promise;
+  await prisma.project.update({ where: { id: "p" }, data: { baseBranch: "changed" } });
+  release.resolve();
+  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded" }] });
+  expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ lastImportStartedAt: null, lastImportToken: null });
+});
+
+it("표면의 예산 초과 사유를 결과까지 보존한다", async () => {
+  await seed(); const repo = reader();
+  repo.snapshot = vi.fn().mockResolvedValue({ status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt, files: [{ path: "i18n/en.json", sha: "en", size: 2_000_001 }] });
+  expect(await run(repo)).toMatchObject({ ok: true, surfaces: [{ status: "failed", reason: "resource-limit" }] });
+});
+
+it("stale 실행은 새 실행이 없어도 실행권 해제를 못 한다", async () => {
+  await seed(); const pause = { entered: deferred(), release: deferred() };
+  const pending = run(reader(undefined, pause)); await pause.entered.promise;
+  const before = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(Date.now() - 301_000) } });
+  pause.release.resolve();
+  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded", reason: "lease-lost" }] });
+  expect(await prisma.project.findUnique({ where: { id: "p" } })).toMatchObject({ repositoryImportToken: before.repositoryImportToken });
+});
+
+it("CI slug의 앞뒤 공백 허용을 적용 트랜잭션에서도 유지한다", async () => {
+  await seed();
+  await expect(applyPush(prisma, { projectId: "p", surfaceId: "s" }, { ...payload(), projectSlug: " fixture\n" }, { token: "ci", startedAt: new Date(), refsMode: "replace", previousBaseLocale: "en" })).resolves.toMatchObject({ inserted: 1 });
+});
+
+it("Sync 적용이 먼저 잠금을 잡아도 뒤따르는 CI가 최종 값을 쓴다", async () => {
+  await seed(); const syncEntered = deferred(); const ciEntered = deferred(); const releaseSync = deferred();
+  const syncClient = prisma.$extends({ query: { stringKey: { async findMany({ args, query }) {
+    syncEntered.resolve(); await releaseSync.promise; return query(args);
+  } } } });
+  const ciClient = prisma.$extends({ query: { async $executeRaw({ args, query }) {
+    ciEntered.resolve(); return query(args);
+  } } });
+  const pendingSync = runRepositoryImportFromReader(syncClient as unknown as PrismaClient, { projectId: "p", userId: "owner", repository }, async () => reader('{"key0":"Sync"}'));
+  await syncEntered.promise;
+  const pendingCi = applyPush(ciClient as unknown as PrismaClient, { projectId: "p", surfaceId: "s" }, payload(1, "Final CI"), { token: "ci", startedAt: new Date(), refsMode: "replace", previousBaseLocale: "en" });
+  await ciEntered.promise; releaseSync.resolve();
+  expect(await pendingSync).toMatchObject({ ok: true, surfaces: [{ status: "imported" }] });
+  await pendingCi;
+  expect((await values()).every(row => row.value === "Final CI")).toBe(true);
+  expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ importRevision: 2 });
+});
+
+it("첫 표면을 확정한 뒤 둘째 표면을 읽는 동안에도 실행권을 유지한다", async () => {
+  await seed();
+  await prisma.translationSurface.create({ data: { id: "second", projectId: "p", slug: "second", adapterName: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "en" } });
+  const entered = deferred(); const release = deferred();
+  const repo: RepoReader = {
+    snapshot: vi.fn().mockResolvedValue({ status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt,
+      files: ["i18n", "second"].flatMap(dir => ["en", "ko"].map(locale => ({ path: `${dir}/${locale}.json`, sha: `${dir}-${locale}`, size: 100 }))),
+    }),
+    blob: vi.fn(async sha => { if (sha.startsWith("second")) { entered.resolve(); await release.promise; } return '{"key0":"Sync"}'; }),
+  };
+  const pending = run(repo); await entered.promise;
+  expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ lastImportStartedAt: null, importRevision: 1 });
+  try { expect(await run()).toEqual({ ok: false, error: "already-running" }); } finally { release.resolve(); }
+  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "imported" }, { status: "imported" }] });
 });

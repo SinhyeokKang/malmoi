@@ -64,7 +64,7 @@ export type FirstSnapshotInput = {
 export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
   const prepared = prepareFirstSnapshot(input);
   if (prepared.payload !== null) await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, prepared.payload, {
-    previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
+    refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
     importOutcome: prepared.result.failed === 0 ? null : "partial-import",
   });
   return prepared.result;

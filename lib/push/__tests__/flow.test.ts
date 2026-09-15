@@ -44,23 +44,23 @@ type Stub = {
   keyQueries: () => number;
 };
 
-function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]): Stub {
+function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[], previousBaseLocale: string | null = payloadFromFiles().format.baseLocale, format = payloadFromFiles().format): Stub {
   const captured: Captured[] = [];
   const projectUpdates: unknown[] = [];
   let transactions = 0;
   let keyFindMany = 0;
 
   const prisma = {
+    project: { findUnique: async () => ({ slug: "acme", archivedAt: null }) },
     locale: { findFirst: async () => null },
-    $executeRaw: (strings: TemplateStringsArray, ...values: unknown[]): Captured => {
+    $executeRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
       const c = { sql: strings.join(" ? "), values };
       captured.push(c);
-      return c;
+      return Promise.resolve(1);
     },
-    // 배열형 트랜잭션은 문장 순서대로 영향 행수를 돌려준다.
-    $transaction: async (arr: readonly unknown[]) => {
+    $transaction: async (run: (tx: unknown) => Promise<unknown>): Promise<unknown> => {
       transactions += 1;
-      return arr.map(() => 1);
+      return run(prisma);
     },
     stringKey: {
       findMany: async (args: { select: Record<string, boolean> }) => (
@@ -71,6 +71,7 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
           : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key }))),
     },
     translationSurface: {
+      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: format.adapter, pathTemplate: format.pathTemplate, baseLocale: previousBaseLocale, declaredBaseLocale: payloadFromFiles().format.baseLocale, lastCommitAt: null }),
       updateMany: async (args: unknown) => {
         projectUpdates.push(args);
         return { count: 1 };
@@ -160,10 +161,10 @@ async function runFlow(options: {
 } = {}) {
   const built = payloadFromFiles(options.scanRefs ?? []);
   const payload = options.locales === undefined ? built : { ...built, locales: options.locales };
-  const stub = stubPrisma(options.existing ?? [], payload.keys.map((k) => k.key));
+  const stub = stubPrisma(options.existing ?? [], payload.keys.map((k) => k.key), options.previousBaseLocale);
   const outcome = await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, {
     token: "fixture-run", startedAt: STARTED_AT,
-    previousBaseLocale:
+    refsMode: "replace", previousBaseLocale:
       options.previousBaseLocale === undefined ? payload.format.baseLocale : options.previousBaseLocale,
   });
   return { ...stub, payload, outcome };
@@ -315,6 +316,7 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         nested: false,
         baseLocale: "en",
         // ⚠️ `declaredBaseLocale`이 **없다** — base가 안 바뀐 push는 허가를 쓰지 않았다 (위 두 케이스).
+        importRevision: { increment: 1 },
         lastCommitSha: "a".repeat(40),
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },
@@ -442,8 +444,8 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
       baseLocale: "en",
       scanRefs: [],
     }).payload;
-    const stub = stubPrisma([], payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, { previousBaseLocale: payload.format.baseLocale, token: "fixture-run", startedAt: STARTED_AT });
+    const stub = stubPrisma([], payload.keys.map((k) => k.key), payload.format.baseLocale, payload.format);
+    await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, { refsMode: "replace", previousBaseLocale: payload.format.baseLocale, token: "fixture-run", startedAt: STARTED_AT });
     return { ...stub, payload };
   }
 
@@ -494,10 +496,10 @@ describe("push 흐름 — 중복 키를 페이로드가 접는다", () => {
     const payload = payloadFromFiles();
     const first = payload.translations[0]!;
     const dup = { ...first, value: "나중 값이 이긴다" };
-    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    const stub = stubPrisma([], payload.keys.map((k) => k.key), payload.format.baseLocale, payload.format);
     await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, { ...payload, translations: [...payload.translations, dup] }, {
       token: "fixture-run", startedAt: STARTED_AT,
-      previousBaseLocale: payload.format.baseLocale,
+      refsMode: "replace", previousBaseLocale: payload.format.baseLocale,
     });
     const cols = columnsOf(stmt(stub.captured, 'INSERT INTO "Translation"'));
     const pairs = (cols["keyId"] ?? []).map((id, i) => `${String(id)}|${String((cols["localeCode"] ?? [])[i])}`);
@@ -527,10 +529,10 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
 
   it("로케일 목록이 비면 표시 문장을 내지 않는다 — 전체를 orphan시키는 사고가 된다", async () => {
     const payload = payloadFromFiles();
-    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    const stub = stubPrisma([], payload.keys.map((k) => k.key), payload.format.baseLocale, payload.format);
     await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, { ...payload, locales: [] }, {
       token: "fixture-run", startedAt: STARTED_AT,
-      previousBaseLocale: payload.format.baseLocale,
+      refsMode: "replace", previousBaseLocale: payload.format.baseLocale,
     });
     expect(has(stub.captured, 'UPDATE "Locale"')).toBe(false);
   });
@@ -545,10 +547,10 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
 describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
   const run = async (importOutcome: "partial-import" | null = null) => {
     const payload = payloadFromFiles();
-    const stub = stubPrisma([], payload.keys.map((k) => k.key));
+    const stub = stubPrisma([], payload.keys.map((k) => k.key), payload.format.baseLocale, payload.format);
     await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, {
       token: "fixture-run", startedAt: STARTED_AT,
-      previousBaseLocale: payload.format.baseLocale,
+      refsMode: "replace", previousBaseLocale: payload.format.baseLocale,
       importOutcome,
     });
     return stub;
@@ -569,7 +571,7 @@ describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
     const payload = payloadFromFiles();
     const existing = payload.keys.map((k) => ({ key: k.key, id: `id-${k.key}`, sourceHash: "stale", orphaned: false }));
     const stub = stubPrisma(existing as never, payload.keys.map((k) => k.key));
-    await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, { previousBaseLocale: payload.format.baseLocale, token: "fixture-run", startedAt: STARTED_AT });
+    await applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, { refsMode: "replace", previousBaseLocale: payload.format.baseLocale, token: "fixture-run", startedAt: STARTED_AT });
     expect(stmt(stub.captured, 'UPDATE "StringKey" AS s').sql).not.toContain("createdAt");
   });
 
