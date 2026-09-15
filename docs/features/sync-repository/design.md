@@ -1,402 +1,272 @@
 # Sync repository — design
 
-`spec.md` §7(결정 넷 + 구현 판단 셋)·§8(게이트 순서)·§9(Action 계약)을 전제로 한다.
+`spec.md` §7·§8·§12의 사용자 결정을 구현하는 계약이다. 이 문서는 설계이며 코드 변경은 아직 없다.
 
 ## 1. 영향 받는 흐름
 
-**push / 편집 UI / pull 중 push다** — 방향이 리포 → 앱이라 `lib/push/`의 적용 층을 그대로 지난다.
-
-| 흐름 | 이번 변경 |
+| 흐름 | 변경 |
 |---|---|
-| push (`/api/push` → `applyPush`) | **새 호출부가 하나 는다.** `applyPush` 자체는 안 바뀐다 |
-| 편집 UI | Server Action 둘 신규 + Home 머리의 버튼 배선(project-home T6이 그 자리를 만든다) |
-| pull (`runSync`) | **없음.** `SyncRun`에 행이 안 생긴다 |
-| 온보딩 | ⚠️ **`runFirstIngest`의 본문이 공용 헬퍼로 빠진다** (§3) — 판정은 한 줄도 안 바뀐다 |
+| CI push | 적용 트랜잭션 시작부터 공통 행 잠금을 잡고 적재 revision을 증가시킨다. Sync 실행권 때문에 CI를 거부하지 않는다 |
+| 수동 Sync | 프로젝트 실행권 → 리포 읽기 → 표면별 경쟁 판정·적용 → 원결과 반환 |
+| 첫 적재 | 리포 읽기·준비를 공용 헬퍼로 추출한다. 첫 적재의 0키 실패·인가·readiness 계약은 유지한다 |
+| 사용처 | Sync는 기존 `KeyRef`를 보존한다. CI가 다음 적재에서 전체 교체한다 |
+| 편집 UI | Action·컴포넌트 연결 계약을 준비한다. Home 배선·실제 UI 검증은 project-home에서 함께 한다 |
+| Publish | `SyncRun`·`lastPulledAt`의 의미와 처리 경로는 유지한다 |
 
-## 2. ⚠️ 가장 큰 발견 — 적재 경로가 이미 전부 있고, 새로 쓸 것은 게이트와 문구뿐이다
+## 2. 재사용과 변경 경계
 
-`runFirstIngest`(`app/(edit)/projects/actions.ts:1057`)가 이 기능의 **거울상**이다. 그 함수가 하는 일:
+기존 `runFirstIngest`의 `templatePaths` → `readFiles` → `planConfirmedFormat` →
+`ingestTargets` → `prepareFirstSnapshot` 경로를 재사용한다. Action에 다운로드·페이로드 조립을 복제하지 않는다.
 
-```
-인가(project:settings) → 행 조회 → readiness 판정(awaiting_first_sync만) → 포맷 셋 유효성
-  → markImportStarted
-  → openRepoReader → snapshot(baseBranch)
-  → templatePaths(저장된 어댑터·템플릿, 트리 경로)        ← "시도한 목록"
-  → readFiles (예산·순차)
-  → planConfirmedFormat (저장된 포맷을 파일로 재검증)
-  → ingestTargets ∪ attempted → 못 받은 것만 한 번 더 readFiles
-  → ingestFirstSnapshot → prepareFirstSnapshot → applyPush
-  → finally: revalidatePath 셋
-```
-
-**재적재가 다른 것은 셋뿐이다:**
-
-| 축 | `runFirstIngest` | 재적재 |
+| 축 | 첫 적재 | 재적재 |
 |---|---|---|
-| readiness | `awaiting_first_sync`**만** | `ready`**만** |
-| 대상 표면 | `defaultSurface` 하나 | **활성 표면 전부** (표면마다 별도 트랜잭션) |
-| `previousBaseLocale` | `null` (첫 적재다) | ⚠️ **저장된 `surface.baseLocale`** (§3.2) |
+| readiness | `awaiting_first_sync` | `ready` |
+| 대상 | default surface 하나 | 활성 표면 전부, 실패도 결과에 포함 |
+| 이전 base | `null` | 저장된 `surface.baseLocale` |
+| 실행권 | 기존 표면 진행 표시 | 프로젝트 실행권 + 표면 진행 표시 |
+| 적용 경쟁 | 기존 첫 적재 계약 | 실행 토큰·revision·설정 재검사 |
+| 사용처 | 기존 경로의 교체 | 보존 |
+| 0키 | 실패 | 정상 빈 카탈로그임을 확인한 경우 성공 |
 
-**그래서 본문을 복제하지 않는다** — 공용 헬퍼로 뺀다.
+추출할 때 다음 세 동작과 이유 주석을 유지한다.
 
-### 2.1 ⚠️ 복제가 특히 위험한 이유 — 그 본문의 주석이 과거 결함 셋을 문서화하고 있다
+1. `attempted`는 성공한 blob 목록이 아니라 스냅샷의 `templatePaths`로 만든다.
+2. `attempted ∪ ingestTargets`를 실패 집계의 대상으로 삼는다.
+3. 이미 받은 blob은 다시 받지 않고 실패한 대상만 한 번 더 받는다.
 
-1. **`attempted`는 `templatePaths`에서 나온다, `ingestTargets`가 아니다** (2026-09-07 리뷰 🔴2) —
-   후자는 `confirmed.format.locales`를 도는데 그 locales는 **성공한 blob에서 나온 값**이라, 못 받은
-   로케일이 목록에서 함께 사라져 `missing`이 0이 된다.
-2. **둘의 합집합을 `targets`로 넘긴다** — 한쪽에만 있는 경로도 실패로 세야 한다.
-3. **이미 받은 것은 다시 안 받는다** — 남는 것은 첫 시도가 실패한 파일이고, 한 번 더 받아 본다.
+## 3. 리포 준비와 저장 경계
 
-⚠️ **복제하면 한쪽만 고쳐지고 다른 쪽이 조용히 낡는다.** 이 리포가 그 부류를 여러 번 밟았다
-(`selectLocaleFiles`를 새로 짠 2026-09-02 · 워크플로 step 생산자가 둘이던 2026-09-14).
+### 3.1 공용 입력과 헬퍼
 
-## 3. 공용 헬퍼 추출 — `lib/import/surface.ts` (신규, `server-only`)
+`lib/import/read.ts`로 모듈 사설 `readFiles`·`snapshotError`를 이동한다. `readFiles`에는 성공한
+`RepoSnapshot` 전체를 전달한다. `snapshot.files`의 `path`·`sha`·`size`가 다운로드·예산 판정에 필요하며,
+경로 목록은 `snapshot.files.map(f => f.path)`로 만든다.
 
 ```ts
 export type SurfaceImportInput = {
   projectId: string;
   projectSlug: string;
-  surface: { id: string; slug: string; adapterName: string; pathTemplate: string; baseLocale: string };
-  /** 이 적재 **전**의 base 로케일. 첫 적재는 null, 재적재는 저장된 값이다 (§3.2). */
-  previousBaseLocale: string | null;
-  startedAt: Date;
-  snapshot: { headSha: string; headCommittedAt: string; paths: readonly string[] };
+  surface: StoredSurfaceImport; // id, slug, adapter, template, base, nested/nestedByPath
+  snapshot: Extract<RepoSnapshot, { status: "ok" }>;
+  mode: "first" | "repository";
 };
-
-export async function importSurfaceFromRepo(
-  prisma: PrismaClient,
-  reader: RepoReader,
-  input: SurfaceImportInput,
-): Promise<FirstIngestResult>;
 ```
 
-- **`runFirstIngest`가 이 함수의 첫 소비자가 된다** — 판정은 한 줄도 안 바뀌고 자리만 옮긴다.
-- ⚠️ **`readFiles`·`snapshotError`가 지금 `actions.ts`의 모듈 사설 함수다** — 함께 옮긴다
-  (`lib/import/read.ts`). 옮기는 것은 자리뿐이고 로직은 그대로다.
-- ⚠️ **`lib/onboarding/`으로 넣지 않는다.** 그 디렉터리의 경계가 *"GitHub을 모른다 — 스냅샷과 blob을
-  값으로 받는다"*이고(`credential-separation.test.ts`가 소스에서 상시로 센다), 이 헬퍼는 `RepoReader`를
-  **직접 든다.** 넣으면 그 검사가 red가 되고, red를 피하려 인자를 값으로 펴면 다운로드 순서 로직이
-  호출부로 새어 나가 §2.1의 함정 셋이 다시 복제된다.
+`StoredSurfaceImport`는 저장 포맷을 검증한 값이며 정의와 테스트를 T2에서 먼저 추가한다.
+`lib/import/surface.ts`(`server-only`)는 reader와 입력을 받아 다운로드·준비 결과를 반환한다.
+**GitHub I/O를 DB 트랜잭션 안에서 실행하지 않는다.** 준비 결과와 적용을 나누므로 첫 적재는 기존
+`applyPush`를, Sync는 §3.3의 경쟁 검사 뒤 `applyPushInTransaction`을 호출할 수 있다.
 
-### 3.1 ⚠️ 이 추출이 "외과적 변경" 규칙과 충돌하지 않는 이유
+준비 결과는 `payload`(기존 비어 있지 않은 push payload), `empty`(§3.5의 증거를 가진 정상 0키),
+`failed`를 구분한다. `count === 0`으로 성공 여부를 추측하지 않는다. `first`에서는 `empty`를 기존 실패로
+돌리며 새 빈 결과는 서버 내부 계약이다. `buildPushPayload`는 기존 생산자를 재사용한다.
 
-CLAUDE.md는 *"요청과 직접 관련 없는 인접 코드 개선·리팩터 금지"*다. **이것은 인접 개선이 아니라
-이 기능의 유일한 비복제 구현 수단이다** — 대안이 §2.1의 100줄을 두 벌로 만드는 것뿐이고, 그 100줄의
-주석이 과거 결함 셋을 진다. **별도 커밋으로 분리하고 테스트를 먼저 박는다** (`tasks.md` T2).
+`lib/onboarding/`은 GitHub을 모르는 경계로 유지한다. 새 I/O 모듈을 그 디렉터리에 넣지 않는다.
 
-### 3.2 ⚠️ `previousBaseLocale`을 `null`로 넘기면 안 된다
+### 3.2 base 로케일
 
-`ingestFirstSnapshot`이 **`null`을 리터럴로 박고 있다**. `isBaseLocaleChange(payloadBase, null)`은
-언제나 `false`이므로(`lib/push/guard.ts:119`), 재적재에서 그대로 쓰면 **리포에서 base 로케일이 바뀌어도
-전 키의 `needsReview`가 안 선다** — 원문이 바뀐 것을 아무도 모른다.
+`previousBaseLocale`은 첫 적재 `null`, 재적재는 저장값을 필수 전달한다.
+현재 `planConfirmedFormat`은 입력 base를 그대로 반환하고 없으면 거부한다. 따라서 Sync가 리포에서
+새 base를 자동 선택한다고 설명하지 않는다. 선언된 base의 전환은 기존 CI·`checkFormat` 계약을 따른다.
+정상 빈 카탈로그도 저장된 base와 포맷이 확인되어야 한다.
 
-⚠️ **`ApplyOptions`의 주석이 이미 그 축을 경고한다**: *"optional로 두지 않는다. 껍데기가 빼먹으면
-base 교체 push가 조용히 … 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02)."*
-**재적재는 저장된 `surface.baseLocale`을 넘긴다.**
+### 3.3 프로젝트 실행권과 CI 우선
 
-### 3.3 `checkCommitOrder`를 부르지 않는다
+**실행권과 데이터 적용 잠금을 구분한다.** 프로젝트 실행권은 네트워크를 포함한 전체 Sync 동안
+유지하고, DB 행 잠금은 선점·표면 적용·종료의 짧은 트랜잭션에서만 잡는다.
 
-그 가드는 `/api/push`가 **외부가 보낸 커밋**을 받을 때 역행을 막는 것이다. 재적재는 **base head를
-직접 읽으므로** 그 시점의 진실이고 비교 대상이 없다. ⚠️ **base가 force-push로 뒤로 갔다면 그것이
-리포의 현재 상태**이고, 불변식 1에 따라 리포가 이긴다.
+추가 필드는 §7에 있다. `IMPORT_STALE_AFTER_SECONDS = 300`이며 정각은 아직 stale이 아니다.
+시작 시각은 서버 시각, 토큰은 매 실행마다 새 UUID다. 같은 밀리초의 두 실행도 다른 토큰을 갖는다.
 
-## 4. 순수 함수로 분리 — `/tdd` 진입점
+1. 인가·readiness → 연결·GitHub 정체성 확인 후 짧은 tx에서 Project 행을 `FOR UPDATE`로 잠근다.
+   권한·보관·readiness·리포 설정과 활성 표면을 다시 확인한다. 유효한 프로젝트 실행권이나
+   활성 표면의 유효한 진행 표시가 있으면 `already-running`; 활성 표면 0이면 `no-surfaces`다.
+2. 같은 tx에서 실행 토큰·시작 시각을 저장하고 활성 표면의 `importRevision` 및 설정을 캡처한다.
+   오래된 실행권은 교체한다. 포맷이 빠진 표면도 이름·사유를 보고하기 위해 목록에 남긴다.
+3. tx 밖에서 reader·snapshot을 각각 한 번 열고 표면별로 준비한다. 표면 진행 표시는
+   자기 실행권·revision을 확인한 짧은 tx에서 시작하며, CI의 새 진행 표시를 무조건 덮지 않는다.
+4. 각 표면 적용 tx의 **첫 단계**에서 Project → TranslationSurface 순서로 행을 잠근다.
+   현재 토큰·유효기간·인가·보관·설정·revision을 재검사한 뒤 준비 결과를 적용한다.
+   기존 키 조회와 계획 생성도 이 잠금 뒤이며 같은 tx다.
+5. `importRevision !== capturedRevision`이면 **CI 우선**으로 `superseded`를 반환한다. 표면 데이터,
+   commit 기준, refs, CI 결과 기록을 수정하지 않는다. 해당 표면만 미적용이며 다른 표면은 계속한다.
+6. 토큰이 바뀌거나 stale이면 이전 실행은 이후 쓰기를 하지 못한다. 아직 처리하지 않은 대상도
+   `lease-lost` 사유와 함께 반환한다. 종료 시 토큰이 자기 것인 경우에만 실행권을 비운다.
 
-**I/O가 0인 판정 셋이다.** Action은 조회 → 이 셋 호출 → 표면 루프로 얇아진다.
+**CI도 같은 적용 잠금에 참여한다.** `applyPush`의 기존 배열형 tx를 짧은 interactive tx로 바꾸고,
+`applyPushInTransaction`의 공용 적용 경계가 Project → Surface 잠금을 기존 키 조회보다 먼저 잡도록 한다.
+이후 쓰기와 `importRevision` 증가는 같은 tx다. 이미 열린 tx를 받은 경로는 그 tx를 그대로 쓰며
+런타임 속성으로 PrismaClient/TransactionClient를 구별하거나 중첩 tx를 열지 않는다.
+기존 Add surface·프로젝트 생성 소비자의 잠금 순서와 rollback도 회귀 검사한다.
+
+CI는 프로젝트 실행 토큰을 거부 조건으로 사용하지 않는다. Sync의 네트워크 작업을 기다리지 않고
+짧은 데이터 적용 잠금만 공유한다. **revision을 마지막 UPDATE에서 증가시키는 것만으로는 부족하다.**
+CI가 먼저 커밋했으면 Sync는 미적용, Sync가 먼저 적용 tx를 완료했으면 이후 CI가 최종 값을 쓴다.
+동일 커밋 CI 재실행도 revision이 바뀌므로 commit SHA 비교만으로 대체하지 않는다.
+
+적용 시점에는 캡처한 repo ID·installation·owner/name·base branch·표면 포맷이 같은지도 검사한다.
+Project와 Surface 행 잠금을 함께 잡으므로 설정 쓰기와 검사·적용 사이에 빈틈이 없다. 설정 변경이나
+보관은 덮지 않고 해당 실행을 거부한다. 오류 매핑은 기존 AccessError/OnboardError를 재사용한다.
+
+**force-push 수용은 유지한다.** Sync 시작 전에 리포가 과거 커밋으로 돌아간 것은 현재 base로 적재한다.
+`checkCommitOrder`의 시각 비교로 이 동작을 막지 않는다. 실행 중 CI 적재는 별도의 revision 검사로 보호한다.
+CI의 기존 커밋 순서·포맷·보관 판정도 적용 tx에서 최신 행으로 재확인한다.
+
+### 3.4 사용처 보존
+
+`ApplyOptions.refsMode: "replace" | "preserve"`를 필수로 두고 모든 호출부를 명시한다.
+기존 CI·첫 적재·Add surface는 `replace`, Sync는 `preserve`다. 공용 적용 함수에서 preserve면
+`KeyRef` DELETE·INSERT를 모두 생략한다. DB refs를 조회해 payload로 되쓰는 방식은 쓰지 않는다.
+키가 orphaned가 돼도 refs 행은 남는다. 다음 CI는 기존 전체 교체 경로로 갱신한다.
+이는 번역 값 병합이 아니며, 수집하지 않은 사용처를 변경하지 않는 것이다.
+결과 보조 문구는 기존 사용처가 보존됐으며 다음 CI가 갱신한다는 사실을 알린다.
+
+### 3.5 정상 0키와 실패 구분
+
+현재 `prepareFirstSnapshot`은 0키에 payload를 만들지 않고, 외부 `PushPayload.keys`도 `.min(1)`이다.
+**외부 push 스키마는 유지한다.** 서버 내부 준비 결과에만 `empty`를 추가한다.
+
+정상 0키의 필요조건은 다음 모두다.
+
+- 저장된 어댑터·템플릿·base에 해당하는 대상 파일이 스냅샷에 존재한다.
+- 대상 다운로드가 모두 성공하고 예산 안에 든다.
+- 각 파일을 해당 어댑터가 유효한 카탈로그 컨테이너로 인식하며 파싱 오류가 없다.
+- base를 포함해 해당 표면에서 정상적으로 읽힌 소스 키가 0개다.
+
+재탐지기가 빈 컨테이너를 후보에서 빼더라도 무조건 실패하거나 무조건 빈 성공으로 접지 않는다.
+저장 포맷을 입력으로 받는 **순수 빈 카탈로그 검증**을 두고 다섯 어댑터의 유효 빈 컨테이너와
+잘못된 파일을 대조한다. 파서가 빈 entries를 반환했다는 사실만으로 인식 성공으로 취급하지 않는다.
+파일 미발견·읽기 실패·포맷 불일치·base 부재는 `failed`이며 기존 키를 orphan 처리하지 않는다.
+로케일 파일 자체를 전부 삭제한 경우도 “정상적으로 읽은 빈 카탈로그”로 추정하지 않는다.
+
+검증된 `empty`는 §3.3의 경쟁 검사 뒤 전용 내부 적용 분기로 **해당 표면 키 전부를 orphaned**로 표시한다.
+번역·KeyRef·Locale·저장 포맷을 삭제하거나 임의 재생성하지 않는다. commit 기준·revision·성공 상태는
+같은 tx에서 갱신한다. 이 분기는 외부 0키 payload를 허용하거나 `as PushPayload`로 검증을 우회하지 않는다.
+기존 비어 있지 않은 payload의 조립·적용 경로는 그대로 재사용한다.
+
+## 4. 순수 판정
 
 ### 4.1 `planRepositoryImport` — `lib/import/plan.ts`
 
-```ts
-export const IMPORT_STALE_AFTER_SECONDS = 300;
+입력: `now`, readiness, 확인한 identity, 프로젝트 실행 토큰·시작 시각, 활성·보관 표면과 포맷·진행 시각.
+출력: `ok`(실행 대상과 포맷 오류 표면) 또는 `not-ready` / `not-connected` / `repo-replaced` /
+`already-running` / `no-surfaces`.
 
-export type ImportStart =
-  | { status: "ok"; surfaces: readonly PlannedSurface[] }
-  | { status: "not-ready" }
-  | { status: "not-connected" }
-  | { status: "repo-replaced" }
-  | { status: "already-running" }
-  | { status: "no-surfaces" };
-
-export function planRepositoryImport(input: {
-  now: Date;
-  readiness: ProjectReadiness;
-  /** 저장값 ↔ GitHub이 준 값의 대조 결과. 호출부가 이미 조회했다. */
-  identity: "ok" | "not-connected" | "repo-replaced";
-  surfaces: readonly { id: string; slug: string; adapterName: string | null; pathTemplate: string | null;
-                       baseLocale: string | null; archivedAt: Date | null; lastImportStartedAt: Date | null }[];
-}): ImportStart;
-```
-
-**판정 넷이 여기 든다:**
-
-1. **거부 순서** — readiness → identity → already-running → no-surfaces (`spec.md` §8).
-2. ⚠️ **stale 회수** — `lastImportStartedAt`이 `IMPORT_STALE_AFTER_SECONDS`보다 오래됐으면 **죽은
-   프로세스**로 보고 무시한다. 지금 `failing()`·`meterSlot`은 `null` 여부로만 보므로 **그 기준이 여기서
-   처음 선다.** 안 두면 중단된 적재 하나가 Sync를 영구히 막는다.
-   ⚠️ **`maxDuration`(60)보다 넉넉해야 한다** — 같거나 작으면 정상 실행이 스스로를 stale로 본다
-   (`STALE_AFTER_SECONDS`가 같은 이유로 300이다).
-   ⚠️ **경계 정각은 아직 stale이 아니다** — `planSyncStart`와 같은 부등호를 쓴다.
-3. **포맷 셋이 빠진 표면을 뺀다** — `adapterName`·`pathTemplate`·`baseLocale` 중 하나라도 `null`이면
-   온보딩 밖에서 만들어진 행이라 적재할 근거가 없다. **전체를 거부하지 않고 그 표면만 뺀다.**
-4. **보관된 표면을 뺀다** (`archivedAt !== null`).
+순서는 readiness → identity → running → 대상이다. 포맷 누락 표면을 `invalid-format` 결과로 남기며,
+활성 표면 전부가 잘못됐어도 `no-surfaces`로 바꾸지 않고 전부 실패 결과를 반환한다.
+이 함수는 원자적 선점을 대신하지 않는다. 저장 경계가 잠금 뒤 다시 판정한다.
 
 ### 4.2 `planImportConfirmation` — `lib/import/confirm.ts`
 
-```ts
-export type ImportConfirmation = {
-  /** 미발송 줄을 세울지와 그 수. */
-  unsent: number;
-  /** 열린 PR 경고. `null` = 없음, `undefined` = **확인하지 못했다** (둘을 접지 않는다). */
-  openPr: { number: number } | null | undefined;
-  /** `Send changes first` 링크를 세울지. */
-  recommendSend: boolean;
-  /** 되돌릴 수 없는 결과가 실재하는가 — Dialog의 tone이 여기서 갈린다. */
-  atRisk: boolean;
-};
-
-export function planImportConfirmation(input: {
-  unsent: number;
-  openPr: { number: number; url: string } | null | undefined;
-}): ImportConfirmation;
-```
-
-⚠️ **이 함수 하나가 `spec.md` §6.2의 함정을 진다.** 단언 셋:
-
-- `unsent > 0` → `recommendSend: true` · `atRisk: true`
-- **`unsent === 0 ∧ openPr !== null` → `atRisk: true`** ← 부분집합 함정이 여기서 잡힌다
-- `openPr === undefined` → 전용 문장 (`null`로 접지 않는다)
-
-⚠️ **`atRisk: false`여도 Dialog를 건너뛰지 않는다.** 되돌릴 수 없는 동작이라는 사실이 수와 무관하고,
-`unsent`는 **조회 시점의 값**이라 Dialog를 보는 동안 번역자가 저장하면 이미 낡는다.
+입력: `unsent`, `openPr: { number; url } | null | undefined`.
+출력: 같은 위험 신호 + `recommendSend: unsent > 0`, `atRisk: unsent > 0 || openPr !== null`.
+`undefined`는 조회 시작과 실패 모두 미확인이다. **성공 응답이 null일 때만** PR 경고를 없앤다.
+`atRisk: false`여도 확인 Dialog와 danger 버튼은 유지한다. 수치는 조회 시점의 신호이며,
+Dialog가 열린 동안 저장된 편집까지 보호하거나 정확한 덮어쓰기 수를 보장하지 않는다.
 
 ### 4.3 `summarizeImport` — `lib/import/result.ts`
+
+`spec.md` §9의 `SurfaceImportResult[]`를 받아 아래 요약을 만든다.
 
 ```ts
 export type ImportSummary = {
   tone: "success" | "warning" | "danger";
-  keys: number;                            // 적재한 키 합
-  imported: number;                        // 성공한 표면 수
-  partial: number;                         // 들어갔지만 일부가 빠진 표면 수
-  /** 못 읽은 표면. **수가 아니라 slug 목록이다** — 아래 참조. */
+  keys: number;
+  imported: number;
+  partial: number;
   unreadable: readonly string[];
+  superseded: readonly string[];
 };
-
-export function summarizeImport(surfaces: readonly SurfaceImportResult[]): ImportSummary;
 ```
 
-⚠️ **불변식 9가 여기 산다** — `unreadable.length > 0 ∨ partial > 0`이면 tone이 `success`가 아니다.
-표면 셋 중 하나가 빠졌는데 `Synced 903 keys`만 쓰면 그 사실이 화면에서 사라진다.
+`imported`는 정상 0키도 포함한다. tone은 다음 순서로 판정한다.
 
-⚠️ **`unreadable`을 수가 아니라 slug 목록으로 든다** (2026-09-15). 결과 문장이 표면 이름을 댈지는
-**시안이 정하는데**(`spec.md` §11.3), 타입이 수면 그 결정이 순수 함수의 시그니처를 바꾼다 —
-목록이면 화면이 `length`를 쓰든 이름을 쓰든 **타입이 안 움직인다.** 그래서 **T3·T4가 T1을
-기다리지 않는다.**
+1. 모든 표면이 imported이면 success.
+2. 그 외 imported/partial이 하나라도 있으면 warning (전부 partial인 경우 포함).
+3. 적용된 표면 없이 failed가 하나라도 있으면 danger (failed + superseded 포함).
+4. CI 우선·실행권 상실로 미적용인 표면만 남으면 warning.
 
-### 4.4 재사용하는 것 (새로 안 만든다)
+입력 0개는 성공으로 접지 않는다. 활성 표면 0은 게이트에서 no-surfaces로 반환한다.
+키 수가 0이라는 이유로 실패로 바꾸지 않는다. 목록 순서는 입력의 안정된 표면 순서(코드 유닛 slug 순)를 유지한다.
+오류 표면이 빠져 전체 성공이 되는 갈래는 없다. **원결과를 UI에 함께 전달**하고 reason/errors를 버리지 않는다.
 
-| 무엇 | 어디 |
-|---|---|
-| 적재 전체 | `prepareFirstSnapshot` → `applyPush` (`lib/onboarding/ingest.ts` · `lib/push/apply.ts`) |
-| 저장된 포맷의 재검증 | `planConfirmedFormat` (`lib/onboarding/confirm.ts`) |
-| 경로 목록 | `templatePaths` · `ingestTargets` |
-| 예산 | `checkDownloadBudget` · `checkContentBudget` |
-| 진행·결과 표시 | `markImportStarted` · `finishImportRun` · `importOutcomeFields` |
-| 실패 문장 | `importFailureMessage` (`ImportFailureCode` 6종) |
-| 미발송 수 | **`countUnpublished`** (`lib/keys/query.ts:178`) — ⚠️ **넷째 벌을 만들지 않는다** |
-| 열린 PR | `loadOpenPrUrl`(설정 페이지 사설) → **`lib/projects/open-pr.ts`로 올린다** (§5.2) |
-| readiness | `planProjectReadiness` |
-| 정체성 대조 | `checkRepoAccess` + `repositoryId`·`installationId` 비교 (Add surface와 같은 배선) |
-
-## 5. 껍데기 — Server Action 둘
+## 5. Server Action 둘
 
 ### 5.1 `runRepositoryImport` — `app/(edit)/projects/actions.ts`
 
-⚠️ **새 파일을 만들지 않는다** — `readFiles`·`snapshotError`·`openRepoReader` 배선이 이미 그 파일에
-있고, CLAUDE.md의 경로 표가 온보딩·프로젝트 동작을 그 파일로 정해 뒀다.
-
 ```
-세션 → 인가(project:settings) → 행 조회(projectId로 좁힌다)
-  → checkRepoAccess → identity 판정
-  → planRepositoryImport(now, readiness, identity, surfaces)   ← 순수
-  → 거부면 값으로 반환 (행을 만들지 않는다)
-  → openRepoReader 한 번 · snapshot 한 번                      ← ⚠️ 표면마다 다시 열지 않는다
-  → for (표면) {
-        markImportStarted
-        try   importSurfaceFromRepo  → 결과 수집
-        catch finishImportRun(code)  → 그 표면만 실패로 기록하고 **루프를 계속한다**
-     }
-  → finally revalidatePath('/projects/${slug}', "layout") · '/projects'
+입력 검증 → 세션 → project:settings → readiness
+  → 로컬 연결 확인 → checkRepoAccess (GitHub 정체성 조회)
+  → 짧은 tx: 재검사·원자적 실행권 획득·표면 revision 캡처
+  → try: reader/snapshot 각 한 번 → 표면별 준비 → 짧은 tx: 경쟁 검사·적용
+  → finally: 자기 실행권 해제 · revalidatePath(project layout, projects)
 ```
 
-- ⚠️ **리더는 한 번만 연다** (`openRepoReader`). 표면마다 `createApp()`을 부르면 설치 토큰 발급이
-  호출마다 하나씩 붙어 예산이 배가 된다 (ARCHITECTURE §3.1, 2026-09-07 code-review 🔴).
-- ⚠️ **스냅샷도 한 번이다** — 표면마다 트리를 다시 읽으면 같은 이유로 비용이 N배이고, 더 중요하게는
-  **표면마다 다른 head를 볼 수 있다**(그 사이 push가 들어오면). 한 스냅샷이 곧 한 시점이다.
-- ⚠️ **표면 루프 안에서 던지지 않는다** — 하나의 실패가 나머지를 막지 않는 것이 결정 2다.
-  예산 초과(`IngestBudgetError`)도 그 표면만 실패다.
-- ⚠️ **`revalidatePath`가 `finally`다** (POSTMORTEM 2026-09-13 — 실패 경로의 무효화가 빠져 있었다).
-- ⚠️ **`markImportStarted`를 인가·게이트 **뒤**에 둔다** — 앞에 두면 거부된 호출까지 목록이
-  "적재 중"으로 그린다.
+공용 reader/snapshot 실패는 기존 OnboardError로 반환하고 자기 진행 표시·실행권을 정리한다.
+표면 실패는 개별 결과로 모아 계속한다. 포맷 누락·부분 파싱 실패·CI 우선 미적용의 사유는 구분한다.
+실패 기록도 토큰·revision·startedAt을 확인한 저장 경계에서 쓰며, 오래된 실행이 CI 결과를 덮지 않는다.
+DB 오류가 나면 일반 실패 값으로 반환하고 내부 오류만 로깅한다. `finally`의 해제 실패가 원래 오류를
+가리지 않게 처리하며 프로세스 강제 종료는 stale 회수로 복구한다.
 
-### 5.2 `checkOpenPullRequest` — 읽기 전용 Action
+### 5.2 `checkOpenPullRequest`
 
-Dialog가 열릴 때 부른다. `loadOpenPrUrl`(설정 페이지 사설 함수)을 `lib/projects/open-pr.ts`로 올려
-**두 소비자가 같은 함수를 쓴다**.
+Dialog가 열릴 때만 호출하며 `project:settings`로 인가한다. `loadOpenPrUrl`을
+`lib/projects/open-pr.ts`로 옮겨 설정 화면과 재사용한다. 기존 반환값은 URL 삼상태이므로 Action은
+성공 URL에서 검증된 PR 번호를 얻어 `{number,url}`로 변환하고 파싱 실패도 undefined로 반환한다.
+기존 설정 화면에는 URL 삼상태를 유지한다. 반환: 객체 / null(조회 성공, 없음) / undefined(미확인).
 
-- 반환은 **삼상태**다 — `{number,url}` / `null`(없음) / `undefined`(확인 실패).
-- ⚠️ **Home 렌더에서 부르지 않는다** — Home의 조회가 이미 늘어나고(project-home design §9.4 —
-  병목이 행 수가 아니라 함수 리전이었다), 이 값은 **Dialog를 연 사람만** 쓴다.
-- 인가는 `project:settings`다 — 버튼과 같은 permission이어야 EDITOR가 PR 존재를 탐색할 수 없다.
+## 6. 컴포넌트 연결 계약
 
-## 6. 새 컴포넌트
+`sync-button.tsx`는 `ArchiveCard`의 Dialog 패턴을 사용한다. 프리미티브 자체는 고치지 않는다.
 
-### 6.1 `components/projects/sync-button.tsx` — `"use client"`
+- OWNER만 렌더한다. Action 둘도 같은 permission을 검사한다.
+- 열릴 때마다 PR 상태를 undefined로 초기화해 즉시 경고한다. 요청 식별자로 이전 응답을 무시한다.
+- 실행 중 `loading={pending}`으로 연타를 막는다. 서버 동시성 보장은 §3.3이 맡는다.
+- `Send changes first`는 `routes.translations(slug)` 링크다. 발송만으로 편집이 보호됐다고 말하지 않는다.
+- 경고 갱신은 `aria-live="polite"`, 성공·warning 결과는 `role="status"`, danger는 `role="alert"`로 알린다.
+- 취소·완료 후 Dialog를 닫으면 Sync 트리거로 포커스를 돌린다. 트리거가 사라진 경우 머리의 적절한
+  포커스 대상으로 복귀한다. 닫은 뒤 도착한 PR 응답으로 Dialog가 다시 열리지 않는다.
+- 결과 상태는 Home 머리가 원결과로 소유한다. `sync-result.tsx`는 요약 tone과 표면별 reason/errors를
+  받아 이름·사유를 표시하며 refresh 뒤에도 유지된다.
+- 클라이언트는 Action 참조와 타입만 가져온다. 서버 준비·적용 모듈은 번들 그래프에 들어가지 않는다.
 
-`ArchiveCard`가 가장 가까운 선례다 (`Dialog` + `DialogTrigger` + `DialogClose` + `useTransition`).
+**이 기능의 준비 완료와 실제 UI 검증은 다르다.** 시안 확정 후 컴포넌트를 준비하고 project-home T6에서
+Home·재시도 버튼에 연결한다. 실제 Dialog·결과·접근성·시안 검증은 project-home에서 함께 완료한다.
 
-- **`components/ui/dialog.tsx`를 고치지 않는다** — 그 프리미티브를 건드리면 초대·확인·아카이브·
-  로그인수단 모달 넷이 함께 움직인다 (DESIGN §6.7).
-- ⚠️ **결과 Alert는 이 컴포넌트가 그리지 않는다.** `PublishButton`/`PublishResult`와 같은 형 —
-  **상태는 머리가 들고** Alert는 머리 아래 고정 자리다. 여기 두면 `revalidatePath`가 다시 그리면서
-  방금 받은 결과가 언마운트된다 (POSTMORTEM 2026-09-07 — `FirstIngestRetry`가 정확히 그 함정이었다).
-- ⚠️ **Dialog가 열릴 때 `checkOpenPullRequest`를 부른다** — 조회 중에는 PR 줄 자리에 스켈레톤이 아니라
-  **아무것도 안 둔다**(수가 흔들리는 자리가 아니다). 응답이 늦으면 `undefined` 문장으로 떨어진다.
-- ⚠️ **연타를 막는다** — `loading={pending}`. 두 실행이 병렬이면 같은 표면에 `markImportStarted`가
-  두 번 걸린다.
-- ⚠️ **EDITOR에게는 렌더하지 않는다** — 부재이지 비활성이 아니다 (`ProjectArchived`의 선례, DESIGN §6.69).
-  **차단은 Action이 든다.**
+## 7. 스키마 — additive 변경
 
-### 6.2 `components/projects/sync-result.tsx`
-
-`PublishResult`와 같은 형: `ImportSummary` → `Alert` variant. ⚠️ **tone을 variant로 그대로 넘긴다** —
-매핑 표를 또 들면 두 벌이 갈린다.
-
-## 7. 스키마 변경 — **없다**
-
-| 후보 | 왜 안 넣나 |
+| 새 필드 | 용도 |
 |---|---|
-| `SyncRun`에 `import` trigger | `SyncRun`은 Publish 전용이고 `trigger`·`status` enum이 그 가정 위에 선다 (ARCHITECTURE §5.6 · project-home design §6.3이 같은 이유로 표면 추가 사건을 거절했다) |
-| `TranslationSurface.lastImportBy` | 실행자를 안 적는다 — 보관 실행자를 안 적는 것과 같은 근거(OWNER만 할 수 있고 멤버 상한이 10이다, project-home §9.4) |
-| 적재 이력 테이블 | PRODUCT §4.1이 임포트 결과를 *"마지막 하나만 남기는 것이고 이력이 아니다"*로 이미 닫았다 |
-| stale 기준 컬럼 | 상수다 (`IMPORT_STALE_AFTER_SECONDS`) |
+| `Project.repositoryImportToken String?` | Sync 실행 소유권. 다른 실행과 stale 실행을 구분 |
+| `Project.repositoryImportStartedAt DateTime?` | 실행권 stale 판정. 표면별 진행 표시와 별개 |
+| `TranslationSurface.importRevision Int @default(0)` | 성공한 데이터 적재마다 같은 tx에서 증가. CI와 Sync 경쟁 감지 |
 
-⚠️ **project-home이 더하는 `TranslationSurface.lastImportFailedAt`은 이 기능이 공짜로 얻는다** —
-실패 기록이 `finishImportRun` 한 자리를 지나므로, 그쪽 T2·T4가 그 함수에 필드를 더하면 이 경로도
-같이 채운다. **순서 의존은 없다** (어느 쪽이 먼저 들어가도 된다).
+기존 행은 token/start null, revision 0으로 시작한다. 신규 테이블·실행 이력·환경변수는 없다.
+표면 실패 시각은 project-home의 별도 작업이며 이 기능의 선행조건은 아니다.
 
-## 8. 새 환경변수
+마이그레이션 SQL을 검토하고 dev에 적용한 뒤 preview 코드를 배포한다. prod는 `/merge` 전에
+`db:deploy`로 넓힌다. **prod 반영을 dev push 시점으로 당기지 않는다.** Codex는 문서·로컬 커밋까지이며
+원격 push/merge는 Claude Code가 맡는다. 이번 feature-review는 마이그레이션을 만들거나 적용하지 않는다.
 
-**없다.** `.env.example` 갱신 불필요.
+## 8. 불변식·과거 회귀
 
-## 9. 불변식 영향
+- **병합 없음**: CI 경쟁 판정은 실행 수락 여부만 고른다. 번역 값을 비교·병합하지 않는다.
+- **키 삭제 없음**: 정상 0키도 orphan 표시이며 번역·사용처는 남는다.
+- **테넌트·인가**: 모든 저장·실행권·표면 쿼리는 인가된 projectId로 좁힌다.
+- **정체성**: installation reader로 blob을 읽기 전에 `checkRepoAccess`로 대조한다.
+- **readiness**: 재적재 실패·정상 0키 이후도 기존 commit 기준이 있어 ready다.
+- **버린 값 보고**: 포맷 누락·부분 실패·CI 우선 미적용은 전체 성공으로 숨기지 않는다.
+- **export 결정성**: export 경로는 변경하지 않는다. 결과 표면 순서도 안정되게 정렬한다.
+- **POSTMORTEM 2026-09-07**: attempted 목록·재시도 합집합·결과 Alert 생존을 회귀 검사한다.
+- **POSTMORTEM 2026-09-13**: 성공·실패 모두 자기 실행만 종료하고 캐시는 finally에서 무효화한다.
+- **POSTMORTEM 2026-09-14**: Dialog 문구는 동작 코드와 대응시킨다. 기존 열린 tx를 받아 같은 tx에서
+  실행하고 Prisma 런타임 속성으로 client 종류를 추측하지 않는다. 실제 PG로 교착·rollback을 검사한다.
+- **POSTMORTEM 2026-09-02**: 이전 base를 필수 전달하며 첫 적재와 재적재의 의미를 구분한다.
 
-| 불변식 | 영향 |
-|---|---|
-| §0-1 소스 키는 코드가 진실 | **강화한다** |
-| **§0-2 병합 없음** | ⚠️ **새 push 시점을 만든다.** 병합 코드는 0으로 유지한다 — 되돌리기·"내 편집 지키기"·값 비교가 전부 금지다 (`spec.md` §6.1) |
-| §0-3 삭제 없음 | 없음 — `applyPush`가 `orphaned`만 세운다 |
-| §0-4 export 결정성 | 없음 |
-| §0-5 `projectId` 좁힘 | ⚠️ 인가가 준 `projectId`·`surfaceId`만. `slug`는 판정 입력이다 |
-| §0-6 자격증명 셋 | ⚠️ 읽기는 installation 토큰(`openRepoReader`), 정체성 대조는 user-to-server(`checkRepoAccess`) — Add surface와 같은 배선이고 `credential-separation.test.ts`가 센다 |
-| §0-8 readiness | ⚠️ **바꾸지 않는다.** 실패해도 `lastCommitSha`가 남아 `ready`가 유지된다 |
-| §0-9 버린 값 | ⚠️ `summarizeImport`가 진다 (§4.3) |
-| §0-11 리포 정체성 | ⚠️ **읽기 전에 대조한다** — `runFirstIngest`에는 없는 검사다 (`spec.md` §7 구현 판단 3) |
-| **인증 경계 (§6)** | ⚠️ 두 Action 다 `project:settings`. 버튼 감춤은 편의 |
+## 9. 검증·완료 의존성
 
-## 10. POSTMORTEM에서 소환한 것
+세부 테스트는 `tasks.md` T2~T8에 있다. 순수 테스트·Action/DOM 테스트·실제 PG 검사를 구현보다 먼저
+작성하고 red를 확인한다. 원자성은 가짜 DB의 호출 기록이 아니라 PG의 통제된 동시 실행으로 검증한다.
 
-```
-grep -n "확인 Dialog\|임포트\|lastImportStartedAt\|revalidatePath\|applyPush" docs/POSTMORTEM.md
-```
-
-### 10.1 2026-09-14 — 확인 Dialog의 유일한 논거가 반대 방향으로 거짓이었다
-
-> **거짓이 비싼 이유는 자리 때문이다** — 되돌릴 수 없는 동작의 확인 화면은 사용자가 **그 문장만 읽고**
-> 판단하는 자리이고 … **집계를 근거로 세울 때 "그 수가 세는 것"과 "그 동작이 바꾸는 것"이 같은
-> 집합인지 먼저 센다.**
-
-⚠️ **이 기능이 정확히 그 축이고 방향이 반대다** — `countUnpublished`가 **부분집합**이다
-(`spec.md` §6.2). 재발 방지 둘을 그대로 적용한다:
-
-1. **결과를 단언하는 문구는 그 결과를 내는 코드를 지목한다** — 사전 주석에 `lib/push/apply.ts`의
-   `"updatedBy" = NULL`을 심볼로 적는다.
-2. **전수 grep을 다시 돌린다**: `grep -nE "will be replaced|won't be able|will stop|no longer" messages/en.tsx`
-   → 새로 더한 문장이 참인지 코드로 되짚는다.
-
-### 10.2 2026-09-13 — 임포트 종료의 소유권과 실패 캐시 무효화가 빠졌다
-
-> A 적재 시작 → B 시작 → A 성공에서 B의 진행 시각이 null이 됐고 … 캐시 무효화는 성공 반환 앞에만 있었다.
-
-⚠️ **이 기능이 그 경로의 새 소비자다.** 지켜야 할 셋:
-- `finishImportRun`은 **자기 `startedAt`을 대조한다** — 이미 그렇게 구현돼 있고 우회하지 않는다.
-- **적재 전체를 `try`로 감싼다** — 리더 생성 예외도 표시를 남기고 던지면 안 된다.
-- **무효화는 `finally`다.**
-- 재발 방지 grep을 다시 돈다:
-  `rg -n 'lastImportStartedAt|markImportStarted|finishImportRun|revalidatePath' lib app | rg -v __tests__`
-
-### 10.3 2026-09-07 — `revalidatePath`가 결과 Alert를 언마운트했다 (§0 불변식 9의 확장)
-
-> 판정은 옳았고 전달이 사라졌다.
-
-⚠️ **결과 Alert를 `revalidatePath`가 바꾸는 조건부 분기 안에 두지 않는다** — 상태는 머리가 든다 (§6.1).
-
-### 10.4 2026-09-14 — 거부 문구가 화면에 없는 버튼 이름을 가리켰다
-
-⚠️ Dialog의 `Send changes first`가 **그 화면의 실제 버튼 이름**과 같아야 한다
-(`m.translations.publish.button` = `Send changes`). **`Publish`라고 쓰지 않는다.**
-
-### 10.5 2026-09-14 — TransactionClient를 런타임 속성으로 구별해 첫 적재가 자기 잠금을 기다렸다
-
-⚠️ **표면 루프에서 `applyPush`(배열형)를 쓴다, `applyPushInTransaction`이 아니다** — 바깥에 열린
-트랜잭션이 없기 때문이다. **어느 모양인지는 호출부가 안다** (`lib/push/apply.ts`의 주석).
-
-### 10.6 2026-09-02 — base 교체 push가 조용히 전 키에 검토 표시를 붙였다
-
-⚠️ **`previousBaseLocale`을 `null`로 넘기지 않는다** (§3.2). 재적재는 저장된 값을 넘긴다.
-
-## 11. 라우트·URL
-
-**변경 없다.** Home(`routes.project(slug)`)에 `?e=` 슬롯을 만들지 않는다 — 결과는 인라인 Alert다.
-
-## 12. 테스트
-
-### 새로 필요한 것
-
-| 파일 | 무엇을 |
-|---|---|
-| `lib/import/__tests__/plan.test.ts` | 거부 순서 · **stale 회수**(경계 정각 포함) · 포맷 셋 빠진 표면 제외 · 보관 표면 제외 · `no-surfaces` |
-| `lib/import/__tests__/confirm.test.ts` | **`unsent = 0 ∧ openPr ≠ null`에서 경고가 선다** · `undefined`가 `null`로 안 접힌다 · `recommendSend` |
-| `lib/import/__tests__/result.test.ts` | `unreadable.length > 0`에서 tone이 `success`가 아니다 (불변식 9) · **slug가 입력 순서대로 나온다**(결정성 — 같은 결과가 같은 문장을 내야 한다) |
-| `lib/import/__tests__/surface.test.ts` | ⚠️ **`runFirstIngest`의 기존 단언을 그대로 옮긴다** — 추출이 판정을 안 바꿨다는 증거 |
-| `app/(edit)/projects/__tests__/…` | Action의 게이트 순서 · **표면 하나 실패가 나머지를 막지 않는다** · `revalidatePath`가 실패에도 돈다 |
-| `components/__tests__/sync-button.test.tsx` | EDITOR에게 버튼이 **없다** · Dialog 문구 세 갈래 · `Send changes first` 링크의 목적지 |
-| `pnpm test:projects:postgres` | 재적재 왕복 · 표면 A 성공 / B 실패에서 A의 키가 남는다 (**손으로 돌린다**) |
-
-### 깨질 것
-
-| 파일 | 왜 |
-|---|---|
-| `app/(edit)/projects/__tests__/…`의 `runFirstIngest` 관련 | 본문이 헬퍼로 빠진다. **판정 단언은 그대로 통과해야 한다** — 통과하지 않으면 추출이 뭔가를 바꾼 것이다 |
-| `lib/github-connect/__tests__/credential-separation.test.ts` | 새 모듈이 `RepoReader`를 든다 — 그 검사의 대상 목록이 늘 수 있다 |
-| `app/__tests__/entry-points.test.ts` | 진입점 둘이 는다. permission을 이름으로 고정한다 |
-| `components/__tests__/client-graph.test.ts` | `sync-button.tsx`가 `"use client"`다 — ⚠️ **그 그래프가 `lib/import/`를 끌어오면 안 된다**. Action만 import하고 판정 모듈은 서버에 남긴다 |
-
-⚠️ **격리 PG 검사가 이 기능의 유일한 진짜 방어선이다** — 하네스의 `$transaction`에는 직렬화가 없고
-`$executeRaw`가 no-op이다 (POSTMORTEM 2026-09-05).
-
-## 13. 구현 뒤
-
-1. **`/design-sync sync-repository`** — 시안이 서면 돈다 (`design-prompt.md`가 그 시안을 만든다).
-2. **`/l10n-roundtrip`** — ⚠️ **폐기용 리포로만.** `i18n-format-check`에 일부러 깨진 파일을 넣어
-   표면 하나 실패 갈래를 실물로 밟는다. 되돌리는 절차를 같이 적는다.
-3. ⚠️ **브라우저로 밟기 어려운 갈래**:
-
-| 갈래 | 어떻게 밟나 |
-|---|---|
-| 기본(미발송 0 · PR 없음) | dev의 `bugshot-i18n-test-qa` ✅ |
-| 미발송 N | 셀 하나를 고치고 Sync ✅ |
-| 열린 PR 경고 | Publish로 PR을 연 뒤 머지하지 않고 Sync ✅ |
-| PR 조회 실패 | ⚠️ **만드는 방법이 정해지지 않았다** — 네트워크 차단 말고는 길이 없다 |
-| `already-running` | ⚠️ **레이스라 손으로 못 만든다** — 격리 PG 검사가 그 자리다 |
-| stale 회수 | ⚠️ 같은 이유. 단위 테스트 + PG 검사 |
-| 표면 부분 실패 | `i18n-format-check`에 깨진 파일 ✅ |
+`project-home T6 → T11(UI·시안·접근성) → T12(폐기용 리포 실물 왕복) → T13(정본 반영·정리)`가
+기능 완료 경로다. 서버·컴포넌트 준비가 끝나도 이 단계를 건너뛰어 전체 완료로 기록하지 않는다.

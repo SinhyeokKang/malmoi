@@ -1,280 +1,212 @@
 # Sync repository — tasks
 
-**결정은 2026-09-15에 닫혔다** (`spec.md` §7의 사용자 판정 넷 + 구현 판단 셋).
-차단 지점은 **T1의 시안 하나**이고, 그것도 T2~T6을 막지 않는다.
+`spec.md` §12의 feature-review 합의를 반영한다. **아래는 구현 계획이며 완료 체크가 아니다.**
+이번 feature-review는 문서만 수정한다. 코드·빌드·테스트·DB·원격 배포는 실행하지 않는다.
 
-커밋 경계는 `───` 로 표시한다. `/ship`이 이 분리를 지킨다.
+## 결정과 완료 경계
 
-## 닫힌 결정 요약
+- OWNER만 실행. 활성 표면 전체의 결과를 보고하며 포맷 누락도 실패로 포함한다.
+- 프로젝트 Sync 실행권은 원자적으로 확보해 전체 실행 동안 유지한다. **CI가 우선**이다.
+- Sync는 사용처를 보존하고 다음 CI가 갱신한다.
+- 정상 빈 카탈로그는 성공으로 처리해 기존 키 전체를 orphaned로 표시한다. 읽기 실패와 구분한다.
+- PR 조회 시작·실패 모두 미확인 경고. no changes도 재적재 완료다.
+- **Action·컴포넌트 준비 완료와 사용자 기능 완료를 구분한다.** Home 배선·실제 UI 검증은
+  project-home에서 함께 한다. T11~T13은 project-home T6 배선 완료 뒤에 실행한다.
 
-| # | 결정 |
-|---|---|
-| 1 | 권한 = **OWNER만** (`project:settings`). EDITOR에게 버튼이 **없다**(비활성이 아니라 부재) |
-| 2 | 범위 = **활성 표면 전부**, 표면마다 별도 트랜잭션·별도 예산·별도 결과 |
-| 3 | Dialog의 수 = **미발송 + 열린 PR 별도 경고**. PR 조회 실패는 셋째 문장 |
-| 4 | 미발송이 있으면 **`Send changes`를 먼저 권한다 — 막지는 않는다** |
-| 구현 1 | 게이트는 `lastImportStartedAt` 위에 선다. `SyncRun`에 행을 만들지 않는다 |
-| 구현 2 | `too-soon`(최소 간격)을 **안 만든다** — 재적재는 리포에 안 쓴다 |
-| 구현 3 | 리포 정체성 대조를 **읽기 전**에 둔다 (`runFirstIngest`에는 없는 검사다) |
+실행 순서: T2 → T3 → T4 → T5(red) → T6(green) → T7 → T8 → T10(준비 게이트).
+T1은 서버 작업과 병렬이며 T8의 시각 구현보다 먼저 완료한다.
+T9는 project-home에 넘기는 연결 계약이다. **T10까지만 끝났으면 준비 완료이며 기능 완료가 아니다.**
 
-**project-home과의 의존**: 이 기능이 `runRepositoryImport`를 주면 project-home T6이 `[Sync]`를
-배선한다. **반대 방향 의존은 없다** — 이 기능은 Home 재작성을 기다리지 않는다.
+커밋 경계는 `───`로 표시한다. 이 목록의 원격 단계는 Claude Code가 맡고 Codex는 로컬 커밋까지다.
 
----
+## T0. 이미 반영한 제품 문서
 
-## T1. 시안 — Claude Design (⚠️ **T7·T8·T11이 여기 걸린다**)
+PRODUCT §3 OWNER 전용 행·§7.5 재적재 readiness 설명, project-home spec §8 권한표는 반영됐다.
+구현이 아직 없다는 표기는 T13까지 유지한다.
 
-`design-prompt.md`를 Claude Design에 넘겨 아트보드를 받는다. **확인 Dialog·결과 Alert·거부 갈래가
-project-home 핸드오프에 없다** — 그래서 시안이 따로 필요하다.
+- **검증**: 권한표·설명·project-home 표가 OWNER 전용으로 일치한다. 단순 grep 건수로 판정하지 않는다.
 
-- **T2~T6은 이것과 병렬로 간다** — 서버 층은 시안과 무관하다.
-- ⚠️ **T8(UI)을 시안 없이 시작하지 않는다.** `ArchiveCard` 선례만 보고 지으면 형이 서기는 하는데,
-  2026-09-13에 새 프로젝트 모달이 핸드오프와 **29곳** 어긋난 채 `pnpm test` 3,000개가 green이었다 —
-  **그 어긋남을 T11에서 갚는 비용이 지금 기다리는 비용보다 크다.**
-- **검증**: 아트보드 여섯(`design-prompt.md` 프롬프트의 "만들어 줄 아트보드 여섯")이 서고,
-  그것이 `/design-sync`의 SoT가 된다.
+## T1. 시안 — project-home 통합 검증의 기준
 
----
+`design-prompt.md`를 Claude Design에 넘겨 4a~4f 아트보드를 받는다. 프롬프트 자체는 시안이 아니다.
+미확인 경고·실패 표면 이름·고정 danger 버튼은 제품 계약이며 시안이 바꾸지 않는다.
 
-## T0. ✅ 문서 정정 (2026-09-15에 **이미 했다**)
+- **검증**: 여섯 아트보드가 있고 PR 조회 중/실패, 정상 0키 완료, 부분 실패, CI 우선 미적용을 담는다.
+- **의존**: 서버 T2~T6은 기다리지 않는다. T8 시각 구현과 T11 실측은 이 시안을 따른다.
 
-1. ✅ **`docs/PRODUCT.md` §3 권한표** — `리포 재적재(Sync)` 행 추가(OWNER O / EDITOR X) +
-   Publish가 EDITOR에게 열린 것과 **방향이 갈리는 근거** 문단.
-2. ✅ **`docs/PRODUCT.md` §7.5** — *"`ready`는 종점이지만 적재의 종점은 아니다"* — 재적재는 상태 전이가
-   아니라 같은 상태에서 되풀이되는 동작이고, 첫 적재와 **진입 조건이 배타적**이다.
-3. ✅ **`docs/features/project-home/spec.md` §8** — `[Sync]`에 **OWNER만** 표기, `2b`의 `[Try again]`도
-   같은 Action이라 함께 갈린다, EDITOR 차이 절에 근거 문단, §4 비목표에 역포인터.
+## T2. 리포 읽기·준비 추출 — 테스트 먼저
 
-- ⚠️ **코드보다 앞서 적혔다** — PRODUCT의 기존 관용구(*"판정 2026-09-13 · **아직 안 만들었다**"*)를
-  그대로 써서 그 사실을 문장에 남겼다. **구현이 끝나면 그 괄호를 지운다** (T13에서 확인).
-- **검증**: `grep -n "리포 재적재" docs/PRODUCT.md` → 2건(표 + 근거 문단).
+1. 기존 `runFirstIngest`의 판정·오류·예산·캐시 무효화 단언을 유지하고 공용 헬퍼 회귀 테스트를 추가한다.
+2. `readFiles`·`snapshotError`를 `lib/import/read.ts`로 옮긴다.
+3. `lib/import/surface.ts`로 읽기·준비를 추출한다. snapshot 입력은 성공한 `RepoSnapshot` 전체이며
+   `files.path/sha/size`를 사용한다. GitHub I/O와 DB 적용을 분리한다.
+4. 첫 적재는 기존 0키 실패와 refs 교체를 유지한다. 이전 base는 null이다.
 
-`─── docs(PRODUCT): record that re-importing a repository is owner-only ───`
+- **검증**: 새 헬퍼 테스트 red→green, 기존 온보딩 테스트와 `pnpm test`·`pnpm typecheck` green.
+  attempted 목록/합집합/실패 blob만 재시도, SHA 다운로드, 크기 예산을 단언한다.
 
----
+`─── refactor(import): extract repository snapshot preparation ───`
 
-## T2. 공용 헬퍼 추출 — 판정을 한 줄도 안 바꾼다 (⚠️ 먼저 red)
+## T3. 순수 계약 테스트 — red
 
-`design.md` §3. `runFirstIngest`의 본문 중 **리포 읽기 → 적재**를 `lib/import/surface.ts`로,
-`readFiles`·`snapshotError`를 `lib/import/read.ts`로 옮긴다.
+- `lib/import/__tests__/plan.test.ts`: 거부 순서, 프로젝트 실행권과 표면 진행 표시의 stale 경계 정각,
+  보관 제외, 포맷 누락은 실패 목록, 활성 표면 전체 포맷 누락과 활성 표면 0개 구별.
+- `lib/import/__tests__/confirm.test.ts`: unsent/PR 객체/null/undefined 조합, recommendSend, 위험 판정.
+- `lib/import/__tests__/result.test.ts`: 전체 성공·정상 0키·부분 파싱 실패·표면 실패·포맷 누락·
+  CI 미적용·실행권 상실. 전부 partial, imported + partial, failed + superseded의 tone 순서도 단언한다.
+  원결과 사유 보존, 안정된 slug 순서, no changes 전용 분기 부재.
+- `lib/import/__tests__/empty.test.ts`: 다섯 어댑터별 정상 빈 컨테이너와 깨진 파싱/잘못된 컨테이너/
+  대상 미발견/base 부재/다운로드 실패를 구별. 재탐지 실패를 무조건 정상 0키로 바꾸지 않는다.
+- `lib/import/__tests__/apply-plan.test.ts`: 캡처 revision 불일치, 다른 실행 토큰, stale 토큰,
+  변경된 설정의 적용 거부. 이전 커밋으로 force-push됐어도 중간 적재가 없으면 허용한다.
 
-1. **테스트 먼저** — `lib/import/__tests__/surface.test.ts`에 **기존 `runFirstIngest` 단언을 그대로
-   옮겨 적는다**. 이 테스트가 green이라는 것이 "추출이 판정을 안 바꿨다"의 증거다.
-2. 추출. `runFirstIngest`가 **첫 소비자**가 된다 (`previousBaseLocale: null`).
-3. `previousBaseLocale`을 **인자로 연다** — 리터럴 `null`을 박지 않는다 (`design.md` §3.2).
+- **검증**: 신규 계약 미구현으로 해당 테스트가 red이며 기존 실패와 구분한다.
 
-- ⚠️ **`lib/onboarding/`에 넣지 않는다** — 그 디렉터리는 GitHub을 모르는 것이 경계이고
-  `credential-separation.test.ts`가 소스에서 그것을 센다.
-- ⚠️ **§2.1의 함정 셋을 그대로 옮긴다** — `attempted`는 `templatePaths`에서 나온다 / 합집합을 넘긴다 /
-  못 받은 것만 한 번 더 받는다. **주석도 함께 옮긴다** (그 주석이 과거 결함 셋의 기록이다).
+`─── test(import): pin repository sync decisions ───`
 
-- **검증**: `pnpm test` green (기존 온보딩 테스트 포함) · `pnpm typecheck` green.
+## T4. 순수 구현 + additive 스키마
 
-`─── refactor(import): lift the repo-read-and-ingest body out of runFirstIngest ───`
+1. 순수 판정 모듈을 구현한다. 테스트가 import하는 순수 파일에는 `server-only`를 붙이지 않는다.
+2. Project 실행 token/start nullable 둘, TranslationSurface.importRevision default 0을 추가한다.
+3. `/db`에서 마이그레이션 SQL 생성·검토·dev 적용 순서를 확인한다. 기존 행을 삭제하거나 reset하지 않는다.
+   prod 적용은 `/merge` 앞이며 이 단계에서 prod를 변경하지 않는다.
 
----
+- **검증**: T3 green, Prisma 생성과 typecheck 통과, SQL이 additive이며 기존 행의 기본값이 맞다.
+  마이그레이션·스키마를 같은 커밋에 포함한다.
 
-## T3. 순수 함수 테스트 먼저 — `/tdd interface` (red)
+`─── feat(import): add sync decisions and execution ownership fields ───`
 
-`design.md` §4의 셋.
+## T5. 적용·Action 회귀 테스트 — 구현 전 red
 
-1. `lib/import/__tests__/plan.test.ts` — `planRepositoryImport`
-   - **거부 순서**: readiness → identity → already-running → no-surfaces. 겹칠 때 어느 쪽이 이기는지.
-   - **stale 회수**: `IMPORT_STALE_AFTER_SECONDS`를 지난 `lastImportStartedAt`은 무시한다.
-     ⚠️ **경계 정각은 아직 stale이 아니다** (`planSyncStart`와 같은 부등호).
-   - 포맷 셋(`adapterName`·`pathTemplate`·`baseLocale`) 중 하나라도 `null`인 표면은 **그 표면만 빠진다**.
-   - 보관 표면 제외 · 남은 게 0이면 `no-surfaces`.
-2. `lib/import/__tests__/confirm.test.ts` — `planImportConfirmation`
-   - ⚠️ **`unsent === 0 ∧ openPr !== null` → `atRisk: true`.** 이 한 줄이 `spec.md` §6.2의 함정이다.
-   - `openPr === undefined`가 `null`로 **안 접힌다**.
-   - `recommendSend`는 `unsent > 0`에서만 true.
-   - `atRisk: false`여도 Dialog를 건너뛰는 갈래가 **없다**.
-3. `lib/import/__tests__/result.test.ts` — `summarizeImport`
-   - `unreadable.length > 0 ∨ partial > 0`이면 tone이 `success`가 **아니다** (불변식 9).
-   - **`unreadable`은 slug 목록이고 입력 순서를 지킨다** — 같은 결과가 같은 문장을 내야 한다.
-   ⚠️ **T1(시안)을 기다리지 않는다** — 문장이 이름을 댈지는 화면의 선택이고 타입은 안 움직인다
-   (`spec.md` §11.3).
+**T6 구현 전에** 단위·Action·실제 PG 테스트를 작성하고 red를 확인한다.
 
-- **검증**: `pnpm test` → 셋 다 **red**.
+`pnpm test:projects:postgres`에 다음 시나리오를 추가한다. 임의 sleep이 아니라 barrier로 순서를 제어한다.
 
-`─── test: pin the repository import gates, confirmation and summary ───`
+1. 편집 → Sync: 리포 값으로 교체하고 updatedBy=NULL. lastPulledAt은 유지한다.
+2. A 성공/B 실패: A가 남고 B 사유가 기록된다. 실패를 전체 성공으로 요약하지 않는다.
+3. 동일 프로젝트 Sync 둘: 한 실행만 진입, 다른 실행은 already-running. 표면 사이에도 실행권 유지.
+4. stale 회수: 새 토큰이 선 뒤 옛 실행은 데이터 적용·실패 기록·실행권 해제를 못 한다.
+5. Sync 준비 H1 → CI H2 적용 → Sync 재개: 해당 표면은 superseded, H2·refs·CI 결과 유지.
+6. 동일 SHA CI 재실행도 revision 변경으로 검출. CI 실패 rollback은 revision을 올리지 않는다.
+7. Sync 적용이 먼저 tx를 잡은 경우 뒤따르는 CI가 최종 값을 쓴다. 실행권 때문에 CI를 거부하지 않는다.
+8. refs 보존: Sync 전후 KeyRef가 같고 다음 CI에서 갱신된다. 정상 0키도 같은 보존 계약.
+9. 정상 0키: 키 전부 orphaned, 번역/사용처 삭제 없음, commit·revision·결과를 같은 tx에서 확정.
+   다운로드 실패/파싱 실패/파일 부재에서는 기존 키의 orphaned 상태를 바꾸지 않는다.
+10. 실패 중간 rollback, Project→Surface 잠금 순서, Add surface·createProject의 기존 원자성 유지.
+11. 준비 도중 보관·권한 회수·리포/branch/포맷 변경: 적용 시 다시 판정하고 이전 설정으로 쓰지 않는다.
+12. 포맷 누락 표면과 유효 표면 혼합/전부 누락: 모든 활성 표면의 이름·사유 반환.
 
----
+Action 하네스에는 OWNER 성공·EDITOR forbidden·세션 만료, 게이트 순서, reader/snapshot 각 한 번,
+공용 읽기 실패와 표면 실패의 반환, 실패 시 finally 무효화를 추가한다.
 
-## T4. 순수 함수 구현 (green)
+- **검증**: 변경 전 새 테스트 red. PG는 실제 저장·동시성을 검증하며 가짜 `$executeRaw`로 대신하지 않는다.
 
-`lib/import/{plan,confirm,result}.ts`.
+`─── test(import): cover sync ownership and CI precedence in Postgres ───`
 
-- ⚠️ **`server-only`를 붙이지 않는다** (테스트가 직접 import하는 순수 모듈).
-- ⚠️ **`IMPORT_STALE_AFTER_SECONDS`를 `lib/sync/plan.ts`에 넣지 않는다** — 상수는 소비자 옆에 둔다
-  (그 파일의 주석이 그 규칙을 이미 적었다).
-- **주석은 한국어로 "왜"만.** 특히 stale 상수가 `maxDuration`보다 넉넉해야 하는 이유.
+## T6. 적용 경계·Server Action — green
 
-- **검증**: `pnpm test` green · `pnpm typecheck` green.
+1. `applyPush`/`applyPushInTransaction`의 공통 적용 경계를 잠금 → 최신 키 조회 → 계획 → 쓰기로
+   바꾼다. CI와 Sync가 Project→Surface 잠금을 같은 순서로 잡고 revision 증가까지 같은 tx로 확정한다.
+   기존 열린 tx 경로는 새 tx를 만들지 않는다. 기존 CI 커밋 순서·포맷·보관도 tx 안에서 재확인한다.
+2. 필수 `refsMode`를 추가한다. 기존 소비자는 replace, Sync만 preserve. preserve는 refs SQL 자체를 생략한다.
+3. 검증된 정상 0키용 내부 적용을 추가한다. 외부 PushPayload의 최소 키 수 제약은 유지한다.
+4. 프로젝트 실행권의 원자적 선점·조건부 해제와 표면별 경쟁 판정을 구현한다. reader/blob 호출은 tx 밖이다.
+5. `runRepositoryImport`를 추가한다. 포맷 누락·부분 실패·CI 미적용도 원결과로 수집한다.
+6. `loadOpenPrUrl`을 `lib/projects/open-pr.ts`로 추출한다. 설정 화면은 URL 삼상태 유지,
+   `checkOpenPullRequest`는 검증한 URL에서 번호를 얻어 객체/null/undefined를 반환한다.
+7. 새 Action 둘의 `project:settings`를 `app/__tests__/entry-points.test.ts`에 이름별로 고정한다.
+8. `lib/import/__tests__/boundaries.test.ts`에 Action 직접 조립 금지/헬퍼 내부 허용을 명시한다.
+   `buildPushPayload`·`applyPush`·`applyPushInTransaction`을 전이 그래프 전체에서 금지하지 않는다.
+   정상 재사용을 허용하고 Action 직결 변형은 실패하는 스캐너 반례도 둔다.
+9. credential-separation과 client-graph 경계를 확인한다. 새 I/O 경로도 설치 자격증명을 사용한다.
 
-`─── feat(import): add the pure judgements behind repository re-import ───`
+- **검증**: T5 전체 green, `pnpm test`·`pnpm typecheck`·`pnpm test:projects:postgres` green.
+  lib/push·keys·surfaces에 영향이 있으므로 격리 PG를 생략하지 않는다.
 
----
+`─── feat(import): implement repository sync with CI precedence ───`
 
-## T5. 껍데기 — Server Action 둘
+## T7. 문구
 
-`design.md` §5.
+`messages/en.tsx`에서 기존 AccessError/OnboardError/importFailureMessage를 재사용한다.
+새 문장은 정상 0키를 포함한 완료, 포맷 누락, CI 우선 미적용, 사용처 보존 안내다.
+미발송 집계는 정확한 손실 개수로 보장하지 않고 열린 PR·미확인 경고를 함께 둔다.
+`Everything already matched the repository` 분기는 만들지 않는다. 파일 일부 실패와 표면 전체 실패를 구분한다.
+결과 문장을 단언하는 사전 주석은 실제 적용 코드의 심볼을 가리킨다.
+기존 `m.translations.banner.unsent`의 손실 경로에 수동 Sync도 포함한다.
 
-1. **`loadOpenPrUrl`을 `lib/projects/open-pr.ts`로 올린다** — 설정 페이지 사설 함수였다.
-   두 소비자(설정 · Dialog)가 같은 함수를 쓴다. **삼상태를 유지한다.**
-2. `checkOpenPullRequest` — 읽기 전용 Action, `project:settings`.
-3. `runRepositoryImport` — `app/(edit)/projects/actions.ts`.
+- **검증**: 문구 스캐너 green, 결과별 문장과 코드 효과 대조. Send changes 링크 이름·목적지가 맞고
+  발송만 하면 안전해진다는 표현이 없다. pull request 외 사용자 문구에 push/pull 용어를 새로 넣지 않는다.
 
-- ⚠️ **리더·스냅샷은 한 번만** — 표면마다 다시 열지 않는다(토큰 발급이 호출마다 붙는다 ·
-  표면마다 다른 head를 보게 된다).
-- ⚠️ **표면 루프 안에서 던지지 않는다** — 하나의 실패가 나머지를 막지 않는다(결정 2).
-  `IngestBudgetError`도 그 표면만 실패다.
-- ⚠️ **`markImportStarted`는 인가·게이트 뒤다.** 거부된 호출을 "적재 중"으로 그리지 않는다.
-- ⚠️ **`revalidatePath`는 `finally`다** (POSTMORTEM 2026-09-13).
-- ⚠️ **`previousBaseLocale`에 저장된 `surface.baseLocale`을 넘긴다** — `null`이면 base 교체가
-  조용히 묻힌다 (POSTMORTEM 2026-09-02).
-- ⚠️ **`applyPush`(배열형)를 쓴다** — 바깥 트랜잭션이 없다 (POSTMORTEM 2026-09-14).
-- ⚠️ **`projectId`로 좁힌다.** `slug`는 판정 입력이다.
+`─── feat(i18n): describe repository sync outcomes ───`
 
-- **검증**: `pnpm test` green · **`pnpm test:projects:postgres` 손으로** (표면 A 성공 / B 실패에서
-  A의 키가 남는다 · 재적재 왕복).
+## T8. 컴포넌트 준비 — DOM 테스트 먼저
 
-`─── feat(import): add the server action that re-imports every active surface ───`
+T1 시안을 따른다. `sync-button.tsx`·`sync-result.tsx`의 공개 props와 Home이 소유할 원결과 상태를 준비한다.
+Home 페이지 재작성은 이 태스크에 넣지 않는다.
 
----
+먼저 `components/__tests__/sync-button.test.tsx`와 결과 테스트를 작성한다.
 
-## T6. 방어선 — 격리 PG 검사에 갈래 추가
+- EDITOR 버튼 부재, OWNER 실행, 연타 방지, 위험이 없어도 Dialog와 danger 버튼 유지.
+- PR 조회 중 즉시 미확인 경고, 성공 null일 때만 해제, 실패 유지, 닫기→재오픈에서 이전 응답 무시.
+- Send changes 링크 목적지, 취소·완료 후 트리거 포커스 복귀, 경고·결과의 live region.
+- 원결과의 표면 이름·사유·오류 경로 유지, 정상 0키 완료, refresh 후 결과 유지용 호스트 계약.
+- 클라이언트 그래프가 server-only 준비·적용 코드를 가져오지 않는다.
 
-`pnpm test:projects:postgres`에 셋을 더한다. **하네스로는 못 재는 것들이다**
-(POSTMORTEM 2026-09-05 — 메모리 `$transaction`에 직렬화가 없고 `$executeRaw`가 no-op이다).
+- **검증**: DOM red→green, `pnpm test`·`pnpm typecheck` 통과. 실제 Home refresh·시각 실측은 T11에 남긴다.
 
-1. **재적재 왕복** — 편집 → 재적재 → 그 셀이 리포 값이고 `updatedBy`가 `NULL`이다.
-2. **표면 부분 실패** — A 성공 / B 실패에서 A의 키가 남고 B의 `lastImportError`가 선다.
-3. **stale 회수** — `lastImportStartedAt`을 과거로 박아 두고 게이트가 통과시킨다.
+`─── feat(home): prepare repository sync controls ───`
 
-- **검증**: `pnpm test:projects:postgres` green.
+## T9. project-home 연결 계약
 
-`─── test(postgres): cover re-import round trip, partial surface failure and stale recovery ───`
+Home 재작성은 project-home T6이 맡는다. 그 작업에서 아래를 함께 배선·검증한다.
 
----
+1. 페이지의 `maxDuration = 60`을 명시한다.
+2. OWNER의 [Sync]·실패 배너 [Try again]을 같은 확인 Dialog와 Action에 연결한다.
+3. Home 머리가 원결과 상태를 유지하고 고정 Alert 자리에 전달한다.
+4. T11·T12의 UI 검증을 project-home 검증과 함께 수행한다.
 
-## T7. 문구 — `messages/en.tsx` (⚠️ **T1의 시안이 값을 확정한다**)
+- **검증**: 실제 배선 전에는 준비 완료만 보고한다. UI가 없는 상태로 실측 통과·기능 완료를 기록하지 않는다.
 
-`spec.md` §10.
+## T10. 준비 게이트·preview
 
-- ⚠️ **새 항목을 늘리기 전에 `onboardErrorMessage`·`errors.access.*`·`importFailureMessage`를 먼저
-  본다** — 거부 문구 다섯 중 셋이 이미 있다 (POSTMORTEM 2026-09-14).
-- ⚠️ **`Send changes first`의 이름이 그 화면의 실제 버튼과 같아야 한다**
-  (`m.translations.publish.button` = `Send changes`). **`Publish`라고 쓰지 않는다.**
-- ⚠️ **미발송 줄의 주석에 `lib/push/apply.ts`의 `"updatedBy" = NULL`을 심볼로 적는다**
-  (POSTMORTEM 2026-09-14의 재발 방지 1).
-- ⚠️ **`pull`·`push` 낱말 0** — 단 `pull request`는 GitHub 고유명사라 예외다
-  (`archive.confirm.openPr`가 이미 그 형).
-- ⚠️ 한글 UI 리터럴 금지 · 제품 이름은 소문자 `malmoi`.
-- ⚠️ **기존 문구 하나를 정정한다 — `m.translations.banner.unsent`.** 지금 *"They can be lost if your
-  developers push code first"*인데 이 기능이 **둘째 경로**를 만든다(OWNER의 `[Sync]`). 주어를 넓힌다.
-  ⚠️ **같은 자리가 두 번째로 넓어지는 것이다** — 그 주석이 첫 번째 정정을 이미 기록하고 있다.
+- `pnpm typecheck` · `pnpm test` · `pnpm build` · `pnpm test:projects:postgres` green.
+- 새 스키마를 dev에 먼저 적용했는지 확인한다. prod는 `/merge`에서 additive-first로 반영한다.
+- Codex는 로컬 커밋까지. dev push는 Claude Code `/push`가 맡는다.
 
-- ⏸ **결과 Alert 문장은 T1(시안)의 `4e`를 기다린다** — 표면 이름을 댈지가 거기서 정해진다
-  (`spec.md` §11.3). **나머지 문구(Dialog·거부·버튼)는 기다리지 않는다.**
+- **검증**: 로컬 게이트·dev migration 통과 근거를 남긴다. T11~T13은 아직 미완료로 유지한다.
 
-- **검증**: `pnpm test` green (두 스캐너 포함) +
-  `grep -nE "will be replaced|won't be able|will stop|no longer" messages/en.tsx` → **새 문장이 참인지
-  코드로 되짚는다**.
+## T11. project-home에서 UI·시안·접근성 검증
 
-`─── feat(i18n): add the copy for repository sync and its confirmation ───`
+**선행조건: T1 시안 + T8 컴포넌트 + project-home T6 실제 배선 완료.**
+`/design-sync`는 그 환경의 지원 런타임에서 project-home과 함께 수행한다.
 
----
+- 미발송 0/N, 열린 PR, 조회 중/실패, 정상 0키, 부분 실패, CI 미적용, 연타, 결과 유지.
+- computed style·접근성 트리로 시안과 대조하고 키보드 포커스·스크린리더 알림을 확인한다.
+- PR 실패·늦은 응답은 DOM에서 Action promise를 제어해 자동 검증한다. 실제 UI에서는 로컬 테스트
+  환경의 응답 제어로 재현하되 프로덕션 실패 토글을 추가하지 않는다. 재현 못 한 갈래는 미검증으로 남긴다.
 
-## T8. UI — 버튼 + Dialog + 결과
+- **검증**: 위 갈래별 실측 근거가 있다. DOM 통과를 실제 브라우저 검증으로 바꿔 적지 않는다.
 
-`design.md` §6. `components/projects/sync-button.tsx` · `sync-result.tsx`.
+## T12. project-home과 실물 왕복
 
-- **`ArchiveCard`가 선례다** (`Dialog` + `DialogTrigger` + `DialogClose` + `useTransition`).
-- ⚠️ **`components/ui/dialog.tsx`를 고치지 않는다** — 모달 넷이 함께 움직인다 (DESIGN §6.7).
-- ⚠️ **결과 Alert는 버튼 컴포넌트가 아니라 머리가 든다** — `revalidatePath`가 다시 그리면서 방금 받은
-  결과가 언마운트된다 (POSTMORTEM 2026-09-07).
-- ⚠️ **EDITOR에게는 렌더하지 않는다** — 부재이지 비활성이 아니다 (DESIGN §6.69의 선례).
-  **차단은 Action이 든다** — 그 사실을 주석에 남긴다.
-- ⚠️ **`"use client"` 그래프가 `lib/import/`를 끌어오면 안 된다** — Action만 import한다
-  (`components/__tests__/client-graph.test.ts`).
-- ⚠️ 연타 방지 `loading={pending}`.
+**선행조건: T11.** `/l10n-roundtrip`을 폐기용 `i18n-format-check`에서 실행한다.
+편집→Sync 덮어쓰기, 정상 0키, 일부 파일 실패, 사용처 보존 후 CI 갱신을 확인한다.
+공유 리포 데이터 변경 전 복구 절차를 정하고 수행 후 복구한다. 포크인 `i18n-many-locales`·`i18n-none`은 쓰지 않는다.
 
-- **검증**: `pnpm test` green + `pnpm build` green (RSC 경계는 `tsc`가 못 본다).
+- **검증**: 실제 결과와 복구를 기록한다. 레이스·stale는 T5의 PG 증거를 사용하고 수동 검증했다고 쓰지 않는다.
 
-`─── feat(home): add the sync button, its confirmation dialog and its result ───`
+## T13. 정본 반영·기능 완료
 
----
+**선행조건: T11·T12 완료.** 준비 단계에서는 이 태스크를 실행하지 않는다.
 
-## T9. ⏭ Home 배선 — **이 기능이 하지 않는다** (2026-09-15 판정)
+- PRODUCT: 구현 전 표기를 지우고 정상 0키·CI 우선·사용처 보존 결론을 반영한다.
+- ARCHITECTURE: 프로젝트 실행권, 공통 적용 잠금, revision, 정상 0키 내부 계약과 배포 순서.
+- DESIGN: 실제 시안 측정값·경고·결과·접근성 규칙.
+- DIRECTORY: 추가 파일·책임 경계.
+- 결론이 정본에 올라간 뒤에만 이 feature 디렉터리를 정리한다.
 
-`app/(edit)/projects/[slug]/page.tsx`를 **project-home T6이 전면 재작성한다.** 같은 파일을 두 번
-고치지 않으므로 **배선은 그쪽이 흡수한다.**
+- **검증**: 코드·실측·정본이 같은 계약을 말하고 project-home에 남은 통합 검증이 없다.
 
-⚠️ **그래서 이 기능이 끝나도 화면에 버튼이 없다** — Action과 컴포넌트만 서 있다. **그 사실을
-숨기지 않는다**: sync-repository만 머지된 구간에서 `[Sync]`는 존재하지 않는다.
+## 비목표
 
-**project-home T6에 넘긴 요구 넷** (그쪽 `tasks.md`에 적었다):
-
-1. **`export const maxDuration = 60`** — ⚠️ **지금 그 파일에 없다.** Server Action은 자기를 부른 페이지
-   세그먼트의 값을 쓰고, 없으면 프로젝트 기본값(300)이다 (ARCHITECTURE §3.1). **선언을 빠뜨리면
-   증상이 "큰 리포에서만 실패"라 재현이 어렵다.**
-2. `[Sync]`·`2b`의 `[Try again]`이 **OWNER에게만 렌더된다** (부재이지 비활성이 아니다).
-3. `onClick`이 `runRepositoryImport`를 부르고, 그 앞에 확인 Dialog가 선다.
-4. **결과 Alert 자리는 머리가 든다** — `revalidatePath`가 다시 그리는 분기 안에 두지 않는다
-   (POSTMORTEM 2026-09-07).
-
-- **검증**: project-home T6의 검증에 포함된다 — 로컬에서 OWNER로 `[Sync]`가 보이고 눌리며,
-  EDITOR 계정에서는 **버튼이 없다**.
-
----
-
-## T10. 게이트 → `/push`
-
-- `pnpm typecheck` · `pnpm test` · `pnpm build` **셋 다 green**.
-- `pnpm test:projects:postgres` **손으로 돌린다** (T5·T6).
-- ⚠️ **`/db`는 필요 없다** — 스키마 변경이 0이다 (`design.md` §7).
-- `/push` → dev · preview 배포. **프로덕션은 `/merge`가 따로 받는다.**
-
----
-
-## T11. `/design-sync sync-repository` — 시안 대조 (⚠️ 생략 금지)
-
-T10까지가 "동작하나"이고 여기가 "시안과 같은가"다.
-
-- 실측은 눈이 아니라 **computed style + CDP 접근성 트리**다.
-- **Dialog의 세 갈래를 실제로 만들어서 잰다** — 미발송 N · 열린 PR · PR 조회 실패.
-  ⚠️ **셋째는 만드는 방법이 정해지지 않았다** (`design.md` §13) — **밟지 못했으면 "검증했다"고 쓰지
-  않는다.**
-- **`danger` 버튼과 `Send changes first` 링크의 포커스 순서**를 접근성 트리로 잰다.
-
----
-
-## T12. 실물 왕복 — `/l10n-roundtrip`
-
-⚠️ **폐기용 리포로만** (`i18n-format-check`). 일부러 깨진 로케일 파일을 넣어 **표면 부분 실패**를
-실물로 밟고, **되돌리는 절차를 같이 적는다.**
-
-⚠️ **`i18n-many-locales`·`i18n-none`은 쓰지 않는다** — 포크라 PR 흔적이 남는다.
-
----
-
-## T13. 정본 반영 + 디렉터리 정리
-
-1. `docs/ARCHITECTURE.md` — §5.5나 §3.1 옆에 **재적재 절**. ⚠️ **불변식 2가 "새 push 시점"을 얻었다는
-   사실과, 그럼에도 병합 코드가 0이라는 제약**을 적는다. 게이트 순서 표도 여기로 올린다.
-2. `docs/DESIGN.md` — 확인 Dialog의 측정값·세 갈래 문장 · **EDITOR에게 버튼이 부재하는 규칙**.
-3. `docs/DIRECTORY.md` — `lib/import/`·`components/projects/sync-*.tsx`가 늘었다.
-4. `docs/PRODUCT.md` — T0에서 이미 했다면 확인만.
-5. **`docs/features/sync-repository/`를 지운다** — 결론이 정본으로 올라갔으면 근거 기록을 쌓아 두지
-   않는다 (CLAUDE.md). 되살릴 일이 생기면 `git log`가 답한다.
-
-`─── docs(ARCHITECTURE): … ───` / `─── docs(DESIGN): … ───` / `─── docs(DIRECTORY): … ───`
-
----
-
-## 안 하는 것 (`spec.md` §4 재확인)
-
-자동 재적재·스케줄 · push 웹훅 · 표면 선택 UI · 되돌리기/스냅샷 · `SyncRun` 행 · `too-soon` 게이트 ·
-`repoAheadFiles`의 Home 사본 · Home 화면 재작성(project-home의 몫) · `archivedBy`류 실행자 컬럼 ·
-적재 이력 테이블.
+자동 적재·웹훅·표면 선택·undo·번역 값 병합·SyncRun import 이력·최소 간격 게이트·Home 재작성은 추가하지 않는다.

@@ -24,8 +24,7 @@ UPDATE`, `"updatedBy" = NULL`)이 이 리포의 헌법이고, 그 대가가 **�
 - **번역 편집자** — **이 버튼을 못 본다** (§7 결정 1). 손실되는 편집의 당사자가 그 창을 스스로 여는
   경로를 만들지 않는다.
 
-⚠️ **project-home spec §8 상태 표가 `[Sync]`를 전 역할에 그리도록 적혀 있다** — 그 표를 고쳐야 한다
-(§9 · `tasks.md` T0).
+**project-home spec §8의 OWNER 전용 표기는 반영됐다** (`tasks.md` T0).
 
 ## 2. 문제 — 관측된 사실
 
@@ -70,20 +69,27 @@ grep -rn "reimport\|resync\|importSurface" app lib   → 0
 ### 2.4 Home의 `[Sync]`가 배선 없이 그려질 예정이다
 
 project-home `tasks.md` T6이 *"`[Sync]`는 그리되 `onClick`은 T1의 산출물을 기다린다"*로 적혀 있고,
-T1이 이 문서다. **이 스펙이 끝나야 그 버튼이 배선된다.**
+T1이 이 문서다. **서버·컴포넌트 준비가 끝나야 그 버튼을 배선할 수 있다.**
 
 ## 3. 완료 조건 — 검증 가능한 문장으로
+
+**준비 완료와 기능 완료를 구분한다.** 이 기능은 서버 경로·Action·컴포넌트 연결 계약을 먼저 준비한다.
+Home 배선과 실제 UI 검증은 project-home에서 함께 한다. 아래 UI 완료 조건과 T11~T13은
+project-home T6 배선 완료에 의존하며, 그 전에는 기능 전체를 완료 처리하지 않는다.
 
 ### 3.1 경로
 
 1. **Home의 `[Sync]`가 활성 표면 전부를 리포에서 다시 적재한다.** 성공하면 각 표면의
-   `lastCommitSha`·`lastCommitAt`이 base head로 전진하고 키·번역이 리포 값이 된다.
+   `lastCommitSha`·`lastCommitAt`이 읽은 base head로 갱신되고 키·번역이 리포 값이 된다.
+   적용 중 CI와의 경쟁은 §12의 CI 우선 계약을 따른다.
    → 격리 PG 검사(`pnpm test:projects:postgres`)에 재적재 왕복을 더한다.
 2. **표면 하나의 실패가 나머지를 막지 않는다.** 표면마다 별도 트랜잭션·별도 예산이고, 결과가
    표면별로 돌아온다.
    → 순수 함수 테스트 + 격리 PG 검사(표면 A 성공 / B 실패에서 A의 키가 남는다).
-3. **적재 경로를 새로 짜지 않는다** — `prepareFirstSnapshot` → `applyPush`를 그대로 지난다.
-   → 소스 스캐너가 이 Action의 그래프에서 `buildPushPayload`·`applyPush` 직접 조립을 0으로 센다.
+3. **비어 있지 않은 적재는 기존 준비·적용을 재사용한다** — 공통 적용 경계에 잠금·revision·refs 보존을 더한다.
+   정상 0키만 외부 payload와 분리된 내부 계약을 둔다 (`design.md` §3).
+   → 소스 스캐너는 Action 본문의 `buildPushPayload`·`applyPush`·`applyPushInTransaction` 직접 호출을 금지한다.
+   공용 헬퍼 내부의 준비·적용 호출은 허용하며, 정상 재사용 경로를 금지하는 전이 그래프 검사는 하지 않는다.
 
 ### 3.2 게이트
 
@@ -103,7 +109,8 @@ T1이 이 문서다. **이 스펙이 끝나야 그 버튼이 배선된다.**
 8. **PR 조회 실패를 "열린 PR 없음"으로 접지 않는다.** `undefined`는 "확인하지 못했다"이고 문장이 다르다.
    → 같은 테스트의 셋째 갈래 (`ArchiveCard`의 `openPrUrl` 삼상태와 같은 계약).
 9. **미발송이 있으면 Dialog가 `Send changes`를 먼저 권한다** (§7 결정 4).
-   ⚠️ **막지는 않는다** — 막으면 PR이 안 머지되는 한 영원히 Sync 못 하는 교착이 생긴다.
+   ⚠️ **막지는 않는다** — 위험을 알린 뒤 OWNER가 리포 값으로 덮는 선택을 할 수 있다.
+   PR 생성만으로 미발송 수가 내려갈 수 있으므로, 그 수를 PR 머지 여부로 읽지 않는다.
    → 단위 테스트가 `unsent > 0`에서 `recommendSend: true`를, `= 0`에서 `false`를 낸다.
 10. **Dialog가 단언하는 결과가 그 결과를 내는 코드를 주석으로 지목한다** (POSTMORTEM 2026-09-14).
     → 사전 항목의 주석에 `applyPush`의 `"updatedBy" = NULL` 자리를 심볼로 적는다.
@@ -149,12 +156,11 @@ T1이 이 문서다. **이 스펙이 끝나야 그 버튼이 배선된다.**
 
 §4.3 다섯 중 걸리는 것 없음.
 
-⚠️ **PRODUCT 갱신이 필요한 자리 둘** (`tasks.md` T0):
-1. **§3 권한표에 행이 하나 는다** — `리포 재적재(Sync)  OWNER: O / EDITOR: X`. 표가 권한의 화면이므로
+**PRODUCT에 이미 반영한 자리 둘** (`tasks.md` T0, 구현 전임을 표기):
+1. **§3 권한표에 행을 추가했다** — `리포 재적재(Sync)  OWNER: O / EDITOR: X`. 표가 권한의 화면이므로
    새 OWNER 전용 동작은 거기 서야 한다.
-2. **§7.5의 readiness 다이어그램에 되돌아오는 화살이 없다** — `ready`가 종점으로 그려져 있는데,
-   이 기능은 `ready`에서 적재를 **다시** 돈다. 다이어그램이 아니라 문장으로 *"`ready` 뒤의 재적재는
-   상태를 바꾸지 않는다 — 실패해도 `ready`는 `lastCommitSha`가 이미 있어 유지된다"*를 적는다.
+2. **§7.5에 재적재 설명을 추가했다** — `ready` 이후에도 적재할 수 있고, 실패해도 기존
+   `lastCommitSha`가 남아 readiness는 유지된다는 문장이다.
 
 ## 6. 불변식 대면
 
@@ -181,7 +187,7 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 | Publish로 PR을 열었고 **머지 전** | **X** (`updatedAt ≤ lastPulledAt`) | X | **O** |
 | PR이 머지되어 CI가 다시 push함 | X | O | O (같은 값이라 무해) |
 
-`Project.lastPulledAt`은 **PR을 만든 시점**에 전진한다(스킵에도 전진한다 — 스키마 주석). 그래서
+`Project.lastPulledAt`은 **PR 생성 시 캡처한 편집 시각으로** 전진한다(스킵에도 전진한다 — 스키마 주석). 그래서
 **두 번째 줄이 조용히 빠진다.**
 
 ⚠️ **POSTMORTEM 2026-09-14가 이 축의 반대 방향이었다** — 그때는 확인 Dialog의 수가 동작이 바꾸는
@@ -215,7 +221,7 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 
 - 근거: 이 동작은 **"리포 값으로 DB를 덮는다"**이고 리포 설정급이다. 손실되는 편집의 당사자가
   그 창을 스스로 여는 경로를 만들지 않는다.
-- ⚠️ **대가**: project-home spec §8 상태 표가 `[Sync]`를 전 역할에 그리도록 적혀 있다 — **고쳐야 한다.**
+- **project-home spec §8의 권한표는 정정됐다.**
   EDITOR에게는 버튼이 **없다**(비활성이 아니라 부재 — 누를 수 없는 버튼을 주지 않는다는
   `ProjectArchived`의 선례, DESIGN §6.69).
 - ⚠️ **차단은 Action이 든다.** 버튼을 감추는 것은 편의다 (CLAUDE.md — 조건부 렌더는 차단이 아니다).
@@ -228,7 +234,7 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
   같은 규칙). 하나가 실패해도 나머지가 들어간다.
 - ⚠️ **수용한 비용 — 시간 초과**: `readFiles`가 순차 다운로드이고 `maxDuration`이 60초다.
   표면 N개 × 로케일 파일이 그 안에 들어야 한다. `i18n-many-locales`(59로케일)급이면 잘린다.
-  **막지 않고 관측한다** — §11 열린 결정 1.
+  **막지 않고 관측한다** — §11.1.
 - ⚠️ **Home 세그먼트에 `export const maxDuration = 60`이 없다** — 지금 `app/(edit)/projects/[slug]/page.tsx`에
   그 선언이 **없어서** 프로젝트 기본값 300으로 떨어진다. Server Action은 자기를 부른 페이지 세그먼트의
   값을 쓰므로 **선언을 더한다** (ARCHITECTURE §3.1).
@@ -240,8 +246,8 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 | 상태 | 문장 |
 |---|---|
 | `unsent > 0` | `{n} edits that haven't been sent yet will be replaced by the repository.` |
-| `openPr ≠ null` | + `Edits in pull request #{n} are not in {branch} yet — they will be replaced too.` |
-| `openPr === undefined` | + `We couldn't check whether anything is still waiting in a pull request.` |
+| `openPr`가 객체 | + `Edits in pull request #{n} are not in {branch} yet — they will be replaced too.` |
+| `openPr === undefined` | + `We haven't confirmed whether anything is still waiting in a pull request.` |
 
 - ⚠️ **`undefined`를 `null`로 접지 않는다** — `ArchiveCard`의 `openPrUrl` 삼상태와 같은 계약이고
   POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽는다")이 그 근거다.
@@ -253,31 +259,30 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
   그 화면의 실제 라벨과 맞춘다**: `m.translations.publish.button`이 `Send changes`이므로 이 문구도
   `Send changes`다 (POSTMORTEM 2026-09-14 — *"무엇을 누르라고 말하는 문구를 쓸 때 그 이름의 컨트롤이
   있는지 본다"*). ⚠️ **`Publish`라고 쓰지 않는다** — 그 낱말은 개념이고 버튼 이름이 아니다.
-- **막지 않는 근거**: 막으면 `unsent > 0`이 PR 머지 전까지 안 내려가는 상황에서 **영원히 Sync 못 하는
-  교착**이 된다 (Publish는 PR만 만들고 `lastPulledAt`만 전진시킨다).
+- **막지 않는 근거**: OWNER가 손실 위험을 확인한 뒤 리포 값으로 덮는 선택을 할 수 있게 한다.
+  Publish는 PR 생성 시 캡처한 편집 시각으로 `lastPulledAt`을 전진시키므로 미발송 수가 내려갈 수 있다.
+  편집 보존의 완료는 PR 머지이므로 `Send changes`만으로 안전해졌다고 안내하지 않는다.
 - **되돌리기를 만들지 않는 근거**: 되돌리기는 "옛 DB 값과 새 리포 값 중 고르기"이고 그것이 곧 병합
   로직이다 — 불변식 2와 정면 충돌한다 (§6.1).
 
 ### 구현 판단 셋 (사용자 결정 아님)
 
-#### 1. 게이트는 `lastImportStartedAt` 위에 선다, `SyncRun`이 아니다
+#### 1. 프로젝트 실행권과 표면 진행 표시를 분리한다
 
-`SyncRun`은 Publish 전용이다 — `trigger`·`status` enum이 그 가정 위에 서고, project-home design §6.3이
-같은 이유로 표면 추가 사건을 거절했다. 적재의 "돌고 있다"는 **이미 `TranslationSurface.lastImportStartedAt`**이
-든다 (`markImportStarted`/`finishImportRun`).
-
-⚠️ **그 컬럼에 stale 기준이 없다** — `failing()`·`meterSlot`이 `null` 여부로만 본다. 죽은 프로세스가
-남기면 그 표면이 영구히 "적재 중"이고 **Sync가 영원히 거부된다.** `IMPORT_STALE_AFTER_SECONDS`를
-새로 든다 (`STALE_AFTER_SECONDS`와 같은 논리 — `maxDuration`보다 넉넉해야 한다).
+`TranslationSurface.lastImportStartedAt`은 진행 표시이며 잠금이 아니다. 프로젝트 단위의 실행 토큰과
+시작 시각을 짧은 DB 트랜잭션에서 원자적으로 확보하고 마지막 표면 처리까지 유지한다.
+`IMPORT_STALE_AFTER_SECONDS = 300`을 초과한 실행권은 회수하며, 이전 토큰은 이후 적용·해제할 수 없다.
+표면별 진행 표시에도 같은 stale 기준을 적용한다. 구체적인 필드와 저장 경계는 `design.md` §3.3·§7.
+`SyncRun`은 계속 Publish 전용이고 적재 이력은 만들지 않는다.
 
 #### 2. `too-soon`(최소 간격)을 만들지 않는다
 
 `PUBLISH_MIN_INTERVAL_SECONDS`의 정의가 *"리포에 쓴 뒤 쉬는 간격"*이다. **재적재는 리포에 안 쓴다** —
-읽기만 한다. 연타는 `already-running`이 이미 막고, 읽기 rate limit은 `openRepoReader`의 토큰 재사용과
-`checkDownloadBudget`이 든다. **쓰이지 않는 축을 미리 만들지 않는다** (CLAUDE.md).
+읽기만 한다. 동시 실행은 이번에 만드는 원자적 실행권으로 막는다. `openRepoReader`는 토큰 발급을 재사용하고
+`checkDownloadBudget`은 다운로드 크기·개수를 제한한다. 둘을 API rate-limit 보장으로 해석하지 않는다. **쓰이지 않는 축을 미리 만들지 않는다** (CLAUDE.md).
 
-⚠️ project-home spec §7.3이 *"`already-running`·`too-soon`은 Sync 게이트가 아니라 Publish 게이트다"*로
-이미 정정했고, 이 판단이 그것과 같은 방향이다.
+기존 Publish 게이트를 Sync에 그대로 붙이지 않는다. Sync의 동시 실행은 전용 실행권이고
+최소 간격 게이트는 없다. project-home이 연결할 거부 계약은 이 문서 §8을 따른다.
 
 #### 3. 리포 정체성 대조를 읽기 **전**에 둔다
 
@@ -292,30 +297,34 @@ CLAUDE.md의 코어 원칙이 그 사실을 이미 적어 뒀다:
 | 1 | 세션 | `unauthorized`·`unavailable` | — |
 | 2 | 인가 `project:settings` | `forbidden`·`not-found`·`archived` | ⚠️ **보관이 여기서 걸린다** — `planProjectAccess`가 권한 → 보관 순이라 EDITOR가 보관된 프로젝트를 치면 답이 `forbidden`이다(보관 여부가 권한 없는 사람에게 새지 않는다) |
 | 3 | readiness | `not-ready` | `awaiting_first_sync`면 그 자리는 `runFirstIngest`다. 두 경로가 한 프로젝트에서 동시에 유효하지 않게 한다 |
-| 4 | 연결·정체성 | `not-connected`·`repo-replaced` | GitHub을 부르기 **전**에 거른다. `repositoryId`·`installationId` 대조가 이름 대조보다 앞이다 (불변식 11) |
-| 5 | 동시 실행 | `already-running` | 활성 표면 중 하나라도 `lastImportStartedAt`이 stale 컷 안이면 거부. **여기까지가 DB만 본다** |
+| 4 | 연결·정체성 | `not-connected`·`repo-replaced` | 로컬 연결값 검사 후 GitHub으로 정체성을 대조한다. 로케일 blob 읽기보다 앞이다 |
+| 5 | 동시 실행 | `already-running` | 유효한 프로젝트 실행권 또는 활성 표면의 진행 표시가 있으면 거부. 최종 판정과 실행권 획득은 원자적이다 |
 | 6 | 적재 대상 | `no-surfaces` | 활성 표면이 0이면 돌 것이 없다 |
 
 ⚠️ **4가 3보다 뒤인 이유**: `not-ready`는 "아직 첫 적재 전"이고 그 화면의 답이 다르다(설정의
 [Run first import]). 연결 상태를 먼저 말하면 사용자가 재연결을 하고도 같은 자리에 선다.
 
 ⚠️ **거부에 행을 만들지 않는다** — ARCHITECTURE §5.6.2와 같은 규칙. `already-running`의 증거는
-**첫 실행의 `lastImportStartedAt`**이다.
+**프로젝트 실행 토큰·시작 시각**이다. 표면 사이의 진행 표시 공백으로 실행권을 판단하지 않는다.
 
 ## 9. Action 계약 — Home이 부를 것
 
 ```ts
 // app/(edit)/projects/actions.ts
+export type SurfaceImportReason = ImportFailureCode | "invalid-format" | "superseded" | "lease-lost";
 export type SurfaceImportResult = {
   surfaceSlug: string;
-  /** 적재한 키 수 (base 로케일 기준). */
+  status: "imported" | "partial" | "failed" | "superseded";
+  /** 정상 빈 카탈로그도 imported/count: 0이다. */
   count: number;
-  /** 못 읽은 항목 수. **0이 아니면 성공 문구를 쓰지 않는다** (불변식 9). */
   failed: number;
-  /** 실패로 끝났으면 그 코드. 성공·부분 성공은 null. */
-  reason: ImportFailureCode | null;
+  reason: SurfaceImportReason | null;
+  /** 기존 어댑터 오류에서 경로와 코드만 전달한다. 원문 예외는 노출하지 않는다. */
+  errors: readonly { path: string; code: AdapterError["code"] }[];
 };
 
+// partial은 실제 적재 + 일부 실패, failed는 적용 실패, superseded는 CI 우선 또는 lease-lost 미적용.
+// reason은 imported/partial에서 null이고 partial의 상세는 errors/failed에 남긴다.
 export type RepositoryImportOutcome =
   | { ok: true; surfaces: SurfaceImportResult[] }
   | { ok: false; error: RepositoryImportError };
@@ -340,8 +349,9 @@ export async function runRepositoryImport(raw: { slug: string }): Promise<Reposi
 ⚠️ **던지지 않는다** — 직렬화 경계라 값으로 돌려준다 (`runFirstIngest`와 같은 형).
 
 **부수 효과** (Action이 보장한다):
-- 표면마다 `markImportStarted` → (성공) `applyPush`의 같은 트랜잭션이 `importOutcomeFields`로 종료 /
-  (실패) `finishImportRun`.
+- 프로젝트 실행권 확보 → 표면별 준비 → 실행권·적재 revision 재검사와 데이터 적용을 같은 트랜잭션으로 확정.
+  표면 진행·결과는 자기 시작 시각으로만 종료하며, 프로젝트 실행권은 전체 루프 종료 시 자기 토큰으로 해제한다.
+- CI가 먼저 적재한 표면은 `superseded`로 보고하고 데이터·refs·CI의 결과 기록을 덮지 않는다.
 - `revalidatePath('/projects/${slug}', "layout")` · `revalidatePath('/projects')` — **`finally`에 둔다**
   (POSTMORTEM 2026-09-13 — 실패 경로의 무효화가 빠져 있었다).
 
@@ -369,16 +379,20 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<{ url
 - 미발송 줄 — `{n} edits that haven't been sent yet will be replaced.`
   ⚠️ **주석에 `lib/push/apply.ts`의 `"updatedBy" = NULL`을 심볼로 적는다** (완료 조건 10).
 - 열린 PR 줄 — `Edits in pull request #{n} are not in {branch} yet — they will be replaced too.`
-- PR 조회 실패 줄 — `We couldn't check whether anything is still waiting in a pull request.`
+- PR 조회 실패 줄 — `We haven't confirmed whether anything is still waiting in a pull request.`
 - 권유 링크 — `Send changes first` ⚠️ **`Send changes`가 그 화면의 실제 버튼 이름이다**
 - 확인 버튼 — `Sync` (variant `danger`) · 취소 — `Cancel`
 
 ### 결과 Alert
 - 전부 성공 — `Synced {n} keys from {branch}.`
-- 표면 하나뿐일 때도 같은 문장 — 표면 이름을 안 넣는다(§11 열린 결정 3)
+- 성공 표면 하나뿐일 때도 같은 완료 문장. 실패·미적용은 표면 이름과 사유를 표시한다 (§11.3).
 - 부분 — `Synced {n} keys, but {m} surfaces could not be read.`
-  ⚠️ **원인 문장은 `importFailureMessage`가 이미 든다** (`ImportFailureCode` 6종) — 새로 쓰지 않는다
-- 변화 없음 — `Everything already matched the repository.`
+  기존 `ImportFailureCode`는 `importFailureMessage`를 재사용하고, 신규 포맷 누락·CI 미적용은 전용 문장을 둔다.
+- 변경이 없는 재적재도 같은 완료 문구를 쓴다. 동일 여부를 별도로 비교하거나 단언하지 않는다.
+- 정상 0키 — `Synced 0 keys from {branch}.` (기존 키는 orphaned 처리)
+- CI 우선으로 미적용 — `New repository data arrived while syncing. This surface was not replaced. Try again if needed.`
+- 포맷 누락 — 표면 이름과 `This surface has no valid import format.`을 표시한다.
+- 파일 일부 실패와 표면 전체 실패는 구분한다. 부분 실패를 `0 surfaces could not be read`로 표현하지 않는다.
 
 ### 거부
 - `not-ready` — `This project hasn't finished its first import yet.`
@@ -405,8 +419,8 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<{ url
   **같은 자리를 두 번째로 넓히는 것이다.**
 - **POSTMORTEM 2026-09-14의 부류다** — 결과를 단언하는 문구가 새 경로 때문에 낡았고, 그것을 잡는
   자동 검사가 **없다**(스캐너는 문장이 거기 있는지를 재지 참인지는 안 잰다).
-- ✅ **판정**: 주어를 넓힌다. 예: `…if a code push or a repository sync lands first — send them when
-  you're done.` **최종 문구는 `/design-sync` 대상이 아니라 리뷰 대상이다** (번역 화면에는 시안이 없다).
+- ✅ **판정**: `…if the repository is imported before your changes are merged.`처럼 수동 재적재도
+  포함한다. 발송과 PR 머지를 구분하고 사용자 문구에 push 용어를 새로 넣지 않는다.
 - ⚠️ **번역 화면을 다른 방향으로 고치지 않는다** — 문장 하나다.
 
 ## 11. 남은 결정 — 2026-09-15에 셋을 닫았다
@@ -414,7 +428,8 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<{ url
 ### 11.1 ✅ 시간 초과 — **관측한다. 예산 분배를 선반영하지 않는다**
 
 표면 N개 × 로케일이 60초를 넘기면 잘린다. 먼저 끝난 표면은 들어가 있고(표면마다 별도 트랜잭션),
-못 끝낸 표면은 `lastImportStartedAt`이 남았다가 `IMPORT_STALE_AFTER_SECONDS` 뒤 **게이트가 회수한다.**
+못 끝낸 표면의 진행 표시와 프로젝트 실행권은 `IMPORT_STALE_AFTER_SECONDS` 뒤 **게이트가 회수한다.**
+회수된 옛 실행은 실행 토큰 대조에서 적용을 거부당한다.
 
 - 근거: **실측 없이 예산 분배 로직을 만드는 것 자체가 결함이다** (CLAUDE.md — *"확장성을 위한
   선반영은 그 자체가 결함이다"*). 지금 설치된 여섯 리포 중 **다표면 프로젝트가 0개**다.
@@ -431,12 +446,31 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<{ url
 - ⚠️ **재적재 직후 미발송이 0이 되는 것은 `updatedBy = NULL` 때문이지 이 컬럼 때문이 아니다.**
   두 원인을 섞어 읽으면 "재적재가 발송 기준을 옮겼다"는 틀린 모델이 생긴다.
 - **수용한 비용**: 재적재 직후의 Publish가 1층에서 안 스킵되어 GitHub 왕복을 한 번 더 한다.
-  ⚠️ **2층(blob SHA 전부 동일)이 그것을 받는다** — 값이 리포와 같아졌으므로 `skipped`로 끝난다.
+  모든 표면이 정상 재적재돼 export 바이트가 같다면 2층 blob SHA 비교가 스킵한다. 부분 실패·
+  CI 우선 미적용·재적재 뒤 새 편집이 있는 경우까지 스킵을 보장하지 않는다.
 
-### 11.3 ⏸ 결과 문장에 표면 이름을 넣을지 — **시안이 정한다**
+### 11.3 ✅ 결과에는 실패한 표면 이름과 원인을 표시한다
 
-`design-prompt.md`의 `4e` 아트보드가 답한다.
+포맷이 없어서 적재에서 제외된 활성 표면도 실패 결과에 포함한다. 성공 표면의 이름을 얼마나
+펼칠지는 시안이 정하지만, 실패·부분 실패·CI 우선 미적용의 표면 이름과 사유는 생략하지 않는다.
+`SurfaceImportResult` 원결과를 UI까지 유지하고 요약만으로 오류 정보를 버리지 않는다.
 
-⚠️ **그 결정이 순수 함수를 막지 않게 한다** — `summarizeImport`가 **수와 함께 표면 slug 목록을
-들고 나온다**(`design.md` §4.3). 문장이 그것을 쓸지 말지는 화면의 선택이고, 타입은 어느 쪽이든
-안 바뀐다. **T3·T4는 T1을 기다리지 않는다.**
+## 12. feature-review 합의 (2026-09-15)
+
+1. **동일 프로젝트의 Sync는 하나만 실행한다.** 원자적 선점부터 전체 종료까지 실행권을 유지한다.
+   실제 PG에서 동시 요청 두 개와 stale 회수 뒤 이전 실행의 적용·해제 거부를 검사한다.
+2. **CI가 우선이다.** Sync의 리포 읽기 전보다 표면의 적재 revision이 바뀌면 그 표면을 적용하지 않는다.
+   스냅샷 시각만 비교하지 않으므로 의도된 force-push는 수용하되 실행 중 CI 결과는 되돌리지 않는다.
+3. **사용처는 보존한다.** Sync는 `KeyRef`를 읽어서 다시 쓰거나 지우지 않는다. 다음 CI가 갱신한다.
+   기존 사용처가 현 리포와 다를 수 있음을 결과의 보조 문구로 알리고 새로 스캔했다고 표현하지 않는다.
+4. **PR 조회 시작부터 미확인 경고를 표시한다.** 성공한 조회가 `null`일 때만 경고를 없앤다.
+   조회 실패도 실행을 막지는 않는다. 닫기·재오픈·늦은 응답에서 이전 조회가 새 상태를 덮지 않게 한다.
+5. **정상적으로 확인한 0키는 성공이다.** 기존 키 전부를 orphaned로 표시하며 번역과 사용처는 삭제하지 않는다.
+   다운로드·파싱 실패, 포맷 불일치, 대상 파일 미발견은 정상 0키로 취급하지 않는다 (`design.md` §3.5).
+6. **적재 불가능한 활성 표면도 이름과 실패 사유를 보고한다.** 보관 표면만 범위에서 제외한다.
+7. **no changes도 완료다.** 별도 값 비교·동일 여부 판정이나 “이미 같았다”는 문구를 만들지 않는다.
+8. **서버·컴포넌트 준비를 먼저 하고 UI 검증은 project-home에서 함께 한다.** T11~T13은 배선 뒤에 완료한다.
+9. **접근성 동작을 기본 계약에 포함한다.** 경고·결과 알림, Dialog 닫기 후 Sync 버튼 포커스 복귀를 검증한다.
+
+남은 타입·문구·테스트 순서 등의 명백한 정정은 사용자 승인으로 일괄 반영한다. 이 문서의 합의는
+구현 계획이며, 코드·DB 변경이나 UI 검증을 이미 끝냈다는 뜻이 아니다.
