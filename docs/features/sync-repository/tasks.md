@@ -3,7 +3,51 @@
 `spec.md` §12의 feature-review 합의를 반영한다. **아래는 구현 계획이며 완료 체크가 아니다.**
 이번 feature-review는 문서만 수정한다. 코드·빌드·테스트·DB·원격 배포는 실행하지 않는다.
 
-2026-09-15 구현·검증 현황과 Claude Code 인계는 [handoff.md](./handoff.md)를 본다. 시안 대조·실제 Home 통합은 미완료다.
+2026-09-15 구현·검증 현황과 Claude Code 인계는 [handoff.md](./handoff.md)를 본다.
+
+---
+
+## ⚠️ 2026-09-15 저녁 현황 — **여기부터 읽는다**
+
+`project-home` 재편이 끝나 dev에 나갔다(`196b57f`, preview 배포). 그 작업이 **T9를 흡수했고**
+이 feature의 남은 것은 **T11·T12·T13 셋**이다. `docs/features/project-home/`은 결론이 정본으로
+올라가 지워졌다 — 그쪽 근거가 필요하면 `git log`와 `docs/DESIGN.md` §6.64다.
+
+**끝난 것**
+
+| 태스크 | 상태 |
+|---|---|
+| T0~T8 | ✅ (이전 세션) |
+| **T9. project-home 연결 계약** | ✅ **project-home T6이 배선했다** — `maxDuration = 60` 명시 · `[Sync]`와 실패 배너 `[Try again]`이 같은 확인 Dialog·Action을 연다 · 머리가 원결과를 들고 본문의 고정 Alert 자리에 넘긴다(`components/home/actions.tsx`의 컨텍스트 Provider) |
+| **T10. 준비 게이트·preview** | ✅ `typecheck`·`test`(4,039)·`build`·`test:projects:postgres`(73) green · dev 마이그레이션 적용 · dev push 완료 |
+
+**남은 것**
+
+| 태스크 | 왜 안 됐나 | 다음 사람이 할 것 |
+|---|---|---|
+| **T11. UI·시안·접근성 검증** | `/design-sync project-home`이 **Home 화면**은 실측했지만(`2a` 아트보드) **Sync 기능의 갈래를 하나도 안 밟았다** | 아래 여덟 갈래를 실물로 밟는다 |
+| **T12. 실물 왕복** | 미착수 | `/l10n-roundtrip`을 폐기용 `i18n-format-check`에서 |
+| **T13. 정본 반영·기능 완료** | T11·T12 선행 | PRODUCT의 "아직 안 만들었다" 표기 제거 외 |
+
+### T11이 밟아야 하는 갈래 여덟 (하나도 안 밟았다)
+
+미발송 0 · 미발송 N · 열린 PR 있음 · PR 조회 중/실패 · 정상 0키 · 일부 파일 실패 ·
+CI 미적용 · 연타 · 결과 유지(`router.refresh()` 뒤에도 Alert가 남나).
+
+⚠️ **DOM 테스트 통과를 실제 브라우저 검증으로 바꿔 적지 않는다.** `components/__tests__/sync-button.test.tsx`·
+`sync-result.test.tsx`가 그 갈래들을 jsdom에서 든다 — 그것은 **판정**을 잰 것이고 T11이 재는 것은
+**시안과 같은가**다.
+
+⚠️ **`/design-sync`를 돌린다면 SoT는 `design_handoff_sync_repository`(아트보드 `4a`~`4f`)다.**
+Home의 핸드오프가 아니다 — 그 둘은 파랑 규칙도 다르다(`docs/DESIGN.md` §6.64의 마지막 ⚠️).
+
+### project-home 쪽에 남은 검증 (이 feature 밖이지만 같은 화면이다)
+
+캔버스 아트보드 여섯 중 **`2a` 하나만 실측했다.** 나머지 다섯(`2a` 빈 · `2b` Sync 실패 ·
+`2c` 미연결 · `2d` 보관 · `2e` 로딩)은 단위·DOM 테스트로만 서 있다 — **밟는 방법과 되돌리는 절차**는
+`docs/DESIGN.md` §6.64의 표에 있다. `2b`는 이 feature의 T11과 **같은 화면**이라 함께 밟으면 된다.
+
+---
 
 ## 결정과 완료 경계
 
@@ -183,7 +227,7 @@ Home 페이지 재작성은 이 태스크에 넣지 않는다.
 
 `─── feat(home): prepare repository sync controls ───`
 
-## T9. project-home 연결 계약
+## T9. project-home 연결 계약 — ✅ **완료** (2026-09-15, project-home T6)
 
 Home 재작성은 project-home T6이 맡는다. 그 작업에서 아래를 함께 배선·검증한다.
 
@@ -194,7 +238,7 @@ Home 재작성은 project-home T6이 맡는다. 그 작업에서 아래를 함�
 
 - **검증**: 실제 배선 전에는 준비 완료만 보고한다. UI가 없는 상태로 실측 통과·기능 완료를 기록하지 않는다.
 
-## T10. 준비 게이트·preview
+## T10. 준비 게이트·preview — ✅ **완료** (2026-09-15, `196b57f`)
 
 - `pnpm typecheck` · `pnpm test` · `pnpm build` · `pnpm test:projects:postgres` green.
 - 새 스키마를 dev에 먼저 적용했는지 확인한다. prod는 `/merge`에서 additive-first로 반영한다.
@@ -202,9 +246,10 @@ Home 재작성은 project-home T6이 맡는다. 그 작업에서 아래를 함�
 
 - **검증**: 로컬 게이트·dev migration 통과 근거를 남긴다. T11~T13은 아직 미완료로 유지한다.
 
-## T11. project-home에서 UI·시안·접근성 검증
+## T11. project-home에서 UI·시안·접근성 검증 — ⚠️ **미착수** (선행조건은 전부 충족됐다)
 
-**선행조건: T1 시안 + T8 컴포넌트 + project-home T6 실제 배선 완료.**
+**선행조건: T1 시안 + T8 컴포넌트 + project-home T6 실제 배선 완료.** ✅ 셋 다 끝났다 —
+막는 것이 없다.
 `/design-sync`는 그 환경의 지원 런타임에서 project-home과 함께 수행한다.
 
 - 미발송 0/N, 열린 PR, 조회 중/실패, 정상 0키, 부분 실패, CI 미적용, 연타, 결과 유지.
