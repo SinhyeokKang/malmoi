@@ -52,7 +52,7 @@ it("carries authentication, archive, and commit order into the update itself", a
       archivedAt: null,
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: commitAt } }],
     },
-    data: { lastImportError: "parse-failed" },
+    data: { lastImportError: "parse-failed", lastImportFailedAt: expect.any(Date) },
   });
 });
 
@@ -65,7 +65,11 @@ it("touches neither the commit baseline nor another run's progress", async () =>
   const { db, project } = fixture();
   await recordReportedFailure(db, { projectId: "p1", surfaceId: "s1", tokenHash: "h", commitAt, code: "parse-failed" });
   const data = project.updateMany.mock.calls[0]?.[0].data;
-  expect(Object.keys(data)).toEqual(["lastImportError"]);
+  /**
+   * ⚠️ **`lastImportFailedAt`은 2026-09-15에 늘었다** (project-home) — 그 항목이 Home에서 검토·미채움과
+   * 한 시간축에 서려면 시각이 필요하고, 그것을 만드는 자리가 여기뿐이다. 나머지 둘은 여전히 안 쓴다.
+   */
+  expect(Object.keys(data)).toEqual(["lastImportError", "lastImportFailedAt"]);
 });
 
 /** 조건이 안 맞으면 0건이다 — 오배송·보관·역행·회전된 토큰이 전부 여기로 접힌다. */

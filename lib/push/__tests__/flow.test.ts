@@ -323,7 +323,8 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
     }, {
       // 결과는 같은 트랜잭션의 조건부 문장이다 — 나중 실행의 표시를 지우지 않는다.
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
-      data: { lastImportError: null, lastImportStartedAt: null, lastImportToken: null },
+      // ⚠️ **성공이 실패 시각도 비운다** — 안 비우면 성공한 뒤에도 Home이 옛 실패를 말한다.
+      data: { lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: null, lastImportToken: null },
     }]);
   });
 

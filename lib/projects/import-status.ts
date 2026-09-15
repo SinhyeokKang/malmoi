@@ -58,9 +58,17 @@ export function representativeFailureCode(errors: readonly AdapterError[]): Repo
  * 생기고, 그 창에서 사용자가 보는 것은 "적재가 깨졌다"인데 실제로는 끝난 상태다.
  * 호출부가 실행 토큰을 대조한 실행만 비운다 — 나중 실행이 돌고 있다면 그 표시를 보존한다.
  */
-export function importOutcomeFields(code: ImportFailureCode | null): {
+/**
+ * @param at 이 결과를 쓰는 시각. **함수가 시계를 읽지 않는다** — 순수해야 하고, 같은 트랜잭션의
+ *   다른 쓰기와 시각이 갈리면 안 된다.
+ *
+ * ⚠️ **성공이 `lastImportFailedAt`도 비운다** (project-home design §6.1). 안 비우면 성공한 뒤에도
+ * Home의 항목·배너·메타 행이 옛 실패를 말한다 — `lastImportError`만 비우면 시각이 유령으로 남는다.
+ */
+export function importOutcomeFields(code: ImportFailureCode | null, at: Date): {
   lastImportError: ImportFailureCode | null;
   lastImportStartedAt: null;
+  lastImportFailedAt: Date | null;
 } {
-  return { lastImportError: code, lastImportStartedAt: null };
+  return { lastImportError: code, lastImportStartedAt: null, lastImportFailedAt: code === null ? null : at };
 }

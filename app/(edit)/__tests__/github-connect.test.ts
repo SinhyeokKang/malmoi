@@ -29,12 +29,13 @@ const hoisted = vi.hoisted(() => ({
   cookieSet: vi.fn(),
   headerGet: vi.fn(),
   redirect: vi.fn(),
+  revalidatePath: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/github", () => ({ probeRepo: hoisted.probeRepo }));
 vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: hoisted.ensureUserToken }));
 vi.mock("@/lib/github-connect/user", () => ({
@@ -194,6 +195,22 @@ describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
 
     expect(hoisted.listUserInstallations).toHaveBeenCalledTimes(1);
     expect(hoisted.listInstallationRepos).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * ⚠️ **Home이 `planConnectionHealth`의 새 소비자다** (2026-09-15 — project-home T10). 다시 연결해도
+   * Home의 미연결 배너가 다음 재검증까지 남으면 사용자는 방금 누른 것이 안 먹은 줄 안다 —
+   * 세는 축은 그 컬럼을 읽는 화면이 아니라 **거기서 파생되는 판정 함수를 부르는 화면**이다
+   * (POSTMORTEM 2026-09-09 🔁 2026-09-11).
+   */
+  it("설정과 Home 둘을 무효화한다", async () => {
+    hoisted.revalidatePath.mockClear();
+    await connectRepository({ slug: "acme" });
+
+    const calls = hoisted.revalidatePath.mock.calls;
+    expect(calls.map((c) => c[0])).toEqual(expect.arrayContaining(["/projects/acme/settings", "/projects/acme"]));
+    // 레이아웃까지 덮어야 셸의 프로젝트 구역도 함께 다시 그려진다.
+    expect(calls).toEqual(expect.arrayContaining([["/projects/acme", "layout"]]));
   });
 });
 

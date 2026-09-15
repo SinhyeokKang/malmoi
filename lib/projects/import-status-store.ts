@@ -68,7 +68,12 @@ export async function recordReportedFailure(
       // 같은 커밋의 재실행 실패는 받는다 — `checkCommitOrder`가 동일 시각을 통과시키는 것과 같은 규칙이다.
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: input.commitAt } }],
     },
-    data: { lastImportError: input.code },
+    /**
+     * ⚠️ **시각도 함께 쓴다** (project-home design §6.1) — Home의 항목이 세 종을 한 시간축에 세우고,
+     * 그중 파서 실패의 시각이 여기서만 나온다. `lastImportError`만 쓰면 그 항목이 언제나
+     * "가장 오래된 것"으로 바닥에 깔린다.
+     */
+    data: { lastImportError: input.code, lastImportFailedAt: new Date() },
   });
   return count === 1 ? "recorded" : "rejected";
 }

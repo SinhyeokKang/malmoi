@@ -123,6 +123,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     revalidatePath("/projects");
     revalidatePath("/projects/new");
     revalidatePath(`/projects/${project.slug}/settings`);
+    /**
+     * ⚠️ **Home도 이 컬럼에서 파생되는 판정을 부른다** (2026-09-15 — project-home T10). 세는 축은
+     * "이 Action이 쓰는 컬럼을 읽는 화면"이 아니라 **"그 컬럼에서 파생되는 판정 함수를 부르는
+     * 화면"**이다 (POSTMORTEM 2026-09-09 🔁 2026-09-11): Home이 `failing`의 새 소비자가 되면서
+     * 배너·항목·메타의 실패 시각이 전부 이 쓰기에 달렸다.
+     */
+    revalidatePath(`/projects/${project.slug}`, "layout");
 
     // 돌려줄 것이 없다 — 보고자는 이 응답으로 아무 결정도 하지 않는다(어차피 exit 1이다).
     return new NextResponse(null, { status: 204 });
