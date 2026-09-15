@@ -1659,3 +1659,40 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 
 - **후속 관측·수정 (같은 날)**: 사용자가 grid 변경 후 스켈레톤이 진했다 연해지는 깜빡임을 보고했다. 콘텐츠 패널에 stacking context가 없어 opacity 애니메이션 자식이 다른 패널 배경 위에 그려질 수 있다는 CSS 규칙을 근거로 `isolate`를 추가했다. 원인 추정에 따른 수정이며 실물 해소 여부는 아직 미검증이다. DOM 테스트에 패널별 `isolate` 계약을 추가해 실패를 먼저 확인했다. `rg -n 'isolate|animate-pulse' components/shell/content-panel.tsx components/ui/skeleton.tsx 'app/(edit)/projects/loading.tsx'`로 경계와 소비자를 함께 확인한다.
 - **사용자 실물 검증 완료 (같은 날)**: `isolate` 추가 후 사용자가 폭 분할과 스켈레톤 농도 변화에 따른 깜빡임 모두 해소됐다고 확인했다. 위의 실물 미검증 상태를 이 확인으로 종료한다. 에이전트는 요청에 따라 실물 검증을 수행하지 않았다. 자동 검증은 타입 검사와 253파일·3,732개 테스트 통과이며, DOM 테스트는 배치·격리 클래스 계약을 검사하고 실제 페인트를 재현하지는 않는다.
+
+### 2026-09-15 — 🔁 형제 프리미티브 둘을 함께 옮기며 **한쪽 소비자만 셌다** (2026-09-14의 재발)
+
+- **영역**: `components/shell/content-panel.tsx`의 `PanelHeader`·`PanelBody` · 소비자
+  `components/project-archived.tsx` · `components/project-not-ready.tsx` · `app/(edit)/error.tsx`.
+  **dev에도 안 나갔다** — `/implement`의 자체 검증이 잡았다.
+- **증상**: 여백 16을 두 프리미티브에 넣었는데, `PanelBody`만 쓰는 화면 셋에서 안쪽 래퍼의
+  `px-6 py-6`이 남아 **16 + 24 = 40**이 됐다. 그 셋은 전부 빈 상태·오류 화면이라 평소에 안 열린다.
+- **근본 원인**: **세는 명령이 프리미티브 하나만 셌다.** 기능 문서(`design.md` §2.1)가
+  `grep -rn "<PanelHeader"`로 소비자를 **11**로 확정했고 그 수가 그대로 태스크·테스트·리포트로
+  흘렀는데, **같은 커밋이 `PanelBody`도 옮겼다.** `PanelBody`는 **14**곳이고 차이 셋이 정확히
+  "머리가 없는 화면"이다 — `PanelHeader`가 없다는 사실이 그 파일들의 **주석에만** 적혀 있어서
+  `grep -rln "PanelHeader"`가 13을 내는 착시까지 겹쳤다(2026-09-14 항목의 그 착시와 같은 자리다).
+  ⚠️ **세는 명령 자체는 틀리지 않았다** — 틀린 것은 **무엇을 세야 하는지**이고, 그 판단은 "이 커밋이
+  몇 개의 프리미티브를 옮기나"에서 나온다.
+- **그물**:
+  - 잡은 것: `/implement` 4관점의 **단순성·타입경계 점검 중 소비자 재열거**. 눈으로 본 것이 아니라
+    `grep -rn "<PanelBody"`를 따로 돌린 것이 전부다.
+  - 놓친 것: `pnpm test` 3,802건(여백을 재는 테스트가 `PanelHeader` 소비자 11만 순회했다) ·
+    `pnpm typecheck` · `/code-review`(값이 캔버스와 같으므로 "맞다"로 읽힌다) ·
+    `/design-sync` 실측(그 셋은 도달 조건이 보관·미준비·서버 오류라 브라우저로 안 밟았다).
+- **재발 방지**:
+  - **한 커밋이 형제 프리미티브 둘 이상을 옮기면 소비자를 프리미티브마다 따로 센다.** 합집합이
+    아니라 **각각의 목록**이어야 한다 — 두 수가 다르다는 사실 자체가 검사 대상이다.
+    `components/__tests__/panel-header.test.tsx`가 `CONSUMERS`(11)와 `BODY_ONLY`(3)를 나눠 세고,
+    두 수를 각각 단언한다(하나로 합치면 이 회귀가 다시 조용해진다).
+  - grep (실제로 돌렸다) — **한 파일이 형제 프리미티브 둘 이상을 내보내는 곳 일곱**:
+    ```
+    for f in components/ui/*.tsx components/shell/content-panel.tsx; do
+      n=$(grep -c "^export function" "$f"); [ "$n" -ge 2 ] && echo "$n $f"; done
+    ```
+    → `button.tsx`(2) · `dropdown-menu.tsx`(5) · `resizable.tsx`(2) · `segmented-control.tsx`(2) ·
+    `select.tsx`(3) · `table.tsx`(9) · `content-panel.tsx`(3).
+  - **그중 소비자 수가 크게 갈리는 짝이 이 부류의 후보다.** 실측: `Button` 60 / `ButtonLink` 14
+    (**차 46**) · `Th` 19 / `Td` 22 · `SegmentedControl` 2 / `SegmentedLinks` 0 ·
+    `SelectTrigger` 9 / `SelectContent` 9. ⚠️ **`Button`↔`ButtonLink`가 가장 위험하다** — 높이·radius를
+    한쪽에서만 옮기면 링크형 버튼 14곳이 조용히 어긋나고, 그 둘은 화면에서 나란히 선다.
