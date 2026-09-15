@@ -3,13 +3,13 @@
 `spec.md` §12의 feature-review 합의를 반영한다. **아래는 구현 계획이며 완료 체크가 아니다.**
 이번 feature-review는 문서만 수정한다. 코드·빌드·테스트·DB·원격 배포는 실행하지 않는다.
 
-2026-09-15 구현·검증 현황과 Claude Code 인계는 [handoff.md](./handoff.md)를 본다.
+[handoff.md](./handoff.md)는 **아트보드 `4a`~`4f`의 실측값**이 정본이다 — 그 문서의 미완료 목록은 낡았고, 현황은 바로 아래 블록이 든다.
 
 ---
 
 ## ⚠️ 2026-09-15 저녁 현황 — **여기부터 읽는다**
 
-`project-home` 재편이 끝나 dev에 나갔다(`196b57f`, preview 배포). 그 작업이 **T9를 흡수했고**
+`project-home` 재편이 끝나 dev에 나갔다(`196b57f` + `/design-sync` 후속 `a0fbbd7`, preview 배포). 그 작업이 **T9를 흡수했고**
 이 feature의 남은 것은 **T11·T12·T13 셋**이다. `docs/features/project-home/`은 결론이 정본으로
 올라가 지워졌다 — 그쪽 근거가 필요하면 `git log`와 `docs/DESIGN.md` §6.64다.
 
@@ -40,6 +40,24 @@ CI 미적용 · 연타 · 결과 유지(`router.refresh()` 뒤에도 Alert가 �
 
 ⚠️ **`/design-sync`를 돌린다면 SoT는 `design_handoff_sync_repository`(아트보드 `4a`~`4f`)다.**
 Home의 핸드오프가 아니다 — 그 둘은 파랑 규칙도 다르다(`docs/DESIGN.md` §6.64의 마지막 ⚠️).
+
+### ⚠️ `/design-sync`를 한 바퀴만 돌았다
+
+스킬 규약은 **리뷰 지적이 0이 될 때까지** 3→4→5단계를 돈다인데, 2026-09-15에 **1라운드에서
+멈췄다** — 리뷰가 낸 🔴 2 · 🟡 8 · ⚪ 다수를 전부 고치고 **재리뷰를 안 걸었다.** 고친 것 중
+`empty:hidden`·`<section>` 이름·로딩 골격은 **그 루프가 스스로 만든 회귀**였으므로, 이번 수정이
+새 회귀를 만들었을 가능성이 같은 크기로 남아 있다.
+
+**다음 세션의 첫 일**: `components/home/**`·`app/(edit)/projects/[slug]/{page,loading}.tsx`에
+리뷰를 한 번 더 건다. 브라우저 실측은 `2a`에서 이미 통과했으므로 **소스 리뷰만** 다시 돌면 된다.
+
+### POSTMORTEM이 낸 후속 후보 다섯 (2026-09-15, grep을 실제로 돌린 결과)
+
+| 자리 | 무엇 | 왜 지금 안 고쳤나 |
+|---|---|---|
+| `lib/projects/import-status-store.ts:82` | `recordReportedFailure`가 결과 필드를 **손으로 나열한다** | 그 경로는 `lastImportStartedAt`을 건드리면 안 되는데 `importOutcomeFields`가 그것을 `null`로 강제한다. **셋째 결과 컬럼이 늘면 또 빠진다** — 그 함수를 "진행 표시를 건드릴지"로 가르는 형으로 여는 것이 답이다 |
+| `components/ui/card.tsx` · `components/projects/project-list.tsx:226` · `app/(edit)/projects/loading.tsx:48` · `.../members/page.tsx:73` | 이름 없는 `<section>` 넷 — `role="generic"`으로 접혀 접근성 트리에서 사라진다 | 각각 그 화면에서 랜드마크가 필요한 자리인지 판정이 필요하다(필요 없으면 `<div>`가 맞다). 프리미티브(`card.tsx`)는 소비자가 이름을 줄 수 있게 여는 쪽이다 |
+| `components/translations/header.tsx:197` | `mb-4 empty:mb-0`이 Home에서 깨진 것과 **같은 모양**이다 | 안의 배너 셋이 전부 `null`을 낼 때 요소를 안 남기는지 확인 안 했다. 남기면 그 여백도 영원히 안 걷힌다 |
 
 ### project-home 쪽에 남은 검증 (이 feature 밖이지만 같은 화면이다)
 
