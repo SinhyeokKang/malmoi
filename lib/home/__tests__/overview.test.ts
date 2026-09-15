@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { activeLocaleProgress, recentActivity } from "../overview";
+import { ACTIVITY_LIMIT, ACTIVITY_WINDOW_DAYS, activeLocaleProgress, recentActivity } from "../overview";
 
 /**
  * Home(`/projects/:slug`)의 순수 판정 둘 (6b-6).
@@ -93,147 +93,158 @@ describe("activeLocaleProgress — 일거리인 로케일만 (6b-6)", () => {
 });
 
 /**
- * **최근 활동 — 지금 재료로만** (PRODUCT §7.7 결정 3). `logs` 화면은 7단계 `SyncRun`의 소비자이고
- * (§6), 그 테이블이 서기 전에 낼 수 있는 것은 셋뿐이다: 사람의 편집 · CI push · 마지막 Publish.
- * **그것은 "변경 이력"이 아니라 그 부분집합**이고, `SyncRun`이 서면 이 블록이 그 테이블로 갈아탄다.
+ * **최근 로그 — 갈래 넷** (project-home design §3.4). `SyncRun`이 서면서 Publish 줄이 PR 번호와 파일
+ * 수를 들게 됐고, `lastImportFailedAt`이 서면서 **실패도 사건이 됐다.**
+ *
+ * ⚠️ **상한이 건수에서 기간으로 바뀌었다.** 8건 고정이면 "오늘 조용했다"와 "7일 조용했다"가 화면에서
+ * 구별되지 않는다 (spec §2.2-3). 건수 상한은 남지만 **자르는 축이 아니라 방어선**이다.
+ *
+ * ⚠️ **`{who} added the {surface} surface` 줄은 만들지 않는다** — 출처가 아예 없다. `SyncRun`은
+ * Publish 전용이고 `trigger`/`status` enum이 그 가정 위에 선다. 캔버스와의 **의도된 이탈**이다.
  */
-describe("recentActivity — 세 출처를 한 줄로 (6b-6)", () => {
-  it("breaks otherwise identical edit ties by surface", () => {
-    const a = { at: new Date(0), key: "same", namespace: "_root", locale: "en", actor: null, surfaceSlug: "a" };
-    const input = { lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 5 };
-    expect(recentActivity({ ...input, edits: [{ ...a, surfaceSlug: "b" }, a] })).toEqual(recentActivity({ ...input, edits: [a, { ...a, surfaceSlug: "b" }] }));
-  });
+describe("recentActivity — 네 출처를 한 줄로", () => {
+  const now = at("2026-09-15T12:00:00Z");
+  const empty = { edits: [], pushes: [], publishes: [], syncFailures: [], now, windowDays: ACTIVITY_WINDOW_DAYS, limit: ACTIVITY_LIMIT };
+
   const edits = [
-    { at: at("2026-09-09T10:00:00Z"), key: "a.greet", surfaceSlug: "default", namespace: "a", locale: "ko", actor: "Kim" },
-    { at: at("2026-09-09T08:00:00Z"), key: "a.bye", surfaceSlug: "default", namespace: "a", locale: "ja", actor: null },
+    { at: at("2026-09-15T10:00:00Z"), key: "a.greet", surfaceSlug: "web", namespace: "a", locale: "ko", actor: "Kim" },
+    { at: at("2026-09-15T08:00:00Z"), key: "a.bye", surfaceSlug: "web", namespace: "a", locale: "ja", actor: null },
   ];
 
   it("시각 내림차순으로 병합한다", () => {
     expect(
       recentActivity({
+        ...empty,
         edits,
-        lastCommitAt: at("2026-09-09T09:00:00Z"),
-        lastPublishedAt: at("2026-09-09T07:00:00Z"),
-        lastPrUrl: "https://github.com/o/r/pull/1",
-        limit: 10,
+        pushes: [{ surfaceSlug: "web", at: at("2026-09-15T09:00:00Z"), newKeys: 12 }],
+        publishes: [{ at: at("2026-09-15T07:00:00Z"), prNumber: 3, changed: 2 }],
+        syncFailures: [{ surfaceSlug: "emails", at: at("2026-09-15T11:00:00Z") }],
       }).map((i) => [i.kind, i.at.toISOString()]),
     ).toEqual([
-      ["edit", "2026-09-09T10:00:00.000Z"],
-      ["push", "2026-09-09T09:00:00.000Z"],
-      ["edit", "2026-09-09T08:00:00.000Z"],
-      ["publish", "2026-09-09T07:00:00.000Z"],
+      ["sync_failed", "2026-09-15T11:00:00.000Z"],
+      ["edit", "2026-09-15T10:00:00.000Z"],
+      ["push", "2026-09-15T09:00:00.000Z"],
+      ["edit", "2026-09-15T08:00:00.000Z"],
+      ["publish", "2026-09-15T07:00:00.000Z"],
     ]);
   });
 
-  it("편집 항목이 어느 키·어느 로케일인지 든다 — 그것이 `?ns=`·`?focus=` 링크의 재료다", () => {
-    const [first] = recentActivity({ edits, lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 });
+  it("편집 항목이 어느 키·어느 로케일인지 든다 — 그것이 `?ns=`·`?locales=` 링크의 재료다", () => {
+    const [first] = recentActivity({ ...empty, edits });
     expect(first).toEqual({
-      kind: "edit",
-      at: at("2026-09-09T10:00:00Z"),
-      key: "a.greet",
-      surfaceSlug: "default", namespace: "a",
-      locale: "ko",
-      actor: "Kim",
+      kind: "edit", at: at("2026-09-15T10:00:00Z"), key: "a.greet",
+      surfaceSlug: "web", namespace: "a", locale: "ko", actor: "Kim",
     });
   });
 
   /** 이름을 못 찾은 편집자는 `actorLabel`이 원문을 내거나 `null`이다 — 여기서 지어내지 않는다. */
   it("편집자가 없어도 항목은 남는다", () => {
-    const items = recentActivity({ edits, lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 });
-    expect(items[1]).toMatchObject({ kind: "edit", actor: null });
+    expect(recentActivity({ ...empty, edits })[1]).toMatchObject({ kind: "edit", actor: null });
   });
 
-  it("PR 링크는 publish 항목이 든다 — 없을 수도 있다", () => {
-    const withPr = recentActivity({
-      edits: [],
-      lastCommitAt: null,
-      lastPublishedAt: at("2026-09-09T07:00:00Z"),
-      lastPrUrl: "https://github.com/o/r/pull/1",
-      limit: 10,
-    });
-    expect(withPr).toEqual([
-      { kind: "publish", at: at("2026-09-09T07:00:00Z"), prUrl: "https://github.com/o/r/pull/1" },
+  /** ⚠️ **`{n} new keys`는 그 Sync가 들여온 키 수다** — 표면마다 갈리므로 표면도 함께 든다. */
+  it("push 줄이 표면과 들어온 키 수를 든다", () => {
+    expect(recentActivity({ ...empty, pushes: [{ surfaceSlug: "emails", at: at("2026-09-15T09:00:00Z"), newKeys: 12 }] })).toEqual([
+      { kind: "push", at: at("2026-09-15T09:00:00Z"), surfaceSlug: "emails", newKeys: 12 },
     ]);
-
-    const withoutPr = recentActivity({
-      edits: [],
-      lastCommitAt: null,
-      lastPublishedAt: at("2026-09-09T07:00:00Z"),
-      lastPrUrl: null,
-      limit: 10,
-    });
-    expect(withoutPr).toEqual([{ kind: "publish", at: at("2026-09-09T07:00:00Z"), prUrl: null }]);
-  });
-
-  /** ⚠️ `lastPrUrl`만 있고 시각이 없는 것은 사건이 아니다 — `skipped`는 그 둘을 안 건드린다 (design §3.4). */
-  it("시각이 없는 출처는 항목을 만들지 않는다", () => {
-    expect(
-      recentActivity({
-        edits: [],
-        lastCommitAt: null,
-        lastPublishedAt: null,
-        lastPrUrl: "https://github.com/o/r/pull/1",
-        limit: 10,
-      }),
-    ).toEqual([]);
-  });
-
-  it("빈 프로젝트는 빈 배열이다", () => {
-    expect(
-      recentActivity({ edits: [], lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 }),
-    ).toEqual([]);
-  });
-
-  it("limit은 병합 뒤에 적용된다 — 편집만 자르면 push·publish가 항상 밀려난다", () => {
-    const items = recentActivity({
-      edits,
-      lastCommitAt: at("2026-09-09T09:00:00Z"),
-      lastPublishedAt: at("2026-09-09T07:00:00Z"),
-      lastPrUrl: null,
-      limit: 2,
-    });
-    expect(items.map((i) => i.kind)).toEqual(["edit", "push"]);
   });
 
   /**
-   * ⚠️ **DB가 준 순서에 기대지 않는다** (code-review 🟡1). `orderBy: { updatedAt: "desc" }`에 보조 키가
-   * 없으면 같은 시각의 편집 둘의 순서가 요청마다 다를 수 있고, `Array.sort`는 안정 정렬이라 **그
-   * 순서를 그대로 보존한다** — 같은 DB 상태가 다른 화면을 낸다. 보증을 조회 문자열이 아니라
-   * **이 함수**에 둔다: 여기서 깨면 테스트가 잡고, 조회는 어느 8건을 고를지만 정한다.
+   * ⚠️ **`changed`는 파일 수다** — `SyncRun.changed`가 그렇고 문장이 그것을 그대로 말한다. 칸 수로
+   * 읽히면 "3칸 보냈다"가 되는데 실제로는 3개 파일이다.
    */
-  it("같은 시각의 편집은 키·로케일 순으로 결정적이다 — 입력 순서가 뒤바뀌어도 같다", () => {
-    const same = at("2026-09-09T10:00:00Z");
-    const a = { at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ko", actor: null };
-    const b = { at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ja", actor: null };
-    const c = { at: same, key: "b.two", surfaceSlug: "default", namespace: "b", locale: "ko", actor: null };
+  it("publish 줄이 PR 번호와 파일 수를 든다 — 둘 다 없을 수 있다", () => {
+    expect(recentActivity({ ...empty, publishes: [{ at: at("2026-09-15T07:00:00Z"), prNumber: 3, changed: 2 }] })).toEqual([
+      { kind: "publish", at: at("2026-09-15T07:00:00Z"), prNumber: 3, changed: 2 },
+    ]);
+    expect(recentActivity({ ...empty, publishes: [{ at: at("2026-09-15T07:00:00Z"), prNumber: null, changed: null }] })).toEqual([
+      { kind: "publish", at: at("2026-09-15T07:00:00Z"), prNumber: null, changed: null },
+    ]);
+  });
 
-    const order = (edits: typeof a[]) =>
-      recentActivity({ edits, lastCommitAt: null, lastPublishedAt: null, lastPrUrl: null, limit: 10 }).map(
-        (i) => (i.kind === "edit" ? `${i.key}:${i.locale}` : i.kind),
-      );
+  it("Sync 실패도 사건이다 — 어느 표면을 못 읽었는지 든다", () => {
+    expect(recentActivity({ ...empty, syncFailures: [{ surfaceSlug: "emails", at: at("2026-09-15T11:00:00Z") }] })).toEqual([
+      { kind: "sync_failed", at: at("2026-09-15T11:00:00Z"), surfaceSlug: "emails" },
+    ]);
+  });
 
+  /**
+   * ⚠️ **"오늘 조용했다"와 "7일 조용했다"가 갈려야 한다** (spec §2.2-3). 건수로 자르면 한 달 전
+   * 사건 여덟이 상시로 서서 이 블록이 무엇을 말하는 자리인지 사라진다.
+   */
+  it("창 밖의 사건은 항목을 만들지 않는다", () => {
+    const old = at("2026-09-07T11:59:00Z");
+    const fresh = at("2026-09-08T13:00:00Z");
+    const items = recentActivity({
+      ...empty,
+      pushes: [{ surfaceSlug: "web", at: old, newKeys: 1 }, { surfaceSlug: "web", at: fresh, newKeys: 2 }],
+    });
+    expect(items.map((i) => i.at.toISOString())).toEqual([fresh.toISOString()]);
+  });
+
+  it("창은 상수로 7일이다 — 문구가 그 수를 그대로 말한다", () => {
+    expect(ACTIVITY_WINDOW_DAYS).toBe(7);
+    expect(ACTIVITY_LIMIT).toBe(20);
+  });
+
+  /** ⚠️ **건수 상한은 방어선이지 자르는 축이 아니다** — 903키 리포에서 편집이 하루에 수백 건 난다. */
+  it("건수 상한은 병합 뒤에 적용된다 — 편집만 자르면 다른 갈래가 항상 밀려난다", () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      at: new Date(now.getTime() - (i + 1) * 60_000),
+      key: `k${i}`, surfaceSlug: "web", namespace: "a", locale: "ko", actor: null,
+    }));
+    const items = recentActivity({
+      ...empty,
+      edits: many,
+      publishes: [{ at: new Date(now.getTime() - 60 * 60_000), prNumber: 1, changed: 1 }],
+      limit: 5,
+    });
+    expect(items).toHaveLength(5);
+    expect(items.every((i) => i.kind === "edit")).toBe(true);
+  });
+
+  it("빈 프로젝트는 빈 배열이다", () => {
+    expect(recentActivity(empty)).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **DB가 준 순서에 기대지 않는다.** `orderBy`에 보조 키가 없으면 같은 시각의 편집 둘의 순서가
+   * 요청마다 다를 수 있고, `Array.sort`는 안정 정렬이라 **그 순서를 그대로 보존한다** — 같은 DB
+   * 상태가 다른 화면을 낸다. 보증을 조회 문자열이 아니라 **이 함수**에 둔다.
+   */
+  it("같은 시각의 편집은 표면·키·로케일 순으로 결정적이다 — 입력 순서가 뒤바뀌어도 같다", () => {
+    const same = at("2026-09-15T10:00:00Z");
+    const a = { at: same, key: "a.one", surfaceSlug: "web", namespace: "a", locale: "ko", actor: null };
+    const b = { at: same, key: "a.one", surfaceSlug: "web", namespace: "a", locale: "ja", actor: null };
+    const c = { at: same, key: "b.two", surfaceSlug: "web", namespace: "b", locale: "ko", actor: null };
+    const order = (rows: (typeof a)[]) =>
+      recentActivity({ ...empty, edits: rows }).map((i) => (i.kind === "edit" ? `${i.key}:${i.locale}` : i.kind));
     expect(order([a, b, c])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
-    // 조회가 다른 순서로 줘도 화면이 같아야 한다 — 그것이 이 케이스의 요지다.
     expect(order([c, a, b])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
     expect(order([b, c, a])).toEqual(["a.one:ja", "a.one:ko", "b.two:ko"]);
   });
 
-  /**
-   * ⚠️ **동시각 정렬이 결정적이어야 한다.** 같은 DB 상태가 같은 화면을 내야 하고, 안 그러면
-   * 새로고침마다 순서가 바뀌는 목록이 된다 — 이 리포가 export 결정성에 대해 지키는 규칙과 같은 축이다.
-   * 리포 수준 사건(publish·push)이 그 시각의 편집들 **위**에 온다: 그것들이 편집을 감싸는 사건이다.
-   */
-  it("같은 시각이면 publish → push → edit 순이고 두 번 불러도 같다", () => {
-    const same = at("2026-09-09T10:00:00Z");
+  /** 리포 수준 사건이 그 시각의 편집 **위**에 온다 — 그것들이 편집을 감싸는 사건이다. */
+  it("같은 시각이면 publish → push → sync_failed → edit 순이고 두 번 불러도 같다", () => {
+    const same = at("2026-09-15T10:00:00Z");
     const input = {
-      edits: [{ at: same, key: "a.one", surfaceSlug: "default", namespace: "a", locale: "ko", actor: null }],
-      lastCommitAt: same,
-      lastPublishedAt: same,
-      lastPrUrl: null,
-      limit: 10,
+      ...empty,
+      edits: [{ at: same, key: "a.one", surfaceSlug: "web", namespace: "a", locale: "ko", actor: null }],
+      pushes: [{ surfaceSlug: "web", at: same, newKeys: 1 }],
+      publishes: [{ at: same, prNumber: 1, changed: 1 }],
+      syncFailures: [{ surfaceSlug: "emails", at: same }],
     };
     const first = recentActivity(input).map((i) => i.kind);
-    expect(first).toEqual(["publish", "push", "edit"]);
+    expect(first).toEqual(["publish", "push", "sync_failed", "edit"]);
     expect(recentActivity(input).map((i) => i.kind)).toEqual(first);
+  });
+
+  it("같은 시각의 표면 사건 둘은 표면 slug로 기울인다", () => {
+    const same = at("2026-09-15T10:00:00Z");
+    const order = (rows: { surfaceSlug: string; at: Date; newKeys: number }[]) =>
+      recentActivity({ ...empty, pushes: rows }).map((i) => (i.kind === "push" ? i.surfaceSlug : i.kind));
+    const rows = [{ surfaceSlug: "web", at: same, newKeys: 1 }, { surfaceSlug: "emails", at: same, newKeys: 2 }];
+    expect(order(rows)).toEqual(["emails", "web"]);
+    expect(order([...rows].reverse())).toEqual(["emails", "web"]);
   });
 });
