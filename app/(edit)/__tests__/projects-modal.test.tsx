@@ -20,7 +20,7 @@ import { NewProjectModal } from "../projects/new-project-modal";
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireUser.mockResolvedValue({ userId: "u1" });
-  mocks.loadProjectList.mockResolvedValue({ rows: [], summary: { newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: 0 } });
+  mocks.loadProjectList.mockResolvedValue({ rows: [] });
   mocks.listConnectableRepos.mockResolvedValue({ ok: true, repos: [] });
 });
 

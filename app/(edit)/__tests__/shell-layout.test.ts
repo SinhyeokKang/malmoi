@@ -61,16 +61,25 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     expect(contentPanel).toMatch(/className="min-h-0 flex-1 overflow-y-auto"/);
   });
 
-  /** ⚠️ **머리가 `shrink-0`이다** — flex 자식의 축소 하한은 콘텐츠 높이가 아니라 0이라, 본문이 길면 눌린다. */
-  it("`PanelHeader`가 눌리지 않는다", () => {
+  /**
+   * ⚠️ **머리가 `shrink-0`이다** — flex 자식의 축소 하한은 콘텐츠 높이가 아니라 0이라, 본문이 길면 눌린다.
+   *
+   * ⚠️ **같은 요소가 아래 선도 든다** (projects-panel-rework T3). 선은 패널 **전폭**이라 폭 상한
+   * 안쪽에 두면 1280을 넘는 화면에서 잘린다 — 눈으로는 "선이 있네"로 읽힌다.
+   */
+  it("`PanelHeader`가 눌리지 않고 아래 선을 든다", () => {
     expect(contentPanel).toMatch(/export function PanelHeader\b/);
-    expect(contentPanel).toMatch(/className="shrink-0"/);
+    expect(contentPanel).toMatch(/className="border-border shrink-0 border-b"/);
   });
 
   /**
    * ⚠️ **폭 상한이 스크롤 컨테이너가 아니라 안쪽 래퍼에 있어야 한다** (2026-09-11 사용자).
    * `overflow-y-auto`를 든 요소를 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 — 화면 다섯이
    * `max-w-4xl`을 안쪽 래퍼에 두는 이유가 그것이고, 프리미티브로 올리면서 같은 함정이 따라온다.
+   *
+   * ⚠️ **등급 둘을 프리미티브가 든다** (projects-panel-rework T3 · DESIGN §5.1). 등급을 셋으로 늘린
+   * 것이 아니라 **화면이 고르던 둘을 prop으로 올린 것**이다 — 안쪽 래퍼가 `max-w-4xl`을 다시
+   * 씌우면 limited 일곱의 여백이 `16 + 24 = 40`이 된다.
    *
    * ⚠️ **눈으로는 "폭이 맞네"로 보인다** — 스크롤바 위치는 콘텐츠가 넘칠 때만 드러난다.
    */
@@ -79,9 +88,10 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     const outers = [...contentPanel.matchAll(/<div className="([^"]*)"/g)].map((m) => m[1] ?? "");
     expect(outers.filter((cls) => /max-w-/.test(cls))).toEqual([]);
     // 상한 자체는 `cn(...)`을 지나는 안쪽 래퍼가 든다.
-    expect(contentPanel).toMatch(/const CONTENT_MAX = "mx-auto w-full max-w-7xl"/);
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, className\)/);
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "min-h-full", className\)/);
+    expect(contentPanel).toMatch(/fluid: "mx-auto w-full max-w-7xl"/);
+    expect(contentPanel).toMatch(/limited: "mx-auto w-full max-w-4xl"/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "flex flex-col gap-3 p-4", className\)/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "min-h-full p-4", className\)/);
   });
 
   /**
