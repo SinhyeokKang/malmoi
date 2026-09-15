@@ -2,7 +2,7 @@
 import { act, useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
-import { SyncButton } from "@/components/home/sync-button";
+import { SyncButton as Control } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import { render } from "./helpers/dom";
@@ -12,6 +12,10 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 const success: RepositoryImportOutcome = { ok: true, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
 const props = { slug: "acme", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
+function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
+  const [open, setOpen] = useState(false);
+  return <Control {...props} open={open} onOpenChange={setOpen} />;
+}
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 function button(name: string) {
   const node = [...document.querySelectorAll("button")].find(b => (b.getAttribute("aria-label") ?? b.textContent?.trim()) === name);
@@ -89,4 +93,25 @@ it("Action 통신 실패는 실패 원결과를 호스트로 전달하고 다시
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "ingest-failed" });
   expect(button("Sync").getAttribute("aria-disabled")).toBe("false");
+});
+
+it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
+  function Host() {
+    const [open, setOpen] = useState(false);
+    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult onRetry={() => setOpen(true)} outcome={{ ok: true, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
+  }
+  await render(<Host />); await click("Try again");
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  expect(mocks.pr).toHaveBeenCalledOnce(); expect(mocks.run).not.toHaveBeenCalled();
+  await click("Sync from repository"); expect(mocks.run).toHaveBeenCalledOnce();
+});
+
+it("권한 변경으로 트리거가 사라지면 Home의 대체 포커스로 복귀한다", async () => {
+  const fallback = { current: document.createElement("h2") };
+  fallback.current.tabIndex = -1; document.body.append(fallback.current);
+  const view = await render(<SyncButton {...props} fallbackFocusRef={fallback} />);
+  await click("Sync"); await view.rerender(<SyncButton {...props} role="EDITOR" fallbackFocusRef={fallback} />);
+  // Radix restores focus in its deferred unmount callback.
+  await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
+  fallback.current.remove();
 });

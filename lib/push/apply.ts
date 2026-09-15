@@ -68,11 +68,11 @@ export type PushOutcome = {
 export type ApplyOptions = {
   token: string;
   refsMode: "replace" | "preserve";
-  /** 종료할 실행의 시작 시각. 나중 실행의 진행 표시를 지우지 않으려면 호출부의 값을 받아야 한다. */
+  /** 실행 시작 시각. 종료 소유권은 token으로 판정한다. */
   startedAt: Date;
   /**
-   * 이 push **전의** `TranslationSurface.baseLocale` (첫 push면 null). **호출부가 넘긴다** — 라우트가 이미
-   * 그 행을 읽어 `checkFormat`에 넘기고 있으므로 여기서 다시 조회하지 않는다 (design §3.13).
+   * 첫 적재면 null. 그 외에는 Project→Surface 잠금 뒤 읽은 최신 base로 다시 판정한다.
+   * 호출부의 값은 첫 적재 여부를 구분한다 (design §3.13).
    *
    * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
    * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
