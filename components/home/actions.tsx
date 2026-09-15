@@ -61,9 +61,20 @@ function useHomeActions(): HomeActionsValue {
 }
 
 export function HomeActions({ children }: { children: ReactNode }) {
-  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncOpen, openSync] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
+  /*
+    ⚠️ **Publish가 도는 동안은 확인 창이 "예약"되지 않는다** (2026-09-15 재리뷰 🟡4 — 상호 잠금 자체가
+    연 갈래다). `SyncButton`은 잠긴 동안 Dialog를 아예 세우지 않으므로, 그때 배너의 `[Try again]`이
+    `syncOpen`을 참으로 만들면 **화면엔 아무 일도 없고 Publish가 끝나는 순간 되돌릴 수 없는 동작의
+    확인 창이 혼자 열린다** — 사람이 이미 다른 것을 보고 있어도.
+
+    ⚠️ **문을 하나로 좁힌다** — 여는 자리가 셋(머리의 트리거 · 실패 배너의 `[Try again]` · 결과
+    Alert의 `[Try again]`)이라 호출부마다 조건을 달면 넷째 자리가 생길 때 빠진다. 반대 방향(창이
+    열린 채 Publish가 시작)은 Dialog가 modal이라 그 버튼에 클릭이 닿지 않는다.
+  */
+  const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
   const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
   const [pull, setPull] = useState<PullOutcome | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);

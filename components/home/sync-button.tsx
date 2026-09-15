@@ -83,7 +83,13 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     busy.current = false;
     setPending(false);
     onResult(outcome);
-    router.refresh();
+    /*
+      ⚠️ **실패에는 부르지 않는다** (POSTMORTEM 2026-09-08 — 같은 부류가 Publish에서 한 번 터졌다).
+      `unauthorized`로 거부된 직후의 refresh는 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고,
+      한 줄 앞에서 세운 거부 Alert를 그대로 씻어 간다("왜 실패했는지가 어디에도 없다"). 갱신할 값은
+      성공에만 있다 — 실패는 DB를 바꾸지 않았으므로 화면이 낡지도 않는다.
+    */
+    if (outcome.ok) router.refresh();
   }
   if (role !== "OWNER") return null;
   /*

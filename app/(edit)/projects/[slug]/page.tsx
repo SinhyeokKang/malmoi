@@ -219,7 +219,12 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       고정되고 본문만 스크롤한다 (`content-panel.tsx`). [Sync]는 머리에 있고 그 결과·배너는 본문에
       있어서, 상태를 한쪽이 소유하면 다른 쪽이 같은 Dialog를 못 연다.
     */
-    <HomeActions>
+    /*
+      ⚠️ **`key`가 프로젝트를 가른다** — `[slug]`는 param만 바뀌는 같은 세그먼트라 React가 이
+      Provider를 같은 자리로 화해시킨다. 없으면 A에서 낸 결과 Alert가 **A의 브랜치 이름을 단 채로**
+      B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
+    */
+    <HomeActions key={slug}>
       <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}

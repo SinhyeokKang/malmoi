@@ -162,3 +162,17 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
     expect(read("lib/shell/nav.ts")).toMatch(/routes\.translations\(slug\)/);
   });
 });
+
+/**
+ * ⚠️ **결과·진행 상태는 프로젝트 단위다** (sync-repository handoff §T9 — *"다른 프로젝트로 이동할
+ * 때는 프로젝트 단위로 상태를 분리한다"*). `[slug]`는 **param만 바뀌는 같은 세그먼트**라 React가
+ * `HomeActions`를 같은 자리로 화해시킨다 — `key`가 없으면 A에서 낸 결과 Alert가 **A의 브랜치
+ * 이름을 단 채로** B의 Home에 남고, 진행 중 잠금도 함께 넘어온다. 셸 LNB의 전환으로 닿는다.
+ *
+ * ⚠️ **렌더 테스트로 세지 않는다** — 테스트가 `key`를 직접 넘기면 React의 동작만 확인하고 **이
+ * 페이지가 그것을 넘겼는지는 안 본다**(공허하게 green인 부류다). 세는 것은 배선이다.
+ */
+it("Home이 HomeActions를 프로젝트 단위로 분리한다", () => {
+  const source = read("app/(edit)/projects/[slug]/page.tsx");
+  expect(source).toMatch(/<HomeActions\s+key=\{/);
+});

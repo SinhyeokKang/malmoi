@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { m } from "@/lib/i18n";
+
 /**
  * Home의 **표현 규칙 셋**을 소스에서 센다 (project-home spec §3.3의 완료 조건 7·8·9).
  *
@@ -129,4 +131,22 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
   it("그래프 전체의 합이 일곱이다 — 자리가 늘면 위 분해도 함께 바뀐다", () => {
     expect(HOME_GRAPH.reduce((sum, path) => sum + count(path), 0)).toBe(7);
   });
+});
+
+/**
+ * ⚠️ **한 화면에서 천단위 구분자가 갈리면 안 된다** (2026-09-15 재리뷰 🟡8). 카운트 카드가 `+1,207`을
+ * 띄우는 **바로 아래** 결과 Alert가 `Synced 1207 keys`라고 쓰고, 확인 Dialog의 `1207 edits` 위에는
+ * `[Publish]` 배지가 `1,207`을 단다 — 같은 수가 두 표기로 서면 같은 수인지부터 다시 읽어야 한다.
+ * `008efce`가 `home` 절 넷을 고쳤지만 같은 화면의 `repositorySync` 절은 안 건드렸다.
+ */
+it("같은 화면의 수는 전부 같은 천단위 표기를 쓴다", () => {
+  const formatted = [
+    m.repositorySync.unsentCount(1207),
+    m.repositorySync.completed(1207, "main"),
+    m.repositorySync.syncedKeys(1207),
+    m.repositorySync.partial(1207),
+    m.home.cards.allFilled(1207),
+  ];
+  expect(formatted.filter((line) => line.includes("1,207"))).toHaveLength(formatted.length);
+  expect(formatted.filter((line) => /(?<![\d,])1207(?![\d,])/.test(line))).toEqual([]);
 });

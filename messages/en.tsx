@@ -46,7 +46,7 @@ export const en = {
      * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
      * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
      */
-    unsentCount: (n: number): string => `${n} edit${n === 1 ? "" : "s"}`,
+    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} edit${n === 1 ? "" : "s"}`,
     /**
      * ⚠️ **덮이는 값의 저자가 리포가 된다** — `lib/push/apply.ts`가 `"updatedBy" = NULL`로 저자를
      * 비우므로, 이 문장이 말하는 "replaced"는 사람 이름까지 사라지는 것을 포함한다.
@@ -80,17 +80,17 @@ export const en = {
      */
     seeOpen: "See what's open",
     /** ⚠️ `Alert.title`은 **구두점 없는 문장 조각**이다 (DESIGN §10) — 헤드라인에서 마침표를 뗀다. */
-    completed: (n: number, branch: string): string => `Synced ${n} key${n === 1 ? "" : "s"} from ${branch}`,
+    completed: (n: number, branch: string): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"} from ${branch}`,
     /**
      * ⚠️ **사고가 붙는 헤드라인에는 브랜치가 없다** (시안 `4e`) — `Synced 640 keys, but 1 surface …`.
      * 한 문장에 출처와 사고를 함께 얹으면 `from main, but …`으로 절이 셋이 되어 사고가 뒤로 밀린다.
      */
-    syncedKeys: (n: number): string => `Synced ${n} key${n === 1 ? "" : "s"}`,
+    syncedKeys: (n: number): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
     unreadable: (n: number): string => `${n} surface${n === 1 ? " could" : "s could"} not be read`,
     /** ⚠️ `could not be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
     notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
-    partial: (n: number): string => `${n} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
     /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
