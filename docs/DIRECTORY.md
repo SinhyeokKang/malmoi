@@ -132,14 +132,20 @@ components/
                         행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
   projects/empty-projects.tsx
-                        프로젝트 0건의 착지점. ⚠️ EmptyState가 아니라 KV 합성이다 — 장식이 패널
-                        **안**으로 들어오는 유일한 경우다(DESIGN §6.4 예외 1). 로그인의 KeyVisual을
-                        상한만 바꿔 재사용한다
+                        본문이 빌 때의 **카드 둘** — 프로젝트 0건(`EmptyProjects`)과 검색 0건
+                        (`NoProjectsMatch`). ⚠️ 부품이 같고 다른 것은 아이콘과 **출구의 무게**뿐이다
+                        (만들기=채운 버튼 / 되돌리기=링크). ⚠️ 2026-09-15에 장식(그라데이션·점 필드·KV)
+                        을 걷어냈다 — 본문이 전부 카드가 되면서 빈 상태가 화면 중 가장 화려해졌다.
+                        DESIGN 원칙 5의 "유일한 예외"가 그때 닫혔다. ⚠️ EmptyState 프리미티브를 쓰지
+                        않는다 — 그쪽은 칩 48·py-12이고 여기는 카드 규격(칩 36·padding 48/24)이다
   projects/project-list.tsx
                         목록 본문. ⚠️ <ContentPanel>을 여기서 안 든다 — /projects와 /projects/new가
                         둘 다 그리므로 공유 컴포넌트가 들면 shell-layout이 두 라우트에서 0을 센다
                         ⚠️ routes.projects({filter,q})를 부르는 자리라 entry-points의 "쿼리 수신자"
                         검사가 app/ 밖인 이 파일도 읽는다
+                        ⚠️ 본문의 갈래 넷은 lib/projects/list.ts의 listBody가 정한다 — 전엔
+                        hasProjects·질의·건수가 JSX 안에서 섞여 판정됐다. 그릇은 카드이고 그룹
+                        헤더가 그 안에 산다(DESIGN §6.63)
   translation-input.tsx 셀 편집. 실패 시 포커스는 shouldRefocus가 정한다(다른 셀을 치고 있으면 안 뺏는다)
   publish-button.tsx    ⚠️ 실패에는 router.refresh()를 부르지 않는다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
