@@ -629,7 +629,7 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 snapshot → ingestTargets(순수) → readBlob × M
   → assemblePushInput   (selectLocaleFiles + adapter.read + base 판정 — push-local과 **같은 함수**)
   → buildPushPayload    (페이로드의 **유일한 생산자**)
-  → applyPush           (키·번역·refs·lastCommit* 를 한 배열형 트랜잭션으로)
+  → applyPush           (Project→Surface 잠금 뒤 키·번역·refs·lastCommit* 를 한 트랜잭션으로)
 ```
 
 - ⚠️ **셋을 우회하지 않는다.** 리터럴로 조립했다가 필수 필드가 늘어도 컴파일러가 침묵한 전례(POSTMORTEM
@@ -638,7 +638,8 @@ snapshot → ingestTargets(순수) → readBlob × M
   `stale-commit` 409로 거부된다**(`checkCommitOrder`는 동일 시각만 통과시킨다). 그래서 스냅샷이
   `headCommittedAt`을 함께 읽는다 — `GET /git/commits/{sha}` 한 번이 더 든다.
 - ⚠️ **`refs`는 빈 배열이다.** 서버가 리포를 체크아웃하지 않아 ts-morph를 돌릴 수 없다. `applyPush`가 refs를
-  전체 교체하므로 "참조 없음"으로 저장되고 CI 첫 push가 채운다 — **화면이 그 사실을 한 줄로 알린다**(조용히
+  전체 교체하므로(`refsMode: "replace"` — Sync만 `"preserve"`로 **기존 사용처를 남긴다**, 같은 이유로 서버가
+  스캔을 못 하기 때문이다) "참조 없음"으로 저장되고 CI 첫 push가 채운다 — **화면이 그 사실을 한 줄로 알린다**(조용히
   비어 있으면 "코드 참조 기능이 고장났다"로 읽힌다).
 - ⚠️ **내려받지 못한 파일을 실패로 센다.** "다운로드 실패"와 "리포에 없음"을 같게 접으면 로케일 12개 중 3개가
   5xx일 때 DB엔 9개만 들어가는데 화면은 "N개 키를 적재했어요"를 쓴다 — 그래서 `targets`(시도한 경로)를 함께
@@ -916,13 +917,13 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 ### 5.5.1 pooler가 구현을 규정한다
 
-- **push는 배열형 `$transaction([...])`을 쓴다 — 왕복 수 때문이다.** 한 번에 배치로 보내 문장 수만큼의 왕복이 없다. ⚠️ **"대화형 `$transaction(async tx => …)`은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다.
+- **push는 대화형 `$transaction(async tx => …)`을 쓴다 — 잠금 때문이다** (2026-09-15에 배열형에서 옮겼다). 진입점 둘(`/api/push`·Sync)이 같은 표면을 동시에 적용할 수 있게 되면서 `Project` → `TranslationSurface`를 `FOR UPDATE`로 잠그고 **잠근 뒤 읽은 최신 상태로** 보관·오배송·포맷·역행을 다시 판정해야 하는데, 배열형은 그 사이에 판정을 끼울 자리가 없다. ⚠️ **대가가 실측으로 있다**: 1446키×6로케일 로컬 격리 핸들러에서 warm 240·242·243ms → **689·677·543ms**. 잠금과 최신 상태 조회가 왕복을 늘린 값이고, 배포 환경의 네트워크 지연은 여기 안 들어 있다(`lib/push/apply.ts`에 같은 수가 있다). 문장 자체는 여전히 배치로 만들어 그 연결에서 순서대로 보낸다 — 키마다 왕복하지 않는다. ⚠️ **"대화형은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다 — push는 2026-09-15에 그 조건에서 빠졌다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결이다.
 
 ### 5.5.15 적용은 한 트랜잭션이다 (2026-09-04)
 
-**배열형 `$transaction` 하나가 Locale·StringKey·Translation·KeyRef·Project를 전부 커밋한다.**
+**트랜잭션 하나가 Locale·StringKey·Translation·KeyRef·Project를 전부 커밋한다.**
 전에는 둘이었다 — 키 id를 확보하려고 중간에 `stringKey.findMany`를 한 번 더 쳤기 때문이다. 두 번째가
 실패하면 **키·`orphaned`·`needsReview`만 새 상태이고 번역·refs·`TranslationSurface.lastCommit*`은 옛 상태인
 혼합 DB**가 남는다.
@@ -980,7 +981,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 5.5.3 보고값은 실제 영향 행수다
 
-`$executeRaw`가 돌려주는 영향 행수를 배열형 트랜잭션 결과에서 읽는다. 후보 수를 보고하면 실제로 쓰이지 않은 행까지 세어 CI 로그에 거짓이 남는다 — `DO NOTHING`이던 시절 재전송마다 "번역 2892건 채움"이 찍혔다. strict에서는 재전송도 전 행을 갱신하므로 두 수가 대개 같지만, 보고 경로는 그대로 실측을 읽는다.
+`$executeRaw`가 돌려주는 영향 행수를 트랜잭션 결과에서 읽는다. 후보 수를 보고하면 실제로 쓰이지 않은 행까지 세어 CI 로그에 거짓이 남는다 — `DO NOTHING`이던 시절 재전송마다 "번역 2892건 채움"이 찍혔다. strict에서는 재전송도 전 행을 갱신하므로 두 수가 대개 같지만, 보고 경로는 그대로 실측을 읽는다.
 
 ### 5.5.4 `applyPush`는 클라이언트를 주입받는다
 
@@ -989,6 +990,15 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 ### 5.5.5 오배송·역행을 페이로드로 막는다 (2026-08-31 결정, 구현됨)
 
 **다섯 검사 모두 거부이지 병합이 아니다.** 전부 **409**로 떨어뜨린다. 표면을 조회한 뒤 포맷·역행을 검사한다.
+
+⚠️ **라우트의 그 판정이 유일한 자리가 아니다** (2026-09-15). 진입점이 둘이 되면서 `applyPushInTransaction`이
+`Project` → `TranslationSurface`를 잠근 **뒤** 보관·오배송·포맷·역행을 **다시** 판정하고 `ApplyGuardError`로
+던진다 — 라우트가 읽은 시점과 적용 시점 사이에 표면 설정이 바뀔 수 있고, 그 창에서 옛 포맷의 페이로드가
+들어가면 잘못된 표면을 통째로 덮는다. **라우트의 검사를 지우고 이쪽만 남기지 않는다**: 409 응답의 갈래는
+라우트가 들고, 트랜잭션 안의 것은 마지막 방어선이다.
+
+⚠️ **Sync만 역행 검사를 건너뛴다** (`refsMode: "preserve"`). 그 동작이 읽는 것은 **지금의 base**이고, 이전
+커밋으로 force-push된 리포에서도 그 상태가 곧 진실이다 — CI의 `commitAt` 순서 계약은 그대로 산다.
 
 | 검사 | 비교 대상 | 막는 것 |
 |---|---|---|
