@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { routes } from "@/lib/routes";
+import { isKeyState, routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 export const maxDuration = 60;
@@ -18,5 +18,7 @@ export default async function LegacyTranslations({ params, searchParams }: {
   const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { defaultSurface: true } });
   const surface = project?.defaultSurface;
   if (!surface || surface.archivedAt !== null) notFound();
-  redirect(routes.surfaceTranslations(slug, surface.slug, firstQueryValues(await searchParams)));
+  const { ns, locales, q, state } = firstQueryValues(await searchParams);
+  // ⚠️ 주소창 값이라 판정 함수로 거른다 — 모르는 값은 실어 보내지 않는다 (POSTMORTEM 2026-09-08).
+  redirect(routes.surfaceTranslations(slug, surface.slug, { ns, locales, q, state: isKeyState(state) ? state : undefined }));
 }

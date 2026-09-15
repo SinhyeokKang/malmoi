@@ -272,9 +272,12 @@ describe("행 축 (8-4)", () => {
   it("배지가 base 라벨을 안 든다 — 이 표에서 base는 맨 위 한 줄이다", () => {
     expect(read(LOCALE_BADGE)).not.toMatch(/m\.locales\.base/);
     expect(read(KEY_GROUP)).not.toMatch(/isBase/);
-    // 사전 키는 남는다 — `/locales`·Home이 계속 쓴다.
+    /*
+      사전 키는 남는다 — `/locales`가 계속 쓴다.
+      ⚠️ **Home이 2026-09-15에 이 목록에서 빠졌다** (project-home) — 로케일 목록 블록이 사라지고
+      메타 열의 국기 줄이 그 자리를 받았다. base를 말할 자리가 그 화면에 더 이상 없다.
+    */
     expect(read("app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx")).toMatch(/m\.locales\.base/);
-    expect(read("app/(edit)/projects/[slug]/page.tsx")).toMatch(/m\.locales\.base/);
   });
 
   /**

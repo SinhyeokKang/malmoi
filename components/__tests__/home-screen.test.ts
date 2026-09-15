@@ -26,7 +26,7 @@ const read = (path: string): string =>
 
 const HOME = "app/(edit)/projects/[slug]/page.tsx";
 
-describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
+describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   const src = read(HOME);
 
   it("게이트가 `translation:write`다 — 번역자가 착지하는 화면이다", () => {
@@ -35,39 +35,62 @@ describe("Home — 개요가 일로 이어진다 (6b-6)", () => {
   });
 
   /**
-   * ⚠️ **진행률 행이 링크여야 한다.** `?locales=`를 실어 그 로케일만 보이는 번역 화면에 착지시키는
-   * 것이 개요가 일로 이어지는 유일한 수단이다 — 숫자만 보이면 사용자가 사이드바로 되돌아간다.
-   *
-   * ⚠️ **8-4에서 `?focus=`가 `?locales=`로 바뀌었다** — 로케일이 열이 아니라 행이 되면서 "기준 열"에
-   * 화면의 대응물이 없어졌다. 단일 선택이라 이 링크의 동작은 같다.
+   * ⚠️ **블록 셋 + 메타 열이다** (spec §3.1-1). `Languages` 블록과 `[Open translations]` primary가
+   * 사라졌다 — 카드 넷이 그 자리를 받고, 각 카드가 자기 구간으로 착지시킨다.
    */
-  it("진행률 행이 `?locales=`를 실은 번역 화면 링크다", () => {
-    expect(src).toMatch(/routes\.surfaceTranslations\([^)]*surfaceSlug[^)]*locales/);
+  it("카드 넷 · 항목 · 로그 · 메타 열 넷을 그린다", () => {
+    for (const block of ["CountCards", "AttentionCard", "LogsCard", "MetaColumn"]) {
+      expect(src, block).toContain(block);
+    }
   });
 
-  /** 활동 항목은 그 편집이 있던 네임스페이스와 로케일로 데려간다 — "무엇이 바뀌었나"에서 "고치자"로. */
-  it("활동 항목이 `?ns=`와 `?locales=`를 실은 링크다", () => {
-    expect(src).toMatch(/ns:/);
-    expect(src).toMatch(/locales:/);
-  });
-
-  it("순수 판정을 `lib/home/overview`에서 받는다 — 화면이 집계하지 않는다", () => {
-    expect(src).toMatch(/from "@\/lib\/home\/overview"/);
-    expect(src).toMatch(/activeLocaleProgress\(/);
-    expect(src).toMatch(/recentActivity\(/);
+  it("`Languages` 블록과 `[Open translations]` primary가 없다", () => {
+    expect(src).not.toMatch(/m\.home\.progress/);
+    expect(src).not.toMatch(/openTranslations/);
   });
 
   /**
-   * ⚠️ **툴바의 지표를 다시 세지 않는다** (결정 2). `countUnpublished`는 번역 화면 툴바의 숫자이고
-   * Home이 그것을 또 세면 사본이 둘이 된다 — 그중 하나가 낡는 것이 이 결정이 막는 것 전부다.
+   * ⚠️ **판정을 화면이 하지 않는다** (design §4). 여섯 상태 × 화면 요소의 매트릭스를 JSX의 `&&`에
+   * 흩으면 테스트가 전수로 들 자리가 없다.
    */
-  it("`countUnpublished`를 부르지 않는다 — 미배포 건수는 툴바의 것이다", () => {
+  it("순수 판정 다섯을 `lib/home/*`에서 받는다", () => {
+    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaRows(", "recentActivity("]) {
+      expect(src, fn).toContain(fn);
+    }
+  });
+
+  /**
+   * ⚠️ **미발송 술어의 넷째 벌을 만들지 않는다** (CLAUDE.md). 카드 넷의 수는 `summaryQueue` 하나에서
+   * 나오고, `countUnpublished`는 번역 화면 툴바의 것이다.
+   */
+  it("`summaryQueue`를 쓰고 `countUnpublished`를 부르지 않는다", () => {
+    expect(src).toMatch(/summaryQueue\(/);
     expect(src).not.toMatch(/countUnpublished/);
   });
 
-  /** 진행률은 6b-5의 조회를 그대로 쓴다 — `loadKeys`는 행마다 셀과 refs를 들고 와 903키에서 무겁다. */
-  it("진행률 재료를 `loadLocaleCounts`에서 받는다 — `loadKeys`를 부르지 않는다", () => {
-    expect(src).toMatch(/loadLocaleCounts\(/);
+  /**
+   * ⚠️ **`archived: false`를 고정으로 넘긴다** (design §2.1) — 그 필터는 계정 합계의 것이고 Home은
+   * 프로젝트 하나다. 그대로 넘기면 보관하는 순간 카드 넷이 전부 0이 된다.
+   */
+  it("`summaryQueue`에 보관을 넘기지 않는다", () => {
+    expect(src).toMatch(/archived:\s*false/);
+  });
+
+  /** ⚠️ 조회가 여섯이다 — 순차로 보내면 도쿄 왕복이 여섯 번 쌓인다 (POSTMORTEM 2026-09-05). */
+  it("조회를 한 라운드로 보낸다", () => {
+    expect(src).toMatch(/Promise\.all\(/);
+  });
+
+  /**
+   * ⚠️ **`[Sync]`가 `runRepositoryImport`를 부른다** — 그 Action은 자기를 부른 페이지 세그먼트의
+   * `maxDuration`을 쓰고, 없으면 큰 리포에서만 실패한다 (sync-repository T9-1).
+   */
+  it("`maxDuration`을 명시한다", () => {
+    expect(src).toMatch(/export const maxDuration = 60/);
+  });
+
+  /** 진행률은 6b-5의 판정을 그대로 쓴다 — `loadKeys`는 행마다 셀과 refs를 들고 와 903키에서 무겁다. */
+  it("`loadKeys`를 부르지 않는다", () => {
     expect(src).not.toMatch(/loadKeys\(/);
   });
 });

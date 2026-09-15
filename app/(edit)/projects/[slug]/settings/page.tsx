@@ -17,9 +17,9 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
-import { probeRepo } from "@/lib/github";
+import { loadConnectionHealth } from "@/lib/github";
 import { loadAccountView } from "@/lib/github-connect/account-view";
-import { planConnectionHealth, type ConnectionHealth } from "@/lib/github-connect/health";
+import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-status";
@@ -103,7 +103,7 @@ export default async function SettingsPage({
 
   // ⚠️ **계정 상태는 `/account`와 같은 함수가 낸다** (6b-4) — 사본을 두면 두 화면이 갈린다.
   const [health, account, openPrUrl] = await Promise.all([
-    loadHealth(project),
+    loadConnectionHealth(project),
     loadAccountView(prisma, userId),
     loadOpenPrUrl(slug, project),
   ]);
@@ -248,24 +248,6 @@ export default async function SettingsPage({
 }
 
 /** App 토큰 쪽. 실패해도 계정 블록을 막지 않는다. */
-async function loadHealth(project: {
-  repoOwner: string;
-  repoName: string;
-  installationId: string | null;
-  repositoryId: string | null;
-}): Promise<ConnectionHealth> {
-  // ⚠️ 저장된 설치가 없으면 probe 결과가 판정을 바꾸지 못한다(`planConnectionHealth`가 그때
-  // `not-connected`를 준다) — 부르면 App JWT 조회와 토큰 발급 두 번이 헛돈다. 지금 프로덕션의
-  // `skillflo`가 그 상태다.
-  if (project.installationId === null) return { status: "not-connected" };
-
-  // ⚠️ try로 감싸지 않는다. `probeRepo`는 GitHub 실패를 값(`error` → `unknown`)으로 주고, 던지는 것은
-  // 환경변수 누락뿐이다 — 그것까지 `unknown`("잠시 뒤 다시")으로 접으면 설정 오류가 영원히 일시 장애로
-  // 보인다 (code-review 2026-09-07 🟡1). "블록의 독립 실패"는 GitHub 장애에 대한 것이지 설정 오류가 아니다.
-  const probe = await probeRepo(project.repoOwner, project.repoName);
-  return planConnectionHealth({ project, probe });
-}
-
 /** §3.3 표 + 리포 정체성 한 갈래 = 일곱. **DESIGN §6.2 밖의 raw 색을 늘리지 않는다.** */
 function HealthRow({
   health,

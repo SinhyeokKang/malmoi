@@ -18,7 +18,7 @@ vi.mock("@/components/project-not-ready", () => ({ ProjectNotReady: () => null }
 import Page from "../../surfaces/[surfaceSlug]/translations/page";
 
 const row = (namespace: string, value: string): KeyRow => ({
-  id: namespace, key: `${namespace}.title`, namespace, orphaned: false, description: null, refs: [],
+  id: namespace, key: `${namespace}.title`, namespace, orphaned: false, createdAt: new Date(0), description: null, refs: [],
   cells: { en: { value, needsReview: false, updatedBy: null, updatedAt: new Date(0) } },
 });
 beforeEach(() => { state.rows = [row("a", ""), row("b", "")]; state.redirect.mockClear(); });

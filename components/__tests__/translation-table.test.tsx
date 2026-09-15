@@ -15,7 +15,7 @@ const project: ProjectContext = {
   lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [],
 };
 const row: KeyRow = {
-  id: "key-one", key: "common.title", namespace: "common", description: "Description", refs: [], orphaned: false,
+  id: "key-one", key: "common.title", namespace: "common", description: "Description", refs: [], orphaned: false, createdAt: new Date(0),
   cells: { en: { value: "First line\nSecond line", needsReview: false, updatedBy: null, updatedAt: new Date(0) } },
 };
 const locales = [{ code: "en", orphaned: false }, { code: "ko", orphaned: false }, { code: "fr", orphaned: true }];

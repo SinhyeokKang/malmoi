@@ -26,11 +26,17 @@ import { pullMessage, type PullOutcome } from "@/lib/pull/message";
 export function PublishButton({
   slug,
   count,
+  disabled = false,
   onResult,
 }: {
   slug: string;
   /** 미배포 건수 — 라벨이 든다. 0이면 숫자가 붙지 않는다. */
   count: number;
+  /**
+   * ⚠️ **Home이 쓴다** — 미연결·보관에서는 보낼 곳이 없고, 보낼 것이 0이면 누를 이유가 없다
+   * (project-home spec §8). 번역 화면은 이 값을 넘기지 않는다: 그쪽 툴바는 상태 갈래를 안 든다.
+   */
+  disabled?: boolean;
   onResult: (outcome: PullOutcome) => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -47,6 +53,7 @@ export function PublishButton({
       // pending 중 연타를 막는다 — 두 실행이 병렬이면 둘 다 열린 PR을 못 보고
       // 각자 생성을 시도해 GitHub이 422로 거부한다.
       loading={pending}
+      disabled={disabled}
     >
       <Send aria-hidden />
       {m.translations.publish.button(count)}
