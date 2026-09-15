@@ -722,3 +722,10 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
     expect(covered).toEqual([]);
   });
 });
+
+it.each(["runRepositoryImport", "checkOpenPullRequest"])("%s는 OWNER의 project:settings로 인가한다", name => {
+  const source = readFileSync(join(APP, "(edit)/projects/actions.ts"), "utf8");
+  const declaration = source.match(new RegExp(`export async function ${name}\\b[\\s\\S]*?(?=\\nexport |$)`))?.[0];
+  expect(declaration).toBeDefined();
+  expect(declaration).toMatch(/getProjectAccess\([\s\S]*?permission:\s*["']project:settings["']/);
+});
