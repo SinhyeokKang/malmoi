@@ -1712,3 +1712,121 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 데이터 적용·실패 기록의 조건과 진행 표시 정리의 조건을 하나로 취급했다. 설정이 바뀌면 앞의 두 동작은 금지해야 하지만, 아직 유효한 자기 실행권에 속한 표시는 정리해야 한다. 역으로 stale 실행은 자기 토큰이 남아 있어도 종료 권한이 없다.
 - **그물**: 설정 변경을 다운로드 전으로만 배치한 테스트는 표시가 세워진 창을 놓쳤다. 실제 PG의 blob barrier 회귀 테스트와 stale 자기 해제 금지 테스트가 각각 red를 냈다. 종료 시 Project 잠금→자기 토큰·유효기간 확인→자기 표면 표시만 정리하도록 고친 뒤 통과했다.
 - **재발 방지**: `rg -n 'lastImportStartedAt: null|lastImportToken|repositoryImportToken' lib/import lib/projects lib/push`로 종료 경계를 점검한다. 적용·실패 기록은 revision/설정까지 검사하고, finally 정리는 유효한 자기 프로젝트 토큰과 자기 표면 토큰만 허용한다. 전수 확인한 기존 `finishImportRun`도 표면 토큰으로 종료를 제한하며, CI와 새 Sync의 표시를 덮지 않는지는 `pnpm test:projects:postgres`가 검증한다.
+
+### 2026-09-15 — `needsReview`와 `updatedBy`를 같은 행에서 찾아 화면 문구가 영영 안 뜰 뻔했다
+
+- **영역**: `lib/keys/query.ts`의 `loadReviewAttention` (project-home 할 일 항목)
+- **증상**: 배포 전에 잡혔다. 검토 대기 항목의 `— last edited by {who}.` 절이 **거의 모든 실제
+  데이터에서 빠진다.** 설계 문서는 "그 로케일의 최근 편집자"라고 적었는데 구현이 "검토 대기 행의
+  저자"로 좁혔고, 그 둘이 **구조적으로 거의 언제나 다르다.**
+- **근본 원인**: **불변식 2의 귀결을 쿼리가 몰랐다.** `Translation.needsReview = true`는 push가
+  세우고 **같은 쓰기가 `updatedBy`를 비운다**(`applyPush`의 `"updatedBy" = NULL`). 반대로 사람이
+  저장하면 `saveTranslation`이 `needsReview: false`와 `updatedBy`를 **함께** 쓴다
+  (`app/(edit)/actions.ts:80-81`). 즉 **두 컬럼은 배타적으로만 채워진다** — `needsReview = true`로
+  좁힌 집합에서 저자를 찾는 것은 정의상 빈손이다. 그 사실이 스키마에도 타입에도 안 나타난다.
+- **그물**: 잡은 것 — **Codex의 중간 리뷰 하나뿐.** 놓친 것: `pnpm typecheck`(두 컬럼 다
+  nullable이라 아무 신호가 없다) · `pnpm test` 4,039건 · `pnpm test:projects:postgres` 71건 ·
+  `/code-review` · `/design-sync`의 브라우저 실측(`bugshot-i18n-test-qa`에 검토 대기가 0이라
+  그 항목이 아예 안 그려졌다). ⚠️ **통합 테스트가 red를 못 낸 이유가 픽스처다** — 내가 쓴 검증이
+  `needsReview: true`와 `updatedBy: "u1"`을 **한 행에 함께** 세웠고, 그 조합은 프로덕션이 만들 수
+  없다. 불변식이 금지한 상태를 픽스처가 만들면 그 테스트는 아무것도 안 지킨다.
+- **재발 방지**:
+  - `grep -rn "needsReview" lib app --include='*.ts' --include='*.tsx' | grep -v __tests__ | grep "updatedBy"`
+    → **3건이고 전부 정상이다**: `loadKeys`의 select(읽기만) · `saveTranslation`의 create·update(둘을
+    **함께 쓰는** 쪽이라 그것이 곧 불변식의 절반이다). 새 위반 없음.
+  - **규칙: `needsReview`로 좁힌 집합에서 `updatedBy`를 찾지 않는다.** 저자가 필요하면 파티션을
+    그 로케일의 **값이 있는 셀 전체**로 두고 `updatedBy IS NOT NULL` 중 최신을 고른다.
+  - **픽스처가 불변식이 금지한 조합을 만들면 안 된다.** `lib/keys/__tests__/list-aggregates.integration.ts`에
+    "저자 없는 검토 대기 + 다른 셀의 사람 편집"을 실제 PG로 세우는 회귀 둘을 넣었다.
+  - ⚠️ **문장도 술어를 따라갔다** — 대표 행이 검토 대기 칸이 아닐 수 있으므로
+    `last edited in this locale by`로 바꿨다. `last edited by`는 "그 8칸을 그 사람이 만졌다"로
+    읽히는데 그것은 거짓이다.
+
+### 2026-09-15 — 컬럼을 더하며 쓰는 자리를 전수로 안 세서 종료 경로 다섯 중 둘에만 붙었다
+
+- **영역**: `lib/projects/import-status.ts`·`import-status-store.ts`·`lib/import/run.ts`·`lib/push/apply.ts`
+- **증상**: 배포 전. `TranslationSurface.lastImportFailedAt`을 추가하고 `applyPush`와 CI 실패 보고
+  **둘에만** 배선했다. 서버 적재 실패(`finishImportRun`)·표면 실패·정상 0키 성공 셋이 빠져서,
+  방금 실패한 표면에 시각이 없어 항목이 **영구히 목록 맨 아래**로 가고(시각 없음 = 가장 오래된 것),
+  복구된 표면은 옛 실패 시각을 계속 들고 있었다.
+- **근본 원인**: **종료 필드를 손으로 나열한 자리가 둘 있었다.** `importOutcomeFields`라는 "한 벌로
+  내는" 함수가 이미 있었는데 `finishImportRun`과 `lib/import/run.ts`의 두 갈래는 `lastImportStartedAt:
+  null, lastImportToken: null, lastImportError: …`를 직접 적고 있었다. 나열형 객체는 **컬럼이 늘 때
+  아무 신호도 안 준다** — 타입이 `Partial`이라 빠진 필드가 오류가 아니다.
+- **그물**: 잡은 것 — Codex 리뷰. 놓친 것: `typecheck`(선택적 필드다) · `pnpm test`(각 경로의
+  테스트가 **자기가 쓰는 필드만** 단언한다) · `/code-review`(diff에 그 두 파일이 없었다 — **컬럼을
+  더한 커밋과 종료 경로를 고치는 커밋이 달랐다**).
+- **재발 방지**:
+  - `grep -rn "lastImportError:" lib app --include='*.ts' | grep -v __tests__ | grep -v importOutcomeFields`
+    → **1건 남았다**: `import-status-store.ts:82`의 `recordReportedFailure`. **의도된 예외다** —
+    그 경로는 `lastImportStartedAt`을 건드리면 안 되는데(서버가 돌린 적 없는 구간이고, 다른 적재가
+    돌고 있으면 그 표시를 뺏는다) `importOutcomeFields`는 그것을 `null`로 강제한다.
+    ⚠️ **후속 후보**: 셋째 결과 컬럼이 늘면 이 자리가 또 빠진다. `importOutcomeFields`를
+    "진행 표시를 건드릴지"로 가르는 형으로 여는 것이 다음 작업이다.
+  - **규칙: 결과 컬럼을 더하면 `importOutcomeFields`의 반환 타입에 더하고, 나열형 객체를 쓰는
+    자리를 위 grep으로 전수 확인한다.** ARCHITECTURE §5에 "종료 경로가 다섯이고 전부 이 함수를
+    지난다"를 적어 뒀다.
+
+### 2026-09-15 — 시안 없이 만든 화면이 네 곳에서 어긋났고 테스트 4,039개가 전부 green이었다
+
+- **영역**: `app/(edit)/projects/[slug]/page.tsx`·`loading.tsx`·`components/home/*`
+- **증상**: 배포 전(`/design-sync`가 잡았다). 넷 다 **화면이 그럴듯하게 보이고** 어느 게이트도
+  신호를 안 냈다.
+  1. **카드·블록·메타의 radius가 16이었다**(캔버스 12). `rounded-xl`을 12로 알고 썼는데
+     `app/globals.css`가 `--radius-xl: calc(var(--radius) + 4px)`로 **Tailwind 기본과 다르게
+     재정의**한다. 눈으로는 4px다.
+  2. **할 일·로그 `<section>`이 `role="generic"`이었다.** `<section>`은 **접근 이름이 있을 때만**
+     `region` 랜드마크다 — 없으면 Chrome이 접어 그 블록이 접근성 트리에서 통째로 사라진다.
+     시각은 동일하다.
+  3. **`empty:hidden`이 절대 안 걸렸다.** `:empty`는 자식 **요소**가 하나라도 있으면 거짓인데,
+     감싼 컴포넌트가 배너 0개일 때도 자기 `<div>`를 렌더한다 → 바깥 래퍼의 `pb-4`가 남아
+     **가장 흔한 화면에 16px 유령 띠**가 섰고, 로딩 골격엔 그것이 없어 데이터 도착 시 본문이 튄다.
+  4. **오른쪽 패널이 열리면 카드 칸이 127px**이라 제목이 두 줄로 접히고 카드마다 수치의 세로
+     위치가 어긋났다. 캔버스는 `panel="none"`으로 그려 칸 240을 전제한다.
+- **근본 원인**: 넷 다 **값이 아니라 표현**이고, 이 리포의 게이트 셋은 전부 값을 본다. 1·3은
+  **토큰·셀렉터의 의미를 확인 없이 가정**한 것이고, 2는 HTML 사실을 몰랐던 것, 4는 **시안이
+  상정하지 않은 폭**이라 캔버스 자체가 답을 안 갖는다.
+  ⚠️ **1은 주석이 이미 경고하고 있었다** — `components/ui/entity-card.tsx:45`에
+  *"radius 12는 `rounded-lg`다 — `rounded-xl`은 16이라 같은 화면의 다른 카드와 어긋난다"*가
+  **2026-09-13부터 있었다.** 그 지식이 **주석에만 있어서** grep 소환 회로(`/implement`·`/code-review`가
+  POSTMORTEM을 grep한다)에 안 걸렸다.
+- **그물**: 잡은 것 — **`/design-sync` 4단계의 computed style + CDP 접근성 트리뿐**(4는 스크린샷).
+  놓친 것: `typecheck` · `test` 4,039 · `build` · `/code-review` · 이 사이클이 새로 쓴 소스 스캐너
+  여섯(파랑·mono·낱말) — **전부 원리적으로 못 본다.** 2026-09-13의 29곳과 같은 층이다.
+- **재발 방지**:
+  - `grep -rn "rounded-xl" app components --include='*.tsx' | grep -v __tests__` → **5건이고 전부
+    정상이다**(패널·모달의 바깥 껍데기라 16이 의도다). **이 값을 카드에 쓰면 어긋난다** —
+    `docs/DESIGN.md` §6.64가 `rounded-lg`를 명시한다.
+  - `grep -rn "<section" app components --include='*.tsx' | grep -v __tests__ | grep -v "aria-label"`
+    → **8건.** ⚠️ **후속 후보 넷**: `components/ui/card.tsx`(프리미티브라 소비자가 이름을 줄 수
+    있어야 한다) · `components/projects/project-list.tsx:226` · `app/(edit)/projects/loading.tsx:48` ·
+    `members/page.tsx:73`. 지금 화면에서 랜드마크가 필요한 자리인지 각각 판정한다.
+  - `grep -rn "empty:" app components --include='*.tsx' | grep -v __tests__` → **3건.**
+    ⚠️ **후속 후보 하나**: `components/translations/header.tsx:197`의 `mb-4 empty:mb-0`이 같은 모양이다 —
+    안의 배너 셋이 전부 `null`을 내면 `:empty`가 참이 되는지(= 그 컴포넌트들이 요소를 남기지 않는지)
+    확인해야 한다.
+  - **규칙: `empty:` 변형은 그 요소의 **직접 자식이 전부 사라질 수 있을 때만** 쓴다.** 컴포넌트를
+    감싸면 그 컴포넌트가 `null`을 내야 하고, 자기 래퍼를 렌더하면 영원히 안 걸린다.
+  - **규칙: `<section>`을 쓰면 `aria-labelledby`로 이름을 준다.** 이름 없이 묶는 것이 목적이면
+    `<div>`다. `components/__tests__/home-landmarks.test.tsx`가 Home의 셋을 고정하고,
+    **셋을 개별로 깨뜨려 red를 확인했다.**
+  - **규칙: 시안이 상정한 폭을 확인한다.** 캔버스의 `panel="none"`처럼 **아트보드의 전제**가
+    실제 셸과 다르면 그 차이가 곧 미대응 갈래다.
+
+### 2026-09-15 — 상태로 좁힌 링크가 네임스페이스로도 좁혀져 0건에 착지했다
+
+- **영역**: `components/home/count-cards.tsx`·`attention-card.tsx` → 번역 화면의 기본 착지
+- **증상**: 배포 전(Codex 리뷰). Home의 `To review 12`를 누르면 **0건인 화면**에 착지할 수 있다.
+- **근본 원인**: 번역 화면은 `?ns=`가 없으면 그것을 "지정 안 함"이 아니라 **"기본 착지"**로 읽고
+  `defaultNamespace`(= 남은 일이 있는 첫 네임스페이스)를 고른다. 그 판정은 **`state`를 안 본다** —
+  `a`에 미번역만, `b`에 검토 대기가 있으면 `To review`가 `a`로 착지하고 교집합이 빈다. 두 좁힘이
+  독립적으로 정해져 서로의 교집합을 비우는 형태이고, **어느 쪽도 단독으로는 틀리지 않았다.**
+- **그물**: 잡은 것 — Codex 리뷰. 놓친 것: `entry-points.test.ts`(키가 수신되는지만 본다) ·
+  `filterByState`의 단위 테스트(네임스페이스 축이 없다) · 브라우저(그 프로젝트에 검토 대기가 0이라
+  카드가 0이었고 누를 이유가 없었다).
+- **재발 방지**:
+  - `grep -rn "state:" app components --include='*.tsx' | grep -v __tests__ | grep "routes\."`
+    → **2건이고 둘 다 `ns`를 함께 싣는다**(카드 링크 · 공가 라우트의 redirect). 새 위반 없음.
+  - **규칙: `state=`로 좁히는 링크는 `ns: ALL_NAMESPACES`를 함께 싣는다.** 구간을 보러 온 사람에게
+    네임스페이스 좁힘은 교집합을 비우는 축이다. `lib/routes.ts`의 `TranslationsQuery` 주석이 그
+    근거를 든다.
