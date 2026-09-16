@@ -16,7 +16,8 @@ import { describe, expect, it } from "vitest";
  * 같은 계열이고, 이 결함의 조건이 정확히 **레이아웃 클래스 조합**이라 그 층에서 판정이 성립한다.
  * 실물 확인은 `/bugshot-qa`가 계속 든다.
  *
- * **8-2(2026-09-10)가 골격을 시안으로 옮기면서 검사가 늘었다** — 셸이 "배경 위에 뜬 패널 셋"이 됐고
+ * **8-2(2026-09-10)가 골격을 시안으로 옮기면서 검사가 늘었다** — 셸이 "배경 위에 뜬 패널"이 됐고
+ * (당시엔 셋이었고 2026-09-16에 우측 프로젝트 패널을 지워 둘이다 — DESIGN §6.55·§5.1)
  * (DESIGN §6.5), 그 구조는 padding·gap·배경 대비가 **함께** 있어야
  * 성립한다. 8-1b가 그중 몇을 한꺼번에 빠뜨린 전례가 있어 하나씩 센다.
  */
@@ -28,7 +29,6 @@ const layout = read("app/(edit)/layout.tsx");
 const sidebar = read("components/shell/sidebar.tsx");
 const header = read("components/shell/header.tsx");
 const contentPanel = read("components/shell/content-panel.tsx");
-const projectLayout = read("app/(edit)/projects/[slug]/layout.tsx");
 const shellPanels = read("components/shell/shell-panels.tsx");
 
 describe("셸 레이아웃 — 뷰포트 고정", () => {
@@ -184,11 +184,6 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
   });
 
   /**
-   * ⚠️ **오른쪽 패널이 `[slug]` 레이아웃에 사는 이유**: 셸(`app/(edit)/layout.tsx`)은 `/projects`
-   * 목록도 감싸 `[slug]` params를 못 받는다. 8-P(diff)와 8-3(breadcrumb·Publish)이 **서버 데이터**를
-   * 필요로 하므로 그 자리가 프로젝트 레이아웃이어야 한다.
-   */
-  /**
    * ⚠️ **오른쪽 프로젝트 패널을 지웠다** (2026-09-16 사용자 판정). 그 패널이 담기로 했던 둘이 각각
    * 다른 주인을 찾았다 — `Changes`의 diff는 Publish 모달 `1a`가 요구하는 것과 **같은 데이터**이고,
    * `General`의 Publish 버튼·결과는 그 모달이 가져간다(`design_handoff_publish_modal` §4). 남은 것은
@@ -207,19 +202,30 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
       });
     const offenders = ["components", "app", "lib"]
       .flatMap((root) => walk(join(ROOT, root)))
-      .filter((file) => /\bProjectPanel\b/.test(readFileSync(file, "utf8")))
+      // ⚠️ **이 파일 자신은 제외한다** — 안 빼면 아래 정규식 리터럴이 스스로 매치해 검사가 자기
+      // 때문에 red가 된다. 전에는 `\b`가 `/\bProjectPanel` 앞의 `b`에 막혀 우연히 통과했다.
+      .filter((file) => file !== fileURLToPath(import.meta.url))
+      .filter((file) => /ProjectPanel/.test(readFileSync(file, "utf8")))
       .map((file) => file.slice(ROOT.length));
     expect(offenders).toEqual([]);
-    // 사전 항목도 소비자가 0이면 죽은 문구다 — 화면 문구는 쓰이는 것만 남긴다.
-    expect(read("messages/en.tsx")).not.toMatch(/^\s{4}panel: \{$/m);
+    /*
+      사전 항목도 소비자가 0이면 죽은 문구다 — 화면 문구는 쓰이는 것만 남긴다.
+      ⚠️ **들여쓰기가 아니라 `common` 블록 안인지를 본다** — `/^\s{4}panel: \{$/`로 세면 한 줄 객체나
+      한 단계 깊은 자리에서 조용히 통과하고, 반대로 **무관한 2단계 `panel`**(`settings.panel` 등)이
+      생기면 엉뚱하게 red다. 지운 것은 `m.common.panel` 하나이므로 그 경로만 센다.
+    */
+    const dictionary = read("messages/en.tsx");
+    const common = dictionary.slice(dictionary.indexOf("\n  common: {"));
+    expect(common.slice(0, common.indexOf("\n  },"))).not.toMatch(/\bpanel:/);
   });
 });
 
 /**
  * **모든 `(edit)` 라우트가 정확히 하나의 콘텐츠 패널을 지난다.**
  *
- * ⚠️ 셸이 `{children}`을 흰 패널로 감싸지 **않는** 것이 이 검사의 이유다 — 감싸면 오른쪽 패널이 그
- * 안에 갇혀 시안의 "패널 둘이 gap 8로 나란히"가 성립하지 않는다. 대신 패널을 각 갈래가 들고,
+ * ⚠️ 셸이 `{children}`을 흰 패널로 감싸지 **않는** 것이 이 검사의 이유다 — 감싸면 흰 패널이 겹쳐
+ * padding이 두 배가 된다(2026-09-16까지 근거는 "오른쪽 패널이 그 안에 갇힌다"였고 그 패널을 지웠다 —
+ * DESIGN §6.55). 대신 패널을 각 갈래가 들고,
  * 하나라도 빠지면 그 화면만 캔버스 위에 맨몸으로 뜬다(**빈 화면이 아니라 어긋난 화면**이라 눈에
  * 잘 안 띈다). 둘이면 흰 패널이 겹쳐 padding이 두 배가 된다.
  */

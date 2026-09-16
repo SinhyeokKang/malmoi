@@ -14,8 +14,14 @@ import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-s
  * 좁은 뷰포트에서 콘텐츠가 받는 폭이 함께 줄어든다.
  *
  * ⚠️ **패널을 지워 콘텐츠가 320 + 8만큼 넓어졌다** — 1264에서 콘텐츠는 `1264 − LNB − 8(핸들)`이라
- * 936~1016이다. 그 폭에 기대는 자리가 하나 있다: Home 카운트 카드의 `@[672px]` 임계값
- * (`components/home/count-cards.tsx`) — 이제 LNB를 상한까지 늘려도 넘는다.
+ * **936~1056**이다(LNB 기본 240이면 1016).
+ *
+ * ⚠️ **그 폭을 카드 컨테이너 폭으로 바꿔 읽지 않는다** (2026-09-16 리뷰 🔴1 — 여기 그렇게 적었다가
+ * 틀렸다). Home 카운트 카드의 `@container/cards`는 **콘텐츠 패널이 아니라 본문 grid의 왼쪽 열**에
+ * 산다(`[slug]/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
+ * **374**(border 2 + `p-4` 32 + 메타 열 320 + gap 20)를 뺀 값이다 — 1280 실측 패널 1016 / 카드 642.
+ * **최소 대응 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
+ * POSTMORTEM 2026-09-15가 적은 실패 모양이 정확히 이것이다 — **재는 지점이 임계값 아래**였다.
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
 
@@ -119,7 +125,12 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
           className="w-2"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
         />
-        {/* Keep transitioning content trees in one cell; the optional project panel owns the 8px spacing. */}
+        {/*
+          전환 중 콘텐츠 트리 둘을 한 셀에 둔다. ⚠️ **둘째 `auto` 열은 2026-09-16부터 비어 있다** —
+          우측 프로젝트 패널을 지웠다(DESIGN §6.55). 배치되는 아이템이 0이면 그 트랙은 0px이고
+          grid에 `gap`이 없어 잔여 여백도 없다. grid를 유지하는 이유는 그 열이 아니라 **두
+          `ContentPanel`이 폭을 나누지 않는 것**이다.
+        */}
         <ResizablePanel style={{ overflow: "visible" }} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]">{children}</ResizablePanel>
       </ResizablePanelGroup>
     </div>

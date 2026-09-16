@@ -256,8 +256,10 @@ function ProjectCard({ title, count, action, children }: {
 function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
     /**
-     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바 240,
-     * 바깥 padding, 오른쪽 패널 320을 뺀 값이라 **같은 뷰포트가 두 폭을 만들고**, 셸이
+     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바와
+     * 바깥 padding을 뺀 값이고, **LNB가 200~320으로 리사이즈되므로 같은 뷰포트가 두 폭을 만든다**.
+     * (2026-09-16까지 근거에 "오른쪽 패널 320"이 함께 있었는데 그 패널을 지웠다 — DESIGN §6.55.
+     * 결론은 그대로다.) 셸이
      * `min-w-[1280px]`을 들어서 뷰포트 브레이크포인트로는 1120·940·760이 **영영 안 밟힌다**
      * (가로 스크롤이 먼저 생긴다). 실제로 변하는 것은 이 카드의 폭이다.
      */
