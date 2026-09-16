@@ -42,7 +42,7 @@ app/
     account/            사용자 축의 유일한 화면. requireUser만 지난다 · loading.tsx 스켈레톤
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
                         페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
-    projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel + ProjectPanel을 든다
+    projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
       translations/ locales/  저장된 defaultSurfaceId로 보내는 legacy redirect
