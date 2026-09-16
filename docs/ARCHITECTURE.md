@@ -1143,17 +1143,45 @@ $transaction(tx):
 - 안 드는 자리는 **불변식 위반**(`unreachable:`)이거나 **readiness가 이미 막는 설정 부재**다 — sync 층에서
   가를 이름이 없고, `unknown`이 정직하다.
 
-⚠️ **`retryable`은 계산되지만 아직 아무 데도 안 간다** (2026-09-11 등재). `classifySyncError`가 `RETRYABLE`
-표로 코드마다 그 값을 정해 `SyncFinish`에 싣는데, `runSync`의 `syncRun.update`가 그것을 쓰지 않고
-**`SyncRun`에 컬럼이 없으며** `loadSyncRuns`도 안 읽는다 — 즉 **소비자 0인 생산자**이고, 이 절의
-"생산자 없는 코드는 두지 않는다"의 정확히 반대 방향이다. 적어 두는 이유는 두 오독을 막기 위해서다:
-UI·자동 재시도가 이미 배선돼 있다고 믿는 것, 그리고 `RETRYABLE`을 "미사용"으로 지우는 것.
+⚠️ **`retryable`이 2026-09-16부터 화면까지 간다** (그전 등재는 "소비자 0"이었다). `classifySyncError`가
+`RETRYABLE` 표로 정한 값을 `failureOutcome`이 **`PullOutcome`에 그대로 싣고**(`code`·`retryable`·`delivery`
+셋), Publish 모달이 그 하나로 실패 화면 둘을 가른다 — `true`면 "다시 하면 된다", `false`면 "설정을
+고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** `loadSyncRuns`도 안 읽는다: 이력
+화면이 그 구별을 하려면 컬럼이 먼저다.
+
+- ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
+  명시적 거부(게이트 둘·인가·준비 거부 여섯)만 `not-started`이고, **실행 중 실패와 클라이언트
+  Action 응답 유실은 전부 `unknown`**이다. 보수적인 쪽으로 고정한 근거는 `saveLastPulledAt`이
+  **PR을 연 뒤**에 돌기 때문이다 — 거기서 죽으면 리포에는 이미 반영돼 있다. **그래서 화면이
+  "아무것도 안 나갔다"를 말할 수 있는 자리는 `not-started` 하나뿐이다**(PRODUCT §4.1).
+- ⚠️ **실행 전 거부 여섯은 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`도 `retryable`도 없고
+  **`SyncRun` 행 자체가 안 생긴다.** 그래서 그 갈래의 화면은 `Reference`도, "Logs에도 있다"도
+  함께 뺀다: 없는 곳을 가리키게 된다. 가르는 기준은 하나로 유지한다("사람이 다시 해서 통하나") —
+  `unavailable`만 재시도 쪽이고 나머지 다섯은 설정 쪽이다.
 
 - **그 표가 담은 사실은 진짜다** — `base-unreadable`·`not-installed`·`glob-matched-nothing` 셋은
   **사람이 고치기 전까지 cron이 매일 밤 같은 실패를 반복한다**(리포 상태·설치·경로 설정이라 시간이
   해결하지 않는다). 나머지 넷(`db-unavailable`·`github-error`·`stale`·`unknown`)만 다음 실행에서 저절로 풀린다.
 - **표시하기로 하면 컬럼이 먼저다.** 지금 화면이 그 구별을 흉내 내려면 `errorCode`로 다시 분기해야 하고,
   그 순간 판정이 두 벌이 된다 — `lib/sync/plan.ts`가 그 축의 주인이다.
+
+### 5.6.35 Publish 미리보기는 **표시 전용**이다 (2026-09-16)
+
+`readPublishPreview`(`lib/publish/read.ts`)가 base 트리를 읽어 "무엇을 덮는가"를 만든다. 읽기만 하는
+Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullRequest`는 `project:settings`(OWNER
+전용)라 EDITOR에게는 열린 PR 번호가 영영 `undefined`가 된다(`entry-points.test.ts`가 그 제약을 고정한다).
+
+⚠️ **이 조회가 돌려준 "이전 값"은 어떤 판정의 입력도 아니다** (§0 불변식 2). export·커밋·PR 판정은
+`runPull`이 DB만 보고 하고, 여기서 읽은 base 값은 **화면에만** 간다. 둘을 견줘 고르는 코드가 생기는
+순간 "병합 없음"이 깨진다.
+
+⚠️ **미리보기와 실행 사이에 시간차가 있다.** 그 사이 다른 사람이 발송하면 확인 버튼을 눌러도
+`no-changes`가 돌아온다 — **미리보기의 수가 실행의 결과를 보장하지 않는다.** 그래서 화면이 그 결과를
+별도 갈래로 들고(`1f`), 미리보기 재열기와 재시도가 **매번 새 조회부터** 시작한다.
+
+⚠️ **조회 실패는 `SYNC_ERROR_CODES`와 섞지 않는다** — 실행 행이 없으므로 오류 분류가 아니라
+**모달 상태**다. 그리고 **읽지 못하면 보내지 않는다**: 같은 조회가 실행 중에 또 돌아
+`base-unreadable`로 죽을 확률이 높고, 예외를 두면 "무조건 목록을 보고 보낸다"가 "보통은"이 된다.
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
