@@ -16,11 +16,11 @@ import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { countUnpublished, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
 import {
-  collectActorIds, filterRows, groupByNamespace, namespaceCountsFor,
+  collectActorIds, filterByState, filterRows, groupByNamespace, namespaceCountsFor,
   parseLocaleSelection, pendingFirst, resolveNamespace,
 } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
+import { ALL_NAMESPACES, isKeyState, routes, type TranslationsQuery } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
@@ -53,10 +53,10 @@ export const maxDuration = 60;
 /**
  * ⚠️ 이 타입이 URL 계약이다 — `entry-points.test.ts`가 `routes.translations`의 키와 대조한다.
  *
- * ⚠️ **옛 `focus`·`state`가 없다** (8-4). 옛 링크는 무시된다 — 기본 선택으로 떨어질 뿐 404도
- * 리다이렉트도 아니다.
+ * ⚠️ **옛 `focus`는 여전히 없다** (8-4) — 무시되고 기본 선택으로 떨어진다. **`state`는 2026-09-15에
+ * 돌아왔다**: Home의 카운트 카드 넷이 여기로 착지한다 (`TranslationsQuery`의 주석에 뒤집은 근거가 있다).
  */
-type Search = Raw<"ns" | "locales" | "q">;
+type Search = Raw<"ns" | "locales" | "q" | "state">;
 
 export default async function TranslationsPage({
   params,
@@ -107,6 +107,12 @@ export default async function TranslationsPage({
   const selected = parseLocaleSelection(search.locales, columns);
   const visibleLocales = columns.filter((locale) => selected.includes(locale.code));
 
+  /**
+   * ⚠️ **주소창 값이라 판정 함수로 거른다** — 모르는 값은 무시한다(404도 리다이렉트도 아니다).
+   * 사전을 직접 인덱싱하면 `Object.prototype`에서 찾아진 값이 판정 자리에 온다 (POSTMORTEM 2026-09-08).
+   */
+  const state = isKeyState(search.state) ? search.state : undefined;
+
   const counts = namespaceCountsFor(rows, selected);
   const selection = resolveNamespace(search.ns, counts);
 
@@ -124,11 +130,16 @@ export default async function TranslationsPage({
   const normalizedLocales = search.locales === undefined ? undefined : selected.join(",") || undefined;
   const normalizedNs = selection.kind === "all" ? ALL_NAMESPACES : selection.kind === "one" ? selection.namespace : undefined;
   if (search.ns !== normalizedNs || search.locales !== normalizedLocales) {
-    redirect(routes.surfaceTranslations(slug, surfaceSlug, { ns: normalizedNs, locales: normalizedLocales, q: search.q }));
+    redirect(routes.surfaceTranslations(slug, surfaceSlug, { ns: normalizedNs, locales: normalizedLocales, q: search.q, state }));
   }
 
   const scoped = selection.kind === "one" ? rows.filter((r) => r.namespace === selection.namespace) : rows;
-  const filtered = selection.kind === "none" ? [] : filterRows(scoped, { locales: selected, q: search.q });
+  /**
+   * ⚠️ **상태 좁힘이 검색보다 앞이다** — 검색은 보이는 로케일의 값을 훑으므로 대상이 좁을수록 싸고,
+   * 둘 다 순수 필터라 결과는 순서에 무관하다.
+   */
+  const narrowed = state === undefined ? scoped : filterByState(scoped, { state, locales: selected, lastPulledAt: project.lastPulledAt });
+  const filtered = selection.kind === "none" ? [] : filterRows(narrowed, { locales: selected, q: search.q });
   /**
    * 섹션 안에서 남은 일이 위로 온다 (spec Q3 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
    * **분할이 안정적이라** 그룹 안의 상대 순서가 그대로 보존되고, 그래서 그룹핑 전에 한 번만 한다.
@@ -158,6 +169,8 @@ export default async function TranslationsPage({
     ns: selection.kind === "all" ? ALL_NAMESPACES : selection.kind === "one" ? selection.namespace : undefined,
     locales: localesParam,
     q: search.q,
+    // ⚠️ **거른 값을 싣는다** — 원문을 실으면 모르는 값이 링크마다 되살아난다.
+    state,
   };
 
   /**

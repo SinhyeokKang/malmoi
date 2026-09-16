@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  filterByState,
   filterRows,
   groupByNamespace,
   namespaceCountsFor,
@@ -22,6 +23,7 @@ const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
   id: `id-${over.key}`,
   namespace: over.key.split(/[._]/)[0] ?? "_root",
   orphaned: false,
+  createdAt: EPOCH,
   cells: {},
   refs: [],
   ...over,
@@ -238,5 +240,73 @@ describe("groupByNamespace — `?ns=*`의 섹션", () => {
     const rows = [row({ key: "__proto__.a", namespace: "__proto__" })];
     const groups = groupByNamespace(rows, namespaceCountsFor(rows, ["ko"]));
     expect(groups).toEqual([{ namespace: "__proto__", rows }]);
+  });
+});
+
+/**
+ * 파이프라인 구간으로 좁힌다 (project-home §9.7) — Home의 카운트 카드 넷이 여기로 착지한다.
+ *
+ * ⚠️ **카드의 수와 정확히 같지 않을 수 있다.** 합계는 프로젝트 전체이고 이 좁힘은 한 표면이다 —
+ * 그 사실은 카드의 보조 줄이 미리 말한다. 여기서 재는 것은 **구간의 정의가 카드의 술어와 같은가**다.
+ */
+describe("filterByState — 카드 넷이 가리키는 구간", () => {
+  const PULLED = new Date("2026-09-10T00:00:00Z");
+  const before = new Date("2026-09-09T00:00:00Z");
+  const after = new Date("2026-09-11T00:00:00Z");
+
+  const rows = [
+    // 마지막 pull 뒤에 들어온 키 — 값도 없다(New와 To translate에 둘 다 센다).
+    row({ key: "a.fresh", createdAt: after, cells: { ko: cell() } }),
+    // 검토 대기.
+    row({ key: "b.review", cells: { ko: cell({ value: "값", needsReview: true }) } }),
+    // 사람이 저장했고 아직 안 보냈다.
+    row({ key: "c.unsent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: after }) } }),
+    // 보낸 뒤로 안 만졌다.
+    row({ key: "d.sent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: before }) } }),
+    // 코드에서 사라진 키 — 어느 구간도 아니다.
+    row({ key: "e.gone", orphaned: true, cells: { ko: cell() } }),
+  ];
+  const ctx = { locales: ["ko"], lastPulledAt: PULLED };
+  const keys = (state: Parameters<typeof filterByState>[1]["state"]) =>
+    filterByState(rows, { ...ctx, state }).map((r) => r.key);
+
+  it("`new`는 마지막 pull 뒤에 들어온 키다 — 단위가 키라서 로케일을 안 본다", () => {
+    expect(keys("new")).toEqual(["a.fresh"]);
+  });
+
+  it("`untranslated`는 보이는 로케일에 빈 칸이 있는 키다", () => {
+    expect(keys("untranslated")).toEqual(["a.fresh"]);
+  });
+
+  it("`review`는 검토 대기 칸이 있는 키다", () => {
+    expect(keys("review")).toEqual(["b.review"]);
+  });
+
+  /** ⚠️ **`isUnpublished`와 같은 술어다** — 넷째 벌을 만들면 카드와 표가 다른 행을 센다. */
+  it("`unsent`는 사람이 만졌고 마지막 pull 뒤에 바뀐 칸이 있는 키다", () => {
+    expect(keys("unsent")).toEqual(["c.unsent"]);
+  });
+
+  it("orphaned 키는 어느 구간에도 없다 — 편집할 수 없으므로 일이 아니다", () => {
+    for (const state of ["new", "untranslated", "review", "unsent"] as const) {
+      expect(keys(state), state).not.toContain("e.gone");
+    }
+  });
+
+  it("보고 있지 않은 로케일의 상태는 세지 않는다", () => {
+    const only = [row({ key: "f.ja", cells: { ja: cell({ value: "値", needsReview: true }) } })];
+    expect(filterByState(only, { ...ctx, state: "review" })).toEqual([]);
+    expect(filterByState(only, { locales: ["ja"], lastPulledAt: PULLED, state: "review" }).map((r) => r.key)).toEqual(["f.ja"]);
+  });
+
+  it("첫 pull 전에는 살아 있는 키 전체가 신규다 — 승인된 정의다", () => {
+    expect(filterByState(rows, { ...ctx, lastPulledAt: null, state: "new" }).map((r) => r.key))
+      .toEqual(["a.fresh", "b.review", "c.unsent", "d.sent"]);
+  });
+
+  it("원본을 건드리지 않는다 — 호출부가 같은 배열로 총계도 센다", () => {
+    const snapshot = [...rows];
+    filterByState(rows, { ...ctx, state: "review" });
+    expect(rows).toEqual(snapshot);
   });
 });

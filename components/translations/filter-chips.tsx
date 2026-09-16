@@ -5,7 +5,7 @@ import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { activeFilters, clearedQuery, type FilterChip } from "@/lib/keys/filters";
-import type { TranslationsQuery } from "@/lib/routes";
+import { isKeyState, type TranslationsQuery } from "@/lib/routes";
 
 /**
  * 적용된 필터의 칩 행 (8-4 design §1·§3.5).
@@ -97,5 +97,11 @@ export function FilterChips({
 function chipLabel(chip: FilterChip): string {
   if (chip.key === "namespace") return m.translations.chips.namespace(chip.value);
   if (chip.key === "locales") return m.translations.chips.locales(chip.value);
-  return m.translations.chips.search(chip.value);
+  if (chip.key === "search") return m.translations.chips.search(chip.value);
+  /**
+   * ⚠️ **`isKeyState`로 거른 뒤 읽는다** — 값이 `searchParams`에서 온 남의 문자열이라 사전을 직접
+   * 인덱싱하면 `Object.prototype`에서 찾아진 것이 라벨 자리에 온다 (POSTMORTEM 2026-09-08).
+   * 페이지가 이미 거르지만 그 보증이 이 함수에는 타입으로 안 온다.
+   */
+  return m.translations.chips.state(isKeyState(chip.value) ? m.translations.states[chip.value] : chip.value);
 }

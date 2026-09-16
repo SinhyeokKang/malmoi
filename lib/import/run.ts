@@ -6,6 +6,7 @@ import type { RepoReader } from "@/lib/github";
 import { isAdapterName } from "@/lib/adapters";
 import { logFailure } from "@/lib/github-connect/log";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { importOutcomeFields } from "@/lib/projects/import-status";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, planRepositoryImport } from "./plan";
@@ -83,13 +84,14 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
       });
     } else if (prepared.kind === "empty") {
       await tx.stringKey.updateMany({ where: { ...scope, orphaned: false }, data: { orphaned: true } });
+      // 정상 0키도 **성공 종료**다 — `importOutcomeFields(null)`이 실패 시각까지 비운다.
       await tx.translationSurface.update({ where: { id: surface.id, projectId: scope.projectId }, data: {
         lastCommitSha: snapshot.headSha, lastCommitAt: new Date(snapshot.headCommittedAt), importRevision: { increment: 1 },
-        lastImportStartedAt: null, lastImportToken: null, lastImportError: null,
+        ...importOutcomeFields(null, new Date()), lastImportToken: null,
       } });
     } else {
       await tx.translationSurface.update({ where: { id: surface.id, projectId: scope.projectId }, data: {
-        lastImportStartedAt: null, lastImportToken: null, lastImportError: "import-failed",
+        ...importOutcomeFields("import-failed", new Date()), lastImportToken: null,
       } });
     }
     return { surfaceSlug: surface.slug,

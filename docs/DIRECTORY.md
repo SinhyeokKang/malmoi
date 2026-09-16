@@ -25,7 +25,7 @@ app/
                         센다. 예외 아홉을 이름으로 고정 + routes.ts↔라우트 대조 + 쿼리 생성기/수신자 대조)
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
-    layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 오른쪽 패널이 갇힌다.
+    layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
@@ -42,7 +42,7 @@ app/
     account/            사용자 축의 유일한 화면. requireUser만 지난다 · loading.tsx 스켈레톤
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
                         페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
-    projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel + ProjectPanel을 든다
+    projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
       translations/ locales/  저장된 defaultSurfaceId로 보내는 legacy redirect
@@ -120,6 +120,14 @@ components/
                         ⚠️ **항목의 우측 클러스터가 shrink-0이다** — 실패 Alert를 그 안에 두면 좌측
                         본문이 truncate로 사라진 뒤 행이 패널 밖으로 밀린다. 그래서 연결/해제 버튼이
                         결과를 콜백으로 바깥에 넘긴다(onResult · onFailure)
+  home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
+                        logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
+                        클라이언트 상태가 0이다) · actions.tsx만 "use client"
+                        ⚠️ **actions.tsx가 컨텍스트 Provider다** — [Sync]는 머리에 있고 그 결과·배너는
+                        본문에 있어서, 한쪽이 상태를 소유하면 배너의 [Try again]이 같은 Dialog를 못 연다.
+                        Provider는 DOM을 안 만들어 PanelHeader·PanelBody 형제 구조가 그대로 남는다
+                        ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
+                        살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  새 프로젝트 모달의 껍데기. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고
                         Radix Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
                         고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
@@ -225,8 +233,15 @@ lib/
                         진행시키고, 추가는 살아 있는 세션 위에서 Account만 쓴다) — 합치지 않는다.
                         ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
-  onboarding/ survey/ scan/ projects/ shell/ home/ settings/ signin/ i18n/ cli/
+  onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ i18n/ cli/
                         각 기능의 순수 판정층
+  home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
+                        ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
+                        갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다) ·
+                        attention(세 종을 한 시간축에 · 상한 5 · ⚠️ 폴백은 actors 맵의 키 존재로 판정한다,
+                        actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
+                        overview(recentActivity — ⚠️ 상한이 건수가 아니라 7일 창이다)
+                        ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다

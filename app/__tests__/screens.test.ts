@@ -55,7 +55,7 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
    */
   it("건강성과 계정을 병렬로 읽는다 — 한쪽 장애가 다른 쪽을 막지 않는다", () => {
     expect(src).toMatch(/Promise\.all\(/);
-    expect(src).toMatch(/loadHealth\(/);
+    expect(src).toMatch(/loadConnectionHealth\(/);
     // ⚠️ **6b-4에서 이 로더가 `lib/github-connect/account-view.ts`로 내려갔다** — `/account`가 같은
     // 3갈래를 필요로 하고, 사본을 두면 두 화면이 갈린다. 이름을 고정해 사본이 돌아오는 것을 막는다.
     expect(src).toMatch(/loadAccountView\(/);
@@ -221,9 +221,14 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
  * 보관된 프로젝트에서 편집 표가 그대로 보이고, 저장을 눌러야 비로소 Action이 거부한다.
  * 눈으로는 안 보이는 결함이라 스캔이 든다 (`entry-points.test.ts`와 같은 계열).
  */
-describe("보관 — 다섯 화면이 같은 갈래를 그린다 (7단계)", () => {
+describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => {
+  /**
+   * ⚠️ **Home이 2026-09-15에 이 목록에서 빠졌다** (project-home `2d`). 전면 교체가 **배너**로
+   * 바뀌었다 — 보관된 프로젝트에서도 카드 넷과 메타 열이 자리를 지키고 값이 무엇이었는지 말한다.
+   * 차단은 그대로 Action과 `/settings`가 들고, Home의 `[Sync]`·`[Publish]`는 비활성이다.
+   * **`ProjectArchived`를 지우지 않는다** — 남은 넷이 계속 쓴다.
+   */
   const SITES = [
-    "app/(edit)/projects/[slug]/page.tsx",
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",

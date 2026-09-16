@@ -111,6 +111,15 @@ model TranslationSurface {
   lastImportToken     String?
   importRevision      Int           @default(0)
   lastImportError     String?
+  /// 마지막 임포트가 **실패한** 시각. 성공은 이 값을 건드리지 않는다 — 성공 시각은 `lastCommitAt`이
+  /// 이미 든다. Home의 항목 정렬·메타의 `failed …`·로그의 `Sync failed` 줄 **셋이 이 한 컬럼을 읽는다**
+  /// (project-home design §6.1): `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간
+  /// 비워지므로, 실패에 시각을 주는 자리가 없었다.
+  ///
+  /// ⚠️ **성공 경로가 `null`로 비운다** — 안 비우면 성공한 뒤에도 항목·배너가 옛 실패를 말한다.
+  /// ⚠️ **backfill이 없다.** 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 시간순
+  /// 정렬에서 **가장 오래된 것으로 취급한다**(임의 순서를 만들지 않는다).
+  lastImportFailedAt  DateTime?
   project             Project       @relation("ProjectSurfaces", fields: [projectId], references: [id], onDelete: Restrict)
   defaultFor          Project[]     @relation("DefaultSurface")
   locales             Locale[]
@@ -128,6 +137,16 @@ model Locale {
   code      String
   name      String
   isBase    Boolean @default(false)
+
+  /// 이 로케일이 **처음 선언된** 시각. Home의 "한 번도 안 채워진 로케일" 항목이 시간축에 서려면
+  /// 시각이 필요한데, 그 로케일은 `Translation` 행이 아예 없어 `max(updatedAt)`도 없다
+  /// (project-home design §6.2).
+  ///
+  /// ⚠️ **기존 행은 프로젝트 생성 시각으로 backfill했다 — 진짜 시각이 아니다.** `@default(now())`만
+  /// 두면 전 행이 "마이그레이션 시각"을 들어 배포 직후 미채움 항목이 목록 맨 위를 점령하고, 그
+  /// 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 이 값을 "로케일이 정확히 언제 생겼나"의
+  /// 답으로 믿는 코드를 만들지 않는다 — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이다.
+  createdAt DateTime @default(now())
 
   /// 리포에서 사라진 로케일. **행을 지우지 않는다** — 키의 orphaned와 같은 근거다: 파일을 되살리면
   /// 번역이 그대로 돌아와야 하고, Translation의 FK가 Restrict라 지우려면 번역을 먼저 지워야 한다.

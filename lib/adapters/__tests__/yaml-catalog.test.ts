@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseDocument } from "yaml";
 import { detectFormat, yamlCatalog } from "../index";
 import type { AdapterFile, DetectedFormat } from "../types";
 
@@ -522,4 +523,236 @@ describe("yaml-catalog — 원본의 인용 부호를 유지한다", () => {
     expect(out).toContain("close: '닫기'");
     expect(out).not.toContain('"확인!"');
   });
+});
+
+describe("yaml-catalog — T12 편집 범위 밖 바이트 보존", () => {
+  const source = `# Japanese\nsettings:\n  help: >\n    2行にわたる折りたたみスカラー。\n    この形が往復で保たれる必要がある。\nerrors:\n  unknown:   '古い値'  # keep\n`;
+
+  it("다른 키를 편집해도 미편집 folded scalar와 정렬 공백을 그대로 둔다", () => {
+    const input = { locale: "ko", entries: [{ key: "errors.unknown", message: "新しい値" }] };
+    const expected = source.replace("'古い値'", "'新しい値'");
+    const output = yamlCatalog.write(withSource(source), input)!;
+    expect(output).toBe(expected);
+    expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries)
+      .toContainEqual(input.entries[0]);
+    expect(yamlCatalog.write(withSource(source), input)).toBe(output);
+    expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+  });
+
+  it("누락 키 삽입도 기존 folded scalar와 바이트를 바꾸지 않는다", () => {
+    const input = { locale: "ko", entries: [{ key: "errors.added", message: "追加" }] };
+    const output = yamlCatalog.write(withSource(source), input)!;
+    expect(output).toBe(source + "  added: 追加\n");
+    expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries)
+      .toContainEqual(input.entries[0]);
+    expect(yamlCatalog.write(withSource(source), input)).toBe(output);
+    expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+  });
+});
+
+describe("yaml-catalog — range 치환 경계", () => {
+  const cases = [
+    ["앵커·태그·주석", "a: &ref !!str 'old'   # keep\nb: *ref\n", "a", "new", "a: &ref !!str 'new'   # keep\nb: *ref\n"],
+    ["CRLF·끝 개행 없음", "a: old\r\nb:   'keep'", "a", "new", "a: new\r\nb:   'keep'"],
+    ["flow 시퀀스", "a: [old,  'keep'] # tail\n", "a.0", "x, y", 'a: ["x, y",  \'keep\'] # tail\n'],
+    ["flow 맵", "a: {x: old,  y: 'keep'}\n", "a.x", "new", "a: {x: new,  y: 'keep'}\n"],
+    ["리터럴 키 우선", "a.b: old\na:\n  b: keep\n", "a.b", "new", "a.b: new\na:\n  b: keep\n"],
+    ["중복 마지막", "a: 'keep'\na:   old # tail\n", "a", "new", "a: 'keep'\na:   new # tail\n"],
+    ["빈 scalar 주석", "a:   # keep\nb: next\n", "a", "new", "a:   new # keep\nb: next\n"],
+    ["빈 scalar 공백 없음", "a:\nb: next\n", "a", "new", "a: new\nb: next\n"],
+    ["명시적 블록 들여쓰기", "a: >2-  # header\n  old\nb: keep\n", "a", "new", "a: >2-  # header\n  new\nb: keep\n"],
+    ["블록 clip", "a: | # header\n    old\nb: keep\n", "a", "new\n", "a: | # header\n    new\nb: keep\n"],
+    ["블록 strip 변경", "a: > # header\n  old\nb: keep\n", "a", "new", "a: >- # header\n  new\nb: keep\n"],
+    ["블록 keep·CRLF", "a: |+ # header\r\n  old\r\n\r\nb: keep\r\n", "a", "new\n\n", "a: |+ # header\r\n  new\r\n\r\nb: keep\r\n"],
+  ] as const;
+  for (const [name, source, key, message, expected] of cases) {
+    it(`${name}: 편집 범위 외 보존·의미·결정성·고정점`, () => {
+      const input = { locale: "ko", entries: [{ key, message }] };
+      const result = yamlCatalog.writeWithErrors!(withSource(source), input);
+      expect(result.errors).toEqual([]);
+      expect(result.content).toBe(expected);
+      const read = yamlCatalog.read(base(), [f("config/locales/ko.yml", result.content!)]);
+      expect(read.errors.filter((error) => error.code !== "duplicate-key")).toEqual([]);
+      if (name === "리터럴 키 우선") expect(parseDocument(result.content!).get(key)).toBe(message);
+      else expect(read.locales[0]?.entries).toContainEqual({ key, message });
+      expect(yamlCatalog.write(withSource(source), input)).toBe(result.content);
+      expect(yamlCatalog.write(withSource(result.content!), input)).toBe(result.content);
+    });
+  }
+  for (const message of ["true", "null", "123", "a: b", "# head", "a\nb", " a\n\n", "quote ' slash \\"]) {
+    it(`스칼라 값 ${JSON.stringify(message)}의 타입과 의미를 보존한다`, () => {
+      for (const source of ["a: old\nb: keep\n", "a: 'old'\nb: keep\n", "a: >- # header\n    old\nb: keep\n", "a: [old, keep]\n"]) {
+        const key = source.includes("[old") ? "a.0" : "a";
+        const input = { locale: "ko", entries: [{ key, message }] };
+        const output = yamlCatalog.write(withSource(source), input)!;
+        const read = yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]);
+        expect(read.errors).toEqual([]);
+        expect(read.locales[0]?.entries).toContainEqual({ key, message });
+        expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+      }
+    });
+  }
+});
+
+describe("yaml-catalog — 원본 보존 삽입 경계", () => {
+  const cases = [
+    ["중첩 맵·다음 주석", "a:\n    x: old # keep\n\n# next\nb: keep\n", "a.z", "a:\n    x: old # keep\n    z: new\n\n# next\nb: keep\n"],
+    ["루트 로케일·문서 끝", "---\nko:\n  x: old\n...\n", "z", "---\nko:\n  x: old\n  z: new\n...\n"],
+    ["중복 맵의 마지막", "a:\n  x: first\na:\n  x: last\n", "a.z", "a:\n  x: first\na:\n  x: last\n  z: new\n"],
+    ["flow 맵", "a: {x: old} # keep\n", "a.z", "a: {x: old, z: new} # keep\n"],
+    ["flow 끝 쉼표", "a: {x: old, } # keep\n", "a.z", "a: {x: old, z: new, } # keep\n"],
+    ["빈 flow 맵", "a: {} # keep\n", "a.z", "a: {z: new} # keep\n"],
+    ["CRLF·끝 개행 없음", "x: old\r\ny: keep", "z", "x: old\r\ny: keep\r\nz: new"],
+    ["없는 경로는 리터럴 키", "x: old\n", "a.z", "x: old\na.z: new\n"],
+  ] as const;
+  for (const [name, source, key, expected] of cases) {
+    it(`${name}: 삽입 이외 바이트·의미·결정성·고정점`, () => {
+      const input = { locale: "ko", entries: [{ key, message: "new" }] };
+      const output = yamlCatalog.write(withSource(source), input)!;
+      expect(output).toBe(expected);
+      expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries).toContainEqual(input.entries[0]);
+      expect(yamlCatalog.write(withSource(source), input)).toBe(output);
+      expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+    });
+  }
+});
+
+describe("yaml-catalog — 추가 경계와 복합 편집", () => {
+  it.each(["", "# keep\n", "---\n# keep\n...\n"])("빈 문서에도 원본을 보존하며 삽입한다: %j", (source) => {
+    const input = { locale: "ko", entries: [{ key: "new", message: "value" }] };
+    const at = source.indexOf("...");
+    const expected = at < 0 ? source + "new: value" + (source.endsWith("\n") ? "\n" : "")
+      : source.slice(0, at) + "new: value\n" + source.slice(at);
+    const output = yamlCatalog.write(withSource(source), input)!;
+    expect(output).toBe(expected);
+    expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+  });
+
+  it.each(["a: >-\n  old", "a:\n  - >-\n    old\n", "a: |4- # keep\n    old\nb: next\n", "a: |-\n            old\nb: next\n"])("블록 EOF·시퀀스·큰 들여쓰기: %j", (source) => {
+    const key = source.includes("  -") ? "a.0" : "a";
+    for (const message of ["new", "new\n", " leading\n\n", "x\u0001y"]) {
+      const input = { locale: "ko", entries: [{ key, message }] };
+      const output = yamlCatalog.write(withSource(source), input)!;
+      const read = yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]);
+      expect(read.errors).toEqual([]);
+      expect(read.locales[0]?.entries).toContainEqual({ key, message });
+      expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+    }
+  });
+
+  it("여러 치환·중첩/상위 삽입의 같은 끝 위치도 보존한다", () => {
+    const source = "a: {x: old} # flow\nb:\n  y: old\n";
+    const entries = [
+      { key: "a.x", message: "edit" }, { key: "a.z", message: "insert" },
+      { key: "b.y", message: "edit" }, { key: "b.z", message: "insert" },
+      { key: "z", message: "root" },
+    ];
+    const output = yamlCatalog.write(withSource(source), { locale: "ko", entries })!;
+    expect(output).toBe("a: {x: edit, z: insert} # flow\nb:\n  y: edit\n  z: insert\nz: root\n");
+    expect(yamlCatalog.write(withSource(source), { locale: "ko", entries: [...entries].reverse() })).toBe(output);
+    expect(yamlCatalog.write(withSource(output), { locale: "ko", entries })).toBe(output);
+  });
+
+  it("flow의 주석·개행·끝 쉼표와 삽입값의 개행도 보존한다", () => {
+    const source = "a: {x: old, # keep\n}\n";
+    const input = { locale: "ko", entries: [{ key: "a.z", message: "line\nnext\n" }] };
+    const output = yamlCatalog.write(withSource(source), input)!;
+    expect(output).toContain(', # keep\n}\n');
+    expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries).toContainEqual(input.entries[0]);
+    expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+  });
+});
+
+describe("yaml-catalog — 자체 검증 회귀", () => {
+  it.each(["a: |", "a: | # keep", "a: >-\n  old\nb: keep\n", "%YAML 1.1\n---\na: old\n"])("블록 헤더·공백 값·실제 스키마: %j", (source) => {
+    for (const message of ["new", " ", "  ", "\n", "yes"]) {
+      const input = { locale: "ko", entries: [{ key: "a", message }] };
+      const output = yamlCatalog.write(withSource(source), input)!;
+      const parsed = parseDocument(output);
+      expect(parsed.errors).toEqual([]);
+      expect(parsed.get("a")).toBe(message);
+      expect(yamlCatalog.write(withSource(source), input)).toBe(output);
+      expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+    }
+  });
+  it.each(["a: {}\n", "a: {x: old}\n", "%YAML 1.1\n---\na: {}\n"])("flow 삽입 개행·타입: %j", (source) => {
+    for (const message of ["line\nnext", "yes", " "]) {
+      const input = { locale: "ko", entries: [{ key: "a.z", message }] };
+      const output = yamlCatalog.write(withSource(source), input)!;
+      const parsed = parseDocument(output);
+      expect(parsed.errors).toEqual([]);
+      expect(parsed.getIn(["a", "z"])).toBe(message);
+      expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+    }
+  });
+});
+
+describe("yaml-catalog — 빈 스칼라의 속성 구분자", () => {
+  it.each([
+    ["a: &ref\nb: *ref\n", "a: &ref new\nb: *ref\n"],
+    ["a: !!str\nb: keep\n", "a: !!str new\nb: keep\n"],
+    ["a: &ref !!str\nb: *ref\n", "a: &ref !!str new\nb: *ref\n"],
+  ])("앵커·태그와 새 값 사이를 구분한다: %j", (source, expected) => {
+    const input = { locale: "ko", entries: [{ key: "a", message: "new" }] };
+    const output = yamlCatalog.write(withSource(source), input)!;
+    expect(output).toBe(expected);
+    const parsed = parseDocument(output);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.get("a")).toBe("new");
+    if (source.includes("*ref")) expect(parsed.toJS().b).toBe("new");
+    expect(yamlCatalog.write(withSource(output), input)).toBe(output);
+  });
+});
+
+describe("yaml-catalog — coincident empty scalar and map insertion", () => {
+  it.each([
+    ["a:", "a", "z"],
+    ["a: ", "a", "z"],
+    ["a:\n", "a", "z"],
+    ["a: {x:}\n", "a.x", "a.z"],
+    ["a: {x: }\n", "a.x", "a.z"],
+    ["a:\n  x:", "a.x", "a.z"],
+    ["a:\n  x:\n", "a.x", "a.z"],
+  ])("keeps both values at the same offset: %j", (source, edited, added) => {
+    const entries = [{ key: edited, message: "edit" }, { key: added, message: "insert" }];
+    const input = { locale: "ko", entries };
+    const result = yamlCatalog.writeWithErrors!(withSource(source), input);
+    expect(result.errors).toEqual([]);
+    const parsed = parseDocument(result.content!);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.getIn(edited.split("."))).toBe("edit");
+    expect(parsed.getIn(added.split("."))).toBe("insert");
+    expect(yamlCatalog.write(withSource(source), { ...input, entries: [...entries].reverse() })).toBe(result.content);
+    expect(yamlCatalog.write(withSource(result.content!), input)).toBe(result.content);
+  });
+});
+
+describe("yaml-catalog — keep chomping beside preserved blank lines", () => {
+  for (const style of ["|", ">"] as const) {
+    for (const newline of ["\n", "\r\n"]) {
+      it.each(["\nb: keep\n", "\n\n# keep\nb: keep\n", "  \n\nb: keep\n", "\n...\n", "\n\n"])(
+        `${style} preserves the requested trailing newlines and untouched suffix (${JSON.stringify(newline)}): %j`,
+        (tail) => {
+          const suffix = tail.replace(/\n/g, newline);
+          const source = `a: ${style}- # header${newline}  old${newline}` + suffix;
+          for (const message of ["new\n\n", "new\n\n\n", "first\n second\n\n"]) {
+            for (const insert of [false, true]) {
+              const entries = [{ key: "a", message }, ...(insert ? [{ key: "z", message: "insert" }] : [])];
+              const input = { locale: "ko", entries };
+              const result = yamlCatalog.writeWithErrors!(withSource(source), input);
+              expect(result.errors).toEqual([]);
+              const parsed = parseDocument(result.content!);
+              expect(parsed.errors).toEqual([]);
+              expect(parsed.get("a")).toBe(message);
+              if (insert) expect(parsed.get("z")).toBe("insert");
+              else expect(result.content!.endsWith(suffix)).toBe(true);
+              expect(result.content).toContain("# header" + newline);
+              expect(yamlCatalog.write(withSource(source), input)).toBe(result.content);
+              expect(yamlCatalog.write(withSource(result.content!), input)).toBe(result.content);
+            }
+          }
+        },
+      );
+    }
+  }
 });

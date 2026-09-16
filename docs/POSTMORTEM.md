@@ -310,6 +310,13 @@ _이 아래에 새 항목을 추가한다._
   - 테스트 규칙: **픽스처의 스타일이 한 종류면 그 축은 검증되지 않은 것이다.** 부호·들여쓰기·따옴표처럼 두 값을 가지는 축은 픽스처를 양쪽으로 둔다 — `ts-dict`에 작은따옴표 픽스처(`SOURCE_SINGLE`)를 새로 넣은 이유다.
   - **후속 후보**: `lib/survey/json-shape.ts`는 재생성 어댑터의 스타일 손실을 지표로 재고 있다(비ASCII `\uXXXX` 이스케이프가 풀려 줄 전체가 diff가 되는 것). **코드 딕셔너리엔 대응 지표가 없다** — `ts-shape.ts`는 무증상 skip을 셀 뿐 스타일을 안 본다. 실측에서 이 부류를 잡으려면 그 자리가 비어 있다.
 
+- **🔁 재발 (2026-09-16, T12 — YAML 미편집 folded scalar)**:
+  - **영역·증상**: `yaml-catalog.writeWithErrors`가 `errors.unknown` 한 키를 편집하거나 누락 키를 삽입해도 같은 파일의 `settings.help: >` 두 줄을 한 줄로 폈다 (`i18n-format-check#3`).
+  - **근본 원인**: CST가 표현을 가진다는 사실을 문서 전체 `doc.toString({ lineWidth: 0 })`이 원본 바이트를 보존한다는 보장으로 읽었다. 무편집 fast path는 원본을 반환하므로 `no-changes`·무편집 왕복은 편집 serializer를 검증하지 않았다.
+  - **그물**: 실리포 T12와 새 편집/삽입 회귀 테스트가 잡았다. 기존 의미 비교·무편집 고정점·hunk 수·`+N/-N` 대칭은 놓쳤다. 동일 원본+입력 반복 결정성, 출력 재적용 고정점, 요청값 일치, 미편집 영역 바이트 동일을 각각 검사한다.
+  - **수정**: 스칼라 range를 뒤에서 치환하고 새 키는 기존 맵 끝에 삽입한다. 전체 문서 재직렬화를 제거했다. 자체 검증에서 빈 블록 헤더·공백 전용 값·flow 개행·YAML 1.1 스키마·빈 스칼라 앵커/태그 구분자도 회귀로 고정했다.
+  - **재발 방지**: `rg -n 'doc\.toString|setIn\(' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'` → 해당 호출 0건. `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`에서 편집과 삽입 각각의 범위 밖 바이트를 검사한다. `rg -c '값 고정점' .claude/commands/l10n-roundtrip.md .agents/skills/source-command-l10n-roundtrip/SKILL.md` → **각 4건**(2단계 제목 · 한계 주석 · 금지 사항 · 리포트 틀). ⚠️ **앞서 적었던 `'no-changes.*결정|hunk 수 =|대칭은.*증거'` grep은 쓰지 않는다** — 그것은 오늘 **3건 히트하는데 전부 고쳐진 본문**이라(그중 하나가 정정 문장 자체다) `/audit`이 히트를 "낡은 설명이 남아 있음"으로 읽고 닫힌 항목을 다시 연다. 스킬 패치는 이 회고보다 **먼저** 들어왔다(`c80d4af`). **재발 방지 grep은 없어야 할 것이 아니라 있어야 할 것을 세는 쪽이 안전하다** — 전자는 본문이 바뀌면 거짓이 된다. 실리포 PR #3 변경 전 원본의 로컬 재생은 통과했으며, 원격 push→편집→pull→머지 왕복은 이번 검증에 포함하지 않았다.
+
 ### 2026-09-04 — 완료 조건에 "방향만 게이트"를 걸었는데 그 방향을 잴 수단이 없었다
 
 - **영역**: `docs/features/format-preservation/spec.md` 완료 조건 ③, `lib/survey/types.ts`(`RepoSurvey`), `lib/survey/diff.ts`(`changedHunks`)
@@ -1712,3 +1719,209 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 데이터 적용·실패 기록의 조건과 진행 표시 정리의 조건을 하나로 취급했다. 설정이 바뀌면 앞의 두 동작은 금지해야 하지만, 아직 유효한 자기 실행권에 속한 표시는 정리해야 한다. 역으로 stale 실행은 자기 토큰이 남아 있어도 종료 권한이 없다.
 - **그물**: 설정 변경을 다운로드 전으로만 배치한 테스트는 표시가 세워진 창을 놓쳤다. 실제 PG의 blob barrier 회귀 테스트와 stale 자기 해제 금지 테스트가 각각 red를 냈다. 종료 시 Project 잠금→자기 토큰·유효기간 확인→자기 표면 표시만 정리하도록 고친 뒤 통과했다.
 - **재발 방지**: `rg -n 'lastImportStartedAt: null|lastImportToken|repositoryImportToken' lib/import lib/projects lib/push`로 종료 경계를 점검한다. 적용·실패 기록은 revision/설정까지 검사하고, finally 정리는 유효한 자기 프로젝트 토큰과 자기 표면 토큰만 허용한다. 전수 확인한 기존 `finishImportRun`도 표면 토큰으로 종료를 제한하며, CI와 새 Sync의 표시를 덮지 않는지는 `pnpm test:projects:postgres`가 검증한다.
+
+### 2026-09-15 — `needsReview`와 `updatedBy`를 같은 행에서 찾아 화면 문구가 영영 안 뜰 뻔했다
+
+- **영역**: `lib/keys/query.ts`의 `loadReviewAttention` (project-home 할 일 항목)
+- **증상**: 배포 전에 잡혔다. 검토 대기 항목의 `— last edited by {who}.` 절이 **거의 모든 실제
+  데이터에서 빠진다.** 설계 문서는 "그 로케일의 최근 편집자"라고 적었는데 구현이 "검토 대기 행의
+  저자"로 좁혔고, 그 둘이 **구조적으로 거의 언제나 다르다.**
+- **근본 원인**: **불변식 2의 귀결을 쿼리가 몰랐다.** `Translation.needsReview = true`는 push가
+  세우고 **같은 쓰기가 `updatedBy`를 비운다**(`applyPush`의 `"updatedBy" = NULL`). 반대로 사람이
+  저장하면 `saveTranslation`이 `needsReview: false`와 `updatedBy`를 **함께** 쓴다
+  (`app/(edit)/actions.ts:80-81`). 즉 **두 컬럼은 배타적으로만 채워진다** — `needsReview = true`로
+  좁힌 집합에서 저자를 찾는 것은 정의상 빈손이다. 그 사실이 스키마에도 타입에도 안 나타난다.
+- **그물**: 잡은 것 — **Codex의 중간 리뷰 하나뿐.** 놓친 것: `pnpm typecheck`(두 컬럼 다
+  nullable이라 아무 신호가 없다) · `pnpm test` 4,039건 · `pnpm test:projects:postgres` 71건 ·
+  `/code-review` · `/design-sync`의 브라우저 실측(`bugshot-i18n-test-qa`에 검토 대기가 0이라
+  그 항목이 아예 안 그려졌다). ⚠️ **통합 테스트가 red를 못 낸 이유가 픽스처다** — 내가 쓴 검증이
+  `needsReview: true`와 `updatedBy: "u1"`을 **한 행에 함께** 세웠고, 그 조합은 프로덕션이 만들 수
+  없다. 불변식이 금지한 상태를 픽스처가 만들면 그 테스트는 아무것도 안 지킨다.
+- **재발 방지**:
+  - `grep -rn "needsReview" lib app --include='*.ts' --include='*.tsx' | grep -v __tests__ | grep "updatedBy"`
+    → **3건이고 전부 정상이다**: `loadKeys`의 select(읽기만) · `saveTranslation`의 create·update(둘을
+    **함께 쓰는** 쪽이라 그것이 곧 불변식의 절반이다). 새 위반 없음.
+  - **규칙: `needsReview`로 좁힌 집합에서 `updatedBy`를 찾지 않는다.** 저자가 필요하면 파티션을
+    그 로케일의 **값이 있는 셀 전체**로 두고 `updatedBy IS NOT NULL` 중 최신을 고른다.
+  - **픽스처가 불변식이 금지한 조합을 만들면 안 된다.** `lib/keys/__tests__/list-aggregates.integration.ts`에
+    "저자 없는 검토 대기 + 다른 셀의 사람 편집"을 실제 PG로 세우는 회귀 둘을 넣었다.
+  - ⚠️ **문장도 술어를 따라갔다** — 대표 행이 검토 대기 칸이 아닐 수 있으므로
+    `last edited in this locale by`로 바꿨다. `last edited by`는 "그 8칸을 그 사람이 만졌다"로
+    읽히는데 그것은 거짓이다.
+
+### 2026-09-15 — 컬럼을 더하며 쓰는 자리를 전수로 안 세서 종료 경로 다섯 중 둘에만 붙었다
+
+- **영역**: `lib/projects/import-status.ts`·`import-status-store.ts`·`lib/import/run.ts`·`lib/push/apply.ts`
+- **증상**: 배포 전. `TranslationSurface.lastImportFailedAt`을 추가하고 `applyPush`와 CI 실패 보고
+  **둘에만** 배선했다. 서버 적재 실패(`finishImportRun`)·표면 실패·정상 0키 성공 셋이 빠져서,
+  방금 실패한 표면에 시각이 없어 항목이 **영구히 목록 맨 아래**로 가고(시각 없음 = 가장 오래된 것),
+  복구된 표면은 옛 실패 시각을 계속 들고 있었다.
+- **근본 원인**: **종료 필드를 손으로 나열한 자리가 둘 있었다.** `importOutcomeFields`라는 "한 벌로
+  내는" 함수가 이미 있었는데 `finishImportRun`과 `lib/import/run.ts`의 두 갈래는 `lastImportStartedAt:
+  null, lastImportToken: null, lastImportError: …`를 직접 적고 있었다. 나열형 객체는 **컬럼이 늘 때
+  아무 신호도 안 준다** — 타입이 `Partial`이라 빠진 필드가 오류가 아니다.
+- **그물**: 잡은 것 — Codex 리뷰. 놓친 것: `typecheck`(선택적 필드다) · `pnpm test`(각 경로의
+  테스트가 **자기가 쓰는 필드만** 단언한다) · `/code-review`(diff에 그 두 파일이 없었다 — **컬럼을
+  더한 커밋과 종료 경로를 고치는 커밋이 달랐다**).
+- **재발 방지**:
+  - `grep -rn "lastImportError:" lib app --include='*.ts' | grep -v __tests__ | grep -v importOutcomeFields`
+    → **1건 남았다**: `import-status-store.ts:82`의 `recordReportedFailure`. **의도된 예외다** —
+    그 경로는 `lastImportStartedAt`을 건드리면 안 되는데(서버가 돌린 적 없는 구간이고, 다른 적재가
+    돌고 있으면 그 표시를 뺏는다) `importOutcomeFields`는 그것을 `null`로 강제한다.
+    ⚠️ **후속 후보**: 셋째 결과 컬럼이 늘면 이 자리가 또 빠진다. `importOutcomeFields`를
+    "진행 표시를 건드릴지"로 가르는 형으로 여는 것이 다음 작업이다.
+  - **규칙: 결과 컬럼을 더하면 `importOutcomeFields`의 반환 타입에 더하고, 나열형 객체를 쓰는
+    자리를 위 grep으로 전수 확인한다.** ARCHITECTURE §5에 "종료 경로가 다섯이고 전부 이 함수를
+    지난다"를 적어 뒀다.
+
+### 2026-09-15 — 시안 없이 만든 화면이 네 곳에서 어긋났고 테스트 4,039개가 전부 green이었다
+
+- **영역**: `app/(edit)/projects/[slug]/page.tsx`·`loading.tsx`·`components/home/*`
+- **증상**: 배포 전(`/design-sync`가 잡았다). 넷 다 **화면이 그럴듯하게 보이고** 어느 게이트도
+  신호를 안 냈다.
+  1. **카드·블록·메타의 radius가 16이었다**(캔버스 12). `rounded-xl`을 12로 알고 썼는데
+     `app/globals.css`가 `--radius-xl: calc(var(--radius) + 4px)`로 **Tailwind 기본과 다르게
+     재정의**한다. 눈으로는 4px다.
+  2. **할 일·로그 `<section>`이 `role="generic"`이었다.** `<section>`은 **접근 이름이 있을 때만**
+     `region` 랜드마크다 — 없으면 Chrome이 접어 그 블록이 접근성 트리에서 통째로 사라진다.
+     시각은 동일하다.
+  3. **`empty:hidden`이 절대 안 걸렸다.** `:empty`는 자식 **요소**가 하나라도 있으면 거짓인데,
+     감싼 컴포넌트가 배너 0개일 때도 자기 `<div>`를 렌더한다 → 바깥 래퍼의 `pb-4`가 남아
+     **가장 흔한 화면에 16px 유령 띠**가 섰고, 로딩 골격엔 그것이 없어 데이터 도착 시 본문이 튄다.
+  4. **오른쪽 패널이 열리면 카드 칸이 127px**이라 제목이 두 줄로 접히고 카드마다 수치의 세로
+     위치가 어긋났다. 캔버스는 `panel="none"`으로 그려 칸 240을 전제한다.
+- **근본 원인**: 넷 다 **값이 아니라 표현**이고, 이 리포의 게이트 셋은 전부 값을 본다. 1·3은
+  **토큰·셀렉터의 의미를 확인 없이 가정**한 것이고, 2는 HTML 사실을 몰랐던 것, 4는 **시안이
+  상정하지 않은 폭**이라 캔버스 자체가 답을 안 갖는다.
+  ⚠️ **1은 주석이 이미 경고하고 있었다** — `components/ui/entity-card.tsx:45`에
+  *"radius 12는 `rounded-lg`다 — `rounded-xl`은 16이라 같은 화면의 다른 카드와 어긋난다"*가
+  **2026-09-13부터 있었다.** 그 지식이 **주석에만 있어서** grep 소환 회로(`/implement`·`/code-review`가
+  POSTMORTEM을 grep한다)에 안 걸렸다.
+- **그물**: 잡은 것 — **`/design-sync` 4단계의 computed style + CDP 접근성 트리뿐**(4는 스크린샷).
+  놓친 것: `typecheck` · `test` 4,039 · `build` · `/code-review` · 이 사이클이 새로 쓴 소스 스캐너
+  여섯(파랑·mono·낱말) — **전부 원리적으로 못 본다.** 2026-09-13의 29곳과 같은 층이다.
+- **재발 방지**:
+  - `grep -rn "rounded-xl" app components --include='*.tsx' | grep -v __tests__` → **5건이고 전부
+    정상이다**(패널·모달의 바깥 껍데기라 16이 의도다). **이 값을 카드에 쓰면 어긋난다** —
+    `docs/DESIGN.md` §6.64가 `rounded-lg`를 명시한다.
+  - `grep -rn "<section" app components --include='*.tsx' | grep -v __tests__ | grep -v "aria-label"`
+    → **8건.** ⚠️ **후속 후보 넷**: `components/ui/card.tsx`(프리미티브라 소비자가 이름을 줄 수
+    있어야 한다) · `components/projects/project-list.tsx:226` · `app/(edit)/projects/loading.tsx:48` ·
+    `members/page.tsx:73`. 지금 화면에서 랜드마크가 필요한 자리인지 각각 판정한다.
+  - `grep -rn "empty:" app components --include='*.tsx' | grep -v __tests__` → **3건.**
+    ⚠️ **후속 후보 하나**: `components/translations/header.tsx:197`의 `mb-4 empty:mb-0`이 같은 모양이다 —
+    안의 배너 셋이 전부 `null`을 내면 `:empty`가 참이 되는지(= 그 컴포넌트들이 요소를 남기지 않는지)
+    확인해야 한다.
+  - **규칙: `empty:` 변형은 그 요소의 **직접 자식이 전부 사라질 수 있을 때만** 쓴다.** 컴포넌트를
+    감싸면 그 컴포넌트가 `null`을 내야 하고, 자기 래퍼를 렌더하면 영원히 안 걸린다.
+  - **규칙: `<section>`을 쓰면 `aria-labelledby`로 이름을 준다.** 이름 없이 묶는 것이 목적이면
+    `<div>`다. `components/__tests__/home-landmarks.test.tsx`가 Home의 셋을 고정하고,
+    **셋을 개별로 깨뜨려 red를 확인했다.**
+  - **규칙: 시안이 상정한 폭을 확인한다.** 캔버스의 `panel="none"`처럼 **아트보드의 전제**가
+    실제 셸과 다르면 그 차이가 곧 미대응 갈래다.
+
+### 2026-09-15 — 상태로 좁힌 링크가 네임스페이스로도 좁혀져 0건에 착지했다
+
+- **영역**: `components/home/count-cards.tsx`·`attention-card.tsx` → 번역 화면의 기본 착지
+- **증상**: 배포 전(Codex 리뷰). Home의 `To review 12`를 누르면 **0건인 화면**에 착지할 수 있다.
+- **근본 원인**: 번역 화면은 `?ns=`가 없으면 그것을 "지정 안 함"이 아니라 **"기본 착지"**로 읽고
+  `defaultNamespace`(= 남은 일이 있는 첫 네임스페이스)를 고른다. 그 판정은 **`state`를 안 본다** —
+  `a`에 미번역만, `b`에 검토 대기가 있으면 `To review`가 `a`로 착지하고 교집합이 빈다. 두 좁힘이
+  독립적으로 정해져 서로의 교집합을 비우는 형태이고, **어느 쪽도 단독으로는 틀리지 않았다.**
+- **그물**: 잡은 것 — Codex 리뷰. 놓친 것: `entry-points.test.ts`(키가 수신되는지만 본다) ·
+  `filterByState`의 단위 테스트(네임스페이스 축이 없다) · 브라우저(그 프로젝트에 검토 대기가 0이라
+  카드가 0이었고 누를 이유가 없었다).
+- **재발 방지**:
+  - `grep -rn "state:" app components --include='*.tsx' | grep -v __tests__ | grep "routes\."`
+    → **2건이고 둘 다 `ns`를 함께 싣는다**(카드 링크 · 공가 라우트의 redirect). 새 위반 없음.
+  - **규칙: `state=`로 좁히는 링크는 `ns: ALL_NAMESPACES`를 함께 싣는다.** 구간을 보러 온 사람에게
+    네임스페이스 좁힘은 교집합을 비우는 축이다. `lib/routes.ts`의 `TranslationsQuery` 주석이 그
+    근거를 든다.
+
+### 2026-09-15 — 2026-09-08의 재발 방지 grep이 "한 곳뿐"이라 적힌 채 두 곳이 됐다
+
+- **영역**: `components/home/sync-button.tsx`(Sync 결과) — 2026-09-08 항목의 같은 부류
+- **증상**: 배포 전(`/design-sync` 재리뷰 라운드 2). 세션이 끊긴 채 [Sync]를 확정하면 danger `Alert`가
+  **한 프레임도 안 보이고** 로그인으로 넘어간다. 2026-09-08의 증상("버튼을 눌렀더니 로그아웃됐고 왜
+  실패했는지는 어디에도 없다")과 글자 그대로 같다.
+- **근본 원인**: 원인은 코드가 아니라 **그물의 형태**다. 2026-09-08이 세운 규칙은 정확했고 재발 방지
+  grep까지 적어 뒀다 — `grep -rn 'router.refresh()' app components lib | grep -v __tests__` → **"한
+  곳뿐"**. 그런데 그 문장은 **그날의 관측을 적은 것**이지 매번 돌아가는 검사가 아니다. 새 화면이 그
+  호출을 하나 더 늘리는 순간 문서의 단언이 조용히 거짓이 됐고, **거짓이 된 사실을 아무도 안 봤다.**
+  `/code-review`는 변경분에 걸린 항목만 소환하는데 이 호출은 그 변경분 **안에** 새로 생긴 것이라
+  "기존 위반"으로도 안 잡혔다.
+- **그물**: 놓친 것 — 정적 게이트 셋(문구·tone 단위 테스트는 green이었다: **문구는 맞게 만들어졌고
+  화면에 닿지 않았을 뿐이다**) · `/code-review` · `/design-sync` 라운드 1 · 브라우저 실측(세션이
+  살아 있어 그 갈래를 못 밟는다). 잡은 것 — **라운드 2 재리뷰가 POSTMORTEM을 grep해 그 문장을 실제로
+  다시 돌린 것.**
+- **재발 방지**:
+  - `if (outcome.ok) router.refresh()` — 실패에는 갱신하지 않는다. 2026-09-08과 같은 수정이다.
+  - `components/__tests__/sync-button.test.tsx`가 거부·통신 실패·성공 셋을 각각 단언한다 — **문서의
+    grep 대신 테스트가 센다.**
+  - **규칙: POSTMORTEM의 재발 방지 줄에 "N곳뿐이다"를 적었으면, 그 수를 세는 것은 테스트여야 한다.**
+    문서에 적힌 수는 그날의 관측이고 다음 커밋이 그것을 거짓으로 만들어도 아무 red도 안 난다.
+    `/audit`이 전수로 다시 돌기 전까지 그 거짓은 계속 참으로 읽힌다.
+
+### 2026-09-15 — 자기 자신을 컨테이너로 물은 쿼리가 "아직 임계값이 아닌가 보다"로 읽혔다
+
+- **영역**: `components/home/count-cards.tsx` — Home의 카운트 카드 넷
+- **증상**: 배포 전(`/design-sync` 재리뷰 라운드 2). 캔버스 `2a`가 4열인데 **어떤 폭에서도 2×2**였다.
+- **근본 원인**: `@container/cards`(선언)와 `@[672px]/cards:grid-cols-4`(질문)가 **같은 요소**에 있었다.
+  CSS 컨테이너 쿼리는 **조상만** 평가한다 — 요소가 자기 자신의 쿼리 컨테이너가 되면 폭이 자기를 바꾸는
+  순환이 생기므로 사양이 금지한다. 그래서 그 변형은 참이 될 수 없다.
+  **아무도 의심하지 않은 이유가 둘 겹쳤다**: ① 좁은 쪽(기본값)이 그대로 서므로 화면이 "아직 임계값이
+  아니다"로 읽힌다 — 깨진 모양이 **정상 갈래 중 하나와 같다.** ② 도입 시점(`9f975e2`, `/design-sync`
+  4단계)의 실측이 **패널 열린 531px**이라 그 폭에서는 2열이 맞는 답이었다. 실측이 초록을 줬는데
+  **재는 지점이 임계값 아래**였다.
+- **그물**: 놓친 것 — `pnpm test` 4,043건(jsdom은 레이아웃이 없다) · 브라우저 실측(531px에서 쟀다) ·
+  `/design-sync` 라운드 1 · 소스 리뷰 라운드 1. 잡은 것 — 라운드 2가 같은 리포의 올바른 형
+  (`project-list.tsx`가 선언을 `<ul>`, 변형을 `<li>` 안쪽에 둔다)과 **나란히 놓고 읽은 것.**
+- **재발 방지**:
+  - 컨테이너를 한 겹 올렸다(`<div className="@container/cards">`). 908px 실측 **4열 1행 gap 8**.
+  - `components/__tests__/container-query.test.ts`가 `components`·`app`의 `className` 리터럴에서
+    **선언과 질문이 같은 요소에 있는 자리를 0으로 고정한다.** ⚠️ 첫 단언이 *"파일도 컨테이너 선언도
+    0이 아니다"*이므로 **매칭이 0인 채로 초록이 될 수 없다.**
+  - **규칙: 반응형 변형을 실측할 때는 임계값 위·아래를 둘 다 밟는다.** 한쪽만 재면 "그 폭에서 맞는
+    답"과 "어느 폭에서도 나오는 답"이 구별되지 않는다 — 이 결함이 정확히 그 차이에 숨었다.
+
+### 2026-09-16 — YAML range 치환의 같은 위치와 바깥 빈 줄이 값을 바꿨다
+
+- **영역**: `lib/adapters/yaml-catalog.ts` — T12 range 치환 수정의 후속 회귀.
+- **증상**: 빈 `a:`에 값 편집과 새 `z` 삽입을 함께 적용하면 `a`는 null로 남고 두 값이 `z`로 붙었다. `|-`·`>-` 뒤에 빈 줄이 있는 원본에 끝 개행 둘인 값을 쓰면 실제 값에는 개행 셋이 생기고 재적용 출력이 달라졌다.
+- **근본 원인**: 빈 스칼라의 zero-width range와 맵 삽입이 같은 offset인데 작업 종류를 정렬에서 구분하지 않았다. 블록의 keep chomping은 원래 range 밖이던 빈 줄까지 값으로 읽으므로 문자열 범위 보존만으로 의미가 보존되지 않았다.
+- **그물**: 리뷰의 복합 입력 재현과 새 회귀 테스트가 잡았다. 기존 YAML 테스트 95건은 빈 스칼라 편집·삽입·keep chomping을 각각 검사했지만 두 경계의 조합은 놓쳤다. 첫 회귀 7건, 두 번째 회귀 12건의 red→green을 관측했고 LF/CRLF·주석·공백 줄·문서 끝 마커·동시 삽입을 추가 검증했다.
+- **수정**: 같은 위치의 맵 삽입을 빈 스칼라 치환보다 먼저 적용한다. keep이 범위 밖 빈 줄을 흡수하는 경우에만 편집 값을 인용해 주변 바이트와 요청값을 분리한다.
+- **재발 방지**: `rg -n 'replacements\.sort|chomp ===|source\.slice\(end\)' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 두 경계를 확인했다(해당 YAML 구현만 해당). `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`의 `coincident empty scalar and map insertion`·`keep chomping beside preserved blank lines`에서 요청값·입력 순서 독립성·반복 출력·재적용 고정점과 원본 suffix 보존을 검사한다.
+
+### 2026-09-16 — 부분 실패 결과가 "임포트가 끝나지 않았다"고 말했다 (끝났고 18키가 들어갔다)
+
+- **영역**: `components/home/sync-result.tsx` · `lib/import/result.ts`의 `SurfaceImportResult`.
+- **증상**: `locales/ja.yml` 하나를 깨뜨리고 Sync하면 한 Alert 안에 네 줄이 섰다 —
+  `Synced 18 keys` / `1 item was not imported. Check the details below.` /
+  **`locales — The last import did not finish.`** / `locales/ja.yml: The file couldn't be parsed.`
+  셋째 줄이 거짓이고 첫째 줄이 그것을 부정한다. 바로 아래 줄이 진짜 원인을 이미 말하고 있었다.
+- **근본 원인**: **타입이 서버가 만들지 않는 조합을 허용했다.** `SurfaceImportResult`는
+  `status`("imported"|"partial"|"failed"|"superseded")와 `reason`(`… | null`)을 **평평하게** 들고,
+  `finishSurface`는 `prepared.kind === "failed"`에만 사유를 단다 — 즉 `partial`의 `reason`은
+  **언제나 `null`**이다. 화면은 그 사실을 모른 채 `reason ?? "import-failed"`로 폴백했고,
+  **없는 사유를 만들어 내는 자리**가 됐다. `superseded`에서는 같은 코드가 참을 말했으므로
+  코드만 읽어서는 갈래가 보이지 않는다.
+- **그물**: 놓친 것 — `pnpm test` 4,132건. 그 중 이 갈래를 재던 케이스가
+  `row("web", "partial", "partial-import")`로 **서버가 절대 만들지 않는 조합**을 넘기고 있었다.
+  사유가 있는 입력을 주면 사유가 있는 출력이 나오므로 폴백 경로가 한 번도 안 밟혔다.
+  잡은 것 — 브라우저 실물 검증(T11)이 화면의 문장을 읽은 것. **jsdom 출력이 실물과 글자까지
+  같았는데도 4,000건이 green이었다** — 재는 입력이 틀리면 환경은 죄가 없다.
+- **재발 방지**:
+  - 원인 줄을 `surface.reason !== null`로 가르고, 사유도 파일 오류도 없는 사고(중복 키만으로도
+    `partial`이 된다 — `buildPushPayload`의 `duplicateKeys`는 어댑터 오류가 아니라 `lastWins`가
+    흡수한다)는 `incidents`에서 뺀다. 안 그러면 빈 `<div>`가 남는다.
+  - `components/__tests__/sync-result.test.tsx`가 이제 **`finishSurface`가 돌려주는 모양**으로 잰다.
+  - **전수 grep**: `grep -rn 'status: "' lib --include='*.ts' | grep -v __tests__` —
+    `lib/github.ts`(`RepoSnapshot`·`BranchList`)와 `lib/pull/run.ts`는 **판별 유니온**이라 불가능한
+    조합이 타입에서 막힌다. **평평한 것은 `SurfaceImportResult` 하나뿐이다**(값 네 개 × 사유가
+    곱해지는 자리라 유니온으로 접으면 `summarizeImport`의 필터 다섯이 전부 갈린다 — 접지 않는
+    대신 화면이 `null`을 갈래로 다룬다).
+  - **규칙: 테스트가 손으로 만드는 결과 객체는 그것을 만드는 서버 함수의 이름을 주석에 적는다.**
+    이 결함이 숨은 자리는 화면도 서버도 아니고 **테스트가 상상한 입력**이었다. 같은 세션에서
+    `lib/home/meta.ts`의 `MetaRow`도 같은 뿌리였고(연결됐다면서 주소가 없는 행이 타입을 통과했다)
+    그쪽은 판별 유니온으로 접었다 — **접을 수 있으면 접고, 못 접으면 테스트가 실물 조합을 쓴다.**

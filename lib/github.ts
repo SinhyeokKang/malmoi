@@ -8,7 +8,7 @@ import { fail } from "@/lib/failure";
 import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
-import { httpStatus, probeFromError, type ProbeResult } from "@/lib/github-connect/health";
+import { httpStatus, planConnectionHealth, probeFromError, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
@@ -88,6 +88,27 @@ export async function probeRepo(owner: string, repo: string): Promise<ProbeResul
     logFailure("probe", error);
     return { status: "error" };
   }
+}
+
+/**
+ * 저장된 값 + probe → 연결 건강성 (design §3.3). **소비자가 둘이다** — 설정 화면과 Home.
+ *
+ * ⚠️ **저장된 설치가 없으면 probe를 안 부른다** — `planConnectionHealth`가 그때 `not-connected`를
+ * 주므로 App JWT 조회와 토큰 발급 두 번이 헛돈다.
+ *
+ * ⚠️ **try로 감싸지 않는다.** `probeRepo`는 GitHub 실패를 값(`error` → `unknown`)으로 주고 던지는
+ * 것은 환경변수 누락뿐이다 — 그것까지 `unknown`("잠시 뒤 다시")으로 접으면 **설정 오류가 영원히
+ * 일시 장애로 보인다** (code-review 2026-09-07). 블록의 독립 실패는 GitHub 장애에 대한 것이지
+ * 설정 오류가 아니다.
+ */
+export async function loadConnectionHealth(project: {
+  repoOwner: string;
+  repoName: string;
+  installationId: string | null;
+  repositoryId: string | null;
+}): Promise<ConnectionHealth> {
+  if (project.installationId === null) return { status: "not-connected" };
+  return planConnectionHealth({ project, probe: await probeRepo(project.repoOwner, project.repoName) });
 }
 
 /**

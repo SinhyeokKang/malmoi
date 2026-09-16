@@ -312,6 +312,39 @@ export function rowReviewCounts(
   return out;
 }
 
+/**
+ * 프로젝트별 검토 대기의 **로케일별 분해** (project-home design §3.2 — 카드 보조 줄 `5 en, 3 ja`).
+ *
+ * ⚠️ **`rowReviewCounts`와 같은 `foldCells`를 쓴다** — "살아 있는 로케일만"이라는 규칙이 한 벌로
+ * 남아야 두 수가 갈리지 않는다. 표면은 가로지른다: 카드의 수가 프로젝트 합계라 분해도 같은
+ * 모집단이어야 한다.
+ *
+ * ⚠️ **건수 내림차순이다** — 보조 줄이 폭에 따라 뒤부터 잘리므로 큰 수가 화면에 남아야 한다.
+ * 동점은 코드 유닛 비교다(`localeCompare`는 로케일 설정에 따라 답이 달라진다).
+ */
+export function reviewByLocale(
+  locales: readonly LiveLocale[],
+  cells: readonly LocaleCellCount[],
+): Map<string, { code: string; count: number }[]> {
+  const byProject = new Map<string, Map<string, number>>();
+  for (const [key, cell] of foldCells(locales, cells)) {
+    if (cell.review === 0) continue;
+    const projectId = key.slice(0, key.indexOf("\u0000"));
+    const code = key.slice(key.lastIndexOf("\u0000") + 1);
+    const perLocale = byProject.get(projectId) ?? new Map<string, number>();
+    perLocale.set(code, (perLocale.get(code) ?? 0) + cell.review);
+    byProject.set(projectId, perLocale);
+  }
+  return new Map(
+    [...byProject].map(([projectId, perLocale]) => [
+      projectId,
+      [...perLocale]
+        .map(([code, count]) => ({ code, count }))
+        .sort((a, b) => b.count - a.count || (a.code === b.code ? 0 : a.code < b.code ? -1 : 1)),
+    ]),
+  );
+}
+
 export type SummaryQueue = { newFromGithub: number; toTranslate: number; toReview: number; toSend: number };
 
 /**

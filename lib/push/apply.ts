@@ -336,7 +336,7 @@ async function applyWith(
     // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
     prisma.translationSurface.updateMany({
       where: { id: surfaceId, projectId, lastImportToken: options.token },
-      data: { ...importOutcomeFields(options.importOutcome ?? null), lastImportToken: null },
+      data: { ...importOutcomeFields(options.importOutcome ?? null, new Date()), lastImportToken: null },
     }),
   ];
 

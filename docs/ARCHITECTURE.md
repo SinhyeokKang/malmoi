@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -311,7 +311,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | | 재생성 | 수술적 치환 |
 |---|---|---|
 | write의 입력 | DB 상태 | DB 상태 **+ 원본 파일 내용**(`DetectedFormat.currentFiles`) |
-| 결정성의 근거 | 정렬·재조립 규칙 | 원본 보존 — 바뀐 값이 없으면 **원본을 그대로 돌려준다** |
+| 결정성의 근거 | 정렬·재조립 규칙 | **같은 원본+입력 → 같은 바이트**. 무편집 원본 보존·실제 편집 결정성·재적용 고정점·미편집 영역 보존은 별도 검사한다 |
 | `orphaned` 키 | 파일에서 뺀다 | **파일에 남긴다**(값을 안 바꾼다). 지우면 코드가 참조하는 키가 사라진다 |
 | 낼 것 0개 | `null` | 원본 그대로(파일을 지우지 않는다). `null`은 원본이 없을 때만 |
 | 원본에 **없는** 키 | 그냥 쓴다 | `yaml-catalog`·`code-dict`는 **삽입한다**. `ts-dict`는 무시한다 (아래) |
@@ -331,18 +331,37 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
 
-- 없는 키는 **그 키가 속할 맵/객체의 끝에** 넣는다. 중간 경로가 없으면 만든다.
+- 없는 키는 **가장 깊은 기존 맵/객체의 끝에** 넣는다. 남은 경로는 리터럴 키 하나로 삽입하며 중간 맵을 새로 만들지 않는다.
 - **결정성**: 추가되는 키를 코드포인트 정렬 순서로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
 - **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
 
 #### `yaml-catalog` 고유
 
 - **`yaml` 패키지의 `parseDocument`로 CST를 들고 스칼라만 갈아끼운다.** 실측으로 주석(독립·줄끝)·빈 줄·앵커·인용 스타일·`---` 문서 마커가 전부 보존된다.
-- ⚠️ **`doc.toString()`은 문서 전체를 다시 찍는다 — 편집이 하나라도 있으면 수술적이 아니다** (2026-09-04 7차 측정, §1.9 §13.3). 값이 안 바뀌면 원본을 그대로 돌려주므로 왕복·바이트 고정점·diff 0.000이 전부 통과했고, 실물 PR도 픽스처가 작아 드러나지 않았다. redmine의 `ko.yml`(1,585줄)에 **키 하나**를 편집하면 816줄이 달라진다. **옵션으로 되돌릴 수 있는 축은 원본에서 관측해 맞춘다** — 들여쓰기 폭·줄 접기·시퀀스 들여쓰기(`indentSeq`, Rails는 부모와 같은 열에 `-`를 쓴다)·플로우 컬렉션 여백(`flowCollectionPadding`). **콜론 뒤 정렬 공백처럼 AST에 남지 않는 축은 이 방식으로 못 닫는다** — 편집된 스칼라의 `range`로 원본 문자열을 갈아끼우는 별 기능이 필요하다. `code-dict`·`ts-dict`는 ts-morph가 원본을 스플라이스해 이 문제가 없다(1키 편집 → 1 hunk 실측).
-- ⚠️ **들여쓰기 폭과 줄 접기는 CST가 보존하지 않는다** (2026-09-04 audit #4). `doc.toString()`은 기본 2칸·`lineWidth: 80`으로 다시 찍으므로, 4칸 리포에서 값 하나를 바꾸면 파일 전체가 재들여쓰기되고 편집하지 않은 80자 넘는 plain 스칼라가 접혀 나갔다. 들여쓰기는 원본 첫 들여쓴 줄에서 관측하고(`indentOf`) 접기는 끈다(`lineWidth: 0`). 픽스처가 전부 2칸·80자 미만이라 보이지 않았던 축이다 — `yaml-catalog.test.ts` "표현은 원본에서"가 양쪽을 고정한다.
+- **편집 스칼라의 `range`만 뒤에서 치환한다** (2026-09-16 T12 수정). 문서 전체를 `toString()`으로 재직렬화하지 않는다. 앵커·태그·주석·정렬 공백·미편집 folded scalar는 원본 바이트로 남는다. 블록 헤더의 들여쓰기·주석과 CRLF를 보존하며, chomping은 요청값에 맞춘다. 공백만 있는 값이나 keep chomping(`+`)이 range 밖 원본 빈 줄까지 흡수하는 경우는 인용 표현으로 낸다. 인용으로 바꿔도 헤더 주석과 주변 빈 줄은 남긴다.
+- **삽입도 기존 맵 끝에 문자열만 추가한다.** block/flow·중복 마지막 맵·빈 문서·문서 끝 마커를 구분하고 새 키만 정렬한다. 부모·자식 맵이 같은 위치에서 끝나면 자식 삽입이 앞에 남아야 한다. 문자열 직렬화의 타입 판정은 원본 문서의 YAML 버전을 따른다 (`%YAML 1.1`의 `yes`는 인용하지 않으면 불리언이다).
 - **알리아스 노드(`*ref`)는 리프로 세지 않는다.** 편집하면 앵커 관계가 깨지고, 애초에 값의 출처가 앵커 쪽이다.
 - **Rails식 로케일 루트 키**(`ko:` 하나가 최상위)를 `read`·`write`가 **각자 `rootKeyOf`로 재관측한다** — 계약 필드로 나르지 않는다. ⚠️ 전에는 `read`가 `rootKeyedByPath`로 돌려줬는데 **`write`가 그 값을 안 믿어** 어차피 원본을 다시 읽었고, 안 믿는 값을 계약에 싣는 것이 결함이라 필드를 지웠다(`lib/adapters/yaml-catalog.ts`의 그 주석이 근거다). mastodon·redmine·decidim이 이쪽이고 misskey·directus는 루트에 바로 키가 온다.
 - 블록 리터럴(`|`)의 값을 바꾸면 인디케이터가 `|-`로 바뀔 수 있다 — 값 의미는 유지되므로 훼손이 아니다.
+
+- ⚠️ **`doc.toString()`으로 전면 재직렬화하던 시절의 대가가 무엇이었나** (2026-09-16에 range 치환으로
+  닫혔다 — 위 두 항목이 지금의 동작이다). 남겨 두는 이유는 **같은 함정이 옵션으로는 안 풀린다**는 것이
+  이 자리의 교훈이기 때문이다.
+
+  전면 재직렬화는 **옵션으로 되돌릴 수 있는 축**(들여쓰기·줄 접기·시퀀스 들여쓰기·플로우 여백)만
+  원본에서 관측해 맞출 수 있었고, **손으로 감은 접힌 스칼라는 그 네 축에 없었다.** `lineWidth: 0`은
+  편집하지 않은 80자 넘는 plain 스칼라가 자동으로 접혀 나가는 것을 막으려고 켠 값인데(POSTMORTEM
+  2026-09-03), 접기를 끄면 **반대로 원본의 손 줄바꿈이 풀렸다** — 두 손상이 서로 반대 방향이라
+  **어느 옵션 값도 둘을 동시에 만족시키지 못한다.** 2026-09-16 실물 왕복(`i18n-format-check#3`)이
+  `errors.unknown` 하나만 편집한 PR에서 건드리지 않은 `settings.help: >`의 두 줄이 한 줄로 실려 나온
+  것을 잡았고, 같은 리포 커밋 #1·#2에서 `ko.yml`이 이미 그렇게 펴져 있었는데 아무도 못 봤다.
+
+  ⚠️ **편집이 0건인 검사로는 영원히 안 드러났다** — `changed`가 false면 원본 바이트를 그대로 돌려주므로
+  재직렬화 경로를 한 줄도 지나지 않는다. `/l10n-roundtrip` 2단계가 **값 고정점이지 바이트 고정점이
+  아니었던** 이유가 그것이다(그 스킬 문서를 함께 고쳤다).
+
+  ⚠️ **지금 `lineWidth: 0`이 남아 있는 자리는 `flowString` 하나**이고 **스칼라 값 하나**를 직렬화할
+  때다 — 문서 전체가 아니다. `indentOf`·`indentsSeq`·`padsFlow`는 관측할 대상이 사라져 함께 지워졌다.
 
 #### `code-dict` 고유
 
@@ -815,6 +834,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   그 갈래로 살아남는다. cuid 모양으로 갈라내려 하면 후자가 함께 사라진다. **이 폴백이 없던 동안 화면이
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
+- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastCommitAt`이 이미 든다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
+- **⚠️ `Locale.createdAt`의 기존 값은 프로젝트 생성 시각이다 — 진짜 시각이 아니다** (같은 마이그레이션). `Locale`에 시각 컬럼이 하나도 없어(`code`·`name`·`isBase`·`orphaned`뿐) "한 번도 안 채워진 로케일"을 시간축에 못 세웠다. **`@default(now())`만 두면 마이그레이션이 거짓을 만든다** — 기존 로케일 전부가 "마이그레이션 시각"을 들고 배포 직후 그 항목들이 목록 맨 위를 점령하며, 그 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 그래서 마이그레이션이 `UPDATE "Locale" … FROM "Project"`로 프로젝트 생성 시각을 넣었다: 로케일이 프로젝트보다 먼저 생길 수는 없고 "지금"보다 덜 틀리다. **이 값을 "로케일이 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다** — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이고, 같은 프로젝트의 로케일 여럿이 동점이 되는 것을 읽는 쪽의 동점 규칙(`surfaceSlug` → 코드 유닛 비교)이 받는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
 - **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — 편집 UI 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(소비자 **셋** — pull 1층 판정 · 미배포 집계 · `loadRecentEdits`, §2), **`(projectId, startedAt)`**(`SyncRun` — `loadSyncRuns`의 키셋 페이지네이션이 그 위에 선다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
 
@@ -1502,7 +1523,7 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
-**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — 쿼리 슬롯이 둘이다.
+**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — ⚠️ **쿼리 슬롯은 넷이다**(`?e=`·`?link=`·`?sessionRevocation=`·`?connect=` — 마지막은 2026-09-14의 로그인 수단 연결이 더했다). 넷이 **생산자도 서는 자리도 다르므로** 한 사전으로 접지 않는다.
 인가 거부는 `requireUser`가 **`/signin`으로** 보낸다 — 판정은 `lib/auth/landing.ts`의 `rejectTarget` 하나이고, **삼항이 아니라 맵 + `satisfies`다**(갈래가 늘면 키가 없어 컴파일 에러가 난다; 삼항이면 새 갈래가 사유 없이 로그인 화면으로 떨어지고 `tsc`가 조용하다 — 8-1a에서 실측). ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를

@@ -200,6 +200,11 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   }
 
   revalidatePath(`/projects/${slug}/settings`);
+  /**
+   * ⚠️ **Home이 `planConnectionHealth`의 새 소비자다** (2026-09-15 — project-home T10). 다시
+   * 연결해도 Home의 미연결 배너가 다음 재검증까지 남으면, 사용자는 방금 누른 것이 안 먹은 줄 안다.
+   */
+  revalidatePath(`/projects/${slug}`, "layout");
   return { ok: true };
 }
 
@@ -276,7 +281,11 @@ export async function updateRepositorySettings(raw: {
     await prisma.project.update({ where: { id: projectId }, data: { baseBranch } });
   }
 
-  // 브랜치를 보이는 화면은 이것 하나다 — 워크플로 YAML의 `branches: [...]`도 같은 화면에 있다.
   revalidatePath(`/projects/${slug}/settings`);
+  /**
+   * ⚠️ **브랜치를 보이는 화면이 2026-09-15에 둘이 됐다** — Home의 메타 열과 Sync 확인 Dialog의
+   * 본문이 그 값을 읽는다. 전 주석("이 화면 하나다")이 그때 거짓이 됐다.
+   */
+  revalidatePath(`/projects/${slug}`, "layout");
   return { ok: true };
 }

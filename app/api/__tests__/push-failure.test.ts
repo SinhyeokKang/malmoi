@@ -71,15 +71,21 @@ it("records the failure against the project the token identifies", async () => {
     expect.objectContaining({ where: { pushTokenHash: HASH } }),
   );
   expect(hoisted.project.updateMany).toHaveBeenCalledWith(
-    expect.objectContaining({ data: { lastImportError: "parse-failed" } }),
+    expect.objectContaining({ data: { lastImportError: "parse-failed", lastImportFailedAt: expect.any(Date) } }),
   );
 });
 
-/** 목록 둘과 그 설정이 이 값을 읽는다 — 안 지우면 실패가 다음 재검증까지 안 보인다. */
-it("invalidates both list routes and the project settings", async () => {
+/**
+ * 목록 둘과 그 설정이 이 값을 읽는다 — 안 지우면 실패가 다음 재검증까지 안 보인다.
+ *
+ * ⚠️ **Home이 2026-09-15에 늘었다** (project-home T10). 세는 축은 "이 Action이 쓰는 컬럼을 읽는
+ * 화면"이 아니라 **"그 컬럼에서 파생되는 판정 함수를 부르는 화면"**이다 — Home이 `failing`의
+ * 새 소비자다 (POSTMORTEM 2026-09-09 🔁 2026-09-11).
+ */
+it("invalidates both list routes, the project settings and home", async () => {
   await post();
   const paths = hoisted.revalidatePath.mock.calls.map((c) => c[0]);
-  expect(paths).toEqual(expect.arrayContaining(["/projects", "/projects/new", "/projects/acme/settings"]));
+  expect(paths).toEqual(expect.arrayContaining(["/projects", "/projects/new", "/projects/acme/settings", "/projects/acme"]));
 });
 
 it.each([

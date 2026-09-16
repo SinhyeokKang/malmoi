@@ -105,11 +105,28 @@ it("importFailureMessage never leaks a parser detail", () => {
   expect(importFailureMessage("parse-failed")).not.toMatch(/SyntaxError|line \d|\.json/);
 });
 
-it("importOutcomeFields clears both columns on a clean import", () => {
-  expect(importOutcomeFields(null)).toEqual({ lastImportError: null, lastImportStartedAt: null });
+const AT = new Date("2026-09-15T09:00:00Z");
+
+/**
+ * ⚠️ **성공이 실패 시각도 비운다** (project-home design §6.1) — 안 비우면 성공한 뒤에도 Home의
+ * 항목·배너·메타가 옛 실패를 말한다.
+ */
+it("importOutcomeFields clears all three columns on a clean import", () => {
+  expect(importOutcomeFields(null, AT)).toEqual({ lastImportError: null, lastImportStartedAt: null, lastImportFailedAt: null });
 });
 
 /** 부분 실패는 데이터가 들어간 채로 남는 표시다 — 진행 표시는 같이 지운다. */
 it("importOutcomeFields keeps the code and still clears the running marker", () => {
-  expect(importOutcomeFields("partial-import")).toEqual({ lastImportError: "partial-import", lastImportStartedAt: null });
+  expect(importOutcomeFields("partial-import", AT)).toEqual({
+    lastImportError: "partial-import", lastImportStartedAt: null, lastImportFailedAt: AT,
+  });
+});
+
+/**
+ * ⚠️ **시각을 함수가 만들지 않는다** — `new Date()`를 여기서 부르면 이 모듈이 순수하지 않게 되고,
+ * 같은 트랜잭션 안의 다른 쓰기와 시각이 갈린다.
+ */
+it("importOutcomeFields takes the time rather than reading the clock", () => {
+  const other = new Date("2020-01-01T00:00:00Z");
+  expect(importOutcomeFields("parse-failed", other).lastImportFailedAt).toBe(other);
 });

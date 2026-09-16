@@ -32,8 +32,11 @@ import type { TranslationsQuery } from "@/lib/routes";
  * ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다. 위로 가는 길은
  * 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다).
  *
- * ⚠️ **8-P가 Publish 버튼과 결과 `Alert`를 오른쪽 프로젝트 패널로 가져간다** (PRODUCT). 그때
- * 떼어낼 것은 이 파일의 슬롯 배선 하나다 — 그 전에 패널에 하나 더 만들면 둘 중 하나가 낡는다.
+ * ⚠️ **Publish 버튼과 결과 `Alert`가 갈 곳이 2026-09-16에 바뀌었다.** 전에는 "8-P가 오른쪽 프로젝트
+ * 패널로 가져간다"였는데 **그 패널을 지웠다**(DESIGN §6.55). 새 목적지는 `design_handoff_publish_modal`의
+ * 모달이고(§4 "결과를 모달 안에 둔다"), **아직 구현 전이다.**
+ * ⚠️ **소비자가 둘이다** — Home의 머리도 같은 `PublishButton`을 쓴다(`components/home/actions.tsx`).
+ * 옮길 때 이 파일만 고치면 Home이 남는다.
  */
 export function TranslationsHeader({
   slug,

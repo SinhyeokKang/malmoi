@@ -50,20 +50,75 @@ describe("planImportRefusal", () => {
   });
 
   it("남은 갈래는 warning으로 떨어지고 닫기를 주지 않는다 — 모르는 값을 성공처럼 보이게 하지 않는다", () => {
-    for (const error of ["ingest-failed", "invalid input", "base-branch-missing"] as const) {
+    for (const error of ["invalid input", "base-branch-missing"] as const) {
       expect(planImportRefusal(error)).toEqual({ tone: "warning", dismissible: false, action: null });
     }
   });
 
   /**
-   * ⚠️ **닫기는 `already-running` 하나뿐이다** — 나머지는 닫아도 같은 버튼이 같은 거부를 반복하고,
-   * 그러면 사람이 "무엇이 막혔는지"를 다시 눌러서 알아내야 한다.
+   * ⚠️ **"요청이 못 갔다"는 생산자가 둘이다** (2026-09-15 라운드 3) — 서버 `catch`가 `ingest-failed`를,
+   * 클라이언트 `catch`가 `unavailable`을 낸다. **둘이 같은 계획이어야 한다**: 한쪽만 등재하면 다른 쪽이
+   * 폴백으로 떨어져 닫기도 액션도 없는 채 남의 화면 문구를 띄운다(실제로 한 번 그렇게 났다).
    */
-  it("닫히는 거부는 하나뿐이다", () => {
-    const errors: RepositoryImportError[] = [
-      "already-running", "not-ready", "not-connected", "no-surfaces", "repo-replaced",
-      "unauthorized", "unavailable", "forbidden", "not-found", "archived", "ingest-failed", "invalid input",
-    ];
-    expect(errors.filter(error => planImportRefusal(error).dismissible)).toEqual(["already-running"]);
+  it("요청이 못 간 두 코드가 같은 계획을 받는다", () => {
+    const plan = { tone: "danger", dismissible: true, action: null };
+    expect(planImportRefusal("ingest-failed")).toEqual(plan);
+    expect(planImportRefusal("unavailable")).toEqual(plan);
+  });
+
+  /**
+   * ⚠️ **기준은 수가 아니라 "닫아도 같은 거부가 반복되나"다.** 반복되는 갈래에 닫기를 주면 사람이
+   * "무엇이 막혔는지"를 다시 눌러서 알아내야 한다 — 그래서 상태가 안 바뀌는 거부에는 닫기가 없다.
+   * 반대로 **일시적 실패는 반복되지 않으므로** 닫을 수 있어야 한다. 처음에는 이 검사가 "하나뿐이다"로
+   * 수를 박아 두었는데, 그 형은 기준이 바뀌었는지와 목록이 늘었는지를 구별하지 못한다.
+   */
+  it("닫기는 상태가 바뀌어야 풀리는 거부에만 없다", () => {
+    /*
+      ⚠️ **두 목록의 합집합이 union 전체여야 한다** (라운드 4 ⚪) — 전에는 12개만 적어 두고 "새 코드는
+      분류돼야 한다"고 적었는데, 실제로는 **어느 목록에도 없으면 둘 다 green**이었다(`last-owner`·
+      `reauthorize`·`resource-limit` …). 아래 타입이 남은 코드를 `never`가 아니게 만들어 **컴파일에서**
+      막는다 — 런타임 단언으로는 "빠뜨린 것"과 "없는 것"을 구별할 수 없다.
+    */
+    /**
+     * 다시 눌러도 같은 답이 나온다 — 리포·설정·권한이 바뀌어야 풀린다.
+     * ⚠️ **`as const`다** — `RepositoryImportError[]`로 주석을 달면 `(typeof repeats)[number]`가 union
+     * 전체로 넓어져 아래 전수 검사가 **언제나 통과하는 공허한 검사**가 된다.
+     */
+    const repeats = [
+      // 이 기능이 직접 내는 것
+      "not-ready", "not-connected", "no-surfaces", "repo-replaced", "invalid input",
+      // 세션·인가 — 다시 눌러도 같다
+      "unauthorized", "forbidden", "not-found", "archived", "last-owner", "not-member",
+      // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
+      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden",
+      "no-installations", "no-repos", "no-candidates",
+      // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
+      "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",
+      "manual-no-match", "not-awaiting",
+      /*
+        규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다. ⚠️ **`tree-truncated`만 생산자가 있다**
+        (`snapshotError`). `resource-limit`은 표면별 `reason`으로만 접히고(`SurfaceImportReason`) 이
+        판정을 안 지나며, `key-count-failed`는 온보딩 후보의 표시 라벨이라 여기로 오지 않는다 —
+        의미상으로는 transient에 가깝지만 **도달 불가라 `PLANS`에 근거 없는 항목을 늘리지 않는다.**
+      */
+      "tree-truncated", "resource-limit", "key-count-failed",
+      /*
+        ⚠️ **아래 여섯은 이 경로에 생산자가 없다** — `RepositoryImportError`가 `ConnectError`를 통째로
+        합집합에 넣어서 분류를 강요받을 뿐, `runRepositoryImport`가 낼 수 있는 값이 아니다. 배정은
+        "그 흐름을 처음부터 다시 해야 한다"는 뜻이고 **검증할 수단이 없는 판단**이다 — 다음 사람이
+        "고쳐야 할 것"으로 읽지 않도록 적어 둔다. 언젠가 union을 실제 생산자 집합으로 좁히는 것이 답이다.
+      */
+      "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
+    ] as const satisfies readonly RepositoryImportError[];
+    /** 기다리거나 다시 누르면 답이 달라진다. */
+    const transient = ["already-running", "ingest-failed", "unavailable"] as const satisfies readonly RepositoryImportError[];
+    type Classified = (typeof repeats)[number] | (typeof transient)[number];
+    type Unclassified = Exclude<RepositoryImportError, Classified>;
+    // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.
+    type _Exhaustive = Unclassified extends never ? true : ["분류되지 않은 거부 코드", Unclassified];
+    const exhaustive: _Exhaustive = true;
+    expect(exhaustive).toBe(true);
+    expect(repeats.filter(error => planImportRefusal(error).dismissible)).toEqual([]);
+    expect(transient.filter(error => !planImportRefusal(error).dismissible)).toEqual([]);
   });
 });

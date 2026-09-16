@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, Send } from "lucide-react";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { Alert } from "@/components/ui/alert";
@@ -26,14 +26,38 @@ import { pullMessage, type PullOutcome } from "@/lib/pull/message";
 export function PublishButton({
   slug,
   count,
+  disabled = false,
+  badge = false,
+  label,
   onResult,
+  onPendingChange,
 }: {
   slug: string;
   /** 미배포 건수 — 라벨이 든다. 0이면 숫자가 붙지 않는다. */
   count: number;
+  /**
+   * ⚠️ **Home이 쓴다** — 미연결·보관에서는 보낼 곳이 없고, 보낼 것이 0이면 누를 이유가 없다
+   * (project-home spec §8). 번역 화면은 이 값을 넘기지 않는다: 그쪽 툴바는 상태 갈래를 안 든다.
+   */
+  disabled?: boolean;
+  /**
+   * Home의 머리만 쓴다 — 번역 화면 툴바는 라벨이 그 수를 이미 든다.
+   *
+   * ⚠️ **Home은 라벨도 다르다** — 그 화면의 낱말은 `Sync`·`Publish` 둘뿐이라는 규칙이 있고
+   * (project-home spec §3.3-7), `Send changes`는 그 규칙 밖의 툴바 문구다.
+   */
+  badge?: boolean;
+  label?: string;
   onResult: (outcome: PullOutcome) => void;
+  /**
+   * ⚠️ **Home이 `[Sync]`를 잠그려고 듣는다** (sync-repository 시안 `4f`) — Publish는 DB로 리포를 덮고
+   * Sync는 리포로 DB를 덮으므로, 겹치면 남는 값이 두 요청의 도착 순서에 달린다. 번역 화면은 이 프롭을
+   * 안 넘긴다(그 툴바에 반대 방향 버튼이 없다).
+   */
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [pending, startTransition] = useTransition();
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
 
   return (
     <Button
@@ -47,9 +71,19 @@ export function PublishButton({
       // pending 중 연타를 막는다 — 두 실행이 병렬이면 둘 다 열린 PR을 못 보고
       // 각자 생성을 시도해 GitHub이 422로 거부한다.
       loading={pending}
+      disabled={disabled}
     >
       <Send aria-hidden />
-      {m.translations.publish.button(count)}
+      {label ?? m.translations.publish.button(count)}
+      {/*
+        ⚠️ **수가 배지로 나온다** (project-home 캔버스 `2a`) — 라벨 안에 넣으면 버튼 폭이 자릿수에
+        따라 흔들리고, 0일 때는 배지 자체가 없어야 한다. 번역 화면은 이 prop을 안 넘긴다.
+      */}
+      {badge && count > 0 && (
+        <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">
+          {count.toLocaleString("en-US")}
+        </span>
+      )}
     </Button>
   );
 }

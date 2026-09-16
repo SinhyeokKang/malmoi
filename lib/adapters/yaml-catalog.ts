@@ -1,4 +1,4 @@
-import { isAlias, isMap, isScalar, isSeq, parseDocument, type Document, type Node } from "yaml";
+import { CST, isAlias, isMap, isScalar, isSeq, parseDocument, stringify, type Document, type Node, type Scalar, type YAMLMap } from "yaml";
 
 import { KEY_SEP } from "./json-style";
 import {
@@ -231,51 +231,91 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   return writeWithErrors(format, input).content;
 }
 
-/**
- * 원본의 들여쓰기 폭. **`yaml`은 파싱한 문서에서 이 값을 보존하지 않는다** — `toString`이 기본
- * 2칸으로 다시 찍는다. 4칸 리포에서 값 하나를 바꾸면 파일 전체가 재들여쓰기된 PR이 나가므로
- * 원본에서 관측한다 (ARCHITECTURE §1.4 "표현은 원본에서"). 들여쓴 첫 줄이 구조의 첫 자식이다.
- */
-function indentOf(text: string): number {
-  for (const line of text.split("\n")) {
-    const m = /^( +)\S/.exec(line);
-    if (m?.[1]) return m[1].length;
-  }
-  return 2;
+type Replacement = { start: number; end: number; text: string; indent?: number };
+
+/** CST는 문자열 타입 판정을 하지 않으므로 스키마 판정은 serializer에 맡긴다. */
+function flowString(value: string, doc: Document, type?: Scalar.Type): string {
+  return stringify(value, {
+    version: doc.directives?.yaml.version ?? "1.2",
+    defaultStringType: type === "QUOTE_SINGLE" ? "QUOTE_SINGLE" : type === "QUOTE_DOUBLE" || value.includes("\n") ? "QUOTE_DOUBLE" : "PLAIN",
+    blockQuote: false,
+    doubleQuotedAsJSON: true,
+    collectionStyle: "flow",
+    lineWidth: 0,
+  }).slice(0, -1);
 }
 
-/**
- * 시퀀스를 부모 키보다 들여썼는가.
- *
- * ⚠️ **`yaml`의 `indentSeq` 기본값이 `true`라 `- item`을 한 단 들여쓴다.** Rails 로케일 파일은
- * 부모와 **같은 열**에 쓰므로, 키 하나를 편집하면 그 파일의 시퀀스 줄이 전부 밀린다 — 7차
- * 재측정의 새 지표(1키 편집 → hunk 수)가 yaml 리포 29개 중 9개에서 이걸 잡았다.
- *
- * 판정: `key:`로 끝나는 줄 바로 다음의 `- ` 줄을 찾아 두 들여쓰기를 견준다. 못 찾으면 기본값을
- * 그대로 쓴다 — 시퀀스가 없으면 이 값이 출력에 영향을 주지 않는다.
- */
-function indentsSeq(text: string): boolean | undefined {
-  const lines = text.split("\n");
-  for (let i = 0; i < lines.length - 1; i += 1) {
-    const parent = /^( *)[^\s#-][^:]*:\s*$/.exec(lines[i] ?? "");
-    if (!parent) continue;
-    const item = /^( *)- /.exec(lines[i + 1] ?? "");
-    if (!item) continue;
-    return (item[1] ?? "").length > (parent[1] ?? "").length;
+function scalarReplacement(source: string, doc: Document, node: Scalar, value: string): Replacement {
+  const [start, end] = node.range!;
+  const token = node.srcToken;
+  const newline = source.includes("\r\n") ? "\r\n" : "\n";
+  if (token?.type === "block-scalar") {
+    const header = CST.stringify(token.props[0]!);
+    const explicit = /[1-9]/.exec(header)?.[0];
+    let indent = explicit ? token.indent + Number(explicit)
+      : /^( *)\S/m.exec(token.source)?.[1]?.length ?? token.indent + 2;
+    /*
+      ⚠️ **9는 YAML 명시 들여쓰기 지시자가 한 자리이기 때문이다** (`|4` · `>2` — 1~9만 쓸 수 있다).
+      원본에서 관측한 들여쓰기가 부모보다 9를 넘으면 **그 폭을 지시자로 표현할 방법이 없고**,
+      선행 공백·개행으로 시작하는 값은 지시자가 없으면 첫 줄이 들여쓰기로 먹혀 값이 달라진다.
+      그 조합에서만 기본값(+2)으로 내린다 — 표현할 수 없는 폭을 고집하면 값이 깨진다.
+    */
+    if (!explicit && indent - token.indent > 9 && /^[ \n]/.test(value)) indent = token.indent + 2;
+    const rendered = CST.createScalarToken(value, {
+      type: value.trim() === "" ? "QUOTE_DOUBLE" : node.type, indent, end: [],
+    });
+    const suffix = token.props.slice(1).map((part) => CST.stringify(part)).join("");
+    let text: string;
+    if (rendered.type === "block-scalar") {
+      const generated = CST.stringify(rendered.props[0]!);
+      // 명시적 폭은 부모와의 차이다. CST 생성기는 선행 공백이 있으면 항상 2를 낸다.
+      const digit = explicit ?? (/[1-9]/.test(generated) ? String(indent - token.indent) : "");
+      const chomp = /[+-]/.exec(generated)?.[0] ?? "";
+      // keep은 range 밖의 빈 줄까지 값으로 흡수한다. 범위를 넓히면 다른 삽입과 겹치므로
+      // 이 경계에서만 인용해 요청값과 원본 빈 줄을 독립적으로 보존한다.
+      if (chomp === "+" && /^[ \t]*\r?\n/.test(source.slice(end))) {
+        return { start, end, text: flowString(value, doc, "QUOTE_DOUBLE") + suffix };
+      }
+      text = generated[0] + digit + chomp + suffix + (suffix.endsWith("\n") ? "" : newline)
+        + rendered.source.replace(/\n/g, newline);
+      if (!source.slice(start, end).endsWith("\n") && !value.endsWith("\n")) text = text.slice(0, -newline.length);
+    } else {
+      text = rendered.source + suffix;
+    }
+    return { start, end, text };
   }
-  return undefined;
+  // 흐름 컬렉션에서도 안전한 표현을 쓴다. 콤마·대괄호가 값에서 구조로 바뀌면 안 된다.
+  let text = flowString(value, doc, node.type);
+  const indent = (token && "indent" in token ? token.indent : 0) + 2;
+  text = text.replace(/\n/g, newline + " ".repeat(indent));
+  if (start === end) {
+    if (/[^\s[{,]/.test(source[start - 1] ?? "")) text = " " + text;
+    if (source[start] === "#") text += " ";
+  }
+  return { start, end, text };
 }
 
-/**
- * 플로우 컬렉션(`[a, b]`)의 괄호 안에 여백을 두는가.
- *
- * ⚠️ **`yaml`의 `flowCollectionPadding` 기본값이 `true`라 `[ a, b ]`로 찍는다.** 손으로 쓴 YAML은
- * 거의 여백을 두지 않으므로, 키 하나를 편집하면 그 파일의 모든 플로우 컬렉션 줄이 바뀐다 —
- * redmine의 `day_names`·`month_names` 넷이 그렇게 밀렸다 (7차 측정).
- */
-function padsFlow(text: string): boolean | undefined {
-  const m = /(?:^|:\s)\[(\s?)\S/m.exec(text);
-  return m === null ? undefined : m[1] === " ";
+/** 기존 맵의 끝에만 새 항목을 더한다. 기존 노드는 직렬화하지 않는다. */
+function insertion(source: string, doc: Document, map: YAMLMap | null, entries: [string, string][]): Replacement {
+  const token = map?.srcToken;
+  const newline = source.includes("\r\n") ? "\r\n" : "\n";
+  const pairs = entries.map(([key, value]) => `${flowString(key, doc)}: ${flowString(value, doc)}`);
+  if (map?.flow) {
+    const last = map.items.at(-1);
+    const node = last?.value ?? last?.key;
+    const at = node && typeof node === "object" && "range" in node && Array.isArray(node.range)
+      ? node.range[1] as number : map.range![0] + 1;
+    return { start: at, end: at, indent: token && "indent" in token ? token.indent : 0, text: (last ? ", " : "") + pairs.join(", ") };
+  }
+  const at = map?.range?.[1] ?? doc.range![1];
+  const width = token && "indent" in token ? token.indent : 0;
+  const indent = " ".repeat(width);
+  const text = pairs.map((pair) => indent + pair.replace(/\n/g, newline + indent + "  ")).join(newline);
+  return {
+    start: at, end: at, indent: width,
+    text: (at > 0 && source[at - 1] !== "\n" ? newline : "") + text
+      + (at < source.length || source.endsWith("\n") ? newline : ""),
+  };
 }
 
 /**
@@ -292,7 +332,7 @@ function writeWithErrors(
 
   let doc: Document;
   try {
-    doc = parseDocument(file.content, PARSE_OPTS);
+    doc = parseDocument(file.content, { ...PARSE_OPTS, keepSourceTokens: true });
   } catch (cause) {
     return {
       content: file.content,
@@ -318,7 +358,7 @@ function writeWithErrors(
     wanted.set(e.key, e.message);
   }
 
-  let changed = false;
+  const replacements: Replacement[] = [];
   const errors: AdapterError[] = [];
   const missing: string[] = [];
   for (const [key, value] of wanted) {
@@ -327,8 +367,7 @@ function writeWithErrors(
     const node = resolveLast(doc, [...prefixPath, key]) ?? resolveLast(doc, [...prefixPath, ...key.split(SEP)]);
     if (isScalar(node)) {
       if (node.value !== value) {
-        node.value = value;
-        changed = true;
+        replacements.push(scalarReplacement(file.content, doc, node, value));
       }
       continue;
     }
@@ -342,34 +381,45 @@ function writeWithErrors(
     missing.push(key);
   }
 
-  // 없는 키는 삽입한다 (ARCHITECTURE §1.4). **정렬 순서로 넣어야 결정적이다.**
+  // 같은 위치의 삽입을 묶고 정렬해 입력 순서와 관계없이 같은 바이트를 낸다.
+  const additions = new Map<YAMLMap | null, [string, string][]>();
   for (const key of missing.sort(compareKeys)) {
-    const value = wanted.get(key);
-    if (value === undefined) continue;
-    doc.setIn(insertPath(doc, prefixPath, key), value);
-    changed = true;
+    const value = wanted.get(key)!;
+    const path = insertPath(doc, prefixPath, key);
+    const name = path.pop()!;
+    const map = resolveLast(doc, path);
+    const emptyRoot = path.length === 0 && (map === null
+      || (isScalar(map) && map.value === null && !map.srcToken));
+    /*
+      ⚠️ **생산자를 못 찾은 방어다** (2026-09-16 리뷰). `insertPath`가 **맵인 동안만** 내려가므로 여기
+      남는 것은 둘뿐인데 — 루트가 맵이 아닌 파일은 `read`가 `root-not-object`로 먼저 떨어뜨려 write에
+      오지 않고, `keepSourceTokens: true`로 파싱한 맵은 `srcToken`을 늘 가진다. 부모가 스칼라·시퀀스·
+      알리아스인 경우는 `insertPath`가 평평한 점 키로 떨어뜨려 **이 분기에 닿지 않는다**(실측).
+      ⚠️ **그래서 코드를 `write-slot-missing`으로 바꾸지 않는다** — 도달 불가한 라벨을 하나 더 만드는
+      일이고, 그것이 POSTMORTEM 2026-09-08이 기록한 함정이다(도달 불가한 갈래를 겨냥한 테스트가
+      1년치 green이었다). 방어는 남기되 **검증된 배정인 척하지 않는다.**
+    */
+    if (!emptyRoot && (!isMap(map) || !map.range || !map.srcToken)) {
+      errors.push({ path: file.path, code: "write-slot-not-scalar", key });
+      continue;
+    }
+    const parent = isMap(map) ? map : null;
+    const entries = additions.get(parent) ?? [];
+    entries.push([name, value]);
+    additions.set(parent, entries);
   }
+  for (const [map, entries] of additions) replacements.push(insertion(file.content, doc, map, entries));
 
-  // 값이 안 바뀌면 원본을 그대로 돌려준다 — 재직렬화가 스타일을 정규화하지 않게 한다.
-  // 바뀌면: 들여쓰기는 원본에서, **접기는 끈다**(`lineWidth: 0`). 기본 80칸에서 편집하지 않은
-  // 긴 plain 스칼라까지 접혀 나가 "값만 바꾼다"가 깨진다 — 픽스처가 전부 80자 미만이라 보이지
-  // 않았다 (POSTMORTEM 2026-09-03 "픽스처가 한 스타일이면 그 축은 검증되지 않은 것").
-  if (!changed) return { content: file.content, errors };
-  // ⚠️ **`doc.toString()`은 문서 전체를 다시 찍는다 — 진짜 수술적 치환이 아니다.** 옵션으로 되돌릴
-  // 수 있는 축(들여쓰기·줄 접기·시퀀스 들여쓰기·플로우 여백)만 원본에서 관측해 맞춘다. 콜론 뒤
-  // 정렬 공백(`one:   "값"`)처럼 AST에 남지 않는 축은 이 방식으로 보존할 수 없다 —
-  // 노드의 `range`로 원본 문자열을 직접 갈아끼우는 방식만이 답이고, 그건 별 기능이다 (§13).
-  const seq = indentsSeq(file.content);
-  const pad = padsFlow(file.content);
-  return {
-    content: doc.toString({
-      indent: indentOf(file.content),
-      lineWidth: 0,
-      ...(seq === undefined ? {} : { indentSeq: seq }),
-      ...(pad === undefined ? {} : { flowCollectionPadding: pad }),
-    }),
-    errors,
-  };
+  // 뒤에서 치환해야 앞 노드의 range가 이동하지 않는다. 같은 끝 위치는 부모를 먼저 넣어
+  // 자식 삽입이 부모보다 앞에 남게 한다. 빈 스칼라 치환은 같은 위치의 모든 삽입 뒤에
+  // 적용해야 값이 원래 키 옆에 남는다. indent는 맵 삽입에만 있다. 변경 0건이면 원본 그대로다.
+  let content = file.content;
+  for (const edit of replacements.sort((a, b) => b.start - a.start || b.end - a.end
+    || Number(a.indent === undefined) - Number(b.indent === undefined)
+    || (a.indent ?? 0) - (b.indent ?? 0))) {
+    content = content.slice(0, edit.start) + edit.text + content.slice(edit.end);
+  }
+  return { content, errors };
 }
 
 /**

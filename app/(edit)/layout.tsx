@@ -20,12 +20,10 @@ import { loadMemberships } from "@/lib/keys/query";
  * `docs/POSTMORTEM.md` 2026-08-31 항목. 렌더 전 차단은 미들웨어가 하고, 여기서는 `redirect()`를
  * **던져** 응답을 중단시킨다(조건부 렌더가 아니다).
  *
- * ⚠️ **`{children}`을 흰 패널로 감싸지 않는다.** 감싸면 오른쪽 패널(`ProjectPanel`)이 그 안에 갇혀
- * "패널 둘이 gap 8로 나란히"가 성립하지 않는다 — `ContentPanel`은 각 갈래의 레이아웃이 들고,
- * 라우트마다 정확히 하나인지는 `__tests__/shell-layout.test.ts`가 체인을 훑어 센다.
- *
- * ⚠️ **Publish 버튼과 breadcrumb이 여기 없다.** 그 조작은 프로젝트에 속하는데 이 레이아웃은
- * `/projects` 목록도 감싸므로 slug가 없다 — 8-3이 그것을 `projects/[slug]/layout.tsx`로 옮긴다.
+ * ⚠️ **`{children}`을 흰 패널로 감싸지 않는다.** 각 갈래가 자기 `ContentPanel`을 들고, 여기서 한 겹
+ * 더 감싸면 흰 패널이 겹쳐 padding이 두 배가 된다. `shell-layout.test.ts`의 "라우트마다 정확히 하나"가
+ * 그 규칙을 센다 — 하나라도 빠지면 그 화면만 캔버스 위에 맨몸으로 뜬다(빈 화면이 아니라 **어긋난**
+ * 화면이라 눈에 잘 안 띈다).
  */
 export default async function EditLayout({ children }: { children: React.ReactNode }) {
   const session = await readSession();

@@ -42,12 +42,14 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * ⚠️ **진행 표시를 여기 세우지 않는다** — 이 자리는 결과의 자리이고, 진행 Alert를 세웠다가 결과
  * Alert로 바꾸면 같은 자리에서 뜻이 두 번 바뀐다. 진행은 트리거가 든다 (`sync-button.tsx`).
  */
-export function SyncResult({ outcome, slug, branch, onRetry, onDismiss }: {
+export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = false, onDismiss }: {
   outcome: RepositoryImportOutcome | null;
   slug: string;
   branch: string;
   /** 읽기 실패·`superseded`에만 선다. Home의 실패 배너와 **같은 라벨·같은 Action**이다. */
   onRetry?: () => void;
+  /** ⚠️ 그 Action이 지금 잠겨 있나 (Publish 진행 중) — 같은 자리 셋이 같이 움직여야 한다. */
+  retryDisabled?: boolean;
   onDismiss?: () => void;
 }) {
   if (outcome === null) return null;
@@ -77,7 +79,13 @@ export function SyncResult({ outcome, slug, branch, onRetry, onDismiss }: {
   // `invalid-format`에는 재시도가 없다 — 포맷을 고치기 전에는 다시 눌러도 결과가 같다.
   const retry = summary.unreadable.length + summary.superseded.length > 0;
   const partialFailures = outcome.surfaces.filter(surface => surface.status === "partial").reduce((sum, surface) => sum + surface.failed, 0);
-  const incidents = [...outcome.surfaces].filter(surface => surface.status !== "imported")
+  /*
+    ⚠️ **말할 것이 없는 사고는 자리를 만들지 않는다** — 중복 키만으로도 `partial`이 된다
+    (`buildPushPayload`의 `duplicateKeys`는 어댑터 오류가 아니라 `lastWins`가 조용히 흡수한다).
+    그 표면은 사유도 파일 오류도 없어서, 거르지 않으면 **빈 `<div>`**가 남는다.
+  */
+  const incidents = [...outcome.surfaces]
+    .filter(surface => surface.status !== "imported" && (surface.reason !== null || surface.errors.length > 0))
     .sort((a, b) => a.surfaceSlug < b.surfaceSlug ? -1 : a.surfaceSlug > b.surfaceSlug ? 1 : 0);
   /**
    * ⚠️ **사고가 없으면 `children`을 넘기지 않는다** — 빈 배열도 `Alert`의 본문 `<div>`를 세워
@@ -89,12 +97,20 @@ export function SyncResult({ outcome, slug, branch, onRetry, onDismiss }: {
     {partialFailures > 0 && <p>{m.repositorySync.partial(partialFailures)}</p>}
     {incidents.map(surface =>
       <div key={surface.surfaceSlug} data-reason={surface.reason ?? undefined}>
-        <p>{m.repositorySync.cause(<span className="text-mono">{surface.surfaceSlug}</span>, reasonMessage(surface.reason ?? "import-failed"))}</p>
+        {/*
+          ⚠️ **사유가 없으면 원인 줄을 만들지 않는다** — `partial`은 서버에서 `reason`이 **언제나
+          `null`**이고(`lib/import/run.ts`의 `finishSurface`는 `prepared.kind === "failed"`에만 사유를
+          단다), 폴백을 쓰면 `{slug} — The last import did not finish.`가 선다. **그 임포트는 끝났고
+          키는 들어갔다** — 바로 위 헤드라인이 `Synced 18 keys`라 한 Alert 안에서 두 문장이 서로를
+          부정한다 (2026-09-16 브라우저 실측). 이 갈래의 원인은 아래 파일 줄이 든다.
+        */}
+        {surface.reason !== null &&
+          <p>{m.repositorySync.cause(<span className="text-mono">{surface.surfaceSlug}</span>, reasonMessage(surface.reason))}</p>}
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;
   return <Alert variant={summary.tone} role="status" title={title} onDismiss={onDismiss}
-    actions={retry && onRetry ? <Button onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
+    actions={retry && onRetry ? <Button disabled={retryDisabled} onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
     {details}
   </Alert>;
 }

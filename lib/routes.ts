@@ -39,10 +39,35 @@ export type TranslationsQuery = {
   /** 키·**선택된 로케일 값**의 부분 일치. */
   q?: string;
   /**
-   * ⚠️ **`state`가 없다** (8-4 — spec Q3). 시안의 칩 행이 정확히 세 종류라 상태 필터의 부재가
-   * 의도로 읽힌다. 행 단위 좁힘 대신 **섹션 안 pending 우선 정렬**이 그 자리를 갚는다.
+   * 파이프라인 상태로 행을 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (project-home §9.7).
+   *
+   * ⚠️ **8-4가 이 키의 부재를 의도로 적었고, 2026-09-15에 뒤집었다.** 그때의 근거는 "시안의 칩 행이
+   * 정확히 세 종류라 부재가 의도로 읽힌다"였는데, **Home이 그 수를 누를 수 있는 카드로 만들면서
+   * 착지할 자리가 필요해졌다** — 카드가 목적지 없이 수만 말하면 개요가 일로 이어지지 않는다
+   * (PRODUCT §7.7 결정 1의 대가). `pendingFirst`(섹션 안 우선 정렬)는 그대로 남는다: 그것은
+   * 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다.
+   *
+   * ⚠️ **수가 맞지 않는 자리가 있다** — 합계는 프로젝트 전체이고 이 좁힘은 **한 표면**이다
+   * (`routes.translations`가 기본 표면으로 redirect한다). 카드의 보조 줄 `across 3 surfaces`가
+   * 그 사실을 **미리** 말한다.
    */
+  state?: KeyState;
 };
+
+/**
+ * 파이프라인 네 구간. **URL이 사용자가 읽는 자리라 화면의 낱말을 쓴다** — 코드 쪽 키
+ * (`toTranslate`)는 목록 화면과 공유하는 사전 키라 다르다.
+ *
+ * ⚠️ **남이 정한 값이다** — `searchParams`에서 오므로 배열 `includes`로 거른다. 사전을 직접
+ * 인덱싱하면 `Object.prototype`에서 찾아진 값이 판정 자리에 온다 (POSTMORTEM 2026-09-08·09).
+ */
+export const KEY_STATES = ["new", "untranslated", "review", "unsent"] as const;
+
+export type KeyState = (typeof KEY_STATES)[number];
+
+export function isKeyState(raw: string | undefined): raw is KeyState {
+  return raw !== undefined && (KEY_STATES as readonly string[]).includes(raw);
+}
 
 /**
  * `undefined`인 파라미터를 **지운다** — `?ns=undefined`가 URL에 실리면 서버가 그것을 이름으로 읽어

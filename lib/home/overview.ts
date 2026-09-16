@@ -32,62 +32,86 @@ export type RecentEdit = {
 };
 
 /**
- * 활동 한 줄. **셋뿐인 이유는 `SyncRun`이 아직 없기 때문이다** (ARCHITECTURE §5.1 · §7.7 결정 3) — 7단계가
- * 그 테이블을 세우면 이 블록이 거기로 갈아탄다. 지금 낼 수 있는 것은 "변경 이력"이 아니라 그 부분집합이다.
+ * 활동 한 줄 — **갈래 넷** (project-home design §3.4).
+ *
+ * ⚠️ **`{who} added the {surface} surface`는 만들지 않는다.** 출처가 아예 없다 — `SyncRun`은 Publish
+ * 전용이고 `trigger`/`status` enum이 그 가정 위에 서므로, 표면 추가 사건을 실으려면 그 테이블의
+ * 계약을 넓혀야 한다. 캔버스와의 **의도된 이탈**이다 (`docs/DESIGN.md`).
+ *
+ * ⚠️ **`sync_failed`는 마지막 하나뿐이다** — `lastImportFailedAt`이 컬럼 하나라 7일 창에 실패가
+ * 둘이면 하나만 보인다. **이력이 아니다** (PRODUCT §4.1).
  */
 export type ActivityItem =
   | ({ kind: "edit" } & RecentEdit)
-  | { kind: "push"; at: Date }
-  | { kind: "publish"; at: Date; prUrl: string | null };
+  /** ⚠️ **`newKeys`는 그 Sync가 들여온 키 수다** — 표면마다 갈리므로 표면도 함께 든다. */
+  | { kind: "push"; at: Date; surfaceSlug: string; newKeys: number }
+  /** ⚠️ **`changed`는 파일 수다** (`SyncRun.changed`) — 칸 수가 아니고 문장이 그것을 그대로 말한다. */
+  | { kind: "publish"; at: Date; prNumber: number | null; changed: number | null }
+  | { kind: "sync_failed"; at: Date; surfaceSlug: string };
 
 /**
  * ⚠️ **동시각 정렬이 결정적이어야 한다.** 같은 DB 상태가 같은 화면을 내야 하고, 안 그러면 새로고침마다
  * 순서가 바뀌는 목록이 된다 — export 결정성과 같은 축이다. 리포 수준 사건이 그 시각의 편집 **위**에
  * 온다: 그것들이 편집을 감싸는 사건이다.
  */
-const RANK: Record<ActivityItem["kind"], number> = { publish: 0, push: 1, edit: 2 };
+const RANK: Record<ActivityItem["kind"], number> = { publish: 0, push: 1, sync_failed: 2, edit: 3 };
+
+/**
+ * ⚠️ **상한이 건수에서 기간으로 바뀌었다** (spec §2.2-3). 8건 고정이면 "오늘 조용했다"와 "7일
+ * 조용했다"가 화면에서 구별되지 않는다 — 빈 상태의 설명문이 이 수를 그대로 말하므로 상수가 정본이다.
+ */
+export const ACTIVITY_WINDOW_DAYS = 7;
+
+/** ⚠️ **건수는 자르는 축이 아니라 방어선이다** — 903키 리포에서 편집이 하루에 수백 건 난다. */
+export const ACTIVITY_LIMIT = 20;
 
 export function recentActivity(input: {
   edits: readonly RecentEdit[];
-  /** CI push. 첫 적재 전이면 null이다. */
-  lastCommitAt: Date | null;
-  /** 마지막으로 **보낸** 시각. ⚠️ `skipped`는 이 값을 안 건드린다 (design §3.4). */
-  lastPublishedAt: Date | null;
-  lastPrUrl: string | null;
+  /** 표면별 마지막 CI push. 첫 적재 전인 표면은 애초에 오지 않는다. */
+  pushes: readonly { surfaceSlug: string; at: Date; newKeys: number }[];
+  /** ⚠️ `skipped`는 사건이 아니다 — 보낸 것이 없으므로 호출부가 성공한 실행만 싣는다. */
+  publishes: readonly { at: Date; prNumber: number | null; changed: number | null }[];
+  syncFailures: readonly { surfaceSlug: string; at: Date }[];
+  /** 창의 기준. **서버가 한 번 만든 값**이라야 항목마다 경계가 갈리지 않는다. */
+  now: Date;
+  windowDays: number;
   limit: number;
 }): ActivityItem[] {
-  const items: ActivityItem[] = input.edits.map((edit) => ({ kind: "edit", ...edit }));
-  // ⚠️ **시각이 없는 출처는 사건이 아니다.** `lastPrUrl`만 있는 상태는 존재하지 않아야 하지만,
-  // 있더라도 "언제"를 모르는 것을 목록에 세우지 않는다.
-  if (input.lastCommitAt !== null) items.push({ kind: "push", at: input.lastCommitAt });
-  if (input.lastPublishedAt !== null) {
-    items.push({ kind: "publish", at: input.lastPublishedAt, prUrl: input.lastPrUrl });
-  }
+  const items: ActivityItem[] = [
+    ...input.edits.map((edit): ActivityItem => ({ kind: "edit", ...edit })),
+    /**
+     * ⚠️ **들여온 키가 0이면 사건이 아니다.** `lastCommitAt`은 표면마다 상시로 서 있어 그 줄이
+     * 영구히 남는데, `CI synced 0 new keys into web`은 아무것도 말하지 않는다 — 마지막 Sync 시각을
+     * 알아야 하는 자리는 메타 열의 `Last sync`다.
+     */
+    ...input.pushes.flatMap((push): ActivityItem[] => (push.newKeys === 0 ? [] : [{ kind: "push", ...push }])),
+    ...input.publishes.map((publish): ActivityItem => ({ kind: "publish", ...publish })),
+    ...input.syncFailures.map((failure): ActivityItem => ({ kind: "sync_failed", ...failure })),
+  ];
+
+  const since = input.now.getTime() - input.windowDays * 24 * 60 * 60 * 1000;
+  const within = items.filter((item) => item.at.getTime() >= since);
 
   /**
-   * ⚠️ **DB가 준 순서에 기대지 않는다.** `Array.sort`는 안정 정렬이라, 시각·종류가 같은 편집 둘의
+   * ⚠️ **DB가 준 순서에 기대지 않는다.** `Array.sort`는 안정 정렬이라, 시각·종류가 같은 항목 둘의
    * 순서를 **입력 그대로 보존한다** — 조회의 `orderBy`에 보조 키가 없으면 그것이 요청마다 다를 수
    * 있고, 그러면 같은 DB 상태가 다른 화면을 낸다. 조회 쪽에도 보조 키를 뒀지만(어느 N건을 고를지가
    * 그것으로 정해진다) **보증은 여기 있어야 테스트가 잡는다.**
    */
-  items.sort(
-    (a, b) =>
-      b.at.getTime() - a.at.getTime() ||
-      RANK[a.kind] - RANK[b.kind] ||
-      // 편집끼리만 남는 갈래다 — push·publish는 종류가 유일해 위에서 갈린다.
-      compareEdit(a, b),
-  );
-  // ⚠️ **자르는 것은 병합 뒤다.** 편집만 먼저 자르면 push·publish가 항상 밀려나 화면에서 사라진다.
-  return items.slice(0, input.limit);
+  within.sort((a, b) => b.at.getTime() - a.at.getTime() || RANK[a.kind] - RANK[b.kind] || compareSame(a, b));
+  // ⚠️ **자르는 것은 병합 뒤다.** 편집만 먼저 자르면 나머지 갈래가 항상 밀려나 화면에서 사라진다.
+  return within.slice(0, input.limit);
 }
 
 /**
- * 같은 시각·같은 종류의 편집 둘. **키 → 로케일 코드 유닛 비교**다 — `localeCompare`는 로케일 설정에
+ * 같은 시각·같은 종류 둘. **표면 → 키 → 로케일 코드 유닛 비교**다 — `localeCompare`는 로케일 설정에
  * 따라 답이 달라서 이 리포가 export 정렬에서도 쓰지 않는다 (ARCHITECTURE §1.1).
  */
-function compareEdit(a: ActivityItem, b: ActivityItem): number {
-  if (a.kind !== "edit" || b.kind !== "edit") return 0;
+function compareSame(a: ActivityItem, b: ActivityItem): number {
+  // publish는 시각 하나에 하나뿐이라 기울일 축이 없다.
+  if (a.kind === "publish" || b.kind === "publish") return 0;
   if (a.surfaceSlug !== b.surfaceSlug) return a.surfaceSlug < b.surfaceSlug ? -1 : 1;
+  if (a.kind !== "edit" || b.kind !== "edit") return 0;
   if (a.key !== b.key) return a.key < b.key ? -1 : 1;
   if (a.locale === b.locale) return 0;
   return a.locale < b.locale ? -1 : 1;

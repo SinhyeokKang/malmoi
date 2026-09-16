@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import { SHELL_HANDLE_PX, SHELL_SIDEBAR_PX, ShellPanels } from "@/components/shell/shell-panels";
 
 import { ContentPanel } from "@/components/shell/content-panel";
-import { ProjectPanel } from "@/components/shell/project-panel";
 
 import { find, render } from "./helpers/dom";
 
@@ -42,7 +41,7 @@ describe("ShellPanels — LNB 구분선", () => {
     }
   });
 
-  /** LNB는 시안 `212:944`의 240에서 시작하고 200~320 사이에서만 움직인다(우측 `ProjectPanel`과 같은 상한). */
+  /** LNB는 시안 `212:944`의 240에서 시작하고 200~320 사이에서만 움직인다. */
   it("치수가 200 / 240 / 320이다", () => {
     expect(SHELL_SIDEBAR_PX).toEqual({ min: 200, default: 240, max: 320 });
   });
@@ -71,14 +70,19 @@ describe("ShellPanels — LNB 구분선", () => {
     expect(container.textContent).toContain("content");
   });
 
-  // jsdom cannot measure layout; assert the placement contract for overlapping route trees.
-  it.each([false, true])("전환 중 콘텐츠는 같은 셀, 프로젝트 패널만 간격을 든다 (project=%s)", async (withProject) => {
+  /**
+   * jsdom cannot measure layout; assert the placement contract for overlapping route trees.
+   *
+   * ⚠️ **오른쪽 프로젝트 패널을 지운 뒤에도 grid를 유지한다** (2026-09-16) — 이 검사가 지키는 것은
+   * 그 패널이 아니라 **전환 중 콘텐츠 패널 둘이 같은 셀을 쓴다**는 것이다. flex로 되돌리면 두
+   * `ContentPanel`이 폭을 나눠 전환 한 프레임 동안 화면이 반으로 갈린다.
+   */
+  it("전환 중 콘텐츠 패널 둘은 같은 셀을 쓴다", async () => {
     const { container } = await render(h(ShellPanels, {
       sidebar: h("aside", null, "nav"),
       children: h(Fragment, null,
         h(ContentPanel, null, "outgoing"),
         h(ContentPanel, null, "incoming"),
-        withProject ? h(ProjectPanel) : null,
       ),
     }));
     const mains = [...container.querySelectorAll("main")];
@@ -94,14 +98,7 @@ describe("ShellPanels — LNB 구분선", () => {
       expect(main.classList.contains("col-start-1")).toBe(true);
       expect(main.classList.contains("row-start-1")).toBe(true);
     }
-    const project = parent?.querySelector("aside");
-    if (withProject) {
-      expect(project?.classList.contains("col-start-2")).toBe(true);
-      expect(project?.classList.contains("row-start-1")).toBe(true);
-      expect(project?.classList.contains("ml-2")).toBe(true);
-      expect(project?.classList.contains("w-80")).toBe(true);
-    } else {
-      expect(project).toBeNull();
-    }
+    // 둘째 열은 비어 있다 — 빈 열의 간격이 남지 않도록 grid 자체에 gap을 두지 않는 이유다.
+    expect(parent?.querySelector("aside")).toBeNull();
   });
 });

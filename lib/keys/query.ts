@@ -103,7 +103,7 @@ export async function loadKeys(
     where: { projectId, surfaceId },
     orderBy: { key: "asc" },
     select: {
-      id: true, key: true, namespace: true, description: true, orphaned: true,
+      id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
       surface: { select: { archivedAt: true } },
       translations: {
         select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true },
@@ -129,6 +129,7 @@ export async function loadKeys(
       namespace: k.namespace,
       description: k.description,
       orphaned: k.orphaned,
+      createdAt: k.createdAt,
       cells,
       refs: k.refs,
     };
@@ -602,4 +603,112 @@ export async function loadProjectListAggregates(
     unsent: new Map(unsentRows.map((r) => [r.projectId, r.n])),
     unsentSurfaces: new Map(unsentRows.map((r) => [r.projectId, r.surfaceSlug])),
   };
+}
+
+/**
+ * ── Home(`/projects/:slug`) 전용 조회 넷 (project-home design §3.3.1·§3.4) ──────────────
+ *
+ * ⚠️ **전부 `projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이고, 인덱스가
+ * 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이다 (CLAUDE.md).
+ */
+
+/** 검토 대기 항목 하나의 재료. `updatedBy`는 **그 로케일의 가장 최근 편집 행**의 값이다. */
+export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count: number; at: Date; updatedBy: string | null };
+
+/**
+ * 로케일별 검토 대기 수 + **그 로케일의 마지막 편집자·시각** (design §3.3.1의 구멍 ①).
+ *
+ * ⚠️ **`loadRecentEdits`로는 안 된다** — 그쪽은 프로젝트 전체의 최근 N건이라 검토가 밀린 로케일이
+ * 통째로 빠질 수 있다. 여기 필요한 것은 "그 로케일에서 마지막으로 만진 사람"이고, 그것은 창과
+ * 무관하게 존재한다.
+ *
+ * ⚠️ **저자를 검토 대기 행에서 뽑지 않는다** (2026-09-15 Codex 리뷰 🟡3). `needsReview = true`는
+ * **push가 세우는 플래그**이고 같은 쓰기가 `updatedBy`를 비운다(불변식 2) — 그 행에서 저자를
+ * 찾으면 **거의 언제나 `null`이라 `— last edited by …` 절이 영영 안 뜬다.** 파티션을 그 로케일의
+ * **값이 있는 셀 전체**로 두고, 대표 행은 `updatedBy IS NOT NULL` 중 최신을 고른다.
+ *
+ * ⚠️ **정렬 키(`at`)는 대표 행의 시각이 아니라 파티션의 `MAX`다** — 항목이 서는 축은 "그 로케일에
+ * 마지막으로 무슨 일이 있었나"이고, 사람이 안 만진 로케일에서도 push 시각이 그 답이다.
+ *
+ * ⚠️ **한 왕복이다.** 창(window) 함수로 세고 `DISTINCT ON`으로 대표 행을 고른다 — 로케일마다
+ * 조회하면 59로케일 리포에서 그만큼 왕복이 붙는다 (POSTMORTEM 2026-09-05).
+ *
+ * ⚠️ **`ORDER BY`에 보조 키가 있다** — 같은 시각의 편집 둘이 있으면 어느 행의 `updatedBy`가 뽑힐지가
+ * 요청마다 달라지고, 그러면 같은 DB 상태가 다른 이름을 낸다.
+ *
+ * ⚠️ **`Locale`을 join해 orphaned 로케일을 뺀다 — `foldCells`와 같은 술어여야 한다.** 그 파일은
+ * 리포에서 사라졌고 번역 화면에서 그 행의 입력이 `disabled`다(ARCHITECTURE §5.5.16): 항목으로
+ * 세우면 번역자를 **편집할 수 없는 행**으로 데려가고, 카드의 수는 그것을 빼므로 **pill과 카드가
+ * 같은 화면에서 어긋난다** (code-review 2026-09-15 🔴1).
+ */
+export async function loadReviewAttention(prisma: PrismaClient, projectId: string): Promise<ReviewAttentionRow[]> {
+  const rows = await prisma.$queryRaw<{ surfaceId: string; localeCode: string; at: Date; updatedBy: string | null; n: number }[]>`
+    SELECT DISTINCT ON (t."surfaceId", t."localeCode")
+      t."surfaceId", t."localeCode",
+      MAX(t."updatedAt") OVER (PARTITION BY t."surfaceId", t."localeCode") AS "at",
+      t."updatedBy",
+      COUNT(*) FILTER (WHERE t."needsReview") OVER (PARTITION BY t."surfaceId", t."localeCode")::int AS n
+    FROM "Translation" t
+    JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
+    JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."id" = t."keyId"
+    JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode"
+    WHERE t."projectId" = ${projectId}
+      AND s."archivedAt" IS NULL
+      AND k."orphaned" = false
+      AND l."orphaned" = false
+      AND t."value" <> ''
+    ORDER BY t."surfaceId", t."localeCode", (t."updatedBy" IS NOT NULL) DESC, t."updatedAt" DESC, t."keyId" ASC`;
+  // 검토 대기가 0인 로케일은 항목이 아니다 — 파티션이 그 로케일 전체라 여기서 거른다.
+  return rows.flatMap((row) => (row.n === 0 ? [] : [{
+    surfaceId: row.surfaceId, localeCode: row.localeCode, count: row.n, at: row.at, updatedBy: row.updatedBy,
+  }]));
+}
+
+/**
+ * 표면별로 **마지막 Sync가 들여온 키 수** — 로그의 `CI synced {n} new keys into {surface}`.
+ *
+ * ⚠️ **`lastPulledAt` 기준의 ④와 다른 수다.** 저쪽은 "마지막 pull 이후 리포에서 들어온 것"이고
+ * 여기는 "마지막 Sync가 들여온 것"이다 — 카드와 로그가 말하는 시점이 다르므로 같은 수를 쓰면
+ * 둘 중 하나가 거짓이 된다.
+ */
+export async function loadLastSyncNewKeys(prisma: PrismaClient, projectId: string): Promise<Map<string, number>> {
+  const rows = await prisma.$queryRaw<{ surfaceId: string; n: number }[]>`
+    SELECT k."surfaceId", COUNT(*)::int AS n
+    FROM "StringKey" k
+    JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s."id" = k."surfaceId"
+    WHERE k."projectId" = ${projectId}
+      AND k."orphaned" = false
+      AND s."archivedAt" IS NULL
+      AND s."lastCommitAt" IS NOT NULL
+      AND k."createdAt" >= s."lastCommitAt"
+    GROUP BY k."surfaceId"`;
+  return new Map(rows.map((row) => [row.surfaceId, row.n]));
+}
+
+/** 되돌려보낸 실행 하나. **`prUrl`은 링크가 아니라 번호의 출처다** — 로그 줄은 번호만 쓴다. */
+export type PublishRun = { at: Date; prUrl: string | null; changed: number | null };
+
+/**
+ * 창 안의 **성공한** Publish (design §3.4).
+ *
+ * ⚠️ **`SUCCEEDED`만이다.** `skipped`는 보낸 것이 없어 사건이 아니고(`lastPublishedAt`도 안 건드린다),
+ * 실패는 `changed`가 `null`이라 문장이 "0 files changed"가 된다 — 실패엔 관측 자체가 없다.
+ *
+ * ⚠️ **`finishedAt`이 아니라 `startedAt`으로 좁힌다** — `@@index([projectId, startedAt])`를 역방향으로
+ * 탄다. 둘의 차이는 실행 시간뿐이고 이 창은 7일이다.
+ */
+export async function loadRecentPublishes(
+  prisma: PrismaClient,
+  projectId: string,
+  since: Date,
+  limit: number,
+): Promise<PublishRun[]> {
+  const rows = await prisma.syncRun.findMany({
+    where: { projectId, status: "SUCCEEDED", finishedAt: { not: null }, startedAt: { gte: since } },
+    orderBy: [{ startedAt: "desc" }, { id: "asc" }],
+    take: limit,
+    select: { finishedAt: true, prUrl: true, changed: true },
+  });
+  // `finishedAt`은 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
+  return rows.flatMap((row) => (row.finishedAt === null ? [] : [{ at: row.finishedAt, prUrl: row.prUrl, changed: row.changed }]));
 }

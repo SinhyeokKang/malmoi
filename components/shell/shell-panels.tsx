@@ -9,11 +9,19 @@ import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-s
 
 /**
  * LNB의 px 치수. **하한 200**은 nav 항목의 아이콘+라벨+배지가 유지되는 자리, **기본 240**은 시안
- * `212:944`(옛 `w-60`), **상한 320**은 우측 `ProjectPanel`과 **같은 값**이다 — 한 화면의 보조 패널
- * 둘이 서로 다른 임의 치수를 갖지 않는다 (DESIGN 규약 6).
+ * `212:944`(옛 `w-60`), **상한 320**은 2026-09-16까지 우측 프로젝트 패널과 맞춘 값이었다 — 그 패널을
+ * 지운 뒤에도 유지한다: LNB가 그보다 넓어져야 할 근거가 새로 생긴 것이 아니고, 상한을 올리면 가장
+ * 좁은 뷰포트에서 콘텐츠가 받는 폭이 함께 줄어든다.
  *
- * 가장 빡빡한 라우트(`[slug]` — `ProjectPanel` 320이 동시에 선다)에서 콘텐츠가 받는 폭은
- * `1264 − LNB − 8(핸들) − 8(gap) − 320`이라 608~688이다.
+ * ⚠️ **패널을 지워 콘텐츠가 320 + 8만큼 넓어졌다** — 1264에서 콘텐츠는 `1264 − LNB − 8(핸들)`이라
+ * **936~1056**이다(LNB 기본 240이면 1016).
+ *
+ * ⚠️ **그 폭을 카드 컨테이너 폭으로 바꿔 읽지 않는다** (2026-09-16 리뷰 🔴1 — 여기 그렇게 적었다가
+ * 틀렸다). Home 카운트 카드의 `@container/cards`는 **콘텐츠 패널이 아니라 본문 grid의 왼쪽 열**에
+ * 산다(`[slug]/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
+ * **374**(border 2 + `p-4` 32 + 메타 열 320 + gap 20)를 뺀 값이다 — 1280 실측 패널 1016 / 카드 642.
+ * **최소 대응 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
+ * POSTMORTEM 2026-09-15가 적은 실패 모양이 정확히 이것이다 — **재는 지점이 임계값 아래**였다.
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
 
@@ -35,7 +43,8 @@ const FALLBACK = panelConstraints(1280 - 16 - SHELL_HANDLE_PX, SHELL_SIDEBAR_PX)
  * 컴포넌트의 자식으로 넘기는 것은 유효하고, 그래야 셸의 서버 데이터 조회가 이쪽으로 끌려오지 않는다.
  *
  * ⚠️ **행의 `gap-2`가 사라지고 핸들 폭이 그 자리를 든다** — flex `gap` 안에 핸들을 끼우면 간격이
- * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치하고 `ProjectPanel`의 `ml-2`가 간격 8을 든다.
+ * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치한다 — 2026-09-16까지 둘째 열의 프로젝트 패널이
+ * `ml-2`로 간격을 들었고, 그 패널을 지운 지금도 grid를 유지한다(아래 전환 중 공존 근거).
  * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
  */
 export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
@@ -79,8 +88,8 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
   return (
     <div ref={measure} className="flex min-h-0 flex-1">
       {/*
-        ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ProjectPanel`의 오른쪽
-        그림자가 그룹 경계에서 잘린다. 셸 바깥의 `p-2`가 그 여백을 이미 들고 있다.
+        ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ContentPanel`의 `shadow-low`가
+        그룹 경계에서 잘린다. 셸 바깥의 `p-2`가 그 여백을 이미 들고 있다.
       */}
       <ResizablePanelGroup ref={groupRef} direction="horizontal" style={{ overflow: "visible" }}>
         <ResizablePanel
@@ -116,7 +125,12 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
           className="w-2"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
         />
-        {/* Keep transitioning content trees in one cell; the optional project panel owns the 8px spacing. */}
+        {/*
+          전환 중 콘텐츠 트리 둘을 한 셀에 둔다. ⚠️ **둘째 `auto` 열은 2026-09-16부터 비어 있다** —
+          우측 프로젝트 패널을 지웠다(DESIGN §6.55). 배치되는 아이템이 0이면 그 트랙은 0px이고
+          grid에 `gap`이 없어 잔여 여백도 없다. grid를 유지하는 이유는 그 열이 아니라 **두
+          `ContentPanel`이 폭을 나누지 않는 것**이다.
+        */}
         <ResizablePanel style={{ overflow: "visible" }} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]">{children}</ResizablePanel>
       </ResizablePanelGroup>
     </div>

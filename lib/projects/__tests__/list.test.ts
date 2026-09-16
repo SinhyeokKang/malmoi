@@ -10,6 +10,7 @@ import {
   projectGroup,
   projectStatus,
   rowBanner,
+  reviewByLocale,
   rowLocaleProgress,
   searchProjects,
   summaryQueue,
@@ -361,6 +362,47 @@ describe("rowLocaleProgress", () => {
 /**
  * **계정 합계 넷** (design §3.2). 검색 전 전체 멤버십 중 **보관하지 않은** 프로젝트의 값이다.
  */
+/**
+ * Home 카드의 보조 줄 `8 cells · 5 en, 3 ja` (project-home design §3.2). `rowReviewCounts`는 프로젝트
+ * 단위로 접어서 그 분해가 없었다 — **같은 `foldCells`를 쓰므로 "살아 있는 로케일만"이 한 벌로 남는다.**
+ */
+describe("reviewByLocale — 검토 대기의 로케일별 분해", () => {
+  const locales = [
+    { projectId: "p", surfaceId: "web", surfaceSlug: "web", code: "en", isBase: true },
+    { projectId: "p", surfaceId: "web", surfaceSlug: "web", code: "ja", isBase: false },
+    { projectId: "p", surfaceId: "emails", surfaceSlug: "emails", code: "ja", isBase: false },
+  ];
+  const cells = [
+    { projectId: "p", surfaceId: "web", localeCode: "en", needsReview: true, count: 5 },
+    { projectId: "p", surfaceId: "web", localeCode: "ja", needsReview: true, count: 2 },
+    { projectId: "p", surfaceId: "emails", localeCode: "ja", needsReview: true, count: 1 },
+    { projectId: "p", surfaceId: "web", localeCode: "ja", needsReview: false, count: 9 },
+  ];
+
+  it("표면을 가로질러 로케일 코드로 합친다 — 카드의 수와 같은 모집단이다", () => {
+    expect(reviewByLocale(locales, cells).get("p")).toEqual([{ code: "en", count: 5 }, { code: "ja", count: 3 }]);
+  });
+
+  /** 많은 쪽이 먼저다 — 보조 줄이 앞부터 잘리므로 큰 수가 화면에 남아야 한다. */
+  it("건수 내림차순, 동점은 코드 유닛 비교다", () => {
+    const tied = [
+      { projectId: "p", surfaceId: "web", localeCode: "ja", needsReview: true, count: 2 },
+      { projectId: "p", surfaceId: "web", localeCode: "en", needsReview: true, count: 2 },
+    ];
+    expect(reviewByLocale(locales, tied).get("p")).toEqual([{ code: "en", count: 2 }, { code: "ja", count: 2 }]);
+  });
+
+  /** ⚠️ orphaned 로케일의 셀은 ①에 없으므로 버려진다 — `rowReviewCounts`와 **같은 접기**다. */
+  it("살아 있지 않은 로케일의 셀은 세지 않는다", () => {
+    const stray = [{ projectId: "p", surfaceId: "web", localeCode: "fr", needsReview: true, count: 4 }];
+    expect(reviewByLocale(locales, stray).get("p")).toBeUndefined();
+  });
+
+  it("검토 대기가 없으면 항목이 없다", () => {
+    expect(reviewByLocale(locales, [{ projectId: "p", surfaceId: "web", localeCode: "en", needsReview: false, count: 5 }]).get("p")).toBeUndefined();
+  });
+});
+
 describe("summaryQueue", () => {
   const base = {
     projects: [{ projectId: "p", archived: false }],

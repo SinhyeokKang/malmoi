@@ -12,7 +12,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
-import { countUnpublished, loadKeys, loadProjectListAggregates } from "../query";
+import { reviewByLocale } from "@/lib/projects/list";
+import { countUnpublished, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
 import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
@@ -618,4 +619,79 @@ it("별도 연결에는 적재 중인 부분 프로젝트가 보이지 않는다
   }
   expect(await pending).toMatchObject({ ok: true });
   expect(await prisma.translation.count()).toBe(4);
+});
+
+/**
+ * **Home의 할 일 항목과 `To review` 카드가 같은 로케일 집합을 센다** (project-home — code-review 🔴1).
+ *
+ * ⚠️ **orphaned 로케일은 일이 아니다.** 그 파일은 리포에서 사라졌고 번역 화면에서 그 행의 입력이
+ * `disabled`다(ARCHITECTURE §5.5.16) — 항목으로 세우면 번역자를 **편집할 수 없는 행**으로 데려간다.
+ * `foldCells`는 이미 그것을 빼므로, 이 조회가 안 빼면 **pill의 수와 카드의 수가 어긋난다.**
+ */
+it("검토 항목이 orphaned 로케일을 빼고 `reviewByLocale`과 같은 답을 낸다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  // `ko`는 살아 있고 `fr`은 리포에서 사라졌다 — 둘 다 검토 대기 셀을 든다.
+  await prisma.locale.create({ data: { projectId: "p1", surfaceId: "surface-p1", code: "fr", name: "French", isBase: false, orphaned: true } });
+  for (const key of ["old", "same", "new"]) {
+    await prisma.translation.create({ data: { projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${key}`,
+      localeCode: "fr", value: "valeur", needsReview: true, updatedBy: "u1", updatedAt: AFTER } });
+  }
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" }, data: { needsReview: true } });
+
+  const rows = await loadReviewAttention(prisma, "p1");
+  const aggregates = await loadProjectListAggregates(prisma, ["p1"]);
+  const byLocale = reviewByLocale(aggregates.locales, aggregates.cells).get("p1") ?? [];
+
+  expect(rows.map((r) => r.localeCode)).toEqual(["ko"]);
+  expect(rows.map((r) => r.count)).toEqual(byLocale.map((l) => l.count));
+  expect(byLocale.map((l) => l.code)).toEqual(["ko"]);
+});
+
+/** ⚠️ 보조 키가 없으면 같은 시각의 편집 둘 중 어느 저자가 뽑힐지가 요청마다 달라진다. */
+it("검토 항목의 대표 행이 결정적이다 — 같은 시각이면 keyId 순이다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" },
+    data: { needsReview: true, updatedAt: AFTER, updatedBy: "u-late" } });
+  await prisma.translation.update({ where: { keyId_localeCode: { keyId: "p1-new", localeCode: "ko" } },
+    data: { updatedBy: "u-first" } });
+
+  const first = await loadReviewAttention(prisma, "p1");
+  const again = await loadReviewAttention(prisma, "p1");
+  expect(first).toEqual(again);
+  // `p1-gone`·`p1-new`·`p1-old`·`p1-same` 중 orphaned 키는 빠지고 남은 셋의 최소 keyId가 `p1-new`다.
+  expect(first[0]).toMatchObject({ localeCode: "ko", updatedBy: "u-first", count: 3 });
+});
+
+/**
+ * **검토 대기 행에서 저자를 찾지 않는다** (2026-09-15 Codex 리뷰 🟡3).
+ *
+ * ⚠️ `needsReview = true`는 **push가 세우는 플래그**이고 같은 쓰기가 `updatedBy`를 비운다
+ * (ARCHITECTURE §0 불변식 2). 그 행에서 저자를 찾으면 거의 언제나 `null`이라 화면의
+ * `— last edited by …` 절이 **영영 안 뜬다** — 그 절이 있는 이유가 통째로 사라진다.
+ */
+it("검토 대기 셀의 저자가 비어 있어도 그 로케일의 마지막 사람 편집자를 낸다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  // push가 만든 검토 대기 — 저자가 없다.
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" },
+    data: { needsReview: true, updatedBy: null, updatedAt: BEFORE } });
+  // 같은 로케일의 다른 셀을 사람이 나중에 저장했다 — 저장은 검토 플래그를 내린다.
+  await prisma.translation.update({ where: { keyId_localeCode: { keyId: "p1-same", localeCode: "ko" } },
+    data: { needsReview: false, updatedBy: "u-human", updatedAt: AFTER } });
+
+  const [row] = await loadReviewAttention(prisma, "p1");
+  // 검토 대기는 셋 중 `gone`(orphaned 키)이 빠진 둘이다.
+  expect(row).toMatchObject({ localeCode: "ko", count: 2, updatedBy: "u-human" });
+  // 정렬 키는 그 로케일의 마지막 변경 시각이다 — 대표 행의 시각과 우연히 같을 뿐이 아니다.
+  expect(row?.at).toEqual(AFTER);
+});
+
+/** 사람이 한 번도 안 만진 로케일은 저자가 없다 — 지어내지 않는다. */
+it("사람 편집이 없으면 저자가 null이고 항목은 남는다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" },
+    data: { needsReview: true, updatedBy: null } });
+
+  const [row] = await loadReviewAttention(prisma, "p1");
+  expect(row).toMatchObject({ localeCode: "ko", updatedBy: null });
+  expect(row?.count).toBe(3);
 });

@@ -23,12 +23,23 @@ import { routes } from "@/lib/routes";
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, name, branch, role, unsent, onResult, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
+  /**
+   * 미연결·보관 — **비활성이고 부재가 아니다** (project-home spec §8의 `2c`·`2d`). 부재는 역할
+   * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
+   * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
+   */
+  paused?: boolean;
   onResult: (outcome: RepositoryImportOutcome) => void;
+  /**
+   * ⚠️ **호스트가 `[Publish]`를 잠그려고 듣는다** (시안 `4f`) — 두 방향이 동시에 돌면 어느 쪽 값이
+   * 남는지 화면이 설명할 수 없다. 이 컴포넌트는 **자기 연타만** 막으므로 형제의 존재는 호스트가 안다.
+   */
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const router = useRouter();
   const triggerId = useId();
@@ -42,7 +53,7 @@ export function SyncButton({ slug, name, branch, role, unsent, onResult, open, o
   useEffect(() => {
     const id = ++request.current;
     setOpenPr(undefined);
-    if (!open || role !== "OWNER") return;
+    if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -50,6 +61,12 @@ export function SyncButton({ slug, name, branch, role, unsent, onResult, open, o
     );
     return () => { request.current++; };
   }, [open, slug, role]); // onOpenChange only closes an externally reopened pending dialog.
+  /*
+    ⚠️ **`pending`을 호스트로 끌어올리지 않고 알리기만 한다** — 이 값은 `open && !pending`과 트리거
+    라벨이 쓰는 지역 상태이고, 올리면 프롭이 controlled 쌍으로 늘어난다. 이 effect가 그 하나의
+    근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
+  */
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
   const plan = planImportConfirmation({ unsent, openPr });
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
@@ -62,13 +79,39 @@ export function SyncButton({ slug, name, branch, role, unsent, onResult, open, o
     changeOpen(false);
     let outcome: RepositoryImportOutcome;
     try { outcome = await runRepositoryImport({ slug }); }
-    catch { outcome = { ok: false, error: "ingest-failed" }; }
+    /*
+      ⚠️ **온보딩 코드를 쓰지 않는다** — `ingest-failed`는 `PLANS`에도 `m.repositorySync.errors`에도
+      없어 **두 폴백을 동시에 타서**, 닫을 수도 갈 곳도 없는 amber가 *"The first import failed. You can
+      try again from settings."*를 띄운다. 첫 적재가 아닌데 그렇게 말하고, 그 설정 화면의 컨트롤은
+      `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨다. 캔버스 §6 `4f`의 tone 표가
+      이 부류(요청이 못 갔다)에 배정한 것은 `unavailable`이다.
+    */
+    catch { outcome = { ok: false, error: "unavailable" }; }
     busy.current = false;
     setPending(false);
     onResult(outcome);
-    router.refresh();
+    /*
+      ⚠️ **실패에는 부르지 않는다** (POSTMORTEM 2026-09-08 — 같은 부류가 Publish에서 한 번 터졌다).
+      `unauthorized`로 거부된 직후의 refresh는 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고,
+      한 줄 앞에서 세운 거부 Alert를 그대로 씻어 간다("왜 실패했는지가 어디에도 없다"). 갱신할 값은
+      성공에만 있다 — 실패는 DB를 바꾸지 않았으므로 화면이 낡지도 않는다.
+    */
+    if (outcome.ok) router.refresh();
   }
   if (role !== "OWNER") return null;
+  /*
+    ⚠️ **멈춘 동안은 Dialog 자체를 세우지 않는다** — 트리거만 `disabled`로 두면 `open`이 밖에서
+    바뀔 때(배너의 `[Try again]`) 확인 창이 열려 실행까지 간다. 보이는 것은 같은 자리의 같은 버튼이고
+    누를 수 없을 뿐이다.
+  */
+  if (paused) {
+    return (
+      <Button disabled>
+        <ArrowDownToLine className="size-3.5" aria-hidden />
+        {m.repositorySync.action}
+      </Button>
+    );
+  }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
     <DialogTrigger asChild>
       {/*

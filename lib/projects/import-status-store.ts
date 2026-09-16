@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { importOutcomeFields } from "./import-status";
 import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
 
 /**
@@ -35,7 +36,12 @@ export async function finishImportRun(
   try {
     await prisma.translationSurface.updateMany({
       where: { id: input.surfaceId, projectId: input.projectId, lastImportToken: input.token },
-      data: { lastImportStartedAt: null, lastImportToken: null, lastImportError: input.code },
+      /**
+       * ⚠️ **종료 필드를 손으로 나열하지 않는다** — `importOutcomeFields`가 셋(코드·진행·실패
+       * 시각)을 한 벌로 낸다. 나열하면 컬럼이 늘 때마다 경로 다섯 중 몇이 조용히 빠진다
+       * (2026-09-15에 `lastImportFailedAt`이 실제로 그렇게 둘에만 붙었다).
+       */
+      data: { ...importOutcomeFields(input.code, new Date()), lastImportToken: null },
     });
   } catch {
     // 삼킨다 — 위 주석.
@@ -68,7 +74,12 @@ export async function recordReportedFailure(
       // 같은 커밋의 재실행 실패는 받는다 — `checkCommitOrder`가 동일 시각을 통과시키는 것과 같은 규칙이다.
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: input.commitAt } }],
     },
-    data: { lastImportError: input.code },
+    /**
+     * ⚠️ **시각도 함께 쓴다** (project-home design §6.1) — Home의 항목이 세 종을 한 시간축에 세우고,
+     * 그중 파서 실패의 시각이 여기서만 나온다. `lastImportError`만 쓰면 그 항목이 언제나
+     * "가장 오래된 것"으로 바닥에 깔린다.
+     */
+    data: { lastImportError: input.code, lastImportFailedAt: new Date() },
   });
   return count === 1 ? "recorded" : "rejected";
 }
