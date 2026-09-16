@@ -5,7 +5,7 @@ import { createContext, useContext, useRef, useState, type ReactNode, type RefOb
 
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
-import { PublishButton, PublishResult } from "@/components/publish-button";
+import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
@@ -16,7 +16,6 @@ import type { RepositoryImportOutcome } from "@/lib/import/result";
 import type { HomeState } from "@/lib/home/state";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
-import type { PullOutcome } from "@/lib/pull/message";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
@@ -43,11 +42,9 @@ type HomeActionsValue = {
   syncPending: boolean;
   setSyncPending: (pending: boolean) => void;
   publishPending: boolean;
-  setPublishPending: (pending: boolean) => void;
+  publish: PublishController;
   outcome: RepositoryImportOutcome | null;
   setOutcome: (outcome: RepositoryImportOutcome | null) => void;
-  pull: PullOutcome | null;
-  setPull: (outcome: PullOutcome | null) => void;
   titleRef: RefObject<HTMLHeadingElement | null>;
 };
 
@@ -60,10 +57,11 @@ function useHomeActions(): HomeActionsValue {
   return value;
 }
 
-export function HomeActions({ children }: { children: ReactNode }) {
+export function HomeActions({ children, slug }: { children: ReactNode; slug: string }) {
   const [syncOpen, openSync] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
-  const [publishPending, setPublishPending] = useState(false);
+  const publish = usePublish(slug);
+  const publishPending = publish.pending;
   /*
     ⚠️ **Publish가 도는 동안은 확인 창이 "예약"되지 않는다** (2026-09-15 재리뷰 🟡4 — 상호 잠금 자체가
     연 갈래다). `SyncButton`은 잠긴 동안 Dialog를 아예 세우지 않으므로, 그때 배너의 `[Try again]`이
@@ -76,10 +74,9 @@ export function HomeActions({ children }: { children: ReactNode }) {
   */
   const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
   const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
-  const [pull, setPull] = useState<PullOutcome | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, setPublishPending, outcome, setOutcome, pull, setPull, titleRef }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -137,7 +134,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
    */
   paused: boolean;
 }) {
-  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, setPublishPending, setOutcome, setPull, titleRef } = useHomeActions();
+  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, setOutcome, titleRef } = useHomeActions();
   return (
     <div className="flex items-center gap-2">
       <SyncButton
@@ -159,13 +156,13 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton slug={slug} count={unsent} label={m.home.publish} badge disabled={paused || unsent === 0 || syncPending} onPendingChange={setPublishPending} onResult={setPull} />
+      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} />
     </div>
   );
 }
 
 /**
- * 본문 맨 위의 **고정 자리** — 상태 배너 하나 + 결과 Alert 둘.
+ * 본문 맨 위의 **고정 자리** — 상태 배너 하나 + Sync 결과와 Publish 모달.
  *
  * ⚠️ **배너와 결과가 같은 자리를 다투지 않는다.** 배너는 "지금 이 프로젝트가 어떤 상태인가"이고
  * 결과는 "방금 누른 것이 어떻게 됐나"라, 둘 다 서 있는 순간이 정상이다.
@@ -187,7 +184,7 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, pull, setPull, setSyncOpen, publishPending } = useHomeActions();
+  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
   const owner = role === "OWNER";
 
   return (
@@ -262,7 +259,7 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
-      {pull !== null && <PublishResult outcome={pull} />}
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} />
     </div>
   );
 }

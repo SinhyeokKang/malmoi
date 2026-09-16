@@ -5,7 +5,7 @@ import { summarizeWarnings } from "../warnings";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
-const committed = { status: "committed", pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] } as const;
+const committed = { status: "committed", pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[] } as const;
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
   expect(planPublishView(committed)).toBe("created");
   expect(planPublishView({ ...committed, pr: "updated" })).toBe("updated");
@@ -56,4 +56,13 @@ it("PR URL은 원본 리포·origin·양의 안전 정수를 검증하고 삼상
   expect(parseGithubPrUrl(undefined, repo)).toBeUndefined();
   expect(parseGithubPrUrl(committed.prUrl, repo)).toEqual({ number: 12, url: committed.prUrl });
   for (const raw of ["https://evil.com/o/r/pull/1", "https://github.com/x/r/pull/1", "https://u@github.com/o/r/pull/1", "https://github.com/o/r/pull/0", "https://github.com/o/r/pull/9007199254740992", "broken"]) expect(parseGithubPrUrl(raw, repo)).toBeUndefined();
+});
+
+it("바뀐 단어만 표시하고 공백·여러 줄을 보존한다", async () => {
+  const { diffWords } = await import("../words");
+  const result = diffWords("hello old\nworld", "hello new\nworld");
+  expect(result.before.filter(t => t.changed).map(t => t.text).join("")).toBe("old");
+  expect(result.after.filter(t => t.changed).map(t => t.text).join("")).toBe("new");
+  expect(result.before.map(t => t.text).join("")).toBe("hello old\nworld");
+  expect(diffWords("", "")).toEqual({ before: [], after: [] });
 });

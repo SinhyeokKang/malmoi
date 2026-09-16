@@ -55,12 +55,14 @@ describe("Publish — 다섯 문구가 Alert로 가는 길이 한 줄이다", ()
 
   it("tone을 Alert variant로 **그대로** 넘긴다 — 매핑 표를 두 벌 두지 않는다 (design §3.4)", () => {
     // `PublishTone`과 Alert의 variant는 같은 네 이름이다 (lib/pull/message.ts).
-    expect(read(PUBLISH)).toMatch(/variant=\{message\.tone\}/);
+    expect(read(PUBLISH)).toMatch(/planPublishView\(outcome\)/);
+    expect(read(PUBLISH)).toMatch(/<Alert variant="danger"/);
   });
 
   it("버린 값의 **파일 목록**을 편다 — 건수만으로는 편집자가 행동할 수 없다 (ARCHITECTURE §0 불변식 9)", () => {
     const src = read(PUBLISH);
-    expect(src).toMatch(/<details/);
+    expect(src).not.toMatch(/<details/);
+    expect(src).toMatch(/<Warnings/);
     expect(src).toMatch(/warnings/);
   });
 
@@ -222,7 +224,7 @@ describe("행 축 (8-4)", () => {
    * 호출이 **있는지만** 본다.
    */
   it("`router.refresh()`가 실패 갈래 **밖**이다", () => {
-    const lines = read(HEADER).split("\n").filter((line) => line.includes("router.refresh()"));
+    const lines = read(PUBLISH).split("\n").filter((line) => line.includes("router.refresh()"));
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatch(/status !== "failed"/);
   });
@@ -310,9 +312,9 @@ describe("행 축 (8-4)", () => {
    */
   it("Publish 결과를 화면으로 끌어온다", () => {
     const src = read(HEADER);
-    expect(src).toMatch(/scrollIntoView/);
+    expect(src).toMatch(/<PublishModal/);
     // 배너가 아니라 **결과**에만 걸린다 — 배너는 도착 시점의 조건이라 사용자가 위에서 본다.
-    expect(src).toMatch(/\[outcome\]/);
+    expect(src).toMatch(/publish=\{publish\}/);
   });
 
   /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */

@@ -100,7 +100,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
     const outcome = await runSync(h.prisma, {
       projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1",
     });
-    expect(outcome).toEqual({ status: "failed", error: "no install" });
+    expect(outcome).toEqual({ status: "failed", error: "no install", code: "not-installed", retryable: false, delivery: "unknown" });
     expect(h.syncRuns[0]).toMatchObject({ status: "FAILED", errorCode: "not-installed", changed: null });
   });
 
@@ -207,7 +207,7 @@ describe("runSync — 게이트 거부", () => {
     const second = await runSync(h.prisma, {
       projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u2",
     });
-    expect(second).toEqual({ status: "failed", error: "already-running" });
+    expect(second).toEqual({ status: "failed", error: "already-running", delivery: "not-started", retryable: false });
     expect(h.syncRuns).toHaveLength(1);
 
     release?.();
@@ -236,7 +236,7 @@ describe("runSync — 게이트 거부", () => {
     const outcome = await runSync(h.prisma, {
       projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1",
     });
-    expect(outcome).toEqual({ status: "failed", error: "too-soon", retryAfterSeconds: 20 });
+    expect(outcome).toEqual({ status: "failed", error: "too-soon", retryAfterSeconds: 20, delivery: "not-started", retryable: false });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
     expect(h.syncRuns).toHaveLength(1);
   });
@@ -293,7 +293,7 @@ describe("runSync — stale 복구", () => {
     const outcome = await runSync(h.prisma, {
       projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1",
     });
-    expect(outcome).toEqual({ status: "failed", error: "already-running" });
+    expect(outcome).toEqual({ status: "failed", error: "already-running", delivery: "not-started", retryable: false });
     expect(h.syncRuns.find((r) => r.id === "r-live")?.status).toBe("RUNNING");
   });
 });
@@ -316,4 +316,14 @@ describe("runSync — 실패가 마지막 성공을 안 덮는다 (완료 조건
     expect(project?.lastPublishedAt).toEqual(new Date("2026-09-01T00:00:00Z"));
     expect(project?.lastPrUrl).toBe("https://github.com/o/r/pull/7");
   });
+});
+
+it("PR 작성 뒤 실행 기록 실패도 전송 여부 미확인이다", async () => {
+  const h = harness();
+  let wrote = false;
+  hoisted.triggerPull.mockImplementation(async () => { wrote = true; return COMMITTED; });
+  vi.spyOn(h.prisma.syncRun, "update").mockRejectedValueOnce(Object.assign(new Error("private DB detail"), { name: "PrismaClientKnownRequestError" }));
+  const outcome = await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1" });
+  expect(wrote).toBe(true);
+  expect(outcome).toMatchObject({ status: "failed", code: "db-unavailable", retryable: true, delivery: "unknown" });
 });

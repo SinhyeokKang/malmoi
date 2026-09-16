@@ -9,6 +9,7 @@ import { TranslationFilters } from "@/components/translations/filters";
 import { TranslationsHeader } from "@/components/translations/header";
 import { m } from "@/lib/i18n";
 
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslation: vi.fn(), triggerPullAction: vi.fn() }));
 
 it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar and chips until the new query arrives", async (source) => {

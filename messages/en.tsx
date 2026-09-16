@@ -1321,37 +1321,53 @@ export const en = {
      * 링크 라벨만 예외가 될 수 있는데(DESIGN §10), 이 자리는 "보낸 것"을 보여주는 것이라 그쪽도 편집자 어휘다.
      */
     publish: {
-      /** 미배포 건수를 라벨이 든다 — 0이면 숫자를 붙이지 않는다(괄호 안 0은 정보가 아니다). */
-      button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n.toLocaleString("en-US")})`),
-      nothing: "Nothing to send — everything is up to date.",
-      created: "Sent for review. Your developers need to accept it before their next code push.",
-      updated: "Updated what you sent earlier with your latest changes.",
-      /**
-       * ⚠️ **`sent`가 필요하다.** 이 갈래는 `committed`와 `skipped` 둘 다 온다(warnings ≥ 1) — 스킵인데
-       * "Sent"라고 쓰면 아무것도 안 보낸 것을 보냈다고 말하게 된다. 갈래는 하나, 문장만 갈린다.
-       */
-      partial: (count: number, sent: boolean): string => {
-        // 1건이 가장 흔한 경우다 — 카운터를 만들어 놓고 여기서 안 쓰면 "1 values"가 나간다.
-        const values = count === 1 ? "1 value" : `${count.toLocaleString("en-US")} values`;
-        return sent
-          ? `Sent, but ${values} couldn't be written — tell your developers.`
-          : `Nothing new was sent, and ${values} couldn't be written — tell your developers.`;
-      },
-      /** ⚠️ **건수만으로는 편집자가 행동할 수 없다** — `<details>`가 어느 파일인지 편다. */
-      dropped: "Which values couldn't be written",
-      failed: (reason: string): string => `Couldn't send: ${reason}`,
-      viewLink: "View what was sent",
-      /**
-       * 게이트 거부 (7단계 — sync-runs design §6.1). **고장이 아니라 "방금 보냈다"라 tone이 `info`다.**
-       *
-       * ⚠️ **카운트다운이 아니라 정적 문장이다** — 줄어드는 숫자를 그리려면 `setInterval`과
-       * `aria-live`가 붙는데, 헤더의 live region은 하나이고 그것은 저장 알림이 든다.
-       */
-      gate: {
-        "already-running": "Already sending. This page will show the result when it's done.",
-        "too-soon": (seconds: number): string =>
-          `Just sent. Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}.`,
-      },
+      button: "Publish",
+      nothing: "Everything you've edited is already sent.",
+      paused: "Publishing is currently unavailable.",
+      viewLink: "View pull request",
+      viewResult: "View result",
+      publishing: "Publishing…",
+      confirm: "Publish changes",
+      previewTitle: (n: number): string => `Publish ${n.toLocaleString("en-US")} changes`,
+      loading: "Reading what would go out…",
+      previewFailed: "Couldn't read what would go out",
+      previewFailedBody: "The preview isn't available yet. Try reading it again before publishing.",
+      previewDescription: "Review your edits against the repository before sending them for review.",
+      overwrite: (n: number): string => `This will replace the branch of open pull request #${n}.`,
+      prUnknown: "We couldn't confirm whether an open pull request will be replaced.",
+      prNone: "There is no open pull request to replace.",
+      before: "Repository",
+      after: "Your edits",
+      key: "Key",
+      locale: "Locale",
+      value: "Value",
+      absent: "Not present",
+      truncated: (n: number): string => `${n.toLocaleString("en-US")} more changes are not shown. Publishing includes all edits.`,
+      summary: (n: number): string => `${n.toLocaleString("en-US")} changes`,
+      progress: ["Preparing your edits", "Sending to the repository", "Waiting for the result"],
+      leave: "Leaving this page won't stop it.",
+      created: "Sent for review.",
+      updated: "Updated the pull request.",
+      partial: "Some values couldn't be written.",
+      noChanges: "No changes to send.",
+      review: "Your developers need to review and accept the changes before their next code push.",
+      replaced: "malmoi replaced the branch with the current translations. It did not append to the previous changes. Let your reviewers know.",
+      noChangesBody: "malmoi found no new changes to send to the repository.",
+      warnings: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"}`,
+      notWritten: "Not written — share these details with your developers.",
+      configError: "Couldn't reach the repository",
+      transientError: "Couldn't finish publishing",
+      reference: "Reference",
+      settings: "Open project settings",
+      signIn: "Sign in",
+      retry: "Try again",
+      notStarted: "Nothing was sent. Your edits are safe.",
+      unknownDelivery: "We couldn't confirm whether your changes were sent.",
+      alreadyRunning: "A publish is already running.",
+      alreadyRunningBody: "Another request is publishing this project. Check Logs for its result.",
+      tooSoon: "Changes were just sent.",
+      tooSoonBody: "Wait before starting another publish.",
+      wait: (seconds: number): string => `Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}`,
     },
 
     /**

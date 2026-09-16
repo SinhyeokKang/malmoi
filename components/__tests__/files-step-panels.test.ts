@@ -18,7 +18,7 @@ import { panelConstraints } from "@/lib/shell/panel-size";
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const files = readFileSync(join(ROOT, "components/onboarding/steps/files.tsx"), "utf8");
-const modal = readFileSync(join(ROOT, "components/onboarding/modal.tsx"), "utf8");
+const modal = readFileSync(join(ROOT, "components/ui/modal.tsx"), "utf8");
 
 describe("② 파일 선택 — 패널 구분선", () => {
   it("좌우가 `ResizablePanel`이고 사이에 핸들이 있다", () => {

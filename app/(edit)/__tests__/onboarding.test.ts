@@ -1320,7 +1320,7 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design 
   });
 
   it("triggerPullAction이 거부하고 pull을 부르지 않는다", async () => {
-    expect(await triggerPullAction("acme")).toEqual({ status: "failed", error: "not-ready" });
+    expect(await triggerPullAction("acme")).toEqual({ status: "failed", error: "not-ready", delivery: "not-started", retryable: false });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
   });
 

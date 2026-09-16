@@ -111,24 +111,24 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
  *
  * ⚠️ **반환 형태가 `saveTranslation`과 다르다** (`{ok}` vs `{status}`). 의도된 것이다:
  * pull은 성공·스킵·실패 **3상태**라 `{ok: boolean}`에 담으면 스킵이 파생 모양이 되고,
- * `pullMessage`의 exhaustive switch가 상태 누락을 컴파일 에러로 잡는 장치를 잃는다.
+ * `planPublishView`의 exhaustive switch가 상태 누락을 컴파일 에러로 잡는 장치를 잃는다.
  */
 export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   // 타입은 클라이언트를 구속하지 않는다 — 비문자열이 Prisma까지 가면 digest 오류가 된다 (ARCHITECTURE §6.3).
-  if (typeof slug !== "string" || slug === "") return { status: "failed", error: "invalid input" };
+  if (typeof slug !== "string" || slug === "") return { status: "failed", error: "invalid input", delivery: "not-started", retryable: false };
 
   const session = await readSession();
-  if (session.status === "unavailable") return { status: "failed", error: "unavailable" };
-  if (session.status === "none") return { status: "failed", error: "unauthorized" };
+  if (session.status === "unavailable") return { status: "failed", error: "unavailable", delivery: "not-started", retryable: true };
+  if (session.status === "none") return { status: "failed", error: "unauthorized", delivery: "not-started", retryable: false };
   const { userId } = session;
 
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
-  if (access.status !== "ok") return { status: "failed", error: access.status };
+  if (access.status !== "ok") return { status: "failed", error: access.status, delivery: "not-started", retryable: false };
 
   // 첫 적재 전에는 내보낼 것이 없다 — `triggerPull`이 저장되지 않은 포맷으로 `fail()`하는 대신
   // 여기서 문구가 있는 사유로 거부한다 (design §3.7).
-  if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready" };
+  if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready", delivery: "not-started", retryable: false };
 
   /**
    * ⚠️ **`triggerPull`을 직접 부르지 않는다** (7단계). `runSync`가 게이트(동시 실행·최소 간격)·

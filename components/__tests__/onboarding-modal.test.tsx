@@ -207,3 +207,11 @@ describe("primary button state styles", () => {
     expect(button.className).not.toMatch(/disabled:opacity-/);
   });
 });
+
+it("actions null은 Next를 숨기고 명시 슬롯은 기본 버튼을 대체한다", async () => {
+  const view = await render(shell({ actions: null, step: undefined }));
+  expect(buttonNamed("Next")).toBeUndefined();
+  await view.rerender(shell({ actions: <Button>Custom action</Button> }));
+  expect(buttonNamed("Next")).toBeUndefined();
+  expect(buttonNamed("Custom action")).toBeDefined();
+});

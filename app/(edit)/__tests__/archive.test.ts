@@ -67,7 +67,7 @@ describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => 
   it("Publish가 archived로 거부되고 GitHub을 부르지 않는다", async () => {
     hoisted.session = sessionFor("u-editor");
     const result = await triggerPullAction("beta");
-    expect(result).toEqual({ status: "failed", error: "archived" });
+    expect(result).toEqual({ status: "failed", error: "archived", delivery: "not-started", retryable: false });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
   });
 

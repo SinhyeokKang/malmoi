@@ -1,0 +1,26 @@
+export type PublishCell = { surface: string; path: string; keyId: string; key: string; localeCode: string; after: string; author: string; updatedAt: string };
+export type BaseValues = Record<string, Record<string, Record<string, string>>>;
+export type PublishRow = PublishCell & { before: string | null; keySpan: number };
+export type PublishDiff = { groups: { surface: string; path: string; rows: PublishRow[] }[]; total: number; truncated: number };
+// 미리보기 페이로드만 제한한다 — 실제 export의 범위·선택에는 영향을 주지 않는다.
+export const PREVIEW_LIMIT = 200;
+const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+export function buildPublishDiff(cells: readonly PublishCell[], base: BaseValues, limit = PREVIEW_LIMIT): PublishDiff {
+  const sorted = [...cells].sort((a,b) => compare(a.surface,b.surface) || compare(a.path,b.path) || compare(a.key,b.key) || compare(a.keyId,b.keyId) || compare(a.localeCode,b.localeCode));
+  const groups: PublishDiff["groups"] = [];
+  for (const cell of sorted.slice(0, limit)) {
+    let group = groups.at(-1);
+    if (!group || group.surface !== cell.surface || group.path !== cell.path) { group = { surface: cell.surface, path: cell.path, rows: [] }; groups.push(group); }
+    const file = Object.hasOwn(base, cell.path) ? base[cell.path] : undefined;
+    const locale = file && Object.hasOwn(file, cell.localeCode) ? file[cell.localeCode] : undefined;
+    const before = locale && Object.hasOwn(locale, cell.key) ? locale[cell.key] ?? null : null;
+    group.rows.push({ ...cell, before, keySpan: 1 });
+  }
+  for (const group of groups) {
+    let first: PublishRow | undefined;
+    for (const row of group.rows) {
+      if (first?.keyId === row.keyId) { first.keySpan++; row.keySpan = 0; } else first = row;
+    }
+  }
+  return { groups, total: cells.length, truncated: Math.max(0, cells.length - limit) };
+}
