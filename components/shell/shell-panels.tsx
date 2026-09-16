@@ -9,11 +9,13 @@ import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-s
 
 /**
  * LNB의 px 치수. **하한 200**은 nav 항목의 아이콘+라벨+배지가 유지되는 자리, **기본 240**은 시안
- * `212:944`(옛 `w-60`), **상한 320**은 우측 `ProjectPanel`과 **같은 값**이다 — 한 화면의 보조 패널
- * 둘이 서로 다른 임의 치수를 갖지 않는다 (DESIGN 규약 6).
+ * `212:944`(옛 `w-60`), **상한 320**은 2026-09-16까지 우측 프로젝트 패널과 맞춘 값이었다 — 그 패널을
+ * 지운 뒤에도 유지한다: LNB가 그보다 넓어져야 할 근거가 새로 생긴 것이 아니고, 상한을 올리면 가장
+ * 좁은 뷰포트에서 콘텐츠가 받는 폭이 함께 줄어든다.
  *
- * 가장 빡빡한 라우트(`[slug]` — `ProjectPanel` 320이 동시에 선다)에서 콘텐츠가 받는 폭은
- * `1264 − LNB − 8(핸들) − 8(gap) − 320`이라 608~688이다.
+ * ⚠️ **패널을 지워 콘텐츠가 320 + 8만큼 넓어졌다** — 1264에서 콘텐츠는 `1264 − LNB − 8(핸들)`이라
+ * 936~1016이다. 그 폭에 기대는 자리가 하나 있다: Home 카운트 카드의 `@[672px]` 임계값
+ * (`components/home/count-cards.tsx`) — 이제 LNB를 상한까지 늘려도 넘는다.
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
 
@@ -35,7 +37,8 @@ const FALLBACK = panelConstraints(1280 - 16 - SHELL_HANDLE_PX, SHELL_SIDEBAR_PX)
  * 컴포넌트의 자식으로 넘기는 것은 유효하고, 그래야 셸의 서버 데이터 조회가 이쪽으로 끌려오지 않는다.
  *
  * ⚠️ **행의 `gap-2`가 사라지고 핸들 폭이 그 자리를 든다** — flex `gap` 안에 핸들을 끼우면 간격이
- * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치하고 `ProjectPanel`의 `ml-2`가 간격 8을 든다.
+ * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치한다 — 2026-09-16까지 둘째 열의 프로젝트 패널이
+ * `ml-2`로 간격을 들었고, 그 패널을 지운 지금도 grid를 유지한다(아래 전환 중 공존 근거).
  * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
  */
 export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
@@ -79,8 +82,8 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
   return (
     <div ref={measure} className="flex min-h-0 flex-1">
       {/*
-        ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ProjectPanel`의 오른쪽
-        그림자가 그룹 경계에서 잘린다. 셸 바깥의 `p-2`가 그 여백을 이미 들고 있다.
+        ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ContentPanel`의 `shadow-low`가
+        그룹 경계에서 잘린다. 셸 바깥의 `p-2`가 그 여백을 이미 들고 있다.
       */}
       <ResizablePanelGroup ref={groupRef} direction="horizontal" style={{ overflow: "visible" }}>
         <ResizablePanel

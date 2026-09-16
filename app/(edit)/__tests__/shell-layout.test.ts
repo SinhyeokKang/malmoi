@@ -29,7 +29,6 @@ const sidebar = read("components/shell/sidebar.tsx");
 const header = read("components/shell/header.tsx");
 const contentPanel = read("components/shell/content-panel.tsx");
 const projectLayout = read("app/(edit)/projects/[slug]/layout.tsx");
-const projectPanel = read("components/shell/project-panel.tsx");
 const shellPanels = read("components/shell/shell-panels.tsx");
 
 describe("셸 레이아웃 — 뷰포트 고정", () => {
@@ -182,14 +181,6 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(contentPanel).toMatch(/\brounded-xl\b/);
     expect(contentPanel).toMatch(/\bborder-border-subtle\b/);
     expect(contentPanel).toMatch(/\bshadow-low\b/);
-  });
-
-  it("오른쪽 패널이 320이고 같은 패널 규칙을 든다", () => {
-    expect(projectPanel).toMatch(/\bw-80\b/);
-    expect(projectPanel).toMatch(/\bbg-background\b/);
-    expect(projectPanel).toMatch(/\brounded-xl\b/);
-    expect(projectPanel).toMatch(/\bborder-border-subtle\b/);
-    expect(projectPanel).toMatch(/\bshadow-low\b/);
   });
 
   /**
