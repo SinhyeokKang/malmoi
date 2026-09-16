@@ -16,6 +16,13 @@ import { AccountCard, AccountFacts, AccountRow, AccountRows } from "../account-s
  *
  * ⚠️ **DESIGN §6.67이 "중복이 셋이 되면 뽑는다"고 예고한다** — 이 프리미티브가 이 화면 밖으로
  * 나가는 날 `status` 없는 호출부가 처음 생기고, 그때 꼬리 대시가 화면에 선다.
+ *
+ * ⚠️ **이 파일은 시각 규격을 안 잰다 — 의도적이다.** `font-medium`(이름만 굵다) · 글리프 28/radius 4 ·
+ * 사실 블록의 `96px 1fr`·`gap 14 12` 같은 값은 **어느 단언도 안 물고**, 그것을 클래스 문자열로 메우면
+ * **스타일을 바꾸는 순간 green인 채 결함만 돌아온다**(`structure.test.tsx` 머리가 금지하는 상태다).
+ * 이 리포는 그 축을 **`/design-sync` 4단계의 computed style 실측**에 배정했다 — 2026-09-16 라운드가
+ * `이름 500` · `28px/4px` · `grid 96px 1fr · gap 14px 12px`를 실제로 쟀다. **구멍을 발견해도 여기서
+ * 메우지 않는다.**
  */
 
 it("구분자는 상태가 있을 때만 선다 — 없으면 이름만 남는다", async () => {
@@ -43,7 +50,12 @@ it("보조 줄은 없으면 그리지 않는다 — 빈 줄이 서면 행 높이
     </AccountRows>,
   );
   const rows = [...container.querySelectorAll("li")];
-  // 본문 div만 센다 — `structure.test.tsx`의 `bodyLines`와 같은 형이다(우측 클러스터를 안 섞는다).
+  /**
+   * 본문 div만 센다 — 우측 클러스터를 안 섞는 목적은 `structure.test.tsx`의 `bodyLines`와 같다.
+   * ⚠️ **형은 엄밀히 다르다**: 그쪽은 `querySelector` + `:scope > span`(첫 본문 div의 **직계**)이고
+   * 여기는 전체 매칭이라 중첩 div가 생기면 과잉 집계한다. 이 파일은 픽스처를 자기가 통제하므로
+   * 무해하지만, **이 줄을 화면 테스트로 복사하지 않는다.**
+   */
   expect(rows.map((row) => row.querySelectorAll("div:first-of-type > span").length)).toEqual([1, 2]);
 });
 
