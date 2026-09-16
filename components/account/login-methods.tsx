@@ -77,7 +77,16 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
       glyph={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
       name={label}
-      detail={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
+      /**
+       * ⚠️ **상태가 본문이다** — 보조 줄로 내리면 부연으로 읽히는데, 이 행이 답하는 질문이 곧
+       * "붙어 있나"다 (핸드오프 v2 §항목 규격).
+       *
+       * ⚠️ **보조 줄을 그리지 않는다.** 캔버스는 연결됨에 `Signed in with this method last on
+       * {date}.`를 두는데 **그 데이터가 리포에 없다**(`Account`에 마지막 사용 컬럼이 없고 `Session`은
+       * provider를 모른다). 미연결 행에만 보조를 그리면 두 행의 높이가 갈리므로 **둘 다 안 그린다** —
+       * 문서화된 이탈이다(DESIGN §6.67).
+       */
+      status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
     >
       {!row.connected ? (
         <form action={startLoginMethodConnect.bind(null, row.provider)}>

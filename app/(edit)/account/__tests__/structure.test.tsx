@@ -104,6 +104,59 @@ it("연결됐을 때만 설치 집계를 한 번 조회한다", async () => {
 });
 
 /**
+ * ⚠️ **행 본문이 한 줄이고 상태가 거기 있다** (2026-09-16 `/design-sync` 4단계 실측이 잡았다).
+ *
+ * 이 구조를 두 줄(이름 본문 + 상태 보조)에서 한 줄로 바꿨는데 **`pnpm test` 4,206개가 전부
+ * green이었다** — 어느 검사도 "상태가 어느 줄에 있나"를 묻지 않았다. 값이 맞고 표현만 틀린 부류를
+ * 단위 테스트가 원리적으로 못 보는 그 자리다.
+ *
+ * 세는 것은 **같은 노드 안에 이름과 상태가 함께 있는가**이고, 상태를 보조 줄로 되돌리면 red다.
+ * 보조 줄은 "다음에 할 일"이라 상태 문자열을 들면 안 된다.
+ */
+it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 그것을 대신하지 않는다", async () => {
+  const container = await screen();
+  const app = card(container, m.account.github.title).querySelector("li")!;
+  const [body, detail] = [...app.querySelectorAll(":scope > div > span")];
+  expect(body).not.toBeUndefined();
+  expect(body!.textContent).toContain("@octocat");
+  expect(body!.textContent).toContain(m.account.github.connected);
+  // 이름만 굵다 — 상태가 같은 무게로 서면 행이 무엇을 묻는지가 흐려진다.
+  const strong = body!.querySelector("span");
+  expect(strong).not.toBeNull();
+  expect(strong!.textContent).toBe("@octocat");
+  // 보조 줄은 **다음에 할 일**이다. 상태를 여기로 내리면 부연으로 읽힌다.
+  expect(detail).not.toBeUndefined();
+  expect(detail!.textContent).not.toContain(m.account.github.connected);
+
+  const methods = card(container, m.link.methods.title).querySelector("li")!;
+  const methodBody = methods.querySelector(":scope > div > span")!;
+  expect(methodBody.textContent).toContain(m.link.providers.github);
+  expect(methodBody.textContent).toContain(m.link.methods.connected);
+  /**
+   * ⚠️ **수단 행에는 보조 줄이 없다** — 캔버스의 `Signed in with this method last on {date}.`는
+   * 데이터가 리포에 없고(`Account`에 마지막 사용 컬럼이 없다), 한쪽만 그리면 두 행 높이가 갈린다.
+   * **되살리려면 스키마가 늘고 그 순간 이 기능의 "스키마 변경 없음"이 깨진다** — 그 사실을 여기서
+   * 고정한다(문서화된 이탈, DESIGN §6.67).
+   */
+  expect(methods.querySelectorAll(":scope > div > span")).toHaveLength(1);
+});
+
+/**
+ * ⚠️ **상태 넷이 저마다 다른 말을 한다.** 넷을 같은 문구로 접으면 화면이 "연결 안 됨"과 "못 읽었다"를
+ * 구별하지 못하고, 사용자가 **멀쩡한 설치를 다시 만든다** (POSTMORTEM 2026-09-03의 축).
+ */
+it.each([
+  ["연결됨", { status: "ok", login: "octocat" }, m.account.github.connected],
+  ["미연동", { status: "ok", login: null }, m.account.github.notConnected],
+  ["인가 만료", { status: "reauthorize" }, m.account.github.statusReauthorize],
+  ["조회 실패", { status: "unavailable" }, m.account.github.statusUnavailable],
+])("GitHub App %s 갈래의 상태가 본문에 선다", async (_label, view, status) => {
+  const container = await screen({}, undefined, view);
+  const body = card(container, m.account.github.title).querySelector("li > div > span")!;
+  expect(body.textContent).toContain(status);
+});
+
+/**
  * ⚠️ **본문이 카드 넷이고 넷이 같은 그릇이다** (spec 완료 조건 1). 전엔 머리 하나 + 리스트 셋이라
  * **Profile만 그릇이 없었고**, 구역 제목이 카드 밖에 있어 제목↔리스트 12가 구역 사이 28과 경쟁했다.
  *

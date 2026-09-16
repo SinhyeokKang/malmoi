@@ -48,12 +48,19 @@ export function AccountCard({
    */
   const titleId = useId();
   return (
-    <section aria-labelledby={titleId} className="border-border overflow-hidden rounded-lg border">
+    <section
+      aria-labelledby={titleId}
+      /*
+        ⚠️ **배경을 카드가 든다.** 패널 배경을 물려받게 두면 그 값이 바뀌는 날 카드 넷이 함께
+        따라가고, 그릇이라는 사실이 사라진다 — 캔버스가 `#fff`를 카드에 명시한 이유다.
+      */
+      className="border-border bg-background overflow-hidden rounded-lg border"
+    >
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
       <div className="border-divider flex items-center gap-2 border-b p-4">
         <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
         {badge}
-        {subtitle !== undefined && <p className="text-muted-foreground ml-auto text-xs">{subtitle}</p>}
+        {subtitle !== undefined && <p className="text-muted-foreground ml-auto text-xs tracking-[0.02em]">{subtitle}</p>}
       </div>
       {notice}
       {/*
@@ -88,22 +95,33 @@ export function AccountRows({ children }: { children: ReactNode }) {
 export function AccountRow({
   glyph,
   name,
+  status,
   detail,
   children,
 }: {
   glyph: ReactNode;
+  /** 이 행이 무엇에 대한 것인가 — 굵다. */
   name: ReactNode;
-  /** 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
+  /**
+   * 이 행이 답하는 **상태**. ⚠️ **이름과 같은 줄·같은 크기다** — 13 보조 줄로 내리면 **부연으로
+   * 읽히는데**, 상태는 이 행이 묻는 질문의 답이다. 구분자(em dash)는 여기서 든다: 호출부마다
+   * 문자열에 박으면 한 화면에 `—`와 `-`가 섞인다.
+   */
+  status?: ReactNode;
+  /** **다음에 할 일**을 든다. 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
   detail?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
       <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded">{glyph}</span>
-      <div className="flex min-w-0 flex-1 flex-col gap-px">
-        <span className="truncate text-base tracking-[0.015em]">{name}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span className="truncate text-base tracking-[0.015em]">
+          <span className="font-medium">{name}</span>
+          {status !== undefined && <> — {status}</>}
+        </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
-        {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal">{detail}</span>}
+        {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal tracking-[0.02em]">{detail}</span>}
       </div>
       {children !== undefined && <div className="flex shrink-0 items-center gap-2">{children}</div>}
     </li>
@@ -121,5 +139,5 @@ export function AccountRow({
  * 가로지르므로 호출부가 `full`로 표시한다.
  */
 export function AccountFacts({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-4 px-4 py-3.5">{children}</div>;
+  return <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">{children}</div>;
 }

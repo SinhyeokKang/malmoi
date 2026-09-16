@@ -159,16 +159,21 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         */}
         <AccountCard title={m.account.profile.title}>
           <AccountFacts>
-          <div className="col-span-2 flex items-center gap-4">
+          {/*
+            ⚠️ **아바타 행도 라벨을 든다** — 두 열을 가로지르게 두면 이 행만 형이 달라지고, 값 열의
+            시작선이 아래 두 행과 어긋난다.
+          */}
+          <span className="text-xs tracking-[0.02em] text-neutral-400">{m.account.profile.avatar}</span>
+          <div className="flex items-center gap-4">
             {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
             <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
             <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
           </div>
 
-          <label className="text-xs text-neutral-400" htmlFor="account-name">{m.account.profile.name}</label>
+          <label className="text-xs tracking-[0.02em] text-neutral-400" htmlFor="account-name">{m.account.profile.name}</label>
           <ProfileNameForm name={name} inputId="account-name" />
 
-          <label className="text-xs text-neutral-400" htmlFor="account-email">{m.account.profile.email}</label>
+          <label className="text-xs tracking-[0.02em] text-neutral-400" htmlFor="account-email">{m.account.profile.email}</label>
           <div className="flex items-center gap-3">
             {/*
               ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져

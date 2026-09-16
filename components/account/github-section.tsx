@@ -9,6 +9,7 @@ import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import { m } from "@/lib/i18n";
 
@@ -53,13 +54,22 @@ export function GithubSection({
       <AccountRow
         glyph={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
         name={connected ? `@${account.login}` : m.account.github.rowName}
+        // 상태가 본문이고 보조 줄은 **다음에 할 일**을 든다 (핸드오프 v2 §항목 규격).
+        status={
+          account.status === "reauthorize" ? m.account.github.statusReauthorize
+          : account.status === "unavailable" ? m.account.github.statusUnavailable
+          : connected ? m.account.github.connected
+          : m.account.github.notConnected
+        }
         detail={
-          account.status === "reauthorize" ? m.settings.account.reauthorize
-          : account.status === "unavailable" ? m.settings.account.unavailable
-          : !connected ? m.account.github.notConnected
+          account.status === "reauthorize" ? m.account.github.hintReauthorize
+          : account.status === "unavailable" ? m.account.github.hintUnavailable
+          : !connected ? m.account.github.hintNotConnected
+          // ⚠️ **`null`(못 읽었다)과 `0`(고른 것이 없다)은 둘 다 줄을 안 그린다** — `Installed on 0
+          // repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다 (design §8 결정 3).
           : installedRepoCount !== null && installedRepoCount > 0
-            ? `${m.account.github.connected} · ${m.account.github.installedOn(installedRepoCount)}`
-            : m.account.github.connected
+            ? m.account.github.installedOn(installedRepoCount)
+            : undefined
         }
       >
         {/*
@@ -83,7 +93,7 @@ export function GithubSection({
               (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브를 건드리면 소비자를 따로 세야 한다).
             */}
             {settingsUrl !== null && (
-              <a className={buttonClass()} href={settingsUrl} target="_blank" rel="noreferrer">
+              <a className={cn(buttonClass(), "gap-1.5")} href={settingsUrl} target="_blank" rel="noreferrer">
                 {m.account.github.installationSettings}
                 <ExternalLink className="size-3" aria-hidden />
               </a>

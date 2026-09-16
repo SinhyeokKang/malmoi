@@ -789,6 +789,8 @@ export const en = {
        * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
        * 화면 위쪽의 산문보다 필드 옆의 한 줄이 실제로 읽힌다.
        */
+      /** 사실 블록의 라벨 셋 — 아바타 행도 라벨을 든다(없으면 그 행만 두 열을 가로질러 형이 갈린다). */
+      avatar: "Avatar",
       name: "Name",
       email: "Email",
       /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
@@ -826,8 +828,28 @@ export const en = {
        * 같이 서면 **같은 사전의 다른 절**에 살아 리뷰로 안 걸린다 (2026-09-13 `malmoi`/`Malmoi`).
        */
       title: "GitHub App",
-      description: "This is write access to your repositories, not a way to sign in.",
-      notConnected: "Not connected.",
+      description: "Write access to the repositories you selected for the app, not a way to sign in.",
+      /**
+       * ⚠️ **아래 넷은 행 본문의 `— {상태}` 자리다** (2026-09-16 — 핸드오프 v2). 상태를 13 보조 줄로
+       * 내리면 **부연으로 읽히는데**, 이 행이 답하는 질문이 곧 상태다. 보조 줄은 `hint*`가 든다.
+       *
+       * ⚠️ **`m.settings.account.reauthorize`·`unavailable`을 재사용하지 않는다** — 그 둘은 문장이고
+       * (`Your GitHub authorization expired.`) 프로젝트 설정 화면이 계속 그 형으로 쓴다. 여기는
+       * 한 줄 안에 이어 붙는 **구절**이라 형이 다르다.
+       */
+      notConnected: "Not connected",
+      statusReauthorize: "Authorization expired",
+      statusUnavailable: "Couldn't load",
+      /** 보조 줄 셋 — **다음에 할 일**을 든다. 연결됨 갈래는 `installedOn`이 그 자리에 선다. */
+      hintNotConnected: "Connect to see which repositories have the app installed.",
+      /**
+       * ⚠️ **해제가 실제로 막는 것만 말한다** — 야간 pull·PR은 App **설치 토큰**이 내므로 이미
+       * 연결된 프로젝트는 그대로 돈다 (2026-09-14 리뷰 🔴1과 같은 축).
+       * ⚠️ **문장 첫 자리도 `malmoi`다** — `brand-spelling.test.ts`가 그것을 0으로 고정한다.
+       */
+      hintReauthorize: "malmoi can't send changes until you reconnect. Your projects stay where they are.",
+      /** ⚠️ **"your account"가 아니라 "this connection"이다** — 계정은 멀쩡하고 못 읽은 것은 이 연결이다. */
+      hintUnavailable: "We couldn't load this connection. Open this page again in a moment.",
       /**
        * 연결된 행의 보조 줄.
        *
@@ -894,7 +916,13 @@ export const en = {
        * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
        */
       confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
-      description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
+      /**
+       * 행 본문의 `— {범위}` 자리 (2026-09-16). ⚠️ **`description`을 대신한다** — 그 문장
+       * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했는데, 그 말은
+       * 아래 보조 줄(`confirmDetail`)이 **provider 이름까지 넣어** 더 정확히 한다. 행 본문이
+       * 답할 것은 "어디까지 닫히나"다.
+       */
+      scope: "all devices, this one included",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
@@ -904,6 +932,8 @@ export const en = {
     },
     signOut: {
       title: "Sign out",
+      /** 행 본문의 `— {범위}` 자리 — 바로 아래 행이 "모든 기기"라 이쪽이 무엇인지 말해야 한다. */
+      scope: "this device",
       description: "You'll need to sign in again to open your projects.",
       /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
       confirmTitle: "Sign out?",
@@ -1858,7 +1888,11 @@ export const en = {
        * ⚠️ **계산값이라 서버가 안 는다** — `loginMethodRows`가 준 행에서 `methodCounts`가 센다.
        */
       count: (connected: number, total: number): string => `${connected} of ${total}`,
-      description: "Add another account with the same verified email to use it as a sign-in method.",
+      /**
+       * ⚠️ **앞 절(`These are the accounts you can use to sign in.`)을 뺐다** (2026-09-16) —
+       * 카드 제목이 이미 그 말을 한다. 헤더 오른쪽 한 줄은 제목이 **안 하는 말**만 든다.
+       */
+      description: "Adding one happens when you sign in with it at this same address.",
       /**
        * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
        * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**
