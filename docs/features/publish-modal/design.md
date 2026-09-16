@@ -17,42 +17,95 @@
 
 **리포에 쓰는 동작은 늘지 않는다** — 이 앱이 하는 최종 액션은 지금도 앞으로도 PR 생성 하나다.
 
-## 2. 상태 표 — 서버 값 → 갈래 1:1
+## 2. 상태 계약 — 실행 결과와 모달 상태를 분리
 
-`⟂`는 도달 불가. 빈칸을 두지 않는다.
+✅ **실행 결과 판정은 8갈래, 모달 상태는 별도 계약이다** (2026-09-16 리뷰 7번 확정).
+`planPublishView(outcome)`은 `PullOutcome` 하나만 받는다. 게이트 거부도 이미 이 타입의
+failed 변형에 들어 있으므로 별도 `gate` 인자를 받지 않는다. 클라이언트가 만든 응답 유실
+outcome도 같은 함수로 처리한다(§2.2).
+
+**모달 본문 상태(`PublishModalState`)**
+
+| 상태 | 화면 | 필요한 값 |
+|---|---|---|
+| `preview-loading` | `1a`의 스켈레톤 | 조회 중이며 실행 버튼 없음 |
+| `preview-ready` | `1a` | 조회에 성공한 `PublishPreview` |
+| `preview-error` | `1k` | 목록 조회 실패 표시 |
+| `running` | `1c` | 실행 중 표시 |
+| `result` | `1d`~`1j` | 완료한 `PullOutcome`을 `planPublishView`로 판정 |
+
+`open`은 이 상태와 분리한다. 닫기는 표시만 끄며 실행과 마지막 결과를 지우지 않는다(§6).
+`1b`는 모달 본문 상태가 아니라 `planPublishButton`의 수 0 판정이다. 따라서 아트보드 번호
+`1a`~`1k`를 결과 함수의 discriminant 열한 개로 만들지 않는다.
+
+**조회·재시도 전이 — 매번 새 목록으로 확인** (2026-09-16 리뷰 8번 확정)
+
+- 새 `[Publish]`와 닫았던 미리보기 재열기는 항상 `preview-loading`으로 시작해
+  `loadPublishPreview`를 새로 호출한다. `1i`·`1k`의 `Try again`도 같은 경로다.
+  `1i`의 재시도는 `triggerPullAction`을 직접 호출하지 않는다.
+- 새 조회를 시작하면 이전 preview와 실행 가능 상태를 즉시 비운다. 최신 조회 성공만
+  `preview-ready`, 실패는 `preview-error`로 전이한다. 로딩·실패에는 발송 버튼이 없으며
+  핸들러도 현재 조회가 `preview-ready`인지 검사한다.
+- 조회마다 요청 세대를 구분한다. 미리보기 닫기·새 조회·호스트 변경/언마운트에서 이전
+  세대를 무효화하며, 늦게 온 성공과 실패 모두 화면·실행 가능 상태를 바꾸지 못한다.
+  이 무효화는 **미리보기 조회에만** 적용한다. 실행 중 모달 닫기는 진행 요청을 무효화하거나
+  마지막 실행 결과를 버리지 않는다(§6).
+- `preview-ready`의 확인 버튼만 새 발송을 1회 시작한다. 실행을 시작하면 그 preview의
+  확인 권한을 소비하고 `running`으로 전이한다. 다음 재시도는 다시 조회·확인을 거친다.
+- `Publishing…`는 기존 `running`을, `View result`는 보관된 `result`를 다시 보여준다.
+  이 둘은 새 발송 진입이 아니므로 preview 조회·발송을 다시 호출하지 않는다.
+
+이 규칙은 **실행마다 조회·확인을 거친다**는 계약이며, 조회 이후 DB가 바뀌지 않는다는
+보장은 아니다. 조회와 실행 사이 다른 발송으로 생기는 `no-edits`는 §2.1대로 처리한다.
+
+**실행 결과(`PublishView`) — 다음 8갈래만 반환한다**
+
+`created` · `updated` · `partial` · `no-changes` · `config-error` · `transient-error` ·
+`already-running` · `too-soon`. 경고 목록·PR 종류·실패의 `delivery` 등 본문에 필요한 값은
+원본 outcome에서 보존한다. 특히 `no-changes`는 `no-edits`도 포함하는 화면 이름이며,
+경고가 있는 스킵의 `1g` 블록도 유지한다. 이 이름이 서버의 스킵 사유를 바꾸지는 않는다.
+
+**실행 결과 → 화면 대응**
 
 | # | 입력 (관측 자리) | 값 |
 |---|---|---|
-| `1a` | 클라이언트 + Action | `countUnpublished > 0` · 모달 열기 — **우회 없는 필수 관문** |
-| `1k` | Action | base 트리를 못 읽었다 — **보내기 버튼이 서지 않는다**. 캔버스에 없는 아트보드(§4-1a) |
-| `1b` | 클라이언트 | `countUnpublished === 0` · **모달 없음** |
-| `1c` | 클라이언트 | Action in-flight (`useTransition`의 `pending`) |
 | `1d` | `PullResult` | `committed` · `pr: "created"` · `warnings` 없음 |
 | `1e` | `PullResult` | `committed` · `pr: "updated"` · `warnings` 없음 |
-| `1f` | `PullResult` | `skipped` · `reason: "no-changes"` · `warnings` 없음 |
+| `1f` | `PullResult` | `skipped` · `reason: "no-edits"` 또는 `"no-changes"` · `warnings` 없음 |
 | `1f`+`1g`블록 | `PullResult` | `skipped` · `reason: "no-changes"` · `warnings > 0` |
 | `1g` | `PullResult` | `committed` · `warnings > 0` (**`pr` 둘 다**) |
 | `1h` | `PullOutcome` failed | `retryable === false` → `base-unreadable` · `not-installed` · `glob-matched-nothing` |
-| `1i` | `PullOutcome` failed | `retryable === true` → `github-error` · `db-unavailable` · `stale` · `unknown` |
-| `1j`좌 | `SyncStart` | `already-running` (행이 안 생긴다) |
-| `1j`우 | `SyncStart` | `too-soon` + `retryAfterSeconds` |
-| ⟂ | `PullResult` | `skipped` · `reason: "no-edits"` — **증명은 §2.1** |
-| **?** | `PullOutcome` failed | **인가·준비 거부** — `unauthorized` · `unavailable` · `not-found` · `archived` · `not-ready` · `invalid input`. **캔버스에 없다 — §2.2** |
+| `1i` | `PullOutcome` failed | `retryable === true` → `github-error` · `db-unavailable` · `unknown` |
+| `1j`좌 | `PullOutcome` failed | `error: "already-running"` (행이 안 생긴다) |
+| `1j`우 | `PullOutcome` failed | `error: "too-soon"` + `retryAfterSeconds` |
+| `1h`/`1i` | `PullOutcome` failed | **인가·준비 거부** — `unavailable`은 `1i`, 나머지(`unauthorized` · `not-found` · `archived` · `not-ready` · `invalid input`)는 `1h` (§2.2) |
 
-### 2.1 `no-edits`가 모달에 못 오는 근거 (술어 둘이 다르다)
+실패의 `1h`/`1i` 선택은 `retryable`로 유지하되, **전송 여부 안내는 별도 `delivery` 값**으로
+정한다. 실행 전 명시적 거부는 `not-started`, 실행 중 오류·응답 유실은 `unknown`이다(§2.2).
+
+`stale`는 `runSync`가 이전 RUNNING 행을 정리할 때 기록하는 Logs 코드다. 현재 요청은 새
+실행을 시작하므로 그 요청의 결과가 `stale`인 것은 아니다. 코드 전수 매핑을 위해 합성
+`stale` 입력을 `1i`로 처리하는 테스트는 가능하지만 실제 도달 경로와 구별한다(리뷰 9번).
+
+### 2.1 `no-edits`와 `no-changes`는 모두 `1f`
 
 버튼의 수는 `countUnpublished`이고 조건이 `updatedBy IS NOT NULL` **AND** `surface.archivedAt IS NULL`
 **AND** `updatedAt > lastPulledAt`이다(`lib/keys/query.ts:177`).
 1층 스킵은 `max(updatedAt)` **전체**를 본다 — `updatedBy`도, 보관 표면도 안 가린다(`lib/pull/load.ts:65`).
 
-**두 술어가 다른데 안전한 이유는 방향이다**: 1층의 집합이 `countUnpublished`의 **상위 집합**이므로
-`countUnpublished > 0`이면 `max(updatedAt) > lastPulledAt`이 반드시 참이고, `shouldSkipPull`은 false다.
-⚠️ **그래서 `1a`에서 출발한 실행은 `no-edits`를 낼 수 없다** — 단, 그 안전이 **포함 관계에만**
-기대고 있으므로 **한쪽 술어를 좁히면 이 결론이 조용히 무너진다.** `lib/pull/__tests__`에 그
-포함 관계를 고정하는 단언을 하나 둔다.
+**동일한 DB 시점**에서는 1층의 집합이 `countUnpublished`의 상위 집합이므로, 미발송 수가
+양수면 1층이 스킵하지 않는다. 하지만 **미리보기와 실행은 같은 시점이 아니다**. `1a`를 읽는
+동안 다른 사용자나 cron이 발송하고 쿨다운까지 지난 뒤 실행하면, 새 `lastPulledAt`을 읽은
+`runPull`은 `no-edits`를 반환할 수 있다. 미리보기의 수로 실행 결과를 제한하지 않는다.
 
-반대 방향(`countUnpublished === 0`인데 1층이 통과)은 흔하다 — code push 직후가 그것이고
-(`updatedBy = NULL`) `1b`가 버튼을 막으므로 사람 경로가 아니라 **cron만** 그 길을 간다.
+✅ **둘 다 보낼 값이 없으므로 `1f`로 표시한다** (2026-09-16 리뷰 2번 확정).
+`no-edits`는 마지막 발송 이후 새 편집이 없는 경우, `no-changes`는 렌더한 파일이 base와 같은
+경우다. 화면은 둘 다 `No changes to send.`이고, 내부 스킵 이유를 사용자에게 구별하지 않는다.
+`no-changes`에 경고가 있으면 기존대로 `1g` 경고 블록을 함께 표시한다.
+
+검증은 두 층이다: 결과 매핑 테스트가 두 이유를 `1f`로 고정하고, 두 소비자의 DOM 테스트가
+미리보기 양수 → 다른 발송 완료 → 쿨다운 경과 → 확인 실행 → `no-edits` 응답의 시간차를
+재현한다. refresh로 미발송 수가 0이 돼도 이미 열린 `1f` 결과는 남는다.
 
 ### 2.2 ⚠️ 캔버스에 없는 갈래가 하나 있다 (결정 필요)
 
@@ -81,9 +134,26 @@
 | `not-ready` | `onboardErrorMessage` | 같은 문장 | 없다 | 없다 |
 | `invalid input` | `accessErrorMessage`의 폴백 | — | 없다 | 없다 |
 
-**여섯이 공유하는 것**: danger `Alert` 규격 · 밑바닥 `Nothing was sent. Your edits are safe.`
-⚠️ **`Reference` 줄을 생략할 때 밑바닥의 "it is in Logs too"도 함께 뺀다** — `SYNC_ERROR_CODES`는
-`SyncRun.errorCode`로 Logs에 남는 값인데 **이 여섯은 행이 아예 안 생긴다.**
+⚠️ **리뷰 5번은 보류다**: 역할별 버튼 분기는 추가하지 않는다. 위 설정 버튼을 공통 전달
+안내로 바꾸는 대안은 아직 미확정이며, EDITOR에게 설정 접근권이 있다는 뜻으로 읽지 않는다.
+
+**실행 전 명시적 거부 여섯이 공유하는 것**: danger `Alert` 규격 · 밑바닥
+`Nothing was sent. Your edits are safe.`. 이 경로는 `delivery: "not-started"`이며 실행 행이 없다.
+`Reference`와 "it is in Logs too"도 함께 뺀다.
+
+✅ **실행 중 오류·응답 유실은 전송 여부를 단정하지 않는다** (2026-09-16 리뷰 1번 확정).
+`runPull`은 브랜치 갱신·PR 작성 **뒤에** `saveLastPulledAt`을 호출하고, `runSync`의 종료 기록도
+그 뒤다. 이 DB 쓰기가 실패하거나 응답이 유실되면 리포에는 이미 반영됐을 수 있다.
+
+- `failureOutcome`이 반환하는 실행 중 실패는 `delivery: "unknown"`이다. 오류 코드나
+  `retryable`만으로 미전송을 추론하지 않는다.
+- 클라이언트의 Action reject도 `error: "unavailable", retryable: true, delivery: "unknown"`으로
+  구분한다. 서버가 실행 전에 반환한 `unavailable`과 같은 의미로 접지 않는다.
+- `unknown`은 기존 `1h`/`1i` 안에서 `We couldn't confirm whether your changes were sent.`를
+  표시한다. `Nothing was sent`와 편집 안전 단정은 사용하지 않는다.
+- 응답 유실에는 오류 코드·Reference를 만들어 붙이지 않는다. Logs에 기록됐다고도 단정하지
+  않는다. 반환받은 Reference는 표시할 수 있지만 오류 코드가 있다는 것만으로 기록 성공을
+  보장하지 않는다.
 
 ### 2.3 `1g`가 `created`/`updated`를 삼킨다 (결정할 값)
 
@@ -94,28 +164,33 @@
 ✅ **확정: `1e`의 무색 경고 블록을 `1g`에서 그대로 재사용한다** (2026-09-16 사용자).
 규칙은 한 줄이다 — **`pr === "updated"`면 그 블록은 항상 선다.** 조건이 `warnings`가 아니라
 `pr` 하나이므로 예외를 기억할 것이 없고, 무색이라 `Not written` 목록과 급이 안 섮이며,
-문구도 안 늘어난다. 화면은 여전히 열이다.
+문구도 안 늘어난다. 이 규칙은 새 결과 갈래를 추가하지 않는다.
 
 ## 3. 순수 함수로 분리 가능한 부분 — `/tdd` 진입점
 
 | 함수 | 입력 → 출력 | 어디에 |
 |---|---|---|
-| `planPublishView(outcome, gate)` | `PullOutcome` → **갈래 discriminant**(`"created"`·`"updated"`·`"partial"`·`"no-changes"`·`"config-error"`·`"transient-error"`·`"already-running"`·`"too-soon"`) | `lib/pull/message.ts` (또는 신규 `lib/publish/view.ts`) |
+| `planPublishView(outcome)` | `PullOutcome` → **실행 결과 8갈래 `PublishView`** (§2). 조회·진행·버튼 상태는 입력도 출력도 아니다 | `lib/pull/message.ts` (또는 신규 `lib/publish/view.ts`) |
 | `buildPublishDiff(rows, base)` | 셀 배열 + 리포 측 값 맵 → **파일 그룹 → 키 → 로케일 행** + 키 병합 플래그 + 상한 초과 수 | 신규 `lib/publish/diff.ts` |
 | `summarizeWarnings(warnings)` | `["surface: path: message", …]` → 파일별 묶음 + 줄 수 | 신규 `lib/publish/warnings.ts` |
-| `planPublishButton({ count, paused, otherPending })` | → `{ disabled, badge, hint }` (`1b`) | 신규 · 두 자리가 같은 판정을 쓴다 |
+| `planPublishButton({ count, paused, otherPending, publishPending })` | → `{ mode, disabled, badge, hint }`. `mode`는 `preview` 또는 `progress`이며, 진행 중이면 클릭 가능한 `progress`가 우선한다 | 신규 · 두 자리가 같은 판정을 쓴다 |
 | `planPublishConfirm({ openPr })` | `OpenImportPr` → `1a`의 열린 PR 줄 판정(있다 · 없다 · 미확인) | `lib/import/confirm.ts`의 `planImportConfirmation` **옆**에 둔다 — 같은 삼상태를 두 화면이 다르게 접으면 안 된다 |
 
 ⚠️ **`planPublishView`가 `never` 검사를 잃지 않는다.** 지금 `pullMessage`의 exhaustive `switch`가
 "상태를 추가하면 컴파일 에러"를 보장하는 유일한 장치다 — 갈래 이름을 내는 함수도 같은 `switch`
 위에 서야 하고, 문구를 화면으로 내리는 것이 그 장치를 없애는 구실이 되면 안 된다.
 
+`PublishModalState` 렌더도 별도 exhaustive switch로 검사한다. 결과 매핑 테스트는
+`PullOutcome` → `PublishView` 8갈래를 고정하고, 모달 DOM 테스트는 조회 중 → 성공/실패,
+확인 → 실행 중 → 결과, 닫기·재열기 전이를 검사한다. 결과 테스트에 클라이언트 상태를
+억지로 넣거나 모달 전이 테스트를 결과 매핑 테스트로 대신하지 않는다.
+
 ⚠️ **`buildPublishDiff`에 I/O가 없다.** GitHub 왕복·DB 조회는 Action 껍데기가 하고, 이 함수는
 **맵 둘을 받아 표를 만든다.** 여기가 비면 diff 목록 전체가 테스트 불가가 된다.
 
-## 4. 신규 API 넷 — 각 항목에 "없으면 어느 자리를 지우나"
+## 4. 필요한 데이터와 계약 — 새 read Action은 하나
 
-### 4-1. 미발송 diff read Action 🔴 (나머지 아홉 갈래의 선행 조건)
+### 4-1. 미발송 diff read Action 🔴 (새 발송의 선행 조건)
 
 ⚠️ **`1a`는 우회 없는 필수 관문이다** (2026-09-16 사용자) — `[Publish]`가 언제나 이 목록을 먼저
 보이고, "바로 보내기" 경로는 없다. 그래서 이 Action은 **보조 화면의 재료가 아니라 동작의 전제**다.
@@ -175,8 +250,10 @@ base 트리 조회는 실패할 수 있다(설치 취소 · 브랜치 부재 · 
 |---|---|
 | 제목 | `Couldn't read what would go out` (신규) |
 | 본문 | **무색 블록** — `1e`·`1f`와 같은 급(`border #e5e5e5` · `bg #fff` · 글리프 `#737373`). danger가 아니다 |
-| 바닥 보조문 | `Nothing was sent. Your edits are safe.` — `1h`·`1i`와 **같은 문장**이다 |
+| 바닥 보조문 | `Nothing was sent. Your edits are safe.` — 실행 전 거부와 같은 문장이다. 미리보기 조회는 쓰기를 하지 않는다 |
 | 버튼 | `Try again` **하나**. 보내기 버튼 없음 |
+
+`Try again`은 새 preview 조회만 시작한다. 목록이 도착한 뒤 `1a`에서 다시 확인해야 발송된다.
 
 ⚠️ **아트보드 번호를 `1k`로 둔다** — 캔버스에 없는 화면이고, `/design-sync`가 대조할 근거가 없는
 자리라는 사실을 번호가 드러내야 한다. **핸드오프가 갱신되면 이 자리가 먼저 충돌한다.**
@@ -234,8 +311,13 @@ base 트리 조회는 실패할 수 있다(설치 취소 · 브랜치 부재 · 
 필요한 것:
 
 ```
-| { status: "failed"; error: string; code?: SyncErrorCode; retryable?: boolean; retryAfterSeconds?: number }
+| { status: "failed"; error: string; delivery: "not-started" | "unknown"; code?: SyncErrorCode; retryable?: boolean; retryAfterSeconds?: number }
 ```
+
+`delivery`는 실패 생산자가 명시한다. 인가·준비·게이트의 실행 전 거부는 `not-started`,
+`failureOutcome`과 클라이언트의 Action reject는 `unknown`이다. 반환 오류가 없는 성공·스킵
+계약은 그대로다. `retryable`과 독립된 값이며, 전송 여부를 알아내기 위한 추가 GitHub 조회는
+도입하지 않는다.
 
 ⚠️ **`/api/pull`의 응답 본문이 함께 넓어진다** — `app/api/pull/route.ts:88`이 outcome을 **그대로
 spread**한다. `code`는 이미 `SyncRun.errorCode`로 DB에 남는 안정적 토큰이라 **새로 새는 정보는 없다**.
@@ -252,19 +334,45 @@ spread**한다. `code`는 이미 `SyncRun.errorCode`로 DB에 남는 안정적 �
 | 무엇 | 지금 | 필요 |
 |---|---|---|
 | `step: Step` | **필수** prop이고 바닥 왼쪽에 `m.newProject.modal.step(step)`을 그린다 | 바닥 왼쪽을 **`ReactNode` 슬롯**으로 (`1a`는 `24 changes · 19 keys · 2 files`, `1c`는 `Leaving this page won't stop it.`) |
+| 바닥 오른쪽 | `[Next]`를 항상 그리고 `onNext`가 필수다 | **actions 슬롯**을 받는다. 생략하면 온보딩 기본 버튼, 명시적 `null`이면 버튼 없음. Publish는 갈래별 버튼을 전달한다 |
 | 닫기 `aria-label` | `m.newProject.modal.close` | 프롭으로 받거나 `m.common.close` |
-| 폭 | `max-w-[800px]` 고정 | **736** — 시안 값. 게이트 둘은 **512**(§6 `1j`) |
+| 폭 | `max-w-[800px]` 고정 | **736** — 시안 값. 게이트 둘은 **512**(§2 `1j`) |
 | 높이 | `min-h-[min(80svh,800px,…)]` | 갈래별 고정(`1a` 560~620 · `1c` 340~380 · `1j` 300~330). ⚠️ **`min-height`가 `max-height`를 이기므로** 세 값을 `min()` 안에 함께 넣는 기존 관용구를 유지한다 |
 | dim | `bg-foreground/32` + `backdrop-blur-[6px]` | 시안은 `rgba(10,10,10,0.32)` — **같다.** blur는 캔버스가 말하지 않으므로 **결정할 값** |
 | `[Back]` | `showBack` | `false` 고정 — 모든 갈래가 단일 단계다 |
 
 ⚠️ **이 파일을 고치면 온보딩 네 단계가 함께 움직인다.** 그래서 **프롭 추가와 기본값 유지**만 한다 —
 `step`을 옵셔널로 내리고 슬롯을 새로 받되, 온보딩 호출부는 한 줄도 안 바뀌는 형이어야 한다.
-`components/onboarding/__tests__`가 그 불변을 재는 자리다.
+`components/__tests__/onboarding-modal.test.tsx`가 기존 동작을 재는 자리다.
 
 ⚠️ **파일을 옮길지도 결정할 값이다.** `components/onboarding/modal.tsx`에 Publish가 의존하면
 디렉터리 이름이 거짓이 된다 — `components/ui/modal.tsx`로 올리는 쪽은 `DIRECTORY.md` 갱신이 붙는다.
 **단 `components/ui/dialog.tsx`는 건드리지 않는다**(소비자 일곱이 함께 움직인다 — DESIGN §6.2).
+
+### 5.1 버튼·포커스·낭독 (리뷰 6번 확정)
+
+✅ **온보딩 기본값을 보존하면서 Publish의 버튼 없는 화면과 상태 전이를 지원한다**
+(2026-09-16 사용자). actions 슬롯을 전달한 호출부는 온보딩용 `onNext`를 요구하지 않는다.
+`step`을 생략해도 전이를 알 수 있도록 Publish가 갈래 전이 키를 전달하고, 온보딩은 기존
+`step` 기준을 유지한다. 같은 갈래의 데이터 갱신에는 포커스를 반복 이동하지 않는다.
+
+- 최초 열기·재열기에는 시안대로 모달 컨테이너에 포커스를 둔다. 확인 버튼으로 자동 착지하지
+  않아 Enter 한 번으로 실행되지 않는다. 열린 모달의 진행·결과 전이에는 포커스를 본문
+  시작으로 이동한다. 닫힌 동안 완료되면 포커스를 빼앗지 않는다.
+- 닫을 때는 실제로 모달을 연 버튼(`Publish`·`Publishing…`·`View result`)으로 돌아간다.
+  그 버튼이 사라졌거나 disabled라 포커스를 받을 수 없으면 해당 호스트의 제목으로 복귀한다.
+  Home·번역 화면 양쪽에 제목 ref와 `tabIndex={-1}`를 둔다.
+- 자동 결과 알림의 경로는 갈래마다 하나다. **danger는 기존 Alert의 `role="alert"`**를 쓰고
+  같은 오류를 모달의 polite live 영역에도 넣지 않는다. 그 외 갈래는 껍데기의 polite live
+  영역 한 곳으로만 전이를 알리고, 본문에 별도 `role="status"`를 중복해서 두지 않는다.
+  포커스 대상의 접근 이름과 live 문구도 같은 문장을 중복으로 읽지 않도록 구성한다.
+- 온보딩의 기존 포커스·낭독 기본값과 공용 Alert의 danger 계약은 바꾸지 않는다. 최초 열기와
+  결과 재열기는 Dialog의 접근 가능한 제목으로 문맥을 제공하고, 같은 결과의 재렌더를 새
+  결과 알림으로 처리하지 않는다.
+
+DOM 검증은 버튼 없는 갈래의 Next 0개, 상태 전이 포커스, 닫기 복귀와 제목 폴백, 활성 live
+알림 경로 1곳을 확인한다. 실제 키보드·스크린리더 검증은 별도 수동 확인으로 두며 DOM 검사가
+실제 낭독까지 보장한다고 쓰지 않는다.
 
 ## 6. 결과의 소유 주체 — 자리가 둘이고 규칙은 하나다
 
@@ -289,6 +397,27 @@ spread**한다. `code`는 이미 `SyncRun.errorCode`로 DB에 남는 안정적 �
 근거: 두 자리가 이미 "언마운트되지 않는 곳"으로 **증명돼 있다.** 새 호스트를 만들면 그 증명을
 처음부터 다시 해야 하고, 실패 모드가 "한 프레임도 안 보인다"라 테스트가 못 잡는다.
 
+✅ **진행 중에는 버튼이 실행 상태를 들고, 완료 뒤에는 별도 결과 진입점을 남긴다**
+(2026-09-16 리뷰 4번 확정). 번역 화면과 Home 모두 같은 규칙이다.
+
+| 상태 | `[Publish]` | 별도 진입점 |
+|---|---|---|
+| 실행 전 | 기존 조건으로 `1a`를 연다. 수가 0이면 비활성 | 보관 중인 직전 결과가 있으면 `View result` |
+| 실행 중 | `Publishing…` + 진행 표시. **클릭 가능**하며 현재 `1c`만 다시 연다 | 숨긴다 — 현재 진행은 왼쪽 버튼으로 연다 |
+| 실행 완료 | 진행 표시를 끝내고 기존 미발송 수·잠금 조건으로 복귀 | `View result`가 마지막 결과 모달을 연다. 수가 0이어도 유지 |
+
+- 실행 상태·결과는 기존 호스트가 소유하고, 모달의 열림 상태와 분리한다. 모달을 닫아도
+  실행·결과를 지우지 않는다. 닫힌 동안 완료되면 모달은 자동으로 열지 않고 결과 진입점을 표시한다.
+- `Publishing…` 클릭과 `View result` 클릭은 **Action을 다시 호출하지 않는다**. 새 실행은
+  `1a`의 확인 버튼에서만 시작하며, 실행 중 확인 버튼의 중복 호출도 막는다.
+- `Publishing…`를 native `disabled`로 만들면 재열기가 막힌다. 공용 Button의 `loading`이
+  클릭을 차단하는 경우 그대로 사용하지 않고, 진행 표시와 실행 차단을 호출부에서 구분한다.
+- 마지막 결과는 성공·스킵·실패·시작 거부 모두 보관한다. 같은 호스트가 마운트된 동안 유지하고,
+  새 실행이 완료되면 교체한다. 단순 미리보기 열기·닫기는 직전 결과를 지우지 않는다.
+  새로고침이나 다른 페이지로 이동한 뒤의 복구 저장소·실행 이력은 추가하지 않는다.
+- 결과 모달은 `count > 0` 조건 안에 두지 않는다. 성공 뒤 refresh로 수가 0이 돼도
+  열린 결과와 `View result`가 남아 PR 링크와 경고 목록을 다시 볼 수 있어야 한다.
+
 ⚠️ **Home의 상호 잠금이 함께 움직인다.** 지금 `publishPending`이 `[Sync]`를 잠그고
 `setSyncOpen`이 `open && !publishPending`으로 문을 좁힌다. 모달이 들어오면 **잠금의 시작·해제
 시점**이 "버튼 클릭"에서 "모달 안의 실행"으로 옮겨간다.
@@ -297,6 +426,8 @@ spread**한다. `code`는 이미 `SyncRun.errorCode`로 DB에 남는 안정적 �
 ⚠️ **반대 방향은 이미 막혀 있다** — Publish 모달이 modal이라 `[Sync]` 트리거에 클릭이 닿지 않는다.
 ⚠️ **`syncPending`과 `publishPending`을 하나의 `busy`로 접지 않는다**(Sync가 자기 자신을 잠근다 —
 `home/actions.tsx`의 주석).
+Publish 모달을 닫아도 실행이 끝날 때까지 `publishPending`은 유지하므로 `[Sync]` 잠금도
+유지한다. 실행 완료 뒤 결과를 열어 보는 것만으로는 `[Sync]`를 잠그지 않는다.
 
 ## 7. 열린 PR 조회 — diff Action이 함께 든다
 
@@ -341,7 +472,7 @@ loadPublishPreview({ slug }) : Promise<PublishPreview>   // translation:write ·
 |---|---|
 | 2 (병합 금지) | ⚠️ **가장 가까운 자리다.** `1a`가 리포 값과 DB 값을 **같은 표에** 그린다. 지키는 방법: **표는 표시 전용이고 어떤 판정의 입력도 아니다** — before를 읽은 결과가 export·커밋·PR 어디에도 들어가지 않는다. 4-1에 주석으로 못 박고, diff Action이 **쓰기를 하지 않는 read Action**임을 테스트가 고정한다 |
 | 4 (export 결정성) | **영향 없다** — 렌더 경로를 안 건드린다 |
-| 5 (`projectId`로 좁힌다) | 신규 Action 둘이 **인가가 돌려준 `projectId`**로만 조회한다. slug로 다시 찾지 않는다 |
+| 5 (`projectId`로 좁힌다) | 신규 read Action 하나가 **인가가 돌려준 `projectId`**로만 조회한다. slug로 다시 찾지 않는다 |
 | 9 (버린 값을 숨기지 않는다) | **강화된다** — `<details>`가 펼친 목록이 되고, 제목이 셀 수 없는 것을 세지 않게 된다. ⚠️ 상한을 둘 때(열린 결정 1) **"나머지는 Logs에"를 화면이 말해야** 이 불변식이 유지된다 |
 | 3 · 10 · 11 | 영향 없다 |
 
@@ -359,23 +490,29 @@ loadPublishPreview({ slug }) : Promise<PublishPreview>   // translation:write ·
 ## 12. 영향받는 테스트
 
 - `lib/pull/__tests__/message.test.ts` — 갈래 매핑 전수. `created`/`updated`가 **다른 화면**인 것 ·
-  `SKIPPED` + `warnings > 0`의 칸 · §2.2의 여섯 사유가 어디로 가는지
+  `no-edits`/`no-changes` 모두 `1f` · `SKIPPED` + `warnings > 0`의 칸 · §2.2의 여섯 사유가 어디로 가는지
 - `lib/sync/__tests__/plan.test.ts` — `already-running`이 `too-soon`보다 앞 · `retryAfterSeconds`가
   올림 · 실패가 `lastSettled`에 안 센다(`1i`의 `Try again`이 그 위에 선다)
-- `lib/pull/__tests__/error-codes.test.ts` — `RETRYABLE`의 true/false ↔ 화면 둘 1:1 (양방향)
-- 신규 `lib/pull/__tests__` — §2.1의 **술어 포함 관계**
-- `components/__tests__/publish-button.test.tsx` — 결과가 `Alert`가 아니라 모달 본문 ·
+- `lib/pull/__tests__/error-codes.test.ts` — 기존 오류 코드 생산자 검사 유지. 화면 매핑 검사는
+  `lib/pull/__tests__/message.test.ts`에 추가하며 `stale`는 합성 입력으로 구별한다
+- 두 소비자의 DOM 테스트 — §2.1의 미리보기 이후 다른 발송 완료·쿨다운 경과에 따른 `no-edits`
+- 신규 `components/__tests__/publish-button.test.tsx` — 결과가 `Alert`가 아니라 모달 본문 ·
   `router.refresh()`가 모달을 언마운트하지 않는다 · `1b`가 Action을 부르지 않는다
+  · 실행 중 닫기/재열기에 Action 호출 1회 유지 · 닫힌 동안 완료 후 수가 0이어도 결과 재열기
 - `components/__tests__/home-actions.test.tsx` — Provider가 결과를 계속 든다 · 상호 잠금이 모달
   전이 뒤에도 선다
+  · 같은 진행/결과 재열기 검증 · 닫아도 Sync 잠금 유지, 완료 후 잠금 해제
 - `app/__tests__/screens.test.ts` — `components/publish-button.tsx`의 소유 화면 목록
-- `app/__tests__/entry-points.test.ts` — 신규 Action 둘의 인가 (`translation:write`)
-- `messages/__tests__/*` 문구 스캐너 — 신규 항목 · `publish.partial`의 건수가 제목에서 빠진다 ·
+- `app/__tests__/entry-points.test.ts` — 신규 read Action 하나의 인가 (`translation:write`)
+- `lib/i18n/__tests__/` 문구 검사 — 신규 항목 · `publish.partial`의 건수가 제목에서 빠진다 ·
   대체된 키가 **남아 있지 않다**
-- `components/onboarding/__tests__` — 껍데기 일반화가 네 단계를 안 움직인다
+- `components/__tests__/onboarding-modal.test.tsx` — 껍데기 일반화 후 기존 온보딩 동작 유지
 - 신규 — diff Action의 단위 테스트(셀 단위 · 키 병합 정렬 · 상한 · **쓰기 0**)
 - 신규 — `1a`의 열린 PR 줄 (`OpenImportPr` 삼상태가 `null`로 접히지 않는다 · EDITOR에게도 번호가 온다)
 - 신규 — `1k` (목록 조회 실패에 보내기 컨트롤이 DOM에 0)
+- 두 소비자의 지연 Promise DOM 테스트 — 재시도/미리보기 재열기마다 새 조회 · 로딩 중
+  발송 컨트롤 0 · A 조회→닫기→B 조회 뒤 A의 늦은 성공/실패 무시 · 최신 목록 확인 전
+  추가 발송 0 · 확인 후 발송 1회 · 진행/결과 재열기는 조회/발송 모두 추가 호출 0
 
 ⚠️ **`pnpm test` 밖의 하나**: `lib/keys/**`를 건드리면 `pnpm test:projects:postgres`를 손으로 돈다
-(미발송 술어 셋이 같은 행을 세는지를 재는 유일한 자리다 — §2.1이 그 위에 선다).
+(미발송 술어 셋이 같은 행을 세는지를 재는 자리다. 미리보기와 실행 사이의 시간차 검증은 별도다).
