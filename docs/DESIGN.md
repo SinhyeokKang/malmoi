@@ -849,7 +849,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 |---|---|---|
 | `2a` 기본 | ✅ 실측(computed style + CDP) | dev의 `bugshot-i18n-test-qa` |
 | `2a` 빈 | ⚠️ **절반** — 할 일·로그의 `EmptyState`는 봤지만 **카드 넷이 전부 0인 화면**은 못 봤다(`New from GitHub`이 907로 남아 있다) | 전부 발송·전부 번역된 프로젝트가 필요하다 — **만드는 방법이 정해지지 않았다** |
-| `2b` Sync 실패 | ❌ 단위·DOM 테스트뿐 | `i18n-format-check`에 일부러 깨진 파일을 넣어 `lastImportError`를 세운다 |
+| `2b` Sync 실패 | ✅ 실측(2026-09-16) — danger 배너 · 제목 `The last sync could not finish` · 본문이 **무엇이 안전한지까지 말한다**(`Nothing was lost — the cells you see are from the last good sync, {시각}`) · `[Try again]`이 확인 Dialog를 연다 | `i18n-format-check`의 `locales/ja.yml`을 깨뜨려 커밋하고 Sync. **되돌림 커밋 + 재Sync로 복구**된다 |
 | `2c` 미연결 | ❌ 단위·DOM 테스트뿐 | GitHub App 설치 목록에서 리포를 뺀다 — ⚠️ **되돌리는 절차를 같이 적고 시작한다** |
 | `2d` 보관 | ❌ 단위·DOM 테스트뿐 | 설정 화면에서 보관 → 복원 (되돌릴 수 있다) |
 | `2e` 로딩 | ❌ 골격 파일만 있고 실물을 못 봤다 | 네트워크 스로틀 |
@@ -860,6 +860,71 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다. ⚠️ **첫 적재 전 화면은 `ProjectNotReady`가 든다** —
 번역 화면과 **같은 컴포넌트**다. ⚠️ **보관은 전면 교체가 아니라 배너다** — `ProjectArchived`의
 소비자가 넷으로 줄었고 **그 컴포넌트를 지우지 않는다**(번역·로케일·멤버·이력이 계속 쓴다).
+
+### 6.644 Sync — 확인 Dialog와 결과 Alert (2026-09-16 실측)
+
+시안은 Claude Design 핸드오프 `design_handoff_sync_repository`(아트보드 `4a`~`4f`)이고 **캔버스가 px 단위
+정본**이다. 아래는 Chrome computed style + CDP 접근성 트리로 **실측한** 값이다. ⚠️ **Home의 핸드오프가
+아니다** — 그 둘은 파랑 규칙도 다르다(§6.64 마지막 ⚠️).
+
+| 요소 | 실측값 |
+|---|---|
+| Dialog | 360 · radius 12 · shadow `rgba(22,24,27,.15) 0 6px 16px 2px` · 400px 뷰포트에서도 360 유지 |
+| 머리 | padding `16 16 8` · gap 8 · 제목 15/500/22.5px/0.225px |
+| 설명문 | 13/20.8px/0.26px/`#737373`/padding `0 16` · 브랜치는 mono 13/18px/`#525252` |
+| 본문 | padding `16 16 0` · 블록 사이 8 |
+| 위험 블록 | amber radius 10 · padding 12 · 13px · 글리프 14 mt 2 · **줄 사이 6** · `#fffbeb`/`#fde68a`/`#78350f` · **수에만 weight 500** |
+| 푸터 | padding 16 · gap 8 · flex-end · 버튼 36/radius 10/px 12/14px |
+| 확정 버튼 | **위험 집계가 0이어도 danger다** — 글자 `#dc2626` · bg `#fff` · border `destructive/40` |
+| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ `Sync from repository` |
+| `aria-describedby` | ⚠️ **Radix는 설명문 하나에만 건다** — 경고 블록 id를 함께 넘겨 넓힌다. 안 넓히면 열릴 때 읽히는 것이 "덮는다"까지이고 **무엇이 지워지는지는 안 읽힌다** |
+
+**위험 블록은 네 갈래이고 권유 줄이 갈래마다 다르다.** ⚠️ **블록이 줄어드는 방향으로 움직인다** —
+조회가 `null`을 주면 미확인 줄이 사라지고 `describedby`도 하나로 줄어든다.
+
+| 갈래 | 아트보드 | 블록 | 권유 |
+|---|---|---|---|
+| 미발송 0 ∧ PR 없음 | `4a` | **본문 자체가 없다** — 부재가 곧 정보다 | — |
+| 미발송 N | `4b` | 미발송 한 줄 | `Send changes first` — **앱 내부 링크** |
+| 미발송 N ∧ 열린 PR | `4c` 좌 | **블록 하나 안에 `<p>` 둘** · 글리프는 블록 머리에 하나 · PR 번호는 **링크가 아니다** | 같은 `Send changes first` |
+| 미발송 0 ∧ 열린 PR | `4c` 우 | 미발송 줄이 **빠지고** PR 줄만(`0 edits …`를 안 쓴다) | `Nothing is waiting to be sent.` + `See what's open`(`_blank`·`noreferrer`·글리프 12·파랑) |
+| PR 조회 중·실패 | `4d` | 확인된 경고와 **같은 amber** — muted 한 줄이면 부재와 같은 신호로 읽힌다 | **줄 없음** |
+
+**결과 Alert는 형이 둘이고 그것이 방어다** (`4e` · ARCHITECTURE §0 불변식 9). 색만 다르면 `Synced …`라는
+앞머리가 같아 스캔에서 성공으로 읽힌다 — **높이와 줄 수가 달라야 읽지 않아도 다른 결과임이 보인다.**
+
+| 갈래 | 형 | 실측 |
+|---|---|---|
+| 전부 성공 / 정상 0키 | **한 줄** | `Synced 18 keys from dev` · `CircleCheck` 16 `text-foreground` · bg `#fff` · border `#e5e5e5` · Dismiss만 |
+| 파일 일부 실패 | 헤드라인 + 파일 줄 | `Synced 18 keys`(브랜치 없음 — 붙이면 전부 성공과 **글자까지 같아진다**) + `1 item was not imported.` + `locales/ja.yml: The file couldn't be parsed.` |
+| CI 미적용 | **두 줄** | `Synced 9 keys, but 1 surface was not replaced` + `locales — New repository data arrived while syncing.`(slug mono) · `[Try again]` 있음 |
+| 전 표면 실패 | 두 줄 | `Sync could not finish` — **`…, but …`을 쓰지 않는다**(앞 절이 거짓이 된다) |
+
+⚠️ **`partial` 표면에는 사유가 없다** (2026-09-16 실측이 잡은 결함). `lib/import/run.ts`의 `finishSurface`는
+`prepared.kind === "failed"`에만 `reason`을 달아 **`partial`은 언제나 `null`**이다. 폴백을 쓰면
+`locales — The last import did not finish.`가 서는데 **그 임포트는 끝났고 18키가 들어갔다** — 한 Alert
+안에서 두 문장이 서로를 부정한다. 그 갈래의 원인은 **파일 줄**이 든다.
+⚠️ **말할 것이 없는 사고는 자리를 만들지 않는다** — 중복 키만으로도 `partial`이 되고(`duplicateKeys`는
+어댑터 오류가 아니라 `lastWins`가 흡수한다) 그 표면은 사유도 파일 오류도 없어 **빈 `<div>`**가 남는다.
+⚠️ **이 결함이 통과한 이유는 테스트가 서버가 만들지 않는 조합(`reason: "partial-import"`)을 재고 있었기
+때문이다** — 회귀는 `components/__tests__/sync-result.test.tsx`가 고정한다.
+
+**거부 갈래 넷은 `[Sync]`에서 도달할 수 없다** (2026-09-16 실측). 근거와 "지우지 않는 이유"는
+`lib/import/refusal.ts`의 머리 주석이 든다 — **`not-ready`·`no-surfaces`는 Home이 서지 않아서**,
+**`not-connected`·`repo-replaced`는 `paused`가 트리거를 native `disabled`로 만들어서**다.
+⚠️ **후자를 "비활성 버튼은 이유를 말하지 못한다"로 반박하지 않는다** — 그 화면은 `not_connected` 배너가
+`[Reconnect]`를 들어 거부 Alert의 액션이 하려던 일을 이미 한다.
+
+**실측 상태** — ⚠️ **jsdom 통과를 실물 검증으로 바꿔 적지 않는다.** `sync-button.test.tsx`·
+`sync-result.test.tsx`가 재는 것은 **판정**이고 여기가 재는 것은 **시안과 같은가**다.
+
+| 갈래 | 상태 | 밟는 방법 |
+|---|---|---|
+| `4a` · `4b` · `4c` 좌우 · `4d` · `4f` 진행/연타/역방향 잠금 | ✅ 실측 | `4c`는 Publish를 돌려 PR을 만든 뒤 Dialog를 연다 |
+| `4e` 성공 한 줄 · 정상 0키 · 일부 파일 실패 · CI 미적용 | ✅ 실측 | 0키는 로케일 파일을 **빈 카탈로그**로, 일부 실패는 파일 하나를 깨뜨려 커밋. CI 미적용은 실행권을 잡은 직후 표면에 **남의 마킹**을 끼운다 |
+| 거부 — `unavailable`(요청이 못 감) | ✅ 실측 | CDP로 오프라인 |
+| 거부 — `already-running` | ✅ 실측 | `Project.repositoryImportToken`·`repositoryImportStartedAt`을 세운다(5분 안에 누른다) |
+| 거부 — 나머지 넷 | ⛔ **도달 불가** | 위 참조. `pnpm test`의 판정 테스트가 유일한 방어선이다 |
 
 ### 6.645 ⚠️ 이메일 칸에는 상태가 **셋**이다 (2026-09-10)
 
