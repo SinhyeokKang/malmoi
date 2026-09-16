@@ -197,9 +197,30 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
    * 목록도 감싸 `[slug]` params를 못 받는다. 8-P(diff)와 8-3(breadcrumb·Publish)이 **서버 데이터**를
    * 필요로 하므로 그 자리가 프로젝트 레이아웃이어야 한다.
    */
-  it("오른쪽 패널은 프로젝트 레이아웃이 든다 — 셸은 slug를 모른다", () => {
-    expect(projectLayout).toMatch(/<ProjectPanel\b/);
-    expect(layout).not.toMatch(/<ProjectPanel\b/);
+  /**
+   * ⚠️ **오른쪽 프로젝트 패널을 지웠다** (2026-09-16 사용자 판정). 그 패널이 담기로 했던 둘이 각각
+   * 다른 주인을 찾았다 — `Changes`의 diff는 Publish 모달 `1a`가 요구하는 것과 **같은 데이터**이고,
+   * `General`의 Publish 버튼·결과는 그 모달이 가져간다(`design_handoff_publish_modal` §4). 남은 것은
+   * 빈 320 프레임과 아무것도 안 하는 세그먼트 컨트롤뿐이었고 2026-09-10부터 그대로 서 있었다.
+   *
+   * ⚠️ **소스에서 센다** — 렌더 테스트는 "안 그린다"를 못 본다(안 그리는 것이 기본값이라 공허하게
+   * green이다). 고아가 된 사전까지 함께 세야 `m.common.panel`이 죽은 채로 남지 않는다.
+   */
+  it("오른쪽 프로젝트 패널은 코드에도 사전에도 남지 않는다", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        if (name.startsWith(".") || name === "node_modules") return [];
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) return walk(full);
+        return /\.tsx?$/.test(name) ? [full] : [];
+      });
+    const offenders = ["components", "app", "lib"]
+      .flatMap((root) => walk(join(ROOT, root)))
+      .filter((file) => /\bProjectPanel\b/.test(readFileSync(file, "utf8")))
+      .map((file) => file.slice(ROOT.length));
+    expect(offenders).toEqual([]);
+    // 사전 항목도 소비자가 0이면 죽은 문구다 — 화면 문구는 쓰이는 것만 남긴다.
+    expect(read("messages/en.tsx")).not.toMatch(/^\s{4}panel: \{$/m);
   });
 });
 
