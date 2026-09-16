@@ -514,7 +514,7 @@ export const en = {
      */
     none: "—",
     /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 ARCHITECTURE §0 불변식 9 위반이다. */
-    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count} dropped`),
+    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count.toLocaleString("en-US")} dropped`),
     empty: {
       title: "No syncs yet",
       description: "This fills in the first time your translations are sent back.",
@@ -700,7 +700,7 @@ export const en = {
      */
     banner: {
       review: (n: number): string =>
-        `${n} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+        `${n.toLocaleString("en-US")} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
       unsent: (n: number): string =>
         `${n.toLocaleString("en-US")} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
@@ -915,8 +915,8 @@ export const en = {
      */
     imported: (count: number, failed: number): string =>
       failed === 0
-        ? `Imported ${count === 1 ? "1 key" : `${count} keys`}.`
-        : `Imported ${count === 1 ? "1 key" : `${count} keys`}, but ${failed} couldn't be read.`,
+        ? `Imported ${count === 1 ? "1 key" : `${count.toLocaleString("en-US")} keys`}.`
+        : `Imported ${count === 1 ? "1 key" : `${count.toLocaleString("en-US")} keys`}, but ${failed.toLocaleString("en-US")} couldn't be read.`,
 
     /**
      * 모달 껍데기 (new-project-modal design §7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
@@ -1022,7 +1022,7 @@ export const en = {
       preview: {
         key: "Key",
         value: "Value",
-        more: (n: number): string => (n === 1 ? "1 more key" : `${n} more keys`),
+        more: (n: number): string => (n === 1 ? "1 more key" : `${n.toLocaleString("en-US")} more keys`),
         language: "Language",
         /** ⚠️ **키 수를 아는 언어만** 두 번째 조각을 받는다 (결정 ⑥⑦). */
         option: (code: string, keys: string | undefined): string => (keys === undefined ? code : `${code} · ${keys}`),
@@ -1099,7 +1099,7 @@ export const en = {
       creating: "Creating project and importing all selected files…",
       nothingCreated: "Nothing was created.",
       resultUnknown: "We couldn't confirm the result. Check your project list before trying again. If the project exists, generate a new push token in Settings.",
-      failedSurface: (path: string, failed: number) => `${path}: ${failed} import issues.`,
+      failedSurface: (path: string, failed: number) => `${path}: ${failed.toLocaleString("en-US")} import issues.`,
       /** ③ info — **읽기 전용임을 말한다.** 리포에 아무것도 쓰지 않는다(불변식). */
       info: (path: string, branch: string): string =>
         `Creating the project reads ${path} on ${branch} once. Nothing is written back to the repository.`,
@@ -1113,7 +1113,7 @@ export const en = {
         [code, keys, mostKeys ? "Most keys" : undefined].filter((part) => part !== undefined).join(" · "),
       /** ⚠️ **키 수를 아는 언어에만 선다** (결정 ⑦). `keyGap`이 `undefined`면 화면이 이 문장을 뺀다. */
       keyGap: (lang: string, n: number, base: string): string =>
-        `${lang} has ${n} keys fewer than ${base}. Those keys would be left out if ${lang} led.`,
+        `${lang} has ${n.toLocaleString("en-US")} keys fewer than ${base}. Those keys would be left out if ${lang} led.`,
       /**
        * 예외 G — 제출 뒤 그 필드에 선다.
        *
@@ -1390,8 +1390,8 @@ export const en = {
     base: "Base",
     /** `localeProgress` — 검토 필요는 번역된 것이 아니라 따로 센다. */
     progress: (percent: number, translated: number, total: number): string =>
-      `${percent}% · ${translated} of ${total}`,
-    needsReview: (n: number): string => (n === 1 ? "1 needs review" : `${n} need review`),
+      `${percent}% · ${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
+    needsReview: (n: number): string => (n === 1 ? "1 needs review" : `${n.toLocaleString("en-US")} need review`),
     /**
      * ⚠️ **orphaned 로케일이 이 화면의 존재 이유다** (ARCHITECTURE §5.5.16). 그 상태는 오래전부터
      * 정의돼 있었는데 **화면이 없어서** 번역자가 볼 수 있는 것은 "열이 사라졌다"뿐이었다. 그래서

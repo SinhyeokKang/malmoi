@@ -148,13 +148,31 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
  * 보면 다른 블록에 같은 이름이 생길 때 엉뚱한 쪽이 조용히 빠진다).
  */
 const NOT_A_COUNT: Record<string, string> = {
+  // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다.
+  "projects.count": "PROJECT_LIMIT = 3",
+  "projects.memberCount": "MEMBER_LIMIT = 10",
+  "errors.onboarding.limit-reached": "PROJECT_LIMIT = 3",
+  // 수가 아니다 — 번호·단계·글자 상한.
+  "projects.banner.prOpen": "PR 번호",
+  "newProject.modal.step": "단계 번호 — `Step 3 of 4`",
+  "newProject.naming.slugTooLong": "글자 수 상한",
+  "errors.onboarding.invalid-slug": "글자 수 상한",
+  "account.profile.errors.tooLong": "글자 수 상한",
+  /*
+    ⚠️ **아래 셋은 상한을 강제하는 상수가 없다** (2026-09-16 라운드 6 Q3) — "한 자리다"는 **관측이지
+    보장이 아니다.** 결론은 유지하되(로케일 파일 그룹이 천 개가 되는 경로가 없다) 표면 상한이
+    생기거나 대량 표면 리포가 들어오면 **이 세 줄이 먼저 재검토 대상**이라는 뜻으로 적어 둔다.
+  */
+  "projects.banner.repoAhead": "로케일 파일 수 — 강제 상한 없음",
+  "newProject.steps.files.description": "후보 세트 수 — 강제 상한 없음",
+  "newProject.files.summaryShort": "로케일 수 — 강제 상한 없음",
   "repositorySync.openPr": "PR 번호 — `#1,207`은 그런 PR이 아니다",
   "home.meta.pr": "PR 번호 — 같은 이유다",
   "translations.publish.gate.too-soon": "남은 초 — 수가 아니라 대기 시간이다",
-  "repositorySync.unreadable": "표면 수 — 활성 표면은 한 자리다",
-  "repositorySync.notReplaced": "표면 수 — 활성 표면은 한 자리다",
-  "home.cards.acrossSurfaces": "표면 수 — 활성 표면은 한 자리다",
-  "home.attention.more": "상한이 5다 — 수가 아니라 나머지 표시다",
+  "repositorySync.unreadable": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
+  "repositorySync.notReplaced": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
+  "home.cards.acrossSurfaces": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
+  "home.attention.more": "상한이 5다 — `lib/home/attention.ts`의 `CAP` 상수가 강제한다",
   // 수를 직접 찍지 않는다 — 보이는 수는 인자로 받은 `unsentCount(n)` 노드가 만들고, `n`은 단복수에만 쓴다.
   "repositorySync.unsent": "수를 찍지 않는다 — 단복수 판정에만 쓴다",
 };
@@ -198,26 +216,37 @@ function numberTakers(top: string): Map<string, string> {
   return out;
 }
 
+/**
+ * ⚠️ **사전을 손으로 고르지 않는다.** 범위를 손으로 적을 때마다 같은 구멍이 **한 겹씩 위로** 올라갔다
+ * — 다섯 함수 → 사전 둘 → 최상위 블록 둘 → 그리고 형제 하나만 고쳐 그룹이 갈라졌다(2026-09-16).
+ * 규칙의 문장이 "이 제품이 보여주는 수"인데 검사 범위가 그보다 좁으면, 그 차이가 매번 결함이 된다.
+ */
+function topLevelDictionaries(): string[] {
+  const source = readFileSync(join(ROOT, "messages/en.tsx"), "utf8");
+  return [...source.matchAll(/^  "?([\w-]+)"?: \{$/gm)].map((match) => match[1] ?? "");
+}
+
 it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => {
   const offenders: string[] = [];
   let checked = 0;
-  for (const top of ["home", "repositorySync", "translations"]) {
+  const dictionaries = topLevelDictionaries();
+  // ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다 — 사전 목록과 대상 수를 함께 센다.
+  expect(dictionaries.length).toBeGreaterThan(8);
+  for (const top of dictionaries) {
     const takers = numberTakers(top);
-    // ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다.
-    expect(takers.size).toBeGreaterThan(3);
     for (const [path, text] of takers) {
       if (Object.hasOwn(NOT_A_COUNT, path)) continue;
       checked += 1;
       if (!text.includes("toLocaleString")) offenders.push(`${path}: ${text.trim().split("\n")[0]}`);
     }
   }
-  // 첫 판이 다섯, 둘째 판이 여덟을 봤다 — 넓힌 것이 실제로 늘었는지 센다.
-  expect(checked).toBeGreaterThan(8);
+  // 첫 판이 다섯, 둘째가 여덟, 셋째가 열셋을 봤다 — 넓힌 것이 실제로 늘었는지 센다.
+  expect(checked).toBeGreaterThan(20);
   expect(offenders).toEqual([]);
 });
 
 /** ⚠️ 면제 목록이 **실재하는 경로**를 가리키나 — 이름이 바뀌면 조용히 면제가 풀리거나 죽은 줄이 남는다. */
 it("면제 목록의 경로가 전부 실재한다", () => {
-  const known = new Set(["home", "repositorySync", "translations"].flatMap((top) => [...numberTakers(top).keys()]));
+  const known = new Set(topLevelDictionaries().flatMap((top) => [...numberTakers(top).keys()]));
   expect(Object.keys(NOT_A_COUNT).filter((path) => !known.has(path))).toEqual([]);
 });
