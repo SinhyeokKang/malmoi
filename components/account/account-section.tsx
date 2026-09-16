@@ -50,10 +50,7 @@ export function AccountCard({
   return (
     <section
       aria-labelledby={titleId}
-      /*
-        ⚠️ **배경을 카드가 든다.** 패널 배경을 물려받게 두면 그 값이 바뀌는 날 카드 넷이 함께
-        따라가고, 그릇이라는 사실이 사라진다 — 캔버스가 `#fff`를 카드에 명시한 이유다.
-      */
+      // 배경을 카드가 든다 — 캔버스가 `#fff`를 카드에 명시했다. 오늘은 패널과 같은 값이다.
       className="border-border bg-background overflow-hidden rounded-lg border"
     >
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
