@@ -607,7 +607,7 @@ describe("code-dict — 삽입 키 이름의 따옴표 관용", () => {
   for (const mark of ["'", '\"', ""]) {
     for (const indent of ["  ", "    "]) {
       it(`${JSON.stringify(mark)} 키 표기를 ${indent.length}칸 형제에서 읽고 값의 부호와 구별한다`, () => {
-        const src = `const labels = ['one', 'two'];\nexport default {\n${indent}${mark}a${mark}: 'A',\n${indent}${mark}b${mark}: 'B',\n};\n`;
+        const src = `export default {\n${indent}${mark}a${mark}: 'A',\n${indent}${mark}b${mark}: 'B',\n};\n`;
         const entries = [{ key: "d", message: "D" }, { key: "c", message: "C" }];
         const expected = src.replace("};", `${indent}${mark}c${mark}: 'C',\n${indent}${mark}d${mark}: 'D',\n};`);
         const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
@@ -665,5 +665,39 @@ describe("code-dict — 비ASCII 식별자 키의 관용", () => {
     expect(out).toBe('export default { 확인: "OK", 취소: "Cancel" };\n');
     expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
       .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+  });
+});
+
+
+describe("code-dict — 삽입 값의 부호는 번역 값만 센다", () => {
+  for (const [keyQuote, valueQuote] of [["'", '\"'], ['\"', "'"]]) {
+    it(`키 ${keyQuote}와 값 ${valueQuote}의 부호를 독립적으로 보존한다`, () => {
+      const src = `export default { ${keyQuote}a${keyQuote}: ${valueQuote}A${valueQuote} };\n`;
+      const entries = [{ key: "c", message: "C" }, { key: "b", message: "B" }];
+      const expected = src.replace(" };", `, ${keyQuote}b${keyQuote}: ${valueQuote}B${valueQuote}, ${keyQuote}c${keyQuote}: ${valueQuote}C${valueQuote} };`);
+      const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+      expect(out).toBe(expected);
+      expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+      expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+      expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+      expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+        .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+    });
+  }
+
+  it("import·일반 상수·다른 객체·배열·함수 내부의 문자열은 세지 않는다", () => {
+    const src = `import dependency from "dependency";
+const labels = ["one", "two"];
+const config = { label: "config" };
+export default { "el": { "a": ('A' as const), "b": 'B' }, array: ["x", "y"], fn: () => ({ text: "z" }) };
+`;
+    const out = codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] });
+    expect(out).toBe(src.replace(`"b": 'B'`, `"b": 'B', "c": 'C'`));
+  });
+
+  it("번역 값이 없는 객체는 키와 외부 문자열의 부호에 관계없이 기본 큰따옴표를 쓴다", () => {
+    const src = "const label = 'outside';\nexport default { 'el': {} };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe(`const label = 'outside';\nexport default { 'el': {'c': "C"} };\n`);
   });
 });

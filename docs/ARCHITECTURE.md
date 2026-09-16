@@ -321,7 +321,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **같은 값이라도 그것을 소스에 적는 방법이 여러 가지면, 고르는 주체는 원본이다.** 값만 맞추면 편집한 줄이 주변과 다른 스타일로 남아 diff가 번지고, 대상 리포의 Prettier·ESLint가 그 PR을 거부한다.
 
-- **인용 부호** (`code-dict`·`ts-dict`) — `lib/adapters/quote-style.ts`. 이스케이프 안전성은 계속 `JSON.stringify`가 지고, `quoteLiteral`이 그 결과를 원본의 부호로 옮긴다. **대응하는 원본 리터럴이 없는 삽입 키만** 파일의 다수 부호(`dominantQuote`)를 따른다 — 삽입 줄만 튀면 맞춘 의미가 없다.
+- **인용 부호** (`code-dict`·`ts-dict`) — `lib/adapters/quote-style.ts`. 이스케이프 안전성은 계속 `JSON.stringify`가 지고, `quoteLiteral`이 그 결과를 원본의 부호로 옮긴다. **대응하는 원본 리터럴이 없는 삽입 값만** 카탈로그 번역 값의 다수 부호(`dominantQuote`)를 따른다 — 키·import·다른 코드의 문자열은 세지 않는다. 삽입 키 이름은 별도로 가장 가까운 선택적 형제의 표기를 따르고, 형제에 단서가 없으면 파일에서 찾는다.
   - 결정성: `dominantQuote`를 삽입 **전에** 세지만 삽입은 항상 다수 쪽을 늘리므로 판정이 진동하지 않는다. 진동하면 2차 write가 1차와 달라져 blob 비교가 매번 "변경됨"을 뱉는다 — `code-dict.test.ts`의 삽입 바이트 고정점 케이스가 이걸 고정한다.
 - **YAML 블록 스타일** (`yaml-catalog`) — CST 노드가 스타일을 들고 있어 값만 갈아끼우면 저절로 보존된다. **단 값 자체가 그 스타일과 모순되면 `yaml`이 지시자를 바꾼다** — 접힌 스칼라 `>`(clip)는 끝 개행을 함의하므로, 개행 없는 값으로 편집하면 `>-`(strip)가 된다. 값을 정확히 표현하기 위한 변경이라 정상이다 (실물 PR `i18n-format-check#1`).
 

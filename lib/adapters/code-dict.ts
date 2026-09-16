@@ -347,9 +347,9 @@ function writeWithErrors(
   }
 
   // 없는 키는 삽입한다 — **정렬 순서로 넣어야 결정적이다** (ARCHITECTURE §1.4).
-  // 삽입에는 대응하는 원본 리터럴이 없으므로 **파일의 다수 부호**를 쓴다. 삽입한 줄만 튀면
-  // 편집 줄의 부호를 맞춘 의미가 없어진다.
-  const quote = dominantQuote(sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((n) => n.getText()));
+  // 삽입 값은 카탈로그의 번역 값 다수 부호를 따른다. 키·import·다른 코드의 문자열을
+  // 함께 세면 키와 값이 다른 부호를 쓰는 파일에서 값의 관용이 뒤집힌다.
+  const quote = dominantQuote(valueLiterals(root));
   for (const key of missing.sort(compareKeys)) {
     const value = wanted.get(key);
     if (value === undefined) continue;
@@ -364,6 +364,17 @@ function writeWithErrors(
   }
 
   return { content: changed ? sf.getFullText() : file.content, errors };
+}
+
+/** collect와 같은 객체/문자열 경로만 따른다 — 배열·함수 내부의 문자열은 번역 값이 아니다. */
+function valueLiterals(obj: ObjectLiteralExpression): string[] {
+  return obj.getProperties().flatMap((prop) => {
+    if (!prop.isKind(SyntaxKind.PropertyAssignment)) return [];
+    const init = unwrap(prop.getInitializer());
+    if (init?.isKind(SyntaxKind.StringLiteral)) return [init.getText()];
+    if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) return valueLiterals(init);
+    return [];
+  });
 }
 
 /**
