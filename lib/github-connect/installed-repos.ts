@@ -40,12 +40,18 @@ export function countInstalledRepos(settled: readonly InstallationReposResult[])
 }
 
 /**
- * ⚠️ **`ensureUserToken`을 같은 요청에서 두 번 부르는 것이 안전한 이유.** `loadAccountView`와 이
- * 조회가 둘 다 부르고, 토큰이 만료였으면 **둘 다 갱신을 시도한다.** GitHub의 refresh 토큰은
- * 1회용이지만 `token-store.ts`가 **조건부 쓰기 + 경합 뒤 한 번 다시 읽기**(`afterRace`)로 그것을
- * 이미 다룬다 — 진 쪽은 이긴 쪽이 회전시킨 토큰을 받는다. **이 주석이 없으면 다음 사람이
- * "토큰을 두 번 얻는다"를 보고 `loadAccountView`를 넓히려 든다**, 그러면 이 값을 안 쓰는
- * `/projects/[slug]/settings`가 매 요청 GitHub을 친다 (design §2.1).
+ * ⚠️ **호출부가 `loadAccountView`와 병렬로 돌리면 안 된다** (2026-09-16 리뷰 🔴1). 이 함수도
+ * `ensureUserToken`을 부르므로, 나란히 두면 둘이 **같은 마이크로태스크에서 같은 refresh 토큰을
+ * 읽는다.** 만료였으면 둘 다 갱신을 시도하고 1회용이라 한쪽이 400을 받는데, 거부가 성공보다 빨리
+ * 오면 진 쪽의 `afterRace`가 이긴 쪽의 쓰기보다 **먼저** 행을 읽어 `reauthorize`를 낸다.
+ *
+ * ⚠️ **`token-store.ts`의 조건부 쓰기가 그것을 막아 준다고 읽지 않는다** — 그 장치는 **탭 둘이
+ * 따로 요청을 보내는** 순차 경합용이고, 거기서도 같은 창이 있다. 같은 요청의 병렬은 두 호출을 같은
+ * 순간에 출발시켜 **항상 같은 행을 읽게 만들어** 그 창을 최대로 연다. 이 주석의 앞 판본이 그 둘을
+ * 같은 것으로 취급해 병렬 호출을 정당화하고 있었다.
+ *
+ * ⚠️ **`loadAccountView`를 넓혀 해결하지 않는다** — `/projects/[slug]/settings`가 같은 함수를 쓰고
+ * 이 값을 안 쓰므로, 그 화면이 매 요청 GitHub을 두 번 치게 된다.
  *
  * ⚠️ **던지지 않는다.** 이 줄 하나 때문에 화면이 빌 이유가 없다 — 실패는 `logFailure`로 남기고
  * `null`을 낸다. 연결 상태 자체는 행이 이미 말한다.

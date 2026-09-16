@@ -83,18 +83,27 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **넷이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [storedProfile, account, methods, installedRepoCount] = await Promise.all([
+  const [storedProfile, account, methods] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
     loadAccountView(prisma, userId),
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
-    /**
-     * ⚠️ **직렬로 붙이지 않는다.** 연결됨 갈래에서만 쓰이는 값이라 `loadAccountView` 뒤에 줄을
-     * 세우고 싶어지는데, 그러면 가장 흔한 상태의 왕복이 하나 는다. 병렬이면 느는 것은 `Account`
-     * 행 읽기 하나(같은 pooler)다. **두 조회가 `ensureUserToken`을 각각 부르는 것이 안전한
-     * 이유는 `installed-repos.ts`의 주석에 있다** (design §2.1).
-     */
-    loadInstalledRepoCount(prisma, userId),
   ]);
+
+  /**
+   * ⚠️ **연결 상태 뒤에 선다 — 같은 `Promise.all`에 넣지 않는다** (2026-09-16 리뷰 🔴1).
+   *
+   * 이 조회도 `ensureUserToken`을 부르므로 `loadAccountView`와 나란히 두면 **둘이 같은
+   * 마이크로태스크에서 같은 refresh 토큰을 읽는다.** 만료된 토큰이면 둘 다 갱신을 시도하고,
+   * refresh 토큰은 1회용이라 한쪽이 400을 받는다 — 거부가 성공보다 빨리 오면 진 쪽의 `afterRace`가
+   * 이긴 쪽의 쓰기보다 **먼저** 행을 읽어 옛 토큰을 보고 `reauthorize`를 낸다. `loadAccountView`가
+   * 지는 날에는 **멀쩡한 연결에 "인가가 만료됐다"가 뜬다.** `token-store.ts`의 조건부 쓰기는 탭
+   * 둘이 따로 보내는 순차 경합용이고, 같은 요청의 병렬은 그 창을 최대로 연다.
+   *
+   * 직렬화의 대가는 왕복 하나인데, **그 값을 안 쓰는 세 갈래에서는 왕복이 오히려 둘 줄어든다** —
+   * 이 로더는 `Account` 행 하나가 아니라 GitHub을 두 번(설치 목록 + 설치별 리포) 친다.
+   */
+  const installedRepoCount =
+    account.status === "ok" && account.login !== null ? await loadInstalledRepoCount(prisma, userId) : null;
 
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
   const name = profile?.name ?? "";

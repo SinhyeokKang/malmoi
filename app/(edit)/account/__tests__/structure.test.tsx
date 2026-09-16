@@ -6,13 +6,13 @@ import { render } from "@/components/__tests__/helpers/dom";
 import { m } from "@/lib/i18n";
 import { encodeUserFields } from "@/lib/credentials/records";
 
-const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn() }));
+const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn(), loadInstalledRepoCount: vi.fn() }));
 vi.mock("@/auth", () => ({ signOut: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: mocks.requireUser }));
 vi.mock("@/lib/db", () => ({ getPrisma: mocks.getPrisma }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: mocks.loadAccountView }));
-/** 설치 리포 수는 실제 토큰 경로를 지난다 — 이 파일이 재는 축이 아니라 값만 준다. */
-vi.mock("@/lib/github-connect/installed-repos", () => ({ loadInstalledRepoCount: async () => 4 }));
+/** 설치 리포 수는 실제 토큰 경로를 지난다 — 값만 주고, **언제 불리는가**를 아래 검사가 센다. */
+vi.mock("@/lib/github-connect/installed-repos", () => ({ loadInstalledRepoCount: mocks.loadInstalledRepoCount }));
 const accountActions = vi.hoisted(() => ({
   updateProfileName: vi.fn(), uploadProfileImage: vi.fn(), deleteProfileImage: vi.fn(),
   startSessionRevocation: vi.fn(), unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(),
@@ -49,6 +49,7 @@ async function screen(
 ) {
   mocks.requireUser.mockResolvedValue({ userId: "owner" });
   mocks.loadAccountView.mockResolvedValue(view);
+  mocks.loadInstalledRepoCount.mockResolvedValue(4);
   mocks.getPrisma.mockReturnValue({
     user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image }) }) },
     account: { findMany: async () => methods },
@@ -72,6 +73,34 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ k1: Buffer.alloc(32, 1).toString("base64") }));
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "k1");
+});
+
+/**
+ * ⚠️ **집계 조회가 연결 상태 뒤에 선다** (2026-09-16 리뷰 🔴1). 전엔 `Promise.all`이 둘을 **같은
+ * 순간에** 출발시켰고, 토큰이 만료됐으면 **둘 다 같은 refresh 토큰으로 갱신을 시도**했다 —
+ * 1회용이라 한쪽이 400을 받고, 거부가 성공보다 빨리 오면 진 쪽의 `afterRace`가 이긴 쪽의 쓰기보다
+ * 먼저 행을 읽어 옛 토큰을 보고 **`reauthorize`**를 낸다. `loadAccountView`가 지면 멀쩡한 연결에
+ * "Your GitHub authorization expired."가 뜬다.
+ *
+ * `token-store.ts`의 조건부 쓰기는 **탭 둘이 따로 보내는** 순차 경합용이고 거기서도 같은 창이 있다.
+ * 같은 요청의 `Promise.all`은 두 호출이 같은 마이크로태스크에서 출발하므로 **항상 같은 행을 읽어**
+ * 그 창을 최대로 연다.
+ *
+ * 세는 것은 **호출 횟수**다 — 연결됨에서 1회, 나머지 셋에서 0회. 병렬로 되돌리면 넷 다 1회가 되어
+ * 아래 셋이 red다.
+ */
+it.each([
+  ["미연동", { status: "ok", login: null }],
+  ["인가 만료", { status: "reauthorize" }],
+  ["조회 실패", { status: "unavailable" }],
+])("%s 상태에서는 설치 집계를 조회하지 않는다 — 토큰 갱신을 둘이 겹쳐 시도하지 않는다", async (_label, view) => {
+  await screen({}, undefined, view);
+  expect(mocks.loadInstalledRepoCount).not.toHaveBeenCalled();
+});
+
+it("연결됐을 때만 설치 집계를 한 번 조회한다", async () => {
+  await screen({}, undefined, { status: "ok", login: "octocat" });
+  expect(mocks.loadInstalledRepoCount).toHaveBeenCalledTimes(1);
 });
 
 /**
