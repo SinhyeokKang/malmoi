@@ -277,7 +277,7 @@ function collect(
 }
 
 /** 프로퍼티 이름이 식별자로 쓸 수 있는가. 아니면 따옴표로 감싼다. */
-const PLAIN_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const PLAIN_NAME = /^[$_\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*$/u;
 
 function write(format: DetectedFormat, input: WriteInput): string | null {
   return writeWithErrors(format, input).content;
@@ -441,7 +441,7 @@ function insert(obj: ObjectLiteralExpression, key: string, value: string, quote:
   const closeLine = source.lastIndexOf("\n", close - 1) + 1;
   const closeIndent = source.slice(closeLine, close);
   const multiline = closeLine > start && /^[\t ]*$/.test(closeIndent);
-  const property = `${quoteName(remaining, quote)}: ${quoteLiteral(value, quote)}${trailingComma ? "," : ""}`;
+  const property = `${quoteName(remaining, quote, cur)}: ${quoteLiteral(value, quote)}${trailingComma ? "," : ""}`;
   let position: number;
   let insertion: string;
   if (multiline) {
@@ -476,9 +476,23 @@ function insert(obj: ObjectLiteralExpression, key: string, value: string, quote:
   return true;
 }
 
-/** 식별자로 쓸 수 있으면 부호 없이, 아니면 **값과 같은 부호로** 감싼다 — 키만 튀지 않게 한다. */
-const quoteName = (name: string, quote: Quote) =>
-  PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
+/** 키의 따옴표는 값의 부호와 별개다 — 가장 가까운 형제의 선택적 표기를 따른다. */
+function quoteName(name: string, quote: Quote, obj: ObjectLiteralExpression): string {
+  // 점·공백 등으로 따옴표가 필수인 이름은 "모든 키를 감싼다"는 근거가 아니다.
+  const optionalName = (prop: PropertyAssignment) => {
+    const node = prop.getNameNode();
+    return node.isKind(SyntaxKind.Identifier)
+      || (node.isKind(SyntaxKind.StringLiteral) && PLAIN_NAME.test(node.getLiteralValue()));
+  };
+  const siblings = obj.getProperties().filter((prop) => prop.isKind(SyntaxKind.PropertyAssignment));
+  // 빈 객체 등 형제에 단서가 없으면 파일에서 찾는다. 파일에도 없으면 기존 기본값을 유지한다:
+  // 유효한 식별자는 부호 없이, 나머지는 값의 부호로 안전하게 이스케이프한다.
+  const exemplar = [...siblings].reverse().find(optionalName)
+    ?? obj.getSourceFile().getDescendantsOfKind(SyntaxKind.PropertyAssignment).reverse().find(optionalName);
+  const node = exemplar?.getNameNode();
+  if (node?.isKind(SyntaxKind.StringLiteral)) return quoteLiteral(name, quoteOf(node.getText()));
+  return PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
+}
 
 export const codeDict: Adapter = {
   name: "code-dict",

@@ -1942,3 +1942,7 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `addPropertyAssignment`의 기본 manipulationSettings가 원본 형식까지 따를 것으로 취급했다. `quoteLiteral`로 부호만 맞춰도 들여쓰기·쉼표·개행은 ts-morph가 정했다. 수정 중 `replaceWithText`와 `replaceText`도 중첩 들여쓰기 또는 CRLF를 정규화하는 것을 회귀 테스트로 확인했다.
 - **그물**: Claude Code의 실물 PR 관측과 새 전체 문자열 단언이 잡았다. 기존 의미 왕복·삽입 순서·무편집 고정점 검사는 형식이 잘못된 채 안정적인 출력을 놓쳤다. 0칸·2칸·4칸·탭 × 끝 쉼표 유무, 중첩 CRLF, 빈 객체를 검사하고 동일 입력 반복·입력 순서 반전·재적용 고정점·재파싱 값 검사를 함께 둔다.
 - **재발 방지**: `rg -n 'addPropertyAssignment|applyTextChanges' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 삽입 API를 확인한다. 수정 후 `code-dict`의 `applyTextChanges` 1곳만 있다. `pnpm test lib/adapters/__tests__/code-dict.test.ts`의 삽입 형식 회귀를 실행한다. 범위 치환 후 AST는 다시 얻어야 한다. 원격 왕복은 이번 작업에서 실행하지 않았으며 Claude Code가 이어서 검증한다.
+
+- **후속 재발 확인 (2026-09-16, 키 이름의 선택적 따옴표)**: 4칸 픽스처의 형제가 `'a'`·`'b'`인데 삽입은 `c`로 나왔다. `quoteName`이 문법상 따옴표가 필요 없는 이름을 항상 생략했고, 앞선 회귀는 모두 점 포함 키라 필수 따옴표 경로만 검사했다. 키와 값의 부호도 별개인데 파일의 문자열 다수 부호만으로는 키 관용을 알 수 없다.
+  - **수정·그물**: 가장 가까운 선택적 형제의 키 표기를 따르고, 형제에 단서가 없으면 파일, 파일에도 없으면 기존 기본값으로 떨어진다. 점·공백 등 필수 따옴표 이름은 판정에서 제외한다. 작은따옴표·큰따옴표·무따옴표 × 2칸·4칸, 중첩·빈 객체·혼합·이스케이프를 전체 문자열로 검사한다. 예전 `quoteName`으로 일부러 되돌리자 신규 7건이 실패했다. 리뷰에서 발견한 한글 식별자 제외도 회귀 2건의 red를 확인한 뒤 유니코드 식별자 판정으로 수정했다.
+  - **재발 방지**: `rg -n 'PLAIN_NAME|optionalName|quoteName' lib/adapters/code-dict.ts`로 문법 판정과 표현 선택이 분리되는지 확인하고 `pnpm test lib/adapters/__tests__/code-dict.test.ts`를 실행한다. 문자열 값만 보지 않고 삽입된 키 토큰 자체를 검사한다. 원격 PR·왕복은 Claude Code가 이어서 확인한다.

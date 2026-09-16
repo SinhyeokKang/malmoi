@@ -601,3 +601,69 @@ describe("code-dict — 빈 여러 줄 객체의 삽입 기준", () => {
     expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
   });
 });
+
+
+describe("code-dict — 삽입 키 이름의 따옴표 관용", () => {
+  for (const mark of ["'", '\"', ""]) {
+    for (const indent of ["  ", "    "]) {
+      it(`${JSON.stringify(mark)} 키 표기를 ${indent.length}칸 형제에서 읽고 값의 부호와 구별한다`, () => {
+        const src = `const labels = ['one', 'two'];\nexport default {\n${indent}${mark}a${mark}: 'A',\n${indent}${mark}b${mark}: 'B',\n};\n`;
+        const entries = [{ key: "d", message: "D" }, { key: "c", message: "C" }];
+        const expected = src.replace("};", `${indent}${mark}c${mark}: 'C',\n${indent}${mark}d${mark}: 'D',\n};`);
+        const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+        expect(out).toBe(expected);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+        expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+          .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+      });
+    }
+  }
+
+  it("따옴표가 필수인 형제는 선택적 따옴표의 관용으로 세지 않는다", () => {
+    const src = "export default { a: 'A', 'b.dot': 'B' };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "c", message: "C" }] }))
+      .toBe("export default { a: 'A', 'b.dot': 'B', c: 'C' };\n");
+  });
+
+  it("중첩 객체의 형제 관용이 바깥 키 표기보다 우선한다", () => {
+    const src = `export default { a: 'A', el: { "b": 'B' } };\n`;
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe(`export default { a: 'A', el: { "b": 'B', "c": 'C' } };\n`);
+  });
+
+  it("빈 객체는 파일의 선택적 키 표기를 따른다", () => {
+    const src = "export default { 'a': 'A', 'el': {} };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe("export default { 'a': 'A', 'el': {'c': 'C'} };\n");
+  });
+
+  it("혼합 관용은 가장 가까운 선택적 형제를 따르고 필수 따옴표는 안전하게 유지한다", () => {
+    const src = `export default { a: 'A', "b": 'B' };\n`;
+    const entries = [{ key: "c", message: "C" }, { key: "odd'key", message: "D" }];
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe(`export default { a: 'A', "b": 'B', "c": 'C', "odd'key": 'D' };\n`);
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.errors).toEqual([]);
+    expect(back.locales[0]!.entries).toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+  });
+});
+
+
+describe("code-dict — 비ASCII 식별자 키의 관용", () => {
+  it("한글 키도 따옴표가 선택적인 형제로 센다", () => {
+    const src = 'export default { "확인": "OK", "취소": "Cancel" };\n';
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "next", message: "Next" }] }))
+      .toBe('export default { "확인": "OK", "취소": "Cancel", "next": "Next" };\n');
+  });
+
+  it("무따옴표 관용에서는 유효한 한글 삽입 키도 감싸지 않는다", () => {
+    const src = 'export default { 확인: "OK" };\n';
+    const entries = [{ key: "취소", message: "Cancel" }];
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe('export default { 확인: "OK", 취소: "Cancel" };\n');
+    expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+      .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+  });
+});
