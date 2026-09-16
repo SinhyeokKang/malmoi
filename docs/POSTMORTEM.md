@@ -1892,3 +1892,36 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **그물**: 리뷰의 복합 입력 재현과 새 회귀 테스트가 잡았다. 기존 YAML 테스트 95건은 빈 스칼라 편집·삽입·keep chomping을 각각 검사했지만 두 경계의 조합은 놓쳤다. 첫 회귀 7건, 두 번째 회귀 12건의 red→green을 관측했고 LF/CRLF·주석·공백 줄·문서 끝 마커·동시 삽입을 추가 검증했다.
 - **수정**: 같은 위치의 맵 삽입을 빈 스칼라 치환보다 먼저 적용한다. keep이 범위 밖 빈 줄을 흡수하는 경우에만 편집 값을 인용해 주변 바이트와 요청값을 분리한다.
 - **재발 방지**: `rg -n 'replacements\.sort|chomp ===|source\.slice\(end\)' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 두 경계를 확인했다(해당 YAML 구현만 해당). `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`의 `coincident empty scalar and map insertion`·`keep chomping beside preserved blank lines`에서 요청값·입력 순서 독립성·반복 출력·재적용 고정점과 원본 suffix 보존을 검사한다.
+
+### 2026-09-16 — 부분 실패 결과가 "임포트가 끝나지 않았다"고 말했다 (끝났고 18키가 들어갔다)
+
+- **영역**: `components/home/sync-result.tsx` · `lib/import/result.ts`의 `SurfaceImportResult`.
+- **증상**: `locales/ja.yml` 하나를 깨뜨리고 Sync하면 한 Alert 안에 네 줄이 섰다 —
+  `Synced 18 keys` / `1 item was not imported. Check the details below.` /
+  **`locales — The last import did not finish.`** / `locales/ja.yml: The file couldn't be parsed.`
+  셋째 줄이 거짓이고 첫째 줄이 그것을 부정한다. 바로 아래 줄이 진짜 원인을 이미 말하고 있었다.
+- **근본 원인**: **타입이 서버가 만들지 않는 조합을 허용했다.** `SurfaceImportResult`는
+  `status`("imported"|"partial"|"failed"|"superseded")와 `reason`(`… | null`)을 **평평하게** 들고,
+  `finishSurface`는 `prepared.kind === "failed"`에만 사유를 단다 — 즉 `partial`의 `reason`은
+  **언제나 `null`**이다. 화면은 그 사실을 모른 채 `reason ?? "import-failed"`로 폴백했고,
+  **없는 사유를 만들어 내는 자리**가 됐다. `superseded`에서는 같은 코드가 참을 말했으므로
+  코드만 읽어서는 갈래가 보이지 않는다.
+- **그물**: 놓친 것 — `pnpm test` 4,132건. 그 중 이 갈래를 재던 케이스가
+  `row("web", "partial", "partial-import")`로 **서버가 절대 만들지 않는 조합**을 넘기고 있었다.
+  사유가 있는 입력을 주면 사유가 있는 출력이 나오므로 폴백 경로가 한 번도 안 밟혔다.
+  잡은 것 — 브라우저 실물 검증(T11)이 화면의 문장을 읽은 것. **jsdom 출력이 실물과 글자까지
+  같았는데도 4,000건이 green이었다** — 재는 입력이 틀리면 환경은 죄가 없다.
+- **재발 방지**:
+  - 원인 줄을 `surface.reason !== null`로 가르고, 사유도 파일 오류도 없는 사고(중복 키만으로도
+    `partial`이 된다 — `buildPushPayload`의 `duplicateKeys`는 어댑터 오류가 아니라 `lastWins`가
+    흡수한다)는 `incidents`에서 뺀다. 안 그러면 빈 `<div>`가 남는다.
+  - `components/__tests__/sync-result.test.tsx`가 이제 **`finishSurface`가 돌려주는 모양**으로 잰다.
+  - **전수 grep**: `grep -rn 'status: "' lib --include='*.ts' | grep -v __tests__` —
+    `lib/github.ts`(`RepoSnapshot`·`BranchList`)와 `lib/pull/run.ts`는 **판별 유니온**이라 불가능한
+    조합이 타입에서 막힌다. **평평한 것은 `SurfaceImportResult` 하나뿐이다**(값 네 개 × 사유가
+    곱해지는 자리라 유니온으로 접으면 `summarizeImport`의 필터 다섯이 전부 갈린다 — 접지 않는
+    대신 화면이 `null`을 갈래로 다룬다).
+  - **규칙: 테스트가 손으로 만드는 결과 객체는 그것을 만드는 서버 함수의 이름을 주석에 적는다.**
+    이 결함이 숨은 자리는 화면도 서버도 아니고 **테스트가 상상한 입력**이었다. 같은 세션에서
+    `lib/home/meta.ts`의 `MetaRow`도 같은 뿌리였고(연결됐다면서 주소가 없는 행이 타입을 통과했다)
+    그쪽은 판별 유니온으로 접었다 — **접을 수 있으면 접고, 못 접으면 테스트가 실물 조합을 쓴다.**
