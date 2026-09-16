@@ -819,6 +819,24 @@ export const en = {
        * 안 읽는다. 숫자가 근거가 될 수 없어 걷었다.
        */
       connected: "Connected",
+      /**
+       * 연결된 행의 보조 줄에 이어 붙는 집계 (design §3.5).
+       *
+       * ⚠️ **설치 설정으로 나가기 전에 그 숫자가 바꾸려는 값이다** — 나가는 링크 옆에 서는 이유가
+       * 그것이다. 위 `connected`가 걷어낸 `N projects use this connection.`과 다른 축이다: 이 수는
+       * 사용자가 GitHub에서 **직접 고른 것**이고, 그래서 근거가 된다.
+       *
+       * ⚠️ **`0`과 "못 읽었다"는 이 줄을 아예 그리지 않는다** (design §8 결정 3) —
+       * `Installed on 0 repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다.
+       */
+      installedOn: (n: number): string => `Installed on ${n.toLocaleString("en-US")} repositor${n === 1 ? "y" : "ies"}.`,
+      /**
+       * 나가는 링크의 라벨.
+       *
+       * ⚠️ **New Project의 설치 링크와 다른 키다** — 그쪽은 "리포를 더 고르러 간다"는 한 가지 일이고
+       * 이쪽은 설정 전반이다. 같은 키를 쓰면 한쪽 문구를 고칠 때 다른 화면이 조용히 따라 움직인다.
+       */
+      installationSettings: "Installation settings",
       /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
       rowName: "GitHub",
       // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.

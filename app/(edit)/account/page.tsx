@@ -13,7 +13,10 @@ import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
 import { displayName } from "@/lib/account/plan";
 import { getPrisma } from "@/lib/db";
+import { optionalEnv } from "@/lib/env";
 import { loadAccountView } from "@/lib/github-connect/account-view";
+import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
+import { loadInstalledRepoCount } from "@/lib/github-connect/installed-repos";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -80,10 +83,17 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **넷이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [storedProfile, account, methods] = await Promise.all([
+  const [storedProfile, account, methods, installedRepoCount] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
     loadAccountView(prisma, userId),
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
+    /**
+     * ⚠️ **직렬로 붙이지 않는다.** 연결됨 갈래에서만 쓰이는 값이라 `loadAccountView` 뒤에 줄을
+     * 세우고 싶어지는데, 그러면 가장 흔한 상태의 왕복이 하나 는다. 병렬이면 느는 것은 `Account`
+     * 행 읽기 하나(같은 pooler)다. **두 조회가 `ensureUserToken`을 각각 부르는 것이 안전한
+     * 이유는 `installed-repos.ts`의 주석에 있다** (design §2.1).
+     */
+    loadInstalledRepoCount(prisma, userId),
   ]);
 
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
@@ -165,7 +175,11 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         */}
         <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
 
-        <GithubSection account={account} />
+        <GithubSection
+          account={account}
+          installedRepoCount={installedRepoCount}
+          settingsUrl={installationSettingsUrl(optionalEnv("GITHUB_APP_SLUG"))}
+        />
 
         <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />
       </PanelBody>
