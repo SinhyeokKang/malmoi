@@ -48,13 +48,14 @@ const KEY_GROUP = "components/translations/key-group.tsx";
 const LOCALE_BADGE = "components/translations/locale-badge.tsx";
 const PANEL = "components/shell/content-panel.tsx";
 
-describe("Publish — 다섯 문구가 Alert로 가는 길이 한 줄이다", () => {
+describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄이다", () => {
   it("옛 `pull-button.tsx`는 사라졌다 — 두 벌이 남으면 그중 하나가 낡는다", () => {
     expect(existsSync(join(ROOT, "components/pull-button.tsx"))).toBe(false);
   });
 
-  it("tone을 Alert variant로 **그대로** 넘긴다 — 매핑 표를 두 벌 두지 않는다 (design §3.4)", () => {
-    // `PublishTone`과 Alert의 variant는 같은 네 이름이다 (lib/pull/message.ts).
+  it("갈래 판정을 한 곳에서 받는다 — 매핑 표를 두 벌 두지 않는다 (DESIGN §6.646)", () => {
+    // ⚠️ **`PublishTone`은 2026-09-16에 사라졌다** — tone 넷을 내던 `pullMessage` 대신
+    // `planPublishView`가 결과 8갈래를 내고, danger는 `Alert` 프리미티브가 그대로 든다.
     expect(read(PUBLISH)).toMatch(/planPublishView\(outcome\)/);
     expect(read(PUBLISH)).toMatch(/<Alert variant="danger"/);
   });

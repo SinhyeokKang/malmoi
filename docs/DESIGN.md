@@ -379,7 +379,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 
 **첫 적재 상태** (`planProjectReadiness`): 판정 자체는 셋이지만 **화면 문구는 목록의 `projectStatus`가 든다** (8-3 — `readinessLabel`은 삭제됐다). 목록에서는 `setup`·`awaiting_first_sync`가 **`Badge neutral`**로 `Setup`·`Pending`이고 `ready`는 **`Badge success`**(초록) `Active`다 (2026-09-11 정정 — 그 둘은 새 프로젝트가 지나가는 **정상 경로**라 amber로 칠하면 고장난 것처럼 보인다). amber는 `Disconnected` 하나뿐이다.
 
-**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(`PublishTone` 선례). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
+**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
 **보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **프로젝트 스위처는 8-3에 사라졌다** — 프로젝트를 옮기는 길이 목록 하나로 통일됐다(§6.5).
 
