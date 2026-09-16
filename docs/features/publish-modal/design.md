@@ -337,7 +337,7 @@ spread**한다. `code`는 이미 `SyncRun.errorCode`로 DB에 남는 안정적 �
 | 바닥 오른쪽 | `[Next]`를 항상 그리고 `onNext`가 필수다 | **actions 슬롯**을 받는다. 생략하면 온보딩 기본 버튼, 명시적 `null`이면 버튼 없음. Publish는 갈래별 버튼을 전달한다 |
 | 닫기 `aria-label` | `m.newProject.modal.close` | 프롭으로 받거나 `m.common.close` |
 | 폭 | `max-w-[800px]` 고정 | **736** — 시안 값. 게이트 둘은 **512**(§2 `1j`) |
-| 높이 | `min-h-[min(80svh,800px,…)]` | 갈래별 고정(`1a` 560~620 · `1c` 340~380 · `1j` 300~330). ⚠️ **`min-height`가 `max-height`를 이기므로** 세 값을 `min()` 안에 함께 넣는 기존 관용구를 유지한다 |
+| 높이 | `min-h-[min(80svh,800px,…)]` | 갈래별 고정(`1a` **620~680** · `1c` 340~380 · `1j` 300~330 — ⚠️ 560~620은 캔버스 갱신 전 값이다). ⚠️ **`min-height`가 `max-height`를 이기므로** 세 값을 `min()` 안에 함께 넣는 기존 관용구를 유지한다 |
 | dim | `bg-foreground/32` + `backdrop-blur-[6px]` | 시안은 `rgba(10,10,10,0.32)` — **같다.** blur는 캔버스가 말하지 않으므로 **결정할 값** |
 | `[Back]` | `showBack` | `false` 고정 — 모든 갈래가 단일 단계다 |
 
