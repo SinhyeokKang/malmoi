@@ -150,6 +150,7 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
 const NOT_A_COUNT: Record<string, string> = {
   "repositorySync.openPr": "PR 번호 — `#1,207`은 그런 PR이 아니다",
   "home.meta.pr": "PR 번호 — 같은 이유다",
+  "translations.publish.gate.too-soon": "남은 초 — 수가 아니라 대기 시간이다",
   "repositorySync.unreadable": "표면 수 — 활성 표면은 한 자리다",
   "repositorySync.notReplaced": "표면 수 — 활성 표면은 한 자리다",
   "home.cards.acrossSurfaces": "표면 수 — 활성 표면은 한 자리다",
@@ -185,10 +186,12 @@ function numberTakers(top: string): Map<string, string> {
     const indent = line.length - line.trimStart().length;
     if (current !== null && indent > current.indent && line.trim() !== "") { current.text.push(line); continue; }
     flush();
-    const block = /^\s*(\w+): \{\s*$/.exec(line);
+    const block = /^\s*"?([\w-]+)"?: \{\s*$/.exec(line);
     if (block) { while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) stack.pop(); stack.push({ name: block[1] ?? "", indent }); continue; }
-    if (/^\s*\},?\s*$/.test(line)) { while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) stack.pop(); continue; }
-    const fn = /^\s*(\w+): \(/.exec(line);
+    // ⚠️ `} as const,`·`} satisfies X,`도 닫는 줄이다 — `},`만 보면 스택이 안 풀려 **뒤따르는 형제의 경로가 어긋난다.**
+    if (/^\s*\}(?:\s+(?:as|satisfies)\s+[\w<>\[\]., ]+)?,?\s*$/.test(line)) { while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) stack.pop(); continue; }
+    // ⚠️ 따옴표 키(`"too-soon": (s: number)`)도 센다 — 안 세면 그 자리가 조용히 면제된다.
+    const fn = /^\s*"?([\w-]+)"?: \(/.exec(line);
     if (fn) current = { path: [...stack.map((s) => s.name), fn[1] ?? ""].join("."), indent, text: [line] };
   }
   flush();
@@ -198,7 +201,7 @@ function numberTakers(top: string): Map<string, string> {
 it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => {
   const offenders: string[] = [];
   let checked = 0;
-  for (const top of ["home", "repositorySync"]) {
+  for (const top of ["home", "repositorySync", "translations"]) {
     const takers = numberTakers(top);
     // ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다.
     expect(takers.size).toBeGreaterThan(3);
@@ -215,6 +218,6 @@ it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => 
 
 /** ⚠️ 면제 목록이 **실재하는 경로**를 가리키나 — 이름이 바뀌면 조용히 면제가 풀리거나 죽은 줄이 남는다. */
 it("면제 목록의 경로가 전부 실재한다", () => {
-  const known = new Set([...numberTakers("home").keys(), ...numberTakers("repositorySync").keys()]);
+  const known = new Set(["home", "repositorySync", "translations"].flatMap((top) => [...numberTakers(top).keys()]));
   expect(Object.keys(NOT_A_COUNT).filter((path) => !known.has(path))).toEqual([]);
 });

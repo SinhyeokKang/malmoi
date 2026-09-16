@@ -702,7 +702,7 @@ export const en = {
       review: (n: number): string =>
         `${n} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
       unsent: (n: number): string =>
-        `${n} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
+        `${n.toLocaleString("en-US")} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
       repoAhead: (n: number, baseBranch: string): string =>
@@ -1013,7 +1013,7 @@ export const en = {
       include: (path: string) => `Include ${path}`,
       previewCandidate: (path: string) => `Preview ${path}`,
       conflicts: "These selections write to the same files. Uncheck a selection to continue.",
-      keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
+      keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
       summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
       notListed: "Not listed?",
@@ -1175,7 +1175,7 @@ export const en = {
 
   translations: {
     /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
-    keys: (n: number): string => (n === 1 ? "1 key" : `${n} keys`),
+    keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
 
     /** ⚠️ URL 값은 `"*"`다 — 이건 그 옵션의 라벨이다 (`ALL_NAMESPACES`). */
     allNamespaces: "All namespaces",
@@ -1218,7 +1218,9 @@ export const en = {
        * `<select>`라 옵션 안에 배지를 그릴 수 없다. 남은 일이 0이면 총계만 보인다.
        */
       namespaceOption: (name: string, pending: number, total: number): string =>
-        pending > 0 ? `${name} (${pending}/${total})` : `${name} (${total})`,
+        pending > 0
+          ? `${name} (${pending.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
+          : `${name} (${total.toLocaleString("en-US")})`,
       /** 초기화 버튼은 아이콘 하나라 접근 이름이 여기서만 온다. */
       clear: "Clear filters",
     },
@@ -1268,7 +1270,7 @@ export const en = {
        * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다.
        */
       unsent: (n: number): string =>
-        `${n === 1 ? "1 change" : `${n} changes`} not yet sent. ` +
+        `${n === 1 ? "1 change" : `${n.toLocaleString("en-US")} changes`} not yet sent. ` +
         "They can be lost when repository changes are imported automatically or with Sync. Send them and wait for the pull request to be merged before syncing.",
 
       /**
@@ -1330,7 +1332,7 @@ export const en = {
      */
     publish: {
       /** 미배포 건수를 라벨이 든다 — 0이면 숫자를 붙이지 않는다(괄호 안 0은 정보가 아니다). */
-      button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n})`),
+      button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n.toLocaleString("en-US")})`),
       nothing: "Nothing to send — everything is up to date.",
       created: "Sent for review. Your developers need to accept it before their next code push.",
       updated: "Updated what you sent earlier with your latest changes.",
@@ -1340,7 +1342,7 @@ export const en = {
        */
       partial: (count: number, sent: boolean): string => {
         // 1건이 가장 흔한 경우다 — 카운터를 만들어 놓고 여기서 안 쓰면 "1 values"가 나간다.
-        const values = count === 1 ? "1 value" : `${count} values`;
+        const values = count === 1 ? "1 value" : `${count.toLocaleString("en-US")} values`;
         return sent
           ? `Sent, but ${values} couldn't be written — tell your developers.`
           : `Nothing new was sent, and ${values} couldn't be written — tell your developers.`;

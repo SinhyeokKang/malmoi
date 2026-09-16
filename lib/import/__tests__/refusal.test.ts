@@ -94,10 +94,20 @@ describe("planImportRefusal", () => {
       "no-installations", "no-repos", "no-candidates",
       // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
       "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",
-      "manual-no-match", "not-awaiting", "no-candidates",
-      // 규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다
+      "manual-no-match", "not-awaiting",
+      /*
+        규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다. ⚠️ **`tree-truncated`만 생산자가 있다**
+        (`snapshotError`). `resource-limit`은 표면별 `reason`으로만 접히고(`SurfaceImportReason`) 이
+        판정을 안 지나며, `key-count-failed`는 온보딩 후보의 표시 라벨이라 여기로 오지 않는다 —
+        의미상으로는 transient에 가깝지만 **도달 불가라 `PLANS`에 근거 없는 항목을 늘리지 않는다.**
+      */
       "tree-truncated", "resource-limit", "key-count-failed",
-      // 계정 연결 왕복 — 그 흐름을 처음부터 다시 해야 한다
+      /*
+        ⚠️ **아래 여섯은 이 경로에 생산자가 없다** — `RepositoryImportError`가 `ConnectError`를 통째로
+        합집합에 넣어서 분류를 강요받을 뿐, `runRepositoryImport`가 낼 수 있는 값이 아니다. 배정은
+        "그 흐름을 처음부터 다시 해야 한다"는 뜻이고 **검증할 수단이 없는 판단**이다 — 다음 사람이
+        "고쳐야 할 것"으로 읽지 않도록 적어 둔다. 언젠가 union을 실제 생산자 집합으로 좁히는 것이 답이다.
+      */
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
