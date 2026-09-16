@@ -87,7 +87,15 @@ it("GITHUB_APP_SLUG가 없으면 링크만 사라지고 해제 버튼은 그대�
  * **공회전으로 바뀐 채 green이었다** (2026-09-16 리뷰 🟡4).
  */
 function lines(container: ParentNode): { body: string; hint: string | null } {
-  const spans = [...container.querySelectorAll("li > div > span")];
+  /**
+   * ⚠️ **본문 `div`를 먼저 집는다.** `li > div > span`으로 세면 **우측 컨트롤 클러스터의 직계
+   * `<span>`도 들어온다** — 오늘은 그 자리에 `<a>`와 버튼뿐이라 우연히 맞지만, 이 리포의 확립된
+   * 관용구인 *"사유 없는 `disabled`를 만들지 않는다"*의 구현형이 **버튼 옆 형제 `<span id={reasonId}>`**
+   * 다(`login-methods.tsx`의 `lastMethod` · `profile-picture.tsx`의 `busy`). [Disconnect]에 그런 사유가
+   * 붙는 날 보조 줄이 없는 갈래에서 `spans[1]`이 그 사유가 되어 **엉뚱한 곳을 가리키는 red**가 난다.
+   */
+  const body = container.querySelector("li > div");
+  const spans = body === null ? [] : [...body.querySelectorAll(":scope > span")];
   return { body: spans[0]?.textContent ?? "", hint: spans[1]?.textContent ?? null };
 }
 

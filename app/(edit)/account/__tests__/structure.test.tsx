@@ -188,18 +188,19 @@ it.each([
 });
 
 /**
- * ⚠️ **구분자를 프리미티브가 든다.** 호출부가 문자열에 `—`를 도로 박아도 `textContent`는 같으므로
- * 어느 검사도 안 문다 — 그러면 한 화면에 `—`와 `-`가 섞이는 것을 막던 설계가 조용히 사라진다.
- * 세는 것은 **`status`가 없으면 대시도 없다**는 비대칭이다.
+ * ⚠️ **이 화면의 행은 예외 없이 상태를 든다.** 하나라도 이름만 남으면 그 행만 "무엇에 대한
+ * 것인가"는 말하고 "어떤가"는 안 말한다.
+ *
+ * ⚠️ **비대칭(`status`가 없으면 대시도 없다)은 여기서 못 잰다** — 이 화면의 행 다섯이 전부
+ * `status`를 넘기므로 프리미티브의 가드를 지워도 DOM이 안 바뀐다. **그 축은 `account-card.test.tsx`가
+ * 프리미티브를 직접 렌더해서 든다** (2026-09-16 재검토 🟡B — 이 검사가 한때 그것을 센다고
+ * 주장했는데 실제로는 긍정 방향만 세고 있었다).
  */
-it("행 구분자는 상태가 있을 때만 선다", async () => {
+it("화면의 모든 행이 상태를 들고 구분자가 선다", async () => {
   const container = await screen();
   const bodies = [...container.querySelectorAll("section[aria-labelledby] li > div > span:first-child")];
   expect(bodies.length).toBeGreaterThan(0);
   for (const body of bodies) expect(body.textContent, body.textContent ?? "").toContain(" — ");
-
-  // Profile 카드는 행이 없다 — 사실 블록이라 대시가 설 자리가 없다.
-  expect(card(container, m.account.profile.title).querySelectorAll("li")).toHaveLength(0);
 });
 
 /**

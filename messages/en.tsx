@@ -924,21 +924,27 @@ export const en = {
       confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
       /**
        * 행 본문의 `— {범위}` 자리 (2026-09-16). ⚠️ **`description`을 대신한다** — 그 문장
-       * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했는데, 그 말은
-       * 아래 보조 줄(`confirmDetail`)이 **provider 이름까지 넣어** 더 정확히 한다. 행 본문이
-       * 답할 것은 "어디까지 닫히나"다.
+       * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했고, 그 말은 이제
+       * 아래 `willConfirm`과 Dialog가 나눠 든다. 행 본문이 답할 것은 **"어디까지 닫히나"**다.
        */
       scope: "all devices, this one included",
       /**
-       * 행 보조 줄 — 누르기 전에 **왕복이 하나 더 있다**는 사실을 말한다.
+       * 행 보조 줄 — **이 버튼이 일을 끝내지 않는다**는 사실을 누르기 전에 말한다. 누르면 provider
+       * 화면으로 나갔다 돌아오고, 예고가 없으면 그 왕복이 실패로 읽힌다 (`confirmAction`이
+       * `Continue to GitHub`인 것과 같은 축).
        *
        * ⚠️ **provider 이름을 넣지 않는다.** 캔버스는 `GitHub will ask you to confirm…`이라 적었고
        * 아래 `confirmDetail`이 정확히 그 문장인데, 행에 그걸 쓰면 **확인 상대를 못 고르는 갈래에서
        * 이 줄만 사라져 두 행 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과 같은 논거다.
-       * 게다가 Dialog의 검은 줄이 같은 문장을 다시 내 사용자가 한 문장을 두 번 읽게 된다.
        * **의도적 이탈이고 DESIGN §6.67에 근거가 있다.**
+       *
+       * ⚠️ **Dialog가 이미 하는 말을 반복하지 않는다.** 첫 판본은
+       * `You'll confirm with the account you sign in with before anything changes.`였는데 **앞 8낱말이
+       * Dialog 회색 설명과 그대로 겹치고** 뒤 절은 검은 줄과 겹쳤다 — 한 문장이 두 번이던 것을
+       * 두 조각이 각각 두 번으로 옮겼을 뿐이었다 (2026-09-16 재검토 🟡C). 행이 들 것은 Dialog가
+       * **아직 안 한 말**이다.
        */
-      willConfirm: "You'll confirm with the account you sign in with before anything changes.",
+      willConfirm: "You'll be sent to your provider to confirm, then back here.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
