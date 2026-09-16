@@ -240,7 +240,15 @@ lib/
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
-                        account-view · connect-plan · health · token · token-store · user · repository-id
+                        account-view · connect-plan · health · token · token-store · user · repository-id ·
+                        installed-repos · installation-url
+                        ⚠️ installed-repos는 /account의 "Installed on {n} repositories."다. 판정
+                        (countInstalledRepos)이 순수 함수이고 껍데기는 실패를 logFailure로 남기고
+                        던지지 않는다. null("못 읽었다")과 0("고른 것이 없다")이 다른 값이다 —
+                        실패한 조회를 0으로 읽으면 사용자가 멀쩡한 설치를 다시 만든다
+                        ⚠️ installation-url은 apps/<slug>/installations/new 하나를 만든다. 기존 세
+                        자리(new-project-modal · 프로젝트 설정 · 온보딩 ②)는 아직 각자 조립한다 —
+                        중복 넷을 헬퍼로 모으는 것은 후속이다
   credentials/ session-revocation/ login-link/ account-connect/
                         저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
                         ⚠️ session-revocation의 message는 주소창 값(?sessionRevocation=)을 받으므로
