@@ -315,7 +315,7 @@ _이 아래에 새 항목을 추가한다._
   - **근본 원인**: CST가 표현을 가진다는 사실을 문서 전체 `doc.toString({ lineWidth: 0 })`이 원본 바이트를 보존한다는 보장으로 읽었다. 무편집 fast path는 원본을 반환하므로 `no-changes`·무편집 왕복은 편집 serializer를 검증하지 않았다.
   - **그물**: 실리포 T12와 새 편집/삽입 회귀 테스트가 잡았다. 기존 의미 비교·무편집 고정점·hunk 수·`+N/-N` 대칭은 놓쳤다. 동일 원본+입력 반복 결정성, 출력 재적용 고정점, 요청값 일치, 미편집 영역 바이트 동일을 각각 검사한다.
   - **수정**: 스칼라 range를 뒤에서 치환하고 새 키는 기존 맵 끝에 삽입한다. 전체 문서 재직렬화를 제거했다. 자체 검증에서 빈 블록 헤더·공백 전용 값·flow 개행·YAML 1.1 스키마·빈 스칼라 앵커/태그 구분자도 회귀로 고정했다.
-  - **재발 방지**: `rg -n 'doc\.toString|setIn\(' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'` → 해당 호출 0건. `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`에서 편집과 삽입 각각의 범위 밖 바이트를 검사한다. `rg -n 'no-changes.*결정|hunk 수 =|대칭은.*증거' .claude/commands/l10n-roundtrip.md` → 낡은 게이트 설명이 남아 있어 별도 리뷰 패치를 준비했다(Codex 원본 편집 제한). 실리포 PR #3 변경 전 원본의 로컬 재생은 통과했으며, 원격 push→편집→pull→머지 왕복은 이번 검증에 포함하지 않았다.
+  - **재발 방지**: `rg -n 'doc\.toString|setIn\(' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'` → 해당 호출 0건. `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`에서 편집과 삽입 각각의 범위 밖 바이트를 검사한다. `rg -c '값 고정점' .claude/commands/l10n-roundtrip.md .agents/skills/source-command-l10n-roundtrip/SKILL.md` → **각 4건**(2단계 제목 · 한계 주석 · 금지 사항 · 리포트 틀). ⚠️ **앞서 적었던 `'no-changes.*결정|hunk 수 =|대칭은.*증거'` grep은 쓰지 않는다** — 그것은 오늘 **3건 히트하는데 전부 고쳐진 본문**이라(그중 하나가 정정 문장 자체다) `/audit`이 히트를 "낡은 설명이 남아 있음"으로 읽고 닫힌 항목을 다시 연다. 스킬 패치는 이 회고보다 **먼저** 들어왔다(`c80d4af`). **재발 방지 grep은 없어야 할 것이 아니라 있어야 할 것을 세는 쪽이 안전하다** — 전자는 본문이 바뀌면 거짓이 된다. 실리포 PR #3 변경 전 원본의 로컬 재생은 통과했으며, 원격 push→편집→pull→머지 왕복은 이번 검증에 포함하지 않았다.
 
 ### 2026-09-04 — 완료 조건에 "방향만 게이트"를 걸었는데 그 방향을 잴 수단이 없었다
 
