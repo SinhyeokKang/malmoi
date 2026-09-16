@@ -310,6 +310,13 @@ _이 아래에 새 항목을 추가한다._
   - 테스트 규칙: **픽스처의 스타일이 한 종류면 그 축은 검증되지 않은 것이다.** 부호·들여쓰기·따옴표처럼 두 값을 가지는 축은 픽스처를 양쪽으로 둔다 — `ts-dict`에 작은따옴표 픽스처(`SOURCE_SINGLE`)를 새로 넣은 이유다.
   - **후속 후보**: `lib/survey/json-shape.ts`는 재생성 어댑터의 스타일 손실을 지표로 재고 있다(비ASCII `\uXXXX` 이스케이프가 풀려 줄 전체가 diff가 되는 것). **코드 딕셔너리엔 대응 지표가 없다** — `ts-shape.ts`는 무증상 skip을 셀 뿐 스타일을 안 본다. 실측에서 이 부류를 잡으려면 그 자리가 비어 있다.
 
+- **🔁 재발 (2026-09-16, T12 — YAML 미편집 folded scalar)**:
+  - **영역·증상**: `yaml-catalog.writeWithErrors`가 `errors.unknown` 한 키를 편집하거나 누락 키를 삽입해도 같은 파일의 `settings.help: >` 두 줄을 한 줄로 폈다 (`i18n-format-check#3`).
+  - **근본 원인**: CST가 표현을 가진다는 사실을 문서 전체 `doc.toString({ lineWidth: 0 })`이 원본 바이트를 보존한다는 보장으로 읽었다. 무편집 fast path는 원본을 반환하므로 `no-changes`·무편집 왕복은 편집 serializer를 검증하지 않았다.
+  - **그물**: 실리포 T12와 새 편집/삽입 회귀 테스트가 잡았다. 기존 의미 비교·무편집 고정점·hunk 수·`+N/-N` 대칭은 놓쳤다. 동일 원본+입력 반복 결정성, 출력 재적용 고정점, 요청값 일치, 미편집 영역 바이트 동일을 각각 검사한다.
+  - **수정**: 스칼라 range를 뒤에서 치환하고 새 키는 기존 맵 끝에 삽입한다. 전체 문서 재직렬화를 제거했다. 자체 검증에서 빈 블록 헤더·공백 전용 값·flow 개행·YAML 1.1 스키마·빈 스칼라 앵커/태그 구분자도 회귀로 고정했다.
+  - **재발 방지**: `rg -n 'doc\.toString|setIn\(' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'` → 해당 호출 0건. `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`에서 편집과 삽입 각각의 범위 밖 바이트를 검사한다. `rg -n 'no-changes.*결정|hunk 수 =|대칭은.*증거' .claude/commands/l10n-roundtrip.md` → 낡은 게이트 설명이 남아 있어 별도 리뷰 패치를 준비했다(Codex 원본 편집 제한). 실리포 PR #3 변경 전 원본의 로컬 재생은 통과했으며, 원격 push→편집→pull→머지 왕복은 이번 검증에 포함하지 않았다.
+
 ### 2026-09-04 — 완료 조건에 "방향만 게이트"를 걸었는데 그 방향을 잴 수단이 없었다
 
 - **영역**: `docs/features/format-preservation/spec.md` 완료 조건 ③, `lib/survey/types.ts`(`RepoSurvey`), `lib/survey/diff.ts`(`changedHunks`)
