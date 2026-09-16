@@ -62,18 +62,64 @@ beforeEach(() => {
 });
 
 /**
- * ⚠️ **래퍼가 목록마다 하나다** — 항목마다 테두리를 주면 셋뿐인 목록이 카드 갤러리처럼 무거워지고,
- * 카드 다섯이 평평하게 쌓여 축이 안 보이던 그 상태로 돌아간다.
+ * ⚠️ **본문이 카드 넷이고 넷이 같은 그릇이다** (spec 완료 조건 1). 전엔 머리 하나 + 리스트 셋이라
+ * **Profile만 그릇이 없었고**, 구역 제목이 카드 밖에 있어 제목↔리스트 12가 구역 사이 28과 경쟁했다.
+ *
+ * ⚠️ **`<section>` 수를 센다 — 존재 검사가 아니라 개수다.** 하나가 `aria-labelledby`를 잃으면
+ * Chrome이 그것을 `generic`으로 접어 접근성 트리에서 사라지는데, "region이 있다"만 세면 그 결함이
+ * 검사를 그대로 지나간다 (POSTMORTEM 2026-09-14 #1 · 2026-09-15 #2).
  */
-it("머리 하나 + 리스트 셋이고 각 리스트가 래퍼 하나 안에 있다", async () => {
+it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
+  const container = await screen();
+  expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.settings);
+
+  // 순서는 나 → 들어오는 길 → 붙어 있는 것 → 나가는 길이다.
+  expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).toEqual([
+    m.account.profile.title,
+    m.link.methods.title,
+    m.account.github.title,
+    m.account.sessionsSection.title,
+  ]);
+
+  const cards = [...container.querySelectorAll("section")];
+  expect(cards).toHaveLength(4);
+  for (const card of cards) {
+    const labelledBy = card.getAttribute("aria-labelledby");
+    // ⚠️ **참조가 끊긴 것을 먼저 센다** — `?.`로 흘리면 부재가 `undefined`로 접혀 통과한다.
+    expect(labelledBy).not.toBeNull();
+    const label = container.ownerDocument.getElementById(labelledBy!);
+    expect(label).not.toBeNull();
+    expect(label!.textContent!.trim()).not.toBe("");
+  }
+});
+
+/**
+ * ⚠️ **행 목록은 셋이다 — Profile은 사실 블록이라 `<ul>`이 아니다.** 아바타·이름·이메일은 항목이
+ * 아니라 한 덩이의 사실이고, `<li>`로 만들면 스크린리더가 "목록, 항목 3개"로 읽어 편집 가능한
+ * 폼을 목록으로 잘못 예고한다.
+ */
+it("카드 넷 중 셋만 행 목록을 들고, 항목이 자기 래퍼를 갖지 않는다", async () => {
   const container = await screen();
   const lists = [...container.querySelectorAll("ul")];
   expect(lists).toHaveLength(3);
   expect(lists.map((list) => list.querySelectorAll(":scope > li").length)).toEqual([2, 1, 2]);
-  // 항목이 자기 래퍼를 갖지 않는다 — `<li>` 안에 또 다른 목록 래퍼가 생기면 그 순간 갤러리다.
+  // `<li>` 안에 또 다른 목록 래퍼가 생기면 그 순간 갤러리다.
   for (const list of lists) expect(list.querySelectorAll("ul")).toHaveLength(0);
-  // 머리 블록은 리스트 밖이다 — 아바타와 이름 필드가 어느 구역에도 속하지 않는다.
-  expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.settings);
+});
+
+/**
+ * 배지는 **수단 카드에만** 선다 — 이 화면에서 사용자가 세는 값은 "몇 가지로 들어올 수 있나"뿐이다.
+ * app 카드는 연결이 하나이고 세션 카드는 동작 둘이라 셀 일이 없다.
+ */
+it("수단 카드 헤더가 연결 수를 들고, 다른 카드에는 배지가 없다", async () => {
+  const container = await screen({}, [{ provider: "github" }]);
+  const cards = [...container.querySelectorAll("section")];
+  const header = cards[1]!.querySelector("h2")!.parentElement!;
+  expect(header.textContent).toContain(m.link.methods.count(1, 2));
+
+  const both = await screen({}, [{ provider: "github" }, { provider: "google" }]);
+  expect([...both.querySelectorAll("section")][1]!.querySelector("h2")!.parentElement!.textContent)
+    .toContain(m.link.methods.count(2, 2));
 });
 
 /**
@@ -118,16 +164,48 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
 });
 
 /**
- * ⚠️ **셋이 같은 자리에 서지 않는다** — 앞의 둘은 머리 Alert이고 `?sessionRevocation=`는 Sessions
- * 구역 **안**이다. 실어 보내놓고 아무도 안 읽으면 사용자에게는 버튼이 안 눌린 것으로 보인다
- * (POSTMORTEM 2026-09-06).
+ * ⚠️ **머리에 남는 것은 `?e=` 하나다.** 가르는 축은 "다시 시도할 컨트롤이 이 화면에 있는가"이고
+ * (2026-09-14 리뷰 🟢8), `?link=`는 **그 카드 안에** 다시 누를 행이 있으므로 카드로 내려간다.
+ * 그래야 둘이 함께 와도 머리 높이가 하나로 고정된다 — 전엔 둘이 쌓여 본문이 밀렸다.
  */
-it.each([["e", "unavailable"], ["link", "unavailable"]])("`?%s=`가 머리 Alert에 닿는다", async (key, value) => {
-  const container = await screen({ [key]: value });
+it("`?e=`가 머리 Alert에 닿는다", async () => {
+  const container = await screen({ e: "unavailable" });
   const alert = container.querySelector('[role="alert"]');
   expect(alert).not.toBeNull();
-  // 머리다 — 어느 구역에도 속하지 않는다.
+  // 머리다 — 어느 카드에도 속하지 않는다.
   expect(alert!.closest("section")).toBeNull();
+});
+
+/**
+ * ⚠️ **`?link=`는 수단 카드 안 첫 줄이고 닫기가 없다** (design §3.4). 바로 아래 행이 그 재시도라,
+ * 닫으면 **다시 누를 컨트롤 옆에서 사유만 사라진다.**
+ *
+ * ⚠️ **닫기가 없어지면 POSTMORTEM 2026-09-14("닫은 알림이 두 번째 실패에서 무음이었다")의 상태가
+ * 원리적으로 생기지 않는다** — 숨길 수 있는 지역 상태가 없다. 그 항목이 만든 `replace` 방어선을
+ * 이 단언이 대신 든다.
+ */
+it("수단 해제 실패는 수단 카드 안에 서고 닫기가 없다", async () => {
+  const container = await screen({ link: "unavailable" });
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert).not.toBeNull();
+  const card = alert!.closest("section");
+  expect(card).not.toBeNull();
+  expect(card!.querySelector("h2")!.textContent).toBe(m.link.methods.title);
+  // 헤더 아래·리스트 위다 — 리스트 안으로 들어가면 항목 하나처럼 읽힌다.
+  expect(card!.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  expect(alert!.querySelector("button")).toBeNull();
+});
+
+/**
+ * ⚠️ **둘이 함께 와도 머리에는 하나뿐이다.** 전엔 `?e=`·`?link=`가 **동시에 설 수 있었고** 그때
+ * 본문이 밀렸다 — 머리 높이가 무엇이 실패했는지에 따라 달라지면 그 자체가 상태가 된다.
+ */
+it("`?e=`와 `?link=`가 함께 와도 머리 Alert는 하나다", async () => {
+  const container = await screen({ e: "unavailable", link: "unavailable" });
+  const alerts = [...container.querySelectorAll('[role="alert"]')];
+  expect(alerts.filter((alert) => alert.closest("section") === null)).toHaveLength(1);
+  // 그리고 나머지 하나는 사라지지 않고 카드 안에 있다 — 옮긴 것이지 버린 것이 아니다.
+  expect(alerts.filter((alert) => alert.closest("section") !== null)).toHaveLength(1);
 });
 
 it("`?sessionRevocation=`는 Sessions 구역 안에 닿는다", async () => {
@@ -372,33 +450,6 @@ it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => 
   expect(container.querySelector("input[type='file']")!.hasAttribute("disabled")).toBe(true);
 });
 
-/**
- * ⚠️ **닫은 뒤 같은 사유가 다시 오면 무음이었다** (2026-09-14 리뷰 🟡3). `shown`이 컴포넌트 지역
- * 상태이고 `unlinkLoginMethod`의 `redirect`가 **같은 URL로 가는 소프트 내비게이션**이라, 두 번째
- * 실패에서 React가 같은 자리의 컴포넌트를 재사용하고 `shown=false`가 살아남는다 — 사용자에게는
- * "버튼이 안 눌린다"로 보인다(POSTMORTEM 2026-09-06의 부류).
- *
- * 닫을 때 **그 쿼리만 지운 주소로 replace**하면 다음 실패가 `/account` → `/account?link=…`라는
- * 실제 이동이 되어 컴포넌트가 새로 마운트된다.
- */
-it("수단 해제 실패를 닫으면 그 쿼리만 지운 주소로 replace한다", async () => {
-  const container = await screen({ e: "unavailable", link: "unavailable" });
-  const [first, second] = [...container.querySelectorAll<HTMLButtonElement>("[role='alert'] button")];
-  /**
-   * ⚠️ **`?e=`는 `replace`를 타지 않는다** — 연결 callback의 하드 내비게이션으로만 오므로 지역
-   * 상태로 충분하고, 붙이면 닫기가 서버 재렌더를 태워 GitHub 조회가 한 번 더 돈다
-   * (2026-09-14 2차 리뷰 R4). 여기서 그 비대칭을 고정한다.
-   */
-  await act(async () => { first!.click(); });
-  expect(router.replace).not.toHaveBeenCalled();
-
-  await act(async () => { second!.click(); });
-  expect(router.replace).toHaveBeenCalledTimes(1);
-  const [target] = router.replace.mock.calls[0] as [string];
-  // 자기 쿼리만 지운다 — 둘이 함께 왔을 때 하나를 닫으면 다른 하나가 화면에서 사라진다.
-  expect(target).toContain("e=unavailable");
-  expect(target).not.toContain("link=");
-});
 
 /**
  * ⚠️ **집계 줄이 세던 것은 이 연결에 의존하지 않는 프로젝트였다** (2026-09-14 리뷰 🔴1).
