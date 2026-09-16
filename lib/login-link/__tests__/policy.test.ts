@@ -12,6 +12,7 @@ import {
   linkCookie,
   linkStateCookie,
   loginMethodRows,
+  methodCounts,
   outcomeUrl,
   parseChallengeIdentifier,
   pickLoginAccount,
@@ -102,6 +103,26 @@ it("수단 목록은 둘을 고정 순서로 내고, 마지막 하나는 해제�
   // 붙어 있지 않은 수단은 해제 대상이 아니다.
   expect(canUnlink(["github", "google"], "github-app")).toBe(false);
   expect(canUnlink([], "github")).toBe(false);
+});
+
+/**
+ * `/account` 수단 카드 헤더의 `{connected} of {total}` 배지 (design §1.3 · §3.3).
+ *
+ * ⚠️ **서버 변경이 0이다** — `loginMethodRows`가 이미 주는 행에서 센다. 분모가 보여야
+ * "하나 더 붙일 수 있다"가 읽힌다(캔버스 §열린 결정 2 → 채택).
+ */
+it("수단 카드 배지는 연결된 수와 전체 수를 센다", () => {
+  expect(methodCounts(loginMethodRows([]))).toEqual({ connected: 0, total: 2 });
+  expect(methodCounts(loginMethodRows([{ provider: "google" }]))).toEqual({ connected: 1, total: 2 });
+  expect(methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }]))).toEqual({
+    connected: 2,
+    total: 2,
+  });
+  // ⚠️ `github-app`은 로그인 수단이 아니다 — 그 행이 분모에 들어가면 배지가 `2 of 3`이 된다.
+  // `loginMethodRows`가 이미 걸러내지만, 배지가 그 행을 직접 세는 구현으로 바뀌면 여기가 red다.
+  expect(
+    methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }, { provider: "github-app" }])),
+  ).toEqual({ connected: 2, total: 2 });
 });
 
 /**
