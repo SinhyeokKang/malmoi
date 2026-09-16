@@ -344,6 +344,27 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - **Rails식 로케일 루트 키**(`ko:` 하나가 최상위)를 `read`·`write`가 **각자 `rootKeyOf`로 재관측한다** — 계약 필드로 나르지 않는다. ⚠️ 전에는 `read`가 `rootKeyedByPath`로 돌려줬는데 **`write`가 그 값을 안 믿어** 어차피 원본을 다시 읽었고, 안 믿는 값을 계약에 싣는 것이 결함이라 필드를 지웠다(`lib/adapters/yaml-catalog.ts`의 그 주석이 근거다). mastodon·redmine·decidim이 이쪽이고 misskey·directus는 루트에 바로 키가 온다.
 - 블록 리터럴(`|`)의 값을 바꾸면 인디케이터가 `|-`로 바뀔 수 있다 — 값 의미는 유지되므로 훼손이 아니다.
 
+- ⚠️ **그 `lineWidth: 0`이 반대 방향의 대가를 만든다** (2026-09-16 실물 왕복 — `i18n-format-check#3`).
+  접기를 끄면 **원본에서 손으로 감아 둔 접힌 스칼라가 한 줄로 펴진다.** `locales/ja.yml`에서
+  `errors.unknown` **하나만** 편집했는데 건드리지 않은 `settings.help: >`의 두 줄이 한 줄이 되어
+  diff에 함께 실렸다:
+
+  ```
+   help: >
+  -      2行にわたる折りたたみスカラー。
+  -      この形が往復で保たれる必要がある。
+  +      2行にわたる折りたたみスカラー。 この形が往復で保たれる必要がある。
+  ```
+
+  **의미는 같다**(접힌 스칼라는 줄을 공백으로 잇는다) — 깨지는 것은 "값만 바꾼다"이지 값이 아니다.
+  ⚠️ **결정성 불변식은 지켜진다**: 같은 DB 상태 → 언제나 같은 바이트다. 이것은 **보존**이 부분적인
+  것이지 출력이 흔들리는 것이 아니다.
+  ⚠️ **한 파일에 편집이 하나라도 있어야 일어난다** — `changed`가 false면 원본을 그대로 돌려주므로
+  편집 없는 파일은 영향이 없다. 그래서 **편집이 0건인 검사로는 절대 안 드러난다**(아래 §게이트).
+  ⚠️ **처음이 아니다** — 같은 리포의 커밋 #1·#2에서 `ko.yml`이 이미 같은 식으로 펴졌고 아무도 못 봤다.
+  근본 해법은 노드의 `range`로 원본 문자열을 직접 갈아끼우는 것이고, `yaml-catalog.ts`의 주석이
+  그것을 **별 기능**으로 분류해 뒀다. 지금은 **알려진 대가**로 둔다.
+
 #### `code-dict` 고유
 
 - **모듈의 default export 객체 리터럴**을 찾는다. `export default { … }`(element-plus·vuetify·quasar)와 `export default <식별자>` → 그 `const`의 초기화식(ant-design `const localeValues: Locale = { … }`) **한 단계까지** 따라간다. ⚠️ **세 번째 형태가 있다** — default export가 **아예 없으면** export된 `const` 객체 리터럴을 받고, 프로퍼티가 가장 많은 것을 고르며 동률은 소스 순서로 가른다(payloadcms/payload의 40로케일이 그것 없이는 통째로 떨어진다). ⚠️ **`export default flat({…})` 같은 호출식은 일부러 따라가지 않는다.**
