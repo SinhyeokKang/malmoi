@@ -3,7 +3,7 @@
 import { ExternalLink, Link2 } from "lucide-react";
 import { useState } from "react";
 
-import { AccountRow, AccountSection } from "@/components/account/account-section";
+import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
@@ -40,11 +40,12 @@ export function GithubSection({
   const connected = account.status === "ok" && account.login !== null;
 
   return (
-    <AccountSection
-      title={m.settings.account.title}
+    <AccountCard
+      title={m.account.github.title}
       subtitle={m.account.github.description}
       notice={failure !== null ? <Alert variant="danger">{failure}</Alert> : undefined}
     >
+      <AccountRows>
       {/*
         ⚠️ **브랜드 마크는 연결됐을 때뿐이다** — 붙어 있는 것이 그 계정이기 때문이다. 미연결·장애는
         대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
@@ -93,6 +94,7 @@ export function GithubSection({
           <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
         ) : undefined}
       </AccountRow>
-    </AccountSection>
+      </AccountRows>
+    </AccountCard>
   );
 }

@@ -1,5 +1,6 @@
 import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
+import { AccountCard, AccountFacts } from "@/components/account/account-section";
 import { DismissibleAlert } from "@/components/account/dismissible-alert";
 import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
@@ -19,7 +20,6 @@ import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { loadInstalledRepoCount } from "@/lib/github-connect/installed-repos";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
-import { routes } from "@/lib/routes";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { isLoginProvider, loginMethodRows, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -130,27 +130,36 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
           않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
         */}
-        {/* ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다. */}
+        {/*
+          ⚠️ **머리에 남는 것은 `?e=` 하나다** (2026-09-16). `?link=`는 수단 카드 안으로 내려갔다 —
+          다시 누를 행이 그 카드에 있으므로 축("다시 시도할 컨트롤이 이 화면에 있는가")이 그쪽을
+          가리킨다. 둘이 쌓일 수 있던 동안에는 무엇이 실패했는지에 따라 **머리 높이가 달라졌다.**
+          ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다.
+        */}
         {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
-        {unlinkFailure !== null && <DismissibleAlert href={routes.account({ e, sessionRevocation, connect })}>{unlinkFailure}</DismissibleAlert>}
       </PanelHeader>
 
-      <PanelBody className="space-y-7">
+      {/*
+        ⚠️ **간격이 16 하나다** (2026-09-16 — 전엔 구역 28 · 제목↔리스트 12). 제목이 카드 안으로
+        들어간 뒤로는 **카드 자체가 축**이라 간격이 하나면 되고, 리듬이 Project Home과 같아진다.
+      */}
+      <PanelBody className="space-y-4">
         {/*
-          머리 블록 — **Profile 카드가 여기로 흡수됐다.** 라벨 열이 128이고 값 열이 나머지다.
+          ⚠️ **Profile이 카드가 됐다** — 전엔 패널 머리에 붙은 블록이라 카드 셋과 형이 달랐다.
           아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
         */}
-        <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
+        <AccountCard title={m.account.profile.title}>
+          <AccountFacts>
           <div className="col-span-2 flex items-center gap-4">
             {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
             <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
             <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
           </div>
 
-          <label className="text-muted-foreground text-xs" htmlFor="account-name">{m.account.profile.name}</label>
+          <label className="text-xs text-neutral-400" htmlFor="account-name">{m.account.profile.name}</label>
           <ProfileNameForm name={name} inputId="account-name" />
 
-          <label className="text-muted-foreground text-xs" htmlFor="account-email">{m.account.profile.email}</label>
+          <label className="text-xs text-neutral-400" htmlFor="account-email">{m.account.profile.email}</label>
           <div className="flex items-center gap-3">
             {/*
               ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져
@@ -167,13 +176,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             />
             <p className="text-muted-foreground text-xs">{m.account.profile.emailSource}</p>
           </div>
-        </div>
+          </AccountFacts>
+        </AccountCard>
 
         {/*
           ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체
           로그아웃의 확인 상대다. 구역 제목이 그 축을 말하는 것이 이 재편의 요지다.
         */}
-        <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} />
+        <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} unlinkFailure={unlinkFailure} />
 
         <GithubSection
           account={account}

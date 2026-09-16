@@ -11,6 +11,8 @@ vi.mock("@/auth", () => ({ signOut: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: mocks.requireUser }));
 vi.mock("@/lib/db", () => ({ getPrisma: mocks.getPrisma }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: mocks.loadAccountView }));
+/** 설치 리포 수는 실제 토큰 경로를 지난다 — 이 파일이 재는 축이 아니라 값만 준다. */
+vi.mock("@/lib/github-connect/installed-repos", () => ({ loadInstalledRepoCount: async () => 4 }));
 const accountActions = vi.hoisted(() => ({
   updateProfileName: vi.fn(), uploadProfileImage: vi.fn(), deleteProfileImage: vi.fn(),
   startSessionRevocation: vi.fn(), unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(),
@@ -53,6 +55,17 @@ async function screen(
   });
   const { container } = await render(await AccountPage({ searchParams: Promise.resolve(params) }));
   return container;
+}
+
+/**
+ * ⚠️ **카드를 인덱스가 아니라 제목으로 찾는다.** Profile이 카드가 되면서 `section` 인덱스가 하나씩
+ * 밀렸고, 인덱스로 집던 검사 넷이 **엉뚱한 카드를 재면서** 실패했다 — 카드가 하나 늘거나 순서가
+ * 바뀔 때마다 같은 일이 생긴다. 못 찾으면 던져서 "0개를 돌았는데 green"을 막는다.
+ */
+function card(container: ParentNode, title: string): HTMLElement {
+  const found = [...container.querySelectorAll("section")].find((s) => s.querySelector("h2")?.textContent === title);
+  if (found === undefined) throw new Error(`Missing card: ${title}`);
+  return found;
 }
 
 beforeEach(() => {
@@ -113,13 +126,21 @@ it("카드 넷 중 셋만 행 목록을 들고, 항목이 자기 래퍼를 갖�
  */
 it("수단 카드 헤더가 연결 수를 들고, 다른 카드에는 배지가 없다", async () => {
   const container = await screen({}, [{ provider: "github" }]);
-  const cards = [...container.querySelectorAll("section")];
-  const header = cards[1]!.querySelector("h2")!.parentElement!;
-  expect(header.textContent).toContain(m.link.methods.count(1, 2));
+  expect(card(container, m.link.methods.title).querySelector("h2")!.parentElement!.textContent)
+    .toContain(m.link.methods.count(1, 2));
 
   const both = await screen({}, [{ provider: "github" }, { provider: "google" }]);
-  expect([...both.querySelectorAll("section")][1]!.querySelector("h2")!.parentElement!.textContent)
+  expect(card(both, m.link.methods.title).querySelector("h2")!.parentElement!.textContent)
     .toContain(m.link.methods.count(2, 2));
+  /**
+   * 배지는 수단 카드에만 있다 — app 카드는 연결이 하나이고 세션 카드는 동작 둘이라 셀 값이 없다.
+   * ⚠️ **헤더 텍스트 전체를 비교하지 않는다** — 오른쪽 설명 한 줄이 같은 머리에 살아서, 그 문구를
+   * 고치는 것만으로 이 단언이 깨진다(배지와 무관한 red다). 세는 것은 배지 요소 자체다.
+   */
+  expect(card(both, m.link.methods.title).querySelector("h2")!.parentElement!.querySelectorAll("span")).toHaveLength(1);
+  for (const title of [m.account.profile.title, m.account.github.title, m.account.sessionsSection.title]) {
+    expect(card(both, title).querySelector("h2")!.parentElement!.querySelectorAll("span"), title).toHaveLength(0);
+  }
 });
 
 /**
@@ -292,7 +313,7 @@ it.each([
   ["unavailable", { status: "unavailable" }, null],
 ])("GitHub %s 갈래의 컨트롤이 우측 클러스터 하나뿐이다", async (_name, view, label) => {
   const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
-  const row = container.querySelectorAll("ul")[1]!.querySelector("li")!;
+  const row = card(container, m.account.github.title).querySelector("li")!;
   const right = row.querySelector(":scope > div:last-child");
   if (label === null) {
     // 조회 실패에는 컨트롤을 주지 않는다 — 그 자리의 재시도는 페이지 새로고침이다.
@@ -319,7 +340,7 @@ it.each([
   actions.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
   actions.disconnectGithub.mockResolvedValue({ ok: false, error: "unavailable" });
   const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
-  const section = container.querySelectorAll("section")[1]!;
+  const section = card(container, m.account.github.title);
   const row = section.querySelector("li")!;
   const trigger = row.querySelector("button")!;
   await act(async () => { trigger.click(); });
@@ -392,7 +413,7 @@ it("사유 없는 disabled가 0이다", async () => {
  */
 it("수단 해제의 확정 버튼이 Action에 닿는다", async () => {
   const container = await screen();
-  const section = container.querySelector("section")!;
+  const section = card(container, m.link.methods.title);
   const trigger = [...section.querySelectorAll("li button")]
     .find((button) => button.getAttribute("aria-haspopup") === "dialog") as HTMLButtonElement;
   await act(async () => { trigger.click(); });
@@ -459,6 +480,6 @@ it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => 
  */
 it("연결된 행이 프로젝트 수를 말하지 않는다", async () => {
   const container = await screen();
-  const row = container.querySelectorAll("ul")[1]!.querySelector("li")!;
+  const row = card(container, m.account.github.title).querySelector("li")!;
   expect(row.textContent).not.toMatch(/\d+\s+projects?/);
 });

@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startSessionRevocation } from "@/app/(edit)/account/actions";
-import { AccountRow, AccountSection } from "@/components/account/account-section";
+import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -43,11 +43,12 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   const message = failed ? m.account.sessions.failed : sessionRevocationMessage(outcome);
 
   return (
-    <AccountSection
+    <AccountCard
       title={m.account.sessionsSection.title}
       subtitle={m.account.sessionsSection.description}
       notice={message !== null ? <Alert variant="danger">{message}</Alert> : undefined}
     >
+      <AccountRows>
       <AccountRow
         glyph={<LogOut className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.signOut.title}
@@ -98,7 +99,8 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
           </DialogContent>
         </Dialog>
       </AccountRow>
-    </AccountSection>
+      </AccountRows>
+    </AccountCard>
   );
 }
 

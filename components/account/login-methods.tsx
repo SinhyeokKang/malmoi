@@ -4,14 +4,15 @@ import { useFormStatus } from "react-dom";
 import { useId, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
-import { AccountRow, AccountSection } from "@/components/account/account-section";
+import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
 import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { Alert } from "@/components/ui/alert";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { m } from "@/lib/i18n";
-import { canUnlink, type LoginProvider } from "@/lib/login-link/policy";
+import { Badge } from "@/components/ui/badge";
+import { canUnlink, methodCounts, type LoginProvider } from "@/lib/login-link/policy";
 import { providerLabel } from "@/lib/login-link/message";
 
 /**
@@ -21,23 +22,44 @@ import { providerLabel } from "@/lib/login-link/message";
  * 서야 하고 그 자리는 리스트 래퍼 바깥이라, 구역을 화면이 조립하면 Alert의 자리가 두 컴포넌트에
  * 걸친다.
  */
-export function LoginMethods({ rows, outcome = null }: {
+export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
   rows: readonly { provider: LoginProvider; connected: boolean }[];
   outcome?: ConnectOutcome | null;
+  /**
+   * `?link=`의 해제 실패 (2026-09-16). **머리에서 이 카드 안으로 내려왔다** — 가르는 축은 "다시
+   * 시도할 컨트롤이 이 화면에 있는가"이고, 마지막 수단이라 거절된 것이면 다시 누를 행이 바로
+   * 아래에 있다. 그래야 `?e=`와 함께 와도 머리 높이가 하나로 고정된다.
+   *
+   * ⚠️ **닫기가 없다** — 닫으면 다시 누를 컨트롤 옆에서 사유만 사라진다. 숨길 수 있는 지역 상태가
+   * 없으므로 "닫은 뒤 두 번째 실패가 무음"(POSTMORTEM 2026-09-14)이 원리적으로 생기지 않는다.
+   */
+  unlinkFailure?: string | null;
 }) {
   const connected = rows.filter((row) => row.connected).map((row) => row.provider);
+  const counts = methodCounts(rows);
+  /** 왕복 결과와 해제 실패가 같은 슬롯을 나눠 쓴다 — 둘이 함께 서면 카드 머리가 두 겹이 된다. */
+  const notice =
+    unlinkFailure !== null ? <Alert variant="danger">{unlinkFailure}</Alert>
+    : outcome !== null ? <Alert variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
+    : undefined;
   return (
-    <AccountSection
+    <AccountCard
       title={m.link.methods.title}
+      /**
+       * ⚠️ **새 variant를 만들지 않았다** — `neutral`이 이미 `bg-foreground/5 text-foreground`이고
+       * 캔버스가 준 배지 스펙(radius 999 · `2px 6px` · 13/500 · `min-width:20px`)과 프리미티브의
+       * 기본값이 그대로 맞는다. 같은 값의 variant를 하나 더 두면 다음 사람이 어느 쪽을 쓸지 고민한다.
+       */
+      badge={<Badge variant="neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
       subtitle={m.link.methods.description}
-      notice={outcome !== null
-        ? <Alert variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
-        : undefined}
+      notice={notice}
     >
-      {rows.map((row) => (
-        <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} />
-      ))}
-    </AccountSection>
+      <AccountRows>
+        {rows.map((row) => (
+          <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} />
+        ))}
+      </AccountRows>
+    </AccountCard>
   );
 }
 

@@ -780,6 +780,11 @@ export const en = {
   account: {
     profile: {
       /**
+       * 카드 헤더 (2026-09-16). **머리 블록이 카드가 되면서 제목이 생겼다** — 카드 넷이 같은 그릇을
+       * 쓰는데 프로필만 패널 머리에 얹혀 있으면 그것만 규격이 다르다. 패널 머리에는 `Settings`만 남는다.
+       */
+      title: "Profile",
+      /**
        * ⚠️ **카드 설명문이 없어졌다** (2026-09-13). 머리 블록에는 설명 슬롯이 없고, 두 칸의
        * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
        * 화면 위쪽의 산문보다 필드 옆의 한 줄이 실제로 읽힌다.
@@ -808,6 +813,19 @@ export const en = {
        * 바로 위 구역이 **로그인 수단**이다. 전 문장(`Connect GitHub to see which repositories you
        * can add.`)은 무엇을 할 수 있는지만 말해 그 구별을 못 했다.
        */
+      /**
+       * 카드 헤더 (2026-09-16). **`settings.account.title`(`GitHub account`)을 갱신하지 않고 새 키다** —
+       * 그 키는 프로젝트 설정 화면이 계속 쓰고, 여기서 바뀐 것은 이 카드의 축 이름이다.
+       *
+       * ⚠️ **`GitHub account`에서 뒤쪽 낱말만 바꿨다.** 이 화면에 "account"가 이미 셋이고(계정 화면 ·
+       * 로그인 수단의 GitHub · 이 연결), 붙어 있는 것은 계정이 아니라 **설치된 app**이다.
+       * `Malmoi app`도 후보였지만 버렸다 — 사용자가 묻는 것은 "내 GitHub에 무엇이 붙어 있나"이고,
+       * 우리 제품 이름을 앞에 세우면 malmoi 안의 기능처럼 읽힌다. 정작 가서 끊는 곳은 GitHub이다.
+       *
+       * ⚠️ **아래 `confirmDisconnect`와 표기가 같아야 한다** — 한 화면에 `GitHub app`과 `GitHub App`이
+       * 같이 서면 **같은 사전의 다른 절**에 살아 리뷰로 안 걸린다 (2026-09-13 `malmoi`/`Malmoi`).
+       */
+      title: "GitHub App",
       description: "This is write access to your repositories, not a way to sign in.",
       notConnected: "Not connected.",
       /**
@@ -839,8 +857,13 @@ export const en = {
       installationSettings: "Installation settings",
       /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
       rowName: "GitHub",
-      // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
-      confirmDisconnect: "Disconnect GitHub from malmoi?",
+      /**
+       * 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
+       *
+       * ⚠️ **카드 제목과 같은 말을 쓴다** (`title`, 2026-09-16). 전엔 `Disconnect GitHub from malmoi?`라
+       * 카드가 무엇을 가리키는지와 Dialog가 무엇을 끊는지가 다른 이름이었다.
+       */
+      confirmDisconnect: "Disconnect GitHub App from malmoi?",
       /**
        * ⚠️ **이 문장이 해제 Dialog를 붙인 논거이고, 2026-09-14까지 거짓이었다** (리뷰 🔴1).
        * 전 문장은 *"won't be able to read your repositories or open pull requests"* 였는데 **PR은 계속
@@ -1828,6 +1851,13 @@ export const en = {
     footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
     methods: {
       title: "Sign-in methods",
+      /**
+       * 카드 헤더의 배지 (2026-09-16). **분모가 보여야 "하나 더 붙일 수 있다"가 읽힌다** — 숫자만
+       * 두면 Project Home의 배지와 형은 같아지지만 그 사실이 사라진다.
+       *
+       * ⚠️ **계산값이라 서버가 안 는다** — `loginMethodRows`가 준 행에서 `methodCounts`가 센다.
+       */
+      count: (connected: number, total: number): string => `${connected} of ${total}`,
       description: "Add another account with the same verified email to use it as a sign-in method.",
       /**
        * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지

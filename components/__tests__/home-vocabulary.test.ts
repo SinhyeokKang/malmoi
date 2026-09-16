@@ -160,6 +160,8 @@ const NOT_A_COUNT: Record<string, string> = {
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",
   "newProject.modal.step": "단계 번호 — `Step 3 of 4`",
+  // 분모가 `LOGIN_PROVIDERS` 길이(2)라 코드 상수로 강제된다 — `Step 3 of 4`와 같은 부류다.
+  "link.methods.count": "LOGIN_PROVIDERS 길이 = 2",
   "newProject.naming.slugTooLong": "글자 수 상한",
   "errors.onboarding.invalid-slug": "글자 수 상한",
   "account.profile.errors.tooLong": "글자 수 상한",
