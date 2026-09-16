@@ -140,54 +140,81 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
  * `008efce`가 `home` 절 넷을 고쳤지만 같은 화면의 `repositorySync` 절은 안 건드렸다.
  */
 /**
- * ⚠️ **고정 목록으로 세지 않는다** (라운드 3 🟡4 — 첫 판이 다섯을 손으로 적어 `home.cards.localeCount`를
- * 원리적으로 못 봤다). **소스에서 "수를 받는 사전 함수"를 전부 뽑아** 그 자리마다 판정하므로, 새로
- * 늘어나는 함수는 목록에 오르거나 red가 된다.
+ * ⚠️ **목록을 손으로 적지 않는다** — 첫 판은 다섯을 적어 `home.cards.localeCount`를 못 봤고, 둘째 판은
+ * 사전 **둘**만 훑어 `home.attention`·`home.logs`(2026-09-15에 고친 바로 그 넷)를 못 봤다. 구멍이
+ * 한 겹씩 위로 올라갔을 뿐이라, 이제 **최상위 블록 안쪽을 중첩까지 전부** 훑는다.
  *
- * ⚠️ **모든 수에 구분자를 넣는 것이 아니다.** 세는 것이 아닌 수가 둘 있고 **그쪽에 넣으면 거짓이 된다**:
- * PR 번호(`#1,207`은 그런 PR이 아니다)와 활성 표면 수(한 자리다 — 규칙이 아니라 장식이 된다).
+ * ⚠️ **모든 수에 구분자를 넣는 것이 아니다** — 세는 수가 아닌 자리는 **경로로** 면제한다(함수 이름만
+ * 보면 다른 블록에 같은 이름이 생길 때 엉뚱한 쪽이 조용히 빠진다).
  */
 const NOT_A_COUNT: Record<string, string> = {
-  openPr: "PR 번호 — `#1,207`은 그런 PR이 아니다",
-  unreadable: "표면 수 — 활성 표면은 한 자리다",
-  notReplaced: "표면 수 — 활성 표면은 한 자리다",
-  acrossSurfaces: "표면 수 — 활성 표면은 한 자리다",
+  "repositorySync.openPr": "PR 번호 — `#1,207`은 그런 PR이 아니다",
+  "home.meta.pr": "PR 번호 — 같은 이유다",
+  "repositorySync.unreadable": "표면 수 — 활성 표면은 한 자리다",
+  "repositorySync.notReplaced": "표면 수 — 활성 표면은 한 자리다",
+  "home.cards.acrossSurfaces": "표면 수 — 활성 표면은 한 자리다",
+  "home.attention.more": "상한이 5다 — 수가 아니라 나머지 표시다",
   // 수를 직접 찍지 않는다 — 보이는 수는 인자로 받은 `unsentCount(n)` 노드가 만들고, `n`은 단복수에만 쓴다.
-  unsent: "수를 찍지 않는다 — 단복수 판정에만 쓴다",
+  "repositorySync.unsent": "수를 찍지 않는다 — 단복수 판정에만 쓴다",
 };
 
-/** `messages/en.tsx`의 한 사전 블록에서 `n: number`를 받는 항목 이름과 그 본문. */
-function numberTakers(dictionary: string): Map<string, string> {
+/**
+ * 최상위 사전 블록 안의 `n: number`를 받는 정의 전부. 키는 **중첩 경로**이고 값은 **정의 전문**이다.
+ *
+ * ⚠️ **정의를 한 줄로 가정하지 않는다** — 인자 목록이나 본문이 다음 줄로 넘어가는 항목이 실제로 있고,
+ * 시그니처만 보면 본문의 `toLocaleString`을 못 봐 **거짓 red**가 난다.
+ */
+function numberTakers(top: string): Map<string, string> {
   const source = readFileSync(join(ROOT, "messages/en.tsx"), "utf8");
-  const open = source.indexOf(`${dictionary}: {`);
-  if (open < 0) throw new Error(`Missing dictionary block: ${dictionary}`);
-  let depth = 0, end = open;
+  const open = source.indexOf(`\n  ${top}: {`);
+  if (open < 0) throw new Error(`Missing dictionary block: ${top}`);
+  let depth = 0, end = source.length;
   for (let i = source.indexOf("{", open); i < source.length; i += 1) {
     if (source[i] === "{") depth += 1;
     else if (source[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
   }
-  const block = source.slice(open, end);
+  const lines = source.slice(open, end).split("\n");
   const out = new Map<string, string>();
-  for (const match of block.matchAll(/^\s{4,}(\w+): \(([^)]*)\)[^\n]*$/gm)) {
-    const [line, name, args] = [match[0], match[1] ?? "", match[2] ?? ""];
-    if (/:\s*number/.test(args)) out.set(name, line);
+  const stack: { name: string; indent: number }[] = [];
+  let current: { path: string; indent: number; text: string[] } | null = null;
+  const flush = () => {
+    if (current !== null && /:\s*number/.test(current.text.join("\n"))) out.set(current.path, current.text.join("\n"));
+    current = null;
+  };
+  for (const line of lines) {
+    const indent = line.length - line.trimStart().length;
+    if (current !== null && indent > current.indent && line.trim() !== "") { current.text.push(line); continue; }
+    flush();
+    const block = /^\s*(\w+): \{\s*$/.exec(line);
+    if (block) { while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) stack.pop(); stack.push({ name: block[1] ?? "", indent }); continue; }
+    if (/^\s*\},?\s*$/.test(line)) { while (stack.length > 0 && (stack.at(-1)?.indent ?? 0) >= indent) stack.pop(); continue; }
+    const fn = /^\s*(\w+): \(/.exec(line);
+    if (fn) current = { path: [...stack.map((s) => s.name), fn[1] ?? ""].join("."), indent, text: [line] };
   }
+  flush();
   return out;
 }
 
 it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => {
   const offenders: string[] = [];
   let checked = 0;
-  for (const dictionary of ["cards", "repositorySync"]) {
-    const takers = numberTakers(dictionary);
+  for (const top of ["home", "repositorySync"]) {
+    const takers = numberTakers(top);
     // ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다.
-    expect(takers.size).toBeGreaterThan(2);
-    for (const [name, line] of takers) {
-      if (Object.hasOwn(NOT_A_COUNT, name)) continue;
+    expect(takers.size).toBeGreaterThan(3);
+    for (const [path, text] of takers) {
+      if (Object.hasOwn(NOT_A_COUNT, path)) continue;
       checked += 1;
-      if (!line.includes("toLocaleString")) offenders.push(`${dictionary}.${name}: ${line.trim()}`);
+      if (!text.includes("toLocaleString")) offenders.push(`${path}: ${text.trim().split("\n")[0]}`);
     }
   }
-  expect(checked).toBeGreaterThan(4);
+  // 첫 판이 다섯, 둘째 판이 여덟을 봤다 — 넓힌 것이 실제로 늘었는지 센다.
+  expect(checked).toBeGreaterThan(8);
   expect(offenders).toEqual([]);
+});
+
+/** ⚠️ 면제 목록이 **실재하는 경로**를 가리키나 — 이름이 바뀌면 조용히 면제가 풀리거나 죽은 줄이 남는다. */
+it("면제 목록의 경로가 전부 실재한다", () => {
+  const known = new Set([...numberTakers("home").keys(), ...numberTakers("repositorySync").keys()]);
+  expect(Object.keys(NOT_A_COUNT).filter((path) => !known.has(path))).toEqual([]);
 });

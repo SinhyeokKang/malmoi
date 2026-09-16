@@ -5,6 +5,8 @@ import type { RepositoryImportError } from "./result";
 /**
  * 거부 Alert의 표시 계약 (시안 `4f`).
  *
+ * ⚠️ **tone과 `dismissible`의 판정 기준이 다르다** — 아래 타입의 주석이 근거다.
+ *
  * ⚠️ **거부는 Alert이고 Dialog 안이 아니다** — 게이트 여섯은 확인을 누른 **뒤**에 돌므로, 답을
  * Dialog 안에 띄우면 이미 답한 질문 위에 새 문장이 얹히고 사람이 "닫아도 되는지"를 다시 판단해야
  * 한다. 결과와 거부가 같은 한 자리에 서서 한 번 누른 일의 답이 두 곳에 나지 않는다.
@@ -14,7 +16,20 @@ import type { RepositoryImportError } from "./result";
  * 결정"(EDITOR에게 버튼이 없다)을 들고 있다. 예외는 **자기 실행 중**뿐이다.
  */
 export type ImportRefusalPlan = {
-  /** ⚠️ **"다시 누르면 되나"로 갈린다** — 기다리면 풀리는 것만 info다. */
+  /**
+   * ⚠️ **두 축의 소유자가 다르다** (2026-09-16 라운드 4 — 전에는 이 주석이 tone까지 "다시 누르면
+   * 되나"로 갈린다고 적어 두고 코드가 그것을 안 지켰다).
+   *
+   * - **tone은 캔버스 §6 `4f`의 tone 표가 정한다.** `ingest-failed`·`unavailable`은 기다리면 풀리지만
+   *   **danger**다 — 실패한 Sync는 "덮였다고 믿는데 안 덮였다"라 불변식 9 계열이고, 동료 편집을
+   *   지우는 버튼 옆에서 info는 틀린 음역이다.
+   * - **`dismissible`만 아래 기준을 따른다.**
+   *
+   * ⚠️ **tone이 live politeness까지 정한다** — `components/ui/alert.tsx`가 `role`을 `danger`면
+   * `"alert"`(assertive)로 덮는다. 캔버스는 **색**을 골랐는데 프리미티브가 그것을 **읽기 방해**
+   * 결정으로 번역한다. 지금 구조에는 "danger 시각 + `status`"가 없다 — 일시적 실패에 스크린리더가
+   * 읽던 문장이 끊기는 대가를 알고 받는다 (`docs/DESIGN.md`).
+   */
   tone: "info" | "warning" | "danger";
   /** ⚠️ 닫아도 같은 버튼이 같은 거부를 반복하는 갈래에는 닫기를 주지 않는다. */
   dismissible: boolean;

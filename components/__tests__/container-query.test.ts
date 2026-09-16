@@ -30,7 +30,12 @@ const QUERIES = /(?:^|\s)@(?:\[[^\]]+\]|[\w-]+)(?:\/[\w-]+)?:/;
  * ⚠️ **주석의 예시를 세면 스캐너가 거짓을 낸다** — 그래서 문자열 리터럴만 본다.
  */
 const CLASS_ATTR = /className=(?:("[^"]*")|(\{))/g;
-const STRING_LITERAL = /"([^"]*)"|'([^']*)'|`([^`$]*)`/g;
+/**
+ * ⚠️ **백틱에서 `$`를 배제하지 않는다** — 그러면 `className={`a ${b}`}` 형 **7곳**이 빈 문자열이 되어
+ * 사각에 들어간다(그중 하나가 이 규칙이 지키려는 화면의 `loading.tsx`다). 보간 조각은 클래스 이름이
+ * 아니므로 같이 딸려와도 `@container` 판정을 흔들지 않는다.
+ */
+const STRING_LITERAL = /"([^"]*)"|'([^']*)'|`([^`]*)`/g;
 
 /** `className={…}`의 균형 잡힌 중괄호 안쪽. 못 닫으면 빈 문자열이다. */
 function braced(source: string, open: number): string {
@@ -82,6 +87,8 @@ it("스캐너가 실제로 매칭한다 — 파일도 컨테이너 선언도 0�
   expect(FILES.length).toBeGreaterThan(50);
   // ⚠️ `cn(…)`을 못 읽던 첫 판은 이 수가 리포 실제보다 훨씬 작았다.
   expect(SOURCES.reduce((n, s) => n + s.values.length, 0)).toBeGreaterThan(200);
+  // ⚠️ **템플릿 className도 실제로 읽히나** — 백틱 분기가 `$`를 배제하던 판은 이 수가 0이었다.
+  expect(SOURCES.filter((s) => s.values.some((v) => v.includes("motion-safe:animate-pulse"))).length).toBeGreaterThan(0);
   expect(SOURCES.filter((s) => s.values.some((v) => DECLARES.test(v))).length).toBeGreaterThan(0);
 });
 

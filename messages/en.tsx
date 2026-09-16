@@ -120,9 +120,15 @@ export const en = {
        * 꼬리 "— your text is kept"는 `[Sync]`에 입력이 없어 지킬 text가 없고, 하필 이 동작은 **리포 값으로
        * 번역을 덮고 저자까지 비운다** — 그 절이 "내 번역은 안전하다"로 읽히면 불변식의 정반대다.
        * 둘은 같은 사건("요청이 못 갔다")이라 같은 문장을 쓴다.
+       *
+       * ⚠️ **원인을 단언하지 않는다** — "could not finish reading the repository"로 썼다가 되돌렸다:
+       * `unavailable`은 `readSession()`이 세션 저장소를 못 읽은 것이라 **GitHub을 한 번도 안 친다**.
+       * `ingest-failed`의 `try`도 `findUnique`·`checkRepoAccess`를 먼저 감싸므로 pooler가 끊기면 같다.
+       * **빌려 온 문장이 거짓이 되는 것과 같은 실수를 방향만 바꿔 되풀이한 것이다** — 이번엔 이 화면
+       * 전용인데 **덮는 union보다 문장이 더 구체적**이라 거짓이 됐다. 단계를 말하지 않으면 전부 참이다.
        */
-      "ingest-failed": "malmoi could not finish reading the repository",
-      "unavailable": "malmoi could not finish reading the repository",
+      "ingest-failed": "The sync didn't go through",
+      "unavailable": "The sync didn't go through",
       /**
        * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는
        * 생성 시점 고정이라 `connectRepository`가 재고정을 거부한다. 눌러도 실패할 버튼이므로

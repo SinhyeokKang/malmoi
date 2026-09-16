@@ -73,13 +73,41 @@ describe("planImportRefusal", () => {
    * 수를 박아 두었는데, 그 형은 기준이 바뀌었는지와 목록이 늘었는지를 구별하지 못한다.
    */
   it("닫기는 상태가 바뀌어야 풀리는 거부에만 없다", () => {
-    /** 다시 눌러도 같은 답이 나온다 — 리포·설정·권한이 바뀌어야 풀린다. */
-    const repeats: RepositoryImportError[] = [
-      "not-ready", "not-connected", "no-surfaces", "repo-replaced",
-      "unauthorized", "forbidden", "not-found", "archived", "invalid input",
-    ];
+    /*
+      ⚠️ **두 목록의 합집합이 union 전체여야 한다** (라운드 4 ⚪) — 전에는 12개만 적어 두고 "새 코드는
+      분류돼야 한다"고 적었는데, 실제로는 **어느 목록에도 없으면 둘 다 green**이었다(`last-owner`·
+      `reauthorize`·`resource-limit` …). 아래 타입이 남은 코드를 `never`가 아니게 만들어 **컴파일에서**
+      막는다 — 런타임 단언으로는 "빠뜨린 것"과 "없는 것"을 구별할 수 없다.
+    */
+    /**
+     * 다시 눌러도 같은 답이 나온다 — 리포·설정·권한이 바뀌어야 풀린다.
+     * ⚠️ **`as const`다** — `RepositoryImportError[]`로 주석을 달면 `(typeof repeats)[number]`가 union
+     * 전체로 넓어져 아래 전수 검사가 **언제나 통과하는 공허한 검사**가 된다.
+     */
+    const repeats = [
+      // 이 기능이 직접 내는 것
+      "not-ready", "not-connected", "no-surfaces", "repo-replaced", "invalid input",
+      // 세션·인가 — 다시 눌러도 같다
+      "unauthorized", "forbidden", "not-found", "archived", "last-owner", "not-member",
+      // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
+      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden",
+      "no-installations", "no-repos", "no-candidates",
+      // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
+      "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",
+      "manual-no-match", "not-awaiting", "no-candidates",
+      // 규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다
+      "tree-truncated", "resource-limit", "key-count-failed",
+      // 계정 연결 왕복 — 그 흐름을 처음부터 다시 해야 한다
+      "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
+    ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
-    const transient: RepositoryImportError[] = ["already-running", "ingest-failed", "unavailable"];
+    const transient = ["already-running", "ingest-failed", "unavailable"] as const satisfies readonly RepositoryImportError[];
+    type Classified = (typeof repeats)[number] | (typeof transient)[number];
+    type Unclassified = Exclude<RepositoryImportError, Classified>;
+    // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.
+    type _Exhaustive = Unclassified extends never ? true : ["분류되지 않은 거부 코드", Unclassified];
+    const exhaustive: _Exhaustive = true;
+    expect(exhaustive).toBe(true);
     expect(repeats.filter(error => planImportRefusal(error).dismissible)).toEqual([]);
     expect(transient.filter(error => !planImportRefusal(error).dismissible)).toEqual([]);
   });
