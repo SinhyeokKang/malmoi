@@ -1883,3 +1883,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     0이 아니다"*이므로 **매칭이 0인 채로 초록이 될 수 없다.**
   - **규칙: 반응형 변형을 실측할 때는 임계값 위·아래를 둘 다 밟는다.** 한쪽만 재면 "그 폭에서 맞는
     답"과 "어느 폭에서도 나오는 답"이 구별되지 않는다 — 이 결함이 정확히 그 차이에 숨었다.
+
+### 2026-09-16 — YAML range 치환의 같은 위치와 바깥 빈 줄이 값을 바꿨다
+
+- **영역**: `lib/adapters/yaml-catalog.ts` — T12 range 치환 수정의 후속 회귀.
+- **증상**: 빈 `a:`에 값 편집과 새 `z` 삽입을 함께 적용하면 `a`는 null로 남고 두 값이 `z`로 붙었다. `|-`·`>-` 뒤에 빈 줄이 있는 원본에 끝 개행 둘인 값을 쓰면 실제 값에는 개행 셋이 생기고 재적용 출력이 달라졌다.
+- **근본 원인**: 빈 스칼라의 zero-width range와 맵 삽입이 같은 offset인데 작업 종류를 정렬에서 구분하지 않았다. 블록의 keep chomping은 원래 range 밖이던 빈 줄까지 값으로 읽으므로 문자열 범위 보존만으로 의미가 보존되지 않았다.
+- **그물**: 리뷰의 복합 입력 재현과 새 회귀 테스트가 잡았다. 기존 YAML 테스트 95건은 빈 스칼라 편집·삽입·keep chomping을 각각 검사했지만 두 경계의 조합은 놓쳤다. 첫 회귀 7건, 두 번째 회귀 12건의 red→green을 관측했고 LF/CRLF·주석·공백 줄·문서 끝 마커·동시 삽입을 추가 검증했다.
+- **수정**: 같은 위치의 맵 삽입을 빈 스칼라 치환보다 먼저 적용한다. keep이 범위 밖 빈 줄을 흡수하는 경우에만 편집 값을 인용해 주변 바이트와 요청값을 분리한다.
+- **재발 방지**: `rg -n 'replacements\.sort|chomp ===|source\.slice\(end\)' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 두 경계를 확인했다(해당 YAML 구현만 해당). `pnpm test lib/adapters/__tests__/yaml-catalog.test.ts`의 `coincident empty scalar and map insertion`·`keep chomping beside preserved blank lines`에서 요청값·입력 순서 독립성·반복 출력·재적용 고정점과 원본 suffix 보존을 검사한다.

@@ -703,3 +703,56 @@ describe("yaml-catalog — 빈 스칼라의 속성 구분자", () => {
     expect(yamlCatalog.write(withSource(output), input)).toBe(output);
   });
 });
+
+describe("yaml-catalog — coincident empty scalar and map insertion", () => {
+  it.each([
+    ["a:", "a", "z"],
+    ["a: ", "a", "z"],
+    ["a:\n", "a", "z"],
+    ["a: {x:}\n", "a.x", "a.z"],
+    ["a: {x: }\n", "a.x", "a.z"],
+    ["a:\n  x:", "a.x", "a.z"],
+    ["a:\n  x:\n", "a.x", "a.z"],
+  ])("keeps both values at the same offset: %j", (source, edited, added) => {
+    const entries = [{ key: edited, message: "edit" }, { key: added, message: "insert" }];
+    const input = { locale: "ko", entries };
+    const result = yamlCatalog.writeWithErrors!(withSource(source), input);
+    expect(result.errors).toEqual([]);
+    const parsed = parseDocument(result.content!);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.getIn(edited.split("."))).toBe("edit");
+    expect(parsed.getIn(added.split("."))).toBe("insert");
+    expect(yamlCatalog.write(withSource(source), { ...input, entries: [...entries].reverse() })).toBe(result.content);
+    expect(yamlCatalog.write(withSource(result.content!), input)).toBe(result.content);
+  });
+});
+
+describe("yaml-catalog — keep chomping beside preserved blank lines", () => {
+  for (const style of ["|", ">"] as const) {
+    for (const newline of ["\n", "\r\n"]) {
+      it.each(["\nb: keep\n", "\n\n# keep\nb: keep\n", "  \n\nb: keep\n", "\n...\n", "\n\n"])(
+        `${style} preserves the requested trailing newlines and untouched suffix (${JSON.stringify(newline)}): %j`,
+        (tail) => {
+          const suffix = tail.replace(/\n/g, newline);
+          const source = `a: ${style}- # header${newline}  old${newline}` + suffix;
+          for (const message of ["new\n\n", "new\n\n\n", "first\n second\n\n"]) {
+            for (const insert of [false, true]) {
+              const entries = [{ key: "a", message }, ...(insert ? [{ key: "z", message: "insert" }] : [])];
+              const input = { locale: "ko", entries };
+              const result = yamlCatalog.writeWithErrors!(withSource(source), input);
+              expect(result.errors).toEqual([]);
+              const parsed = parseDocument(result.content!);
+              expect(parsed.errors).toEqual([]);
+              expect(parsed.get("a")).toBe(message);
+              if (insert) expect(parsed.get("z")).toBe("insert");
+              else expect(result.content!.endsWith(suffix)).toBe(true);
+              expect(result.content).toContain("# header" + newline);
+              expect(yamlCatalog.write(withSource(source), input)).toBe(result.content);
+              expect(yamlCatalog.write(withSource(result.content!), input)).toBe(result.content);
+            }
+          }
+        },
+      );
+    }
+  }
+});

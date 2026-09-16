@@ -265,6 +265,11 @@ function scalarReplacement(source: string, doc: Document, node: Scalar, value: s
       // 명시적 폭은 부모와의 차이다. CST 생성기는 선행 공백이 있으면 항상 2를 낸다.
       const digit = explicit ?? (/[1-9]/.test(generated) ? String(indent - token.indent) : "");
       const chomp = /[+-]/.exec(generated)?.[0] ?? "";
+      // keep은 range 밖의 빈 줄까지 값으로 흡수한다. 범위를 넓히면 다른 삽입과 겹치므로
+      // 이 경계에서만 인용해 요청값과 원본 빈 줄을 독립적으로 보존한다.
+      if (chomp === "+" && /^[ \t]*\r?\n/.test(source.slice(end))) {
+        return { start, end, text: flowString(value, doc, "QUOTE_DOUBLE") + suffix };
+      }
       text = generated[0] + digit + chomp + suffix + (suffix.endsWith("\n") ? "" : newline)
         + rendered.source.replace(/\n/g, newline);
       if (!source.slice(start, end).endsWith("\n") && !value.endsWith("\n")) text = text.slice(0, -newline.length);
@@ -294,7 +299,7 @@ function insertion(source: string, doc: Document, map: YAMLMap | null, entries: 
     const node = last?.value ?? last?.key;
     const at = node && typeof node === "object" && "range" in node && Array.isArray(node.range)
       ? node.range[1] as number : map.range![0] + 1;
-    return { start: at, end: at, text: (last ? ", " : "") + pairs.join(", ") };
+    return { start: at, end: at, indent: token && "indent" in token ? token.indent : 0, text: (last ? ", " : "") + pairs.join(", ") };
   }
   const at = map?.range?.[1] ?? doc.range![1];
   const width = token && "indent" in token ? token.indent : 0;
@@ -391,9 +396,12 @@ function writeWithErrors(
   for (const [map, entries] of additions) replacements.push(insertion(file.content, doc, map, entries));
 
   // 뒤에서 치환해야 앞 노드의 range가 이동하지 않는다. 같은 끝 위치는 부모를 먼저 넣어
-  // 자식 삽입이 부모보다 앞에 남게 한다. 변경 0건이면 원본 그대로다.
+  // 자식 삽입이 부모보다 앞에 남게 한다. 빈 스칼라 치환은 같은 위치의 모든 삽입 뒤에
+  // 적용해야 값이 원래 키 옆에 남는다. indent는 맵 삽입에만 있다. 변경 0건이면 원본 그대로다.
   let content = file.content;
-  for (const edit of replacements.sort((a, b) => b.start - a.start || b.end - a.end || (a.indent ?? 0) - (b.indent ?? 0))) {
+  for (const edit of replacements.sort((a, b) => b.start - a.start || b.end - a.end
+    || Number(a.indent === undefined) - Number(b.indent === undefined)
+    || (a.indent ?? 0) - (b.indent ?? 0))) {
     content = content.slice(0, edit.start) + edit.text + content.slice(edit.end);
   }
   return { content, errors };
