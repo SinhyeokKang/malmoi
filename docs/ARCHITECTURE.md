@@ -1523,7 +1523,7 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
 열한 개가 통째로 무음이므로 `isConnectError`·`connectErrorMessage`를 함께 걸러 한 줄 보인다. 두 union이
 겹치는 값은 `unavailable` 하나이고 뜻이 같아 먼저 보는 쪽이 이겨도 문제가 없다. **같은 쌍을 설정 화면도 읽는다** — 연결이 실패해 slug를 아는 채로 돌아오면 그쪽 `?e=`에 실린다.
-**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — 쿼리 슬롯이 둘이다.
+**`/account`의 연결 왕복 사유는 `isConnectError`로 검사한다** (2026-09-09, 6b-4). `sessionRevocation` 결과는 **별도 고정 비교**로 검사한다 — ⚠️ **쿼리 슬롯은 넷이다**(`?e=`·`?link=`·`?sessionRevocation=`·`?connect=` — 마지막은 2026-09-14의 로그인 수단 연결이 더했다). 넷이 **생산자도 서는 자리도 다르므로** 한 사전으로 접지 않는다.
 인가 거부는 `requireUser`가 **`/signin`으로** 보낸다 — 판정은 `lib/auth/landing.ts`의 `rejectTarget` 하나이고, **삼항이 아니라 맵 + `satisfies`다**(갈래가 늘면 키가 없어 컴파일 에러가 난다; 삼항이면 새 갈래가 사유 없이 로그인 화면으로 떨어지고 `tsc`가 조용하다 — 8-1a에서 실측). ⚠️ **읽는 쪽이 셋에서 넷이 됐다** — 실어 보내놓고 안 읽으면
 거부가 통째로 무음이다.
 **`/projects/new`는 `isOnboardError`·`isConnectError` 쌍이다** (2026-09-07) — callback이 `ConnectError`를
