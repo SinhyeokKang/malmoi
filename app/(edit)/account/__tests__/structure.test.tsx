@@ -69,6 +69,24 @@ function card(container: ParentNode, title: string): HTMLElement {
   return found;
 }
 
+/**
+ * 행의 **본문 두 줄**만 집는다 — 우측 컨트롤 클러스터는 뺀다.
+ *
+ * ⚠️ **`li > div > span`으로 세면 클러스터의 직계 `<span>`도 들어온다.** 가정이 아니다:
+ * `login-methods.tsx`의 마지막 수단 갈래가 `<span id={reasonId}>{lastMethod}</span>`를 버튼 옆
+ * 형제로 그리고(이 리포의 *"사유 없는 `disabled`를 만들지 않는다"* 관용구), **이 파일의 다른 검사
+ * 셋이 그 갈래를 실제로 렌더한다.** 지금 안 터지는 유일한 이유는 아래 단언들이 쓰는 `screen()`
+ * 기본값이 수단 **둘**이라는 우연이다. **실측으로 확인했다** — 옛 선택자로 그 갈래를 렌더하면
+ * `toHaveLength(1)`이 `got 2`로 red다 (2026-09-16 3라운드 🟡).
+ *
+ * 세려는 불변식은 **본문 div에 대한 진술**이다. `li` 아래를 통째로 세면 "보조 줄이 없다"와
+ * "우측에 span이 없다"가 한 수로 접히고, 사유가 붙는 날 **"보조 줄이 생겼다"는 엉뚱한 red**가 난다.
+ */
+function bodyLines(row: Element): HTMLSpanElement[] {
+  const body = row.querySelector("div:first-of-type");
+  return body === null ? [] : [...body.querySelectorAll<HTMLSpanElement>(":scope > span")];
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ k1: Buffer.alloc(32, 1).toString("base64") }));
@@ -116,7 +134,7 @@ it("연결됐을 때만 설치 집계를 한 번 조회한다", async () => {
 it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 그것을 대신하지 않는다", async () => {
   const container = await screen();
   const app = card(container, m.account.github.title).querySelector("li")!;
-  const [body, detail] = [...app.querySelectorAll(":scope > div > span")];
+  const [body, detail] = bodyLines(app);
   expect(body).not.toBeUndefined();
   expect(body!.textContent).toContain("@octocat");
   expect(body!.textContent).toContain(m.account.github.connected);
@@ -129,16 +147,17 @@ it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 �
   expect(detail!.textContent).not.toContain(m.account.github.connected);
 
   const methods = card(container, m.link.methods.title).querySelector("li")!;
-  const methodBody = methods.querySelector(":scope > div > span")!;
-  expect(methodBody.textContent).toContain(m.link.providers.github);
-  expect(methodBody.textContent).toContain(m.link.methods.connected);
+  const methodLines = bodyLines(methods);
+  expect(methodLines[0]).not.toBeUndefined();
+  expect(methodLines[0]!.textContent).toContain(m.link.providers.github);
+  expect(methodLines[0]!.textContent).toContain(m.link.methods.connected);
   /**
    * ⚠️ **수단 행에는 보조 줄이 없다** — 캔버스의 `Signed in with this method last on {date}.`는
    * 데이터가 리포에 없고(`Account`에 마지막 사용 컬럼이 없다), 한쪽만 그리면 두 행 높이가 갈린다.
    * **되살리려면 스키마가 늘고 그 순간 이 기능의 "스키마 변경 없음"이 깨진다** — 그 사실을 여기서
    * 고정한다(문서화된 이탈, DESIGN §6.67).
    */
-  expect(methods.querySelectorAll(":scope > div > span")).toHaveLength(1);
+  expect(methodLines).toHaveLength(1);
 });
 
 /**
@@ -152,8 +171,9 @@ it.each([
   ["조회 실패", { status: "unavailable" }, m.account.github.statusUnavailable],
 ])("GitHub App %s 갈래의 상태가 본문에 선다", async (_label, view, status) => {
   const container = await screen({}, undefined, view);
-  const body = card(container, m.account.github.title).querySelector("li > div > span")!;
-  expect(body.textContent).toContain(status);
+  const body = bodyLines(card(container, m.account.github.title).querySelector("li")!)[0];
+  expect(body).not.toBeUndefined();
+  expect(body!.textContent).toContain(status);
 });
 
 /**
@@ -176,7 +196,7 @@ it.each([
   const rows = [...card(container, m.account.sessionsSection.title).querySelectorAll("li")];
   expect(rows).toHaveLength(2);
   const shapes = rows.map((row) => {
-    const spans = [...row.querySelectorAll(":scope > div > span")];
+    const spans = bodyLines(row);
     return { body: spans[0]?.textContent ?? "", hasHint: spans.length === 2 };
   });
   expect(shapes[0]!.body).toContain(m.account.signOut.scope);
@@ -198,9 +218,12 @@ it.each([
  */
 it("화면의 모든 행이 상태를 들고 구분자가 선다", async () => {
   const container = await screen();
-  const bodies = [...container.querySelectorAll("section[aria-labelledby] li > div > span:first-child")];
+  const bodies = [...container.querySelectorAll("section[aria-labelledby] li")].map((row) => bodyLines(row)[0]);
   expect(bodies.length).toBeGreaterThan(0);
-  for (const body of bodies) expect(body.textContent, body.textContent ?? "").toContain(" — ");
+  for (const body of bodies) {
+    expect(body).not.toBeUndefined();
+    expect(body!.textContent, body!.textContent ?? "").toContain(" — ");
+  }
 });
 
 /**

@@ -938,13 +938,21 @@ export const en = {
        * 이 줄만 사라져 두 행 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과 같은 논거다.
        * **의도적 이탈이고 DESIGN §6.67에 근거가 있다.**
        *
+       * ⚠️ **능동태다** — 이 리포에서 수동태가 서는 자리는 **이미 일어난 일**뿐이다
+       * (`Confirmation was cancelled.` · `You have been signed out…`). 누르기 **전에** 읽는 예고는
+       * 전부 능동이다(`You'll need to sign in again…` · `We'll add this sign-in method…`).
+       *
+       * ⚠️ **`your provider`는 캔버스 정정 요청 대상이다** (2026-09-16 3라운드 🟡) — 비개발자가 그
+       * 낱말을 Google로 옮기지 못할 수 있는데, 대안이 전부 Dialog와 겹치거나(`the account you sign
+       * in with`) 부정확하다. **이 줄 자체가 캔버스 이탈이므로 대체 문구도 캔버스가 정한다.**
+       *
        * ⚠️ **Dialog가 이미 하는 말을 반복하지 않는다.** 첫 판본은
        * `You'll confirm with the account you sign in with before anything changes.`였는데 **앞 8낱말이
        * Dialog 회색 설명과 그대로 겹치고** 뒤 절은 검은 줄과 겹쳤다 — 한 문장이 두 번이던 것을
        * 두 조각이 각각 두 번으로 옮겼을 뿐이었다 (2026-09-16 재검토 🟡C). 행이 들 것은 Dialog가
        * **아직 안 한 말**이다.
        */
-      willConfirm: "You'll be sent to your provider to confirm, then back here.",
+      willConfirm: "We'll send you to your provider to confirm, then bring you back here.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",

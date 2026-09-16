@@ -94,7 +94,7 @@ function lines(container: ParentNode): { body: string; hint: string | null } {
    * 다(`login-methods.tsx`의 `lastMethod` · `profile-picture.tsx`의 `busy`). [Disconnect]에 그런 사유가
    * 붙는 날 보조 줄이 없는 갈래에서 `spans[1]`이 그 사유가 되어 **엉뚱한 곳을 가리키는 red**가 난다.
    */
-  const body = container.querySelector("li > div");
+  const body = container.querySelector("li > div:first-of-type");
   const spans = body === null ? [] : [...body.querySelectorAll(":scope > span")];
   return { body: spans[0]?.textContent ?? "", hint: spans[1]?.textContent ?? null };
 }

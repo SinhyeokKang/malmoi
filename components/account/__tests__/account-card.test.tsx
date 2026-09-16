@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
-const { AccountCard, AccountFacts, AccountRow, AccountRows } = await import("../account-section");
+import { AccountCard, AccountFacts, AccountRow, AccountRows } from "../account-section";
 
 /**
  * `/account`의 카드 프리미티브 **자체**를 잰다 (2026-09-16 재검토 🟡B).
@@ -43,7 +43,8 @@ it("보조 줄은 없으면 그리지 않는다 — 빈 줄이 서면 행 높이
     </AccountRows>,
   );
   const rows = [...container.querySelectorAll("li")];
-  expect(rows.map((row) => row.querySelectorAll("li > div > span").length)).toEqual([1, 2]);
+  // 본문 div만 센다 — `structure.test.tsx`의 `bodyLines`와 같은 형이다(우측 클러스터를 안 섞는다).
+  expect(rows.map((row) => row.querySelectorAll("div:first-of-type > span").length)).toEqual([1, 2]);
 });
 
 /**
