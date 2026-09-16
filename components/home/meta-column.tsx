@@ -81,14 +81,21 @@ function value(row: MetaRow, now: Date): ReactNode {
           <Badge variant="warning">{m.home.meta.notConnected}</Badge>
         </span>
       ) : (
+        /*
+          ⚠️ **이 링크만 `ExternalLink`를 안 단다** — 두 정본이 같은 답을 준다: 캔버스
+          (`design_handoff_project_home`)의 lucide 목록에 `external-link`가 없고 `2a`가 "리포 주소와
+          PR 번호만 링크"라고만 적으며, `docs/DESIGN.md` §6.3이 글리프를 다는 외부 링크 여덟을 이름으로
+          열거하는데 **"Home의 PR 링크"는 있고 이 리포 링크는 없다.** 바로 아래 `lastPublish`의 PR
+          링크는 그 목록에 있으므로 글리프를 그대로 든다 — `home-landmarks.test.tsx`가 그 **비대칭**을
+          센다(한쪽만 고치지 못하게).
+        */
         <a
           href={row.href ?? undefined}
           target="_blank"
           rel="noreferrer"
-          className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+          className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
         >
           {`${row.owner}/${row.name}`}
-          <ExternalLink className="size-3" aria-hidden />
         </a>
       );
     case "branch":
