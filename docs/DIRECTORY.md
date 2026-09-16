@@ -76,7 +76,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 21개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 22개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -89,7 +89,16 @@ components/
                         맡긴다. 링을 숨은 input에 붙이면 보이지도 않는 요소가 링을 들고 검사만 green이다
                         ⚠️ resizable(21번째)만 radix-ui가 아니라 react-resizable-panels를 쓴다 —
                         포인터 히트 판정·전역 커서가 document 레벨이라 CSS로 대신할 수 없다
+                        ⚠️ modal(22번째)은 2026-09-16에 components/onboarding/에서 올라왔다 — 소비자가
+                        둘이 되는 순간(온보딩 · Publish) 껍데기가 한쪽 디렉터리에 살면 안 된다.
+                        옛 경로는 재수출로 남아 온보딩 호출부가 한 줄도 안 바뀌었다
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
+  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 둘이다 — 새 프로젝트 온보딩(네 단계)과 Publish 모달
+                        (갈래 열하나). ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
+                        Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
+                        고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
+                        넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
+                        actions 슬롯을 주면 그 자리를 호출부가 가져간다(Publish가 갈래별 버튼을 넣는다)
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
                         ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
@@ -128,10 +137,7 @@ components/
                         Provider는 DOM을 안 만들어 PanelHeader·PanelBody 형제 구조가 그대로 남는다
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
-  onboarding/modal.tsx  새 프로젝트 모달의 껍데기. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고
-                        Radix Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
-                        고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
-                        넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유한다
+  onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
   onboarding/add-surface.tsx  FilesStep 재사용·수동 확인·추가 step 결과, 입력 실패 보존
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
@@ -155,7 +161,12 @@ components/
                         hasProjects·질의·건수가 JSX 안에서 섞여 판정됐다. 그릇은 카드이고 그룹
                         헤더가 그 안에 산다(DESIGN §6.63)
   translation-input.tsx 셀 편집. 실패 시 포커스는 shouldRefocus가 정한다(다른 셀을 치고 있으면 안 뺏는다)
-  publish-button.tsx    ⚠️ 실패에는 router.refresh()를 부르지 않는다
+  publish-button.tsx    Publish 버튼 + 모달 갈래 열하나(DESIGN §6.646). ⚠️ 실패에는 router.refresh()를
+                        부르지 않는다 ⚠️ **usePublish를 무조건 렌더되는 호스트가 든다** — 번역 화면은
+                        TranslationsHeader, Home은 HomeNotices다. 조건부 자리에 두면 refresh가 방금
+                        받은 결과를 언마운트한다 ⚠️ **리포 이름·base·sync 브랜치를 서버가 넘긴다** —
+                        syncBranchFor가 사는 모듈(lib/pull/trigger)은 octokit·ts-morph를 물어
+                        클라이언트 그래프에 오면 안 된다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
                         ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
   __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
@@ -220,10 +231,24 @@ lib/
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
   surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 생성+첫 적재 원자적 확정
+  publish/              Publish 모달이 읽는 순수 판정 넷. diff(셀 단위 조립·키 병합·상한) ·
+                        plan(결과 8갈래 planPublishView + 버튼 planPublishButton, 둘 다 never 검사) ·
+                        warnings(파일별 묶기 — 파서 원문의 개행을 보존한다) · words(낱말 diff) ·
+                        preview(모달 상태 다섯의 계약). ⚠️ read.ts만 server-only다 — base 트리를
+                        읽어 "무엇을 덮는가"를 만든다. **이전 값은 표시 전용이고 어떤 판정의
+                        입력도 아니다**(ARCHITECTURE §0 불변식 2)
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
-                        account-view · connect-plan · health · token · token-store · user · repository-id
+                        account-view · connect-plan · health · token · token-store · user · repository-id ·
+                        installed-repos · installation-url
+                        ⚠️ installed-repos는 /account의 "Installed on {n} repositories."다. 판정
+                        (countInstalledRepos)이 순수 함수이고 껍데기는 실패를 logFailure로 남기고
+                        던지지 않는다. null("못 읽었다")과 0("고른 것이 없다")이 다른 값이다 —
+                        실패한 조회를 0으로 읽으면 사용자가 멀쩡한 설치를 다시 만든다
+                        ⚠️ installation-url은 apps/<slug>/installations/new 하나를 만든다. 기존 세
+                        자리(new-project-modal · 프로젝트 설정 · 온보딩 ②)는 아직 각자 조립한다 —
+                        중복 넷을 헬퍼로 모으는 것은 후속이다
   credentials/ session-revocation/ login-link/ account-connect/
                         저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
                         ⚠️ session-revocation의 message는 주소창 값(?sessionRevocation=)을 받으므로

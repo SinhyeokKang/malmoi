@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { syncBranchFor } from "@/lib/pull/trigger";
+
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
@@ -224,7 +226,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       Provider를 같은 자리로 화해시킨다. 없으면 A에서 낸 결과 Alert가 **A의 브랜치 이름을 단 채로**
       B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
     */
-    <HomeActions key={slug}>
+    <HomeActions key={slug} slug={slug}>
       <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
@@ -259,6 +261,9 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
         state={state}
         role={role}
         branch={project.baseBranch}
+        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 octokit·ts-morph를 물어 클라이언트가 물면 안 된다. */
+        repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
+        unsent={counts.toSend}
         failedSurface={failed?.slug ?? null}
         reason={failed?.importError ?? null}
         lastSyncAt={lastSyncAt}

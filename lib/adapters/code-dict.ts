@@ -277,7 +277,7 @@ function collect(
 }
 
 /** 프로퍼티 이름이 식별자로 쓸 수 있는가. 아니면 따옴표로 감싼다. */
-const PLAIN_NAME = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const PLAIN_NAME = /^[$_\p{ID_Start}][$\u200C\u200D\p{ID_Continue}]*$/u;
 
 function write(format: DetectedFormat, input: WriteInput): string | null {
   return writeWithErrors(format, input).content;
@@ -347,13 +347,15 @@ function writeWithErrors(
   }
 
   // 없는 키는 삽입한다 — **정렬 순서로 넣어야 결정적이다** (ARCHITECTURE §1.4).
-  // 삽입에는 대응하는 원본 리터럴이 없으므로 **파일의 다수 부호**를 쓴다. 삽입한 줄만 튀면
-  // 편집 줄의 부호를 맞춘 의미가 없어진다.
-  const quote = dominantQuote(sf.getDescendantsOfKind(SyntaxKind.StringLiteral).map((n) => n.getText()));
+  // 삽입 값은 카탈로그의 번역 값 다수 부호를 따른다. 키·import·다른 코드의 문자열을
+  // 함께 세면 키와 값이 다른 부호를 쓰는 파일에서 값의 관용이 뒤집힌다.
+  const quote = dominantQuote(valueLiterals(root));
   for (const key of missing.sort(compareKeys)) {
     const value = wanted.get(key);
     if (value === undefined) continue;
     if (insert(root, key, value, quote)) {
+      // 원문 범위 치환은 기존 AST 노드를 무효화한다. 다음 키는 새 트리에서 찾는다.
+      root = defaultExportObject(sf)!;
       changed = true;
       continue;
     }
@@ -362,6 +364,17 @@ function writeWithErrors(
   }
 
   return { content: changed ? sf.getFullText() : file.content, errors };
+}
+
+/** collect와 같은 객체/문자열 경로만 따른다 — 배열·함수 내부의 문자열은 번역 값이 아니다. */
+function valueLiterals(obj: ObjectLiteralExpression): string[] {
+  return obj.getProperties().flatMap((prop) => {
+    if (!prop.isKind(SyntaxKind.PropertyAssignment)) return [];
+    const init = unwrap(prop.getInitializer());
+    if (init?.isKind(SyntaxKind.StringLiteral)) return [init.getText()];
+    if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) return valueLiterals(init);
+    return [];
+  });
 }
 
 /**
@@ -430,13 +443,67 @@ function insert(obj: ObjectLiteralExpression, key: string, value: string, quote:
   }
   const remaining = segments.slice(at).join(SEP);
   if (remaining === "") return false;
-  cur.addPropertyAssignment({ name: quoteName(remaining, quote), initializer: quoteLiteral(value, quote) });
+  const source = cur.getSourceFile().getFullText();
+  const start = cur.getStart();
+  const close = cur.getEnd() - 1;
+  const properties = cur.getProperties();
+  const last = properties.at(-1);
+  const trailingComma = cur.compilerNode.properties.hasTrailingComma === true;
+  const closeLine = source.lastIndexOf("\n", close - 1) + 1;
+  const closeIndent = source.slice(closeLine, close);
+  const multiline = closeLine > start && /^[\t ]*$/.test(closeIndent);
+  const property = `${quoteName(remaining, quote, cur)}: ${quoteLiteral(value, quote)}${trailingComma ? "," : ""}`;
+  let position: number;
+  let insertion: string;
+  if (multiline) {
+    // 가장 가까운 형제의 들여쓰기를 그대로 쓴다 — ts-morph 기본 폭으로 반올림하지 않는다.
+    const siblingIndent = [...properties].reverse().map((prop) => {
+      const line = source.lastIndexOf("\n", prop.getStart() - 1) + 1;
+      return source.slice(line, prop.getStart());
+    }).find((prefix) => /^[\t ]*$/.test(prefix));
+    // 빈 여러 줄 객체는 파일의 첫 프로퍼티 들여쓰기를 단서로 삼는다.
+    // 그것도 없으면 닫는 괄호 + 2칸, 끝 쉼표 없음으로 시작한다.
+    const fileIndent = cur.getSourceFile().getDescendantsOfKind(SyntaxKind.PropertyAssignment)
+      .map((prop) => source.slice(source.lastIndexOf("\n", prop.getStart() - 1) + 1, prop.getStart()))
+      .find((prefix) => /^[\t ]+$/.test(prefix));
+    const indent = siblingIndent ?? closeIndent + (fileIndent ?? "  ");
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    position = closeLine;
+    insertion = `${indent}${property}${newline}`;
+  } else {
+    // 빈 한 줄 객체는 원래 안쪽 여백을 쓰고 한 줄·끝 쉼표 없음으로 시작한다.
+    const space = source.slice(start + 1).match(/^[\t ]*/)?.[0] ?? "";
+    const tailSpace = source.slice(start + 1, close).match(/[\t ]*$/)?.[0] ?? "";
+    position = close - tailSpace.length;
+    insertion = `${space}${property}`;
+  }
+  let text = source.slice(start, position) + insertion + source.slice(position, cur.getEnd());
+  if (last !== undefined && !trailingComma) {
+    const commaAt = last.getEnd() - start;
+    text = text.slice(0, commaAt) + "," + text.slice(commaAt);
+  }
+  // 객체를 재포맷하면 기존 주석·빈 줄·개행 코드까지 바뀌므로 원본 구간만 치환한다.
+  cur.getSourceFile().applyTextChanges([{ span: { start, length: cur.getEnd() - start }, newText: text }]);
   return true;
 }
 
-/** 식별자로 쓸 수 있으면 부호 없이, 아니면 **값과 같은 부호로** 감싼다 — 키만 튀지 않게 한다. */
-const quoteName = (name: string, quote: Quote) =>
-  PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
+/** 키의 따옴표는 값의 부호와 별개다 — 가장 가까운 형제의 선택적 표기를 따른다. */
+function quoteName(name: string, quote: Quote, obj: ObjectLiteralExpression): string {
+  // 점·공백 등으로 따옴표가 필수인 이름은 "모든 키를 감싼다"는 근거가 아니다.
+  const optionalName = (prop: PropertyAssignment) => {
+    const node = prop.getNameNode();
+    return node.isKind(SyntaxKind.Identifier)
+      || (node.isKind(SyntaxKind.StringLiteral) && PLAIN_NAME.test(node.getLiteralValue()));
+  };
+  const siblings = obj.getProperties().filter((prop) => prop.isKind(SyntaxKind.PropertyAssignment));
+  // 빈 객체 등 형제에 단서가 없으면 파일에서 찾는다. 파일에도 없으면 기존 기본값을 유지한다:
+  // 유효한 식별자는 부호 없이, 나머지는 값의 부호로 안전하게 이스케이프한다.
+  const exemplar = [...siblings].reverse().find(optionalName)
+    ?? obj.getSourceFile().getDescendantsOfKind(SyntaxKind.PropertyAssignment).reverse().find(optionalName);
+  const node = exemplar?.getNameNode();
+  if (node?.isKind(SyntaxKind.StringLiteral)) return quoteLiteral(name, quoteOf(node.getText()));
+  return PLAIN_NAME.test(name) ? name : quoteLiteral(name, quote);
+}
 
 export const codeDict: Adapter = {
   name: "code-dict",

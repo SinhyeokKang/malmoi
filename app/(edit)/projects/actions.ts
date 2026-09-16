@@ -1,5 +1,7 @@
 "use server";
 
+import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+
 import { findUserByEmail } from "@/lib/credentials/access";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
@@ -1237,13 +1239,7 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenI
     const project = await prisma.project.findUnique({ where: { id: access.projectId } });
     if (project === null) return undefined;
     const rawUrl = await loadOpenPrUrl(parsed.data.slug, project);
-    if (rawUrl === null || rawUrl === undefined) return rawUrl;
-    const url = new URL(rawUrl);
-    if (url.origin !== "https://github.com" || url.username || url.password) return undefined;
-    const parts = url.pathname.split("/");
-    if (parts.length !== 5 || parts[1]?.toLowerCase() !== project.repoOwner.toLowerCase() || parts[2]?.toLowerCase() !== project.repoName.toLowerCase() || parts[3] !== "pull" || !/^[1-9][0-9]*$/.test(parts[4] ?? "")) return undefined;
-    const number = Number(parts[4]);
-    return Number.isSafeInteger(number) ? { number, url: rawUrl } : undefined;
+    return parseGithubPrUrl(rawUrl, project);
   } catch (error) {
     logFailure("repository-import-pr", error);
     return undefined;

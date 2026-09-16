@@ -316,7 +316,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 | **머리** | `PanelHeader` `flex flex-col gap-4 px-6 pt-6 pb-3` — `h1 text-xl font-medium`(**사이드바 라벨과 같은 키**) ⚠️ **여백·제목 크기가 `/projects` 목록과 같은 형이다** (2026-09-11 — 시안 `212:5074` 실측 `pt-24`·`gap-16`·`pb-12`·20px). 8-4가 `py-4 space-y-3` + `text-base`로 냈던 것을 되돌린 것이고, 근거는 **같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다**는 것이다 + 총계 `Badge neutral` + "Last sent …" + PR 링크, 우측에 **Publish 버튼**. ⚠️ **breadcrumb이 없다**(8-4 — 프로젝트 하위 화면 다섯에서 함께 지웠다; 위로 가는 길은 사이드바가 든다). ⚠️ **총계는 필터 *전*의 값이다**(§6.63과 같은 규칙) — 필터마다 흔들리면 "이 프로젝트에 키가 몇 개인가"에 답하지 못한다. 필터 후 건수는 섹션 헤딩의 배지가 든다. ⚠️ **숫자 배지는 `aria-hidden` 숫자 + `sr-only` 문장**이다 — 숫자만 그리면 접근 이름이 "Translations 1134"다 |
 | **툴바** | 네임스페이스 `Select w-40`(옵션 라벨은 갈래 둘이다 — pending이 있으면 `{name} ({pending}/{total})`, 0이면 `{name} ({total})`. ⚠️ **2026-09-13부터 Radix라 옵션 안에 배지를 그릴 수는 있다** — 그래도 라벨 형은 그대로 둔다: 남은 일이 0인 ns에 `0/12`를 적으면 분자가 무엇인지 매번 읽어야 한다는 근거가 형식과 무관하게 그대로다) · 로케일 **다중 선택** `DropdownMenu w-32`(`DropdownMenuCheckboxItem`, ⚠️ **항목이 국기 + 코드다** — 2026-09-11 실물: 표의 배지엔 국기가 있는데 그것을 **고르는** 자리엔 없어서 같은 로케일이 두 자리에서 다르게 보였다. 조각은 `LocaleFlag`가 들고 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 메뉴로 오지 않는다) · 검색 `Input w-64 pl-8` + `Search` `absolute left-2`(우측 정렬). ⚠️ **상태 필터가 없다**(8-4 — 시안의 칩이 정확히 세 종류라 그 부재가 의도다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08). ⚠️ **왼쪽 네임스페이스 패널이 사라졌다** — 드롭다운이 그 역할을 가져갔고, 둘을 두면 같은 필터가 두 곳이고 하나가 낡는다 |
 | **칩 행** | 적용된 필터가 `bg-muted rounded-full` 칩이고 **종류가 셋**(`Namespace:` · `Languages:` · `Search:`). ⚠️ **로케일 칩은 코드마다가 아니라 하나로 묶는다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 **전체로 넓어지고**(제거가 넓힘이 된다), 6로케일에서 한 줄을 넘는다. ⚠️ **칩 전체가 링크가 아니다** — 라벨은 평문이고 제거만 `Button ghost sm`(중첩 상호작용 요소는 금지, POSTMORTEM 2026-09-09와 같은 모양이다). 칩은 **h-8**(시안 `Chip` 32)이고 `text-sm`이다 — 같은 줄의 컨트롤이 36인데 칩만 20이면 필터가 걸려 있다는 사실이 눈에 안 들어온다. 초기화는 칩이 하나라도 있을 때만 보이는 `ghost sm` 정사각이고 ⚠️ **칩 옆이 아니라 줄 오른쪽 끝, 글리프가 `RotateCcw`다** (2026-09-11 — 시안 `IconButton`이 x=1252의 `repeat-outlined`): 칩 옆이면 칩이 늘 때마다 버튼이 옮겨 다녀 **누를 자리가 화면마다 달라지고**, 깔때기(`FilterX`)면 이 버튼이 **검색까지** 되돌린다는 사실을 안 말한다(`/projects`의 [Clear filters]와 같은 글리프다). ⚠️ **기본 착지의 네임스페이스는 칩이 아니다** — 그것은 화면이 정한 착지점이지 사용자가 고른 필터가 아니다 |
-| **배너·결과 자리** | 칩 아래, **스크롤 영역 안**이다 — 배너 둘과 Publish 결과 `Alert`가 동시에 서면 고정 영역이 400px을 넘어 뷰포트의 40%를 먹는다. 순서는 **기준 로케일 대기 → 편집 손실 → Publish 결과**. ⚠️ **셋 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 결과를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **결과는 나타날 때 `scrollIntoView`로 화면에 올린다** — 버튼은 고정 머리에 있으므로 표를 내린 채 누르면 그 문구가 뷰포트 밖이고, **실패는 다른 신호가 0이다**(PRODUCT 불변식 9) |
+| **배너 자리** | 칩 아래, **스크롤 영역 안**이다. 순서는 **기준 로케일 대기 → 편집 손실**. ⚠️ **둘 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 상태를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **Publish 결과는 2026-09-16에 이 자리를 떠났다** — 모달이 든다(§6.646). `scrollIntoView`로 결과를 화면에 올리던 장치도 함께 사라졌다: 모달은 스크롤 밖으로 나갈 수 없다 |
 
 ⚠️ **Publish 버튼과 결과 `Alert`가 갈 곳이 2026-09-16에 바뀌었다.** 전에는 "8-P가 오른쪽 프로젝트
 패널로 가져간다"였는데 **그 패널을 지웠고**(§6.55), 새 목적지는 `design_handoff_publish_modal`의
@@ -379,7 +379,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 
 **첫 적재 상태** (`planProjectReadiness`): 판정 자체는 셋이지만 **화면 문구는 목록의 `projectStatus`가 든다** (8-3 — `readinessLabel`은 삭제됐다). 목록에서는 `setup`·`awaiting_first_sync`가 **`Badge neutral`**로 `Setup`·`Pending`이고 `ready`는 **`Badge success`**(초록) `Active`다 (2026-09-11 정정 — 그 둘은 새 프로젝트가 지나가는 **정상 경로**라 amber로 칠하면 고장난 것처럼 보인다). amber는 `Disconnected` 하나뿐이다.
 
-**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(`PublishTone` 선례). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
+**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
 **보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **프로젝트 스위처는 8-3에 사라졌다** — 프로젝트를 옮기는 길이 목록 하나로 통일됐다(§6.5).
 
@@ -391,14 +391,14 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
-| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | "Nothing to publish" |
-| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | Publish 성공 둘 — **초록을 쓰지 않는다**(raw 색을 늘리지 않는다). 성공은 조용하다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
-| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · Publish "일부 미기록" · `repo-moved` |
-| `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
+| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — "Nothing to publish"가 꺼진 Publish 버튼의 hover로 내려갔다(§6.646) |
+| `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — Publish 성공 둘이 모달의 무색 블록으로 내려갔다(§6.646). **초록을 쓰지 않는다**는 근거는 그대로 산다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
+| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · `repo-moved` (⚠️ Publish "일부 미기록"은 2026-09-16에 **무색 블록**으로 내려갔다 — §6.646) |
+| `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 **둘**(모달 안 — §6.646) · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **neutral-300**(`#d4d4d4`) — 라디오 지시자의 비선택 테두리(16px 원에서 `--input`(#e5e5e5)은 안 보인다) **+ Home 로그 레일의 점**(2026-09-15 — 10px 원의 테두리라 같은 이유다). 그 밖은 없다.
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **neutral-300**(`#d4d4d4`) — 라디오 지시자의 비선택 테두리(16px 원에서 `--input`(#e5e5e5)은 안 보인다) **+ Home 로그 레일의 점**(2026-09-15 — 10px 원의 테두리라 같은 이유다) · **neutral-400**(`#a3a3a3`, 2026-09-16 등재 — **전부터 쓰이던 것을 이제 센다**: Home의 메타 열·개수 카드·로그 카드 글리프, `/account` Profile 사실 블록의 라벨 열. 캔버스가 라벨·보조 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 연하다). 그 밖은 없다.
 
 ⚠️ **선이 셋이다** (2026-09-13 정정 — 실물 실측). 처음에는 핸드오프의 `#f0f0f0`을
 `border-subtle`(#e9ecef)로 접었는데 **그것이 오판이었다**: `border-subtle`은 *떠 있는 표면의 바깥
@@ -451,6 +451,20 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 | 색 | 자리 | 왜 기존 토큰이 아닌가 |
 |---|---|---|
 | `neutral-400` (`#a3a3a3`) | 카드 글리프(색을 안 든 둘) · 항목 행의 시각 · 메타 열의 라벨 · 0인 수치 | **`--muted-foreground`(#737373)보다 한 단계 더 물러난 층**이고 리포에 그 층이 없었다. 이 화면은 한 화면에 읽을 것이 넷(수 · 근거 · 사건 · 사실)이라 전부 같은 회색이면 위계가 서지 않는다 — 캔버스가 이 색을 **"정보이지만 지금 읽을 필요는 없는 것"** 에 일관되게 쓴다. ⚠️ **흰 배경 2.6:1이라 §7의 3:1 하한을 못 넘는다 — 본문에 쓰지 않는다**: 대상은 라벨·시각·비활성 글리프처럼 **옆의 값이 뜻을 완성하는** 자리뿐이고, 그 값은 전부 `#0a0a0a`다 |
+
+**Publish 모달이 데려온 둘** (2026-09-16 등재 — `components/publish-button.tsx`의 diff 표가 유일한 소비자다):
+
+| 색 | 자리 | 왜 기존 토큰이 아닌가 |
+|---|---|---|
+| `red-700` (`#b91c1c`) + `red-700/[0.14]` | diff의 `−` 글리프 · 제거된 낱말의 배경 | **diff의 만국 공용 어휘**라 이 제품의 상태색 축(§2.3의 "destructive는 글자색 전용")과 별개다. `--destructive`(#dc2626)보다 한 단계 내린 것은 배경 위에 얹는 글자라서이고, 알파 0.14는 **배지로 안 보이게** 하는 값이다 — 줄 전체가 아니라 바뀐 낱말만 칠한다 |
+| `green-800` (`#166534`) + `green-800/[0.16]` | diff의 `+` 글리프 · PR 카드의 `GitPullRequestArrow` · 추가된 낱말의 배경 | 같은 축이다. `Badge success`가 이미 `text-green-800`을 들고 있어 **색 자체는 새 값이 아니고**, 배경 없이 홀로 서는 쓰임과 알파 변형이 새로 등재된다 |
+
+⚠️ **초록·빨강을 이 두 자리 밖으로 넓히지 않는다.** 여기서만 예외인 근거가 "diff"이고, 상태·결과에
+쓰기 시작하면 §6.2가 첫날에 깨진다 — 그래서 성공 결과의 PR 배지도 `Badge success` 하나뿐이다.
+
+⚠️ **`neutral-400`은 저자 이름에 쓰지 않는다** (2026-09-16). 시안은 diff 행의 저자를 `#a3a3a3`으로
+그렸지만 위 등재 줄이 그 색을 **본문 금지**로 못 박았고, 저자 이름은 "옆의 값이 뜻을 완성하는"
+부류가 아니다 — 그 화면에서 누가 고쳤는지 말하는 **유일한** 자리다. `--muted-foreground`로 올린다.
 
 **흑백 둘과 남의 자산은 이 규칙 밖이다** (2026-09-11 등재):
 
@@ -580,7 +594,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 스크롤되지 않고 활성 스크롤러가 하나였다.
 
 GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응물이 없고 PRODUCT §4.2가 기능 밀도를 막는다.
-**Publish 버튼은 아직 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), Home의 머리에도 하나 있다. ⚠️ **옮길 곳이 2026-09-16에 바뀌었다** — §6.55의 패널이 목적지였는데 그 패널을 지웠고, 새 목적지는 `design_handoff_publish_modal`의 모달이다(§321). **아직 구현 전이다.**
+**Publish 버튼은 셸에 없다** — 번역 화면 **제목 행 우측**이고(8-4), Home의 머리에도 하나 있다. 버튼은 그 두 자리에 그대로 있고, **결과와 확인이 2026-09-16에 모달로 들어갔다**(§6.646).
 
 전환 중 콘텐츠 패널 둘이 공존해도 폭을 나누지 않도록 셸 우측은 `grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]`이다. 콘텐츠는 `isolate col-start-1 row-start-1`(스켈레톤 opacity 애니메이션의 쌓임을 패널 내부로 제한)이다. ⚠️ **둘째 열은 2026-09-16부터 비어 있다**(§6.55) — grid를 유지하는 이유는 그 열이 아니라 **전환 중 두 콘텐츠 패널이 같은 셀을 쓴다**는 것이고, flex로 되돌리면 한 프레임 동안 화면이 반으로 갈린다. grid 자체에는 gap을 두지 않아 빈 열의 간격이 남지 않는다. 패널 사이 간격은 8px 그대로다.
 
@@ -940,6 +954,86 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 
 ⚠️ **배지가 아니라 평문이다** — 사용자가 할 일이 없고(운영자가 키를 되살린다) 드문 상태를 요란하게 만들면 §6.1의 "가장 흔한 상태가 가장 조용하다"가 뒤집힌다.
 
+### 6.646 Publish — 한 동작의 끝 열하나가 **모달 안에서** 답한다 (2026-09-16 실측)
+
+시안은 Claude Design 핸드오프 `design_handoff_publish_modal`(아트보드 `1a`~`1k`)이고 **캔버스가 px
+단위 정본**이다. 아래 값은 Chrome의 computed style로 잰 것이고 소비자는 **둘**이다 — 번역 화면
+툴바(`components/translations/header.tsx`)와 Home 머리(`components/home/actions.tsx`).
+
+⚠️ **껍데기가 `components/ui/modal.tsx`(온보딩과 공유)이지 `Dialog`(360)가 아니다.** 근거는 `1a`의
+diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 360에서는 값 칸이 한 줄에 두세 낱말이
+되어 "바뀐 낱말만 칠한다"가 무의미해진다. **수용한 비용: 확인 창 계열이 둘이 됐다** — Archive·Sync는
+360, Publish는 736이고 **Home에서는 그 둘이 한 화면에 나란히 산다**. 경계 규칙은 한 줄이다:
+**답만 받는 확인은 360 · 읽어야 하는 목록이 있으면 736.**
+
+| 자리 | 값 |
+|---|---|
+| 패널 | 폭 **736**(게이트 둘은 **512**) · radius 16 · `shadow-medium` · dim `bg-foreground/32` + `backdrop-blur-[6px]` |
+| 높이 | **갈래마다 고정**이다 — `1a` 620~680 · `1c` 340~380 · `1d` 420~460 · `1e`·`1h` 460~500 · `1f` 360~400 · `1g` 560~600 · `1i` 400~440 · `1j` 300~330 · `1k` 440~480. ⚠️ **한 값으로 묶으면** 단계가 짧은 갈래에서 바닥 버튼이 허공에 뜬다. ⚠️ **클래스를 리터럴로 적는다** — Tailwind는 소스에 그대로 있는 문자열만 만든다 |
+| 본문 블록 사이 | **결과 갈래는 12**(안쪽 열 하나가 든다) · `1a`는 껍데기의 **16**. ⚠️ 껍데기 값을 바꾸면 온보딩 네 단계가 함께 움직인다 |
+| 무색 블록 | `border-border` radius 12 · padding **14 16**(제목 없는 `1f`는 **16**) · gap 12 · 제목 14/500 · 본문 13/1.7 muted. ⚠️ **글리프 칸의 높이가 첫 줄의 line-height와 같다**(17 / 21 / 24) — `margin-top` 보정은 글자 크기가 다른 블록마다 어긋난다 |
+| diff 표 | radius 12 · 머리 bg `--primary-foreground`(= `rgba(10,10,10,.02)`) `sticky` · 머리 아래 `--border` · 머리 옆·행 사이 `--divider` · 열 **220 / 84 / 나머지** · 셀 padding **11 14**(로케일 11 12) · 머리 **9 14** · 키 mono 12(네임스페이스 접두 muted) · 로케일 13/500 + 국기 16×11 radius 2 + `0 0 0 1px rgba(10,10,10,.06)` · 값 14/lh20 |
+| PR 배지 | `Badge success` — 시안의 `padding 3 9`가 아니라 프리미티브 값이다 |
+| 바닥 버튼 | `Button primary size="lg"`(40 · radius 12 · padding 0 16) — 시안 값과 **정확히 같다** |
+
+**⚠️ `<table>`이다 — `div`가 아니다.** 캔버스는 그림이라 DOM 시맨틱을 정하지 않는다. 200행짜리
+데이터 그리드에서 열 머리와 셀의 연결이 사라지면 낭독에 `actionLog. filter.all en All`만 남는다.
+**키 병합은 `rowSpan`이 든다** — 테두리를 지워 병합처럼 보이게 하면 화면은 같고 접근성 트리에만
+빈 칸이 하나 더 생긴다. ⚠️ **`border-separate`다**: `collapse`는 `sticky` 머리에서 테두리가 같이
+안 붙는다. ⚠️ **머리 셀의 아래와 옆이 다른 색이라** `border-b-border border-r-divider`로 변을 갈라
+준다 — 한 클래스로 주면 뒤엣것이 네 변을 다 덮는다.
+
+**⚠️ `−`/`+`는 `aria-hidden`이고 뜻은 `sr-only`가 든다** (2026-09-16 CDP 실측). 글리프만 두면
+낭독에 "All … All actions"만 남아 어느 쪽이 리포의 값인지 사라진다.
+
+**알림은 한 곳이다.** danger 갈래는 `Alert`의 `role="alert"` 하나이고 그때 껍데기의 live는 `off`다 —
+같은 결과를 두 번 읽지 않는다(시안의 블록별 `aria-live="polite"`를 이 규칙으로 정정했다).
+**포커스**는 열릴 때 컨테이너, 목록·결과로 전이하면 본문, 닫으면 호출 버튼(사라졌으면 호스트 제목).
+
+**⚠️ `bodyScroll`은 안쪽 스크롤러가 있는 갈래만 `hidden`이다**(`1a`·`1k`·`1g`, 그리고 경고가 붙은
+`1f`). 나머지는 `shrink-0` 블록만 쌓으므로 잠그면 **낮은 뷰포트에서 마지막 줄에 스크롤로도 못
+닿는다** — 패널 높이가 `max-h-[min(X, calc(100svh-96px))]`이라 화면이 낮으면 뒤엣것이 이긴다.
+
+**시안과 일부러 다른 자리** — 전부 근거가 리포 쪽에 있다:
+
+| 무엇 | 시안 | 구현 | 왜 |
+|---|---|---|---|
+| `Alert`·`Badge`·비활성 primary의 radius·padding·색 | 8 / 3 9 / `rgba(10,10,10,.05)` | 프리미티브 값 | "프리미티브와 어긋나면 프리미티브가 이긴다" — 한 화면만 다른 폼이 되면 안 된다 |
+| diff 행의 저자 | `#a3a3a3` | `--muted-foreground` | §6.2가 그 색을 **본문 금지**로 등재했다 |
+| PR 카드의 제목 · 파일별 건수 · `opened 2 days ago` | 있음 | 없음 | `PullResult`에 그 값이 없다. `updated`는 남이 만든 제목일 수 있어 지어내면 거짓이 된다 |
+| `1j` 좌우의 실행자·마지막 발송 줄 | 있음 | 없음 | `planSyncStart`가 그 값을 안 싣는다 — 핸드오프가 남긴 **열린 결정**이다 |
+| `1j` `too-soon`의 버튼 | 비활성 | **활성** | 카운트다운을 안 넣기로 한 이상 꺼진 버튼은 스스로 안 풀려 "18초 뒤에 다시"가 못 지키는 약속이 된다 |
+| `1h`의 `Open project settings` | 역할 무관 | **OWNER만** | 설정은 `project:settings`다 — 캔버스 자신이 "눌러서 거절당하는 경험을 만들지 않는다"를 근거로 적었다 |
+| PR 줄의 `aria-live` | 블록마다 `polite` | 껍데기 한 곳 | 같은 전이를 둘이 알리면 중복 낭독이다(리뷰 6번) |
+
+**열린 결정 넷이 2026-09-16에 닫혔다** — 넷 다 "새 화면을 만들지 않는다"로 끝났다:
+
+- **경고가 수십 줄일 때** → **전부 펼치고 목록만 자체 스크롤한다.** `Not written`이 `flex-1` +
+  안쪽 스크롤러라 몇 줄이든 PR 블록을 밀어내지 않는다 — "다섯까지 보이고 나머지는 Logs로"가
+  필요 없고 불변식 9(버린 값을 숨기지 않는다)가 그대로 선다.
+- **확인 창의 두 형** → **경계를 문장으로 박는다**(위 ⚠️). `Dialog`에 큰 변주를 만들지 않는다 —
+  그 프리미티브의 소비자가 일곱이라 크기를 늘리면 "어느 걸 쓰나"가 매 화면 판단이 된다.
+- **`1h`의 복구 버튼** → **OWNER에게만 세운다.** 설정 화면이 `project:settings`라 EDITOR가 누르면
+  거절당하고, **무반응·거절당하는 버튼은 비활성보다 한 단계 아래다**(Home의 배너 셋·Sync 결과가
+  이미 같은 형이다). EDITOR에게는 바닥의 *"Not an owner? Send them the reference above"* 한 줄이
+  유일한 복구 경로로 남는다. ⚠️ **세션 만료의 `Sign in`은 역할을 안 탄다** — 다시 로그인하는 것은
+  누구나 할 수 있다.
+- **`1b`가 열린 PR 앞에서도 같은 모양인가** → **같다.** PR 링크는 **이미 두 화면에 서 있고**(번역
+  화면 머리의 `Last sent … · View pull request`, Home 메타 열의 PR 번호 — §6.3), 버튼 자리에 하나
+  더 세우면 같은 사실을 한 화면에서 두 번 말한다. 그리고 **"열려 있나"는 지금 모르는 값이다** —
+  `lastPrUrl`은 마지막으로 **만든** PR이지 현재 상태가 아니고, 열림 여부를 알려면 0건 화면에서도
+  GitHub 왕복을 상시로 돌려야 한다.
+
+**`1g`의 실측** (2026-09-16 `/l10n-roundtrip` — `yaml-catalog`가 맵 자리에 스칼라를 못 써서 경고
+셋이 났다): 높이 599(`created`) / 600(`updated`) · `Not written` 목록 radius **8**(경고 블록 12와
+갈라 둔 값) · 머리·행 padding **11 16** · 경로 칸 **210** · 행 사이 `--divider` · `<details>` **0**.
+⚠️ **목록이 자체 스크롤러를 든다** — 경고가 몇 줄이든 PR 블록을 밀어내지 않는다는 것이 "다섯까지만
+보이고 나머지는 Logs로"를 안 만든 근거다. `updated` 변주의 순서는 **PR 줄 → 무색 블록 → 목록**이다.
+
+**⚠️ 실물로 못 밟은 갈래 둘** (2026-09-16): `1h`(실행 전 거부 여섯 — 클라이언트에서 강제할 수 없다) ·
+`1j`(쿨다운 30초가 미리보기 GitHub 왕복보다 짧아 세 번 시도 모두 실패). **단위 테스트로만 서 있다** —
+위 표의 높이 중 그 둘은 코드 값이지 실측값이 아니다.
+
 ### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
 
 **Members** 표(Person · Email · Role · Joined · Actions) 위에 [Invite member] `primary`, 그 아래 **Pending
@@ -995,34 +1089,49 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다(거부는 `/projects?e=`, 저장 실패는 폼 안 `Alert danger`).
 
-### 6.67 계정 (`/account`) — 머리 하나 + 리스트 셋 (2026-09-09 6b-4 · 2026-09-10 세션 회수 · 2026-09-13 재편)
+### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수 · 2026-09-13 재편 · **2026-09-16 카드 규격**)
 
-**사용자 축의 유일한 화면이다** (PRODUCT §7.7). 셸 안 `mx-auto max-w-4xl`(머리 `px-6 pt-6 pb-3` · 본문 `px-6 pt-3 pb-8` — §6.5), 제목 `text-xl
-font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올라갈 자리가 없다.
+**사용자 축의 유일한 화면이다** (PRODUCT §7.7). 셸 안 `mx-auto max-w-4xl`, 제목 `text-lg font-medium`, **breadcrumb 없다** — 프로젝트 축이 아니라 위로 올라갈 자리가 없다.
 
-⚠️ **머리 하나 + 리스트 셋이다** (2026-09-13 — 계정 화면 핸드오프). 그 전엔 `Card` 다섯(Profile · Sign-in methods · GitHub account · Sessions · Sign out)이 `space-y-6`으로 평평하게 쌓여 **축이 안 보였다**: 같은 화면에 "GitHub"이 세 군데(로그인 수단 · 리포 쓰기 권한 · 전체 로그아웃의 확인 상대) 나오는데 그 구별을 **카드 설명문 두 줄**에 맡기고 있었다 — 설명문은 읽은 사람에게만 작동한다. 지금 축을 드는 것은 **구역 제목**이다.
+⚠️ **본문이 카드 넷이다** (2026-09-16 — 핸드오프 v2). **Profile · Sign-in methods · GitHub App · Sessions** 순서이고 근거는 *나 → 들어오는 길 → 붙어 있는 것 → 나가는 길*이다. 그 전(2026-09-13 재편)은 **머리 하나 + 리스트 셋**이었고 세 가지가 어긋나 있었다: 구역 제목이 **카드 밖** 14/500이라 제목↔리스트 12가 구역 사이 28과 경쟁했고, **Profile만 그릇이 없었으며**(패널 머리에 붙은 블록), 행 규격(글리프 32/radius 8 · 본문 14)이 **셸 안에서 이 화면만** 쓰던 값이었다.
 
-뼈대(전부 실측): 본문 폭 **896**(`max-w-4xl`, 안쪽 래퍼가 든다) · 머리 `24 24 12` · 본문 `12 24 32` · 머리 블록 `pb-5` + 아래 hairline · 그리드 `128px 1fr` gap `16 12` · **구역 사이 28** · 헤더↔리스트 **12** · 항목 사이 **0**.
+⚠️ **그 재편이 푼 문제는 그대로 유효하다** — 그 전엔 `Card` 다섯이 `space-y-6`으로 평평하게 쌓여 축이 안 보였고, 같은 화면에 "GitHub"이 세 군데(로그인 수단 · 리포 쓰기 권한 · 전체 로그아웃의 확인 상대) 나오는데 그 구별을 **카드 설명문 두 줄**에 맡기고 있었다. 축을 드는 것은 지금도 **카드 제목**이고, 바뀐 것은 그 제목이 사는 자리다.
+
+뼈대(2026-09-16 브라우저 실측 — computed style): 본문 폭 **896**(`max-w-4xl`, 안쪽 래퍼가 든다) · 머리 padding **16** · 본문 padding **16**(`PanelBody`가 `p-4`로 든다 — 화면이 다시 정하면 두 번 적용된다) · **카드 사이 16**(`space-y-4`, 실측 16·16·16 — 전엔 구역 28 + 헤더↔리스트 12) · 항목 사이 **0**.
 
 | 규격 | 값 |
 |---|---|
-| 구역 헤더 | `h2` 14/500 + 부제 13 muted, **baseline** gap 8. `<section aria-labelledby>`로 region에 이름을 건다 — 화면에서 하는 구별이 스크린리더에서 사라지지 않게 |
-| 리스트 래퍼 | `border-border overflow-hidden rounded-lg border` — **래퍼가 목록마다 하나**이고 디바이더가 그것을 횡단한다(둘째 항목부터 `border-t`). 항목마다 테두리를 주면 셋뿐인 목록이 카드 갤러리처럼 무거워진다. New Project의 리포 목록과 같은 구조다 |
-| 항목 | `p-3 gap-3` · 글리프 **32**(radius 8 · `bg-muted`) · 본문 `min-w-0 flex-1 flex-col gap-px`(이름 14 · 보조 13 muted `leading-normal`) · 우측 `flex shrink-0 items-center gap-3` |
-| 글리프 | provider면 **브랜드 마크**(무채색 위계 밖), 그 밖은 lucide **회색**(`link-2` · `log-out` · `monitor-smartphone` — 동작을 가리킨다) |
+| 카드 | `border-border overflow-hidden rounded-lg border` — radius **12**. ⚠️ **`rounded-xl`은 이 리포에서 16이다** (POSTMORTEM 2026-09-15): 한 단계 둥글어지고 화면에서 모서리가 섞인다 |
+| 카드 헤더 | `p-4` · `h2` **15/500/0.015em** + 배지(gap 8) + 설명 한 줄 `ml-auto text-xs muted`. ⚠️ **설명을 제목 아래로 쌓지 않는다** — 머리 높이가 카드마다 달라져 **행 시작선이 어긋난다**. 이 화면엔 툴바가 없어 그 자리가 비어 있었다 |
+| 디바이더 **둘** | 헤더 아래 **`--divider`**(#f0f0f0) · 행 사이 **`--border`**(#e5e5e5). ⚠️ **같은 회색 하나면 머리가 첫 행처럼 보인다** — 옅은 선이 "여기부터 내용", 진한 선이 "항목과 항목"이다 |
+| 항목 | `px-4 py-[13px] gap-3` · 글리프 **28**(radius 4 · `bg-foreground/5`) · 본문 `min-w-0 flex-1 flex-col gap-[3px]` · 우측 `flex shrink-0 items-center gap-2` |
+| 항목 본문 | **한 줄이다** — `**{이름}** — {상태}` (`AccountRow`의 `name` + `status`). 15/0.015em, 이름만 500. ⚠️ **상태를 13 보조 줄로 내리지 않는다** — 그러면 **부연으로 읽히는데**, 상태는 이 행이 묻는 질문의 답이다. ⚠️ **구분자(em dash)는 프리미티브가 든다** — 호출부마다 문자열에 박으면 한 화면에 `—`와 `-`가 섞인다 |
+| 항목 보조 | **다음에 할 일**을 든다 — 13 muted `leading-normal` `tracking-[0.02em]`. 없으면 그리지 않는다 |
+| 행 hover | **없다.** ⚠️ Project Home의 attention 행에서 **치수는 빌리고 상호작용은 빌리지 않는다** — 그쪽은 행 전체가 링크라 `bg-foreground/[0.02]`가 깔리지만, 여기서 누를 수 있는 것은 우측 버튼뿐이라 hover를 주면 행을 눌러도 되는 것처럼 보인다 |
+| 글리프 | provider면 **브랜드 마크**(무채색 위계 밖), 그 밖은 lucide **회색**(`link-2` · `log-out` · `monitor-smartphone` — 동작을 가리킨다). ⚠️ **캔버스는 그 회색을 `#525252`로 그렸고 구현은 `--muted-foreground`(#737373)다 — 의도적 이탈이다**: §6.2가 "새 raw 색을 늘리지 않는다"인데 **neutral-600은 이 화면 하나를 위한 신규**다. ⚠️ **근거를 "리포는 늘 토큰을 쓴다"로 적지 않는다 — 그건 거짓이다**(2026-09-16 리뷰): `components/home/count-cards.tsx`가 캔버스 `#a3a3a3`에 맞춰 글리프를 **raw `neutral-400`**으로 두는 선례이고, 그 문장을 읽은 다음 사람이 그 파일을 보면 이탈 전체를 뒤집는다. 가르는 선은 **그 raw가 이미 여러 화면이 쓰는 것인가**이다 |
+| 배지 | **수단 카드에만** `Badge variant="neutral"`로 `{connected} of {total}`. ⚠️ **새 variant를 만들지 않았다** — `neutral`이 이미 `bg-foreground/5 text-foreground`이고 프리미티브 기본값(radius 999 · `px-1.5 py-0.5` · 13/500 · `min-w-5`)이 캔버스 스펙과 그대로 맞는다. 값이 같은 variant를 하나 더 두면 다음 사람이 어느 쪽을 쓸지 고민한다. ⚠️ **분모를 보인다** — 숫자만 두면 Project Home 배지와 형은 같아지지만 "하나 더 붙일 수 있다"가 안 읽힌다 |
 
-⚠️ **우측 클러스터가 `shrink-0`이라 실패 Alert를 그 안에 두면 행이 패널 밖으로 밀린다** (2026-09-13 리뷰). 좌측 본문이 `min-w-0`으로 먼저 truncate되고도 모자라기 때문이다. `DisconnectGithubButton`·`ConnectGithubButton` 둘 다 **실패 문구를 바깥이 들도록** 콜백을 받는다(`onFailure`·`onResult`) — `/account`는 그것을 **구역 Alert**로 올리고, 설정 화면·온보딩은 기존처럼 버튼 아래 그린다.
+⚠️ **공유 프리미티브를 뽑지 않았다.** Project Home의 카드(`attention-card.tsx`·`logs-card.tsx`·`meta-column.tsx`)와 규격이 같아졌지만 그쪽은 빈 상태·`<details>`·Meter를 각자 들고 있어, 추출하면 **이 변경이 브라우저로 밟지 않는 화면이 함께 움직인다** (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브 둘을 옮기며 `PanelBody`만 쓰는 화면 셋을 놓쳤고 그 셋은 보관·미준비·오류라 평소에 안 열린다). 규격은 `components/account/account-section.tsx`가 들고, **중복이 셋이 되면** 그때 뽑는다. 그 파일이 내보내는 프리미티브는 넷(`AccountCard`·`AccountRows`·`AccountRow`·`AccountFacts`)이고 소비자 수가 **4 / 3 / 3 / 1로 갈린다** — 하나를 옮길 때 나머지 셋의 목록을 따로 세는 근거다.
 
-⚠️ **쿼리 슬롯이 넷이고 같은 자리에 서지 않는다** (2026-09-14에 `?connect=`가 붙어 셋에서 넷이 됐다) — `?e=`(연결 실패, `isConnectError`)·`?link=`(수단 해제 결과)는 **머리 Alert**이고, `?sessionRevocation=`(다섯 갈래가 문구 넷으로 접힌다)·`?connect=`(로그인 수단 연결 결과)는 **그 구역 안**이다. 출처가 다른 실패를 한자리에 모으면 어느 왕복이 실패했는지가 사라진다. ⚠️ **[Dismiss]는 머리 Alert에만 있다** — 그쪽은 왕복에서 돌아온 일회성 사유라 치울 수 있고, 구역 Alert는 그 구역의 현재 상태라 치우면 상태가 사라진 것처럼 보인다.
+⚠️ **`AccountCard`가 `<ul>`을 만들지 않는다.** Profile 카드의 몸통은 목록이 아니라 **사실 블록**(`AccountFacts` — 라벨 열 **96** `text-xs text-neutral-400` · `px-4 py-3.5`, Project Home 오른쪽 `Project` 카드의 메타 열과 같은 형)이다. 카드가 감싸면 `<ul>` 안에 `<div>`가 들어가고, 스크린리더가 **편집 가능한 폼을 "목록, 항목 3개"로 예고**한다. 행을 드는 카드 셋만 `AccountRows`를 쓴다.
+
+⚠️ **우측 클러스터가 `shrink-0`이라 실패 Alert를 그 안에 두면 행이 패널 밖으로 밀린다** (2026-09-13 리뷰). 좌측 본문이 `min-w-0`으로 먼저 truncate되고도 모자라기 때문이다. `DisconnectGithubButton`·`ConnectGithubButton` 둘 다 **실패 문구를 바깥이 들도록** 콜백을 받는다(`onFailure`·`onResult`) — `/account`는 그것을 **카드 Alert**로 올리고, 설정 화면·온보딩은 기존처럼 버튼 아래 그린다.
+
+⚠️ **쿼리 슬롯이 넷이고, 머리에 서는 것은 하나다** (2026-09-16에 `?link=`가 내려갔다). 가르는 축은 **"다시 시도할 컨트롤이 이 화면에 있는가"**다 — `?e=`(연결 왕복이 화면 밖에서 깨졌다)만 **머리 Alert**이고, `?link=`(수단 해제 거절)·`?sessionRevocation=`·`?connect=`는 **그 카드 안**이다. `?link=`가 카드로 간 이유: 마지막 수단이라 거절된 것이면 **다시 누를 행이 그 카드에 있다.** ⚠️ **머리가 하나가 되면서 머리 높이가 고정됐다** — 전엔 `?e=`·`?link=`가 **동시에 설 수 있어** 무엇이 실패했는지에 따라 본문이 밀렸다. ⚠️ **[Dismiss]는 머리 Alert에만 있다** — 카드 Alert를 치우면 바로 아래 재시도 컨트롤 옆에서 **사유만** 사라진다. 덕분에 숨길 수 있는 지역 상태가 없어져, "닫은 알림이 같은 주소로 돌아온 두 번째 실패에서 무음"(POSTMORTEM 2026-09-14)이 **원리적으로 생기지 않는다**.
 
 | 블록 | 규칙 |
 |---|---|
-| 머리 | 아바타 **56** + [Image upload]·[Delete] + 캡션(gap 6) / `Name` 라벨 + 필드 **320×36** + [Save] / `Email` 라벨 + **읽기 전용 필드** + 출처 한 줄. ⚠️ **이름은 편집 가능하고 이메일만 읽기 전용이다** (2026-09-13) — 이메일을 고칠 수 없는 근거는 초대 대조가 **검증된 주소** 위에 선다는 것이고 그 논증은 이메일 축에서만 성립한다. ⚠️ **"재로그인마다 `planEmailRefresh`가 갱신한다"가 이름에도 걸린 것처럼 적혀 있었고 거짓이었다** — 그 함수는 입력 넷이 전부 이메일이다. 값은 세션이 아니라 **`User` 행**에서 읽는다. ⚠️ **주소가 sans다**(§4.1) · **마스킹하지 않는다**(자기 주소다) · 이메일 필드는 `disabled`가 아니라 **`readOnly` + `tabIndex={-1}`**(disabled면 접근성 트리에서 빠져 자기 주소를 못 읽는다)이고 **글자가 기본색**이다(muted 면 위 muted 글자는 14px에서 4.35:1로 하한을 깬다). ⚠️ **저장 피드백은 [Save] 오른쪽 `text-xs` 인라인**이고 토스트가 아니다 — 그 형이 이 리포에 0이다 |
-| Sign-in methods | 행이 **언제나 둘이고 순서가 고정**이다(`LOGIN_PROVIDERS`). 연결됨 보조 줄 `Connected` / 미연결 `Not connected` + [Connect]. **마지막 수단은 버튼을 지우지 않고 비활성 + 왼쪽에 사유** — 버튼이 사라지면 "원래 없는 기능"으로 읽힌다 |
-| GitHub account | 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 연결됨 보조 줄은 **`Connected` 한 낱말이다.** ⚠️ **2026-09-14까지 `Connected · N projects use this connection`이었고 그 숫자를 걷었다** — 세던 것이 **내가 OWNER인 모든 프로젝트**였는데 그중 이 연결에 실제로 의존하는 것은 없다(야간 pull·PR은 App **설치 토큰**이 낸다). 확인 화면의 근거가 될 수 없는 숫자였다. ⚠️ **`unavailable`에만 컨트롤이 없다** — 조회 실패를 "연결 안 됨"으로 접으면 사용자가 멀쩡한 설치를 다시 만든다. `reauthorize`는 장애가 아니라 인가 만료라 다시 연결할 문이 필요하다 |
-| Sessions | 항목 둘이 **한 리스트**이고 **Sign out이 위**다 — 같은 축(지금 열린 것을 닫는다)이고 흔한 쪽이 아래에 있으면 사용자가 되돌릴 수 없는 쪽을 먼저 읽는다. 행 버튼은 Sign out `default` / Sign out everywhere **`danger`**. 실패는 **구역 Alert**다(항목 안에 넣으면 래퍼의 행 높이가 항목마다 달라진다) |
+| Profile | 헤더 `Profile`(배지 없음) + 사실 블록: 아바타 **56** + [Image upload]·[Delete] + 캡션(gap 6) / `Name` 라벨 + 필드 **320×36** + [Save] / `Email` 라벨 + **읽기 전용 필드** + 출처 한 줄. ⚠️ **이름은 편집 가능하고 이메일만 읽기 전용이다** (2026-09-13) — 이메일을 고칠 수 없는 근거는 초대 대조가 **검증된 주소** 위에 선다는 것이고 그 논증은 이메일 축에서만 성립한다. ⚠️ **"재로그인마다 `planEmailRefresh`가 갱신한다"가 이름에도 걸린 것처럼 적혀 있었고 거짓이었다** — 그 함수는 입력 넷이 전부 이메일이다. 값은 세션이 아니라 **`User` 행**에서 읽는다. ⚠️ **주소가 sans다**(§4.1) · **마스킹하지 않는다**(자기 주소다) · 이메일 필드는 `disabled`가 아니라 **`readOnly` + `tabIndex={-1}`**(disabled면 접근성 트리에서 빠져 자기 주소를 못 읽는다)이고 **글자가 기본색**이다(muted 면 위 muted 글자는 14px에서 4.35:1로 하한을 깬다). ⚠️ **저장 피드백은 [Save] 오른쪽 `text-xs` 인라인**이고 토스트가 아니다 — 그 형이 이 리포에 0이다. ⚠️ **편집은 페이지 레벨이다** — Dialog로 되돌리지 않는다 |
+| Sign-in methods | 헤더 + 배지 `{connected} of {total}` + 오른쪽 한 줄. 행이 **언제나 둘이고 순서가 고정**이다(`LOGIN_PROVIDERS`). 본문 `**GitHub** — Connected` / `**Google** — Not connected`. ⚠️ **보조 줄을 그리지 않는다 — 의도적 이탈이다**: 캔버스는 연결됨에 `Signed in with this method last on {date}.`를 두는데 **그 데이터가 리포에 없다**(`Account`에 마지막 사용 컬럼이 없고 `Session`은 provider를 모른다). 미연결 행에만 그리면 두 행 높이가 갈리므로 둘 다 안 그린다. **되살리려면 스키마가 늘고, 그 순간 이 기능의 "스키마 변경 없음"이 깨진다.** **마지막 수단은 버튼을 지우지 않고 비활성 + 왼쪽에 사유** — 버튼이 사라지면 "원래 없는 기능"으로 읽힌다 |
+| GitHub App | ⚠️ **카드 제목이 `GitHub App`이다** (2026-09-16 — 전엔 `GitHub account`). 이 화면에 "account"가 이미 셋이고(계정 화면 · 로그인 수단의 GitHub · 이 연결), 붙어 있는 것은 계정이 아니라 **설치된 app**이라 뒤쪽 낱말만 바꿨다. `Malmoi app`(New Project 모달의 어휘)을 버린 이유: 사용자가 묻는 것은 "내 GitHub에 무엇이 붙어 있나"이고, 우리 제품 이름을 앞에 세우면 malmoi 안의 기능처럼 읽힌다 — 정작 가서 끊는 곳은 GitHub이다. ⚠️ **해제 Dialog 제목과 표기가 같아야 한다**(`Disconnect GitHub App from malmoi?`) — 한 화면에 `GitHub app`과 `GitHub App`이 같이 서면 **같은 사전의 다른 절**에 살아 리뷰로 안 걸린다(2026-09-13에 `malmoi`/`Malmoi`가 정확히 그랬다). ⚠️ **새 키다** — `m.settings.account.title`(`GitHub account`)은 프로젝트 설정 화면이 계속 쓴다. 설정 화면 §6.6의 같은 블록과 **같은 4갈래**(`ok` 연결됨 / `ok` 미연결 / `reauthorize` / `unavailable`)이고 같은 로더를 부른다. 본문이 `**@handle** — {상태}`이고 **보조 줄이 갈래마다 다르다**(전엔 본문이 핸들 하나, 보조가 `Connected · Installed on …`이었다). 상태 넷은 짧은 구절이다: `Connected` · `Not connected` · `Authorization expired` · `Couldn't load`. 보조 줄은 **키로 적는다** — `account.github.hintNotConnected`(연결하면 무엇이 보이나) · `hintReauthorize`(무엇이 막히고 무엇이 안 막히나) · `hintUnavailable`(다시 열어 보라) · 연결됨은 `installedOn`. ⚠️ **긴 문장은 값이 아니라 키를 적는다** (2026-09-16 재검토 🔴1): 정본에 문장을 박아 두면 `messages/en.tsx`를 고칠 때마다 **여기를 같이 세야 하고**, 한 번 놓친 순간 정본이 **폐기된 값을 현재 값으로** 들어 다음 사람이 "정본대로" 되돌린다 — stale 문서가 아니라 **잘못된 지시**다. 실제로 이 절이 그 상태로 한 라운드를 났다<br>⚠️ **재인가 문구가 "발송이 멈춘다"고 말하지 않는다** (2026-09-16 리뷰 🔴1). 한때 `malmoi can't send changes until you reconnect.`였고 **거짓이었다** — `ensureUserToken` 소비자는 넷뿐이고(`account-view` · `installed-repos` · 프로젝트 Action 둘) **`lib/pull`·`lib/push`에는 0곳**이다. 야간 pull·PR은 `createGitClient`의 **설치 토큰**이 내므로 사용자 토큰이 만료돼도 그대로 돈다. 그 문장을 믿으면 없는 장애를 찾거나 **멀쩡한 App 설치를 다시 만든다**. ⚠️ **`unavailable`에만 컨트롤이 없다** — 조회 실패를 "연결 안 됨"으로 접으면 사용자가 멀쩡한 설치를 다시 만든다. `reauthorize`는 장애가 아니라 인가 만료라 다시 연결할 문이 필요하다 |
+| [Installation settings] | ⚠️ **연결됨에만 선다** (2026-09-16 신설). 리포를 붙이거나 빼는 문이 전엔 **New Project 모달 안에만** 있어 프로젝트를 만들려던 사람만 그 링크를 봤다 — "지금 무엇이 붙어 있나"를 읽는 자리에 둬야 그 자리에서 고친다. 나머지 세 갈래는 설치를 못 믿는 상태라 **밖으로 나가는 문을 두면 "고치러 갔는데 고칠 게 없는" 자리에 착지한다**. ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝**(세션 카드와 같은 순서)이고 둘 다 `default`다. ⚠️ **목적지가 `apps/<slug>/installations/new`다** — `Account`에 설치 ID 컬럼이 없고 설치가 여럿일 수 있어 "어느 설치인가"에 답이 없다. 그 주소는 이미 설치한 계정을 GitHub이 설정 화면으로 보낸다. `GITHUB_APP_SLUG`가 없으면 **그 링크만 조용히 사라진다**. ⚠️ **`ButtonLink`가 아니라 `<a>` + `buttonClass()`다** — 그 프리미티브는 `next/link`라 `target`·`rel`을 안 받는다(§6.3의 외부 링크 규칙: `ExternalLink` 12 · `target="_blank" rel="noreferrer"`). 프리미티브를 넓히면 `Button`↔`ButtonLink` 소비자 74곳이 함께 움직인다 |
+| 설치 리포 집계 | `Installed on {n} repositories.` — **연결됨 갈래의 보조 줄**이다(다른 셋은 그 자리에 `hint*`가 선다). 설치 설정으로 나가기 전에 **그 숫자가 바꾸려는 값**이라 나가는 링크와 같은 행에 있다. ⚠️ **`null`(못 읽었다)과 `0`(고른 것이 없다)은 둘 다 그 줄을 안 그린다** — `Installed on 0 repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다. 판정은 화면 아래에서 갈려 있어 `logFailure`가 원인을 남긴다. ⚠️ **`N projects use this connection.`을 되살리지 않는다** (2026-09-14 리뷰 🔴1 · 2026-09-16 캔버스 정정): 그 N이 세던 것은 **내가 OWNER인 모든 프로젝트**였고 그중 이 연결에 실제로 의존하는 것은 없다 — 야간 pull·PR은 App **설치 토큰**이 내고 사용자 토큰을 한 줄도 안 읽는다. **근거가 될 수 없는 숫자**라 확인 Dialog의 "지금 참인 사실" 자리에도 못 선다. 지금 숫자는 다르다: 사용자가 GitHub에서 **직접 고른 것**이다 |
+| Sessions | 본문 `**Sign out** — this device` / `**Sign out everywhere** — all devices, this one included`. 보조 줄은 **둘 다 있고 provider 이름이 없다**(`account.signOut.description` · `account.sessions.willConfirm` — 값은 사전이 든다). ⚠️ **캔버스의 `GitHub will ask you to confirm…`을 행에 쓰지 않는다 — 의도적 이탈이고 근거가 둘이다**: (a) 그 문구는 확인 상대를 아는 갈래에만 서므로 못 고르는 날 아래 행의 보조 줄만 사라져 **두 행 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과 같은 논거를 같은 화면에서 반대로 적용하지 않는다. (b) **Dialog가 이미 하는 말을 행이 반복하지 않는다** — 첫 판본(`You'll confirm with the account you sign in with before anything changes.`)은 앞 8낱말이 Dialog 회색 설명과, 뒤 절이 검은 줄과 겹쳤다. 행이 들 것은 Dialog가 **아직 안 한 말**, 즉 *이 버튼은 일을 끝내지 않고 나갔다 돌아온다*이다(`confirmAction`이 `Continue to GitHub`인 것과 같은 축). provider 이름은 Dialog의 검은 줄이 든다. 항목 둘이 **한 리스트**이고 **Sign out이 위**다 — 같은 축(지금 열린 것을 닫는다)이고 흔한 쪽이 아래에 있으면 사용자가 되돌릴 수 없는 쪽을 먼저 읽는다. 행 버튼은 Sign out `default` / Sign out everywhere **`danger`**. 실패는 **카드 Alert**다(항목 안에 넣으면 행 높이가 항목마다 달라진다). ⚠️ **행 버튼 라벨을 건드리지 않는다** — 이미 `Sign out everywhere`이고, `Confirm and sign out everywhere`는 **Dialog 확정 버튼의 폴백**(확인 상대를 못 골랐을 때)이라 다른 자리다 |
 | 되돌릴 수 없는 넷 | **전부 확인 Dialog를 지난다** (2026-09-13). 그 전엔 수단 해제 하나뿐이었고, 주석이 그 비대칭을 *"`DisconnectGithubButton`은 다시 누르면 복구되는 연결"*로 정당화했다 — **복구가 쉬운 것과 결과가 가벼운 것은 다른 축이다**: 그 해제는 **새 프로젝트에서 리포를 고르는 일과 (재)연결을 막고**, 다시 열려면 OAuth 왕복 전체가 필요하다. ⚠️ **"모든 프로젝트의 발송을 멈춘다"가 아니다** (2026-09-14 정정) — 이미 연결된 프로젝트의 야간 pull·PR은 **설치 토큰**이 내므로 해제 뒤에도 그대로 돈다. 확정 라벨이 **결과**를 말한다(전체 로그아웃은 `Continue to GitHub` — 그 버튼이 일을 끝내지 않는다). **로그아웃만 확정이 primary**이고 나머지 셋은 danger — 잃는 것이 없는 하나를 같은 무게로 칠하지 않는다. ⚠️ **제출 지점이 Dialog 안이면 `pending`도 거기 선다** — 트리거는 overlay 뒤라 스피너가 안 보이고, 그동안 화면이 안 바뀌면 사용자가 다시 눌러 **두 번째 challenge가 첫 것을 지운다** |
 | 접근 이름 | ⚠️ **보이는 라벨이 `Disconnect`인 컨트롤이 셋이다.** 이름까지 같으면 브라우즈 모드의 컨트롤 목록과 음성 입력에서 **유일한 로그인 수단 해제**와 **리포 쓰기 권한 해제**가 구별되지 않는다. ⚠️ **대상만 붙이면 부족하다** — `"Disconnect GitHub"`이 양쪽에서 나온다(2026-09-13에 실제로 그랬다). **이름이 드는 것은 축이다**: `Disconnect GitHub as a sign-in method` / `Disconnect GitHub repository access`. 비활성 컨트롤에도 붙인다(접근성 트리에는 남는다) |
+| 카드 접근 이름 | ⚠️ **카드 넷 전부 `<section aria-labelledby>`로 자기 `h2`를 가리킨다.** 없으면 Chrome이 `<section>`을 `generic`으로 접어 **접근성 트리에서 카드가 통째로 사라진다**(POSTMORTEM 2026-09-15 #2) — 화면에서 하는 구별이 그 사용자에게만 없어진다. ⚠️ **검사는 개수를 센다**(`section` 넷 + 각자의 labelledby 참조가 살아 있는지) — "region이 있다"만 세면 하나가 이름을 잃어도 그대로 지나간다(POSTMORTEM 2026-09-14 #1) |
+
+⚠️ **로딩 골격은 카드 셋까지다**(Profile · Sign-in methods · GitHub App). Sessions를 안 그리는 근거는 "그 구역이 기다리지 않아서"가 **아니다** — `loading.tsx`는 세그먼트 전체의 fallback이라 Sessions도 그동안 안 그려진다. 대가는 그 리스트 한 벌만큼의 높이 변화이고, 받아들이는 이유는 **골격이 길수록 화면이 "다 왔다"고 거짓말한다**는 쪽이다. ⚠️ **카드 껍데기·헤더 padding·디바이더 둘은 골격에서도 실물이고** 움직이는 것은 글자 자리뿐 — 골격이 그 값을 안 들면 데이터가 도착할 때 카드 경계가 튄다(POSTMORTEM 2026-09-15 #3의 유령 띠와 같은 축). 치수도 실물이다: 필드 320×36 · 아바타 56 · 글리프 **28**.
 
 ⚠️ **페이지 수준 거부는 global `Alert danger`** (§6.4) — callback이 연결 실패를 `?e=`로 여기 보낸다.
 **주소창 값이라 `isConnectError`로 거른다**: 캐스팅하면 프로토타입 키가 문자열 자리에 함수를 넣어 화면이
@@ -1127,7 +1236,8 @@ Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이�
 닫힌 선택기는 짧은 라벨과 tooltip을, 열린 목록은 전체 path template 보조 줄을 함께 낸다.
 같은 이름의 `apps/*/locales`도 경로로 구별한다. 항목별 미발송 수는 배지다. 접근 이름은 `Translation surface`.
 선택기는 번역 툴바·칩과 같은 pending·이동 함수를 공유한다. 유효한 ns/locales/q는 보존하고
-유효하지 않은 필터는 URL에서도 제거한다. Publish는 표면과 무관한 프로젝트 전체 `Send changes (N)`이다.
+유효하지 않은 필터는 URL에서도 제거한다. Publish는 표면과 무관한 **프로젝트 전체**이고 라벨은
+2026-09-16부터 Home과 같은 `Publish` + 배지다(§6.646).
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 남은 자리는 **표 헤더**(`bg-muted/50`)·**값 칩**·**코드 블록**이다(사이드바는 8-2부터 캔버스 위라 이 목록에 없다).
 - **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 DESIGN §6.5(규약 6)·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).

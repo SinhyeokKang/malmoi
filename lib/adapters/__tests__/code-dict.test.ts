@@ -545,3 +545,159 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
     expect(res.content).toContain("새 값");
   });
 });
+
+
+describe("code-dict — 삽입 형식 회귀", () => {
+  for (const indent of ["", "  ", "    ", "\t"]) {
+    for (const comma of ["", ","]) {
+      it(`${JSON.stringify(indent)} 들여쓰기와 끝 쉼표 ${comma ? "있음" : "없음"}을 형제에서 읽는다`, () => {
+        const src = `const en = {\n${indent}'errors.network': 'Network error',\n${indent}'errors.unknown': 'Unknown error'${comma} // keep\n\n} as const;\nexport default en;\n`;
+        const entries = [{ key: "settings.z", message: "Z" }, { key: "settings.tone", message: "Tone" }];
+        const expected = `const en = {\n${indent}'errors.network': 'Network error',\n${indent}'errors.unknown': 'Unknown error', // keep\n\n${indent}'settings.tone': 'Tone',\n${indent}'settings.z': 'Z'${comma}\n} as const;\nexport default en;\n`;
+        const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+        expect(out).toBe(expected);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+        expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+        const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+        expect(back.errors).toEqual([]);
+        expect(back.locales[0]!.entries).toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+      });
+    }
+  }
+
+  it("중첩 객체의 형제를 따르고 CRLF와 바깥 바이트를 보존한다", () => {
+    const src = "export default {\r\n  el: {\r\n      ok: 'OK',\r\n  },\r\n  name: 'en',\r\n};\r\n";
+    const expected = src.replace("      ok: 'OK',\r\n", "      ok: 'OK',\r\n      next: 'Next',\r\n");
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.next", message: "Next" }] })).toBe(expected);
+  });
+
+  it("형제가 없는 한 줄 객체는 원본 안쪽 여백과 끝 쉼표 없음을 따른다", () => {
+    for (const space of ["", " "]) {
+      const src = `const en = {${space}} as const;\nexport default en;\n`;
+      const entries = [{ key: "tone", message: "Tone" }, { key: "zoom", message: "Zoom" }];
+      const expected = `const en = {${space}tone: "Tone",${space}zoom: "Zoom"${space}} as const;\nexport default en;\n`;
+      const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+      expect(out).toBe(expected);
+      expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+    }
+  });
+});
+
+
+describe("code-dict — 빈 여러 줄 객체의 삽입 기준", () => {
+  it("파일에 들여쓰기 단서가 없으면 2칸과 끝 쉼표 없음으로 시작한다", () => {
+    const src = "const en = {\n} as const;\nexport default en;\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "tone", message: "Tone" }] }))
+      .toBe('const en = {\n  tone: "Tone"\n} as const;\nexport default en;\n');
+  });
+
+  it("빈 중첩 객체는 파일의 들여쓰기 단서를 닫는 괄호에 더한다", () => {
+    const src = "export default {\n    name: 'en',\n    el: {\n    },\n};\n";
+    const entries = [{ key: "el.tone", message: "Tone" }, { key: "name", message: "EN" }, { key: "zoom", message: "Zoom" }];
+    const expected = "export default {\n    name: 'EN',\n    el: {\n        tone: 'Tone'\n    },\n    zoom: 'Zoom',\n};\n";
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe(expected);
+    expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+  });
+});
+
+
+describe("code-dict — 삽입 키 이름의 따옴표 관용", () => {
+  for (const mark of ["'", '\"', ""]) {
+    for (const indent of ["  ", "    "]) {
+      it(`${JSON.stringify(mark)} 키 표기를 ${indent.length}칸 형제에서 읽고 값의 부호와 구별한다`, () => {
+        const src = `export default {\n${indent}${mark}a${mark}: 'A',\n${indent}${mark}b${mark}: 'B',\n};\n`;
+        const entries = [{ key: "d", message: "D" }, { key: "c", message: "C" }];
+        const expected = src.replace("};", `${indent}${mark}c${mark}: 'C',\n${indent}${mark}d${mark}: 'D',\n};`);
+        const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+        expect(out).toBe(expected);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+        expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+          .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+      });
+    }
+  }
+
+  it("따옴표가 필수인 형제는 선택적 따옴표의 관용으로 세지 않는다", () => {
+    const src = "export default { a: 'A', 'b.dot': 'B' };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "c", message: "C" }] }))
+      .toBe("export default { a: 'A', 'b.dot': 'B', c: 'C' };\n");
+  });
+
+  it("중첩 객체의 형제 관용이 바깥 키 표기보다 우선한다", () => {
+    const src = `export default { a: 'A', el: { "b": 'B' } };\n`;
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe(`export default { a: 'A', el: { "b": 'B', "c": 'C' } };\n`);
+  });
+
+  it("빈 객체는 파일의 선택적 키 표기를 따른다", () => {
+    const src = "export default { 'a': 'A', 'el': {} };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe("export default { 'a': 'A', 'el': {'c': 'C'} };\n");
+  });
+
+  it("혼합 관용은 가장 가까운 선택적 형제를 따르고 필수 따옴표는 안전하게 유지한다", () => {
+    const src = `export default { a: 'A', "b": 'B' };\n`;
+    const entries = [{ key: "c", message: "C" }, { key: "odd'key", message: "D" }];
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe(`export default { a: 'A', "b": 'B', "c": 'C', "odd'key": 'D' };\n`);
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.errors).toEqual([]);
+    expect(back.locales[0]!.entries).toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+  });
+});
+
+
+describe("code-dict — 비ASCII 식별자 키의 관용", () => {
+  it("한글 키도 따옴표가 선택적인 형제로 센다", () => {
+    const src = 'export default { "확인": "OK", "취소": "Cancel" };\n';
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "next", message: "Next" }] }))
+      .toBe('export default { "확인": "OK", "취소": "Cancel", "next": "Next" };\n');
+  });
+
+  it("무따옴표 관용에서는 유효한 한글 삽입 키도 감싸지 않는다", () => {
+    const src = 'export default { 확인: "OK" };\n';
+    const entries = [{ key: "취소", message: "Cancel" }];
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe('export default { 확인: "OK", 취소: "Cancel" };\n');
+    expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+      .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+  });
+});
+
+
+describe("code-dict — 삽입 값의 부호는 번역 값만 센다", () => {
+  for (const [keyQuote, valueQuote] of [["'", '\"'], ['\"', "'"]]) {
+    it(`키 ${keyQuote}와 값 ${valueQuote}의 부호를 독립적으로 보존한다`, () => {
+      const src = `export default { ${keyQuote}a${keyQuote}: ${valueQuote}A${valueQuote} };\n`;
+      const entries = [{ key: "c", message: "C" }, { key: "b", message: "B" }];
+      const expected = src.replace(" };", `, ${keyQuote}b${keyQuote}: ${valueQuote}B${valueQuote}, ${keyQuote}c${keyQuote}: ${valueQuote}C${valueQuote} };`);
+      const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+      expect(out).toBe(expected);
+      expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+      expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+      expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+      expect(codeDict.read(base(), [f("src/locale/ko.ts", out)]).locales[0]!.entries)
+        .toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+    });
+  }
+
+  it("import·일반 상수·다른 객체·배열·함수 내부의 문자열은 세지 않는다", () => {
+    const src = `import dependency from "dependency";
+const labels = ["one", "two"];
+const config = { label: "config" };
+export default { "el": { "a": ('A' as const), "b": 'B' }, array: ["x", "y"], fn: () => ({ text: "z" }) };
+`;
+    const out = codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] });
+    expect(out).toBe(src.replace(`"b": 'B'`, `"b": 'B', "c": 'C'`));
+  });
+
+  it("번역 값이 없는 객체는 키와 외부 문자열의 부호에 관계없이 기본 큰따옴표를 쓴다", () => {
+    const src = "const label = 'outside';\nexport default { 'el': {} };\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.c", message: "C" }] }))
+      .toBe(`const label = 'outside';\nexport default { 'el': {'c': "C"} };\n`);
+  });
+});

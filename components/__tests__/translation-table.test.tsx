@@ -10,7 +10,7 @@ import { find, input, render } from "./helpers/dom";
 const save = vi.hoisted(() => vi.fn());
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslation: save }));
 const project: ProjectContext = {
-  surfaceId: "s1", surfaceSlug: "default", surfaces: [], id: "p", slug: "demo", name: "Demo", repoOwner: "owner", repoName: "repo",
+  surfaceId: "s1", surfaceSlug: "default", surfaces: [], id: "p", slug: "demo", name: "Demo", repoOwner: "owner", repoName: "repo", baseBranch: "main",
   installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en",
   lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [],
 };

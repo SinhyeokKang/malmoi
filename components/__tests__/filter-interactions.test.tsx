@@ -9,6 +9,7 @@ import { TranslationFilters } from "@/components/translations/filters";
 import { TranslationsHeader } from "@/components/translations/header";
 import { m } from "@/lib/i18n";
 
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslation: vi.fn(), triggerPullAction: vi.fn() }));
 
 it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar and chips until the new query arrives", async (source) => {
@@ -26,7 +27,7 @@ it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar
       <TranslationsHeader surfaceSlug="default" surfaces={[]} slug="demo" totalCount={2} query={query} chipQuery={query}
         namespaces={[{ namespace: "a", pending: 1, total: 1 }, { namespace: "b", pending: 1, total: 1 }]}
         locales={[{ code: "en", orphaned: false }]} selected={["en"]} fallback={["en"]}
-        unpublished={0} lastSentLabel={null} lastPrUrl={null} dismissKey="never" baseLocale="en" declaredBaseLocale="en">
+        unpublished={0} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-demo" }} role="OWNER" lastSentLabel={null} lastPrUrl={null} dismissKey="never" baseLocale="en" declaredBaseLocale="en">
         <p>Translations</p>
       </TranslationsHeader>
     </Suspense>;

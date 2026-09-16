@@ -345,6 +345,6 @@ describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
  * 전부 같은 자리라 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내준다.
  */
 it("온보딩 모달 본문이 포커스 링 자리를 남긴다", () => {
-  const src = read("components/onboarding/modal.tsx");
+  const src = read("components/ui/modal.tsx");
   expect(src).toContain("px-8 pt-0.5 pb-6");
 });

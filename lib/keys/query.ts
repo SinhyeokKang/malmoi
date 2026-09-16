@@ -40,6 +40,8 @@ export type ProjectContext = {
   name: string;
   repoOwner: string;
   repoName: string;
+  /** Publish 모달이 "무엇을 덮는가"를 말할 때 든다 — 조회가 실패한 갈래도 이 이름을 말해야 한다. */
+  baseBranch: string;
   /**
    * readiness 판정의 재료 둘 (`planProjectReadiness`). **번역 화면이 따로 조회하지 않는다** —
    * 같은 행을 두 번 읽던 것을 한 번으로 합쳤다 (T7).
@@ -70,7 +72,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
-      id: true, slug: true, name: true, repoOwner: true, repoName: true,
+      id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true,
       installationId: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: {

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,11 +16,14 @@ import { Skeleton } from "@/components/ui/skeleton";
  * 그것을 받아들이는 이유는 **골격이 길수록 화면이 "다 왔다"고 거짓말한다**는 쪽이다 — 아래 치수
  * 규칙이 막는 것은 필드·아바타처럼 **자리가 남는** 요소의 튐이다.
  *
- * ⚠️ **치수가 실물이다** — 필드 320×36 · 아바타 56 · 글리프 32. 다르면 데이터가 도착하는 순간
+ * ⚠️ **치수가 실물이다** — 필드 320×36 · 아바타 56 · 글리프 **28**. 다르면 데이터가 도착하는 순간
  * 레이아웃이 튀고, 그 튐이 로딩 표시보다 더 눈에 띈다.
  *
- * ⚠️ **radius가 자리를 따라간다** — 글자 4 · 버튼·필드 10 · 글리프 8 · 아바타 999. 전부 `rounded`로
- * 두면 필드 자리에 글자 모양 블록이 선다.
+ * ⚠️ **radius가 자리를 따라간다** — 글자 4 · 버튼·필드 10 · 글리프 **4** · 아바타 999. 전부
+ * `rounded`로 두면 필드 자리에 글자 모양 블록이 선다.
+ *
+ * ⚠️ **카드 껍데기·헤더 padding·디바이더 둘은 골격에서도 실물이다** — 골격이 그 값을 안 들면
+ * 데이터가 도착할 때 본문이 튄다 (POSTMORTEM 2026-09-15 #3의 유령 띠와 같은 축).
  *
  * ⚠️ **`aria-hidden`은 `Skeleton`이 든다** — 호출부가 컨테이너마다 붙이면 하나가 빠지고, 그 순간
  * 스크린리더가 회색 블록을 읽는다 (`projects/loading.tsx`에서 실제로 둘로 갈렸다).
@@ -33,55 +38,74 @@ export default function AccountLoading() {
         </div>
       </PanelHeader>
 
-      <PanelBody className="space-y-7">
-        {/* 머리 블록 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
-        <div className="border-border grid grid-cols-[128px_1fr] items-center gap-x-3 gap-y-4 border-b pb-5">
-          <div className="col-span-2 flex items-center gap-4">
-            <Skeleton className="size-14 rounded-full" />
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-9 w-32 rounded-md" />
-                <Skeleton className="h-9 w-20 rounded-md" />
-              </div>
-              <Skeleton className="h-4 w-64" />
-            </div>
-          </div>
-
-          <Skeleton className="h-4 w-12" />
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-9 w-80 rounded-md" />
-            <Skeleton className="h-9 w-16 rounded-md" />
-          </div>
-
-          <Skeleton className="h-4 w-12" />
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-80 rounded-md" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-        </div>
-
-        {/* 구역 둘 — 수단(항목 둘) · GitHub(항목 하나). Sessions는 위 주석대로 없다. */}
-        {[2, 1].map((rows, section) => (
-          <div key={section} className="flex flex-col gap-3">
-            <div className="flex items-baseline gap-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-            <div className="border-border overflow-hidden rounded-lg border">
-              {Array.from({ length: rows }, (_, row) => (
-                <div key={row} className={`flex items-center gap-3 p-3 ${row === 0 ? "" : "border-border border-t"}`}>
-                  <Skeleton className="size-8 rounded-sm" />
-                  <div className="flex flex-1 flex-col gap-px">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-40" />
-                  </div>
-                  <Skeleton className="h-9 w-24 rounded-md" />
+      <PanelBody className="space-y-4">
+        {/* Profile 카드 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
+        <SkeletonCard>
+          <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">
+            {/* 아바타 행도 라벨 열을 든다 — 실물이 그렇다. 안 그리면 아바타가 108px 왼쪽에서 출발한다. */}
+            <Skeleton className="h-4 w-12" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="size-14 rounded-full" />
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-9 w-32 rounded-md" />
+                  <Skeleton className="h-9 w-20 rounded-md" />
                 </div>
-              ))}
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </div>
+
+            <Skeleton className="h-4 w-12" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-9 w-80 rounded-md" />
+              <Skeleton className="h-9 w-16 rounded-md" />
+            </div>
+
+            <Skeleton className="h-4 w-12" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-80 rounded-md" />
+              <Skeleton className="h-4 w-56" />
             </div>
           </div>
+        </SkeletonCard>
+
+        {/* 수단(행 둘) · GitHub App(행 하나). Sessions는 위 주석대로 없다. */}
+        {[{ rows: 2, hint: false }, { rows: 1, hint: true }].map(({ rows, hint }, card) => (
+          <SkeletonCard key={card}>
+            {Array.from({ length: rows }, (_, row) => (
+              <div key={row} className={`flex items-center gap-3 px-4 py-[13px] ${row === 0 ? "" : "border-border border-t"}`}>
+                <Skeleton className="size-7 rounded" />
+                <div className="flex flex-1 flex-col gap-[3px]">
+                  <Skeleton className="h-4 w-40" />
+                  {/*
+                    ⚠️ **줄 수가 카드마다 다르다** — 수단 카드는 보조 줄을 안 그리고(데이터가 없다),
+                    GitHub App 카드는 집계를 든다. 골격이 둘 다 두 줄이면 데이터 도착 순간 수단
+                    카드만 줄어들고 그 아래 카드가 위로 밀린다.
+                  */}
+                  {hint && <Skeleton className="h-4 w-56" />}
+                </div>
+                <Skeleton className="h-9 w-24 rounded-md" />
+              </div>
+            ))}
+          </SkeletonCard>
         ))}
       </PanelBody>
     </>
+  );
+}
+
+/**
+ * 카드 껍데기 — **테두리·radius·헤더 padding·디바이더가 실물과 같은 값이다.** 헤더 안의 글자만
+ * 골격이고, 그래서 데이터가 도착해도 카드 경계가 움직이지 않는다.
+ */
+function SkeletonCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="border-border overflow-hidden rounded-lg border">
+      <div className="border-divider flex items-center gap-2 border-b p-4">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="ml-auto h-4 w-48" />
+      </div>
+      {children}
+    </div>
   );
 }

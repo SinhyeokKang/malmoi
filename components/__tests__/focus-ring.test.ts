@@ -150,6 +150,8 @@ const RING_FIXTURE_EXEMPT = [
   "components/ui/dropdown-menu.tsx",
   "components/ui/segmented-control.tsx",
   "components/ui/dialog.tsx",
+  // Like dialog.tsx, every modal control uses Button; no native controls bypass its ring.
+  "components/ui/modal.tsx",
   /**
    * ⚠️ **`segmented-control.tsx`와 같은 사정이다** — `resizable.test.tsx`가 렌더해서 링 셋을
    * **실제로** 본다. 여기 픽스처로 둘 수 없는 이유는 아래 렌더 검사가

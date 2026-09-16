@@ -47,6 +47,7 @@ describe("triggerPullAction — 예외의 본문", () => {
     expect(result.error).not.toContain("pooler");
     expect(result.error).not.toContain("postgres.abc");
     expect(result.error).toMatch(/ref/);
+    expect(result).toMatchObject({ code: "db-unavailable", retryable: true, delivery: "unknown" });
   });
 
   it("우리 문구(AppError)는 그대로 나간다 — slug·경로 템플릿은 편집자가 이미 아는 값이다", async () => {
@@ -54,7 +55,7 @@ describe("triggerPullAction — 예외의 본문", () => {
     hoisted.triggerPull.mockImplementation(async () => fail("base 브랜치를 읽을 수 없다: dev"));
 
     const result = await triggerPullAction("acme");
-    expect(result).toEqual({ status: "failed", error: "base 브랜치를 읽을 수 없다: dev" });
+    expect(result).toEqual({ status: "failed", error: "base 브랜치를 읽을 수 없다: dev", code: "unknown", retryable: true, delivery: "unknown" });
   });
 
   it("ref가 호출마다 달라 로그를 찾을 수 있다", async () => {

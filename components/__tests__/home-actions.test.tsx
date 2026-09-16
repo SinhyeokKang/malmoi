@@ -19,7 +19,7 @@ import { render } from "./helpers/dom";
  * ⚠️ **`[Sync]`는 native `disabled`가 아니라 `aria-disabled`다** — Dialog가 닫힐 때 포커스를 되돌릴
  * 대상으로 남아야 한다(spec §12-9). 그래서 이 파일은 두 버튼을 **다른 속성**으로 센다.
  */
-const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn() }));
 // ⚠️ 보관·재연결 Action까지 mock한다 — 호스트가 배너 액션으로 그 둘을 들고 오고, 실물 모듈은
 // `next-auth`를 통해 서버 전용 코드를 끌어온다.
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
@@ -27,7 +27,10 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectReposit
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
-const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 12, paused: false };
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
+
+const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 12, paused: false,
+  repo: { owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" } };
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -58,12 +61,12 @@ function Host() {
   </>;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ groups: [], total: 12, keys: 9, truncated: 0, openPr: null }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: [] }>();
   mocks.run.mockReturnValue(run.promise);
-  await render(<HomeActions><HomeHeaderActions {...props} /></HomeActions>);
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
 
   expect(locked(button("Publish"))).toBe(false);
   await click("Sync");
@@ -80,18 +83,21 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
 });
 
 it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는다", async () => {
-  const pull = deferred<{ status: "ok" }>();
+  const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  await render(<HomeActions><HomeHeaderActions {...props} /></HomeActions>);
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
 
   await click("Publish");
+  expect(mocks.pull).not.toHaveBeenCalled();
+  await click("Open pull request");
+  await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
   expect(locked(button("Sync"))).toBe(true);
 
   await click("Sync");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(mocks.run).not.toHaveBeenCalled();
 
-  await act(async () => { pull.resolve({ status: "ok" }); await pull.promise; });
+  await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
   expect(locked(button("Sync"))).toBe(false);
 });
 
@@ -100,14 +106,14 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
  * (spec §8). Publish가 도는 동안에도 그 규칙이 그대로여야 한다.
  */
 it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", async () => {
-  const pull = deferred<{ status: "ok" }>();
+  const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  await render(<HomeActions><HomeHeaderActions {...props} role="EDITOR" /></HomeActions>);
+  await render(<HomeActions slug="acme"><HomeHeaderActions {...props} role="EDITOR" /></HomeActions>);
 
   await click("Publish");
   expect([...document.querySelectorAll("button")].some(b => (b.textContent ?? "").includes("Sync"))).toBe(false);
 
-  await act(async () => { pull.resolve({ status: "ok" }); await pull.promise; });
+  await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
 });
 
 /**
@@ -118,10 +124,12 @@ it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", as
  * 없어 밟히지 않던 자리다.
  */
 it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼자 열리지 않는다", async () => {
-  const pull = deferred<{ status: "ok" }>();
+  const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  const view = await render(<HomeActions><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
   await click("Publish");
+  await click("Open pull request");
+  await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
 
   /*
     ⚠️ **무반응이 아니라 비활성이어야 한다** (라운드 3 🟡3). 같은 Action을 여는 머리의 `[Sync]`는
@@ -133,8 +141,8 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   await click("Try again");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 
-  await act(async () => { pull.resolve({ status: "ok" }); await pull.promise; });
-  await view.rerender(<HomeActions><Host /></HomeActions>);
+  await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
+  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(mocks.run).not.toHaveBeenCalled();
 

@@ -1925,3 +1925,153 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     이 결함이 숨은 자리는 화면도 서버도 아니고 **테스트가 상상한 입력**이었다. 같은 세션에서
     `lib/home/meta.ts`의 `MetaRow`도 같은 뿌리였고(연결됐다면서 주소가 없는 행이 타입을 통과했다)
     그쪽은 판별 유니온으로 접었다 — **접을 수 있으면 접고, 못 접으면 테스트가 실물 조합을 쓴다.**
+
+### 2026-09-16 — Publish 미리보기가 로케일을 무시하고 첫 파일을 골랐다
+
+- **영역**: `lib/publish/read.ts` — multi-locale base 값 조회.
+- **증상**: 구현 중 리뷰에서 `a.ts`의 en에 `hello`, `b.ts`의 ko에 `hello`가 있는 경우 ko 편집도 `a.ts`로 그룹핑하는 경로를 발견했다. 올바른 어댑터 픽스처로 수정 전 실패·수정 후 통과를 확인했다. 프로덕션 사고는 아니다.
+- **근본 원인**: 파일 소유권을 키 하나로 찾고 셀의 다른 축인 로케일을 생략했다. 조회 실패를 첫 경로로 폴백하면 오류 대신 그럴듯한 미리보기가 나왔다.
+- **그물**: 병렬 정적 리뷰와 multi-locale 회귀 테스트가 잡았다. 기존 단일 JSON 파일 테스트·타입 검사는 두 경로가 경쟁하는 입력이 없어 놓쳤다.
+- **재발 방지**: `rg -n 'matches\[0\]|paths\[0\]|localeCode.*path' lib/publish`를 실행했다. 미리보기는 활성 로케일의 정확히 한 경로만 허용하고 불확실하면 조회 실패로 막는다. `lib/publish/__tests__/read.test.ts`가 로케일별 파일, 경로 부재·중복, per-locale 새 파일을 고정한다. export 경로·판정은 변경하지 않았다.
+
+
+### 2026-09-16 — 삽입 키의 인용 부호만 맞추고 들여쓰기와 끝 쉼표를 놓쳤다 (2026-09-03 표현 보존 결함 재발)
+
+- **영역**: `lib/adapters/code-dict.ts`의 `insert`, `lib/adapters/__tests__/code-dict.test.ts`.
+- **증상**: 실물 왕복 PR에서 2칸·끝 쉼표를 쓰는 파일에 새 키만 4칸·쉼표 없음으로 삽입됐다. 기존 값의 치환이 보존되더라도 삽입은 별도 표현 경로였다.
+- **근본 원인**: `addPropertyAssignment`의 기본 manipulationSettings가 원본 형식까지 따를 것으로 취급했다. `quoteLiteral`로 부호만 맞춰도 들여쓰기·쉼표·개행은 ts-morph가 정했다. 수정 중 `replaceWithText`와 `replaceText`도 중첩 들여쓰기 또는 CRLF를 정규화하는 것을 회귀 테스트로 확인했다.
+- **그물**: Claude Code의 실물 PR 관측과 새 전체 문자열 단언이 잡았다. 기존 의미 왕복·삽입 순서·무편집 고정점 검사는 형식이 잘못된 채 안정적인 출력을 놓쳤다. 0칸·2칸·4칸·탭 × 끝 쉼표 유무, 중첩 CRLF, 빈 객체를 검사하고 동일 입력 반복·입력 순서 반전·재적용 고정점·재파싱 값 검사를 함께 둔다.
+- **재발 방지**: `rg -n 'addPropertyAssignment|applyTextChanges' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 삽입 API를 확인한다. 수정 후 `code-dict`의 `applyTextChanges` 1곳만 있다. `pnpm test lib/adapters/__tests__/code-dict.test.ts`의 삽입 형식 회귀를 실행한다. 범위 치환 후 AST는 다시 얻어야 한다. 원격 왕복은 이번 작업에서 실행하지 않았으며 Claude Code가 이어서 검증한다.
+
+- **후속 재발 확인 (2026-09-16, 키 이름의 선택적 따옴표)**: 4칸 픽스처의 형제가 `'a'`·`'b'`인데 삽입은 `c`로 나왔다. `quoteName`이 문법상 따옴표가 필요 없는 이름을 항상 생략했고, 앞선 회귀는 모두 점 포함 키라 필수 따옴표 경로만 검사했다. 키와 값의 부호도 별개인데 파일의 문자열 다수 부호만으로는 키 관용을 알 수 없다.
+  - **수정·그물**: 가장 가까운 선택적 형제의 키 표기를 따르고, 형제에 단서가 없으면 파일, 파일에도 없으면 기존 기본값으로 떨어진다. 점·공백 등 필수 따옴표 이름은 판정에서 제외한다. 작은따옴표·큰따옴표·무따옴표 × 2칸·4칸, 중첩·빈 객체·혼합·이스케이프를 전체 문자열로 검사한다. 예전 `quoteName`으로 일부러 되돌리자 신규 7건이 실패했다. 리뷰에서 발견한 한글 식별자 제외도 회귀 2건의 red를 확인한 뒤 유니코드 식별자 판정으로 수정했다.
+  - **재발 방지**: `rg -n 'PLAIN_NAME|optionalName|quoteName' lib/adapters/code-dict.ts`로 문법 판정과 표현 선택이 분리되는지 확인하고 `pnpm test lib/adapters/__tests__/code-dict.test.ts`를 실행한다. 문자열 값만 보지 않고 삽입된 키 토큰 자체를 검사한다. 원격 PR·왕복은 Claude Code가 이어서 확인한다.
+
+- **후속 재발 확인 (2026-09-16, 키 리터럴이 값 부호 집계에 섞임)**: `"a": 'A'` 파일에서 삽입 값이 큰따옴표로 나왔다. `dominantQuote` 자체의 집계가 아니라 호출부가 파일의 모든 StringLiteral을 넘기는 것이 원인이었다. 앞선 키 표기 회귀의 `labels = ['one', 'two']`가 작은따옴표 수를 늘려 결함을 가렸다.
+  - **수정·그물**: 보조 문자열을 제거하고 양방향 혼합 부호와 외부 문자열 제외·빈 카탈로그 기본값을 단언했다. 수정 전 5건 red를 확인했고, 고친 뒤 예전 집계로 되돌리는 mutation에서도 같은 5건이 실패했다. `valueLiterals(root)`는 `collect`와 같은 프로퍼티 초기화식 경로에서 중첩 객체와 문자열 값만 수집한다. 키·import·다른 객체·배열·함수 내부 문자열은 제외한다.
+  - **재발 방지**: `rg -n 'dominantQuote|valueLiterals' lib/adapters/code-dict.ts`로 표본의 출처를 확인하고 `pnpm test lib/adapters/__tests__/code-dict.test.ts`를 실행한다. 혼합 표현 테스트에 무관한 리터럴을 더해 다수결을 맞추지 않는다. 원격 왕복은 Claude Code에 인계한다.
+
+### 2026-09-16 — 같은 요청의 `Promise.all`이 토큰 회전을 둘로 겹쳤고, 내가 단 주석이 그것을 "안전하다"고 정당화했다
+
+- **영역**: `app/(edit)/account/page.tsx` · `lib/github-connect/installed-repos.ts` · `lib/github-connect/token-store.ts`.
+  **dev에도 안 나갔다** — `/ship` 4단계 `/code-review`가 정적 읽기로 잡았다.
+- **증상**: 없다(확률적이고 만료 토큰에서만 난다). 재현 경로: 토큰이 만료된 사용자가 `/account`를 연다 →
+  `loadAccountView`와 `loadInstalledRepoCount`가 **같은 `Promise.all`**에 있고 둘 다 `ensureUserToken`을
+  부른다 → 둘이 같은 refresh 토큰 `R`을 읽고 둘 다 회전을 시도한다 → 1회용이라 한쪽이 400을 받는다 →
+  **거부가 성공보다 빨리 오므로** 진 쪽의 `afterRace`가 이긴 쪽의 `updateMany`보다 먼저 행을 읽어 옛 `R`과
+  옛 만료를 보고 `plan !== "use"` → `null` → `refreshFailure(400)` = **`reauthorize`**. 어느 쪽이 지는지는
+  결정되지 않고, `loadAccountView`가 지는 날 **멀쩡한 연결에 "Your GitHub authorization expired."**가 뜬다.
+- **근본 원인**: **방어 장치의 전제가 호출 형태와 함께 바뀌는데 그 사실이 어디에도 안 적혀 있었다.**
+  `token-store.ts`의 조건부 쓰기(`where`에 읽었던 `refresh_token`) + `afterRace`는 **탭 둘이 따로 요청을
+  보내는** 순차 경합용이고, 거기서도 같은 창이 있지만 두 요청 사이에 왕복 하나가 끼어 폭이 좁다. 같은
+  요청의 `Promise.all`은 두 호출을 **같은 마이크로태스크에서** 출발시켜 **항상 같은 행을 읽게 만들어** 그
+  창을 최대로 연다. ⚠️ **그리고 내가 `installed-repos.ts`에 "두 번 부르는 것이 안전한 이유"를 적으면서 그
+  둘을 같은 것으로 취급했다** — 주석이 근거처럼 보이는 문장으로 결함을 덮은 형이고, 리뷰가 그 주석을 읽으면
+  "이미 검토된 자리"로 넘어간다. **2026-09-03("주석이 '명시 지정은 동작한다'고 단언했고 그걸 검사하는
+  테스트의 이름만 그랬다")과 같은 계보이고, 축이 하나 더 나쁘다**: 그때는 검사가 공허했고 이번엔 **주석이
+  적극적으로 틀린 안전을 주장**했다.
+- **그물**:
+  - 잡은 것: **`/code-review`의 정적 읽기 하나.** 두 호출부가 같은 함수를 무는 것을 보고 경합을 되짚었다.
+  - 놓친 것: `pnpm test` 4,200건 · `pnpm typecheck` · **브라우저 실측**(dev 계정 토큰이 만료 전이라 그 갈래가
+    안 그려진다) · `/design-sync` 4단계. 경합은 **상태를 만들어야 보이는데 그 상태를 만드는 비용이 높다** —
+    토큰을 일부러 만료시키고 두 요청을 같은 밀리초에 띄워야 한다.
+- **재발 방지**:
+  - **규칙: 같은 요청에서 `ensureUserToken`을 두 번 부르지 않는다.** 두 값이 필요하면 **직렬화한다** —
+    뒤엣것이 앞엣것의 상태에서만 쓰이는 경우가 대부분이고, 그때 병렬은 **결과를 버리면서 경합만 만든다**
+    (이번에도 연결 안 된 세 갈래에서 GitHub 왕복 둘이 통째로 낭비였다).
+  - grep (실제로 돌렸다):
+    `grep -rn "ensureUserToken" --include='*.ts' --include='*.tsx' app lib | grep -v __tests__ | grep -v token-store.ts`
+    → 호출부 **다섯**이고 **같은 요청에 둘이 도는 자리는 이제 없다**: `projects/actions.ts:532`·`:1382`와
+    `settings/actions.ts:136`은 **서로 다른 Server Action**이라 한 요청에 하나만 돈다. `account-view.ts`와
+    `installed-repos.ts`가 이번 자리였고 직렬화했다.
+  - **`loadAccountView`가 든 다른 `Promise.all`도 확인했다** — `app/(edit)/projects/[slug]/settings/page.tsx:105`의
+    나머지 둘(`loadConnectionHealth` → `probeRepo`, `loadOpenPrUrl` → `createGitClient`)은 **installation
+    토큰 경로**라 사용자 토큰을 안 문다. **안전하다.**
+  - ⚠️ **후속 후보**: 이 규칙을 소스 스캐너로 세울 수 있다 — 한 `Promise.all` 리터럴 안에서 `ensureUserToken`
+    그래프에 닿는 호출이 둘 이상인지. 지금은 호출부가 다섯뿐이라 grep으로 족하지만, 사용자 토큰을 무는
+    로더가 늘면 이 자리가 조용해진다.
+
+### 2026-09-16 — 행 본문이 두 줄에서 한 줄로 바뀌었는데 테스트 4,206개가 전부 green이었다
+
+- **영역**: `components/account/account-section.tsx` · `login-methods.tsx` · `github-section.tsx` ·
+  `sessions-section.tsx` · `app/(edit)/account/loading.tsx`.
+  **dev에도 안 나갔다** — `/design-sync` 4단계 실측이 잡았다.
+- **증상**: `/account`의 **모든 행**이 상태를 13px 보조 줄에 두고 있었다. 핸드오프는 본문 한 줄
+  (`**이름** — 상태`)이고 README가 근거까지 적어 뒀다: *"상태를 13 보조 줄로 내리면 **부연으로 읽히는데**,
+  상태는 이 행이 답하는 값이다."* 같은 라운드에서 이탈이 **여덟 부류**였다 — 본문 구조 · 카드 배경 ·
+  사실 블록의 `Avatar` 라벨 누락 · grid row-gap(16 vs 14) · 본문 스택 gap(1 vs 3) · 보조 줄 letter-spacing ·
+  외부 링크 아이콘 gap(8 vs 6) · 수단 카드 헤더 문구.
+- **근본 원인**: **값은 전부 맞았고 틀린 것은 "어느 줄에 있나"뿐이었다.** 같은 문자열이 화면에 있었으므로
+  문구를 세는 검사는 전부 통과했다. 그 축을 묻는 단언이 **하나도 없었고**, 특히 `container.textContent`로
+  세는 관용구가 두 줄을 **한 덩이로 만들어** 원리적으로 못 본다. ⚠️ **고친 뒤에도 같은 함정이 한 번 더
+  났다**: `github-section.test.tsx`의 `expect(text).toContain(m.account.github.connected)`가 상태를 보조
+  줄에서 본문으로 **옮긴 뒤에도 통과해서**, 검사 이름이 말하는 것을 더 이상 검사하지 않는 **공회전**으로
+  바뀌어 있었다(리뷰가 잡았다).
+- **그물**:
+  - 잡은 것: **`/design-sync` 4단계(캔버스 ↔ computed style 대조)와 5단계 리뷰.** 4단계가 여덟 부류를,
+    5단계가 공회전과 골격 드리프트를 잡았다.
+  - 놓친 것: `pnpm test` **4,206건** · `pnpm typecheck` · `/code-review`(문구가 캔버스와 같으므로 "맞다"로
+    읽힌다) · 화면(두 줄이든 한 줄이든 **그럴듯하게 보인다**).
+  - ⚠️ **`loading.tsx`가 따로 떠내려갔다** — 골격이 수단 카드에 텍스트 줄 **둘**을 그리는데 실물은 보조
+    줄을 안 그려 **한 줄**이고, 아바타 행에 라벨 열이 없어 실물보다 **108px 왼쪽**에서 시작했다. 이 화면은
+    GitHub 왕복 둘을 기다리므로 골격이 **항상 보이고**, 데이터가 닿는 순간 아바타가 점프하고 아래 카드가
+    위로 밀린다. 골격은 **로딩 순간에만 보여서 스크린샷에도 안 남는다.**
+- **재발 방지**:
+  - **규칙: 구조를 세는 단언은 노드를 집는다.** `container.textContent`나 `element.textContent`에
+    `toContain`을 거는 것은 **"그 문자열이 화면 어딘가에 있다"**를 물을 뿐이고, "어느 줄/어느 슬롯에
+    있나"는 못 묻는다. 두 줄을 가르는 검사는 `li > div > span`의 **첫째/둘째를 각각** 집는다
+    (`github-section.test.tsx`의 `lines()` 헬퍼가 그 형이다).
+  - grep (실제로 돌렸다):
+    `grep -rln "container.textContent\|\.textContent)\.toContain" --include='*.test.tsx' --include='*.test.ts' app components lib`
+    → **12파일 이상**이다. 전부가 문제인 것은 아니다(문구 존재만 재는 자리는 그 형이 맞다) — **위험한 것은
+    "슬롯이 둘 이상인 컴포넌트에서 한쪽만 참이어야 하는" 단언**이다. 후속 후보 1순위는
+    `components/__tests__/entity-card.test.tsx`·`project-row.test.tsx`처럼 **행 안에 본문/보조 슬롯이 있는**
+    컴포넌트의 테스트다.
+  - **규칙: 골격을 든 화면은 실물과 "줄 수"를 함께 센다.** `loading.tsx`는 테스트가 0이고, 이번 드리프트는
+    "수단 골격 행의 텍스트 줄 수 == 실물 수단 행의 줄 수" 하나만 있었어도 red였다.
+  - ⚠️ **문서도 같은 자리에서 낡았다** — `docs/DESIGN.md` §6.67을 전면 갱신하면서 뼈대 줄의
+    `머리 24 24 12 · 본문 12 24 32`를 **확인 없이 옮겨 적었는데** 브라우저 실측은 **16·16**이었다
+    (`PanelBody`가 `p-4`를 든다). **"실측"이라고 쓸 값은 실제로 재고 나서 쓴다** — 재지 않은 값에 그 말을
+    붙이면 다음 사람이 의심해야 할 곳을 의심하지 않는다.
+  - **계보**: 2026-09-15("시안 없이 만든 화면이 네 곳에서 어긋났고 테스트 4,039개가 전부 green") ·
+    2026-09-13(새 프로젝트 모달 29곳)과 같은 부류다. **셋 다 "값이 맞고 표현이 틀린" 축이고, 셋 다
+    `/design-sync`만 잡았다.**
+
+### 2026-09-16 — 뮤테이션을 되돌리는 `git checkout -- <디렉터리>`가 같은 디렉터리의 미커밋 작업을 함께 지웠다
+
+- **영역**: 작업 절차(`/design-sync` 3단계 뒤 6단계 뮤테이션). 잃은 것은
+  `components/account/{account-section,login-methods,github-section,sessions-section}.tsx`의 미커밋 수정.
+- **증상**: 뮤테이션 셋을 돌리고 복원한 뒤 `pnpm typecheck`이 `Property 'description' does not exist`로
+  죽었다. 방금 만든 `status` 슬롯·`scope` 키 배선이 통째로 HEAD로 돌아가 있었고, **메시지 사전과 페이지는
+  남아서** 소비자만 사라진 상태였다.
+- **근본 원인**: **명령은 그대로인데 전제가 바뀌었다.** 앞선 뮤테이션 다섯(M1~M5)에서 같은
+  `git checkout -q -- components app`이 안전했던 이유는 그때 대상 파일이 **이미 커밋된 뒤**라
+  `checkout`이 되돌리는 것이 뮤테이션뿐이었기 때문이다. `/design-sync` 3단계 수정은 **아직 커밋 전**이라
+  같은 명령이 뮤테이션과 작업을 구별하지 못했다. ⚠️ **`git checkout -- <경로>`는 "내가 방금 넣은 변경"과
+  "내가 아까 넣은 변경"을 가르는 정보를 갖고 있지 않다** — 그 구별은 커밋 경계에만 있다.
+- **그물**:
+  - 잡은 것: **`pnpm typecheck` 하나.** 지운 키(`m.account.sessions.description`)의 소비자가 되살아나
+    타입이 깨졌다. **우연에 가깝다** — 되돌아간 변경이 전부 클래스 문자열과 JSX 구조였다면 typecheck도
+    `pnpm test`도 green이었고, 그대로 커밋됐을 것이다(그리고 그 커밋 메시지는 "고쳤다"고 말했을 것이다).
+  - 놓친 것: `git status`를 복원 직후에 안 봤다. 명령이 조용히 성공하고 **아무것도 출력하지 않는다.**
+- **재발 방지**:
+  - **규칙: 뮤테이션 전에 커밋한다.** 뮤테이션은 "지금 상태가 방어선인가"를 묻는 것이므로 **그 상태가
+    커밋돼 있는 것이 자연스럽다.** `/design-sync`·`/tdd`·`/ship`이 뮤테이션을 요구하는 자리마다 같다.
+  - **커밋이 이른 상황이면 `git checkout`을 쓰지 않는다** — 뮤테이션할 파일의 사본을 스크래치패드에 뜨고
+    그것으로 되돌린다(`cp <file> $SCRATCH/` → `cp $SCRATCH/<file> <file>`). 되돌릴 대상이 **파일 하나**로
+    한정되어 옆 파일을 건드릴 길이 없다.
+  - **복원 직후 `git status --porcelain`을 본다.** 되돌아간 파일 목록이 뮤테이션한 파일과 같은지가 유일한
+    확인이고, 이 명령은 그 차이를 즉시 보여준다.
+- **🔁 재발 (2026-09-16, 같은 세션 · 이 항목을 쓴 직후)**: `/design-sync` 3라운드에서 "옛 선택자가 정말
+  위험한가"를 실험하려고 `structure.test.tsx`를 임시로 되돌려 red를 확인했고, **사본으로 복원한 뒤 다시
+  수정하고 마지막에 `git checkout -q -- <file>`을 붙였다.** 그 한 줄이 방금 만든 `bodyLines` 헬퍼와
+  치환 여섯을 통째로 지웠다.
+  - ⚠️ **위 재발 방지를 지키고도 났다.** 사본은 떴고 `git status`도 봤다 — **지운 것은 사본 복원이 아니라
+    그 뒤에 이어 붙인 `git checkout`이었다.** 실험이 *되돌리기 → 재수정 → 되돌리기* 두 단계였고, 둘째
+    단계의 복원 수단만 다른 것을 썼다. 규칙이 "뮤테이션 복원에 `git checkout`을 쓰지 않는다"였는데
+    **이 자리는 뮤테이션이 아니라 "실험"이라고 스스로 분류해 규칙 밖으로 뒀다.**
+  - **규칙 정정: 작업 중인 파일에 `git checkout -- <경로>`를 쓰지 않는다.** 뮤테이션이든 실험이든
+    구별하지 않는다 — 그 구별이 이번 재발의 통로였다. 되돌릴 것이 있으면 **사본 하나로만** 되돌린다.
+  - 그물: 이번에도 잡은 것은 **`git status --porcelain`**이다(커밋 직전에 돌렸고 그 파일이 목록에 없었다).
+    ⚠️ **typecheck·test는 둘 다 green이었다** — 지워진 것이 테스트 헬퍼라 옛 형으로 돌아가도 그 파일의
+    단언이 전부 통과했다. 첫 번째 사고 때는 typecheck이 잡았지만 **그건 운이었다**는 것이 이것으로 확인됐다.

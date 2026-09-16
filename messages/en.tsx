@@ -780,10 +780,17 @@ export const en = {
   account: {
     profile: {
       /**
+       * 카드 헤더 (2026-09-16). **머리 블록이 카드가 되면서 제목이 생겼다** — 카드 넷이 같은 그릇을
+       * 쓰는데 프로필만 패널 머리에 얹혀 있으면 그것만 규격이 다르다. 패널 머리에는 `Settings`만 남는다.
+       */
+      title: "Profile",
+      /**
        * ⚠️ **카드 설명문이 없어졌다** (2026-09-13). 머리 블록에는 설명 슬롯이 없고, 두 칸의
        * 소유자가 다르다는 사실은 **이메일 칸 옆의 `emailSource` 한 줄**이 그 자리에서 말한다 —
        * 화면 위쪽의 산문보다 필드 옆의 한 줄이 실제로 읽힌다.
        */
+      /** 사실 블록의 라벨 셋 — 아바타 행도 라벨을 든다(없으면 그 행만 두 열을 가로질러 형이 갈린다). */
+      avatar: "Avatar",
       name: "Name",
       email: "Email",
       /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
@@ -808,10 +815,49 @@ export const en = {
        * 바로 위 구역이 **로그인 수단**이다. 전 문장(`Connect GitHub to see which repositories you
        * can add.`)은 무엇을 할 수 있는지만 말해 그 구별을 못 했다.
        */
-      description: "This is write access to your repositories, not a way to sign in.",
-      notConnected: "Not connected.",
       /**
-       * 연결된 행의 보조 줄.
+       * 카드 헤더 (2026-09-16). **`settings.account.title`(`GitHub account`)을 갱신하지 않고 새 키다** —
+       * 그 키는 프로젝트 설정 화면이 계속 쓰고, 여기서 바뀐 것은 이 카드의 축 이름이다.
+       *
+       * ⚠️ **`GitHub account`에서 뒤쪽 낱말만 바꿨다.** 이 화면에 "account"가 이미 셋이고(계정 화면 ·
+       * 로그인 수단의 GitHub · 이 연결), 붙어 있는 것은 계정이 아니라 **설치된 app**이다.
+       * `Malmoi app`도 후보였지만 버렸다 — 사용자가 묻는 것은 "내 GitHub에 무엇이 붙어 있나"이고,
+       * 우리 제품 이름을 앞에 세우면 malmoi 안의 기능처럼 읽힌다. 정작 가서 끊는 곳은 GitHub이다.
+       *
+       * ⚠️ **아래 `confirmDisconnect`와 표기가 같아야 한다** — 한 화면에 `GitHub app`과 `GitHub App`이
+       * 같이 서면 **같은 사전의 다른 절**에 살아 리뷰로 안 걸린다 (2026-09-13 `malmoi`/`Malmoi`).
+       */
+      title: "GitHub App",
+      description: "Write access to the repositories you selected for the app, not a way to sign in.",
+      /**
+       * ⚠️ **아래 넷은 행 본문의 `— {상태}` 자리다** (2026-09-16 — 핸드오프 v2). 상태를 13 보조 줄로
+       * 내리면 **부연으로 읽히는데**, 이 행이 답하는 질문이 곧 상태다. 보조 줄은 `hint*`가 든다.
+       *
+       * ⚠️ **`m.settings.account.reauthorize`·`unavailable`을 재사용하지 않는다** — 그 둘은 문장이고
+       * (`Your GitHub authorization expired.`) 프로젝트 설정 화면이 계속 그 형으로 쓴다. 여기는
+       * 한 줄 안에 이어 붙는 **구절**이라 형이 다르다.
+       */
+      notConnected: "Not connected",
+      statusReauthorize: "Authorization expired",
+      statusUnavailable: "Couldn't load",
+      /** 보조 줄 셋 — **다음에 할 일**을 든다. 연결됨 갈래는 `installedOn`이 그 자리에 선다. */
+      hintNotConnected: "Connect to see which repositories have the app installed.",
+      /**
+       * ⚠️ **재인가가 실제로 막는 것만 말한다.** 앞 판본은 `malmoi can't send changes until you
+       * reconnect.`였고 **거짓이었다** — `ensureUserToken` 소비자는 넷뿐이고(`account-view` ·
+       * `installed-repos` · 프로젝트 Action 둘) **`lib/pull`·`lib/push`에는 0곳**이다. 야간 pull과
+       * PR은 `createGitClient`의 **설치 토큰**이 내므로 사용자 토큰이 만료돼도 그대로 돈다.
+       *
+       * 그 문장을 믿은 사용자는 없는 장애를 찾거나 **멀쩡한 App 설치를 지우고 다시 만든다**
+       * (POSTMORTEM 2026-09-03과 같은 결말). 같은 카드의 `confirmHint`가 이미 정확한 범위를 쓰고
+       * 있었는데 이 줄만 반대를 말했다 — **같은 사전의 다른 절**이라 리뷰로 안 걸리는 형이다
+       * (2026-09-13 `malmoi`/`Malmoi`).
+       */
+      hintReauthorize: "You won't be able to add or reconnect repositories until you authorize again. Projects that are already connected keep syncing.",
+      /** ⚠️ **"your account"가 아니라 "this connection"이다** — 계정은 멀쩡하고 못 읽은 것은 이 연결이다. */
+      hintUnavailable: "We couldn't load this connection. Open this page again in a moment.",
+      /**
+       * 연결된 행의 **본문** 상태 절 (2026-09-16에 보조 줄에서 올라왔다).
        *
        * ⚠️ **프로젝트 수를 말하지 않는다** (2026-09-14 리뷰 🔴1). 전에는 `Connected · N projects use
        * this connection`이었는데, 그 N이 세던 것은 **내가 OWNER인 모든 프로젝트**였고 그중 이 연결에
@@ -819,10 +865,33 @@ export const en = {
        * 안 읽는다. 숫자가 근거가 될 수 없어 걷었다.
        */
       connected: "Connected",
+      /**
+       * 연결된 행의 **보조 줄** — 이 갈래에서 "다음에 할 일"의 자리를 이 집계가 든다.
+       *
+       * ⚠️ **설치 설정으로 나가기 전에 그 숫자가 바꾸려는 값이다** — 나가는 링크와 같은 행에 서는
+       * 이유가 그것이다. 위 `connected`가 걷어낸 `N projects use this connection.`과 다른 축이다: 이 수는
+       * 사용자가 GitHub에서 **직접 고른 것**이고, 그래서 근거가 된다.
+       *
+       * ⚠️ **`0`과 "못 읽었다"는 이 줄을 아예 그리지 않는다** (design §8 결정 3) —
+       * `Installed on 0 repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다.
+       */
+      installedOn: (n: number): string => `Installed on ${n.toLocaleString("en-US")} repositor${n === 1 ? "y" : "ies"}.`,
+      /**
+       * 나가는 링크의 라벨.
+       *
+       * ⚠️ **New Project의 설치 링크와 다른 키다** — 그쪽은 "리포를 더 고르러 간다"는 한 가지 일이고
+       * 이쪽은 설정 전반이다. 같은 키를 쓰면 한쪽 문구를 고칠 때 다른 화면이 조용히 따라 움직인다.
+       */
+      installationSettings: "Installation settings",
       /** 행의 제목 자리 — 연결된 계정이 없을 때다. 핸들이 있으면 그것이 제목이다. */
       rowName: "GitHub",
-      // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
-      confirmDisconnect: "Disconnect GitHub from malmoi?",
+      /**
+       * 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
+       *
+       * ⚠️ **카드 제목과 같은 말을 쓴다** (`title`, 2026-09-16). 전엔 `Disconnect GitHub from malmoi?`라
+       * 카드가 무엇을 가리키는지와 Dialog가 무엇을 끊는지가 다른 이름이었다.
+       */
+      confirmDisconnect: "Disconnect GitHub App from malmoi?",
       /**
        * ⚠️ **이 문장이 해제 Dialog를 붙인 논거이고, 2026-09-14까지 거짓이었다** (리뷰 🔴1).
        * 전 문장은 *"won't be able to read your repositories or open pull requests"* 였는데 **PR은 계속
@@ -853,7 +922,37 @@ export const en = {
        * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
        */
       confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
-      description: "Confirm with the account you use to sign in. This signs you out on all devices, including this one.",
+      /**
+       * 행 본문의 `— {범위}` 자리 (2026-09-16). ⚠️ **`description`을 대신한다** — 그 문장
+       * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했고, 그 말은 이제
+       * 아래 `willConfirm`과 Dialog가 나눠 든다. 행 본문이 답할 것은 **"어디까지 닫히나"**다.
+       */
+      scope: "all devices, this one included",
+      /**
+       * 행 보조 줄 — **이 버튼이 일을 끝내지 않는다**는 사실을 누르기 전에 말한다. 누르면 provider
+       * 화면으로 나갔다 돌아오고, 예고가 없으면 그 왕복이 실패로 읽힌다 (`confirmAction`이
+       * `Continue to GitHub`인 것과 같은 축).
+       *
+       * ⚠️ **provider 이름을 넣지 않는다.** 캔버스는 `GitHub will ask you to confirm…`이라 적었고
+       * 아래 `confirmDetail`이 정확히 그 문장인데, 행에 그걸 쓰면 **확인 상대를 못 고르는 갈래에서
+       * 이 줄만 사라져 두 행 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과 같은 논거다.
+       * **의도적 이탈이고 DESIGN §6.67에 근거가 있다.**
+       *
+       * ⚠️ **능동태다** — 이 리포에서 수동태가 서는 자리는 **이미 일어난 일**뿐이다
+       * (`Confirmation was cancelled.` · `You have been signed out…`). 누르기 **전에** 읽는 예고는
+       * 전부 능동이다(`You'll need to sign in again…` · `We'll add this sign-in method…`).
+       *
+       * ⚠️ **`your provider`는 캔버스 정정 요청 대상이다** (2026-09-16 3라운드 🟡) — 비개발자가 그
+       * 낱말을 Google로 옮기지 못할 수 있는데, 대안이 전부 Dialog와 겹치거나(`the account you sign
+       * in with`) 부정확하다. **이 줄 자체가 캔버스 이탈이므로 대체 문구도 캔버스가 정한다.**
+       *
+       * ⚠️ **Dialog가 이미 하는 말을 반복하지 않는다.** 첫 판본은
+       * `You'll confirm with the account you sign in with before anything changes.`였는데 **앞 8낱말이
+       * Dialog 회색 설명과 그대로 겹치고** 뒤 절은 검은 줄과 겹쳤다 — 한 문장이 두 번이던 것을
+       * 두 조각이 각각 두 번으로 옮겼을 뿐이었다 (2026-09-16 재검토 🟡C). 행이 들 것은 Dialog가
+       * **아직 안 한 말**이다.
+       */
+      willConfirm: "We'll send you to your provider to confirm, then bring you back here.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
@@ -863,6 +962,8 @@ export const en = {
     },
     signOut: {
       title: "Sign out",
+      /** 행 본문의 `— {범위}` 자리 — 바로 아래 행이 "모든 기기"라 이쪽이 무엇인지 말해야 한다. */
+      scope: "this device",
       description: "You'll need to sign in again to open your projects.",
       /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
       confirmTitle: "Sign out?",
@@ -1317,41 +1418,201 @@ export const en = {
     },
 
     /**
-     * Publish 결과 다섯 (design §3.4). **git 어휘를 쓰지 않는다** — 읽는 사람은 비개발자 동료다.
-     * 링크 라벨만 예외가 될 수 있는데(DESIGN §10), 이 자리는 "보낸 것"을 보여주는 것이라 그쪽도 편집자 어휘다.
+     * Publish 모달 — 한 동작의 끝 열하나가 이 사전을 지난다
+     * (Claude Design `design_handoff_publish_modal` §12가 문구의 정본이다).
+     *
+     * ⚠️ **같은 뜻의 두 문장을 남기지 않는다.** 옛 Alert 어휘(`created`·`updated`·`partial`·
+     * `dropped`·`failed`·`gate`)는 전부 여기서 대체됐다 — 되살리면 한 사실을 두 문장이 말한다.
+     *
+     * ⚠️ **git 어휘를 쓰는 자리가 생겼다** (2026-09-16 사용자 확정 — 열린 결정 5). 읽는 사람은
+     * 비개발자 동료지만 **전달해야 할 값이 PR 번호**라, 그 번호를 부르는 이름이 GitHub에서 보는
+     * 이름과 달라지면 전달이 끊긴다. `viewLink`는 번역 화면 머리의 "Last sent" 링크와 공유한다.
+     *
+     * ⚠️ **`30`을 문자열에 박지 않는다** — 대기 간격은 `PUBLISH_MIN_INTERVAL_SECONDS`가 정본이고
+     * 서버가 준 `retryAfterSeconds`가 버튼 라벨을 든다. 화면이 상수를 따로 들면 둘이 갈린다.
      */
     publish: {
-      /** 미배포 건수를 라벨이 든다 — 0이면 숫자를 붙이지 않는다(괄호 안 0은 정보가 아니다). */
-      button: (n: number): string => (n === 0 ? "Send changes" : `Send changes (${n.toLocaleString("en-US")})`),
-      nothing: "Nothing to send — everything is up to date.",
-      created: "Sent for review. Your developers need to accept it before their next code push.",
-      updated: "Updated what you sent earlier with your latest changes.",
+      button: "Publish",
+      publishing: "Publishing\u2026",
+      viewResult: "View result",
+      viewLink: "View pull request",
+      nothing: "Everything you've edited is already sent.",
+      paused: "Publishing is currently unavailable.",
+
+      /** `1a` — 우회 없는 필수 관문. 조회 중에도 같은 제목·같은 PR 줄이 선다. */
+      previewTitle: (n: number): string => `Publish ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      previewIntro: (repo: string): string =>
+        `Everything you've edited goes to ${repo} as one pull request.`,
+      previewCounts: (n: number, keys: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} in ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}.`,
+      previewSummary: (n: number, keys: number, files: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
+      changes: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      fileSummary: (n: number, keys: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}`,
+      key: "Key",
+      locale: "Locale",
+      value: "Value",
       /**
-       * ⚠️ **`sent`가 필요하다.** 이 갈래는 `committed`와 `skipped` 둘 다 온다(warnings ≥ 1) — 스킵인데
-       * "Sent"라고 쓰면 아무것도 안 보낸 것을 보냈다고 말하게 된다. 갈래는 하나, 문장만 갈린다.
+       * ⚠️ **화면에는 `−`/`+` 글리프뿐이라 낭독에 아무것도 안 남는다** (2026-09-16 CDP 실측).
+       * 글리프는 `aria-hidden`이고 이 두 줄이 그 자리를 대신한다 — 시안의 모양은 그대로 두고
+       * 뜻만 접근성 트리에 돌려준다.
        */
-      partial: (count: number, sent: boolean): string => {
-        // 1건이 가장 흔한 경우다 — 카운터를 만들어 놓고 여기서 안 쓰면 "1 values"가 나간다.
-        const values = count === 1 ? "1 value" : `${count.toLocaleString("en-US")} values`;
-        return sent
-          ? `Sent, but ${values} couldn't be written — tell your developers.`
-          : `Nothing new was sent, and ${values} couldn't be written — tell your developers.`;
+      beforeLabel: "In the repository",
+      afterLabel: "Your edit",
+      /** 상한은 미리보기 페이로드에만 걸린다 — 발송 범위는 전부다. */
+      truncated: (n: number): string =>
+        `${n.toLocaleString("en-US")} more are not listed here. Publishing sends all of them.`,
+
+      /** 열린 PR 삼상태 — `null`로 접지 않는다. "없다"와 "모른다"는 다른 줄이다. */
+      prOpen: {
+        title: (n: number): string => `#${n} is open \u2014 this replaces what it holds`,
+        body: (n: number, changes: number): ReactNode => (
+          <>
+            A second pull request isn&apos;t opened. #{n} will hold{" "}
+            <span className="text-foreground">everything unsent</span>, not just{" "}
+            {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}, and anyone
+            reviewing it will see it change.
+          </>
+        ),
       },
-      /** ⚠️ **건수만으로는 편집자가 행동할 수 없다** — `<details>`가 어느 파일인지 편다. */
-      dropped: "Which values couldn't be written",
-      failed: (reason: string): string => `Couldn't send: ${reason}`,
-      viewLink: "View what was sent",
+      prNone: {
+        title: (repo: string): string => `A new pull request opens on ${repo}`,
+        body: (changes: number): string =>
+          changes === 1
+            ? "Nothing is open right now, so this change goes out on its own."
+            : `Nothing is open right now, so these ${changes.toLocaleString("en-US")} changes go out on their own.`,
+      },
+      prUnknown: {
+        title: "Couldn't check for an open pull request",
+        body: "If one is already open, publishing replaces what it holds instead of opening a second one.",
+      },
+      openPr: "Open pull request",
+      replacePr: (n: number): string => `Replace pull request #${n}`,
+
+      /** `1c` — 단계 셋은 **시간 기반**이고 사실을 주장하지 않는다(진행 이벤트 API가 없다). */
+      progressTitle: (n: number): string => `Publishing ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      progressDescription:
+        "Writing the locale files and opening a pull request. This usually takes a few seconds.",
+      progress: (branch: string): readonly string[] => [
+        "Rendering the locale files",
+        `Committing to ${branch}`,
+        "Opening the pull request",
+      ],
+      leave: "Leaving this page won't stop it.",
+
+      /** `1d` — 새 PR. **"Published"가 아니다** — 머지 전까지 제품에 닿지 않는다. */
+      created: "Sent for review",
+      createdDescription: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} in a pull request. ${n === 1 ? "It reaches" : "They reach"} the product once someone on the team merges it.`,
+      prMeta: (n: number, files: number): string =>
+        `Pull request #${n} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"} changed`,
+      openedJustNow: "Opened just now",
+      holdsEverything: "Holds everything unsent",
+      prState: "Open",
+      accessNote:
+        "Editing or closing this pull request happens on GitHub. If you don't have access there, ask an owner.",
+
+      /** `1e` — 열려 있던 PR이 갱신됐다. 승인 무효는 말하지 않는다(그 설정을 읽지 않는다). */
+      updated: "Your earlier pull request now holds this",
+      updatedDescription: (n: number, changes: number): string =>
+        `#${n} was still open, so malmoi replaced its contents instead of opening a second one. It now holds everything unsent, not just ${changes === 1 ? "today's one" : `today's ${changes.toLocaleString("en-US")}`}.`,
+      replacedTitle: "The branch was replaced, not added to",
+      replacedBody: (branch: string, base: string): ReactNode => (
+        <>
+          {branch} always holds{" "}
+          <span className="text-foreground">one commit off {base}</span>, so this pull request is a
+          snapshot of everything unsent — not a history of what was added since.
+        </>
+      ),
+      tellReviewer: (n: number): string =>
+        `If #${n} has been waiting a while, it may be worth telling the reviewer it changed.`,
+
+      /** `1f` — 파일이 같았다. `1b`와 다른 상태이고 실패가 아니다. */
+      noChanges: "Nothing changed in the files",
+      noChangesDescription:
+        "Your edits were already in the repository, so no pull request was needed.",
+      noChangesBody: (branch: string): ReactNode => (
+        <>
+          malmoi compared what it would write against{" "}
+          <span className="text-foreground">{branch}</span> and the two came out identical. This
+          happens when the same values were pushed from the repository, or when an edit was undone
+          before sending.
+        </>
+      ),
+      inLogs: "It is recorded in Logs as a run with nothing to send.",
+      close: "Close",
+
+      /** `1g` — 버려진 값. **펼친 목록**이다(불변식 9). */
+      partial: "Sent for review \u2014 some values were left out",
+      partialDescription:
+        "The pull request is open, but malmoi could not write every value into the files. What it kept out is listed below.",
+      notWritten: "Not written",
+      warnings: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,
+      stillHere: "These values stay in malmoi and will go out once the files can hold them.",
+
+      /** `1h` — 다시 해도 같다. 제목·바닥 버튼·사실 표가 **사유에서 온다**. */
+      configError: "Couldn't reach the repository",
       /**
-       * 게이트 거부 (7단계 — sync-runs design §6.1). **고장이 아니라 "방금 보냈다"라 tone이 `info`다.**
-       *
-       * ⚠️ **카운트다운이 아니라 정적 문장이다** — 줄어드는 숫자를 그리려면 `setInterval`과
-       * `aria-live`가 붙는데, 헤더의 live region은 하나이고 그것은 저장 알림이 든다.
-       */
-      gate: {
-        "already-running": "Already sending. This page will show the result when it's done.",
-        "too-soon": (seconds: number): string =>
-          `Just sent. Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}.`,
-      },
+        * ⚠️ **원인을 단정하지 않는다** — 이 틀이 덮는 셋(`base-unreadable`·`not-installed`·
+        * `glob-matched-nothing`) 중 브랜치를 못 읽은 것은 하나뿐이다. 무엇이 틀렸는지는 아래
+        * Alert가 서버의 safe 메시지로 말한다.
+        * ⚠️ **"아무것도 안 써졌다"를 쓰지 않는다** (spec C10) — 전송 여부는 바닥 한 줄이 든다.
+        */
+      configErrorDescription: (repo: string, branch: string): string =>
+        `Something about ${repo} has to change before ${branch} can take this. Your edits are still saved here.`,
+      wontHelp: "Retrying won't help",
+      repository: "Repository",
+      baseBranch: "Base branch",
+      failedAt: "Failed at",
+      reference: "Reference",
+      /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
+      sendReference: "Not an owner? Send them the reference above \u2014 it is in Logs too.",
+      settings: "Open project settings",
+      signIn: "Sign in",
+
+      /** `1i` — 다시 하면 된다. "절반만 나갔나"에 **먼저** 답한다. */
+      transientError: "GitHub didn't answer",
+      transientErrorDescription:
+        "The request to GitHub failed partway. Your edits are still saved here.",
+      /**
+        * ⚠️ **"아무것도 안 나갔다"고 말하지 않는다** (spec C10 · 리뷰 1번). `db-unavailable`은 PR을
+        * 연 **뒤** 기록에서 죽는 경로라 그 단정이 거짓이 될 수 있다. 대신 사람이 실제로 두려워하는
+        * 것("두 번 나가면 어떡하나")에 답한다 — 브랜치를 **덮으므로** 재시도가 사본을 만들지 않는다.
+        */
+      transientErrorBody: (): ReactNode => (
+        <>
+          This is usually temporary, and trying again is safe: malmoi{" "}
+          <span className="font-medium">replaces the same branch</span> instead of adding to it, so
+          a second attempt can&apos;t leave two copies behind.
+        </>
+      ),
+      retry: "Try again",
+
+      /** 실행 전 명시적 거부만 미전송을 단정한다 (spec C10). */
+      notStarted: "Nothing was sent. Your edits are safe.",
+      unknownDelivery: "We couldn't confirm whether your changes were sent.",
+
+      /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
+      alreadyRunning: "Someone is publishing right now",
+      alreadyRunningBody:
+        "Another run started a moment ago. Wait for it to finish \u2014 your changes will be included if it hasn't read them yet, and sent next time if it has.",
+      tooSoon: "Just a moment",
+      /** ⚠️ **간격을 수로 말하지 않는다** — 남은 초는 버튼이 들고, 두 수가 한 화면에 서면 어긋나 보인다. */
+      tooSoonBody:
+        "malmoi waits a moment between pull requests so the repository doesn't get two in a row.",
+      wait: (seconds: number): string => `Try again in ${seconds.toLocaleString("en-US")}s`,
+
+      /** `1k` — 판단할 재료를 못 얻었다. **실패로 말하지 않는다**(무색 블록 · `Try again`). */
+      previewFailed: "Couldn't read what would go out",
+      previewFailedDescription: (branch: string): string =>
+        `malmoi reads the locale files on ${branch} to show what your edits would change. That read didn't come back.`,
+      previewFailedTitle: (branch: string): string => `The files on ${branch} couldn't be read`,
+      previewFailedBody: (n: number): string =>
+        `Your ${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} still here. Publishing stays off until this list can be shown \u2014 sending without it would skip the one step that says what a pull request replaces.`,
+      previewFailedHint:
+        "If this keeps happening, the repository connection is the place to look \u2014 an owner can check it in project settings.",
     },
 
     /**
@@ -1650,7 +1911,18 @@ export const en = {
     footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
     methods: {
       title: "Sign-in methods",
-      description: "Add another account with the same verified email to use it as a sign-in method.",
+      /**
+       * 카드 헤더의 배지 (2026-09-16). **분모가 보여야 "하나 더 붙일 수 있다"가 읽힌다** — 숫자만
+       * 두면 Project Home의 배지와 형은 같아지지만 그 사실이 사라진다.
+       *
+       * ⚠️ **계산값이라 서버가 안 는다** — `loginMethodRows`가 준 행에서 `methodCounts`가 센다.
+       */
+      count: (connected: number, total: number): string => `${connected} of ${total}`,
+      /**
+       * ⚠️ **앞 절(`These are the accounts you can use to sign in.`)을 뺐다** (2026-09-16) —
+       * 카드 제목이 이미 그 말을 한다. 헤더 오른쪽 한 줄은 제목이 **안 하는 말**만 든다.
+       */
+      description: "Adding one happens when you sign in with it at this same address.",
       /**
        * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
        * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**
@@ -1666,7 +1938,7 @@ export const en = {
        * 영영 안 밟는다. **이름이 드는 것은 대상이 아니라 축이다**(아래 `disconnectLabel`과 같다).
        */
       connectLabel: (provider: string): string => `Connect ${provider} as a sign-in method`,
-      /** 연결된 행의 보조 줄 — 미연결 행의 `notConnected`와 짝이다. 한쪽만 있으면 행 높이가 갈린다. */
+      /** 연결된 행의 **본문** 상태 절 (2026-09-16에 보조 줄에서 올라왔다) — 미연결 행의 `notConnected`와 짝이다. */
       connected: "Connected",
       notConnected: "Not connected",
       disconnect: "Disconnect",

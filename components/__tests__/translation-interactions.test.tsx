@@ -6,7 +6,6 @@ import { render, find, input } from "./helpers/dom";
 const actions = vi.hoisted(() => ({ save: vi.fn(), publish: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslation: actions.save, triggerPullAction: actions.publish }));
 import { TranslationInput } from "@/components/translation-input";
-import { PublishButton } from "@/components/publish-button";
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -33,16 +32,7 @@ it("저장 요청이 reject해도 작성값과 재시도 버튼이 남는다", a
   expect(find<HTMLTextAreaElement>(container, "textarea").getAttribute("aria-invalid")).toBe("false");
 });
 
-it("Publish 요청이 reject하면 결과 슬롯으로 실패를 돌려준다", async () => {
-  vi.spyOn(console, "error").mockImplementation(() => {});
-  actions.publish.mockRejectedValue(new Error("private transport details"));
-  const onResult = vi.fn();
-  const { container } = await render(<Boundary><PublishButton slug="demo" count={1} onResult={onResult} /></Boundary>);
-  await act(async () => find<HTMLButtonElement>(container, "button").click());
-  expect(onResult).toHaveBeenCalledWith({ status: "failed", error: "unavailable" });
-  expect(container.textContent).not.toContain("Page failed");
-  expect(find<HTMLButtonElement>(container, "button").disabled).toBe(false);
-});
+// Publish transport rejection is covered by publish-button.test.tsx, through preview confirmation.
 
 it("미편집 셀은 재검증된 서버 값을 표시한다", async () => {
   const { container, rerender } = await render(<TranslationInput {...props} />);

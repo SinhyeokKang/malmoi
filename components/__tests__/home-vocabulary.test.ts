@@ -160,6 +160,8 @@ const NOT_A_COUNT: Record<string, string> = {
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",
   "newProject.modal.step": "단계 번호 — `Step 3 of 4`",
+  // 분모가 `LOGIN_PROVIDERS` 길이(2)라 코드 상수로 강제된다 — `Step 3 of 4`와 같은 부류다.
+  "link.methods.count": "LOGIN_PROVIDERS 길이 = 2",
   "newProject.naming.slugTooLong": "글자 수 상한",
   "errors.onboarding.invalid-slug": "글자 수 상한",
   "account.profile.errors.tooLong": "글자 수 상한",
@@ -173,7 +175,10 @@ const NOT_A_COUNT: Record<string, string> = {
   "newProject.files.summaryShort": "로케일 수 — 강제 상한 없음",
   "repositorySync.openPr": "PR 번호 — `#1,207`은 그런 PR이 아니다",
   "home.meta.pr": "PR 번호 — 같은 이유다",
-  "translations.publish.gate.too-soon": "남은 초 — 수가 아니라 대기 시간이다",
+  "translations.publish.prOpen.title": "PR 번호",
+  "translations.publish.replacePr": "PR 번호",
+  "translations.publish.tellReviewer": "PR 번호",
+  "translations.publish.wait": "남은 초 — 수가 아니라 대기 시간이다",
   "repositorySync.unreadable": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
   "repositorySync.notReplaced": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
   "home.cards.acrossSurfaces": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",

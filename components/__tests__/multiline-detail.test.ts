@@ -66,7 +66,7 @@ function renderSites(): { path: string; line: number; text: string }[] {
  * 실재하는지도 보는 것과 같은 형이다. ⚠️ **목록 밖의 새 소비자는 이 검사가 못 잡는다**: `warnings`를
  * 받는 컴포넌트가 늘면 이 목록에 손으로 더해야 한다. 그 좁음을 여기 적어 두는 것이 목록의 대가다.
  */
-const COMPOSED_SITES = [{ path: "components/publish-button.tsx", marker: "warnings.map(" }];
+const COMPOSED_SITES = [{ path: "components/publish-button.tsx", marker: "group.messages.map(" }];
 
 describe("서버가 합친 warnings를 렌더하는 자리도 개행을 접지 않는다", () => {
   it("고정한 파일과 마커가 실재한다 — 이름이 낡으면 검사가 조용해진다", () => {

@@ -21,23 +21,12 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
     expect(m.newProject.imported(903, 2)).toContain("2 couldn't be read");
   });
 
-  it("Publish의 '일부 미기록'은 보냈는지에 따라 문장이 갈린다 — skipped에 'Sent'라고 쓰지 않는다", () => {
-    expect(m.translations.publish.partial(3, true)).toMatch(/^Sent, but 3 values/);
-    expect(m.translations.publish.partial(3, false)).toMatch(/^Nothing new was sent/);
-  });
-
-  /**
-   * ⚠️ **1건이 가장 흔한 경우다** (2026-09-08 code-review 🟡A). 사전에 카운터를 만들어 두고 이 자리에서
-   * 쓰지 않아 "1 values"가 나갔다 — 사용자가 읽는 문장의 문법 오류다.
-   */
-  it("건수가 1이면 단수다", () => {
-    expect(m.translations.publish.partial(1, true)).toContain("1 value ");
-    expect(m.translations.publish.partial(1, true)).not.toContain("1 values");
-    expect(m.translations.publish.partial(1, false)).toContain("1 value ");
-  });
-
-  it("실패 문구는 원인을 그대로 싣는다 — 삼키면 개발자에게 물어보는 것 말고 방법이 없어진다", () => {
-    expect(m.translations.publish.failed("internal (ref abc)")).toContain("internal (ref abc)");
+  it("Publish 카운터는 경고 행을 세고 쿨다운은 서버 초를 표시한다", () => {
+    expect(m.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in malmoi");
+    expect(m.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in malmoi");
+    // ⚠️ **초가 버튼 라벨이고 서버 값 그대로다** — 화면이 대기 간격 상수를 따로 들면 둘이 갈린다.
+    expect(m.translations.publish.wait(1)).toBe("Try again in 1s");
+    expect(m.translations.publish.wait(18)).toBe("Try again in 18s");
   });
 
   /**
@@ -56,9 +45,13 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
     expect(m.translations.banner.unsent(2)).toContain("merged");
   });
 
-  it("Publish 버튼 라벨이 미배포 건수를 든다 — 0이면 숫자를 붙이지 않는다", () => {
-    expect(m.translations.publish.button(0)).toBe("Send changes");
-    expect(m.translations.publish.button(3)).toBe("Send changes (3)");
+  it("Publish의 수는 미리보기 제목이 든다", () => {
+    expect(m.translations.publish.previewTitle(3)).toBe("Publish 3 changes");
+    // ⚠️ **한 건짜리가 실물에서 "Publish 1 changes"로 나갔다** (2026-09-16 실측) — 갈래 넷이 같은 수를 든다.
+    expect(m.translations.publish.previewTitle(1)).toBe("Publish 1 change");
+    expect(m.translations.publish.previewCounts(1, 1)).toBe("1 change in 1 key.");
+    expect(m.translations.publish.previewSummary(1, 1, 1)).toBe("1 change \u00b7 1 key \u00b7 1 file");
+    expect(m.translations.publish.createdDescription(1)).toContain("1 change is in a pull request.");
   });
 });
 

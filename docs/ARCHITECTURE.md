@@ -300,7 +300,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.test.ts`가 `contract.ts`의 헬퍼로 그 계약을 `ADAPTERS` 순회로 고정한다(판정과 순회가 갈려 있다 — §1.1): 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
   - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 문장`, 있을 때만)로 올린다.
-    ⚠️ **`AdapterError`는 문장을 안 든다 — 코드를 든다** (2026-09-08, 6b-1): `{ path, code: AdapterErrorCode, key?, detail? }`이고 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage`가 사전(`messages/en.tsx`의 `adapterErrors`)에서 꺼내 조립한다 — `key`는 앞에, `detail`(파서 원문)은 뒤 괄호에. 어댑터가 자유 문자열을 만들던 시절엔 **화면에 닿는 문구가 사전 밖에 있어** en으로 고쳐도 ko가 따라오지 않았다 . ⚠️ **`lib/survey/one.ts`의 `classify`가 같은 코드로 §1.9 지표 ③을 가르므로 갈래를 합치면 회차 간 대조가 무의미해진다** — `parse-failed`와 `parse-crashed`가 옛 문구 기준으로 다른 통이라 갈라져 있고, `__tests__/classify.test.ts`가 옛 문구 22개와 옛 분류기 본문을 픽스처로 들고 그 표를 고정한다 (§20). 편집 UI에서는 **결과 자체가 갈린다** (2026-09-08): `pullMessage`가 warnings ≥ 1이면 tone을 `warning`으로 내리고 "N values couldn't be written — tell your developers." 문장을 낸다 — 성공 문구에 덧붙이는 것이 아니다(그러면 버린 값이 success 안에 숨는다, §0 불변식 9). **2층 스킵에 warnings가 붙어도 같다** — 다만 그때는 "Sent"라고 쓰지 않는다(아무것도 안 갔다). **어느 파일인지는 화면이 직접 보인다** (2026-09-08 ship 3) — `components/publish-button.tsx`가 `outcome`을 들고 `<details>`로 `파일: 메시지`를 편다. 문구의 정본은 `messages/en.tsx`이고 `lib/pull/message.ts`가 그것을 읽는다(cron 응답 JSON·Action 반환에도 그대로 실린다). 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
+    ⚠️ **`AdapterError`는 문장을 안 든다 — 코드를 든다** (2026-09-08, 6b-1): `{ path, code: AdapterErrorCode, key?, detail? }`이고 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage`가 사전(`messages/en.tsx`의 `adapterErrors`)에서 꺼내 조립한다 — `key`는 앞에, `detail`(파서 원문)은 뒤 괄호에. 어댑터가 자유 문자열을 만들던 시절엔 **화면에 닿는 문구가 사전 밖에 있어** en으로 고쳐도 ko가 따라오지 않았다 . ⚠️ **`lib/survey/one.ts`의 `classify`가 같은 코드로 §1.9 지표 ③을 가르므로 갈래를 합치면 회차 간 대조가 무의미해진다** — `parse-failed`와 `parse-crashed`가 옛 문구 기준으로 다른 통이라 갈라져 있고, `__tests__/classify.test.ts`가 옛 문구 22개와 옛 분류기 본문을 픽스처로 들고 그 표를 고정한다 (§20). 편집 UI에서는 **결과 자체가 갈린다**: warnings ≥ 1이면 성공이 **별도 갈래**가 되고(`planPublishView`의 `partial`), 성공 문구에 한 줄 덧붙이는 것이 아니다 — 그러면 버린 값이 success 안에 숨는다(§0 불변식 9). **2층 스킵에 warnings가 붙어도 같다** — 다만 그때는 "Sent"라고 쓰지 않는다(아무것도 안 갔다). **어느 파일인지는 화면이 직접 보인다** — Publish 모달이 `파일: 메시지`를 **펼친 목록**으로 세운다(DESIGN §6.646). ⚠️ **2026-09-16에 `<details>`가 사라졌다** — 접힌 목록은 불변식 9의 경계선이었다. 같은 날 `pullMessage`도 사라졌다: tone 넷을 내던 그 함수 대신 화면이 `PullOutcome`을 직접 갈래로 옮기고(`lib/publish/plan.ts`) `lib/pull/message.ts`에는 **타입만** 남았다. 문구의 정본은 `messages/en.tsx`다(cron 응답 JSON·Action 반환에는 `PullOutcome`이 그대로 실린다). 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
 
@@ -321,7 +321,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **같은 값이라도 그것을 소스에 적는 방법이 여러 가지면, 고르는 주체는 원본이다.** 값만 맞추면 편집한 줄이 주변과 다른 스타일로 남아 diff가 번지고, 대상 리포의 Prettier·ESLint가 그 PR을 거부한다.
 
-- **인용 부호** (`code-dict`·`ts-dict`) — `lib/adapters/quote-style.ts`. 이스케이프 안전성은 계속 `JSON.stringify`가 지고, `quoteLiteral`이 그 결과를 원본의 부호로 옮긴다. **대응하는 원본 리터럴이 없는 삽입 키만** 파일의 다수 부호(`dominantQuote`)를 따른다 — 삽입 줄만 튀면 맞춘 의미가 없다.
+- **인용 부호** (`code-dict`·`ts-dict`) — `lib/adapters/quote-style.ts`. 이스케이프 안전성은 계속 `JSON.stringify`가 지고, `quoteLiteral`이 그 결과를 원본의 부호로 옮긴다. **대응하는 원본 리터럴이 없는 삽입 값만** 카탈로그 번역 값의 다수 부호(`dominantQuote`)를 따른다 — 키·import·다른 코드의 문자열은 세지 않는다. 삽입 키 이름은 별도로 가장 가까운 선택적 형제의 표기를 따르고, 형제에 단서가 없으면 파일에서 찾는다.
   - 결정성: `dominantQuote`를 삽입 **전에** 세지만 삽입은 항상 다수 쪽을 늘리므로 판정이 진동하지 않는다. 진동하면 2차 write가 1차와 달라져 blob 비교가 매번 "변경됨"을 뱉는다 — `code-dict.test.ts`의 삽입 바이트 고정점 케이스가 이걸 고정한다.
 - **YAML 블록 스타일** (`yaml-catalog`) — CST 노드가 스타일을 들고 있어 값만 갈아끼우면 저절로 보존된다. **단 값 자체가 그 스타일과 모순되면 `yaml`이 지시자를 바꾼다** — 접힌 스칼라 `>`(clip)는 끝 개행을 함의하므로, 개행 없는 값으로 편집하면 `>-`(strip)가 된다. 값을 정확히 표현하기 위한 변경이라 정상이다 (실물 PR `i18n-format-check#1`).
 
@@ -1143,17 +1143,45 @@ $transaction(tx):
 - 안 드는 자리는 **불변식 위반**(`unreachable:`)이거나 **readiness가 이미 막는 설정 부재**다 — sync 층에서
   가를 이름이 없고, `unknown`이 정직하다.
 
-⚠️ **`retryable`은 계산되지만 아직 아무 데도 안 간다** (2026-09-11 등재). `classifySyncError`가 `RETRYABLE`
-표로 코드마다 그 값을 정해 `SyncFinish`에 싣는데, `runSync`의 `syncRun.update`가 그것을 쓰지 않고
-**`SyncRun`에 컬럼이 없으며** `loadSyncRuns`도 안 읽는다 — 즉 **소비자 0인 생산자**이고, 이 절의
-"생산자 없는 코드는 두지 않는다"의 정확히 반대 방향이다. 적어 두는 이유는 두 오독을 막기 위해서다:
-UI·자동 재시도가 이미 배선돼 있다고 믿는 것, 그리고 `RETRYABLE`을 "미사용"으로 지우는 것.
+⚠️ **`retryable`이 2026-09-16부터 화면까지 간다** (그전 등재는 "소비자 0"이었다). `classifySyncError`가
+`RETRYABLE` 표로 정한 값을 `failureOutcome`이 **`PullOutcome`에 그대로 싣고**(`code`·`retryable`·`delivery`
+셋), Publish 모달이 그 하나로 실패 화면 둘을 가른다 — `true`면 "다시 하면 된다", `false`면 "설정을
+고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** `loadSyncRuns`도 안 읽는다: 이력
+화면이 그 구별을 하려면 컬럼이 먼저다.
+
+- ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
+  명시적 거부(게이트 둘·인가·준비 거부 여섯)만 `not-started`이고, **실행 중 실패와 클라이언트
+  Action 응답 유실은 전부 `unknown`**이다. 보수적인 쪽으로 고정한 근거는 `saveLastPulledAt`이
+  **PR을 연 뒤**에 돌기 때문이다 — 거기서 죽으면 리포에는 이미 반영돼 있다. **그래서 화면이
+  "아무것도 안 나갔다"를 말할 수 있는 자리는 `not-started` 하나뿐이다**(PRODUCT §4.1).
+- ⚠️ **실행 전 거부 여섯은 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`도 `retryable`도 없고
+  **`SyncRun` 행 자체가 안 생긴다.** 그래서 그 갈래의 화면은 `Reference`도, "Logs에도 있다"도
+  함께 뺀다: 없는 곳을 가리키게 된다. 가르는 기준은 하나로 유지한다("사람이 다시 해서 통하나") —
+  `unavailable`만 재시도 쪽이고 나머지 다섯은 설정 쪽이다.
 
 - **그 표가 담은 사실은 진짜다** — `base-unreadable`·`not-installed`·`glob-matched-nothing` 셋은
   **사람이 고치기 전까지 cron이 매일 밤 같은 실패를 반복한다**(리포 상태·설치·경로 설정이라 시간이
   해결하지 않는다). 나머지 넷(`db-unavailable`·`github-error`·`stale`·`unknown`)만 다음 실행에서 저절로 풀린다.
 - **표시하기로 하면 컬럼이 먼저다.** 지금 화면이 그 구별을 흉내 내려면 `errorCode`로 다시 분기해야 하고,
   그 순간 판정이 두 벌이 된다 — `lib/sync/plan.ts`가 그 축의 주인이다.
+
+### 5.6.35 Publish 미리보기는 **표시 전용**이다 (2026-09-16)
+
+`readPublishPreview`(`lib/publish/read.ts`)가 base 트리를 읽어 "무엇을 덮는가"를 만든다. 읽기만 하는
+Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullRequest`는 `project:settings`(OWNER
+전용)라 EDITOR에게는 열린 PR 번호가 영영 `undefined`가 된다(`entry-points.test.ts`가 그 제약을 고정한다).
+
+⚠️ **이 조회가 돌려준 "이전 값"은 어떤 판정의 입력도 아니다** (§0 불변식 2). export·커밋·PR 판정은
+`runPull`이 DB만 보고 하고, 여기서 읽은 base 값은 **화면에만** 간다. 둘을 견줘 고르는 코드가 생기는
+순간 "병합 없음"이 깨진다.
+
+⚠️ **미리보기와 실행 사이에 시간차가 있다.** 그 사이 다른 사람이 발송하면 확인 버튼을 눌러도
+`no-changes`가 돌아온다 — **미리보기의 수가 실행의 결과를 보장하지 않는다.** 그래서 화면이 그 결과를
+별도 갈래로 들고(`1f`), 미리보기 재열기와 재시도가 **매번 새 조회부터** 시작한다.
+
+⚠️ **조회 실패는 `SYNC_ERROR_CODES`와 섞지 않는다** — 실행 행이 없으므로 오류 분류가 아니라
+**모달 상태**다. 그리고 **읽지 못하면 보내지 않는다**: 같은 조회가 실행 중에 또 돌아
+`base-unreadable`로 죽을 확률이 높고, 예외를 두면 "무조건 목록을 보고 보낸다"가 "보통은"이 된다.
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
@@ -1516,8 +1544,9 @@ Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-o
 저장할 키가 없어 화면으로 도달하지 않으므로 이것이 막는 것은 **URL 직접 호출**과 적재 실패 후의
 재방문이다. 판정은 `planProjectReadiness`(`lib/onboarding/readiness.ts`)이고 **`ProjectAccess` union에
 넣지 않았다** — 넣으면 `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
-그래서 문구는 `onboardErrorMessage`가 들고, `pullMessage`·`translation-input`이 `isAccessError` 다음에
-`isOnboardError`를 본다 — 한쪽만 보면 번역자 화면에 내부 토큰(`not-ready`)이 그대로 뜬다.
+그래서 문구는 `onboardErrorMessage`가 들고, **Publish 모달**(`failureText`)·`translation-input`이
+`isAccessError` 다음에 `isOnboardError`를 본다 — 한쪽만 보면 번역자 화면에 내부 토큰(`not-ready`)이
+그대로 뜬다.
 
 ⚠️ **`/projects`는 두 union을 함께 읽는다** (2026-09-06, SaaS 4단계). GitHub 연결 실패도 그 화면에 착지한다 —
 state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보낸다. `isAccessError` 하나만 보면 연결 사유
@@ -1553,9 +1582,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 ### 6.35 ⚠️ 판정을 오케스트레이션 파일에 두지 않는다 — 클라이언트 번들이 그 그래프를 따라온다 (2026-09-07)
 
 거부 사유가 화면에 닿아야 하므로(§6.3) **문구 모듈은 클라이언트 컴포넌트가 import한다** —
-`accessErrorMessage`·`connectErrorMessage`·`onboardErrorMessage`·`pullMessage`에
+`accessErrorMessage`·`connectErrorMessage`·`onboardErrorMessage`에
 **`repositorySettingsErrorMessage`**(`lib/settings/message.ts` — 로케일 폼·리포 폼)와
-**`adapterErrorMessage`**(`lib/i18n/adapter-errors.ts` — 온보딩 둘)를 더해 **여섯이다**(2026-09-11 정정 — 넷으로 적혀 있었다).
+**`adapterErrorMessage`**(`lib/i18n/adapter-errors.ts` — 온보딩 둘, 그리고 2026-09-16부터 Publish 모달의
+버려진 값 목록)를 더해 **다섯이다** (2026-09-11에 넷→여섯으로 고쳤고, 2026-09-16에 `pullMessage`가
+사라져 다섯이 됐다 — 그 자리는 `lib/publish/plan.ts`의 갈래 판정이 대신한다).
 그래서 그 모듈들이 **값으로 끌어오는 것이 곧 클라이언트 번들**이 된다. ⚠️ **새 `*ErrorMessage`를 만들 때마다 여기 더한다** —
 숫자가 낡으면 "문구 경로는 전부 가볍다"가 실측 없이 서 있게 된다.
 
@@ -1722,6 +1753,22 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 callback 라우트만 로그가 있고 Action·토큰 껍데기·probe는 없던 것을 한 곳으로 모았다. `reauthorize`는
 남기지 않는다(화면이 다음 행동을 말한다). `token-store.test.ts`·`github-connect.test.ts`가 `console.error`
 호출을 단언한다.
+
+⚠️ **한 요청에서 `ensureUserToken`을 두 번 부르지 않는다** (2026-09-16). 만료된 토큰이면 두 호출이
+**같은 refresh 토큰을 읽고 둘 다 회전을 시도한다** — GitHub의 refresh 토큰은 1회용이라 한쪽이 400을
+받고, **거부가 성공보다 빨리 오므로** 진 쪽의 `afterRace`가 이긴 쪽의 `updateMany`보다 먼저 행을 읽어
+옛 토큰을 보고 **`reauthorize`**를 낸다. 어느 쪽이 지는지는 결정되지 않고, 화면을 그리는 쪽이 지는 날
+**멀쩡한 연결에 "인가가 만료됐다"가 뜬다.**
+
+⚠️ **`token-store.ts`의 조건부 쓰기(`where`에 읽었던 `refresh_token`) + `afterRace`가 그것을 막아 준다고
+읽지 않는다** — 그 장치는 **탭 둘이 따로 요청을 보내는** 순차 경합용이고 거기서도 같은 창이 있다. 같은
+요청의 `Promise.all`은 두 호출을 **같은 마이크로태스크에서** 출발시켜 **항상 같은 행을 읽게 만들어** 그
+창을 최대로 연다. 값이 둘 필요하면 **직렬화한다** — 뒤엣것이 앞엣것의 상태에서만 쓰이는 경우가
+대부분이고, 그때 병렬은 **결과를 버리면서 경합만 만든다**(`/account`가 그랬다: 연결 안 된 세 갈래에서
+GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" app lib | grep -v __tests__` →
+**호출부 다섯이고 같은 요청에 둘이 도는 자리는 없다**(프로젝트 Action 셋은 서로 다른 Action이다).
+`pnpm test`·`typecheck`·브라우저 실측 **전부 못 본다** — 경합이라 재현이 확률적이고 만료 토큰에서만
+난다 (POSTMORTEM 2026-09-16).
 
 ⚠️ **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다.** 리네임·소유자 이전을 서버가
 조용히 받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.

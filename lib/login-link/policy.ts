@@ -141,6 +141,16 @@ export function loginMethodRows(
   }));
 }
 
+/**
+ * 수단 카드 헤더의 `{connected} of {total}` 배지 (design §1.3).
+ *
+ * ⚠️ **`loginMethodRows`가 준 행에서 센다** — 서버 값이 하나도 안 는다. 분모를 `Account` 행에서
+ * 직접 세면 `github-app`(로그인 수단이 아니다)이 섞여 `2 of 3`이 된다.
+ */
+export function methodCounts(rows: readonly { connected: boolean }[]): { connected: number; total: number } {
+  return { connected: rows.filter((row) => row.connected).length, total: rows.length };
+}
+
 /** 마지막 로그인 수단은 해제할 수 없다 (design 불변식 6). */
 export function canUnlink(methods: readonly string[], provider: string): boolean {
   const login = methods.filter(isLoginProvider);

@@ -50,18 +50,22 @@ export async function runSync(
   }
 
   const finish = planSyncFinish(result);
-  await prisma.syncRun.update({
-    where: { id: runId },
-    data: {
-      status: finish.status,
-      errorCode: finish.errorCode,
-      prUrl: finish.prUrl,
-      changed: finish.changed,
-      warnings: finish.warnings,
-      finishedAt: new Date(),
-    },
-  });
-
+  try {
+    await prisma.syncRun.update({
+      where: { id: runId },
+      data: {
+        status: finish.status,
+        errorCode: finish.errorCode,
+        prUrl: finish.prUrl,
+        changed: finish.changed,
+        warnings: finish.warnings,
+        finishedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    // 리포 쓰기 이후의 DB 실패일 수 있으므로 미전송을 단정하지 않는다.
+    return failureOutcome(slug, error);
+  }
   return outcome;
 }
 
@@ -114,12 +118,12 @@ async function startRun(
       trigger,
     });
     if (gate.status === "already-running") {
-      return { status: "rejected", outcome: { status: "failed", error: "already-running" } };
+      return { status: "rejected", outcome: { status: "failed", error: "already-running", delivery: "not-started", retryable: false } };
     }
     if (gate.status === "too-soon") {
       return {
         status: "rejected",
-        outcome: { status: "failed", error: "too-soon", retryAfterSeconds: gate.retryAfterSeconds },
+        outcome: { status: "failed", error: "too-soon", delivery: "not-started", retryable: false, retryAfterSeconds: gate.retryAfterSeconds },
       };
     }
 
@@ -155,12 +159,13 @@ async function startRun(
  */
 function failureOutcome(slug: string, error: unknown): PullOutcome {
   const failure = classifyFailure(error);
+  const { code, retryable } = classifySyncError(error);
   if (failure.safe) {
     // 우리 문구도 로그에 남긴다 — 응답은 200 배열이라 cron에서는 이것이 유일한 신호다.
     console.error(`[sync:${slug}] ${classifySyncError(error).code} ${failure.message}`);
-    return { status: "failed", error: failure.message };
+    return { status: "failed", error: failure.message, code, retryable, delivery: "unknown" };
   }
   const ref = randomUUID().slice(0, 8);
   console.error(`[sync:${slug}] ${ref} ${failure.detail}`);
-  return { status: "failed", error: `internal (ref ${ref})` };
+  return { status: "failed", error: `internal (ref ${ref})`, code, retryable, delivery: "unknown" };
 }
