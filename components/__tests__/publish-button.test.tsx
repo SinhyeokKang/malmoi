@@ -21,13 +21,13 @@ async function click(name: string) { await act(async () => { await userEvent.set
 function deferred<T>() { let resolve!: (x: T) => void; let reject!: (x: unknown) => void; const promise = new Promise<T>((a,b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 beforeEach(() => { vi.clearAllMocks(); mocks.preview.mockResolvedValue(preview); mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits" }); });
 describe.each(["translations", "home"])("%s 호스트", kind => {
-function Host({ count = 1 }: { count?: number }) {
+function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" | "EDITOR" }) {
   if (kind === "home") return <HomeActions slug="acme"><HomeTitle archived={false}>Host</HomeTitle>
-    <HomeHeaderActions slug="acme" name="Host" branch="main" role="EDITOR" unsent={count} paused={false} />
-    <HomeNotices slug="acme" name="Host" branch="main" role="EDITOR" state="default" repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} unsent={count} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
+    <HomeHeaderActions slug="acme" name="Host" branch="main" role={role} unsent={count} paused={false} />
+    <HomeNotices slug="acme" name="Host" branch="main" role={role} state="default" repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} unsent={count} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
   </HomeActions>;
   return <TranslationsHeader slug="acme" surfaceSlug="default" surfaces={[]} totalCount={1} query={{}} chipQuery={{}}
-    namespaces={[]} locales={[]} selected={[]} fallback={[]} unpublished={count} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} lastSentLabel={null} lastPrUrl={null}
+    namespaces={[]} locales={[]} selected={[]} fallback={[]} unpublished={count} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} role={role} lastSentLabel={null} lastPrUrl={null}
     dismissKey="never" baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
 }
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
@@ -107,6 +107,22 @@ it("키 병합은 rowSpan이 들고 diff 두 줄은 낭독될 이름을 든다",
   const labels = [...document.querySelectorAll(".sr-only")].map(n => n.textContent);
   expect(labels).toContain("In the repository");
   expect(labels).toContain("Your edit");
+});
+/**
+ * ⚠️ **복구 버튼이 역할을 탄다** (2026-09-16 사용자 판정). 설정 화면은 `project:settings`라 EDITOR가
+ * 누르면 거절당한다 — **무반응·거절당하는 버튼은 비활성보다 한 단계 아래다**. 캔버스 자신도 `1h`에
+ * "설정은 OWNER만 열므로 눌러서 거절당하는 경험을 만들지 않는다"고 적었다.
+ * ⚠️ **바닥의 "오너에게 전달하라" 한 줄은 두 역할 모두에 선다** — 그것이 EDITOR의 유일한 복구 경로다.
+ */
+it.each([["OWNER", 1], ["EDITOR", 0]] as const)("설정 링크는 %s에게 %i개다", async (role, links) => {
+  mocks.pull.mockResolvedValue({ status: "failed", error: "could not read the base branch", code: "base-unreadable", retryable: false, delivery: "unknown" });
+  await render(<Host role={role} />);
+  await click("Publish1"); await click("Open pull request");
+  expect(document.querySelectorAll('a[href="/projects/acme/settings"]')).toHaveLength(links);
+  expect(document.body.textContent).toContain("Not an owner?");
+  // 서버가 준 safe 메시지를 코드로 갈음하지 않는다 — 코드만 남기면 "안 된대요"가 한 낱말 바뀔 뿐이다.
+  expect(document.body.textContent).toContain("could not read the base branch");
+  expect(document.body.textContent).toContain("base-unreadable");
 });
 it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗지 않는다", async () => {
   const run = deferred<unknown>(); mocks.pull.mockReturnValueOnce(run.promise);

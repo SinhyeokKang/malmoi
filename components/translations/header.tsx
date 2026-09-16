@@ -26,6 +26,7 @@ export function TranslationsHeader({
   fallback,
   unpublished,
   repo,
+  role,
   lastSentLabel,
   lastPrUrl,
   dismissKey,
@@ -55,6 +56,8 @@ export function TranslationsHeader({
   unpublished: number;
   /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
   repo: { owner: string; name: string; branch: string; syncBranch: string };
+  /** `1h`의 복구 버튼이 이것을 탄다 — EDITOR는 설정 화면에 못 들어간다. */
+  role: "OWNER" | "EDITOR";
   /** ⚠️ 서버가 만든 상대 시각이다 — 클라이언트가 다시 계산하면 하이드레이션이 갈린다. */
   lastSentLabel: string | null;
   lastPrUrl: string | null;
@@ -138,7 +141,7 @@ export function TranslationsHeader({
         그 안의 빈 상태가 `flex-1`로 남은 높이를 먹는다. 표가 올 때는 아무 일도 안 한다 — 표는
         `flex-1`이 아니라 자연 높이다.
       */}
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unpublished} repo={repo} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unpublished} repo={repo} role={role} />
       <PanelBody width="fluid" className="flex flex-col">
         {/*
           배너는 본문에, Publish 결과는 위의 모달에 둔다.

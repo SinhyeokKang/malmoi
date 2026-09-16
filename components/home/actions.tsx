@@ -263,7 +263,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
     </div>
   );
 }

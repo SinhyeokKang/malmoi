@@ -296,10 +296,16 @@ function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
 
 const stamp = (at: Date) => `${at.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${at.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
 
-export function PublishModal({ slug, publish, fallbackFocusRef, count, repo }: {
+export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;
   publish: PublishController;
   fallbackFocusRef: RefObject<HTMLElement | null>;
+  /**
+   * ⚠️ **`1h`의 복구 버튼이 역할을 탄다** (2026-09-16 사용자). 설정 화면은 `project:settings`라
+   * EDITOR가 누르면 거절당한다 — **무반응·거절당하는 버튼은 비활성보다 한 단계 아래다**(Home의
+   * 배너 셋·Sync 결과가 이미 같은 형이다). EDITOR에게는 바닥의 "오너에게 전달하라" 한 줄만 남는다.
+   */
+  role: "OWNER" | "EDITOR";
   /** 미발송 수 — `1a`의 스켈레톤과 `1k`가 조회 전에도 그것을 말한다. */
   count: number;
   /**
@@ -430,8 +436,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo }: {
           description = hasCode ? p.configErrorDescription(label, repo.branch) : undefined;
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
-          actions = hasCode
+          actions = hasCode && role === "OWNER"
             ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={`/projects/${slug}/settings`}>{p.settings}</a>
+            // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
               ? <a className={buttonClass({ variant: "primary", size: "lg" })} href="/signin">{p.signIn}</a>
               : null;

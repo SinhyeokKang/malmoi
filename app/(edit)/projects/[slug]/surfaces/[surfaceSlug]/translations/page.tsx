@@ -206,6 +206,7 @@ export default async function TranslationsPage({
       unpublished={unpublished}
       /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 octokit·ts-morph를 물어 클라이언트가 물면 안 된다. */
       repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
+      role={role}
       lastSentLabel={
         project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date())
       }
