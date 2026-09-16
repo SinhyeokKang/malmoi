@@ -545,3 +545,59 @@ describe("code-dict — 키 단위 스킵도 보고한다 (2026-09-04 audit #3)"
     expect(res.content).toContain("새 값");
   });
 });
+
+
+describe("code-dict — 삽입 형식 회귀", () => {
+  for (const indent of ["", "  ", "    ", "\t"]) {
+    for (const comma of ["", ","]) {
+      it(`${JSON.stringify(indent)} 들여쓰기와 끝 쉼표 ${comma ? "있음" : "없음"}을 형제에서 읽는다`, () => {
+        const src = `const en = {\n${indent}'errors.network': 'Network error',\n${indent}'errors.unknown': 'Unknown error'${comma} // keep\n\n} as const;\nexport default en;\n`;
+        const entries = [{ key: "settings.z", message: "Z" }, { key: "settings.tone", message: "Tone" }];
+        const expected = `const en = {\n${indent}'errors.network': 'Network error',\n${indent}'errors.unknown': 'Unknown error', // keep\n\n${indent}'settings.tone': 'Tone',\n${indent}'settings.z': 'Z'${comma}\n} as const;\nexport default en;\n`;
+        const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+        expect(out).toBe(expected);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries })).toBe(out);
+        expect(codeDict.write(withSource(src), { locale: "ko", entries: [...entries].reverse() })).toBe(out);
+        expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+        const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+        expect(back.errors).toEqual([]);
+        expect(back.locales[0]!.entries).toEqual(expect.arrayContaining(entries.map(e => expect.objectContaining(e))));
+      });
+    }
+  }
+
+  it("중첩 객체의 형제를 따르고 CRLF와 바깥 바이트를 보존한다", () => {
+    const src = "export default {\r\n  el: {\r\n      ok: 'OK',\r\n  },\r\n  name: 'en',\r\n};\r\n";
+    const expected = src.replace("      ok: 'OK',\r\n", "      ok: 'OK',\r\n      next: 'Next',\r\n");
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "el.next", message: "Next" }] })).toBe(expected);
+  });
+
+  it("형제가 없는 한 줄 객체는 원본 안쪽 여백과 끝 쉼표 없음을 따른다", () => {
+    for (const space of ["", " "]) {
+      const src = `const en = {${space}} as const;\nexport default en;\n`;
+      const entries = [{ key: "tone", message: "Tone" }, { key: "zoom", message: "Zoom" }];
+      const expected = `const en = {${space}tone: "Tone",${space}zoom: "Zoom"${space}} as const;\nexport default en;\n`;
+      const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+      expect(out).toBe(expected);
+      expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+    }
+  });
+});
+
+
+describe("code-dict — 빈 여러 줄 객체의 삽입 기준", () => {
+  it("파일에 들여쓰기 단서가 없으면 2칸과 끝 쉼표 없음으로 시작한다", () => {
+    const src = "const en = {\n} as const;\nexport default en;\n";
+    expect(codeDict.write(withSource(src), { locale: "ko", entries: [{ key: "tone", message: "Tone" }] }))
+      .toBe('const en = {\n  tone: "Tone"\n} as const;\nexport default en;\n');
+  });
+
+  it("빈 중첩 객체는 파일의 들여쓰기 단서를 닫는 괄호에 더한다", () => {
+    const src = "export default {\n    name: 'en',\n    el: {\n    },\n};\n";
+    const entries = [{ key: "el.tone", message: "Tone" }, { key: "name", message: "EN" }, { key: "zoom", message: "Zoom" }];
+    const expected = "export default {\n    name: 'EN',\n    el: {\n        tone: 'Tone'\n    },\n    zoom: 'Zoom',\n};\n";
+    const out = codeDict.write(withSource(src), { locale: "ko", entries })!;
+    expect(out).toBe(expected);
+    expect(codeDict.write(withSource(out), { locale: "ko", entries })).toBe(out);
+  });
+});

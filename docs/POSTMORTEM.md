@@ -1933,3 +1933,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 파일 소유권을 키 하나로 찾고 셀의 다른 축인 로케일을 생략했다. 조회 실패를 첫 경로로 폴백하면 오류 대신 그럴듯한 미리보기가 나왔다.
 - **그물**: 병렬 정적 리뷰와 multi-locale 회귀 테스트가 잡았다. 기존 단일 JSON 파일 테스트·타입 검사는 두 경로가 경쟁하는 입력이 없어 놓쳤다.
 - **재발 방지**: `rg -n 'matches\[0\]|paths\[0\]|localeCode.*path' lib/publish`를 실행했다. 미리보기는 활성 로케일의 정확히 한 경로만 허용하고 불확실하면 조회 실패로 막는다. `lib/publish/__tests__/read.test.ts`가 로케일별 파일, 경로 부재·중복, per-locale 새 파일을 고정한다. export 경로·판정은 변경하지 않았다.
+
+
+### 2026-09-16 — 삽입 키의 인용 부호만 맞추고 들여쓰기와 끝 쉼표를 놓쳤다 (2026-09-03 표현 보존 결함 재발)
+
+- **영역**: `lib/adapters/code-dict.ts`의 `insert`, `lib/adapters/__tests__/code-dict.test.ts`.
+- **증상**: 실물 왕복 PR에서 2칸·끝 쉼표를 쓰는 파일에 새 키만 4칸·쉼표 없음으로 삽입됐다. 기존 값의 치환이 보존되더라도 삽입은 별도 표현 경로였다.
+- **근본 원인**: `addPropertyAssignment`의 기본 manipulationSettings가 원본 형식까지 따를 것으로 취급했다. `quoteLiteral`로 부호만 맞춰도 들여쓰기·쉼표·개행은 ts-morph가 정했다. 수정 중 `replaceWithText`와 `replaceText`도 중첩 들여쓰기 또는 CRLF를 정규화하는 것을 회귀 테스트로 확인했다.
+- **그물**: Claude Code의 실물 PR 관측과 새 전체 문자열 단언이 잡았다. 기존 의미 왕복·삽입 순서·무편집 고정점 검사는 형식이 잘못된 채 안정적인 출력을 놓쳤다. 0칸·2칸·4칸·탭 × 끝 쉼표 유무, 중첩 CRLF, 빈 객체를 검사하고 동일 입력 반복·입력 순서 반전·재적용 고정점·재파싱 값 검사를 함께 둔다.
+- **재발 방지**: `rg -n 'addPropertyAssignment|applyTextChanges' lib/adapters --glob '*.ts' --glob '!**/__tests__/**'`로 삽입 API를 확인한다. 수정 후 `code-dict`의 `applyTextChanges` 1곳만 있다. `pnpm test lib/adapters/__tests__/code-dict.test.ts`의 삽입 형식 회귀를 실행한다. 범위 치환 후 AST는 다시 얻어야 한다. 원격 왕복은 이번 작업에서 실행하지 않았으며 Claude Code가 이어서 검증한다.

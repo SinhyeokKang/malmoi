@@ -354,6 +354,8 @@ function writeWithErrors(
     const value = wanted.get(key);
     if (value === undefined) continue;
     if (insert(root, key, value, quote)) {
+      // 원문 범위 치환은 기존 AST 노드를 무효화한다. 다음 키는 새 트리에서 찾는다.
+      root = defaultExportObject(sf)!;
       changed = true;
       continue;
     }
@@ -430,7 +432,47 @@ function insert(obj: ObjectLiteralExpression, key: string, value: string, quote:
   }
   const remaining = segments.slice(at).join(SEP);
   if (remaining === "") return false;
-  cur.addPropertyAssignment({ name: quoteName(remaining, quote), initializer: quoteLiteral(value, quote) });
+  const source = cur.getSourceFile().getFullText();
+  const start = cur.getStart();
+  const close = cur.getEnd() - 1;
+  const properties = cur.getProperties();
+  const last = properties.at(-1);
+  const trailingComma = cur.compilerNode.properties.hasTrailingComma === true;
+  const closeLine = source.lastIndexOf("\n", close - 1) + 1;
+  const closeIndent = source.slice(closeLine, close);
+  const multiline = closeLine > start && /^[\t ]*$/.test(closeIndent);
+  const property = `${quoteName(remaining, quote)}: ${quoteLiteral(value, quote)}${trailingComma ? "," : ""}`;
+  let position: number;
+  let insertion: string;
+  if (multiline) {
+    // 가장 가까운 형제의 들여쓰기를 그대로 쓴다 — ts-morph 기본 폭으로 반올림하지 않는다.
+    const siblingIndent = [...properties].reverse().map((prop) => {
+      const line = source.lastIndexOf("\n", prop.getStart() - 1) + 1;
+      return source.slice(line, prop.getStart());
+    }).find((prefix) => /^[\t ]*$/.test(prefix));
+    // 빈 여러 줄 객체는 파일의 첫 프로퍼티 들여쓰기를 단서로 삼는다.
+    // 그것도 없으면 닫는 괄호 + 2칸, 끝 쉼표 없음으로 시작한다.
+    const fileIndent = cur.getSourceFile().getDescendantsOfKind(SyntaxKind.PropertyAssignment)
+      .map((prop) => source.slice(source.lastIndexOf("\n", prop.getStart() - 1) + 1, prop.getStart()))
+      .find((prefix) => /^[\t ]+$/.test(prefix));
+    const indent = siblingIndent ?? closeIndent + (fileIndent ?? "  ");
+    const newline = source.includes("\r\n") ? "\r\n" : "\n";
+    position = closeLine;
+    insertion = `${indent}${property}${newline}`;
+  } else {
+    // 빈 한 줄 객체는 원래 안쪽 여백을 쓰고 한 줄·끝 쉼표 없음으로 시작한다.
+    const space = source.slice(start + 1).match(/^[\t ]*/)?.[0] ?? "";
+    const tailSpace = source.slice(start + 1, close).match(/[\t ]*$/)?.[0] ?? "";
+    position = close - tailSpace.length;
+    insertion = `${space}${property}`;
+  }
+  let text = source.slice(start, position) + insertion + source.slice(position, cur.getEnd());
+  if (last !== undefined && !trailingComma) {
+    const commaAt = last.getEnd() - start;
+    text = text.slice(0, commaAt) + "," + text.slice(commaAt);
+  }
+  // 객체를 재포맷하면 기존 주석·빈 줄·개행 코드까지 바뀌므로 원본 구간만 치환한다.
+  cur.getSourceFile().applyTextChanges([{ span: { start, length: cur.getEnd() - start }, newText: text }]);
   return true;
 }
 
