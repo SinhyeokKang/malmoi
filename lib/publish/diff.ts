@@ -1,7 +1,8 @@
 export type PublishCell = { surface: string; path: string; keyId: string; key: string; localeCode: string; after: string; author: string; updatedAt: string };
 export type BaseValues = Record<string, Record<string, Record<string, string>>>;
 export type PublishRow = PublishCell & { before: string | null; keySpan: number };
-export type PublishDiff = { groups: { surface: string; path: string; rows: PublishRow[] }[]; total: number; truncated: number };
+/** `changes`·`keys`는 **실린 행 기준**이다 — 상한을 넘은 분량은 `truncated`가 따로 말한다. */
+export type PublishDiff = { groups: { surface: string; path: string; changes: number; keys: number; rows: PublishRow[] }[]; total: number; truncated: number };
 // 미리보기 페이로드만 제한한다 — 실제 export의 범위·선택에는 영향을 주지 않는다.
 export const PREVIEW_LIMIT = 200;
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
@@ -10,7 +11,7 @@ export function buildPublishDiff(cells: readonly PublishCell[], base: BaseValues
   const groups: PublishDiff["groups"] = [];
   for (const cell of sorted.slice(0, limit)) {
     let group = groups.at(-1);
-    if (!group || group.surface !== cell.surface || group.path !== cell.path) { group = { surface: cell.surface, path: cell.path, rows: [] }; groups.push(group); }
+    if (!group || group.surface !== cell.surface || group.path !== cell.path) { group = { surface: cell.surface, path: cell.path, changes: 0, keys: 0, rows: [] }; groups.push(group); }
     const file = Object.hasOwn(base, cell.path) ? base[cell.path] : undefined;
     const locale = file && Object.hasOwn(file, cell.localeCode) ? file[cell.localeCode] : undefined;
     const before = locale && Object.hasOwn(locale, cell.key) ? locale[cell.key] ?? null : null;
@@ -19,8 +20,9 @@ export function buildPublishDiff(cells: readonly PublishCell[], base: BaseValues
   for (const group of groups) {
     let first: PublishRow | undefined;
     for (const row of group.rows) {
-      if (first?.keyId === row.keyId) { first.keySpan++; row.keySpan = 0; } else first = row;
+      if (first?.keyId === row.keyId) { first.keySpan++; row.keySpan = 0; } else { first = row; group.keys++; }
     }
+    group.changes = group.rows.length;
   }
   return { groups, total: cells.length, truncated: Math.max(0, cells.length - limit) };
 }

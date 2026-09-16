@@ -1317,57 +1317,201 @@ export const en = {
     },
 
     /**
-     * Publish 결과 다섯 (design §3.4). **git 어휘를 쓰지 않는다** — 읽는 사람은 비개발자 동료다.
-     * 링크 라벨만 예외가 될 수 있는데(DESIGN §10), 이 자리는 "보낸 것"을 보여주는 것이라 그쪽도 편집자 어휘다.
+     * Publish 모달 — 한 동작의 끝 열하나가 이 사전을 지난다
+     * (Claude Design `design_handoff_publish_modal` §12가 문구의 정본이다).
+     *
+     * ⚠️ **같은 뜻의 두 문장을 남기지 않는다.** 옛 Alert 어휘(`created`·`updated`·`partial`·
+     * `dropped`·`failed`·`gate`)는 전부 여기서 대체됐다 — 되살리면 한 사실을 두 문장이 말한다.
+     *
+     * ⚠️ **git 어휘를 쓰는 자리가 생겼다** (2026-09-16 사용자 확정 — 열린 결정 5). 읽는 사람은
+     * 비개발자 동료지만 **전달해야 할 값이 PR 번호**라, 그 번호를 부르는 이름이 GitHub에서 보는
+     * 이름과 달라지면 전달이 끊긴다. `viewLink`는 번역 화면 머리의 "Last sent" 링크와 공유한다.
+     *
+     * ⚠️ **`30`을 문자열에 박지 않는다** — 대기 간격은 `PUBLISH_MIN_INTERVAL_SECONDS`가 정본이고
+     * 서버가 준 `retryAfterSeconds`가 버튼 라벨을 든다. 화면이 상수를 따로 들면 둘이 갈린다.
      */
     publish: {
       button: "Publish",
+      publishing: "Publishing\u2026",
+      viewResult: "View result",
+      viewLink: "View pull request",
       nothing: "Everything you've edited is already sent.",
       paused: "Publishing is currently unavailable.",
-      viewLink: "View pull request",
-      viewResult: "View result",
-      publishing: "Publishing…",
-      confirm: "Publish changes",
-      previewTitle: (n: number): string => `Publish ${n.toLocaleString("en-US")} changes`,
-      loading: "Reading what would go out…",
-      previewFailed: "Couldn't read what would go out",
-      previewFailedBody: "The preview isn't available yet. Try reading it again before publishing.",
-      previewDescription: "Review your edits against the repository before sending them for review.",
-      overwrite: (n: number): string => `This will replace the branch of open pull request #${n}.`,
-      prUnknown: "We couldn't confirm whether an open pull request will be replaced.",
-      prNone: "There is no open pull request to replace.",
-      before: "Repository",
-      after: "Your edits",
+
+      /** `1a` — 우회 없는 필수 관문. 조회 중에도 같은 제목·같은 PR 줄이 선다. */
+      previewTitle: (n: number): string => `Publish ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      previewIntro: (repo: string): string =>
+        `Everything you've edited goes to ${repo} as one pull request.`,
+      previewCounts: (n: number, keys: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} in ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}.`,
+      previewSummary: (n: number, keys: number, files: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
+      changes: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      fileSummary: (n: number, keys: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}`,
       key: "Key",
       locale: "Locale",
       value: "Value",
-      absent: "Not present",
-      truncated: (n: number): string => `${n.toLocaleString("en-US")} more changes are not shown. Publishing includes all edits.`,
-      summary: (n: number): string => `${n.toLocaleString("en-US")} changes`,
-      progress: ["Preparing your edits", "Sending to the repository", "Waiting for the result"],
+      /**
+       * ⚠️ **화면에는 `−`/`+` 글리프뿐이라 낭독에 아무것도 안 남는다** (2026-09-16 CDP 실측).
+       * 글리프는 `aria-hidden`이고 이 두 줄이 그 자리를 대신한다 — 시안의 모양은 그대로 두고
+       * 뜻만 접근성 트리에 돌려준다.
+       */
+      beforeLabel: "In the repository",
+      afterLabel: "Your edit",
+      /** 상한은 미리보기 페이로드에만 걸린다 — 발송 범위는 전부다. */
+      truncated: (n: number): string =>
+        `${n.toLocaleString("en-US")} more are not listed here. Publishing sends all of them.`,
+
+      /** 열린 PR 삼상태 — `null`로 접지 않는다. "없다"와 "모른다"는 다른 줄이다. */
+      prOpen: {
+        title: (n: number): string => `#${n} is open \u2014 this replaces what it holds`,
+        body: (n: number, changes: number): ReactNode => (
+          <>
+            A second pull request isn&apos;t opened. #{n} will hold{" "}
+            <span className="text-foreground">everything unsent</span>, not just{" "}
+            {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}, and anyone
+            reviewing it will see it change.
+          </>
+        ),
+      },
+      prNone: {
+        title: (repo: string): string => `A new pull request opens on ${repo}`,
+        body: (changes: number): string =>
+          changes === 1
+            ? "Nothing is open right now, so this change goes out on its own."
+            : `Nothing is open right now, so these ${changes.toLocaleString("en-US")} changes go out on their own.`,
+      },
+      prUnknown: {
+        title: "Couldn't check for an open pull request",
+        body: "If one is already open, publishing replaces what it holds instead of opening a second one.",
+      },
+      openPr: "Open pull request",
+      replacePr: (n: number): string => `Replace pull request #${n}`,
+
+      /** `1c` — 단계 셋은 **시간 기반**이고 사실을 주장하지 않는다(진행 이벤트 API가 없다). */
+      progressTitle: (n: number): string => `Publishing ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      progressDescription:
+        "Writing the locale files and opening a pull request. This usually takes a few seconds.",
+      progress: (branch: string): readonly string[] => [
+        "Rendering the locale files",
+        `Committing to ${branch}`,
+        "Opening the pull request",
+      ],
       leave: "Leaving this page won't stop it.",
-      created: "Sent for review.",
-      updated: "Updated the pull request.",
-      partial: "Some values couldn't be written.",
-      noChanges: "No changes to send.",
-      review: "Your developers need to review and accept the changes before their next code push.",
-      replaced: "malmoi replaced the branch with the current translations. It did not append to the previous changes. Let your reviewers know.",
-      noChangesBody: "malmoi found no new changes to send to the repository.",
-      warnings: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"}`,
-      notWritten: "Not written — share these details with your developers.",
+
+      /** `1d` — 새 PR. **"Published"가 아니다** — 머지 전까지 제품에 닿지 않는다. */
+      created: "Sent for review",
+      createdDescription: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} in a pull request. ${n === 1 ? "It reaches" : "They reach"} the product once someone on the team merges it.`,
+      prMeta: (n: number, files: number): string =>
+        `Pull request #${n} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"} changed`,
+      openedJustNow: "Opened just now",
+      holdsEverything: "Holds everything unsent",
+      prState: "Open",
+      accessNote:
+        "Editing or closing this pull request happens on GitHub. If you don't have access there, ask an owner.",
+
+      /** `1e` — 열려 있던 PR이 갱신됐다. 승인 무효는 말하지 않는다(그 설정을 읽지 않는다). */
+      updated: "Your earlier pull request now holds this",
+      updatedDescription: (n: number, changes: number): string =>
+        `#${n} was still open, so malmoi replaced its contents instead of opening a second one. It now holds everything unsent, not just ${changes === 1 ? "today's one" : `today's ${changes.toLocaleString("en-US")}`}.`,
+      replacedTitle: "The branch was replaced, not added to",
+      replacedBody: (branch: string, base: string): ReactNode => (
+        <>
+          {branch} always holds{" "}
+          <span className="text-foreground">one commit off {base}</span>, so this pull request is a
+          snapshot of everything unsent — not a history of what was added since.
+        </>
+      ),
+      tellReviewer: (n: number): string =>
+        `If #${n} has been waiting a while, it may be worth telling the reviewer it changed.`,
+
+      /** `1f` — 파일이 같았다. `1b`와 다른 상태이고 실패가 아니다. */
+      noChanges: "Nothing changed in the files",
+      noChangesDescription:
+        "Your edits were already in the repository, so no pull request was needed.",
+      noChangesBody: (branch: string): ReactNode => (
+        <>
+          malmoi compared what it would write against{" "}
+          <span className="text-foreground">{branch}</span> and the two came out identical. This
+          happens when the same values were pushed from the repository, or when an edit was undone
+          before sending.
+        </>
+      ),
+      inLogs: "It is recorded in Logs as a run with nothing to send.",
+      close: "Close",
+
+      /** `1g` — 버려진 값. **펼친 목록**이다(불변식 9). */
+      partial: "Sent for review \u2014 some values were left out",
+      partialDescription:
+        "The pull request is open, but malmoi could not write every value into the files. What it kept out is listed below.",
+      notWritten: "Not written",
+      warnings: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,
+      stillHere: "These values stay in malmoi and will go out once the files can hold them.",
+
+      /** `1h` — 다시 해도 같다. 제목·바닥 버튼·사실 표가 **사유에서 온다**. */
       configError: "Couldn't reach the repository",
-      transientError: "Couldn't finish publishing",
+      /**
+        * ⚠️ **원인을 단정하지 않는다** — 이 틀이 덮는 셋(`base-unreadable`·`not-installed`·
+        * `glob-matched-nothing`) 중 브랜치를 못 읽은 것은 하나뿐이다. 무엇이 틀렸는지는 아래
+        * Alert가 서버의 safe 메시지로 말한다.
+        * ⚠️ **"아무것도 안 써졌다"를 쓰지 않는다** (spec C10) — 전송 여부는 바닥 한 줄이 든다.
+        */
+      configErrorDescription: (repo: string, branch: string): string =>
+        `Something about ${repo} has to change before ${branch} can take this. Your edits are still saved here.`,
+      wontHelp: "Retrying won't help",
+      repository: "Repository",
+      baseBranch: "Base branch",
+      failedAt: "Failed at",
       reference: "Reference",
+      /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
+      sendReference: "Not an owner? Send them the reference above \u2014 it is in Logs too.",
       settings: "Open project settings",
       signIn: "Sign in",
+
+      /** `1i` — 다시 하면 된다. "절반만 나갔나"에 **먼저** 답한다. */
+      transientError: "GitHub didn't answer",
+      transientErrorDescription:
+        "The request to GitHub failed partway. Your edits are still saved here.",
+      /**
+        * ⚠️ **"아무것도 안 나갔다"고 말하지 않는다** (spec C10 · 리뷰 1번). `db-unavailable`은 PR을
+        * 연 **뒤** 기록에서 죽는 경로라 그 단정이 거짓이 될 수 있다. 대신 사람이 실제로 두려워하는
+        * 것("두 번 나가면 어떡하나")에 답한다 — 브랜치를 **덮으므로** 재시도가 사본을 만들지 않는다.
+        */
+      transientErrorBody: (): ReactNode => (
+        <>
+          This is usually temporary, and trying again is safe: malmoi{" "}
+          <span className="font-medium">replaces the same branch</span> instead of adding to it, so
+          a second attempt can&apos;t leave two copies behind.
+        </>
+      ),
       retry: "Try again",
+
+      /** 실행 전 명시적 거부만 미전송을 단정한다 (spec C10). */
       notStarted: "Nothing was sent. Your edits are safe.",
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
-      alreadyRunning: "A publish is already running.",
-      alreadyRunningBody: "Another request is publishing this project. Check Logs for its result.",
-      tooSoon: "Changes were just sent.",
-      tooSoonBody: "Wait before starting another publish.",
-      wait: (seconds: number): string => `Try again in ${seconds === 1 ? "1 second" : `${seconds} seconds`}`,
+
+      /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
+      alreadyRunning: "Someone is publishing right now",
+      alreadyRunningBody:
+        "Another run started a moment ago. Wait for it to finish \u2014 your changes will be included if it hasn't read them yet, and sent next time if it has.",
+      tooSoon: "Just a moment",
+      /** ⚠️ **간격을 수로 말하지 않는다** — 남은 초는 버튼이 들고, 두 수가 한 화면에 서면 어긋나 보인다. */
+      tooSoonBody:
+        "malmoi waits a moment between pull requests so the repository doesn't get two in a row.",
+      wait: (seconds: number): string => `Try again in ${seconds.toLocaleString("en-US")}s`,
+
+      /** `1k` — 판단할 재료를 못 얻었다. **실패로 말하지 않는다**(무색 블록 · `Try again`). */
+      previewFailed: "Couldn't read what would go out",
+      previewFailedDescription: (branch: string): string =>
+        `malmoi reads the locale files on ${branch} to show what your edits would change. That read didn't come back.`,
+      previewFailedTitle: (branch: string): string => `The files on ${branch} couldn't be read`,
+      previewFailedBody: (n: number): string =>
+        `Your ${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} still here. Publishing stays off until this list can be shown \u2014 sending without it would skip the one step that says what a pull request replaces.`,
+      previewFailedHint:
+        "If this keeps happening, the repository connection is the place to look \u2014 an owner can check it in project settings.",
     },
 
     /**

@@ -22,9 +22,11 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 
   it("Publish 카운터는 경고 행을 세고 쿨다운은 서버 초를 표시한다", () => {
-    expect(m.translations.publish.warnings(3)).toBe("3 warnings");
-    expect(m.translations.publish.wait(1)).toBe("Try again in 1 second");
-    expect(m.translations.publish.wait(2)).toBe("Try again in 2 seconds");
+    expect(m.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in malmoi");
+    expect(m.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in malmoi");
+    // ⚠️ **초가 버튼 라벨이고 서버 값 그대로다** — 화면이 대기 간격 상수를 따로 들면 둘이 갈린다.
+    expect(m.translations.publish.wait(1)).toBe("Try again in 1s");
+    expect(m.translations.publish.wait(18)).toBe("Try again in 18s");
   });
 
   /**
@@ -45,6 +47,11 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
 
   it("Publish의 수는 미리보기 제목이 든다", () => {
     expect(m.translations.publish.previewTitle(3)).toBe("Publish 3 changes");
+    // ⚠️ **한 건짜리가 실물에서 "Publish 1 changes"로 나갔다** (2026-09-16 실측) — 갈래 넷이 같은 수를 든다.
+    expect(m.translations.publish.previewTitle(1)).toBe("Publish 1 change");
+    expect(m.translations.publish.previewCounts(1, 1)).toBe("1 change in 1 key.");
+    expect(m.translations.publish.previewSummary(1, 1, 1)).toBe("1 change \u00b7 1 key \u00b7 1 file");
+    expect(m.translations.publish.createdDescription(1)).toContain("1 change is in a pull request.");
   });
 });
 

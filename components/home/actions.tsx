@@ -173,12 +173,16 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
   있는 상태**이지 방금 일어난 사건이 아니다. assertive live 영역을 상시 상태에 쓰면 그 화면에
   들어올 때마다 스크린리더가 읽던 것을 끊는다. 의도된 이탈이고 `docs/DESIGN.md`에 있다.
 */
-export function HomeNotices({ slug, name, state, role, branch, failedSurface, reason, lastSyncAt, now }: {
+export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now }: {
   slug: string;
   name: string;
   state: HomeState;
   role: "OWNER" | "EDITOR";
   branch: string;
+  /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
+  repo: { owner: string; name: string; branch: string; syncBranch: string };
+  /** 미발송 수 — 모달의 조회 전 갈래(`1a` 스켈레톤·`1k`)가 그것을 말한다. */
+  unsent: number;
   failedSurface: string | null;
   reason: ImportFailureCode | null;
   lastSyncAt: Date | null;
@@ -259,7 +263,7 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} />
     </div>
   );
 }

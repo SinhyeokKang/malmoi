@@ -29,7 +29,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }
 
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
 
-const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 12, paused: false };
+const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 12, paused: false,
+  repo: { owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" } };
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -60,7 +61,7 @@ function Host() {
   </>;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ groups: [], total: 12, truncated: 0, openPr: null }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ groups: [], total: 12, keys: 9, truncated: 0, openPr: null }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: [] }>();
@@ -88,7 +89,7 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
 
   await click("Publish");
   expect(mocks.pull).not.toHaveBeenCalled();
-  await click("Publish changes");
+  await click("Open pull request");
   await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
   expect(locked(button("Sync"))).toBe(true);
 
@@ -127,7 +128,7 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   mocks.pull.mockReturnValue(pull.promise);
   const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
   await click("Publish");
-  await click("Publish changes");
+  await click("Open pull request");
   await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
 
   /*

@@ -27,7 +27,7 @@ it.each(["namespace", "search chip", "clear"])("%s navigation locks both toolbar
       <TranslationsHeader surfaceSlug="default" surfaces={[]} slug="demo" totalCount={2} query={query} chipQuery={query}
         namespaces={[{ namespace: "a", pending: 1, total: 1 }, { namespace: "b", pending: 1, total: 1 }]}
         locales={[{ code: "en", orphaned: false }]} selected={["en"]} fallback={["en"]}
-        unpublished={0} lastSentLabel={null} lastPrUrl={null} dismissKey="never" baseLocale="en" declaredBaseLocale="en">
+        unpublished={0} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-demo" }} lastSentLabel={null} lastPrUrl={null} dismissKey="never" baseLocale="en" declaredBaseLocale="en">
         <p>Translations</p>
       </TranslationsHeader>
     </Suspense>;

@@ -18,9 +18,11 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   if (!project.installationId || !project.repositoryId) throw new Error("Repository unavailable");
   const where = { projectId, surface: { archivedAt: null }, updatedBy: { not: null },
     ...(project.lastPulledAt === null ? {} : { updatedAt: { gt: project.lastPulledAt } }) };
-  const [rows, total, client, rawPr] = await Promise.all([
+  const [rows, total, keyIds, client, rawPr] = await Promise.all([
     prisma.translation.findMany({ where, take: PREVIEW_LIMIT, orderBy: [{ surfaceId: "asc" }, { keyId: "asc" }, { localeCode: "asc" }], include: { stringKey: { select: { key: true } } } }),
     prisma.translation.count({ where }),
+    // 바닥 요약의 "키 수"는 **미발송 전체**를 세야 한다 — 표에 실린 200행만 세면 상한 아래에서만 참이다.
+    prisma.translation.groupBy({ by: ["keyId"], where }),
     createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId),
     loadOpenPrUrl(slug, project),
   ]);
@@ -65,5 +67,5 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
-  return { ...buildPublishDiff(cells, base), total, truncated: Math.max(0, total - cells.length), openPr: parseGithubPrUrl(rawPr, project) };
+  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - cells.length), openPr: parseGithubPrUrl(rawPr, project) };
 }

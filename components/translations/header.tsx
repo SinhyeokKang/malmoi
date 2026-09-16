@@ -25,6 +25,7 @@ export function TranslationsHeader({
   selected,
   fallback,
   unpublished,
+  repo,
   lastSentLabel,
   lastPrUrl,
   dismissKey,
@@ -52,6 +53,8 @@ export function TranslationsHeader({
   fallback: readonly string[];
   /** 아직 안 보낸 편집 수 — 배너와 버튼 라벨이 같은 값을 쓴다 (design §3.5). */
   unpublished: number;
+  /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
+  repo: { owner: string; name: string; branch: string; syncBranch: string };
   /** ⚠️ 서버가 만든 상대 시각이다 — 클라이언트가 다시 계산하면 하이드레이션이 갈린다. */
   lastSentLabel: string | null;
   lastPrUrl: string | null;
@@ -135,7 +138,7 @@ export function TranslationsHeader({
         그 안의 빈 상태가 `flex-1`로 남은 높이를 먹는다. 표가 올 때는 아무 일도 안 한다 — 표는
         `flex-1`이 아니라 자연 높이다.
       */}
-      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} />
+      <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unpublished} repo={repo} />
       <PanelBody width="fluid" className="flex flex-col">
         {/*
           배너는 본문에, Publish 결과는 위의 모달에 둔다.

@@ -1,21 +1,26 @@
 "use client";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
-import { Send, LoaderCircle } from "lucide-react";
+import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject, type ReactNode } from "react";
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonClass } from "@/components/ui/button";
 import { OnboardingModal } from "@/components/ui/modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import type { PullOutcome } from "@/lib/pull/message";
-import type { PublishModalState } from "@/lib/publish/preview";
+import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
+
+/** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 refresh로 줄어 있다. */
+type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
 
 /** 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·refresh가 실행 결과를 지우면 안 된다. */
 export function usePublish(slug: string) {
@@ -23,7 +28,9 @@ export function usePublish(slug: string) {
   const [state, setState] = useState<PublishModalState>({ kind: "preview-loading" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
-  const [result, setResult] = useState<PullOutcome | null>(null);
+  const [result, setResult] = useState<PublishResultState | null>(null);
+  /** ⚠️ **진행 중인 실행의 건수는 `result`에서 못 읽는다** — 그 값은 아직 **직전** 실행의 것이다. */
+  const [runTotal, setRunTotal] = useState(0);
   const current = useRef(state); current.current = state;
   const running = useRef(false);
   const generation = useRef(0);
@@ -31,7 +38,7 @@ export function usePublish(slug: string) {
   const triggerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     host.current++; generation.current++; running.current = false;
-    setOpen(false); setPending(false); setResult(null); setState({ kind: "preview-loading" });
+    setOpen(false); setPending(false); setResult(null); setRunTotal(0); setState({ kind: "preview-loading" });
     return () => { host.current++; generation.current++; };
   }, [slug]);
   function close() { generation.current++; setOpen(false); }
@@ -52,17 +59,18 @@ export function usePublish(slug: string) {
   async function confirm() {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
-    running.current = true; generation.current++; setPending(true);
+    const total = current.current.preview.total;
+    running.current = true; generation.current++; setPending(true); setRunTotal(total);
     current.current = { kind: "running" }; setState(current.current);
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
     if (owner !== host.current) return;
-    running.current = false; setPending(false); setResult(next);
+    running.current = false; setPending(false); setResult({ outcome: next, at: new Date(), total });
     current.current = { kind: "result", outcome: next }; setState(current.current);
     if (next.status !== "failed") router.refresh();
   }
-  function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result }); setOpen(true); } }
+  function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result.outcome }); setOpen(true); } }
   function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else void preview(); }
-  return { state, open, pending, result, triggerRef, close, preview, confirm, showResult, launch };
+  return { state, open, pending, result, runTotal, triggerRef, close, preview, confirm, showResult, launch };
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
@@ -79,84 +87,414 @@ export function PublishButton({ count, publish, disabled = false }: { count: num
     {!publish.pending && publish.result && <Button onClick={event => { publish.triggerRef.current = event.currentTarget; publish.showResult(); }}>{m.translations.publish.viewResult}</Button>}
   </div>;
 }
+
 const p = m.translations.publish;
+
+/**
+ * ⚠️ **갈래마다 높이를 고정한다** (시안 §7) — 한 값으로 묶으면 단계가 짧은 갈래에서 바닥 버튼이
+ * 허공에 뜬다. ⚠️ **리터럴 문자열이어야 한다** — Tailwind는 소스에 그대로 적힌 클래스만 만든다.
+ */
+const PANEL = {
+  preview: "max-w-[736px] min-h-[min(620px,calc(100svh-96px))] max-h-[min(680px,calc(100svh-96px))]",
+  running: "max-w-[736px] min-h-[min(340px,calc(100svh-96px))] max-h-[min(380px,calc(100svh-96px))]",
+  created: "max-w-[736px] min-h-[min(420px,calc(100svh-96px))] max-h-[min(460px,calc(100svh-96px))]",
+  updated: "max-w-[736px] min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
+  noChanges: "max-w-[736px] min-h-[min(360px,calc(100svh-96px))] max-h-[min(400px,calc(100svh-96px))]",
+  partial: "max-w-[736px] min-h-[min(560px,calc(100svh-96px))] max-h-[min(600px,calc(100svh-96px))]",
+  configError: "max-w-[736px] min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
+  transientError: "max-w-[736px] min-h-[min(400px,calc(100svh-96px))] max-h-[min(440px,calc(100svh-96px))]",
+  gate: "max-w-[512px] min-h-[min(300px,calc(100svh-96px))] max-h-[min(330px,calc(100svh-96px))]",
+  previewError: "max-w-[736px] min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
+} as const;
+
+/**
+ * 무색 블록 — `1a`의 PR 줄 · `1e`·`1g`의 브랜치 경고 · `1f`의 본문이 같은 급이다.
+ *
+ * ⚠️ **글리프 칸의 높이가 첫 줄의 line-height와 같다** (시안 §5). `margin-top`으로 눈대중 보정하면
+ * 글자 크기가 다른 블록마다 어긋나고, 그 어긋남은 한 화면 안에서만 안 보인다.
+ */
+/*
+ * ⚠️ **블록에 `aria-live`를 주지 않는다** — 시안은 PR 줄에 `polite`를 적었지만 **리뷰 6번이
+ * "껍데기의 polite live 한 곳"으로 정정했다**: 같은 전이를 둘이 알리면 중복 낭독이 되고,
+ * `translations-screen.test.ts`가 이 화면의 live 영역을 announcer 하나로 고정한다.
+ */
+function Notice({ icon: Icon, title, children }: { icon: typeof Info; title?: string; children: ReactNode }) {
+  // ⚠️ 제목 없는 형(`1f`)은 padding 16이고 제목 있는 형은 14 16이다 — 시안이 그 둘을 갈라 그렸다.
+  return <div className={`border-border flex shrink-0 gap-3 rounded-lg border ${title === undefined ? "p-4" : "px-4 py-3.5"}`}>
+    <span className={`text-muted-foreground flex shrink-0 items-center ${title === undefined ? "h-6" : "h-[17px]"}`}><Icon className="size-4" aria-hidden /></span>
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      {title !== undefined && <span className="text-sm font-medium">{title}</span>}
+      <span className={title === undefined ? "text-sm leading-[1.7] text-pretty" : "text-muted-foreground text-xs leading-[1.7]"}>{children}</span>
+    </span>
+  </div>;
+}
+
+/**
+ * ⚠️ **결과 갈래의 블록 사이는 12이고 껍데기의 16이 아니다** (시안 `1d`~`1k`가 전부 `gap:12`인
+ * 안쪽 열을 하나 둔다). 껍데기 값을 바꾸면 온보딩 네 단계가 함께 움직인다.
+ */
+function Stack({ children }: { children: ReactNode }) {
+  return <div className="flex min-h-0 flex-1 flex-col gap-3">{children}</div>;
+}
+
+/** 바닥 보조 한 줄 — 글리프 21(13/1.6)에 맞춘다. */
+function Hint({ icon: Icon = Info, children }: { icon?: typeof Info; children: ReactNode }) {
+  return <div className="text-muted-foreground flex gap-2.5 text-xs leading-[1.6]">
+    <span className="flex h-[21px] shrink-0 items-center"><Icon className="size-4" aria-hidden /></span>
+    <span className="min-w-0 flex-1">{children}</span>
+  </div>;
+}
+
+/** 네임스페이스 접두를 muted로 내린다 — 키 목록에서 눈이 잡아야 하는 것은 접두가 아니라 뒷부분이다. */
+function namespaceOf(key: string): string {
+  const dot = key.indexOf(".");
+  return dot < 0 ? "" : key.slice(0, dot + 1);
+}
+
+/** `1d`·`1e`·`1g`가 공유하는 PR 카드. ⚠️ **제목을 그리지 않는다** — `PullResult`에 없다(§10-6). */
+function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
+  return <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5">
+    <GitPullRequestArrow className="size-4 shrink-0 text-green-800" aria-hidden />
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="truncate text-sm">{repo}{number !== null && ` #${number}`}</span>
+      <span className="text-muted-foreground text-xs">{note}</span>
+    </span>
+    <Badge variant="success">{p.prState}</Badge>
+  </div>;
+}
+
+/** `1e`·`1g`가 공유하는 브랜치 경고 — 조건은 `pr === "updated"` 하나다(warnings와 무관하다). */
+function Replaced({ branch, base }: { branch: string; base: string }) {
+  return <Notice icon={RefreshCw} title={p.replacedTitle}>{p.replacedBody(branch, base)}</Notice>;
+}
+
+/**
+ * 표 머리 — `1a`와 `1k`가 같은 자리에서 갈린다.
+ *
+ * ⚠️ **`<table>`이다** — 시안은 그림이라 DOM 시맨틱을 정하지 않고, 200행짜리 데이터 그리드에서
+ * 열 머리와 셀의 연결이 사라지면 낭독에 "actionLog. filter.all en All"만 남는다. 치수는 그대로다.
+ * ⚠️ **`border-separate`다** — `collapse`는 `sticky` 머리에서 테두리가 같이 안 붙는다.
+ */
+function TableHead() {
+  return <thead className="bg-primary-foreground">
+    <tr>
+      {/* ⚠️ 아래는 구조선(`#e5e5e5`), 옆은 그룹 안의 선(`#f0f0f0`) — 한 클래스로 주면 뒤엣것이 네 변을 다 덮는다. */}
+      <th scope="col" className="border-b-border border-r-divider text-muted-foreground bg-primary-foreground sticky top-0 z-10 w-[220px] border-r border-b px-3.5 py-[9px] text-left text-xs font-normal">{p.key}</th>
+      <th scope="col" className="border-b-border border-r-divider text-muted-foreground bg-primary-foreground sticky top-0 z-10 w-[84px] border-r border-b px-3 py-[9px] text-left text-xs font-normal">{p.locale}</th>
+      <th scope="col" className="border-border text-muted-foreground bg-primary-foreground sticky top-0 z-10 border-b px-3.5 py-[9px] text-left text-xs font-normal">{p.value}</th>
+    </tr>
+  </thead>;
+}
+
+/** 표 껍데기 — `1a`는 행을, `1k`는 빈 상태를 안에 세운다. */
+function TableShell({ children }: { children: ReactNode }) {
+  return <div className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">{children}</div>;
+}
+
+function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { text: string; changed: boolean }[]; before?: boolean }) {
+  return <span className="flex gap-2">
+    {/* 글리프는 장식이고 뜻은 `sr-only`가 든다 — 낭독에 "All … All actions"만 남으면 어느 쪽이 리포인지 모른다. */}
+    <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
+    <span className={`w-2.5 shrink-0 text-xs leading-5 ${before ? "text-red-700" : "text-green-800"}`} aria-hidden>{sign}</span>
+    <span className={`min-w-0 flex-1 text-sm leading-5 break-words ${before ? "text-muted-foreground" : ""}`}>
+      {parts.map((part, i) => <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>{part.text}</span>)}
+    </span>
+  </span>;
+}
+
+function PreviewTable({ preview }: { preview: PublishPreview }) {
+  return <TableShell>
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <table className="w-full table-fixed border-separate border-spacing-0">
+        <TableHead />
+        {preview.groups.map(group => <tbody key={`${group.surface}:${group.path}`}>
+          <tr>
+            <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
+              <span className="flex items-center gap-2">
+                <FileJson2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{group.path}</span>
+                <span className="text-muted-foreground ml-auto shrink-0">{p.fileSummary(group.changes, group.keys)}</span>
+              </span>
+            </th>
+          </tr>
+          {group.rows.map(row => {
+            const diff = diffWords(row.before ?? "", row.after);
+            const flag = flagFor(row.localeCode);
+            const namespace = namespaceOf(row.key);
+            return <tr key={`${row.keyId}:${row.localeCode}`}>
+              {/* ⚠️ **`rowSpan`이 병합을 든다** — 테두리를 지워 병합처럼 보이게 하면 낭독에는 빈 칸이 하나 더 생긴다. */}
+              {row.keySpan > 0 && <td rowSpan={row.keySpan} className="border-divider w-[220px] border-t border-r px-3.5 py-[11px] align-top">
+                <span className="text-mono block truncate text-[12px]"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
+              </td>}
+              <td className="border-divider w-[84px] border-t border-r px-3 py-[11px] align-top">
+                <span className="flex items-start gap-2">
+                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(10,10,10,0.06)]" />}
+                  <span className="text-xs leading-5 font-medium">{row.localeCode}</span>
+                </span>
+              </td>
+              <td className="border-divider border-t px-3.5 py-[11px] align-top">
+                <span className="flex items-start gap-2.5">
+                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                    {row.before !== null && <DiffLine sign="−" parts={diff.before} before />}
+                    <DiffLine sign="+" parts={diff.after} />
+                  </span>
+                  {/* ⚠️ 시안은 `#a3a3a3`이지만 그 색은 **본문 금지**다 — 흰 배경 2.6:1로 §7의 3:1 하한을 못 넘고, 저자 이름은 옆의 값이 뜻을 완성해 주지 않는다 (DESIGN §6.2). */}
+                  <span className="text-muted-foreground shrink-0 text-[12px] leading-5">{row.author}</span>
+                </span>
+              </td>
+            </tr>;
+          })}
+        </tbody>)}
+      </table>
+      {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
+    </div>
+  </TableShell>;
+}
+
+/**
+ * ⚠️ **시간 기반이고 사실을 주장하지 않는다** — 진행 이벤트를 내는 API가 없다(시안 §10-2).
+ * 그래서 완료 표시가 **무색**이고 `done` 낱말이 없다.
+ */
+function Progress({ branch }: { branch: string }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => { const a = setTimeout(() => setStage(1), 2500); const b = setTimeout(() => setStage(2), 6500); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
+  return <ol className="border-border flex shrink-0 flex-col overflow-hidden rounded-lg border">
+    {p.progress(branch).map((text, i) => <li key={text} className={`flex items-center gap-3 px-4 py-3.5 ${i === 0 ? "" : "border-divider border-t"}`}>
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        {i < stage && <Check className="size-4 text-neutral-400" aria-hidden />}
+        {i === stage && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
+      </span>
+      <span className={`min-w-0 flex-1 text-sm ${i === stage ? "" : "text-muted-foreground"}`}>{text}</span>
+    </li>)}
+  </ol>;
+}
+
+/** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
+function Warnings({ warnings }: { warnings: readonly string[] }) {
+  const groups = summarizeWarnings(warnings);
+  return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border">
+    <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-[11px]">
+      <TriangleAlert className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+      <h3 className="text-sm font-medium">{p.notWritten}</h3>
+      <span className="text-muted-foreground ml-auto shrink-0 text-xs">{p.warnings(warnings.length)}</span>
+    </div>
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      {groups.map((group, i) => group.messages.map((message, j) => <div key={`${i}:${j}`} className="border-divider flex items-start gap-3 border-b px-4 py-[11px]">
+        <span className="w-[210px] shrink-0 truncate text-xs leading-5">{j === 0 ? group.file : ""}</span>
+        <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5 whitespace-pre-wrap">{message}</span>
+      </div>))}
+    </div>
+    <p className="text-muted-foreground shrink-0 px-4 py-[11px] text-xs leading-[1.6]">{p.stillHere}</p>
+  </section>;
+}
+
 function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
   if (isAccessError(outcome.error)) return accessErrorMessage(outcome.error);
   if (isOnboardError(outcome.error)) return onboardErrorMessage(outcome.error);
   return outcome.error === "invalid input" ? accessErrorMessage("forbidden") : outcome.error;
 }
-function Progress() {
-  const [stage, setStage] = useState(0);
-  useEffect(() => { const a = setTimeout(() => setStage(1), 2500); const b = setTimeout(() => setStage(2), 6500); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
-  return <ol className="space-y-5 text-muted-foreground">{p.progress.map((text, i) => <li key={text} className="flex items-center gap-3">{i === stage && <LoaderCircle className="size-4 animate-spin" aria-hidden />}{text}</li>)}</ol>;
-}
-function DiffValue({ before, after }: { before: string | null; after: string }) {
-  const diff = diffWords(before ?? "", after);
-  return <div className="grid grid-cols-2 gap-3 whitespace-pre-wrap break-words">
-    <div><span className="text-xs text-muted-foreground">{p.before}</span><p>{before === null ? p.absent : diff.before.map((part,i) => <span key={i} className={part.changed ? "bg-red-50 text-red-700" : undefined}>{part.text}</span>)}</p></div>
-    <div><span className="text-xs text-muted-foreground">{p.after}</span><p>{diff.after.map((part,i) => <span key={i} className={part.changed ? "bg-green-50 text-green-700" : undefined}>{part.text}</span>)}</p></div>
-  </div>;
-}
-function Warnings({ warnings }: { warnings: readonly string[] }) {
-  if (!warnings.length) return null;
-  return <section><h3 className="font-medium">{p.warnings(warnings.length)}</h3><p className="text-sm">{p.notWritten}</p>
-    {summarizeWarnings(warnings).map((group,i) => <div key={i} className="mt-3"><p className="text-xs font-medium">{group.file}</p><ul>{group.messages.map((message,j) => <li key={j} className="whitespace-pre-wrap text-xs">{message}</li>)}</ul></div>)}
-  </section>;
-}
-export function PublishModal({ slug, publish, fallbackFocusRef }: { slug: string; publish: PublishController; fallbackFocusRef: RefObject<HTMLElement | null> }) {
-  const { state } = publish;
-  let title: string; let body: ReactNode; let actions: ReactNode = null; let footer: ReactNode = null; let quiet = false; let narrow = false;
+
+const stamp = (at: Date) => `${at.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${at.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+
+export function PublishModal({ slug, publish, fallbackFocusRef, count, repo }: {
+  slug: string;
+  publish: PublishController;
+  fallbackFocusRef: RefObject<HTMLElement | null>;
+  /** 미발송 수 — `1a`의 스켈레톤과 `1k`가 조회 전에도 그것을 말한다. */
+  count: number;
+  /**
+   * ⚠️ **호스트가 넘긴다** — 조회가 실패한 갈래(`1k`·`1h`)도 리포 이름을 말해야 하고,
+   * 브랜치 이름은 서버가 만든다(그 모듈을 클라이언트가 물면 번들에 octokit·ts-morph가 온다).
+   */
+  repo: { owner: string; name: string; branch: string; syncBranch: string };
+}) {
+  const { state, result, runTotal } = publish;
+  const label = `${repo.owner}/${repo.name}`;
+  let title: string; let body: ReactNode; let description: string | undefined;
+  let actions: ReactNode = null; let footer: ReactNode = null; let quiet = false; let panel: string = PANEL.preview;
+  /** 본문 안에 자체 스크롤러가 있는가 — 표(`1a`·`1k`)와 경고 목록(`1g`)뿐이다. */
+  let inner = true;
   switch (state.kind) {
-    case "preview-loading": title = p.loading; body = <><p>{p.prUnknown}</p><div className="bg-muted h-40 animate-pulse rounded-lg" /></>; break;
-    case "preview-error": title = p.previewFailed; body = <div className="border-divider rounded-lg border p-4">{p.previewFailedBody}</div>; footer = p.notStarted; actions = <Button onClick={() => void publish.preview()}>{p.retry}</Button>; break;
+    case "preview-loading":
+      title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count);
+      body = <>
+        <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
+        <TableShell>
+          <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
+          <div className="bg-muted min-h-0 flex-1 animate-pulse" />
+        </TableShell>
+      </>;
+      break;
+    case "preview-error": {
+      panel = PANEL.previewError;
+      title = p.previewFailed; description = p.previewFailedDescription(repo.branch); footer = p.notStarted;
+      actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.retry}</Button>;
+      body = <Stack>
+        <TableShell>
+          <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-8 py-6 text-center">
+            <FileJson2 className="text-muted-foreground size-5" aria-hidden />
+            <p className="text-sm font-medium">{p.previewFailedTitle(repo.branch)}</p>
+            <p className="text-muted-foreground max-w-[420px] text-xs leading-[1.7] text-pretty">{p.previewFailedBody(count)}</p>
+          </div>
+        </TableShell>
+        <Hint>{p.previewFailedHint}</Hint>
+      </Stack>;
+      break;
+    }
     case "preview-ready": {
       const data = state.preview;
-      title = p.previewTitle(data.total); footer = p.summary(data.total);
-      actions = <Button variant="primary" onClick={() => void publish.confirm()}>{p.confirm}</Button>;
-      body = <><p className="text-sm">{data.openPr === undefined ? p.prUnknown : data.openPr === null ? p.prNone : p.overwrite(data.openPr.number)}</p>
-        <div className="min-h-0 overflow-auto">{data.groups.map(group => <section key={`${group.surface}:${group.path}`}>
-          <h3 className="bg-muted px-3 py-2 text-xs">{group.surface}: {group.path}</h3>
-          <table className="w-full table-fixed text-sm"><thead><tr><th className="w-40 text-left">{p.key}</th><th className="w-20 text-left">{p.locale}</th><th className="text-left">{p.value}</th></tr></thead>
-            <tbody>{group.rows.map(row => <tr key={`${row.keyId}:${row.localeCode}`} className={row.keySpan > 0 ? "border-divider border-t align-top" : "align-top"}>
-              {row.keySpan > 0 && <td rowSpan={row.keySpan} className="break-words p-2">{row.key}</td>}
-              <td className="p-2">{flagFor(row.localeCode) && <img src={`/flags/${flagFor(row.localeCode)}.svg`} alt="" className="mr-1 inline-block h-3 w-4" />}{row.localeCode}</td><td className="p-2"><DiffValue before={row.before} after={row.after} /><p className="mt-2 text-xs text-muted-foreground">{row.author}</p></td>
-            </tr>)}</tbody></table></section>)}
-          {data.truncated > 0 && <p className="mt-3 text-sm">{p.truncated(data.truncated)}</p>}
-        </div></>; break;
+      const open = data.openPr;
+      title = p.previewTitle(data.total);
+      description = `${p.previewIntro(label)} ${p.previewCounts(data.total, data.keys)}`;
+      // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
+      footer = data.truncated > 0 ? p.fileSummary(data.total, data.keys) : p.previewSummary(data.total, data.keys, data.groups.length);
+      actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open ? p.replacePr(open.number) : p.openPr}</Button>;
+      body = <>
+        {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
+        {open === undefined
+          ? <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
+          : open === null
+            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(data.total)}</Notice>
+            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, data.total)}</Notice>}
+        <PreviewTable preview={data} />
+      </>;
+      break;
     }
-    case "running": title = p.publishing; body = <Progress />; footer = p.leave; break;
+    case "running":
+      panel = PANEL.running; inner = false;
+      title = p.progressTitle(runTotal || count); description = p.progressDescription; footer = p.leave;
+      actions = <Button variant="primary" size="lg" disabled>{p.publishing}</Button>;
+      body = <Progress branch={repo.syncBranch} />;
+      break;
     case "result": {
-      const outcome = state.outcome; const view = planPublishView(outcome);
+      const outcome = state.outcome;
+      const view = planPublishView(outcome);
+      const at = result?.at ?? null;
+      const total = result?.total ?? count;
+      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(design §4-4).
+      const number = outcome.status === "committed"
+        ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
+        : null;
+      const files = outcome.status === "committed" ? outcome.changed.length : 0;
+      const viewPr = outcome.status === "committed"
+        ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={outcome.prUrl} target="_blank" rel="noreferrer">{p.viewLink}</a>
+        : null;
       switch (view) {
-        case "created": title = p.created; break;
-        case "updated": title = p.updated; break;
-        case "partial": title = p.partial; break;
-        case "no-changes": title = p.noChanges; break;
-        case "config-error": title = outcome.status === "failed" && !outcome.code ? failureText(outcome) : p.configError; break;
-        case "transient-error": title = p.transientError; break;
-        case "already-running": title = p.alreadyRunning; narrow = true; break;
-        case "too-soon": title = p.tooSoon; narrow = true; break;
+        case "created":
+          panel = PANEL.created; inner = false;
+          title = p.created; description = p.createdDescription(total);
+          footer = number === null ? null : p.prMeta(number, files);
+          actions = viewPr;
+          body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} /><Hint>{p.accessNote}</Hint></Stack>;
+          break;
+        case "updated":
+          panel = PANEL.updated; inner = false;
+          title = p.updated; description = number === null ? undefined : p.updatedDescription(number, total);
+          footer = number === null ? null : p.prMeta(number, files);
+          actions = viewPr;
+          body = <Stack>
+            <PrCard repo={label} number={number} note={p.holdsEverything} />
+            <Replaced branch={repo.syncBranch} base={repo.branch} />
+            {number !== null && <Hint>{p.tellReviewer(number)}</Hint>}
+          </Stack>;
+          break;
+        case "partial":
+          panel = PANEL.partial;
+          title = p.partial; description = p.partialDescription;
+          footer = number === null ? null : p.prMeta(number, files);
+          actions = viewPr;
+          body = <Stack>
+            <PrCard repo={label} number={number} note={outcome.status === "committed" && outcome.pr === "updated" ? p.holdsEverything : p.openedJustNow} />
+            {/* 조건은 `pr` 하나다 — 버려진 값이 있는지와 무관하게 참인 사실이다. */}
+            {outcome.status === "committed" && outcome.pr === "updated" && <Replaced branch={repo.syncBranch} base={repo.branch} />}
+            <Warnings warnings={outcome.status === "committed" ? outcome.warnings ?? [] : []} />
+          </Stack>;
+          break;
+        case "no-changes":
+          panel = PANEL.noChanges; inner = outcome.status === "skipped" && (outcome.warnings?.length ?? 0) > 0;
+          title = p.noChanges; description = p.noChangesDescription;
+          actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+          body = <Stack>
+            <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
+            {(outcome.status === "skipped" && outcome.warnings?.length) ? <Warnings warnings={outcome.warnings} /> : <Hint icon={History}>{p.inLogs}</Hint>}
+          </Stack>;
+          break;
+        case "config-error": {
+          panel = PANEL.configError; inner = false;
+          const failed = outcome.status === "failed" ? outcome : null;
+          // 실행 전 거부 다섯은 `SYNC_ERROR_CODES`를 지나지 않아 **실행 행 자체가 안 생긴다** —
+          // 그래서 사실 표도 `Reference`도 "Logs에도 있다"도 함께 빠진다.
+          const hasCode = failed?.code !== undefined;
+          title = hasCode ? p.configError : failed ? failureText(failed) : p.configError;
+          description = hasCode ? p.configErrorDescription(label, repo.branch) : undefined;
+          footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
+          quiet = true;
+          actions = hasCode
+            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={`/projects/${slug}/settings`}>{p.settings}</a>
+            : failed?.error === "unauthorized"
+              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href="/signin">{p.signIn}</a>
+              : null;
+          body = <Stack>
+            {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(spec §2-4). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
+            <Alert variant="danger" title={p.wontHelp}>{hasCode && failed ? failureText(failed) : null}</Alert>
+            {hasCode && failed && <>
+              <div className="border-border grid shrink-0 grid-cols-[130px_1fr] gap-x-3.5 gap-y-2.5 rounded-lg border px-4 py-3.5 text-xs">
+                <span className="text-muted-foreground">{p.repository}</span><span>{label}</span>
+                <span className="text-muted-foreground">{p.baseBranch}</span><span>{repo.branch}</span>
+                <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at)}</span>
+                <span className="text-muted-foreground">{p.reference}</span><span className="text-muted-foreground text-mono">{failed.code}</span>
+              </div>
+              <Hint>{p.sendReference}</Hint>
+            </>}
+          </Stack>;
+          break;
+        }
+        case "transient-error": {
+          panel = PANEL.transientError; inner = false;
+          const failed = outcome.status === "failed" ? outcome : null;
+          title = p.transientError; description = p.transientErrorDescription;
+          footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
+          quiet = true;
+          actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.retry}</Button>;
+          body = <Stack>
+            <Alert variant="danger">{p.transientErrorBody()}</Alert>
+            {/* ⚠️ 응답 유실에는 `Reference`를 만들어 붙이지 않는다 — 코드가 없으면 줄이 통째로 빠진다. */}
+            {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
+              <span className="text-muted-foreground">{p.reference}</span>
+              <span className="text-mono">{failed.code}</span>
+              {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at)}</span>}
+            </div>}
+          </Stack>;
+          break;
+        }
+        case "already-running":
+          panel = PANEL.gate; inner = false;
+          title = p.alreadyRunning; description = p.alreadyRunningBody;
+          actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+          body = null;
+          break;
+        case "too-soon": {
+          panel = PANEL.gate; inner = false;
+          const seconds = outcome.status === "failed" ? outcome.retryAfterSeconds ?? 0 : 0;
+          title = p.tooSoon; description = p.tooSoonBody;
+          /*
+            ⚠️ **시안은 이 버튼을 꺼 두지만 살려 둔다** — 카운트다운을 안 넣기로 한 이상(열린 결정 3)
+            꺼진 버튼은 스스로 풀리지 않아 "18초 뒤에 다시 하라"는 라벨이 영영 못 지키는 약속이 된다.
+            라벨이 시키는 것을 화면이 실제로 할 수 있어야 한다.
+          */
+          actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.wait(seconds)}</Button>;
+          body = null;
+          break;
+        }
         default: { const exhaustive: never = view; return exhaustive; }
-      }
-      if (outcome.status === "failed") {
-        footer = outcome.delivery === "not-started" ? p.notStarted : p.unknownDelivery;
-        quiet = !narrow;
-        body = narrow ? <p>{view === "already-running" ? p.alreadyRunningBody : p.tooSoonBody}</p> : <Alert variant="danger"><p>{failureText(outcome)}</p>{outcome.code && <p className="mt-2">{p.reference}: <code>{outcome.code}</code></p>}</Alert>;
-        if (view === "transient-error") actions = <Button onClick={() => void publish.preview()}>{p.retry}</Button>;
-        else if (view === "too-soon") actions = <Button onClick={() => void publish.preview()}>{p.wait(outcome.retryAfterSeconds ?? 0)}</Button>;
-        else if (view === "config-error" && outcome.code) actions = <a href={`/projects/${slug}/settings`}>{p.settings}</a>;
-        else if (outcome.error === "unauthorized") actions = <a href="/signin">{p.signIn}</a>;
-      } else {
-        body = <><p>{outcome.status === "committed" ? p.review : p.noChangesBody}</p>
-          {outcome.status === "committed" && <><a className="text-blue-600" href={outcome.prUrl} target="_blank" rel="noreferrer">{p.viewLink} #{outcome.prUrl.split("/").at(-1)}</a><ul>{outcome.changed.map(path => <li key={path} className="text-xs">{path}</li>)}</ul>{outcome.pr === "updated" && <div className="border-divider rounded-lg border p-4 text-sm">{p.replaced}</div>}</>}
-          <Warnings warnings={outcome.warnings ?? []} /></>;
       }
       break;
     }
     default: { const exhaustive: never = state; return exhaustive; }
   }
-  return <OnboardingModal open={publish.open} onClose={publish.close} title={title} closeLabel={m.common.close}
+  return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
     footer={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
-    panelClassName={narrow ? "max-w-[512px] min-h-[min(320px,calc(100svh-96px))]" : "max-w-[736px] min-h-[min(560px,calc(100svh-96px))]"}
-    bodyScroll={state.kind === "preview-ready" ? "hidden" : "auto"}>{body}</OnboardingModal>;
+    /* ⚠️ **안쪽 스크롤러가 있는 갈래만 `hidden`이다** — 나머지는 `shrink-0` 블록만 쌓아서, 낮은 뷰포트에서 잠그면 마지막 줄에 스크롤로도 못 닿는다. */
+    panelClassName={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
 }
