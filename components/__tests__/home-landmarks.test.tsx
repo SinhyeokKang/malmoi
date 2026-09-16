@@ -89,3 +89,39 @@ describe("목록 시맨틱", () => {
     expect(container.querySelector("details > ul > li")).not.toBeNull();
   });
 });
+
+/**
+ * **외부 링크 글리프는 PR 번호에만 붙는다** (2026-09-16 사용자 판정).
+ *
+ * ⚠️ **두 정본이 같은 답을 준다.** `design_handoff_project_home`의 lucide 목록에 `external-link`가
+ * 없고 `2a`는 *"리포 주소와 PR 번호만 링크"*라고만 적는다. `docs/DESIGN.md` §6.3이 글리프를 다는
+ * 외부 링크를 **이름으로 여덟** 열거하는데 거기에 **"Home의 PR 링크"는 있고 리포 링크는 없다** —
+ * 리포 행의 글리프는 어느 정본에도 근거가 없이 붙어 있었다.
+ *
+ * ⚠️ **비대칭을 센다** — "글리프가 없다"만 세면 PR 행에서 글리프가 사라져도 green이고, 그것은
+ * §6.3을 깨는 회귀다. 한 검사가 둘을 함께 들어야 다음 사람이 한쪽만 고치지 못한다.
+ */
+describe("메타 열 — 외부 링크 글리프", () => {
+  const at = new Date("2026-09-14T12:00:00Z");
+
+  it("리포 행은 글리프 없이 링크이고 PR 행은 글리프를 든다", async () => {
+    const { container } = await render(
+      <MetaColumn
+        slug="acme"
+        now={now}
+        canOpenSettings
+        rows={[
+          { kind: "repository", owner: "acme", name: "web", href: "https://github.com/acme/web", disconnected: false },
+          { kind: "lastPublish", at, prUrl: "https://github.com/acme/web/pull/127" },
+        ]}
+      />,
+    );
+    const links = [...container.querySelectorAll("a[target=_blank]")];
+    const repo = links.find((a) => (a.textContent ?? "").includes("acme/web"));
+    const pr = links.find((a) => a.getAttribute("href")?.includes("/pull/"));
+    expect(repo).toBeDefined();
+    expect(pr).toBeDefined();
+    expect(repo?.querySelector("svg")).toBeNull();
+    expect(pr?.querySelector("svg")).not.toBeNull();
+  });
+});
