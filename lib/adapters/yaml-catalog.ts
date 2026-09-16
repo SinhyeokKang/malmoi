@@ -254,6 +254,12 @@ function scalarReplacement(source: string, doc: Document, node: Scalar, value: s
     const explicit = /[1-9]/.exec(header)?.[0];
     let indent = explicit ? token.indent + Number(explicit)
       : /^( *)\S/m.exec(token.source)?.[1]?.length ?? token.indent + 2;
+    /*
+      ⚠️ **9는 YAML 명시 들여쓰기 지시자가 한 자리이기 때문이다** (`|4` · `>2` — 1~9만 쓸 수 있다).
+      원본에서 관측한 들여쓰기가 부모보다 9를 넘으면 **그 폭을 지시자로 표현할 방법이 없고**,
+      선행 공백·개행으로 시작하는 값은 지시자가 없으면 첫 줄이 들여쓰기로 먹혀 값이 달라진다.
+      그 조합에서만 기본값(+2)으로 내린다 — 표현할 수 없는 폭을 고집하면 값이 깨진다.
+    */
     if (!explicit && indent - token.indent > 9 && /^[ \n]/.test(value)) indent = token.indent + 2;
     const rendered = CST.createScalarToken(value, {
       type: value.trim() === "" ? "QUOTE_DOUBLE" : node.type, indent, end: [],
@@ -384,6 +390,15 @@ function writeWithErrors(
     const map = resolveLast(doc, path);
     const emptyRoot = path.length === 0 && (map === null
       || (isScalar(map) && map.value === null && !map.srcToken));
+    /*
+      ⚠️ **생산자를 못 찾은 방어다** (2026-09-16 리뷰). `insertPath`가 **맵인 동안만** 내려가므로 여기
+      남는 것은 둘뿐인데 — 루트가 맵이 아닌 파일은 `read`가 `root-not-object`로 먼저 떨어뜨려 write에
+      오지 않고, `keepSourceTokens: true`로 파싱한 맵은 `srcToken`을 늘 가진다. 부모가 스칼라·시퀀스·
+      알리아스인 경우는 `insertPath`가 평평한 점 키로 떨어뜨려 **이 분기에 닿지 않는다**(실측).
+      ⚠️ **그래서 코드를 `write-slot-missing`으로 바꾸지 않는다** — 도달 불가한 라벨을 하나 더 만드는
+      일이고, 그것이 POSTMORTEM 2026-09-08이 기록한 함정이다(도달 불가한 갈래를 겨냥한 테스트가
+      1년치 green이었다). 방어는 남기되 **검증된 배정인 척하지 않는다.**
+    */
     if (!emptyRoot && (!isMap(map) || !map.range || !map.srcToken)) {
       errors.push({ path: file.path, code: "write-slot-not-scalar", key });
       continue;
