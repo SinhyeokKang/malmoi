@@ -843,15 +843,21 @@ export const en = {
       /** 보조 줄 셋 — **다음에 할 일**을 든다. 연결됨 갈래는 `installedOn`이 그 자리에 선다. */
       hintNotConnected: "Connect to see which repositories have the app installed.",
       /**
-       * ⚠️ **해제가 실제로 막는 것만 말한다** — 야간 pull·PR은 App **설치 토큰**이 내므로 이미
-       * 연결된 프로젝트는 그대로 돈다 (2026-09-14 리뷰 🔴1과 같은 축).
-       * ⚠️ **문장 첫 자리도 `malmoi`다** — `brand-spelling.test.ts`가 그것을 0으로 고정한다.
+       * ⚠️ **재인가가 실제로 막는 것만 말한다.** 앞 판본은 `malmoi can't send changes until you
+       * reconnect.`였고 **거짓이었다** — `ensureUserToken` 소비자는 넷뿐이고(`account-view` ·
+       * `installed-repos` · 프로젝트 Action 둘) **`lib/pull`·`lib/push`에는 0곳**이다. 야간 pull과
+       * PR은 `createGitClient`의 **설치 토큰**이 내므로 사용자 토큰이 만료돼도 그대로 돈다.
+       *
+       * 그 문장을 믿은 사용자는 없는 장애를 찾거나 **멀쩡한 App 설치를 지우고 다시 만든다**
+       * (POSTMORTEM 2026-09-03과 같은 결말). 같은 카드의 `confirmHint`가 이미 정확한 범위를 쓰고
+       * 있었는데 이 줄만 반대를 말했다 — **같은 사전의 다른 절**이라 리뷰로 안 걸리는 형이다
+       * (2026-09-13 `malmoi`/`Malmoi`).
        */
-      hintReauthorize: "malmoi can't send changes until you reconnect. Your projects stay where they are.",
+      hintReauthorize: "You won't be able to add or reconnect repositories until you authorize again. Projects that are already connected keep syncing.",
       /** ⚠️ **"your account"가 아니라 "this connection"이다** — 계정은 멀쩡하고 못 읽은 것은 이 연결이다. */
       hintUnavailable: "We couldn't load this connection. Open this page again in a moment.",
       /**
-       * 연결된 행의 보조 줄.
+       * 연결된 행의 **본문** 상태 절 (2026-09-16에 보조 줄에서 올라왔다).
        *
        * ⚠️ **프로젝트 수를 말하지 않는다** (2026-09-14 리뷰 🔴1). 전에는 `Connected · N projects use
        * this connection`이었는데, 그 N이 세던 것은 **내가 OWNER인 모든 프로젝트**였고 그중 이 연결에
@@ -860,10 +866,10 @@ export const en = {
        */
       connected: "Connected",
       /**
-       * 연결된 행의 보조 줄에 이어 붙는 집계 (design §3.5).
+       * 연결된 행의 **보조 줄** — 이 갈래에서 "다음에 할 일"의 자리를 이 집계가 든다.
        *
-       * ⚠️ **설치 설정으로 나가기 전에 그 숫자가 바꾸려는 값이다** — 나가는 링크 옆에 서는 이유가
-       * 그것이다. 위 `connected`가 걷어낸 `N projects use this connection.`과 다른 축이다: 이 수는
+       * ⚠️ **설치 설정으로 나가기 전에 그 숫자가 바꾸려는 값이다** — 나가는 링크와 같은 행에 서는
+       * 이유가 그것이다. 위 `connected`가 걷어낸 `N projects use this connection.`과 다른 축이다: 이 수는
        * 사용자가 GitHub에서 **직접 고른 것**이고, 그래서 근거가 된다.
        *
        * ⚠️ **`0`과 "못 읽었다"는 이 줄을 아예 그리지 않는다** (design §8 결정 3) —
@@ -923,6 +929,16 @@ export const en = {
        * 답할 것은 "어디까지 닫히나"다.
        */
       scope: "all devices, this one included",
+      /**
+       * 행 보조 줄 — 누르기 전에 **왕복이 하나 더 있다**는 사실을 말한다.
+       *
+       * ⚠️ **provider 이름을 넣지 않는다.** 캔버스는 `GitHub will ask you to confirm…`이라 적었고
+       * 아래 `confirmDetail`이 정확히 그 문장인데, 행에 그걸 쓰면 **확인 상대를 못 고르는 갈래에서
+       * 이 줄만 사라져 두 행 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과 같은 논거다.
+       * 게다가 Dialog의 검은 줄이 같은 문장을 다시 내 사용자가 한 문장을 두 번 읽게 된다.
+       * **의도적 이탈이고 DESIGN §6.67에 근거가 있다.**
+       */
+      willConfirm: "You'll confirm with the account you sign in with before anything changes.",
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out on all devices. Sign in again to continue.",
       failed: "We could not sign you out everywhere. Try again.",
@@ -1908,7 +1924,7 @@ export const en = {
        * 영영 안 밟는다. **이름이 드는 것은 대상이 아니라 축이다**(아래 `disconnectLabel`과 같다).
        */
       connectLabel: (provider: string): string => `Connect ${provider} as a sign-in method`,
-      /** 연결된 행의 보조 줄 — 미연결 행의 `notConnected`와 짝이다. 한쪽만 있으면 행 높이가 갈린다. */
+      /** 연결된 행의 **본문** 상태 절 (2026-09-16에 보조 줄에서 올라왔다) — 미연결 행의 `notConnected`와 짝이다. */
       connected: "Connected",
       notConnected: "Not connected",
       disconnect: "Disconnect",

@@ -41,8 +41,10 @@ export default function AccountLoading() {
       <PanelBody className="space-y-4">
         {/* Profile 카드 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
         <SkeletonCard>
-          <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-4 px-4 py-3.5">
-            <div className="col-span-2 flex items-center gap-4">
+          <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">
+            {/* 아바타 행도 라벨 열을 든다 — 실물이 그렇다. 안 그리면 아바타가 108px 왼쪽에서 출발한다. */}
+            <Skeleton className="h-4 w-12" />
+            <div className="flex items-center gap-4">
               <Skeleton className="size-14 rounded-full" />
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
@@ -68,14 +70,19 @@ export default function AccountLoading() {
         </SkeletonCard>
 
         {/* 수단(행 둘) · GitHub App(행 하나). Sessions는 위 주석대로 없다. */}
-        {[2, 1].map((rows, card) => (
+        {[{ rows: 2, hint: false }, { rows: 1, hint: true }].map(({ rows, hint }, card) => (
           <SkeletonCard key={card}>
             {Array.from({ length: rows }, (_, row) => (
               <div key={row} className={`flex items-center gap-3 px-4 py-[13px] ${row === 0 ? "" : "border-border border-t"}`}>
                 <Skeleton className="size-7 rounded" />
-                <div className="flex flex-1 flex-col gap-px">
-                  <Skeleton className="h-4 w-24" />
+                <div className="flex flex-1 flex-col gap-[3px]">
                   <Skeleton className="h-4 w-40" />
+                  {/*
+                    ⚠️ **줄 수가 카드마다 다르다** — 수단 카드는 보조 줄을 안 그리고(데이터가 없다),
+                    GitHub App 카드는 집계를 든다. 골격이 둘 다 두 줄이면 데이터 도착 순간 수단
+                    카드만 줄어들고 그 아래 카드가 위로 밀린다.
+                  */}
+                  {hint && <Skeleton className="h-4 w-56" />}
                 </div>
                 <Skeleton className="h-9 w-24 rounded-md" />
               </div>

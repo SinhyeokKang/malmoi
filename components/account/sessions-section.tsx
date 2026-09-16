@@ -63,10 +63,13 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
         status={m.account.sessions.scope}
         /**
          * ⚠️ **확인이 둘이 된다는 사실을 누르기 전에 말한다** — 이 왕복은 provider 화면을 한 번 더
-         * 지나고, 예고가 없으면 그 두 번째가 실패로 읽힌다. 확인 상대를 못 고르면 그리지 않는다
-         * (없으면 안 그린다 — Dialog의 검은 줄과 같은 규칙).
+         * 지나고, 예고가 없으면 그 두 번째가 실패로 읽힌다.
+         *
+         * ⚠️ **provider 이름이 없는 문구다.** `confirmDetail(provider)`를 쓰면 확인 상대를 못 고르는
+         * 갈래에서 이 줄만 사라져 **위 행과 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과
+         * 같은 논거를 여기서 반대로 적용하지 않는다. provider 이름은 Dialog의 검은 줄이 든다.
          */
-        detail={confirmProvider === null ? undefined : m.account.sessions.confirmDetail(confirmProvider)}
+        detail={m.account.sessions.willConfirm}
       >
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

@@ -81,23 +81,67 @@ it("GITHUB_APP_SLUG가 없으면 링크만 사라지고 해제 버튼은 그대�
   expect([...container.querySelectorAll("button")].map((b) => b.textContent)).toContain(m.settings.account.disconnect);
 });
 
-it("설치 리포 수를 읽었으면 보조 줄이 그 수를 든다", async () => {
-  expect((await section()).textContent).toContain(m.account.github.installedOn(4));
+/**
+ * 행의 두 줄을 **노드로** 집는다 — `container.textContent`로 세면 본문과 보조 줄이 한 덩이가 되어
+ * "어느 줄에 있나"를 못 묻는다. 실제로 상태가 보조 줄에서 본문으로 올라간 변경에서 그렇게 쓴 단언이
+ * **공회전으로 바뀐 채 green이었다** (2026-09-16 리뷰 🟡4).
+ */
+function lines(container: ParentNode): { body: string; hint: string | null } {
+  const spans = [...container.querySelectorAll("li > div > span")];
+  return { body: spans[0]?.textContent ?? "", hint: spans[1]?.textContent ?? null };
+}
+
+it("설치 리포 수는 본문이 아니라 보조 줄이 든다", async () => {
+  const { body, hint } = lines(await section());
+  expect(hint).toBe(m.account.github.installedOn(4));
+  // 본문은 상태만 든다 — 집계를 여기 붙이면 상태가 숫자에 묻힌다.
+  expect(body).not.toContain("Installed on");
+  expect(body).toContain(m.account.github.connected);
 });
 
 it("리포가 하나면 단수로 읽힌다", async () => {
-  const text = (await section({ status: "ok", login: "octocat" }, 1)).textContent ?? "";
-  expect(text).toContain(m.account.github.installedOn(1));
+  const { hint } = lines(await section({ status: "ok", login: "octocat" }, 1));
+  expect(hint).toBe(m.account.github.installedOn(1));
   // 단복수를 안 가르면 `1 repositories`가 그대로 화면에 선다.
-  expect(text).not.toContain("1 repositories");
+  expect(hint).not.toContain("1 repositories");
 });
 
 it.each<[string, number | null]>([
   ["못 읽었으면", null],
   ["0개면", 0],
-])("%s 보조 줄이 Connected만 든다 — 빈 집계는 문장을 만들지 않는다", async (_label, count) => {
-  const container = await section({ status: "ok", login: "octocat" }, count);
-  const text = container.textContent ?? "";
-  expect(text).toContain(m.account.github.connected);
-  expect(text).not.toContain("Installed on");
+])("%s 보조 줄을 아예 그리지 않는다 — 빈 집계는 문장을 만들지 않는다", async (_label, count) => {
+  const { body, hint } = lines(await section({ status: "ok", login: "octocat" }, count));
+  // ⚠️ **보조 줄이 없다**를 센다 — 전엔 `textContent`를 봐서 상태가 본문으로 옮겨가도 통과했다.
+  expect(hint).toBeNull();
+  expect(body).toContain(m.account.github.connected);
+});
+
+/**
+ * ⚠️ **상태와 보조 줄의 짝이 갈래마다 맞는가.** 상태 넷은 `structure.test.tsx`가 고정하는데
+ * **짝이 되는 hint 셋은 어느 단언도 안 들고 있었다** — `hintReauthorize`↔`hintUnavailable`을 서로
+ * 바꿔도 green이다. 브라우저로 못 밟는 갈래가 정확히 그 셋이라(dev 계정이 늘 연결됨) **여기가
+ * 유일한 그물이다.**
+ */
+it.each<[string, AccountView, string, string]>([
+  ["미연동", { status: "ok", login: null }, m.account.github.notConnected, m.account.github.hintNotConnected],
+  ["인가 만료", { status: "reauthorize" }, m.account.github.statusReauthorize, m.account.github.hintReauthorize],
+  ["조회 실패", { status: "unavailable" }, m.account.github.statusUnavailable, m.account.github.hintUnavailable],
+])("%s 갈래의 상태와 보조 줄이 짝이다", async (_label, account, status, hint) => {
+  const measured = lines(await section(account));
+  expect(measured.body).toContain(status);
+  expect(measured.hint).toBe(hint);
+});
+
+/**
+ * ⚠️ **재인가 문구가 발송을 막는다고 말하지 않는다** (2026-09-16 리뷰 🔴1). 앞 판본은
+ * `malmoi can't send changes until you reconnect.`였고 **거짓이었다** — 야간 pull·PR은
+ * `createGitClient`의 **설치 토큰**이 내므로 사용자 토큰이 만료돼도 그대로 돈다. 그 문장을 믿은
+ * 사용자는 없는 장애를 찾거나 **멀쩡한 App 설치를 다시 만든다** (POSTMORTEM 2026-09-03의 결말).
+ */
+it("재인가 문구가 발송이 멈춘다고 말하지 않는다", async () => {
+  const { hint } = lines(await section({ status: "reauthorize" }));
+  expect(hint).not.toBeNull();
+  expect(hint!).not.toMatch(/can't send|cannot send|stops? syncing|won't sync/i);
+  // 실제로 막히는 것을 말한다 — 리포를 붙이는 일과 (재)연결이다.
+  expect(hint!).toMatch(/reconnect|authorize/i);
 });

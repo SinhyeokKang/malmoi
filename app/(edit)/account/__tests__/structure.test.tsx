@@ -157,6 +157,52 @@ it.each([
 });
 
 /**
+ * ⚠️ **Sessions 행도 본문 한 줄이고, 두 행의 보조 줄이 같이 있거나 같이 없다.**
+ *
+ * 앞 판본은 아래 행의 보조 줄에 `confirmDetail(provider)`를 써서 **확인 상대를 못 고르는 갈래에서
+ * 그 줄만 사라졌다** — 수단 카드에서 "한쪽만 그리면 두 행 높이가 갈린다"로 보조 줄 둘을 다 지워
+ * 놓고 같은 카드에서 반대로 적용한 것이었다 (2026-09-16 리뷰 🟡5).
+ */
+it.each([
+  ["수단 둘", [{ provider: "github" }, { provider: "google" }]],
+  /**
+   * ⚠️ **확인 상대를 못 고르는 갈래** — `pickLoginAccount`가 `null`을 준다. 도달성은 낮지만
+   * (DB 세션 사용자는 보통 `Account` 행을 하나는 갖는다) **그 갈래를 렌더하는 테스트가 0개였고**,
+   * 그래서 높이 갈림이 어느 그물에도 안 걸렸다.
+   */
+  ["수단 0", []],
+])("%s 에서도 Sessions 두 행이 같은 모양이다", async (_label, methods) => {
+  const container = await screen({}, methods);
+  const rows = [...card(container, m.account.sessionsSection.title).querySelectorAll("li")];
+  expect(rows).toHaveLength(2);
+  const shapes = rows.map((row) => {
+    const spans = [...row.querySelectorAll(":scope > div > span")];
+    return { body: spans[0]?.textContent ?? "", hasHint: spans.length === 2 };
+  });
+  expect(shapes[0]!.body).toContain(m.account.signOut.scope);
+  expect(shapes[1]!.body).toContain(m.account.sessions.scope);
+  // 둘이 같이 있거나 같이 없다 — 한쪽만 있으면 행 높이가 갈린다.
+  expect(shapes[0]!.hasHint).toBe(shapes[1]!.hasHint);
+  // ⚠️ provider 이름이 행에 없다 — 그것이 들어가면 위 갈래에서 이 줄만 사라진다.
+  expect(shapes[1]!.body).not.toContain(m.link.providers.github);
+});
+
+/**
+ * ⚠️ **구분자를 프리미티브가 든다.** 호출부가 문자열에 `—`를 도로 박아도 `textContent`는 같으므로
+ * 어느 검사도 안 문다 — 그러면 한 화면에 `—`와 `-`가 섞이는 것을 막던 설계가 조용히 사라진다.
+ * 세는 것은 **`status`가 없으면 대시도 없다**는 비대칭이다.
+ */
+it("행 구분자는 상태가 있을 때만 선다", async () => {
+  const container = await screen();
+  const bodies = [...container.querySelectorAll("section[aria-labelledby] li > div > span:first-child")];
+  expect(bodies.length).toBeGreaterThan(0);
+  for (const body of bodies) expect(body.textContent, body.textContent ?? "").toContain(" — ");
+
+  // Profile 카드는 행이 없다 — 사실 블록이라 대시가 설 자리가 없다.
+  expect(card(container, m.account.profile.title).querySelectorAll("li")).toHaveLength(0);
+});
+
+/**
  * ⚠️ **본문이 카드 넷이고 넷이 같은 그릇이다** (spec 완료 조건 1). 전엔 머리 하나 + 리스트 셋이라
  * **Profile만 그릇이 없었고**, 구역 제목이 카드 밖에 있어 제목↔리스트 12가 구역 사이 28과 경쟁했다.
  *
