@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { metaRows } from "../meta";
+import { metaRows, type MetaRow } from "../meta";
 
 /**
  * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · design §3.5). **행이 상태에 따라 사라지거나 는다** —
@@ -66,8 +66,22 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
    */
   it("미연결이면 리포 링크가 빠지고 pill이 선다", () => {
     expect(row({ ...base, state: "not_connected" }, "repository")).toEqual({
-      kind: "repository", owner: "acme", name: "web", href: null, disconnected: true,
+      kind: "repository", owner: "acme", name: "web", disconnected: true,
     });
+  });
+
+  /**
+   * ⚠️ **타입이 어긋난 조합을 막는다** — 전에는 `href: string | null`과 `disconnected: boolean`이 따로
+   * 서서 **연결됐다고 말하면서 주소가 없는 행**을 만들 수 있었고, 화면은 그것을 파랑 글자 + 외부 링크
+   * 모양인데 **포커스를 못 받는 요소**로 그렸다. 도달 불가를 지키던 것은 타입이 아니라 `metaRows`의
+   * 한 줄이었다. 아래 두 단언은 런타임이 아니라 **컴파일러**가 센다.
+   */
+  it("연결됐다고 말하면서 주소가 없는 행은 타입이 거부한다", () => {
+    // @ts-expect-error — `disconnected: false`면 `href`가 필수다.
+    const broken: MetaRow = { kind: "repository", owner: "acme", name: "web", disconnected: false };
+    // @ts-expect-error — `disconnected: true`에는 `href` 자리가 없다.
+    const alsoBroken: MetaRow = { kind: "repository", owner: "acme", name: "web", disconnected: true, href: "https://example.com" };
+    expect([broken, alsoBroken].every(r => r.kind === "repository")).toBe(true);
   });
 
   it("Sync 실패면 마지막 Sync 행이 값 둘을 든다 — 성공 시각과 실패 시각", () => {

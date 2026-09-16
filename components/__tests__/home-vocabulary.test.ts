@@ -81,7 +81,12 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
    * ⚠️ **`text-mono`는 이 리포의 유일한 mono 소비 경로다** (`app/globals.css`의 `@utility`).
    * 시안이 Home에서 mono를 0으로 만들었으므로 여기서는 그 유틸이 한 번도 안 서야 한다.
    */
-  it("그래프 여섯에 `text-mono`가 없다", () => {
+  /**
+   * ⚠️ **`sync-result.tsx`·`sync-button.tsx`는 이 목록에 없다** — 결과 Alert의 원인 줄은 시안 `4e`가
+   * **slug를 mono로** 지시하고(`docs/DESIGN.md` §6.644) 그것이 이 규칙보다 좁은 계약이다. 목록에
+   * 넣으면 그 둘이 서로를 부정한다.
+   */
+  it("그래프 일곱에 `text-mono`가 없다", () => {
     for (const path of HOME_GRAPH) {
       expect(bare(read(path)), path).not.toMatch(/text-mono/);
     }

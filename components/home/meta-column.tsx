@@ -90,7 +90,7 @@ function value(row: MetaRow, now: Date): ReactNode {
           센다(한쪽만 고치지 못하게).
         */
         <a
-          href={row.href ?? undefined}
+          href={row.href}
           target="_blank"
           rel="noreferrer"
           className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"

@@ -457,8 +457,15 @@ export const en = {
          * ⚠️ **캔버스의 `CI pushes are rejected`를 바꿨다** — 이 화면에 `push` 낱말이 0이라는 것이
          * 완료 조건이고(spec §3.3-7), `home-vocabulary.test.ts`가 그것을 센다. 뜻은 같다: 거절되는
          * 것은 리포에서 들어오는 Sync다.
+         *
+         * ⚠️ **열린 PR을 단언하지 않는다** — 전에는 꼬리가 `The open pull request was left alone.`이었고
+         * **열린 PR 없이 보관한 프로젝트에서 거짓**이었다. Home은 그 사실을 모른다(알려면 GitHub 왕복이고
+         * `checkOpenPullRequest`는 owner 전용이다). 그 문장의 자리는 보관을 **누르기 직전**의 확인
+         * Dialog이고, `ArchiveCard`가 거기서 `openPrUrl`을 셋(모름·있음·없음)으로 가른다.
+         * POSTMORTEM 2026-09-03("조회 실패를 부재로 접지 않는다")과 같은 축이다 — 모르는 것을 안다고
+         * 말하지 않는다.
          */
-        body: "Editing and publishing are off, and syncs from your repository are refused. The open pull request was left alone. Restore it to work on it again.",
+        body: "Editing and publishing are off, and syncs from your repository are refused. Restore it to work on it again.",
         action: "Restore project",
         editor: "Ask an owner of this project to restore it.",
       },

@@ -236,7 +236,13 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
           variant="warning"
           title={m.home.banner.archived.title}
           /* 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다 (`ArchiveCard`의 규칙). */
-          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={null} /> : undefined}
+          /*
+            ⚠️ **`null`이 아니라 `undefined`다** — 그 prop의 계약이 `null`은 "없다", `undefined`는
+            **"확인하지 못했다"**이고(POSTMORTEM 2026-09-03), Home은 열린 PR을 모른다. 지금은 복원
+            분기가 그 값을 안 읽어 증상이 없지만, 같은 화면의 배너 문구가 정확히 그 거짓 단언을
+            들고 있다가 2026-09-16에 걷혔다.
+          */
+          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={undefined} /> : undefined}
         >
           {m.home.banner.archived.body}
           {!owner && <> {m.home.banner.archived.editor}</>}
@@ -249,7 +255,12 @@ export function HomeNotices({ slug, name, state, role, branch, failedSurface, re
         outcome={outcome}
         onDismiss={() => setOutcome(null)}
         retryDisabled={publishPending}
-        onRetry={() => setSyncOpen(true)}
+        /*
+          ⚠️ **역할로 가른다 — 위 배너 셋과 같은 모양이다.** EDITOR에게 `[Try again]`이 서면
+          `SyncButton`이 `role !== "OWNER"`에서 `null`이라 눌러도 확인 창이 안 열린다. 지금은 EDITOR가
+          결과를 가질 경로가 없어 도달 불가지만, **무반응인 버튼은 비활성보다 한 단계 아래다**.
+        */
+        onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
       {pull !== null && <PublishResult outcome={pull} />}
     </div>
