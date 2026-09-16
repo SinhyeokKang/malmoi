@@ -11,9 +11,20 @@ import type { RepositoryImportError } from "./result";
  * Dialog 안에 띄우면 이미 답한 질문 위에 새 문장이 얹히고 사람이 "닫아도 되는지"를 다시 판단해야
  * 한다. 결과와 거부가 같은 한 자리에 서서 한 번 누른 일의 답이 두 곳에 나지 않는다.
  *
- * ⚠️ **사전 비활성화를 만들지 않는다** — `not-ready`·`not-connected`는 렌더 시점에 알 수 있지만
- * 그것으로 트리거를 끄지 않는다. 비활성 버튼은 이유를 말하지 못하고, 이 기능은 이미 "부재가
- * 결정"(EDITOR에게 버튼이 없다)을 들고 있다. 예외는 **자기 실행 중**뿐이다.
+ * ⚠️ **아래 넷은 `[Sync]`에서 도달할 수 없다** (2026-09-16 브라우저 실측 · T11). 전에 이 주석은
+ * *"사전 비활성화를 만들지 않는다 — `not-ready`·`not-connected`는 렌더 시점에 알 수 있지만 그것으로
+ * 트리거를 끄지 않는다"*라고 적혀 있었는데 **화면은 정확히 반대로 동작한다**:
+ *
+ * - `not-ready`·`no-surfaces` — `planProjectReadiness`가 `ready`가 아니면 Home이 서지 않고 설정 화면이
+ *   대신 뜬다. 거기엔 `[Sync]`가 없다(`[Run first import]`뿐). `lastCommitSha`를 **null로 되돌리는
+ *   코드가 없어서**(`lib/push/apply.ts`가 세우기만 한다) 한 번 `ready`가 된 프로젝트는 여기 못 온다.
+ * - `not-connected`·`repo-replaced` — `planHomeState`가 둘을 `not_connected` 하나로 접고, Home의
+ *   `paused`가 트리거를 native `disabled`로 만든다(`app/(edit)/projects/[slug]/page.tsx`).
+ *
+ * **손실은 아니다** — 그 화면은 `not_connected` 배너가 `[Reconnect]`를 들어 아래 `action`이 하려던
+ * 일을 이미 한다. **계획을 지우지도 않는다**: Action은 경합(렌더 후 상태가 바뀜)에서 여전히 이 코드를
+ * 돌려주고, `planImportRefusal`의 폴백이 모르는 값을 warning으로 떨어뜨리는 것이 방어선이다.
+ * 실제로 밟히는 것은 `already-running`·`ingest-failed`·`unavailable`과 `AccessError` 갈래다.
  */
 export type ImportRefusalPlan = {
   /**
