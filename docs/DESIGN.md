@@ -490,7 +490,14 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 (`grep -rn underline app components --include='*.tsx'`가 0건이어야 한다) `Button` variant `link`도
 같이 바뀌었다.
 
-**리포 밖으로 나가는 링크는 전부 `text-blue-600` + `ExternalLink` 12px 아이콘**이다 — 지금 **여덟 곳**이다: 코드 참조 permalink · 툴바의 "View what was sent" · Publish 결과의 PR 링크 · **Home의 PR 링크** · **이력 표의 PR 링크** · **보관 Dialog의 열린 PR 링크** · App 설치 링크 둘(온보딩·설정). ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`.
+**리포 밖으로 나가는 링크는 `text-blue-600` + `ExternalLink` 12px 아이콘**이다 — 지금 **여덟 곳**이다: 코드 참조 permalink · 툴바의 "View what was sent" · Publish 결과의 PR 링크 · **Home의 PR 링크** · **이력 표의 PR 링크** · **보관 Dialog의 열린 PR 링크** · App 설치 링크 둘(온보딩·설정). ⚠️ 2026-09-08 `/doc-check`이 다섯 곳 중 **둘만** 아이콘을 든 상태를 잡았다 — 규칙이 아니라 코드를 고쳤다. `target="_blank" rel="noreferrer"`.
+
+⚠️ **예외 하나 — Home 메타 열의 리포 링크는 파랑이지만 글리프가 없다** (2026-09-16). 규칙을 "전부"로
+읽으면 이 자리가 위반으로 보이므로 여기 적는다: **두 정본이 함께 그렇게 정했다** — `design_handoff_project_home`의
+lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호만 링크"*라고만 적으며, 바로 위 여덟
+목록에도 **Home의 PR 링크는 있고 리포 링크는 없다.** 같은 카드 안에서 PR 번호는 글리프를 들고 리포
+주소는 안 드는 **비대칭이 의도**이고, `components/__tests__/home-landmarks.test.tsx`가 둘을 **한 검사**로
+센다 — 한쪽만 고치면 red다.
 
 **내부 링크는 표면이 두 갈래다.** 셸 **안**의 내부 링크(사이드바·목록 행·진행률 행·활동 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다 — 행 전체가 눌리는 자리라 색이 아니라 hover가 그것을 말한다. ⚠️ **셸 밖 화면의 텍스트 링크는 `text-blue-600`이다**(로그인 푸터의 Privacy·Docs, `/privacy`·`/docs`의 돌아가는 링크) — 그 화면들엔 사이드바도 행도 없어서 **링크가 문단 안의 글자 하나**이고, 색이 없으면 눌리는 것인지 알 수단이 밑줄뿐인데 그것을 8-1b가 전역으로 걷었다. 아이콘은 안 붙는다(리포 밖으로 안 나간다).
 
