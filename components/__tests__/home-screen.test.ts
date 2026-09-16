@@ -176,3 +176,39 @@ it("Home이 HomeActions를 프로젝트 단위로 분리한다", () => {
   const source = read("app/(edit)/projects/[slug]/page.tsx");
   expect(source).toMatch(/<HomeActions\s+key=\{/);
 });
+
+/**
+ * 로딩 골격(캔버스 `2e`)이 실물과 같은 자리·같은 높이를 그리는지 **소스에서** 센다.
+ *
+ * ⚠️ **렌더 테스트로는 못 센다** — jsdom에 레이아웃이 없어 모든 rect가 `0×0`이라, "도착하는 순간
+ * 튀지 않는다"는 이 파일의 존재 이유가 통째로 측정 불가다. 브라우저 실측은 실물 Home 쪽에서 했고
+ * (2026-09-16 · `docs/DESIGN.md` §6.64), 여기가 막는 것은 **그 값이 다시 지워지는 것**이다.
+ *
+ * ⚠️ **`2e` 화면 자체는 아직 못 밟았다** — soft navigation은 이전 화면을 유지하고, hard navigation은
+ * `(edit)` 레이아웃이 shell을 잡고 있어 fallback 창이 안 열렸다(임시 지연 5초로도 안 떴다).
+ */
+describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () => {
+  const skeleton = () => read("app/(edit)/projects/[slug]/loading.tsx");
+
+  it("메타 열은 구역이 둘이고 바닥에 링크가 있다", () => {
+    const source = skeleton();
+    // 한 구역 아홉 행이면 경계 하나와 `[Project settings ›]` 45px이 통째로 빠진다.
+    expect(source.match(/<MetaGroup rows=\{\d+\}/g)).toHaveLength(2);
+    expect(source).toMatch(/<FooterLink \/>\s*<\/aside>/);
+  });
+
+  it("행 높이는 블록이 아니라 컨테이너가 든다", () => {
+    const source = skeleton();
+    // 할 일 행은 두 줄(42) · 로그 행은 한 줄(22) · 메타 행은 `text-sm`의 20이다.
+    expect(source).toMatch(/h-\[42px\]/);
+    expect(source).toMatch(/h-\[22px\]/);
+    expect(source).toMatch(/flex h-5 items-center/);
+    expect(source).toMatch(/flex h-\[45px\] items-center/);
+  });
+
+  it("할 일 카드에는 바닥 링크가 없고 로그 카드에는 있다", () => {
+    const source = skeleton();
+    expect(source).toMatch(/<Card rows=\{3\} footer=\{false\} \/>/);
+    expect(source).toMatch(/<Card rows=\{5\} footer divided=\{false\} \/>/);
+  });
+});

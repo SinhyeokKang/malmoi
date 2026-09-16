@@ -22,8 +22,13 @@ export default function ProjectHomeLoading() {
     <>
       {/*
         ⚠️ **골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다** — 그 화면에 들어온 스크린리더
-        사용자에게는 `<main>`이 비어 있고 도착도 안 알려진다. live 영역 한 줄이 그것을 메운다
-        (2026-09-15 리뷰).
+        사용자에게는 `<main>`이 비어 있다. 이 한 줄이 그 자리를 메운다 (2026-09-15 리뷰).
+
+        ⚠️ **"도착을 알린다"는 약속이 아니다** (2026-09-16 정정) — 이 `role="status"`는 **문구를 품은
+        채** 트리에 들어왔다가 통째로 사라지고, live 영역은 삽입 시점에 등록되므로 그 첫 내용은
+        읽힐 수도 안 읽힐 수도 있다. 제거는 `aria-relevant` 기본값이 announce하지 않으므로 언제나
+        안 읽힌다. 빈 래퍼를 상시로 세우는 해법은 **라우트가 통째로 바뀌는 이 자리에는 걸 곳이 없다**
+        — 그 논의는 `components/ui/alert.tsx`의 `role` prop 주석이 든다.
       */}
       <span className="sr-only" role="status">{m.home.loading}</span>
       {/* ⚠️ `aria-hidden`이 머리와 본문 **둘 다**에 있다 — 하나만 빠져도 스크린리더가 회색 블록을 읽는다. */}
@@ -61,18 +66,19 @@ export default function ProjectHomeLoading() {
           <Card rows={5} footer divided={false} />
         </div>
 
+        {/*
+          ⚠️ **메타 열은 구역이 둘이고 바닥에 링크가 있다** (§6.64 · 2026-09-16 실측). 한 구역 아홉 행으로
+          그리면 경계 하나와 `[Project settings ›]` 45px이 통째로 빠져 **오른쪽 열이 도착하는 순간
+          늘어난다.** 행 수(6·3)는 실물의 가장 흔한 모양이고, 두 줄짜리 값(리포·마지막 발행)까지
+          맞히려 들지는 않는다 — 틀리면 두 번 튄다.
+        */}
         <aside className="border-border overflow-hidden rounded-lg border">
           <div className="p-4">
             <Block className="h-5 w-20 rounded-md" />
           </div>
-          <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Block className="h-3 w-24 shrink-0 rounded-md" />
-                <Block className="h-3.5 w-[62%] rounded-md" />
-              </div>
-            ))}
-          </div>
+          <MetaGroup rows={6} />
+          <MetaGroup rows={3} />
+          <FooterLink />
         </aside>
       </PanelBody>
     </>
@@ -99,17 +105,55 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
             className={divided ? "border-divider flex items-center gap-3 border-t px-4 py-3.5" : "flex items-center gap-3 pb-4"}
           >
             <Block className={divided ? "size-7 shrink-0 rounded" : "size-2.5 shrink-0 rounded-full"} />
-            <Block className="h-3.5 w-[72%] rounded-md" />
+            {/*
+              ⚠️ **자리의 높이는 블록이 아니라 컨테이너가 든다** (2026-09-16 실측) — 블록을 두껍게
+              키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**
+              (표면·로케일 13 + 문장 15)이라 42, 로그 행은 한 줄이라 22다. 전에는 둘 다 14로 서서
+              도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
+            */}
+            <span className={`flex min-w-0 flex-1 flex-col justify-center gap-1 ${divided ? "h-[42px]" : "h-[22px]"}`}>
+              {divided && <Block className="h-[17px] w-[62%] rounded-md" />}
+              <Block className="h-[21px] w-[72%] rounded-md" />
+            </span>
             <Block className="ml-auto h-3 w-12 shrink-0 rounded-md" />
           </li>
         ))}
       </ul>
-      {footer && (
-        <div className="border-divider flex items-center justify-center border-t px-4 py-3">
-          <Block className="h-3.5 w-16 rounded-md" />
-        </div>
-      )}
+      {footer && <FooterLink />}
     </section>
+  );
+}
+
+/**
+ * 카드 바닥의 `All logs ›` · `Project settings ›` 자리.
+ *
+ * ⚠️ **45px이다** — 실물은 `px-4 py-3` 위에 14px 글자와 chevron이 서서 45가 되는데, 골격이 블록
+ * 높이만 14로 두면 38이 되어 도착할 때마다 7px씩 밀린다 (2026-09-16 실측).
+ */
+function FooterLink() {
+  return (
+    <div className="border-divider flex h-[45px] items-center justify-center border-t px-4">
+      <Block className="h-3.5 w-16 rounded-md" />
+    </div>
+  );
+}
+
+/**
+ * 메타 열의 구역 하나.
+ *
+ * ⚠️ **행 높이 20은 컨테이너가 든다** — 실물의 값은 `text-sm`(line-height 20)이고, 골격이 블록의
+ * 14로 서면 아홉 행에서 54px이 모자란다 (2026-09-16 실측).
+ */
+function MetaGroup({ rows }: { rows: number }) {
+  return (
+    <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex h-5 items-center gap-3">
+          <Block className="h-3 w-24 shrink-0 rounded-md" />
+          <Block className="h-3.5 w-[62%] rounded-md" />
+        </div>
+      ))}
+    </div>
   );
 }
 
