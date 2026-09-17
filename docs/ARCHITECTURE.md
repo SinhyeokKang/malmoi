@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -11,7 +11,8 @@
 
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
-3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다.
+3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
+   UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -998,6 +999,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 **대가는 편집 손실 창이다.** 번역자의 편집은 pull PR이 머지되기 전까지 리포에 없으므로, 그 사이 push가 오면 사라진다. 이 위험을 코드에서 지우려 하면 곧 변경 감지·병합이 되어 코어 원칙을 깬다 — 완화는 pull 주기를 줄이는 쪽에서만 한다.
 
+**"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
+
 **따라서 `Translation.value`의 쓰기 주체는 둘이다**: 편집 UI의 `saveTranslation`과 push. 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다.
 
 ### 5.5.3 보고값은 실제 영향 행수다
@@ -1078,6 +1081,18 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 - **실 DB를 치지 않는다.** prisma 스텁이 태그드 템플릿 인자를 캡처한다 — 실 DB 왕복은 재현 가능한 게이트가 아니다 — 붙는 DB가 머신·환경마다 갈리므로(로컬·Preview는 dev, 프로덕션은 prod) 테스트가 어느 쪽을 쳤는지가 결과를 바꾼다.
 - **컬럼 이름 개수 = 값 배열 개수를 매번 검사한다.** `unnest` 인자 순서가 컬럼 목록과 어긋나면 값이 옆 컬럼으로 들어가는데, 타입이 같으면(`text[]`끼리) 런타임도 조용하다.
 - 덮는 손실 지점: `sortIndex`의 0(falsy), 키 description과 로케일 description의 분리, `placeholders`의 JSON 직렬화, `refs`의 keyId 연결, 빈 값 번역 제외, orphan·unorphan·`needsReview` 전파.
+
+### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
+
+적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이고, 근거가 `docs/features/sync-edit-protection/design.md`에만 있어서 여기로 올렸다.
+
+| 컬럼 | 소유 | 무엇을 막나 |
+|---|---|---|
+| `TranslationSurface.lastImportToken` + `lastImportStartedAt` | 표면 | **뒤늦은 결과 쓰기.** 실행이 시작할 때 UUID를 세우고(`markImportStarted`·`lib/surfaces/create.ts`·`lib/import/run.ts`), 결과 쓰기(`importOutcomeFields`)는 전부 `WHERE lastImportToken = <내 토큰>`이다 — A가 끝난 뒤 B가 시작했으면 A의 늦은 실패 보고는 0행이고 B의 표시를 못 지운다(`lib/push/apply.ts` "성공도 자기 실행만 끝낸다"). 300초(`IMPORT_STALE_AFTER_SECONDS`) 지나면 죽은 실행으로 보고 새 실행이 들어간다 |
+| `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
+| `TranslationSurface.importRevision` | 표면 | **옛 상태 위에 계획한 적용.** 성공한 적용마다 +1(`applyPush`·`finishSurface`). 수동 Sync는 계획 시점의 revision을 잡아 두고 표면마다 적용 tx에서 `planImportApply`가 현재값과 대조한다 — 그 사이 CI push가 지나갔으면 `superseded`로 그 표면만 건너뛴다(값을 견주는 것이 아니라 **"내가 본 상태가 아직 그 상태인가"**만 본다 — §0 불변식 2 안이다) |
+
+⚠️ **`lastImportToken`을 세우는 자리가 트랜잭션 밖이면 이 방어가 뒤집힌다** — `app/api/push/route.ts`의 `markImportStarted`가 그 자리이고, 동시 CI 둘이면 성공한 임포트가 `import-failed`로 표시될 수 있다(launch-readiness L3.7). 잠금 뒤로 옮기는 것이 수정이다.
 
 ## 5.6 sync 실행 (`lib/sync/`)
 
