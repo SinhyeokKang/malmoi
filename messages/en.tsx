@@ -51,13 +51,14 @@ export const en = {
      * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
      * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
      */
-    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} edit${n === 1 ? "" : "s"}`,
+    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} unsent translation change${n === 1 ? "" : "s"}`,
     /**
-     * ⚠️ **덮이는 값의 저자가 리포가 된다** — `lib/push/apply.ts`가 `"updatedBy" = NULL`로 저자를
-     * 비우므로, 이 문장이 말하는 "replaced"는 사람 이름까지 사라지는 것을 포함한다.
+     * **폐기를 말하는 문장 하나로 교체했다** (sync-edit-protection T13, design §4.3) — 설명문이 이미 `replace`를 말하지만 이 줄이
+     * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
+     * ⚠️ `updatedBy`까지 비워 저자도 리포가 된다(`lib/push/apply.ts`) — "discard"가 그것을 포함한다.
      */
-    unsent: (n: number, edits: ReactNode): ReactNode => (
-      <>{edits} that {n === 1 ? "hasn't" : "haven't"} been sent yet will be replaced.</>
+    unsent: (_n: number, edits: ReactNode): ReactNode => (
+      <>Sync will discard {edits} and replace them with repository values.</>
     ),
     /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
     openPr: (n: number, branch: string): string =>
@@ -316,7 +317,6 @@ export const en = {
       reviewByLocale: (parts: string): string => parts,
       // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
       localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
-      lastPublish: (when: string): string => `last publish ${when}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
       nothingPending: "nothing pending",
       /** `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다. */
@@ -324,6 +324,8 @@ export const en = {
       asOf: (when: string | null): string => (when === null ? "never synced" : `as of ${when}`),
       asOfLastSync: "as of the last sync",
       cannotSend: "cannot be sent while paused",
+      /** 보낼 편집이 있는 동안 CI 적재가 보류된다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13). */
+      repositoryUpdatesPaused: "repository updates paused",
       frozen: "frozen at archive",
       neverSent: "never sent",
     },
@@ -1365,12 +1367,13 @@ export const en = {
 
     banner: {
       /**
-       * 편집 손실 창 (design §3.11). **주어가 편집자의 행동이다** — 처음 초안은 "code push"가 주어였고,
-       * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다.
+       * 리포 갱신 보류 (sync-edit-protection T13). **손실을 예고하지 않는다** — 미전달 편집이 있으면 CI 적재가 보류되므로 편집은
+       * 사라지지 않는다. 멈춘 사실과 푸는 조건(보내기)만 말한다. ⚠️ `can be lost`·`automatically`를 되살리지 않는다.
        */
-      unsent: (n: number): string =>
-        `${n === 1 ? "1 change" : `${n.toLocaleString("en-US")} changes`} not yet sent. ` +
-        "They can be lost when repository changes are imported automatically or with Sync. Send them and wait for the pull request to be merged before syncing.",
+      paused: (n: number): string =>
+        `Repository updates are paused until ${n.toLocaleString("en-US")} unsent change${n === 1 ? " is" : "s are"} sent.`,
+      /** 헤더의 Publish 버튼으로 포커스를 옮긴다 — 둘째 트리거가 아니다. 화살표 글리프가 방향을 든다. */
+      sendWithPublish: "Send with Publish",
 
       /**
        * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**

@@ -75,11 +75,12 @@ export function usePublish(slug: string) {
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
-export function PublishButton({ count, publish, disabled = false }: { count: number; publish: PublishController; disabled?: boolean }) {
+/** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
+export function PublishButton({ id, count, publish, disabled = false }: { id?: string; count: number; publish: PublishController; disabled?: boolean }) {
   const plan = planPublishButton({ count, paused: disabled, otherPending: false, publishPending: publish.pending });
   return <div className="flex items-center gap-2">
     <span title={plan.hint}>
-      <Button variant="primary" disabled={plan.disabled} onClick={event => { publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
+      <Button id={id} variant="primary" disabled={plan.disabled} onClick={event => { publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
         {publish.pending ? m.translations.publish.publishing : m.translations.publish.button}
         {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{plan.badge.toLocaleString("en-US")}</span>}

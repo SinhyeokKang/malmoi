@@ -163,7 +163,6 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(read(HEADER)).not.toMatch(/dismissKey/);
   });
 });
-});
 
 /**
  * **설정의 보관 카드** (7단계 — design §6.2).

@@ -35,7 +35,6 @@ export type CardSubline =
   | { kind: "synced"; at: Date | null }
   | { kind: "acrossSurfaces"; surfaces: number }
   | { kind: "reviewByLocale"; locales: readonly { code: string; count: number }[] }
-  | { kind: "lastPublish"; at: Date }
   | { kind: "allFilled"; keys: number }
   | { kind: "nothingPending" }
   | { kind: "lastGoodSync"; at: Date | null }
@@ -43,7 +42,9 @@ export type CardSubline =
   | { kind: "asOfLastSync" }
   | { kind: "pausedCannotSend" }
   | { kind: "frozenAtArchive" }
-  | { kind: "neverSent" };
+  | { kind: "neverSent" }
+  /** 보낼 편집이 있어 CI 자동 적재가 보류 중이다 (sync-edit-protection T13). 보류는 저장되는 상태가 아니라 pending > 0에서 파생된다. */
+  | { kind: "repositoryUpdatesPaused" };
 
 export type HomeCard = {
   key: CardKey;
@@ -72,7 +73,6 @@ export function countCards(input: {
   keys: number;
   /** 표면별 `lastCommitAt`의 최댓값. 첫 Sync 전에는 `null`이다. */
   lastSyncAt: Date | null;
-  lastPublishedAt: Date | null;
   /** 검토 대기의 로케일별 분해 — `8 cells · 5 en, 3 ja`의 뒤쪽이다. */
   reviewByLocale: readonly { code: string; count: number }[];
 }): HomeCard[] {
@@ -93,7 +93,7 @@ export function countCards(input: {
  * 거짓이다 — 그 수는 마지막 Sync 시점의 것이고 지금의 관측이 아니다.
  */
 function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): CardSubline {
-  const { state, counts, lastSyncAt, lastPublishedAt } = input;
+  const { state, counts, lastSyncAt } = input;
 
   if (key === "newFromGithub") {
     if (state === "import_failed") return { kind: "lastGoodSync", at: lastSyncAt };
@@ -123,6 +123,9 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
     return counts.toReview === 0 ? { kind: "nothingPending" } : { kind: "reviewByLocale", locales: input.reviewByLocale };
   }
   if (counts.toSend === 0) return { kind: "nothingPending" };
-  // 보낸 적이 없으면 기준으로 삼을 시각이 없다 — 같은 문장이 그 사실을 말한다.
-  return lastPublishedAt === null ? { kind: "neverSent" } : { kind: "lastPublish", at: lastPublishedAt };
+  /*
+    ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (sync-edit-protection T13). 보낼 편집이 있으면 리포의 새 키·삭제가 앱에 안
+    들어오고, 그것을 OWNER가 아는 자리가 이 줄이다. 넷째 전폭 배너를 두지 않는다 — 상시 상태에 배너를 두면 Home의 배너 0개 전제가 깨진다.
+  */
+  return { kind: "repositoryUpdatesPaused" };
 }

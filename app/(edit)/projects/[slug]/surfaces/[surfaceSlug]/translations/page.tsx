@@ -211,7 +211,6 @@ export default async function TranslationsPage({
         project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date())
       }
       lastPrUrl={project.lastPrUrl}
-      dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
     >

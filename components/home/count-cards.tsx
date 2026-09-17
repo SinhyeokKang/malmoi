@@ -134,8 +134,6 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "reviewByLocale":
       // 폭에 따라 뒤부터 잘리므로 큰 수가 앞이다 — 정렬은 `reviewByLocale`이 이미 했다.
       return m.home.cards.reviewByLocale(subline.locales.map((l) => m.home.cards.localeCount(l.code, l.count)).join(", "));
-    case "lastPublish":
-      return m.home.cards.lastPublish(relativeTime(subline.at, now));
     case "allFilled":
       return m.home.cards.allFilled(subline.keys);
     case "nothingPending":
@@ -152,5 +150,7 @@ function sublineText(subline: CardSubline, now: Date): string {
       return m.home.cards.frozen;
     case "neverSent":
       return m.home.cards.neverSent;
+    case "repositoryUpdatesPaused":
+      return m.home.cards.repositoryUpdatesPaused;
   }
 }

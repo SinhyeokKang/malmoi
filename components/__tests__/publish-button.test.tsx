@@ -28,7 +28,7 @@ function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" |
   </HomeActions>;
   return <TranslationsHeader slug="acme" surfaceSlug="default" surfaces={[]} totalCount={1} query={{}} chipQuery={{}}
     namespaces={[]} locales={[]} selected={[]} fallback={[]} unpublished={count} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} role={role} lastSentLabel={null} lastPrUrl={null}
-    dismissKey="never" baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
+    baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
 }
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
   const view = await render(<Host />);

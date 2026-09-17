@@ -1,53 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ArrowUp } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 
-/** 닫힘 상태는 이 브라우저·이 세션만의 것이다 — 서버에 저장하지 않는다. */
-const DISMISS_KEY = "malmoi:edit-loss-dismissed";
-
 /**
- * 편집 손실 창 배너 (design §3.11). **ARCHITECTURE §0 불변식 2이 감수한 대가를 편집자가 보는 자리에 처음으로 적는다** —
- * push가 strict로 덮으므로, 보낸 것이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다.
+ * 리포 갱신 보류 배너 (sync-edit-protection T13 · design §4.3). 미전달 편집이 있으면 CI 자동 적재가 통째로 보류되므로
+ * **손실이 아니라 멈춤**을 말한다. 파일 이름은 옛 "편집 손실 창" 배너의 자리를 그대로 이은 것이다.
  *
- * ⚠️ **닫기 키가 세션이 아니라 `lastPulledAt`이다.** 세션 단위로 닫으면 건수가 3→7로 늘어도 닫힌
- * 채여서 새 편집이 위험에 있는 것을 말하지 않는다. 다음 Publish 뒤 그 값이 바뀌어 배너가 다시 보인다.
- *
- * ⚠️ **클라이언트 마운트 뒤에만 렌더한다.** SSR은 `sessionStorage`를 모르므로, 먼저 그리면 닫아 둔
- * 사용자가 매 렌더에 한 프레임씩 배너를 본다.
+ * ⚠️ **2026-09-18에 뒤집었다** — 전에는 `…can be lost when repository changes are imported automatically or with Sync.`를
+ * `lastPulledAt` 닫기 키의 warning으로 띄웠다. 보호가 켜지면 그 문장의 절반이 거짓이고, 남은 절반은 안전한 상태에 amber를
+ * 띄운다(DESIGN §6.1 "가장 흔한 상태가 가장 조용하다").
+ * ⚠️ **닫기가 없다** — 상시 조건이고 출구(Publish)가 헤더에 있다. 닫기 키를 편집 시각으로 두면 저장마다 키가 바뀌어
+ * 닫기가 스스로를 무효화한다(DESIGN §6.67과 같은 형). 숨길 지역 상태가 없으니 SSR 플래시 방지용 마운트 대기도 없다.
+ * ⚠️ **액션은 둘째 Publish 트리거가 아니다** — Publish 모달의 트리거는 헤더 버튼 하나이고 `returnFocusRef`·`publishPending`
+ * 잠금이 그 자리에 묶여 있다. 여기서는 그 버튼으로 포커스만 옮긴다.
  */
-export function EditLossBanner({ slug, count, dismissKey }: { slug: string; count: number; dismissKey: string }) {
-  const storageKey = `${DISMISS_KEY}:${slug}`;
-  const [mounted, setMounted] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    try {
-      setDismissed(window.sessionStorage.getItem(storageKey) === dismissKey);
-    } catch {
-      // 사생활 보호 모드 등에서 접근 자체가 던진다 — 보이는 쪽이 안전한 기본값이다.
-      setDismissed(false);
-    }
-  }, [storageKey, dismissKey]);
-
-  if (!mounted || dismissed || count === 0) return null;
-
+export function EditLossBanner({ count, publishButtonId }: { count: number; publishButtonId: string }) {
+  if (count === 0) return null;
   return (
     <Alert
-      variant="warning"
-      onDismiss={() => {
-        setDismissed(true);
-        try {
-          window.sessionStorage.setItem(storageKey, dismissKey);
-        } catch {
-          // 저장 못 해도 이번 화면의 닫기는 동작한다.
-        }
-      }}
+      variant="info"
+      actions={
+        <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
+          {m.translations.banner.sendWithPublish}
+          <ArrowUp className="size-3.5" aria-hidden />
+        </Button>
+      }
     >
-      {m.translations.banner.unsent(count)}
+      {m.translations.banner.paused(count)}
     </Alert>
   );
 }

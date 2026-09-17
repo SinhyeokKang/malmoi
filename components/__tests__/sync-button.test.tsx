@@ -120,7 +120,7 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   await render(<SyncButton {...props} unsent={7} />); await click("Sync");
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(2);
-  expect(lines[0]).toContain("7 edits that haven't been sent yet");
+  expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
   expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Send changes first");
 });
@@ -135,7 +135,7 @@ it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외�
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(1);
   expect(lines[0]).toContain("pull request #42");
-  expect(dialog()?.textContent).not.toContain("0 edits");
+  expect(dialog()?.textContent).not.toContain("0 unsent");
   expect(document.querySelector('a[href="/projects/acme/translations"]')).toBeNull();
   const link = document.querySelector('a[href*="pull/42"]');
   expect(link?.textContent).toContain("See what's open");
