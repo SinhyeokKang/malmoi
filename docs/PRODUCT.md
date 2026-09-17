@@ -179,7 +179,8 @@ IA 확정(§7.7)이 더했다. ⚠️ **한때 ③이 둘이고 ⑤가 없었다
 **1차는 지금의 Actions 경로를 유지한다** (`.github/actions/malmoi-i18n-push` → `/api/push`).
 
 근거: 위 "push 웹훅"이 명시적 비범위이고, Actions 경로는 **실물로 검증돼 있다**(`[skip-malmoi-i18n]`
-스킵, 열린 PR 경고, 적재 실패만 red). 웹훅으로 얻는 것은 "워크플로 파일 없이 연결"
+스킵 — ⚠️ 실물은 squash 머지뿐이고 merge commit은 PR 제목의 마커로 `skip-marker.test.ts`가 대조한다(2026-09-17,
+launch-readiness L1.2·L1.2b), 열린 PR 경고, 적재 실패만 red). 웹훅으로 얻는 것은 "워크플로 파일 없이 연결"
 하나인데, 서명 검증·delivery 중복 방지·이벤트 allowlist·재시도 원자성이 통째로 딸려온다.
 
 ✅ **대신 `/api/push`의 인증을 프로젝트별로 바꿨다** (2026-09-07). 전에는 서버 env 하나가 대상
