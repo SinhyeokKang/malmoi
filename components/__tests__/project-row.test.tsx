@@ -6,6 +6,12 @@ import { render } from "./helpers/dom";
 // 머리의 검색이 `useRouter`를 문다 — 이 스위트가 재는 것은 띠이고 라우터는 그 길목일 뿐이다.
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
+vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
+
+import { HomeActions, HomeTitle } from "@/components/home/actions";
 import { ProjectList } from "@/components/projects/project-list";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { m } from "@/lib/i18n";
@@ -128,4 +134,15 @@ it("띠 링크가 행 링크 안에 있지 않다", async () => {
   const card = (await draw({ review: 88 })).querySelector("ul");
   const rowLink = card?.querySelector("a[href='/projects/acme']");
   expect(rowLink?.querySelectorAll("a")).toHaveLength(0);
+});
+
+it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 썸네일 배경·모서리가 같다", async (name) => {
+  const list = await draw({ name });
+  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false}>{name}</HomeTitle></HomeActions>);
+  const listTile = list.querySelector("svg.lucide-box")?.parentElement;
+  const homeTile = home.container.querySelector("svg.lucide-box")?.parentElement;
+  expect(listTile).not.toBeNull();
+  expect(homeTile).not.toBeNull();
+  const visualClasses = (tile: HTMLElement | null | undefined) => [...(tile?.classList ?? [])].filter((c) => c.startsWith("bg-") || c.startsWith("rounded")).sort();
+  expect(visualClasses(homeTile)).toEqual(visualClasses(listTile));
 });
