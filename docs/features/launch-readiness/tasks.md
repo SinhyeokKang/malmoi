@@ -4,6 +4,8 @@
 
 **이 문서가 생긴 이유**: 같은 날 GitHub App과 `malmoi` 리포가 둘 다 private이었던 것이 드러났다 — 모든 검증이 오너 계정(`SinhyeokKang`)으로 돌아서 그 계정에서만 통과하는 설정이 안 보였다. PRODUCT §1의 완료 조건("낯선 리포를 연결한 사용자가 설명 없이 완주")을 막는 것이 R0·R1이고, 나머지는 같은 감사에서 나온 결함·공백·부채다.
 
+**2026-09-18 리허설**: prod·dev DB를 비우고 완료 판정 왕복을 두 계정(Owner GitHub `SinhyeokKang`=ox501501 · Editor Google ox501tube)으로 한 번 돌았다 — 아래 각 태스크의 "리허설" 줄이 그 실측이다. 결과: **왕복 자체는 전 단계 통과**(설치 → 생성 4분 05초 → CI push 200 → 초대 수락부터 Publish까지 **2분 18초** → merge commit 머지 → CI skipped → 편집 보존 → 재-Publish 1건). 남은 것은 아래에 표시.
+
 **2026-09-17 `/feature-review`(CPO·CDO·CTO·QA) 반영**: 인용 40여 곳을 실측해 정정했고, 🔒 10개 중 **9개를 결정으로 닫았다**(아래 "결정 기록"). 남은 🔒는 L1.1 하나다.
 
 **읽는 법**
@@ -40,6 +42,7 @@
 
 - [ ] L0.1 Google OAuth 동의 화면의 게시 상태를 확인한다. `CLAUDE.md:58`·`.env.example:81`이 "External + 테스트"로 적는다 — 테스트 모드면 등록된 테스트 사용자만 로그인된다. 같이 확인: 요청 스코프가 `email`·`profile`뿐이면 **심사 없이 게시되는지**(L1.1의 "심사 범위·기간"은 추측이라 여기서 사실로 바꾼다). (audit #4)
   - 검증(수동): L0.5의 두 번째 Google 계정(테스트 사용자 목록 밖)으로 `https://mal-moi.com/signin` 로그인 시도 → 성공이면 닫는다. `403 access_denied`면 L1.1로 간다.
+  - 리허설(2026-09-18): Editor ox501tube@gmail.com이 Google로 초대 수락 성공 — 그 계정이 테스트 사용자 목록에 있는지, 게시 상태가 무엇인지는 **콘솔에서 아직 안 봤다**(성공이 게시를 뜻하지 않는다). L0.1은 열린 채.
   - 결과 → L1.1.
 - [ ] L0.2 GitHub App의 "Request user authorization (OAuth) during installation" 설정과 Setup URL·callback URL 목록을 확인한다. **켜져 있으면 끄는 것이 태스크다** — 우리 연결 흐름(ARCH §6.4)이 따로 있어 그 옵션은 켤 이유가 없고, 켜진 상태에선 state 없는 콜백이 `/api/github/callback`에서 `state-mismatch`로 거부된다. `external_url`이 `https://github.com`인 것도 같이 본다(audit #42). (audit #8)
   - 검증(수동): 설정 스크린샷을 이 태스크에 링크한다. 옵션이 꺼진 상태로 설치 한 번 → 콜백 요청 0건(Vercel 로그).
@@ -50,8 +53,9 @@
   - 결과 → L2.9 문구, OPERATIONS.
 - [ ] L0.4 `malmoi-test-org`에서 **관리자가 아닌 멤버**의 설치 요청 경로를 실측한다(오너 설치는 2026-09-17에 확인함). L0.5가 선행이다. (audit #8)
   - 검증(수동, `/bugshot-qa`): 요청 전·요청 후 승인 대기·승인 후 새로고침 세 화면의 문구를 기록한다. L2.4의 입력이다.
+  - 리허설(2026-09-18): org 설치는 **관리자(SinhyeokKang)** 로 했다 — 요청 경로는 아직 안 밟았다(Editor 계정이 Google뿐이라 GitHub 비관리자 멤버가 없다).
   - 결과 → L2.4 둘째 항목의 문구.
-- [ ] L0.5 **두 번째 GitHub 계정과 Google 계정을 확보한다.** 오너가 아닌 계정을 `malmoi-test-org`에 **비관리자 멤버**로 넣는다. 완료 판정·L0.1·L0.4·L2.3·L2.5·L2.8이 전부 이 계정을 전제한다 — 지금은 이 문서에만 있고 계정이 없다.
+- [ ] L0.5 (2026-09-18 절반 — Editor Google 계정 `ox501tube@gmail.com` 확보·초대 수락 완료. **비관리자 GitHub 멤버는 아직 없다** — `sinhyeok-kang`을 `malmoi-test-org`에 member로 넣으면 닫힌다) **두 번째 GitHub 계정과 Google 계정을 확보한다.** 오너가 아닌 계정을 `malmoi-test-org`에 **비관리자 멤버**로 넣는다. 완료 판정·L0.1·L0.4·L2.3·L2.5·L2.8이 전부 이 계정을 전제한다 — 지금은 이 문서에만 있고 계정이 없다.
   - 검증(수동): 그 계정으로 `mal-moi.com` 로그인 → 프로젝트 0개 화면. `malmoi-test-org` 멤버 목록에 role=member로 보임.
 - [ ] L0.6 **로케일 1개 폐기용 리포 `i18n-single-locale`을 만든다**(작은 MIT 리포 포크, `i18n-none`과 같은 이유로 74KB급). L2.7의 "단일 로케일 거부" 화면을 브라우저로 밟을 리포가 없다 — 설치 목록 여섯은 0·3·59로케일뿐이다. 두 App(L2.10) 중 **dev App에만** 설치한다.
   - 검증(수동): 온보딩 ②에서 `no-candidates` 문구 도달. ⚠️ CLAUDE.md 게이트웨이의 설치 목록 줄은 **설치 목록에 실제로 든 뒤에** 갱신한다(그 절의 경고 그대로).
@@ -94,7 +98,7 @@
   - 검증(수동): `gh api repos/SinhyeokKang/malmoi --jq .license.spdx_id` → `MIT`. docs/DESIGN.md §국기 절에 출처 한 줄.
 - [ ] L2.3 도움말 경로. `/docs` 채우기는 **이미 범위**(`PRODUCT.md:421` "출시 전에 채운다")라 결정이 아니다. 실을 것은 L2.4·L2.5·L2.6이 만드는 문구를 모은 것 — 워크플로 설정 · 허용 action 목록(L2.5) · 머지 방식 무관(L1.2) · 상한 셋(L2.6) · 지원 포맷. `app/docs/page.tsx:10` placeholder. 설정 화면(`app/(edit)/projects/[slug]/settings/page.tsx:214-218`)의 `docs/ACTIONS.md`는 `<span class="text-mono">`라 누를 수 없다 → `/docs#workflow` 내부 링크(셸 안 링크 규칙: 밑줄·아이콘 없음, `DESIGN.md:516`). README를 공개 독자용으로 바꾸면 CLAUDE.md 문서 지도("README = CLAUDE.md 요약 미러")도 같은 커밋에서 바뀐다 — 운영 문서는 docs/로 내린다. **`docs/ACTIONS.md:38-43` 예시가 주석은 "slug를 넣어라"인데 스니펫엔 slug가 없다**(`workflow.ts`는 넣는다) — 복붙하면 그 주석이 경고한 버그를 재현한다. (audit #7, #42)
   - 검증(수동, `/bugshot-qa`): L0.5 계정이 설정 화면의 링크만 따라 `malmoi-test-org` 리포에 워크플로를 붙이고 **대상 리포 run URL(green)**을 남긴다.
-- [ ] L2.4 설치 흐름의 막힘 둘(방향 결정됨). (audit #8)
+- [ ] L2.4 설치 흐름의 막힘 둘(방향 결정됨). (audit #8) — 리허설(2026-09-18) 재현: Install 뒤 GitHub `settings/installations/<id>`에 남았고 malmoi 모달은 **새로고침해야** 리포가 떴다(계정·org 둘 다).
   - 착지: Route Handler **`app/api/github/setup/route.ts`** — GitHub이 브라우저를 되돌리는 외부 진입점이므로 `app/api/github/callback/route.ts:17-34`와 같은 형(matcher 밖 + `requireUser` + `entry-points.test.ts`의 `USER_GUARD`). **`installation_id`는 읽지 않는다** — `/projects/new`가 사용자 토큰으로 설치 목록을 다시 조회하므로 믿을 이유가 없고, 읽지 않으면 위조 판정 자체가 사라진다. `setup_action=install` → `/projects/new`(① 재조회, 새 상태 없음) / `setup_action=request` → `/projects?e=install-requested`(§6.4 global Alert 자리, `DESIGN.md:541`) / 그 외·부재 → `/projects`. `GITHUB_APP_SLUG` 부재 시 착지 URL 등록만 남는 것을 OPERATIONS에.
   - 문구: 관리자 아닌 조직원이 설치를 "요청"하면 승인 전까지 설치 0개라 `no-installations`(`app/(edit)/projects/actions.ts:542`, `messages/en.tsx:1060-1066`)가 반복된다. 요청 대기 갈래를 `EmptyState` 설명 한 문장 교체로 넣되(시안 불필요), **`afterInstall: "Refresh this page once you're done."`(`:1066`)은 "본인이 끝낼 수 있다"를 전제하므로 요청 갈래에서는 거짓이다** — 두 문장이 같은 화면에 서지 않게 한다(POSTMORTEM 2026-09-14 "문장 사이의 모순은 소스 스캔이 못 본다").
   - 검증(자동): `setup_action` 판정 순수 함수 — `install`·`request`·부재·위조 값 넷 → 목적지. `entry-points.test.ts` USER_GUARD 등재 + `middleware` matcher 밖(POSTMORTEM 2026-09-06 "쿼리 수신자"). DOM: 요청 갈래 렌더에 `afterInstall` 문장 0 + **설치 갈래 렌더에는 1**.
@@ -218,7 +222,7 @@
   - 검증(자동): 없는 로케일 `--base` → exit ≠ 0(**있는 로케일 → 0** 짝). `flagValue("--x", ["--x", "--y"])` → undefined.
 - [ ] L7.4 ⚪ 정리: 죽은·과잉 export(`looksLikeCatalog` · `REGISTERED_ADAPTERS` · `mergeCandidates` · `serialize` · `tsDictDetectByContent` · `loginAccountData` · 재수출 4곳 · 미사용 import 5곳) · 영역 간 중복 헬퍼(문자열 비교 · 세션 쿠키 이름 하드코딩 6곳 · `lockUser` ×3 · HTTP status 추출 ×3 · `isUniqueViolation` ×2 · scripts dotenv/PrismaClient) · 낡은·틀린 주석(`lib/github.ts:1-5` · `lib/auth/query.ts:13-15` · `lib/locale-code.ts:27-29`). `actions.ts:834`는 **틀린 주석이 아니다**(`REF_SAFE_SLUG`는 `ref-slug.ts:14`, `trigger.ts:24` 재수출 한 홉) — 뺀다. (audit #44, #45, #46)
   - 검증(자동): `pnpm typecheck` · `pnpm test`. 죽은 export 제거는 typecheck가 안 잡는다 — `rg -n "<이름>" lib app components scripts` 0건을 항목마다.
-- [ ] L7.5 ⚪ 공개 리포 표면: `lib/github-connect/origin.ts:41` 개인 Vercel 팀 slug 호스트 · `components/onboarding/steps/naming.tsx:89` `mal-moi.com` 하드코딩(사전에 없음, dev에서도 표시) → **호스트를 빼고 경로만**(`/projects/{slug}`) 보인다 — 힌트의 목적은 slug가 URL·브랜치에 박히는 모양이라 호스트 없이도 참이고 origin 판정을 끌어올 필요가 없다; `:91`의 `malmoi-i18n/sync-` 접두는 `syncBranchFor`와 중복(주석이 인정) · Supabase ref 두 개·운영 절차 노출 판단. (audit #42)
+- [ ] L7.5 ⚪ (리허설 2026-09-18: dev.mal-moi.com의 ③에서 "Opens at mal-moi.com/projects/…"로 보였다 — 재현) 공개 리포 표면: `lib/github-connect/origin.ts:41` 개인 Vercel 팀 slug 호스트 · `components/onboarding/steps/naming.tsx:89` `mal-moi.com` 하드코딩(사전에 없음, dev에서도 표시) → **호스트를 빼고 경로만**(`/projects/{slug}`) 보인다 — 힌트의 목적은 slug가 URL·브랜치에 박히는 모양이라 호스트 없이도 참이고 origin 판정을 끌어올 필요가 없다; `:91`의 `malmoi-i18n/sync-` 접두는 `syncBranchFor`와 중복(주석이 인정) · Supabase ref 두 개·운영 절차 노출 판단. (audit #42)
   - 검증(자동): 힌트 렌더에 호스트 문자열 0 + `syncBranchFor(slug)` 값과 일치.
 - [ ] L7.6 ⚪ 좁은 창·기타: `lib/push/apply.ts:106-111` 토큰 회전 직전 push · `app/signin/link/[challenge]/page.tsx:137-141` origin 판정 실패 시 non-secure 쿠키(`origin?.secure ?? false`) → **fail-closed**: `requestOrigin === null`이면 시작 자체를 거부(§6.4 "빈 `AUTH_SECRET`은 던진다"와 같은 판단; 지금은 시작 `?? false`·콜백이 갈려 증상이 "계정 병합 실패"로 나왔다, CLAUDE.md 2026-09-14) · `lib/failure.ts:77` pg 오류 원문 서버 로그 · `lib/adapters/json-style.ts:111,117`. 셀 비우기 의미 항목은 **L1.3으로 옮겼다**. (audit #46, #48)
   - 검증(자동): origin `null` → 링크 로그인 시작이 거부 응답(**정상 origin → 시작** 짝). `failure.ts:77` 로그에 pg 원문 없음(스파이).
@@ -230,6 +234,8 @@
 ## 완료 판정
 
 **R0 · R1(L1.5 포함) · R2 중 L2.0·L2.1·L2.3·L2.4가 닫힌 뒤**, 아래 왕복을 **L0.5의 두 계정**으로 한 번 완주한다. 오너는 관찰만 한다.
+
+> 2026-09-18 리허설(정식 판정 아님 — 오너 계정이 리포 소유자이고 브라우저를 에이전트가 돌렸다): ① 설치 요청 경로 대신 관리자 설치 · 설치 링크→④ 4분 05초 · run 35239896384 green(두 표면 200) ② 초대→Publish 2분 18초 · PR #14 `+2 −2` 제목 마커 ③ merge commit `4d206cf` · run 35240428269 **skipped** · sync 브랜치 삭제 ④ 편집 3건 `updatedBy` 보존 · 재-Publish PR #15에 후속 1건만. 미측정: 재pull 0 diff(cron), 비관리자 설치 요청.
 
 1. **개발자(L0.5 GitHub 계정, `malmoi-test-org` 비관리자)**: 로그인 → 설치 요청 → (오너 승인) → 착지 → 프로젝트 생성 → 설정 화면 링크만 따라 워크플로 부착 → CI push. 관측물: 요청 대기 화면 · 착지 후 `/projects/new` · **대상 리포 run URL(green)**.
 2. **비개발자(L0.5 Google 계정, 테스트 사용자 목록 밖)**: 초대 링크 → Google 로그인 → 수락 → 편집 → Publish. 관측물: 수락 화면 · **PR URL**. **스톱워치**: 초대 링크 클릭부터 Publish까지 안내 없이 — PRODUCT §1 "10분 안에·설명 없이"의 유일한 측정이다.
