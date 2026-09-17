@@ -4,7 +4,7 @@ import { planRepositoryImport, type ImportPlanInput } from "../plan";
 const now = new Date("2026-09-15T00:10:00Z");
 const surface = { id: "s", slug: "default", archivedAt: null, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportStartedAt: null };
 const input = (over: Partial<ImportPlanInput> = {}): ImportPlanInput => ({
-  now, readiness: "ready", identity: "ok", repositoryImportToken: null, repositoryImportStartedAt: null, surfaces: [surface], ...over,
+  now, readiness: "ready", identity: "ok", repositoryImportToken: null, repositoryImportStartedAt: null, surfaces: [surface], runningSync: null, ...over,
 });
 
 describe("planRepositoryImport", () => {
@@ -33,5 +33,12 @@ describe("planRepositoryImport", () => {
   });
   it("알 수 없는 어댑터와 빈 포맷도 오류 표면에 남긴다", () => {
     expect(planRepositoryImport(input({ surfaces: [{ ...surface, adapterName: "unknown" }, { ...surface, id: "x", slug: "x", baseLocale: "" }] }))).toMatchObject({ ok: true, surfaces: [], invalidFormat: [{ slug: "default" }, { slug: "x" }] });
+  });
+  it("진행 중인 Publish가 있으면 수동 Sync는 already-running이다 (없음 → ok 대조, sync-edit-protection T1)", () => {
+    expect(planRepositoryImport(input({ runningSync: { startedAt: new Date(+now - 5_000) } }))).toEqual({ ok: false, error: "already-running" });
+    expect(planRepositoryImport(input({ runningSync: null })).ok).toBe(true);
+  });
+  it.each([0, 300_000, 300_001])("Publish stale 경계 %s ms — 실행권·표면 표시와 같은 경계", age => {
+    expect(planRepositoryImport(input({ runningSync: { startedAt: new Date(+now - age) } })).ok).toBe(age > 300_000);
   });
 });

@@ -280,3 +280,37 @@ describe("classifySyncError — 안정적 오류 코드", () => {
     ]);
   });
 });
+
+describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protection T1, design §4.2)", () => {
+  const base = { now: NOW, running: null, lastSettled: null, trigger: "manual" as const };
+
+  it("진행 중인 수동 Sync가 있으면 Publish는 already-running이다 (없음 → ok 대조)", () => {
+    expect(planSyncStart({ ...base, activeImport: { startedAt: ago(5) } })).toEqual({ status: "already-running" });
+    expect(planSyncStart({ ...base, activeImport: null })).toEqual({ status: "ok", staleToClose: false });
+  });
+
+  it("stale한 수동 Sync는 막지 않는다 — 죽은 프로세스의 표시가 Publish를 영구히 잠그면 안 된다", () => {
+    expect(planSyncStart({ ...base, activeImport: { startedAt: ago(STALE_AFTER_SECONDS + 1) } })).toEqual({ status: "ok", staleToClose: false });
+  });
+
+  it("cron도 같은 배제를 받는다", () => {
+    expect(planSyncStart({ ...base, trigger: "cron", activeImport: { startedAt: ago(5) } })).toEqual({ status: "already-running" });
+  });
+
+  /**
+   * ⚠️ **stale 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 1밀리초가 생긴다** — 그 창에서 Sync와 Publish가 동시에 돈다.
+   * 경계 정각과 1ms 뒤에서 두 판정이 **같은 답**을 내는지 교차로 센다.
+   */
+  it.each([0, STALE_AFTER_SECONDS * 1000, STALE_AFTER_SECONDS * 1000 + 1])("양쪽 stale 경계가 같다 — %s ms", async (age) => {
+    const { planRepositoryImport } = await import("@/lib/import/plan");
+    const startedAt = new Date(NOW.getTime() - age);
+    const publishBlocked = planSyncStart({ ...base, activeImport: { startedAt } }).status === "already-running";
+    const importBlocked = !planRepositoryImport({
+      now: NOW, readiness: "ready", identity: "ok", repositoryImportToken: null, repositoryImportStartedAt: null,
+      surfaces: [{ id: "s", slug: "default", archivedAt: null, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportStartedAt: null }],
+      runningSync: { startedAt },
+    }).ok;
+    expect(publishBlocked).toBe(importBlocked);
+    expect(publishBlocked).toBe(age <= STALE_AFTER_SECONDS * 1000);
+  });
+});

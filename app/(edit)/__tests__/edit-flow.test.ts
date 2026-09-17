@@ -308,3 +308,66 @@ describe("orphaned 키", () => {
     expect((await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" })).ok).toBe(true);
   });
 });
+
+/**
+ * **저장이 편집 토큰을 발급한다** (sync-edit-protection T4, design §2 — 배포 A의 dual-write). 판정·집계·화면은
+ * 아직 토큰을 읽지 않는다. 여기서 재는 것은 "값이 실제로 바뀔 때만 새 토큰"이다 — no-op이 토큰을 바꾸면
+ * Publish 뒤 같은 값 재저장이 pending을 되살려 CI가 이유 없이 보류된다.
+ */
+describe("저장의 편집 토큰 (T4)", () => {
+  let db: ReturnType<typeof memoryDb>;
+
+  beforeEach(() => {
+    db = memoryDb();
+    hoisted.prisma = db.prisma;
+    hoisted.session = sessionFor(EDITOR);
+  });
+
+  const row = () => db.translations.find((t) => t.keyId === "k-greet" && t.localeCode === "ko") as { pendingEditToken?: string | null } | undefined;
+  const save = (value: string) => saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value });
+
+  it("[C7] 새 셀 저장 → 토큰이 생긴다", async () => {
+    await save("안녕");
+    expect(row()?.pendingEditToken).toEqual(expect.any(String));
+    expect(row()?.pendingEditToken).not.toBe("");
+  });
+
+  it("[C7] 값 변경 → 토큰이 회전한다 — 같은 셀의 두 저장을 구별한다", async () => {
+    await save("안녕");
+    const first = row()?.pendingEditToken;
+    await save("안녕하세요");
+    expect(row()?.pendingEditToken).toEqual(expect.any(String));
+    expect(row()?.pendingEditToken).not.toBe(first);
+  });
+
+  it("같은 값 재저장(no-op) → 토큰 불변 (값 변경 → 회전 대조는 위)", async () => {
+    await save("안녕");
+    const first = row()?.pendingEditToken;
+    await save("안녕");
+    expect(row()?.pendingEditToken).toBe(first);
+  });
+
+  it("검토 표시만 있는 셀에 같은 값 저장 → no-op, 토큰이 서지 않는다", async () => {
+    db.translations.push({
+      projectId: "p1", surfaceId: "surface-p1",
+      keyId: "k-greet", localeCode: "ko", value: "옛 번역",
+      description: null, placeholders: null, needsReview: true, updatedBy: null,
+      updatedAt: new Date("2026-09-02T00:00:00Z"),
+    });
+    await save("옛 번역");
+    expect(row()?.pendingEditToken ?? null).toBeNull();
+    await save("새 번역");
+    expect(row()?.pendingEditToken).toEqual(expect.any(String));
+  });
+
+  it("기존 행을 바꾸는 저장도 토큰을 쓴다 — create 갈래만 쓰면 리포 값을 고친 편집이 안 잡힌다", async () => {
+    db.translations.push({
+      projectId: "p1", surfaceId: "surface-p1",
+      keyId: "k-greet", localeCode: "ko", value: "리포 값",
+      description: null, placeholders: null, needsReview: false, updatedBy: null,
+      updatedAt: new Date("2026-09-02T00:00:00Z"),
+    });
+    await save("편집 값");
+    expect(row()?.pendingEditToken).toEqual(expect.any(String));
+  });
+});

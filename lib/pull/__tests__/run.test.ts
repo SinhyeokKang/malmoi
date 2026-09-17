@@ -701,3 +701,67 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
     expect(result).not.toHaveProperty("warnings");
   });
 });
+
+/**
+ * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4, design §2·§5). 해제 SQL 자체는 PG 통합 테스트
+ * (`lib/keys/__tests__/sync-edit-protection.integration.ts`)가 재고, 여기서는 "어느 경로가 무엇을 넘기나"만 센다.
+ *
+ * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (design §6.1) — 편집을 원복한 셀은 2층에서
+ * 끝나고, 그 경로가 캡처를 해제하지 않으면 토큰이 영영 남아 CI가 영구 보류된다.
+ */
+describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 넘긴다 (T4)", () => {
+  const CAPTURED = [{ id: "t1", token: "tok-1" }, { id: "t2", token: "tok-2" }];
+
+  function capturing(given: { client: GitClient; calls: FakeCall[] }) {
+    const delivered: unknown[] = [];
+    const { deps: base } = makeDeps({}, given);
+    const { deps } = makeDeps({
+      loadState: async () => ({ ...(await base.loadState()), pendingEdits: CAPTURED }),
+      saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+    }, given);
+    return { deps, delivered };
+  }
+
+  /** 렌더 결과가 base와 같은 트리 — 2층에서 `no-changes`로 끝난다. */
+  const sameAsBase = () => createFakeGitClient({
+    refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "i18n/ko.json", sha: blobSha(KO_CONTENT) }, { path: "i18n/en.json", sha: blobSha(EN_CONTENT) }] },
+    blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
+  });
+
+  it("committed → 캡처 전부를 넘긴다", async () => {
+    const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } });
+    const { deps, delivered } = capturing(made);
+    const result = await runPull(deps);
+    expect(result.status).toBe("committed");
+    expect(delivered).toEqual([CAPTURED]);
+  });
+
+  it("skipped/no-changes → 캡처 전부를 넘긴다 (기존 2층의 토큰판)", async () => {
+    const { deps, delivered } = capturing(sameAsBase());
+    const result = await runPull(deps);
+    expect(result).toEqual({ status: "skipped", reason: "no-changes" });
+    expect(delivered).toEqual([CAPTURED]);
+  });
+
+  it("skipped/no-edits → 쓰기 0회 (같은 캡처의 committed → 1회 대조)", async () => {
+    const made = createFakeGitClient({});
+    const delivered: unknown[] = [];
+    await runPull({
+      loadState: async () => ({
+        project: { ...PROJECT }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: CAPTURED,
+      }),
+      createClient: async () => made.client,
+      saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(delivered).toEqual([]);
+  });
+
+  it("GitHub 쓰기 실패 → 해제 쓰기 0회 — 보낸 것으로 증명되지 않은 편집은 남는다 [C10]", async () => {
+    const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] }, failOn: "createPr" });
+    const { deps, delivered } = capturing(made);
+    await expect(runPull(deps)).rejects.toThrow();
+    expect(delivered).toEqual([]);
+  });
+});
