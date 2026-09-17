@@ -13,7 +13,7 @@ Commit 구분은 작업 단위다. 실제 배포는 **T0 단독 → 호환 A →
 
 ## Commit 0 — 1층 스킵 정렬 (스키마 없음, 단독 배포)
 
-- [ ] T0. `lib/pull/plan.ts`의 `shouldSkipPull`이 `max(updatedAt)` 대신 기존 미전달 술어(`updatedBy IS NOT NULL ∧ updatedAt > lastPulledAt`)로 판정하게 한다.
+- [x] T0. (2026-09-17 완료 — `lib/keys/unpublished.ts`의 where 조각을 `countUnpublished`와 1층이 공유; dev DB EXPLAIN: 2,721행 프로젝트에서 `Translation_projectId_updatedAt_idx` Index Scan·3행, `lastPulledAt` null인 첫 pull만 전 행) `lib/pull/plan.ts`의 `shouldSkipPull`이 `max(updatedAt)` 대신 기존 미전달 술어(`updatedBy IS NOT NULL ∧ updatedAt > lastPulledAt`)로 판정하게 한다.
   push가 전 행의 `updatedAt`을 올려 사람 편집 없이도 cron이 PR을 갱신·되돌리는 문제(spec 문제 2·3)를 스키마 없이 먼저 닫는다.
   - 검증(자동): `lib/pull/__tests__/run.test.ts`에 "push 직후(전 행 `updatedAt` 상승, `updatedBy` 전부 null) → GitHub 호출 0회" 추가, **같은 픽스처에서 셀 하나에 `updatedBy`를 세우면 호출 > 0**. 기존 "1층 스킵의 API 0회" 테스트 green 유지.
   - 검증(자동): dev DB에서 새 1층 쿼리의 `EXPLAIN` — push 직후 프로젝트에서 `[projectId, updatedAt]` 범위 스캔 행 수를 기록한다(schema 주석의 audit #45가 이 쿼리의 매일 비용을 경고한다). Seq Scan이면 T0에서 멈추고 보고한다.
