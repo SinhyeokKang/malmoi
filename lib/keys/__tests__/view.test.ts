@@ -167,28 +167,17 @@ describe("resolveNamespace — `?ns=`의 해석", () => {
   });
 });
 
-describe("isUnpublished — 아직 안 보낸 편집인가", () => {
-  const pulled = new Date("2026-09-08T00:00:00Z");
-
-  it("사람이 만졌고 마지막 판정 뒤에 바뀌었다", () => {
-    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2026-09-08T01:00:00Z") }, pulled)).toBe(true);
+describe("isUnpublished — 아직 전달 확인되지 않은 편집인가 (sync-edit-protection T8)", () => {
+  it("[C9] 토큰이 있는 활성 셀 → true (pending 투영)", () => {
+    expect(isUnpublished({ pending: true, surfaceArchivedAt: null })).toBe(true);
   });
 
-  it("push가 쓴 행은 세지 않는다 — updatedBy가 없다", () => {
-    expect(isUnpublished({ updatedBy: null, updatedAt: new Date("2026-09-08T01:00:00Z") }, pulled)).toBe(false);
+  it("토큰이 없으면 → false — 시각·저자가 아니라 토큰이 판정한다 (위 true 대조)", () => {
+    expect(isUnpublished({ pending: false, surfaceArchivedAt: null })).toBe(false);
   });
 
-  it("이미 보낸 편집은 세지 않는다", () => {
-    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2026-09-07T23:00:00Z") }, pulled)).toBe(false);
-  });
-
-  it("경계는 배타적이다 — 판정 시각과 같은 행은 그 판정에 이미 들어갔다", () => {
-    expect(isUnpublished({ updatedBy: "u1", updatedAt: pulled }, pulled)).toBe(false);
-  });
-
-  it("한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다", () => {
-    expect(isUnpublished({ updatedBy: "u1", updatedAt: new Date("2020-01-01") }, null)).toBe(true);
-    expect(isUnpublished({ updatedBy: null, updatedAt: new Date("2020-01-01") }, null)).toBe(false);
+  it("[C9] 보관 표면의 셀은 pending이어도 세지 않는다", () => {
+    expect(isUnpublished({ pending: true, surfaceArchivedAt: new Date("2026-09-08T00:00:00Z") })).toBe(false);
   });
 });
 

@@ -15,7 +15,6 @@ import { createHarness, type Seed } from "./harness";
  * 좁혀지지 않아 남의 행이 나왔다.
  */
 
-const PULLED = new Date("2026-09-05T00:00:00Z");
 
 function seed(): Seed {
   return {
@@ -36,37 +35,47 @@ function seed(): Seed {
       { id: "k2", projectId: "p2", key: "a", sourceText: "A", description: null, sortIndex: 0, orphaned: false },
     ],
     translations: [
-      // p1: 사람이 만졌고 마지막 판정 뒤 — 미배포 1건
-      { keyId: "k1", localeCode: "ko", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u1", updatedAt: new Date("2026-09-06T00:00:00Z") },
-      // p1: push가 쓴 행 — 시각은 더 최근이지만 저자가 리포다
-      { keyId: "k1", localeCode: "fr", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-07T00:00:00Z") },
-      // p1: 사람이 만졌지만 이미 보냈다
-      { keyId: "k1", localeCode: "ja", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u1", updatedAt: new Date("2026-09-04T00:00:00Z") },
-      // p2: 다른 테넌트의 미배포 — 세면 안 된다
-      { keyId: "k2", localeCode: "ko", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u2", updatedAt: new Date("2026-09-06T00:00:00Z") },
+      // p1: 전달 확인되지 않은 편집 — 토큰이 있다
+      { keyId: "k1", localeCode: "ko", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u1", updatedAt: new Date("2026-09-06T00:00:00Z"), pendingEditToken: "tok-ko" },
+      // p1: push가 쓴 행 — 시각은 더 최근이지만 토큰이 없다
+      { keyId: "k1", localeCode: "fr", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-07T00:00:00Z"), pendingEditToken: null },
+      // p1: 사람이 만졌고 이미 전달 확인됐다 — 저자는 남고 토큰은 없다
+      { keyId: "k1", localeCode: "ja", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u1", updatedAt: new Date("2026-09-04T00:00:00Z"), pendingEditToken: null },
+      // p2: 다른 테넌트의 미전달 — 세면 안 된다
+      { keyId: "k2", localeCode: "ko", value: "v", description: null, placeholders: null, needsReview: false, updatedBy: "u2", updatedAt: new Date("2026-09-06T00:00:00Z"), pendingEditToken: "tok-p2" },
     ],
   };
 }
 
-describe("countUnpublished", () => {
-  it("사람이 만졌고 마지막 판정 뒤에 바뀐 행만 센다", async () => {
+describe("countUnpublished — 토큰 술어 (sync-edit-protection T8)", () => {
+  it("[C9] 토큰이 있는 활성 셀만 센다 — 저자·시각은 판정에 안 쓴다", async () => {
     const { prisma } = createHarness(seed());
-    expect(await countUnpublished(prisma, "p1", PULLED)).toBe(1);
+    expect(await countUnpublished(prisma, "p1")).toBe(1);
   });
 
   it("다른 프로젝트의 행을 세지 않는다 — RLS가 없어 애플리케이션이 유일한 방어선이다", async () => {
     const { prisma } = createHarness(seed());
-    expect(await countUnpublished(prisma, "p2", PULLED)).toBe(1);
+    expect(await countUnpublished(prisma, "p2")).toBe(1);
   });
 
-  it("한 번도 안 보냈으면 사람이 만진 행이 전부다 — push가 쓴 행은 여전히 빠진다", async () => {
-    const { prisma } = createHarness(seed());
-    expect(await countUnpublished(prisma, "p1", null)).toBe(2);
+  it("[C9] orphan 로케일의 편집은 세지 않는다 (같은 픽스처의 활성 로케일 → 1 대조)", async () => {
+    const base = seed();
+    const { prisma } = createHarness({ ...base, locales: [
+      { projectId: "p1", code: "en", isBase: true, orphaned: false },
+      { projectId: "p1", code: "ko", isBase: false, orphaned: true },
+    ] });
+    expect(await countUnpublished(prisma, "p1")).toBe(0);
+  });
+
+  it("[C9] orphan 키의 편집은 세지 않는다", async () => {
+    const base = seed();
+    const { prisma } = createHarness({ ...base, keys: (base.keys ?? []).map(k => k.id === "k1" ? { ...k, orphaned: true } : k) });
+    expect(await countUnpublished(prisma, "p1")).toBe(0);
   });
 
   it("편집이 없는 프로젝트는 0이다", async () => {
     const { prisma } = createHarness({ ...seed(), translations: [] });
-    expect(await countUnpublished(prisma, "p1", PULLED)).toBe(0);
+    expect(await countUnpublished(prisma, "p1")).toBe(0);
   });
 });
 
@@ -120,19 +129,14 @@ describe("loadMemberships", () => {
  *
  * 하네스가 그 `where`를 해석하므로, 여기서 두 경로에 **같은 행 집합**을 먹여 결과를 맞댄다.
  */
-describe("isUnpublished ↔ countUnpublished — 술어가 갈리지 않는다", () => {
-  const rows = seed().translations ?? [];
-
-  for (const lastPulledAt of [PULLED, null]) {
-    it(`같은 행 집합에서 같은 수를 낸다 (lastPulledAt=${lastPulledAt === null ? "null" : "있음"})`, async () => {
-      const { prisma } = createHarness(seed());
-      // p1의 키는 k1 하나다 — 하네스의 count가 키를 통해 projectId로 좁히는 것과 같은 범위를 손으로 만든다.
-      const mine = rows.filter((t) => t.keyId === "k1");
-      const byPredicate = mine.filter((t) => isUnpublished(t, lastPulledAt)).length;
-
-      expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(byPredicate);
-    });
-  }
+describe("isUnpublished ↔ countUnpublished — 술어가 갈리지 않는다 (⑤ 하네스)", () => {
+  it("같은 행 집합에서 같은 수를 낸다", async () => {
+    const { prisma } = createHarness(seed());
+    const mine = (seed().translations ?? []).filter((t) => t.keyId === "k1");
+    const byPredicate = mine.filter((t) => isUnpublished({ pending: (t.pendingEditToken ?? null) !== null, surfaceArchivedAt: null })).length;
+    expect(byPredicate).toBeGreaterThan(0);
+    expect(await countUnpublished(prisma, "p1")).toBe(byPredicate);
+  });
 });
 
 /**
