@@ -273,6 +273,14 @@ model Translation {
   /// 옛 행은 한 행도 못 찾는다. `User.id`를 쓰는 이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
   updatedBy   String?
 
+  /// **아직 전달 확인되지 않은 마지막 편집의 식별자** (sync-edit-protection design §2). 저장이 값을 실제로 바꿀 때
+  /// 새 UUID를 쓰고, strict 적재가 덮을 때와 Publish가 `(id, token)` 조건부 UPDATE로 전달 확인할 때 비운다.
+  ///
+  /// ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 구별할 수 없고, 그 구별이
+  /// "Publish가 캡처한 편집"과 "그 뒤 들어온 편집"을 가르는 유일한 근거다.
+  /// ⚠️ **원문은 서버 밖으로 나가지 않는다** — 화면에는 `pending: boolean` 투영만 간다(폐기 승인 지문의 위조 불가 전제).
+  pendingEditToken String?
+
   updatedAt DateTime @updatedAt
 
   /// 두 관계가 projectId를 공유한다 — 이것이 테넌트 간 참조를 막는 장치다.
@@ -292,6 +300,8 @@ model Translation {
   /// **매일** 부르는 쿼리라 조용히 느려지고 어느 게이트에도 안 나타난다 (2026-09-04 audit #45).
   /// 위 인덱스로는 대체되지 않는다 — `localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다.
   @@index([projectId, updatedAt])
+  /// 토큰 술어(`lib/protection/where.ts`)용. btree는 `IS NOT NULL`을 스캔 조건으로 쓰므로 프로젝트 파티션의 non-null 구간만 읽는다.
+  @@index([projectId, pendingEditToken])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
