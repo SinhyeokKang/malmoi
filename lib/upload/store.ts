@@ -2,12 +2,12 @@
 import "server-only";
 import { del, list, put, type ListBlobResultBlob } from "@vercel/blob";
 import { requireEnv } from "@/lib/env";
-import type { ImageType } from "./image";
+import type { StoredImageType } from "./image";
 
-export async function putImage(key: string, bytes: Uint8Array, ext: ImageType): Promise<string> {
+export async function putImage(key: string, bytes: Uint8Array, ext: StoredImageType): Promise<string> {
   const blob = await put(key, Buffer.from(bytes), {
     access: "public", addRandomSuffix: false,
-    contentType: ext === "png" ? "image/png" : "image/jpeg",
+    contentType: `image/${ext}`,
     token: requireEnv("BLOB_READ_WRITE_TOKEN"),
   });
   return blob.url;

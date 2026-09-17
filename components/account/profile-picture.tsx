@@ -15,7 +15,7 @@ import { uploadRejectMessage } from "@/lib/upload/message";
  *
  * **거부 셋이 각자 화면에 닿는다** — 하나라도 빠지면 사유가 값으로 돌아와도 무음이다
  * (POSTMORTEM 2026-09-06):
- * ① 800 KB 초과는 **제출 전에** 사유가 보인다(`planImagePick`)
+ * ① 3 MB 초과는 **제출 전에** 사유가 보인다(`planImagePick`)
  * ② 이름만 `.png`로 바꾼 SVG는 **서버 사유**로 거절된다(`planImageUpload`의 시그니처 판정)
  * ③ 사진이 없을 때 [Delete]의 `disabled` 옆에 사유가 선다
  *

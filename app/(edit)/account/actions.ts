@@ -22,7 +22,8 @@ import { revocationCookie } from "@/lib/session-revocation/policy";
 import { decodeUser, encodeUserFields, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys, validatePiiWriteKey } from "@/lib/credentials/storage";
 import { planNameSave } from "@/lib/account/plan";
-import { imageObjectKey, planImageDelete, planImageUpload, type UploadReject } from "@/lib/upload/image";
+import { imageObjectKey, IMAGE_MAX_BYTES, planImageDelete, type UploadReject } from "@/lib/upload/image";
+import { normalizeImage } from "@/lib/upload/normalize";
 import { putImage, deleteImage } from "@/lib/upload/store";
 
 type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
@@ -74,19 +75,20 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
   const { userId } = await requireUser();
   const file = form.get("image");
   if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };
+  if (file.size > IMAGE_MAX_BYTES) return { ok: false, reason: "too-large" };
   let uploaded: string | null = null;
   let previous: string | null;
   let stage = "file-validation";
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const plan = planImageUpload(bytes);
+    const plan = await normalizeImage(bytes);
     if (!plan.ok) return plan;
     stage = "pii-write-key";
     validatePiiWriteKey();
-    const key = imageObjectKey(userId, plan.ext, randomBytes(24).toString("base64url"));
+    const key = imageObjectKey(userId, "webp", randomBytes(24).toString("base64url"));
     // Network I/O stays outside the row lock and Prisma's transaction timeout.
     stage = "blob-upload";
-    uploaded = await putImage(key, bytes, plan.ext);
+    uploaded = await putImage(key, plan.bytes, "webp");
     stage = "image-encryption";
     const image = encodeUserFields(userId, { image: uploaded });
     stage = "database-update";

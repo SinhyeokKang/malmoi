@@ -1,4 +1,3 @@
-import { crc32 } from "node:zlib";
 import sharp from "sharp";
 import { expect, it } from "vitest";
 import { normalizeImage } from "../normalize";
@@ -37,10 +36,9 @@ it("빈 파일·3MB 초과·위장 SVG·손상 PNG를 사유로 거부한다", a
 });
 
 it("압축 크기가 작아도 과도한 입력 픽셀은 거부한다", async () => {
-  const input = await sharp({ create: { width: 1, height: 1, channels: 3, background: "red" } }).png().toBuffer();
-  // IHDR과 CRC만 바꿔 거대한 래스터를 실제로 할당하지 않는다.
-  input.writeUInt32BE(10_000, 16);
-  input.writeUInt32BE(10_000, 20);
-  input.writeUInt32BE(crc32(input.subarray(12, 29)), 29);
+  const input = await sharp({ create: { width: 6400, height: 6400, channels: 3, background: "red" } }).png().toBuffer();
+  expect(input.length).toBeLessThan(3_000_000);
+  // A valid oversized image must decode when the pixel guard is explicitly disabled.
+  await expect(sharp(input, { limitInputPixels: false }).resize(1, 1).toBuffer()).resolves.toBeInstanceOf(Buffer);
   expect(await normalizeImage(input)).toEqual({ ok: false, reason: "unsupported-type" });
 });
