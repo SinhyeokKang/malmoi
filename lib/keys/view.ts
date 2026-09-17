@@ -14,12 +14,16 @@ export type KeyRefRow = {
 
 /** 한 로케일의 번역 셀. 테이블의 한 칸이다. */
 export type Cell = {
-  surfaceArchivedAt?: Date | null;
+  surfaceArchivedAt: Date | null;
   value: string | null;
   needsReview: boolean;
   updatedBy: string | null;
-  /** `isUnpublished`가 읽는다 — 셀의 "아직 안 보냄" 표시가 이 값과 `lastPulledAt`의 비교다. */
   updatedAt: Date;
+  /**
+   * `isUnpublished`가 읽는다 — 아직 전달 확인되지 않은 편집 토큰이 있는가(`pendingWhere`의 투영).
+   * ⚠️ **토큰 원문이 아니라 boolean이다** — 이 객체는 RSC 페이로드로 화면에 가고, 원문이 새면 폐기 승인 지문을 위조할 수 있다.
+   */
+  pending: boolean;
 };
 
 /**
@@ -332,7 +336,7 @@ export function filterByState(
     return ctx.locales.some((code) => {
       if (ctx.state === "unsent") {
         const cell = row.cells[code];
-        return cell !== undefined && isUnpublished(cell, ctx.lastPulledAt);
+        return cell !== undefined && isUnpublished(cell);
       }
       const state = cellState(row, code);
       return ctx.state === "review" ? state === "needsReview" : state === "untranslated";
@@ -401,23 +405,13 @@ export function groupByNamespace(
 }
 
 /**
- * 아직 안 보낸 편집인가 (design §3.5).
+ * 아직 전달 확인되지 않은 편집인가 (sync-edit-protection T8). `pendingWhere`의 행 단위 형태다.
  *
- * ⚠️ **`updatedAt > lastPulledAt`만으로는 안 된다.** push가 전 행의 `updatedAt`을 올리므로 push
- * 직후 야간 pull 전까지 903키 전부가 "안 보낸 편집"으로 나온다. push가 쓴 행은 `updatedBy`가
- * 비어 있고(design §3.6) 사람이 저장한 행만 `User.id`를 든다.
- *
- * 기준이 `lastPublishedAt`이 아니라 `lastPulledAt`인 이유: 후자는 벽시계가 아니라 캡처된
- * `max(updatedAt)`이고 `no-changes` 스킵에도 전진한다 — "사람이 만졌고 마지막 판정 뒤 바뀐 행"을
- * 정확히 센다.
+ * ⚠️ **`surfaceArchivedAt`이 required다** — optional이던 동안 호출부가 안 실으면 보관 표면 셀도 셌다.
+ * ⚠️ **시각·저자로 판정하지 않는다** — `lastPulledAt` 비교는 같은 밀리초 재저장을 못 가르고, Publish의 전달 확인은 토큰으로 한다.
  */
-export function isUnpublished(
-  cell: { updatedBy: string | null; updatedAt: Date; surfaceArchivedAt?: Date | null },
-  lastPulledAt: Date | null,
-): boolean {
-  if (cell.updatedBy === null || cell.surfaceArchivedAt != null) return false;
-  // 경계는 배타적이다 — 판정 시각과 같은 행은 그 판정에 이미 들어갔다.
-  return lastPulledAt === null || cell.updatedAt > lastPulledAt;
+export function isUnpublished(cell: { pending: boolean; surfaceArchivedAt: Date | null }): boolean {
+  return cell.pending && cell.surfaceArchivedAt === null;
 }
 
 /**

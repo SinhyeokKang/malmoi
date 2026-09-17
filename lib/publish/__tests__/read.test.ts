@@ -16,7 +16,7 @@ it("쓰기 메서드 없는 클라이언트로 base 이전 값과 DB 값을 함�
  expect(result.groups[0]?.rows[0]).toMatchObject({ before: "old", after: "new" });
  expect(result.openPr?.number).toBe(12);
  expect(db.project.findUniqueOrThrow.mock.calls[0]?.[0].where).toEqual({ id: "p" });
- expect(db.translation.findMany.mock.calls[0]?.[0]).toMatchObject({ where: { projectId: "p", surface: { archivedAt: null }, updatedBy: { not: null } }, take: 200 });
+ expect(db.translation.findMany.mock.calls[0]?.[0]).toMatchObject({ where: { projectId: "p", surface: { archivedAt: null }, pendingEditToken: { not: null } }, take: 200 });
  expect(mocks.client.getRefSha).toHaveBeenCalledWith("heads/main");
 });
 it("base 파싱 실패를 빈 이전 값으로 접지 않는다", async () => { mocks.client.getBlobText.mockResolvedValue("invalid"); await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow(); });

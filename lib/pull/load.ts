@@ -1,7 +1,6 @@
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { unpublishedWhere } from "@/lib/keys/unpublished";
-import { pendingWhere } from "@/lib/protection/where";
+import { countPending, pendingWhere } from "@/lib/protection/where";
 import type { PendingEdit, PullState } from "./run";
 
 /**
@@ -68,12 +67,12 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     where: { projectId: project.id },
     _max: { updatedAt: true },
   });
-  // 1층 판정값 — `countUnpublished`와 같은 where 조각이다. `max(updatedAt)`으로 판정하면 push가 올린
-  // `updatedAt`이 편집으로 읽혀 편집 0건인 밤에도 GitHub을 부른다 (sync-edit-protection T0).
-  const unpublished = await prisma.translation.count({ where: unpublishedWhere(project.id, project.lastPulledAt) });
+  // 1층 판정값 — `countUnpublished`와 같은 토큰 술어다. 시각으로 세면 push가 올린 `updatedAt`이 편집으로 읽히고
+  // (T0), 저자·시각으로 세면 같은 밀리초 재저장과 전달 확인을 못 가른다 (sync-edit-protection T8).
+  const unpublished = await countPending(prisma, project.id);
   // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection design §2).
-  // 배포 A에서는 판정에 안 쓰고 성공·동등 경로의 조건부 해제에만 쓴다.
-  const pending = await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
+  // 0이면 조회하지 않는다 — 관계 조인이 낡은 통계에서 인덱스를 버리는 창이 있다(`countPending` 주석). 같은 스냅샷이라 결과가 같다.
+  const pending = unpublished === 0 ? [] : await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
 
   return {
     project: rest,

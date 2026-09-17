@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
 import { createGitClient } from "@/lib/github";
 import { loadActors } from "@/lib/keys/query";
+import { pendingWhere } from "@/lib/protection/where";
 import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
@@ -16,8 +17,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     surfaces: { where: { archivedAt: null }, include: { locales: { where: { orphaned: false }, select: { code: true } } } },
   } });
   if (!project.installationId || !project.repositoryId) throw new Error("Repository unavailable");
-  const where = { projectId, surface: { archivedAt: null }, updatedBy: { not: null },
-    ...(project.lastPulledAt === null ? {} : { updatedAt: { gt: project.lastPulledAt } }) };
+  // 무엇이 PR로 나가는가를 정하는 사본이다 — 배너·1층·목록과 같은 토큰 술어여야 "보낼 편집 N건"이 서로 맞는다 (sync-edit-protection T8).
+  const where = pendingWhere(projectId);
   const [rows, total, keyIds, client, rawPr] = await Promise.all([
     prisma.translation.findMany({ where, take: PREVIEW_LIMIT, orderBy: [{ surfaceId: "asc" }, { keyId: "asc" }, { localeCode: "asc" }], include: { stringKey: { select: { key: true } } } }),
     prisma.translation.count({ where }),

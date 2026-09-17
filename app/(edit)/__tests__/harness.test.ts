@@ -24,7 +24,7 @@ describe("harness — surface aggregate contract", () => {
       locales: [],
       translations: ["z", "a", "dead", "o", "unassigned"].map(keyId => ({
         keyId, localeCode: "en", value: "Edited", description: null, placeholders: null,
-        needsReview: false, updatedBy: "human", updatedAt: at,
+        needsReview: false, updatedBy: "human", updatedAt: at, pendingEditToken: `tok-${keyId}`,
       })),
     });
     h.projects.forEach(project => { project.lastPulledAt = null; });

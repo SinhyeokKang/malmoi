@@ -375,7 +375,7 @@ describe("loadProjectList", () => {
       keys: [...(base.keys ?? []), { id: "k3", projectId: "p1", key: "b", sourceText: "B", description: null, sortIndex: 1, orphaned: false }],
       translations: [
         { keyId: "k1", localeCode: "en", value: "Hello", description: null, placeholders: null, needsReview: false, updatedBy: null, updatedAt: new Date("2026-09-01T00:00:00Z") },
-        { keyId: "k1", localeCode: "ko", value: "안녕", description: null, placeholders: null, needsReview: true, updatedBy: "u1", updatedAt: new Date("2026-09-02T00:00:00Z") },
+        { keyId: "k1", localeCode: "ko", value: "안녕", description: null, placeholders: null, needsReview: true, updatedBy: "u1", updatedAt: new Date("2026-09-02T00:00:00Z"), pendingEditToken: "tok-ko" },
       ],
     });
 

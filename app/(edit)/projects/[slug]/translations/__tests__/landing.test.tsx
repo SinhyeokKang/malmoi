@@ -19,7 +19,7 @@ import Page from "../../surfaces/[surfaceSlug]/translations/page";
 
 const row = (namespace: string, value: string): KeyRow => ({
   id: namespace, key: `${namespace}.title`, namespace, orphaned: false, createdAt: new Date(0), description: null, refs: [],
-  cells: { en: { value, needsReview: false, updatedBy: null, updatedAt: new Date(0) } },
+  cells: { en: { value, needsReview: false, updatedBy: null, updatedAt: new Date(0), surfaceArchivedAt: null, pending: false } },
 });
 beforeEach(() => { state.rows = [row("a", ""), row("b", "")]; state.redirect.mockClear(); });
 

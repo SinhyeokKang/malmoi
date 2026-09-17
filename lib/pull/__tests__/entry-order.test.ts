@@ -167,7 +167,7 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
   it("캡처 aggregate와 1층 count가 탈 인덱스가 스키마에 있다 — 쿼리와 인덱스가 함께 움직여야 한다", () => {
     expect(sourceOf("lib/pull/load.ts")).toContain("_max: { updatedAt: true }");
     // 1층 count는 토큰 술어다(sync-edit-protection T8) — `[projectId, pendingEditToken]`이 `IS NOT NULL`을 Index Cond로 탄다.
-    expect(sourceOf("lib/pull/load.ts")).toContain("translation.count({ where: pendingWhere(project.id) })");
+    expect(sourceOf("lib/pull/load.ts")).toContain("countPending(prisma, project.id)");
     expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, pendingEditToken])");
     expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, updatedAt])");
   });

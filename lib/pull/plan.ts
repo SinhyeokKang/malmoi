@@ -19,7 +19,7 @@ import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 /**
  * GitHub을 한 번도 부르지 않고 끝낼 수 있는가.
  *
- * @param unpublished 미발송 편집의 수 — `unpublishedWhere`(`lib/keys/unpublished.ts`)로 센 값.
+ * @param unpublished 미전달 편집의 수 — `pendingWhere`(`lib/protection/where.ts`)로 센 값.
  *   `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`이다.
  *
  * ⚠️ **`max(updatedAt) > lastPulledAt`이 아니다** (sync-edit-protection T0, 2026-09-17). push가 전 행의

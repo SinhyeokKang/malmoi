@@ -135,17 +135,24 @@ function payload(projectId: string, translations: { key: string; locale: string;
 }
 
 describe("적재의 토큰 정리 (T4)", () => {
-  it("strict 적재가 덮은 셀만 토큰을 비우고, 페이로드에 없는 셀(실패 파일)은 토큰을 유지한다", async () => {
+  it("[C4] 승인된 토큰의 셀만 덮고 토큰을 비운다 — 페이로드에 없는 셀(실패 파일)은 토큰 유지", async () => {
     await seed("p", { lastPulledAt: PULLED, cells: [
       { key: "k1", locale: "ko", token: "tok-ko" },
       { key: "k1", locale: "fr", token: "tok-fr" },
     ] });
     await applyPush(prisma, { projectId: "p", surfaceId: "surface-p" }, payload("p", [{ key: "k1", locale: "ko", value: "repo" }]),
-      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", approvedTokens: ["tok-ko", "tok-fr"] });
 
     // 덮인 셀 → null (대조: 안 덮인 셀 → 유지)
     expect(await cell("p", "k1", "ko")).toEqual({ value: "repo", updatedBy: null, pendingEditToken: null });
     expect(await cell("p", "k1", "fr")).toMatchObject({ value: "k1-fr", updatedBy: "editor", pendingEditToken: "tok-fr" });
+  });
+
+  it("[C1] 승인 없는 적재는 토큰 있는 셀을 덮지 않는다 (위 승인 → 덮임 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "tok-ko" }] });
+    await applyPush(prisma, { projectId: "p", surfaceId: "surface-p" }, payload("p", [{ key: "k1", locale: "ko", value: "repo" }]),
+      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+    expect(await cell("p", "k1", "ko")).toEqual({ value: "k1-ko", updatedBy: "editor", pendingEditToken: "tok-ko" });
   });
 
   it("적재가 새로 만든 셀은 토큰이 없다", async () => {

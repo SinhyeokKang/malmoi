@@ -99,7 +99,9 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
 function columnsOf(c: Captured): Record<string, unknown[]> {
   const m = /AS v\(([^)]*)\)/.exec(c.sql) ?? /INSERT INTO "[A-Za-z]+" \(([^)]*)\)/.exec(c.sql);
   const names = (m?.[1] ?? "").split(",").map((s) => s.trim().replace(/"/g, ""));
-  const arrays = c.values.filter((v): v is unknown[] => Array.isArray(v));
+  const all = c.values.filter((v): v is unknown[] => Array.isArray(v));
+  // 번역 upsert의 마지막 배열은 unnest 인자가 아니라 토큰 가드(`= ANY(approvedTokens)`)다 — sync-edit-protection T7.
+  const arrays = c.sql.includes('"pendingEditToken" = ANY(') ? all.slice(0, -1) : all;
   expect(names.length, `컬럼 ${names.length}개 vs 값 배열 ${arrays.length}개: ${c.sql.slice(0, 60)}`).toBe(arrays.length);
   return Object.fromEntries(names.map((n, i) => [n, arrays[i] ?? []]));
 }

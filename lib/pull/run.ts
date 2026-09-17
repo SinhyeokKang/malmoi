@@ -41,7 +41,7 @@ export type PullState = {
   surfaces: (ProjectFormatColumns & { id: string; slug: string; localeCodes: string[]; keys: RenderKey[] })[];
   /** 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`. `lastPulledAt`에 캡처되는 값이다. */
   maxUpdatedAt: Date | null;
-  /** 미발송 편집의 수(`unpublishedWhere`). 1층 스킵의 판정값이다 — `maxUpdatedAt`이 아니다 (T0). */
+  /** 미전달 편집의 수(`pendingWhere`). 1층 스킵의 판정값이다 — `maxUpdatedAt`이 아니다 (T0·T8). */
   unpublished: number;
   /** 같은 스냅샷의 `pendingWhere` 셀. `committed`·`no-changes`에서만 해제 쓰기에 실린다. */
   pendingEdits: readonly PendingEdit[];

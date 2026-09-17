@@ -26,6 +26,8 @@ const hoisted = vi.hoisted(() => ({
   applyPush: vi.fn(),
   prisma: {
     translationSurface: { findFirst: vi.fn(), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    // 보류 사전 집계(sync-edit-protection T7) — 0이면 기존 적재 경로다.
+    translation: { count: vi.fn().mockResolvedValue(0) },
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
     // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
     // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
@@ -42,7 +44,12 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 // 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
-vi.mock("@/lib/push/apply", () => ({ applyPush: hoisted.applyPush }));
+// 라우트는 보호 적재(`applyProtectedPush`)를 부른다 — 여기서는 보류 판정 밖(적용 결과·오류 본문)을 보므로 applied로 감싼다.
+// 보류 자체는 `lib/keys/__tests__/sync-edit-protection.integration.ts`가 실제 PostgreSQL로 잰다.
+vi.mock("@/lib/push/apply", () => ({
+  applyPush: hoisted.applyPush,
+  applyProtectedPush: async (...args: unknown[]) => ({ status: "applied", outcome: await hoisted.applyPush(...args) }),
+}));
 
 const { GET: pullGet } = await import("../pull/route");
 const { POST: pushPost } = await import("../push/route");

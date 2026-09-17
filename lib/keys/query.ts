@@ -16,7 +16,7 @@ import {
   type ProjectEvents,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
-import { unpublishedWhere } from "./unpublished";
+import { countPending } from "@/lib/protection/where";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -109,7 +109,9 @@ export async function loadKeys(
       id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
       surface: { select: { archivedAt: true } },
       translations: {
-        select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true },
+        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection design §2).
+        select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true, pendingEditToken: true,
+          locale: { select: { orphaned: true } } },
       },
       refs: { select: { path: true, line: true }, orderBy: [{ path: "asc" }, { line: "asc" }] },
     },
@@ -124,6 +126,8 @@ export async function loadKeys(
         updatedBy: t.updatedBy,
         updatedAt: t.updatedAt,
         surfaceArchivedAt: k.surface.archivedAt,
+        // `pendingWhere`와 같은 조건의 투영 — orphan 키·로케일의 남은 토큰은 미전달이 아니다.
+        pending: t.pendingEditToken !== null && !k.orphaned && !t.locale.orphaned,
       };
     }
     return {
@@ -168,23 +172,18 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
 }
 
 /**
- * 아직 안 보낸 편집의 **수**. `isUnpublished`(`./view`)의 집계 형태다 — 술어가 두 벌이 되지 않게
- * 조건을 같은 문장으로 적는다. 목록의 `loadProjectListAggregates` raw ⑤도 같은 술어다.
+ * 아직 전달 확인되지 않은 편집의 **수**. `isUnpublished`(`./view`)의 집계 형태이고, where 조각은 pull 1층·Publish
+ * 미리보기와 같은 `pendingWhere`다 (sync-edit-protection T8). 목록의 `loadProjectListAggregates` raw ⑤만 SQL 사본이다.
  *
- * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push가 전 행의 `updatedAt`을 올리므로 그 조건이
- * 없으면 push 직후 야간 pull 전까지 903키 전부가 "안 보낸 편집"으로 나오고, 편집 손실 배너가 매번 뜬다
- * (translation-ui design §3.5). push가 쓴 행은 `updatedBy`를 비운다(§3.6).
- *
+ * ⚠️ **시각·저자로 세지 않는다** — push가 전 행의 `updatedAt`을 올리고, 같은 밀리초의 재저장을 시각으로는 못 가른다.
  * ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
  */
 export async function countUnpublished(
   prisma: PrismaClient,
   projectId: string,
-  lastPulledAt: Date | null,
   surfaceId?: string,
 ): Promise<number> {
-  // where 조각은 `lib/keys/unpublished.ts`가 든다 — pull의 1층 스킵과 같은 객체다 (T0).
-  return prisma.translation.count({ where: unpublishedWhere(projectId, lastPulledAt, surfaceId) });
+  return countPending(prisma, projectId, surfaceId);
 }
 
 /**
@@ -553,25 +552,27 @@ export async function loadProjectListAggregates(
         AND (p."lastPulledAt" IS NULL OR k."createdAt" > p."lastPulledAt")
       GROUP BY k."projectId"`,
     /**
-     * ⑤ 미발송 — **`countUnpublished`·`isUnpublished`와 같은 술어의 세 번째 자리다**
-     * (`lib/keys/query.ts`의 `countUnpublished` · `lib/keys/view.ts`의 `isUnpublished`).
+     * ⑤ 미발송 — **`pendingWhere`(`lib/protection/where.ts`)의 SQL 사본이다.** `countUnpublished`·`isUnpublished`·
+     * pull 1층·Publish 미리보기와 같은 행을 센다(`pnpm test:projects:postgres`가 대조한다).
      *
-     * ⚠️ **`updatedBy IS NOT NULL`이 빠지면 안 된다.** push가 전 행의 `updatedAt`을 올리므로
-     * (strict — ARCHITECTURE §0 불변식 2) 조건이 없으면 code push 직후 903키 전부가
-     * "안 보낸 편집"이 된다.
-     *
-     * ⚠️ **활성 로케일 필터를 덧붙이지 않는다** — 미발송의 기존 계약과 진행률의 분모는 다른 문제다.
+     * ⚠️ **토큰으로 판정한다** — 시각·저자 조건을 되살리면 push 직후 전 행이 "안 보낸 편집"이 되거나(T0) 같은 밀리초
+     * 재저장을 못 가른다(sync-edit-protection T8).
+     * ⚠️ **orphan 키·로케일을 뺀다** (2026-09-18에 뒤집었다 — 전에는 "활성 로케일 필터를 덧붙이지 않는다"가 의도였다).
+     * 그 셀은 export에 안 나가므로 세면 Publish로 영영 0이 안 되는 수가 되고, 보호 배포 뒤엔 CI가 영구 보류된다.
      * `p."archivedAt" IS NULL`은 목록 Summary의 **프로젝트 선택 조건**이지 셀 술어가 아니다.
      */
     prisma.$queryRaw<{ projectId: string; surfaceSlug: string; n: number }[]>`
       SELECT t."projectId", MIN(s."slug") AS "surfaceSlug", COUNT(*)::int AS n
       FROM "Translation" t JOIN "Project" p ON p."id" = t."projectId"
       JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
+      JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId"
+      JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode"
       WHERE t."projectId" = ANY(${ids}::text[])
-        AND t."updatedBy" IS NOT NULL
+        AND t."pendingEditToken" IS NOT NULL
         AND s."archivedAt" IS NULL
+        AND k."orphaned" = false
+        AND l."orphaned" = false
         AND p."archivedAt" IS NULL
-        AND (p."lastPulledAt" IS NULL OR t."updatedAt" > p."lastPulledAt")
       GROUP BY t."projectId"`,
   ]);
 
