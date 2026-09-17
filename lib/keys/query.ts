@@ -16,6 +16,7 @@ import {
   type ProjectEvents,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
+import { unpublishedWhere } from "./unpublished";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -182,16 +183,8 @@ export async function countUnpublished(
   lastPulledAt: Date | null,
   surfaceId?: string,
 ): Promise<number> {
-  return prisma.translation.count({
-    where: {
-      projectId,
-      surfaceId,
-      surface: { archivedAt: null },
-      updatedBy: { not: null },
-      // 한 번도 안 보냈으면 사람이 만진 행이 전부 미배포다 — 비교 대상이 없다.
-      ...(lastPulledAt === null ? {} : { updatedAt: { gt: lastPulledAt } }),
-    },
-  });
+  // where 조각은 `lib/keys/unpublished.ts`가 든다 — pull의 1층 스킵과 같은 객체다 (T0).
+  return prisma.translation.count({ where: unpublishedWhere(projectId, lastPulledAt, surfaceId) });
 }
 
 /**

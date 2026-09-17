@@ -36,8 +36,10 @@ export type PullProject = {
 export type PullState = {
   project: PullProject;
   surfaces: (ProjectFormatColumns & { id: string; slug: string; localeCodes: string[]; keys: RenderKey[] })[];
-  /** 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`. */
+  /** 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`. `lastPulledAt`에 캡처되는 값이다. */
   maxUpdatedAt: Date | null;
+  /** 미발송 편집의 수(`unpublishedWhere`). 1층 스킵의 판정값이다 — `maxUpdatedAt`이 아니다 (T0). */
+  unpublished: number;
 };
 
 export type PullDeps = {
@@ -75,14 +77,14 @@ export type PullResult =
 const BLOB_CONCURRENCY = 8;
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt } = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt, unpublished } = await deps.loadState();
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
-  if (shouldSkipPull(maxUpdatedAt, project.lastPulledAt)) {
+  if (shouldSkipPull(unpublished)) {
     return { status: "skipped", reason: "no-edits" };
   }
-  // `shouldSkipPull`이 `maxUpdatedAt === null`이면 true를 주므로 여기선 non-null이다.
-  // 조용한 폴백(`?? new Date(0)`)을 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
+  // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
+  // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
   if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
   // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
   // 편집이 다음 실행에서 영영 스킵된다.

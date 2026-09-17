@@ -48,8 +48,9 @@ model Project {
   /// 상태라 500이 아니라 401이다). Postgres unique는 NULL 여럿을 허용하므로 기존 행에 무해하다.
   pushTokenHash String? @unique
 
-  /// 마지막으로 성공한 pull의 기준 시각 — **1층 DB 측 스킵**의 비교 대상이다 (ARCHITECTURE §2).
-  /// `Translation.updatedAt`의 최대값이 이 값을 넘지 않았으면 GitHub을 한 번도 부르지 않고 끝낸다.
+  /// 마지막으로 성공한 pull의 기준 시각 — **1층 DB 측 스킵**과 미발송 집계의 기준선이다 (ARCHITECTURE §2).
+  /// `updatedBy IS NOT NULL AND updatedAt > 이 값`인 활성 표면의 행이 0이면 GitHub을 한 번도 부르지 않고 끝낸다
+  /// (2026-09-17 T0 — 전에는 `max(updatedAt)` 비교였고, push가 전 행의 `updatedAt`을 올려 편집 없는 밤에도 왕복이 났다).
   ///
   /// 넣는 값은 `now()`가 아니라 **판정 시점에 캡처한 `max(updatedAt)`** 이다. `now()`를 쓰면
   /// export 스냅샷과 갱신 사이에 들어온 편집이 다음 실행에서 영영 스킵된다.

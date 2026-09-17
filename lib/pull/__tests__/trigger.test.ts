@@ -37,7 +37,7 @@ describe("triggerPull — 조립", () => {
       },
       localeCodes: ["en"],
       keys: [],
-      maxUpdatedAt: new Date("2026-09-03T00:00:00Z"),
+      maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 0,
     });
     const result = await triggerPull({} as never, "slug");
     expect(result).toEqual({ status: "skipped", reason: "no-edits" });
@@ -63,7 +63,7 @@ describe("triggerPull — 조립", () => {
       },
       localeCodes: ["en"],
       keys: [],
-      maxUpdatedAt: new Date("2026-09-03T00:00:00Z"),
+      maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 1,
     });
     await expect(triggerPull({} as never, "slug")).rejects.toThrow(/installationId/);
     expect(hoisted.createGitClient).not.toHaveBeenCalled();
@@ -100,7 +100,7 @@ describe("triggerPull — 조립", () => {
       },
       surfaces: [{ id: "s1", slug: "default", adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en",
         localeCodes: ["en"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { en: { value: "one" } } }] }],
-      maxUpdatedAt: new Date("2026-09-04T00:00:00Z"),
+      maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1,
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const result = await triggerPull({} as never, "fmt");

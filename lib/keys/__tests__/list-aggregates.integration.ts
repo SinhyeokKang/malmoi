@@ -253,6 +253,8 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
   const state = await loadPullState(prisma, "p1");
   expect(state.surfaces.map(s => s.slug)).toEqual(["default"]);
   expect(state.maxUpdatedAt).toEqual(newest);
+  // 1층 스킵의 판정값은 `countUnpublished`와 같은 where 조각으로 센다(T0) — 보관 표면 b의 셀은 둘 다 빼야 한다.
+  expect(state.unpublished).toBe(await countUnpublished(prisma, "p1", PULLED));
   expect(isUnpublished({ updatedAt: newest, updatedBy: "human", surfaceArchivedAt: AFTER }, PULLED)).toBe(false);
 });
 

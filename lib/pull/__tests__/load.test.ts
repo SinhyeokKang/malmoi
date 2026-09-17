@@ -54,10 +54,18 @@ it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다",
   const tx = {
     project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", surfaces: [] })) },
     stringKey: { findMany: vi.fn(async () => []) },
-    translation: { aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })) },
+    translation: {
+      aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })),
+      count: vi.fn(async () => 2),
+    },
   };
   const transaction = vi.fn(async (fn: (client: typeof tx) => Promise<unknown>, _options: unknown) => fn(tx));
   const state = await loadPullState({ $transaction: transaction } as unknown as PrismaClient, "a");
   expect(state.maxUpdatedAt).toEqual(new Date(100));
+  // 1층 판정값은 미발송 술어로 센다(T0) — `updatedBy IS NOT NULL`이 빠지면 push 직후가 편집으로 읽힌다.
+  expect(state.unpublished).toBe(2);
+  expect(tx.translation.count).toHaveBeenCalledWith({
+    where: expect.objectContaining({ projectId: "p1", updatedBy: { not: null }, surface: { archivedAt: null } }),
+  });
   expect(transaction).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({ isolationLevel: "RepeatableRead" }));
 });
