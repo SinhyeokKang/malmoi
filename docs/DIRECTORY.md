@@ -186,6 +186,10 @@ components/
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
                         ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
   __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
+                        disabled-pairing(⚠️ buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이
+                        있는지 + 그 스타일을 ui/button.tsx 밖에서 쓰지 않는지. <a>와 Radix 트리거는
+                        disabled 속성을 못 써서 각자 철자를 발명했고 같은 pending이 세 화면에서
+                        달라 보였다 — POSTMORTEM 2026-09-17. hover: 축만 양방향 예외다) ·
                         client-graph(⚠️ "use client" 값 import 그래프에 ts-morph·octokit·prisma·node:fs가
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
