@@ -506,3 +506,20 @@ describe("미전달 술어 전환 — 사본 넷이 같은 행을 센다 (T8)", 
     expect(serialized).toContain('"pending":true');
   });
 });
+
+
+describe("Publish 전달 확인 실패 (T10)", () => {
+  it("[C10] 해제 쓰기가 실패하면 lastPulledAt·토큰이 함께 되돌아간다 — 보낸 것으로 증명되지 않은 편집은 남는다 (성공 → 해제 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "tok-1" }] });
+    const state = await loadPullState(prisma, "p");
+    await pool.query(`CREATE FUNCTION reject_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected ack failure'; END $$;
+      CREATE TRIGGER reject_ack BEFORE UPDATE ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION reject_ack()`);
+    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits)).rejects.toThrow();
+    expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBe("tok-1");
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ lastPulledAt: PULLED, lastPrUrl: null });
+
+    await pool.query(`DROP TRIGGER reject_ack ON "Translation"`);
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
+    expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
+  });
+});

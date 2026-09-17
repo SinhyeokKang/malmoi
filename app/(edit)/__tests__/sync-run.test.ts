@@ -136,7 +136,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
 
   it("warnings 수가 행에 남는다 — 버린 값을 성공으로 숨기지 않는다", async () => {
     const h = harness();
-    hoisted.triggerPull.mockResolvedValue({ ...COMMITTED, warnings: ["a: x", "b: y"] });
+    hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "writer-warnings", warnings: ["a: x", "b: y"] });
     await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null });
     expect(h.syncRuns[0]).toMatchObject({ warnings: 2 });
   });

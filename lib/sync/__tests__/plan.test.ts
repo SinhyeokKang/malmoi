@@ -169,24 +169,10 @@ describe("planSyncFinish — 결과를 행으로", () => {
     });
   });
 
-  it("⚠️ warnings는 skipped에도 센다 — 어댑터 경고는 skipped로 끝날 수 있다", () => {
-    // 버린 값을 성공으로 접으면 ARCHITECTURE §0 불변식 9 위반이다. 2층 스킵 + writer 경고가 그 모양이다.
+  it("⚠️ writer 경고로 멈춘 실행은 SKIPPED이고 경고 수를 센다 — 버린 값을 숨기지 않는다 (sync-edit-protection T10)", () => {
     expect(
-      planSyncFinish({ status: "skipped", reason: "no-changes", warnings: ["a.json: dropped"] }),
-    ).toMatchObject({ status: "SKIPPED", warnings: 1 });
-  });
-
-  it("committed의 warnings도 센다", () => {
-    expect(
-      planSyncFinish({
-        status: "committed",
-        pr: "updated",
-        commitSha: "abc",
-        prUrl: "https://x",
-        changed: [],
-        warnings: ["a: x", "b: y"],
-      }),
-    ).toMatchObject({ status: "SUCCEEDED", changed: 0, warnings: 2 });
+      planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["a: x", "b: y"] }),
+    ).toMatchObject({ status: "SKIPPED", warnings: 2, prUrl: null });
   });
 
   it("thrown은 FAILED이고 changed·prUrl이 null이다 — 0이 아니다", () => {

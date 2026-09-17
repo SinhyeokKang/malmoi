@@ -9,9 +9,9 @@ const committed = { status: "committed", pr: "created", prUrl: "https://github.c
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
   expect(planPublishView(committed)).toBe("created");
   expect(planPublishView({ ...committed, pr: "updated" })).toBe("updated");
-  expect(planPublishView({ ...committed, warnings: ["x"] })).toBe("partial");
+  // writer 경고는 **보내지 않은** 결과다(sync-edit-protection T10) — 기존 Warnings 갈래가 "보내지 않았다"로 선다.
+  expect(planPublishView({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toBe("partial");
   for (const reason of ["no-edits", "no-changes"] as const) expect(planPublishView({ status: "skipped", reason })).toBe("no-changes");
-  expect(planPublishView({ status: "skipped", reason: "no-changes", warnings: ["x"] })).toBe("no-changes");
   for (const error of ["already-running", "too-soon"] as const) expect(planPublishView({ status: "failed", error, delivery: "not-started" })).toBe(error);
   for (const error of ["unauthorized", "not-found", "archived", "not-ready", "invalid input", "unavailable"]) {
     expect(planPublishView({ status: "failed", error, retryable: error === "unavailable", delivery: "not-started" })).toBe(error === "unavailable" ? "transient-error" : "config-error");
