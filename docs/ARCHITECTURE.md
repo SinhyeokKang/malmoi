@@ -297,7 +297,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백 |
 
     `ProjectFormatColumns.nestedByPath`를 **optional로 두지 않았다** — 껍데기가 `select`에서 빼면 컴파일러가 막는다 (POSTMORTEM 2026-09-02 "공급 계약은 optional로 두지 않는다"). `lib/pull/__tests__/entry-order.test.ts`가 진입점에서 musicblocks 모양을 단언하고 `lib/push/__tests__/flow.test.ts`가 b→c 홉을 SQL 인자로 본다.
-- **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
+- **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. ✅ **read 쪽도 같은 규칙이다** (2026-09-17, launch-readiness L1.4): 중첩(`errors: {messages: {blank}}`)과 점 키(`"errors.messages.blank"`)가 같은 평탄 키를 내면 하나만 싣고(마지막이 이긴다 — 적재의 `lastWins`와 같은 규칙) `duplicate-key`로 보고한다. 전에는 둘 다 실어 뒤의 `lastWins`가 조용히 하나를 버렸고, `surveyOne`의 키 충돌 지표가 그 중복을 세고 있었다 — 지금은 그 지표가 `duplicate-key` 에러를 센다.
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.test.ts`가 `contract.ts`의 헬퍼로 그 계약을 `ADAPTERS` 순회로 고정한다(판정과 순회가 갈려 있다 — §1.1): 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
   - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 문장`, 있을 때만)로 올린다.
@@ -333,6 +333,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
 
 - 없는 키는 **가장 깊은 기존 맵/객체의 끝에** 넣는다. 남은 경로는 리터럴 키 하나로 삽입하며 중간 맵을 새로 만들지 않는다.
+  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다.
 - **결정성**: 추가되는 키를 코드포인트 정렬 순서로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
 - **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
 
