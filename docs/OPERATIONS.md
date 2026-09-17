@@ -77,6 +77,27 @@ dev 검증은 현재 체크아웃 CLI의 `--project <slug> --surface <등록 slu
 **나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
 [ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.
 
+## 미전달 편집 보호 배포 — A(호환) → backfill → B(보호)
+
+sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 편집 토큰을 쓰므로(dual-write) A 롤아웃이 끝나면 "토큰 없이 저장되는 창"은 스스로 닫힌다.
+
+1. **A**: `/push`(dev) → dev backfill → `/merge`(1단계 `pnpm db:status:prod` → `pnpm db:deploy`로 `add_translation_pending_edit_token`) → 프로덕션 alias 전환 + 60초(가장 긴 `maxDuration`) 경과.
+2. **backfill** — 대상 DB마다 0행이 **두 번 연속** 나올 때까지(스크립트가 반복한다):
+   ```
+   pnpm exec tsx scripts/backfill-pending-edit-token.ts                       # dev (.env.local의 DATABASE_URL)
+   DATABASE_URL='<prod 접속 문자열>' pnpm exec tsx scripts/backfill-pending-edit-token.ts   # prod — 값은 사람이 붙인다
+   ```
+   ⚠️ `.env.local`을 편집해 prod를 겨누지 않는다. `DIRECT_URL_PROD`(5432)도 쓸 수 있다 — 한 문장 UPDATE라 세션 모드면 된다.
+3. **B**: `/push`(dev — precondition `pending_edit_token_precondition`이 dev에서 통과해야 한다) → `/merge`(prod `db:deploy`가 precondition 게이트).
+4. **precondition이 실패하면** (`precondition failed: unsent edits without pendingEditToken remain`): 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.
+   ```
+   PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
+   # 2단계 backfill을 그 DB에 다시 돌린다
+   pnpm db:deploy
+   ```
+   §3의 규칙 그대로다 — `_prisma_migrations`가 전부 롤백된 것을 확인한 경우에만, 체크섬 수정·무조건 applied·reset 금지. `migrate dev`가 리셋을 제안하면 거부한다.
+5. B 뒤 미전달 카운트가 **한 번 줄어들 수 있다** — orphan 키·로케일의 편집이 집계에서 빠지기 때문이다(값은 DB에 남는다). "번역이 사라졌다"는 제보면 먼저 `orphaned`를 본다.
+
 ## 1. 암호화 키 셋 — 섞지 않는다
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
