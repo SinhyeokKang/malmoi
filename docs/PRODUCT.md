@@ -140,7 +140,9 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다. **방어선은 확인 Dialo
 초기에 정한 것을 그대로 잇고, 멀티테넌트 문맥에서 새로 거절하는 것을 더한다.
 
 **초기부터 이어지는 것**: ICU 복수형, 동시 편집, 세밀한 RBAC, in-context 편집, 스크린샷 첨부,
-번역자 노트, 승인 워크플로(draft→reviewed).
+번역자 노트, 승인 워크플로(draft→reviewed). ⚠️ **`needsReview`("To review"·"Needs review")는 이것이
+아니다** — push가 원문이 바뀐 셀에 세우고 번역자가 저장하면 내려가는 **플래그 하나**이지, 상태 머신도
+승인권도 없다(누가 "승인"하는 자리가 없다). 그 플래그를 단계로 늘리는 순간 이 비범위에 든다.
 
 **SaaS에서 새로 거절하는 것**:
 
@@ -148,7 +150,7 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다. **방어선은 확인 Dialo
 - **조직 계층** — account 개념을 두더라도 개인/조직 구분까지다. 팀·하위 그룹은 없다.
 - **번역 메모리·기계 번역·AI 번역** — 이 도구의 축이 아니다.
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
-- **범용 알림 시스템** — 이메일 발송 자체를 1차에서 뺀다(§5.1).
+- **범용 알림 시스템** — 이메일 발송 자체를 1차에서 뺀다(ARCHITECTURE §6.00).
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
 
 ### 4.3 1차에서 빼되 2차에 열어두는 것 — 판정 다섯
@@ -191,8 +193,8 @@ IA 확정(§7.7)이 더했다. ⚠️ **한때 ③이 둘이고 ⑤가 없었다
 #### ③ 로그인 provider를 GitHub App으로 교체 → 뺀다 (2026-09-06 판정, 4단계)
 
 **1차는 로그인 OAuth App과 연결 GitHub App을 따로 둔다** — 같은 사람이 GitHub 왕복을 두 번 한다
-(로그인 한 번, 연결 한 번). 합치면 OAuth App 셋(프로덕션·preview·로컬)과 그 secret이 사라지고
-왕복도 한 번이 된다.
+(로그인 한 번, 연결 한 번). 합치면 OAuth App 하나(2026-09-14부터 세 환경이 같은 앱을 쓴다 — CLAUDE.md)와
+그 secret이 사라지고 왕복도 한 번이 된다.
 
 근거는 **가용성이다**. 프로덕션 GitHub 로그인이 실물로 처음
 성공한 것이 2026-09-06이고(그전엔 `AUTH_GITHUB_ID`에 레코드 번호가 들어가 있었다 — 2단계), 로그인을
@@ -228,7 +230,7 @@ IdP에서 검증받았어야 하고, 붙이려면 기존 provider의 OAuth를 **
 `allowDangerousEmailAccountLinking`은 계속 어느 provider에도 없다.
 
 ⚠️ **병합이 만든 새 상태 둘**: ① 로그인 `Account`가 둘 이상인 User는 `planEmailRefresh`가 언제나
-`keep`이다 — 아니면 `User.email`이 마지막으로 로그인한 provider에 따라 뒤집히고 초대 대조(§5.6)가
+`keep`이다 — 아니면 `User.email`이 마지막으로 로그인한 provider에 따라 뒤집히고 초대 대조(ARCHITECTURE §6.2)가
 그 위에 선다. 대가는 그 사용자의 이메일이 provider를 안 따라간다는 것. ② 전체 세션 회수의 확인
 상대를 `pickLoginAccount`가 고른다(아래 절).
 
@@ -332,7 +334,7 @@ setup → awaiting_first_sync → ready
 `ProjectStatus`는 **저장된 행만 보고** 목록 배지를 낸다. 그 축의 결정 셋:
 
 - **조회 실패(`unknown`)를 `app-uninstalled`로 접지 않는다** — 장애를 "제거됨"으로 보여주면 사용자가
-  멀쩡한 설치를 다시 만든다. §5.1의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
+  멀쩡한 설치를 다시 만든다. ARCHITECTURE §6.1.2의 "세션 없음 ≠ 못 읽었다"와 같은 축이다.
 - ✅ **`repositoryId === null`은 readiness와도 건강성과도 다른 셋째 축이고, 2026-09-11에 목록이 그것을
   드러낸다** (`Disconnected` 배지 — 2026-09-10 `/doc-check`이 잡았고 2026-09-11에 한 낱말로 줄였다). sec-audit-2 이전에 만들어진 행이 그 상태이고
   결과는 셋이다 — 목록에서 **`Active`로 보이고**(`planProjectReadiness`가 그 컬럼을 안 본다 →
@@ -456,7 +458,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      만들면 그것이 곧 미발송 술어의 넷째 벌이고, `pnpm test:projects:postgres`가 그것을 잡는다.
    - `Home`이 소유하는 나머지는 그대로다 — "한 화면에 모아야만 보이는 것": 지금 손봐야 할 항목과
      최근 로그.
-3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (§6). ✅ **그래서 `Home`이 그 부분집합으로 먼저
+3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (ARCHITECTURE §5). ✅ **그래서 `Home`이 그 부분집합으로 먼저
    섰다** (6b-6) — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
    `TranslationSurface.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
    "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
@@ -532,7 +534,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 조직이 실제로 필요해지면 `/:account/:project`로 옮기며 옛 URL에 redirect를 둔다.
 
 ⚠️ **URL을 안다는 사실은 접근 권한이 아니다.** slug는 사람이 읽는 주소일 뿐이고, 인가는 항상 내부
-`projectId`와 `ProjectMember`로 판정한다 (§5.2).
+`projectId`와 `ProjectMember`로 판정한다 (ARCHITECTURE §6.1).
 
 ### 7.8 push 인증 — `Project.pushTokenHash`
 
@@ -545,7 +547,7 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 `pushTokenHash`가 `null`인 프로젝트는 어떤 해시로도 조회되지 않으므로 fail-closed가 컬럼의 성질로 성립하고,
 무효 토큰·미발급·없는 프로젝트가 전부 **401 하나**다 (⚠️ 인증을 통과한 뒤의 slug 오배송은 **409이고 본문에 `expected` slug가 실린다** — 그 시점엔 이미 그 프로젝트의 토큰을 든 호출자이므로 새로 새는 정보가 없다)(404 없음 — 프로젝트 존재를 노출하지 않는다).
 
-- **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(§5.6) 해시 저장 규칙이 한 곳에 모인다.
+- **원문은 발급 시 한 번만 보여준다** — 초대 토큰과 같은 모델이라(ARCHITECTURE §6.2) 해시 저장 규칙이 한 곳에 모인다.
 - composite action은 `project`·`push-token`에 `surface`(기본 `default`)·`path-template`을 더한다.
   서버의 `surfaceSlug`는 필수다. 첫 workflow와 추가 step 모두 확정된 표면·경로를 싣는다.
 - GitHub OIDC는 쓰지 않는다. 공유 시크릿이 사라지는 것은 매력적이지만 JWKS 검증 + claim 대조
@@ -600,6 +602,11 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
+**Server Action의 경계도 같은 선이다** (2026-09-17, launch-readiness L3.4): **번역을 바꾸는 쓰기는 보관 중
+거부**(`runFirstIngest`·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
+허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
+바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
+
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `malmoi-i18n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
   가정하지 않는다. ✅ 설정 화면의 보관 **확인 Dialog**가 그 PR을 링크로 싣는다 (2026-09-10).
@@ -622,7 +629,13 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
   수정합니다"가 비개발자에게 가장 무거운 문장이고, 그 권한은 리포의 CI 정의를 통째로 바꿀 수 있다.
   ⚠️ **"권한을 더하면 재승인 대기 중 기존 설치의 pull이 죽는다"는 미실측이라 근거로 쓰지 않았다** —
   GitHub은 승인 전까지 옛 권한으로 계속 동작하는 것으로 알려져 있다
-- **`AuditEvent`를 만드는 시점** (§6) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
-- **표면 여러 개의 Actions 배선은 확정했다** — 한 Project의 여러 step이 `PUSH_TOKEN` 하나를
-  공유하고 각각 `surface`·`path-template`을 명시한다. concurrency는 프로젝트 단위다.
-  기존에 같은 리포를 가리키던 여러 Project는 자동 통합하지 않으며, 그 상태를 유지하면 토큰도 각각이다.
+- **`AuditEvent`를 만드는 시점** (ARCHITECTURE §5) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
+- ~~**표면 여러 개의 Actions 배선**~~ → ✅ **확정했다** (2026-09-14, multi-surface B — §7.1). 한 Project의
+  여러 step이 `PUSH_TOKEN` 하나를 공유하고 각각 `surface`·`path-template`을 명시한다. concurrency는
+  프로젝트 단위다. 기존에 같은 리포를 가리키던 여러 Project는 자동 통합하지 않으며, 그 상태를 유지하면
+  토큰도 각각이다 — 그 secret 이름은 자유다(ACTIONS.md의 `PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML`은 예시).
+- **push의 "리포 부재 → DB 셀 비움"** (2026-09-17, launch-readiness L1.3). 지금은 리포에서 사라지거나
+  `""`가 된 번역을 DB에 반영하지 않는다(ARCHITECTURE §5.5.2 — 코드에서 번역을 지우는 방법은 없다).
+  뒤집으려면 **export가 명시적 빈값과 미번역 빈값을 구별하는 수단**이 먼저다 — 지금은 둘 다 부재로
+  나가서, 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. sync-edit-protection의
+  후속 spec이 그 수단을 정할 때 같이 본다.
