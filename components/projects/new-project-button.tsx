@@ -18,8 +18,9 @@ export function NewProjectButton({ q }: { q?: string }) {
       href={href}
       aria-busy={pending || undefined}
       aria-disabled={pending || undefined}
+      // 겉모습은 `buttonClass`의 `aria-disabled:` 짝이 든다 — `<a>`는 `disabled`를 못 받는다.
       className={cn(buttonClass({ variant: "primary" }),
-        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none aria-disabled:cursor-wait",
+        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
       )}
       onNavigate={(event) => {
         // Next calls onNavigate only for same-tab navigation, preserving modified clicks.

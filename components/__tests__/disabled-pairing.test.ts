@@ -63,13 +63,21 @@ it("buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이 있다", (
 /**
  * 역방향도 막는다 — `aria-disabled:`만 있고 `disabled:`가 없으면 진짜 `<button>`이 그 모양을
  * 못 받는다. 두 검사가 함께 있어야 "한 자리에서 정의된다"가 참이 된다.
+ *
+ * ⚠️ **`hover:`만 예외다.** 브라우저는 진짜 `disabled` 요소에 hover를 안 태우므로 그쪽엔 짝이
+ * 필요 없고, `aria-disabled`는 태우므로 **이쪽에만** 필요하다 — 없으면 회색으로 죽은 버튼이
+ * hover에서 다시 살아난다. 예외를 `hover:`로 좁혀 두는 것이 요지다: 넓히면 이 검사가 아무것도
+ * 안 막는다.
  */
-it("buttonClass의 aria-disabled: 유틸리티마다 disabled: 짝이 있다", () => {
+it("buttonClass의 aria-disabled: 유틸리티마다 disabled: 짝이 있다 (hover: 제외)", () => {
   const source = read(BUTTON);
   const real = utilities(source, "disabled");
   const aria = utilities(source, "aria-disabled");
   expect(aria.size).toBeGreaterThan(0);
-  expect([...aria].filter((u) => !real.has(u)).sort()).toEqual([]);
+  const unpaired = [...aria].filter((u) => !real.has(u) && !u.startsWith("hover:"));
+  expect(unpaired.sort()).toEqual([]);
+  // 예외가 실제로 쓰이고 있는지도 본다 — 안 쓰이면 위 문단이 죽은 설명이다.
+  expect([...aria].some((u) => u.startsWith("hover:"))).toBe(true);
 });
 
 /**
