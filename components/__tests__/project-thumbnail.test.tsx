@@ -9,7 +9,7 @@ it.each([undefined, null, ""])("이미지 %s이면 이름 색과 Box 폴백을 �
   expect(container.querySelector("img")).toBeNull();
   const tile = container.querySelector("svg.lucide-box")?.parentElement;
   expect(tile?.classList.contains(toneFill("Acme"))).toBe(true);
-  expect(tile?.classList.contains("rounded-[4px]")).toBe(true);
+  expect(tile?.classList.contains("rounded-sm")).toBe(true);
   expect(tile?.getAttribute("aria-hidden")).toBe("true");
 });
 

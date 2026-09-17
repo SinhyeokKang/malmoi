@@ -260,9 +260,13 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).toContain(literal);
   });
 
-  it("행 글리프 radius 4는 공통 프로젝트 썸네일이 소유한다", () => {
+  /**
+   * ⚠️ **radius가 8이고 캔버스의 4가 아니다** (2026-09-17 사용자) — 초대 카드(§6.4)까지 세 화면을
+   * 한 값으로 모은 판정이다. 근거는 DESIGN §6.63의 이탈 표에 있다.
+   */
+  it("행 글리프 radius 8은 공통 프로젝트 썸네일이 소유한다", () => {
     expect(BODY).toContain("<ProjectThumbnail name={row.name}");
-    expect(code("components/projects/project-thumbnail.tsx")).toContain("rounded-[4px]");
+    expect(code("components/projects/project-thumbnail.tsx")).toContain("rounded-sm");
   });
 
   /**
