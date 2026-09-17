@@ -19,9 +19,9 @@ describe("이미지 형식과 크기", () => {
     expect(sniffImageType(new Uint8Array([...png, ...new TextEncoder().encode("acTL")]))).toBe("png");
     expect(sniffImageType(new Uint8Array([...png, 0, 255]))).toBe("png");
   });
-  it.each([799_999, 800_000, 800_001])("크기 경계 %i", (size) => {
+  it.each([2_999_999, 3_000_000, 3_000_001])("크기 경계 %i", (size) => {
     const bytes = new Uint8Array(size); bytes.set(png);
-    expect(planImageUpload(bytes)).toEqual(size > 800_000 ? { ok: false, reason: "too-large" } : { ok: true, ext: "png" });
+    expect(planImageUpload(bytes)).toEqual(size > 3_000_000 ? { ok: false, reason: "too-large" } : { ok: true });
   });
   it("빈 파일과 지원하지 않는 형식의 사유가 다르다", () => {
     expect(planImageUpload(new Uint8Array())).toEqual({ ok: false, reason: "empty" });
@@ -74,4 +74,12 @@ describe("클라이언트 선검사", () => {
     expect(planImagePick({ size: 10, type: "image/png" })).toEqual({ ok: true });
     expect(planImageUpload(new TextEncoder().encode("<svg/>"))).toEqual({ ok: false, reason: "unsupported-type" });
   });
+});
+
+it("WebP 키를 만들고 새 WebP와 기존 PNG/JPEG를 모두 정리한다", () => {
+  expect(imageObjectKey("u1", "webp", "n1")).toBe("avatars/u1/n1.webp");
+  for (const ext of ["png", "jpeg", "webp"]) {
+    expect(planImageDelete(`https://store.public.blob.vercel-storage.com/avatars/u1/n1.${ext}`)).toBe(`avatars/u1/n1.${ext}`);
+  }
+  expect(IMAGE_MAX_BYTES).toBe(3_000_000);
 });

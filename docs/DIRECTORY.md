@@ -142,6 +142,22 @@ components/
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
+  projects/project-thumbnail.tsx
+                        프로젝트를 가리키는 28 타일. 소비자가 **둘**이다 — 목록 행과 Home 머리.
+                        ⚠️ **2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다**
+                        (POSTMORTEM 2026-09-17). ⚠️ radius가 rounded-sm(8)이고 캔버스의 4가 아니다
+                        — 초대 카드(components/invite/project-card.tsx)까지 세 화면을 한 값으로
+                        모은 판정이다 (DESIGN §6.63의 이탈 줄이 정본)
+                        ⚠️ optional src는 아직 소비자가 없다 — 프로젝트 이미지가 생길 자리다
+  projects/new-project-button.tsx
+                        [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
+                        Link.onNavigate를 가로채 useTransition + router.push로 옮기고 그동안 Plus를
+                        Loader2로 **교체**한다(더하지 않는다 — 라벨 폭이 흔들린다)
+                        ⚠️ **Next는 같은탭 클릭에만 onNavigate를 부른다** — 수정키·새 탭은 네이티브로
+                        떨어진다. 그 전제를 테스트가 mock으로 정의하므로 new-project-button.test.tsx가
+                        설치된 next 소스에 따로 고정한다
+                        ⚠️ ButtonLink가 아니라 buttonClass를 빌려 쓴다 — onNavigate가 필요해서다
+                        (publish-button·github-section과 같은 관용구)
   projects/locale-meter.tsx
                         행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
@@ -170,6 +186,10 @@ components/
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다)
                         ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
   __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
+                        disabled-pairing(⚠️ buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이
+                        있는지 + 그 스타일을 ui/button.tsx 밖에서 쓰지 않는지. <a>와 Radix 트리거는
+                        disabled 속성을 못 써서 각자 철자를 발명했고 같은 pending이 세 화면에서
+                        달라 보였다 — POSTMORTEM 2026-09-17. hover: 축만 양방향 예외다) ·
                         client-graph(⚠️ "use client" 값 import 그래프에 ts-morph·octokit·prisma·node:fs가
                         없는지. 없으면 7.2MB 청크가 조용히 나간다 — 실제로 나갔다) ·
                         slottable-item · translations-screen · home-screen · logs-screen · members-screen ·
@@ -200,8 +220,11 @@ lib/
                         invite-view · membership · email · cookie · message · landing · invite-label
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
   upload/               사용자 프로필 사진 전용. image(형식·크기·키·삭제 allowlist 판정 +
-                        planImagePick — 클라이언트 선검사) · store(server-only Vercel Blob I/O) ·
+                        planImagePick — 클라이언트 선검사) · normalize(server-only. sharp로 EXIF 방향
+                        적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O) ·
                         message(거부 → 문구). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
+                        ⚠️ **normalize는 인증·사용자·Blob·DB에 닿지 않는다** — bytes → bytes라
+                        아바타 밖(프로젝트 이미지 등)에서도 그대로 재사용된다
                         ⚠️ **문구가 image.ts가 아니라 message.ts다** — 능력 쪽에 두면 no-korean-ui가
                         한글만 세므로 green인 채 사전을 통째로 우회한다
                         ⚠️ **클라이언트 선검사는 방어선이 아니다** — File.type이 확장자에서 오므로

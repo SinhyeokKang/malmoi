@@ -118,9 +118,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
         ⚠️ **진행 중에도 `disabled`가 아니라 `aria-disabled`다** — `disabled`면 Radix가 Dialog를 닫을 때
         포커스를 되돌릴 대상이 DOM에서 포커스를 못 받아 사라진다(spec §12-9). 겉모습은 `default disabled`
         그대로이고 바뀌는 것은 포커스 가능성뿐이며, 클릭·Enter 연타는 핸들러가 막는다 (시안 §8).
+
+        ⚠️ **그 겉모습을 여기서 그리지 않는다** (2026-09-17) — `buttonClass`의 `aria-disabled:` 짝이
+        든다. 전엔 이 자리가 자기 철자를 들고 있었고, 같은 pending이 로그인·New project와 달라 보였다.
       */}
-      <Button id={triggerId} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}
-        className="aria-disabled:text-muted-foreground aria-disabled:cursor-not-allowed aria-disabled:hover:bg-background">
+      <Button id={triggerId} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
         {pending
           ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
           : <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}

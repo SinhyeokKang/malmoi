@@ -976,11 +976,7 @@ export const en = {
     picture: {
       upload: "Image upload",
       delete: "Delete",
-      /**
-       * ⚠️ **"as-is"가 EXIF를 안 벗긴다는 판정을 말하는 자리다** (2026-09-13 사용자). 빼면 그
-       * 판정이 화면에서 사라지고, 위치 정보가 실린 사진을 올린 사람이 그 사실을 알 길이 없다.
-       */
-      caption: "PNG or JPEG, up to 800 KB. Uploaded as-is.",
+      caption: "PNG or JPEG, up to 3 MB. Resized automatically.",
       /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
       noPicture: "You haven't added one yet.",
       /**
@@ -1959,12 +1955,17 @@ export const en = {
      * 사용자는 같은 파일을 다시 고른다.
      */
     upload: {
-      "too-large": "That picture is over 800 KB. Choose a smaller one.",
-      "unsupported-type": "That file isn't a PNG or JPEG. Choose one of those.",
+      "too-large": "That picture is over 3 MB. Choose a smaller one.",
+      /**
+       * ⚠️ **바이트가 아니라 치수를 말한다** — 3 MB 안에 드는 파일도 여기서 걸리므로 "over 3 MB"를
+       * 재사용하면 사용자가 크기를 줄여도 같은 화면을 다시 만난다.
+       */
+      "too-many-pixels": "That picture's dimensions are too large. Choose one with fewer pixels.",
+      "unsupported-type": "That file isn't a valid PNG or JPEG. Choose another picture.",
       "not-a-file": "No picture was received. Choose a file and try again.",
       empty: "That file is empty. Choose another one.",
       unavailable: "We couldn't save that picture. Try again in a moment.",
-      fallback: "We couldn't use that picture. Choose a PNG or JPEG under 800 KB.",
+      fallback: "We couldn't use that picture. Choose a PNG or JPEG up to 3 MB.",
     },
     connectMethod: {
       connected: "Sign-in method added. You can use it next time you sign in.",

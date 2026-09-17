@@ -2075,3 +2075,27 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 그물: 이번에도 잡은 것은 **`git status --porcelain`**이다(커밋 직전에 돌렸고 그 파일이 목록에 없었다).
     ⚠️ **typecheck·test는 둘 다 green이었다** — 지워진 것이 테스트 헬퍼라 옛 형으로 돌아가도 그 파일의
     단언이 전부 통과했다. 첫 번째 사고 때는 typecheck이 잡았지만 **그건 운이었다**는 것이 이것으로 확인됐다.
+
+### 2026-09-17 — 같은 프로젝트의 목록과 상세 썸네일 색이 달랐다
+
+- **영역**: `components/projects/project-list.tsx` · `components/home/actions.tsx` · `components/projects/project-thumbnail.tsx`
+- **증상**: 프로젝트 목록은 이름에서 정한 배경색을 썼지만 Home 머리는 고정 `bg-foreground`였다. 모서리도 목록은 4px, Home은 `rounded`로 달랐다.
+- **근본 원인**: 같은 프로젝트를 나타내는 타일을 화면마다 구현했고, Home의 고정 배경을 시안 이탈로 문서화하면서 목록의 이름 기반 색 규칙과 대조하지 않았다.
+- **그물**: 사용자가 두 화면의 불일치를 발견했다. 기존 테스트는 각 화면의 동작과 목록의 치수만 검사했다. 세 이름으로 목록과 Home의 배경·모서리를 비교하는 DOM 테스트에서 red를 확인한 뒤, 두 곳을 `ProjectThumbnail`로 연결해 green을 확인했다. 이미지 URL이 있으면 같은 타일 안에서 자르지 않고 표시하는 계약도 검사한다.
+- **재발 방지**: `rg -n 'bg-foreground.*size-7|ProjectThumbnail|toneFill\(row.name\)' components/home components/projects`를 실행해 두 소비자가 공통 컴포넌트만 쓰고 고정 배경이 남지 않음을 확인했다. 같은 엔터티를 여러 화면에 표시할 때 색·모서리의 교차 화면 계약을 함께 검사한다.
+
+### 2026-09-17 — New project 클릭 후 모달 대기 중 버튼이 반응하지 않았다
+
+- **영역**: `components/projects/project-list.tsx` · `components/projects/empty-projects.tsx` · `components/projects/new-project-button.tsx`
+- **증상**: 사용자가 New project 클릭 후 모달이 나타나기까지 약 1초 동안 버튼에 반응이 없어 클릭이 먹지 않은 것처럼 보인다고 보고했다.
+- **근본 원인**: 두 진입점이 일반 `ButtonLink`를 사용해 라우트 전환 상태를 표시하지 않았다. 모달 내부 리포 조회의 Suspense는 모달 껍데기가 도착한 뒤의 대기만 설명한다.
+- **그물**: 기존 테스트는 링크 목적지와 모달의 로딩 상태를 각각 검사했지만 그 사이 버튼의 pending 상태를 검사하지 않았다. 전용 컴포넌트의 테스트를 먼저 추가해 red를 확인한 뒤, 실제 React transition을 지연시켜 스피너·중복 클릭 차단·검색어 보존·모달 도착 후 복구를 검증했다. Next Link 자체는 테스트에서 대체했으므로 실 브라우저 라우팅·시안 대조는 후속 검증 대상이다.
+- **재발 방지**: `rg -n 'NewProjectButton|routes.newProject|startTransition|onNavigate' components/projects`를 실행해 헤더와 빈 목록이 같은 전용 버튼을 사용함을 확인했다. 비동기 모달 진입은 모달 내부 로딩과 진입 버튼의 전환 대기를 구분해 검사한다.
+
+### 2026-09-17 — 같은 pending이 화면마다 다르게 보였다 (비활성 형 이탈의 2회차)
+
+- **영역**: `components/ui/button.tsx` · `components/home/sync-button.tsx` · `components/projects/new-project-button.tsx`
+- **증상**: 사용자가 로그인 화면과 프로젝트 목록을 견줘 발견했다. 로그인 OAuth 버튼은 **회색으로 죽고 + 스피너**인데 New project는 **스피너만** 돌았다. 세어 보니 철자가 셋이었다 — 로그인은 `disabled:bg-muted`(cva), Home sync는 `aria-disabled:text-muted-foreground …`(손글씨), New project는 `aria-disabled:cursor-wait`(손글씨).
+- **근본 원인**: 비활성 겉모습을 **`disabled` 속성 하나**가 만드는데(cva의 `disabled:` 유틸리티), 그 속성을 쓸 수 없는 자리가 계속 생긴다 — `<a>`에는 없는 속성이고, Radix Dialog 트리거는 `disabled`면 닫을 때 포커스를 되돌릴 대상을 잃는다. 그 자리들이 각자 `aria-disabled:` 철자를 발명했다. ⚠️ **2026-09-15 "비활성 primary가 호출부에 따라 다른 형으로 보였다"와 같은 부류의 2회차다** — 그때 심은 재발 방지 grep이 `disabled:opacity-|disabled:bg-background`만 봐서 **`aria-disabled:` 철자를 통째로 놓쳤다.** 1회차의 교훈은 "호출부가 비활성 형을 소유하지 못하게"였는데, 정작 그것을 강제하는 수단이 특정 두 유틸리티 이름을 찾는 grep이었다.
+- **그물**: 소스 메타 테스트 3건이 red→green을 냈다(짝 강제 + `ui/button.tsx` 밖 `aria-disabled:` 스타일 0건). ⚠️ **그 뒤 브라우저 computed style이 두 번째 결함을 따로 잡았다**: `disabled:hover:bg-transparent`를 `aria-disabled:`로 그대로 복제했더니 `default`·`danger`의 배경이 흰색(`rgb(255,255,255)`)에서 **투명(`rgba(0,0,0,0)`)** 으로 떨어졌다 — **브라우저는 진짜 `disabled`에 hover를 안 태우므로 그 규칙은 여태 한 번도 적용된 적 없는 죽은 CSS였고**, `aria-disabled`에서 처음 살아났다. jsdom도 소스 검사도 원리적으로 못 보는 부류이고, `/design-sync`의 실측이 아니었으면 그대로 나갔다. ⚠️ **첫 측정이 거짓 통과를 냈다** — `transition-colors` 때문에 hover를 건 직후 읽으면 **전이 시작값**이 잡힌다(danger가 중간값 `oklab(...)`으로 나온 것이 단서였다). 400ms 기다린 뒤에야 다섯 variant의 hover가 실제로 증명됐다.
+- **재발 방지**: `pnpm exec vitest run components/__tests__/disabled-pairing.test.ts`. grep은 `rg -n 'aria-disabled:' components app | grep -v 'ui/button.tsx'`이고 **0건이어야 한다**(속성을 세우는 것은 자유이고 막는 것은 그 모양을 직접 그리는 것이다). ⚠️ **`hover:` 축은 두 접두사가 다른 값이어야 한다** — 짝을 강제하면 위의 죽은 규칙 복제를 도로 강요하게 되므로 메타 테스트가 그 축만 양방향 예외로 둔다. 비활성 형을 브라우저로 잴 때는 `transition-colors`가 끝난 뒤에 읽는다.

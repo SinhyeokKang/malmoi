@@ -33,10 +33,27 @@ import { cn } from "@/lib/utils";
  * 낮아서(흰 배경 **2.54:1**, 하한 3:1 미달) 경계가 한 겹 더 있는 자리가 유리하다. 그전엔
  * `--ring == --border`라 링이 흰 배경에서 실질적으로 없었다(1.19:1) — DESIGN §7.
  */
+/**
+ * ⚠️ **`disabled:` 유틸리티마다 `aria-disabled:` 짝이 선다** (2026-09-17 사용자 — 전역 규칙).
+ *
+ * pending 표시는 `Button`의 `loading`이 거는 **`disabled` 속성 하나**가 만든다. 그런데 그 속성을
+ * 쓸 수 없는 자리가 계속 생긴다 — `<a>`에는 없는 속성이고(`NewProjectButton`), Radix Dialog
+ * 트리거는 `disabled`면 닫을 때 포커스를 잃는다(`SyncButton`). 그 자리들이 각자 `aria-disabled:`
+ * 철자를 발명해 **같은 pending이 화면마다 다르게 보였다**: 로그인은 회색 + not-allowed, Home
+ * sync는 글자만 회색, New project는 커서만 바뀌었다. 소비자는 이제 **속성만** 세우면 된다.
+ *
+ * ⚠️ **짝을 빠뜨리면 `disabled_pairing` 메타 테스트가 red다** — 새 variant를 만드는 사람이 한쪽만
+ * 적는 것이 이 규칙이 실제로 깨지는 유일한 경로이고, 그것은 화면에도 다른 테스트에도 안 나타난다.
+ *
+ * ⚠️ **`aria-disabled:hover:*`가 `disabled:` 쪽보다 하나 많은 자리가 있다**(primary의
+ * `aria-disabled:hover:bg-muted`). 진짜 `disabled`는 브라우저가 hover를 안 태우지만 `aria-disabled`는
+ * 태우므로, 그것이 없으면 **회색으로 죽은 버튼이 hover에서 검게 살아난다.** 메타 테스트는 짝의
+ * 존재만 보고 여분을 금지하지 않는다 — 이 비대칭이 그 이유다.
+ */
 export const buttonClass = cva(
   cn(
     "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 text-sm font-normal whitespace-nowrap",
-    "transition-colors disabled:cursor-not-allowed",
+    "transition-colors disabled:cursor-not-allowed aria-disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   ),
   {
@@ -48,7 +65,11 @@ export const buttonClass = cva(
          * `bg-primary/90`(≈#2e2e2e)이라 **밝아지고** 있었고, 캔버스는 `--foreground`(#0a0a0a)로
          * 내려간다. 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는 부류이므로 computed style로 잰다.
          */
-        primary: "bg-primary text-primary-foreground hover:bg-foreground disabled:bg-muted disabled:text-muted-foreground",
+        primary: cn(
+          "bg-primary text-primary-foreground hover:bg-foreground",
+          "disabled:bg-muted disabled:text-muted-foreground",
+          "aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted",
+        ),
         /**
          * ⚠️ **hover가 `--accent`(#f5f5f5)가 아니라 `--primary-foreground`(#fafafa)다**
          * (2026-09-13 — 같은 실측). 그 토큰이 **역할을 하나 더 든다**는 뜻이고 DESIGN §6.2가
@@ -57,18 +78,27 @@ export const buttonClass = cva(
         default: cn(
           "border-input bg-background text-foreground hover:bg-primary-foreground border",
           "disabled:text-muted-foreground disabled:hover:bg-transparent",
+          // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
+          //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
+          //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
+          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
         // ⚠️ `bg-destructive`가 없다 — destructive는 **글자색 전용**이다 (§2.3).
         danger: cn(
           "border-destructive/40 text-destructive hover:bg-destructive/5 bg-background border",
           "disabled:text-muted-foreground disabled:hover:bg-transparent",
+          // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
+          //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
+          //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
+          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
         ghost: cn(
           "text-muted-foreground hover:text-foreground",
-          "disabled:text-muted-foreground",
+          // hover가 글자색을 되살리는 유일한 variant라 여기만 짝이 하나 더 필요하다.
+          "disabled:text-muted-foreground aria-disabled:text-muted-foreground aria-disabled:hover:text-muted-foreground",
         ),
         // 인라인 링크형 — 외부 링크가 아니라 **행동**이다("Sign in with another account").
-        link: "text-blue-600 disabled:text-muted-foreground",
+        link: "text-blue-600 disabled:text-muted-foreground aria-disabled:text-muted-foreground",
       },
       size: {
         /**

@@ -1,11 +1,11 @@
 "use client";
 
-import { Box } from "lucide-react";
 import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
 import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
+import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
@@ -94,17 +94,11 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
  *
  * ⚠️ **머리에 리포·브랜치·멤버 수를 적지 않는다** — 오른쪽 `Project` 카드가 그 사실의 소유자다.
  */
-export function HomeTitle({ archived, children }: { archived: boolean; children: ReactNode }) {
+export function HomeTitle({ archived, children }: { archived: boolean; children: string }) {
   const { titleRef } = useHomeActions();
   return (
     <span className="flex min-w-0 items-center gap-2.5">
-      {/*
-        타일은 **이름의 일부**이지 링크가 아니다 — 프로젝트 안이라 자기 자신으로 가는 링크가 될
-        자리이고, 그것은 죽은 컨트롤이다. 색은 셸 스위처의 프로젝트 아바타와 같은 축이다.
-      */}
-      <span className="bg-foreground text-background flex size-7 shrink-0 items-center justify-center rounded" aria-hidden>
-        <Box className="size-4" />
-      </span>
+      <ProjectThumbnail name={children} />
       <h1 ref={titleRef} tabIndex={-1} className="truncate text-lg font-medium">
         {children}
       </h1>

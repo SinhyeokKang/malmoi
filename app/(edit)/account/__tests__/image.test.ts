@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { decodeUser, encodeUserFields } from "@/lib/credentials/records";
 import { uploadProfileImage, deleteProfileImage } from "../actions";
@@ -8,13 +9,15 @@ vi.mock("@/lib/db", () => ({ getPrisma: mocks.getPrisma }));
 vi.mock("@/lib/upload/store", () => ({ putImage: mocks.putImage, deleteImage: mocks.deleteImage }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 const oldUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/old.png";
-const newUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/new.png";
+const newUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/new.webp";
 let row: { id: string; image?: string | null };
 let tx: { $executeRaw: ReturnType<typeof vi.fn>; user: { findUniqueOrThrow: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> } };
-function form(bytes = Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10)) {
+let validPng: Uint8Array<ArrayBuffer>;
+function form(bytes = validPng) {
   const data = new FormData(); data.set("image", new File([bytes], "fake.svg", { type: "image/svg+xml" })); data.set("userId", "victim"); return data;
 }
-beforeEach(() => {
+beforeEach(async () => {
+  validPng = new Uint8Array(await sharp({ create: { width: 384, height: 192, channels: 4, background: "#ff000080" } }).png().toBuffer());
   vi.clearAllMocks();
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ k1: Buffer.alloc(32, 1).toString("base64") }));
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "k1");
@@ -42,7 +45,7 @@ it("문자열과 누락 파일은 값으로 거부한다", async () => {
 it("빈 파일, 형식, 크기는 저장 전에 값으로 거부한다", async () => {
   expect(await uploadProfileImage(form(new Uint8Array()))).toEqual({ ok: false, reason: "empty" });
   expect(await uploadProfileImage(form(new TextEncoder().encode("<svg/>")))).toEqual({ ok: false, reason: "unsupported-type" });
-  expect(await uploadProfileImage(form(new Uint8Array(800_001)))).toEqual({ ok: false, reason: "too-large" });
+  expect(await uploadProfileImage(form(new Uint8Array(3_000_001)))).toEqual({ ok: false, reason: "too-large" });
   expect(mocks.putImage).not.toHaveBeenCalled();
 });
 it("주입된 userId를 무시하고 세션 행을 잠가 봉투로 저장한 뒤 이전 파일을 정리한다", async () => {
@@ -52,7 +55,7 @@ it("주입된 userId를 무시하고 세션 행을 잠가 봉투로 저장한 �
   expect(tx.user.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: "owner" }, select: { id: true, image: true } });
   expect(tx.user.update).toHaveBeenCalledWith({ where: { id: "owner" }, data: { image: expect.stringMatching(/^enc:v1:/) } });
   expect(decodeUser(row).image).toBe(newUrl);
-  expect(mocks.putImage).toHaveBeenCalledWith(expect.stringMatching(/^avatars\/owner\/[A-Za-z0-9_-]+\.png$/), expect.any(Uint8Array), "png");
+  expect(mocks.putImage).toHaveBeenCalledWith(expect.stringMatching(/^avatars\/owner\/[A-Za-z0-9_-]+\.webp$/), expect.any(Uint8Array), "webp");
   expect(mocks.deleteImage).toHaveBeenCalledWith("avatars/owner/old.png");
   expect(mocks.revalidatePath).toHaveBeenCalledWith("/", "layout");
 });
@@ -66,7 +69,7 @@ it("DB 쓰기 또는 커밋 실패는 새 파일만 정리한다", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   mocks.getPrisma.mockReturnValue({ $transaction: async (fn: (t: typeof tx) => unknown) => { await fn(tx); throw new Error("commit failed"); } });
   expect(await uploadProfileImage(form())).toEqual({ ok: false, reason: "unavailable" });
-  expect(mocks.deleteImage).toHaveBeenCalledExactlyOnceWith("avatars/owner/new.png");
+  expect(mocks.deleteImage).toHaveBeenCalledExactlyOnceWith("avatars/owner/new.webp");
   expect(mocks.revalidatePath).not.toHaveBeenCalled();
 });
 it("삭제는 null을 저장하고 같은 레이아웃을 무효화한다", async () => {
@@ -111,11 +114,11 @@ it("동시 업로드는 직렬화된 이전 값을 정리하고 마지막 파일
     await before;
     try { return await fn(tx); } finally { unlock(); }
   } });
-  const lastUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/last.png";
+  const lastUrl = "https://store.public.blob.vercel-storage.com/avatars/owner/last.webp";
   mocks.putImage.mockResolvedValueOnce(newUrl).mockResolvedValueOnce(lastUrl);
   expect(await Promise.all([uploadProfileImage(form()), uploadProfileImage(form())])).toEqual([{ ok: true }, { ok: true }]);
   expect(decodeUser(row).image).toBe(lastUrl);
-  expect(mocks.deleteImage.mock.calls.map(([key]) => key).sort()).toEqual(["avatars/owner/new.png", "avatars/owner/old.png"]);
+  expect(mocks.deleteImage.mock.calls.map(([key]) => key).sort()).toEqual(["avatars/owner/new.webp", "avatars/owner/old.png"]);
   expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
 });
 it.each(["", "missing-key"])("PII 쓰기 키 %s가 없으면 Blob에 바이트를 보내지 않는다", async (kid) => {
@@ -142,4 +145,17 @@ it("자기 행에 다른 사용자 URL이 들어 있어도 다른 사용자의 �
   row = { id: "owner", ...encodeUserFields("owner", { image: "https://store.public.blob.vercel-storage.com/avatars/victim/old.png" }) };
   expect(await deleteProfileImage()).toEqual({ ok: true });
   expect(mocks.deleteImage).not.toHaveBeenCalled();
+});
+
+it("3MB 원본을 받아 Blob에는 축소한 WebP만 보낸다", async () => {
+  const bytes = new Uint8Array(3_000_000); bytes.set(validPng);
+  expect(await uploadProfileImage(form(bytes))).toEqual({ ok: true });
+  const uploaded = mocks.putImage.mock.calls[0]![1] as Uint8Array;
+  expect(uploaded.length).toBeLessThan(validPng.length);
+  expect(await sharp(uploaded).metadata()).toMatchObject({ format: "webp", width: 192, height: 96, hasAlpha: true });
+});
+it("시그니처만 있는 손상 파일은 Blob과 DB에 닿지 않는다", async () => {
+  expect(await uploadProfileImage(form(Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10)))).toEqual({ ok: false, reason: "unsupported-type" });
+  expect(mocks.putImage).not.toHaveBeenCalled();
+  expect(mocks.getPrisma).not.toHaveBeenCalled();
 });
