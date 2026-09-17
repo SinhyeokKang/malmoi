@@ -97,6 +97,9 @@ model TranslationSurface {
   id                  String        @id @default(cuid())
   projectId           String
   slug                String
+  /// ⚠️ **쓰는 곳이 0이다** — 읽기(필터·미발송 술어)만 있다. 표면 보관·복원은 다음 라운드(PRODUCT §7.1)이고,
+  /// 그때까지 이 컬럼은 항상 null이다. 지우지 않는 이유: 읽기 ~40곳과 술어 넷이 걸려 있고, drop은
+  /// additive-first 순서를 역전해야 해서 런칭 직전에 뗄 이득이 없다(launch-readiness L3.11, 2026-09-17).
   archivedAt          DateTime?
   adapterName         String?
   pathTemplate        String?
