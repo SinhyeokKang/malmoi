@@ -22,3 +22,11 @@ it("공개 저장은 키를 바꾸지 않고 토큰과 판정된 MIME을 넘긴�
   expect(await listImages()).toEqual([{ pathname: "avatars/u/n.png" }]);
   expect(sdk.list).toHaveBeenLastCalledWith({ prefix: "avatars/", cursor: "next", token: "test-token" });
 });
+
+it("WebP 저장은 WebP MIME을 사용한다", async () => {
+  vi.stubEnv("BLOB_READ_WRITE_TOKEN", "test-token");
+  sdk.put.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/avatars/u/n.webp" });
+  const { putImage } = await import("../store");
+  await putImage("avatars/u/n.webp", Uint8Array.of(1), "webp");
+  expect(sdk.put).toHaveBeenCalledWith("avatars/u/n.webp", expect.any(Buffer), expect.objectContaining({ contentType: "image/webp" }));
+});
