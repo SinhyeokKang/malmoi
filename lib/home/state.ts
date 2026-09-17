@@ -24,8 +24,12 @@ export type HomeState = "archived" | "not_connected" | "import_failed" | "empty"
  * 제거됐다"로 읽히고 사용자가 재설치하러 간다 — `planConnectionHealth`가 조회 실패를
  * `app-uninstalled`로 접지 않는 것과 정확히 같은 축이다 (POSTMORTEM 2026-09-03 · 09-06).
  *
- * ⚠️ **`repo-moved`·`installation-changed`는 미연결이 아니다.** 그 상태에서도 Sync·Publish가 돌기
- * 때문에 "일시 정지"라고 말하면 거짓이다 — 새 주소를 확인하라는 안내는 설정 화면이 든다.
+ * ⚠️ **`repo-moved`는 미연결이 아니다.** 그 상태에서도 Sync·Publish가 돌기 때문에 "일시 정지"라고
+ * 말하면 거짓이다 — 새 주소를 확인하라는 안내는 설정 화면이 든다.
+ *
+ * ⚠️ **`installation-changed`는 미연결이다** (#52). `createGitClient`가 **저장된** `installationId`로
+ * 토큰을 받으므로 재설치로 옛 설치가 사라지면 모든 호출이 404다 — "돈다"로 읽으면 Home이 빈 상태와
+ * 켜진 Publish를 띄우고, 누른 사람은 [Reconnect]로 가는 길 없이 재시도만 반복한다.
  */
 export function planHomeState(input: {
   archived: boolean;
@@ -34,7 +38,8 @@ export function planHomeState(input: {
   counts: SummaryQueue;
 }): HomeState {
   if (input.archived) return "archived";
-  if (input.connection.status === "not-connected" || input.connection.status === "app-uninstalled" || input.connection.status === "repo-replaced") {
+  const { status } = input.connection;
+  if (status === "not-connected" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced") {
     return "not_connected";
   }
   // "지금 돌고 있다"가 "지난번에 실패했다"를 이긴다 — 목록·설정과 **같은 술어**다.

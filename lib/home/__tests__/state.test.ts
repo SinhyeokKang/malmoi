@@ -75,17 +75,27 @@ describe("planHomeState — 우선순위가 곧 순서다", () => {
   });
 
   /**
-   * ⚠️ **주소가 바뀐 것과 끊긴 것은 다르다.** `repo-moved`·`installation-changed`는 Sync·Publish가
-   * 여전히 도는 상태라 "일시 정지"라고 말하면 거짓이다 — 그 안내는 설정 화면이 든다.
+   * ⚠️ **주소가 바뀐 것과 끊긴 것은 다르다.** `repo-moved`는 저장된 설치로 새 주소에 여전히 닿아
+   * Sync·Publish가 도는 상태라 "일시 정지"라고 말하면 거짓이다 — 그 안내는 설정 화면이 든다.
    */
-  it("주소·설치가 바뀐 것만으로는 일시 정지가 아니다", () => {
+  it("주소가 바뀐 것만으로는 일시 정지가 아니다", () => {
     expect(planHomeState({ ...base, connection: { status: "repo-moved", fullName: "o/new" } })).toBe("default");
-    expect(planHomeState({ ...base, connection: { status: "installation-changed", installationId: "2" } })).toBe("default");
   });
 
   it("연결 전·제거·다른 리포 셋은 전부 미연결이다 — Sync도 Publish도 멈춘다", () => {
     for (const status of ["not-connected", "app-uninstalled", "repo-replaced"] as const) {
       expect(planHomeState({ ...base, connection: { status } })).toBe("not_connected");
     }
+  });
+
+  /**
+   * ⚠️ **설치가 바뀌면 멈춘다** (#52 — 2026-09-17 실측). `createGitClient`는 **저장된**
+   * `installationId`로 토큰을 받으므로, 재설치로 그 설치가 사라지면 모든 읽기·쓰기가 404다. 한때
+   * 이 테스트는 반대를 고정했고 Home이 "Nothing needs you" + 켜진 Publish를 띄웠다 — 누르면
+   * "Couldn't read what would go out"만 반복되고 [Reconnect]로 가는 길이 없었다.
+   */
+  it("설치가 바뀐 것은 미연결이다 — 저장된 설치로는 아무것도 못 한다", () => {
+    expect(planHomeState({ ...base, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
+    expect(planHomeState({ ...base, counts: zero, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
   });
 });
