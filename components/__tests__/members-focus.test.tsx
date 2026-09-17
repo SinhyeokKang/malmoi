@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
@@ -34,8 +34,32 @@ const byLabel = (label: string) => {
   return node;
 };
 async function click(node: HTMLElement) { await act(async () => { await userEvent.setup().click(node); }); }
+/** 응답을 손으로 푼다 — 즉시 풀리면 `disabled`가 켜졌다 꺼지는 사이에 아래 fixup이 돌 틈이 없다. */
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve: async (value: T) => { await act(async () => { resolve(value); }); } };
+}
 
-beforeEach(() => { vi.clearAllMocks(); });
+/**
+ * ⚠️ **jsdom에는 HTML의 focus fixup 규칙이 없다** — 포커스된 버튼이 `disabled`가 되면 브라우저는
+ * `activeElement`를 `body`로 돌리지만 jsdom은 그대로 둔다. 그래서 Revoke(Dialog 없이 누른 버튼
+ * 자체가 `loading`이 되는 갈래)의 #53이 jsdom에서 green이었다. 그 규칙만 흉내 낸다.
+ */
+let fixup: MutationObserver | undefined;
+beforeEach(() => {
+  vi.clearAllMocks();
+  fixup = new MutationObserver(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches(":disabled")) return;
+    // jsdom의 `blur()`는 포커스 가능한 요소에서만 돈다 — 속성을 잠깐 걷어야 풀린다.
+    active.removeAttribute("disabled");
+    active.blur();
+    active.setAttribute("disabled", "");
+  });
+  fixup.observe(document.body, { attributes: true, attributeFilter: ["disabled"], subtree: true });
+});
+afterEach(() => { fixup?.disconnect(); });
 
 describe("Members — Remove", () => {
   function Screen({ members }: { members: MemberView[] }) {
@@ -62,16 +86,23 @@ describe("Members — Remove", () => {
     expect(status()?.textContent).toContain("Alice");
   });
 
-  it("실패하면 포커스를 옮기지 않고 아무것도 알리지 않는다 — 행 옆 Alert가 답한다", async () => {
-    mocks.changeMember.mockResolvedValue({ ok: false, error: "last-owner" });
+  /**
+   * ⚠️ **거부되면 포커스가 그 행의 Remove로 돌아온다** (malmoi#53). Dialog가 닫히며 트리거로 포커스를
+   * 돌려주는데 그 순간 트리거는 `loading` → `disabled`라 받지 못하고 `body`로 빠졌다 — 행 옆 Alert를
+   * 찾으려면 페이지 맨 위부터 다시 탭해야 했다.
+   */
+  it("실패하면 제목으로 옮기지 않고 그 행의 Remove로 포커스를 돌려준다 — 행 옆 Alert가 답한다", async () => {
+    const response = deferred<{ ok: false; error: string }>();
+    mocks.changeMember.mockReturnValue(response.promise);
     await render(<Screen members={[owner, alice]} />);
 
     await click(byLabel("Remove Alice"));
     const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === "Remove");
     if (!confirm) throw new Error("Missing confirm");
     await click(confirm);
+    await response.resolve({ ok: false, error: "last-owner" });
 
-    expect(document.activeElement?.id).not.toBe("members-heading");
+    expect(document.activeElement).toBe(byLabel("Remove Alice"));
     expect(status()?.textContent).toBe("");
     expect(document.querySelector('[role="alert"]')).not.toBeNull();
   });
@@ -100,13 +131,17 @@ describe("Pending invitations — Revoke", () => {
     expect(status()?.textContent).toContain("t***@example.com");
   });
 
-  it("실패하면 포커스를 옮기지 않고 알리지 않는다", async () => {
-    mocks.revokeInvitation.mockResolvedValue({ ok: false, error: "unavailable" });
+  /** ⚠️ `members`의 Remove와 같은 결함이다 (malmoi#53) — 누른 버튼이 `loading` 동안 `disabled`라 포커스를 잃는다. */
+  it("실패하면 제목으로 옮기지 않고 그 행의 Revoke로 포커스를 돌려준다", async () => {
+    const response = deferred<{ ok: false; error: string }>();
+    mocks.revokeInvitation.mockReturnValue(response.promise);
     await render(<Screen invitations={[invite]} />);
 
     await click(byLabel("Revoke invitation for t***@example.com"));
+    await response.resolve({ ok: false, error: "unavailable" });
 
-    expect(document.activeElement?.id).not.toBe("pending-heading");
+    expect(document.activeElement).toBe(byLabel("Revoke invitation for t***@example.com"));
+    expect(document.querySelector('[role="alert"]')).not.toBeNull();
     expect(status()?.textContent).toBe("");
   });
 });

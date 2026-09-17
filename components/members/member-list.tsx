@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { changeMember } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -48,10 +48,21 @@ export function MemberList({
   headingId: string;
 }) {
   const manage = canPerform(role, "member:manage");
-  const [failed, setFailed] = useState<{ userId: string; error: string } | null>(null);
+  /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
+  const [failed, setFailed] = useState<{ userId: string; error: string; removal: boolean } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
+
+  /**
+   * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). Dialog는 닫히면서 트리거로
+   * 포커스를 돌려주는데 그 순간 트리거가 `loading` → `disabled`라 받지 못하고 `body`로 빠진다.
+   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 여전히 `disabled`고
+   * `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   */
+  useEffect(() => {
+    if (failed?.removal) document.getElementById(`remove-${failed.userId}`)?.focus();
+  }, [failed]);
 
   function apply(targetUserId: string, nextRole: Role | null, who: string) {
     setFailed(null);
@@ -61,7 +72,7 @@ export function MemberList({
       const result = await changeMember({ slug, targetUserId, nextRole });
       setPendingId(null);
       if (!result.ok) {
-        setFailed({ userId: targetUserId, error: result.error });
+        setFailed({ userId: targetUserId, error: result.error, removal: nextRole === null });
         return;
       }
       // 역할 변경은 행이 남아 포커스가 셀렉트에 그대로 있다 — 옮기는 것은 행이 사라지는 제거뿐이다.
@@ -136,6 +147,7 @@ export function MemberList({
             <Td className="text-right">
               {manage && (
                 <RemoveButton
+                  id={`remove-${member.userId}`}
                   who={who}
                   pending={pendingId === member.userId}
                   onConfirm={() => apply(member.userId, null, who)}
@@ -160,10 +172,12 @@ export function MemberList({
 
 /** 제거는 되돌릴 수 없어 확인을 한 번 받는다 (DESIGN §6.4 — 제목은 대상을 명시한 질문). */
 function RemoveButton({
+  id,
   who,
   pending,
   onConfirm,
 }: {
+  id: string;
   who: string;
   pending: boolean;
   onConfirm: () => void;
@@ -174,6 +188,7 @@ function RemoveButton({
         {/* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을
             찾으므로 다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */}
         <Button
+          id={id}
           variant="ghost"
           aria-label={m.members.removeLabel(who)}
           loading={pending}

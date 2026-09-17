@@ -1,7 +1,7 @@
 "use client";
 
 import { MailPlus } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { revokeInvitation } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -46,6 +46,16 @@ export function PendingInvitations({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
+
+  /**
+   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그 버튼은 `loading` 동안 `disabled`라
+   * 브라우저가 포커스를 `body`로 떨어뜨리고, 행 옆 Alert를 찾으려면 맨 위부터 다시 탭해야 했다.
+   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 버튼이 여전히
+   * `disabled`고 `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   */
+  useEffect(() => {
+    if (failed !== null) document.getElementById(`revoke-${failed.id}`)?.focus();
+  }, [failed]);
 
   function revoke(invitationId: string, who: string) {
     setFailed(null);
@@ -101,6 +111,7 @@ export function PendingInvitations({
             <Td className="text-right">
               {manage && (
                 <Button
+                  id={`revoke-${invitation.id}`}
                   variant="ghost"
                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                   loading={pendingId === invitation.id}
