@@ -158,6 +158,32 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     expect(found).toMatch(/writeWithErrors를 구현하지 않았다/);
   });
 
+  it("잡는다: 깊은 점 키를 못 찾고 가장 깊은 맵에 다시 넣는 수술적 writer (L1.4의 옛 동작)", () => {
+    const fakeDuplicating: Adapter = {
+      name: "yaml-catalog",
+      layout: "per-locale",
+      writeStrategy: "surgical",
+      detect: () => undefined,
+      detectCandidates: () => [],
+      read: () => ({ locales: [], errors: [], nested: true }),
+      write: (f, input) => {
+        const src = f.currentFiles?.[0]?.content ?? "";
+        let out = src;
+        for (const e of input.entries) {
+          if (e.orphaned === true) continue;
+          const literal = new RegExp(`(${JSON.stringify(e.key)}: ).*`);
+          // 루트의 리터럴 전체 키만 찾는다 — `grp.x.y`는 못 찾고 "없는 키"로 판정해 `grp` 아래에 또 넣는다.
+          if (literal.test(out)) out = out.replace(literal, `$1${JSON.stringify(e.message)}`);
+          else out += `  ${JSON.stringify(e.key.split(".").slice(1).join("."))}: ${JSON.stringify(e.message)}\n`;
+        }
+        return out;
+      },
+    };
+    const found = writerContractViolations(fakeDuplicating).join("\n");
+    expect(found).toMatch(/깊은 점 키: 값 무변경인데 원본 바이트가 바뀌었다/);
+    expect(found).toMatch(/깊은 점 키: "x\.y" 리터럴이 1→2개로 늘었다/);
+  });
+
   it("잡는다: 입력을 통째로 무시하고 상수를 내는 writer", () => {
     const fakeConstant: Adapter = {
       ...fakeRegenerating({}),

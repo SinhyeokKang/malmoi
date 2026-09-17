@@ -358,55 +358,56 @@ function writeWithErrors(
     wanted.set(e.key, e.message);
   }
 
+  // 루트 키 아래가 걷기의 시작점이다. 루트 키가 있는데 그 자리가 비어 있으면 아래 `emptyRoot`가 아니라
+  // `write-slot-not-scalar`로 떨어진다 — 그 파일의 규약(루트 키)은 있는데 맵이 없는 상태라 삽입 위치가 없다.
+  const start: unknown = prefixPath.length === 0 ? doc.contents : resolveLast(doc, prefixPath);
+
   const replacements: Replacement[] = [];
   const errors: AdapterError[] = [];
-  const missing: string[] = [];
+  const missing = new Map<string, Extract<Located, { kind: "missing" }>>();
   for (const [key, value] of wanted) {
-    // ⚠️ **리터럴 전체 키를 먼저 본다.** `{ "a.b": v }`처럼 점을 품은 평평한 키를 쓰는 파일에서
-    // 곧바로 쪼개면 못 찾고 없는 키로 판정해 중첩 맵을 새로 만든다 — 원본 규약을 갈아치운다.
-    const node = resolveLast(doc, [...prefixPath, key]) ?? resolveLast(doc, [...prefixPath, ...key.split(SEP)]);
-    if (isScalar(node)) {
-      if (node.value !== value) {
-        replacements.push(scalarReplacement(file.content, doc, node, value));
+    const hit = locate(start, key.split(SEP));
+    if (hit.kind === "missing") {
+      missing.set(key, hit);
+      continue;
+    }
+    if (isScalar(hit.node)) {
+      if (hit.node.value !== value) {
+        replacements.push(scalarReplacement(file.content, doc, hit.node, value));
       }
       continue;
     }
     // 알리아스·맵·시퀀스 자리는 건드리지 않는다 — 구조를 바꾸는 일이다. **다만 조용히 버리지
     // 않는다**: 알리아스는 값의 출처가 앵커 쪽이라 편집이 원리적으로 무효이고, 맵 자리는 원본
     // 규약을 갈아치우게 된다. 어느 키를 못 넣었는지는 알려야 한다 (ARCHITECTURE §1.35).
-    if (node !== undefined && node !== null) {
-      errors.push({ path: file.path, code: "write-slot-not-scalar", key });
-      continue;
-    }
-    missing.push(key);
+    errors.push({ path: file.path, code: "write-slot-not-scalar", key });
   }
 
   // 같은 위치의 삽입을 묶고 정렬해 입력 순서와 관계없이 같은 바이트를 낸다.
   const additions = new Map<YAMLMap | null, [string, string][]>();
-  for (const key of missing.sort(compareKeys)) {
+  for (const key of [...missing.keys()].sort(compareKeys)) {
     const value = wanted.get(key)!;
-    const path = insertPath(doc, prefixPath, key);
-    const name = path.pop()!;
-    const map = resolveLast(doc, path);
-    const emptyRoot = path.length === 0 && (map === null
-      || (isScalar(map) && map.value === null && !map.srcToken));
+    const { parent, name } = missing.get(key)!;
+    const emptyRoot = prefixPath.length === 0 && parent === start && (parent === null
+      || (isScalar(parent) && parent.value === null && !parent.srcToken));
     /*
-      ⚠️ **생산자를 못 찾은 방어다** (2026-09-16 리뷰). `insertPath`가 **맵인 동안만** 내려가므로 여기
+      ⚠️ **생산자를 못 찾은 방어다** (2026-09-16 리뷰). `locate`가 **맵·시퀀스인 동안만** 내려가므로 여기
       남는 것은 둘뿐인데 — 루트가 맵이 아닌 파일은 `read`가 `root-not-object`로 먼저 떨어뜨려 write에
-      오지 않고, `keepSourceTokens: true`로 파싱한 맵은 `srcToken`을 늘 가진다. 부모가 스칼라·시퀀스·
-      알리아스인 경우는 `insertPath`가 평평한 점 키로 떨어뜨려 **이 분기에 닿지 않는다**(실측).
+      오지 않고, `keepSourceTokens: true`로 파싱한 맵은 `srcToken`을 늘 가진다. 부모가 스칼라·알리아스인
+      경우는 `locate`가 그 위의 맵에서 평평한 점 키로 떨어뜨려 **이 분기에 닿지 않는다**(실측). 시퀀스
+      부모만 여기 온다 — 항목을 늘리는 것은 구조 변경이라 넣지 않는다.
       ⚠️ **그래서 코드를 `write-slot-missing`으로 바꾸지 않는다** — 도달 불가한 라벨을 하나 더 만드는
       일이고, 그것이 POSTMORTEM 2026-09-08이 기록한 함정이다(도달 불가한 갈래를 겨냥한 테스트가
       1년치 green이었다). 방어는 남기되 **검증된 배정인 척하지 않는다.**
     */
-    if (!emptyRoot && (!isMap(map) || !map.range || !map.srcToken)) {
+    if (!emptyRoot && (!isMap(parent) || !parent.range || !parent.srcToken)) {
       errors.push({ path: file.path, code: "write-slot-not-scalar", key });
       continue;
     }
-    const parent = isMap(map) ? map : null;
-    const entries = additions.get(parent) ?? [];
+    const map = isMap(parent) ? parent : null;
+    const entries = additions.get(map) ?? [];
     entries.push([name, value]);
-    additions.set(parent, entries);
+    additions.set(map, entries);
   }
   for (const [map, entries] of additions) replacements.push(insertion(file.content, doc, map, entries));
 
@@ -456,20 +457,61 @@ function resolveLast(doc: Document, path: readonly string[]): unknown {
   return node;
 }
 
-/**
- * 삽입 경로 — **가장 깊은 기존 맵까지 내려가고 남은 부분은 리터럴 키 하나로 넣는다.**
- * `code-dict.insert`와 같은 규칙이고, 이유도 같다: 새 중간 맵을 만들면 파일에 두 규약이 섞인다.
- */
-function insertPath(doc: Document, prefixPath: readonly string[], key: string): string[] {
-  const segments = key.split(SEP);
-  let at = 0;
-  while (at < segments.length - 1) {
-    const node = resolveLast(doc, [...prefixPath, ...segments.slice(0, at + 1)]);
-    // 시퀀스 안에는 키를 만들지 않는다 — 항목을 늘리는 건 구조 변경이다.
-    if (!isMap(node)) break;
-    at += 1;
+type Located =
+  | { kind: "found"; node: unknown }
+  /** 못 찾았다 — `parent`는 내려간 가장 깊은 컨테이너, `name`은 거기 넣을 남은 경로(리터럴 하나). */
+  | { kind: "missing"; parent: unknown; name: string };
+
+/** 맵에서 이름이 같은 **마지막** 항목의 값 — `resolveLast`와 같은 이유(YAML 로더는 마지막이 이긴다). */
+function lastChild(map: YAMLMap, name: string): unknown {
+  let found: unknown;
+  for (const item of map.items) {
+    const key = isScalar(item.key) ? String(item.key.value) : undefined;
+    if (key === name) found = item.value;
   }
-  return [...prefixPath, ...segments.slice(0, at), segments.slice(at).join(SEP)];
+  return found === null ? undefined : found;
+}
+
+/**
+ * 조회와 삽입이 **같은 걷기**를 쓴다 — 각 깊이에서 **가장 긴 리터럴 접두를 먼저** 보고, 컨테이너면 내려간다.
+ *
+ * ⚠️ "리터럴 전체 키 / 전부 split" 둘만 시도하면 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로
+ * 낸다)를 **못 찾는다** — 전체 리터럴도 없고 `messages` 맵도 없다. 그러면 없는 키로 판정해 `errors` 아래에
+ * `"messages.blank"`를 또 넣고, write마다 중복이 하나씩 늘었다(launch-readiness L1.4, POSTMORTEM 2026-09-02
+ * "구분자가 데이터에도 있어서" 재발). 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생기므로 함수가 하나다.
+ *
+ * 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 함께 있으면 **긴 리터럴이 이긴다** — read의 last-wins와
+ * 같아지는 것은 리터럴이 뒤에 올 때이고, 앞에 오는 파일은 read와 write가 다른 항목을 고를 수 있다(알려진 한계).
+ * 시퀀스는 인덱스 한 칸씩만 내려간다 — read가 `key.0`으로 펼치므로 리터럴 조립이 없다.
+ */
+function locate(start: unknown, segments: readonly string[]): Located {
+  let node = start;
+  let at = 0;
+  while (at < segments.length) {
+    if (isSeq(node)) {
+      const index = Number(segments[at]);
+      const item = Number.isInteger(index) && index >= 0 ? node.items[index] : undefined;
+      if (item === undefined || item === null) return { kind: "missing", parent: node, name: segments.slice(at).join(SEP) };
+      node = item;
+      at += 1;
+      continue;
+    }
+    if (!isMap(node)) return { kind: "missing", parent: node, name: segments.slice(at).join(SEP) };
+    let stepped = false;
+    for (let len = segments.length - at; len >= 1; len -= 1) {
+      const child = lastChild(node, segments.slice(at, at + len).join(SEP));
+      if (child === undefined) continue;
+      if (at + len === segments.length) return { kind: "found", node: child };
+      // 스칼라·알리아스는 더 내려갈 수 없다 — 더 짧은 접두를 본다. 아무것도 없으면 이 맵이 삽입 지점이다.
+      if (!isMap(child) && !isSeq(child)) continue;
+      node = child;
+      at += len;
+      stepped = true;
+      break;
+    }
+    if (!stepped) return { kind: "missing", parent: node, name: segments.slice(at).join(SEP) };
+  }
+  return { kind: "found", node };
 }
 
 export const yamlCatalog: Adapter = {
