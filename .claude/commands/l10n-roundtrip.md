@@ -9,6 +9,7 @@ description: 실제 리포로 push→편집→pull→머지→재pull 왕복을 
 - `/l10n-roundtrip <project-slug> --surface <slug> --path-template <template>` — 지정 표면으로 한 바퀴.
 - 두 표면 검증은 `--surface`·`--path-template` 쌍을 둘 지정하고, 각 표면 push·편집 뒤 Publish를 **한 번만** 한다.
 - `/l10n-roundtrip <project-slug> --dry` — **PR을 만들지 않고** 렌더 결과만 원본과 비교한다 (1·2단계까지).
+- `--merge <squash|merge|rebase>` — 4단계의 머지 방식. **기본 `squash`.** 루프 마커는 커밋 메시지와 PR 제목 둘 다에 있어 셋 다 가드를 지나야 하는데(ARCHITECTURE §3), 2026-09-17까지 이 스킬이 squash만 돌아 merge commit 회귀는 구조적으로 안 보였다(launch-readiness L1.2). `lib/pull/`을 고쳤으면 **`merge`로 한 번 더** 돈다.
 
 ## 언제 쓰나
 
@@ -105,11 +106,14 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 **PR 머지는 사용자가 한다** — 되돌리기 어려운 작업이라 이 스킬이 대신 승인하지 않는다. 명령을 제시하고 대기한다.
 
 ```
-GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> --squash --delete-branch
+GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> --<squash|merge|rebase> --delete-branch
 ```
 
+머지 전 확인할 것:
+- **PR 제목에 `[skip-malmoi-i18n]`이 있다** (`gh pr view <n> --json title`). merge commit의 `head_commit.message`는 `Merge pull request #N …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 제목의 마커가 그 방식의 유일한 가드다. 재사용된 옛 PR이면 이번 pull이 제목 뒤에 마커를 덧붙였어야 한다(`withSkipMarker`).
+
 머지 뒤 확인할 것:
-- `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다)
+- `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다). `--merge`면 그 메시지의 **둘째 문단(PR 제목)**에 있고, `--squash`·`--rebase`면 첫 줄에 있다 — 어느 자리든 가드는 부분 문자열만 본다
 - `malmoi-i18n/sync-<project-slug>` 브랜치가 삭제됐다
 - checkout을 merge head로 갱신하고 두 표면을 각각 다시 push해 편집 값·구조·표현이 유지되는지 확인한다
 - 값 불변 재push 뒤 첫 pull은 `no-changes`(2층), 즉시 재pull은 **`no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다
@@ -142,7 +146,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 2 값 고정점:   no-changes ✅ / ❌ (committed — 중단) · ⚠️ 표현 보존은 여기서 안 보인다
 3 편집 <n>건:  PR #<n> +<a> -<b> / <n>파일, hunk <n>
    보존:      주석 · 빈 줄 · 키 순서 · 인용 부호 · <포맷별 항목>
-4 머지 후:    dev head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅
+4 머지 후:    --<방식> · PR 제목 마커 ✅ · dev head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅
 5 CI:         스킵(사유) / green
 6 정리:       토큰 회수 ✅ (.env.local 미편집 — 원복 불필요) / 검증용 행 삭제 ✅ / dev 종료 ✅ / <기타>
 ```
