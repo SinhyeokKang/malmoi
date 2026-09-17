@@ -66,7 +66,7 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
       { kind: "synced", at: at("2026-09-14T00:00:00Z") },
       { kind: "acrossSurfaces", surfaces: 3 },
       { kind: "reviewByLocale", locales: [{ code: "en", count: 5 }, { code: "ja", count: 3 }] },
-      { kind: "lastPublish", at: at("2026-09-13T00:00:00Z") },
+      { kind: "repositoryUpdatesPaused" },
     ]);
   });
 
@@ -75,8 +75,13 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
     expect(card({ ...base, surfaces: 1 }, "toTranslate")?.subline).toEqual({ kind: "acrossSurfaces", surfaces: 1 });
   });
 
-  it("한 번도 안 보냈으면 마지막 Publish 대신 그 사실을 말한다", () => {
-    expect(card({ ...base, lastPublishedAt: null }, "toSend")?.subline).toEqual({ kind: "neverSent" });
+  /**
+   * [C12] **보낼 편집이 있으면 리포 갱신이 멈췄다는 사실이 보조 줄이다** (sync-edit-protection T13) — OWNER가 보류를 아는 화면 자리다.
+   * 0이면 기존 `nothing pending` 갈래다(아래 0 갈래 테스트).
+   */
+  it("[C12] 보낼 편집이 있으면 repository updates paused를 말한다", () => {
+    expect(card(base, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused" });
+    expect(card({ ...base, counts: { ...counts, toSend: 0 } }, "toSend")?.subline).toEqual({ kind: "nothingPending" });
   });
 
   it("0이면 근거가 바뀐다 — 다 채웠다 / 대기 없음", () => {

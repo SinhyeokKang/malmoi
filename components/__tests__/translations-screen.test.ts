@@ -144,22 +144,25 @@ describe("접근 이름과 경로 (code-review 2026-09-08 🟡)", () => {
    */
 });
 
-describe("편집 손실 배너 (design §3.11)", () => {
+describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
   const src = read(BANNER);
 
-  it("닫기 키가 세션이 아니라 `lastPulledAt`이다 — 다음 Publish 뒤 다시 보인다", () => {
-    expect(src).toMatch(/dismissKey/);
-    expect(src).toMatch(/sessionStorage/);
+  it("[C11] 닫기 상태를 저장하지 않는다 — 상시 조건이고 닫기 키가 저장마다 바뀌면 닫기가 스스로를 무효화한다", () => {
+    expect(src).not.toMatch(/sessionStorage/);
+    expect(src).not.toMatch(/dismissKey/);
+    expect(src).not.toMatch(/onDismiss/);
   });
 
-  it("클라이언트 마운트 뒤에만 렌더한다 — SSR은 닫힘 상태를 모른다(플래시 방지)", () => {
-    expect(src).toMatch(/useEffect/);
-    expect(src).toMatch(/mounted/);
+  it("[C11] info tone이다 — 안전한 상태에 amber 경고를 띄우지 않는다(DESIGN §6.1)", () => {
+    expect(src).toMatch(/variant="info"/);
+    expect(src).not.toMatch(/variant="warning"/);
   });
 
-  it("경고 tone이다 — 편집이 사라질 수 있다는 말은 조용하면 안 된다", () => {
-    expect(src).toMatch(/variant="warning"/);
+  it("헤더가 Publish 버튼 id를 배너에 넘긴다 — 액션은 둘째 트리거가 아니라 포커스 이동이다", () => {
+    expect(read(HEADER)).toMatch(/publishButtonId=/);
+    expect(read(HEADER)).not.toMatch(/dismissKey/);
   });
+});
 });
 
 /**

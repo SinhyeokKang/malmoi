@@ -66,7 +66,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   expect(described).toHaveLength(2);
   const text = described.map(id => document.getElementById(id)?.textContent ?? "").join(" ");
   expect(text).toContain("replace what's in the app with them");
-  expect(text).toContain("7 edits");
+  expect(text).toContain("7 unsent translation changes");
   expect(text).toContain("pull request #42");
 
   // 조용한 갈래에는 경고 블록이 없으므로 설명문 하나만 남는다.
@@ -253,4 +253,18 @@ it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실�
   await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenLastCalledWith({ slug: "acme", approval: null });
+});
+
+/**
+ * **문장을 늘리지 않고 교체한다** (sync-edit-protection T13, design §4.3). 경고 블록이 폐기를 한 번 말하고, 같은 사실을 두 번 말하지 않는다.
+ */
+it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 말한다 — 취소하면 아무것도 안 부른다", async () => {
+  await render(<SyncButton {...props} unsent={3} />);
+  await click("Sync");
+  const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
+  expect(warning).toContain("Sync will discard 3 unsent translation changes and replace them with repository values.");
+  expect(warning.match(/discard/g)).toHaveLength(1);
+  expect(warning.match(/replace/g)).toHaveLength(1);
+  await click("Cancel");
+  expect(mocks.run).not.toHaveBeenCalled();
 });
