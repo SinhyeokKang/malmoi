@@ -136,6 +136,10 @@
   - grep: `grep -rn 'split("\.")\|join("\.")\|SEP' lib/adapters/` → **평탄화/복원 쌍이 단사인지** 본다. 한쪽만 있으면 왕복이 안 서고, 양쪽이 있어도 구분자가 데이터에 있으면 안 선다.
   - **파일 단위로 관측할 것을 포맷 단위 boolean으로 들지 않는다.** `nested`가 그 예였고, 형제 파일 하나가 전체 판정을 바꿨다.
   - **"에러 건수" 지표로는 이 계열이 원리적으로 안 잡힌다.** 왕복(의미 비교)이 유일한 그물이므로 어댑터를 추가할 때마다 왕복 검증을 붙인다.
+- **🔁 재발 (2026-09-17, launch-readiness L1.4 — `/audit` 정적 발견, 사고 전)**: 같은 구분자 문제가 이번엔 **조회 쪽**에서 났다. `yaml-catalog`·`code-dict`의 write가 키를 "리터럴 전체 / 전부 split" 둘로만 찾아서, `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾고** 없는 키로 판정해 `errors` 아래에 `"messages.blank"`를 또 넣었다 — write마다 중복이 하나씩 늘고 2차 write가 1차와 달라져 바이트 고정점이 깨진다. 삽입한 새 키도 다음 write에서 또 들어갔다(테스트 red에 그대로 찍혔다).
+  - **왜 다시 났나**: 위 재발 방지가 "합치는 쪽(flatten/setDeep)이 단사인가"만 물었고, **찾는 쪽이 read와 같은 규칙으로 걷는가**는 안 물었다. 조회(`resolveLast` 둘)와 삽입(`insertPath`·`insert`)이 서로 다른 규칙으로 걸어서, 조회가 놓친 키를 삽입이 새 키로 알았다. `code-dict`의 `findScalar` 주석이 "리터럴 전체 키를 먼저 본다"고 안전을 주장하는 바로 아래가 결함이었다 — 깊이 1에서만 참인 문장이었다.
+  - **그물**: 놓친 것 — 단위 테스트(점 키 픽스처가 전부 깊이 1), 계약 매트릭스(`CONTRACT_KEYS`에 점 0개), 실측 코퍼스 129개(그 모양의 리포가 없었다). 잡은 것 — `/audit` 정적 읽기. 수정 뒤 `contract.ts`에 "깊은 점 키" 축(값 무변경 바이트 동일 · 리터럴 개수 불변)과 옛 동작을 흉내 내는 가짜 어댑터(`contract.test.ts`)가 남았다.
+  - **재발 방지 추가**: **조회와 삽입은 한 함수다** — `locate`(각 깊이에서 가장 긴 리터럴 접두 우선, 컨테이너면 하강). grep: `rg -n "function (locate|resolveLast|findScalar|insertPath|insert)\b" lib/adapters` → 어댑터마다 걷기 함수가 **하나**여야 한다(yaml의 `resolveLast`는 루트 키 한 칸 전용으로 남는다). 같은 축의 read 쪽도 닫았다 — `json-catalog.read`가 중첩·점 키 충돌을 `duplicate-key`로 보고한다(전에는 둘 다 실어 `lastWins`가 조용히 하나를 버렸고, `surveyOne`의 충돌 지표가 그 중복 엔트리에 기대고 있었다). ⚠️ **대상 리포 CI 계약이 바뀌었다** — JSON 평탄·중첩 충돌 파일이 green에서 red로(ACTIONS.md §3).
 
 ---
 
