@@ -70,9 +70,7 @@ export function EmptyProjects() {
       icon={Box}
       title={m.projects.empty.title}
       description={m.projects.empty.description}
-      action={
-        <NewProjectButton />
-      }
+      action={<NewProjectButton />}
     />
   );
 }
