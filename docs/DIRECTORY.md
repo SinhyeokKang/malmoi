@@ -142,6 +142,22 @@ components/
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
+  projects/project-thumbnail.tsx
+                        프로젝트를 가리키는 28 타일. 소비자가 **둘**이다 — 목록 행과 Home 머리.
+                        ⚠️ **2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다**
+                        (POSTMORTEM 2026-09-17). ⚠️ radius가 rounded-sm(8)이고 캔버스의 4가 아니다
+                        — 초대 카드(components/invite/project-card.tsx)까지 세 화면을 한 값으로
+                        모은 판정이다 (DESIGN §6.63의 이탈 줄이 정본)
+                        ⚠️ optional src는 아직 소비자가 없다 — 프로젝트 이미지가 생길 자리다
+  projects/new-project-button.tsx
+                        [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
+                        Link.onNavigate를 가로채 useTransition + router.push로 옮기고 그동안 Plus를
+                        Loader2로 **교체**한다(더하지 않는다 — 라벨 폭이 흔들린다)
+                        ⚠️ **Next는 같은탭 클릭에만 onNavigate를 부른다** — 수정키·새 탭은 네이티브로
+                        떨어진다. 그 전제를 테스트가 mock으로 정의하므로 new-project-button.test.tsx가
+                        설치된 next 소스에 따로 고정한다
+                        ⚠️ ButtonLink가 아니라 buttonClass를 빌려 쓴다 — onNavigate가 필요해서다
+                        (publish-button·github-section과 같은 관용구)
   projects/locale-meter.tsx
                         행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
