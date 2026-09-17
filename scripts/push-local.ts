@@ -22,6 +22,7 @@ import { findTarget, flagValue, flagValues } from "../lib/cli/args";
 import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
+import { reportPushResponse } from "../lib/cli/push-response";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import {
   representativeFailureCode,
@@ -231,6 +232,8 @@ const res = await fetch(`${baseUrl}/api/push`, {
   body: JSON.stringify(payload),
 });
 const text = await res.text();
-console.log(`\nPOST ${baseUrl}/api/push → ${res.status}`);
-console.log(text.slice(0, 800));
-process.exitCode = res.ok ? 0 : 1;
+// 보류(`deferred`)는 200·exit 0이고 `::warning` 한 줄이 붙는다 — 판정은 `lib/cli/push-response.ts`가 든다 (sync-edit-protection T16).
+const report = reportPushResponse(res.status, text);
+console.log(`\n${baseUrl}`);
+for (const line of report.lines) console.log(line);
+process.exitCode = report.exitCode;
