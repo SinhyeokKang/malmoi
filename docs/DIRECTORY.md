@@ -200,8 +200,11 @@ lib/
                         invite-view · membership · email · cookie · message · landing · invite-label
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
   upload/               사용자 프로필 사진 전용. image(형식·크기·키·삭제 allowlist 판정 +
-                        planImagePick — 클라이언트 선검사) · store(server-only Vercel Blob I/O) ·
+                        planImagePick — 클라이언트 선검사) · normalize(server-only. sharp로 EXIF 방향
+                        적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O) ·
                         message(거부 → 문구). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
+                        ⚠️ **normalize는 인증·사용자·Blob·DB에 닿지 않는다** — bytes → bytes라
+                        아바타 밖(프로젝트 이미지 등)에서도 그대로 재사용된다
                         ⚠️ **문구가 image.ts가 아니라 message.ts다** — 능력 쪽에 두면 no-korean-ui가
                         한글만 세므로 green인 채 사전을 통째로 우회한다
                         ⚠️ **클라이언트 선검사는 방어선이 아니다** — File.type이 확장자에서 오므로
