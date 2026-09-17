@@ -1956,6 +1956,11 @@ export const en = {
      */
     upload: {
       "too-large": "That picture is over 3 MB. Choose a smaller one.",
+      /**
+       * ⚠️ **바이트가 아니라 치수를 말한다** — 3 MB 안에 드는 파일도 여기서 걸리므로 "over 3 MB"를
+       * 재사용하면 사용자가 크기를 줄여도 같은 화면을 다시 만난다.
+       */
+      "too-many-pixels": "That picture's dimensions are too large. Choose one with fewer pixels.",
       "unsupported-type": "That file isn't a valid PNG or JPEG. Choose another picture.",
       "not-a-file": "No picture was received. Choose a file and try again.",
       empty: "That file is empty. Choose another one.",

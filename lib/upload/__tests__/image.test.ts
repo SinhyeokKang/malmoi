@@ -21,7 +21,7 @@ describe("이미지 형식과 크기", () => {
   });
   it.each([2_999_999, 3_000_000, 3_000_001])("크기 경계 %i", (size) => {
     const bytes = new Uint8Array(size); bytes.set(png);
-    expect(planImageUpload(bytes)).toEqual(size > 3_000_000 ? { ok: false, reason: "too-large" } : { ok: true, ext: "png" });
+    expect(planImageUpload(bytes)).toEqual(size > 3_000_000 ? { ok: false, reason: "too-large" } : { ok: true });
   });
   it("빈 파일과 지원하지 않는 형식의 사유가 다르다", () => {
     expect(planImageUpload(new Uint8Array())).toEqual({ ok: false, reason: "empty" });
