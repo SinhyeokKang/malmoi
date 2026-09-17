@@ -156,7 +156,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미발송 술어가 세 벌이라**(`isUnpublished` · `countUnpublished` · 목록 집계의 raw SQL) "셋이 같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미발송 술어가 세 벌이라**(`isUnpublished` · `countUnpublished` · 목록 집계의 raw SQL) "셋이 같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/load.ts`·`lib/protection/**`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 
