@@ -236,7 +236,8 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
   it("경로별 관측이 없으면 포맷 단위 값으로 폴백한다 (하위 호환 — 접두 충돌이 경고로 남는다)", async () => {
     const h = depsWith(null);
     const r = await runPull(h.deps);
-    expect(r.warnings?.length ?? 0).toBeGreaterThan(0);
+    // 경고가 있으면 쓰기 전에 멈춘다(sync-edit-protection T10) — 경고는 그 갈래에만 실린다.
+    expect(r.status === "skipped" && r.reason === "writer-warnings" ? r.warnings.length : 0).toBeGreaterThan(0);
   });
 });
 

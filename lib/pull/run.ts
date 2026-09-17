@@ -13,6 +13,7 @@ import {
 import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
+import { planProtectedPublish } from "@/lib/protection/plan";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -59,12 +60,15 @@ export type PullDeps = {
 };
 
 /**
- * `warnings`는 writer가 **버린** 항목이다 (`파일: 메시지`). 값을 잃고도 조용하면 안 된다 —
- * json-catalog 접두 충돌(ARCHITECTURE §1.35)이 대표다. **있을 때만 싣는다** — 빈 배열을 항상
- * 실으면 결과 모양이 바뀌어 소비자마다 분기가 늘고, 없는 것과 같아야 하는 값이다.
+ * `warnings`는 writer가 **버린** 항목이다 (`파일: 메시지`) — json-catalog 접두 충돌(ARCHITECTURE §1.35)이 대표다.
+ *
+ * ⚠️ **경고가 있으면 GitHub에 쓰기 전에 멈춘다** (sync-edit-protection T10, 2026-09-18). 전에는 경고를 커밋·스킵 결과에
+ * 실어 보냈다 — 그러면 버린 값의 편집 토큰이 전달 확인으로 비워져 "보내지 않은 편집을 보냈다"가 된다. 그래서 경고는
+ * **`writer-warnings` 갈래 하나에만** 산다. 성공(`committed`)·동등(`no-changes`) 결과에 경고 자리가 없다.
  */
 export type PullResult =
-  | { status: "skipped"; reason: "no-edits" | "no-changes"; warnings?: string[] }
+  | { status: "skipped"; reason: "no-edits" | "no-changes" }
+  | { status: "skipped"; reason: "writer-warnings"; warnings: string[] }
   | {
       status: "committed";
       /**
@@ -75,7 +79,6 @@ export type PullResult =
       commitSha: string;
       prUrl: string;
       changed: string[];
-      warnings?: string[];
     };
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
@@ -154,7 +157,14 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }));
   const local = planMultiSurfacePull(rendered);
   const warnings = rendered.flatMap(p => p.files.flatMap(f => (f.errors ?? []).map(e => `${p.surfaceSlug}: ${e.path}: ${adapterErrorMessage(e)}`)));
-  const withWarnings = warnings.length === 0 ? {} : { warnings };
+  /**
+   * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
+   * 여기 오면 미전달 편집이 있고, 멈추면 `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
+   * ⚠️ **대가: 경고가 지속 상태이면 매 밤 트리·blob을 다시 읽는다** — 사람이 Publish 모달에서 경고를 보고 해소할 때까지다
+   * (design §2가 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
+   */
+  const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
+  if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
   const changes = planPullChanges(
@@ -198,7 +208,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
     // (sync-edit-protection design §6.1 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);
-    return { status: "skipped", reason: "no-changes", ...withWarnings };
+    return { status: "skipped", reason: "no-changes" };
   }
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
@@ -245,6 +255,5 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     commitSha,
     prUrl,
     changed: changes.map((c) => c.path),
-    ...withWarnings,
   };
 }

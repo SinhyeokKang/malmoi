@@ -1551,10 +1551,14 @@ export const en = {
       inLogs: "It is recorded in Logs as a run with nothing to send.",
       close: "Close",
 
-      /** `1g` — 버려진 값. **펼친 목록**이다(불변식 9). */
-      partial: "Sent for review \u2014 some values were left out",
-      partialDescription:
-        "The pull request is open, but malmoi could not write every value into the files. What it kept out is listed below.",
+      /**
+       * `1g` — 버려진 값. **펼친 목록**이다(불변식 9).
+       * ⚠️ **보내지 않았다** (sync-edit-protection T10, 2026-09-18) — 전에는 PR을 열고 버린 값을 알렸지만("Sent for review — some
+       * values were left out"), 이제 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 편집은 malmoi에 남고 리포 갱신도 계속 멈춰 있다.
+       */
+      notSent: "Not sent \u2014 some values can't be written to the files",
+      notSentDescription:
+        "malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
       notWritten: "Not written",
       warnings: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,

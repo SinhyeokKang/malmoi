@@ -55,12 +55,12 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
     syncBranch: syncBranchFor(slug),
   });
 
-  // ⚠️ **warnings는 실행별 진단이고 큐가 아니다** (2026-09-04 audit #35). 2층까지 통과하면
-  // `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 이 경고가 다시 나오지 않는다. 그
-  // 갱신을 막는 쪽(경고가 있으면 안 쓰기)은 `missingOriginal`처럼 **지속 상태**인 경고에서
-  // 매일 밤 트리·blob 전량 읽기를 영구화한다. 그래서 스킵 판정은 그대로 두고 **로그에 남긴다** —
+  // ⚠️ **경고가 있으면 쓰기 전에 멈추고 `lastPulledAt`을 안 쓴다** (sync-edit-protection T10, 2026-09-18). 2026-09-04 audit #35는
+  // 반대를 골랐다 — `missingOriginal` 같은 **지속 상태** 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다는 근거였다.
+  // 그 대가를 이제 감수한다: 경고를 실어 보내면 버린 값의 편집 토큰까지 전달 확인으로 비워져 보내지 않은 편집이 사라진다.
+  // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. 로그에는 계속 남긴다 —
   // cron 응답 JSON을 놓쳐도 Vercel 로그에서 찾을 수 있어야 한다.
-  if (result.warnings !== undefined) {
+  if (result.status === "skipped" && result.reason === "writer-warnings") {
     for (const w of result.warnings) console.warn(`[pull:${slug}] ${w}`);
   }
   return result;
