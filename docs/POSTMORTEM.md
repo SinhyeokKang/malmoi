@@ -2075,3 +2075,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 그물: 이번에도 잡은 것은 **`git status --porcelain`**이다(커밋 직전에 돌렸고 그 파일이 목록에 없었다).
     ⚠️ **typecheck·test는 둘 다 green이었다** — 지워진 것이 테스트 헬퍼라 옛 형으로 돌아가도 그 파일의
     단언이 전부 통과했다. 첫 번째 사고 때는 typecheck이 잡았지만 **그건 운이었다**는 것이 이것으로 확인됐다.
+
+### 2026-09-17 — 같은 프로젝트의 목록과 상세 썸네일 색이 달랐다
+
+- **영역**: `components/projects/project-list.tsx` · `components/home/actions.tsx` · `components/projects/project-thumbnail.tsx`
+- **증상**: 프로젝트 목록은 이름에서 정한 배경색을 썼지만 Home 머리는 고정 `bg-foreground`였다. 모서리도 목록은 4px, Home은 `rounded`로 달랐다.
+- **근본 원인**: 같은 프로젝트를 나타내는 타일을 화면마다 구현했고, Home의 고정 배경을 시안 이탈로 문서화하면서 목록의 이름 기반 색 규칙과 대조하지 않았다.
+- **그물**: 사용자가 두 화면의 불일치를 발견했다. 기존 테스트는 각 화면의 동작과 목록의 치수만 검사했다. 세 이름으로 목록과 Home의 배경·모서리를 비교하는 DOM 테스트에서 red를 확인한 뒤, 두 곳을 `ProjectThumbnail`로 연결해 green을 확인했다. 이미지 URL이 있으면 같은 타일 안에서 자르지 않고 표시하는 계약도 검사한다.
+- **재발 방지**: `rg -n 'bg-foreground.*size-7|ProjectThumbnail|toneFill\(row.name\)' components/home components/projects`를 실행해 두 소비자가 공통 컴포넌트만 쓰고 고정 배경이 남지 않음을 확인했다. 같은 엔터티를 여러 화면에 표시할 때 색·모서리의 교차 화면 계약을 함께 검사한다.
