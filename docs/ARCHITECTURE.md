@@ -529,9 +529,11 @@ sha1("blob " + byteLength + "\0" + content)
 
 | 층 | 무엇을 보는가 | 통과 못 하면 |
 |---|---|---|
-| **1. DB 측 스킵** | `Translation.updatedAt` 최대값 vs `Project.lastPulledAt` | **GitHub을 한 번도 부르지 않고 종료** |
+| **1. DB 측 스킵** | **미발송 편집의 수**(`unpublishedWhere` — `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`)가 0인가 | **GitHub을 한 번도 부르지 않고 종료** |
 
-⚠️ **1층의 최대값 쿼리는 인덱스와 짝이다** (2026-09-04). `@@index([projectId, updatedAt])`이 있어야 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
+⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). 지금은 `countUnpublished`와 **같은 where 조각**(`lib/keys/unpublished.ts`)으로 센 수가 0이면 끝이다. 첫 pull(`lastPulledAt = null`)도 사람이 만진 행이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
+
+⚠️ **1층의 두 쿼리는 인덱스와 짝이다** (2026-09-04 · T0 실측 2026-09-17: 미발송 count가 `Translation_projectId_updatedAt_idx` Index Scan을 타고 2,721행 프로젝트에서 3행만 읽었다 — `lastPulledAt`이 null인 첫 pull만 프로젝트 전 행을 훑는다). `@@index([projectId, updatedAt])`이 있어야 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
 
 ⚠️ **그 인덱스의 소비자는 셋이다** (2026-09-11 정정 — 전엔 둘로 적혀 있었다): 1층 판정 · 미배포 집계(`countUnpublished`) · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
