@@ -24,7 +24,7 @@ function lines(container: HTMLElement) {
  * 성공으로 읽힌다 (ARCHITECTURE §0 불변식 9).
  */
 it("전부 성공은 한 줄이고 표면을 나열하지 않는다", async () => {
-  const { container } = await render(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: true, surfaces: [row("web", "imported", null), row("emails", "imported", null)] }} />);
+  const { container } = await render(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "imported", null), row("emails", "imported", null)] }} />);
   expect(alert(container)?.getAttribute("role")).toBe("status");
   expect(container.textContent).toContain("Synced 8 keys from main");
   expect(container.textContent).not.toContain("web");
@@ -33,13 +33,13 @@ it("전부 성공은 한 줄이고 표면을 나열하지 않는다", async () =
 });
 
 it("정상 0키도 같은 한 줄 형에 들어간다 — '이미 같았다' 갈래를 만들지 않는다", async () => {
-  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, surfaces: [{ ...row("web", "imported", null), count: 0 }] }} />);
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ ...row("web", "imported", null), count: 0 }] }} />);
   expect(container.textContent).toContain("Synced 0 keys from main");
   expect(lines(container)).toBe(1);
 });
 
 it("keeps unreadable and unapplied surfaces distinct with original diagnostics", async () => {
-  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, surfaces: [
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     row("web", "imported", null), row("ci", "superseded", "superseded"), row("format", "failed", "invalid-format"),
     { ...row("broken", "failed", "parse-failed"), errors: [{ path: "locales/ko.json", code: "parse-failed" }] },
   ] }} />);
@@ -61,7 +61,7 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
  * 거짓이 되어 실패가 부분 성공으로 읽힌다.
  */
 it("전 표면 실패는 성공 절을 앞에 두지 않는다", async () => {
-  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, surfaces: [row("web", "failed", "parse-failed")] }} />);
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "parse-failed")] }} />);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
   expect(container.textContent).toContain("Sync could not finish");
   expect(container.textContent).not.toContain("but");
@@ -69,7 +69,7 @@ it("전 표면 실패는 성공 절을 앞에 두지 않는다", async () => {
 });
 
 it("포맷 누락은 표면별 결과이고 재시도가 없다", async () => {
-  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, surfaces: [row("web", "failed", "invalid-format")] }} />);
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "invalid-format")] }} />);
   expect(container.textContent).not.toContain("could not be read");
   expect(container.textContent).toContain("This surface has no valid import format.");
   expect([...container.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
@@ -81,7 +81,7 @@ it("포맷 누락은 표면별 결과이고 재시도가 없다", async () => {
  * **서버가 만들지 않는 조합**을 재고 있었고, 그래서 아래 회귀가 통과했다.
  */
 it("distinguishes partial file failures from whole-surface failures", async () => {
-  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, surfaces: [{ ...row("web", "partial", null), count: 8, failed: 2,
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ ...row("web", "partial", null), count: 8, failed: 2,
     errors: [{ path: "locales/ja.yml", code: "parse-failed" }] }] }} />);
   expect(container.querySelector('[role="status"]')).not.toBeNull(); expect(container.textContent).toContain("2");
   expect(container.textContent).not.toContain("surface could not be read");
@@ -101,7 +101,7 @@ it("distinguishes partial file failures from whole-surface failures", async () =
  * 버려졌는지가 화면에서 사라진다.
  */
 it("파일 일부 실패는 없는 사유를 만들어 내지 않는다 — 원인 줄 대신 파일 줄만 선다", async () => {
-  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, surfaces: [
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("locales", "partial", null), count: 18, failed: 1, errors: [{ path: "locales/ja.yml", code: "parse-failed" }] },
   ] }} />);
   expect(container.textContent).toContain("Synced 18 keys");
@@ -118,7 +118,7 @@ it("파일 일부 실패는 없는 사유를 만들어 내지 않는다 — 원�
  * 만들면 빈 블록이 남는다.
  */
 it("사유도 파일 오류도 없는 사고는 빈 자리를 남기지 않는다", async () => {
-  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, surfaces: [
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("web", "partial", null), count: 8, failed: 1 },
   ] }} />);
   expect(container.textContent).toContain("Synced 8 keys");
@@ -135,7 +135,7 @@ it("사유도 파일 오류도 없는 사고는 빈 자리를 남기지 않는�
 
 /** ⚠️ 사유가 **있는** 갈래는 그 줄이 참이므로 그대로 선다 — 위 수정이 여기까지 걷어 가면 안 된다. */
 it("superseded는 사유가 있으므로 원인 줄이 그대로 선다", async () => {
-  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, surfaces: [
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("i18n", "imported", null), count: 9 }, row("locales", "superseded", "superseded"),
   ] }} />);
   expect(container.textContent).toContain("Synced 9 keys, but 1 surface was not replaced");
@@ -172,4 +172,16 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   await view.rerender(<SyncResult {...props} outcome={{ ok: false, error: "forbidden" }} />);
   expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
   expect(view.container.textContent).not.toContain("forbidden");
+});
+
+/**
+ * **승인 뒤 남은 편집은 성공 한 줄에 숨기지 않는다** (sync-edit-protection T9 · POSTMORTEM 2026-09-16 "부분 실패를 미완료로 표현").
+ * 폐기를 승인했는데 편집이 남았다면(Dialog 뒤 저장 · 리포에 없는 셀) 리포 갱신은 계속 멈춰 있다 — 그 사실이 두 줄 형으로 선다.
+ */
+it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드라인을 쓰지 않는다 (0이면 한 줄 성공 대조는 첫 테스트)", async () => {
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 2, surfaces: [row("web", "imported", null)] }} />);
+  expect(container.textContent).toContain("2 unsent changes were kept");
+  expect(container.textContent).not.toContain("from main");
+  expect(lines(container)).toBe(2);
+  expect(container.querySelector(".border-amber-200")).not.toBeNull();
 });

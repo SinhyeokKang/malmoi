@@ -122,3 +122,9 @@ describe("planImportRefusal", () => {
     expect(transient.filter(error => !planImportRefusal(error).dismissible)).toEqual([]);
   });
 });
+
+describe("reconfirm — 승인 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9)", () => {
+  it("warning이고 닫을 수 있고 액션이 없다 — 다음 행동은 [Sync]를 다시 열어 새 내용을 확인하는 것이다", () => {
+    expect(planImportRefusal("reconfirm")).toEqual({ tone: "warning", dismissible: true, action: null });
+  });
+});
