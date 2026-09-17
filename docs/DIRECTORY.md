@@ -241,7 +241,7 @@ lib/
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
                         plan · run · render · load · client · targets · trigger · branch-name · ref-slug /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan
-  import/               리포 재적재(화면 이름 `Sync`) — read(파일 읽기·스냅샷 오류) · surface(읽기·준비
+  import/               리포 재적재(화면 이름 `Sync`) — approval(폐기 승인 지문의 발급·재계산이 같은 함수) · read(파일 읽기·스냅샷 오류) · surface(읽기·준비
                         추출) · empty(정상 빈 카탈로그와 깨진 파싱을 가른다) · plan(거부 순서·실행권) ·
                         apply-plan(revision·실행 토큰 대조) · run(진입점 껍데기) · confirm·result·refusal
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
@@ -262,8 +262,9 @@ lib/
                         입력도 아니다**(ARCHITECTURE §0 불변식 2)
   protection/           미전달 편집 보호(sync-edit-protection) — plan(보류·폐기·Publish·화면 판정 넷, 잎) ·
                         fingerprint(폐기 승인 sha256 — ⚠️ node:crypto라 plan과 갈라 뒀다, client-graph가
-                        파일 목록으로 고정) · where(토큰 술어 pendingWhere) · backfill(옛 술어 ∧ 활성 ∧
-                        토큰 없음 SQL 한 문장). ⚠️ 배포 A에서는 where·backfill만 소비자가 있다
+                        파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
+                        loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
+                        backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -286,6 +287,7 @@ lib/
                         ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ i18n/ cli/
+                        (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄)
                         각 기능의 순수 판정층
   home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
@@ -372,8 +374,8 @@ vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암
                         **화면의 모든 클릭**을 핸들로 보고 삼켰다(폼 입력이 빈 값으로 남는다)
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
-                        ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미발송 술어가 세 벌이 된 뒤로
-                        "셋이 같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
+                        ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미전달 술어가 공유 조각(pendingWhere)
+                        + 손 사본 둘(셀 투영 · 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
                         건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)도
                         여기서만 잰다 — include가 `lib/keys/__tests__/`로 박혀 있어 그 테스트도 그 디렉터리에 산다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
