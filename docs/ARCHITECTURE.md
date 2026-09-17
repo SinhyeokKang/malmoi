@@ -1794,9 +1794,13 @@ GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한�
 PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts`)가 sharp로 EXIF 방향을
 적용하고 **192px 이내로 비율을 지켜 축소해 WebP quality 85로 다시 인코딩한다**(2026-09-17). 원본을
 저장하지 않으므로 메타데이터는 — 위치 정보를 포함해 — 함께 사라진다. 확대·강제 크롭은 하지 않아
-그보다 작은 사진은 치수가 그대로다. ⚠️ **디코더 픽셀 상한(`limitInputPixels: 40_000_000`)이 파일
-크기 상한과 별개로 필요하다** — 압축된 3 MB는 디코드 후 메모리를 묶지 못한다(압축률이 높은 PNG
-하나가 수억 픽셀이 될 수 있다). ⚠️ **Server Action 본문 상한을 4 MB로 올렸다**(`next.config.ts`의
+그보다 작은 사진은 치수가 그대로다. ⚠️ **디코더 픽셀 상한(40,000,000)이 파일 크기 상한과
+별개로 필요하다** — 압축된 3 MB는 디코드 후 메모리를 묶지 못한다(압축률이 높은 PNG 하나가 수천만
+픽셀이 될 수 있다). **치수는 헤더(`metadata()`)에서 먼저 재고 `too-many-pixels`로 거부한다** —
+파이프라인의 `limitInputPixels`가 던지게 두면 그 실패가 디코드 실패와 같은 catch에 들어와
+사유를 가를 수 없고, 가르려고 sharp의 오류 메시지를 읽으면 버전이 올라갈 때 조용히 깨진다.
+상한 자체는 그대로 걸어 둔다(헤더가 거짓인 파일의 방어선). ⚠️ **sharp 계열 실패는 값으로
+돌아오므로 action의 `stage` 로그가 안 탄다** — `normalizeImage`의 catch가 직접 한 줄을 남긴다. ⚠️ **Server Action 본문 상한을 4 MB로 올렸다**(`next.config.ts`의
 `serverActions.bodySizeLimit`) — 3 MB 파일에 multipart 프레이밍이 얹히면 기본 1 MB에서 프레임워크가
 먼저 던지고, 그러면 우리 거부 사유가 화면에 닿지 못한다. **새로 저장하는 확장자는 `webp` 하나지만
 삭제 allowlist는 `png|jpeg|webp` 셋을 받는다** — 이전 정책으로 올라간 파일도 지워져야 한다.
