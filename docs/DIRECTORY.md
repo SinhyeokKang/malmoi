@@ -260,6 +260,10 @@ lib/
                         preview(모달 상태 다섯의 계약). ⚠️ read.ts만 server-only다 — base 트리를
                         읽어 "무엇을 덮는가"를 만든다. **이전 값은 표시 전용이고 어떤 판정의
                         입력도 아니다**(ARCHITECTURE §0 불변식 2)
+  protection/           미전달 편집 보호(sync-edit-protection) — plan(보류·폐기·Publish·화면 판정 넷, 잎) ·
+                        fingerprint(폐기 승인 sha256 — ⚠️ node:crypto라 plan과 갈라 뒀다, client-graph가
+                        파일 목록으로 고정) · where(토큰 술어 pendingWhere) · backfill(옛 술어 ∧ 활성 ∧
+                        토큰 없음 SQL 한 문장). ⚠️ 배포 A에서는 where·backfill만 소비자가 있다
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -350,7 +354,8 @@ prisma/schema.prisma    12테이블 + enum 셋. ⚠️ Auth.js 4테이블의 모
 prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다(additive-first)
 prisma/credential-cutover/  ⚠️ 마이그레이션이 아니라 스테이징 자리다 — Prisma가 이 디렉터리를 안 본다
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
-                        smoke-github · credentials · finalize-credentials
+                        smoke-github · credentials · finalize-credentials · backfill-pending-edit-token
+                        (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
                         대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
@@ -369,7 +374,8 @@ vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미발송 술어가 세 벌이 된 뒤로
                         "셋이 같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
-                        건드렸으면 손으로 돌린다
+                        건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)도
+                        여기서만 잰다 — include가 `lib/keys/__tests__/`로 박혀 있어 그 테스트도 그 디렉터리에 산다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
                         세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
 ```

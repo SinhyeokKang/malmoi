@@ -60,7 +60,7 @@ function makeDeps(
       project: { ...PROJECT },
 
       surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
     }),
     createClient: async () => client,
     saveLastPulledAt: async (_projectId, at) => {
@@ -80,7 +80,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -98,7 +98,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT },
 
         surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [] }],
-        maxUpdatedAt: null, unpublished: 0,
+        maxUpdatedAt: null, unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -115,7 +115,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
@@ -135,7 +135,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
     project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") },
     surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
     maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
-    unpublished,
+    unpublished, pendingEdits: [],
   });
 
   it("push 직후 — updatedAt은 전부 올라갔지만 미발송 0이면 GitHub 호출 0회", async () => {
@@ -459,7 +459,7 @@ describe("runPull — 실패 처리", () => {
         project: { ...PROJECT, installationId: null },
 
         surfaces: [{ ...({ ...PROJECT, installationId: null }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -503,7 +503,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -523,7 +523,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -587,7 +587,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "하나!" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -627,7 +627,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "비!" }, en: { value: "bee!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -661,7 +661,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -686,7 +686,7 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
           { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
           { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
     });
     const result = await runPull(deps);
@@ -699,5 +699,69 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
     const { deps } = makeDeps();
     const result = await runPull(deps);
     expect(result).not.toHaveProperty("warnings");
+  });
+});
+
+/**
+ * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4, design §2·§5). 해제 SQL 자체는 PG 통합 테스트
+ * (`lib/keys/__tests__/sync-edit-protection.integration.ts`)가 재고, 여기서는 "어느 경로가 무엇을 넘기나"만 센다.
+ *
+ * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (design §6.1) — 편집을 원복한 셀은 2층에서
+ * 끝나고, 그 경로가 캡처를 해제하지 않으면 토큰이 영영 남아 CI가 영구 보류된다.
+ */
+describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 넘긴다 (T4)", () => {
+  const CAPTURED = [{ id: "t1", token: "tok-1" }, { id: "t2", token: "tok-2" }];
+
+  function capturing(given: { client: GitClient; calls: FakeCall[] }) {
+    const delivered: unknown[] = [];
+    const { deps: base } = makeDeps({}, given);
+    const { deps } = makeDeps({
+      loadState: async () => ({ ...(await base.loadState()), pendingEdits: CAPTURED }),
+      saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+    }, given);
+    return { deps, delivered };
+  }
+
+  /** 렌더 결과가 base와 같은 트리 — 2층에서 `no-changes`로 끝난다. */
+  const sameAsBase = () => createFakeGitClient({
+    refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "i18n/ko.json", sha: blobSha(KO_CONTENT) }, { path: "i18n/en.json", sha: blobSha(EN_CONTENT) }] },
+    blobs: { [blobSha(KO_CONTENT)]: KO_CONTENT, [blobSha(EN_CONTENT)]: EN_CONTENT },
+  });
+
+  it("committed → 캡처 전부를 넘긴다", async () => {
+    const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } });
+    const { deps, delivered } = capturing(made);
+    const result = await runPull(deps);
+    expect(result.status).toBe("committed");
+    expect(delivered).toEqual([CAPTURED]);
+  });
+
+  it("skipped/no-changes → 캡처 전부를 넘긴다 (기존 2층의 토큰판)", async () => {
+    const { deps, delivered } = capturing(sameAsBase());
+    const result = await runPull(deps);
+    expect(result).toEqual({ status: "skipped", reason: "no-changes" });
+    expect(delivered).toEqual([CAPTURED]);
+  });
+
+  it("skipped/no-edits → 쓰기 0회 (같은 캡처의 committed → 1회 대조)", async () => {
+    const made = createFakeGitClient({});
+    const delivered: unknown[] = [];
+    await runPull({
+      loadState: async () => ({
+        project: { ...PROJECT }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: CAPTURED,
+      }),
+      createClient: async () => made.client,
+      saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(delivered).toEqual([]);
+  });
+
+  it("GitHub 쓰기 실패 → 해제 쓰기 0회 — 보낸 것으로 증명되지 않은 편집은 남는다 [C10]", async () => {
+    const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] }, failOn: "createPr" });
+    const { deps, delivered } = capturing(made);
+    await expect(runPull(deps)).rejects.toThrow();
+    expect(delivered).toEqual([]);
   });
 });

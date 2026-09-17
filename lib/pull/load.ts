@@ -1,7 +1,8 @@
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { unpublishedWhere } from "@/lib/keys/unpublished";
-import type { PullState } from "./run";
+import { pendingWhere } from "@/lib/protection/where";
+import type { PendingEdit, PullState } from "./run";
 
 /**
  * pull이 필요한 DB 상태를 읽고, 성공 후 `lastPulledAt`을 쓴다.
@@ -70,6 +71,9 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
   // 1층 판정값 — `countUnpublished`와 같은 where 조각이다. `max(updatedAt)`으로 판정하면 push가 올린
   // `updatedAt`이 편집으로 읽혀 편집 0건인 밤에도 GitHub을 부른다 (sync-edit-protection T0).
   const unpublished = await prisma.translation.count({ where: unpublishedWhere(project.id, project.lastPulledAt) });
+  // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection design §2).
+  // 배포 A에서는 판정에 안 쓰고 성공·동등 경로의 조건부 해제에만 쓴다.
+  const pending = await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
 
   return {
     project: rest,
@@ -98,6 +102,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     })),
     maxUpdatedAt: agg._max.updatedAt,
     unpublished,
+    pendingEdits: pending.flatMap(t => t.pendingEditToken === null ? [] : [{ id: t.id, token: t.pendingEditToken }]),
   };
 }
 
@@ -116,13 +121,44 @@ export async function saveLastPulledAt(
   prisma: PrismaClient,
   projectId: string,
   at: Date,
-  published?: { prUrl: string },
+  published: { prUrl: string } | undefined,
+  delivered: readonly PendingEdit[],
 ): Promise<void> {
-  await prisma.project.update({
+  const project = {
     where: { id: projectId },
     data: {
       lastPulledAt: at,
       ...(published === undefined ? {} : { lastPublishedAt: new Date(), lastPrUrl: published.prUrl }),
     },
+  };
+  if (delivered.length === 0) {
+    await prisma.project.update(project);
+    return;
+  }
+  // 같은 트랜잭션이다 — `lastPulledAt`만 전진하고 해제가 빠지면 옛 술어는 0인데 토큰이 남는 "유령 pending"이 된다
+  // (design §6.1). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update(project);
+    await acknowledgeDelivered(tx, projectId, delivered);
   });
+}
+
+/**
+ * **캡처한 토큰이 아직 그대로인 셀만** 해제한다 — 캡처 뒤 같은 셀을 다시 저장했으면 토큰이 달라 남는다(같은 밀리초여도).
+ *
+ * ⚠️ **선조회 후 무조건 UPDATE로 바꾸지 않는다** — 이 조건부 UPDATE 한 문장이 방어선이다 (design §2).
+ * ⚠️ `updatedAt`을 건드리지 않는다 — raw SQL이라 `@updatedAt`이 개입하지 않는다. 시각이 움직이면 방금 쓴
+ * `lastPulledAt`(= 캡처한 `max(updatedAt)`)보다 뒤가 되어 옛 술어가 전달한 편집을 다시 센다.
+ * ⚠️ orphan 키·로케일·보관 표면 셀은 캡처 뒤 그렇게 됐어도 여기서 바꾸지 않는다 (완료 조건 9).
+ */
+async function acknowledgeDelivered(tx: Prisma.TransactionClient, projectId: string, delivered: readonly PendingEdit[]): Promise<void> {
+  await tx.$executeRaw`
+    UPDATE "Translation" AS t SET "pendingEditToken" = NULL
+    FROM unnest(${delivered.map(d => d.id)}::text[], ${delivered.map(d => d.token)}::text[]) AS v("id", "token"),
+      "TranslationSurface" s, "StringKey" k, "Locale" l
+    WHERE t."projectId" = ${projectId}
+      AND t."id" = v."id" AND t."pendingEditToken" = v."token"
+      AND s."projectId" = t."projectId" AND s."id" = t."surfaceId" AND s."archivedAt" IS NULL
+      AND k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId" AND k."orphaned" = false
+      AND l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND l."orphaned" = false`;
 }

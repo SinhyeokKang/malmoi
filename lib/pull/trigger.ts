@@ -51,7 +51,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
       if (!project.repositoryId) fail("repository identity is not pinned; reconnect the project", "not-installed");
       return createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     },
-    saveLastPulledAt: (projectId, at, published) => saveLastPulledAt(prisma, projectId, at, published),
+    saveLastPulledAt: (projectId, at, published, delivered) => saveLastPulledAt(prisma, projectId, at, published, delivered),
     syncBranch: syncBranchFor(slug),
   });
 

@@ -22,13 +22,13 @@ describe("saveLastPulledAt", () => {
 
   it("스킵은 lastPulledAt만 쓴다 — 보낸 것이 없다", async () => {
     const { prisma, update } = fakePrisma();
-    await saveLastPulledAt(prisma, "p1", at);
+    await saveLastPulledAt(prisma, "p1", at, undefined, []);
     expect(update).toHaveBeenCalledWith({ where: { id: "p1" }, data: { lastPulledAt: at } });
   });
 
   it("커밋되면 세 컬럼을 같은 update에 싣는다 — 왕복을 두 번 만들지 않는다", async () => {
     const { prisma, update } = fakePrisma();
-    await saveLastPulledAt(prisma, "p1", at, { prUrl: "https://github.com/o/r/pull/1" });
+    await saveLastPulledAt(prisma, "p1", at, { prUrl: "https://github.com/o/r/pull/1" }, []);
 
     expect(update).toHaveBeenCalledTimes(1);
     const arg = update.mock.calls[0]?.[0] as unknown as {
@@ -43,7 +43,7 @@ describe("saveLastPulledAt", () => {
 
   it("보낸 시각은 캡처 값이 아니라 벽시계다 — 두 컬럼이 같은 값이면 뜻이 하나로 무너진다", async () => {
     const { prisma, update } = fakePrisma();
-    await saveLastPulledAt(prisma, "p1", new Date("2020-01-01T00:00:00Z"), { prUrl: "u" });
+    await saveLastPulledAt(prisma, "p1", new Date("2020-01-01T00:00:00Z"), { prUrl: "u" }, []);
     const data = (update.mock.calls[0]?.[0] as unknown as { data: { lastPublishedAt: Date } }).data;
     expect(data.lastPublishedAt.getFullYear()).toBeGreaterThan(2020);
   });
@@ -57,6 +57,7 @@ it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다",
     translation: {
       aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })),
       count: vi.fn(async () => 2),
+      findMany: vi.fn(async () => [{ id: "t1", pendingEditToken: "tok" }]),
     },
   };
   const transaction = vi.fn(async (fn: (client: typeof tx) => Promise<unknown>, _options: unknown) => fn(tx));

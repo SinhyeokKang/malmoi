@@ -574,6 +574,13 @@ clone하지 않는다.
 그쪽이고(진행 판정), 툴바의 "Last sent"가 읽는 것은 이쪽이다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
 "보냈다"가 갱신된다.
 
+**`lastPulledAt`이 전진하는 두 자리에서 편집 토큰의 전달 확인이 같은 트랜잭션에 실린다** (2026-09-18, §5의 `pendingEditToken`).
+`loadPullState`가 export와 같은 RepeatableRead 스냅샷에서 활성 셀의 `(id, token)`을 캡처하고, `saveLastPulledAt`이
+`t."pendingEditToken" = v."token"`인 행만 비운다 — 캡처 뒤 같은 셀을 다시 저장했으면 토큰이 달라 남는다.
+⚠️ **`no-changes`를 빼면 "유령 pending"이 생긴다**: 편집을 원복한 셀은 2층에서 끝나 옛 술어는 0이 되는데 토큰만 남고,
+backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE는 `updatedAt`을 건드리지 않는다 — 올리면 방금 쓴
+`lastPulledAt`보다 뒤가 되어 옛 술어가 보낸 편집을 다시 센다. 1층 스킵·실패 경로는 해제하지 않는다.
+
 ⚠️ **`warnings`는 실행별 진단이고 큐가 아니다** (2026-09-04). 2층까지 통과하면 `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 같은 경고가 다시 나오지 않는다. **경고가 있으면 `lastPulledAt`을 안 쓰는 쪽은 택하지 않았다** — `missingOriginal`(리포에 그 로케일 파일이 없다)처럼 **지속 상태**인 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다. 대신 `lib/pull/trigger.ts`가 `console.warn`으로도 낸다 — 진입점 둘이 공유하는 조립층이라 한 곳이면 되고, cron 응답 JSON을 놓쳐도 Vercel 로그에 남는다.
 
 ### 함정
@@ -838,6 +845,14 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   그 갈래로 살아남는다. cuid 모양으로 갈라내려 하면 후자가 함께 사라진다. **이 폴백이 없던 동안 화면이
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
+- **`Translation.pendingEditToken`은 "아직 전달 확인되지 않은 마지막 편집"의 식별자다** (2026-09-18, sync-edit-protection 배포 A).
+  쓰는 자리가 넷이고 **전부 여기 적힌 것뿐이다**: `saveTranslation`이 값이 실제로 바뀔 때 새 UUID를 쓰고(no-op은 안 쓴다) ·
+  `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
+  캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채운다.
+  ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
+  ⚠️ **배포 A에서는 어떤 판정도 이 컬럼을 읽지 않는다** — 미배포 집계·1층 스킵·배너는 여전히 `updatedBy`·`updatedAt` 술어다.
+  판정 전환(보류·폐기 승인)은 배포 B이고, 그때 이 절과 §0·§5.5.2를 함께 고친다.
+  인덱스는 일반 복합 `[projectId, pendingEditToken]`이다 — btree가 `IS NOT NULL`을 Index Cond로 써서 격리 PG 합성 3만 행에서 3행만 읽었다(없으면 3만 행 비트맵 스캔) — 그래서 스키마로 표현되지 않는 partial 인덱스는 쓰지 않는다.
 - **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastCommitAt`이 이미 든다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
 - **⚠️ `Locale.createdAt`의 기존 값은 프로젝트 생성 시각이다 — 진짜 시각이 아니다** (같은 마이그레이션). `Locale`에 시각 컬럼이 하나도 없어(`code`·`name`·`isBase`·`orphaned`뿐) "한 번도 안 채워진 로케일"을 시간축에 못 세웠다. **`@default(now())`만 두면 마이그레이션이 거짓을 만든다** — 기존 로케일 전부가 "마이그레이션 시각"을 들고 배포 직후 그 항목들이 목록 맨 위를 점령하며, 그 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 그래서 마이그레이션이 `UPDATE "Locale" … FROM "Project"`로 프로젝트 생성 시각을 넣었다: 로케일이 프로젝트보다 먼저 생길 수는 없고 "지금"보다 덜 틀리다. **이 값을 "로케일이 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다** — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이고, 같은 프로젝트의 로케일 여럿이 동점이 되는 것을 읽는 쪽의 동점 규칙(`surfaceSlug` → 코드 유닛 비교)이 받는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.

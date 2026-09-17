@@ -29,6 +29,17 @@ export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
  */
 export const STALE_AFTER_SECONDS = 300;
 
+/**
+ * 실행 표시가 아직 살아 있는가. **Publish와 수동 Sync(`lib/import/plan.ts`의 `hasActiveImport`)가 이 하나를 쓴다** —
+ * 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 창에서 둘이 동시에 돈다 (sync-edit-protection design §4.2).
+ * 경계 정각은 아직 진행 중이다 — 진행 중인 실행을 뺏지 않는다.
+ *
+ * ⚠️ 방향이 이쪽이다 — `lib/import/plan.ts`는 `@/lib/adapters`(ts-morph)를 물어 이 모듈이 그쪽을 import하면 안 된다.
+ */
+export function isRunActive(startedAt: Date, now: Date): boolean {
+  return now.getTime() - startedAt.getTime() <= STALE_AFTER_SECONDS * 1000;
+}
+
 /** `logs` 화면의 한 페이지. 서버 `?cursor=` + "Older"가 이 수로 자른다. */
 export const SYNC_LOG_PAGE_SIZE = 20;
 
@@ -98,13 +109,17 @@ export function planSyncStart(input: {
   running: { startedAt: Date } | null;
   lastSettled: { finishedAt: Date } | null;
   trigger: SyncTriggerKind;
+  /**
+   * 진행 중인 수동 Sync(`Project.repositoryImportStartedAt`). Sync가 리포 값으로 덮는 중에 Publish가 스냅샷을 뜨면
+   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection design §4.2). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다.
+   */
+  activeImport: { startedAt: Date } | null;
 }): SyncStart {
-  const { now, running, lastSettled, trigger } = input;
+  const { now, running, lastSettled, trigger, activeImport } = input;
 
-  const staleCutoff = now.getTime() - STALE_AFTER_SECONDS * 1000;
-  // 경계 정각은 아직 stale이 아니다 — 진행 중인 실행을 뺏지 않는다.
-  const staleToClose = running !== null && running.startedAt.getTime() < staleCutoff;
+  const staleToClose = running !== null && !isRunActive(running.startedAt, now);
   if (running !== null && !staleToClose) return { status: "already-running" };
+  if (activeImport !== null && isRunActive(activeImport.startedAt, now)) return { status: "already-running" };
 
   if (trigger === "manual" && lastSettled !== null) {
     const elapsed = (now.getTime() - lastSettled.finishedAt.getTime()) / 1000;

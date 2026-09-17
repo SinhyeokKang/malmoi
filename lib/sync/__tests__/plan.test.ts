@@ -40,7 +40,7 @@ describe("상수 — 값이 아니라 관계가 계약이다", () => {
 
 describe("planSyncStart — 돌려도 되는가", () => {
   it("아무것도 없으면 ok, 닫을 stale도 없다", () => {
-    expect(planSyncStart({ now: NOW, running: null, lastSettled: null, trigger: "manual" })).toEqual({
+    expect(planSyncStart({ now: NOW, running: null, lastSettled: null, trigger: "manual", activeImport: null })).toEqual({
       status: "ok",
       staleToClose: false,
     });
@@ -48,7 +48,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
 
   it("RUNNING 행이 있으면 already-running이다", () => {
     expect(
-      planSyncStart({ now: NOW, running: { startedAt: ago(5) }, lastSettled: null, trigger: "manual" }),
+      planSyncStart({ now: NOW, running: { startedAt: ago(5) }, lastSettled: null, trigger: "manual", activeImport: null }),
     ).toEqual({ status: "already-running" });
   });
 
@@ -60,7 +60,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
         now: NOW,
         running: { startedAt: ago(5) },
         lastSettled: { finishedAt: ago(1) },
-        trigger: "manual",
+        trigger: "manual", activeImport: null,
       }),
     ).toEqual({ status: "already-running" });
   });
@@ -71,7 +71,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
         now: NOW,
         running: { startedAt: ago(STALE_AFTER_SECONDS + 1) },
         lastSettled: null,
-        trigger: "manual",
+        trigger: "manual", activeImport: null,
       }),
     ).toEqual({ status: "ok", staleToClose: true });
   });
@@ -82,7 +82,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
         now: NOW,
         running: { startedAt: ago(STALE_AFTER_SECONDS) },
         lastSettled: null,
-        trigger: "manual",
+        trigger: "manual", activeImport: null,
       }),
     ).toEqual({ status: "already-running" });
   });
@@ -91,13 +91,13 @@ describe("planSyncStart — 돌려도 되는가", () => {
     // ⚠️ 문구가 상수를 따로 들면 둘이 갈린다. `pullMessage`는 결정성 테스트 아래라
     // `Date.now()`를 못 보므로 이 수가 outcome에 실려야 한다 (design §1.1).
     expect(
-      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(10) }, trigger: "manual" }),
+      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(10) }, trigger: "manual", activeImport: null }),
     ).toEqual({ status: "too-soon", retryAfterSeconds: 20 });
   });
 
   it("남은 초는 올림이다 — 내림하면 0초를 안내하고 다시 거부된다", () => {
     expect(
-      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(29.4) }, trigger: "manual" }),
+      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(29.4) }, trigger: "manual", activeImport: null }),
     ).toEqual({ status: "too-soon", retryAfterSeconds: 1 });
   });
 
@@ -107,21 +107,21 @@ describe("planSyncStart — 돌려도 되는가", () => {
         now: NOW,
         running: null,
         lastSettled: { finishedAt: ago(PUBLISH_MIN_INTERVAL_SECONDS) },
-        trigger: "manual",
+        trigger: "manual", activeImport: null,
       }),
     ).toEqual({ status: "ok", staleToClose: false });
   });
 
   it("⚠️ too-soon은 cron에 안 걸린다 — 야간 실행이 조용히 안 도는 경로를 만들지 않는다", () => {
     expect(
-      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(1) }, trigger: "cron" }),
+      planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(1) }, trigger: "cron", activeImport: null }),
     ).toEqual({ status: "ok", staleToClose: false });
   });
 
   it("⚠️ 직전이 FAILED면(lastSettled: null) too-soon에 안 걸린다 — 제한은 재시도 억제가 아니다", () => {
     // 30초는 "리포에 쓴 뒤 쉬는 간격"이다. 아무것도 못 썼는데 기다리게 하면 사람이 손을 못 쓴다.
     expect(
-      planSyncStart({ now: NOW, running: null, lastSettled: null, trigger: "manual" }),
+      planSyncStart({ now: NOW, running: null, lastSettled: null, trigger: "manual", activeImport: null }),
     ).toEqual({ status: "ok", staleToClose: false });
   });
 
@@ -131,7 +131,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
         now: NOW,
         running: { startedAt: ago(STALE_AFTER_SECONDS + 1) },
         lastSettled: { finishedAt: ago(1) },
-        trigger: "manual",
+        trigger: "manual", activeImport: null,
       }),
     ).toEqual({ status: "too-soon", retryAfterSeconds: 29 });
   });
@@ -278,5 +278,39 @@ describe("classifySyncError — 안정적 오류 코드", () => {
       "stale",
       "unknown",
     ]);
+  });
+});
+
+describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protection T1, design §4.2)", () => {
+  const base = { now: NOW, running: null, lastSettled: null, trigger: "manual" as const };
+
+  it("진행 중인 수동 Sync가 있으면 Publish는 already-running이다 (없음 → ok 대조)", () => {
+    expect(planSyncStart({ ...base, activeImport: { startedAt: ago(5) } })).toEqual({ status: "already-running" });
+    expect(planSyncStart({ ...base, activeImport: null })).toEqual({ status: "ok", staleToClose: false });
+  });
+
+  it("stale한 수동 Sync는 막지 않는다 — 죽은 프로세스의 표시가 Publish를 영구히 잠그면 안 된다", () => {
+    expect(planSyncStart({ ...base, activeImport: { startedAt: ago(STALE_AFTER_SECONDS + 1) } })).toEqual({ status: "ok", staleToClose: false });
+  });
+
+  it("cron도 같은 배제를 받는다", () => {
+    expect(planSyncStart({ ...base, trigger: "cron", activeImport: { startedAt: ago(5) } })).toEqual({ status: "already-running" });
+  });
+
+  /**
+   * ⚠️ **stale 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 1밀리초가 생긴다** — 그 창에서 Sync와 Publish가 동시에 돈다.
+   * 경계 정각과 1ms 뒤에서 두 판정이 **같은 답**을 내는지 교차로 센다.
+   */
+  it.each([0, STALE_AFTER_SECONDS * 1000, STALE_AFTER_SECONDS * 1000 + 1])("양쪽 stale 경계가 같다 — %s ms", async (age) => {
+    const { planRepositoryImport } = await import("@/lib/import/plan");
+    const startedAt = new Date(NOW.getTime() - age);
+    const publishBlocked = planSyncStart({ ...base, activeImport: { startedAt } }).status === "already-running";
+    const importBlocked = !planRepositoryImport({
+      now: NOW, readiness: "ready", identity: "ok", repositoryImportToken: null, repositoryImportStartedAt: null,
+      surfaces: [{ id: "s", slug: "default", archivedAt: null, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportStartedAt: null }],
+      runningSync: { startedAt },
+    }).ok;
+    expect(publishBlocked).toBe(importBlocked);
+    expect(publishBlocked).toBe(age <= STALE_AFTER_SECONDS * 1000);
   });
 });

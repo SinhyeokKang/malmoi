@@ -268,6 +268,20 @@ describe("클라이언트 그래프", () => {
     expect([...files].some(file => file.includes("/adapters/") || file.includes("/push/"))).toBe(false);
   });
 
+  /**
+   * ⚠️ **보호 판정은 화면이 값으로 읽고, 지문은 서버만 계산한다** (sync-edit-protection design §7). 두 모듈이
+   * 같은 디렉터리라 `plan.ts`가 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 온다 — 소비자
+   * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
+   */
+  it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {
+    const plan = walk([join(ROOT, "lib/protection/plan.ts")]);
+    expect([...plan.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/protection/plan.ts"]);
+    expect([...plan.packages].filter((name) => !allowed(name))).toEqual([]);
+
+    const fingerprint = walk([join(ROOT, "lib/protection/fingerprint.ts")]);
+    expect([...fingerprint.packages].filter((name) => !allowed(name))).not.toEqual([]);
+  });
+
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
     const { files, packages } = walk(CLIENT_ENTRIES);
     const offenders = [...packages].filter((name) => !allowed(name));

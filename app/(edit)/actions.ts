@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 
 import { getProjectAccess } from "@/lib/auth/query";
@@ -75,10 +77,13 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   if (plan.action === "noop") return { ok: true, value: existing?.value ?? "" };
 
   // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
+  // 편집 토큰은 값이 실제로 바뀐 이 갈래에서만 새로 쓴다 — no-op은 위에서 끝났다. Publish가 캡처한 토큰과 달라야
+  // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection design §2).
+  const pendingEditToken = randomUUID();
   await prisma.translation.upsert({
     where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
-    create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId },
-    update: { value: plan.value, needsReview: false, updatedBy: userId },
+    create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
+    update: { value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
   });
 
   /**

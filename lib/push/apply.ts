@@ -291,6 +291,9 @@ async function applyWith(
         -- **덮인 값의 저자는 리포다** (translation-ui design §3.6). 사람 이름을 남기면 거짓이고,
         -- 미배포 집계(isUnpublished)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
         "updatedBy" = NULL,
+        -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
+        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection design §2).
+        "pendingEditToken" = NULL,
         "updatedAt" = ${now}`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.

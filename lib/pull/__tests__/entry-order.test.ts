@@ -52,7 +52,7 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
       project: { ...PROJECT },
 
       surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [...keys] }],
-      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
     }),
     createClient: async () => client,
     saveLastPulledAt: async () => {},
@@ -122,7 +122,7 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
       }),
     },
     stringKey: { findMany },
-    translation: { aggregate: async () => ({ _max: { updatedAt: null } }), count: async () => 0 },
+    translation: { aggregate: async () => ({ _max: { updatedAt: null } }), count: async () => 0, findMany: async () => [] },
   } as unknown as PrismaClient;
   return { prisma, args };
 }
@@ -202,7 +202,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
           project: { ...PROJECT },
 
           surfaces: [{ ...({ ...PROJECT, nested: true, nestedByPath, baseLocale: "th" }), id: "s1", slug: "default", localeCodes: ["th"], keys: [...DOTTED] }],
-          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
@@ -266,7 +266,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
             { key: "a.one", sourceText: "one", sortIndex: 0, orphaned: false, cells: { en: { value: "one" }, ko: { value: "하나" } } },
             { key: "a.two", sourceText: "two", sortIndex: 1, orphaned: false, cells: { en: { value: "two" }, ko: { value: "둘" } } },
           ] }],
-          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
