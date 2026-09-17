@@ -2083,3 +2083,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 같은 프로젝트를 나타내는 타일을 화면마다 구현했고, Home의 고정 배경을 시안 이탈로 문서화하면서 목록의 이름 기반 색 규칙과 대조하지 않았다.
 - **그물**: 사용자가 두 화면의 불일치를 발견했다. 기존 테스트는 각 화면의 동작과 목록의 치수만 검사했다. 세 이름으로 목록과 Home의 배경·모서리를 비교하는 DOM 테스트에서 red를 확인한 뒤, 두 곳을 `ProjectThumbnail`로 연결해 green을 확인했다. 이미지 URL이 있으면 같은 타일 안에서 자르지 않고 표시하는 계약도 검사한다.
 - **재발 방지**: `rg -n 'bg-foreground.*size-7|ProjectThumbnail|toneFill\(row.name\)' components/home components/projects`를 실행해 두 소비자가 공통 컴포넌트만 쓰고 고정 배경이 남지 않음을 확인했다. 같은 엔터티를 여러 화면에 표시할 때 색·모서리의 교차 화면 계약을 함께 검사한다.
+
+### 2026-09-17 — New project 클릭 후 모달 대기 중 버튼이 반응하지 않았다
+
+- **영역**: `components/projects/project-list.tsx` · `components/projects/empty-projects.tsx` · `components/projects/new-project-button.tsx`
+- **증상**: 사용자가 New project 클릭 후 모달이 나타나기까지 약 1초 동안 버튼에 반응이 없어 클릭이 먹지 않은 것처럼 보인다고 보고했다.
+- **근본 원인**: 두 진입점이 일반 `ButtonLink`를 사용해 라우트 전환 상태를 표시하지 않았다. 모달 내부 리포 조회의 Suspense는 모달 껍데기가 도착한 뒤의 대기만 설명한다.
+- **그물**: 기존 테스트는 링크 목적지와 모달의 로딩 상태를 각각 검사했지만 그 사이 버튼의 pending 상태를 검사하지 않았다. 전용 컴포넌트의 테스트를 먼저 추가해 red를 확인한 뒤, 실제 React transition을 지연시켜 스피너·중복 클릭 차단·검색어 보존·모달 도착 후 복구를 검증했다. Next Link 자체는 테스트에서 대체했으므로 실 브라우저 라우팅·시안 대조는 후속 검증 대상이다.
+- **재발 방지**: `rg -n 'NewProjectButton|routes.newProject|startTransition|onNavigate' components/projects`를 실행해 헤더와 빈 목록이 같은 전용 버튼을 사용함을 확인했다. 비동기 모달 진입은 모달 내부 로딩과 진입 버튼의 전환 대기를 구분해 검사한다.
