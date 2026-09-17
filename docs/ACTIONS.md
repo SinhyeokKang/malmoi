@@ -170,7 +170,7 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 넷 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 셋과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
-| 커밋 메시지에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
+| `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
 | **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales`에 그 로케일 — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
@@ -208,6 +208,10 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `malmoi-i18n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
 
 **막지 않는 이유**: 막으면 "어느 쪽이 이기는지"를 CI가 판정하게 되고, 그건 병합 로직이라 코어 원칙을 깬다. 개발자가 볼 재료만 남기고 판단은 사람이 한다.
+
+### 머지 방식은 무엇이든 된다 — 단, PR 제목의 마커를 지우지 않는다
+
+번역 PR은 squash · rebase · **merge commit** 어느 것으로 머지해도 된다. 루프 가드는 `head_commit.message`의 부분 문자열만 보는데, merge commit의 그 메시지는 `Merge pull request #N from …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 그래서 마커는 **PR 제목에도** 든다(`malmoi-i18n: sync translations [skip-malmoi-i18n]`). PR 제목을 고쳐도 되지만 **`[skip-malmoi-i18n]`은 남긴다** — 지우면 머지 직후 push가 돌아 DB를 그 시점 값으로 덮고, 그 뒤에 저장한 번역이 사라진다. 제목에서 마커가 빠진 열린 PR은 다음 pull이 **그 제목 뒤에 마커를 다시 붙인다**(제목은 그대로다 — 2026-09-17 이전에 열린 PR도 여기에 든다).
 
 ## 4. 야간 pull은 대상 리포와 무관하다
 
