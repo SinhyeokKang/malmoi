@@ -221,7 +221,7 @@ export function FilesStep({
             ))}
           </ul>
         ) : candidates.length === 0 ? (
-          <ManualForm state={state} onManual={onManual} />
+          <ManualForm state={state} onManual={onManual} clearsSelection={false} />
         ) : (
           <>
             {selection ? candidateList : <RadioGroup aria-label={m.newProject.files.candidates}
@@ -453,11 +453,20 @@ function ManualToggle({ state, onManual }: { state: FilesStepState; onManual: (n
       </p>
     );
   }
-  return <ManualForm state={state} onManual={onManual} />;
+  return <ManualForm state={state} onManual={onManual} clearsSelection />;
 }
 
 /** 예외 E — 후보 0개. **경로를 치면 우측이 키로 차고 그것이 검증이다.** */
-function ManualForm({ state, onManual }: { state: FilesStepState; onManual: (next: ManualEntry) => void }) {
+function ManualForm({
+  state,
+  onManual,
+  clearsSelection,
+}: {
+  state: FilesStepState;
+  onManual: (next: ManualEntry) => void;
+  /** ⚠️ **후보 0개에는 위에 지울 선택이 없다** (malmoi#47) — 그 갈래에서 안내 문장은 없는 UI를 가리킨다. */
+  clearsSelection: boolean;
+}) {
   const { manual, adapters } = state;
   // 셀렉트의 선택지가 `adapters` 그 배열이라 못 찾을 수 없다 — 폴백은 타입을 닫기 위한 것이다.
   const choice = adapters.find((c) => c.adapter === manual.adapter);
@@ -503,7 +512,7 @@ function ManualForm({ state, onManual }: { state: FilesStepState; onManual: (nex
         />
       </FormGroup>
       {/* ⚠️ 이 문장은 **블록 전체**를 설명한다 — 필드의 `help`로 매달면 그 필드의 설명으로 읽힌다 */}
-      <p className="text-muted-foreground text-xs">{m.newProject.files.manual.hint}</p>
+      {clearsSelection && <p className="text-muted-foreground text-xs">{m.newProject.files.manual.hint}</p>}
     </div>
   );
 }
