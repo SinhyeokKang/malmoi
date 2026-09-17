@@ -118,7 +118,7 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | authz | `middleware.ts`, `auth.ts`, `lib/auth/**`, `app/api/**` | **보호 라우트가 전부 `matcher`에 있는가**(레이아웃 조건부 렌더는 차단이 아니다 — RSC 페이로드가 실린다) / 레이아웃이 `redirect()`를 던지는가 / **인가가 `ProjectMember`인가** — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. ⚠️ **허용 핸들 목록(`AUTH_ALLOWED_LOGINS`)은 2026-09-05에 사라졌다**(ARCHITECTURE §6): 로그인은 검증된 이메일만 요구하고 그것이 아무것도 열지 않는다. **그 변수가 코드에 다시 보이면 그것이 결함이고**, `app/__tests__/entry-points.test.ts`가 부재를 상시로 센다 / `/api/push`의 `PUSH_TOKEN`·`/api/pull`의 `CRON_SECRET` 검증 / **OAuth 토큰으로 커밋하거나 App 토큰으로 사용자 식별하는 코드**(두 자격증명 혼입) |
-| tenancy-env | `lib/db.ts`, `lib/env.ts`, `lib/keys/query.ts`, `prisma/**` | **모든 DB 쿼리가 `projectId`로 좁혀졌는가**(RLS 없음 — 애플리케이션이 유일한 방어선) / Server Action이 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인하는가 / **환경변수를 모듈 최상위에서 평가하는 코드**(파일을 읽기만 해도 죽는다 — 두 번 밟은 함정) / `process.env` 산발 접근 / 코드가 읽는 변수가 `.env.example`에 전부 있는가 / ⚠️ **DB에 닿는 경로가 앱 하나인가** — 아래 |
+| tenancy-env | `lib/db.ts`, `lib/env.ts`, `lib/keys/query.ts`, `prisma/**` | **모든 DB 쿼리가 `projectId`로 좁혀졌는가**(RLS 없음 — 앱 안의 방어선은 이것뿐이고, 앱 밖 경로는 `anon`·`authenticated` GRANT 0 + 새 마이그레이션 뒤 탐지로 닫는다, CLAUDE.md Supabase 권한 절) / Server Action이 `keyId`·`localeCode`의 프로젝트 소속을 스스로 확인하는가 / **환경변수를 모듈 최상위에서 평가하는 코드**(파일을 읽기만 해도 죽는다 — 두 번 밟은 함정) / `process.env` 산발 접근 / 코드가 읽는 변수가 `.env.example`에 전부 있는가 / ⚠️ **DB에 닿는 경로가 앱 하나인가** — 아래 |
 
 ⚠️ **`tenancy-env` 차원은 2026-09-09에 축이 하나 늘었다: "DB에 도달하는 경로를 전수로 센다."**
 

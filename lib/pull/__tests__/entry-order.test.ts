@@ -52,7 +52,7 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
       project: { ...PROJECT },
 
       surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [...keys] }],
-      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
     }),
     createClient: async () => client,
     saveLastPulledAt: async () => {},
@@ -122,7 +122,7 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
       }),
     },
     stringKey: { findMany },
-    translation: { aggregate: async () => ({ _max: { updatedAt: null } }) },
+    translation: { aggregate: async () => ({ _max: { updatedAt: null } }), count: async () => 0 },
   } as unknown as PrismaClient;
   return { prisma, args };
 }
@@ -158,13 +158,17 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
   });
 
   /**
-   * **1층 판정의 기준값을 내는 쿼리와 그것을 태울 인덱스가 짝이다** (2026-09-04 audit #45).
-   * `aggregate({ where: { projectId }, _max: { updatedAt } })`는 `(projectId, updatedAt)` 인덱스가
-   * 있으면 역방향 스캔 첫 행에서 멈추고, 없으면 그 프로젝트 파티션 전체를 훑는다. 야간 cron이
-   * **매일** 부르는 쿼리라 인덱스가 사라지면 조용히 느려지고 게이트에는 안 나타난다.
+   * **1층의 두 쿼리와 그것을 태울 인덱스가 짝이다** (2026-09-04 audit #45, T0로 둘이 됐다).
+   * 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`는 `(projectId, updatedAt)` 인덱스가
+   * 있으면 역방향 스캔 첫 행에서 멈추고, 판정용 `count(unpublishedWhere(…))`는 같은 인덱스의
+   * `updatedAt > lastPulledAt` 범위를 탄다(dev DB EXPLAIN: 2,721행에서 3행). 없으면 그 프로젝트 파티션
+   * 전체를 훑는다. 야간 cron이 **매일** 부르는 쿼리라 인덱스가 사라지면 조용히 느려지고 게이트에는 안 나타난다.
    */
-  it("1층 aggregate가 탈 인덱스가 스키마에 있다 — 쿼리와 인덱스가 함께 움직여야 한다", () => {
+  it("캡처 aggregate와 1층 count가 탈 인덱스가 스키마에 있다 — 쿼리와 인덱스가 함께 움직여야 한다", () => {
     expect(sourceOf("lib/pull/load.ts")).toContain("_max: { updatedAt: true }");
+    expect(sourceOf("lib/pull/load.ts")).toContain("unpublishedWhere(project.id, project.lastPulledAt)");
+    // 범위 조건이 술어에서 빠지면 count가 인덱스 범위를 못 타고 프로젝트 전 행을 훑는다.
+    expect(sourceOf("lib/keys/unpublished.ts")).toContain("updatedAt: { gt: lastPulledAt }");
     expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, updatedAt])");
   });
 
@@ -198,7 +202,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
           project: { ...PROJECT },
 
           surfaces: [{ ...({ ...PROJECT, nested: true, nestedByPath, baseLocale: "th" }), id: "s1", slug: "default", localeCodes: ["th"], keys: [...DOTTED] }],
-          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
@@ -262,7 +266,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
             { key: "a.one", sourceText: "one", sortIndex: 0, orphaned: false, cells: { en: { value: "one" }, ko: { value: "하나" } } },
             { key: "a.two", sourceText: "two", sortIndex: 1, orphaned: false, cells: { en: { value: "two" }, ko: { value: "둘" } } },
           ] }],
-          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+          maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},

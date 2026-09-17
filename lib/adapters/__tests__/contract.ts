@@ -130,6 +130,35 @@ export function formatFor(adapter: Adapter, keys: readonly string[] = CONTRACT_K
 const entriesFor = (keys: readonly string[]): LocaleEntry[] => keys.map((k) => ({ key: k, message: val(k) }));
 
 /**
+ * 중첩 맵 안에 점을 품은 리터럴 키를 둔 원본 — read가 `group.x.y`로 내는 모양이다. **삽입하는 수술적 어댑터만**
+ * 만든다(`ts-dict`는 삽입 예외, 재생성은 원본 바이트 보존이 계약이 아니다).
+ */
+function deepDottedSourceFor(adapter: Adapter): { format: DetectedFormat; key: string; literal: string } | undefined {
+  const key = "group.x.y";
+  const literal = '"x.y"';
+  switch (adapter.name) {
+    case "yaml-catalog":
+      return {
+        key, literal,
+        format: {
+          adapter: adapter.name, pathTemplate: "config/locales/{locale}.yml", locales: ["en"],
+          currentFiles: [{ path: "config/locales/en.yml", content: `"group":\n  ${literal}: ${JSON.stringify(srcVal(key))}\n` }],
+        },
+      };
+    case "code-dict":
+      return {
+        key, literal,
+        format: {
+          adapter: adapter.name, pathTemplate: "src/locale/{locale}.ts", locales: ["en"],
+          currentFiles: [{ path: "src/locale/en.ts", content: `export default {\n  "group": {\n    ${literal}: ${JSON.stringify(srcVal(key))},\n  },\n}\n` }],
+        },
+      };
+    default:
+      return undefined;
+  }
+}
+
+/**
  * **파일에서의 순서를 흉내 낸 배치** — 코드 유닛 순과 일부러 다르게 골랐다.
  *
  * 같으면 `order`를 통째로 무시하는 writer도 정렬 검사를 통과한다. 두 순서가 달라야 그 writer가
@@ -236,6 +265,26 @@ export function writerContractViolations(adapter: Adapter): string[] {
       const appeared = inserted !== null && inserted.includes(val(insertKey));
       if (inserts && !appeared) bad.push(`삽입: 원본에 없던 키 ${insertKey}가 출력에 나타나지 않았다 (§1.1 여섯 지점 #5)`);
       if (!inserts && appeared) bad.push(`삽입: ${adapter.name}는 삽입하지 않는 것이 계약인데 원본에 없던 키가 나타났다 (§1.4)`);
+    }
+  }
+  // **깊은 점 키.** 원본이 `grp: { "x.y": … }`처럼 중첩 맵 안에 점을 품은 리터럴 키를 두면 read는 `grp.x.y`를
+  // 낸다. write가 그 키를 "리터럴 전체 / 전부 split" 둘로만 찾으면 못 찾고, 없는 키로 판정해 `grp` 아래에
+  // `"x.y"`를 **또** 넣는다 — write마다 중복이 하나씩 는다 (launch-readiness L1.4, POSTMORTEM 2026-09-02 재발).
+  // 삽입하는 수술적 어댑터만 대상이다 — 재생성은 구조를 다시 만드므로 "원본 바이트 그대로"가 성립하지 않는다.
+  {
+    const deep = deepDottedSourceFor(adapter);
+    if (deep !== undefined) {
+      const { format, key, literal } = deep;
+      const source = format.currentFiles![0]!.content;
+      const count = (s: string) => s.split(literal).length - 1;
+      const same = write([{ key, message: srcVal(key) }], format);
+      if (same !== source) bad.push(`깊은 점 키: 값 무변경인데 원본 바이트가 바뀌었다 — ${key}를 못 찾고 다시 넣었다`);
+      const changed = write([{ key, message: val(key) }], format);
+      if (changed === null || !changed.includes(val(key))) {
+        bad.push(`깊은 점 키: ${key}의 DB 값이 출력에 반영되지 않았다`);
+      } else if (count(changed) !== count(source)) {
+        bad.push(`깊은 점 키: ${literal} 리터럴이 ${count(source)}→${count(changed)}개로 늘었다 — 중복 삽입`);
+      }
     }
   }
   if (write(entriesFor([...CONTRACT_KEYS].reverse())) !== plain) {

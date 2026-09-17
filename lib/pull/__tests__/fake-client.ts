@@ -19,8 +19,8 @@ export type FakeGitOptions = {
   tree?: Record<string, GitTreeBlob[]>;
   /** blob SHA → 내용. 주입되지 않은 SHA를 요구하면 던진다. */
   blobs?: Record<string, string>;
-  /** 열린 PR의 URL. 없으면 `null`이 되어 생성 경로를 태운다. */
-  openPrUrl?: string;
+  /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
+  openPr?: { url: string; number: number; title: string };
   /** 이 메서드가 호출되면 던진다. 실패 후 상태(`lastPulledAt` 미갱신)를 검증하는 입력이다. */
   failOn?: keyof GitClient;
 };
@@ -72,13 +72,16 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     async updateRefForce(branch, sha) {
       record("updateRefForce", [branch, sha]);
     },
-    async findOpenPrUrl(head, base) {
-      record("findOpenPrUrl", [head, base]);
-      return opts.openPrUrl ?? null;
+    async findOpenPr(head, base) {
+      record("findOpenPr", [head, base]);
+      return opts.openPr ?? null;
     },
     async createPr(headBranch, baseBranch, title, body) {
       record("createPr", [headBranch, baseBranch, title, body]);
       return `https://github.com/fake/repo/pull/1`;
+    },
+    async updatePrTitle(pullNumber, title) {
+      record("updatePrTitle", [pullNumber, title]);
     },
     // 목록 전용 둘 (projects-list §3.4). pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
     async compareToBase(baseSha, branch) {

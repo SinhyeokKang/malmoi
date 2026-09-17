@@ -70,6 +70,18 @@ it("조회 실패와 응답 유실 재시도 모두 새 확인을 요구한다",
   await click("Try again"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   await click("Open pull request"); expect(mocks.pull).toHaveBeenCalledTimes(2);
 });
+/**
+ * **조회 중에는 "조회 실패"를 말하지 않는다** (malmoi#49). `prUnknown`은 열린 PR 조회가 **실제로**
+ * 모른다를 돌려줬을 때의 문장이다 — 로딩에 그것을 세우면 몇 초 동안 일어나지 않은 실패를 읽힌다.
+ */
+it("미리보기 로딩 중엔 prUnknown이 없고, 준비된 뒤 openPr가 모름일 때만 선다", async () => {
+  const read = deferred<unknown>(); mocks.preview.mockReturnValueOnce(read.promise);
+  await render(<Host />); await click("Publish1");
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  expect(document.body.textContent).not.toContain("Couldn't check for an open pull request");
+  await act(async () => read.resolve({ ...preview, openPr: undefined }));
+  expect(document.body.textContent).toContain("Couldn't check for an open pull request");
+});
 it("열기는 컨테이너, 열린 상태 전이는 본문, disabled 호출부의 닫기는 제목으로 돌아간다", async () => {
   const read = deferred<unknown>(); mocks.preview.mockReturnValueOnce(read.promise);
   const view = await render(<Host />); await click("Publish1");

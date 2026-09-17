@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { changeMember } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -33,6 +33,7 @@ export function MemberList({
   role,
   viewerId,
   now,
+  headingId,
 }: {
   slug: string;
   members: readonly MemberView[];
@@ -40,23 +41,52 @@ export function MemberList({
   viewerId: string;
   /** 서버가 넘긴 기준 시각. 클라이언트에서 `new Date()`를 부르면 hydration이 갈린다. */
   now: Date;
+  /**
+   * 제거 뒤 포커스 착지점 — 서버 페이지가 그리는 표 제목이다 (malmoi#51). 포커스를 쥔 행이 사라지면
+   * 브라우저가 `body`로 떨어뜨리고, 이웃 행은 마지막 행을 지우면 없다.
+   */
+  headingId: string;
 }) {
   const manage = canPerform(role, "member:manage");
-  const [failed, setFailed] = useState<{ userId: string; error: string } | null>(null);
+  /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
+  const [failed, setFailed] = useState<{ userId: string; error: string; removal: boolean } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
 
-  function apply(targetUserId: string, nextRole: Role | null) {
+  /**
+   * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). Dialog는 닫히면서 트리거로
+   * 포커스를 돌려주는데 그 순간 트리거가 `loading` → `disabled`라 받지 못하고 `body`로 빠진다.
+   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 여전히 `disabled`고
+   * `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   */
+  useEffect(() => {
+    if (failed?.removal) document.getElementById(`remove-${failed.userId}`)?.focus();
+  }, [failed]);
+
+  function apply(targetUserId: string, nextRole: Role | null, who: string) {
     setFailed(null);
+    setAnnouncement("");
     setPendingId(targetUserId);
     startTransition(async () => {
       const result = await changeMember({ slug, targetUserId, nextRole });
       setPendingId(null);
-      if (!result.ok) setFailed({ userId: targetUserId, error: result.error });
+      if (!result.ok) {
+        setFailed({ userId: targetUserId, error: result.error, removal: nextRole === null });
+        return;
+      }
+      // 역할 변경은 행이 남아 포커스가 셀렉트에 그대로 있다 — 옮기는 것은 행이 사라지는 제거뿐이다.
+      if (nextRole === null) {
+        document.getElementById(headingId)?.focus();
+        setAnnouncement(m.members.removed(who));
+      }
     });
   }
 
   return (
+    <>
+    {/* ⚠️ **결과 전부터 DOM에 있어야 한다** — 텍스트와 함께 새로 붙는 live 영역은 스크린 리더가 놓친다. */}
+    <p role="status" className="sr-only">{announcement}</p>
     <Table>
       <thead>
         <tr>
@@ -91,7 +121,7 @@ export function MemberList({
                 <Select
                   value={member.role}
                   disabled={pendingId === member.userId}
-                  onValueChange={(value) => apply(member.userId, value as Role)}
+                  onValueChange={(value) => apply(member.userId, value as Role, who)}
                 >
                   {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
                   <span id={`role-${member.userId}-label`} className="sr-only">
@@ -117,9 +147,10 @@ export function MemberList({
             <Td className="text-right">
               {manage && (
                 <RemoveButton
+                  id={`remove-${member.userId}`}
                   who={who}
                   pending={pendingId === member.userId}
-                  onConfirm={() => apply(member.userId, null)}
+                  onConfirm={() => apply(member.userId, null, who)}
                 />
               )}
               {failed?.userId === member.userId && (
@@ -135,15 +166,18 @@ export function MemberList({
         })}
       </tbody>
     </Table>
+    </>
   );
 }
 
 /** 제거는 되돌릴 수 없어 확인을 한 번 받는다 (DESIGN §6.4 — 제목은 대상을 명시한 질문). */
 function RemoveButton({
+  id,
   who,
   pending,
   onConfirm,
 }: {
+  id: string;
   who: string;
   pending: boolean;
   onConfirm: () => void;
@@ -154,6 +188,7 @@ function RemoveButton({
         {/* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을
             찾으므로 다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */}
         <Button
+          id={id}
           variant="ghost"
           aria-label={m.members.removeLabel(who)}
           loading={pending}

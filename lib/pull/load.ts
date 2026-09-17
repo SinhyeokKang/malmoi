@@ -1,5 +1,6 @@
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { unpublishedWhere } from "@/lib/keys/unpublished";
 import type { PullState } from "./run";
 
 /**
@@ -60,12 +61,15 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     },
   });
 
-  // 1층 판정의 기준값. **`projectId`로 좁힌다** — 안 좁히면 다른 프로젝트의 편집이 이 프로젝트의
+  // `lastPulledAt`에 캡처될 값. **`projectId`로 좁힌다** — 안 좁히면 다른 프로젝트의 편집이 이 프로젝트의
   // pull을 깨우고, 그쪽 `updatedAt`이 이쪽 `lastPulledAt`에 박힌다.
   const agg = await prisma.translation.aggregate({
     where: { projectId: project.id },
     _max: { updatedAt: true },
   });
+  // 1층 판정값 — `countUnpublished`와 같은 where 조각이다. `max(updatedAt)`으로 판정하면 push가 올린
+  // `updatedAt`이 편집으로 읽혀 편집 0건인 밤에도 GitHub을 부른다 (sync-edit-protection T0).
+  const unpublished = await prisma.translation.count({ where: unpublishedWhere(project.id, project.lastPulledAt) });
 
   return {
     project: rest,
@@ -93,6 +97,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     })),
     })),
     maxUpdatedAt: agg._max.updatedAt,
+    unpublished,
   };
 }
 

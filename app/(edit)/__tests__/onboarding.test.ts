@@ -1528,7 +1528,9 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     });
     const result = await createProject(createInput({ surfaces: formats }));
     expect(result).toMatchObject({ ok: false, surface: { pathTemplate: "other/{locale}.json", failed: expect.any(Number) } });
-    if (reason === "duplicate") expect(!result.ok && result.surface?.errors).toEqual([]);
+    // 평탄·중첩 충돌은 read가 `duplicate-key`로 보고한다 (2026-09-17, launch-readiness L1.4) — 전에는 조용히
+    // 하나를 버려 이 배열이 비어 있었고, 거부 사유는 적재 층의 중복 판정뿐이었다.
+    if (reason === "duplicate") expect(!result.ok && result.surface?.errors).toEqual([{ path: "other/fr.json", code: "duplicate-key", key: "a.greet" }]);
     expect(db.spies.createProject).not.toHaveBeenCalled();
     expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
   });

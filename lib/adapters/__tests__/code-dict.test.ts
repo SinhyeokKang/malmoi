@@ -701,3 +701,51 @@ export default { "el": { "a": ('A' as const), "b": 'B' }, array: ["x", "y"], fn:
       .toBe(`const label = 'outside';\nexport default { 'el': {'c': "C"} };\n`);
   });
 });
+
+/**
+ * **깊이 2 이상의 점 키** — `el: { 'a.b': x }`를 read는 `el.a.b`로 낸다. `findScalar`가 "리터럴 전체 / 전부 split"
+ * 둘로만 찾으면 못 찾고, `insert`가 `el` 아래에 `'a.b'`를 **또** 넣었다 (launch-readiness L1.4, POSTMORTEM
+ * 2026-09-02 재발). 조회와 삽입이 각 깊이에서 리터럴 우선으로 내려가는 같은 걷기를 쓴다.
+ */
+describe("code-dict — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)", () => {
+  const cases = [
+    ["깊이 2", "export default {\n  el: {\n    'a.b': 'old',\n    other: 'keep',\n  },\n}\n", "el.a.b", "'a.b'"],
+    ["깊이 3", "export default {\n  el: {\n    'a.b.c': 'old',\n  },\n}\n", "el.a.b.c", "'a.b.c'"],
+    ["실제 중첩과 혼재 — 리터럴이 이긴다", "export default {\n  el: {\n    a: { b: 'keep' },\n    'a.b': 'old',\n  },\n}\n", "el.a.b", "'a.b'"],
+    ["따옴표를 품은 키", "export default {\n  'he said \"x\"': 'old',\n}\n", 'he said "x"', "'he said \"x\"'"],
+  ] as const;
+  const count = (s: string, literal: string) => s.split(literal).length - 1;
+
+  for (const [name, source, key, literal] of cases) {
+    it(`${name}: 값 무변경이면 원본 바이트 그대로`, () => {
+      const res = codeDict.writeWithErrors!(withSource(source), { locale: "ko", entries: [{ key, message: "old" }] });
+      expect(res.errors).toEqual([]);
+      expect(res.content).toBe(source);
+    });
+
+    it(`${name}: 값 변경이면 그 줄만 바뀌고 키는 하나로 남는다`, () => {
+      const input = { locale: "ko", entries: [{ key, message: "new" }] };
+      const res = codeDict.writeWithErrors!(withSource(source), input);
+      expect(res.errors).toEqual([]);
+      const out = res.content!;
+      expect(count(out, literal)).toBe(count(source, literal));
+      const diff = out.split("\n").filter((line, i) => line !== source.split("\n")[i]);
+      expect(diff).toHaveLength(1);
+      const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+      expect(back.errors).toEqual([]);
+      expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
+      expect(codeDict.write(withSource(out), input)).toBe(out);
+    });
+  }
+
+  it("없는 깊은 점 키는 가장 깊은 기존 객체에 리터럴 하나로 넣고, 기존 점 키는 건드리지 않는다", () => {
+    const source = "export default {\n  el: {\n    'a.b': 'keep',\n  },\n}\n";
+    const input = { locale: "ko", entries: [{ key: "el.a.other", message: "added" }] };
+    const out = codeDict.write(withSource(source), input)!;
+    expect(count(out, "'a.b'")).toBe(1);
+    expect(out).toContain("'a.other'");
+    const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
+    expect(back.locales[0]?.entries).toContainEqual({ key: "el.a.other", message: "added" });
+    expect(codeDict.write(withSource(out), input)).toBe(out);
+  });
+});

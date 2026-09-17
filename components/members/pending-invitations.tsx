@@ -1,7 +1,7 @@
 "use client";
 
 import { MailPlus } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { revokeInvitation } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -27,6 +27,7 @@ export function PendingInvitations({
   invitations,
   role,
   now,
+  headingId,
 }: {
   slug: string;
   /**
@@ -37,33 +38,53 @@ export function PendingInvitations({
   invitations: readonly PendingInvitation[];
   role: Role;
   now: Date;
+  /** 철회 뒤 포커스 착지점 — `MemberList`와 같은 이유이고, 마지막 초대를 지워 빈 상태로 접혀도 남는다 (malmoi#51). */
+  headingId: string;
 }) {
   const manage = canPerform(role, "member:manage");
   const [failed, setFailed] = useState<{ id: string; error: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
 
-  if (invitations.length === 0) {
-    return (
+  /**
+   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그 버튼은 `loading` 동안 `disabled`라
+   * 브라우저가 포커스를 `body`로 떨어뜨리고, 행 옆 Alert를 찾으려면 맨 위부터 다시 탭해야 했다.
+   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 버튼이 여전히
+   * `disabled`고 `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   */
+  useEffect(() => {
+    if (failed !== null) document.getElementById(`revoke-${failed.id}`)?.focus();
+  }, [failed]);
+
+  function revoke(invitationId: string, who: string) {
+    setFailed(null);
+    setAnnouncement("");
+    setPendingId(invitationId);
+    startTransition(async () => {
+      const result = await revokeInvitation({ slug, invitationId });
+      setPendingId(null);
+      if (!result.ok) {
+        setFailed({ id: invitationId, error: result.error });
+        return;
+      }
+      document.getElementById(headingId)?.focus();
+      setAnnouncement(m.members.pending.revoked(who));
+    });
+  }
+
+  return (
+    <>
+    {/* ⚠️ **빈 상태 갈래 밖에 둔다** — 마지막 초대를 지우면 표가 `EmptyState`로 접히는데, 그때 live 영역이
+        같이 사라지면 알림이 읽히지 않는다. */}
+    <p role="status" className="sr-only">{announcement}</p>
+    {invitations.length === 0 ? (
       <EmptyState
         icon={MailPlus}
         title={m.members.pending.empty.title}
         description={m.members.pending.empty.description}
       />
-    );
-  }
-
-  function revoke(invitationId: string) {
-    setFailed(null);
-    setPendingId(invitationId);
-    startTransition(async () => {
-      const result = await revokeInvitation({ slug, invitationId });
-      setPendingId(null);
-      if (!result.ok) setFailed({ id: invitationId, error: result.error });
-    });
-  }
-
-  return (
+    ) : (
     <Table>
       <thead>
         <tr>
@@ -90,10 +111,11 @@ export function PendingInvitations({
             <Td className="text-right">
               {manage && (
                 <Button
+                  id={`revoke-${invitation.id}`}
                   variant="ghost"
                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                   loading={pendingId === invitation.id}
-                  onClick={() => revoke(invitation.id)}
+                  onClick={() => revoke(invitation.id, invitation.emailLabel)}
                 >
                   {m.members.pending.revoke}
                 </Button>
@@ -110,5 +132,7 @@ export function PendingInvitations({
         ))}
       </tbody>
     </Table>
+    )}
+    </>
   );
 }

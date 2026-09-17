@@ -385,28 +385,48 @@ function valueLiterals(obj: ObjectLiteralExpression): string[] {
  * **없는 키로 판정해 중첩 객체를 새로 만든다** — 원본 규약을 갈아치우는 셈이다.
  */
 function findScalar(obj: ObjectLiteralExpression, key: string): StringLiteral | "not-a-literal" | undefined {
-  const direct = propertyNamed(obj, key);
-  if (direct !== undefined) {
-    const init = unwrap(direct.getInitializer());
-    return init?.isKind(SyntaxKind.StringLiteral) ? init : "not-a-literal";
-  }
+  const hit = locate(obj, key.split(SEP));
+  if (hit.kind === "missing") return undefined;
+  if (hit.kind === "blocked") return "not-a-literal";
+  return hit.init?.isKind(SyntaxKind.StringLiteral) ? hit.init : "not-a-literal";
+}
 
-  const segments = key.split(SEP);
-  let cur: ObjectLiteralExpression = obj;
-  for (let i = 0; i < segments.length; i += 1) {
-    const name = segments[i]!;
-    const prop = propertyNamed(cur, name);
-    if (prop === undefined) return undefined;
-    const init = unwrap(prop.getInitializer());
-    const last = i === segments.length - 1;
-    if (last) {
-      if (init?.isKind(SyntaxKind.StringLiteral)) return init;
-      return "not-a-literal";
+type Located =
+  | { kind: "found"; init: Expression | undefined }
+  /** 접두 프로퍼티는 있는데 객체가 아니다 — 문자열 자리를 객체로 덮는 것은 구조 변경이라 넣지도 찾지도 않는다. */
+  | { kind: "blocked" }
+  /** 못 찾았다 — `parent`는 내려간 가장 깊은 객체, `name`은 거기 넣을 남은 경로(리터럴 하나). */
+  | { kind: "missing"; parent: ObjectLiteralExpression; name: string };
+
+/**
+ * 조회와 삽입이 **같은 걷기**를 쓴다 — 각 깊이에서 **가장 긴 리터럴 접두를 먼저** 보고, 객체면 내려간다.
+ *
+ * ⚠️ "리터럴 전체 키 / 전부 split" 둘만 시도하면 `el: { 'a.b': x }`(read가 `el.a.b`로 낸다)를 **못 찾는다** —
+ * 전체 리터럴도 없고 `a` 객체도 없다. 그러면 없는 키로 판정해 `el` 아래에 `'a.b'`를 또 넣고, write마다 중복이
+ * 하나씩 늘었다(launch-readiness L1.4, POSTMORTEM 2026-09-02 재발). `yaml-catalog.locate`와 같은 규칙이다.
+ */
+function locate(obj: ObjectLiteralExpression, segments: readonly string[]): Located {
+  let cur = obj;
+  let at = 0;
+  for (;;) {
+    let stepped = false;
+    let blocked = false;
+    for (let len = segments.length - at; len >= 1; len -= 1) {
+      const prop = propertyNamed(cur, segments.slice(at, at + len).join(SEP));
+      if (prop === undefined) continue;
+      const init = unwrap(prop.getInitializer());
+      if (at + len === segments.length) return { kind: "found", init };
+      if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        cur = init;
+        at += len;
+        stepped = true;
+        break;
+      }
+      blocked = true;
     }
-    if (!init?.isKind(SyntaxKind.ObjectLiteralExpression)) return "not-a-literal";
-    cur = init;
+    if (stepped) continue;
+    return blocked ? { kind: "blocked" } : { kind: "missing", parent: cur, name: segments.slice(at).join(SEP) };
   }
-  return undefined;
 }
 
 function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssignment | undefined {
@@ -429,19 +449,11 @@ function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssi
  * 새 중간 객체를 만들지 않는 이유: 만들면 파일 안에 두 규약이 섞인다.
  */
 function insert(obj: ObjectLiteralExpression, key: string, value: string, quote: Quote): boolean {
-  const segments = key.split(SEP);
-  let cur: ObjectLiteralExpression = obj;
-  let at = 0;
-  while (at < segments.length - 1) {
-    const prop = propertyNamed(cur, segments[at]!);
-    if (prop === undefined) break;
-    const init = unwrap(prop.getInitializer());
-    // 문자열 자리를 객체로 덮는 것은 구조 변경이다 — 포기한다.
-    if (!init?.isKind(SyntaxKind.ObjectLiteralExpression)) return false;
-    cur = init;
-    at += 1;
-  }
-  const remaining = segments.slice(at).join(SEP);
+  const hit = locate(obj, key.split(SEP));
+  // 찾았거나(호출부가 missing만 넘기므로 실제로는 안 온다) 문자열 자리를 객체로 덮어야 하면 포기한다.
+  if (hit.kind !== "missing") return false;
+  const cur = hit.parent;
+  const remaining = hit.name;
   if (remaining === "") return false;
   const source = cur.getSourceFile().getFullText();
   const start = cur.getStart();

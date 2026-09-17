@@ -168,9 +168,17 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
     nestedByPath[file.path] = fileNested;
     if (fileNested) nested = true;
 
-    const entries: LocaleEntry[] = [];
-    flatten(top, "", entries, errors, file.path);
-    entries.sort((a, b) => compareKeys(a.key, b.key));
+    const flat: LocaleEntry[] = [];
+    flatten(top, "", flat, errors, file.path);
+    // 평탄 키가 두 경로에서 같아질 수 있다 — `errors.messages.blank`가 중첩(`errors: {messages: {blank}}`)과
+    // 점 키(`"errors.messages.blank"`) 양쪽에서 나온다. **마지막이 이긴다**(뒤의 `lastWins`와 같은 규칙)를
+    // 유지하되 사실은 알린다 — write 쪽의 `key-shadowed`와 짝이고, 조용히 하나를 버리는 것이 §1.35의 손실 계열이다.
+    const byKey = new Map<string, LocaleEntry>();
+    for (const e of flat) {
+      if (byKey.has(e.key)) errors.push({ path: file.path, code: "duplicate-key", key: e.key });
+      byKey.set(e.key, e);
+    }
+    const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));
     locales.push({ locale, entries });
   }
 

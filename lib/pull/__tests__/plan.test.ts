@@ -12,34 +12,23 @@ import {
 
 const T = (iso: string) => new Date(iso);
 
-describe("shouldSkipPull — 1층 DB 측 스킵", () => {
-  it("편집이 lastPulledAt 이후면 스킵하지 않는다", () => {
-    expect(shouldSkipPull(T("2026-09-01T10:00:00Z"), T("2026-09-01T09:00:00Z"))).toBe(false);
+describe("shouldSkipPull — 1층 DB 측 스킵 (미발송 술어, sync-edit-protection T0)", () => {
+  it("미발송 편집이 0이면 스킵한다 — 편집 없는 날의 기본 경로", () => {
+    expect(shouldSkipPull(0)).toBe(true);
   });
 
-  it("편집이 lastPulledAt 이전이면 스킵한다 (편집 없는 날의 기본 경로)", () => {
-    expect(shouldSkipPull(T("2026-09-01T09:00:00Z"), T("2026-09-01T10:00:00Z"))).toBe(true);
+  it("미발송 편집이 하나라도 있으면 스킵하지 않는다 (짝)", () => {
+    expect(shouldSkipPull(1)).toBe(false);
+    expect(shouldSkipPull(903)).toBe(false);
   });
 
-  it("같은 시각이면 스킵한다 — 이미 그 시점까지 반영됐다", () => {
-    const t = T("2026-09-01T10:00:00Z");
-    expect(shouldSkipPull(t, new Date(t))).toBe(true);
-  });
-
-  it("첫 pull(lastPulledAt=null)은 스킵하지 않는다 — 아직 아무것도 안 나갔다", () => {
-    expect(shouldSkipPull(T("2026-09-01T10:00:00Z"), null)).toBe(false);
-  });
-
-  it("편집이 0건(maxUpdatedAt=null)이면 스킵한다 — 내보낼 것이 없다", () => {
-    expect(shouldSkipPull(null, T("2026-09-01T10:00:00Z"))).toBe(true);
-  });
-
-  it("편집 0건 + 첫 pull이면 스킵한다 — 빈 DB로 커밋을 만들지 않는다", () => {
-    expect(shouldSkipPull(null, null)).toBe(true);
-  });
-
-  it("밀리초 차이도 편집으로 본다 (updatedAt이 그 해상도로 저장된다)", () => {
-    expect(shouldSkipPull(T("2026-09-01T10:00:00.001Z"), T("2026-09-01T10:00:00.000Z"))).toBe(false);
+  /**
+   * ⚠️ 판정값이 `max(updatedAt)`이 아니라 미발송 **수**인 이유: push가 전 행의 `updatedAt`을 올려
+   * 시각 비교는 사람 편집이 없어도 매일 밤 GitHub을 불렀다. 첫 pull(lastPulledAt=null)도 사람이 만진
+   * 행이 없으면 스킵한다 — "무조건 진행"이던 옛 규칙은 빈 PR을 만들었다.
+   */
+  it("첫 pull이어도 미발송이 0이면 스킵한다 — 빈 DB·push만 된 DB로 커밋을 만들지 않는다", () => {
+    expect(shouldSkipPull(0)).toBe(true);
   });
 });
 

@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/signin/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/relative-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 코드가 아직 서지 않은 항목은 `(미구현)` 표시. 구현하면서 실제 동작과 어긋난 부분을 갱신한다.
 
@@ -11,7 +11,8 @@
 
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
-3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다.
+3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
+   UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -296,7 +297,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백 |
 
     `ProjectFormatColumns.nestedByPath`를 **optional로 두지 않았다** — 껍데기가 `select`에서 빼면 컴파일러가 막는다 (POSTMORTEM 2026-09-02 "공급 계약은 optional로 두지 않는다"). `lib/pull/__tests__/entry-order.test.ts`가 진입점에서 musicblocks 모양을 단언하고 `lib/push/__tests__/flow.test.ts`가 b→c 홉을 SQL 인자로 본다.
-- **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다.
+- **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. ✅ **read 쪽도 같은 규칙이다** (2026-09-17, launch-readiness L1.4): 중첩(`errors: {messages: {blank}}`)과 점 키(`"errors.messages.blank"`)가 같은 평탄 키를 내면 하나만 싣고(마지막이 이긴다 — 적재의 `lastWins`와 같은 규칙) `duplicate-key`로 보고한다. 전에는 둘 다 실어 뒤의 `lastWins`가 조용히 하나를 버렸고, `surveyOne`의 키 충돌 지표가 그 중복을 세고 있었다 — 지금은 그 지표가 `duplicate-key` 에러를 센다.
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.test.ts`가 `contract.ts`의 헬퍼로 그 계약을 `ADAPTERS` 순회로 고정한다(판정과 순회가 갈려 있다 — §1.1): 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
   - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`파일: 문장`, 있을 때만)로 올린다.
@@ -332,6 +333,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
 
 - 없는 키는 **가장 깊은 기존 맵/객체의 끝에** 넣는다. 남은 경로는 리터럴 키 하나로 삽입하며 중간 맵을 새로 만들지 않는다.
+  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다.
 - **결정성**: 추가되는 키를 코드포인트 정렬 순서로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
 - **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
 
@@ -388,7 +390,7 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 ```
 회차별 로그는 지웠고 — `git log`가 든다 — 여기 남는 것은 **판정과 그 근거**다.
 
-**최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다)**
+**최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다. 19차 2026-09-17, launch-readiness L1.4 뒤 재측정: 아래 표가 **한 칸도 안 바뀌었다** — 깊은 점 키 걷기 통일은 결함 케이스의 출력만 바꾸고 코퍼스에 그 모양이 없었다. ⚠️ 19차부터 "키 충돌" 지표가 read의 `duplicate-key` 보고도 세므로 그 수치(학습 454 · 홀드아웃 0)는 이전 회차와 비교하지 않는다)**
 
 | 지표 | 학습 109 | 홀드아웃 20 |
 |---|---|---|
@@ -527,9 +529,11 @@ sha1("blob " + byteLength + "\0" + content)
 
 | 층 | 무엇을 보는가 | 통과 못 하면 |
 |---|---|---|
-| **1. DB 측 스킵** | `Translation.updatedAt` 최대값 vs `Project.lastPulledAt` | **GitHub을 한 번도 부르지 않고 종료** |
+| **1. DB 측 스킵** | **미발송 편집의 수**(`unpublishedWhere` — `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`)가 0인가 | **GitHub을 한 번도 부르지 않고 종료** |
 
-⚠️ **1층의 최대값 쿼리는 인덱스와 짝이다** (2026-09-04). `@@index([projectId, updatedAt])`이 있어야 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
+⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). 지금은 `countUnpublished`와 **같은 where 조각**(`lib/keys/unpublished.ts`)으로 센 수가 0이면 끝이다. 첫 pull(`lastPulledAt = null`)도 사람이 만진 행이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
+
+⚠️ **1층의 두 쿼리는 인덱스와 짝이다** (2026-09-04 · T0 실측 2026-09-17: 미발송 count가 `Translation_projectId_updatedAt_idx` Index Scan을 타고 2,721행 프로젝트에서 3행만 읽었다 — `lastPulledAt`이 null인 첫 pull만 프로젝트 전 행을 훑는다). `@@index([projectId, updatedAt])`이 있어야 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
 
 ⚠️ **그 인덱스의 소비자는 셋이다** (2026-09-11 정정 — 전엔 둘로 적혀 있었다): 1층 판정 · 미배포 집계(`countUnpublished`) · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
@@ -557,13 +561,13 @@ clone하지 않는다.
 2.5 **여기서 파일별 blob을 읽는다** (`GET /git/blobs/{sha}`) — 어느 방식이든 write에 원본이 필요하다. 수술적은 **치환 대상**이(§1.4), 재생성은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프)이 거기서 온다(§1.1). **2026-09-04까지 재생성은 이 단계를 건너뛰었고**, 그 대가가 재생성 리포 71개 중 30개의 "값 편집 0건인데 모든 줄이 바뀌는" diff였다 (§14)
 3. 로컬 export + blob SHA 계산 → 비교. **전부 같으면 종료** (`multi-locale`은 write를 파일별로 부른다)
 4. `POST /git/trees` — **`base_tree`를 반드시 넘긴다.** 빼면 트리가 새로 만들어져 리포의 나머지 파일이 전부 삭제된 커밋이 된다. **항목의 `content`가 blob을 암묵 생성하므로 `POST /git/blobs`를 따로 부르지 않는다** — 파일 8개면 호출 9회가 1회로 줄고, `buildTreePayload`가 이미 `content`를 싣는다
-5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-malmoi-i18n]`
+5. `POST /git/commits` — `parents: [baseHeadSha]`, 메시지에 `[skip-malmoi-i18n]` (PR 제목에도 — 아래)
 6. `PATCH /git/refs/heads/{malmoi-i18n/sync-<slug>}` — `force: true`
 
 결과 `PullResult`에 writer가 버린 항목이 `warnings`로 실린다(있을 때만 — §1.35). 커밋이 없어도(2층 스킵) 실린다.
 
 **커밋이 나갔으면 `pr: "created" | "updated"`가 함께 실린다** (2026-09-08). 재사용 판정은 이미 하고 있었고
-(`findOpenPrUrl`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
+(`findOpenPr`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
 사실이다. **`Project`에 컬럼 둘이 따라온다**: `lastPublishedAt`·`lastPrUrl`은 `committed`일 때만 쓰고
 (`saveLastPulledAt`의 같은 `update` 한 번), `skipped`는 건드리지 않는다. ⚠️ **`lastPulledAt`과 뜻이 다르다** —
 그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계의 기준은
@@ -584,7 +588,7 @@ clone하지 않는다.
 - **force update는 의도된 것이다.** `malmoi-i18n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
   - ⚠️ **그 불변식을 지키는 코드가 커밋 경로에만 있었다** (2026-09-09, 6b-3 T6이 프로덕션에서 찾았다). 2층이 비교하는 것은 **base 트리**이므로 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경 0건이 되고, 그때 커밋을 만들지 않으니 **브랜치는 직전 스냅샷을 그대로 들었다** — 그 PR을 머지하면 되돌린 편집이 리포에 적용된다. **"변경 0건"은 base 대비 0건이고 브랜치 대비 0건이 아니다.** 지금은 그 경로가 sync ref를 읽어 base보다 앞서 있으면 **base head로 되돌린다**(PR은 재사용 규칙대로 열린 채 diff만 0이 된다). 읽기 1회가 늘지만 **편집이 있었던 실행만** 그 줄에 닿으므로 1층 스킵의 "API 0회"는 그대로다.
   - ⚠️ 화면 문구는 아직 그 경우를 구별하지 않는다 — `skipped/no-changes`가 "Nothing to send"라 **사용자의 열린 PR이 방금 비워진 사실을 말하지 않는다** (미해결).
-- **`[skip-malmoi-i18n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다.
+- **`[skip-malmoi-i18n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다. ⚠️ **마커는 커밋 메시지와 PR 제목(`PR_TITLE`) 둘 다에 든다** (2026-09-17, launch-readiness L1.2) — 가드 셋(`action.yml`·워크플로 템플릿·ACTIONS.md)은 `head_commit.message`의 부분 문자열만 보는데, "Create a merge commit"의 그 메시지는 `Merge pull request #N from …\n\n<PR 제목>`이라 커밋 메시지의 마커가 실리지 않는다. 제목에 있으면 세 머지 방식 전부에서 잡힌다(`lib/pull/__tests__/skip-marker.test.ts`가 다섯 모양을 대조하고 소비자 셋의 리터럴을 센다). 재사용하는 PR의 제목에 마커가 없으면 pull이 `PATCH /pulls`로 **원래 제목 뒤에 마커를 덧붙인다**(`withSkipMarker` — 사람이 고친 제목을 기본 제목으로 덮지 않는다; 256자 상한을 넘을 때만 `PR_TITLE`로 폴백). 마커가 있으면 PATCH 자체가 없다. 검사 쪽(둘째 부모 조회)을 고치는 안은 러너 `fetch-depth`와 태그 릴리스를 부르므로 버렸다.
 - **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:malmoi-i18n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다.
 - **⚠️ `multi-locale`의 write는 파일 × 로케일 이중 루프다** (2026-09-01 발견 — 그전 서술은 "파일별"까지만 말했다). `ts-dict.write`는 `currentFiles[0]`만 보고 **`input.locale`로 로케일 객체 하나를 고르므로**, 파일 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 PR에 ko만 바뀐 채 나간다.
 - **⚠️ `malmoi-i18n/sync`를 삭제하면 GitHub이 그 head를 가진 PR을 자동으로 닫는다** (2026-09-01 실측). 첫 실행 경로를 재현하려고 브랜치를 지우면 닫힌 PR이 남고, 다음 pull은 그것을 재사용하지 않고 새로 만든다(`state=open` 필터라 정상). PR 번호가 늘어나는 것을 버그로 오진하지 않는다.
@@ -998,6 +1002,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 **대가는 편집 손실 창이다.** 번역자의 편집은 pull PR이 머지되기 전까지 리포에 없으므로, 그 사이 push가 오면 사라진다. 이 위험을 코드에서 지우려 하면 곧 변경 감지·병합이 되어 코어 원칙을 깬다 — 완화는 pull 주기를 줄이는 쪽에서만 한다.
 
+**"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
+
 **따라서 `Translation.value`의 쓰기 주체는 둘이다**: 편집 UI의 `saveTranslation`과 push. 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다.
 
 ### 5.5.3 보고값은 실제 영향 행수다
@@ -1078,6 +1084,18 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 - **실 DB를 치지 않는다.** prisma 스텁이 태그드 템플릿 인자를 캡처한다 — 실 DB 왕복은 재현 가능한 게이트가 아니다 — 붙는 DB가 머신·환경마다 갈리므로(로컬·Preview는 dev, 프로덕션은 prod) 테스트가 어느 쪽을 쳤는지가 결과를 바꾼다.
 - **컬럼 이름 개수 = 값 배열 개수를 매번 검사한다.** `unnest` 인자 순서가 컬럼 목록과 어긋나면 값이 옆 컬럼으로 들어가는데, 타입이 같으면(`text[]`끼리) 런타임도 조용하다.
 - 덮는 손실 지점: `sortIndex`의 0(falsy), 키 description과 로케일 description의 분리, `placeholders`의 JSON 직렬화, `refs`의 keyId 연결, 빈 값 번역 제외, orphan·unorphan·`needsReview` 전파.
+
+### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
+
+적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이고, 근거가 `docs/features/sync-edit-protection/design.md`에만 있어서 여기로 올렸다.
+
+| 컬럼 | 소유 | 무엇을 막나 |
+|---|---|---|
+| `TranslationSurface.lastImportToken` + `lastImportStartedAt` | 표면 | **뒤늦은 결과 쓰기.** 실행이 시작할 때 UUID를 세우고(`markImportStarted`·`lib/surfaces/create.ts`·`lib/import/run.ts`), 결과 쓰기(`importOutcomeFields`)는 전부 `WHERE lastImportToken = <내 토큰>`이다 — A가 끝난 뒤 B가 시작했으면 A의 늦은 실패 보고는 0행이고 B의 표시를 못 지운다(`lib/push/apply.ts` "성공도 자기 실행만 끝낸다"). 300초(`IMPORT_STALE_AFTER_SECONDS`) 지나면 죽은 실행으로 보고 새 실행이 들어간다 |
+| `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
+| `TranslationSurface.importRevision` | 표면 | **옛 상태 위에 계획한 적용.** 성공한 적용마다 +1(`applyPush`·`finishSurface`). 수동 Sync는 계획 시점의 revision을 잡아 두고 표면마다 적용 tx에서 `planImportApply`가 현재값과 대조한다 — 그 사이 CI push가 지나갔으면 `superseded`로 그 표면만 건너뛴다(값을 견주는 것이 아니라 **"내가 본 상태가 아직 그 상태인가"**만 본다 — §0 불변식 2 안이다) |
+
+⚠️ **`lastImportToken`을 세우는 자리가 트랜잭션 밖이면 이 방어가 뒤집힌다** — `app/api/push/route.ts`의 `markImportStarted`가 그 자리이고, 동시 CI 둘이면 성공한 임포트가 `import-failed`로 표시될 수 있다(launch-readiness L3.7). 잠금 뒤로 옮기는 것이 수정이다.
 
 ## 5.6 sync 실행 (`lib/sync/`)
 

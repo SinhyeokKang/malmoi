@@ -19,15 +19,16 @@ import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 /**
  * GitHub을 한 번도 부르지 않고 끝낼 수 있는가.
  *
- * @param maxUpdatedAt 그 프로젝트 `Translation.updatedAt`의 최대값. 편집이 0건이면 `null`.
- * @param lastPulledAt 마지막으로 성공한 pull의 기준 시각. 첫 pull이면 `null`.
+ * @param unpublished 미발송 편집의 수 — `unpublishedWhere`(`lib/keys/unpublished.ts`)로 센 값.
+ *   `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`이다.
+ *
+ * ⚠️ **`max(updatedAt) > lastPulledAt`이 아니다** (sync-edit-protection T0, 2026-09-17). push가 전 행의
+ * `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 매일 밤 PR을 갱신·되돌렸다 — strict 적재 뒤 첫
+ * cron이 편집 0건인 프로젝트에 GitHub 왕복을 만들었다. 미발송 술어로 판정하면 "사람이 만졌고 마지막
+ * 판정 뒤 바뀐 행"이 0이면 끝이고, 첫 pull도 그 행이 없으면 빈 PR을 만들지 않는다.
  */
-export function shouldSkipPull(maxUpdatedAt: Date | null, lastPulledAt: Date | null): boolean {
-  // 낼 것이 아예 없으면 첫 pull이어도 커밋을 만들지 않는다 — 빈 DB로 파일을 뽑으면 안 된다.
-  if (maxUpdatedAt === null) return true;
-  // 첫 pull은 리포에 아무것도 안 나간 상태다. 무조건 진행한다.
-  if (lastPulledAt === null) return false;
-  return maxUpdatedAt.getTime() <= lastPulledAt.getTime();
+export function shouldSkipPull(unpublished: number): boolean {
+  return unpublished === 0;
 }
 
 // ── 포맷 재조립 ─────────────────────────────────────────────────────────────

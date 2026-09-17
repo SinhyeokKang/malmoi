@@ -117,3 +117,26 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
     expect(w2).toBe(w);
   });
 });
+
+/**
+ * **평탄·중첩 충돌은 read가 보고한다** (launch-readiness L1.4 · audit #20). write는 접두 충돌을 `key-shadowed`로
+ * 알리는데 read는 같은 평탄 키가 두 경로에서 나와도 조용히 둘 다 실었다 — 뒤의 `lastWins`가 하나를 버리고,
+ * 어느 값이 DB에 남았는지 아무도 모른다.
+ */
+describe("평탄·중첩 충돌은 read가 duplicate-key로 보고한다", () => {
+  it("같은 평탄 키가 두 경로에서 나오면 에러 + 마지막이 이긴다", () => {
+    const src = JSON.stringify({ errors: { messages: { blank: "a" } }, "errors.messages.blank": "b" }, null, 2) + "\n";
+    const res = jsonCatalog.read(fmt(), [f("locales/en.json", src)]);
+    expect(res.errors).toContainEqual({ path: "locales/en.json", code: "duplicate-key", key: "errors.messages.blank" });
+    const hits = res.locales[0]!.entries.filter((e) => e.key === "errors.messages.blank");
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.message).toBe("b");
+  });
+
+  it("충돌이 없으면 에러 0 (짝)", () => {
+    const src = JSON.stringify({ errors: { messages: { blank: "a" } }, "errors.messages.other": "b" }, null, 2) + "\n";
+    const res = jsonCatalog.read(fmt(), [f("locales/en.json", src)]);
+    expect(res.errors).toEqual([]);
+    expect(res.locales[0]!.entries).toHaveLength(2);
+  });
+});

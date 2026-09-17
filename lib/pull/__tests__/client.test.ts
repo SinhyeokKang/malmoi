@@ -103,16 +103,15 @@ describe("createFakeGitClient — 쓰기 경로", () => {
 });
 
 describe("createFakeGitClient — PR", () => {
-  it("열린 PR이 있으면 그 URL을 준다", async () => {
-    const { client } = createFakeGitClient({ openPrUrl: "https://github.com/o/r/pull/1" });
-    await expect(client.findOpenPrUrl("o:malmoi-i18n/sync", "dev")).resolves.toBe(
-      "https://github.com/o/r/pull/1",
-    );
+  it("열린 PR이 있으면 URL·번호·제목을 준다", async () => {
+    const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t" };
+    const { client } = createFakeGitClient({ openPr: pr });
+    await expect(client.findOpenPr("o:malmoi-i18n/sync", "dev")).resolves.toEqual(pr);
   });
 
   it("열린 PR이 없으면 null이다 — 생성 경로를 태우는 입력이다", async () => {
     const { client } = createFakeGitClient({});
-    await expect(client.findOpenPrUrl("o:malmoi-i18n/sync", "dev")).resolves.toBeNull();
+    await expect(client.findOpenPr("o:malmoi-i18n/sync", "dev")).resolves.toBeNull();
   });
 
   it("createPr이 URL을 돌려주고 호출이 기록된다", async () => {

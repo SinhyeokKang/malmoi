@@ -9,6 +9,7 @@ import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingModal } from "@/components/ui/modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -125,6 +126,24 @@ function Notice({ icon: Icon, title, children }: { icon: typeof Info; title?: st
     <span className="flex min-w-0 flex-1 flex-col gap-1">
       {title !== undefined && <span className="text-sm font-medium">{title}</span>}
       <span className={title === undefined ? "text-sm leading-[1.7] text-pretty" : "text-muted-foreground text-xs leading-[1.7]"}>{children}</span>
+    </span>
+  </div>;
+}
+
+/**
+ * PR 줄의 조회 중 자리 — 제목 있는 `Notice`와 같은 박스라 준비되면 표가 안 밀린다.
+ *
+ * ⚠️ **`prUnknown`으로 대신하지 않는다** (malmoi#49). 그 문장은 조회가 **실패했다**는 말이라, 로딩에
+ * 세우면 몇 초 동안 일어나지 않은 실패와 "열린 PR을 덮을 수 있다"를 읽힌다.
+ */
+function NoticeSkeleton() {
+  return <div aria-hidden className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
+    <span className="flex h-[17px] shrink-0 items-center"><Skeleton className="size-4 rounded-full" /></span>
+    {/* ⚠️ **막대가 아니라 줄 상자가 높이를 든다** — 제목 20 + 본문 13/1.7(22.1)이 `Notice`의 실측이고,
+        막대 높이로 맞추면 소수 줄 높이가 안 맞아 준비될 때 표가 5px 밀렸다(2026-09-17 실측 71 → 76). */}
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="flex h-5 items-center"><Skeleton className="h-3.5 w-56" /></span>
+      <span className="flex items-center text-xs leading-[1.7]">{"\u200b"}<Skeleton className="h-3 w-full" /></span>
     </span>
   </div>;
 }
@@ -324,7 +343,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-loading":
       title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count);
       body = <>
-        <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
+        <NoticeSkeleton />
         <TableShell>
           <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
           <div className="bg-muted min-h-0 flex-1 animate-pulse" />

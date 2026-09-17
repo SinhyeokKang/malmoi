@@ -756,3 +756,55 @@ describe("yaml-catalog — keep chomping beside preserved blank lines", () => {
     }
   }
 });
+
+/**
+ * **깊이 2 이상의 점 키** — `errors: { "messages.blank": x }`를 read는 `errors.messages.blank`로 낸다. write가
+ * 그 키를 "리터럴 전체 / 전부 split" 둘로만 찾으면 못 찾고 없는 키로 판정해 `errors` 아래에 `"messages.blank"`를
+ * **또** 넣었다 — write마다 중복이 하나씩 늘었다 (launch-readiness L1.4, POSTMORTEM 2026-09-02 재발).
+ * 조회와 삽입이 **각 깊이에서 리터럴 우선으로 내려가는 같은 걷기**를 써야 한다.
+ */
+describe("yaml-catalog — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)", () => {
+  const cases = [
+    ["깊이 2", "ko:\n  errors:\n    \"messages.blank\": old\n    other: keep\n", "errors.messages.blank", '"messages.blank"'],
+    ["깊이 3", "ko:\n  errors:\n    \"messages.blank.title\": old\n", "errors.messages.blank.title", '"messages.blank.title"'],
+    ["실제 중첩과 혼재 — 뒤에 오는 리터럴이 read의 last-wins와 같은 항목", "ko:\n  errors:\n    messages:\n      blank: keep\n    \"messages.blank\": old\n", "errors.messages.blank", '"messages.blank"'],
+    ["앵커가 걸린 맵 아래", "ko:\n  errors: &errs\n    \"messages.blank\": old\n  ref: *errs\n", "errors.messages.blank", '"messages.blank"'],
+    ["대괄호 키", "ko:\n  \"arr[0]\": old\n", "arr[0]", '"arr[0]"'],
+    ["따옴표를 품은 키", "ko:\n  'he said \"x\"': old\n", 'he said "x"', "'he said \"x\"'"],
+  ] as const;
+  const count = (s: string, literal: string) => s.split(literal).length - 1;
+
+  for (const [name, source, key, literal] of cases) {
+    it(`${name}: 값 무변경이면 원본 바이트 그대로`, () => {
+      const res = yamlCatalog.writeWithErrors!(withSource(source), { locale: "ko", entries: [{ key, message: "old" }] });
+      expect(res.errors).toEqual([]);
+      expect(res.content).toBe(source);
+    });
+
+    it(`${name}: 값 변경이면 그 줄만 바뀌고 키는 하나로 남는다`, () => {
+      const input = { locale: "ko", entries: [{ key, message: "new" }] };
+      const res = yamlCatalog.writeWithErrors!(withSource(source), input);
+      expect(res.errors).toEqual([]);
+      const out = res.content!;
+      expect(count(out, literal)).toBe(count(source, literal));
+      const diff = out.split("\n").filter((line, i) => line !== source.split("\n")[i]);
+      expect(diff).toHaveLength(1);
+      const back = yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]);
+      expect(back.errors).toEqual([]);
+      expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
+      expect(yamlCatalog.write(withSource(out), input)).toBe(out);
+    });
+  }
+
+  it("없는 깊은 점 키는 가장 깊은 기존 맵에 리터럴 하나로 넣고, 기존 점 키는 건드리지 않는다", () => {
+    const source = "ko:\n  errors:\n    \"messages.blank\": keep\n";
+    const input = { locale: "ko", entries: [{ key: "errors.messages.other", message: "added" }] };
+    const out = yamlCatalog.write(withSource(source), input)!;
+    expect(count(out, '"messages.blank"')).toBe(1);
+    expect(out).toContain("messages.other");
+    const back = yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]);
+    expect(back.errors).toEqual([]);
+    expect(back.locales[0]?.entries).toContainEqual({ key: "errors.messages.other", message: "added" });
+    expect(yamlCatalog.write(withSource(out), input)).toBe(out);
+  });
+});

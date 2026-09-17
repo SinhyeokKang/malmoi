@@ -92,6 +92,9 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   for (const e of read1.errors) survey.errors[classify(e.code)] += 1;
 
   const allKeys = new Set<string>();
+  // read가 같은 평탄 키를 두 경로에서 만나면 이제 하나만 싣고 `duplicate-key`로 알린다(2026-09-17, L1.4) —
+  // 엔트리를 세는 아래 `duplicateCount`는 그 충돌을 더 이상 못 보므로 에러 쪽에서 센다.
+  survey.keyCollisions += read1.errors.filter((e) => e.code === "duplicate-key").length;
   for (const loc of read1.locales) {
     survey.keyCollisions += duplicateCount(loc, read1.nested);
     for (const e of loc.entries) allKeys.add(e.key);

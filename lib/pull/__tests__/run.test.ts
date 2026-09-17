@@ -60,7 +60,7 @@ function makeDeps(
       project: { ...PROJECT },
 
       surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
     }),
     createClient: async () => client,
     saveLastPulledAt: async (_projectId, at) => {
@@ -80,7 +80,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -98,7 +98,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT },
 
         surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [] }],
-        maxUpdatedAt: null,
+        maxUpdatedAt: null, unpublished: 0,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -115,13 +115,50 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
       syncBranch: "malmoi-i18n/sync",
     });
     expect(writes).toEqual([]);
+  });
+});
+
+describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 (sync-edit-protection T0)", () => {
+  /**
+   * push 직후의 모양: 전 행의 `updatedAt`이 `lastPulledAt`보다 뒤인데 `updatedBy`는 전부 null이다.
+   * 옛 `max(updatedAt)` 비교는 이것을 편집으로 읽어 매일 밤 GitHub을 불렀고, 편집 없는 프로젝트의
+   * PR을 갱신·되돌렸다(spec 문제 2·3).
+   */
+  const pushedState = (unpublished: number): PullState => ({
+    project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") },
+    surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
+    maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+    unpublished,
+  });
+
+  it("push 직후 — updatedAt은 전부 올라갔지만 미발송 0이면 GitHub 호출 0회", async () => {
+    const { client, calls } = createFakeGitClient({});
+    const result = await runPull({
+      loadState: async () => pushedState(0),
+      createClient: async () => client,
+      saveLastPulledAt: async () => {},
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(calls).toEqual([]);
+    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+  });
+
+  it("같은 픽스처에서 셀 하나가 미발송이면 GitHub을 부른다 (짝)", async () => {
+    const { client, calls } = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } });
+    await runPull({
+      loadState: async () => pushedState(1),
+      createClient: async () => client,
+      saveLastPulledAt: async () => {},
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(calls.length).toBeGreaterThan(0);
   });
 });
 
@@ -277,10 +314,43 @@ describe("runPull — 커밋·PR 경로", () => {
       "createCommit",
       "getRefSha",
       "createRef",
-      "findOpenPrUrl",
+      "findOpenPr",
       "createPr",
     ]);
     expect(result).toMatchObject({ status: "committed", pr: "created" });
+  });
+
+  /**
+   * 가드 셋은 `head_commit.message`만 보고, merge commit의 그 메시지는 PR 제목이 둘째 문단이다 — 제목에
+   * 마커가 없으면 그 머지 방식에서 push가 DB를 덮는다 (launch-readiness L1.2, `skip-marker.test.ts`).
+   */
+  it("PR 제목에 [skip-malmoi-i18n]이 있다", async () => {
+    const { deps, calls } = makeDeps();
+    await runPull(deps);
+    expect(calls.find((c) => c.method === "createPr")?.args[2]).toContain(SKIP_MARKER);
+  });
+
+  it("재사용하는 PR 제목에 마커가 없으면 **원래 제목에 마커를 덧붙인다** — 사람이 고친 제목을 버리지 않는다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: "Translations for 2.0" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    const patch = calls.find((c) => c.method === "updatePrTitle");
+    expect(patch?.args).toEqual([7, `Translations for 2.0 ${SKIP_MARKER}`]);
+  });
+
+  it("재사용하는 PR 제목에 마커가 있으면 건드리지 않는다 — 사람이 고친 제목도 마커만 남았으면 유지 (짝)", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `Translations for 2.0 ${SKIP_MARKER}` },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("updatePrTitle");
   });
 
   /**
@@ -292,7 +362,7 @@ describe("runPull — 커밋·PR 경로", () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
-      openPrUrl: "https://github.com/o/r/pull/7",
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}` },
     });
     const { deps } = makeDeps({}, { client, calls });
     expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
@@ -332,7 +402,7 @@ describe("runPull — 커밋·PR 경로", () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
-      openPrUrl: "https://github.com/o/r/pull/7",
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}` },
     });
     const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
@@ -343,7 +413,7 @@ describe("runPull — 커밋·PR 경로", () => {
   it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPrUrl")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
+    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
   });
 
   it("성공하면 lastPulledAt을 캡처 값으로 갱신한다", async () => {
@@ -389,7 +459,7 @@ describe("runPull — 실패 처리", () => {
         project: { ...PROJECT, installationId: null },
 
         surfaces: [{ ...({ ...PROJECT, installationId: null }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -433,7 +503,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -453,7 +523,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -517,7 +587,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "하나!" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -557,7 +627,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "비!" }, en: { value: "bee!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -591,7 +661,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -616,7 +686,7 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
           { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
           { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
       }),
     });
     const result = await runPull(deps);
