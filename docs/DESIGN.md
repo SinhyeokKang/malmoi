@@ -1066,6 +1066,13 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
   `maskedInviteLabels`로 **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 — 충돌이 없으면 출력이 `maskEmail`과
   같다(§6.1 "가장 흔한 상태가 가장 조용하다").
 - **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
+- ⚠️ **행을 지우는 성공(제거·철회) 뒤 포커스는 그 표의 제목으로 간다** (2026-09-17,
+  [malmoi#51](https://github.com/SinhyeokKang/malmoi/issues/51)). 포커스를 쥔 행이 사라지면 브라우저가
+  `body`로 떨어뜨린다. **이웃 행이 아닌 이유**: 마지막 행을 지우면 없고, 제목은 대기 초대가 `EmptyState`로
+  접혀도 남는다. 제목은 `tabIndex={-1}` + `outline-none`(착지점이지 컨트롤이 아니다)이고, 결과는 표마다
+  **상시 마운트된** `role="status"` 한 줄이 대상 이름과 함께 한 번 읽는다 — 텍스트와 함께 새로 붙는
+  live 영역은 스크린 리더가 놓치고, 빈 상태 갈래 **밖**에 있어야 마지막 철회도 읽힌다. **역할 변경은
+  옮기지 않는다** — 행이 남아 포커스가 셀렉트에 그대로 있다. 실패는 기존대로 행 옆 `Alert`가 답한다.
 - **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
   대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
 
