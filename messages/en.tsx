@@ -1702,6 +1702,8 @@ export const en = {
     /** 보이는 텍스트. 아래 `removeLabel`이 그것을 **포함**해야 한다 (WCAG 2.5.3 Label in Name). */
     remove: "Remove",
     removeLabel: (who: string): string => `Remove ${who}`,
+    /** 행이 사라진 뒤 한 번 읽히는 결과 (malmoi#51) — 포커스가 제목으로 가므로 무엇이 됐는지는 이 문장이 든다. */
+    removed: (who: string): string => `Removed ${who}`,
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
     confirmRemove: (who: string): string => `Remove ${who} from this project?`,
     confirmRemoveHint: "They lose access right away. Their past edits stay.",
@@ -1730,6 +1732,7 @@ export const en = {
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */
       revokeLabel: (who: string): string => `Revoke invitation for ${who}`,
+      revoked: (who: string): string => `Revoked the invitation for ${who}`,
       revokeFailed: (reason: string): string => `Couldn't revoke that invitation: ${reason}`,
       empty: {
         title: "No pending invitations",

@@ -45,6 +45,21 @@ const INVITE = "components/members/invite-dialog.tsx";
 const PENDING = "components/members/pending-invitations.tsx";
 
 describe("멤버 화면 — 페이지", () => {
+  /**
+   * **행을 지운 뒤의 포커스 착지점이 실제로 존재한다** (malmoi#51 · 2026-09-17 code-review 🟡1).
+   *
+   * ⚠️ `members-focus.test.tsx`는 제목을 **자기가** 그려서 잰다 — 페이지의 `id`와 `headingId`가 갈라져도
+   * green이다. 갈라지면 `getElementById`가 `null`이고 `?.`가 조용히 넘어가 포커스가 다시 `body`로 빠진다.
+   */
+  it.each([["MemberList", "h1"], ["PendingInvitations", "h2"]])("%s의 headingId가 같은 페이지의 %s id이고 그 제목이 포커스를 받는다", (component, tag) => {
+    const src = read(PAGE);
+    const passed = new RegExp(`<${component}\\b[^>]*headingId="([^"]+)"`).exec(src)?.[1];
+    expect(passed).toBeDefined();
+    const heading = new RegExp(`<${tag}\\b[^>]*\\bid="${passed}"[^>]*>`).exec(src)?.[0];
+    expect(heading).toBeDefined();
+    expect(heading).toMatch(/tabIndex=\{-1\}/);
+  });
+
   it("최상단에서 requireProjectAccess를 던진다 — 조건부 렌더는 차단이 아니다", () => {
     const src = read(PAGE);
     expect(src).toContain("requireProjectAccess");
