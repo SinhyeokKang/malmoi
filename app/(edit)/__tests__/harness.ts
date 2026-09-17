@@ -127,6 +127,7 @@ export type TranslationSeed = {
   needsReview: boolean;
   updatedBy: string | null;
   updatedAt: Date;
+  pendingEditToken?: string | null;
 };
 
 export type LocaleSeed = { projectId: string; surfaceId?: string | null; code: string; isBase?: boolean; orphaned?: boolean };
@@ -1171,8 +1172,10 @@ export function createHarness(seed: Seed = {}) {
           projectId: string;
           value?: { not: string };
           stringKey?: { orphaned?: boolean };
+          locale?: { orphaned?: boolean };
+          pendingEditToken?: { not: null };
         } & ScopedWhere;
-        select?: { localeCode?: boolean; needsReview?: boolean };
+        select?: { localeCode?: boolean; needsReview?: boolean; id?: boolean; pendingEditToken?: boolean };
       }) => {
         const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
         const rows = translations.filter((t) => {
@@ -1182,6 +1185,11 @@ export function createHarness(seed: Seed = {}) {
           if (where.value !== undefined && t.value === where.value.not) return false;
           const wantOrphaned = where.stringKey?.orphaned;
           if (wantOrphaned !== undefined && (key.orphaned ?? false) !== wantOrphaned) return false;
+          // 토큰 술어(`pendingWhere`) — 무시하면 Publish 캡처가 토큰 없는 셀까지 `undefined` 토큰으로 싣는다.
+          if (where.pendingEditToken !== undefined && (t.pendingEditToken ?? null) === null) return false;
+          const localeOrphaned = where.locale?.orphaned;
+          if (localeOrphaned !== undefined &&
+            (locales.find(l => l.projectId === key.projectId && l.surfaceId === t.surfaceId && l.code === t.localeCode)?.orphaned ?? false) !== localeOrphaned) return false;
           return true;
         });
         // ⚠️ `select` 밖의 필드를 흘리지 않는다 — 하네스가 관대하면 화면이 안 받은 값을 쓰게 된다.
@@ -1189,6 +1197,9 @@ export function createHarness(seed: Seed = {}) {
         return rows.map((t) => ({
           ...(select.localeCode === true ? { localeCode: t.localeCode } : {}),
           ...(select.needsReview === true ? { needsReview: t.needsReview } : {}),
+          // 시드 행에는 id가 없다 — 실제 테이블의 `@@unique([keyId, localeCode])`와 같은 축으로 만든다.
+          ...(select.id === true ? { id: `${t.keyId}:${t.localeCode}` } : {}),
+          ...(select.pendingEditToken === true ? { pendingEditToken: t.pendingEditToken ?? null } : {}),
         }));
       },
       aggregate: async ({ where }: { where: { projectId: string } }) => {

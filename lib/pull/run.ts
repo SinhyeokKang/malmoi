@@ -33,6 +33,9 @@ export type PullProject = {
   lastPulledAt: Date | null;
 };
 
+/** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection design §2). 원문은 서버 밖으로 나가지 않는다. */
+export type PendingEdit = { id: string; token: string };
+
 export type PullState = {
   project: PullProject;
   surfaces: (ProjectFormatColumns & { id: string; slug: string; localeCodes: string[]; keys: RenderKey[] })[];
@@ -40,6 +43,8 @@ export type PullState = {
   maxUpdatedAt: Date | null;
   /** 미발송 편집의 수(`unpublishedWhere`). 1층 스킵의 판정값이다 — `maxUpdatedAt`이 아니다 (T0). */
   unpublished: number;
+  /** 같은 스냅샷의 `pendingWhere` 셀. `committed`·`no-changes`에서만 해제 쓰기에 실린다. */
+  pendingEdits: readonly PendingEdit[];
 };
 
 export type PullDeps = {
@@ -49,7 +54,7 @@ export type PullDeps = {
    * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
    * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
    */
-  saveLastPulledAt(projectId: string, at: Date, published?: { prUrl: string }): Promise<void>;
+  saveLastPulledAt(projectId: string, at: Date, published: { prUrl: string } | undefined, delivered: readonly PendingEdit[]): Promise<void>;
   syncBranch: string;
 };
 
@@ -77,7 +82,7 @@ export type PullResult =
 const BLOB_CONCURRENCY = 8;
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt, unpublished } = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits } = await deps.loadState();
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
   if (shouldSkipPull(unpublished)) {
@@ -190,7 +195,9 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // ⚠️ **되돌리기보다 뒤에 쓴다** — 아래 커밋 경로와 같은 순서다. force가 실패했는데 먼저 쓰면
     // 그 편집이 1층에 걸려 다음 실행이 스킵하고, 브랜치는 옛 스냅샷 그대로 남는다.
     // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
-    await deps.saveLastPulledAt(project.id, captured);
+    // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
+    // (sync-edit-protection design §6.1 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
+    await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);
     return { status: "skipped", reason: "no-changes", ...withWarnings };
   }
 
@@ -230,7 +237,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
   // **보낸 것의 링크가 새로고침을 넘어야 한다** — cron 경로도 여기를 지나므로 야간 pull이 만든 PR도 남는다.
-  await deps.saveLastPulledAt(project.id, captured, { prUrl });
+  await deps.saveLastPulledAt(project.id, captured, { prUrl }, pendingEdits);
 
   return {
     status: "committed",

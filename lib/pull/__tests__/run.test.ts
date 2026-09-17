@@ -60,7 +60,7 @@ function makeDeps(
       project: { ...PROJECT },
 
       surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+      maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
     }),
     createClient: async () => client,
     saveLastPulledAt: async (_projectId, at) => {
@@ -80,7 +80,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -98,7 +98,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT },
 
         surfaces: [{ ...({ ...PROJECT }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [] }],
-        maxUpdatedAt: null, unpublished: 0,
+        maxUpdatedAt: null, unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -115,7 +115,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
         project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") },
 
         surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T11:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 0, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
@@ -135,7 +135,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
     project: { ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") },
     surfaces: [{ ...({ ...PROJECT, lastPulledAt: new Date("2026-09-01T09:00:00Z") }), id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }],
     maxUpdatedAt: new Date("2026-09-01T10:00:00Z"),
-    unpublished,
+    unpublished, pendingEdits: [],
   });
 
   it("push 직후 — updatedAt은 전부 올라갔지만 미발송 0이면 GitHub 호출 0회", async () => {
@@ -459,7 +459,7 @@ describe("runPull — 실패 처리", () => {
         project: { ...PROJECT, installationId: null },
 
         surfaces: [{ ...({ ...PROJECT, installationId: null }), id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -503,7 +503,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -523,7 +523,7 @@ ko:
         project: yamlProject,
 
         surfaces: [{ ...(yamlProject), id: "s1", slug: "default", localeCodes: ["ko"], keys: [{ key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" } } }] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -587,7 +587,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "하나!" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -627,7 +627,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "비!" }, en: { value: "bee!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -661,7 +661,7 @@ export const ns = { ko, en };
             cells: { ko: { value: "" }, en: { value: "one!" } },
           },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
@@ -686,7 +686,7 @@ describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
           { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
           { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
         ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1,
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),
     });
     const result = await runPull(deps);

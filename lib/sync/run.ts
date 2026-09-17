@@ -116,6 +116,8 @@ async function startRun(
       running,
       lastSettled: settledAt === null ? null : { finishedAt: settledAt },
       trigger,
+      // 수동 Sync와의 배제는 배포 B(sync-edit-protection T9)에서 연결한다 — 배포 A는 사용자 흐름을 바꾸지 않는다.
+      activeImport: null,
     });
     if (gate.status === "already-running") {
       return { status: "rejected", outcome: { status: "failed", error: "already-running", delivery: "not-started", retryable: false } };

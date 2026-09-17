@@ -98,7 +98,8 @@ const cellId = (projectId: string, key: string, locale: string) => `${projectId}
 
 async function cell(projectId: string, key: string, locale: string) {
   const { rows } = await pool.query<{ value: string; updatedBy: string | null; pendingEditToken: string | null }>(
-    `SELECT "value", "updatedBy", "pendingEditToken" FROM "Translation" WHERE "id" = $1`, [cellId(projectId, key, locale)]);
+    // 키·로케일로 찾는다 — 적재가 만든 행은 id가 UUID다.
+    `SELECT "value", "updatedBy", "pendingEditToken" FROM "Translation" WHERE "keyId" = $1 AND "localeCode" = $2`, [`${projectId}-${key}`, locale]);
   return rows[0];
 }
 

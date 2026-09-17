@@ -43,7 +43,9 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
       project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner ||
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();
-    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces });
+    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces,
+      // Publish와의 배제는 배포 B(sync-edit-protection T9)에서 연결한다 — 배포 A는 사용자 흐름을 바꾸지 않는다.
+      runningSync: null });
     if (!plan.ok) return plan;
     const token = randomUUID();
     await tx.project.update({ where: { id: project.id }, data: { repositoryImportToken: token, repositoryImportStartedAt: startedAt } });
