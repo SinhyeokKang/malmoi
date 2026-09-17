@@ -1072,7 +1072,7 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
   접혀도 남는다. 제목은 `tabIndex={-1}` + `outline-none`(착지점이지 컨트롤이 아니다)이고, 결과는 표마다
   **상시 마운트된** `role="status"` 한 줄이 대상 이름과 함께 한 번 읽는다 — 텍스트와 함께 새로 붙는
   live 영역은 스크린 리더가 놓치고, 빈 상태 갈래 **밖**에 있어야 마지막 철회도 읽힌다. **역할 변경은
-  옮기지 않는다** — 행이 남아 포커스가 셀렉트에 그대로 있다. 실패는 기존대로 행 옆 `Alert`가 답한다.
+  옮기지 않는다** — 행이 남아 포커스가 셀렉트에 그대로 있다. 실패는 기존대로 행 옆 `Alert`가 답하고, ⚠️ **포커스는 그 행의 [Remove]·[Revoke]로 돌아간다** (2026-09-17, [malmoi#53](https://github.com/SinhyeokKang/malmoi/issues/53)) — 실행 중 버튼이 `loading`(= `disabled`)이라 브라우저가 포커스를 `body`로 떨어뜨리고, 되돌리지 않으면 행 옆 Alert에 페이지 맨 위부터 다시 걸어 와야 닿는다.
 - **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
   대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
 
