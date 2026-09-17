@@ -1,8 +1,8 @@
-import { Box, Plus, SearchX, type LucideIcon } from "lucide-react";
+import { Box, SearchX, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ButtonLink } from "@/components/ui/button";
+import { NewProjectButton } from "@/components/projects/new-project-button";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
@@ -71,10 +71,7 @@ export function EmptyProjects() {
       title={m.projects.empty.title}
       description={m.projects.empty.description}
       action={
-        <ButtonLink variant="primary" href={routes.newProject()}>
-          <Plus aria-hidden />
-          {m.common.nav.newProject}
-        </ButtonLink>
+        <NewProjectButton />
       }
     />
   );

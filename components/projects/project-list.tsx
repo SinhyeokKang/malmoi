@@ -6,7 +6,6 @@ import {
   GitMerge,
   GitPullRequest,
   GitPullRequestArrow,
-  Plus,
   TriangleAlert,
   Unplug,
 } from "lucide-react";
@@ -17,10 +16,10 @@ import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-proj
 import { LocaleMeter } from "@/components/projects/locale-meter";
 import { ProjectSearch } from "@/components/projects/search-input";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
@@ -139,10 +138,7 @@ export function ProjectList({
               <div className="ml-auto">
                 <ProjectSearch q={q} />
               </div>
-              <ButtonLink variant="primary" href={routes.newProject({ q })}>
-                <Plus aria-hidden />
-                {m.common.nav.newProject}
-              </ButtonLink>
+              <NewProjectButton q={q} />
             </>
           )}
         </div>
