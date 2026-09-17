@@ -73,6 +73,7 @@
   - 검증(자동, PG — `lib/keys/__tests__/push-absent-cells.integration.ts`): 네 갈래 각각 DB 셀 **유지** — `""` · 키 부재 · 로케일 파일 부재(payload `locales`에 없음) · orphaned 키. **같은 픽스처에서 값이 있는 셀은 덮어씀 + `updatedBy = NULL`** 대조. 뒤이은 pull 계획이 유지된 셀을 그대로 내는 것까지.
   - 검증(자동): `lib/push/apply.ts`를 건드리면 `pnpm test:projects:postgres` green.
   - 흡수: 옛 L7.6의 "수술적 어댑터의 셀 비우기 의미가 `writeStrategy`마다 갈림"은 같은 결정이다 — 위 문장이 그것도 덮는지 §1 표현 보존 절에서 확인하고 갈리면 한 줄 더.
+  - ✅ **문서 부분 완료(2026-09-17)** — ARCHITECTURE §0 불변식 3·§5.5.2, `apply.ts` 주석, PRODUCT §10. **남은 것**: PG 테스트 네 갈래 + `writeStrategy` 확인.
 - [ ] L1.4 yaml-catalog·code-dict에서 **깊이 2 이상의 점(.) 포함 키**가 write마다 중복 삽입되는 것을 막는다. `lib/adapters/yaml-catalog.ts:367,472` · `lib/adapters/code-dict.ts:388,444` — 조회가 "전체 리터럴 / 전체 split" 둘만 시도해 `errors: { "messages.blank": x }`는 둘 다 실패 → `missing` → `insertPath`가 `errors` 아래 리터럴을 **또** 넣는다(2026-09-17 재검증). `:365-366` 주석이 "리터럴 먼저 본다"고 안전을 주장하는 바로 아래다. (audit #3, POSTMORTEM 2026-09-02 "구분자가 데이터에도 있어서" 재발)
   - 방향: 조회를 **각 깊이에서 리터럴 우선으로 내려가는 걷기 하나**로 바꾸고 `findScalar`·`insertPath`·`insert` 넷이 같은 걷기를 쓴다 — 조회와 삽입이 다른 규칙으로 걸으면 중복이 다시 생긴다.
   - 검증(자동, 재현 먼저): `ko: { errors: { "messages.blank": x } }` 픽스처로 값 무변경 write → **원본 바이트 동일**, 값 변경 write → 그 줄만 바뀜, 재read에 `duplicate-key` 없음. code-dict는 `{ el: { 'a.b': 'x' } }`로 같은 셋. 누락 케이스: 깊이 3 · 점 키와 실제 중첩 혼재(`errors.messages.blank` vs `errors: {messages: {blank}}` 공존) · `[`·따옴표 포함 키 · YAML anchor/alias.
@@ -129,6 +130,7 @@
   - 검증(수동, `/bugshot-qa`): 세션 쿠키를 지우고 Publish 클릭(POSTMORTEM 2026-09-08 절차) → `Sign in`.
 - [ ] L3.4 보관된 프로젝트에 쓰는 Action(🔒 제거 — PRODUCT §7.9:598-601이 CI push를 409로 막는 이유가 "보관 중에 번역이 조용히 바뀌기"다). `runFirstIngest`(`actions.ts:1066-1095`)는 `applyPush`로 번역을 덮는데 `archivedAt`을 안 본다(`addSurface:1016`·`runRepositoryImport:1210`은 본다) → **거부**. 피해는 `apply.ts:110` 가드로 막히지만 스냅샷 다운로드 뒤 `ingest-failed`로 오진한다. `updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken`은 번역을 안 바꾸므로 **허용**. §7.9에 "번역을 바꾸는 쓰기는 보관 중 거부, 설정 쓰기는 허용" 한 줄. (audit #18)
   - 검증(자동, 재현 먼저): 보관 프로젝트에서 `runFirstIngest` → 거부(지금은 `ingest-failed`가 나오는 red), 설정 넷 → 성공, **활성 프로젝트 → `runFirstIngest` 성공** 대조.
+  - ✅ **PRODUCT §7.9 문장 완료(2026-09-17)**. **남은 것**: `runFirstIngest`의 거부 + 테스트.
 - [ ] L3.5 `lib/push/apply.ts:243-248` — `needsReview` 전파 UPDATE가 `updatedAt`만 올리고 `updatedBy`는 그대로라(같은 파일 `:290` upsert는 `NULL`로 비운다 — push 쪽 쓰기 둘이 다르다), 이미 PR로 보낸 편집이 "안 보낸 편집"으로 다시 잡힌다. POSTMORTEM 2026-09-15 `:1732`의 전제("두 컬럼 — `needsReview`·`updatedBy` — 은 배타적으로만 채워진다")가 이 경로에서 거짓이다 — 정정 문장: "push의 `needsReview` 전파는 `updatedBy`를 비우지 않아 두 컬럼이 한 행에 공존할 수 있었다(2026-09-17 수정)". SQL 한 줄 수정이라 순수 판정은 없다. (audit #19)
   - 검증(자동, PG): Publish → 원문 변경 push → 그 셀이 미발송 술어 **네 사본 + 하네스**(L3.10 선행) 모두에서 제외, **원문 변경 후 번역자가 다시 저장 → 포함** 대조. `pnpm test:projects:postgres` green.
 - [ ] L3.6 어댑터 잠재 결함. (audit #20)
@@ -148,7 +150,7 @@
   - 검증(자동): 두 자리 모두 로그 인자에 `error.message` 원문이 없음(스파이), **갈래 이름은 있음** 대조.
 - [ ] L3.10 미발송 술어는 **프로덕션 넷**(`lib/keys/view.ts:414` `isUnpublished` · `query.ts:180` `countUnpublished` · `query.ts:573` 목록 raw SQL · `lib/publish/read.ts:19`) **+ 하네스 하나**(`app/(edit)/__tests__/harness.ts:914,1108`)다. `test:projects:postgres`(`list-aggregates.integration.ts:313,466`)는 ①②③만 대조한다 — **④는 PR에 실제로 실리는 행을 정하는 사본**이라 가장 먼저 대조에 넣어야 한다. `readPublishPreview`가 GitHub 호출(`read.ts:26-28`)을 섞고 있어 `where` 빌더를 먼저 순수 함수로 분리해야 대조 가능. 갱신 대상: `CLAUDE.md:140` "세 벌" · `lib/keys/query.ts:563-564` 주석 · `app/(edit)/__tests__/queries.test.ts:123`. (audit #24)
   - 검증(자동, PG): 다섯이 같은 행을 센다 — 보관 표면·orphan 로케일·orphan 키 포함 픽스처. 어느 하나에서 조건 하나를 지우면 red(리포에 남는 동등성 단언).
-- [ ] L3.11 `TranslationSurface.archivedAt`(🔒 제거 — `PRODUCT.md:270` "표면 보관·복원은 다음 라운드"가 이미 결정). **유지한다.** 쓰기 0(`schema.prisma:100`)·읽기 ~40곳·술어 넷이 걸린 컬럼을 런칭 직전에 떼면 `/merge` 1단계 "prod 먼저 넓힌다" 순서를 이 건만 뒤집어야 하고(코드 제거 배포 → 다음 라운드 drop), 이득이 0이다. `20260914070000_finalize_translation_surfaces/migration.sql:10` 가드도 그 컬럼을 참조한다. (audit #24)
+- [x] L3.11 (2026-09-17 완료) `TranslationSurface.archivedAt`(🔒 제거 — `PRODUCT.md:270` "표면 보관·복원은 다음 라운드"가 이미 결정). **유지한다.** 쓰기 0(`schema.prisma:100`)·읽기 ~40곳·술어 넷이 걸린 컬럼을 런칭 직전에 떼면 `/merge` 1단계 "prod 먼저 넓힌다" 순서를 이 건만 뒤집어야 하고(코드 제거 배포 → 다음 라운드 drop), 이득이 0이다. `20260914070000_finalize_translation_surfaces/migration.sql:10` 가드도 그 컬럼을 참조한다. (audit #24)
   - 할 일: `schema.prisma:100`에 주석(`Project.archivedAt` `:71-78`에는 있고 여기엔 없다) — "쓰는 곳 0, 표면 보관 라운드에서 연다(PRODUCT §7.2)".
   - 검증(수동): `grep -n archivedAt prisma/schema.prisma`에 주석 두 곳.
 
@@ -192,9 +194,9 @@
 
 - [ ] L6.1 "리포·App private" 전제 제거: `docs/ACTIONS.md:9,11,76-77` · `CLAUDE.md:171,232` · `README.md:63` · `.claude/commands/merge.md:7` · `.claude/commands/push.md:9` · `.github/actions/malmoi-i18n-push/action.yml:7-9`(주석 — 태그 릴리스와 묶는다). **브랜치 프로텍션(결정됨)**: `main`에 required check `verify`만 켠다 — `/merge`는 PR 경로라 안 걸리고 `/sync`는 dev를 밀어 안 걸리며, CLAUDE.md:217 "다른 창구가 main을 직접 친 경우"의 구멍만 닫힌다. 고칠 문서는 PRODUCT가 아니라 CLAUDE.md:206·217. (audit #35)
   - 검증(수동): `grep -rn "private" docs CLAUDE.md README.md .claude/commands` 결과를 한 줄씩 판정 → 남는 것은 "private이었다"는 과거형뿐. `pnpm sync:agents:check`. `gh api repos/SinhyeokKang/malmoi/branches/main/protection --jq .required_status_checks.contexts` → `["verify"]`.
-- [ ] L6.2 코어 모듈 목록 둘(`docs/ARCHITECTURE.md:3` · `.claude/commands/push.md:110`)에 `lib/publish/` 추가(`lib/search-params.ts` 판정 포함). (audit #36)
+- [x] L6.2 (2026-09-17 완료 — `lib/search-params.ts`·`utils.ts`는 잎 유틸이라 목록 밖) 코어 모듈 목록 둘(`docs/ARCHITECTURE.md:3` · `.claude/commands/push.md:110`)에 `lib/publish/` 추가(`lib/search-params.ts` 판정 포함). (audit #36)
   - 검증(수동): `ls lib` ↔ 두 목록 diff 0.
-- [ ] L6.3 문서끼리 모순 — 항목마다 정본 하나를 정하고 **나머지가 0건이 되는 grep**을 적는다: (audit #37)
+- [x] L6.3 (2026-09-17 완료) 문서끼리 모순 — 항목마다 정본 하나를 정하고 **나머지가 0건이 되는 grep**을 적는다: (audit #37)
   - GitHub OAuth 앱 개수: 정본 `CLAUDE.md:149` "하나" → `README.md:65` · `PRODUCT.md:194` · `.env.example:107` · `push.md:180` 갱신. grep `rg -n "OAuth 앱.*셋|three OAuth" README.md docs .env.example .claude` → 0.
   - `.claude/commands/audit.md:121` "RLS 없음 — 유일한 방어선" → CLAUDE.md의 "GRANT 0 + 탐지" 문장으로. grep `rg -n "유일한 방어선" .claude/commands` → 0.
   - PRODUCT §10 미결 목록 안의 결정 항목(`:626`)과 `docs/ACTIONS.md:19`가 가리키는 없는 항목 → grep 결과 링크 대상 실재.
@@ -202,7 +204,7 @@
   - `README.md:7` "원격 배포 대기" → 삭제. `lib/github-connect/origin.ts:41`의 셋째 호스트 문서 부재 → CLAUDE.md 브랜치 정책에 한 줄.
 - [ ] L6.4 숫자·목록: `docs/DIRECTORY.md:25` 예외 아홉(실제 10+1) · `:348` 12테이블(13) · `:61-62` 열둘(16) · `CLAUDE.md:223` 여섯 개(8) · DIRECTORY 미등재(`app/api/auth/[...nextauth]/` · `app/(edit)/publish-actions.ts` · components 루트 6개 · `components/projects/search-input.tsx` · `prisma/maintenance/` · `prisma/__tests__/` · `.github/actions/malmoi-i18n-push/` · vitest 설정 둘 · `types/next-auth.d.ts`) · `DIRECTORY.md:352-353` `smoke-blob` · CLAUDE.md 데이터 경로 표에 `app/api/push/failure/route.ts`·`publish-actions.ts`·L2.4의 `setup/route.ts` · 명령 표에 `credentials:finalize:*`·push:local `--surface`/`--path-template`·adapter-survey `--limit`/`--jobs` · `prisma/schema.prisma`의 `docs/MVP.md`·"SAAS §8" 참조 · `docs/ARCHITECTURE.md:5` 죽은 `(미구현)` 범례. 수치는 가능하면 문장에서 빼고 테스트가 센다(POSTMORTEM 2026-09-15). (audit #38)
   - 검증(수동): `/doc-check`로 대조.
-- [ ] L6.5 근거를 정본으로 올린다: `needsReview`("To review")가 비범위 승인 워크플로가 아니라는 것을 PRODUCT에 · `repositoryImportToken`·`lastImportToken`·`importRevision`의 근거를 ARCHITECTURE §5.5/§5.6으로(지금은 `sync-edit-protection/design.md`에만 있다). sync-edit-protection 디렉터리는 L1.5가 끝날 때 그 문서의 T19가 지운다. (audit #39)
+- [x] L6.5 (2026-09-17 완료 — PRODUCT §4.2 `needsReview` 문장, ARCHITECTURE §5.5.7 신설) 근거를 정본으로 올린다: `needsReview`("To review")가 비범위 승인 워크플로가 아니라는 것을 PRODUCT에 · `repositoryImportToken`·`lastImportToken`·`importRevision`의 근거를 ARCHITECTURE §5.5/§5.6으로(지금은 `sync-edit-protection/design.md`에만 있다). sync-edit-protection 디렉터리는 L1.5가 끝날 때 그 문서의 T19가 지운다. (audit #39)
   - 검증(수동): `grep -rn "sync-edit-protection" docs prisma lib` → L1.5 완료 뒤 정본 참조만 남음.
 
 ## R7 — 컨벤션·정리 (🟡·⚪)
