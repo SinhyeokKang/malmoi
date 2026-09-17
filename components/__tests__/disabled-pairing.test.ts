@@ -51,13 +51,19 @@ const utilities = (source: string, prefix: string): Set<string> =>
 /**
  * ⚠️ **짝이 어긋나는 것을 막는 것이 이 파일의 본체다.** variant를 새로 만드는 사람은 `disabled:`만
  * 적고, 그 순간 `<a>`·Radix 트리거 쪽만 조용히 다른 모양이 된다 — 화면에도 테스트에도 안 나타난다.
+ *
+ * ⚠️ **`hover:`는 양방향 모두 예외다** (2026-09-17 실측). 브라우저는 진짜 `disabled`에 hover를 안
+ * 태우므로 `disabled:hover:*`는 **한 번도 적용된 적 없는 죽은 규칙**이고, `aria-disabled`에서는
+ * 타므로 그쪽엔 규칙이 **반드시** 필요하다. 즉 두 축은 같은 값일 수 없다 — `disabled:hover:bg-transparent`를
+ * 그대로 복제했다가 `default`·`danger`의 배경이 흰색에서 투명으로 떨어지는 것을 브라우저 computed
+ * style이 잡았다. **짝을 강제하면 그 복제를 도로 강요하게 된다.**
  */
-it("buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이 있다", () => {
+it("buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이 있다 (hover: 제외)", () => {
   const source = read(BUTTON);
   const real = utilities(source, "disabled");
   const aria = utilities(source, "aria-disabled");
   expect(real.size).toBeGreaterThan(0);
-  expect([...real].filter((u) => !aria.has(u)).sort()).toEqual([]);
+  expect([...real].filter((u) => !aria.has(u) && !u.startsWith("hover:")).sort()).toEqual([]);
 });
 
 /**

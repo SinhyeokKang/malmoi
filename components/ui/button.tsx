@@ -78,13 +78,19 @@ export const buttonClass = cva(
         default: cn(
           "border-input bg-background text-foreground hover:bg-primary-foreground border",
           "disabled:text-muted-foreground disabled:hover:bg-transparent",
-          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-transparent",
+          // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
+          //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
+          //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
+          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
         // ⚠️ `bg-destructive`가 없다 — destructive는 **글자색 전용**이다 (§2.3).
         danger: cn(
           "border-destructive/40 text-destructive hover:bg-destructive/5 bg-background border",
           "disabled:text-muted-foreground disabled:hover:bg-transparent",
-          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-transparent",
+          // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
+          //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
+          //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
+          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
         ghost: cn(
           "text-muted-foreground hover:text-foreground",
