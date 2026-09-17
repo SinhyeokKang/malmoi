@@ -390,7 +390,7 @@ export async function createGitClient(
       });
     },
 
-    async findOpenPrUrl(head, baseBranch) {
+    async findOpenPr(head, baseBranch) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
         ...base,
         // `owner:branch` 형식이어야 필터가 걸린다. 브랜치명만 넘기면 GitHub이 필터를 조용히
@@ -399,7 +399,16 @@ export async function createGitClient(
         base: baseBranch,
         state: "open",
       });
-      return res.data[0]?.html_url ?? null;
+      const pr = res.data[0];
+      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title };
+    },
+
+    async updatePrTitle(pullNumber, title) {
+      await octokit.request("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", {
+        ...base,
+        pull_number: pullNumber,
+        title,
+      });
     },
 
     /**

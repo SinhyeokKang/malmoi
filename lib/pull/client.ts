@@ -62,14 +62,18 @@ export type GitClient = {
   updateRefForce(branch: string, sha: string): Promise<void>;
 
   /**
-   * 열린 PR의 URL. 없으면 `null`.
+   * 열린 PR. 없으면 `null`. `title`을 같이 주는 이유는 재사용하는 PR의 제목에 루프 마커가 있는지
+   * 호출부가 봐야 해서다(`PR_TITLE`) — 마커가 커밋 메시지에만 있던 시절의 PR이 남아 있다.
    *
    * @param head **`owner:branch` 형식이어야 필터가 걸린다.** 브랜치명만 넘기면 GitHub이 필터를
    *   조용히 무시하고 전체 목록을 주므로, 재사용 판정이 무너져 PR이 중복 생성된다.
    */
-  findOpenPrUrl(head: string, base: string): Promise<string | null>;
+  findOpenPr(head: string, base: string): Promise<{ url: string; number: number; title: string } | null>;
 
   createPr(headBranch: string, baseBranch: string, title: string, body: string): Promise<string>;
+
+  /** 재사용하는 PR의 제목 갱신 — 제목에 루프 마커가 없을 때만 부른다(매 실행 PATCH를 만들지 않는다). */
+  updatePrTitle(pullNumber: number, title: string): Promise<void>;
 
   /**
    * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (projects-list design §3.4 C).

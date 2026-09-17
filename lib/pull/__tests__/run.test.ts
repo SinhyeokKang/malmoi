@@ -277,10 +277,43 @@ describe("runPull — 커밋·PR 경로", () => {
       "createCommit",
       "getRefSha",
       "createRef",
-      "findOpenPrUrl",
+      "findOpenPr",
       "createPr",
     ]);
     expect(result).toMatchObject({ status: "committed", pr: "created" });
+  });
+
+  /**
+   * 가드 셋은 `head_commit.message`만 보고, merge commit의 그 메시지는 PR 제목이 둘째 문단이다 — 제목에
+   * 마커가 없으면 그 머지 방식에서 push가 DB를 덮는다 (launch-readiness L1.2, `skip-marker.test.ts`).
+   */
+  it("PR 제목에 [skip-malmoi-i18n]이 있다", async () => {
+    const { deps, calls } = makeDeps();
+    await runPull(deps);
+    expect(calls.find((c) => c.method === "createPr")?.args[2]).toContain(SKIP_MARKER);
+  });
+
+  it("재사용하는 PR 제목에 마커가 없으면 **원래 제목에 마커를 덧붙인다** — 사람이 고친 제목을 버리지 않는다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: "Translations for 2.0" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    const patch = calls.find((c) => c.method === "updatePrTitle");
+    expect(patch?.args).toEqual([7, `Translations for 2.0 ${SKIP_MARKER}`]);
+  });
+
+  it("재사용하는 PR 제목에 마커가 있으면 건드리지 않는다 — 사람이 고친 제목도 마커만 남았으면 유지 (짝)", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `Translations for 2.0 ${SKIP_MARKER}` },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("updatePrTitle");
   });
 
   /**
@@ -292,7 +325,7 @@ describe("runPull — 커밋·PR 경로", () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
-      openPrUrl: "https://github.com/o/r/pull/7",
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}` },
     });
     const { deps } = makeDeps({}, { client, calls });
     expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
@@ -332,7 +365,7 @@ describe("runPull — 커밋·PR 경로", () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
-      openPrUrl: "https://github.com/o/r/pull/7",
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}` },
     });
     const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
@@ -343,7 +376,7 @@ describe("runPull — 커밋·PR 경로", () => {
   it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPrUrl")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
+    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
   });
 
   it("성공하면 lastPulledAt을 캡처 값으로 갱신한다", async () => {
