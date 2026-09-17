@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
-import { checkOpenPullRequest, runRepositoryImport } from "@/app/(edit)/projects/actions";
+import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { m } from "@/lib/i18n";
@@ -48,6 +48,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const warningId = useId();
   const [pending, setPending] = useState(false);
   const [openPr, setOpenPr] = useState<OpenImportPr>(undefined);
+  /**
+   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection design §4.1). 서버가 잠금 뒤 재계산해 대조하므로
+   * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
+   */
+  const approval = useRef<string | null>(null);
   const request = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
@@ -55,6 +60,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     setOpenPr(undefined);
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
+    approval.current = null;
+    void prepareRepositorySync({ slug }).then(
+      value => { if (request.current === id) approval.current = value?.approval ?? null; },
+      () => { if (request.current === id) approval.current = null; },
+    );
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
       () => { if (request.current === id) setOpenPr(undefined); },
@@ -78,7 +88,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     setPending(true);
     changeOpen(false);
     let outcome: RepositoryImportOutcome;
-    try { outcome = await runRepositoryImport({ slug }); }
+    try { outcome = await runRepositoryImport({ slug, approval: approval.current }); }
     /*
       ⚠️ **온보딩 코드를 쓰지 않는다** — `ingest-failed`는 `PLANS`에도 `m.repositorySync.errors`에도
       없어 **두 폴백을 동시에 타서**, 닫을 수도 갈 곳도 없는 amber가 *"The first import failed. You can
@@ -150,7 +160,8 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       description={<span id={describedId}>{m.repositorySync.body(<span className="text-mono text-neutral-600">{branch}</span>)}</span>}
       footer={<>
         <DialogClose asChild><Button id={cancelId}>{m.common.cancel}</Button></DialogClose>
-        <Button variant="danger" onClick={() => void confirm()}>{m.repositorySync.confirm}</Button>
+        {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}
+        <Button variant="danger" onClick={() => void confirm()}>{unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}</Button>
       </>}>
       {/*
         ⚠️ **위험이 없으면 본문 자체가 없다** (시안 `4a`) — "없음"을 한 줄로 세우지 않는다: 부재가 곧

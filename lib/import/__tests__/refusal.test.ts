@@ -111,7 +111,7 @@ describe("planImportRefusal", () => {
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
-    const transient = ["already-running", "ingest-failed", "unavailable"] as const satisfies readonly RepositoryImportError[];
+    const transient = ["already-running", "ingest-failed", "unavailable", "reconfirm"] as const satisfies readonly RepositoryImportError[];
     type Classified = (typeof repeats)[number] | (typeof transient)[number];
     type Unclassified = Exclude<RepositoryImportError, Classified>;
     // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.

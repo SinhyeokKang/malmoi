@@ -1590,43 +1590,43 @@ it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정
 describe("repository import Actions", () => {
   beforeEach(() => {
     Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "1035512", baseBranch: "develop" });
-    hoisted.runRepositoryImportFromReader.mockResolvedValue({ ok: true, surfaces: [{ surfaceSlug: "default", status: "imported", count: 2, failed: 0, reason: null, errors: [] }] });
+    hoisted.runRepositoryImportFromReader.mockResolvedValue({ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "default", status: "imported", count: 2, failed: 0, reason: null, errors: [] }] });
     hoisted.loadOpenPrUrl.mockResolvedValue(null);
   });
   it("OWNER만 실행하고 원결과를 반환한다", async () => {
-    expect(await runRepositoryImport({ slug: "acme" })).toMatchObject({ ok: true, surfaces: [{ count: 2 }] });
-    expect(hoisted.runRepositoryImportFromReader).toHaveBeenCalledWith(db.prisma, expect.objectContaining({ projectId: "p1", userId: OWNER }), expect.any(Function));
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toMatchObject({ ok: true, surfaces: [{ count: 2 }] });
+    expect(hoisted.runRepositoryImportFromReader).toHaveBeenCalledWith(db.prisma, expect.objectContaining({ projectId: "p1", userId: OWNER, approval: null }), expect.any(Function));
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/acme", "layout");
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
   });
   it("EDITOR·비로그인은 저장과 GitHub 호출 전에 거부한다", async () => {
     hoisted.session = sessionFor(EDITOR);
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "forbidden" });
     expect(await checkOpenPullRequest({ slug: "acme" })).toBeUndefined();
     hoisted.session = null;
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "unauthorized" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "unauthorized" });
     expect(hoisted.runRepositoryImportFromReader).not.toHaveBeenCalled();
     expect(hoisted.probeRepo).not.toHaveBeenCalled();
   });
   it("readiness는 연결 실패보다 먼저다", async () => {
     db.surfaces[0]!.lastCommitSha = null;
     db.projects[0]!.repositoryId = null;
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "not-ready" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "not-ready" });
     expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
   });
   it("같은 이름의 다른 리포를 blob 읽기 전에 거부한다", async () => {
     hoisted.probeRepo.mockResolvedValue({ ...PROBE_OK, repositoryId: "other" });
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "repo-replaced" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "repo-replaced" });
     expect(hoisted.runRepositoryImportFromReader).not.toHaveBeenCalled();
   });
   it("공용 읽기 실패를 그대로 반환하고 finally에서 캐시를 지운다", async () => {
     hoisted.runRepositoryImportFromReader.mockResolvedValue({ ok: false, error: "tree-truncated" });
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "tree-truncated" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "tree-truncated" });
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/acme", "layout");
   });
   it("DB 오류는 직렬화 경계에서 감추고 캐시를 지운다", async () => {
     hoisted.runRepositoryImportFromReader.mockRejectedValue(new Error("internal database error"));
-    expect(await runRepositoryImport({ slug: "acme" })).toEqual({ ok: false, error: "ingest-failed" });
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "ingest-failed" });
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
   });
   it.each([null, undefined, "https://github.com/acme/web/pull/12", "https://evil.example/acme/web/pull/12"])("PR 삼상태와 URL 검증 %s", async url => {

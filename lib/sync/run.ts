@@ -107,6 +107,11 @@ async function startRun(
       select: { finishedAt: true },
     });
 
+    // 수동 Sync가 리포 값으로 덮는 중이면 스냅샷이 절반만 덮인 DB가 된다 — 같은 Project 잠금 안에서 읽는다 (sync-edit-protection design §4.2).
+    const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
+    const activeImport = importing?.repositoryImportToken != null && importing.repositoryImportStartedAt !== null
+      ? { startedAt: importing.repositoryImportStartedAt } : null;
+
     const now = new Date();
     // `finishedAt`은 terminal 행에서 항상 채워지지만 컬럼이 nullable이라 타입이 그것을 모른다.
     // 없으면 "직전 성공 없음"으로 읽는다 — 게이트가 더 관대해질 뿐 잘못 막지 않는다.
@@ -116,8 +121,7 @@ async function startRun(
       running,
       lastSettled: settledAt === null ? null : { finishedAt: settledAt },
       trigger,
-      // 수동 Sync와의 배제는 배포 B(sync-edit-protection T9)에서 연결한다 — 배포 A는 사용자 흐름을 바꾸지 않는다.
-      activeImport: null,
+      activeImport,
     });
     if (gate.status === "already-running") {
       return { status: "rejected", outcome: { status: "failed", error: "already-running", delivery: "not-started", retryable: false } };

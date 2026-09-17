@@ -10,8 +10,12 @@ export type SurfaceImportResult = {
   count: number; failed: number; reason: SurfaceImportReason | null;
   errors: readonly { path: string; code: AdapterError["code"] }[];
 };
-export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "repo-replaced" | "already-running" | "no-surfaces";
-export type RepositoryImportOutcome = { ok: true; surfaces: SurfaceImportResult[] } | { ok: false; error: RepositoryImportError };
+/** `reconfirm` — 폐기 승인 지문이 없거나 잠금 뒤 재계산과 달랐다(Dialog 뒤 편집·적용·설정 변경). sync-edit-protection design §4.1. */
+export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "repo-replaced" | "already-running" | "no-surfaces" | "reconfirm";
+/**
+ * @param remainingEdits 실행이 끝난 뒤 남은 미전달 편집 — 승인 뒤 저장됐거나 리포에 값이 없어 안 덮인 셀. 0이 아니면 리포 갱신은 계속 멈춘다.
+ */
+export type RepositoryImportOutcome = { ok: true; surfaces: SurfaceImportResult[]; remainingEdits: number } | { ok: false; error: RepositoryImportError };
 export type ImportSummary = {
   tone: "success" | "warning" | "danger";
   keys: number; imported: number; partial: number;

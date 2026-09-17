@@ -37,3 +37,22 @@ export async function countPending(
   if (tokens === 0) return 0;
   return db.translation.count({ where: pendingWhere(projectId, surfaceId) });
 }
+
+/**
+ * `pendingWhere` 셀의 `(id, token)` — 토큰 원문이라 **서버 안에서만** 쓴다(Publish 캡처 · 폐기 승인 지문).
+ * `countPending`과 같은 이유로 토큰 컬럼만 보는 count가 0이면 관계 조인을 돌리지 않는다.
+ */
+export async function loadPendingEdits(
+  db: {
+    translation: {
+      count(args: { where: Prisma.TranslationWhereInput }): Promise<number>;
+      findMany(args: { where: Prisma.TranslationWhereInput; select: { id: true; pendingEditToken: true } }): Promise<{ id: string; pendingEditToken: string | null }[]>;
+    };
+  },
+  projectId: string,
+): Promise<{ id: string; token: string }[]> {
+  const tokens = await db.translation.count({ where: { projectId, pendingEditToken: { not: null } } });
+  if (tokens === 0) return [];
+  const rows = await db.translation.findMany({ where: pendingWhere(projectId), select: { id: true, pendingEditToken: true } });
+  return rows.flatMap(row => row.pendingEditToken === null ? [] : [{ id: row.id, token: row.pendingEditToken }]);
+}

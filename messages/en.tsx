@@ -36,6 +36,11 @@ export const en = {
     /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
     pending: "Syncing…",
     confirm: "Sync from repository",
+    /**
+     * 미전달 편집이 있을 때의 확정 라벨 (sync-edit-protection spec "수동 Sync"). 트리거 `Sync`와 접근 이름이 달라야 한다는
+     * 규칙(DESIGN §6.646)은 이 라벨에도 선다. 무엇을 버리는지를 동사가 먼저 말한다.
+     */
+    confirmDiscard: "Discard changes and sync",
     /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
     title: (name: string): string => `Sync ${name} from the repository?`,
     /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
@@ -91,6 +96,11 @@ export const en = {
     notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    /**
+     * 승인 뒤 남은 편집 (sync-edit-protection T9). **실패가 아니다** — 승인 뒤 저장됐거나 리포에 값이 없어 덮이지 않은 편집이다.
+     * 남아 있는 한 자동 적재가 멈춘다는 결과까지 말한다(그 사실이 없으면 "성공했는데 왜 안 들어오지"가 된다).
+     */
+    kept: (n: number): string => `${n.toLocaleString("en-US")} unsent change${n === 1 ? " was" : "s were"} kept. Repository updates stay paused until ${n === 1 ? "it is" : "they are"} sent.`,
     /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
@@ -111,6 +121,8 @@ export const en = {
       "not-ready": "This project hasn't finished its first import yet",
       "not-connected": "malmoi is not connected to this repository",
       "already-running": "A sync is already running",
+      /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
+      "reconfirm": "Translations changed after you opened Sync — nothing was discarded. Open Sync again to review",
       "no-surfaces": "There's nothing to sync — this project has no active surfaces",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**

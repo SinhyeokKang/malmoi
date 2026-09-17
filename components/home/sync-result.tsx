@@ -61,6 +61,12 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
         <ButtonLink href={routes.settings(slug)}>{refusal.action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
+  /*
+    ⚠️ **승인 뒤 남은 편집은 성공 한 줄에 숨기지 않는다** (sync-edit-protection T9 · POSTMORTEM 2026-09-16) — 남아 있는 한
+    자동 적재가 멈춘다. `partial`과 같은 형(warning · 브랜치 없는 헤드라인 · 원인 줄)으로 선다.
+  */
+  const kept = outcome.remainingEdits;
+  const tone = kept > 0 && summary.tone === "success" ? "warning" : summary.tone;
   const replaced = summary.imported + summary.partial > 0;
   const notReplaced = summary.superseded.length + summary.invalidFormat.length;
   /**
@@ -74,7 +80,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
     : notReplaced ? m.repositorySync.withIssue(m.repositorySync.syncedKeys(summary.keys), m.repositorySync.notReplaced(notReplaced))
     // ⚠️ **파일 일부 실패(`partial`)도 성공 헤드라인을 쓰지 않는다** — 표면은 전부 들어갔지만 값이
     // 버려졌으므로 `summary.tone`이 warning이다. 브랜치까지 붙이면 전부 성공한 결과와 **글자까지 같아진다**.
-    : summary.partial > 0 ? m.repositorySync.syncedKeys(summary.keys)
+    : summary.partial > 0 || kept > 0 ? m.repositorySync.syncedKeys(summary.keys)
     : m.repositorySync.completed(summary.keys, branch);
   // `invalid-format`에는 재시도가 없다 — 포맷을 고치기 전에는 다시 눌러도 결과가 같다.
   const retry = summary.unreadable.length + summary.superseded.length > 0;
@@ -92,7 +98,8 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
    * `space-y-2`가 제목 아래에 **보이지 않는 8px**을 만든다(같은 부류를 확인 Dialog의 본문에서 한 번
    * 밟았다). 성공이 한 줄이라는 것이 이 화면의 방어이므로 그 8px이 곧 형의 차이를 깎는다.
    */
-  const details = incidents.length === 0 && partialFailures === 0 ? undefined : <>
+  const details = incidents.length === 0 && partialFailures === 0 && kept === 0 ? undefined : <>
+    {kept > 0 && <p>{m.repositorySync.kept(kept)}</p>}
     {summary.unreadable.length > 0 && notReplaced > 0 && <p>{m.repositorySync.notReplaced(notReplaced)}</p>}
     {partialFailures > 0 && <p>{m.repositorySync.partial(partialFailures)}</p>}
     {incidents.map(surface =>
@@ -109,7 +116,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;
-  return <Alert variant={summary.tone} role="status" title={title} onDismiss={onDismiss}
+  return <Alert variant={tone} role="status" title={title} onDismiss={onDismiss}
     actions={retry && onRetry ? <Button disabled={retryDisabled} onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
     {details}
   </Alert>;
