@@ -246,7 +246,6 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
 
   it.each([
     ["이름 칸 420", "w-[420px]"],
-    ["행 글리프 radius 4", "rounded-[4px]"],
     ["행 요소 gap 16", "gap-4"],
     ["행 padding 14/14/12", "py-3.5"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
@@ -259,6 +258,11 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     ["본문 카드 사이 16", "gap-4"],
   ])("%s", (_label, literal) => {
     expect(BODY).toContain(literal);
+  });
+
+  it("행 글리프 radius 4는 공통 프로젝트 썸네일이 소유한다", () => {
+    expect(BODY).toContain("<ProjectThumbnail name={row.name}");
+    expect(code("components/projects/project-thumbnail.tsx")).toContain("rounded-[4px]");
   });
 
   /**

@@ -1,5 +1,4 @@
 import {
-  Box,
   ChevronRight,
   CircleDashed,
   ExternalLink,
@@ -17,11 +16,11 @@ import type { ReactNode } from "react";
 import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/projects/locale-meter";
 import { ProjectSearch } from "@/components/projects/search-input";
+import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { toneFill } from "@/components/ui/tone";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
@@ -291,27 +290,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          */
         className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
       >
-        {/*
-          프로젝트 이미지 자리 — **지금은 빈 상태뿐이다**. 업로드 기능이 없으므로 컨테이너(28)와
-          폴백 글리프(16)만 세운다: 자리를 먼저 잡아야 나중에 이미지가 들어올 때 행 높이·정렬이
-          안 흔들린다.
-
-          ⚠️ **radius가 4다** — `rounded-sm`(8)이 아니다. 시안 값이고, 비슷한 유틸리티로 옮기는 것이
-          이전 사이클에서 구현과 시안이 갈린 원인이었다.
-
-          ⚠️ **색이 프로젝트 이름에서 온다** — 사용자 아바타와 **같은 판정**(`lib/tone.ts`)이고
-          입력만 다르다. 목록을 훑을 때 행을 가르는 것이 이름 글자보다 색이 먼저다.
-        */}
-        <span
-          aria-hidden
-          className={cn(
-            "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-[4px]",
-            "text-white",
-            toneFill(row.name),
-          )}
-        >
-          <Box className="size-4" />
-        </span>
+        <ProjectThumbnail name={row.name} />
 
         {/*
           ⚠️ **420 고정 + `shrink-0`이다.** 이름 칸이 늘어나면 Meter의 x가 행마다 달라지고,
