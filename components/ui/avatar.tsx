@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { toneFill } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 
@@ -25,10 +29,19 @@ export function Avatar({
 }) {
   const shapeClass = shape === "circle" ? "rounded-full" : "rounded";
   const style = { width: size, height: size };
-  if (src) {
+  /**
+   * ⚠️ **실패를 불리언이 아니라 그 `src`로 기억한다** (malmoi#50) — 사진을 바꾸면 새 URL은 다시 시도해야
+   * 하는데, 불리언이면 되돌리는 effect가 한 박자 늦어 새 사진 대신 이니셜이 먼저 선다.
+   */
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (src && src !== failedSrc) {
     // eslint 없는 리포다 — `next/image`를 쓰지 않는 이유는 GitHub 아바타가 외부 호스트라
     // `images.remotePatterns` 설정이 따라붙기 때문이다(면적 대비 얻는 것이 없다).
-    return <img src={src} alt="" style={style} className={cn(shapeClass, "shrink-0 object-cover", className)} />;
+    // ⚠️ 공급자 사진은 핫링크라 공급자 쪽 일시 실패·만료가 그대로 여기 온다 — Blob을 지나는 것은 업로드뿐이다.
+    // ⚠️ **`ref`가 한 번 더 본다** — 하이드레이션 전에 끝난 실패는 `onError`로 안 온다(서버가 그린 `/account`).
+    return <img src={src} alt="" style={style} onError={() => setFailedSrc(src)}
+      ref={(img) => { if (img?.complete && img.naturalWidth === 0) setFailedSrc(src); }}
+      className={cn(shapeClass, "shrink-0 object-cover", className)} />;
   }
   return (
     <span
