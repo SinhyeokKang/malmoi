@@ -10,6 +10,8 @@
 여기서 파생되지 않는 복잡도는 전부 의심 대상이다. 
 
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
+   ⚠️ **미전달 편집이 있는 동안은 유예된다** (2026-09-18, sync-edit-protection) — CI 자동 적재가 통째로 보류되므로
+   리포의 새 키·삭제·로케일 추가도 그동안 앱에 안 들어온다(§5.5.2). 편집을 Publish하거나 OWNER가 폐기를 승인하면 풀린다.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
@@ -529,13 +531,13 @@ sha1("blob " + byteLength + "\0" + content)
 
 | 층 | 무엇을 보는가 | 통과 못 하면 |
 |---|---|---|
-| **1. DB 측 스킵** | **미발송 편집의 수**(`unpublishedWhere` — `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`)가 0인가 | **GitHub을 한 번도 부르지 않고 종료** |
+| **1. DB 측 스킵** | **미전달 편집의 수**(`countPending` — `pendingEditToken IS NOT NULL ∧ 활성 표면·키·로케일`)가 0인가 | **GitHub을 한 번도 부르지 않고 종료** |
 
-⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). 지금은 `countUnpublished`와 **같은 where 조각**(`lib/keys/unpublished.ts`)으로 센 수가 0이면 끝이다. 첫 pull(`lastPulledAt = null`)도 사람이 만진 행이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
+⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). T0는 그것을 저자·시각 술어의 건수로 바꿨고, **2026-09-18(T8)부터는 편집 토큰 술어**(`lib/protection/where.ts`의 `pendingWhere` — `countUnpublished`·Publish 캡처·미리보기와 같은 객체)로 센 수가 0이면 끝이다. 시각 술어는 같은 밀리초의 재저장과 전달 확인을 못 갈랐다. 첫 pull(`lastPulledAt = null`)도 미전달 편집이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
 
-⚠️ **1층의 두 쿼리는 인덱스와 짝이다** (2026-09-04 · T0 실측 2026-09-17: 미발송 count가 `Translation_projectId_updatedAt_idx` Index Scan을 타고 2,721행 프로젝트에서 3행만 읽었다 — `lastPulledAt`이 null인 첫 pull만 프로젝트 전 행을 훑는다). `@@index([projectId, updatedAt])`이 있어야 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
+⚠️ **1층의 두 쿼리는 인덱스와 짝이다** (2026-09-04 · T8 2026-09-18: 미전달 count는 `[projectId, pendingEditToken]`을 탄다 — **단 관계 조인이 낡은 통계에서 그 인덱스를 버린다**(POSTMORTEM 2026-09-18, 8,676행 5.5초) — 그래서 `countPending`이 토큰 컬럼만 보는 count가 0이면 조인을 돌리지 않는다). `@@index([projectId, updatedAt])`이 있어야 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
 
-⚠️ **그 인덱스의 소비자는 셋이다** (2026-09-11 정정 — 전엔 둘로 적혀 있었다): 1층 판정 · 미배포 집계(`countUnpublished`) · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
+⚠️ **그 인덱스(`[projectId, updatedAt]`)의 소비자는 둘이다** (2026-09-18 — 1층 판정·미배포 집계는 토큰 인덱스로 옮겼다): 1층의 캡처 `aggregate` · **Home 활동의 `loadRecentEdits`**(`lib/keys/query.ts`). 셋째는 `take`로 역방향 스캔을 타는 것에 더해 **보조 정렬 키를 요구한다** — `orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }]`다. ⚠️ **`updatedAt`만 남기면 동시각 행에서 "어느 N건이 오는지"가 비결정적이 된다** — push가 전 행의 시각을 한꺼번에 올리므로 동시각이 예외가 아니라 **기본 경로**다. 소비자를 둘로 세고 인덱스나 보조 키를 정리하면 Home이 조용히 흔들리거나 풀스캔한다.
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
 
 ⚠️ **2층으로는 "변경 없음"을 관측할 수 없다** (2026-09-01 실측). 2층은 **base 브랜치**와 비교하므로 pull PR이 머지되기 전까지 매번 "변경됨"을 낸다 — `malmoi-i18n/sync`와 비교하지 않는 것이 "parents는 항상 base head"(§3)의 결과다. 따라서 **export 결정성의 판정은 두 커밋의 tree SHA 동일성**이고, "두 번째 pull이 no-op"은 1층 이야기다. 실측: 3줄 변경 상태와 2745줄 변경 상태 양쪽에서 tree SHA가 같았다.
@@ -581,7 +583,9 @@ clone하지 않는다.
 backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE는 `updatedAt`을 건드리지 않는다 — 올리면 방금 쓴
 `lastPulledAt`보다 뒤가 되어 옛 술어가 보낸 편집을 다시 센다. 1층 스킵·실패 경로는 해제하지 않는다.
 
-⚠️ **`warnings`는 실행별 진단이고 큐가 아니다** (2026-09-04). 2층까지 통과하면 `lastPulledAt`이 갱신되므로 다음 밤은 1층에서 끝나고 같은 경고가 다시 나오지 않는다. **경고가 있으면 `lastPulledAt`을 안 쓰는 쪽은 택하지 않았다** — `missingOriginal`(리포에 그 로케일 파일이 없다)처럼 **지속 상태**인 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다. 대신 `lib/pull/trigger.ts`가 `console.warn`으로도 낸다 — 진입점 둘이 공유하는 조립층이라 한 곳이면 되고, cron 응답 JSON을 놓쳐도 Vercel 로그에 남는다.
+⚠️ **writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다** (2026-09-18, sync-edit-protection T10 — 2026-09-04 결정의 반전). 렌더 뒤·2층 비교 전에 `planProtectedPublish`가 `skipped/writer-warnings`로 끝내고 `lastPulledAt`도 토큰도 쓰지 않는다. 전에는 경고를 커밋·스킵 결과에 실어 보냈는데, 그러면 **버린 값의 편집 토큰까지 전달 확인으로 비워져** 보내지 않은 편집을 보냈다고 기록한다. 경고는 `PullResult`의 그 갈래에만 있다(`committed`·`no-changes`에 자리가 없다). **대가**: `missingOriginal`처럼 **지속 상태**인 경고는 사람이 해소할 때까지 매 밤 트리·blob을 다시 읽는다 — 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. `lib/pull/trigger.ts`가 `console.warn`으로도 낸다.
+
+⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
 ### 함정
 
@@ -850,8 +854,10 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
   캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채운다.
   ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
-  ⚠️ **배포 A에서는 어떤 판정도 이 컬럼을 읽지 않는다** — 미배포 집계·1층 스킵·배너는 여전히 `updatedBy`·`updatedAt` 술어다.
-  판정 전환(보류·폐기 승인)은 배포 B이고, 그때 이 절과 §0·§5.5.2를 함께 고친다.
+  ⚠️ **배포 B(2026-09-18)부터 미전달 판정의 유일한 근거다** — 미배포 집계·1층 스킵·Publish 미리보기·셀 배지·목록 raw SQL·CI 보류·수동 Sync 폐기 승인이
+  전부 `pendingWhere`(또는 그 SQL 사본)를 지난다. **원문은 서버 밖으로 나가지 않는다** — 셀은 `pending: boolean` 투영이고 폐기 승인은 sha256 지문 하나다.
+  strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync만 넘긴다.
+  배포 B의 precondition 마이그레이션(`20260917170000_pending_edit_token_precondition`)이 backfill 미수렴을 `db:deploy`에서 거부한다(복구 절차는 OPERATIONS).
   인덱스는 일반 복합 `[projectId, pendingEditToken]`이다 — btree가 `IS NOT NULL`을 Index Cond로 써서 격리 PG 합성 3만 행에서 3행만 읽었다(없으면 3만 행 비트맵 스캔) — 그래서 스키마로 표현되지 않는 partial 인덱스는 쓰지 않는다.
 - **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastCommitAt`이 이미 든다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
 - **⚠️ `Locale.createdAt`의 기존 값은 프로젝트 생성 시각이다 — 진짜 시각이 아니다** (같은 마이그레이션). `Locale`에 시각 컬럼이 하나도 없어(`code`·`name`·`isBase`·`orphaned`뿐) "한 번도 안 채워진 로케일"을 시간축에 못 세웠다. **`@default(now())`만 두면 마이그레이션이 거짓을 만든다** — 기존 로케일 전부가 "마이그레이션 시각"을 들고 배포 직후 그 항목들이 목록 맨 위를 점령하며, 그 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 그래서 마이그레이션이 `UPDATE "Locale" … FROM "Project"`로 프로젝트 생성 시각을 넣었다: 로케일이 프로젝트보다 먼저 생길 수는 없고 "지금"보다 덜 틀리다. **이 값을 "로케일이 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다** — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이고, 같은 프로젝트의 로케일 여럿이 동점이 되는 것을 읽는 쪽의 동점 규칙(`surfaceSlug` → 코드 유닛 비교)이 받는다.
@@ -1011,11 +1017,15 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ### 5.5.2 번역값은 strict 덮어쓰기다
 
-**`INSERT ... ON CONFLICT DO UPDATE`.** 리포 파일의 값이 push마다 DB를 덮는다 — 변경 감지도, 병합도, 예외도 없다 (§0 불변식 2). base 로케일 행도 같이 쓴다.
+**`INSERT ... ON CONFLICT DO UPDATE`.** 리포 파일의 값이 push마다 DB를 덮는다 — 변경 감지도, 병합도 없다 (§0 불변식 2). base 로케일 행도 같이 쓴다. **예외는 하나다**: 미전달 편집 토큰이 있는 셀은 덮지 않는다(아래 보류 — 값 비교가 아니라 토큰 유무다).
 
 > **⚠️ 2026-08-31 정책 반전.** 이전 구현은 `DO NOTHING`(없을 때만 채우는 콜드 스타트)이었고, 그전 스펙은 "번역 값을 어떤 경로로도 건드리지 않는다"였다. **문서에서 이 둘 중 하나를 서술한 대목을 보면 낡은 것이다.** 반전 이유는 §0 불변식 2에 있다 — 진실의 방향을 한 번에 하나로 두는 것이 "병합 없음"을 지키는 가장 단순한 형태다.
 
-**대가는 편집 손실 창이다.** 번역자의 편집은 pull PR이 머지되기 전까지 리포에 없으므로, 그 사이 push가 오면 사라진다. 이 위험을 코드에서 지우려 하면 곧 변경 감지·병합이 되어 코어 원칙을 깬다 — 완화는 pull 주기를 줄이는 쪽에서만 한다.
+**미전달 편집이 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다, 완화는 pull 주기를 줄이는 쪽에서만"의 반전). 그 옛 판정이 금지한 것은 **변경 감지와 병합**이었고, 보류는 둘 다 하지 않는다: **자동 적재 판정은 리포를 보지 않는다** — 입력은 프로젝트 전체의 미전달 편집 수(`countPending`) 하나이고, 0이면 이 절의 strict 적재가 한 줄도 안 바뀐 채 돈다. 리포 값과 DB 값을 견주는 코드가 없어 승자를 고르는 자리도 없다.
+
+- `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면(판정과 upsert 사이에 커밋된 저장) 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. 저장 경로엔 잠금이 없다.
+- 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.
+- **대가는 정확히 하나다**: 미전달 편집이 남아 있는 동안 리포의 새 소스 키·삭제도 앱에 안 들어온다(§0 불변식 1의 유예). 손실을 막는 값이 "적재가 늦어짐"이고 병합이 아니다.
 
 **"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
 
@@ -1110,7 +1120,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 | `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
 | `TranslationSurface.importRevision` | 표면 | **옛 상태 위에 계획한 적용.** 성공한 적용마다 +1(`applyPush`·`finishSurface`). 수동 Sync는 계획 시점의 revision을 잡아 두고 표면마다 적용 tx에서 `planImportApply`가 현재값과 대조한다 — 그 사이 CI push가 지나갔으면 `superseded`로 그 표면만 건너뛴다(값을 견주는 것이 아니라 **"내가 본 상태가 아직 그 상태인가"**만 본다 — §0 불변식 2 안이다) |
 
-⚠️ **`lastImportToken`을 세우는 자리가 트랜잭션 밖이면 이 방어가 뒤집힌다** — `app/api/push/route.ts`의 `markImportStarted`가 그 자리이고, 동시 CI 둘이면 성공한 임포트가 `import-failed`로 표시될 수 있다(launch-readiness L3.7). 잠금 뒤로 옮기는 것이 수정이다.
+⚠️ **`lastImportToken`을 세우는 자리가 트랜잭션 밖이면 이 방어가 뒤집힌다** — `app/api/push/route.ts`의 `markImportStarted`가 그 자리이고, 동시 CI 둘이면 성공한 임포트가 `import-failed`로 표시될 수 있다(launch-readiness L3.7). ⚠️ **sync-edit-protection 배포 B는 이것을 옮기지 않았다** — design §3은 적용 트랜잭션 안으로 옮기라고 했지만, 그러면 롤백된 실패에서 표시가 없어 `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 대신 보류 판정을 표시 **앞**의 사전 집계로 두어 보류 경로는 쓰기 0이고, 경합 보류만 `abandonImportRun`이 자기 표시를 거둔다. L3.7은 열려 있다.
 
 ## 5.6 sync 실행 (`lib/sync/`)
 
