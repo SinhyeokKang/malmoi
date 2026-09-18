@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 
+import { m } from "@/lib/i18n";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "malmoi",
-  description: "Localization management for your team",
+  title: m.common.appName,
+  description: m.common.appDescription,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

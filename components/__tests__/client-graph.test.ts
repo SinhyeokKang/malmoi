@@ -132,6 +132,7 @@ const CLIENT_LIB_FILES = [
   "lib/tone.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",
+  "lib/utc-time.ts",
   "lib/utils.ts",
 ];
 

@@ -190,5 +190,16 @@ it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗�
   expect(document.body.textContent).not.toContain("Reference");
   expect(document.body.textContent).not.toContain("Next");
 });
+/**
+ * **실패 시각은 UTC라고 말한다** (launch-readiness L7.1 결정 — Logs 형). 전엔 라벨 없는 브라우저 로컬이라 보는 사람이
+ * 어느 시간대인지 몰랐고, 같은 참조 코드로 Logs 화면(UTC)과 대조하면 시각이 어긋나 보였다.
+ */
+it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", retryable: true, code: "ref-1" });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const time = document.querySelector("time");
+  expect(time?.textContent).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+  expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
+});
 
 });

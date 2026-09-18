@@ -89,7 +89,7 @@ export default async function LinkAccountPage({
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          secondary={`${providerLabel(view.have)} · ${joinedLabel(view.joined)}`}
+          secondary={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
           meta={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
@@ -111,7 +111,7 @@ export default async function LinkAccountPage({
 
 /** 가입 월 — `lang="en"`이라 로케일을 고정한다. 서버에서만 렌더되므로 hydration이 갈리지 않는다. */
 function joinedLabel(joined: Date): string {
-  return `Joined ${new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(joined)}`;
+  return m.link.joined(new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(joined));
 }
 
 /**

@@ -1,4 +1,5 @@
 "use client";
+import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
@@ -321,7 +322,8 @@ function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
   return outcome.error === "invalid input" ? accessErrorMessage("forbidden") : outcome.error;
 }
 
-const stamp = (at: Date) => `${at.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${at.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+// 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
+const stamp = (at: Date) => <time dateTime={at.toISOString()}>{utcMinute(at)}</time>;
 
 export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;

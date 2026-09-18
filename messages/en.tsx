@@ -169,6 +169,8 @@ export const en = {
   common: {
     retry: "Try again",
     appName: "malmoi",
+    /** 루트 `metadata.description` — 검색 결과·링크 미리보기에 선다. */
+    appDescription: "Localization management for your team",
     /**
      * ⚠️ **구역이 다른 문구를 가져다 쓰지 않는다** (2026-09-13 리뷰). Sessions·GitHub 구역이
      * `link.methods.cancel`을 빌려 쓰고 있었고, 그러면 Sign-in methods를 고칠 때 나머지 둘이
@@ -1931,6 +1933,8 @@ export const en = {
     description: (pending: string, have: string): string =>
       `You just signed in with ${pending}, but this address was created with ${have}.`,
     confirm: (have: string): string => `Confirm with ${have}`,
+    /** 기존 계정 카드의 가입 월. 월은 호출부가 UTC로 만든다. */
+    joined: (month: string): string => `Joined ${month}`,
     /** ⚠️ **되돌릴 수 있다고 약속하지 않는다** — 해제는 `/account`의 일이고 이 흐름의 문장이 아니다. */
     footnote: "We'll add this sign-in method to that account. Your projects and translations stay where they are.",
     methods: {

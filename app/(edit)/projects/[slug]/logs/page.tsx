@@ -15,6 +15,7 @@ import { routes } from "@/lib/routes";
 import { loadSyncRuns } from "@/lib/sync/query";
 import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
+import { utcMinute } from "@/lib/utc-time";
 
 /**
  * sync 이력 (7단계 — DESIGN §6.68). PRODUCT §7.7 라우트 표의 마지막 칸이다.
@@ -33,18 +34,6 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 진행 중에만"이라는 규칙 위에 타이머가 하나 더 붙는다. 갱신은 재방문이다.
  */
 type Search = Raw<"cursor">;
-
-/**
- * `2026-09-10 12:00 UTC`.
- *
- * ⚠️ **UTC라고 **말한다**.** 서버 렌더라 `toLocaleString`은 서버의 타임존(Vercel은 UTC)을 쓸 뿐
- * 보는 사람의 것이 아니고, 표시를 진짜 로컬로 하려면 클라이언트 컴포넌트가 하나 붙는다. 라벨 없이
- * 내면 사용자가 자기 시간대로 읽고 **밤 사이 실행의 날짜를 하루 어긋나게** 센다.
- * 정확한 값은 `dateTime` 속성이 들고 있고, 상대 시각이 그 아래 보조로 붙는다.
- */
-function utcMinute(at: Date): string {
-  return `${at.toISOString().replace("T", " ").slice(0, 16)} UTC`;
-}
 
 export default async function LogsPage({
   params,
