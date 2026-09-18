@@ -404,7 +404,19 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 | 조용한 손실 | **0건** | **0건** |
 | **`ts-dict`가 1순위인 리포** | **0** | **0** |
 
-⚠️ **2026-09-18(launch-readiness L4.6)에 측정 입력이 프로덕션과 같아졌다 — 위 표는 그 전 값이다.** survey가 로케일마다 자기 파일 순서·자기 키를 write에 넘겼는데, 프로덕션은 base 파일의 키만 base 순서로 전 로케일에 쓴다(`rowsForLocale` → `buildWriteEntries`). 그래서 비-base 재배열·비-base 전용 키 탈락이 지표에 안 보였고, multi-locale은 `writeWithErrors`를 안 불러 `writeErrors`가 0이었다. **"왕복 의미 동일"·비-base diff·write 에러는 20차부터 이전 회차와 비교하지 않는다.** 20차 재측정은 아직 안 했다.
+⚠️ **2026-09-18(launch-readiness L4.6)에 측정 입력이 프로덕션과 같아졌다 — 위 표는 그 전 값이다.** survey가 로케일마다 자기 파일 순서·자기 키를 write에 넘겼는데, 프로덕션은 base 파일의 키만 base 순서로 전 로케일에 쓴다(`rowsForLocale` → `buildWriteEntries`). 그래서 비-base 재배열·비-base 전용 키 탈락이 지표에 안 보였고, multi-locale은 `writeWithErrors`를 안 불러 `writeErrors`가 0이었다. 같은 날 **"의미 동일"의 기준을 원본 파일에서 DB가 가진 값으로**, **바이트 고정점의 2차 write를 "다시 push → pull"로** 바꿨다(비-base에만 있던 키는 DB에 없으므로 빠져도 손실이 아니다).
+
+**20차 (2026-09-18)** — 위 둘을 반영한 첫 측정이다. 이전 회차와 비교하지 않는다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 지원 포맷 탐지 | 100/101 (99.0%) | 16/17 (94.1%) |
+| 오탐 | 0/100 (0.0%) | 2/16 (12.5%) |
+| 왕복 의미 동일 | 98/99 (siyuan — §1.9 ①의 알려진 점 키 1건) | 17/17 |
+| **바이트 고정점** | **97/99** | **12/17** |
+| `writeErrors` > 0 | 1 (siyuan 22) | 0 |
+
+⚠️ **고정점 실패 7건(학습 axe-core·mapprint · 홀드아웃 grafana·open-webui·Ghost·zulip·jitsi-meet)은 결정성 결함이 아니라 제품 동작이다.** 전부 **base 파일에 빈 값**이 있는 리포다. 1차 pull은 base 값이 `""`이면 sourceText로 폴백하는데 sourceText도 `""`라 그 키를 **base 파일에서 뺀다**(재생성 writer는 빈 값을 안 쓴다 — §1.1). 비-base 번역은 그대로 나간다. 그 PR이 머지되면 다음 push가 그 키를 **전 로케일에서 orphan**하고, 2차 pull이 **비-base 파일의 번역까지 지운다** — 두 번째 PR이 번역을 삭제한다. 옛 측정은 2차 write에 read2의 원시 엔트리를 넘겨 이 사이클을 못 봤다. 후속은 launch-readiness L4.10이다.
 
 ⚠️ **홀드아웃 오탐이 1건 늘었는데 코퍼스 드리프트다** — 새로 틀린 것은 mattermost(1순위
 `i18n/glossary/{locale}.json`, 정답 2순위)이고 그 리포에 용어집 디렉터리가 생겼다. **변경 전
