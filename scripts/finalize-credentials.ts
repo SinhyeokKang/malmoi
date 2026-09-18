@@ -1,21 +1,20 @@
-import { config } from "dotenv";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { credentialCommand, credentialTarget } from "../lib/credentials/command";
 import { convertCredentials } from "../lib/credentials/conversion";
 import { CredentialError } from "../lib/credentials/crypto";
 import { FINALIZE_MIGRATION, finalizationPending } from "../lib/credentials/finalize";
-config({ path: ".env.local", quiet: true });
+import { loadLocalEnv, scriptPrisma } from "./local";
+loadLocalEnv();
 let prisma: PrismaClient | undefined;
 try {
   const options = credentialCommand(process.argv.slice(2));
   if (options.mode !== "backfill") throw new CredentialError();
   const { target, url } = credentialTarget();
-  prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }), log: [] });
+  prisma = scriptPrisma(url);
   await convertCredentials(prisma, { mode: "verify" });
   const sql = (name: string, folder = "migrations") => readFileSync(join("prisma", folder, name, "migration.sql"));
   if (!sql(FINALIZE_MIGRATION).equals(sql(FINALIZE_MIGRATION, "credential-cutover"))) throw new CredentialError();

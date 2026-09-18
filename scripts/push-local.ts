@@ -15,7 +15,6 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
-import { config } from "dotenv";
 
 import { detectCandidatesAcross, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
@@ -38,8 +37,9 @@ import {
   type SourceFileInput,
   type WrapperId,
 } from "../lib/scan/index";
+import { loadLocalEnv } from "./local";
 
-config({ path: ".env.local", quiet: true });
+loadLocalEnv();
 
 const argv = process.argv.slice(2);
 /** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
@@ -82,7 +82,7 @@ if (projectSlug === undefined) {
 //
 // ⚠️ **명령 앞에 붙이는 형태를 먼저 안내한다.** `.env.local`은 에이전트가 편집하지 않는 파일이고
 // (CLAUDE.md — 2026-09-04 전문 노출로 전면 재발급), 프로젝트를 바꿔 가며 검증할 때 파일을 고쳤다
-// 되돌리는 절차가 그 사고 경로였다 (2026-09-13, Codex 하네스 검토 지적 2). 위 `config()`가 쓰는
+// 되돌리는 절차가 그 사고 경로였다 (2026-09-13, Codex 하네스 검토 지적 2). 위 `loadLocalEnv()`가 쓰는
 // dotenv는 **이미 있는 `process.env`를 덮지 않으므로** 앞에 붙인 값이 이긴다.
 const token = optionalEnv("PUSH_TOKEN");
 if (token === undefined) {

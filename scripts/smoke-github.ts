@@ -7,8 +7,6 @@
  *
  * 사용: `pnpm smoke:github <project-slug>` — **인자가 필수다** (2026-09-07, 서버 env 폴백 제거).
  */
-import { config } from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "../lib/adapters/index";
@@ -19,10 +17,11 @@ import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budge
 import { makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/trigger";
+import { loadLocalEnv, scriptPrisma } from "./local";
 
 // .env.local을 명시적으로 읽는다 — dotenv 기본값은 `.env`이고 이 프로젝트의 시크릿은
 // Next.js 관례에 따라 `.env.local`에 있다. 경로를 안 주면 값이 undefined가 되고 원인을 오진한다.
-config({ path: ".env.local" });
+loadLocalEnv();
 
 /**
  * `lib/db.ts`를 쓰지 않는다 — 그 파일의 `server-only`가 tsx 스크립트를 막는다
@@ -30,9 +29,7 @@ config({ path: ".env.local" });
  * 그대로 들고 있으므로 여기서 재현할 것이 없다.
  */
 function createPrisma(): PrismaClient {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }),
-  });
+  return scriptPrisma(requireEnv("DATABASE_URL"));
 }
 
 async function main(): Promise<void> {
