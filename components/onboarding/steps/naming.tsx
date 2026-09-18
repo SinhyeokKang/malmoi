@@ -16,6 +16,7 @@ import { languageName } from "@/lib/onboarding/language-name";
 import { cn } from "@/lib/utils";
 import { LOCALE_RADIO_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
+import { SYNC_BRANCH_PREFIX } from "@/lib/pull/ref-slug";
 
 import { failureText } from "../failure";
 
@@ -86,9 +87,11 @@ export function NamingStep({
           mono는 푸시 토큰·워크플로 YAML처럼 그대로 베껴야 하는 것에만 남는다. 시안은 색만 올린다.
         */
         help={m.newProject.naming.hint(
-          <span className="text-foreground">mal-moi.com/projects/{slug || "…"}</span>,
-          // 브랜치 이름의 정본은 `syncBranchFor`다 — 여기 있는 것은 그 규칙의 설명이다
-          <span className="text-foreground">malmoi-i18n/sync-{slug || "…"}</span>,
+          // ⚠️ **호스트를 말하지 않는다** (launch-readiness L7.5) — 박아 두면 dev·로컬에서도 프로덕션 주소가 보인다.
+          // 힌트가 전하려는 것은 slug가 경로와 브랜치에 박힌다는 것이라 경로만으로 참이다.
+          <span className="text-foreground">/projects/{slug || "…"}</span>,
+          // 접두는 `syncBranchFor`와 같은 상수다 — 설명이 규칙과 갈리면 사용자가 PR을 못 찾는다.
+          <span className="text-foreground">{SYNC_BRANCH_PREFIX}{slug || "…"}</span>,
         )}
       >
         <Input
