@@ -345,6 +345,25 @@ describe("json-catalog — write", () => {
     expect(out.endsWith("\n\n")).toBe(false);
   });
 
+  /**
+   * ⚠️ **루트는 배열이 되지 않는다** — 최상위 키가 `"0".."n-1"`이면 배열로 나가고, 다음 read가
+   * `root-not-object`로 그 로케일을 통째로 떨어뜨린다 (launch-readiness L3.6). 루트 아래는 위 테스트대로 배열이다.
+   */
+  it("최상위 키가 0..n-1이어도 루트는 객체로 남고 왕복한다", () => {
+    const base = { adapter: "json-catalog" as const, pathTemplate: "src/lib/i18n/{locale}.json", locales: ["en"] };
+    const out = jsonCatalog.write({ ...base, nested: true }, {
+      locale: "en",
+      entries: [
+        { key: "0.title", message: "A" },
+        { key: "1", message: "B" },
+      ],
+    })!;
+    expect(JSON.parse(out)).toEqual({ "0": { title: "A" }, "1": "B" });
+    const r = jsonCatalog.read(base, [f("src/lib/i18n/en.json", out)]);
+    expect(r.errors).toEqual([]);
+    expect(r.locales[0]?.entries.map((e) => e.key)).toEqual(["0.title", "1"]);
+  });
+
   it("description은 버린다 (저장할 곳이 없다)", () => {
     const out = jsonCatalog.write(flat, {
       locale: "en",

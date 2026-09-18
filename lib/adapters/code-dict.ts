@@ -291,7 +291,10 @@ function writeWithErrors(
   format: DetectedFormat,
   input: WriteInput,
 ): { content: string | null; errors: AdapterError[] } {
-  const file = format.currentFiles?.[0];
+  // ⚠️ `currentFiles?.[0]`가 아니라 **경로로 고른다** — 호출부가 여러 파일을 실으면 다른 로케일의
+  // 원본 위에 치환하게 된다 (launch-readiness L3.6, json-catalog·chrome-locales와 같은 규칙).
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const file = format.currentFiles?.find((c) => c.path === path);
   if (!file) return { content: null, errors: [] };
 
   let sf: SourceFile;

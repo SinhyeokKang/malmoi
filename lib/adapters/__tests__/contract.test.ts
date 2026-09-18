@@ -58,6 +58,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     neverNull?: boolean;
     respectInputOrder?: boolean;
     ignoreOrder?: boolean;
+    firstFile?: boolean;
   };
 
   const fakeRegenerating = (b: Break): Adapter => ({
@@ -92,7 +93,11 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
       for (const e of list) out[e.key] = e.message;
       // **규칙을 다 지키는 fake는 표현도 원본에서 읽는다** — 계약이 그만큼 넓어졌다
       // (원본 포맷 보존, 2026-09-04). `b.indent`를 준 위반 케이스만 그 관측을 무시한다.
-      const observed = observeJsonStyle(_f.currentFiles?.[0]?.content).indent;
+      // 원본은 **자기 경로로** 고른다. `b.firstFile`만 위치(`[0]`)로 고른다 — L3.6의 옛 동작이다.
+      const own = b.firstFile
+        ? _f.currentFiles?.[0]
+        : _f.currentFiles?.find((c) => c.path === _f.pathTemplate.replaceAll("{locale}", input.locale));
+      const observed = observeJsonStyle(own?.content).indent;
       const space = b.indent === undefined ? observed : b.indent;
       return JSON.stringify(out, null, space) + (b.noTrailingNewline ? "" : "\n");
     },
@@ -107,6 +112,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ["0개인데 null을 안 냄", { neverNull: true }, /null을 내지 않았다/],
     ["입력 순서를 그대로 따름", { respectInputOrder: true }, /입력 순서 무관|정렬/],
     ["order를 무시하고 늘 코드 유닛 순", { ignoreOrder: true }, /order: LocaleEntry\.order 순서를 따르지 않는다/],
+    ["원본을 경로가 아니라 [0]으로 고름", { firstFile: true }, /원본 파일 둘/],
   ];
 
   for (const [name, brk, pattern] of cases) {
