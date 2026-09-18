@@ -16,7 +16,7 @@ import {
   type ProjectEvents,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
-import { countPending } from "@/lib/protection/where";
+import { countPending, countPendingBySurface } from "@/lib/protection/where";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -188,6 +188,11 @@ export async function countUnpublished(
   surfaceId?: string,
 ): Promise<number> {
   return countPending(prisma, projectId, surfaceId);
+}
+
+/** 표면 → 미배포 수(`countPendingBySurface`). 합은 `countUnpublished(prisma, projectId)`와 같다 — 둘 다 보관 표면을 뺀다. */
+export function countUnpublishedBySurface(prisma: PrismaClient, projectId: string): Promise<Map<string, number>> {
+  return countPendingBySurface(prisma, projectId);
 }
 
 /**

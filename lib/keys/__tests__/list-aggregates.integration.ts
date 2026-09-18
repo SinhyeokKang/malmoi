@@ -13,7 +13,7 @@ import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { isUnpublished } from "@/lib/keys/view";
 import { reviewByLocale } from "@/lib/projects/list";
-import { countUnpublished, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
+import { countUnpublished, countUnpublishedBySurface, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
 import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
@@ -327,6 +327,38 @@ it("⑤가 countUnpublished와, 그리고 행별 isUnpublished의 합과 같다 
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
   expect(unsent.get("p1")).toBe(byRow);
+});
+
+/**
+ * **표면별 미배포 수는 표면 수와 무관한 쿼리 수로 센다** (launch-readiness L7.2, audit #40). 전엔 로케일·번역 화면이 표면마다
+ * `countUnpublished`를 불러 N+1이었다. 술어는 `pendingWhere`(①)를 그대로 지난다 — 여섯째 사본을 만들지 않는다.
+ * ⚠️ **쿼리 수는 1이 아니라 ≤2다** — `countPending`과 같은 선행 count(토큰 컬럼만, 인덱스만 탄다)를 남긴다. 낡은 통계에서
+ * 관계 조인이 5.5초로 튀던 실측 대응이라 빼지 않는다.
+ */
+it("countUnpublishedBySurface가 표면별 개별 호출·전체 합과 같고, 쿼리 수가 표면 수와 무관하다 (보관 표면은 빠진다)", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  for (const [id, archivedAt] of [["b", null], ["c", AFTER]] as const) {
+    await prisma.translationSurface.create({ data: { id, projectId: "p1", slug: id, pathTemplate: `${id}/{locale}.json`, adapterName: "json-catalog", baseLocale: "en", archivedAt } });
+    await prisma.locale.create({ data: { projectId: "p1", surfaceId: id, code: "en", name: "English" } });
+    await prisma.stringKey.create({ data: { id: `${id}-key`, projectId: "p1", surfaceId: id, key: `${id}.key`, namespace: id, sourceText: id, sourceHash: id } });
+    await prisma.translation.create({ data: { projectId: "p1", surfaceId: id, keyId: `${id}-key`, localeCode: "en", value: id, updatedBy: "u1", pendingEditToken: `tok-${id}` } });
+  }
+  let queries = 0;
+  const counted = prisma.$extends({ query: { $allOperations: ({ args, query }) => { queries += 1; return query(args); } } }) as unknown as typeof prisma;
+  const bySurface = await countUnpublishedBySurface(counted, "p1");
+  expect(queries).toBeLessThanOrEqual(2);
+  for (const surfaceId of ["surface-p1", "b", "c"]) {
+    expect(bySurface.get(surfaceId) ?? 0).toBe(await countUnpublished(prisma, "p1", surfaceId));
+  }
+  expect(bySurface.get("surface-p1")).toBe(2);
+  expect(bySurface.get("b")).toBe(1);
+  expect(bySurface.has("c")).toBe(false);
+  expect([...bySurface.values()].reduce((a, b) => a + b, 0)).toBe(await countUnpublished(prisma, "p1"));
+  // 토큰이 하나도 없으면 선행 count 하나로 끝난다.
+  await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { pendingEditToken: null } });
+  queries = 0;
+  expect((await countUnpublishedBySurface(counted, "p1")).size).toBe(0);
+  expect(queries).toBe(1);
 });
 
 /** 첫 pull 전후가 같은 답이다 — 토큰 술어는 `lastPulledAt`을 읽지 않는다. */

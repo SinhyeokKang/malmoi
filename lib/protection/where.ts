@@ -3,7 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 /**
  * **토큰 술어** — 활성 표면 · 활성 키 · 활성 로케일에서 아직 전달 확인되지 않은 편집 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
  *
- * **미전달 술어의 주인은 여기 하나다** — `countUnpublished`·pull 1층·Publish 캡처·Publish 미리보기가 이 객체를 쓰고,
+ * **미전달 술어의 주인은 여기 하나다** — `countUnpublished`·`countUnpublishedBySurface`·pull 1층·Publish 캡처·Publish 미리보기가 이 객체를 쓰고,
  * 손 사본은 셀 투영(`lib/keys/query.ts` `loadKeys`의 `pending`)과 목록 raw SQL ⑤뿐이다(`pnpm test:projects:postgres`가 대조한다).
  *
  * ⚠️ **orphan 키·로케일을 뺀다.** 그 셀은 export에 안 나가므로 캡처해 해제하면 "보내지 않은 편집을 보냈다"가 된다 (완료 조건 9).
@@ -36,6 +36,25 @@ export async function countPending(
   const tokens = await db.translation.count({ where: { projectId, ...(surfaceId === undefined ? {} : { surfaceId }), pendingEditToken: { not: null } } });
   if (tokens === 0) return 0;
   return db.translation.count({ where: pendingWhere(projectId, surfaceId) });
+}
+
+/**
+ * 표면 → `pendingWhere` 셀 수. 없는 표면(보관 포함)은 키가 없다 — **쿼리 수가 표면 수와 무관하다** (launch-readiness L7.2).
+ * 로케일·번역 화면이 표면마다 `countPending`을 부르던 N+1을 대신한다. 선행 count는 `countPending`과 같은 이유로 둔다.
+ */
+export async function countPendingBySurface(
+  db: {
+    translation: {
+      count(args: { where: Prisma.TranslationWhereInput }): Promise<number>;
+      groupBy(args: { by: ["surfaceId"]; where: Prisma.TranslationWhereInput; _count: { _all: true } }): Promise<{ surfaceId: string; _count: { _all: number } }[]>;
+    };
+  },
+  projectId: string,
+): Promise<Map<string, number>> {
+  const tokens = await db.translation.count({ where: { projectId, pendingEditToken: { not: null } } });
+  if (tokens === 0) return new Map();
+  const rows = await db.translation.groupBy({ by: ["surfaceId"], where: pendingWhere(projectId), _count: { _all: true } });
+  return new Map(rows.map(row => [row.surfaceId, row._count._all]));
 }
 
 /**

@@ -9,7 +9,7 @@ vi.mock("@/lib/keys/query", () => ({
   loadProject: async () => ({ id: "p", surfaces: [{ id: "s", slug: "default", archivedAt: null, lastCommitSha: "sha", pathTemplate: "i18n/{locale}.json" }], slug: "demo", installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en", lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [{ code: "en", isBase: true, orphaned: false }] }),
   loadKeys: async () => state.rows,
   loadActors: async () => ({}),
-  countUnpublished: async () => 0,
+  countUnpublishedBySurface: async () => new Map(),
 }));
 vi.mock("@/components/translations/header", () => ({ TranslationsHeader: () => null }));
 vi.mock("@/components/translations/key-group", () => ({ KeyGroup: () => null }));

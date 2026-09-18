@@ -14,7 +14,7 @@ import { canPerform } from "@/lib/auth/permission";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
-import { countUnpublished, loadLocaleCounts, loadProject } from "@/lib/keys/query";
+import { countUnpublishedBySurface, loadLocaleCounts, loadProject } from "@/lib/keys/query";
 import { LocaleSurfaceSelector } from "@/components/surface-selector";
 import { localeProgress } from "@/lib/keys/view";
 import { basePending } from "@/lib/onboarding/base-pending";
@@ -46,16 +46,17 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
   if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   const prisma = getPrisma();
-  const [project, counts] = await Promise.all([
+  // 표면별 미배포 수도 같은 라운드다 — 표면마다 세던 N+1을 한 번의 집계로 바꿨다 (launch-readiness L7.2).
+  const [project, counts, unsentBySurface] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadLocaleCounts(prisma, projectId, surfaceId),
+    countUnpublishedBySurface(prisma, projectId),
   ]);
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
 
   const rows = localeProgress({ locales: project.locales, total: counts.total, cells: counts.cells });
-  const surfaces = await Promise.all(project.surfaces.map(async s => ({ slug: s.slug, pathTemplate: s.pathTemplate,
-    unpublished: await countUnpublished(prisma, projectId, s.id) })));
+  const surfaces = project.surfaces.map(s => ({ slug: s.slug, pathTemplate: s.pathTemplate, unpublished: unsentBySurface.get(s.id) ?? 0 }));
   // 셀렉트에는 살아 있는 것만 — 감추는 것은 편의이고 방어는 Action이다.
   const selectable = rows.filter((r) => !r.orphaned).map((r) => r.code);
   const canManage = canPerform(role, "project:settings");

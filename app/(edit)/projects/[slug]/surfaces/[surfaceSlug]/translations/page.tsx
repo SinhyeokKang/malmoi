@@ -14,7 +14,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
-import { countUnpublished, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
+import { countUnpublishedBySurface, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
 import {
   collectActorIds, filterByState, filterRows, groupByNamespace, namespaceCountsFor,
   parseLocaleSelection, pendingFirst, resolveNamespace,
@@ -154,10 +154,12 @@ export default async function TranslationsPage({
    * ⚠️ **미배포 집계와 병렬이다** — 위에서 `loadKeys`를 떼어내며 라운드가 하나 늘 뻔했다. 둘은
    * 서로를 안 물므로 같은 라운드에 보낸다.
    */
-  const [unpublished, actors] = await Promise.all([
-    countUnpublished(prisma, project.id),
+  const [unsentBySurface, actors] = await Promise.all([
+    countUnpublishedBySurface(prisma, project.id),
     loadActors(prisma, collectActorIds(visible)),
   ]);
+  // 전체 미배포 수는 표면별 합이다 — 둘 다 보관 표면을 빼는 같은 술어라 따로 세지 않는다 (launch-readiness L7.2).
+  const unpublished = [...unsentBySurface.values()].reduce((sum, n) => sum + n, 0);
 
   /**
    * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (PRODUCT §7.7).
@@ -181,8 +183,7 @@ export default async function TranslationsPage({
    * 것이지 사용자가 고른 필터가 아니다 (6a T2).
    */
   const chipQuery: TranslationsQuery = { ...query, ns: search.ns === undefined ? undefined : query.ns };
-  const surfaces = await Promise.all(project.surfaces.map(async s => ({ slug: s.slug, pathTemplate: s.pathTemplate,
-    unpublished: await countUnpublished(prisma, projectId, s.id) })));
+  const surfaces = project.surfaces.map(s => ({ slug: s.slug, pathTemplate: s.pathTemplate, unpublished: unsentBySurface.get(s.id) ?? 0 }));
 
   return (
     // ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
