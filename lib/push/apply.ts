@@ -305,6 +305,8 @@ async function applyWith(
   const refs = payload.refs
     .map((r) => ({ ...r, keyId: idByKey.get(r.key) }))
     .filter((r): r is typeof r & { keyId: string } => r.keyId !== undefined);
+  // 한 벌에서 나눈다 — 결과와 진행 표시는 거르는 조건이 다르다(아래 마지막 두 문장).
+  const { lastImportStartedAt, ...outcome } = importOutcomeFields(options.importOutcome ?? null, new Date());
 
   const rest = [
     // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (ARCHITECTURE §0 불변식 2) — 변경 감지도 병합도 없다.
@@ -386,11 +388,15 @@ async function applyWith(
         lastCommitAt: new Date(payload.commitAt),
       },
     }),
-    // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
-    // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
+    // **결과는 무조건, 진행 표시는 자기 실행만** 끝낸다. 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이
+    // 실패하는 창을 만들지 않는다.
+    // - 결과를 토큰으로 거르면 교차한 B가 토큰을 덮은 사이 A의 성공이 0행이 되고, 남은 옛 실패가 화면에 선다
+    //   (launch-readiness L3.7). 잠금 뒤 커밋 순서가 곧 데이터 순서라 마지막 커밋의 결과가 맞다.
+    // - 진행 표시를 거르지 않으면 A 성공이 대기 중인 B의 표시를 비우고, 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
+    prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: outcome }),
     prisma.translationSurface.updateMany({
       where: { id: surfaceId, projectId, lastImportToken: options.token },
-      data: { ...importOutcomeFields(options.importOutcome ?? null, new Date()), lastImportToken: null },
+      data: { lastImportStartedAt, lastImportToken: null },
     }),
   ];
 

@@ -193,7 +193,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       });
     } catch (error) {
       // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
-      await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
+      // ⚠️ **트랜잭션 안의 `stale-commit`은 실패가 아니다** — 위 사전 가드를 함께 지난 더 새 커밋이 먼저 적재됐다는
+      // 뜻이라 이 실행은 아무것도 안 했다. 실패로 닫으면 방금 성공한 적재를 `import-failed`로 덮는다 (launch-readiness L3.7).
+      if (error instanceof ApplyGuardError && error.code === "stale-commit") await abandonImportRun(prisma, { ...scope, token });
+      else await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
       if (error instanceof ApplyGuardError) {
         const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
         return NextResponse.json({ error: message }, { status: guardStatus(error.code) });

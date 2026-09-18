@@ -323,10 +323,14 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },
     }, {
-      // 결과는 같은 트랜잭션의 조건부 문장이다 — 나중 실행의 표시를 지우지 않는다.
-      where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
+      // 결과는 토큰과 **무관하다** — 교차한 실행이 토큰을 덮어도 이 성공이 기록된다 (launch-readiness L3.7).
+      where: { id: "surface-1", projectId: PROJECT_ID },
       // ⚠️ **성공이 실패 시각도 비운다** — 안 비우면 성공한 뒤에도 Home이 옛 실패를 말한다.
-      data: { lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: null, lastImportToken: null },
+      data: { lastImportError: null, lastImportFailedAt: null },
+    }, {
+      // 진행 표시는 조건부다 — 나중 실행의 표시를 지우지 않는다.
+      where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
+      data: { lastImportStartedAt: null, lastImportToken: null },
     }]);
   });
 
@@ -580,17 +584,19 @@ describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
 
   it("완전 성공이 이전 실패와 진행 표시를 같이 비운다", async () => {
     const { projectUpdates } = await run(null);
-    expect(projectUpdates[1]).toMatchObject({
+    expect(projectUpdates[1]).toEqual({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: null, lastImportFailedAt: null } });
+    expect(projectUpdates[2]).toMatchObject({
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
-      data: expect.objectContaining({ lastImportError: null, lastImportStartedAt: null }),
+      data: { lastImportStartedAt: null, lastImportToken: null },
     });
   });
 
   it("부분 실패는 코드를 남기고 진행 표시만 비운다 — 데이터는 이미 들어갔다", async () => {
     const { projectUpdates } = await run("partial-import");
-    expect(projectUpdates[1]).toMatchObject({
+    expect(projectUpdates[1]).toMatchObject({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: "partial-import" } });
+    expect(projectUpdates[2]).toMatchObject({
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
-      data: expect.objectContaining({ lastImportError: "partial-import", lastImportStartedAt: null }),
+      data: { lastImportStartedAt: null, lastImportToken: null },
     });
   });
 
