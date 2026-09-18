@@ -966,7 +966,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - ⚠️ **그 위에 층이 하나 더 있다** — `lib/push/assemble.ts`의 `assemblePushInput`이 `selectLocaleFiles` →
   `adapter.read` → base 판정을 한 묶음으로 들고, `scripts/push-local.ts`와 온보딩의 첫 적재가 **둘 다 이걸
   지난다**(셋을 직접 부르지 않는다). 생산자가 하나인 이유와 같은 이유로 그 입구도 하나여야 한다.
-- `scripts/ingest.ts`는 **`selectLocaleFiles`·`pickBaseLocale`을 그대로 import한다** (2026-09-04 — 전엔 바이트 동일한 복사본이었다). ⚠️ **그 CLI는 `assemblePushInput`을 지나지 않는다** — 두 함수를 각자 부르므로 단일 입구를 우회한다(통일은 미결). ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
+- `scripts/ingest.ts`도 **`assemblePushInput`을 지난다** (2026-09-18, launch-readiness L7.3 — 전엔 `selectLocaleFiles`·`pickBaseLocale`을 각자 불러 단일 입구를 우회했고, 그래서 **`--base` 검증이 그 CLI에서만 빠져** 탐지되지 않은 로케일을 base로 받았다). 원본이 필요한 왕복 검증을 위해 그 함수가 읽은 `files`를 함께 돌려준다. 검증은 `scripts/__tests__/ingest-base.test.ts`가 스크립트를 실제로 띄워서 한다. ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
 - **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
 
 ### 5.5.05 외부 페이로드가 **경로와 크기**를 정하지 못한다 (2026-09-09, sec-audit 발견 2·10)
