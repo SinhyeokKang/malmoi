@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FolderGit2, GitBranch, Search } from "lucide-react";
+import { FolderGit2, GitBranch, Search } from "lucide-react";
 
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
@@ -224,9 +224,8 @@ function InstallHint({ installUrl }: { installUrl: string | null }) {
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+      <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
         {m.newProject.empty.addRepos}
-        <ExternalLink className="size-3" aria-hidden />
       </a>
     </p>
   );
@@ -377,9 +376,8 @@ function Blocked({
                 m.newProject.empty.noLink
               ) : (
                 <>
-                  <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+                  <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
                     {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
-                    <ExternalLink className="size-3" aria-hidden />
                   </a>{" "}
                   — {m.newProject.empty.afterInstall}
                 </>

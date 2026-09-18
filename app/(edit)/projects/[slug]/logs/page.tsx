@@ -1,4 +1,4 @@
-import { ExternalLink, History } from "lucide-react";
+import { History } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
@@ -130,10 +130,9 @@ export default async function LogsPage({
                             href={row.prUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+                            className="focus-visible:ring-ring text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
                           >
                             {m.translations.publish.viewLink}
-                            <ExternalLink className="size-3" aria-hidden />
                           </a>
                         </p>
                       )}

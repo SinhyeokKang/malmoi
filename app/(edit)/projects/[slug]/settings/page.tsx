@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { GithubAccount, ReauthorizePrompt } from "@/components/github-account";
@@ -282,10 +281,9 @@ function HealthRow({
                   href={installUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-baseline gap-1 text-blue-600"
+                  className="text-blue-600"
                 >
                   {m.settings.repository.health.install}
-                  <ExternalLink className="size-3" aria-hidden />
                 </a>{" "}
                 — {m.settings.repository.health.installHint}
               </p>

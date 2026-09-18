@@ -91,20 +91,19 @@ describe("목록 시맨틱", () => {
 });
 
 /**
- * **외부 링크 글리프는 PR 번호에만 붙는다** (2026-09-16 사용자 판정).
+ * **외부 링크는 글리프를 달지 않는다** (2026-09-18 사용자 판정 — DESIGN §6.3).
  *
- * ⚠️ **두 정본이 같은 답을 준다.** `design_handoff_project_home`의 lucide 목록에 `external-link`가
- * 없고 `2a`는 *"리포 주소와 PR 번호만 링크"*라고만 적는다. `docs/DESIGN.md` §6.3이 글리프를 다는
- * 외부 링크를 **이름으로 여덟** 열거하는데 거기에 **"Home의 PR 링크"는 있고 리포 링크는 없다** —
- * 리포 행의 글리프는 어느 정본에도 근거가 없이 붙어 있었다.
+ * ⚠️ **2026-09-16에는 리포 행만 뺐고 PR 행은 글리프를 들어 이 검사가 그 비대칭을 셌다.**
+ * 그 예외의 근거였던 캔버스(`design_handoff_project_home`의 lucide 목록에 `external-link`가 없다)가
+ * 결국 화면 전체로 넓혀졌다 — 나가는 신호는 `text-blue-600`과 새 탭이 들고, 12px 글리프는 한 줄짜리
+ * 메타 행에서 자리만 먹었다. **이제 두 행이 같은 규칙이라 비대칭이 아니라 일치를 센다.**
  *
- * ⚠️ **비대칭을 센다** — "글리프가 없다"만 세면 PR 행에서 글리프가 사라져도 green이고, 그것은
- * §6.3을 깨는 회귀다. 한 검사가 둘을 함께 들어야 다음 사람이 한쪽만 고치지 못한다.
+ * ⚠️ **둘을 함께 든다** — 한쪽만 세면 다른 쪽에 글리프가 되살아나도 green이다.
  */
 describe("메타 열 — 외부 링크 글리프", () => {
   const at = new Date("2026-09-14T12:00:00Z");
 
-  it("리포 행은 글리프 없이 링크이고 PR 행은 글리프를 든다", async () => {
+  it("리포 행도 PR 행도 글리프 없이 링크다", async () => {
     const { container } = await render(
       <MetaColumn
         slug="acme"
@@ -122,6 +121,6 @@ describe("메타 열 — 외부 링크 글리프", () => {
     expect(repo).toBeDefined();
     expect(pr).toBeDefined();
     expect(repo?.querySelector("svg")).toBeNull();
-    expect(pr?.querySelector("svg")).not.toBeNull();
+    expect(pr?.querySelector("svg")).toBeNull();
   });
 });

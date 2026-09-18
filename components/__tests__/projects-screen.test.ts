@@ -333,11 +333,15 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).toContain("m.projects.importFailure.contactOwner");
   });
 
-  /** 외부로 나가는 둘만 `ExternalLink` 12를 단다 (DESIGN §6.3). */
-  it("외부 링크가 새 탭과 글리프를 든다", () => {
+  /**
+   * ⚠️ **외부 링크에 글리프를 달지 않는다** (2026-09-18 사용자 판정 — DESIGN §6.3).
+   * 나가는 신호는 색과 새 탭이 들고, 아이콘은 띠 한 줄에서 자리만 먹었다. Home 리포 행이
+   * 2026-09-16에 먼저 뺐고 나머지 열이 그 뒤를 따랐다 — **예외를 다시 만들지 않는다.**
+   */
+  it("외부 링크가 새 탭을 열되 글리프를 달지 않는다", () => {
     expect(BODY).toContain('target="_blank"');
     expect(BODY).toContain('rel="noreferrer"');
-    expect(BODY).toContain('<ExternalLink className="size-3"');
+    expect(BODY).not.toContain("ExternalLink");
   });
 
   /** ⚠️ **`main`을 하드코딩하지 않는다** — 실제 base 브랜치 이름이 문구와 링크에 들어간다. */

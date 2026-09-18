@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
 
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
@@ -104,10 +103,9 @@ export function TranslationsHeader({
                     href={lastPrUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-baseline gap-1 text-blue-600"
+                    className="text-blue-600"
                   >
                     {m.translations.publish.viewLink}
-                    <ExternalLink className="size-3" aria-hidden />
                   </a>
                 </>
               )}

@@ -73,7 +73,10 @@ export const en = {
     prUnknown: "We couldn't check whether anything is still waiting in a pull request.",
     /** ⚠️ 라벨이 `Send changes first`로 고정이다 — 그 화면의 실제 버튼 이름이 `Send changes`다. */
     sendFirst: "Send changes first",
-    /** 링크가 앱 안(번역 화면)으로 간다는 것을 문장이 말한다 — `ExternalLink` 글리프를 붙이지 않는다. */
+    /**
+     * 링크가 앱 안(번역 화면)으로 간다는 것을 **문장이** 말한다. 2026-09-18에 외부 링크도 글리프를
+     * 버려서 모양으로는 안팎이 안 갈린다 — 목적지를 알리는 몫이 전부 이 문장에 있다.
+     */
     sendHint: (link: ReactNode): ReactNode => <>Your translators can {link} — it opens the translation screen.</>,
     /**
      * 미발송 0 ∧ 열린 PR — `Send changes first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).

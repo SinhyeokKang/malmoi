@@ -1,7 +1,6 @@
 import {
   ChevronRight,
   CircleDashed,
-  ExternalLink,
   Eye,
   GitMerge,
   GitPullRequest,
@@ -419,7 +418,10 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
   return <icon.glyph aria-hidden className={cn("size-3.5 shrink-0", icon.tone)} />;
 }
 
-/** 띠의 링크는 **하나까지**다. 외부로 나가는 둘은 `ExternalLink` 12를 단다 (DESIGN §6.3). */
+/**
+ * 띠의 링크는 **하나까지**다. 외부로 나가는 둘은 `target="_blank"`만 다르고 **모양이 내부 링크와
+ * 같다** — 글리프를 달지 않는다 (DESIGN §6.3, 2026-09-18). 띠가 한 줄이라 12px 아이콘이 자리만 먹었다.
+ */
 function BannerAction({
   row,
   banner,
@@ -439,10 +441,9 @@ function BannerAction({
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="ml-1 inline-flex shrink-0 items-baseline gap-1 text-blue-600"
+      className="ml-1 shrink-0 text-blue-600"
     >
       {label}
-      <ExternalLink className="size-3" aria-hidden />
     </a>
   );
 

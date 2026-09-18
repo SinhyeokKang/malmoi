@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { ExternalLink } from "lucide-react";
 
 import { TranslationInput } from "@/components/translation-input";
 import { LocaleBadge } from "@/components/translations/locale-badge";
@@ -157,16 +156,15 @@ function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
   const link = buildPermalink(project, ref);
   if (!link) return null;
   return (
-    // 리포 밖으로 나가는 링크는 색 + `ExternalLink` 12 (DESIGN §6.3)
+    // 리포 밖으로 나가는 링크는 색만 든다 — 글리프를 달지 않는다 (DESIGN §6.3)
     <a
       href={link}
       target="_blank"
       rel="noreferrer"
-      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600"
+      className="mt-0.5 text-xs text-blue-600"
     >
       {ref.path.split("/").pop()}:{ref.line}
       {row.refs.length > 1 && ` +${row.refs.length - 1}`}
-      <ExternalLink className="size-3" aria-hidden />
     </a>
   );
 }

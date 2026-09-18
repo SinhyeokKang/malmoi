@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, ExternalLink, LoaderCircle, TriangleAlert } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
@@ -205,9 +205,8 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
             )}</p>
           : openPr !== undefined && openPr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
                   {m.repositorySync.seeOpen}
-                  <ExternalLink className="size-3" aria-hidden />
                 </a></p>
             : null}
       </>}

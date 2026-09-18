@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Link2 } from "lucide-react";
+import { Link2 } from "lucide-react";
 import { useState } from "react";
 
 import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
@@ -9,7 +9,6 @@ import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import { m } from "@/lib/i18n";
 
@@ -93,9 +92,8 @@ export function GithubSection({
               (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브를 건드리면 소비자를 따로 세야 한다).
             */}
             {settingsUrl !== null && (
-              <a className={cn(buttonClass(), "gap-1.5")} href={settingsUrl} target="_blank" rel="noreferrer">
+              <a className={buttonClass()} href={settingsUrl} target="_blank" rel="noreferrer">
                 {m.account.github.installationSettings}
-                <ExternalLink className="size-3" aria-hidden />
               </a>
             )}
             <DisconnectGithubButton onFailure={setFailure} />
