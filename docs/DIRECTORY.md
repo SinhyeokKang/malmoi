@@ -79,8 +79,8 @@ app/
   api/pull/             DB → PR. cron 전용(CRON_SECRET)
   api/auth/[...nextauth]/  Auth.js 핸들러(auth.ts의 handlers를 그대로 내보낸다). 인가를 지나지 않는 것이
                         당연해서 entry-points의 면제 목록에 이름으로 든다
-  api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다
-  api/github/setup/     App Setup URL — 설치(요청) 뒤 착지. setup_action만 읽는다. 같은 이유로 matcher 밖
+  api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
+                        설치·인가·리포 선택 변경이 전부 여기로 온다(state 없는 설치 계열 복귀는 착지만)
 middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/projects/:path* · /account).
                         렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
 ```
@@ -316,8 +316,8 @@ lib/
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id ·
-                        installed-repos · installation-url · setup(Setup URL 착지 판정 — 클라이언트도
-                        읽는 잎) · log(접힌 실패를 **서버 로그에만** 남기는
+                        installed-repos · installation-url · callback-plan(callback 갈래 판정 — 쓰기는
+                        route에 남는다) · pending(설치 요청 대기·승인 판정) · log(접힌 실패를 **서버 로그에만** 남기는
                         logFailure — 응답 본문에는 안 싣는다) · message(거부 → 문구. ⚠️ 던지지 않는다 —
                         ?e=가 주소창 값이라 단언을 걸면 설정 화면이 통째로 죽는다)
                         ⚠️ installed-repos는 /account의 "Installed on {n} repositories."다. 판정

@@ -39,6 +39,7 @@ const hoisted = vi.hoisted(() => ({
   listBranches: vi.fn(),
   createGitClient: vi.fn(),
   listUserInstallations: vi.fn(),
+  listUserInstallationRecords: vi.fn(),
   listInstallationRepos: vi.fn(),
   authorizeUrl: vi.fn(),
   ingestFirstSnapshot: vi.fn(),
@@ -74,6 +75,7 @@ vi.mock("@/lib/github", () => ({
 vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: hoisted.ensureUserToken }));
 vi.mock("@/lib/github-connect/user", () => ({
   listUserInstallations: hoisted.listUserInstallations,
+  listUserInstallationRecords: hoisted.listUserInstallationRecords,
   listInstallationRepos: hoisted.listInstallationRepos,
   authorizeUrl: hoisted.authorizeUrl,
 }));
@@ -125,6 +127,10 @@ const CATALOG = `${JSON.stringify({ "a.greet": "Hello", "a.bye": "Bye" }, null, 
 
 /** `probeTargets`가 고르는 셋 — en 우선 → 코드포인트 순. ②의 미리보기가 처음 드는 언어와 같다. */
 const SAMPLED_LOCALES = ["en", "fr", "ko"];
+
+/** `listUserInstallationRecords`가 주는 행 — 전부 요청 기록(`REQUESTED_AT`)보다 **앞**에 생긴 설치다. */
+const records = (...ids: string[]) => ids.map((id) => ({ id, createdAt: new Date("2026-01-01T00:00:00Z") }));
+const REQUESTED_AT = new Date("2026-09-18T10:00:00Z");
 
 /** `listInstallationRepos`가 주는 행. `pushed_at`은 같은 응답에 이미 있다 — 추가 호출 0. */
 const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z") => ({ fullName, pushedAt });
@@ -179,6 +185,7 @@ beforeEach(() => {
   hoisted.ensureUserToken.mockResolvedValue({ status: "ok", accessToken: "user-token" });
   hoisted.probeRepo.mockResolvedValue(PROBE_OK);
   hoisted.listUserInstallations.mockResolvedValue(["77"]);
+  hoisted.listUserInstallationRecords.mockResolvedValue(records("77"));
   hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web")]);
   hoisted.openRepoReader.mockImplementation(async () => reader());
   hoisted.authorizeUrl.mockReturnValue("https://github.com/login/oauth/authorize?client_id=x");
@@ -282,6 +289,47 @@ describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한�
     expect(await startGithubConnectForUser("new")).toEqual({ ok: false, error: "unavailable" });
     expect(hoisted.cookieSet).not.toHaveBeenCalled();
   });
+
+  /**
+   * ⚠️ **설치와 연결이 한 왕복이다** (install-and-connect). "Request user authorization (OAuth) during
+   * installation"이 켜져 있으면 GitHub이 설치 URL의 `state`를 callback까지 싣는다 — 쿠키·서명 dest는
+   * Authorize와 **같고** redirect 대상만 갈린다.
+   */
+  it("via=install이면 설치 URL로 가고 그 state가 쿠키 payload의 nonce다", async () => {
+    vi.stubEnv("GITHUB_APP_SLUG", "malmoi");
+
+    await expect(startGithubConnectForUser("new", {}, "install")).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const target = new URL(hoisted.redirect.mock.calls[0]?.[0] as string);
+    expect(target.origin + target.pathname).toBe("https://github.com/apps/malmoi/installations/new");
+    const { nonce, dest } = signedDest() as { nonce: string; dest: unknown };
+    expect(target.searchParams.get("state")).toBe(nonce);
+    expect(dest).toEqual({ kind: "new" });
+    expect(hoisted.authorizeUrl).not.toHaveBeenCalled();
+  });
+
+  it("via를 안 주면 지금처럼 Authorize다", async () => {
+    vi.stubEnv("GITHUB_APP_SLUG", "malmoi");
+
+    await expect(startGithubConnectForUser("new", {})).rejects.toThrow(/NEXT_REDIRECT/);
+
+    expect(hoisted.redirect).toHaveBeenCalledWith("https://github.com/login/oauth/authorize?client_id=x");
+  });
+
+  it("GITHUB_APP_SLUG가 없으면 install은 unavailable이고 쿠키를 심지 않는다", async () => {
+    vi.stubEnv("GITHUB_APP_SLUG", "");
+
+    expect(await startGithubConnectForUser("new", {}, "install")).toEqual({ ok: false, error: "unavailable" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+    expect(hoisted.redirect).not.toHaveBeenCalled();
+  });
+
+  it("모르는 via는 invalid input이고 쿠키를 심지 않는다", async () => {
+    vi.stubEnv("GITHUB_APP_SLUG", "malmoi");
+
+    expect(await startGithubConnectForUser("new", {}, "configure" as never)).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+  });
 });
 
 describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
@@ -294,6 +342,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
         { owner: "acme", repo: "ext", fullName: "acme/ext", pushedAt: "2026-09-01T00:00:00Z" },
         { owner: "acme", repo: "web", fullName: "acme/web", pushedAt: "2026-09-01T00:00:00Z" },
       ],
+      pending: false,
     });
   });
 
@@ -312,7 +361,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
    * 유일한 방어선이다.
    */
   it("같은 리포가 두 설치에 있어도 한 번만 나오고, 이름순으로 정렬돼 있다", async () => {
-    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listUserInstallationRecords.mockResolvedValue(records("77", "88"));
     hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) =>
       id === "77" ? [repoRow("acme/web"), repoRow("acme/zeta")] : [repoRow("acme/web"), repoRow("acme/alpha")],
     );
@@ -352,33 +401,33 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
   });
 
   it("설치가 0개면 no-installations이고 리포 목록을 부르지 않는다", async () => {
-    hoisted.listUserInstallations.mockResolvedValue([]);
+    hoisted.listUserInstallationRecords.mockResolvedValue(records());
 
-    expect(await listConnectableRepos()).toEqual({ ok: false, error: "no-installations" });
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "no-installations", pending: false });
     expect(hoisted.listInstallationRepos).not.toHaveBeenCalled();
   });
 
   it("설치는 있는데 선택된 리포가 없으면 no-repos다 — 설치 0개와 안내가 다르다", async () => {
     hoisted.listInstallationRepos.mockResolvedValue([]);
 
-    expect(await listConnectableRepos()).toEqual({ ok: false, error: "no-repos" });
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "no-repos", pending: false });
   });
 
   it("토큰이 없거나 만료면 그 사유가 그대로 나간다 — 장애로 위장하지 않는다", async () => {
     hoisted.ensureUserToken.mockResolvedValue({ status: "not-connected" });
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "not-connected" });
-    expect(hoisted.listUserInstallations).not.toHaveBeenCalled();
+    expect(hoisted.listUserInstallationRecords).not.toHaveBeenCalled();
   });
 
   it("401은 reauthorize다 — 영구 상태를 \"잠시 뒤 다시\"로 안내하지 않는다", async () => {
-    hoisted.listUserInstallations.mockRejectedValue(Object.assign(new Error("bad"), { status: 401 }));
+    hoisted.listUserInstallationRecords.mockRejectedValue(Object.assign(new Error("bad"), { status: 401 }));
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "reauthorize" });
   });
 
   it("나머지 실패는 unavailable이다", async () => {
-    hoisted.listUserInstallations.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
+    hoisted.listUserInstallationRecords.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
   });
@@ -390,7 +439,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
    * 버튼을 무한히 누른다. `/api/pull`의 프로젝트별 try/catch와 같은 판단이다 (ARCHITECTURE §3.05).
    */
   it("설치 하나가 실패해도 나머지 설치의 리포는 보인다", async () => {
-    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listUserInstallationRecords.mockResolvedValue(records("77", "88"));
     hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) => {
       if (id === "88") throw Object.assign(new Error("suspended"), { status: 403 });
       return [repoRow("acme/web")];
@@ -399,23 +448,94 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
     expect(await listConnectableRepos()).toEqual({
       ok: true,
       repos: [{ owner: "acme", repo: "web", fullName: "acme/web", pushedAt: "2026-09-01T00:00:00Z" }],
+      pending: false,
     });
   });
 
   it("설치가 전부 실패하면 unavailable이다 — 빈 목록을 \"리포가 없다\"로 말하지 않는다", async () => {
-    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listUserInstallationRecords.mockResolvedValue(records("77", "88"));
     hoisted.listInstallationRepos.mockRejectedValue(Object.assign(new Error("boom"), { status: 500 }));
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
   });
 
   it("전부 실패했는데 하나가 401이면 reauthorize다 — 재인가 신호가 장애에 묻히지 않는다", async () => {
-    hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
+    hoisted.listUserInstallationRecords.mockResolvedValue(records("77", "88"));
     hoisted.listInstallationRepos.mockImplementation(async (_token: string, id: string) => {
       throw Object.assign(new Error("nope"), { status: id === "88" ? 401 : 500 });
     });
 
     expect(await listConnectableRepos()).toEqual({ ok: false, error: "reauthorize" });
+  });
+});
+
+/**
+ * 설치 요청 대기 (install-and-connect). 기록은 `Account(github-app).installRequestedAt`이고, **그 시각
+ * 이후에 생긴 설치**가 목록에 나타나면 승인으로 읽어 기록을 지운다 — 다른 기기에서도 같은 판정이다.
+ */
+describe("listConnectableRepos — 설치 요청 대기", () => {
+  function requestOn() {
+    db = createHarness({
+      users: [{ id: OWNER, email: "o@a.com" }],
+      accounts: [{ userId: OWNER, provider: "github-app", providerAccountId: "gh-1", installRequestedAt: REQUESTED_AT }],
+    });
+    hoisted.prisma = db.prisma;
+  }
+
+  it("기록 있음 · 설치 0 → no-installations + pending", async () => {
+    requestOn();
+    hoisted.listUserInstallationRecords.mockResolvedValue([]);
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "no-installations", pending: true });
+    expect(db.prisma.account.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("기록 앞 설치에 리포가 있으면 목록 + pending — 목록 위 info 한 줄의 근거다", async () => {
+    requestOn();
+
+    const result = await listConnectableRepos();
+
+    expect(result).toMatchObject({ ok: true, pending: true });
+  });
+
+  it("기록 뒤 설치가 생겼으면 승인이다 — 목록 + pending false + 기록을 지운다", async () => {
+    requestOn();
+    hoisted.listUserInstallationRecords.mockResolvedValue([
+      { id: "77", createdAt: new Date(REQUESTED_AT.getTime() + 60_000) },
+    ]);
+
+    const result = await listConnectableRepos();
+
+    expect(result).toMatchObject({ ok: true, pending: false });
+    expect(db.prisma.account.updateMany).toHaveBeenCalledTimes(1);
+    expect(db.accounts.find((a) => a.userId === OWNER)?.installRequestedAt).toBeNull();
+  });
+
+  it("목록을 읽는 사이 새 요청이 심겼으면 지우지 않는다 — 읽은 기록만 지운다", async () => {
+    requestOn();
+    const renewed = new Date(REQUESTED_AT.getTime() + 120_000);
+    hoisted.listUserInstallationRecords.mockImplementation(async () => {
+      // 다른 탭의 callback이 조회 도중 새 요청을 커밋했다.
+      const row = db.accounts.find((a) => a.userId === OWNER);
+      if (row !== undefined) row.installRequestedAt = renewed;
+      return [{ id: "77", createdAt: new Date(REQUESTED_AT.getTime() + 60_000) }];
+    });
+
+    await listConnectableRepos();
+
+    expect(db.accounts.find((a) => a.userId === OWNER)?.installRequestedAt).toBe(renewed);
+  });
+
+  it("기록이 없으면 pending false이고 지우기를 부르지 않는다", async () => {
+    expect(await listConnectableRepos()).toMatchObject({ ok: true, pending: false });
+    expect(db.prisma.account.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("기록 조회가 던지면 unavailable이다 — 장애를 대기 없음으로 위장하지 않는다", async () => {
+    requestOn();
+    vi.mocked(db.prisma.account.findFirst).mockRejectedValueOnce(new Error("db down"));
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
   });
 });
 

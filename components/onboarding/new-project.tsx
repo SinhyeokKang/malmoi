@@ -10,7 +10,6 @@ import {
   listRepoBranches,
   loadCandidateSample,
 } from "@/app/(edit)/projects/actions";
-import { INSTALL_REQUESTED } from "@/lib/github-connect/setup";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
@@ -48,6 +47,7 @@ export function NewProject({
   listError,
   adapters,
   installUrl,
+  pending: installPending = false,
   now,
   initialError,
   backQuery,
@@ -57,6 +57,8 @@ export function NewProject({
   listError: string | undefined;
   adapters: AdapterChoice[];
   installUrl: string | null;
+  /** 설치 요청이 조직 관리자의 승인을 기다린다 (`listConnectableRepos`). 거부가 아니라 배너로 서지 않는다. */
+  pending?: boolean;
   /** 서버가 한 번 만든 "지금" — 클라이언트에서 만들면 hydration이 어긋난다. */
   now: string;
   /** `?e=` — callback이 실어 보낸 사유. ① 본문 맨 위 배너로 선다. */
@@ -73,9 +75,7 @@ export function NewProject({
   const [step, setStep] = useState<Step>(1);
   const [pending, startTransition] = useTransition();
   const [accessLost, setAccessLost] = useState<string | null>(null);
-  /** 설치 요청 대기는 거부가 아니다 — 실패 배너로 세우지 않고 ①이 따로 읽는다 (`lib/github-connect/setup.ts`). */
-  const installRequested = initialError === INSTALL_REQUESTED;
-  const [banner, setBanner] = useState<string | null>(installRequested ? null : initialError ?? null);
+  const [banner, setBanner] = useState<string | null>(initialError ?? null);
   const [announce, setAnnounce] = useState<string | undefined>(undefined);
 
   // ① 리포·브랜치
@@ -483,8 +483,9 @@ export function NewProject({
             branchValue,
             accessError,
             banner: accessLost ?? banner,
-            installRequested,
+            pending: installPending,
           }}
+          onAnnounce={setAnnounce}
           onQueryChange={setRepoQuery}
           onSelect={selectRepo}
           onBranchChange={(value) => {

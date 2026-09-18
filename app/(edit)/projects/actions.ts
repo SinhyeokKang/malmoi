@@ -31,17 +31,25 @@ import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { requireEnv } from "@/lib/env";
+import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/failure";
+import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
+import { planPending } from "@/lib/github-connect/pending";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
-import { authorizeUrl, type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
+import {
+  authorizeUrl,
+  type InstallationRepo,
+  listInstallationRepos,
+  listUserInstallationRecords,
+  listUserInstallations,
+} from "@/lib/github-connect/user";
 import { signSampleConfirmation, verifySampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
@@ -405,6 +413,13 @@ export type UserConnectDest = z.infer<typeof UserConnectDest>;
  * `/account`에는 대응물이 없다. 상한·형식은 `parseDest`가 서명을 풀 때 한 번 더 좁힌다.
  */
 const ConnectBack = z.object({ q: z.string().max(200).optional() });
+/**
+ * 왕복이 GitHub의 어느 화면으로 가는가 (install-and-connect). `install`은 설치 URL에 state를 실어 설치와
+ * 인가를 **한 왕복**으로 합친다. 쿠키·서명 dest는 둘이 같다 — 그래서 새 export가 아니라 인자다
+ * (`entry-points.test.ts`의 목록과 쿠키 규약이 한 자리에 남는다).
+ */
+const ConnectVia = z.enum(["authorize", "install"]);
+export type ConnectVia = z.infer<typeof ConnectVia>;
 
 /**
  * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (ARCHITECTURE §6.4). 인가는 `requireUser`뿐이다:
@@ -423,10 +438,12 @@ const ConnectBack = z.object({ q: z.string().max(200).optional() });
 export async function startGithubConnectForUser(
   raw: UserConnectDest,
   rawBack: { q?: string } = {},
+  rawVia: ConnectVia = "authorize",
 ): Promise<StartUserConnectResult> {
   // 입력이 인가보다 먼저다 — 모르는 갈래가 서명 payload에 실리면 착지가 `landingPath`의 사각지대가 된다.
   const parsed = UserConnectDest.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const via = ConnectVia.safeParse(rawVia);
+  if (!parsed.success || !via.success) return { ok: false, error: "invalid input" };
   const dest = parsed.data;
   // 목록 상태는 착지를 못 정한다 — 이상하면 그 값만 버리고 연결은 계속한다.
   const back = ConnectBack.safeParse(rawBack);
@@ -441,6 +458,14 @@ export async function startGithubConnectForUser(
   // Host를 못 믿으면 authorize URL을 만들지 않는다 — 추측한 origin으로 사용자를 보내지 않는다.
   if (origin === null) return { ok: false, error: "unavailable" };
   const nonce = randomBytes(32).toString("base64url");
+  /**
+   * ⚠️ **쿠키보다 먼저 목적지를 정한다** — 슬러그가 없어 갈 곳이 없는데 쿠키를 심으면 다음 왕복이 옛 nonce와
+   * 대조된다. 화면은 슬러그가 없으면 이 버튼을 애초에 안 세운다(`new-project-modal.tsx`) — 여기는 방어선이다.
+   */
+  const target = via.data === "install"
+    ? installWithStateUrl(optionalEnv("GITHUB_APP_SLUG"), nonce)
+    : authorizeUrl(nonce, callbackUrl(origin.origin));
+  if (target === null) return { ok: false, error: "unavailable" };
 
   const cookieStore = await cookies();
   cookieStore.set(
@@ -464,7 +489,7 @@ export async function startGithubConnectForUser(
   );
 
   // `redirect`는 던지므로 이 아래는 실행되지 않는다.
-  redirect(authorizeUrl(nonce, callbackUrl(origin.origin)));
+  redirect(target);
 }
 
 export type DisconnectResult = { ok: true } | { ok: false; error: "unavailable" };
@@ -517,9 +542,22 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
 
 /** ①의 리포 행. `pushedAt`은 "이 리포가 아직 살아 있는가"를 말한다 — 목록이 길수록 그 신호가 는다. */
 export type ConnectableRepo = { owner: string; repo: string; fullName: string; pushedAt: string | null };
+/**
+ * ⚠️ **`pending`(설치 요청 대기)은 거부가 아니라 플래그다** — `OnboardError` union에 넣으면 `?e=`를 지나 ①
+ * danger 배너 후보가 된다(`lib/github-connect/pending.ts`). 대기를 말할 수 있는 갈래 셋에만 선다.
+ */
 export type ConnectableReposResult =
+  | { ok: true; repos: ConnectableRepo[]; pending: boolean }
+  | { ok: false; error: WaitableEmpty; pending: boolean }
+  | { ok: false; error: Exclude<OnboardFailure, WaitableEmpty> };
+/** 대기를 말할 수 있는 빈 상태 — 장애·토큰 상태는 기록과 무관하다. */
+type WaitableEmpty = "no-installations" | "no-repos";
+/** ⚠️ **빈 상태 둘이 따로 선다** — `!==` 좁히기는 판별자가 단일 리터럴인 갈래만 지운다. */
+type RepoListing =
   | { ok: true; repos: ConnectableRepo[] }
-  | { ok: false; error: OnboardFailure };
+  | { ok: false; error: "no-installations" }
+  | { ok: false; error: "no-repos" }
+  | { ok: false; error: Exclude<OnboardFailure, WaitableEmpty> };
 
 /**
  * 내 설치가 덮는 리포 목록 (화면 ②). **표시용이지만 인가 근거와 같은 목록이다** — `createProject`가
@@ -535,13 +573,58 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { ok: false, error: token.status };
 
-  let installations: readonly string[];
+  /**
+   * 설치 요청 기록 (install-and-connect). ⚠️ **조회가 던지면 `unavailable`이다** — 장애를 "대기 없음"으로
+   * 위장하면 요청자가 설치 화면을 보고 링크를 다시 눌러 요청이 한 번 더 간다.
+   */
+  let requestedAt: Date | null;
+  try {
+    const row = await prisma.account.findFirst({
+      where: { userId, provider: APP_ACCOUNT_PROVIDER },
+      select: { installRequestedAt: true },
+    });
+    requestedAt = row?.installRequestedAt ?? null;
+  } catch (error) {
+    logFailure("onboard-repos", error);
+    return { ok: false, error: "unavailable" };
+  }
+
+  let installations: readonly { id: string; createdAt: Date }[];
   try {
     // ⚠️ **전 페이지를 읽는다** — 31번째 설치가 빠지면 정당한 리포가 목록에 없다 (`user.ts`).
-    installations = await listUserInstallations(token.accessToken);
+    installations = await listUserInstallationRecords(token.accessToken);
   } catch (error) {
     return listFailure([error]);
   }
+
+  const listed = await listReposOf(token.accessToken, installations.map((i) => i.id));
+  if (!listed.ok && listed.error !== "no-installations" && listed.error !== "no-repos") return listed;
+
+  const { pending, clearRequest } = planPending({ listResult: listed.ok ? { ok: true } : listed, requestedAt, installations });
+  if (clearRequest) {
+    /**
+     * 승인됐다 — 기록을 지운다. RSC 로더 안의 조건부 쓰기이고 전례가 있다(`ensureUserToken`의 토큰 회전).
+     * ⚠️ **읽은 값과 같을 때만 지운다** — GitHub 목록 조회(수백 ms~수 초) 사이에 다른 탭의 callback이 새 요청을
+     * 심었으면 그것은 이 승인과 무관하다. 지우면 그 대기가 사라져 사용자가 설치를 다시 눌러 요청이 한 번 더 간다.
+     * 실패해도 목록은 보인다 — 다음 조회가 다시 지운다.
+     */
+    try {
+      await prisma.account.updateMany({
+        where: { userId, provider: APP_ACCOUNT_PROVIDER, installRequestedAt: requestedAt },
+        data: { installRequestedAt: null },
+      });
+    } catch (error) {
+      logFailure("onboard-repos", error);
+    }
+  }
+  return { ...listed, pending };
+}
+
+/** 설치들 → 리포 목록. 설치 0개와 리포 0개를 가른다 (§3.12). */
+async function listReposOf(
+  accessToken: string,
+  installations: readonly string[],
+): Promise<RepoListing> {
   if (installations.length === 0) return { ok: false, error: "no-installations" };
 
   /**
@@ -552,7 +635,7 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
    */
   const settled = await Promise.all(
     installations.map((id) =>
-      listInstallationRepos(token.accessToken, id).then(
+      listInstallationRepos(accessToken, id).then(
         (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
         (error: unknown): { error: unknown } => ({ error }),
       ),
@@ -1396,7 +1479,7 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
  * 신호**다. `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 사용자가 같은 버튼을 무한히
  * 누른다 — 필요한 것은 "GitHub 다시 연결" 버튼이다.
  */
-function listFailure(errors: readonly unknown[]): { ok: false; error: OnboardFailure } {
+function listFailure(errors: readonly unknown[]): { ok: false; error: "reauthorize" | "unavailable" } {
   for (const error of errors) logFailure("onboard-repos", error);
   return errors.some((error) => httpStatus(error) === 401)
     ? { ok: false, error: "reauthorize" }

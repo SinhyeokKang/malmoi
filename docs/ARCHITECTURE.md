@@ -1515,7 +1515,7 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(`lib/auth/session.ts` — 거부는 redirect) / `getProjectAccess`(`lib/auth/query.ts` — union 반환) → 둘 다 `planProjectAccess`(`lib/auth/access.ts`). 표면 스코프는 `requireSurfaceAccess`·`getSurfaceAccess`(`lib/surfaces/access.ts`)가 그 뒤에 선다 | ⚠️ **`archived`는 못 막는다 — 막으라고 있는 갈래가 아니다.** 페이지 래퍼도 그 갈래만 redirect하지 않고 `{ …, archived: true }`를 **값으로** 돌려준다(§5.6.4) — 되돌릴 수 있는 상태이고 OWNER가 갈 곳이 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고 `app/__tests__/screens.test.ts`가 그 갈래를 만나는 화면 다섯을 전수로 센다 |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
-- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`·`/api/github/setup`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 둘을 부정 단언으로 고정한다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(PRODUCT §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
@@ -1841,15 +1841,35 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   목적지를 서명에서 얻으므로 무효한 state의 목적지는 믿을 수 없다. **넷 다 `?e=`를 읽는 쪽이
   있다**(§6.3). ⚠️ 갈래가 넷이 되면서 삼항 사슬을 `landingPath`로 내렸다 — 사슬로 두면 새 갈래를
   더할 때 어느 조건이 기본값(`null` = state를 못 믿는다)인지 보이지 않는다.
-- **App 설치의 복귀는 따로다 — Setup URL `/api/github/setup`** (2026-09-18, launch-readiness L2.4).
-  callback과 같은 형(matcher 밖 + `requireUser`)이지만 **state가 없다**: 설치 링크는 서명할 것을 싣지
-  않는 GitHub 주소이고, 이 지점은 쓰기 없이 착지만 정한다. **읽는 것은 `setup_action` 하나**다 —
-  `installation_id`는 믿을 이유가 없어(`/projects/new`가 사용자 토큰으로 설치 목록을 다시 조회한다)
-  안 읽고, 그래서 위조 판정이 없다. `install`·`update` → `/projects/new`, `request`(조직 비관리자의
-  설치 요청) → `/projects/new?e=install-requested`, 그 외 → `/projects`(`setupLanding`, 순수).
-  ⚠️ **`install-requested`는 거부 union에 없다** — 넣으면 ① 실패 배너로 서서 대기가 실패로 읽힌다.
-  ⚠️ **Setup URL은 App당 하나다** — 세 환경이 App 하나를 공유하는 동안 로컬·preview에서 한 설치도
-  프로덕션으로 착지한다(L2.10이 App을 나누면 풀린다).
+- **설치와 연결은 한 왕복이다 — 복귀도 callback 하나다** (2026-09-18, install-and-connect). App 설정
+  "Request user authorization (OAuth) during installation"을 켜 두면 GitHub이 설치 URL
+  (`installWithStateUrl` — `apps/<slug>/installations/new?state=<nonce>`)의 `state`를 대상 선택 → 권한
+  화면 → callback까지 싣고 `code`와 함께 돌려준다. 그래서 ①의 주 버튼은 `startGithubConnectForUser(dest,
+  back, "install")`이고 쿠키·서명 dest는 Authorize와 **같다**(redirect 대상만 갈린다). 갈래 판정은 순수
+  `planCallback`(`callback-plan.ts`)이고 **쓰기는 route에 남는다**(`exclusive.test.ts`가 `account.create`의
+  자리를 고정한다).
+  - ⚠️ **state 쿼리가 없는 설치 계열 복귀(`setup_action` = `install`·`update`·`request`)는 `/projects/new`에
+    착지만 한다** — code 교환·Account·요청 기록·쿠키 소거 전부 0. GitHub 앱 페이지에서 직접 설치, 리포 선택
+    Save, 관리자의 요청 승인 복귀가 이 모양이고 누가 시작했는지 모른다(POSTMORTEM 2026-09-10). 쿠키를 안
+    지우는 이유는 다른 탭에서 진행 중인 왕복의 것일 수 있어서다. `setup_action`이 없거나 모르는 값이면
+    지금처럼 `state-mismatch`다(Authorize 복귀엔 항상 state가 있다). ⚠️ **state 쿼리가 있으면 설치
+    계열이어도 서명 검증을 지난다** — land-only가 검증 우회로가 되지 않는다.
+  - `installation_id`는 여전히 **안 읽는다** — 목적지가 사용자 토큰으로 설치 목록을 다시 조회한다.
+  - **설치 요청 기록**: `setup_action=request`(조직 비관리자)로 서명 state와 함께 돌아오면
+    `Account(github-app).installRequestedAt`을 심고, `install`이면 지운다. **연결이 성공하는 쓰기에만,
+    `FOR UPDATE` 뒤 같은 트랜잭션에서** 싣는다 — `taken-by-other`는 쓰기 전에 빠진다. 서명 state 뒤에서만
+    쓰이므로 CSRF로 심을 수 없다. User가 아니라 Account에 두는 이유: 해제·다른 계정 교체가 행 삭제로 기록을
+    같이 치운다.
+  - **대기 판정**은 `planPending`(`pending.ts`): 기록이 있고 **그 시각 이후에 생긴 설치**가 사용자 설치
+    목록(`listUserInstallationRecords` — 같은 응답의 `created_at`, 추가 호출 0)에 없으면 대기다. 보이면
+    승인으로 읽고 `listConnectableRepos`가 기록을 지운다 — ⚠️ **읽은 값과 같을 때만**
+    (`installRequestedAt: requestedAt`): 목록 조회 사이에 다른 탭이 새 요청을 심었으면 그것은 이 승인과
+    무관하다. ⚠️ **대기는 거부 union(`OnboardError`)에 없다** — `ConnectableReposResult.pending` 플래그다.
+    union에 넣으면 `?e=`를 지나 ① danger 배너 후보가 된다(POSTMORTEM 2026-09-06). 만료·거절 감지는 없다
+    (GitHub이 요청자에게 알리지 않는다 — 웹훅은 PRODUCT §4.3 ②와 같은 이유로 안 만든다).
+  - ⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — 로컬·preview에서 시작한 설치도 App의 첫
+    callback(프로덕션)으로 간다. 그쪽엔 쿠키가 없어 교환 0회로 거부되므로 환경을 넘는 연결은 안 생긴다.
+    그래서 설치 왕복은 **프로덕션에서만** 실측된다(L2.10이 App을 나누면 풀린다).
 
 #### `planRepoConnect` — 3중 검증이 판정 자리 하나에 모여 있다 (`connect-plan.ts`)
 

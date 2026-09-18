@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { installationSettingsUrl } from "../installation-url";
+import { installationSettingsUrl, installWithStateUrl } from "../installation-url";
 
 /**
  * [Installation settings] 버튼의 목적지 (DESIGN §6.67).
@@ -24,4 +24,26 @@ it("빈 문자열도 null이다 — `apps//installations/new`로 나가는 문�
   // `optionalEnv`가 이미 빈 문자열을 `undefined`로 접지만, 타입이 `string`을 허용하는 한
   // 다른 호출부가 `process.env`에서 바로 넘길 수 있다.
   expect(installationSettingsUrl("")).toBeNull();
+});
+
+/**
+ * ① 주 버튼의 목적지 (install-and-connect). "Request user authorization (OAuth) during installation"이
+ * 켜져 있으면 GitHub이 `state`를 대상 선택 → 권한 화면 → callback까지 그대로 싣는다 — 그래서 설치와
+ * 연결이 한 왕복이 된다.
+ */
+describe("installWithStateUrl", () => {
+  it("slug가 있으면 설치 주소에 state 하나를 싣는다", () => {
+    expect(installWithStateUrl("malmoi", "nonce-1")).toBe("https://github.com/apps/malmoi/installations/new?state=nonce-1");
+  });
+
+  it("slug가 없거나 빈 문자열이면 null이다 — 항상 실패하는 버튼을 세우지 않는다", () => {
+    expect(installWithStateUrl(undefined, "nonce-1")).toBeNull();
+    expect(installWithStateUrl("", "nonce-1")).toBeNull();
+  });
+
+  it("nonce를 인코딩한다 — 쿼리 키가 state 하나로 남는다", () => {
+    const url = new URL(installWithStateUrl("malmoi", "a&b=c d")!);
+    expect([...url.searchParams.keys()]).toEqual(["state"]);
+    expect(url.searchParams.get("state")).toBe("a&b=c d");
+  });
 });

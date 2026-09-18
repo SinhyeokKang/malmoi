@@ -774,11 +774,11 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
   });
 
   /**
-   * GitHub이 브라우저를 되돌리는 두 지점. 로그인은 필요하지만(`requireUser`) matcher에 넣으면
+   * GitHub이 브라우저를 되돌리는 지점(설치·인가·리포 선택 변경이 전부 callback으로 온다). 로그인은 필요하지만(`requireUser`) matcher에 넣으면
    * 로그인 화면으로 302되며 쿼리(`code`·`setup_action`)가 사라진다 (POSTMORTEM 2026-09-06 "쿼리 수신자").
    */
   it("GitHub 복귀 지점은 matcher 밖이다 — 302되면 쿼리가 사라진다", () => {
-    const RETURNS = ["/api/github/callback", "/api/github/setup"];
+    const RETURNS = ["/api/github/callback"];
     expect(RETURNS.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)))).toEqual([]);
     // 대조군: 같은 판정이 보호 경로는 덮는다고 말한다 — 0건이 판정 고장이 아니다.
     expect(PATTERNS.some((pattern) => covers(pattern, "/projects/new"))).toBe(true);

@@ -140,6 +140,7 @@ export type AccountSeed = {
   access_token?: string | null;
   refresh_token?: string | null;
   expires_at?: number | null;
+  installRequestedAt?: Date | null;
 };
 
 /** `loadPullState`가 읽는 포맷 컬럼들. 프로젝트마다 같아도 되는 값이다. */
@@ -211,7 +212,7 @@ export function createHarness(seed: Seed = {}) {
   const surfaces = (seed.surfaces ?? projects.map(p => ({ ...p, id: `surface-${p.id}`, projectId: p.id, slug: "default", archivedAt: null })))
     .map(s => ({ ...FORMAT, ...s }));
   const accounts = (seed.accounts ?? []).map((a) => ({
-    access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...a,
+    access_token: "token", refresh_token: "refresh", expires_at: null as number | null, installRequestedAt: null as Date | null, ...a,
   }));
   // 시드가 `createdAt`을 안 주면 결정적인 값을 심는다 — 정렬·표시가 이 컬럼을 읽는다.
   const members = (seed.members ?? []).map((m, i) => ({
@@ -643,7 +644,7 @@ export function createHarness(seed: Seed = {}) {
       (a) => a.provider === args.data.provider && a.providerAccountId === args.data.providerAccountId,
     );
     if (clash) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
-    const row = { access_token: "token", refresh_token: "refresh", expires_at: null as number | null, ...args.data };
+    const row = { access_token: "token", refresh_token: "refresh", expires_at: null as number | null, installRequestedAt: null as Date | null, ...args.data };
     accounts.push(row);
     return row;
   });
@@ -663,8 +664,14 @@ export function createHarness(seed: Seed = {}) {
 
   const updateManyAccounts = vi.fn(
     async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+      // ⚠️ **`{ not: null }`을 실제로 본다** — 요청 기록 지우기의 조건이다. 동등 비교로 접으면 그 조건이 항상
+      // 거짓이라 "지웠다"를 단언하는 테스트가 red가 되거나, 조건을 빼먹은 구현이 green이 된다.
       const matched = accounts.filter((a) =>
-        Object.entries(args.where).every(([k, v]) => (a as Record<string, unknown>)[k] === v),
+        Object.entries(args.where).every(([k, v]) => {
+          const actual = (a as Record<string, unknown>)[k];
+          if (v !== null && typeof v === "object" && "not" in v) return actual !== (v as { not: unknown }).not && actual !== undefined;
+          return actual === v;
+        }),
       );
       for (const row of matched) Object.assign(row, args.data);
       return { count: matched.length };

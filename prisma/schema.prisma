@@ -433,6 +433,11 @@ model Account {
   id_token          String?
   session_state     String?
 
+  /// 조직 비관리자의 GitHub App 설치 **요청** 시각 (install-and-connect). `github-app` 행에만 쓴다 — 연결
+  /// 해제·다른 계정으로 교체가 행 삭제로 기록을 같이 치운다(User에 두면 새 계정에 거짓 대기가 뜬다).
+  /// 서명 state가 있는 callback만 쓰고, 이 시각 뒤에 생긴 설치가 목록에 보이면 지운다.
+  installRequestedAt DateTime?
+
   /// Cascade다 — 어댑터의 `deleteUser`가 `user.delete` 하나만 부르므로 Restrict면 그 메서드가
   /// 항상 실패한다. **우리 데이터(`ProjectMember`)는 반대로 Restrict다** — 아래.
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

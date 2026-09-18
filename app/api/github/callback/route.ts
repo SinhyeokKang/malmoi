@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planAccountLink } from "@/lib/github-connect/account-link";
+import { planCallback, type RequestRecord } from "@/lib/github-connect/callback-plan";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { stateCookieNames, verifyState, type StateDest } from "@/lib/github-connect/state";
@@ -42,28 +43,34 @@ export async function GET(request: Request): Promise<NextResponse> {
     .map((name) => cookieStore.get(name)?.value)
     .find((value) => value !== undefined);
 
+  const stateParam = url.searchParams.get("state");
   const state = verifyState({
     cookie,
-    query: url.searchParams.get("state"),
+    query: stateParam,
     userId,
     now: new Date(),
     secret: requireEnv("AUTH_SECRET"),
   });
 
-  // ⚠️ **state를 믿을 수 없으면 `dest`도 믿을 수 없다** — 목적지가 `/projects`이고, 그 화면이
-  // `isConnectError`로 사유를 읽는다 (ARCHITECTURE §6.4). 사용자가 취소한 경우도 여기서는 갈래를 바꾸지
-  // 않는다: 어디로 돌아가야 하는지 모르는 것이 먼저다.
-  const denied = url.searchParams.get("error") !== null;
-  if (state.status !== "ok") {
-    return landing(request, null, denied ? "denied" : state.status);
-  }
-  const dest = state.dest;
-
-  if (denied) return landing(request, dest, "denied");
-
-  const code = url.searchParams.get("code");
-  // code도 error도 없는 요청을 성공으로 읽지 않는다.
-  if (code === null || code === "") return landing(request, dest, "exchange-failed");
+  /**
+   * 갈래는 `planCallback`이 정한다 (install-and-connect). ⚠️ **state를 믿을 수 없으면 `dest`도 믿을 수 없다** —
+   * 목적지가 `/projects`이고, 그 화면이 `isConnectError`로 사유를 읽는다 (ARCHITECTURE §6.4).
+   */
+  const plan = planCallback({
+    setupAction: url.searchParams.get("setup_action"),
+    stateParam,
+    state,
+    denied: url.searchParams.get("error") !== null,
+    code: url.searchParams.get("code"),
+  });
+  /**
+   * ⚠️ **state 없는 설치 계열 복귀는 착지만 한다** — 교환·쓰기·쿠키 소거 0. 누가 시작했는지 모르는 왕복이고
+   * (POSTMORTEM 2026-09-10), 쿠키는 다른 탭에서 진행 중인 왕복의 것일 수 있다. `installation_id`도 안 읽는다 —
+   * 목적지 화면이 사용자 토큰으로 설치 목록을 다시 조회한다.
+   */
+  if (plan.kind === "land-only") return NextResponse.redirect(new URL(routes.newProject(), request.url));
+  if (plan.kind === "reject") return landing(request, plan.dest, plan.error);
+  const { dest, code } = plan;
 
   try {
     validateTokenWriteKey();
@@ -85,7 +92,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   let outcome: ConnectError | null;
   try {
-    outcome = await linkAccount(getPrisma(), { userId, providerAccountId: viewer.id, tokens });
+    outcome = await linkAccount(getPrisma(), { userId, providerAccountId: viewer.id, tokens, request: plan.request });
   } catch (error) {
     // DB 장애를 거부로 위장하지 않는다 (POSTMORTEM 2026-09-06).
     logFailure("link", error);
@@ -102,10 +109,9 @@ export async function GET(request: Request): Promise<NextResponse> {
  * 첫째의 `userId`를 덮어써 **연결 소유권이 이동한다.** 어댑터의 `linkAccount`도 `create`만 한다 —
  * 그 성질을 따르고 P2002를 재조회로 푼다.
  */
-async function linkAccount(
-  prisma: PrismaClient,
-  input: { userId: string; providerAccountId: string; tokens: UserTokens },
-): Promise<ConnectError | null> {
+type LinkInput = { userId: string; providerAccountId: string; tokens: UserTokens; request: RequestRecord };
+
+async function linkAccount(prisma: PrismaClient, input: LinkInput): Promise<ConnectError | null> {
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${input.userId} FOR UPDATE`;
@@ -121,11 +127,14 @@ async function linkAccount(
   }
 }
 
-async function linkAccountLocked(
-  prisma: Prisma.TransactionClient,
-  input: { userId: string; providerAccountId: string; tokens: UserTokens },
-): Promise<ConnectError | null> {
+async function linkAccountLocked(prisma: Prisma.TransactionClient, input: LinkInput): Promise<ConnectError | null> {
   const { userId, providerAccountId, tokens } = input;
+  /**
+   * 설치 요청 기록 (install-and-connect). ⚠️ **연결이 성공하는 쓰기에만 실린다** — `FOR UPDATE` 뒤, 같은
+   * 트랜잭션이다(POSTMORTEM 2026-09-13). `taken-by-other`는 아래에서 먼저 빠지므로 남의 행에 대기가 안 심긴다.
+   * `keep`은 키 자체를 안 싣는다: Authorize 복귀는 대기를 모른다.
+   */
+  const record = requestColumn(input.request);
   const key = { provider: PROVIDER, providerAccountId };
 
   const existing = await prisma.account.findUnique({
@@ -145,7 +154,7 @@ async function linkAccountLocked(
 
   if (plan === "already-linked") {
     // `userId`를 data에 넣지 않는다 — 이미 내 행이고, 넣으면 경합에서 소유권이 움직인다.
-    await prisma.account.update({ where: { provider_providerAccountId: key, userId }, data: columns(tokens, userId, providerAccountId) });
+    await prisma.account.update({ where: { provider_providerAccountId: key, userId }, data: { ...columns(tokens, userId, providerAccountId), ...record } });
     return null;
   }
 
@@ -154,12 +163,18 @@ async function linkAccountLocked(
     await prisma.account.delete({
       where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: current.providerAccountId }, userId },
     });
-    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId) } });
+    await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId), ...record } });
     return null;
   }
 
-  await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId) } });
+  await prisma.account.create({ data: { userId, ...key, type: "oauth", ...columns(tokens, userId, providerAccountId), ...record } });
   return null;
+}
+
+function requestColumn(request: RequestRecord): { installRequestedAt?: Date | null } {
+  if (request === "set") return { installRequestedAt: new Date() };
+  if (request === "clear") return { installRequestedAt: null };
+  return {};
 }
 
 /**

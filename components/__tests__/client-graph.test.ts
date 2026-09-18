@@ -94,8 +94,6 @@ const CLIENT_LIB_FILES = [
   "lib/auth/permission.ts",
   "lib/compare.ts",
   "lib/github-connect/message.ts",
-  // `?e=install-requested` 상수를 ①이 읽는다 — `routes` 하나만 무는 잎이다 (launch-readiness L2.4).
-  "lib/github-connect/setup.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",
