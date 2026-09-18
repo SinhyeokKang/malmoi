@@ -1112,7 +1112,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 ### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
 
-적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이고, 근거가 `docs/features/sync-edit-protection/design.md`에만 있어서 여기로 올렸다.
+적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
 
 | 컬럼 | 소유 | 무엇을 막나 |
 |---|---|---|
@@ -1143,6 +1143,7 @@ $transaction(tx):
 - ⚠️ **잠금은 `Project` 행이지 `SyncRun`이 아니다** — 막으려는 것이 "이 프로젝트에 대한 두 번째
   실행"이고, **아직 존재하지 않는 행은 잠글 수 없다.** `createInvitation`·`changeMember`·`createProject`가
   같은 형이다.
+- ⚠️ **Publish와 수동 Sync가 서로를 막는다** (2026-09-18, sync-edit-protection). 방향이 반대인 두 실행이 겹치면 **남는 값이 두 요청의 도착 순서에 달린다** — Sync는 리포 값으로 DB를 덮고 Publish는 DB로 리포를 덮는다. 그래서 `planSyncStart`가 같은 잠금 안에서 `Project.repositoryImportToken`·`repositoryImportStartedAt`을, `planRepositoryImport`가 `SyncRun`의 `RUNNING` 행을 읽는다. **stale 경계는 하나다**(`isRunActive` — `STALE_AFTER_SECONDS` 300초, 경계 정각은 아직 진행 중): 두 벌이면 한쪽은 막고 한쪽은 여는 창이 생긴다. 상수·판정이 `lib/sync/plan.ts`에 있고 `lib/import/plan.ts`가 그것을 쓴다 — **방향이 그쪽이다**(`lib/import/plan.ts`는 `@/lib/adapters`를 물어 화면 그래프로 새면 안 된다).
 - ⚠️ **부분 유니크 인덱스(`WHERE status='RUNNING'`)를 쓰지 않는다** — Prisma가 그 문법을 못 내서
   마이그레이션에 raw SQL을 손으로 넣어야 하고, 스키마와 실제 DB가 갈리는 자리가 하나 는다.
 - ⚠️ **잠금 트랜잭션 안에서 GitHub을 부르지 않는다.** 여기까지가 수 ms이고 실제 pull은 밖에서 돈다 —
