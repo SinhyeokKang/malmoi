@@ -1444,14 +1444,29 @@ async function checkRepoAccess(
     const settled = await Promise.all(
       userInstallationIds.map((id) =>
         listInstallationRepos(token.accessToken, id).then(
-          (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
-          (): { repos: readonly InstallationRepo[] } => ({ repos: [] }),
+          (repos): { repos: readonly InstallationRepo[]; error?: unknown } => ({ repos }),
+          (error: unknown): { repos: readonly InstallationRepo[]; error?: unknown } => ({ repos: [], error }),
         ),
       ),
     );
     // 대소문자만 다른 이름을 거짓 거부하지 않는다 (`planRepoConnect`와 같은 규칙).
     const holder = settled.find((r) => r.repos.some((row) => row.fullName.toLowerCase() === wanted));
     if (holder === undefined) {
+      /**
+       * ⚠️ **하나도 못 읽었는데 실패가 있었다면 "설치 안 됨"이 아니다** — 장애를 거부로 위장하면
+       * 화면이 "App이 설치돼 있지 않다"고 단언하고, 사용자는 **이미 설치한 것을 다시 설치하러 간다.**
+       * 형제 `listConnectableRepos`가 같은 선을 긋는다 (POSTMORTEM 2026-09-06 "401이 not-installed로
+       * 접혀 있었다").
+       *
+       * ⚠️ **부분 실패는 그대로 진행한다** — 일시중지된 설치의 403은 영구 상태이고, 통째로 접으면
+       * 정상 설치의 리포도 연결하지 못한다. 가르는 축은 "성공한 조회가 하나라도 있었나"다.
+       */
+      const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
+      // 원인은 어느 갈래든 로그에만 남는다 — 화면에 실으면 존재 오라클이 된다.
+      for (const error of failures) logFailure("onboard-access", error);
+      if (failures.length > 0 && failures.length === settled.length) {
+        return { status: "rejected", error: "unavailable" };
+      }
       // ⚠️ **여기서 갈래를 나누지 않는다** — "우리 App이 없다"와 "네가 못 본다"를 구별해 주는 것이
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };

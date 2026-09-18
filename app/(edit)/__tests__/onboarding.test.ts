@@ -975,6 +975,32 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
   });
 
+  /**
+   * ⚠️ **장애를 거부로 위장하지 않는다** (launch-readiness L3.2). 설치별 리포 조회가 5xx·403으로
+   * **전부** 실패하면 `holder`를 못 찾는데, 그것을 `repo-not-installed`로 접으면 화면이 **"App이
+   * 설치돼 있지 않다"**고 단언한다 — 사용자는 이미 설치한 것을 다시 설치하러 간다.
+   *
+   * ⚠️ **부분 실패와 갈린다** — 아래 대조군이 그 선이고, 형제 `listConnectableRepos`가 같은 문장을
+   * 이미 들고 있다("하나도 못 읽었는데 실패가 있었다면 빈 목록은 '리포가 없다'가 아니다").
+   *
+   * 선례: POSTMORTEM 2026-09-06 "401이 not-installed로 접혀 있었다".
+   */
+  it("설치별 조회가 전부 실패하면 unavailable이다 — 설치 안 됨으로 접지 않는다", async () => {
+    hoisted.listInstallationRepos.mockRejectedValue(Object.assign(new Error("boom"), { status: 503 }));
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
+  });
+
+  it("일부만 실패하고 나머지에서 찾으면 그대로 진행한다 — 위 unavailable의 대조군", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "78"]);
+    hoisted.listInstallationRepos
+      .mockRejectedValueOnce(Object.assign(new Error("suspended"), { status: 403 }))
+      .mockResolvedValueOnce([repoRow("acme/web")]);
+
+    expect(await createProject(createInput())).toMatchObject({ ok: true });
+  });
+
   it("probe 장애는 unavailable로 통과한다 — planProjectCreate가 그것을 거부로 접지 않는다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "error" });
 
