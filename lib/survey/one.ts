@@ -16,7 +16,6 @@ import {
   emptyErrors,
   type ReadErrorKind,
   type RepoSurvey,
-  type Roundtrip,
   type SeparatorCounts,
   type SurveyCandidate,
   type SurveyInput,

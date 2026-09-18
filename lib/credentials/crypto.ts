@@ -65,7 +65,3 @@ export function hashSessionToken(raw: string): string {
   return `sha256:v1:${createHash("sha256").update("malmoi/session/v1\0").update(raw).digest("hex")}`;
 }
 export function isSessionValid(expires: Date, now: Date): boolean { return expires.getTime() > now.getTime(); }
-export function loginAccountData<T extends { userId: string; type: string; provider: string; providerAccountId: string }>(account: T) {
-  if (account.provider !== "github" && account.provider !== "google") return invalid();
-  return { userId: account.userId, type: account.type, provider: account.provider, providerAccountId: account.providerAccountId };
-}

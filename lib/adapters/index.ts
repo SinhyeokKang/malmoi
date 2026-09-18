@@ -11,7 +11,6 @@ export { jsonCatalog } from "./json-catalog";
 export { yamlCatalog } from "./yaml-catalog";
 export { codeDict } from "./code-dict";
 export { tsDict } from "./ts-dict";
-export { localeFromPath } from "./chrome-locales";
 export { namespaceOf, compareKeys, catalogVerdict, matchGlobPaths, pathSignals } from "./shared";
 export * from "./types";
 

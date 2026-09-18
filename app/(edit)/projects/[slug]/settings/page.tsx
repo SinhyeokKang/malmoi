@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
 import { GithubAccount, ReauthorizePrompt } from "@/components/github-account";
-import { CopyButton } from "@/components/onboarding/copy-button";
 import { FirstIngestRetry } from "@/components/onboarding/first-ingest-retry";
 import { PushTokenPanel } from "@/components/onboarding/push-token-panel";
 import { WorkflowBlock } from "@/components/onboarding/workflow-block";

@@ -1,5 +1,4 @@
 import { matchesGlob } from "./glob";
-import { serializeJson } from "./json-style";
 import type { LocaleEntry, ReadResult } from "./types";
 
 /**
@@ -64,17 +63,6 @@ const MAX_TEMPLATE_LENGTH = 200;
 export function exceedsGlobBudget(pathTemplate: string): boolean {
   if (pathTemplate.length > MAX_TEMPLATE_LENGTH) return true;
   return (pathTemplate.match(GLOB_QUANTIFIER)?.length ?? 0) > MAX_GLOB_QUANTIFIERS;
-}
-
-/**
- * 들여쓰기 2칸 + 파일 끝 개행 정확히 1개.
- *
- * ⚠️ **원본을 아는 호출부는 `serializeJson(value, style)`을 직접 부른다** — 이 함수는 원본이
- * 없을 때의 기본 경로다(신규 로케일 파일). 시그니처를 그대로 두는 것은 호출부 diff를 줄이려는
- * 것이고, 판정은 `lib/adapters/json-style.ts` 한 곳에 있다.
- */
-export function serialize(value: unknown): string {
-  return serializeJson(value);
 }
 
 /**
@@ -355,11 +343,6 @@ export function verdictFromValues(values: readonly unknown[]): CatalogVerdict {
   const good = values.filter((v) => typeof v === "string" || (v !== null && typeof v === "object")).length;
   if (good === 0) return "no";
   return good * 2 >= values.length ? "yes" : "no";
-}
-
-/** @deprecated `catalogVerdict`를 쓴다. `unknown`을 `false`로 눌러버린다. */
-export function looksLikeCatalog(content: string): boolean {
-  return catalogVerdict(content) === "yes";
 }
 
 /** probe로 읽어볼 샘플 수 상한. GitHub API에서는 블롭 읽기가 요청 비용이다. */

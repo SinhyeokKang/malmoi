@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_JSON_STYLE, indentOf, observeJsonStyle, pathKey, serializeJson } from "../json-style";
-import { serialize } from "../shared";
 import { chromeLocales } from "../chrome-locales";
 import { jsonCatalog } from "../json-catalog";
 
 /**
  * **원본 포맷 보존 태스크 1a — 들여쓰기 축** (ARCHITECTURE §1.1).
  *
- * `serialize`가 표현을 2칸으로 고정하는 것이 학습 코퍼스의 최대 잔여 diff 원인이다
+ * 옛 `serialize`가 표현을 2칸으로 고정한 것이 학습 코퍼스의 최대 잔여 diff 원인이다
  * (재생성 리포 71개 중 **30개**, `ARCHITECTURE §1.9` §11.3). 4칸 파일에 2칸을 쓰면 값 편집이
  * 0건이어도 **모든 줄이 바뀐다.**
  *
@@ -20,12 +19,13 @@ import { jsonCatalog } from "../json-catalog";
 const V = { b: "둘", a: { deep: "깊다", arr: ["x", "y"] }, emoji: "🎉", quote: 'a"b\\c' };
 
 describe("serializeJson — 기본 경로가 지금과 바이트 동일하다", () => {
-  it("스타일을 안 주면 `serialize`와 같다 — 이게 깨지면 clean 고정 집합의 0.000이 무너진다", () => {
-    expect(serializeJson(V)).toBe(serialize(V));
+  // 원본이 없을 때의 기본 경로(신규 로케일 파일) — 2칸 + 끝 개행 1개. 이게 깨지면 clean 고정 집합의 0.000이 무너진다.
+  it("스타일을 안 주면 2칸 + 끝 개행 1개다", () => {
+    expect(serializeJson(V)).toBe(`${JSON.stringify(V, null, 2)}\n`);
   });
 
   it("DEFAULT_JSON_STYLE을 줘도 같다", () => {
-    expect(serializeJson(V, DEFAULT_JSON_STYLE)).toBe(serialize(V));
+    expect(serializeJson(V, DEFAULT_JSON_STYLE)).toBe(serializeJson(V));
   });
 
   it("끝 개행이 정확히 1개다 — 원본과 무관한 불변식이다", () => {

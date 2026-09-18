@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { ADAPTERS, chromeLocales, detectFormat, jsonCatalog, tsDict } from "../index";
-import { tsDictDetectByContent } from "../ts-dict";
 import type { FileProbe } from "../types";
 
 /**
@@ -66,7 +65,7 @@ describe("detectCandidates — 후보를 순위순으로 전부 낸다", () => {
     const paths = ["a/i18n/x.ts", "b/i18n/y.ts"];
     expect(tsDict.detectCandidates(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
       .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
-    expect(tsDictDetectByContent(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
+    expect(tsDict.detectCandidates(paths, () => TS_SOURCE).map((c) => c.pathTemplate))
       .toEqual(["a/i18n/*.ts", "b/i18n/*.ts"]);
   });
 

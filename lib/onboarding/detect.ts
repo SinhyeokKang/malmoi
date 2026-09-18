@@ -6,13 +6,6 @@ import { m } from "@/lib/i18n";
 import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
 
 /**
- * ⚠️ **`keyGap`은 잎 모듈에 산다** — ③(클라이언트)이 그것을 **값으로** 부르는데, 이 파일은
- * `lib/adapters`를 물어 ts-morph 전체를 끌고 온다 (POSTMORTEM 2026-09-07, 7.2MB). 여기서
- * 다시 내보내는 것은 서버 호출부의 import 자리를 바꾸지 않기 위해서다.
- */
-export { keyGap } from "./key-gap";
-
-/**
  * 2패스 탐지의 순수 조각들 (ARCHITECTURE §3.1). `FileProbe`가 동기라 서버는 경로만으로 1차 후보를
  * 얻고, 내려받을 파일을 고른 뒤, 내용을 들고 다시 돈다. 여기에는 I/O가 없다 — GitHub은 Server Action이 부른다.
  */

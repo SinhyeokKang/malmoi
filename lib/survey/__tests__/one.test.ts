@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ADAPTERS, detectFormat } from "../../adapters";
-import { candidatesFor, mergeCandidates } from "../merge";
+import { candidatesFor } from "../merge";
 import { selectSurveyFiles } from "../select";
 import { surveyOne } from "../one";
 import type { SurveyInput } from "../types";
@@ -62,28 +62,6 @@ const input = (repo: string, files: Record<string, string>, extraPaths: string[]
   paths: [...Object.keys(files), ...extraPaths],
   files: new Map(Object.entries(files)),
   configFiles: [],
-});
-
-describe("mergeCandidates — 어댑터를 가로지르는 순위", () => {
-  it("ADAPTERS 순서로 이어붙인다", () => {
-    const merged = mergeCandidates([
-      [{ adapter: "chrome-locales", pathTemplate: "a/_locales/{locale}/messages.json", locales: ["en", "ko"] }],
-      [
-        { adapter: "json-catalog", pathTemplate: "x/{locale}.json", locales: ["en", "ko"] },
-        { adapter: "json-catalog", pathTemplate: "y/{locale}.json", locales: ["en", "ko"] },
-      ],
-      [],
-    ]);
-    expect(merged.map((c) => c.pathTemplate)).toEqual([
-      "a/_locales/{locale}/messages.json",
-      "x/{locale}.json",
-      "y/{locale}.json",
-    ]);
-  });
-
-  it("전부 비면 빈 배열", () => {
-    expect(mergeCandidates([[], [], []])).toEqual([]);
-  });
 });
 
 describe("candidatesFor — [0]이 항상 detectFormat 결과다", () => {

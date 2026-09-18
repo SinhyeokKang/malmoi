@@ -10,12 +10,13 @@ import {
   SAMPLE_ROWS,
   formatLabel,
   ingestTargets,
-  keyGap,
   makeProbe,
   probeTargets,
   sampleRows,
   summarizeCandidates,
 } from "../detect";
+// ⚠️ `keyGap`은 잎 모듈에 산다 — ③(클라이언트)이 값으로 부르는데 `detect.ts`는 ts-morph를 끌고 온다 (POSTMORTEM 2026-09-07).
+import { keyGap } from "../key-gap";
 
 /**
  * 2패스 탐지의 순수 조각들 (ARCHITECTURE §3.1).

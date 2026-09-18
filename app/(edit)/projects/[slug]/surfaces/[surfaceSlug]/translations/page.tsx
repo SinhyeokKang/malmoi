@@ -3,7 +3,6 @@ import { syncBranchFor } from "@/lib/pull/trigger";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
-import { PanelBody } from "@/components/shell/content-panel";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";

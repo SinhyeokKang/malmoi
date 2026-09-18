@@ -18,7 +18,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { ADAPTERS, adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
@@ -32,7 +32,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
-import { listBranches, openRepoReader, probeRepo, type RepoSnapshot } from "@/lib/github";
+import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/github-connect/health";
@@ -1204,8 +1204,6 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     revalidatePath("/projects/new");
   }
 }
-
-export type { RepositoryImportOutcome, SurfaceImportResult, SurfaceImportReason, RepositoryImportError } from "@/lib/import/result";
 
 /**
  * ⚠️ **`approval`은 불투명 지문 하나다** — 클라이언트는 `prepareRepositorySync`가 준 값을 되돌려 줄 뿐이고, 서버가 잠금 뒤
