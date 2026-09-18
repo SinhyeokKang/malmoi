@@ -6,15 +6,13 @@ import { decodeUser } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
 import { connectChallengeIdentifier, connectChallengePrefix, parseConnectChallenge, planLoginMethodLink, type ConnectOutcome } from "./plan";
+import { lockUser } from "@/lib/auth/lock";
+import { isUniqueViolation } from "@/lib/failure";
 
 function digest(kind: "nonce" | "state", raw: string): string {
   return createHash("sha256").update(`malmoi/account-connect/${kind}/v1\0${raw}`).digest("hex");
 }
 function validNonce(raw: string): boolean { return /^[A-Za-z0-9_-]{43}$/.test(raw) && Buffer.from(raw, "base64url").toString("base64url") === raw; }
-async function lockUser(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-  return rows.length === 1;
-}
 type Start = { userId: string; provider: LoginProvider; nonce: string; sessionToken: string; state: string };
 export async function beginConnect(prisma: PrismaClient, input: Start): Promise<"ready" | ConnectOutcome> {
   if (!isLoginProvider(input.provider) || !validNonce(input.nonce) || !input.sessionToken || !input.state) return "failed";
@@ -74,7 +72,7 @@ export async function finishConnect(prisma: PrismaClient, input: Proof): Promise
     });
   } catch (error) {
     // 중단된 트랜잭션 밖에서 다시 조회한다 — 유일성 경합이 소유권을 옮기면 안 된다.
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+    if (isUniqueViolation(error)) {
       stage = "uniqueness-recheck";
       try {
         const session = await prisma.session.findFirst({ where: { sessionToken: hashSessionToken(input.sessionToken), expires: { gt: new Date() } }, select: { userId: true } });

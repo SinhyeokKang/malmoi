@@ -17,6 +17,7 @@ import {
   type LinkOutcome,
   type LoginProvider,
 } from "./policy";
+import { lockUser } from "@/lib/auth/lock";
 
 /**
  * challenge의 DB 껍데기 — `lib/session-revocation/store.ts`와 같은 형이다.
@@ -36,11 +37,6 @@ import {
  */
 export function challengeTokenHash(raw: string): string {
   return hashInviteToken(raw);
-}
-
-export async function lockUser(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-  return rows.length === 1;
 }
 
 /**

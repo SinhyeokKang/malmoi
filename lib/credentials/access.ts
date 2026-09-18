@@ -5,6 +5,7 @@ import { CredentialError } from "./crypto";
 import { decodeUser, encodeUserFields, verifyLookupEmail } from "./records";
 import { logCredentialFailure } from "./log";
 import { lookupEmail } from "./storage";
+import { isUniqueViolation } from "@/lib/failure";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 /** Prisma 인자나 암호 입력이 예외에 실려 새지 않게 한다. */
@@ -44,7 +45,7 @@ export async function refreshVerifiedEmail(prisma: PrismaClient, provider: strin
       return plan;
     });
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") return "conflict";
+    if (isUniqueViolation(error)) return "conflict";
     logCredentialFailure("refresh-email", error);
     throw new CredentialError();
   }

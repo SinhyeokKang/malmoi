@@ -16,10 +16,12 @@
  *
  * 이름을 정확히 대조한다. DB 세션의 토큰은 짧아 Auth.js의 쿠키 청크 분할(`.0`·`.1`)이 생기지 않는다.
  */
-const SESSION_COOKIES: ReadonlySet<string> = new Set([
-  "authjs.session-token",
-  "__Secure-authjs.session-token",
-]);
+export function sessionCookieName(secure: boolean): string {
+  return secure ? "__Secure-authjs.session-token" : "authjs.session-token";
+}
+
+// 인증 왕복 셋이 이 이름을 각자 하드코딩하고 있었다 — 접두 규칙이 바뀌면 한쪽만 따라간다(launch-readiness L7.4).
+const SESSION_COOKIES: ReadonlySet<string> = new Set([sessionCookieName(false), sessionCookieName(true)]);
 
 export function hasSessionCookie(names: readonly string[]): boolean {
   return names.some((name) => SESSION_COOKIES.has(name));

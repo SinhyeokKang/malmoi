@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { hasSessionCookie, shouldRedirectToLogin } from "../cookie";
+import { hasSessionCookie, sessionCookieName, shouldRedirectToLogin } from "../cookie";
 
 /**
  * 미들웨어의 **1차 차단** 판정 (ARCHITECTURE §6.1).
@@ -72,4 +72,10 @@ describe("shouldRedirectToLogin — 렌더(GET)만 돌려보낸다", () => {
     expect(shouldRedirectToLogin({ method: "get", cookieNames: [] })).toBe(true);
     expect(shouldRedirectToLogin({ method: "post", cookieNames: [] })).toBe(false);
   });
+});
+
+// Auth.js 규칙(`@auth/core/lib/utils/cookie.js`) — https면 `__Secure-` 접두다. 인증 왕복 셋이 이 함수 하나를 쓴다 (L7.4).
+it("sessionCookieName — secure일 때만 __Secure- 접두", () => {
+  expect(sessionCookieName(true)).toBe("__Secure-authjs.session-token");
+  expect(sessionCookieName(false)).toBe("authjs.session-token");
 });

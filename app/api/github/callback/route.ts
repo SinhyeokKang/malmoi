@@ -12,6 +12,7 @@ import { stateCookieNames, verifyState, type StateDest } from "@/lib/github-conn
 import { exchangeCode, getViewer, type UserTokens } from "@/lib/github-connect/user";
 import { routes } from "@/lib/routes";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { isUniqueViolation } from "@/lib/failure";
 
 /**
  * GitHub이 브라우저를 되돌리는 지점 (ARCHITECTURE §6.4). **연결 흐름에서 Route Handler는 이것 하나다** —
@@ -178,9 +179,7 @@ function columns(tokens: UserTokens, userId: string, providerAccountId: string):
   };
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
-}
+
 
 /**
  * 착지 + state 쿠키 소거. **사유는 항상 `?e=`로 실린다** — 넘겨놓고 읽는 쪽을 안 만들면 거부가

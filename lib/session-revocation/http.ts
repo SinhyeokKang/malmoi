@@ -6,6 +6,7 @@ import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { finishRevocation } from "./store";
 import { outcomeUrl, revocationCookie, revocationStateCookie, type Outcome } from "./policy";
+import { sessionCookieName } from "@/lib/auth/cookie";
 
 type Attempt = { nonce: string; sessionToken: string; state: string; outcome?: Outcome };
 // 결과는 이 핸들러 호출의 것이지, 호출자가 고른 리다이렉트 URL의 것이 아니다.
@@ -48,7 +49,7 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
   if (!intent) return run();
   const attempt: Attempt = {
     nonce: nonceCookie?.value ?? "",
-    sessionToken: request.cookies.get(secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value ?? "",
+    sessionToken: request.cookies.get(sessionCookieName(secure))?.value ?? "",
     state,
   };
   return stateScope.run(secure, () => pending.run(attempt, async () => {
@@ -74,8 +75,8 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
       response.cookies.set(revocationStateCookie(false).name, "", { ...revocationStateCookie(false).options, maxAge: 0 });
     }
     if (outcome === "revoked") {
-      response.cookies.set("authjs.session-token", "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
-      if (secure) response.cookies.set("__Secure-authjs.session-token", "", { path: "/", httpOnly: true, sameSite: "lax", secure: true, maxAge: 0 });
+      response.cookies.set(sessionCookieName(false), "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
+      if (secure) response.cookies.set(sessionCookieName(true), "", { path: "/", httpOnly: true, sameSite: "lax", secure: true, maxAge: 0 });
     }
     return response;
   }));

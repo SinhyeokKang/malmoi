@@ -1,7 +1,7 @@
 import { openToken, sealToken, validateTokenWriteKey } from "@/lib/credentials/storage";
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { httpStatus } from "./health";
+import { httpStatus } from "@/lib/failure";
 import { logFailure } from "./log";
 import { planTokenUse, refreshFailure } from "./token";
 import { refreshUserToken } from "./user";

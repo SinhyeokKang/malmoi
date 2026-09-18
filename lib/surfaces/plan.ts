@@ -1,7 +1,8 @@
 import { normalizeProjectSlug, planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
+import { compareCodeUnits } from "@/lib/compare";
 
 export function compareSurfaces(a: string | number, b: string | number): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return compareCodeUnits(a, b);
 }
 
 export function selectDefaultSurface<T>(candidates: readonly T[]): T | null {

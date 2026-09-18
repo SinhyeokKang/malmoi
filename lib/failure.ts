@@ -111,8 +111,22 @@ export function logCaught(scope: string, stage: string, error: unknown): void {
  * `instanceof`를 못 믿어서이고, 그쪽은 **우리 이름과 같은지**만 묻는다).
  */
 function failureTag(error: unknown): string {
-  if (typeof error === "object" && error !== null && "status" in error && typeof error.status === "number") {
-    return `http-${error.status}`;
-  }
+  const status = httpStatus(error);
+  if (status !== undefined) return `http-${status}`;
   return error instanceof Error ? error.constructor.name : typeof error;
+}
+
+/**
+ * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
+ * 채우지 않는다.** 부재는 "모른다"다. 같은 식이 세 곳에 따로 있었다(launch-readiness L7.4).
+ */
+export function httpStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
+  const status = (error as { status: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+}
+
+/** Prisma의 유일성 위반(P2002). 경합에서 진 쪽을 재조회·충돌로 푸는 자리들이 쓴다. */
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }

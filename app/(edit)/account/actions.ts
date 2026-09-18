@@ -26,6 +26,7 @@ import { planNameSave } from "@/lib/account/plan";
 import { imageObjectKey, IMAGE_MAX_BYTES, planImageDelete, type UploadReject } from "@/lib/upload/image";
 import { normalizeImage } from "@/lib/upload/normalize";
 import { putImage, deleteImage } from "@/lib/upload/store";
+import { sessionCookieName } from "@/lib/auth/cookie";
 
 type ImageResult = { ok: true } | { ok: false; reason: UploadReject | "unavailable" };
 
@@ -145,7 +146,7 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     // ⚠️ **버려진 병합 왕복을 먼저 지운다** — 남아 있으면 그쪽이 이 callback을 먹는다 (불변식 8c).
     await clearAuthRoundtripCookies();
     const jar = await cookies();
-    const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
+    const sessionToken = jar.get(sessionCookieName(origin.secure))?.value;
     if (!sessionToken) return { error: "unavailable" };
     const prisma = getPrisma();
     const accounts = await prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true, providerAccountId: true } });
@@ -226,7 +227,7 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
           stage = "cookies";
           await clearAuthRoundtripCookies();
           const jar = await cookies();
-          const sessionToken = jar.get(origin.secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value;
+          const sessionToken = jar.get(sessionCookieName(origin.secure))?.value;
           if (sessionToken) {
             oauthStarted = true;
             stage = "oauth";

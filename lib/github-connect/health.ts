@@ -1,3 +1,4 @@
+import { httpStatus } from "@/lib/failure";
 /**
  * 연결 건강성 판정 (DESIGN §6.2). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5) —
  * `SyncRun`(7단계)이 서기 전에 상태 컬럼을 만들면 그때 두 벌이 된다.
@@ -42,15 +43,6 @@ export type ConnectionHealth =
   | { status: "ok" }
   | { status: "unknown" };
 
-/**
- * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
- * 채우지 않는다.** 부재는 "모른다"이고 아래 분류가 그것을 `error`로 남긴다.
- */
-export function httpStatus(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
-  const status = (error as { status: unknown }).status;
-  return typeof status === "number" ? status : undefined;
-}
 
 /**
  * HTTP 상태 → probe 분류. `probeRepo`가 부른다.

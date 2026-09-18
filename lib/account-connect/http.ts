@@ -8,6 +8,7 @@ import { routes } from "@/lib/routes";
 import { connectCookie, connectStateCookie } from "./policy";
 import { finishConnect } from "./store";
 import type { ConnectOutcome } from "./plan";
+import { sessionCookieName } from "@/lib/auth/cookie";
 
 type Attempt = { nonce: string; sessionToken: string; state: string; outcome?: ConnectOutcome };
 const pending = new AsyncLocalStorage<Attempt>();
@@ -33,7 +34,7 @@ export async function withConnect(request: NextRequest, run: () => Promise<Respo
   const nonce = request.cookies.get(connectCookie(true).name) ?? request.cookies.get(connectCookie(false).name);
   const intent = nonce !== undefined || request.cookies.has(connectStateCookie(true).name) || request.cookies.has(connectStateCookie(false).name);
   if (!intent) return run();
-  const attempt: Attempt = { nonce: nonce?.value ?? "", sessionToken: request.cookies.get(secure ? "__Secure-authjs.session-token" : "authjs.session-token")?.value ?? "", state: url.searchParams.get("state") ?? "" };
+  const attempt: Attempt = { nonce: nonce?.value ?? "", sessionToken: request.cookies.get(sessionCookieName(secure))?.value ?? "", state: url.searchParams.get("state") ?? "" };
   return stateScope.run(secure, () => pending.run(attempt, async () => {
     let original: Response;
     try { original = await run(); } catch (error) {

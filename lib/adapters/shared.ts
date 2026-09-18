@@ -1,5 +1,6 @@
 import { matchesGlob } from "./glob";
 import type { LocaleEntry, ReadResult } from "./types";
+import { compareCodeUnits } from "@/lib/compare";
 
 /**
  * 모든 writer가 공유하는 결정성 규칙 (ARCHITECTURE §1.1).
@@ -10,7 +11,7 @@ import type { LocaleEntry, ReadResult } from "./types";
 
 /** `<` 비교 = UTF-16 코드 유닛 순서. `localeCompare`는 Node ICU 빌드에 의존해 불변식이 환경에 묶인다. */
 export function compareKeys(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return compareCodeUnits(a, b);
 }
 
 /**

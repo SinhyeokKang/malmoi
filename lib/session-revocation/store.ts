@@ -4,12 +4,9 @@ import { hashSessionToken } from "@/lib/credentials/crypto";
 import { logCaught } from "@/lib/failure";
 import { pickLoginAccount } from "@/lib/login-link/policy";
 import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, validNonce, type Outcome } from "./policy";
+import { lockUser } from "@/lib/auth/lock";
 
 type Proof = { nonce: string; sessionToken: string; state: string; provider: string; providerAccountId: string };
-async function lockUser(tx: Prisma.TransactionClient, userId: string) {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-  return rows.length === 1;
-}
 export async function beginRevocation(prisma: PrismaClient, input: Proof & { userId: string }): Promise<"ready" | "invalid" | "unavailable"> {
   if (!validNonce(input.nonce) || !input.state || !input.sessionToken || (input.provider !== "github" && input.provider !== "google")) return "invalid";
   const provider = input.provider;

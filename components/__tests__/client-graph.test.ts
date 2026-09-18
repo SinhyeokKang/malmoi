@@ -92,6 +92,7 @@ const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
+  "lib/compare.ts",
   "lib/github-connect/message.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",

@@ -1,3 +1,4 @@
+import { compareCodeUnits } from "@/lib/compare";
 export type PublishCell = { surface: string; path: string; keyId: string; key: string; localeCode: string; after: string; author: string; updatedAt: string };
 export type BaseValues = Record<string, Record<string, Record<string, string>>>;
 export type PublishRow = PublishCell & { before: string | null; keySpan: number };
@@ -5,7 +6,7 @@ export type PublishRow = PublishCell & { before: string | null; keySpan: number 
 export type PublishDiff = { groups: { surface: string; path: string; changes: number; keys: number; rows: PublishRow[] }[]; total: number; truncated: number };
 // 미리보기 페이로드만 제한한다 — 실제 export의 범위·선택에는 영향을 주지 않는다.
 export const PREVIEW_LIMIT = 200;
-const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+const compare = compareCodeUnits<string>;
 export function buildPublishDiff(cells: readonly PublishCell[], base: BaseValues, limit = PREVIEW_LIMIT): PublishDiff {
   const sorted = [...cells].sort((a,b) => compare(a.surface,b.surface) || compare(a.path,b.path) || compare(a.key,b.key) || compare(a.keyId,b.keyId) || compare(a.localeCode,b.localeCode));
   const groups: PublishDiff["groups"] = [];

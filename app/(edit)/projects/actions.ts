@@ -3,7 +3,7 @@
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { findUserByEmail } from "@/lib/credentials/access";
-import { logCaught } from "@/lib/failure";
+import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
@@ -35,7 +35,7 @@ import { requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
-import { httpStatus } from "@/lib/github-connect/health";
+import { httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
@@ -1506,9 +1506,7 @@ async function checkRepoAccess(
 }
 
 
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
-}
+
 
 /** 추가 읽기 없이 확정 포맷과 같은 snapshot의 전체 경로로 소유 범위를 계산한다. */
 function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]): string[] {

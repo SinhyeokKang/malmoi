@@ -1,14 +1,13 @@
-// ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`가 이 모듈을
-// **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`·
-// `lib/push/apply.ts`가 같은 이유로 붙이지 않은 선례다 (ARCHITECTURE §5.5.4).
-// 클라이언트 유입 위험은 낮다: 이 파일이 무는 것은 타입과 `lib/env.ts`, `octokit`뿐이고
-// `"use client"` 그래프에 들어가면 octokit 때문에 번들이 터져 즉시 드러난다.
+// ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`(react-server 조건 없는 tsx)가 이 모듈을
+// **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
+// (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
+// 목록 밖이고 `octokit`을 물므로 `"use client"` 그래프에 닿는 순간 red다.
 import { App, Octokit } from "octokit";
-import { fail } from "@/lib/failure";
+import { fail, httpStatus } from "@/lib/failure";
 import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
-import { httpStatus, planConnectionHealth, probeFromError, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
+import { planConnectionHealth, probeFromError, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
@@ -40,7 +39,7 @@ function createApp(): App {
 
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
 export function isNotFound(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "status" in error && error.status === 404;
+  return httpStatus(error) === 404;
 }
 
 /**

@@ -14,7 +14,7 @@ import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
-import { httpStatus } from "@/lib/github-connect/health";
+import { httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";

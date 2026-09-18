@@ -1,4 +1,4 @@
-import { httpStatus } from "@/lib/github-connect/health";
+import { httpStatus } from "@/lib/failure";
 import { classifyFailure } from "@/lib/failure";
 
 import type { PullResult } from "@/lib/pull/run";

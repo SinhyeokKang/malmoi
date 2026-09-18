@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireEnv } from "../env";
-import { AppError, MissingEnvError, classifyFailure, fail, logCaught } from "../failure";
+import { AppError, MissingEnvError, classifyFailure, fail, httpStatus, isUniqueViolation, logCaught } from "../failure";
 
 /**
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
@@ -169,5 +169,21 @@ describe("logCaught", () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+// 같은 판정이 셋·넷씩 흩어져 있던 것을 여기 하나로 모았다 (launch-readiness L7.4).
+describe("httpStatus · isUniqueViolation", () => {
+  it("상태가 숫자일 때만 돌려주고, 없으면 undefined다 — 0이나 404로 채우지 않는다", () => {
+    expect(httpStatus(Object.assign(new Error("x"), { status: 404 }))).toBe(404);
+    expect(httpStatus({ status: "404" })).toBeUndefined();
+    expect(httpStatus(new Error("network"))).toBeUndefined();
+    expect(httpStatus(null)).toBeUndefined();
+  });
+
+  it("P2002만 유일성 위반이다", () => {
+    expect(isUniqueViolation({ code: "P2002" })).toBe(true);
+    expect(isUniqueViolation({ code: "P2025" })).toBe(false);
+    expect(isUniqueViolation("P2002")).toBe(false);
   });
 });
