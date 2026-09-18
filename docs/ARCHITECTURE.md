@@ -730,12 +730,12 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 - **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
   `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
   `baseLocale`은 `isPathSafeLocale`도 지난다.
-- **`workflow.ts`의 `renderWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
+- **`workflow.ts`의 `renderProjectWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
   - **step 생산자는 `renderSurfaceWorkflowStep` 하나다.** 파일 전체는 `renderProjectWorkflowYaml`이
-    그것을 **활성 표면 수만큼** 이어 붙이고, `renderWorkflowYaml`은 표면 하나짜리 래퍼다(온보딩 ④).
-    설정 화면이 전자를 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
+    그것을 **활성 표면 수만큼** 이어 붙인다 — 온보딩 ④와 설정 화면이 둘 다 이것을 부른다(표면 하나짜리
+    래퍼가 있었지만 테스트만 불러 2026-09-18에 지웠다 — launch-readiness L4.7). 설정 화면이 이것을 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
     표면의 step을 다시 볼 자리가 그 화면뿐이고**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
     `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
   - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
@@ -1080,7 +1080,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
 `TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
 후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
-`adapter:`를 박지 않는다**(`renderWorkflowYaml` — 탐지가 같은 답을 낸다는 전제였다).
+`adapter:`를 박지 않는다**(`lib/onboarding/workflow.ts` — 탐지가 같은 답을 낸다는 전제였다).
 그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
 strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
 이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
