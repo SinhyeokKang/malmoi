@@ -55,7 +55,7 @@ pnpm dev
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` / 브라우저: `pnpm db:studio` (dev) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 check-only. 절차는 [docs/OPERATIONS.md](./docs/OPERATIONS.md) |
-| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미발송 술어 일치를 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`를 건드렸을 때 손으로 돌린다 |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미전달 술어 일치·편집 토큰의 조건부 쓰기(CI 보류·폐기 승인·Publish 전달 확인)를 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/**`·`lib/pull/**`·`lib/import/**`·`lib/protection/**`를 건드렸을 때 손으로 돌린다 |
 | Codex 미러 동기화 | `pnpm sync:agents` |
 
 **브랜치는 `main` / `dev` 둘이다.** 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.

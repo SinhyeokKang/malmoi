@@ -3,8 +3,9 @@ import { m } from "@/lib/i18n";
 export type PublishView = "created" | "updated" | "partial" | "no-changes" | "config-error" | "transient-error" | "already-running" | "too-soon";
 export function planPublishView(outcome: PullOutcome): PublishView {
   switch (outcome.status) {
-    case "committed": return outcome.warnings?.length ? "partial" : outcome.pr;
-    case "skipped": return "no-changes";
+    case "committed": return outcome.pr;
+    // writer 경고는 **보내지 않은** 결과다(sync-edit-protection T10) — `partial` 갈래가 "보내지 않았다"로 선다. 새 갈래를 늘리지 않는다.
+    case "skipped": return outcome.reason === "writer-warnings" ? "partial" : "no-changes";
     case "failed":
       if (outcome.error === "already-running" || outcome.error === "too-soon") return outcome.error;
       return outcome.retryable ? "transient-error" : "config-error";

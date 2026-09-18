@@ -5,8 +5,10 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
 import { classifyFailure } from "@/lib/failure";
-import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
-import { applyPush, ApplyGuardError } from "@/lib/push/apply";
+import { abandonImportRun, finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
+import { applyProtectedPush, ApplyGuardError } from "@/lib/push/apply";
+import type { PushResponse } from "@/lib/push/payload";
+import { countPending } from "@/lib/protection/where";
 import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
@@ -18,7 +20,8 @@ import { hashPushToken } from "@/lib/push/token";
  * `POST`인 이유와 `PATCH`가 불가능한 이유는 ARCHITECTURE §0 불변식 2에 있다: 전체 키 집합을 받아야
  * `orphaned`를 판정할 수 있고, 리소스 교체가 아니라 부수효과 있는 RPC다.
  *
- * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 대가인 편집 손실 창도 거기 있다.
+ * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 단 **미전달 편집이 프로젝트에 하나라도 있으면
+ * 적재 전체를 보류한다** (sync-edit-protection, 2026-09-18) — 200 `deferred`이고 어떤 컬럼도 쓰지 않는다. 리포를 보지 않는다.
  *
  * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, design §3.8). `sha256(원문)`으로
  * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을
@@ -164,14 +167,25 @@ export async function POST(request: Request): Promise<NextResponse> {
      * **진행 표시는 서버가 실제로 처리 중인 구간만 말한다** (projects-list design §3.35) — 그래서
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
+    /**
+     * **보류 판정이 진행 표시보다 먼저다** (sync-edit-protection design §3). 보류는 아무것도 하지 않은 것이라 표시를
+     * 세웠다 지우는 쓰기조차 없어야 한다(완료 조건 2) — 그래서 표시 전에 한 번 센다. 판정과 적용 사이 경합은
+     * `applyProtectedPush`가 잠금 안에서 다시 세고 재집계로 잡는다.
+     *
+     * ⚠️ design §3은 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
+     * `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 트랜잭션 밖 사전 집계로 같은 목적을 이룬다.
+     */
+    const pendingBefore = await countPending(prisma, project.id);
+    if (pendingBefore > 0) return deferred(project.id, parsed.data.commitSha, pendingBefore);
+
     const startedAt = new Date();
     const token = randomUUID();
     const scope = { projectId: project.id, surfaceId: surface.id };
     await markImportStarted(prisma, scope, startedAt, token);
 
-    let outcome;
+    let result;
     try {
-      outcome = await applyPush(prisma, scope, parsed.data, {
+      result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
         startedAt, token,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
@@ -198,7 +212,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       revalidatePath("/projects/new");
     }
 
-    return NextResponse.json({
+    if (result.status === "deferred") {
+      // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
+      await abandonImportRun(prisma, { ...scope, token });
+      return deferred(project.id, parsed.data.commitSha, result.pendingCount);
+    }
+    const outcome = result.outcome;
+    return NextResponse.json<PushResponse>({
+      status: "applied",
       projectId: project.id,
       commitSha: parsed.data.commitSha,
       inserted: outcome.inserted,
@@ -223,4 +244,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     console.error(`[push] ${ref} ${failure.detail}`);
     return NextResponse.json({ error: "internal", ref }, { status: 500 });
   }
+}
+
+/**
+ * 보류 응답. **200이다** — 오류가 아니라 "편집이 먼저 전달돼야 한다"는 정상 결과이고, 구 action 태그(`@malmoi-i18n-push-v1`)의
+ * CLI도 `res.ok`로 exit 0이 된다(design §3). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
+ */
+function deferred(projectId: string, commitSha: string, pendingCount: number): NextResponse {
+  return NextResponse.json<PushResponse>({ status: "deferred", reason: "pending-edits", pendingCount, projectId, commitSha });
 }

@@ -8,6 +8,8 @@ import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/impo
 import { isBaseLocaleChange, checkFormat, checkCommitOrder, checkProjectSlug } from "./guard";
 import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
+import { planProtectedImport } from "@/lib/protection/plan";
+import { countPending } from "@/lib/protection/where";
 
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
@@ -90,6 +92,14 @@ export type ApplyOptions = {
    * 존재할 수 없다.
    */
   importOutcome?: ImportFailureCode | null;
+  /**
+   * 덮어도 되는 편집 토큰 — 수동 Sync에서 OWNER가 폐기를 승인한 집합이다 (sync-edit-protection design §4.1).
+   * strict upsert는 **토큰이 없거나 이 목록에 있는 셀만** 덮는다. 목록 밖의 토큰은 승인 뒤 들어온 저장이라 살아남는다.
+   *
+   * ⚠️ **optional이고 기본은 빈 목록 = 토큰 있는 셀을 하나도 안 덮는다.** 빠졌을 때의 기본이 **편집 보존**이라 안전한 쪽이다
+   * (`importOutcome`과 같은 근거). 반대로 기본을 "전부 덮기"로 두면 새 호출부 하나가 조용히 편집을 지운다.
+   */
+  approvedTokens?: readonly string[];
 };
 
 type PushScope = { projectId: string; surfaceId: string };
@@ -100,6 +110,41 @@ export class ApplyGuardError extends Error {
 
 export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
   return prisma.$transaction(tx => applyPushInTransaction(tx, scope, payload, options), { maxWait: 10_000, timeout: 30_000 });
+}
+
+/** 판정과 upsert 사이에 커밋된 저장을 재집계가 잡았다 — 트랜잭션을 되돌리려고 던진다. */
+class PendingEditsDuringApply extends Error {
+  constructor(readonly pendingCount: number) { super("pending edits appeared during apply"); }
+}
+
+export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number };
+
+/**
+ * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection design §3).
+ *
+ * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ *
+ * ⚠️ **재집계를 지우지 않는다.** 저장 경로엔 잠금이 없어 "판정 뒤·upsert 전"에 커밋된 저장이 있을 수 있다. upsert의
+ * 토큰 가드가 그 셀을 안 덮어도 **조건 불일치는 0행 갱신이라 조용하다**(POSTMORTEM 2026-09-14) — 재집계 예외가 그 무음을 깬다.
+ * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
+ */
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens">): Promise<ProtectedPushResult> {
+  try {
+    return await prisma.$transaction(async tx => {
+      // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
+      const pending = await countPending(tx, scope.projectId);
+      const decision = planProtectedImport({ mode: "auto", pending });
+      if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
+      const outcome = await applyPushInTransaction(tx, scope, payload, { ...options, approvedTokens: [] });
+      const after = await countPending(tx, scope.projectId);
+      if (after > 0) throw new PendingEditsDuringApply(after);
+      return { status: "applied", outcome } as const;
+    }, { maxWait: 10_000, timeout: 30_000 });
+  } catch (error) {
+    if (error instanceof PendingEditsDuringApply) return { status: "deferred", pendingCount: error.pendingCount };
+    throw error;
+  }
 }
 
 export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
@@ -263,8 +308,8 @@ async function applyWith(
 
   const rest = [
     // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (ARCHITECTURE §0 불변식 2) — 변경 감지도 병합도 없다.
-    // ⚠️ 대가: 번역자가 편집한 뒤 pull이 돌기 전에 push가 오면 그 편집이 사라진다.
-    //    pull 주기가 곧 데이터 손실 창이다. 스펙에 감수하는 대가로 명시돼 있다.
+    // ⚠️ 단 **미전달 편집(토큰 있는 셀)은 덮지 않는다** (sync-edit-protection, 2026-09-18). CI는 그런 셀이 하나라도 있으면
+    //    애초에 적재를 보류하고(`applyProtectedPush`), 수동 Sync는 OWNER가 승인한 토큰만 덮는다. 값 비교가 아니라 토큰 유무다.
     // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
     ...(uniqueTranslations.length === 0 ? [] : [prisma.$executeRaw`
       INSERT INTO "Translation" ("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
@@ -294,7 +339,10 @@ async function applyWith(
         -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
         -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection design §2).
         "pendingEditToken" = NULL,
-        "updatedAt" = ${now}`]),
+        "updatedAt" = ${now}
+      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection design §3).
+      -- 승인된 폐기(수동 Sync)의 토큰만 예외다. 조건 불일치는 0행이라 조용하므로 CI 경로는 재집계가 그 무음을 깬다.
+      WHERE "Translation"."pendingEditToken" IS NULL OR "Translation"."pendingEditToken" = ANY(${[...(options.approvedTokens ?? [])]}::text[])`]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
     ...(options.refsMode === "preserve" ? [] : [prisma.$executeRaw`

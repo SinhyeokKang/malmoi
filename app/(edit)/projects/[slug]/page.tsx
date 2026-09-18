@@ -284,7 +284,6 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
               surfaces: surfaces.length,
               keys,
               lastSyncAt,
-              lastPublishedAt: project.lastPublishedAt,
               reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
             })}
             slug={slug}

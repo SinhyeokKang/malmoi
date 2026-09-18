@@ -30,7 +30,7 @@ const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
 });
 
 const cell = (over: Partial<NonNullable<KeyRow["cells"][string]>> = {}) => ({
-  value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH, ...over,
+  value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH, surfaceArchivedAt: null, pending: false, ...over,
 });
 
 const locale = (code: string, orphaned = false) => ({ code, orphaned });
@@ -260,9 +260,9 @@ describe("filterByState — 카드 넷이 가리키는 구간", () => {
     // 검토 대기.
     row({ key: "b.review", cells: { ko: cell({ value: "값", needsReview: true }) } }),
     // 사람이 저장했고 아직 안 보냈다.
-    row({ key: "c.unsent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: after }) } }),
-    // 보낸 뒤로 안 만졌다.
-    row({ key: "d.sent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: before }) } }),
+    row({ key: "c.unsent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: after, pending: true }) } }),
+    // 보낸 뒤로 안 만졌다 — 저자는 남고 토큰은 전달 확인으로 비었다.
+    row({ key: "d.sent", cells: { ko: cell({ value: "값", updatedBy: "u1", updatedAt: after, pending: false }) } }),
     // 코드에서 사라진 키 — 어느 구간도 아니다.
     row({ key: "e.gone", orphaned: true, cells: { ko: cell() } }),
   ];
@@ -283,7 +283,7 @@ describe("filterByState — 카드 넷이 가리키는 구간", () => {
   });
 
   /** ⚠️ **`isUnpublished`와 같은 술어다** — 넷째 벌을 만들면 카드와 표가 다른 행을 센다. */
-  it("`unsent`는 사람이 만졌고 마지막 pull 뒤에 바뀐 칸이 있는 키다", () => {
+  it("`unsent`는 아직 전달 확인되지 않은 편집 칸이 있는 키다 — 시각이 아니라 토큰 투영이다", () => {
     expect(keys("unsent")).toEqual(["c.unsent"]);
   });
 

@@ -16,13 +16,13 @@ const project: ProjectContext = {
 };
 const row: KeyRow = {
   id: "key-one", key: "common.title", namespace: "common", description: "Description", refs: [], orphaned: false, createdAt: new Date(0),
-  cells: { en: { value: "First line\nSecond line", needsReview: false, updatedBy: null, updatedAt: new Date(0) } },
+  cells: { en: { value: "First line\nSecond line", needsReview: false, updatedBy: null, updatedAt: new Date(0), surfaceArchivedAt: null, pending: false } },
 };
 const locales = [{ code: "en", orphaned: false }, { code: "ko", orphaned: false }, { code: "fr", orphaned: true }];
 function View({ rows = [row], visible = locales }: { rows?: KeyRow[]; visible?: typeof locales }) {
   return <Table scrollable={false} aria-label="Common translations" className="table-fixed">
     <colgroup><col className="w-80" /><col className="w-17" /><col /></colgroup>
-    {rows.map((item) => <KeyGroup surfaceSlug="default" key={item.id} slug="demo" row={item} locales={visible} project={project} actors={new Map()} lastPulledAt={null} />)}
+    {rows.map((item) => <KeyGroup surfaceSlug="default" key={item.id} slug="demo" row={item} locales={visible} project={project} actors={new Map()} />)}
   </Table>;
 }
 

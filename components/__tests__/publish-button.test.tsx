@@ -28,7 +28,7 @@ function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" |
   </HomeActions>;
   return <TranslationsHeader slug="acme" surfaceSlug="default" surfaces={[]} totalCount={1} query={{}} chipQuery={{}}
     namespaces={[]} locales={[]} selected={[]} fallback={[]} unpublished={count} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} role={role} lastSentLabel={null} lastPrUrl={null}
-    dismissKey="never" baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
+    baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
 }
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
   const view = await render(<Host />);
@@ -47,9 +47,11 @@ it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는
   const run = deferred<unknown>(); mocks.pull.mockReturnValue(run.promise);
   await render(<Host />); await click("Publish1"); await click("Open pull request"); await click("Close");
   await click("Publishing…"); expect(mocks.pull).toHaveBeenCalledTimes(1); await click("Close");
-  await act(async () => run.resolve({ status: "committed", pr: "updated", prUrl: "https://github.com/owner/repo/pull/12", changed: ["ko.json"], warnings: ["web: ko.json: bad\n ^"] }));
+  await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad\n ^"] }));
   expect(document.querySelector('[role="dialog"]')).toBeNull();
-  await click("View result"); expect(document.body.textContent).toContain("#12"); expect(document.querySelector("details")).toBeNull();
+  // writer 경고는 쓰기 전에 멈춘 결과다(T10) — PR 카드가 없고 "보내지 않았다"가 제목이며 버린 값은 펼친 목록이다.
+  await click("View result"); expect(document.body.textContent).toContain("Not sent"); expect(document.body.textContent).not.toContain("#12");
+  expect(document.querySelector("details")).toBeNull();
   expect(document.body.textContent).toContain("bad\n ^");
 });
 it.each([true, false])("이전 조회의 늦은 응답을 무시한다 (성공=%s)", async success => {

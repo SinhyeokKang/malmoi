@@ -23,7 +23,7 @@ function row(cells: Record<string, string | null>): KeyRow {
     createdAt: new Date(0),
     refs: [],
     cells: Object.fromEntries(
-      Object.entries(cells).map(([code, updatedBy]) => [code, { value: "v", needsReview: false, updatedBy, updatedAt: new Date("2026-09-01T00:00:00Z") }]),
+      Object.entries(cells).map(([code, updatedBy]) => [code, { value: "v", needsReview: false, updatedBy, updatedAt: new Date("2026-09-01T00:00:00Z"), surfaceArchivedAt: null, pending: false }]),
     ),
   };
 }

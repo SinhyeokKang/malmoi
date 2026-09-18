@@ -103,7 +103,7 @@ function reader(content = '{"hello":"Repository"}', pause?: { entered: ReturnTyp
     blob: vi.fn().mockResolvedValue(content),
   };
 }
-const run = (repo = reader()) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository }, async () => repo);
+const run = (repo = reader(), approval: string | null = null) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval }, async () => repo);
 const ci = (value = "CI") => applyPush(prisma, { projectId: "p", surfaceId: "s" }, payload(1, value), { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
 const values = () => prisma.translation.findMany({ where: { projectId: "p" }, orderBy: [{ localeCode: "asc" }, { keyId: "asc" }] });
 
@@ -252,7 +252,7 @@ it("Sync 적용이 먼저 잠금을 잡아도 뒤따르는 CI가 최종 값을 �
   const ciClient = prisma.$extends({ query: { async $executeRaw({ args, query }) {
     ciEntered.resolve(); return query(args);
   } } });
-  const pendingSync = runRepositoryImportFromReader(syncClient as unknown as PrismaClient, { projectId: "p", userId: "owner", repository }, async () => reader('{"key0":"Sync"}'));
+  const pendingSync = runRepositoryImportFromReader(syncClient as unknown as PrismaClient, { projectId: "p", userId: "owner", repository, approval: null }, async () => reader('{"key0":"Sync"}'));
   await syncEntered.promise;
   const pendingCi = applyPush(ciClient as unknown as PrismaClient, { projectId: "p", surfaceId: "s" }, payload(1, "Final CI"), { token: "ci", startedAt: new Date(), refsMode: "replace", previousBaseLocale: "en" });
   await ciEntered.promise; releaseSync.resolve();
@@ -276,4 +276,118 @@ it("첫 표면을 확정한 뒤 둘째 표면을 읽는 동안에도 실행권�
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ lastImportStartedAt: null, importRevision: 1 });
   try { expect(await run()).toEqual({ ok: false, error: "already-running" }); } finally { release.resolve(); }
   expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "imported" }, { status: "imported" }] });
+});
+
+
+// ── sync-edit-protection T9 — 수동 Sync 폐기 승인 ───────────────────────────────────────────────────────
+import { readDiscardApproval } from "@/lib/import/approval";
+import { runSync } from "@/lib/sync/run";
+
+/**
+ * **폐기는 서버가 발급한 지문을 되돌려 받았을 때만 열린다** (design §4.1). 각 거부 줄은 같은 픽스처의 성공 대조를 든다.
+ * 편집은 `saveTranslation`과 같은 컬럼(값·저자·토큰)을 SQL로 심는다.
+ */
+async function editedFixture() {
+  await seed(); await ci();
+  await pool.query(`UPDATE "Translation" SET "value" = 'Edited', "updatedBy" = 'owner', "pendingEditToken" = 'tok-' || "localeCode" WHERE "projectId" = 'p' AND "localeCode" IN ('ko', 'fr')`);
+}
+const approve = async () => (await readDiscardApproval(prisma, { projectId: "p", userId: "owner" })).fingerprint;
+const repoValues = () => reader('{"key0":"Repository"}');
+async function cellOf(locale: string) {
+  return prisma.translation.findFirstOrThrow({ where: { projectId: "p", localeCode: locale }, select: { value: true, updatedBy: true, pendingEditToken: true } });
+}
+
+it("[C4] OWNER가 승인한 지문 → 편집을 리포 값으로 덮고 토큰·저자를 비운다, 남은 편집 0", async () => {
+  await editedFixture();
+  expect(await run(repoValues(), await approve())).toMatchObject({ ok: true, remainingEdits: 0, surfaces: [{ status: "imported" }] });
+  expect(await cellOf("ko")).toEqual({ value: "Repository", updatedBy: null, pendingEditToken: null });
+});
+
+it("[C4] 승인 없이(지문 null) → reconfirm, 편집 불변 (위 승인 → 덮임 대조)", async () => {
+  await editedFixture();
+  expect(await run(repoValues(), null)).toEqual({ ok: false, error: "reconfirm" });
+  expect(await cellOf("ko")).toEqual({ value: "Edited", updatedBy: "owner", pendingEditToken: "tok-ko" });
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ repositoryImportToken: null });
+});
+
+it("[C4] EDITOR 직접 호출 → forbidden, OWNER의 지문을 들고 와도 (OWNER → 적용 대조는 첫 줄)", async () => {
+  await editedFixture();
+  const approval = await approve();
+  await prisma.projectMember.update({ where: { projectId_userId: { projectId: "p", userId: "owner" } }, data: { role: "EDITOR" } });
+  expect(await run(repoValues(), approval)).toEqual({ ok: false, error: "forbidden" });
+  expect(await cellOf("ko")).toMatchObject({ value: "Edited" });
+});
+
+it("[C4] 같은 건수 다른 편집(Dialog 뒤 재저장) → reconfirm, 새로 받은 지문 → 적용", async () => {
+  await editedFixture();
+  const stale = await approve();
+  await pool.query(`UPDATE "Translation" SET "value" = 'Edited again', "pendingEditToken" = 'tok-ko-2' WHERE "projectId" = 'p' AND "localeCode" = 'ko'`);
+  expect(await run(repoValues(), stale)).toEqual({ ok: false, error: "reconfirm" });
+  expect(await cellOf("ko")).toMatchObject({ value: "Edited again", pendingEditToken: "tok-ko-2" });
+  expect(await run(repoValues(), await approve())).toMatchObject({ ok: true, remainingEdits: 0 });
+});
+
+it("[C4] 설정 변경 뒤 옛 지문 → reconfirm (새 지문이면 reconfirm이 아니다)", async () => {
+  await editedFixture();
+  const stale = await approve();
+  await prisma.translationSurface.update({ where: { id: "s" }, data: { baseLocale: "ko" } });
+  expect(await run(repoValues(), stale)).toEqual({ ok: false, error: "reconfirm" });
+  expect(await run(repoValues(), await approve())).not.toEqual({ ok: false, error: "reconfirm" });
+});
+
+it("[C4][C10] 부분 적용 뒤 같은 지문 재사용 → reconfirm — 리포에 없는 셀의 편집은 남고 결과가 그 수를 말한다", async () => {
+  await editedFixture();
+  const approval = await approve();
+  const partialRepo = reader();
+  // fr 파일에는 key0이 없다 — 그 셀은 덮이지 않아 승인된 토큰이 그대로 남는다(빈값·누락 보완은 별도 spec).
+  partialRepo.blob = vi.fn(async (sha: string) => sha === "fr" ? "{}" : '{"key0":"Repository"}');
+  expect(await run(partialRepo, approval)).toMatchObject({ ok: true, remainingEdits: 1 });
+  expect(await cellOf("fr")).toMatchObject({ value: "Edited", pendingEditToken: "tok-fr" });
+  expect(await run(repoValues(), approval)).toEqual({ ok: false, error: "reconfirm" });
+});
+
+it("일시 실패(스냅샷 못 읽음) 뒤 같은 상태로 같은 지문 재시도 → 적용 — 데이터가 안 바뀌었으니 지문도 같다", async () => {
+  await editedFixture();
+  const approval = await approve();
+  const failing = reader();
+  failing.snapshot = vi.fn().mockResolvedValue({ status: "base-branch-missing" });
+  expect(await run(failing, approval)).toMatchObject({ ok: false });
+  expect(await run(repoValues(), approval)).toMatchObject({ ok: true, remainingEdits: 0 });
+});
+
+it("[C4][C7] 지문 대조 뒤·upsert 전 저장 → 그 셀은 새 값·토큰 유지 + 남은 편집 1 (승인 집합 셀은 덮임 대조)", async () => {
+  await editedFixture();
+  const approval = await approve();
+  const pause = { entered: deferred(), release: deferred() };
+  const running = run(reader('{"key0":"Repository"}', pause), approval);
+  await pause.entered.promise;
+  await pool.query(`UPDATE "Translation" SET "value" = 'Saved during sync', "pendingEditToken" = 'tok-late' WHERE "projectId" = 'p' AND "localeCode" = 'ko'`);
+  pause.release.resolve();
+  expect(await running).toMatchObject({ ok: true, remainingEdits: 1 });
+  expect(await cellOf("ko")).toEqual({ value: "Saved during sync", updatedBy: "owner", pendingEditToken: "tok-late" });
+  expect(await cellOf("fr")).toEqual({ value: "Repository", updatedBy: null, pendingEditToken: null });
+});
+
+it("pending 0이면 지문 없이도 적용한다 — 폐기할 것이 없다", async () => {
+  await seed(); await ci();
+  expect(await run(repoValues(), null)).toMatchObject({ ok: true, remainingEdits: 0 });
+});
+
+it("Publish 진행 중 수동 Sync → already-running, stale Publish면 진행 (양쪽 같은 경계)", async () => {
+  await seed(); await ci();
+  const row = await prisma.syncRun.create({ data: { projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date() } });
+  expect(await run(repoValues())).toEqual({ ok: false, error: "already-running" });
+  await prisma.syncRun.update({ where: { id: row.id }, data: { startedAt: new Date(Date.now() - 301_000) } });
+  expect(await run(repoValues())).toMatchObject({ ok: true });
+});
+
+it("수동 Sync 진행 중 Publish 시작 → already-running, stale Sync면 게이트를 지난다", async () => {
+  await seed(); await ci();
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "other-sync", repositoryImportStartedAt: new Date() } });
+  expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner" })).toMatchObject({ status: "failed", error: "already-running" });
+  expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(0);
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(Date.now() - 301_000) } });
+  await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner" });
+  // 게이트를 지났다는 증거는 행이다 — 거부에는 행을 만들지 않는다(lib/sync/run.ts). 뒤의 GitHub 호출 실패는 이 테스트 밖이다.
+  expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(1);
 });

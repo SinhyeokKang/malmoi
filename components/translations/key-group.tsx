@@ -27,7 +27,6 @@ export function KeyGroup({
   locales,
   project,
   actors,
-  lastPulledAt,
 }: {
   slug: string;
   surfaceSlug: string;
@@ -41,7 +40,6 @@ export function KeyGroup({
   locales: readonly { code: string; orphaned: boolean }[];
   project: ProjectContext;
   actors: Map<string, Actor>;
-  lastPulledAt: Date | null;
 }) {
   const keyCell = (
     <TableHead scope="rowgroup" rowSpan={locales.length} className="border-border h-auto border-r px-2 py-3 align-top font-normal whitespace-normal">
@@ -69,7 +67,7 @@ export function KeyGroup({
     <TableBody className="border-border border-b">
       {locales.map((locale, index) => (
         <LocaleRow key={locale.code} slug={slug} surfaceSlug={surfaceSlug} row={row} locale={locale} actors={actors}
-          lastPulledAt={lastPulledAt} keyCell={index === 0 ? keyCell : null} />
+          keyCell={index === 0 ? keyCell : null} />
       ))}
     </TableBody>
   );
@@ -82,7 +80,6 @@ function LocaleRow({
   row,
   locale,
   actors,
-  lastPulledAt,
 }: {
   keyCell: ReactNode;
   slug: string;
@@ -91,12 +88,11 @@ function LocaleRow({
   /** ⚠️ `isBase`가 없다 — 배지가 그 라벨을 안 들고, 이 표에서 base는 **순서**가 말한다. */
   locale: { code: string; orphaned: boolean };
   actors: Map<string, Actor>;
-  lastPulledAt: Date | null;
 }) {
   const cell = row.cells[locale.code];
   const state = cellState(row, locale.code);
   const actor = actorLabel(cell?.updatedBy ?? null, actors);
-  const unsent = cell !== undefined && isUnpublished(cell, lastPulledAt);
+  const unsent = cell !== undefined && isUnpublished(cell);
 
   const meta = state === "needsReview" || unsent || actor !== null;
   const metaLabel = [

@@ -50,6 +50,11 @@ export type ImportRefusalPlan = {
 
 const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
   "already-running": { tone: "info", dismissible: true, action: null },
+  /**
+   * 승인한 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9). **닫을 수 있다** — 다음 행동은 `[Sync]`를 다시 열어 새 건수를
+   * 보고 승인하는 것이고, 그 Dialog가 새 지문을 받는다. 아무것도 지워지지 않았으므로 danger가 아니다.
+   */
+  "reconfirm": { tone: "warning", dismissible: true, action: null },
   "not-ready": { tone: "warning", dismissible: false, action: "settings" },
   "not-connected": { tone: "warning", dismissible: false, action: "reconnect" },
   "no-surfaces": { tone: "warning", dismissible: false, action: null },

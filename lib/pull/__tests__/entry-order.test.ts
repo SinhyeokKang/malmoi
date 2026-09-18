@@ -166,9 +166,9 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
    */
   it("캡처 aggregate와 1층 count가 탈 인덱스가 스키마에 있다 — 쿼리와 인덱스가 함께 움직여야 한다", () => {
     expect(sourceOf("lib/pull/load.ts")).toContain("_max: { updatedAt: true }");
-    expect(sourceOf("lib/pull/load.ts")).toContain("unpublishedWhere(project.id, project.lastPulledAt)");
-    // 범위 조건이 술어에서 빠지면 count가 인덱스 범위를 못 타고 프로젝트 전 행을 훑는다.
-    expect(sourceOf("lib/keys/unpublished.ts")).toContain("updatedAt: { gt: lastPulledAt }");
+    // 1층 count는 토큰 술어다(sync-edit-protection T8) — `[projectId, pendingEditToken]`이 `IS NOT NULL`을 Index Cond로 탄다.
+    expect(sourceOf("lib/pull/load.ts")).toContain("countPending(prisma, project.id)");
+    expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, pendingEditToken])");
     expect(sourceOf("prisma/schema.prisma")).toContain("@@index([projectId, updatedAt])");
   });
 
@@ -236,7 +236,8 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
   it("경로별 관측이 없으면 포맷 단위 값으로 폴백한다 (하위 호환 — 접두 충돌이 경고로 남는다)", async () => {
     const h = depsWith(null);
     const r = await runPull(h.deps);
-    expect(r.warnings?.length ?? 0).toBeGreaterThan(0);
+    // 경고가 있으면 쓰기 전에 멈춘다(sync-edit-protection T10) — 경고는 그 갈래에만 실린다.
+    expect(r.status === "skipped" && r.reason === "writer-warnings" ? r.warnings.length : 0).toBeGreaterThan(0);
   });
 });
 

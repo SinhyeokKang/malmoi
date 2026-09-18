@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { BACKFILL_CONDITION_SQL } from "../backfill";
@@ -42,5 +44,17 @@ describe("BACKFILL_CONDITION_SQL — 옛 술어 ∧ 활성 셀 ∧ 토큰 없음
     ]) {
       expect(BACKFILL_CONDITION_SQL).toContain(fragment);
     }
+  });
+});
+
+describe("사본 ④ — Publish 미리보기가 무엇을 PR로 보낼지 같은 술어로 고른다 (T8)", () => {
+  it("`lib/publish/read.ts`가 `pendingWhere`를 쓰고 옛 저자·시각 조건을 들지 않는다", () => {
+    const source = readFileSync("lib/publish/read.ts", "utf8");
+    expect(source).toContain("pendingWhere(projectId)");
+    expect(source).not.toContain("updatedBy: { not: null }");
+  });
+
+  it("`lib/keys/unpublished.ts`(옛 공유 조각)가 사라졌다 — 술어의 주인은 하나다", () => {
+    expect(() => readFileSync("lib/keys/unpublished.ts", "utf8")).toThrow();
   });
 });

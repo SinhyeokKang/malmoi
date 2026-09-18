@@ -36,6 +36,11 @@ export const en = {
     /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
     pending: "Syncing…",
     confirm: "Sync from repository",
+    /**
+     * 미전달 편집이 있을 때의 확정 라벨 (sync-edit-protection spec "수동 Sync"). 트리거 `Sync`와 접근 이름이 달라야 한다는
+     * 규칙(DESIGN §6.646)은 이 라벨에도 선다. 무엇을 버리는지를 동사가 먼저 말한다.
+     */
+    confirmDiscard: "Discard changes and sync",
     /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
     title: (name: string): string => `Sync ${name} from the repository?`,
     /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
@@ -46,13 +51,14 @@ export const en = {
      * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
      * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
      */
-    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} edit${n === 1 ? "" : "s"}`,
+    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} unsent translation change${n === 1 ? "" : "s"}`,
     /**
-     * ⚠️ **덮이는 값의 저자가 리포가 된다** — `lib/push/apply.ts`가 `"updatedBy" = NULL`로 저자를
-     * 비우므로, 이 문장이 말하는 "replaced"는 사람 이름까지 사라지는 것을 포함한다.
+     * **폐기를 말하는 문장 하나로 교체했다** (sync-edit-protection T13, design §4.3) — 설명문이 이미 `replace`를 말하지만 이 줄이
+     * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
+     * ⚠️ `updatedBy`까지 비워 저자도 리포가 된다(`lib/push/apply.ts`) — "discard"가 그것을 포함한다.
      */
-    unsent: (n: number, edits: ReactNode): ReactNode => (
-      <>{edits} that {n === 1 ? "hasn't" : "haven't"} been sent yet will be replaced.</>
+    unsent: (_n: number, edits: ReactNode): ReactNode => (
+      <>Sync will discard {edits} and replace them with repository values.</>
     ),
     /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
     openPr: (n: number, branch: string): string =>
@@ -91,6 +97,11 @@ export const en = {
     notReplaced: (n: number): string => `${n} surface${n === 1 ? " was" : "s were"} not replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " was" : "s were"} not imported. Check the details below.`,
+    /**
+     * 승인 뒤 남은 편집 (sync-edit-protection T9). **실패가 아니다** — 승인 뒤 저장됐거나 리포에 값이 없어 덮이지 않은 편집이다.
+     * 남아 있는 한 자동 적재가 멈춘다는 결과까지 말한다(그 사실이 없으면 "성공했는데 왜 안 들어오지"가 된다).
+     */
+    kept: (n: number): string => `${n.toLocaleString("en-US")} unsent change${n === 1 ? " was" : "s were"} kept. Repository updates stay paused until ${n === 1 ? "it is" : "they are"} sent.`,
     /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
@@ -111,6 +122,8 @@ export const en = {
       "not-ready": "This project hasn't finished its first import yet",
       "not-connected": "malmoi is not connected to this repository",
       "already-running": "A sync is already running",
+      /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
+      "reconfirm": "Translations changed after you opened Sync — nothing was discarded. Open Sync again to review",
       "no-surfaces": "There's nothing to sync — this project has no active surfaces",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
@@ -304,7 +317,6 @@ export const en = {
       reviewByLocale: (parts: string): string => parts,
       // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
       localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
-      lastPublish: (when: string): string => `last publish ${when}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
       nothingPending: "nothing pending",
       /** `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다. */
@@ -312,6 +324,8 @@ export const en = {
       asOf: (when: string | null): string => (when === null ? "never synced" : `as of ${when}`),
       asOfLastSync: "as of the last sync",
       cannotSend: "cannot be sent while paused",
+      /** 보낼 편집이 있는 동안 CI 적재가 보류된다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13). */
+      repositoryUpdatesPaused: "repository updates paused",
       frozen: "frozen at archive",
       neverSent: "never sent",
     },
@@ -1353,12 +1367,13 @@ export const en = {
 
     banner: {
       /**
-       * 편집 손실 창 (design §3.11). **주어가 편집자의 행동이다** — 처음 초안은 "code push"가 주어였고,
-       * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다.
+       * 리포 갱신 보류 (sync-edit-protection T13). **손실을 예고하지 않는다** — 미전달 편집이 있으면 CI 적재가 보류되므로 편집은
+       * 사라지지 않는다. 멈춘 사실과 푸는 조건(보내기)만 말한다. ⚠️ `can be lost`·`automatically`를 되살리지 않는다.
        */
-      unsent: (n: number): string =>
-        `${n === 1 ? "1 change" : `${n.toLocaleString("en-US")} changes`} not yet sent. ` +
-        "They can be lost when repository changes are imported automatically or with Sync. Send them and wait for the pull request to be merged before syncing.",
+      paused: (n: number): string =>
+        `Repository updates are paused until ${n.toLocaleString("en-US")} unsent change${n === 1 ? " is" : "s are"} sent.`,
+      /** 헤더의 Publish 버튼으로 포커스를 옮긴다 — 둘째 트리거가 아니다. 화살표 글리프가 방향을 든다. */
+      sendWithPublish: "Send with Publish",
 
       /**
        * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**
@@ -1539,10 +1554,14 @@ export const en = {
       inLogs: "It is recorded in Logs as a run with nothing to send.",
       close: "Close",
 
-      /** `1g` — 버려진 값. **펼친 목록**이다(불변식 9). */
-      partial: "Sent for review \u2014 some values were left out",
-      partialDescription:
-        "The pull request is open, but malmoi could not write every value into the files. What it kept out is listed below.",
+      /**
+       * `1g` — 버려진 값. **펼친 목록**이다(불변식 9).
+       * ⚠️ **보내지 않았다** (sync-edit-protection T10, 2026-09-18) — 전에는 PR을 열고 버린 값을 알렸지만("Sent for review — some
+       * values were left out"), 이제 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 편집은 malmoi에 남고 리포 갱신도 계속 멈춰 있다.
+       */
+      notSent: "Not sent \u2014 some values can't be written to the files",
+      notSentDescription:
+        "malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
       notWritten: "Not written",
       warnings: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,

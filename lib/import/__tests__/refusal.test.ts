@@ -111,7 +111,7 @@ describe("planImportRefusal", () => {
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
-    const transient = ["already-running", "ingest-failed", "unavailable"] as const satisfies readonly RepositoryImportError[];
+    const transient = ["already-running", "ingest-failed", "unavailable", "reconfirm"] as const satisfies readonly RepositoryImportError[];
     type Classified = (typeof repeats)[number] | (typeof transient)[number];
     type Unclassified = Exclude<RepositoryImportError, Classified>;
     // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.
@@ -120,5 +120,11 @@ describe("planImportRefusal", () => {
     expect(exhaustive).toBe(true);
     expect(repeats.filter(error => planImportRefusal(error).dismissible)).toEqual([]);
     expect(transient.filter(error => !planImportRefusal(error).dismissible)).toEqual([]);
+  });
+});
+
+describe("reconfirm — 승인 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9)", () => {
+  it("warning이고 닫을 수 있고 액션이 없다 — 다음 행동은 [Sync]를 다시 열어 새 내용을 확인하는 것이다", () => {
+    expect(planImportRefusal("reconfirm")).toEqual({ tone: "warning", dismissible: true, action: null });
   });
 });

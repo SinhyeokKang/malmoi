@@ -22,7 +22,7 @@ import { render } from "./helpers/dom";
 const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn() }));
 // ⚠️ 보관·재연결 Action까지 mock한다 — 호스트가 배너 액션으로 그 둘을 들고 오고, 실물 모듈은
 // `next-auth`를 통해 서버 전용 코드를 끌어온다.
-vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: vi.fn().mockResolvedValue(undefined), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
@@ -64,13 +64,14 @@ function Host() {
 beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ groups: [], total: 12, keys: 9, truncated: 0, openPr: null }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
-  const run = deferred<{ ok: true; surfaces: [] }>();
+  const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
   mocks.run.mockReturnValue(run.promise);
   await render(<HomeActions slug="acme"><Host /></HomeActions>);
 
   expect(locked(button("Publish"))).toBe(false);
   await click("Sync");
-  await click("Sync from repository");
+  // 미전달 편집이 있는 픽스처라 확정이 곧 폐기다 — 라벨이 그 사실을 말한다 (sync-edit-protection T13).
+  await click("Discard changes and sync");
 
   expect(button("Syncing")).toBeDefined();
   expect(locked(button("Publish"))).toBe(true);
@@ -78,7 +79,7 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
   await click("Publish");
   expect(mocks.pull).not.toHaveBeenCalled();
 
-  await act(async () => { run.resolve({ ok: true, surfaces: [] }); await run.promise; });
+  await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
   expect(locked(button("Publish"))).toBe(false);
 });
 

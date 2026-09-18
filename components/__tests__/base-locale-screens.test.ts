@@ -112,8 +112,8 @@ describe("번역 화면 — 배너 둘의 자리가 갈린다", () => {
    */
   it("대기 배너에 닫기가 없다 — 할 일이 남은 동안 계속 참이다", () => {
     expect(read(BASE_BANNER)).not.toMatch(/onDismiss/);
-    // 편집 손실 배너는 반대다 — 건수가 0이 되거나 사용자가 닫으면 사라진다.
-    expect(read(EDIT_LOSS_BANNER)).toMatch(/onDismiss/);
+    // 리포 갱신 보류 배너도 닫기가 없다(sync-edit-protection T13, 2026-09-18 반전) — 상시 조건이고 건수가 0이 되면 사라진다.
+    expect(read(EDIT_LOSS_BANNER)).not.toMatch(/onDismiss/);
   });
 });
 

@@ -676,26 +676,36 @@ export const ns = { ko, en };
   });
 });
 
-describe("runPull — writer가 버린 항목이 결과에 실린다", () => {
-  it("json-catalog 접두 충돌로 빠진 키가 warnings로 나온다 — survey만 보던 것을 프로덕션 경로가 본다", async () => {
-    const { deps } = makeDeps({
-      loadState: async (): Promise<PullState> => ({
-        project: { ...PROJECT },
-
-        surfaces: [{ ...({ ...PROJECT, nested: true }), id: "s1", slug: "default", localeCodes: ["en"], keys: [
-          { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
-          { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
-        ] }],
-        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
-      }),
-    });
-    const result = await runPull(deps);
-    expect(result.status).toBe("committed");
-    expect(result.warnings?.length ?? 0).toBeGreaterThan(0);
-    expect(result.warnings?.[0]).toMatch(/^default: i18n\/en\.json: /);
+describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘다 (sync-edit-protection T10)", () => {
+  const conflicting = (): PullState => ({
+    project: { ...PROJECT },
+    surfaces: [{ ...({ ...PROJECT, nested: true }), id: "s1", slug: "default", localeCodes: ["en"], keys: [
+      { key: "a.b", sourceText: "leaf", orphaned: false, cells: { en: { value: "leaf" } } },
+      { key: "a.b.c", sourceText: "deeper", orphaned: false, cells: { en: { value: "deeper" } } },
+    ] }],
+    maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [{ id: "t1", token: "tok" }],
   });
 
-  it("버린 항목이 없으면 warnings 필드 자체가 없다 — 없는 것과 같아야 한다", async () => {
+  it("[C10] json-catalog 접두 충돌 → skipped/writer-warnings, 트리·커밋·ref·PR 쓰기 0회, 전달 확인 0회", async () => {
+    const saved: unknown[] = [];
+    const { deps, calls } = makeDeps({ loadState: async () => conflicting(), saveLastPulledAt: async (...args) => void saved.push(args) });
+    const result = await runPull(deps);
+    expect(result.status).toBe("skipped");
+    expect(result).toMatchObject({ reason: "writer-warnings" });
+    expect(result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings[0] : "").toMatch(/^default: i18n\/en\.json: /);
+    const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle"];
+    expect(calls.map((c) => c.method).filter((m) => writes.includes(m))).toEqual([]);
+    expect(saved).toEqual([]);
+  });
+
+  it("[C6] 같은 픽스처에서 충돌이 없으면 쓴다 — 쓰기 > 0 (위 0회 대조)", async () => {
+    const { deps, calls } = makeDeps();
+    const result = await runPull(deps);
+    expect(result.status).toBe("committed");
+    expect(calls.map((c) => c.method)).toContain("createCommit");
+  });
+
+  it("버린 항목이 없으면 warnings 필드 자체가 없다 — 성공 결과에는 경고 자리가 없다", async () => {
     const { deps } = makeDeps();
     const result = await runPull(deps);
     expect(result).not.toHaveProperty("warnings");

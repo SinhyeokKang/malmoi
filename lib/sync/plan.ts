@@ -154,8 +154,8 @@ export type SyncFinish = {
  * ("마지막으로 **보낸**" 것이지 시도한 것이 아니다 — `lib/pull/load.ts`) 그 구별이 행에도 남아야
  * `logs`가 "어제 밤엔 보낼 게 없었다"와 "어제 밤에 보냈다"를 가른다.
  *
- * ⚠️ **`warnings`는 `skipped`에도 센다** — 2층 스킵 + writer 경고가 그 모양이고, 버린 값을 조용히
- * 숨기면 ARCHITECTURE §0 불변식 9 위반이다.
+ * ⚠️ **`warnings`는 `skipped/writer-warnings`에서 센다** — 쓰기 전에 멈춘 실행이고(sync-edit-protection T10), 버린 값을
+ * 조용히 숨기면 ARCHITECTURE §0 불변식 9 위반이다. 성공·동등 결과에는 경고 자리가 없다.
  */
 export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFinish {
   if ("thrown" in result) {
@@ -163,7 +163,7 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
     return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0 };
   }
 
-  const warnings = result.warnings?.length ?? 0;
+  const warnings = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0;
   if (result.status === "skipped") {
     return { status: "SKIPPED", errorCode: null, retryable: null, prUrl: null, changed: 0, warnings };
   }

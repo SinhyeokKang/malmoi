@@ -75,11 +75,12 @@ export function usePublish(slug: string) {
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
-export function PublishButton({ count, publish, disabled = false }: { count: number; publish: PublishController; disabled?: boolean }) {
+/** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
+export function PublishButton({ id, count, publish, disabled = false }: { id?: string; count: number; publish: PublishController; disabled?: boolean }) {
   const plan = planPublishButton({ count, paused: disabled, otherPending: false, publishPending: publish.pending });
   return <div className="flex items-center gap-2">
     <span title={plan.hint}>
-      <Button variant="primary" disabled={plan.disabled} onClick={event => { publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
+      <Button id={id} variant="primary" disabled={plan.disabled} onClick={event => { publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
         {publish.pending ? m.translations.publish.publishing : m.translations.publish.button}
         {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{plan.badge.toLocaleString("en-US")}</span>}
@@ -424,25 +425,26 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             {number !== null && <Hint>{p.tellReviewer(number)}</Hint>}
           </Stack>;
           break;
-        case "partial":
+        case "partial": {
+          /*
+            ⚠️ **보내지 않은 결과다** (sync-edit-protection T10). writer가 값을 버리면 GitHub에 쓰기 전에 멈추므로 PR 카드·브랜치
+            교체 줄이 없다 — 있으면 "보냈다"로 읽힌다. 버린 값은 펼친 목록으로 선다(불변식 9). 새 모달 갈래를 늘리지 않고 이 틀을 쓴다.
+          */
           panel = PANEL.partial;
-          title = p.partial; description = p.partialDescription;
-          footer = number === null ? null : p.prMeta(number, files);
-          actions = viewPr;
+          title = p.notSent; description = p.notSentDescription;
+          actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
-            <PrCard repo={label} number={number} note={outcome.status === "committed" && outcome.pr === "updated" ? p.holdsEverything : p.openedJustNow} />
-            {/* 조건은 `pr` 하나다 — 버려진 값이 있는지와 무관하게 참인 사실이다. */}
-            {outcome.status === "committed" && outcome.pr === "updated" && <Replaced branch={repo.syncBranch} base={repo.branch} />}
-            <Warnings warnings={outcome.status === "committed" ? outcome.warnings ?? [] : []} />
+            <Warnings warnings={outcome.status === "skipped" && outcome.reason === "writer-warnings" ? outcome.warnings : []} />
           </Stack>;
           break;
+        }
         case "no-changes":
-          panel = PANEL.noChanges; inner = outcome.status === "skipped" && (outcome.warnings?.length ?? 0) > 0;
+          panel = PANEL.noChanges; inner = false;
           title = p.noChanges; description = p.noChangesDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
-            {(outcome.status === "skipped" && outcome.warnings?.length) ? <Warnings warnings={outcome.warnings} /> : <Hint icon={History}>{p.inLogs}</Hint>}
+            <Hint icon={History}>{p.inLogs}</Hint>
           </Stack>;
           break;
         case "config-error": {

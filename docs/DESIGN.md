@@ -316,7 +316,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 | **머리** | `PanelHeader` `flex flex-col gap-4 px-6 pt-6 pb-3` — `h1 text-xl font-medium`(**사이드바 라벨과 같은 키**) ⚠️ **여백·제목 크기가 `/projects` 목록과 같은 형이다** (2026-09-11 — 시안 `212:5074` 실측 `pt-24`·`gap-16`·`pb-12`·20px). 8-4가 `py-4 space-y-3` + `text-base`로 냈던 것을 되돌린 것이고, 근거는 **같은 셸 안의 두 화면이 다른 여백을 들면 라우트를 옮길 때 머리가 튄다**는 것이다 + 총계 `Badge neutral` + "Last sent …" + PR 링크, 우측에 **Publish 버튼**. ⚠️ **breadcrumb이 없다**(8-4 — 프로젝트 하위 화면 다섯에서 함께 지웠다; 위로 가는 길은 사이드바가 든다). ⚠️ **총계는 필터 *전*의 값이다**(§6.63과 같은 규칙) — 필터마다 흔들리면 "이 프로젝트에 키가 몇 개인가"에 답하지 못한다. 필터 후 건수는 섹션 헤딩의 배지가 든다. ⚠️ **숫자 배지는 `aria-hidden` 숫자 + `sr-only` 문장**이다 — 숫자만 그리면 접근 이름이 "Translations 1134"다 |
 | **툴바** | 네임스페이스 `Select w-40`(옵션 라벨은 갈래 둘이다 — pending이 있으면 `{name} ({pending}/{total})`, 0이면 `{name} ({total})`. ⚠️ **2026-09-13부터 Radix라 옵션 안에 배지를 그릴 수는 있다** — 그래도 라벨 형은 그대로 둔다: 남은 일이 0인 ns에 `0/12`를 적으면 분자가 무엇인지 매번 읽어야 한다는 근거가 형식과 무관하게 그대로다) · 로케일 **다중 선택** `DropdownMenu w-32`(`DropdownMenuCheckboxItem`, ⚠️ **항목이 국기 + 코드다** — 2026-09-11 실물: 표의 배지엔 국기가 있는데 그것을 **고르는** 자리엔 없어서 같은 로케일이 두 자리에서 다르게 보였다. 조각은 `LocaleFlag`가 들고 배지의 pill·`(base)`·orphaned는 **표 문맥**이라 메뉴로 오지 않는다) · 검색 `Input w-64 pl-8` + `Search` `absolute left-2`(우측 정렬). ⚠️ **상태 필터가 없다**(8-4 — 시안의 칩이 정확히 세 종류라 그 부재가 의도다). ⚠️ **`<form>`을 쓰지 않는다** — 제출 버튼 없는 폼은 Enter로 submit되지 않는다(POSTMORTEM 2026-09-08). ⚠️ **왼쪽 네임스페이스 패널이 사라졌다** — 드롭다운이 그 역할을 가져갔고, 둘을 두면 같은 필터가 두 곳이고 하나가 낡는다 |
 | **칩 행** | 적용된 필터가 `bg-muted rounded-full` 칩이고 **종류가 셋**(`Namespace:` · `Languages:` · `Search:`). ⚠️ **로케일 칩은 코드마다가 아니라 하나로 묶는다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 **전체로 넓어지고**(제거가 넓힘이 된다), 6로케일에서 한 줄을 넘는다. ⚠️ **칩 전체가 링크가 아니다** — 라벨은 평문이고 제거만 `Button ghost sm`(중첩 상호작용 요소는 금지, POSTMORTEM 2026-09-09와 같은 모양이다). 칩은 **h-8**(시안 `Chip` 32)이고 `text-sm`이다 — 같은 줄의 컨트롤이 36인데 칩만 20이면 필터가 걸려 있다는 사실이 눈에 안 들어온다. 초기화는 칩이 하나라도 있을 때만 보이는 `ghost sm` 정사각이고 ⚠️ **칩 옆이 아니라 줄 오른쪽 끝, 글리프가 `RotateCcw`다** (2026-09-11 — 시안 `IconButton`이 x=1252의 `repeat-outlined`): 칩 옆이면 칩이 늘 때마다 버튼이 옮겨 다녀 **누를 자리가 화면마다 달라지고**, 깔때기(`FilterX`)면 이 버튼이 **검색까지** 되돌린다는 사실을 안 말한다(`/projects`의 [Clear filters]와 같은 글리프다). ⚠️ **기본 착지의 네임스페이스는 칩이 아니다** — 그것은 화면이 정한 착지점이지 사용자가 고른 필터가 아니다 |
-| **배너 자리** | 칩 아래, **스크롤 영역 안**이다. 순서는 **기준 로케일 대기 → 편집 손실**. ⚠️ **둘 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 상태를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **Publish 결과는 2026-09-16에 이 자리를 떠났다** — 모달이 든다(§6.646). `scrollIntoView`로 결과를 화면에 올리던 장치도 함께 사라졌다: 모달은 스크롤 밖으로 나갈 수 없다 |
+| **배너 자리** | 칩 아래, **스크롤 영역 안**이다. 순서는 **기준 로케일 대기 → 리포 갱신 보류**(파일은 `edit-loss-banner.tsx` 그대로 — 2026-09-18에 문장·tone이 뒤집혔다). ⚠️ **둘 다 조건부 분기 밖**이어야 한다 — 분기 안이면 `revalidatePath`·`router.refresh()`가 방금 받은 상태를 언마운트한다(POSTMORTEM 2026-09-07). ⚠️ **Publish 결과는 2026-09-16에 이 자리를 떠났다** — 모달이 든다(§6.646). `scrollIntoView`로 결과를 화면에 올리던 장치도 함께 사라졌다: 모달은 스크롤 밖으로 나갈 수 없다 |
 
 ⚠️ **Publish 버튼과 결과 `Alert`가 갈 곳이 2026-09-16에 바뀌었다.** 전에는 "8-P가 오른쪽 프로젝트
 패널로 가져간다"였는데 **그 패널을 지웠고**(§6.55), 새 목적지는 `design_handoff_publish_modal`의
@@ -372,7 +372,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 |---|---|---|
 | 미번역 | 무색 — `text-muted-foreground` "Untranslated" | 없음은 상태가 아니라 부재다. 색을 주면 셋 중 가장 흔한 것이 가장 시끄러워진다 |
 | 검토필요 (`needsReview`) | **amber** — `Badge warning` = `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
-| 미배포 (`isUnpublished`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·편집 손실 배너와 **같은 술어**다(`updatedBy`가 사람인 행). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
+| 미배포 (`isUnpublished`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·보류 배너와 **같은 술어**다(편집 토큰이 남은 활성 셀 — 2026-09-18). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
 | orphaned | **red 계열 글자만** — `Badge danger` = `text-destructive` (배경 없음) | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기** |
 
 **연결 건강성 7종** (설정 화면): **배지를 쓰지 않는다** (2026-09-08 실물 정정) — `ok`·`not-connected`·`unknown`은 평문 `text-muted-foreground text-xs`(가장 흔한 상태가 조용하다) / `repo-moved` → **`Alert warning`** / `app-uninstalled`·`installation-changed` → **`Alert danger` + [Reconnect]** / **`repo-replaced` → `Alert danger`이고 [Reconnect]가 **없다**(2026-09-10, sec-audit-2 — 저장된 주소가 **다른 리포**를 가리키는 상태다. 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가 재고정을 거부하므로 **눌러도 실패할 버튼**이고, 그래서 'danger = danger + [Reconnect]'라는 짝이 여기서만 깨진다). 색 체계는 아래와 같고 담는 그릇만 다르다. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
@@ -387,13 +387,13 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 
 **이름에서 뽑는 색 8종** (2026-09-11 사용자 — `lib/tone.ts`의 `toneOf` + `components/ui/tone.ts`의 `toneFill`): **소비자가 둘이고 형이 같다** — 사용자 아바타 폴백과 **프로젝트 목록 행의 아이콘**이 모두 채운 배경 + 흰 글리프(`toneFill`)다. 그 배경이 곧 **프로젝트 이미지가 들어올 자리**이므로 지금 색을 채워 두면 이미지가 붙는 날 표면이 바뀌지 않는다. 이름을 해시해 `rose`·`orange`·`amber`·`emerald`·`teal`·`sky`·`indigo`·`fuchsia`의 **`-600` 배경 + 흰 글자**를 고른다. **같은 이름은 언제나 같은 색**이다(`Math.random`이 아니다 — 렌더마다 바뀌면 색이 사람을 못 가리킨다). ⚠️ **`-600`으로 통일한다**: `-500`이 더 밝지만 amber·lime 계열에서 흰 글자가 안 읽혀, 색마다 단계를 다르게 두면 여덟이 같은 계열로 안 보인다. ⚠️ **클래스를 문자열 리터럴 맵으로 든다** — `bg-${tone}-600`으로 조립하면 Tailwind가 정적 추출을 못 해 배경이 통째로 빠진다. ⚠️ **판정은 `lib/`, 클래스는 컴포넌트**다(`STATUS_VARIANT`와 같은 형) — `lib/`가 Tailwind 클래스를 알면 규칙이 두 층에 걸린다.
 
-**Alert 4종** (§6.4 — Publish 결과·편집 손실 배너·페이지 수준 거부):
+**Alert 4종** (§6.4 — Publish 결과·리포 갱신 보류 배너·페이지 수준 거부):
 
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
-| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — "Nothing to publish"가 꺼진 Publish 버튼의 hover로 내려갔다(§6.646) |
+| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | **번역 화면의 리포 갱신 보류 배너** (2026-09-18 — 소비자 0에서 1로 부활했다). `Repository updates are paused until N unsent changes are sent.` · **닫기 없음**(상시 조건) · 액션 `Send with Publish ↑`는 헤더 Publish 버튼으로 **포커스만** 옮긴다(둘째 트리거를 만들지 않는다). 새 색·토큰은 없다. ⚠️ 2026-09-16의 "Nothing to publish"는 여전히 꺼진 Publish 버튼 hover다(§6.646) |
 | `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — Publish 성공 둘이 모달의 무색 블록으로 내려갔다(§6.646). **초록을 쓰지 않는다**는 근거는 그대로 산다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
-| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | 편집 손실 배너 · `repo-moved` (⚠️ Publish "일부 미기록"은 2026-09-16에 **무색 블록**으로 내려갔다 — §6.646) |
+| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | `repo-moved` · 수동 Sync 결과의 `reconfirm` 거부와 "남은 편집" 결과 (⚠️ **편집 손실 배너가 2026-09-18에 여기서 빠져 `info`로 갔다** — 보호가 켜진 뒤 안전한 상태에 amber를 띄우면 "가장 흔한 상태가 가장 조용하다"(§6.1) 위반이다) |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 **둘**(모달 안 — §6.646) · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
@@ -481,7 +481,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 14
 |---|---|---|
 | **토스트** | **전역 결과를 내는 이벤트** — 대상이 화면 전체이고 읽고 나면 사라져도 되는 것 | 로그인 거부 · 세션 회수 완료 |
 | 인라인 | **대상이 있는 판정** | 셀 저장 상태 · 멤버 행 옆 거부 |
-| 인라인 | **지속되는 조건** | 편집 손실 배너 · base 대기 배너 · 초대 수락 실패 전체(`?e=unauthorized`·`unavailable` 포함) |
+| 인라인 | **지속되는 조건** | 리포 갱신 보류 배너 · base 대기 배너 · 초대 수락 실패 전체(`?e=unauthorized`·`unavailable` 포함) |
 | 인라인 | **페이지 콘텐츠 자체** | 초대의 `not-found`·`expired`·`already-accepted` |
 
 - **`<Toaster theme="light" />`가 `app/layout.tsx`에 있다.** ⚠️ `sonner`는 테마를 **스스로 감지**하므로
@@ -538,7 +538,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **Checkbox** | Radix `Checkbox.Root` · 16 사각 · 비선택 `neutral-300`, 선택 `foreground` + 체크 12. Radio와 같은 포커스 링·disabled. 시각 label은 필수가 아니며 `aria-label` 또는 `aria-labelledby`로 이름을 준다. 포함 체크와 상세 버튼은 형제다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** — 2026-09-12부터 **Radix `RadioGroup`이** 방향키·roving tabindex·`loop`를 들고, **Home/End만 프리미티브가 얹는다**(Radix가 안 준다). 2026-09-11의 손수 구현(`nextRovingIndex` + `tabIndex={selected ? 0 : -1}`)을 대체했고, 링 검사가 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이 보이지 않는 링으로 green을 만들지 않는다 |
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
-| **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 편집 손실 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
+| **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 리포 갱신 보류 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
 | **Table** | 번역·언어·이력·멤버 넷이 쓴다. shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 번역 화면만 프리미티브를 직접 들고 나머지 셋이 프리셋을 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 번역 화면만 `false`다** — 그쪽은 `PanelBody`가 스크롤을 소유하므로 컨테이너를 하나 더 만들면 중첩된다(§6.1) |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
@@ -809,7 +809,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 |---|---|
 | 머리 | 타일 28(radius 8, **이름 기반 `toneFill`** — 목록 행과 같은 `ProjectThumbnail`이다) + `h1` 18/500 + (보관이면) `Archived` pill + 우측 `[Sync]`·`[Publish]`. **리포·브랜치·멤버 수를 머리에 안 적는다** — 메타 열이 그 사실의 소유자다 |
 | 카드 넷 | `repeat(4,1fr)` **gap 8** · 카드 padding 14 · 내부 gap 12 · **radius 12**(`rounded-lg` — ⚠️ `rounded-xl`은 16이다) · border `#e5e5e5` · hover `bg-foreground/[0.02]` · **전체가 링크** |
-| 카드 내용 | 1행 제목 14/500 + `ml-auto` 글리프 16 / 2행 수치 24/500 + 보조 줄 13 `#737373`. 순서가 **파이프라인**이다 |
+| 카드 내용 | 1행 제목 14/500 + `ml-auto` 글리프 16 / 2행 수치 24/500 + 보조 줄 13 `#737373`. 순서가 **파이프라인**이다. ⚠️ **`To send`가 0이 아니면 보조 줄은 `repository updates paused`다** (2026-09-18 — 마지막 Publish 시각 줄을 대체했다). OWNER가 CI 적재 보류를 아는 화면 자리이고, 넷째 전폭 배너를 두지 않는다(상시 상태에 배너를 두면 배너 0개 전제가 깨진다) |
 | 카드 색 | 첫 칸만 **글리프와 수치 둘 다** `blue-600`(들어온 것) · `To review` 글리프만 `amber-700` · 나머지 글리프 `neutral-400`. **값이 0이면 수치·글리프가 `neutral-400`이고 색이 빠진다**(값은 안 지운다 — 0이 곧 정보다) |
 | 유입 수치 | **`+n` 접두**(늘어난 양이라서다). 나머지 셋은 남아 있는 양이라 부호가 뜻을 바꾼다. 천단위 구분자는 **`en-US` 고정**이다 — 서버 로케일을 따르면 같은 DB 상태가 다른 화면을 낸다 |
 | 블록 카드 | 머리 `h2` 15/500 padding 16 · 카드 안 구분선은 **`--divider`(#f0f0f0)**이고 테두리(`#e5e5e5`)보다 연하다 |
@@ -891,7 +891,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 위험 블록 | amber radius 10 · padding 12 · 13px · 글리프 14 mt 2 · **줄 사이 6** · `#fffbeb`/`#fde68a`/`#78350f` · **수에만 weight 500** |
 | 푸터 | padding 16 · gap 8 · flex-end · 버튼 36/radius 10/px 12/14px |
 | 확정 버튼 | **위험 집계가 0이어도 danger다** — 글자 `#dc2626` · bg `#fff` · border `destructive/40` |
-| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ `Sync from repository` |
+| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). 둘 다 트리거와 이름이 다르다 |
 | `aria-describedby` | ⚠️ **Radix는 설명문 하나에만 건다** — 경고 블록 id를 함께 넘겨 넓힌다. 안 넓히면 열릴 때 읽히는 것이 "덮는다"까지이고 **무엇이 지워지는지는 안 읽힌다** |
 
 **위험 블록은 네 갈래이고 권유 줄이 갈래마다 다르다.** ⚠️ **블록이 줄어드는 방향으로 움직인다** —
@@ -900,7 +900,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 갈래 | 아트보드 | 블록 | 권유 |
 |---|---|---|---|
 | 미발송 0 ∧ PR 없음 | `4a` | **본문 자체가 없다** — 부재가 곧 정보다 | — |
-| 미발송 N | `4b` | 미발송 한 줄 | `Send changes first` — **앱 내부 링크** |
+| 미발송 N | `4b` | 미발송 한 줄 — **`Sync will discard N unsent translation changes and replace them with repository values.`** (2026-09-18 교체 — 전엔 "…will be replaced"였다. 문장을 더하지 않아 360 Dialog 줄 수가 같다) | `Send changes first` — **앱 내부 링크** |
 | 미발송 N ∧ 열린 PR | `4c` 좌 | **블록 하나 안에 `<p>` 둘** · 글리프는 블록 머리에 하나 · PR 번호는 **링크가 아니다** | 같은 `Send changes first` |
 | 미발송 0 ∧ 열린 PR | `4c` 우 | 미발송 줄이 **빠지고** PR 줄만(`0 edits …`를 안 쓴다) | `Nothing is waiting to be sent.` + `See what's open`(`_blank`·`noreferrer`·글리프 12·파랑) |
 | PR 조회 중·실패 | `4d` | 확인된 경고와 **같은 amber** — muted 한 줄이면 부재와 같은 신호로 읽힌다 | **줄 없음** |
@@ -914,6 +914,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 파일 일부 실패 | 헤드라인 + 파일 줄 | `Synced 18 keys`(브랜치 없음 — 붙이면 전부 성공과 **글자까지 같아진다**) + `1 item was not imported.` + `locales/ja.yml: The file couldn't be parsed.` |
 | CI 미적용 | **두 줄** | `Synced 9 keys, but 1 surface was not replaced` + `locales — New repository data arrived while syncing.`(slug mono) · `[Try again]` 있음 |
 | 전 표면 실패 | 두 줄 | `Sync could not finish` — **`…, but …`을 쓰지 않는다**(앞 절이 거짓이 된다) |
+| 승인 뒤 남은 편집 | 헤드라인 + 원인 줄 · **warning** (2026-09-18) | `Synced 18 keys`(브랜치 없음) + `2 unsent changes were kept. Repository updates stay paused until they are sent.` — 폐기를 승인했는데 편집이 남은 것은 성공 한 줄에 숨기지 않는다 |
 
 ⚠️ **`partial` 표면에는 사유가 없다** (2026-09-16 실측이 잡은 결함). `lib/import/run.ts`의 `finishSurface`는
 `prepared.kind === "failed"`에만 `reason`을 달아 **`partial`은 언제나 `null`**이다. 폴백을 쓰면
@@ -1030,6 +1031,9 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 360�
 갈라 둔 값) · 머리·행 padding **11 16** · 경로 칸 **210** · 행 사이 `--divider` · `<details>` **0**.
 ⚠️ **목록이 자체 스크롤러를 든다** — 경고가 몇 줄이든 PR 블록을 밀어내지 않는다는 것이 "다섯까지만
 보이고 나머지는 Logs로"를 안 만든 근거다. `updated` 변주의 순서는 **PR 줄 → 무색 블록 → 목록**이다.
+⚠️ **`1g`는 2026-09-18부터 "보내지 않았다"다** (sync-edit-protection T10) — writer 경고가 있으면 GitHub에 쓰기 전에 멈추므로 PR 카드·교체 줄이 빠지고
+제목이 `Not sent — some values can't be written to the files`, 바닥은 `Close`다. 틀(높이 560~600 · 목록 치수)은 그대로 재사용하고 새 갈래를 만들지 않았다.
+**위 실측(PR 줄이 있는 모양)은 그 전의 것이다** — 새 모양은 브라우저로 아직 안 쟀다.
 
 **⚠️ 실물로 못 밟은 갈래 둘** (2026-09-16): `1h`(실행 전 거부 여섯 — 클라이언트에서 강제할 수 없다) ·
 `1j`(쿨다운 30초가 미리보기 GitHub 왕복보다 짧아 세 번 시도 모두 실패). **단위 테스트로만 서 있다** —
@@ -1257,7 +1261,7 @@ Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이�
   - ⚠️ **`--input`과 값을 다시 같게 두지 않는다** — 필드 테두리는 쉬는 상태의 윤곽, 링은 포커스 신호로 축이 다르다. `lib/__tests__/globals-css.test.ts`가 `--border`와의 동일성과 무채색 여부를 센다.
 - ⚠️ **`overflow-hidden` 부모 안에서는 `focus-visible:ring-inset`이 예외로 붙는다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px 퍼지는데, 프로젝트 목록의 `<ul>`이 `rounded-lg`로 첫·끝 행의 모서리를 자르려고 `overflow-hidden`을 들고 있어 **그 3px이 통째로 잘렸다** — 키보드 사용자에게 포커스가 아예 안 보였다. 부모의 `overflow-hidden`을 뗄 수 없는 자리에서만 안쪽으로 그린다.
 - **저장 알림은 표 하나에 `aria-live="polite"` 영역 하나**다 (`components/translations/announcer.tsx`) — 셀마다 두면 903행×3로케일에 2,700개다. 결과만 알린다("Saving…"은 알리지 않는다). 실패 시 포커스는 **`shouldRefocus(active, own)`가 정한다**: `body`이거나 같은 셀일 때만 되돌리고, 사용자가 다음 셀을 치고 있으면 뺏지 않는다 — 재시도 지점은 상태줄의 `[Retry]`다 (design §3.8).
-- **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — `aria-live`가 announcer에만 있는지 · 셀에 `role="status"`가 없는지 · 셀이 키·로케일을 접근 이름으로 드는지 · `Textarea rows=1`인지 · 배너 tone이 warning인지 · 옛 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
+- **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — `aria-live`가 announcer에만 있는지 · 셀에 `role="status"`가 없는지 · 셀이 키·로케일을 접근 이름으로 드는지 · `Textarea rows=1`인지 · 보류 배너가 `info`이고 닫기·세션 저장이 없는지 · 옛 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
 - 아이콘만 있는 버튼은 `aria-label`.
 - 드롭다운·모달은 Radix가 포커스 트랩·Esc·`aria-*`를 든다 — 직접 만들지 않는다.
 

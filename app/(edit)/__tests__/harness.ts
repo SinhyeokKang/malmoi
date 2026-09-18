@@ -919,7 +919,8 @@ export function createHarness(seed: Seed = {}) {
       const unsentSurfaces = new Map<string, string>();
       const activeSurface = (projectId: string, surfaceId: string | null | undefined) =>
         surfaces.find(s => s.projectId === projectId && s.id === surfaceId && s.archivedAt === null);
-      if (sql.includes('"StringKey"')) {
+      // ⚠️ **⑤도 `"StringKey"`를 조인한다**(orphan 키 제외, sync-edit-protection T8) — 분기를 `FROM "Translation"`으로 가른다.
+      if (!sql.includes('FROM "Translation"')) {
         for (const k of keys) {
           if (!live(k.projectId) || (k.orphaned ?? false)) continue;
           if (!activeSurface(k.projectId, k.surfaceId)) continue;
@@ -932,8 +933,10 @@ export function createHarness(seed: Seed = {}) {
           if (projectId === undefined || !live(projectId)) continue;
           const surface = activeSurface(projectId, t.surfaceId);
           if (!surface) continue;
-          if (t.updatedBy === null) continue;
-          if (!after(projectId, t.updatedAt)) continue;
+          // `pendingWhere`의 raw 사본과 같은 조건 — 토큰 · orphan 키 · orphan 로케일.
+          if ((t.pendingEditToken ?? null) === null) continue;
+          if (keys.find(k => k.id === t.keyId)?.orphaned ?? false) continue;
+          if (locales.find(l => l.projectId === projectId && l.surfaceId === t.surfaceId && l.code === t.localeCode)?.orphaned ?? false) continue;
           counted.set(projectId, (counted.get(projectId) ?? 0) + 1);
           const first = unsentSurfaces.get(projectId);
           if (first === undefined || surface.slug < first) unsentSurfaces.set(projectId, surface.slug);
@@ -1110,16 +1113,23 @@ export function createHarness(seed: Seed = {}) {
       }: {
         where: {
           projectId: string;
-          updatedBy?: { not: null };
-          updatedAt?: { gt: Date };
+          stringKey?: { orphaned?: boolean };
+          locale?: { orphaned?: boolean };
+          pendingEditToken?: { not: null };
         } & ScopedWhere;
       }) => {
-        const ids = new Set(keys.filter((k) => k.projectId === where.projectId).map((k) => k.id));
+        // ⑤ `pendingWhere`의 하네스 사본 (sync-edit-protection T8). 조건 넷을 전부 해석한다 — 하나라도 무시하면
+        // `countUnpublished`의 orphan 제외를 이 하네스로는 판정할 수 없다(가짜가 실제보다 관대하면 결함이 안 보인다).
+        const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
         return translations.filter((t) => {
-          if (!ids.has(t.keyId)) return false;
+          const key = live.get(t.keyId);
+          if (key === undefined) return false;
           if (!matchesScope(t, where)) return false;
-          if (where.updatedBy !== undefined && t.updatedBy === null) return false;
-          if (where.updatedAt !== undefined && !(t.updatedAt > where.updatedAt.gt)) return false;
+          if (where.pendingEditToken !== undefined && (t.pendingEditToken ?? null) === null) return false;
+          if (where.stringKey?.orphaned !== undefined && (key.orphaned ?? false) !== where.stringKey.orphaned) return false;
+          const localeOrphaned = where.locale?.orphaned;
+          if (localeOrphaned !== undefined &&
+            (locales.find(l => l.projectId === key.projectId && l.surfaceId === t.surfaceId && l.code === t.localeCode)?.orphaned ?? false) !== localeOrphaned) return false;
           return true;
         }).length;
       },

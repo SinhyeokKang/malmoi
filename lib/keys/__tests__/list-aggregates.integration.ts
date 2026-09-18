@@ -77,7 +77,7 @@ it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한�
   const cells = rows.flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
   expect(cells.length).toBeGreaterThan(0);
   expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
-  expect(cells.some(cell => isUnpublished(cell, PULLED))).toBe(false);
+  expect(cells.some(cell => isUnpublished(cell))).toBe(false);
 });
 
 async function addFixture() {
@@ -222,7 +222,7 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
   await prisma.translationSurface.create({ data: { id: "b", projectId: "p1", slug: "b", pathTemplate: "other/{locale}.json", adapterName: "json-catalog", baseLocale: "fr", declaredBaseLocale: "de", lastCommitSha: "b-sha" } });
   await prisma.locale.create({ data: { projectId: "p1", surfaceId: "b", code: "fr", name: "French" } });
   await prisma.stringKey.create({ data: { id: "b-key", projectId: "p1", surfaceId: "b", key: "b.key", namespace: "b", sourceText: "B", sourceHash: "b" } });
-  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "fr", value: "B", updatedBy: "human", updatedAt: AFTER } });
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "fr", value: "B", updatedBy: "human", updatedAt: AFTER, pendingEditToken: "b-edit" } });
   await prisma.keyRef.create({ data: { keyId: "b-key", path: "b.ts", line: 1 } });
   const readB = () => prisma.translationSurface.findUniqueOrThrow({ where: { id: "b" }, include: { locales: true, keys: { include: { refs: true } }, translations: true } });
   const before = await readB();
@@ -242,20 +242,21 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
   expect(await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p1-old", localeCode: "ko" } } })).toMatchObject({ value: "Repository", updatedBy: null });
   // Phase A retains the old PK, but it must never allow a cell to cross surface ownership.
   await expect(prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "en", value: "wrong surface" } })).rejects.toThrow();
-  const unpublished = await countUnpublished(prisma, "p1", PULLED);
+  const unpublished = await countUnpublished(prisma, "p1");
+  expect(unpublished).toBeGreaterThan(0);
   await prisma.translationSurface.update({ where: { id: "b" }, data: { archivedAt: AFTER } });
-  expect(await countUnpublished(prisma, "p1", PULLED)).toBe(unpublished - 1);
+  expect(await countUnpublished(prisma, "p1")).toBe(unpublished - 1);
   const aggregate = await loadProjectListAggregates(prisma, ["p1"]);
   expect(aggregate.locales.some(l => l.surfaceId === "b")).toBe(false);
-  expect(aggregate.unsent.get("p1") ?? 0).toBe(await countUnpublished(prisma, "p1", PULLED));
+  expect(aggregate.unsent.get("p1") ?? 0).toBe(await countUnpublished(prisma, "p1"));
   const newest = new Date("2099-01-01T00:00:00Z");
   await prisma.translation.update({ where: { keyId_localeCode: { keyId: "b-key", localeCode: "fr" } }, data: { updatedAt: newest } });
   const state = await loadPullState(prisma, "p1");
   expect(state.surfaces.map(s => s.slug)).toEqual(["default"]);
   expect(state.maxUpdatedAt).toEqual(newest);
   // 1층 스킵의 판정값은 `countUnpublished`와 같은 where 조각으로 센다(T0) — 보관 표면 b의 셀은 둘 다 빼야 한다.
-  expect(state.unpublished).toBe(await countUnpublished(prisma, "p1", PULLED));
-  expect(isUnpublished({ updatedAt: newest, updatedBy: "human", surfaceArchivedAt: AFTER }, PULLED)).toBe(false);
+  expect(state.unpublished).toBe(await countUnpublished(prisma, "p1"));
+  expect(isUnpublished({ pending: true, surfaceArchivedAt: AFTER })).toBe(false);
 });
 
 /**
@@ -307,35 +308,34 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
         value: `v${index}`,
         updatedBy: spec.key === "old" ? null : "u1",
         updatedAt: spec.createdAt,
+        // 사람이 만진 셀은 토큰을 든다(배포 A dual-write) — push가 쓴 `old`만 없다.
+        pendingEditToken: spec.key === "old" ? null : `tok-${spec.key}`,
       },
     });
   }
 }
 
-it("⑤가 countUnpublished와, 그리고 행별 isUnpublished의 합과 같다", async () => {
+it("⑤가 countUnpublished와, 그리고 행별 isUnpublished의 합과 같다 — orphan 키는 셋 다 뺀다 [C9]", async () => {
   await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
 
   const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
-  const counted = await countUnpublished(prisma, "p1", PULLED);
-  const cells = await prisma.translation.findMany({
-    where: { projectId: "p1" },
-    select: { updatedBy: true, updatedAt: true },
-  });
-  const byRow = cells.filter((c) => isUnpublished(c, PULLED)).length;
+  const counted = await countUnpublished(prisma, "p1");
+  const byRow = (await loadKeys(prisma, "p1", "surface-p1"))
+    .flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined && isUnpublished(cell)).length;
 
-  // 저자 null은 빠지고, 기준 시각과 같은 행도 빠진다 — 남는 것은 `new`와 `gone` 둘이다.
+  // 토큰 없는 `old`는 빠지고 orphan 키 `gone`도 빠진다 — 남는 것은 `same`과 `new` 둘이다. 시각은 판정에 안 쓴다.
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
   expect(unsent.get("p1")).toBe(byRow);
 });
 
-/** 첫 pull 전에는 사람이 만진 행이 전부 미발송이다 — 비교 대상이 없다. */
+/** 첫 pull 전후가 같은 답이다 — 토큰 술어는 `lastPulledAt`을 읽지 않는다. */
 it("첫 pull 전에도 세 판정이 같다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
 
   const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
-  const counted = await countUnpublished(prisma, "p1", null);
-  expect(unsent.get("p1")).toBe(3);
+  const counted = await countUnpublished(prisma, "p1");
+  expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
 });
 
@@ -465,22 +465,26 @@ it("적재 트랜잭션이 실패하면 진행·오류와 기존 데이터도 �
   expect(await prisma.stringKey.count({ where: { projectId: "p1", orphaned: false } })).toBe(3);
 });
 
-it.each([PULLED, null])("미발송 세 술어의 저자·시각·빈 값·고아 로케일 경계를 대조한다: %s", async (lastPulledAt) => {
+it.each([PULLED, null])("미발송 세 술어의 토큰·빈 값·고아 키·고아 로케일 경계를 대조한다: %s", async (lastPulledAt) => {
   await seed({ id: "p1", lastPulledAt, archived: false });
   await prisma.translation.deleteMany({ where: { projectId: "p1" } });
   await prisma.locale.update({ where: { projectId_surfaceId_code: { projectId: "p1", surfaceId: "surface-p1", code: "ko" } }, data: { orphaned: true } });
-  for (const updatedBy of [null, "user"]) {
-    for (const [index, updatedAt] of [BEFORE, PULLED, AFTER].entries()) {
-      await prisma.translation.create({ data: {
-        projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${["old", "same", "new"][index]}`,
-        localeCode: updatedBy === null ? "en" : "ko", value: "", updatedBy, updatedAt,
-      } });
-    }
+  for (const cell of [
+    { key: "old", localeCode: "en", token: null, updatedAt: AFTER },     // push가 쓴 행 — 시각이 최신이어도 빠진다
+    { key: "same", localeCode: "en", token: "t-same", updatedAt: BEFORE }, // 옛 시각이어도 토큰이 있으면 센다
+    { key: "new", localeCode: "en", token: "t-new", updatedAt: PULLED },   // 빈 값도 편집이다
+    { key: "old", localeCode: "ko", token: "t-orphan-locale", updatedAt: AFTER },
+    { key: "gone", localeCode: "en", token: "t-orphan-key", updatedAt: AFTER },
+  ]) {
+    await prisma.translation.create({ data: {
+      projectId: "p1", surfaceId: "surface-p1", keyId: `p1-${cell.key}`, localeCode: cell.localeCode, value: "",
+      updatedBy: cell.token === null ? null : "user", updatedAt: cell.updatedAt, pendingEditToken: cell.token,
+    } });
   }
-  const cells = await prisma.translation.findMany({ where: { projectId: "p1" } });
-  const expected = lastPulledAt === null ? 3 : 1;
-  expect(cells.filter((cell) => isUnpublished(cell, lastPulledAt))).toHaveLength(expected);
-  expect(await countUnpublished(prisma, "p1", lastPulledAt)).toBe(expected);
+  const cells = (await loadKeys(prisma, "p1", "surface-p1")).flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
+  const expected = 2;
+  expect(cells.filter((cell) => isUnpublished(cell))).toHaveLength(expected);
+  expect(await countUnpublished(prisma, "p1")).toBe(expected);
   expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
 });
 

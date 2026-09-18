@@ -146,3 +146,25 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
     duplicateKeys,
   };
 }
+
+/**
+ * `/api/push`의 성공 본문 — **HTTP 200의 닫힌 union이다** (sync-edit-protection design §3).
+ *
+ * ⚠️ **이름 있는 타입이어야 한다** — 본문이 인라인 리터럴이던 동안은 산문에만 있는 union이라 `applied`가 빠져도
+ * 컴파일러가 몰랐다. `deferred`는 큐에 넣었다는 뜻이 아니므로 202가 아니다. 실제 오류는 계속 4xx/5xx다.
+ */
+export type PushResponse =
+  | {
+      status: "applied";
+      projectId: string;
+      commitSha: string;
+      inserted: number;
+      updated: number;
+      orphaned: number;
+      unorphaned: number;
+      staleTranslations: number;
+      translationsFilled: number;
+      orphanedLocales: number;
+      refs: number;
+    }
+  | { status: "deferred"; reason: "pending-edits"; pendingCount: number; projectId: string; commitSha: string };

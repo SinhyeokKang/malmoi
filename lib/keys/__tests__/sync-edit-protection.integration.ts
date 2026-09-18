@@ -5,12 +5,15 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { loadPullState, saveLastPulledAt } from "@/lib/pull/load";
-import { applyPush } from "@/lib/push/apply";
+import { applyProtectedPush, applyPush } from "@/lib/push/apply";
+import { hashPushToken } from "@/lib/push/token";
+import { countUnpublished, loadKeys, loadProjectListAggregates } from "@/lib/keys/query";
+import { isUnpublished } from "@/lib/keys/view";
 import { backfillPendingEditTokens } from "@/lib/protection/backfill";
 
 /**
@@ -31,12 +34,26 @@ let pool: Pool;
 let prisma: PrismaClient;
 let started = false;
 
-async function resetSchema() {
+/** 배포 B의 precondition 마이그레이션 — 이름 접미로 찾는다(타임스탬프는 생성 시각이다). */
+const PRECONDITION_SUFFIX = "_pending_edit_token_precondition";
+
+/**
+ * @param beforePrecondition 참이면 precondition 마이그레이션 **앞에서 멈춘다.** 픽스처가 매번 전체 마이그레이션을 재생하므로
+ *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다 (tasks T6).
+ */
+async function resetSchema(beforePrecondition = false) {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
   for (const name of readdirSync("prisma/migrations").sort()) {
     if (name === "migration_lock.toml") continue;
+    if (beforePrecondition && name.endsWith(PRECONDITION_SUFFIX)) break;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
+}
+
+function preconditionSql(): string {
+  const name = readdirSync("prisma/migrations").find(n => n.endsWith(PRECONDITION_SUFFIX));
+  if (name === undefined) throw new Error("precondition migration missing");
+  return readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8");
 }
 
 beforeAll(async () => {
@@ -118,17 +135,24 @@ function payload(projectId: string, translations: { key: string; locale: string;
 }
 
 describe("적재의 토큰 정리 (T4)", () => {
-  it("strict 적재가 덮은 셀만 토큰을 비우고, 페이로드에 없는 셀(실패 파일)은 토큰을 유지한다", async () => {
+  it("[C4] 승인된 토큰의 셀만 덮고 토큰을 비운다 — 페이로드에 없는 셀(실패 파일)은 토큰 유지", async () => {
     await seed("p", { lastPulledAt: PULLED, cells: [
       { key: "k1", locale: "ko", token: "tok-ko" },
       { key: "k1", locale: "fr", token: "tok-fr" },
     ] });
     await applyPush(prisma, { projectId: "p", surfaceId: "surface-p" }, payload("p", [{ key: "k1", locale: "ko", value: "repo" }]),
-      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", approvedTokens: ["tok-ko", "tok-fr"] });
 
     // 덮인 셀 → null (대조: 안 덮인 셀 → 유지)
     expect(await cell("p", "k1", "ko")).toEqual({ value: "repo", updatedBy: null, pendingEditToken: null });
     expect(await cell("p", "k1", "fr")).toMatchObject({ value: "k1-fr", updatedBy: "editor", pendingEditToken: "tok-fr" });
+  });
+
+  it("[C1] 승인 없는 적재는 토큰 있는 셀을 덮지 않는다 (위 승인 → 덮임 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "tok-ko" }] });
+    await applyPush(prisma, { projectId: "p", surfaceId: "surface-p" }, payload("p", [{ key: "k1", locale: "ko", value: "repo" }]),
+      { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+    expect(await cell("p", "k1", "ko")).toEqual({ value: "k1-ko", updatedBy: "editor", pendingEditToken: "tok-ko" });
   });
 
   it("적재가 새로 만든 셀은 토큰이 없다", async () => {
@@ -306,5 +330,196 @@ describe("backfill (T5)", () => {
     expect(await oldPredicateIds()).toEqual([]);
     expect(await activeTokenIds()).toEqual([]);
     expect(await backfillPendingEditTokens(prisma)).toBe(0);
+  });
+});
+
+
+describe("precondition 마이그레이션 (T6)", () => {
+  it("backfill 전: 토큰 없는 옛-미전달 활성 셀이 있으면 실제로 던진다 → backfill 뒤 같은 SQL은 통과한다", async () => {
+    await resetSchema(true);
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", updatedAt: AFTER, token: null }] });
+
+    await expect(pool.query(preconditionSql())).rejects.toThrow(/precondition/);
+    expect(await backfillPendingEditTokens(prisma)).toBe(1);
+    await expect(pool.query(preconditionSql())).resolves.toBeDefined();
+  });
+
+  it("orphan 셀·이미 보낸 셀만 있으면 통과한다 — 대상 조건이 backfill과 같다", async () => {
+    await resetSchema(true);
+    await seed("p", { lastPulledAt: PULLED, cells: [
+      { key: "k3", locale: "ko", updatedAt: AFTER, token: null },
+      { key: "k1", locale: "gone", updatedAt: AFTER, token: null },
+      { key: "k1", locale: "ko", updatedAt: BEFORE, token: null },
+    ] });
+    await expect(pool.query(preconditionSql())).resolves.toBeDefined();
+  });
+});
+
+/** 앱의 모든 테이블 — "쓰기 0회"를 행 스냅샷 동일성으로 잰다(조건부 쓰기의 0행 무음까지 포함한다). */
+async function dump() {
+  const out: Record<string, unknown[]> = {};
+  for (const table of ["Project", "TranslationSurface", "StringKey", "Translation", "Locale", "KeyRef", "SyncRun"]) {
+    out[table] = (await pool.query(`SELECT * FROM "${table}" x ORDER BY x::text`)).rows;
+  }
+  return out;
+}
+
+const PUSH_TOKEN = "protection-fixture-token";
+vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
+vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+
+async function post(body: unknown) {
+  const { POST } = await import("@/app/api/push/route");
+  const response = await POST(new Request("http://localhost/api/push", { method: "POST", headers: { authorization: `Bearer ${PUSH_TOKEN}` }, body: JSON.stringify(body) }));
+  return { status: response.status, body: await response.json() as Record<string, unknown> };
+}
+
+const ciPayload = () => payload("p", [{ key: "k1", locale: "ko", value: "repo-ko" }, { key: "k2", locale: "fr", value: "repo-fr" }]);
+
+describe("CI 적재 보류 (T7)", () => {
+  async function fixture(token: string | null) {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", value: "edited", token }] });
+    await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  }
+
+  it("[C1][C2] pending 1 → 200 deferred, 모든 테이블 행 불변(진행 표시·lastCommitAt 포함)", async () => {
+    await fixture("tok-edit");
+    const before = await dump();
+    const res = await post(ciPayload());
+    expect(res).toEqual({ status: 200, body: expect.objectContaining({ status: "deferred", reason: "pending-edits", pendingCount: 1 }) });
+    expect(await dump()).toEqual(before);
+    expect(await cell("p", "k1", "ko")).toEqual({ value: "edited", updatedBy: "editor", pendingEditToken: "tok-edit" });
+  });
+
+  it("[C3][C8] 같은 픽스처에서 편집이 전달 확인됐으면(토큰 없음) → applied, 쓰기 > 0, 진행 표시 정리", async () => {
+    await fixture(null);
+    const before = await dump();
+    const res = await post(ciPayload());
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "applied", translationsFilled: 2 });
+    expect(await dump()).not.toEqual(before);
+    expect(await cell("p", "k1", "ko")).toEqual({ value: "repo-ko", updatedBy: null, pendingEditToken: null });
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p" } })).toMatchObject({ lastImportStartedAt: null, lastImportToken: null, lastCommitAt: new Date(COMMIT_AT) });
+  });
+
+  it("[C2] 동시 두 CI 요청 → 둘 다 deferred, 행 불변", async () => {
+    await fixture("tok-edit");
+    const before = await dump();
+    const results = await Promise.all([post(ciPayload()), post(ciPayload())]);
+    expect(results.map(r => r.body.status)).toEqual(["deferred", "deferred"]);
+    expect(await dump()).toEqual(before);
+  });
+
+  it("보관 프로젝트 + pending 1 → 409 (보류가 아니다 — 가드가 먼저다)", async () => {
+    await fixture("tok-edit");
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: AFTER } });
+    const res = await post(ciPayload());
+    expect(res.status).toBe(409);
+    expect(res.body.status).toBeUndefined();
+  });
+
+  const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
+    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null });
+
+  /**
+   * ⚠️ **판정과 upsert 사이에 커밋된 저장** (design §3). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
+   * StringKey UPDATE에서 세우고(판정 count는 이미 끝났다) 그 사이에 저장을 커밋한다 — sleep이 아니라 잠금 대기가 barrier다.
+   */
+  it("[C1][C7] 판정 뒤·upsert 전 저장 → 재집계로 전체 롤백 → deferred, 저장한 편집 유지 (저장 없음 → applied 대조)", async () => {
+    await fixture(null);
+    await seed("q", { lastPulledAt: PULLED, cells: [] });
+    const blocker = await pool.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`UPDATE "StringKey" SET "namespace" = "namespace" WHERE "id" = 'p-k1'`);
+      const running = apply();
+      for (let i = 0; i < 200; i++) {
+        const { rows } = await pool.query(`SELECT count(*)::int n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%StringKey%'`);
+        if (rows[0].n > 0) break;
+        await new Promise(r => setTimeout(r, 25));
+      }
+      await resave("p", "k1", "ko", "saved-mid-apply", "tok-mid");
+      await blocker.query("COMMIT");
+      expect(await running).toEqual({ status: "deferred", pendingCount: 1 });
+    } finally {
+      blocker.release();
+    }
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "saved-mid-apply", pendingEditToken: "tok-mid" });
+    // 롤백이다 — 같은 적재의 다른 셀도 안 들어갔다.
+    expect(await cell("p", "k2", "fr")).toBeUndefined();
+  });
+
+  it("[C3] 같은 픽스처에서 경합이 없으면 applied", async () => {
+    await fixture(null);
+    expect(await apply()).toMatchObject({ status: "applied" });
+    expect(await cell("p", "k2", "fr")).toMatchObject({ value: "repo-fr" });
+  });
+
+  it("[C1] CI가 먼저 커밋되고 저장이 뒤따르면 → applied + 저장 성공·토큰 유지 (양쪽 다 편집이 산다)", async () => {
+    await fixture(null);
+    expect(await apply()).toMatchObject({ status: "applied" });
+    await resave("p", "k1", "ko", "after-ci", "tok-after");
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "after-ci", pendingEditToken: "tok-after" });
+  });
+
+  it("[C1] 토큰 있는 셀은 upsert가 건드리지 않는다 — 가드 자체 (재집계와 별개)", async () => {
+    await fixture("tok-edit");
+    // 판정을 우회해 가드만 본다: 승인 없는 수동 적재 경로(approvedTokens 빈 목록)로 직접 적용한다.
+    await prisma.$transaction(tx => import("@/lib/push/apply").then(m => m.applyPushInTransaction(tx, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
+      { token: "manual", startedAt: new Date(), previousBaseLocale: "en", refsMode: "preserve", approvedTokens: [] })));
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "edited", pendingEditToken: "tok-edit" });
+    expect(await cell("p", "k2", "fr")).toMatchObject({ value: "repo-fr" });
+  });
+});
+
+describe("미전달 술어 전환 — 사본 넷이 같은 행을 센다 (T8)", () => {
+  const cells: CellSpec[] = [
+    { key: "k1", locale: "ko", token: "t1", updatedAt: BEFORE },  // 옛 시각이어도 토큰이 있으면 미전달
+    { key: "k2", locale: "fr", token: "t2", updatedBy: null },    // 저자 없어도 토큰이 판정한다
+    { key: "k1", locale: "fr", token: null },                     // 전달 확인됨
+    { key: "k3", locale: "ko", token: "t-orphan-key" },           // orphan 키 [C9]
+    { key: "k2", locale: "gone", token: "t-orphan-locale" },      // orphan 로케일 [C9]
+  ];
+
+  it("[C9] countUnpublished ② = 목록 raw SQL ③ = 셀 isUnpublished ① = pull 1층 = 2 (활성 편집 > 0)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells });
+    const counted = await countUnpublished(prisma, "p");
+    const aggregate = (await loadProjectListAggregates(prisma, ["p"])).unsent.get("p") ?? 0;
+    const byCell = (await loadKeys(prisma, "p", "surface-p")).flatMap(row => Object.values(row.cells)).filter(c => c !== undefined && isUnpublished(c)).length;
+    const state = await loadPullState(prisma, "p");
+    expect(counted).toBe(2);
+    expect([aggregate, byCell, state.unpublished, state.pendingEdits.length]).toEqual([2, 2, 2, 2]);
+  });
+
+  it("[C5] pending 0이면 1층 판정값이 0이다 (pending 1 → 1 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: null, updatedAt: AFTER }] });
+    expect((await loadPullState(prisma, "p")).unpublished).toBe(0);
+    await resave("p", "k1", "ko", "x", "tok");
+    expect((await loadPullState(prisma, "p")).unpublished).toBe(1);
+  });
+
+  it("셀 RSC 페이로드에 토큰 원문이 없다 (`pending: true`는 있다 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "secret-token-value" }] });
+    const serialized = JSON.stringify(await loadKeys(prisma, "p", "surface-p"));
+    expect(serialized).not.toContain("secret-token-value");
+    expect(serialized).not.toContain("pendingEditToken");
+    expect(serialized).toContain('"pending":true');
+  });
+});
+
+
+describe("Publish 전달 확인 실패 (T10)", () => {
+  it("[C10] 해제 쓰기가 실패하면 lastPulledAt·토큰이 함께 되돌아간다 — 보낸 것으로 증명되지 않은 편집은 남는다 (성공 → 해제 대조)", async () => {
+    await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "tok-1" }] });
+    const state = await loadPullState(prisma, "p");
+    await pool.query(`CREATE FUNCTION reject_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected ack failure'; END $$;
+      CREATE TRIGGER reject_ack BEFORE UPDATE ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION reject_ack()`);
+    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits)).rejects.toThrow();
+    expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBe("tok-1");
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ lastPulledAt: PULLED, lastPrUrl: null });
+
+    await pool.query(`DROP TRIGGER reject_ack ON "Translation"`);
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
+    expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
   });
 });

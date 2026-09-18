@@ -156,7 +156,7 @@ export default async function TranslationsPage({
    * 서로를 안 물므로 같은 라운드에 보낸다.
    */
   const [unpublished, actors] = await Promise.all([
-    countUnpublished(prisma, project.id, project.lastPulledAt),
+    countUnpublished(prisma, project.id),
     loadActors(prisma, collectActorIds(visible)),
   ]);
 
@@ -183,7 +183,7 @@ export default async function TranslationsPage({
    */
   const chipQuery: TranslationsQuery = { ...query, ns: search.ns === undefined ? undefined : query.ns };
   const surfaces = await Promise.all(project.surfaces.map(async s => ({ slug: s.slug, pathTemplate: s.pathTemplate,
-    unpublished: await countUnpublished(prisma, projectId, project.lastPulledAt, s.id) })));
+    unpublished: await countUnpublished(prisma, projectId, s.id) })));
 
   return (
     // ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
@@ -211,7 +211,6 @@ export default async function TranslationsPage({
         project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date())
       }
       lastPrUrl={project.lastPrUrl}
-      dismissKey={project.lastPulledAt?.toISOString() ?? "never"}
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
     >
@@ -269,7 +268,6 @@ export default async function TranslationsPage({
                       locales={visibleLocales}
                       project={project}
                       actors={actors}
-                      lastPulledAt={project.lastPulledAt}
                     />
                   ))}
                 </Table>

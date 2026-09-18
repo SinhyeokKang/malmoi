@@ -7,10 +7,10 @@ import { SyncResult } from "@/components/home/sync-result";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import { render } from "./helpers/dom";
 
-const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn() }));
-vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr }));
+const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), prepare: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
-const success: RepositoryImportOutcome = { ok: true, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
+const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
 const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
 function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,7 @@ function button(name: string) {
 }
 function dialog() { return document.querySelector('[role="dialog"]'); }
 async function click(name: string) { await act(async () => userEvent.setup().click(button(name))); }
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 }); });
 
 it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확인을 거친다", async () => {
   const view = await render(<SyncButton {...props} role="EDITOR" />);
@@ -35,7 +35,7 @@ it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확
   expect(button("Sync from repository").className).toContain("text-destructive");
   expect(mocks.run).not.toHaveBeenCalled();
   await click("Sync from repository");
-  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme" });
+  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-1" });
   expect(props.onResult).toHaveBeenCalledWith(success);
   expect(mocks.refresh).toHaveBeenCalledOnce();
 });
@@ -66,7 +66,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   expect(described).toHaveLength(2);
   const text = described.map(id => document.getElementById(id)?.textContent ?? "").join(" ");
   expect(text).toContain("replace what's in the app with them");
-  expect(text).toContain("7 edits");
+  expect(text).toContain("7 unsent translation changes");
   expect(text).toContain("pull request #42");
 
   // 조용한 갈래에는 경고 블록이 없으므로 설명문 하나만 남는다.
@@ -120,7 +120,7 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   await render(<SyncButton {...props} unsent={7} />); await click("Sync");
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(2);
-  expect(lines[0]).toContain("7 edits that haven't been sent yet");
+  expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
   expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Send changes first");
 });
@@ -135,7 +135,7 @@ it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외�
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(1);
   expect(lines[0]).toContain("pull request #42");
-  expect(dialog()?.textContent).not.toContain("0 edits");
+  expect(dialog()?.textContent).not.toContain("0 unsent");
   expect(document.querySelector('a[href="/projects/acme/translations"]')).toBeNull();
   const link = document.querySelector('a[href*="pull/42"]');
   expect(link?.textContent).toContain("See what's open");
@@ -219,7 +219,7 @@ it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른�
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
   function Host() {
     const [open, setOpen] = useState(false);
-    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
+    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
   }
   await render(<Host />); await click("Try again");
   expect(dialog()).not.toBeNull();
@@ -235,4 +235,36 @@ it("권한 변경으로 트리거가 사라지면 Home의 대체 포커스로 �
   // Radix restores focus in its deferred unmount callback.
   await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
   fallback.current.remove();
+});
+
+/**
+ * **폐기 승인은 서버가 Dialog를 열 때 발급한 지문이다** (sync-edit-protection T9, design §4.1). `discard: true` 같은 boolean을 보내지 않는다 —
+ * 서버가 잠금 뒤 재계산해 대조하므로 Dialog 뒤 새 편집·설정 변경이 있으면 거기서 reconfirm이 된다.
+ */
+it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실패면 null을 보내 서버가 재확인을 요구하게 둔다", async () => {
+  await render(<SyncButton {...props} unsent={2} />);
+  await click("Sync");
+  await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledWith({ slug: "acme" }));
+  await click("Discard changes and sync");
+  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-1" });
+
+  mocks.prepare.mockRejectedValue(new Error("offline"));
+  await click("Sync");
+  await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledTimes(2));
+  await click("Discard changes and sync");
+  expect(mocks.run).toHaveBeenLastCalledWith({ slug: "acme", approval: null });
+});
+
+/**
+ * **문장을 늘리지 않고 교체한다** (sync-edit-protection T13, design §4.3). 경고 블록이 폐기를 한 번 말하고, 같은 사실을 두 번 말하지 않는다.
+ */
+it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 말한다 — 취소하면 아무것도 안 부른다", async () => {
+  await render(<SyncButton {...props} unsent={3} />);
+  await click("Sync");
+  const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
+  expect(warning).toContain("Sync will discard 3 unsent translation changes and replace them with repository values.");
+  expect(warning.match(/discard/g)).toHaveLength(1);
+  expect(warning.match(/replace/g)).toHaveLength(1);
+  await click("Cancel");
+  expect(mocks.run).not.toHaveBeenCalled();
 });

@@ -8,6 +8,10 @@ import { logFailure } from "@/lib/github-connect/log";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importOutcomeFields } from "@/lib/projects/import-status";
 import { applyPushInTransaction } from "@/lib/push/apply";
+import { sameFingerprint } from "@/lib/protection/fingerprint";
+import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
+import { countPending } from "@/lib/protection/where";
+import { readDiscardApproval } from "./approval";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, planRepositoryImport } from "./plan";
 import { snapshotError } from "./read";
@@ -15,8 +19,12 @@ import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportOutcome, SurfaceImportResult } from "./result";
 
 type Repository = Pick<Project, "repositoryId" | "installationId" | "repoOwner" | "repoName" | "baseBranch">;
-type ImportRunInput = { projectId: string; userId: string; repository: Repository };
-type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; userId: string };
+/**
+ * @param approval Dialog가 열릴 때 서버가 발급한 폐기 승인 지문(`readDiscardApproval`). 없으면 `null` — 미전달 편집이 있으면 reconfirm이다.
+ */
+type ImportRunInput = { projectId: string; userId: string; repository: Repository; approval: string | null };
+/** @param approvedTokens 잠금 뒤 지문 대조를 지난 편집 토큰 — upsert는 토큰 없거나 이 목록인 셀만 덮는다. */
+type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; userId: string; approvedTokens: readonly string[] };
 const transactionOptions = { maxWait: 10_000, timeout: 30_000 };
 
 function settings(project: Repository, surface: TranslationSurface): ImportSettings {
@@ -43,13 +51,21 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
       project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner ||
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();
-    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces,
-      // Publish와의 배제는 배포 B(sync-edit-protection T9)에서 연결한다 — 배포 A는 사용자 흐름을 바꾸지 않는다.
-      runningSync: null });
+    // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (design §4.2).
+    const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
+    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
     if (!plan.ok) return plan;
+    /**
+     * **폐기 승인은 잠금 뒤에 재계산한다** (design §4.1 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
+     * 클라이언트의 `discard: true`를 믿지 않는다 — Dialog 뒤 새 편집·적용·설정 변경은 전부 지문을 바꿔 reconfirm이 된다.
+     */
+    const approval = await readDiscardApproval(tx, { projectId: project.id, userId: input.userId });
+    const confirmation = planDiscardConfirmation({ role: member.role, fingerprintMatches: sameFingerprint(input.approval, approval.fingerprint) });
+    const decision = planProtectedImport({ mode: "manual", pending: approval.pending.length, approved: confirmation.action === "proceed" });
+    if (decision.action !== "apply") return { ok: false, error: "reconfirm" };
     const token = randomUUID();
     await tx.project.update({ where: { id: project.id }, data: { repositoryImportToken: token, repositoryImportStartedAt: startedAt } });
-    return { ok: true, lease: { project, token, startedAt, userId: input.userId,
+    return { ok: true, lease: { project, token, startedAt, userId: input.userId, approvedTokens: approval.pending.map(edit => edit.token),
       surfaces: surfaces.filter(surface => surface.archivedAt === null).sort((a, b) => a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0) } };
   }, transactionOptions);
 }
@@ -83,6 +99,8 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
       await applyPushInTransaction(tx, scope, prepared.payload, {
         token: lease.token, startedAt: lease.startedAt, refsMode: "preserve", previousBaseLocale: surface.baseLocale,
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
+        // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.
+        approvedTokens: lease.approvedTokens,
       });
     } else if (prepared.kind === "empty") {
       await tx.stringKey.updateMany({ where: { ...scope, orphaned: false }, data: { orphaned: true } });
@@ -114,7 +132,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
   const unchangedSnapshot = { headSha: "", headCommittedAt: lease.startedAt.toISOString() };
   try {
     if (lease.surfaces.every(surface => surface.adapterName === null || !isAdapterName(surface.adapterName) || !surface.pathTemplate || !surface.baseLocale)) {
-      return { ok: true, surfaces: lease.surfaces.map(surface => result(surface, "failed", "invalid-format")) };
+      return { ok: true, surfaces: lease.surfaces.map(surface => result(surface, "failed", "invalid-format")), remainingEdits: await countPending(prisma, input.projectId) };
     }
     const reader = await openReader();
     const snapshot = await reader.snapshot(lease.project.baseBranch);
@@ -148,7 +166,8 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
         catch (recordError) { logFailure("repository-import-record", recordError); surfaces.push(result(surface, "failed", "import-failed")); }
       }
     }
-    return { ok: true, surfaces };
+    // **승인 뒤 남은 편집을 성공으로 접지 않는다** (POSTMORTEM 2026-09-16) — 남아 있는 한 리포 갱신은 계속 멈춘다.
+    return { ok: true, surfaces, remainingEdits: await countPending(prisma, input.projectId) };
   } catch (error) {
     logFailure("repository-import-read", error);
     for (const surface of lease.surfaces) {

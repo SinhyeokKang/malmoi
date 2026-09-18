@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { type ReactNode, useId, useRef } from "react";
 
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
@@ -29,7 +29,6 @@ export function TranslationsHeader({
   role,
   lastSentLabel,
   lastPrUrl,
-  dismissKey,
   baseLocale,
   declaredBaseLocale,
   children,
@@ -61,8 +60,6 @@ export function TranslationsHeader({
   /** ⚠️ 서버가 만든 상대 시각이다 — 클라이언트가 다시 계산하면 하이드레이션이 갈린다. */
   lastSentLabel: string | null;
   lastPrUrl: string | null;
-  /** 배너 닫기 키 = `lastPulledAt` (design §3.11). */
-  dismissKey: string;
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). */
   baseLocale: string | null;
   declaredBaseLocale: string | null;
@@ -70,6 +67,7 @@ export function TranslationsHeader({
 }) {
   const publish = usePublish(slug);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const publishButtonId = useId();
 
   return (
     <>
@@ -117,7 +115,7 @@ export function TranslationsHeader({
           )}
 
           <div className="ml-auto">
-            <PublishButton count={unpublished} publish={publish} />
+            <PublishButton id={publishButtonId} count={unpublished} publish={publish} />
           </div>
         </div>
 
@@ -152,7 +150,7 @@ export function TranslationsHeader({
         */}
         <div className="mb-4 empty:mb-0 space-y-3">
           <BasePendingBanner baseLocale={baseLocale} declaredBaseLocale={declaredBaseLocale} />
-          <EditLossBanner slug={slug} count={unpublished} dismissKey={dismissKey} />
+          <EditLossBanner count={unpublished} publishButtonId={publishButtonId} />
 
         </div>
         {children}

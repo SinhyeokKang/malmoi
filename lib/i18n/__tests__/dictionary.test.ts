@@ -30,19 +30,17 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 
   /**
-   * 편집 손실 배너 (design §3.11). **주어가 편집자의 행동이다** — 처음 초안은 "code push"가 주어였고,
-   * 실제 경계가 pull 실행이 아니라 **PR 머지**인 것도 담지 못했다 (CDO·CPO 검수).
+   * 리포 갱신 보류 배너 (sync-edit-protection T13). 손실을 예고하지 않고 멈춘 사실과 푸는 조건을 말한다 — 보호가 켜진 뒤
+   * "can be lost … automatically"는 절반이 거짓이다(spec 완료 조건 11).
    */
-  it("배너는 1건과 여러 건의 문장이 갈린다", () => {
-    expect(m.translations.banner.unsent(1)).toContain("1 change ");
-    expect(m.translations.banner.unsent(1)).not.toContain("1 changes");
-    expect(m.translations.banner.unsent(4)).toContain("4 changes ");
+  it("배너는 1건과 여러 건의 문장이 갈리고 손실을 예고하지 않는다", () => {
+    expect(m.translations.banner.paused(1)).toBe("Repository updates are paused until 1 unsent change is sent.");
+    expect(m.translations.banner.paused(4)).toBe("Repository updates are paused until 4 unsent changes are sent.");
+    expect(m.translations.banner.paused(2)).not.toMatch(/can be lost|automatically/);
   });
 
-  it("배너는 편집자가 할 수 있는 일로 끝난다 — 막힌 사실만 말하면 갇힌다", () => {
-    expect(m.translations.banner.unsent(2)).toMatch(/send them/i);
-    expect(m.translations.banner.unsent(2)).toContain("Sync");
-    expect(m.translations.banner.unsent(2)).toContain("merged");
+  it("[C12] Home 발송 카드의 보류 보조 줄", () => {
+    expect(m.home.cards.repositoryUpdatesPaused).toBe("repository updates paused");
   });
 
   it("Publish의 수는 미리보기 제목이 든다", () => {

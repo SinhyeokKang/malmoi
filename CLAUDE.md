@@ -30,7 +30,8 @@
 
 따라서:
 
-- **push는 리포 값으로 번역을 덮고 저자도 비운다** (`ON CONFLICT DO UPDATE`, `"updatedBy" = NULL`). 변경 감지도 병합도 없다. **덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이었다.** 미배포 집계(`countUnpublished`·`isUnpublished`)가 그 조건 위에 선다 — `updatedAt`만 보면 push가 전 행의 시각을 올려 code push 직후 903키 전부가 "안 보낸 편집"이 된다. **대가는 편집 손실 창이다** — 번역자가 편집한 뒤 pull PR이 머지되기 전에 코드가 푸시되면 그 편집이 사라진다.
+- **push는 리포 값으로 번역을 덮고 저자도 비운다** (`ON CONFLICT DO UPDATE`, `"updatedBy" = NULL`). 변경 감지도 병합도 없다. **덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이었다.**
+- **단, 미전달 편집이 하나라도 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다"의 반전). **보류 판정은 리포를 보지 않는다** — 입력은 `Translation.pendingEditToken`으로 센 미전달 편집 수 하나이고, 0이면 위의 strict 적재가 그대로 돈다. 그래서 변경 감지도 병합도 아니다. 미배포 집계·1층 스킵·배지가 전부 그 토큰 술어(`lib/protection/where.ts`) 위에 선다. 편집을 버리는 길은 OWNER가 서버 발급 지문으로 승인한 수동 Sync뿐이다. **대가는 적재 지연이다** — 미전달 편집이 남은 동안 리포의 새 키·삭제도 앱에 안 들어온다(`/api/push`는 200 `deferred`).
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다.
 - **pull은 값을 병합하지 않는다.** **모든 어댑터가 원본 파일 내용을 읽는다** — 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 **구조**(빈 줄·주석·키 순서)를, 재생성(`chrome-locales`·`json-catalog`)은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)을 가져온다. 어느 쪽도 **값**은 아니다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다.
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
@@ -137,7 +138,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미발송 술어가 세 벌이라**(`isUnpublished` · `countUnpublished` · 목록 집계의 raw SQL) "셋이 같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/load.ts`·`lib/protection/**`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 

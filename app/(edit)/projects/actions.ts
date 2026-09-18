@@ -55,6 +55,7 @@ import {
 } from "@/lib/onboarding/detect";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
+import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
@@ -1194,10 +1195,16 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
 
 export type { RepositoryImportOutcome, SurfaceImportResult, SurfaceImportReason, RepositoryImportError } from "@/lib/import/result";
 
-export async function runRepositoryImport(raw: { slug: string }): Promise<RepositoryImportOutcome> {
-  const parsed = SlugOnlyInput.safeParse(raw);
+/**
+ * ⚠️ **`approval`은 불투명 지문 하나다** — 클라이언트는 `prepareRepositorySync`가 준 값을 되돌려 줄 뿐이고, 서버가 잠금 뒤
+ * 재계산해 대조한다(`lib/import/run.ts`). boolean 동의(`discard: true`)를 받지 않는다 — 그 뒤의 모든 편집을 버리는 포괄 권한이 된다.
+ */
+const RepositoryImportInput = z.object({ slug: z.string().min(1), approval: z.string().max(128).nullable() });
+
+export async function runRepositoryImport(raw: { slug: string; approval: string | null }): Promise<RepositoryImportOutcome> {
+  const parsed = RepositoryImportInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug } = parsed.data;
+  const { slug, approval } = parsed.data;
   const session = await readSession();
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
@@ -1214,7 +1221,7 @@ export async function runRepositoryImport(raw: { slug: string }): Promise<Reposi
     if (connected.status !== "ok") return { ok: false, error: connected.error };
     if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
     const installationId = project.installationId;
-    return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId,
+    return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId, approval,
       repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
     }, () => openRepoReader(project.repoOwner, project.repoName, installationId));
   } catch (error) {
@@ -1224,6 +1231,29 @@ export async function runRepositoryImport(raw: { slug: string }): Promise<Reposi
     revalidatePath(`/projects/${slug}`, "layout");
     revalidatePath("/projects");
     revalidatePath("/projects/new");
+  }
+}
+
+/**
+ * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection design §4.1). OWNER 전용 — Sync와 같은 권한이다.
+ *
+ * ⚠️ **토큰 원문을 돌려주지 않는다** — 지문과 건수만 간다. 원문이 화면에 가면 클라이언트가 지문을 스스로 만들 수 있다.
+ * ⚠️ 실패는 `undefined`다 — 화면은 `null` 승인으로 실행하고 서버가 reconfirm으로 답한다(폐기가 조용히 열리는 경로가 없다).
+ */
+export async function prepareRepositorySync(raw: { slug: string }): Promise<{ approval: string; unsent: number } | undefined> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return undefined;
+  const session = await readSession();
+  if (session.status !== "ok") return undefined;
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return undefined;
+  try {
+    const { fingerprint, pending } = await readDiscardApproval(prisma, { projectId: access.projectId, userId: session.userId });
+    return { approval: fingerprint, unsent: pending.length };
+  } catch (error) {
+    logFailure("repository-sync-prepare", error);
+    return undefined;
   }
 }
 

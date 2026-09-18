@@ -55,7 +55,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
 
   const rows = localeProgress({ locales: project.locales, total: counts.total, cells: counts.cells });
   const surfaces = await Promise.all(project.surfaces.map(async s => ({ slug: s.slug, pathTemplate: s.pathTemplate,
-    unpublished: await countUnpublished(prisma, projectId, project.lastPulledAt, s.id) })));
+    unpublished: await countUnpublished(prisma, projectId, s.id) })));
   // 셀렉트에는 살아 있는 것만 — 감추는 것은 편의이고 방어는 Action이다.
   const selectable = rows.filter((r) => !r.orphaned).map((r) => r.code);
   const canManage = canPerform(role, "project:settings");
