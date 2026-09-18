@@ -187,3 +187,22 @@ describe("httpStatus · isUniqueViolation", () => {
     expect(isUniqueViolation("P2002")).toBe(false);
   });
 });
+
+/**
+ * **pg 오류 원문이 서버 로그에 안 남는다** (launch-readiness L7.6, audit #48). 감사 시점엔 `classifyFailure`가
+ * `${name}: ${message}`를 돌려줘 로그에 pooler 호스트·DB 유저가 실렸다 — 2026-09-18 개정 뒤로는 생성자 이름뿐이다.
+ */
+it("pg 모양 오류는 생성자 이름만 남긴다 — 메시지의 호스트·유저가 로그에 없다", () => {
+  class DatabaseError extends Error {}
+  const error = new DatabaseError('password authentication failed for user "postgres.xgsyyapzkpbdtkrprlmn" at aws-0.pooler.supabase.com');
+  expect(classifyFailure(error)).toEqual({ safe: false, detail: "DatabaseError" });
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    logCaught("invite", "accept", error);
+    const line = String(spy.mock.calls[0]?.[0]);
+    expect(line).toMatch(/ accept: DatabaseError$/);
+    expect(line).not.toMatch(/password|postgres\.|pooler/);
+  } finally {
+    spy.mockRestore();
+  }
+});

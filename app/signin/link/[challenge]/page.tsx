@@ -136,11 +136,14 @@ function ProviderButton({
         await clearAuthRoundtripCookies();
         const h = await headers();
         const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
-        const cookie = linkCookie(origin?.secure ?? false);
+        // ⚠️ **fail-closed** (launch-readiness L7.6) — 판정 못 한 origin으로 `?? false`를 두면 콜백의 `?? https`와 state 쿠키
+        // 이름이 갈려 증상이 "계정 병합 실패"로 나온다(CLAUDE.md 2026-09-14). 모르는 호스트에서 인증 쿠키를 심지도 않는다.
+        if (origin === null) redirect(routes.signIn({ error: "Unavailable" }));
+        const cookie = linkCookie(origin.secure);
         // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (ARCHITECTURE "계정 병합").
         (await cookies()).set(cookie.name, challenge, cookie.options);
         // 시작 스코프 안에서 불러야 Auth.js가 state를 **우리 쿠키 이름**으로 저장한다 (불변식 3).
-        await withLinkStart(origin?.secure ?? false, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));
+        await withLinkStart(origin.secure, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));
       }}
     >
       <SubmitButton variant="primary" size="lg" className="w-full">
