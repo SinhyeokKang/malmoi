@@ -2,7 +2,11 @@
 
 ## 다중 표면 배포 1 — additive migration과 writer 전환
 
-T16은 Add surface를 열지 않는다. 옛 Locale PK·StringKey unique와 nullable `surfaceId`는 T17에서 교체한다.
+⚠️ **dev 반영 완료(2026-09-14). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
+걷어낼 때 3단계의 `backfill-surfaces.sql` 사용법은 §3 복구로 옮길 후보다 — 백업 복원·새 DB에서 다시 밟는다.
+
+Add surface는 2026-09-14에 열렸다(`app/(edit)/projects/[slug]/surfaces/new`, `lib/surfaces/create.ts`).
+옛 Locale PK·StringKey unique와 nullable `surfaceId`도 같은 날 `20260914070000_finalize_translation_surfaces`로 교체됐다.
 dev는 `/push` 전, prod는 별도 `/merge` 1단계에서 해당 DB 마이그레이션을 적용한다. prod를 dev 푸시 때 미리 바꾸지 않는다.
 
 1. 대상 환경의 CI push·첫 적재·편집 등 옛 writer를 중지하고 진행 중 요청이 끝난 것을 확인한다.
@@ -26,6 +30,9 @@ WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
 
 ## 다중 표면 배포 2 — 제약과 writer 동시 전환
 
+⚠️ **dev 반영 완료(2026-09-14). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
+걷어낼 때 3단계의 precondition 실패 복구는 §3 복구로 옮길 후보다.
+
 1. 배포 1의 commit·CI·Vercel 성공 SHA와 dev/prod 마이그레이션 상태를 각각 확인한다.
    Surface writer가 활성화된 DB에서 옛 Project 값을 복사하는 재백필은 실행하지 않는다.
 2. 대상 환경의 push·첫 적재·추가·편집 요청을 멈추고 진행 중 요청을 drain한다. 단계 A writer의
@@ -35,7 +42,8 @@ WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
    precondition 실패 시 SQL을 우회하거나 TRUNCATE하지 말고 누락된 surface/default 소유권을 조사한다.
 4. `pnpm db:status` / `pnpm db:status:prod`, drift, 아래 정합성 SQL과 공개 권한을 확인한다.
    새 코드 배포 성공 SHA 확인 뒤 요청을 재개한다. Add surface·동일 key/locale 공존·교차 FK 거부는
-   격리 PostgreSQL에서도 검사한다. 빈 DB의 0건 결과만으로 migration 방어가 검증됐다고 쓰지 않는다.
+   `pnpm test:projects:postgres`(§4)로 격리 PostgreSQL에서도 검사한다.
+   빈 DB의 0건 결과만으로 migration 방어가 검증됐다고 쓰지 않는다.
 5. 기존 URL·첫 온보딩·Add surface·두 표면의 단일 Publish 왕복을 검증한다.
    dev의 `bugshot-i18n-test-qa`는 상주 프로젝트이므로 삭제·TRUNCATE하지 않는다.
 
@@ -67,7 +75,6 @@ null 자식·잘못된 부모/default·공개 권한은 모두 0이어야 한다
 
 서버 필수 계약과 릴리스 순서는 서버 writer 배포 → action 태그의 실제 payload 생산 코드 확인/필요 시 릴리스 →
 대상 리포별 새 YAML 전환 → smoke/왕복이다. 호환되지 않는 기존 workflow는 전환 동안 중지한다.
-태그 이동·대상 리포 변경은 Claude Code 담당이며 이번 Codex 세션은 수행하지 않는다.
 새 태그가 이미 필드를 생산하면 T17이라는 이유만으로 태그를 다시 옮기지 않는다. 다만 Project 생성 ID 수정처럼
 새 서버 코드가 필요한 변경은 서버 배포를 완료한 뒤 재검증한다.
 
@@ -78,6 +85,9 @@ dev 검증은 현재 체크아웃 CLI의 `--project <slug> --surface <등록 slu
 [ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.
 
 ## 미전달 편집 보호 배포 — A(호환) → backfill → B(보호)
+
+⚠️ **dev 반영 완료(2026-09-17). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
+걷어낼 때 backfill 단계의 스크립트 사용법과 4의 precondition 실패 복구는 §3 복구로 옮길 후보다.
 
 sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 편집 토큰을 쓰므로(dual-write) A 롤아웃이 끝나면 "토큰 없이 저장되는 창"은 스스로 닫힌다.
 
@@ -92,7 +102,7 @@ sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 �
 4. **precondition이 실패하면** (`precondition failed: unsent edits without pendingEditToken remain`): 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.
    ```
    PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
-   # 2단계 backfill을 그 DB에 다시 돌린다
+   # backfill 단계를 그 DB에 다시 돌린다
    pnpm db:deploy
    ```
    §3의 규칙 그대로다 — `_prisma_migrations`가 전부 롤백된 것을 확인한 경우에만, 체크섬 수정·무조건 applied·reset 금지. `migrate dev`가 리셋을 제안하면 거부한다.
@@ -102,7 +112,8 @@ sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 �
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
 셋이기 때문이고, `validateCredentialKeys`가 **키 값 셋이 서로 다른지** 검사한다(⚠️ `*_KEY_ID` 셋은
-안 본다 — keyring 안의 이름이라 겹쳐도 된다. 그리고 전환 CLI에서만 돈다).
+**서로 비교하지 않는다** — keyring 안의 이름이라 전부 `k1`이어도 통과한다. 단 active kid가 그 keyring에
+없으면 던진다. 그리고 전환 CLI에서만 돈다).
 
 | 무엇 | 환경변수 | 무엇을 여나 |
 |---|---|---|
@@ -177,6 +188,8 @@ pnpm credentials:dev --mode=verify
 - **PII 키 유실 시 계정을 재생성하지 않는다 — 백업 키를 복원한다.**
 - 암호화 백업 복원 후에도 **트래픽을 차단한 상태에서** 해당 keyring으로 `verify`를 끝낸다.
 - **평문 코드로 rollback하지 않는다.**
+- **백업 복원·새 DB에서는 `pnpm credentials:finalize:dev` / `:prod`로 finalize 마이그레이션 상태를 먼저
+  확인한다** — 기본 check-only라 `pending`만 보고한다.
 - 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
   검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
   reset으로 통과시키지 않는다.**
@@ -191,6 +204,10 @@ pnpm credentials:dev --mode=verify
   테스트용 프로세스가 root이면 실행할 수 없다.
   ⚠️ **`pnpm test`에 없다**(별도 config). `/push` 게이트가 안 돌리므로 `lib/credentials/**`를
   건드렸으면 손으로 돌린다.
+- `pnpm test:projects:postgres` — 같은 방식으로 격리 클러스터를 띄워(`CREDENTIAL_PG_BIN` 동일) 목록 집계,
+  Add surface 원자성·동일 key/locale 공존·교차 FK 거부·실제 Project 생성, 편집 토큰의 조건부 쓰기를
+  검사한다. ⚠️ **이것도 `pnpm test` 밖이다** — `lib/keys/**`·`lib/surfaces/**`·`lib/protection/**` 등
+  전체 목록은 [CLAUDE.md](../CLAUDE.md) 명령어 표에 있다.
 - 격리 테스트는 실제 Auth.js 핸들러와 **가짜** OAuth 응답, 실제 DB unique/잠금/CAS, 중단·재개·백업
   복원을 검사한다. **실제 공급자·배포 차단·키보드/포커스 검증을 대신하지 않는다.**
 
