@@ -80,6 +80,61 @@ function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean 
  */
 const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "server-only", "yaml", "zod"];
 
+/**
+ * **클라이언트가 닿아도 되는 `lib/**` 파일 — 정확 일치다** (launch-readiness L4.9, POSTMORTEM 2026-09-09 재발).
+ *
+ * 위 패키지 허용 목록은 **npm 이름**만 본다. 그래서 `lib/keys/view.ts` → `lib/adapters/shared` → `json-style`처럼
+ * **리포 안 모듈만으로 이어진 서버 그래프**는 패키지가 하나도 안 나와 green이었다 — 금지 목록 방식이라 재발을 못 본 것과
+ * 같은 형이다. 여기서 뒤집는다: 닿는 파일 집합 자체를 고정한다. 클라이언트가 새 `lib/**` 모듈을 값으로 읽으면 red이고,
+ * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/filters` 잎 검사와 같은 형).
+ */
+const CLIENT_LIB_FILES = [
+  "lib/account/plan.ts",
+  "lib/auth/message.ts",
+  "lib/auth/permission.ts",
+  "lib/github-connect/message.ts",
+  "lib/i18n/adapter-errors.ts",
+  "lib/i18n/index.ts",
+  "lib/import/confirm.ts",
+  "lib/import/refusal.ts",
+  "lib/import/result.ts",
+  "lib/keys/edit-command.ts",
+  "lib/keys/filters.ts",
+  "lib/keys/flag.ts",
+  "lib/keys/refocus.ts",
+  "lib/login-link/message.ts",
+  "lib/login-link/policy.ts",
+  "lib/onboarding/base-pending.ts",
+  "lib/onboarding/branch.ts",
+  "lib/onboarding/create-plan.ts",
+  "lib/onboarding/key-gap.ts",
+  "lib/onboarding/language-name.ts",
+  "lib/onboarding/locale-picker.ts",
+  "lib/onboarding/message.ts",
+  "lib/onboarding/next-enabled.ts",
+  "lib/onboarding/select-surfaces.ts",
+  "lib/onboarding/slug.ts",
+  "lib/projects/import-failure.ts",
+  "lib/projects/pr-url.ts",
+  "lib/publish/plan.ts",
+  "lib/publish/warnings.ts",
+  "lib/publish/words.ts",
+  "lib/pull/branch-name.ts",
+  "lib/pull/ref-slug.ts",
+  "lib/relative-time.ts",
+  "lib/routes.ts",
+  "lib/session-revocation/message.ts",
+  "lib/settings/message.ts",
+  "lib/shell/nav.ts",
+  "lib/shell/panel-size.ts",
+  "lib/signin/dot-field.ts",
+  "lib/surfaces/plan.ts",
+  "lib/tone.ts",
+  "lib/upload/image.ts",
+  "lib/upload/message.ts",
+  "lib/utils.ts",
+];
+
 const SKIP_DIR = new Set(["ui", "__tests__", "node_modules", "generated"]);
 
 function sourceFiles(dir: string): string[] {
@@ -280,6 +335,20 @@ describe("클라이언트 그래프", () => {
 
     const fingerprint = walk([join(ROOT, "lib/protection/fingerprint.ts")]);
     expect([...fingerprint.packages].filter((name) => !allowed(name))).not.toEqual([]);
+  });
+
+  it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {
+    const { files } = walk(CLIENT_ENTRIES);
+    const reached = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/")).sort();
+    expect(reached).toEqual([...CLIENT_LIB_FILES].sort());
+  });
+
+  // 음성 대조 — 실제로 새어 나갔던 경로(2026-09-09)가 이 목록 밖으로 나가는지 센다. 공허한 목록이 아니다.
+  it("`lib/keys/view.ts`의 그래프는 허용 목록 밖으로 나간다 — 그 재발을 이 검사가 잡는다", () => {
+    const { files } = walk([join(ROOT, "lib/keys/view.ts")]);
+    const outside = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/") && !CLIENT_LIB_FILES.includes(rel));
+    expect(outside).toContain("lib/keys/view.ts");
+    expect(outside.some((rel) => rel.startsWith("lib/adapters/"))).toBe(true);
   });
 
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {
