@@ -34,6 +34,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const actors = await loadActors(prisma, [...new Set(rows.flatMap(r => r.updatedBy ? [r.updatedBy] : []))]);
   const base: BaseValues = Object.create(null);
   const cells: PublishCell[] = [];
+  let withoutFile = 0;
   for (const surface of project.surfaces) {
     const surfaceRows = rows.filter(r => r.surfaceId === surface.id);
     if (!surfaceRows.length) continue;
@@ -59,6 +60,11 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
     for (const row of surfaceRows) {
       if (!surface.locales.some(locale => locale.code === row.localeCode)) throw new Error("Preview path unavailable");
+      // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다.
+      if (adapter.layout === "per-locale" && adapter.writeStrategy === "surgical") {
+        const target = paths.find(p => p.locale === row.localeCode);
+        if (target !== undefined && !shas.has(target.path)) { withoutFile++; continue; }
+      }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
@@ -68,5 +74,6 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
-  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - cells.length), openPr: parseGithubPrUrl(rawPr, project) };
+  // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`이 따로 말한다.
+  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, openPr: parseGithubPrUrl(rawPr, project) };
 }

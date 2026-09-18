@@ -272,6 +272,8 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
         </tbody>)}
       </table>
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
+      {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
+      {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
     </div>
   </TableShell>;
 }

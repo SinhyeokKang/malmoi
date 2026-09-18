@@ -44,3 +44,25 @@ it("multi-locale 경로가 둘이면 첫 파일을 임의로 고르지 않는다
   mocks.client.getBlobText.mockResolvedValue('const en = { hello: "old" };');
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview path unavailable");
 });
+/**
+ * ⚠️ **pull이 안 쓰는 셀을 약속하지 않는다** (launch-readiness L3.7). 수술적 per-locale 어댑터는 원본 파일이 없으면
+ * `original-file-missing`으로 그 로케일을 안 낸다(`render.ts`) — 미리보기가 그 셀을 "추가"로 그리면 거짓이다.
+ * 빼되 수를 따로 센다: `truncated`(상한 밖)에 섞으면 "더 있다"로 읽힌다. 막지는 않는다 — 다른 셀은 나간다.
+ */
+it("수술적 per-locale 어댑터의 없는 파일 셀은 빼고 따로 센다", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([rows[0], { ...rows[0], localeCode: "ko", value: "새" }]);
+  db.translation.count.mockResolvedValue(2);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue("hello: old\n");
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups.map(g => [g.path, g.rows.map(r => r.localeCode)])).toEqual([["en.yml", ["en"]]]);
+  expect(result.withoutFile).toBe(1);
+  expect(result.truncated).toBe(0);
+});
+it("재생성 어댑터의 없는 파일은 새 파일이라 빼지 않는다 (짝)", async () => {
+  mocks.client.getTree.mockResolvedValue([]);
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.withoutFile).toBe(0);
+  expect(result.groups[0]?.rows).toHaveLength(1);
+});

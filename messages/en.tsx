@@ -1477,6 +1477,9 @@ export const en = {
       /** 상한은 미리보기 페이로드에만 걸린다 — 발송 범위는 전부다. */
       truncated: (n: number): string =>
         `${n.toLocaleString("en-US")} more are not listed here. Publishing sends all of them.`,
+      /** 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐다 (launch-readiness L3.7). 편집은 DB에 남는다. */
+      withoutFile: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because the language file isn't in the repository yet. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
 
       /** 열린 PR 삼상태 — `null`로 접지 않는다. "없다"와 "모른다"는 다른 줄이다. */
       prOpen: {

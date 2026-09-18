@@ -149,6 +149,16 @@ it.each([
   expect(links).not.toContain("/projects/acme/settings");
   expect(mocks.pull).not.toHaveBeenCalled();
 });
+/**
+ * **표에서 뺀 셀은 따로 말한다** (launch-readiness L3.7) — 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀이다.
+ * 말하지 않으면 제목의 건수와 표의 행이 조용히 어긋난다.
+ */
+it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 표 아래에 말한다(%s)", async (n, shown) => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: n }));
+  await render(<Host count={3} />);
+  await click("Publish3");
+  expect(document.body.textContent?.includes("language file isn't in the repository")).toBe(shown);
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);
