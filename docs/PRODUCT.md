@@ -645,5 +645,16 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 - **push의 "리포 부재 → DB 셀 비움"** (2026-09-17, launch-readiness L1.3). 지금은 리포에서 사라지거나
   `""`가 된 번역을 DB에 반영하지 않는다(ARCHITECTURE §5.5.2 — 코드에서 번역을 지우는 방법은 없다).
   뒤집으려면 **export가 명시적 빈값과 미번역 빈값을 구별하는 수단**이 먼저다 — 지금은 둘 다 부재로
-  나가서, 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. sync-edit-protection의
-  후속 spec이 그 수단을 정할 때 같이 본다.
+  나가서, 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 아래 **빈값·누락 셀 spec**이
+  그 수단을 정할 때 같이 본다.
+
+- **빈값·누락 셀의 strict 적재 보완** (2026-09-18, sync-edit-protection이 범위에서 뺀 둘 중 하나 — 착수 전 `/feature`가 필요하다).
+  지금 `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 빼고(§5.5.2), `lib/adapters/shared.ts`의 writer는 빈 값을 파일에서
+  **키째 제거**한다 — 그래서 `""`는 "빈 값 기록"이 아니라 "그 키 삭제"다. **먼저 정할 것은 export가 명시적 빈값과 미번역 빈값을
+  구별하는 수단**이고, 그 전에는 "리포 부재 → DB 비움"을 열 수 없다. ⚠️ 이것은 편집 보호와 **반대 방향**이다 — 보호는 "덜 덮는다"이고
+  이쪽은 "더 덮는다"라, 한 spec에 섞으면 판정 기준이 갈린다.
+- **`publish-pr-handoff`** (2026-09-18, 같은 분리 — 착수 전 `/feature`가 필요하다). PR 전달 → Sync → 새 편집 → 재Publish가 이전 PR
+  내용을 교체하는 것을 사람이 검토하는 화면이 없다. 열린 PR 대비 **파일 diff**·페이지네이션·미리보기 승인 지문이 그 spec의 범위이고,
+  딸려 오는 것이 셋이다: Claude Design 핸드오프 선행 · `components/ui/`에 없는 pagination 프리미티브 · **EDITOR의 열린 PR 인가**
+  (`checkOpenPullRequest`가 `project:settings`라 EDITOR는 열린 PR을 영영 모른다 — ARCHITECTURE §5.6.35). 그때까지 Publish 미리보기는
+  base 대비 목록이고 **표시 전용**이다.
