@@ -119,6 +119,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
+| Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는 유일한 Action이다 |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |

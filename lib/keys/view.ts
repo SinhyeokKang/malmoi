@@ -111,9 +111,26 @@ export function translationState(input: {
   return input.needsReview ? "needsReview" : "translated";
 }
 
+/**
+ * 행에서 로케일 하나의 셀을 꺼낸다 — **`cells`를 직접 인덱싱하지 않는다.**
+ *
+ * ⚠️ **로케일 코드는 남이 정한 키다** (CLAUDE.md 코드 컨벤션이 `Locale.code`를 이름으로 든다).
+ * 리포의 파일명에서 오고 `isPathSafeLocale`은 `constructor`·`toString`·`valueOf`를 통과시킨다 —
+ * `_` 시작만 막으므로 `__proto__`만 걸린다. 그 이름들로 평범한 객체를 인덱싱하면
+ * **`Object.prototype`의 값이 나오고 `cell !== undefined`가 통과한다.**
+ *
+ * ⚠️ **2026-09-18 재현에서 증상이 안 났지만 그것은 방어가 아니라 우연이었다** — 프로토타입에서
+ * 찾아진 값에 `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로
+ * 떨어졌을 뿐이다. `Cell`에 그 이름의 필드가 하나 생기면 끝나는 우연이라, 여기서 끊는다.
+ * 대입 쪽 짝은 `lib/keys/query.ts`의 `Object.create(null)`이다.
+ */
+export function cellAt(row: KeyRow, locale: string): Cell | undefined {
+  return Object.hasOwn(row.cells, locale) ? row.cells[locale] : undefined;
+}
+
 /** 행 + 로케일 → 배지 상태. 셀이 없으면 미번역이다. */
 export function cellState(row: KeyRow, locale: string): TranslationState {
-  const cell = row.cells[locale];
+  const cell = cellAt(row, locale);
   return translationState({
     orphaned: row.orphaned,
     value: cell?.value ?? null,
@@ -306,7 +323,7 @@ export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[]
   const needle = filter.q?.trim().toLowerCase() ?? "";
   if (needle === "") return [...rows];
   return rows.filter((row) => {
-    const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
+    const haystack = [row.key, ...filter.locales.map((code) => cellAt(row, code)?.value ?? "")];
     return haystack.some((text) => text.toLowerCase().includes(needle));
   });
 }
@@ -335,7 +352,7 @@ export function filterByState(
     if (ctx.state === "new") return ctx.lastPulledAt === null || row.createdAt > ctx.lastPulledAt;
     return ctx.locales.some((code) => {
       if (ctx.state === "unsent") {
-        const cell = row.cells[code];
+        const cell = cellAt(row, code);
         return cell !== undefined && isUnpublished(cell);
       }
       const state = cellState(row, code);

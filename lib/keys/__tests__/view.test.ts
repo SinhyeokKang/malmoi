@@ -1,9 +1,16 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { relativeTime } from "@/lib/relative-time";
 import {
   buildPermalink,
+  cellAt,
+  cellState,
   defaultNamespace,
+  filterByState,
   isUnpublished,
   localeProgress,
   resolveNamespace,
@@ -366,5 +373,83 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
 
   it("로케일이 없으면 빈 배열이다", () => {
     expect(localeProgress({ locales: [], total: 5, cells: [] })).toEqual([]);
+  });
+});
+
+/**
+ * **로케일 코드는 남이 정한 키다** — `Locale.code`는 리포의 파일명에서 오고, CLAUDE.md 코드 컨벤션이
+ * `cells` 같은 맵을 그 부류로 이름을 들어 지목한다(조회는 `Object.hasOwn`, 대입은 `Object.create(null)`).
+ *
+ * ⚠️ **증상이 없다고 규칙이 지켜진 것이 아니다.** 2026-09-18 재현 시도에서 `constructor` 로케일이
+ * 거짓 배지를 켜지 **못했는데**, 이유가 방어가 아니라 우연이었다 — `Object.prototype.constructor`에는
+ * `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로 떨어졌을 뿐이다.
+ * **`Cell`에 `constructor`·`toString` 같은 이름의 필드가 하나 생기는 날 그 우연이 끝난다.**
+ * `__proto__`는 `isPathSafeLocale`이 `_` 시작이라 거부하지만 그 방어선은 다른 모듈에 있는 한 겹이다.
+ */
+describe("cells — 프로토타입에서 셀을 찾지 않는다", () => {
+  const proto = row({
+    key: "greeting",
+    cells: { ko: { ...cell({ value: "안녕" }), surfaceArchivedAt: null, pending: false } },
+  });
+
+  /** `isPathSafeLocale`을 통과하는 이름들이다 — `__proto__`만 막히고 나머지는 DB에 들어올 수 있다. */
+  const INHERITED = ["constructor", "toString", "valueOf", "hasOwnProperty"] as const;
+
+  it("상속된 이름의 셀은 없는 것으로 읽는다", () => {
+    for (const name of INHERITED) {
+      expect(cellAt(proto, name), name).toBeUndefined();
+    }
+    expect(cellAt(proto, "ko")).toBeDefined();
+  });
+
+  it("상속된 이름은 미번역이다 — 배지가 값을 지어내지 않는다", () => {
+    for (const name of INHERITED) {
+      expect(cellState(proto, name), name).toBe("untranslated");
+    }
+  });
+
+  /** ⚠️ **`cell !== undefined`가 통과하는 것이 이 자리의 함정이었다** — 프로토타입 값은 undefined가 아니다. */
+  it("상속된 이름은 미전달 필터에 걸리지 않는다", () => {
+    for (const name of INHERITED) {
+      expect(
+        filterByState([proto], { state: "unsent", locales: [name], lastPulledAt: null }),
+        name,
+      ).toEqual([]);
+    }
+  });
+});
+
+/**
+ * **재발 방지는 grep이 아니라 이 스캔이다.**
+ *
+ * ⚠️ 증상이 없는 결함이라 리뷰로도 테스트로도 안 걸린다 — 2026-09-18에 네 자리가 같은 모양으로
+ * 살아 있었고 `pnpm test` 4,369개가 green이었다. **새로 쓰는 사람이 `row.cells[code]`라고 적는 것이
+ * 자연스럽다는 것이 이 결함의 성질**이므로, 그 모양 자체를 0으로 고정한다.
+ */
+describe("소스 스캔 — cells를 직접 인덱싱하지 않는다", () => {
+  const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+  /** 셀 맵을 로케일 코드로 인덱싱하는 자리 전부. `cellAt`·`Object.hasOwn` 가드만 예외다. */
+  const FILES = [
+    "lib/keys/view.ts",
+    "lib/keys/query.ts",
+    "lib/pull/render.ts",
+    "components/translations/key-group.tsx",
+  ] as const;
+
+  it("`.cells[`는 hasOwn 가드 안에만 있다", () => {
+    for (const file of FILES) {
+      const src = readFileSync(join(ROOT, file), "utf8");
+      const offenders = src
+        .split("\n")
+        .map((line, i) => [i + 1, line] as const)
+        .filter(([, line]) => /\.cells\[/.test(line) && !/Object\.hasOwn/.test(line));
+      expect(offenders, `${file}: cellAt 또는 Object.hasOwn을 지나야 한다`).toEqual([]);
+    }
+  });
+
+  /** ⚠️ **대입 쪽이 빠지면 읽기만 고친 반쪽이 된다** — `__proto__` 대입은 키를 조용히 삼킨다. */
+  it("셀 맵은 `Object.create(null)`로 만든다", () => {
+    const src = readFileSync(join(ROOT, "lib/keys/query.ts"), "utf8");
+    expect(src).toContain('const cells: KeyRow["cells"] = Object.create(null)');
   });
 });

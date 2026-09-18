@@ -412,6 +412,9 @@ prisma/schema.prisma    13테이블 + enum 셋(TranslationSurface가 2026-09-14�
                         빠져도 linkAccount가 런타임에 던지고 타입 검사는 못 본다
 prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다(additive-first)
 prisma/credential-cutover/  ⚠️ 마이그레이션이 아니라 스테이징 자리다 — Prisma가 이 디렉터리를 안 본다
+prisma/__tests__/       schema-contract · push-token-column · declared-base-locale-column. ⚠️ **스키마
+                        파일을 텍스트로 읽어 센다** — tsc는 `schema.prisma`를 안 보고 마이그레이션이
+                        빠진 컬럼은 런타임에야 드러난다
 prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아니라 **손으로 한 번만 도는 SQL**이다 —
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)

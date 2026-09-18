@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
 import type { ProjectContext } from "@/lib/keys/query";
 import {
-  actorLabel, buildPermalink, cellState, isUnpublished,
+  actorLabel, buildPermalink, cellAt, cellState, isUnpublished,
   type Actor, type KeyRow,
 } from "@/lib/keys/view";
 
@@ -88,7 +88,7 @@ function LocaleRow({
   locale: { code: string; orphaned: boolean };
   actors: Map<string, Actor>;
 }) {
-  const cell = row.cells[locale.code];
+  const cell = cellAt(row, locale.code);
   const state = cellState(row, locale.code);
   const actor = actorLabel(cell?.updatedBy ?? null, actors);
   const unsent = cell !== undefined && isUnpublished(cell);

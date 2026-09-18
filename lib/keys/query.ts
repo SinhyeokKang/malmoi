@@ -118,7 +118,11 @@ export async function loadKeys(
   });
 
   return keys.map((k) => {
-    const cells: KeyRow["cells"] = {};
+    // ⚠️ **평범한 `{}`가 아니다** — 키가 `Locale.code`(리포가 정한다)라서다. `__proto__`는
+    // `isPathSafeLocale`이 막지만 그 방어선은 다른 모듈에 있는 한 겹이고, 평범한 객체에
+    // `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생겨 **그 로케일 열이 조용히
+    // 사라진다** (CLAUDE.md 코드 컨벤션). 읽는 쪽 짝은 `lib/keys/view.ts`의 `cellAt`이다.
+    const cells: KeyRow["cells"] = Object.create(null);
     for (const t of k.translations) {
       cells[t.localeCode] = {
         value: t.value,
