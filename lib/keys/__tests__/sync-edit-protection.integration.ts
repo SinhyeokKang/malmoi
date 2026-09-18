@@ -419,7 +419,7 @@ describe("CI 적재 보류 (T7)", () => {
   });
 
   const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
-    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null });
+    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN) });
 
   /**
    * ⚠️ **판정과 upsert 사이에 커밋된 저장** (ARCHITECTURE §5.5.2). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
@@ -521,5 +521,62 @@ describe("Publish 전달 확인 실패 (T10)", () => {
     await pool.query(`DROP TRIGGER reject_ack ON "Translation"`);
     await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
+  });
+});
+
+/**
+ * **토큰 회전과 겹친 CI push** (launch-readiness L7.6, audit #46). 라우트는 토큰을 트랜잭션 **밖**에서 조회하므로, 조회 뒤 회전이
+ * 커밋되면 옛 토큰의 push 하나가 적재될 수 있었다 — 회전의 목적(유출 토큰을 즉시 끊는다)에 창이 난다.
+ * barrier는 sleep이 아니라 **Project 행 잠금**이다: 다른 연결이 그 행을 쥔 동안 라우트는 조회를 통과해 적용 잠금에서 기다리고,
+ * 그 사이 회전이 커밋된다.
+ */
+describe("토큰 회전 경합 (L7.6)", () => {
+  async function fixture() {
+    await seed("p", { lastPulledAt: PULLED, cells: [] });
+    await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  }
+  async function waitForProjectLock() {
+    for (let i = 0; i < 200; i++) {
+      const { rows } = await pool.query(`SELECT count(*)::int n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%"Project"%FOR UPDATE%'`);
+      if (rows[0].n > 0) return;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    throw new Error("apply never waited on the Project lock");
+  }
+
+  it("조회 뒤 회전이 커밋되면 401이고 아무것도 적재하지 않는다 — 진행 표시도 거둔다", async () => {
+    await fixture();
+    const blocker = await pool.connect();
+    let running: ReturnType<typeof post> | undefined;
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+      running = post(ciPayload());
+      await waitForProjectLock();
+      await blocker.query(`UPDATE "Project" SET "pushTokenHash" = $1 WHERE "id" = 'p'`, [hashPushToken("rotated-token")]);
+      await blocker.query("COMMIT");
+    } finally {
+      blocker.release();
+    }
+    expect(await running).toEqual({ status: 401, body: { error: "unauthorized" } });
+    expect(await cell("p", "k1", "ko")).toBeUndefined();
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p" } })).toMatchObject({ lastImportToken: null, lastCommitAt: BEFORE });
+  });
+
+  it("회전이 없으면 같은 경로로 적재된다 (짝)", async () => {
+    await fixture();
+    const blocker = await pool.connect();
+    let running: ReturnType<typeof post> | undefined;
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+      running = post(ciPayload());
+      await waitForProjectLock();
+      await blocker.query("COMMIT");
+    } finally {
+      blocker.release();
+    }
+    expect(await running).toMatchObject({ status: 200, body: { status: "applied" } });
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "repo-ko" });
   });
 });

@@ -58,8 +58,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     const prisma = getPrisma();
     // **토큰이 프로젝트를 정한다.** 원문은 쿼리에 실리지 않고, 발급받지 않은 프로젝트(`pushTokenHash`가 null)는
     // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (PRODUCT §7.8).
+    const pushTokenHash = hashPushToken(rawToken);
     const project = await prisma.project.findUnique({
-      where: { pushTokenHash: hashPushToken(rawToken) },
+      where: { pushTokenHash },
       // 포맷 셋은 `checkFormat`의 비교 대상이다 — 온보딩이 확정한 표면을 CI가 갈아치우지 못하게 한다.
       select: {
         id: true,
@@ -187,7 +188,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
-        startedAt, token,
+        startedAt, token, pushTokenHash,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
       });
@@ -215,6 +216,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       revalidatePath("/projects/new");
     }
 
+    // 조회 뒤 토큰이 회전됐다 — 아무것도 적재하지 않았으니 진행 표시만 거두고 처음 조회와 같은 401로 답한다.
+    if (result.status === "unauthorized") {
+      await abandonImportRun(prisma, { ...scope, token });
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
