@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { requireEnv } from "@/lib/env";
 import { credentialIO } from "./access";
 import { CredentialError } from "./crypto";
-import { assertUniqueEmails, isHashedSession, planCredentialMigration, planPersonalFields, type MigrationMode } from "./migration";
+import { assertUniqueEmails, isHashedSession, migrateAccountFields, migratePersonalFields, type MigrationMode } from "./migration";
 import { validateCredentialKeys } from "./storage";
 export type ConversionOptions = { mode: MigrationMode; apply?: boolean; trafficBlocked?: boolean; writersDrained?: boolean };
 type ConversionReport = { users: number; invitations: number; accounts: number; sessions: number; loginAccounts: number; appAccounts: number; oldPiiKey: number; oldTokenKey: number; changes: number; applied: number };
@@ -20,18 +20,18 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
       if (owners.has(row.userId)) throw new CredentialError();
       owners.add(row.userId);
     }
-    // Build and validate the entire plan before the first write. Each CAS statement is one resumable batch.
+    // 첫 쓰기 전에 계획 전체를 만들고 검증한다. CAS 문장 하나가 재개 가능한 배치 하나다.
     const writes: (() => Promise<{ count: number }>)[] = [];
     for (const row of users) {
-      const data = planPersonalFields(row, "User", options.mode);
+      const data = migratePersonalFields(row, "User", options.mode);
       if (data) writes.push(() => prisma.user.updateMany({ where: { id: row.id, email: row.email, emailLookup: row.emailLookup, name: row.name, image: row.image }, data }));
     }
     for (const row of invitations) {
-      const data = planPersonalFields(row, "ProjectInvitation", options.mode);
+      const data = migratePersonalFields(row, "ProjectInvitation", options.mode);
       if (data) writes.push(() => prisma.projectInvitation.updateMany({ where: { id: row.id, projectId: row.projectId, email: row.email, emailLookup: row.emailLookup }, data: { email: data.email, emailLookup: data.emailLookup } }));
     }
     for (const row of accounts) {
-      const data = planCredentialMigration(row, options.mode);
+      const data = migrateAccountFields(row, options.mode);
       if (data) writes.push(() => prisma.account.updateMany({ where: { provider: row.provider, providerAccountId: row.providerAccountId, userId: row.userId, access_token: row.access_token, refresh_token: row.refresh_token, id_token: row.id_token, expires_at: row.expires_at }, data }));
     }
     for (const row of sessions) {
@@ -45,7 +45,7 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
         if ((await write()).count !== 1) throw new CredentialError();
         applied++;
       }
-      // A surviving old writer or a partial rotation must never be reported as ready to resume.
+      // 살아남은 옛 writer나 부분 회전을 재개 가능으로 보고하면 안 된다.
       const verified = await convertCredentials(prisma, { mode: "verify" });
       if ((options.mode === "rotate-token" && verified.oldTokenKey !== 0) || (options.mode === "rotate-pii" && verified.oldPiiKey !== 0)) throw new CredentialError();
       return { ...verified, changes: writes.length, applied };

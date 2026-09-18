@@ -7,7 +7,7 @@ config({ path: ".env.local", quiet: true });
 let prisma: PrismaClient | undefined;
 try {
   const options = credentialCommand(process.argv.slice(2));
-  const { target, url } = credentialTarget(process.env);
+  const { target, url } = credentialTarget();
   prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }), log: [] });
   const counts = await convertCredentials(prisma, options);
   console.log(JSON.stringify({ target, mode: options.mode, ...counts }));

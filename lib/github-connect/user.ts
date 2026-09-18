@@ -1,3 +1,4 @@
+import "server-only";
 import { OAuthApp } from "@octokit/oauth-app";
 import { Octokit } from "octokit";
 

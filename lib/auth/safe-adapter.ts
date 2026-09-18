@@ -1,3 +1,4 @@
+import "server-only";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import type { PrismaClient } from "@/generated/prisma/client";

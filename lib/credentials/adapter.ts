@@ -32,7 +32,7 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
       return decodeUser(row);
     },
     async updateUser({ id, image: _providerImage, ...fields }) {
-      // Provider updates must preserve the user's uploaded picture, including an explicit deletion.
+      // 공급자 갱신이 사용자가 올린 사진을 덮으면 안 된다 — 명시적으로 지운 상태도 포함이다.
       const row = await prisma.user.update({ where: { id }, data: { ...encodeUserFields(id, fields), ...(fields.emailVerified !== undefined ? { emailVerified: fields.emailVerified } : {}) } });
       return decodeUser(row);
     },
@@ -72,7 +72,7 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
     },
     async deleteSession(raw) { await prisma.session.deleteMany({ where: { sessionToken: hashSessionToken(raw) } }); },
   };
-  // Auth.js wraps adapter exceptions and can log their causes; sanitize before that boundary.
+  // Auth.js는 어댑터 예외를 감싸고 원인을 로그에 찍을 수 있다 — 그 경계 전에 정리한다.
   return Object.fromEntries(Object.entries(adapter).map(([name, method]) => [name,
     typeof method === "function" ? (...args: unknown[]) => credentialIO(() => Promise.resolve(Reflect.apply(method, adapter, args))) : method,
   ])) as Adapter;

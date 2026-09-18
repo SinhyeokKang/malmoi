@@ -7,7 +7,7 @@ import { logCredentialFailure } from "./log";
 import { lookupEmail } from "./storage";
 
 type Client = PrismaClient | Prisma.TransactionClient;
-/** Never let Prisma arguments or crypto inputs escape in an exception. */
+/** Prisma 인자나 암호 입력이 예외에 실려 새지 않게 한다. */
 export async function credentialIO<T>(work: () => Promise<T>): Promise<T> {
   try { return await work(); } catch (error) { logCredentialFailure("credential-io", error); throw new CredentialError(); }
 }

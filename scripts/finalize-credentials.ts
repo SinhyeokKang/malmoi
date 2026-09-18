@@ -14,7 +14,7 @@ let prisma: PrismaClient | undefined;
 try {
   const options = credentialCommand(process.argv.slice(2));
   if (options.mode !== "backfill") throw new CredentialError();
-  const { target, url } = credentialTarget(process.env);
+  const { target, url } = credentialTarget();
   prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }), log: [] });
   await convertCredentials(prisma, { mode: "verify" });
   const sql = (name: string, folder = "migrations") => readFileSync(join("prisma", folder, name, "migration.sql"));
