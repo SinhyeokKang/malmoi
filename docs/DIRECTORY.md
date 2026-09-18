@@ -395,11 +395,13 @@ lib/
                         이것을 지난다. Object.create(null)로 만든다(키를 주소창이 정한다)
   locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
-                        응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다
+                        응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
+                        logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지)
+  utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `refocus`·`relative-time`·`ref-slug`·`flag`·`filters`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `refocus`·`relative-time`·`utc-time`·`ref-slug`·`flag`·`filters`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
