@@ -2119,3 +2119,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `pendingWhere`의 관계 필터(`surface.archivedAt`·`stringKey.orphaned`·`locale.orphaned`)를 Prisma 7이 **LEFT JOIN 셋 + `j.id IS NOT NULL`**로 풀어낸다. 대량 적재 직후 autovacuum이 `ANALYZE`를 돌기 전에는 플래너가 `Locale`·`StringKey`를 rows=1로 추정해 **조인부터** 돌고, `Translation`을 `[projectId, surfaceId, updatedAt]`으로 8,676번 훑으며 `[projectId, pendingEditToken]` 인덱스를 버렸다(`Rows Removed by Filter: 8676`, loops=8676). `ANALYZE` 뒤에는 같은 쿼리가 토큰 인덱스부터 타서 13ms였다. **토큰이 0개인 프로젝트(가장 흔한 경우)에서도 조인을 전부 돈다**는 점이 요지다 — 결과가 0이 될 것을 인덱스 하나로 알 수 있는데 쿼리 모양이 그 경로를 막았다. 프로덕션에서도 **온보딩 첫 적재 직후 첫 CI push**가 정확히 그 창에 든다.
 - **그물**: 잡은 것 — 실측을 **기록만** 하던 PG 테스트의 타임아웃(단언이 아니라 30초 기본 제한). 놓친 것 — 단위 테스트·메모리 하네스(플래너가 없다), 배포 A의 EXPLAIN(T3)은 **`ANALYZE`를 돌린 합성 데이터**로 재서 인덱스를 탔다고 판정했다. 대응 뒤 같은 POST가 cold 814ms / warm 240~247ms로 돌아왔다.
 - **재발 방지**: 토큰 술어를 세는 자리는 `countPending`·`loadPendingEdits`만 쓴다 — **토큰 컬럼만 보는 count가 0이면 관계 조인을 돌리지 않는다**. `rg -n "count\(\{ where: pendingWhere|findMany\(\{ where: pendingWhere" lib app` → 남은 자리는 `lib/pull/load.ts`(1층이 0이면 건너뛴다)와 `lib/publish/read.ts`(사용자가 미리보기를 열 때만)여야 한다. EXPLAIN으로 인덱스를 판정할 때는 **`ANALYZE` 전과 후를 둘 다** 잰다 — 대량 적재 직후가 실제로 요청이 오는 순간이다. ⚠️ **같은 모양의 관계 필터가 다른 집계에도 있다**(2026-09-18 grep, 문제로 관측되진 않음): `rg -n "stringKey: \{ orphaned|surface: \{ archivedAt: null \}" lib app --glob '!**/__tests__/**'` → `lib/keys/query.ts:413·415·452·518·524·535`. 목록·Home 집계라 적재 직후 첫 화면이 느릴 수 있는 후보다.
+
+### 2026-09-18 — 인가 방어선이 호출이 아니라 이름을 셌다 — `import` 줄과 주석 인용만으로 green
+
+- **영역**: `app/__tests__/entry-points.test.ts`("예외가 아닌 진입점은 전부 인가를 지난다") · 발견 자리 `app/api/github/setup/route.ts`
+- **증상**: 없다(사고 전). launch-readiness L2.4에서 새 Route Handler를 만들고 **`await requireUser();`를 지우는 뮤테이션**을 걸었는데 스위트가 green이었다. 고친 뒤 다시 걸어도 green이었다 — 두 번째는 라우트의 설명 주석이 `` `requireUser()`를 지나고 ``라고 적고 있었다. 그리고 호출 형으로 좁히자 **`invite/actions.ts`가 red**가 됐다: 그 파일은 export 단위 검사가 `acceptInvitation`을 따로 면제하는데, 파일 단위 검사는 이름 언급 하나로 통과하고 있었다.
+- **근본 원인**: 판정이 `source.includes("requireUser")`였다. 가드를 부르는 파일은 반드시 그 이름을 **import**하므로, 이 검사는 "호출했는가"가 아니라 "import했는가"를 쟀다 — 가드를 import만 하고 부르지 않는 모양(리팩터 중 호출을 지우고 import를 남기는 가장 흔한 회귀)이 정확히 사각이었다. 이 리포는 **왜를 주석에 적는 규칙**이라 가드 이름을 인용하는 주석도 흔하다. `hasUserGuard`(Action용)는 이미 `requireUser(`로 호출을 봤는데 파일 단위 검사만 이름을 봤다 — 같은 파일 안에서 두 판정의 정밀도가 갈려 있었다.
+- **그물**: 잡은 것 — 새 라우트에 건 **뮤테이션**(가드 호출 삭제) 하나. 놓친 것 — 이 검사 자신(통과를 보고한다), 2026-09-07 항목의 메타 테스트 관용구(그때는 "덮는 **대상 목록**"을 먹였지 "무엇을 호출로 인정하나"는 먹이지 않았다), 기존 라우트 전부(가드가 실제로 불리고 있어 판정의 느슨함이 드러날 일이 없었다).
+- **재발 방지**:
+  - 지금 판정은 **주석을 벗긴 뒤 `${g}(`를 센다**(`callsGuard`), 파일 단위는 page·route만. 메타 테스트 "가드 판정은 import·주석이 아니라 호출을 본다"가 import만 · 주석 인용 · 호출 셋을 먹인다.
+  - 소스 스캔 방어선을 새로 쓰거나 고칠 때 **대상에서 호출을 지우는 뮤테이션을 한 번 건다** — import와 주석이 남는 모양으로(대상 파일 통째 삭제는 이 부류를 못 본다).
+  - grep: `rg -n '(source|body|code|text)\.includes\(' --glob '**/__tests__/**' app lib components` → 식별자 **이름**을 찾는 줄마다 (a) 인자가 `name(` 호출 형인가 (b) 입력에서 주석을 벗겼나를 본다.
