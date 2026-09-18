@@ -2131,3 +2131,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 소스 스캔 방어선을 새로 쓰거나 고칠 때 **대상에서 호출을 지우는 뮤테이션을 한 번 건다** — import와 주석이 남는 모양으로(대상 파일 통째 삭제는 이 부류를 못 본다).
   - grep: `rg -n '(source|body|code|text)\.includes\(' --glob '**/__tests__/**' app lib components` → 식별자 **이름**을 찾는 줄마다 (a) 인자가 `name(` 호출 형인가 (b) 입력에서 주석을 벗겼나를 본다.
   - **같은 날 후속으로 grep의 남은 둘을 닫았다**: Action export 단위 판정(`exportGuarded` — 함수 안 주석의 가드 인용)과 쿼리 수신 판정(`readsSearchParams`)이 이제 `stripComments`를 지난다. 각각 메타 테스트 red → green, export 판정은 실제 Action(`settings/actions.ts#startGithubConnect`)의 가드 호출을 주석으로 바꾸는 뮤테이션이 red였다(전에는 green이었을 모양이다).
+
+### 2026-09-18 — 앞 테스트의 영원히 안 끝나는 async transition이 뒤 테스트의 transition을 pending으로 붙잡았다
+
+- **영역**: `components/__tests__/new-project.test.tsx` · `components/onboarding/steps/repo.tsx`([Check again]) · `components/onboarding/connect-github.tsx`(`useGithubConnect`)
+- **증상**: install-and-connect 구현 중 "[Check again] 뒤 아직이면 'Still waiting for approval.'을 알린다" 단언이 **파일 전체 실행에서만** red였다(`-t`로 단독 실행하면 green, 반복해도 결정적으로 red). 디버그 출력으로 보니 [Check again]의 `useTransition`이 `router.refresh()`(동기 mock) 뒤에도 **`isPending === true`에서 내려오지 않았다.**
+- **근본 원인**: React 19는 **진행 중인 async transition(async action)을 전역으로 얽는다** — 하나라도 안 끝났으면 이후 시작한 transition도 그것이 끝날 때까지 pending이다. 같은 파일의 앞 테스트가 "주 버튼 대기 중 보조 링크 비활성"을 보려고 `startGithubConnectForUser`를 `new Promise(() => {})`로 mock했고, 그 async transition이 테스트가 끝난 뒤에도 모듈 수명 내내 살아 있었다. `vi.clearAllMocks()`·언마운트는 **React의 전역 async action 스코프를 풀지 못한다.** 부수로, 처음 구현은 `checking`의 true→false **가장자리를 effect로 관찰**했는데 동기 콜백이면 React가 두 값을 한 커밋에 접을 수 있어 그것만으로도 비결정적이었다.
+- **그물**: 잡은 것 — 새로 쓴 DOM 단언(파일 전체 실행). 놓친 것 — 단독 실행(`-t`)은 green이라 "flaky"로 오진하기 쉬웠고, 앞 테스트 자신은 자기 단언만 보므로 누수를 모른다.
+- **재발 방지**:
+  - pending을 보려고 영원히 안 끝나는 promise를 쓰면 **테스트 끝에서 푼다**(`let settle; mockReturnValue(new Promise(r => { settle = r }))` … `await act(async () => settle(…))`). 이번 파일은 그렇게 고쳤다.
+  - transition 완료 뒤 할 일은 `isPending`의 가장자리가 아니라 **클릭이 세우는 상태**(`awaiting`)와 `!isPending`의 조합으로 판정한다(`repo.tsx`).
+  - grep: `rg -n "new Promise\(\(\) => \{\}\)" components app lib --glob '**/__tests__/**'` → 2026-09-18 기준 남은 3건(`app/(edit)/account/__tests__/structure.test.tsx:590·613` 프로필 사진 업로드·삭제, `components/__tests__/new-project.test.tsx:142` 브랜치 조회). 지금은 같은 파일 뒤쪽에 transition 완료를 단언하는 테스트가 없어 드러나지 않았을 뿐인 후보다 — 그 mock이 `startTransition(async …)` 안에서 불리면 같은 누수다.
