@@ -65,7 +65,13 @@ describe("멤버 화면 — 페이지", () => {
     expect(src).toContain("requireProjectAccess");
     // EDITOR도 목록을 보므로 게이트는 `translation:write`다. `member:manage`면 EDITOR가 못 들어온다.
     expect(src).toContain('"translation:write"');
-    expect(src).not.toContain('requireProjectAccess(...arguments)');
+    // ⚠️ **위치가 요지다** (launch-readiness L4.3). 옛 단언 `not.toContain('requireProjectAccess(...arguments)')`는
+    // 아무도 안 쓰는 리터럴이라 절대 실패하지 않았다 — 호출이 첫 JSX `return`보다 **뒤**로 가도 green이었다.
+    const call = src.indexOf("await requireProjectAccess(");
+    const firstJsxReturn = src.search(/\breturn\s*(\(|<)/);
+    expect(call).toBeGreaterThan(-1);
+    expect(firstJsxReturn).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(firstJsxReturn);
   });
 
   /**

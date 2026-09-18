@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ADAPTERS, detectFormat } from "../../adapters";
 import { candidatesFor, mergeCandidates } from "../merge";
 import { selectSurveyFiles } from "../select";
@@ -321,19 +321,32 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.roundtrip.semantic).toBe("not-run");
   });
 
-  it("어댑터 호출을 감싸므로 던지지 않는다 — 리포 하나가 전체를 멈추지 않는다", () => {
+  /**
+   * ⚠️ **제목의 조건을 실제로 만든다** (launch-readiness L4.3). 전에는 멀쩡한 파일만 먹여 어댑터가 한 번도 안 던졌고,
+   * 감싸는 `try`를 지워도 green이었다. read·write가 각각 던지게 해 결과로 남는지 본다.
+   */
+  it.each(["read", "write"] as const)("어댑터 %s가 던져도 surveyOne은 던지지 않고 결과에 남긴다 — 리포 하나가 전체를 멈추지 않는다", (method) => {
     const good = 'export default { "a": "1" }\n';
-    const s = surveyOne({
-      repo: "acme/throws",
-      paths: ["src/i18n/ko.ts", "src/i18n/en.ts"],
-      files: new Map([
-        ["src/i18n/ko.ts", good],
-        ["src/i18n/en.ts", good],
-      ]),
-      configFiles: [],
-    });
-    expect(s.chosen?.adapter).toBe("code-dict");
-    expect(s.failure).toBeUndefined();
+    const codeDict = ADAPTERS.find((a) => a.name === "code-dict")!;
+    // survey의 write 홉은 `writeWithErrors`다(프로덕션 pull과 같은 함수 — ARCHITECTURE §1.35).
+    const spy = vi.spyOn(codeDict, method === "read" ? "read" : "writeWithErrors").mockImplementation(() => { throw new Error("boom"); });
+    try {
+      const s = surveyOne({
+        repo: "acme/throws",
+        paths: ["src/i18n/ko.ts", "src/i18n/en.ts"],
+        files: new Map([
+          ["src/i18n/ko.ts", good],
+          ["src/i18n/en.ts", good],
+        ]),
+        configFiles: [],
+      });
+      expect(spy).toHaveBeenCalled();
+      expect(s.chosen?.adapter).toBe("code-dict");
+      expect(s.failure).toBe(`${method}가 던졌다: boom`);
+      expect(s.errors["adapter-threw"]).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("생산자에 타입이 붙어 있다 — 필드를 늘리면 컴파일러가 잡는다", () => {

@@ -228,11 +228,14 @@ describe("code-dict — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () => 
     expect(out).toContain("// 사람이 넣은 주석");
   });
 
-  it("중간 경로가 없으면 만든다", () => {
+  // ⚠️ **중간 맵을 만들지 않는다** (launch-readiness L4.3 — yaml-catalog의 같은 이름 테스트 주석).
+  it("중간 경로가 없으면 가장 깊은 기존 맵에 점 키 리터럴로 넣는다", () => {
     const out = codeDict.write(withSource(DEFAULT_OBJ), {
       locale: "ko",
       entries: [{ key: "brand.new.deep", message: "깊은 새 값" }],
     })!;
+    expect(out).toMatch(/^  ['"]brand\.new\.deep['"]: ['"]깊은 새 값['"],$/m);
+    expect(out).not.toMatch(/\bbrand:\s*\{/);
     const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
     expect(back.locales[0]!.entries.find((e) => e.key === "brand.new.deep")?.message).toBe("깊은 새 값");
   });

@@ -188,7 +188,11 @@ it("stale 회수 뒤 옛 실행은 적용·실패 기록·종료를 하지 못�
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toEqual(before);
 });
 
-it.each(["archive", "permission", "repo", "branch", "format"])("준비 도중 %s 변경을 적용 시 다시 거부한다", async change => {
+/**
+ * ⚠️ **`reason`까지 박는다** (launch-readiness L4.3). 전에는 다섯이 `superseded` 상태만 봐서 서로 구별되지 않았다 —
+ * 인가·보관은 실행권을 잃은 것(`lease-lost`)이고 설정 변경은 다른 스냅샷이 된 것(`superseded`)이다.
+ */
+it.each([["archive", "lease-lost"], ["permission", "lease-lost"], ["repo", "superseded"], ["branch", "superseded"], ["format", "superseded"]] as const)("준비 도중 %s 변경을 적용 시 다시 거부한다 (%s)", async (change, reason) => {
   await seed(); const pause = { entered: deferred(), release: deferred() };
   const pending = run(reader(undefined, pause)); await pause.entered.promise;
   if (change === "archive") await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
@@ -197,7 +201,7 @@ it.each(["archive", "permission", "repo", "branch", "format"])("준비 도중 %s
   if (change === "branch") await prisma.project.update({ where: { id: "p" }, data: { baseBranch: "other" } });
   if (change === "format") await prisma.translationSurface.update({ where: { id: "s" }, data: { pathTemplate: "other/{locale}.json" } });
   pause.release.resolve();
-  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded" }] });
+  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded", reason }] });
   expect(await prisma.stringKey.count({ where: { projectId: "p" } })).toBe(0);
 });
 
@@ -219,7 +223,7 @@ it("설정 변경으로 거부돼도 자기 진행 표시는 정리한다", asyn
   const pending = run(repo); await entered.promise;
   await prisma.project.update({ where: { id: "p" }, data: { baseBranch: "changed" } });
   release.resolve();
-  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded" }] });
+  expect(await pending).toMatchObject({ ok: true, surfaces: [{ status: "superseded", reason: "superseded" }] });
   expect(await prisma.translationSurface.findUnique({ where: { id: "s" } })).toMatchObject({ lastImportStartedAt: null, lastImportToken: null });
 });
 
