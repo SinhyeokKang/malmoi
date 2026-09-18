@@ -2130,3 +2130,4 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 지금 판정은 **주석을 벗긴 뒤 `${g}(`를 센다**(`callsGuard`), 파일 단위는 page·route만. 메타 테스트 "가드 판정은 import·주석이 아니라 호출을 본다"가 import만 · 주석 인용 · 호출 셋을 먹인다.
   - 소스 스캔 방어선을 새로 쓰거나 고칠 때 **대상에서 호출을 지우는 뮤테이션을 한 번 건다** — import와 주석이 남는 모양으로(대상 파일 통째 삭제는 이 부류를 못 본다).
   - grep: `rg -n '(source|body|code|text)\.includes\(' --glob '**/__tests__/**' app lib components` → 식별자 **이름**을 찾는 줄마다 (a) 인자가 `name(` 호출 형인가 (b) 입력에서 주석을 벗겼나를 본다.
+  - **같은 날 후속으로 grep의 남은 둘을 닫았다**: Action export 단위 판정(`exportGuarded` — 함수 안 주석의 가드 인용)과 쿼리 수신 판정(`readsSearchParams`)이 이제 `stripComments`를 지난다. 각각 메타 테스트 red → green, export 판정은 실제 Action(`settings/actions.ts#startGithubConnect`)의 가드 호출을 주석으로 바꾸는 뮤테이션이 red였다(전에는 green이었을 모양이다).
