@@ -26,8 +26,9 @@ const LOCALE_HEAD = /[A-Za-z0-9]/;
 /**
  * 이 로케일 코드를 파일 경로에 보간해도 되는가.
  *
- * ⚠️ **정규식 `$` 앵커를 쓰지 않는다** — `$`는 문자열 끝 **또는 마지막 개행 앞**에서 맞으므로
- * `"en\n"` 같은 값이 통과한다. 부정 문자 클래스로 훑는 쪽은 그 구멍이 없다.
+ * ⚠️ **허용 문자 앵커(`^…$`)가 아니라 부정 문자 클래스로 훑는다.** JS의 `$`는(`m` 플래그 없이) 입력 끝에서만 맞아
+ * `"en\n"`을 막지만, 같은 규칙을 Python·Ruby·PCRE로 옮기면 `$`가 **마지막 개행 앞**에서도 맞아 통과한다 — 부정 클래스는
+ * 어느 엔진에서도 그 구멍이 없다.
  */
 export function isPathSafeLocale(code: string): boolean {
   if (code.length === 0 || code.length > MAX_LOCALE_CODE_LENGTH) return false;

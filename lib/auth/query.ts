@@ -1,3 +1,4 @@
+import "server-only";
 import { decodeUser, decodeInvitation, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import { m } from "@/lib/i18n";
@@ -10,9 +11,8 @@ import type { Permission, Role } from "./permission";
 /**
  * 인가 조회 껍데기. **판정은 하지 않는다** — `planProjectAccess`가 한다 (ARCHITECTURE §6.1).
  *
- * `server-only`를 붙이지 않는다: 테스트가 이 모듈을 직접 import해 메모리 DB로 두 조회를 검사한다
- * (`lib/env.ts`와 같은 예외 — 그 패키지는 `react-server` 조건 밖에서 던져 vitest를 죽인다).
- * 세션을 읽는 쪽(`lib/auth/session.ts`)이 `server-only`를 든다.
+ * 세션을 읽는 쪽(`lib/auth/session.ts`)과 같이 `server-only`를 든다 — 테스트가 직접 import해 메모리 DB로 두 조회를 검사하지만
+ * `vitest.setup.ts`가 그 패키지를 전역 mock하므로 더는 예외 사유가 아니다(launch-readiness L7.4).
  *
  * **prisma를 주입받는다** — `triggerPull(prisma, slug)`·`loadKeys(prisma, projectId)`와 같은 형태다.
  */
