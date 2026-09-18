@@ -1250,6 +1250,14 @@ Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullReque
 **모달 상태**다. 그리고 **읽지 못하면 보내지 않는다**: 같은 조회가 실행 중에 또 돌아
 `base-unreadable`로 죽을 확률이 높고, 예외를 두면 "무조건 목록을 보고 보낸다"가 "보통은"이 된다.
 
+⚠️ **거부는 조회 실패가 아니다** (2026-09-18, launch-readiness L3.3). `loadPublishPreview`는 `ok`·`rejected`·`failed`를 낸다 —
+세션 없음·인가 거부는 `rejected`이고 `triggerPullAction`의 실행 전 거부와 **같은 낱말**이라 화면이 그대로 `1h`로 그린다.
+전에는 전부 `null`이라 세션 만료가 Retry로 그려졌고 Retry는 같은 거부를 영영 받았다. 세션 저장소 **장애**는 거부가 아니라 `failed`다.
+
+⚠️ **pull이 안 쓰는 셀을 약속하지 않는다** (2026-09-18, L3.7). 수술적 per-locale 어댑터는 원본 파일이 base에 없으면 그 로케일을
+안 낸다(`render.ts`의 `original-file-missing`) — 미리보기는 그 셀을 표에서 빼고 `withoutFile`로 센다. **막지 않는다**: 막으면 파일
+하나 빠진 프로젝트의 Publish가 통째로 멈춘다. `truncated`는 상한 때문에 조회하지 않은 행만이라 두 수가 섞이지 않는다.
+
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
 `Project.archivedAt`은 **되돌릴 수 있는 사실 하나**이지 상태 머신이 아니다 (`Locale.orphaned`와 같은 형 —
