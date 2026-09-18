@@ -879,7 +879,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   ⚠️ **미배포 집계는 이 컬럼 위에 서지 않는다** (2026-09-18 배포 B 정정). `updatedAt`만 보면 push가 전 행의
   시각을 올려 code push 직후 903키 전부가 "안 보낸 편집"으로 세어지는데, 그 자리를 메운 것은 `updatedBy`가
   아니라 **편집 토큰**이다(아래 `pendingEditToken`) — 배포 A까지 저자·시각 술어였고 배포 B가 토큰 하나로
-  바꿨다. 지금 `countUnpublished`(`lib/keys/query.ts`)는 `countPending`에 그대로 위임하고,
+  바꿨다. 지금 `countUnpublished`(`lib/keys/query.ts`)는 `countPending`에, 표면별 수를 내는 `countUnpublishedBySurface`는
+  `countPendingBySurface`(같은 `pendingWhere` + `groupBy` — 표면마다 세던 N+1을 대신한다, launch-readiness L7.2)에 그대로 위임하고,
   `isUnpublished`(`lib/keys/view.ts`)는 `pending` + `surfaceArchivedAt` 둘만 본다. **둘 중 어느 쪽에도
   `updatedBy`가 없다** — 같은 밀리초의 재저장을 저자로도 시각으로도 가를 수 없어서다.
   ⚠️ **그래서 이 컬럼을 읽는 쪽은 폴백을 갖는다** — `loadActors`가 id로 `User`를 따로 읽고(join이 아니다,
