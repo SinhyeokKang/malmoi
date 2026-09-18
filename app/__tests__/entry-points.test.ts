@@ -96,6 +96,23 @@ const USER_SCOPED_ACTIONS = new Set([
   "projects/actions.ts#disconnectGithub",
 ]);
 
+/**
+ * 소스 스캔 판정 전에 주석을 벗긴다 (POSTMORTEM 2026-09-18). 이 리포는 "왜"를 주석에 적어 가드·식별자
+ * 이름을 인용하는 주석이 흔하고, 벗기지 않으면 인용 하나가 호출·읽기로 세어진다.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
+/**
+ * export 하나의 인가 판정. ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프
+ * Action이 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
+ */
+function exportGuarded(body: string, id: string): boolean {
+  const code = stripComments(body);
+  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
+}
+
 /** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
@@ -186,9 +203,6 @@ describe("서버 진입점", () => {
    * ⚠️ **이름이 아니라 호출(`g(`)을 센다** (2026-09-18, launch-readiness L2.4). 이름만 보면 `import`
    * 줄이 그것을 들고 있어, 호출을 지운 라우트가 green이었다 — `/api/github/setup`에서 뮤테이션으로 잡혔다.
    */
-  // 주석도 벗긴다 — 설명 주석이 `` `requireUser()` ``를 인용하면 같은 착시다(같은 뮤테이션에서 두 번째로 잡혔다).
-  const stripComments = (source: string): string =>
-    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const callsGuard = (source: string): boolean => {
     const code = stripComments(source);
     return GUARDS.some((g) => code.includes(`${g}(`));
@@ -199,6 +213,15 @@ describe("서버 진입점", () => {
     expect(callsGuard(imported)).toBe(false);
     expect(callsGuard(imported + "\n/** `requireUser()`를 지난다 */\n// requireUser()")).toBe(false);
     expect(callsGuard(imported + "\nawait requireUser();")).toBe(true);
+  });
+
+  /** export 단위 판정도 같은 착시를 막는다 — 함수 안 주석이 가드를 인용해도 호출이 아니다. */
+  it("Action export 판정도 주석 인용을 호출로 세지 않는다", () => {
+    const quoted = 'export async function f(slug: string) {\n  // getProjectAccess()를 지난 뒤 부른다\n  return slug;\n}';
+    expect(exportGuarded(quoted, "x/actions.ts#f")).toBe(false);
+    expect(exportGuarded(quoted + "\nawait getProjectAccess({ slug });", "x/actions.ts#f")).toBe(true);
+    const userQuoted = 'export async function g() {\n  /** requireUser()면 충분하다 */\n}';
+    expect(exportGuarded(userQuoted, "projects/actions.ts#createProject")).toBe(false);
   });
 
   // Action 파일은 아래 export 단위 검사가 맡는다 — 파일 단위로 보면 `invite/actions.ts`처럼 export가
@@ -227,11 +250,7 @@ describe("서버 진입점", () => {
         const body = file.source.slice(mark.at, marks[i + 1]?.at ?? file.source.length);
         const id = `${file.path}#${mark.name}`;
         if (EXEMPT_ACTIONS.has(id)) continue;
-        // ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프 Action이
-        // 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
-        const guarded = PROJECT_GUARDS.some((g) => body.includes(g)) ||
-          (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(body));
-        if (!guarded) unguarded.push(id);
+        if (!exportGuarded(body, id)) unguarded.push(id);
       }
     }
     expect(unguarded).toEqual([]);
@@ -256,7 +275,8 @@ describe("서버 진입점", () => {
     const id = "projects/[slug]/settings/actions.ts#updateThing";
     expect(USER_SCOPED_ACTIONS.has(id)).toBe(false);
     const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
-    expect(accepted.some((g) => source.includes(g))).toBe(false);
+    expect(exportGuarded(source, id)).toBe(false);
+    expect(accepted.some((g) => source.includes(`${g}(`))).toBe(false);
   });
 
   /**
@@ -598,13 +618,22 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(PENDING_QUERY_KEYS.filter((key) => ACCEPTED.includes(key))).toEqual([]);
   });
 
+  // 주석을 벗기고 센다 (POSTMORTEM 2026-09-18) — 페이지 주석이 `searchParams`를 설명하는 일이 흔하다.
+  const readsSearchParams = (source: string): boolean => stripComments(source).includes("searchParams");
+
+  it("수신 판정은 주석 속 `searchParams` 언급을 읽기로 세지 않는다", () => {
+    const page = "export default async function Page() {\n  // searchParams는 안 읽는다\n  return null;\n}";
+    expect(readsSearchParams(page)).toBe(false);
+    expect(readsSearchParams(page.replace("Page()", "Page({ searchParams }: Props)"))).toBe(true);
+  });
+
   it("보낸 쿼리를 대상 페이지가 읽는다", () => {
     const unread: string[] = [];
     for (const emit of EMITTED) {
       const page = PAGES.find((p) => p.shape === emit.target);
       // 대상이 이 앱의 페이지가 아니면(외부 URL·API) 이 검사의 대상이 아니다.
       if (page === undefined) continue;
-      if (!page.source.includes("searchParams")) {
+      if (!readsSearchParams(page.source)) {
         unread.push(`${emit.from} → ${emit.target}?${emit.key}= (${page.path}가 searchParams를 안 읽는다)`);
       }
     }
