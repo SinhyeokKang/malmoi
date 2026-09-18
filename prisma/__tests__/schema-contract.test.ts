@@ -180,7 +180,7 @@ describe("테넌트 모델 — ProjectMember · ProjectInvitation", () => {
 
   it("ProjectInvitation의 (projectId, email)이 **unique가 아니다** — 재초대를 막으면 안 된다", () => {
     // acceptedAt을 남기는 설계라 수락·만료된 행이 이메일을 점유한다. 멤버를 뺐다가 다시 부르는
-    // 정상 경로가 unique 위반이 된다 (design §5). 판정은 planInvitationAccept가 한다.
+    // 정상 경로가 unique 위반이 된다 (ARCHITECTURE §6.02). 판정은 planInvitationAccept가 한다.
     const body = block("model", "ProjectInvitation");
     expect(body).toContain("@@index([projectId, emailLookup])");
     expect(body).not.toContain("@@unique([projectId, emailLookup])");

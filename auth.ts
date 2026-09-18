@@ -1,5 +1,6 @@
 import { authorizeConnect, withConnect, connectAuthCookies } from "@/lib/account-connect/http";
 import { credentialAdapter } from "@/lib/credentials/adapter";
+import { logCredentialBoundary } from "@/lib/credentials/log";
 import { refreshVerifiedEmail } from "@/lib/credentials/access";
 import { randomBytes } from "node:crypto";
 import NextAuth from "next-auth";
@@ -79,7 +80,7 @@ const google = Google({
  *
  * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
  * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 이메일 기반 자동 병합을 막는다.
- * 로그인 세션의 추가 계정 연결은 safePrismaAdapter가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
+ * 로그인 세션의 추가 계정 연결은 `credentialAdapter`가 펼친 `safePrismaAdapter.linkAccount`가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
  * ARCHITECTURE §6.2.1는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
  * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
  */
@@ -156,7 +157,7 @@ const authConfig = NextAuth(async () => ({
       const revocation = await authorizeRevocation(getPrisma(), account);
       if (revocation !== null) return revocation;
       /**
-       * ⚠️ **회수 판정 뒤, 나머지 전부보다 앞이다** (design 불변식 8b). 확인 왕복은 **기존 계정으로
+       * ⚠️ **회수 판정 뒤, 나머지 전부보다 앞이다** (ARCHITECTURE "계정 병합"). 확인 왕복은 **기존 계정으로
        * 하는 평범한 로그인**이라 여기서 갈라놓지 않으면 그대로 로그인이 되고, 불일치 갈래에서
        * **남의 GitHub으로 로그인된 세션이 이미 만들어진 채** 병합 화면을 보게 된다.
        */
@@ -179,7 +180,7 @@ const authConfig = NextAuth(async () => ({
       try {
         const refresh = await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
         /**
-         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (account-linking design §5.1) — 같은
+         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (ARCHITECTURE "계정 병합") — 같은
          * 주소가 다른 수단으로 이미 등록돼 있으면 `OAuthAccountNotLinked`로 떨어뜨리지 않고
          * 안내 화면으로 보낸다. **여기서 합치지 않는다**: 이 반환은 문자열이라 Auth.js가
          * `handleLoginOrRegister`를 통째로 건너뛰고 `User`·`Account`·`Session`이 0회 쓰인다.
@@ -187,7 +188,7 @@ const authConfig = NextAuth(async () => ({
         if (refresh === "unlinked" && isLoginProvider(provider)) {
           const offer = await loadLinkOffer(getPrisma(), { provider, providerAccountId, verifiedEmail: user.email });
           if (offer.kind === "offer") {
-            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (design 불변식 9).
+            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (ARCHITECTURE §6.4).
             const jar = await cookies();
             const dest = destFromCallbackUrl(
               (jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value,
@@ -197,8 +198,10 @@ const authConfig = NextAuth(async () => ({
             return routes.signInLink(token);
           }
         }
-      } catch {
+      } catch (error) {
         // 장애는 사유를 실어 보낸다 — 그냥 로그인 화면이면 정당한 비로그인과 같은 응답이 된다.
+        // 바깥 경계라 **항상** 한 줄이다 — 안쪽이 일부러 던진 거부도 로그 0줄로 끝나지 않는다 (launch-readiness L5.1).
+        logCredentialBoundary("sign-in", error);
         return routes.signIn({ error: "Unavailable" });
       }
       return true;

@@ -1,6 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
 import { useTransition } from "react";
 
 import { archiveProject, unarchiveProject } from "@/app/(edit)/projects/actions";
@@ -9,7 +8,7 @@ import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/
 import { m } from "@/lib/i18n";
 
 /**
- * 보관 카드 — settings-block **여섯째, 맨 아래** (7단계 — sync-runs design §6.2, DESIGN §6.6).
+ * 보관 카드 — settings-block **여섯째, 맨 아래** (7단계 — PRODUCT §7.9 · DESIGN §6.6).
  *
  * ⚠️ **인라인 결과 Alert가 없다.** 성공하면 Action이 `revalidatePath("/", "layout")`을 부르고 이
  * 화면이 다시 그려지는데, 결과 문구를 여기 두면 **방금 받은 그것이 언마운트되면서 사라진다** —
@@ -83,10 +82,9 @@ export function ArchiveCard({
               href={openPrUrl}
               target="_blank"
               rel="noreferrer"
-              className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
             >
               {m.archive.confirm.openPrLink}
-              <ExternalLink className="size-3" aria-hidden />
             </a>
           </p>
         ) : null}

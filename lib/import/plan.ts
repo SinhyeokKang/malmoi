@@ -2,7 +2,7 @@ import { isAdapterName } from "@/lib/adapters";
 import type { ProjectReadiness } from "@/lib/onboarding/readiness";
 import { isRunActive, STALE_AFTER_SECONDS } from "@/lib/sync/plan";
 
-/** Publish와 같은 값이다 — 경계 판정은 `isRunActive` 하나다 (sync-edit-protection design §4.2). */
+/** Publish와 같은 값이다 — 경계 판정은 `isRunActive` 하나다 (sync-edit-protection — ARCHITECTURE §5.6.1). */
 export const IMPORT_STALE_AFTER_SECONDS = STALE_AFTER_SECONDS;
 
 export function hasActiveImport(startedAt: Date | null, now: Date): boolean {
@@ -19,7 +19,7 @@ export type ImportPlanInput = {
   identity: "ok" | "not-connected" | "repo-replaced";
   repositoryImportToken: string | null; repositoryImportStartedAt: Date | null;
   surfaces: readonly ImportPlanSurface[];
-  /** 진행 중인 Publish(`SyncRun` RUNNING). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다. */
+  /** 진행 중인 Publish(`SyncRun` RUNNING). 껍데기(`lib/import/run.ts`)가 같은 Project 잠금 안에서 읽어 넘긴다. */
   runningSync: { startedAt: Date } | null;
 };
 

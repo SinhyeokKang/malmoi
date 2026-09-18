@@ -1,5 +1,5 @@
 /**
- * 사용자가 입력한 **base 브랜치 이름**의 형식 판정 (translation-ui design §3.13, 6b-3).
+ * 사용자가 입력한 **base 브랜치 이름**의 형식 판정 (DESIGN §6.6, 6b-3).
  *
  * ⚠️ **`isRefSafeSlug`(`lib/pull/ref-slug.ts`)보다 넓다.** 그쪽은 **우리가 만드는** ref
  * (`malmoi-i18n/sync-<slug>`)라 한 세그먼트로 좁혀야 하고, 이쪽은 **남의 리포에 이미 있는** 브랜치라

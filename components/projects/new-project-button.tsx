@@ -23,7 +23,7 @@ export function NewProjectButton({ q }: { q?: string }) {
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
       )}
       onNavigate={(event) => {
-        // Next calls onNavigate only for same-tab navigation, preserving modified clicks.
+        // Next는 같은 탭 이동에서만 onNavigate를 부른다 — 수정 키 클릭(새 탭)은 그대로 둔다.
         event.preventDefault();
         if (!pending) startTransition(() => router.push(href));
       }}

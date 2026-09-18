@@ -5,12 +5,12 @@ import type { AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/ty
 import { makeProbe } from "./detect";
 
 /**
- * 확정은 **파일을 다시 읽어 재검증**한다 (design §3.4). 탐지 결과를 서버에 저장하지 않으므로 클라이언트가
+ * 확정은 **파일을 다시 읽어 재검증**한다 (ARCHITECTURE §3.1). 탐지 결과를 서버에 저장하지 않으므로 클라이언트가
  * 고른 값을 다시 받는데, 그것을 그대로 저장하면 임의의 `pathTemplate`으로 pull이 리포의 아무 파일이나
  * 덮어쓰는 커밋을 만든다 — ARCHITECTURE §6가 `installationId`에 대해 막은 것과 같은 형태다.
  *
  * 자동 후보와 수동 지정이 **한 경로**다. `ts-dict`는 `detect`가 그 디렉터리 `.ts` 최대 8개를 읽어야 매치하므로
- * 이 경로가 아니면 수동 지정이 항상 거부된다 (design §3.5).
+ * 이 경로가 아니면 수동 지정이 항상 거부된다 (ARCHITECTURE §3.1).
  */
 
 /**

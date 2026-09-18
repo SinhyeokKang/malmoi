@@ -5,7 +5,7 @@ import type { Actor } from "@/lib/keys/view";
 import { attentionItems } from "../attention";
 
 /**
- * `Needs your attention` — 세 종을 **한 시간축**에 세운다 (spec §9.1).
+ * `Needs your attention` — 세 종을 **한 시간축**에 세운다 (DESIGN §6.64).
  *
  * ⚠️ **캔버스 `2a`의 행 순서와 어긋나는 것이 의도다.** 캔버스는 파서 → 검토 → 미채움의 **종류 순**
  * 이었고 시간순이면 순서가 달라진다. 로그 카드와 같은 규칙을 쓰는 쪽을 골랐다 — 두 카드가 나란히
@@ -52,7 +52,7 @@ describe("attentionItems — 시간순(최신)", () => {
   });
 
   /**
-   * ⚠️ **에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이다** (design §6.1). 임의 위치를
+   * ⚠️ **에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이다** (ARCHITECTURE §5). 임의 위치를
    * 주면 배포 직후 목록이 흔들리므로 **가장 오래된 것으로 고정한다.**
    */
   it("실패 시각이 없는 옛 행은 가장 오래된 것으로 취급한다", () => {
@@ -126,7 +126,7 @@ describe("attentionItems — 상태가 항목을 덜어낸다", () => {
     expect(items.shown[1]).toMatchObject({ surfaceSlug: "web", reason: "parse-crashed" });
   });
 
-  /** `2d`: 할 수 있는 일이 없다 — 항목 카드가 통째로 `EmptyState`다 (spec §8). */
+  /** `2d`: 할 수 있는 일이 없다 — 항목 카드가 통째로 `EmptyState`다 (DESIGN §6.64). */
   it("보관에서는 항목이 하나도 서지 않는다", () => {
     expect(attentionItems({ ...base, state: "archived" })).toEqual({ shown: [], more: [], count: 0 });
   });
@@ -146,7 +146,7 @@ describe("attentionItems — 상태가 항목을 덜어낸다", () => {
 });
 
 /**
- * ⚠️ **`actorLabel`의 `null`에 걸면 안 걸린다** (spec §9.11) — 그 함수는 못 찾으면 `updatedBy` 원문을
+ * ⚠️ **`actorLabel`의 `null`에 걸면 안 걸린다** (ARCHITECTURE §5) — 그 함수는 못 찾으면 `updatedBy` 원문을
  * 돌려주고, 2026-09-05 이후 행에서 그것은 cuid다. 화면에 cuid가 서는 것을 막는 판정은 **`actors`
  * 맵에 키가 있는지**뿐이다.
  */

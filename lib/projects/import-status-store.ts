@@ -5,7 +5,7 @@ import { importOutcomeFields } from "./import-status";
 import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
 
 /**
- * 임포트 진행·결과의 **쓰기 껍데기** (projects-list design §3.35). 판정은 `./import-status`가 하고
+ * 임포트 진행·결과의 **쓰기 껍데기** (PRODUCT §7.8). 판정은 `./import-status`가 하고
  * 여기는 DB만 안다.
  *
  * ⚠️ **인가는 호출부가 이미 했다** — Route Handler는 토큰으로, Server Action은 `getProjectAccess`로.
@@ -23,7 +23,7 @@ export async function markImportStarted(prisma: PrismaClient, scope: { projectId
 /**
  * 서버 적재가 **아무것도 안 하고 끝났다** — 진행 표시만 거둔다(결과 필드는 건드리지 않는다).
  *
- * CI 적재가 판정 뒤 경합으로 보류됐을 때다(sync-edit-protection design §3). 보류는 실패도 성공도 아니라서
+ * CI 적재가 판정 뒤 경합으로 보류됐을 때다(sync-edit-protection — ARCHITECTURE §5.5.2). 보류는 실패도 성공도 아니라서
  * `finishImportRun`으로 닫으면 마지막 실패·성공 기록이 거짓으로 바뀐다. 안 거두면 300초 "진행 중"이 남는다(POSTMORTEM 2026-09-15).
  * ⚠️ 자기 실행 토큰을 대조한다 — 그 사이 다른 실행의 표시를 뺏지 않는다. 쓰기 실패는 `finishImportRun`과 같은 이유로 삼킨다.
  */
@@ -93,7 +93,7 @@ export async function recordReportedFailure(
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: input.commitAt } }],
     },
     /**
-     * ⚠️ **시각도 함께 쓴다** (project-home design §6.1) — Home의 항목이 세 종을 한 시간축에 세우고,
+     * ⚠️ **시각도 함께 쓴다** (ARCHITECTURE §5) — Home의 항목이 세 종을 한 시간축에 세우고,
      * 그중 파서 실패의 시각이 여기서만 나온다. `lastImportError`만 쓰면 그 항목이 언제나
      * "가장 오래된 것"으로 바닥에 깔린다.
      */

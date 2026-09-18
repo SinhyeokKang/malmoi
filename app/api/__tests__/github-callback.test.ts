@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signState, type StateDest } from "@/lib/github-connect/state";
 
 /**
- * **GitHub이 브라우저를 되돌리는 유일한 진입점** (design §3.1·§7.1). Route Handler인 이유는 호출자가
+ * **GitHub이 브라우저를 되돌리는 유일한 진입점** (ARCHITECTURE §6.4·§6.1). Route Handler인 이유는 호출자가
  * 우리 UI가 아니라 GitHub이기 때문이고, 나가는 쪽은 Server Action이다.
  *
  * 이 파일이 지키는 것 셋:
@@ -200,7 +200,7 @@ describe("사용자가 GitHub에서 취소한 경우", () => {
   });
 });
 
-describe("착지 갈래는 서명된 dest가 정한다 (design §3.6)", () => {
+describe("착지 갈래는 서명된 dest가 정한다 (ARCHITECTURE §6.4)", () => {
   /**
    * 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없다. **갈래가 서명 안에 있어야** 공격자가
    * 착지를 정할 수 없고, 그래서 open redirect 판정이 아예 필요 없다.
@@ -301,6 +301,8 @@ describe("정상 연결", () => {
     // 통째로 넘기면 App 시크릿이 DB에 눕는다 — 껍데기가 필요한 필드만 뽑아야 한다.
     await GET(request({ code: "abc", state: "nonce-1" }));
 
+    // 호출이 안 일어나면 "시크릿이 안 실렸다"가 공허하게 참이다 (launch-readiness L4.4).
+    expect(hoisted.account.create).toHaveBeenCalledTimes(1);
     const [args] = hoisted.account.create.mock.calls[0] ?? [];
     const serialized = JSON.stringify(args?.data ?? {});
     expect(serialized).not.toContain("client-secret");
@@ -333,6 +335,7 @@ describe("이미 연결된 계정", () => {
 
     await GET(request({ code: "abc", state: "nonce-1" }));
 
+    expect(hoisted.account.update).toHaveBeenCalledTimes(1);
     const [args] = hoisted.account.update.mock.calls[0] ?? [];
     expect(Object.keys(args?.data ?? {})).not.toContain("userId");
   });

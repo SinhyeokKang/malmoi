@@ -84,7 +84,7 @@ export type KeyRow = {
   id: string;
   key: string;
   namespace: string;
-  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다 (project-home §9.7). */
+  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다. */
   createdAt: Date;
 
   description?: string | null;
@@ -111,9 +111,26 @@ export function translationState(input: {
   return input.needsReview ? "needsReview" : "translated";
 }
 
+/**
+ * 행에서 로케일 하나의 셀을 꺼낸다 — **`cells`를 직접 인덱싱하지 않는다.**
+ *
+ * ⚠️ **로케일 코드는 남이 정한 키다** (CLAUDE.md 코드 컨벤션이 `Locale.code`를 이름으로 든다).
+ * 리포의 파일명에서 오고 `isPathSafeLocale`은 `constructor`·`toString`·`valueOf`를 통과시킨다 —
+ * `_` 시작만 막으므로 `__proto__`만 걸린다. 그 이름들로 평범한 객체를 인덱싱하면
+ * **`Object.prototype`의 값이 나오고 `cell !== undefined`가 통과한다.**
+ *
+ * ⚠️ **2026-09-18 재현에서 증상이 안 났지만 그것은 방어가 아니라 우연이었다** — 프로토타입에서
+ * 찾아진 값에 `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로
+ * 떨어졌을 뿐이다. `Cell`에 그 이름의 필드가 하나 생기면 끝나는 우연이라, 여기서 끊는다.
+ * 대입 쪽 짝은 `lib/keys/query.ts`의 `Object.create(null)`이다.
+ */
+export function cellAt(row: KeyRow, locale: string): Cell | undefined {
+  return Object.hasOwn(row.cells, locale) ? row.cells[locale] : undefined;
+}
+
 /** 행 + 로케일 → 배지 상태. 셀이 없으면 미번역이다. */
 export function cellState(row: KeyRow, locale: string): TranslationState {
-  const cell = row.cells[locale];
+  const cell = cellAt(row, locale);
   return translationState({
     orphaned: row.orphaned,
     value: cell?.value ?? null,
@@ -130,7 +147,7 @@ export type NamespaceCount = {
 };
 
 /**
- * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (8-4 design §3.1).
+ * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (DESIGN §6.1).
  *
  * ⚠️ **코드 배열이 아니라 이 모양을 받는다.** 폴백이 orphaned를 빼야 하는데 코드만 받으면
  * 그 판정을 호출부가 하게 되고, 그러면 규칙이 화면 코드로 내려간다.
@@ -138,7 +155,7 @@ export type NamespaceCount = {
 export type LocaleOption = { code: string; orphaned: boolean };
 
 /**
- * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — spec Q2).
+ * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — DESIGN §6.1).
  *
  * 로케일이 행이 된 뒤로 "기준 열"이라는 개념에 대응물이 없다. 그 자리를 **선택 집합**이 대신하고
  * 집계·검색·pending 정렬·기본 착지가 전부 이 결과 위에 선다.
@@ -174,7 +191,7 @@ export function parseLocaleSelection(
 }
 
 /**
- * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (design §3.2).
+ * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (DESIGN §6.1).
  *
  * ⚠️ **키 단위로 한 번만 센다.** 로케일마다 세면 집계의 합이 `total`을 넘어 드롭다운의
  * `pending/total`이 1을 넘는다. 우선순위는 `cellState`의 것을 그대로 쓴다
@@ -242,7 +259,7 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
 }
 
 /**
- * 착지할 네임스페이스 — **"남은 일이 있는" 첫 번째다** (design §3.3).
+ * 착지할 네임스페이스 — **"남은 일이 있는" 첫 번째다** (DESIGN §6.1).
  *
  * `compareKeys` 첫 항목(알파벳순)으로 착지하면 이미 다 번역된 사소한 네임스페이스일 수 있고,
  * 그러면 편집자가 열 때마다 직접 찾아야 한다. 903키 프로젝트에서 그 비용이 매번 든다.
@@ -257,7 +274,7 @@ export function defaultNamespace(counts: readonly NamespaceCount[]): string | nu
   // 정렬은 `namespaceCountsFor`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
   const pending = counts.find((c) => c.untranslated + c.needsReview > 0);
   if (pending) return pending.namespace;
-  // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
+  // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (DESIGN §6.1).
   return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
 }
 
@@ -296,7 +313,7 @@ export type RowFilter = {
 /**
  * 툴바의 검색 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
  *
- * ⚠️ **검색 대상을 선택된 로케일로 좁힌다** (8-4 design §3.3). 안 좁히면 `?locales=ko`에서
+ * ⚠️ **검색 대상을 선택된 로케일로 좁힌다.** 안 좁히면 `?locales=ko`에서
  * **fr 값에 맞은 키가 아무 표시 없이 나타난다** — 옛 축에서는 전 로케일이 열로 보여서 어디가
  * 맞았는지 눈에 띄었지만 행 축에서는 그 값이 화면에 없다.
  *
@@ -306,19 +323,19 @@ export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[]
   const needle = filter.q?.trim().toLowerCase() ?? "";
   if (needle === "") return [...rows];
   return rows.filter((row) => {
-    const haystack = [row.key, ...filter.locales.map((code) => row.cells[code]?.value ?? "")];
+    const haystack = [row.key, ...filter.locales.map((code) => cellAt(row, code)?.value ?? "")];
     return haystack.some((text) => text.toLowerCase().includes(needle));
   });
 }
 
 /**
- * 파이프라인 구간으로 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (project-home §9.7).
+ * 파이프라인 구간으로 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (DESIGN §6.64).
  *
  * ⚠️ **술어를 새로 쓰지 않는다.** `unsent`는 `isUnpublished`, `review`·`untranslated`는
  * `cellState`다 — 카드의 수와 표의 행이 다른 규칙을 쓰면 "24라더니 9개뿐"이 **좁힘 때문인지
  * 정의 차이 때문인지** 화면에서 구별되지 않는다.
  *
- * ⚠️ **`new`만 로케일을 안 본다** — 단위가 셀이 아니라 키다 (spec §7.1). 나머지 셋은 **보고 있는
+ * ⚠️ **`new`만 로케일을 안 본다** — 단위가 셀이 아니라 키다. 나머지 셋은 **보고 있는
  * 로케일**에서만 판정한다: 안 보이는 로케일 때문에 걸린 행은 왜 걸렸는지 화면에 근거가 없다.
  *
  * ⚠️ **orphaned 키는 어느 구간도 아니다** — 편집이 막혀 있어 일이 아니고, `cellState`가 그것을
@@ -335,7 +352,7 @@ export function filterByState(
     if (ctx.state === "new") return ctx.lastPulledAt === null || row.createdAt > ctx.lastPulledAt;
     return ctx.locales.some((code) => {
       if (ctx.state === "unsent") {
-        const cell = row.cells[code];
+        const cell = cellAt(row, code);
         return cell !== undefined && isUnpublished(cell);
       }
       const state = cellState(row, code);
@@ -345,7 +362,7 @@ export function filterByState(
 }
 
 /**
- * 섹션 안에서 **남은 일이 있는 키를 위로** 올린다 (8-4 — spec Q3).
+ * 섹션 안에서 **남은 일이 있는 키를 위로** 올린다 (8-4 — DESIGN §6.1).
  *
  * 상태 필터를 뺀 대가를 갚는 유일한 수단이다. 크롬 확장 `messages.json`은 구분자가 없어
  * 네임스페이스가 `_root` 하나이고(그게 이 도구의 1차 타깃이다), 그 프로젝트에서는 `pending/total`이
@@ -373,7 +390,7 @@ export function pendingFirst(rows: readonly KeyRow[], locales: readonly string[]
 export type NamespaceGroup = { namespace: string; rows: KeyRow[] };
 
 /**
- * 전체 보기의 섹션 배열 (8-4 design §3.6).
+ * 전체 보기의 섹션 배열 (DESIGN §6.1).
  *
  * ⚠️ **순서를 `counts`에서 받는다.** `rows`만 보면 순서의 출처가 `loadKeys`의
  * `orderBy: { key: "asc" }`(Postgres collation)인데 집계가 쓰는 것은 `compareKeys`

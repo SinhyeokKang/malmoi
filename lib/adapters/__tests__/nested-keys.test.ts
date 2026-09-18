@@ -109,6 +109,11 @@ describe("접두 충돌은 조용히 삼키지 않고 에러로 보고한다 (si
       entries: r1.locales[0]!.entries,
     })!;
     const r2 = jsonCatalog.read(fmt({ nested: true }), [f("locales/en.json", w)]);
+    // **제목의 축이다** (launch-readiness L4.3) — 전에는 아래 바이트 고정점만 봐서, 2차 read가 무엇을 잃어도
+    // 두 write가 같으면 green이었다. 얕은 쪽 하나만 빠지고 나머지는 키·값 그대로여야 한다.
+    const semantic = (r: typeof r1) => r.locales[0]!.entries.map((e) => [e.key, e.message]);
+    expect(semantic(r2)).toEqual(semantic(r1).filter(([key]) => key !== "grp.task.database"));
+    expect(semantic(r2)).toEqual([["grp.task.database.index", "깊은쪽"]]);
     const w2 = jsonCatalog.write(fmt({ nested: true }), {
       locale: "en",
       entries: r2.locales[0]!.entries,

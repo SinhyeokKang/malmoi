@@ -192,7 +192,7 @@ describe("updateBaseLocale — 저장", () => {
   it("선언에만 쓴다 — 현실은 push가 소유한다", async () => {
     expect(await updateBaseLocale({ surfaceSlug: "default", slug: "alpha", baseLocale: "ko" })).toEqual({ ok: true });
     expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBe("ko");
-    // ⚠️ **현실은 그대로다.** 바꾸면 pull이 옛 base의 원문을 새 base 파일에 실어 보낸다 (design §3.13).
+    // ⚠️ **현실은 그대로다.** 바꾸면 pull이 옛 base의 원문을 새 base 파일에 실어 보낸다 (ARCHITECTURE §5.5.5).
     expect(alpha().baseLocale).toBe("en");
   });
 
@@ -228,7 +228,7 @@ describe("updateBaseLocale — 저장", () => {
   });
 
   /**
-   * **되돌리는 경로다** (design §3.13: "B로 선언했다가 A로 다시 저장하면 대기가 사라진다").
+   * **되돌리는 경로다** (DESIGN §6.66: "B로 선언했다가 A로 다시 저장하면 대기가 사라진다").
    * 별도 취소 버튼을 두지 않는 근거가 이 케이스다.
    */
   it("대기 중에 현재 base를 다시 저장하면 선언이 비워진다 — 취소 버튼이 없는 이유다", async () => {

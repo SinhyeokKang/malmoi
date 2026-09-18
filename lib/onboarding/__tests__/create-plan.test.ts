@@ -5,7 +5,7 @@ import type { RepoConnect } from "@/lib/github-connect/connect-plan";
 import { planProjectCreate } from "../create-plan";
 
 /**
- * 프로젝트 생성 가부가 값으로 판정되는 한 자리 (design §5). 3중 검증(`planRepoConnect`)의 결과를 받아
+ * 프로젝트 생성 가부가 값으로 판정되는 한 자리 (ARCHITECTURE §3.1). 3중 검증(`planRepoConnect`)의 결과를 받아
  * **그대로 흘리고**, 그 위에 OWNER 개수 제한과 slug 충돌을 얹는다.
  *
  * ⚠️ **`unavailable`은 `unavailable`로 그대로 나간다.** 조회 실패를 거부로 접으면 사용자가 있는 권한을
@@ -33,7 +33,7 @@ describe("planProjectCreate — 3중 검증 결과가 그대로 흘러나온다"
   });
 });
 
-describe("planProjectCreate — OWNER 개수 제한 (spec §4: 자율 가입의 대가)", () => {
+describe("planProjectCreate — OWNER 개수 제한 (PRODUCT §4.2: 자율 가입의 대가)", () => {
   it("OWNER 행이 limit개면 `limit-reached`다", () => {
     expect(planProjectCreate({ ...base, ownerCount: 3 })).toEqual({ status: "limit-reached" });
   });

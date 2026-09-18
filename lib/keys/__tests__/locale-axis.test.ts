@@ -11,7 +11,7 @@ import {
 } from "../view";
 
 /**
- * 로케일이 **행**이 된 뒤의 순수 판정 (8-4 T1 — translation-ui/design §3).
+ * 로케일이 **행**이 된 뒤의 순수 판정 (8-4 T1 — DESIGN §6.1).
  *
  * 옛 축(로케일이 열)에서는 "기준 로케일 하나"가 집계·필터·착지를 정했다. 행이 되면 그 개념에
  * 대응물이 없으므로 **선택된 로케일 집합**이 그 자리를 대신하고, 아래 다섯이 그 집합 위에 선다.
@@ -79,7 +79,10 @@ describe("parseLocaleSelection — `?locales=`의 해석", () => {
     expect(parseLocaleSelection("zz,yy", LOCALES)).toEqual(["en", "ko", "ja"]);
   });
 
-  /** ⚠️ 주소창 값이라 객체 조회가 아니라 배열 `includes`다 (`parseProjectFilter`와 같은 관용구). */
+  /**
+   * ⚠️ 주소창 값이라 객체 조회가 아니라 배열 `includes`다 — 조회 쪽의 프로토타입 차단이고,
+   * 대입 쪽의 짝은 `lib/search-params.ts`의 `Object.create(null)`이다 (CLAUDE.md 코드 컨벤션).
+   */
   it("`__proto__`가 갈래로 새지 않는다", () => {
     expect(parseLocaleSelection("__proto__", LOCALES)).toEqual(["en", "ko", "ja"]);
     expect(parseLocaleSelection("constructor", LOCALES)).toEqual(["en", "ko", "ja"]);
@@ -168,7 +171,7 @@ describe("filterRows — 검색의 대상이 선택된 로케일이다", () => {
   });
 });
 
-describe("pendingFirst — 상태 필터를 뺀 대가를 갚는다 (spec Q3)", () => {
+describe("pendingFirst — 상태 필터를 뺀 대가를 갚는다 (DESIGN §6.1)", () => {
   it("남은 일이 있는 키가 위로 온다", () => {
     const rows = [
       row({ key: "a.done", cells: { ko: cell({ value: "값" }) } }),
@@ -244,7 +247,7 @@ describe("groupByNamespace — `?ns=*`의 섹션", () => {
 });
 
 /**
- * 파이프라인 구간으로 좁힌다 (project-home §9.7) — Home의 카운트 카드 넷이 여기로 착지한다.
+ * 파이프라인 구간으로 좁힌다 (DESIGN §6.64) — Home의 카운트 카드 넷이 여기로 착지한다.
  *
  * ⚠️ **카드의 수와 정확히 같지 않을 수 있다.** 합계는 프로젝트 전체이고 이 좁힘은 한 표면이다 —
  * 그 사실은 카드의 보조 줄이 미리 말한다. 여기서 재는 것은 **구간의 정의가 카드의 술어와 같은가**다.

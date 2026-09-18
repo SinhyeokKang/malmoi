@@ -13,17 +13,17 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * 멤버 관리 (6b-2 — design §3.9 · user-stories §5).
+ * 멤버 관리 (6b-2 — DESIGN §6.65).
  *
  * ⚠️ **게이트가 `translation:write`다, `member:manage`가 아니다.** EDITOR도 목록을 본다 — "누가 이
- * 프로젝트에 있나"는 번역자에게도 필요한 정보이고, user-stories §5가 그렇게 결정했다. 컨트롤만
+ * 프로젝트에 있나"는 번역자에게도 필요한 정보이고, DESIGN §6.65가 그렇게 결정했다. 컨트롤만
  * 역할로 갈리고 **판정은 Action이 `member:manage`로** 한다. 이것이 별도 라우트를 만든 실제 이유다:
- * `/settings`는 `project:settings` 뒤라 EDITOR가 아예 못 들어온다 (spec §2.3).
+ * `/settings`는 `project:settings` 뒤라 EDITOR가 아예 못 들어온다 (PRODUCT §3).
  *
  * ⚠️ **최상단에서 던진다.** 조건부 렌더는 차단이 아니다 — App Router가 레이아웃과 페이지를 병렬로
  * 렌더해 페이지가 이미 실행되고 RSC 페이로드에 데이터가 실린다 (POSTMORTEM 2026-08-31, 실측 1.3MB).
  *
- * ⚠️ **`?e=` 슬롯이 없다.** design §3.9가 "global Alert 슬롯이 와이어에 있어야 한다"고 요구했지만
+ * ⚠️ **`?e=` 슬롯이 없다.** 옛 기능 문서가 "global Alert 슬롯이 와이어에 있어야 한다"고 요구했지만
  * **그 쿼리를 보내는 자리를 설계가 만들지 않았다** — `requireProjectAccess`의 거부는 `/projects?e=`로
  * 가고, `changeMember`·`revokeInvitation`의 실패는 **행 옆 인라인**이다(어느 행이 거부됐는지가
  * 정보이므로 상단으로 올리면 그것을 잃는다). 읽는 쪽만 두면 도달 불가 코드이고, 그것을 두지 않는
@@ -58,7 +58,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">

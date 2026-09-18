@@ -1,4 +1,4 @@
-import { ExternalLink, History } from "lucide-react";
+import { History } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
@@ -15,9 +15,10 @@ import { routes } from "@/lib/routes";
 import { loadSyncRuns } from "@/lib/sync/query";
 import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
+import { utcMinute } from "@/lib/utc-time";
 
 /**
- * sync 이력 (7단계 — sync-runs design §6). PRODUCT §7.7 라우트 표의 마지막 칸이다.
+ * sync 이력 (7단계 — DESIGN §6.68). PRODUCT §7.7 라우트 표의 마지막 칸이다.
  *
  * ⚠️ **게이트가 `translation:write`다, OWNER 전용이 아니다.** "내가 보낸 게 실제로 갔나"를 묻는
  * 사람이 번역자이고, `project:settings` 뒤에 두면 그 질문에 답할 화면이 그 사람에게 없다.
@@ -33,18 +34,6 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 진행 중에만"이라는 규칙 위에 타이머가 하나 더 붙는다. 갱신은 재방문이다.
  */
 type Search = Raw<"cursor">;
-
-/**
- * `2026-09-10 12:00 UTC`.
- *
- * ⚠️ **UTC라고 **말한다**.** 서버 렌더라 `toLocaleString`은 서버의 타임존(Vercel은 UTC)을 쓸 뿐
- * 보는 사람의 것이 아니고, 표시를 진짜 로컬로 하려면 클라이언트 컴포넌트가 하나 붙는다. 라벨 없이
- * 내면 사용자가 자기 시간대로 읽고 **밤 사이 실행의 날짜를 하루 어긋나게** 센다.
- * 정확한 값은 `dateTime` 속성이 들고 있고, 상대 시각이 그 아래 보조로 붙는다.
- */
-function utcMinute(at: Date): string {
-  return `${at.toISOString().replace("T", " ").slice(0, 16)} UTC`;
-}
 
 export default async function LogsPage({
   params,
@@ -75,7 +64,7 @@ export default async function LogsPage({
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader description={m.logs.description}>
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
       </PanelHeader>
@@ -130,10 +119,9 @@ export default async function LogsPage({
                             href={row.prUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+                            className="focus-visible:ring-ring text-xs text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
                           >
                             {m.translations.publish.viewLink}
-                            <ExternalLink className="size-3" aria-hidden />
                           </a>
                         </p>
                       )}
@@ -153,7 +141,7 @@ export default async function LogsPage({
         )}
 
         {/*
-          ⚠️ **페이지네이션이 링크 하나다** (design 결정 14) — 클라이언트 상태가 0이라 뒤로 가기·공유·
+          ⚠️ **페이지네이션이 링크 하나다** (DESIGN §6.68) — 클라이언트 상태가 0이라 뒤로 가기·공유·
           새로고침이 전부 그냥 된다. `SYNC_LOG_PAGE_SIZE`는 조회와 화면이 같은 상수를 본다.
         */}
         {page.nextCursor !== null && (

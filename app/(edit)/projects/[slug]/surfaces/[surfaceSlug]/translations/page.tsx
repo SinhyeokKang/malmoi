@@ -3,7 +3,6 @@ import { syncBranchFor } from "@/lib/pull/trigger";
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
-import { PanelBody } from "@/components/shell/content-panel";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { Announcer } from "@/components/translations/announcer";
 import { TranslationsHeader } from "@/components/translations/header";
@@ -15,7 +14,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
-import { countUnpublished, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
+import { countUnpublishedBySurface, loadActors, loadKeys, loadProject } from "@/lib/keys/query";
 import {
   collectActorIds, filterByState, filterRows, groupByNamespace, namespaceCountsFor,
   parseLocaleSelection, pendingFirst, resolveNamespace,
@@ -29,7 +28,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  *
  * 로케일이 열이던 시절에는 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다. 행이 축이면
  * 그 문제가 사라지는 대신 세로가 로케일 배수로 는다 — ⚠️ **다만 `<Textarea>` 수는 그대로다**
- * (903키 × 3로케일 = 2,709). 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다 (design §5).
+ * (903키 × 3로케일 = 2,709). 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다 (ARCHITECTURE §1.95).
  *
  * **base 로케일도 편집 가능하다** — 고정된 것은 키뿐이다. 화면의 base 값은 `StringKey.sourceText`가
  * 아니라 `cells[base]`다. ⚠️ **`sourceText`는 이 화면에 실리지 않는다** (2026-09-04 audit #47).
@@ -45,7 +44,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (설정 화면과 같은 이유).
  * 이 화면의 [Send changes]가 `triggerPullAction`을 부르고 그것이 로케일 파일마다 blob을 읽는다.
  *
- * ⚠️ **`STALE_AFTER_SECONDS`(300)의 전제가 이 줄이다** (7단계 — sync-runs design §1.4). 없으면 이
+ * ⚠️ **`STALE_AFTER_SECONDS`(300)의 전제가 이 줄이다** (7단계 — ARCHITECTURE §5.6.2). 없으면 이
  * 세그먼트가 프로젝트 기본값(300)을 쓰고, 그러면 stale 판정 창과 실행 상한이 **같아져** 정상 실행이
  * 스스로를 stale로 보고 두 번째 실행을 허용한다.
  */
@@ -102,7 +101,7 @@ export default async function TranslationsPage({
 
   /**
    * 보일 로케일. **폴백은 "살아 있는 로케일 전체"다** — orphaned를 섞으면 그 빈 셀이 전부
-   * 미번역으로 잡혀 기본 착지가 행이 전부 disabled인 네임스페이스로 간다 (design §3.1).
+   * 미번역으로 잡혀 기본 착지가 행이 전부 disabled인 네임스페이스로 간다 (ARCHITECTURE §5.5.16).
    */
   const fallback = parseLocaleSelection(undefined, columns);
   const selected = parseLocaleSelection(search.locales, columns);
@@ -142,7 +141,7 @@ export default async function TranslationsPage({
   const narrowed = state === undefined ? scoped : filterByState(scoped, { state, locales: selected, lastPulledAt: project.lastPulledAt });
   const filtered = selection.kind === "none" ? [] : filterRows(narrowed, { locales: selected, q: search.q });
   /**
-   * 섹션 안에서 남은 일이 위로 온다 (spec Q3 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
+   * 섹션 안에서 남은 일이 위로 온다 (DESIGN §6.1 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
    * **분할이 안정적이라** 그룹 안의 상대 순서가 그대로 보존되고, 그래서 그룹핑 전에 한 번만 한다.
    */
   const visible = pendingFirst(filtered, selected);
@@ -155,13 +154,15 @@ export default async function TranslationsPage({
    * ⚠️ **미배포 집계와 병렬이다** — 위에서 `loadKeys`를 떼어내며 라운드가 하나 늘 뻔했다. 둘은
    * 서로를 안 물므로 같은 라운드에 보낸다.
    */
-  const [unpublished, actors] = await Promise.all([
-    countUnpublished(prisma, project.id),
+  const [unsentBySurface, actors] = await Promise.all([
+    countUnpublishedBySurface(prisma, project.id),
     loadActors(prisma, collectActorIds(visible)),
   ]);
+  // 전체 미배포 수는 표면별 합이다 — 둘 다 보관 표면을 빼는 같은 술어라 따로 세지 않는다 (launch-readiness L7.2).
+  const unpublished = [...unsentBySurface.values()].reduce((sum, n) => sum + n, 0);
 
   /**
-   * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (design §2).
+   * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (PRODUCT §7.7).
    *
    * 명시적 선택은 목적 표면의 전체 로케일과 같아도 보존한다 — 왕복 전환에서 선택이 넓어지면 안 된다.
    */
@@ -182,8 +183,7 @@ export default async function TranslationsPage({
    * 것이지 사용자가 고른 필터가 아니다 (6a T2).
    */
   const chipQuery: TranslationsQuery = { ...query, ns: search.ns === undefined ? undefined : query.ns };
-  const surfaces = await Promise.all(project.surfaces.map(async s => ({ slug: s.slug, pathTemplate: s.pathTemplate,
-    unpublished: await countUnpublished(prisma, projectId, s.id) })));
+  const surfaces = project.surfaces.map(s => ({ slug: s.slug, pathTemplate: s.pathTemplate, unpublished: unsentBySurface.get(s.id) ?? 0 }));
 
   return (
     // ⚠️ **무조건 렌더한다** — Publish 결과 Alert가 이 안에 있고, 조건부 분기에 두면
@@ -236,7 +236,7 @@ export default async function TranslationsPage({
           />
         </div>
       ) : (
-        /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
+        /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (DESIGN §7). */
         <Announcer>
           <div>
             {groups.map((group) => (

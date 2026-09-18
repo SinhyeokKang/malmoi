@@ -31,7 +31,7 @@ import { RepoStep } from "./steps/repo";
 import { ResultStep } from "./steps/result";
 
 /**
- * 새 프로젝트 온보딩 모달의 **상태 컨테이너** (new-project-modal design §2·§9).
+ * 새 프로젝트 온보딩 모달의 **상태 컨테이너** (DESIGN §6.7).
  *
  * ⚠️ **중간 상태를 서버에 저장하지 않는다.** 새로고침하면 ①부터다 — 그래서 ④를 지난 뒤에는
  * "프로젝트 행이 이미 있다"를 문구가 말한다.
@@ -203,7 +203,7 @@ export function NewProject({
     setSlugTaken(false);
   }
 
-  /** ①→② — **먼저 넘어간 뒤** 그 안이 스켈레톤으로 찬다 (design §4). */
+  /** ①→② — **먼저 넘어간 뒤** 그 안이 스켈레톤으로 찬다 (DESIGN §6.7). */
   function detect() {
     if (repo === undefined) return;
     const request = ++detectRequest.current;
@@ -263,7 +263,7 @@ export function NewProject({
     );
   }
 
-  /** ②의 언어 전환 — detect가 든 셋 밖은 누를 때 받는다 (design §3.4). */
+  /** ②의 언어 전환 — detect가 든 셋 밖은 누를 때 받는다 (DESIGN §6.7). */
   function chooseLocale(code: string) {
     setLocale(code);
     const key = sampleKey(code);
@@ -362,7 +362,7 @@ export function NewProject({
     return () => { active = false; clearTimeout(timer); };
   }, [step, usingManual, repo, branchValue, manual.adapter, manual.pathTemplate, manual.baseLocale]);
 
-  /** ②→③ — 이름·주소의 **제안**을 채운다. 지우는 선행 상태가 없다 (design §9). */
+  /** ②→③ — 이름·주소의 **제안**을 채운다. 지우는 선행 상태가 없다 (DESIGN §6.7). */
   function toNaming() {
     if (repo === undefined) return;
     if (name === "") setName(repo.repo);
@@ -441,7 +441,7 @@ export function NewProject({
       nextArrow={step !== 3 && step !== 4}
       nextDisabled={!nextEnabled(step, state)}
       // ⚠️ **③→④만 [Next]가 로딩이다** — 예외 I가 ③에 머물러야 하므로 미리 넘어갈 수 없다.
-      // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (design §4).
+      // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (DESIGN §6.7).
       nextPending={step === 3 && pending}
       showBack={step === 2 || step === 3}
       bodyDirection={step === 2 ? "row" : "column"}

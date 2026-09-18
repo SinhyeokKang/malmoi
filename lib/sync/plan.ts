@@ -1,4 +1,4 @@
-import { httpStatus } from "@/lib/github-connect/health";
+import { httpStatus } from "@/lib/failure";
 import { classifyFailure } from "@/lib/failure";
 
 import type { PullResult } from "@/lib/pull/run";
@@ -16,7 +16,7 @@ import type { PullResult } from "@/lib/pull/run";
 
 /**
  * 수동 Publish의 최소 간격. **"리포에 쓴 뒤 쉬는 간격"이지 "시작 간격"이 아니다** — 그래서
- * 기준이 직전 실행의 `finishedAt`이고, 실패한 실행은 세지 않는다 (design 결정 7).
+ * 기준이 직전 실행의 `finishedAt`이고, 실패한 실행은 세지 않는다 (ARCHITECTURE §5.6.2).
  */
 export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
 
@@ -24,14 +24,14 @@ export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
  * 이보다 오래된 `RUNNING` 행은 죽은 프로세스가 남긴 것으로 본다.
  *
  * ⚠️ **`maxDuration`(60초)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이 스스로를 stale로 보고**
- * 두 번째 실행을 허용한다 (design §1.4). 그 전제가 수동 경로에서 서려면 번역 페이지가
+ * 두 번째 실행을 허용한다 (ARCHITECTURE §5.6.2). 그 전제가 수동 경로에서 서려면 번역 페이지가
  * `maxDuration = 60`을 선언해야 한다 — 없으면 프로젝트 기본값(300)이라 이 상수와 같아진다.
  */
 export const STALE_AFTER_SECONDS = 300;
 
 /**
  * 실행 표시가 아직 살아 있는가. **Publish와 수동 Sync(`lib/import/plan.ts`의 `hasActiveImport`)가 이 하나를 쓴다** —
- * 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 창에서 둘이 동시에 돈다 (sync-edit-protection design §4.2).
+ * 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 창에서 둘이 동시에 돈다 (sync-edit-protection — ARCHITECTURE §5.6.1).
  * 경계 정각은 아직 진행 중이다 — 진행 중인 실행을 뺏지 않는다.
  *
  * ⚠️ 방향이 이쪽이다 — `lib/import/plan.ts`는 `@/lib/adapters`(ts-morph)를 물어 이 모듈이 그쪽을 import하면 안 된다.
@@ -52,7 +52,7 @@ export const SYNC_LOG_PAGE_SIZE = 20;
  * `lib/pull`의 특정 throw 자리이거나(`lib/pull/__tests__/error-codes.test.ts`가 양방향으로 고정한다)
  * 껍데기가 만드는 것(`stale`)이다.
  *
- * ⚠️ **없앤 것과 이유** (design §1.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
+ * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
  * 아니다) · `app-uninstalled`/`base-branch-missing`(같은 한 문장에서 나와 가를 수 없다 →
  * `base-unreadable` 하나) · `repo-unreachable`(status 판독 없이 못 만든다 → `github-error`).
  */
@@ -102,7 +102,7 @@ export type SyncStart =
  *
  * @param running `status = RUNNING`인 최신 행. 없으면 `null`.
  * @param lastSettled `status ∈ {SUCCEEDED, SKIPPED}`인 최신 행. **FAILED는 호출부가 `null`로 준다** —
- *   제한의 목적은 "리포에 두 번 쓰기" 방지이지 재시도 억제가 아니다 (design 결정 7).
+ *   제한의 목적은 "리포에 두 번 쓰기" 방지이지 재시도 억제가 아니다 (ARCHITECTURE §5.6.2).
  */
 export function planSyncStart(input: {
   now: Date;
@@ -111,7 +111,8 @@ export function planSyncStart(input: {
   trigger: SyncTriggerKind;
   /**
    * 진행 중인 수동 Sync(`Project.repositoryImportStartedAt`). Sync가 리포 값으로 덮는 중에 Publish가 스냅샷을 뜨면
-   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection design §4.2). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다.
+   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection — ARCHITECTURE §5.6.1).
+   * 껍데기(`lib/sync/run.ts`)가 같은 Project 잠금 안에서 읽어 넘긴다.
    */
   activeImport: { startedAt: Date } | null;
 }): SyncStart {

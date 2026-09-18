@@ -6,7 +6,7 @@ import { hashInviteToken } from "@/lib/auth/invitation";
 import { beginLink, challengeTokenHash, finishLink, loadLinkOffer } from "../store";
 import { challengeIdentifier } from "../policy";
 
-/** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (design 불변식 4). */
+/** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (ARCHITECTURE "계정 병합"). */
 it("URL 토큰은 초대 토큰과 같은 해시 규칙을 쓴다", () => {
   expect(challengeTokenHash("raw-challenge")).toBe(hashInviteToken("raw-challenge"));
   expect(challengeTokenHash("raw-challenge")).not.toBe("raw-challenge");
@@ -139,4 +139,24 @@ it("조회는 새 Account일 때만 이메일을 본다 — 그 사용자의 수
   // 빈 이메일은 조회 없이 거부다 — 이메일이 같을 때만 병합한다.
   expect(offer).toEqual({ kind: "reject" });
   expect(findMany).not.toHaveBeenCalled();
+});
+
+// 장애가 null·"unavailable"로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
+it("DB 장애는 분류 한 줄을 남기고 접힌다, 성공은 0줄", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const { db } = fixture();
+    expect(await beginLink(db, challenge)).not.toBeNull();
+    expect((await finishLink(db, { challengeToken: TOKEN, confirming })).outcome).toBe("linked");
+    expect(log).not.toHaveBeenCalled();
+    const broken = { $transaction: vi.fn().mockRejectedValue(new Error("secret row")) } as unknown as PrismaClient;
+    expect(await beginLink(broken, challenge)).toBeNull();
+    expect((await finishLink(broken, { challengeToken: TOKEN, confirming })).outcome).toBe("unavailable");
+    expect(log.mock.calls.map((c) => String(c[0]))).toEqual([
+      expect.stringMatching(/^\[login-link\] \w{8} begin: Error$/),
+      expect.stringMatching(/^\[login-link\] \w{8} finish: Error$/),
+    ]);
+  } finally {
+    log.mockRestore();
+  }
 });

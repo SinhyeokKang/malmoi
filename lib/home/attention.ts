@@ -5,7 +5,7 @@ import { failing } from "@/lib/projects/list";
 import type { HomeState } from "./state";
 
 /**
- * `Needs your attention` — 세 종을 **한 시간축**에 세운다 (spec §9.1 · design §3.3).
+ * `Needs your attention` — 세 종을 **한 시간축**에 세운다 (DESIGN §6.64 · ARCHITECTURE §5).
  *
  * ⚠️ **캔버스 `2a`의 행 순서와 어긋나는 것이 의도다.** 캔버스는 종류 순(파서 → 검토 → 미채움)이고
  * 이쪽은 시간순이다 — 로그 카드가 바로 옆에 서는데 두 카드의 정렬 규칙이 다르면 사용자가 어느 쪽을
@@ -21,7 +21,7 @@ const CAP = 5;
 export type AttentionItem =
   /**
    * ⚠️ **로케일을 모른다** — `lastImportError`가 표면 단위 컬럼이다. 캔버스의 `{surface} · {locale} file`
-   * 에서 문장을 **표면까지로 낮춘다** (design §3.3).
+   * 에서 문장을 **표면까지로 낮춘다.**
    */
   | { kind: "import_failed"; at: Date | null; surfaceSlug: string; reason: ImportFailureCode }
   | { kind: "review"; at: Date; surfaceSlug: string; code: string; name: string; count: number; who: string | null }
@@ -29,7 +29,7 @@ export type AttentionItem =
 
 export type AttentionList = {
   shown: AttentionItem[];
-  /** `<details>` 안에 접히는 나머지. **클라이언트 상태가 0이다** (spec §9.9). */
+  /** `<details>` 안에 접히는 나머지. **클라이언트 상태가 0이다** (DESIGN §6.64). */
   more: AttentionItem[];
   /** 머리의 pill. 상한 5까지만 센다 — 세지 않은 것을 수로 말하지 않는다. */
   count: number;
@@ -45,7 +45,7 @@ export function attentionItems(input: {
   /** `2b`에서 배너가 지목한 표면. 그 하나만 목록에서 빠진다 — 나머지 실패는 남는다. */
   bannerSurface?: string | null;
 }): AttentionList {
-  // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (spec §8).
+  // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (DESIGN §6.64).
   if (input.state === "archived") return { shown: [], more: [], count: 0 };
 
   const items: AttentionItem[] = [];
@@ -74,7 +74,7 @@ export function attentionItems(input: {
 }
 
 /**
- * ⚠️ **`actorLabel`의 `null`에 걸면 안 걸린다** (spec §9.11). 그 함수는 못 찾으면 `updatedBy` 원문을
+ * ⚠️ **`actorLabel`의 `null`에 걸면 안 걸린다** (ARCHITECTURE §5). 그 함수는 못 찾으면 `updatedBy` 원문을
  * 돌려주고 2026-09-05 이후 행에서 그것은 cuid다 — 화면에 cuid가 서는 것을 막는 판정은 **맵에 키가
  * 있는지**뿐이다. 없으면 `— last edited by …` 절을 통째로 뺀다.
  */
@@ -84,7 +84,7 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
 }
 
 /**
- * ⚠️ **시각이 없는 항목은 가장 오래된 것이다** (design §6.1). 에러는 있는데 `lastImportFailedAt`이
+ * ⚠️ **시각이 없는 항목은 가장 오래된 것이다** (ARCHITECTURE §5). 에러는 있는데 `lastImportFailedAt`이
  * `null`인 행은 마이그레이션 이전 행뿐이고, 임의 위치를 주면 배포 직후 목록이 흔들린다.
  *
  * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을

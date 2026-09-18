@@ -13,7 +13,7 @@ import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 
 /**
- * 기준 브랜치 (6b-3 — design §3.13. **6b-5가 기준 언어 필드를 `/projects/:slug/locales`로 옮겼다** —
+ * 기준 브랜치 (6b-3 — DESIGN §6.6. **6b-5가 기준 언어 필드를 `/projects/:slug/locales`로 옮겼다** —
  * PRODUCT §7.7 결정 4).
  *
  * ⚠️ **여기서 선언 컬럼을 건드리지 않는다.** 두 필드가 한 폼이던 동안, 대기 중에 화면을 새로 열면

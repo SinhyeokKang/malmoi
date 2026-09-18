@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * 기준 로케일 변경이 **두 화면에 실제로 배선됐는지** 소스에서 센다 (6b-3 — design §3.13).
+ * 기준 로케일 변경이 **두 화면에 실제로 배선됐는지** 소스에서 센다 (6b-3 — DESIGN §6.66).
  *
  * ⚠️ **6b-5가 자리를 옮겼다** (PRODUCT §7.7 결정 4): 필드와 대기 Alert가 `settings` → `locales`다.
  * 옮기는 이유는 로케일이 지금까지 **번역 표의 열로만** 존재해서 orphaned 로케일이 왜 그렇게 됐고

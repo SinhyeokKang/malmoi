@@ -11,7 +11,7 @@ import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 /**
- * GitHub 계정 연결 — **사용자 수준** (design §3.6). 설정 화면의 같은 버튼과 다른 것은 인가와 착지
+ * GitHub 계정 연결 — **사용자 수준** (ARCHITECTURE §6.4). 설정 화면의 같은 버튼과 다른 것은 인가와 착지
  * 지점 둘뿐이다: 여기는 프로젝트가 없으므로 `requireUser`만 지나고, 왕복 후 `dest`가 가리키는
  * 사용자 축 화면(`/projects/new` 또는 `/account`)으로 돌아온다(서명된 값이 정한다).
  *

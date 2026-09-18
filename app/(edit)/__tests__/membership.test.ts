@@ -1,5 +1,5 @@
 import { encodeInvitationEmail } from "@/lib/credentials/records";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { hashInviteToken } from "@/lib/auth/invitation";
 
@@ -9,7 +9,7 @@ import { createHarness, sessionFor } from "./harness";
  * 초대와 멤버 변경 (ARCHITECTURE §6.02).
  *
  * ⚠️ **초대 수락은 `requireProjectAccess`를 지나지 않는다** — 수락 전엔 멤버가 아니기 때문이다.
- * 그래서 그 Action은 spec 완료 조건 6의 **명시된 예외**이고, 대신 **토큰이 인가를 대신한다**:
+ * 그래서 그 Action은 ARCHITECTURE §6.1의 **명시된 예외**이고, 대신 **토큰이 인가를 대신한다**:
  * 해시로 행을 찾고, 단일 사용이고, provider가 검증한 이메일과 대조한다.
  */
 
@@ -450,7 +450,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
 });
 
 /**
- * `revokeInvitation` (6b-2, design §3.9).
+ * `revokeInvitation` (6b-2, ARCHITECTURE §6.02).
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
@@ -543,7 +543,7 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
 });
 
 /**
- * **멤버 10명 제한** (7단계 — sync-runs spec 완료 조건 8, design §1.5·결정 3).
+ * **멤버 10명 제한** (7단계 — PRODUCT §4.2).
  *
  * ⚠️ **집계가 잠금 안이다.** 밖에서 세면 두 OWNER가 동시에 초대할 때 각자 "자리 있음"을 보고
  * 각자 만든다 — `createProject`의 재집계와 같은 형이고, 여기는 잠글 `Project` 행이 **이미 있다**.
@@ -611,5 +611,31 @@ describe("createInvitation — 멤버 제한", () => {
     expect(await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).toMatchObject({
       ok: true,
     });
+  });
+});
+
+/**
+ * 장애가 `unavailable` 한 갈래로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
+ * ⚠️ **원문은 안 남긴다** — Prisma 메시지엔 인자(이메일 봉투·토큰 해시)가 실린다.
+ */
+describe("삼킨 장애의 로그 한 줄", () => {
+  let log: { mock: { calls: unknown[][] }; mockRestore: () => void };
+  beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => log.mockRestore());
+  const lines = () => log.mock.calls.map((c) => String(c[0]));
+
+  it("createInvitation — 성공 0줄, 장애 한 줄", async () => {
+    expect((await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).ok).toBe(true);
+    expect(lines()).toEqual([]);
+    vi.spyOn(db.prisma, "$transaction").mockRejectedValue(new Error("secret argument"));
+    expect(await createInvitation({ slug: "alpha", email: "late@a.com", role: "EDITOR" })).toEqual({ ok: false, error: "unavailable" });
+    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} create: Error$/)]);
+  });
+
+  it("acceptInvitation — 장애 한 줄", async () => {
+    hoisted.session = sessionFor("u-guest");
+    vi.spyOn(db.prisma.projectInvitation, "findUnique").mockRejectedValue(new Error("secret argument"));
+    expect(await acceptInvitation({ token: "raw" })).toEqual({ ok: false, error: "unavailable" });
+    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} accept: Error$/)]);
   });
 });

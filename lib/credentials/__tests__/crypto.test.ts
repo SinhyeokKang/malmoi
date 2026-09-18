@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createHmac } from "node:crypto";
-import { decrypt, encrypt, parseKeyring, emailLookup, hashSessionToken, isSessionValid, loginAccountData } from "../crypto";
+import { decrypt, encrypt, parseKeyring, emailLookup, hashSessionToken, isSessionValid } from "../crypto";
 const key = Buffer.alloc(32, 1);
 const ring = new Map([["k1", key]]);
 const aad = JSON.stringify(["pii", "User", "u1", "email"]);
@@ -59,10 +59,5 @@ describe("lookup and session", () => {
     expect(isSessionValid(new Date(100), new Date(99))).toBe(true);
     expect(isSessionValid(new Date(100), new Date(100))).toBe(false);
     expect(isSessionValid(new Date(NaN), new Date(0))).toBe(false);
-  });
-  it("로그인 account는 식별 필드만 저장하고 다른 provider를 거부한다", () => {
-    const account = { userId: "u1", type: "oauth", provider: "github", providerAccountId: "1", access_token: "secret", id_token: "secret" };
-    expect(loginAccountData(account)).toEqual({ userId: "u1", type: "oauth", provider: "github", providerAccountId: "1" });
-    expect(() => loginAccountData({ ...account, provider: "github-app" })).toThrow();
   });
 });

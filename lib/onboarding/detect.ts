@@ -6,14 +6,7 @@ import { m } from "@/lib/i18n";
 import { pickBaseLocale, selectLocaleFiles } from "@/lib/push/payload";
 
 /**
- * ⚠️ **`keyGap`은 잎 모듈에 산다** — ③(클라이언트)이 그것을 **값으로** 부르는데, 이 파일은
- * `lib/adapters`를 물어 ts-morph 전체를 끌고 온다 (POSTMORTEM 2026-09-07, 7.2MB). 여기서
- * 다시 내보내는 것은 서버 호출부의 import 자리를 바꾸지 않기 위해서다.
- */
-export { keyGap } from "./key-gap";
-
-/**
- * 2패스 탐지의 순수 조각들 (design §3.1·§3.2·§3.3·§4). `FileProbe`가 동기라 서버는 경로만으로 1차 후보를
+ * 2패스 탐지의 순수 조각들 (ARCHITECTURE §3.1). `FileProbe`가 동기라 서버는 경로만으로 1차 후보를
  * 얻고, 내려받을 파일을 고른 뒤, 내용을 들고 다시 돈다. 여기에는 I/O가 없다 — GitHub은 Server Action이 부른다.
  */
 
@@ -21,7 +14,7 @@ export { keyGap } from "./key-gap";
 export type TemplateGroup = { pathTemplate: string; locales: Iterable<string> };
 
 /**
- * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (design §2).
+ * 내려받을 후보 수 상한. 비용이 아니라 **응답 시간**이다 — 페이지 `maxDuration`이 60초다 (ARCHITECTURE §3.1).
  * JSON류 5 × 3파일 + code-dict 2 × 3파일 + **ts-dict 씨앗 2 × 8파일**(2026-09-14) = blob ≤ 37.
  * ⚠️ **다운로드가 순차다**(secondary rate limit) — 늘린 몫이 그대로 응답 시간이다.
  */
@@ -67,7 +60,7 @@ export function makeProbe(blobs: ReadonlyMap<string, string>): FileProbe {
 }
 
 /**
- * 어댑터 이름 → 화면 문구 + 경로 예시 (design §3.3). **어댑터 이름은 화면에 쓰지 않는다** (PRODUCT §3) — 단 경로는
+ * 어댑터 이름 → 화면 문구 + 경로 예시 (DESIGN §6.7). **어댑터 이름은 화면에 쓰지 않는다** (PRODUCT §3) — 단 경로는
  * 보인다. 사용자가 자기 리포에서 확인할 수 있는 유일한 단서라서 숨기면 후보를 고를 근거가 사라진다.
  * "코드 딕셔너리"가 둘이라 경로 예시가 구별자다.
  */
@@ -96,11 +89,11 @@ export type CandidateSummary = {
   pathTemplate: string;
   /** 정렬돼 있다 — 탐지 결과는 정렬돼 있지 않다. */
   locales: string[];
-  /** 기본 선택 — 사용자가 라디오로 바꾼다 (design §3.2). */
+  /** 기본 선택 — 사용자가 라디오로 바꾼다 (PRODUCT §7.3). */
   baseLocale: string;
   keys: KeyCount;
   /**
-   * ②의 키·값 미리보기. **`sampleOrder`가 고른 로케일만 든다 — 추가 blob이 0이다** (design §3.3):
+   * ②의 키·값 미리보기. **`sampleOrder`가 고른 로케일만 든다 — 추가 blob이 0이다** (ARCHITECTURE §3.1):
    * `probeTargets`가 이미 그 파일들을 내려받았고, 지금까지는 기준 로케일 하나만 풀고 나머지를 버렸다.
    * 나머지 로케일은 사용자가 세그먼트를 누를 때 `loadCandidateSample`이 받는다.
    *
@@ -120,17 +113,17 @@ export type LocaleSample = {
   total: number;
 };
 
-/** 표가 언어당 보이는 행 수. 화면은 `total - rows.length`로 "N more keys"를 만든다 (design §10). */
+/** 표가 언어당 보이는 행 수. 화면은 `total - rows.length`로 "N more keys"를 만든다. */
 export const SAMPLE_ROWS = 10;
 
 /**
  * 한 로케일의 앞 N행 + 전체 수.
  *
  * ⚠️ **`read`가 준 순서를 다시 정렬하지 않는다.** 어댑터가 이미 키 기준으로 정렬해 주므로 언어를
- * 바꿔도 같은 키가 같은 줄에 서고, 그것이 ②가 "ko 열이 비어 있다"를 보여 주는 화면인 이유다 (spec §1).
+ * 바꿔도 같은 키가 같은 줄에 서고, 그것이 ②가 "ko 열이 비어 있다"를 보여 주는 화면인 이유다 (DESIGN §6.7).
  *
  * 읽기 실패는 `{ rows: [], total: 0 }`이다 — **"정말 비었다"와 구별하지 않는다.** 그 구별은 호출부가
- * 한다(빈 칸 vs "We couldn't read this file." — design §3.4): 여기는 순수 함수라 "왜 비었는지"를
+ * 한다(빈 칸 vs "We couldn't read this file." — DESIGN §6.7): 여기는 순수 함수라 "왜 비었는지"를
  * 아는 자리가 아니고, 어느 쪽이든 후보를 떨어뜨리지 않는 것이 규칙이다 (ARCHITECTURE §4).
  */
 export function sampleRows(
@@ -145,10 +138,10 @@ export function sampleRows(
 
 /**
  * 후보 + 내려받은 blob → 사용자 언어 요약. 키 수는 기준 로케일 파일을 **실제로 read한** 결과다 — 경로와
- * 로케일 수만으로는 `_locales`(4키)와 `ts-dict`(903키)를 사람이 구별할 수 없다 (design §3.2).
+ * 로케일 수만으로는 `_locales`(4키)와 `ts-dict`(903키)를 사람이 구별할 수 없다 (PRODUCT §7.3).
  *
  * 읽기 실패는 후보를 떨어뜨리지 않고 `key-count-failed`다 — 남의 리포를 우리 파서 규칙으로 탈락시키지 않는다
- * (ARCHITECTURE §4의 연장). 순서는 바꾸지 않는다 — 후보 순위는 탐지기 순위다 (spec §6).
+ * (ARCHITECTURE §4의 연장). 순서는 바꾸지 않는다 — 후보 순위는 탐지기 순위다 (PRODUCT §7.3).
  */
 export function summarizeCandidates(
   candidates: readonly DetectedFormat[],
@@ -177,7 +170,7 @@ export function summarizeCandidates(
  * 전부를 준다. 로케일 수만큼 부르면 903키 파일을 50번 파싱하고 `maxDuration`(60초)을 넘긴다.
  *
  * **내려받지 않은 로케일은 `samples`에 아예 넣지 않는다** — 빈 행으로 넣으면 화면이 "정말 비었다"와
- * 구별할 수 없다. 내려받았는데 못 읽은 것만 `rows: []`로 남는다 (design §3.4).
+ * 구별할 수 없다. 내려받았는데 못 읽은 것만 `rows: []`로 남는다 (DESIGN §6.7).
  */
 function sampleCandidate(
   adapter: Adapter,
@@ -248,8 +241,8 @@ function rowsOf(entries: readonly LocaleEntry[] | undefined, limit: number): { r
 }
 
 /**
- * 첫 적재가 내려받을 로케일 파일 경로 **전부** (design §4). `probeTargets`의 21개와 별개 예산이다 — 50로케일이면
- * 50개이고, 그래서 첫 적재가 별도 Action이다 (§3.11).
+ * 첫 적재가 내려받을 로케일 파일 경로 **전부** (ARCHITECTURE §3.1). `probeTargets`의 21개와 별개 예산이다 — 50로케일이면
+ * 50개이고, 그래서 첫 적재가 별도 Action이다.
  *
  * `selectLocaleFiles`를 그대로 지난다 — 규칙이 갈리면 여기서 적재한 파일을 pull이 안 쓴다 (2026-09-04).
  * 내용 없는 probe로 경로만 뽑는다.

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planProjectAccess } from "../access";
 
 /**
- * 프로젝트 인가의 판정 전부 (design §3). 껍데기(`requireProjectAccess`)는 조회와 redirect만 하고
+ * 프로젝트 인가의 판정 전부 (ARCHITECTURE §6.1). 껍데기(`requireProjectAccess`)는 조회와 redirect만 하고
  * **여기서 아무 I/O도 하지 않는다** — `checkBearer`(`lib/push/auth.ts`)·`planSave`와 같은 결이다.
  *
  * ⚠️ **"slug가 없다"와 "멤버가 아니다"를 같은 `not-found`로 접는다** (PRODUCT §7.7 — "URL을 안다는
@@ -90,7 +90,7 @@ describe("planProjectAccess — 통과하면 인가된 projectId를 준다", () 
 });
 
 /**
- * **보관** (7단계 — sync-runs design §4, 결정 1).
+ * **보관** (7단계 — ARCHITECTURE §5.6.4).
  *
  * ⚠️ **인가 union의 갈래로 둔다.** 페이지·Action이 각자 `archivedAt`을 보게 하면 새 화면 하나가
  * 조용히 빠지는데, 여기 두면 `entry-points.test.ts`가 세는 **모든 진입점이 한 자리에서** 거부된다.

@@ -7,7 +7,7 @@ import type { DetectedFormat } from "@/lib/adapters/types";
 import { ingestFirstSnapshot } from "../ingest";
 
 /**
- * 서버측 첫 적재 (design §4). **기존 경로를 그대로 지난다** — `assemblePushInput` → `buildPushPayload` →
+ * 서버측 첫 적재 (ARCHITECTURE §3.1). **기존 경로를 그대로 지난다** — `assemblePushInput` → `buildPushPayload` →
  * `applyPush`. 셋을 우회하면 CI가 올린 것과 온보딩이 올린 것이 달라진다 (POSTMORTEM 2026-08-31: 페이로드를
  * 리터럴로 조립했다가 필수 필드가 늘어도 컴파일러가 침묵했다 / 2026-09-02: 껍데기가 파일을 안 골라 어댑터가
  * "존재하지 않았다").

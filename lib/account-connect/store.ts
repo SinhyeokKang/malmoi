@@ -6,15 +6,13 @@ import { decodeUser } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
 import { connectChallengeIdentifier, connectChallengePrefix, parseConnectChallenge, planLoginMethodLink, type ConnectOutcome } from "./plan";
+import { lockUser } from "@/lib/auth/lock";
+import { isUniqueViolation } from "@/lib/failure";
 
 function digest(kind: "nonce" | "state", raw: string): string {
   return createHash("sha256").update(`malmoi/account-connect/${kind}/v1\0${raw}`).digest("hex");
 }
 function validNonce(raw: string): boolean { return /^[A-Za-z0-9_-]{43}$/.test(raw) && Buffer.from(raw, "base64url").toString("base64url") === raw; }
-async function lockUser(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-  return rows.length === 1;
-}
 type Start = { userId: string; provider: LoginProvider; nonce: string; sessionToken: string; state: string };
 export async function beginConnect(prisma: PrismaClient, input: Start): Promise<"ready" | ConnectOutcome> {
   if (!isLoginProvider(input.provider) || !validNonce(input.nonce) || !input.sessionToken || !input.state) return "failed";
@@ -45,18 +43,18 @@ export async function finishConnect(prisma: PrismaClient, input: Proof): Promise
   let stage = "challenge";
   try {
     return await prisma.$transaction(async tx => {
-      // The purpose-bound nonce lookup discovers the owner; all later reads and consumption bind that owner.
+      // 목적에 묶인 nonce 조회가 소유자를 찾고, 이후의 읽기·소비는 전부 그 소유자에 묶인다.
       const row = await tx.verificationToken.findFirst({ where: { token: digest("nonce", input.nonce), identifier: { startsWith: connectChallengePrefix() } } });
       const c = row && parseConnectChallenge(row.identifier);
       if (!row || !c || !await lockUser(tx, c.userId)) return "expired";
-      // Another callback or start can consume/replace this challenge while we wait for the owner lock.
+      // 소유자 잠금을 기다리는 동안 다른 callback·시작이 이 challenge를 소비하거나 바꿀 수 있다.
       const current = await tx.verificationToken.findUnique({ where: { identifier_token: { identifier: row.identifier, token: row.token } } });
       if (!current) return "expired";
       const now = new Date();
       stage = "session";
       const session = await tx.session.findFirst({ where: { userId: c.userId, sessionToken: hashSessionToken(input.sessionToken), expires: { gt: now } } });
       stage = "ownership";
-      // Ownership lookup is deliberately cross-user: reject before any account write.
+      // 소유 조회는 일부러 사용자 경계를 넘는다 — 계정을 쓰기 전에 거부한다.
       const existing = await tx.account.findUnique({ where: { provider_providerAccountId: { provider: input.provider, providerAccountId: input.providerAccountId } }, select: { userId: true } });
       const decision = planLoginMethodLink({ challenge: { ...c, expires: current.expires }, sessionUserId: session?.userId ?? null, provider: input.provider,
         providerLookup: input.verifiedEmail ? lookupEmail(input.verifiedEmail) : null, existing, state: digest("state", input.state), sessionToken: hashSessionToken(input.sessionToken), now });
@@ -73,14 +71,14 @@ export async function finishConnect(prisma: PrismaClient, input: Proof): Promise
       return "connected";
     });
   } catch (error) {
-    // Re-query outside the aborted transaction; a uniqueness race must never transfer ownership.
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
+    // 중단된 트랜잭션 밖에서 다시 조회한다 — 유일성 경합이 소유권을 옮기면 안 된다.
+    if (isUniqueViolation(error)) {
       stage = "uniqueness-recheck";
       try {
         const session = await prisma.session.findFirst({ where: { sessionToken: hashSessionToken(input.sessionToken), expires: { gt: new Date() } }, select: { userId: true } });
         const existing = await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: input.provider, providerAccountId: input.providerAccountId } }, select: { userId: true } });
         if (session && existing) return existing.userId === session.userId ? "already-connected" : "taken-by-other";
-      } catch { /* Only fixed outcomes leave this boundary. */ }
+      } catch { /* 이 경계 밖으로는 정해진 결과만 나간다. */ }
     }
     console.error("Account connect finish failed.", { stage });
     return "failed";

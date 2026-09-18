@@ -18,7 +18,7 @@ import { planProtectedPublish } from "@/lib/protection/plan";
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
  * 의존성 주입만 맡는다. DB와 GitHub이 인자로 들어오므로 fake로 호출 수를 셀 수 있다 —
- * spec 완료 조건 4("편집이 없으면 API 0회")를 판정할 다른 방법이 없다.
+ * ARCHITECTURE §2의 1층 스킵("편집이 없으면 API 0회")을 판정할 다른 방법이 없다.
  *
  * ⚠️ `server-only`를 붙이지 않는다 — 테스트가 직접 import한다.
  */
@@ -34,7 +34,7 @@ export type PullProject = {
   lastPulledAt: Date | null;
 };
 
-/** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection design §2). 원문은 서버 밖으로 나가지 않는다. */
+/** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`). 원문은 서버 밖으로 나가지 않는다. */
 export type PendingEdit = { id: string; token: string };
 
 export type PullState = {
@@ -73,7 +73,7 @@ export type PullResult =
       status: "committed";
       /**
        * 열린 PR이 있었는지 — 화면 문구가 갈린다("Sent for review" vs "Updated what you sent earlier").
-       * `findOpenPr`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (design §3.4).
+       * `findOpenPr`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (ARCHITECTURE §3).
        */
       pr: "created" | "updated";
       commitSha: string;
@@ -161,7 +161,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
    * 여기 오면 미전달 편집이 있고, 멈추면 `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
    * ⚠️ **대가: 경고가 지속 상태이면 매 밤 트리·blob을 다시 읽는다** — 사람이 Publish 모달에서 경고를 보고 해소할 때까지다
-   * (design §2가 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
+   * (ARCHITECTURE §3이 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
    */
   const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
   if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
@@ -184,7 +184,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * (= base와 동일)를 정확히 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
      *
      * ⚠️ **읽기 1회가 늘어나는 곳은 여기뿐이다** — 편집이 있었던 실행만 이 줄에 닿는다.
-     * 1층 스킵의 "GitHub API 0회"(spec 완료 조건 4)는 그대로다.
+     * 1층 스킵의 "GitHub API 0회"(ARCHITECTURE §2)는 그대로다.
      */
     const staleHead = await client.getRefSha(`heads/${deps.syncBranch}`);
     /**
@@ -204,9 +204,9 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
     // ⚠️ **되돌리기보다 뒤에 쓴다** — 아래 커밋 경로와 같은 순서다. force가 실패했는데 먼저 쓰면
     // 그 편집이 1층에 걸려 다음 실행이 스킵하고, 브랜치는 옛 스냅샷 그대로 남는다.
-    // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
+    // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3).
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
-    // (sync-edit-protection design §6.1 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
+    // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);
     return { status: "skipped", reason: "no-changes" };
   }
@@ -227,7 +227,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // `owner:branch` 형식이어야 필터가 걸린다 — 브랜치명만 넘기면 GitHub이 조용히 무시해
   // 전체 목록이 오고, 재사용 판정이 무너져 PR이 중복 생성된다.
   const head = `${project.repoOwner}:${deps.syncBranch}`;
-  const existing = await client.findOpenPr(head, project.baseBranch);
+  const existing = await client.findOpenPr(head);
   let prUrl: string;
   if (existing === null) {
     prUrl = await client.createPr(
@@ -242,6 +242,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // 제목은 두는 것이라(사람이 고친 제목을 덮지 않는다) 결과가 같으면 PATCH도 없다.
     const title = withSkipMarker(existing.title);
     if (title !== existing.title) await client.updatePrTitle(existing.number, title);
+    // 설정에서 base를 바꾼 뒤의 PR이다 — 스냅샷 커밋은 이미 새 base 위에 있다 (launch-readiness L3.7).
+    if (existing.base !== project.baseBranch) await client.updatePrBase(existing.number, project.baseBranch);
     prUrl = existing.url;
   }
 

@@ -11,7 +11,7 @@ import { connectErrorMessage, isConnectError } from "@/lib/github-connect/messag
 import { m } from "@/lib/i18n";
 
 /**
- * 리포 재연결 (design §8). **결과를 인라인으로 보이고 redirect하지 않는다**
+ * 리포 재연결 (DESIGN §6.6). **결과를 인라인으로 보이고 redirect하지 않는다**
  * (`app/(edit)/actions.ts`의 규칙).
  *
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로

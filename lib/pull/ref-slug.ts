@@ -10,6 +10,12 @@
  * **import이 없어야 한다.** 여기에 무엇이든 더하는 순간 그것이 클라이언트 번들의 일부가 된다.
  */
 
+/**
+ * sync 브랜치 이름의 접두. `syncBranchFor`와 온보딩 ③의 힌트가 같이 쓴다 — 힌트가 사본을 들면 규칙과 갈려 사용자가 PR을
+ * 못 찾는다(launch-readiness L7.5). 잎에 두는 이유는 위와 같다.
+ */
+export const SYNC_BRANCH_PREFIX = "malmoi-i18n/sync-";
+
 /** `git check-ref-format`이 받아주는 문자만. 슬래시를 빼는 것은 `malmoi-i18n/sync-<slug>`의 세그먼트를 하나로 두려는 것이다. */
 export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

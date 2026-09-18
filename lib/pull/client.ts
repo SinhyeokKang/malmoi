@@ -5,7 +5,7 @@ import type { CommitPayload, TreePayload } from "./payload";
  * 테스트용 가짜는 `lib/pull/__tests__/fake-client.ts`가 구현한다.
  *
  * **왜 인터페이스를 갈라놓나**: 오케스트레이션이 이걸 인자로 받으면 테스트가 fake를 넘겨
- * "GitHub을 몇 번 불렀나"를 셀 수 있다. spec 완료 조건 4("편집이 없으면 API 0회")의 판정 수단이
+ * "GitHub을 몇 번 불렀나"를 셀 수 있다. ARCHITECTURE §2의 1층 스킵("편집이 없으면 API 0회")의 판정 수단이
  * 이것 하나뿐이다. `lib/github.ts`를 직접 물면 octokit이 실 네트워크를 잡으려 들고 App 자격증명이
  * 필요해진다 — 인터페이스로 갈라 fake를 주입하는 것이 호출 수를 셀 유일한 방법이다. (전 서술은
  * "그 파일의 `server-only` 때문"이었는데 `lib/github.ts`는 일부러 안 붙였다 — 2026-09-04 audit #38.)
@@ -18,7 +18,7 @@ export type GitTreeBlob = { path: string; sha: string; size?: number };
 
 /**
  * compare가 돌려주는 변경 파일 하나. **`previous_filename`은 rename에만 있다** — GitHub이 그때만
- * 채우고, 그 둘 중 하나가 로케일 경로면 변경으로 센다 (projects-list design §3.4).
+ * 채우고, 그 둘 중 하나가 로케일 경로면 변경으로 센다.
  */
 export type ChangedFile = { filename: string; previous_filename?: string };
 
@@ -65,18 +65,24 @@ export type GitClient = {
    * 열린 PR. 없으면 `null`. `title`을 같이 주는 이유는 재사용하는 PR의 제목에 루프 마커가 있는지
    * 호출부가 봐야 해서다(`PR_TITLE`) — 마커가 커밋 메시지에만 있던 시절의 PR이 남아 있다.
    *
+   * ⚠️ **base로 거르지 않는다** (launch-readiness L3.7). 설정에서 base를 바꾸면 저장된 base로는 옛 PR이
+   * 안 보여 같은 head로 PR이 하나 더 열린다. 대신 `base`를 돌려주고 호출부가 어긋나면 옮긴다.
+   *
    * @param head **`owner:branch` 형식이어야 필터가 걸린다.** 브랜치명만 넘기면 GitHub이 필터를
    *   조용히 무시하고 전체 목록을 주므로, 재사용 판정이 무너져 PR이 중복 생성된다.
    */
-  findOpenPr(head: string, base: string): Promise<{ url: string; number: number; title: string } | null>;
+  findOpenPr(head: string): Promise<{ url: string; number: number; title: string; base: string } | null>;
 
   createPr(headBranch: string, baseBranch: string, title: string, body: string): Promise<string>;
 
   /** 재사용하는 PR의 제목 갱신 — 제목에 루프 마커가 없을 때만 부른다(매 실행 PATCH를 만들지 않는다). */
   updatePrTitle(pullNumber: number, title: string): Promise<void>;
 
+  /** 재사용하는 PR의 base를 설정의 base로 옮긴다 — 어긋날 때만 부른다. */
+  updatePrBase(pullNumber: number, base: string): Promise<void>;
+
   /**
-   * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (projects-list design §3.4 C).
+   * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (DESIGN §6.63).
    *
    * ⚠️ **이 둘은 목록 전용이다** — pull은 쓰지 않는다. 그래도 같은 인터페이스에 두는 이유는
    * 자격증명이 같기 때문이고(installation 토큰), 갈라 두면 **같은 App 토큰을 만드는 자리가 둘**이 된다.

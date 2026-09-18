@@ -21,7 +21,7 @@ import { runSync } from "@/lib/sync/run";
  * (ARCHITECTURE §6.1). `app/__tests__/entry-points.test.ts`가 그 호출을 강제한다.
  *
  * ⚠️ **여기서 `redirect()`를 쓰지 않는다.** blur 저장 중의 redirect는 입력 중인 셀을 날린다 —
- * 거부는 결과값으로 돌려주고 화면이 `accessErrorMessage`로 문구를 정한다 (design §3).
+ * 거부는 결과값으로 돌려주고 화면이 `accessErrorMessage`로 문구를 정한다 (ARCHITECTURE §6.3).
  */
 
 /** 거부 사유는 `AccessError`와 같은 문자열이다 — 화면이 한 곳에서 문구로 바꾼다. */
@@ -45,7 +45,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   const { projectId, surfaceId } = access;
 
   // 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**을 막는다
-  // (design §3.7). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
+  // (PRODUCT §7.5). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
   // `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
   if (!(await isReady(prisma, projectId))) return { ok: false, error: "not-ready" };
 
@@ -78,7 +78,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
 
   // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
   // 편집 토큰은 값이 실제로 바뀐 이 갈래에서만 새로 쓴다 — no-op은 위에서 끝났다. Publish가 캡처한 토큰과 달라야
-  // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection design §2).
+  // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
   const pendingEditToken = randomUUID();
   await prisma.translation.upsert({
     where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
@@ -94,7 +94,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
    */
   revalidatePath(`/projects/${slug}`, "layout");
   /**
-   * ⚠️ **목록도 이 값을 읽는다** (projects-list §3). 위가 **접두가 아니라 세그먼트**라 `/projects`를
+   * ⚠️ **목록도 이 값을 읽는다** (DESIGN §6.63). 위가 **접두가 아니라 세그먼트**라 `/projects`를
    * 안 덮고, `/projects/new`는 모달 뒤에 같은 목록을 그리는 **또 다른 경로**다
    * (POSTMORTEM 2026-09-09). 저장 하나가 Summary의 `To review`·`To send`와 행의 Meter를 동시에
    * 움직이므로, 여기서 안 지우면 번역자가 저장한 값이 목록에서만 옛 숫자로 남는다.
@@ -132,7 +132,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   if (access.status !== "ok") return { status: "failed", error: access.status, delivery: "not-started", retryable: false };
 
   // 첫 적재 전에는 내보낼 것이 없다 — `triggerPull`이 저장되지 않은 포맷으로 `fail()`하는 대신
-  // 여기서 문구가 있는 사유로 거부한다 (design §3.7).
+  // 여기서 문구가 있는 사유로 거부한다 (PRODUCT §7.5).
   if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready", delivery: "not-started", retryable: false };
 
   /**
@@ -148,7 +148,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
     requestedBy: userId,
   });
   /**
-   * ⚠️ **Publish가 목록의 셋을 동시에 움직인다** (projects-list §3): `lastPulledAt`이 전진해
+   * ⚠️ **Publish가 목록의 셋을 동시에 움직인다** (DESIGN §6.63): `lastPulledAt`이 전진해
    * `To send`와 `New from GitHub`의 기준이 바뀌고, `lastPrUrl`이 `pr_open` 띠를 세운다.
    * **스킵·실패에도 지운다** — 어느 쪽이든 목록이 보여 주던 값이 더 이상 최신이 아니고,
    * 성공만 지우면 "실패한 Publish 뒤에 옛 띠가 남는" 갈래가 생긴다.
@@ -160,7 +160,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
 }
 
 /**
- * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 본다 (`planProjectReadiness`, design §3.7).
+ * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 본다 (`planProjectReadiness`, PRODUCT §7.5).
  * **`lastCommitSha`가 "첫 적재가 성공했다"의 유일한 증거다** — `applyPush`가 그것을 키·번역·refs와
  * 한 배열형 트랜잭션에서 쓰므로 부분 성공 상태가 없다.
  *

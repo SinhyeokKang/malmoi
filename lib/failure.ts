@@ -1,5 +1,7 @@
 // 500 본문에 무엇을 실을지의 판정. I/O가 없는 순수 함수라 두 라우트가 같은 규칙을 쓴다.
 
+import { randomUUID } from "node:crypto";
+
 import type { SyncErrorCode } from "@/lib/sync/plan";
 
 /**
@@ -57,7 +59,15 @@ const SAFE_ERROR_NAMES: ReadonlySet<string> = new Set([AppError.name, MissingEnv
 export type Failure =
   /** 우리가 만든 메시지다 — 본문에 그대로 실어도 된다. */
   | { safe: true; message: string }
-  /** 남의 라이브러리가 만든 메시지다 — 본문엔 `ref`만, 전문은 서버 로그로. */
+  /**
+   * 남의 라이브러리가 만든 메시지다 — 본문엔 `ref`만, **로그에는 갈래 이름만**.
+   *
+   * ⚠️ **`detail`은 전문이 아니라 분류다** (2026-09-18 반전). 2026-09-04에는 "전문은 서버 로그로"
+   * 였는데, 그 판단은 **서버 로그를 안전한 곳으로** 봤다. `lib/github-connect/log.ts`가 2026-09-10
+   * credential 리뷰에서 같은 위험(남의 메시지에 Prisma 인자·암호문이 실린다)을 **로그에도** 걸었고,
+   * 두 규칙이 반대인 채로 굴렀다. 더 보수적인 쪽으로 합쳤다 — 소비자 다섯이 이 값을 그대로
+   * `console.error`에 넣으므로 **여기서 끊는 것이 그 다섯을 한 번에 닫는 유일한 자리**다.
+   */
   | { safe: false; detail: string };
 
 /**
@@ -72,9 +82,51 @@ export type Failure =
  * public이면 Prisma 접속 오류 한 번이 pooler 호스트와 DB 유저를 공개 Actions 로그에 박는다.
  */
 export function classifyFailure(error: unknown): Failure {
-  if (error instanceof Error) {
-    if (SAFE_ERROR_NAMES.has(error.name)) return { safe: true, message: error.message };
-    return { safe: false, detail: `${error.name}: ${error.message}` };
+  if (error instanceof Error && SAFE_ERROR_NAMES.has(error.name)) {
+    return { safe: true, message: error.message };
   }
-  return { safe: false, detail: String(error) };
+  return { safe: false, detail: failureTag(error) };
+}
+
+/**
+ * **삼켜서 갈래 하나로 접는 자리**의 서버 로그 한 줄 (launch-readiness L5.2). 화면엔 "Unavailable" 같은 갈래만 가므로
+ * 원인을 볼 곳이 여기뿐이다 — 규칙은 `classifyFailure`와 같다(원문 금지). **성공 경로에서는 부르지 않는다.**
+ *
+ * `lib/credentials/log.ts`·`lib/github-connect/log.ts`와 같은 모양이고 그 둘은 자기 접두를 고정한 사본이다.
+ */
+export function logCaught(scope: string, stage: string, error: unknown): void {
+  const failure = classifyFailure(error);
+  console.error(`[${scope}] ${randomUUID().slice(0, 8)} ${stage}: ${failure.safe ? failure.message : failure.detail}`);
+}
+
+/**
+ * 남의 오류를 **로그에 남겨도 되는 한 낱말**로 접는다 — `lib/github-connect/log.ts`와 같은 규칙이다.
+ *
+ * ⚠️ **메시지는 안 찍지만 분류는 남긴다.** 전부 `"internal"` 한 단어로 접으면 로그를 남기는 의미가
+ * 사라진다 — 화면엔 `ref`만 가므로 갈래를 볼 곳이 여기뿐이다. 상태 코드와 생성자 이름은 우리와
+ * 라이브러리가 정한 상수이지 사용자 데이터가 아니다.
+ *
+ * ⚠️ **`error.name`이 아니라 `constructor.name`이다** — `name`은 쓰기 가능한 속성이라 남의 코드가
+ * 메시지를 거기 담을 수 있다(우리 `SAFE_ERROR_NAMES` 판정이 `name`을 보는 것은 번들 경계를 넘는
+ * `instanceof`를 못 믿어서이고, 그쪽은 **우리 이름과 같은지**만 묻는다).
+ */
+function failureTag(error: unknown): string {
+  const status = httpStatus(error);
+  if (status !== undefined) return `http-${status}`;
+  return error instanceof Error ? error.constructor.name : typeof error;
+}
+
+/**
+ * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
+ * 채우지 않는다.** 부재는 "모른다"다. 같은 식이 세 곳에 따로 있었다(launch-readiness L7.4).
+ */
+export function httpStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
+  const status = (error as { status: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+}
+
+/** Prisma의 유일성 위반(P2002). 경합에서 진 쪽을 재조회·충돌로 푸는 자리들이 쓴다. */
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }

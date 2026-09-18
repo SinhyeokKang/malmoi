@@ -1,13 +1,13 @@
 import { openToken, sealToken, validateTokenWriteKey } from "@/lib/credentials/storage";
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { httpStatus } from "./health";
+import { httpStatus } from "@/lib/failure";
 import { logFailure } from "./log";
 import { planTokenUse, refreshFailure } from "./token";
 import { refreshUserToken } from "./user";
 
 /**
- * `Account(provider: "github-app")`에서 쓸 수 있는 사용자 토큰을 얻는다 (design §2.4).
+ * `Account(provider: "github-app")`에서 쓸 수 있는 사용자 토큰을 얻는다 (ARCHITECTURE §6.4).
  * **판정은 `planTokenUse`·`refreshFailure`가 하고, 여기는 읽기·갱신·쓰기와 경합만 다룬다.**
  *
  * ⚠️ **갱신 결과를 즉시 쓴다.** GitHub의 refresh 토큰은 1회용(회전)이라 성공한 순간 이전 쌍이
@@ -96,7 +96,7 @@ export async function ensureUserToken(
 /**
  * ⚠️ **`findFirst`다.** `Account`의 unique는 `@@id([provider, providerAccountId])` 하나뿐이라
  * `userId`로는 `findUnique`가 성립하지 않는다. User당 App 연결이 하나라는 것은 우리 정책이지
- * DB 제약이 아니다 (design §2.3).
+ * DB 제약이 아니다 (ARCHITECTURE §5.1).
  */
 async function readAccount(prisma: PrismaClient, userId: string): Promise<AccountRow | null> {
   return prisma.account.findFirst({

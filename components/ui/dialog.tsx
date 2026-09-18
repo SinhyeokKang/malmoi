@@ -37,14 +37,14 @@ export function DialogContent({
       <Primitive.Content
         className={cn(
           /**
-           * ⚠️ **360이다 — `max-w-lg`(512)가 아니었다** (2026-09-13 핸드오프). 확인 대화는 어느
+           * ⚠️ **440이다** (2026-09-18 사용자 — 핸드오프 360에서 올렸다. 그 전엔 `max-w-lg` 512였다). 확인 대화는 어느
            * 화면이든 같은 무게여야 하므로 프리미티브 기본값을 옮겼다 — 소비자 넷이 함께 움직인다
            * (archive-card · invite-dialog · member-list · login-methods).
            *
            * ⚠️ **`shadow-lg`는 Tailwind 기본 그림자라 DESIGN §4.5가 금지한 값이었다.** 캔버스 값이
            * `--shadow-medium`과 바이트로 같으므로 이건 이탈이 아니라 **기존 위반의 교정**이다.
            */
-          "bg-background border-border fixed top-1/2 left-1/2 z-50 w-full max-w-90 -translate-x-1/2 -translate-y-1/2",
+          "bg-background border-border fixed top-1/2 left-1/2 z-50 w-full max-w-110 -translate-x-1/2 -translate-y-1/2",
           "shadow-medium rounded-lg border",
           className,
         )}

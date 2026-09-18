@@ -1,7 +1,7 @@
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
 import { fail } from "@/lib/failure";
-import { isRefSafeSlug } from "./ref-slug";
+import { isRefSafeSlug, SYNC_BRANCH_PREFIX } from "./ref-slug";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
 import { loadPullState, saveLastPulledAt } from "./load";
@@ -39,7 +39,7 @@ export function syncBranchFor(slug: string): string {
   if (!isRefSafeSlug(slug)) {
     fail(`project slug is not usable as a git branch name: ${JSON.stringify(slug)}`);
   }
-  return `malmoi-i18n/sync-${slug}`;
+  return `${SYNC_BRANCH_PREFIX}${slug}`;
 }
 
 export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {

@@ -12,7 +12,7 @@
 - **선택지 나열 금지**: 추천 하나를 고르고 그 이유 한 줄. 사용자 결정이 필요한 지점(작업 원칙의 "가정을 명시")만 예외.
 - **예외**: 코드·커밋 메시지·PR title/body는 영문.
 
-강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.**
+강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.** ⚠️ **`next.config.ts`의 `agentRules: false`가 Next의 `AGENTS.md` 덧쓰기를 막는다** — 그 파일은 `scripts/sync-agents.mjs`가 소유하는 순수 생성물이라, Next가 자기 블록을 붙이면 `next dev`를 돌릴 때마다 미러 게이트(`pnpm sync:agents:check`)가 드리프트로 잡고 지우면 Next가 다시 만든다.
 
 ## 이 프로젝트
 
@@ -56,13 +56,14 @@
 | 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) | — |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) | — |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다.** 마이그레이션은 `prisma.config.ts`(`DIRECT_URL`, 5432) / 런타임은 driver adapter(`DATABASE_URL`, 6543) | `prisma`·`@prisma/client`·`@prisma/adapter-pg` 7.10.0 + `pg` 8.23.0 |
-| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core@0.41.3` 고정) |
+| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(`/signin/link/[challenge]` — 세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(살아 있는 세션이 인가를 대신하므로 challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 테스트**여야 한다(Internal은 조직 밖 계정을 `403 org_internal`로 막아 초대 경로를 통째로 죽인다) | `next-auth` 5.0.0-beta.32 + `@auth/prisma-adapter` 2.11.3 (`@auth/core` 0.41.3 — 직접 의존성이 아니라 next-auth가 끌어오는 값이고 override도 없다: **lockfile만이 고정 장치다**) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(EXIF 방향 적용 후 192px 이내 WebP 재인코딩, 메타데이터는 그때 사라진다). ⚠️ **버전을 Next의 전이 의존성과 같은 값에 고정한다** — 갈리면 네이티브 바이너리가 두 벌 깔린다. ⚠️ **파일 크기 상한이 디코더 메모리를 묶지 못해** `limitInputPixels`가 따로 선다 | `sharp` 0.35.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 22개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 컴포넌트다**(`app/layout.tsx`의 `<Toaster>`). ⚠️ **`theme="light"`가 필수다** — 스스로 테마를 감지하므로 안 주면 OS 다크에서 살아난다. ⚠️ **`classNames`로 우리 토큰에 묶는다** — 안 묶으면 자기 배경·테두리·radius를 쓴다 | `sonner` 2.0.8 |
 | 패널 리사이즈 | `resizable.tsx` 하나가 쓴다 — 셸 LNB와 새 프로젝트 모달 ②. ⚠️ **`minSize`·`defaultSize`·`maxSize`가 % 전용이라** 셸은 `ResizeObserver`로 재고 px→%로 환산한다(`lib/shell/panel-size.ts`). ⚠️ **커서는 라이브러리가 `document.head`에 꽂는 `<style>`이 건다** — 핸들에 `cursor-*`를 쓰면 안 먹는다. ⚠️ **jsdom에서는 이 라이브러리가 화면의 모든 클릭을 삼킨다** — document 레벨 `pointerdown`이 핸들 rect ± 마진으로 히트 판정하는데 jsdom은 모든 rect가 `0×0 @ (0,0)`이다. `vitest.setup.ts`가 핸들 rect만 화면 밖으로 밀어 막는다(실 브라우저에는 없는 조건이라 프로덕션 코드를 비틀지 않는다). 시각 규칙은 DESIGN §6.56 | `react-resizable-panels` 2.1.9 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
@@ -99,8 +100,11 @@
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
+| Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는 유일한 Action이다 |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
+| `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
+| `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다) |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다** — 클라이언트 fetch 배선과 중복 스키마가 생기고 `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
@@ -130,15 +134,16 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 마이그레이션 상태 | `pnpm db:status` (dev) · `pnpm db:status:prod` (prod — `/merge` 1단계가 본다) |
 | Prisma 재생성 / DB 브라우저 | `pnpm db:generate` · `pnpm db:studio` |
 | 로케일 적재 | `pnpm ingest <디렉터리> [--json] [--base <locale>] [--adapter <name>]` |
-| 사용처 스캔 | `pnpm scan <디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (**결과가 어떻든 exit 0**) |
-| 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
-| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>]` (읽기 전용, exit 0) |
+| 사용처 스캔 | `pnpm scan <디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (**스캔 결과가 어떻든 exit 0** — 인자 오류만 2) |
+| 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
+| 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. 업로드·다운로드·삭제·404를 한 바퀴 돌고 **고아 후보를 삭제 없이 목록으로만** 낸다. ⚠️ `NODE_OPTIONS=--conditions=react-server`가 붙어 있다 — PII 복호 모듈이 `server-only`라서다) |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
+| 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 봉투 재검증 + 마이그레이션 SQL 바이트 대조 + `_prisma_migrations` 체크섬 재계산. 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)와 **동시 CI push의 결과 표시**도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 
@@ -146,7 +151,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 1. **Node를 `.nvmrc`에 맞춘다**(24). **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다.
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 여섯이 비면 로그인·초대·멤버 조회가 통째로 죽는다.** **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
    - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
    - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
 4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
@@ -182,7 +187,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **GitHub default branch는 `dev`다.** ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
 - **`main`에 직접 커밋·푸시하지 않는다.**
-- **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다(2026-09-14, Vercel 도메인을 `dev` 브랜치에 묶었다 · 가비아 CNAME). ⚠️ **로그인은 이 URL에서만 된다** — Vercel 대시보드의 "Visit"이 주는 **배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어** OAuth에 등록할 수 없고, Auth.js가 `AUTH_URL` 없이 요청 헤더로 origin을 만들기 때문에 그 URL이 그대로 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 그건 자격증명이 아니라 URL 문제다**(두 공급자의 공통분모는 origin뿐이다). ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다**(지금 셋 — `mal-moi.com` · `dev.mal-moi.com` · Vercel 브랜치 별칭 `malmoi-git-dev-….vercel.app`, 후자는 CNAME이 가리키는 원 주소라 남긴다) — 빠뜨리면 `requestOrigin`이 `null`을 주고, 그 `null`의 폴백이 시작(`?? false`)과 콜백(`?? https`)에서 갈려 state 쿠키 이름이 어긋난다. 증상은 로그인이 아니라 **계정 병합이 "Something went wrong"으로 죽는 것**이고 서버 로그엔 minify된 `[auth] k` 한 줄뿐이다(2026-09-14 실측). ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
+- **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다(2026-09-14, Vercel 도메인을 `dev` 브랜치에 묶었다 · 가비아 CNAME). ⚠️ **로그인은 이 URL에서만 된다** — Vercel 대시보드의 "Visit"이 주는 **배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어** OAuth에 등록할 수 없고, Auth.js가 `AUTH_URL` 없이 요청 헤더로 origin을 만들기 때문에 그 URL이 그대로 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 그건 자격증명이 아니라 URL 문제다**(두 공급자의 공통분모는 origin뿐이다). ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다**(지금 셋 — `mal-moi.com` · `dev.mal-moi.com` · Vercel 브랜치 별칭 `malmoi-git-dev-….vercel.app`, 후자는 CNAME이 가리키는 원 주소라 남긴다) — 빠뜨리면 `requestOrigin`이 `null`을 준다 — 2026-09-14엔 그 폴백이 시작(`?? false`)과 콜백(`?? https`)에서 갈려 state 쿠키 이름이 어긋났고 증상이 **계정 병합의 "Something went wrong"**(서버 로그엔 minify된 `[auth] k` 한 줄)였다. 2026-09-18부터 병합 확인 시작이 fail-closed라 **그 호스트에서는 `/signin?error=Unavailable`로 바로 돌아간다**(launch-readiness L7.6) — 그 증상을 보면 이 목록부터 본다. ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.
 - **`git push --force`는 main에 금지.** dev는 `/sync`가 머지 후 force update하지만 그 스킬의 안전 검사 3개를 지나야 한다.
 
@@ -221,7 +226,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 문서 지도
 
-**여섯 개다.** 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
+**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 둘이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담)와 `README.md`(요약 미러). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
 
 | 문서 | 무엇 | 언제 갱신하나 |
 |---|---|---|
@@ -248,7 +253,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
-- **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
+- **날짜는 UTC로 저장하고, 절대 시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`의 `2026-09-10 12:00 UTC` 형(Logs 화면이 정본). 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
 - **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다.** 1차 `middleware.ts`는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고, **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). **새 보호 라우트는 `matcher`에 추가한다.**
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다.

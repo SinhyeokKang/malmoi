@@ -7,21 +7,21 @@
  *
  * 사용: `pnpm smoke:github <project-slug>` — **인자가 필수다** (2026-09-07, 서버 env 폴백 제거).
  */
-import { config } from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "../lib/adapters/index";
 import { codeDictCandidatePaths } from "../lib/adapters/code-dict";
 import { requireEnv } from "../lib/env";
 import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
+import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
 import { makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/trigger";
+import { loadLocalEnv, scriptPrisma } from "./local";
 
 // .env.local을 명시적으로 읽는다 — dotenv 기본값은 `.env`이고 이 프로젝트의 시크릿은
 // Next.js 관례에 따라 `.env.local`에 있다. 경로를 안 주면 값이 undefined가 되고 원인을 오진한다.
-config({ path: ".env.local" });
+loadLocalEnv();
 
 /**
  * `lib/db.ts`를 쓰지 않는다 — 그 파일의 `server-only`가 tsx 스크립트를 막는다
@@ -29,9 +29,7 @@ config({ path: ".env.local" });
  * 그대로 들고 있으므로 여기서 재현할 것이 없다.
  */
 function createPrisma(): PrismaClient {
-  return new PrismaClient({
-    adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }),
-  });
+  return scriptPrisma(requireEnv("DATABASE_URL"));
 }
 
 async function main(): Promise<void> {
@@ -104,11 +102,11 @@ async function main(): Promise<void> {
           (same ? "" : ` ⚠️ DB=${project.installationId} (재연결 필요)`),
       );
     } else {
-      // `not-installed`와 `error`를 가려 찍는다 — 접으면 장애가 "제거됨"으로 읽힌다 (design §3.3).
+      // `not-installed`와 `error`를 가려 찍는다 — 접으면 장애가 "제거됨"으로 읽힌다 (ARCHITECTURE §6.5.1).
       console.log(`probeRepo: ${probe.status}`);
     }
 
-    // ── 온보딩 경로: 스냅샷 + 2패스 탐지 (design §3.1) ──────────────────────────
+    // ── 온보딩 경로: 스냅샷 + 2패스 탐지 (ARCHITECTURE §3.1) ──────────────────────────
     // ⚠️ **진입점으로 돈다** — 어댑터 API로만 검증하면 순위 픽스가 자기 단위 테스트만 통과하고 실제
     // 경로에서는 죽어 있을 수 있다 (POSTMORTEM 2026-09-02). 여기서 부르는 것은 `detectCandidatesAcross`다.
     const reader = await openRepoReader(project.repoOwner, project.repoName, project.installationId);
@@ -125,12 +123,18 @@ async function main(): Promise<void> {
       const targets = probeTargets(jsonLike, codeDict, paths);
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length}개`);
 
+      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산 둘을 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
+      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
+      checkDownloadBudget(targets, snapshot.files);
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));
       const blobs = new Map<string, string>();
+      let totalBytes = 0;
       for (const path of targets) {
         const sha = shaOf.get(path);
         const text = sha === undefined ? undefined : await reader.blob(sha);
-        if (text !== undefined) blobs.set(path, text);
+        if (text === undefined) continue;
+        totalBytes = checkContentBudget(path, text, totalBytes);
+        blobs.set(path, text);
       }
       console.log(`  내려받음: ${blobs.size}/${targets.length}`);
 

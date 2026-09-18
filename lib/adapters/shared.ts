@@ -1,6 +1,6 @@
 import { matchesGlob } from "./glob";
-import { serializeJson } from "./json-style";
 import type { LocaleEntry, ReadResult } from "./types";
+import { compareCodeUnits } from "@/lib/compare";
 
 /**
  * 모든 writer가 공유하는 결정성 규칙 (ARCHITECTURE §1.1).
@@ -11,7 +11,7 @@ import type { LocaleEntry, ReadResult } from "./types";
 
 /** `<` 비교 = UTF-16 코드 유닛 순서. `localeCompare`는 Node ICU 빌드에 의존해 불변식이 환경에 묶인다. */
 export function compareKeys(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return compareCodeUnits(a, b);
 }
 
 /**
@@ -67,17 +67,6 @@ export function exceedsGlobBudget(pathTemplate: string): boolean {
 }
 
 /**
- * 들여쓰기 2칸 + 파일 끝 개행 정확히 1개.
- *
- * ⚠️ **원본을 아는 호출부는 `serializeJson(value, style)`을 직접 부른다** — 이 함수는 원본이
- * 없을 때의 기본 경로다(신규 로케일 파일). 시그니처를 그대로 두는 것은 호출부 diff를 줄이려는
- * 것이고, 판정은 `lib/adapters/json-style.ts` 한 곳에 있다.
- */
-export function serialize(value: unknown): string {
-  return serializeJson(value);
-}
-
-/**
  * 낼 항목을 고르고 **원본 파일 순서로** 늘어놓는다.
  *
  * 빈 문자열도 미번역으로 취급한다(편집 UI에서 값을 지우면 그렇게 들어온다). 미번역 항목을
@@ -99,7 +88,8 @@ export function orderedEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
     // orphaned = 코드에서 사라진 키. DB엔 남기고 파일에서만 뺀다 — 되돌릴 수 있어야 한다.
     // **모든 재생성 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
     .filter((e) => e.orphaned !== true)
-    .filter((e) => e.message !== "")
+    // 빈 값은 미번역이라 뺀다 — base 파일에 `""`로 있던 키(`writeEmpty`)만 남긴다 (launch-readiness L4.10).
+    .filter((e) => e.message !== "" || e.writeEmpty === true)
     // `filter`가 이미 새 배열을 냈으므로 `sort`가 입력을 건드리지 않는다.
     .sort((a, b) => {
       const ao = a.order;
@@ -354,11 +344,6 @@ export function verdictFromValues(values: readonly unknown[]): CatalogVerdict {
   const good = values.filter((v) => typeof v === "string" || (v !== null && typeof v === "object")).length;
   if (good === 0) return "no";
   return good * 2 >= values.length ? "yes" : "no";
-}
-
-/** @deprecated `catalogVerdict`를 쓴다. `unknown`을 `false`로 눌러버린다. */
-export function looksLikeCatalog(content: string): boolean {
-  return catalogVerdict(content) === "yes";
 }
 
 /** probe로 읽어볼 샘플 수 상한. GitHub API에서는 블롭 읽기가 요청 비용이다. */

@@ -8,7 +8,7 @@ import { activeFilters, clearedQuery, type FilterChip } from "@/lib/keys/filters
 import { isKeyState, type TranslationsQuery } from "@/lib/routes";
 
 /**
- * 적용된 필터의 칩 행 (8-4 design §1·§3.5).
+ * 적용된 필터의 칩 행 (8-4 — DESIGN §6.1).
  *
  * ⚠️ **칩 전체를 링크로 만들지 않는다.** 안에 제거 버튼이 들어가면 상호작용 요소가 중첩되고
  * (접근성으로도 금지다), 그 모양이 정확히 Radix Slot이 던진 자리와 같다 (POSTMORTEM 2026-09-09).

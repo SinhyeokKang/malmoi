@@ -17,7 +17,7 @@ import { runSync } from "@/lib/sync/run";
  * `/projects/:path*`뿐이라 기본값이 안전하지만, 보호 라우트를 넓힐 때 이 경로를 함께 넣으면
  * 야간 pull이 조용히 리다이렉트된다.
  *
- * ⚠️ **준비된 프로젝트 전부를 순회한다** (2026-09-07, design §3.9). 전에는 서버 env 하나가 대상을
+ * ⚠️ **준비된 프로젝트 전부를 순회한다** (2026-09-07, ARCHITECTURE §3.05). 전에는 서버 env 하나가 대상을
  * 정해서 프로젝트가 둘 이상이면 나머지가 영영 안 돌았다. **한 프로젝트의 실패가 나머지를 막지 않는다** —
  * 실패는 그 항목에만 남고 응답은 항상 배열이다.
  */
@@ -103,9 +103,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
     // (`MissingEnvError` — 변수 이름만 담는다)는 본문에 남긴다: 그게 POSTMORTEM 2026-09-03이
-    // 요구한 "원인이 남는 500"이다. 남의 라이브러리 메시지는 `ref`만 내보내고 전문은 서버
-    // 로그(Vercel)로 보낸다 — 이 응답은 **임의의 대상 리포**의 Actions 로그로 흘러가고
-    // (`scripts/push-local.ts`가 stdout에 찍는다) 그 리포가 public이면 누구나 읽는다.
+    // 요구한 "원인이 남는 500"이다. 남의 라이브러리 메시지는 `ref`만 내보내고, **서버 로그에도
+    // 갈래 이름만** 남는다(2026-09-18 — `classifyFailure` 주석). 이 응답은 **임의의 대상 리포**의
+    // Actions 로그로 흘러가고(`scripts/push-local.ts`가 stdout에 찍는다) 그 리포가 public이면
+    // 누구나 읽는다.
     // `lastPulledAt`은 성공 후에만 쓰이므로 다음 실행이 처음부터 다시 돈다.
     const failure = classifyFailure(error);
     if (failure.safe) return NextResponse.json({ error: failure.message }, { status: 500 });

@@ -1,10 +1,11 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
 import { dominantFieldOrder } from "../adapters/chrome-locales";
-import { sameMeaning } from "../adapters/shared";
 import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
 import { pickBaseLocale } from "../push/payload";
+import { buildWriteEntries } from "../pull/plan";
+import { rowsForLocale, type RenderKey } from "../pull/render";
 import { candidatesFor } from "./merge";
 import { median } from "./stats";
 import { tsShape } from "./ts-shape";
@@ -15,7 +16,6 @@ import {
   emptyErrors,
   type ReadErrorKind,
   type RepoSurvey,
-  type Roundtrip,
   type SeparatorCounts,
   type SurveyCandidate,
   type SurveyInput,
@@ -342,7 +342,7 @@ function mergeShape(survey: RepoSurvey, shape: JsonShape): void {
  * 냈다. 태스크 2·4가 둘 다 되돌리게 만든 뒤로는 diff 원인이 아니고 **관측치**로만 남는다:
  * 33개 중 12개(placeholders)·20개(비-base description)라는 숫자가 이 기능의 근거였다.
  *
- * ⚠️ **왕복 의미 게이트는 여전히 이 필드를 못 본다.** `sameMeaning`이 key·message만 비교하므로
+ * ⚠️ **왕복 의미 게이트는 여전히 이 필드를 못 본다.** `keepsStoredValues`가 key·message만 비교하므로
  * 회귀가 나도 그쪽은 조용하다 — 바이트 왕복(L2 골든 픽스처)이 유일한 그물이다.
  */
 function observeChrome(
@@ -396,14 +396,21 @@ function applyRoundtrip(
   const adapter = adapterFor(fmt);
   const localeNames = read1.locales.map((l) => l.locale);
   const base = pickBase(localeNames);
+  /**
+   * ⚠️ **프로덕션이 write에 넘기는 입력을 그대로 만든다** (launch-readiness L4.6). push는 base 파일의 키만 base 순서
+   * (`order` → `sortIndex`)로 DB에 올리고 빈 값은 적재하지 않는다(`apply.ts`). pull은 그 키로 로케일마다 행을 만들어
+   * `buildWriteEntries`를 지난다 — 전 로케일이 **base 순서**다. 로케일마다 자기 파일 순서를 넘기면 비-base 재배열이
+   * 지표에서 사라진다(POSTMORTEM 2026-09-02 "지표와 프로덕션이 다른 입력으로 write를 부른다").
+   */
+  const keys = renderKeysOf(read1, base);
   const entriesOf = (locale: string): readonly LocaleEntry[] =>
-    read1.locales.find((l) => l.locale === locale)?.entries ?? [];
+    buildWriteEntries(rowsForLocale(keys, locale, { isBase: locale === base }), { isBase: locale === base });
 
   const reported = { count: 0 };
   const byPath = new Map(originals.map((f) => [f.path, f.content]));
   const write1 =
     layout === "multi-locale"
-      ? writeMultiLocale(fmt, originals, localeNames, base, entriesOf)
+      ? writeMultiLocale(fmt, originals, localeNames, base, entriesOf, reported)
       : writePerLocale(fmt, localeNames, entriesOf, byPath, reported);
   survey.writeErrors = reported.count;
   if (write1.size === 0) return;
@@ -415,10 +422,18 @@ function applyRoundtrip(
   // 재생성 writer는 미번역(빈 값)을 빼므로, 그 규칙을 1차 read에도 적용해야 공정하다.
   // 축은 `writeStrategy`다 — `layout`으로 가르면 per-locale + surgical(yaml·code-dict)이 잘못 분류된다.
   const dropEmpty = adapter.writeStrategy === "regenerate";
-  survey.roundtrip.semantic = sameMeaning(read1, read2, dropEmpty) ? "same" : "different";
+  /**
+   * ⚠️ **기준은 원본 파일이 아니라 DB가 가진 것이다** (2026-09-18, launch-readiness L4.6 뒤 20차 측정). write 입력을 프로덕션과
+   * 같게 만든 뒤 read1과 견주면 비-base에만 있던 키(DB에 없다 — base 파일이 키의 진실이다)가 빠진 것을 "손실"로 셌다.
+   * 손실은 **DB에 있던 값이 파일에서 사라지거나 바뀐 것**이다. 재생성은 그 밖의 키가 없어야 하고, 수술적 치환은 원본의
+   * 나머지가 남는 것이 정상이다.
+   */
+  survey.roundtrip.semantic = keepsStoredValues(localeNames, entriesOf, read2, dropEmpty) ? "same" : "different";
 
+  // 2차 write도 **다시 push → pull**이다 — read2로 DB 상태를 다시 만들어 같은 관문을 지난다.
+  const keys2 = renderKeysOf(read2, base);
   const entries2 = (locale: string): readonly LocaleEntry[] =>
-    read2.locales.find((l) => l.locale === locale)?.entries ?? [];
+    buildWriteEntries(rowsForLocale(keys2, locale, { isBase: locale === base }), { isBase: locale === base });
   const write2 =
     layout === "multi-locale"
       ? writeMultiLocale(fmt, asFiles(write1), localeNames, base, entries2)
@@ -528,16 +543,25 @@ function writeMultiLocale(
   locales: readonly string[],
   base: string | undefined,
   entriesOf: (locale: string) => readonly LocaleEntry[],
+  reportedErrors?: { count: number },
 ): Map<string, string> {
   const adapter = adapterFor(fmt);
   const out = new Map<string, string>();
   for (const file of originals) {
     let content = file.content;
     for (const locale of locales) {
-      const next = adapter.write(
-        { ...fmt, currentFiles: [{ path: file.path, content }] },
-        { locale, entries: entriesOf(locale) },
-      );
+      const writeFormat = { ...fmt, currentFiles: [{ path: file.path, content }] };
+      const input = { locale, entries: entriesOf(locale) };
+      // ⚠️ `writePerLocale`과 같은 이유로 `writeWithErrors`를 쓴다 — `write`만 부르면 ts-dict가 버린 항목이
+      // 지표에 안 남아 `writeErrors`가 구조적으로 0이었다 (launch-readiness L4.6).
+      let next: string | null;
+      if (adapter.writeWithErrors !== undefined) {
+        const res = adapter.writeWithErrors(writeFormat, input);
+        if (reportedErrors) reportedErrors.count += res.errors.length;
+        next = res.content;
+      } else {
+        next = adapter.write(writeFormat, input);
+      }
       if (next !== null) content = next;
     }
     out.set(file.path, content);
@@ -545,6 +569,48 @@ function writeMultiLocale(
   return out;
 }
 
+
+/**
+ * read 결과 → push가 DB에 남겼을 키. **base 파일의 키만**이고(`buildPushPayload`), 빈 값은 셀이 없다(`apply.ts`가
+ * `""`를 적재하지 않는다). base가 없으면 첫 로케일을 base로 본다(`pickBase`와 같은 폴백).
+ */
+function renderKeysOf(read: ReadResult, base: string | undefined): RenderKey[] {
+  const baseLocale = read.locales.find((l) => l.locale === base) ?? read.locales[0];
+  if (baseLocale === undefined) return [];
+  const byLocale = read.locales.map((l) => [l.locale, new Map(l.entries.map((e) => [e.key, e]))] as const);
+  return baseLocale.entries.map((e) => {
+    const cells: RenderKey["cells"] = Object.create(null) as RenderKey["cells"];
+    for (const [locale, entries] of byLocale) {
+      const cell = entries.get(e.key);
+      if (cell === undefined || cell.message === "") continue;
+      cells[locale] = {
+        value: cell.message,
+        ...(cell.description === undefined ? {} : { description: cell.description }),
+        ...(cell.placeholders === undefined ? {} : { placeholders: cell.placeholders }),
+      };
+    }
+    return { key: e.key, sourceText: e.message, description: e.description ?? null, sortIndex: e.order ?? null, orphaned: false, cells };
+  });
+}
+
+/**
+ * DB가 가진 값(`entriesOf` — pull이 write에 넘기는 것)이 2차 read에 그대로 있는가. `exact`(재생성)면 그 밖의 키도 없어야 한다.
+ */
+function keepsStoredValues(
+  locales: readonly string[],
+  entriesOf: (locale: string) => readonly LocaleEntry[],
+  read: ReadResult,
+  exact: boolean,
+): boolean {
+  for (const locale of locales) {
+    const stored = new Map(entriesOf(locale).map((e) => [e.key, e.message]));
+    // 빈 값을 걸러 견주지 않는다 — 재생성 writer가 `""`를 쓰는 것은 DB가 `""`를 가진 base 키뿐이다(`writeEmpty`, L4.10).
+    const got = new Map((read.locales.find((l) => l.locale === locale)?.entries ?? []).map((e) => [e.key, e.message]));
+    for (const [key, message] of stored) if (got.get(key) !== message) return false;
+    if (exact && got.size !== stored.size) return false;
+  }
+  return true;
+}
 
 function sameBytes(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string>): boolean {
   if (a.size !== b.size) return false;

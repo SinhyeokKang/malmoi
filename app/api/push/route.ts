@@ -23,7 +23,7 @@ import { hashPushToken } from "@/lib/push/token";
  * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 단 **미전달 편집이 프로젝트에 하나라도 있으면
  * 적재 전체를 보류한다** (sync-edit-protection, 2026-09-18) — 200 `deferred`이고 어떤 컬럼도 쓰지 않는다. 리포를 보지 않는다.
  *
- * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, design §3.8). `sha256(원문)`으로
+ * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, PRODUCT §7.8). `sha256(원문)`으로
  * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을
  * 먼저 찾으면 **오배송된 페이로드가 인증 대상을 고르게 된다.** 서버 env 둘(공유 토큰·활성 프로젝트 slug)은
  * 이 라우트에서 사라졌다 — `checkBearer`는 `/api/pull`의 `CRON_SECRET` 전용으로 남는다.
@@ -57,15 +57,16 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const prisma = getPrisma();
     // **토큰이 프로젝트를 정한다.** 원문은 쿼리에 실리지 않고, 발급받지 않은 프로젝트(`pushTokenHash`가 null)는
-    // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (design §3.8).
+    // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (PRODUCT §7.8).
+    const pushTokenHash = hashPushToken(rawToken);
     const project = await prisma.project.findUnique({
-      where: { pushTokenHash: hashPushToken(rawToken) },
+      where: { pushTokenHash },
       // 포맷 셋은 `checkFormat`의 비교 대상이다 — 온보딩이 확정한 표면을 CI가 갈아치우지 못하게 한다.
       select: {
         id: true,
         slug: true,
         // ⚠️ **optional로 두지 않는다** — 껍데기가 빼면 `checkFormat`이 선언을 못 보고 base 변경이
-        // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (design §3.13).
+        // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (ARCHITECTURE §5.5.5).
         // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
         archivedAt: true,
       },
@@ -90,7 +91,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     /**
-     * 보관 거부 (7단계 — sync-runs design §4, 결정 9). **오배송·표면 검사보다 앞이다** — 멈춘
+     * 보관 거부 (7단계 — ARCHITECTURE §5.6.4). **오배송·표면 검사보다 앞이다** — 멈춘
      * 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 그 셋 중 무엇이 걸리든 사용자가
      * 할 일은 같다(워크플로를 뗀다).
      */
@@ -160,19 +161,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     /**
      * ⚠️ **`previousBaseLocale`은 이 행의 값이다** — `applyPush`가 그것으로 base 교체를 알아보고
-     * `needsReview` 전파를 건너뛴다 (design §3.13). 아래 update가 `baseLocale`을 덮으므로 **덮기 전의
+     * `needsReview` 전파를 건너뛴다 (ARCHITECTURE §5.5.5). 아래 update가 `baseLocale`을 덮으므로 **덮기 전의
      * 값**을 넘겨야 하고, 그래서 조회를 다시 하지 않고 위에서 읽은 행을 그대로 쓴다.
      */
     /**
-     * **진행 표시는 서버가 실제로 처리 중인 구간만 말한다** (projects-list design §3.35) — 그래서
+     * **진행 표시는 서버가 실제로 처리 중인 구간만 말한다** (PRODUCT §7.8) — 그래서
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
     /**
-     * **보류 판정이 진행 표시보다 먼저다** (sync-edit-protection design §3). 보류는 아무것도 하지 않은 것이라 표시를
+     * **보류 판정이 진행 표시보다 먼저다** (sync-edit-protection — ARCHITECTURE §5.5.2). 보류는 아무것도 하지 않은 것이라 표시를
      * 세웠다 지우는 쓰기조차 없어야 한다(완료 조건 2) — 그래서 표시 전에 한 번 센다. 판정과 적용 사이 경합은
      * `applyProtectedPush`가 잠금 안에서 다시 세고 재집계로 잡는다.
      *
-     * ⚠️ design §3은 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
+     * ⚠️ 옛 기능 문서는 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
      * `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 트랜잭션 밖 사전 집계로 같은 목적을 이룬다.
      */
     const pendingBefore = await countPending(prisma, project.id);
@@ -187,13 +188,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
-        startedAt, token,
+        startedAt, token, pushTokenHash,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
       });
     } catch (error) {
       // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
-      await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
+      // ⚠️ **트랜잭션 안의 `stale-commit`은 실패가 아니다** — 위 사전 가드를 함께 지난 더 새 커밋이 먼저 적재됐다는
+      // 뜻이라 이 실행은 아무것도 안 했다. 실패로 닫으면 방금 성공한 적재를 `import-failed`로 덮는다 (launch-readiness L3.7).
+      if (error instanceof ApplyGuardError && error.code === "stale-commit") await abandonImportRun(prisma, { ...scope, token });
+      else await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
       if (error instanceof ApplyGuardError) {
         const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
         return NextResponse.json({ error: message }, { status: guardStatus(error.code) });
@@ -212,6 +216,11 @@ export async function POST(request: Request): Promise<NextResponse> {
       revalidatePath("/projects/new");
     }
 
+    // 조회 뒤 토큰이 회전됐다 — 아무것도 적재하지 않았으니 진행 표시만 거두고 처음 조회와 같은 401로 답한다.
+    if (result.status === "unauthorized") {
+      await abandonImportRun(prisma, { ...scope, token });
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
@@ -235,9 +244,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
     // (`MissingEnvError` — 변수 이름만 담는다)는 본문에 남긴다: 그게 POSTMORTEM 2026-09-03이
-    // 요구한 "원인이 남는 500"이다. 남의 라이브러리 메시지는 `ref`만 내보내고 전문은 서버
-    // 로그(Vercel)로 보낸다 — 이 응답은 **임의의 대상 리포**의 Actions 로그로 흘러가고
-    // (`scripts/push-local.ts`가 stdout에 찍는다) 그 리포가 public이면 누구나 읽는다.
+    // 요구한 "원인이 남는 500"이다. 남의 라이브러리 메시지는 `ref`만 내보내고, **서버 로그에도
+    // 갈래 이름만** 남는다(2026-09-18 — `classifyFailure` 주석). 이 응답은 **임의의 대상 리포**의
+    // Actions 로그로 흘러가고(`scripts/push-local.ts`가 stdout에 찍는다) 그 리포가 public이면
+    // 누구나 읽는다.
     const failure = classifyFailure(error);
     if (failure.safe) return NextResponse.json({ error: failure.message }, { status: 500 });
     const ref = randomUUID().slice(0, 8);
@@ -248,7 +258,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 /**
  * 보류 응답. **200이다** — 오류가 아니라 "편집이 먼저 전달돼야 한다"는 정상 결과이고, 구 action 태그(`@malmoi-i18n-push-v1`)의
- * CLI도 `res.ok`로 exit 0이 된다(design §3). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
+ * CLI도 `res.ok`로 exit 0이 된다(ARCHITECTURE §5.5.2). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
  */
 function deferred(projectId: string, commitSha: string, pendingCount: number): NextResponse {
   return NextResponse.json<PushResponse>({ status: "deferred", reason: "pending-edits", pendingCount, projectId, commitSha });

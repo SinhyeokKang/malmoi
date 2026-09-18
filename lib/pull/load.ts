@@ -70,7 +70,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
   // 1층 판정값 — `countUnpublished`와 같은 토큰 술어다. 시각으로 세면 push가 올린 `updatedAt`이 편집으로 읽히고
   // (T0), 저자·시각으로 세면 같은 밀리초 재저장과 전달 확인을 못 가른다 (sync-edit-protection T8).
   const unpublished = await countPending(prisma, project.id);
-  // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection design §2).
+  // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
   // 0이면 조회하지 않는다 — 관계 조인이 낡은 통계에서 인덱스를 버리는 창이 있다(`countPending` 주석). 같은 스냅샷이라 결과가 같다.
   const pending = unpublished === 0 ? [] : await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
 
@@ -110,7 +110,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
  * 만들지 않는다.
  *
  * ⚠️ **`skipped`는 `lastPublishedAt`을 건드리지 않는다** — 그 컬럼은 "마지막으로 **보낸**" 시각이지
- * "마지막으로 시도한" 시각이 아니다 (translation-ui design §3.4). 반대로 `lastPulledAt`은 변경 없는
+ * "마지막으로 시도한" 시각이 아니다 (ARCHITECTURE §3). 반대로 `lastPulledAt`은 변경 없는
  * 스킵에도 전진한다(그 순간 export == base 트리가 검증된 상태다).
  *
  * 시각은 **여기서** 잰다 — `lastPulledAt`에 들어가는 캡처 값(`max(updatedAt)`)은 벽시계가 아니라
@@ -135,7 +135,7 @@ export async function saveLastPulledAt(
     return;
   }
   // 같은 트랜잭션이다 — `lastPulledAt`만 전진하고 해제가 빠지면 옛 술어는 0인데 토큰이 남는 "유령 pending"이 된다
-  // (design §6.1). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
+  // (ARCHITECTURE §3). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
   await prisma.$transaction(async (tx) => {
     await tx.project.update(project);
     await acknowledgeDelivered(tx, projectId, delivered);
@@ -145,7 +145,7 @@ export async function saveLastPulledAt(
 /**
  * **캡처한 토큰이 아직 그대로인 셀만** 해제한다 — 캡처 뒤 같은 셀을 다시 저장했으면 토큰이 달라 남는다(같은 밀리초여도).
  *
- * ⚠️ **선조회 후 무조건 UPDATE로 바꾸지 않는다** — 이 조건부 UPDATE 한 문장이 방어선이다 (design §2).
+ * ⚠️ **선조회 후 무조건 UPDATE로 바꾸지 않는다** — 이 조건부 UPDATE 한 문장이 방어선이다 (ARCHITECTURE §3).
  * ⚠️ `updatedAt`을 건드리지 않는다 — raw SQL이라 `@updatedAt`이 개입하지 않는다. 시각이 움직이면 방금 쓴
  * `lastPulledAt`(= 캡처한 `max(updatedAt)`)보다 뒤가 되어 옛 술어가 전달한 편집을 다시 센다.
  * ⚠️ orphan 키·로케일·보관 표면 셀은 캡처 뒤 그렇게 됐어도 여기서 바꾸지 않는다 (완료 조건 9).

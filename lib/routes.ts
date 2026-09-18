@@ -22,7 +22,7 @@
  */
 export const ALL_NAMESPACES = "*";
 
-/** 번역 화면의 상태는 URL에 있다 — 공유 가능하고 새로고침에 살아남는다 (design §3.3). */
+/** 번역 화면의 상태는 URL에 있다 — 공유 가능하고 새로고침에 살아남는다 (PRODUCT §7.7). */
 export type TranslationsQuery = {
   /** 네임스페이스. `"*"`는 전체 — 어댑터가 만들 수 없는 이름이라 실제 접두와 충돌하지 않는다. */
   ns?: string;
@@ -39,7 +39,7 @@ export type TranslationsQuery = {
   /** 키·**선택된 로케일 값**의 부분 일치. */
   q?: string;
   /**
-   * 파이프라인 상태로 행을 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (project-home §9.7).
+   * 파이프라인 상태로 행을 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (PRODUCT §7.7).
    *
    * ⚠️ **8-4가 이 키의 부재를 의도로 적었고, 2026-09-15에 뒤집었다.** 그때의 근거는 "시안의 칩 행이
    * 정확히 세 종류라 부재가 의도로 읽힌다"였는데, **Home이 그 수를 누를 수 있는 카드로 만들면서
@@ -84,7 +84,7 @@ function withQuery(path: string, query: Record<string, string | undefined>): str
 
 export const routes = {
   /**
-   * 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다 (design §3.8).
+   * 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다.
    *
    * ⚠️ **`/`가 아니라 `/signin`이다** (8-1a). 랜딩 페이지가 `/`에 들어올 예정이라 미리 갈랐다 —
    * 나중에 옮기면 이 목적지를 가리키는 **아홉 자리**가 동시에 움직이고, 경로 문자열은 타입이
@@ -102,7 +102,7 @@ export const routes = {
    * 내 프로젝트 목록. **좁히는 축은 검색 하나다** — 서버가 이미 걸러 그리므로 클라이언트 상태가 0이고,
    * 뒤로가기·공유·새로고침이 그냥 된다.
    *
-   * ⚠️ **`filter`가 2026-09-13에 사라졌다** (projects-list §1.2). 옛 링크의 `?filter=`는 **조용히
+   * ⚠️ **`filter`가 2026-09-13에 사라졌다** (DESIGN §6.63). 옛 링크의 `?filter=`는 **조용히
    * 무시된다** — 404도 리다이렉트도 아니고, 더 넓게 보일 뿐이다. 옛 `?focus=`를 폐기했을 때와 같은
    * 관용구다(위 `TranslationsQuery` 주석).
    *
@@ -114,7 +114,7 @@ export const routes = {
    */
   projects: (query: { q?: string } = {}): string => withQuery("/projects", query),
   /**
-   * 새 프로젝트 모달의 **딥링크** (new-project-modal §1.4). `/projects` 위에 모달이 열린 주소이고,
+   * 새 프로젝트 모달의 **딥링크** (DESIGN §6.7). `/projects` 위에 모달이 열린 주소이고,
    * 그래서 목록과 **같은 쿼리**를 받는다 — 뒤 목록이 열기 직전과 같아야 하고, 닫으면 그 값을 들고
    * `/projects`로 돌아간다.
    *
@@ -169,7 +169,7 @@ export const routes = {
   members: (slug: string): string => `/projects/${slug}/members`,
   /**
    * sync 이력 (7단계). **커서는 서버가 만든 값이고 클라이언트 상태가 아니다** — "Older"가 링크
-   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (design 결정 14).
+   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (DESIGN §6.68).
    */
   logs: (slug: string, query: { cursor?: string } = {}): string =>
     withQuery(`/projects/${slug}/logs`, query),

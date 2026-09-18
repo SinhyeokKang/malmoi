@@ -75,7 +75,7 @@ function sourcesIn(dir: string, base: string): { rel: string; source: string }[]
 const CONNECT_SOURCES = sourcesIn(join(ROOT, "lib/github-connect"), "lib/github-connect");
 const GITHUB_TS = readFileSync(join(ROOT, "lib/github.ts"), "utf8");
 /**
- * **온보딩은 GitHub을 아예 모른다** (2026-09-07, design §3.10). 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고,
+ * **온보딩은 GitHub을 아예 모른다** (2026-09-07, ARCHITECTURE §3.1). 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고,
  * App 개인키도 사용자 토큰도 **그리고 `lib/github.ts`도** import하지 않는다 — 두 토큰이 만나는 자리는
  * Server Action 하나여야 한다. 여기에 루트를 더하지 않으면 이 방어선이 새 디렉터리를 자동으로 덮지 않는다.
  */
@@ -83,6 +83,12 @@ const ONBOARDING_SOURCES = [
   ...sourcesIn(join(ROOT, "lib/onboarding"), "lib/onboarding"),
   ...sourcesIn(join(ROOT, "lib/account-connect"), "lib/account-connect"),
 ];
+/**
+ * **App 토큰을 쓰는 쪽** — 커밋·PR·미리보기·열린 PR 조회 (launch-readiness L4.9). 이쪽은 `@/lib/github`을 정당하게 물고,
+ * 사용자 토큰을 물면 두 자격증명이 한 파일에서 만난다. 전에는 이 루트들을 안 훑어 `lib/projects/open-pr.ts` 같은 자리가
+ * 2홉 뒤에 사용자 토큰을 물어도 green이었다 (POSTMORTEM "2홉은 못 본다").
+ */
+const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
 const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
 
@@ -127,6 +133,10 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   it("스캔 대상을 실제로 찾았다", () => {
     expect(CONNECT_SOURCES.length).toBeGreaterThan(3);
     expect(ONBOARDING_SOURCES.length).toBeGreaterThan(3);
+    // 넷 다 들어왔는가 — 한 디렉터리가 이름이 바뀌면 조용히 0개가 된다.
+    for (const dir of ["lib/pull", "lib/push", "lib/projects", "lib/publish"]) {
+      expect(APP_TOKEN_SOURCES.some((f) => f.rel.startsWith(`${dir}/`)), dir).toBe(true);
+    }
   });
 
   it("커밋 경로 import 검사식이 실제로 잡는다", () => {
@@ -138,7 +148,7 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   });
 });
 
-describe("온보딩은 두 자격증명을 모른다 (design §3.10)", () => {
+describe("온보딩은 두 자격증명을 모른다 (ARCHITECTURE §3.1)", () => {
   it("lib/onboarding/이 App 자격증명을 참조하지 않는다", () => {
     const offenders = ONBOARDING_SOURCES.filter((f) => APP_CREDENTIAL.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);
@@ -151,6 +161,13 @@ describe("온보딩은 두 자격증명을 모른다 (design §3.10)", () => {
 
   it("lib/onboarding/이 `@/lib/github`을 import하지 않는다 — 스냅샷·blob은 Server Action이 값으로 넘긴다", () => {
     const offenders = ONBOARDING_SOURCES.filter((f) => COMMIT_PATH_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("App 토큰 경로가 사용자 토큰을 모른다", () => {
+  it("lib/pull·push·projects·publish가 사용자 토큰 모듈을 import하지 않는다", () => {
+    const offenders = APP_TOKEN_SOURCES.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);
   });
 });

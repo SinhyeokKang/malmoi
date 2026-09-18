@@ -12,7 +12,7 @@ import { ALL_NAMESPACES, routes } from "@/lib/routes";
 /**
  * `Needs your attention` (캔버스 `2a` 왼쪽 가운데).
  *
- * ⚠️ **`+2 more`가 `<details>`다** (spec §9.9) — 클라이언트 상태가 0이라 Home 전체가 순수 서버
+ * ⚠️ **`+2 more`가 `<details>`다** (DESIGN §6.64) — 클라이언트 상태가 0이라 Home 전체가 순수 서버
  * 컴포넌트로 남는다. `client-graph.test.ts`가 보는 그래프가 안 늘고 번들도 안 는다.
  *
  * ⚠️ **행에 버튼도 바닥 링크도 없다** — 이 항목은 DB 상태에서 파생된 **사실**이라 지워도 원인이
@@ -157,7 +157,7 @@ function body(item: AttentionItem): string {
 }
 
 /**
- * ⚠️ **꼬리 절이 통째로 빠지는 갈래가 있다** (spec §9.11) — 이름을 못 찾으면
+ * ⚠️ **꼬리 절이 통째로 빠지는 갈래가 있다** (DESIGN §6.64) — 이름을 못 찾으면
  * `8 cells are waiting for review.`로 끝난다. `who`가 `null`인지가 그 판정이고, 그 `null`은
  * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
  */

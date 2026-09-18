@@ -10,7 +10,8 @@ export function classifyCredential(value: string | null): "null" | "envelope" | 
 }
 export type AccountFields = { userId: string; provider: string; providerAccountId: string; access_token: string | null; refresh_token: string | null; id_token: string | null };
 type AccountPatch = Pick<AccountFields, "access_token" | "refresh_token" | "id_token">;
-export function planCredentialMigration(row: AccountFields, mode: MigrationMode): AccountPatch | null {
+// ⚠️ **`plan*`이 아니다** — 이 리포의 `plan*`은 순수 함수인데 이 둘은 봉투를 열고 다시 봉인한다(키를 env에서 읽는다, launch-readiness L7.1).
+export function migrateAccountFields(row: AccountFields, mode: MigrationMode): AccountPatch | null {
   const hasSecrets = [row.access_token, row.refresh_token, row.id_token].some(v => v !== null);
   if (row.provider === "github" || row.provider === "google") {
     if (!hasSecrets) return null;
@@ -56,7 +57,7 @@ export function assertUniqueEmails(rows: PersonalFields[]): void {
     seen.add(email);
   }
 }
-export function planPersonalFields(row: PersonalFields, table: "User" | "ProjectInvitation", mode: MigrationMode): PersonalPatch | null {
+export function migratePersonalFields(row: PersonalFields, table: "User" | "ProjectInvitation", mode: MigrationMode): PersonalPatch | null {
   const email = readEmail(row, table);
   const fields = table === "User" ? [row.email, row.name, row.image] : [row.email];
   const formats = fields.filter((v): v is string => v != null).map(classifyCredential);

@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { linkCookie, linkStateCookie } from "./policy";
 
 /**
- * **일반 로그인 진입점 셋이 버려진 병합 왕복을 지운다** (design 불변식 8c).
+ * **일반 로그인 진입점 셋이 버려진 병합 왕복을 지운다** (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **`clearRevocationCookies`와 쌍이다** — 두 가로채기의 intent 판정이 각자 쿠키 셋의 **OR**이라
  * 암호적 결합이 없다. 한쪽을 중단한 사용자가 곧바로 다른 쪽을 시작하면 남은 쿠키가 그 callback을

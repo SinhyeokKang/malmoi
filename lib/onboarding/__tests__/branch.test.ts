@@ -5,7 +5,7 @@ import { isValidBranchName } from "@/lib/pull/branch-name";
 import { planBranchChoice } from "../branch";
 
 /**
- * ①의 브랜치 칸이 무엇으로 서는지를 정하는 순수 함수 (feature design §3.2·§4).
+ * ①의 브랜치 칸이 무엇으로 서는지를 정하는 순수 함수 (DESIGN §6.7).
  *
  * ⚠️ **실패한 조회를 "브랜치가 없다"로 읽지 않는다** (POSTMORTEM 2026-09-03). 조회가 실패하면
  * 빈 `Select`가 아니라 **읽기 전용 default branch**이고, 그 사실을 캡션이 말한다.

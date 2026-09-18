@@ -65,7 +65,7 @@ export function outcomeUrl(outcome: Outcome): string {
     : routes.account({ sessionRevocation: outcome });
 }
 
-/** Auth.js encrypts state with the cookie name as salt, so it cannot be renamed into ordinary login. */
+/** Auth.js는 쿠키 이름을 salt로 state를 암호화한다 — 이름을 가르면 일반 로그인으로 개명할 수 없다. */
 export function revocationStateCookie(secure: boolean) {
   return { name: `${secure ? "__Secure-" : ""}malmoi-revocation-state`, options: {
     secure, httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 900,

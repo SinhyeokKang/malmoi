@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { hashPushToken } from "@/lib/push/token";
 
 /**
- * **CI 파싱 실패의 유일한 수신구** (`POST /api/push/failure` — projects-list design §3.35).
+ * **CI 파싱 실패의 유일한 수신구** (`POST /api/push/failure` — PRODUCT §7.8).
  * 외부 진입점이라 Route Handler다.
  *
  * 이 파일이 지키는 것 넷:

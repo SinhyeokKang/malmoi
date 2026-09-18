@@ -1,7 +1,7 @@
 import type { HomeState } from "./state";
 
 /**
- * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · design §3.5).
+ * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · DESIGN §6.64).
  *
  * ⚠️ **행이 상태에 따라 사라지거나 는다.** 그 규칙을 JSX의 `&&`에 흩으면 여섯 상태 × 열 행의
  * 매트릭스를 화면을 읽어야만 알 수 있고, 테스트가 전수로 들 자리가 없어진다.
@@ -27,7 +27,7 @@ export type MetaRow =
   | { kind: "lastSync"; at: Date | null; failedAt: Date | null }
   | { kind: "lastPublish"; at: Date | null; prUrl: string | null }
   | { kind: "created"; at: Date }
-  /** ⚠️ **시각만 든다** (spec §9.4) — 캔버스의 `· by Sinhyeok`을 뺀 **의도된 이탈**이다. */
+  /** ⚠️ **시각만 든다** (DESIGN §6.64 이탈 표) — 캔버스의 `· by Sinhyeok`을 뺀 **의도된 이탈**이다. */
   | { kind: "archived"; at: Date };
 
 export function metaRows(input: {
@@ -54,7 +54,7 @@ export function metaRows(input: {
           href: `https://github.com/${input.repoOwner}/${input.repoName}` },
     { kind: "branch", branch: input.baseBranch },
   ];
-  // ⚠️ **표면이 하나면 행이 사라진다** (spec §9.5-4) — `1`은 정보가 아니라 자리만 먹는다.
+  // ⚠️ **표면이 하나면 행이 사라진다** — `1`은 정보가 아니라 자리만 먹는다.
   if (input.surfaces > 1) rows.push({ kind: "surfaces", count: input.surfaces });
   rows.push(
     { kind: "locales", codes: input.locales },

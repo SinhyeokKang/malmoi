@@ -269,11 +269,17 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
     expect(entries).toEqual([{ key: "a.one", message: "src:a.one" }]);
   });
 
-  it("base 로케일의 sourceText도 비어 있으면 제외한다", () => {
+  /**
+   * ⚠️ **이 기대값이 2026-09-18에 뒤집혔다** (launch-readiness L4.10, 어댑터 실측 20차). 옛 동작은 "폴백할 원문이 없으니
+   * 뺀다"였는데, 원문이 빈 키는 **리포 base 파일에 `""`로 있던 키**다(키 집합은 base 파일에서만 온다 — `lib/push/payload.ts`).
+   * 빼면 머지 뒤 push가 전 로케일 orphan → 2차 pull이 비-base 번역을 지운다. 그래서 `""` 그대로 쓰라는 표시를 단다 —
+   * `WriteInput`에 `isBase`가 없으므로(의도된 계약) 판정은 여기서 하고 writer는 표시만 본다.
+   */
+  it("base 로케일의 sourceText도 비어 있으면 빈 값 그대로 쓰라고 표시한다", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: null, sourceText: "" })], {
       isBase: true,
     });
-    expect(entries).toEqual([]);
+    expect(entries).toEqual([{ key: "a.one", message: "", writeEmpty: true }]);
   });
 
   /** 빈 값과 행 부재가 **같은 답**을 내야 한다 — 두 경로가 갈리면 어느 쪽이 base 파일을 정하는지가 상황 의존이 된다. */
@@ -283,11 +289,16 @@ describe("buildWriteEntries — writer에 넘길 entries의 유일한 관문", (
     expect(empty).toEqual(absent);
   });
 
-  it("base에서 값과 sourceText가 둘 다 비면 제외한다 — 폴백할 원문이 없다", () => {
+  it("base에서 값과 sourceText가 둘 다 비면 빈 값 그대로 쓰라고 표시한다 (L4.10)", () => {
     const entries = buildWriteEntries([row({ key: "a.one", value: "", sourceText: "" })], {
       isBase: true,
     });
-    expect(entries).toEqual([]);
+    expect(entries).toEqual([{ key: "a.one", message: "", writeEmpty: true }]);
+  });
+
+  it("비-base는 sourceText가 비어도 표시하지 않는다 — 빈 값은 미번역이다 (짝)", () => {
+    expect(buildWriteEntries([row({ key: "a.one", value: "", sourceText: "" })], { isBase: false })).toEqual([]);
+    expect(buildWriteEntries([row({ key: "a.one", value: null, sourceText: "" })], { isBase: false })).toEqual([]);
   });
 
   it("description은 실어 보낸다 — base에만 넣는 판정은 어댑터가 isBase로 한다", () => {

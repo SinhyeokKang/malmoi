@@ -44,7 +44,7 @@ type Stub = {
   keyQueries: () => number;
 };
 
-function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[], previousBaseLocale: string | null = payloadFromFiles().format.baseLocale, format = payloadFromFiles().format): Stub {
+function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[], previousBaseLocale: string | null = payloadFromFiles().format.baseLocale, format = payloadFromFiles().format, lastCommitAt: Date | null = null): Stub {
   const captured: Captured[] = [];
   const projectUpdates: unknown[] = [];
   let transactions = 0;
@@ -71,7 +71,7 @@ function stubPrisma(existing: readonly ExistingKey[], allKeys: readonly string[]
           : [...new Set([...existing.map((e) => e.key), ...allKeys])].map((key) => ({ id: `id-${key}`, key }))),
     },
     translationSurface: {
-      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: format.adapter, pathTemplate: format.pathTemplate, baseLocale: previousBaseLocale, declaredBaseLocale: payloadFromFiles().format.baseLocale, lastCommitAt: null }),
+      findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: format.adapter, pathTemplate: format.pathTemplate, baseLocale: previousBaseLocale, declaredBaseLocale: payloadFromFiles().format.baseLocale, lastCommitAt }),
       updateMany: async (args: unknown) => {
         projectUpdates.push(args);
         return { count: 1 };
@@ -236,7 +236,7 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
   });
 
   /**
-   * **덮인 값의 저자는 리포다** (translation-ui design §3.6). strict 덮어쓰기에서 사람 이름이 남으면
+   * **덮인 값의 저자는 리포다** (ARCHITECTURE §5.5.2). strict 덮어쓰기에서 사람 이름이 남으면
    * 거짓이고, 미배포 집계(isUnpublished)가 push 직후 **전 키를** "안 보낸 편집"으로 센다 —
    * 903키 프로젝트에서 배너가 매번 뜬다.
    */
@@ -323,10 +323,14 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         lastCommitAt: new Date("2026-09-03T00:00:00+09:00"),
       },
     }, {
-      // 결과는 같은 트랜잭션의 조건부 문장이다 — 나중 실행의 표시를 지우지 않는다.
-      where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
+      // 결과는 토큰과 **무관하다** — 교차한 실행이 토큰을 덮어도 이 성공이 기록된다 (launch-readiness L3.7).
+      where: { id: "surface-1", projectId: PROJECT_ID },
       // ⚠️ **성공이 실패 시각도 비운다** — 안 비우면 성공한 뒤에도 Home이 옛 실패를 말한다.
-      data: { lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: null, lastImportToken: null },
+      data: { lastImportError: null, lastImportFailedAt: null },
+    }, {
+      // 진행 표시는 조건부다 — 나중 실행의 표시를 지우지 않는다.
+      where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
+      data: { lastImportStartedAt: null, lastImportToken: null },
     }]);
   });
 
@@ -339,6 +343,35 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
         || c.sql.includes('INSERT INTO "KeyRef"');
       expect(scoped, c.sql.slice(0, 80)).toBe(true);
     }
+  });
+});
+
+/**
+ * **트랜잭션 안의 역행 가드** (launch-readiness L4.2). 스텁 표면이 `lastCommitAt: null`로 고정돼 있어 이 가드가 한 번도
+ * 안 돌았다 — 사전 가드를 함께 지난 교차 요청을 막는 것은 이것뿐이다(`concurrent-import.integration.ts`).
+ */
+describe("push 흐름 — 잠금 뒤 역행 가드", () => {
+  const payload = payloadFromFiles();
+  const later = new Date(new Date(payload.commitAt).getTime() + 1000);
+  const apply = (refsMode: "replace" | "preserve", lastCommitAt: Date | null) => {
+    const stub = stubPrisma([], payload.keys.map((k) => k.key), payload.format.baseLocale, payload.format, lastCommitAt);
+    return { stub, run: applyPush(stub.prisma, { projectId: PROJECT_ID, surfaceId: "surface-1" }, payload, { refsMode, previousBaseLocale: payload.format.baseLocale, token: "fixture-run", startedAt: STARTED_AT }) };
+  };
+
+  it("저장된 커밋보다 앞선 CI push는 아무것도 안 쓰고 stale-commit으로 던진다", async () => {
+    const { stub, run } = apply("replace", later);
+    await expect(run).rejects.toMatchObject({ code: "stale-commit" });
+    expect(stub.captured.map((c) => c.sql).filter((sql) => !sql.includes("FOR UPDATE"))).toEqual([]);
+    expect(stub.projectUpdates).toEqual([]);
+  });
+
+  it("같은 시각은 통과한다 (짝 — 같은 커밋의 재전송)", async () => {
+    await expect(apply("replace", new Date(payload.commitAt)).run).resolves.toBeDefined();
+  });
+
+  // Repository Sync는 force-push 뒤의 현재 base도 받는다 — 가드는 CI(`replace`) 전용이다.
+  it("preserve(Repository Sync)는 역행 가드를 받지 않는다", async () => {
+    await expect(apply("preserve", later).run).resolves.toBeDefined();
   });
 });
 
@@ -359,6 +392,27 @@ describe("push 흐름 — 기존 키가 있다", () => {
   it("UPDATE 경로에서도 sortIndex가 매번 새로 박힌다 — drift가 없는 근거다", async () => {
     const { captured } = await runFlow({ existing: [existingZebra] });
     expect(columnsOf(stmt(captured, 'UPDATE "StringKey" AS s'))["sortIndex"]).toEqual([0]);
+  });
+
+  /**
+   * ⚠️ **`projectId`만으로는 한 표면 적재가 형제 표면을 건드린다** (launch-readiness L4.2). 위 "projectId로
+   * 좁혀진다"는 이 축을 못 봐서, 로케일 orphan·키 orphan·키 UPDATE·refs DELETE의 `AND "surfaceId"`를 지워도
+   * green이었다. 문장마다 이 표면의 id가 인자에 있어야 한다.
+   */
+  it("모든 쓰기가 surfaceId로도 좁혀진다 — 형제 표면을 orphan시키지 않는다", async () => {
+    const gone: ExistingKey = { id: "id-gone", key: "gone", sourceHash: "h", orphaned: false };
+    // 원문이 바뀐 키 — 이게 없으면 `needsReview` 전파 문장이 아예 안 나와 그 자리를 못 본다.
+    const stale: ExistingKey = { id: "id-apple", key: "apple", sourceHash: "stale", orphaned: false };
+    const { captured } = await runFlow({ existing: [existingZebra, gone, stale], scanRefs: [{ key: "apple", refs: [{ path: "a.ts", line: 1 }] }] });
+    for (const sql of ['UPDATE "Locale"', 'UPDATE "StringKey" AS s', 'UPDATE "StringKey" SET "orphaned" = true', 'UPDATE "Translation" SET "needsReview"', 'DELETE FROM "KeyRef"']) {
+      expect(stmt(captured, sql).values, sql).toContain("surface-1");
+    }
+    for (const c of captured) {
+      const scoped = c.values.some((v) => v === "surface-1" || (Array.isArray(v) && v.includes("surface-1")))
+        // KeyRef·Translation은 표면 컬럼 없이 방금 조회한 이 표면의 키 id로 좁힌다. 프로젝트 잠금은 표면 단위가 아니다.
+        || c.sql.includes('INSERT INTO "KeyRef"') || c.sql.includes('INSERT INTO "Translation"') || c.sql.includes('FROM "Project" WHERE');
+      expect(scoped, c.sql.slice(0, 80)).toBe(true);
+    }
   });
 
   it("코드에서 사라진 키는 orphaned로 표시하고 삭제하지 않는다", async () => {
@@ -387,7 +441,7 @@ describe("push 흐름 — 기존 키가 있다", () => {
   });
 
   /**
-   * **base 교체 push는 `needsReview`를 한 행도 세우지 않는다** (6b-3 — design §3.13).
+   * **base 교체 push는 `needsReview`를 한 행도 세우지 않는다** (6b-3 — ARCHITECTURE §5.5.5).
    *
    * ⚠️ 이 케이스가 다른 것과 갈리는 지점은 **원인**이다. `sourceHash`가 전부 달라지지만 그 변화의
    * 뜻이 "원문 문장이 수정됐다"가 아니라 "원문의 **언어**가 교체됐다"라 다른 로케일의 번역은
@@ -542,7 +596,7 @@ describe("push 흐름 — 사라진 로케일을 orphaned로 표시한다", () =
 });
 
 /**
- * **키 생성 시각과 임포트 결과** (projects-list design §3.35·§8).
+ * **키 생성 시각과 임포트 결과** (PRODUCT §7.8).
  *
  * 둘 다 `applyPush`의 **같은 트랜잭션**에 실린다. 결과를 뒤에 따로 쓰면 데이터는 들어갔는데 목록만
  * 실패로 남는 창이 생기고, 그 창에서 사용자가 보는 것은 "적재가 깨졌다"인데 실제로는 끝난 상태다.
@@ -580,17 +634,19 @@ describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
 
   it("완전 성공이 이전 실패와 진행 표시를 같이 비운다", async () => {
     const { projectUpdates } = await run(null);
-    expect(projectUpdates[1]).toMatchObject({
+    expect(projectUpdates[1]).toEqual({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: null, lastImportFailedAt: null } });
+    expect(projectUpdates[2]).toMatchObject({
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
-      data: expect.objectContaining({ lastImportError: null, lastImportStartedAt: null }),
+      data: { lastImportStartedAt: null, lastImportToken: null },
     });
   });
 
   it("부분 실패는 코드를 남기고 진행 표시만 비운다 — 데이터는 이미 들어갔다", async () => {
     const { projectUpdates } = await run("partial-import");
-    expect(projectUpdates[1]).toMatchObject({
+    expect(projectUpdates[1]).toMatchObject({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: "partial-import" } });
+    expect(projectUpdates[2]).toMatchObject({
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
-      data: expect.objectContaining({ lastImportError: "partial-import", lastImportStartedAt: null }),
+      data: { lastImportStartedAt: null, lastImportToken: null },
     });
   });
 

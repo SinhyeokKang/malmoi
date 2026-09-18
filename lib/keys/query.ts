@@ -16,7 +16,7 @@ import {
   type ProjectEvents,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
-import { countPending } from "@/lib/protection/where";
+import { countPending, countPendingBySurface } from "@/lib/protection/where";
 import type { Actor, KeyRow } from "./view";
 
 /**
@@ -52,12 +52,12 @@ export type ProjectContext = {
   baseLocale: string | null;
   /**
    * 기준 로케일 변경의 **선언**. 번역 화면의 대기 배너가 `basePending`으로 이것과 `baseLocale`을
-   * 견준다 (6b-3 — design §3.13). pull은 이 컬럼을 읽지 않는다.
+   * 견준다 (6b-3 — ARCHITECTURE §5.5.5). pull은 이 컬럼을 읽지 않는다.
    */
   declaredBaseLocale: string | null;
-  /** 미배포 판정의 기준선. 벽시계가 아니라 캡처된 `max(updatedAt)`이다 (design §3.5). */
+  /** 미배포 판정의 기준선. 벽시계가 아니라 캡처된 `max(updatedAt)`이다 (ARCHITECTURE §3). */
   lastPulledAt: Date | null;
-  /** 마지막으로 **보낸** 시각과 그때의 PR. `skipped`는 이 둘을 건드리지 않는다 (design §3.4). */
+  /** 마지막으로 **보낸** 시각과 그때의 PR. `skipped`는 이 둘을 건드리지 않는다 (ARCHITECTURE §3). */
   lastPublishedAt: Date | null;
   lastPrUrl: string | null;
   locales: LocaleRow[];
@@ -109,7 +109,7 @@ export async function loadKeys(
       id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
       surface: { select: { archivedAt: true } },
       translations: {
-        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection design §2).
+        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
         select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true, pendingEditToken: true,
           locale: { select: { orphaned: true } } },
       },
@@ -118,7 +118,11 @@ export async function loadKeys(
   });
 
   return keys.map((k) => {
-    const cells: KeyRow["cells"] = {};
+    // ⚠️ **평범한 `{}`가 아니다** — 키가 `Locale.code`(리포가 정한다)라서다. `__proto__`는
+    // `isPathSafeLocale`이 막지만 그 방어선은 다른 모듈에 있는 한 겹이고, 평범한 객체에
+    // `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생겨 **그 로케일 열이 조용히
+    // 사라진다** (CLAUDE.md 코드 컨벤션). 읽는 쪽 짝은 `lib/keys/view.ts`의 `cellAt`이다.
+    const cells: KeyRow["cells"] = Object.create(null);
     for (const t of k.translations) {
       cells[t.localeCode] = {
         value: t.value,
@@ -186,12 +190,17 @@ export async function countUnpublished(
   return countPending(prisma, projectId, surfaceId);
 }
 
+/** 표면 → 미배포 수(`countPendingBySurface`). 합은 `countUnpublished(prisma, projectId)`와 같다 — 둘 다 보관 표면을 뺀다. */
+export function countUnpublishedBySurface(prisma: PrismaClient, projectId: string): Promise<Map<string, number>> {
+  return countPendingBySurface(prisma, projectId);
+}
+
 /**
  * 내 멤버십 한 줄. 셸 사이드바와 프로젝트 목록이 **같은 조회**를 쓴다 — 이름이 같은 함수가 두 벌이면
  * 그중 하나가 낡는다(2026-09-08에 실제로 그렇게 갈릴 뻔했다).
  *
  * `installationId`·`lastCommitSha`는 목록의 상태 텍스트 재료다 — `planProjectReadiness`가 컬럼을
- * 만들지 않고 이 둘로 판정한다 (design §3.7). 사이드바는 그것을 안 읽는다.
+ * 만들지 않고 이 둘로 판정한다 (PRODUCT §7.5). 사이드바는 그것을 안 읽는다.
  */
 export type MembershipRow = {
   slug: string;
@@ -201,7 +210,7 @@ export type MembershipRow = {
   surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
   /**
    * 보관 시각 (7단계). **목록에서 숨기는 대신 배지로 남긴다** — 숨기면 OWNER가 되돌릴 링크에
-   * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (sync-runs design §4).
+   * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (PRODUCT §7.9).
    */
   archivedAt: Date | null;
 };
@@ -235,7 +244,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
 }
 
 /**
- * 목록 화면의 한 행 (8-3 · projects-list §3). `MembershipRow`에 **그 화면만 쓰는 것들**이 붙는다.
+ * 목록 화면의 한 행 (8-3 · DESIGN §6.63). `MembershipRow`에 **그 화면만 쓰는 것들**이 붙는다.
  *
  * ⚠️ **`Project.id`를 싣지 않는다** — 화면이 아는 식별자는 slug 하나로 남긴다. 내부 id는 집계를
  * 묶는 서버 안의 값이고, 그것을 RSC 페이로드에 흘리면 URL이 아닌 경로로 새는 식별자가 하나 는다.
@@ -256,7 +265,7 @@ export type ProjectListRow = MembershipRow &
   baseBranch: string;
   /** `pr_open` 띠의 목적지. 번호는 여기서 파싱한다. */
   lastPrUrl: string | null;
-  /** 행의 Meter — **정렬 후 최대 셋**이다 (design §3.1). */
+  /** 행의 Meter — **정렬 후 최대 셋**이다 (DESIGN §6.63). */
   meters: RowLocaleProgress[];
   reviewSurfaceSlug: string | null;
   unsentSurfaceSlug: string | null;
@@ -272,7 +281,7 @@ export type ProjectListRow = MembershipRow &
 export type ProjectListView = { rows: ProjectListRow[] };
 
 /**
- * `/projects` 목록 전용 조회 (8-3 · projects-list §3).
+ * `/projects` 목록 전용 조회 (8-3 · DESIGN §6.63).
  *
  * ⚠️ **`loadMemberships`를 넓히지 않고 함수를 나눈 이유**: 그쪽은 **셸이 매 페이지에서** 부른다.
  * 거기에 `_count`와 집계를 얹으면 모든 화면이 목록 하나를 위한 왕복을 물게 되고, 그것이
@@ -312,8 +321,8 @@ export async function loadProjectList(
           repositoryId: true,
           baseBranch: true,
           lastPrUrl: true,
-          // 임포트 진행·결과 (projects-list design §3.35) — 띠와 Meter 자리가 이 둘로 갈린다.
-          // 원격 경로 판정의 입력 (projects-list §3.4).
+          // 임포트 진행·결과 (PRODUCT §7.8) — 띠와 Meter 자리가 이 둘로 갈린다.
+          // 원격 경로 판정의 입력.
           /**
            * ⚠️ **orphaned도 포함한 전체 저장 로케일이다** — 탐지 정규식이 거르는 코드(`es-419`·
            * `zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
@@ -329,7 +338,7 @@ export async function loadProjectList(
   // 멤버십이 0이면 집계도 원격도 0회다 — 빈 `in`으로 왕복을 만들지 않는다.
   const ids = rows.map((r) => r.project.id);
   /**
-   * ⚠️ **DB 집계와 원격 조회를 함께 시작한다** (design §3.4). 순서가 있는 것이 아니라 둘 다 끝나야
+   * ⚠️ **DB 집계와 원격 조회를 함께 시작한다.** 순서가 있는 것이 아니라 둘 다 끝나야
    * 행이 완성되는 것이고, 순차로 보내면 GitHub 왕복이 DB 왕복 **뒤에** 붙는다.
    *
    * ⚠️ **원격은 실패해도 목록을 죽이지 않는다** — 그 함수가 실패를 값으로 접는다.
@@ -481,7 +490,7 @@ export async function loadRecentEdits(
 }
 
 /**
- * 목록 집계 다섯 — **왕복 수가 프로젝트 수와 무관하다** (projects-list design §3).
+ * 목록 집계 다섯 — **왕복 수가 프로젝트 수와 무관하다** (DESIGN §6.63).
  *
  * ⚠️ **`Promise.all`로 보낸다.** 순차로 보내면 도쿄 리전 왕복이 다섯 번 쌓이고, 그 고정 비용은
  * 이미 실측돼 있다 (POSTMORTEM 2026-09-09 — 3.3초의 원인이 함수 리전이었다).
@@ -536,7 +545,7 @@ export async function loadProjectListAggregates(
       _count: { _all: true },
     }),
     /**
-     * ④ 신규 키 — **기준은 임포트가 아니라 pull이다** (design §3.2). `lastPulledAt`은 성공한 pull이
+     * ④ 신규 키 — **기준은 임포트가 아니라 pull이다.** `lastPulledAt`은 성공한 pull이
      * 처리한 번역 스냅샷의 기준 시각이고, 첫 pull 전에는 활성 키 전체가 신규다(승인된 정의).
      *
      * ⚠️ **파라미터화한 `ANY`다** — 문자열 연결·`$queryRawUnsafe`를 쓰지 않는다.
@@ -589,8 +598,8 @@ export async function loadProjectListAggregates(
     }]),
     /**
      * ⚠️ **소비자가 지금 없다 — 지우지 않는다** (2026-09-15). 목록의 Summary가 사라지면서 이 raw
-     * 집계(④)를 읽는 화면이 0이 됐고, `project-home`의 `New from GitHub`이 그것을 받는다
-     * (`docs/features/project-home/design.md` §3.1).
+     * 집계(④)를 읽는 화면이 0이 됐고, Home의 `New from GitHub` 카드가 그것을 받는다
+     * (DESIGN §6.64).
      *
      * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 명시적으로
      * 금지하고, `pnpm test:projects:postgres`가 "셋이 같은 행을 세나"를 재는 유일한 자리다.
@@ -602,7 +611,7 @@ export async function loadProjectListAggregates(
 }
 
 /**
- * ── Home(`/projects/:slug`) 전용 조회 넷 (project-home design §3.3.1·§3.4) ──────────────
+ * ── Home(`/projects/:slug`) 전용 조회 넷 (DESIGN §6.64) ────────────────────────────
  *
  * ⚠️ **전부 `projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이고, 인덱스가
  * 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이다 (CLAUDE.md).
@@ -612,7 +621,7 @@ export async function loadProjectListAggregates(
 export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count: number; at: Date; updatedBy: string | null };
 
 /**
- * 로케일별 검토 대기 수 + **그 로케일의 마지막 편집자·시각** (design §3.3.1의 구멍 ①).
+ * 로케일별 검토 대기 수 + **그 로케일의 마지막 편집자·시각** (DESIGN §6.64).
  *
  * ⚠️ **`loadRecentEdits`로는 안 된다** — 그쪽은 프로젝트 전체의 최근 N건이라 검토가 밀린 로케일이
  * 통째로 빠질 수 있다. 여기 필요한 것은 "그 로케일에서 마지막으로 만진 사람"이고, 그것은 창과
@@ -685,7 +694,7 @@ export async function loadLastSyncNewKeys(prisma: PrismaClient, projectId: strin
 export type PublishRun = { at: Date; prUrl: string | null; changed: number | null };
 
 /**
- * 창 안의 **성공한** Publish (design §3.4).
+ * 창 안의 **성공한** Publish (DESIGN §6.64).
  *
  * ⚠️ **`SUCCEEDED`만이다.** `skipped`는 보낸 것이 없어 사건이 아니고(`lastPublishedAt`도 안 건드린다),
  * 실패는 `changed`가 `null`이라 문장이 "0 files changed"가 된다 — 실패엔 관측 자체가 없다.

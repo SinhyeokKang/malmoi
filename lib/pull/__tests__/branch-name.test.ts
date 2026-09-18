@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { isValidBranchName } from "../branch-name";
 
 /**
- * base branch 입력의 형식 판정 (translation-ui design §3.13, 6b-3).
+ * base branch 입력의 형식 판정 (DESIGN §6.6, 6b-3).
  *
  * ⚠️ **`isRefSafeSlug`보다 넓다.** 그쪽은 **우리가 만드는** ref 이름(`malmoi-i18n/sync-<slug>`)이라 좁게
  * 잠가야 하고, 이쪽은 **남의 리포에 이미 있는** 브랜치라 `/`·대문자·`.`을 받아야 한다

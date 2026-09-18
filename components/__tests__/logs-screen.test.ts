@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * `logs`(`/projects/:slug/logs`)의 배선을 **소스에서** 센다 (7단계 — design §6).
+ * `logs`(`/projects/:slug/logs`)의 배선을 **소스에서** 센다 (7단계 — DESIGN §6.68).
  *
  * 이 화면에는 렌더 테스트가 없는 층이 둘 있다:
  *
@@ -29,7 +29,7 @@ const PAGE = "app/(edit)/projects/[slug]/logs/page.tsx";
 describe("logs — 조회 실패와 '없음'이 다른 모양이다", () => {
   const src = read(PAGE);
 
-  it("게이트가 `translation:write`다 — OWNER 전용이 아니다 (design §6)", () => {
+  it("게이트가 `translation:write`다 — OWNER 전용이 아니다 (PRODUCT §3)", () => {
     expect(src).toContain("requireProjectAccess");
     expect(src).toMatch(/permission:\s*"translation:write"/);
   });

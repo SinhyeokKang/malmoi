@@ -1,11 +1,8 @@
 import { expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { safePrismaAdapter } from "../safe-adapter";
-it("OAuth 콜백이 사용하는 어댑터 조회부터 만료 세션을 거부한다", async () => {
-  const findUnique = vi.fn().mockResolvedValue({ expires: new Date(100), user: { id: "victim" } });
-  const adapter = safePrismaAdapter({ session: { findUnique, deleteMany: vi.fn().mockResolvedValue({ count: 1 }) } } as unknown as PrismaClient, () => new Date(100));
-  expect(await adapter.getSessionAndUser!("stolen")).toBeNull();
-});
+// 만료 세션 조회(만료 거부 · 장애 전파 · 조건부 정리)는 프로덕션 구현인 `credentialAdapter`에서 잰다 —
+// `lib/credentials/__tests__/adapter.test.ts` (launch-readiness L4.7).
 it("기존 사용자의 두 번째 로그인 수단을 쓰기 시점에 거부한다", async () => {
   const create = vi.fn();
   const tx = { $executeRaw: vi.fn(), account: { findFirst: vi.fn().mockResolvedValue({ provider: "google" }), create } };
@@ -19,17 +16,6 @@ it("첫 로그인은 식별 필드만 저장한다", async () => {
   const adapter = safePrismaAdapter({ $transaction: async (fn: (x: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient);
   await adapter.linkAccount!({ userId: "u1", type: "oauth", provider: "github", providerAccountId: "1", access_token: "secret", refresh_token: "secret", id_token: "secret" });
   expect(create).toHaveBeenCalledWith({ data: { userId: "u1", type: "oauth", provider: "github", providerAccountId: "1" } });
-});
-it("DB 장애를 비로그인으로 바꾸지 않는다", async () => {
-  const adapter = safePrismaAdapter({ session: { findUnique: vi.fn().mockRejectedValue(new Error("offline")) } } as unknown as PrismaClient);
-  await expect(adapter.getSessionAndUser!("raw")).rejects.toThrow("offline");
-});
-it("만료행 정리는 현재도 만료인 행에만 적용한다", async () => {
-  const deleteMany = vi.fn().mockResolvedValue({ count: 0 });
-  const findUnique = vi.fn().mockResolvedValue({ expires: new Date(99), user: { id: "u1" } });
-  const adapter = safePrismaAdapter({ session: { findUnique, deleteMany } } as unknown as PrismaClient, () => new Date(100));
-  expect(await adapter.getSessionAndUser!("raw")).toBeNull();
-  expect(deleteMany).toHaveBeenCalledWith({ where: { sessionToken: "raw", expires: { lte: new Date(100) } } });
 });
 it("동시 첫 로그인 연결도 같은 사용자에 계정 하나만 남긴다", async () => {
   const rows: { provider: string }[] = [];

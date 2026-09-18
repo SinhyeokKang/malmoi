@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { requireEnv } from "../env";
-import { AppError, MissingEnvError, classifyFailure, fail } from "../failure";
+import { AppError, MissingEnvError, classifyFailure, fail, httpStatus, isUniqueViolation, logCaught } from "../failure";
 
 /**
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
@@ -27,19 +27,37 @@ describe("classifyFailure — 우리 메시지와 남의 메시지를 가른다"
     expect(c.safe && c.message).toContain("EXAMPLE_MISSING_VAR");
   });
 
-  it("Prisma 접속 오류는 안전하지 않다 — 호스트·유저가 본문으로 나가면 안 된다", () => {
+  /**
+   * ⚠️ **2026-09-18에 뒤집혔다.** 전에는 이 자리가 `detail`이 전문을 담는 것을 고정했고 근거는
+   * "본문엔 `ref`만, 전문은 서버 로그로"였다(2026-09-04). 그 판단은 **서버 로그를 안전한 곳으로**
+   * 봤는데, `lib/github-connect/log.ts`가 2026-09-10 credential 리뷰에서 같은 위험을 **로그에도**
+   * 걸었다: 남의 라이브러리 메시지에는 Prisma 인자·암호문이 실릴 수 있다. 두 규칙이 서로 반대인
+   * 채로 넉 달을 굴렀고, 더 보수적인 쪽으로 합쳤다.
+   *
+   * ⚠️ **대가를 적어 둔다** — 이제 Prisma 접속 실패의 호스트·유저는 **어디에도 안 남는다.** 남는
+   * 것은 갈래 이름뿐이고, 그것으로 부족하면 재현이 유일한 길이다.
+   */
+  it("Prisma 접속 오류는 안전하지 않고, 호스트·유저가 로그에도 안 남는다", () => {
     const c = classifyFailure(
       new Error(`Can't reach database server at \`aws-0-ap-northeast-1.pooler.supabase.com:5432\``),
     );
     expect(c.safe).toBe(false);
-    // 전문은 버리지 않는다 — 서버 로그로 보낼 값이다.
-    expect(c.safe === false && c.detail).toContain("pooler.supabase.com");
+    expect(c.safe === false && c.detail).not.toContain("pooler.supabase.com");
+    // 분류는 남는다 — 전부 한 단어로 접으면 로그를 남기는 의미가 사라진다 (`log.ts`와 같은 판단).
+    expect(c.safe === false && c.detail).toBe("Error");
   });
 
-  it("Error가 아닌 것을 던져도 문자열로 잡는다", () => {
+  /** ⚠️ HTTP 오류는 상태 코드가 갈래다 — `log.ts`가 `http-<status>`를 쓰는 것과 같은 형이다. */
+  it("status를 든 오류는 `http-<status>`로 접힌다", () => {
+    const c = classifyFailure(Object.assign(new Error("secret in body"), { status: 503 }));
+    expect(c.safe === false && c.detail).toBe("http-503");
+  });
+
+  it("Error가 아닌 것을 던져도 타입으로 잡는다 — 값 자체는 안 남는다", () => {
     const c = classifyFailure("문자열을 던졌다");
     expect(c.safe).toBe(false);
-    expect(c.safe === false && c.detail).toContain("문자열을 던졌다");
+    expect(c.safe === false && c.detail).not.toContain("문자열을 던졌다");
+    expect(c.safe === false && c.detail).toBe("string");
   });
 
   it("MissingEnvError는 이름으로 판정한다 — instanceof는 번들 경계를 넘으면 깨진다", () => {
@@ -130,4 +148,61 @@ describe("AppError.code — 던지는 자리가 코드를 든다", () => {
   it("코드가 있어도 안전 판정은 안 바뀐다 — classifyFailure는 name만 본다", () => {
     expect(classifyFailure(new AppError("x", "not-installed"))).toEqual({ safe: true, message: "x" });
   });
+});
+
+/**
+ * **삼킨 실패의 한 줄** (launch-readiness L5.2). 사용자에게 갈래 하나로 접혀 나가는 자리에서 원인을 볼 곳이 서버 로그뿐이다 —
+ * `classifyFailure`와 같은 규칙(우리 메시지는 그대로, 남의 메시지는 분류 한 낱말)이고 화면의 `ref`와 짝지을 8자를 앞에 둔다.
+ */
+describe("logCaught", () => {
+  it("남의 오류는 분류만, 우리 오류는 메시지를 남긴다", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      logCaught("login-link", "callback", new TypeError("secret row"));
+      logCaught("invite", "accept", new MissingEnvError("missing environment variable PII_ACTIVE_KEY_ID"));
+      logCaught("open-pr", "probe", Object.assign(new Error("secret"), { status: 502 }));
+      expect(spy.mock.calls.map((c) => c[0])).toEqual([
+        expect.stringMatching(/^\[login-link\] \w{8} callback: TypeError$/),
+        expect.stringMatching(/^\[invite\] \w{8} accept: missing environment variable PII_ACTIVE_KEY_ID$/),
+        expect.stringMatching(/^\[open-pr\] \w{8} probe: http-502$/),
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+// 같은 판정이 셋·넷씩 흩어져 있던 것을 여기 하나로 모았다 (launch-readiness L7.4).
+describe("httpStatus · isUniqueViolation", () => {
+  it("상태가 숫자일 때만 돌려주고, 없으면 undefined다 — 0이나 404로 채우지 않는다", () => {
+    expect(httpStatus(Object.assign(new Error("x"), { status: 404 }))).toBe(404);
+    expect(httpStatus({ status: "404" })).toBeUndefined();
+    expect(httpStatus(new Error("network"))).toBeUndefined();
+    expect(httpStatus(null)).toBeUndefined();
+  });
+
+  it("P2002만 유일성 위반이다", () => {
+    expect(isUniqueViolation({ code: "P2002" })).toBe(true);
+    expect(isUniqueViolation({ code: "P2025" })).toBe(false);
+    expect(isUniqueViolation("P2002")).toBe(false);
+  });
+});
+
+/**
+ * **pg 오류 원문이 서버 로그에 안 남는다** (launch-readiness L7.6, audit #48). 감사 시점엔 `classifyFailure`가
+ * `${name}: ${message}`를 돌려줘 로그에 pooler 호스트·DB 유저가 실렸다 — 2026-09-18 개정 뒤로는 생성자 이름뿐이다.
+ */
+it("pg 모양 오류는 생성자 이름만 남긴다 — 메시지의 호스트·유저가 로그에 없다", () => {
+  class DatabaseError extends Error {}
+  const error = new DatabaseError('password authentication failed for user "postgres.xgsyyapzkpbdtkrprlmn" at aws-0.pooler.supabase.com');
+  expect(classifyFailure(error)).toEqual({ safe: false, detail: "DatabaseError" });
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    logCaught("invite", "accept", error);
+    const line = String(spy.mock.calls[0]?.[0]);
+    expect(line).toMatch(/ accept: DatabaseError$/);
+    expect(line).not.toMatch(/password|postgres\.|pooler/);
+  } finally {
+    spy.mockRestore();
+  }
 });

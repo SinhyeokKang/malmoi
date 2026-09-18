@@ -48,7 +48,7 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
   expect(container.textContent).toContain("Synced 4 keys, but 1 surface could not be read");
   expect(container.textContent).not.toContain("keys from main");
   expect(container.textContent).toContain("2 surfaces were not replaced");
-  // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 성공한 `web`은 서지 않는다.
+  // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 성공한 `web`은 서지 않는다.
   for (const text of ["ci", "format", "broken", "locales/ko.json"]) expect(container.textContent).toContain(text);
   expect(container.querySelector('[role="status"] .text-mono')?.textContent).toBe("broken");
   expect(container.querySelector('[data-reason="superseded"]')).not.toBeNull();

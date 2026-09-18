@@ -3,6 +3,7 @@
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { findUserByEmail } from "@/lib/credentials/access";
+import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
@@ -17,7 +18,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { ADAPTERS, adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
+import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
@@ -31,10 +32,10 @@ import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { requireEnv } from "@/lib/env";
-import { listBranches, openRepoReader, probeRepo, type RepoSnapshot } from "@/lib/github";
+import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
-import { httpStatus } from "@/lib/github-connect/health";
+import { httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
@@ -163,7 +164,7 @@ export async function createInvitation(raw: {
       await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
 
       /**
-       * ⚠️ **집계가 잠금 안이다** (7단계 — sync-runs design §1.5). 밖에서 세면 두 OWNER가 동시에
+       * ⚠️ **집계가 잠금 안이다** (7단계 — ARCHITECTURE §6.02). 밖에서 세면 두 OWNER가 동시에
        * 초대할 때 각자 "자리 있음"을 보고 각자 만든다 — `createProject`의 재집계와 같은 형이고,
        * 여기는 잠글 `Project` 행이 **이미 있다**. 대기 초대는 안 센다(`planInvitationCreate`).
        */
@@ -172,7 +173,7 @@ export async function createInvitation(raw: {
       if (limit.status !== "ok") return limit.status;
 
       // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, emailLookup)`이 unique가 아니라
-      // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (design §5).
+      // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (ARCHITECTURE §6.02).
       await tx.projectInvitation.updateMany({
         where: { projectId, emailLookup: lookupEmail(email, projectId), acceptedAt: null },
         data: { expiresAt: now },
@@ -198,7 +199,8 @@ export async function createInvitation(raw: {
     // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
     revalidatePath(`/projects/${input.slug}/members`);
     return { ok: true, token };
-  } catch {
+  } catch (error) {
+    logCaught("invite", "create", error);
     return { ok: false, error: "unavailable" };
   }
 }
@@ -208,7 +210,7 @@ const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string()
 export type RevokeResult = { ok: true } | { ok: false; error: string };
 
 /**
- * 대기 중인 초대를 무효화한다 (6b-2 — design §3.9).
+ * 대기 중인 초대를 무효화한다 (6b-2 — ARCHITECTURE §6.02).
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 그 링크의 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다.
@@ -334,7 +336,7 @@ export async function changeMember(raw: {
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * 온보딩 (SaaS 5단계 — design §3.6·§3.11). **두 GitHub 자격증명이 만나는 유일한 자리다**:
+ * 온보딩 (SaaS 5단계 — ARCHITECTURE §3.1). **두 GitHub 자격증명이 만나는 유일한 자리다**:
  * 리포 읽기는 App installation 토큰(`openRepoReader`·`probeRepo`), "이 사람이 그 설치를 볼 수
  * 있는가"는 사용자 토큰(`listUserInstallations`·`listInstallationRepos`).
  * `lib/onboarding/`은 둘 다 모르고 스냅샷·blob을 **값으로** 받는다
@@ -405,7 +407,7 @@ export type UserConnectDest = z.infer<typeof UserConnectDest>;
 const ConnectBack = z.object({ q: z.string().max(200).optional() });
 
 /**
- * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (design §3.6). 인가는 `requireUser`뿐이다:
+ * GitHub 계정 연결의 **나가는 쪽 — 사용자 수준** (ARCHITECTURE §6.4). 인가는 `requireUser`뿐이다:
  * `Account` 행은 사용자 소유이므로 프로젝트 권한을 요구할 근거가 없다.
  *
  * ⚠️ **설정 화면의 `startGithubConnect`와 다른 것은 인가와 `dest` 둘뿐이다.** 쿠키 이름·`secure`·
@@ -445,7 +447,7 @@ export async function startGithubConnectForUser(
     stateCookieName(origin.secure),
     signState({
       userId,
-      // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (design §3.6).
+      // 착지가 서명 안에 있다 — 쿼리로 실으면 공격자가 그것을 정한다 (ARCHITECTURE §6.4).
       dest: dest === "new" ? { kind: "new", ...(back.success ? back.data : {}) } : { kind: "account" },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
@@ -546,7 +548,7 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
    * ⚠️ **설치 하나의 실패가 나머지를 막지 않는다** (code-review 2026-09-07 🟡2). 일시중지된 설치는
    * 403을 주고 그건 영구 상태다 — `Promise.all`로 묶어 통째로 `unavailable`로 접으면 정상 설치의
    * 리포도 못 고르고 화면은 "잠시 뒤 다시"를 말한다. `/api/pull`이 프로젝트별로 감싸 한 실패가
-   * 순회를 멈추지 않게 한 것과 같은 판단이다 (design §3.9).
+   * 순회를 멈추지 않게 한 것과 같은 판단이다 (ARCHITECTURE §3.05).
    */
   const settled = await Promise.all(
     installations.map((id) =>
@@ -592,7 +594,7 @@ export type DetectResult =
   | { ok: false; error: OnboardFailure };
 
 /**
- * 탐지 (화면 ③) — **2패스다** (design §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
+ * 탐지 (화면 ③) — **2패스다** (ARCHITECTURE §3.1). `FileProbe`가 동기라 경로만으로 1차 후보를 얻고,
  * 내려받을 파일을 고른 뒤(`probeTargets`, blob ≤37 — ts-dict 씨앗이 2026-09-14에 16을 더했다), 내용을 들고 다시 돈다.
  *
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
@@ -660,7 +662,7 @@ export type BranchesResult =
   | { ok: false; error: OnboardFailure; defaultBranch?: string };
 
 /**
- * ①의 브랜치 목록 (design §3.2).
+ * ①의 브랜치 목록 (DESIGN §6.7).
  *
  * ⚠️ **인가는 `checkRepoAccess`를 그대로 지난다.** 그 함수가 ARCHITECTURE §6의 3중 검증이고, 존재
  * 오라클을 막는 **순서**(사용자 토큰으로 먼저 보고 없으면 `repo-not-installed` 한 갈래로 접는다)가
@@ -847,8 +849,8 @@ export async function createProject(raw: {
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, existing] = await Promise.all([
-    // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (spec §4).
-    // ⚠️ **보관은 슬롯을 비운다** (7단계, 결정 10) — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
+    // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (PRODUCT §4.2).
+    // ⚠️ **보관은 슬롯을 비운다** (7단계 — ARCHITECTURE §5.6.4) — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
     // 아래 재집계와 **같은 조건**이어야 한다: 하나만 좁히면 선조회를 지난 뒤 재집계가 거부한다.
     prisma.projectMember.count({ where: { userId, role: "OWNER", project: { archivedAt: null } } }),
     // ⚠️ **전역 조회다** — slug는 `@unique`이고 "이미 쓰는 주소인가"는 테넌트 안에서 답할 수 없는
@@ -954,7 +956,7 @@ export async function createProject(raw: {
           repoOwner: plan.repoOwner,
           repoName: plan.repoName,
           // ⚠️ default가 `"main"`이라 **반드시 채운다** — default branch가 `develop`인 리포의
-          // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (design §4).
+          // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (ARCHITECTURE §3.1).
           baseBranch,
           installationId: plan.installationId,
           repositoryId: access.repositoryId,
@@ -1055,7 +1057,7 @@ export type FirstIngestResultView =
   | { ok: false; error: OnboardError | AccessError | "invalid input" };
 
 /**
- * 첫 적재 (화면 ⑤⑥) — **`awaiting_first_sync`에서만 돈다** (design §3.7). 설정 화면의 [다시 시도]가
+ * 첫 적재 (화면 ⑤⑥) — **`awaiting_first_sync`에서만 돈다** (PRODUCT §7.5). 설정 화면의 [다시 시도]가
  * 같은 Action이고, `retryFirstIngest`는 따로 없다.
  *
  * ⚠️ **`ready`에서 돌리면 strict push라 번역자 편집을 버튼 하나로 덮는다.** 그래서 `not-awaiting`이다.
@@ -1087,10 +1089,20 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       repoName: true,
       baseBranch: true,
       installationId: true,
+      archivedAt: true,
       defaultSurface: true,
     },
   });
   if (project === null) return { ok: false, error: "not-found" };
+  /**
+   * ⚠️ **인가가 이것을 안 막는다** — 이 Action은 `project:settings` 뒤에 있고 그 권한만 보관 중에도
+   * 통과한다(PRODUCT §7.9 — 전부 막으면 보관이 편도가 된다). 번역을 바꾸는 쓰기는 자기가 한 번 더
+   * 봐야 하고, 형제 `addSurface`·`runRepositoryImport`가 같은 형이다.
+   *
+   * ⚠️ **`apply.ts`의 트랜잭션 가드가 이미 막고 있었지만 너무 늦었다** — 거기까지 가면 스냅샷을
+   * 이미 내려받은 뒤이고, 그 예외가 아래에서 `ingest-failed`로 접혀 **"적재 실패"로 오진**된다.
+   */
+  if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
   const surface = project.defaultSurface;
   if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
@@ -1109,7 +1121,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   }
 
   /**
-   * **여기서부터가 "돌고 있다"** (projects-list design §3.35) — 인가·준비 확인을 지났고 다음 줄이
+   * **여기서부터가 "돌고 있다"** (PRODUCT §7.8) — 인가·준비 확인을 지났고 다음 줄이
    * 리포를 읽는다. 그 앞에서 세우면 거부된 호출까지 목록에 진행 중으로 뜬다.
    *
    * ⚠️ **끝내는 것은 시작한 쪽이다.** 조기 반환이 여섯이라 하나라도 빠지면 그 프로젝트가 영영
@@ -1154,7 +1166,7 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       format: prepared.format,
       baseLocale: prepared.baseLocale,
       headSha: snapshot.headSha,
-      // ⚠️ **base head 커밋의 시각이다.** `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4).
+      // ⚠️ **base head 커밋의 시각이다.** `new Date()`면 CI 첫 push가 `stale-commit` 409다 (ARCHITECTURE §3.1).
       headCommittedAt: snapshot.headCommittedAt,
       paths,
       // 내려받기를 **시도한** 목록이다 — `blobs`에 없는 것을 실패로 센다 (불변식 9).
@@ -1192,8 +1204,6 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     revalidatePath("/projects/new");
   }
 }
-
-export type { RepositoryImportOutcome, SurfaceImportResult, SurfaceImportReason, RepositoryImportError } from "@/lib/import/result";
 
 /**
  * ⚠️ **`approval`은 불투명 지문 하나다** — 클라이언트는 `prepareRepositorySync`가 준 값을 되돌려 줄 뿐이고, 서버가 잠금 뒤
@@ -1235,7 +1245,7 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
 }
 
 /**
- * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection design §4.1). OWNER 전용 — Sync와 같은 권한이다.
+ * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). OWNER 전용 — Sync와 같은 권한이다.
  *
  * ⚠️ **토큰 원문을 돌려주지 않는다** — 지문과 건수만 간다. 원문이 화면에 가면 클라이언트가 지문을 스스로 만들 수 있다.
  * ⚠️ 실패는 `undefined`다 — 화면은 `null` 승인으로 실행하고 서버가 reconfirm으로 답한다(폐기가 조용히 열리는 경로가 없다).
@@ -1284,7 +1294,7 @@ export type RotateTokenResult =
  * push 토큰 재발급 (설정 화면). **원문은 이 반환값에만 있다** — 잃으면 다시 재발급이다.
  *
  * ⚠️ **회전하면 옛 토큰이 즉시 무효다.** 대상 리포의 `PUSH_TOKEN` secret을 바꾸기 전까지 그 리포의
- * CI는 401이고, 화면이 버튼 **위에** 그 사실을 상시 캡션으로 둔다 (design §3.13).
+ * CI는 401이고, 화면이 버튼 **위에** 그 사실을 상시 캡션으로 둔다 (DESIGN §6.6).
  */
 export async function rotatePushToken(raw: { slug: string }): Promise<RotateTokenResult> {
   const parsed = SlugOnlyInput.safeParse(raw);
@@ -1314,7 +1324,7 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 export type ArchiveResult = { ok: true } | { ok: false; error: string };
 
 /**
- * 프로젝트 보관 (7단계 — sync-runs design §4).
+ * 프로젝트 보관 (7단계 — ARCHITECTURE §5.6.4).
  *
  * **되돌릴 수 있는 사실 하나를 쓴다** — 상태 머신도 삭제도 아니다(PRODUCT §7.9의 자동 영구 삭제는
  * 비목표다). 그 사실 하나가 편집·Publish·야간 cron·CI push를 한꺼번에 멈춘다.
@@ -1381,7 +1391,7 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
 }
 
 /**
- * 목록 조회 실패 → 사유. **401이 있으면 그것이 이긴다** (design §2.4): 사용자가 GitHub에서 App
+ * 목록 조회 실패 → 사유. **401이 있으면 그것이 이긴다** (ARCHITECTURE §6.4): 사용자가 GitHub에서 App
  * 인가를 철회하면 DB 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고 **이 GET이 유일한
  * 신호**다. `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 사용자가 같은 버튼을 무한히
  * 누른다 — 필요한 것은 "GitHub 다시 연결" 버튼이다.
@@ -1434,14 +1444,29 @@ async function checkRepoAccess(
     const settled = await Promise.all(
       userInstallationIds.map((id) =>
         listInstallationRepos(token.accessToken, id).then(
-          (repos): { repos: readonly InstallationRepo[] } => ({ repos }),
-          (): { repos: readonly InstallationRepo[] } => ({ repos: [] }),
+          (repos): { repos: readonly InstallationRepo[]; error?: unknown } => ({ repos }),
+          (error: unknown): { repos: readonly InstallationRepo[]; error?: unknown } => ({ repos: [], error }),
         ),
       ),
     );
     // 대소문자만 다른 이름을 거짓 거부하지 않는다 (`planRepoConnect`와 같은 규칙).
     const holder = settled.find((r) => r.repos.some((row) => row.fullName.toLowerCase() === wanted));
     if (holder === undefined) {
+      /**
+       * ⚠️ **하나도 못 읽었는데 실패가 있었다면 "설치 안 됨"이 아니다** — 장애를 거부로 위장하면
+       * 화면이 "App이 설치돼 있지 않다"고 단언하고, 사용자는 **이미 설치한 것을 다시 설치하러 간다.**
+       * 형제 `listConnectableRepos`가 같은 선을 긋는다 (POSTMORTEM 2026-09-06 "401이 not-installed로
+       * 접혀 있었다").
+       *
+       * ⚠️ **부분 실패는 그대로 진행한다** — 일시중지된 설치의 403은 영구 상태이고, 통째로 접으면
+       * 정상 설치의 리포도 연결하지 못한다. 가르는 축은 "성공한 조회가 하나라도 있었나"다.
+       */
+      const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
+      // 원인은 어느 갈래든 로그에만 남는다 — 화면에 실으면 존재 오라클이 된다.
+      for (const error of failures) logFailure("onboard-access", error);
+      if (failures.length > 0 && failures.length === settled.length) {
+        return { status: "rejected", error: "unavailable" };
+      }
       // ⚠️ **여기서 갈래를 나누지 않는다** — "우리 App이 없다"와 "네가 못 본다"를 구별해 주는 것이
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };
@@ -1475,15 +1500,13 @@ async function checkRepoAccess(
     installationId: connect.installationId,
     repoOwner: connect.repoOwner,
     repoName: connect.repoName,
-    // `GET /repos` 응답에 이미 있다 — pull이 이 값을 읽는다 (design §4).
+    // `GET /repos` 응답에 이미 있다 — pull이 이 값을 읽는다 (ARCHITECTURE §3.1).
     defaultBranch: probe.defaultBranch,
   };
 }
 
 
-function isUniqueViolation(error: unknown): boolean {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
-}
+
 
 /** 추가 읽기 없이 확정 포맷과 같은 snapshot의 전체 경로로 소유 범위를 계산한다. */
 function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]): string[] {

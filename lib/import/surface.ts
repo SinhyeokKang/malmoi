@@ -12,7 +12,7 @@ import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { prepareFirstSnapshot, type FirstIngestResult } from "@/lib/onboarding/ingest";
 import type { PushPayloadType } from "@/lib/push/plan";
 
-/** GitHub I/O stays outside the caller's database transaction. */
+/** GitHub I/O는 호출부의 DB 트랜잭션 밖에 둔다. */
 export async function readSurfaceSnapshot(
   reader: RepoReader,
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
@@ -28,7 +28,7 @@ async function readSurfaceFiles(
   stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string },
 ) {
   const paths = snapshot.files.map(file => file.path);
-  // Targets come from the tree, not successful downloads: otherwise missing locales disappear from failures.
+  // 대상은 성공한 다운로드가 아니라 트리에서 온다 — 아니면 빠진 로케일이 실패 목록에서 사라진다.
   const attempted = templatePaths(stored.adapter, stored.pathTemplate, paths);
   const files = await readFiles(reader, snapshot, attempted);
   const confirmed = planConfirmedFormat(stored, files);
@@ -39,7 +39,7 @@ async function readSurfaceFiles(
     ...ingestTargets(confirmed.format, adapterFor(confirmed.format).layout, paths),
   ])].sort(compareKeys);
   const blobs = new Map(files.map(file => [file.path, file.content]));
-  // Retry only missing blobs once; retain failed attempts in targets for the preparation failure count.
+  // 빠진 blob만 한 번 재시도한다 — 실패한 시도는 준비 실패 수를 위해 대상에 남긴다.
   for (const extra of await readFiles(reader, snapshot, targets.filter(path => !blobs.has(path)))) {
     blobs.set(extra.path, extra.content);
   }

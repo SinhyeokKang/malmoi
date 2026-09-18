@@ -1,9 +1,14 @@
+import "server-only";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 /**
- * `PrismaAdapter`를 **두 자리에서만** 감싼다 (2026-09-10, sec-audit-2 발견 31·39).
+ * `PrismaAdapter`를 **`linkAccount` 한 자리에서** 감싼다 (2026-09-10, sec-audit-2 발견 31·39).
+ *
+ * ⚠️ **만료 세션 조회의 방어는 여기 없다** (2026-09-18, launch-readiness L4.7). `credentialAdapter`(`lib/credentials/adapter.ts`)가
+ * 이 어댑터를 펼친 뒤 `getSessionAndUser`를 봉투 digest 조회로 **덮으므로**, 여기 있던 구현은 프로덕션에서 한 번도 불리지
+ * 않은 채 테스트만 그것을 고정했다. 아래 근거는 그 덮는 구현의 근거이고, 한 벌만 둔다.
  *
  * ⚠️ **Auth.js는 세션 만료를 OAuth callback 앞에서 보지 않는다.** `@auth/core`의 세션 경로
  * (`actions/session.js`)는 만료를 검사하고 지우지만, **callback 경로는 그것을 지나지 않는다** —
@@ -19,24 +24,13 @@ import type { PrismaClient } from "@/generated/prisma/client";
  *
  * ⚠️ **`PrismaAdapter`를 통째로 다시 구현하지 않는다** — Auth.js 4테이블의 모양은 어댑터가 정하고
  * 컬럼 하나가 어긋나면 런타임에 던지는데 **타입 검사가 그것을 못 본다** (ARCHITECTURE §5.1).
- * 베이스를 펼치고 두 메서드만 덮는다.
+ * 베이스를 펼치고 `linkAccount` 하나만 덮는다.
  *
- * @param now 테스트가 만료 경계를 고정하려고 넘긴다 — 기본은 실제 시각이다.
  */
-export function safePrismaAdapter(prisma: PrismaClient, now: () => Date = () => new Date()): Adapter {
+export function safePrismaAdapter(prisma: PrismaClient): Adapter {
   const base = PrismaAdapter(prisma);
   return {
     ...base,
-    async getSessionAndUser(token) {
-      const result = await base.getSessionAndUser!(token);
-      if (result === null) return null;
-      const cutoff = now();
-      if (result.session.expires.getTime() > cutoff.getTime()) return result;
-      // ⚠️ **지우는 조건에 만료를 다시 건다.** 조회와 삭제 사이에 그 세션이 갱신됐을 수 있고,
-      // 토큰만 보고 지우면 방금 살아난 세션을 끊는다.
-      await prisma.session.deleteMany({ where: { sessionToken: token, expires: { lte: cutoff } } });
-      return null;
-    },
     /**
      * ⚠️ **Auth.js 경유로는 로그인 수단이 User당 하나다.** ARCHITECTURE §6.2.1가 OAuth 계정 통합을 비범위로
      * 두었는데, 그 정책은 "첫 로그인"에만 서 있었다 — **로그인된 상태에서 provider를 추가하는

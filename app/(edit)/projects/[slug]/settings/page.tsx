@@ -1,8 +1,6 @@
-import { ExternalLink } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { GithubAccount, ReauthorizePrompt } from "@/components/github-account";
-import { CopyButton } from "@/components/onboarding/copy-button";
 import { FirstIngestRetry } from "@/components/onboarding/first-ingest-retry";
 import { PushTokenPanel } from "@/components/onboarding/push-token-panel";
 import { WorkflowBlock } from "@/components/onboarding/workflow-block";
@@ -43,7 +41,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
  * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (`app/api/*`의 값이 아니다 —
- * design §2). 이 화면의 [Run first import]가 `runFirstIngest`를 부르고 그것은 로케일 파일 수만큼 blob을
+ * ARCHITECTURE §3.1). 이 화면의 [Run first import]가 `runFirstIngest`를 부르고 그것은 로케일 파일 수만큼 blob을
  * 받으므로, 기본 제한으로는 큰 리포에서 응답 도중 잘린다.
  */
 export const maxDuration = 60;
@@ -71,14 +69,14 @@ export default async function SettingsPage({
       repoName: true,
       installationId: true,
       repositoryId: true,
-      // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — design §3.7·§7).
+      // 상태 블록과 워크플로 YAML의 재료 (SaaS 5단계 — PRODUCT §7.5 · DESIGN §6.6).
       // ⚠️ **활성 표면 전부다.** 워크플로 파일은 표면마다 step 하나를 들고, 그것을 다시 볼 자리가
       // 이 화면뿐이다 — Add surface 결과 화면은 새로고침 한 번에 사라진다.
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } },
       baseBranch: true,
       // 기준 로케일 변경의 선언 — 워크플로 YAML의 `base-locale:`이 이 값을 읽는다 (6b-3).
       /**
-       * 마지막 임포트가 남긴 실패 (projects-list design §3.35). **코드 하나이고 이력이 아니다** —
+       * 마지막 임포트가 남긴 실패 (PRODUCT §7.8). **코드 하나이고 이력이 아니다** —
        * 파서 원문은 저장되지 않으므로 이 화면이 보여줄 수 있는 것은 사유 문장과 복구 안내뿐이고,
        * 상세 진단은 대상 리포의 Actions 로그에 있다.
        */
@@ -132,7 +130,7 @@ export default async function SettingsPage({
           버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
         */}
         {notice !== null && <Alert variant="danger">{notice}</Alert>}
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1>
       </PanelHeader>
@@ -145,7 +143,7 @@ export default async function SettingsPage({
           </p>
           <HealthRow health={health} slug={slug} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
           {/*
-            기준 브랜치 (6b-3 — design §3.13). ⚠️ **readiness 분기 밖이다** — 안에 두면 첫 적재가
+            기준 브랜치 (6b-3 — DESIGN §6.6). ⚠️ **readiness 분기 밖이다** — 안에 두면 첫 적재가
             끝나는 순간 `revalidatePath`가 폼을 언마운트해 방금 받은 저장 결과가 사라진다
             (POSTMORTEM 2026-09-07, `FirstIngestRetry`와 같은 축).
 
@@ -231,7 +229,7 @@ export default async function SettingsPage({
         </Card>
 
         {/*
-          보관 (7단계 — design §6.2). **맨 아래이고 readiness 분기 밖의 형제다** — 첫 적재가 실패한
+          보관 (7단계 — DESIGN §6.6). **맨 아래이고 readiness 분기 밖의 형제다** — 첫 적재가 실패한
           프로젝트도 멈출 수 있어야 하고, 분기 안에 두면 그 상태에서 카드가 사라진다.
         */}
         <Card title={m.archive.title} description={m.archive.description}>
@@ -282,10 +280,9 @@ function HealthRow({
                   href={installUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-baseline gap-1 text-blue-600"
+                  className="text-blue-600"
                 >
                   {m.settings.repository.health.install}
-                  <ExternalLink className="size-3" aria-hidden />
                 </a>{" "}
                 — {m.settings.repository.health.installHint}
               </p>
@@ -316,7 +313,7 @@ function HealthRow({
       // 사용자는 자기가 뭘 잘못했는지 찾는 데 시간을 쓴다.
       return <Alert variant="danger">{m.settings.repository.health["repo-replaced"]}</Alert>;
     default:
-      // 조회 실패를 "제거됨"으로 접지 않는다 (design §3.3) — 그러면 사용자가 멀쩡한 설치를 다시 만든다.
+      // 조회 실패를 "제거됨"으로 접지 않는다 (DESIGN §6.2) — 그러면 사용자가 멀쩡한 설치를 다시 만든다.
       return <p className="text-muted-foreground text-xs">{m.settings.repository.health.unknown}</p>;
   }
 }

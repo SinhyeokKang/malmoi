@@ -1,7 +1,6 @@
 import {
   ChevronRight,
   CircleDashed,
-  ExternalLink,
   Eye,
   GitMerge,
   GitPullRequest,
@@ -251,7 +250,7 @@ function ProjectCard({ title, count, action, children }: {
 function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
     /**
-     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (design §6). 패널 폭은 뷰포트에서 사이드바와
+     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (DESIGN §6.63). 패널 폭은 뷰포트에서 사이드바와
      * 바깥 padding을 뺀 값이고, **LNB가 200~320으로 리사이즈되므로 같은 뷰포트가 두 폭을 만든다**.
      * (2026-09-16까지 근거에 "오른쪽 패널 320"이 함께 있었는데 그 패널을 지웠다 — DESIGN §6.55.
      * 결론은 그대로다.) 셸이
@@ -340,7 +339,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
           </span>
         ) : (
           /*
-            ⚠️ **`shrink-0`으로 되돌리지 않는다** (design §9-I). 기준 폭은 332(=100*3 + 16*2)이지만
+            ⚠️ **`shrink-0`으로 되돌리지 않는다** (DESIGN §6.63). 기준 폭은 332(=100*3 + 16*2)이지만
             좁은 화면에서는 남은 폭까지 줄어들어야 우측 배지·화살표·포커스 링이 카드 안에 남는다.
             문구를 JS로 자르거나 DOM에서 빼지 않는다 — 줄이는 것은 CSS다.
           */
@@ -374,7 +373,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
  *
  * ⚠️ **링크가 역할로 갈리는 것은 셋이다**(`Reconnect`·`Continue setup`·`View details`). 그 셋은
  * `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다 — 그 자리에는
- * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (design §4 F).
+ * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (DESIGN §6.63).
  */
 function BannerLine({ row, banner }: { row: ProjectListRow; banner: NonNullable<RowBanner> }) {
   const canSettle = canPerform(row.role, "project:settings");
@@ -419,7 +418,10 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
   return <icon.glyph aria-hidden className={cn("size-3.5 shrink-0", icon.tone)} />;
 }
 
-/** 띠의 링크는 **하나까지**다. 외부로 나가는 둘은 `ExternalLink` 12를 단다 (DESIGN §6.3). */
+/**
+ * 띠의 링크는 **하나까지**다. 외부로 나가는 둘은 `target="_blank"`만 다르고 **모양이 내부 링크와
+ * 같다** — 글리프를 달지 않는다 (DESIGN §6.3, 2026-09-18). 띠가 한 줄이라 12px 아이콘이 자리만 먹었다.
+ */
 function BannerAction({
   row,
   banner,
@@ -439,10 +441,9 @@ function BannerAction({
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="ml-1 inline-flex shrink-0 items-baseline gap-1 text-blue-600"
+      className="ml-1 shrink-0 text-blue-600"
     >
       {label}
-      <ExternalLink className="size-3" aria-hidden />
     </a>
   );
 

@@ -37,7 +37,7 @@ type HomeActionsValue = {
    * 다른 쪽을 잠근다.** 각 버튼은 자기 연타만 막고 서로의 존재를 모르므로 이 판정은 호스트의 몫이다.
    *
    * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 `Syncing…` 트리거가 native
-   * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (spec §12-9).
+   * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (DESIGN §6.64).
    */
   syncPending: boolean;
   setSyncPending: (pending: boolean) => void;
@@ -111,7 +111,7 @@ export function HomeTitle({ archived, children }: { archived: boolean; children:
 /**
  * 머리 오른쪽의 버튼 둘.
  *
- * ⚠️ **`[Sync]`는 EDITOR에게 부재이고 비활성이 아니다** (spec §8 · DESIGN §6.69) — 누를 수 없는
+ * ⚠️ **`[Sync]`는 EDITOR에게 부재이고 비활성이 아니다** (DESIGN §6.64 · §6.69) — 누를 수 없는
  * 버튼을 주지 않는다. 판정은 `SyncButton`이 `role`로 직접 한다.
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
@@ -123,7 +123,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
   role: "OWNER" | "EDITOR";
   unsent: number;
   /**
-   * 미연결·보관 — 둘 다 보낼 곳이 없다. **버튼 둘이 비활성이고 부재가 아니다** (spec §8) —
+   * 미연결·보관 — 둘 다 보낼 곳이 없다. **버튼 둘이 비활성이고 부재가 아니다** (DESIGN §6.64) —
    * 부재는 역할 갈래의 규칙이다.
    */
   paused: boolean;

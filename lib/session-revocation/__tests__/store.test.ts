@@ -65,3 +65,20 @@ it("database failures return fixed unavailable, never exception details", async 
   tx.session.deleteMany.mockRejectedValue(new Error("secret query"));
   expect(await finishRevocation(db, input)).toBe("unavailable");
 });
+// 장애가 "unavailable" 한 갈래로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
+it("DB 장애는 분류 한 줄을 남기고 unavailable, 성공은 0줄", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const { db } = fixture();
+    expect(await beginRevocation(db, { ...input, userId: "u" })).toBe("ready");
+    expect(await finishRevocation(db, input)).toBe("revoked");
+    expect(log).not.toHaveBeenCalled();
+    const broken = { $transaction: vi.fn().mockRejectedValue(new Error("secret row")) } as unknown as PrismaClient;
+    expect(await beginRevocation(broken, { ...input, userId: "u" })).toBe("unavailable");
+    expect(await finishRevocation(broken, input)).toBe("unavailable");
+    expect(log.mock.calls.map((c) => String(c[0]))).toEqual([
+      expect.stringMatching(/^\[session-revocation\] \w{8} begin: Error$/),
+      expect.stringMatching(/^\[session-revocation\] \w{8} finish: Error$/),
+    ]);
+  } finally { log.mockRestore(); }
+});

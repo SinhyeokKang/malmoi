@@ -10,15 +10,16 @@ import {
   SAMPLE_ROWS,
   formatLabel,
   ingestTargets,
-  keyGap,
   makeProbe,
   probeTargets,
   sampleRows,
   summarizeCandidates,
 } from "../detect";
+// ⚠️ `keyGap`은 잎 모듈에 산다 — ③(클라이언트)이 값으로 부르는데 `detect.ts`는 ts-morph를 끌고 온다 (POSTMORTEM 2026-09-07).
+import { keyGap } from "../key-gap";
 
 /**
- * 2패스 탐지의 순수 조각들 (design §3.1·§3.2·§3.3·§4).
+ * 2패스 탐지의 순수 조각들 (ARCHITECTURE §3.1).
  *
  * ⚠️ **`probeTargets`가 고르는 파일은 5)의 검증이 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`와
  * `hasDictionary`가 `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽는다. 다른 3개를 받으면 후보가
@@ -83,7 +84,7 @@ describe("probeTargets — 내려받을 blob 경로", () => {
     expect(probeTargets([], [group], [])).toEqual(["src/locale/en.ts", "src/locale/fr.ts", "src/locale/ja.ts"]);
   });
 
-  it("상한: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = 21이다 (design §3.1)", () => {
+  it("상한: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 = 21이다 (ARCHITECTURE §3.1)", () => {
     expect(PROBE_LIMITS).toEqual({ jsonLike: 5, codeDict: 2 });
     const locales = ["en", "ko", "ja", "fr", "de"];
     const jsonLike = Array.from({ length: 7 }, (_, i) => json(`dir${i}/{locale}.json`, locales));
@@ -164,7 +165,7 @@ describe("makeProbe — Map을 동기 FileProbe로", () => {
   });
 });
 
-describe("formatLabel — 어댑터 이름을 화면에 쓰지 않는다 (design §3.3)", () => {
+describe("formatLabel — 어댑터 이름을 화면에 쓰지 않는다 (PRODUCT §3)", () => {
   const names = ADAPTERS.map((a) => a.name);
 
   it("다섯 어댑터 전부에 라벨과 경로 예시가 있다", () => {
@@ -197,7 +198,7 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
   const c1 = json("src/locales/{locale}.json", ["ko", "en"]);
   const c2 = json("other/{locale}.json", ["ja", "ko"]);
 
-  it("키 수는 기준 로케일 파일을 실제로 read한 결과에서 온다 (design §3.2)", () => {
+  it("키 수는 기준 로케일 파일을 실제로 read한 결과에서 온다 (PRODUCT §7.3)", () => {
     const [s] = summarizeCandidates([c1], new Map([["src/locales/en.json", EN]]));
     expect(s?.keys).toEqual({ status: "counted", count: 2 });
   });
@@ -222,7 +223,7 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
     expect(s?.keys).toEqual({ status: "key-count-failed" });
   });
 
-  it("순서를 바꾸지 않는다 — 후보 순위는 탐지기 순위다 (spec §6)", () => {
+  it("순서를 바꾸지 않는다 — 후보 순위는 탐지기 순위다 (PRODUCT §7.3)", () => {
     const out = summarizeCandidates([c2, c1], new Map());
     expect(out.map((s) => s.pathTemplate)).toEqual([c2.pathTemplate, c1.pathTemplate]);
   });
@@ -246,7 +247,7 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
   });
 });
 
-describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (design §4)", () => {
+describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (ARCHITECTURE §3.1)", () => {
   it("per-locale은 `{locale}` 치환 ∩ 트리 경로다 — 트리에 없는 로케일 파일은 뺀다", () => {
     const format = json("src/locales/{locale}.json", ["ko", "en", "fr"]);
     const paths = ["src/locales/en.json", "src/locales/ko.json", "src/locales/index.ts", "README.md"];
@@ -282,7 +283,7 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * 새 프로젝트 온보딩 모달 T1 — 샘플·키 수 (feature design §3.3·§10)
+ * 새 프로젝트 온보딩 모달 — 샘플·키 수 (DESIGN §6.7)
  *
  * ⚠️ **여기의 핵심은 "추가 blob이 0"과 "read 호출 수 상한" 둘이다.** 전자는 다운로드를,
  * 후자는 파싱을 잰다 — `summarizeCandidates`가 기준 로케일 하나만 풀던 것을 셋으로 늘리므로
@@ -290,7 +291,7 @@ describe("ingestTargets — 첫 적재가 내려받을 로케일 파일 전부 (
  * ─────────────────────────────────────────────────────────────────────────────
  */
 describe("SAMPLE_ROWS — 표가 언어당 보이는 행 수", () => {
-  it("10이다 — 화면은 `total - rows.length`로 'N more keys'를 만든다 (design §10)", () => {
+  it("10이다 — 화면은 `total - rows.length`로 'N more keys'를 만든다", () => {
     expect(SAMPLE_ROWS).toBe(10);
   });
 });
@@ -335,7 +336,7 @@ describe("sampleRows — blob 맵에서 그 로케일의 앞 N행", () => {
     expect(sampleRows(jsonCatalog, format, "en", blobs, 2).total).toBe(5);
   });
 
-  it("blob이 없으면 빈 배열이다 — '못 읽었다'이지 '비었다'가 아니다 (design §3.4)", () => {
+  it("blob이 없으면 빈 배열이다 — '못 읽었다'이지 '비었다'가 아니다 (DESIGN §6.7)", () => {
     expect(sampleRows(jsonCatalog, format, "ko", new Map([["src/locales/en.json", EN]]))).toEqual({
       rows: [],
       total: 0,
@@ -366,7 +367,7 @@ describe("sampleRows — blob 맵에서 그 로케일의 앞 N행", () => {
   });
 });
 
-describe("keyGap — ③의 '145 keys fewer' (design §10, 결정 ⑦)", () => {
+describe("keyGap — ③의 '145 keys fewer' (DESIGN §6.7)", () => {
   it("기준보다 적으면 그 차이다", () => {
     expect(keyGap(903, 758)).toBe(145);
   });
@@ -379,14 +380,14 @@ describe("keyGap — ③의 '145 keys fewer' (design §10, 결정 ⑦)", () => {
     expect(keyGap(758, 903)).toBeUndefined();
   });
 
-  it("어느 쪽이든 키 수를 모르면 `undefined`다 — 모르는 것을 아는 척하지 않는다 (결정 ⑦)", () => {
+  it("어느 쪽이든 키 수를 모르면 `undefined`다 — 모르는 것을 아는 척하지 않는다 (DESIGN §6.7)", () => {
     expect(keyGap(undefined, 758)).toBeUndefined();
     expect(keyGap(903, undefined)).toBeUndefined();
     expect(keyGap(undefined, undefined)).toBeUndefined();
   });
 });
 
-describe("summarizeCandidates — `samples` 확장 (design §3.3)", () => {
+describe("summarizeCandidates — `samples` 확장 (ARCHITECTURE §3.1)", () => {
   const LOCALES = ["ko", "en", "ja", "fr"];
   const c = json("src/locales/{locale}.json", LOCALES);
   const body = (suffix: string) => JSON.stringify({ a: `A${suffix}`, b: `B${suffix}` });
@@ -424,7 +425,7 @@ describe("summarizeCandidates — `samples` 확장 (design §3.3)", () => {
     expect(s?.keys).toEqual({ status: "counted", count: 2 });
   });
 
-  it("multi-locale(ts-dict)은 전 언어를 든다 — 한 파일이라 공짜다 (design §3.3)", () => {
+  it("multi-locale(ts-dict)은 전 언어를 든다 — 한 파일이라 공짜다", () => {
     const [s] = summarizeCandidates([TS_FORMAT], new Map([[TS_PATH, TS_SOURCE]]));
     expect(s?.samples.map((x) => x.locale)).toEqual(["en", "fr", "ko"]);
     expect(s?.samples.every((x) => x.rows.length === 2)).toBe(true);

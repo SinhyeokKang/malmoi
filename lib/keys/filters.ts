@@ -1,7 +1,7 @@
 import { ALL_NAMESPACES, type TranslationsQuery } from "@/lib/routes";
 
 /**
- * 툴바 아래 **칩 행**의 유일한 출처 (8-4 design §3.5).
+ * 툴바 아래 **칩 행**의 유일한 출처 (DESIGN §6.1).
  *
  * ⚠️ **잎이다 — import가 `lib/routes.ts`(그쪽도 잎)까지다.** 칩 행이 클라이언트 컴포넌트인데
  * `lib/keys/view.ts`는 잎이 아니다(`compareKeys` → `lib/adapters/shared`). 값으로 읽으면 그
@@ -15,7 +15,7 @@ import { ALL_NAMESPACES, type TranslationsQuery } from "@/lib/routes";
  */
 
 /**
- * 시안의 칩 종류 셋 + **`state` 하나** (project-home §9.7).
+ * 시안의 칩 종류 셋 + **`state` 하나** (PRODUCT §7.7).
  *
  * ⚠️ **넷째가 시안 개정 없이 늘었다.** 근거는 목적지 쪽이다 — Home의 카운트 카드가 `?state=`로
  * 착지시키는데 칩이 없으면 **사용자가 그 좁힘을 되돌릴 수단이 화면에 없다.** 주소창을 고치라고

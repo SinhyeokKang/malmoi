@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FLAG_INVENTORY, flagFor } from "../flag";
 
 /**
- * 로케일 코드 → 국기 파일 id (8-4 T1 — spec Q4).
+ * 로케일 코드 → 국기 파일 id (8-4 T1 — DESIGN §6.1).
  *
  * ⚠️ **매핑은 원리적으로 실패한다** — 언어와 국가는 같은 축이 아니다. 그래서 이 테스트가 고정하는
  * 것은 성공 사례가 아니라 **실패했을 때 무엇을 내는가**(`null` = 코드만 그린다)이다.

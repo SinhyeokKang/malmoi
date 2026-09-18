@@ -15,7 +15,7 @@ import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
- * 대기 중인 초대 (design §3.9).
+ * 대기 중인 초대 (DESIGN §6.65).
  *
  * ⚠️ **[Revoke]는 삭제가 아니라 만료다** — 그 판정은 서버에 있고(`revokeInvitation`), 여기서 알 것은
  * "성공하면 이 행이 목록에서 빠진다"뿐이다. `revalidatePath`가 다시 그린다.

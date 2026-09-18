@@ -32,6 +32,12 @@ describe("flagValue / flagValues / hasFlag", () => {
     expect(flagValue(["./repo", "--base"], "--base")).toBeUndefined();
   });
 
+  // 값이 빠진 플래그가 다음 플래그를 값으로 삼키면 `--base --json`이 base 로케일 "--json"이 된다 (launch-readiness L7.3).
+  it("다음 자리가 플래그면 값이 없는 것이다", () => {
+    expect(flagValue(["--x", "--y"], "--x")).toBeUndefined();
+    expect(flagValue(["--base", "--json", "./repo"], "--base")).toBeUndefined();
+  });
+
   it("반복 플래그는 전부 모은다 — 한 리포가 클라이언트·서버 래퍼를 함께 쓴다", () => {
     expect(flagValues(["--wrapper", "a#t", "x", "--wrapper", "b#u()"], "--wrapper")).toEqual(["a#t", "b#u()"]);
     expect(flagValues([], "--wrapper")).toEqual([]);

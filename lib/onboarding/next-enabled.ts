@@ -1,7 +1,7 @@
 import { planSlug } from "./slug";
 
 /**
- * design §4의 상태 표를 코드로. 껍데기가 [Next]를 그릴 때 부른다 — 단계는 본문과 이 상태만 넘긴다.
+ * DESIGN §6.7의 단계별 조건을 코드로. 껍데기가 [Next]를 그릴 때 부른다 — 단계는 본문과 이 상태만 넘긴다.
  *
  * ⚠️ **`lib/` 아래 잎에 둔다.** `components/` 아래면 `"use client"` 그래프에 들어가고, 그러면
  * `client-graph.test.ts`가 요구하는 "타입만 물어라" 제약이 이 모듈까지 따라온다.

@@ -5,7 +5,7 @@ import type { AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import { templatePaths } from "@/lib/onboarding/confirm";
 import { checkContentBudget } from "@/lib/onboarding/budget";
 
-/** Empty entries are insufficient: every target must be a recognized, error-free catalog containing the base. */
+/** 엔트리가 비었다는 것만으로는 부족하다 — 모든 대상이 base를 포함한, 오류 없이 인식된 카탈로그여야 한다. */
 export function verifyEmptyCatalog(input: {
   stored: { adapter: AdapterName; pathTemplate: string; baseLocale: string };
   paths: readonly string[];
@@ -23,15 +23,15 @@ export function verifyEmptyCatalog(input: {
     bytes = checkContentBudget(path, content, bytes);
     if (input.stored.adapter === "yaml-catalog") {
       const document = parseDocument(content);
-      // The reader skips aliases/nulls/complex keys; skipped content is not an empty catalog.
+      // reader는 알리아스·null·복합 키를 건너뛴다 — 건너뛴 내용은 빈 카탈로그가 아니다.
       if (document.errors.length > 0 || !isMap(document.contents) || !emptyYamlContainer(document.contents)) return false;
     }
     const read = adapter.read(format, [{ path, content }]);
     if (read.errors.length > 0 || read.locales.length === 0 || read.locales.some(locale => locale.entries.length > 0)) return false;
-    // JSON null leaves are untranslated keys, not proof that the catalog has no keys.
+    // JSON null 잎은 미번역 키이지 카탈로그에 키가 없다는 증거가 아니다.
     if (input.stored.adapter === "json-catalog" && !emptyJsonContainer(JSON.parse(content))) return false;
     if (input.stored.adapter === "ts-dict") {
-      // ts-dict.read intentionally ignores shorthand/spreads. They are not evidence of an empty dictionary.
+      // ts-dict.read는 축약·spread를 일부러 무시한다. 빈 딕셔너리의 증거가 아니다.
       const project = new Project({ useInMemoryFileSystem: true, skipFileDependencyResolution: true, compilerOptions: { noLib: true } });
       const source = project.createSourceFile(path, content);
       for (const locale of read.locales) {

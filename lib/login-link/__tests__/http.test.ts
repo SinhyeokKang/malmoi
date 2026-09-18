@@ -138,3 +138,28 @@ it("시작 스코프 밖에서는 state 쿠키 이름을 바꾸지 않는다", a
   expect(named?.state.name).toBe("__Secure-malmoi-link-state");
   expect((await withLinkStart(false, async () => linkAuthCookies()))?.state.name).toBe("malmoi-link-state");
 });
+
+/**
+ * ⚠️ **`AUTH_URL`·`NEXTAUTH_URL`이 서면 next-auth가 `req.nextUrl`을 구조 분해한다** (`reqWithEnvURL`).
+ * 사본이 표준 `Request`면 그 순간 TypeError이고 위의 `catch`가 무로그 500으로 삼킨다 —
+ * `.env.example`의 "의도적으로 없다" 한 줄이 유일한 방어선이었다 (launch-readiness L3.8).
+ */
+it.each([undefined, "AUTH_URL", "NEXTAUTH_URL"])("env URL(%s)이 있어도 Auth.js 핸들러가 사본을 받는다", async (name) => {
+  // 빈 문자열이 아니라 삭제다 — next-auth가 `??`로 고르므로 `""`는 NEXTAUTH_URL을 가린다.
+  vi.stubEnv("AUTH_URL", undefined);
+  vi.stubEnv("NEXTAUTH_URL", undefined);
+  if (name) vi.stubEnv(name, "https://mal-moi.com");
+  const { default: NextAuth } = await import("next-auth");
+  const { handlers } = NextAuth({ providers: [], secret: "test-secret", trustHost: true });
+  let thrown: unknown;
+  await withLoginLink(request(), async (callbackRequest) => {
+    try {
+      return await handlers.GET(callbackRequest);
+    } catch (error) {
+      thrown = error;
+      throw error;
+    }
+  });
+  vi.unstubAllEnvs();
+  expect(thrown).toBeUndefined();
+});

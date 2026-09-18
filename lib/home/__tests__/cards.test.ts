@@ -6,7 +6,7 @@ import { countCards } from "../cards";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a`). **수와 문구는 이미 있는 것을 쓴다** — 값은 `summaryQueue`,
- * 제목은 `m.projects.summary.*`다 (project-home design §2). 여기서 새로 정하는 것은 **보조 줄**과
+ * 제목은 `m.projects.summary.*`다 (DESIGN §6.64). 여기서 새로 정하는 것은 **보조 줄**과
  * **0 갈래**뿐이고, 그 둘이 상태마다 갈리는 규칙이 이 함수 하나에 든다.
  */
 
@@ -36,20 +36,20 @@ describe("countCards — 순서가 파이프라인이다", () => {
   });
 
   /**
-   * ⚠️ **첫 칸만 단위가 keys다** (spec §7.1). 보조 줄이 그 사실을 말하지 않으면 화면이 서로 다른
+   * ⚠️ **첫 칸만 단위가 keys다.** 보조 줄이 그 사실을 말하지 않으면 화면이 서로 다른
    * 단위 넷을 나란히 세워 놓고 같은 모집단인 척한다.
    */
   it("첫 칸은 keys이고 나머지 셋은 cells다", () => {
     expect(countCards(base).map((c) => c.unit)).toEqual(["keys", "cells", "cells", "cells"]);
   });
 
-  /** 색은 둘뿐이다 — 유입의 파랑과 검토의 amber. 파랑 다섯 자리 중 하나가 이것이다 (spec §3.3-9). */
+  /** 색은 둘뿐이다 — 유입의 파랑과 검토의 amber. 파랑 다섯 자리 중 하나가 이것이다 (DESIGN §6.2). */
   it("유입은 파랑, 검토는 amber, 나머지는 색이 없다", () => {
     expect(countCards(base).map((c) => c.tone)).toEqual(["accent", null, "warning", null]);
   });
 
   /**
-   * ⚠️ **목록 화면의 띠와 다른 규칙이다** (design §5.2). 저쪽은 라벨이 이미 muted라 글리프가 그 색을
+   * ⚠️ **목록 화면의 띠와 다른 규칙이다** (DESIGN §6.63). 저쪽은 라벨이 이미 muted라 글리프가 그 색을
    * 상속하지만, 카드는 수치가 24/500 `#0a0a0a`라 0을 흐리는 규칙이 새로 필요하다.
    */
   it("값이 0이면 수치·글리프가 흐려지고 색이 빠진다", () => {
@@ -70,7 +70,7 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
     ]);
   });
 
-  /** ⚠️ **표면이 하나면 `across 3 surfaces`가 거짓이다** — 그 줄이 사라진다 (spec §9.5-4). */
+  /** ⚠️ **표면이 하나면 `across 3 surfaces`가 거짓이다** — 그 줄이 사라진다. */
   it("표면이 하나면 표면 수를 말하지 않는다", () => {
     expect(card({ ...base, surfaces: 1 }, "toTranslate")?.subline).toEqual({ kind: "acrossSurfaces", surfaces: 1 });
   });
@@ -141,8 +141,8 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
 });
 
 /**
- * 완료 조건 5 (spec §3.2) — **세 셀 구간이 서로 겹치지 않는다.** 첫 칸은 단위가 keys라 이 단언에서
- * 빠진다 (spec §7.1: 새 키의 빈 칸은 `New`에도 `To translate`에도 센다).
+ * **세 셀 구간이 서로 겹치지 않는다.** 첫 칸은 단위가 keys라 이 단언에서 빠진다 — 새 키의 빈 칸은
+ * `New`에도 `To translate`에도 센다.
  */
 describe("세 셀 구간의 겹침 0 — summaryQueue가 같은 셀을 두 번 세지 않는다", () => {
   const input = {
@@ -172,7 +172,7 @@ describe("세 셀 구간의 겹침 0 — summaryQueue가 같은 셀을 두 번 �
   /**
    * ⚠️ **미발송은 사람이 저장한 칸이므로 값이 있다** — `saveTranslation`이 `needsReview: false`와
    * `updatedBy`를 함께 쓰고 push는 `updatedBy = NULL`과 `needsReview = true`를 함께 쓴다. 둘이 동시에
-   * 참일 수 없다는 것이 이 배타성의 근거다 (spec §7.1).
+   * 참일 수 없다는 것이 이 배타성의 근거다.
    */
   it("미발송은 미번역·검토 대기와 겹치지 않는다 — 셋의 합이 칸 수를 넘지 않는다", () => {
     const queue = summaryQueue(input);

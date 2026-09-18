@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 
 /**
- * 리포 갱신 보류 배너 (sync-edit-protection T13 · design §4.3). 미전달 편집이 있으면 CI 자동 적재가 통째로 보류되므로
+ * 리포 갱신 보류 배너 (sync-edit-protection T13 · DESIGN §6.2). 미전달 편집이 있으면 CI 자동 적재가 통째로 보류되므로
  * **손실이 아니라 멈춤**을 말한다. 파일 이름은 옛 "편집 손실 창" 배너의 자리를 그대로 이은 것이다.
  *
  * ⚠️ **2026-09-18에 뒤집었다** — 전에는 `…can be lost when repository changes are imported automatically or with Sync.`를

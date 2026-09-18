@@ -4,7 +4,7 @@ import { createFakeGitClient } from "./fake-client";
 
 /**
  * fake 자체의 계약을 박는다. **2단계 오케스트레이션 테스트 전부가 이 도구에 의존하고**,
- * spec 완료 조건 4("편집이 없으면 GitHub API를 한 번도 부르지 않는다")의 판정 수단이 여기다.
+ * ARCHITECTURE §2의 1층 스킵("편집이 없으면 GitHub API를 한 번도 부르지 않는다")의 판정 수단이 여기다.
  * 도구가 조용히 틀리면 그 위의 검증이 전부 가짜가 된다.
  */
 
@@ -104,14 +104,14 @@ describe("createFakeGitClient — 쓰기 경로", () => {
 
 describe("createFakeGitClient — PR", () => {
   it("열린 PR이 있으면 URL·번호·제목을 준다", async () => {
-    const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t" };
+    const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t", base: "main" };
     const { client } = createFakeGitClient({ openPr: pr });
-    await expect(client.findOpenPr("o:malmoi-i18n/sync", "dev")).resolves.toEqual(pr);
+    await expect(client.findOpenPr("o:malmoi-i18n/sync")).resolves.toEqual(pr);
   });
 
   it("열린 PR이 없으면 null이다 — 생성 경로를 태우는 입력이다", async () => {
     const { client } = createFakeGitClient({});
-    await expect(client.findOpenPr("o:malmoi-i18n/sync", "dev")).resolves.toBeNull();
+    await expect(client.findOpenPr("o:malmoi-i18n/sync")).resolves.toBeNull();
   });
 
   it("createPr이 URL을 돌려주고 호출이 기록된다", async () => {

@@ -131,7 +131,7 @@ describe("getProjectAccess — 조회가 projectId로 좁혀진다", () => {
 });
 
 /**
- * **보관 조회** (7단계 — sync-runs design §4). 판정은 `planProjectAccess`가 하고, 여기서 고정하는 것은
+ * **보관 조회** (7단계 — ARCHITECTURE §5.6.4). 판정은 `planProjectAccess`가 하고, 여기서 고정하는 것은
  * **그 입력을 이 조회가 든다**는 것이다 — 호출부가 따로 읽으면 진입점마다 왕복이 하나 늘고 조건이 갈린다.
  */
 describe("getProjectAccess — 보관", () => {

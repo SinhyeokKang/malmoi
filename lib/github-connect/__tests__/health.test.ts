@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planConnectionHealth, probeFromError, type ProbeResult } from "../health";
 
 /**
- * 연결 건강성 판정 (design §3.3·§4). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5).
+ * 연결 건강성 판정 (DESIGN §6.2). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5).
  *
  * ⚠️ **이 표의 요지는 마지막 줄이다 — 조회 실패(`error`)를 `app-uninstalled`로 접지 않는다.**
  * 접으면 **장애가 "제거됨"으로 읽힌다**: POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽어

@@ -1,7 +1,7 @@
 import { m } from "@/lib/i18n";
 
 /**
- * `updateRepositorySettings`의 거부 갈래 → 문구 (6b-3 — translation-ui design §3.13).
+ * `updateRepositorySettings`의 거부 갈래 → 문구 (6b-3 — DESIGN §6.6).
  * `lib/auth/message.ts`·`lib/github-connect/message.ts`와 같은 형이다.
  *
  * ⚠️ **`noop`은 이 union에 없다.** 그것은 거부가 아니라 "쓸 것이 없다"이고 화면은 성공으로 보인다 —

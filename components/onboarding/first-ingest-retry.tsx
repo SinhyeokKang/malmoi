@@ -13,11 +13,11 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { ingestHeadline, isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 /**
- * 첫 적재 [다시 시도] — **온보딩 결과 화면과 같은 Action이다** (`runFirstIngest`, design §3.11).
+ * 첫 적재 [다시 시도] — **온보딩 결과 화면과 같은 Action이다** (`runFirstIngest`, PRODUCT §7.4).
  * `retryFirstIngest`를 따로 두지 않는 이유는 판정(`awaiting_first_sync`가 아니면 `not-awaiting`)이
  * 한 자리에 있어야 하기 때문이다.
  *
- * ⚠️ **실패 사유는 이 호출의 반환값에만 있다.** 중간 상태를 저장하지 않으므로(design §3.4) 화면을
+ * ⚠️ **실패 사유는 이 호출의 반환값에만 있다.** 중간 상태를 저장하지 않으므로 화면을
  * 다시 열면 사유를 모른다 — 그래서 인라인으로 남기고 `revalidatePath`가 상태 텍스트를 갱신한다.
  *
  * ⚠️ **`canRun`이 false여도 이 컴포넌트는 마운트된 채 있어야 한다.** 성공하면 `revalidatePath`가

@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { findUserByEmail } from "@/lib/credentials/access";
+import { logCaught } from "@/lib/failure";
 
 import { planLinkConfirm, planLinkOffer, type LinkOffer } from "./plan";
 import {
@@ -16,6 +17,7 @@ import {
   type LinkOutcome,
   type LoginProvider,
 } from "./policy";
+import { lockUser } from "@/lib/auth/lock";
 
 /**
  * challenge의 DB 껍데기 — `lib/session-revocation/store.ts`와 같은 형이다.
@@ -29,7 +31,7 @@ import {
  */
 
 /**
- * ⚠️ **초대 토큰과 같은 함수를 쓴다** (design 불변식 4) — URL 경로에 실리는 단일 사용 토큰이라
+ * ⚠️ **초대 토큰과 같은 함수를 쓴다** (ARCHITECTURE "계정 병합") — URL 경로에 실리는 단일 사용 토큰이라
  * 규칙이 갈릴 이유가 없다. **`policy.ts`가 아니라 여기 있는 이유**는 그 파일을 클라이언트가 읽어
  * `node:crypto`가 번들로 따라 들어가기 때문이다.
  */
@@ -37,15 +39,10 @@ export function challengeTokenHash(raw: string): string {
   return hashInviteToken(raw);
 }
 
-export async function lockUser(tx: Prisma.TransactionClient, userId: string): Promise<boolean> {
-  const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-  return rows.length === 1;
-}
-
 /**
  * "이 로그인을 거부할 것인가, 안내할 것인가."
  *
- * ⚠️ **조회는 새 Account일 때만 한다** (design §5.1) — 호출부가 `refreshVerifiedEmail`의 결과로
+ * ⚠️ **조회는 새 Account일 때만 한다** (ARCHITECTURE "계정 병합") — 호출부가 `refreshVerifiedEmail`의 결과로
  * 이미 "이 Account가 새 것인가"를 알고 있고, 재방문 로그인(대부분)에는 이 함수가 아예 안 불린다.
  */
 export async function loadLinkOffer(
@@ -89,15 +86,16 @@ export async function beginLink(
       return true;
     });
     return ok ? token : null;
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "begin", error);
     return null;
   }
 }
 
 /**
- * 확인 왕복의 끝 — **단일 사용 + 조건부 소비**다 (design 불변식 5).
+ * 확인 왕복의 끝 — **단일 사용 + 조건부 소비**다 (ARCHITECTURE "계정 병합").
  *
- * ⚠️ **실패는 challenge를 소비하지 않는다** (design ⑧) — 소비하면 훔친 URL 한 번으로 피해자의
+ * ⚠️ **실패는 challenge를 소비하지 않는다** (ARCHITECTURE "계정 병합") — 소비하면 훔친 URL 한 번으로 피해자의
  * 병합을 태울 수 있고, 안 해도 상한은 10분 TTL이 든다. 그래서 `planLinkConfirm`의 반환에
  * "이 갈래가 소비를 요구하는가"가 붙어 있고 여기가 그것을 읽는다.
  *
@@ -160,7 +158,8 @@ export async function finishLink(
       });
       return { outcome: "linked" as const, dest: challenge.dest };
     });
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "finish", error);
     return { outcome: "unavailable", dest: null };
   }
 }

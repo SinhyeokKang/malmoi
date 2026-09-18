@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/alert";
 import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
 import { getPrisma } from "@/lib/db";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
 import { withLinkStart } from "@/lib/login-link/http";
@@ -23,7 +24,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
- * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (account-linking spec §3-1).
+ * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (PRODUCT §4.3 ④).
  *
  * ⚠️ **인가가 없다 — challenge가 대신한다.** `middleware.ts`의 matcher에 넣지 않는다: 넣으면
  * 비로그인이 `/signin`으로 튕겨 이 화면이 존재할 이유가 사라진다 (`/invite/[token]`과 같은 판단).
@@ -47,7 +48,8 @@ export default async function LinkAccountPage({
   let view;
   try {
     view = await loadChallengeView(getPrisma(), challenge, new Date());
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "page", error);
     // 장애와 만료를 가른다 — 같은 화면으로 접으면 다시 시도해도 소용없는 사람에게 재시도를 준다.
     redirect(routes.signIn({ error: "Unavailable" }));
   }
@@ -63,13 +65,13 @@ export default async function LinkAccountPage({
         />
 
         {/*
-          ⚠️ **실패는 기본 상태 + `Alert` 한 장이 전부다** (design §5.5) — 부제·각주·구분선·버튼
+          ⚠️ **실패는 기본 상태 + `Alert` 한 장이 전부다** (DESIGN §6.62) — 부제·각주·구분선·버튼
           라벨이 그대로다. 실패에서 레이아웃을 갈아치우면 사용자가 같은 화면으로 돌아온 것을
           못 알아본다. 자리는 설명 **아래**, 카드 **위**.
 
           ⚠️ **규약 8의 Layer A는 아니다 — 의도적 예외다.** 인라인인 이유는 **메시지와 조치가 한
           자리에 있어야** 해서다: 다시 누를 버튼이 바로 아래에 있고, 토스트는 그 둘을 화면의
-          반대 끝으로 가른다. challenge가 **살아 있다**(design ⑧)는 것이 이 상태의 전제다.
+          반대 끝으로 가른다. challenge가 **살아 있다**(ARCHITECTURE "계정 병합")는 것이 이 상태의 전제다.
         */}
         {e !== undefined && (
           <Alert variant="danger" className="w-full">
@@ -81,13 +83,13 @@ export default async function LinkAccountPage({
           ⚠️ **1행은 마스킹한 이메일이고 아바타만 이름·이미지에서 온다** — 주소가 "어느 계정인가"의
           답이고, 아바타는 **셸과 같은 얼굴로 보이는 것**이 일이다(같은 계정이 화면마다 다른
           글자·색이면 아바타가 소음이 된다). 우측은 provider 마크 하나이고, 브랜드 마크는 무채색
-          위계의 대상이 아니라 `--foreground`를 그대로 받는다 (design §7).
+          위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.2).
         */}
         <EntityCard
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          secondary={`${providerLabel(view.have)} · ${joinedLabel(view.joined)}`}
+          secondary={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
           meta={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
@@ -109,7 +111,7 @@ export default async function LinkAccountPage({
 
 /** 가입 월 — `lang="en"`이라 로케일을 고정한다. 서버에서만 렌더되므로 hydration이 갈리지 않는다. */
 function joinedLabel(joined: Date): string {
-  return `Joined ${new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(joined)}`;
+  return m.link.joined(new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(joined));
 }
 
 /**
@@ -134,11 +136,14 @@ function ProviderButton({
         await clearAuthRoundtripCookies();
         const h = await headers();
         const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
-        const cookie = linkCookie(origin?.secure ?? false);
-        // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (design 불변식 4).
+        // ⚠️ **fail-closed** (launch-readiness L7.6) — 판정 못 한 origin으로 `?? false`를 두면 콜백의 `?? https`와 state 쿠키
+        // 이름이 갈려 증상이 "계정 병합 실패"로 나온다(CLAUDE.md 2026-09-14). 모르는 호스트에서 인증 쿠키를 심지도 않는다.
+        if (origin === null) redirect(routes.signIn({ error: "Unavailable" }));
+        const cookie = linkCookie(origin.secure);
+        // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (ARCHITECTURE "계정 병합").
         (await cookies()).set(cookie.name, challenge, cookie.options);
         // 시작 스코프 안에서 불러야 Auth.js가 state를 **우리 쿠키 이름**으로 저장한다 (불변식 3).
-        await withLinkStart(origin?.secure ?? false, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));
+        await withLinkStart(origin.secure, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));
       }}
     >
       <SubmitButton variant="primary" size="lg" className="w-full">

@@ -41,7 +41,7 @@ const ALLOWED = [
   "tailwind-merge",
   /**
    * ⚠️ **셋은 프리미티브(`components/ui/`)가 쓴다** — 이 리포가 그 디렉터리를 소유하면서 들어왔다
-   * (translation-ui design §3.2). `SKIP_DIR`의 `ui`는 **진입점 탐색**만 건너뛰므로 import를 따라가면
+   * (ARCHITECTURE §0). `SKIP_DIR`의 `ui`는 **진입점 탐색**만 건너뛰므로 import를 따라가면
    * 여기로 들어온다. **이것이 그 "여기서 한 번 하는 의도된 결정"이고**, 아래 메타 테스트가 셋을
    * 각자 고정한다 — 하나라도 목록에서 빠지면 red다.
    */
@@ -79,6 +79,63 @@ function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean 
  * 테스트가 "스캐너가 이것들을 실제로 집는지"를 확인하는 데만 쓴다(목록이 낡아도 판정은 안 좁아진다).
  */
 const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "server-only", "yaml", "zod"];
+
+/**
+ * **클라이언트가 닿아도 되는 `lib/**` 파일 — 정확 일치다** (launch-readiness L4.9, POSTMORTEM 2026-09-09 재발).
+ *
+ * 위 패키지 허용 목록은 **npm 이름**만 본다. 그래서 `lib/keys/view.ts` → `lib/adapters/shared` → `json-style`처럼
+ * **리포 안 모듈만으로 이어진 서버 그래프**는 패키지가 하나도 안 나와 green이었다 — 금지 목록 방식이라 재발을 못 본 것과
+ * 같은 형이다. 여기서 뒤집는다: 닿는 파일 집합 자체를 고정한다. 클라이언트가 새 `lib/**` 모듈을 값으로 읽으면 red이고,
+ * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/filters` 잎 검사와 같은 형).
+ */
+const CLIENT_LIB_FILES = [
+  "lib/account/plan.ts",
+  "lib/auth/message.ts",
+  "lib/auth/permission.ts",
+  "lib/compare.ts",
+  "lib/github-connect/message.ts",
+  "lib/i18n/adapter-errors.ts",
+  "lib/i18n/index.ts",
+  "lib/import/confirm.ts",
+  "lib/import/refusal.ts",
+  "lib/import/result.ts",
+  "lib/keys/edit-command.ts",
+  "lib/keys/filters.ts",
+  "lib/keys/flag.ts",
+  "lib/keys/refocus.ts",
+  "lib/login-link/message.ts",
+  "lib/login-link/policy.ts",
+  "lib/onboarding/base-pending.ts",
+  "lib/onboarding/branch.ts",
+  "lib/onboarding/create-plan.ts",
+  "lib/onboarding/key-gap.ts",
+  "lib/onboarding/language-name.ts",
+  "lib/onboarding/locale-picker.ts",
+  "lib/onboarding/message.ts",
+  "lib/onboarding/next-enabled.ts",
+  "lib/onboarding/select-surfaces.ts",
+  "lib/onboarding/slug.ts",
+  "lib/projects/import-failure.ts",
+  "lib/projects/pr-url.ts",
+  "lib/publish/plan.ts",
+  "lib/publish/warnings.ts",
+  "lib/publish/words.ts",
+  "lib/pull/branch-name.ts",
+  "lib/pull/ref-slug.ts",
+  "lib/relative-time.ts",
+  "lib/routes.ts",
+  "lib/session-revocation/message.ts",
+  "lib/settings/message.ts",
+  "lib/shell/nav.ts",
+  "lib/shell/panel-size.ts",
+  "lib/signin/dot-field.ts",
+  "lib/surfaces/plan.ts",
+  "lib/tone.ts",
+  "lib/upload/image.ts",
+  "lib/upload/message.ts",
+  "lib/utc-time.ts",
+  "lib/utils.ts",
+];
 
 const SKIP_DIR = new Set(["ui", "__tests__", "node_modules", "generated"]);
 
@@ -227,7 +284,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **사전은 잎이어야 한다** (translation-ui design §3.1). 클라이언트 컴포넌트가 `@/lib/i18n`을
+   * ⚠️ **사전은 잎이어야 한다** (ARCHITECTURE §0). 클라이언트 컴포넌트가 `@/lib/i18n`을
    * 읽으므로 그 그래프가 곧 번들이다 — 사전이 `@/lib/**`를 하나라도 물면 7.2MB 사고의 재현이다.
    * 실 소비자는 T6부터 생기고, **그 전까지 이 검사가 공허하지 않도록** 여기서 직접 건다.
    */
@@ -241,7 +298,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (8-4 design §3.5·§3.7). 칩 행과
+   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (ARCHITECTURE §0). 칩 행과
    * 로케일 배지가 그것을 값으로 읽는데, 이웃한 `lib/keys/view.ts`는 잎이 아니다
    * (`compareKeys` → `lib/adapters/shared` → `json-style`).
    *
@@ -269,7 +326,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **보호 판정은 화면이 값으로 읽고, 지문은 서버만 계산한다** (sync-edit-protection design §7). 두 모듈이
+   * ⚠️ **보호 판정은 화면이 값으로 읽고, 지문은 서버만 계산한다** (sync-edit-protection — DIRECTORY의 `lib/protection/`). 두 모듈이
    * 같은 디렉터리라 `plan.ts`가 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 온다 — 소비자
    * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
    */
@@ -280,6 +337,20 @@ describe("클라이언트 그래프", () => {
 
     const fingerprint = walk([join(ROOT, "lib/protection/fingerprint.ts")]);
     expect([...fingerprint.packages].filter((name) => !allowed(name))).not.toEqual([]);
+  });
+
+  it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {
+    const { files } = walk(CLIENT_ENTRIES);
+    const reached = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/")).sort();
+    expect(reached).toEqual([...CLIENT_LIB_FILES].sort());
+  });
+
+  // 음성 대조 — 실제로 새어 나갔던 경로(2026-09-09)가 이 목록 밖으로 나가는지 센다. 공허한 목록이 아니다.
+  it("`lib/keys/view.ts`의 그래프는 허용 목록 밖으로 나간다 — 그 재발을 이 검사가 잡는다", () => {
+    const { files } = walk([join(ROOT, "lib/keys/view.ts")]);
+    const outside = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/") && !CLIENT_LIB_FILES.includes(rel));
+    expect(outside).toContain("lib/keys/view.ts");
+    expect(outside.some((rel) => rel.startsWith("lib/adapters/"))).toBe(true);
   });
 
   it("허용 목록 밖의 패키지가 클라이언트 그래프에 없다", () => {

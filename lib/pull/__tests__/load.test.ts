@@ -5,7 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { saveLastPulledAt } from "../load";
 
 /**
- * **두 컬럼의 뜻이 다르다** (translation-ui design §3.4·§3.5):
+ * **두 컬럼의 뜻이 다르다** (ARCHITECTURE §3):
  *
  * - `lastPulledAt` — 캡처된 `max(updatedAt)`. 1층 스킵의 비교 대상이고 **변경 없는 스킵에도 전진한다.**
  * - `lastPublishedAt`·`lastPrUrl` — "마지막으로 **보낸**" 것. 스킵은 건드리지 않는다.

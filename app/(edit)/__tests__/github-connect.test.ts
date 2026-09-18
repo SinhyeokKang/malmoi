@@ -4,7 +4,7 @@ import type { ProbeResult } from "@/lib/github-connect/health";
 import { createHarness, sessionFor } from "./harness";
 
 /**
- * **설정 화면의 두 Server Action** (design §3.2·§3.4). 화면 자체는 렌더 테스트가 없어 T5가 보고,
+ * **설정 화면의 두 Server Action** (ARCHITECTURE §6.4). 화면 자체는 렌더 테스트가 없어 T5가 보고,
  * 여기서는 **저장이 인가된 것만 바꾸는가**를 값으로 고정한다.
  *
  * ⚠️ **거부만 검증하면 "항상 거부하는 Action"도 전부 통과한다** (POSTMORTEM 2026-09-06 — 전면
@@ -216,7 +216,7 @@ describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
 
 describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가른다", () => {
   /**
-   * ⚠️ **사용자 토큰 GET의 401은 `reauthorize`다** (design §2.4). 사용자가 GitHub 설정에서 App 인가를
+   * ⚠️ **사용자 토큰 GET의 401은 `reauthorize`다** (ARCHITECTURE §6.4). 사용자가 GitHub 설정에서 App 인가를
    * 철회하면 DB의 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고, 그 직후 GET이 401을 뱉는다 —
    * `expires_at`으로는 볼 수 없어 **이 자리가 유일한 신호**다.
    *

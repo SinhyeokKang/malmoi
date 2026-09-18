@@ -1,5 +1,5 @@
 /**
- * 배포 A 이전 편집에 토큰을 채운다 (sync-edit-protection design §6.1 3단계).
+ * 배포 A 이전 편집에 토큰을 채운다 (sync-edit-protection — OPERATIONS의 배포 절차 backfill 단계).
  *
  * **SQL 한 문장이고 멱등이다** — 대상은 옛 술어(저자·시각) ∧ 활성 셀 ∧ 토큰 없음이라, 한 번 발급된 행은 다음 실행의
  * 대상에서 빠진다. 배포 A 롤아웃 뒤에는 dual-write가 새 저장에 토큰을 쓰므로 0행이 두 번 연속 나오면 수렴이다.

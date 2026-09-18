@@ -8,7 +8,7 @@
  *
  * ⚠️ **둘을 따로 판정하지 않는 것이 이 파일의 요지다.** origin은 `Host`에서, `secure`는
  * `x-forwarded-proto`에서 각자 읽으면 한쪽만 바뀌어도 쿠키를 심은 이름과 찾는 이름이 갈린다 —
- * `stateCookieNames`가 그 갈림을 이미 한 번 감당하고 있고(design §3.1), 그 위에 또 쌓지 않는다.
+ * `stateCookieNames`가 그 갈림을 이미 한 번 감당하고 있고(ARCHITECTURE §6.4), 그 위에 또 쌓지 않는다.
  */
 
 /** App 설정에 등록한 경로. 세 환경이 전부 `<origin>` + 이 값이다 — 바뀌면 셋이 함께 죽는다. */

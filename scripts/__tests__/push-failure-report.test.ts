@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 import { afterEach, expect, it } from "vitest";
 
 /**
- * **CI 파싱 실패 보고의 생산자 쪽** (projects-list design §3.35). `scripts/push-local.ts`는 `tsx`
+ * **CI 파싱 실패 보고의 생산자 쪽** (docs/ACTIONS.md "적재 실패는 말모이에도 남는다"). `scripts/push-local.ts`는 `tsx`
  * 진입점이라 import만 해도 `process.argv`를 읽고 네트워크에 닿는다 — 그래서 소스 스캔이 아니라
  * **실제로 돌려서** 본다 (`required-args.test.ts`가 소스 스캔인 것과 갈리는 지점이다: 여기서 묻는 것은
  * "무엇이 쓰여 있나"가 아니라 **"무엇을 보냈나"**다).

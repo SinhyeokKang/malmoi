@@ -16,7 +16,7 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * | `order`가 있으면 그 순서 | 검사 | **비적용** — 원본이 이미 순서를 갖고 있다 |
  * | `order`가 없으면 코드 유닛 순 | 검사 | **비적용** |
  * | orphaned | 출력에서 뺀다 | **원본 값이 남는다** (지우면 코드가 참조하는 키가 사라진다) |
- * | 빈 값 | 어댑터가 뺀다 | **호출부 계약** — 어댑터는 거르지 않는다 |
+ * | 빈 값 | 어댑터가 뺀다 — **`writeEmpty` 표시가 있으면 `""`로 쓴다** (L4.10) | **호출부 계약** — 표시가 있어도 원본 값이 남는다 |
  * | **배열 위치가 아니라 `order`에만** 의존·재실행 동일 | 검사 | 검사 |
  * | orphaned의 **DB 값**이 출력에 안 나온다 | 검사 | 검사 |
  *
@@ -250,6 +250,21 @@ export function writerContractViolations(adapter: Adapter): string[] {
     if (surgical && without !== null) bad.push("원본 없이 파일을 만들었다 — 수술적 치환은 치환할 대상이 없으면 null이어야 한다 (§1.4)");
     if (!surgical && without === null) bad.push("원본이 없다고 null을 냈다 — 재생성은 원본 없이도 파일을 만들어야 한다 (신규 로케일)");
   }
+  // **원본 파일 둘.** per-locale writer는 원본을 `currentFiles?.[0]`이 아니라 **자기 경로로** 골라야
+  // 한다. `render.ts`가 한 파일로 정규화해 넘기므로 지금은 잠복이지만, 호출부가 여러 파일을 실으면
+  // 다른 로케일의 원본 위에 치환하거나 그 표현을 입는다 (launch-readiness L3.6). 남의 파일을 앞에 둔다.
+  if (adapter.layout === "per-locale") {
+    const decoyPath = fmt.pathTemplate.replaceAll("{locale}", "zz");
+    const decoy = surgical
+      ? formatFor(adapter, ["decoy_only"]).currentFiles?.[0]?.content
+      : fourSpaceDonor(adapter)?.currentFiles?.[0]?.content;
+    if (decoy !== undefined) {
+      const both = { ...fmt, currentFiles: [{ path: decoyPath, content: decoy }, ...(fmt.currentFiles ?? [])] };
+      if (write(entriesFor(CONTRACT_KEYS), both) !== plain) {
+        bad.push("원본 파일 둘: 다른 로케일의 파일을 앞에 실었더니 출력이 달라졌다 — 원본을 경로가 아니라 위치로 고른다");
+      }
+    }
+  }
   // **삽입 경로.** 픽스처 원본이 계약 키를 전부 담고 있어 지금까지 "없는 키를 넣는" 자리(§1.1의 여섯
   // 지점 #5)를 어느 어댑터도 밟지 않았다. 원본을 한 키 빼고 만들어 그 키가 출력에 나타나는지 본다.
   {
@@ -323,6 +338,12 @@ export function writerContractViolations(adapter: Adapter): string[] {
       bad.push("orphaned 키의 원본 값을 지웠다 — 수술적 치환은 파일에 남겨야 한다 (§1.4)");
     }
     if (!plain.includes("사람이 넣은 주석")) bad.push("원본 주석을 잃었다 (수술적 치환의 존재 이유다)");
+    // `writeEmpty`는 재생성 writer의 표시다 — 수술적 치환은 원본을 두므로 원본 값이 그대로 남아야 한다 (L4.10).
+    const [first, ...rest] = CONTRACT_KEYS;
+    const markedSurgical = write([{ key: first, message: "", writeEmpty: true }, ...entriesFor(rest)]);
+    if (markedSurgical !== null && !markedSurgical.includes(srcVal(first))) {
+      bad.push("writeEmpty 표시를 보고 원본 값을 빈 값으로 바꿨다 — 수술적 치환은 빈 값으로 치환하지 않는다");
+    }
     // **`order`가 닿으면 회귀다.** 수술적 치환은 원본 순서를 그대로 두므로 order를 줘도 출력이
     // 같아야 한다 — 달라졌다면 이 방식이 재생성 규칙을 밟기 시작한 것이다.
     if (ordered !== plain) {
@@ -396,6 +417,11 @@ export function writerContractViolations(adapter: Adapter): string[] {
   const withEmpty = write([{ key: "a_x", message: "" }, ...entriesFor(CONTRACT_KEYS)]);
   if (withEmpty !== null && at(withEmpty, "a_x") !== -1) {
     bad.push("빈 문자열을 미번역으로 취급해 빼지 않았다");
+  }
+  // base 파일에 `""`로 있던 키는 남아야 한다 — 빠지면 다음 push가 전 로케일 orphan한다 (launch-readiness L4.10).
+  const marked = write([{ key: "a_x", message: "", writeEmpty: true }, ...entriesFor(CONTRACT_KEYS)]);
+  if (marked === null || at(marked, "a_x") === -1) {
+    bad.push("writeEmpty 표시가 있는 빈 값을 뺐다 — base 파일에서 키가 사라진다");
   }
   if (write([{ key: "only", message: "", orphaned: false }]) !== null) {
     bad.push("낼 항목이 0개인데 null을 내지 않았다 — 빈 파일은 '이 로케일 지원함'으로 읽힌다");

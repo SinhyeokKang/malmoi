@@ -35,6 +35,9 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/__tests__/**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**", ".next/**"],
+    // next-auth는 `next/server`를 확장자 없이 import해 Node ESM 해석이 실패한다 — 인라인해야 진짜
+    // 핸들러를 부를 수 있다 (`lib/login-link/__tests__/http.test.ts`의 `AUTH_URL` 회귀).
+    server: { deps: { inline: ["next-auth"] } },
   },
   resolve: {
     alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },

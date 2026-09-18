@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { installationSettingsUrl } from "../installation-url";
 
 /**
- * [Installation settings] 버튼의 목적지 (design §1.2).
+ * [Installation settings] 버튼의 목적지 (DESIGN §6.67).
  *
  * ⚠️ **설치 ID로 가는 주소(`/settings/installations/<id>`)를 쓰지 않는다.** `Account` 모델에 설치 ID
  * 컬럼이 **없고**, 사용자에게 설치가 여럿일 수 있어 "어느 설치인가"에 답이 없다.

@@ -4,7 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadProjectListAggregates } from "../query";
 
 /**
- * **목록 집계의 왕복 수가 상수다** (projects-list design §3).
+ * **목록 집계의 왕복 수가 상수다** (DESIGN §6.63).
  *
  * ⚠️ **프로젝트 수에 비례해 쿼리가 늘면 안 된다.** 도쿄 리전 왕복 하나가 고정 비용으로 붙고
  * (CLAUDE.md 가상화 절의 실측), 그것이 이 화면에서 N배가 되면 로그인 직후의 착지점이 느려진다.

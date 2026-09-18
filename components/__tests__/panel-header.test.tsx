@@ -214,7 +214,7 @@ describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
 
   /**
    * ⚠️ **안쪽 래퍼의 `max-w-4xl`도 함께 사라진다** — 프리미티브가 등급을 들면서 이중 여백의 원인이
-   * 없어진다. 남겨 두면 limited 일곱이 `16 + 24 = 40`이 된다 (design §2.2).
+   * 없어진다. 남겨 두면 limited 일곱이 `16 + 24 = 40`이 된다 (DESIGN §5.15).
    */
   it.each(CONSUMERS)("%s가 안쪽 래퍼로 폭을 다시 정하지 않는다", (path) => {
     expect(readFileSync(join(ROOT, path), "utf8")).not.toContain("mx-auto w-full max-w-4xl");

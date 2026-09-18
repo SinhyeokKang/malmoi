@@ -31,7 +31,7 @@ export type BaseLocaleResult =
 /**
  * ⚠️ **선언 컬럼에만 쓴다.** `Project.baseLocale`(현실)은 push가 소유하고 pull이 그것을 읽으므로,
  * 여기서 현실을 바꾸면 야간 pull이 **옛 base의 원문을 새 base 파일에 실은 PR**을 낸다
- * (design §3.13이 그 안을 기각한 근거).
+ * (ARCHITECTURE §5.5.5가 그 안을 기각한 근거).
  *
  * ⚠️ **`Translation`·`StringKey`·`Locale.isBase`를 건드리지 않는다.** 재적재 경로는 CI 하나뿐이고
  * (`runFirstIngest`는 ready에서 `not-awaiting`), 자동으로 이어 붙이면 저장 하나가 GitHub 왕복이 된다.
@@ -84,7 +84,7 @@ export async function updateBaseLocale(raw: {
     await prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: baseLocale } });
   } else if (project.declaredBaseLocale !== null) {
     /**
-     * `noop`인데 선언이 남아 있다 — **되돌리는 경로다** (design §3.13: "B로 선언했다가 A로 다시
+     * `noop`인데 선언이 남아 있다 — **되돌리는 경로다** (DESIGN §6.66: "B로 선언했다가 A로 다시
      * 저장하면 대기가 사라진다"). 별도 취소 버튼을 두지 않는 근거가 이 한 줄이고, `null`로 비우는
      * 것이 현실과 같은 값을 넣는 것보다 낫다 — `checkFormat`에 남는 예외가 아예 없다.
      */

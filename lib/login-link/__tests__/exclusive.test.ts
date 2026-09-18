@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 const ROOT = process.cwd();
 
 /**
- * ⚠️ **양방향 쿠키 정리가 배타성의 전부다** (account-linking design 불변식 8c) — 두 가로채기의
+ * ⚠️ **양방향 쿠키 정리가 배타성의 전부다** (ARCHITECTURE "계정 병합") — 두 가로채기의
  * intent 판정에 암호적 결합이 없으므로, 시작하는 쪽이 상대의 흔적을 먼저 지워야 한다.
  * 한 방향만 지우면 "회수를 중단한 직후 병합"이 회수 화면으로 새고, 그 증상은 버튼이 엉뚱한
  * 화면을 낸 것으로만 보인다 (POSTMORTEM 2026-09-10).
@@ -25,7 +25,7 @@ it("병합 시작이 회수 쿠키를 먼저 지운다", () => {
 });
 
 /**
- * ⚠️ **`safePrismaAdapter.linkAccount`의 거부를 한 줄도 약하게 하지 않는다** (design 불변식 2).
+ * ⚠️ **`safePrismaAdapter.linkAccount`의 거부를 한 줄도 약하게 하지 않는다** (ARCHITECTURE "계정 병합").
  * 병합은 `finishLink`가 직접 쓰므로 그 게이트를 열 이유가 없다 — **Auth.js 경유의 유일한 경로**로
  * 뜻만 좁아진다.
  */

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * `TranslationSurface.declaredBaseLocale` — 기준 로케일 변경의 **선언** (6b-3 · translation-ui design §3.13).
+ * `TranslationSurface.declaredBaseLocale` — 기준 로케일 변경의 **선언** (6b-3 · ARCHITECTURE §5.5.5).
  * `push-token-column.test.ts`와 같은 텍스트 대조다.
  *
  * ⚠️ **컬럼이 둘인 것이 이 설계의 요지다.** 같은 컬럼(`baseLocale`)에 선언을 쓰면 pull이 그것을

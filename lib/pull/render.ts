@@ -38,7 +38,10 @@ export function rowsForLocale(
   opts: { isBase?: boolean } = {},
 ): PullRow[] {
   return keys.map((k) => {
-    const cell = k.cells[locale];
+    // ⚠️ **로케일 코드는 리포가 정한 키다** — `isPathSafeLocale`이 `constructor`·`toString`을
+    // 통과시키므로 평범한 인덱싱은 `Object.prototype`의 값을 셀로 집는다 (CLAUDE.md 코드 컨벤션 ·
+    // `lib/keys/view.ts`의 `cellAt`이 화면 쪽 짝이다). **여기는 파일로 나가는 경로라 더 위험하다.**
+    const cell = Object.hasOwn(k.cells, locale) ? k.cells[locale] : undefined;
     // **base만 키 단위 description으로 폴백한다.** `Translation.description`이 전부 null인
     // 마이그레이션 직후에도 base 파일이 description을 잃지 않게 하는 장치다 —
     // `value ?? sourceText`(아래 `buildWriteEntries`)와 같은 축이고, 그 값은 애초에 base

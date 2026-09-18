@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
  * (POSTMORTEM 2026-09-08 — 툴팁 provider, 접기 버튼 한 번에 죽었다).
  *
  * 해법은 `Slot.Slottable`이다: 어느 자식을 슬롯 대상으로 삼을지 알려 주면 형제가 허용된다.
- * 렌더 테스트를 두지 않는 리포라(design §4) 소스로 센다.
+ * 렌더 테스트를 두지 않는 리포라 소스로 센다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const UI = join(ROOT, "components/ui");

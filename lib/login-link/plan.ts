@@ -1,11 +1,11 @@
 import { checkChallenge, isLoginProvider, pickLoginAccount, type Challenge, type LoginProvider } from "./policy";
 
 /**
- * 거부를 안내로 바꾸는 판정 둘 (design §5.2).
+ * 거부를 안내로 바꾸는 판정 둘 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **자동 병합은 여전히 없다.** `offer`가 여는 것은 **화면 하나**이고, 행을 쓰는 것은 기존
  * provider의 OAuth를 새로 통과한 `planLinkConfirm`의 `ok` 하나뿐이다 — `allowDangerousEmailAccountLinking`은
- * 어느 provider에도 켜지 않는다 (design 불변식 7).
+ * 어느 provider에도 켜지 않는다 (ARCHITECTURE §6.2.1).
  */
 
 export type LinkOffer =
@@ -14,7 +14,7 @@ export type LinkOffer =
   | { kind: "offer"; userId: string; have: LoginProvider };
 
 /**
- * ⚠️ **`existingUser`는 새 조회가 아니다** (design §5.1). 호출부가 이미 "이 Account가 새 것인가"를
+ * ⚠️ **`existingUser`는 새 조회가 아니다** (ARCHITECTURE "계정 병합"). 호출부가 이미 "이 Account가 새 것인가"를
  * 알고 있고, **그 값이 '없다'일 때만** 이메일 조회 하나를 더한다 — 재방문 로그인(대부분)에는
  * 비용이 0이다.
  */
@@ -43,7 +43,7 @@ export function planLinkOffer(input: {
 
 export type LinkConfirm = {
   kind: "ok" | "expired" | "wrong-account" | "already-linked" | "invalid";
-  /** ⚠️ **`ok`에서만 참이다** (design ⑧) — 실패가 소비하면 훔친 URL 한 번으로 남의 병합을 태운다. */
+  /** ⚠️ **`ok`에서만 참이다** (ARCHITECTURE "계정 병합") — 실패가 소비하면 훔친 URL 한 번으로 남의 병합을 태운다. */
   consume: boolean;
 };
 

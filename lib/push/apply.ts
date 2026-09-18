@@ -14,10 +14,10 @@ import { countPending } from "@/lib/protection/where";
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * Both entry points lock Project → Surface before reading keys. Existing transactions stay on their connection.
- * Local isolated /api/push baseline (1446 keys × 6 locales, 2026-09-15): cold 743ms; warm 240/242/243ms.
- * After locking + revision: cold 1716ms; warm 689/677/543ms (same local isolated handler fixture).
- * These include handler/DB work, not deployed network latency; the added reads cost more locally.
+ * 두 진입점 모두 키를 읽기 전에 Project → Surface 순으로 잠근다. 기존 트랜잭션은 자기 연결에 머문다.
+ * 로컬 격리 /api/push 기준선(1446키 × 6로케일, 2026-09-15): cold 743ms · warm 240/242/243ms.
+ * 잠금 + revision 뒤: cold 1716ms · warm 689/677/543ms(같은 로컬 격리 핸들러 픽스처).
+ * 핸들러·DB 작업을 포함하고 배포 환경의 네트워크 지연은 빠진 값이다 — 더해진 읽기는 로컬에서 더 비싸다.
  *
  * ⚠️ **`"$transaction" in prisma` 같은 런타임 판별로 둘을 합치지 않는다.** proxy를 오판해 중첩
  * 트랜잭션을 열었고, 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다려 멈췄다
@@ -74,7 +74,7 @@ export type ApplyOptions = {
   startedAt: Date;
   /**
    * 첫 적재면 null. 그 외에는 Project→Surface 잠금 뒤 읽은 최신 base로 다시 판정한다.
-   * 호출부의 값은 첫 적재 여부를 구분한다 (design §3.13).
+   * 호출부의 값은 첫 적재 여부를 구분한다 (ARCHITECTURE §5.5.5).
    *
    * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
    * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
@@ -82,7 +82,7 @@ export type ApplyOptions = {
   previousBaseLocale: string | null;
   /**
    * 이 적재의 **결과** — 완전 성공이면 생략(또는 null), 일부가 빠졌으면 `"partial-import"`
-   * (projects-list design §3.35).
+   * (PRODUCT §7.8).
    *
    * ⚠️ **같은 트랜잭션에서 확정되는 것이 요지다.** `applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데
    * 목록만 실패로 남는 창이 생긴다.
@@ -93,7 +93,7 @@ export type ApplyOptions = {
    */
   importOutcome?: ImportFailureCode | null;
   /**
-   * 덮어도 되는 편집 토큰 — 수동 Sync에서 OWNER가 폐기를 승인한 집합이다 (sync-edit-protection design §4.1).
+   * 덮어도 되는 편집 토큰 — 수동 Sync에서 OWNER가 폐기를 승인한 집합이다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인).
    * strict upsert는 **토큰이 없거나 이 목록에 있는 셀만** 덮는다. 목록 밖의 토큰은 승인 뒤 들어온 저장이라 살아남는다.
    *
    * ⚠️ **optional이고 기본은 빈 목록 = 토큰 있는 셀을 하나도 안 덮는다.** 빠졌을 때의 기본이 **편집 보존**이라 안전한 쪽이다
@@ -117,10 +117,10 @@ class PendingEditsDuringApply extends Error {
   constructor(readonly pendingCount: number) { super("pending edits appeared during apply"); }
 }
 
-export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number };
+export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number } | { status: "unauthorized" };
 
 /**
- * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection design §3).
+ * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
  * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
  *
@@ -128,15 +128,20 @@ export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | 
  * 토큰 가드가 그 셀을 안 덮어도 **조건 불일치는 0행 갱신이라 조용하다**(POSTMORTEM 2026-09-14) — 재집계 예외가 그 무음을 깬다.
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
-export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens">): Promise<ProtectedPushResult> {
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string }): Promise<ProtectedPushResult> {
   try {
     return await prisma.$transaction(async tx => {
       // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
-      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
+      const locked = await tx.$queryRaw<{ pushTokenHash: string | null }[]>`SELECT "pushTokenHash" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
+      // ⚠️ **잠근 뒤에 토큰을 다시 대조한다** (launch-readiness L7.6). 라우트의 인증 조회는 트랜잭션 밖이라, 그 뒤 커밋된 회전을
+      // 여기서 안 보면 옛 토큰의 push 하나가 적재된다 — 회전의 목적이 유출 토큰을 즉시 끊는 것이다. 회전이 이 잠금 뒤로 줄을 서면
+      // 그 push는 회전 **전에** 일어난 것이라 받는다.
+      if (locked[0]?.pushTokenHash !== options.pushTokenHash) return { status: "unauthorized" } as const;
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });
       if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
-      const outcome = await applyPushInTransaction(tx, scope, payload, { ...options, approvedTokens: [] });
+      const { pushTokenHash: _verified, ...applyOptions } = options;
+      const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [] });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);
       return { status: "applied", outcome } as const;
@@ -155,7 +160,7 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   if (project === null || surface === null || project.archivedAt !== null || surface.archivedAt !== null) throw new ApplyGuardError("archived");
   if (checkProjectSlug(payload.projectSlug, project.slug) !== "ok" || surface.slug !== payload.surfaceSlug) throw new ApplyGuardError("wrong-project");
   if (checkFormat(payload.format, surface) !== "ok") throw new ApplyGuardError("wrong-format");
-  // Repository Sync accepts the current base even after a force-push; CI keeps its existing order guard.
+  // Repository Sync는 force-push 뒤에도 현재 base를 받는다. CI는 기존 순서 가드를 유지한다.
   if (options.refsMode === "replace" && checkCommitOrder(new Date(payload.commitAt), surface.lastCommitAt) !== "ok") throw new ApplyGuardError("stale-commit");
   return applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale }, async statements => {
     const results: unknown[] = [];
@@ -251,7 +256,7 @@ async function applyWith(
         ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
         -- ⚠️ createdAt은 INSERT에만 있다 — 아래 UPDATE가 건드리면 살아 돌아온 키가 매번
-        -- "새 키"로 다시 잡힌다 (projects-list design §8). 시계가 하나인 이유는 위 주석과 같다.
+        -- "새 키"로 다시 잡힌다. 시계가 하나인 이유는 위 주석과 같다.
         ${plan.toInsert.map(() => now)}::timestamp[],
         ${plan.toInsert.map(() => now)}::timestamp[]
       )`]),
@@ -305,6 +310,8 @@ async function applyWith(
   const refs = payload.refs
     .map((r) => ({ ...r, keyId: idByKey.get(r.key) }))
     .filter((r): r is typeof r & { keyId: string } => r.keyId !== undefined);
+  // 한 벌에서 나눈다 — 결과와 진행 표시는 거르는 조건이 다르다(아래 마지막 두 문장).
+  const { lastImportStartedAt, ...outcome } = importOutcomeFields(options.importOutcome ?? null, new Date());
 
   const rest = [
     // **strict 덮어쓰기.** 리포 값이 DB를 덮는다 (ARCHITECTURE §0 불변식 2) — 변경 감지도 병합도 없다.
@@ -333,14 +340,14 @@ async function applyWith(
         -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
         "description" = EXCLUDED."description",
         "placeholders" = EXCLUDED."placeholders",
-        -- **덮인 값의 저자는 리포다** (translation-ui design §3.6). 사람 이름을 남기면 거짓이고,
+        -- **덮인 값의 저자는 리포다** (ARCHITECTURE §5.5.2). 사람 이름을 남기면 거짓이고,
         -- 미배포 집계(isUnpublished)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
         "updatedBy" = NULL,
         -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
-        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection design §2).
+        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection — ARCHITECTURE §5의 pendingEditToken 절).
         "pendingEditToken" = NULL,
         "updatedAt" = ${now}
-      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection design §3).
+      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection — ARCHITECTURE §5.5.2).
       -- 승인된 폐기(수동 Sync)의 토큰만 예외다. 조건 불일치는 0행이라 조용하므로 CI 경로는 재집계가 그 무음을 깬다.
       WHERE "Translation"."pendingEditToken" IS NULL OR "Translation"."pendingEditToken" = ANY(${[...(options.approvedTokens ?? [])]}::text[])`]),
 
@@ -368,7 +375,7 @@ async function applyWith(
         ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
         /**
-         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (design §3.13, 6b-3).
+         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (ARCHITECTURE §5.5.5, 6b-3).
          *
          * ⚠️ **push마다 비우면 기능이 흔한 경로에서 무력화된다** (code-review 2026-09-09). OWNER가
          * base를 선언한 뒤 워크플로를 고치기 전에 평범한 CI push 한 번이 오면(base 브랜치에 머지가
@@ -386,11 +393,15 @@ async function applyWith(
         lastCommitAt: new Date(payload.commitAt),
       },
     }),
-    // 성공도 자기 실행만 끝낸다 — A 성공이 B의 표시를 비우면 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
-    // 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이 실패하는 창을 만들지 않는다.
+    // **결과는 무조건, 진행 표시는 자기 실행만** 끝낸다. 데이터와 결과는 같은 트랜잭션에 남겨 성공 후 별도 기록이
+    // 실패하는 창을 만들지 않는다.
+    // - 결과를 토큰으로 거르면 교차한 B가 토큰을 덮은 사이 A의 성공이 0행이 되고, 남은 옛 실패가 화면에 선다
+    //   (launch-readiness L3.7). 잠금 뒤 커밋 순서가 곧 데이터 순서라 마지막 커밋의 결과가 맞다.
+    // - 진행 표시를 거르지 않으면 A 성공이 대기 중인 B의 표시를 비우고, 뒤늦은 B 실패까지 조건부 쓰기에서 탈락한다.
+    prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: outcome }),
     prisma.translationSurface.updateMany({
       where: { id: surfaceId, projectId, lastImportToken: options.token },
-      data: { ...importOutcomeFields(options.importOutcome ?? null, new Date()), lastImportToken: null },
+      data: { lastImportStartedAt, lastImportToken: null },
     }),
   ];
 

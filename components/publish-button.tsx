@@ -1,4 +1,5 @@
 "use client";
+import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
@@ -16,9 +17,11 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import type { PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 refresh로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
@@ -51,7 +54,11 @@ export function usePublish(slug: string) {
     try {
       const data = await loadPublishPreview({ slug });
       if (request !== generation.current) return;
-      const next: PublishModalState = data ? { kind: "preview-ready", preview: data } : { kind: "preview-error" };
+      // 거부는 실행 전 거부와 같은 결과로 그린다(`1h`) — Retry가 같은 거부를 다시 받는 갈래를 만들지 않는다 (L3.3).
+      const next: PublishModalState =
+        data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
+        : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
+        : { kind: "preview-error" };
       current.current = next; setState(next);
     } catch {
       if (request === generation.current) { current.current = { kind: "preview-error" }; setState(current.current); }
@@ -97,16 +104,15 @@ const p = m.translations.publish;
  * 허공에 뜬다. ⚠️ **리터럴 문자열이어야 한다** — Tailwind는 소스에 그대로 적힌 클래스만 만든다.
  */
 const PANEL = {
-  preview: "max-w-[736px] min-h-[min(620px,calc(100svh-96px))] max-h-[min(680px,calc(100svh-96px))]",
-  running: "max-w-[736px] min-h-[min(340px,calc(100svh-96px))] max-h-[min(380px,calc(100svh-96px))]",
-  created: "max-w-[736px] min-h-[min(420px,calc(100svh-96px))] max-h-[min(460px,calc(100svh-96px))]",
-  updated: "max-w-[736px] min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  noChanges: "max-w-[736px] min-h-[min(360px,calc(100svh-96px))] max-h-[min(400px,calc(100svh-96px))]",
-  partial: "max-w-[736px] min-h-[min(560px,calc(100svh-96px))] max-h-[min(600px,calc(100svh-96px))]",
-  configError: "max-w-[736px] min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  transientError: "max-w-[736px] min-h-[min(400px,calc(100svh-96px))] max-h-[min(440px,calc(100svh-96px))]",
-  gate: "max-w-[512px] min-h-[min(300px,calc(100svh-96px))] max-h-[min(330px,calc(100svh-96px))]",
-  previewError: "max-w-[736px] min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
+  preview: "min-h-[min(620px,calc(100svh-96px))] max-h-[min(680px,calc(100svh-96px))]",
+  running: "min-h-[min(340px,calc(100svh-96px))] max-h-[min(380px,calc(100svh-96px))]",
+  created: "min-h-[min(420px,calc(100svh-96px))] max-h-[min(460px,calc(100svh-96px))]",
+  updated: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
+  noChanges: "min-h-[min(360px,calc(100svh-96px))] max-h-[min(400px,calc(100svh-96px))]",
+  partial: "min-h-[min(560px,calc(100svh-96px))] max-h-[min(600px,calc(100svh-96px))]",
+  configError: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
+  transientError: "min-h-[min(400px,calc(100svh-96px))] max-h-[min(440px,calc(100svh-96px))]",
+  previewError: "min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
 } as const;
 
 /**
@@ -267,6 +273,8 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
         </tbody>)}
       </table>
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
+      {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
+      {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
     </div>
   </TableShell>;
 }
@@ -314,7 +322,8 @@ function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
   return outcome.error === "invalid input" ? accessErrorMessage("forbidden") : outcome.error;
 }
 
-const stamp = (at: Date) => `${at.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · ${at.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+// 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
+const stamp = (at: Date) => <time dateTime={at.toISOString()}>{utcMinute(at)}</time>;
 
 export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;
@@ -340,6 +349,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   let actions: ReactNode = null; let footer: ReactNode = null; let quiet = false; let panel: string = PANEL.preview;
   /** 본문 안에 자체 스크롤러가 있는가 — 표(`1a`·`1k`)와 경고 목록(`1g`)뿐이다. */
   let inner = true;
+  // 실행 거부 둘은 작은 모달이다 — 제목·한 문장·버튼 하나라 큰 패널이면 빈 판이 된다 (2026-09-18 사용자, 옛 512 게이트).
+  let alert = false;
   switch (state.kind) {
     case "preview-loading":
       title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count);
@@ -398,7 +409,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const view = planPublishView(outcome);
       const at = result?.at ?? null;
       const total = result?.total ?? count;
-      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(design §4-4).
+      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
         ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
         : null;
@@ -458,13 +469,13 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
           actions = hasCode && role === "OWNER"
-            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={`/projects/${slug}/settings`}>{p.settings}</a>
+            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
-              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href="/signin">{p.signIn}</a>
+              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()}>{p.signIn}</a>
               : null;
           body = <Stack>
-            {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(spec §2-4). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
+            {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
             <Alert variant="danger" title={p.wontHelp}>{hasCode && failed ? failureText(failed) : null}</Alert>
             {hasCode && failed && <>
               <div className="border-border grid shrink-0 grid-cols-[130px_1fr] gap-x-3.5 gap-y-2.5 rounded-lg border px-4 py-3.5 text-xs">
@@ -497,13 +508,13 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           break;
         }
         case "already-running":
-          panel = PANEL.gate; inner = false;
+          alert = true;
           title = p.alreadyRunning; description = p.alreadyRunningBody;
-          actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+          actions = <Button variant="primary" onClick={publish.close}>{p.close}</Button>;
           body = null;
           break;
         case "too-soon": {
-          panel = PANEL.gate; inner = false;
+          alert = true;
           const seconds = outcome.status === "failed" ? outcome.retryAfterSeconds ?? 0 : 0;
           title = p.tooSoon; description = p.tooSoonBody;
           /*
@@ -511,7 +522,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             꺼진 버튼은 스스로 풀리지 않아 "18초 뒤에 다시 하라"는 라벨이 영영 못 지키는 약속이 된다.
             라벨이 시키는 것을 화면이 실제로 할 수 있어야 한다.
           */
-          actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.wait(seconds)}</Button>;
+          actions = <Button variant="primary" onClick={() => void publish.preview()}>{p.wait(seconds)}</Button>;
           body = null;
           break;
         }
@@ -520,6 +531,18 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       break;
     }
     default: { const exhaustive: never = state; return exhaustive; }
+  }
+  if (alert) {
+    return <Dialog open={publish.open} onOpenChange={next => { if (!next) publish.close(); }}>
+      <DialogContent title={title} description={description} footer={actions}
+        // 큰 껍데기와 같은 복귀 규칙 — 호출 버튼, 사라졌으면 호스트 제목.
+        onCloseAutoFocus={event => {
+          event.preventDefault();
+          const target = publish.triggerRef.current;
+          if (target?.isConnected && !target.matches(":disabled")) target.focus();
+          else fallbackFocusRef.current?.focus();
+        }} />
+    </Dialog>;
   }
   return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
     footer={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}

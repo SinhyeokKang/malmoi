@@ -143,10 +143,10 @@ describe("상태 문구", () => {
 });
 
 /**
- * **목록 재설계의 판정 여섯** (projects-list design §4·§5). 전부 I/O가 없는 잎이고, 그래서
+ * **목록 재설계의 판정 여섯** (DESIGN §6.63). 전부 I/O가 없는 잎이고, 그래서
  * `components/__tests__/client-graph.test.ts`가 이 모듈을 클라이언트 번들 밖에 둔다.
  *
- * ⚠️ **상태표(design §5)가 정본이다.** 캔버스 `1c`에서 그대로 옮긴 표이고, 아래 매트릭스는 그 행과
+ * ⚠️ **캔버스 `1c`의 상태표가 정본이다** (DESIGN §6.63). 거기서 그대로 옮긴 표이고, 아래 매트릭스는 그 행과
  * 1:1이다 — 표에 없는 조합을 여기서 발명하지 않는다.
  */
 
@@ -154,7 +154,7 @@ const READY = { installationId: "i", surfaces: [{ archivedAt: null, lastCommitSh
 const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, importError: null, importing: false } as const;
 const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
 
-describe("projectGroup — 상태표의 그룹 열과 1:1 (design §5)", () => {
+describe("projectGroup — 상태표의 그룹 열과 1:1 (DESIGN §6.63)", () => {
   it.each([
     ["active · all set", {}],
     ["review pending", { review: 88 }],
@@ -181,7 +181,7 @@ describe("projectGroup — 상태표의 그룹 열과 1:1 (design §5)", () => {
   });
 });
 
-describe("rowBanner — 겹치면 하나만 (design §4 우선순위)", () => {
+describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", () => {
   it("보관 행에는 액션이 없다", () => {
     expect(rowBanner(row({ archivedAt: new Date(), unsent: 24, review: 9 }))).toBeNull();
   });
@@ -245,7 +245,7 @@ describe("rowBanner — 겹치면 하나만 (design §4 우선순위)", () => {
   });
 });
 
-describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)", () => {
+describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.63)", () => {
   it("값이 있는 상태는 바를 그린다", () => {
     const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
     expect(meterSlot(row(), locales)).toEqual({ kind: "meters", locales });
@@ -261,7 +261,7 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)"
   });
 
   /**
-   * ⚠️ **이미 적재된 프로젝트의 실패는 Meter를 지우지 않는다** (design §5) — 데이터가 있는데
+   * ⚠️ **이미 적재된 프로젝트의 실패는 Meter를 지우지 않는다** (DESIGN §6.63) — 데이터가 있는데
    * 문장으로 덮으면 "번역이 사라졌다"로 읽힌다. 그 사실은 띠가 말한다.
    */
   it("적재된 뒤의 실패는 바를 유지한다", () => {
@@ -279,7 +279,7 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (design §5)"
 });
 
 /**
- * **행의 Meter 재료** (design §3.1). ①②③의 조회 결과를 프로젝트별로 접는다.
+ * **행의 Meter 재료** (DESIGN §6.63). ①②③의 조회 결과를 프로젝트별로 접는다.
  *
  * ⚠️ **`localeProgress`(`lib/keys/view.ts`)와 합치지 않는다** — 저쪽은 `untranslated`·orphaned 꼬리까지
  * 드는 화면 계약이고 여기 필요한 것은 두 구간 비율뿐이다. **`percent`의 내림 규칙만 그대로 쓴다**
@@ -360,10 +360,10 @@ describe("rowLocaleProgress", () => {
 });
 
 /**
- * **계정 합계 넷** (design §3.2). 검색 전 전체 멤버십 중 **보관하지 않은** 프로젝트의 값이다.
+ * **계정 합계 넷** (DESIGN §6.63의 Summary 항). 검색 전 전체 멤버십 중 **보관하지 않은** 프로젝트의 값이다.
  */
 /**
- * Home 카드의 보조 줄 `8 cells · 5 en, 3 ja` (project-home design §3.2). `rowReviewCounts`는 프로젝트
+ * Home 카드의 보조 줄 `8 cells · 5 en, 3 ja` (DESIGN §6.64). `rowReviewCounts`는 프로젝트
  * 단위로 접어서 그 분해가 없었다 — **같은 `foldCells`를 쓰므로 "살아 있는 로케일만"이 한 벌로 남는다.**
  */
 describe("reviewByLocale — 검토 대기의 로케일별 분해", () => {
@@ -484,7 +484,7 @@ describe("summaryQueue", () => {
   });
 });
 
-describe("groupProjects — 검색 중에는 평평하다 (design §4)", () => {
+describe("groupProjects — 검색 중에는 평평하다 (DESIGN §6.63)", () => {
   const rows = [
     { slug: "b", ...READY, ...QUIET, archivedAt: new Date("2026-09-01T00:00:00Z") },
     { slug: "a", ...READY, ...QUIET },
@@ -579,7 +579,7 @@ it.each([
 });
 
 /**
- * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (projects-panel-rework design §3.1).
+ * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (DESIGN §6.63).
  *
  * ⚠️ **지금은 `hasProjects`·`query`·`rows.length` 셋이 JSX 안에서 섞여 판정된다.** 넷을 한 자리에
  * 모아야 갈래를 그대로 단언할 수 있다.

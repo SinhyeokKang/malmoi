@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { render, find } from "./helpers/dom";
 
 /**
- * 모달 껍데기 (new-project-modal spec 완료 조건 4 · design §2.1·§8).
+ * 모달 껍데기 (DESIGN §6.7).
  *
  * ⚠️ **소스 스캔으로 나누지 않는다.** `showBack` prop을 세는 것은 "그려 놓고 안 보이는" 경우를 못
  * 잡는다 — 그래서 실제로 렌더해 쿼리한다.
@@ -105,7 +105,7 @@ describe("OnboardingModal — [Next]는 껍데기가 소유한다", () => {
   });
 });
 
-describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (design §1.2.1)", () => {
+describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (DESIGN §6.7)", () => {
   it("`aria-live` 영역이 하나 있고 단계가 바뀌면 새 제목이 거기 쓰인다", async () => {
     const { rerender } = await render(shell({ step: 1, title: "New project" }));
     const live = find<HTMLElement>(document.body, '[aria-live="polite"]');
@@ -132,7 +132,7 @@ describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (des
   });
 });
 
-describe("OnboardingModal — 높이가 뷰포트에 물린다 (design §8)", () => {
+describe("OnboardingModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () => {
   it("본문 열이 `min-h-0 flex-1 overflow-y-auto`를 든다 — 없으면 바닥이 화면 밖으로 나간다", async () => {
     await render(shell());
 
@@ -149,18 +149,18 @@ describe("OnboardingModal — 높이가 뷰포트에 물린다 (design §8)", ()
   });
 
   /**
-   * ⚠️ **폭 800 · 최대 높이 800이다** (2026-09-13 사용자). 폭은 핸드오프 값으로 돌아왔고 — ②의 값 셀이
-   * 덜 보이는 것을 감수한 결정이다 — 높이는 **뷰포트만이 아니라 절대값에도** 물린다: 세로로 긴
+   * ⚠️ **폭 1024 · 최대 높이 800이다** (폭은 2026-09-18 사용자 — 핸드오프 값 800에서 올렸다. ②의 패널 그룹 폭이
+   * 같이 움직인다: `files.tsx` `FILES_PANEL_WIDTH`). 높이는 **뷰포트만이 아니라 절대값에도** 물린다: 세로로 긴
    * 화면에서 80svh가 800px을 넘어가면 네 단계 중 어느 것도 그 높이를 채우지 못해 빈 판이 된다.
    *
    * ⚠️ **`min-h`에도 800이 들어간다** — CSS에서 `min-height`가 `max-height`를 이기므로, 상한만
    * 800으로 막고 하한을 80svh로 두면 1,100px 화면에서 하한이 이겨 상한이 없는 것과 같아진다.
    */
-  it("폭 800 · 높이 상한 800에 물린다", async () => {
+  it("폭 1024 · 높이 상한 800에 물린다", async () => {
     await render(shell());
 
     const panel = find<HTMLElement>(document.body, "[data-onboarding-panel]");
-    expect(panel.className).toContain("max-w-[800px]");
+    expect(panel.className).toContain("max-w-[1024px]");
     expect(panel.className).toContain("max-h-[min(800px,");
     expect(panel.className).toContain("min-h-[min(80svh,800px,");
   });

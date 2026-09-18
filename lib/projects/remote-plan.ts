@@ -3,7 +3,7 @@ import type { AdapterName } from "@/lib/adapters/types";
 import { templatePaths } from "@/lib/onboarding/confirm";
 
 /**
- * **"base가 앞섰다"의 숫자** (projects-list design §3.4 C′).
+ * **"base가 앞섰다"의 숫자**.
  *
  * compare가 주는 것은 경로뿐이라 세는 단위도 **로케일 파일**이다. 시안의 `12 keys`가 여기서
  * `3 locale files`가 된 이유가 그것이고, **키 수를 지어내지 않는다** — 서버는 그 커밋을 체크아웃하지
@@ -29,7 +29,7 @@ export function changedLocaleFileCount(
   const matched = new Set(templatePaths(format.adapter, format.pathTemplate, paths));
 
   /**
-   * ⚠️ **저장 로케일의 정확한 경로를 합친다** (design §3.4). `templatePaths`의 per-locale 갈래는
+   * ⚠️ **저장 로케일의 정확한 경로를 합친다.** `templatePaths`의 per-locale 갈래는
    * `looksLikeLocale`로 거르는데 그 규칙이 `es-419`의 숫자와 `zh-Hant-TW`의 길이를 떨어뜨린다 —
    * 실제로 그 코드로 적재된 프로젝트의 파일이 통째로 안 보이게 된다.
    *

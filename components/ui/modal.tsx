@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 새 프로젝트 온보딩 모달의 **껍데기** — 네 단계가 이것을 공유하고 본문만 넘긴다
- * (new-project-modal design §2.1·§8).
+ * (DESIGN §6.7).
  *
  * ⚠️ **`components/ui/dialog.tsx`를 쓰지 않는다.** 그 프리미티브로는 §8의 껍데기가 만들어지지
  * 않는다 — Overlay가 `bg-foreground/40` **고정**이고, 머리·본문·바닥 padding이 박혀 있고, 바닥이
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **바닥 버튼이 `Button size="lg"`다.** 그 크기의 주석이 "셸 밖 카드 전용(로그인·초대 수락 둘)"인데
  * **이 모달을 그 예외에 넣었다** — dim 위에 뜬 표면이라 셸 안이 아니고, 핸드오프의 40/radius 12가
- * `lg`와 **정확히 같다**. 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다 (design §8).
+ * `lg`와 **정확히 같다**. 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다 (DESIGN §6.4).
  */
 export type OnboardingModalProps = {
   open: boolean;
@@ -59,7 +59,7 @@ export type OnboardingModalProps = {
   bodyDirection?: "column" | "row";
   /** ②④는 `hidden` — 안쪽 요소가 스크롤한다. */
   bodyScroll?: "auto" | "hidden";
-  /** 로딩→완료 같은 비동기 전이를 `sr-only` live 영역에 흘려보낸다 (design §1.2.1). */
+  /** 로딩→완료 같은 비동기 전이를 `sr-only` live 영역에 흘려보낸다 (DESIGN §6.7). */
   announce?: string;
   onBack?: () => void;
   onClose: () => void;
@@ -92,7 +92,7 @@ export function OnboardingModal({
   const [live, setLive] = useState("");
 
   /**
-   * ⚠️ **단계가 바뀌면 포커스를 본문으로 옮긴다** (design §1.2.1). 안 하면 [Next]를 누른 뒤 포커스가
+   * ⚠️ **단계가 바뀌면 포커스를 본문으로 옮긴다** (DESIGN §6.7). 안 하면 [Next]를 누른 뒤 포커스가
    * 바닥에 남아, 스크린리더 사용자가 새 단계의 본문을 만나려면 위로 거슬러 올라가야 한다. 여기서
    * 한 번 하므로 단계마다 다시 배선하지 않는다.
    */
@@ -155,7 +155,7 @@ export function OnboardingModal({
           }}
           data-onboarding-panel
           className={cn(
-            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[800px] -translate-x-1/2 -translate-y-1/2",
+            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
             "flex-col overflow-hidden rounded-xl shadow-medium",
             "min-h-[min(80svh,800px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]",
             panelClassName,

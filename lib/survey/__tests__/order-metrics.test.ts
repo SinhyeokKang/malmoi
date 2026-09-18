@@ -40,9 +40,12 @@ const BASE_SCRAMBLED = {
  * (`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면 안 보이는 격차**이고, 그 격차를 만드는
  * 원인은 시간이 지나며 하나씩 고쳐진다 — 그래서 **이 기능들이 고치지 않는 원인**으로 만들어야
  * 판별력이 남는다. 미번역 제외는 의도된 규칙이라 앞으로도 안 고친다 (ARCHITECTURE §1.1).
+ *
+ * ⚠️ **세 번째로 갈았다** (2026-09-18, launch-readiness L4.10). 그 "안 고친다"가 base에서는 틀렸다 — base의 `""`는
+ * 이제 그대로 쓰여 diff를 안 낸다. 지금 원인은 **문자열이 아닌 값**(`null`)이다: read가 건너뛰므로 DB에 없고 파일에서 빠진다.
  */
 const BASE_EMPTY_ONLY = {
-  "src/i18n/en.json": two({ a: "A", b: "B", gone: "" }),
+  "src/i18n/en.json": two({ a: "A", b: "B", gone: null }),
   "src/i18n/ko.json": two({ a: "에이", b: "비" }),
   "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
 };
@@ -199,6 +202,30 @@ describe("surveyOne — 비-base 로케일 diff", () => {
     expect(s.diffRatioNonBase).toBe(0);
   });
 
+  /**
+   * ⚠️ **프로덕션은 base 순서로 전 로케일을 쓴다** (launch-readiness L4.6). push가 base 파일의 키 위치를 `sortIndex`로
+   * 올리고 pull이 그 순서를 모든 로케일에 `order`로 싣는다(`rowsForLocale` → `buildWriteEntries`). survey가 로케일마다
+   * 자기 파일 순서를 넘기면 비-base 재배열이 ≈0으로 보였다 — 지표가 프로덕션이 안 하는 일을 재고 있었다.
+   */
+  it("비-base의 키 순서가 base와 다르면 비-base diff가 0이 아니다", () => {
+    const s = surveyOne(input("acme/order-differs", {
+      "src/i18n/en.json": two({ a: "A", b: "B" }),
+      "src/i18n/ko.json": two({ b: "비", a: "에이" }),
+    }));
+    expect(s.diffRatio).toBe(0);
+    expect(s.diffRatioNonBase).toBeGreaterThan(0);
+  });
+
+  it("비-base에만 있는 키는 프로덕션처럼 빠진다 — DB에 그 키가 없다", () => {
+    const s = surveyOne(input("acme/extra-key", {
+      "src/i18n/en.json": two({ a: "A" }),
+      "src/i18n/ko.json": two({ a: "에이", only: "여기만" }),
+    }));
+    expect(s.diffRatioNonBase).toBeGreaterThan(0);
+    // DB에 없던 키다 — 파일에서 빠져도 **손실이 아니다**(base 파일이 키의 진실이다). 옛 판정은 원본과 견줘 여기서 "다름"이었다.
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
+  });
+
   it("전 로케일에 원인이 있으면 비-base diff도 0이 아니다", () => {
     const s = surveyOne(input("acme/all-empty", ALL_EMPTY));
     expect(s.diffRatioNonBase).toBeGreaterThan(0);
@@ -217,14 +244,54 @@ describe("surveyOne — 비-base 로케일 diff", () => {
     expect(s.indent).toEqual({ char: "space", width: 4 });
   });
 
-  it("순서만 흐트러진 파일은 이제 diff가 0이다 — 태스크 2가 한 일이 이것이다", () => {
+  it("순서만 흐트러진 base는 diff가 0이고, base와 순서가 다른 비-base는 재배열된다", () => {
     // 전에는 이 픽스처가 base diff > 0을 냈다. 순서 보존이 실제로 프로덕션 경로에서
     // 동작하는지를 **어댑터 단위 테스트가 아니라 survey 진입점에서** 확인하는 지점이다.
     const s = surveyOne(input("acme/scrambled", BASE_SCRAMBLED));
     expect(s.diffRatio).toBe(0);
-    expect(s.diffRatioNonBase).toBe(0);
+    // ⚠️ **반전** (2026-09-18, launch-readiness L4.6). 전에는 `toBe(0)`이었다 — survey가 로케일마다 자기 파일 순서를
+    // 넘겨서다. 프로덕션은 base 순서(b, a)로 ko·ja를 다시 쓰므로 그 두 파일이 바뀐다. 0은 지표의 거짓이었다.
+    expect(s.diffRatioNonBase).toBeGreaterThan(0);
     // 순서 일치율은 원본 텍스트에서 재므로 **여전히 0이다** — write가 고쳐진 것과 무관하다.
     expect(s.localeOrderAgreement).toBe(0);
+  });
+});
+
+/**
+ * **고정점은 "다시 push → pull"이다** (2026-09-18 20차). base 값이 빈 키는 1차 pull이 base 파일에서 빼고, 머지 뒤 push가
+ * 그 키를 orphan해 2차 pull이 비-base 번역까지 지웠다. launch-readiness L4.10이 base의 빈 값을 `""` 그대로 쓰게 해
+ * 이 단언이 `"different"`에서 `"same"`으로 뒤집혔다(옛 측정은 2차 write에 원시 read를 넘겨 결함을 못 봤다).
+ */
+describe("surveyOne — 두 사이클 고정점", () => {
+  it("base 값이 비고 비-base에 번역이 있어도 두 번째 사이클이 그 번역을 지우지 않는다 (L4.10)", () => {
+    const s = surveyOne(input("acme/base-blank", {
+      "src/i18n/en.json": two({ a: "A", b: "" }),
+      "src/i18n/ko.json": two({ a: "에이", b: "비" }),
+    }));
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
+  });
+
+  it("base에 빈 값이 없으면 고정점이다 (짝)", () => {
+    const s = surveyOne(input("acme/base-full", {
+      "src/i18n/en.json": two({ a: "A", b: "B" }),
+      "src/i18n/ko.json": two({ a: "에이" }),
+    }));
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
+  });
+});
+
+/**
+ * **multi-locale도 `writeWithErrors`를 지난다** (launch-readiness L4.6). 전에는 `write`만 불러 ts-dict가 버린 항목이
+ * 지표에 안 남았다 — `writeErrors`가 multi-locale에서 **구조적으로 0**이었다.
+ */
+describe("surveyOne — multi-locale write 에러", () => {
+  it("로케일 객체가 없는 네임스페이스 파일은 writeErrors로 센다", () => {
+    const s = surveyOne(input("acme/ts-missing-ko", {
+      "src/i18n/namespaces/a.ts": 'const en = { "x": "X" } as const;\nconst ko = { "x": "엑스" } as const;\nexport const a = { en, ko };\n',
+      "src/i18n/namespaces/b.ts": 'const en = { "y": "Y" } as const;\nexport const b = { en };\n',
+    }));
+    expect(s.chosen?.adapter).toBe("ts-dict");
+    expect(s.writeErrors).toBeGreaterThan(0);
   });
 });
 

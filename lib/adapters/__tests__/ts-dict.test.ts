@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { detectFormat, tsDict } from "../index";
-import { tsDictDetectByContent } from "../ts-dict";
 
 /**
  * 픽스처는 bugshot-2 `src/i18n/namespaces/common.ts`의 실제 형태다 —
@@ -49,13 +48,13 @@ const format = {
 const file = (content = SOURCE) => [{ path: "src/i18n/namespaces/common.ts", content }];
 
 /**
- * ⚠️ **2026-09-14부터 자동 탐지에도 참여한다** (§1.9 판정 ③ 뒤집기). 여기서 `tsDictDetectByContent`를
+ * ⚠️ **2026-09-14부터 자동 탐지에도 참여한다** (§1.9 판정 ③ 뒤집기). 여기서 `tsDict.detectCandidates`를
  * 직접 부르는 것은 이제 "보관된 로직이라서"가 아니라 **다른 어댑터의 순위와 섞이지 않게** 이 어댑터의
  * 판정만 재기 위해서다 — 어댑터 간 순위는 `detect-candidates.test.ts`가 본다.
  */
 describe("detect — ts-dict (이 어댑터의 판정만 잰다)", () => {
   it("namespaces 디렉터리의 .ts 파일들을 찾는다", () => {
-    const d = tsDictDetectByContent([
+    const d = tsDict.detectCandidates([
       "src/i18n/namespaces/common.ts",
       "src/i18n/namespaces/editor.ts",
       "src/i18n/index.ts",
@@ -95,7 +94,7 @@ export const app = { ko, en };
   });
 
   it("실제 bugshot-2 형태에서 로케일이 정확히 셋이다", () => {
-    const d = tsDictDetectByContent(
+    const d = tsDict.detectCandidates(
       ["src/i18n/namespaces/common.ts", "src/i18n/namespaces/ai.ts"],
       () => SOURCE + "\nexport const ai = { ko, en, fr };\n",
     )[0];
@@ -253,6 +252,23 @@ const en = {
 
 export const common = { ko, en };
 `;
+
+/**
+ * **CRLF 원본** (launch-readiness L4.5 — 픽스처가 전부 LF였다). 수술적 치환이라 원본 바이트가 요지다.
+ */
+describe("ts-dict — CRLF 원본", () => {
+  const crlf = SOURCE_SINGLE.replaceAll("\n", "\r\n");
+  const write = (message: string) =>
+    tsDict.write({ ...format, locales: ["ko", "en"], currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: crlf }] }, { locale: "ko", entries: [{ key: "common.ok", message }] }) ?? "";
+
+  it("값 무변경 write는 바이트 동일하다", () => {
+    expect(write("확인")).toBe(crlf);
+  });
+
+  it("값을 바꿔도 그 줄만 바뀌고 CRLF가 남는다", () => {
+    expect(write("확인했습니다")).toBe(crlf.replace("'common.ok': '확인'", "'common.ok': '확인했습니다'"));
+  });
+});
 
 describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
   const fileSingle = () => [{ path: "src/i18n/namespaces/common.ts", content: SOURCE_SINGLE }];

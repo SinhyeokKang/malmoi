@@ -8,7 +8,7 @@ import { expect, it, vi } from "vitest";
  * 있고 `AuthToast`가 언마운트 정리를 안 했다. 로그인과 무관한 화면에 로그인 거부 사유가 떠 있으면
  * 그것은 그 화면의 상태로 읽힌다.
  *
- * ⚠️ **렌더 테스트가 없는 리포라**(translation-ui design §4) `useEffect`를 가로채 **효과 자체를**
+ * ⚠️ **렌더 테스트가 없는 리포라** `useEffect`를 가로채 **효과 자체를**
  * 돌린다 — 소스 스캔보다 강하고 DOM이 필요 없다. `normal-login.test.tsx`가 서버 컴포넌트를 함수로
  * 부르는 것과 같은 계보다.
  */

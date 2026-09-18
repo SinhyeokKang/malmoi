@@ -5,7 +5,7 @@ import { codeDict } from "../index";
 import type { FileProbe } from "../types";
 
 /**
- * `codeDictCandidatePaths` — `detectCandidates`의 **probe 이전 부분**을 분리·export한 것 (design §3.1 2b).
+ * `codeDictCandidatePaths` — `detectCandidates`의 **probe 이전 부분**을 분리·export한 것 (ARCHITECTURE §3.1).
  *
  * 온보딩은 GitHub API라 probe가 동기적으로 없다. code-dict는 probe 없이 후보 0개이므로(`if (!probe) return []`)
  * 내려받을 파일을 고를 근거가 없다 — 경로 그룹만 먼저 얻어야 한다. 정규식을 `lib/onboarding/`에 복사하지

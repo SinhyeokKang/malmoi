@@ -2,9 +2,11 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { requireEnv as readEnv } from "@/lib/env";
 import { CredentialError, decrypt, emailLookup, encrypt, parseKeyring } from "./crypto";
+import { logCredentialFailure } from "./log";
 
 function requireEnv(name: string): string {
-  try { return readEnv(name); } catch { throw new CredentialError(); }
+  // 변수 **이름**은 남긴다 — `MissingEnvError`는 이름만 담고, 버리면 어느 키가 빠졌는지 알 길이 없다.
+  try { return readEnv(name); } catch (error) { logCredentialFailure("credential-env", error); throw new CredentialError(); }
 }
 
 export function validateCredentialKeys(): void {

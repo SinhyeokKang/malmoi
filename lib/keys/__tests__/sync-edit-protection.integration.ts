@@ -17,7 +17,7 @@ import { isUnpublished } from "@/lib/keys/view";
 import { backfillPendingEditTokens } from "@/lib/protection/backfill";
 
 /**
- * **sync-edit-protection의 조건부 쓰기를 실제 PostgreSQL로 잰다** (tasks T4·T5).
+ * **sync-edit-protection의 조건부 쓰기를 실제 PostgreSQL로 잰다.**
  *
  * ⚠️ **이 파일이 `lib/keys/__tests__/`에 있는 이유는 코드 위치가 아니라** `vitest.projects.config.ts`의 include가
  * 이 디렉터리로 박혀 있어서다 — 다른 곳에 두면 조용히 0건 수집된다 (2026-09-10).
@@ -39,7 +39,7 @@ const PRECONDITION_SUFFIX = "_pending_edit_token_precondition";
 
 /**
  * @param beforePrecondition 참이면 precondition 마이그레이션 **앞에서 멈춘다.** 픽스처가 매번 전체 마이그레이션을 재생하므로
- *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다 (tasks T6).
+ *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다.
  */
 async function resetSchema(beforePrecondition = false) {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
@@ -232,7 +232,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
 });
 
 /**
- * 옛 술어(저자·시각) ∧ 활성 셀. backfill 전후의 **양방향 동등성**을 이 SQL로 잰다 — design §6.1의 "유령 pending"
+ * 옛 술어(저자·시각) ∧ 활성 셀. backfill 전후의 **양방향 동등성**을 이 SQL로 잰다 — ARCHITECTURE §3의 "유령 pending"
  * (토큰은 있는데 옛 술어는 0)을 잡는 유일한 그물이다.
  */
 async function oldPredicateIds(): Promise<string[]> {
@@ -316,7 +316,7 @@ describe("backfill (T5)", () => {
   });
 
   /**
-   * ⚠️ **design §6.1의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
+   * ⚠️ **ARCHITECTURE §3의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
    * `lastPulledAt` 전진으로 0이 된다. 그 경로가 캡처를 해제하지 않으면 토큰만 남고, backfill은 더하기만 하므로 못 지운다.
    */
   it("[C5] 편집 → no-changes 전달 확인 뒤 옛 술어 0 = 활성 토큰 0 — 유령 pending이 없다", async () => {
@@ -419,10 +419,10 @@ describe("CI 적재 보류 (T7)", () => {
   });
 
   const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
-    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null });
+    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN) });
 
   /**
-   * ⚠️ **판정과 upsert 사이에 커밋된 저장** (design §3). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
+   * ⚠️ **판정과 upsert 사이에 커밋된 저장** (ARCHITECTURE §5.5.2). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
    * StringKey UPDATE에서 세우고(판정 count는 이미 끝났다) 그 사이에 저장을 커밋한다 — sleep이 아니라 잠금 대기가 barrier다.
    */
   it("[C1][C7] 판정 뒤·upsert 전 저장 → 재집계로 전체 롤백 → deferred, 저장한 편집 유지 (저장 없음 → applied 대조)", async () => {
@@ -521,5 +521,62 @@ describe("Publish 전달 확인 실패 (T10)", () => {
     await pool.query(`DROP TRIGGER reject_ack ON "Translation"`);
     await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
+  });
+});
+
+/**
+ * **토큰 회전과 겹친 CI push** (launch-readiness L7.6, audit #46). 라우트는 토큰을 트랜잭션 **밖**에서 조회하므로, 조회 뒤 회전이
+ * 커밋되면 옛 토큰의 push 하나가 적재될 수 있었다 — 회전의 목적(유출 토큰을 즉시 끊는다)에 창이 난다.
+ * barrier는 sleep이 아니라 **Project 행 잠금**이다: 다른 연결이 그 행을 쥔 동안 라우트는 조회를 통과해 적용 잠금에서 기다리고,
+ * 그 사이 회전이 커밋된다.
+ */
+describe("토큰 회전 경합 (L7.6)", () => {
+  async function fixture() {
+    await seed("p", { lastPulledAt: PULLED, cells: [] });
+    await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  }
+  async function waitForProjectLock() {
+    for (let i = 0; i < 200; i++) {
+      const { rows } = await pool.query(`SELECT count(*)::int n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%"Project"%FOR UPDATE%'`);
+      if (rows[0].n > 0) return;
+      await new Promise(r => setTimeout(r, 25));
+    }
+    throw new Error("apply never waited on the Project lock");
+  }
+
+  it("조회 뒤 회전이 커밋되면 401이고 아무것도 적재하지 않는다 — 진행 표시도 거둔다", async () => {
+    await fixture();
+    const blocker = await pool.connect();
+    let running: ReturnType<typeof post> | undefined;
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+      running = post(ciPayload());
+      await waitForProjectLock();
+      await blocker.query(`UPDATE "Project" SET "pushTokenHash" = $1 WHERE "id" = 'p'`, [hashPushToken("rotated-token")]);
+      await blocker.query("COMMIT");
+    } finally {
+      blocker.release();
+    }
+    expect(await running).toEqual({ status: 401, body: { error: "unauthorized" } });
+    expect(await cell("p", "k1", "ko")).toBeUndefined();
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p" } })).toMatchObject({ lastImportToken: null, lastCommitAt: BEFORE });
+  });
+
+  it("회전이 없으면 같은 경로로 적재된다 (짝)", async () => {
+    await fixture();
+    const blocker = await pool.connect();
+    let running: ReturnType<typeof post> | undefined;
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+      running = post(ciPayload());
+      await waitForProjectLock();
+      await blocker.query("COMMIT");
+    } finally {
+      blocker.release();
+    }
+    expect(await running).toMatchObject({ status: 200, body: { status: "applied" } });
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "repo-ko" });
   });
 });

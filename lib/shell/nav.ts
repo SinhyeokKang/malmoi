@@ -27,7 +27,7 @@ export type NavProject = { slug: string; name: string; role: Role; archived: boo
  *
  * ⚠️ **URL의 slug를 그대로 믿지 않는다.** 내 멤버십 목록 안에서 찾고, 없으면 `null`이다 — 이름·역할을
  * 지어내면 남의 프로젝트 이름이 사이드바에 뜬다. 데이터 접근은 여전히 각 페이지의
- * `requireProjectAccess`가 판정한 `projectId`로만 한다 (design §2).
+ * `requireProjectAccess`가 판정한 `projectId`로만 한다 (ARCHITECTURE §6.1).
  */
 export function activeProject(pathname: string, memberships: readonly NavProject[]): NavProject | null {
   const [, base, slug] = pathname.split("/");
@@ -67,7 +67,7 @@ export type NavSection = {
  * 여기서 역할을 다시 나열하면 표가 둘이 되고, 그중 하나가 낡는다.
  *
  * ⚠️ **Members·Locales·Logs는 `canPerform` 뒤가 아니다 — 전원에게 보인다.** EDITOR도 그 화면들에
- * `translation:write`로 들어오고 **컨트롤만** 역할로 갈린다 (design §3.9 · 6b-2 · 6b-5).
+ * `translation:write`로 들어오고 **컨트롤만** 역할로 갈린다 (ARCHITECTURE §6.1 · 6b-2 · 6b-5).
  */
 export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [

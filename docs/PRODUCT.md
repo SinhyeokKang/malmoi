@@ -67,6 +67,27 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
 
+**역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
+하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
+리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관) · `member:manage`(OWNER — `createInvitation`·
+`revokeInvitation`·`changeMember`). ⚠️ **아래에서 "넷째 permission을 만들지 않는다"고 말할 때의 셋이
+이것이다** — 그 문장이 무엇을 세는지 이 목록 없이는 문서 안에서 확인할 수 없었다.
+
+⚠️ **OWNER는 승격으로 늘릴 수 있고, 마지막 OWNER는 제거·강등되지 않는다.** `changeMember`가
+`nextRole: Role | null` 하나로 제거와 역할 변경을 **같은 판정**에 태운다 — 강등을 따로 두면 "제거는
+막고 강등은 통과"가 되는데 결과는 같다(OWNER 없는 프로젝트). 방어는 셋이 겹친다: 순수 판정
+`planMemberChange` · 프로젝트 행 `SELECT … FOR UPDATE`(OWNER 둘이 동시에 서로를 내리면 각자 "2명"을
+읽고 둘 다 통과한다) · 쓰기 뒤 OWNER **재집계 0이면 롤백**. §1이 드는 "되돌릴 수 없는 상태를
+구조적으로 막았는가"가 여기서 판정된다 — OWNER 0명은 아무도 되살릴 수 없다.
+
+⚠️ **남의 이메일은 화면에서 마스킹된다** (`lib/auth/email.ts`의 `maskEmail` —
+`sinhyeok@…` → `s***@…`). 소비자는 초대 화면 · 번역 셀의 편집자 메타 · 멤버 표 · 병합 안내이고,
+**OWNER도 전체 주소를 못 본다**(멤버 표에 `Email` 열이 있지만 그 값이 마스킹된 것이다 — 원문은
+와이어에 안 싣는다). 예외는 **충돌할 때뿐**이다: `lib/auth/invite-label.ts`가 목록 전체를 보고
+겹치는 행만 더 보이며, 대기 초대는 주소가 유일한 식별자라 두 초대가 같은 행으로 접히면 [Revoke]가
+엉뚱한 링크를 무효화한다. 노출은 **갈라야 할 때 최소한만** 늘린다. 자기 주소(`/account`)는
+마스킹하지 않는다. 근거 축은 ARCHITECTURE §6.2(PII)다.
+
 ⚠️ **뒤의 둘은 화면도 Action도 갈려 있다** (6b-5, 2026-09-09). base branch는 `/settings`의
 `updateRepositorySettings`가 `Project.baseBranch`를 **즉시** 쓰고, 기준 로케일은 `/locales`의
 `updateBaseLocale`이 **선언**(`TranslationSurface.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때
@@ -140,6 +161,15 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
   없었고, 사용자는 "여기서 못 하는 일"과 "할 수 없는 일"을 구별할 수 없었다. ⚠️ **sec-audit-2 #31의
   거부를 완화하는 것이 아니다** — `linkAccount`의 거부는 Auth.js 콜백을 지나는 **모든** 로그인에
   걸린 방어선이라 그대로 두고, 인가 조건을 갖춘 **별도 경로**를 그 옆에 세운다 (ARCHITECTURE §6.2)
+- **전체 세션 회수 — `/account`의 [Sign out everywhere]** (`startSessionRevocation` ·
+  `components/account/sessions-section.tsx`). DB 세션이라 "다른 기기에서 로그아웃"이 실제로 성립하는
+  유일한 자리이고, 잃어버린 기기·공용 PC가 그 질문을 만든다. ⚠️ **boolean 확인이 아니라 provider
+  왕복이다** — 버튼은 일을 끝내지 않고 `pickLoginAccount`가 고른 provider로 내보내며, 거기서 인증을
+  통과해야 회수가 일어난다. 그래서 확정 라벨이 `Continue to <provider>`다: "Sign out everywhere"라
+  적으면 그 왕복이 예고 없이 닥치고 두 번째 확인이 실패로 읽힌다. ⚠️ **이 기기도 함께 닫힌다**
+  (`all devices, this one included`). 결과는 `routes.signIn({ sessions })`·
+  `routes.account({ sessionRevocation })`가 실어 나른다 — 갈래 다섯이고, **확인 상대를 못 고르는
+  갈래**(`pickLoginAccount`가 `null`)가 하나 더 있다
 
 ### 4.2 만들지 않는 것
 
@@ -152,7 +182,15 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 
 **SaaS에서 새로 거절하는 것**:
 
-- **과금·플랜** — 수익 모델을 붙이지 않는다. 결제·플랜·한도 과금은 그 자체로 청구·환불·세금·실패한 결제의 복구가 딸려오고, 지금 이 도구가 답하는 질문이 아니다. 자원 상한은 고정값으로 든다(프로젝트 3 · 멤버 10).
+- **과금·플랜** — 수익 모델을 붙이지 않는다. 결제·플랜·한도 과금은 그 자체로 청구·환불·세금·실패한 결제의 복구가 딸려오고, 지금 이 도구가 답하는 질문이 아니다. 자원 상한은 전부 **고정값**으로 들고 플랜으로 갈리지 않는다.
+  - **계정 축** — 사용자당 프로젝트 **3**(`lib/onboarding/create-plan.ts`의 `PROJECT_LIMIT`) ·
+    프로젝트당 멤버 **10**(`lib/auth/invitation.ts`의 `MEMBER_LIMIT`). 자율 가입의 대가다.
+  - ⚠️ **리포 축의 상한이 둘 더 있고, 그쪽이 "어떤 리포를 받아들이나"를 정한다.**
+    ① **첫 적재 예산**(`lib/onboarding/budget.ts`) — 파일 **200** · 파일당 **2MB** · 합계 **10MB**.
+    내려받기 **전에** 트리의 `size`로 판정하고, 넘으면 프로젝트 생성이 `resource-limit`으로 거부된다
+    (§7.4의 All-or-Nothing이 드는 "예산 초과"가 이것이다). ② **push 상한**(`lib/push/plan.ts`) —
+    키 **20,000** · 로케일 **200** · 값 한 건 **10,000자** · 행 **200,000**. 넘으면 `/api/push`가
+    **400**이고 사유가 응답에 실려 대상 리포의 Actions 로그로 간다. 근거는 실측 20배 여유다.
 - **조직 계층** — account 개념을 두더라도 개인/조직 구분까지다. 팀·하위 그룹은 없다.
 - **번역 메모리·기계 번역·AI 번역** — 이 도구의 축이 아니다.
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
@@ -239,7 +277,9 @@ IdP에서 검증받았어야 하고, 붙이려면 기존 provider의 OAuth를 **
 ⚠️ **병합이 만든 새 상태 둘**: ① 로그인 `Account`가 둘 이상인 User는 `planEmailRefresh`가 언제나
 `keep`이다 — 아니면 `User.email`이 마지막으로 로그인한 provider에 따라 뒤집히고 초대 대조(ARCHITECTURE §6.2)가
 그 위에 선다. 대가는 그 사용자의 이메일이 provider를 안 따라간다는 것. ② 전체 세션 회수의 확인
-상대를 `pickLoginAccount`가 고른다(아래 절).
+상대를 `pickLoginAccount`가 **결정적으로** 고른다 — 수단이 둘이면 "어느 쪽으로 확인하나"에 답이
+필요하고, 화면이 고르게 하면 그 선택이 서버의 판정과 갈린다 (그 동작 자체는 **§4.1의 마지막 항목**이
+든다. ⚠️ 여기 있던 *"아래 절"* 포인터는 **가리킬 절이 없는 채로 남아 있었다** — 2026-09-18 정정).
 
 **§4.2 비범위는 그대로다** — 여기서 연 것은 "같은 검증 이메일의 두 수단"뿐이고, **이메일이 다른
 두 수단의 병합**과 **이미 양쪽에 `User`가 따로 있는 경우**는 계속 비범위다.
@@ -272,11 +312,11 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**단계 B 코드에서 OWNER의 Settings → Add surface가 열린다.** 기존 리포의 후보 하나 또는 수동 경로를
+**단계 B가 OWNER의 Settings → Add surface를 열었다** (`/projects/:slug/surfaces/new`). 기존 리포의 후보 하나 또는 수동 경로를
 골라 표면 생성과 첫 적재를 원자적으로 끝낸다. 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는
 겹칠 수 없다. 실패하면 기존 입력을 유지하고, 성공하면 기존 PUSH_TOKEN을 쓰는 추가 workflow step을 준다.
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
-표면 보관·복원은 다음 라운드다. 원격 배포·실물 왕복 완료 전까지 기능 문서를 유지한다.
+표면 보관·복원은 다음 라운드다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
@@ -318,8 +358,15 @@ Codex 검토는 연동 PR → 머지 → Actions를 온보딩의 전제로 뒀�
 
 ```
 setup → awaiting_first_sync → ready
-                            ↘ error / needs_reconnect / needs_configuration
 ```
+
+⚠️ **갈래는 이 셋뿐이다** (`lib/onboarding/readiness.ts`의 `ProjectReadiness`). 한때 여기
+`↘ error / needs_reconnect / needs_configuration`이 붙어 있었는데 **셋 다 이 축의 값이 아니다** —
+`planProjectReadiness`가 보는 것이 `installationId`와 표면의 `lastCommitSha` **둘뿐**이라 실패 상태를
+낼 자리가 구조적으로 없다. `needs_reconnect`만 **다른 축에 실재한다**(아래 문단 — 목록의
+`ProjectStatus`다). `error`·`needs_configuration`은 **어느 축에도 생산자가 없다**: 리포에 남은 것은
+`lib/push/guard.ts`의 주석 한 줄(옛 7단계 계획)이고, 적재 실패를 실제로 드는 자리는 `Project` 컬럼
+둘(`lastImportStartedAt`·`lastImportError` — §4.1)이다.
 
 **별도 상태 컬럼을 즉시 만들지 않는다** — 초기에는 기존 nullable 필드와 최근 `SyncRun` 결과로 계산할
 수 있다. 다만 `ready` 전 프로젝트가 번역 화면에 들어가는 것은 막는다.
@@ -357,10 +404,17 @@ setup → awaiting_first_sync → ready
 - **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
   받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 - **`repo-replaced`는 사람도 못 따라간다** (2026-09-10, sec-audit-2 발견 34). 이름은 주소이고
-  `Project.repositoryId`가 정체성이라, 저장된 주소가 **다른 리포**를 가리키면 그 화면에는 [다시 연결]이
-  없다 — 리포는 생성 시점에 고정이고 `connectRepository`가 다른 ID로의 재고정을 거부하므로 답은
-  "새 프로젝트"다. ⚠️ **ID 대조가 이름 대조보다 앞이다**: 리네임 뒤 같은 조직이 옛 이름으로 리포를
-  새로 만들면 `fullName`도 `installationId`도 저장값과 같아, ID를 안 보면 이 화면이 초록을 띄운다.
+  `Project.repositoryId`가 정체성이라, 저장된 주소가 **다른 리포**를 가리키면 **설정 화면**에는
+  [다시 연결]이 없다 — 리포는 생성 시점에 고정이고 `connectRepository`가 다른 ID로의 재고정을
+  거부하므로 답은 "새 프로젝트"다. ⚠️ **ID 대조가 이름 대조보다 앞이다**: 리네임 뒤 같은 조직이 옛
+  이름으로 리포를 새로 만들면 `fullName`도 `installationId`도 저장값과 같아, ID를 안 보면 이 화면이
+  초록을 띄운다.
+  - ⚠️ **Home은 그 결정을 지키지 않는다 — 알려진 결함이다** (2026-09-18 확인). `planHomeState`가
+    `repo-replaced`를 `not_connected`로 접고(`lib/home/state.ts`), 그 상태의 Home 배너는 OWNER에게
+    [Reconnect]를 띄운다(`components/home/actions.tsx`). 누르면 `connectRepository`가
+    `repo-forbidden`으로 거부하므로 **문서가 "없다"고 한 버튼이 Home에 서 있고 막다른 길이다.**
+    접는 것 자체는 옳다(그 프로젝트는 실제로 돌지 않는다) — 틀린 것은 **그 갈래에 같은 동작을 주는
+    것**이고, 답은 "새 프로젝트"를 말하는 별도 문구다.
 
 ### 7.6 Publish — PR 생성은 완료가 아니다
 
@@ -394,16 +448,25 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
-/account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 ← 6b-4 · account-linking · account-connect · account-settings
+/account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
-/projects/:slug/translations   번역
-/projects/:slug/locales        ✅ 로케일 목록 + 기준 로케일 지정   ← 6b-5 (2026-09-09, 프로덕션)
+/projects/:slug/translations   → **기본 표면으로 redirect** (옛 URL 껍데기)
+/projects/:slug/locales        → **기본 표면으로 redirect** (옛 URL 껍데기)
+/projects/:slug/surfaces/:surface/translations  ✅ 번역             ← multi-surface B
+/projects/:slug/surfaces/:surface/locales       ✅ 로케일 목록 + 기준 로케일 지정 ← 6b-5 → multi-surface B
+/projects/:slug/surfaces/new   ✅ Add surface (`project:settings`) ← multi-surface B
 /projects/:slug/members        멤버
 /projects/:slug/logs           ✅ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
+
+⚠️ **프로젝트 축은 실제로 3단계다** — 번역·로케일은 표면 아래에 있다(§7.1). 생성기는
+`routes.surfaceTranslations`·`routes.surfaceLocales`·`routes.addSurface`이고, 표의 앞 두 줄은
+`defaultSurface`로 던지는 **redirect 껍데기**다(`routes.translations`·`routes.locales`가 계속
+그것을 가리킨다 — 옛 링크와 공유된 주소가 살아 있어야 한다). ⚠️ **그 껍데기도 쿼리를 실어 보낸다** —
+`?ns=`·`?locales=`·`?q=`·`?state=`를 빠뜨리면 Home 카드가 준 좁힘이 redirect에서 사라진다.
 
 ⚠️ **`/account` 행은 지금 있는 것만 적는다** — 이 표의 ✅는 **프로덕션에 선 것**을 뜻한다.
 앞서 적으면 그것을 믿은 사람이 의심해야 할 곳을 의심하지 않는다. §4.1이 얹기로 판정했던 항목 둘
@@ -515,12 +578,13 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 ⚠️ **역할 게이팅은 6b-2 관용구를 그대로 쓴다**: 페이지 게이트는 `translation:write`(EDITOR도 로케일·
 이력·개요를 본다) · **컨트롤만 role로 갈리고 판정은 Action**이 한다. `project:settings` 뒤에 두는 것은
-`settings` 하나다 — 거기에 리포 연결과 push 토큰이 있다.
+`settings`와 `surfaces/new` 둘이다 — 앞은 리포 연결과 push 토큰이고, 뒤는 표면을 늘리는 자리라
+둘 다 "프로젝트를 어떻게 잇는가"를 바꾼다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·**`?locales=`**(8-4가 `?focus=`·`?state=` 둘을 폐기했다 — 로케일이 행이라 "기준 열"에 대응물이 없고, 상태 필터는 섹션 안 pending 우선 정렬이 갚는다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·**`?locales=`**(8-4가 `?focus=`를 폐기했다 — 로케일이 행이라 "기준 열"에 대응물이 없다)·**`?state=`**(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
-⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 다섯: `projects`·`projects/new`·`account`·
-`settings`·`invite/[token]`). ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
+⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 **일곱**: `projects`·`projects/new`·`account`·
+`settings`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`). ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
 든다"이다** — 그 라우트가 목록 위의 모달 딥링크가 되면서, 사유는 페이지 머리가 아니라 ① 본문 맨 위
 배너로 선다. 그 라우트는 `?q=`도 함께 받아 **뒤 목록에 반영**하고, 닫으면 그 값을 들고
 `/projects`로 돌아간다 (`routes.newProject({ q })`). 그것을 만드는 자리가 `redirect()`의 문자열 연결이기 때문이고
@@ -548,6 +612,16 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 서버 env 하나가 대상 프로젝트를 정하던 것을 **대체했다** (2026-09-07). 프로젝트마다 토큰을 발급해
 **sha256 해시만 저장**한다 — 발급은 온보딩 결과 화면과 설정 화면의 [토큰 재발급]이다.
+
+⚠️ **CI 진입점은 둘이고 토큰은 하나다** — `/api/push`(적재)와 **`/api/push/failure`**(적재 실패
+사실만). 뒤가 있는 이유는 **로케일 파일을 파싱조차 못 하면 `/api/push`가 아예 안 불리기** 때문이다:
+그 실패는 여태 대상 리포의 Actions 로그에만 있었고 말모이 쪽에서는 프로젝트가 그냥 조용했다. 그
+보고가 `Project`의 `lastImportStartedAt`·`lastImportError`(§4.1)를 채우고, 화면에는 사유 문장
+**여섯**(`lib/projects/import-failure.ts`)과 복구 안내 **두 갈래**(첫 적재 전이면 이 화면의 버튼이
+다시 돌리고, 적재된 뒤면 고칠 곳이 대상 리포의 CI다)로 선다. ⚠️ **새 토큰을 만들지 않았다**(같은
+`PUSH_TOKEN`이라 인증 경로가 늘지 않는다) ⚠️ **아무것도 적재하지 않는다**(`lastCommitSha`·
+`lastCommitAt`도 안 움직인다 — 전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를
+받는다). 외부 계약의 정본은 [ACTIONS.md](./ACTIONS.md)다.
 
 ⚠️ **조회 방향이 중요하다** (2026-09-07 구현에서 확정):
 `sha256(Bearer)`로 **행을 찾고**, 페이로드의 `projectSlug`는 그 행의 slug와 **나중에** 대조한다. 페이로드
@@ -610,7 +684,7 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
-**Server Action의 경계도 같은 선이다** (2026-09-17, launch-readiness L3.4): **번역을 바꾸는 쓰기는 보관 중
+**Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
 거부**(`runFirstIngest`·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
 허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
 바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
@@ -645,5 +719,17 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 - **push의 "리포 부재 → DB 셀 비움"** (2026-09-17, launch-readiness L1.3). 지금은 리포에서 사라지거나
   `""`가 된 번역을 DB에 반영하지 않는다(ARCHITECTURE §5.5.2 — 코드에서 번역을 지우는 방법은 없다).
   뒤집으려면 **export가 명시적 빈값과 미번역 빈값을 구별하는 수단**이 먼저다 — 지금은 둘 다 부재로
-  나가서, 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. sync-edit-protection의
-  후속 spec이 그 수단을 정할 때 같이 본다.
+  나가서, 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 아래 **빈값·누락 셀 spec**이
+  그 수단을 정할 때 같이 본다.
+
+- **빈값·누락 셀의 strict 적재 보완** (2026-09-18, sync-edit-protection이 범위에서 뺀 둘 중 하나 — 착수 전 `/feature`가 필요하다).
+  지금 `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 빼고(§5.5.2), `lib/adapters/shared.ts`의 writer는 빈 값을 파일에서
+  **키째 제거**한다 — 그래서 `""`는 "빈 값 기록"이 아니라 "그 키 삭제"다(예외 하나: base 파일에 원문까지 `""`로 있던 키는 `""` 그대로
+  남는다 — 빠지면 다음 push가 전 로케일 orphan한다, 2026-09-18 launch-readiness L4.10). **먼저 정할 것은 export가 명시적 빈값과 미번역 빈값을
+  구별하는 수단**이고, 그 전에는 "리포 부재 → DB 비움"을 열 수 없다. ⚠️ 이것은 편집 보호와 **반대 방향**이다 — 보호는 "덜 덮는다"이고
+  이쪽은 "더 덮는다"라, 한 spec에 섞으면 판정 기준이 갈린다.
+- **`publish-pr-handoff`** (2026-09-18, 같은 분리 — 착수 전 `/feature`가 필요하다). PR 전달 → Sync → 새 편집 → 재Publish가 이전 PR
+  내용을 교체하는 것을 사람이 검토하는 화면이 없다. 열린 PR 대비 **파일 diff**·페이지네이션·미리보기 승인 지문이 그 spec의 범위이고,
+  딸려 오는 것이 셋이다: Claude Design 핸드오프 선행 · `components/ui/`에 없는 pagination 프리미티브 · **EDITOR의 열린 PR 인가**
+  (`checkOpenPullRequest`가 `project:settings`라 EDITOR는 열린 PR을 영영 모른다 — ARCHITECTURE §5.6.35). 그때까지 Publish 미리보기는
+  base 대비 목록이고 **표시 전용**이다.

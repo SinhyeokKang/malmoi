@@ -5,7 +5,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { en } from "@/messages/en";
 
 /**
- * **어댑터 오류는 코드이고 문장은 사전이 낸다** (translation-ui design §3.1.4, 6b-1).
+ * **어댑터 오류는 코드이고 문장은 사전이 낸다** (CLAUDE.md 코드 컨벤션, 6b-1).
  *
  * 전에는 어댑터가 한국어 자유 문자열을 만들어 온보딩 결과·Publish warnings·CLI에 그대로 실었다.
  * 화면에 닿는 값이 자유 문자열이면 en으로 바꿔도 사전 밖이라 **ko가 못 따라온다.**

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { selectPullTargets } from "../targets";
 
 /**
- * 야간 cron이 돌 프로젝트 고르기 (design §3.9). **준비 안 된 프로젝트를 돌리면 던진다** —
+ * 야간 cron이 돌 프로젝트 고르기 (ARCHITECTURE §3.05). **준비 안 된 프로젝트를 돌리면 던진다** —
  * `installationId`가 null이면 `runPull`(`run.ts:78`)이, 포맷 컬럼이 null이면 `formatFromProject`
  * (`plan.ts:78-83`)가 던지고, 그 실패가 매일 밤 로그를 채운다. 그래서 필터가 판정층에 있다.
  *
@@ -52,7 +52,7 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
     expect(selectPullTargets([project({ surfaces: [{ archivedAt: null, lastCommitSha: null }] })], 50).targets).toEqual([]);
   });
 
-  it("`skillflo-web` 모양(설치 없음 + 더미 SHA)은 **의도적으로** 빠진다 (spec §5)", () => {
+  it("`skillflo-web` 모양(설치 없음 + 더미 SHA)은 **의도적으로** 빠진다 (ARCHITECTURE §3.05)", () => {
     const rows = [
       project({ slug: "skillflo-web", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
       project({ slug: "order-check" }),
@@ -124,7 +124,7 @@ describe("selectPullTargets — 순회 상한 (sec-audit 26)", () => {
 });
 
 /**
- * **보관 제외와 아사 방지** (7단계 — sync-runs design §4·§5.2).
+ * **보관 제외와 아사 방지** (7단계 — PRODUCT §7.9 · ARCHITECTURE §5.6.5).
  *
  * ⚠️ **정렬이 순서 취향이 아니라 대책이다.** `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 매일 밤 같은
  * 프로젝트면 그 프로젝트는 **영원히 안 돈다** — `project-onboarding/design.md`가 "7단계 `SyncRun`이

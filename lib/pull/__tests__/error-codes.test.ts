@@ -6,15 +6,15 @@ import { describe, expect, it } from "vitest";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
 /**
- * **던지는 자리가 코드를 든다** (spec 완료 조건 7 · ARCHITECTURE §5.6).
+ * **던지는 자리가 코드를 든다** (ARCHITECTURE §5.6).
  *
  * pull 실패는 전부 메시지만 다른 `AppError`라, 잡는 쪽에서 문자열을 매칭하면 문장 하나가 바뀔 때
  * `SyncRun.errorCode`가 조용히 `unknown`으로 무너진다. 그래서 코드는 **던지는 자리**가 든다.
  *
- * ⚠️ **그렇다고 모든 `fail(`이 코드를 들지는 않는다** — "생산자 없는 코드는 두지 않는다"(design §1.3)가
+ * ⚠️ **그렇다고 모든 `fail(`이 코드를 들지는 않는다** — "생산자 없는 코드는 두지 않는다"(ARCHITECTURE §5.6.3)가
  * union을 일곱으로 묶었고, 나머지 자리는 **불변식 위반**(`unreachable:`)이거나 **첫 적재 전에 이미
  * readiness가 막는 설정 부재**라 sync 층에서 가를 이름이 없다. 그래서 이 스캔은 둘을 **양쪽으로**
- * 고정한다: 코드를 들어야 하는 자리 넷과, 안 드는 자리 전부의 이름. 새 `fail(`이 생기면 어느
+ * 고정한다: 코드를 들어야 하는 자리 다섯과, 안 드는 자리 전부의 이름. 새 `fail(`이 생기면 어느
  * 목록에도 없어 red가 된다 — `app/__tests__/entry-points.test.ts`가 예외를 이름으로 고정하는 것과 같은 형이다.
  */
 

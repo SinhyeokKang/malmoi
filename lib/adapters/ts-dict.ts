@@ -206,12 +206,6 @@ function detect(paths: readonly string[], probe?: (p: string) => string | undefi
   return detectByContent(paths, probe)[0];
 }
 
-/**
- * 내용 탐지 그 자체. ⚠️ **`detectCandidates`가 이 함수를 부른다** — 별칭이라 두 진입점이 갈릴 수
- * 없다. 2026-09-14 전에는 "자동 탐지에서 빠진 로직, 되살리려면 부를 것"이었다.
- */
-export const tsDictDetectByContent = detectByContent;
-
 /** 첫 구문 진단 메시지. 타입 진단은 lib 로드가 필요하고 여기선 의미가 없다 — 구문만 본다. */
 function syntaxError(project: Project, sf: SourceFile): string | undefined {
   const first = project.getProgram().getSyntacticDiagnostics(sf)[0];

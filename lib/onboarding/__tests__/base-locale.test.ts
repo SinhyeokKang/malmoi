@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planBaseLocaleChange } from "../base-locale";
 
 /**
- * 기준 로케일 변경의 순수 판정 (design §3.13, 6b-3).
+ * 기준 로케일 변경의 순수 판정 (DESIGN §6.66, 6b-3).
  *
  * ⚠️ **`orphaned`를 거부하는 것이 요지다.** 그 로케일 파일은 리포에서 사라졌고(행만 남아 있다),
  * base로 세우면 **다음 push가 그 파일을 못 읽어 키 집합이 0이 된다** — 살아 있던 키 전부가

@@ -287,7 +287,11 @@ function writeWithErrors(
     }
     setDeep(root, e.key.split(SEP), e.message);
   }
-  return { content: serializeJson(normalizeArrays(root), style), errors };
+  // ⚠️ **루트는 배열로 되돌리지 않는다** — 최상위 키가 `"0".."n-1"`이면 배열로 나가고, 다음 read가
+  // `root-not-object`로 그 로케일 전체를 떨어뜨린다 (launch-readiness L3.6).
+  const normalized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  for (const name of Object.keys(root)) normalized[name] = normalizeArrays(root[name]);
+  return { content: serializeJson(normalized, style), errors };
 }
 
 function setDeep(node: Record<string, unknown>, segments: readonly string[], value: string): void {

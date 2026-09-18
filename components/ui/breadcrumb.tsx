@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * **페이지 콘텐츠의 첫 줄이다** — top bar가 아니다. 레이아웃은 페이지 props를 못 받으므로 거기 두면
- * parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요해진다 (design §2).
+ * parallel route 슬롯이나 클라이언트 컨텍스트(첫 페인트 플래시)가 필요해진다 (DESIGN §6.5).
  */
 export function Breadcrumb({ items }: { items: readonly { label: string; href?: string }[] }) {
   return (

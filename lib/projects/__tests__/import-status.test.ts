@@ -108,7 +108,7 @@ it("importFailureMessage never leaks a parser detail", () => {
 const AT = new Date("2026-09-15T09:00:00Z");
 
 /**
- * ⚠️ **성공이 실패 시각도 비운다** (project-home design §6.1) — 안 비우면 성공한 뒤에도 Home의
+ * ⚠️ **성공이 실패 시각도 비운다** (ARCHITECTURE §5) — 안 비우면 성공한 뒤에도 Home의
  * 항목·배너·메타가 옛 실패를 말한다.
  */
 it("importOutcomeFields clears all three columns on a clean import", () => {

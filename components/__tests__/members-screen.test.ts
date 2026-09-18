@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **멤버 화면의 배선을 소스로 센다** (6b-2, design §3.9). `translations-screen.test.ts`와 같은 계열 —
+ * **멤버 화면의 배선을 소스로 센다** (6b-2 — DESIGN §6.65). `translations-screen.test.ts`와 같은 계열 —
  * 렌더 테스트가 없는 자리의 상시 방어선이다.
  *
  * 여기 있는 것은 전부 **눈으로 훑어서는 안 보이는** 부류다: 마스킹은 정상 데이터에서도 "그럴싸한"
@@ -65,13 +65,19 @@ describe("멤버 화면 — 페이지", () => {
     expect(src).toContain("requireProjectAccess");
     // EDITOR도 목록을 보므로 게이트는 `translation:write`다. `member:manage`면 EDITOR가 못 들어온다.
     expect(src).toContain('"translation:write"');
-    expect(src).not.toContain('requireProjectAccess(...arguments)');
+    // ⚠️ **위치가 요지다** (launch-readiness L4.3). 옛 단언 `not.toContain('requireProjectAccess(...arguments)')`는
+    // 아무도 안 쓰는 리터럴이라 절대 실패하지 않았다 — 호출이 첫 JSX `return`보다 **뒤**로 가도 green이었다.
+    const call = src.indexOf("await requireProjectAccess(");
+    const firstJsxReturn = src.search(/\breturn\s*(\(|<)/);
+    expect(call).toBeGreaterThan(-1);
+    expect(firstJsxReturn).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(firstJsxReturn);
   });
 
   /**
    * **읽는 쪽과 보내는 쪽이 짝이다** (2026-09-08 code-review 🟡1).
    *
-   * design §3.9는 `?e=` global Alert 슬롯을 요구했지만 **그 쿼리를 이 경로로 보내는 자리를 설계가
+   * 옛 설계는 `?e=` global Alert 슬롯을 요구했지만 **그 쿼리를 이 경로로 보내는 자리를 설계가
    * 만들지 않았다** — 거부는 `/projects?e=`로 가고 Action 실패는 행 옆 인라인이다. 읽는 쪽만 두면
    * 도달 불가 코드다. 그래서 지웠고, **이 검사가 그 상태를 고정한다**: 누가 슬롯만 되살리면 red이고,
    * 생산자를 만들면 같은 커밋에서 이 검사를 뒤집게 된다.
@@ -112,7 +118,7 @@ describe("멤버 화면 — 페이지", () => {
 });
 
 describe("멤버 화면 — 컨트롤", () => {
-  it("역할 변경은 native Select다 — DropdownMenu가 아니다 (design §3.9)", () => {
+  it("역할 변경은 native Select다 — DropdownMenu가 아니다 (DESIGN §6.65)", () => {
     const src = read(LIST);
     expect(src).toContain('from "@/components/ui/select"');
     expect(src).not.toContain("DropdownMenu");

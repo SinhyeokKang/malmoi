@@ -72,7 +72,7 @@ export async function runSync(
 type Started = { status: "ok"; runId: string } | { status: "rejected"; outcome: PullOutcome };
 
 /**
- * 게이트 판정 · stale 닫기 · 행 생성을 **한 트랜잭션**에서 한다 (design §3).
+ * 게이트 판정 · stale 닫기 · 행 생성을 **한 트랜잭션**에서 한다 (ARCHITECTURE §5.6.1).
  *
  * ⚠️ **잠금은 `Project` 행이지 `SyncRun`이 아니다** — 막으려는 것이 "이 프로젝트에 대한 두 번째
  * 실행"이고, 아직 존재하지 않는 행은 잠글 수 없다. `createInvitation`·`changeMember`·`createProject`가
@@ -81,7 +81,7 @@ type Started = { status: "ok"; runId: string } | { status: "rejected"; outcome: 
  * ⚠️ **트랜잭션 안에서 GitHub을 부르지 않는다.** 여기까지가 수 ms이고 실제 pull은 밖에서 돈다 —
  * 안 그러면 GitHub 지연이 곧 DB 커넥션 점유이고, pooler에서 그것은 전 테넌트에 번진다.
  *
- * ⚠️ **거부에는 행을 만들지 않는다** (결정 6). `already-running`의 증거는 **첫 실행의 `RUNNING` 행**이다.
+ * ⚠️ **거부에는 행을 만들지 않는다** (ARCHITECTURE §5.6.2). `already-running`의 증거는 **첫 실행의 `RUNNING` 행**이다.
  */
 async function startRun(
   prisma: PrismaClient,
@@ -100,14 +100,14 @@ async function startRun(
       select: { startedAt: true },
     });
     // ⚠️ **FAILED를 안 집는다** — 최소 간격은 "리포에 쓴 뒤 쉬는 간격"이라 아무것도 못 쓴 실행은
-    // 세지 않는다 (design 결정 7). 그 술어가 여기 있으므로 판정 함수는 `null`만 받는다.
+    // 세지 않는다 (ARCHITECTURE §5.6.2). 그 술어가 여기 있으므로 판정 함수는 `null`만 받는다.
     const lastSettled = await tx.syncRun.findFirst({
       where: { projectId, status: { in: ["SUCCEEDED", "SKIPPED"] } },
       orderBy: { startedAt: "desc" },
       select: { finishedAt: true },
     });
 
-    // 수동 Sync가 리포 값으로 덮는 중이면 스냅샷이 절반만 덮인 DB가 된다 — 같은 Project 잠금 안에서 읽는다 (sync-edit-protection design §4.2).
+    // 수동 Sync가 리포 값으로 덮는 중이면 스냅샷이 절반만 덮인 DB가 된다 — 같은 Project 잠금 안에서 읽는다 (sync-edit-protection — ARCHITECTURE §5.6.1).
     const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
     const activeImport = importing?.repositoryImportToken != null && importing.repositoryImportStartedAt !== null
       ? { startedAt: importing.repositoryImportStartedAt } : null;
@@ -161,7 +161,8 @@ async function startRun(
  *
  * ⚠️ **남의 라이브러리 메시지는 싣지 않는다** — 이 값이 화면과 대상 리포의 (public일 수 있는)
  * Actions 로그로 흘러가고, Prisma 접속 오류 한 줄이 pooler 호스트와 DB 유저를 담는다
- * (ARCHITECTURE §6.0). 전문은 `ref`와 함께 서버 로그로 간다.
+ * (ARCHITECTURE §6.0). 서버 로그에는 `ref`와 **갈래 이름만** 간다 — 원문은 어디에도 안 남는다
+ * (`classifyFailure`가 2026-09-18에 그것을 끊었다).
  */
 function failureOutcome(slug: string, error: unknown): PullOutcome {
   const failure = classifyFailure(error);

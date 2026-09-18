@@ -7,7 +7,7 @@ import { m } from "@/lib/i18n";
 import { ingestHeadline, isOnboardError, onboardErrorMessage, type OnboardError } from "../message";
 
 /**
- * 온보딩 실패 갈래 → 한국어 한 줄 (design §3.12). `connectErrorMessage`와 **같은 형**이다 — `satisfies never`로
+ * 온보딩 실패 갈래 → 한국어 한 줄 (ARCHITECTURE §6.3). `connectErrorMessage`와 **같은 형**이다 — `satisfies never`로
  * 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 던지지 않고 폴백한다(`?e=`는 주소창에 있다).
  *
  * ⚠️ **판정 union을 만드는 커밋과 문구를 만드는 커밋을 나누지 않는다.** "거부는 옳게 판정됐는데 화면에
@@ -91,7 +91,7 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
     }
   });
 
-  it("`unauthorized`는 '입력한 값은 그대로'라고 말하지 않는다 — 중간 상태 무저장이라 거짓이다 (design §3.4)", () => {
+  it("`unauthorized`는 '입력한 값은 그대로'라고 말하지 않는다 — 중간 상태 무저장이라 거짓이다 (ARCHITECTURE §3.1)", () => {
     expect(onboardErrorMessage("unauthorized")).not.toMatch(/is kept|are kept/i);
   });
 
@@ -116,7 +116,7 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
   });
 
   it("`not-ready`는 번역자에게 무엇을 기다리는지 말한다 — 내부 이름을 쓰지 않는다", () => {
-    // 이 문구는 **번역 화면의 저장 실패 줄**에 뜬다 (design §3.7). "not-ready"를 그대로 흘리면
+    // 이 문구는 **번역 화면의 저장 실패 줄**에 뜬다 (ARCHITECTURE §6.3). "not-ready"를 그대로 흘리면
     // 비개발자 동료는 무슨 일이 일어났는지 알 수 없다 (POSTMORTEM 2026-09-06).
     const text = onboardErrorMessage("not-ready");
     expect(text).toMatch(/setting it up/i);

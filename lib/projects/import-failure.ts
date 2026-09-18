@@ -1,6 +1,6 @@
 import { m } from "@/lib/i18n";
 
-// Client-safe failure vocabulary; validation stays in import-status.ts.
+// 클라이언트에 실어도 되는 실패 낱말. 검증은 import-status.ts에 남는다.
 /**
  * **CI가 보고할 수 있는 넷.** 외부 계약이라 서버만 쓰는 코드와 갈라 둔다 — `partial-import`는
  * "데이터가 들어갔는데 일부가 빠졌다"는 뜻이고 그 판정은 적재를 실제로 돌린 쪽만 할 수 있다.

@@ -1,8 +1,9 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 
@@ -13,7 +14,7 @@ import { finishLink } from "./store";
  * 확인 왕복의 callback 가로채기 — `lib/session-revocation/http.ts`와 **같은 형이고 목적이 반대다**
  * (하나는 왕복을 멈추고, 하나는 진행시킨다).
  *
- * ⚠️ **`withRevocation`이 바깥, 이것이 안쪽이다** (design 불변식 8a) — 회수가 먼저 판정하고 자기
+ * ⚠️ **`withRevocation`이 바깥, 이것이 안쪽이다** (ARCHITECTURE "계정 병합") — 회수가 먼저 판정하고 자기
  * 것이 아니면 통과시킨다. 두 intent 판정에 암호적 결합이 없으므로 배타성은 **양방향 쿠키
  * 정리**가 만든다 (불변식 8c, POSTMORTEM 2026-09-10).
  */
@@ -71,8 +72,12 @@ export async function authorizeLoginLink(
  * 요청 객체를 그 생성자에 넣으면 `TypeError: Cannot read private member #state`로 **500이 난다** —
  * 확인 왕복 전체가 죽었다. **테스트는 이것을 원리적으로 못 봤다**: 단위·통합 스위트가
  * `new NextRequest("http://…", { headers })`로 직접 만든 객체를 넘기므로 그 복사가 성립한다
- * (POSTMORTEM 2026-09-12). 표준 `Request`로 조립하면 두 경로가 같아진다 — `next-auth`도
- * 내부에서 `new Request(url, req)`만 한다.
+ * (POSTMORTEM 2026-09-12). **url 문자열 + init으로 조립하면** 런타임 객체의 사설 필드를 읽지
+ * 않으므로 두 경로가 같아진다.
+ *
+ * ⚠️ **그래도 표준 `Request`가 아니라 `NextRequest`여야 한다** (launch-readiness L3.8). `AUTH_URL`·
+ * `NEXTAUTH_URL`이 서면 next-auth의 `reqWithEnvURL`이 `req.nextUrl`을 구조 분해하고, 표준 `Request`엔
+ * 그 필드가 없어 계정 연결 콜백이 전부 TypeError가 된다 — 아래 `catch`가 그것을 무로그 500으로 삼킨다.
  */
 function withoutSessionCookie(request: NextRequest): NextRequest {
   const headers = new Headers(request.headers);
@@ -85,13 +90,14 @@ function withoutSessionCookie(request: NextRequest): NextRequest {
     if (kept.length === 0) headers.delete("cookie");
     else headers.set("cookie", kept.join("; "));
   }
-  const init: RequestInit & { duplex?: "half" } = { method: request.method, headers };
+  // Next의 init은 `signal`에서 `null`을 안 받아 전역 `RequestInit`과 어긋난다 — 생성자의 것을 쓴다.
+  const init: NonNullable<ConstructorParameters<typeof NextRequest>[1]> & { duplex?: "half" } = { method: request.method, headers };
   // GET·HEAD엔 본문이 없다. 그 밖에는 스트림을 그대로 넘긴다(`duplex`가 없으면 undici가 던진다).
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = request.body;
     init.duplex = "half";
   }
-  return new Request(request.url, init) as unknown as NextRequest;
+  return new NextRequest(request.url, init);
 }
 
 export async function withLoginLink(request: NextRequest, run: (request: NextRequest) => Promise<Response>): Promise<Response> {
@@ -117,7 +123,8 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       let original: Response;
       try {
         original = await run(callbackRequest);
-      } catch {
+      } catch (error) {
+        logCaught("login-link", "callback", error);
         original = new Response(null, { status: 500 });
       }
       // signIn 앞에서 난 오류에도 결론이 있어야 한다 — 취소와 장애를 가른다.
@@ -125,7 +132,7 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       const token = attempt.token === "" ? null : attempt.token;
       /**
        * ⚠️ **성공 착지를 challenge가 든다** — `callbackUrl` 쿠키가 아니라 저장된 **갈래**에서
-       * 만든다 (design 불변식 9). 그 쿠키가 지워지거나 바뀌어도 초대로 돌아가는 길이 산다.
+       * 만든다 (ARCHITECTURE §6.4). 그 쿠키가 지워지거나 바뀌어도 초대로 돌아가는 길이 산다.
        */
       // 연결 커밋과 Auth.js의 세션 생성은 별개다. 뒤쪽 실패를 성공으로 덮거나,
       // 이미 소비된 challenge로 돌려보내 장애를 LinkExpired로 바꾸지 않는다.
@@ -147,7 +154,11 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       response.cookies.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
       const state = linkStateCookie(secure);
       response.cookies.set(state.name, "", { ...state.options, maxAge: 0 });
-      if (secure) response.cookies.set(linkCookie(false).name, "", { ...linkCookie(false).options, maxAge: 0 });
+      // ⚠️ secure 호스트에서도 non-secure 변형을 지운다 — 로컬로 시작한 왕복의 stale state가 남는다(L5.2 계약 테스트).
+      if (secure) {
+        response.cookies.set(linkCookie(false).name, "", { ...linkCookie(false).options, maxAge: 0 });
+        response.cookies.set(linkStateCookie(false).name, "", { ...linkStateCookie(false).options, maxAge: 0 });
+      }
       return response;
     }),
   );

@@ -11,7 +11,7 @@ export type ProjectAccess =
   | { status: "not-found" }
   | { status: "forbidden" }
   /**
-   * 보관된 프로젝트 (7단계 — sync-runs design §4). **`forbidden`과 가른다** — 권한은 그대로이고
+   * 보관된 프로젝트 (7단계 — ARCHITECTURE §5.6.4). **`forbidden`과 가른다** — 권한은 그대로이고
    * 프로젝트가 멈춘 것이라, 화면이 "권한이 없다" 대신 "되돌리는 법"을 말해야 한다.
    */
   | { status: "archived"; projectId: string; role: Role }

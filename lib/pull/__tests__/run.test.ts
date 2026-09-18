@@ -73,7 +73,7 @@ function makeDeps(
 }
 
 describe("runPull — 1층 DB 측 스킵", () => {
-  it("편집이 lastPulledAt 이후로 없으면 GitHub을 한 번도 부르지 않는다 (spec 완료 조건 4)", async () => {
+  it("편집이 lastPulledAt 이후로 없으면 GitHub을 한 번도 부르지 않는다 (ARCHITECTURE §2)", async () => {
     const { client, calls } = createFakeGitClient({});
     const result = await runPull({
       loadState: async () => ({
@@ -289,7 +289,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     expect(writes).toEqual([new Date("2026-09-01T10:00:00Z")]);
   });
 
-  /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4). */
+  /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3). */
   it("되돌리기는 published로 세지 않는다", async () => {
     const published: unknown[] = [];
     const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
@@ -356,7 +356,7 @@ describe("runPull — 커밋·PR 경로", () => {
   /**
    * ⚠️ **화면 문구가 이 값으로 갈린다** — "Sent for review"(새로 보냄)와 "Updated what you sent
    * earlier"(먼저 보낸 것을 갱신)는 편집자에게 다른 사실이다. 재사용 판정은 이미 하고 있었고
-   * 값으로만 안 내고 있었다 (design §3.4).
+   * 값으로만 안 내고 있었다 (ARCHITECTURE §3).
    */
   it("열린 PR을 재사용하면 pr는 updated다", async () => {
     const { client, calls } = createFakeGitClient({
@@ -413,7 +413,36 @@ describe("runPull — 커밋·PR 경로", () => {
   it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
+    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync"]);
+  });
+
+  /**
+   * ⚠️ **base를 바꾼 뒤에도 같은 PR이다** (launch-readiness L3.7). 조회를 저장된 base로 거르면 옛 base의
+   * PR을 못 찾아 같은 head로 PR이 하나 더 열린다 — GitHub은 base가 다르면 그것을 막지 않는다.
+   * 스냅샷 커밋은 이미 새 base 위에 있으므로 옛 PR의 base를 옮긴다.
+   */
+  it("열린 PR의 base가 설정과 다르면 새로 열지 않고 base를 옮긴다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}`, base: "main" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    const result = await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("createPr");
+    expect(calls.find((c) => c.method === "updatePrBase")?.args).toEqual([7, "dev"]);
+    expect(result).toMatchObject({ status: "committed", pr: "updated", prUrl: "https://github.com/o/r/pull/7" });
+  });
+
+  it("열린 PR의 base가 설정과 같으면 base를 건드리지 않는다 (짝)", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}`, base: "dev" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("updatePrBase");
   });
 
   it("성공하면 lastPulledAt을 캡처 값으로 갱신한다", async () => {
@@ -713,10 +742,10 @@ describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘�
 });
 
 /**
- * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4, design §2·§5). 해제 SQL 자체는 PG 통합 테스트
+ * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4 — ARCHITECTURE §3·§5). 해제 SQL 자체는 PG 통합 테스트
  * (`lib/keys/__tests__/sync-edit-protection.integration.ts`)가 재고, 여기서는 "어느 경로가 무엇을 넘기나"만 센다.
  *
- * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (design §6.1) — 편집을 원복한 셀은 2층에서
+ * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (ARCHITECTURE §3) — 편집을 원복한 셀은 2층에서
  * 끝나고, 그 경로가 캡처를 해제하지 않으면 토큰이 영영 남아 CI가 영구 보류된다.
  */
 describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 넘긴다 (T4)", () => {

@@ -1,7 +1,7 @@
 import { m, pick } from "@/lib/i18n";
 
 /**
- * 연결 실패 사유 → 사용자 문구 (design §3.5). `inviteErrorMessage`(`lib/auth/message.ts`)와 **같은 형**이다:
+ * 연결 실패 사유 → 사용자 문구 (ARCHITECTURE §6.3). `inviteErrorMessage`(`lib/auth/message.ts`)와 **같은 형**이다:
  * `satisfies never`로 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다.
  *
  * ⚠️ **던지지 않는 것이 이 형을 고른 이유다.** `?e=`는 주소창에 있어 사용자가 손댈 수 있다 — 던지면

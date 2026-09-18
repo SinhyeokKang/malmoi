@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { m } from "@/lib/i18n";
 
 /**
- * Home의 **표현 규칙 셋**을 소스에서 센다 (project-home spec §3.3의 완료 조건 7·8·9).
+ * Home의 **표현 규칙 셋**을 소스에서 센다 (DESIGN §6.64).
  *
  * ⚠️ **값이 아니라 구조를 센다.** 클래스 문자열을 통째로 박으면 스타일을 바꾸는 순간 green인 채
  * 결함만 돌아온다 — 세는 것은 "파랑이 몇 자리인가"이지 "그 자리가 어떤 클래스인가"가 아니다.

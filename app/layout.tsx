@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 
+import { m } from "@/lib/i18n";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "malmoi",
-  description: "Localization management for your team",
+  title: m.common.appName,
+  description: m.common.appDescription,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     /*
       ⚠️ **`lang="en"`이다** (2026-09-08 ship 4). 화면 문구가 전부 영어가 된 커밋이 이것이므로 여기서
       바꿨다 — 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽는다. ko를 열면 이 값도 같이
-      바뀐다 (design §3.1 — 그때 바뀌는 파일이 `lib/i18n/index.ts`와 여기다).
+      바뀐다 (PRODUCT §10 — 그때 바뀌는 파일이 `lib/i18n/index.ts`와 여기다).
     */
     <html lang="en">
       <head>

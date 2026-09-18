@@ -42,6 +42,11 @@ export type JsonStyle = {
    * (ARCHITECTURE §1.35의 별칭 버그를 표현 축에서 재현하는 것이다).
    */
   compactPaths: ReadonlySet<string>;
+  /**
+   * 줄바꿈. **CRLF 원본을 LF로 다시 쓰면 값이 안 바뀌어도 모든 줄이 바뀌고** blob SHA가 매번 달라진다
+   * (launch-readiness L4.5 — yaml·code-dict는 이미 보존했다). 문자열 안의 개행은 `\n` 이스케이프라 치환이 값에 닿지 않는다.
+   */
+  eol: "\n" | "\r\n";
 };
 
 const NO_COMPACT: ReadonlySet<string> = new Set<string>();
@@ -52,6 +57,7 @@ export const DEFAULT_JSON_STYLE: JsonStyle = {
   escapeNonAscii: false,
   escapeSlash: false,
   compactPaths: NO_COMPACT,
+  eol: "\n",
 };
 
 /** 세그먼트 배열 → `compactPaths`의 키. 루트는 `[]`다. */
@@ -88,12 +94,16 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
       : (scan.indent.char === "tab" ? "\t" : " ").repeat(scan.indent.width);
   // 스캔이 끝까지 못 갔으면 수집한 두 축은 부분값이라 못 믿는다. 들여쓰기는 스캐너와 무관하게
   // 정규식으로 관측하므로 그대로 산다.
-  if (scan.failed) return { indent, escapeNonAscii: false, escapeSlash: false, compactPaths: NO_COMPACT };
+  // 줄바꿈도 스캐너와 무관하게 센다 — 우세한 쪽이다(섞인 파일은 다수결).
+  const crlf = text.split("\r\n").length - 1;
+  const eol = crlf > 0 && crlf >= text.split("\n").length - 1 - crlf ? "\r\n" : "\n";
+  if (scan.failed) return { indent, escapeNonAscii: false, escapeSlash: false, compactPaths: NO_COMPACT, eol };
   return {
     indent,
     escapeNonAscii: scan.escapeNonAscii,
     escapeSlash: scan.escapeSlash,
     compactPaths: scan.compactPaths,
+    eol,
   };
 }
 
@@ -107,10 +117,11 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
  * 쓰인다 — `replacer`·`space`로는 컨테이너마다 다른 펼침과 비ASCII 이스케이프를 낼 수 없다.
  */
 export function serializeJson(value: unknown, style: JsonStyle = DEFAULT_JSON_STYLE): string {
-  if (!style.escapeNonAscii && !style.escapeSlash && style.compactPaths.size === 0) {
-    return `${JSON.stringify(value, null, style.indent)}\n`;
-  }
-  return `${render(value, style, [], "")}\n`;
+  const lf = !style.escapeNonAscii && !style.escapeSlash && style.compactPaths.size === 0
+    ? `${JSON.stringify(value, null, style.indent)}\n`
+    : `${render(value, style, [], "")}\n`;
+  // 직렬화 결과의 개행은 전부 구조의 것이다 — 문자열 값의 개행은 `\n` 이스케이프로 나간다.
+  return style.eol === "\n" ? lf : lf.replaceAll("\n", style.eol);
 }
 
 /** 코드 유닛 하나를 `\uXXXX`로. 소문자 4자리 — 원본 관례이자 `charCodeAt` 기본형이다. */

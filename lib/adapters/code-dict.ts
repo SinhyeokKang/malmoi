@@ -113,7 +113,7 @@ export type CodeDictGroup = { pathTemplate: string; locales: ReadonlySet<string>
 /**
  * `detectCandidates`의 **probe 이전 부분** — 경로만으로 만들 수 있는 후보 그룹을 순위순으로 낸다.
  *
- * 분리해 export한 이유 (2026-09-07, 온보딩 design §3.1): 서버는 GitHub API라 동기 probe가 없고, code-dict는
+ * 분리해 export한 이유 (2026-09-07, ARCHITECTURE §3.1): 서버는 GitHub API라 동기 probe가 없고, code-dict는
  * probe 없이 후보 0개라 **내려받을 파일을 고를 근거가 없다.** 이 함수로 그룹을 먼저 얻어 상위 몇 개의 샘플을
  * 내려받고, 그 내용을 probe로 만들어 `detectCandidates`를 다시 돈다. 정규식을 `lib/onboarding/`에 복사하지
  * 않는다 — 공급층이 두 벌이면 POSTMORTEM 2026-09-02의 형태다.
@@ -291,7 +291,10 @@ function writeWithErrors(
   format: DetectedFormat,
   input: WriteInput,
 ): { content: string | null; errors: AdapterError[] } {
-  const file = format.currentFiles?.[0];
+  // ⚠️ `currentFiles?.[0]`가 아니라 **경로로 고른다** — 호출부가 여러 파일을 실으면 다른 로케일의
+  // 원본 위에 치환하게 된다 (launch-readiness L3.6, json-catalog·chrome-locales와 같은 규칙).
+  const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const file = format.currentFiles?.find((c) => c.path === path);
   if (!file) return { content: null, errors: [] };
 
   let sf: SourceFile;

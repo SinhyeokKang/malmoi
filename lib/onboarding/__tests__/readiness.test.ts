@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planProjectReadiness } from "../readiness";
 
 /**
- * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (design §3.7).
+ * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (PRODUCT §7.5).
  *
  * ⚠️ **`lastCommitSha`가 "첫 적재가 성공했다"의 유일한 증거다.** `applyPush`가 키·번역과 한 트랜잭션에서
  * 그 컬럼을 쓰므로 부분 성공 상태가 없다. 설정(어댑터·경로·기준 로케일)이 저장됐다는 것은 `ready`가

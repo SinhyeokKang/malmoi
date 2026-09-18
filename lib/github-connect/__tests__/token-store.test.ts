@@ -2,7 +2,7 @@ import { sealToken, openToken } from "@/lib/credentials/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 사용자 토큰 확보 껍데기 (design §2.4). **판정은 `planTokenUse`·`refreshFailure`가 하고, 여기는
+ * 사용자 토큰 확보 껍데기 (ARCHITECTURE §6.4). **판정은 `planTokenUse`·`refreshFailure`가 하고, 여기는
  * 읽기·갱신·쓰기와 경합 처리만 한다.**
  *
  * ⚠️ **GitHub의 refresh 토큰은 1회용(회전)이다.** 갱신에 성공하면 이전 access/refresh 둘 다 무효라
@@ -140,6 +140,8 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
 
     await ensureUserToken(prisma, "u1", NOW);
 
+    // 루프가 0번 돌면 공허하다 (launch-readiness L4.4).
+    expect(hoisted.updateMany).toHaveBeenCalled();
     for (const [args] of hoisted.updateMany.mock.calls) {
       expect(Object.keys(args?.data ?? {})).not.toContain("userId");
     }

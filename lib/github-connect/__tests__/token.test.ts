@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planTokenUse, refreshFailure } from "../token";
 
 /**
- * GitHub App user 토큰의 사용·갱신 판정 (design §2.4·§4). 토큰은 기본 8시간이고 refresh 토큰은
+ * GitHub App user 토큰의 사용·갱신 판정 (ARCHITECTURE §6.4). 토큰은 기본 8시간이고 refresh 토큰은
  * 1회용(회전)이다 — 그 저장·경합 처리는 껍데기(`ensureUserToken`)가 하고 여기서는 갈래만 정한다.
  *
  * ⚠️ **만료 60초 전을 이미 만료로 본다.** 판정과 실제 호출 사이에 왕복이 있어, 정확히 만료 시각을
@@ -61,7 +61,7 @@ describe("planTokenUse — 갱신할 수단이 없으면 reauthorize", () => {
 
 describe("refreshFailure — 갱신 실패를 거부와 장애로 가른다", () => {
   /**
-   * ⚠️ `Account`에 `refresh_token_expires_in` 컬럼이 없어(design §5) refresh 만료를 미리 볼 수 없다 —
+   * ⚠️ `Account`에 `refresh_token_expires_in` 컬럼이 없어(ARCHITECTURE §5.1) refresh 만료를 미리 볼 수 없다 —
    * **갱신 호출의 실패가 유일한 신호**다. 그 신호를 한 갈래로 접으면 일시 장애가 "다시 인가하세요"로
    * 위장돼 사용자가 멀쩡한 연결을 지우고 다시 만든다 (POSTMORTEM 2026-09-03·2026-09-06과 같은 축).
    */

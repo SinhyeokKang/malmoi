@@ -17,7 +17,7 @@ import { render } from "./helpers/dom";
  * 서로의 존재를 모른다. 2026-09-15 브라우저 실측에서 `Syncing…` 중 `[Publish]`가 그대로 눌렸다.
  *
  * ⚠️ **`[Sync]`는 native `disabled`가 아니라 `aria-disabled`다** — Dialog가 닫힐 때 포커스를 되돌릴
- * 대상으로 남아야 한다(spec §12-9). 그래서 이 파일은 두 버튼을 **다른 속성**으로 센다.
+ * 대상으로 남아야 한다(DESIGN §6.64). 그래서 이 파일은 두 버튼을 **다른 속성**으로 센다.
  */
 const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn() }));
 // ⚠️ 보관·재연결 Action까지 mock한다 — 호스트가 배너 액션으로 그 둘을 들고 오고, 실물 모듈은
@@ -61,7 +61,7 @@ function Host() {
   </>;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ groups: [], total: 12, keys: 9, truncated: 0, openPr: null }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ status: "ok", preview: { groups: [], total: 12, keys: 9, truncated: 0, openPr: null } }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
@@ -104,7 +104,7 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
 
 /**
  * ⚠️ **잠금이 역할 갈래를 덮지 않는다** — EDITOR에게 `[Sync]`는 비활성이 아니라 **부재**다
- * (spec §8). Publish가 도는 동안에도 그 규칙이 그대로여야 한다.
+ * (DESIGN §6.64). Publish가 도는 동안에도 그 규칙이 그대로여야 한다.
  */
 it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", async () => {
   const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();

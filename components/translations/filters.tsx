@@ -20,7 +20,7 @@ import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 
 /**
- * 툴바 셋 — 네임스페이스 `Select` · 로케일 다중 선택 · 검색 (8-4 design §1).
+ * 툴바 셋 — 네임스페이스 `Select` · 로케일 다중 선택 · 검색 (8-4 — DESIGN §6.1).
  *
  * **URL이 상태다.** 서버 렌더 필터라 링크를 공유할 수 있고 새로고침에 살아남는다 — 클라이언트
  * 상태로 두면 903키 화면에서 "내가 보던 것"을 다시 만들 방법이 없다.
@@ -32,7 +32,7 @@ import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
  * 페이지 안의 링크 생성기가 옛 경로를 하드코딩해 사이드바가 전부 404였다).
  *
  * ⚠️ **칩이 아닌 컨트롤은 `{...query}`를 보존한다** — ns를 바꾸는 순간 로케일 선택과 검색어가
- * URL에서 날아가면 안 된다 (design §2).
+ * URL에서 날아가면 안 된다 (DESIGN §6.1).
  *
  * ⚠️ **네임스페이스가 52개인 프로젝트에서 검색 없는 native 목록이다** — 감수 항목이고 이 배송에서
  * 고치지 않는다.

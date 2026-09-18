@@ -34,8 +34,9 @@ it("nonce가 사라져도 state 쿠키는 연결 목적을 유지한다", async 
   const response = await withConnect(request("", "malmoi-connect-state=encrypted"), async () => new Response());
   expect(response.headers.get("location")).toBe("http://localhost/account?connect=failed");
 });
-it("callback crashes leave a fixed diagnostic without OAuth exception details", async () => {
+// 형식(ref·분류)의 정본은 `lib/__tests__/oauth-callback-contract.test.ts` — 여기선 원문이 새지 않는 것만 본다.
+it("callback crashes leave one classified line without OAuth exception details", async () => {
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   await withConnect(request(), async () => { throw new Error("OAuth secret"); });
-  expect(log).toHaveBeenCalledExactlyOnceWith("Account connect callback failed.");
+  expect(log).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/^\[account-connect\] \w{8} callback: Error$/));
 });

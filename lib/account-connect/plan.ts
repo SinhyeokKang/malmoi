@@ -29,7 +29,7 @@ export function parseConnectChallenge(identifier: string): ConnectChallenge | nu
     return connectChallengeIdentifier(c) === identifier ? c : null;
   } catch { return null; }
 }
-/** state/sessionToken are digests prepared by store.ts; this module is safe in the client graph. */
+/** state·sessionToken은 store.ts가 만든 다이제스트다 — 이 모듈은 클라이언트 그래프에 들어가도 안전하다. */
 export function planLoginMethodLink(input: {
   challenge: (ConnectChallenge & { expires: Date }) | null; sessionUserId: string | null;
   provider: string; providerLookup: string | null; existing: { userId: string } | null;

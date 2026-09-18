@@ -47,7 +47,7 @@ pnpm dev
 | 타입 체크 | `pnpm typecheck` |
 | 빌드 | `pnpm build` — ⚠️ `/push` 로컬 게이트 셋의 하나다. `tsc`는 RSC 경계를 못 본다 |
 | 테스트 | `pnpm test` |
-| 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 키 적재 → 왕복 검증 |
+| 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 적재 **미리보기** → 왕복 검증 (DB에 쓰지 않는다) |
 | 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
 | 어댑터 범용성 측정 | `pnpm adapter-survey docs/adapter-survey/repos.txt` — 읽기 전용, 네트워크 |
 | GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
@@ -55,8 +55,8 @@ pnpm dev
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` / 브라우저: `pnpm db:studio` (dev) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 check-only. 절차는 [docs/OPERATIONS.md](./docs/OPERATIONS.md) |
-| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미전달 술어 일치·편집 토큰의 조건부 쓰기(CI 보류·폐기 승인·Publish 전달 확인)를 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/**`·`lib/pull/**`·`lib/import/**`·`lib/protection/**`를 건드렸을 때 손으로 돌린다 |
-| Codex 미러 동기화 | `pnpm sync:agents` |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미전달 술어 일치·편집 토큰의 조건부 쓰기(CI 보류·폐기 승인·Publish 전달 확인)를 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/**`·`lib/pull/**`·`lib/import/**`·`lib/protection/**`·`lib/publish/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸을 때 손으로 돌린다 |
+| Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check` — CI `verify`의 마지막 스텝) |
 
 **브랜치는 `main` / `dev` 둘이다.** 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
 

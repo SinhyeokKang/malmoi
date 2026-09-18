@@ -4,7 +4,7 @@ import { planLinkConfirm, planLinkOffer } from "../plan";
 import type { Challenge } from "../policy";
 
 /**
- * 거부를 안내로 바꾸는 판정 둘 (design §5.2).
+ * 거부를 안내로 바꾸는 판정 둘 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **자동 병합은 없다** — `offer`는 "화면을 보여줘도 되는가"까지이고, 행을 쓰는 것은
  * 기존 provider의 OAuth를 새로 통과한 `planLinkConfirm`의 `ok` 하나뿐이다.
@@ -75,7 +75,7 @@ it("만료 판정이 계정 대조보다 앞이다", () => {
 });
 
 /**
- * ⚠️ **실패는 challenge를 소비하지 않는다** (design ⑧) — 소비하면 훔친 URL 한 번으로 피해자의
+ * ⚠️ **실패는 challenge를 소비하지 않는다** (ARCHITECTURE "계정 병합") — 소비하면 훔친 URL 한 번으로 피해자의
  * 병합을 태울 수 있다. 상한은 10분 TTL이 든다.
  */
 it("실패 갈래는 아무것도 소비하지 않는다", () => {

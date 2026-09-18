@@ -7,7 +7,7 @@ import { m } from "@/lib/i18n";
 import { connectErrorMessage, isConnectError, type ConnectError } from "../message";
 
 /**
- * 연결 실패 사유 → 사용자 문구 (design §3.5·§4). `inviteErrorMessage`와 **같은 형**이다:
+ * 연결 실패 사유 → 사용자 문구 (ARCHITECTURE §6.3). `inviteErrorMessage`와 **같은 형**이다:
  * `satisfies never`로 갈래 누락을 컴파일 타임에 막고, 모르는 값에는 **던지지 않고 폴백**한다.
  *
  * ⚠️ **던지지 않는 것이 중요하다.** `?e=`는 주소창에 있어 사용자가 손댈 수 있다 — 던지면 설정 화면이
@@ -97,7 +97,7 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
   });
 
   it("고정된 거부는 사용자가 할 수 있는 일을 말한다 — 막힌 이유만 알려주면 갇힌다", () => {
-    // `taken-by-other`는 연결 해제(design §3.4)가, 나머지 둘은 GitHub 쪽 권한이 답이다.
+    // `taken-by-other`는 연결 해제(DESIGN §6.67)가, 나머지 둘은 GitHub 쪽 권한이 답이다.
     expect(connectErrorMessage("taken-by-other").length).toBeGreaterThan(10);
     expect(connectErrorMessage("installation-forbidden").length).toBeGreaterThan(10);
     expect(connectErrorMessage("repo-forbidden").length).toBeGreaterThan(10);

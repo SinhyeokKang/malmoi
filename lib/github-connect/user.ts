@@ -1,10 +1,11 @@
+import "server-only";
 import { OAuthApp } from "@octokit/oauth-app";
 import { Octokit } from "octokit";
 
 import { requireEnv } from "@/lib/env";
 
 /**
- * **user-to-server 토큰으로 GitHub을 읽는 껍데기** (design §2.1·§2.2). 판정은 하지 않는다 —
+ * **user-to-server 토큰으로 GitHub을 읽는 껍데기**. 판정은 하지 않는다 —
  * 무엇이 허용인지는 `planRepoConnect`가, 토큰을 쓸지 갱신할지는 `planTokenUse`가 정한다.
  *
  * ⚠️ **App 개인키를 모른다.** 여기서 쓰는 것은 App의 **OAuth client id/secret**이고
@@ -69,7 +70,7 @@ function pickTokens(authentication: {
 }
 
 /**
- * 인가 화면 URL. `state`는 nonce이고 목적지 slug는 쿠키의 서명 안에 있다 (design §3.1).
+ * 인가 화면 URL. `state`는 nonce이고 목적지 slug는 쿠키의 서명 안에 있다 (ARCHITECTURE §6.4).
  *
  * ⚠️ **`redirectUrl`은 선택이 아니다** (malmoi#7). App에 callback URL이 여러 개 등록돼 있으면 GitHub은
  * 명시하지 않은 요청을 **첫 번째**로 보낸다 — 로컬에서 시작한 연결이 프로덕션으로 돌아가고, state
@@ -89,7 +90,7 @@ export async function exchangeCode(code: string): Promise<UserTokens> {
   return pickTokens(authentication);
 }
 
-/** refresh 토큰은 1회용이다 — 성공하면 이전 쌍이 무효이므로 호출부가 결과를 즉시 저장한다 (design §2.4). */
+/** refresh 토큰은 1회용이다 — 성공하면 이전 쌍이 무효이므로 호출부가 결과를 즉시 저장한다 (ARCHITECTURE §6.4). */
 export async function refreshUserToken(refreshToken: string): Promise<UserTokens> {
   const { authentication } = await createOAuthApp().refreshToken({ refreshToken });
   return pickTokens(authentication);
@@ -104,7 +105,7 @@ export async function getViewer(accessToken: string): Promise<{ id: string; logi
 /**
  * ⚠️ **전 페이지를 읽는다.** 기본 30개씩 오는데 첫 페이지만 보면 31번째 설치·리포가
  * `installation-forbidden`·`repo-forbidden`으로 **거짓 거부**된다 — 이 목록은 표시용이 아니라
- * 인가 판정의 근거다 (design §2.1).
+ * 인가 판정의 근거다 (ARCHITECTURE §6.4).
  */
 export async function listUserInstallations(accessToken: string): Promise<string[]> {
   const items = await userOctokit(accessToken).paginate("GET /user/installations");

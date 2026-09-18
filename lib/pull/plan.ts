@@ -20,7 +20,7 @@ import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
  * GitHub을 한 번도 부르지 않고 끝낼 수 있는가.
  *
  * @param unpublished 미전달 편집의 수 — `pendingWhere`(`lib/protection/where.ts`)로 센 값.
- *   `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`이다.
+ *   `pendingEditToken IS NOT NULL ∧ 활성 표면 ∧ 활성 키 ∧ 활성 로케일`이다 — **시각 비교가 없다.**
  *
  * ⚠️ **`max(updatedAt) > lastPulledAt`이 아니다** (sync-edit-protection T0, 2026-09-17). push가 전 행의
  * `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 매일 밤 PR을 갱신·되돌렸다 — strict 적재 뒤 첫
@@ -192,13 +192,20 @@ export function buildWriteEntries(
      * 라운드트립 한 번 뒤에 조용히 일어난다. base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
      *
      * **비-base는 그대로다** — 그쪽의 빈 값은 미번역이고 파일에서 빠지는 것이 맞다.
+     *
+     * ⚠️ **sourceText까지 비면 `""` 그대로 쓴다** (2026-09-18, launch-readiness L4.10 — 어댑터 실측 20차). 키 집합은
+     * base 파일에서만 오므로(`lib/push/payload.ts`) 원문이 빈 키는 **리포 base 파일에 `""`로 있던 키**다. 옛 동작은
+     * "폴백할 원문이 없다"며 뺐고, 바로 위 문단이 막으려던 결과(전 로케일 orphan → 비-base 번역 소실)가 이 틈으로
+     * 났다 — 코퍼스 7개 리포. 재생성 writer가 빈 값을 거르므로 `writeEmpty`로 표시한다.
      */
     const present = row.value === "" ? null : row.value;
     const message = present ?? (opts.isBase ? row.sourceText : null);
-    if (message === null || message === "") continue;
+    if (message === null) continue;
     entries.push({
       key: row.key,
       message,
+      // `message`가 비는 길은 base 폴백뿐이다 — `present`는 빈 값을 `null`로 접었다.
+      ...(message === "" ? { writeEmpty: true as const } : {}),
       // 빈 description은 싣지 않는다 — 없는 것과 같아야 파일이 결정적이다.
       ...(row.description ? { description: row.description } : {}),
       // ⚠️ **`sortIndex ? …`로 쓰면 0이 falsy라 파일의 첫 키가 순서를 잃는다.**

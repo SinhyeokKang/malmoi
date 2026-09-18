@@ -34,3 +34,18 @@ it("production signIn stops a revocation flow before email refresh even without 
   });
   expect(state.findUnique).not.toHaveBeenCalled();
 });
+
+/**
+ * **바깥 경계도 한 줄 남긴다** (launch-readiness L5.1). 전에는 이 catch가 무로그라, 안쪽에서 일부러 던진 `CredentialError`
+ * (찍지 않는 갈래)로 끝나면 "Unavailable"에 로그 0줄이었다. 원문은 어디에도 없다.
+ */
+it("production signIn logs the stage for a storage outage without the raw message", async () => {
+  const callback = (await state.factory!()).callbacks!.signIn!;
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  state.findUnique.mockRejectedValue(new Error("Prisma private data"));
+  expect(await callback({ user: { id: "u1", email: "old@example.com" }, account: { provider: "github", providerAccountId: "gh1", type: "oauth" }, profile: { email: "fresh@example.com" } })).toBe("/signin?error=Unavailable");
+  const lines = spy.mock.calls.map((call) => String(call[0]));
+  expect(lines.some((line) => /\[credentials\] \w{8} sign-in: CredentialError$/.test(line))).toBe(true);
+  expect(lines.join("\n")).not.toContain("Prisma private data");
+  spy.mockRestore();
+});

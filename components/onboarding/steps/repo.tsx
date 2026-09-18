@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FolderGit2, GitBranch, Search } from "lucide-react";
+import { FolderGit2, GitBranch, Search } from "lucide-react";
 
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { failureText } from "../failure";
 
 /**
- * ① 리포와 브랜치 (new-project-modal design §4).
+ * ① 리포와 브랜치 (DESIGN §6.7).
  *
  * ⚠️ **막힘 상태 셋(예외 A·B·C)이 여기 있다.** 전에는 `/projects/new`가 라우트라 그 갈래마다 따로
  * 반환했는데, 모달이 되면서 같은 자리에 선다 — 그것이 `new/layout.tsx`를 지울 수 있게 한 이관이다.
@@ -224,9 +224,8 @@ function InstallHint({ installUrl }: { installUrl: string | null }) {
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+      <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
         {m.newProject.empty.addRepos}
-        <ExternalLink className="size-3" aria-hidden />
       </a>
     </p>
   );
@@ -377,9 +376,8 @@ function Blocked({
                 m.newProject.empty.noLink
               ) : (
                 <>
-                  <a href={installUrl} target="_blank" rel="noreferrer" className="inline-flex items-baseline gap-[3px] text-blue-600">
+                  <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
                     {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
-                    <ExternalLink className="size-3" aria-hidden />
                   </a>{" "}
                   — {m.newProject.empty.afterInstall}
                 </>

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { metaRows, type MetaRow } from "../meta";
 
 /**
- * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · design §3.5). **행이 상태에 따라 사라지거나 는다** —
+ * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · DESIGN §6.64). **행이 상태에 따라 사라지거나 는다** —
  * 그 규칙을 JSX의 `&&`에 흩으면 여섯 상태 × 열 행의 매트릭스를 화면을 읽어야만 알 수 있다.
  */
 
@@ -43,7 +43,7 @@ describe("metaRows — 아홉 행", () => {
     });
   });
 
-  /** ⚠️ **표면이 하나면 그 행이 사라진다** (spec §9.5-4) — `1`이라고 적는 것은 정보가 아니다. */
+  /** ⚠️ **표면이 하나면 그 행이 사라진다** — `1`이라고 적는 것은 정보가 아니다. */
   it("표면이 하나면 표면 행을 그리지 않는다", () => {
     expect(kinds({ ...base, surfaces: 1 })).not.toContain("surfaces");
     expect(kinds({ ...base, surfaces: 2 })).toContain("surfaces");
@@ -93,7 +93,7 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
   });
 
   /**
-   * ⚠️ **실행자를 적지 않는다** (spec §9.4) — 캔버스의 `· by Sinhyeok`을 뺀 **의도된 이탈**이다.
+   * ⚠️ **실행자를 적지 않는다** (DESIGN §6.64 이탈 표) — 캔버스의 `· by Sinhyeok`을 뺀 **의도된 이탈**이다.
    * 보관은 OWNER만 할 수 있고 멤버 상한이 10이라 "누가"의 값이 낮다.
    */
   it("보관이면 행이 하나 늘고 시각만 든다", () => {

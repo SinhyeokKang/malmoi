@@ -1,5 +1,6 @@
+import { httpStatus } from "@/lib/failure";
 /**
- * 연결 건강성 판정 (design §3.3). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5) —
+ * 연결 건강성 판정 (DESIGN §6.2). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5) —
  * `SyncRun`(7단계)이 서기 전에 상태 컬럼을 만들면 그때 두 벌이 된다.
  *
  * ⚠️ **조회 실패(`error`)를 `app-uninstalled`로 접지 않는다.** 접으면 **장애가 "제거됨"으로 읽힌다** —
@@ -16,7 +17,7 @@
 export type ProbeResult =
   /**
    * @param defaultBranch `GET /repos` 응답에 이미 있다 — 호출을 늘리지 않는다. `Project.baseBranch`를
-   *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (design §4).
+   *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (ARCHITECTURE §3.1).
    *   `planConnectionHealth`는 이 필드를 보지 않는다 — 판정은 그대로다.
    *
    * @param repositoryId GitHub이 그 리포에 붙인 **불변 id** (sec-audit-2 발견 34). ⚠️ **optional로 두지
@@ -42,15 +43,6 @@ export type ConnectionHealth =
   | { status: "ok" }
   | { status: "unknown" };
 
-/**
- * octokit 에러에서 HTTP 상태를 꺼낸다. 없으면(네트워크 오류) `undefined` — **그것을 0이나 404로
- * 채우지 않는다.** 부재는 "모른다"이고 아래 분류가 그것을 `error`로 남긴다.
- */
-export function httpStatus(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
-  const status = (error as { status: unknown }).status;
-  return typeof status === "number" ? status : undefined;
-}
 
 /**
  * HTTP 상태 → probe 분류. `probeRepo`가 부른다.

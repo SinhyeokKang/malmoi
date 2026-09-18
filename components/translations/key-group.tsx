@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { ExternalLink } from "lucide-react";
 
 import { TranslationInput } from "@/components/translation-input";
 import { LocaleBadge } from "@/components/translations/locale-badge";
@@ -9,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
 import type { ProjectContext } from "@/lib/keys/query";
 import {
-  actorLabel, buildPermalink, cellState, isUnpublished,
+  actorLabel, buildPermalink, cellAt, cellState, isUnpublished,
   type Actor, type KeyRow,
 } from "@/lib/keys/view";
 
 /**
- * 키 하나 + 그 아래 로케일 행들 (8-4 design §1 — 시안 `212:937`).
+ * 키 하나 + 그 아래 로케일 행들 (8-4 — DESIGN §6.1 · 시안 `212:937`).
  *
  * 키별 tbody와 rowSpan으로 로케일 행을 묶는다. 여러 줄 값은 브라우저의 행 높이 계산에 맡긴다.
  *
@@ -73,7 +72,7 @@ export function KeyGroup({
   );
 }
 
-/** Metadata expands only for the active cell so completed rows retain the design's density. */
+/** 메타데이터는 활성 셀에서만 펼친다 — 끝난 행이 시안의 밀도를 유지한다. */
 function LocaleRow({
   keyCell,
   slug, surfaceSlug,
@@ -89,7 +88,7 @@ function LocaleRow({
   locale: { code: string; orphaned: boolean };
   actors: Map<string, Actor>;
 }) {
-  const cell = row.cells[locale.code];
+  const cell = cellAt(row, locale.code);
   const state = cellState(row, locale.code);
   const actor = actorLabel(cell?.updatedBy ?? null, actors);
   const unsent = cell !== undefined && isUnpublished(cell);
@@ -157,16 +156,15 @@ function CodeRef({ row, project }: { row: KeyRow; project: ProjectContext }) {
   const link = buildPermalink(project, ref);
   if (!link) return null;
   return (
-    // 리포 밖으로 나가는 링크는 색 + `ExternalLink` 12 (DESIGN §6.3)
+    // 리포 밖으로 나가는 링크는 색만 든다 — 글리프를 달지 않는다 (DESIGN §6.3)
     <a
       href={link}
       target="_blank"
       rel="noreferrer"
-      className="mt-0.5 inline-flex items-baseline gap-1 text-xs text-blue-600"
+      className="mt-0.5 text-xs text-blue-600"
     >
       {ref.path.split("/").pop()}:{ref.line}
       {row.refs.length > 1 && ` +${row.refs.length - 1}`}
-      <ExternalLink className="size-3" aria-hidden />
     </a>
   );
 }

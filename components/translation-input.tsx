@@ -15,7 +15,7 @@ import type { SaveInputType } from "@/lib/keys/save";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { routes } from "@/lib/routes";
 
-/** "Saved"가 남아 있는 시간. 903행에서 영구 텍스트가 쌓이면 표가 시끄러워진다 (design §3.8). */
+/** "Saved"가 남아 있는 시간. 903행에서 영구 텍스트가 쌓이면 표가 시끄러워진다 (DESIGN §6.1). */
 const SAVED_MS = 1500;
 
 /**
@@ -25,7 +25,7 @@ const SAVED_MS = 1500;
  * 뺐다. 대신 저장 중 상태와 실패 사유를 셀 안에 보인다.
  *
  * ⚠️ **셀 안 상태줄은 시각 전용이다** — 알림은 표 하나의 live region이 든다 (`Announcer`). 셀마다
- * `role="status"`를 두면 903행 × 3로케일에 2,700개다 (design §3.8).
+ * `role="status"`를 두면 903행 × 3로케일에 2,700개다 (DESIGN §7).
  *
  * ⚠️ **실패해도 포커스를 뺏지 않는다** — 판정은 `shouldRefocus`다. blur 저장은 비동기라 응답이 올 때
  * 사용자는 이미 다음 셀을 치고 있을 수 있다.
@@ -133,7 +133,7 @@ export function TranslationInput({
         aria-label={m.translations.cellLabel(keyName, localeCode)}
         // `fieldClass`가 `aria-[invalid=true]:border-destructive`를 든다 — 색을 여기서 또 주지 않는다.
         aria-invalid={failed}
-        // The parent cell draws the focus ring around the value and its expanded metadata.
+        // 포커스 링은 부모 셀이 값과 펼친 메타데이터를 함께 둘러 그린다.
         className="block min-h-10 w-full rounded-none border-transparent bg-transparent py-3 pr-14 pl-3 hover:bg-muted/40 focus-visible:ring-0"
       />
 

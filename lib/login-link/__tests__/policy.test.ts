@@ -20,12 +20,12 @@ import {
 } from "../policy";
 
 /**
- * 병합 challenge의 순수 판정 (design §5.2).
+ * 병합 challenge의 순수 판정 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **`session-revocation`과 형은 같지만 증명이 다르다** — 그쪽은 살아 있는 세션이 인가를 대신해
  * `sessionDigest`·`stateDigest`를 담지만, 여기는 세션이 **없다**. 담는 것은 "무엇을 붙일 것인가"와
  * "성공하면 어디로 돌아가나"뿐이고, 왕복의 진정성은 Auth.js가 자기 이름·salt로 암호화한 state
- * 쿠키가 든다 (design 불변식 3).
+ * 쿠키가 든다 (ARCHITECTURE "계정 병합").
  */
 
 const challenge: Challenge = {
@@ -106,7 +106,7 @@ it("수단 목록은 둘을 고정 순서로 내고, 마지막 하나는 해제�
 });
 
 /**
- * `/account` 수단 카드 헤더의 `{connected} of {total}` 배지 (design §1.3 · §3.3).
+ * `/account` 수단 카드 헤더의 `{connected} of {total}` 배지 (DESIGN §6.67).
  *
  * ⚠️ **서버 변경이 0이다** — `loginMethodRows`가 이미 주는 행에서 센다. 분모가 보여야
  * "하나 더 붙일 수 있다"가 읽힌다(캔버스 §열린 결정 2 → 채택).
@@ -126,7 +126,7 @@ it("수단 카드 배지는 연결된 수와 전체 수를 센다", () => {
 });
 
 /**
- * ⚠️ **`dest`가 문자열이 아니라 갈래다** (design 불변식 9) — 저장된 문자열을 그대로 리다이렉트에
+ * ⚠️ **`dest`가 문자열이 아니라 갈래다** (ARCHITECTURE §6.4) — 저장된 문자열을 그대로 리다이렉트에
  * 쓰면 open redirect 판정이 생기고, 그 판정을 잊는 것이 조용하다.
  */
 it("성공 착지는 갈래 이름으로만 만들어진다 — 임의 URL을 받는 자리가 없다", () => {
@@ -169,7 +169,7 @@ it("쿠키 이름 둘은 secure 접두를 가르고 Auth.js state와 이름이 �
   expect(linkCookie(false).name).toBe("malmoi-login-link");
   expect(linkStateCookie(true).name).toBe("__Secure-malmoi-link-state");
   expect(linkStateCookie(false).name).toBe("malmoi-link-state");
-  // 회수 왕복과 이름이 갈려야 두 가로채기가 서로를 먹지 않는다 (design 불변식 8).
+  // 회수 왕복과 이름이 갈려야 두 가로채기가 서로를 먹지 않는다 (ARCHITECTURE "계정 병합").
   expect(linkStateCookie(true).name).not.toContain("revocation");
   for (const cookie of [linkCookie(true), linkStateCookie(true)]) {
     expect(cookie.options).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/", secure: true });

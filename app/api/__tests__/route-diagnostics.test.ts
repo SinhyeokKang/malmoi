@@ -11,7 +11,7 @@ import { createHarness } from "../../(edit)/__tests__/harness";
  * HTTP 응답뿐이다. 설정 누락이 **본문 없는 500**으로 나가면 로그에 원인이 없어 추측만 남는다 —
  * 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다(`ACTIVE_PROJECT_SLUG`가 `try` 밖이었다).
  *
- * ⚠️ **push의 인증은 2026-09-07부터 `Project.pushTokenHash` 조회다** (design §3.8). 토큰이 프로젝트를 정하고
+ * ⚠️ **push의 인증은 2026-09-07부터 `Project.pushTokenHash` 조회다** (PRODUCT §7.8). 토큰이 프로젝트를 정하고
  * slug는 그 뒤에 대조된다 — 페이로드 slug로 행을 찾으면 **오배송 페이로드가 인증 대상을 고른다.** 그래서
  * "토큰 없음"·"틀린 토큰"·"미발급 프로젝트"가 전부 401이고 **프로젝트 존재를 노출하지 않는다**(404가 사라졌다).
  *
@@ -29,7 +29,7 @@ const hoisted = vi.hoisted(() => ({
     // 보류 사전 집계(sync-edit-protection T7) — 0이면 기존 적재 경로다.
     translation: { count: vi.fn().mockResolvedValue(0) },
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
-    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
+    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (PRODUCT §7.8) — 없으면
     // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
     project: {
       findUnique: vi.fn(),
@@ -41,12 +41,15 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-// 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
+// 목록 둘의 무효화가 push 경로에 붙었다 (DESIGN §6.63) — 테스트 환경에는 그 컨텍스트가 없다.
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 // 라우트는 보호 적재(`applyProtectedPush`)를 부른다 — 여기서는 보류 판정 밖(적용 결과·오류 본문)을 보므로 applied로 감싼다.
 // 보류 자체는 `lib/keys/__tests__/sync-edit-protection.integration.ts`가 실제 PostgreSQL로 잰다.
-vi.mock("@/lib/push/apply", () => ({
+// ⚠️ **`ApplyGuardError`는 진짜다** (launch-readiness L4.2) — 라우트의 catch가 `instanceof`로 가른다. 빠지면 그 줄이
+// 먼저 던져 어떤 오류든 500이 되고, 500 테스트가 의도한 이유 없이 통과한다.
+vi.mock("@/lib/push/apply", async () => ({
+  ApplyGuardError: (await vi.importActual<typeof import("@/lib/push/apply")>("@/lib/push/apply")).ApplyGuardError,
   applyPush: hoisted.applyPush,
   applyProtectedPush: async (...args: unknown[]) => ({ status: "applied", outcome: await hoisted.applyPush(...args) }),
 }));
@@ -144,7 +147,7 @@ const ready = (slug: string) => ({
   syncRuns: [] as { startedAt: Date }[],
 });
 
-describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => {
+describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)", () => {
   /**
    * ⚠️ **응답 모양이 `{ results, unprocessed }`다** (2026-09-09, sec-audit 발견 26). 전에는 배열
    * 자체였는데, 순회 상한이 붙으면서 **못 돈 수**를 실을 자리가 필요했다 — 항목으로 섞으면
@@ -201,9 +204,15 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
     expect(body[1]).toMatchObject({ slug: "b", status: "failed" });
     expect(body[1].ref).toMatch(/^[0-9a-f]{8}$/);
     expect(JSON.stringify(body)).not.toContain("GitHub App");
-    // 버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다.
+    /**
+     * ⚠️ **로그에도 원문이 안 남는다** (2026-09-18 반전 — `classifyFailure`). 전에는 이 자리가
+     * "버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다"로 전문을 고정했다. 남의 메시지에
+     * Prisma 인자·암호문이 실릴 수 있다는 `lib/github-connect/log.ts`의 판단을 로그까지 넓혔다.
+     * 남는 것은 **갈래 이름 + ref + 프로젝트 slug** 셋이고, 그것으로 부족하면 재현이 유일한 길이다.
+     */
     const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
-    expect(logged).toContain("GitHub App 토큰 발급 실패");
+    expect(logged).not.toContain("GitHub App 토큰 발급 실패");
+    expect(logged).toContain("Error");
     expect(logged).toContain(body[1].ref);
     expect(logged).toContain("[pull:b]");
     spy.mockRestore();
@@ -312,7 +321,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
   });
 });
 
-describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () => {
+describe("/api/push — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", () => {
   it("빈 토큰(`Bearer `)은 DB를 조회하지 않고 401이다 — 공짜 왕복을 내주지 않는다", async () => {
     const res = await pushPost(pushRequest(payload(), ""));
     expect(res.status).toBe(401);
@@ -321,7 +330,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
 
   it("인증이 JSON 파싱보다 **먼저**다 — 무효 토큰 하나로 대용량 페이로드를 파싱시키지 않는다", async () => {
     // `maxDuration = 60`인 공개 엔드포인트다. 본문이 아예 JSON이 아니어도 인증 실패가 먼저 나와야 한다
-    // (code-review 2026-09-07 🟡3 · design §3.8의 순서 그림).
+    // (code-review 2026-09-07 🟡3 · PRODUCT §7.8의 조회 방향).
     const res = await pushPost(
       new Request("https://x/api/push", {
         method: "POST",
@@ -408,7 +417,10 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     const body = await res.json();
     expect(body).toMatchObject({ error: "internal" });
     expect(JSON.stringify(body)).not.toContain("pooler.supabase.com");
-    expect(spy.mock.calls[0]?.[0]).toContain("pooler.supabase.com");
+    // ⚠️ **로그에도 안 남는다** (2026-09-18 반전). 전에는 이 줄이 `toContain`이었다 — 서버 로그를
+    // 안전한 곳으로 본 2026-09-04 판단이고, credential 리뷰가 그것을 뒤집었다.
+    expect(spy.mock.calls[0]?.[0]).not.toContain("pooler.supabase.com");
+    expect(spy.mock.calls[0]?.[0]).toContain("Error");
     spy.mockRestore();
   });
 
@@ -420,9 +432,30 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: "internal" });
+    // ⚠️ **의도한 이유의 500인가** (launch-readiness L4.2). mock에 `ApplyGuardError`가 없으면 catch의 `instanceof`가
+    // 먼저 던져도 같은 500이 나온다 — 그러면 실패 기록에 닿지 못하므로 그 쓰기를 본다.
+    expect(hoisted.prisma.translationSurface.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ lastImportError: "import-failed" }),
+    }));
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
     spy.mockRestore();
+  });
+
+  /**
+   * **트랜잭션 안의 가드는 409다** — 사전 가드를 함께 지난 교차 요청이 잠금 뒤에 받는 거부다. 실패 기록을 쓰지 않고
+   * 진행 표시만 거둔다(launch-readiness L3.7 — 그 경합은 `concurrent-import.integration.ts`가 PG로 잰다).
+   */
+  it("적재 안의 stale-commit은 409이고 실패로 기록하지 않는다", async () => {
+    const { ApplyGuardError } = await import("@/lib/push/apply");
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
+    hoisted.prisma.translationSurface.updateMany.mockClear();
+    hoisted.applyPush.mockRejectedValue(new ApplyGuardError("stale-commit"));
+    const res = await pushPost(pushRequest(payload()));
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: "stale commit" });
+    const writes = hoisted.prisma.translationSurface.updateMany.mock.calls.map(([args]) => (args as { data: Record<string, unknown> }).data);
+    expect(writes).toEqual([{ lastImportStartedAt: null, lastImportToken: null }]);
   });
 
   it("오배송은 409다 — 기준이 서버 env가 아니라 **토큰의 프로젝트**다", async () => {
@@ -435,7 +468,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   });
 
   /**
-   * **보관 중 CI push는 409** (7단계 — sync-runs design §4, 결정 9). 대상 리포 CI가 red가 되는 것은
+   * **보관 중 CI push는 409** (7단계 — ARCHITECTURE §5.6.4). 대상 리포 CI가 red가 되는 것은
    * 의도된 신호다 — 워크플로를 떼라는 뜻이고, 조용히 200을 주면 보관이 "멈춘다"를 뜻하지 않게 된다.
    */
   it("보관된 프로젝트는 409다 — 오배송·표면 검사보다 앞이다", async () => {

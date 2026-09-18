@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * 프로젝트 목록 화면의 배선을 **소스로** 센다 (8-3 — `translations-screen`·`home-screen`과 같은 계보).
- * 렌더 테스트가 없는 리포라(translation-ui design §4) 이 층이 방어선이다.
+ * 렌더 테스트가 없는 리포라 이 층이 방어선이다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const read = (rel: string): string => readFileSync(join(ROOT, rel), "utf8");
@@ -31,7 +31,7 @@ const PAGE = ["app/(edit)/projects/page.tsx", "components/projects/project-list.
 describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 아니다", () => {
   /**
    * ⚠️ **세그먼트를 `useState`로 만들면 뒤로가기·공유·새로고침이 전부 깨진다.** `logs`의 `?cursor=`가
-   * 같은 판정이고(design 결정 14), 서버가 이미 필터된 목록을 그리므로 클라이언트 상태가 0이어야 한다.
+   * 같은 판정이고(DESIGN §6.68), 서버가 이미 필터된 목록을 그리므로 클라이언트 상태가 0이어야 한다.
    */
   it("페이지가 클라이언트 컴포넌트가 아니다", () => {
     expect(PAGE.map(code).join("\n")).not.toContain('"use client"');
@@ -39,7 +39,7 @@ describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 
   });
 
   /**
-   * ⚠️ **필터 축이 사라졌다** (projects-list §1). 좁히는 것은 `?q=` 하나이고, 옛 `?filter=`는
+   * ⚠️ **필터 축이 사라졌다** (DESIGN §6.63). 좁히는 것은 `?q=` 하나이고, 옛 `?filter=`는
    * **조용히 무시된다** — 읽는 코드가 목록 경로에 하나도 없어야 그 계약이 성립한다.
    */
   it("좁히는 축이 검색 하나다 — `?filter=`를 읽는 코드가 없다", () => {
@@ -186,7 +186,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
 });
 
 /**
- * **Meter의 치수는 시안이 정본이다** (projects-list design §11.3·§11.5).
+ * **Meter의 치수는 시안이 정본이다** (DESIGN §6.63).
  *
  * ⚠️ **이전 사이클(`new-project-modal`)에서 같은 캔버스를 주고도 구현이 시안과 갈렸다.** 원인은
  * "비슷한 유틸리티로 옮긴 것"이다 — `gap-2.5`(10)로 `gap 16`을, `rounded-sm`(8)로 `radius 4`를
@@ -219,7 +219,7 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **국기는 `LocaleFlag`를 재사용한다** (design §11.35) — 리포에 253개가 이미 있고 치수·radius가
+   * ⚠️ **국기는 `LocaleFlag`를 재사용한다** (DESIGN §6.63) — 리포에 253개가 이미 있고 치수·radius가
    * 시안과 같다. 새 자산도, 새 매핑도, `rounded-[2px]`도 만들지 않는다.
    */
   it("국기를 새로 만들지 않는다", () => {
@@ -236,7 +236,7 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
 });
 
 /**
- * **목록 본문의 치수는 시안이 정본이다** (projects-list design §11.2·§11.3·§11.5).
+ * **목록 본문의 치수는 시안이 정본이다** (DESIGN §6.63).
  *
  * ⚠️ **주석을 벗기고 센다** — 이 파일 위쪽의 `code()`가 그 일을 한다. 주석이 자기가 피하는 것을
  * 리터럴로 적는 부류라, 안 벗기면 주석만으로 green이 된다.
@@ -284,7 +284,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **Summary 넷이 목록 화면에서 사라진다** (projects-panel-rework §2-6). 계정 합계는 "어느
+   * ⚠️ **Summary 넷이 목록 화면에서 사라진다** (DESIGN §6.63). 계정 합계는 "어느
    * 프로젝트를 열지"에 쓰이지 않고, 같은 값을 프로젝트별로 쪼갠 것이 이미 행의 Meter와 아래 띠다.
    *
    * ⚠️ **`summaryQueue`·raw ④·`m.projects.summary.*`는 지우지 않는다** — `project-home`이 받는다
@@ -323,7 +323,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다** (design §4 F) — `project:settings` 뒤라 EDITOR에게
+   * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
    * 보여 주면 눌러서 거절당하는 경험이 된다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
    */
   it("세 링크가 `project:settings`로 갈린다", () => {
@@ -333,11 +333,15 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).toContain("m.projects.importFailure.contactOwner");
   });
 
-  /** 외부로 나가는 둘만 `ExternalLink` 12를 단다 (DESIGN §6.3). */
-  it("외부 링크가 새 탭과 글리프를 든다", () => {
+  /**
+   * ⚠️ **외부 링크에 글리프를 달지 않는다** (2026-09-18 사용자 판정 — DESIGN §6.3).
+   * 나가는 신호는 색과 새 탭이 들고, 아이콘은 띠 한 줄에서 자리만 먹었다. Home 리포 행이
+   * 2026-09-16에 먼저 뺐고 나머지 열이 그 뒤를 따랐다 — **예외를 다시 만들지 않는다.**
+   */
+  it("외부 링크가 새 탭을 열되 글리프를 달지 않는다", () => {
     expect(BODY).toContain('target="_blank"');
     expect(BODY).toContain('rel="noreferrer"');
-    expect(BODY).toContain('<ExternalLink className="size-3"');
+    expect(BODY).not.toContain("ExternalLink");
   });
 
   /** ⚠️ **`main`을 하드코딩하지 않는다** — 실제 base 브랜치 이름이 문구와 링크에 들어간다. */
@@ -348,9 +352,9 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
 });
 
 /**
- * **스켈레톤이 실물 골격을 따라간다** (projects-list design §11.3 · tasks T6).
+ * **스켈레톤이 실물 골격을 따라간다** (DESIGN §6.63).
  *
- * ⚠️ **이 화면은 GitHub을 기다린다** (design §3.4 ⊕) — 스켈레톤이 서 있는 시간이 전보다 길어졌고,
+ * ⚠️ **이 화면은 GitHub을 기다린다** (DESIGN §6.63) — 스켈레톤이 서 있는 시간이 전보다 길어졌고,
  * 골격이 실물과 어긋나면 그만큼 오래 어긋나 보인다. 데이터가 도착하는 순간의 튐이 로딩 표시보다
  * 더 눈에 띈다.
  */
@@ -400,7 +404,7 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 });
 
 /**
- * **폭 축소는 컨테이너 쿼리다** (design §6).
+ * **폭 축소는 컨테이너 쿼리다** (DESIGN §6.63).
  *
  * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-[1280px]`을 들어 가로 스크롤이 먼저
  * 생기고, 패널 폭은 같은 뷰포트에서도 **LNB 리사이즈(200~320)**로 두 값이 된다 — 실제로 변하는 것은
@@ -427,7 +431,7 @@ describe("Meter 폭 축소 — 컨테이너 기준", () => {
   });
 
   /**
-   * ⚠️ **대체 문장은 `shrink-0`으로 되돌리지 않는다** (design §9-I). Meter 개수만 줄여 놓고 문장을
+   * ⚠️ **대체 문장은 `shrink-0`으로 되돌리지 않는다** (DESIGN §6.63). Meter 개수만 줄여 놓고 문장을
    * 고정 폭으로 두면 좁은 화면에서 그 문장이 우측 배지를 밀어낸다.
    */
   it("Meter 대체 문장이 줄어들 수 있다", () => {

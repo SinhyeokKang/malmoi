@@ -1,16 +1,14 @@
 /** Real Blob I/O smoke; only its random probe is deleted. Orphan candidates are read-only. */
-import { config } from "dotenv";
 import { randomBytes } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
 import { requireEnv } from "../lib/env";
 import { decodeUser, readable } from "../lib/credentials/records";
 import { validatePiiReadKeys } from "../lib/credentials/storage";
 import { imageObjectKey, planImageDelete } from "../lib/upload/image";
 import { deleteImage, listImages, putImage } from "../lib/upload/store";
+import { loadLocalEnv, scriptPrisma } from "./local";
 
-config({ path: ".env.local", quiet: true });
+loadLocalEnv();
 let stage = "blob-token-configuration";
 
 async function main() {
@@ -18,7 +16,7 @@ async function main() {
   stage = "pii-read-key";
   validatePiiReadKeys();
   stage = "database-configuration";
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: requireEnv("DATABASE_URL") }) });
+  const prisma = scriptPrisma(requireEnv("DATABASE_URL"));
   // A complete PNG, not just its signature; the production store receives the actual bytes.
   const bytes = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
   const key = imageObjectKey("smoke", "png", randomBytes(24).toString("base64url"));

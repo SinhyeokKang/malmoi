@@ -24,7 +24,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
 
-const { archiveProject, unarchiveProject } = await import("../projects/actions");
+const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
 const { saveTranslation, triggerPullAction } = await import("../actions");
 
 const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
@@ -69,6 +69,20 @@ describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => 
     const result = await triggerPullAction("beta");
     expect(result).toEqual({ status: "failed", error: "archived", delivery: "not-started", retryable: false });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
+  });
+
+  /**
+   * ⚠️ **`project:settings` 뒤에 있어서 인가가 안 막는다** (PRODUCT §7.9 — 그 권한만 통과시키는 것이
+   * 보관을 편도로 만들지 않기 위해서다). 그래서 **번역을 바꾸는 Action은 자기가 한 번 더 봐야 한다** —
+   * 형제 `addSurface`·`runRepositoryImport`가 이미 그렇게 한다.
+   *
+   * ⚠️ **막히기는 했다 — 다만 너무 늦게다.** `lib/push/apply.ts`의 트랜잭션 가드가 던져서 번역이
+   * 실제로 바뀌지는 않았는데, 그때는 이미 스냅샷을 내려받은 뒤이고 호출부가 그 예외를
+   * `ingest-failed`로 접어 **"적재에 실패했다"로 오진**했다 (launch-readiness L3.4).
+   */
+  it("첫 적재가 archived로 거부된다 — 스냅샷을 받기 전에", async () => {
+    const result = await runFirstIngest({ slug: "beta" });
+    expect(result).toEqual({ ok: false, error: "archived" });
   });
 
   it("보관되지 않은 프로젝트는 그대로 돈다 — 거부가 전역이 아니다", async () => {

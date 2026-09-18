@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **반응형 분기가 0개다** (8단계 규약 3 — 최소 대응 너비 1280).
  *
- * ⚠️ **항목 노출은 편의이고 차단이 아니다** (design §2). EDITOR에게 Project settings를 안 보이는 것은
+ * ⚠️ **항목 노출은 편의이고 차단이 아니다** (DESIGN §6.5). EDITOR에게 Project settings를 안 보이는 것은
  * 없는 문을 안 보이게 하는 것뿐이고, URL 직접 진입은 페이지의 `requireProjectAccess`가 막는다.
  *
  * ⚠️ **pathname에서 뽑은 slug는 표시용이다** — `activeProject`가 그것을 **내 멤버십 목록 안에서**

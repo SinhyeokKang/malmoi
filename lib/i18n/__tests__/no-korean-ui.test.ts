@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **화면에 닿는 소스에 한글 리터럴이 없다** (design §3.1.5).
+ * **화면에 닿는 소스에 한글 리터럴이 없다** (CLAUDE.md 코드 컨벤션).
  *
  * UI 문자열의 단일 출처는 `messages/en.tsx`이고, 그 규칙을 지키는 것은 리뷰가 아니라 이 검사다.
  *
@@ -40,7 +40,7 @@ const ROOTS = ["app", "components", "lib", "messages"];
 const ROOT_FILES = ["auth.ts", "middleware.ts"];
 
 /**
- * 스캔에서 빼는 갈래 (design §3.1.4).
+ * 스캔에서 빼는 갈래 (CLAUDE.md 코드 컨벤션).
  *
  * - `lib/survey/**`·`lib/scan/**` — 웹 UI가 아니라 `pnpm adapter-survey`·`pnpm scan`의 **터미널 출력**이다.
  *

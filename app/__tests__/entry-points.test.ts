@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (spec 완료 조건 6).
+ * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (ARCHITECTURE §6.1).
  *
  * ⚠️ 읽어서 판정하는 것은 한 번 지나면 무너진다. `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를
  * 순회해 매트릭스를 강제하는 것과 같은 성질의 **상시 방어선**이다 — 새 Action·새 페이지가 인가를
@@ -27,7 +27,7 @@ import { describe, expect, it } from "vitest";
  * ⚠️ **`requireUser`는 프로젝트 인가가 아니다** (2026-09-09, sec-audit 발견 14). 전에는 `GUARDS`에
  * 섞여 있어 **프로젝트 스코프 Action이 `requireUser()`만 불러도 green**이었다. 지금은 갈라져 있고,
  * `requireUser`로 충분한 export는 **이름으로** 고정한다 — 전부 **사용자 소유 행**만 만지거나
- * 인가할 프로젝트가 아직 없는 생성 경로다 (design §3.6).
+ * 인가할 프로젝트가 아직 없는 생성 경로다 (ARCHITECTURE §6.1).
  *
  * ⚠️ **`invite/actions.ts`의 면제도 파일이 아니라 export 단위다.** 파일 단위였을 때는 그 파일에
  * export가 하나 늘면 검사 밖이었다.
@@ -41,7 +41,7 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const EXEMPT = new Set([
   "api/push/route.ts",
   /**
-   * CI 파싱 실패 보고 (projects-list design §3.35). **세션 인가가 아니라 그 프로젝트의 push 토큰이
+   * CI 파싱 실패 보고 (PRODUCT §7.8). **세션 인가가 아니라 그 프로젝트의 push 토큰이
    * 대신한다** — `/api/push`와 같은 계보이고, 호출자가 사람이 아니라 GitHub Actions다.
    */
   "api/push/failure/route.ts",
@@ -84,7 +84,7 @@ const USER_SCOPED_ACTIONS = new Set([
   "account/actions.ts#deleteProfileImage",
   // The display name is the user's own — a person with no project still owns it.
   "account/actions.ts#updateProfileName",
-  // 생성 경로 — 아직 프로젝트가 없다 (design §3.6)
+  // 생성 경로 — 아직 프로젝트가 없다 (ARCHITECTURE §6.1)
   "projects/actions.ts#listConnectableRepos",
   "projects/actions.ts#detectRepoFormats",
   "projects/actions.ts#listRepoBranches",
@@ -265,7 +265,7 @@ describe("차단 규칙", () => {
     const CONDITIONAL_RENDER = /if \(!session[^)]*\)\s*\{?\s*return\s*\(?\s*</;
 
     // ⚠️ **`/invite/[token]`만 예외다.** 비로그인에게 **마스킹한 이메일·프로젝트 이름·역할**만
-    // 보이고 번역 데이터는 조회조차 하지 않는다 — 새는 것이 그것이 전부라 허용한다 (design §4.1).
+    // 보이고 번역 데이터는 조회조차 하지 않는다 — 새는 것이 그것이 전부라 허용한다 (ARCHITECTURE §6.1).
     for (const entry of ENTRY_POINTS.filter((e) => e.path !== "invite/[token]/page.tsx")) {
       expect(entry.source).not.toMatch(CONDITIONAL_RENDER);
     }
@@ -306,7 +306,7 @@ describe("죽은 라우트 링크", () => {
   ));
 
   /**
-   * ⚠️ **`lib/routes.ts`도 읽는다** (translation-ui design §3.3). 링크 생성이 그 파일 한 곳으로
+   * ⚠️ **`lib/routes.ts`도 읽는다** (PRODUCT §7.7). 링크 생성이 그 파일 한 곳으로
    * 모이면서, `app/` 아래만 스캔하는 이 검사가 **가장 중요한 파일을 못 보게** 됐다.
    */
   const LINK_SOURCES = [
@@ -454,7 +454,7 @@ describe("쿼리 파라미터의 수신자", () => {
   const EXTRA_EMITTERS = [
     "components/projects/project-list.tsx",
     /**
-     * ⚠️ **2026-09-13에 들어왔다** (projects-list §1). 필터 탭이 사라지면서 `routes.projects({ q })`의
+     * ⚠️ **2026-09-13에 들어왔다** (DESIGN §6.63). 필터 탭이 사라지면서 `routes.projects({ q })`의
      * **유일한 발신처**가 이 파일이 됐다 — 목록 본문에는 인자 없는 `routes.projects()`만 남는다.
      * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 스스로 반복한다.
      */
@@ -517,7 +517,7 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
     // 3번 — 인자 객체. 이 셋이 2026-09-11까지 전부 검사 밖이었다.
     expect(EMITTED.some((x) => x.target === "/account" && x.key === "sessionRevocation")).toBe(true);
-    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(projects-list §1),
+    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(DESIGN §6.63),
     // 그것을 실어 보내던 자리가 검색창 하나로 줄었다.
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "q")).toBe(true);
   });
@@ -650,7 +650,7 @@ describe("세션 읽기 단일 진입점", () => {
  * 두고 있었다 (2026-09-07, T7이 `/projects/new`를 더하면서 자동 검사가 없다는 것이 드러났다).
  *
  * ⚠️ **`(edit)` 밖은 대상이 아니다** — `/`(로그인)와 `/invite/[token]`은 **일부러** matcher 밖이고,
- * 후자는 넣으면 초대 토큰이 `/`로 302되며 사라진다 (design §4.1).
+ * 후자는 넣으면 초대 토큰이 `/`로 302되며 사라진다.
  */
 describe("보호 라우트가 미들웨어 matcher에 있다", () => {
   const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -713,7 +713,7 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
    * 그대로 따르는 사람이 정확히 이 함정을 밟는다.
    *
    * ⚠️ **비로그인으로 열려야 하는 라우트 전부가 대상이다** — `/`(랜딩 자리)·`/signin`·`/invite`
-   * (토큰이 `/`로 302되며 사라진다, design §4.1)·공개 문서 둘.
+   * (토큰이 `/`로 302되며 사라진다, ARCHITECTURE §6.1)·공개 문서 둘.
    */
   it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
     // ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면

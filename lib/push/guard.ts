@@ -11,7 +11,7 @@
 export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format" | "archived";
 
 /**
- * 보관된 프로젝트는 CI push도 안 받는다 (7단계 — sync-runs design §4, 결정 9).
+ * 보관된 프로젝트는 CI push도 안 받는다 (7단계 — PRODUCT §7.9).
  *
  * ⚠️ **보관의 뜻이 "멈춘다"다.** 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀌는데, strict push라
  * 그 덮어쓰기는 되돌릴 수 없다 (`Translation`의 FK가 RESTRICT라 이물 키도 못 지운다). 대상 리포
@@ -30,7 +30,7 @@ export function checkArchived(archivedAt: Date | null): GuardResult {
  * ⚠️ **두 번째 인자가 2026-09-07에 바뀌었다** — 서버 env의 활성 프로젝트 slug 하나에서
  * `project.slug`(토큰으로 조회한 행)로. 순수 함수라 판정은 그대로이고 바뀐 것은 "무엇과 대조하는가"다.
  * 페이로드 slug로 행을 찾아 대조하면 순환이라 아무것도 막지 못한다 — 조회가 먼저, 대조가 나중이다
- * (design §3.8).
+ * (PRODUCT §7.8).
  */
 export function checkProjectSlug(payloadSlug: string, activeSlug: string): GuardResult {
   // Actions가 셸 치환으로 값을 만들면 개행이 딸려올 수 있다.
@@ -78,7 +78,7 @@ export function checkProjectSlug(payloadSlug: string, activeSlug: string): Guard
  * 트림하지 않는다: 이 셋은 셸 치환이 아니라 **탐지 결과**에서 오고, `--adapter`·`--base`로 들어온
  * 값은 `isAdapterName`·`assemblePushInput`이 CLI에서 먼저 거부한다.
  *
- * ⚠️ **`baseLocale`만 `declaredBaseLocale`도 받는다** (6b-3 — design §3.13). OWNER가 설정 화면에서
+ * ⚠️ **`baseLocale`만 `declaredBaseLocale`도 받는다** (6b-3 — ARCHITECTURE §5.5.5). OWNER가 설정 화면에서
  * 선언한 값이고, 그것이 없으면 base를 바꾸는 순간 그 리포의 push가 **영영 409**다(워크플로를 고쳐도
  * 저장값은 옛 base라 되돌릴 경로가 DB 직접 수정뿐이다). **느슨해지는 것은 base 하나이고**
  * `adapter`·`pathTemplate`은 그대로 엄격하다 — 오배송을 막는 것은 그 둘이다.
@@ -110,7 +110,7 @@ export function checkFormat(
 
 /**
  * 이 push가 **base 로케일을 바꾸는가** — `planPush`가 `needsReview` 전파를 건너뛸지 정한다
- * (design §3.13).
+ * (ARCHITECTURE §5.5.5).
  *
  * ⚠️ 저장값이 없으면(첫 push) 변경이 아니다 — 비교 대상이 없고 기존 키도 없어 전파할 것이 애초에
  * 없다. 여기서 `true`를 내면 "첫 push는 전파를 끈다"는 무의미한 특례가 하나 생긴다.

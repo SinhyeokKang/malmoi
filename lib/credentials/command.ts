@@ -1,4 +1,6 @@
+import { optionalEnv } from "@/lib/env";
 import { CredentialError } from "./crypto";
+import { logCredentialFailure } from "./log";
 import type { ConversionOptions } from "./conversion";
 import type { MigrationMode } from "./migration";
 export function credentialCommand(args: string[]): ConversionOptions {
@@ -20,10 +22,11 @@ export function credentialCommand(args: string[]): ConversionOptions {
   if (result.apply && (!result.trafficBlocked || !result.writersDrained || mode === "verify")) throw new CredentialError();
   return result;
 }
-export function credentialTarget(env: Readonly<Record<string, string | undefined>>): { target: "dev" | "prod"; url: string } {
-  const target = env.CREDENTIAL_TARGET;
+// 환경변수는 `lib/env.ts`로 읽는다(CLAUDE.md) — `env`는 테스트가 주입하는 자리다. 스크립트는 넘기지 않는다.
+export function credentialTarget(env: Record<string, string | undefined> = process.env): { target: "dev" | "prod"; url: string } {
+  const target = optionalEnv("CREDENTIAL_TARGET", env);
   if (target !== "dev" && target !== "prod") throw new CredentialError();
-  const url = env[target === "prod" ? "DIRECT_URL_PROD" : "DIRECT_URL"];
+  const url = optionalEnv(target === "prod" ? "DIRECT_URL_PROD" : "DIRECT_URL", env);
   if (!url) throw new CredentialError();
   try {
     const parsed = new URL(url);
@@ -32,5 +35,5 @@ export function credentialTarget(env: Readonly<Record<string, string | undefined
     const pooler = parsed.hostname.endsWith(".pooler.supabase.com") && parsed.username === `postgres.${ref}`;
     if (!["postgres:", "postgresql:"].includes(parsed.protocol) || parsed.port !== "5432" || parsed.pathname !== "/postgres" || !(direct || pooler) || [...parsed.searchParams].some(([key, value]) => key !== "sslmode" || value !== "verify-full")) throw new CredentialError();
     return { target, url };
-  } catch { throw new CredentialError(); }
+  } catch (error) { logCredentialFailure("credential-target", error); throw new CredentialError(); }
 }

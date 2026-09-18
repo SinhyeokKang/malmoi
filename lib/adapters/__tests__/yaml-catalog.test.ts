@@ -210,12 +210,20 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
     expect(out).toContain("# 의미 단위 주석");
   });
 
-  it("중간 경로가 없으면 만든다", () => {
+  /**
+   * ⚠️ **중간 맵을 만들지 않는다** (launch-readiness L4.3 — 옛 제목 "중간 경로가 없으면 만든다"는 구현과 반대였다).
+   * 가장 깊이 존재하는 맵 아래에 남은 경로를 **점 키 리터럴 하나**로 넣는다 — 조회도 같은 걷기라(L1.4) 다음 write가
+   * 그 리터럴을 찾아 중복을 만들지 않는다. 옛 단언(값이 어딘가에 있다)은 두 모양을 가르지 못했다.
+   */
+  it("중간 경로가 없으면 가장 깊은 기존 맵에 점 키 리터럴로 넣는다", () => {
     const out = yamlCatalog.write(withSource(RAILS), {
       locale: "ko",
       entries: [{ key: "brand.new.deep", message: "깊은 새 값" }],
     })!;
-    expect(out).toContain("깊은 새 값");
+    expect(out).toMatch(/^  brand\.new\.deep: 깊은 새 값$/m);
+    expect(out).not.toMatch(/^\s*brand:\s*$/m);
+    const again = yamlCatalog.write(withSource(out), { locale: "ko", entries: [{ key: "brand.new.deep", message: "깊은 새 값" }] })!;
+    expect(again).toBe(out);
   });
 
   it("삽입 순서가 결정적이다 — 같은 입력이면 같은 바이트", () => {

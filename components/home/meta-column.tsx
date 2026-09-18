@@ -1,4 +1,4 @@
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -11,7 +11,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 
 /**
- * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · design §3.5).
+ * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · DESIGN §6.64).
  *
  * ⚠️ **구역이 둘이다** — 리포의 모양(주소·브랜치·표면·로케일·키·멤버)과 **시각**(마지막 Sync·
  * 마지막 Publish·생성·보관). 한 덩어리로 두면 아홉 행이 균질한 표가 되어 "언제"를 찾는 눈이
@@ -82,12 +82,10 @@ function value(row: MetaRow, now: Date): ReactNode {
         </span>
       ) : (
         /*
-          ⚠️ **이 링크만 `ExternalLink`를 안 단다** — 두 정본이 같은 답을 준다: 캔버스
-          (`design_handoff_project_home`)의 lucide 목록에 `external-link`가 없고 `2a`가 "리포 주소와
-          PR 번호만 링크"라고만 적으며, `docs/DESIGN.md` §6.3이 글리프를 다는 외부 링크 여덟을 이름으로
-          열거하는데 **"Home의 PR 링크"는 있고 이 리포 링크는 없다.** 바로 아래 `lastPublish`의 PR
-          링크는 그 목록에 있으므로 글리프를 그대로 든다 — `home-landmarks.test.tsx`가 그 **비대칭**을
-          센다(한쪽만 고치지 못하게).
+          ⚠️ **외부 링크에 글리프를 달지 않는다** (DESIGN §6.3). 이 자리가 2026-09-16에 먼저 뺐고 —
+          캔버스(`design_handoff_project_home`)의 lucide 목록에 `external-link`가 없다 — 2026-09-18에
+          나머지 열이 따라왔다. 나가는 신호는 색과 `target="_blank"`가 든다.
+          `home-landmarks.test.tsx`가 이 행과 아래 PR 행을 **함께** 세서 한쪽에만 되살아나지 못하게 한다.
         */
         <a
           href={row.href}
@@ -139,17 +137,16 @@ function value(row: MetaRow, now: Date): ReactNode {
         <span>
           {m.home.meta.pullRequest}{" "}
           {/*
-            ⚠️ **리포 밖으로 나가는 링크는 전부 색 + `ExternalLink` 12px이다** (DESIGN §6.3이 이 자리를
-            이름으로 든다). 아이콘이 빠지면 예고 없이 새 탭이 열리고, 접근 이름도 `#127` 하나가 된다.
+            ⚠️ **글리프 없이 색만 든다** (DESIGN §6.3 — 위 리포 행과 같은 규칙). 접근 이름이 `#127`
+            하나뿐이라 앞의 `{m.home.meta.pullRequest}`가 그것이 무엇인지 말하는 몫을 진다.
           */}
           <a
             href={row.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
           >
             {m.home.meta.pr(pr)}
-            <ExternalLink className="size-3" aria-hidden />
           </a>
           {` · ${relativeTime(row.at, now)}`}
         </span>

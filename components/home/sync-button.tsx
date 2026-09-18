@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, ExternalLink, LoaderCircle, TriangleAlert } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
@@ -18,7 +18,7 @@ import { routes } from "@/lib/routes";
  *
  * **이 Dialog가 유일한 방어선이다** — 동작은 되돌릴 수 없고 동료의 편집을 지운다(`lib/push/apply.ts`가
  * `"updatedBy" = NULL`로 저자까지 비운다). 되돌리기·부분 선택·"내 편집만 지키기"를 그리지 않는 것은
- * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (spec §6.1).
+ * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (ARCHITECTURE §0 불변식 2).
  *
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
@@ -29,7 +29,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
   /**
-   * 미연결·보관 — **비활성이고 부재가 아니다** (project-home spec §8의 `2c`·`2d`). 부재는 역할
+   * 미연결·보관 — **비활성이고 부재가 아니다** (DESIGN §6.64의 `2c`·`2d`). 부재는 역할
    * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
    * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
    */
@@ -49,7 +49,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const [pending, setPending] = useState(false);
   const [openPr, setOpenPr] = useState<OpenImportPr>(undefined);
   /**
-   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection design §4.1). 서버가 잠금 뒤 재계산해 대조하므로
+   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로
    * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
    */
   const approval = useRef<string | null>(null);
@@ -70,13 +70,13 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       () => { if (request.current === id) setOpenPr(undefined); },
     );
     return () => { request.current++; };
-  }, [open, slug, role]); // onOpenChange only closes an externally reopened pending dialog.
+  }, [open, slug, role]); // onOpenChange는 밖에서 다시 연 대기 Dialog를 닫기만 한다.
   /*
     ⚠️ **`pending`을 호스트로 끌어올리지 않고 알리기만 한다** — 이 값은 `open && !pending`과 트리거
     라벨이 쓰는 지역 상태이고, 올리면 프롭이 controlled 쌍으로 늘어난다. 이 effect가 그 하나의
     근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
   */
-  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange의 참조 변경은 트리거가 아니다.
   const plan = planImportConfirmation({ unsent, openPr });
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
@@ -126,7 +126,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     <DialogTrigger asChild>
       {/*
         ⚠️ **진행 중에도 `disabled`가 아니라 `aria-disabled`다** — `disabled`면 Radix가 Dialog를 닫을 때
-        포커스를 되돌릴 대상이 DOM에서 포커스를 못 받아 사라진다(spec §12-9). 겉모습은 `default disabled`
+        포커스를 되돌릴 대상이 DOM에서 포커스를 못 받아 사라진다(DESIGN §6.64). 겉모습은 `default disabled`
         그대로이고 바뀌는 것은 포커스 가능성뿐이며, 클릭·Enter 연타는 핸들러가 막는다 (시안 §8).
 
         ⚠️ **그 겉모습을 여기서 그리지 않는다** (2026-09-17) — `buttonClass`의 `aria-disabled:` 짝이
@@ -205,9 +205,8 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
             )}</p>
           : openPr !== undefined && openPr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring inline-flex items-baseline gap-1 text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
                   {m.repositorySync.seeOpen}
-                  <ExternalLink className="size-3" aria-hidden />
                 </a></p>
             : null}
       </>}

@@ -3,14 +3,14 @@ import { m } from "@/lib/i18n";
 
 /**
  * 갈래 누락을 **컴파일 타임에** 잡는다 — 사전이 잎이라 union을 그쪽에서 import할 수 없으므로
- * 소비자가 `satisfies`를 건다 (translation-ui design §3.1.2). `ACCESS`·`INVITE`·`CONNECT`·`ONBOARD`와
+ * 소비자가 `satisfies`를 건다 (CLAUDE.md 코드 컨벤션). `ACCESS`·`INVITE`·`CONNECT`·`ONBOARD`와
  * 같은 형이고, 이것이 옛 `never` 검사가 하던 일이다.
  */
 const ADAPTER = m.adapterErrors satisfies Record<AdapterErrorCode | "fallback", string>;
 
 /**
  * **어댑터 오류 하나를 사람이 읽는 한 줄로.** 문장은 사전이 내고 어댑터는 코드만 준다
- * (translation-ui design §3.1.4, 6b-1).
+ * (CLAUDE.md 코드 컨벤션, 6b-1).
  *
  * ⚠️ **잎이어야 한다** — 온보딩의 클라이언트 컴포넌트 둘이 이걸 읽으므로 import 그래프가 곧 번들이다.
  * `@/lib/adapters/types`는 **타입만** 가져온다(값으로 끌어오면 `ADAPTER_ERROR_CODES`를 따라

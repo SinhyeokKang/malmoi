@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { shouldRefocus } from "../refocus";
 
 /**
- * ⚠️ **blur 저장은 비동기다** (translation-ui design §3.8). 실패 응답이 올 때 사용자는 이미 **다음 셀에
+ * ⚠️ **blur 저장은 비동기다** (DESIGN §6.1). 실패 응답이 올 때 사용자는 이미 **다음 셀에
  * 타이핑 중**일 수 있고, 그 순간 커서를 뺏으면 입력이 엉뚱한 셀로 들어간다 (WCAG 3.2 예측 가능성).
  * 처음 초안은 실패 시 무조건 `focus()`였고 CDO 검수가 그것을 잡았다.
  *
