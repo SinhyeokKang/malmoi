@@ -56,7 +56,7 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
     if (!plan.ok) return plan;
     /**
-     * **폐기 승인은 잠금 뒤에 재계산한다** (design §4.1 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
+     * **폐기 승인은 잠금 뒤에 재계산한다** (ARCHITECTURE §5.5.2 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
      * 클라이언트의 `discard: true`를 믿지 않는다 — Dialog 뒤 새 편집·적용·설정 변경은 전부 지문을 바꿔 reconfirm이 된다.
      */
     const approval = await readDiscardApproval(tx, { projectId: project.id, userId: input.userId });

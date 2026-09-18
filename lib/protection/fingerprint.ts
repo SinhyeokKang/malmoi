@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
 /**
- * 수동 Sync 폐기 승인 지문 (sync-edit-protection design §4.1).
+ * 수동 Sync 폐기 승인 지문 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인).
  *
  * **HMAC·만료가 없다.** 토큰 원문이 서버 밖으로 나가지 않으므로(§2) 클라이언트는 지문을 위조할 수 없고, 재사용은
  * 상태 변화(새 편집·적용·설정 변경)가 지문을 바꿔 막는다. 서버는 잠금 **뒤** 같은 입력으로 재계산해 대조한다

@@ -107,7 +107,7 @@ async function startRun(
       select: { finishedAt: true },
     });
 
-    // 수동 Sync가 리포 값으로 덮는 중이면 스냅샷이 절반만 덮인 DB가 된다 — 같은 Project 잠금 안에서 읽는다 (sync-edit-protection design §4.2).
+    // 수동 Sync가 리포 값으로 덮는 중이면 스냅샷이 절반만 덮인 DB가 된다 — 같은 Project 잠금 안에서 읽는다 (sync-edit-protection — ARCHITECTURE §5.6.1).
     const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
     const activeImport = importing?.repositoryImportToken != null && importing.repositoryImportStartedAt !== null
       ? { startedAt: importing.repositoryImportStartedAt } : null;

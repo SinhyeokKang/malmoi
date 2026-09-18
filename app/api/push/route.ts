@@ -168,7 +168,7 @@ export async function POST(request: Request): Promise<NextResponse> {
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
     /**
-     * **보류 판정이 진행 표시보다 먼저다** (sync-edit-protection design §3). 보류는 아무것도 하지 않은 것이라 표시를
+     * **보류 판정이 진행 표시보다 먼저다** (sync-edit-protection — ARCHITECTURE §5.5.2). 보류는 아무것도 하지 않은 것이라 표시를
      * 세웠다 지우는 쓰기조차 없어야 한다(완료 조건 2) — 그래서 표시 전에 한 번 센다. 판정과 적용 사이 경합은
      * `applyProtectedPush`가 잠금 안에서 다시 세고 재집계로 잡는다.
      *
@@ -248,7 +248,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 /**
  * 보류 응답. **200이다** — 오류가 아니라 "편집이 먼저 전달돼야 한다"는 정상 결과이고, 구 action 태그(`@malmoi-i18n-push-v1`)의
- * CLI도 `res.ok`로 exit 0이 된다(design §3). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
+ * CLI도 `res.ok`로 exit 0이 된다(ARCHITECTURE §5.5.2). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
  */
 function deferred(projectId: string, commitSha: string, pendingCount: number): NextResponse {
   return NextResponse.json<PushResponse>({ status: "deferred", reason: "pending-edits", pendingCount, projectId, commitSha });

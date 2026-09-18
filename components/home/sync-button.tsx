@@ -49,7 +49,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const [pending, setPending] = useState(false);
   const [openPr, setOpenPr] = useState<OpenImportPr>(undefined);
   /**
-   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection design §4.1). 서버가 잠금 뒤 재계산해 대조하므로
+   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로
    * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
    */
   const approval = useRef<string | null>(null);

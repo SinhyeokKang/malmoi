@@ -23,7 +23,7 @@ export async function markImportStarted(prisma: PrismaClient, scope: { projectId
 /**
  * 서버 적재가 **아무것도 안 하고 끝났다** — 진행 표시만 거둔다(결과 필드는 건드리지 않는다).
  *
- * CI 적재가 판정 뒤 경합으로 보류됐을 때다(sync-edit-protection design §3). 보류는 실패도 성공도 아니라서
+ * CI 적재가 판정 뒤 경합으로 보류됐을 때다(sync-edit-protection — ARCHITECTURE §5.5.2). 보류는 실패도 성공도 아니라서
  * `finishImportRun`으로 닫으면 마지막 실패·성공 기록이 거짓으로 바뀐다. 안 거두면 300초 "진행 중"이 남는다(POSTMORTEM 2026-09-15).
  * ⚠️ 자기 실행 토큰을 대조한다 — 그 사이 다른 실행의 표시를 뺏지 않는다. 쓰기 실패는 `finishImportRun`과 같은 이유로 삼킨다.
  */

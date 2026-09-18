@@ -3,7 +3,7 @@ import { discardFingerprint } from "@/lib/protection/fingerprint";
 import { loadPendingEdits } from "@/lib/protection/where";
 
 /**
- * 수동 Sync 폐기 승인의 **발급과 재계산이 같은 함수다** (sync-edit-protection design §4.1). 발급은 Dialog가 열릴 때
+ * 수동 Sync 폐기 승인의 **발급과 재계산이 같은 함수다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 발급은 Dialog가 열릴 때
  * (`prepareRepositorySync`), 재계산은 실행권 트랜잭션의 Project 잠금 뒤다(`lib/import/run.ts`). 입력이 한 벌이어야
  * "같은 상태 → 같은 지문"이 선다 — 둘이 각자 입력을 모으면 한쪽에 필드가 늘 때 모든 승인이 reconfirm이 된다.
  *

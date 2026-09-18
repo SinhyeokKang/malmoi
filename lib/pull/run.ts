@@ -34,7 +34,7 @@ export type PullProject = {
   lastPulledAt: Date | null;
 };
 
-/** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection design §2). 원문은 서버 밖으로 나가지 않는다. */
+/** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`). 원문은 서버 밖으로 나가지 않는다. */
 export type PendingEdit = { id: string; token: string };
 
 export type PullState = {
@@ -206,7 +206,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // 그 편집이 1층에 걸려 다음 실행이 스킵하고, 브랜치는 옛 스냅샷 그대로 남는다.
     // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
-    // (sync-edit-protection design §6.1 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
+    // (sync-edit-protection — OPERATIONS의 배포 절차 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);
     return { status: "skipped", reason: "no-changes" };
   }

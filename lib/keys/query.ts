@@ -109,7 +109,7 @@ export async function loadKeys(
       id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
       surface: { select: { archivedAt: true } },
       translations: {
-        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection design §2).
+        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
         select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true, pendingEditToken: true,
           locale: { select: { orphaned: true } } },
       },

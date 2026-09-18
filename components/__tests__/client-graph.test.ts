@@ -269,7 +269,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **보호 판정은 화면이 값으로 읽고, 지문은 서버만 계산한다** (sync-edit-protection design §7). 두 모듈이
+   * ⚠️ **보호 판정은 화면이 값으로 읽고, 지문은 서버만 계산한다** (sync-edit-protection — DIRECTORY의 `lib/protection/`). 두 모듈이
    * 같은 디렉터리라 `plan.ts`가 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 온다 — 소비자
    * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
    */

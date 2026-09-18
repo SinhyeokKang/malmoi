@@ -1235,7 +1235,7 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
 }
 
 /**
- * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection design §4.1). OWNER 전용 — Sync와 같은 권한이다.
+ * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). OWNER 전용 — Sync와 같은 권한이다.
  *
  * ⚠️ **토큰 원문을 돌려주지 않는다** — 지문과 건수만 간다. 원문이 화면에 가면 클라이언트가 지문을 스스로 만들 수 있다.
  * ⚠️ 실패는 `undefined`다 — 화면은 `null` 승인으로 실행하고 서버가 reconfirm으로 답한다(폐기가 조용히 열리는 경로가 없다).

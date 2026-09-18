@@ -316,7 +316,7 @@ describe("backfill (T5)", () => {
   });
 
   /**
-   * ⚠️ **design §6.1의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
+   * ⚠️ **OPERATIONS 배포 절차의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
    * `lastPulledAt` 전진으로 0이 된다. 그 경로가 캡처를 해제하지 않으면 토큰만 남고, backfill은 더하기만 하므로 못 지운다.
    */
   it("[C5] 편집 → no-changes 전달 확인 뒤 옛 술어 0 = 활성 토큰 0 — 유령 pending이 없다", async () => {
@@ -422,7 +422,7 @@ describe("CI 적재 보류 (T7)", () => {
     { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null });
 
   /**
-   * ⚠️ **판정과 upsert 사이에 커밋된 저장** (design §3). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
+   * ⚠️ **판정과 upsert 사이에 커밋된 저장** (ARCHITECTURE §5.5.2). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
    * StringKey UPDATE에서 세우고(판정 count는 이미 끝났다) 그 사이에 저장을 커밋한다 — sleep이 아니라 잠금 대기가 barrier다.
    */
   it("[C1][C7] 판정 뒤·upsert 전 저장 → 재집계로 전체 롤백 → deferred, 저장한 편집 유지 (저장 없음 → applied 대조)", async () => {

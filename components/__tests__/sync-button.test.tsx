@@ -238,7 +238,7 @@ it("권한 변경으로 트리거가 사라지면 Home의 대체 포커스로 �
 });
 
 /**
- * **폐기 승인은 서버가 Dialog를 열 때 발급한 지문이다** (sync-edit-protection T9, design §4.1). `discard: true` 같은 boolean을 보내지 않는다 —
+ * **폐기 승인은 서버가 Dialog를 열 때 발급한 지문이다** (sync-edit-protection T9 — ARCHITECTURE §5.5.2). `discard: true` 같은 boolean을 보내지 않는다 —
  * 서버가 잠금 뒤 재계산해 대조하므로 Dialog 뒤 새 편집·설정 변경이 있으면 거기서 reconfirm이 된다.
  */
 it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실패면 null을 보내 서버가 재확인을 요구하게 둔다", async () => {
@@ -256,7 +256,7 @@ it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실�
 });
 
 /**
- * **문장을 늘리지 않고 교체한다** (sync-edit-protection T13, design §4.3). 경고 블록이 폐기를 한 번 말하고, 같은 사실을 두 번 말하지 않는다.
+ * **문장을 늘리지 않고 교체한다** (sync-edit-protection T13 — DESIGN §6.2). 경고 블록이 폐기를 한 번 말하고, 같은 사실을 두 번 말하지 않는다.
  */
 it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 말한다 — 취소하면 아무것도 안 부른다", async () => {
   await render(<SyncButton {...props} unsent={3} />);

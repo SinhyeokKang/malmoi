@@ -1,5 +1,5 @@
 /**
- * 미전달 편집 보호의 순수 판정 (sync-edit-protection design §7).
+ * 미전달 편집 보호의 순수 판정 (sync-edit-protection — DIRECTORY의 `lib/protection/`).
  *
  * **I/O가 0이고 리포를 보지 않는다.** 자동 적재의 보류는 DB의 pending 수 하나로 갈리며, 리포 값과 DB 값을
  * 견주는 입력이 원리적으로 없다 — 이 모듈에 그런 입력이 생기는 순간 병합이다(ARCHITECTURE §0 불변식 2).

@@ -93,7 +93,7 @@ export type ApplyOptions = {
    */
   importOutcome?: ImportFailureCode | null;
   /**
-   * 덮어도 되는 편집 토큰 — 수동 Sync에서 OWNER가 폐기를 승인한 집합이다 (sync-edit-protection design §4.1).
+   * 덮어도 되는 편집 토큰 — 수동 Sync에서 OWNER가 폐기를 승인한 집합이다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인).
    * strict upsert는 **토큰이 없거나 이 목록에 있는 셀만** 덮는다. 목록 밖의 토큰은 승인 뒤 들어온 저장이라 살아남는다.
    *
    * ⚠️ **optional이고 기본은 빈 목록 = 토큰 있는 셀을 하나도 안 덮는다.** 빠졌을 때의 기본이 **편집 보존**이라 안전한 쪽이다
@@ -120,7 +120,7 @@ class PendingEditsDuringApply extends Error {
 export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number };
 
 /**
- * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection design §3).
+ * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
  * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
  *
@@ -337,10 +337,10 @@ async function applyWith(
         -- 미배포 집계(isUnpublished)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
         "updatedBy" = NULL,
         -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
-        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection design §2).
+        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection — ARCHITECTURE §5의 pendingEditToken 절).
         "pendingEditToken" = NULL,
         "updatedAt" = ${now}
-      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection design §3).
+      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection — ARCHITECTURE §5.5.2).
       -- 승인된 폐기(수동 Sync)의 토큰만 예외다. 조건 불일치는 0행이라 조용하므로 CI 경로는 재집계가 그 무음을 깬다.
       WHERE "Translation"."pendingEditToken" IS NULL OR "Translation"."pendingEditToken" = ANY(${[...(options.approvedTokens ?? [])]}::text[])`]),
 

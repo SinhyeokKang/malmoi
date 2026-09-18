@@ -70,7 +70,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
   // 1층 판정값 — `countUnpublished`와 같은 토큰 술어다. 시각으로 세면 push가 올린 `updatedAt`이 편집으로 읽히고
   // (T0), 저자·시각으로 세면 같은 밀리초 재저장과 전달 확인을 못 가른다 (sync-edit-protection T8).
   const unpublished = await countPending(prisma, project.id);
-  // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection design §2).
+  // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
   // 0이면 조회하지 않는다 — 관계 조인이 낡은 통계에서 인덱스를 버리는 창이 있다(`countPending` 주석). 같은 스냅샷이라 결과가 같다.
   const pending = unpublished === 0 ? [] : await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
 

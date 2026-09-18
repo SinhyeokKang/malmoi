@@ -31,7 +31,7 @@ export const STALE_AFTER_SECONDS = 300;
 
 /**
  * 실행 표시가 아직 살아 있는가. **Publish와 수동 Sync(`lib/import/plan.ts`의 `hasActiveImport`)가 이 하나를 쓴다** —
- * 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 창에서 둘이 동시에 돈다 (sync-edit-protection design §4.2).
+ * 경계가 두 벌이면 한쪽은 막고 한쪽은 여는 창에서 둘이 동시에 돈다 (sync-edit-protection — ARCHITECTURE §5.6.1).
  * 경계 정각은 아직 진행 중이다 — 진행 중인 실행을 뺏지 않는다.
  *
  * ⚠️ 방향이 이쪽이다 — `lib/import/plan.ts`는 `@/lib/adapters`(ts-morph)를 물어 이 모듈이 그쪽을 import하면 안 된다.
@@ -111,7 +111,7 @@ export function planSyncStart(input: {
   trigger: SyncTriggerKind;
   /**
    * 진행 중인 수동 Sync(`Project.repositoryImportStartedAt`). Sync가 리포 값으로 덮는 중에 Publish가 스냅샷을 뜨면
-   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection design §4.2). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다.
+   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection — ARCHITECTURE §5.6.1). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다.
    */
   activeImport: { startedAt: Date } | null;
 }): SyncStart {

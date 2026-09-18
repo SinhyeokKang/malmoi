@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
- * **토큰 술어** — 활성 표면 · 활성 키 · 활성 로케일에서 아직 전달 확인되지 않은 편집 (sync-edit-protection design §2).
+ * **토큰 술어** — 활성 표면 · 활성 키 · 활성 로케일에서 아직 전달 확인되지 않은 편집 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
  *
  * **미전달 술어의 주인은 여기 하나다** — `countUnpublished`·pull 1층·Publish 캡처·Publish 미리보기가 이 객체를 쓰고,
  * 손 사본은 셀 투영(`lib/keys/query.ts` `loadKeys`의 `pending`)과 목록 raw SQL ⑤뿐이다(`pnpm test:projects:postgres`가 대조한다).

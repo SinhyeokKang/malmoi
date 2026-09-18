@@ -273,7 +273,7 @@ model Translation {
   /// 옛 행은 한 행도 못 찾는다. `User.id`를 쓰는 이유는 이메일이 재할당될 수 있어서다 (SAAS §5.6).
   updatedBy   String?
 
-  /// **아직 전달 확인되지 않은 마지막 편집의 식별자** (sync-edit-protection design §2). 저장이 값을 실제로 바꿀 때
+  /// **아직 전달 확인되지 않은 마지막 편집의 식별자** (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`). 저장이 값을 실제로 바꿀 때
   /// 새 UUID를 쓰고, strict 적재가 덮을 때와 Publish가 `(id, token)` 조건부 UPDATE로 전달 확인할 때 비운다.
   ///
   /// ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 구별할 수 없고, 그 구별이
