@@ -413,7 +413,36 @@ describe("runPull — 커밋·PR 경로", () => {
   it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync", "dev"]);
+    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync"]);
+  });
+
+  /**
+   * ⚠️ **base를 바꾼 뒤에도 같은 PR이다** (launch-readiness L3.7). 조회를 저장된 base로 거르면 옛 base의
+   * PR을 못 찾아 같은 head로 PR이 하나 더 열린다 — GitHub은 base가 다르면 그것을 막지 않는다.
+   * 스냅샷 커밋은 이미 새 base 위에 있으므로 옛 PR의 base를 옮긴다.
+   */
+  it("열린 PR의 base가 설정과 다르면 새로 열지 않고 base를 옮긴다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}`, base: "main" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    const result = await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("createPr");
+    expect(calls.find((c) => c.method === "updatePrBase")?.args).toEqual([7, "dev"]);
+    expect(result).toMatchObject({ status: "committed", pr: "updated", prUrl: "https://github.com/o/r/pull/7" });
+  });
+
+  it("열린 PR의 base가 설정과 같으면 base를 건드리지 않는다 (짝)", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/7", number: 7, title: `x ${SKIP_MARKER}`, base: "dev" },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map((c) => c.method)).not.toContain("updatePrBase");
   });
 
   it("성공하면 lastPulledAt을 캡처 값으로 갱신한다", async () => {

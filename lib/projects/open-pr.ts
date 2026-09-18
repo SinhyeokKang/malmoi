@@ -8,7 +8,6 @@ export async function loadOpenPrUrl(
   project: {
     repoOwner: string;
     repoName: string;
-    baseBranch: string;
     installationId: string | null;
     repositoryId: string | null;
     archivedAt: Date | null;
@@ -21,7 +20,7 @@ export async function loadOpenPrUrl(
   if (project.repositoryId === null) return undefined;
   try {
     const client = await createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
-    const pr = await client.findOpenPr(`${project.repoOwner}:${syncBranchFor(slug)}`, project.baseBranch);
+    const pr = await client.findOpenPr(`${project.repoOwner}:${syncBranchFor(slug)}`);
     return pr === null ? null : pr.url;
   } catch {
     return undefined;

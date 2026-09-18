@@ -227,7 +227,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // `owner:branch` 형식이어야 필터가 걸린다 — 브랜치명만 넘기면 GitHub이 조용히 무시해
   // 전체 목록이 오고, 재사용 판정이 무너져 PR이 중복 생성된다.
   const head = `${project.repoOwner}:${deps.syncBranch}`;
-  const existing = await client.findOpenPr(head, project.baseBranch);
+  const existing = await client.findOpenPr(head);
   let prUrl: string;
   if (existing === null) {
     prUrl = await client.createPr(
@@ -242,6 +242,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // 제목은 두는 것이라(사람이 고친 제목을 덮지 않는다) 결과가 같으면 PATCH도 없다.
     const title = withSkipMarker(existing.title);
     if (title !== existing.title) await client.updatePrTitle(existing.number, title);
+    // 설정에서 base를 바꾼 뒤의 PR이다 — 스냅샷 커밋은 이미 새 base 위에 있다 (launch-readiness L3.7).
+    if (existing.base !== project.baseBranch) await client.updatePrBase(existing.number, project.baseBranch);
     prUrl = existing.url;
   }
 

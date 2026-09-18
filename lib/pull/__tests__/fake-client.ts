@@ -20,7 +20,7 @@ export type FakeGitOptions = {
   /** blob SHA → 내용. 주입되지 않은 SHA를 요구하면 던진다. */
   blobs?: Record<string, string>;
   /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
-  openPr?: { url: string; number: number; title: string };
+  openPr?: { url: string; number: number; title: string; base?: string };
   /** 이 메서드가 호출되면 던진다. 실패 후 상태(`lastPulledAt` 미갱신)를 검증하는 입력이다. */
   failOn?: keyof GitClient;
 };
@@ -72,9 +72,10 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     async updateRefForce(branch, sha) {
       record("updateRefForce", [branch, sha]);
     },
-    async findOpenPr(head, base) {
-      record("findOpenPr", [head, base]);
-      return opts.openPr ?? null;
+    async findOpenPr(head) {
+      record("findOpenPr", [head]);
+      // base를 안 주면 테스트 프로젝트의 기본 base(`dev`)다 — 어긋남 경로는 명시할 때만 탄다.
+      return opts.openPr === undefined ? null : { ...opts.openPr, base: opts.openPr.base ?? "dev" };
     },
     async createPr(headBranch, baseBranch, title, body) {
       record("createPr", [headBranch, baseBranch, title, body]);
@@ -82,6 +83,9 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     },
     async updatePrTitle(pullNumber, title) {
       record("updatePrTitle", [pullNumber, title]);
+    },
+    async updatePrBase(pullNumber, base) {
+      record("updatePrBase", [pullNumber, base]);
     },
     // 목록 전용 둘. pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
     async compareToBase(baseSha, branch) {

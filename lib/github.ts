@@ -390,17 +390,17 @@ export async function createGitClient(
       });
     },
 
-    async findOpenPr(head, baseBranch) {
+    async findOpenPr(head) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
         ...base,
         // `owner:branch` 형식이어야 필터가 걸린다. 브랜치명만 넘기면 GitHub이 필터를 조용히
         // 무시해 전체 목록이 오고, 재사용 판정이 무너져 PR이 중복 생성된다.
+        // ⚠️ `base`로 거르지 않는다 — base를 바꾼 뒤 옛 PR을 못 찾아 하나 더 연다 (`GitClient.findOpenPr`).
         head,
-        base: baseBranch,
         state: "open",
       });
       const pr = res.data[0];
-      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title };
+      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title, base: pr.base.ref };
     },
 
     async updatePrTitle(pullNumber, title) {
@@ -408,6 +408,14 @@ export async function createGitClient(
         ...base,
         pull_number: pullNumber,
         title,
+      });
+    },
+
+    async updatePrBase(pullNumber, baseBranch) {
+      await octokit.request("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", {
+        ...base,
+        pull_number: pullNumber,
+        base: baseBranch,
       });
     },
 
