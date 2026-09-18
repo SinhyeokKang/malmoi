@@ -123,8 +123,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
-| `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다) |
-| `/api/github/setup` | Route Handler | GitHub App **Setup URL** — 설치·설치 요청 뒤 복귀. `setup_action`만 읽어 착지를 정하고 쓰기가 없다(`installation_id`는 안 읽는다). callback과 같이 matcher 밖 |
+| `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다). **설치·인가·리포 선택 변경이 전부 여기로 온다** — App 설정 "Request user authorization during installation"이 켜져 있어 설치와 연결이 한 왕복이고, state 없는 설치 계열 복귀는 쓰기 없이 착지만 한다(ARCHITECTURE §6.4. 옛 Setup URL 라우트는 2026-09-18에 지웠다) |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다** — 클라이언트 fetch 배선과 중복 스키마가 생기고 `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
@@ -138,7 +137,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다.
 
-여기에 `GITHUB_APP_SLUG` 하나가 더 붙는데 자격증명이 아니다 — 설치 링크 조립용이고 `optionalEnv`라 **없으면 그 링크만 조용히 사라진다**.
+여기에 `GITHUB_APP_SLUG` 하나가 더 붙는데 자격증명이 아니다 — 설치 링크 조립용이고 `optionalEnv`다. ⚠️ **2026-09-18부터 ①(새 프로젝트)의 주 경로다** — 없으면 설치 버튼이 서지 않고 "관리자에게 요청하라"로 떨어져 **설치가 없는 신규 사용자는 화면 안에서 온보딩을 끝낼 수 없다**(연결만 된다). 나머지 소비자(`/account`·설정의 설치 설정 링크)는 조용히 사라진다.
 
 ### 암호화 키도 셋이고, 섞지 않는다
 
@@ -240,7 +239,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - ⚠️ **로케일이 하나도 없는 리포도 하나 필요하다 — `i18n-none`이다** (2026-09-13, `sindresorhus/p-map` 포크 · 74KB · MIT). 온보딩 ②의 **후보 0개**(예외 E — 좌측이 수동 지정 폼이 되고 우측이 "Nothing to preview yet"인 갈래)는 **설치된 다른 다섯이 전부 로케일 리포라 브라우저로 영영 못 밟는다.** 그 갈래는 되돌릴 수 없는 결정 직전의 화면인데 단위 테스트로만 고정돼 있었다. **74KB를 고른 이유는 트리 조회가 즉시 끝나서다** — `i18n-many-locales`는 탐지에 30초가 넘는다. ⚠️ **쓰기 검증에는 쓰지 않는다**(포크라 PR 흔적이 남는다).
 - ⚠️ **dev DB의 `bugshot-i18n-test-qa`는 지우지 않는다** (2026-09-13 사용자 — **프로젝트 생성 검증용 상주**). ⚠️ **2026-09-18 사용자 요청으로 dev DB를 통째로 초기화하면서 이 프로젝트도 지웠다**(install-and-connect를 처음 상태에서 검증하려고) — 지금은 없다. ④를 다시 볼 때 정상 온보딩으로 한 번 만들고 그때부터 다시 상주다. ④(결과 화면)는 **프로젝트를 실제로 만들어야만** 도달하므로, 그 화면을 볼 때마다 새로 만들면 dev DB에 일회용 프로젝트가 쌓인다. 리포는 폐기용(`bugshot-i18n-test`)이고 **생성은 리포에 아무것도 쓰지 않는다**(③의 info가 그 사실을 말한다) — 남겨도 외부 흔적이 없다.
   - **단계 B의 상주 QA 보존**: `bugshot-i18n-test-qa`는 정상 온보딩으로 재생성한 dev 검증 프로젝트다. 초기화 절차를 재실행하지 않는다. 같은 이름의 key/locale 공존·교차 FK·Add surface 원자성·실제 Project 생성은 `pnpm test:projects:postgres`가 검증한다. 빈 prod DB의 precondition 0건은 그 방어의 근거가 아니다.
-- **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** — `pnpm test`가 값은 보지만 화면은 못 보는 축(라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지)이 대상이다. **리포트+이슈 전용**이고 preview가 아니라 **로컬**을 쓴다.
+- **`/bugshot-qa`는 편집 UI의 실물 검증 전담이다** — `pnpm test`가 값은 보지만 화면은 못 보는 축(라우트 이관, 권한별 UI 노출, 거부 문구, 입력값 유지)이 대상이다. **리포트+이슈 전용**이고 preview가 아니라 **로컬**을 쓴다. ⚠️ **GitHub App 설치 왕복(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다** — 설치 URL이 `redirect_uri`를 안 받아 프로덕션 callback으로 간다. 로컬에서는 보조 링크(Authorize)로 연결하고, 승인 대기 화면은 dev DB의 `Account.installRequestedAt`을 직접 심어 본다(OPERATIONS "설치 중 인가").
 - ⚠️ **`/design-sync`는 Claude Design 핸드오프를 SoT로 삼는 루프다** — **시안이 정본이고 구현이 따라간다.** 수정→**실측**→(불일치면 수정)→**리뷰**→(지적이면 수정)을 일치할 때까지 돌고, 실측은 눈이 아니라 **computed style + CDP 접근성 트리**다. 2026-09-13에 새 프로젝트 모달이 핸드오프와 **29곳** 어긋난 채 `pnpm test` 3,000개가 green이었고, 그 루프가 **자기가 만든 회귀 넷**(list role 소실·접근 이름 0·반투명 sticky 헤더·`<strong>` 제거)을 추가로 잡았다 — **전부 화면에도 테스트에도 안 나타나는 부류다.** `/bugshot-qa`가 "동작하나"를 보는 자리라면 이쪽은 **"시안과 같은가"**다.
 - **`/l10n-roundtrip`은 어댑터 실물 검증 전담이다** — 실제 리포·실제 GitHub API로 push→편집→pull→머지→재pull을 한 바퀴 돈다. **값이 맞아도 표현이 깨지는 부류는 `pnpm test`가 원리적으로 못 본다.** 대상은 **폐기용 리포만**이다(`bugshot-i18n-test`·`i18n-format-check`·`i18n-order-check`) — 재생성 어댑터를 고쳤으면 `i18n-order-check`다(그 리포가 표현 5축이 섞이도록 재포맷돼 있다).
 
