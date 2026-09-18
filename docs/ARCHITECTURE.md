@@ -404,6 +404,8 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 | 조용한 손실 | **0건** | **0건** |
 | **`ts-dict`가 1순위인 리포** | **0** | **0** |
 
+⚠️ **2026-09-18(launch-readiness L4.6)에 측정 입력이 프로덕션과 같아졌다 — 위 표는 그 전 값이다.** survey가 로케일마다 자기 파일 순서·자기 키를 write에 넘겼는데, 프로덕션은 base 파일의 키만 base 순서로 전 로케일에 쓴다(`rowsForLocale` → `buildWriteEntries`). 그래서 비-base 재배열·비-base 전용 키 탈락이 지표에 안 보였고, multi-locale은 `writeWithErrors`를 안 불러 `writeErrors`가 0이었다. **"왕복 의미 동일"·비-base diff·write 에러는 20차부터 이전 회차와 비교하지 않는다.** 20차 재측정은 아직 안 했다.
+
 ⚠️ **홀드아웃 오탐이 1건 늘었는데 코퍼스 드리프트다** — 새로 틀린 것은 mattermost(1순위
 `i18n/glossary/{locale}.json`, 정답 2순위)이고 그 리포에 용어집 디렉터리가 생겼다. **변경 전
 코드(`765c20f`)로 같은 리포를 다시 재서 같은 결과를 확인했다** — 탐지 규칙 변경의 영향이 아니다.
