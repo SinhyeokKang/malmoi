@@ -84,7 +84,7 @@
   - 검증(자동, 재현 먼저): `ko: { errors: { "messages.blank": x } }` 픽스처로 값 무변경 write → **원본 바이트 동일**, 값 변경 write → 그 줄만 바뀜, 재read에 `duplicate-key` 없음. code-dict는 `{ el: { 'a.b': 'x' } }`로 같은 셋. 누락 케이스: 깊이 3 · 점 키와 실제 중첩 혼재(`errors.messages.blank` vs `errors: {messages: {blank}}` 공존) · `[`·따옴표 포함 키 · YAML anchor/alias.
   - 검증(자동): 계약 매트릭스는 케이스 표가 아니라 `lib/adapters/__tests__/contract.ts:191` `writerContractViolations` 안의 검사 + `contract.test.ts:52-60`의 `Break` 네거티브 어댑터 쌍이다. **새 축 = 검사 하나 + `Break` 플래그 하나**(가짜 어댑터로 그 검사가 red를 내는 증명) — 이것이 리포에 남는 뮤테이션 가드다. 다섯 어댑터 전부에 돈다.
   - 검증(자동): `json-catalog.ts:199`는 read에 감지가 없고(`lastWins`가 삼킴) write만 `key-shadowed`(`:262-281`)를 낸다 — 같은 축에서 **read가 에러를 내게** 한다. (audit #20)
-- [ ] L1.5 **`docs/features/sync-edit-protection/tasks.md` T0~T19를 런칭 전에 완주한다**(결정됨). PRODUCT §1 완료 조건 2 "데이터 손실을 구조적으로 막았는가"의 답이 그 기능이다. 그 문서의 배포 셋(T0 단독 → 호환 A → 보호 B)이 이 문서의 `/merge` 횟수에 더해진다. L1.3의 (b)는 그 spec의 "별도 spec" 판정과 일치한다.
+- [x] L1.5 (2026-09-18 완료 — 배포 셋을 전부 프로덕션에 넣었다: T0(#54) · 호환 A(#55, `pendingEditToken` + dual-write + Publish CAS) · 보호 B(#56, CI 보류 · 폐기 승인 지문 · 토큰 술어 · 배너/라벨/카드 · CLI `::warning`). backfill은 dev·prod 모두 0행 두 번으로 수렴했고 precondition 마이그레이션이 prod `db:deploy`에서 통과했다. 실물 왕복(T17)과 화면 확인(T13)은 `malmoi-test-org/bugshot-i18n-test`로 돌았다. **못 본 둘**: "승인 뒤 남은 편집 N건" 결과 줄(획득 뒤·덮어쓰기 전 창을 손으로 못 맞췄다 — PG·DOM 테스트가 덮는다)과 Publish "Not sent" 갈래(그 리포는 writer 경고가 없다). 정본은 ARCHITECTURE §0 불변식 1·§5.5.2·§5.6.1·§5, CLAUDE/AGENTS 코어 원칙, PRODUCT §3·§4.1·§7.6·§10, DESIGN §6.2·§6.646·Home 카드, ACTIONS red/green 표, DIRECTORY, OPERATIONS로 옮겼고 그 디렉터리는 지웠다) **`docs/features/sync-edit-protection/tasks.md` T0~T19를 런칭 전에 완주한다**(결정됨). PRODUCT §1 완료 조건 2 "데이터 손실을 구조적으로 막았는가"의 답이 그 기능이다. 그 문서의 배포 셋(T0 단독 → 호환 A → 보호 B)이 이 문서의 `/merge` 횟수에 더해진다. L1.3의 (b)는 그 spec의 "별도 spec" 판정과 일치한다.
   - 검증: 그 문서의 T15·T17·T18. 완료 판정의 왕복에 T17(편집→코드 커밋→보류→Publish→적재 재개)이 포함된다.
 
 ## R2 — 첫 사용 경험 (🟡 launch)
@@ -210,7 +210,7 @@
 - [ ] L6.4 숫자·목록: `docs/DIRECTORY.md:25` 예외 아홉(실제 10+1) · `:348` 12테이블(13) · `:61-62` 열둘(16) · `CLAUDE.md:223` 여섯 개(8) · DIRECTORY 미등재(`app/api/auth/[...nextauth]/` · `app/(edit)/publish-actions.ts` · components 루트 6개 · `components/projects/search-input.tsx` · `prisma/maintenance/` · `prisma/__tests__/` · `.github/actions/malmoi-i18n-push/` · vitest 설정 둘 · `types/next-auth.d.ts`) · `DIRECTORY.md:352-353` `smoke-blob` · CLAUDE.md 데이터 경로 표에 `app/api/push/failure/route.ts`·`publish-actions.ts`·L2.4의 `setup/route.ts` · 명령 표에 `credentials:finalize:*`·push:local `--surface`/`--path-template`·adapter-survey `--limit`/`--jobs` · `prisma/schema.prisma`의 `docs/MVP.md`·"SAAS §8" 참조 · `docs/ARCHITECTURE.md:5` 죽은 `(미구현)` 범례. 수치는 가능하면 문장에서 빼고 테스트가 센다(POSTMORTEM 2026-09-15). (audit #38)
   - 검증(수동): `/doc-check`로 대조.
 - [x] L6.5 (2026-09-17 완료 — PRODUCT §4.2 `needsReview` 문장, ARCHITECTURE §5.5.7 신설) 근거를 정본으로 올린다: `needsReview`("To review")가 비범위 승인 워크플로가 아니라는 것을 PRODUCT에 · `repositoryImportToken`·`lastImportToken`·`importRevision`의 근거를 ARCHITECTURE §5.5/§5.6으로(지금은 `sync-edit-protection/design.md`에만 있다). sync-edit-protection 디렉터리는 L1.5가 끝날 때 그 문서의 T19가 지운다. (audit #39)
-  - 검증(수동): `grep -rn "sync-edit-protection" docs prisma lib` → L1.5 완료 뒤 정본 참조만 남음.
+  - 검증(수동): `grep -rn "sync-edit-protection" docs prisma lib` → 2026-09-18 실행: `docs/features/sync-edit-protection/`이 사라졌고 남은 것은 정본 서술과 코드 주석의 기능 이름뿐이다(주석의 `design §N` 포인터는 ARCHITECTURE·OPERATIONS·DESIGN 좌표로 옮겼다).
 
 ## R7 — 컨벤션·정리 (🟡·⚪)
 
