@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "@/lib/github-connect/health";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
-import { renderProjectWorkflowYaml, renderWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, workflowSurfaceOf, type WorkflowSurface } from "@/lib/onboarding/workflow";
+
+/** 표면 하나짜리 프로덕션 호출 — 온보딩 ④·설정이 `renderProjectWorkflowYaml`을 직접 부른다(래퍼는 테스트만 썼다 — launch-readiness L4.7). */
+const renderOneSurface = ({ slug, baseBranch, ...surface }: { slug: string; baseBranch: string } & WorkflowSurface) =>
+  renderProjectWorkflowYaml({ slug, baseBranch, surfaces: [surface] });
 import { hashPushToken } from "@/lib/push/token";
 
 import { createHarness, sessionFor } from "./harness";
@@ -718,7 +722,7 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     const result = await createProject(createInput({ baseBranch: "release/2.0" }));
 
     expect(result).toMatchObject({ ok: true, baseBranch: "release/2.0" });
-    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "acme-web", baseBranch: "release/2.0" })).toContain("release/2.0");
+    expect(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "acme-web", baseBranch: "release/2.0" })).toContain("release/2.0");
   });
 
   it("브랜치를 안 주면 거부한다 — T8 이후에는 선택한 브랜치가 필수다", async () => {

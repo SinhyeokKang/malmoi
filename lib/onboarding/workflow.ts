@@ -45,15 +45,6 @@ export type WorkflowSurface = {
 };
 
 /**
- * 표면 하나짜리 워크플로 파일. 온보딩 ④는 표면이 **항상 하나**라 이 모양으로 부른다 —
- * 아래 `renderProjectWorkflowYaml`의 얇은 래퍼이고 구현은 한 벌이다.
- */
-export function renderWorkflowYaml(input: { slug: string; baseBranch: string } & WorkflowSurface): string {
-  const { slug, baseBranch, ...surface } = input;
-  return renderProjectWorkflowYaml({ slug, baseBranch, surfaces: [surface] });
-}
-
-/**
  * **프로젝트의 워크플로 파일 — 활성 표면마다 step 하나다** (ARCHITECTURE §3.1 · 대상 리포 계약).
  *
  * 복사용 `.github/workflows/malmoi-i18n.yml`이다 (PRODUCT §7.4). App 권한(`workflows: write`)을 늘리지

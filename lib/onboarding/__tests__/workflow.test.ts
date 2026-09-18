@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { SKIP_MARKER } from "@/lib/pull/payload";
 
-import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, renderWorkflowYaml, workflowSurfaceOf } from "../workflow";
+import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, workflowSurfaceOf, type WorkflowSurface } from "../workflow";
+
+/** 표면 하나짜리 프로덕션 호출 — 온보딩 ④·설정이 `renderProjectWorkflowYaml`을 직접 부른다(래퍼는 테스트만 썼다 — launch-readiness L4.7). */
+const renderOneSurface = ({ slug, baseBranch, ...surface }: { slug: string; baseBranch: string } & WorkflowSurface) =>
+  renderProjectWorkflowYaml({ slug, baseBranch, surfaces: [surface] });
 
 /**
  * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (PRODUCT §7.4). App 권한(`workflows: write`)을 늘리지 않고
@@ -42,30 +46,30 @@ function bare(yaml: string): string[] {
     .filter((line) => line.length > 0);
 }
 
-describe("renderWorkflowYaml", () => {
+describe("renderProjectWorkflowYaml — 표면 하나", () => {
   it("slug가 `project:`에 박힌다", () => {
-    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "main" })).toMatch(/^\s+project: my-app$/m);
+    expect(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "main" })).toMatch(/^\s+project: my-app$/m);
   });
 
   it("base 브랜치가 트리거에 박힌다 — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다", () => {
-    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "develop" })).toMatch(/branches: \["develop"\]/);
-    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" })).toMatch(/branches: \["main"\]/);
+    expect(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "develop" })).toMatch(/branches: \["develop"\]/);
+    expect(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" })).toMatch(/branches: \["main"\]/);
   });
 
   it("수동 지정이면 `adapter:`·`base-locale:`이 붙는다", () => {
-    const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "ts-dict", baseLocale: "ko" });
+    const yml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "ts-dict", baseLocale: "ko" });
     expect(yml).toMatch(/^\s+adapter: ts-dict$/m);
     expect(yml).toMatch(/^\s+base-locale: ko$/m);
   });
 
   it("미확정 값은 렌더러가 임의로 채우지 않는다", () => {
-    const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
+    const yml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
     expect(yml).not.toMatch(/adapter:/);
     expect(yml).not.toMatch(/base-locale:/);
   });
 
   it("`wrapper`는 넣지 않는다 — 훅 기반 리포는 docs/ACTIONS.md를 보라고 화면이 따로 말한다", () => {
-    expect(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "ts-dict", baseLocale: "ko" })).not.toMatch(
+    expect(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "ts-dict", baseLocale: "ko" })).not.toMatch(
       /wrapper/,
     );
   });
@@ -78,8 +82,8 @@ describe("renderWorkflowYaml", () => {
    */
   it("concurrency group이 프로젝트마다 다르다 — 한 리포의 두 프로젝트가 서로를 취소하지 않는다", () => {
     const groupOf = (yml: string) => /^\s*group:\s*(.+)$/m.exec(yml)?.[1];
-    const a = groupOf(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "format-check-code", baseBranch: "main" }));
-    const b = groupOf(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "format-check-yaml", baseBranch: "main" }));
+    const a = groupOf(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "format-check-code", baseBranch: "main" }));
+    const b = groupOf(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "format-check-yaml", baseBranch: "main" }));
 
     expect(a).toContain("format-check-code");
     expect(b).toContain("format-check-yaml");
@@ -96,7 +100,7 @@ describe("renderWorkflowYaml", () => {
    * 정확히 그 상태를 지나갔다(셋을 함께 바꿔 우연히 green이었다).
    */
   it("무한 루프 가드(SKIP_MARKER)와 `PUSH_TOKEN` secret 참조가 있다", () => {
-    const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
+    const yml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
     expect(yml).toContain(SKIP_MARKER);
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
@@ -107,19 +111,19 @@ describe("renderWorkflowYaml", () => {
   it("docs/ACTIONS.md의 예시와 같은 모양이다 — 주석·빈 줄을 빼면 줄 단위로 같다", () => {
     const doc = bare(firstYamlBlock(actionsDoc));
     // 문서 예시는 `project: order-check`·`branches: [main]`이다 — 같은 값으로 렌더해 대조한다.
-    const ours = bare(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "order-check", baseBranch: "main", adapter: "json-catalog", baseLocale: "en" }));
+    const ours = bare(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "order-check", baseBranch: "main", adapter: "json-catalog", baseLocale: "en" }));
     expect(ours).toEqual(doc);
   });
 
   it("파일 끝 개행이 정확히 하나다", () => {
-    const yml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
+    const yml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
     expect(yml.endsWith("\n")).toBe(true);
     expect(yml.endsWith("\n\n")).toBe(false);
   });
 
   it("같은 입력은 같은 문자열이다", () => {
-    const a = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
-    const b = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
+    const a = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
+    const b = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main", adapter: "code-dict", baseLocale: "en" });
     expect(a).toBe(b);
   });
 });
@@ -129,24 +133,24 @@ describe("renderWorkflowYaml", () => {
  * 전에는 `probeRepo`의 default branch뿐이라 `main`·`develop` 같은 평범한 이름만 왔다 — 이제
  * `release/2.0`·`feat/UI-1`이 그대로 flow sequence 안에 들어간다.
  */
-describe("renderWorkflowYaml — 사용자가 고른 브랜치 이름", () => {
+describe("renderProjectWorkflowYaml — 사용자가 고른 브랜치 이름", () => {
   const line = (yaml: string): string => yaml.split("\n").find((l) => l.includes("branches:")) ?? "";
 
   it("`/`가 든 이름이 한 항목으로 남는다 — YAML이 쪼개거나 잃지 않는다", () => {
-    const yaml = renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "release/2.0" });
+    const yaml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "release/2.0" });
 
     expect(yaml).toContain("release/2.0");
     expect(line(yaml)).toBe('    branches: ["release/2.0"]');
   });
 
   it("`,`가 든 이름도 한 항목이다 — 인용이 없으면 flow sequence가 둘로 갈린다", () => {
-    expect(line(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "a,b" }))).toBe('    branches: ["a,b"]');
+    expect(line(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: "a,b" }))).toBe('    branches: ["a,b"]');
   });
 
   it("`isValidBranchName`을 지난 이름이면 인용이 깨질 문자가 없다 — `\\`·제어문자가 거부된다", () => {
     for (const name of ["main", "release/2.0", "feat/UI-1", "v1.0", "a,b", "a'b"]) {
       expect(isValidBranchName(name)).toBe(true);
-      expect(line(renderWorkflowYaml({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: name }))).toBe(`    branches: ["${name}"]`);
+      expect(line(renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "my-app", baseBranch: name }))).toBe(`    branches: ["${name}"]`);
     }
   });
 });
@@ -164,10 +168,6 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
   const two = { surfaceSlug: "_locales", pathTemplate: "_locales/{locale}/messages.json" };
   const render = (surfaces: readonly { surfaceSlug: string; pathTemplate: string }[]) =>
     renderProjectWorkflowYaml({ slug: "order-check", baseBranch: "main", surfaces });
-
-  it("표면 하나면 `renderWorkflowYaml`과 바이트가 같다 — 표면이 하나인 화면은 움직이지 않는다", () => {
-    expect(render([one])).toBe(renderWorkflowYaml({ slug: "order-check", baseBranch: "main", ...one }));
-  });
 
   /**
    * ⚠️ **step 하나짜리 렌더러와 대조하는 것만으로는 모양을 못 잰다** — 둘이 같은 구현이라 그 단언은
@@ -251,7 +251,7 @@ describe("workflowSurfaceOf", () => {
   ] as const)("설정 YAML이 ④의 확정 adapter와 base를 모두 보존한다 (%s, %s)", (adapterName, baseLocale) => {
     const fromSettings = renderProjectWorkflowYaml({ slug: "x", baseBranch: "main",
       surfaces: [workflowSurfaceOf({ slug: "web", pathTemplate: "web/{locale}.json", adapterName, baseLocale, declaredBaseLocale: null })] });
-    const fromOnboarding = renderWorkflowYaml({ slug: "x", baseBranch: "main", surfaceSlug: "web",
+    const fromOnboarding = renderOneSurface({ slug: "x", baseBranch: "main", surfaceSlug: "web",
       pathTemplate: "web/{locale}.json", baseLocale, adapter: adapterName });
     const baseLine = (yaml: string) => yaml.split("\n").filter(line => line.includes("base-locale:"));
     expect(baseLine(fromSettings)).toEqual([`          base-locale: ${baseLocale}`]);
