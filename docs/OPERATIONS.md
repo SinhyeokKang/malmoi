@@ -185,6 +185,9 @@ pnpm credentials:dev --mode=verify
 
 ## 3. 복구
 
+- **로그인·초대가 전부 "Unavailable"이면 서버 로그의 `[credentials]` 줄부터 본다** (2026-09-18 — 전에는 0줄이었다).
+  `credential-env: missing environment variable <이름>`이면 그 키가 빠진 것이고, 나머지는 분류 한 낱말(`sign-in: CredentialError`
+  · `credential-io: PrismaClientKnownRequestError` 등)이다. **원문은 어디에도 안 남는다** — Prisma 인자·암호문이 실리기 때문이다.
 - **PII 키 유실 시 계정을 재생성하지 않는다 — 백업 키를 복원한다.**
 - 암호화 백업 복원 후에도 **트래픽을 차단한 상태에서** 해당 keyring으로 `verify`를 끝낸다.
 - **평문 코드로 rollback하지 않는다.**
