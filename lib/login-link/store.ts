@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { findUserByEmail } from "@/lib/credentials/access";
+import { logCaught } from "@/lib/failure";
 
 import { planLinkConfirm, planLinkOffer, type LinkOffer } from "./plan";
 import {
@@ -89,7 +90,8 @@ export async function beginLink(
       return true;
     });
     return ok ? token : null;
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "begin", error);
     return null;
   }
 }
@@ -160,7 +162,8 @@ export async function finishLink(
       });
       return { outcome: "linked" as const, dest: challenge.dest };
     });
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "finish", error);
     return { outcome: "unavailable", dest: null };
   }
 }

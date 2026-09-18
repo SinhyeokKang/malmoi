@@ -1,6 +1,7 @@
 "use server";
 
 import { decodeUser, decodeInvitation } from "@/lib/credentials/records";
+import { logCaught } from "@/lib/failure";
 
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
 import type { InviteError } from "@/lib/auth/message";
@@ -100,7 +101,8 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
       return { ok: false, error: after?.acceptedAt != null ? "already-accepted" : "expired" };
     }
     return { ok: true, slug: project.slug };
-  } catch {
+  } catch (error) {
+    logCaught("invite", "accept", error);
     return { ok: false, error: "unavailable" };
   }
 }

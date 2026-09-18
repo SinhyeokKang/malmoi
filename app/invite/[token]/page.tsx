@@ -20,6 +20,7 @@ import { planInviteView } from "@/lib/auth/invite-view";
 import { inviteErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { logCaught } from "@/lib/failure";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
@@ -69,7 +70,10 @@ export default async function InvitePage({
       },
     });
     return row === null ? null : decodeInvitation(row);
-  }).catch(() => undefined);
+  }).catch((error: unknown) => {
+    logCaught("invite", "page-invitation", error);
+    return undefined;
+  });
 
   const input = { session: session.status, invitation, viewerEmail: null, alreadyMember: false, queryError: e, now: new Date() };
   let view = planInviteView(input);
@@ -89,7 +93,8 @@ export default async function InvitePage({
         select: { userId: true },
       });
       view = planInviteView({ ...input, viewerEmail: viewer?.email ?? null, alreadyMember: member !== null, now: new Date() });
-    } catch {
+    } catch (error) {
+      logCaught("invite", "page-viewer", error);
       view = planInviteView({ ...input, session: "unavailable" });
     }
   }

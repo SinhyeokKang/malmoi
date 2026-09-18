@@ -1,5 +1,6 @@
 import "server-only";
 
+import { logCaught } from "@/lib/failure";
 import { createGitClient } from "@/lib/github";
 import { syncBranchFor } from "@/lib/pull/trigger";
 
@@ -22,7 +23,8 @@ export async function loadOpenPrUrl(
     const client = await createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     const pr = await client.findOpenPr(`${project.repoOwner}:${syncBranchFor(slug)}`);
     return pr === null ? null : pr.url;
-  } catch {
+  } catch (error) {
+    logCaught("open-pr", "find", error);
     return undefined;
   }
 }

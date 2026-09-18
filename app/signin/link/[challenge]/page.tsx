@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/alert";
 import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
 import { getPrisma } from "@/lib/db";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
 import { withLinkStart } from "@/lib/login-link/http";
@@ -47,7 +48,8 @@ export default async function LinkAccountPage({
   let view;
   try {
     view = await loadChallengeView(getPrisma(), challenge, new Date());
-  } catch {
+  } catch (error) {
+    logCaught("login-link", "page", error);
     // 장애와 만료를 가른다 — 같은 화면으로 접으면 다시 시도해도 소용없는 사람에게 재시도를 준다.
     redirect(routes.signIn({ error: "Unavailable" }));
   }

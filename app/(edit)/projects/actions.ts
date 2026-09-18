@@ -3,6 +3,7 @@
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { findUserByEmail } from "@/lib/credentials/access";
+import { logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
@@ -198,7 +199,8 @@ export async function createInvitation(raw: {
     // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
     revalidatePath(`/projects/${input.slug}/members`);
     return { ok: true, token };
-  } catch {
+  } catch (error) {
+    logCaught("invite", "create", error);
     return { ok: false, error: "unavailable" };
   }
 }

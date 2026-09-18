@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { requireEnv } from "../env";
-import { AppError, MissingEnvError, classifyFailure, fail } from "../failure";
+import { AppError, MissingEnvError, classifyFailure, fail, logCaught } from "../failure";
 
 /**
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
@@ -147,5 +147,27 @@ describe("AppError.code — 던지는 자리가 코드를 든다", () => {
 
   it("코드가 있어도 안전 판정은 안 바뀐다 — classifyFailure는 name만 본다", () => {
     expect(classifyFailure(new AppError("x", "not-installed"))).toEqual({ safe: true, message: "x" });
+  });
+});
+
+/**
+ * **삼킨 실패의 한 줄** (launch-readiness L5.2). 사용자에게 갈래 하나로 접혀 나가는 자리에서 원인을 볼 곳이 서버 로그뿐이다 —
+ * `classifyFailure`와 같은 규칙(우리 메시지는 그대로, 남의 메시지는 분류 한 낱말)이고 화면의 `ref`와 짝지을 8자를 앞에 둔다.
+ */
+describe("logCaught", () => {
+  it("남의 오류는 분류만, 우리 오류는 메시지를 남긴다", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      logCaught("login-link", "callback", new TypeError("secret row"));
+      logCaught("invite", "accept", new MissingEnvError("missing environment variable PII_ACTIVE_KEY_ID"));
+      logCaught("open-pr", "probe", Object.assign(new Error("secret"), { status: 502 }));
+      expect(spy.mock.calls.map((c) => c[0])).toEqual([
+        expect.stringMatching(/^\[login-link\] \w{8} callback: TypeError$/),
+        expect.stringMatching(/^\[invite\] \w{8} accept: missing environment variable PII_ACTIVE_KEY_ID$/),
+        expect.stringMatching(/^\[open-pr\] \w{8} probe: http-502$/),
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

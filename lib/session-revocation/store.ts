@@ -1,6 +1,7 @@
 import "server-only";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { hashSessionToken } from "@/lib/credentials/crypto";
+import { logCaught } from "@/lib/failure";
 import { pickLoginAccount } from "@/lib/login-link/policy";
 import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, validNonce, type Outcome } from "./policy";
 
@@ -31,7 +32,7 @@ export async function beginRevocation(prisma: PrismaClient, input: Proof & { use
       await tx.verificationToken.create({ data: { identifier: challengeIdentifier({ userId: input.userId, provider, providerAccountId: input.providerAccountId, sessionDigest, stateDigest: stateHash(input.state) }), token: nonceHash(input.nonce), expires: new Date(now.getTime() + 300000) } });
       return "ready";
     });
-  } catch { return "unavailable"; }
+  } catch (error) { logCaught("session-revocation", "begin", error); return "unavailable"; }
 }
 export async function finishRevocation(prisma: PrismaClient, input: Proof): Promise<Outcome> {
   if (!validNonce(input.nonce) || !input.state || !input.sessionToken) return "invalid";
@@ -53,5 +54,5 @@ export async function finishRevocation(prisma: PrismaClient, input: Proof): Prom
       await tx.session.deleteMany({ where: { userId: challenge.userId } });
       return "revoked";
     });
-  } catch { return "unavailable"; }
+  } catch (error) { logCaught("session-revocation", "finish", error); return "unavailable"; }
 }

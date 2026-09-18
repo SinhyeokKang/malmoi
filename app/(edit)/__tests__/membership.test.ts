@@ -1,5 +1,5 @@
 import { encodeInvitationEmail } from "@/lib/credentials/records";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { hashInviteToken } from "@/lib/auth/invitation";
 
@@ -611,5 +611,31 @@ describe("createInvitation — 멤버 제한", () => {
     expect(await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).toMatchObject({
       ok: true,
     });
+  });
+});
+
+/**
+ * 장애가 `unavailable` 한 갈래로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
+ * ⚠️ **원문은 안 남긴다** — Prisma 메시지엔 인자(이메일 봉투·토큰 해시)가 실린다.
+ */
+describe("삼킨 장애의 로그 한 줄", () => {
+  let log: { mock: { calls: unknown[][] }; mockRestore: () => void };
+  beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => log.mockRestore());
+  const lines = () => log.mock.calls.map((c) => String(c[0]));
+
+  it("createInvitation — 성공 0줄, 장애 한 줄", async () => {
+    expect((await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).ok).toBe(true);
+    expect(lines()).toEqual([]);
+    vi.spyOn(db.prisma, "$transaction").mockRejectedValue(new Error("secret argument"));
+    expect(await createInvitation({ slug: "alpha", email: "late@a.com", role: "EDITOR" })).toEqual({ ok: false, error: "unavailable" });
+    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} create: Error$/)]);
+  });
+
+  it("acceptInvitation — 장애 한 줄", async () => {
+    hoisted.session = sessionFor("u-guest");
+    vi.spyOn(db.prisma.projectInvitation, "findUnique").mockRejectedValue(new Error("secret argument"));
+    expect(await acceptInvitation({ token: "raw" })).toEqual({ ok: false, error: "unavailable" });
+    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} accept: Error$/)]);
   });
 });

@@ -1,14 +1,15 @@
-import { beforeEach, expect, it, vi } from "vitest";
-const s = vi.hoisted(() => ({ requireUser: vi.fn(), signIn: vi.fn(), begin: vi.fn(), accounts: vi.fn(), set: vi.fn(), get: vi.fn(), headers: vi.fn() }));
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+const s = vi.hoisted(() => ({ requireUser: vi.fn(), signIn: vi.fn(), begin: vi.fn(), accounts: vi.fn(), set: vi.fn(), get: vi.fn(), headers: vi.fn(), transaction: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: s.requireUser }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ account: { findMany: s.accounts } }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ account: { findMany: s.accounts }, $transaction: s.transaction }) }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../store", () => ({ beginRevocation: s.begin }));
 // 병합 쿠키 정리는 이 테스트의 대상이 아니다 — `exclusive.test.ts`가 그 순서를 따로 센다.
 vi.mock("@/lib/auth/roundtrip-cookies", () => ({ clearAuthRoundtripCookies: vi.fn() }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: s.get, set: s.set }), headers: s.headers }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
-import { startSessionRevocation } from "@/app/(edit)/account/actions";
+import { startSessionRevocation, unlinkLoginMethod } from "@/app/(edit)/account/actions";
 beforeEach(() => {
   vi.clearAllMocks();
   s.requireUser.mockResolvedValue({ userId: "u" });
@@ -47,4 +48,26 @@ it.each(["no-cookie", "no-account", "missing-state", "store-failure", "bad-host"
   if (failure === "bad-host") s.headers.mockResolvedValue(new Headers({ host: "evil.com" }));
   expect(await startSessionRevocation()).toEqual({ error: "unavailable" });
   expect(s.set).not.toHaveBeenCalled();
+});
+
+// 장애가 "unavailable" 한 갈래로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
+let log: { mock: { calls: unknown[][] }; mockRestore: () => void };
+beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
+afterEach(() => log.mockRestore());
+const lines = () => log.mock.calls.map((c) => String(c[0]));
+it("시작 장애는 분류 한 줄, 성공은 0줄", async () => {
+  await expect(startSessionRevocation()).rejects.toThrow("REDIRECT:https://github.com");
+  expect(lines()).toEqual([]);
+  s.accounts.mockRejectedValue(new Error("secret row"));
+  expect(await startSessionRevocation()).toEqual({ error: "unavailable" });
+  expect(lines()).toEqual([expect.stringMatching(/^\[session-revocation\] \w{8} start: Error$/)]);
+});
+it("로그인 수단 해제 장애는 분류 한 줄, 성공·마지막 수단 거부는 0줄", async () => {
+  s.transaction.mockResolvedValueOnce("disconnected").mockResolvedValueOnce("last-method");
+  await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=disconnected");
+  await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=last-method");
+  expect(lines()).toEqual([]);
+  s.transaction.mockRejectedValue(new Error("secret row"));
+  await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=unavailable");
+  expect(lines()).toEqual([expect.stringMatching(/^\[account\] \w{8} unlink: Error$/)]);
 });

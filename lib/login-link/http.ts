@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { NextRequest, NextResponse } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 
@@ -122,7 +123,8 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       let original: Response;
       try {
         original = await run(callbackRequest);
-      } catch {
+      } catch (error) {
+        logCaught("login-link", "callback", error);
         original = new Response(null, { status: 500 });
       }
       // signIn 앞에서 난 오류에도 결론이 있어야 한다 — 취소와 장애를 가른다.
@@ -152,7 +154,11 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       response.cookies.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
       const state = linkStateCookie(secure);
       response.cookies.set(state.name, "", { ...state.options, maxAge: 0 });
-      if (secure) response.cookies.set(linkCookie(false).name, "", { ...linkCookie(false).options, maxAge: 0 });
+      // ⚠️ secure 호스트에서도 non-secure 변형을 지운다 — 로컬로 시작한 왕복의 stale state가 남는다(L5.2 계약 테스트).
+      if (secure) {
+        response.cookies.set(linkCookie(false).name, "", { ...linkCookie(false).options, maxAge: 0 });
+        response.cookies.set(linkStateCookie(false).name, "", { ...linkStateCookie(false).options, maxAge: 0 });
+      }
       return response;
     }),
   );

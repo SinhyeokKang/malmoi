@@ -1,5 +1,7 @@
 // 500 본문에 무엇을 실을지의 판정. I/O가 없는 순수 함수라 두 라우트가 같은 규칙을 쓴다.
 
+import { randomUUID } from "node:crypto";
+
 import type { SyncErrorCode } from "@/lib/sync/plan";
 
 /**
@@ -84,6 +86,17 @@ export function classifyFailure(error: unknown): Failure {
     return { safe: true, message: error.message };
   }
   return { safe: false, detail: failureTag(error) };
+}
+
+/**
+ * **삼켜서 갈래 하나로 접는 자리**의 서버 로그 한 줄 (launch-readiness L5.2). 화면엔 "Unavailable" 같은 갈래만 가므로
+ * 원인을 볼 곳이 여기뿐이다 — 규칙은 `classifyFailure`와 같다(원문 금지). **성공 경로에서는 부르지 않는다.**
+ *
+ * `lib/credentials/log.ts`·`lib/github-connect/log.ts`와 같은 모양이고 그 둘은 자기 접두를 고정한 사본이다.
+ */
+export function logCaught(scope: string, stage: string, error: unknown): void {
+  const failure = classifyFailure(error);
+  console.error(`[${scope}] ${randomUUID().slice(0, 8)} ${stage}: ${failure.safe ? failure.message : failure.detail}`);
 }
 
 /**

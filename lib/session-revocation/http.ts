@@ -2,6 +2,7 @@ import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { NextResponse, type NextRequest } from "next/server";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { finishRevocation } from "./store";
 import { outcomeUrl, revocationCookie, revocationStateCookie, type Outcome } from "./policy";
@@ -53,7 +54,10 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
   return stateScope.run(secure, () => pending.run(attempt, async () => {
     let original: Response;
     try { original = await run(); }
-    catch { original = new Response(null); }
+    catch (error) {
+      logCaught("session-revocation", "callback", error);
+      original = new Response(null, { status: 500 });
+    }
     const outcome = attempt.outcome ?? (url.searchParams.get("error") === "access_denied" ? "cancelled" : "unavailable");
     const headers = new Headers(original.headers);
     // This callback always ends at one of our fixed destinations, including errors before signIn.
@@ -64,7 +68,11 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
     response.cookies.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
     const stateCookie = revocationStateCookie(secure);
     response.cookies.set(stateCookie.name, "", { ...stateCookie.options, maxAge: 0 });
-    if (secure) response.cookies.set(revocationCookie(false).name, "", { ...revocationCookie(false).options, maxAge: 0 });
+    // ⚠️ secure 호스트에서도 non-secure 변형을 지운다 — 로컬로 시작한 왕복의 stale state가 남는다(L5.2 계약 테스트).
+    if (secure) {
+      response.cookies.set(revocationCookie(false).name, "", { ...revocationCookie(false).options, maxAge: 0 });
+      response.cookies.set(revocationStateCookie(false).name, "", { ...revocationStateCookie(false).options, maxAge: 0 });
+    }
     if (outcome === "revoked") {
       response.cookies.set("authjs.session-token", "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
       if (secure) response.cookies.set("__Secure-authjs.session-token", "", { path: "/", httpOnly: true, sameSite: "lax", secure: true, maxAge: 0 });
