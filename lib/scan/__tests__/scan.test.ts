@@ -186,3 +186,19 @@ describe("키 이름·원문 검증을 하지 않는다 (어댑터 소관)", () 
     expect(r.refs[0]?.refs).toHaveLength(2);
   });
 });
+
+/**
+ * **픽스처 편향** (launch-readiness L4.5). 위 픽스처는 전부 큰따옴표였고 템플릿 리터럴 거부(`ast.ts` `literalOf`)를
+ * 고정하는 테스트가 없었다 — 작은따옴표가 흔한 리포 모양이고, 거부가 풀리면 `t(\`a.${x}\`)`와 형태로 구분되지 않는다.
+ */
+describe("인용 부호와 템플릿 리터럴", () => {
+  it("작은따옴표 import·호출도 같은 키다", () => {
+    const refs = clean({ path: "src/a.ts", code: "import { t } from '@/i18n';\nt('k_single');", kind: "ts" });
+    expect(keysOf(refs)).toEqual(["k_single"]);
+  });
+
+  it("템플릿 리터럴은 치환이 없어도 키로 받지 않는다", () => {
+    const r = scanSources([ts("src/a.ts", "t(`k_tpl`);\nt(`k_${x}`);\nt(\"k_plain\");")]);
+    expect(keysOf(r.refs)).toEqual(["k_plain"]);
+  });
+});

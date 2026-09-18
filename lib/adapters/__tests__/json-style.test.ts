@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_JSON_STYLE, indentOf, observeJsonStyle, pathKey, serializeJson } from "../json-style";
 import { serialize } from "../shared";
+import { chromeLocales } from "../chrome-locales";
+import { jsonCatalog } from "../json-catalog";
 
 /**
  * **원본 포맷 보존 태스크 1a — 들여쓰기 축** (ARCHITECTURE §1.1).
@@ -288,5 +290,30 @@ describe("원본 끝 개행이 없어도 출력은 정확히 1개다 — 원본�
     expect(first.endsWith("}\n")).toBe(true);
     expect(first.endsWith("\n\n")).toBe(false);
     expect(serializeJson({ a: "하나" }, observeJsonStyle(first))).toBe(first);
+  });
+});
+
+/**
+ * **줄바꿈 축** (launch-readiness L4.5). yaml·code-dict는 CRLF 원본을 보존하는데(`yaml-catalog.test.ts`·`code-dict.test.ts`)
+ * JSON 재생성 어댑터는 `JsonStyle`에 개행 필드가 없어 CRLF 파일을 LF로 다시 썼다 — 값이 하나도 안 바뀌어도 **모든 줄이
+ * 바뀌고** blob SHA가 매번 달라 야간 pull이 빈 PR을 낸다(ARCHITECTURE §0 결정성).
+ */
+describe("JSON 재생성 어댑터 — CRLF 원본", () => {
+  const cases = [
+    { adapter: jsonCatalog, pathTemplate: "i18n/{locale}.json", body: (nl: string) => `{${nl}  "a": "A",${nl}  "b": "B"${nl}}${nl}`, entries: [{ key: "a", message: "A" }, { key: "b", message: "B" }] },
+    { adapter: chromeLocales, pathTemplate: "_locales/{locale}/messages.json", body: (nl: string) => `{${nl}  "a": {${nl}    "message": "A"${nl}  }${nl}}${nl}`, entries: [{ key: "a", message: "A" }] },
+  ];
+  for (const c of cases) {
+    it.each([["CRLF", "\r\n"], ["LF", "\n"]])(`${c.adapter.name}: %s 원본에 값 무변경 write는 바이트 동일하다`, (_name, nl) => {
+      const path = c.pathTemplate.replace("{locale}", "en");
+      const original = c.body(nl);
+      const out = c.adapter.write({ adapter: c.adapter.name, pathTemplate: c.pathTemplate, locales: ["en"], currentFiles: [{ path, content: original }] }, { locale: "en", entries: c.entries });
+      expect(out).toBe(original);
+    });
+  }
+  it("관측: CRLF가 우세하면 CRLF, 아니면 LF", () => {
+    expect(observeJsonStyle('{\r\n  "a": "A"\r\n}\r\n').eol).toBe("\r\n");
+    expect(observeJsonStyle('{\n  "a": "A"\n}\n').eol).toBe("\n");
+    expect(observeJsonStyle(undefined).eol).toBe("\n");
   });
 });

@@ -254,6 +254,23 @@ const en = {
 export const common = { ko, en };
 `;
 
+/**
+ * **CRLF 원본** (launch-readiness L4.5 — 픽스처가 전부 LF였다). 수술적 치환이라 원본 바이트가 요지다.
+ */
+describe("ts-dict — CRLF 원본", () => {
+  const crlf = SOURCE_SINGLE.replaceAll("\n", "\r\n");
+  const write = (message: string) =>
+    tsDict.write({ ...format, locales: ["ko", "en"], currentFiles: [{ path: "src/i18n/namespaces/common.ts", content: crlf }] }, { locale: "ko", entries: [{ key: "common.ok", message }] }) ?? "";
+
+  it("값 무변경 write는 바이트 동일하다", () => {
+    expect(write("확인")).toBe(crlf);
+  });
+
+  it("값을 바꿔도 그 줄만 바뀌고 CRLF가 남는다", () => {
+    expect(write("확인했습니다")).toBe(crlf.replace("'common.ok': '확인'", "'common.ok': '확인했습니다'"));
+  });
+});
+
 describe("ts-dict — 원본의 인용 부호를 유지한다", () => {
   const fileSingle = () => [{ path: "src/i18n/namespaces/common.ts", content: SOURCE_SINGLE }];
   const writeSingle = (entries: Array<{ key: string; message: string }>, locale = "ko") =>
