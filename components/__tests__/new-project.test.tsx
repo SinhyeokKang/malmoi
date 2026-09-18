@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isAccessLost } from "@/components/onboarding/failure";
 import { NewProject } from "@/components/onboarding/new-project";
@@ -32,7 +32,7 @@ const user = userEvent.setup();
 
 const mocks = vi.hoisted(() => ({
   listRepoBranches: vi.fn(), detectRepoFormats: vi.fn(), loadCandidateSample: vi.fn(),
-  createProject: vi.fn(), confirmManualFormat: vi.fn(), runFirstIngest: vi.fn(),
+  createProject: vi.fn(), confirmManualFormat: vi.fn(), runFirstIngest: vi.fn(), startGithubConnectForUser: vi.fn(),
   router: { back: vi.fn(), push: vi.fn(), replace: vi.fn(), refresh: vi.fn() },
 }));
 vi.mock("@/app/(edit)/projects/actions", () => mocks);
@@ -532,7 +532,7 @@ it("① 계정 미연결 빈 상태가 본문 세로 중앙에 선다", async ()
   await render(<NewProject repos={undefined} listError="not-connected" installUrl={null} now="2026-09-13T00:00:00Z"
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
 
-  expect(document.body.textContent).toContain("Connect GitHub repositories");
+  expect(document.body.textContent).toContain("Connect your repositories");
   expectCentered(emptyWrapper());
 });
 
@@ -715,37 +715,186 @@ it.each([
 });
 
 /**
- * 설치 요청(조직 비관리자) 뒤 GitHub이 `?e=install-requested`로 되돌린다 (launch-readiness L2.4).
+ * ① 막힘 갈래 (install-and-connect · design "화면 문구" 표). **설치와 연결이 한 왕복이다** — 주 버튼이
+ * Install이고, 이미 조직에 설치된 사람만 보조 링크로 Authorize한다.
  *
- * ⚠️ **`afterInstall`("끝나면 새로고침")과 한 화면에 서지 않는다** — 요청자는 설치를 끝낼 수 없다
- * (POSTMORTEM 2026-09-14 "문장 사이의 모순은 소스 스캔이 못 본다"). 거부가 아니라 대기라 `danger`
- * 배너로도 서지 않는다.
+ * ⚠️ **대기 화면에 설치 화면 제목이 0회다** — 요청자에게 설치하라고 하면 링크를 다시 눌러 요청이 한 번 더
+ * 간다(spec 문제 2·3). 대조군(A/B에 1회)이 그 단언이 실제로 red를 낼 수 있음을 보인다.
+ * ⚠️ **"Refresh this page"는 어느 갈래에도 없다** — 설치·리포 선택 모두 같은 탭 왕복이다.
  */
-const AFTER_INSTALL = "Refresh this page once you're done.";
-const REQUESTED = "An organization owner has to approve your request to install the malmoi GitHub App.";
+const SETTINGS = "https://github.com/apps/malmoi/installations/new";
+const INSTALL_TITLE = "Connect your repositories";
+const REFRESH = "Refresh this page";
+const E_INFO = "An organization owner still has to approve your install request.";
 
-it.each(["no-installations", "no-repos"])("① 설치 요청 대기면 %s 빈 상태가 승인 대기를 말하고 새로고침을 권하지 않는다", async (error) => {
-  await render(<NewProject repos={undefined} listError={error} installUrl="https://github.com/apps/malmoi/installations/new"
-    now="2026-09-13T00:00:00Z" initialError="install-requested" backQuery={{}} closeMode="list" adapters={[]} />);
+async function blocked(listError: string, over: { pending?: boolean; installUrl?: string | null; repos?: RepoOption[] } = {}) {
+  return render(<NewProject repos={over.repos} listError={listError} installUrl={over.installUrl === undefined ? SETTINGS : over.installUrl}
+    pending={over.pending ?? false} now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{ q: "format" }}
+    closeMode="list" adapters={[]} />);
+}
+const count = (text: string) => (document.body.textContent ?? "").split(text).length - 1;
+const maybeButton = (name: string) =>
+  [...document.body.querySelectorAll("button")].find((b) => b.textContent?.trim() === name) ?? null;
+const inert = (el: HTMLElement) => (el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true";
 
-  expect(document.body.textContent).toContain(REQUESTED);
-  expect(document.body.textContent).not.toContain(AFTER_INSTALL);
+it("① A 연결 없음: 설치 제목 1회 + [Install GitHub App] + 보조 링크 \"Connect your account\"", async () => {
+  await blocked("not-connected");
+
+  expect(count(INSTALL_TITLE)).toBe(1);
+  expect(maybeButton("Install GitHub App")).not.toBeNull();
+  expect(document.body.textContent).toContain("Already installed on your organization?");
+  expect(maybeButton("Connect your account")).not.toBeNull();
+});
+
+it("① A: 주 버튼은 via=install, 보조 링크는 via=authorize로 같은 Action을 부른다", async () => {
+  mocks.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
+  await blocked("not-connected");
+
+  await click(button("Install GitHub App"));
+  await click(button("Connect your account"));
+
+  expect(mocks.startGithubConnectForUser.mock.calls[0]).toEqual(["new", { q: "format" }, "install"]);
+  expect(mocks.startGithubConnectForUser.mock.calls[1]).toEqual(["new", { q: "format" }, "authorize"]);
+});
+
+it("① A: 주 버튼이 대기 중이면 보조 링크도 눌리지 않는다 — state 쿠키가 덮이지 않게", async () => {
+  mocks.startGithubConnectForUser.mockReturnValue(new Promise(() => {}));
+  await blocked("not-connected");
+
+  await click(button("Install GitHub App"));
+
+  expect(inert(button("Connect your account"))).toBe(true);
+});
+
+it("① A: 실패하면 블록에 오류 Alert가 하나다", async () => {
+  mocks.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
+  await blocked("not-connected");
+
+  await click(button("Install GitHub App"));
+
+  expect(document.body.querySelectorAll('[role="alert"]')).toHaveLength(1);
+});
+
+it("① B 연결됨·설치 0: 같은 블록이지만 보조 링크가 없다", async () => {
+  await blocked("no-installations");
+
+  expect(count(INSTALL_TITLE)).toBe(1);
+  expect(maybeButton("Install GitHub App")).not.toBeNull();
+  expect(maybeButton("Connect your account")).toBeNull();
+});
+
+it("① C 리포 0: [Choose repositories]가 같은 탭 링크다", async () => {
+  await blocked("no-repos");
+
+  expect(document.body.textContent).toContain("Add a repository");
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent?.trim() === "Choose repositories");
+  expect(link?.getAttribute("href")).toBe(SETTINGS);
+  expect(link?.getAttribute("target")).toBeNull();
+});
+
+it.each(["no-installations", "no-repos"])("① D 대기(%s): 설치 제목 0회 + [Check again] + 다른 계정 링크", async (error) => {
+  await blocked(error, { pending: true });
+
+  expect(document.body.textContent).toContain("Waiting for approval");
+  expect(count(INSTALL_TITLE)).toBe(0);
+  expect(maybeButton("Install GitHub App")).toBeNull();
+  expect(maybeButton("Check again")).not.toBeNull();
+  expect(maybeButton("Install on a different account")).not.toBeNull();
+  // 거부가 아니라 대기다 — 실패 배너로 서지 않는다.
   expect(document.body.querySelector('[role="alert"]')).toBeNull();
 });
 
-it("① 대조군: 요청이 아니면 설치 링크와 새로고침 안내가 그대로 선다", async () => {
-  await render(<NewProject repos={undefined} listError="no-installations" installUrl="https://github.com/apps/malmoi/installations/new"
-    now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+it("① D: [Check again]은 목록을 다시 읽고, 아직이면 대기 중임을 알린다", async () => {
+  await blocked("no-installations", { pending: true });
 
-  expect(document.body.textContent).toContain(AFTER_INSTALL);
-  expect(document.body.textContent).not.toContain(REQUESTED);
+  await click(button("Check again"));
+
+  expect(mocks.router.refresh).toHaveBeenCalledTimes(1);
+  expect(find(document.body, '[role="status"]').textContent).toContain("Still waiting for approval.");
 });
 
-it("① 다른 설치로 리포가 이미 보이면 목록 위 info 한 줄로 알리고 실패 배너는 없다", async () => {
-  await render(<NewProject repos={repos} listError={undefined} installUrl={null} now="2026-09-13T00:00:00Z"
-    initialError="install-requested" backQuery={{}} closeMode="list" adapters={[]} />);
+it("① D: 승인돼 목록이 서면 포커스가 검색 필드로 간다 — 버튼 언마운트로 body에 떨어지지 않게", async () => {
+  const view = await blocked("no-installations", { pending: true });
+  await click(button("Check again"));
 
-  expect(document.body.textContent).toContain(REQUESTED);
+  await view.rerender(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} pending={false}
+    now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{ q: "format" }} closeMode="list" adapters={[]} />);
+
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Find a repository by name");
+});
+
+it("① reauthorize: 분리된 블록 — Reconnect GitHub + [Reauthorize GitHub App](Authorize)", async () => {
+  mocks.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
+  await blocked("reauthorize");
+
+  expect(document.body.textContent).toContain("Reconnect GitHub");
+  expect(count(INSTALL_TITLE)).toBe(0);
+  const reauth = button("Reauthorize GitHub App");
+  expect(reauth.querySelector("svg")).not.toBeNull();
+  await click(reauth);
+  expect(mocks.startGithubConnectForUser.mock.calls[0]?.[2] ?? "authorize").toBe("authorize");
+});
+
+it.each([
+  ["not-connected", false],
+  ["no-installations", false],
+  ["no-repos", false],
+  ["no-installations", true],
+  ["reauthorize", false],
+] as const)("① %s(pending=%s): \"Refresh this page\"가 없다", async (error, pending) => {
+  await blocked(error, { pending });
+  expect(count(REFRESH)).toBe(0);
+});
+
+it("① 목록 아래 힌트 링크도 같은 탭이다", async () => {
+  await render(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.getAttribute("href") === SETTINGS);
+  expect(link).toBeDefined();
+  expect(link?.getAttribute("target")).toBeNull();
+});
+
+describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 세우지 않는다", () => {
+  const NO_LINK = "Ask your administrator to install the malmoi GitHub App";
+
+  it("A는 Authorize + 관리자 안내", async () => {
+    await blocked("not-connected", { installUrl: null });
+
+    expect(maybeButton("Authorize GitHub App")).not.toBeNull();
+    expect(maybeButton("Install GitHub App")).toBeNull();
+    expect(document.body.textContent).toContain(NO_LINK);
+  });
+
+  it.each(["no-installations", "no-repos"])("%s는 버튼 없이 관리자 안내", async (error) => {
+    await blocked(error, { installUrl: null });
+
+    expect(maybeButton("Install GitHub App")).toBeNull();
+    expect(maybeButton("Choose repositories")).toBeNull();
+    expect(document.body.querySelector("a")).toBeNull();
+    expect(document.body.textContent).toContain(NO_LINK);
+  });
+
+  it("D는 다른 계정 링크가 없다", async () => {
+    await blocked("no-installations", { installUrl: null, pending: true });
+
+    expect(maybeButton("Install on a different account")).toBeNull();
+    expect(maybeButton("Check again")).not.toBeNull();
+  });
+});
+
+it("① E: 대기면 목록 위 info 한 줄, 실패 배너는 없다", async () => {
+  await render(<NewProject repos={repos} listError={undefined} installUrl={null} pending now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(count(E_INFO)).toBe(1);
   expect(document.body.querySelector('[role="alert"]')).toBeNull();
   expect(document.body.querySelectorAll('[role="radio"]')).toHaveLength(2);
+});
+
+it("① E 대조군: 대기가 아니면 info가 없다", async () => {
+  await render(<NewProject repos={repos} listError={undefined} installUrl={null} pending={false} now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(count(E_INFO)).toBe(0);
 });

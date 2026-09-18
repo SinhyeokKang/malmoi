@@ -467,3 +467,85 @@ it("invalid encryption write key rejects before consuming the OAuth code", async
     expect(hoisted.account.create).not.toHaveBeenCalled();
   } finally { vi.unstubAllEnvs(); }
 });
+
+/**
+ * **state 없는 설치 계열 복귀는 착지만 한다** (install-and-connect). GitHub 앱 페이지에서 직접 설치, 리포
+ * 선택 Save, 관리자의 요청 승인 복귀가 전부 state 없이 온다 — 누가 시작했는지 모르는 왕복은 **쓰지 않는다**
+ * (POSTMORTEM 2026-09-10 "재인증 목적이 사라진 OAuth callback이 일반 가입을 실행했다").
+ */
+describe("state 없는 설치 계열 복귀 — land-only", () => {
+  it.each(["install", "update", "request"])("setup_action=%s → /projects/new, 교환·쓰기·쿠키 소거 0", async (action) => {
+    const res = await GET(request({ code: "abc", setup_action: action, installation_id: "999" }));
+
+    expect(location(res)).toBe("/projects/new");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+    expect(hoisted.transaction).not.toHaveBeenCalled();
+    expect(hoisted.account.create).not.toHaveBeenCalled();
+    expect(hoisted.account.update).not.toHaveBeenCalled();
+    // 다른 탭에서 진행 중인 왕복의 쿠키다 — 지우면 그 왕복이 state-mismatch가 된다.
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("setup_action이 없으면 지금처럼 state-mismatch다 (대조군)", async () => {
+    const res = await GET(request({ code: "abc" }));
+
+    expect(location(res)).toBe("/projects?e=state-mismatch");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+  });
+
+  it("state 쿼리가 틀리면 설치 계열이어도 교환 0회로 거부한다", async () => {
+    const res = await GET(request({ code: "abc", state: "nonce-attacker", setup_action: "install" }));
+
+    expect(location(res)).toBe("/projects?e=state-mismatch");
+    expect(hoisted.exchangeCode).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 설치 요청 기록 — `Account(github-app).installRequestedAt`. **연결 성공과 같은 트랜잭션**(User 행
+ * `FOR UPDATE` 뒤)에서만 쓴다 (POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽어").
+ */
+describe("설치 요청 기록", () => {
+  it("setup_action=request면 새 행에 요청 시각을 싣는다", async () => {
+    await GET(request({ code: "abc", state: "nonce-1", setup_action: "request" }));
+
+    const [args] = hoisted.account.create.mock.calls[0] ?? [];
+    expect(args?.data.installRequestedAt).toEqual(NOW);
+  });
+
+  it("setup_action=install이면 기록을 지운다(null)", async () => {
+    await GET(request({ code: "abc", state: "nonce-1", setup_action: "install" }));
+
+    const [args] = hoisted.account.create.mock.calls[0] ?? [];
+    expect(args?.data).toHaveProperty("installRequestedAt", null);
+  });
+
+  it("setup_action이 없으면 기록을 건드리지 않는다 — Authorize 복귀는 대기를 모른다", async () => {
+    hoisted.account.findUnique.mockResolvedValue({ userId: SESSION_USER });
+    hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-1" });
+
+    await GET(request({ code: "abc", state: "nonce-1" }));
+
+    const [args] = hoisted.account.update.mock.calls[0] ?? [];
+    expect(Object.keys(args?.data ?? {})).not.toContain("installRequestedAt");
+  });
+
+  it("이미 연결된 행에도 request면 기록을 싣는다", async () => {
+    hoisted.account.findUnique.mockResolvedValue({ userId: SESSION_USER });
+    hoisted.account.findFirst.mockResolvedValue({ providerAccountId: "gh-1" });
+
+    await GET(request({ code: "abc", state: "nonce-1", setup_action: "request" }));
+
+    const [args] = hoisted.account.update.mock.calls[0] ?? [];
+    expect(args?.data.installRequestedAt).toEqual(NOW);
+  });
+
+  it("taken-by-other면 기록도 쓰지 않는다", async () => {
+    hoisted.account.findUnique.mockResolvedValue({ userId: "someone-else" });
+
+    await GET(request({ code: "abc", state: "nonce-1", setup_action: "request" }));
+
+    expect(hoisted.account.create).not.toHaveBeenCalled();
+    expect(hoisted.account.update).not.toHaveBeenCalled();
+  });
+});
