@@ -187,7 +187,7 @@
 
 ## R5 — 삼킨 실패 (🟡)
 
-- [ ] L5.1 POSTMORTEM 2026-09-14(`:1497`) 후속 미이행: `auth.ts:202` · `lib/credentials/access.ts:11`과 **`:45-48`**(둘째 무로그 swallow) · `lib/credentials/storage.ts:7`(`MissingEnvError`의 변수 이름까지 버림) · `lib/credentials/command.ts:35`. PII 키 하나가 빠지면 로그인·초대가 전부 "Unavailable"이고 서버 로그 0줄이다. `logFailure` 형으로 갈래 이름을 남긴다(원문 금지). (audit #33)
+- [x] L5.1 (2026-09-18 — `lib/credentials/log.ts`(`[credentials]` 접두, `classifyFailure` 규칙)를 만들고 다섯 자리에 달았다: `credentialIO` · `refreshVerifiedEmail`(P2002는 충돌이라 안 찍는다) · `storage.ts` `requireEnv`(`MissingEnvError`라 **변수 이름이 남는다**) · `credentialTarget` · `auth.ts` `signIn`. 안쪽 넷은 **원본이 이미 `CredentialError`면 안 찍고**, 바깥 경계 `signIn`은 항상 찍는다 — 그래서 중첩 장애는 두 줄(원인 + 단계)이다. 성공 경로 0줄 · 원문 없음 대조. `test:credentials:postgres` 64 green) POSTMORTEM 2026-09-14(`:1497`) 후속 미이행: `auth.ts:202` · `lib/credentials/access.ts:11`과 **`:45-48`**(둘째 무로그 swallow) · `lib/credentials/storage.ts:7`(`MissingEnvError`의 변수 이름까지 버림) · `lib/credentials/command.ts:35`. PII 키 하나가 빠지면 로그인·초대가 전부 "Unavailable"이고 서버 로그 0줄이다. `logFailure` 형으로 갈래 이름을 남긴다(원문 금지). (audit #33)
   - 검증(자동): 각 catch 경로에서 로그 1줄 + 갈래 이름, 원문 없음, **성공 경로 로그 0** 대조. `lib/credentials/**`를 건드리므로 `pnpm test:credentials:postgres` 손으로.
 - [ ] L5.2 같은 형 확산 — **공유 추상화는 만들지 않는다**(셋은 목적·AsyncLocalStorage 격리가 다르다). 할 일 둘: (audit #34)
   - OAuth 콜백 래퍼 셋(`session-revocation/http.ts` · `account-connect/http.ts` · `login-link/http.ts`)을 **계약 테스트 하나**로 잰다 — 같은 예외 주입 → 같은 상태 코드·로그 1줄·state 쿠키 정리. 상태 코드는 지금 200/200/500이고 **login-link의 500은 `:132` `loginFailed`가 소비**하므로 200으로 맞추면 실패 감지가 죽는다 → 500 쪽으로 통일.
