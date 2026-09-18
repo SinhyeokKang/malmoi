@@ -1130,11 +1130,11 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 | 컬럼 | 소유 | 무엇을 막나 |
 |---|---|---|
-| `TranslationSurface.lastImportToken` + `lastImportStartedAt` | 표면 | **뒤늦은 결과 쓰기.** 실행이 시작할 때 UUID를 세우고(`markImportStarted`·`lib/surfaces/create.ts`·`lib/import/run.ts`), 결과 쓰기(`importOutcomeFields`)는 전부 `WHERE lastImportToken = <내 토큰>`이다 — A가 끝난 뒤 B가 시작했으면 A의 늦은 실패 보고는 0행이고 B의 표시를 못 지운다(`lib/push/apply.ts` "성공도 자기 실행만 끝낸다"). 300초(`IMPORT_STALE_AFTER_SECONDS`) 지나면 죽은 실행으로 보고 새 실행이 들어간다 |
+| `TranslationSurface.lastImportToken` + `lastImportStartedAt` | 표면 | **뒤늦은 결과 쓰기.** 실행이 시작할 때 UUID를 세우고(`markImportStarted`·`lib/surfaces/create.ts`·`lib/import/run.ts`), 실패 보고와 진행 표시 거두기는 전부 `WHERE lastImportToken = <내 토큰>`이다 — A가 끝난 뒤 B가 시작했으면 A의 늦은 실패 보고는 0행이고 B의 표시를 못 지운다. ⚠️ **`applyPush`의 성공 결과만 예외다**(2026-09-18, launch-readiness L3.7) — 결과(`lastImportError`·`lastImportFailedAt`)는 무조건, 진행 표시(`lastImportStartedAt`·토큰)만 조건부다. 잠금 뒤 커밋 순서가 곧 데이터 순서라 마지막 커밋의 결과가 맞고, 결과까지 거르면 교차한 B가 토큰을 덮은 사이 A의 성공이 0행이 되어 옛 실패가 남는다. 300초(`IMPORT_STALE_AFTER_SECONDS`) 지나면 죽은 실행으로 보고 새 실행이 들어간다 |
 | `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
 | `TranslationSurface.importRevision` | 표면 | **옛 상태 위에 계획한 적용.** 성공한 적용마다 +1(`applyPush`·`finishSurface`). 수동 Sync는 계획 시점의 revision을 잡아 두고 표면마다 적용 tx에서 `planImportApply`가 현재값과 대조한다 — 그 사이 CI push가 지나갔으면 `superseded`로 그 표면만 건너뛴다(값을 견주는 것이 아니라 **"내가 본 상태가 아직 그 상태인가"**만 본다 — §0 불변식 2 안이다) |
 
-⚠️ **`lastImportToken`을 세우는 자리가 트랜잭션 밖이면 이 방어가 뒤집힌다** — `app/api/push/route.ts`의 `markImportStarted`가 그 자리이고, 동시 CI 둘이면 성공한 임포트가 `import-failed`로 표시될 수 있다(launch-readiness L3.7). ⚠️ **sync-edit-protection 배포 B는 이것을 옮기지 않았다** — design §3은 적용 트랜잭션 안으로 옮기라고 했지만, 그러면 롤백된 실패에서 표시가 없어 `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 대신 보류 판정을 표시 **앞**의 사전 집계로 두어 보류 경로는 쓰기 0이고, 경합 보류만 `abandonImportRun`이 자기 표시를 거둔다. L3.7은 열려 있다.
+⚠️ **`lastImportToken`을 세우는 자리는 트랜잭션 밖이다** — `app/api/push/route.ts`의 `markImportStarted`. 동시 CI 둘이 사전 가드를 함께 지나면 토큰은 나중 요청의 것이 된다. **옮기지 않는다** — 적용 트랜잭션 안으로 옮기면 롤백된 실패에서 표시가 없어 `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 대신 교차의 두 결과를 따로 막는다(2026-09-18, launch-readiness L3.7 — `lib/keys/__tests__/concurrent-import.integration.ts`가 barrier로 재현한다): ① 성공 결과는 토큰과 무관하게 쓴다(위 표) ② 트랜잭션 **안**의 `stale-commit`은 실패가 아니라 "더 새 커밋이 먼저 적재됐다"라 `abandonImportRun`으로 표시만 거둔다. 둘 중 하나만 있으면 성공한 적재가 `import-failed`로 그려진다. 보류도 같은 형이다 — 판정을 표시 **앞**의 사전 집계로 두어 보류 경로는 쓰기 0이고, 경합 보류만 `abandonImportRun`이 자기 표시를 거둔다.
 
 ## 5.6 sync 실행 (`lib/sync/`)
 
@@ -1427,9 +1427,9 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 아니다 — 같은 커밋의 재실행 실패도 표시하며, 같은 커밋의 성공 뒤 늦게 도착한 실패는 표시될 수 있다.
 
 ⚠️ **성공의 원자성도 같은 축이다.** 완전 성공이면 이전 실패를 **적재와 같은 트랜잭션에서** 비운다 —
-`applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데 목록만 실패로 남는 창이 생긴다. 그 비움은 **자기 실행의
-시작 시각을 대조해서만** 일어난다: 먼저 끝난 실행이 나중에 시작한 실행의 진행 표시를 지우면, 그 나중
-실행의 실패 기록이 조건부 쓰기에서 탈락한다 (POSTMORTEM 2026-09-13).
+`applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데 목록만 실패로 남는 창이 생긴다. **진행 표시** 비움은 **자기 실행의
+토큰을 대조해서만** 일어난다: 먼저 끝난 실행이 나중에 시작한 실행의 진행 표시를 지우면, 그 나중
+실행의 실패 기록이 조건부 쓰기에서 탈락한다 (POSTMORTEM 2026-09-13). 실패 기록 비움은 무조건이다(§5.5.7 표 — L3.7).
 
 ⚠️ **`/api/push`에는 대응하는 사건이 없다** (2026-09-07). 전에는 같은 사건("그 slug의 `Project` 행이 없다")을 404 + 본문(`project '<slug>' not found`)으로 냈는데, 프로젝트를 **토큰이 정하게** 되면서 그 갈래가 사라졌다 — 조회되지 않으면 무효 토큰과 구별하지 않고 **401 하나**다(프로젝트 존재를 노출하지 않는다, §5.5.5). pull이 5xx인 것은 그대로다: 그쪽은 **자기 설정**을 읽는다.
 
