@@ -124,6 +124,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
 | `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다) |
+| `/api/github/setup` | Route Handler | GitHub App **Setup URL** — 설치·설치 요청 뒤 복귀. `setup_action`만 읽어 착지를 정하고 쓰기가 없다(`installation_id`는 안 읽는다). callback과 같이 matcher 밖 |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다** — 클라이언트 fetch 배선과 중복 스키마가 생기고 `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
@@ -191,9 +192,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 |---|---|
 | push `[dev]` | dev에 red가 쌓이는 것. preview 배포와 같은 커밋을 검증한다 |
 | pull_request `[main]` | **프로덕션 머지 게이트.** `/merge`가 이 결론을 본다 |
-| push `[main]` | 머지 뒤 확인 + 다른 창구(웹 UI·Codex·다른 머신)가 main을 직접 친 경우 |
+| push `[main]` | 머지 뒤 확인 |
 
-⚠️ **GitHub 브랜치 프로텍션은 없다**(Free + private). PR CI가 게이트인 것은 **`/merge`가 그것을 보기 때문**이지 서버가 강제해서가 아니다. **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다.
+**`main`에 브랜치 프로텍션이 있다**(2026-09-18 — 리포가 public이 되어 Free에서도 열렸다): required check `verify` 하나, **`enforce_admins` 켬**, strict·리뷰 요구 없음. 오너도 main을 직접 칠 수 없다 — 새 커밋은 push 시점에 `verify`가 없으므로 PR 머지만 통과한다. 관리자를 빼면 유일한 사람인 오너가 우회하므로 켜 둔 것이 요지다. `/sync`는 dev를 밀고 태그는 대상이 아니라 걸리지 않는다. **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다.
 
 ## 브랜치 정책 & 배포
 
@@ -254,7 +255,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/DIRECTORY.md](./docs/DIRECTORY.md) | 어디에 무엇이 있고 **왜 그렇게 생겼나** | 파일·디렉터리를 새로 만들거나 옮겼을 때 |
 | [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트 단일, 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. 새 raw 색을 늘렸으면 §6.2에 등재 |
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 — **나중에 다시 실행할 절차만** | 그 절차가 바뀌었을 때 |
-| [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때. ⚠️ 말모이가 private이라 Settings > Actions에서 접근 허용이 켜져 있어야 대상 리포가 이 action을 쓴다 |
+| [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
 | [README.md](./README.md) | CLAUDE.md의 요약 미러 | 스택·명령·브랜치가 바뀌면 같이 |
 

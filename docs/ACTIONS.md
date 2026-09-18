@@ -6,9 +6,7 @@
 
 ## 1. 말모이 쪽 설정 (한 번만)
 
-⚠️ **말모이 리포가 private이라 접근을 열어야 한다.** `malmoi` > Settings > Actions > General > Access > **"Accessible from repositories owned by the user"**. 안 켜면 대상 리포 run이 `unable to resolve action`으로 죽는다.
-
-⚠️ **그 설정은 소유자가 같은 리포만 열어준다** — **다른 계정이 소유한 리포는 이 경로가 원리적으로 없다.** 그 프로젝트는 편집과 야간 pull은 정상이고 **자동 수집(push)만 안 돈다**: 소스 키가 갱신되지 않으므로 리포에 새 문자열이 생겨도 화면에 나타나지 않는다. 온보딩 **스펙**이 이것을 §5 빚으로 등재했다 — ⚠️ **결과 화면은 아직 말하지 않는다**.
+**없다.** 말모이 리포가 public이라(2026-09-18) 어느 계정의 리포든 이 action을 참조할 수 있다. ⚠️ **private이던 동안에는** Settings > Actions > Access의 "Accessible from repositories owned by the user"가 필요했고 그 설정은 **소유자가 같은 리포만** 열어서, 다른 계정 리포는 자동 수집(push)이 원리적으로 안 돌았다 — `unable to resolve action`을 보면 리포가 다시 private이 됐는지부터 본다.
 
 ## 2. 대상 리포 쪽 설정
 
@@ -73,9 +71,9 @@ jobs:
 
 ⚠️ **참조는 `@malmoi-i18n-push-v1`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
-대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. Free + private에서
-브랜치 프로텍션이 거부되므로(403 실측) `main`을 지키는 것은 `/merge` 관행뿐이고, 그 관행이 남의
-리포의 보안 경계가 되어서는 안 된다.
+대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. `main`에는 이제 브랜치
+프로텍션(required check `verify`, 2026-09-18)이 있지만 그것이 보는 것은 **테스트 green**이지 action이
+남의 러너에서 할 일이 아니다 — 말모이의 CI 게이트가 남의 리포의 보안 경계가 되어서는 안 된다.
 
 ⚠️ **전에 이 문서와 `CLAUDE.md`가 `@main`을 "안전하다"고 적었는데, 그 논거는 *낡음*이었다** —
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은

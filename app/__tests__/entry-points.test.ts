@@ -96,6 +96,23 @@ const USER_SCOPED_ACTIONS = new Set([
   "projects/actions.ts#disconnectGithub",
 ]);
 
+/**
+ * 소스 스캔 판정 전에 주석을 벗긴다 (POSTMORTEM 2026-09-18). 이 리포는 "왜"를 주석에 적어 가드·식별자
+ * 이름을 인용하는 주석이 흔하고, 벗기지 않으면 인용 하나가 호출·읽기로 세어진다.
+ */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+}
+
+/**
+ * export 하나의 인가 판정. ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프
+ * Action이 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
+ */
+function exportGuarded(body: string, id: string): boolean {
+  const code = stripComments(body);
+  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
+}
+
 /** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
@@ -182,9 +199,36 @@ describe("서버 진입점", () => {
     for (const name of EXEMPT) expect(found).toContain(name);
   });
 
-  it("예외가 아닌 진입점은 전부 인가를 지난다", () => {
+  /**
+   * ⚠️ **이름이 아니라 호출(`g(`)을 센다** (2026-09-18, launch-readiness L2.4). 이름만 보면 `import`
+   * 줄이 그것을 들고 있어, 호출을 지운 라우트가 green이었다 — `/api/github/setup`에서 뮤테이션으로 잡혔다.
+   */
+  const callsGuard = (source: string): boolean => {
+    const code = stripComments(source);
+    return GUARDS.some((g) => code.includes(`${g}(`));
+  };
+
+  it("가드 판정은 import·주석이 아니라 호출을 본다", () => {
+    const imported = 'import { requireUser } from "@/lib/auth/session";\nexport async function GET() {}';
+    expect(callsGuard(imported)).toBe(false);
+    expect(callsGuard(imported + "\n/** `requireUser()`를 지난다 */\n// requireUser()")).toBe(false);
+    expect(callsGuard(imported + "\nawait requireUser();")).toBe(true);
+  });
+
+  /** export 단위 판정도 같은 착시를 막는다 — 함수 안 주석이 가드를 인용해도 호출이 아니다. */
+  it("Action export 판정도 주석 인용을 호출로 세지 않는다", () => {
+    const quoted = 'export async function f(slug: string) {\n  // getProjectAccess()를 지난 뒤 부른다\n  return slug;\n}';
+    expect(exportGuarded(quoted, "x/actions.ts#f")).toBe(false);
+    expect(exportGuarded(quoted + "\nawait getProjectAccess({ slug });", "x/actions.ts#f")).toBe(true);
+    const userQuoted = 'export async function g() {\n  /** requireUser()면 충분하다 */\n}';
+    expect(exportGuarded(userQuoted, "projects/actions.ts#createProject")).toBe(false);
+  });
+
+  // Action 파일은 아래 export 단위 검사가 맡는다 — 파일 단위로 보면 `invite/actions.ts`처럼 export가
+  // 면제된 파일이 이름 언급 하나로 통과하던 것과 같은 착시가 된다.
+  it("예외가 아닌 페이지·라우트는 전부 인가를 지난다", () => {
     const unguarded = ENTRY_POINTS.filter(
-      (e) => !EXEMPT.has(e.path) && !GUARDS.some((g) => e.source.includes(g)),
+      (e) => !e.path.endsWith("actions.ts") && !EXEMPT.has(e.path) && !callsGuard(e.source),
     ).map((e) => e.path);
     expect(unguarded).toEqual([]);
   });
@@ -206,11 +250,7 @@ describe("서버 진입점", () => {
         const body = file.source.slice(mark.at, marks[i + 1]?.at ?? file.source.length);
         const id = `${file.path}#${mark.name}`;
         if (EXEMPT_ACTIONS.has(id)) continue;
-        // ⚠️ **`requireUser`는 이름이 목록에 있을 때만 인정한다** — 프로젝트 스코프 Action이
-        // 로그인만 확인하고 남의 프로젝트를 만지는 것이 정확히 이 검사가 막아야 하는 것이다.
-        const guarded = PROJECT_GUARDS.some((g) => body.includes(g)) ||
-          (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(body));
-        if (!guarded) unguarded.push(id);
+        if (!exportGuarded(body, id)) unguarded.push(id);
       }
     }
     expect(unguarded).toEqual([]);
@@ -235,7 +275,8 @@ describe("서버 진입점", () => {
     const id = "projects/[slug]/settings/actions.ts#updateThing";
     expect(USER_SCOPED_ACTIONS.has(id)).toBe(false);
     const accepted = USER_SCOPED_ACTIONS.has(id) ? GUARDS : PROJECT_GUARDS;
-    expect(accepted.some((g) => source.includes(g))).toBe(false);
+    expect(exportGuarded(source, id)).toBe(false);
+    expect(accepted.some((g) => source.includes(`${g}(`))).toBe(false);
   });
 
   /**
@@ -577,13 +618,22 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(PENDING_QUERY_KEYS.filter((key) => ACCEPTED.includes(key))).toEqual([]);
   });
 
+  // 주석을 벗기고 센다 (POSTMORTEM 2026-09-18) — 페이지 주석이 `searchParams`를 설명하는 일이 흔하다.
+  const readsSearchParams = (source: string): boolean => stripComments(source).includes("searchParams");
+
+  it("수신 판정은 주석 속 `searchParams` 언급을 읽기로 세지 않는다", () => {
+    const page = "export default async function Page() {\n  // searchParams는 안 읽는다\n  return null;\n}";
+    expect(readsSearchParams(page)).toBe(false);
+    expect(readsSearchParams(page.replace("Page()", "Page({ searchParams }: Props)"))).toBe(true);
+  });
+
   it("보낸 쿼리를 대상 페이지가 읽는다", () => {
     const unread: string[] = [];
     for (const emit of EMITTED) {
       const page = PAGES.find((p) => p.shape === emit.target);
       // 대상이 이 앱의 페이지가 아니면(외부 URL·API) 이 검사의 대상이 아니다.
       if (page === undefined) continue;
-      if (!page.source.includes("searchParams")) {
+      if (!readsSearchParams(page.source)) {
         unread.push(`${emit.from} → ${emit.target}?${emit.key}= (${page.path}가 searchParams를 안 읽는다)`);
       }
     }
@@ -721,6 +771,17 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
     const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
     const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
     expect(covered).toEqual([]);
+  });
+
+  /**
+   * GitHub이 브라우저를 되돌리는 두 지점. 로그인은 필요하지만(`requireUser`) matcher에 넣으면
+   * 로그인 화면으로 302되며 쿼리(`code`·`setup_action`)가 사라진다 (POSTMORTEM 2026-09-06 "쿼리 수신자").
+   */
+  it("GitHub 복귀 지점은 matcher 밖이다 — 302되면 쿼리가 사라진다", () => {
+    const RETURNS = ["/api/github/callback", "/api/github/setup"];
+    expect(RETURNS.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)))).toEqual([]);
+    // 대조군: 같은 판정이 보호 경로는 덮는다고 말한다 — 0건이 판정 고장이 아니다.
+    expect(PATTERNS.some((pattern) => covers(pattern, "/projects/new"))).toBe(true);
   });
 });
 

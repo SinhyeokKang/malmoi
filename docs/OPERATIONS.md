@@ -216,6 +216,16 @@ pnpm credentials:dev --mode=verify
 - 격리 테스트는 실제 Auth.js 핸들러와 **가짜** OAuth 응답, 실제 DB unique/잠금/CAS, 중단·재개·백업
   복원을 검사한다. **실제 공급자·배포 차단·키보드/포커스 검증을 대신하지 않는다.**
 
+## GitHub App 콘솔 설정 — Setup URL
+
+App 설정 > General > **Post installation** (2026-09-18, launch-readiness L2.4):
+
+- **Setup URL** = `https://mal-moi.com/api/github/setup`. 없으면 설치 뒤 GitHub 설정 화면에 남고 malmoi는 새로고침해야 리포가 뜬다.
+- **Redirect on update** 켬 — 설치의 리포 선택을 바꾼 뒤(① "Choose repositories")에도 ①로 돌아온다.
+- **Request user authorization (OAuth) during installation**은 끈다 — 켜면 GitHub이 Setup URL 대신 callback URL로 보내고, state 없는 callback은 `state-mismatch`다(L0.2).
+
+⚠️ **URL은 App당 하나다** — 세 환경이 `malmoi-prod` 하나를 공유하는 동안 로컬·preview에서 한 설치도 프로덕션으로 착지한다. ⚠️ **`GITHUB_APP_SLUG`가 없는 환경에서도 이 등록은 남는다** — 그 환경은 설치 링크만 사라지고(관리자 설치 안내로 떨어진다) 누가 GitHub에서 직접 설치하면 여전히 이 URL로 돌아온다.
+
 ## 5. 자격증명 전면 재발급
 
 순서가 있다 (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → Vercel env → 재배포

@@ -4,7 +4,7 @@ description: dev → main PR 생성 + CI 대기 + squash 머지 + dev 동기화.
 
 `dev`를 `main`에 반영한다. **main 머지가 곧 Vercel 프로덕션 배포이므로 이 스킬이 배포 스킬이다** — 별도 `/deploy`는 없고, `/push`는 dev까지(= preview 배포)만 간다.
 
-> **⚠️ GitHub 브랜치 프로텍션이 없다** (Free 플랜 + private). 서버가 main 직접 push를 막지 않으므로 **이 스킬의 게이트가 유일한 방어**다. 게이트를 건너뛰거나 main에 직접 푸시하면 검증되지 않은 코드가 프로덕션으로 나간다.
+> **`main`은 브랜치 프로텍션이 막는다** (2026-09-18 — required check `verify`, `enforce_admins` 켬). 직접 push는 서버가 거부하고 PR 머지는 `verify`가 green이어야 된다. ⚠️ **서버가 보는 것은 `verify` 하나뿐이다** — `db:status:prod`·미커밋·미푸시 검사는 여전히 이 스킬만 한다.
 >
 > **PR CI가 프로덕션 앞의 진짜 게이트다** (2026-09-04 브랜치 분리로 되살아났다). 브랜치가 하나였던 동안에는 PR 이벤트 자체가 없어 CI가 배포 **뒤에** 돌았고, 방어선은 `/push`의 로컬 게이트뿐이었다.
 
