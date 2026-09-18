@@ -27,19 +27,37 @@ describe("classifyFailure — 우리 메시지와 남의 메시지를 가른다"
     expect(c.safe && c.message).toContain("EXAMPLE_MISSING_VAR");
   });
 
-  it("Prisma 접속 오류는 안전하지 않다 — 호스트·유저가 본문으로 나가면 안 된다", () => {
+  /**
+   * ⚠️ **2026-09-18에 뒤집혔다.** 전에는 이 자리가 `detail`이 전문을 담는 것을 고정했고 근거는
+   * "본문엔 `ref`만, 전문은 서버 로그로"였다(2026-09-04). 그 판단은 **서버 로그를 안전한 곳으로**
+   * 봤는데, `lib/github-connect/log.ts`가 2026-09-10 credential 리뷰에서 같은 위험을 **로그에도**
+   * 걸었다: 남의 라이브러리 메시지에는 Prisma 인자·암호문이 실릴 수 있다. 두 규칙이 서로 반대인
+   * 채로 넉 달을 굴렀고, 더 보수적인 쪽으로 합쳤다.
+   *
+   * ⚠️ **대가를 적어 둔다** — 이제 Prisma 접속 실패의 호스트·유저는 **어디에도 안 남는다.** 남는
+   * 것은 갈래 이름뿐이고, 그것으로 부족하면 재현이 유일한 길이다.
+   */
+  it("Prisma 접속 오류는 안전하지 않고, 호스트·유저가 로그에도 안 남는다", () => {
     const c = classifyFailure(
       new Error(`Can't reach database server at \`aws-0-ap-northeast-1.pooler.supabase.com:5432\``),
     );
     expect(c.safe).toBe(false);
-    // 전문은 버리지 않는다 — 서버 로그로 보낼 값이다.
-    expect(c.safe === false && c.detail).toContain("pooler.supabase.com");
+    expect(c.safe === false && c.detail).not.toContain("pooler.supabase.com");
+    // 분류는 남는다 — 전부 한 단어로 접으면 로그를 남기는 의미가 사라진다 (`log.ts`와 같은 판단).
+    expect(c.safe === false && c.detail).toBe("Error");
   });
 
-  it("Error가 아닌 것을 던져도 문자열로 잡는다", () => {
+  /** ⚠️ HTTP 오류는 상태 코드가 갈래다 — `log.ts`가 `http-<status>`를 쓰는 것과 같은 형이다. */
+  it("status를 든 오류는 `http-<status>`로 접힌다", () => {
+    const c = classifyFailure(Object.assign(new Error("secret in body"), { status: 503 }));
+    expect(c.safe === false && c.detail).toBe("http-503");
+  });
+
+  it("Error가 아닌 것을 던져도 타입으로 잡는다 — 값 자체는 안 남는다", () => {
     const c = classifyFailure("문자열을 던졌다");
     expect(c.safe).toBe(false);
-    expect(c.safe === false && c.detail).toContain("문자열을 던졌다");
+    expect(c.safe === false && c.detail).not.toContain("문자열을 던졌다");
+    expect(c.safe === false && c.detail).toBe("string");
   });
 
   it("MissingEnvError는 이름으로 판정한다 — instanceof는 번들 경계를 넘으면 깨진다", () => {

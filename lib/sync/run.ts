@@ -161,7 +161,8 @@ async function startRun(
  *
  * ⚠️ **남의 라이브러리 메시지는 싣지 않는다** — 이 값이 화면과 대상 리포의 (public일 수 있는)
  * Actions 로그로 흘러가고, Prisma 접속 오류 한 줄이 pooler 호스트와 DB 유저를 담는다
- * (ARCHITECTURE §6.0). 전문은 `ref`와 함께 서버 로그로 간다.
+ * (ARCHITECTURE §6.0). 서버 로그에는 `ref`와 **갈래 이름만** 간다 — 원문은 어디에도 안 남는다
+ * (`classifyFailure`가 2026-09-18에 그것을 끊었다).
  */
 function failureOutcome(slug: string, error: unknown): PullOutcome {
   const failure = classifyFailure(error);

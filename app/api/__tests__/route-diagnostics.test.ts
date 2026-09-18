@@ -41,7 +41,7 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-// 목록 둘의 무효화가 push 경로에 붙었다 (projects-list §3) — 테스트 환경에는 그 컨텍스트가 없다.
+// 목록 둘의 무효화가 push 경로에 붙었다 (DESIGN §6.63) — 테스트 환경에는 그 컨텍스트가 없다.
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 // 라우트는 보호 적재(`applyProtectedPush`)를 부른다 — 여기서는 보류 판정 밖(적용 결과·오류 본문)을 보므로 applied로 감싼다.
@@ -201,9 +201,15 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
     expect(body[1]).toMatchObject({ slug: "b", status: "failed" });
     expect(body[1].ref).toMatch(/^[0-9a-f]{8}$/);
     expect(JSON.stringify(body)).not.toContain("GitHub App");
-    // 버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다.
+    /**
+     * ⚠️ **로그에도 원문이 안 남는다** (2026-09-18 반전 — `classifyFailure`). 전에는 이 자리가
+     * "버리지 않는다 — 운영자가 그 ref로 Vercel 로그에서 찾는다"로 전문을 고정했다. 남의 메시지에
+     * Prisma 인자·암호문이 실릴 수 있다는 `lib/github-connect/log.ts`의 판단을 로그까지 넓혔다.
+     * 남는 것은 **갈래 이름 + ref + 프로젝트 slug** 셋이고, 그것으로 부족하면 재현이 유일한 길이다.
+     */
     const logged = spy.mock.calls.map((c) => String(c[0])).join("\n");
-    expect(logged).toContain("GitHub App 토큰 발급 실패");
+    expect(logged).not.toContain("GitHub App 토큰 발급 실패");
+    expect(logged).toContain("Error");
     expect(logged).toContain(body[1].ref);
     expect(logged).toContain("[pull:b]");
     spy.mockRestore();
@@ -408,7 +414,10 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", ()
     const body = await res.json();
     expect(body).toMatchObject({ error: "internal" });
     expect(JSON.stringify(body)).not.toContain("pooler.supabase.com");
-    expect(spy.mock.calls[0]?.[0]).toContain("pooler.supabase.com");
+    // ⚠️ **로그에도 안 남는다** (2026-09-18 반전). 전에는 이 줄이 `toContain`이었다 — 서버 로그를
+    // 안전한 곳으로 본 2026-09-04 판단이고, credential 리뷰가 그것을 뒤집었다.
+    expect(spy.mock.calls[0]?.[0]).not.toContain("pooler.supabase.com");
+    expect(spy.mock.calls[0]?.[0]).toContain("Error");
     spy.mockRestore();
   });
 
