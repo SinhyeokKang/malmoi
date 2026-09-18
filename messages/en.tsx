@@ -1067,27 +1067,49 @@ export const en = {
       },
     },
 
-    /** ①①' — 셋이 사용자에게 요구하는 일이 다르다: 계정 연결 · App 설치 · 설치에 리포 추가 (DESIGN §6.7). */
+    /**
+     * ① 막힘 갈래 — 설치 전(A/B) · 리포 없음(C) · 승인 대기(D) · 재인가 (install-and-connect · DESIGN §6.7).
+     * ⚠️ **제목은 마침표 없는 짧은 구, 설명은 한 문장이다** (DESIGN §6.4·§10).
+     */
     empty: {
+      /** Authorize 왕복의 버튼 둘 — `add-surface`도 쓴다. ① 설치 전(A)은 `GITHUB_APP_SLUG`가 없을 때만 이 버튼이다. */
       connect: {
-        title: "Connect GitHub repositories",
-        description: "Authorize the malmoi GitHub App to access your repositories. This is separate from signing in to malmoi.",
         action: "Authorize GitHub App",
         reauthorize: "Reauthorize GitHub App",
       },
-      /** ⚠️ **제목은 마침표 없는 짧은 구다** (DESIGN §10) — 사유 문장은 `description`이 든다. */
-      noInstallations: "Install the malmoi GitHub App",
-      noRepos: "Choose repositories for the GitHub App",
-      install: "Install GitHub App",
-      addRepos: "Choose repositories",
-      /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
-      afterInstall: "Refresh this page once you're done.",
+      install: {
+        title: "Connect your repositories",
+        description: "Install the malmoi GitHub App on your account or organization to choose repositories.",
+        action: "Install GitHub App",
+        /** A에만 선다 — 이미 조직에 설치돼 있어 연결만 필요한 사람의 길이다. */
+        installed: "Already installed on your organization?",
+        connect: "Connect your account",
+      },
+      repos: {
+        title: "Add a repository",
+        description: "Choose which repositories the malmoi GitHub App can access.",
+        action: "Choose repositories",
+      },
       /**
-       * 설치 **요청** 뒤 (`?e=install-requested`, `lib/github-connect/setup.ts`). ⚠️ **`afterInstall`과 한
-       * 화면에 서지 않는다** — 요청자는 설치를 끝낼 수 없어 "끝나면 새로고침"이 거짓이 된다.
+       * 설치 **요청** 뒤 (`Account.installRequestedAt`). ⚠️ **설치 화면 제목이 여기 서지 않는다** — 요청자는
+       * 설치할 수 없고, 설치 링크를 다시 누르면 요청이 한 번 더 간다.
        */
-      requested: "An organization owner has to approve your request to install the malmoi GitHub App. Your repositories show up here once they do.",
+      waiting: {
+        title: "Waiting for approval",
+        description: "An organization owner has to approve your request to install the malmoi GitHub App.",
+        action: "Check again",
+        otherAccount: "Install on a different account",
+        /** [Check again] 뒤 아직이면 — live region이 읽는다. 승인됐으면 목록이 선다. */
+        still: "Still waiting for approval.",
+        /** 다른 설치로 리포가 이미 보일 때 목록 위 한 줄 — 위 설명과 같은 사실이다. */
+        info: "An organization owner still has to approve your install request.",
+      },
+      reconnect: {
+        title: "Reconnect GitHub",
+        description: "Authorize the malmoi GitHub App again to see your repositories.",
+      },
+      /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크를 세울 수 없다 — 그때 할 수 있는 일을 말한다. */
+      noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
     },

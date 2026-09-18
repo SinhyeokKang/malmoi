@@ -108,8 +108,16 @@ export async function getViewer(accessToken: string): Promise<{ id: string; logi
  * 인가 판정의 근거다 (ARCHITECTURE §6.4).
  */
 export async function listUserInstallations(accessToken: string): Promise<string[]> {
+  return (await listUserInstallationRecords(accessToken)).map((installation) => installation.id);
+}
+
+/**
+ * 설치 목록 + 생긴 시각. **같은 응답의 `created_at`이다 — 추가 호출이 0이다.** 설치 요청 대기 판정
+ * (`pending.ts`)이 "요청 뒤에 생긴 설치가 있는가"로 승인을 읽는다.
+ */
+export async function listUserInstallationRecords(accessToken: string): Promise<{ id: string; createdAt: Date }[]> {
   const items = await userOctokit(accessToken).paginate("GET /user/installations");
-  return items.map((installation) => String(installation.id));
+  return items.map((installation) => ({ id: String(installation.id), createdAt: new Date(installation.created_at) }));
 }
 
 /** 그 설치에서 볼 수 있는 리포 하나. `pushedAt`은 같은 응답에 이미 있다 — **추가 호출이 0이다.** */

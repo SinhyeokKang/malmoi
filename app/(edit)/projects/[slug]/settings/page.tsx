@@ -24,6 +24,7 @@ import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import
 import { failing } from "@/lib/projects/list";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { renderProjectWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
+import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -256,7 +257,7 @@ function HealthRow({
   slug: string;
   appSlug: string | undefined;
 }) {
-  const installUrl = appSlug === undefined ? null : `https://github.com/apps/${appSlug}/installations/new`;
+  const installUrl = installationSettingsUrl(appSlug);
 
   switch (health.status) {
     case "ok":

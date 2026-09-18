@@ -758,12 +758,16 @@ it("① A: 주 버튼은 via=install, 보조 링크는 via=authorize로 같은 A
 });
 
 it("① A: 주 버튼이 대기 중이면 보조 링크도 눌리지 않는다 — state 쿠키가 덮이지 않게", async () => {
-  mocks.startGithubConnectForUser.mockReturnValue(new Promise(() => {}));
+  // ⚠️ **끝에서 푼다** — React 19는 진행 중인 async transition을 전역으로 얽어서, 영원히 안 끝나는 promise를
+  // 남기면 **뒤 테스트의 transition까지 pending으로 붙잡힌다**(이 파일의 [Check again] 단언이 그렇게 red였다).
+  let settle: (value: unknown) => void = () => {};
+  mocks.startGithubConnectForUser.mockReturnValue(new Promise((resolve) => { settle = resolve; }));
   await blocked("not-connected");
 
   await click(button("Install GitHub App"));
 
   expect(inert(button("Connect your account"))).toBe(true);
+  await act(async () => settle({ ok: false, error: "unavailable" }));
 });
 
 it("① A: 실패하면 블록에 오류 Alert가 하나다", async () => {
@@ -810,7 +814,7 @@ it("① D: [Check again]은 목록을 다시 읽고, 아직이면 대기 중임�
   await click(button("Check again"));
 
   expect(mocks.router.refresh).toHaveBeenCalledTimes(1);
-  expect(find(document.body, '[role="status"]').textContent).toContain("Still waiting for approval.");
+  expect(find(document.body, '[aria-live="polite"]').textContent).toContain("Still waiting for approval.");
 });
 
 it("① D: 승인돼 목록이 서면 포커스가 검색 필드로 간다 — 버튼 언마운트로 body에 떨어지지 않게", async () => {

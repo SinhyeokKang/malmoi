@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-import { startGithubConnectForUser, type UserConnectDest } from "@/app/(edit)/projects/actions";
+import { startGithubConnectForUser, type ConnectVia, type UserConnectDest } from "@/app/(edit)/projects/actions";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -44,31 +44,54 @@ export function ConnectGithubButton({
    */
   onResult?: (message: string | null) => void;
 }) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const report = (message: string | null) => { if (onResult === undefined) setError(message); else onResult(message); };
+  const connect = useGithubConnect({ dest, back, onResult });
 
   return (
     <div className="space-y-2">
       <Button
         variant="primary"
-        loading={pending}
+        loading={connect.pending}
         // ⚠️ 라벨과 같게 두면 대기 상태가 안 보인다 — GitHub으로 나가는 왕복이라 문구가 "이동"이다.
-        onClick={() => {
-          report(null);
-          startTransition(async () => {
-            const result = await startGithubConnectForUser(dest, back ?? {});
-            // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
-            if (!result.ok) report(messageFor(result.error));
-          });
-        }}
+        onClick={() => connect.start("authorize")}
       >
         <GithubIcon className="size-4" />
         {label}
       </Button>
-      {error !== null && <Alert variant="danger">{error}</Alert>}
+      {connect.error !== null && <Alert variant="danger">{connect.error}</Alert>}
     </div>
   );
+}
+
+/**
+ * 연결 왕복 하나의 pending·실패 (install-and-connect). ⚠️ **한 블록의 버튼들이 이것 하나를 공유한다** — ①의
+ * 주 버튼(Install)과 보조 링크(Authorize)가 각자 transition을 들면 둘 다 눌려 state 쿠키가 덮이고, 먼저 떠난
+ * 왕복이 `state-mismatch`로 돌아온다.
+ */
+export function useGithubConnect({
+  dest,
+  back,
+  onResult,
+}: {
+  dest: UserConnectDest;
+  back?: { filter?: string; q?: string };
+  onResult?: (message: string | null) => void;
+}): { pending: boolean; error: string | null; start: (via: ConnectVia) => void } {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const report = (message: string | null) => { if (onResult === undefined) setError(message); else onResult(message); };
+
+  return {
+    pending,
+    error,
+    start: (via) => {
+      report(null);
+      startTransition(async () => {
+        const result = await startGithubConnectForUser(dest, back ?? {}, via);
+        // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
+        if (!result.ok) report(messageFor(result.error));
+      });
+    },
+  };
 }
 
 function messageFor(error: string): string {

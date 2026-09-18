@@ -1,11 +1,13 @@
 "use client";
 
-import { FolderGit2, GitBranch, Search } from "lucide-react";
+import { Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { GithubIcon } from "@/components/signin/brand-icons";
-import { ConnectGithubButton } from "@/components/onboarding/connect-github";
+import { useGithubConnect } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Radio, RadioGroup } from "@/components/ui/radio";
@@ -44,8 +46,8 @@ export type RepoStepState = {
   branchValue: string;
   accessError: string | undefined;
   banner: string | null;
-  /** GitHub Setup URL이 `setup_action=request`로 되돌렸다 — 조직 관리자의 승인을 기다린다. */
-  installRequested: boolean;
+  /** 설치 요청이 조직 관리자의 승인을 기다린다 (`Account.installRequestedAt` — `listConnectableRepos`). */
+  pending: boolean;
 };
 
 export function RepoStep({
@@ -53,16 +55,59 @@ export function RepoStep({
   onSelect,
   onQueryChange,
   onBranchChange,
+  onAnnounce,
 }: {
   state: RepoStepState;
   onSelect: (repo: RepoOption) => void;
   onQueryChange: (query: string) => void;
   onBranchChange: (value: string) => void;
+  /** 모달의 live 영역 하나로 흘려보낸다 — 영역을 둘로 나누면 같은 전이가 두 번 읽힌다. */
+  onAnnounce: (message: string) => void;
 }) {
   const { repos, query, listError, installUrl, now, selected } = state;
+  const router = useRouter();
+  const search = useRef<HTMLDivElement>(null);
+  /**
+   * [Check again] (install-and-connect). ⚠️ **`router.refresh()`는 Suspense fallback을 다시 띄우지 않는다** —
+   * `loading`이 없으면 반응이 안 보인다. 상태가 이 컴포넌트에 있는 이유: 승인되면 D 블록이 언마운트되고,
+   * 그때 포커스를 검색 필드로 옮겨야 `body`에 떨어지지 않는다.
+   */
+  const [checking, startCheck] = useTransition();
+  /**
+   * ⚠️ **클릭이 세우는 상태다 — `checking`의 true→false 가장자리를 관찰하지 않는다.** 콜백이 동기로 끝나면
+   * React가 두 값을 한 커밋에 접어 가장자리가 안 보일 수 있다(테스트에서 순서에 따라 갈렸다).
+   */
+  const [awaiting, setAwaiting] = useState(false);
+  const checked = useRef(false);
+  const blockedPending = listError !== undefined && state.pending;
+  useEffect(() => {
+    if (!awaiting || checking) return;
+    setAwaiting(false);
+    // 새로고침이 끝났는데 여전히 대기면 그 사실을 말한다 — 같은 화면이 다시 서서 눈으로는 반응이 없다.
+    if (blockedPending) onAnnounce(m.newProject.empty.waiting.still);
+  }, [awaiting, checking, blockedPending, onAnnounce]);
+  const listed = listError === undefined && repos !== undefined;
+  useEffect(() => {
+    if (!checked.current || !listed) return;
+    checked.current = false;
+    search.current?.querySelector("input")?.focus();
+  }, [listed]);
 
   if (listError !== undefined) {
-    return <Blocked error={listError} installUrl={installUrl} back={state.backQuery} requested={state.installRequested} />;
+    return (
+      <Blocked
+        error={listError}
+        installUrl={installUrl}
+        back={state.backQuery}
+        pending={state.pending}
+        checking={checking}
+        onCheckAgain={() => {
+          checked.current = true;
+          setAwaiting(true);
+          startCheck(() => router.refresh());
+        }}
+      />
+    );
   }
 
   // ① 로딩 — 스켈레톤 **셋**. 개수는 실제보다 적게 둔다: 몇 개가 올지를 예고하는 것이 아니다.
@@ -103,14 +148,14 @@ export function RepoStep({
     <div className="flex flex-1 flex-col gap-4">
       {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
       {/* 다른 설치로 리포가 이미 보여도 요청이 사라진 것은 아니다 — 무음으로 두면 방금 한 요청이 안 먹은 것으로 읽힌다. */}
-      {state.installRequested && <Alert variant="info">{m.newProject.empty.requested}</Alert>}
+      {state.pending && <Alert variant="info">{m.newProject.empty.waiting.info}</Alert>}
 
       {/*
         ⚠️ **`SearchInput`을 쓰지 않는다** — 그 프리미티브는 Enter 제출형이고 폭을 `w-64`로 못 박았다
         ("폭을 인자로 열면 툴바마다 검색창이 달라진다"). 여기는 입력 중 즉시 거르는 폭 100% 필드라
         계약이 다르다. **글리프 자리잡기 관용구만 그 파일에서 그대로 가져온다.**
       */}
-      <div className="relative shrink-0">
+      <div ref={search} className="relative shrink-0">
         <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" aria-hidden />
         <Input
           value={query}
@@ -224,14 +269,17 @@ export function RepoStep({
   );
 }
 
-/** 목록에 없는 리포로 가는 길 — 목록 아래, 검색 0건에서는 빈 상태 블록 아래. `GITHUB_APP_SLUG`가 없으면 사라진다. */
+/**
+ * 목록에 없는 리포로 가는 길 — 목록 아래, 검색 0건에서는 빈 상태 블록 아래. `GITHUB_APP_SLUG`가 없으면 사라진다.
+ * ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 리포 선택을 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
+ */
 function InstallHint({ installUrl }: { installUrl: string | null }) {
   if (installUrl === null) return null;
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
-        {m.newProject.empty.addRepos}
+      <a href={installUrl} className="text-blue-600">
+        {m.newProject.empty.repos.action}
       </a>
     </p>
   );
@@ -334,70 +382,125 @@ function BranchLabel({ htmlFor }: { htmlFor?: string }) {
 }
 
 /**
- * 예외 A·B·C — 연결 전 / 설치 없음 / 리포 없음. **셋이 사용자에게 요구하는 일이 다르다**: 계정
- * 연결 · App 설치 · 설치 설정에서 리포 추가. 하나로 접으면 무엇을 해야 하는지 알 수 없다.
+ * ① 막힘 갈래 (install-and-connect · DESIGN §6.7). **사용자에게 요구하는 일이 갈래마다 다르다**: 설치(A/B) ·
+ * 설치에 리포 추가(C) · 관리자 승인 대기(D) · 재인가. 하나로 접으면 무엇을 해야 하는지 알 수 없다.
+ *
+ * ⚠️ **대기(D)에 설치 화면 제목·버튼을 세우지 않는다** — 요청자는 설치할 수 없고, 설치 링크를 다시 누르면
+ * 요청이 한 번 더 간다. ⚠️ **"끝나면 새로고침"은 어느 갈래에도 없다** — 설치·리포 선택 모두 같은 탭 왕복이다.
+ * ⚠️ **`installUrl === null`(= `GITHUB_APP_SLUG` 없음)이면 설치 버튼을 세우지 않는다** — 서버가 이미 알고,
+ * 세우면 항상 `unavailable`로 실패하는 버튼이 된다.
  */
 function Blocked({
   error,
   installUrl,
   back,
-  requested,
+  pending,
+  checking,
+  onCheckAgain,
 }: {
   error: string;
   installUrl: string | null;
   back: { filter?: string; q?: string };
-  requested: boolean;
+  pending: boolean;
+  checking: boolean;
+  onCheckAgain: () => void;
 }) {
-  if (error === "not-connected" || error === "reauthorize") {
+  /**
+   * ⚠️ **한 블록의 버튼들이 pending 하나·오류 하나를 공유한다** — 주 버튼(Install)과 보조 링크(Authorize)가
+   * 각자 들면 둘 다 눌려 state 쿠키가 덮이고, 먼저 떠난 왕복이 `state-mismatch`로 돌아온다.
+   */
+  const connect = useGithubConnect({ dest: "new", back });
+  const link = (via: "install" | "authorize", label: string) => (
+    <Button variant="link" size="sm" className="px-0" disabled={connect.pending} onClick={() => connect.start(via)}>
+      {label}
+    </Button>
+  );
+
+  if ((error === "no-installations" || error === "no-repos") && pending) {
     return (
-      <Centered>
-        <EmptyState
-          icon={GithubIcon}
-          title={m.newProject.empty.connect.title}
-          description={m.newProject.empty.connect.description}
-          action={
-            <ConnectGithubButton
-              dest="new"
-              back={back}
-              label={error === "not-connected" ? m.newProject.empty.connect.action : m.newProject.empty.connect.reauthorize}
-            />
-          }
-        />
-      </Centered>
+      <BlockShell
+        icon={Clock}
+        title={m.newProject.empty.waiting.title}
+        description={m.newProject.empty.waiting.description}
+        action={
+          <Button variant="primary" loading={checking} onClick={onCheckAgain}>
+            {m.newProject.empty.waiting.action}
+          </Button>
+        }
+        // 요청이 거절됐는지 GitHub이 알려 주지 않는다 — 다른 계정에 설치하는 길을 남긴다.
+        secondary={installUrl === null ? null : link("install", m.newProject.empty.waiting.otherAccount)}
+        error={connect.error}
+      />
     );
   }
 
-  if (error === "no-installations" || error === "no-repos") {
+  if (error === "not-connected" || error === "no-installations") {
     return (
-      <Centered>
-        <EmptyState
-          icon={GithubIcon}
-          /**
-           * ⚠️ **제목에 판정층 문구를 넣지 않는다** (code-review 2026-09-08). `onboardErrorMessage`는
-           * "무엇이 없다 + 무엇을 하라"의 두 문장이고, 빈 상태의 제목은 마침표 없는 짧은 구다.
-           */
-          title={error === "no-installations" ? m.newProject.empty.noInstallations : m.newProject.empty.noRepos}
-          description={
-            /*
-              ⚠️ **요청 대기면 설명 전체를 한 문장으로 바꾼다** — 판정층 문구("설치하라")와 `afterInstall`
-              ("끝나면 새로고침")이 둘 다 요청자가 할 수 없는 일을 시킨다 (launch-readiness L2.4).
-            */
-            requested ? m.newProject.empty.requested : <>
-              {onboardErrorMessage(error)}{" "}
-              {installUrl === null ? (
-                m.newProject.empty.noLink
-              ) : (
-                <>
-                  <a href={installUrl} target="_blank" rel="noreferrer" className="text-blue-600">
-                    {error === "no-installations" ? m.newProject.empty.install : m.newProject.empty.addRepos}
-                  </a>{" "}
-                  — {m.newProject.empty.afterInstall}
-                </>
-              )}
+      <BlockShell
+        icon={Link2}
+        title={m.newProject.empty.install.title}
+        description={installUrl === null ? m.newProject.empty.noLink : m.newProject.empty.install.description}
+        action={
+          installUrl !== null ? (
+            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("install")}>
+              {m.newProject.empty.install.action}
+            </Button>
+          ) : error === "not-connected" ? (
+            // 슬러그가 없어도 연결은 된다 — 설치는 관리자가 GitHub에서 따로 한다.
+            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+              <GithubIcon className="size-4" />
+              {m.newProject.empty.connect.action}
+            </Button>
+          ) : null
+        }
+        // 이미 조직에 설치돼 있어 연결만 필요한 사람의 길 — 연결이 없는 A에만 선다.
+        secondary={
+          error === "not-connected" && installUrl !== null ? (
+            <>
+              {m.newProject.empty.install.installed} {link("authorize", m.newProject.empty.install.connect)}
             </>
-          }
-        />
-      </Centered>
+          ) : null
+        }
+        error={connect.error}
+      />
+    );
+  }
+
+  if (error === "no-repos") {
+    return (
+      <BlockShell
+        icon={FolderGit2}
+        title={m.newProject.empty.repos.title}
+        description={installUrl === null ? m.newProject.empty.noLink : m.newProject.empty.repos.description}
+        action={
+          installUrl === null ? null : (
+            // ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
+            <a href={installUrl} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+              {m.newProject.empty.repos.action}
+            </a>
+          )
+        }
+        secondary={null}
+        error={null}
+      />
+    );
+  }
+
+  if (error === "reauthorize") {
+    return (
+      <BlockShell
+        icon={GithubIcon}
+        title={m.newProject.empty.reconnect.title}
+        description={m.newProject.empty.reconnect.description}
+        action={
+          <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+            <GithubIcon className="size-4" />
+            {m.newProject.empty.connect.reauthorize}
+          </Button>
+        }
+        secondary={null}
+        error={connect.error}
+      />
     );
   }
 
@@ -413,12 +516,31 @@ function Blocked({
 }
 
 /**
- * 빈 상태가 본문의 **남은 높이 중앙**에 서는 자리 (핸드오프 1 · DESIGN §6.4).
- *
- * ⚠️ **`EmptyState`가 수직 중앙을 하지 않는다** — 표 안에서도 쓰여서 자리마다 다르고, `flex-1`은
- * 호출부가 든다는 것이 그 컴포넌트의 계약이다. 껍데기가 `min-h`로 세로를 잡아 두므로 여기서
+ * 막힘 갈래 한 블록 — 검색 0건 블록과 같은 형이다: 한 열이 남은 높이의 중앙에 서고 보조 줄이 빈 상태에 붙는다.
+ * ⚠️ **`EmptyState`가 수직 중앙을 하지 않는다** — `flex-1`은 호출부가 든다는 것이 그 컴포넌트의 계약이다.
  * 안 잡으면 칩·제목·설명이 헤더 바로 아래 뭉치고 그 아래 수백 px이 빈다 (2026-09-13 사용자 실물).
+ * ⚠️ **보조 줄은 `EmptyState` 밖, 아래다**(`InstallHint` 형) — action 래퍼는 가로 flex라 그 안에 넣으면 버튼 옆에 붙는다.
  */
-function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-1 items-center justify-center">{children}</div>;
+function BlockShell({
+  icon,
+  title,
+  description,
+  action,
+  secondary,
+  error,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action: React.ReactNode;
+  secondary: React.ReactNode;
+  error: string | null;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3">
+      <EmptyState icon={icon} title={title} description={description} action={action ?? undefined} />
+      {secondary !== null && <p className="text-muted-foreground text-xs leading-[1.6]">{secondary}</p>}
+      {error !== null && <Alert variant="danger">{error}</Alert>}
+    </div>
+  );
 }

@@ -14,3 +14,20 @@ export function installationSettingsUrl(appSlug: string | undefined): string | n
   // 다른 호출부가 `process.env`에서 바로 넘겨 `apps//installations/new`로 나갈 수 있다.
   return appSlug === undefined || appSlug === "" ? null : `https://github.com/apps/${appSlug}/installations/new`;
 }
+
+/**
+ * ① 주 버튼 [Install GitHub App]의 목적지 (install-and-connect). App 설정 "Request user authorization (OAuth)
+ * during installation"이 켜져 있으면 GitHub이 이 `state`를 대상 선택 → 권한 화면 → callback까지 그대로
+ * 싣는다 — 설치와 연결(user-to-server 인가)이 **한 왕복**이 된다.
+ *
+ * ⚠️ **이름이 `installUrl`이 아니다** — `NewProject`·`RepoStep`의 prop `installUrl`은 설치 **설정** 주소다.
+ * ⚠️ **`redirect_uri`를 받지 않는 주소다** — 로컬·preview에서 시작해도 App의 첫 callback(프로덕션)으로
+ * 간다. 그쪽엔 쿠키가 없어 교환 0회로 거부되므로 환경을 넘는 연결은 생기지 않는다.
+ */
+export function installWithStateUrl(appSlug: string | undefined, nonce: string): string | null {
+  const base = installationSettingsUrl(appSlug);
+  if (base === null) return null;
+  const url = new URL(base);
+  url.searchParams.set("state", nonce);
+  return url.toString();
+}

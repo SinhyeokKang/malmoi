@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { NewProject } from "@/components/onboarding/new-project";
 import { ADAPTERS } from "@/lib/adapters";
 import { optionalEnv } from "@/lib/env";
+import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { formatLabel } from "@/lib/onboarding/detect";
 import { normalizeProjectSlug } from "@/lib/onboarding/slug";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
@@ -53,6 +54,7 @@ async function RepoLoader({
           : undefined
       }
       listError={listed.ok ? undefined : listed.error}
+      pending={"pending" in listed && listed.pending}
       adapters={adapters}
       installUrl={installUrl()}
       /** ⚠️ **"지금"을 서버가 한 번 만든다** — 클라이언트에서 만들면 hydration이 어긋난다. */
@@ -65,10 +67,9 @@ async function RepoLoader({
 }
 
 /**
- * `GITHUB_APP_SLUG`는 `optionalEnv`라 **없으면 링크가 조용히 사라진다** — 그때는 관리자에게
- * 요청하라고 화면이 말한다.
+ * 설치 **설정** 주소. `GITHUB_APP_SLUG`는 `optionalEnv`라 **없으면 `null`이고**, 그때 ①은 설치 버튼을 세우지
+ * 않고 관리자에게 요청하라고 말한다 — 세우면 시작 Action이 항상 `unavailable`로 실패한다.
  */
 function installUrl(): string | null {
-  const appSlug = optionalEnv("GITHUB_APP_SLUG");
-  return appSlug === undefined ? null : `https://github.com/apps/${appSlug}/installations/new`;
+  return installationSettingsUrl(optionalEnv("GITHUB_APP_SLUG"));
 }
