@@ -54,9 +54,9 @@ export function renderWorkflowYaml(input: { slug: string; baseBranch: string } &
 }
 
 /**
- * **프로젝트의 워크플로 파일 — 활성 표면마다 step 하나다** (spec §5.2 · 대상 리포 계약).
+ * **프로젝트의 워크플로 파일 — 활성 표면마다 step 하나다** (ARCHITECTURE §3.1 · 대상 리포 계약).
  *
- * 복사용 `.github/workflows/malmoi-i18n.yml`이다 (design §7). App 권한(`workflows: write`)을 늘리지
+ * 복사용 `.github/workflows/malmoi-i18n.yml`이다 (PRODUCT §7.4). App 권한(`workflows: write`)을 늘리지
  * 않고 사용자가 붙인다 — 설치 화면의 "워크플로 파일을 수정합니다"가 비개발자에게 가장 무거운
  * 문장이고, 로케일 파일 하나 쓰려고 CI 정의를 통째로 바꿀 권한을 드는 것이 면적에 맞지 않는다.
  *

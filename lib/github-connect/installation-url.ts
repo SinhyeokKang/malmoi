@@ -1,5 +1,5 @@
 /**
- * `/account`의 [Installation settings] 버튼이 나가는 곳 (design §1.2).
+ * `/account`의 [Installation settings] 버튼이 나가는 곳 (DESIGN §6.67).
  *
  * ⚠️ **설치 ID로 가는 주소(`/settings/installations/<id>`)를 쓰지 않는다.** `Account` 모델에 설치 ID
  * 컬럼이 **없고**(`@@id([provider, providerAccountId])` + 토큰 넷뿐), 사용자에게 설치가 여럿일 수

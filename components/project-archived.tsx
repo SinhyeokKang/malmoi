@@ -8,7 +8,7 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * 보관된 프로젝트 화면 (7단계 — sync-runs design §4). **정책과 문구를 한 곳이 든다** —
+ * 보관된 프로젝트 화면 (7단계 — DESIGN §6.69). **정책과 문구를 한 곳이 든다** —
  * 같은 갈래를 만나는 화면이 다섯이고(Home·번역·로케일·멤버·이력), 사본이 다섯이면 그중 하나가 낡는다.
  * `project-not-ready.tsx`와 같은 형이다.
  *

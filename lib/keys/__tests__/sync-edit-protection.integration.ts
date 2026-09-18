@@ -17,7 +17,7 @@ import { isUnpublished } from "@/lib/keys/view";
 import { backfillPendingEditTokens } from "@/lib/protection/backfill";
 
 /**
- * **sync-edit-protection의 조건부 쓰기를 실제 PostgreSQL로 잰다** (tasks T4·T5).
+ * **sync-edit-protection의 조건부 쓰기를 실제 PostgreSQL로 잰다.**
  *
  * ⚠️ **이 파일이 `lib/keys/__tests__/`에 있는 이유는 코드 위치가 아니라** `vitest.projects.config.ts`의 include가
  * 이 디렉터리로 박혀 있어서다 — 다른 곳에 두면 조용히 0건 수집된다 (2026-09-10).
@@ -39,7 +39,7 @@ const PRECONDITION_SUFFIX = "_pending_edit_token_precondition";
 
 /**
  * @param beforePrecondition 참이면 precondition 마이그레이션 **앞에서 멈춘다.** 픽스처가 매번 전체 마이그레이션을 재생하므로
- *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다 (tasks T6).
+ *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다.
  */
 async function resetSchema(beforePrecondition = false) {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
@@ -232,7 +232,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
 });
 
 /**
- * 옛 술어(저자·시각) ∧ 활성 셀. backfill 전후의 **양방향 동등성**을 이 SQL로 잰다 — design §6.1의 "유령 pending"
+ * 옛 술어(저자·시각) ∧ 활성 셀. backfill 전후의 **양방향 동등성**을 이 SQL로 잰다 — ARCHITECTURE §3의 "유령 pending"
  * (토큰은 있는데 옛 술어는 0)을 잡는 유일한 그물이다.
  */
 async function oldPredicateIds(): Promise<string[]> {

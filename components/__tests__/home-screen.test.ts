@@ -35,7 +35,7 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   });
 
   /**
-   * ⚠️ **블록 셋 + 메타 열이다** (spec §3.1-1). `Languages` 블록과 `[Open translations]` primary가
+   * ⚠️ **블록 셋 + 메타 열이다** (DESIGN §6.64). `Languages` 블록과 `[Open translations]` primary가
    * 사라졌다 — 카드 넷이 그 자리를 받고, 각 카드가 자기 구간으로 착지시킨다.
    */
   it("카드 넷 · 항목 · 로그 · 메타 열 넷을 그린다", () => {
@@ -50,7 +50,7 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   });
 
   /**
-   * ⚠️ **판정을 화면이 하지 않는다** (design §4). 여섯 상태 × 화면 요소의 매트릭스를 JSX의 `&&`에
+   * ⚠️ **판정을 화면이 하지 않는다** (DESIGN §6.64). 여섯 상태 × 화면 요소의 매트릭스를 JSX의 `&&`에
    * 흩으면 테스트가 전수로 들 자리가 없다.
    */
   it("순수 판정 다섯을 `lib/home/*`에서 받는다", () => {
@@ -69,7 +69,7 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   });
 
   /**
-   * ⚠️ **`archived: false`를 고정으로 넘긴다** (design §2.1) — 그 필터는 계정 합계의 것이고 Home은
+   * ⚠️ **`archived: false`를 고정으로 넘긴다** — 그 필터는 계정 합계의 것이고 Home은
    * 프로젝트 하나다. 그대로 넘기면 보관하는 순간 카드 넷이 전부 0이 된다.
    */
   it("`summaryQueue`에 보관을 넘기지 않는다", () => {

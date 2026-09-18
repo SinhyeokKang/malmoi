@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: 
 const { GithubSection } = await import("../github-section");
 
 /**
- * GitHub App 구역의 **행 안 갈래** (design §3.6 · tasks T3).
+ * GitHub App 구역의 **행 안 갈래** (DESIGN §6.67).
  *
  * ⚠️ **[Installation settings]는 연결됨에만 선다.** 나머지 셋은 설치를 못 믿는 상태이고, 그때
  * 밖으로 나가는 문을 두면 사용자가 "고치러 갔는데 고칠 게 없는" 자리에 착지한다.

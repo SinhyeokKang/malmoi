@@ -4,7 +4,7 @@ import { flagFor } from "@/lib/keys/flag";
 import { cn } from "@/lib/utils";
 
 /**
- * 로케일 행의 왼쪽 칸 — **국기(있으면) + 코드** (8-4 design §4).
+ * 로케일 행의 왼쪽 칸 — **국기(있으면) + 코드** (8-4 — DESIGN §6.1).
  *
  * ⚠️ **국기가 `<img>`가 아니라 `background-image`다.** `?ns=*`에서 이 배지가 2,709개 서는데
  * `<img>`면 요소·레이아웃 오브젝트가 그만큼 늘고, 그것이 이 화면이 실제로 더하는 렌더 비용의

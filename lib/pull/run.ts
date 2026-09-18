@@ -73,7 +73,7 @@ export type PullResult =
       status: "committed";
       /**
        * 열린 PR이 있었는지 — 화면 문구가 갈린다("Sent for review" vs "Updated what you sent earlier").
-       * `findOpenPr`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (design §3.4).
+       * `findOpenPr`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (ARCHITECTURE §3).
        */
       pr: "created" | "updated";
       commitSha: string;
@@ -161,7 +161,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
    * 여기 오면 미전달 편집이 있고, 멈추면 `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
    * ⚠️ **대가: 경고가 지속 상태이면 매 밤 트리·blob을 다시 읽는다** — 사람이 Publish 모달에서 경고를 보고 해소할 때까지다
-   * (design §2가 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
+   * (ARCHITECTURE §3이 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
    */
   const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
   if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
@@ -204,7 +204,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
     // ⚠️ **되돌리기보다 뒤에 쓴다** — 아래 커밋 경로와 같은 순서다. force가 실패했는데 먼저 쓰면
     // 그 편집이 1층에 걸려 다음 실행이 스킵하고, 브랜치는 옛 스냅샷 그대로 남는다.
-    // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4).
+    // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3).
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
     // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);

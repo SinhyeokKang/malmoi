@@ -21,7 +21,7 @@ import { runSync } from "@/lib/sync/run";
  * (ARCHITECTURE §6.1). `app/__tests__/entry-points.test.ts`가 그 호출을 강제한다.
  *
  * ⚠️ **여기서 `redirect()`를 쓰지 않는다.** blur 저장 중의 redirect는 입력 중인 셀을 날린다 —
- * 거부는 결과값으로 돌려주고 화면이 `accessErrorMessage`로 문구를 정한다 (design §3).
+ * 거부는 결과값으로 돌려주고 화면이 `accessErrorMessage`로 문구를 정한다 (ARCHITECTURE §6.3).
  */
 
 /** 거부 사유는 `AccessError`와 같은 문자열이다 — 화면이 한 곳에서 문구로 바꾼다. */
@@ -45,7 +45,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   const { projectId, surfaceId } = access;
 
   // 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**을 막는다
-  // (design §3.7). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
+  // (PRODUCT §7.5). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
   // `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
   if (!(await isReady(prisma, projectId))) return { ok: false, error: "not-ready" };
 
@@ -132,7 +132,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   if (access.status !== "ok") return { status: "failed", error: access.status, delivery: "not-started", retryable: false };
 
   // 첫 적재 전에는 내보낼 것이 없다 — `triggerPull`이 저장되지 않은 포맷으로 `fail()`하는 대신
-  // 여기서 문구가 있는 사유로 거부한다 (design §3.7).
+  // 여기서 문구가 있는 사유로 거부한다 (PRODUCT §7.5).
   if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready", delivery: "not-started", retryable: false };
 
   /**
@@ -160,7 +160,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
 }
 
 /**
- * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 본다 (`planProjectReadiness`, design §3.7).
+ * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 본다 (`planProjectReadiness`, PRODUCT §7.5).
  * **`lastCommitSha`가 "첫 적재가 성공했다"의 유일한 증거다** — `applyPush`가 그것을 키·번역·refs와
  * 한 배열형 트랜잭션에서 쓰므로 부분 성공 상태가 없다.
  *

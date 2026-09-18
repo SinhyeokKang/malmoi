@@ -28,7 +28,7 @@ function ago(seconds: number): Date {
 
 describe("상수 — 값이 아니라 관계가 계약이다", () => {
   it("⚠️ STALE_AFTER_SECONDS가 maxDuration(60)보다 넉넉하다", () => {
-    // 같거나 작으면 **정상 실행이 스스로를 stale로 보고** 두 번째 실행을 허용한다 (design §1.4).
+    // 같거나 작으면 **정상 실행이 스스로를 stale로 보고** 두 번째 실행을 허용한다 (ARCHITECTURE §5.6.2).
     expect(STALE_AFTER_SECONDS).toBeGreaterThan(60);
   });
 
@@ -89,7 +89,7 @@ describe("planSyncStart — 돌려도 되는가", () => {
 
   it("직전 성공이 최소 간격 안이면 too-soon이고, 남은 초를 값으로 준다", () => {
     // ⚠️ 문구가 상수를 따로 들면 둘이 갈린다. `pullMessage`는 결정성 테스트 아래라
-    // `Date.now()`를 못 보므로 이 수가 outcome에 실려야 한다 (design §1.1).
+    // `Date.now()`를 못 보므로 이 수가 outcome에 실려야 한다 (ARCHITECTURE §5.6.2).
     expect(
       planSyncStart({ now: NOW, running: null, lastSettled: { finishedAt: ago(10) }, trigger: "manual", activeImport: null }),
     ).toEqual({ status: "too-soon", retryAfterSeconds: 20 });
@@ -267,7 +267,7 @@ describe("classifySyncError — 안정적 오류 코드", () => {
   });
 });
 
-describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protection T1, design §4.2)", () => {
+describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protection — ARCHITECTURE §5.6.1)", () => {
   const base = { now: NOW, running: null, lastSettled: null, trigger: "manual" as const };
 
   it("진행 중인 수동 Sync가 있으면 Publish는 already-running이다 (없음 → ok 대조)", () => {

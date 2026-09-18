@@ -28,9 +28,9 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { acceptInvitation } from "../actions";
 
 /**
- * 초대 수락 화면 — **셸 밖 카드다** (design §3.14 · DESIGN §5.1).
+ * 초대 수락 화면 — **셸 밖 카드다** (DESIGN §6.62 · §5.1).
  *
- * ⚠️ **미들웨어 matcher 밖이다** (design §4.1). 비로그인으로 열려야 토큰이 보존된다 — matcher에
+ * ⚠️ **미들웨어 matcher 밖이다** (ARCHITECTURE §6.1). 비로그인으로 열려야 토큰이 보존된다 — matcher에
  * 넣으면 세션 없는 요청이 로그인 화면(`/signin`)으로 302되고 그 순간 링크의 토큰이 사라진다.
  *
  * ⚠️ **비로그인에게 보이는 것은 마스킹한 이메일·프로젝트 이름·역할뿐이다.** 조건부 렌더이지만
@@ -188,7 +188,7 @@ function Card({ children }: { children: ReactNode }) {
  * 같은 자리에서 같은 일을 하는 버튼이 화면마다 다르게 생기면, 번역자에게 **첫 얼굴인 이 화면**이
  * 로그인 화면과 다른 제품처럼 보인다 (`AuthLayout`을 둘이 공유하는 이유와 같은 근거).
  *
- * ⚠️ **GitHub이 `primary`인 것도 그쪽을 따른다.** design §6은 *"어느 쪽으로 가입했는지 화면이
+ * ⚠️ **GitHub이 `primary`인 것도 그쪽을 따른다.** 옛 기능 문서는 *"어느 쪽으로 가입했는지 화면이
  * 모르므로 primary가 없다"*로 둘 다 `default`를 적었는데, **그 논거는 `/signin`에도 똑같이 성립해
  * 두 화면을 가르지 못한다.** 그리고 로그인이 유일한 할 일인 화면에 primary가 0이면 DESIGN §2의
  * "primary는 화면당 하나"가 그 화면에서 성립하지 않는다.

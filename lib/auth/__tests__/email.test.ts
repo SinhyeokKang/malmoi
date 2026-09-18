@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { freshVerifiedEmail, maskEmail, normalizeEmail, planEmailRefresh } from "../email";
 
 /**
- * 이메일 정규화 — **trim + 소문자, 그 이상은 하지 않는다** (design §2).
+ * 이메일 정규화 — **trim + 소문자, 그 이상은 하지 않는다**.
  *
  * 이 함수가 하는 일보다 **하지 않는 일**이 중요하다. gmail의 점·`+` 태그를 우리가 접으면
  * provider가 준 주소를 재해석하는 것이고, 그 결과 **다른 사람의 초대와 일치시킬 수 있다.**

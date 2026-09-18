@@ -2,7 +2,7 @@ import { sealToken, openToken } from "@/lib/credentials/storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * 사용자 토큰 확보 껍데기 (design §2.4). **판정은 `planTokenUse`·`refreshFailure`가 하고, 여기는
+ * 사용자 토큰 확보 껍데기 (ARCHITECTURE §6.4). **판정은 `planTokenUse`·`refreshFailure`가 하고, 여기는
  * 읽기·갱신·쓰기와 경합 처리만 한다.**
  *
  * ⚠️ **GitHub의 refresh 토큰은 1회용(회전)이다.** 갱신에 성공하면 이전 access/refresh 둘 다 무효라

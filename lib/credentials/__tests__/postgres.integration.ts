@@ -741,7 +741,7 @@ it("renaming the encrypted merge state to an ordinary state cookie cannot turn i
 });
 
 /**
- * design §14-1 — **실물로만 알 수 있던 하나**: 회수를 중단한 직후 병합을 시작하면 누구의 callback인가.
+ * ARCHITECTURE "계정 병합" — **실물로만 알 수 있던 하나**: 회수를 중단한 직후 병합을 시작하면 누구의 callback인가.
  * 시작하는 쪽이 상대의 쿠키를 지우므로 병합이 자기 것을 받는다 (불변식 8c).
  */
 it("a merge started right after an abandoned revocation still receives its own callback", async () => {

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type NextState, nextEnabled } from "../next-enabled";
 
 /**
- * design §4의 상태 표를 코드로 옮긴 것 (feature design §10). 껍데기가 [Next]를 그릴 때 부른다.
+ * DESIGN §6.7의 단계별 조건을 코드로 옮긴 것. 껍데기가 [Next]를 그릴 때 부른다.
  *
  * ⚠️ **`lib/` 아래 잎이다** — `components/` 아래로 내리면 `"use client"` 그래프에 들어가고,
  * 그러면 `client-graph.test.ts`가 이 모듈에까지 "타입만 물어라"를 요구한다.

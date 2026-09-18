@@ -14,7 +14,7 @@ import {
  * ⚠️ **`not-found`가 별도 값인 이유**: 조회 실패와 "권한 없음"을 같은 값으로 접으면
  * **실패한 조회가 정상 거부로 읽힌다** — POSTMORTEM 2026-09-03이 정확히 그 형태였다
  * (실패한 PR 조회를 "PR 없음"으로 읽어 경고가 사라졌다). 호출부가 넷을 구별해 각자 다른
- * 문구를 보인다 (design §4.1).
+ * 문구를 보인다 (ARCHITECTURE §6.3).
  */
 
 const T = new Date("2026-09-05T00:00:00.000Z");
@@ -128,7 +128,7 @@ describe("planInvitationAccept — 다섯 분기", () => {
 });
 
 /**
- * **프로젝트당 멤버 제한** (spec 완료 조건 8, design §1.5).
+ * **프로젝트당 멤버 제한** (PRODUCT §4.2).
  *
  * 상한이 `PROJECT_LIMIT`(`lib/onboarding/create-plan.ts`)과 같은 형이다 — 상수는 **소비자 옆**에
  * 두고 모음 파일을 만들지 않는다. `createInvitation`이 이미 `Project` 행을 잠그므로 그 트랜잭션

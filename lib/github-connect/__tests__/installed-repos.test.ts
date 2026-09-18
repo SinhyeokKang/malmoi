@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 import { countInstalledRepos } from "../installed-repos";
 
 /**
- * 설치된 리포 수 집계의 순수 판정 (design §1.1). `/account`의 GitHub App 행 보조 줄이 쓴다.
+ * 설치된 리포 수 집계의 순수 판정 (DESIGN §6.67). `/account`의 GitHub App 행 보조 줄이 쓴다.
  *
  * ⚠️ **`null`과 `0`은 다른 사실이다.** `0`은 "선택된 리포가 없다"로 읽혀 사용자가 멀쩡한 설치를
  * 다시 만들러 간다 — 실패한 조회를 "없음"으로 읽으면 없는 것과 구별되지 않는다

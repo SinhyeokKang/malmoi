@@ -18,7 +18,7 @@ import { routes } from "@/lib/routes";
  *
  * **이 Dialog가 유일한 방어선이다** — 동작은 되돌릴 수 없고 동료의 편집을 지운다(`lib/push/apply.ts`가
  * `"updatedBy" = NULL`로 저자까지 비운다). 되돌리기·부분 선택·"내 편집만 지키기"를 그리지 않는 것은
- * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (spec §6.1).
+ * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (ARCHITECTURE §0 불변식 2).
  *
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
@@ -29,7 +29,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
   /**
-   * 미연결·보관 — **비활성이고 부재가 아니다** (project-home spec §8의 `2c`·`2d`). 부재는 역할
+   * 미연결·보관 — **비활성이고 부재가 아니다** (DESIGN §6.64의 `2c`·`2d`). 부재는 역할
    * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
    * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
    */
@@ -126,7 +126,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     <DialogTrigger asChild>
       {/*
         ⚠️ **진행 중에도 `disabled`가 아니라 `aria-disabled`다** — `disabled`면 Radix가 Dialog를 닫을 때
-        포커스를 되돌릴 대상이 DOM에서 포커스를 못 받아 사라진다(spec §12-9). 겉모습은 `default disabled`
+        포커스를 되돌릴 대상이 DOM에서 포커스를 못 받아 사라진다(DESIGN §6.64). 겉모습은 `default disabled`
         그대로이고 바뀌는 것은 포커스 가능성뿐이며, 클릭·Enter 연타는 핸들러가 막는다 (시안 §8).
 
         ⚠️ **그 겉모습을 여기서 그리지 않는다** (2026-09-17) — `buttonClass`의 `aria-disabled:` 짝이

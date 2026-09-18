@@ -11,7 +11,7 @@ import { createHarness } from "../../(edit)/__tests__/harness";
  * HTTP 응답뿐이다. 설정 누락이 **본문 없는 500**으로 나가면 로그에 원인이 없어 추측만 남는다 —
  * 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였다(`ACTIVE_PROJECT_SLUG`가 `try` 밖이었다).
  *
- * ⚠️ **push의 인증은 2026-09-07부터 `Project.pushTokenHash` 조회다** (design §3.8). 토큰이 프로젝트를 정하고
+ * ⚠️ **push의 인증은 2026-09-07부터 `Project.pushTokenHash` 조회다** (PRODUCT §7.8). 토큰이 프로젝트를 정하고
  * slug는 그 뒤에 대조된다 — 페이로드 slug로 행을 찾으면 **오배송 페이로드가 인증 대상을 고른다.** 그래서
  * "토큰 없음"·"틀린 토큰"·"미발급 프로젝트"가 전부 401이고 **프로젝트 존재를 노출하지 않는다**(404가 사라졌다).
  *
@@ -29,7 +29,7 @@ const hoisted = vi.hoisted(() => ({
     // 보류 사전 집계(sync-edit-protection T7) — 0이면 기존 적재 경로다.
     translation: { count: vi.fn().mockResolvedValue(0) },
     // ⚠️ `findMany`가 없으면 pull 라우트가 TypeError로 죽는다 — 순회의 유일한 조회다.
-    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (projects-list design §3.35) — 없으면
+    // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (PRODUCT §7.8) — 없으면
     // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
     project: {
       findUnique: vi.fn(),
@@ -144,7 +144,7 @@ const ready = (slug: string) => ({
   syncRuns: [] as { startedAt: Date }[],
 });
 
-describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => {
+describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)", () => {
   /**
    * ⚠️ **응답 모양이 `{ results, unprocessed }`다** (2026-09-09, sec-audit 발견 26). 전에는 배열
    * 자체였는데, 순회 상한이 붙으면서 **못 돈 수**를 실을 자리가 필요했다 — 항목으로 섞으면
@@ -312,7 +312,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (design §3.9)", () => 
   });
 });
 
-describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () => {
+describe("/api/push — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", () => {
   it("빈 토큰(`Bearer `)은 DB를 조회하지 않고 401이다 — 공짜 왕복을 내주지 않는다", async () => {
     const res = await pushPost(pushRequest(payload(), ""));
     expect(res.status).toBe(401);
@@ -321,7 +321,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
 
   it("인증이 JSON 파싱보다 **먼저**다 — 무효 토큰 하나로 대용량 페이로드를 파싱시키지 않는다", async () => {
     // `maxDuration = 60`인 공개 엔드포인트다. 본문이 아예 JSON이 아니어도 인증 실패가 먼저 나와야 한다
-    // (code-review 2026-09-07 🟡3 · design §3.8의 순서 그림).
+    // (code-review 2026-09-07 🟡3 · PRODUCT §7.8의 조회 방향).
     const res = await pushPost(
       new Request("https://x/api/push", {
         method: "POST",
@@ -435,7 +435,7 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (design §3.8)", () 
   });
 
   /**
-   * **보관 중 CI push는 409** (7단계 — sync-runs design §4, 결정 9). 대상 리포 CI가 red가 되는 것은
+   * **보관 중 CI push는 409** (7단계 — ARCHITECTURE §5.6.4). 대상 리포 CI가 red가 되는 것은
    * 의도된 신호다 — 워크플로를 떼라는 뜻이고, 조용히 200을 주면 보관이 "멈춘다"를 뜻하지 않게 된다.
    */
   it("보관된 프로젝트는 409다 — 오배송·표면 검사보다 앞이다", async () => {

@@ -64,7 +64,7 @@ export const FLAG_INVENTORY: readonly string[] = [
  * ⚠️ 다만 **`es-MX`·`pt-BR`처럼 하위태그가 붙으면 정확히 선다** — 그 경우 이 표를 지나지 않는다.
  */
 export const LANGUAGE_FLAGS = new Map<string, string>([
-  // 시안·design §3.7이 이름으로 적은 다섯.
+  // 시안이 이름으로 적은 다섯.
   ["ko", "kr"],
   ["en", "gb"],
   ["ja", "jp"],

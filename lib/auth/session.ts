@@ -19,7 +19,7 @@ import { readSession } from "./read-session";
  * 실린다** — 실측 1.3MB에 1446키가 노출됐다 (POSTMORTEM 2026-08-31). `redirect`는 렌더를 중단한다.
  *
  * ⚠️ **Server Action에서는 이걸 쓰지 않는다.** blur 저장 중의 redirect는 입력 중인 셀을 날린다 —
- * Action은 `getProjectAccess`를 직접 부르고 결과를 union으로 돌려준다 (design §3).
+ * Action은 `getProjectAccess`를 직접 부르고 결과를 union으로 돌려준다 (ARCHITECTURE §6.1).
  */
 export async function requireUser(): Promise<{ userId: string }> {
   const session = await readSession();
@@ -36,7 +36,7 @@ export async function requireProjectAccess(input: {
   const { userId } = await requireUser();
   const access = await getProjectAccess(getPrisma(), { userId, ...input });
   /**
-   * ⚠️ **보관은 redirect하지 않는다** (7단계 — sync-runs design §4). 되돌릴 수 있는 상태이고
+   * ⚠️ **보관은 redirect하지 않는다** (7단계 — ARCHITECTURE §5.6.4). 되돌릴 수 있는 상태이고
    * OWNER가 갈 곳은 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. 페이지가
    * `ProjectArchived`를 그리고, **그리는지는 `app/__tests__/screens.test.ts`가 소스로 센다** —
    * 값으로 돌려주는 이상 호출부가 빠뜨릴 수 있고 그 실수는 화면에 안 보인다(정상 렌더가 된다).

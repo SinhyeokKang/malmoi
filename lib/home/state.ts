@@ -4,14 +4,14 @@ import { failing } from "@/lib/projects/list";
 import type { SummaryQueue } from "@/lib/projects/list";
 
 /**
- * Home이 그리는 화면 갈래 (캔버스 `2a`~`2d` · project-home design §4).
+ * Home이 그리는 화면 갈래 (캔버스 `2a`~`2d` · DESIGN §6.64).
  *
  * ⚠️ **로딩(`2e`)이 여기 없다.** 그것은 데이터 상태가 아니라 라우트의 `loading.tsx`이고, 값으로
  * 두면 **생산자가 없는 갈래**가 하나 남는다 — 이 리포는 그런 union을 만들지 않는다(`listBody`가
  * 도달 불가 갈래에 `throw`를 세운 것과 같은 규칙).
  *
  * ⚠️ **`empty`를 `counts.x === 0` 검사로 흩지 않는 이유**: 여섯 상태 × 화면 요소의 매트릭스가
- * spec §8의 표이고, 그 표를 테스트가 전수로 들려면 **판정이 값 하나여야 한다.** JSX 안에 흩으면
+ * DESIGN §6.64의 아트보드 표이고, 그 표를 테스트가 전수로 들려면 **판정이 값 하나여야 한다.** JSX 안에 흩으면
  * "빈 상태에서 저 블록이 무엇이 되나"를 화면을 읽어야만 알 수 있다.
  */
 export type HomeState = "archived" | "not_connected" | "import_failed" | "empty" | "default";

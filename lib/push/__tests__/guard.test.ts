@@ -164,7 +164,7 @@ describe("guardStatus", () => {
 });
 
 /**
- * **OWNER가 선언한 base는 받아들인다** (design §3.13, 6b-3).
+ * **OWNER가 선언한 base는 받아들인다** (ARCHITECTURE §5.5.5, 6b-3).
  *
  * `Project.declaredBaseLocale`은 "다음 CI push가 이 base를 가져오면 받아들이겠다"는 **일회용
  * 허가**다. 그것이 없으면 base를 바꾸는 순간 그 리포의 push가 영영 409이고(워크플로를 고쳐도
@@ -206,7 +206,7 @@ describe("checkFormat — 선언한 base도 받아들인다 (6b-3)", () => {
 });
 
 /**
- * **base가 바뀌는 push인가** — `planPush`가 `needsReview` 전파를 건너뛸지 정한다 (design §3.13).
+ * **base가 바뀌는 push인가** — `planPush`가 `needsReview` 전파를 건너뛸지 정한다 (ARCHITECTURE §5.5.5).
  */
 describe("isBaseLocaleChange", () => {
   it("저장값과 다르면 변경이다", () => {
@@ -224,7 +224,7 @@ describe("isBaseLocaleChange", () => {
 });
 
 /**
- * **보관 중 CI push는 409** (7단계 — sync-runs design §4, 결정 9).
+ * **보관 중 CI push는 409** (7단계 — PRODUCT §7.9).
  *
  * 보관의 뜻이 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀐다** — strict push라
  * 그 덮어쓰기는 되돌릴 수 없다. 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).

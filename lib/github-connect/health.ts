@@ -1,5 +1,5 @@
 /**
- * 연결 건강성 판정 (design §3.3). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5) —
+ * 연결 건강성 판정 (DESIGN §6.2). **상태 컬럼을 만들지 않고 App 쪽 조회로 계산한다** (PRODUCT §7.5) —
  * `SyncRun`(7단계)이 서기 전에 상태 컬럼을 만들면 그때 두 벌이 된다.
  *
  * ⚠️ **조회 실패(`error`)를 `app-uninstalled`로 접지 않는다.** 접으면 **장애가 "제거됨"으로 읽힌다** —
@@ -16,7 +16,7 @@
 export type ProbeResult =
   /**
    * @param defaultBranch `GET /repos` 응답에 이미 있다 — 호출을 늘리지 않는다. `Project.baseBranch`를
-   *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (design §4).
+   *   이 값으로 채우지 않으면 default branch가 `develop`인 리포의 pull이 `main`을 찾는다 (ARCHITECTURE §3.1).
    *   `planConnectionHealth`는 이 필드를 보지 않는다 — 판정은 그대로다.
    *
    * @param repositoryId GitHub이 그 리포에 붙인 **불변 id** (sec-audit-2 발견 34). ⚠️ **optional로 두지

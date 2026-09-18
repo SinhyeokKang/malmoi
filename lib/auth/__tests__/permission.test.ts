@@ -5,7 +5,7 @@ import { canPerform, type Permission, type Role } from "../permission";
 /**
  * PRODUCT §3 권한표를 코드로. **역할은 둘, permission은 셋이라 6칸이 전부다.**
  *
- * ⚠️ **Publish는 별도 permission이 아니라 `translation:write`에 포함된다** (design §2).
+ * ⚠️ **Publish는 별도 permission이 아니라 `translation:write`에 포함된다** (PRODUCT §3).
  * PRODUCT §3이 EDITOR에게 Publish를 허용했고("PR 생성이지 base 직접 쓰기가 아니다"),
  * "개발자만 Publish"가 필요해지면 그때 permission을 나눈다 — 지금 넷째를 두는 것은 선반영이다.
  *

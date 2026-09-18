@@ -9,7 +9,7 @@ import { SKIP_MARKER } from "@/lib/pull/payload";
 import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, renderWorkflowYaml, workflowSurfaceOf } from "../workflow";
 
 /**
- * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (design §7). App 권한(`workflows: write`)을 늘리지 않고
+ * 결과 화면의 복사용 `.github/workflows/malmoi-i18n.yml` (PRODUCT §7.4). App 권한(`workflows: write`)을 늘리지 않고
  * 사용자가 붙인다.
  *
  * ⚠️ **`docs/ACTIONS.md`의 예시와 같은 모양이어야 한다** — 문서가 정본이고 이 함수는 그것을 slug만 바꿔 낸다.
@@ -152,7 +152,7 @@ describe("renderWorkflowYaml — 사용자가 고른 브랜치 이름", () => {
 });
 
 /**
- * **워크플로 파일 하나에 표면마다 step 하나** (multi-surface spec §5.2 · 대상 리포 계약).
+ * **워크플로 파일 하나에 표면마다 step 하나** (ARCHITECTURE §3.1 · 대상 리포 계약).
  *
  * ⚠️ **Add surface 결과 화면을 벗어나면 그 step을 다시 볼 자리가 여기뿐이다.** 결과 화면은 한 번
  * 지나가고 새로고침하면 draft가 초기화된다 — 설정 화면이 활성 표면 전부를 렌더하지 않으면 두 번째

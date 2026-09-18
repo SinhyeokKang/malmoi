@@ -9,7 +9,7 @@ import { hashPushToken } from "@/lib/push/token";
 import { createHarness, sessionFor } from "./harness";
 
 /**
- * **온보딩 Server Action 다섯** (design §3.6·§3.11 · tasks T6). 화면은 T7이고, 여기서 고정하는 것은
+ * **온보딩 Server Action 다섯** (ARCHITECTURE §3.1). 화면은 T7이고, 여기서 고정하는 것은
  * **인가·3중 검증·재검증·트랜잭션 경계**가 값으로 지켜지는가다.
  *
  * ⚠️ **별도 파일이다.** `github-connect.test.ts`·`publish-failure.test.ts`와 같은 이유로 mock 범위가
@@ -76,7 +76,7 @@ vi.mock("@/lib/github-connect/user", () => ({
 vi.mock("@/lib/onboarding/ingest", async original => ({ ...(await original<typeof import("@/lib/onboarding/ingest")>()), ingestFirstSnapshot: hoisted.ingestFirstSnapshot }));
 vi.mock("@/lib/push/apply", async original => ({ ...(await original<typeof import("@/lib/push/apply")>()), applyPushInTransaction: hoisted.applyPushInTransaction }));
 // ⚠️ **부분 mock이다.** 통째로 가리면 `isRefSafeSlug`가 사라지고 `planSlug`가 그것을 부른다 —
-// slug 형식 규칙이 pull과 **같은 함수**여야 한다는 것이 T1의 판정이었다 (design §5).
+// slug 형식 규칙이 pull과 **같은 함수**여야 한다는 것이 T1의 판정이었다 (ARCHITECTURE §3.1).
 vi.mock("@/lib/pull/trigger", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/pull/trigger")>()),
   triggerPull: hoisted.triggerPull,
@@ -188,7 +188,7 @@ beforeEach(() => {
 
 describe("비로그인은 어느 Action도 지나지 못한다", () => {
   /**
-   * 프로젝트가 없는 다섯은 `requireUser`라 `/`로 redirect하고(design §3.6 — 중간 상태 무저장이라
+   * 프로젝트가 없는 다섯은 `requireUser`라 `/`로 redirect하고(ARCHITECTURE §6.1 — 중간 상태 무저장이라
    * "처음부터"가 맞는 안내다), 프로젝트가 있는 둘은 값으로 거부한다.
    */
   beforeEach(() => {
@@ -218,7 +218,7 @@ describe("비로그인은 어느 Action도 지나지 못한다", () => {
   });
 });
 
-describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한다 (design §3.6)", () => {
+describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한다 (ARCHITECTURE §6.4)", () => {
   /** 심어진 쿠키의 서명 payload. 착지 갈래가 **쿠키 안에** 있다는 것이 이 함수의 요지다. */
   function signedDest(): unknown {
     const value = hoisted.cookieSet.mock.calls[0]?.[1] as string;
@@ -255,7 +255,7 @@ describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한�
   /**
    * ⚠️ **착지는 서명 안에 있고 인자는 갈래 이름뿐이다.** 클라이언트가 `{kind:"settings", slug}`를
    * 통째로 보낼 수 있으면 남의 프로젝트 설정 화면으로 착지를 정할 수 있고, 그러면 이 자리에
-   * open redirect 판정이 생긴다 (design §3.1).
+   * open redirect 판정이 생긴다 (ARCHITECTURE §6.4).
    */
   it("모르는 갈래는 값으로 거부하고 쿠키를 심지 않는다 — 클라이언트가 착지를 고르지 못한다", async () => {
     expect(await startGithubConnectForUser("settings" as never)).toEqual({
@@ -383,7 +383,7 @@ describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
    * ⚠️ **설치 하나의 실패가 나머지를 막지 않는다** (code-review 2026-09-07 🟡2). 일시중지된 설치는
    * 403을 주고 그건 **영구 상태**다(`health.ts`가 `not-installed`로 분류하는 것과 같은 축) — 전체를
    * `unavailable`로 접으면 정상 설치의 리포도 못 고르고, 화면은 "잠시 뒤 다시"를 말해 사용자가 같은
-   * 버튼을 무한히 누른다. `/api/pull`의 프로젝트별 try/catch와 같은 판단이다 (design §3.9).
+   * 버튼을 무한히 누른다. `/api/pull`의 프로젝트별 try/catch와 같은 판단이다 (ARCHITECTURE §3.05).
    */
   it("설치 하나가 실패해도 나머지 설치의 리포는 보인다", async () => {
     hoisted.listUserInstallations.mockResolvedValue(["77", "88"]);
@@ -557,7 +557,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
   });
 });
 
-describe("listRepoBranches — ①의 브랜치 목록 (design §3.2)", () => {
+describe("listRepoBranches — ①의 브랜치 목록 (DESIGN §6.7)", () => {
   it("목록과 default branch를 함께 준다 — `defaultBranch`는 이미 손에 있으므로 GitHub을 한 번 더 부르지 않는다", async () => {
     expect(await listRepoBranches({ owner: "acme", repo: "web" })).toEqual({
       ok: true,
@@ -592,7 +592,7 @@ describe("listRepoBranches — ①의 브랜치 목록 (design §3.2)", () => {
 });
 
 /**
- * ②의 언어 전환 (design §3.4).
+ * ②의 언어 전환 (DESIGN §6.7).
  *
  * ⚠️ **불변식 10이 걸리는 자리다** — 클라이언트가 보낸 `pathTemplate`·`locale`·`ref` 셋으로 리포를 읽는
  * **새 경로**다. 방어 셋은 새로 만들지 않고 ARCHITECTURE §3.1이 그 값 쌍에 **지정한** 함수를 부른다:
@@ -669,7 +669,7 @@ describe("loadCandidateSample — ②의 언어 샘플", () => {
   });
 });
 
-describe("createProject — 재검증한 값만 저장한다 (design §3.4)", () => {
+describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1)", () => {
   it("행·OWNER 멤버십·토큰 해시가 한 번에 생기고 원문이 반환된다", async () => {
     const result = await createProject(createInput());
     // `baseBranch`는 결과 화면의 워크플로 YAML이 `on.push.branches`에 박는 값이다 (T7).
@@ -838,7 +838,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   });
 
   /**
-   * **보관은 슬롯을 비운다** (7단계 — sync-runs design 결정 10). `project-onboarding/spec.md`가
+   * **보관은 슬롯을 비운다** (7단계 — ARCHITECTURE §5.6.4). `project-onboarding/spec.md`가
    * "삭제가 비범위라 슬롯을 되찾을 길이 없다"를 이 단계로 넘긴 자리다.
    *
    * ⚠️ **두 집계 모두** 좁혀야 한다 — 선조회만 좁히면 트랜잭션 안 재집계가 보관분을 세어 거부하고,
@@ -982,7 +982,7 @@ describe("createProject — 재검증한 값만 저장한다 (design §3.4)", ()
   });
 });
 
-describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)", () => {
+describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)", () => {
   beforeEach(() => {
     // 하네스 기본 프로젝트는 포맷이 json-catalog이고, 시드는 "적재 완료"가 기본이다 —
     // 첫 적재 전 상태를 보려면 명시적으로 되돌린다 (`harness.ts`의 `ProjectSeed` 주석).
@@ -1026,7 +1026,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (design §3.7)"
       surfaceSlug: "default",
       baseLocale: "en",
       headSha: HEAD_SHA,
-      // ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4).
+      // ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (ARCHITECTURE §3.1).
       headCommittedAt: HEAD_AT,
     });
     expect(input.format).toMatchObject({ adapter: "json-catalog", pathTemplate: "i18n/{locale}.json" });
@@ -1178,7 +1178,7 @@ describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
  * 자동 병합을 금지하므로 다른 계정으로 옮길 길도 없다). `Account` 행은 사용자 소유라 프로젝트
  * 권한을 요구할 근거가 애초에 없었다.
  */
-describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절반)", () => {
+describe("disconnectGithub — 사용자 수준 (ARCHITECTURE §6.4의 나머지 절반)", () => {
   /**
    * ⚠️ **무효화 범위가 이 연결을 보이는 화면 전부를 덮어야 한다** (6b-4). 6b-4까지는 화면이 둘이고
    * 둘 다 `/projects` 아래여서 `revalidatePath("/projects", "layout")`으로 충분했는데, **계정 카드가
@@ -1302,7 +1302,7 @@ describe("disconnectGithub — 사용자 수준 (design §3.6의 나머지 절�
   });
 });
 
-describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (design §3.7)", () => {
+describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (PRODUCT §7.5)", () => {
   /**
    * 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**과 적재 실패 후의
    * 재방문을 막는다. 거부가 화면에 닿아야 하므로 사유는 문구를 가진 갈래로 돌려준다

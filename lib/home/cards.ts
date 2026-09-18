@@ -3,7 +3,7 @@ import type { SummaryQueue } from "@/lib/projects/list";
 import type { HomeState } from "./state";
 
 /**
- * 카운트 카드 넷 (캔버스 `2a` · project-home design §2·§5).
+ * 카운트 카드 넷 (캔버스 `2a` · DESIGN §6.64).
  *
  * ⚠️ **값도 제목도 글리프도 새로 만들지 않는다.** 목록 화면이 같은 넷을 같은 순서·같은 라벨·같은
  * 색으로 이미 그리고, 수는 `summaryQueue`가 낸다 — 여기서 새로 정하는 것은 **보조 줄**과 **0 갈래**
@@ -16,7 +16,7 @@ export const CARD_KEYS = ["newFromGithub", "toTranslate", "toReview", "toSend"] 
 export type CardKey = (typeof CARD_KEYS)[number];
 
 /**
- * 카드가 가리키는 번역 화면의 상태 어휘 (spec §9.7). **`CardKey`와 1:1이지만 이름이 다르다** —
+ * 카드가 가리키는 번역 화면의 상태 어휘 (PRODUCT §7.7). **`CardKey`와 1:1이지만 이름이 다르다** —
  * URL은 사용자가 읽는 자리라 화면의 낱말(`untranslated`)을 쓰고, 코드 쪽 키는 목록 화면과
  * 공유하는 사전 키(`toTranslate`)를 따른다.
  */
@@ -43,23 +43,23 @@ export type CardSubline =
   | { kind: "pausedCannotSend" }
   | { kind: "frozenAtArchive" }
   | { kind: "neverSent" }
-  /** 보낼 편집이 있어 CI 자동 적재가 보류 중이다 (sync-edit-protection T13). 보류는 저장되는 상태가 아니라 pending > 0에서 파생된다. */
+  /** 보낼 편집이 있어 CI 자동 적재가 보류 중이다 (DESIGN §6.64). 보류는 저장되는 상태가 아니라 pending > 0에서 파생된다. */
   | { kind: "repositoryUpdatesPaused" };
 
 export type HomeCard = {
   key: CardKey;
   value: number;
   /**
-   * ⚠️ **첫 칸만 keys다** (spec §7.1). 새 키의 빈 칸은 `New`에도 `To translate`에도 세므로 넷이
+   * ⚠️ **첫 칸만 keys다.** 새 키의 빈 칸은 `New`에도 `To translate`에도 세므로 넷이
    * 같은 모집단의 네 구간이 **아니고**, 그 사실을 화면에서 말하는 자리가 이 단위 하나다.
    */
   unit: "keys" | "cells";
   /**
-   * ⚠️ **목록 화면의 띠와 다른 규칙이다** (design §5.2). 저쪽은 라벨이 이미 muted라 글리프가 그 색을
+   * ⚠️ **목록 화면의 띠와 다른 규칙이다** (DESIGN §6.63). 저쪽은 라벨이 이미 muted라 글리프가 그 색을
    * 상속하지만, 카드는 수치가 크고 기본색이 `#0a0a0a`라 0을 흐리는 규칙이 새로 필요하다.
    */
   muted: boolean;
-  /** 파랑 다섯 자리 중 하나가 첫 칸이다 (spec §3.3-9). amber는 `To review` 글리프다. */
+  /** 파랑 다섯 자리 중 하나가 첫 칸이다 (DESIGN §6.2). amber는 `To review` 글리프다. */
   tone: "accent" | "warning" | null;
   subline: CardSubline;
 };
@@ -124,7 +124,7 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
   }
   if (counts.toSend === 0) return { kind: "nothingPending" };
   /*
-    ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (sync-edit-protection T13). 보낼 편집이 있으면 리포의 새 키·삭제가 앱에 안
+    ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (DESIGN §6.64). 보낼 편집이 있으면 리포의 새 키·삭제가 앱에 안
     들어오고, 그것을 OWNER가 아는 자리가 이 줄이다. 넷째 전폭 배너를 두지 않는다 — 상시 상태에 배너를 두면 Home의 배너 0개 전제가 깨진다.
   */
   return { kind: "repositoryUpdatesPaused" };

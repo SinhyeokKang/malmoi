@@ -450,7 +450,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
 });
 
 /**
- * `revokeInvitation` (6b-2, design §3.9).
+ * `revokeInvitation` (6b-2, ARCHITECTURE §6.02).
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
@@ -543,7 +543,7 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
 });
 
 /**
- * **멤버 10명 제한** (7단계 — sync-runs spec 완료 조건 8, design §1.5·결정 3).
+ * **멤버 10명 제한** (7단계 — PRODUCT §4.2).
  *
  * ⚠️ **집계가 잠금 안이다.** 밖에서 세면 두 OWNER가 동시에 초대할 때 각자 "자리 있음"을 보고
  * 각자 만든다 — `createProject`의 재집계와 같은 형이고, 여기는 잠글 `Project` 행이 **이미 있다**.

@@ -98,7 +98,7 @@ const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { enc
 // 커밋 **시각**은 역행 판정의 근거다 (ARCHITECTURE §5.5.5). `%cI`가 offset이 붙은 ISO 8601이다.
 const commitAt = execFileSync("git", ["-C", target, "show", "-s", "--format=%cI", "HEAD"], { encoding: "utf8" }).trim();
 /**
- * **적재 실패를 서버에 한 번 알린다** (projects-list design §3.35). 이 경로가 없으면 파싱 실패는
+ * **적재 실패를 서버에 한 번 알린다** (docs/ACTIONS.md "적재 실패는 말모이에도 남는다"). 이 경로가 없으면 파싱 실패는
  * 대상 리포의 Actions 로그에만 남고 말모이 화면에서는 프로젝트가 그냥 조용하다.
  *
  * ⚠️ **원래 실패를 가리지 않는다** — 5초에 끊고, 재시도하지 않고, 비정상 응답·네트워크 실패는
@@ -161,7 +161,7 @@ if (adapterName !== undefined && !format) {
 }
 /**
  * ⚠️ **구문 오류가 여기서 "후보 없음"으로 나타난다.** 로케일 파일이 하나뿐인데 그것이 깨졌으면
- * 탐지가 조용히 0개를 내고, 그 갈래가 여태 말모이 쪽에 아무 흔적도 안 남겼다 (design §3.35).
+ * 탐지가 조용히 0개를 내고, 그 갈래가 여태 말모이 쪽에 아무 흔적도 안 남겼다 (docs/ACTIONS.md "적재 실패는 말모이에도 남는다").
  */
 if (!format) {
   console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일) — 연동 불가.`);
@@ -169,7 +169,7 @@ if (!format) {
   process.exit(1);
 }
 // ⚠️ **select → read → base 판정은 `lib/push/assemble.ts`가 든다** (2026-09-07). 서버의 첫 적재가 같은
-// 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (design §4).
+// 함수를 지나야 "CI로 올린 것과 온보딩이 올린 것이 같다"가 구조로 보장된다 (ARCHITECTURE §3.1).
 // base가 키 집합의 진실이라 명시가 탐지 목록에 없으면 그 함수가 던진다 (2026-09-04 audit #1).
 // `--base`가 탐지 목록에 없으면 `assemblePushInput`이 던진다. **플래그 이름을 먼저 찍는다** — 사용자가
 // 고쳐야 하는 것은 인자이고, composite action에서는 그 입력 이름이 `base-locale`이다.

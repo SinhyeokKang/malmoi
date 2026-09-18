@@ -4,7 +4,7 @@ import type { GitClient } from "@/lib/pull/client";
 import { loadRemoteSignals, type RemoteTarget } from "../remote";
 
 /**
- * **보관 제외 전부를 처리하되 동시에 도는 프로젝트는 셋까지** (projects-list design §3.4 ⊕).
+ * **보관 제외 전부를 처리하되 동시에 도는 프로젝트는 셋까지**.
  *
  * ⚠️ **`slice(0, 3)`이 아니다.** 3은 동시 작업 수이고, 앞의 셋만 조회한다는 뜻이 아니다 — 넷째부터
  * 띠가 영영 안 뜨면 그 프로젝트는 화면에서 조용한 것과 구별되지 않는다.
@@ -126,7 +126,7 @@ it("하나가 실패해도 나머지를 끝까지 처리하고, 그 행은 두 �
   }
 });
 
-/** 부분 실패도 둘 다 뺀다 — 실패를 성공처럼 그리지 않는다 (design §3.4). */
+/** 부분 실패도 둘 다 뺀다 — 실패를 성공처럼 그리지 않는다. */
 it("PR 조회만 실패해도 compare 결과를 쓰지 않는다", async () => {
   const { createClient } = fakes({
     async isPullRequestOpen() {

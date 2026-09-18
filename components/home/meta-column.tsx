@@ -11,7 +11,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 
 /**
- * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · design §3.5).
+ * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · DESIGN §6.64).
  *
  * ⚠️ **구역이 둘이다** — 리포의 모양(주소·브랜치·표면·로케일·키·멤버)과 **시각**(마지막 Sync·
  * 마지막 Publish·생성·보관). 한 덩어리로 두면 아홉 행이 균질한 표가 되어 "언제"를 찾는 눈이

@@ -45,7 +45,7 @@ export async function lockUser(tx: Prisma.TransactionClient, userId: string): Pr
 /**
  * "이 로그인을 거부할 것인가, 안내할 것인가."
  *
- * ⚠️ **조회는 새 Account일 때만 한다** (design §5.1) — 호출부가 `refreshVerifiedEmail`의 결과로
+ * ⚠️ **조회는 새 Account일 때만 한다** (ARCHITECTURE "계정 병합") — 호출부가 `refreshVerifiedEmail`의 결과로
  * 이미 "이 Account가 새 것인가"를 알고 있고, 재방문 로그인(대부분)에는 이 함수가 아예 안 불린다.
  */
 export async function loadLinkOffer(

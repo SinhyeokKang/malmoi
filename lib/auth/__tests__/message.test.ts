@@ -12,7 +12,7 @@ import {
 } from "../message";
 
 /**
- * 인가 거부 → 사용자 문구 (design §4.1). `pullMessage`(`lib/pull/message.ts`)와 같은 형태다 —
+ * 인가 거부 → 사용자 문구 (ARCHITECTURE §6.3). `pullMessage`(`lib/pull/message.ts`)와 같은 형태다 —
  * **케이스 누락을 컴파일 타임에 막는 `never` 검사**가 구현에 있고, 여기서는 값을 대조한다.
  *
  * ⚠️ 이 문구가 필요한 이유: DB 세션에서 "권한 회수가 즉시 반영된다"는 성질은 사용자에게

@@ -22,7 +22,7 @@
  */
 export const ALL_NAMESPACES = "*";
 
-/** 번역 화면의 상태는 URL에 있다 — 공유 가능하고 새로고침에 살아남는다 (design §3.3). */
+/** 번역 화면의 상태는 URL에 있다 — 공유 가능하고 새로고침에 살아남는다 (PRODUCT §7.7). */
 export type TranslationsQuery = {
   /** 네임스페이스. `"*"`는 전체 — 어댑터가 만들 수 없는 이름이라 실제 접두와 충돌하지 않는다. */
   ns?: string;
@@ -84,7 +84,7 @@ function withQuery(path: string, query: Record<string, string | undefined>): str
 
 export const routes = {
   /**
-   * 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다 (design §3.8).
+   * 로그인 화면. 세션이 끊긴 채 저장을 시도한 셀이 여기로 보낸다.
    *
    * ⚠️ **`/`가 아니라 `/signin`이다** (8-1a). 랜딩 페이지가 `/`에 들어올 예정이라 미리 갈랐다 —
    * 나중에 옮기면 이 목적지를 가리키는 **아홉 자리**가 동시에 움직이고, 경로 문자열은 타입이
@@ -169,7 +169,7 @@ export const routes = {
   members: (slug: string): string => `/projects/${slug}/members`,
   /**
    * sync 이력 (7단계). **커서는 서버가 만든 값이고 클라이언트 상태가 아니다** — "Older"가 링크
-   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (design 결정 14).
+   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (DESIGN §6.68).
    */
   logs: (slug: string, query: { cursor?: string } = {}): string =>
     withQuery(`/projects/${slug}/logs`, query),

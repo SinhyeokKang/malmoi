@@ -73,7 +73,7 @@ export function DropdownMenuItem({
 }
 
 /**
- * **다중 선택 항목** (8-4 — design §9). 번역 화면의 `Select locales`가 유일한 소비자다.
+ * **다중 선택 항목** (8-4 — DESIGN §6.4). 번역 화면의 `Select locales`가 유일한 소비자다.
  *
  * ⚠️ **`DropdownMenuItem` + `selected`로는 안 된다.** 그쪽은 `bg-muted` + `<Check>`라는 **시각
  * 표시만** 붙어 접근성 트리에 상태가 없고, Radix `Item`은 선택 시 메뉴를 **닫는다** — 다중 선택에서

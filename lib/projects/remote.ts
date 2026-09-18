@@ -6,7 +6,7 @@ import type { GitClient } from "@/lib/pull/client";
 import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
 
 /**
- * 목록의 **원격 신호 둘** — 열린 PR과 base 드리프트 (projects-list design §3.4).
+ * 목록의 **원격 신호 둘** — 열린 PR과 base 드리프트. 둘 다 목록 행 아래 띠로 선다 (DESIGN §6.63).
  *
  * ⚠️ **자격증명은 installation 토큰이다** (`createGitClient`). user-to-server 토큰을 쓰지 않는다 —
  * 경계가 셋이고 섞지 않는다 (ARCHITECTURE §0 불변식 6, `credential-separation.test.ts`가 상시로 센다).
@@ -39,7 +39,7 @@ export type RemoteSignals = { openPr: { number: number; url: string } | null; re
 
 const NONE: RemoteSignals = { openPr: null, repoAheadFiles: 0 };
 
-/** 동시에 도는 **프로젝트** 수. 전체 요청 수도, 처리할 프로젝트 수도 아니다 (design ⊕). */
+/** 동시에 도는 **프로젝트** 수. 전체 요청 수도, 처리할 프로젝트 수도 아니다. */
 const CONCURRENCY = 3;
 
 /**
@@ -47,8 +47,8 @@ const CONCURRENCY = 3;
  *
  * ⚠️ **try/catch는 에러만 값으로 접고 지연은 못 접는다.** GitHub이 응답을 영영 안 주면
  * `signalsFor`의 catch에 닿지 않으므로 페이지가 그대로 매달리고, 이 화면은 로그인 직후의
- * 착지점이라 그 매달림이 곧 빈 화면이다 (design §7.5의 "GitHub이 실패해도 목록이 뜬다"를
- * **지연**까지 넓힌 것).
+ * 착지점이라 그 매달림이 곧 빈 화면이다 — 위의 "실패는 값으로 흐른다"를 **지연**까지
+ * 넓힌 것이다.
  *
  * ⚠️ **넘긴 요청을 취소하지는 않는다** — octokit에 그 손잡이가 없다. 페이지가 안 기다릴 뿐이고,
  * 남은 작업은 자기 속도로 끝나며 그 결과는 버려진다.
@@ -140,7 +140,7 @@ async function withDeadline(work: Promise<RemoteSignals[]>): Promise<RemoteSigna
  * ⚠️ **`slice`로 묶어 `Promise.all`을 돌리지 않는다.** 그러면 묶음 안의 가장 느린 하나가 끝날 때까지
  * 나머지 두 자리가 논다 — 목록이 통째로 그 하나를 기다리게 된다.
  *
- * ⚠️ **라이브러리를 더하지 않는다** (design ⊕). 요구가 "동시 n개"뿐이고 그것이 이 열 줄이다.
+ * ⚠️ **라이브러리를 더하지 않는다.** 요구가 "동시 n개"뿐이고 그것이 이 열 줄이다.
  */
 async function mapWithLimit<T, R>(items: readonly T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);

@@ -10,7 +10,7 @@ import { SYNC_LOG_PAGE_SIZE } from "./plan";
 import { decodeCursor, type SyncRunRow } from "./view";
 
 /**
- * `logs` 화면의 조회 (7단계 — design §6).
+ * `logs` 화면의 조회 (7단계 — DESIGN §6.68).
  *
  * ⚠️ **`projectId`로 좁힌다** — 인가는 호출부(`requireProjectAccess`)가 이미 지났고 여기 오는
  * `projectId`는 그 판정의 산출물이다. 인덱스도 `[projectId, startedAt]`이라 좁히지 않으면 풀스캔이고,

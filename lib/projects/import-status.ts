@@ -6,7 +6,7 @@ export { REPORTED_IMPORT_FAILURES, IMPORT_FAILURE_CODES, isImportFailureCode, im
 export type { ReportedImportFailure, ImportFailureCode } from "./import-failure";
 
 /**
- * 임포트 결과의 **순수 계약** (projects-list design §3.35). I/O가 없으므로 Route Handler·Server
+ * 임포트 결과의 **순수 계약** (PRODUCT §7.8). I/O가 없으므로 Route Handler·Server
  * Action·CLI가 같은 판정을 쓴다.
  *
  * ⚠️ **잎이어야 한다** — 목록과 설정 화면이 이 문장을 읽고, 그 그래프가 곧 번들이다
@@ -62,7 +62,7 @@ export function representativeFailureCode(errors: readonly AdapterError[]): Repo
  * @param at 이 결과를 쓰는 시각. **함수가 시계를 읽지 않는다** — 순수해야 하고, 같은 트랜잭션의
  *   다른 쓰기와 시각이 갈리면 안 된다.
  *
- * ⚠️ **성공이 `lastImportFailedAt`도 비운다** (project-home design §6.1). 안 비우면 성공한 뒤에도
+ * ⚠️ **성공이 `lastImportFailedAt`도 비운다** (ARCHITECTURE §5). 안 비우면 성공한 뒤에도
  * Home의 항목·배너·메타 행이 옛 실패를 말한다 — `lastImportError`만 비우면 시각이 유령으로 남는다.
  */
 export function importOutcomeFields(code: ImportFailureCode | null, at: Date): {

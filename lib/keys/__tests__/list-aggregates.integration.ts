@@ -18,7 +18,7 @@ import { loadPullState } from "@/lib/pull/load";
 import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
 /**
- * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (projects-list design §3.2 · tasks T3).
+ * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (ARCHITECTURE §5).
  *
  * ⚠️ **가짜 클라이언트의 호출 수만으로 raw SQL이 맞다고 판정하지 않는다.** `list-aggregates.test.ts`가
  * 재는 것은 "다섯 번만 보냈나"이고, 여기서 재는 것은 **"⑤와 `countUnpublished`가 같은 행을 세나"**다 —

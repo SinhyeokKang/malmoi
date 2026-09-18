@@ -20,7 +20,7 @@ const { listBranches } = await import("@/lib/github");
 const { MissingEnvError } = await import("@/lib/failure");
 
 /**
- * ①의 브랜치 목록 (feature design §3.2).
+ * ①의 브랜치 목록 (DESIGN §6.7).
  *
  * ⚠️ **층을 `lib/`에 맞춰 끊는다** — Action(`listRepoBranches`)은 `app/(edit)/__tests__/onboarding.test.ts`가
  * 보고, 여기는 GitHub 껍데기만 본다. 선례가 `lib/__tests__/github-probe.test.ts`다.

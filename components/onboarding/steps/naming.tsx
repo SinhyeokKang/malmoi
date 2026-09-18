@@ -20,7 +20,7 @@ import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { failureText } from "../failure";
 
 /**
- * ③ 이름·주소·기준 언어 (new-project-modal design §4).
+ * ③ 이름·주소·기준 언어 (DESIGN §6.7).
  *
  * ⚠️ **주소 중복을 입력 중에 조회하지 않는다** (결정 ②). 형식은 `planSlug`를 **클라이언트가 직접**
  * 부르고(잎이라 번들 비용이 0이고 왕복도 0이다), 중복은 [Create project]가 `slug-taken`으로 판정한다.

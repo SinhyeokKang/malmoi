@@ -5,7 +5,7 @@ import { importOutcomeFields } from "./import-status";
 import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
 
 /**
- * 임포트 진행·결과의 **쓰기 껍데기** (projects-list design §3.35). 판정은 `./import-status`가 하고
+ * 임포트 진행·결과의 **쓰기 껍데기** (PRODUCT §7.8). 판정은 `./import-status`가 하고
  * 여기는 DB만 안다.
  *
  * ⚠️ **인가는 호출부가 이미 했다** — Route Handler는 토큰으로, Server Action은 `getProjectAccess`로.
@@ -93,7 +93,7 @@ export async function recordReportedFailure(
       OR: [{ lastCommitAt: null }, { lastCommitAt: { lte: input.commitAt } }],
     },
     /**
-     * ⚠️ **시각도 함께 쓴다** (project-home design §6.1) — Home의 항목이 세 종을 한 시간축에 세우고,
+     * ⚠️ **시각도 함께 쓴다** (ARCHITECTURE §5) — Home의 항목이 세 종을 한 시간축에 세우고,
      * 그중 파서 실패의 시각이 여기서만 나온다. `lastImportError`만 쓰면 그 항목이 언제나
      * "가장 오래된 것"으로 바닥에 깔린다.
      */

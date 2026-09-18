@@ -289,7 +289,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     expect(writes).toEqual([new Date("2026-09-01T10:00:00Z")]);
   });
 
-  /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (design §3.4). */
+  /** ⚠️ `lastPublishedAt`은 건드리지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3). */
   it("되돌리기는 published로 세지 않는다", async () => {
     const published: unknown[] = [];
     const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
@@ -356,7 +356,7 @@ describe("runPull — 커밋·PR 경로", () => {
   /**
    * ⚠️ **화면 문구가 이 값으로 갈린다** — "Sent for review"(새로 보냄)와 "Updated what you sent
    * earlier"(먼저 보낸 것을 갱신)는 편집자에게 다른 사실이다. 재사용 판정은 이미 하고 있었고
-   * 값으로만 안 내고 있었다 (design §3.4).
+   * 값으로만 안 내고 있었다 (ARCHITECTURE §3).
    */
   it("열린 PR을 재사용하면 pr는 updated다", async () => {
     const { client, calls } = createFakeGitClient({
@@ -713,10 +713,10 @@ describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘�
 });
 
 /**
- * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4, design §2·§5). 해제 SQL 자체는 PG 통합 테스트
+ * **캡처한 편집을 전달 확인 쓰기에 싣는가** (sync-edit-protection T4 — ARCHITECTURE §3·§5). 해제 SQL 자체는 PG 통합 테스트
  * (`lib/keys/__tests__/sync-edit-protection.integration.ts`)가 재고, 여기서는 "어느 경로가 무엇을 넘기나"만 센다.
  *
- * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (design §6.1) — 편집을 원복한 셀은 2층에서
+ * ⚠️ **`no-changes`를 빠뜨리면 배포 B에서 유령 pending이 생긴다** (ARCHITECTURE §3) — 편집을 원복한 셀은 2층에서
  * 끝나고, 그 경로가 캡처를 해제하지 않으면 토큰이 영영 남아 CI가 영구 보류된다.
  */
 describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 넘긴다 (T4)", () => {

@@ -65,7 +65,7 @@ export function GithubSection({
           : account.status === "unavailable" ? m.account.github.hintUnavailable
           : !connected ? m.account.github.hintNotConnected
           // ⚠️ **`null`(못 읽었다)과 `0`(고른 것이 없다)은 둘 다 줄을 안 그린다** — `Installed on 0
-          // repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다 (design §8 결정 3).
+          // repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다 (DESIGN §6.67).
           : installedRepoCount !== null && installedRepoCount > 0
             ? m.account.github.installedOn(installedRepoCount)
             : undefined
@@ -84,7 +84,7 @@ export function GithubSection({
         ) : connected ? (
           <>
             {/*
-              ⚠️ **연결됨에만 선다** (design §3.6). 나머지 셋은 설치를 못 믿는 상태이고, 그때 밖으로
+              ⚠️ **연결됨에만 선다** (DESIGN §6.67). 나머지 셋은 설치를 못 믿는 상태이고, 그때 밖으로
               나가는 문을 두면 사용자가 "고치러 갔는데 고칠 게 없는" 자리에 착지한다.
               ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 구역과 같은 순서다.
               ⚠️ **`ButtonLink`가 아니라 `<a>`다** — 그 프리미티브는 `next/link`라 `target`·`rel`을

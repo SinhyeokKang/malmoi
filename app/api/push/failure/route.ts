@@ -11,7 +11,7 @@ import { checkArchived, checkCommitOrder, checkProjectSlug, guardStatus } from "
 import { hashPushToken } from "@/lib/push/token";
 
 /**
- * CI가 **적재에 실패했다는 사실**을 남기는 자리 (projects-list design §3.35). 로케일 파일을 파싱하지
+ * CI가 **적재에 실패했다는 사실**을 남기는 자리 (PRODUCT §7.8). 로케일 파일을 파싱하지
  * 못하면 `/api/push`는 아예 불리지 않으므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다 —
  * 말모이 쪽 화면에서는 프로젝트가 그냥 조용했다.
  *
@@ -42,7 +42,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const prisma = getPrisma();
     /**
-     * **토큰이 프로젝트를 정한다** — `/api/push`와 같은 순서다 (design §3.8). 본문의 slug로 행을 찾으면
+     * **토큰이 프로젝트를 정한다** — `/api/push`와 같은 순서다 (PRODUCT §7.8). 본문의 slug로 행을 찾으면
      * 오배송된 보고가 인증 대상을 고르게 된다.
      *
      * ⚠️ **인증이 본문보다 먼저다.** 무효 토큰 하나로 스키마 구조(zod `issues`)를 받아 갈 수 없다.

@@ -14,14 +14,14 @@ import { routes } from "@/lib/routes";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 /**
- * GitHub이 브라우저를 되돌리는 지점 (design §3.1). **연결 흐름에서 Route Handler는 이것 하나다** —
+ * GitHub이 브라우저를 되돌리는 지점 (ARCHITECTURE §6.4). **연결 흐름에서 Route Handler는 이것 하나다** —
  * 나가는 쪽은 Server Action이 쿠키를 심고 `redirect`한다.
  *
  * CLAUDE.md의 "내부 쓰기에 Route Handler를 새로 만들지 않는다"의 **예외가 아니라 반대편**이다:
  * 호출자가 우리 UI가 아니라 GitHub이 보낸 전체 페이지 내비게이션이고, Server Action은 돌아오는
  * 쪽을 받을 수 없다.
  *
- * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** (design §7.1). 로그인 화면으로 302되면 `code`가 사라지고
+ * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** (ARCHITECTURE §6.1). 로그인 화면으로 302되면 `code`가 사라지고
  * 사용자에게는 "연결을 눌렀는데 로그인 화면으로 돌아왔다"로 보인다 — `/invite/[token]`을 뺀 것과
  * 같은 이유다. 대신 `requireUser()`를 지나고 `entry-points.test.ts`의 `GUARDS`가 그것을 센다.
  */
@@ -50,7 +50,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   });
 
   // ⚠️ **state를 믿을 수 없으면 `dest`도 믿을 수 없다** — 목적지가 `/projects`이고, 그 화면이
-  // `isConnectError`로 사유를 읽는다 (design §3.5). 사용자가 취소한 경우도 여기서는 갈래를 바꾸지
+  // `isConnectError`로 사유를 읽는다 (ARCHITECTURE §6.4). 사용자가 취소한 경우도 여기서는 갈래를 바꾸지
   // 않는다: 어디로 돌아가야 하는지 모르는 것이 먼저다.
   const denied = url.searchParams.get("error") !== null;
   if (state.status !== "ok") {
@@ -95,7 +95,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 }
 
 /**
- * `planAccountLink`의 판정을 쓰기로 옮긴다 (design §3.1의 표).
+ * `planAccountLink`의 판정을 쓰기로 옮긴다 (ARCHITECTURE §6.2.1).
  *
  * ⚠️ **`upsert`를 쓰지 않는다.** 두 요청이 동시에 `existing: null`을 받으면 둘째의 update 분기가
  * 첫째의 `userId`를 덮어써 **연결 소유권이 이동한다.** 어댑터의 `linkAccount`도 `create`만 한다 —
@@ -149,7 +149,7 @@ async function linkAccountLocked(
   }
 
   if (plan === "replace" && current !== null) {
-    // User당 App 연결은 하나다 (design §2.3). 삭제와 생성이 갈리면 그 사이에 연결이 0인 창이 생긴다.
+    // User당 App 연결은 하나다 (ARCHITECTURE §6.2.1). 삭제와 생성이 갈리면 그 사이에 연결이 0인 창이 생긴다.
     await prisma.account.delete({
       where: { provider_providerAccountId: { provider: PROVIDER, providerAccountId: current.providerAccountId }, userId },
     });
@@ -188,7 +188,7 @@ function isUniqueViolation(error: unknown): boolean {
  * `/account`(6b-4) · `/projects`(state를 못 믿어 돌아갈 곳을 모르는 경우).
  *
  * ⚠️ **경로는 서명된 `dest`가 정한다.** 쿼리에서 읽으면 공격자가 착지를 고르고, 그러면 open
- * redirect 판정이 필요해진다 (design §3.6).
+ * redirect 판정이 필요해진다 (ARCHITECTURE §6.4).
  */
 function landing(
   request: Request,

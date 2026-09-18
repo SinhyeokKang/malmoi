@@ -74,7 +74,7 @@ export type ApplyOptions = {
   startedAt: Date;
   /**
    * 첫 적재면 null. 그 외에는 Project→Surface 잠금 뒤 읽은 최신 base로 다시 판정한다.
-   * 호출부의 값은 첫 적재 여부를 구분한다 (design §3.13).
+   * 호출부의 값은 첫 적재 여부를 구분한다 (ARCHITECTURE §5.5.5).
    *
    * ⚠️ **optional로 두지 않는다.** 껍데기가 빼먹으면 base 교체 push가 조용히 전 키에 검토 표시를
    * 붙이고, 그 결함은 지표로도 안 보인다 (POSTMORTEM 2026-09-02).
@@ -82,7 +82,7 @@ export type ApplyOptions = {
   previousBaseLocale: string | null;
   /**
    * 이 적재의 **결과** — 완전 성공이면 생략(또는 null), 일부가 빠졌으면 `"partial-import"`
-   * (projects-list design §3.35).
+   * (PRODUCT §7.8).
    *
    * ⚠️ **같은 트랜잭션에서 확정되는 것이 요지다.** `applyPush` 뒤에 따로 쓰면 데이터는 들어갔는데
    * 목록만 실패로 남는 창이 생긴다.
@@ -251,7 +251,7 @@ async function applyWith(
         ${plan.toInsert.map((k) => k.sortIndex ?? null)}::int[],
         ${plan.toInsert.map(() => false)}::boolean[],
         -- ⚠️ createdAt은 INSERT에만 있다 — 아래 UPDATE가 건드리면 살아 돌아온 키가 매번
-        -- "새 키"로 다시 잡힌다 (projects-list design §8). 시계가 하나인 이유는 위 주석과 같다.
+        -- "새 키"로 다시 잡힌다. 시계가 하나인 이유는 위 주석과 같다.
         ${plan.toInsert.map(() => now)}::timestamp[],
         ${plan.toInsert.map(() => now)}::timestamp[]
       )`]),
@@ -333,7 +333,7 @@ async function applyWith(
         -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
         "description" = EXCLUDED."description",
         "placeholders" = EXCLUDED."placeholders",
-        -- **덮인 값의 저자는 리포다** (translation-ui design §3.6). 사람 이름을 남기면 거짓이고,
+        -- **덮인 값의 저자는 리포다** (ARCHITECTURE §5.5.2). 사람 이름을 남기면 거짓이고,
         -- 미배포 집계(isUnpublished)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
         "updatedBy" = NULL,
         -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
@@ -368,7 +368,7 @@ async function applyWith(
         ...(payload.format.nestedByPath === undefined ? {} : { nestedByPath: payload.format.nestedByPath }),
         baseLocale: payload.format.baseLocale,
         /**
-         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (design §3.13, 6b-3).
+         * **허가를 쓴 push만 선언을 비운다 — 일회용이다** (ARCHITECTURE §5.5.5, 6b-3).
          *
          * ⚠️ **push마다 비우면 기능이 흔한 경로에서 무력화된다** (code-review 2026-09-09). OWNER가
          * base를 선언한 뒤 워크플로를 고치기 전에 평범한 CI push 한 번이 오면(base 브랜치에 머지가

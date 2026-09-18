@@ -4,7 +4,7 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullResult } from "./run";
 
 /**
- * 야간 cron이 돌 프로젝트 고르기 (design §3.9). **순수 판정이다** — 조회는 라우트가 한다.
+ * 야간 cron이 돌 프로젝트 고르기 (ARCHITECTURE §3.05). **순수 판정이다** — 조회는 라우트가 한다.
  *
  * ⚠️ **준비 안 된 프로젝트를 돌리면 던진다.** `installationId`·`repositoryId`가 null이면
  * `triggerPull`의 `createClient`가, `runPull`(`run.ts`)이,

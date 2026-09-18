@@ -84,7 +84,7 @@ export type KeyRow = {
   id: string;
   key: string;
   namespace: string;
-  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다 (project-home §9.7). */
+  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다. */
   createdAt: Date;
 
   description?: string | null;
@@ -147,7 +147,7 @@ export type NamespaceCount = {
 };
 
 /**
- * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (8-4 design §3.1).
+ * 보일 로케일의 후보 — `Locale` 행에서 오는 두 축뿐이다 (DESIGN §6.1).
  *
  * ⚠️ **코드 배열이 아니라 이 모양을 받는다.** 폴백이 orphaned를 빼야 하는데 코드만 받으면
  * 그 판정을 호출부가 하게 되고, 그러면 규칙이 화면 코드로 내려간다.
@@ -191,7 +191,7 @@ export function parseLocaleSelection(
 }
 
 /**
- * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (design §3.2).
+ * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (DESIGN §6.1).
  *
  * ⚠️ **키 단위로 한 번만 센다.** 로케일마다 세면 집계의 합이 `total`을 넘어 드롭다운의
  * `pending/total`이 1을 넘는다. 우선순위는 `cellState`의 것을 그대로 쓴다
@@ -259,7 +259,7 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
 }
 
 /**
- * 착지할 네임스페이스 — **"남은 일이 있는" 첫 번째다** (design §3.3).
+ * 착지할 네임스페이스 — **"남은 일이 있는" 첫 번째다** (DESIGN §6.1).
  *
  * `compareKeys` 첫 항목(알파벳순)으로 착지하면 이미 다 번역된 사소한 네임스페이스일 수 있고,
  * 그러면 편집자가 열 때마다 직접 찾아야 한다. 903키 프로젝트에서 그 비용이 매번 든다.
@@ -274,7 +274,7 @@ export function defaultNamespace(counts: readonly NamespaceCount[]): string | nu
   // 정렬은 `namespaceCountsFor`가 이미 했다 — 여기서 다시 정렬하면 규칙이 두 벌이 된다.
   const pending = counts.find((c) => c.untranslated + c.needsReview > 0);
   if (pending) return pending.namespace;
-  // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (design §3.7).
+  // 편집할 수 없는 화면에 착지시키지 않는다 — orphaned 셀은 disabled다 (DESIGN §6.1).
   return counts.find((c) => c.total > c.orphaned)?.namespace ?? null;
 }
 
@@ -313,7 +313,7 @@ export type RowFilter = {
 /**
  * 툴바의 검색 필터. **서버 렌더 필터다** — URL이 상태라 공유되고 새로고침에 살아남는다.
  *
- * ⚠️ **검색 대상을 선택된 로케일로 좁힌다** (8-4 design §3.3). 안 좁히면 `?locales=ko`에서
+ * ⚠️ **검색 대상을 선택된 로케일로 좁힌다.** 안 좁히면 `?locales=ko`에서
  * **fr 값에 맞은 키가 아무 표시 없이 나타난다** — 옛 축에서는 전 로케일이 열로 보여서 어디가
  * 맞았는지 눈에 띄었지만 행 축에서는 그 값이 화면에 없다.
  *
@@ -329,13 +329,13 @@ export function filterRows(rows: readonly KeyRow[], filter: RowFilter): KeyRow[]
 }
 
 /**
- * 파이프라인 구간으로 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (project-home §9.7).
+ * 파이프라인 구간으로 좁힌다 — Home의 카운트 카드 넷이 가리키는 자리다 (DESIGN §6.64).
  *
  * ⚠️ **술어를 새로 쓰지 않는다.** `unsent`는 `isUnpublished`, `review`·`untranslated`는
  * `cellState`다 — 카드의 수와 표의 행이 다른 규칙을 쓰면 "24라더니 9개뿐"이 **좁힘 때문인지
  * 정의 차이 때문인지** 화면에서 구별되지 않는다.
  *
- * ⚠️ **`new`만 로케일을 안 본다** — 단위가 셀이 아니라 키다 (spec §7.1). 나머지 셋은 **보고 있는
+ * ⚠️ **`new`만 로케일을 안 본다** — 단위가 셀이 아니라 키다. 나머지 셋은 **보고 있는
  * 로케일**에서만 판정한다: 안 보이는 로케일 때문에 걸린 행은 왜 걸렸는지 화면에 근거가 없다.
  *
  * ⚠️ **orphaned 키는 어느 구간도 아니다** — 편집이 막혀 있어 일이 아니고, `cellState`가 그것을
@@ -390,7 +390,7 @@ export function pendingFirst(rows: readonly KeyRow[], locales: readonly string[]
 export type NamespaceGroup = { namespace: string; rows: KeyRow[] };
 
 /**
- * 전체 보기의 섹션 배열 (8-4 design §3.6).
+ * 전체 보기의 섹션 배열 (DESIGN §6.1).
  *
  * ⚠️ **순서를 `counts`에서 받는다.** `rows`만 보면 순서의 출처가 `loadKeys`의
  * `orderBy: { key: "asc" }`(Postgres collation)인데 집계가 쓰는 것은 `compareKeys`

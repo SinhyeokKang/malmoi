@@ -310,7 +310,7 @@ describe("orphaned 키", () => {
 });
 
 /**
- * **저장이 편집 토큰을 발급한다** (sync-edit-protection T4, design §2 — 배포 A의 dual-write). 판정·집계·화면은
+ * **저장이 편집 토큰을 발급한다** (sync-edit-protection T4 — ARCHITECTURE §5.5.2, 배포 A의 dual-write). 판정·집계·화면은
  * 아직 토큰을 읽지 않는다. 여기서 재는 것은 "값이 실제로 바뀔 때만 새 토큰"이다 — no-op이 토큰을 바꾸면
  * Publish 뒤 같은 값 재저장이 pending을 되살려 CI가 이유 없이 보류된다.
  */

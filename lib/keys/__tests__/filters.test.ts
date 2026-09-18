@@ -5,7 +5,7 @@ import { ALL_NAMESPACES } from "@/lib/routes";
 import { activeFilters, clearedQuery } from "../filters";
 
 /**
- * 칩 행의 유일한 출처 (8-4 T2 — design §3.5).
+ * 칩 행의 유일한 출처 (8-4 T2 — DESIGN §6.1).
  *
  * `next`가 **그 칩을 뗀 뒤의 쿼리**다 — 화면이 쿼리 조립을 다시 하면 규칙이 두 벌이 되고
  * 하나가 낡는다.
@@ -98,7 +98,7 @@ describe("clearedQuery — 초기화 버튼", () => {
 });
 
 /**
- * 넷째 칩 — Home의 카운트 카드가 실어 보낸 좁힘 (project-home §9.7).
+ * 넷째 칩 — Home의 카운트 카드가 실어 보낸 좁힘 (PRODUCT §7.7).
  *
  * ⚠️ **칩이 없으면 되돌릴 수단이 화면에 없다.** 카드에서 착지한 사용자에게 남는 출구가 주소창뿐인데,
  * 그 사람이 이 화면의 주 사용자다.

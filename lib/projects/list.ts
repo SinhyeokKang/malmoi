@@ -79,12 +79,12 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
 }
 
 /**
- * ── 목록 재설계의 판정 여섯 (projects-list design §4·§5) ──────────────────────
+ * ── 목록 재설계의 판정 여섯 (DESIGN §6.63) ──────────────────────
  *
  * ⚠️ **전부 이 파일에 둔다.** 오케스트레이션 파일(`lib/keys/query.ts`)에 두면 클라이언트 번들이
  * 그 그래프를 따라온다 (ARCHITECTURE §0 말미 · `client-graph.test.ts`).
  *
- * ⚠️ **상태표(design §5)가 정본이다** — 캔버스 `1c`에서 그대로 옮긴 표다. §4의 union 스케치와 어긋나는
+ * ⚠️ **캔버스 `1c`의 상태표가 정본이다** (DESIGN §6.63). 옛 union 스케치와 어긋나는
  * 자리가 하나 있고(첫 적재 대기의 띠), **표를 따른다**: 그 상태의 문장은 Meter 자리가 들고 띠는 비운다.
  * 생산자 없는 갈래를 union에 남기지 않는 것이 이 리포의 규칙이기도 하다.
  */
@@ -95,7 +95,7 @@ export type ProjectEvents = {
   review: number;
   /** 안 보낸 편집 수 — `countUnpublished`와 **같은 술어**의 결과다. */
   unsent: number;
-  /** 열린 PR. ⚠️ **`state === "open"`을 확인한 뒤에만 채운다** (design §3.4 B). */
+  /** 열린 PR. ⚠️ **`state === "open"`을 확인한 뒤에만 채운다.** */
   openPr: { number: number; url: string } | null;
   /** base가 앞선 **로케일 파일 수**. ⚠️ 키 수가 아니다 (C′) — 서버는 리포의 키를 모른다. */
   repoAheadFiles: number;
@@ -122,7 +122,7 @@ export function failing(row: { importError: ImportFailureCode | null; importing:
 }
 
 /**
- * 행이 어느 그룹에 서는가 (design §5의 그룹 열).
+ * 행이 어느 그룹에 서는가 (DESIGN §6.63의 그룹 항).
  *
  * ⚠️ **검토 대기와 열린 PR은 `All set`이다.** 둘 다 "읽고 누르면 되는 것"이고, 여기서 손볼 것으로
  * 올리면 정상 운영 중인 프로젝트가 상시 `Needs attention`에 남아 그 그룹이 의미를 잃는다.
@@ -136,7 +136,7 @@ export function projectGroup(row: RowInput): ProjectGroup {
 }
 
 /**
- * 행 아래 띠 — **겹치면 하나만** (design §4의 우선순위).
+ * 행 아래 띠 — **겹치면 하나만** (DESIGN §6.63의 띠 항).
  *
  * ⚠️ **역할을 받지 않는다** (F). 시안의 Editor 갈래(*"…waiting for an owner to send them."*)는 버렸다 —
  * PRODUCT §3이 **EDITOR에게도 Publish를 허용**하므로 그 문구는 화면이 권한을 실제보다 좁혀 말하는 것이다.
@@ -163,7 +163,7 @@ export function rowBanner(row: RowInput): RowBanner {
   if (status === "needs_reconnect") return { kind: "needs_reconnect" };
   if (failing(row) && row.importError !== null) return { kind: "import_failed", reason: row.importError };
   if (status === "setup") return { kind: "setup" };
-  // ⚠️ 첫 적재 대기는 띠가 없다 (design §5의 8·9행) — 그 문장은 Meter 자리가 든다.
+  // ⚠️ 첫 적재 대기는 띠가 없다 (DESIGN §6.63) — 그 문장은 Meter 자리가 든다.
   if (status === "awaiting_first_sync") return null;
   // E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다.
   if (row.unsent > 0) return { kind: "unsent", count: row.unsent };
@@ -193,7 +193,7 @@ export type RowLocaleProgress = {
   percent: number;
 };
 
-/** Meter 자리에 문장이 서는 갈래 넷 (design §5). */
+/** Meter 자리에 문장이 서는 갈래 넷 (DESIGN §6.63). */
 export type MeterNote = "setup" | "waiting" | "importing" | "failed";
 
 /**
@@ -231,7 +231,7 @@ const cellKey = (projectId: string, surfaceId: string, code: string): string => 
  * ③을 ①의 **살아 있는 (projectId, code)** 로 거른 뒤 접는다.
  *
  * ⚠️ **이 필터가 없으면 orphaned 로케일의 번역이 분자에 들어간다** — 분모(키)는 orphaned를 빼므로
- * 분자가 분모보다 커진다 (design §3.1).
+ * 분자가 분모보다 커진다.
  */
 function foldCells(
   locales: readonly LiveLocale[],
@@ -252,7 +252,7 @@ function foldCells(
 }
 
 /**
- * 행의 Meter 재료 (design §3.1).
+ * 행의 Meter 재료 (DESIGN §6.63).
  *
  * ⚠️ **`localeProgress`(`lib/keys/view.ts`)와 합치지 않는다** — 저쪽은 `untranslated`·orphaned 꼬리까지
  * 드는 화면 계약이고 여기 필요한 것은 두 구간 비율뿐이다. **`percent`의 내림 규칙만 그대로 쓴다**
@@ -288,7 +288,7 @@ export function rowLocaleProgress(
     byProject.set(locale.projectId, list);
   }
   for (const [projectId, list] of byProject) {
-    // base 먼저 → 코드순. 앞에서부터 자르므로 "하나만 남으면 base"가 공짜로 성립한다 (design §6 근거 ③).
+    // base 먼저 → 코드순. 앞에서부터 자르므로 "하나만 남으면 base"가 공짜로 성립한다 (DESIGN §6.63).
     list.sort((a, b) => a.surfaceSlug < b.surfaceSlug ? -1 : a.surfaceSlug > b.surfaceSlug ? 1 : a.isBase === b.isBase ? (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) : a.isBase ? -1 : 1);
     byProject.set(projectId, list.slice(0, 3));
   }
@@ -313,7 +313,7 @@ export function rowReviewCounts(
 }
 
 /**
- * 프로젝트별 검토 대기의 **로케일별 분해** (project-home design §3.2 — 카드 보조 줄 `5 en, 3 ja`).
+ * 프로젝트별 검토 대기의 **로케일별 분해** (DESIGN §6.64 — 카드 보조 줄 `5 en, 3 ja`).
  *
  * ⚠️ **`rowReviewCounts`와 같은 `foldCells`를 쓴다** — "살아 있는 로케일만"이라는 규칙이 한 벌로
  * 남아야 두 수가 갈리지 않는다. 표면은 가로지른다: 카드의 수가 프로젝트 합계라 분해도 같은
@@ -349,8 +349,7 @@ export type SummaryQueue = { newFromGithub: number; toTranslate: number; toRevie
 
 /**
  * ⚠️ **소비자가 지금 없다 — 지우지 않는다** (2026-09-15). 목록 머리의 Summary 넷이 사라지면서
- * 이 함수를 부르는 화면이 0이 됐고, `project-home`의 카운트 카드 넷이 그것을 받는다
- * (`docs/features/project-home/tasks.md` T4 — *"`summaryQueue`를 고치지 않는다"*).
+ * 이 함수를 부르는 화면이 0이 됐고, Home의 카운트 카드 넷이 그것을 받는다 (DESIGN §6.63·§6.64).
  *
  * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 금지하고,
  * `pnpm test:projects:postgres`가 셋이 같은 행을 세는지 재는 유일한 자리다. `/code-review`·`/audit`이
@@ -359,7 +358,7 @@ export type SummaryQueue = { newFromGithub: number; toTranslate: number; toRevie
  * ⚠️ **블록을 둘로 나누지 않는다** — TS는 선언 바로 앞 **마지막** 블록만 붙이므로, 위 경고를 별도
  * 블록으로 두면 hover·IntelliSense에 아래 설명만 뜬다. 그 경고를 읽어야 하는 사람이 보는 자리가 거기다.
  *
- * ── 계정 합계 넷 (design §3.2). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
+ * ── 계정 합계 넷 (DESIGN §6.63의 Summary 항). **검색 전 전체 멤버십 중 보관하지 않은 프로젝트**의 값이고,
  * 검색·그룹에 흔들리지 않는다.
  *
  * ⚠️ **Meter의 셋 제한을 적용하지 않는다** — 59로케일 리포에서 넷째 로케일부터의 미번역이 통째로
@@ -412,7 +411,7 @@ export function summaryQueue(input: {
 }
 
 /**
- * 그룹으로 나눈다 — **검색 중에는 평평하다** (design §2).
+ * 그룹으로 나눈다 — **검색 중에는 평평하다** (DESIGN §6.63의 검색 항).
  *
  * ⚠️ **질의가 있으면 그룹을 그리지 않는다.** 결과가 셋으로 흩어지면 "몇 개 찾았나"를 사용자가 더해야
  * 하고, 그 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다.
@@ -444,7 +443,7 @@ export function groupProjects<T extends RowInput>(
 }
 
 /**
- * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (projects-panel-rework design §3.1).
+ * **본문이 네 모양 중 어느 것인가** — 아트보드 `1a`~`1d`와 1:1 (DESIGN §6.63).
  *
  * ⚠️ **갈래를 한 자리에 모은다.** 전에는 `hasProjects`·질의·건수가 JSX 안에서 섞여 판정됐고, 그러면
  * 넷 중 하나가 바뀔 때 나머지 셋이 어떤 모양이 되는지를 화면을 읽어야만 알 수 있었다.

@@ -40,7 +40,7 @@ import { routes } from "@/lib/routes";
  * 것**이 됐다. 그래서 Home이 합계를 소유하되 제약이 하나 붙는다: **합계는 표면별 값의 합으로만
  * 만든다** — 별도 집계 경로를 만들면 그것이 곧 네 번째 사본이다.
  *
- * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (spec §3.3-7). 표시는 `Sync`(리포 → 앱)와
+ * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (DESIGN §10). 표시는 `Sync`(리포 → 앱)와
  * `Publish`(앱 → 리포) 둘뿐이고 **코드 식별자는 그대로다**.
  *
  * ⚠️ **최상단에서 던진다.** 조건부 렌더는 차단이 아니다 — App Router가 레이아웃과 페이지를 병렬로
@@ -48,7 +48,7 @@ import { routes } from "@/lib/routes";
  * `2c`·`2d`에서 `[Reconnect]`·`[Project settings]`를 감추는 것은 **편의**이고, 차단은 `/settings`의
  * `requireProjectAccess({ permission: "project:settings" })`가 든다.
  *
- * ⚠️ **보관은 전면 교체가 아니라 배너다** (spec §8 `2d`) — `ProjectArchived`의 소비자가 하나 줄었다.
+ * ⚠️ **보관은 전면 교체가 아니라 배너다** (DESIGN §6.64 `2d`) — `ProjectArchived`의 소비자가 하나 줄었다.
  * **그 컴포넌트를 지우지 않는다**: 번역·로케일·멤버·이력 화면이 계속 쓴다.
  *
  * ⚠️ **보관된 프로젝트에서 첫·넷째 카드가 0이 된다** — 캔버스 `2d`는 "값 유지"이지만, 그 둘의 raw
@@ -140,7 +140,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
   ]);
 
   /**
-   * ⚠️ **`archived: false`를 고정으로 넘긴다** (design §2.1). 그 필터는 **계정 합계**의 것이고
+   * ⚠️ **`archived: false`를 고정으로 넘긴다** (DESIGN §6.64). 그 필터는 **계정 합계**의 것이고
    * ("지금 내가 할 일"의 합계에서 보관을 뺀다), Home은 프로젝트 하나라 그 축이 존재하지 않는다 —
    * 그대로 넘기면 보관하는 순간 카드 넷이 전부 0이 된다.
    */

@@ -75,7 +75,7 @@ function sourcesIn(dir: string, base: string): { rel: string; source: string }[]
 const CONNECT_SOURCES = sourcesIn(join(ROOT, "lib/github-connect"), "lib/github-connect");
 const GITHUB_TS = readFileSync(join(ROOT, "lib/github.ts"), "utf8");
 /**
- * **온보딩은 GitHub을 아예 모른다** (2026-09-07, design §3.10). 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고,
+ * **온보딩은 GitHub을 아예 모른다** (2026-09-07, ARCHITECTURE §3.1). 순수 판정과 DB 껍데기(`ingest.ts`)만 갖고,
  * App 개인키도 사용자 토큰도 **그리고 `lib/github.ts`도** import하지 않는다 — 두 토큰이 만나는 자리는
  * Server Action 하나여야 한다. 여기에 루트를 더하지 않으면 이 방어선이 새 디렉터리를 자동으로 덮지 않는다.
  */
@@ -138,7 +138,7 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   });
 });
 
-describe("온보딩은 두 자격증명을 모른다 (design §3.10)", () => {
+describe("온보딩은 두 자격증명을 모른다 (ARCHITECTURE §3.1)", () => {
   it("lib/onboarding/이 App 자격증명을 참조하지 않는다", () => {
     const offenders = ONBOARDING_SOURCES.filter((f) => APP_CREDENTIAL.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);

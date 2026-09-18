@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planAccountLink } from "../account-link";
 
 /**
- * GitHub 계정 연결 판정 (design §2.3·§3.1·§4). **ARCHITECTURE §6.2.1의 방어선** — 다른 User가 이미 그 GitHub
+ * GitHub 계정 연결 판정. **ARCHITECTURE §6.2.1의 방어선** — 다른 User가 이미 그 GitHub
  * 계정을 연결했으면 **병합하지 않고 거부**한다. 잘못된 자동 병합은 불편이 아니라 계정 탈취다.
  *
  * ⚠️ **유일성의 범위는 `provider: "github-app"` 안이다.** 로그인용 `github` 행이 남의 것이어도

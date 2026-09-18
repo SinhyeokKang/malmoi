@@ -17,7 +17,7 @@ import type { ProjectListRow } from "@/lib/keys/query";
 import { m } from "@/lib/i18n";
 
 /**
- * **띠의 역할 분기를 실제로 렌더해서 본다** (projects-list design §5).
+ * **띠의 역할 분기를 실제로 렌더해서 본다** (DESIGN §6.63).
  *
  * ⚠️ **소스 grep으로는 이 축을 못 잰다.** `projects-screen.test.ts`가 `canPerform(row.role, …)`
  * 문자열의 **존재**를 세는데, 그 삼항을 뒤집어도(`canSettle ? ownerOnly : internal`) 토큰은 그대로
@@ -84,7 +84,7 @@ it("원격 변경 띠가 실제 base로 compare를 연다", async () => {
 
 /**
  * **역할로 갈리는 셋** — `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다.
- * 문장은 역할과 무관하고 **링크만** 사라진다 (design §4 F).
+ * 문장은 역할과 무관하고 **링크만** 사라진다 (DESIGN §6.63).
  */
 it.each([
   ["needs_reconnect", { repositoryId: null }, m.projects.banner.action.reconnect, m.projects.banner.askOwner.reconnect],

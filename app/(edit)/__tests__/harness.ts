@@ -306,7 +306,7 @@ export function createHarness(seed: Seed = {}) {
       select?: { locales?: { where?: { orphaned?: boolean } }; surfaces?: { include?: { locales?: { where?: { orphaned?: boolean } } } } };
     }) => {
       // 실 Prisma는 unique where의 null을 PrismaClientValidationError로 거부한다 — 가짜도 던진다. 조용히 null을
-      // 돌려주면 "미발급 프로젝트가 인증에 걸리는" fail-open을 테스트가 못 본다 (design §3.8).
+      // 돌려주면 "미발급 프로젝트가 인증에 걸리는" fail-open을 테스트가 못 본다 (PRODUCT §7.8).
       if ("pushTokenHash" in args.where && typeof args.where.pushTokenHash !== "string") {
         throw new Error("Argument `pushTokenHash` must not be null");
       }
@@ -552,7 +552,7 @@ export function createHarness(seed: Seed = {}) {
   // `projectId`(마지막 OWNER 보호)와 `userId`(사용자당 프로젝트 3개 제한 — OWNER 행만 센다) 둘 다 받는다.
   /**
    * ⚠️ **`project: { archivedAt: null }`을 실제로 본다** (7단계). 무시하면 "보관이 `PROJECT_LIMIT`
-   * 슬롯을 비운다"(design 결정 10)가 **무엇을 넣어도 통과한다** — 가짜가 실제보다 관대한 부류다
+   * 슬롯을 비운다"(ARCHITECTURE §5.6.4)가 **무엇을 넣어도 통과한다** — 가짜가 실제보다 관대한 부류다
    * (POSTMORTEM 2026-09-06 하네스 자기검사).
    */
   const countMembers = vi.fn(

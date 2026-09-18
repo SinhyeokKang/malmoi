@@ -9,7 +9,7 @@ import { activeProject, navFooterItems, navZones, projectSections, type NavProje
  *
  * ⚠️ **pathname에서 뽑은 slug는 표시용이다** — 데이터 접근에 쓰지 않는다. 인가는 각 페이지의
  * `requireProjectAccess`가 하고, 여기서 하는 일은 "지금 어느 프로젝트를 보고 있나"를 **내 멤버십
- * 목록 안에서** 찾는 것뿐이다 (design §2). 목록에 없으면 컨텍스트가 없다.
+ * 목록 안에서** 찾는 것뿐이다 (ARCHITECTURE §6.1). 목록에 없으면 컨텍스트가 없다.
  */
 
 const memberships: NavProject[] = [
@@ -37,7 +37,7 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
     expect(activeProject("/projects/beta/settings", memberships)).toEqual(memberships[1]);
   });
 
-  it("프로젝트 밖 라우트에는 컨텍스트가 없다 — 목록·생성 화면 (design §2)", () => {
+  it("프로젝트 밖 라우트에는 컨텍스트가 없다 — 목록·생성 화면 (ARCHITECTURE §6.1)", () => {
     expect(activeProject("/projects", memberships)).toBeNull();
     expect(activeProject("/projects/new", memberships)).toBeNull();
   });
@@ -61,7 +61,7 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
 });
 
 /**
- * ⚠️ **노출은 편의이고 방어가 아니다** (design §2). EDITOR가 URL로 직접 들어가면 페이지의
+ * ⚠️ **노출은 편의이고 방어가 아니다** (ARCHITECTURE §6.1). EDITOR가 URL로 직접 들어가면 페이지의
  * `requireProjectAccess`가 `not-found`를 낸다 — 여기서 항목을 숨기는 것은 없는 문을 안 보이게
  * 하는 것뿐이다. 그래서 판정을 `canPerform`이 하고 이 함수는 그것을 부르기만 한다.
  */
@@ -114,7 +114,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   });
 
   /**
-   * ⚠️ **Logs도 `canPerform` 뒤가 아니다** (design §6). "내가 보낸 게 실제로 갔나"를 보는 사람이
+   * ⚠️ **Logs도 `canPerform` 뒤가 아니다**. "내가 보낸 게 실제로 갔나"를 보는 사람이
    * 번역자이고, OWNER 전용으로 두면 그 질문에 답할 화면이 그 사람에게 없다.
    */
   it("Logs는 두 역할에 다 있다 — 번역자가 자기 전송 결과를 본다", () => {
@@ -135,7 +135,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   });
 
   /**
-   * ⚠️ **Members는 `member:manage` 뒤가 아니다** (design §3.9 검수 (b)). EDITOR도 목록을 본다 —
+   * ⚠️ **Members는 `member:manage` 뒤가 아니다** (ARCHITECTURE §6.1). EDITOR도 목록을 본다 —
    * user-stories §5의 "EDITOR는 목록만 본다"와 §0의 "OWNER만"이 모순이었고 전자가 맞다. 컨트롤만
    * 역할로 감추고 Action이 `member:manage`로 거부한다.
    */

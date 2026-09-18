@@ -7,7 +7,7 @@ import { fieldClass } from "./input";
 /**
  * 번역 셀이 이것이다.
  *
- * ⚠️ **`ref`를 받는다** — 저장 실패 뒤 커서를 되돌리는 셀이 그 노드를 알아야 한다 (design §3.8).
+ * ⚠️ **`ref`를 받는다** — 저장 실패 뒤 커서를 되돌리는 셀이 그 노드를 알아야 한다 (DESIGN §7).
  * React 19는 함수 컴포넌트에 `ref`를 그냥 prop으로 넘기므로 `forwardRef`가 필요 없지만, 타입은
  * `ComponentPropsWithRef`여야 그 prop이 존재한다.
  *

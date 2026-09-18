@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { changedLocaleFileCount } from "../remote-plan";
 
 /**
- * **"base가 앞섰다"의 숫자는 키가 아니라 로케일 파일 수다** (projects-list design §3.4 C′).
+ * **"base가 앞섰다"의 숫자는 키가 아니라 로케일 파일 수다**.
  * 서버는 리포를 체크아웃하지 않으므로 그 커밋의 키를 셀 수 없다 — compare가 주는 것은 경로뿐이고,
  * 그래서 화면도 파일 수를 말한다. **키 수를 지어내지 않는다.**
  *
@@ -34,7 +34,7 @@ describe("changedLocaleFileCount — per-locale", () => {
   });
 
   /**
-   * ⚠️ **저장 로케일은 탐지 정규식을 통과하지 못할 수 있다** (design §3.4). `looksLikeLocale`이
+   * ⚠️ **저장 로케일은 탐지 정규식을 통과하지 못할 수 있다.** `looksLikeLocale`이
    * `es-419`의 숫자와 `zh-Hant-TW`의 길이를 거르므로, 그 둘은 **저장된 코드로 만든 정확한 경로**를
    * 따로 합쳐야 빠지지 않는다.
    */

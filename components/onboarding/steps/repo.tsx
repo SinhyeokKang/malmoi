@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { failureText } from "../failure";
 
 /**
- * ① 리포와 브랜치 (new-project-modal design §4).
+ * ① 리포와 브랜치 (DESIGN §6.7).
  *
  * ⚠️ **막힘 상태 셋(예외 A·B·C)이 여기 있다.** 전에는 `/projects/new`가 라우트라 그 갈래마다 따로
  * 반환했는데, 모달이 되면서 같은 자리에 선다 — 그것이 `new/layout.tsx`를 지울 수 있게 한 이관이다.

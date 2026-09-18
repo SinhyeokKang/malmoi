@@ -23,7 +23,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
- * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (account-linking spec §3-1).
+ * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (PRODUCT §4.3 ④).
  *
  * ⚠️ **인가가 없다 — challenge가 대신한다.** `middleware.ts`의 matcher에 넣지 않는다: 넣으면
  * 비로그인이 `/signin`으로 튕겨 이 화면이 존재할 이유가 사라진다 (`/invite/[token]`과 같은 판단).
@@ -63,7 +63,7 @@ export default async function LinkAccountPage({
         />
 
         {/*
-          ⚠️ **실패는 기본 상태 + `Alert` 한 장이 전부다** (design §5.5) — 부제·각주·구분선·버튼
+          ⚠️ **실패는 기본 상태 + `Alert` 한 장이 전부다** (DESIGN §6.62) — 부제·각주·구분선·버튼
           라벨이 그대로다. 실패에서 레이아웃을 갈아치우면 사용자가 같은 화면으로 돌아온 것을
           못 알아본다. 자리는 설명 **아래**, 카드 **위**.
 
@@ -81,7 +81,7 @@ export default async function LinkAccountPage({
           ⚠️ **1행은 마스킹한 이메일이고 아바타만 이름·이미지에서 온다** — 주소가 "어느 계정인가"의
           답이고, 아바타는 **셸과 같은 얼굴로 보이는 것**이 일이다(같은 계정이 화면마다 다른
           글자·색이면 아바타가 소음이 된다). 우측은 provider 마크 하나이고, 브랜드 마크는 무채색
-          위계의 대상이 아니라 `--foreground`를 그대로 받는다 (design §7).
+          위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.2).
         */}
         <EntityCard
           name={view.emailLabel}

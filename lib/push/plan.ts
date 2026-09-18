@@ -98,7 +98,7 @@ export const PushPayload = z
   .object({
     /**
      * 대상 프로젝트. **Bearer 토큰이 정한 프로젝트의 slug와 대조해 다르면 409다** (ARCHITECTURE §5.5.5).
-     * 이 필드로 행을 찾지 않는다 — 그러면 오배송 페이로드가 인증 대상을 고르게 된다 (design §3.8).
+     * 이 필드로 행을 찾지 않는다 — 그러면 오배송 페이로드가 인증 대상을 고르게 된다 (PRODUCT §7.8).
      */
     projectSlug: z.string().min(1),
     surfaceSlug: z.string().min(1).max(40),
@@ -195,7 +195,7 @@ export type IncomingKeyType = z.infer<typeof IncomingKey>;
  */
 export type PlanOptions = {
   /**
-   * 이 push가 base 로케일을 교체하는가. `true`면 **`needsReview` 전파를 건너뛴다** (design §3.13).
+   * 이 push가 base 로케일을 교체하는가. `true`면 **`needsReview` 전파를 건너뛴다** (ARCHITECTURE §5.5.5).
    *
    * ⚠️ **`sourceHash`가 바뀐 원인이 평소와 다르다.** 평소의 전파는 "개발자가 원문 문장을 고쳤다 →
    * 번역이 낡았을 수 있다"인데, base 변경은 **원문의 언어가 교체된 것**이고 의미는 그대로다 —

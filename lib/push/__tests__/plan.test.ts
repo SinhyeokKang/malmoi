@@ -227,7 +227,7 @@ describe("PushPayload 검증 — 외부 진입점이라 조용히 통과시키�
 });
 
 /**
- * **base가 바뀌는 push에서는 `needsReview` 전파를 건너뛴다** (design §3.13, 6b-3).
+ * **base가 바뀌는 push에서는 `needsReview` 전파를 건너뛴다** (ARCHITECTURE §5.5.5, 6b-3).
  *
  * ⚠️ **`sourceHash`가 바뀐 원인이 평소와 다르다.** 평소의 전파는 "개발자가 원문 문장을 고쳤다 →
  * 번역이 낡았을 수 있다"인데, base 변경은 **원문의 언어가 교체된 것**이고 의미는 그대로다 —

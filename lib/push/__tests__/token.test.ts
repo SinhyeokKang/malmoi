@@ -5,7 +5,7 @@ import { hashInviteToken } from "@/lib/auth/invitation";
 import { generatePushToken, hashPushToken } from "../token";
 
 /**
- * 프로젝트별 push 토큰 (design §3.8 · PRODUCT §7.8). **원문은 저장하지 않는다** — 발급 시 한 번 보여주고 해시만
+ * 프로젝트별 push 토큰 (PRODUCT §7.8). **원문은 저장하지 않는다** — 발급 시 한 번 보여주고 해시만
  * `Project.pushTokenHash`에 남긴다. 인증은 `sha256(원문)`으로 행을 **조회**하므로 비교 자체가 없다 —
  * `timingSafeEqual`이 필요 없는 이유다 (`hashInviteToken`의 주석과 같은 판단).
  *

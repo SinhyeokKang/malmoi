@@ -398,7 +398,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const view = planPublishView(outcome);
       const at = result?.at ?? null;
       const total = result?.total ?? count;
-      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(design §4-4).
+      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
         ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
         : null;
@@ -464,7 +464,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
               ? <a className={buttonClass({ variant: "primary", size: "lg" })} href="/signin">{p.signIn}</a>
               : null;
           body = <Stack>
-            {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(spec §2-4). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
+            {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
             <Alert variant="danger" title={p.wontHelp}>{hasCode && failed ? failureText(failed) : null}</Alert>
             {hasCode && failed && <>
               <div className="border-border grid shrink-0 grid-cols-[130px_1fr] gap-x-3.5 gap-y-2.5 rounded-lg border px-4 py-3.5 text-xs">

@@ -33,7 +33,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   if (session.status !== "ok") redirect(rejectTarget(session.status));
 
   // 사이드바가 프로젝트 컨텍스트를 알아야 하는데 레이아웃은 `[slug]` params를 못 받는다 —
-  // 멤버십 목록을 넘기면 클라이언트가 pathname으로 그 안에서 찾는다 (design §2).
+  // 멤버십 목록을 넘기면 클라이언트가 pathname으로 그 안에서 찾는다 (DESIGN §6.5).
   // **`userId`로 좁힌다** (POSTMORTEM 2026-09-06). 사용자당 3개 제한이라 가볍다.
   const memberships = await loadMemberships(getPrisma(), session.userId);
 

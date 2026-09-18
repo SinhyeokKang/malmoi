@@ -7,14 +7,14 @@ import { makeProbe } from "../detect";
 import { planConfirmedFormat, templatePaths } from "../confirm";
 
 /**
- * 확정은 **파일을 다시 읽어 재검증**한다 (design §3.4). 클라이언트가 보낸 `adapterName`·`pathTemplate`을
+ * 확정은 **파일을 다시 읽어 재검증**한다 (ARCHITECTURE §3.1). 클라이언트가 보낸 `adapterName`·`pathTemplate`을
  * 그대로 저장하면 임의의 `pathTemplate`으로 pull이 리포의 아무 파일이나 덮어쓰는 커밋을 만든다.
  *
  * ⚠️ **저장하는 것은 `detectFormatWith`의 반환값이다** — 클라이언트 입력이 아니다. 검증한 값을 저장하지
  * 않으면 검증이 장식이다 (POSTMORTEM 2026-09-05).
  *
  * 자동 후보와 수동 지정이 **한 경로**다 — `ts-dict`는 `detect`가 그 디렉터리 `.ts` 최대 8개를 읽어야
- * 매치하므로 이 경로가 아니면 수동 지정이 항상 거부된다 (design §3.5).
+ * 매치하므로 이 경로가 아니면 수동 지정이 항상 거부된다 (ARCHITECTURE §3.1).
  */
 
 const f = (path: string, content: string): AdapterFile => ({ path, content });
@@ -137,7 +137,7 @@ describe("planConfirmedFormat — 입력 ↔ 재탐지 결과 대조", () => {
     expect(out.baseLocale).toBe("en");
   });
 
-  it("`ts-dict` 수동 지정이 통과한다 — 디렉터리의 `.ts` 4개를 읽어야 매치한다 (design §3.5)", () => {
+  it("`ts-dict` 수동 지정이 통과한다 — 디렉터리의 `.ts` 4개를 읽어야 매치한다 (ARCHITECTURE §3.1)", () => {
     const files = ["common", "editor", "settings", "ai"].map((ns) => f(`src/i18n/namespaces/${ns}.ts`, TS_NS(ns)));
     const out = planConfirmedFormat(
       { adapter: "ts-dict", pathTemplate: "src/i18n/namespaces/*.ts", baseLocale: "en" },

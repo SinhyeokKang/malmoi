@@ -5,7 +5,7 @@ import { REF_SAFE_SLUG, syncBranchFor } from "@/lib/pull/trigger";
 import { PROJECT_SLUG_MAX, normalizeProjectSlug, planSlug, suggestAlternateSlug } from "../slug";
 
 /**
- * 프로젝트 slug 판정 (design §5). **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`를 import한다** —
+ * 프로젝트 slug 판정 (ARCHITECTURE §3.1). **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`를 import한다** —
  * 복사하면 갈리고, 갈리면 온보딩이 만든 slug가 pull에서 `fail()`로 죽는다. 그래서 여기서 가장 중요한
  * 검사는 아래 "교차 검증"이다: `planSlug`가 통과시킨 것을 `syncBranchFor`가 거부하면 안 된다.
  */
@@ -41,7 +41,7 @@ describe("planSlug — 형식·예약어·길이", () => {
     expect(planSlug("bugshot-2".toUpperCase())).toBe("format");
   });
 
-  it("예약어 `new`는 `reserved`다 — `/projects/new`와 충돌한다 (design §3.11)", () => {
+  it("예약어 `new`는 `reserved`다 — `/projects/new`와 충돌한다 (PRODUCT §7.7)", () => {
     expect(planSlug("new")).toBe("reserved");
     // 예약어는 정확히 그 이름만이다 — 접두·접미가 붙으면 다른 slug다.
     expect(planSlug("new-project")).toBe("ok");
@@ -132,7 +132,7 @@ describe("normalizeProjectSlug — 리포명 → slug 후보", () => {
 });
 
 /**
- * ③ 예외 G의 대안 제안 (feature design §3.5·§10).
+ * ③ 예외 G의 대안 제안.
  *
  * ⚠️ **존재 확인이 없다** — 그래서 문구가 `Try another, such as <alt>.`이고 `<alt> is free`가 아니다.
  * 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09(문서가 단언한 통제를 코드가 안 했다)의 모양이 된다.

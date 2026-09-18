@@ -104,11 +104,11 @@ async function main(): Promise<void> {
           (same ? "" : ` ⚠️ DB=${project.installationId} (재연결 필요)`),
       );
     } else {
-      // `not-installed`와 `error`를 가려 찍는다 — 접으면 장애가 "제거됨"으로 읽힌다 (design §3.3).
+      // `not-installed`와 `error`를 가려 찍는다 — 접으면 장애가 "제거됨"으로 읽힌다 (ARCHITECTURE §6.5.1).
       console.log(`probeRepo: ${probe.status}`);
     }
 
-    // ── 온보딩 경로: 스냅샷 + 2패스 탐지 (design §3.1) ──────────────────────────
+    // ── 온보딩 경로: 스냅샷 + 2패스 탐지 (ARCHITECTURE §3.1) ──────────────────────────
     // ⚠️ **진입점으로 돈다** — 어댑터 API로만 검증하면 순위 픽스가 자기 단위 테스트만 통과하고 실제
     // 경로에서는 죽어 있을 수 있다 (POSTMORTEM 2026-09-02). 여기서 부르는 것은 `detectCandidatesAcross`다.
     const reader = await openRepoReader(project.repoOwner, project.repoName, project.installationId);

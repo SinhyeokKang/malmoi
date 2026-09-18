@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
  * 24키짜리 번역 화면에서도 `scrollHeight` 1483 / 뷰포트 775였고, **Sign out(top 1411)과
  * Collapse sidebar(top 1443)가 스크롤 전부터 화면 밖**이었다 — 사이드바 접기는 그 버튼이 유일한 경로다.
  *
- * ⚠️ **렌더 테스트를 두지 않는 리포라**(translation-ui design §4) 소스로 센다. `focus-ring`·`globals-css`와
+ * ⚠️ **렌더 테스트를 두지 않는 리포라**(ARCHITECTURE §0.5) 소스로 센다. `focus-ring`·`globals-css`와
  * 같은 계열이고, 이 결함의 조건이 정확히 **레이아웃 클래스 조합**이라 그 층에서 판정이 성립한다.
  * 실물 확인은 `/bugshot-qa`가 계속 든다.
  *

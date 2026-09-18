@@ -4,7 +4,7 @@ import { planRepoConnect } from "../connect-plan";
 import type { ProbeResult } from "../health";
 
 /**
- * ARCHITECTURE §6의 **3중 검증이 값으로 판정되는 자리** (design §3.2·§4). 5단계 프로젝트 생성 경로가
+ * ARCHITECTURE §6의 **3중 검증이 값으로 판정되는 자리**. 5단계 프로젝트 생성 경로가
  * 이 함수를 그대로 재사용하므로, 여기가 닫히면 §5.7의 공격 시나리오 둘이 함께 닫힌다.
  *
  * ```

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **`ACTIVE_PROJECT_SLUG` 폴백이 사라졌다** (design §3.8 · tasks T3). 두 스크립트가 프로젝트를 env에서 추측하던
+ * **`ACTIVE_PROJECT_SLUG` 폴백이 사라졌다** (PRODUCT §7.8). 두 스크립트가 프로젝트를 env에서 추측하던
  * 자리를 **인자 필수**로 바꾼다 — 서버가 그 변수를 더 읽지 않으므로 폴백이 있으면 "로컬에서만 되는 값"이 남고,
  * 무엇보다 `push:local`의 `PUSH_TOKEN`은 이제 **그 프로젝트의 토큰 원문**이라 slug와 토큰이 어긋나면 409다.
  *

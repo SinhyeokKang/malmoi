@@ -1,7 +1,7 @@
 import { isRefSafeSlug } from "@/lib/pull/ref-slug";
 
 /**
- * 프로젝트 slug 판정 (design §5). `Project.slug`에는 DB 제약이 없어 **`syncBranchFor`가 유일한 방어선**이었고
+ * 프로젝트 slug 판정 (ARCHITECTURE §3.1). `Project.slug`에는 DB 제약이 없어 **`syncBranchFor`가 유일한 방어선**이었고
  * 위반은 pull 시점에 `fail()`로 터졌다 — 온보딩이 그것을 통과하는 slug만 만들게 해서 실패를 생성 시점으로
  * 당긴다. 형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug`를 **그대로 부른다**: 복사하면 갈리고, 갈리면 온보딩이 만든 slug가
  * pull에서 죽는다 (`__tests__/slug.test.ts`가 두 함수를 교차 검증한다).
@@ -12,7 +12,7 @@ import { isRefSafeSlug } from "@/lib/pull/ref-slug";
 /** URL 경로·브랜치 이름에 들어간다 — 사람이 읽고 치는 길이여야 한다. */
 export const PROJECT_SLUG_MAX = 40;
 
-/** `/projects/new`가 라우트다 — 그 이름의 프로젝트는 설정 화면에 도달할 수 없다 (design §3.11). */
+/** `/projects/new`가 라우트다 — 그 이름의 프로젝트는 설정 화면에 도달할 수 없다 (PRODUCT §7.7). */
 const RESERVED = new Set(["new"]);
 
 export type SlugCheck = "ok" | "empty" | "format" | "too-long" | "reserved";
@@ -48,7 +48,7 @@ export function normalizeProjectSlug(repoName: string): string {
 }
 
 /**
- * 주소가 이미 쓰였을 때의 대안 하나 (design §3.5).
+ * 주소가 이미 쓰였을 때의 대안 하나.
  *
  * ⚠️ **존재 확인이 없다.** 그래서 문구가 `Try another, such as <alt>.`이고 `<alt> is free`가 아니다 —
  * 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09(문서가 단언한 통제를 코드가 안 했다)의 모양이 된다.

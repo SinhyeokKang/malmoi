@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 /**
  * 번역 화면의 배선을 **소스에서** 센다 (translation-ui T7).
  *
- * ⚠️ 이 리포에는 렌더 테스트가 없다 (design §4 — jsdom이 못 보는 결함 부류가 셋이라 게이트만 늘어난다).
+ * ⚠️ 이 리포에는 렌더 테스트가 없다 (jsdom이 못 보는 결함 부류가 셋이라 게이트만 늘어난다).
  * 그래서 `lib/keys/__tests__/actor.test.ts`·`focus-ring`·`client-graph`와 같은 계열로, **판정 함수가
  * green인 것과 화면이 그것을 실제로 쓰는 것은 다른 사실**임을 이 스캔이 든다 — 이 리포의 반복 실패
  * 유형이 "만든 것이 실제로 호출되는가"다.
@@ -84,7 +84,7 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
   });
 });
 
-describe("live region — 표 하나에 하나다 (design §3.8)", () => {
+describe("live region — 표 하나에 하나다 (DESIGN §7)", () => {
   it("`aria-live`가 announcer에만 있다 — 903행×3로케일이면 셀마다 두는 순간 2,700개다", () => {
     for (const path of [PAGE, HEADER, BANNER, PUBLISH, INPUT, FILTERS, CHIPS, KEY_GROUP, LOCALE_BADGE]) {
       expect(read(path), path).not.toMatch(/aria-live/);
@@ -106,7 +106,7 @@ describe("live region — 표 하나에 하나다 (design §3.8)", () => {
   });
 });
 
-describe("셀 편집 — 포커스를 뺏지 않는다 (design §3.8)", () => {
+describe("셀 편집 — 포커스를 뺏지 않는다 (DESIGN §7)", () => {
   const src = read(INPUT);
 
   it("판정을 순수 함수에 맡긴다 — `activeElement`를 직접 비교하지 않는다", () => {
@@ -165,7 +165,7 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
 });
 
 /**
- * **설정의 보관 카드** (7단계 — design §6.2).
+ * **설정의 보관 카드** (7단계 — DESIGN §6.6).
  *
  * ⚠️ **인라인 결과 Alert를 두지 않는다.** 성공하면 `revalidatePath("/", "layout")`이 이 화면을 다시
  * 그리는데, 결과 문구가 그 안에 있으면 방금 받은 결과가 **언마운트되면서 사라진다** —
@@ -256,7 +256,7 @@ describe("행 축 (8-4)", () => {
   });
 
   /**
-   * ⚠️ **로케일 헤더가 사라져 orphaned 로케일의 표시가 살 자리가 배지뿐이다** (design §4).
+   * ⚠️ **로케일 헤더가 사라져 orphaned 로케일의 표시가 살 자리가 배지뿐이다** (DESIGN §6.1).
    * 색만으로 말하면 스크린리더에 아무것도 안 남으므로 `sr-only` 문구가 함께 있어야 한다.
    */
   it("로케일 배지가 orphaned 표시를 든다", () => {
@@ -298,7 +298,7 @@ describe("행 축 (8-4)", () => {
   /**
    * ⚠️ **본문 랜드마크를 `ContentPanel`이 든다** — 표 갈래가 `<table>`에서 `div` + `grid`로 바뀌면서
    * 이 화면의 트리를 통째로 다시 썼다. `shell-layout.test.ts`가 스스로 "렌더 경로를 못 본다"고
-   * 적어 뒀으므로 **어느 자리가 드는지를 이름으로** 고정한다 (design §8-7).
+   * 적어 뒀으므로 **어느 자리가 드는지를 이름으로** 고정한다 (DESIGN §6.5).
    */
   it("`<main>`을 `ContentPanel`이 들고 번역 화면은 자기 것을 안 든다", () => {
     expect(read(PANEL)).toMatch(/<main\b/);

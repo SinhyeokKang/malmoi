@@ -44,7 +44,7 @@ export function isNotFound(error: unknown): boolean {
 }
 
 /**
- * 연결 건강성의 근거를 읽는다 (design §3.3). **판정은 `planConnectionHealth`가 한다** — 여기서
+ * 연결 건강성의 근거를 읽는다 (ARCHITECTURE §6.5). **판정은 `planConnectionHealth`가 한다** — 여기서
  * 돌려주는 것은 "우리 App이 이 리포에 설치돼 있는가"와 "지금 이름이 무엇인가"뿐이다.
  *
  * ⚠️ **`GET /repos/{o}/{r}`만으로는 판정할 수 없다.** installation 토큰으로도 **public 리포는 접근을
@@ -80,7 +80,7 @@ export async function probeRepo(owner: string, repo: string): Promise<ProbeResul
       installationId: String(installation.data.id),
       repositoryId: String(res.data.id),
       fullName: res.data.full_name,
-      // 같은 응답에 이미 있다 — 온보딩이 `Project.baseBranch`를 이 값으로 채운다 (design §4).
+      // 같은 응답에 이미 있다 — 온보딩이 `Project.baseBranch`를 이 값으로 채운다 (ARCHITECTURE §3.1).
       defaultBranch: res.data.default_branch,
     };
   } catch (error) {
@@ -91,7 +91,7 @@ export async function probeRepo(owner: string, repo: string): Promise<ProbeResul
 }
 
 /**
- * 저장된 값 + probe → 연결 건강성 (design §3.3). **소비자가 둘이다** — 설정 화면과 Home.
+ * 저장된 값 + probe → 연결 건강성 (ARCHITECTURE §6.5.1). **소비자가 둘이다** — 설정 화면과 Home.
  *
  * ⚠️ **저장된 설치가 없으면 probe를 안 부른다** — `planConnectionHealth`가 그때 `not-connected`를
  * 주므로 App JWT 조회와 토큰 발급 두 번이 헛돈다.
@@ -127,7 +127,7 @@ export type RepoReader = {
 };
 
 /**
- * 온보딩이 보는 리포 스냅샷 (design §3.10). **잘림·브랜치 부재·장애를 값으로 준다** — 온보딩은 그것을
+ * 온보딩이 보는 리포 스냅샷 (ARCHITECTURE §3.1). **잘림·브랜치 부재·장애를 값으로 준다** — 온보딩은 그것을
  * "파일이 너무 많아 자동 탐지를 할 수 없어요"처럼 **말해야** 하고, pull은 같은 상황에서 **던져야** 한다
  * (부분 트리로 blob SHA를 비교하면 전부 틀어진다). 그래서 판정이 아니라 값이고, `GitClient.getTree`가
  * 이 위에서 던진다 — `lib/pull/client.ts`의 계약은 그대로다.
@@ -139,7 +139,7 @@ export type RepoSnapshot =
   | { status: "unavailable" };
 
 /**
- * ①의 브랜치 목록 (feature design §3.2). **installation 토큰이다** — 읽기이지만 리포 내용이고,
+ * ①의 브랜치 목록 (DESIGN §6.7). **installation 토큰이다** — 읽기이지만 리포 내용이고,
  * user-to-server 토큰은 "어느 설치를 볼 수 있는가"에만 쓰인다 (ARCHITECTURE §6).
  *
  * ⚠️ **`openRepoReader`에 얹지 않는다.** 그 리더는 설치 토큰 캐시를 한 번만 만들려고 존재하는데
@@ -186,7 +186,7 @@ export async function listBranches(owner: string, repo: string, installationId: 
  *
  * ⚠️ **`headCommittedAt`을 위해 `GET /git/commits/{sha}`를 한 번 더 부른다.** ref·tree 응답에 커밋 시각이
  * 없고, 첫 적재가 `new Date()`를 쓰면 그 시각이 커밋보다 미래라 **CI의 첫 push가 `stale-commit` 409로
- * 거부된다** (`checkCommitOrder`는 동일 시각만 통과시킨다 — design §4).
+ * 거부된다** (`checkCommitOrder`는 동일 시각만 통과시킨다 — ARCHITECTURE §3.1).
  *
  * ⚠️ **ref가 404여도 "브랜치 없음"으로 단정하지 않는다** — GitHub은 권한 없는 리소스에도 404를 준다
  * (`client.ts` 주석, POSTMORTEM 2026-09-03). 호출부가 `probeRepo`로 설치를 먼저 확인한 뒤에만 이 값을
@@ -202,7 +202,7 @@ export async function openRepoReader(
 ): Promise<RepoReader> {
   // ⚠️ **App을 한 번만 만든다.** `@octokit/auth-app`의 설치 토큰 캐시는 인스턴스마다 새로 생기므로,
   // 읽기마다 `createApp()`을 부르면 **매 호출에 `POST /app/installations/{id}/access_tokens`가 하나씩
-  // 더 붙는다** — design §3.1의 예산(`ref 1 + tree 1 + blob ≤37`)이 2배가 되고, 50로케일 리포의 첫
+  // 더 붙는다** — ARCHITECTURE §3.1의 예산(`ref 1 + tree 1 + blob ≤37`)이 2배가 되고, 50로케일 리포의 첫
   // 적재는 100회가 되어 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴2). `createGitClient`가
   // 클로저를 돌려주는 것과 같은 이유다.
   const app = createApp();

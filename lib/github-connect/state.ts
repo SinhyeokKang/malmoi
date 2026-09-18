@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * OAuth state 서명·검증 (design §3.1). **I/O가 없다** — nonce 생성과 쿠키 쓰기·읽기는 껍데기가 한다.
+ * OAuth state 서명·검증 (ARCHITECTURE §6.4). **I/O가 없다** — nonce 생성과 쿠키 쓰기·읽기는 껍데기가 한다.
  *
  * ⚠️ **`secret`을 인자로 받는다.** 함수 안에서 `requireEnv("AUTH_SECRET")`을 부르면 순수가 아니고,
  * 단위 테스트가 환경변수를 요구하게 된다 (CLAUDE.md — 환경변수는 함수 안에서, 그리고 이 판정층은
@@ -15,7 +15,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
  */
 
 /**
- * 연결 왕복이 끝난 뒤 착지할 곳 (design §3.6 + 6b-4). **갈래가 셋이다**: 설정 화면은 프로젝트가 있고,
+ * 연결 왕복이 끝난 뒤 착지할 곳 (ARCHITECTURE §6.4 + 6b-4). **갈래가 셋이다**: 설정 화면은 프로젝트가 있고,
  * 생성 화면(`/projects/new`)과 계정 화면(`/account`)은 없다 — 그래서 slug가 착지를 겸할 수 없다.
  *
  * ⚠️ **뒤의 둘을 하나로 합치지 않는다.** 둘 다 slug가 없어 payload 모양이 같지만 **착지가 다르고**,
@@ -199,7 +199,7 @@ function parsePayload(encoded: string): StatePayload | null {
 /**
  * ⚠️ **옛 모양(`{slug}`)은 여기서 `null`이 되어 `state-mismatch`가 된다.** 관대하게 받아 주면
  * "slug가 있으면 설정 화면"이라는 세 번째 규칙이 착지 판정에 영구히 남는다 — 10분 만료라 배포 직후
- * 그 창의 사용자는 버튼을 다시 누르면 된다 (design §3.6).
+ * 그 창의 사용자는 버튼을 다시 누르면 된다 (ARCHITECTURE §6.4).
  *
  * ⚠️ **`settings`인데 slug가 비면 거부한다.** 통과시키면 착지가 `/projects//settings`가 되고, 그건
  * 라우트가 아니라 404다 — 사용자에게는 "연결을 눌렀는데 아무 일도 안 났다"로 보인다.

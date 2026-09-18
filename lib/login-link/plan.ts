@@ -1,7 +1,7 @@
 import { checkChallenge, isLoginProvider, pickLoginAccount, type Challenge, type LoginProvider } from "./policy";
 
 /**
- * 거부를 안내로 바꾸는 판정 둘 (design §5.2).
+ * 거부를 안내로 바꾸는 판정 둘 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **자동 병합은 여전히 없다.** `offer`가 여는 것은 **화면 하나**이고, 행을 쓰는 것은 기존
  * provider의 OAuth를 새로 통과한 `planLinkConfirm`의 `ok` 하나뿐이다 — `allowDangerousEmailAccountLinking`은
@@ -14,7 +14,7 @@ export type LinkOffer =
   | { kind: "offer"; userId: string; have: LoginProvider };
 
 /**
- * ⚠️ **`existingUser`는 새 조회가 아니다** (design §5.1). 호출부가 이미 "이 Account가 새 것인가"를
+ * ⚠️ **`existingUser`는 새 조회가 아니다** (ARCHITECTURE "계정 병합"). 호출부가 이미 "이 Account가 새 것인가"를
  * 알고 있고, **그 값이 '없다'일 때만** 이메일 조회 하나를 더한다 — 재방문 로그인(대부분)에는
  * 비용이 0이다.
  */

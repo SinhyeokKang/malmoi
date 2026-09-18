@@ -30,7 +30,7 @@ const CONNECT = ["malmoi-account-connect", "__Host-malmoi-account-connect", "mal
 const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-state", "__Secure-malmoi-link-state"];
 
 /**
- * ⚠️ **목록이 셋이 됐다** (account-linking design §13) — 병합 안내 화면의 [Confirm]도 일반
+ * ⚠️ **목록이 셋이 됐다** (ARCHITECTURE "계정 병합") — 병합 안내 화면의 [Confirm]도 일반
  * 로그인을 시작하므로, 버려진 회수 왕복이 그 callback을 먹으면 Location이
  * `/account?sessionRevocation=invalid`로 덮인다 (POSTMORTEM 2026-09-10).
  *

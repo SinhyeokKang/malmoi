@@ -34,7 +34,7 @@ async function html(status: "ok" | "none", viewerEmail = "person@example.com") {
 }
 
 /**
- * ⚠️ **320 컬럼의 제목 칸이 비어 있던 유일한 화면이었다** (account-linking spec §2) — `docs/DESIGN.md`가
+ * ⚠️ **320 컬럼의 제목 칸이 비어 있던 유일한 화면이었다** (DESIGN §6.62) — `docs/DESIGN.md`가
  * 셸 밖 폼 컬럼에 `h1 text-2xl font-medium`을 **이미 요구한다**. 새 결정이 아니라 규칙 위반의 교정이다.
  */
 it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
@@ -66,7 +66,7 @@ it("비로그인에는 프로젝트 카드가 없고 로그인에는 있다", as
 
 /**
  * ⚠️ **둘째 문장이 이 기능으로 거짓이 됐다** — 병합하면 다른 수단으로 들어와도 수락된다.
- * 실제 거부는 `email-mismatch` 갈래가 말한다 (design §6).
+ * 실제 거부는 `email-mismatch` 갈래가 말한다 (DESIGN §6.62).
  */
 it("설명이 다른 계정으로는 안 된다고 말하지 않는다", async () => {
   const markup = await html("ok");

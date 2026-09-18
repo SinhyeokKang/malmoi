@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { m, pick } from "@/lib/i18n";
 
 /**
- * 사전의 **함수 값**만 테스트한다 (design §3.1.3). 문자열 값은 `as const` 접근이 곧 타입 검사라
+ * 사전의 **함수 값**만 테스트한다 (CLAUDE.md 코드 컨벤션). 문자열 값은 `as const` 접근이 곧 타입 검사라
  * 런타임 단언이 더할 것이 없지만, 함수는 복수형·보간·노드 삽입 로직을 들고 있어 틀릴 수 있다.
  */
 describe("사전 — 카운터는 단수·복수를 가른다", () => {

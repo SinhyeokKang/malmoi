@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { discardFingerprint, sameFingerprint, type DiscardFingerprintInput } from "../fingerprint";
 
 /**
- * 폐기 승인 지문 (design §4.1). 서버가 발급하고 잠금 뒤 재계산해 대조한다 — **상태가 바뀌면 지문이 바뀐다**가
+ * 폐기 승인 지문 (ARCHITECTURE §5.5.2). 서버가 발급하고 잠금 뒤 재계산해 대조한다 — **상태가 바뀌면 지문이 바뀐다**가
  * 계약의 전부다(만료·HMAC이 없다). 그래서 입력 축마다 "바꾸면 달라진다"를 하나씩 센다.
  */
 

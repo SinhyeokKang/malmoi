@@ -83,7 +83,7 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     async updatePrTitle(pullNumber, title) {
       record("updatePrTitle", [pullNumber, title]);
     },
-    // 목록 전용 둘 (projects-list §3.4). pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
+    // 목록 전용 둘. pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
     async compareToBase(baseSha, branch) {
       record("compareToBase", [baseSha, branch]);
       return { ahead: false, files: [] };

@@ -41,7 +41,7 @@ const ALLOWED = [
   "tailwind-merge",
   /**
    * ⚠️ **셋은 프리미티브(`components/ui/`)가 쓴다** — 이 리포가 그 디렉터리를 소유하면서 들어왔다
-   * (translation-ui design §3.2). `SKIP_DIR`의 `ui`는 **진입점 탐색**만 건너뛰므로 import를 따라가면
+   * (ARCHITECTURE §0). `SKIP_DIR`의 `ui`는 **진입점 탐색**만 건너뛰므로 import를 따라가면
    * 여기로 들어온다. **이것이 그 "여기서 한 번 하는 의도된 결정"이고**, 아래 메타 테스트가 셋을
    * 각자 고정한다 — 하나라도 목록에서 빠지면 red다.
    */
@@ -227,7 +227,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **사전은 잎이어야 한다** (translation-ui design §3.1). 클라이언트 컴포넌트가 `@/lib/i18n`을
+   * ⚠️ **사전은 잎이어야 한다** (ARCHITECTURE §0). 클라이언트 컴포넌트가 `@/lib/i18n`을
    * 읽으므로 그 그래프가 곧 번들이다 — 사전이 `@/lib/**`를 하나라도 물면 7.2MB 사고의 재현이다.
    * 실 소비자는 T6부터 생기고, **그 전까지 이 검사가 공허하지 않도록** 여기서 직접 건다.
    */
@@ -241,7 +241,7 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (8-4 design §3.5·§3.7). 칩 행과
+   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (ARCHITECTURE §0). 칩 행과
    * 로케일 배지가 그것을 값으로 읽는데, 이웃한 `lib/keys/view.ts`는 잎이 아니다
    * (`compareKeys` → `lib/adapters/shared` → `json-style`).
    *

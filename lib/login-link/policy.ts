@@ -1,7 +1,7 @@
 import { routes } from "@/lib/routes";
 
 /**
- * 같은 주소의 다른 로그인 수단을 붙이는 challenge의 순수 판정 (design §5.1).
+ * 같은 주소의 다른 로그인 수단을 붙이는 challenge의 순수 판정 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **`lib/session-revocation/policy.ts`와 형은 같지만 증명이 다르다.** 그쪽은 **살아 있는 세션**이
  * 인가를 대신하므로 `sessionDigest`·`stateDigest`를 challenge에 담아 왕복을 묶어야 한다. 여기는
@@ -142,7 +142,7 @@ export function loginMethodRows(
 }
 
 /**
- * 수단 카드 헤더의 `{connected} of {total}` 배지 (design §1.3).
+ * 수단 카드 헤더의 `{connected} of {total}` 배지 (DESIGN §6.67).
  *
  * ⚠️ **`loginMethodRows`가 준 행에서 센다** — 서버 값이 하나도 안 는다. 분모를 `Account` 행에서
  * 직접 세면 `github-app`(로그인 수단이 아니다)이 섞여 `2 of 3`이 된다.
@@ -173,7 +173,7 @@ export function outcomeUrl(dest: LinkDest): string {
 
 /**
  * 실패 착지. **같은 화면으로 돌아간다** — 메시지와 조치(다시 누를 버튼)가 한 자리에 있어야 한다
- * (design §5.5 상태 둘).
+ * (DESIGN §6.62).
  *
  * ⚠️ **만료는 이 화면을 다시 그리지 않는다** (완료 조건 5) — 다시 그리면 그 상태가 또 하나의
  * 표면이 된다. 토큰이 없는 경우도 같은 곳으로 간다: 돌아갈 challenge가 없다.

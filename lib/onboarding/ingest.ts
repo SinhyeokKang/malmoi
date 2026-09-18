@@ -12,7 +12,7 @@ import { buildPushPayload } from "@/lib/push/payload";
 import { makeProbe } from "./detect";
 
 /**
- * 서버측 첫 적재 (design §4). **기존 경로를 그대로 지난다**:
+ * 서버측 첫 적재 (ARCHITECTURE §3.1). **기존 경로를 그대로 지난다**:
  *
  * ```
  * assemblePushInput  → selectLocaleFiles + adapter.read + base 판정 (CLI와 같은 함수)
@@ -24,7 +24,7 @@ import { makeProbe } from "./detect";
  * (POSTMORTEM 2026-08-31), 껍데기가 파일을 안 골라 어댑터가 "존재하지 않았던" 전례도 있다 (2026-09-02).
  *
  * ⚠️ **GitHub을 모른다.** 스냅샷과 blob은 **값으로** 받는다 — `lib/onboarding/`이 `@/lib/github`을
- * import하지 않는 것이 경계이고, 두 자격증명이 만나는 자리는 Server Action 하나다 (design §3.10).
+ * import하지 않는 것이 경계이고, 두 자격증명이 만나는 자리는 Server Action 하나다 (ARCHITECTURE §3.1).
  * `credential-separation.test.ts`가 소스에서 상시로 센다.
  */
 
@@ -47,7 +47,7 @@ export type FirstSnapshotInput = {
   format: DetectedFormat;
   baseLocale: string;
   headSha: string;
-  /** base head 커밋의 시각. ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (design §4). */
+  /** base head 커밋의 시각. ⚠️ `new Date()`면 CI 첫 push가 `stale-commit` 409다 (ARCHITECTURE §3.1). */
   headCommittedAt: string;
   /** 스냅샷의 트리 경로 전부. `selectLocaleFiles`가 여기서 실재하는 파일만 고른다. */
   paths: readonly string[];
@@ -75,7 +75,7 @@ export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnap
  * Add surface는 Surface 생성과 같은 tx에 실어야 한다 (`lib/surfaces/create.ts`).
  *
  * ⚠️ **`failed`를 적재 *앞에서* 센다.** 결과가 적재와 **같은 트랜잭션**에 실려야 빠진 파일이 있을 때
- * 데이터는 들어간 채 `partial-import`가 남는다 (projects-list design §3.35 · 불변식 9는 "숨기지 마라"이지
+ * 데이터는 들어간 채 `partial-import`가 남는다 (PRODUCT §4.1 · 불변식 9는 "숨기지 마라"이지
  * "지워라"가 아니다). 그래서 이 함수는 판정만 하고 `importOutcome` 결정을 호출부에 넘긴다.
  */
 export function prepareFirstSnapshot(input: FirstSnapshotInput) {

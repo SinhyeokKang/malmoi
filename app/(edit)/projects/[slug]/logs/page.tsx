@@ -17,7 +17,7 @@ import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /**
- * sync 이력 (7단계 — sync-runs design §6). PRODUCT §7.7 라우트 표의 마지막 칸이다.
+ * sync 이력 (7단계 — DESIGN §6.68). PRODUCT §7.7 라우트 표의 마지막 칸이다.
  *
  * ⚠️ **게이트가 `translation:write`다, OWNER 전용이 아니다.** "내가 보낸 게 실제로 갔나"를 묻는
  * 사람이 번역자이고, `project:settings` 뒤에 두면 그 질문에 답할 화면이 그 사람에게 없다.
@@ -152,7 +152,7 @@ export default async function LogsPage({
         )}
 
         {/*
-          ⚠️ **페이지네이션이 링크 하나다** (design 결정 14) — 클라이언트 상태가 0이라 뒤로 가기·공유·
+          ⚠️ **페이지네이션이 링크 하나다** (DESIGN §6.68) — 클라이언트 상태가 0이라 뒤로 가기·공유·
           새로고침이 전부 그냥 된다. `SYNC_LOG_PAGE_SIZE`는 조회와 화면이 같은 상수를 본다.
         */}
         {page.nextCursor !== null && (

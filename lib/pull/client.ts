@@ -18,7 +18,7 @@ export type GitTreeBlob = { path: string; sha: string; size?: number };
 
 /**
  * compare가 돌려주는 변경 파일 하나. **`previous_filename`은 rename에만 있다** — GitHub이 그때만
- * 채우고, 그 둘 중 하나가 로케일 경로면 변경으로 센다 (projects-list design §3.4).
+ * 채우고, 그 둘 중 하나가 로케일 경로면 변경으로 센다.
  */
 export type ChangedFile = { filename: string; previous_filename?: string };
 
@@ -76,7 +76,7 @@ export type GitClient = {
   updatePrTitle(pullNumber: number, title: string): Promise<void>;
 
   /**
-   * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (projects-list design §3.4 C).
+   * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (DESIGN §6.63).
    *
    * ⚠️ **이 둘은 목록 전용이다** — pull은 쓰지 않는다. 그래도 같은 인터페이스에 두는 이유는
    * 자격증명이 같기 때문이고(installation 토큰), 갈라 두면 **같은 App 토큰을 만드는 자리가 둘**이 된다.

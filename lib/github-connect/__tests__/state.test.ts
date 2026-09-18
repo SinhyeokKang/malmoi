@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { signState, stateCookieName, stateCookieNames, verifyState } from "../state";
 
 /**
- * OAuth state 서명·검증 (design §3.1·§4). **I/O가 없다** — nonce 생성과 쿠키 쓰기는 껍데기가 하고,
+ * OAuth state 서명·검증 (ARCHITECTURE §6.4). **I/O가 없다** — nonce 생성과 쿠키 쓰기는 껍데기가 하고,
  * 여기서는 서명·대조·만료만 판정한다. `secret`을 인자로 받는 것이 그 조건이다: 함수 안에서
  * `requireEnv("AUTH_SECRET")`을 부르면 순수가 아니고 이 테스트가 환경변수를 요구하게 된다.
  *
@@ -14,7 +14,7 @@ import { signState, stateCookieName, stateCookieNames, verifyState } from "../st
  *
  * ⚠️ **목적지는 쿠키에서 온다.** GitHub이 돌려주는 쿼리에서 읽으면 공격자가 목적지를 정한다.
  *
- * ⚠️ **`dest`가 갈래 셋이다** (design §3.6 + 6b-4): 설정 화면(`{kind:"settings", slug}`) · 생성 화면
+ * ⚠️ **`dest`가 갈래 셋이다** (ARCHITECTURE §6.4 + 6b-4): 설정 화면(`{kind:"settings", slug}`) · 생성 화면
  * (`{kind:"new"}`) · 계정 화면(`{kind:"account"}`). 뒤의 둘은 **사용자 축이라 slug가 없다** (PRODUCT §7.7).
  * 생성 경로에는 프로젝트가 없어 slug가 그 역할을 겸할 수 없다. 갈래를 **서명 안에** 두는 이유는
  * 쿼리로 실으면 공격자가 착지를 정해 open redirect 판정이 필요해지기 때문이다.
@@ -87,7 +87,7 @@ describe("verifyState — 정상 왕복", () => {
     });
   });
 
-  it("생성 경로의 dest는 slug가 없다 — 프로젝트 없이 연결이 성립한다 (design §3.6)", () => {
+  it("생성 경로의 dest는 slug가 없다 — 프로젝트 없이 연결이 성립한다 (ARCHITECTURE §6.4)", () => {
     const cookie = sign({ dest: { kind: "new" } });
     expect(verify({ cookie, query: "nonce-1" })).toEqual({ status: "ok", dest: { kind: "new" } });
   });
@@ -221,7 +221,7 @@ describe("빈 secret을 거부한다 — 설정 오류를 거부로 위장하지
 
 describe("옛 payload 모양은 거부된다 — 배포 직후 10분의 창을 의도한다", () => {
   /**
-   * T6이 `StatePayload.slug`를 `dest`로 바꿨다 (design §3.6). **진행 중인 연결 왕복은 전부
+   * T6이 `StatePayload.slug`를 `dest`로 바꿨다 (ARCHITECTURE §6.4). **진행 중인 연결 왕복은 전부
    * `state-mismatch`가 된다** — 10분 만료라 그 창의 사용자는 버튼을 다시 누르면 되고, 관대하게
    * 받아 주면 갈래가 둘인 착지 판정에 "slug가 있으면 설정"이라는 세 번째 규칙이 영구히 남는다.
    *

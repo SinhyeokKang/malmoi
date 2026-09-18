@@ -13,7 +13,7 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { CopyButton } from "./copy-button";
 
 /**
- * push 토큰 재발급 (design §3.13). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
+ * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
  *
  * ⚠️ **경고를 버튼 *위*에 상시로 둔다.** confirm 다이얼로그 전례가 리포에 없어 만들지 않는 대신,
  * 되돌릴 수 없는 결과(옛 토큰 즉시 무효 → 대상 리포 CI가 401)를 누르기 전에 읽게 한다.

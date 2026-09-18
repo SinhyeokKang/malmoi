@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { planHomeState } from "../state";
 
 /**
- * Home의 여섯 화면(캔버스 `2a`~`2e`)이 **한 함수의 반환값 하나로** 갈린다 (project-home design §4).
+ * Home의 여섯 화면(캔버스 `2a`~`2e`)이 **한 함수의 반환값 하나로** 갈린다 (DESIGN §6.64).
  *
  * ⚠️ **로딩은 이 함수의 갈래가 아니다.** 여섯 번째 아트보드 `2e`는 데이터 상태가 아니라 **라우트의
  * `loading.tsx`**이고, 그것을 union에 넣으면 생산자가 없는 갈래가 하나 남는다(이 리포가 금지한다 —

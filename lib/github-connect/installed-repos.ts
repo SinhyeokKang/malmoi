@@ -5,7 +5,7 @@ import { ensureUserToken } from "./token-store";
 import { listInstallationRepos, listUserInstallations } from "./user";
 
 /**
- * `/account`의 GitHub App 행이 드는 **설치된 리포 수** (design §1.1·§2.2).
+ * `/account`의 GitHub App 행이 드는 **설치된 리포 수** (DESIGN §6.67).
  *
  * **판정은 `countInstalledRepos`, I/O는 `loadInstalledRepoCount`다.** 껍데기에는 단위 테스트가
  * 없다 — fetch 모킹 비용이 가치를 넘고, `user.ts`가 같은 이유로 그렇게 서 있다.

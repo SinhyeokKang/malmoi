@@ -15,7 +15,7 @@ import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
- * 멤버 표 (design §3.9 · user-stories §5).
+ * 멤버 표 (DESIGN §6.65).
  *
  * ⚠️ **EDITOR도 이 표를 본다** — 컨트롤만 `canPerform`으로 감춘다. 감추는 것은 **편의이고 차단이
  * 아니다**: 방어는 `changeMember`의 `member:manage`이고, 그래도 감추는 이유는 EDITOR에게 셀렉트를

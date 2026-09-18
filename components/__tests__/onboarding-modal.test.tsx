@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { render, find } from "./helpers/dom";
 
 /**
- * 모달 껍데기 (new-project-modal spec 완료 조건 4 · design §2.1·§8).
+ * 모달 껍데기 (DESIGN §6.7).
  *
  * ⚠️ **소스 스캔으로 나누지 않는다.** `showBack` prop을 세는 것은 "그려 놓고 안 보이는" 경우를 못
  * 잡는다 — 그래서 실제로 렌더해 쿼리한다.
@@ -105,7 +105,7 @@ describe("OnboardingModal — [Next]는 껍데기가 소유한다", () => {
   });
 });
 
-describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (design §1.2.1)", () => {
+describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (DESIGN §6.7)", () => {
   it("`aria-live` 영역이 하나 있고 단계가 바뀌면 새 제목이 거기 쓰인다", async () => {
     const { rerender } = await render(shell({ step: 1, title: "New project" }));
     const live = find<HTMLElement>(document.body, '[aria-live="polite"]');
@@ -132,7 +132,7 @@ describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (des
   });
 });
 
-describe("OnboardingModal — 높이가 뷰포트에 물린다 (design §8)", () => {
+describe("OnboardingModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () => {
   it("본문 열이 `min-h-0 flex-1 overflow-y-auto`를 든다 — 없으면 바닥이 화면 밖으로 나간다", async () => {
     await render(shell());
 

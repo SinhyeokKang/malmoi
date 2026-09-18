@@ -5,7 +5,7 @@ import { m } from "@/lib/i18n";
 import { CopyButton } from "./copy-button";
 
 /**
- * 복사용 워크플로 YAML (design §7). **여러 줄이라 값 칩이 아니다** — `<pre>`가 DESIGN §6.4의
+ * 복사용 워크플로 YAML (DESIGN §6.6). **여러 줄이라 값 칩이 아니다** — `<pre>`가 DESIGN §6.4의
  * "코드 블록"이다.
  *
  * ⚠️ **`overflow-x-auto`가 `<pre>` 자신에 붙는다.** 없으면 긴 줄(`${{ secrets.PUSH_TOKEN }}`이 들어간

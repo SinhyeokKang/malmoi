@@ -11,9 +11,9 @@ import { assemblePushInput } from "../assemble";
 
 /**
  * `assemblePushInput` — select → read → base 판정. `scripts/push-local.ts`에 인라인이던 것을 옮겨
- * **CLI와 서버 첫 적재가 같은 함수를 지나게** 한다 (design §4).
+ * **CLI와 서버 첫 적재가 같은 함수를 지나게** 한다 (ARCHITECTURE §3.1).
  *
- * ⚠️ **"서버 첫 적재 = CLI push와 같은 DB 상태"가 §4의 실제 정확성 주장이다.** 함수를 공유하면 등가가
+ * ⚠️ **"서버 첫 적재 = CLI push와 같은 DB 상태"가 그 절의 실제 정확성 주장이다.** 함수를 공유하면 등가가
  * 구조로 보장되고, 그 사실을 여기서 한 번 잰다 — **같은 트리를 fs probe와 메모리 probe로 각각 먹여
  * 결과가 deep-equal**인지. 두 경로가 갈리면 "CI로 올린 것과 온보딩이 올린 것이 다르다"가 된다.
  *

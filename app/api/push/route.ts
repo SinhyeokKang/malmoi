@@ -23,7 +23,7 @@ import { hashPushToken } from "@/lib/push/token";
  * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 단 **미전달 편집이 프로젝트에 하나라도 있으면
  * 적재 전체를 보류한다** (sync-edit-protection, 2026-09-18) — 200 `deferred`이고 어떤 컬럼도 쓰지 않는다. 리포를 보지 않는다.
  *
- * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, design §3.8). `sha256(원문)`으로
+ * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, PRODUCT §7.8). `sha256(원문)`으로
  * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을
  * 먼저 찾으면 **오배송된 페이로드가 인증 대상을 고르게 된다.** 서버 env 둘(공유 토큰·활성 프로젝트 slug)은
  * 이 라우트에서 사라졌다 — `checkBearer`는 `/api/pull`의 `CRON_SECRET` 전용으로 남는다.
@@ -57,7 +57,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     const prisma = getPrisma();
     // **토큰이 프로젝트를 정한다.** 원문은 쿼리에 실리지 않고, 발급받지 않은 프로젝트(`pushTokenHash`가 null)는
-    // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (design §3.8).
+    // 어떤 해시로도 조회되지 않는다 — fail-closed가 컬럼의 성질로 성립한다 (PRODUCT §7.8).
     const project = await prisma.project.findUnique({
       where: { pushTokenHash: hashPushToken(rawToken) },
       // 포맷 셋은 `checkFormat`의 비교 대상이다 — 온보딩이 확정한 표면을 CI가 갈아치우지 못하게 한다.
@@ -65,7 +65,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         id: true,
         slug: true,
         // ⚠️ **optional로 두지 않는다** — 껍데기가 빼면 `checkFormat`이 선언을 못 보고 base 변경이
-        // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (design §3.13).
+        // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (ARCHITECTURE §5.5.5).
         // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
         archivedAt: true,
       },
@@ -90,7 +90,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     /**
-     * 보관 거부 (7단계 — sync-runs design §4, 결정 9). **오배송·표면 검사보다 앞이다** — 멈춘
+     * 보관 거부 (7단계 — ARCHITECTURE §5.6.4). **오배송·표면 검사보다 앞이다** — 멈춘
      * 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 그 셋 중 무엇이 걸리든 사용자가
      * 할 일은 같다(워크플로를 뗀다).
      */
@@ -160,11 +160,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     /**
      * ⚠️ **`previousBaseLocale`은 이 행의 값이다** — `applyPush`가 그것으로 base 교체를 알아보고
-     * `needsReview` 전파를 건너뛴다 (design §3.13). 아래 update가 `baseLocale`을 덮으므로 **덮기 전의
+     * `needsReview` 전파를 건너뛴다 (ARCHITECTURE §5.5.5). 아래 update가 `baseLocale`을 덮으므로 **덮기 전의
      * 값**을 넘겨야 하고, 그래서 조회를 다시 하지 않고 위에서 읽은 행을 그대로 쓴다.
      */
     /**
-     * **진행 표시는 서버가 실제로 처리 중인 구간만 말한다** (projects-list design §3.35) — 그래서
+     * **진행 표시는 서버가 실제로 처리 중인 구간만 말한다** (PRODUCT §7.8) — 그래서
      * 가드 **뒤**다. 거부된 요청까지 세우면 목록이 돌지 않는 적재를 "진행 중"으로 그린다.
      */
     /**
@@ -172,7 +172,7 @@ export async function POST(request: Request): Promise<NextResponse> {
      * 세웠다 지우는 쓰기조차 없어야 한다(완료 조건 2) — 그래서 표시 전에 한 번 센다. 판정과 적용 사이 경합은
      * `applyProtectedPush`가 잠금 안에서 다시 세고 재집계로 잡는다.
      *
-     * ⚠️ design §3은 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
+     * ⚠️ 옛 기능 문서는 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
      * `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 트랜잭션 밖 사전 집계로 같은 목적을 이룬다.
      */
     const pendingBefore = await countPending(prisma, project.id);

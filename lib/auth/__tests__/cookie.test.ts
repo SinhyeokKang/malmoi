@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { hasSessionCookie, shouldRedirectToLogin } from "../cookie";
 
 /**
- * 미들웨어의 **1차 차단** 판정 (design §4).
+ * 미들웨어의 **1차 차단** 판정 (ARCHITECTURE §6.1).
  *
  * ⚠️ DB 세션으로 바뀌면 `auth()` 래퍼가 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면
  * 쓰기까지 한다 — 미들웨어가 Prisma를 물게 된다. 그래서 래퍼를 버리고 **쿠키 이름만** 본다.

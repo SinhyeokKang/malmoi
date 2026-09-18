@@ -8,7 +8,7 @@ import { maskedEmailLabels } from "./invite-label";
 import type { Permission, Role } from "./permission";
 
 /**
- * 인가 조회 껍데기. **판정은 하지 않는다** — `planProjectAccess`가 한다 (design §3).
+ * 인가 조회 껍데기. **판정은 하지 않는다** — `planProjectAccess`가 한다 (ARCHITECTURE §6.1).
  *
  * `server-only`를 붙이지 않는다: 테스트가 이 모듈을 직접 import해 메모리 DB로 두 조회를 검사한다
  * (`lib/env.ts`와 같은 예외 — 그 패키지는 `react-server` 조건 밖에서 던져 vitest를 죽인다).
@@ -43,7 +43,7 @@ export async function getProjectAccess(
 
 /**
  * ─────────────────────────────────────────────────────────────────────────────
- * 멤버 화면의 조회 둘 (6b-2 — translation-ui design §3.9).
+ * 멤버 화면의 조회 둘 (6b-2 — DESIGN §6.65).
  *
  * ⚠️ **둘 다 `projectId`로만 좁힌다** — 인가는 호출부(`requireProjectAccess`)가 이미 지났고, 여기
  * 넘어오는 `projectId`는 그 판정의 산출물이다. `slug`로 다시 찾지 않는 이유는 그렇게 하면 인가된

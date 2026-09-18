@@ -110,7 +110,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
  * 만들지 않는다.
  *
  * ⚠️ **`skipped`는 `lastPublishedAt`을 건드리지 않는다** — 그 컬럼은 "마지막으로 **보낸**" 시각이지
- * "마지막으로 시도한" 시각이 아니다 (translation-ui design §3.4). 반대로 `lastPulledAt`은 변경 없는
+ * "마지막으로 시도한" 시각이 아니다 (ARCHITECTURE §3). 반대로 `lastPulledAt`은 변경 없는
  * 스킵에도 전진한다(그 순간 export == base 트리가 검증된 상태다).
  *
  * 시각은 **여기서** 잰다 — `lastPulledAt`에 들어가는 캡처 값(`max(updatedAt)`)은 벽시계가 아니라
@@ -135,7 +135,7 @@ export async function saveLastPulledAt(
     return;
   }
   // 같은 트랜잭션이다 — `lastPulledAt`만 전진하고 해제가 빠지면 옛 술어는 0인데 토큰이 남는 "유령 pending"이 된다
-  // (design §6.1). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
+  // (ARCHITECTURE §3). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
   await prisma.$transaction(async (tx) => {
     await tx.project.update(project);
     await acknowledgeDelivered(tx, projectId, delivered);
@@ -145,7 +145,7 @@ export async function saveLastPulledAt(
 /**
  * **캡처한 토큰이 아직 그대로인 셀만** 해제한다 — 캡처 뒤 같은 셀을 다시 저장했으면 토큰이 달라 남는다(같은 밀리초여도).
  *
- * ⚠️ **선조회 후 무조건 UPDATE로 바꾸지 않는다** — 이 조건부 UPDATE 한 문장이 방어선이다 (design §2).
+ * ⚠️ **선조회 후 무조건 UPDATE로 바꾸지 않는다** — 이 조건부 UPDATE 한 문장이 방어선이다 (ARCHITECTURE §3).
  * ⚠️ `updatedAt`을 건드리지 않는다 — raw SQL이라 `@updatedAt`이 개입하지 않는다. 시각이 움직이면 방금 쓴
  * `lastPulledAt`(= 캡처한 `max(updatedAt)`)보다 뒤가 되어 옛 술어가 전달한 편집을 다시 센다.
  * ⚠️ orphan 키·로케일·보관 표면 셀은 캡처 뒤 그렇게 됐어도 여기서 바꾸지 않는다 (완료 조건 9).

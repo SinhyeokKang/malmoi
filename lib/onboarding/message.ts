@@ -5,7 +5,7 @@ import { PROJECT_LIMIT } from "./create-plan";
 import { PROJECT_SLUG_MAX } from "./slug";
 
 /**
- * 온보딩 실패 갈래 → 사용자 문구 (design §3.12). `connectErrorMessage`와 **같은 형**이다: 문구는
+ * 온보딩 실패 갈래 → 사용자 문구 (ARCHITECTURE §6.3). `connectErrorMessage`와 **같은 형**이다: 문구는
  * 사전(`messages/en.tsx`)이 들고 갈래 누락은 `satisfies Record<Union, string>`이 컴파일 타임에 막으며,
  * 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있다.
  *
@@ -36,7 +36,7 @@ export type OnboardError =
    * 갈래를 다시 내기 때문이다 (2026-09-07 정정 — 전 주석은 "수동 지정은 된다"고 적어 있었다).
    */
   | "tree-truncated"
-  /** `probeRepo` 200 뒤의 base 브랜치 404 — 권한 없음과 갈라 있다 (design §3.10). */
+  /** `probeRepo` 200 뒤의 base 브랜치 404 — 권한 없음과 갈라 있다. */
   | "base-branch-missing"
   /** 후보 단위 — 탈락이 아니다. 표시 라벨이라 `?e=`로는 오지 않는다. */
   | "key-count-failed"
@@ -59,12 +59,12 @@ export type OnboardError =
    */
   | "invalid-branch"
   // ── 다시 시도 · 첫 적재 ──────────────────────────────────────────────────
-  /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (design §3.7). */
+  /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (PRODUCT §7.5). */
   | "not-awaiting"
   | "ingest-failed"
   | "resource-limit"
   /**
-   * 첫 적재가 끝나기 전에 번역 Action이 불렸다 (design §3.7). 화면으로는 도달하지 않고 **URL 직접
+   * 첫 적재가 끝나기 전에 번역 Action이 불렸다 (ARCHITECTURE §6.3). 화면으로는 도달하지 않고 **URL 직접
    * 호출**과 적재 실패 후의 재방문이 여기로 온다 — 그래도 문구를 두는 이유는 번역자가 저장 실패
    * 한 줄로 그것을 만나기 때문이다 (POSTMORTEM 2026-09-06).
    */
@@ -72,7 +72,7 @@ export type OnboardError =
   // ── 전부 ─────────────────────────────────────────────────────────────────
   /** 조회·네트워크 실패. **거부가 아니다** — 유일하게 재시도가 맞는 사유다. */
   | "unavailable"
-  /** 세션 만료. 중간 상태 무저장(design §3.4)이라 "입력한 값은 그대로"라고 말하면 거짓이다. */
+  /** 세션 만료. 중간 상태 무저장(ARCHITECTURE §3.1)이라 "입력한 값은 그대로"라고 말하면 거짓이다. */
   | "unauthorized";
 
 const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * **UI 문자열의 단일 출처** (design §3.1). 라이브러리를 넣지 않는다 — 필요한 것은 "문자열이 한 곳에
+ * **UI 문자열의 단일 출처** (CLAUDE.md 코드 컨벤션). 라이브러리를 넣지 않는다 — 필요한 것은 "문자열이 한 곳에
  * 있다"와 "나중에 ko를 더할 자리"뿐이고, 그건 객체 하나로 된다.
  *
  * ⚠️ **이 파일은 잎이다.** `@/lib/**`를 import하지 않는다(react의 `ReactNode` 타입뿐) — 클라이언트
@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
  * 않는다 — 함수 값이 셋을 한 번에 하고, `as const` 덕분에 접근 자체가 타입 검사다.
  *
  * ⚠️ **소비자가 `satisfies`를 건다.** 여기서 union을 import하면 잎이 아니게 되므로, 갈래 누락은
- * 각 문구 모듈이 `satisfies Record<Union, string>`으로 잡는다 (design §3.1.2).
+ * 각 문구 모듈이 `satisfies Record<Union, string>`으로 잡는다 (CLAUDE.md 코드 컨벤션).
  *
  * 문체는 DESIGN §10이다 — sentence case · 라벨에 마침표 없음 · "please"·"sorry" 금지 ·
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
@@ -22,7 +22,7 @@ export const en = {
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
    * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
    *
-   * ⚠️ **코드 식별자는 `import`이고 화면만 `Sync`다** (spec §12). 여기서만 낱말이 갈린다.
+   * ⚠️ **코드 식별자는 `import`이고 화면만 `Sync`다** (DESIGN §10). 여기서만 낱말이 갈린다.
    */
   repositorySync: {
     /**
@@ -53,7 +53,7 @@ export const en = {
      */
     unsentCount: (n: number): string => `${n.toLocaleString("en-US")} unsent translation change${n === 1 ? "" : "s"}`,
     /**
-     * **폐기를 말하는 문장 하나로 교체했다** (sync-edit-protection T13, design §4.3) — 설명문이 이미 `replace`를 말하지만 이 줄이
+     * **폐기를 말하는 문장 하나로 교체했다** (sync-edit-protection — DESIGN §6.644) — 설명문이 이미 `replace`를 말하지만 이 줄이
      * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
      * ⚠️ `updatedBy`까지 비워 저자도 리포가 된다(`lib/push/apply.ts`) — "discard"가 그것을 포함한다.
      */
@@ -105,7 +105,7 @@ export const en = {
      * 남아 있는 한 자동 적재가 멈춘다는 결과까지 말한다(그 사실이 없으면 "성공했는데 왜 안 들어오지"가 된다).
      */
     kept: (n: number): string => `${n.toLocaleString("en-US")} unsent change${n === 1 ? " was" : "s were"} kept. Repository updates stay paused until ${n === 1 ? "it is" : "they are"} sent.`,
-    /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (spec §11.3) — 셋 이상이면 헤드라인이 무너진다. */
+    /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
     /** 거부 Alert의 액션 둘. 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
@@ -292,12 +292,12 @@ export const en = {
   /**
    * 프로젝트 Home — **카드 넷 · 할 일 · 로그 · 메타 열** (project-home §10).
    *
-   * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (spec §3.3-7). 표시는 `Sync`(리포 → 앱)와
+   * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (DESIGN §10). 표시는 `Sync`(리포 → 앱)와
    * `Publish`(앱 → 리포) 둘뿐이고 **코드 식별자는 그대로다** — 읽는 사람이 비개발자라 저장소
    * 방향을 말하는 낱말이 둘이면 어느 쪽이 자기 일인지 매번 다시 판단해야 한다.
    *
    * ⚠️ **카드 제목은 여기 없다** — `m.projects.summary.*` 넷을 목록 화면과 **같은 키로** 쓴다.
-   * 두 벌이 되면 하나가 낡는다 (design §2).
+   * 두 벌이 되면 하나가 낡는다 (DESIGN §6.64).
    */
   home: {
     /**
@@ -308,7 +308,7 @@ export const en = {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** — 없으면 로딩이 무음이다. */
     loading: "Loading project",
     /**
-     * 보조 줄 — `{unit} · {근거}` 두 토막이다 (spec §10). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
+     * 보조 줄 — `{unit} · {근거}` 두 토막이다 (DESIGN §6.64). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
      * `New`에도 `To translate`에도 세므로 넷이 같은 모집단이 아니고, 그 사실을 말하는 자리가 여기다.
      */
     cards: {
@@ -339,7 +339,7 @@ export const en = {
       more: (n: number): string => `+${n} more`,
       /**
        * ⚠️ **로케일을 모른다** — `lastImportError`가 표면 단위 컬럼이라 캔버스의 `{surface} · {locale}
-       * file`에서 문장을 **표면까지로 낮췄다** (design §3.3).
+       * file`에서 문장을 **표면까지로 낮췄다** (DESIGN §6.64).
        */
       importFailed: {
         title: (surface: string): string => `${surface} surface`,
@@ -355,7 +355,7 @@ export const en = {
          * `needsReview`는 push가 세우고 같은 쓰기가 `updatedBy`를 비운다(불변식 2). 그냥
          * `last edited by Kim`이면 "Kim이 그 8칸을 만졌다"로 읽히는데 그것은 거짓이다.
          *
-         * ⚠️ **이름을 못 찾으면 이 절이 통째로 빠진다** (spec §9.11) — 호출부가 `null`로 갈린다.
+         * ⚠️ **이름을 못 찾으면 이 절이 통째로 빠진다** (DESIGN §6.64) — 호출부가 `null`로 갈린다.
          */
         tail: (who: string): string => ` — last edited in this locale by ${who}.`,
       },
@@ -388,7 +388,7 @@ export const en = {
       },
       /**
        * ⚠️ **키 수가 노드다** — 파랑 다섯 자리 중 하나가 그 조각이고, 문장으로 접으면 줄 전체가
-       * 파래져 "이 줄이 링크"로 읽힌다 (spec §3.3-9).
+       * 파래져 "이 줄이 링크"로 읽힌다 (DESIGN §6.64).
        */
       sync: (keys: ReactNode, surface: string): ReactNode => (
         <>CI synced {keys} into {surface}</>
@@ -410,7 +410,7 @@ export const en = {
        * ⚠️ **`{n} files changed`다** — `SyncRun.changed`가 파일 수이고 칸 수가 아니다.
        *
        * ⚠️ **번호가 노드다** — 파랑 다섯 자리 중 하나가 그 조각이라 문자열로 접으면 화면이 색을 줄
-       * 자리를 잃는다 (spec §3.3-9).
+       * 자리를 잃는다 (DESIGN §6.64).
        */
       publish: (pr: ReactNode | null, changed: number | null): ReactNode => (
         <>
@@ -448,7 +448,7 @@ export const en = {
       syncFailed: {
         title: "The last sync could not finish",
         /**
-         * ⚠️ **원인 문장은 `importFailureMessage`가 든다** (spec §7.2) — 그 함수가 `Object.hasOwn`과
+         * ⚠️ **원인 문장은 `importFailureMessage`가 든다** (PRODUCT §7.8) — 그 함수가 `Object.hasOwn`과
          * 폴백을 이미 가지고 있다. 여기서 사전을 직접 인덱싱하면 그 방어선을 우회한다.
          */
         body: (surface: string, branch: string, reason: string): string =>
@@ -459,7 +459,7 @@ export const en = {
             ? "Nothing was lost — the cells you see are from before this sync."
             : `Nothing was lost — the cells you see are from the last good sync, ${when}.`,
         action: "Try again",
-        /** ⚠️ **EDITOR는 본문만 본다** — 같은 Action이라 버튼이 통째로 없다 (spec §8). */
+        /** ⚠️ **EDITOR는 본문만 본다** — 같은 Action이라 버튼이 통째로 없다 (DESIGN §6.64). */
         editor: "Ask an owner of this project to run the sync again.",
       },
       notConnected: {
@@ -472,7 +472,7 @@ export const en = {
         title: "This project is archived",
         /**
          * ⚠️ **캔버스의 `CI pushes are rejected`를 바꿨다** — 이 화면에 `push` 낱말이 0이라는 것이
-         * 완료 조건이고(spec §3.3-7), `home-vocabulary.test.ts`가 그것을 센다. 뜻은 같다: 거절되는
+         * 완료 조건이고(DESIGN §10), `home-vocabulary.test.ts`가 그것을 센다. 뜻은 같다: 거절되는
          * 것은 리포에서 들어오는 Sync다.
          *
          * ⚠️ **열린 PR을 단언하지 않는다** — 전에는 꼬리가 `The open pull request was left alone.`이었고
@@ -490,7 +490,7 @@ export const en = {
   },
 
   /**
-   * sync 이력 (7단계 — sync-runs design §6). **과거 시제다** — Publish Alert가 "지금 무슨 일이
+   * sync 이력 (7단계 — DESIGN §6.68). **과거 시제다** — Publish Alert가 "지금 무슨 일이
    * 일어났나"를 현재 시제로 말하고, 이 화면은 "그때 무슨 일이 있었나"라 어휘가 갈려야 한다.
    */
   logs: {
@@ -544,7 +544,7 @@ export const en = {
   },
 
   /**
-   * 보관 (7단계 — sync-runs design §6.2). ⚠️ **"삭제"라고 쓰지 않는다** — 되돌릴 수 있고,
+   * 보관 (7단계 — DESIGN §6.6). ⚠️ **"삭제"라고 쓰지 않는다** — 되돌릴 수 있고,
    * 자동 영구 삭제는 비목표다 (PRODUCT §7.9).
    */
   archive: {
@@ -683,7 +683,7 @@ export const en = {
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**
-     * Meter 자리에 **바 대신 서는 문장** (design §5). 값이 없는 상태에서 0% 바를 그리면
+     * Meter 자리에 **바 대신 서는 문장** (DESIGN §6.63). 값이 없는 상태에서 0% 바를 그리면
      * "0% 번역됨"으로 읽히는데, 그 프로젝트는 아직 셀 것이 없는 상태다.
      */
     meter: {
@@ -695,7 +695,7 @@ export const en = {
       },
     },
     /**
-     * 행 아래 띠 — **다음 한 수**를 말한다 (design §5). 겹치면 하나만 그리고 우선순위는
+     * 행 아래 띠 — **다음 한 수**를 말한다 (DESIGN §6.63). 겹치면 하나만 그리고 우선순위는
      * `rowBanner`가 정한다.
      *
      * ⚠️ **복수형을 함수가 든다** — 시안 문구가 전부 복수형이지만 `1 strings`는 틀렸다
@@ -767,7 +767,7 @@ export const en = {
       needs_reconnect: "Disconnected",
     },
     /**
-     * 마지막 임포트가 실패했을 때의 **사유 문장** (projects-list design §3.35).
+     * 마지막 임포트가 실패했을 때의 **사유 문장** (PRODUCT §7.8).
      *
      * ⚠️ **저장된 것은 코드 하나다** — 파서 원문·파일 경로·행 번호는 DB에 들어가지 않는다.
      * `AdapterError`가 모든 포맷에 행 번호를 주지 않으므로 `line 41` 같은 값을 지어낼 수도 없고,
@@ -889,7 +889,7 @@ export const en = {
        * 이유가 그것이다. 위 `connected`가 걷어낸 `N projects use this connection.`과 다른 축이다: 이 수는
        * 사용자가 GitHub에서 **직접 고른 것**이고, 그래서 근거가 된다.
        *
-       * ⚠️ **`0`과 "못 읽었다"는 이 줄을 아예 그리지 않는다** (design §8 결정 3) —
+       * ⚠️ **`0`과 "못 읽었다"는 이 줄을 아예 그리지 않는다** (DESIGN §6.67) —
        * `Installed on 0 repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다.
        */
       installedOn: (n: number): string => `Installed on ${n.toLocaleString("en-US")} repositor${n === 1 ? "y" : "ies"}.`,
@@ -1023,7 +1023,7 @@ export const en = {
         : `Imported ${count === 1 ? "1 key" : `${count.toLocaleString("en-US")} keys`}, but ${failed.toLocaleString("en-US")} couldn't be read.`,
 
     /**
-     * 모달 껍데기 (new-project-modal design §7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
+     * 모달 껍데기 (DESIGN §6.7). **[Back]·[Next]는 껍데기가 소유한다** — 단계는
      * 본문과 "다음으로 갈 수 있는가"만 넘긴다.
      */
     modal: {
@@ -1142,7 +1142,7 @@ export const en = {
         rows: "Preview rows",
         /**
          * ⚠️ **빈 칸과 가른다.** 정말 비어 있으면 빈 칸이고, 못 읽었으면 이 문장이다 — ②가
-         * "ko 열이 비어 있다"를 말하는 화면이라 이 구별이 기능의 목적 자체에 걸린다 (design §3.4).
+         * "ko 열이 비어 있다"를 말하는 화면이라 이 구별이 기능의 목적 자체에 걸린다 (DESIGN §6.7).
          */
         unavailable: "We couldn't read this file.",
       },
@@ -1151,7 +1151,7 @@ export const en = {
         format: "File format",
         path: "Path",
         /**
-         * 문장을 사전이 소유한다 — 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3).
+         * 문장을 사전이 소유한다 — 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (CLAUDE.md 코드 컨벤션).
          *
          * ⚠️ **갈래가 어댑터의 `layout`이다** — multi-locale(`ts-dict`)은 한 파일에 로케일이 나란히
          * 있어 경로에 로케일이 없다. 한 문장으로 두면 그 포맷에서 틀린 안내가 되고, 그것이
@@ -1221,8 +1221,8 @@ export const en = {
       /**
        * 예외 G — 제출 뒤 그 필드에 선다.
        *
-       * ⚠️ **`is free`라고 단언하지 않는다** — `suggestAlternateSlug`는 존재 확인을 하지 않는다
-       * (design §3.5). 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09의 모양이다.
+       * ⚠️ **`is free`라고 단언하지 않는다** — `suggestAlternateSlug`는 존재 확인을 하지 않는다.
+       * 확인한 적 없는 것을 단언하면 POSTMORTEM 2026-09-09의 모양이다.
        */
       slugTaken: (alt: string | undefined): string =>
         alt === undefined
@@ -1245,7 +1245,7 @@ export const en = {
       sessionLostAfterCreate: "Sign in again and come back — your project is still in your list.",
     },
 
-    /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (design §3.13). */
+    /** ⑤⑥ 결과 — **토큰 원문은 이 화면에서만 보인다** (PRODUCT §7.8). */
     result: {
       token: {
         title: "Push token",
@@ -1293,7 +1293,7 @@ export const en = {
      */
     orphaned: "Orphaned",
     needsReview: "Needs review",
-    /** 셀 메타 — `updatedBy`가 사람일 때만 붙는다. push가 덮은 셀에는 표기가 없다 (design §3.6). */
+    /** 셀 메타 — `updatedBy`가 사람일 때만 붙는다. push가 덮은 셀에는 표기가 없다 (ARCHITECTURE §5.5.2). */
     editedBy: (name: string): string => `Edited by ${name}`,
     notSent: "Not yet sent",
 
@@ -1330,7 +1330,7 @@ export const en = {
     },
 
     /**
-     * 적용된 필터의 칩 (8-4 design §3.5). **라벨을 `lib/keys/filters.ts`가 만들지 않는다** —
+     * 적용된 필터의 칩 (8-4 — DESIGN §6.1). **라벨을 `lib/keys/filters.ts`가 만들지 않는다** —
      * 그 모듈은 잎이어야 해서 사전을 물지 않는다.
      *
      * ⚠️ **로케일 칩이 하나다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 오히려
@@ -1379,7 +1379,7 @@ export const en = {
       sendWithPublish: "Send with Publish",
 
       /**
-       * 기준 로케일 변경 대기 (6b-3 — design §3.13). **"먼저 보내라"만 말한다.**
+       * 기준 로케일 변경 대기 (6b-3 — DESIGN §6.1). **"먼저 보내라"만 말한다.**
        *
        * ⚠️ **검토 표시를 예고하지 않는다** — `planPush`가 base 교체 push에서 전파를 건너뛰므로 그
        * 일이 안 일어난다. 둘을 말하면 무엇을 해야 하는지가 흐려진다.
@@ -1393,7 +1393,7 @@ export const en = {
     },
 
     empty: {
-      /** 첫 적재 전. OWNER는 설정으로 보내므로 이 문구를 읽는 사람은 번역자다 (design §3.7). */
+      /** 첫 적재 전. OWNER는 설정으로 보내므로 이 문구를 읽는 사람은 번역자다 (PRODUCT §7.5). */
       notReady: "Nothing to translate yet",
       noLocales: {
         title: "No languages yet",
@@ -1410,7 +1410,7 @@ export const en = {
       },
     },
 
-    /** ⚠️ 셀 안 상태줄은 **시각 전용**이다 — 알림은 표 하나의 live region이 든다 (design §3.8). */
+    /** ⚠️ 셀 안 상태줄은 **시각 전용**이다 — 알림은 표 하나의 live region이 든다 (DESIGN §6.1). */
     save: {
       /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
@@ -1640,7 +1640,7 @@ export const en = {
   },
 
   /**
-   * 멤버 화면 (6b-2 — design §3.9). **역할 이름은 `projects.role`에서 온다** — 어휘가 두 벌이면 갈린다.
+   * 멤버 화면 (6b-2 — DESIGN §6.65). **역할 이름은 `projects.role`에서 온다** — 어휘가 두 벌이면 갈린다.
    *
    * ⚠️ **이 표는 프로젝트의 전원이 본다**(EDITOR 포함) — 그래서 이메일 문구가 "마스킹돼 있다"를
    * 설명하지 않는다. 마스킹은 사과할 일이 아니라 기본값이다.
@@ -1677,7 +1677,7 @@ export const en = {
       title: "No languages yet",
       description: "They appear after the first import reads your locale files.",
     },
-    /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (design §3.13). */
+    /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (PRODUCT §3). */
     field: {
       label: "Base language",
       help: "The language your source strings are written in. Changing it takes effect on the next CI push.",
@@ -1821,7 +1821,7 @@ export const en = {
       running: "Importing…",
       failed: "The import didn't finish. Try again in a moment.",
       /**
-       * 마지막 임포트가 남긴 실패의 **복구 안내** (projects-list design §3.35). 사유 문장은
+       * 마지막 임포트가 남긴 실패의 **복구 안내** (PRODUCT §7.8). 사유 문장은
        * `m.projects.importFailure`가 내고 여기는 "그래서 뭘 하면 되나"만 말한다.
        *
        * ⚠️ **갈래가 둘인 이유는 고칠 자리가 다르기 때문이다** — 첫 적재 전이면 이 화면의 버튼이
@@ -1847,11 +1847,11 @@ export const en = {
     workflow: {
       title: "Workflow",
       /**
-       * 문장을 사전이 소유한다 — JSX 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (design §3.1.3).
+       * 문장을 사전이 소유한다 — JSX 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (CLAUDE.md 코드 컨벤션).
        */
       saveAs: (path: ReactNode): ReactNode => <>Save this in your repository as {path}.</>,
       copy: "Copy YAML",
-      /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (spec §5의 빚). */
+      /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (ARCHITECTURE §4). */
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
           Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
@@ -1882,7 +1882,7 @@ export const en = {
     },
   },
 
-  /** 초대 수락 화면 — **셸 밖 카드다** (design §3.14). 거부 문구는 `errors.invite`가 든다. */
+  /** 초대 수락 화면 — **셸 밖 카드다** (DESIGN §6.62). 거부 문구는 `errors.invite`가 든다. */
   invite: {
     /**
      * ⚠️ **`invitedTo`를 대체한다** (account-linking §6). 프로젝트 이름과 역할은 이제 **카드의 두
@@ -1912,7 +1912,7 @@ export const en = {
      */
     sentTo: (email: string): string => `This invitation was sent to ${email}.`,
     // ⚠️ 장애 문구를 여기 두지 않는다 — `errors.invite.unavailable`이 같은 상태를 말한다.
-    // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (design §3.1.4).
+    // 같은 장에 문구가 두 벌이면 ko를 열 때 한 벌만 번역돼 두 언어가 섞인다 (CLAUDE.md 코드 컨벤션).
   },
 
   /**
@@ -2128,7 +2128,7 @@ export const en = {
   },
 
   /**
-   * `adapterErrorMessage` — `AdapterErrorCode` 스물둘 + 폴백 (translation-ui design §3.1.4, 6b-1).
+   * `adapterErrorMessage` — `AdapterErrorCode` 스물둘 + 폴백 (CLAUDE.md 코드 컨벤션, 6b-1).
    *
    * ⚠️ **이 문구들은 접힌 자리에만 간다** — 온보딩 결과의 `<details>` · Publish warnings · CLI.
    * 그래도 사전에 있는 이유는 **번역자와 개발자가 같은 화면에서 읽기 때문**이다: 자유 문자열로

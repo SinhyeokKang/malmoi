@@ -7,7 +7,7 @@ import { toneFill } from "@/components/ui/tone";
  * 초대의 프로젝트 카드 — **`components/ui/`의 프리미티브가 아니다** (account-linking design ⑩).
  *
  * 박스 규격은 `EntityCard`와 같고(같은 화면 언어여야 한다) 다른 것은 아바타·2행·우측 슬롯의
- * 내용뿐이다. 프리미티브로 올리지 않는 이유 셋이 design §7에 있다 — 요지는 `Avatar`의 폴백이
+ * 내용뿐이다. 프리미티브로 올리지 않는 이유 셋이 DESIGN §6.4에 있다 — 요지는 `Avatar`의 폴백이
  * 이니셜인데 여기 요구는 **흰 글리프**이고, `docs/DESIGN.md`가 그 대체를 이미 거부해 뒀다는 것.
  *
  * ⚠️ **숫자를 싣지 않는다** — 키 수·멤버 수는 수락 여부를 바꾸지 않고 프로젝트 규모만 새게 한다.
@@ -29,7 +29,7 @@ export function InviteProjectCard({
 
         ⚠️ **radius가 `rounded-sm`(8)이다 — 프로젝트 목록 행의 아이콘과 같은 값이다** (2026-09-12 실측:
         그쪽은 `size-7 rounded-sm`이고 여기가 `rounded-lg`(12)였다). 같은 대상을 가리키는 표식이
-        화면마다 다른 모서리를 가지면 그것이 같은 것이라는 신호가 죽는다. design §7의 표도 8을 적었다.
+        화면마다 다른 모서리를 가지면 그것이 같은 것이라는 신호가 죽는다. DESIGN §6.4의 표도 8을 적었다.
 
         ⚠️ **`overflow-hidden`도 목록과 같다** — 프로젝트 이미지가 생기는 날 이 배경이 그대로 그
         이미지의 자리가 된다(`app/(edit)/projects/page.tsx`의 같은 주석).

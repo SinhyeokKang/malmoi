@@ -32,7 +32,7 @@ export type RecentEdit = {
 };
 
 /**
- * 활동 한 줄 — **갈래 넷** (project-home design §3.4).
+ * 활동 한 줄 — **갈래 넷** (DESIGN §6.64).
  *
  * ⚠️ **`{who} added the {surface} surface`는 만들지 않는다.** 출처가 아예 없다 — `SyncRun`은 Publish
  * 전용이고 `trigger`/`status` enum이 그 가정 위에 서므로, 표면 추가 사건을 실으려면 그 테이블의
@@ -57,7 +57,7 @@ export type ActivityItem =
 const RANK: Record<ActivityItem["kind"], number> = { publish: 0, push: 1, sync_failed: 2, edit: 3 };
 
 /**
- * ⚠️ **상한이 건수에서 기간으로 바뀌었다** (spec §2.2-3). 8건 고정이면 "오늘 조용했다"와 "7일
+ * ⚠️ **상한이 건수에서 기간으로 바뀌었다.** 8건 고정이면 "오늘 조용했다"와 "7일
  * 조용했다"가 화면에서 구별되지 않는다 — 빈 상태의 설명문이 이 수를 그대로 말하므로 상수가 정본이다.
  */
 export const ACTIVITY_WINDOW_DAYS = 7;

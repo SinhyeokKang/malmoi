@@ -25,7 +25,7 @@ import { isValidBranchName } from "@/lib/pull/branch-name";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
 /**
- * GitHub 계정 연결의 **나가는 쪽** (design §3.1). 돌아오는 쪽만 Route Handler다
+ * GitHub 계정 연결의 **나가는 쪽** (ARCHITECTURE §6.4). 돌아오는 쪽만 Route Handler다
  * (`app/api/github/callback/route.ts`) — 외부로 302하는 것은 Server Action이 쿠키를 심고
  * `redirect(절대 URL)`로 할 수 있고, 그래야 CLAUDE.md의 "내부 쓰기에 Route Handler 금지"와
  * 어긋나지 않는다.
@@ -77,13 +77,13 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
   const nonce = randomBytes(32).toString("base64url");
 
   // ⚠️ **목적지는 쿠키의 서명 안에 있다.** 쿼리로 실어 보내면 GitHub이 돌려줄 때 공격자가
-  // 그 값을 정할 수 있다 — 서명 대상에 넣으면 open redirect 판정 자체가 필요 없다 (design §3.1).
+  // 그 값을 정할 수 있다 — 서명 대상에 넣으면 open redirect 판정 자체가 필요 없다 (ARCHITECTURE §6.4).
   const cookieStore = await cookies();
   cookieStore.set(
     stateCookieName(secure),
     signState({
       userId,
-      // 이 Action은 설정 화면 전용이다 — 생성 경로는 `{kind:"new"}`로 서명한다 (design §3.6).
+      // 이 Action은 설정 화면 전용이다 — 생성 경로는 `{kind:"new"}`로 서명한다 (ARCHITECTURE §6.4).
       dest: { kind: parsed.data.returnTo ?? "settings", slug },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
@@ -107,8 +107,8 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
 export type ConnectResult = { ok: true } | { ok: false; error: ConnectError | AccessError | "invalid input" };
 
 /**
- * 리포 **재연결** (design §3.2). 이름이 `connect`지만 리포를 고르지는 않는다 — 리포는 Project에
- * 고정돼 있고(spec §4 "다른 리포는 다른 프로젝트다"), 여기서 정해지는 것은 **어느 설치가 그 리포를
+ * 리포 **재연결** (ARCHITECTURE §6.4). 이름이 `connect`지만 리포를 고르지는 않는다 — 리포는 Project에
+ * 고정돼 있고(PRODUCT §7.1 "다른 리포는 다른 프로젝트다"), 여기서 정해지는 것은 **어느 설치가 그 리포를
  * 덮는가**와 리네임된 경우의 새 이름뿐이다.
  *
  * ⚠️ **클라이언트가 보내는 것은 slug 하나다.** `installationId`는 `probeRepo`가 GitHub에 물어 얻으므로
@@ -164,7 +164,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
         : [];
   } catch (error) {
     /**
-     * ⚠️ **401은 거부가 아니라 재인가 신호다** (design §2.4). 사용자가 GitHub에서 App 인가를
+     * ⚠️ **401은 거부가 아니라 재인가 신호다** (ARCHITECTURE §6.4). 사용자가 GitHub에서 App 인가를
      * 철회하면 DB 토큰은 아직 만료 전이라 `ensureUserToken`이 `ok`를 주고, **이 GET이 유일한 신호**다.
      * `unavailable`로 접으면 영구 상태를 "잠시 뒤 다시"로 안내해 사용자가 같은 버튼을 무한히 누른다 —
      * 필요한 것은 "GitHub 다시 연결" 버튼이고 그것은 `reauthorize`에만 나온다.
@@ -255,7 +255,7 @@ export async function updateRepositorySettings(raw: {
 
   /**
    * 형식은 저장 전에 본다 — **여기서는** GitHub을 부르지 않는다(브랜치의 실존은 pull이 시끄럽게
-   * 말한다, design §3.13).
+   * 말한다, DESIGN §6.6).
    *
    * ⚠️ **온보딩은 반대로 묻는다** (2026-09-13, new-project-modal): ①이 `listRepoBranches`로 목록을
    * 받아 `Select`에 넣는다. 같은 컬럼에 UI가 두 벌로 갈리는 것이 **의도다** — 온보딩은 **처음 고르는

@@ -12,7 +12,7 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
 /**
- * GitHub 계정 연결·해제 (design §8 섹션 2). 연결은 **폼 제출**이다 — `startGithubConnect`가 성공하면
+ * GitHub 계정 연결·해제 (DESIGN §6.6). 연결은 **폼 제출**이다 — `startGithubConnect`가 성공하면
  * `redirect`로 GitHub에 나가므로 `useTransition`으로 감싸면 응답이 돌아오지 않는다.
  *
  * ⚠️ **두 Action이 서로 다른 파일에서 온다** (2026-09-07 리뷰 🟡9): 해제는 **사용자 수준**

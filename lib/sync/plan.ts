@@ -16,7 +16,7 @@ import type { PullResult } from "@/lib/pull/run";
 
 /**
  * 수동 Publish의 최소 간격. **"리포에 쓴 뒤 쉬는 간격"이지 "시작 간격"이 아니다** — 그래서
- * 기준이 직전 실행의 `finishedAt`이고, 실패한 실행은 세지 않는다 (design 결정 7).
+ * 기준이 직전 실행의 `finishedAt`이고, 실패한 실행은 세지 않는다 (ARCHITECTURE §5.6.2).
  */
 export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
 
@@ -24,7 +24,7 @@ export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
  * 이보다 오래된 `RUNNING` 행은 죽은 프로세스가 남긴 것으로 본다.
  *
  * ⚠️ **`maxDuration`(60초)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이 스스로를 stale로 보고**
- * 두 번째 실행을 허용한다 (design §1.4). 그 전제가 수동 경로에서 서려면 번역 페이지가
+ * 두 번째 실행을 허용한다 (ARCHITECTURE §5.6.2). 그 전제가 수동 경로에서 서려면 번역 페이지가
  * `maxDuration = 60`을 선언해야 한다 — 없으면 프로젝트 기본값(300)이라 이 상수와 같아진다.
  */
 export const STALE_AFTER_SECONDS = 300;
@@ -52,7 +52,7 @@ export const SYNC_LOG_PAGE_SIZE = 20;
  * `lib/pull`의 특정 throw 자리이거나(`lib/pull/__tests__/error-codes.test.ts`가 양방향으로 고정한다)
  * 껍데기가 만드는 것(`stale`)이다.
  *
- * ⚠️ **없앤 것과 이유** (design §1.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
+ * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
  * 아니다) · `app-uninstalled`/`base-branch-missing`(같은 한 문장에서 나와 가를 수 없다 →
  * `base-unreadable` 하나) · `repo-unreachable`(status 판독 없이 못 만든다 → `github-error`).
  */
@@ -102,7 +102,7 @@ export type SyncStart =
  *
  * @param running `status = RUNNING`인 최신 행. 없으면 `null`.
  * @param lastSettled `status ∈ {SUCCEEDED, SKIPPED}`인 최신 행. **FAILED는 호출부가 `null`로 준다** —
- *   제한의 목적은 "리포에 두 번 쓰기" 방지이지 재시도 억제가 아니다 (design 결정 7).
+ *   제한의 목적은 "리포에 두 번 쓰기" 방지이지 재시도 억제가 아니다 (ARCHITECTURE §5.6.2).
  */
 export function planSyncStart(input: {
   now: Date;

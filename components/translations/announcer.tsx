@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
 /**
- * 표 하나의 **live region 하나** (design §3.8).
+ * 표 하나의 **live region 하나** (DESIGN §7).
  *
  * ⚠️ **셀마다 두지 않는다.** 903행 × 3로케일이면 `aria-live` 영역이 2,700개이고, 스크린리더가
  * 그만큼의 영역을 감시한다 — 처음 초안이 그랬고 CDO 검수가 잡았다. 셀 안 상태줄은 **시각 전용**이고

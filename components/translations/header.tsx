@@ -50,7 +50,7 @@ export function TranslationsHeader({
   locales: readonly { code: string; orphaned: boolean }[];
   selected: readonly string[];
   fallback: readonly string[];
-  /** 아직 안 보낸 편집 수 — 배너와 버튼 라벨이 같은 값을 쓴다 (design §3.5). */
+  /** 아직 안 보낸 편집 수 — 배너와 버튼 라벨이 같은 값을 쓴다 (DESIGN §6.1). */
   unpublished: number;
   /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
   repo: { owner: string; name: string; branch: string; syncBranch: string };

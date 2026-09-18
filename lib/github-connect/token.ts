@@ -1,5 +1,5 @@
 /**
- * GitHub App user 토큰의 사용·갱신 판정 (design §2.4). 저장·경합 처리는 껍데기(`ensureUserToken`)가
+ * GitHub App user 토큰의 사용·갱신 판정 (ARCHITECTURE §6.4). 저장·경합 처리는 껍데기(`ensureUserToken`)가
  * 하고 여기서는 갈래만 정한다 — refresh 토큰은 1회용(회전)이라 갱신 결과를 즉시 써야 한다.
  *
  * ⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없다.** refresh 토큰 자체의 만료(6개월)와
@@ -29,9 +29,9 @@ export function planTokenUse(input: {
 }
 
 /**
- * 갱신 호출의 실패 → 거부인가 장애인가 (design §2.4).
+ * 갱신 호출의 실패 → 거부인가 장애인가 (ARCHITECTURE §6.4).
  *
- * ⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없어**(design §5) refresh 토큰의 만료를 미리 볼
+ * ⚠️ **`Account`에 `refresh_token_expires_in` 컬럼이 없어**(ARCHITECTURE §5.1) refresh 토큰의 만료를 미리 볼
  * 수 없다 — **이 호출의 실패가 유일한 신호**다. 한 갈래로 접으면 일시 장애가 "다시 인가하세요"로
  * 위장돼 사용자가 멀쩡한 연결을 지우고 다시 만든다.
  *

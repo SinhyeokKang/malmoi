@@ -29,7 +29,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  *
  * 로케일이 열이던 시절에는 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다. 행이 축이면
  * 그 문제가 사라지는 대신 세로가 로케일 배수로 는다 — ⚠️ **다만 `<Textarea>` 수는 그대로다**
- * (903키 × 3로케일 = 2,709). 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다 (design §5).
+ * (903키 × 3로케일 = 2,709). 늘어나는 것은 행 래퍼와 로케일 배지이고 입력보다 싸다 (ARCHITECTURE §1.95).
  *
  * **base 로케일도 편집 가능하다** — 고정된 것은 키뿐이다. 화면의 base 값은 `StringKey.sourceText`가
  * 아니라 `cells[base]`다. ⚠️ **`sourceText`는 이 화면에 실리지 않는다** (2026-09-04 audit #47).
@@ -45,7 +45,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * ⚠️ **Server Action은 자기를 부른 페이지 세그먼트의 `maxDuration`을 쓴다** (설정 화면과 같은 이유).
  * 이 화면의 [Send changes]가 `triggerPullAction`을 부르고 그것이 로케일 파일마다 blob을 읽는다.
  *
- * ⚠️ **`STALE_AFTER_SECONDS`(300)의 전제가 이 줄이다** (7단계 — sync-runs design §1.4). 없으면 이
+ * ⚠️ **`STALE_AFTER_SECONDS`(300)의 전제가 이 줄이다** (7단계 — ARCHITECTURE §5.6.2). 없으면 이
  * 세그먼트가 프로젝트 기본값(300)을 쓰고, 그러면 stale 판정 창과 실행 상한이 **같아져** 정상 실행이
  * 스스로를 stale로 보고 두 번째 실행을 허용한다.
  */
@@ -102,7 +102,7 @@ export default async function TranslationsPage({
 
   /**
    * 보일 로케일. **폴백은 "살아 있는 로케일 전체"다** — orphaned를 섞으면 그 빈 셀이 전부
-   * 미번역으로 잡혀 기본 착지가 행이 전부 disabled인 네임스페이스로 간다 (design §3.1).
+   * 미번역으로 잡혀 기본 착지가 행이 전부 disabled인 네임스페이스로 간다 (ARCHITECTURE §5.5.16).
    */
   const fallback = parseLocaleSelection(undefined, columns);
   const selected = parseLocaleSelection(search.locales, columns);
@@ -161,7 +161,7 @@ export default async function TranslationsPage({
   ]);
 
   /**
-   * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (design §2).
+   * 링크·필터가 공유하는 현재 URL 상태. 하나를 바꿔도 나머지가 보존된다 (PRODUCT §7.7).
    *
    * 명시적 선택은 목적 표면의 전체 로케일과 같아도 보존한다 — 왕복 전환에서 선택이 넓어지면 안 된다.
    */
@@ -236,7 +236,7 @@ export default async function TranslationsPage({
           />
         </div>
       ) : (
-        /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (design §3.8). */
+        /* ⚠️ live region은 **표 하나에 하나**다 — 셀마다 두면 903행×3로케일에 2,700개다 (DESIGN §7). */
         <Announcer>
           <div>
             {groups.map((group) => (

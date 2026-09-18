@@ -22,7 +22,7 @@ export async function findUserByEmail(prisma: Client, email: string) {
 /**
  * ⚠️ **`"unlinked"`가 `"keep"`에서 갈라져 나왔다** (account-linking T2). 호출부(`signIn` 콜백)가
  * "이 Account가 처음 보는 것인가"를 알아야 병합 안내를 **그때만** 조회한다 — 두 상태를 같은
- * `"keep"`으로 접으면 재방문 로그인마다 이메일 조회가 한 번씩 더 돈다 (design §5.1).
+ * `"keep"`으로 접으면 재방문 로그인마다 이메일 조회가 한 번씩 더 돈다 (ARCHITECTURE "계정 병합").
  */
 export async function refreshVerifiedEmail(prisma: PrismaClient, provider: string, providerAccountId: string, fresh: string | null): Promise<EmailRefresh | "unlinked"> {
   try {

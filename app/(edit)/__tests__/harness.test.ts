@@ -66,7 +66,7 @@ describe("harness — TranslationSurface delegate", () => {
 /**
  * 하네스 자체의 계약 — **가짜가 실제 제약보다 관대하면 결함을 원리적으로 못 본다** (POSTMORTEM 2026-09-05).
  * 온보딩(5단계)이 `project.create`·`findUnique({ pushTokenHash })`·`findMany`·`projectMember.count({ userId, role })`를
- * 새로 부르는데, 하네스에 그 경로가 없으면 slug 충돌·토큰 조회를 **재현할 수조차 없다** (tasks T2).
+ * 새로 부르는데, 하네스에 그 경로가 없으면 slug 충돌·토큰 조회를 **재현할 수조차 없다**.
  *
  * 흉내 내는 스키마 제약: `Project.slug @unique` · `Project.pushTokenHash @unique`(NULL 여럿 허용) ·
  * `$transaction` 롤백이 `projects`도 되돌린다.
@@ -139,7 +139,7 @@ describe("harness — project.create", () => {
 });
 
 describe("harness — project.findUnique({ pushTokenHash })", () => {
-  it("해시로 행을 돌려준다 — 토큰이 프로젝트를 정한다 (design §3.8)", async () => {
+  it("해시로 행을 돌려준다 — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", async () => {
     const h = createHarness({ projects: [{ id: "p1", slug: "acme", pushTokenHash: "hash-1" }] });
     expect(await h.prisma.project.findUnique({ where: { pushTokenHash: "hash-1" } })).toMatchObject({ id: "p1" });
     expect(await h.prisma.project.findUnique({ where: { pushTokenHash: "nope" } })).toBeNull();

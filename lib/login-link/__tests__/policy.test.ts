@@ -20,7 +20,7 @@ import {
 } from "../policy";
 
 /**
- * 병합 challenge의 순수 판정 (design §5.2).
+ * 병합 challenge의 순수 판정 (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **`session-revocation`과 형은 같지만 증명이 다르다** — 그쪽은 살아 있는 세션이 인가를 대신해
  * `sessionDigest`·`stateDigest`를 담지만, 여기는 세션이 **없다**. 담는 것은 "무엇을 붙일 것인가"와
@@ -106,7 +106,7 @@ it("수단 목록은 둘을 고정 순서로 내고, 마지막 하나는 해제�
 });
 
 /**
- * `/account` 수단 카드 헤더의 `{connected} of {total}` 배지 (design §1.3 · §3.3).
+ * `/account` 수단 카드 헤더의 `{connected} of {total}` 배지 (DESIGN §6.67).
  *
  * ⚠️ **서버 변경이 0이다** — `loginMethodRows`가 이미 주는 행에서 센다. 분모가 보여야
  * "하나 더 붙일 수 있다"가 읽힌다(캔버스 §열린 결정 2 → 채택).
