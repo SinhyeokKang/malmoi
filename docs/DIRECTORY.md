@@ -247,7 +247,8 @@ lib/
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
                         read-session · outage · public-session · permission · access · invitation ·
-                        invite-view · membership · email · cookie · message · landing · invite-label ·
+                        invite-view · membership · email · cookie(sessionCookieName — 세션 쿠키 이름의 유일한 출처) ·
+                        lock(lockUser — 인증 왕복 셋의 User 행 잠금) · message · landing · invite-label ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
                         주소만 뽑고 verified를 버려, 검증한 주소와 저장되는 주소가 갈린다. /user 조회 실패는
                         던지고 검증 실패는 email을 비워 signIn이 막게 한다) ·
@@ -396,12 +397,14 @@ lib/
   locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
                         응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
-                        logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지)
+                        logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
+                        httpStatus · isUniqueViolation — 흩어진 사본이 셋·넷이던 판정
+  compare.ts            ⚠️ 잎. compareCodeUnits — 결정적 정렬 전부의 `<` 비교(localeCompare 금지)
   utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `refocus`·`relative-time`·`utc-time`·`ref-slug`·`flag`·`filters`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `refocus`·`relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`·`filters`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
@@ -425,7 +428,8 @@ prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아�
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
-                        credentials · finalize-credentials · backfill-pending-edit-token
+                        credentials · finalize-credentials · backfill-pending-edit-token ·
+                        local(loadLocalEnv · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다)
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
