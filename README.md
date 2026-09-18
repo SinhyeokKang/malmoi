@@ -60,6 +60,6 @@ pnpm dev
 
 **브랜치는 `main` / `dev` 둘이다.** 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
 
-**린터가 없다** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않고, 스타일 게이트가 곧 타입 체크와 테스트다. 게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). ⚠️ **둘 다 못 보는 스위트가 둘 있다** — `pnpm test:credentials:postgres`·`pnpm test:projects:postgres`는 별도 config + 로컬 PostgreSQL이라 `pnpm test`에도 CI에도 없다. GitHub 브랜치 프로텍션은 Free 플랜 + private 조합이라 없으므로, PR CI가 게이트인 것은 `/merge`가 그것을 확인하기 때문이지 서버가 강제해서가 아니다.
+**린터가 없다** — ESLint/Prettier/Biome 미도입이라 `pnpm lint`는 존재하지 않고, 스타일 게이트가 곧 타입 체크와 테스트다. 게이트가 둘이다: `/push`가 로컬에서 돌리는 `pnpm typecheck` + `pnpm test` + `pnpm build`(dev·preview 앞), 그리고 **PR에 붙는 CI `verify` 체크**(프로덕션 앞 — `/merge`가 그 결론을 본다). ⚠️ **둘 다 못 보는 스위트가 둘 있다** — `pnpm test:credentials:postgres`·`pnpm test:projects:postgres`는 별도 config + 로컬 PostgreSQL이라 `pnpm test`에도 CI에도 없다. `main`은 브랜치 프로텍션(required check `verify`, 관리자 포함)이 걸려 있어 PR 머지로만 들어간다.
 
 preview는 **dev DB**를 본다. preview에서 로그인은 dev 브랜치 고정 URL(`https://dev.mal-moi.com`)에서만 된다 — OAuth 앱은 GitHub·Google 각 하나이고 세 환경의 callback이 그 앱에 등록돼 있으며, 배포별 URL은 등록할 수 없다.
