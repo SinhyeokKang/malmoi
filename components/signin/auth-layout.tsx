@@ -66,8 +66,8 @@ function Footer() {
         출처이고, `entry-points.test.ts`의 "죽은 라우트 링크"가 거기 값들을 실재하는 `page.tsx`와
         대조하므로 외부 URL을 섞으면 "없는 라우트"로 잡힌다.
 
-        ⚠️ **리포가 아직 private이라 로그아웃 방문자에게 404다** — 출시 전 public 전환이
-        전제다(2026-09-10 사용자).
+        ⚠️ **리포가 public이어야 이 링크가 산다** — private이면 로그아웃 방문자에게 404다
+        (2026-09-18 public 전환).
       */}
       <FooterLink href="https://github.com/SinhyeokKang/malmoi" label={m.signIn.footer.github} external />
       <FooterLink href={routes.privacy()} label={m.signIn.footer.privacy} />
