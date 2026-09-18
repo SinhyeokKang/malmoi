@@ -19,7 +19,7 @@ export type ImportPlanInput = {
   identity: "ok" | "not-connected" | "repo-replaced";
   repositoryImportToken: string | null; repositoryImportStartedAt: Date | null;
   surfaces: readonly ImportPlanSurface[];
-  /** 진행 중인 Publish(`SyncRun` RUNNING). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다. */
+  /** 진행 중인 Publish(`SyncRun` RUNNING). 껍데기(`lib/import/run.ts`)가 같은 Project 잠금 안에서 읽어 넘긴다. */
   runningSync: { startedAt: Date } | null;
 };
 

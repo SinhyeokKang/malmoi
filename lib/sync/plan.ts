@@ -111,7 +111,8 @@ export function planSyncStart(input: {
   trigger: SyncTriggerKind;
   /**
    * 진행 중인 수동 Sync(`Project.repositoryImportStartedAt`). Sync가 리포 값으로 덮는 중에 Publish가 스냅샷을 뜨면
-   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection — ARCHITECTURE §5.6.1). 배포 A에서는 호출부가 `null`을 넘긴다 — T9가 연결한다.
+   * 절반만 덮인 DB가 PR로 나간다 (sync-edit-protection — ARCHITECTURE §5.6.1).
+   * 껍데기(`lib/sync/run.ts`)가 같은 Project 잠금 안에서 읽어 넘긴다.
    */
   activeImport: { startedAt: Date } | null;
 }): SyncStart {

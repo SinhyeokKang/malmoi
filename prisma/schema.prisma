@@ -395,7 +395,10 @@ model User {
   name          String?
   /// 정규화한 주소의 AES-GCM envelope. 정확 일치 조회는 별도 HMAC emailLookup을 쓴다.
   email         String
-  /// R1 준비 단계 nullable. 차단 backfill·검증 후 R2에서 NOT NULL로 전환한다.
+  /// ⚠️ **nullable이 최종 형태다 — 준비 단계가 아니다** (ARCHITECTURE §5.1). `NOT NULL`을 걸면
+  /// 전환 도구의 CAS가 `where: { emailLookup: null }`로 미채움 행을 집지 못해 백업 복원 뒤 다시 채울
+  /// 수단이 사라진다. 유일성은 unique 인덱스가 들고, "lookup 없는 행이 안 생긴다"는 유일한 생성자
+  /// `credentialAdapter.createUser`가 쓰기 전에 던져서 증명한다.
   emailLookup   String?   @unique
   emailVerified DateTime?
   /// ⚠️ **name과 같은 envelope 대상이다** (위 주석). 값은 Vercel Blob의 공개 URL이고 그 URL 자체가

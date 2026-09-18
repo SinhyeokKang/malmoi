@@ -20,7 +20,7 @@ import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
  * GitHub을 한 번도 부르지 않고 끝낼 수 있는가.
  *
  * @param unpublished 미전달 편집의 수 — `pendingWhere`(`lib/protection/where.ts`)로 센 값.
- *   `updatedBy IS NOT NULL ∧ 활성 표면 ∧ updatedAt > lastPulledAt`이다.
+ *   `pendingEditToken IS NOT NULL ∧ 활성 표면 ∧ 활성 키 ∧ 활성 로케일`이다 — **시각 비교가 없다.**
  *
  * ⚠️ **`max(updatedAt) > lastPulledAt`이 아니다** (sync-edit-protection T0, 2026-09-17). push가 전 행의
  * `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 매일 밤 PR을 갱신·되돌렸다 — strict 적재 뒤 첫

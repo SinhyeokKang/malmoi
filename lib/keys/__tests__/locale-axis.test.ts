@@ -79,7 +79,10 @@ describe("parseLocaleSelection — `?locales=`의 해석", () => {
     expect(parseLocaleSelection("zz,yy", LOCALES)).toEqual(["en", "ko", "ja"]);
   });
 
-  /** ⚠️ 주소창 값이라 객체 조회가 아니라 배열 `includes`다 (`parseProjectFilter`와 같은 관용구). */
+  /**
+   * ⚠️ 주소창 값이라 객체 조회가 아니라 배열 `includes`다 — 조회 쪽의 프로토타입 차단이고,
+   * 대입 쪽의 짝은 `lib/search-params.ts`의 `Object.create(null)`이다 (CLAUDE.md 코드 컨벤션).
+   */
   it("`__proto__`가 갈래로 새지 않는다", () => {
     expect(parseLocaleSelection("__proto__", LOCALES)).toEqual(["en", "ko", "ja"]);
     expect(parseLocaleSelection("constructor", LOCALES)).toEqual(["en", "ko", "ja"]);

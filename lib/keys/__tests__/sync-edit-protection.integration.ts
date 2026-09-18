@@ -316,7 +316,7 @@ describe("backfill (T5)", () => {
   });
 
   /**
-   * ⚠️ **OPERATIONS 배포 절차의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
+   * ⚠️ **ARCHITECTURE §3의 유령 pending.** 배포 A 기간에 편집 → 원복 → cron이 2층 `no-changes`로 끝나면 옛 술어는
    * `lastPulledAt` 전진으로 0이 된다. 그 경로가 캡처를 해제하지 않으면 토큰만 남고, backfill은 더하기만 하므로 못 지운다.
    */
   it("[C5] 편집 → no-changes 전달 확인 뒤 옛 술어 0 = 활성 토큰 0 — 유령 pending이 없다", async () => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * 배포 A 이전 편집에 편집 토큰을 채운다 (sync-edit-protection — OPERATIONS의 배포 절차 3단계 · tasks T5).
+ * 배포 A 이전 편집에 편집 토큰을 채운다 (sync-edit-protection — OPERATIONS의 배포 절차 backfill 단계 · tasks T5).
  *
  *   pnpm exec tsx scripts/backfill-pending-edit-token.ts
  *
