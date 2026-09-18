@@ -140,6 +140,8 @@ describe("ensureUserToken — 갱신하면 즉시 저장한다", () => {
 
     await ensureUserToken(prisma, "u1", NOW);
 
+    // 루프가 0번 돌면 공허하다 (launch-readiness L4.4).
+    expect(hoisted.updateMany).toHaveBeenCalled();
     for (const [args] of hoisted.updateMany.mock.calls) {
       expect(Object.keys(args?.data ?? {})).not.toContain("userId");
     }

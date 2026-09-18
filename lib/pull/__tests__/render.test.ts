@@ -102,7 +102,10 @@ describe("renderLocaleFiles — per-locale", () => {
       key({ key: "z.gone", orphaned: true, cells: { ko: { value: "고아" } } }),
     ];
     const files = renderLocaleFiles(format, "per-locale", paths, withGone, "en", new Map());
-    expect(files.find((f) => f.path === "i18n/ko.json")?.content).not.toContain("z.gone");
+    // 파일을 못 찾으면 "없다"가 공허하게 참이다 — 존재를 먼저 센다 (POSTMORTEM 2026-09-14, launch-readiness L4.4).
+    const ko = files.find((f) => f.path === "i18n/ko.json");
+    expect(ko?.content).toContain("하나");
+    expect(ko!.content).not.toContain("z.gone");
   });
 
   it("같은 입력 두 번 → 바이트 동일 (결정성)", () => {
@@ -267,7 +270,9 @@ describe("renderLocaleFiles — base description 폴백이 실제 경로에서 �
     const files = renderLocaleFiles(format, "per-locale", paths, keys, "en", new Map());
     expect(files.find((f) => f.path === "_locales/en/messages.json")?.content).toContain('"description": "인사말"');
     // 비-base엔 폴백하지 않는다 — 원본에 없던 값을 만드는 것은 병합이다.
-    expect(files.find((f) => f.path === "_locales/ko/messages.json")?.content).not.toContain("인사말");
+    const ko = files.find((f) => f.path === "_locales/ko/messages.json");
+    expect(ko?.content).toEqual(expect.any(String));
+    expect(ko!.content).not.toContain("인사말");
   });
 });
 
