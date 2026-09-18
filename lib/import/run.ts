@@ -70,7 +70,7 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
   }, transactionOptions);
 }
 
-/** This lock order is shared with CI and existing transactions such as Add surface. */
+/** 이 잠금 순서는 CI와 Add surface 같은 기존 트랜잭션이 공유한다. */
 async function current(tx: Prisma.TransactionClient, lease: Lease, captured: TranslationSurface) {
   const projectId = lease.project.id;
   await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -85,7 +85,7 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
     archived: project.archivedAt !== null || surface.archivedAt !== null,
     capturedSettings: settings(lease.project, captured), currentSettings: settings(project, surface) });
   if (!plan.ok) return plan;
-  // CI may be in flight before it commits a new revision. Its running marker also takes priority.
+  // CI가 새 revision을 커밋하기 전에 진행 중일 수 있다. 그 실행 표시도 우선한다.
   if (surface.lastImportToken !== lease.token && hasActiveImport(surface.lastImportStartedAt, now)) return { ok: false, reason: "superseded" } as const;
   return { ok: true, surface } as const;
 }
@@ -123,7 +123,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
   }, transactionOptions);
 }
 
-/** The callback opens an installation reader only after atomic execution ownership is acquired. */
+/** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. */
 export async function runRepositoryImportFromReader(prisma: PrismaClient, input: ImportRunInput, openReader: () => Promise<RepoReader>): Promise<RepositoryImportOutcome> {
   const acquired = await acquire(prisma, input);
   if (!acquired.ok) return acquired;
@@ -181,7 +181,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
         await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${input.projectId} FOR UPDATE`;
         const project = await tx.project.findUnique({ where: { id: input.projectId } });
         if (project?.repositoryImportToken !== lease.token || !hasActiveImport(project.repositoryImportStartedAt, new Date())) return;
-        // Clear only our markers, including configuration-change refusals. Never erase another CI/run's marker or outcome.
+        // 우리 표시만 지운다(설정 변경 거부 포함). 다른 CI·실행의 표시나 결과는 지우지 않는다.
         await tx.translationSurface.updateMany({ where: { projectId: input.projectId, lastImportToken: lease.token }, data: { lastImportToken: null, lastImportStartedAt: null } });
         await tx.project.updateMany({ where: { id: input.projectId, repositoryImportToken: lease.token }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
       }, transactionOptions);

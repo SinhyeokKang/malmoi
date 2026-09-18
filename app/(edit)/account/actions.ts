@@ -87,14 +87,14 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
     stage = "pii-write-key";
     validatePiiWriteKey();
     const key = imageObjectKey(userId, "webp", randomBytes(24).toString("base64url"));
-    // Network I/O stays outside the row lock and Prisma's transaction timeout.
+    // 네트워크 I/O는 행 잠금과 Prisma 트랜잭션 타임아웃 밖에 둔다.
     stage = "blob-upload";
     uploaded = await putImage(key, plan.bytes, "webp");
     stage = "image-encryption";
     const image = encodeUserFields(userId, { image: uploaded });
     stage = "database-update";
     previous = await getPrisma().$transaction(async (tx) => {
-      // Upload and delete serialize the read/write pair on the same user row.
+      // 업로드와 삭제는 같은 User 행에서 읽기·쓰기 쌍을 직렬화한다.
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
       const row = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { id: true, image: true } });
       const prev = readable(() => decodeUser(row))?.image ?? null;
@@ -106,7 +106,7 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
     await cleanImage(uploaded, userId);
     return { ok: false, reason: "unavailable" };
   }
-  // Only clean the previous image after commit; rollback must leave its URL usable.
+  // 이전 이미지는 커밋 뒤에만 지운다 — 롤백되면 그 URL이 계속 쓰여야 한다.
   await cleanImage(previous, userId);
   revalidatePath("/", "layout");
   return { ok: true };
@@ -168,7 +168,7 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
     logCaught("session-revocation", "start", error);
     return { error: "unavailable" };
   }
-  // Next's redirect throws; keep it outside the failure handler.
+  // Next의 redirect는 던진다 — 실패 처리 밖에 둔다.
   redirect(destination);
 }
 
@@ -206,7 +206,7 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
   redirect(routes.account({ link: outcome }));
 }
 
-/** The live session replaces re-proving the existing method; the new provider still needs OAuth proof. */
+/** 살아 있는 세션이 기존 수단의 재증명을 대신한다. 새 공급자는 여전히 OAuth 증명이 필요하다. */
 export async function startLoginMethodConnect(provider: string): Promise<void> {
   const { userId } = await requireUser();
   let destination = routes.account({ connect: "failed" });
@@ -252,7 +252,7 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
     console.error("Account connect start failed.", { stage });
     destination = routes.account({ connect: "failed" });
   }
-  // signIn writes state before the DB challenge exists. A failed start must not claim a later callback.
+  // signIn은 DB challenge보다 먼저 state를 쓴다. 실패한 시작이 나중 callback을 가로채면 안 된다.
   if (oauthStarted && !ready) {
     try { await clearAuthRoundtripCookies(); } catch {
       console.error("Account connect start failed.", { stage: "cleanup" });

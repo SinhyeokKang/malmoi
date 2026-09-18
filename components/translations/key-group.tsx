@@ -72,7 +72,7 @@ export function KeyGroup({
   );
 }
 
-/** Metadata expands only for the active cell so completed rows retain the design's density. */
+/** 메타데이터는 활성 셀에서만 펼친다 — 끝난 행이 시안의 밀도를 유지한다. */
 function LocaleRow({
   keyCell,
   slug, surfaceSlug,

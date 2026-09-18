@@ -192,7 +192,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
       },
     });
   } catch (error) {
-    // A concurrent reconnect changed the identity/address we authorized.
+    // 동시에 들어온 재연결이 우리가 인가한 신원·주소를 바꿨다.
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2025") {
       return { ok: false, error: "repo-forbidden" };
     }

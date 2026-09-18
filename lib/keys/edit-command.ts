@@ -1,4 +1,4 @@
-/** IME confirmation belongs to the composition, not to the cell's save shortcut. */
+/** IME 확정 입력은 조합의 것이지 셀 저장 단축키의 것이 아니다. */
 export function editCommand(event: {
   key: string;
   shiftKey?: boolean;

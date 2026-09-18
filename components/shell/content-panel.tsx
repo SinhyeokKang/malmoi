@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
  * 쓰는데 둘 다 sectioning content 밖이라, 패널 머리를 `<header>`로 만들면 **banner 랜드마크가
  * 둘**이 된다. 그래서 `PanelHeader`는 평범한 `div`다.
  */
-// Keep animated descendants inside their panel when route trees overlap.
+// 라우트 트리가 겹칠 때 애니메이션 중인 자손을 자기 패널 안에 가둔다.
 export function ContentPanel({ children }: { children: ReactNode }) {
   return (
     <main className="isolate col-start-1 row-start-1 border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">

@@ -22,7 +22,7 @@ export async function authorizeConnect(prisma: PrismaClient, account: { provider
   if (!attempt) return null;
   attempt.outcome = account ? await finishConnect(prisma, { nonce: attempt.nonce, sessionToken: attempt.sessionToken, state: attempt.state,
     provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail }) : "failed";
-  // Always stop Auth.js before ordinary login can create User/Account/Session rows.
+  // 일반 로그인이 User·Account·Session 행을 만들기 전에 Auth.js를 항상 멈춘다.
   return routes.account({ connect: attempt.outcome });
 }
 export async function withConnect(request: NextRequest, run: () => Promise<Response>): Promise<Response> {

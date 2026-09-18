@@ -82,7 +82,7 @@ function SegmentBody({ leading, icon: Icon, label, badge }: SegmentContent) {
   );
 }
 
-/** A single-choice view switcher; Radix owns selection and roving focus. */
+/** 단일 선택 보기 전환기. 선택과 roving focus는 Radix가 소유한다. */
 export function SegmentedControl<T extends string>({
   label,
   value,
@@ -108,7 +108,7 @@ export function SegmentedControl<T extends string>({
       loop
       className={cn(TRACK, "flex", className)}
       onKeyDown={(event) => {
-        // Preserve Home/End selection as well as focus; Radix only selects on arrows.
+        // Home/End에서도 포커스와 함께 선택을 옮긴다 — Radix는 화살표에서만 선택한다.
         if (event.key !== "Home" && event.key !== "End") return;
         const items = event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]');
         const target = event.key === "Home" ? items[0] : items[items.length - 1];

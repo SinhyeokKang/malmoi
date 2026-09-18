@@ -14,10 +14,10 @@ import { countPending } from "@/lib/protection/where";
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
  *
- * Both entry points lock Project → Surface before reading keys. Existing transactions stay on their connection.
- * Local isolated /api/push baseline (1446 keys × 6 locales, 2026-09-15): cold 743ms; warm 240/242/243ms.
- * After locking + revision: cold 1716ms; warm 689/677/543ms (same local isolated handler fixture).
- * These include handler/DB work, not deployed network latency; the added reads cost more locally.
+ * 두 진입점 모두 키를 읽기 전에 Project → Surface 순으로 잠근다. 기존 트랜잭션은 자기 연결에 머문다.
+ * 로컬 격리 /api/push 기준선(1446키 × 6로케일, 2026-09-15): cold 743ms · warm 240/242/243ms.
+ * 잠금 + revision 뒤: cold 1716ms · warm 689/677/543ms(같은 로컬 격리 핸들러 픽스처).
+ * 핸들러·DB 작업을 포함하고 배포 환경의 네트워크 지연은 빠진 값이다 — 더해진 읽기는 로컬에서 더 비싸다.
  *
  * ⚠️ **`"$transaction" in prisma` 같은 런타임 판별로 둘을 합치지 않는다.** proxy를 오판해 중첩
  * 트랜잭션을 열었고, 별도 연결의 Locale FK가 아직 커밋되지 않은 Surface를 기다려 멈췄다
@@ -155,7 +155,7 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   if (project === null || surface === null || project.archivedAt !== null || surface.archivedAt !== null) throw new ApplyGuardError("archived");
   if (checkProjectSlug(payload.projectSlug, project.slug) !== "ok" || surface.slug !== payload.surfaceSlug) throw new ApplyGuardError("wrong-project");
   if (checkFormat(payload.format, surface) !== "ok") throw new ApplyGuardError("wrong-format");
-  // Repository Sync accepts the current base even after a force-push; CI keeps its existing order guard.
+  // Repository Sync는 force-push 뒤에도 현재 base를 받는다. CI는 기존 순서 가드를 유지한다.
   if (options.refsMode === "replace" && checkCommitOrder(new Date(payload.commitAt), surface.lastCommitAt) !== "ok") throw new ApplyGuardError("stale-commit");
   return applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale }, async statements => {
     const results: unknown[] = [];

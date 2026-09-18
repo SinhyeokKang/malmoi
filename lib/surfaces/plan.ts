@@ -14,7 +14,7 @@ export function surfaceLabel(pathTemplate: string): string {
 
 export function planSurfaceSlug(pathTemplate: string, existingSlugs: readonly string[]): string {
   const directory = surfaceLabel(pathTemplate);
-  // A leading underscore is meaningful for Chrome's conventional directory name.
+  // 앞 밑줄은 Chrome 관례 디렉터리 이름(`_locales`)에서 의미가 있다.
   const stem = directory === "_locales" ? directory : normalizeProjectSlug(directory) || "default";
   const used = new Set(existingSlugs);
   for (let n = 1; ; n++) {

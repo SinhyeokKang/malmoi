@@ -41,7 +41,7 @@ export async function finishRevocation(prisma: PrismaClient, input: Proof): Prom
       const row = await tx.verificationToken.findFirst({ where: { token: nonceHash(input.nonce), identifier: { startsWith: challengePrefix() } } });
       const challenge = row && parseChallengeIdentifier(row.identifier);
       if (!row || !challenge || !await lockUser(tx, challenge.userId)) return "invalid";
-      // Read the clock after waiting for the lock: a queued callback must not revive an expired proof.
+      // 잠금을 기다린 뒤에 시계를 읽는다 — 대기 중이던 callback이 만료된 증명을 되살리면 안 된다.
       const now = new Date();
       const decision = checkChallenge(challenge, { ...input, expires: row.expires, now });
       if (decision !== "ok") return decision;

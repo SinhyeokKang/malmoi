@@ -1,4 +1,4 @@
-// The smoke script uses the react-server condition to exercise this production path.
+// 스모크 스크립트가 react-server 조건으로 이 프로덕션 경로를 그대로 밟는다.
 import "server-only";
 import { del, list, put, type ListBlobResultBlob } from "@vercel/blob";
 import { requireEnv } from "@/lib/env";

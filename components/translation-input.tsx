@@ -133,7 +133,7 @@ export function TranslationInput({
         aria-label={m.translations.cellLabel(keyName, localeCode)}
         // `fieldClass`가 `aria-[invalid=true]:border-destructive`를 든다 — 색을 여기서 또 주지 않는다.
         aria-invalid={failed}
-        // The parent cell draws the focus ring around the value and its expanded metadata.
+        // 포커스 링은 부모 셀이 값과 펼친 메타데이터를 함께 둘러 그린다.
         className="block min-h-10 w-full rounded-none border-transparent bg-transparent py-3 pr-14 pl-3 hover:bg-muted/40 focus-visible:ring-0"
       />
 

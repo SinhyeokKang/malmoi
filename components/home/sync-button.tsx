@@ -70,13 +70,13 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       () => { if (request.current === id) setOpenPr(undefined); },
     );
     return () => { request.current++; };
-  }, [open, slug, role]); // onOpenChange only closes an externally reopened pending dialog.
+  }, [open, slug, role]); // onOpenChange는 밖에서 다시 연 대기 Dialog를 닫기만 한다.
   /*
     ⚠️ **`pending`을 호스트로 끌어올리지 않고 알리기만 한다** — 이 값은 `open && !pending`과 트리거
     라벨이 쓰는 지역 상태이고, 올리면 프롭이 controlled 쌍으로 늘어난다. 이 effect가 그 하나의
     근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
   */
-  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange identity is not a trigger.
+  useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange의 참조 변경은 트리거가 아니다.
   const plan = planImportConfirmation({ unsent, openPr });
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
