@@ -1399,10 +1399,21 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 
 ⚠️ **`/api/pull`은 `catch`가 둘이다** (§3.05의 프로젝트별 격리와 이어진다) — 외곽 하나와 프로젝트별 `failureItem` 하나. `lib/pull/**`의 실패는 대개 `safe`(`fail()`)이고 개별 실행 결과는 **HTTP 200의 results 배열**이며 cron이 본문을 버리므로, 조용한 `safe` 갈래는 전면 장애를 성공과 구별 불가로 만든다. 그래서 프로젝트별 실패도 분류를 지나 항목으로 남는다.
 
-| 오류 | 본문 | 전문 |
+| 오류 | 본문 | 서버 로그 |
 |---|---|---|
 | `AppError`(`fail()`) · `MissingEnvError`(`requireEnv`) | 메시지 그대로 | — |
-| 그 밖(Prisma·octokit·unknown) | `{ error: "internal", ref }` | `console.error`로 서버 로그(Vercel) |
+| 그 밖(Prisma·octokit·unknown) | `{ error: "internal", ref }` | `ref` + **갈래 이름만** (`http-503` · `PrismaClientInitializationError` · `string`) |
+
+⚠️ **로그에도 원문을 싣지 않는다** (2026-09-18 반전). 2026-09-04에는 "본문엔 `ref`만, **전문은 서버
+로그로**"였고 그 판단은 서버 로그를 안전한 곳으로 봤다. `lib/github-connect/log.ts`가 2026-09-10
+credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma 인자·암호문이 실린다)을 **로그에도**
+걸었고, 두 규칙이 넉 달을 반대인 채 굴렀다 — 보수적인 쪽으로 합쳤다. `classifyFailure`의 `detail`이
+이제 전문이 아니라 분류이고, **그 값을 그대로 `console.error`에 넣는 소비자 다섯이 한 번에 닫혔다**
+(`lib/sync/run.ts` · `/api/pull` 둘 · `/api/push` · `/api/push/failure`).
+
+⚠️ **대가를 적어 둔다** — Prisma 접속 실패의 pooler 호스트·DB 유저가 이제 **어디에도 안 남는다.**
+남는 것은 갈래 이름·`ref`·프로젝트 slug 셋이고, 그것으로 부족하면 재현이 유일한 길이다. 전부
+`"internal"` 한 단어로 접지 않는 이유가 그 최소선이다 — 화면엔 `ref`만 가므로 갈래를 볼 곳이 로그뿐이다.
 
 ⚠️ **첫 구현은 `MissingEnvError` 하나만 안전으로 봤고 그게 진단을 한 단계 늦췄다** (2026-09-04 실측). 프로덕션이 `프로젝트를 찾을 수 없다: order-check`로 죽었을 때 본문이 `{error:"internal",ref}`뿐이어서 Vercel 로그를 뒤져야 원인(Production `DATABASE_URL`이 dev를 가리킴)을 알았다. 우리가 문구를 정한 오류는 slug·경로 템플릿·어댑터 이름만 담고 그건 CI가 이미 입력으로 아는 값이다 — `lib/pull/**`의 `throw`를 전부 `fail()`로 바꿔 그 자리들이 본문에 남는다.
 
