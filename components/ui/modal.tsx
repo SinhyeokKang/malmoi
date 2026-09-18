@@ -155,7 +155,7 @@ export function OnboardingModal({
           }}
           data-onboarding-panel
           className={cn(
-            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[800px] -translate-x-1/2 -translate-y-1/2",
+            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
             "flex-col overflow-hidden rounded-xl shadow-medium",
             "min-h-[min(80svh,800px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]",
             panelClassName,

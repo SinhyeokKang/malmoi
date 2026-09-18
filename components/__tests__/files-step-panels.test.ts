@@ -9,8 +9,8 @@ import { panelConstraints } from "@/lib/shell/panel-size";
 /**
  * **모달 ②의 좌 후보 목록 ↔ 우 미리보기 구분선.**
  *
- * ⚠️ **여기는 px→% 환산 훅이 필요 없다** — 그룹 폭이 **항상 720**이다: 모달 `max-w-[800px]` −
- * `px-8`(64) = 736, 핸들 16을 빼면 720. 셸(`components/shell/shell-panels.tsx`)만 뷰포트를 따라
+ * ⚠️ **여기는 px→% 환산 훅이 필요 없다** — 그룹 폭이 **고정**이다: 모달 `max-w-[1024px]`(2026-09-18, 옛 800) −
+ * `px-8`(64) = 960, 핸들 8을 빼면 952. 셸(`components/shell/shell-panels.tsx`)만 뷰포트를 따라
  * 변해서 재야 한다.
  *
  * ⚠️ **소스로 센다** — 이 화면을 DOM으로 세우는 테스트가 없고(`onboarding-modal.test.tsx`는 껍데기만
@@ -42,16 +42,18 @@ describe("② 파일 선택 — 패널 구분선", () => {
   });
 
   /**
-   * 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이고, 728 위에서 %로 굳는다.
-   * ⚠️ **분모가 핸들과 함께 움직인다** — 736 − 8이다. 핸들을 8로 내리고 여기를 16으로 두면
+   * 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이고, 952 위에서 %로 굳는다.
+   * ⚠️ **분모가 모달 폭·핸들과 함께 움직인다** — 1024 − 64 − 8이다. 핸들을 8로 내리고 여기를 16으로 두면
    * 240이 242로 서고, 그 3px은 화면에서 안 보이므로 이 숫자가 유일한 방어선이다.
    */
-  it("좌측이 200 / 240 / 320을 728 기준 %로 든다", () => {
-    const expected = panelConstraints(728, { min: 200, default: 240, max: 320 });
+  it("좌측이 200 / 240 / 320을 952 기준 %로 든다", () => {
+    const expected = panelConstraints(952, { min: 200, default: 240, max: 320 });
     expect(expected).not.toBeNull();
-    expect((expected?.defaultSize ?? 0) * 728 / 100).toBeCloseTo(240, 6);
+    expect((expected?.defaultSize ?? 0) * 952 / 100).toBeCloseTo(240, 6);
     expect(files).toMatch(/panelConstraints\(\s*FILES_PANEL_WIDTH\s*,/);
-    expect(files).toMatch(/const FILES_PANEL_WIDTH = 736 - 8/);
+    expect(files).toMatch(/const FILES_PANEL_WIDTH = 960 - 8/);
+    // 분모의 출처 — 모달 폭이 바뀌면 여기와 함께 움직여야 한다.
+    expect(modal).toMatch(/max-w-\[1024px\]/);
     expect(files).toMatch(/min: 200, default: 240, max: 320/);
   });
 

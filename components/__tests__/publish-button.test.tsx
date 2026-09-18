@@ -194,6 +194,21 @@ it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗�
  * **실패 시각은 UTC라고 말한다** (launch-readiness L7.1 결정 — Logs 형). 전엔 라벨 없는 브라우저 로컬이라 보는 사람이
  * 어느 시간대인지 몰랐고, 같은 참조 코드로 Logs 화면(UTC)과 대조하면 시각이 어긋나 보였다.
  */
+/**
+ * **실행 거부 둘은 작은 모달(Alert)이다** (2026-09-18 사용자). 제목·한 문장·버튼 하나뿐이라 큰 패널에 두면 빈 판이 된다 —
+ * 전엔 큰 껍데기를 512로 좁혀 썼다. 거부 뒤 다시 누르면 큰 모달의 미리보기로 돌아간다.
+ */
+it.each([
+  [{ status: "failed", error: "already-running", delivery: "not-started", retryable: false }, "Close"],
+  [{ status: "failed", error: "too-soon", delivery: "not-started", retryable: false, retryAfterSeconds: 18 }, null],
+] as const)("실행 거부(%#)는 작은 Dialog로 뜨고 큰 패널이 없다", async (outcome, closeLabel) => {
+  mocks.pull.mockResolvedValueOnce(outcome);
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.querySelector("[data-onboarding-panel]")).toBeNull();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.className).toContain("max-w-110");
+  if (closeLabel) { await click(closeLabel); expect(document.querySelector('[role="dialog"]')).toBeNull(); }
+});
 it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", retryable: true, code: "ref-1" });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
