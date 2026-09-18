@@ -68,6 +68,14 @@
     3. C: org 설치의 리포 선택을 비운 상태에서 ① → C → [Choose repositories] → Save → 같은 탭 ① → 목록
     4. A 신규 1클릭: 연결 해제 + 개인 설치(리포 있는 계정) → ① A → Install & Authorize → 목록
     5. A 보조 링크: 연결만 해제한 상태에서 "Connect your account" → 목록
+  - **실측 결과 (2026-09-18 프로덕션, ego-browser · `test-sinhyeok`)**:
+    1. ✓ A → [Install GitHub App](URL 쿼리는 `state` 하나) → org "Authorize & Request" → `/projects/new` 착지, 연결 완료(`/account` Connected), **D**. 모달 재진입도 D, [Check again]은 모달 live 영역에 "Still waiting for approval."(두 번째 클릭도 재알림). ⚠️ 다른 브라우저 확인은 미실측(판정이 DB라 새로 불러와도 D였다). ⚠️ 배포 전 L0.4의 옛 요청이 남아 있어 GitHub이 "Cancel Request"만 보였다 — 취소 뒤 새 요청.
+    2. ✓ 오너 승인 복귀 → `/projects/new`(state 없는 착지). ①을 다시 열자 목록, info 없음, prod `installRequestedAt` 0행. ⚠️ 승인 뒤 [Check again] → 목록 전환은 미실측(열 때 이미 승인돼 D가 안 섰다).
+    3. ✗ 미실측 — `test-sinhyeok` 개인 계정에 리포가 0이라 "Only select"로 바꿀 수 없고 변경 없는 Save는 비활성. 목록 아래 "Choose repositories"가 같은 탭(`target` 없음)인 것만 확인.
+    4. ✓ revoke + 연결 해제 뒤 A → [Install GitHub App] → GitHub "Install & Authorize"(callback 리다이렉트 명시) 한 번 → 목록.
+    5. ✓ 연결만 해제 → "Connect your account" → Authorize(`redirect_uri`·`state`) → 목록.
+    - 재인가 블록: revoke 뒤 ①이 "Reconnect GitHub" + [Reauthorize GitHub App] → Authorize → 목록.
+    - **결함 후보(이 기능 밖)**: ① revoke 뒤 `/account`의 App 행이 "Couldn't load … Open this page again in a moment."이고 **Disconnect가 없다** — 영구 상태(401)를 일시 장애로 보이고 해제 수단을 뺏는다. ② 창 높이 351px에서 모달 footer가 ① 본문 버튼을 덮어 누를 수 없다(본문이 스크롤되지 않는다).
   - 뒷정리: org 재설치로 `installationId`가 바뀐 org 리포의 prod 프로젝트는 [Reconnect](malmoi#52)
 
 ## 확인 (2026-09-18)
