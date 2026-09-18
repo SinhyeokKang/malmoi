@@ -272,7 +272,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
-- **날짜는 UTC로 저장**, 표시 시점에만 로컬로 변환.
+- **날짜는 UTC로 저장하고, 절대 시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`의 `2026-09-10 12:00 UTC` 형(Logs 화면이 정본). 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
 - **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다.** 1차 `middleware.ts`는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고, **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). **새 보호 라우트는 `matcher`에 추가한다.**
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다.
