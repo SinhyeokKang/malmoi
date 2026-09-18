@@ -511,6 +511,21 @@ describe("listConnectableRepos — 설치 요청 대기", () => {
     expect(db.accounts.find((a) => a.userId === OWNER)?.installRequestedAt).toBeNull();
   });
 
+  it("목록을 읽는 사이 새 요청이 심겼으면 지우지 않는다 — 읽은 기록만 지운다", async () => {
+    requestOn();
+    const renewed = new Date(REQUESTED_AT.getTime() + 120_000);
+    hoisted.listUserInstallationRecords.mockImplementation(async () => {
+      // 다른 탭의 callback이 조회 도중 새 요청을 커밋했다.
+      const row = db.accounts.find((a) => a.userId === OWNER);
+      if (row !== undefined) row.installRequestedAt = renewed;
+      return [{ id: "77", createdAt: new Date(REQUESTED_AT.getTime() + 60_000) }];
+    });
+
+    await listConnectableRepos();
+
+    expect(db.accounts.find((a) => a.userId === OWNER)?.installRequestedAt).toBe(renewed);
+  });
+
   it("기록이 없으면 pending false이고 지우기를 부르지 않는다", async () => {
     expect(await listConnectableRepos()).toMatchObject({ ok: true, pending: false });
     expect(db.prisma.account.updateMany).not.toHaveBeenCalled();

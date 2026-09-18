@@ -604,12 +604,13 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   if (clearRequest) {
     /**
      * 승인됐다 — 기록을 지운다. RSC 로더 안의 조건부 쓰기이고 전례가 있다(`ensureUserToken`의 토큰 회전).
-     * ⚠️ **`installRequestedAt: { not: null }`이 조건이다** — 그 사이 새 요청이 심겼어도 같은 행이라 지워지지만,
-     * 이미 지워진 행에 쓰기를 반복하지 않는다. 실패해도 목록은 보인다 — 다음 조회가 다시 지운다.
+     * ⚠️ **읽은 값과 같을 때만 지운다** — GitHub 목록 조회(수백 ms~수 초) 사이에 다른 탭의 callback이 새 요청을
+     * 심었으면 그것은 이 승인과 무관하다. 지우면 그 대기가 사라져 사용자가 설치를 다시 눌러 요청이 한 번 더 간다.
+     * 실패해도 목록은 보인다 — 다음 조회가 다시 지운다.
      */
     try {
       await prisma.account.updateMany({
-        where: { userId, provider: APP_ACCOUNT_PROVIDER, installRequestedAt: { not: null } },
+        where: { userId, provider: APP_ACCOUNT_PROVIDER, installRequestedAt: requestedAt },
         data: { installRequestedAt: null },
       });
     } catch (error) {

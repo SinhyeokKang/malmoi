@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
-import { onboardErrorMessage } from "@/lib/onboarding/message";
 import type { RepoOption } from "@/lib/onboarding/types";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
@@ -85,7 +84,10 @@ export function RepoStep({
     setAwaiting(false);
     // 새로고침이 끝났는데 여전히 대기면 그 사실을 말한다 — 같은 화면이 다시 서서 눈으로는 반응이 없다.
     if (blockedPending) onAnnounce(m.newProject.empty.waiting.still);
-  }, [awaiting, checking, blockedPending, onAnnounce]);
+    // 목록이 아닌 다른 막힘(승인됐는데 리포 0 → C)에 착지했으면 포커스 이동 대기를 거둔다 — 남기면 한참 뒤
+    // 목록이 설 때 느닷없이 포커스를 뺏는다.
+    if (listError !== undefined && !blockedPending) checked.current = false;
+  }, [awaiting, checking, blockedPending, listError, onAnnounce]);
   const listed = listError === undefined && repos !== undefined;
   useEffect(() => {
     if (!checked.current || !listed) return;
@@ -104,6 +106,11 @@ export function RepoStep({
         onCheckAgain={() => {
           checked.current = true;
           setAwaiting(true);
+          /**
+           * ⚠️ **live 영역을 먼저 비운다** — 모달은 `announce` 값이 **바뀔 때만** 낭독한다. 두 번째 클릭은 같은
+           * 문장을 다시 넣으므로 비우지 않으면 스크린리더에는 로딩만 돌고 아무 일도 없는 것으로 들린다.
+           */
+          onAnnounce("");
           startCheck(() => router.refresh());
         }}
       />

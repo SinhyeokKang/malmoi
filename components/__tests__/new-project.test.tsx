@@ -817,6 +817,20 @@ it("① D: [Check again]은 목록을 다시 읽고, 아직이면 대기 중임�
   expect(find(document.body, '[aria-live="polite"]').textContent).toContain("Still waiting for approval.");
 });
 
+it("① D: 두 번째 [Check again]도 다시 알린다 — 같은 문장이라 값이 안 바뀌면 live 영역이 무음이다", async () => {
+  await blocked("no-installations", { pending: true });
+  const region = find(document.body, '[aria-live="polite"]');
+  let announced = 0;
+  const observer = new MutationObserver(() => { if (region.textContent?.includes("Still waiting for approval.")) announced += 1; });
+  observer.observe(region, { childList: true, characterData: true, subtree: true });
+
+  await click(button("Check again"));
+  await click(button("Check again"));
+  observer.disconnect();
+
+  expect(announced).toBeGreaterThanOrEqual(2);
+});
+
 it("① D: 승인돼 목록이 서면 포커스가 검색 필드로 간다 — 버튼 언마운트로 body에 떨어지지 않게", async () => {
   const view = await blocked("no-installations", { pending: true });
   await click(button("Check again"));
