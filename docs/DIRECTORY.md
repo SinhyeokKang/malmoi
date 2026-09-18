@@ -108,7 +108,7 @@ components/
   ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 둘이다 — 새 프로젝트 온보딩(네 단계)과 Publish 모달
                         (갈래 열하나). ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
                         Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
-                        고정이라 960 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
+                        고정이라 1024 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
                         넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
                         actions 슬롯을 주면 그 자리를 호출부가 가져간다(Publish가 갈래별 버튼을 넣는다)
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
