@@ -713,3 +713,39 @@ it.each([
     "disabled:bg-muted", "disabled:cursor-not-allowed", "disabled:text-muted-foreground",
   ]);
 });
+
+/**
+ * 설치 요청(조직 비관리자) 뒤 GitHub이 `?e=install-requested`로 되돌린다 (launch-readiness L2.4).
+ *
+ * ⚠️ **`afterInstall`("끝나면 새로고침")과 한 화면에 서지 않는다** — 요청자는 설치를 끝낼 수 없다
+ * (POSTMORTEM 2026-09-14 "문장 사이의 모순은 소스 스캔이 못 본다"). 거부가 아니라 대기라 `danger`
+ * 배너로도 서지 않는다.
+ */
+const AFTER_INSTALL = "Refresh this page once you're done.";
+const REQUESTED = "An organization owner has to approve your request to install the malmoi GitHub App.";
+
+it.each(["no-installations", "no-repos"])("① 설치 요청 대기면 %s 빈 상태가 승인 대기를 말하고 새로고침을 권하지 않는다", async (error) => {
+  await render(<NewProject repos={undefined} listError={error} installUrl="https://github.com/apps/malmoi/installations/new"
+    now="2026-09-13T00:00:00Z" initialError="install-requested" backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(document.body.textContent).toContain(REQUESTED);
+  expect(document.body.textContent).not.toContain(AFTER_INSTALL);
+  expect(document.body.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("① 대조군: 요청이 아니면 설치 링크와 새로고침 안내가 그대로 선다", async () => {
+  await render(<NewProject repos={undefined} listError="no-installations" installUrl="https://github.com/apps/malmoi/installations/new"
+    now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(document.body.textContent).toContain(AFTER_INSTALL);
+  expect(document.body.textContent).not.toContain(REQUESTED);
+});
+
+it("① 다른 설치로 리포가 이미 보이면 목록 위 info 한 줄로 알리고 실패 배너는 없다", async () => {
+  await render(<NewProject repos={repos} listError={undefined} installUrl={null} now="2026-09-13T00:00:00Z"
+    initialError="install-requested" backQuery={{}} closeMode="list" adapters={[]} />);
+
+  expect(document.body.textContent).toContain(REQUESTED);
+  expect(document.body.querySelector('[role="alert"]')).toBeNull();
+  expect(document.body.querySelectorAll('[role="radio"]')).toHaveLength(2);
+});

@@ -1083,6 +1083,11 @@ export const en = {
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크가 조용히 사라진다 — 그때 할 수 있는 일을 말한다. */
       noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
       afterInstall: "Refresh this page once you're done.",
+      /**
+       * 설치 **요청** 뒤 (`?e=install-requested`, `lib/github-connect/setup.ts`). ⚠️ **`afterInstall`과 한
+       * 화면에 서지 않는다** — 요청자는 설치를 끝낼 수 없어 "끝나면 새로고침"이 거짓이 된다.
+       */
+      requested: "An organization owner has to approve your request to install the malmoi GitHub App. Your repositories show up here once they do.",
       listFailed: "We couldn't load your repositories.",
       retryHint: "Refresh this page in a moment.",
     },

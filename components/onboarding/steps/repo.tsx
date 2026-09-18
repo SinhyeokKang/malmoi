@@ -44,6 +44,8 @@ export type RepoStepState = {
   branchValue: string;
   accessError: string | undefined;
   banner: string | null;
+  /** GitHub Setup URL이 `setup_action=request`로 되돌렸다 — 조직 관리자의 승인을 기다린다. */
+  installRequested: boolean;
 };
 
 export function RepoStep({
@@ -59,7 +61,9 @@ export function RepoStep({
 }) {
   const { repos, query, listError, installUrl, now, selected } = state;
 
-  if (listError !== undefined) return <Blocked error={listError} installUrl={installUrl} back={state.backQuery} />;
+  if (listError !== undefined) {
+    return <Blocked error={listError} installUrl={installUrl} back={state.backQuery} requested={state.installRequested} />;
+  }
 
   // ① 로딩 — 스켈레톤 **셋**. 개수는 실제보다 적게 둔다: 몇 개가 올지를 예고하는 것이 아니다.
   if (repos === undefined) {
@@ -98,6 +102,8 @@ export function RepoStep({
     */
     <div className="flex flex-1 flex-col gap-4">
       {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
+      {/* 다른 설치로 리포가 이미 보여도 요청이 사라진 것은 아니다 — 무음으로 두면 방금 한 요청이 안 먹은 것으로 읽힌다. */}
+      {state.installRequested && <Alert variant="info">{m.newProject.empty.requested}</Alert>}
 
       {/*
         ⚠️ **`SearchInput`을 쓰지 않는다** — 그 프리미티브는 Enter 제출형이고 폭을 `w-64`로 못 박았다
@@ -335,10 +341,12 @@ function Blocked({
   error,
   installUrl,
   back,
+  requested,
 }: {
   error: string;
   installUrl: string | null;
   back: { filter?: string; q?: string };
+  requested: boolean;
 }) {
   if (error === "not-connected" || error === "reauthorize") {
     return (
@@ -370,7 +378,11 @@ function Blocked({
            */
           title={error === "no-installations" ? m.newProject.empty.noInstallations : m.newProject.empty.noRepos}
           description={
-            <>
+            /*
+              ⚠️ **요청 대기면 설명 전체를 한 문장으로 바꾼다** — 판정층 문구("설치하라")와 `afterInstall`
+              ("끝나면 새로고침")이 둘 다 요청자가 할 수 없는 일을 시킨다 (launch-readiness L2.4).
+            */
+            requested ? m.newProject.empty.requested : <>
               {onboardErrorMessage(error)}{" "}
               {installUrl === null ? (
                 m.newProject.empty.noLink

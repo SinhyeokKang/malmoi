@@ -10,6 +10,7 @@ import {
   listRepoBranches,
   loadCandidateSample,
 } from "@/app/(edit)/projects/actions";
+import { INSTALL_REQUESTED } from "@/lib/github-connect/setup";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
@@ -72,7 +73,9 @@ export function NewProject({
   const [step, setStep] = useState<Step>(1);
   const [pending, startTransition] = useTransition();
   const [accessLost, setAccessLost] = useState<string | null>(null);
-  const [banner, setBanner] = useState<string | null>(initialError ?? null);
+  /** 설치 요청 대기는 거부가 아니다 — 실패 배너로 세우지 않고 ①이 따로 읽는다 (`lib/github-connect/setup.ts`). */
+  const installRequested = initialError === INSTALL_REQUESTED;
+  const [banner, setBanner] = useState<string | null>(installRequested ? null : initialError ?? null);
   const [announce, setAnnounce] = useState<string | undefined>(undefined);
 
   // ① 리포·브랜치
@@ -480,6 +483,7 @@ export function NewProject({
             branchValue,
             accessError,
             banner: accessLost ?? banner,
+            installRequested,
           }}
           onQueryChange={setRepoQuery}
           onSelect={selectRepo}
