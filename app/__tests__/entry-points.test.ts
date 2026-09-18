@@ -182,9 +182,30 @@ describe("서버 진입점", () => {
     for (const name of EXEMPT) expect(found).toContain(name);
   });
 
-  it("예외가 아닌 진입점은 전부 인가를 지난다", () => {
+  /**
+   * ⚠️ **이름이 아니라 호출(`g(`)을 센다** (2026-09-18, launch-readiness L2.4). 이름만 보면 `import`
+   * 줄이 그것을 들고 있어, 호출을 지운 라우트가 green이었다 — `/api/github/setup`에서 뮤테이션으로 잡혔다.
+   */
+  // 주석도 벗긴다 — 설명 주석이 `` `requireUser()` ``를 인용하면 같은 착시다(같은 뮤테이션에서 두 번째로 잡혔다).
+  const stripComments = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const callsGuard = (source: string): boolean => {
+    const code = stripComments(source);
+    return GUARDS.some((g) => code.includes(`${g}(`));
+  };
+
+  it("가드 판정은 import·주석이 아니라 호출을 본다", () => {
+    const imported = 'import { requireUser } from "@/lib/auth/session";\nexport async function GET() {}';
+    expect(callsGuard(imported)).toBe(false);
+    expect(callsGuard(imported + "\n/** `requireUser()`를 지난다 */\n// requireUser()")).toBe(false);
+    expect(callsGuard(imported + "\nawait requireUser();")).toBe(true);
+  });
+
+  // Action 파일은 아래 export 단위 검사가 맡는다 — 파일 단위로 보면 `invite/actions.ts`처럼 export가
+  // 면제된 파일이 이름 언급 하나로 통과하던 것과 같은 착시가 된다.
+  it("예외가 아닌 페이지·라우트는 전부 인가를 지난다", () => {
     const unguarded = ENTRY_POINTS.filter(
-      (e) => !EXEMPT.has(e.path) && !GUARDS.some((g) => e.source.includes(g)),
+      (e) => !e.path.endsWith("actions.ts") && !EXEMPT.has(e.path) && !callsGuard(e.source),
     ).map((e) => e.path);
     expect(unguarded).toEqual([]);
   });
@@ -721,6 +742,17 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
     const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
     const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
     expect(covered).toEqual([]);
+  });
+
+  /**
+   * GitHub이 브라우저를 되돌리는 두 지점. 로그인은 필요하지만(`requireUser`) matcher에 넣으면
+   * 로그인 화면으로 302되며 쿼리(`code`·`setup_action`)가 사라진다 (POSTMORTEM 2026-09-06 "쿼리 수신자").
+   */
+  it("GitHub 복귀 지점은 matcher 밖이다 — 302되면 쿼리가 사라진다", () => {
+    const RETURNS = ["/api/github/callback", "/api/github/setup"];
+    expect(RETURNS.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)))).toEqual([]);
+    // 대조군: 같은 판정이 보호 경로는 덮는다고 말한다 — 0건이 판정 고장이 아니다.
+    expect(PATTERNS.some((pattern) => covers(pattern, "/projects/new"))).toBe(true);
   });
 });
 
