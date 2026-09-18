@@ -326,6 +326,8 @@ lib/
                         중복 넷을 헬퍼로 모으는 것은 후속이다
   credentials/ session-revocation/ login-link/ account-connect/
                         저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
+                        credentials/log는 삼킨 실패의 한 줄(`[credentials]`) — 원인이 CredentialError로
+                        바뀌는 자리에서만 찍고 바깥 경계(signIn)는 항상 찍는다. 원문 금지
                         ⚠️ session-revocation의 message는 주소창 값(?sessionRevocation=)을 받으므로
                         인자가 union이 아니라 string | undefined다 — 단언을 걸면 "모르는 값에 문구를
                         내지 않는다"가 검사에서 지워진다
