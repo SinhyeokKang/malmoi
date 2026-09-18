@@ -15,6 +15,7 @@ import { adapterFor, detectCandidatesAcross } from "../lib/adapters/index";
 import { codeDictCandidatePaths } from "../lib/adapters/code-dict";
 import { requireEnv } from "../lib/env";
 import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
+import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
 import { makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
 import { syncBranchFor } from "../lib/pull/trigger";
@@ -125,12 +126,18 @@ async function main(): Promise<void> {
       const targets = probeTargets(jsonLike, codeDict, paths);
       console.log(`  1패스 후보 ${jsonLike.length} + code-dict 그룹 ${codeDict.length} → blob ${targets.length}개`);
 
+      // ⚠️ **프로덕션(`lib/import/read.ts` `readFiles`)과 같은 예산 둘을 지난다** — 손으로 짠 루프가 건너뛰어 예산을 넘는
+      // 리포에서 프로덕션은 거부하고 스모크만 통과했다(launch-readiness L7.3). `readFiles`는 `server-only`라 직접 못 부른다.
+      checkDownloadBudget(targets, snapshot.files);
       const shaOf = new Map(snapshot.files.map((f) => [f.path, f.sha]));
       const blobs = new Map<string, string>();
+      let totalBytes = 0;
       for (const path of targets) {
         const sha = shaOf.get(path);
         const text = sha === undefined ? undefined : await reader.blob(sha);
-        if (text !== undefined) blobs.set(path, text);
+        if (text === undefined) continue;
+        totalBytes = checkContentBudget(path, text, totalBytes);
+        blobs.set(path, text);
       }
       console.log(`  내려받음: ${blobs.size}/${targets.length}`);
 

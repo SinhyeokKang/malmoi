@@ -16,7 +16,8 @@ import { blobSha } from "../lib/githash";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import { matchGlobPaths } from "../lib/adapters/index";
 import { sameMeaning } from "../lib/adapters/shared";
-import { pickBaseLocale, selectLocaleFiles } from "../lib/push/payload";
+import { AppError } from "../lib/failure";
+import { assemblePushInput } from "../lib/push/assemble";
 
 
 const argv = process.argv.slice(2);
@@ -61,11 +62,20 @@ if (!format) {
 
 const adapter = adapterFor(format);
 
-// 파일 수집은 push와 **같은 함수**를 쓴다 — 여기만 따로 짜면 새 어댑터를 추가할 때 한쪽만 먹인다
-// (POSTMORTEM 2026-09-02, ARCHITECTURE §5.5.0).
-const files = selectLocaleFiles(adapter.layout, format, paths, probe);
-
-const result = adapter.read(format, files);
+// 파일 수집·read·base 판정은 push와 **같은 함수**(`assemblePushInput`)를 지난다 — 여기만 따로 짜면 새 어댑터를
+// 추가할 때 한쪽만 먹이고(POSTMORTEM 2026-09-02), `--base` 검증이 이 CLI에서만 빠진다(launch-readiness L7.3 —
+// 탐지되지 않은 로케일을 base로 받아 진짜 base에만 있는 키가 미리보기에서 사라졌다).
+// base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순)이다.
+let assembled: ReturnType<typeof assemblePushInput>;
+try {
+  assembled = assemblePushInput({ paths, probe, format, baseLocale: baseOverride });
+} catch (error) {
+  // 우리 판정만 한 줄로 접는다 — 어댑터의 예기치 못한 오류는 스택을 남긴다(`scripts/push-local.ts`와 같다).
+  if (!(error instanceof AppError)) throw error;
+  console.error(error.message);
+  process.exit(1);
+}
+const { read: result, files, baseLocale: base } = assembled;
 // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어준다.
 // **파일별 관측값도 함께 넘긴다** — 포맷 단위 boolean만 넘기면 평평한 파일의 점 키가 쪼개진다.
 // **원본 내용도 넘긴다** — 수술적 어댑터는 write에 필수이고, 재생성은 표현(들여쓰기)을 거기서
@@ -79,14 +89,6 @@ const writeFormat = {
   nested: result.nested,
   ...(result.nestedByPath === undefined ? {} : { nestedByPath: result.nestedByPath }),
 };
-
-// base 로케일: --base가 없으면 push와 같은 판정(`pickBaseLocale` — en 우선, 없으면 사전순).
-// detect가 base를 알 수 없다 — 어느 로케일이 기준인지는 리포의 관례이므로 미결이다 (사용자 지정이 정본이다).
-const base = baseOverride ?? pickBaseLocale(format.locales);
-if (base === undefined) {
-  console.error("로케일이 하나도 없다 — 연동 불가.");
-  process.exit(1);
-}
 
 if (hasFlag(argv, "--json")) {
   console.log(JSON.stringify({ format: { ...writeFormat, currentFiles: files }, base, result }, null, 2));

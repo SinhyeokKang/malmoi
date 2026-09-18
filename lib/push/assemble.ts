@@ -1,5 +1,5 @@
 import { adapterFor } from "@/lib/adapters";
-import type { DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
+import type { AdapterFile, DetectedFormat, FileProbe, ReadResult } from "@/lib/adapters/types";
 import { fail } from "@/lib/failure";
 
 import { pickBaseLocale, selectLocaleFiles } from "./payload";
@@ -17,6 +17,8 @@ import { pickBaseLocale, selectLocaleFiles } from "./payload";
 
 export type AssembledPushInput = {
   read: ReadResult;
+  /** read가 먹은 파일. 원본이 필요한 층(`pnpm ingest`의 왕복 검증)이 같은 선택을 다시 짜지 않게 돌려준다. */
+  files: AdapterFile[];
   /** 키 집합의 진실. `buildPushPayload`가 이 로케일의 엔트리로만 `keys`를 만든다. */
   baseLocale: string;
 };
@@ -49,8 +51,9 @@ export function assemblePushInput(input: {
   if (baseLocale === undefined) fail("no locales — nothing to connect");
 
   const adapter = adapterFor(format);
-  const read = adapter.read(format, selectLocaleFiles(adapter.layout, format, paths, probe));
+  const files = selectLocaleFiles(adapter.layout, format, paths, probe);
+  const read = adapter.read(format, files);
 
   // read 에러를 여기서 판정하지 않는다 — CLI는 exit 1로 죽이고 온보딩은 화면에 수를 보인다.
-  return { read, baseLocale };
+  return { read, files, baseLocale };
 }

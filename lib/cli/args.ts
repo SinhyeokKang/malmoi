@@ -22,10 +22,11 @@ export function findTarget(argv: readonly string[], valueFlags: ReadonlySet<stri
   return undefined;
 }
 
-/** `--name <value>`의 첫 값. 플래그가 마지막이면 값이 없는 것이다. */
+/** `--name <value>`의 첫 값. 플래그가 마지막이거나 다음 자리가 플래그면 값이 없는 것이다. */
 export function flagValue(argv: readonly string[], name: string): string | undefined {
   const at = argv.indexOf(name);
-  return at === -1 ? undefined : argv[at + 1];
+  const value = at === -1 ? undefined : argv[at + 1];
+  return value === undefined || value.startsWith("--") ? undefined : value;
 }
 
 /** 반복 가능한 `--name <value>` 전부. */
