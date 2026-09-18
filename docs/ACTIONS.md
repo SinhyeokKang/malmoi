@@ -87,7 +87,12 @@ jobs:
 
 ⚠️ **action 안의 `uses:`도 전부 40자 SHA로 핀돼 있다** — 업스트림 태그 재지정(2025년
 `tj-actions/changed-files`)이 같은 경로로 들어온다. `scripts/__tests__/workflow-pins.test.ts`가
-`.github/` 전체를 훑어 가변 태그가 0건인지 상시로 센다.
+`.github/` 전체를 훑어 가변 태그가 0건인지 상시로 센다(핀 옆의 버전 주석과 `ci.yml`의
+`permissions: contents: read`도 같은 파일이 센다).
+
+⚠️ **그 테스트가 이 문서도 읽는다** — 이 문서가 action을 `main`으로 참조하도록 안내하지 않는지, 그리고
+`@malmoi-i18n-push-v1` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
+가변 참조를 예시로 쓰지 않는다). 위 스니펫의 태그를 고칠 때 그 두 조건이 함께 움직인다.
 
 ⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout@v4`는 그 방어선 밖이다.**
 이 문서의 복붙 블록과 그것을 만드는 `lib/onboarding/workflow.ts`는 우리 리포의 워크플로가 아니라
@@ -166,16 +171,16 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
-| **같은 키가 두 번 나온다** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다 |
-| `/api/push`가 4xx·5xx | **red** — **409가 넷**(판정 순서대로 **보관** · 오배송 · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
-| **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 넷 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 셋과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
+| **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다** — `ts-dict`·`code-dict`·`chrome-locales`는 중복 감지가 없어 마지막 값만 남고(`buildPushPayload`의 `duplicateKeys`), CI 로그의 "중복으로 접힌 엔트리 N개" 경고 한 줄로 끝난다: **green이다** |
+| `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`** · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
+| **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
 | **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길은 둘이다: 번역자가 Publish해 PR로 보낸 뒤 이 job을 **다시 돌리기**(다음 push도 된다), 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
 | `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
-| **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales`에 그 로케일 — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
+| **로케일 파일을 지웠다** | green + 응답의 `orphanedLocales` 수가 는다(**개수뿐이다** — 어느 로케일인지는 응답에 없고, `deferred` 응답에는 이 필드 자체가 없다) — **red가 아니다.** 의도한 삭제인지 실수인지는 CI 로그에 남아야 사람이 안다. 그 뒤 pull PR도 그 파일을 내지 않는다 |
 | 열린 번역 PR(`malmoi-i18n/sync-<project>`)이 있다 | green + **run 요약 경고** (아래) |
 | 번역 PR **조회 자체가 실패**(`pull-requests: read` 누락 등) | green + 조회 실패 경고 — **실패를 "PR 없음"으로 읽지 않는다** |
 
@@ -188,7 +193,8 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 | 무엇 | 값 |
 |---|---|
 | 인증 | **같은 `PUSH_TOKEN`** — 새 토큰도 새 input도 없다 |
-| 본문 | `{ projectSlug, commitSha, commitAt, code }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`) |
+| 본문 | `{ projectSlug, surfaceSlug, commitSha, commitAt, code }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`). **닫힌 스키마라 `surfaceSlug`가 빠지면 400 `invalid report`다**(기본값이 없다 — 위 §"표면별 입력") |
+| 응답 | 성공은 **204**(본문 없음). 거부는 401 · 400(`body too large` — 본문 상한 **4096바이트** · `invalid json` · `invalid report`) · 409(`archived` · `project mismatch` · `surface mismatch` · `stale commit` · `stale report`) · 500 `{"error":"internal","ref":"…"}` — **전부 경고 한 줄로 접힌다** |
 | 제한 | **5초 · 재시도 없음**. 비정상 응답·네트워크 실패는 경고 한 줄로 남고 **원래 진단과 exit 1은 그대로다** |
 | 안 보내는 것 | 파서 원문 · 소스 문자열 · 로컬 절대경로 · 토큰 |
 
@@ -213,7 +219,7 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 
 ### 머지 방식은 무엇이든 된다 — 단, PR 제목의 마커를 지우지 않는다
 
-번역 PR은 squash · rebase · **merge commit** 어느 것으로 머지해도 된다. 루프 가드는 `head_commit.message`의 부분 문자열만 보는데, merge commit의 그 메시지는 `Merge pull request #N from …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 그래서 마커는 **PR 제목에도** 든다(`malmoi-i18n: sync translations [skip-malmoi-i18n]`). PR 제목을 고쳐도 되지만 **`[skip-malmoi-i18n]`은 남긴다** — 지우면 머지 직후 push가 돌아 DB를 그 시점 값으로 덮고, 그 뒤에 저장한 번역이 사라진다. 제목에서 마커가 빠진 열린 PR은 다음 pull이 **그 제목 뒤에 마커를 다시 붙인다**(제목은 그대로다 — 2026-09-17 이전에 열린 PR도 여기에 든다).
+번역 PR은 squash · rebase · **merge commit** 어느 것으로 머지해도 된다. 루프 가드는 `head_commit.message`의 부분 문자열만 보는데, merge commit의 그 메시지는 `Merge pull request #N from …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 그래서 마커는 **PR 제목에도** 든다(`malmoi-i18n: sync translations [skip-malmoi-i18n]`). PR 제목을 고쳐도 되지만 **`[skip-malmoi-i18n]`은 남긴다** — 지우면 머지 직후 push가 돌아 DB를 그 시점 값으로 덮고, 그 뒤에 저장한 번역이 사라진다. 제목에서 마커가 빠진 열린 PR은 다음 pull이 **그 제목 뒤에 마커를 다시 붙인다**(제목은 그대로다. 단 붙인 결과가 GitHub 상한인 **256자를 넘으면 기본 제목으로 돌아간다** — `PATCH /pulls`가 422로 pull 전체를 죽이는 것보다 낫다. 2026-09-17 이전에 열린 PR도 여기에 든다).
 
 ## 4. 야간 pull은 대상 리포와 무관하다
 
