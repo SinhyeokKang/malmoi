@@ -20,7 +20,7 @@
 
 **워크플로** `.github/workflows/malmoi-i18n.yml`:
 
-⚠️ **아래 블록이 정본이다.** 말모이의 온보딩 결과 화면이 같은 스니펫을 slug만 바꿔 복사용으로 내고(`lib/onboarding/workflow.ts`의 `renderWorkflowYaml`), **`lib/onboarding/__tests__/workflow.test.ts`가 이 문서의 첫 YAML 코드 블록을 읽어 줄 단위로 대조한다**(그 스캐너가 여는 펜스를 정규식으로 찾으므로 이 문서의 산문에 그 펜스 문자열을 쓰지 않는다) — 한쪽만 고치면 `pnpm test`가 red이고, 통과시키면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
+⚠️ **아래 블록이 정본이다.** 말모이의 온보딩 결과 화면이 같은 스니펫을 slug만 바꿔 복사용으로 내고(`lib/onboarding/workflow.ts`의 `renderProjectWorkflowYaml`), **`lib/onboarding/__tests__/workflow.test.ts`가 이 문서의 첫 YAML 코드 블록을 읽어 줄 단위로 대조한다**(그 스캐너가 여는 펜스를 정규식으로 찾으므로 이 문서의 산문에 그 펜스 문자열을 쓰지 않는다) — 한쪽만 고치면 `pnpm test`가 red이고, 통과시키면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
 
 ```yaml
 name: malmoi-i18n
