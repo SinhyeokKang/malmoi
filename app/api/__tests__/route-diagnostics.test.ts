@@ -46,7 +46,10 @@ vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
 // 라우트는 보호 적재(`applyProtectedPush`)를 부른다 — 여기서는 보류 판정 밖(적용 결과·오류 본문)을 보므로 applied로 감싼다.
 // 보류 자체는 `lib/keys/__tests__/sync-edit-protection.integration.ts`가 실제 PostgreSQL로 잰다.
-vi.mock("@/lib/push/apply", () => ({
+// ⚠️ **`ApplyGuardError`는 진짜다** (launch-readiness L4.2) — 라우트의 catch가 `instanceof`로 가른다. 빠지면 그 줄이
+// 먼저 던져 어떤 오류든 500이 되고, 500 테스트가 의도한 이유 없이 통과한다.
+vi.mock("@/lib/push/apply", async () => ({
+  ApplyGuardError: (await vi.importActual<typeof import("@/lib/push/apply")>("@/lib/push/apply")).ApplyGuardError,
   applyPush: hoisted.applyPush,
   applyProtectedPush: async (...args: unknown[]) => ({ status: "applied", outcome: await hoisted.applyPush(...args) }),
 }));
@@ -429,9 +432,30 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", ()
     const res = await pushPost(pushRequest(payload()));
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toMatchObject({ error: "internal" });
+    // ⚠️ **의도한 이유의 500인가** (launch-readiness L4.2). mock에 `ApplyGuardError`가 없으면 catch의 `instanceof`가
+    // 먼저 던져도 같은 500이 나온다 — 그러면 실패 기록에 닿지 못하므로 그 쓰기를 본다.
+    expect(hoisted.prisma.translationSurface.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ lastImportError: "import-failed" }),
+    }));
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects");
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/new");
     spy.mockRestore();
+  });
+
+  /**
+   * **트랜잭션 안의 가드는 409다** — 사전 가드를 함께 지난 교차 요청이 잠금 뒤에 받는 거부다. 실패 기록을 쓰지 않고
+   * 진행 표시만 거둔다(launch-readiness L3.7 — 그 경합은 `concurrent-import.integration.ts`가 PG로 잰다).
+   */
+  it("적재 안의 stale-commit은 409이고 실패로 기록하지 않는다", async () => {
+    const { ApplyGuardError } = await import("@/lib/push/apply");
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
+    hoisted.prisma.translationSurface.updateMany.mockClear();
+    hoisted.applyPush.mockRejectedValue(new ApplyGuardError("stale-commit"));
+    const res = await pushPost(pushRequest(payload()));
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: "stale commit" });
+    const writes = hoisted.prisma.translationSurface.updateMany.mock.calls.map(([args]) => (args as { data: Record<string, unknown> }).data);
+    expect(writes).toEqual([{ lastImportStartedAt: null, lastImportToken: null }]);
   });
 
   it("오배송은 409다 — 기준이 서버 env가 아니라 **토큰의 프로젝트**다", async () => {
