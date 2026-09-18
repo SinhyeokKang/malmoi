@@ -186,6 +186,7 @@
   - 검증(자동, 리포에 남는 형): client-graph를 **허용 목록 반전**(패키지 금지 → `@/lib/**` 잎 화이트리스트)으로 · credential-separation 루트에 넷 추가. 각각 지금 통과하는 위반이 있으면 그 목록을 태스크에 적고 고친다.
 
 - [ ] L4.10 **base 파일의 빈 값이 두 번째 사이클에 비-base 번역을 지운다** (2026-09-18 어댑터 실측 20차가 찾았다 — ARCHITECTURE §1.9). base 값 `""` → 폴백 sourceText도 `""` → 1차 pull이 그 키를 base 파일에서 뺀다 → 머지 뒤 push가 전 로케일 orphan → 2차 pull이 비-base 번역을 지운다. 코퍼스 실측 7개 리포(학습 2/99 · 홀드아웃 5/17). `lib/pull/plan.ts` `buildWriteEntries`의 base 폴백 주석이 막으려던 바로 그 결과이고, sourceText까지 빈 경우만 빠져 있다. ⚠️ **방향은 사용자 결정** — 재생성 writer는 빈 값을 안 쓰는 계약(§1.1 "미번역 제외")이라 "base는 빈 값도 쓴다"는 계약 변경이다. 대안은 push가 base의 빈 값 키를 적재 단계에서 어떻게 다룰지다.
+  - (2026-09-18 결정 — **base 파일의 빈 값만 `""` 그대로 다시 쓴다. 비-base 빈 값(미번역)은 지금처럼 뺀다.** base 파일이 키 집합의 진실이라 거기서 키가 빠지면 다음 push가 전 로케일 orphan → 2차 pull이 비-base 번역을 지운다. push가 빈 값 키를 적재하지 않는 대안은 "리포가 키의 진실" 원칙과 부딪혀 버렸다. 구현: `WriteInput`엔 `isBase`가 없으므로(의도된 계약) `lib/pull/plan.ts` `buildWriteEntries`가 base에서 value·sourceText가 둘 다 빈 항목에 "비어도 쓴다" 표시(`LocaleEntry` 필드)를 붙이고, 재생성 writer(`lib/adapters/shared.ts` `orderedEntries`)가 그 표시만 통과시킨다. 수술적 어댑터는 원본을 두므로 영향이 없을 것 — 확인한다. 계약 매트릭스 `contract.ts`의 "빈 값" 줄과 Break 짝을 함께 고치고, `order-metrics.test.ts` "두 사이클 고정점"은 `different` → `same`으로 뒤집힌다. 고친 뒤 ARCHITECTURE §1.1 빈 값 규칙·§1.9 L4.10 문단 갱신, 학습·홀드아웃 재측정을 21차로 기록 — 고정점 99/99 · 17/17이 목표.)
   - 검증(자동): base `{a:"A", b:""}` · ko `{a:"에이", b:"비"}` 픽스처로 push→pull→push→pull 두 사이클 뒤 ko의 `b`가 남는다(지금 red — survey 고정점 테스트 형으로).
 
 ## R5 — 삼킨 실패 (🟡)
