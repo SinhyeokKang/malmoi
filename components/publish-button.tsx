@@ -16,6 +16,7 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import type { PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
@@ -51,7 +52,11 @@ export function usePublish(slug: string) {
     try {
       const data = await loadPublishPreview({ slug });
       if (request !== generation.current) return;
-      const next: PublishModalState = data ? { kind: "preview-ready", preview: data } : { kind: "preview-error" };
+      // 거부는 실행 전 거부와 같은 결과로 그린다(`1h`) — Retry가 같은 거부를 다시 받는 갈래를 만들지 않는다 (L3.3).
+      const next: PublishModalState =
+        data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
+        : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
+        : { kind: "preview-error" };
       current.current = next; setState(next);
     } catch {
       if (request === generation.current) { current.current = { kind: "preview-error" }; setState(current.current); }
@@ -458,10 +463,10 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
           actions = hasCode && role === "OWNER"
-            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={`/projects/${slug}/settings`}>{p.settings}</a>
+            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
-              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href="/signin">{p.signIn}</a>
+              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()}>{p.signIn}</a>
               : null;
           body = <Stack>
             {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
