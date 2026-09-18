@@ -9,7 +9,7 @@ import { decodeUser, encodeUserFields, verifyLookupEmail } from "./records";
 import { lookupEmail } from "./storage";
 
 export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => new Date()): Adapter {
-  const base = safePrismaAdapter(prisma, now);
+  const base = safePrismaAdapter(prisma);
   const restore = (row: Awaited<ReturnType<typeof prisma.user.findUnique>>): AdapterUser | null => row === null ? null : decodeUser(row);
   const adapter: Adapter = {
     ...base,
@@ -51,6 +51,7 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
       const row = await prisma.session.create({ data: { ...data, sessionToken: hashSessionToken(data.sessionToken) } });
       return { ...row, sessionToken: data.sessionToken };
     },
+    // ⚠️ **OAuth callback 경로가 만료를 안 보므로 조회가 만료 행을 돌려주지 않는다** — 근거는 `lib/auth/safe-adapter.ts` 머리 주석.
     async getSessionAndUser(raw) {
       const row = await prisma.session.findUnique({ where: { sessionToken: hashSessionToken(raw) }, include: { user: true } });
       if (row === null) return null;

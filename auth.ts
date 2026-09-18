@@ -79,7 +79,7 @@ const google = Google({
  *
  * ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이
  * 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던진다 — 이메일 기반 자동 병합을 막는다.
- * 로그인 세션의 추가 계정 연결은 safePrismaAdapter가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
+ * 로그인 세션의 추가 계정 연결은 `credentialAdapter`가 펼친 `safePrismaAdapter.linkAccount`가 별도로 거부한다. 켜는 순간 **같은 이메일이라는 이유만으로 계정이 합쳐지고**,
  * ARCHITECTURE §6.2.1는 그것을 "불편이 아니라 계정 탈취"라 부른다. 명시적 연결은 4단계다.
  * `lib/auth/__tests__/provider-config.test.ts`가 이 부재를 검사한다.
  */
