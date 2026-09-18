@@ -124,6 +124,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
 | `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다) |
+| `/api/github/setup` | Route Handler | GitHub App **Setup URL** — 설치·설치 요청 뒤 복귀. `setup_action`만 읽어 착지를 정하고 쓰기가 없다(`installation_id`는 안 읽는다). callback과 같이 matcher 밖 |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다** — 클라이언트 fetch 배선과 중복 스키마가 생기고 `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
 
