@@ -1,6 +1,6 @@
 import "server-only";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { requestOrigin } from "@/lib/github-connect/origin";
@@ -71,8 +71,12 @@ export async function authorizeLoginLink(
  * 요청 객체를 그 생성자에 넣으면 `TypeError: Cannot read private member #state`로 **500이 난다** —
  * 확인 왕복 전체가 죽었다. **테스트는 이것을 원리적으로 못 봤다**: 단위·통합 스위트가
  * `new NextRequest("http://…", { headers })`로 직접 만든 객체를 넘기므로 그 복사가 성립한다
- * (POSTMORTEM 2026-09-12). 표준 `Request`로 조립하면 두 경로가 같아진다 — `next-auth`도
- * 내부에서 `new Request(url, req)`만 한다.
+ * (POSTMORTEM 2026-09-12). **url 문자열 + init으로 조립하면** 런타임 객체의 사설 필드를 읽지
+ * 않으므로 두 경로가 같아진다.
+ *
+ * ⚠️ **그래도 표준 `Request`가 아니라 `NextRequest`여야 한다** (launch-readiness L3.8). `AUTH_URL`·
+ * `NEXTAUTH_URL`이 서면 next-auth의 `reqWithEnvURL`이 `req.nextUrl`을 구조 분해하고, 표준 `Request`엔
+ * 그 필드가 없어 계정 연결 콜백이 전부 TypeError가 된다 — 아래 `catch`가 그것을 무로그 500으로 삼킨다.
  */
 function withoutSessionCookie(request: NextRequest): NextRequest {
   const headers = new Headers(request.headers);
@@ -85,13 +89,14 @@ function withoutSessionCookie(request: NextRequest): NextRequest {
     if (kept.length === 0) headers.delete("cookie");
     else headers.set("cookie", kept.join("; "));
   }
-  const init: RequestInit & { duplex?: "half" } = { method: request.method, headers };
+  // Next의 init은 `signal`에서 `null`을 안 받아 전역 `RequestInit`과 어긋난다 — 생성자의 것을 쓴다.
+  const init: NonNullable<ConstructorParameters<typeof NextRequest>[1]> & { duplex?: "half" } = { method: request.method, headers };
   // GET·HEAD엔 본문이 없다. 그 밖에는 스트림을 그대로 넘긴다(`duplex`가 없으면 undici가 던진다).
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = request.body;
     init.duplex = "half";
   }
-  return new Request(request.url, init) as unknown as NextRequest;
+  return new NextRequest(request.url, init);
 }
 
 export async function withLoginLink(request: NextRequest, run: (request: NextRequest) => Promise<Response>): Promise<Response> {
