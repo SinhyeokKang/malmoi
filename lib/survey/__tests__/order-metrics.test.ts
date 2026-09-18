@@ -219,6 +219,8 @@ describe("surveyOne — 비-base 로케일 diff", () => {
       "src/i18n/ko.json": two({ a: "에이", only: "여기만" }),
     }));
     expect(s.diffRatioNonBase).toBeGreaterThan(0);
+    // DB에 없던 키다 — 파일에서 빠져도 **손실이 아니다**(base 파일이 키의 진실이다). 옛 판정은 원본과 견줘 여기서 "다름"이었다.
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
   });
 
   it("전 로케일에 원인이 있으면 비-base diff도 0이 아니다", () => {
@@ -249,6 +251,29 @@ describe("surveyOne — 비-base 로케일 diff", () => {
     expect(s.diffRatioNonBase).toBeGreaterThan(0);
     // 순서 일치율은 원본 텍스트에서 재므로 **여전히 0이다** — write가 고쳐진 것과 무관하다.
     expect(s.localeOrderAgreement).toBe(0);
+  });
+});
+
+/**
+ * **고정점은 "다시 push → pull"이다** (2026-09-18 20차). base 값이 빈 키는 1차 pull이 base 파일에서 빼고, 머지 뒤 push가
+ * 그 키를 orphan해 2차 pull이 비-base 번역까지 지운다 — 그래서 **지금은 고정점이 아니다.** launch-readiness L4.10을 고치면
+ * 이 단언이 `"same"`으로 뒤집혀야 한다(옛 측정은 2차 write에 원시 read를 넘겨 이것을 "same"으로 봤다).
+ */
+describe("surveyOne — 두 사이클 고정점", () => {
+  it("base 값이 비고 비-base에 번역이 있으면 두 번째 사이클이 그 번역을 지운다 (L4.10)", () => {
+    const s = surveyOne(input("acme/base-blank", {
+      "src/i18n/en.json": two({ a: "A", b: "" }),
+      "src/i18n/ko.json": two({ a: "에이", b: "비" }),
+    }));
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "different" });
+  });
+
+  it("base에 빈 값이 없으면 고정점이다 (짝)", () => {
+    const s = surveyOne(input("acme/base-full", {
+      "src/i18n/en.json": two({ a: "A", b: "B" }),
+      "src/i18n/ko.json": two({ a: "에이" }),
+    }));
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
   });
 });
 
