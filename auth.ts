@@ -1,5 +1,6 @@
 import { authorizeConnect, withConnect, connectAuthCookies } from "@/lib/account-connect/http";
 import { credentialAdapter } from "@/lib/credentials/adapter";
+import { logCredentialBoundary } from "@/lib/credentials/log";
 import { refreshVerifiedEmail } from "@/lib/credentials/access";
 import { randomBytes } from "node:crypto";
 import NextAuth from "next-auth";
@@ -197,8 +198,10 @@ const authConfig = NextAuth(async () => ({
             return routes.signInLink(token);
           }
         }
-      } catch {
+      } catch (error) {
         // 장애는 사유를 실어 보낸다 — 그냥 로그인 화면이면 정당한 비로그인과 같은 응답이 된다.
+        // 바깥 경계라 **항상** 한 줄이다 — 안쪽이 일부러 던진 거부도 로그 0줄로 끝나지 않는다 (launch-readiness L5.1).
+        logCredentialBoundary("sign-in", error);
         return routes.signIn({ error: "Unavailable" });
       }
       return true;

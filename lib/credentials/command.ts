@@ -1,4 +1,5 @@
 import { CredentialError } from "./crypto";
+import { logCredentialFailure } from "./log";
 import type { ConversionOptions } from "./conversion";
 import type { MigrationMode } from "./migration";
 export function credentialCommand(args: string[]): ConversionOptions {
@@ -32,5 +33,5 @@ export function credentialTarget(env: Readonly<Record<string, string | undefined
     const pooler = parsed.hostname.endsWith(".pooler.supabase.com") && parsed.username === `postgres.${ref}`;
     if (!["postgres:", "postgresql:"].includes(parsed.protocol) || parsed.port !== "5432" || parsed.pathname !== "/postgres" || !(direct || pooler) || [...parsed.searchParams].some(([key, value]) => key !== "sslmode" || value !== "verify-full")) throw new CredentialError();
     return { target, url };
-  } catch { throw new CredentialError(); }
+  } catch (error) { logCredentialFailure("credential-target", error); throw new CredentialError(); }
 }

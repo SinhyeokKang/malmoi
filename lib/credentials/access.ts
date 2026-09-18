@@ -3,12 +3,13 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { planEmailRefresh, type EmailRefresh } from "@/lib/auth/email";
 import { CredentialError } from "./crypto";
 import { decodeUser, encodeUserFields, verifyLookupEmail } from "./records";
+import { logCredentialFailure } from "./log";
 import { lookupEmail } from "./storage";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 /** Never let Prisma arguments or crypto inputs escape in an exception. */
 export async function credentialIO<T>(work: () => Promise<T>): Promise<T> {
-  try { return await work(); } catch { throw new CredentialError(); }
+  try { return await work(); } catch (error) { logCredentialFailure("credential-io", error); throw new CredentialError(); }
 }
 export async function findUserByEmail(prisma: Client, email: string) {
   return credentialIO(async () => {
@@ -44,6 +45,7 @@ export async function refreshVerifiedEmail(prisma: PrismaClient, provider: strin
     });
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") return "conflict";
+    logCredentialFailure("refresh-email", error);
     throw new CredentialError();
   }
 }
