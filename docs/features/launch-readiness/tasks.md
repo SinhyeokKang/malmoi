@@ -44,7 +44,7 @@
   - 검증(수동): L0.5의 두 번째 Google 계정(테스트 사용자 목록 밖)으로 `https://mal-moi.com/signin` 로그인 시도 → 성공이면 닫는다. `403 access_denied`면 L1.1로 간다.
   - 리허설(2026-09-18): Editor ox501tube@gmail.com이 Google로 초대 수락 성공 — 그 계정이 테스트 사용자 목록에 있는지, 게시 상태가 무엇인지는 **콘솔에서 아직 안 봤다**(성공이 게시를 뜻하지 않는다). L0.1은 열린 채.
   - 결과 → L1.1.
-- [ ] L0.2 GitHub App의 "Request user authorization (OAuth) during installation" 설정과 Setup URL·callback URL 목록을 확인한다. **켜져 있으면 끄는 것이 태스크다** — 우리 연결 흐름(ARCH §6.4)이 따로 있어 그 옵션은 켤 이유가 없고, 켜진 상태에선 state 없는 콜백이 `/api/github/callback`에서 `state-mismatch`로 거부된다. `external_url`이 `https://github.com`인 것도 같이 본다(audit #42). (audit #8)
+- [x] L0.2 (2026-09-18 사용자 콘솔 확인 — "Request user authorization during installation" 꺼짐 · Setup URL `https://mal-moi.com/api/github/setup` + Redirect on update 켬 · callback 넷(`mal-moi.com`·`dev.mal-moi.com`·Vercel 브랜치 별칭·`localhost:3000`) · Public. ⚠️ 스크린샷은 안 남겼고 "콜백 0건" 설치 실측은 L2.4 수동 검증과 같이 한다) GitHub App의 "Request user authorization (OAuth) during installation" 설정과 Setup URL·callback URL 목록을 확인한다. **켜져 있으면 끄는 것이 태스크다** — 우리 연결 흐름(ARCH §6.4)이 따로 있어 그 옵션은 켤 이유가 없고, 켜진 상태에선 state 없는 콜백이 `/api/github/callback`에서 `state-mismatch`로 거부된다. `external_url`이 `https://github.com`인 것도 같이 본다(audit #42). (audit #8)
   - 검증(수동): 설정 스크린샷을 이 태스크에 링크한다. 옵션이 꺼진 상태로 설치 한 번 → 콜백 요청 0건(Vercel 로그).
   - 결과 → L2.4의 착지 설계, L2.10의 App 둘 모두에 같은 설정.
 - [ ] L0.3 Vercel 플랜과 Supabase prod 플랜을 확인한다. (audit #11)
@@ -55,7 +55,7 @@
   - 검증(수동, `/bugshot-qa`): 요청 전·요청 후 승인 대기·승인 후 새로고침 세 화면의 문구를 기록한다. L2.4의 입력이다.
   - 리허설(2026-09-18): org 설치는 **관리자(SinhyeokKang)** 로 했다 — 요청 경로는 아직 안 밟았다(Editor 계정이 Google뿐이라 GitHub 비관리자 멤버가 없다).
   - 결과 → L2.4 둘째 항목의 문구.
-- [ ] L0.5 (2026-09-18 절반 — Editor Google 계정 `ox501tube@gmail.com` 확보·초대 수락 완료. **비관리자 GitHub 멤버는 아직 없다** — `sinhyeok-kang`을 `malmoi-test-org`에 member로 넣으면 닫힌다) **두 번째 GitHub 계정과 Google 계정을 확보한다.** 오너가 아닌 계정을 `malmoi-test-org`에 **비관리자 멤버**로 넣는다. 완료 판정·L0.1·L0.4·L2.3·L2.5·L2.8이 전부 이 계정을 전제한다 — 지금은 이 문서에만 있고 계정이 없다.
+- [x] L0.5 (2026-09-18 완료 — `test-sinhyeok`이 `malmoi-test-org` member(`gh api orgs/malmoi-test-org/members?role=admin` → `SinhyeokKang`뿐), Editor Google `ox501tube@gmail.com`. 이전 기록: 절반 — Editor Google 계정 `ox501tube@gmail.com` 확보·초대 수락 완료. **비관리자 GitHub 멤버는 아직 없다** — `sinhyeok-kang`을 `malmoi-test-org`에 member로 넣으면 닫힌다) **두 번째 GitHub 계정과 Google 계정을 확보한다.** 오너가 아닌 계정을 `malmoi-test-org`에 **비관리자 멤버**로 넣는다. 완료 판정·L0.1·L0.4·L2.3·L2.5·L2.8이 전부 이 계정을 전제한다 — 지금은 이 문서에만 있고 계정이 없다.
   - 검증(수동): 그 계정으로 `mal-moi.com` 로그인 → 프로젝트 0개 화면. `malmoi-test-org` 멤버 목록에 role=member로 보임.
 - [ ] L0.6 **로케일 1개 폐기용 리포 `i18n-single-locale`을 만든다**(작은 MIT 리포 포크, `i18n-none`과 같은 이유로 74KB급). L2.7의 "단일 로케일 거부" 화면을 브라우저로 밟을 리포가 없다 — 설치 목록 여섯은 0·3·59로케일뿐이다. 두 App(L2.10) 중 **dev App에만** 설치한다.
   - 검증(수동): 온보딩 ②에서 `no-candidates` 문구 도달. ⚠️ CLAUDE.md 게이트웨이의 설치 목록 줄은 **설치 목록에 실제로 든 뒤에** 갱신한다(그 절의 경고 그대로).
