@@ -149,7 +149,7 @@ describe("로그인했지만 멤버가 아닌 사용자", () => {
   });
 });
 
-describe("제거된 멤버 — spec 완료 조건 2의 자동 절반", () => {
+describe("제거된 멤버 — 인가 판정의 자동 절반", () => {
   it("세션이 살아 있어도 ProjectMember 행이 사라지면 거부된다", async () => {
     hoisted.session = sessionFor("u-editor");
     const before = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "kA", localeCode: "ko", value: "먼저" });

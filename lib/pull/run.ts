@@ -18,7 +18,7 @@ import { planProtectedPublish } from "@/lib/protection/plan";
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
  * 의존성 주입만 맡는다. DB와 GitHub이 인자로 들어오므로 fake로 호출 수를 셀 수 있다 —
- * spec 완료 조건 4("편집이 없으면 API 0회")를 판정할 다른 방법이 없다.
+ * ARCHITECTURE §2의 1층 스킵("편집이 없으면 API 0회")을 판정할 다른 방법이 없다.
  *
  * ⚠️ `server-only`를 붙이지 않는다 — 테스트가 직접 import한다.
  */
@@ -184,7 +184,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * (= base와 동일)를 정확히 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
      *
      * ⚠️ **읽기 1회가 늘어나는 곳은 여기뿐이다** — 편집이 있었던 실행만 이 줄에 닿는다.
-     * 1층 스킵의 "GitHub API 0회"(spec 완료 조건 4)는 그대로다.
+     * 1층 스킵의 "GitHub API 0회"(ARCHITECTURE §2)는 그대로다.
      */
     const staleHead = await client.getRefSha(`heads/${deps.syncBranch}`);
     /**

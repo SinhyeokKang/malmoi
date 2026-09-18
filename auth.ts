@@ -156,7 +156,7 @@ const authConfig = NextAuth(async () => ({
       const revocation = await authorizeRevocation(getPrisma(), account);
       if (revocation !== null) return revocation;
       /**
-       * ⚠️ **회수 판정 뒤, 나머지 전부보다 앞이다** (design 불변식 8b). 확인 왕복은 **기존 계정으로
+       * ⚠️ **회수 판정 뒤, 나머지 전부보다 앞이다** (ARCHITECTURE "계정 병합"). 확인 왕복은 **기존 계정으로
        * 하는 평범한 로그인**이라 여기서 갈라놓지 않으면 그대로 로그인이 되고, 불일치 갈래에서
        * **남의 GitHub으로 로그인된 세션이 이미 만들어진 채** 병합 화면을 보게 된다.
        */
@@ -179,7 +179,7 @@ const authConfig = NextAuth(async () => ({
       try {
         const refresh = await refreshVerifiedEmail(getPrisma(), provider, providerAccountId, freshVerifiedEmail(provider, profile));
         /**
-         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (account-linking design §5.1) — 같은
+         * ⚠️ **처음 보는 Account일 때만 한 조회를 더한다** (ARCHITECTURE "계정 병합") — 같은
          * 주소가 다른 수단으로 이미 등록돼 있으면 `OAuthAccountNotLinked`로 떨어뜨리지 않고
          * 안내 화면으로 보낸다. **여기서 합치지 않는다**: 이 반환은 문자열이라 Auth.js가
          * `handleLoginOrRegister`를 통째로 건너뛰고 `User`·`Account`·`Session`이 0회 쓰인다.
@@ -187,7 +187,7 @@ const authConfig = NextAuth(async () => ({
         if (refresh === "unlinked" && isLoginProvider(provider)) {
           const offer = await loadLinkOffer(getPrisma(), { provider, providerAccountId, verifiedEmail: user.email });
           if (offer.kind === "offer") {
-            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (design 불변식 9).
+            // 복귀 지점은 **갈래 이름**이다 — 저장된 URL을 리다이렉트에 쓰지 않는다 (ARCHITECTURE §6.4).
             const jar = await cookies();
             const dest = destFromCallbackUrl(
               (jar.get("__Secure-authjs.callback-url") ?? jar.get("authjs.callback-url"))?.value,

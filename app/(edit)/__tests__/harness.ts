@@ -110,7 +110,7 @@ export type KeySeed = {
   sortIndex: number | null;
   orphaned: boolean;
   /**
-   * 키가 처음 들어온 시각 (projects-list §8). **목록의 `New from GitHub`가 `lastPulledAt`과 견준다** —
+   * 키가 처음 들어온 시각. **목록의 `New from GitHub`가 `lastPulledAt`과 견준다** —
    * 시드가 안 주면 아래에서 기준선 이전의 값을 심는다(기존 키는 신규가 아니다).
    */
   createdAt?: Date;
@@ -171,7 +171,7 @@ const FORMAT = {
   lastPublishedAt: new Date("2026-09-01T00:00:00Z") as Date | null,
   lastPrUrl: "https://github.com/o/r/pull/7" as string | null,
   /**
-   * 임포트 진행·결과 (projects-list §3.35). **기본이 "돌고 있지 않고 실패도 없다"**여야 목록의
+   * 임포트 진행·결과 (PRODUCT §7.8). **기본이 "돌고 있지 않고 실패도 없다"**여야 목록의
    * 평범한 행이 시드 하나로 만들어진다.
    */
   lastImportStartedAt: null as Date | null,
@@ -418,7 +418,7 @@ export function createHarness(seed: Seed = {}) {
           if (inner["repoOwner"] === true) p["repoOwner"] = project?.repoOwner ?? "";
           if (inner["repoName"] === true) p["repoName"] = project?.repoName ?? "";
           /**
-           * ⚠️ **`id`는 서버 안에서만 쓴다** (projects-list §3.0) — 집계를 프로젝트별로 묶는 키이고
+           * ⚠️ **`id`는 서버 안에서만 쓴다** (DESIGN §6.63) — 집계를 프로젝트별로 묶는 키이고
            * `ProjectListRow`에는 안 나간다. 여기서 안 내면 그 묶기가 통째로 `undefined` 키가 되어
            * **Summary가 조용히 0이 된다.**
            */
@@ -431,7 +431,7 @@ export function createHarness(seed: Seed = {}) {
           if (inner["adapterName"] === true) p["adapterName"] = project?.adapterName ?? null;
           if (inner["pathTemplate"] === true) p["pathTemplate"] = project?.pathTemplate ?? null;
           /**
-           * 원격 경로 판정의 입력 (projects-list §3.4). ⚠️ **orphaned를 거르지 않는다** — 사라진
+           * 원격 경로 판정의 입력 (DESIGN §6.63). ⚠️ **orphaned를 거르지 않는다** — 사라진
            * 로케일의 파일도 리포에서는 변경될 수 있고, 그 변경이 `repo_ahead`의 근거다.
            */
           if (inner["locales"] !== undefined) {
@@ -899,7 +899,7 @@ export function createHarness(seed: Seed = {}) {
       updateMany: updateManySyncRuns,
     },
     /**
-     * ④⑤ raw 집계 (projects-list §3.2). **SQL을 해석하지 않고 대상 테이블로 갈래만 가른다** —
+     * ④⑤ raw 집계 (DESIGN §6.63). **SQL을 해석하지 않고 대상 테이블로 갈래만 가른다** —
      * 이 하네스가 재는 것은 "조회가 배선됐나"이고, **결과가 진짜 SQL과 같은지는 격리 Postgres**가
      * 본다 (`pnpm test:projects:postgres`). 가짜의 호출 수만으로 raw 결과를 판정하지 않는다.
      */
@@ -998,7 +998,7 @@ export function createHarness(seed: Seed = {}) {
             k.projectId === where.projectId && matchesScope(k, where) &&
             (where.orphaned === undefined || (k.orphaned ?? false) === where.orphaned),
         ).length,
-      /** ② 살아 있는 키 수 — 전 로케일 공통 분모다 (projects-list §3.1). */
+      /** ② 살아 있는 키 수 — 전 로케일 공통 분모다 (DESIGN §6.63). */
       groupBy: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } & ScopedWhere }) => {
         const counted = new Map<string, number>();
         for (const k of keys) {
@@ -1030,7 +1030,7 @@ export function createHarness(seed: Seed = {}) {
     },
     locale: {
       /**
-       * ① 살아 있는 로케일 (projects-list §3.1).
+       * ① 살아 있는 로케일 (DESIGN §6.63).
        *
        * ⚠️ **`orphaned`를 실제로 본다** — 무시하면 사라진 로케일이 Meter에 열로 서고, 그 셀의
        * 번역이 분자에 들어가 **분모보다 커진다.**
@@ -1134,7 +1134,7 @@ export function createHarness(seed: Seed = {}) {
         }).length;
       },
       /**
-       * ③ 값이 있는 셀의 (로케일 × 검토여부) 개수 (projects-list §3.1).
+       * ③ 값이 있는 셀의 (로케일 × 검토여부) 개수 (DESIGN §6.63).
        *
        * ⚠️ **`projectId`가 시드 행에 없다** — 키를 통해 되짚는다(위 `count`와 같은 이유).
        * ⚠️ **필터 둘을 실제로 적용한다**: 빈 값은 미번역이고, 죽은 키의 번역은 분자에서 빠진다.

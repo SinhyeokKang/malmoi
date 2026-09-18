@@ -14,7 +14,7 @@ import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content
  * ⚠️ **머리 아래 선도 스켈레톤에 있다** — `PanelHeader`가 늘 들기 때문이고 여기서 할 일이 없다.
  * 선이 뒤늦게 생기면 본문이 1px 밀린다.
  *
- * ⚠️ **이 화면은 GitHub을 기다린다** (projects-list §3.4 ⊕). 목록이 DB 집계와 원격 신호를 함께
+ * ⚠️ **이 화면은 GitHub을 기다린다** (DESIGN §6.63). 목록이 DB 집계와 원격 신호를 함께
  * 기다리므로 스켈레톤이 서 있는 시간이 전보다 길다 — 골격이 실물과 어긋나면 그만큼 오래 어긋나 보인다.
  *
  * ⚠️ **행을 둘만 그린다** — 스켈레톤은 "곧 온다"를 말하는 것이지 몇 개가 올지를 예고하는 것이

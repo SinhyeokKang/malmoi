@@ -142,7 +142,7 @@ export default async function TranslationsPage({
   const narrowed = state === undefined ? scoped : filterByState(scoped, { state, locales: selected, lastPulledAt: project.lastPulledAt });
   const filtered = selection.kind === "none" ? [] : filterRows(narrowed, { locales: selected, q: search.q });
   /**
-   * 섹션 안에서 남은 일이 위로 온다 (spec Q3 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
+   * 섹션 안에서 남은 일이 위로 온다 (DESIGN §6.1 — 상태 필터를 뺀 대가를 갚는 유일한 수단이다).
    * **분할이 안정적이라** 그룹 안의 상대 순서가 그대로 보존되고, 그래서 그룹핑 전에 한 번만 한다.
    */
   const visible = pendingFirst(filtered, selected);

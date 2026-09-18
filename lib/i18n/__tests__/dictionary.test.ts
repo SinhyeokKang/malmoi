@@ -31,7 +31,7 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
 
   /**
    * 리포 갱신 보류 배너 (sync-edit-protection T13). 손실을 예고하지 않고 멈춘 사실과 푸는 조건을 말한다 — 보호가 켜진 뒤
-   * "can be lost … automatically"는 절반이 거짓이다(spec 완료 조건 11).
+   * "can be lost … automatically"는 절반이 거짓이다.
    */
   it("배너는 1건과 여러 건의 문장이 갈리고 손실을 예고하지 않는다", () => {
     expect(m.translations.banner.paused(1)).toBe("Repository updates are paused until 1 unsent change is sent.");
@@ -59,7 +59,7 @@ describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
    * 알려면 역할마다 관사 표를 두게 된다 — 직함처럼 관사 없이 쓴다.
    */
   /**
-   * ⚠️ **초대 문장이 그 자리를 떠났다** (account-linking §6) — 프로젝트 이름과 역할은 이제 카드의
+   * ⚠️ **초대 문장이 그 자리를 떠났다** (DESIGN §6.62) — 프로젝트 이름과 역할은 이제 카드의
    * 두 행이라 관사가 붙을 문장 자체가 없다. 규칙이 사라진 것이 아니라 **대상이 옮겨갔다**:
    * 지금 데이터를 문장에 넣는 자리는 병합 화면의 provider 이름 둘이다.
    */

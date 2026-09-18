@@ -6,8 +6,8 @@ import type { CommitPayload, TreePayload } from "../payload";
  * 테스트용 `GitClient`. **`.test.ts`가 아니라 vitest의 include에 걸리지 않는다**
  * (`**\/__tests__/**\/*.test.{ts,tsx}`) — 도구이므로 그 자체가 테스트 스위트는 아니다.
  *
- * 이 파일이 존재하는 이유는 하나다: **호출을 세는 것.** spec 완료 조건 4("편집이 없으면 GitHub
- * API를 한 번도 부르지 않는다")를 판정할 다른 방법이 없다 — 실물로는 계측이 안 된다.
+ * 이 파일이 존재하는 이유는 하나다: **호출을 세는 것.** ARCHITECTURE §2의 1층 스킵("편집이 없으면 GitHub
+ * API를 한 번도 부르지 않는다")을 판정할 다른 방법이 없다 — 실물로는 계측이 안 된다.
  */
 
 export type FakeCall = { method: keyof GitClient; args: unknown[] };

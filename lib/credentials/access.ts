@@ -35,7 +35,7 @@ export async function refreshVerifiedEmail(prisma: PrismaClient, provider: strin
       if (row === null) throw new CredentialError();
       const user = decodeUser(row);
       const taken = await findUserByEmail(tx, fresh);
-      // ⚠️ **수단이 둘 이상이면 주소를 옮기지 않는다** (account-linking design ⑦) — 병합한 계정에서
+      // ⚠️ **수단이 둘 이상이면 주소를 옮기지 않는다** (ARCHITECTURE "계정 병합") — 병합한 계정에서
       // `User.email`이 로그인한 provider에 따라 뒤집히면 초대 대조가 그 위에서 흔들린다.
       const loginMethods = await tx.account.count({ where: { userId: user.id, provider: { in: ["github", "google"] } } });
       const plan = planEmailRefresh({ stored: user.email, fresh, takenByOther: taken !== null && taken.id !== user.id, loginMethods });

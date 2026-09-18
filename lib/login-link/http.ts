@@ -13,7 +13,7 @@ import { finishLink } from "./store";
  * 확인 왕복의 callback 가로채기 — `lib/session-revocation/http.ts`와 **같은 형이고 목적이 반대다**
  * (하나는 왕복을 멈추고, 하나는 진행시킨다).
  *
- * ⚠️ **`withRevocation`이 바깥, 이것이 안쪽이다** (design 불변식 8a) — 회수가 먼저 판정하고 자기
+ * ⚠️ **`withRevocation`이 바깥, 이것이 안쪽이다** (ARCHITECTURE "계정 병합") — 회수가 먼저 판정하고 자기
  * 것이 아니면 통과시킨다. 두 intent 판정에 암호적 결합이 없으므로 배타성은 **양방향 쿠키
  * 정리**가 만든다 (불변식 8c, POSTMORTEM 2026-09-10).
  */
@@ -125,7 +125,7 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       const token = attempt.token === "" ? null : attempt.token;
       /**
        * ⚠️ **성공 착지를 challenge가 든다** — `callbackUrl` 쿠키가 아니라 저장된 **갈래**에서
-       * 만든다 (design 불변식 9). 그 쿠키가 지워지거나 바뀌어도 초대로 돌아가는 길이 산다.
+       * 만든다 (ARCHITECTURE §6.4). 그 쿠키가 지워지거나 바뀌어도 초대로 돌아가는 길이 산다.
        */
       // 연결 커밋과 Auth.js의 세션 생성은 별개다. 뒤쪽 실패를 성공으로 덮거나,
       // 이미 소비된 challenge로 돌려보내 장애를 LinkExpired로 바꾸지 않는다.

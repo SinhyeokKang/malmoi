@@ -131,7 +131,7 @@ export default async function SettingsPage({
           버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
         */}
         {notice !== null && <Alert variant="danger">{notice}</Alert>}
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1>
       </PanelHeader>

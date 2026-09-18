@@ -155,7 +155,7 @@ export type NamespaceCount = {
 export type LocaleOption = { code: string; orphaned: boolean };
 
 /**
- * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — spec Q2).
+ * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — DESIGN §6.1).
  *
  * 로케일이 행이 된 뒤로 "기준 열"이라는 개념에 대응물이 없다. 그 자리를 **선택 집합**이 대신하고
  * 집계·검색·pending 정렬·기본 착지가 전부 이 결과 위에 선다.
@@ -362,7 +362,7 @@ export function filterByState(
 }
 
 /**
- * 섹션 안에서 **남은 일이 있는 키를 위로** 올린다 (8-4 — spec Q3).
+ * 섹션 안에서 **남은 일이 있는 키를 위로** 올린다 (8-4 — DESIGN §6.1).
  *
  * 상태 필터를 뺀 대가를 갚는 유일한 수단이다. 크롬 확장 `messages.json`은 구분자가 없어
  * 네임스페이스가 `_root` 하나이고(그게 이 도구의 1차 타깃이다), 그 프로젝트에서는 `pending/total`이

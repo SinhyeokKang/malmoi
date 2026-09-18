@@ -15,7 +15,7 @@ const SOURCE = readFileSync(join(ROOT, "components/ui/entity-card.tsx"), "utf8")
 /**
  * `EntityCard` — "지금 다루는 대상 하나"를 보이는 프리미티브 (DESIGN §6.4).
  *
- * ⚠️ **`kind`가 없다** (design ⑩) — 이 배송의 소비자는 병합 화면 하나이고, 초대의 프로젝트 카드는
+ * ⚠️ **`kind`가 없다** — 이 배송의 소비자는 병합 화면 하나이고, 초대의 프로젝트 카드는
  * 형이 다르다(글리프 폴백 · 라운드 사각 · 우측 국기). 둘이 진짜 같아지는 순간 올린다.
  */
 it("대상 하나를 아바타·두 줄·우측 슬롯으로 그린다", async () => {

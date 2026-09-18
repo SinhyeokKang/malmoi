@@ -56,7 +56,7 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
     expect(AUTH_TS).toContain("credentialAdapter(");
   });
 
-  it("GitHub과 Google 둘 다 등록돼 있다 — Google 없이는 spec 완료 조건 3을 검증할 수 없다", () => {
+  it("GitHub과 Google 둘 다 등록돼 있다 — provider가 하나면 계정 병합 경로를 검증할 수 없다", () => {
     expect(AUTH_TS).toContain("GitHub");
     expect(AUTH_TS).toContain("Google");
   });
@@ -74,7 +74,7 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
 });
 
 /**
- * 두 가로채기의 배타성은 **구조가 아니라 순서와 쿠키 정리가 만든다** (account-linking design 불변식 8).
+ * 두 가로채기의 배타성은 **구조가 아니라 순서와 쿠키 정리가 만든다** (ARCHITECTURE "계정 병합").
  *
  * ⚠️ **`session-revocation/http.ts`의 intent 판정이 쿠키 셋의 OR이라 암호적 결합이 없다.** 회수를
  * 중단한 사용자가 곧바로 병합을 시작하면 회수가 그 callback을 먹고 Location을

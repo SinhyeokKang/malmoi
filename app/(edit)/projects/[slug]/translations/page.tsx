@@ -6,7 +6,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 export const maxDuration = 60;
 /**
- * ⚠️ **`state`가 여기도 있어야 한다** (project-home §9.7) — Home의 카운트 카드가 이 공가 라우트를
+ * ⚠️ **`state`가 여기도 있어야 한다** (PRODUCT §7.7) — Home의 카운트 카드가 이 공가 라우트를
  * 가리키고, 여기서 빠지면 `firstQueryValues`가 그 키를 안 실어 **redirect가 좁힘을 버린다.**
  */
 type Search = Raw<"ns" | "locales" | "q" | "state">;

@@ -35,7 +35,7 @@ const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-stat
  * `/account?sessionRevocation=invalid`로 덮인다 (POSTMORTEM 2026-09-10).
  *
  * ⚠️ **양방향이다** — 일반 로그인 둘은 병합 쿠키도 지운다. 남은 병합 쿠키가 평범한 로그인
- * callback을 가로채면 그 로그인이 병합 실패 화면으로 샌다 (design 불변식 8c).
+ * callback을 가로채면 그 로그인이 병합 실패 화면으로 샌다 (ARCHITECTURE "계정 병합").
  */
 const ENTRIES = [
   { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
@@ -67,7 +67,7 @@ it.each(ENTRIES)("$entry login clears abandoned confirmation cookies and preserv
   }
 });
 
-/** 병합 시작은 challenge 원문을 쿠키에 실어야 callback이 그 행을 찾는다 (design 불변식 4). */
+/** 병합 시작은 challenge 원문을 쿠키에 실어야 callback이 그 행을 찾는다 (ARCHITECTURE "계정 병합"). */
 it("link confirmation carries the challenge token in its own cookie", async () => {
   const page = await render("link");
   const button = providers(page)[0]!;

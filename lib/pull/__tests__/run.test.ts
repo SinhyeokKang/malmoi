@@ -73,7 +73,7 @@ function makeDeps(
 }
 
 describe("runPull — 1층 DB 측 스킵", () => {
-  it("편집이 lastPulledAt 이후로 없으면 GitHub을 한 번도 부르지 않는다 (spec 완료 조건 4)", async () => {
+  it("편집이 lastPulledAt 이후로 없으면 GitHub을 한 번도 부르지 않는다 (ARCHITECTURE §2)", async () => {
     const { client, calls } = createFakeGitClient({});
     const result = await runPull({
       loadState: async () => ({

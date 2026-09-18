@@ -624,7 +624,7 @@ async function startLinkProof(identity: string, dest: { kind: "invite"; token: s
   const landing = dest.kind === "invite" ? `/invite/${dest.token}` : "/projects";
   const signin = await withLinkStart(false, () => handlers.POST(new NextRequest("http://localhost/api/auth/signin/github", { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: `http://localhost${landing}` }) })));
   const issued = signin.headers.getSetCookie().map(c => c.split(";")[0]!);
-  // ⚠️ state가 **우리 이름**으로 저장돼야 이 왕복이 일반 로그인으로 개명될 수 없다 (design 불변식 3).
+  // ⚠️ state가 **우리 이름**으로 저장돼야 이 왕복이 일반 로그인으로 개명될 수 없다 (ARCHITECTURE "계정 병합").
   expect(issued.some(c => c.startsWith("malmoi-link-state="))).toBe(true);
   expect(issued.some(c => c.startsWith("authjs.state="))).toBe(false);
   const state = new URL(signin.headers.get("location")!).searchParams.get("state")!;
@@ -656,7 +656,7 @@ it("confirming with a different account writes nothing, mints no session and kee
   expect(await prisma.account.count()).toBe(2);
   expect(await prisma.session.count()).toBe(0);
   expect(await prisma.user.findMany()).toEqual(before);
-  // ⚠️ **실패는 소비하지 않는다** (design ⑧) — 훔친 URL 한 번으로 남의 병합을 태울 수 없다.
+  // ⚠️ **실패는 소비하지 않는다** (ARCHITECTURE "계정 병합") — 훔친 URL 한 번으로 남의 병합을 태울 수 없다.
   expect(await prisma.verificationToken.count()).toBe(1);
 });
 

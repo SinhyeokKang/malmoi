@@ -136,7 +136,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
 
   /**
    * ⚠️ **Members는 `member:manage` 뒤가 아니다** (ARCHITECTURE §6.1). EDITOR도 목록을 본다 —
-   * user-stories §5의 "EDITOR는 목록만 본다"와 §0의 "OWNER만"이 모순이었고 전자가 맞다. 컨트롤만
+   * 옛 기능 문서 안에서 "EDITOR는 목록만 본다"와 "OWNER만"이 모순이었고 전자가 맞다. 컨트롤만
    * 역할로 감추고 Action이 `member:manage`로 거부한다.
    */
   it("Members는 두 역할에 다 있다 — 목록은 전원이 본다, 컨트롤만 갈린다", () => {

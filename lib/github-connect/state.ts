@@ -33,7 +33,7 @@ export type StateDest =
    * `landingPath`가 고정하므로 여기 실리는 것은 그 라우트가 이미 주소창에서 받는 값뿐이고,
    * open redirect 판정이 새로 생기지 않는다.
    *
-   * ⚠️ **옛 state의 `filter`는 조용히 떨어진다** (projects-list §1.2) — 아래 `parseDest`가 `q`만
+   * ⚠️ **옛 state의 `filter`는 조용히 떨어진다** (DESIGN §6.63) — 아래 `parseDest`가 `q`만
    * 집으므로, 필터가 있던 시절에 시작된 왕복이 돌아와도 더 넓은 목록을 볼 뿐이다.
    */
   | { kind: "new"; q?: string }

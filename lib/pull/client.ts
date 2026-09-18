@@ -5,7 +5,7 @@ import type { CommitPayload, TreePayload } from "./payload";
  * 테스트용 가짜는 `lib/pull/__tests__/fake-client.ts`가 구현한다.
  *
  * **왜 인터페이스를 갈라놓나**: 오케스트레이션이 이걸 인자로 받으면 테스트가 fake를 넘겨
- * "GitHub을 몇 번 불렀나"를 셀 수 있다. spec 완료 조건 4("편집이 없으면 API 0회")의 판정 수단이
+ * "GitHub을 몇 번 불렀나"를 셀 수 있다. ARCHITECTURE §2의 1층 스킵("편집이 없으면 API 0회")의 판정 수단이
  * 이것 하나뿐이다. `lib/github.ts`를 직접 물면 octokit이 실 네트워크를 잡으려 들고 App 자격증명이
  * 필요해진다 — 인터페이스로 갈라 fake를 주입하는 것이 호출 수를 셀 유일한 방법이다. (전 서술은
  * "그 파일의 `server-only` 때문"이었는데 `lib/github.ts`는 일부러 안 붙였다 — 2026-09-04 audit #38.)

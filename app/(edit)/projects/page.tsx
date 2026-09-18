@@ -45,7 +45,7 @@ export default async function ProjectsPage({
    * 하나만 겹치고 뜻이 같으므로 먼저 보는 쪽이 이겨도 문제가 없다.
    */
   // ⚠️ **옛 `?filter=`는 읽지 않는다** — 그 키가 있어도 조용히 무시되고 전체 목록이 뜬다
-  // (projects-list §1.2). 리다이렉트를 만들지 않는 것이 옛 `?focus=`와 같은 관용구다.
+  // (DESIGN §6.63). 리다이렉트를 만들지 않는 것이 옛 `?focus=`와 같은 관용구다.
   const { e, q } = firstQueryValues(await searchParams);
   const message = isAccessError(e)
     ? accessErrorMessage(e)

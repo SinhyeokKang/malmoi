@@ -287,7 +287,7 @@ describe("행 축 (8-4)", () => {
 
   /**
    * ⚠️ **`Untranslated` 배지·상태 필터·입력 테두리가 같은 배송에서 사라졌다** — 값이 빈 셀의
-   * 유일한 시각 신호가 `placeholder`다 (spec Q3).
+   * 유일한 시각 신호가 `placeholder`다 (DESIGN §6.1).
    */
   it("빈 셀의 `placeholder`가 살아 있다", () => {
     expect(read(INPUT)).toMatch(/placeholder=\{[^}]*m\.translations\.placeholder/);

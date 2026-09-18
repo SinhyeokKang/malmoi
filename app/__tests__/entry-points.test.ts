@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 /**
- * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (spec 완료 조건 6).
+ * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (ARCHITECTURE §6.1).
  *
  * ⚠️ 읽어서 판정하는 것은 한 번 지나면 무너진다. `lib/adapters/__tests__/contract.ts`가 `ADAPTERS`를
  * 순회해 매트릭스를 강제하는 것과 같은 성질의 **상시 방어선**이다 — 새 Action·새 페이지가 인가를
@@ -454,7 +454,7 @@ describe("쿼리 파라미터의 수신자", () => {
   const EXTRA_EMITTERS = [
     "components/projects/project-list.tsx",
     /**
-     * ⚠️ **2026-09-13에 들어왔다** (projects-list §1). 필터 탭이 사라지면서 `routes.projects({ q })`의
+     * ⚠️ **2026-09-13에 들어왔다** (DESIGN §6.63). 필터 탭이 사라지면서 `routes.projects({ q })`의
      * **유일한 발신처**가 이 파일이 됐다 — 목록 본문에는 인자 없는 `routes.projects()`만 남는다.
      * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 스스로 반복한다.
      */
@@ -517,7 +517,7 @@ describe("쿼리 파라미터의 수신자", () => {
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "e")).toBe(true);
     // 3번 — 인자 객체. 이 셋이 2026-09-11까지 전부 검사 밖이었다.
     expect(EMITTED.some((x) => x.target === "/account" && x.key === "sessionRevocation")).toBe(true);
-    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(projects-list §1),
+    // ⚠️ **`filter`가 아니라 `q`다** — 필터 축이 2026-09-13에 사라졌고(DESIGN §6.63),
     // 그것을 실어 보내던 자리가 검색창 하나로 줄었다.
     expect(EMITTED.some((x) => x.target === "/projects" && x.key === "q")).toBe(true);
   });

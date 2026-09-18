@@ -290,7 +290,7 @@ export const en = {
   },
 
   /**
-   * 프로젝트 Home — **카드 넷 · 할 일 · 로그 · 메타 열** (project-home §10).
+   * 프로젝트 Home — **카드 넷 · 할 일 · 로그 · 메타 열** (DESIGN §6.64).
    *
    * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (DESIGN §10). 표시는 `Sync`(리포 → 앱)와
    * `Publish`(앱 → 리포) 둘뿐이고 **코드 식별자는 그대로다** — 읽는 사람이 비개발자라 저장소
@@ -596,7 +596,7 @@ export const en = {
      * ⚠️ **제목이 질의를 안 싣는다** — 긴 질의가 제목을 밀어내고, 무엇을 쳤는지는 검색창이 이미
      * 보여준다. 설명이 그것을 말한다.
      *
-     * ⚠️ **`byFilter`가 2026-09-13에 사라졌다** (projects-list §1.4). 좁히는 축이 검색 하나가 되면서
+     * ⚠️ **`byFilter`가 2026-09-13에 사라졌다** (DESIGN §6.63). 좁히는 축이 검색 하나가 되면서
      * "탭 0건"이라는 갈래 자체가 없어졌다 — 남겨 두면 탭이 있던 시절의 화석이 사전에 남는다.
      */
     narrowed: {
@@ -643,7 +643,7 @@ export const en = {
     /**
      * 큐 넷의 제목.
      *
-     * ⚠️ **2026-09-15에 목록 화면에서 내려왔다** (projects-panel-rework §2-6) — 못 누르는 숫자 넷이
+     * ⚠️ **2026-09-15에 목록 화면에서 내려왔다** (DESIGN §6.63) — 못 누르는 숫자 넷이
      * 머리 90px을 차지했고, 같은 값을 프로젝트별로 쪼갠 것이 이미 행의 Meter와 아래 띠다.
      *
      * ⚠️ **지우지 않는다 — `project-home`이 카운트 카드 넷으로 받는다**(`project-home/tasks.md`:189
@@ -1288,7 +1288,7 @@ export const en = {
      * 배지 (DESIGN §6.2) — **"Translated"가 없다**: 가장 흔한 상태가 가장 조용해야 한다.
      *
      * ⚠️ **`Untranslated`가 8-4에서 사라졌다** — 값 칸이 비어 있는 것이 이미 그 말이고, 남는
-     * 신호는 입력의 `placeholder`다(spec Q3 — 배지·상태 필터·입력 테두리가 **같은 배송에서**
+     * 신호는 입력의 `placeholder`다(DESIGN §6.1 — 배지·상태 필터·입력 테두리가 **같은 배송에서**
      * 사라지므로 그 하나가 유일하다). `needsReview`는 값이 차 있어 다른 신호가 없으므로 남는다.
      */
     orphaned: "Orphaned",
@@ -1309,7 +1309,7 @@ export const en = {
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
 
     /**
-     * 툴바 셋 (8-4 — 시안 `212:937`). **상태 필터가 없다** (spec Q3): 시안의 칩 행이 정확히 세
+     * 툴바 셋 (8-4 — 시안 `212:937`). **상태 필터가 없다** (DESIGN §6.1): 시안의 칩 행이 정확히 세
      * 종류라 그 부재가 누락이 아니라 의도로 읽힌다. 대신 섹션 안에서 pending 키가 위로 온다.
      */
     filters: {
@@ -1341,7 +1341,7 @@ export const en = {
       locales: (value: string): string => `Languages: ${value}`,
       search: (value: string): string => `Search: ${value}`,
       /**
-       * Home의 카운트 카드가 실어 보낸 좁힘 (project-home §9.7).
+       * Home의 카운트 카드가 실어 보낸 좁힘 (DESIGN §6.64).
        *
        * ⚠️ **카드의 제목을 그대로 쓰지 않는다** — 카드는 `To review`(할 일)이고 칩은 "지금 무엇으로
        * 좁혀져 있나"라 `Showing: waiting for review`가 맞는 말이다. 같은 낱말을 쓰면 칩이 할 일
@@ -1353,7 +1353,7 @@ export const en = {
     },
 
     /**
-     * `?state=`의 네 어휘 (project-home §9.7).
+     * `?state=`의 네 어휘 (PRODUCT §7.7).
      *
      * ⚠️ **URL의 값으로 직접 인덱싱하지 않는다** — 남이 정한 키다. 호출부가 `isKeyState`로 거른 뒤
      * 읽는다 (POSTMORTEM 2026-09-08·09).
@@ -1403,7 +1403,7 @@ export const en = {
         title: "No keys yet",
         description: "Once your developers push code, the strings they marked show up here.",
       },
-      /** ⚠️ **상태 필터를 가리키지 않는다** — 8-4가 그것을 뺐다 (spec Q3). 빠져나갈 길은 칩이다. */
+      /** ⚠️ **상태 필터를 가리키지 않는다** — 8-4가 그것을 뺐다 (DESIGN §6.1). 빠져나갈 길은 칩이다. */
       noMatch: {
         title: "No keys match",
         description: "Remove a filter above to see the rest.",
@@ -1885,7 +1885,7 @@ export const en = {
   /** 초대 수락 화면 — **셸 밖 카드다** (DESIGN §6.62). 거부 문구는 `errors.invite`가 든다. */
   invite: {
     /**
-     * ⚠️ **`invitedTo`를 대체한다** (account-linking §6). 프로젝트 이름과 역할은 이제 **카드의 두
+     * ⚠️ **`invitedTo`를 대체한다** (DESIGN §6.62). 프로젝트 이름과 역할은 이제 **카드의 두
      * 행**이라 합친 문자열의 소비자가 없다 — 있지도 않은 자리를 위해 사전 항목을 만들지 않는다.
      * 역할 이름은 계속 `projects.role`에서 온다(화면 어휘가 두 벌이면 갈린다). 그 값에 관사를
      * 붙이지 않는 규칙도 그대로다 — 2026-09-08에 "as a Editor"가 나왔다.
@@ -1905,7 +1905,7 @@ export const en = {
      */
     openProject: "Open project",
     /**
-     * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (account-linking §6). 지금까지의 값은
+     * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (DESIGN §6.62). 지금까지의 값은
      * *"…Signing in with a different account won't accept it."*이었는데 **그 문장이 병합으로
      * 거짓이 된다** — 다른 수단으로 들어와도 같은 주소면 수락된다. 그리고 설명 자리로 올라오면
      * 올바른 계정으로 온 사람이 경고부터 읽는다. 실제 거부는 `email-mismatch` 갈래가 말한다.
@@ -2039,7 +2039,7 @@ export const en = {
     /**
      * `linkErrorMessage` — 병합 확인 실패 여섯 + 폴백.
      *
-     * ⚠️ **challenge는 살아 있다** (design ⑧) — 실패가 소비하지 않으므로 "다시 눌러라"가 참이다.
+     * ⚠️ **challenge는 살아 있다** (ARCHITECTURE "계정 병합") — 실패가 소비하지 않으므로 "다시 눌러라"가 참이다.
      */
     link: {
       "wrong-account": "That's a different account. Choose the account this address was created with, then try again.",

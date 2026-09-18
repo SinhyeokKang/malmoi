@@ -36,7 +36,7 @@ export type ChallengeView = {
    * 색**이 되고, 자기 계정인지 알아보라고 만든 카드가 오히려 남의 계정처럼 보였다.
    *
    * ⚠️ **남는 노출은 훔친 challenge URL이다** — 그 URL을 얻은 사람이 이름·아바타를 본다
-   * (design ⑧이 그 시나리오를 상정한다). 붙이려면 여전히 기존 provider의 OAuth를 통과해야 하므로
+   * (ARCHITECTURE "계정 병합"이 그 시나리오를 상정한다). 붙이려면 여전히 기존 provider의 OAuth를 통과해야 하므로
    * 계정이 열리지는 않는다. 프로젝트 수·멤버 목록 같은 **계정 내용**은 계속 싣지 않는다.
    */
   name: string | null;

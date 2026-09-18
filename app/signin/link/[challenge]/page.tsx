@@ -69,7 +69,7 @@ export default async function LinkAccountPage({
 
           ⚠️ **규약 8의 Layer A는 아니다 — 의도적 예외다.** 인라인인 이유는 **메시지와 조치가 한
           자리에 있어야** 해서다: 다시 누를 버튼이 바로 아래에 있고, 토스트는 그 둘을 화면의
-          반대 끝으로 가른다. challenge가 **살아 있다**(design ⑧)는 것이 이 상태의 전제다.
+          반대 끝으로 가른다. challenge가 **살아 있다**(ARCHITECTURE "계정 병합")는 것이 이 상태의 전제다.
         */}
         {e !== undefined && (
           <Alert variant="danger" className="w-full">
@@ -135,7 +135,7 @@ function ProviderButton({
         const h = await headers();
         const origin = requestOrigin({ host: h.get("host"), forwardedProto: h.get("x-forwarded-proto") });
         const cookie = linkCookie(origin?.secure ?? false);
-        // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (design 불변식 4).
+        // 원문 토큰은 주소창과 이 쿠키에만 있다 — DB엔 해시만 남는다 (ARCHITECTURE "계정 병합").
         (await cookies()).set(cookie.name, challenge, cookie.options);
         // 시작 스코프 안에서 불러야 Auth.js가 state를 **우리 쿠키 이름**으로 저장한다 (불변식 3).
         await withLinkStart(origin?.secure ?? false, () => signIn(provider, { redirectTo: outcomeUrl(dest) }));

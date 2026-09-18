@@ -4,7 +4,7 @@ import { createFakeGitClient } from "./fake-client";
 
 /**
  * fake 자체의 계약을 박는다. **2단계 오케스트레이션 테스트 전부가 이 도구에 의존하고**,
- * spec 완료 조건 4("편집이 없으면 GitHub API를 한 번도 부르지 않는다")의 판정 수단이 여기다.
+ * ARCHITECTURE §2의 1층 스킵("편집이 없으면 GitHub API를 한 번도 부르지 않는다")의 판정 수단이 여기다.
  * 도구가 조용히 틀리면 그 위의 검증이 전부 가짜가 된다.
  */
 

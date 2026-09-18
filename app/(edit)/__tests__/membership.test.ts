@@ -9,7 +9,7 @@ import { createHarness, sessionFor } from "./harness";
  * 초대와 멤버 변경 (ARCHITECTURE §6.02).
  *
  * ⚠️ **초대 수락은 `requireProjectAccess`를 지나지 않는다** — 수락 전엔 멤버가 아니기 때문이다.
- * 그래서 그 Action은 spec 완료 조건 6의 **명시된 예외**이고, 대신 **토큰이 인가를 대신한다**:
+ * 그래서 그 Action은 ARCHITECTURE §6.1의 **명시된 예외**이고, 대신 **토큰이 인가를 대신한다**:
  * 해시로 행을 찾고, 단일 사용이고, provider가 검증한 이메일과 대조한다.
  */
 

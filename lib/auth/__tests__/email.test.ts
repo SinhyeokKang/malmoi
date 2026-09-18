@@ -71,7 +71,7 @@ describe("planEmailRefresh — 재로그인 시 저장 이메일 갱신 판정",
   });
 
   /**
-   * ⚠️ **"같은 주소면 언제나 keep"은 병합 시점에만 참이었다** (account-linking design ⑦). 병합 뒤
+   * ⚠️ **"같은 주소면 언제나 keep"은 병합 시점에만 참이었다** (ARCHITECTURE "계정 병합"). 병합 뒤
    * 한쪽 provider에서 주소를 바꾸면 로그인할 때마다 `User.email`이 뒤집히고, 초대 대조(ARCHITECTURE §6.02)가
    * 그 값 위에 선다. 대가는 병합한 사용자의 이메일이 provider를 안 따라가는 것이다.
    */

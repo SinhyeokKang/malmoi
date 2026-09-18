@@ -4,7 +4,7 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { toneFill } from "@/components/ui/tone";
 
 /**
- * 초대의 프로젝트 카드 — **`components/ui/`의 프리미티브가 아니다** (account-linking design ⑩).
+ * 초대의 프로젝트 카드 — **`components/ui/`의 프리미티브가 아니다**.
  *
  * 박스 규격은 `EntityCard`와 같고(같은 화면 언어여야 한다) 다른 것은 아바타·2행·우측 슬롯의
  * 내용뿐이다. 프리미티브로 올리지 않는 이유 셋이 DESIGN §6.4에 있다 — 요지는 `Avatar`의 폴백이

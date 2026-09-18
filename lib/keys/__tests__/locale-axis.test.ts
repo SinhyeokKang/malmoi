@@ -171,7 +171,7 @@ describe("filterRows — 검색의 대상이 선택된 로케일이다", () => {
   });
 });
 
-describe("pendingFirst — 상태 필터를 뺀 대가를 갚는다 (spec Q3)", () => {
+describe("pendingFirst — 상태 필터를 뺀 대가를 갚는다 (DESIGN §6.1)", () => {
   it("남은 일이 있는 키가 위로 온다", () => {
     const rows = [
       row({ key: "a.done", cells: { ko: cell({ value: "값" }) } }),

@@ -1,5 +1,5 @@
 /**
- * 로케일 코드 → 국기 파일 id, 또는 `null` (8-4 — spec Q4).
+ * 로케일 코드 → 국기 파일 id, 또는 `null` (8-4 — DESIGN §6.1).
  *
  * ⚠️ **잎이다 — import가 0이다.** 로케일 배지가 `?ns=*`에서 2,709번 렌더되고 그 트리가
  * 클라이언트다. `lib/keys/view.ts`를 하나라도 물면 `compareKeys` → `lib/adapters/shared` 그래프가

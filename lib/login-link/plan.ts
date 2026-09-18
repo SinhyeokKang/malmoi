@@ -5,7 +5,7 @@ import { checkChallenge, isLoginProvider, pickLoginAccount, type Challenge, type
  *
  * ⚠️ **자동 병합은 여전히 없다.** `offer`가 여는 것은 **화면 하나**이고, 행을 쓰는 것은 기존
  * provider의 OAuth를 새로 통과한 `planLinkConfirm`의 `ok` 하나뿐이다 — `allowDangerousEmailAccountLinking`은
- * 어느 provider에도 켜지 않는다 (design 불변식 7).
+ * 어느 provider에도 켜지 않는다 (ARCHITECTURE §6.2.1).
  */
 
 export type LinkOffer =
@@ -43,7 +43,7 @@ export function planLinkOffer(input: {
 
 export type LinkConfirm = {
   kind: "ok" | "expired" | "wrong-account" | "already-linked" | "invalid";
-  /** ⚠️ **`ok`에서만 참이다** (design ⑧) — 실패가 소비하면 훔친 URL 한 번으로 남의 병합을 태운다. */
+  /** ⚠️ **`ok`에서만 참이다** (ARCHITECTURE "계정 병합") — 실패가 소비하면 훔친 URL 한 번으로 남의 병합을 태운다. */
   consume: boolean;
 };
 

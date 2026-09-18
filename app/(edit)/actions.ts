@@ -94,7 +94,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
    */
   revalidatePath(`/projects/${slug}`, "layout");
   /**
-   * ⚠️ **목록도 이 값을 읽는다** (projects-list §3). 위가 **접두가 아니라 세그먼트**라 `/projects`를
+   * ⚠️ **목록도 이 값을 읽는다** (DESIGN §6.63). 위가 **접두가 아니라 세그먼트**라 `/projects`를
    * 안 덮고, `/projects/new`는 모달 뒤에 같은 목록을 그리는 **또 다른 경로**다
    * (POSTMORTEM 2026-09-09). 저장 하나가 Summary의 `To review`·`To send`와 행의 Meter를 동시에
    * 움직이므로, 여기서 안 지우면 번역자가 저장한 값이 목록에서만 옛 숫자로 남는다.
@@ -148,7 +148,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
     requestedBy: userId,
   });
   /**
-   * ⚠️ **Publish가 목록의 셋을 동시에 움직인다** (projects-list §3): `lastPulledAt`이 전진해
+   * ⚠️ **Publish가 목록의 셋을 동시에 움직인다** (DESIGN §6.63): `lastPulledAt`이 전진해
    * `To send`와 `New from GitHub`의 기준이 바뀌고, `lastPrUrl`이 `pr_open` 띠를 세운다.
    * **스킵·실패에도 지운다** — 어느 쪽이든 목록이 보여 주던 값이 더 이상 최신이 아니고,
    * 성공만 지우면 "실패한 Publish 뒤에 옛 띠가 남는" 갈래가 생긴다.

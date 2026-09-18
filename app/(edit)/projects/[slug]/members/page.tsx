@@ -13,10 +13,10 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * 멤버 관리 (6b-2 — DESIGN §6.65 · user-stories §5).
+ * 멤버 관리 (6b-2 — DESIGN §6.65).
  *
  * ⚠️ **게이트가 `translation:write`다, `member:manage`가 아니다.** EDITOR도 목록을 본다 — "누가 이
- * 프로젝트에 있나"는 번역자에게도 필요한 정보이고, user-stories §5가 그렇게 결정했다. 컨트롤만
+ * 프로젝트에 있나"는 번역자에게도 필요한 정보이고, DESIGN §6.65가 그렇게 결정했다. 컨트롤만
  * 역할로 갈리고 **판정은 Action이 `member:manage`로** 한다. 이것이 별도 라우트를 만든 실제 이유다:
  * `/settings`는 `project:settings` 뒤라 EDITOR가 아예 못 들어온다 (PRODUCT §3).
  *
@@ -58,7 +58,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        {/* ⚠️ **breadcrumb이 없다** (8-4 spec Q5) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
+        {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">

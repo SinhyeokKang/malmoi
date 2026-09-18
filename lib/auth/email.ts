@@ -115,7 +115,7 @@ export function planEmailRefresh(input: {
   loginMethods: number;
 }): EmailRefresh {
   /**
-   * ⚠️ **수단이 둘 이상이면 언제나 `keep`이다** (account-linking design ⑦). 병합 전에는 User당
+   * ⚠️ **수단이 둘 이상이면 언제나 `keep`이다** (ARCHITECTURE "계정 병합"). 병합 전에는 User당
    * 로그인 수단이 하나라 이 경로가 원리적으로 없었다 — 병합이 그것을 만든다: 한쪽 provider에서
    * 주소를 바꾸면 `User.email`이 **마지막으로 로그인한 provider에 따라 뒤집히고**, 초대 대조
    * (ARCHITECTURE §6.02)가 그 값 위에 서 있다. ARCHITECTURE §6.2.1가 경고한 "정본 판정"이 한 로그인 뒤에 도착한다.

@@ -46,7 +46,7 @@ export type SegmentContent = {
    * 라벨 **맨 왼쪽** — `icon`보다도 앞이다.
    *
    * ⚠️ **`icon`으로 대신할 수 없다.** 그쪽은 `ComponentType`(lucide 컴포넌트)인데 국기는 컴포넌트가
-   * 아니라 인라인 `style`의 `background-image`다 (new-project-modal §8). 치수·`aria-hidden`은 호출부
+   * 아니라 인라인 `style`의 `background-image`다 (DESIGN §6.7). 치수·`aria-hidden`은 호출부
    * 책임이고, 여기서 주는 것은 자리뿐이다.
    */
   leading?: ReactNode;
