@@ -192,13 +192,20 @@ export function buildWriteEntries(
      * 라운드트립 한 번 뒤에 조용히 일어난다. base 파일의 값은 곧 소스 문자열이고 그 소유자는 코드다.
      *
      * **비-base는 그대로다** — 그쪽의 빈 값은 미번역이고 파일에서 빠지는 것이 맞다.
+     *
+     * ⚠️ **sourceText까지 비면 `""` 그대로 쓴다** (2026-09-18, launch-readiness L4.10 — 어댑터 실측 20차). 키 집합은
+     * base 파일에서만 오므로(`lib/push/payload.ts`) 원문이 빈 키는 **리포 base 파일에 `""`로 있던 키**다. 옛 동작은
+     * "폴백할 원문이 없다"며 뺐고, 바로 위 문단이 막으려던 결과(전 로케일 orphan → 비-base 번역 소실)가 이 틈으로
+     * 났다 — 코퍼스 7개 리포. 재생성 writer가 빈 값을 거르므로 `writeEmpty`로 표시한다.
      */
     const present = row.value === "" ? null : row.value;
     const message = present ?? (opts.isBase ? row.sourceText : null);
-    if (message === null || message === "") continue;
+    if (message === null) continue;
     entries.push({
       key: row.key,
       message,
+      // `message`가 비는 길은 base 폴백뿐이다 — `present`는 빈 값을 `null`로 접었다.
+      ...(message === "" ? { writeEmpty: true as const } : {}),
       // 빈 description은 싣지 않는다 — 없는 것과 같아야 파일이 결정적이다.
       ...(row.description ? { description: row.description } : {}),
       // ⚠️ **`sortIndex ? …`로 쓰면 0이 falsy라 파일의 첫 키가 순서를 잃는다.**

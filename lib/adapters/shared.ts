@@ -99,7 +99,8 @@ export function orderedEntries(entries: readonly LocaleEntry[]): LocaleEntry[] {
     // orphaned = 코드에서 사라진 키. DB엔 남기고 파일에서만 뺀다 — 되돌릴 수 있어야 한다.
     // **모든 재생성 writer가 이 함수를 지나야 이 불변식에 주인이 생긴다.**
     .filter((e) => e.orphaned !== true)
-    .filter((e) => e.message !== "")
+    // 빈 값은 미번역이라 뺀다 — base 파일에 `""`로 있던 키(`writeEmpty`)만 남긴다 (launch-readiness L4.10).
+    .filter((e) => e.message !== "" || e.writeEmpty === true)
     // `filter`가 이미 새 배열을 냈으므로 `sort`가 입력을 건드리지 않는다.
     .sort((a, b) => {
       const ao = a.order;

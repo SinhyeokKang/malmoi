@@ -40,9 +40,12 @@ const BASE_SCRAMBLED = {
  * (`diffRatioNonBase`)가 재려는 것은 **base 하나만 재면 안 보이는 격차**이고, 그 격차를 만드는
  * 원인은 시간이 지나며 하나씩 고쳐진다 — 그래서 **이 기능들이 고치지 않는 원인**으로 만들어야
  * 판별력이 남는다. 미번역 제외는 의도된 규칙이라 앞으로도 안 고친다 (ARCHITECTURE §1.1).
+ *
+ * ⚠️ **세 번째로 갈았다** (2026-09-18, launch-readiness L4.10). 그 "안 고친다"가 base에서는 틀렸다 — base의 `""`는
+ * 이제 그대로 쓰여 diff를 안 낸다. 지금 원인은 **문자열이 아닌 값**(`null`)이다: read가 건너뛰므로 DB에 없고 파일에서 빠진다.
  */
 const BASE_EMPTY_ONLY = {
-  "src/i18n/en.json": two({ a: "A", b: "B", gone: "" }),
+  "src/i18n/en.json": two({ a: "A", b: "B", gone: null }),
   "src/i18n/ko.json": two({ a: "에이", b: "비" }),
   "src/i18n/ja.json": two({ a: "エー", b: "ビー" }),
 };
@@ -256,16 +259,16 @@ describe("surveyOne — 비-base 로케일 diff", () => {
 
 /**
  * **고정점은 "다시 push → pull"이다** (2026-09-18 20차). base 값이 빈 키는 1차 pull이 base 파일에서 빼고, 머지 뒤 push가
- * 그 키를 orphan해 2차 pull이 비-base 번역까지 지운다 — 그래서 **지금은 고정점이 아니다.** launch-readiness L4.10을 고치면
- * 이 단언이 `"same"`으로 뒤집혀야 한다(옛 측정은 2차 write에 원시 read를 넘겨 이것을 "same"으로 봤다).
+ * 그 키를 orphan해 2차 pull이 비-base 번역까지 지웠다. launch-readiness L4.10이 base의 빈 값을 `""` 그대로 쓰게 해
+ * 이 단언이 `"different"`에서 `"same"`으로 뒤집혔다(옛 측정은 2차 write에 원시 read를 넘겨 결함을 못 봤다).
  */
 describe("surveyOne — 두 사이클 고정점", () => {
-  it("base 값이 비고 비-base에 번역이 있으면 두 번째 사이클이 그 번역을 지운다 (L4.10)", () => {
+  it("base 값이 비고 비-base에 번역이 있어도 두 번째 사이클이 그 번역을 지우지 않는다 (L4.10)", () => {
     const s = surveyOne(input("acme/base-blank", {
       "src/i18n/en.json": two({ a: "A", b: "" }),
       "src/i18n/ko.json": two({ a: "에이", b: "비" }),
     }));
-    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "different" });
+    expect(s.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
   });
 
   it("base에 빈 값이 없으면 고정점이다 (짝)", () => {

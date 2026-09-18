@@ -605,7 +605,8 @@ function keepsStoredValues(
 ): boolean {
   for (const locale of locales) {
     const stored = new Map(entriesOf(locale).map((e) => [e.key, e.message]));
-    const got = new Map((read.locales.find((l) => l.locale === locale)?.entries ?? []).filter((e) => !exact || e.message !== "").map((e) => [e.key, e.message]));
+    // 빈 값을 걸러 견주지 않는다 — 재생성 writer가 `""`를 쓰는 것은 DB가 `""`를 가진 base 키뿐이다(`writeEmpty`, L4.10).
+    const got = new Map((read.locales.find((l) => l.locale === locale)?.entries ?? []).map((e) => [e.key, e.message]));
     for (const [key, message] of stored) if (got.get(key) !== message) return false;
     if (exact && got.size !== stored.size) return false;
   }

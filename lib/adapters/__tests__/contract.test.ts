@@ -55,6 +55,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     noTrailingNewline?: boolean;
     keepOrphaned?: boolean;
     keepEmpty?: boolean;
+    dropMarkedEmpty?: boolean;
     neverNull?: boolean;
     respectInputOrder?: boolean;
     ignoreOrder?: boolean;
@@ -71,7 +72,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     write: (_f: DetectedFormat, input: WriteInput): string | null => {
       let list: LocaleEntry[] = [...input.entries];
       if (!b.keepOrphaned) list = list.filter((e) => e.orphaned !== true);
-      if (!b.keepEmpty) list = list.filter((e) => e.message !== "");
+      if (!b.keepEmpty) list = list.filter((e) => e.message !== "" || (e.writeEmpty === true && !b.dropMarkedEmpty));
       const byKey = (x: LocaleEntry, y: LocaleEntry) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0);
       if (b.respectInputOrder) {
         // 정렬하지 않는다 — 배열 위치에 의존한다.
@@ -109,6 +110,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ["끝 개행 없음", { noTrailingNewline: true }, /파일 끝 개행이 없다/],
     ["orphaned를 남김", { keepOrphaned: true }, /orphaned/],
     ["빈 값을 남김", { keepEmpty: true }, /빈 문자열/],
+    ["writeEmpty 표시를 무시하고 뺌", { dropMarkedEmpty: true }, /writeEmpty/],
     ["0개인데 null을 안 냄", { neverNull: true }, /null을 내지 않았다/],
     ["입력 순서를 그대로 따름", { respectInputOrder: true }, /입력 순서 무관|정렬/],
     ["order를 무시하고 늘 코드 유닛 순", { ignoreOrder: true }, /order: LocaleEntry\.order 순서를 따르지 않는다/],

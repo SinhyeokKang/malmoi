@@ -104,6 +104,17 @@ export type LocaleEntry = {
    * read 쪽에서는 항상 비어 있다 — 파일에 있는 키는 정의상 orphaned가 아니다.
    */
   orphaned?: boolean;
+  /**
+   * **빈 값이어도 파일에 쓴다** (launch-readiness L4.10). base 파일에 `""`로 있던 키에만 붙는다 — 판정은
+   * `lib/pull/plan.ts` `buildWriteEntries`가 한다(`WriteInput`엔 `isBase`가 없다 — 의도된 계약).
+   *
+   * 재생성 writer는 빈 값을 미번역으로 보고 빼는데(§1.1), base 파일에서 키가 빠지면 다음 push가 그 키를 **전 로케일에서
+   * orphan**하고 그다음 pull이 비-base 번역을 지운다. 비-base의 빈 값은 그대로 미번역이다 — 이 표시가 안 붙는다.
+   * 수술적 치환은 이 표시를 안 본다 — 빈 값으로 치환하지 않으므로 원본 `""`가 그대로 남는다.
+   *
+   * read 쪽에서는 항상 비어 있다.
+   */
+  writeEmpty?: true;
 };
 
 export type ReadLocale = {
