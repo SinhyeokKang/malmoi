@@ -245,7 +245,7 @@ lib/
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
-                        safe-adapter(⚠️ Auth.js는 세션 만료를 OAuth callback 앞에서 안 본다) ·
+                        safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
                         read-session · outage · public-session · permission · access · invitation ·
                         invite-view · membership · email · cookie · message · landing · invite-label ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
