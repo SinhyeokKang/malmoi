@@ -684,10 +684,8 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
-**Server Action의 경계도 같은 선이다** (2026-09-17, launch-readiness L3.4): **번역을 바꾸는 쓰기는 보관 중
-거부**(`runFirstIngest`(⚠️ **아직 Action 층 거부가 없다** — launch-readiness L3.4. 그 Action은
-`Project.archivedAt`을 안 보므로 스냅샷 다운로드까지 간 뒤 `applyPush`의 최종 가드가 던지고 호출부가
-`ingest-failed`로 **오진한다**. 피해는 없지만 사용자가 읽는 사유가 거짓이다)·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
+**Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
+거부**(`runFirstIngest`·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
 허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
 바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
 

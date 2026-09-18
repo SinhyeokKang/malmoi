@@ -1087,10 +1087,20 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
       repoName: true,
       baseBranch: true,
       installationId: true,
+      archivedAt: true,
       defaultSurface: true,
     },
   });
   if (project === null) return { ok: false, error: "not-found" };
+  /**
+   * ⚠️ **인가가 이것을 안 막는다** — 이 Action은 `project:settings` 뒤에 있고 그 권한만 보관 중에도
+   * 통과한다(PRODUCT §7.9 — 전부 막으면 보관이 편도가 된다). 번역을 바꾸는 쓰기는 자기가 한 번 더
+   * 봐야 하고, 형제 `addSurface`·`runRepositoryImport`가 같은 형이다.
+   *
+   * ⚠️ **`apply.ts`의 트랜잭션 가드가 이미 막고 있었지만 너무 늦었다** — 거기까지 가면 스냅샷을
+   * 이미 내려받은 뒤이고, 그 예외가 아래에서 `ingest-failed`로 접혀 **"적재 실패"로 오진**된다.
+   */
+  if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
   const surface = project.defaultSurface;
   if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
