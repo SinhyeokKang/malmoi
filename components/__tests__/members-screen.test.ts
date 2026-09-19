@@ -168,6 +168,57 @@ describe("멤버 화면 — 카드", () => {
   });
 });
 
+/**
+ * **캔버스 값 그대로** (`design_handoff_members/Members.dc.html` · `/design-sync` 2026-09-19).
+ *
+ * ⚠️ **"비슷한 유틸리티로 옮긴 것"이 이 부류의 결함이다** — `w-32`(128)로 132를, `pl-4`(16)로 12를
+ * 옮기면 `tsc`도 `pnpm test`도 조용하다. 그래서 리터럴을 전수로 센다 (`projects-screen.test.ts`와 같은 계보).
+ *
+ * ⚠️ **소스 검사만으로는 부족하다** — 클래스가 맞아도 부모의 flex 규칙이 그것을 이긴다.
+ * 실측은 `/design-sync` 4단계가 들고, 이 라운드에서는 **dev DB에 프로젝트가 0개라 못 밟았다.**
+ */
+describe("멤버 행 — 캔버스 값 그대로", () => {
+  const ROW = "components/members/member-row.tsx";
+  const CHIP = "components/members/role-chip.tsx";
+
+  it.each([
+    ["아바타 32", ROW, "size={32}"],
+    ["행 padding 14/14/14/12", ROW, "py-3.5 pr-3.5 pl-3"],
+    ["행 요소 gap 16", ROW, "gap-4"],
+    ["이름 칸 300 고정", ROW, "w-[300px]"],
+    ["이름 15/500", ROW, "text-base"],
+    ["주소 14", ROW, "text-sm"],
+    ["오른쪽 군 gap 8", ROW, "gap-2"],
+    ["역할 칩 폭 132", CHIP, "w-[132px]"],
+    ["칩 점선 테두리", CHIP, "border-dashed"],
+  ])("%s", (_label, file, literal) => {
+    expect(read(file)).toContain(literal);
+  });
+
+  /**
+   * ⚠️ **띠 텍스트가 행 1행 텍스트와 같은 x에서 시작해야** 그 띠가 이 행에 속한 것으로 읽힌다.
+   * 아바타가 32가 되면서 56 → 60으로 따라 움직인 값이다(`pl-3` 12 + 32 + `gap-4` 16).
+   */
+  it("사유 띠 들여쓰기가 아바타 폭을 따라간다", () => {
+    expect(read(ROW)).toContain('indent="avatar"');
+    expect(read("components/ui/row-card.tsx")).toMatch(/indent === "avatar" \? "pl-15" : "pl-14"/);
+  });
+
+  /** ⚠️ **1행의 첫 글자를 아바타 씨앗으로 쓰지 않는다** — 셸 아바타와 다른 글자가 된다. */
+  it("아바타 씨앗이 1행 텍스트에서 오지 않는다", () => {
+    const src = read(ROW);
+    expect(src).toContain('identity.avatarSeed ?? ""');
+    expect(src).not.toContain("name={identity.primary}");
+  });
+
+  /** ⚠️ **[Remove]·[Revoke]는 `danger`다** — 캔버스가 `ghost`를 명시적으로 기각했다. */
+  it.each([LIST, PENDING])("%s의 파괴적 액션이 danger variant다", (file) => {
+    const src = read(file);
+    expect(src).toContain('variant="danger"');
+    expect(src).not.toContain('variant="ghost"');
+  });
+});
+
 describe("멤버 화면 — 컨트롤", () => {
   it("역할 변경은 native Select다 — DropdownMenu가 아니다 (DESIGN §6.65)", () => {
     const src = read(LIST);

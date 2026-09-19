@@ -1,5 +1,6 @@
 "use client";
 
+import { Copy, Info } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type RefObject } from "react";
 
 import { createInvitation } from "@/app/(edit)/projects/actions";
@@ -8,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { OnboardingModal } from "@/components/ui/modal";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 /**
  * 초대 링크 발급 — **한 창의 두 얼굴**(폼 → 링크). `components/ui/modal.tsx`의 `OnboardingModal`을
@@ -113,12 +115,15 @@ export function InviteModal({
           </Button>
         }
       >
-        <div className="flex items-center gap-2">
+        {/* ⚠️ **채운 면이 아니라 테두리 카드다** (캔버스 `1g`) — 값이 주인공이라 배경으로 눌러 두지 않는다. */}
+        <div className="border-border flex shrink-0 items-center gap-2.5 rounded-lg border py-3 pr-3 pl-3.5">
           {/* ⚠️ **sans 14다** — mono는 사람이 글자를 옮겨 적는 값의 형이고, 여기엔 [Copy]가 붙어 있다. */}
-          <span className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 text-sm">{issued.link}</span>
+          <span className="min-w-0 flex-1 truncate text-sm">{issued.link}</span>
+          {/* ⚠️ **`primary`다** — 이 얼굴에서 할 일이 복사 하나다(바닥 [Done]은 닫기다). */}
           {/* ⚠️ **복사 실패를 삼키지 않는다** — 복사된 줄 알고 닫으면 링크를 영구히 잃는다. */}
           <Button
             type="button"
+            variant="primary"
             onClick={() => {
               void navigator.clipboard.writeText(issued.link).then(
                 () => setCopied("copied"),
@@ -126,12 +131,21 @@ export function InviteModal({
               );
             }}
           >
+            <Copy aria-hidden />
             {copied === "copied" ? m.common.copied : copied === "failed" ? m.common.copyFailed : m.common.copy}
           </Button>
         </div>
-        <Alert variant="info" title={m.members.invite.notKept.title}>
-          {m.members.invite.notKept.body}
-        </Alert>
+        {/*
+          ⚠️ **`Alert`이 아니라 테두리 카드다** (캔버스 `1g`). `Alert info`는 muted 면 + 아이콘이라
+          "무언가 잘못됐다"의 계열로 읽히는데, 이 블록이 말하는 것은 **정상 동작의 사실**이다.
+        */}
+        <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
+          <Info aria-hidden className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-sm font-medium">{m.members.invite.notKept.title}</span>
+            <span className="text-muted-foreground text-xs leading-[1.7]">{m.members.invite.notKept.body}</span>
+          </div>
+        </div>
       </OnboardingModal>
     );
   }
@@ -184,25 +198,36 @@ export function InviteModal({
         */}
         <div className="space-y-2">
           <span id="invite-role-label" className="block text-sm font-medium">{m.members.invite.roleLabel}</span>
+          {/*
+            ⚠️ **카드 둘이고 지시자(라디오 원)가 없다** (캔버스 `1g`) — 선택을 **테두리**가 말한다.
+            나란히 둘뿐이라 원이 없어도 "둘 중 하나"가 형에서 읽히고, 각 카드가 설명 한 줄을 들어
+            원 + 라벨 행보다 고르는 근거를 가까이 둔다. **새 색·radius·size를 만들지 않는다** —
+            선택 테두리는 `--primary`, 나머지는 `--border`다.
+            ⚠️ **선택 상태를 테두리로만 말하므로 포커스 링이 반드시 산다** — 링이 없으면 키보드로
+            어디 있는지 알 수 없다(§7).
+          */}
           <RadioGroup
             aria-labelledby="invite-role-label"
             value={role}
             onValueChange={(next) => setRole(next as Role)}
-            className="space-y-2"
+            className="flex gap-2.5"
           >
             {(["EDITOR", "OWNER"] as const).map((option) => (
-              <Radio
+              <RadioGroupItem
                 key={option}
                 value={option}
                 id={`invite-role-${option}`}
-                labelClassName="items-start gap-3"
-                label={
-                  <span className="flex flex-col gap-0.5">
-                    <span>{m.projects.role[option]}</span>
-                    <span className="text-muted-foreground text-xs">{m.members.invite.roleHint[option]}</span>
-                  </span>
-                }
-              />
+                className={cn(
+                  "focus-visible:ring-ring flex min-w-0 flex-1 cursor-pointer flex-col items-start gap-0.5 rounded-md border px-3.5 py-3 text-left",
+                  "focus-visible:ring-2 focus-visible:outline-none",
+                  "data-[state=checked]:border-primary border-border hover:bg-foreground/[0.02]",
+                )}
+              >
+                <span className="text-sm font-medium">{m.projects.role[option]}</span>
+                <span className="text-muted-foreground text-xs leading-[1.5]">
+                  {m.members.invite.roleHint[option]}
+                </span>
+              </RadioGroupItem>
             ))}
           </RadioGroup>
         </div>

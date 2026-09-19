@@ -1968,8 +1968,23 @@ export const en = {
      */
     unreadableLabel: "Couldn't be read",
     unreadableHint: "This person's name and address couldn't be decrypted. Role and join date are unaffected.",
-    /** 읽기전용 역할 칩의 접근 이름 — 보이는 것은 역할 낱말과 자물쇠뿐이다. */
-    roleLocked: (who: string): string => `Role for ${who} — only owners can change this`,
+    /**
+     * 읽기전용 역할 칩의 접근 이름 — 보이는 것은 역할 낱말과 자물쇠뿐이다.
+     *
+     * ⚠️ **문장이 둘이다** (핸드오프 결정 3). 같은 점선 칩이지만 **잠긴 까닭이 다르다**: 대기 초대는
+     * 발급 시점에 굳은 것(`ProjectInvitation.role`은 `changeMember`가 못 건드린다)이고, EDITOR 시야는
+     * 권한이 없는 것이다. 한 문장으로 접으면 "Revoke하고 다시 초대"라는 **복구 경로**가 사라진다.
+     */
+    roleLocked: {
+      pending: (role: string): string =>
+        `${role}, set when the invitation was created. Revoke and invite again to change it.`,
+      editor: (role: string): string => `${role}, only owners can change roles.`,
+    },
+    /**
+     * ⚠️ **값이 자기 라벨을 든다** (핸드오프 결정 3-b). 열 머리를 지웠으므로 `2 days ago`가 무엇의
+     * 시각인지 말할 자리가 이 문장뿐이다 — 라벨 없이 상대 시각만 두면 가입일과 만료가 구별되지 않는다.
+     */
+    joined: (when: string): string => `Joined ${when}`,
     /** 이름이 없는 사용자 — Google 계정엔 핸들이 없다. */
     unnamed: "No name set",
     you: "You",
@@ -1985,7 +2000,9 @@ export const en = {
     removed: (who: string): string => `Removed ${who}`,
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
     confirmRemove: (who: string): string => `Remove ${who} from this project?`,
-    confirmRemoveHint: "They lose access right away. Their past edits stay.",
+    /** ⚠️ **번역이 남는다는 사실을 먼저 말한다** (캔버스 `1c`) — 망설이는 이유가 대개 그것이고,
+     * `ProjectMember` 관계가 `Restrict`라 데이터가 조용히 사라지지 않는다. */
+    confirmRemoveHint: "They lose access right away. Their translations stay — the history keeps their name.",
     cancel: "Cancel",
     /** 마지막 OWNER 보호는 `accessErrorMessage("last-owner")`가 낸다 — 여기 두 벌로 쓰지 않는다. */
     changeFailed: (reason: string): string => `Couldn't apply that change: ${reason}`,
@@ -2034,7 +2051,8 @@ export const en = {
        * **대기 초대에는 상한이 없다**(`planInvitationCreate`가 대기를 안 센다).
        */
       count: (n: number): string => `${n.toLocaleString("en-US")} invitation${n === 1 ? "" : "s"}`,
-      /** 행의 메타 줄. 열 머리가 사라지면서 라벨이 문장 안으로 들어왔다. */
+      /** 행의 메타 줄. 열 머리가 사라지면서 라벨이 문장 안으로 들어왔다 (`m.members.joined`와 같은 이유). */
+      expires: (when: string): string => `Expires ${when}`,
       invitedBy: (who: string): string => `Invited by ${who}`,
       /**
        * 초대한 사람의 이름이 없을 때.
@@ -2305,10 +2323,11 @@ export const en = {
       // "없다"와 "멤버가 아니다"를 가르지 않는다 — 프로젝트 존재를 노출하지 않는다 (PRODUCT §7.7).
       "not-found": "You can't open this project. Check your invite link.",
       // 무엇을 하면 되는지 말한다 — 막힌 이유만 알려주면 사용자가 갇힌다.
-      // ⚠️ **문구가 시안 문장이다** (members-rework §7) — `"last-owner"`를 생산하는 자리가 멤버 경로뿐이라
-      // (`planMemberChange` + `LastOwnerRollback`) 나머지 소비자에는 도달하지 않는다. 화면의 사전 차단 띠와
-      // 사후 Alert이 **같은 이 문자열**을 쓰는 것이 이 값이 한 벌인 이유다.
-      "last-owner": "A project needs one owner. Make someone else an owner first, then change this.",
+      // ⚠️ **핸드오프가 이 값을 코드 쪽으로 맞췄다** (members.prompt.md 결정 6 — *"시안 문장(needs one
+      // owner)은 버린다"*). 2026-09-19에 한 번 시안 문장으로 바꿨다가 되돌렸다: 바꾸면 `accessErrorMessage`
+      // 소비자 전부에 번지는데 얻는 것이 단어 둘이었다. **사전 차단 띠와 사후 Alert이 같은 문장**이라는
+      // 요구는 둘 다 이 키를 읽는 것으로 이미 지켜진다.
+      "last-owner": "A project needs at least one owner. Make someone else an owner first.",
       "not-member": "That person isn't a member of this project.",
       // 유일하게 재시도가 맞는 사유다 — 입력값이 남아 있다는 것을 말한다.
       unavailable: "Something went wrong. Try again in a moment — your text is kept.",

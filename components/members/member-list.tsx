@@ -140,9 +140,15 @@ export function MemberList({
                   identity={identity}
                   you={member.userId === viewerId}
                   meta={
-                    <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(member.joinedAt, now)}</span>
+                    /* ⚠️ **150 고정 + 라벨을 든다** (캔버스). 열 머리를 지웠으므로 `2 days ago`가 무엇의
+                       시각인지 말하는 자리가 이 문장뿐이고, 폭이 흔들리면 오른쪽 군의 x가 행마다 달라진다. */
+                    <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
+                      {m.members.joined(relativeTime(member.joinedAt, now))}
+                    </span>
                   }
                   band={sentences.length === 0 ? null : sentences.join(" ")}
+                  /* 막힌 동작의 사유는 붉게, 못 읽음만이면 조용히 (캔버스 `1c` ↔ `1d`). */
+                  bandTone={blocked ? "danger" : "muted"}
                   controls={(describedBy) =>
                     manage ? (
                       <>
@@ -162,7 +168,7 @@ export function MemberList({
                         />
                       </>
                     ) : (
-                      <RoleChip role={member.role} who={who} />
+                      <RoleChip role={member.role} reason="editor" />
                     )
                   }
                   after={
@@ -233,7 +239,7 @@ function RoleSelect({
         onClick={blocked ? (event) => event.preventDefault() : undefined}
         // Tab만 통과시킨다 — 포커스는 받아야 사유가 낭독되고, 나머지는 전부 이 컨트롤의 동작이다.
         onKeyDown={blocked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
-        className="w-32"
+        className="w-[132px]"
       >
         <SelectValue />
       </SelectTrigger>
@@ -247,6 +253,10 @@ function RoleSelect({
 
 /**
  * 제거는 되돌릴 수 없어 확인을 한 번 받는다 (DESIGN §6.4 — 제목은 대상을 명시한 질문).
+ *
+ * ⚠️ **`danger`이고 `ghost`가 아니다** (캔버스가 ghost를 명시적으로 기각했다): *"ghost는 행 위를 지나야
+ * 존재가 드러나 «누를 수 있는 것인지 라벨인지» 모호했다."* 면을 채우지 않는 이유는 그러면 이 화면이
+ * 통째로 제거하는 화면처럼 보이기 때문이고, 대개 이 화면을 여는 이유는 **보는 것**이다.
  *
  * ⚠️ **사전 차단된 행은 Dialog를 아예 세우지 않는다.** `preventDefault`로 트리거를 막는 형도
  * 리포에 있지만(`sync-button`), 되돌릴 수 없는 확인 창이 "열리긴 하는데 아무 일도 안 일어난다"가
@@ -271,7 +281,7 @@ function RemoveButton({
     return (
       <Button
         id={id}
-        variant="ghost"
+        variant="danger"
         aria-label={m.members.removeLabel(who)}
         aria-disabled
         aria-describedby={describedBy}
@@ -286,7 +296,7 @@ function RemoveButton({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button id={id} variant="ghost" aria-label={m.members.removeLabel(who)} loading={pending}>
+        <Button id={id} variant="danger" aria-label={m.members.removeLabel(who)} loading={pending}>
           {m.members.remove}
         </Button>
       </DialogTrigger>

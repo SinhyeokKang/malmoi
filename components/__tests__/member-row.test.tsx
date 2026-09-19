@@ -28,13 +28,14 @@ describe("MemberRow — 아바타 씨앗", () => {
   });
 
   /**
-   * ⚠️ **씨앗이 없으면 이니셜 없는 중립 원이다.** 마스킹 주소의 첫 글자(`j`)를 쓰면 셸 아바타와
-   * 다른 글자·다른 색이 되어 **아바타가 사람을 못 가리킨다** (`entity-card.tsx`가 밟은 함정).
+   * ⚠️ **씨앗이 없으면 `?`다 — 1행의 첫 글자가 아니다** (캔버스 `1a` 넷째 행). 마스킹 주소의 첫
+   * 글자(`j`)를 쓰면 셸 아바타와 다른 글자·다른 색이 되어 **아바타가 사람을 못 가리킨다**
+   * (`entity-card.tsx`가 밟은 함정). 갈래를 늘리지 않고 빈 이름을 넘기면 프리미티브가 그 답을 낸다.
    */
-  it("씨앗이 없으면 글자 없는 중립 원이다", async () => {
+  it("씨앗이 없으면 `?`이고 1행의 첫 글자를 쓰지 않는다", async () => {
     for (const row of [identity(null, "j***@acme.com"), identity(null, null), identity("Jane", "j***@x.com", false)]) {
       const { container } = await render(<MemberRow id="u1" identity={row} />);
-      expect(find(container, "[data-avatar]").textContent).toBe("");
+      expect(find(container, "[data-avatar]").textContent).toBe("?");
     }
   });
 });
@@ -116,25 +117,40 @@ describe("MemberRow — 사유 띠와 aria-describedby", () => {
 
 describe("RoleChip", () => {
   /**
-   * ⚠️ **역할 낱말이 낭독에서 사라지면 안 된다** — sr-only 문장만 두고 보이는 글자를 `aria-hidden`으로
-   * 덮으면 "Role for Jane — only owners can change this"만 읽히고 **그 역할이 무엇인지는 안 읽힌다.**
+   * ⚠️ **역할 낱말이 낭독에서 사라지면 안 된다.** `aria-label`이 보이는 글자를 **덮어쓰므로**, 그 라벨이
+   * 역할을 포함하지 않으면 "only owners can change roles"만 읽히고 무엇이 잠겼는지는 안 읽힌다.
+   * 캔버스가 라벨을 `{role}, …`로 시작시키는 이유이고, WCAG 2.5.3(Label in Name)도 그것으로 지켜진다.
    */
-  it("역할 낱말과 잠김 사유를 함께 낭독한다", async () => {
-    const { container } = await render(<RoleChip role="EDITOR" who="Jane" />);
+  it("보이는 역할 낱말이 접근 이름 안에 들어 있다", async () => {
+    const { container } = await render(<RoleChip role="EDITOR" reason="editor" />);
     const chip = find<HTMLElement>(container, "[data-role-chip]");
     expect(chip.textContent).toContain(m.projects.role.EDITOR);
-    expect(chip.textContent).toContain(m.members.roleLocked("Jane"));
-    expect(find<HTMLElement>(chip, ".sr-only").textContent).toContain(m.members.roleLocked("Jane"));
+    expect(chip.getAttribute("aria-label")).toBe(m.members.roleLocked.editor(m.projects.role.EDITOR));
+    expect(chip.getAttribute("aria-label")).toContain(m.projects.role.EDITOR);
   });
 
-  it("대상을 든다 — 행마다 같은 문구면 누구의 역할인지 구별되지 않는다", async () => {
-    const { container } = await render(<RoleChip role="OWNER" who="Ann" />);
-    expect(find(container, "[data-role-chip]").textContent).toContain("Ann");
+  /**
+   * ⚠️ **잠긴 까닭이 둘이라 문장이 둘이다** (핸드오프 결정 3). 한 문장으로 접으면 대기 초대의
+   * **복구 경로**("Revoke하고 다시 초대")가 사라진다 — 그 행에서 할 수 있는 유일한 일이다.
+   */
+  it("대기 초대와 EDITOR 시야가 다른 사유를 낭독한다", async () => {
+    const pending = await render(<RoleChip role="OWNER" reason="pending" />);
+    const editor = await render(<RoleChip role="OWNER" reason="editor" />);
+    const label = (c: HTMLElement) => find<HTMLElement>(c, "[data-role-chip]").getAttribute("aria-label");
+    expect(label(pending.container)).toContain("Revoke and invite again");
+    expect(label(editor.container)).not.toContain("Revoke and invite again");
+    expect(label(pending.container)).not.toBe(label(editor.container));
+  });
+
+  /** ⚠️ **자물쇠는 `aria-hidden`이다** — 칩이 라벨을 들므로 글리프가 이름에 끼면 안 된다. */
+  it("자물쇠가 접근성 트리 밖이다", async () => {
+    const { container } = await render(<RoleChip role="OWNER" reason="pending" />);
+    expect(find(container, "[data-role-chip] svg").getAttribute("aria-hidden")).toBe("true");
   });
 
   /** ⚠️ **누를 수 없는 것이 눌릴 것처럼 보이면 안 된다** — 칩은 버튼이 아니다. */
   it("버튼이 아니다", async () => {
-    const { container } = await render(<RoleChip role="OWNER" who="Ann" />);
+    const { container } = await render(<RoleChip role="OWNER" reason="pending" />);
     expect(container.querySelector("button")).toBeNull();
   });
 });

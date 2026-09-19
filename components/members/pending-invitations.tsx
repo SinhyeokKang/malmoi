@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail } from "lucide-react";
+import { Mail, MailPlus } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
 import { revokeInvitation } from "@/app/(edit)/projects/actions";
@@ -90,7 +90,7 @@ export function PendingInvitations({
         {invitations.length === 0 ? (
           /* ⚠️ **버튼이 없다** — 여기서 할 일은 헤더의 [Invite]이고, 카드가 그것을 두 번 말하지 않는다. */
           <EmptyRowCard
-            icon={Mail}
+            icon={MailPlus}
             title={m.members.pending.empty.title}
             description={m.members.pending.empty.description}
             inset
@@ -110,22 +110,39 @@ export function PendingInvitations({
                   <MemberRow
                     id={invitation.id}
                     identity={identity}
+                    /*
+                      ⚠️ **아바타가 아니라 mail 칩이다** (캔버스 `1a`). 아직 사람이 아니라 **보낸 링크**이고,
+                      이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다. 씨앗도 없다(이름이 없는 행이라
+                      `planMemberIdentity`가 `avatarSeed: null`을 준다).
+                    */
+                    glyph={
+                      <span
+                        aria-hidden
+                        className="bg-foreground/[0.05] text-muted-foreground flex size-8 items-center justify-center rounded-full"
+                      >
+                        <Mail className="size-3.5" />
+                      </span>
+                    }
                     meta={
-                      <span className="text-muted-foreground flex shrink-0 flex-col items-end gap-0.5 text-xs">
-                        <span>{relativeTime(invitation.expiresAt, now)}</span>
-                        <span>
+                      /* ⚠️ **가로 두 칸이다** (캔버스) — 만료는 150 고정, 초대한 사람은 남는 폭이다.
+                         세로로 쌓으면 행 높이가 멤버 카드와 달라져 두 카드가 다른 표처럼 읽힌다. */
+                      <>
+                        <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
+                          {m.members.pending.expires(relativeTime(invitation.expiresAt, now))}
+                        </span>
+                        <span className="text-muted-foreground min-w-0 truncate text-xs">
                           {m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}
                         </span>
-                      </span>
+                      </>
                     }
                     band={invitation.readable ? null : m.members.unreadableHint}
                     controls={() => (
                       <>
-                        <RoleChip role={invitation.role} who={invitation.emailLabel} />
+                        <RoleChip role={invitation.role} reason="pending" />
                         {manage && (
                           <Button
                             id={`revoke-${invitation.id}`}
-                            variant="ghost"
+                            variant="danger"
                             aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                             loading={pendingId === invitation.id}
                             onClick={() => revoke(invitation.id, invitation.emailLabel)}

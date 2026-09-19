@@ -63,30 +63,33 @@ export function RowCard({
 }) {
   return (
     <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-      <div className="p-4">
-        <div className="flex items-center gap-2">
-          {/*
-            ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
-            이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가
-            다시 `body`로 빠진다 — 그리고 그 실패는 `?.`에 삼켜져 조용하다. 프리미티브가 짝을 든다.
-          */}
-          <h2
-            id={titleId}
-            tabIndex={titleId === undefined ? undefined : -1}
-            className="text-base font-medium outline-none"
-          >
-            {title}
-          </h2>
-          {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
-          <Badge variant="neutral">
-            <span aria-hidden>{count}</span>
-            <span className="sr-only">{countLabel}</span>
-          </Badge>
-          {action}
-        </div>
+      {/*
+        ⚠️ **설명이 제목 아래가 아니라 같은 줄 오른쪽 끝이다** (캔버스 `1a` — `margin-left:auto`).
+        아래로 내리면 카드 헤더가 두 줄이 되어 행 목록의 시작 y가 카드마다 달라지고, 두 카드를
+        나란히 훑을 때 첫 행의 위치가 어긋난다. `/projects`는 이 슬롯을 안 쓰므로 한 줄 그대로다.
+      */}
+      <div className="flex items-center gap-2 p-4">
+        {/*
+          ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
+          이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가
+          다시 `body`로 빠진다 — 그리고 그 실패는 `?.`에 삼켜져 조용하다. 프리미티브가 짝을 든다.
+        */}
+        <h2
+          id={titleId}
+          tabIndex={titleId === undefined ? undefined : -1}
+          className="text-base font-medium outline-none"
+        >
+          {title}
+        </h2>
+        {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
+        <Badge variant="neutral">
+          <span aria-hidden>{count}</span>
+          <span className="sr-only">{countLabel}</span>
+        </Badge>
         {description !== undefined && (
-          <p className="text-muted-foreground mt-1.5 text-sm">{description}</p>
+          <span className="text-muted-foreground ml-auto truncate text-xs">{description}</span>
         )}
+        {action}
       </div>
       {children}
     </section>
@@ -143,17 +146,35 @@ export function BannerLine({
   icon,
   children,
   action,
+  tone = "muted",
+  indent = "row",
 }: {
   /** `aria-describedby`의 대상. 꺼진 컨트롤이 이 띠를 가리킨다 (멤버 화면). */
   id?: string;
   icon?: ReactNode;
   children: ReactNode;
   action?: ReactNode;
+  /**
+   * ⚠️ **사유에 따라 글자색이 갈린다** (캔버스 `1c` ↔ `1d`). 막힌 동작을 설명하는 띠는
+   * `danger`(마지막 오너)이고, 상태를 설명하는 띠는 `muted`(못 읽음 · `/projects`의 다음 한 수)다 —
+   * 둘을 같은 색으로 두면 "지금 막혀 있다"와 "이런 상태다"가 한 화면에서 구별되지 않는다.
+   */
+  tone?: "muted" | "danger";
+  /**
+   * 텍스트 시작 x. 행의 글리프 폭이 화면마다 달라 값이 둘이다 —
+   * `row` 56(`/projects` 썸네일 28 + gap 16 + padding 12) · `avatar` 60(멤버 아바타 32 + 16 + 12).
+   * ⚠️ **띠 텍스트가 행 1행 텍스트와 같은 x에서 시작해야** 그 행에 속한 것으로 읽힌다.
+   */
+  indent?: "row" | "avatar";
 }) {
   return (
     <div
       id={id}
-      className="border-foreground/[0.06] bg-foreground/[0.02] text-muted-foreground flex items-center gap-2 border-t py-2 pr-3.5 pl-14 text-xs"
+      className={cn(
+        "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs",
+        indent === "avatar" ? "pl-15" : "pl-14",
+        tone === "danger" ? "text-destructive" : "text-muted-foreground",
+      )}
     >
       {icon}
       <span className="min-w-0 truncate">{children}</span>
@@ -197,16 +218,25 @@ export function EmptyRowCard({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col items-center gap-3.5 px-6 py-12 text-center",
-        inset ? "border-foreground/[0.06] border-t" : "border-border bg-background rounded-lg border",
+        "flex shrink-0 flex-col items-center text-center",
+        inset
+          ? "border-foreground/[0.06] gap-2.5 border-t p-8"
+          : "border-border bg-background gap-3.5 rounded-lg border px-6 py-12",
       )}
     >
       {/*
-        ⚠️ **칩이 36이고 글리프는 16이다.** 캔버스는 글리프를 18로 그리는데 DESIGN §6.8이 아이콘
-        크기를 **셋(16·12·24)으로 고정**하므로 18은 넷째 값이 된다 — 36 칩 안의 2px이라 등재된 차이로 둔다.
+        ⚠️ **카드 안과 밖의 규격이 다르다** — 캔버스가 둘을 다르게 그렸다: 서 있는 카드(`/projects`
+        0건)는 **칩 36 라운드 사각 · 글리프 16 · padding `48 24`**이고, 카드 **안**의 0건(대기 초대)은
+        **칩 40 원 · 글리프 18 · padding 32 · gap 10**이다. 앞은 화면의 착지점이고 뒤는 카드 하나가
+        비었다는 보조 신호라 무게가 다르다. **`/projects`의 값을 건드리지 않으려고** 갈래를 `inset`에 묶는다.
       */}
-      <span className="bg-foreground/[0.04] flex size-9 items-center justify-center rounded-sm text-neutral-600">
-        <Icon className="size-4" aria-hidden />
+      <span
+        className={cn(
+          "bg-foreground/[0.04] flex items-center justify-center text-neutral-600",
+          inset ? "size-10 rounded-full" : "size-9 rounded-sm",
+        )}
+      >
+        <Icon className={inset ? "size-[18px]" : "size-4"} aria-hidden />
       </span>
       {/*
         ⚠️ **`<p>` 둘이다 — `<span>`으로 두면 문단 경계가 0이 된다.** `flex flex-col`이 시각적으로는

@@ -167,9 +167,10 @@ describe("#7 · #9 EDITOR 시야", () => {
     expect(container.querySelector('[role="combobox"]')).toBeNull();
   });
 
-  it("칩이 대상과 잠김 사유를 낭독한다", async () => {
+  it("칩이 권한 사유를 낭독한다 — 대기 초대의 문장이 아니다", async () => {
     const container = await draw([owner], "EDITOR");
-    expect(find(container, "[data-role-chip]").textContent).toContain(m.members.roleLocked("Name u1"));
+    const chip = find<HTMLElement>(container, "[data-role-chip]");
+    expect(chip.getAttribute("aria-label")).toBe(m.members.roleLocked.editor(m.projects.role.OWNER));
   });
 
   /** ⚠️ **오너가 하나여도 띠를 안 그린다** — EDITOR에게는 그 사유가 설명할 행동이 없다. */
@@ -306,5 +307,57 @@ describe("#7 · #8 패널 머리 — EDITOR", () => {
     const container = await drawHeader("EDITOR", MEMBER_LIMIT);
     expect(container.textContent).toContain(m.members.ownerOnly);
     expect(container.textContent).not.toContain(m.members.seatsFull(MEMBER_LIMIT));
+  });
+});
+
+/**
+ * **캔버스가 닫은 결정을 렌더로 고정한다** (`/design-sync` 2026-09-19).
+ *
+ * ⚠️ **아래 넷은 전부 `spec.md`가 한 번 캔버스와 다르게 적었고 구현이 그것을 따라갔던 자리다.**
+ * `members.prompt.md`의 "하지 말 것"이 이름으로 막아 둔 항목(아바타 32 · last-owner 문구)이 그중
+ * 둘이다. 같은 방향으로 다시 새기 쉬우므로 값이 아니라 **관측 가능한 결과**를 센다.
+ */
+describe("캔버스 대조로 되돌린 자리", () => {
+  /** ⚠️ 열 머리를 지운 대가가 이 라벨이다 — 없으면 `2 days ago`가 무엇의 시각인지 화면이 말하지 않는다. */
+  it("값이 자기 라벨을 든다 — 가입일과 만료", async () => {
+    const members = await draw([owner, editor]);
+    expect(find(members, "li").textContent).toContain(m.members.joined(""));
+
+    const pending = await drawPending([invitation({ id: "i1" })]);
+    expect(find(pending, "li").textContent).toContain(m.members.pending.expires(""));
+    expect(find(pending, "li").textContent).toContain(m.members.pending.invitedBy("Owner"));
+  });
+
+  /**
+   * ⚠️ **막힌 동작의 사유와 상태 설명이 다른 색이다** (캔버스 `1c` ↔ `1d`). 같은 색으로 두면
+   * "지금 막혀 있다"와 "이런 상태다"가 한 화면에서 구별되지 않는다.
+   */
+  it("띠 색이 사유에 따라 갈린다", async () => {
+    const blocked = await draw([owner, editor]);
+    expect(bands(blocked)[0]!.className).toContain("text-destructive");
+
+    const unreadable = await draw([owner, second, member({ userId: "u9", readable: false })]);
+    const band = bands(unreadable).find((b) => b.textContent === m.members.unreadableHint);
+    expect(band?.className).toContain("text-muted-foreground");
+    expect(band?.className).not.toContain("text-destructive");
+  });
+
+  /**
+   * ⚠️ **사전 차단 띠와 사후 Alert이 같은 문자열이어야 한다** — 그 요구는 둘 다 `accessErrorMessage`를
+   * 읽는 것으로 이미 지켜진다. 핸드오프 결정 6이 **시안 문장을 버리고 코드 문구를 쓰라**고 정했다:
+   * 바꾸면 소비자 열여섯에 번지는데 얻는 것이 단어 둘이다.
+   */
+  it("last-owner 문구가 시안 문장이 아니라 사전 값이다", async () => {
+    const container = await draw([owner, editor]);
+    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
+    expect(accessErrorMessage("last-owner")).toContain("at least one owner");
+  });
+
+  /** ⚠️ **대기 초대 행은 사람이 아니다** — 이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다. */
+  it("대기 초대 행의 글리프가 아바타가 아니다", async () => {
+    const container = await drawPending([invitation({ id: "i1" })]);
+    const glyph = find<HTMLElement>(container, "[data-avatar]");
+    expect(glyph.querySelector("svg")).not.toBeNull();
+    expect(glyph.textContent).toBe("");
   });
 });
