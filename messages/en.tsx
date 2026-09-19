@@ -275,10 +275,23 @@ export const en = {
    * 뒤로가기 말고 돌아올 길이 없다.
    */
   publicDocs: {
-    back: "Back to sign in",
+    /**
+     * ⚠️ **복귀 링크가 세션으로 갈린다** (DESIGN §6.61) — 셸 사이드바의 `CircleHelp`로 들어온
+     * 사람에게 "Back to sign in"만 주면 나가는 길이 로그아웃처럼 보인다.
+     */
+    back: {
+      app: "Back to projects",
+      signIn: "Back to sign in",
+    },
+    /**
+     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
+     * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
+     * 블록은 문단(`p`) 아니면 목록(`ul`)이고, 클래스는 `components/public-doc.tsx`가 든다.
+     */
     privacy: {
       title: "Privacy Policy",
-      body: "We're still writing this. It will be here before launch.",
+      intro: "We're still writing this. It will be here before launch.",
+      sections: [],
     },
     /**
      * ⚠️ **`title`의 소비자가 둘이다** — 이 화면의 제목과 **사이드바 하단 항목**
@@ -287,7 +300,8 @@ export const en = {
      */
     docs: {
       title: "Docs",
-      body: "We're still writing this. It will be here before launch.",
+      intro: "We're still writing this. It will be here before launch.",
+      sections: [],
     },
   },
 

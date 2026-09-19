@@ -1,26 +1,90 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * `/privacy`·`/docs`가 공유하는 껍데기 (8-1a).
+ * `/privacy`·`/docs`가 공유하는 **장문 읽기 그릇** (DESIGN §6.61, launch-readiness L2.0).
+ *
+ * ⚠️ **시안이 없고 DESIGN §6.61이 정본이다** — 이 파일의 옛 주석이 가리키던 "8-1b 시안"은 존재한
+ * 적이 없다. 형을 바꾸려면 그 절을 먼저 고친다.
  *
  * ⚠️ **셸 밖이라 사이드바도 푸터도 없다** — 돌아가는 링크가 없으면 뒤로가기 말고 길이 없다.
- * 로그인 화면 푸터가 이 둘을 가리키므로 **거기서 온 사람이 되돌아갈 수 있어야 한다.**
+ * 로그인 화면 푸터와 **셸 사이드바의 `CircleHelp`** 둘 다 여기로 보내므로, 어디서 왔든 돌아갈 수
+ * 있어야 한다.
  *
- * ⚠️ **형은 8-1b가 시안대로 다시 잡는다** — 지금은 placeholder이고 내용도 "준비 중"이다.
+ * ⚠️ **클래스를 사전에 두지 않는다** — `messages/en.tsx`는 잎이라 컴포넌트를 import할 수 없다
+ * (`components/__tests__/client-graph.test.ts`). 사전은 문구와 구조(`{ id, heading, blocks }`)만
+ * 내놓고 마크업·클래스는 전부 여기 있다.
  */
-export function PublicDoc({ title, body }: { title: string; body: string }) {
+
+/** 문단 아니면 목록. 법적 문서의 열거를 문단으로 접지 않는다 (DESIGN §6.61). */
+export type DocBlock = { p: ReactNode } | { ul: ReactNode[] };
+
+export type DocSection = {
+  /**
+   * ⚠️ **사전이 정하는 값이고 제목에서 파생하지 않는다** — 설정 화면이 `/docs#workflow`로 절을
+   * 직접 가리킨다(L2.3). 제목 문구를 고칠 때마다 남의 링크가 죽으면 안 된다.
+   */
+  id: string;
+  heading: string;
+  blocks: DocBlock[];
+};
+
+export function PublicDoc({
+  title,
+  intro,
+  sections,
+  signedIn,
+}: {
+  title: string;
+  intro?: ReactNode;
+  /** 사전이 `as const`라 읽기 전용으로 온다. */
+  sections: readonly DocSection[];
+  /**
+   * ⚠️ **세션을 못 읽는 장애(`unavailable`)는 `false` 쪽이다** — 공개 문서가 세션 장애로 못 열리는
+   * 것이 "로그인 화면으로 보낸다"보다 나쁘다.
+   */
+  signedIn: boolean;
+}) {
+  const back = signedIn
+    ? { href: routes.projects(), label: m.publicDocs.back.app }
+    : { href: routes.signIn(), label: m.publicDocs.back.signIn };
+
   return (
-    <main className="mx-auto flex min-h-svh max-w-2xl flex-col justify-center gap-4 px-8 py-12">
-      <h1 className="text-lg font-medium">{title}</h1>
-      <p className="text-muted-foreground text-sm">{body}</p>
+    // ⚠️ 세로 중앙 정렬을 쓰지 않는다 — 절이 여럿이면 첫 화면이 문서 중간부터 시작한다 (§6.61).
+    <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-8 px-8 py-12">
+      <div className="space-y-3">
+        <h1 className="text-2xl font-medium">{title}</h1>
+        {intro === undefined ? null : <p className="text-sm leading-6">{intro}</p>}
+      </div>
+      {sections.map((section) => (
+        // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음).
+        <section key={section.id} className="space-y-3 [&_a]:text-blue-600">
+          <h2 id={section.id} className="text-base font-medium">
+            {section.heading}
+          </h2>
+          {section.blocks.map((block, index) =>
+            "p" in block ? (
+              <p key={index} className="text-sm leading-6">
+                {block.p}
+              </p>
+            ) : (
+              <ul key={index} className="list-disc space-y-1 pl-5 text-sm leading-6">
+                {block.ul.map((item, itemIndex) => (
+                  <li key={itemIndex}>{item}</li>
+                ))}
+              </ul>
+            ),
+          )}
+        </section>
+      ))}
       <Link
-        href={routes.signIn()}
+        href={back.href}
         className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
       >
-        {m.publicDocs.back}
+        {back.label}
       </Link>
     </main>
   );
