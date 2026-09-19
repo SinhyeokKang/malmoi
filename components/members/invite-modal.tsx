@@ -71,6 +71,9 @@ export function InviteModal({
 
   function close() {
     // 닫으면 링크도 사라진다 — 다시 열었을 때 남아 있으면 "아직 볼 수 있다"는 거짓 신호다.
+    // ⚠️ **부모의 `setOpen(false)`와 한 배치로 커밋된다** — 같은 핸들러 안이라 React가 묶는다.
+    // 2026-09-19 code-review가 여기서 링크 얼굴이 한 커밋 되돌아간다고 의심했는데 **거짓이었다**:
+    // 그 red는 Radix의 포커스 복귀가 매크로태스크라 생긴 테스트 경쟁이었고, 실제 복귀는 양쪽 다 된다.
     setIssued(null);
     setError(null);
     setCopied("idle");

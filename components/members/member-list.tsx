@@ -36,9 +36,6 @@ import { relativeTime } from "@/lib/relative-time";
  * Alert로 올리면 어느 행이 거부됐는지 사라진다 (DESIGN §6.4).
  */
 
-/** Radix Select 트리거가 여는 키. 사전 차단 행에서 이 넷을 막지 않으면 키보드로만 열린다. */
-const OPEN_KEYS = new Set([" ", "Enter", "ArrowDown", "ArrowUp"]);
-
 export function MemberList({
   slug,
   members,
@@ -194,8 +191,15 @@ export function MemberList({
  * `aria-describedby`의 전달 경로가 없다 — 시안이 "꺼진 컨트롤에는 반드시 이유가 붙는다"를 요구하므로
  * 그 요구를 만족하는 유일한 형이다. 모양은 `select.tsx`가 든다(호출부가 철자를 발명하지 않는다).
  *
- * ⚠️ **막는 것은 `preventDefault` 둘이다** — Radix는 포인터로도 키보드로도 연다. 포인터만 막으면
- * 키보드 사용자에게만 열리고, 그 사람이 정확히 이 사유를 들어야 하는 사람이다.
+ * ⚠️ **막는 것이 셋이고, 셋 다 필요하다** (2026-09-19 code-review — 처음엔 둘이었고 둘 다 통했다).
+ * Radix는 `composeEventHandlers`로 우리 핸들러를 먼저 돌리고 `defaultPrevented`면 자기 것을 건너뛴다:
+ *   - `onPointerDown` — 마우스 경로. 막지 않으면 pointerdown에서 바로 열린다.
+ *   - `onClick` — ⚠️ **막지 않으면 마우스 클릭이 그대로 연다.** `pointerTypeRef`가 `useRef("touch")`로
+ *     시작하고 그것을 `"mouse"`로 바꾸는 코드가 **방금 건너뛴 Radix의 `onPointerDown` 첫 줄**이라,
+ *     ref가 영원히 `"touch"`고 `onClick`의 `!== "mouse"` 갈래가 열어 준다.
+ *   - `onKeyDown` — ⚠️ **화이트리스트다.** 여는 키 넷만 막으면 **타이프어헤드**가 남는다: Radix가
+ *     `event.key.length === 1`이면 여는 키 판정보다 **먼저** 검색을 돌려 창을 열지 않고 값을 바꾼다.
+ *     그리고 그 여는 키 목록은 라이브러리 내부 상수라 우리가 복제하면 버전이 올라갈 때 조용히 어긋난다.
  *
  * ⚠️ **`pending`은 진짜 `disabled`다** — 그쪽은 사유를 들려줄 것이 없고 잠깐이다. 두 축이 한 행에
  * 겹치지 않는다(차단된 행은 제출될 수 없다).
@@ -226,7 +230,9 @@ function RoleSelect({
         aria-disabled={blocked || undefined}
         aria-describedby={describedBy}
         onPointerDown={blocked ? (event) => event.preventDefault() : undefined}
-        onKeyDown={blocked ? (event) => { if (OPEN_KEYS.has(event.key)) event.preventDefault(); } : undefined}
+        onClick={blocked ? (event) => event.preventDefault() : undefined}
+        // Tab만 통과시킨다 — 포커스는 받아야 사유가 낭독되고, 나머지는 전부 이 컨트롤의 동작이다.
+        onKeyDown={blocked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
         className="w-32"
       >
         <SelectValue />

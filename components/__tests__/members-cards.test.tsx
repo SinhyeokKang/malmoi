@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
 import { MembersPanelHeader } from "@/components/members/members-panel-header";
@@ -14,7 +15,11 @@ import { m } from "@/lib/i18n";
 
 import { find, render } from "./helpers/dom";
 
-vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: vi.fn(), revokeInvitation: vi.fn(), createInvitation: vi.fn() }));
+const mocks = vi.hoisted(() => ({ changeMember: vi.fn(), revokeInvitation: vi.fn(), createInvitation: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => mocks);
+const { changeMember } = mocks;
+
+beforeEach(() => { vi.clearAllMocks(); });
 
 /**
  * **spec §6 상태 표의 Members 카드 갈래** (members-rework).
@@ -86,6 +91,35 @@ describe("#2 OWNER · 오너 1명", () => {
       expect(control.getAttribute("aria-describedby"), selector).toBe(band.id);
       expect(control.hasAttribute("disabled"), selector).toBe(false);
     }
+  });
+
+  /**
+   * ⚠️ **속성만 보면 이 결함에 green이다** (2026-09-19 code-review 🔴1). Radix `Select.Trigger`의
+   * `pointerTypeRef`는 **`useRef("touch")`로 시작**하고 그것을 `"mouse"`로 바꾸는 코드가 Radix 자신의
+   * `onPointerDown` **첫 줄**이다 — 우리가 그 핸들러를 `preventDefault`로 건너뛰면 ref가 영원히
+   * `"touch"`고, 이어지는 `onClick`이 `pointerTypeRef.current !== "mouse"`를 보고 **연다.**
+   * 즉 꺼진 것처럼 보이는 셀렉트가 **마우스 클릭으로 그냥 열렸다.**
+   */
+  it("꺼진 셀렉트가 마우스 클릭으로 열리지 않는다", async () => {
+    const container = await draw([owner, editor]);
+    const trigger = find<HTMLElement>(rows(container)[0]!, '[role="combobox"]');
+    await act(async () => { await userEvent.setup().click(trigger); });
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  /**
+   * ⚠️ **타이프어헤드는 열지 않고 값을 바꾼다** (code-review 🔴2). Radix 트리거의 `onKeyDown`이
+   * `event.key.length === 1`이면 `handleTypeaheadSearch`를 **`OPEN_KEYS` 판정보다 먼저** 부른다 —
+   * 여는 키 넷만 막으면 나머지 한 글자가 전부 통과해 `onValueChange`가 발사된다.
+   */
+  it("꺼진 셀렉트가 타이프어헤드로 역할을 바꾸지 않는다", async () => {
+    const container = await draw([owner, editor]);
+    const trigger = find<HTMLElement>(rows(container)[0]!, '[role="combobox"]');
+    trigger.focus();
+    await act(async () => { await userEvent.setup().keyboard("e"); });
+    expect(changeMember).not.toHaveBeenCalled();
+    expect(trigger.textContent).toContain(m.projects.role.OWNER);
   });
 
   /** **이 단언이 이 기능의 실질 위험을 막는다** — 같은 상황에 두 문장이 서는 것. */

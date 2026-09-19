@@ -17,19 +17,30 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ createInvitation: mocks.create
  * ⚠️ **사후 거부가 세 번째 얼굴이 아니다** — 폼에 머물며 입력값을 지킨다. 그 성질은 렌더로만 보인다.
  */
 const noop = () => {};
-const ref = { current: null };
+const ref = { current: null } as { current: HTMLElement | null };
 
-const open = async () => {
+const open = async (onClose: () => void = noop) => {
   const { container } = await render(
-    <InviteModal slug="acme" open onClose={noop} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />,
+    <InviteModal slug="acme" open onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />,
   );
   return container;
 };
 const panel = () => find<HTMLElement>(document.body, "[data-onboarding-panel]");
 const submit = () => find<HTMLButtonElement>(panel(), 'button[type="submit"]');
 const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
+/**
+ * ⚠️ **Radix의 포커스 복귀는 렌더 뒤 매크로태스크다** — `act`는 React만 비우므로 그 전에 단언하면
+ * 통과·실패가 **실행마다 갈린다**(실측 3회 중 1회 red). 타이머를 한 번 비우고 본다.
+ */
+const settle = async () => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); }); };
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  // 모달이 포커스를 돌려줄 대상 — 실제 화면에서는 패널 머리의 [Invite]다.
+  const trigger = document.createElement("button");
+  document.body.append(trigger);
+  ref.current = trigger;
+});
 
 describe("얼굴 ① 폼", () => {
   it("좌석 사용량이 바닥에 서고 제목이 역할을 특정하지 않는다", async () => {
@@ -108,5 +119,31 @@ describe("얼굴 ② 링크", () => {
   it("링크 줄이 mono가 아니다", async () => {
     await issue();
     expect(panel().innerHTML).not.toContain("text-mono");
+  });
+
+  /**
+   * ⚠️ **닫을 때 얼굴도 함께 바뀐다** — `close()`가 `setIssued(null)`과 `onClose()`를 한 배치에서 부르므로
+   * Radix `Content`는 "링크 얼굴에서 닫힌다"가 아니라 "폼 얼굴이 되면서 닫힌다"를 본다. 그 전이에서
+   * `onCloseAutoFocus`가 안 돌면 포커스가 `body`로 빠진다 (malmoi#51 · #53과 같은 축).
+   */
+  it("[Done]으로 닫으면 포커스가 [Invite]로 돌아간다", async () => {
+    const onClose = vi.fn();
+    mocks.createInvitation.mockResolvedValue({ ok: true, token: "t0", label: "n***@acme.com" });
+    const { rerender } = await render(
+      <InviteModal slug="acme" open onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />,
+    );
+    await input(find<HTMLInputElement>(panel(), "#invite-email"), "new@acme.com");
+    await click(submit());
+
+    const done = [...panel().querySelectorAll("button")].find((b) => b.textContent === m.members.invite.done);
+    if (!done) throw new Error("Missing Done");
+    await click(done);
+    expect(onClose).toHaveBeenCalled();
+    // 부모가 `open`을 내리는 것까지 재현한다 — 그 렌더에서 Radix가 닫기 전이를 돈다.
+    await rerender(
+      <InviteModal slug="acme" open={false} onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />,
+    );
+    await settle();
+    expect(document.activeElement).toBe(ref.current);
   });
 });

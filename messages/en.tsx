@@ -2019,8 +2019,6 @@ export const en = {
         body: "The invitation stays in Pending invitations, but the address above is gone once this closes. If it's lost, revoke the invitation and make a new one.",
       },
       done: "Done",
-      /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (ARCHITECTURE §6.02). */
-      linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
       alreadyMember: "That email is already a member of this project.",
       failed: (reason: string): string => `Couldn't create the link: ${reason}`,
     },
