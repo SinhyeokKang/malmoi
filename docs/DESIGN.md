@@ -154,7 +154,9 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 ### 4.1 mono 표면 불변식 — 13px / 18px
 
-⚠️ **mono 표면은 줄어드는 중이고, 목적지는 diff 하나다** (2026-09-11 사용자). 남은 자리는 **덩어리로 읽는 기계 텍스트** — 리포 `owner/name`, 브랜치 이름, 초대 링크 URL, 파일 경로, 토큰 값, 워크플로 YAML, 어댑터 오류의 파서 원문. 그쪽은 sans로 깔면 `l`/`1`/`I`와 `_`/`.`이 구분되지 않아 값을 잘못 읽는다.
+⚠️ **mono 표면은 줄어드는 중이고, 목적지는 diff 하나다** (2026-09-11 사용자). 남은 자리는 **덩어리로 읽는 기계 텍스트** — 리포 `owner/name`, 브랜치 이름, 파일 경로, 토큰 값, 워크플로 YAML, 어댑터 오류의 파서 원문. 그쪽은 sans로 깔면 `l`/`1`/`I`와 `_`/`.`이 구분되지 않아 값을 잘못 읽는다.
+
+⚠️ **기준 문장은 "복사 버튼이 붙은 값은 mono가 아니다"다** (2026-09-19, members-rework). mono의 근거가 **사람이 글자를 하나씩 옮겨 읽는다**는 것이므로, 옆에 [Copy]가 서 있으면 그 근거가 성립하지 않는다 — 그 값은 눈으로 옮겨 적는 값이 아니다. 이 문장이 들어오면서 **초대 링크 URL이 위 목록에서 빠졌다**(`invite-modal.tsx`가 sans 14로 그린다). ⚠️ **토큰 값은 남는다** — 그쪽도 [Copy]가 붙지만 사용자가 **다른 시스템에 붙여 넣은 뒤 대조**하는 값이고(대상 리포의 `PUSH_TOKEN` 시크릿), 그 대조가 곧 글자 단위 읽기다.
 
 ⚠️ **2026-09-11에 둘이 빠졌다 — 번역 키와 로케일 코드다.**
 
@@ -558,12 +560,13 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 리포 갱신 보류 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) |
 | **Card** | `border-border rounded-lg border` · 헤더(`px-4 py-3 border-b` 제목 `text-sm font-medium` + 우측 슬롯) · 본문 `p-4 space-y-2` — 옛 "섹션 카드" |
-| **Table** | 번역·언어·이력·멤버 넷 + 공개 문서(§6.61) 다섯이 쓴다. shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 번역 화면이 프리미티브를 직접 들고, 공개 문서는 **섞어 쓴다**(열 머리는 `TableHead`, 셀은 `Td` — §6.61이 그 이유를 든다). 나머지 셋은 프리셋만 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다, §6.1) · 온보딩 ②의 파일 표(그 `div`가 스크롤을 들어야 `Th`의 `sticky`가 붙는다, §6.643) · 공개 문서(그 `div`가 `role="region"`을 들어야 키보드로 가로 스크롤된다, §6.61). 컨테이너를 하나 더 만들면 스크롤이 중첩된다 |
+| **Table** | 번역·언어·이력 **셋** + 공개 문서(§6.61) **넷**이 쓴다 (⚠️ **2026-09-19에 멤버가 빠졌다** — 그 화면이 카드 + `<ul>`로 갔다, §6.65. 온보딩 ②의 파일 표는 이 수 밖이다 — §6.643. 세는 명령: `grep -rln 'from "@/components/ui/table"' components app | grep -v __tests__ | grep -v ui/table` → **파일 여섯**, 화면 다섯). shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 번역 화면이 프리미티브를 직접 들고, 공개 문서는 **섞어 쓴다**(열 머리는 `TableHead`, 셀은 `Td` — §6.61이 그 이유를 든다). 나머지 셋은 프리셋만 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다, §6.1) · 온보딩 ②의 파일 표(그 `div`가 스크롤을 들어야 `Th`의 `sticky`가 붙는다, §6.643) · 공개 문서(그 `div`가 `role="region"`을 들어야 키보드로 가로 스크롤된다, §6.61). 컨테이너를 하나 더 만들면 스크롤이 중첩된다 |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
-| **Dialog** | **`max-w-110`(440 — 2026-09-18, 옛 360)** `rounded-lg border bg-background` **`shadow-medium`** · 헤더 `p-4 pb-2` · 제목 `text-base font-medium`(15/500) · 설명 `px-4 text-xs leading-[1.6]`(13/1.6) · 푸터 **`p-4`** `gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Overlay·Content 모두 `z-50` · Esc·배경·X·Cancel 넷으로 닫힌다. 닫기는 위 Alert와 **같은 36 정방**(음수 마진만 `-mt-1.5 -mr-2`), 라벨은 `m.common.close`<br>⚠️ **넷이 2026-09-13에 움직였다**(계정 화면 핸드오프 — 폭 512→360 · `shadow-lg`→`shadow-medium` · 설명 14→13/1.6 · 푸터 위 24→16). **`shadow-lg`는 Tailwind 기본 그림자라 §4.5가 금지한 값이었다** — 이건 이탈이 아니라 기존 위반의 교정이다. 소비자 **일곱**이 함께 움직인다(archive-card · invite-dialog · member-list · login-methods · github-account · sessions-section · **home/sync-button**) — ⚠️ **이 수가 세 번 틀렸다**(넷 → 다섯 → 여섯 → 일곱). *"프리미티브를 만질 때마다 소비자를 다시 센다"*의 입력이 이 숫자이고, 빠졌던 하나가 하필 **푸터 유무로 본문 형이 갈리는** 변경의 소비자였다. 세는 명령은 `grep -rln "import .*DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`다 — ⚠️ **프리미티브 자신을 빼야 한다**, 그리고 **`import` 없이 세면 주석에서 그 이름을 부른 파일까지 든다**(2026-09-15에 실제로 한 건 더 셌다). 이 줄을 처음 적었을 때 그것이 빠져 **명령과 본문이 서로 다른 수를 냈다**<br>⚠️ **본문의 형이 푸터 유무를 따라간다** — 확인 Dialog의 "검은 줄"은 `p-4 pb-0 text-xs leading-[1.6]`(*지금 참인 값*을 말하는 한 줄이고 푸터가 자기 16을 갖는다), **푸터 없는 소비자**(초대 폼)는 본문이 곧 폼이라 `p-4 text-sm`이다. 구별 없이 `pb-0`을 주면 그 폼이 바닥에 붙고 `FormGroup` help까지 13으로 내려간다(2026-09-13 실측)<br>⚠️ **본문이 없으면 그 `<div>`를 그리지 않는다** — 확인 Dialog는 대부분 본문이 없어서 빈 블록의 `p-4`가 설명문과 푸터 사이에 **죽은 32px**을 만들고 있었다<br>⚠️ **Dialog 안의 경고는 `Alert`가 아니라 전용 블록이다** (2026-09-15 — sync 핸드오프 §7 · 실측): `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert`로 **색은 `Alert warning` 그대로**이고 **치수만 한 단계 줄인다**(radius **10** · padding **12** · 글자 **13** · 글리프 **14** · 줄 사이 **6**). 360 Dialog에서 `p-4` Alert는 본문 폭을 296으로 떨어뜨려 두 줄 문장이 네 줄이 된다. **프리미티브로 올리지 않는다 — 소비자가 `home/sync-button` 하나다**(올리면 안 본 화면 넷이 함께 움직인다). 글리프는 **블록 머리에 하나**이고 줄마다 주지 않는다: 글리프가 둘이면 경고가 둘인 화면이 되는데 실제로는 한 경고의 근거가 둘이다 |
-| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 360 Dialog 소비자 **일곱이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **둘**(`onboarding/new-project` · `publish-button`) |
+| **Dialog** | **`max-w-110`(440 — 2026-09-18, 옛 360)** `rounded-lg border bg-background` **`shadow-medium`** · 헤더 `p-4 pb-2` · 제목 `text-base font-medium`(15/500) · 설명 `px-4 text-xs leading-[1.6]`(13/1.6) · 푸터 **`p-4`** `gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Overlay·Content 모두 `z-50` · Esc·배경·X·Cancel 넷으로 닫힌다. 닫기는 위 Alert와 **같은 36 정방**(음수 마진만 `-mt-1.5 -mr-2`), 라벨은 `m.common.close`<br>⚠️ **넷이 2026-09-13에 움직였다**(계정 화면 핸드오프 — 폭 512→360 · `shadow-lg`→`shadow-medium` · 설명 14→13/1.6 · 푸터 위 24→16). **`shadow-lg`는 Tailwind 기본 그림자라 §4.5가 금지한 값이었다** — 이건 이탈이 아니라 기존 위반의 교정이다. 소비자 **일곱**이 함께 움직인다(archive-card · member-list · login-methods · github-account · sessions-section · home/sync-button · **publish-button**) — ⚠️ **이 수가 네 번 틀렸다**(넷 → 다섯 → 여섯 → 일곱 → **그때 실제로는 여덟**). 2026-09-19에 아래 명령을 다시 돌려 보니 그 시점 소비자가 **여덟**이었고 **`publish-button`이 목록에서 빠져 있었다** — 이 줄이 *"프리미티브를 만질 때마다 소비자를 다시 센다"*고 적어 두고 스스로 그것을 안 한 것이다. 지금 일곱인 이유는 같은 날 `invite-dialog`가 사라졌기 때문이다(초대가 `OnboardingModal`로 갔다, §6.65). *"프리미티브를 만질 때마다 소비자를 다시 센다"*의 입력이 이 숫자이고, 빠졌던 하나가 하필 **푸터 유무로 본문 형이 갈리는** 변경의 소비자였다. 세는 명령은 `grep -rln "import .*DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`다 — ⚠️ **프리미티브 자신을 빼야 한다**, 그리고 **`import` 없이 세면 주석에서 그 이름을 부른 파일까지 든다**(2026-09-15에 실제로 한 건 더 셌다). 이 줄을 처음 적었을 때 그것이 빠져 **명령과 본문이 서로 다른 수를 냈다**<br>⚠️ **본문의 형이 푸터 유무를 따라간다** — 확인 Dialog의 "검은 줄"은 `p-4 pb-0 text-xs leading-[1.6]`(*지금 참인 값*을 말하는 한 줄이고 푸터가 자기 16을 갖는다), **푸터 없는 소비자**(초대 폼)는 본문이 곧 폼이라 `p-4 text-sm`이다. 구별 없이 `pb-0`을 주면 그 폼이 바닥에 붙고 `FormGroup` help까지 13으로 내려간다(2026-09-13 실측)<br>⚠️ **본문이 없으면 그 `<div>`를 그리지 않는다** — 확인 Dialog는 대부분 본문이 없어서 빈 블록의 `p-4`가 설명문과 푸터 사이에 **죽은 32px**을 만들고 있었다<br>⚠️ **Dialog 안의 경고는 `Alert`가 아니라 전용 블록이다** (2026-09-15 — sync 핸드오프 §7 · 실측): `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert`로 **색은 `Alert warning` 그대로**이고 **치수만 한 단계 줄인다**(radius **10** · padding **12** · 글자 **13** · 글리프 **14** · 줄 사이 **6**). 360 Dialog에서 `p-4` Alert는 본문 폭을 296으로 떨어뜨려 두 줄 문장이 네 줄이 된다. **프리미티브로 올리지 않는다 — 소비자가 `home/sync-button` 하나다**(올리면 안 본 화면 넷이 함께 움직인다). 글리프는 **블록 머리에 하나**이고 줄마다 주지 않는다: 글리프가 둘이면 경고가 둘인 화면이 되는데 실제로는 한 경고의 근거가 둘이다 |
+| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 360 Dialog 소비자 **일곱이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **셋**(`onboarding/new-project` · `publish-button` · **`members/invite-modal`** — 2026-09-19. 초대가 폼→링크 두 얼굴이 되면서 440 `Dialog`에서 옮겨 왔다, §6.65) |
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
+| **RowCard** | members-rework 신설 (2026-09-19) — **프리미티브 23**. **행 목록 카드**: `RowCard`(헤더 = 제목 · 카운트 배지 · 설명 한 줄) / `RowCardList`(`<ul>` + `@container`) / `RowCardItem`(선의 급 둘) / `BannerLine`(행 아래 사유 띠) / `EmptyRowCard`(칩 36 · padding `48 24` · `inset`이면 카드 안). 소비자 **다섯**(`projects/project-list` · `projects/empty-projects` · `members/member-list` · `members/pending-invitations` · `members/member-row`). 카드 `border-border rounded-lg shrink-0 overflow-hidden` · 헤더 `p-4` 제목 `text-base font-medium` · 헤더↔첫 행 `border-foreground/[0.06]` · 행↔행 `border-border`. ⚠️ **`Card`가 아닌 이유**: 제목이 `text-sm`, 헤더 선이 전폭 `border-border`, 본문 `space-y-2 p-4`라 행 목록에 padding이 두 벌, 카운트 배지 슬롯도 `overflow-hidden`·`shrink-0`도 없다. ⚠️ **`EntityCard`도 아니다** — 형은 가깝지만 **개별 카드이고 목록 카드가 아니다.** ⚠️ **`divide-y` 금지** — 띠가 행의 형제라 그 규칙이 띠와 행 사이에도 `#e5e5e5`를 넣는데 시안은 거기가 `#f0f0f0`이다. ⚠️ **`countLabel`에 기본값이 없다** — 전에는 `m.projects.count`가 박혀 있었고, 그대로 공유했으면 멤버 카드가 "3 projects"를 낭독했다. ⚠️ **`description`은 `/projects`가 안 쓰는 슬롯이라 조건을 코드에 조건으로 쓴다**(POSTMORTEM 2026-09-14) — 설명이 없으면 헤더가 예전과 글자 하나까지 같은 한 줄이다. ⚠️ **hover·`ring-inset`·전체-링크 형은 올리지 않는다** — 소비자에 남는다(헤더에 hover가 붙으면 누를 수 없는 것이 눌릴 것처럼 보이고 `projects-cards.test.tsx`가 그것을 0으로 고정한다). ⚠️ **`titleId`가 있으면 `tabIndex={-1}`도 같이 붙는다** — 그 id가 붙는 유일한 이유가 포커스 착지점이라(malmoi#51) 둘이 갈리면 `focus()`가 조용히 무시된다 |
 | **EntityCard** | account-linking 신설 (2026-09-12) — **프리미티브 17**. "지금 다루는 대상 하나"를 보이는 자리이고 소비자는 **병합 화면 하나**다. 박스 `flex items-center gap-3 rounded-lg border p-3 w-full`(radius **12** — ⚠️ `rounded-xl`은 16이라 같은 화면의 `Card`·`Alert`·`Dialog`(전부 12) 사이에서 **작은 카드 하나만 더 둥글어진다**) · 본문 `min-w-0 flex-1 flex-col gap-px`, 1행 `text-sm truncate`, 2행 `text-xs text-muted-foreground` · 우측 슬롯(provider 마크 16, ⚠️ **브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다**). ⚠️ **아바타 소스가 1행 텍스트와 갈라져 있다**(`avatarName`·`image`, 2026-09-12) — 병합 화면의 1행은 **마스킹한 이메일**이라 이니셜이 주소의 첫 글자가 되는데 셸 아바타는 표시 이름에서 온다. 같은 계정이 화면마다 다른 글자·다른 색으로 보이면 아바타가 사람을 가리키지 못하고 소음이 된다. ⚠️ **`kind` prop이 없다** — 초대의 프로젝트 카드는 **같은 박스 규격**을 쓰지만 `components/invite/project-card.tsx`의 화면 조각이다: 아바타 폴백이 이니셜이 아니라 **흰 `Box` 글리프**이고 §6.63이 이미 그 대체를 거부해 뒀다(`Avatar`는 한 줄도 안 건드린다). ⚠️ **그 글리프 박스의 radius는 `rounded-sm`(8)로 §6.63의 목록 행과 같다** (2026-09-12 실측 — 12로 나가 있었다. ⚠️ **그 사이 목록 행만 4로 내려가 이 문장이 한동안 거짓이었고, 2026-09-17에 목록·Home을 8로 올려 다시 참이 됐다** — 이 줄을 읽고 8을 고른 사람이 실제로는 어긋난 값을 보고 있었다): 같은 대상을 가리키는 표식이 화면마다 다른 모서리를 가지면 같은 것이라는 신호가 죽는다. 크기는 카드 규격을 따라 32이고 목록 행은 28이다. ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 `components/translations/`를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다 |
 | **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. ⚠️ **`dropdown-menu.tsx`의 export이지 새 프리미티브가 아니다** — 이 리포는 **파일 단위로** 센다(`SegmentedControl`/`SegmentedLinks`가 한 행인 것이 그 근거다). 그래서 **프리미티브는 16 그대로였다** (2026-09-12에 `EntityCard`가 붙어 **17**이다 — 아래 행). 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유) |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32/**56** — ⚠️ **56은 `/account` 머리 하나다** (2026-09-13) 그리고 **글자 크기가 `size`를 따라간다**(56은 `text-xl` = 20/500, 나머지는 `text-xs` = 13). 56짜리 원 안의 13은 점처럼 보인다. 소비자 둘(`entity-card`·`user-menu`)은 32라 안 움직인다. ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 받으면 raw `<img>`다(`next/image`가 아니다 — POSTMORTEM 2026-09-11) · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 |
@@ -1000,7 +1003,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 상태 | 무엇 | 어떻게 |
 |---|---|---|
 | 값 있음 | 남의 주소 | **마스킹 라벨**(`a***@acme.com`) — 충돌하는 행만 접두를 늘린다(malmoi#18). **서버가** 만든다 |
-| 부재 | 그 값이 원래 없다 | 이력 표는 `—`, 멤버 표는 이름으로 대신(§6.68·§6.65) |
+| 부재 | 그 값이 원래 없다 | 이력 표는 `—`, 멤버 행은 **마스킹 주소가 이름 자리로 올라간다**(§6.68·§6.65 — `planMemberIdentity`. 둘 다 없으면 `No name set`이고, 못 읽은 행은 `Couldn't be read`로 갈래가 하나 더 있다) |
 | **못 읽었다** | 저장된 값을 지금 키로 못 연다 | **`m.common.unreadable`("Unavailable")** — `lib/auth/query.ts`·`lib/sync/query.ts`가 낸다 |
 
 ⚠️ **셋째를 부재로 접지 않는다.** 빈 칸으로 두면 관리자가 "이 사람은 이메일이 없구나"로 읽는데, 실제로는 키가 옛 세대라 못 연 것이다 — POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다")이 화면 층으로 내려온 자리다. 이력 표에서는 `—`와 "Unavailable"이 **같은 열에서** 갈린다.
@@ -1093,46 +1096,117 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커스가 본문으로 간다(구조·포커스 실측. 높이는 안 쟀다).
 **표 아래 `withoutFile` 한 줄**(수술적 어댑터의 원본 파일 부재로 뺀 셀 수 — L3.7)은 설치된 리포에 그 모양이 없어 못 밟았다.
 
-### 6.65 멤버 (`/projects/[slug]/members`) — 표 둘 (2026-09-09, 6b-2)
+### 6.65 멤버 (`/projects/[slug]/members`) — 카드 둘 (2026-09-19, members-rework)
 
-**Members** 표(Person · Email · Role · Joined · Actions) 위에 [Invite member] `primary`, 그 아래 **Pending
-invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `max-w-4xl` 본문에 있다.
-⚠️ **breadcrumb이 없다** (8-4가 프로젝트 하위 화면 다섯에서 함께 걷었다 — §0) — 머리는 `h1`
-(`text-lg font-medium`, 사이드바 라벨과 같은 키 — §5.15) 하나이고 그 줄 **우측이 [Invite member]**다.
+셸 안 `limited`. `h1`(`text-lg font-medium`) 줄 **우측이 좌석 라벨 + [Invite member]**이고, 본문은
+`space-y-4`로 카드 둘 — **Members** · **Pending invitations**. ⚠️ **breadcrumb이 없다** (8-4 — §0).
 
-- **Actions 열은 헤더가 `sr-only`다** — 시각적으로 비어야 하지만 이름 없는 `<th>`는 스크린 리더가 빈 열로
-  읽는다 (§7).
-- **행 컨트롤의 라벨은 대상을 든다** — `Change role for {name}` · `Remove {name}` · `Revoke invitation for
-  {email}`. 열마다 같은 라벨이면 셀렉트 다섯 개가 누구의 것인지 구별되지 않는다(번역 셀의 `cellLabel`과
-  같은 형). ⚠️ [Remove]의 `aria-label`은 **보이는 텍스트를 포함**한다 — 음성 입력이 라벨로 컨트롤을 찾는다
-  (WCAG 2.5.3).
-- **역할 변경은 `Select`**(즉시 적용), **제거는 `Dialog` 확인 한 번**(되돌릴 수 없다). `Revoke`에는
-  확인이 없다 — 같은 마스킹 값이 다이얼로그에 다시 나올 뿐이라 **식별을 고치는 것이 답이었다**(아래).
-- **거부 문구는 행 옆 in-block `Alert danger`다.** 마지막 OWNER 보호(`last-owner`)는 **그 행에 대한 판정**이라
-  상단 global Alert로 올리면 어느 행이 거부됐는지 사라진다. ⚠️ 이 화면에는 **global Alert 슬롯이 없다** —
-  `?e=`를 이 경로로 보내는 자리가 없다(거부는 `/projects?e=`로 간다).
+⚠️ **2026-09-19에 표 둘이 카드 둘이 됐다.** 그 전에는 `PanelBody` 안에 `<Table>` 둘이 `space-y-6`으로
+서 있었다. 표를 버린 근거는 세 개다:
+1. **열 머리가 사라지면 `<table>`의 가치가 사라진다** — `<th>` 없는 표는 스크린리더에 "5열 4행"만 말하고
+   셀 이름을 못 준다. 옛 `sr-only <Th>` 행이 그 부채를 메우고 있었다.
+2. **행 아래 사유 띠가 `<tr>` 형제로 안 들어간다** — 전폭·들여쓰기 56인데 `colSpan`을 세야 하고 **열 수가
+   역할별로 갈린다**(EDITOR는 액션 열이 없다).
+3. `/projects` 행이 이미 `<ul>`이고 **같은 그릇을 공유하는 것이 이 변경의 목적**이다.
+
+**그릇은 `components/ui/row-card.tsx`다** — `RowCard`(헤더: 제목 · 카운트 배지 · 설명 한 줄) /
+`RowCardList`(`<ul>` + `@container`) / `RowCardItem`(선의 급 둘) / `BannerLine`(사유 띠) /
+`EmptyRowCard`. `/projects`의 그룹 카드와 **같은 파일**이다 (§6.63). ⚠️ **`countLabel`을 반드시 넘긴다** —
+기본값이 없고, 안 넘기면 타입이 막는다(전에는 `m.projects.count`가 박혀 있어 멤버 카드가 "3 projects"를
+낭독할 뻔했다).
+
+| 자리 | 규칙 |
+|---|---|
+| 행 | 아바타 24 · 두 줄 텍스트 · 메타 · **오른쪽 군(갭 8)**. 텍스트가 **56에서 시작**한다(`pl-4` + 24 + `gap-4`) — 띠의 `pl-14`와 같은 x라야 그 띠가 이 행에 속한 것으로 읽힌다 |
+| 두 줄 배치 | `planMemberIdentity`가 정한다 — 이름 → (없으면) 마스킹 주소가 1행으로 **올라가고** 2행은 빈다 → (없으면) `No name set`. 못 읽은 행은 `Couldn't be read` |
+| 아바타 | 이니셜 · `size={24}` · `lib/tone.ts` 8색. ⚠️ **씨앗이 1행 텍스트와 갈라져 있다** — 1행이 마스킹 주소면 이니셜이 `o***@…` → `o`가 되어 셸 아바타와 다른 글자·다른 색이 된다(`entity-card.tsx`가 밟은 함정). 씨앗이 없으면 **이니셜 없는 중립 원**이다 |
+| 역할 — OWNER 시야 | `Select`(즉시 적용, `w-32`) |
+| 역할 — 읽기전용 | **점선 테두리 + 자물쇠 칩**(`role-chip.tsx`). 대기 초대는 **전원** 이 칩이다(발급 후 변경 불가). 높이 `h-9`이고 시안의 32가 아니다 — 같은 자리의 `SelectTrigger`가 `h-9`라 갈리면 오른쪽 군의 높이가 행마다 튄다. ⚠️ **역할 낱말을 `aria-hidden`으로 덮지 않는다** — sr-only 사유만 남기면 그 역할이 무엇인지가 안 읽힌다 |
+| 제거·철회 | [Remove]는 `Dialog` 확인 한 번(되돌릴 수 없다), [Revoke]는 확인 없음 — 같은 마스킹 값이 다이얼로그에 다시 나올 뿐이라 **식별을 고치는 것이 답이었다**(아래 malmoi#18) |
+| 대기 0건 | `EmptyRowCard`를 **카드 안에**(`inset`) 세운다 — 칩 36 · padding `48 24`, `/projects`의 빈 카드와 같은 규격이고 **버튼이 없다**(할 일은 헤더의 [Invite]다). ⚠️ `components/ui/empty-state.tsx`를 쓰지 않는다 — 그쪽은 칩 48 + `py-12`이고 맞추면 소비자 아홉이 함께 움직인다 |
+
+#### 사전 차단 — **감추지 않고 꺼서 그린다**
+
+⚠️ **이 화면이 "컨트롤만 role로 갈린다"는 관용구를 뒤집는다** (2026-09-19). 다른 화면(§6.66 · §6.68 ·
+§6.63의 띠 링크 셋)은 **할 수 없는 컨트롤을 안 그린다.** 멤버는 반대다 — **그리고 끈 뒤 이유를 붙인다.**
+
+근거: 이 화면은 EDITOR도 들어오고(게이트가 `translation:write`다) **같은 화면을 OWNER와 함께 본다.**
+감추면 오른쪽 끝이 통째로 비어 "여기에 무엇이 있었는지"조차 안 보이고, 둘이 말을 맞출 수 없다. 다른
+화면들은 그 자리에 "누가 할 수 있는지"를 **문장으로** 넣을 수 있었지만 여기는 행마다 컨트롤이 선다.
+**다음 화면은 어느 쪽을 따를지 이 문단으로 판단한다**: 같은 화면을 두 역할이 나란히 보고, 그 컨트롤이
+행 단위로 반복되면 멤버 쪽이다.
+
+| 갈래 | 화면 |
+|---|---|
+| EDITOR | 좌석 라벨 자리에 `Only owners can invite or change roles` + **꺼진 [Invite]**. 역할은 자물쇠 칩, [Remove]·[Revoke] 없음. ⚠️ **띠는 안 그린다** — 그 사유가 설명할 행동이 EDITOR에게 없다 |
+| 좌석 10/10 | `10 of 10 seats — remove someone to invite` + 꺼진 [Invite]. ⚠️ **EDITOR × 좌석 초과는 역할 사유가 이긴다** — 좌석이 비어도 그 사람은 초대할 수 없으므로 좌석 문구가 거짓 희망이 된다. 판정은 `planSeatNotice`의 단언이 든다 |
+| 마지막 오너 | 그 행의 `Select`·[Remove]가 꺼지고 **행 아래 띠**가 사유를 든다 |
+| 못 읽은 행 | 행이 **남고** 띠가 사유를 든다. 역할·가입일은 정상이다. ⚠️ **EDITOR에게도 보인다** — 막힌 행동이 아니라 행이 그렇게 보이는 이유를 말한다 |
+| 못 읽음 + 마지막 오너 | **띠 하나에 문장 둘**(못 읽음 → 마지막 오너 순). 한 행에 띠는 항상 하나다 — 둘이면 `aria-describedby`가 어느 쪽을 가리킬지 화면마다 정하게 된다 |
+
+⚠️ **꺼진 컨트롤은 `aria-disabled`다, `disabled`가 아니다.** 진짜 `disabled`는 포커스를 못 받아
+`aria-describedby`의 전달 경로가 없고, 그러면 "꺼진 컨트롤에는 반드시 이유가 붙는다"가 성립하지 않는다.
+**`loading`과 겸용 불가다**(그쪽이 진짜 `disabled`를 건다). 겉모습의 철자는 `button.tsx`·`select.tsx`가
+들고 호출부는 **속성만** 세운다 (§6.4 · `disabled-pairing.test.ts`).
+
+⚠️ **Radix 컨트롤을 끌 때는 그것이 *어느 이벤트에서 여는지*를 `dist/index.mjs`에서 센다.**
+`Select.Trigger`는 셋(`onPointerDown`·`onClick`·`onKeyDown`)이고 셋 다 막아야 한다 — 포인터만 막으면
+**우리가 건너뛴 핸들러가 라이브러리의 포인터 종류 감지를 무력화해 클릭이 도리어 열어 준다**
+(POSTMORTEM 2026-09-19). 키 가드는 `Tab` 외 전부를 막는 **화이트리스트**다(블랙리스트는 타이프어헤드를 못 덮는다).
+
+⚠️ **사전 차단은 편의이고 차단이 아니다.** 다른 탭이 그 사이 좌석을 채우거나 오너를 바꾼다 — 서버 거부
+셋이 전부 남는다. 그래서 **화면과 서버가 같은 판정 함수를 부른다**(`planMemberChange` ·
+`planInvitationCreate`를 감싼 `planSeatNotice`)고, 사전 띠와 사후 `Alert`이 **같은 문자열**
+(`accessErrorMessage("last-owner")`)을 쓴다. 그 동일성은 `members-cards.test.tsx`가 **렌더로** 센다 —
+소스에 그 이름이 있는지 세는 검사는 오늘 이미 green이다 (POSTMORTEM 2026-09-18).
+
+#### 초대 — `OnboardingModal` 두 얼굴
+
+[Invite member]와 모달을 **같은 클라이언트 컴포넌트**(`members-panel-header.tsx`)가 든다 —
+`OnboardingModal`은 제어형이고 `DialogTrigger`가 없다.
+
+- **얼굴 ① 폼**: Email `Input` + Role 라디오 둘(**기본 Editor**). 바닥 왼쪽 `{n} of {limit} seats used`,
+  오른쪽 [Create invite link]. ⚠️ **`step`을 넘기지 않는다** — 초대는 단계가 아니라 두 얼굴이다.
+- **얼굴 ② 링크**: 제목 `Link ready for {label}`(**라벨은 서버가 만든다** — 클라이언트에서 가리면 세 번째
+  마스킹 구현이다), 링크 줄 **sans 14**(§4.1 — [Copy]가 붙은 값은 mono가 아니다), 안내 카드, 바닥 [Done].
+- ⚠️ **제출 버튼이 바닥이라 `<form>` 바깥이다 → `form="invite-form"`으로 묶는다.** 안 묶으면 Enter가
+  **조용히** 죽는다 (POSTMORTEM 2026-09-08). **이 리포의 `form=` 첫 도입이다.**
+- ⚠️ **사후 거부는 세 번째 얼굴이 아니다** — `createInvitation`이 실패를 **값으로** 돌려주므로 폼 얼굴에
+  머물며 본문 맨 아래 `Alert`으로 선다. 입력값이 남고 포커스는 누른 제출 버튼으로 돌아간다(malmoi#53).
+- ⚠️ **테두리 있는 카드 라디오를 만들지 않았다** — 리포 전수 0건인 시각 형이고, 만들면 등재할 부품이
+  하나 는다. `Radio`가 이미 라벨 행이고 보조 줄만 아래에 붙인다.
+
+#### 그대로 남는 것
+
+- **행 컨트롤의 라벨은 대상을 든다** — `Change role for {name}` · `Remove {name}` ·
+  `Revoke invitation for {email}` · 칩의 `Role for {who} — only owners can change this`. 행마다 같은
+  라벨이면 컨트롤이 누구의 것인지 구별되지 않는다. ⚠️ [Remove]의 `aria-label`은 **보이는 텍스트를
+  포함**한다 — 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
+- **거부 문구는 그 행 아래다** (띠와 같은 자리). ⚠️ 이 화면에는 **global Alert 슬롯이 없다** — `?e=`를
+  이 경로로 보내는 자리가 없다(거부는 `/projects?e=`로 간다).
 - ⚠️ **마스킹은 서버가 한다 — 원문은 와이어에 오르지 않는다** (2026-09-09, sec-audit 발견 4). 전에는 두
   로더가 `email`을 원문으로 내려보내고 `"use client"` 컴포넌트가 렌더할 때 가렸다 — **그러면 원문이 RSC
-  페이로드에 그대로 실린다.** 관측자는 그 프로젝트의 EDITOR 이상이고 view-source로 읽으며, **대기 초대
-  쪽이 더 민감하다**(아직 멤버가 아닌 외부인의 주소다). 지금 `MemberView.emailLabel`·
-  `PendingInvitation.emailLabel`이 **이미 마스킹된 값**이고 컴포넌트는 그것을 그대로 그린다.
-  상시 검사는 `components/__tests__/members-screen.test.ts`이고 **렌더가 아니라 소스 스캔**이다 —
-  페이로드는 눈으로 안 보인다.
-- ⚠️ **이메일 마스킹의 예외가 여기 있다.** 두 표 모두 `maskEmail`이 기본이지만(이 표는 EDITOR도 본다 —
-  규칙을 역할로 나누지 않는다) **대기 초대는 마스킹한 주소가 유일한 식별자**라 첫 글자만 남기면 서로 다른
-  둘이 같은 행이 된다([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)). 서버가
-  `maskedInviteLabels`로 **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 — 충돌이 없으면 출력이 `maskEmail`과
-  같다(§6.1 "가장 흔한 상태가 가장 조용하다").
-- **대기 0건은 `EmptyState`** — 표 머리만 남은 화면은 "불러오는 중"과 구별되지 않는다.
-- ⚠️ **행을 지우는 성공(제거·철회) 뒤 포커스는 그 표의 제목으로 간다** (2026-09-17,
-  [malmoi#51](https://github.com/SinhyeokKang/malmoi/issues/51)). 포커스를 쥔 행이 사라지면 브라우저가
-  `body`로 떨어뜨린다. **이웃 행이 아닌 이유**: 마지막 행을 지우면 없고, 제목은 대기 초대가 `EmptyState`로
-  접혀도 남는다. 제목은 `tabIndex={-1}` + `outline-none`(착지점이지 컨트롤이 아니다)이고, 결과는 표마다
-  **상시 마운트된** `role="status"` 한 줄이 대상 이름과 함께 한 번 읽는다 — 텍스트와 함께 새로 붙는
-  live 영역은 스크린 리더가 놓치고, 빈 상태 갈래 **밖**에 있어야 마지막 철회도 읽힌다. **역할 변경은
-  옮기지 않는다** — 행이 남아 포커스가 셀렉트에 그대로 있다. 실패는 기존대로 행 옆 `Alert`가 답하고, ⚠️ **포커스는 그 행의 [Remove]·[Revoke]로 돌아간다** (2026-09-17, [malmoi#53](https://github.com/SinhyeokKang/malmoi/issues/53)) — 실행 중 버튼이 `loading`(= `disabled`)이라 브라우저가 포커스를 `body`로 떨어뜨리고, 되돌리지 않으면 행 옆 Alert에 페이지 맨 위부터 다시 걸어 와야 닿는다.
-- **EDITOR에게는 컨트롤이 아예 렌더되지 않는다**([Invite member]·`Select`·[Remove]·[Revoke] 전부). 목록과
-  대기 초대는 본다. ⚠️ 노출은 편의이고 차단이 아니다 — 판정은 Action의 `member:manage`다.
+  페이로드에 그대로 실린다.** `MemberView.emailLabel`·`PendingInvitation.emailLabel`이 **이미 마스킹된
+  값**이고 컴포넌트는 그것을 그대로 그린다. 상시 검사는 `members-screen.test.ts`이고 **렌더가 아니라
+  소스 스캔**이다(페이로드는 눈으로 안 보인다) — 그 금지선은 이제 `components/members/**`의
+  `"use client"` 파일을 **전수로** 훑는다(파일 둘 하드코딩이었고, 파일이 넷이 되자 신설분이 방어선 밖이었다).
+- ⚠️ **대기 초대는 마스킹한 주소가 유일한 식별자다** — 첫 글자만 남기면 서로 다른 둘이 같은 행이 된다
+  ([malmoi#18](https://github.com/SinhyeokKang/malmoi/issues/18)). 서버가 **`maskedEmailLabels`**
+  (`lib/auth/invite-label.ts`)로 **목록 전체를 보고** 충돌하는 행만 접두를 늘린다 — 충돌이 없으면 출력이
+  `maskEmail`과 글자 하나까지 같다 (§6.1). ⚠️ **이름이 `maskedInviteLabels`가 아니다** — 그 이름은
+  같은 함수의 옛 별칭이고 이 문단이 2026-09-19까지 그것을 가리키고 있었다.
+- ⚠️ **행을 지우는 성공(제거·철회) 뒤 포커스는 그 카드의 제목으로 간다**
+  ([malmoi#51](https://github.com/SinhyeokKang/malmoi/issues/51)). 포커스를 쥔 행이 사라지면 브라우저가
+  `body`로 떨어뜨린다. **이웃 행이 아닌 이유**: 마지막 행을 지우면 없고, 제목은 대기 초대가 빈 상태로
+  접혀도 남는다. ⚠️ **2026-09-19에 착지점이 페이지에서 카드로 내려왔다** — 카드가 자기 헤더를 들면서
+  페이지 `<h1>Members</h1>` 아래에 `<h2>Members</h2>`가 서는 문제도 함께 풀렸다. **id와
+  `tabIndex={-1}`을 프리미티브가 한 자리에서 짝지어 든다**(`RowCard`) — 갈라지면 `getElementById`는
+  찾는데 `focus()`가 무시되고 그 실패는 `?.`에 삼켜져 조용하다. 결과는 카드마다 **상시 마운트된**
+  `role="status"` 한 줄이 대상 이름과 함께 한 번 읽는다 — 빈 상태 갈래 **밖**에 있어야 마지막 철회도
+  읽힌다. **역할 변경은 옮기지 않는다**(행이 남는다). 실패는 행 아래 `Alert`가 답하고 ⚠️ **포커스는 그
+  행의 [Remove]·[Revoke]로 돌아간다**
+  ([malmoi#53](https://github.com/SinhyeokKang/malmoi/issues/53)) — 실행 중 버튼이 `loading`(= `disabled`)
+  이라 브라우저가 포커스를 `body`로 떨어뜨린다.
 
 ### 6.66 언어 (`/projects/[slug]/locales`) — 표 + 폼 (2026-09-09, 6b-5)
 
@@ -1144,14 +1218,14 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 
 | 요소 | 규칙 |
 |---|---|
-| 표 | ⚠️ **`Card` 밖이다** — Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). 멤버 화면(§6.65)과 같은 관용구로 `<Table>`을 `<main>`에 직접 둔다. 열 둘: Language · Translated |
+| 표 | ⚠️ **`Card` 밖이다** — Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). `<Table>`을 `<main>`에 직접 둔다. ⚠️ **2026-09-19까지 이 줄이 멤버 화면을 선례로 인용했는데 그 화면이 카드로 갔다**(§6.65) — 같은 관용구를 쓰는 곳은 이제 이력(§6.68)이다. 열 둘: Language · Translated |
 | Language 열 | 코드는 파일명 그대로가 진실이라 **`text-mono`**(§4.1) + base면 `Badge`(muted) + orphaned면 `Badge danger`("File missing" — **배경 없음**, 되돌릴 수 있는 상태다 §6.2) |
 | orphaned 행 | ⚠️ **배지만 달지 않는다** — 사유와 되살리는 방법을 `text-xs text-muted-foreground` 한 단락으로 함께 낸다. 그 둘이 이 화면이 존재하는 이유다. **진행률도 계속 낸다**("되살리면 돌아온다"의 근거) |
 | Translated 열 | `localeProgress` — "N% · a of b" + 검토 필요가 있으면 `Badge warning`. ⚠️ **percent는 내림**이라 902/903이 100%로 보이지 않고, **base 로케일도 100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다) |
 | 정렬 | base 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 → **orphaned 맨 뒤**(행마다 설명이 붙어 사이에 끼면 건강한 목록이 쪼개진다). base가 orphaned여도 맨 앞이다 |
 | 기준 언어 Card | ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 라벨과 help를 들고, 둘을 다 두면 같은 문장이 화면에 두 번 나온다(실측). `Select` + [Save] 하나. ⚠️ **트리거가 `<button>`이라 `FormGroup`의 `htmlFor`가 버튼을 가리킨다** — 클릭 포워딩은 그대로 되지만 `labels`로 세는 검사는 `label[for]`를 직접 세야 한다. **orphaned 로케일은 목록에 없다** — 감추는 것은 편의이고 방어는 Action이다 |
 | 대기 Alert | `Alert warning` + 고칠 줄을 **`<pre>`**로(여러 줄일 수 있는 코드는 값 칩이 아니다 §6.4) + [Copy line]. ⚠️ **`settings`로 링크하지 않는다** — 그러면 고치려고 두 화면을 오간다(§7.7 결정 4의 경계). 워크플로 YAML **전체**는 설정에 남는다 |
-| 역할 | 페이지 게이트는 **`translation:write`**(번역자도 "왜 열이 사라졌나"를 봐야 한다). **기준 언어 Card와 대기 Alert만 `project:settings`로 갈리고 판정은 Action**이 한다 (§6.65와 같은 관용구) |
+| 역할 | 페이지 게이트는 **`translation:write`**(번역자도 "왜 열이 사라졌나"를 봐야 한다). **기준 언어 Card와 대기 Alert만 `project:settings`로 갈리고 판정은 Action**이 한다. ⚠️ **여기는 안 그리고, 멤버(§6.65)는 꺼서 그린다** — 2026-09-19에 그 화면이 관용구를 뒤집었고 왜 갈리는지는 §6.65가 든다(요지: 멤버는 두 역할이 같은 화면을 나란히 보고 컨트롤이 행마다 반복된다) |
 
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다(거부는 `/projects?e=`, 저장 실패는 폼 안 `Alert danger`).
 
@@ -1205,7 +1279,7 @@ invitations** 표(Email · Role · Expires · Invited by · Actions). 둘 다 `m
 
 ### 6.68 이력 (`/projects/[slug]/logs`) — 표 하나 (2026-09-10, 7단계)
 
-셸 안 `limited`(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다 — §5.15가 정본이다). 제목 + 한 줄 설명, 그 아래 **표 하나**. ⚠️ **breadcrumb이 없다** (8-4 — §0)이고 **제목은 `Logs`다**(사이드바 라벨과 같은 키 — "Sync history"는 옛 이름이다). ⚠️ **표는 `Card` 밖이다** — 로케일·멤버 화면과 같은 관용구이고, Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측).
+셸 안 `limited`(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다 — §5.15가 정본이다). 제목 + 한 줄 설명, 그 아래 **표 하나**. ⚠️ **breadcrumb이 없다** (8-4 — §0)이고 **제목은 `Logs`다**(사이드바 라벨과 같은 키 — "Sync history"는 옛 이름이다). ⚠️ **표는 `Card` 밖이다** — 로케일 화면(§6.66)과 같은 관용구이고, Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). ⚠️ **멤버 화면은 2026-09-19에 이 관용구를 떠났다**(카드 + `<ul>` — §6.65).
 
 열 다섯: **When**(`<time dateTime>`에 절대 시각 `YYYY-MM-DD HH:mm UTC` + 그 아래 상대 시각 `text-xs`) · **Started by** · **Result**(배지 — §6.2) · **Files** · **Reason**.
 
