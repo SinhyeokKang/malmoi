@@ -156,6 +156,11 @@ const NOT_A_COUNT: Record<string, string> = {
   // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다.
   "projects.count": "PROJECT_LIMIT = 3",
   "projects.memberCount": "MEMBER_LIMIT = 10",
+  // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
+  "members.seats": "MEMBER_LIMIT = 10",
+  "members.seatsFull": "MEMBER_LIMIT = 10",
+  "members.count": "MEMBER_LIMIT = 10",
+  "members.invite.seatsUsed": "MEMBER_LIMIT = 10",
   "errors.onboarding.limit-reached": "PROJECT_LIMIT = 3",
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",
