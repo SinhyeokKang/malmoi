@@ -84,7 +84,12 @@ export function PublicDoc({
       </div>
       {sections.map((section) => (
         // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음).
-        <section key={section.id} className="space-y-3 [&_a]:text-blue-600">
+        // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
+        <section
+          key={section.id}
+          aria-labelledby={section.id}
+          className="space-y-3 [&_a]:text-blue-600"
+        >
           <h2 id={section.id} className="text-base font-medium">
             {section.heading}
           </h2>

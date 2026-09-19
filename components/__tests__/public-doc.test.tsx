@@ -38,6 +38,17 @@ it("절이 id를 가진 h2로 선다", async () => {
   expect(headings).toEqual(["what-we-collect", "workflow"]);
 });
 
+/**
+ * ⚠️ **이름 없는 `<section>`을 두지 않는다** (POSTMORTEM 2026-09-15 `:1821`) — 절이 일곱이면 랜드마크
+ * 목록에 "region"만 일곱 뜬다. 이름은 이미 있는 `<h2 id>`가 댄다.
+ */
+it("절마다 자기 제목이 접근 이름이 된다", async () => {
+  const { container } = await render(<PublicDoc title="Privacy Policy" sections={sections} signedIn={false} />);
+
+  const labelled = [...container.querySelectorAll("section")].map((s) => s.getAttribute("aria-labelledby"));
+  expect(labelled).toEqual(["what-we-collect", "workflow"]);
+});
+
 it("블록이 문단과 목록 둘이다", async () => {
   const { container } = await render(<PublicDoc title="Docs" sections={sections} signedIn={false} />);
 
