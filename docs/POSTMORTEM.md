@@ -2142,3 +2142,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - pending을 보려고 영원히 안 끝나는 promise를 쓰면 **테스트 끝에서 푼다**(`let settle; mockReturnValue(new Promise(r => { settle = r }))` … `await act(async () => settle(…))`). 이번 파일은 그렇게 고쳤다.
   - transition 완료 뒤 할 일은 `isPending`의 가장자리가 아니라 **클릭이 세우는 상태**(`awaiting`)와 `!isPending`의 조합으로 판정한다(`repo.tsx`).
   - grep: `rg -n "new Promise\(\(\) => \{\}\)" components app lib --glob '**/__tests__/**'` → 2026-09-18 기준 남은 3건(`app/(edit)/account/__tests__/structure.test.tsx:590·613` 프로필 사진 업로드·삭제, `components/__tests__/new-project.test.tsx:142` 브랜치 조회). 지금은 같은 파일 뒤쪽에 transition 완료를 단언하는 테스트가 없어 드러나지 않았을 뿐인 후보다 — 그 mock이 `startTransition(async …)` 안에서 불리면 같은 누수다.
+
+### 2026-09-19 — 인가를 철회한 사용자가 "잠시 뒤 다시"에 갇혔고, 그 자리만 401 규칙을 어기고 있었다
+
+- **영역**: `lib/github-connect/account-view.ts` · `components/account/github-section.tsx`(`unavailable`에 컨트롤 0) · 규칙의 정본은 ARCHITECTURE §6.5.1
+- **증상**: install-and-connect 프로덕션 실측 중, GitHub에서 malmoi-prod 인가를 Revoke한 뒤 `/account`의 GitHub App 행이 **"Couldn't load — Open this page again in a moment."**이 되고 [Disconnect]·[Reconnect]가 **둘 다 사라졌다.** 새로고침해도 같다 — 그 계정은 연결을 고칠 수도 끊을 수도 없다. 실측을 이어가려고 재인가를 두 번 돌아가야 했다.
+- **근본 원인**: `loadAccountView`가 `getViewer`의 401을 `unavailable`로 접었다. 주석은 *"401이면 인가가 철회된 것이고, 그 밖은 일시 장애다 — 둘을 가르는 것은 다음 호출이 한다"*였는데, **저장된 토큰은 만료 전이라** `ensureUserToken`이 계속 `ok`를 주고 다음 호출도 같은 401이다. 즉 "다음 호출이 가른다"가 성립하지 않는 조건에서 그 문장이 쓰였다. 화면 쪽은 `unavailable`에 컨트롤을 두지 않는 것이 **의도된 규칙**이라(조회 실패에 [Connect]를 세우면 이미 연결된 사용자에게 왕복을 시킨다) 두 규칙이 맞물려 막다른 화면이 됐다. ARCHITECTURE §6.5.1은 **2026-09-07부터 "사용자 토큰 401 → reauthorize, 잠시 뒤 다시로 안내하면 사용자가 갇힌다"**를 적고 있었다 — 문서가 옳았고 판정 함수 하나가 그것을 어겼다.
+- **그물**: 잡은 것 — 프로덕션 실측(`/account`를 눈으로 본 것). 놓친 것 — 단위 테스트(이 모듈에 테스트 파일이 **없었다**), `app/(edit)/account/__tests__/structure.test.tsx`(`loadAccountView`를 **mock**하고 세 갈래 렌더만 본다 — 어떤 입력이 어떤 갈래가 되는지는 묻지 않는다), `/doc-check`(문서가 옳았으므로 드리프트가 아니다). 형제 함수 `listFailure`는 같은 규칙을 지키고 있어 비교 대상이 있었는데도 드러나지 않았다.
+- **재발 방지**:
+  - `lib/github-connect/__tests__/account-view.test.ts`가 401→`reauthorize`, 503→`unavailable`, 토큰 상태 셋을 고정한다.
+  - grep: `rg -n "httpStatus\(|status === 401" lib/github-connect` → 사용자 토큰을 쓰는 조회 실패 자리마다 401이 `reauthorize`로 올라가는지 본다. 지금 자리는 `token.ts`(`refreshFailure`)·`actions.ts`(`listFailure`)·`account-view.ts` 셋이다.
+  - **화면이 컨트롤을 0개 세우는 상태를 만들 때는 그 상태가 영구일 수 있는지 먼저 묻는다** — `unavailable`처럼 "다시 열면 풀린다"를 전제한 갈래에 영구 조건이 섞이면 사용자가 갇힌다. 그 조합은 mock 기반 렌더 테스트로는 안 잡힌다(입력→갈래 판정이 mock 뒤에 있다).
