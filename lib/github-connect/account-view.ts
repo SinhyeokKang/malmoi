@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
+import { httpStatus } from "@/lib/failure";
+
 import { logFailure } from "./log";
 import { ensureUserToken } from "./token-store";
 import { getViewer } from "./user";
@@ -31,8 +33,13 @@ export async function loadAccountView(prisma: PrismaClient, userId: string): Pro
   try {
     return { status: "ok", login: (await getViewer(token.accessToken)).login };
   } catch (error) {
-    // 401이면 인가가 철회된 것이고, 그 밖은 일시 장애다 — 둘을 가르는 것은 다음 호출이 한다.
     logFailure("viewer", error);
-    return { status: "unavailable" };
+    /**
+     * ⚠️ **401은 인가 철회이고 영구 상태다** (2026-09-19 프로덕션 실측). 저장된 토큰은 아직 만료 전이라
+     * `ensureUserToken`이 `ok`를 주고 이 401이 유일한 신호다 — **다음 호출도 같은 401**이므로 "둘을 가르는
+     * 것은 다음 호출"이 거짓이었다. `unavailable`로 접으면 화면이 "잠시 뒤 다시"를 말하며 컨트롤을 하나도
+     * 안 세워, 사용자가 다시 연결하지도 해제하지도 못하는 자리에 갇힌다. `listFailure`와 같은 판정이다.
+     */
+    return httpStatus(error) === 401 ? { status: "reauthorize" } : { status: "unavailable" };
   }
 }

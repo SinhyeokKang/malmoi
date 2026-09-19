@@ -1921,6 +1921,8 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 |---|---|---|
 | probe `error` | `unknown` (≠`app-uninstalled`) | 조회 실패를 "제거됨"으로 보여주면 멀쩡한 설치를 다시 만든다 |
 | 사용자 토큰 401 | `reauthorize` | 인가 철회다. "잠시 뒤 다시"로 안내하면 사용자가 갇힌다 |
+
+⚠️ **그 줄을 어긴 자리가 2026-09-19까지 하나 있었다** — `loadAccountView`가 `getViewer`의 401을 `unavailable`로 접었다("둘을 가르는 것은 다음 호출"이라는 주석과 함께). 저장된 토큰은 만료 전이라 `ensureUserToken`이 계속 `ok`를 주므로 **다음 호출도 같은 401**이고, `/account`는 `unavailable`에 컨트롤을 하나도 세우지 않아(§6.67) 사용자가 다시 연결하지도 해제하지도 못했다. 프로덕션 실측이 잡았다 — 이 표는 **판정 함수마다** 적용된다(`listFailure`·`loadAccountView`·`ensureUserToken`).
 | 사용자 토큰 **429** | `unavailable` | **4xx인데 장애다** — 재시도하면 풀린다 |
 | DB 장애 | `unavailable` | 토큰을 못 읽은 것이지 없는 것이 아니다 |
 

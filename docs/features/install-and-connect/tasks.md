@@ -68,6 +68,16 @@
     3. C: org 설치의 리포 선택을 비운 상태에서 ① → C → [Choose repositories] → Save → 같은 탭 ① → 목록
     4. A 신규 1클릭: 연결 해제 + 개인 설치(리포 있는 계정) → ① A → Install & Authorize → 목록
     5. A 보조 링크: 연결만 해제한 상태에서 "Connect your account" → 목록
+  - **실측 결과 (2026-09-18 프로덕션, ego-browser · `test-sinhyeok`)**:
+    1. ✓ A → [Install GitHub App](URL 쿼리는 `state` 하나) → org "Authorize & Request" → `/projects/new` 착지, 연결 완료(`/account` Connected), **D**. 모달 재진입도 D, [Check again]은 모달 live 영역에 "Still waiting for approval."(두 번째 클릭도 재알림). ⚠️ 다른 브라우저 확인은 미실측(판정이 DB라 새로 불러와도 D였다). ⚠️ 배포 전 L0.4의 옛 요청이 남아 있어 GitHub이 "Cancel Request"만 보였다 — 취소 뒤 새 요청.
+    2. ✓ 오너 승인 복귀 → `/projects/new`(state 없는 착지). ①을 다시 열자 목록, info 없음, prod `installRequestedAt` 0행. ⚠️ 승인 뒤 [Check again] → 목록 전환은 미실측(열 때 이미 승인돼 D가 안 섰다).
+    3. ✓ (2026-09-19 `SinhyeokKang`) 목록 아래 "Choose repositories" → GitHub 설치 설정에서 리포 하나를 빼고 Save → **같은 탭**으로 `/projects/new` 착지(탭 수 그대로)이고 목록이 새 선택을 반영. 되돌리는 Save도 같은 착지. ⚠️ `test-sinhyeok`으로는 못 잰다(개인 리포 0 → "Only select" 불가, 변경 없는 Save는 비활성). ⚠️ **C(설치는 있는데 리포 0) 화면 자체는 GitHub이 그 상태를 못 만들게 해서 실측 대상이 아니다** — "Only select"는 리포를 1개 이상 요구한다. DOM 테스트가 그 갈래를 든다.
+    4. ✓ revoke + 연결 해제 뒤 A → [Install GitHub App] → GitHub "Install & Authorize"(callback 리다이렉트 명시) 한 번 → 목록.
+    5. ✓ 연결만 해제 → "Connect your account" → Authorize(`redirect_uri`·`state`) → 목록.
+    - 재인가 블록: revoke 뒤 ①이 "Reconnect GitHub" + [Reauthorize GitHub App] → Authorize → 목록.
+    - **결함(이 기능 밖) 1건 — 고쳤다**: revoke 뒤 `/account`의 App 행이 "Couldn't load … in a moment."에 갇히고 컨트롤이 0이었다. `loadAccountView`가 `getViewer`의 401을 `unavailable`로 접었는데 토큰이 만료 전이라 다음 호출도 같은 401이다 — 401을 `reauthorize`로 올렸다(2026-09-19).
+    - **결함이 아니었던 것**: "짧은 창에서 ① 버튼이 footer에 덮인다"는 오진이었다 — 본문은 `overflow-y-auto`로 정상 스크롤되고(360px 창에서 본문 69px·내용 346px) 스크롤 뒤 hit-test가 버튼을 집는다. 자동 클릭이 스크롤을 안 한 것이 원인이다.
+    - **계정 주의**: 실측은 `test-sinhyeok`과 `SinhyeokKang`만 쓴다(2026-09-19 사용자). `sinhyeok-kang`은 대상이 아니다.
   - 뒷정리: org 재설치로 `installationId`가 바뀐 org 리포의 prod 프로젝트는 [Reconnect](malmoi#52)
 
 ## 확인 (2026-09-18)
