@@ -3,30 +3,42 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { changeMember } from "@/app/(edit)/projects/actions";
+import { MemberRow } from "@/components/members/member-row";
+import { RoleChip } from "@/components/members/role-chip";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, Td, Th } from "@/components/ui/table";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { planMemberIdentity } from "@/lib/auth/member-identity";
+import { planMemberChange } from "@/lib/auth/membership";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { MemberView } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
- * 멤버 표 (DESIGN §6.65).
+ * 멤버 카드 (DESIGN §6.65).
  *
- * ⚠️ **EDITOR도 이 표를 본다** — 컨트롤만 `canPerform`으로 감춘다. 감추는 것은 **편의이고 차단이
- * 아니다**: 방어는 `changeMember`의 `member:manage`이고, 그래도 감추는 이유는 EDITOR에게 셀렉트를
- * 그리면 눌렀을 때만 거부되어 "왜 안 되지"가 되기 때문이다.
+ * ⚠️ **EDITOR도 이 카드를 본다** — 그리고 **컨트롤이 사라지지 않고 꺼진 채 이유를 든다.** 감추면
+ * 오른쪽 끝이 통째로 비어 "여기에 무엇이 있었는지"조차 안 보이고, 같은 화면을 보는 OWNER와 말을
+ * 맞출 수 없다. 차단은 여전히 `changeMember`의 `member:manage`이고 노출만 바뀐다.
  *
- * ⚠️ **이메일은 전원에게 마스킹한다** — 규칙을 역할로 나누지 않는다(OWNER도 같다). 되돌릴 수 없는
- * 변환이라 **대조에 쓰지 않는다**: 초대 중복 판정은 서버가 원문으로 한다 (`lib/auth/email.ts`).
+ * ⚠️ **사전 차단이 서버 거부와 같은 함수를 지난다** — 마지막 오너 판정은 `planMemberChange`이고
+ * 문구는 `accessErrorMessage("last-owner")`다. 사전 문구와 사후 Alert이 **같은 문자열**인 것이
+ * 배선이 아니라 구조로 보장된다.
  *
- * ⚠️ **거부 문구는 행 옆 인라인이다.** 마지막 OWNER 보호(`last-owner`)는 그 행에 대한 판정이므로,
- * 페이지 상단 global Alert로 올리면 어느 행이 거부됐는지 사라진다 (DESIGN §6.4).
+ * ⚠️ **이메일은 전원에게 마스킹한다** — 규칙을 역할로 나누지 않는다(OWNER도 같다). 라벨은 서버가
+ * 목록 전체를 보고 만든다 (sec-audit 발견 4 · malmoi#18).
+ *
+ * ⚠️ **거부 문구는 그 행 아래다.** 마지막 OWNER 보호는 그 행에 대한 판정이므로, 페이지 상단 global
+ * Alert로 올리면 어느 행이 거부됐는지 사라진다 (DESIGN §6.4).
  */
+
+/** Radix Select 트리거가 여는 키. 사전 차단 행에서 이 넷을 막지 않으면 키보드로만 열린다. */
+const OPEN_KEYS = new Set([" ", "Enter", "ArrowDown", "ArrowUp"]);
+
 export function MemberList({
   slug,
   members,
@@ -42,8 +54,11 @@ export function MemberList({
   /** 서버가 넘긴 기준 시각. 클라이언트에서 `new Date()`를 부르면 hydration이 갈린다. */
   now: Date;
   /**
-   * 제거 뒤 포커스 착지점 — 서버 페이지가 그리는 표 제목이다 (malmoi#51). 포커스를 쥔 행이 사라지면
-   * 브라우저가 `body`로 떨어뜨리고, 이웃 행은 마지막 행을 지우면 없다.
+   * 제거 뒤 포커스 착지점 — **이 카드의 제목**이다 (malmoi#51). 포커스를 쥔 행이 사라지면 브라우저가
+   * `body`로 떨어뜨리고, 이웃 행은 마지막 행을 지우면 없다. 제목은 카드가 비어도 남는다.
+   *
+   * ⚠️ **2026-09-19에 페이지에서 카드로 내려왔다** — 카드가 자기 헤더를 들면서 페이지 `<h1>` 아래에
+   * 같은 낱말이 두 번 서는 문제도 함께 풀렸다. `<ul aria-labelledby>`도 이 id를 쓴다.
    */
   headingId: string;
 }) {
@@ -85,114 +100,187 @@ export function MemberList({
 
   return (
     <>
-    {/* ⚠️ **결과 전부터 DOM에 있어야 한다** — 텍스트와 함께 새로 붙는 live 영역은 스크린 리더가 놓친다. */}
-    <p role="status" className="sr-only">{announcement}</p>
-    <Table>
-      <thead>
-        <tr>
-          <Th>{m.members.columns.person}</Th>
-          <Th>{m.members.columns.email}</Th>
-          <Th>{m.members.columns.role}</Th>
-          <Th>{m.members.columns.joined}</Th>
-          {/* 시각적으로는 빈 열이지만 이름 없는 `<th>`를 남기지 않는다 (DESIGN §7 · 🟡3). */}
-          <Th className="text-right">
-            <span className="sr-only">{m.members.columns.actions}</span>
-          </Th>
-        </tr>
-      </thead>
-      <tbody>
-        {members.map((member) => {
-          // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
-          // ⚠️ **라벨은 서버가 만든다** (sec-audit 발견 4) — 여기서 가리면 원문이 이미 페이로드에 있다.
-          const who = member.name ?? member.emailLabel ?? m.members.unnamed;
-          return (
-          <tr key={member.userId}>
-            <Td>
-              {member.name ?? <span className="text-muted-foreground">{m.members.unnamed}</span>}
-              {member.userId === viewerId && (
-                <span className="text-muted-foreground ml-2 text-xs">({m.members.you})</span>
-              )}
-            </Td>
-            {/* 주소는 식별자라 mono다 (DESIGN §4.1) — 한 줄이므로 개행 보존이 필요 없다. */}
-            {/* ⚠️ 주소는 sans다 (2026-09-13) — 마스킹된 값이라 더욱 읽는 값이다. */}
-            <Td>{member.emailLabel ?? "—"}</Td>
-            <Td>
-              {manage ? (
-                <Select
-                  value={member.role}
-                  disabled={pendingId === member.userId}
-                  onValueChange={(value) => apply(member.userId, value as Role, who)}
-                >
-                  {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
-                  <span id={`role-${member.userId}-label`} className="sr-only">
-                    {m.members.changeRole(who)}
-                  </span>
-                  <SelectTrigger
-                    id={`role-${member.userId}`}
-                    aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="OWNER">{m.projects.role.OWNER}</SelectItem>
-                    <SelectItem value="EDITOR">{m.projects.role.EDITOR}</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                m.projects.role[member.role]
-              )}
-            </Td>
-            <Td className="text-muted-foreground text-xs">{relativeTime(member.joinedAt, now)}</Td>
-            <Td className="text-right">
-              {manage && (
-                <RemoveButton
-                  id={`remove-${member.userId}`}
-                  who={who}
-                  pending={pendingId === member.userId}
-                  onConfirm={() => apply(member.userId, null, who)}
+      {/* ⚠️ **결과 전부터 DOM에 있어야 한다** — 텍스트와 함께 새로 붙는 live 영역은 스크린 리더가 놓친다. */}
+      <p role="status" className="sr-only">{announcement}</p>
+      <RowCard
+        title={m.common.nav.members}
+        titleId={headingId}
+        count={members.length}
+        countLabel={m.members.count(members.length)}
+        description={m.members.cardHint}
+      >
+        <RowCardList labelledBy={headingId}>
+          {members.map((member, index) => {
+            const identity = planMemberIdentity(member);
+            // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
+            // ⚠️ **라벨은 서버가 만든다** (sec-audit 발견 4) — 여기서 가리면 원문이 이미 페이로드에 있다.
+            const who = member.name ?? member.emailLabel ?? m.members.unnamed;
+            /**
+             * ⚠️ **서버(`changeMember`)가 부르는 것과 글자 하나까지 같은 함수다.** 제거(`nextRole: null`)와
+             * 강등이 같은 판정을 지나므로 한 번만 불러도 셀렉트와 [Remove] 둘 다 커버된다.
+             *
+             * ⚠️ **EDITOR에게는 세지 않는다** — 그 사람에게는 어차피 끌 컨트롤이 없고, 사유 띠는
+             * **할 수 있는 행동**이 있을 때만 할 일이 있다.
+             */
+            const blocked =
+              manage && planMemberChange({ members, targetUserId: member.userId, nextRole: null }) === "last-owner";
+            /**
+             * ⚠️ **한 행에 띠는 하나다.** 못 읽음 → 마지막 오너 순으로 문장을 잇는다.
+             *
+             * ⚠️ **못 읽음은 EDITOR에게도 보인다** — 행이 `Couldn't be read`라고 말하는 이유를 설명하는
+             * 문장이지 막힌 행동을 설명하는 문장이 아니다.
+             */
+            const sentences = [
+              member.readable ? null : m.members.unreadableHint,
+              blocked ? accessErrorMessage("last-owner") : null,
+            ].filter((sentence): sentence is string => sentence !== null);
+            const pending = pendingId === member.userId;
+
+            return (
+              <RowCardItem key={member.userId} first={index === 0}>
+                <MemberRow
+                  id={member.userId}
+                  identity={identity}
+                  you={member.userId === viewerId}
+                  meta={
+                    <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(member.joinedAt, now)}</span>
+                  }
+                  band={sentences.length === 0 ? null : sentences.join(" ")}
+                  controls={(describedBy) =>
+                    manage ? (
+                      <>
+                        <RoleSelect
+                          member={member}
+                          who={who}
+                          pending={pending}
+                          describedBy={blocked ? describedBy : undefined}
+                          onChange={(next) => apply(member.userId, next, who)}
+                        />
+                        <RemoveButton
+                          id={`remove-${member.userId}`}
+                          who={who}
+                          pending={pending}
+                          describedBy={blocked ? describedBy : undefined}
+                          onConfirm={() => apply(member.userId, null, who)}
+                        />
+                      </>
+                    ) : (
+                      <RoleChip role={member.role} who={who} />
+                    )
+                  }
+                  after={
+                    failed?.userId === member.userId ? (
+                      <Alert variant="danger" className="mx-4 mb-3.5 text-left">
+                        {isAccessError(failed.error)
+                          ? accessErrorMessage(failed.error)
+                          : m.members.changeFailed(failed.error)}
+                      </Alert>
+                    ) : null
+                  }
                 />
-              )}
-              {failed?.userId === member.userId && (
-                <Alert variant="danger" className="mt-2 text-left">
-                  {isAccessError(failed.error)
-                    ? accessErrorMessage(failed.error)
-                    : m.members.changeFailed(failed.error)}
-                </Alert>
-              )}
-            </Td>
-          </tr>
-          );
-        })}
-      </tbody>
-    </Table>
+              </RowCardItem>
+            );
+          })}
+        </RowCardList>
+      </RowCard>
     </>
   );
 }
 
-/** 제거는 되돌릴 수 없어 확인을 한 번 받는다 (DESIGN §6.4 — 제목은 대상을 명시한 질문). */
+/**
+ * 역할 셀렉트.
+ *
+ * ⚠️ **사전 차단은 `aria-disabled`다, `disabled`가 아니다.** 진짜 `disabled`는 포커스를 못 받아
+ * `aria-describedby`의 전달 경로가 없다 — 시안이 "꺼진 컨트롤에는 반드시 이유가 붙는다"를 요구하므로
+ * 그 요구를 만족하는 유일한 형이다. 모양은 `select.tsx`가 든다(호출부가 철자를 발명하지 않는다).
+ *
+ * ⚠️ **막는 것은 `preventDefault` 둘이다** — Radix는 포인터로도 키보드로도 연다. 포인터만 막으면
+ * 키보드 사용자에게만 열리고, 그 사람이 정확히 이 사유를 들어야 하는 사람이다.
+ *
+ * ⚠️ **`pending`은 진짜 `disabled`다** — 그쪽은 사유를 들려줄 것이 없고 잠깐이다. 두 축이 한 행에
+ * 겹치지 않는다(차단된 행은 제출될 수 없다).
+ */
+function RoleSelect({
+  member,
+  who,
+  pending,
+  describedBy,
+  onChange,
+}: {
+  member: MemberView;
+  who: string;
+  pending: boolean;
+  describedBy: string | undefined;
+  onChange: (next: Role) => void;
+}) {
+  const blocked = describedBy !== undefined;
+  return (
+    <Select value={member.role} disabled={pending} onValueChange={(value) => onChange(value as Role)}>
+      {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
+      <span id={`role-${member.userId}-label`} className="sr-only">
+        {m.members.changeRole(who)}
+      </span>
+      <SelectTrigger
+        id={`role-${member.userId}`}
+        aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
+        aria-disabled={blocked || undefined}
+        aria-describedby={describedBy}
+        onPointerDown={blocked ? (event) => event.preventDefault() : undefined}
+        onKeyDown={blocked ? (event) => { if (OPEN_KEYS.has(event.key)) event.preventDefault(); } : undefined}
+        className="w-32"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="OWNER">{m.projects.role.OWNER}</SelectItem>
+        <SelectItem value="EDITOR">{m.projects.role.EDITOR}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+/**
+ * 제거는 되돌릴 수 없어 확인을 한 번 받는다 (DESIGN §6.4 — 제목은 대상을 명시한 질문).
+ *
+ * ⚠️ **사전 차단된 행은 Dialog를 아예 세우지 않는다.** `preventDefault`로 트리거를 막는 형도
+ * 리포에 있지만(`sync-button`), 되돌릴 수 없는 확인 창이 "열리긴 하는데 아무 일도 안 일어난다"가
+ * 되는 것보다 **열리지 않는 편이 정직하다.**
+ */
 function RemoveButton({
   id,
   who,
   pending,
+  describedBy,
   onConfirm,
 }: {
   id: string;
   who: string;
   pending: boolean;
+  describedBy: string | undefined;
   onConfirm: () => void;
 }) {
+  /* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을 찾으므로
+     다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */
+  if (describedBy !== undefined) {
+    return (
+      <Button
+        id={id}
+        variant="ghost"
+        aria-label={m.members.removeLabel(who)}
+        aria-disabled
+        aria-describedby={describedBy}
+        // ⚠️ **`loading`과 겸용 불가다** — 그쪽은 진짜 `disabled`를 걸어 사유의 전달 경로를 죽인다.
+        onClick={(event) => event.preventDefault()}
+      >
+        {m.members.remove}
+      </Button>
+    );
+  }
+
   return (
     <Dialog>
       <DialogTrigger asChild>
-        {/* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을
-            찾으므로 다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */}
-        <Button
-          id={id}
-          variant="ghost"
-          aria-label={m.members.removeLabel(who)}
-          loading={pending}
-        >
+        <Button id={id} variant="ghost" aria-label={m.members.removeLabel(who)} loading={pending}>
           {m.members.remove}
         </Button>
       </DialogTrigger>

@@ -62,7 +62,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
-          <h1 id="members-heading" tabIndex={-1} className="text-lg font-medium outline-none">{m.common.nav.members}</h1>
+          <h1 className="text-lg font-medium">{m.common.nav.members}</h1>
           {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
         </div>
       </PanelHeader>

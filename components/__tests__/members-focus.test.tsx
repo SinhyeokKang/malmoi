@@ -62,11 +62,13 @@ beforeEach(() => {
 afterEach(() => { fixup?.disconnect(); });
 
 describe("Members — Remove", () => {
+  /**
+   * ⚠️ **제목을 여기서 그리지 않는다** (2026-09-19). 전에는 이 래퍼가 `<h1 id tabIndex={-1}>`을 **자기가**
+   * 그려서, 컴포넌트가 착지점을 실제로 렌더하지 않아도 green이었다 — 그 구멍을 `members-screen.test.ts`의
+   * 소스 대조가 메우고 있었다. 이제 카드가 제목을 들므로 **이 렌더가 그 짝을 직접 잰다.**
+   */
   function Screen({ members }: { members: MemberView[] }) {
-    return <>
-      <h1 id="members-heading" tabIndex={-1}>Members</h1>
-      <MemberList slug="acme" members={members} role="OWNER" viewerId="u1" now={now} headingId="members-heading" />
-    </>;
+    return <MemberList slug="acme" members={members} role="OWNER" viewerId="u1" now={now} headingId="members-heading" />;
   }
 
   it("확인 후 성공하면 제목으로 포커스가 가고 결과가 대상 이름과 함께 읽힌다", async () => {

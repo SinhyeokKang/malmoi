@@ -51,13 +51,24 @@ describe("멤버 화면 — 페이지", () => {
    * ⚠️ `members-focus.test.tsx`는 제목을 **자기가** 그려서 잰다 — 페이지의 `id`와 `headingId`가 갈라져도
    * green이다. 갈라지면 `getElementById`가 `null`이고 `?.`가 조용히 넘어가 포커스가 다시 `body`로 빠진다.
    */
-  it.each([["MemberList", "h1"], ["PendingInvitations", "h2"]])("%s의 headingId가 같은 페이지의 %s id이고 그 제목이 포커스를 받는다", (component, tag) => {
+  it.each([["MemberList", LIST]])("%s가 받은 headingId를 카드 제목으로 넘긴다", (component, file) => {
     const src = read(PAGE);
     const passed = new RegExp(`<${component}\\b[^>]*headingId="([^"]+)"`).exec(src)?.[1];
     expect(passed).toBeDefined();
-    const heading = new RegExp(`<${tag}\\b[^>]*\\bid="${passed}"[^>]*>`).exec(src)?.[0];
-    expect(heading).toBeDefined();
-    expect(heading).toMatch(/tabIndex=\{-1\}/);
+    // 카드가 그 id를 제목에 건다 — 값은 prop으로 흐르므로 **전달**을 센다.
+    expect(read(file)).toMatch(/titleId=\{headingId\}/);
+  });
+
+  /**
+   * ⚠️ **id와 `tabIndex={-1}`이 한 자리에서 나온다** (malmoi#51). 갈라지면 `getElementById`는 찾는데
+   * `focus()`가 무시되어 포커스가 다시 `body`로 빠지고, 그 실패는 `?.`에 삼켜져 **조용하다.**
+   * 실제 착지는 `members-focus.test.tsx`가 렌더로 재고(2026-09-19부터 그 래퍼가 제목을 안 그린다),
+   * 여기서는 프리미티브가 그 짝을 놓지 않는지만 본다.
+   */
+  it("카드 제목은 id가 있으면 포커스도 받는다", () => {
+    const card = read("components/ui/row-card.tsx");
+    expect(card).toMatch(/id=\{titleId\}/);
+    expect(card).toMatch(/tabIndex=\{titleId === undefined \? undefined : -1\}/);
   });
 
   it("최상단에서 requireProjectAccess를 던진다 — 조건부 렌더는 차단이 아니다", () => {
@@ -114,6 +125,45 @@ describe("멤버 화면 — 페이지", () => {
     expect(read(LIST)).toContain("emailLabel");
     expect(read(PENDING)).toContain("emailLabel");
     expect(read(PAGE)).not.toContain("maskedInviteLabels");
+  });
+});
+
+/**
+ * **그릇이 표에서 카드로 바뀌었다** (members-rework · DESIGN §6.65).
+ *
+ * ⚠️ **갱신이 아니라 신설이다** — 이 파일에 `Table` 관련 단언은 **0건**이었다. 표를 지우는 변경이
+ * 아무 검사도 건드리지 않고 지나갔다는 뜻이고, 되돌아오는 것도 똑같이 조용할 것이다.
+ */
+describe("멤버 화면 — 카드", () => {
+  it.each([LIST])("%s가 `Table`을 쓰지 않는다 — 열 머리가 사라져 표의 가치가 사라졌다", (file) => {
+    const src = read(file);
+    expect(src).not.toContain('from "@/components/ui/table"');
+    expect(src).not.toMatch(/<(Table|Th|Td)\b/);
+  });
+
+  it.each([LIST])("%s가 공유 카드 프리미티브를 쓴다 — `/projects`와 같은 그릇이다", (file) => {
+    const src = read(file);
+    expect(src).toContain('from "@/components/ui/row-card"');
+    expect(src).toMatch(/<RowCard\b/);
+    expect(src).toMatch(/<RowCardList\b/);
+    expect(src).toMatch(/<RowCardItem\b/);
+  });
+
+  /**
+   * ⚠️ **`<ul>`이 카드 제목에 묶인다** — 카드가 둘이라 "list, N items"만으로는 어느 목록인지 안 갈린다.
+   */
+  it.each([LIST])("%s가 목록을 카드 제목에 묶는다", (file) => {
+    expect(read(file)).toMatch(/labelledBy=\{headingId\}/);
+  });
+
+  /**
+   * ⚠️ **화면이 상한을 따로 들지 않는다.** 들면 `MEMBER_LIMIT`과 서버 거부가 갈리는 날 둘이 다른
+   * 수를 말한다 — 좌석 수는 서버가 판정해 값으로 내려보낸다 (`planSeatNotice`).
+   */
+  it("멤버 화면 파일이 `MEMBER_LIMIT`을 import하지 않는다", () => {
+    for (const file of [PAGE, LIST, PENDING]) {
+      expect(read(file), file).not.toContain("MEMBER_LIMIT");
+    }
   });
 });
 
@@ -190,7 +240,22 @@ describe("멤버 화면 — 임시 폼이 대체됐다", () => {
  * 아니라 규칙이 문서에만 있고 배선이 안 따라간 것이다 (POSTMORTEM 2026-09-05과 같은 축).
  */
 describe("멤버 화면 — 이메일 원문이 클라이언트로 안 간다 (sec-audit 4)", () => {
-  const clients = ["components/members/member-list.tsx", "components/members/pending-invitations.tsx"];
+  /**
+   * ⚠️ **파일 둘 하드코딩이었다** (2026-09-19에 넓혔다). 그 배열은 이 디렉터리에 파일이 둘일 때
+   * 쓰였고, 넷이 되자 **신설 파일이 자동으로 방어선 밖**이었다 — 목록을 손으로 적는 검사가 늘
+   * 겪는 일이다. 이제 `components/members/**`의 `"use client"` 파일을 전수로 센다.
+   */
+  const clients = (function collectClients(): string[] {
+    const dir = join(ROOT, "components/members");
+    return readdirSync(dir)
+      .filter((name) => name.endsWith(".tsx"))
+      .map((name) => `components/members/${name}`)
+      .filter((rel) => /^\s*"use client"/.test(readFileSync(join(ROOT, rel), "utf8")));
+  })();
+
+  it("스캔이 실제로 파일을 걸었다 — 빈 배열은 방어선이 아니다", () => {
+    expect(clients.length).toBeGreaterThan(1);
+  });
 
   it("클라이언트 컴포넌트가 `maskEmail`을 import하지 않는다 — 마스킹은 서버의 일이다", () => {
     for (const path of clients) {

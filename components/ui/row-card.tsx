@@ -65,7 +65,18 @@ export function RowCard({
     <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
       <div className="p-4">
         <div className="flex items-center gap-2">
-          <h2 id={titleId} className="text-base font-medium">{title}</h2>
+          {/*
+            ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
+            이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가
+            다시 `body`로 빠진다 — 그리고 그 실패는 `?.`에 삼켜져 조용하다. 프리미티브가 짝을 든다.
+          */}
+          <h2
+            id={titleId}
+            tabIndex={titleId === undefined ? undefined : -1}
+            className="text-base font-medium outline-none"
+          >
+            {title}
+          </h2>
           {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
           <Badge variant="neutral">
             <span aria-hidden>{count}</span>
