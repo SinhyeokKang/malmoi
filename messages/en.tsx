@@ -268,17 +268,218 @@ export const en = {
   /**
    * 공개 문서 둘 — 로그인 화면 푸터가 가리킨다 (8-1a).
    *
-   * ⚠️ **아직 placeholder이고 출시 전에 채운다.** 라우트를 먼저 딴 이유는 시안 푸터가 그것을
+   * ⚠️ **`/privacy`는 본문이 섰고 `/docs`는 아직 placeholder다** (launch-readiness L2.3). 라우트를 먼저 딴 이유는 시안 푸터가 그것을
    * 가리키기 때문이고, 링크가 죽어 있는 것보다 "준비 중"이 낫다는 판정이다.
    *
    * ⚠️ **`back`이 없으면 사용자가 갇힌다** — 이 둘은 셸 **밖**이라 사이드바도 푸터도 없고
    * 뒤로가기 말고 돌아올 길이 없다.
    */
   publicDocs: {
-    back: "Back to sign in",
+    /**
+     * ⚠️ **복귀 링크가 세션으로 갈린다** (DESIGN §6.61) — 셸 사이드바의 `CircleHelp`로 들어온
+     * 사람에게 "Back to sign in"만 주면 나가는 길이 로그아웃처럼 보인다.
+     */
+    back: {
+      app: "Back to projects",
+      signIn: "Back to sign in",
+    },
+    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.61). */
+    effectiveDate: "Effective date",
+    /**
+     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
+     * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
+     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 `components/public-doc.tsx`가 든다.
+     */
     privacy: {
       title: "Privacy Policy",
-      body: "We're still writing this. It will be here before launch.",
+      /**
+       * ⚠️ **본문을 고치면 `effectiveDate`를 같이 옮긴다.** 지금 그것을 강제하는 것은 이 주석뿐이다 —
+       * 본문 해시 ↔ 개정 이력 게이트는 `docs/features/privacy/tasks.md` P4이고 **아직 없다.**
+       * 그래서 `changes` 절도 그 게이트를 말하지 않는다: 없는 통제를 공표하지 않는다.
+       * ⚠️ **절 `id`는 URL 조각이다** — 제목 문구를 고쳐도 `id`는 따라 고치지 않는다.
+       * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
+       * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
+       */
+      effectiveDate: "2026-09-19",
+      intro:
+        "malmoi is a localization tool: developers push the strings in their code to malmoi, their teammates translate them here, and malmoi opens a pull request back to the repository. This policy covers what malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
+      sections: [
+        {
+          id: "collected",
+          heading: "What we collect",
+          blocks: [
+            {
+              p: "malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. There is no analytics, advertising or tracking of any kind.",
+            },
+            {
+              table: {
+                label: "What malmoi stores about you",
+                head: ["What", "Where it comes from", "Why"],
+                rows: [
+                  [
+                    "Your name, email address and profile picture",
+                    "GitHub or Google, when you sign in",
+                    "Identifying you to your teammates",
+                  ],
+                  [
+                    "A keyed index of your email address",
+                    "Derived from the address",
+                    "Matching an invitation to the account that accepts it, without comparing addresses in the clear",
+                  ],
+                  [
+                    "Which GitHub or Google account you signed in with, as the account id at that provider",
+                    "GitHub or Google, when you sign in",
+                    "Recognizing you the next time. malmoi keeps no sign-in tokens — the id is all it stores",
+                  ],
+                  [
+                    "A GitHub token for your own account, and when it expires",
+                    "GitHub, when you connect a repository to a project",
+                    "Reading which GitHub App installations you can choose a repository from. It is never used to write to a repository",
+                  ],
+                  [
+                    "Sign-in state: your session, and short-lived challenges for linking an account or signing other sessions out",
+                    "Created by malmoi",
+                    "Keeping you signed in, and proving that a reply from GitHub or Google belongs to a round trip you started",
+                  ],
+                  [
+                    "Your project membership and any invitation sent to your address",
+                    "The person who invites you",
+                    "Deciding which projects you can open and what you can do in them",
+                  ],
+                  [
+                    "Who last changed a translation, and who asked for a sync",
+                    "Your own edits",
+                    "Showing your teammates who changed what",
+                  ],
+                ],
+              },
+            },
+            {
+              p: "Names, email addresses and connection tokens are stored encrypted, and the keys are held outside the database. A profile picture you upload is re-encoded before it is stored, which drops the original file and the metadata in it; a picture that comes from GitHub or Google stays on their servers.",
+            },
+          ],
+        },
+        {
+          id: "purposes",
+          heading: "Why we use it",
+          blocks: [
+            {
+              ul: [
+                "Signing you in and keeping you signed in.",
+                "Deciding which projects you can open and what you can do in them.",
+                "Showing your teammates who changed a translation and who asked for a sync.",
+                "Writing translations back to the repository a project is connected to, as a pull request.",
+                "Keeping the service running, which includes looking at error logs when something fails.",
+              ],
+            },
+            {
+              p: "malmoi does not sell your data, does not share it for advertising, and does not use it to train anything. The repository coordinates a project is connected to are about the repository, not about you, and this policy does not treat them as personal data.",
+            },
+          ],
+        },
+        {
+          id: "retention",
+          heading: "How long we keep it",
+          blocks: [
+            {
+              p: "How long something works and how long its row is kept are different, so this section says both.",
+            },
+            {
+              ul: [
+                "Your account and its connections: kept until you ask us to delete them.",
+                "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
+                "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
+                "An invitation stops working after 7 days, or as soon as it is accepted or revoked. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "Translations and the record of who changed them: kept for the life of the project.",
+              ],
+            },
+          ],
+        },
+        {
+          id: "third-parties",
+          heading: "Who else sees it",
+          blocks: [
+            { p: "malmoi sends your data to four services and to no one else." },
+            {
+              ul: [
+                "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by malmoi's GitHub App, not under your own account.",
+                "Google — signing you in, if you choose Google.",
+                "Supabase — the database, hosted in Tokyo.",
+                "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
+              ],
+            },
+            {
+              p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though malmoi sends them nothing.",
+            },
+          ],
+        },
+        {
+          id: "deletion",
+          heading: "Deleting your data, and how to reach us",
+          blocks: [
+            {
+              p: (
+                <>
+                  Write to <a href="mailto:ox501501@gmail.com">ox501501@gmail.com</a> to ask what malmoi holds about
+                  you, to correct it, or to have it deleted. We answer within 30 days. malmoi has no self-service
+                  delete screen, so the request goes through that address.
+                </>
+              ),
+            },
+            {
+              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded.",
+            },
+            {
+              p: "Translations stay. They are the project's output and are already in the repository, so removing them would delete work that belongs to the team — but the record of who wrote them stops pointing at you.",
+            },
+          ],
+        },
+        {
+          id: "cookies",
+          heading: "Cookies",
+          blocks: [
+            {
+              p: "Every cookie malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+            },
+            {
+              table: {
+                label: "Cookies malmoi sets",
+                head: ["Cookie", "How long it lasts", "What it does"],
+                rows: [
+                  ["Session", "24 hours from your last activity", "Keeps you signed in"],
+                  [
+                    "Sign-in request check",
+                    "Until you close the browser",
+                    "Checks that a sign-in was started from this site",
+                  ],
+                  ["Return address", "Until you close the browser", "Sends you back to the page you started from"],
+                  [
+                    "Sign-in state",
+                    "15 minutes",
+                    "Proves that the reply from GitHub or Google belongs to the sign-in you started",
+                  ],
+                  ["Repository connection state", "10 minutes", "The same, for connecting a repository"],
+                  [
+                    "Account link and sign-out challenges",
+                    "5 to 15 minutes",
+                    "The same, for adding a second sign-in method to one address and for signing other sessions out",
+                  ],
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "changes",
+          heading: "Changes to this policy",
+          blocks: [
+            {
+              p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
+            },
+            { ul: ["2026-09-19 — first version."] },
+          ],
+        },
+      ],
     },
     /**
      * ⚠️ **`title`의 소비자가 둘이다** — 이 화면의 제목과 **사이드바 하단 항목**
@@ -287,7 +488,8 @@ export const en = {
      */
     docs: {
       title: "Docs",
-      body: "We're still writing this. It will be here before launch.",
+      intro: "We're still writing this. It will be here before launch.",
+      sections: [],
     },
   },
 
