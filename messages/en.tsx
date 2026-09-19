@@ -283,6 +283,8 @@ export const en = {
       app: "Back to projects",
       signIn: "Back to sign in",
     },
+    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.61). */
+    effectiveDate: "Effective date",
     /**
      * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
      * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**

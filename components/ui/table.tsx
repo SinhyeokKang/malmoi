@@ -31,7 +31,8 @@ export function Table({
    * 움직이고, `sticky top-0`은 **가장 가까운 스크롤 컨테이너** 기준이라 세로를 바깥이 들면 헤더가
    * 붙을 대상이 없어 그냥 흘러간다. 높이는 부모(`min-h-0 flex-1`)가 정해 준다.
    *
-   * ⚠️ **번역 화면만 `scrollable={false}`다** — 그쪽은 `PanelBody`가 스크롤을 소유하므로 여기서
+   * ⚠️ **끄는 곳이 둘이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다)과 온보딩 ②의 파일 표
+   * (`steps/files.tsx`가 바깥 `div`로 스크롤을 들어야 `Th`의 `sticky`가 거기 붙는다). 여기서
    * 컨테이너를 하나 더 만들면 스크롤이 중첩된다.
    */
   return scrollable ? <div className="h-full min-w-0 overflow-auto">{table}</div> : table;

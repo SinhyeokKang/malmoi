@@ -170,7 +170,9 @@ it("헤더가 불투명하고 행에 hover 강조가 없다", async () => {
 
   expect(find<HTMLElement>(container, "thead th").className).not.toContain("/50");
   expect(find<HTMLElement>(container, "thead th").className).not.toContain("sticky");
-  expect(find<HTMLElement>(container, "tbody tr").className).not.toContain("hover:bg-");
+  // `cn`이 프리미티브의 `hover:bg-muted/50`을 지우고 투명이 남는다 — 지워졌는지를 짝으로 센다.
+  expect(find<HTMLElement>(container, "tbody tr").className).toContain("hover:bg-transparent");
+  expect(find<HTMLElement>(container, "tbody tr").className).not.toContain("hover:bg-muted");
 });
 
 /** 헤더 수와 행의 셀 수가 갈리면 열이 밀린다 — 픽스처로 그 형을 고정한다(실물 대조는 P4.3). */
