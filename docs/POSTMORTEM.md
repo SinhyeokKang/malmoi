@@ -1866,6 +1866,15 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     문서에 적힌 수는 그날의 관측이고 다음 커밋이 그것을 거짓으로 만들어도 아무 red도 안 난다.
     `/audit`이 전수로 다시 돌기 전까지 그 거짓은 계속 참으로 읽힌다.
 
+  🔁 **재발 (2026-09-19, privacy)** — 같은 부류를 **같은 커밋에서 다시 만들었다.** 공개 문서 그릇이
+  `scrollable={false}`의 **세 번째** 소비자가 되는 변경이었고, 그 변경이 지나는 김에 "번역 화면만"이라는
+  옛 거짓을 "**둘이다**"로 고쳤다 — 자기가 셋째를 만드는 중이라는 사실을 빼고 셌다. 세 자리(`table.tsx`
+  주석 · `DESIGN.md` §5.61 · 테스트 **이름**)가 동시에 거짓이 됐고, `pnpm test` 4,605개·`typecheck`·
+  `/code-review`가 전부 green이었다(문서 문장과 테스트 **이름**은 아무도 안 센다). 잡은 것은
+  `/design-sync` 5단계의 리뷰 에이전트뿐이다. **스스로 소비자를 늘리는 변경에서 그 수를 고치는 것이
+  가장 위험하다 — 고치는 시점에 자기 변경이 아직 안 세어져 있다.** 규칙은 그대로이고, 여기에 한 줄
+  더한다: **개수를 말하는 문장을 고칠 때는 이번 변경분을 먼저 더하고 센다.**
+
 ### 2026-09-15 — 자기 자신을 컨테이너로 물은 쿼리가 "아직 임계값이 아닌가 보다"로 읽혔다
 
 - **영역**: `components/home/count-cards.tsx` — Home의 카운트 카드 넷
@@ -2153,3 +2162,64 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - `lib/github-connect/__tests__/account-view.test.ts`가 401→`reauthorize`, 503→`unavailable`, 토큰 상태 셋을 고정한다.
   - grep: `rg -n "httpStatus\(|status === 401" lib/github-connect` → 사용자 토큰을 쓰는 조회 실패 자리마다 401이 `reauthorize`로 올라가는지 본다. 지금 자리는 `token.ts`(`refreshFailure`)·`actions.ts`(`listFailure`)·`account-view.ts` 셋이다.
   - **화면이 컨트롤을 0개 세우는 상태를 만들 때는 그 상태가 영구일 수 있는지 먼저 묻는다** — `unavailable`처럼 "다시 열면 풀린다"를 전제한 갈래에 영구 조건이 섞이면 사용자가 갇힌다. 그 조합은 mock 기반 렌더 테스트로는 안 잡힌다(입력→갈래 판정이 mock 뒤에 있다).
+
+### 2026-09-19 — 개인정보처리방침이 코드와 어긋난 문장 셋을 실은 채 green이었다
+
+- **영역**: `messages/en.tsx`의 `publicDocs.privacy` · `lib/privacy/collected.ts`
+- **증상**: 배포 전(`/design-sync` 5단계 리뷰). 방금 쓴 방침 본문이 **사실이 아닌 문장 셋**을 담고 있었다.
+  ① "we store … access and refresh tokens, and the scopes you granted / when you sign in" — 로그인
+  provider의 토큰은 **의도적으로 저장하지 않는다**(`lib/auth/safe-adapter.ts`의 `linkAccount`가
+  `{userId, type, provider, providerAccountId}` 넷만 쓴다, sec-audit-2 발견 39). `Account.scope`·
+  `id_token`·`token_type`·`session_state`는 **리포 전체에서 쓰는 코드가 0**이다. ② "An invitation: 7 days,
+  or until it is accepted or revoked" — `revokeInvitation`은 `expiresAt`만 당기고 **행을 지우지 않는다**
+  (`projectInvitation.delete`가 리포에 0건, 정리 cron 없음). 초대 주소가 영구 보존인데 방침은 7일이라 썼다.
+  ③ "a test … compares a digest of the text against a recorded revision, and it fails if the text changes"
+  — **그 테스트는 아직 없다**(P4가 배포 게이트 뒤다). 방침이 **없는 통제를 자기 무결성 근거로 공표**했다.
+- **근본 원인**: 산문은 코드를 읽지 않는다. 이 기능은 그 문제를 알고 **전수 등재 게이트**(`collected.ts` +
+  `pnpm typecheck`)를 먼저 세웠는데, 그 게이트가 세는 것은 **"필드가 등재됐나"이지 "등재가 사실인가"가
+  아니다** — `Account.scope`는 등재돼 있었고 green이었다. 값이 없는 컬럼과 값이 있는 컬럼을 타입이 구별하지
+  못한다. ②·③은 게이트의 사각이 더 크다: **보관 기간과 "우리가 무엇을 막는가"는 스키마에 없다.**
+- **그물**: 놓친 것 — `pnpm typecheck`(전수 등재 게이트가 통과했다) · `pnpm test` 4,605 ·
+  `no-korean-ui`·`brand-spelling`(문구의 참/거짓을 묻지 않는다) · `/code-review`(코드를 보지 산문을
+  안 본다) · 브라우저 실측(표현만 잰다). 잡은 것 — **`/design-sync` 5단계 리뷰 에이전트에게 "본문의
+  각 주장을 실제 소스와 대조하라"고 파일 목록까지 주어 시킨 것 하나뿐.**
+- **재발 방지**:
+  - `grep -rn "scope\|id_token\|session_state\|token_type" app lib --include='*.ts' | grep -v __tests__ | grep -v "lib/privacy"`
+    → **쓰는 자리 0건**을 확인했다. 그 넷은 `NOT_PERSONAL`로 두고 **"쓰기 시작하면 `collected`로 옮기고
+    표에 행을 더한다"**를 파일 주석에 박았다 — 옮기지 않으면 방침의 "저장하지 않는다"가 거짓이 된다.
+  - `grep -rn "projectInvitation.delete\|session.deleteMany\|verificationToken.delete" app lib --include='*.ts' | grep -v __tests__`
+    → 초대 삭제 **0건** · 세션·challenge는 **다음 제시/다음 시도 때만** 지워진다
+    (`lib/credentials/adapter.ts`·`lib/session-revocation/store.ts`). 본문을 **"얼마나 동작하나"와
+    "행이 얼마나 남나"를 나눠 쓰는** 형으로 고쳤다.
+  - **규칙: 방침·고지 본문이 "우리는 X를 막는다"를 쓰려면 X를 세는 검사가 이미 있어야 한다.** 없으면
+    통제를 주장하지 않는 형으로 쓰고, 검사가 서는 커밋에서 되올린다(그때 본문이 바뀌므로 개정 이력에
+    행이 는다 — privacy P4.3이 그 자리다).
+  - **규칙: 등재 게이트는 "빠짐"을 잡지 "거짓"을 못 잡는다.** 새 등재에 값이 실제로 쓰이는지는 사람이
+    한 번 확인한다 — 이번엔 `grep`으로 각 컬럼의 쓰기 자리를 셌다.
+
+### 2026-09-19 — 스크롤 래퍼에 준 접근 이름이 표의 이름이 아니었다
+
+- **영역**: `components/public-doc.tsx` (같은 형이 `components/onboarding/steps/files.tsx:345-360`에도 있다)
+- **증상**: 배포 전(`/design-sync` 4단계 CDP 실측). 수집 항목·쿠키 표 둘에 `aria-label`을 **감싸는
+  `role="region"` div에만** 걸었고, 설계 문서·DOM 테스트가 그것을 "표의 접근 이름"이라고 불렀다. 실제
+  접근성 트리는 `role=table, name=""` — **스크린리더의 표 목록에는 여전히 이름 없는 표 둘이 뜬다.**
+  한 문서에 표가 둘이라 정확히 그 상황을 막으려고 넣은 라벨이 그 일을 안 하고 있었다.
+- **근본 원인**: 랜드마크의 이름과 표의 이름은 **다른 노드의 속성**인데, 스크롤 컨테이너를 만들면서
+  "표에 이름을 줬다"고 읽게 된다 — 컨테이너가 표를 감싸므로 육안·스크린샷·DOM 단언 어디서도 구별되지
+  않는다. DOM 테스트는 내가 쓴 단언(`[role=region]`의 `aria-label`)을 그대로 통과했다: **테스트가
+  의도가 아니라 구현을 베꼈다.**
+- **그물**: 놓친 것 — DOM 테스트(같은 노드를 단언했다) · `pnpm test` 4,605 · 스크린샷 · `/code-review`.
+  잡은 것 — **`Accessibility.getPartialAXTree`로 `<table>` 노드를 직접 찍은 것.** jsdom에는 accname
+  계산이 브라우저와 다르고 표 목록이라는 개념 자체가 없다.
+- **재발 방지**:
+  - `grep -rn 'role="region"' app components --include='*.tsx' | grep -v __tests__` → **2건**
+    (`public-doc.tsx` · `onboarding/steps/files.tsx`). ⚠️ **후자는 아직 같은 결함이다** — 래퍼는
+    `aria-label`을 들고 그 안의 `<Table>`(`:360`)은 이름이 없다. 이 기능의 범위 밖이라 안 고쳤다.
+  - `grep -rn "<Table" app components --include='*.tsx' | grep -v __tests__ | grep -v "aria-label\|aria-labelledby"`
+    → 이름 없는 표 **넷**(로그 · 언어 · 멤버 · 초대). 전부 자기 패널 제목 아래 하나씩이라 지금은
+    판정 보류지만, **한 화면에 표가 둘이 되는 순간 같은 문제가 된다.**
+  - **규칙: 표를 감싸는 컨테이너에 이름을 주면 `<table>`에도 같은 이름을 준다.** 래퍼의 이름은
+    랜드마크의 이름이고, 표 목록은 `<table>` 자신의 이름을 읽는다. `docs/DESIGN.md` §6.61이 그
+    문장을 든다.
+  - **규칙: 접근 이름을 단언하는 DOM 테스트는 "그 이름을 실제로 쓰는 노드"를 고른다.** 래퍼를
+    단언하면 구현을 베낀 것이고, 구현이 틀려도 green이다.
