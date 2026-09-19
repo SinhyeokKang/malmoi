@@ -41,7 +41,8 @@ const SCANNED = (function collect(): string[] {
 
 const PAGE = "app/(edit)/projects/[slug]/members/page.tsx";
 const LIST = "components/members/member-list.tsx";
-const INVITE = "components/members/invite-dialog.tsx";
+const INVITE = "components/members/invite-modal.tsx";
+const HEADER = "components/members/members-panel-header.tsx";
 const PENDING = "components/members/pending-invitations.tsx";
 
 describe("멤버 화면 — 페이지", () => {
@@ -188,18 +189,25 @@ describe("멤버 화면 — 컨트롤", () => {
 
   it("초대 링크는 한 번만 보인다 — 닫으면 사라진다는 것이 상태로 있다", () => {
     const src = read(INVITE);
-    expect(src).toContain("onOpenChange");
-    expect(src).toContain("setLink(null)");
+    expect(src).toContain("function close()");
+    expect(src).toContain("setIssued(null)");
   });
 
   /**
    * ⚠️ **제출 버튼 없는 `<form>`은 Enter로 submit되지 않는다** (POSTMORTEM 2026-09-08 — 번역 화면의
    * 검색이 그렇게 조용히 무효였다).
+   *
+   * ⚠️ **이 버튼은 `<form>` 밖이다** — 모달 바닥은 본문의 형제라 `form=`으로 묶여 있지 않으면
+   * Enter가 **조용히** 죽는다. 옛 검사는 `<form`과 `type="submit"`의 **존재만** 봐서 버튼이 폼
+   * 밖으로 나가도 green이었다 — 실제로 이 배송이 버튼을 밖으로 내보냈다.
    */
-  it("초대 폼이 자기 안에 submit 버튼을 갖는다", () => {
+  it("초대 폼의 제출 버튼이 `form=`으로 그 폼에 묶여 있다", () => {
     const src = read(INVITE);
-    expect(src).toContain("<form");
+    const formId = /const FORM_ID = "([^"]+)"/.exec(src)?.[1];
+    expect(formId).toBeDefined();
+    expect(src).toMatch(new RegExp(`<form id=\\{FORM_ID\\}`));
     expect(src).toContain('type="submit"');
+    expect(src).toContain("form={FORM_ID}");
   });
 
   /**
@@ -215,9 +223,47 @@ describe("멤버 화면 — 컨트롤", () => {
   });
 });
 
+/**
+ * **[Invite]가 사라지지 않고 꺼진 채 이유를 든다** (members-rework §6).
+ */
+describe("멤버 화면 — 패널 머리", () => {
+  /**
+   * ⚠️ **조건부 렌더는 차단이 아니었다** — 서버 거부는 `createInvitation`에 그대로 있고, 감추는 것은
+   * 노출 판정이었다. 그 판정을 걷어낸 것이 이 배송이고, 되돌아오면 EDITOR 화면의 오른쪽 끝이 다시 빈다.
+   */
+  it("페이지가 [Invite]를 역할로 감추지 않는다", () => {
+    const src = read(PAGE);
+    expect(src).toContain("<MembersPanelHeader");
+    expect(src).not.toMatch(/canPerform\([^)]*\)\s*&&/);
+  });
+
+  /** ⚠️ **좌석 판정이 서버다** — `planSeatNotice`가 `node:crypto`를 무는 모듈을 문다. */
+  it("좌석 판정을 서버가 하고 값만 내려보낸다", () => {
+    expect(read(PAGE)).toContain("planSeatNotice(");
+    // 클라이언트는 타입만 가져간다 — 값으로 import하면 `client-graph.test.ts`가 red다.
+    expect(read(HEADER)).toMatch(/import type \{ SeatNotice \} from "@\/lib\/auth\/seat-notice"/);
+  });
+
+  /**
+   * ⚠️ **진짜 `disabled`면 사유가 영영 낭독되지 않는다** — 포커스를 못 받는 요소의 `aria-describedby`는
+   * 전달 경로가 없다. ⚠️ **`loading`과 겸용 불가다** — 그쪽이 진짜 `disabled`를 건다.
+   */
+  it("꺼진 [Invite]가 `aria-disabled`이고 사유를 가리킨다", () => {
+    const src = read(HEADER);
+    expect(src).toContain("aria-disabled=");
+    expect(src).toContain("aria-describedby=");
+    expect(src).not.toContain("loading=");
+  });
+});
+
 describe("멤버 화면 — 임시 폼이 대체됐다", () => {
   it("`components/invite-form.tsx`가 없다 — 초대 수단이 둘이면 하나가 낡는다", () => {
     expect(() => read("components/invite-form.tsx")).toThrow();
+  });
+
+  /** ⚠️ **파일이 사라지면 `read`는 skip이 아니라 ENOENT다** — 옛 경로를 읽는 검사가 남으면 즉시 red다. */
+  it("옛 `invite-dialog.tsx`가 없다 — 초대 창이 둘이면 하나가 낡는다", () => {
+    expect(() => read("components/members/invite-dialog.tsx")).toThrow();
   });
 
   it("번역 화면이 그것을 더 이상 import하지 않는다", () => {

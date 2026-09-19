@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
+import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
+import { MembersPanelHeader } from "@/components/members/members-panel-header";
 import { PendingInvitations } from "@/components/members/pending-invitations";
+import { MEMBER_LIMIT } from "@/lib/auth/invitation";
 import { accessErrorMessage } from "@/lib/auth/message";
+import { planSeatNotice } from "@/lib/auth/seat-notice";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 
 import { find, render } from "./helpers/dom";
 
-vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: vi.fn(), revokeInvitation: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: vi.fn(), revokeInvitation: vi.fn(), createInvitation: vi.fn() }));
 
 /**
  * **spec §6 상태 표의 Members 카드 갈래** (members-rework).
@@ -213,5 +217,60 @@ describe("Pending — 못 읽은 초대", () => {
     expect(find(row, "[data-primary]").textContent).toContain(m.members.unreadableLabel);
     expect(find<HTMLElement>(row, '[id^="band-"]').textContent).toBe(m.members.unreadableHint);
     expect(row.querySelector('[aria-label^="Revoke "]')).not.toBeNull();
+  });
+});
+
+/**
+ * **패널 머리 — spec §6의 좌석·역할 갈래** (#1 · #3 · #7 · #8).
+ */
+const drawHeader = async (role: Role, memberCount: number) => {
+  const { container } = await render(
+    <MembersPanelHeader slug="acme" notice={planSeatNotice({ role, memberCount })} />,
+  );
+  return container;
+};
+const invite = (container: HTMLElement) => find<HTMLButtonElement>(container, "button");
+
+describe("#1 · #3 패널 머리 — OWNER", () => {
+  it("자리가 남으면 잔량을 말하고 [Invite]가 열린다", async () => {
+    const container = await drawHeader("OWNER", 4);
+    expect(container.textContent).toContain(m.members.seats(4, MEMBER_LIMIT));
+    expect(invite(container).getAttribute("aria-disabled")).toBeNull();
+  });
+
+  /**
+   * ⚠️ **진짜 `disabled`가 아니다** — 포커스를 못 받으면 `aria-describedby`의 전달 경로가 없고,
+   * 시안이 요구하는 "꺼진 버튼에는 반드시 이유"가 성립하지 않는다.
+   */
+  it("좌석이 차면 사유와 함께 꺼지고, 그 사유를 버튼이 가리킨다", async () => {
+    const container = await drawHeader("OWNER", MEMBER_LIMIT);
+    const button = invite(container);
+    expect(container.textContent).toContain(m.members.seatsFull(MEMBER_LIMIT));
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(button.disabled).toBe(false);
+    const reason = document.getElementById(button.getAttribute("aria-describedby") ?? "");
+    expect(reason?.textContent).toBe(m.members.seatsFull(MEMBER_LIMIT));
+  });
+
+  /** ⚠️ **열 창이 없는 갈래에는 모달을 세우지 않는다.** */
+  it("좌석이 차면 눌러도 창이 열리지 않는다", async () => {
+    const container = await drawHeader("OWNER", MEMBER_LIMIT);
+    await act(async () => { invite(container).click(); });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+});
+
+describe("#7 · #8 패널 머리 — EDITOR", () => {
+  it("역할 사유가 서고 [Invite]는 꺼진 채 남는다", async () => {
+    const container = await drawHeader("EDITOR", 4);
+    expect(container.textContent).toContain(m.members.ownerOnly);
+    expect(invite(container).getAttribute("aria-disabled")).toBe("true");
+  });
+
+  /** ⚠️ **이 단언이 열린 결정 하나를 닫는다** — 좌석을 비워도 EDITOR는 초대할 수 없다. */
+  it("좌석이 차 있어도 역할 사유가 이긴다", async () => {
+    const container = await drawHeader("EDITOR", MEMBER_LIMIT);
+    expect(container.textContent).toContain(m.members.ownerOnly);
+    expect(container.textContent).not.toContain(m.members.seatsFull(MEMBER_LIMIT));
   });
 });
