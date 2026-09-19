@@ -76,9 +76,13 @@
 | `malmoi-login-link` / `malmoi-link-state` | 10분 / 15분 | 같은 주소에 두 번째 로그인 수단 붙이기 |
 | `malmoi-session-revocation` / `malmoi-revocation-state` | 5분 / 15분 | 세션 폐기 왕복 |
 
+⚠️ **`authjs.csrf-token`이 조사에서 빠졌다** (2026-09-19 브라우저 실측으로 발견 — `/signin`에서 실제로 선다). `set(` 전수 grep이 못 본 이유는 **`@auth/core`가 심기 때문**이다. 세션 쿠키(브라우저를 닫으면 사라진다)이고 본문 표에 행으로 넣었다. **같은 이유로 `authjs.callback-url`의 수명도 "로그인 왕복"이 아니라 "브라우저를 닫을 때까지"다.**
+
 **추적·분석·광고 쿠키는 0이다** — 그 사실을 `cookies` 절이 문장으로 말한다.
 
 **P0.4 — 문의 주소와 삭제 절차.** 주소는 `ox501501@gmail.com`(결정 13). 절차: 요청을 받으면 **30일 안에** ① 그 사람의 `User`·`Account`·`Session`·`ProjectMember` 행과 아직 수락되지 않은 초대를 지우고 ② 직접 올린 프로필 사진을 Blob에서 지우며 ③ **번역 값 자체는 남기고 `Translation.updatedBy`·`SyncRun.requestedBy`만 끊는다**(번역은 프로젝트의 산출물이고 리포에 이미 나가 있다 — 지우면 남의 데이터를 지우는 것이 된다). 보관 기간: 계정은 삭제 요청까지, 세션은 24시간, 초대는 7일(`INVITE_DAYS`). 절차 정본은 P5.3이 OPERATIONS.md에 남긴다.
+
+⚠️ **그 절차는 `prisma.user.delete` 한 줄로 끝나지 않는다** (2026-09-19 리뷰). `ProjectMember.user`와 `ProjectInvitation.invitedByUser`가 둘 다 `onDelete: Restrict`라 순서를 지키지 않으면 **던진다**: ① 그 사람의 `ProjectMember` 행 ② 그 사람이 **보낸** 초대(`invitedBy`) ③ 그 사람에게 **온** 미수락 초대 ④ 세션·`Account` ⑤ Blob의 프로필 사진 ⑥ 마지막에 `User`. **마지막 OWNER면 멈춘다** — 그 행을 지우면 스키마 주석대로 "이 행이 없는 `Project`는 아무도 접근할 수 없다"가 되므로, 소유권 이전이 선행이다. ⚠️ **`Translation.updatedBy`는 FK가 없어 손으로 `NULL`을 쓴다**(`SyncRun.requestedBy`는 `SetNull`이라 자동이다).
 
 `──` 커밋 없음 (조사는 이 문서 갱신으로만 남는다)
 
@@ -90,6 +94,7 @@
   - ⚠️ **`only?`를 두지 않는다**(결정 7). `Translation`의 스칼라 12개 중 11개는 `NOT_PERSONAL`, `updatedBy`만 `DISCLOSED`다.
   - ⚠️ **폴백**: `` `${M}ScalarFieldEnum` `` 템플릿 리터럴 인덱싱이 TS에서 안 풀리면 모델별로 명시적으로 쓴다(13줄). 파서를 되살리지 않는다.
   - 검증(이것이 (A) 검사다): **`pnpm typecheck` green.** 뮤테이션 짝 — 한 필드를 지우면 "빠진 키" red, 없는 필드 이름을 넣으면 "없는 키" red, `MODEL_CLASSES`에서 모델 하나를 빼면 `satisfies` red. **셋을 실제로 돌려 확인하고 되돌린다** (⚠️ 작업 중인 파일에 `git checkout --`를 쓰지 않는다 — POSTMORTEM 2026-09-16 `:2044`).
+  - ⚠️ **설계와 갈린 판정 셋** (2026-09-19 `/code-review` + 리뷰 에이전트, 전부 근거를 확인하고 바꿨다): ① **`DISCLOSURE_SECTIONS`가 넷이 아니라 셋이다** — `third-parties` 절은 **서비스 넷**을 말하고 저장 항목을 이름 대지 않아, 넣어 두면 게이트가 참이 아닌 상태로 green이 된다(역검증 테스트가 실제로 red를 냈다). `Account`의 OAuth 컬럼은 `collected`로 간다. ② **`Translation.updatedAt`도 `collected`다** — Home 로그가 `updatedBy`와 한 문장으로 세우므로("X edited K in ko · 2d ago") 시각만 떼면 "누가 언제"의 절반을 안 밝히는 것이 된다. `SyncRun.trigger`·`startedAt`·`finishedAt`도 같다. ③ **`Account.scope`·`id_token`·`token_type`·`session_state`는 `NOT_PERSONAL`이다** — 우리 코드가 한 번도 쓰지 않는 Auth.js 스키마의 컬럼이고(전수 확인), 방침이 "저장하지 않는다"고 쓴다. **쓰기 시작하면 `collected`로 옮기고 표에 행을 더한다.**
   - 검증(0건 방어): `lib/privacy/__tests__/collected.test.ts`에 개수 가드 — `personal` 모델 수 > 0, 분류된 필드 수 > 40, `DISCLOSURE_SECTIONS`의 각 이름이 실재(역검증).
 - [ ] **P1.2** `docs/DIRECTORY.md`에 `lib/privacy/` 한 줄. **`.claude/commands/push.md`의 `lib/` 코어 모듈 트리거 목록과 `docs/ARCHITECTURE.md`의 같은 목록에 `lib/privacy/`를 더한다** — 양쪽에 "서로 같아야 한다"가 못 박혀 있고 `push.md`가 "`lib/` 하위에 새 디렉터리가 생기면 이 줄에 추가한다"고 쓴다(과거 `/doc-check`이 네 번 갈린 것을 잡았다).
   - 검증: 두 목록의 항목이 문자열로 일치한다.
@@ -153,6 +158,7 @@
   - ⚠️ **(C)의 상수는 `REVISIONS: { effectiveDate, digest }[]` 이력 배열이고 이 파일이 든다**(결정 3·8). 단언은 (a) 마지막 항목의 `digest`가 현재 본문과 같다 (b) 사전의 `effectiveDate`가 그 항목의 날짜와 같다 — **"해시만 갱신하고 날짜는 두는" 탈출구가 닫힌다.** 방침의 `changes` 절이 필요로 하는 개정 이력이 같은 배열로 선다.
   - ⚠️ **git log 기반 대안을 쓰지 않는다** — CI 체크아웃이 깊이 1이라(`actions/checkout`에 `fetch-depth` 없음) 파일 이력이 없고, 조용히 통과하거나 조용히 깨진다.
   - ⚠️ **파일이 `.tsx`다** — 렌더가 필요하고 리포의 렌더 테스트는 전부 `.tsx`다.
+  - ⚠️ **`changes` 절 문장을 그때 되올린다** (2026-09-19 리뷰 🔴1) — 초안 본문이 "a test compares a digest … and it fails if the text changes without a new entry"로 **아직 없는 통제를 공표**했다. P3.1에서 "개정이 있으면 시행일이 옮겨지고 여기 적힌다"로 낮췄으므로, 게이트가 실제로 서는 이 태스크에서 통제를 말하는 문장으로 되돌린다(본문이 바뀌므로 개정 이력에 행이 하나 는다).
   - ⚠️ **`REVISIONS`의 각 `effectiveDate`가 `changes` 절 본문에 문자열로 있는지도 센다** (2026-09-19 `/code-review`) — 이력이 배열과 본문 두 곳이라, 배열만 갱신하면 (C)는 green인데 **화면의 개정 이력에는 그 개정이 없다.**
   - 검증(0건 방어): `docText(...).length`가 임계 초과 · 실물 사전의 **모든 `table` 블록에서 헤더 수 = 각 행의 셀 수**(P2.2의 단언은 픽스처를 보므로 실물의 셀 누락을 못 잡는다) · 절 일곱이 전부 존재.
   - 검증(뮤테이션, **일회성 확인이고 리포에 남는 것이 아니다** — 리포에 남는 짝은 P4.1·P4.2의 픽스처 단언이다): `DISCLOSED`에서 한 줄을 빼면 (B)가 red · 절 id를 오타 내면 (B)가 red · 본문 한 글자를 바꾸면 (C)가 red. **셋을 실제로 돌려 확인하고 되돌린다** (⚠️ `git checkout --` 금지).
