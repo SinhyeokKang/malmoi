@@ -91,7 +91,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 22개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 23개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -106,10 +106,15 @@ components/
                         포인터 히트 판정·전역 커서가 document 레벨이라 CSS로 대신할 수 없다
                         ⚠️ modal(22번째)은 2026-09-16에 components/onboarding/에서 올라왔다 — 소비자가
                         둘이 되는 순간(온보딩 · Publish) 껍데기가 한쪽 디렉터리에 살면 안 된다.
-                        옛 경로는 재수출로 남아 온보딩 호출부가 한 줄도 안 바뀌었다
+                        옛 경로는 재수출로 남아 온보딩 호출부가 한 줄도 안 바뀌었다. 2026-09-19에
+                        초대 모달이 셋째 소비자가 됐다
+                        ⚠️ row-card(23번째)는 행 목록 카드다(RowCard/RowCardList/RowCardItem/
+                        BannerLine/EmptyRowCard) — /projects의 그룹 카드와 멤버 화면 둘이 공유한다.
+                        복사하면 선의 급 둘·divide-y 금지·shrink-0·@container 위치·ring-inset,
+                        주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
-  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 둘이다 — 새 프로젝트 온보딩(네 단계)과 Publish 모달
-                        (갈래 열하나). ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
+  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 셋이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
+                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴, 2026-09-19). ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
                         Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
                         고정이라 1024 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
                         넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
@@ -139,9 +144,19 @@ components/
                         원인은 소스의 상수이고 translations-screen.test.ts가 그 예산을 센다
                         ⚠️ 국기는 CSS background-image다 — ?ns=*에서 2,709개가 서므로 <img>면 요소가 그만큼 는다
                         ⚠️ live region은 표 하나다(셀마다 두면 2,700개)
-  locales/ members/ settings/ onboarding/ projects/ signin/ account/ invite/
+  locales/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
+  members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
+                        [Invite] + 모달 소유) · member-list · pending-invitations · member-row
+                        (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
+                        ⚠️ **행 껍데기가 aria-describedby 배선을 든다** — controls가 띠의 id를 받는
+                        함수다. 소비자가 그 id를 직접 알면 띠 없는 갈래에서 빈 문자열을 남긴다
+                        ⚠️ **꺼진 컨트롤은 aria-disabled다** — 진짜 disabled는 포커스를 못 받아
+                        사유의 전달 경로가 없다. Radix Select는 여는 이벤트가 셋이라 셋 다 막는다
+                        (POSTMORTEM 2026-09-19)
+                        ⚠️ **maskEmail 금지선이 이 디렉터리를 전수로 훑는다** — 마스킹은 서버의 일이고,
+                        파일 목록을 손으로 적던 검사가 파일이 넷이 되자 신설분을 놓쳤다
   account/              계정 화면 — 머리 하나 + 리스트 셋. account-section(구역·항목 규격 하나) ·
                         login-methods · github-section · sessions-section · profile-name-form ·
                         profile-picture · dismissible-alert
@@ -251,6 +266,10 @@ lib/
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
                         read-session · outage · public-session · permission · access · invitation ·
                         invite-view · membership · email · cookie(sessionCookieName — 세션 쿠키 이름의 유일한 출처) ·
+                        member-identity(행의 두 줄 배치 + 아바타 씨앗. ⚠️ 씨앗이 1행과 갈라져 있다 —
+                        1행이 마스킹 주소면 이니셜이 셸 아바타와 다른 글자가 된다) ·
+                        seat-notice(좌석 라벨 갈래 + EDITOR 우선순위. ⚠️ 서버 전용 — invitation이
+                        node:crypto를 문다. 화면은 값만 받는다) ·
                         lock(lockUser — 인증 왕복 셋의 User 행 잠금) · message · landing · invite-label ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
                         주소만 뽑고 verified를 버려, 검증한 주소와 저장되는 주소가 갈린다. /user 조회 실패는
