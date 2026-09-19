@@ -168,6 +168,9 @@ it("표 래퍼가 키보드로 가로 스크롤되는 region이다", async () =>
   const region = find<HTMLElement>(container, "[role=region]");
 
   expect(region.getAttribute("aria-label")).toBe("What malmoi stores about you");
+  // ⚠️ **래퍼 이름은 표의 이름이 아니다** (2026-09-19 CDP 실측 — `role=table, name=""`).
+  // 스크린리더의 표 목록은 `<table>` 자신의 이름을 읽으므로 둘 다 있어야 한다.
+  expect(find<HTMLElement>(container, "table").getAttribute("aria-label")).toBe("What malmoi stores about you");
   expect(region.tabIndex).toBe(0);
   expect(region.className).toContain("overflow-auto");
 });

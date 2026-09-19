@@ -118,7 +118,8 @@ export function PublicDoc({
                 aria-label={block.table.label}
                 className="min-w-0 overflow-auto"
               >
-                <Table scrollable={false}>
+                {/* 래퍼의 이름은 랜드마크의 이름이고, 표 목록은 `<table>` 자신의 이름을 읽는다 — 둘 다 준다. */}
+                <Table scrollable={false} aria-label={block.table.label}>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       {block.table.head.map((cell, cellIndex) => (

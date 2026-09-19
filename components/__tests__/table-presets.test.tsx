@@ -66,7 +66,7 @@ it("Tr이 행 구분선을 Td에 맡긴다 — 선이 두 번 그려지지 않�
   expect(tr.classList.contains("hover:bg-muted/50")).toBe(false);
 });
 
-it("스크롤 컨테이너는 기본이고 끄는 곳이 둘이다 — 번역 화면과 온보딩 ②", async () => {
+it("스크롤 컨테이너는 기본이고 끄는 곳이 셋이다 — 번역 화면·온보딩 ②·공개 문서", async () => {
   const { container } = await render(<Table><TableBody><tr><td>x</td></tr></TableBody></Table>);
   expect(find<HTMLElement>(container, "div").className).toContain("overflow-auto");
 
