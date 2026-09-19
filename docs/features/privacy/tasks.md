@@ -10,21 +10,75 @@
 
 ## P0. 조사 — 무엇을 저장하는가
 
-- [ ] **P0.1** `prisma/schema.prisma`의 **모델 13개 전부**를 `personal` / `not-personal`로 가르고, `personal`인 모델의 스칼라 필드를 전수로 표에 옮긴다. 각 행에 **개인정보인가 / 방침이 말해야 하는가 / 어느 절인가 / 표에서 어느 행으로 접히나** 네 열.
+- [x] **P0.1** `prisma/schema.prisma`의 **모델 13개 전부**를 `personal` / `not-personal`로 가르고, `personal`인 모델의 스칼라 필드를 전수로 표에 옮긴다. 각 행에 **개인정보인가 / 방침이 말해야 하는가 / 어느 절인가 / 표에서 어느 행으로 접히나** 네 열.
   - ⚠️ **모델까지 전수인 것이 이번 변경의 핵심이다** — 초안은 여덟 모델 하드코딩이라 `Project`·`TranslationSurface`·`Locale`·`StringKey`·`KeyRef`가 대상 밖이었고, `schema.prisma`가 §10으로 미뤄둔 `AuditEvent` 같은 새 모델이 생겨도 게이트가 침묵했다.
   - ⚠️ **`Project.repoOwner`·`repositoryImportToken`·`pushTokenHash`를 판단하는 자리다.** 모델 자체는 `not-personal`이 맞을 가능성이 높지만(생성자 컬럼이 없고 소유는 `ProjectMember`로만 표현된다) **판단을 한 번 남기는 것이 요지다.**
   - ⚠️ **`VerificationToken.identifier`를 "개인정보 아님"으로 분류하면 틀린다** — 값이 `JSON.stringify([purpose, "v1", userId, provider, providerAccountId, …])`라 `userId`와 외부 계정 식별자가 한 문자열 안에 있다(`lib/login-link/policy.ts`·`lib/session-revocation/store.ts`).
   - ⚠️ **접히는 관계(네 번째 열)를 여기서 적어 두지 않으면 P3.1에서 다시 판단하게 된다**(`Account`의 OAuth 컬럼 일곱 → "GitHub·Google 연결 토큰" 한 행).
   - 검증: **줄 단위 grep으로 개수를 대조하지 않는다**(초안의 `grep -cE '^  [a-zA-Z]'`는 실측 168을 주고 실제 대상은 48이다 — 관계 36·enum 블록 값 8·enum 필드 4·generator 3이 섞인다). 전수 여부는 **P1.1의 `pnpm typecheck`이 판정한다** — 빠진 모델·필드를 이름으로 지목한다. 이 표는 그 입력이자 P3.1 본문의 입력이다.
-- [ ] **P0.2** 외부 전송처를 전수로 확인한다 — GitHub API · GitHub/Google OAuth · Supabase · Vercel Blob **넷이 맞는지**. 다섯째가 있으면 spec §6(자동 허용목록 제외)의 근거가 무너진다.
+- [x] **P0.2** 외부 전송처를 전수로 확인한다 — GitHub API · GitHub/Google OAuth · Supabase · Vercel Blob **넷이 맞는지**. 다섯째가 있으면 spec §6(자동 허용목록 제외)의 근거가 무너진다.
   - ⚠️ **`grep 'https://'`로는 확인되지 않는다** — 실측 7줄이 전부 `github.com`이고, **Google은 `next-auth/providers/google` 내부 · Supabase는 `DATABASE_URL` 환경변수 · Blob은 `@vercel/blob` SDK라 리터럴이 없다.** 넷 중 셋을 원리적으로 못 본다.
   - 검증: 세 축을 각각 본다 — ① `package.json`의 네트워크를 타는 의존성 ② `lib/env.ts`가 읽는 외부 서비스 env 전수 ③ `grep -rn 'https://' lib app auth.ts | grep -v __tests__`의 호스트. 결과를 이 파일에 적는다.
   - ⚠️ **프로필 이미지 호스트(`avatars.githubusercontent.com`·`lh3.googleusercontent.com`)를 다섯째로 셀지 판정한다** — 우리가 보내는 쪽이 아니라 받아오는 쪽이라 "전송처"가 아닐 수 있다. 어느 쪽이든 판정을 적는다.
-- [ ] **P0.3** 쿠키를 전수로 확인한다(세션 · OAuth state · `authjs.callback-url` · login-link/session-revocation 지문). 이름·수명·목적을 표로.
+- [x] **P0.3** 쿠키를 전수로 확인한다(세션 · OAuth state · `authjs.callback-url` · login-link/session-revocation 지문). 이름·수명·목적을 표로.
   - 검증: `lib/auth/cookie.ts`·`lib/login-link/**`·`lib/session-revocation/**`·`lib/github-connect/**`에서 `set(` 호출 전수.
-- [ ] **P0.4** **문의 주소와 삭제 요청 처리 절차를 확정한다.** 주소는 **`ox501501@gmail.com`**(결정 13, 2026-09-19 사용자). 처리 절차(요청을 받으면 무엇을 지우는가 · 응답 기한)를 한 문단으로 적는다.
+- [x] **P0.4** **문의 주소와 삭제 요청 처리 절차를 확정한다.** 주소는 **`ox501501@gmail.com`**(결정 13, 2026-09-19 사용자). 처리 절차(요청을 받으면 무엇을 지우는가 · 응답 기한)를 한 문단으로 적는다.
   - ⚠️ **리포 전체에 이 판정이 0건이다.** 정하지 않으면 방침이 지킬 수 없는 약속을 공표한다.
   - 검증: 절차 문단이 P3.1의 `deletion` 절 입력이자 P5.3의 OPERATIONS.md 항목 입력이 된다.
+
+### P0 결과 (2026-09-19 조사)
+
+**P0.1 — 모델 13 / `personal` 8 / 분류 대상 스칼라 63.** 분류는 `lib/privacy/collected.ts`가 정본이고 아래는 그 판단 근거다.
+
+| 모델 | 분류 | 근거 |
+|---|---|---|
+| `Project` | not-personal | 생성자 컬럼이 없고 소유는 `ProjectMember`로만 표현된다. ⚠️ `repoOwner`는 개인 리포면 개인 계정명과 같은 문자열이지만 **우리가 사람에 대해 모으는 값이 아니라 리포 좌표다** — 방침은 "연결한 리포의 좌표"를 목적(§purposes)에서 말하고 수집 항목 표에는 넣지 않는다. `repositoryImportToken`·`pushTokenHash`는 기계 자격증명이다 |
+| `TranslationSurface` · `Locale` · `StringKey` · `KeyRef` | not-personal | 번역 대상 문자열과 그 좌표뿐 |
+| `Translation` | **personal** | `updatedBy`(User.id) 하나 때문이다. 스칼라 12 중 11은 `NOT_PERSONAL` |
+| `SyncRun` | **personal** | `requestedBy`(User.id) 하나 |
+| `User` | **personal** | 스칼라 7 전부 |
+| `Account` | **personal** | OAuth 자격증명과 공급자 계정 식별자 |
+| `Session` | **personal** | 세션 토큰과 그 소유자 |
+| `VerificationToken` | **personal** | ⚠️ `identifier`가 `JSON.stringify([purpose, "v1", userId, provider, providerAccountId, …])`라 **`String` 타입 뒤에 userId와 외부 계정 식별자가 있다** |
+| `ProjectMember` | **personal** | 누가 어느 프로젝트에서 무슨 역할인가 |
+| `ProjectInvitation` | **personal** | 초대 주소와 그 HMAC 색인 |
+
+절 배정 규칙(파일 머리 주석에 같이 남긴다): `collected` = 수집 항목 표가 이름을 대는 값 · `third-parties` = GitHub·Google 때문에만 존재하는 값 · `cookies` = 쿠키가 나르거나 쿠키 수명이 지배하는 값 · `retention` = 보관 기간을 정하는 값 · `NOT_PERSONAL` = 사람을 기술하지 않는 번역 작업 데이터.
+
+| 모델 | `DISCLOSED` (절) | `NOT_PERSONAL` |
+|---|---|---|
+| `User` (7) | `collected`: `id` `name` `email` `emailLookup` `emailVerified` `image` `createdAt` | — |
+| `Account` (12) | `third-parties`: `type` `provider` `providerAccountId` `refresh_token` `access_token` `expires_at` `token_type` `scope` `id_token` `session_state` · `collected`: `userId` `installRequestedAt` | — |
+| `Session` (3) | `cookies`: `sessionToken` `userId` · `retention`: `expires` | — |
+| `VerificationToken` (3) | `collected`: `identifier` `token` · `retention`: `expires` | — |
+| `ProjectMember` (5) | `collected`: `userId` `role` `createdAt` `updatedAt` | `projectId` |
+| `ProjectInvitation` (10) | `collected`: `email` `emailLookup` `role` `tokenHash` `invitedBy` `acceptedAt` · `retention`: `expiresAt` | `id` `projectId` `createdAt` |
+| `Translation` (12) | `collected`: `updatedBy` | 나머지 11 |
+| `SyncRun` (11) | `collected`: `requestedBy` | 나머지 10 |
+
+표에서 접히는 행(P3.1 입력): `User` 여섯 → "Your name, email address and profile picture" / `Account` 열 → "Your GitHub and Google connection" / `Session`·`VerificationToken` → "Sign-in state" / `ProjectMember`·`ProjectInvitation` → "Project membership and invitations" / `Translation.updatedBy`·`SyncRun.requestedBy` → "Who made a change".
+
+**P0.2 — 외부 전송처는 넷이 맞다.** 세 축으로 확인했다.
+- 네트워크를 타는 의존성: `octokit` · `@octokit/oauth-app` · `next-auth`(GitHub·Google) · `pg`/`@prisma/adapter-pg`(Supabase) · `@vercel/blob`. 나머지는 전부 로컬이다.
+- `lib/env.ts`가 읽는 외부 서비스 env: `DATABASE_URL`(Supabase) · `GITHUB_APP_*`·`AUTH_GITHUB_*`·`AUTH_GOOGLE_*` · `BLOB_READ_WRITE_TOKEN`(Vercel Blob).
+- `https://` 리터럴은 전부 `github.com`·`api.github.com`뿐이다 — **Google은 provider 내부, Supabase는 env, Blob은 SDK라 리터럴이 없다**(셋을 원리적으로 못 본다).
+- ⚠️ **프로필 이미지 호스트는 다섯째로 세지 않는다**(판정): `auth.ts:56`이 공급자 URL(`avatars.githubusercontent.com`·`lh3.googleusercontent.com`)을 `User.image`에 그대로 담고 **그 이미지는 보는 사람의 브라우저가 직접 받는다** — 우리가 보내는 것이 0이다. 다만 브라우저 요청이 그쪽에 남으므로 **`third-parties` 절이 한 문장으로 말한다**. 직접 올린 사진은 Vercel Blob(공개 읽기 + 난수 키)이라 넷 안이다.
+
+**P0.3 — 쿠키 전수.** 전부 `httpOnly` · `sameSite=lax` · https에서 `__Host-`/`__Secure-` 접두.
+
+| 이름 | 수명 | 목적 |
+|---|---|---|
+| `authjs.session-token` | 24시간(마지막 활동 기준 갱신, `updateAge` 1시간) | 로그인 상태 |
+| `authjs.callback-url` | 로그인 왕복 | 로그인 뒤 돌아갈 곳 |
+| Auth.js OAuth state·PKCE | 15분 | 로그인 왕복의 진정성 |
+| `malmoi-gh-state` | 10분 | GitHub App 연결 왕복 |
+| `malmoi-account-connect` / `malmoi-connect-state` | 5분 / 15분 | 계정 연결 왕복 |
+| `malmoi-login-link` / `malmoi-link-state` | 10분 / 15분 | 같은 주소에 두 번째 로그인 수단 붙이기 |
+| `malmoi-session-revocation` / `malmoi-revocation-state` | 5분 / 15분 | 세션 폐기 왕복 |
+
+**추적·분석·광고 쿠키는 0이다** — 그 사실을 `cookies` 절이 문장으로 말한다.
+
+**P0.4 — 문의 주소와 삭제 절차.** 주소는 `ox501501@gmail.com`(결정 13). 절차: 요청을 받으면 **30일 안에** ① 그 사람의 `User`·`Account`·`Session`·`ProjectMember` 행과 아직 수락되지 않은 초대를 지우고 ② 직접 올린 프로필 사진을 Blob에서 지우며 ③ **번역 값 자체는 남기고 `Translation.updatedBy`·`SyncRun.requestedBy`만 끊는다**(번역은 프로젝트의 산출물이고 리포에 이미 나가 있다 — 지우면 남의 데이터를 지우는 것이 된다). 보관 기간: 계정은 삭제 요청까지, 세션은 24시간, 초대는 7일(`INVITE_DAYS`). 절차 정본은 P5.3이 OPERATIONS.md에 남긴다.
 
 `──` 커밋 없음 (조사는 이 문서 갱신으로만 남는다)
 
