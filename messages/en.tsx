@@ -268,7 +268,7 @@ export const en = {
   /**
    * 공개 문서 둘 — 로그인 화면 푸터가 가리킨다 (8-1a).
    *
-   * ⚠️ **아직 placeholder이고 출시 전에 채운다.** 라우트를 먼저 딴 이유는 시안 푸터가 그것을
+   * ⚠️ **`/privacy`는 본문이 섰고 `/docs`는 아직 placeholder다** (launch-readiness L2.3). 라우트를 먼저 딴 이유는 시안 푸터가 그것을
    * 가리키기 때문이고, 링크가 죽어 있는 것보다 "준비 중"이 낫다는 판정이다.
    *
    * ⚠️ **`back`이 없으면 사용자가 갇힌다** — 이 둘은 셸 **밖**이라 사이드바도 푸터도 없고
@@ -288,13 +288,14 @@ export const en = {
     /**
      * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
      * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
-     * 블록은 문단(`p`) 아니면 목록(`ul`)이고, 클래스는 `components/public-doc.tsx`가 든다.
+     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 `components/public-doc.tsx`가 든다.
      */
     privacy: {
       title: "Privacy Policy",
       /**
-       * ⚠️ **본문을 고치면 `lib/privacy/__tests__`의 개정 이력에 행이 하나 늘어야 red가 풀린다** —
-       * 시행일도 그 행을 따른다. 오타 하나도 같은 취급인 것이 법적 문서에서는 맞다.
+       * ⚠️ **본문을 고치면 `effectiveDate`를 같이 옮긴다.** 지금 그것을 강제하는 것은 이 주석뿐이다 —
+       * 본문 해시 ↔ 개정 이력 게이트는 `docs/features/privacy/tasks.md` P4이고 **아직 없다.**
+       * 그래서 `changes` 절도 그 게이트를 말하지 않는다: 없는 통제를 공표하지 않는다.
        * ⚠️ **절 `id`는 URL 조각이다** — 제목 문구를 고쳐도 `id`는 따라 고치지 않는다.
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
@@ -326,9 +327,14 @@ export const en = {
                     "Matching an invitation to the account that accepts it, without comparing addresses in the clear",
                   ],
                   [
-                    "Your GitHub and Google connection: the account id at that provider, access and refresh tokens, and the scopes you granted",
-                    "GitHub or Google, when you sign in or connect a repository",
-                    "Signing you in, and reading which GitHub App installations you can see",
+                    "Which GitHub or Google account you signed in with, as the account id at that provider",
+                    "GitHub or Google, when you sign in",
+                    "Recognizing you the next time. malmoi keeps no sign-in tokens — the id is all it stores",
+                  ],
+                  [
+                    "A GitHub token for your own account, and when it expires",
+                    "GitHub, when you connect a repository to a project",
+                    "Reading which GitHub App installations you can choose a repository from. It is never used to write to a repository",
                   ],
                   [
                     "Sign-in state: your session, and short-lived challenges for linking an account or signing other sessions out",
@@ -376,12 +382,15 @@ export const en = {
           heading: "How long we keep it",
           blocks: [
             {
+              p: "How long something works and how long its row is kept are different, so this section says both.",
+            },
+            {
               ul: [
-                "Your account and its connections: until you ask us to delete them.",
-                "A session: 24 hours from your last activity.",
-                "A challenge for linking an account or signing other sessions out: 5 to 15 minutes.",
-                "An invitation: 7 days, or until it is accepted or revoked.",
-                "Translations and the record of who changed them: for the life of the project.",
+                "Your account and its connections: kept until you ask us to delete them.",
+                "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
+                "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
+                "An invitation stops working after 7 days, or as soon as it is accepted or revoked. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "Translations and the record of who changed them: kept for the life of the project.",
               ],
             },
           ],
@@ -438,7 +447,12 @@ export const en = {
                 head: ["Cookie", "How long it lasts", "What it does"],
                 rows: [
                   ["Session", "24 hours from your last activity", "Keeps you signed in"],
-                  ["Return address", "The sign-in round trip", "Sends you back to the page you started from"],
+                  [
+                    "Sign-in request check",
+                    "Until you close the browser",
+                    "Checks that a sign-in was started from this site",
+                  ],
+                  ["Return address", "Until you close the browser", "Sends you back to the page you started from"],
                   [
                     "Sign-in state",
                     "15 minutes",
@@ -460,7 +474,7 @@ export const en = {
           heading: "Changes to this policy",
           blocks: [
             {
-              p: "The effective date at the top moves whenever this text does: a test in malmoi's repository compares a digest of the text against a recorded revision, and it fails if the text changes without a new entry.",
+              p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
             { ul: ["2026-09-19 — first version."] },
           ],

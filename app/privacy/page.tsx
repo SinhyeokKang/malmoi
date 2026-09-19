@@ -3,8 +3,8 @@ import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 
 /**
- * ⚠️ **본문은 사전에 있다** (`messages/en.tsx`의 `publicDocs.privacy`) — 고치면 개정 이력에 행이
- * 하나 늘어야 `lib/privacy/__tests__`가 green이 된다.
+ * ⚠️ **본문은 사전에 있다** (`messages/en.tsx`의 `publicDocs.privacy`) — 고치면 `effectiveDate`를
+ * 같이 옮긴다. 그것을 강제하는 게이트는 아직 없다(privacy P4).
  * 로그인 화면 푸터가 이 경로를 가리키므로 **라우트를 먼저 딴다** — `lib/routes.ts`에 등재만 하고
  * 페이지를 안 만들면 404를 가리키는 생성기가 되고, 죽은 링크 검사의 접두 규칙이 그것을 통과시켜
  * 못 잡는다.

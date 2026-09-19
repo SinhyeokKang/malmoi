@@ -19,8 +19,12 @@ import type { Prisma } from "@/generated/prisma/client";
 /**
  * 수집 항목을 **이름으로 말하는** 절만 든다. 절 일곱 중 `purposes`·`deletion`·`changes`는 항목을
  * 열거하지 않으므로 여기 없다 — 전체를 대조하면 그 셋이 무조건 "안 쓰인 절"로 잡힌다.
+ *
+ * ⚠️ **`third-parties`도 여기 없다** (2026-09-19 — 초안은 넷이었다). 그 절이 말하는 것은 **서비스
+ * 넷**이고 저장 항목을 하나도 이름 대지 않는다. 넣어 두면 필드가 "본문이 말한다"고 가리키는 곳이
+ * 실제로는 아무것도 안 말하는 절이 되어, **게이트가 참이 아닌 상태로 green이 된다.**
  */
-export const DISCLOSURE_SECTIONS = ["collected", "third-parties", "retention", "cookies"] as const;
+export const DISCLOSURE_SECTIONS = ["collected", "retention", "cookies"] as const;
 export type DisclosureSection = (typeof DISCLOSURE_SECTIONS)[number];
 
 /** 사람을 기술하지 않는 값. 번역 작업 데이터와 행 부기가 여기 들어온다. */
@@ -98,18 +102,30 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "User.image": "collected",
   "User.createdAt": "collected",
 
+  /**
+   * ⚠️ **`third-parties`가 아니라 `collected`다** (2026-09-19 리뷰) — 그 절은 **누가 더 보나**(서비스
+   * 넷)를 말하고 필드를 하나도 이름 대지 않는다. 절 id로 대조하는 (B) 검사가 거기를 가리키면
+   * **본문이 말하지 않는 것을 말한다고 판정한다.**
+   */
   "Account.userId": "collected",
   "Account.installRequestedAt": "collected",
-  "Account.type": "third-parties",
-  "Account.provider": "third-parties",
-  "Account.providerAccountId": "third-parties",
-  "Account.refresh_token": "third-parties",
-  "Account.access_token": "third-parties",
-  "Account.expires_at": "third-parties",
-  "Account.token_type": "third-parties",
-  "Account.scope": "third-parties",
-  "Account.id_token": "third-parties",
-  "Account.session_state": "third-parties",
+  "Account.provider": "collected",
+  "Account.providerAccountId": "collected",
+  "Account.refresh_token": "collected",
+  "Account.access_token": "collected",
+  "Account.expires_at": "collected",
+  /** 상수 `"oauth"`뿐이다 — 사람을 기술하지 않는다. */
+  "Account.type": NOT_PERSONAL,
+  /**
+   * ⚠️ **Auth.js 스키마의 컬럼이지만 우리 코드가 한 번도 쓰지 않는다** (2026-09-19 전수 확인 —
+   * 쓰는 자리는 `app/api/github/callback/route.ts`의 세 컬럼과 `safe-adapter`의 넷뿐이다).
+   * **쓰기 시작하면 이 줄을 `collected`로 옮기고 수집 항목 표에 행을 더한다** — 방침이 "저장하지
+   * 않는다"고 쓴 값이라, 옮기지 않으면 그 문장이 거짓이 된다.
+   */
+  "Account.token_type": NOT_PERSONAL,
+  "Account.scope": NOT_PERSONAL,
+  "Account.id_token": NOT_PERSONAL,
+  "Account.session_state": NOT_PERSONAL,
 
   "Session.sessionToken": "cookies",
   "Session.userId": "cookies",
@@ -127,7 +143,8 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
 
   "ProjectInvitation.id": NOT_PERSONAL,
   "ProjectInvitation.projectId": NOT_PERSONAL,
-  "ProjectInvitation.createdAt": NOT_PERSONAL,
+  /** `ProjectMember.createdAt`과 같은 의미다 — 식별된 주소가 언제 초대됐나. 둘을 갈라 판정하지 않는다. */
+  "ProjectInvitation.createdAt": "collected",
   "ProjectInvitation.email": "collected",
   "ProjectInvitation.emailLookup": "collected",
   "ProjectInvitation.role": "collected",
@@ -136,7 +153,13 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "ProjectInvitation.invitedBy": "collected",
   "ProjectInvitation.expiresAt": "retention",
 
-  /** 번역 값 자체는 프로젝트의 산출물이고 사람을 기술하지 않는다 — 저자 컬럼 하나만 갈린다. */
+  /**
+   * 번역 값 자체는 프로젝트의 산출물이고 사람을 기술하지 않는다.
+   *
+   * ⚠️ **`updatedAt`은 저자 컬럼과 붙어 다니므로 갈리지 않는다** (2026-09-19 리뷰 — 설계 초안은
+   * "`updatedBy`만"이었다): Home의 로그가 실제로 둘을 한 문장으로 세운다("X edited K in ko · 2d ago").
+   * 시각만 떼면 "누가 언제"의 절반을 방침이 말하지 않는 것이 된다.
+   */
   "Translation.id": NOT_PERSONAL,
   "Translation.projectId": NOT_PERSONAL,
   "Translation.surfaceId": NOT_PERSONAL,
@@ -147,15 +170,16 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "Translation.placeholders": NOT_PERSONAL,
   "Translation.needsReview": NOT_PERSONAL,
   "Translation.pendingEditToken": NOT_PERSONAL,
-  "Translation.updatedAt": NOT_PERSONAL,
+  "Translation.updatedAt": "collected",
   "Translation.updatedBy": "collected",
 
   "SyncRun.id": NOT_PERSONAL,
   "SyncRun.projectId": NOT_PERSONAL,
   "SyncRun.status": NOT_PERSONAL,
-  "SyncRun.trigger": NOT_PERSONAL,
-  "SyncRun.startedAt": NOT_PERSONAL,
-  "SyncRun.finishedAt": NOT_PERSONAL,
+  /** MANUAL/CRON이 "사람이 눌렀나"를 직접 말한다 — `requestedBy`와 같은 축이다. */
+  "SyncRun.trigger": "collected",
+  "SyncRun.startedAt": "collected",
+  "SyncRun.finishedAt": "collected",
   "SyncRun.errorCode": NOT_PERSONAL,
   "SyncRun.prUrl": NOT_PERSONAL,
   "SyncRun.changed": NOT_PERSONAL,
