@@ -23,9 +23,9 @@ const mocks = vi.hoisted(() => ({ changeMember: vi.fn(), revokeInvitation: vi.fn
 vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation }));
 
 const now = new Date("2026-09-17T00:00:00Z");
-const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", role: "EDITOR", joinedAt: now };
-const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", role: "OWNER", joinedAt: now };
-const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
+const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", readable: true, role: "EDITOR", joinedAt: now };
+const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", readable: true, role: "OWNER", joinedAt: now };
+const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
 
 const status = () => document.querySelector('[role="status"]');
 const byLabel = (label: string) => {
