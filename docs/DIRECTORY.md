@@ -18,7 +18,9 @@ app/
                         authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
-  privacy/ · docs/      공개 문서(placeholder). 둘 다 components/public-doc.tsx — 돌아가는 링크가 요지다
+  privacy/ · docs/      공개 문서. 둘 다 components/public-doc.tsx(장문 그릇 — DESIGN §6.61). 본문은
+                        아직 placeholder(L2.1·L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
+                        하나다 — 로그인 상태면 /projects, 아니면 /signin. 그래서 둘 다 동적이다
   layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
   globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
   __tests__/            entry-points(진입점 소스 스캔 — 모든 page·route·actions가 인가를 지나는지 fs로
