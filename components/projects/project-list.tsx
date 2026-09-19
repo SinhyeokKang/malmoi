@@ -19,6 +19,7 @@ import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
@@ -153,18 +154,24 @@ export function ProjectList({
       <PanelBody width="fluid" className="flex flex-col gap-4">
         {body.kind === "groups" ? (
           body.cards.map((card) => (
-            <ProjectCard key={card.group} title={GROUP_LABEL[card.group]} count={card.rows.length}>
+            <RowCard
+              key={card.group}
+              title={GROUP_LABEL[card.group]}
+              count={card.rows.length}
+              countLabel={m.projects.count(card.rows.length)}
+            >
               <RowList rows={card.rows} />
-            </ProjectCard>
+            </RowCard>
           ))
         ) : body.kind === "results" ? (
           /*
             ⚠️ **결과를 그룹으로 쪼개지 않는다** (캔버스 `1c`). 결과 1건에 헤더 셋이면 둘이 빈 카드가
             되고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다. 상태는 행의 칩이 말한다.
           */
-          <ProjectCard
+          <RowCard
             title={m.projects.resultsFor(body.query)}
             count={body.rows.length}
+            countLabel={m.projects.count(body.rows.length)}
             /*
               나가는 길은 헤더 오른쪽 하나다 — 지금 좁혀진 것이 **이 카드**라는 사실이 그 자리에서 읽힌다.
 
@@ -183,7 +190,7 @@ export function ProjectList({
             }
           >
             <RowList rows={body.rows} q={q} />
-          </ProjectCard>
+          </RowCard>
         ) : body.kind === "empty" ? (
           <EmptyProjects />
         ) : (
@@ -195,75 +202,18 @@ export function ProjectList({
 }
 
 /**
- * 그룹 카드 — **헤더가 카드 안에 있다** (캔버스 `1a`). `Project Home`이 이미 이 문법이고(카드가 자기
- * 제목을 든다), 같은 앱이 같은 것을 두 문법으로 말할 이유가 없다.
- *
- * ⚠️ **radius가 12이고 패널의 16이 아니다** — `rounded-lg`.
- *
- * ⚠️ **헤더는 누를 수 없다** — hover도 링크도 없다. 링크가 서는 것은 결과 카드의 `Clear search`
- * 하나뿐이고 그것은 `action` 슬롯이다.
- *
- * ⚠️ **카드 바닥에 더 보기 링크를 두지 않는다** — `Project Home`의 `All logs`는 잘린 목록의 나머지로
- * 가는 출구지만, 이 카드는 그룹 전체를 이미 그린다.
- *
- * ⚠️ **`shrink-0`이 없으면 아래 행이 잘린다.** `overflow-hidden`을 든 flex 자식은 CSS의 automatic
- * minimum size가 적용되지 않아 축소 하한이 0이다 — 넘친 행은 카드 **안에** 감춰져 바깥 패널에
- * 스크롤조차 생기지 않는다 (실측 2026-09-11).
- */
-function ProjectCard({ title, count, action, children }: {
-  title: string;
-  count: number;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-      <div className="flex items-center gap-2 p-4">
-        <h2 className="text-base font-medium">{title}</h2>
-        {/*
-          ⚠️ **숫자만 그리면 접근 이름이 "Needs attention 1"이다.** 시안이 숫자 배지라 보이는 것은
-          그대로 두고 스크린리더에는 완전한 문장을 준다 — 번역 화면 머리가 같은 관용구다.
-        */}
-        <Badge variant="neutral">
-          <span aria-hidden>{count}</span>
-          <span className="sr-only">{m.projects.count(count)}</span>
-        </Badge>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * 카드 안의 행 목록.
- *
- * ⚠️ **선의 급이 둘이다** (캔버스 `1a`). 헤더↔첫 행은 `#f0f0f0`(`border-foreground/[0.06]`),
- * 행↔행은 `#e5e5e5`(`border-border`)다 — **헤더 divider가 행 구분선보다 약해야 "헤더 + 행들"로
- * 읽힌다.** 두 색은 압축된 PNG에서 구별되지 않으므로 스크린샷으로 판정하지 않는다.
- *
- * ⚠️ **`divide-y`를 쓰지 않는다.** 띠가 행의 형제라 그 규칙이 **띠와 행 사이에도** `#e5e5e5` 선을
- * 넣는데, 시안은 거기가 `#f0f0f0`이다. 그래서 행마다 `border-t`를 직접 준다.
- *
- * ⚠️ **`<ul>`로 남는다** — 카드로 감싸면서 list role을 잃으면 스크린리더가 개수를 못 읽는다.
+ * 카드 안의 행 목록 — 선의 급 둘·`@container`·`divide-y` 금지는 전부 `components/ui/row-card.tsx`가
+ * 든다. 여기 남는 것은 **무엇을 행으로 그리나**뿐이다.
  */
 function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
-    /**
-     * ⚠️ **`@container`가 여기다 — 뷰포트가 아니다** (DESIGN §6.63). 패널 폭은 뷰포트에서 사이드바와
-     * 바깥 padding을 뺀 값이고, **LNB가 200~320으로 리사이즈되므로 같은 뷰포트가 두 폭을 만든다**.
-     * (2026-09-16까지 근거에 "오른쪽 패널 320"이 함께 있었는데 그 패널을 지웠다 — DESIGN §6.55.
-     * 결론은 그대로다.) 셸이
-     * `min-w-[1280px]`을 들어서 뷰포트 브레이크포인트로는 1120·940·760이 **영영 안 밟힌다**
-     * (가로 스크롤이 먼저 생긴다). 실제로 변하는 것은 이 카드의 폭이다.
-     */
-    <ul className="@container">
+    <RowCardList>
       {rows.map((row, index) => (
-        <li key={row.slug} className={index === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}>
+        <RowCardItem key={row.slug} first={index === 0}>
           <ProjectRow row={row} q={q} />
-        </li>
+        </RowCardItem>
       ))}
-    </ul>
+    </RowCardList>
   );
 }
 
@@ -361,42 +311,44 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
         </span>
       </Link>
 
-      {banner !== null && <BannerLine row={row} banner={banner} />}
+      {banner !== null && <ProjectBanner row={row} banner={banner} />}
     </>
   );
 }
 
 /**
- * 행 아래 띠 — **다음 한 수** (시안 `1c`).
+ * 행 아래 띠의 **내용** — 형(들여쓰기 56 · 선 · 배경 · 13px)은 `BannerLine` 프리미티브가 든다.
  *
  * ⚠️ **행의 형제이고 `<a>` 안이 아니다** — 링크를 중첩할 수 없다.
+ *
+ * ⚠️ **이름이 `BannerLine`이 아니다** — 프리미티브와 한 파일 안에서 충돌한다. 바깥에 있는 사실
+ * (`</Link>` 뒤)을 `projects-screen.test.ts`가 이 이름으로 센다.
  *
  * ⚠️ **링크가 역할로 갈리는 것은 셋이다**(`Reconnect`·`Continue setup`·`View details`). 그 셋은
  * `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다 — 그 자리에는
  * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (DESIGN §6.63).
  */
-function BannerLine({ row, banner }: { row: ProjectListRow; banner: NonNullable<RowBanner> }) {
+function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullable<RowBanner> }) {
   const canSettle = canPerform(row.role, "project:settings");
 
   return (
-    <div className="border-foreground/[0.06] bg-foreground/[0.02] text-muted-foreground flex items-center gap-2 border-t py-2 pr-3.5 pl-14 text-xs">
-      <BannerIcon banner={banner} />
-      <span className="min-w-0 truncate">
-        {banner.kind === "review" && m.projects.banner.review(banner.count)}
-        {banner.kind === "unsent" && m.projects.banner.unsent(banner.count)}
-        {banner.kind === "pr_open" && m.projects.banner.prOpen(banner.number)}
-        {banner.kind === "repo_ahead" && m.projects.banner.repoAhead(banner.files, row.baseBranch)}
-        {banner.kind === "setup" && m.projects.banner.setup}
-        {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
-        {banner.kind === "import_failed" && (
-          <>
-            {importFailureMessage(banner.reason)}{" "}
-            {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.contactOwner}
-          </>
-        )}
-      </span>
-      <BannerAction row={row} banner={banner} canSettle={canSettle} />
-    </div>
+    <BannerLine
+      icon={<BannerIcon banner={banner} />}
+      action={<BannerAction row={row} banner={banner} canSettle={canSettle} />}
+    >
+      {banner.kind === "review" && m.projects.banner.review(banner.count)}
+      {banner.kind === "unsent" && m.projects.banner.unsent(banner.count)}
+      {banner.kind === "pr_open" && m.projects.banner.prOpen(banner.number)}
+      {banner.kind === "repo_ahead" && m.projects.banner.repoAhead(banner.files, row.baseBranch)}
+      {banner.kind === "setup" && m.projects.banner.setup}
+      {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
+      {banner.kind === "import_failed" && (
+        <>
+          {importFailureMessage(banner.reason)}{" "}
+          {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.contactOwner}
+        </>
+      )}
+    </BannerLine>
   );
 }
 

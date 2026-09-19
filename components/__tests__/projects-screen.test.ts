@@ -28,6 +28,16 @@ const code = (rel: string): string =>
  */
 const PAGE = ["app/(edit)/projects/page.tsx", "components/projects/project-list.tsx"];
 
+/**
+ * ⚠️ **그릇이 프리미티브로 올라갔다** (members-rework T5). 카드·행 목록·행·띠·빈 상태가
+ * `components/ui/row-card.tsx`에 살고 멤버 화면이 같은 것을 쓴다 — `rounded-lg`·`p-4`·
+ * `border-foreground/[0.06]`·`@container`·`pl-14`처럼 **옮겨간 리터럴**을 이 스위트가 계속 세려면
+ * 읽는 자리가 둘이어야 한다. 합쳐 읽는 쪽이 낫다: 어느 파일이 들든 규칙은 이 화면에 여전히 적용되고,
+ * 부정 단언(`divide-y` 없음 등)은 **넓어진다**.
+ */
+const ROW_CARD = "components/ui/row-card.tsx";
+const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD)].join("\n");
+
 describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 아니다", () => {
   /**
    * ⚠️ **세그먼트를 `useState`로 만들면 뒤로가기·공유·새로고침이 전부 깨진다.** `logs`의 `?cursor=`가
@@ -162,7 +172,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * `PanelBody`의 flex 자식이 `<ul>`이 아니라 카드가 됐다. **불변식은 그대로이고 요소만 바뀐다.**
    */
   it("목록이 축소되지 않는다 — 카드가 `shrink-0`을 든다", () => {
-    const card = /<section className="([^"]*)"/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
+    const card = /<section className="([^"]*)"/.exec(LIST_AND_CARD)?.[1] ?? "";
     expect(card).not.toBe("");
     expect(card).toContain("shrink-0");
     expect(card).toContain("overflow-hidden");
@@ -242,7 +252,7 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
  * 리터럴로 적는 부류라, 안 벗기면 주석만으로 green이 된다.
  */
 describe("목록 본문 — 캔버스 값 그대로", () => {
-  const BODY = code("components/projects/project-list.tsx");
+  const BODY = LIST_AND_CARD;
 
   it.each([
     ["이름 칸 420", "w-[420px]"],
@@ -307,7 +317,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    * ⚠️ **띠는 행의 형제다** — `<a>` 안에 넣으면 링크가 중첩되고, 그 안의 [Review]는 누를 수 없다.
    */
   it("띠가 행 링크 밖에 있다", () => {
-    expect(BODY).toMatch(/<\/Link>\s*\n\s*\{banner !== null && <BannerLine/);
+    expect(BODY).toMatch(/<\/Link>\s*\n\s*\{banner !== null && <ProjectBanner/);
   });
 
   it("그룹 헤더 셋을 사전에서 가져온다 — 배지 낱말과 두 벌이 되지 않는다", () => {
@@ -411,10 +421,10 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
  * 카드 폭이다. (2026-09-16까지 근거가 '오른쪽 패널 유무'였고 그 패널을 지웠다 — DESIGN §6.55.)
  */
 describe("Meter 폭 축소 — 컨테이너 기준", () => {
-  const BODY = code("components/projects/project-list.tsx");
+  const BODY = LIST_AND_CARD;
 
   it("카드가 컨테이너다", () => {
-    expect(BODY).toMatch(/<ul className="[^"]*@container/);
+    expect(BODY).toMatch(/<ul[^>]*className="[^"]*@container/);
   });
 
   it.each([
@@ -446,8 +456,8 @@ describe("Meter 폭 축소 — 컨테이너 기준", () => {
  * 단위 테스트가 원리적으로 못 본다. 실측은 그때 한 번이고 이 검사는 다음에도 돈다.
  */
 describe("캔버스 대조로 잡은 자리", () => {
-  const BODY = code("components/projects/project-list.tsx");
-  const EMPTY = code("components/projects/empty-projects.tsx");
+  const BODY = LIST_AND_CARD;
+  const EMPTY = [code("components/projects/empty-projects.tsx"), code(ROW_CARD)].join("\n");
 
   /**
    * ⚠️ **빈 상태가 카드 규격으로 내려온다** (캔버스 `1b`). 다른 블록이 전부 `border 1 · radius 12 ·
