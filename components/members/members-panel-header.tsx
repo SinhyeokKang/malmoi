@@ -41,7 +41,8 @@ export function MembersPanelHeader({ slug, notice }: { slug: string; notice: Sea
   return (
     <div className="flex items-center gap-3">
       {/* 사유가 버튼 **왼쪽**에 선다 — 꺼진 버튼이 자기 이유를 이 문장으로 가리킨다. */}
-      <span id={REASON_ID} className="text-muted-foreground text-sm">{label}</span>
+      {/* ⚠️ **13px이다**(`text-xs`) — 카드 헤더 설명·행 메타와 같은 급이다. `text-sm`(14)이면 제목 옆에서 한 단계 무거워져 [Invite]와 제목 사이의 위계가 흐려진다 (캔버스 `1a`). */}
+      <span id={REASON_ID} className="text-muted-foreground text-xs">{label}</span>
       <Button
         variant="primary"
         aria-disabled={notice.canInvite ? undefined : true}

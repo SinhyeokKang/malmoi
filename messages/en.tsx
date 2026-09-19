@@ -2000,8 +2000,15 @@ export const en = {
     removed: (who: string): string => `Removed ${who}`,
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
     confirmRemove: (who: string): string => `Remove ${who} from this project?`,
-    /** ⚠️ **번역이 남는다는 사실을 먼저 말한다** (캔버스 `1c`) — 망설이는 이유가 대개 그것이고,
-     * `ProjectMember` 관계가 `Restrict`라 데이터가 조용히 사라지지 않는다. */
+    /**
+     * ⚠️ **번역이 남는다는 사실을 먼저 말한다** (캔버스 `1c`) — 망설이는 이유가 대개 그것이다.
+     *
+     * ⚠️ **그것을 보장하는 것은 FK가 아니다.** 한때 이 주석이 `ProjectMember`의 `Restrict`를 근거로
+     * 들었는데 **거짓이다** — `schema.prisma`가 *"멤버 행의 제거·강등은 FK가 막지 않는다"*를 명시한다
+     * (그 `Restrict`는 Project·User **삭제**를 막는다). 실제 근거는 `Translation.updatedBy`에 FK가
+     * 없고 `loadActors`가 `ProjectMember`가 아니라 `User`를 읽는다는 것이다 — 멤버 행이 사라져도
+     * 이름이 붙은 이력은 그대로다.
+     */
     confirmRemoveHint: "They lose access right away. Their translations stay — the history keeps their name.",
     cancel: "Cancel",
     /** 마지막 OWNER 보호는 `accessErrorMessage("last-owner")`가 낸다 — 여기 두 벌로 쓰지 않는다. */

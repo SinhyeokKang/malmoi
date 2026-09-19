@@ -1129,6 +1129,25 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 | 대기 초대 행의 글리프 | **mail 칩**(32 원 · `bg-foreground/[0.05]` · `Mail` 14). ⚠️ **아바타가 아니다** — 아직 사람이 아니라 보낸 링크이고, 이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다 |
 | 대기 0건 | `EmptyRowCard`를 **카드 안에**(`inset`) 세운다 — 칩 **40 원** · 글리프 18 · padding **32** · gap 10, **버튼이 없다**(할 일은 헤더의 [Invite]다). ⚠️ **`/projects`의 서 있는 빈 카드와 규격이 다르다**(칩 36 라운드 사각 · 글리프 16 · padding `48 24`) — 앞은 화면의 착지점이고 이쪽은 카드 하나가 비었다는 보조 신호라 무게가 다르다. 갈래를 `inset`에 묶어 `/projects` 값을 안 건드린다. ⚠️ `components/ui/empty-state.tsx`를 쓰지 않는다 — 그쪽은 칩 48 + `py-12`이고 맞추면 소비자 아홉이 함께 움직인다 |
 | 사유 띠 | 들여쓰기 **60** · `text-xs` · 배경 `bg-foreground/[0.02]` · 위 선 `border-foreground/[0.06]`. ⚠️ **색이 사유에 따라 갈린다** — 막힌 동작은 `text-destructive`(마지막 오너), 상태 설명은 `text-muted-foreground`(못 읽음). 같은 색이면 "지금 막혀 있다"와 "이런 상태다"가 구별되지 않는다 |
+| 헤더 우측 사유 | `text-xs`(13) — 카드 헤더 설명·행 메타와 같은 급이다. ⚠️ **`text-sm`(14)이면 제목 옆에서 한 단계 무거워져** [Invite]와 제목 사이의 위계가 흐려진다(2026-09-19 실측에서 14로 나가 있었다) |
+
+#### 실측 (2026-09-19 · 1440×900 · computed style + CDP)
+
+⚠️ **모달 높이는 뷰포트에 물린다** — `min(80svh, 800, 100svh-96)`이라 1440×900에서만 캔버스의 720이 나온다.
+좁은 창에서 재면 561이 나오고 그것을 이탈로 오진하게 된다.
+
+접근성은 `Accessibility.getPartialAXTree`로 쟀다(jsdom의 accname은 브라우저와 다르다). 확인된 것:
+
+- 꺼진 셀렉트·[Remove]가 **`focusable: true`이면서** `description`에 사유를 싣는다 — `aria-disabled`를 고른
+  판단이 실제로 작동한다는 증거다. 진짜 `disabled`였다면 `focusable: false`라 그 경로가 죽는다.
+- `<ul>`의 접근 이름이 카드 제목(`Members`)이고, 카드 `h2`가 `focusable: true`다(제거 뒤 착지점).
+- 모달의 Role 카드가 `role=radio` + `name="Editor Can translate and publish"` — 지시자 없는 카드인데도
+  이름이 내용에서 온다. ⚠️ POSTMORTEM 2026-09-13이 `role=combobox`에서 **빈 이름**을 낸 자리와 같은 형이라
+  이 라운드에서 확인했다.
+- 읽기전용 칩이 `aria-label`로 역할 + 사유를 들고 자물쇠는 `aria-hidden`이다.
+
+⚠️ **밟지 못한 갈래 셋** — 좌석 10/10 · 복호화 실패 행 · 보관된 프로젝트. 단위 테스트로만 서 있고
+**실측으로 확인되지 않았다.**
 
 #### 사전 차단 — **감추지 않고 꺼서 그린다**
 
@@ -1165,7 +1184,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 (`accessErrorMessage("last-owner")`)을 쓴다. 그 동일성은 `members-cards.test.tsx`가 **렌더로** 센다 —
 소스에 그 이름이 있는지 세는 검사는 오늘 이미 green이다 (POSTMORTEM 2026-09-18).
 
-#### ⚠️ 캔버스와 의도적으로 갈린 셋 (2026-09-19 사용자 판정 — **프리미티브가 이긴다**)
+#### ⚠️ 캔버스와 의도적으로 갈린 여섯 (2026-09-19 사용자 판정 — **프리미티브가 이긴다**)
 
 `/design-sync` 2단계의 *"프리미티브와 어긋나면 프리미티브가 이긴다"*를 적용한 자리다. 캔버스가 이
 화면만 다른 값을 그렸고, 따라가면 같은 컨트롤이 화면마다 두 모양이 된다.
@@ -1175,6 +1194,8 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 | 행 안 컨트롤 높이 | 32 | **36**(`h-9`) | `Button`·`SelectTrigger`의 기본값이다. 32를 만들면 `size`가 넷이 되고 *"어느 걸 쓰나"*가 매 화면 판단이 된다(§6.4). **대가**: 아바타 32와 컨트롤 36이 어긋나 캔버스가 노린 *"행의 세로 리듬이 하나"*가 깨진다 |
 | 초대 모달의 Email `Input` | 40 | **36**(`fieldClass`) | 같은 이유. `Input`·`Textarea`·`SelectTrigger`가 한 값을 공유한다 |
 | 꺼진 [Invite]의 면 | 흰 면 + 테두리 + `#a3a3a3` | **`bg-muted`**(`buttonClass`의 `aria-disabled:` 짝) | 2026-09-17에 *"같은 pending이 화면마다 다르게 보였다"*를 고치며 세운 전역 규칙이고, `disabled-pairing.test.ts`가 호출부의 철자 발명을 0으로 고정한다 |
+| 아바타 이니셜 글자 | 12 | **13**(`Avatar`의 `text-xs`) | 프리미티브가 `size === 56 ? text-xl : text-xs` 둘로만 가른다. 한 자리를 위해 분기를 늘리면 다음 크기마다 같은 판단이 생긴다 |
+| 발급 링크의 letter-spacing | 0.01em | **0.02em**(`--text-sm--letter-spacing`) | 타입 스케일이 크기와 자간을 **짝으로** 든다(§4). 한 자리만 덮으면 같은 `text-sm`이 화면마다 다른 자간을 갖는다 — 실측 차이는 0.14px다 |
 
 ⚠️ **`danger` variant의 색도 캔버스와 1:1이 아니다** — 캔버스는 `#b91c1c`(red-700)이고 이 리포의
 `--destructive`는 `hsl(0 72.2% 50.6%)`다. 같은 이유로 프리미티브를 따른다(§2.3).

@@ -189,10 +189,6 @@ export function InviteModal({
         </FormGroup>
 
         {/*
-          ⚠️ **테두리 있는 카드 라디오를 만들지 않는다** — 리포 전수 0건인 시각 형이고, 만들면 DESIGN에
-          등재해야 하는 새 부품이 하나 는다. `Radio`가 이미 라벨 행이고 보조 줄만 아래에 붙인다.
-        */}
-        {/*
           ⚠️ **`fieldset`/`legend`를 겹쳐 쓰지 않는다** — 그것도 그룹이고 `RadioGroup`도 그룹이라
           스크린리더가 그룹을 두 번 읽는다. 이름은 `aria-labelledby` **한 쪽만** 준다 (`radio.tsx`).
         */}

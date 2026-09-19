@@ -136,8 +136,8 @@ export function RowCardItem({ first = false, children }: { first?: boolean; chil
  * ⚠️ **행의 형제이고 `<a>` 안이 아니다** — 링크를 중첩할 수 없다. `/projects`에서는 `<li>` 안의
  * 둘째 블록이고, 멤버 행에서도 같은 자리다.
  *
- * ⚠️ **들여쓰기 56(`pl-14`)이 행 글리프 폭 + gap과 맞물린다** — 띠 텍스트가 행의 1행 텍스트와 같은 x에서
- * 시작해야 그 행에 속한 것으로 읽힌다.
+ * ⚠️ **들여쓰기가 행 글리프 폭 + gap과 맞물린다** — 띠 텍스트가 행의 1행 텍스트와 같은 x에서 시작해야
+ * 그 행에 속한 것으로 읽힌다. 값이 둘인 이유와 각각의 계산은 아래 `indent` prop이 든다.
  *
  * ⚠️ **13px은 `text-xs`다** — 이 리포는 `--text-xs: 13px`이고 `text-[13px]`은 전수 0건이다 (DESIGN §4.1).
  */
@@ -236,7 +236,12 @@ export function EmptyRowCard({
           inset ? "size-10 rounded-full" : "size-9 rounded-sm",
         )}
       >
-        <Icon className={inset ? "size-[18px]" : "size-4"} aria-hidden />
+        {/*
+          ⚠️ **글리프는 둘 다 16이다** — 캔버스는 카드 안 빈 상태를 18로 그리는데 §6.8이 아이콘 크기를
+          **넷(16·14·12·20)으로 고정**하고, 18을 쓰면 리포 최초의 임의 아이콘 치수가 생긴다.
+          §6.63의 등재된 이탈 2번이 `/projects` 빈 상태에서 같은 판단을 이미 내렸다 — 두 자리가 같은 값이다.
+        */}
+        <Icon className="size-4" aria-hidden />
       </span>
       {/*
         ⚠️ **`<p>` 둘이다 — `<span>`으로 두면 문단 경계가 0이 된다.** `flex flex-col`이 시각적으로는

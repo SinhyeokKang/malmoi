@@ -167,10 +167,19 @@ describe("#7 · #9 EDITOR 시야", () => {
     expect(container.querySelector('[role="combobox"]')).toBeNull();
   });
 
+  /**
+   * ⚠️ **`aria-label`이 아니라 `sr-only` 텍스트다** (리뷰 🔴1) — 이 칩은 role 없는 `<span>`이고
+   * ARIA는 `generic`에 이름을 붙이는 것을 금지한다. 낭독되는 것은 칩의 **텍스트 전체**다.
+   */
   it("칩이 권한 사유를 낭독한다 — 대기 초대의 문장이 아니다", async () => {
     const container = await draw([owner], "EDITOR");
     const chip = find<HTMLElement>(container, "[data-role-chip]");
-    expect(chip.getAttribute("aria-label")).toBe(m.members.roleLocked.editor(m.projects.role.OWNER));
+    expect(chip.getAttribute("aria-label")).toBeNull();
+    expect(find<HTMLElement>(chip, ".sr-only").textContent).toBe(
+      m.members.roleLocked.editor(m.projects.role.OWNER),
+    );
+    // 보이는 낱말은 그 문장 안에 이미 있으므로 중복 낭독을 막는다.
+    expect(find<HTMLElement>(chip, "[aria-hidden]").textContent).toBe(m.projects.role.OWNER);
   });
 
   /** ⚠️ **오너가 하나여도 띠를 안 그린다** — EDITOR에게는 그 사유가 설명할 행동이 없다. */
@@ -351,6 +360,17 @@ describe("캔버스 대조로 되돌린 자리", () => {
     const container = await draw([owner, editor]);
     expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
     expect(accessErrorMessage("last-owner")).toContain("at least one owner");
+  });
+
+  /**
+   * ⚠️ **띠 텍스트가 행 1행 텍스트와 같은 x에서 시작해야** 그 띠가 이 행에 속한 것으로 읽힌다.
+   * 아바타가 32가 되면서 56 → 60으로 따라 움직인 값이고, **프리미티브가 실제로 그 클래스를 붙이는지**를
+   * 여기서 잰다(소스의 삼항 철자를 붙잡으면 표현만 바꿔도 red가 나고 계약은 안 잡힌다).
+   */
+  it("띠가 아바타 폭에 맞춰 들여쓰인다", async () => {
+    const container = await draw([owner, editor]);
+    expect(bands(container)[0]!.className).toContain("pl-15");
+    expect(bands(container)[0]!.className).not.toContain("pl-14");
   });
 
   /** ⚠️ **대기 초대 행은 사람이 아니다** — 이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다. */

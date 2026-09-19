@@ -121,12 +121,25 @@ describe("RoleChip", () => {
    * 역할을 포함하지 않으면 "only owners can change roles"만 읽히고 무엇이 잠겼는지는 안 읽힌다.
    * 캔버스가 라벨을 `{role}, …`로 시작시키는 이유이고, WCAG 2.5.3(Label in Name)도 그것으로 지켜진다.
    */
-  it("보이는 역할 낱말이 접근 이름 안에 들어 있다", async () => {
+  it("보이는 역할 낱말이 낭독되는 문장 안에 들어 있다", async () => {
     const { container } = await render(<RoleChip role="EDITOR" reason="editor" />);
     const chip = find<HTMLElement>(container, "[data-role-chip]");
     expect(chip.textContent).toContain(m.projects.role.EDITOR);
-    expect(chip.getAttribute("aria-label")).toBe(m.members.roleLocked.editor(m.projects.role.EDITOR));
-    expect(chip.getAttribute("aria-label")).toContain(m.projects.role.EDITOR);
+    expect(find<HTMLElement>(chip, ".sr-only").textContent).toBe(
+      m.members.roleLocked.editor(m.projects.role.EDITOR),
+    );
+  });
+
+  /**
+   * ⚠️ **`aria-label`을 쓰면 ARIA 규격 위반이다** (리뷰 🔴1). role 없는 `<span>`은 `generic`이고
+   * naming이 금지돼 있다 — Chromium은 그 노드를 unignore해 이름을 실어 주므로 **CDP 실측이 통과
+   * 신호를 준다.** 그것은 Chrome이 관대하다는 사실이지 계약이 아니다.
+   */
+  it("칩이 `aria-label`을 쓰지 않는다 — role 없는 span에는 이름을 못 붙인다", async () => {
+    const { container } = await render(<RoleChip role="EDITOR" reason="editor" />);
+    const chip = find<HTMLElement>(container, "[data-role-chip]");
+    expect(chip.getAttribute("aria-label")).toBeNull();
+    expect(chip.getAttribute("role")).toBeNull();
   });
 
   /**
@@ -136,7 +149,7 @@ describe("RoleChip", () => {
   it("대기 초대와 EDITOR 시야가 다른 사유를 낭독한다", async () => {
     const pending = await render(<RoleChip role="OWNER" reason="pending" />);
     const editor = await render(<RoleChip role="OWNER" reason="editor" />);
-    const label = (c: HTMLElement) => find<HTMLElement>(c, "[data-role-chip]").getAttribute("aria-label");
+    const label = (c: HTMLElement) => find<HTMLElement>(c, "[data-role-chip] .sr-only").textContent;
     expect(label(pending.container)).toContain("Revoke and invite again");
     expect(label(editor.container)).not.toContain("Revoke and invite again");
     expect(label(pending.container)).not.toBe(label(editor.container));

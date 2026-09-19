@@ -181,27 +181,56 @@ describe("멤버 행 — 캔버스 값 그대로", () => {
   const ROW = "components/members/member-row.tsx";
   const CHIP = "components/members/role-chip.tsx";
 
+  /**
+   * ⚠️ **`toContain`은 부분문자열이라 스케일 한 단계를 못 가른다** (2026-09-19 리뷰 🟡5). `"gap-2"`는
+   * `gap-2.5`에도 걸려서 캔버스 8을 10으로 바꿔도 green이었다 — 뮤테이션으로 확인했다. 클래스는
+   * **토큰 경계로** 센다.
+   */
+  const hasClass = (file: string, token: string): boolean =>
+    new RegExp(`(^|[\\s"'\`])${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s"'\`]|$)`).test(read(file));
+
   it.each([
     ["아바타 32", ROW, "size={32}"],
-    ["행 padding 14/14/14/12", ROW, "py-3.5 pr-3.5 pl-3"],
-    ["행 요소 gap 16", ROW, "gap-4"],
     ["이름 칸 300 고정", ROW, "w-[300px]"],
-    ["이름 15/500", ROW, "text-base"],
-    ["주소 14", ROW, "text-sm"],
-    ["오른쪽 군 gap 8", ROW, "gap-2"],
     ["역할 칩 폭 132", CHIP, "w-[132px]"],
     ["칩 점선 테두리", CHIP, "border-dashed"],
   ])("%s", (_label, file, literal) => {
     expect(read(file)).toContain(literal);
   });
 
+  it.each([
+    ["행 padding 14/14/14/12", ROW, ["py-3.5", "pr-3.5", "pl-3"]],
+    ["행 요소 gap 16", ROW, ["gap-4"]],
+    ["오른쪽 군 gap 8", ROW, ["gap-2"]],
+    /** ⚠️ **무게까지 센다** — 15만 세면 `font-medium`을 지워도 green이다(리뷰 🟡5에서 실측). */
+    ["이름 15/500", ROW, ["text-base", "font-medium"]],
+    ["주소 14", ROW, ["text-sm"]],
+    /** ⚠️ **고정 열 셋 중 150은 두 소비자에 있다** — 여기 빠져 있어 스캐너가 둘만 지켰다. */
+    ["가입일 칸 150 고정", LIST, ["w-[150px]"]],
+    ["만료 칸 150 고정", PENDING, ["w-[150px]"]],
+  ])("%s", (_label, file, tokens) => {
+    for (const token of tokens) expect(hasClass(file, token), token).toBe(true);
+  });
+
+  /** ⚠️ **스캐너가 실제로 red를 낼 수 있나** — 매칭이 0인 검사는 방어선이 아니라 장식이다. */
+  it("토큰 경계 검사가 스케일 한 단계를 가른다", () => {
+    expect(hasClass(ROW, "gap-4")).toBe(true);
+    expect(hasClass(ROW, "gap-2.5")).toBe(false);
+    expect(hasClass(ROW, "pl-4")).toBe(false);
+  });
+
   /**
    * ⚠️ **띠 텍스트가 행 1행 텍스트와 같은 x에서 시작해야** 그 띠가 이 행에 속한 것으로 읽힌다.
    * 아바타가 32가 되면서 56 → 60으로 따라 움직인 값이다(`pl-3` 12 + 32 + `gap-4` 16).
    */
-  it("사유 띠 들여쓰기가 아바타 폭을 따라간다", () => {
+  /**
+   * ⚠️ **프리미티브의 *서식*을 잡지 않는다** (2026-09-19 리뷰 🟡6). 전에는 `row-card.tsx`의 삼항
+   * 철자를 정규식으로 붙잡았는데, 값이 같은 다른 표현으로 바꾸거나 prettier가 줄을 접기만 해도
+   * 동작이 그대로인데 red가 났다 — 그리고 정작 **그 클래스가 붙는지**는 안 셌다. 계약은
+   * `members-cards.test.tsx`가 렌더한 띠의 `className`으로 잰다.
+   */
+  it("행이 아바타 폭에 맞는 들여쓰기를 요청한다", () => {
     expect(read(ROW)).toContain('indent="avatar"');
-    expect(read("components/ui/row-card.tsx")).toMatch(/indent === "avatar" \? "pl-15" : "pl-14"/);
   });
 
   /** ⚠️ **1행의 첫 글자를 아바타 씨앗으로 쓰지 않는다** — 셸 아바타와 다른 글자가 된다. */

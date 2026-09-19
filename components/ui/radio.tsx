@@ -54,5 +54,11 @@ export function Radio({
   );
 }
 
-/** `SegmentedControl`이 Radix 선택·roving focus를 그대로 쓰려고 든다 (형만 자기 것으로 얹는다). */
+/**
+ * Radix 선택·roving focus를 그대로 쓰되 **형만 자기 것으로 얹는** 소비자가 든다.
+ *
+ * 소비자 **둘**: `SegmentedControl`(세그먼트) · 초대 모달의 Role 카드(2026-09-19 — 지시자 없이
+ * 테두리가 선택을 말한다). ⚠️ **둘 다 포커스 링을 자기가 든다** — `Radio`와 달리 지시자 원이 없어
+ * 링이 빠지면 키보드로 어디 있는지 알 수 없다 (§7).
+ */
 export const RadioGroupItem = Primitive.Item;
