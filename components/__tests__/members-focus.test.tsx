@@ -111,11 +111,9 @@ describe("Members — Remove", () => {
 });
 
 describe("Pending invitations — Revoke", () => {
+  /** ⚠️ 위 `Members`와 같은 이유로 제목을 래퍼가 그리지 않는다 — 카드가 든다. */
   function Screen({ invitations }: { invitations: PendingInvitation[] }) {
-    return <>
-      <h2 id="pending-heading" tabIndex={-1}>Pending invitations</h2>
-      <PendingInvitations slug="acme" invitations={invitations} role="OWNER" now={now} headingId="pending-heading" />
-    </>;
+    return <PendingInvitations slug="acme" invitations={invitations} role="OWNER" now={now} headingId="pending-heading" />;
   }
 
   it("마지막 초대를 지워 빈 상태로 접혀도 포커스는 제목, 알림은 같은 live 영역에 남는다", async () => {

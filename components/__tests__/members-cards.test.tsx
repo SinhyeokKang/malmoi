@@ -2,14 +2,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
+import { PendingInvitations } from "@/components/members/pending-invitations";
 import { accessErrorMessage } from "@/lib/auth/message";
-import type { MemberView } from "@/lib/auth/query";
+import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 
 import { find, render } from "./helpers/dom";
 
-vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: vi.fn(), revokeInvitation: vi.fn() }));
 
 /**
  * **spec §6 상태 표의 Members 카드 갈래** (members-rework).
@@ -144,5 +145,73 @@ describe("#7 · #9 EDITOR 시야", () => {
     const container = await draw([owner, member({ userId: "u2", readable: false })], "EDITOR");
     expect(bands(container)).toHaveLength(1);
     expect(bands(container)[0]!.textContent).toBe(m.members.unreadableHint);
+  });
+});
+
+/**
+ * **spec §6 상태 표의 Pending 카드 갈래.**
+ */
+const invitation = (over: Partial<PendingInvitation> & { id: string }): PendingInvitation => ({
+  emailLabel: `${over.id}***@acme.com`,
+  readable: true,
+  role: "EDITOR",
+  expiresAt: new Date("2026-09-24T00:00:00Z"),
+  invitedByName: "Owner",
+  ...over,
+});
+
+const drawPending = async (invitations: PendingInvitation[], role: Role = "OWNER") => {
+  const { container } = await render(
+    <PendingInvitations slug="acme" invitations={invitations} role={role} now={now} headingId="pending-heading" />,
+  );
+  return container;
+};
+
+describe("Pending — 역할은 바꿀 수 없다", () => {
+  /** ⚠️ **OWNER에게도 셀렉트를 안 준다** — 발급된 초대의 역할은 철회 후 재발급으로만 바뀐다. */
+  it("전원 자물쇠 칩이고 셀렉트가 없다", async () => {
+    const container = await drawPending([invitation({ id: "i1" }), invitation({ id: "i2", role: "OWNER" })]);
+    expect(container.querySelectorAll("[data-role-chip]")).toHaveLength(2);
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
+  });
+
+  it("OWNER에게는 [Revoke]가 있고 EDITOR에게는 없다", async () => {
+    const owned = await drawPending([invitation({ id: "i1" })]);
+    expect(owned.querySelectorAll('[aria-label^="Revoke "]')).toHaveLength(1);
+    const read = await drawPending([invitation({ id: "i1" })], "EDITOR");
+    expect(read.querySelector('[aria-label^="Revoke "]')).toBeNull();
+  });
+});
+
+describe("#4 Pending 0건", () => {
+  /** ⚠️ **버튼이 없다** — 여기서 할 일은 헤더의 [Invite]이고, 카드가 그것을 두 번 말하지 않는다. */
+  it("빈 상태가 카드 안에 서고 출구 버튼이 없다", async () => {
+    const container = await drawPending([]);
+    expect(container.textContent).toContain(m.members.pending.empty.title);
+    expect(container.querySelector("ul")).toBeNull();
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector("a")).toBeNull();
+  });
+
+  /** ⚠️ **live 영역이 빈 상태 갈래 밖이다** — 마지막 초대를 지운 알림이 그 접힘과 함께 사라지면 안 된다. */
+  it("빈 상태로 접혀도 live 영역이 남는다", async () => {
+    const container = await drawPending([]);
+    expect(container.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it("배지가 초대 수를 말한다 — `projects`의 문장을 물려받지 않는다", async () => {
+    const container = await drawPending([]);
+    expect(find(container, "h2 + span .sr-only").textContent).toBe(m.members.pending.count(0));
+  });
+});
+
+describe("Pending — 못 읽은 초대", () => {
+  /** ⚠️ **행을 숨기지 않는다** — 철회는 id로 되므로 못 읽은 초대도 걷어낼 수 있어야 한다. */
+  it("행이 남고 전용 문구와 띠가 선다", async () => {
+    const container = await drawPending([invitation({ id: "i1", readable: false })]);
+    const row = find<HTMLElement>(container, "li");
+    expect(find(row, "[data-primary]").textContent).toContain(m.members.unreadableLabel);
+    expect(find<HTMLElement>(row, '[id^="band-"]').textContent).toBe(m.members.unreadableHint);
+    expect(row.querySelector('[aria-label^="Revoke "]')).not.toBeNull();
   });
 });

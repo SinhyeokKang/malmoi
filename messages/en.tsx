@@ -1941,13 +1941,6 @@ export const en = {
 
   members: {
     /**
-     * 표 헤더. `Joined`는 상대 시각이라 열 이름이 단위를 말하지 않는다.
-     *
-     * ⚠️ **`actions`가 빈 문자열이 아니다** (2026-09-08 code-review 🟡3). 시각적으로는 비어야 하지만
-     * 빈 `<th>`는 스크린 리더가 이름 없는 열로 읽는다 — 화면이 `sr-only`로 감춘다.
-     */
-    columns: { person: "Person", email: "Email", role: "Role", joined: "Joined", actions: "Actions" },
-    /**
      * 패널 헤더 우측의 좌석 잔량 — 갈래는 `planSeatNotice`가 정한다.
      *
      * ⚠️ **상한을 문구가 따로 들지 않는다** — `limit`이 인자로 들어온다. 화면이 `MEMBER_LIMIT`을
@@ -2043,8 +2036,14 @@ export const en = {
        * **대기 초대에는 상한이 없다**(`planInvitationCreate`가 대기를 안 센다).
        */
       count: (n: number): string => `${n.toLocaleString("en-US")} invitation${n === 1 ? "" : "s"}`,
-      columns: { email: "Email", role: "Role", expires: "Expires", invitedBy: "Invited by" },
-      /** 초대한 사람의 이름이 없을 때. 이메일을 여기 쓰지 않는다 — 이미 마스킹한 열이 옆에 있다. */
+      /** 행의 메타 줄. 열 머리가 사라지면서 라벨이 문장 안으로 들어왔다. */
+      invitedBy: (who: string): string => `Invited by ${who}`,
+      /**
+       * 초대한 사람의 이름이 없을 때.
+       *
+       * ⚠️ **이메일을 여기 쓰지 않는다** — 그 주소는 초대한 사람의 것이고 이 화면이 가리는 대상이 아니다.
+       * (열이 사라지기 전에는 *"이미 마스킹한 열이 옆에 있다"*가 근거였는데, 그 열이 없어졌다.)
+       */
       unknownInviter: "a member",
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */

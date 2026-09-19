@@ -51,7 +51,7 @@ describe("멤버 화면 — 페이지", () => {
    * ⚠️ `members-focus.test.tsx`는 제목을 **자기가** 그려서 잰다 — 페이지의 `id`와 `headingId`가 갈라져도
    * green이다. 갈라지면 `getElementById`가 `null`이고 `?.`가 조용히 넘어가 포커스가 다시 `body`로 빠진다.
    */
-  it.each([["MemberList", LIST]])("%s가 받은 headingId를 카드 제목으로 넘긴다", (component, file) => {
+  it.each([["MemberList", LIST], ["PendingInvitations", PENDING]])("%s가 받은 headingId를 카드 제목으로 넘긴다", (component, file) => {
     const src = read(PAGE);
     const passed = new RegExp(`<${component}\\b[^>]*headingId="([^"]+)"`).exec(src)?.[1];
     expect(passed).toBeDefined();
@@ -135,13 +135,13 @@ describe("멤버 화면 — 페이지", () => {
  * 아무 검사도 건드리지 않고 지나갔다는 뜻이고, 되돌아오는 것도 똑같이 조용할 것이다.
  */
 describe("멤버 화면 — 카드", () => {
-  it.each([LIST])("%s가 `Table`을 쓰지 않는다 — 열 머리가 사라져 표의 가치가 사라졌다", (file) => {
+  it.each([LIST, PENDING])("%s가 `Table`을 쓰지 않는다 — 열 머리가 사라져 표의 가치가 사라졌다", (file) => {
     const src = read(file);
     expect(src).not.toContain('from "@/components/ui/table"');
     expect(src).not.toMatch(/<(Table|Th|Td)\b/);
   });
 
-  it.each([LIST])("%s가 공유 카드 프리미티브를 쓴다 — `/projects`와 같은 그릇이다", (file) => {
+  it.each([LIST, PENDING])("%s가 공유 카드 프리미티브를 쓴다 — `/projects`와 같은 그릇이다", (file) => {
     const src = read(file);
     expect(src).toContain('from "@/components/ui/row-card"');
     expect(src).toMatch(/<RowCard\b/);
@@ -152,7 +152,7 @@ describe("멤버 화면 — 카드", () => {
   /**
    * ⚠️ **`<ul>`이 카드 제목에 묶인다** — 카드가 둘이라 "list, N items"만으로는 어느 목록인지 안 갈린다.
    */
-  it.each([LIST])("%s가 목록을 카드 제목에 묶는다", (file) => {
+  it.each([LIST, PENDING])("%s가 목록을 카드 제목에 묶는다", (file) => {
     expect(read(file)).toMatch(/labelledBy=\{headingId\}/);
   });
 

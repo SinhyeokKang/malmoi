@@ -67,13 +67,10 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         </div>
       </PanelHeader>
 
-      <PanelBody className="space-y-6">
+      {/* ⚠️ **카드 갭이 16이다** — 두 카드가 각자 제목을 들므로 섹션 래퍼도 `space-y-6`도 필요 없다. */}
+      <PanelBody className="space-y-4">
         <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} headingId="members-heading" />
-
-        <section className="space-y-3">
-          <h2 id="pending-heading" tabIndex={-1} className="text-sm font-medium outline-none">{m.members.pending.title}</h2>
-          <PendingInvitations slug={slug} invitations={pending} role={role} now={now} headingId="pending-heading" />
-        </section>
+        <PendingInvitations slug={slug} invitations={pending} role={role} now={now} headingId="pending-heading" />
       </PanelBody>
     </>
   );

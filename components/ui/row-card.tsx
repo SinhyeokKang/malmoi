@@ -177,20 +177,28 @@ export function EmptyRowCard({
   title,
   description,
   action,
-  className,
+  inset = false,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
   /** 출구가 없는 소비자가 있다 — 대기 초대 0건은 **버튼을 두지 않는다**(할 일이 헤더의 [Invite]다). */
   action?: ReactNode;
-  className?: string;
+  /**
+   * **이미 `RowCard` 안인가.** 그러면 자기 테두리·radius를 내려놓고 헤더 divider와 같은 급의 선
+   * 하나만 남긴다.
+   *
+   * ⚠️ **className으로 덮게 두지 않는다** — `rounded-lg`를 `rounded-none`으로, `border`를 `border-0`로
+   * 되돌리는 식은 twMerge와 Tailwind의 유틸리티 순서에 기대는 것이고, 그 둘 중 하나가 바뀌면
+   * **테두리가 두 겹으로 보이는 것 말고는 아무 신호가 없다.**
+   */
+  inset?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "border-border bg-background flex shrink-0 flex-col items-center gap-3.5 rounded-lg border px-6 py-12 text-center",
-        className,
+        "flex shrink-0 flex-col items-center gap-3.5 px-6 py-12 text-center",
+        inset ? "border-foreground/[0.06] border-t" : "border-border bg-background rounded-lg border",
       )}
     >
       {/*
