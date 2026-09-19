@@ -194,7 +194,7 @@ const REVISIONS = [{ effectiveDate: "2026-09-19", digest: "…" }] as const;  //
 | 10. 절 목록과 id | **일곱, kebab-case 확정**: `collected`·`purposes`·`retention`·`third-parties`·`deletion`·`cookies`·`changes` | spec §3.1 · P3.1 |
 | 11. ko 본문 | **en 단일.** 대가를 spec §6에 명시 | spec §6 |
 | 12. Google 게시 | **완료 조건에서 뺀다.** P6 태스크로 남기고 판단은 L1.1이 든다 | spec §3 |
-| 13. 문의 주소 | **개인 메일** — 구체 주소는 P3.1 착수 시 사람이 채운다 | P0.4 · P3.1 |
+| 13. 문의 주소 | **`ox501501@gmail.com`** (개인 메일) | P0.4 · P3.1 |
 | 14. `/push` 트리거 | **CLAUDE.md에 무조건 박는다** (조건부 아님) | §2.3 · P5.1 |
 
 **남은 열린 질문은 하나이고 조사로 닫힌다**: P0.2에서 외부 전송처가 GitHub·Google·Supabase·Vercel Blob **넷이 아닌 것으로 드러나면** spec §6의 "자동 허용목록 검사를 안 만든다"가 근거를 잃는다. 그때는 (A)와 같은 형으로 호스트 전수 등재를 추가한다.

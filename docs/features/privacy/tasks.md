@@ -22,7 +22,7 @@
   - ⚠️ **프로필 이미지 호스트(`avatars.githubusercontent.com`·`lh3.googleusercontent.com`)를 다섯째로 셀지 판정한다** — 우리가 보내는 쪽이 아니라 받아오는 쪽이라 "전송처"가 아닐 수 있다. 어느 쪽이든 판정을 적는다.
 - [ ] **P0.3** 쿠키를 전수로 확인한다(세션 · OAuth state · `authjs.callback-url` · login-link/session-revocation 지문). 이름·수명·목적을 표로.
   - 검증: `lib/auth/cookie.ts`·`lib/login-link/**`·`lib/session-revocation/**`·`lib/github-connect/**`에서 `set(` 호출 전수.
-- [ ] **P0.4** **문의 주소와 삭제 요청 처리 절차를 확정한다.** 주소는 **개인 메일**(결정 13) — 구체 주소는 사람이 채운다. 처리 절차(요청을 받으면 무엇을 지우는가 · 응답 기한)를 한 문단으로 적는다.
+- [ ] **P0.4** **문의 주소와 삭제 요청 처리 절차를 확정한다.** 주소는 **`ox501501@gmail.com`**(결정 13, 2026-09-19 사용자). 처리 절차(요청을 받으면 무엇을 지우는가 · 응답 기한)를 한 문단으로 적는다.
   - ⚠️ **리포 전체에 이 판정이 0건이다.** 정하지 않으면 방침이 지킬 수 없는 약속을 공표한다.
   - 검증: 절차 문단이 P3.1의 `deletion` 절 입력이자 P5.3의 OPERATIONS.md 항목 입력이 된다.
 
