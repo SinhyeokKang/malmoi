@@ -112,6 +112,8 @@ components/
                         BannerLine/EmptyRowCard) — /projects의 그룹 카드와 멤버 화면 둘이 공유한다.
                         복사하면 선의 급 둘·divide-y 금지·shrink-0·@container 위치·ring-inset,
                         주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
+  ui/image-tile.tsx     프로젝트 타일의 이미지 + 깨진 URL 폴백. useImageFallback은 Avatar와 한 벌이고
+                        마크업만 다르다 — 소비자 셋(목록·Home / 초대 / 설정)은 서버 컴포넌트로 남는다
   ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 locales도 지원.
                         옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
@@ -177,7 +179,8 @@ components/
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
   settings/             general-card · repository-card/repository-form · sources-card/add-sources-modal ·
-                        ci-card · archive-card. 독립 add-surface.tsx는 모달 전환 뒤 삭제했다.
+                        ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
+                        삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
