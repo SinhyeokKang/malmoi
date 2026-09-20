@@ -130,6 +130,97 @@ export type EventPayload =
       value: ValueChange | null;
     };
 
+/** 사건 당시 대상 소스의 성격. ⚠️ **빈 배열 하나로는 "전역"과 "모른다"가 같은 모양이 된다.** */
+export const SURFACE_SCOPES = ["sources", "project-wide", "not-recorded"] as const;
+
+export type SurfaceScope = (typeof SURFACE_SCOPES)[number];
+
+/**
+ * 저장된 Json → 종류별 맥락. **읽는 쪽이 폴백을 든다** — 옛 행·다른 버전이 쓴 payload가 와도
+ * 화면이 죽지 않고 `Not recorded`로 떨어져야 한다.
+ *
+ * ⚠️ **`Object.hasOwn`으로 읽는다** (CLAUDE.md · POSTMORTEM 2026-09-08). `payload[key] ?? fallback`은
+ * `Object.prototype`에서 찾아진 값을 못 막아 문자열 자리에 **함수**가 온다 — 번역 키가 이 안에
+ * 들어가므로 남이 정한 키가 실제로 닿는 자리다.
+ */
+export function readPayload(kind: EventKind, value: unknown): EventPayload | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  switch (kind) {
+    case "TRANSLATION":
+      return {
+        kind,
+        surfaceSlug: str(raw, "surfaceSlug") ?? "",
+        key: str(raw, "key") ?? "",
+        locale: str(raw, "locale") ?? "",
+        before: str(raw, "before"),
+        after: str(raw, "after"),
+      };
+    case "IMPORT":
+      return {
+        kind,
+        source: oneOfRaw(IMPORT_SOURCES, str(raw, "source")) ?? "ci",
+        surfaceSlugs: strings(raw, "surfaceSlugs"),
+        keys: num(raw, "keys"),
+        pendingEdits: num(raw, "pendingEdits"),
+        surfaces: outcomes(raw),
+        errorCode: str(raw, "errorCode"),
+        refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")),
+      };
+    case "PUBLISH":
+      return { kind, surfaceSlugs: strings(raw, "surfaceSlugs"), refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")) };
+    case "SURFACE":
+      return { kind, surfaceSlug: str(raw, "surfaceSlug") ?? "", adapter: str(raw, "adapter"), baseLocale: change(raw, "baseLocale") };
+    case "MEMBER":
+      return { kind, targetLabel: str(raw, "targetLabel") ?? "", role: change(raw, "role") };
+    default:
+      return { kind: "SETTINGS", field: str(raw, "field") ?? "", value: change(raw, "value") };
+  }
+}
+
+function str(raw: Record<string, unknown>, key: string): string | null {
+  const value = Object.hasOwn(raw, key) ? raw[key] : undefined;
+  return typeof value === "string" ? value : null;
+}
+
+function num(raw: Record<string, unknown>, key: string): number | null {
+  const value = Object.hasOwn(raw, key) ? raw[key] : undefined;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function strings(raw: Record<string, unknown>, key: string): string[] {
+  const value = Object.hasOwn(raw, key) ? raw[key] : undefined;
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function change(raw: Record<string, unknown>, key: string): ValueChange | null {
+  const value = Object.hasOwn(raw, key) ? raw[key] : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const inner = value as Record<string, unknown>;
+  return { before: str(inner, "before"), after: str(inner, "after") };
+}
+
+function outcomes(raw: Record<string, unknown>): SurfaceOutcome[] {
+  const value = Object.hasOwn(raw, "surfaces") ? raw.surfaces : undefined;
+  if (!Array.isArray(value)) return [];
+  const out: SurfaceOutcome[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) continue;
+    const inner = item as Record<string, unknown>;
+    const status = oneOfRaw(OUTCOME_STATUSES, str(inner, "status"));
+    if (status === null) continue;
+    out.push({ surfaceSlug: str(inner, "surfaceSlug") ?? "", status, count: num(inner, "count"), reason: str(inner, "reason") });
+  }
+  return out;
+}
+
+const OUTCOME_STATUSES = ["imported", "partial", "failed", "superseded"] as const;
+
+/** ⚠️ **배열 `includes`다** — 사전 인덱싱은 프로토타입 키에 값을 돌려준다. */
+function oneOfRaw<T extends string>(values: readonly T[], raw: string | null): T | null {
+  return raw !== null && (values as readonly string[]).includes(raw) ? (raw as T) : null;
+}
+
 /**
  * `?kind=`의 값 일곱. **URL은 사용자가 읽는 자리라 화면의 낱말을 쓴다** — 저장 값(`EventKind`)과
  * 갈리는 이유가 그것이다 (`KEY_STATES`와 같은 판정).
