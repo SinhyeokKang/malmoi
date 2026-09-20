@@ -2340,3 +2340,23 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 절대 시각: `grep -rn "toLocaleDateString\|toLocaleTimeString" app components lib --include="*.ts" --include="*.tsx" | grep -v __tests__` → **0건**. 절대 시각의 생산자는 `lib/utc-time.ts`의 `utcMinute` 하나여야 하고, 이 grep이 그것을 우회한 자리를 센다.
   - 이미지 폴백: `grep -rn "<img " app components --include="*.tsx" | grep -v __tests__` → **3건**이고 전부 통과다: `components/ui/avatar.tsx`·`components/ui/image-tile.tsx`(둘이 `useImageFallback`을 공유한다) + `components/publish-button.tsx`의 국기(자사 정적 자산이고 매핑이 확인된 것만 그린다 — 외부 URL이 아니라 대상이 아니다). **새 `<img>`는 이 셋 중 하나를 지나거나 여기 근거를 더한다.**
   - ⚠️ **셋에 공통인 물음은 "이 규칙의 소비자가 몇인가"다.** DESIGN §6.4가 프리미티브마다 소비자 수를 적는 이유와 같다 — 새 화면을 만들 때 규칙을 읽는 것으로는 부족하고, **그 규칙을 재는 검사가 새 화면을 렌더하는지**를 따로 봐야 한다.
+
+
+### 2026-09-20 — 활동 판정은 통과했지만 조회·렌더·적재 연결에서 사실이 달라졌다
+
+- **영역**: `lib/events/` · `components/logs/` · 설정·적재 진입점.
+- **증상**: 완료된 Publish에 종료 시각이 없고, 진행 중 Import는 Running 필터에서 빠졌다. 수동 적재 성공은
+  `pendingEdits: 0`만 보고 "Nothing was imported"로 표시했다. Copy는 동작 없는 span이었고 Home·상세는
+  dropped 경고를 버렸다. 실제 `project-wide` 소스 필터가 전역 사건을 반환했다. 동일 값 재저장·동시 설정
+  변경은 중복 사건·낡은 before를 만들었으며 CI 쓰기 실패와 수동 Sync 사전 거부는 사건이 없었다.
+- **근본 원인**: 순수 판정의 입력·반환값만 검사했고 생산자→조회→컴포넌트의 실제 연결은 검사하지 않았다.
+  `null`은 Import에서 실행 중, 다른 종류에서 결과 없음인데 한 갈래로 접었다. 미전달 수의 부재와 0도
+  같은 뜻으로 다뤘다. URL 특수값은 실제 slug 생성 규칙과 대조하지 않았다. tx로 쓰기를 묶는 것만으로는
+  tx 밖에서 읽은 before나 no-op 판정까지 참이 되지 않는다.
+- **그물**: 새 DOM 테스트가 실제 Copy·문구·경고·URL 검색 상태를 검사하고, PostgreSQL 테스트가 종료 시각
+  조인·Running 필터·slug 충돌·CI 실패 및 두 인증 실패 경로·동시 기록을 검사한다. 설정 Action 테스트는
+  같은 값 반복과 잠금 시점 변경을 주입한다. 기존 문자열·파일 존재 검사는 이 연결을 놓쳤다.
+- **재발 방지**: `rg -n 'pendingEdits !== null|finishedAt: row.finishedAt|PROJECT_WIDE|before: project\.' lib/events components/logs app`
+  로 분기·시각·특수값·전후 값 생산자를 함께 본다. `pendingEdits !== null`은 반드시 결과 종류와 함께 판정한다.
+  실조회 행을 필터로 다시 찾는 양방향 검사와 DOM 행동 검사를 유지한다. 멤버 대상은 마스킹 주소만 저장해
+  이름이 영구 payload·searchText에 복제되지 않게 한다.
