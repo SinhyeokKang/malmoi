@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InviteModal } from "@/components/members/invite-modal";
 import { m } from "@/lib/i18n";
@@ -10,6 +10,27 @@ import { find, input, render } from "./helpers/dom";
 
 const mocks = vi.hoisted(() => ({ createInvitation: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ createInvitation: mocks.createInvitation }));
+
+/**
+ * ⚠️ **jsdom에는 HTML의 focus fixup 규칙이 없다** — 포커스된 버튼이 `disabled`가 되면 브라우저는
+ * `activeElement`를 `body`로 돌리지만 jsdom은 그대로 둔다. 그래서 **아무것도 안 해도** "포커스가 제출
+ * 버튼에 있다"가 참이 되고, 복귀 로직을 통째로 지워도 green이다 (malmoi#64에서 실제로 그랬다 —
+ * 브라우저에서는 포커스가 모달 패널에 떨어져 있었다).
+ *
+ * `members-focus.test.tsx`가 같은 이유로 쓰는 관용구를 그대로 가져온다.
+ */
+function installFocusFixup(): MutationObserver {
+  const observer = new MutationObserver(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches(":disabled")) return;
+    // jsdom의 `blur()`는 포커스 가능한 요소에서만 돈다 — 속성을 잠깐 걷어야 풀린다.
+    active.removeAttribute("disabled");
+    active.blur();
+    active.setAttribute("disabled", "");
+  });
+  observer.observe(document.body, { attributes: true, attributeFilter: ["disabled"], subtree: true });
+  return observer;
+}
 
 /**
  * **초대 모달의 두 얼굴** (members-rework T10).
@@ -34,8 +55,12 @@ const click = async (node: HTMLElement) => { await act(async () => { await userE
  */
 const settle = async () => { await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); }); };
 
+let fixup: MutationObserver | undefined;
+afterEach(() => { fixup?.disconnect(); fixup = undefined; });
+
 beforeEach(() => {
   vi.clearAllMocks();
+  fixup = installFocusFixup();
   // 모달이 포커스를 돌려줄 대상 — 실제 화면에서는 패널 머리의 [Invite]다.
   const trigger = document.createElement("button");
   document.body.append(trigger);
@@ -83,7 +108,15 @@ describe("얼굴 ① 폼", () => {
 
     expect(find(panel(), '[role="alert"]').textContent).toContain(m.members.invite.alreadyMember);
     expect(find<HTMLInputElement>(panel(), "#invite-email").value).toBe("taken@acme.com");
-    // 포커스는 누른 제출 버튼으로 돌아간다 (malmoi#53).
+    /**
+     * 포커스는 누른 제출 버튼으로 돌아간다 (malmoi#53 · malmoi#64).
+     *
+     * ⚠️ **`pending`이 풀린 뒤라야 한다.** `pending`은 `useTransition`의 값이라 `setError`가 커밋되는
+     * 시점에도 아직 true다 — 그때 `focus()`를 부르면 버튼이 여전히 `disabled`라 **조용히 무시된다.**
+     * 위 fixup이 없으면 jsdom은 포커스를 그대로 둬서 이 단언이 **아무것도 안 재고** 통과한다.
+     */
+    await settle();
+    expect(submit().disabled).toBe(false);
     expect(document.activeElement).toBe(submit());
   });
 });
