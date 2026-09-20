@@ -17,6 +17,13 @@ import type { ReactNode } from "react";
  * 문체는 DESIGN §10이다 — sentence case · 라벨에 마침표 없음 · "please"·"sorry" 금지 ·
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
+/**
+ * ⚠️ **한 낱말이 두 자리에 선다** — 저장된 값을 지금 키로 못 여는 칸(`common.unreadable`)과 이벤트
+ * 상세의 값 상태(`logs.value.unavailable`)가 같은 사실을 말한다. 리터럴을 두 벌 두면 하나가 낡고,
+ * 그 어긋남은 두 화면을 함께 보는 눈이 없어 안 보인다 (2026-09-13 `malmoi`/`Malmoi` 계열).
+ */
+const UNAVAILABLE = "Unavailable";
+
 export const en = {
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
@@ -235,7 +242,7 @@ export const en = {
      * "이 사람은 이메일이 없구나"로 읽고, 그것이 POSTMORTEM 2026-09-03이 말하는 실패다.
      * 표 셀에 들어가므로 한 단어이고, 사용자가 할 일은 없다(운영자가 키를 되살린다).
      */
-    unreadable: "Unavailable",
+    unreadable: UNAVAILABLE,
   },
 
   /**
@@ -714,6 +721,41 @@ export const en = {
       failed: "Failed",
       /** ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). */
       running: "Running…",
+      /**
+       * 적재 실행의 결과 다섯 (logs-rework spec §6). **색은 셋뿐이라 낱말이 뜻을 든다.**
+       *
+       * ⚠️ **왜곡 금지**: `Deferred`는 삭제도 성공도 아니고(미전달 편집이 있어 적재를 통째로
+       * 보류했다), `Superseded`는 **확인된 사유만** 말한다 — 대체한 실행이 무엇인지 우리는 모른다.
+       */
+      imported: "Imported",
+      deferred: "Deferred",
+      partial: "Partially completed",
+      superseded: "Superseded",
+      /** 사람이 고쳐야 풀리는 거부 여섯 (spec §6.1). 다시 눌러 사라지는 거부는 이력에 안 남는다. */
+      notStarted: "Not started",
+    },
+    /**
+     * 날짜 카드의 머리 (logs-rework). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이
+     * 보는 사람마다 다른 날에 선다. 나머지 날은 `YYYY-MM-DD`를 그대로 쓴다.
+     */
+    day: {
+      today: "Today",
+      yesterday: "Yesterday",
+    },
+    /**
+     * 값 상태 넷 (spec §6). **빈 칸을 만들지 않는 규칙의 유일한 관문이다** — 빈 칸은 "값이 없다"와
+     * "이 종류엔 해당 없다"를 구별하지 못한다 (POSTMORTEM 2026-09-03). '해당 없음'은 `logs.none`이다.
+     */
+    value: {
+      /** 사람이 **비운** 값. 수집하지 못한 값(`notRecorded`)과 다른 사실이다. */
+      empty: "Empty",
+      /** 보이지 않는 차이를 보이게 한다 — 전후가 공백 수만 다를 수 있다. */
+      spacesOnly: (n: number): string =>
+        `Spaces only (${n.toLocaleString("en-US")} character${n === 1 ? "" : "s"})`,
+      /** 사건 당시 그 값을 수집하지 않았다. **과거를 추정해 채우지 않는다** (spec §7). */
+      notRecorded: "Not recorded",
+      /** 저장된 값을 지금 키로 못 열었다 — `common.unreadable`과 **같은 낱말이어야 한다.** */
+      unavailable: UNAVAILABLE,
     },
     trigger: {
       cron: "Nightly",

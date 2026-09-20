@@ -357,7 +357,6 @@ describe("클라이언트 그래프", () => {
   it("`lib/events`의 판정 모듈 셋은 잎이다 — 조회를 물지 않는다", () => {
     const view = walk([join(ROOT, "lib/events/view.ts")]);
     expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
-      "lib/events/payload.ts",
       "lib/events/view.ts",
       "lib/i18n/index.ts",
       "messages/en.tsx",

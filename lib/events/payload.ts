@@ -1,0 +1,159 @@
+/**
+ * 프로젝트 활동 스트림의 **어휘와 종류별 맥락** (logs-rework design §2).
+ *
+ * ⚠️ **잎이다 — import가 0이다.** 판정 모듈 셋(`view`·`filter`·`search`)이 전부 이것을 물고, 그중
+ * 둘은 클라이언트가 값으로 읽는다 (`components/__tests__/client-graph.test.ts`).
+ *
+ * ⚠️ **`@/generated/prisma/client`를 값으로 import하지 않는다** — `lib/sync/view.ts`와 같은 근거로
+ * enum을 **문자열 union으로 다시 적는다.** 스키마와 어긋나면 조회 함수의 반환 타입이 컴파일에서 걸린다.
+ */
+
+/** 사건의 종류 여섯. URL의 `?kind=`는 화면 낱말(`LOG_KINDS`)이고 이것은 저장 값이다. */
+export const EVENT_KINDS = ["TRANSLATION", "IMPORT", "PUBLISH", "SURFACE", "MEMBER", "SETTINGS"] as const;
+
+export type EventKind = (typeof EVENT_KINDS)[number];
+
+/**
+ * 행위자의 종류. **`USER`인데 FK가 비었으면 계정이 지워진 사람이다**(`SetNull`) — `AUTOMATION`·
+ * `UNKNOWN`과 구별된다 (결정 8).
+ */
+export const ACTOR_KINDS = ["USER", "AUTOMATION", "UNKNOWN"] as const;
+
+export type ActorKind = (typeof ACTOR_KINDS)[number];
+
+/**
+ * 결과 어휘 아홉 (spec §6). **실행에만 붙는다** — 비실행 사건의 결과는 `null`이고, 화면은 그 칸을
+ * 빈 채 폭만 유지한다. `N dropped`는 여기 없다: 그것은 결과와 **독립으로** 붙는 경고다(불변식 9).
+ */
+export const EVENT_RESULTS = [
+  "running",
+  "sent",
+  "nothingToSend",
+  "imported",
+  "deferred",
+  "partial",
+  "superseded",
+  "notStarted",
+  "failed",
+] as const;
+
+export type EventResult = (typeof EVENT_RESULTS)[number];
+
+/**
+ * `Not started`로 남기는 거부 **여섯뿐이다** (spec §6.1 — 결정 7). 다음 번에도 같은 이유로 거부될
+ * 것만 남긴다. `already-running`·`too-soon`·400 검증 오류·no-op은 쓰지 않는다.
+ *
+ * ⚠️ **`wrong-format`이지 `format-mismatch`가 아니다** — `lib/push/guard.ts`의 `GuardResult`가 쓰는
+ * 낱말이고, 같은 거부에 이름을 둘 만들면 그중 하나가 낡는다.
+ */
+export const NOT_STARTED_REASONS = [
+  "archived",
+  "not-ready",
+  "stale-commit",
+  "wrong-format",
+  "repo-replaced",
+  "not-installed",
+] as const;
+
+export type NotStartedReason = (typeof NOT_STARTED_REASONS)[number];
+
+/** 실행을 시작한 자리. `reported-failure`는 `/api/push/failure`가 받은 보고다. */
+export const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure"] as const;
+
+export type ImportSource = (typeof IMPORT_SOURCES)[number];
+
+/** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
+export type ValueChange = { before: string | null; after: string | null };
+
+/**
+ * 관측된 소스별 결과. ⚠️ **실행 전체 값을 소스별로 나누어 추정하지 않는다** (spec §3.C.15) —
+ * 수집하지 못한 값은 `null`이고 화면이 `Not recorded`로 읽는다.
+ */
+export type SurfaceOutcome = {
+  surfaceSlug: string;
+  status: "imported" | "partial" | "failed" | "superseded";
+  count: number | null;
+  reason: string | null;
+};
+
+/**
+ * 종류별 맥락 (spec §10 결정 2 — 여기서 닫는다).
+ *
+ * ⚠️ **`kind`로 판별하는 union이다.** DB는 `kind` 컬럼과 `payload` Json을 나눠 들지만, 쓰는 쪽은
+ * 언제나 둘을 함께 아는 자리에 있다 — 인자를 둘로 쪼개면 짝이 어긋난 조합이 타입으로 통과한다.
+ *
+ * ⚠️ **토큰 값·해시·초대 링크 원문은 어느 갈래에도 없다** (spec §3.C.14 · T5c). 있는 것은
+ * "발급/교체했다"는 사실뿐이고, 초대 대상은 **마스킹 라벨**이다.
+ */
+export type EventPayload =
+  | {
+      kind: "TRANSLATION";
+      surfaceSlug: string;
+      key: string;
+      locale: string;
+      before: string | null;
+      after: string | null;
+    }
+  | {
+      kind: "IMPORT";
+      source: ImportSource;
+      /** 실행이 **시작 시점에 잡은** 대상 소스 전부. 이후 소스를 더해도 과거 집합은 바뀌지 않는다. */
+      surfaceSlugs: readonly string[];
+      keys: number | null;
+      /** `Deferred`의 관측된 미전달 편집 수. 다른 결과에서는 `null`이다. */
+      pendingEdits: number | null;
+      surfaces: readonly SurfaceOutcome[];
+      errorCode: string | null;
+      refusal: NotStartedReason | null;
+    }
+  | {
+      /** ⚠️ **결과·파일 수·PR은 없다** (결정 1) — 조회가 `SyncRun`을 조인해 읽는다. 복제하지 않는다. */
+      kind: "PUBLISH";
+      surfaceSlugs: readonly string[];
+      refusal: NotStartedReason | null;
+    }
+  | {
+      kind: "SURFACE";
+      surfaceSlug: string;
+      adapter: string | null;
+      baseLocale: ValueChange | null;
+    }
+  | {
+      /** ⚠️ **원문 이메일이 아니라 마스킹 라벨이다** (sec-audit 발견 4). */
+      kind: "MEMBER";
+      targetLabel: string;
+      role: ValueChange | null;
+    }
+  | {
+      kind: "SETTINGS";
+      field: string;
+      value: ValueChange | null;
+    };
+
+/**
+ * `?kind=`의 값 일곱. **URL은 사용자가 읽는 자리라 화면의 낱말을 쓴다** — 저장 값(`EventKind`)과
+ * 갈리는 이유가 그것이다 (`KEY_STATES`와 같은 판정).
+ */
+export const LOG_KINDS = ["all", "translations", "imports", "publish", "sources", "members", "settings"] as const;
+
+export type LogKind = (typeof LOG_KINDS)[number];
+
+/** 화면 낱말 → 저장 값. `all`은 좁히지 않으므로 `null`이다. */
+export function eventKindOf(kind: LogKind): EventKind | null {
+  switch (kind) {
+    case "translations":
+      return "TRANSLATION";
+    case "imports":
+      return "IMPORT";
+    case "publish":
+      return "PUBLISH";
+    case "sources":
+      return "SURFACE";
+    case "members":
+      return "MEMBER";
+    case "settings":
+      return "SETTINGS";
+    default:
+      return null;
+  }
+}
