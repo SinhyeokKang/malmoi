@@ -34,3 +34,11 @@ it("오류 ID는 재렌더에도 유지되고 필드 설명과 장식 아이콘�
   await rerender(form("Too long"));
   expect(container.querySelector('[role="alert"]')?.id).toBe("name-error");
 });
+
+it("파일 선택의 보이는 버튼에 오류 설명과 invalid 상태를 전달한다", async () => {
+  const { FileInput } = await import("@/components/ui/file-input");
+  const { container } = await render(<><FileInput accept="image/png" onPick={() => {}} aria-describedby="upload-error" aria-invalid>Upload</FileInput><p id="upload-error">Unsupported image</p></>);
+  const button = container.querySelector("button");
+  expect(button?.getAttribute("aria-describedby")).toBe("upload-error");
+  expect(button?.getAttribute("aria-invalid")).toBe("true");
+});
