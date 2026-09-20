@@ -169,6 +169,12 @@ components/
                         ⚠️ **항목의 우측 클러스터가 shrink-0이다** — 실패 Alert를 그 안에 두면 좌측
                         본문이 truncate로 사라진 뒤 행이 패널 밖으로 밀린다. 그래서 연결/해제 버튼이
                         결과를 콜백으로 바깥에 넘긴다(onResult · onFailure)
+  logs/                 **활동 스트림의 화면 조각** (2026-09-20, logs-rework — DESIGN §6.68)
+                        glyph(칩 28 · 팔레트 일곱) · event-row(행 다섯 칸) · log-filters(`"use client"` —
+                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기)
+                        ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
+                        같은 모양이어야 한다. 그래서 파랑 한 자리도 이 파일에 있다(home-vocabulary가 센다)
+                        ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
                         클라이언트 상태가 0이다) · actions.tsx만 "use client"
