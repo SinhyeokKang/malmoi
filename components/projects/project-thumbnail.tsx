@@ -1,6 +1,6 @@
 import { Box } from "lucide-react";
+import { ImageTile } from "@/components/ui/image-tile";
 import { toneFill } from "@/components/ui/tone";
-import { cn } from "@/lib/utils";
 
 /**
  * 프로젝트를 가리키는 타일. 소비자는 목록 행·Home 머리 **둘**이고, 초대 카드는 같은 규격을 자기
@@ -24,17 +24,18 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **`object-contain`이다 — `avatar.tsx`의 `object-cover`와 다르다.** 프로젝트 이미지는 로고라
  * 잘리면 뜻이 사라지고, 사람 사진은 채워야 얼굴이 산다. 같은 유틸리티로 모으지 않는다.
+ *
+ * ⚠️ **깨진 URL의 폴백은 `ImageTile`이 든다** (malmoi#50) — `image`가 truthy라는 것은 "보인다"가
+ * 아니다. 폴백이 없으면 Blob이 사라진 프로젝트가 빈 테두리 상자로 남는다.
  */
 export function ProjectThumbnail({ name, src }: { name: string; src?: string | null }) {
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "border-border flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm border",
-        !src && ["text-white", toneFill(name)],
-      )}
+    <ImageTile
+      src={src}
+      className="border-border flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm border"
+      fallbackClassName={`text-white ${toneFill(name)}`}
     >
-      {src ? <img src={src} alt="" className="size-full object-contain" /> : <Box className="size-4" />}
-    </span>
+      <Box className="size-4" />
+    </ImageTile>
   );
 }

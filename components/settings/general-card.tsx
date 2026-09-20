@@ -6,6 +6,7 @@ import { deleteProjectImage, updateProjectName, uploadProjectImage } from "@/app
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
 import { Input } from "@/components/ui/input";
+import { ImageTile } from "@/components/ui/image-tile";
 import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
 import { toneFill } from "@/components/ui/tone";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -28,11 +29,16 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
   const caption = archived ? m.settings.archivedReason : pending ? m.settings.general.busy : imageError ?? m.settings.general.caption;
   return <PanelCard title={m.settings.general.title}>
     <PanelFacts>
-      <span className="text-foreground/40 text-xs">{m.settings.general.thumbnail}</span>
+      <span className="text-xs text-neutral-400">{m.settings.general.thumbnail}</span>
       <div className="flex items-center gap-4">
-        <span aria-hidden className={cn("border-border flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border", !image && ["text-white", toneFill(name)])}>
-          {image ? <img src={image} alt="" className="size-full object-contain" /> : <Box className="size-[26px]" />}
-        </span>
+        {/* 깨진 URL의 폴백은 목록·Home·초대와 같은 `ImageTile`이 든다 (malmoi#50). */}
+        <ImageTile
+          src={image}
+          className="border-border flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border"
+          fallbackClassName={`text-white ${toneFill(name)}`}
+        >
+          <Box className="size-[26px]" />
+        </ImageTile>
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2 [&_.animate-spin]:size-3.5">
             <FileInput aria-describedby="project-image-caption" aria-invalid={imageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {
@@ -57,7 +63,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       </div>
     </PanelFacts>
     <div className="border-border border-t"><PanelFacts>
-      <label htmlFor="project-name" className="text-foreground/40 text-xs">{m.settings.general.name}</label>
+      <label htmlFor="project-name" className="text-xs text-neutral-400">{m.settings.general.name}</label>
       <form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
         event.preventDefault(); if (archived || saving || !plan.ok) return;
         setError(null); setSaved(false);
@@ -71,7 +77,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       </form>
     </PanelFacts></div>
     <div className="border-border border-t"><PanelFacts>
-      <label htmlFor="project-address" className="text-foreground/40 text-xs">{m.settings.general.address}</label>
+      <label htmlFor="project-address" className="text-xs text-neutral-400">{m.settings.general.address}</label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Input id="project-address" className="bg-muted text-muted-foreground w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={slug} readOnly />
         <p className="text-muted-foreground min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs">{m.settings.general.addressHelp(slug)}</p>

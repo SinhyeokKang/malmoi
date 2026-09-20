@@ -49,3 +49,23 @@ it("Archived metadata controls are disabled with a reason", async () => {
   for (const b of container.querySelectorAll("button")) expect(b.disabled).toBe(true);
   expect(container.textContent).toContain("Restore this project");
 });
+
+/**
+ * **주소 힌트도 호스트를 말하지 않는다** (launch-readiness L7.5 — `naming-hint.test.tsx`와 같은 근거).
+ * `mal-moi.com`을 박으면 dev·로컬에서 지금 보고 있는 호스트와 다른 주소를 알려 준다. 힌트가 전하는 것은
+ * slug가 경로에 박히고 바뀌지 않는다는 것이라 호스트 없이도 참이다.
+ */
+it("The address hint names the path without a host", async () => {
+  const { container } = await render(view());
+  const text = container.textContent ?? "";
+  expect(text).toContain("/projects/acme");
+  expect(text).not.toMatch(/mal-moi\.com|vercel\.app|localhost/);
+});
+
+/** 같은 폴백이 설정 미리보기에도 있다 — 없으면 56px 빈 상자만 남는다 (malmoi#50). */
+it("A broken thumbnail URL falls back to the name tile", async () => {
+  const { container } = await render(view("https://store.public.blob.vercel-storage.com/projects/p/gone.webp"));
+  await act(async () => { container.querySelector("img")!.dispatchEvent(new Event("error")); });
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("svg.lucide-box")).not.toBeNull();
+});
