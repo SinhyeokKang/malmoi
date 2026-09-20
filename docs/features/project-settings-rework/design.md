@@ -7,7 +7,7 @@
 | push (`/api/push`) | ❌ | 적재 경로를 건드리지 않는다. 소스별 상태는 **이미 있는 컬럼**을 행 단위로 읽을 뿐이다 |
 | pull (`/api/pull`) | ❌ | — |
 | 편집 UI | ⚠️ 간접 | 이름·썸네일이 사이드바 스위처·목록·Home·초대 카드에 뜬다 — `revalidatePath` 범위가 그만큼 넓다 |
-| 온보딩 | ⚠️ | `FilesStep`의 `selection` 모드를 두 번째 소비자가 쓴다. **모드 자체는 안 바꾼다** |
+| 온보딩 | ⚠️ | `FilesStep`의 `selection` 모드를 재사용하고 `locked`·`pending`을 추가한다. 기존 호출부는 생략 시 동작을 유지한다(§7.1) |
 | 계정 (`/account`) | ⚠️ | 카드 프리미티브를 승격하면 그 화면이 함께 움직인다 (D1) |
 
 **적재의 강제 순서는 그대로다** — 설정 화면은 여전히 읽기와 메타데이터 쓰기만 한다. 유일한 예외가
@@ -26,15 +26,34 @@ I/O 없는 함수만. 이 목록이 곧 `/tdd interface`의 대상이다.
 | `planProjectImageDelete` | `lib/upload/image.ts` (기존 파일) | `string \| null` → Blob key `\| null` |
 | `planAddSources` | `lib/surfaces/plan-add.ts` (신규) | `{ picked: CandidateSummary[]; existing: { pathTemplate }[] }` → `{ add: […]; locked: […] }` — 이미 소스인 파일을 **체크+잠금**으로 가르는 판정 |
 | `summarizeAddResults` | `lib/surfaces/plan-add.ts` (신규) | `SurfaceAdded[]` → `{ surfaces: n; keys: n; failed: n; tone: "success" \| "warning" }` — **표면 성패가 아니라 적재의 부분 실패를 합산한다**(D4가 표면을 all-or-nothing으로 고정했다) |
-| `planWorkflowStale` | `lib/onboarding/workflow.ts` (기존 파일) | `surfaces: { slug, lastCommitSha }[]` → `string[]`(아직 CI가 안 닿은 소스 이름) |
+| `planWorkflowStale` | `lib/onboarding/workflow.ts` (기존 파일) | `surfaces: { slug, lastCommitSha }[]` → `string[]`(첫 적재가 확인되지 않은 소스 이름 — CI 최신성 증거는 아님(§3.6)) |
 | `formatSourceCounts` | `lib/surfaces/plan-add.ts` (신규) | `{ keys: number; locales: number }` → 행 보조 줄 문자열. **집계 자체는 순수가 아니다**(D5 — §3.5) |
 
-**설계 점검**: 여기가 비면 설계를 다시 본다는 게이트를 통과한다 — 여덟 개가 순수이고, 서버 쪽에
-남는 것은 전부 얇은 껍데기(Blob put/del · Prisma update · `addSurfaceFromSnapshot` 반복 호출)다.
+**설계 점검**: 여기가 비면 설계를 다시 본다는 게이트를 통과한다 — 아홉 개가 순수이고, 서버 쪽에
+남는 것은 전부 얇은 껍데기(Blob put/del · Prisma update · 단일 tx를 여는 `addSurfacesFromSnapshot` 호출)다.
 
 ⚠️ **`planSurfaceImportStatus`가 이 기능의 심장이다.** 지금 `page.tsx`가 그 판정을 **인라인으로**
 한다 — `surfaces.map(s => s.lastImportError).find(isImportFailureCode)` + `failing({...})`. 그것을
 행 단위 순수 함수로 올리는 것이 C7의 전부이고, 나머지는 그 반환값을 그리는 일이다.
+
+### 1.1 소스 적재 상태의 판정표
+
+위에서 먼저 맞는 행을 택한다. 오류는 기존 `isImportFailureCode`로 인정된 코드만 실패로 취급한다.
+
+| 입력 조건 | state | canRetry | at |
+|---|---|---|---|
+| `lastImportStartedAt !== null` (SHA·이전 오류와 무관) | `importing` | false | `lastImportStartedAt` |
+| 실행 중 아님 + 인식된 오류 + SHA 없음 | `failed-first` | true | `lastImportFailedAt` |
+| 실행 중 아님 + 인식된 오류 + SHA 있음 | `failed-after` | false | `lastImportFailedAt` |
+| 실행 중 아님 + 인식된 오류 없음 + SHA 없음 | `not-imported` | true | null |
+| 실행 중 아님 + 인식된 오류 없음 + SHA 있음 | `imported` | false | `lastCommitAt` |
+
+시각 컬럼이 null이면 `at`도 null이며 현재 시각으로 메우지 않는다. 미지의 오류 코드는 없는 오류와
+같이 판정한다. `partial-import`도 인식된 오류다 — SHA가 있으면 `failed-after`로 부분 실패를 남긴다.
+`canRetry`는 **표면 상태만의 가능성**이다. 실제 버튼은 여기에 설치 연결이 있는
+`planSurfaceReadiness === "awaiting_first_sync"`, 프로젝트·표면 비보관, 클라이언트 pending 아님을
+함께 요구한다. 서버도 대상 표면 인가·readiness·보관 검사를 유지한다. 라벨·상태별 표현은
+**캔버스 확인 필요**다. `planProjectReadiness`의 활성 표면 `some` 및 설치 우선 판정은 유지한다.
 
 ## 2. 스키마 변경 — **additive 하나**
 
@@ -81,12 +100,31 @@ EXIF 방향 적용 후 메타데이터 소멸) / `IMAGE_MAX_BYTES` 3 MB. 다른 
 3. **키 접두가 `projects/<projectId>/`다.** ⚠️ **`lib/upload/store.ts`의 `listImages`가
    `prefix: "avatars/"`로 하드코딩돼 있다** — 고치지 않으면 `pnpm smoke:blob`의 고아 탐지가 프로젝트
    썸네일을 **영영 못 본다.** 그 함수를 `listImages(prefix)`로 넓히고 스모크가 둘 다 훑는다.
+   **목록만 넓히면 충분하지 않다.** 스모크는 기존 User.image 참조셋에 `Project.image` 참조셋을 더하고,
+   프로젝트 객체는 `planProjectImageDelete`로 판정한다. 사용 중 URL은 후보에서 제외하고 미참조 URL만
+   고아 후보로 보고한다(자동 삭제 없음). 아바타의 삭제 규칙은 그대로 둔다. 이 배선·실 API 검증은
+   `Project.image` 마이그레이션과 클라이언트 생성 **뒤**에 수행한다.
 
 **순서는 계정 쪽과 같다** — 네트워크 I/O를 트랜잭션 밖에 두고, `SELECT … FOR UPDATE`로 같은 행의
 읽기·쓰기를 직렬화하고, **이전 이미지는 커밋 뒤에만** 지운다(롤백되면 그 URL이 계속 쓰여야 한다).
 
 ⚠️ **`next.config.ts`의 `bodySizeLimit`이 4 MB로 이미 올라가 있다** — 3 MB 상한이 프레임워크보다
 먼저 걸리지 않는 것이 우리 거부 사유가 화면에 닿는 조건이다(`lib/upload/image.ts` 주석).
+
+**C5는 저장만으로 끝나지 않는다.** 다음 네 읽기 경로에 `Project.image`를 싣는다.
+
+| 화면 | 조회·전달·렌더 경로 |
+|---|---|
+| 설정 미리보기 | `settings/page.tsx`의 Project select → General 카드의 미리보기 props |
+| 프로젝트 목록 | `lib/keys/query.ts`의 목록 조회·`ProjectListRow` → `components/projects/project-list.tsx` → `ProjectThumbnail.src` |
+| Home 머리 | `app/(edit)/projects/[slug]/page.tsx`의 Project select → `components/home/actions.tsx`의 `HomeTitle` props → `ProjectThumbnail.src` |
+| 초대 카드 | `app/invite/[token]/page.tsx`의 초대 Project select → `components/invite/project-card.tsx`의 `InviteProjectCard` 이미지 prop·렌더 |
+
+초대는 현재 `ProjectThumbnail`을 쓰지 않고 `Box`를 직접 그린다. 이미지 URL이 없으면 기존 표시를
+유지하며, 이미지가 있는 경우의 배치·치수는 **캔버스 확인 필요**다. 기존 초대 조회·표시 조건을 유지한다.
+업로드·교체·삭제 성공 뒤에는 `revalidatePath("/", "layout")`로 네 경로의 캐시를 갱신한다.
+이는 다른 브라우저에 실시간 갱신을 보내는 계약이 아니라 **다음 조회가 최신 URL 또는 null을 받는 계약**이다.
+조회·DTO는 Codex가, 화면 props·렌더는 Claude Code가 맡고 네 화면의 연결 검증으로 C5를 닫는다.
 
 ### 3.2 이름 — `updateProjectName`
 
@@ -108,11 +146,14 @@ updateProjectName(raw: { slug: string; name: string }):
 ```ts
 addSurfaces(raw: { slug: string; picks: { adapter: string; pathTemplate: string; baseLocale: string }[] }):
   Promise<{ ok: true; results: SurfaceAdded[]; yaml: string }
-        | { ok: false; error: OnboardError | AccessError | "invalid input";
+        | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input";
             conflicts?: { path: string; surfaceSlugs: string[] }[] }>
 
 type SurfaceAdded = { pathTemplate: string; surfaceSlug: string; count: number; failed: number }
 ```
+
+`AddSurfaceErrorCode`는 `lib/surfaces/create.ts`의 기존 계약이다. `path-conflict`·`repo-replaced`를
+포함해 경계 오류를 보존하고, 충돌에는 `conflicts`를 싣는다. 오류 union·충돌 목록의 반환을 테스트한다.
 
 **하나라도 실패하면 아무것도 안 생긴다.** 사용자 결정(2026-09-20)이고, 화면이 부분 성공을 그릴 일이
 없어진다. 대신 **트랜잭션 경계가 넓어지므로** 아래 넷이 이 결정의 대가다.
@@ -122,16 +163,36 @@ type SurfaceAdded = { pathTemplate: string; surfaceSlug: string; count: number; 
 커밋되지 않은 Surface를 기다렸다."* 원인은 **런타임 client 오용**(tx 안에서 바깥 `prisma`를 썼다)이고,
 그 항목의 재발 방지 grep이 `rg -n '\$transaction.*in|in.*\$transaction' lib app --glob '*.ts'`다.
 표면이 N개면 그 오용의 자리가 N배이므로, **`addSurfacesFromSnapshot`은 `tx` 하나를 끝까지 넘긴다.**
+이 grep은 주석·무관한 식별자도 잡으므로 결과 0건을 게이트로 삼지 않는다. 원자성은 격리 PG에서
+둘째 표면·마지막 쓰기·timeout에 실패를 주입해 검증한다. 신규 Surface·Locale·StringKey·Translation·
+KeyRef가 모두 0건이고 기존 표면 데이터는 불변이어야 한다. 겹치는 경로를 추가하는 동시 요청은
+하나만 성공하고 다른 요청은 `path-conflict`로 끝나는지도 단언한다.
 
 ⚠️ **2. 네트워크 I/O를 전부 tx 밖으로 뺀다.**
-`openRepoReader` → `snapshot(baseBranch)` → 표면마다 `templatePaths` → `readFiles` →
-`planConfirmedFormat`까지가 **tx 이전**이다. tx 안에 남는 것은 검증된 blob 맵 N개의 DB 쓰기뿐이다.
+`openRepoReader` → `snapshot(baseBranch)` → 표면마다 `templatePaths` → 대상 경로 합집합의 예산 검사 →
+`readFiles` 한 번 → 표면별 `planConfirmedFormat`까지가 **tx 이전**이다. 내려받은 파일은 표면별
+대상 경로로 나눠 전달하고, 같은 경로를 반복 다운로드하지 않는다. tx 안에 남는 것은 검증된 blob 맵
+N개의 DB 쓰기뿐이다.
 안 그러면 GitHub 지연이 그대로 트랜잭션 보유 시간이 된다.
 
-⚠️ **3. Prisma 트랜잭션 타임아웃을 명시한다.**
-예산이 표면당 파일 200 · 합계 10MB이므로 N개면 그만큼 곱해진다. `$transaction`의 `timeout`을
-호출부에서 올리고(현행 `addSurfaceFromSnapshot`이 쓰는 값 기준), **상한을 넘는 선택 수를 화면이 막지
-않는다** — 서버가 `resource-limit`으로 거부하고 사유가 모달에 선다.
+⚠️ **3. 요청 전체 예산과 Prisma 트랜잭션 timeout을 고정한다.**
+기존 `lib/onboarding/budget.ts`의 **파일 200개·합계 10,000,000바이트·파일당 2,000,000바이트**를
+표면마다 새로 부여하지 않고 **요청 전체 대상 경로의 합집합**에 적용한다. `readFiles`를 한 번 호출해
+`checkDownloadBudget`이 첫 blob 요청 전에 전체 트리 size를 검사하고, `checkContentBudget`의 실제
+바이트 누적도 요청 전체에서 이어지게 한다. 크기를 알 수 없는 파일의 거부 규칙도 유지한다.
+합계 초과는 `resource-limit`이며 트랜잭션을 열지 않는다. 모달은 선택을 유지하고 거부 사유를 보인다.
+별도 선택 개수 제한을 화면에 만들지 않는다 — 서버가 전체 파일·바이트 예산으로 판정한다.
+
+`$transaction`은 현행 상한인 **`maxWait: 10_000`, `timeout: 30_000`**을 명시하며 N배 늘리지 않는다.
+timeout으로 중단되면 전체 쓰기를 롤백한다. 호출 페이지의 `maxDuration = 60`은 별도 실행 한도다.
+DB timeout이 다운로드 시간까지 제한하거나 60초 안의 응답을 보장하는 것은 아니며, GitHub 지연을
+트랜잭션 timeout 증가로 해결하지 않는다. 이 예산의 대가는 **개별 추가는 가능해도 합친 요청은
+거부될 수 있다는 것**이다. D4의 한 요청 안 all-or-nothing은 그대로 유지한다.
+
+검증은 각 소스가 개별 예산 안인 합계 초과 입력, 200/201파일·10MB 경계, 알 수 없는 size,
+트리 size보다 실제 내용이 커 누적 상한을 넘는 입력을 포함한다. 다운로드 전 거부는 blob 호출 0회·
+DB 쓰기 0건을, 실제 바이트 초과는 DB 쓰기 0건을 단언한다. 격리 PG에서는 timeout 실패 시
+신규 데이터 0건·기존 데이터 불변을 확인한다.
 
 ⚠️ **4. 경로 충돌은 `Project` 행 잠금 안에서 본다.**
 같은 항목의 재발 방지가 *"Project 잠금을 빼는 mutation은 안내 가능한 path-conflict 대신 P2002를 내며
@@ -140,12 +201,14 @@ red다"*이다. N개를 한 tx에서 만들면 **선택 안에서 서로 충돌�
 확장되는 경우는 tx 안에서 잡힌다).
 
 ⚠️ **불변식 9는 그대로 산다.** 표면 **생성**은 all-or-nothing이지만 **적재**는 아니다 —
-`SurfaceAdded.failed`는 "그 표면에서 읽지 못한 파일 수"이고 0이 아니면 결과 문구가
+`SurfaceAdded.failed`는 "그 표면에서 읽지 못하거나 중복으로 제외된 항목 수"이고 0이 아니면 결과 문구가
 `ingestHeadline`과 같은 형으로 warning이다. `summarizeAddResults`는 그 축을 합산하는 함수로 남는다
 (표면 성패를 세는 함수가 아니다).
 
 ⚠️ **기존 `addSurface`는 지운다** — 소비자가 `components/onboarding/add-surface.tsx` 하나이고 그
-화면이 모달로 대체된다. 남기면 같은 일에 Action이 둘이 된다.
+화면이 모달로 대체된다. **삭제 시점은 마지막 소비자를 제거하는 T5.6과 같은 커밋**이다.
+T3.3은 새 API를 추가하되 기존 Action·결과 타입과 그 구현 의존성을 유지해 서버 인계 시 기존 UI가
+타입 검사·테스트를 통과하게 한다. 소비자 제거 뒤 기존 API만을 위한 고아를 함께 정리한다.
 
 ### 3.4 소스별 첫 적재 — `runFirstIngest`에 `surfaceSlug` 추가
 
@@ -165,8 +228,7 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
 
 ### 3.5 소스 행의 키·언어 수 (D5 확정 — 그린다, 성능을 잰다)
 
-캔버스 `1a`대로 행마다 `{keys} keys · {locales} languages`를 그린다. ⚠️ **이 항목 하나가 이 기능의
-유일한 성능 위험이다** — POSTMORTEM 2026-09-18이 같은 모양의 관계 필터 count에서 **적재 직후 5.5초**를
+캔버스 `1a`대로 행마다 `{keys} keys · {locales} languages`를 그린다. ⚠️ **이 항목은 설정 조회의 성능 위험이다** — POSTMORTEM 2026-09-18이 같은 모양의 관계 필터 count에서 **적재 직후 5.5초**를
 냈다(Prisma LEFT JOIN × 낡은 통계).
 
 **그래서 셋을 강제한다:**
@@ -177,11 +239,28 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
 2. **`EXPLAIN`을 `ANALYZE` 전과 후로 둘 다 잰다.** *"대량 적재 직후가 실제로 요청이 오는 순간이다"* —
    같은 항목의 재발 방지 문장 그대로다. 측정은 `pnpm test:projects:postgres`가 도는 격리 PG에서.
 3. **느리면 그 줄을 내리는 것이 1차 대응이다.** 비정규화 컬럼(`TranslationSurface.keyCount` 등)은
-   적재 경로가 그것을 써야 하므로 **이 기능의 범위 밖이고**, 필요해지면 별도 판정이다.
+   적재 경로가 그것을 써야 하므로 **이 기능의 범위 밖이고**, 필요해지면 별도 판정이다. 줄을 내린 상태는 C8c 완료가 아니라 **성능 검증 미완료**로 보고한다.
+
+**측정 절차와 합격선**: 구현 검증용 기준으로 격리 PG의 집계 SQL 실행시간 **500ms 이하**를 둔다.
+표면 1개와 5개를 각각 준비하고 표면당 활성 키 20,000개·활성 로케일 200개·번역 200,000행에
+orphaned 키·로케일과 빈 표면, 다른 프로젝트 데이터를 섞는다. 집계 정답은 따로 단언한다.
+각 규모에서 새로 적재한 fixture로 5회 반복하며 매회 `ANALYZE` 전후의
+`EXPLAIN (ANALYZE, BUFFERS)`를 남긴다. 두 조건 모두 최대 실행시간이 합격선 이하여야 한다.
+사전 통계가 자동 갱신돼 전후 차이가 지워지지 않도록 격리 fixture의 통계 상태도 기록한다.
+PG 버전·실행 환경·데이터량·실행시간·버퍼 사용량을 함께 남기고, 관계 없는 API 왕복·렌더 시간을
+SQL 시간으로 섞지 않는다. 이 수치는 기존 성능 실측치가 아니라 **이번 구현의 검증 기준**이다.
 
 ⚠️ **`orphaned`를 뺀 수다** — `StringKey.orphaned`·`Locale.orphaned`는 export에서 빠지므로 "이 소스가
 지금 담고 있는 것"이 아니다. 목록·Home의 기존 집계와 **같은 술어**를 써야 한다(갈리면 같은
 프로젝트가 화면마다 다른 수를 말한다).
+
+### 3.6 워크플로 근사의 한계 (D8 유지)
+
+`planWorkflowStale`는 `lastCommitSha === null`만 본다. 소스 추가의 서버 첫 적재도 SHA를 채우므로,
+**CI YAML에 아직 등록하지 않은 소스가 결과에서 빠질 수 있다.** 빈 목록은 워크플로 최신성이나
+CI 연결 완료를 증명하지 않는다. 소스 추가 성공 뒤 YAML 반영 안내는 이 결과와 무관하게 유지한다.
+테스트는 첫 적재 성공·CI 미등록 상황에서 결과가 비고도 YAML 안내가 남음을 단언한다.
+실제 안내 문구·배치는 **캔버스 확인 필요**다. 리포 파일을 읽는 경로는 추가하지 않는다.
 
 ## 4. 새 환경변수
 
@@ -214,20 +293,19 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
    페이지 수준 `?e=`는 **`PanelHeader` 안**에 남긴다(고정, 스크롤 안 함). 카드 안 실패만 본문이다.
 3. **2026-09-03 — 조회 실패를 부재로 접으면 정보가 조용히 사라진다.**
    `openPrUrl` 삼상태를 그대로 든다(`string` / `null` / `undefined`). 새 자리 하나가 같은 부류다 —
-   **썸네일 URL이 `null`인 것과 이미지 로드가 실패한 것**은 다르고, 후자는 `ProjectThumbnail`이
-   폴백으로 접는다(현행 동작 유지, 늘리지 않는다).
+   **썸네일 URL이 `null`인 것과 이미지 로드가 실패한 것**은 다르고, 현행 `ProjectThumbnail`은 URL이 없을 때만
+   폴백을 그린다. 로드 실패를 잡는 `onError` 처리는 없으며, 이번 범위에 새 실패 폴백을 추가하지 않는다.
 4. **2026-09-13 — `malmoi` / `Malmoi`가 한 화면에 같이 섰다.** 같은 사전의 다른 절이라 리뷰로 안
    걸렸다. 신규 문구가 20개 넘게 들어오므로 `brand-spelling.test.ts`·`no-korean-ui.test.ts`가 계속
    전수로 돈다.
 5. **2026-09-18 — 관계 필터 count가 대량 적재 직후 5.5초였다.** 캔버스 `1a`의 소스 행이 "키·언어"
    수를 보인다. ⚠️ **새 관계 필터 count를 만들지 않는다** — `lib/keys/query.ts`의 기존 집계를
-   재사용하거나, 재사용할 수 없으면 **그 숫자를 안 그린다.** 그 항목의 grep이 이미
+   활용한 표면별 집계를 만들고 §3.5 기준으로 검증한다. 성능 미달 시 줄을 내리고 미완료로 보고한다. 그 항목의 grep이 이미
    `lib/keys/query.ts:413·415·452·518·524·535`를 "적재 직후 첫 화면이 느릴 수 있는 후보"로 적어 뒀다.
 6. **2026-09-17 — 같은 pending이 화면마다 다르게 보였다 / 2026-09-19 — 꺼진 Radix Select가 마우스로
    열렸다.** 모달 안에 `Checkbox`(Radix)가 다수 서고 확정 중에 잠긴다. ⚠️ **`fieldset disabled`만으로
-   Radix Portal 컨트롤이 안 잠긴다**(POSTMORTEM 2026-09-14) — `FilesStep`이 `selection` 모드에서
-   그것을 어떻게 다루는지 확인하고, `add-surface.tsx`의 현행 `<fieldset disabled={pending}>`를
-   그대로 복제하지 않는다.
+   Radix Portal 컨트롤이 안 잠긴다**(POSTMORTEM 2026-09-14) — §7.1의 `pending`을 내부 컨트롤에
+   직접 전달한다. `add-surface.tsx`의 현행 `<fieldset disabled={pending}>`만 복제하지 않는다.
 
 추가로 **2026-09-15 🔁 (형제 프리미티브 둘을 옮기며 한쪽 소비자만 셌다)** — D1의 카드 승격이 정확히
 그 부류다. 옮기기 전에 소비자를 **명령으로 다시 센다.**
@@ -237,15 +315,37 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
 | 대상 | 무엇 | 소비자 |
 |---|---|---|
 | `components/ui/panel-card.tsx` (신규) | `AccountCard`·`AccountRows`·`AccountRow`·`AccountFacts`를 `components/account/account-section.tsx`에서 승격 + 개명(`PanelCard`·`PanelRows`·`PanelRow`·`PanelFacts`) | `/account` 4·3·3·1 + 이 화면. **DESIGN §6.67이 "중복이 셋이 되면 그때 뽑는다"고 적었고 이 화면이 셋째다** |
-| `components/ui/card.tsx` | **삭제.** 남는 소비자가 `locales/page.tsx` 하나이고 그것도 `PanelCard`로 옮긴다 | 2 → 0 |
+| `components/ui/card.tsx` | **최종 삭제.** T4.3에서 locales를 먼저 옮기고, 설정의 마지막 소비자를 옮기는 Phase 5 커밋에서 삭제한다 | 2 → 0 |
 | `components/ui/alert.tsx` | `inset` boolean prop 추가 — 테두리·radius 없이 전폭 · padding 13/16 · 위 디바이더. 배경만 danger `destructive/4%` / warning `amber-50` | 새 소비자 둘(이 화면 · `/account`). **variant를 늘리지 않는다** — `danger`×`inset` 조합이 필요하므로 축이 따로여야 한다 |
 | `components/ui/form-group.tsx` | `error`에 아이콘 14 추가 | 기존 소비자 전부(먼저 센다) |
-| `components/onboarding/steps/files.tsx` | **안 바꾼다.** `selection` 모드가 이미 있다 | 1 → 2 |
+| `components/onboarding/steps/files.tsx` | `selection` 모드 재사용 + `selection.locked`·`pending` 최소 확장(§7.1) | 기존 단일·다중 선택 소비자 + Add sources 모달 |
 | `components/onboarding/modal.tsx` | **안 바꾼다.** 1024는 `panelClassName`으로 준다 | — |
 | `components/projects/project-thumbnail.tsx` | **안 바꾼다.** `src`를 이미 받고 테두리·`object-contain`·`rounded-sm`이 2026-09-17/09-20에 확정됐다 | — |
 | `components/github-account.tsx` | 설정 화면의 import만 끊는다. **파일은 남는다** (`/account`가 쓴다) | 2 → 1 |
 | `components/settings/repository-form.tsx` | 실패를 `FormGroup error`로 | — |
 | `components/onboarding/add-surface.tsx` | **삭제** + `app/(edit)/projects/[slug]/surfaces/new/page.tsx` 처리는 D3 | — |
+
+`PanelCard`는 locales의 **제목 없는 사용**을 지원한다. 제목이 없으면 헤더·빈 h2·디바이더·
+끊어진 `aria-labelledby`를 만들지 않고 그릇만 렌더한다. locales의 FormGroup 라벨·help를 중복하지
+않으며, 제목 있는 설정 카드 다섯은 이름 있는 section을 유지한다. D1·D2의 승격·동반 전환은 유지한다.
+
+### 7.1 `FilesStep`의 기존 소스 잠금 · 확정 중 잠금
+
+현행 `selection`은 `checked`·`conflicts`·`onToggle`만 받는다. 기존 모드를 유지하고 다음 둘을 추가한다.
+
+- `selection.locked?: ReadonlySet<number>` — 후보 배열의 인덱스다(`checked`와 같은 축). 생략하면
+  잠긴 항목이 없다. 기존 소스 판정은 `planAddSources`에서 받고, 해당 체크박스는 **checked + disabled**로
+  렌더한다. 토글 콜백도 실행하지 않는다. 잠긴 항목은 신규 추가 요청의 `picks`에서 제외한다.
+- `pending?: boolean` — `FilesStep` 최상위 prop이며 기본값은 `false`다. 확정 중에는 Checkbox·RadioGroup·
+  후보 미리보기 버튼·재탐지 버튼·수동 입력·내부 Select에 비활성을 직접 전달한다. 내부 하위 컴포넌트까지
+  전달하고, 이미 열린 Select의 항목으로도 값을 바꿀 수 없도록 처리한다. `fieldset disabled`에 의존하지 않는다.
+
+기존 소스의 미리보기는 `pending`이 아닐 때 계속 열 수 있다 — 잠금은 **추가 선택**에만 적용된다.
+실패로 `pending`이 풀리면 선택을 유지하고, 기존 소스의 체크 잠금만 남긴다. 잠금 표시의 구체적 배치·
+문구는 **캔버스 확인 필요**다.
+
+검증은 기존 단일 선택과 온보딩 다중 선택의 동작 유지, 잠긴 항목의 체크·비활성 상태와 마우스·키보드
+토글 차단, 확정 중 Portal Select를 포함한 입력 차단, 실패 뒤 선택 유지·잠금 복구를 각각 단언한다.
 
 ## 8. 라우트 · IA 영향
 
@@ -258,7 +358,7 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
 
 ## 9. 접근성 (핸드오프 프롬프트 §7)
 
-- 카드 넷 전부 `<section aria-labelledby>`. ⚠️ 없으면 Chrome이 `generic`으로 접어 **접근성 트리에서
+- 활성 설정 카드 다섯 전부 `<section aria-labelledby>`. ⚠️ 없으면 Chrome이 `generic`으로 접어 **접근성 트리에서
   카드가 통째로 사라진다**(POSTMORTEM 2026-09-15 #2). 검사는 **개수를 센다** — "region이 있다"만
   세면 하나가 이름을 잃어도 지나간다(POSTMORTEM 2026-09-14 #1).
 - 체크박스 목록의 `aria-label`은 `m.newProject.files.include(pathTemplate)` — `FilesStep`이 이미 준다.
@@ -268,7 +368,10 @@ runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngest
   아무것도 안 재고 있었다"*이므로, 복귀 단언은 `members-focus.test.tsx`의 관용구를 따른다.
 - 확인 Dialog의 초기 포커스는 **[Cancel]**.
 - pending은 `aria-busy` + 스피너 14, **라벨을 바꾸지 않는다**(폭이 흔들린다).
-- 진행 줄 `role="status"` · 실패 줄은 `Alert danger`가 이미 `role="alert"`. ⚠️ **live 영역의 보장은
+- 인라인 필드 오류도 `role="alert"`와 안정된 오류 ID를 제공한다. 이름·브랜치 입력은
+  `aria-invalid`와 `aria-describedby`로 오류에 연결하고, 업로드 거부는 업로드 컨트롤에서 설명을
+  참조하게 한다. 장식 오류 아이콘은 `aria-hidden`이다. 카드 Alert의 역할만으로 대체하지 않는다.
+- 진행 줄 `role="status"` · 카드 실패 줄은 `Alert danger`가 이미 `role="alert"`. ⚠️ **live 영역의 보장은
   "내용이 바뀌면 알린다"까지다**(`alert.tsx` 주석) — 통째로 들어왔다 사라지는 자리는 첫 내용이 안
   읽힐 수 있고, 그것을 고치려 빈 래퍼를 세우면 `danger`가 assertive를 잃는다. **약속하지 않는다.**
 
