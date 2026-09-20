@@ -31,12 +31,15 @@ export function InviteProjectCard({
         그쪽은 `size-7 rounded-sm`이고 여기가 `rounded-lg`(12)였다). 같은 대상을 가리키는 표식이
         화면마다 다른 모서리를 가지면 그것이 같은 것이라는 신호가 죽는다. DESIGN §6.4의 표도 8을 적었다.
 
+        ⚠️ **테두리(`border-border`)도 `ProjectThumbnail`·`Avatar`와 같은 값이다** (2026-09-20 사용자) —
+        같은 대상을 가리키는 타일이 화면마다 윤곽 유무가 갈리면 모서리가 갈리는 것과 같은 손실이다.
+
         ⚠️ **`overflow-hidden`도 목록과 같다** — 프로젝트 이미지가 생기는 날 이 배경이 그대로 그
         이미지의 자리가 된다(`app/(edit)/projects/page.tsx`의 같은 주석).
       */}
       <span
         aria-hidden
-        className={`flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white ${toneFill(name)}`}
+        className={`border-border flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border text-white ${toneFill(name)}`}
       >
         <Box className="size-4" />
       </span>

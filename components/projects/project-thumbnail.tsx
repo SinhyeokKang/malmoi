@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
  * (§6.4 — 그쪽은 2026-09-12에 12에서 8로 내려왔다). **세 화면을 한 값으로 모으는 쪽을 골랐다.**
  * DESIGN §6.63의 이탈 표가 그 판정의 정본이다.
  *
+ * ⚠️ **테두리가 이미지·폴백 두 갈래에 똑같이 붙는다** (2026-09-20 사용자, `Avatar`와 같은 판정) —
+ * 흰 배경 로고는 윤곽이 없으면 타일이 사라지고, 이미지에만 붙이면 폴백이 일어난 순간 같은 `size-7`이
+ * 달라 보인다. `box-sizing: border-box`라 28px은 안 움직인다.
+ *
  * ⚠️ **`object-contain`이다 — `avatar.tsx`의 `object-cover`와 다르다.** 프로젝트 이미지는 로고라
  * 잘리면 뜻이 사라지고, 사람 사진은 채워야 얼굴이 산다. 같은 유틸리티로 모으지 않는다.
  */
@@ -26,7 +30,7 @@ export function ProjectThumbnail({ name, src }: { name: string; src?: string | n
     <span
       aria-hidden
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm",
+        "border-border flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm border",
         !src && ["text-white", toneFill(name)],
       )}
     >

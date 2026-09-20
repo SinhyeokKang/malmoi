@@ -28,6 +28,12 @@ export function Avatar({
   className?: string;
 }) {
   const shapeClass = shape === "circle" ? "rounded-full" : "rounded";
+  /**
+   * ⚠️ **사진과 이니셜이 같은 테두리를 쓴다** (2026-09-20 사용자) — 흰 배경에 가까운 사진은
+   * 윤곽이 없으면 경계가 사라지고, 둘이 다른 테두리를 가지면 폴백이 일어난 순간 크기가 달라 보인다.
+   * `box-sizing: border-box`라 `size`는 그대로고 안쪽만 1px 줄어든다.
+   */
+  const borderClass = "border border-border";
   const style = { width: size, height: size };
   /**
    * ⚠️ **실패를 불리언이 아니라 그 `src`로 기억한다** (malmoi#50) — 사진을 바꾸면 새 URL은 다시 시도해야
@@ -41,7 +47,7 @@ export function Avatar({
     // ⚠️ **`ref`가 한 번 더 본다** — 하이드레이션 전에 끝난 실패는 `onError`로 안 온다(서버가 그린 `/account`).
     return <img src={src} alt="" style={style} onError={() => setFailedSrc(src)}
       ref={(img) => { if (img?.complete && img.naturalWidth === 0) setFailedSrc(src); }}
-      className={cn(shapeClass, "shrink-0 object-cover", className)} />;
+      className={cn(shapeClass, borderClass, "shrink-0 object-cover", className)} />;
   }
   return (
     <span
@@ -58,6 +64,7 @@ export function Avatar({
         size === 56 ? "text-xl" : "text-xs",
         toneFill(name),
         shapeClass,
+        borderClass,
         className,
       )}
     >
