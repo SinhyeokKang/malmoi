@@ -95,6 +95,8 @@ const CLIENT_LIB_FILES = [
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
   "lib/compare.ts",
+  // Settings recovery now owns its card notice; this leaf only assembles public URLs.
+  "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
@@ -118,6 +120,11 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
   "lib/projects/import-failure.ts",
+  // Settings share these pure status/name/selection planners; no server dependencies.
+  "lib/projects/plan.ts",
+  "lib/import/surface-status.ts",
+  "lib/onboarding/readiness.ts",
+  "lib/surfaces/plan-add.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
   "lib/publish/warnings.ts",
