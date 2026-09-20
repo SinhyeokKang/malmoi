@@ -88,7 +88,7 @@ export function EventDetail({
               </span>
             </span>
           </Field>
-          {fields(row, archived).map(([label, value]) => (
+          {fields(row).map(([label, value]) => (
             <Field key={label} label={label}>
               {value}
             </Field>
@@ -126,6 +126,7 @@ export function EventDetail({
           </div>
         )}
 
+        {/* ⚠️ **보관 중에는 야간 절이 빠진다** — 다음 야간 실행이 없으므로 그 문장이 거짓이 된다. */}
         {row.result === "failed" && (
           <Note tone="danger" body={planArchivedReason(row.run?.errorCode ?? "", archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
@@ -203,8 +204,13 @@ function surfaceWord(status: "imported" | "partial" | "failed" | "superseded"): 
   return m.logs.status.failed;
 }
 
-/** 종류가 정하는 필드들. **빈 칸을 만들지 않는다** — 값이 없으면 줄 자체를 안 그린다. */
-function fields(row: EventRow, archived: boolean): [string, ReactNode][] {
+/**
+ * 종류가 정하는 필드들. **빈 칸을 만들지 않는다** — 값이 없으면 줄 자체를 안 그린다.
+ *
+ * ⚠️ **보관 여부를 받지 않는다** — 그 분기는 실패 **사유 문장** 하나에만 걸리고(`planArchivedReason`),
+ * 여기까지 끌고 오면 안 쓰는 인자가 "빠뜨린 갈래"처럼 읽힌다.
+ */
+function fields(row: EventRow): [string, ReactNode][] {
   const out: [string, ReactNode][] = [];
   const payload = row.payload;
   if (row.kind === "PUBLISH") {
@@ -254,8 +260,6 @@ function fields(row: EventRow, archived: boolean): [string, ReactNode][] {
   if (payload?.kind === "SETTINGS" && payload.value !== null) {
     out.push([m.logs.detail.labels.effect, `${payload.value.before ?? m.logs.none} → ${payload.value.after ?? m.logs.none}`]);
   }
-  // 보관된 프로젝트에서는 야간 절이 빠진다 — 그 판정이 사유 문장과 같은 자리에 선다.
-  void archived;
   return out;
 }
 
