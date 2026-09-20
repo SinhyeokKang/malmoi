@@ -10,7 +10,7 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
-import { CopyButton } from "./copy-button";
+import { CopyButton } from "@/components/onboarding/copy-button";
 
 /**
  * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.

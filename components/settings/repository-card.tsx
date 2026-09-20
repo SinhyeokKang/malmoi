@@ -23,7 +23,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
   const recovery = account.status !== "ok" || account.login === null;
   const notice = health.status === "repo-moved" ? <Alert inset variant="warning">{m.settings.repository.health.moved(<span className="text-mono">{health.fullName}</span>)}</Alert>
     : disconnected || health.status === "repo-replaced" ? <Alert inset variant="danger">{m.settings.repository.health[health.status]}
-      {health.status === "app-uninstalled" && installUrl && <> <a className="underline focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
+      {health.status === "app-uninstalled" && installUrl && <> <a className="text-blue-600 underline focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
     </Alert> : undefined;
   const status = health.status === "ok" || health.status === "repo-moved" ? m.settings.repository.health.ok : disconnected ? m.settings.repository.disconnected : health.status === "not-connected" ? m.settings.repository.notConnected : health.status === "unknown" ? m.settings.repository.unknown : null;
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : health.status === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;

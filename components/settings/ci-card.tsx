@@ -4,7 +4,7 @@ import { OnboardingModal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { FileCode2, ChevronRight } from "lucide-react";
 import { PanelCard } from "@/components/ui/panel-card";
-import { PushTokenPanel } from "@/components/onboarding/push-token-panel";
+import { PushTokenPanel } from "./push-token-panel";
 import { m } from "@/lib/i18n";
 export function CiCard({ slug, archived, stale, children }: { slug: string; archived: boolean; stale: readonly string[]; children: ReactNode }) {
   const [open, setOpen] = useState(false);
