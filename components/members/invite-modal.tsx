@@ -64,12 +64,21 @@ export function InviteModal({
 
   /**
    * ⚠️ **거부되면 누른 제출 버튼으로 포커스를 돌려준다** (malmoi#53). 그 버튼은 `loading` 동안
-   * `disabled`라 브라우저가 포커스를 `body`로 떨어뜨린다. 응답 콜백에서 바로 부르면 `pending`이
-   * 아직 커밋 전이라 여전히 `disabled`고 `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   * `disabled`라 브라우저가 포커스를 떨어뜨리고, 이 모달은 Radix 포커스 트랩 안이라 그 포커스가
+   * **패널(Content)에 갇힌다.**
+   *
+   * ⚠️ **`pending`이 의존성에 있어야 한다** (malmoi#64). `pending`은 `useTransition`의 값이라
+   * `setError`가 커밋되는 시점에도 **아직 true**다 — 그 커밋에서 `focus()`를 부르면 버튼이 여전히
+   * `disabled`라 **조용히 무시된다.** `error`만 보면 그 한 번이 전부이고 다시 부를 기회가 없다.
+   * `pending`이 풀리는 커밋에서 한 번 더 도는 것이 이 줄의 전부다.
+   *
+   * ⚠️ **형제 화면이 이 함정을 피한 이유는 다른 수단을 쓰기 때문이다** — `member-list.tsx`는
+   * `pendingId`를 직접 들어서 `setPendingId(null)`과 실패 기록을 **한 배치**에 넣을 수 있다.
+   * `useTransition`에는 그 손잡이가 없다.
    */
   useEffect(() => {
-    if (error !== null) submitRef.current?.focus();
-  }, [error]);
+    if (error !== null && !pending) submitRef.current?.focus();
+  }, [error, pending]);
 
   function close() {
     // 닫으면 링크도 사라진다 — 다시 열었을 때 남아 있으면 "아직 볼 수 있다"는 거짓 신호다.

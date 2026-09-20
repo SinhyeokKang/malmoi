@@ -246,9 +246,9 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **헤더 높이** | `h-12` (48px) — ⚠️ **8-2가 top bar를 대체했다**: 전폭이고 border가 없으며 로고를 든다 | `$header-height: 3rem + 1px` |
 | 사이드바 항목 높이 | `p-1.5` + `text-sm` = 32px, 아이콘 16 (8-2 시안 치수: `p-6`·`gap-8`·`radius-8`) | nav item ≈ 32px |
 | **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 간격 8(LNB↔콘텐츠는 8px 리사이저, 나머지는 `gap-2`) — 규약 3.5, 예외 없음 | — |
-| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — 폼·설정·계정·온보딩 · 언어·멤버·**이력** (⚠️ **프로젝트 목록은 8-3에 fluid로 갔다**, ⚠️ **Home도 fluid다** — 우측 320 열이 붙으면서 갔다, ⚠️ **초대 수락은 8-1b에 셸 밖 2열로 갔다** — 폼 컬럼이 `w-[320px]`다, §6.62) | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
-| 콘텐츠 fluid | **여섯이다** — 번역 표 · 프로젝트 목록(+ 그 스켈레톤) · `surfaces/new` · **Home(+ 그 스켈레톤)**. 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**이고, 표만 자기 컨테이너 안에서 가로 스크롤한다. 등급은 §5.15의 `width` prop이 든다 | 표 화면은 fluid |
-| **콘텐츠 상한 (공통)** | ⚠️ **등급 둘을 `PanelHeader`·`PanelBody`의 `width` prop이 든다** (2026-09-15 — projects-panel-rework. 그 전에는 프리미티브가 `max-w-7xl` 하나를 들고 limited 일곱이 **안쪽 래퍼**로 `max-w-4xl`을 다시 씌웠다). `fluid` = 1280 · `limited` = 896이고 **기본값이 `limited`다**(`PanelHeader` 소비자 열둘 중 여섯이고, 빠뜨렸을 때 좁아지는 쪽이 넘치는 쪽보다 눈에 띈다). ⚠️ **등급을 셋으로 늘린 것이 아니다** — 화면이 고르던 둘을 한 층 위로 올렸을 뿐이다. ⚠️ **폭과 여백은 같이 결정된다**: 여백만 프리미티브로 올리면 안쪽 래퍼가 살아 있는 limited 일곱이 `16 + 24 = 40`이 된다. ⚠️ **1440을 안 고른 이유**: 뷰포트 2032px부터 걸려 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다. ⚠️ **스크롤 컨테이너에 직접 주지 않는다** — 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 | — |
+| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — ⚠️ **2026-09-20부터 설정 축 둘뿐이다**(사용자 판정): **프로젝트 설정** · **`/account`**(+ 그 스켈레톤). 멤버·언어·이력은 그날 fluid로 갔고, 프로젝트 목록(8-3)·Home도 이미 갔다. ⚠️ **초대 수락은 8-1b에 셸 밖 2열로 갔다** — 폼 컬럼이 `w-[320px]`다(§6.62). 그 밖에 **본문 전용 셋**(`error`·`ProjectArchived`·`ProjectNotReady`)이 기본값으로 limited다 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
+| 콘텐츠 fluid | **아홉이다** (2026-09-20) — 번역 표 · 프로젝트 목록(+ 그 스켈레톤) · `surfaces/new` · **Home(+ 그 스켈레톤)** · **멤버 · 언어 · 이력**. 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**이고, 표만 자기 컨테이너 안에서 가로 스크롤한다. 등급은 §5.15의 `width` prop이 든다 | 표 화면은 fluid |
+| **콘텐츠 상한 (공통)** | ⚠️ **등급 둘을 `PanelHeader`·`PanelBody`의 `width` prop이 든다** (2026-09-15 — projects-panel-rework. 그 전에는 프리미티브가 `max-w-7xl` 하나를 들고 limited 일곱이 **안쪽 래퍼**로 `max-w-4xl`을 다시 씌웠다). `fluid` = 1280 · `limited` = 896이고 **기본값이 `limited`다**. ⚠️ **2026-09-20부터 그쪽이 소수다** — `PanelHeader` 소비자 열둘 중 **fluid 아홉 · limited 셋**. 그래도 뒤집지 않는 근거는 "다수"가 아니라 **빠뜨렸을 때의 증상**이다: 좁아지는 쪽이 넘치는 쪽보다 눈에 띄고, fluid를 기본으로 돌리면 본문 전용 셋이 아무도 안 본 채 1280으로 넓어진다. ⚠️ **등급을 셋으로 늘린 것이 아니다** — 화면이 고르던 둘을 한 층 위로 올렸을 뿐이다. ⚠️ **폭과 여백은 같이 결정된다**: 여백만 프리미티브로 올리면 안쪽 래퍼가 살아 있는 limited 일곱이 `16 + 24 = 40`이 된다. ⚠️ **1440을 안 고른 이유**: 뷰포트 2032px부터 걸려 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다. ⚠️ **스크롤 컨테이너에 직접 주지 않는다** — 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 | — |
 | **패널 머리 (라우트 아홉 공통)** | ⚠️ **2026-09-15에 규격이 프리미티브로 올라갔다** — 아래 §5.15가 정본이다. 그 전 이력: 2026-09-11에 `px-6 pt-6 pb-3` + `h1 text-xl`(20)로 통일했는데(그 전에는 `/projects`·번역만 20이고 나머지 일곱이 15였다) **값을 열한 곳이 각자 적었고 그중 하나가 이미 어긋나 있었다**(`add-surface`의 `px-6 py-5`) | — |
 | ~~사이드바 접힘~~ | ⚠️ **없다** — 8-2가 반응형 분기를(최소 대응 너비가 1280이라 `xl` 미만 오버레이·햄버거는 도달 불가였다), **8-3이 아이콘 레일과 `localStorage`까지** 걷었다(시안에 없다). 레일에서만 렌더되던 툴팁이 함께 사라져 `Tooltip` 프리미티브도 없다 (§6.5) | 1200px |
 | 드롭다운 패널 | `min-w-60 max-w-md` | 248~456px |
@@ -283,7 +283,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | PageTitle | `h1 text-lg font-medium` (18/500/0.01em) | `18px`·`500`·`0.18px`. ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다** — `--text-lg--letter-spacing`이 이미 그 값이다 |
 | 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자 셋(`logs`·`locales`·`surfaces/new`)이고 **전에는 12와 14 두 벌로 갈려 있었다** |
 | 본문 여백 | `p-4` (16) | 같음 |
-| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | fluid 여섯(목록 · 그 스켈레톤 · 번역 · `surfaces/new` · **Home · 그 스켈레톤**) / limited 여섯 |
+| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 아홉**(목록 · 그 스켈레톤 · 번역 · `surfaces/new` · Home · 그 스켈레톤 · **멤버 · 언어 · 이력**) / **limited 셋**(프로젝트 설정 · `/account` · 그 스켈레톤) + 본문 전용 셋 |
 
 ⚠️ **설명 슬롯이 prop인 이유는 POSTMORTEM 2026-09-14다** — *"프리미티브의 여백 하나가 그 슬롯을 안
 쓰는 소비자에게만 깨졌다"*. 여백 16의 전제는 **"제목 줄 하나"**이고, 설명이 붙는 화면은 머리가 세로로
@@ -542,7 +542,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 |---|---|
 | **Button** `primary` | `bg-primary text-primary-foreground hover:bg-foreground` (2026-09-13 — hover에서 **어두워진다**. 코드는 `bg-primary/90`(≈#2e2e2e)이라 **밝아지고** 있었고 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는다) · `h-9 px-3 text-sm font-normal` + **size가 radius를 든다**(`md` `rounded-md` 10 — §5) — 옛 "primary 버튼". **화면당 하나**(확정 액션) |
 | **Button** `default` | `border border-input bg-background hover:bg-primary-foreground text-foreground` (2026-09-13 — #f5f5f5 → **#fafafa**, §6.2) · 같은 치수 — 옛 "bordered(페이지·툴바)"를 하나로. **툴바도 같은 `md`(36)다** — 크기로 자리를 가르지 않는다 |
-| **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소 |
+| **Button** `danger` | `default` + `text-destructive border-destructive/40 hover:bg-destructive/5` — `bg-destructive` 없음(§2.3). 멤버 제거·연결 해제·초대 취소<br>⚠️ **꺼져도 destructive 계열을 유지한다 — 이 variant만 그렇다** (2026-09-20, 사용자가 화면에서 잡았다). 나머지는 꺼지면 `text-muted-foreground`로 죽지만 여기는 **선 `/20` · 글자 `/40`** 으로 한 단계씩 내려갈 뿐이다. 근거: 소비자가 **전부 되돌릴 수 없는 동작**이라(Discard · Archive · Sign out everywhere · Unlink · Remove · Revoke) 회색으로 접으면 *"이건 파괴적이다"* 라는 신호가 사라진다 — 핸드오프가 danger의 꺼진 형을 따로 정의한 이유다.<br>⚠️ **선과 글자를 반드시 짝으로 옅힌다.** 글자만 muted로 바꾸고 테두리를 `/40`에 두었더니 **붉은 테두리 + 회색 글자**가 되어 꺼진 것으로도 켜진 것으로도 안 읽혔다 — `disabled-pairing.test.ts`가 그 짝을 상시로 센다.<br>⚠️ **대비가 낮아진다** — `text-destructive/40`은 흰 배경에서 **약 1.6:1**로 muted(4.7:1)보다 낮다. 꺼진 컨트롤이라 WCAG 1.4.3 대상은 아니고, **꺼진 컨트롤에는 반드시 사유가 붙는다**(§6.65)는 규칙이 색이 지지 않는 정보를 진다. |
 | **Button** `ghost` | 배경·테두리 없음 · `text-muted-foreground hover:text-foreground` — 옛 "텍스트 버튼"(밑줄 제거). 툴바 보조·아이콘 버튼·사이드바 |
 | **Button** `link` | `text-blue-600` 인라인 (밑줄 없음) — 번역 셀의 [Retry]·[Sign in] (초대 화면의 "Sign in with another account"는 기본형 `w-full`이다) |
 | **Button** `size="sm"` | `h-7 px-2 text-xs` — 표 안·배지 옆 |
@@ -600,7 +600,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). 여기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 — ⚠️ `min-w-`가 없으면 1280 미만에서 **스크롤이 아니라 flex가 압축돼 콘텐츠가 잘린다**(실측: 1100 뷰포트에서 문서 폭 1280, 가로 스크롤 발생). `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
 | **헤더** | `h-12 px-1`, **배경도 border도 없다**(캔버스 위에 얹힌다). 드는 것은 **로고 32 좌측**(`public/brand/malmoi-icon-black.svg`, `/projects` 링크) **+ 사용자 메뉴 32 우측**(아바타 `ghost` 버튼 → DropdownMenu: 이름·이메일 → **Settings** → Sign out) **둘뿐이다.** ⚠️ 항목 문구가 사이드바 사용자 구역의 `Settings`와 **같은 키**다 — 한 곳(`/account`)을 가리키는 이름이 둘이면 그중 하나가 낡는다. ⚠️ 버튼이 아바타와 같은 32여야 한다 — `size="sm"`(28)이면 아바타가 위아래로 삐져나온다(실측). ⚠️ **breadcrumb은 여기에도, 어디에도 없다** — 8-4가 프로젝트 하위 화면 다섯에서 통째로 걷었고(§0) 위로 가는 길은 사이드바가 든다. 셸로 옮길 것이 남아 있지 않다 |
 | 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 툴팁도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다). 소비자가 0이 되어 **2026-09-11에 `Tooltip` 프리미티브 자체를 걷었다** — 조상 provider를 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다는 교훈은 POSTMORTEM 2026-09-08에 남아 있고, 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다. ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
-| **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/[0.07]`, 비활성 hover `hover:bg-foreground/[0.03]` — 2026-09-11에 **둘 다 한 단계 내렸다**(사이드바는 배경 없이 캔버스 위에 얹혀 같은 알파도 흰 패널 위보다 진하다). **선택의 weight는 라벨 `<span>`이 든다.** Badge는 자체 `font-medium`(500)을 사용한다. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
+| **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/[0.07]`, 비활성 hover `hover:bg-foreground/[0.03]` — 2026-09-11에 **둘 다 한 단계 내렸다**(사이드바는 배경 없이 캔버스 위에 얹혀 같은 알파도 흰 패널 위보다 진하다). ⚠️ **선택에 weight가 없다 — 면 하나로만 표현한다** (2026-09-20 사용자 — 옛 판정 *"선택의 weight는 라벨 `<span>`이 든다"*의 철회. 그 판정은 **굵기를 `<Link>`가 아니라 라벨에 두는** 자리 문제를 푼 것이고, 굵기가 필요한가는 묻지 않았다). 굵기가 면과 함께 움직이면 선택을 옮길 때마다 **라벨 폭이 바뀌어 글자가 흔들리고**, 신호가 둘이라 면의 알파를 조정할 근거도 흐려진다. `components/__tests__/sidebar-selection.test.ts`가 소스에서 `font-medium` 개수를 **1**(구역 라벨 `<p>`)로 고정한다 — 사이드바에 렌더 테스트가 없어 스캔이 든다. Badge는 자체 `font-medium`(500)을 쓰므로 상속 문제도 함께 사라졌다. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
 | 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) |
 | **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
 | **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (PRODUCT §7.7). 순서는 **사용자 축 먼저**(`Projects`·`Settings`) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 **함께** 대체했다. 라벨은 `<p>` `text-foreground py-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
@@ -1098,7 +1098,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 
 ### 6.65 멤버 (`/projects/[slug]/members`) — 카드 둘 (2026-09-19, members-rework)
 
-셸 안 `limited`. `h1`(`text-lg font-medium`) 줄 **우측이 좌석 라벨 + [Invite member]**이고, 본문은
+셸 안 **`fluid`**(2026-09-20 사용자 판정 — limited는 설정 축 둘뿐이다). ⚠️ **캔버스는 limited 전제로 그려졌다** — 아트보드의 카드 폭이 864(=896 − padding 32)이고, fluid에서는 1248까지 넓어져 고정 열(이름 300 · 역할 132 · 가입일 150) 사이의 빈 공간이 그만큼 커진다. 캔버스 값을 바꾼 것이 아니라 **그릇을 넓힌 것**이다. `h1`(`text-lg font-medium`) 줄 **우측이 좌석 라벨 + [Invite member]**이고, 본문은
 `space-y-4`로 카드 둘 — **Members** · **Pending invitations**. ⚠️ **breadcrumb이 없다** (8-4 — §0).
 
 ⚠️ **2026-09-19에 표 둘이 카드 둘이 됐다.** 그 전에는 `PanelBody` 안에 `<Table>` 둘이 `space-y-6`으로
@@ -1226,6 +1226,10 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
   **조용히** 죽는다 (POSTMORTEM 2026-09-08). **이 리포의 `form=` 첫 도입이다.**
 - ⚠️ **사후 거부는 세 번째 얼굴이 아니다** — `createInvitation`이 실패를 **값으로** 돌려주므로 폼 얼굴에
   머물며 본문 맨 아래 `Alert`으로 선다. 입력값이 남고 포커스는 누른 제출 버튼으로 돌아간다(malmoi#53).
+  ⚠️ **그 복귀가 `pending`에 물려 있다** (malmoi#64). 이 모달은 `useTransition`을 쓰므로 실패를 기록하는
+  커밋에서도 `isPending`이 **아직 true**이고, 그때 `focus()`를 부르면 버튼이 `disabled`라 **조용히
+  무시된다** — 그러면 포커스가 Radix 트랩에 걸려 **패널에 갇힌다.** 행 액션(`member-list`)은
+  `pendingId`를 자기가 들어서 이 문제가 없다: **두 화면이 같은 관용구로 보이지만 수단이 다르다.**
 - ⚠️ **테두리 있는 카드 라디오를 만들지 않았다** — 리포 전수 0건인 시각 형이고, 만들면 등재할 부품이
   하나 는다. `Radio`가 이미 라벨 행이고 보조 줄만 아래에 붙인다.
 
@@ -1266,7 +1270,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 **이 화면이 생긴 이유는 orphaned 로케일이다.** 그때까지 로케일은 **번역 표의 열로만** 존재해서, 파일이
 사라진 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 없었다 (ARCHITECTURE §5.5.16).
 
-셸 안 `limited`(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다 — §5.15가 정본이다). `h1` → 설명 한 줄
+셸 안 **`fluid`**(2026-09-20 — §5.1. 여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). `h1` → 설명 한 줄
 (`text-xs text-muted-foreground`) → **표** → **기준 언어 Card**. ⚠️ **breadcrumb이 없다** (8-4 — §0).
 
 | 요소 | 규칙 |
@@ -1332,7 +1336,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 
 ### 6.68 이력 (`/projects/[slug]/logs`) — 표 하나 (2026-09-10, 7단계)
 
-셸 안 `limited`(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다 — §5.15가 정본이다). 제목 + 한 줄 설명, 그 아래 **표 하나**. ⚠️ **breadcrumb이 없다** (8-4 — §0)이고 **제목은 `Logs`다**(사이드바 라벨과 같은 키 — "Sync history"는 옛 이름이다). ⚠️ **표는 `Card` 밖이다** — 로케일 화면(§6.66)과 같은 관용구이고, Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). ⚠️ **멤버 화면은 2026-09-19에 이 관용구를 떠났다**(카드 + `<ul>` — §6.65).
+셸 안 **`fluid`**(2026-09-20 — §5.1. 여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). 제목 + 한 줄 설명, 그 아래 **표 하나**. ⚠️ **breadcrumb이 없다** (8-4 — §0)이고 **제목은 `Logs`다**(사이드바 라벨과 같은 키 — "Sync history"는 옛 이름이다). ⚠️ **표는 `Card` 밖이다** — 로케일 화면(§6.66)과 같은 관용구이고, Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). ⚠️ **멤버 화면은 2026-09-19에 이 관용구를 떠났다**(카드 + `<ul>` — §6.65).
 
 열 다섯: **When**(`<time dateTime>`에 절대 시각 `YYYY-MM-DD HH:mm UTC` + 그 아래 상대 시각 `text-xs`) · **Started by** · **Result**(배지 — §6.2) · **Files** · **Reason**.
 

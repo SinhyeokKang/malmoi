@@ -136,11 +136,11 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
         <Icon className="size-4" aria-hidden />
       </span>
       {/*
-        ⚠️ **선택의 굵기가 라벨에만 붙는다** (2026-09-11 사용자). `<Link>`에 두면 `Badge`가 그것을
-        **상속해** 개수까지 굵어진다 — 배지는 weight를 지정하지 않아 자기가 앉은 자리를 따르기
-        때문이다. 선택은 **라벨**의 성질이지 행 전체의 성질이 아니다.
+        ⚠️ **선택에 굵기를 주지 않는다** (2026-09-20 사용자 — 옛 판정 "선택의 굵기가 라벨에만 붙는다"의
+        철회). 선택 상태는 **면(배경 알파) 하나로만** 표현한다 — 굵기가 함께 움직이면 라벨 폭이 바뀌어
+        선택을 옮길 때마다 글자가 미세하게 흔들리고, 신호가 둘이라 면의 대비를 조정할 근거도 흐려진다.
       */}
-      <span className={cn("min-w-0 truncate", active && "font-medium")}>{item.label}</span>
+      <span className="min-w-0 truncate">{item.label}</span>
       {/*
         ⚠️ **0도 보인다** — `undefined`와 `0`이 다르다. 프로젝트가 없다는 사실은 그 자체로 정보이고,
         `item.badge && …`로 쓰면 0이 falsy라 조용히 사라진다.

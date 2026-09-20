@@ -57,7 +57,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
-      <PanelHeader>
+      <PanelHeader width="fluid">
         {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
@@ -73,7 +73,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
       </PanelHeader>
 
       {/* ⚠️ **카드 갭이 16이다** — 두 카드가 각자 제목을 들므로 섹션 래퍼도 `space-y-6`도 필요 없다. */}
-      <PanelBody className="space-y-4">
+      <PanelBody width="fluid" className="space-y-4">
         <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} headingId="members-heading" />
         <PendingInvitations slug={slug} invitations={pending} role={role} now={now} headingId="pending-heading" />
       </PanelBody>

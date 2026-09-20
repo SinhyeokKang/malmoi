@@ -2274,3 +2274,43 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
       **같은 결함이 아니다**: `Dialog.Trigger`는 `onClick` 하나로만 열고, 게다가 그 Dialog가
       `open={open && !pending}` 제어형이라 방어선이 둘이다.
     - 나머지 둘(`new-project-button.tsx` · `members-panel-header.tsx`)은 Radix가 아닌 일반 버튼·링크다.
+
+### 2026-09-20 — 포커스 복귀가 브라우저에서만 깨졌고, 그것을 재는 테스트는 아무것도 안 재고 있었다 ([malmoi#64](https://github.com/SinhyeokKang/malmoi/issues/64))
+
+- **영역**: `components/members/invite-modal.tsx`(거부 뒤 포커스 복귀) · `components/__tests__/invite-modal.test.tsx`
+- **증상**: `/bugshot-qa`가 잡았다. 이미 멤버인 주소로 초대를 제출하면 폼 얼굴·입력값은 정상인데
+  **포커스가 누른 제출 버튼이 아니라 모달 패널**(Radix `Content`, `tabindex=-1`)에 떨어진다. 2/2 재현.
+  스크린 리더·키보드 사용자는 거부 Alert을 듣고도 컨테이너에 갇혀, 그 문장에 닿거나 재시도하려면
+  다이얼로그 맨 위부터 탭해야 한다 — **malmoi#53이 행 액션에서 고친 것과 같은 실패**다.
+- **근본 원인**: **`pending`이 `useTransition`의 값이라 내가 커밋 시점을 못 고른다.**
+  `startTransition(async …)` 안에서 `setError(…)`가 커밋될 때 `isPending`은 **아직 true**이고, 그래서
+  effect가 부르는 `focus()`가 **`disabled` 버튼에서 조용히 무시된다.** 의존성이 `[error]` 하나라
+  **다시 부를 기회가 없었다** — `pending`이 풀리는 커밋에서는 effect가 안 돈다.
+  - ⚠️ **형제 화면이 멀쩡한 이유가 "같은 관용구를 썼기 때문"이 아니다.** `member-list.tsx`는
+    `pendingId`를 **자기가 들어서** `setPendingId(null)`과 실패 기록을 한 배치에 넣을 수 있다.
+    `useTransition`에는 그 손잡이가 없다. **주석은 두 화면이 같은 형이라고 말하고 있었고, 그 문장이
+    이 차이를 가렸다.**
+- **그물**:
+  - 잡은 것: **실물 브라우저의 `document.activeElement`.**
+  - 놓친 것: `pnpm typecheck` · `pnpm test` 4,707 · `pnpm build` · `/code-review` · **`/design-sync` 5단계
+    리뷰**(소스만 보면 effect가 옳아 보인다) · 그리고 **그 계약을 단언하던 렌더 테스트 자신**.
+  - ⚠️ **테스트가 공회전이었다.** `invite-modal.test.tsx`가
+    `expect(document.activeElement).toBe(submit())`을 들고 green이었는데, **jsdom은 요소가 `disabled`가
+    돼도 `activeElement`를 옮기지 않는다** — `userEvent.click`이 남긴 포커스가 그대로 있어서
+    **복귀 로직을 통째로 지워도 통과한다.** 브라우저에는 그 fixup 규칙이 있고 게다가 포커스 트랩까지
+    있어 결과가 갈렸다.
+- **재발 방지**:
+  - **규칙: `disabled`를 지나는 포커스 복귀를 단언하는 jsdom 테스트는 focus fixup observer를 함께 단다.**
+    `members-focus.test.tsx`가 2026-09-17에 같은 이유로 그 관용구를 이미 갖고 있었는데 **새 테스트가
+    그것을 안 가져왔다.** 없으면 그 단언은 "클릭이 남긴 포커스가 아직 거기 있다"를 재는 것이다.
+  - **규칙: 그런 단언은 뮤테이션으로 red를 확인한다.** 이 항목의 수정에서 둘을 돌렸다 —
+    `pending` 의존성 제거(원래 결함) · 복귀 호출 통째 제거. fixup 전에는 **둘 다 green**이었다.
+  - grep (실제로 돌렸다):
+    `grep -rln "activeElement" components/__tests__ --include='*.test.tsx'` → **11파일**,
+    그중 `grep -rln 'attributeFilter: \["disabled"\]' components/__tests__` → **둘**
+    (`members-focus` · `invite-modal`). ⚠️ **나머지 아홉이 전부 결함인 것은 아니다** — 위험한 것은
+    **"`loading`/`disabled`를 지나는 컨트롤로 되돌린다"를 단언하는 자리**뿐이다. 후속 후보 1순위는
+    `publish-button.test.tsx`·`new-project.test.tsx`·`onboarding-modal.test.tsx`(전부 `nextPending`으로
+    바닥 버튼이 `disabled`가 되는 모달이다).
+  - ⚠️ **`useTransition`의 `isPending`으로 포커스 복귀를 배선할 때는 그것을 의존성에 넣는다.**
+    상태를 직접 드는 화면(`pendingId`)과 달리 **커밋 시점을 고를 수 없다**는 것이 이 함정의 전부다.
