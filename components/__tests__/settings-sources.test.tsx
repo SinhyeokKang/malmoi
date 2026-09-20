@@ -51,3 +51,18 @@ it("새 소스의 SHA가 생겨도 YAML 수정 안내는 추가 결과와 함께
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(container.textContent).toContain("Update the workflow");
 });
+
+it("수동 확정은 잠기지 않은 같은 경로의 자동 후보 어댑터를 바꾼다", async () => {
+  actions.confirmManualFormat.mockResolvedValue({ ok: true, candidate: { ...candidate("app"), adapter: "yaml-catalog" } });
+  actions.addSurfaces.mockResolvedValue({ ok: false, error: "resource-limit" });
+  await render(<SourcesCard {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }, { adapter: "yaml-catalog", layout: "per-locale", label: "YAML", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.click(document.querySelector('#manual-format')!); });
+  await act(async () => { await user.click([...document.querySelectorAll('[role="option"]')].find(n => n.textContent === "YAML")!); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
+  await act(async () => { await user.click(find("Check files")); });
+  await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
+  expect(actions.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "yaml-catalog", pathTemplate: "app/{locale}.json", baseLocale: "en" }] });
+});
