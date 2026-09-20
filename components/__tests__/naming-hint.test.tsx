@@ -19,3 +19,30 @@ it("경로만 보이고 브랜치는 syncBranchFor와 같다", async () => {
   expect(text).not.toMatch(/mal-moi\.com|vercel\.app|localhost/);
   expect(text).toContain(syncBranchFor("acme-mobile"));
 });
+
+/**
+ * **오류가 필드에 매달린다** (DESIGN §6.4 — "필드의 aria-invalid/aria-describedby는 소비자가 잇는다").
+ * `FormGroup`이 안정된 id와 `role="alert"`을 주지만 그것을 가리키는 것은 호출부다: 안 이으면
+ * 포커스가 입력에 있는 스크린리더 사용자는 **무엇을 고쳐야 하는지** 못 듣는다. 이 화면이 그 유일한
+ * 소비자다(리포 전체에서 `FormGroup error`는 여기 하나다).
+ *
+ * ⚠️ **술어가 `aria-invalid`와 같아야 한다** — 갈리면 오류가 없을 때 없는 id를 가리킨다.
+ */
+it.each([
+  { slugTaken: true, slug: "acme-mobile", label: "이미 쓰는 slug" },
+  { slugTaken: false, slug: "Acme Mobile", label: "형식 위반" },
+])("$label의 오류를 입력이 aria-describedby로 가리킨다", async ({ slugTaken, slug }) => {
+  const { container } = await render(<NamingStep state={{ ...state, slug, slugTaken }} onChange={() => {}} />);
+  const field = container.querySelector<HTMLInputElement>("#project-slug")!;
+  expect(field.getAttribute("aria-invalid")).toBe("true");
+  const described = document.getElementById(field.getAttribute("aria-describedby")!);
+  expect(described?.getAttribute("role")).toBe("alert");
+  expect(described?.textContent?.trim()).not.toBe("");
+});
+
+it("오류가 없으면 없는 id를 가리키지 않는다", async () => {
+  const { container } = await render(<NamingStep state={state} onChange={() => {}} />);
+  const field = container.querySelector<HTMLInputElement>("#project-slug")!;
+  expect(field.getAttribute("aria-invalid")).toBeNull();
+  expect(field.getAttribute("aria-describedby")).toBeNull();
+});

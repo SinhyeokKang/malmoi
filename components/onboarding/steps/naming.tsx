@@ -59,6 +59,8 @@ export function NamingStep({
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
   const verdict = planSlug(state.slug);
+  // slug 거부 술어는 하나다 — `aria-invalid`·`aria-describedby`·`FormGroup error`가 같은 것을 본다.
+  const slugRejected = state.slugTaken || verdict !== "ok";
   const { slug } = state;
 
   return (
@@ -97,7 +99,13 @@ export function NamingStep({
         <Input
           id="project-slug"
           value={slug}
-          aria-invalid={state.slugTaken || verdict !== "ok" ? true : undefined}
+          /**
+           * ⚠️ **두 속성이 같은 술어를 쓴다** — `FormGroup`은 `error`가 있을 때만 그 `<p>`를 그리므로,
+           * 갈리면 오류가 없는 동안 **없는 id**를 가리킨다. 안정된 id는 프리미티브가 주고 잇는 것은
+           * 호출부다(DESIGN §6.4) — 안 이으면 포커스가 입력에 있는 사람에게 사유가 안 닿는다.
+           */
+          aria-invalid={slugRejected ? true : undefined}
+          aria-describedby={slugRejected ? "project-slug-error" : undefined}
           onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
           className="w-full"
         />
