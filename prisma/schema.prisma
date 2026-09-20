@@ -502,6 +502,12 @@ model ProjectEvent {
   @@unique([projectId, syncRunId])
   /// 정렬 tie-breaker까지 포함한다 — 커서 둘과 **같은 키여야** 같은 DB 상태가 같은 목록을 낸다(불변식 4).
   @@index([projectId, occurredAt, id])
+  /// 행위자 필터의 목록 전용 (`loadEventActors` — code-review 2026-09-21). ⚠️ **위 인덱스로는 못 탄다**:
+  /// 그쪽 두 번째 열이 `occurredAt`이라 `actorUserId` distinct가 **프로젝트의 사건 전부를 읽고 정렬**한다.
+  /// 사건은 지우지 않으므로(불변식 3의 확장) 그 비용은 시간이 지날수록만 커지고, Logs를 그릴 때마다 든다.
+  /// ⚠️ **`actorKind`가 가운데다** — 조회가 `USER`로 등호를 걸고 `actorUserId`로 정렬하므로 이 순서여야
+  /// 정렬이 사라지고 세 열이 다 인덱스에 있어 힙을 안 본다.
+  @@index([projectId, actorKind, actorUserId])
 }
 
 /// 로그인 사용자. **`email`이 unique인 것은 어댑터의 `getUserByEmail`이 `findUnique`이기 때문이다.**
