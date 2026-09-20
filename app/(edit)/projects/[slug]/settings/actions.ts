@@ -295,6 +295,16 @@ export async function updateRepositorySettings(raw: {
   return { ok: true };
 }
 
+/**
+ * 커밋 **뒤**에 도는 캐시 갱신 — 던져도 쓰기 결과를 바꾸지 않는다 (POSTMORTEM 2026-09-20).
+ * 원자성을 약속한 경계는 DB tx이고, 그 밖의 실패를 호출부로 흘리면 저장된 값을 화면이
+ * "실패"로 말한다(이미지는 사용자가 다시 눌러 두 번째 객체를 만든다).
+ */
+function revalidateAfterCommit(scope: string, projectId: string): void {
+  try { revalidatePath("/", "layout"); }
+  catch { console.error("Project metadata cache refresh failed after commit.", { scope, projectId }); }
+}
+
 export async function updateProjectName(raw: { slug: string; name: string }): Promise<
   { ok: true; name: string } | { ok: false; error: "empty" | "too-long" | AccessError | "invalid input" }
 > {
@@ -310,7 +320,7 @@ export async function updateProjectName(raw: { slug: string; name: string }): Pr
   // 보관 중에도 표시값은 되돌릴 수 있다. 적재와 달리 서버에서 보관 가드를 더하지 않는다(D7).
   try { await prisma.project.update({ where: { id: access.projectId }, data: { name: plan.name } }); }
   catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("name", access.projectId);
   return { ok: true, name: plan.name };
 }
 
@@ -359,7 +369,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
     return { ok: false, reason: "unavailable" };
   }
   await cleanProjectImage(previous, projectId);
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("image-upload", projectId);
   return { ok: true };
 }
 
@@ -382,6 +392,6 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
     });
   } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }
   await cleanProjectImage(previous, projectId);
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("image-delete", projectId);
   return { ok: true };
 }
