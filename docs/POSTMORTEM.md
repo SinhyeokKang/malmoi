@@ -2223,3 +2223,54 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     문장을 든다.
   - **규칙: 접근 이름을 단언하는 DOM 테스트는 "그 이름을 실제로 쓰는 노드"를 고른다.** 래퍼를
     단언하면 구현을 베낀 것이고, 구현이 틀려도 green이다.
+
+### 2026-09-19 — 꺼진 Radix Select가 마우스 클릭으로 열렸다 (우리 가드가 라이브러리의 포인터 종류 감지를 무력화했다)
+
+- **영역**: `components/members/member-list.tsx`(`RoleSelect`) · `components/__tests__/members-cards.test.tsx`
+- **증상**: dev에도 안 나갔다 — `/code-review`가 잡았다. 멤버 화면에서 **마지막 오너 행**의 역할
+  셀렉트는 회색으로 죽고 `aria-disabled="true"`를 들고 행 아래 사유 띠를 가리킨다. 그런데 **마우스로
+  누르면 그냥 열린다.** 역할을 바꾸면 `changeMember`가 발사되고 서버가 `last-owner`로 거부해 사후
+  Alert이 뜬다 — 데이터는 안 망가지지만(서버 거부가 살아 있다) 화면이 *"이 컨트롤은 꺼져 있고 이유는
+  이것"*이라고 말해 놓고 거짓말을 한다. 이 배송이 없애려던 "왜 안 되지"가 그대로 돌아온 것이다.
+  - **두 번째 경로**: 키보드로 Tab한 뒤 **아무 한 글자**(`e`)를 치면 창을 열지도 않고 값이 바뀐다.
+- **근본 원인**: **우리가 막은 핸들러가 라이브러리의 상태를 세우는 핸들러였다.** Radix
+  `Select.Trigger`는 포인터 종류를 `React.useRef("touch")`로 시작하고, 그것을 `"mouse"`로 바꾸는 대입이
+  **자기 `onPointerDown`의 첫 줄**이다. 우리는 그 핸들러를 `preventDefault()`로 건너뛰게 만들었고
+  (`composeEventHandlers`의 `checkForDefaultPrevented`가 기본 `true`다), 그래서 ref는 영원히 `"touch"`로
+  남는다. 이어지는 Radix `onClick`이 `if (pointerTypeRef.current !== "mouse") handleOpen()`을 보고
+  **연다** — 즉 **포인터 경로를 막은 것이 클릭 경로를 열어 준 것**이다.
+  - 타이프어헤드 쪽은 다른 이유다: Radix의 `onKeyDown`이 `event.key.length === 1`이면
+    `handleTypeaheadSearch`를 **여는 키 판정보다 먼저** 부른다. 우리 가드는 여는 키 넷
+    (`" " Enter ArrowDown ArrowUp`)만 막는 **블랙리스트**였고, 그 넷은 **라이브러리 내부 상수를 우리가
+    복제한 것**이라 버전이 올라가면 조용히 어긋나기까지 한다.
+  - ⚠️ **`aria-disabled`를 고른 판단 자체는 옳았다.** 진짜 `disabled`는 포커스를 못 받아
+    `aria-describedby`의 전달 경로가 없고, 그러면 "꺼진 컨트롤에는 반드시 이유가 붙는다"가 성립하지
+    않는다. 틀린 것은 **"그래서 무엇을 막아야 하는가"를 라이브러리에 묻지 않은 것**이다.
+- **그물**:
+  - 잡은 것: **`/code-review`에서 Radix `dist/index.mjs`를 직접 읽은 것.** 그 파일을 열기 전까지는
+    가드가 충분해 보였다.
+  - 놓친 것: `pnpm typecheck` · `pnpm test` 4,665건 · `pnpm build` · **내가 쓴 렌더 테스트**
+    (`aria-disabled` **속성**만 봤다 — POSTMORTEM 2026-09-18의 *"방어선이 호출이 아니라 이름을 셌다"*와
+    같은 형이다) · 화면(회색으로 죽어 보인다).
+  - **계보**: 2026-09-14 *"fieldset 비활성만으로 Radix Portal의 언어 선택을 잠그지 못했다"* · 2026-09-09
+    *"포털 안은 열기 전 DOM에 없다"*. 셋 다 **"Radix 위에 우리 판정을 얹었는데 그 판정이 라이브러리의
+    실제 경로를 다 덮지 않았다"**이다.
+- **재발 방지**:
+  - **규칙: 컨트롤을 "끈" 렌더 테스트는 속성이 아니라 *열리지 않는다*를 센다.** `aria-disabled`가
+    붙었는지는 우리가 쓴 줄을 다시 읽는 것이고, 클릭·키 입력 뒤 `[role="listbox"]`가 없고
+    `onValueChange`가 안 불린 것이 계약이다. 뮤테이션으로 red를 확인한다(가드 제거 → 1 failed,
+    블랙리스트로 되돌림 → 1 failed).
+  - **규칙: 키 가드는 화이트리스트다.** `Tab` 외 전부 막는다 — 블랙리스트는 타이프어헤드처럼 "여는
+    키가 아닌데 값을 바꾸는" 경로를 원리적으로 못 덮고, 라이브러리 내부 키 목록의 복제본이 된다.
+  - **규칙: Radix 프리미티브에 사전 차단을 얹기 전에 그 컴포넌트가 *어느 이벤트에서 여는지*를
+    `dist/index.mjs`에서 센다.** 2026-09-08의 *"조상 provider를 요구하는지 dist에서 확인한다"*와 같은
+    절차다. 실측: `Select.Trigger`는 **셋**(`onPointerDown`·`onClick`·`onKeyDown`), `Dialog.Trigger`는
+    **하나**(`onClick`).
+  - grep (실제로 돌렸다): `grep -rn 'aria-disabled' app components --include='*.tsx' | grep -v __tests__`
+    → 호출부 **넷**. 그중 Radix 프리미티브 위에 얹은 것은 **둘**이다.
+    - `components/members/member-list.tsx` — 이 항목이 고친 자리(셀렉트)와 `RemoveButton`(순수
+      `<Button>`이라 경로가 `onClick` 하나다).
+    - `components/home/sync-button.tsx` — `DialogTrigger asChild` + `onClick` `preventDefault`.
+      **같은 결함이 아니다**: `Dialog.Trigger`는 `onClick` 하나로만 열고, 게다가 그 Dialog가
+      `open={open && !pending}` 제어형이라 방어선이 둘이다.
+    - 나머지 둘(`new-project-button.tsx` · `members-panel-header.tsx`)은 Radix가 아닌 일반 버튼·링크다.

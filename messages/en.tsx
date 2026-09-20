@@ -1941,12 +1941,50 @@ export const en = {
 
   members: {
     /**
-     * 표 헤더. `Joined`는 상대 시각이라 열 이름이 단위를 말하지 않는다.
+     * 패널 헤더 우측의 좌석 잔량 — 갈래는 `planSeatNotice`가 정한다.
      *
-     * ⚠️ **`actions`가 빈 문자열이 아니다** (2026-09-08 code-review 🟡3). 시각적으로는 비어야 하지만
-     * 빈 `<th>`는 스크린 리더가 이름 없는 열로 읽는다 — 화면이 `sr-only`로 감춘다.
+     * ⚠️ **상한을 문구가 따로 들지 않는다** — `limit`이 인자로 들어온다. 화면이 `MEMBER_LIMIT`을
+     * import하면 그 상수와 서버 거부가 갈리는 날 둘이 다른 수를 말한다.
      */
-    columns: { person: "Person", email: "Email", role: "Role", joined: "Joined", actions: "Actions" },
+    seats: (n: number, limit: number): string => `${n} of ${limit} seats`,
+    /** 자리가 없을 때 — 막힌 사실과 **무엇을 하면 되는지**를 함께 말한다. */
+    seatsFull: (limit: number): string => `${limit} of ${limit} seats — remove someone to invite`,
+    /** EDITOR 시야. ⚠️ **좌석 초과보다 이 사유가 이긴다** (`planSeatNotice`의 단언이 그것을 고정한다). */
+    ownerOnly: "Only owners can invite or change roles",
+    /** Members 카드 헤더의 설명 한 줄. */
+    cardHint: "Owners can manage members and project settings",
+    /**
+     * 카드 카운트 배지의 sr-only 문장.
+     *
+     * ⚠️ **필수다** — `RowCard`의 배지가 `<span aria-hidden>{count}</span>` + sr-only 문장 형이고
+     * 기본값이 `m.projects.count`라, 안 넘기면 멤버 카드가 "3 projects"를 낭독한다.
+     */
+    count: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
+    /**
+     * 복호화 실패 행 (멤버·대기 초대 공용).
+     *
+     * ⚠️ **`m.common.unreadable`("Unavailable")과 갈라 둔다** — 그쪽은 표 셀 한 단어 제약을 지고
+     * `lib/sync/query.ts`가 여전히 표다. 이 화면은 행 아래 띠가 사유를 들 수 있다.
+     */
+    unreadableLabel: "Couldn't be read",
+    unreadableHint: "This person's name and address couldn't be decrypted. Role and join date are unaffected.",
+    /**
+     * 읽기전용 역할 칩의 접근 이름 — 보이는 것은 역할 낱말과 자물쇠뿐이다.
+     *
+     * ⚠️ **문장이 둘이다** (핸드오프 결정 3). 같은 점선 칩이지만 **잠긴 까닭이 다르다**: 대기 초대는
+     * 발급 시점에 굳은 것(`ProjectInvitation.role`은 `changeMember`가 못 건드린다)이고, EDITOR 시야는
+     * 권한이 없는 것이다. 한 문장으로 접으면 "Revoke하고 다시 초대"라는 **복구 경로**가 사라진다.
+     */
+    roleLocked: {
+      pending: (role: string): string =>
+        `${role}, set when the invitation was created. Revoke and invite again to change it.`,
+      editor: (role: string): string => `${role}, only owners can change roles.`,
+    },
+    /**
+     * ⚠️ **값이 자기 라벨을 든다** (핸드오프 결정 3-b). 열 머리를 지웠으므로 `2 days ago`가 무엇의
+     * 시각인지 말할 자리가 이 문장뿐이다 — 라벨 없이 상대 시각만 두면 가입일과 만료가 구별되지 않는다.
+     */
+    joined: (when: string): string => `Joined ${when}`,
     /** 이름이 없는 사용자 — Google 계정엔 핸들이 없다. */
     unnamed: "No name set",
     you: "You",
@@ -1962,7 +2000,16 @@ export const en = {
     removed: (who: string): string => `Removed ${who}`,
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
     confirmRemove: (who: string): string => `Remove ${who} from this project?`,
-    confirmRemoveHint: "They lose access right away. Their past edits stay.",
+    /**
+     * ⚠️ **번역이 남는다는 사실을 먼저 말한다** (캔버스 `1c`) — 망설이는 이유가 대개 그것이다.
+     *
+     * ⚠️ **그것을 보장하는 것은 FK가 아니다.** 한때 이 주석이 `ProjectMember`의 `Restrict`를 근거로
+     * 들었는데 **거짓이다** — `schema.prisma`가 *"멤버 행의 제거·강등은 FK가 막지 않는다"*를 명시한다
+     * (그 `Restrict`는 Project·User **삭제**를 막는다). 실제 근거는 `Translation.updatedBy`에 FK가
+     * 없고 `loadActors`가 `ProjectMember`가 아니라 `User`를 읽는다는 것이다 — 멤버 행이 사라져도
+     * 이름이 붙은 이력은 그대로다.
+     */
+    confirmRemoveHint: "They lose access right away. Their translations stay — the history keeps their name.",
     cancel: "Cancel",
     /** 마지막 OWNER 보호는 `accessErrorMessage("last-owner")`가 낸다 — 여기 두 벌로 쓰지 않는다. */
     changeFailed: (reason: string): string => `Couldn't apply that change: ${reason}`,
@@ -1970,20 +2017,56 @@ export const en = {
     /** 초대 발급 — 6a의 임시 폼(`translations.invite`)에서 여기로 옮겼다. 화면 하나에 어휘 한 벌이다. */
     invite: {
       open: "Invite member",
-      title: "Invite a translator",
+      /** ⚠️ **`translator`가 아니다** — 역할 선택이 붙는 순간 그 낱말이 거짓이 된다. */
+      title: "Invite a member",
+      /** ⚠️ **제품 이름은 문장 첫 자리도 소문자다** (`brand-spelling.test.ts`). */
+      description: "malmoi doesn't send email. You'll get a link to pass on yourself.",
       email: "Email",
-      help: "They'll be able to edit translations in this project.",
-      create: "Create link",
-      /** 원문은 서버가 저장하지 않는다 — 이 화면을 벗어나면 다시 볼 수 없다 (ARCHITECTURE §6.02). */
-      linkHint: "Copy the link and send it yourself. You won't see it again after you close this.",
+      /** 링크가 주소에 묶인다는 사실 — 수락이 그 주소의 검증된 로그인을 요구한다 (ARCHITECTURE §6.02). */
+      help: "The link only works for this address, signed in with it.",
+      roleLabel: "Role",
+      /** 역할 선택의 보조 줄 — 권한표(`lib/auth/permission.ts`)를 한 문장씩 옮긴 것이다. */
+      roleHint: {
+        EDITOR: "Can translate and publish",
+        OWNER: "Also manages members and settings",
+      },
+      /** 모달 바닥 왼쪽. 헤더의 `seats`와 다른 문장인 것은 시안이고, 수는 같은 값에서 온다. */
+      seatsUsed: (n: number, limit: number): string => `${n} of ${limit} seats used`,
+      create: "Create invite link",
+      /** ⚠️ **라벨은 서버가 만든다** (`maskedEmailLabels`) — 클라이언트에서 가리면 세 번째 마스킹 구현이다. */
+      ready: (label: string): string => `Link ready for ${label}`,
+      readyHint: "Send it to them yourself. You won't be able to see this link again after closing.",
+      expiresIn: (role: string): string => `Expires in 7 days \u00b7 ${role}`,
+      /** 링크 얼굴의 안내 카드 — 무엇이 남고 무엇이 사라지는지, 잃었을 때의 복구 경로까지. */
+      notKept: {
+        title: "malmoi doesn't keep the link",
+        body: "The invitation stays in Pending invitations, but the address above is gone once this closes. If it's lost, revoke the invitation and make a new one.",
+      },
+      done: "Done",
       alreadyMember: "That email is already a member of this project.",
       failed: (reason: string): string => `Couldn't create the link: ${reason}`,
     },
 
     pending: {
       title: "Pending invitations",
-      columns: { email: "Email", role: "Role", expires: "Expires", invitedBy: "Invited by" },
-      /** 초대한 사람의 이름이 없을 때. 이메일을 여기 쓰지 않는다 — 이미 마스킹한 열이 옆에 있다. */
+      /** 카드 헤더의 설명 한 줄 — 만료가 사용 여부와 무관하다는 것이 이 화면에서 유일하게 놀라는 규칙이다. */
+      cardHint: "A link expires after 7 days whether it is used or not",
+      /**
+       * ⚠️ `m.members.count`와 같은 이유 — 기본값이 "projects"다.
+       *
+       * ⚠️ **여기만 천단위 구분자를 쓴다** — 좌석 넷은 `MEMBER_LIMIT`(10)이 분모라 세 자리를 못 넘기지만
+       * **대기 초대에는 상한이 없다**(`planInvitationCreate`가 대기를 안 센다).
+       */
+      count: (n: number): string => `${n.toLocaleString("en-US")} invitation${n === 1 ? "" : "s"}`,
+      /** 행의 메타 줄. 열 머리가 사라지면서 라벨이 문장 안으로 들어왔다 (`m.members.joined`와 같은 이유). */
+      expires: (when: string): string => `Expires ${when}`,
+      invitedBy: (who: string): string => `Invited by ${who}`,
+      /**
+       * 초대한 사람의 이름이 없을 때.
+       *
+       * ⚠️ **이메일을 여기 쓰지 않는다** — 그 주소는 초대한 사람의 것이고 이 화면이 가리는 대상이 아니다.
+       * (열이 사라지기 전에는 *"이미 마스킹한 열이 옆에 있다"*가 근거였는데, 그 열이 없어졌다.)
+       */
       unknownInviter: "a member",
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */
@@ -2247,6 +2330,10 @@ export const en = {
       // "없다"와 "멤버가 아니다"를 가르지 않는다 — 프로젝트 존재를 노출하지 않는다 (PRODUCT §7.7).
       "not-found": "You can't open this project. Check your invite link.",
       // 무엇을 하면 되는지 말한다 — 막힌 이유만 알려주면 사용자가 갇힌다.
+      // ⚠️ **핸드오프가 이 값을 코드 쪽으로 맞췄다** (members.prompt.md 결정 6 — *"시안 문장(needs one
+      // owner)은 버린다"*). 2026-09-19에 한 번 시안 문장으로 바꿨다가 되돌렸다: 바꾸면 `accessErrorMessage`
+      // 소비자 전부에 번지는데 얻는 것이 단어 둘이었다. **사전 차단 띠와 사후 Alert이 같은 문장**이라는
+      // 요구는 둘 다 이 키를 읽는 것으로 이미 지켜진다.
       "last-owner": "A project needs at least one owner. Make someone else an owner first.",
       "not-member": "That person isn't a member of this project.",
       // 유일하게 재시도가 맞는 사유다 — 입력값이 남아 있다는 것을 말한다.

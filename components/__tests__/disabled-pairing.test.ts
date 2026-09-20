@@ -21,6 +21,13 @@ import { expect, it } from "vitest";
  */
 const ROOT = process.cwd();
 const BUTTON = "components/ui/button.tsx";
+/**
+ * ⚠️ **둘째 프리미티브다** (members-rework T7). `SelectTrigger`도 `disabled`를 못 쓰는 자리가 생겼다 —
+ * 사전 차단은 사유를 `aria-describedby`로 들려줘야 하고 진짜 `disabled`에는 그 전달 경로가 없다.
+ * 목록에 **등재**하는 것이 그 결정이고, 아래 세 검사가 `button.tsx`와 같은 강도로 이 파일도 본다.
+ */
+const SELECT = "components/ui/select.tsx";
+const PRIMITIVES = [BUTTON, SELECT];
 const SKIP = new Set(["__tests__", "node_modules"]);
 
 const stripComments = (source: string): string =>
@@ -58,8 +65,8 @@ const utilities = (source: string, prefix: string): Set<string> =>
  * 그대로 복제했다가 `default`·`danger`의 배경이 흰색에서 투명으로 떨어지는 것을 브라우저 computed
  * style이 잡았다. **짝을 강제하면 그 복제를 도로 강요하게 된다.**
  */
-it("buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이 있다 (hover: 제외)", () => {
-  const source = read(BUTTON);
+it.each(PRIMITIVES)("%s의 disabled: 유틸리티마다 aria-disabled: 짝이 있다 (hover: 제외)", (file) => {
+  const source = read(file);
   const real = utilities(source, "disabled");
   const aria = utilities(source, "aria-disabled");
   expect(real.size).toBeGreaterThan(0);
@@ -75,15 +82,18 @@ it("buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이 있다 (ho
  * hover에서 다시 살아난다. 예외를 `hover:`로 좁혀 두는 것이 요지다: 넓히면 이 검사가 아무것도
  * 안 막는다.
  */
-it("buttonClass의 aria-disabled: 유틸리티마다 disabled: 짝이 있다 (hover: 제외)", () => {
-  const source = read(BUTTON);
+it.each(PRIMITIVES)("%s의 aria-disabled: 유틸리티마다 disabled: 짝이 있다 (hover: 제외)", (file) => {
+  const source = read(file);
   const real = utilities(source, "disabled");
   const aria = utilities(source, "aria-disabled");
   expect(aria.size).toBeGreaterThan(0);
   const unpaired = [...aria].filter((u) => !real.has(u) && !u.startsWith("hover:"));
   expect(unpaired.sort()).toEqual([]);
-  // 예외가 실제로 쓰이고 있는지도 본다 — 안 쓰이면 위 문단이 죽은 설명이다.
-  expect([...aria].some((u) => u.startsWith("hover:"))).toBe(true);
+});
+
+/** ⚠️ **`hover:` 예외가 실제로 쓰이고 있나** — 안 쓰이면 위 문단이 죽은 설명이다. `Button`만 그 자리다. */
+it("hover: 예외가 buttonClass에서 실제로 쓰인다", () => {
+  expect([...utilities(read(BUTTON), "aria-disabled")].some((u) => u.startsWith("hover:"))).toBe(true);
 });
 
 /**
@@ -96,7 +106,7 @@ it("aria-disabled: 스타일을 buttonClass 밖에서 쓰지 않는다", () => {
   const offenders = sourceFiles(join(ROOT, "components"))
     .concat(sourceFiles(join(ROOT, "app")))
     .map((full) => full.slice(ROOT.length + 1))
-    .filter((rel) => rel !== BUTTON)
+    .filter((rel) => !PRIMITIVES.includes(rel))
     .filter((rel) => utilities(read(rel), "aria-disabled").size > 0);
   expect(offenders.sort()).toEqual([]);
 });

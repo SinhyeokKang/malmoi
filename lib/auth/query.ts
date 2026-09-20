@@ -64,6 +64,16 @@ export type MemberView = {
    * 관측자는 그 프로젝트의 EDITOR 이상이고 view-source로 읽는다. 안 읽는 것이 안 새는 것이다.
    */
   emailLabel: string | null;
+  /**
+   * 이 행의 PII를 **복호화할 수 있었나**. `false`면 `name`·`emailLabel`의 값은 폴백이고 사람의 것이 아니다.
+   *
+   * ⚠️ **문자열 센티널을 쓰지 않으려고 있는 필드다** — 로더 안에서는 "주소가 없는 행"과 "못 읽은 행"이
+   * 이미 다른 갈래인데 `m.common.unreadable`과 라벨을 견주는 방식으로는 되살릴 수 없다(같은 문자열이
+   * 정상 경로에서도 나올 수 있고, 값을 비교하는 코드는 이 리포에 0건이다).
+   *
+   * ⚠️ **PII 경계를 안 넓힌다** — 원문을 함축하지 않고, 복호화 실패는 이미 라벨로 화면에 보인다.
+   */
+  readable: boolean;
   role: Role;
   joinedAt: Date;
 };
@@ -88,22 +98,27 @@ export async function loadMembers(prisma: PrismaClient, projectId: string): Prom
   const rows = storedRows.map((r) => ({ ...r, user: r.user === null ? null : readable(() => decodeUser(r.user!)) }));
   // 라벨은 **목록 전체를 보고** 만든다 — 행마다 따로 만들면 같은 도메인의 두 주소가 같은 라벨이 된다.
   const labels = maskedEmailLabels(rows.map((r) => r.user?.email ?? ""));
-  return rows.map((r, i) => ({
-    userId: r.userId,
-    // 못 읽은 행은 이름도 못 읽는다 — 옛 값을 그럴듯하게 보여줄 자리가 없다.
-    name: r.user?.name ?? null,
-    emailLabel: storedRows[i]?.user !== null && r.user === null
-      ? m.common.unreadable
-      : r.user?.email ? (labels[i] ?? null) : null,
-    role: r.role,
-    joinedAt: r.createdAt,
-  }));
+  return rows.map((r, i) => {
+    // ⚠️ **"사용자 행이 없다"와 "있는데 못 열었다"를 가른다** — 앞은 정상(주소 미보유)이고 뒤가 장애다.
+    const unreadable = storedRows[i]?.user !== null && r.user === null;
+    return {
+      userId: r.userId,
+      // 못 읽은 행은 이름도 못 읽는다 — 옛 값을 그럴듯하게 보여줄 자리가 없다.
+      name: r.user?.name ?? null,
+      emailLabel: unreadable ? m.common.unreadable : r.user?.email ? (labels[i] ?? null) : null,
+      readable: !unreadable,
+      role: r.role,
+      joinedAt: r.createdAt,
+    };
+  });
 }
 
 export type PendingInvitation = {
   id: string;
   /** ⚠️ **마스킹 라벨이다** — `MemberView.emailLabel`과 같은 이유이고, 여기가 더 민감하다(발견 4). */
   emailLabel: string;
+  /** ⚠️ `MemberView.readable`과 같은 이유이고 같은 소비자(`planMemberIdentity`)가 읽는다. */
+  readable: boolean;
   role: Role;
   expiresAt: Date;
   invitedByName: string | null;
@@ -158,6 +173,7 @@ export async function loadPendingInvitations(
   return rows.map((r, i) => ({
     id: r.id,
     emailLabel: r.decoded === null ? m.common.unreadable : (labels[i] ?? ""),
+    readable: r.decoded !== null,
     role: r.role,
     expiresAt: r.expiresAt,
     invitedByName: r.invitedByUser?.name ?? null,

@@ -24,6 +24,7 @@ import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import { normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
+import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
 import { planMemberChange } from "@/lib/auth/membership";
 import type { Role } from "@/lib/auth/permission";
@@ -115,7 +116,12 @@ const MemberChangeInput = z.object({
 });
 
 export type InviteResult =
-  | { ok: true; token: string }
+  /**
+   * ⚠️ **`label`이 서버에서 온다** — 링크 얼굴 제목이 *"Link ready for {label}"*이고, 그 마스킹을
+   * 클라이언트에서 다시 하면 **세 번째 구현**이 된다(같은 주소가 화면마다 다르게 보인다 —
+   * `lib/auth/email.ts`). 유출이 아닌 것과 별개로, 멤버 화면의 `maskEmail` 금지선이 그 순간 예외를 갖는다.
+   */
+  | { ok: true; token: string; label: string }
   | { ok: false; error: string };
 
 export async function createInvitation(raw: {
@@ -206,7 +212,8 @@ export async function createInvitation(raw: {
 
     // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
     revalidatePath(`/projects/${input.slug}/members`);
-    return { ok: true, token };
+    // 목록 전체가 아니라 한 주소를 가리는 자리다 — 충돌 판정이 필요 없으므로 라벨은 `maskEmail`과 같다.
+    return { ok: true, token, label: maskedEmailLabels([email])[0] ?? "" };
   } catch (error) {
     logCaught("invite", "create", error);
     return { ok: false, error: "unavailable" };

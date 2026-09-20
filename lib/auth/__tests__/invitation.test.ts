@@ -135,8 +135,13 @@ describe("planInvitationAccept — 다섯 분기", () => {
  * 안에서 센 값을 넘긴다.
  */
 describe("planInvitationCreate — 멤버 10명 제한", () => {
-  it("9명이면 통과다 — 열째 자리가 남아 있다", () => {
-    expect(planInvitationCreate({ memberCount: MEMBER_LIMIT - 1 })).toEqual({ status: "ok" });
+  /**
+   * ⚠️ **`ok`에도 `limit`이 실린다** (members-rework T4). 그 함수의 `@returns` 주석이 *"limit을 값으로
+   * 돌려준다 — 문구가 상수를 따로 들면 둘이 갈린다"*를 이미 적고 있었고, `ok` 갈래에서만 그것을 어기고
+   * 있었다. 화면의 `4 of 10 seats`가 그 값을 읽는다.
+   */
+  it("9명이면 통과하고 상한을 함께 준다 — 열째 자리가 남아 있다", () => {
+    expect(planInvitationCreate({ memberCount: MEMBER_LIMIT - 1 })).toEqual({ status: "ok", limit: MEMBER_LIMIT });
   });
 
   it("10명이면 거부하고 상한을 값으로 준다 — 문구가 숫자를 따로 들면 둘이 갈린다", () => {
@@ -154,7 +159,7 @@ describe("planInvitationCreate — 멤버 10명 제한", () => {
 
   it("⚠️ 대기 초대는 안 센다 — 가장 단순한 규칙이고 그 대가는 초과 수락이다", () => {
     // 대기 초대까지 세면 "만료된 초대 때문에 못 부른다"가 생기고 그것을 설명할 화면이 없다.
-    expect(planInvitationCreate({ memberCount: 0 })).toEqual({ status: "ok" });
+    expect(planInvitationCreate({ memberCount: 0 })).toEqual({ status: "ok", limit: MEMBER_LIMIT });
   });
 
   it("상한이 10이다", () => {

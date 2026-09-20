@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { ProjectArchived } from "@/components/project-archived";
-import { InviteDialog } from "@/components/members/invite-dialog";
 import { MemberList } from "@/components/members/member-list";
+import { MembersPanelHeader } from "@/components/members/members-panel-header";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { canPerform } from "@/lib/auth/permission";
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
+import { planSeatNotice } from "@/lib/auth/seat-notice";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
@@ -61,19 +61,21 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
         {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         {/* 초대 버튼이 제목 행 우측이다 — 머리에 붙어 있으므로 본문과 함께 스크롤하지 않는다. */}
+        {/*
+          ⚠️ **좌석 판정이 서버에서 일어난다** — `planSeatNotice`가 `lib/auth/invitation.ts`를 물고
+          그 모듈이 `node:crypto`를 문다. 값만 내려보내면 클라이언트 번들 경계가 안 움직인다.
+          그리고 **화면이 `MEMBER_LIMIT`을 따로 들지 않는다** — 들면 서버 거부와 갈린다.
+        */}
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
-          <h1 id="members-heading" tabIndex={-1} className="text-lg font-medium outline-none">{m.common.nav.members}</h1>
-          {canPerform(role, "member:manage") && <InviteDialog slug={slug} />}
+          <h1 className="text-lg font-medium">{m.common.nav.members}</h1>
+          <MembersPanelHeader slug={slug} notice={planSeatNotice({ role, memberCount: members.length })} />
         </div>
       </PanelHeader>
 
-      <PanelBody className="space-y-6">
+      {/* ⚠️ **카드 갭이 16이다** — 두 카드가 각자 제목을 들므로 섹션 래퍼도 `space-y-6`도 필요 없다. */}
+      <PanelBody className="space-y-4">
         <MemberList slug={slug} members={members} role={role} viewerId={userId} now={now} headingId="members-heading" />
-
-        <section className="space-y-3">
-          <h2 id="pending-heading" tabIndex={-1} className="text-sm font-medium outline-none">{m.members.pending.title}</h2>
-          <PendingInvitations slug={slug} invitations={pending} role={role} now={now} headingId="pending-heading" />
-        </section>
+        <PendingInvitations slug={slug} invitations={pending} role={role} now={now} headingId="pending-heading" />
       </PanelBody>
     </>
   );

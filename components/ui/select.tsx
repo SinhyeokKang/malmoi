@@ -40,6 +40,13 @@ export function SelectTrigger({ className, children, ...props }: ComponentProps<
         */
         "[&>span]:min-w-0 [&>span]:truncate",
         "data-[placeholder]:text-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed",
+        /*
+          ⚠️ **`disabled`를 쓸 수 없는 자리가 있다** (2026-09-17 전역 규칙의 둘째 소비자 — 첫째는 `<a>`와
+          Radix Dialog 트리거였다). 사전 차단은 **사유를 `aria-describedby`로 들려줘야** 하는데, 진짜
+          `disabled`는 포커스를 못 받아 그 전달 경로가 없다 — 멤버 화면의 마지막 오너 행이 그 자리다.
+          철자를 호출부가 발명하지 않도록 **여기 한 번** 적는다 (`disabled-pairing.test.ts`가 짝을 센다).
+        */
+        "aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:cursor-not-allowed",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         className,
       )}

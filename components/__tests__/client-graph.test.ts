@@ -90,6 +90,8 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
+  "lib/auth/member-identity.ts",
+  "lib/auth/membership.ts",
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
   "lib/compare.ts",

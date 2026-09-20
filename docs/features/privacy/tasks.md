@@ -137,12 +137,13 @@
 
 ## ▶ 배포 게이트 (P6 앞당김 — 런칭 차단을 여기서 푼다)
 
-- [ ] **P6.1** `/push`(dev·preview 확인) → **`/merge`**(프로덕션 배포). `https://mal-moi.com/privacy`가 열리는지 확인한다.
+- [x] **P6.1** (2026-09-19 완료 — PR #62 squash 머지 `c8877f0`. `https://mal-moi.com/privacy` 200이고 절 앵커 일곱이 프로덕션 HTML에 전부 있다) `/push`(dev·preview 확인) → **`/merge`**(프로덕션 배포). `https://mal-moi.com/privacy`가 열리는지 확인한다.
   - 검증: 비로그인으로 열리고 복귀 링크가 `/signin`, 로그인 상태에서 `/projects`. 절 앵커 일곱이 프로덕션에서 동작.
-- [ ] **P6.2** Google Cloud 콘솔 — OAuth 동의 화면에 `https://mal-moi.com/privacy`를 넣고 **게시**로 전환한다.
+- [x] **P6.2** (2026-09-19 사용자 — **퍼블릭 게시 완료**) Google Cloud 콘솔 — OAuth 동의 화면에 `https://mal-moi.com/privacy`를 넣고 **게시**로 전환한다.
+  - ⚠️ **Search Console 도메인 소유권 인증이 게시의 선행이다** (2026-09-19 실측 — 승인된 도메인 등록이 그것을 요구한다). 가비아 DNS에 TXT(호스트 `@`)를 넣는다. **한 번 실패했고 원인은 토큰이 36자로 잘린 것이었다** — 정상은 `google-site-verification=` 뒤 **43자**인데 인증 창의 입력칸이 폭에 맞춰 잘려 보여 그만큼만 복사됐고, ⚠️ **실패 화면이 "대신 발견된 레코드"로 그 잘린 값을 그대로 되읽어 눈으로는 정답과 구별되지 않는다.** 판정은 길이로 한다: `dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}'` → 43. 43자로 교체한 뒤 인증·게시 둘 다 통과했다. 절차 정본은 `docs/OPERATIONS.md`.
   - 검증: 상태가 In production. **사용자 작업이다.**
   - 롤백: 문제가 생기면 동의 화면을 Testing으로 되돌린다(게시 취소가 되돌리기다. "L1.1을 열어 둔다"는 보류이지 롤백이 아니다).
-- [ ] **P6.3** 테스트 사용자 목록 **밖**의 Google 계정으로 `mal-moi.com/signin` 로그인 → 성공.
+- [x] **P6.3** (2026-09-19 사용자 실측 — 목록 밖 계정으로 로그인 성공. **launch-readiness L1.1을 닫았다.** ⚠️ 본 것은 **로그인**까지이고 초대 수락 완주는 아니다) 테스트 사용자 목록 **밖**의 Google 계정으로 `mal-moi.com/signin` 로그인 → 성공.
   - ⚠️ **계정을 먼저 특정한다** — launch-readiness가 `ox501tube@gmail.com`을 목록 **안**으로 적으므로 그것이 아니다. 실측 전에 어느 주소를 쓸지 정하고 여기에 적는다.
   - 검증: launch-readiness **L1.1이 닫힌다.** 실패(`403 access_denied`)면 게시가 반영되지 않은 것이고 L1.1은 열린 채로 둔다. ⚠️ **L0.1은 이미 닫혀 있다** — 이 단계로 닫히는 것은 L1.1 하나다.
 

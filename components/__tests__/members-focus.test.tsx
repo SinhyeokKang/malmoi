@@ -23,9 +23,9 @@ const mocks = vi.hoisted(() => ({ changeMember: vi.fn(), revokeInvitation: vi.fn
 vi.mock("@/app/(edit)/projects/actions", () => ({ changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation }));
 
 const now = new Date("2026-09-17T00:00:00Z");
-const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", role: "EDITOR", joinedAt: now };
-const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", role: "OWNER", joinedAt: now };
-const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
+const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", readable: true, role: "EDITOR", joinedAt: now };
+const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", readable: true, role: "OWNER", joinedAt: now };
+const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
 
 const status = () => document.querySelector('[role="status"]');
 const byLabel = (label: string) => {
@@ -62,11 +62,13 @@ beforeEach(() => {
 afterEach(() => { fixup?.disconnect(); });
 
 describe("Members — Remove", () => {
+  /**
+   * ⚠️ **제목을 여기서 그리지 않는다** (2026-09-19). 전에는 이 래퍼가 `<h1 id tabIndex={-1}>`을 **자기가**
+   * 그려서, 컴포넌트가 착지점을 실제로 렌더하지 않아도 green이었다 — 그 구멍을 `members-screen.test.ts`의
+   * 소스 대조가 메우고 있었다. 이제 카드가 제목을 들므로 **이 렌더가 그 짝을 직접 잰다.**
+   */
   function Screen({ members }: { members: MemberView[] }) {
-    return <>
-      <h1 id="members-heading" tabIndex={-1}>Members</h1>
-      <MemberList slug="acme" members={members} role="OWNER" viewerId="u1" now={now} headingId="members-heading" />
-    </>;
+    return <MemberList slug="acme" members={members} role="OWNER" viewerId="u1" now={now} headingId="members-heading" />;
   }
 
   it("확인 후 성공하면 제목으로 포커스가 가고 결과가 대상 이름과 함께 읽힌다", async () => {
@@ -109,11 +111,9 @@ describe("Members — Remove", () => {
 });
 
 describe("Pending invitations — Revoke", () => {
+  /** ⚠️ 위 `Members`와 같은 이유로 제목을 래퍼가 그리지 않는다 — 카드가 든다. */
   function Screen({ invitations }: { invitations: PendingInvitation[] }) {
-    return <>
-      <h2 id="pending-heading" tabIndex={-1}>Pending invitations</h2>
-      <PendingInvitations slug="acme" invitations={invitations} role="OWNER" now={now} headingId="pending-heading" />
-    </>;
+    return <PendingInvitations slug="acme" invitations={invitations} role="OWNER" now={now} headingId="pending-heading" />;
   }
 
   it("마지막 초대를 지워 빈 상태로 접혀도 포커스는 제목, 알림은 같은 live 영역에 남는다", async () => {

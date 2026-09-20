@@ -71,7 +71,11 @@ export function planInvitationAccept(input: {
  */
 export const MEMBER_LIMIT = 10;
 
-export type InvitationCreate = { status: "ok" } | { status: "member-limit"; limit: number };
+/**
+ * ⚠️ **`limit`이 두 갈래 모두에 있다** (members-rework T4). 전에는 거부 갈래에만 있어서, 좌석 잔량을
+ * 보이려는 화면이 `MEMBER_LIMIT`을 따로 import하게 돼 있었다 — 아래 `@returns`가 금지하는 바로 그 모양이다.
+ */
+export type InvitationCreate = { status: "ok"; limit: number } | { status: "member-limit"; limit: number };
 
 /**
  * 초대를 하나 더 발급해도 되는가.
@@ -85,5 +89,6 @@ export type InvitationCreate = { status: "ok" } | { status: "member-limit"; limi
  * @returns `limit`을 값으로 돌려준다 — 문구가 상수를 따로 들면 둘이 갈린다.
  */
 export function planInvitationCreate(input: { memberCount: number }): InvitationCreate {
-  return input.memberCount >= MEMBER_LIMIT ? { status: "member-limit", limit: MEMBER_LIMIT } : { status: "ok" };
+  const status = input.memberCount >= MEMBER_LIMIT ? "member-limit" : "ok";
+  return { status, limit: MEMBER_LIMIT };
 }
