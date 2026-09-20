@@ -24,7 +24,7 @@ import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapter
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
-import { normalizeEmail } from "@/lib/auth/email";
+import { maskEmail, normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
@@ -34,6 +34,9 @@ import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { invitationEventLabel, userEventLabel } from "@/lib/events/member-label";
+import { runTokenFor } from "@/lib/events/payload";
+import { finishRun, recordEvent, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
@@ -208,6 +211,17 @@ export async function createInvitation(raw: {
           invitedBy: userId,
         },
       });
+      /**
+       * ⚠️ **초대 링크 원문도 해시도 payload에 없다** (spec §3.C.14 · T5c). 남는 것은 "누구를 어떤
+       * 역할로 불렀다"는 사실과 **마스킹 라벨**뿐이다.
+       */
+      await recordEvent(tx, {
+        projectId,
+        subtype: "member.invited",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: { kind: "MEMBER", targetLabel: maskEmail(email), role: { before: null, after: input.role } },
+      });
       return "ok" as const;
     });
     if (outcome !== "ok") return { ok: false, error: outcome };
@@ -258,11 +272,25 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
 
   // 조건부 쓰기의 count를 읽는다 — `update`는 행이 없을 때 P2025로 던지고, Server Action의
   // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
-  const written = await prisma.projectInvitation.updateMany({
-    where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
-    data: { expiresAt: new Date() },
+  // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
+  const written = await prisma.$transaction(async (tx) => {
+    // 라벨을 **쓰기 전에** 읽는다 — 무효화는 행을 지우지 않지만 순서를 뒤집을 이유도 없다.
+    const targetLabel = await invitationEventLabel(tx, { projectId: access.projectId, invitationId: input.invitationId });
+    const count = (await tx.projectInvitation.updateMany({
+      where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
+      data: { expiresAt: new Date() },
+    })).count;
+    if (count === 0) return 0;
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "member.invitationRevoked",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "MEMBER", targetLabel, role: null },
+    });
+    return count;
   });
-  if (written.count === 0) return { ok: false, error: "not-found" };
+  if (written === 0) return { ok: false, error: "not-found" };
 
   revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true };
@@ -336,6 +364,19 @@ export async function changeMember(raw: {
 
     // 판정과 쓰기 사이에 사라졌다 — 다른 요청이 먼저 처리한 것이고, 결과는 그쪽이 옳다.
     if (written.count === 0) return "not-member" as const;
+
+    // 제거와 역할 변경이 **같은 사건 계열**이다 — `after`가 null이면 제거다(판정이 하나인 것과 같은 축).
+    await recordEvent(tx, {
+      projectId,
+      subtype: input.nextRole === null ? "member.removed" : "member.roleChanged",
+      actor: { kind: "USER", userId },
+      scope: "project-wide",
+      payload: {
+        kind: "MEMBER",
+        targetLabel: await userEventLabel(tx, input.targetUserId),
+        role: { before: members.find((member) => member.userId === input.targetUserId)?.role ?? null, after: input.nextRole },
+      },
+    });
 
     const owners = await tx.projectMember.count({ where: { projectId, role: "OWNER" } });
     if (owners === 0) throw new LastOwnerRollback();
@@ -1058,17 +1099,65 @@ export async function createProject(raw: {
         select: { id: true },
       });
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
+      /**
+       * ⚠️ **생성은 사건 셋이다** (결정 13): 생성 1 + **소스당** 1 + 최초 적재 1. 한 줄로 접으면
+       * 나중에 추가한 소스가 **같은 일인데 다른 모양**으로 남고, 소스 필터가 그 한 줄을 어디에 넣을지
+       * 애매해진다. 로케일·키는 독립 행을 만들지 않고 적재 실행의 집계로만 남는다.
+       */
+      await recordEvent(tx, {
+        projectId: project.id,
+        subtype: "settings.projectCreated",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "project", value: { before: null, after: `${plan.repoOwner}/${plan.repoName}` } },
+      });
       for (const item of prepared) {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
           slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
           baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
+        await recordEvent(tx, {
+          projectId: project.id,
+          subtype: "surface.added",
+          actor: { kind: "USER", userId },
+          surfaceIds: [item.id],
+          payload: { kind: "SURFACE", surfaceSlug: item.surface.surfaceSlug, adapter: item.surface.adapter,
+            baseLocale: { before: null, after: item.surface.baseLocale } },
+        });
         await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
           refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
       }
-      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
+      /**
+       * 최초 적재 실행 하나 — **소스별로 복제하지 않는다** (결정 14). 여기까지 온 것은 모든 표면의
+       * `failed`가 0이라는 뜻이라(위에서 하나라도 실패하면 `ingest-failed`로 반환한다) 결과가
+       * `Imported`로 고정이고, 그 사실을 소스별 결과로도 남긴다.
+       */
+      await recordRun(tx, {
+        projectId: project.id,
+        subtype: "import.first",
+        actor: { kind: "USER", userId },
+        surfaceIds: prepared.map(item => item.id),
+        result: "imported",
+        occurredAt: startedAt,
+        finishedAt: new Date(),
+        runToken: runTokenFor({ kind: "import", token }),
+        payload: {
+          kind: "IMPORT", source: "first",
+          surfaceSlugs: prepared.map(item => item.surface.surfaceSlug),
+          keys: prepared.reduce((sum, item) => sum + item.payload.keys.length, 0),
+          pendingEdits: null,
+          surfaces: prepared.map(item => ({ surfaceSlug: item.surface.surfaceSlug, status: "imported" as const, count: item.payload.keys.length, reason: null })),
+          errorCode: null, refusal: null,
+        },
+      });
+      /**
+       * ⚠️ **수집 개시 시각을 생성 tx에서 쓴다** (spec §7.1). 신규 프로젝트는 이 순간부터 전부
+       * 기록되므로 경계선이 없고, 기존 프로젝트는 구 writer 종료가 확인된 뒤 한 번 기록한다 —
+       * 여기서 `now()`를 쓰는 것과 그것을 추정으로 채우는 것은 다른 일이다.
+       */
+      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id, activityCoverageStartedAt: startedAt } });
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch (error) {
     // 잠금 안에서 센 결과가 넘쳤다 — 쓰기는 되돌아갔고 사용자에게는 선조회와 같은 사유가 간다.
@@ -1170,11 +1259,45 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
     finishImportRun(prisma, { ...scope, token, code });
 
+  /**
+   * 실행 사건 — 시작에 열고 **모든 반환·예외 경로**가 닫는다 (T5b-0). 조기 반환이 여섯이라 하나라도
+   * 빠지면 그 실행이 영영 `Running…`으로 남고, 화면에 그것을 닫을 수단이 없다.
+   *
+   * ⚠️ **기록 실패가 적재를 되돌리지 않는다** — 관측 기반이라 실행은 이미 일어났다.
+   */
+  const runToken = runTokenFor({ kind: "import", token });
+  const surfaceSlugs = [surface.slug];
+  await prisma
+    .$transaction(tx => recordRun(tx, {
+      projectId, subtype: "import.first", actor: { kind: "USER", userId },
+      surfaceIds: [surface.id], occurredAt: startedAt, runToken,
+      payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+    }))
+    .catch((error: unknown) => logFailure("onboard-ingest-event", error));
+  const closeRun = async (
+    result: "imported" | "partial" | "failed",
+    outcome: { keys: number | null; errorCode: string | null },
+  ) => {
+    try {
+      await prisma.$transaction(tx => finishRun(tx, {
+        projectId, runToken, result,
+        payload: {
+          kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
+          surfaces: [{ surfaceSlug: surface.slug, status: result === "failed" ? "failed" : result === "partial" ? "partial" : "imported", count: outcome.keys, reason: outcome.errorCode }],
+          errorCode: outcome.errorCode, refusal: null,
+        },
+      }));
+    } catch (error) {
+      logFailure("onboard-ingest-event", error);
+    }
+  };
+
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: snapshotError(snapshot) });
       return { ok: false, error: snapshotError(snapshot) };
     }
 
@@ -1184,11 +1307,13 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     } catch (error) {
       if (!(error instanceof IngestBudgetError)) throw error;
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: "resource-limit" });
       return { ok: false, error: "resource-limit" };
     }
     if (prepared.status !== "ok") {
       logFailure("onboard-ingest", new Error(`stored format no longer holds: ${prepared.reason}`));
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
       return { ok: false, error: "ingest-failed" };
     }
     const { paths, targets, blobs } = prepared;
@@ -1226,12 +1351,14 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
      */
     if (result.count === 0) await failRun("partial-import");
 
+    await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null });
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
     await failRun();
+    await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
     return { ok: false, error: "ingest-failed" };
   } finally {
     // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.
@@ -1348,9 +1475,22 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
-  await prisma.project.update({
-    where: { id: access.projectId },
-    data: { pushTokenHash: hashPushToken(pushToken) },
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({
+      where: { id: access.projectId },
+      data: { pushTokenHash: hashPushToken(pushToken) },
+    });
+    /**
+     * ⚠️ **값도 해시도 payload에 없다** (spec §3.C.14 · T5c). 남는 것은 "회전했다"는 사실뿐이고,
+     * 그 사실이 곧 "그 리포의 CI가 지금부터 401이다"를 설명한다.
+     */
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.pushTokenRotated",
+      actor: { kind: "USER", userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "pushToken", value: null },
+    });
   });
 
   revalidatePath(`/projects/${slug}/settings`);
@@ -1391,7 +1531,20 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
-  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
+    /**
+     * ⚠️ **보관 사건 자체를 읽을 수 있어야 한다** — 그 때문에 Logs가 보관된 프로젝트에서도 열린다
+     * (완료조건 11). 사건은 남았는데 볼 화면이 없으면 기록한 의미가 없다.
+     */
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.archived",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "archived", value: { before: null, after: "archived" } },
+    });
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -1420,7 +1573,16 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
-  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.restored",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "archived", value: { before: "archived", after: null } },
+    });
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };

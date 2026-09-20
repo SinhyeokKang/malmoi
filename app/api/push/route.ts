@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
+import { recordCiImport, recordCiImportInTransaction, type CiImportEvent } from "@/lib/events/ci";
 import { classifyFailure } from "@/lib/failure";
+import { logFailure } from "@/lib/github-connect/log";
 import { abandonImportRun, finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { applyProtectedPush, ApplyGuardError } from "@/lib/push/apply";
 import type { PushResponse } from "@/lib/push/payload";
@@ -87,8 +89,28 @@ export async function POST(request: Request): Promise<NextResponse> {
     const parsed = PushPayload.safeParse(body);
     if (!parsed.success) {
       // 검증 실패를 조용히 삼키지 않는다 — CI 로그에서 무엇이 틀렸는지 보여야 한다.
+      // ⚠️ **400은 이력에 안 남는다** (결정 7) — 페이로드가 깨진 것은 다음에도 같은 이유로 거부될
+      // 일이 아니라 생산자 버그이고, 그 진단은 이 응답과 CI 로그의 몫이다.
       return NextResponse.json({ error: "invalid payload", issues: parsed.error.issues }, { status: 400 });
     }
+
+    /**
+     * ⚠️ **없으면 요청별로 발급한다** (design §3.3의 전환 규칙). 구 생산자는 그 값이 요청마다
+     * 달라 **HTTP 재전달 중복 방지가 보장되지 않는다** — 그래도 처리는 계속한다. 새 생산자가
+     * 나가면 그 제한이 사라진다.
+     */
+    const executionId = parsed.data.executionId ?? randomUUID();
+    /**
+     * 사건 기록은 **응답을 바꾸지 않는다** — 관측 기반이라 적재는 이미 끝났고, 여기서 던지면
+     * 정상 응답이 500이 된다.
+     */
+    const record = async (input: Omit<CiImportEvent, "projectId" | "pushTokenHash" | "executionId">) => {
+      try {
+        await recordCiImport(prisma, { projectId: project.id, pushTokenHash, executionId, ...input });
+      } catch (error) {
+        logFailure("push-event", error);
+      }
+    };
 
     /**
      * 보관 거부 (7단계 — ARCHITECTURE §5.6.4). **오배송·표면 검사보다 앞이다** — 멈춘
@@ -97,6 +119,8 @@ export async function POST(request: Request): Promise<NextResponse> {
      */
     const archived = checkArchived(project.archivedAt);
     if (archived !== "ok") {
+      // 거부 여섯 중 하나다 — 사람이 프로젝트 상태를 바꿔야 풀린다 (spec §6.1).
+      await record({ surface: null, result: "notStarted", refusal: "archived" });
       return NextResponse.json({ error: "archived" }, { status: guardStatus(archived) });
     }
 
@@ -122,6 +146,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!surface) return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
     const formatCheck = checkFormat(parsed.data.format, surface);
     if (formatCheck !== "ok") {
+      await record({ surface, result: "notStarted", refusal: "wrong-format" });
       // 무엇을 고쳐야 하는지 보여준다 — `expected`는 이미 그 프로젝트의 토큰을 든 호출자에게만 간다.
       // 고치는 방법은 워크플로에 `adapter:`·`base-locale:`을 박는 것이고 화면이 그 YAML을 낸다.
       return NextResponse.json(
@@ -149,6 +174,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const commitAt = new Date(parsed.data.commitAt);
     const order = checkCommitOrder(commitAt, surface.lastCommitAt);
     if (order !== "ok") {
+      await record({ surface, result: "notStarted", refusal: "stale-commit" });
       return NextResponse.json(
         {
           error: "stale commit",
@@ -177,7 +203,10 @@ export async function POST(request: Request): Promise<NextResponse> {
      * `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 트랜잭션 밖 사전 집계로 같은 목적을 이룬다.
      */
     const pendingBefore = await countPending(prisma, project.id);
-    if (pendingBefore > 0) return deferred(project.id, parsed.data.commitSha, pendingBefore);
+    if (pendingBefore > 0) {
+      await record({ surface, result: "deferred", pendingEdits: pendingBefore });
+      return deferred(project.id, parsed.data.commitSha, pendingBefore);
+    }
 
     const startedAt = new Date();
     const token = randomUUID();
@@ -191,6 +220,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         startedAt, token, pushTokenHash,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
+        /**
+         * ⚠️ **성공 사건이 적재와 같은 트랜잭션이다** (design §3.2). 밖에서 쓰면 "적재는 됐는데
+         * 이력엔 없다"와 그 반대가 둘 다 열리고, 회전 경합으로 롤백된 적재가 사건만 남긴다.
+         */
+        onApplied: async (tx, outcome) => {
+          await recordCiImportInTransaction(tx, {
+            projectId: project.id, pushTokenHash, executionId,
+            surface, result: "imported",
+            keys: outcome.inserted + outcome.updated,
+            surfaces: [{ surfaceSlug: surface.slug, status: "imported", count: outcome.inserted + outcome.updated, reason: null }],
+          });
+        },
       });
     } catch (error) {
       // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
@@ -199,6 +240,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       if (error instanceof ApplyGuardError && error.code === "stale-commit") await abandonImportRun(prisma, { ...scope, token });
       else await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
       if (error instanceof ApplyGuardError) {
+        // ⚠️ **`wrong-project`는 거부 여섯에 없다** (spec §6.1) — 오배송은 다음에도 같은 이유로
+        // 거부되지만 **이 프로젝트에서 일어난 일이 아니다.** 기록하면 남의 실수가 내 이력에 선다.
+        if (error.code !== "wrong-project") await record({ surface, result: "notStarted", refusal: error.code });
         const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
         return NextResponse.json({ error: message }, { status: guardStatus(error.code) });
       }
@@ -224,6 +268,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
+      await record({ surface, result: "deferred", pendingEdits: result.pendingCount });
       return deferred(project.id, parsed.data.commitSha, result.pendingCount);
     }
     const outcome = result.outcome;

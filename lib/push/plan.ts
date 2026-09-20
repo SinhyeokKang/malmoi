@@ -102,6 +102,17 @@ export const PushPayload = z
      */
     projectSlug: z.string().min(1),
     surfaceSlug: z.string().min(1).max(40),
+    /**
+     * 생산자가 **소스별 실행 시작에 한 번** 발급하는 식별자 (logs-rework design §3.3). HTTP 재전달은
+     * 같은 값을 유지하고 새 CLI 호출·워크플로 재실행은 새 값을 낸다 — 그래서 활동 이력에서 같은
+     * 실행이 두 줄이 되지 않는다.
+     *
+     * ⚠️ **커밋 SHA가 실행 식별자가 아니다** — 같은 커밋을 다시 처리하는 것은 별도 실행이다.
+     * ⚠️ **optional이다** — 서버가 먼저 이 필드를 **받아들이고** 그 다음에 새 생산자가 나간다.
+     *   식별자 없는 구 생산자는 요청별 식별자로 처리되고, 재전달 중복 방지는 보장되지 않는다.
+     * ⚠️ **인증 증거가 아니다** — 서버가 인가된 projectId·확인된 surfaceId 아래에서만 쓴다.
+     */
+    executionId: z.uuid().optional(),
     // 40자 hex — permalink 기준이라 형태가 틀리면 링크가 전부 깨진다.
     commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha must be 40 lowercase hex characters"),
     /**

@@ -16,6 +16,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { recordEvent } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
@@ -187,14 +188,29 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — 클라이언트가 보낸 slug는 판정 입력일 뿐이다.
   try {
-    await prisma.project.update({
-      where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
-      data: {
-        installationId: plan.installationId,
-        repositoryId: probe.repositoryId,
-        repoOwner: plan.repoOwner,
-        repoName: plan.repoName,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
+        data: {
+          installationId: plan.installationId,
+          repositoryId: probe.repositoryId,
+          repoOwner: plan.repoOwner,
+          repoName: plan.repoName,
+        },
+      });
+      // ⚠️ **설치 id·리포 id를 싣지 않는다** — 자격증명 경계의 값이고, 사람이 읽을 사실은 "어느
+      // 리포에 붙였나"뿐이다.
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.repositoryConnected",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: {
+          kind: "SETTINGS",
+          field: "repository",
+          value: { before: `${project.repoOwner}/${project.repoName}`, after: `${plan.repoOwner}/${plan.repoName}` },
+        },
+      });
     });
   } catch (error) {
     // 동시에 들어온 재연결이 우리가 인가한 신원·주소를 바꿨다.
@@ -282,8 +298,18 @@ export async function updateRepositorySettings(raw: {
   if (project === null) return { ok: false, error: "not-found" };
 
   // **바뀐 것이 없으면 쓰지 않는다** — 빈 update는 `Project.updatedAt`만 올린다.
+  // ⚠️ **no-op은 사건도 아니다** (완료조건 3) — 값이 그대로면 일어난 일이 없다.
   if (baseBranch !== project.baseBranch) {
-    await prisma.project.update({ where: { id: projectId }, data: { baseBranch } });
+    await prisma.$transaction(async (tx) => {
+      await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.baseBranchChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "baseBranch", value: { before: project.baseBranch, after: baseBranch } },
+      });
+    });
   }
 
   revalidatePath(`/projects/${slug}/settings`);
@@ -318,7 +344,23 @@ export async function updateProjectName(raw: { slug: string; name: string }): Pr
   const plan = planProjectName(parsed.data.name);
   if (!plan.ok) return { ok: false, error: plan.reason };
   // 보관 중에도 표시값은 되돌릴 수 있다. 적재와 달리 서버에서 보관 가드를 더하지 않는다(D7).
-  try { await prisma.project.update({ where: { id: access.projectId }, data: { name: plan.name } }); }
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+      const row = await tx.project.findUnique({ where: { id: access.projectId }, select: { name: true } });
+      if (!row) throw new Error("Project disappeared");
+      // 잠금 뒤에 읽은 값이라 `before`가 실제로 내가 덮은 이름이다.
+      if (row.name === plan.name) return;
+      await tx.project.update({ where: { id: access.projectId }, data: { name: plan.name } });
+      await recordEvent(tx, {
+        projectId: access.projectId,
+        subtype: "settings.nameChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "name", value: { before: row.name, after: plan.name } },
+      });
+    });
+  }
   catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
   revalidateAfterCommit("name", access.projectId);
   return { ok: true, name: plan.name };
@@ -361,6 +403,17 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");
       await tx.project.update({ where: { id: projectId }, data: { image } });
+      /**
+       * ⚠️ **사실만 남긴다** — Blob URL은 키에 난수가 들어간 공개 주소이고, 이력에 굳으면 교체
+       * 뒤에도 옛 주소가 영구히 남는다. "바꿨다"만이 사람이 읽을 사실이다.
+       */
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.imageChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "image", value: null },
+      });
       return row.image;
     });
   } catch {
@@ -388,6 +441,13 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");
       await tx.project.update({ where: { id: projectId }, data: { image: null } });
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.imageRemoved",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "image", value: null },
+      });
       return row.image;
     });
   } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }

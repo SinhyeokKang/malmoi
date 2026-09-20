@@ -36,9 +36,12 @@ const read: ReadResult = {
   ],
 };
 
+const EXECUTION_ID = "11111111-2222-4333-8444-555555555555";
+
 const input = {
   projectSlug: "acme",
   surfaceSlug: "default",
+  executionId: EXECUTION_ID,
   commitSha: "a".repeat(40),
   commitAt: "2026-09-03T00:00:00+09:00",
   format,
@@ -145,6 +148,21 @@ describe("buildPushPayload", () => {
     };
     const { payload } = buildPushPayload(nested);
     expect(payload.keys[0]?.namespace).toBe("common");
+  });
+
+  /**
+   * ⚠️ **조립이 식별자를 만들지 않는다** (logs-rework design §3.3). 여기서 만들면 재전달마다 새
+   * 값이 나와 서버의 중복 방지가 무너진다 — 호출부가 **파싱 이전에** 한 번 발급한다.
+   */
+  it("실행 식별자를 발급하지 않고 받은 값을 그대로 싣는다", () => {
+    expect(buildPushPayload(input).payload.executionId).toBe(EXECUTION_ID);
+    const other = "99999999-8888-4777-8666-555555555555";
+    expect(buildPushPayload({ ...input, executionId: other }).payload.executionId).toBe(other);
+  });
+
+  /** 내부 적재는 HTTP를 건너지 않는다 — 필드를 **비우고**, 빈 문자열을 만들지 않는다. */
+  it("null이면 필드를 싣지 않는다", () => {
+    expect(buildPushPayload({ ...input, executionId: null }).payload).not.toHaveProperty("executionId");
   });
 
   it("translations는 base를 포함한 전 로케일에서 온다 — base도 편집 가능하다", () => {

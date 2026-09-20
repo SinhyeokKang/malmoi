@@ -130,6 +130,38 @@ export type EventPayload =
       value: ValueChange | null;
     };
 
+/**
+ * 실행 하나를 가리키는 **멱등 키**. 서버가 실행 종류와 소스 범위를 붙인다 (design §3.3).
+ *
+ * ⚠️ **외부 식별자를 그대로 쓰지 않는다.** CI가 보낸 `executionId`는 인증 증거가 아니므로, 내부
+ * Publish·수동 Sync의 식별자와 **충돌할 수 없도록** 종류 접두와 인가된 소스 id를 함께 붙인다.
+ * 이 값이 `@@unique([projectId, runToken])`에 걸려 재전달·동시 요청을 DB 층에서 한 건으로 만든다.
+ */
+export type RunTokenInput =
+  | { kind: "publish"; syncRunId: string }
+  | { kind: "import"; token: string }
+  /** 가드가 표면을 정하기 전에 거부하면 `surfaceId`가 없다 — 그때도 실행 하나는 하나다. */
+  | { kind: "ci"; surfaceId: string | null; executionId: string };
+
+export function runTokenFor(input: RunTokenInput): string {
+  switch (input.kind) {
+    case "publish":
+      return `publish:${input.syncRunId}`;
+    case "import":
+      return `import:${input.token}`;
+    default:
+      return `ci:${input.surfaceId ?? "-"}:${input.executionId}`;
+  }
+}
+
+/**
+ * 사건 당시 대상 소스 — **정렬·중복 제거한 집합**이다. 순서가 흔들리면 같은 사건이 다른 배열로
+ * 저장되고, 그 차이는 화면에도 테스트에도 안 나타난다(불변식 4의 결이다).
+ */
+export function normalizeSurfaceIds(ids: readonly string[]): string[] {
+  return [...new Set(ids.filter((id) => id !== ""))].sort();
+}
+
 /** 사건 당시 대상 소스의 성격. ⚠️ **빈 배열 하나로는 "전역"과 "모른다"가 같은 모양이 된다.** */
 export const SURFACE_SCOPES = ["sources", "project-wide", "not-recorded"] as const;
 

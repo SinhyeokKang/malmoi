@@ -11,6 +11,7 @@
  *
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
@@ -93,6 +94,15 @@ if (token === undefined) {
   process.exit(1);
 }
 
+/**
+ * **이 소스의 실행 하나를 가리키는 식별자** (logs-rework design §3.3). 파싱·조립 **이전에 한 번**
+ * 발급하고, 정상 push와 실패 보고가 같은 값을 쓴다 — 그래야 서버가 한 실행을 한 줄로 남긴다.
+ *
+ * ⚠️ **재전달이 같은 값을 유지한다.** 새 CLI 호출·워크플로 재실행은 새 프로세스라 새 값이고,
+ * 그것이 의도다 — 같은 커밋을 다시 처리하는 것은 별도 실행이다.
+ */
+const executionId = randomUUID();
+
 // 커밋 SHA는 대상 리포에서 읽는다 — permalink 기준이라 실제 값이어야 한다.
 const commitSha = execFileSync("git", ["-C", target, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 // 커밋 **시각**은 역행 판정의 근거다 (ARCHITECTURE §5.5.5). `%cI`가 offset이 붙은 ISO 8601이다.
@@ -112,7 +122,7 @@ async function reportFailure(code: ReportedImportFailure): Promise<void> {
     const res = await fetch(`${baseUrl}/api/push/failure`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-      body: JSON.stringify({ projectSlug: projectSlug!, surfaceSlug, commitSha, commitAt, code } satisfies ImportFailureReportType),
+      body: JSON.stringify({ projectSlug: projectSlug!, surfaceSlug, commitSha, commitAt, code, executionId } satisfies ImportFailureReportType),
       // 재시도 없음 — 실패 보고를 기다리느라 CI 러너를 붙잡지 않는다.
       signal: AbortSignal.timeout(5000),
     });
@@ -205,6 +215,7 @@ const scan = scanSources(sources, wrappers);
 // 컴파일러가 붙잡을 지점이 없었고, 이 스크립트만 400을 받는 상태로 남았다
 // (POSTMORTEM 2026-08-31). 7단계의 Actions 워크플로도 같은 함수를 지나야 한다.
 const { payload, unknownRefs, duplicateKeys } = buildPushPayload({
+  executionId,
   projectSlug,
   surfaceSlug,
   commitSha,

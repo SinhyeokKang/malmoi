@@ -7,6 +7,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { recordEvent } from "@/lib/events/record";
 import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
@@ -81,14 +82,36 @@ export async function updateBaseLocale(raw: {
   if (plan === "unknown-locale" || plan === "orphaned-locale") return { ok: false, error: plan };
 
   if (plan === "ok") {
-    await prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: baseLocale } });
+    await prisma.$transaction(async (tx) => {
+      await tx.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: baseLocale } });
+      /**
+       * ⚠️ **선언이지 적용이 아니다** — `baseLocale`은 CI의 다음 push가 확정한다(`checkFormat`).
+       * 사건도 그 사실을 그대로 말한다: `before`는 지금 쓰이는 값, `after`는 선언한 값이다.
+       */
+      await recordEvent(tx, {
+        projectId,
+        subtype: "surface.baseLocaleDeclared",
+        actor: { kind: "USER", userId: session.userId },
+        surfaceIds: [surfaceId],
+        payload: { kind: "SURFACE", surfaceSlug, adapter: null, baseLocale: { before: project.baseLocale, after: baseLocale } },
+      });
+    });
   } else if (project.declaredBaseLocale !== null) {
     /**
      * `noop`인데 선언이 남아 있다 — **되돌리는 경로다** (DESIGN §6.66: "B로 선언했다가 A로 다시
      * 저장하면 대기가 사라진다"). 별도 취소 버튼을 두지 않는 근거가 이 한 줄이고, `null`로 비우는
      * 것이 현실과 같은 값을 넣는 것보다 낫다 — `checkFormat`에 남는 예외가 아예 없다.
      */
-    await prisma.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: null } });
+    await prisma.$transaction(async (tx) => {
+      await tx.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale: null } });
+      await recordEvent(tx, {
+        projectId,
+        subtype: "surface.baseLocaleDeclarationCleared",
+        actor: { kind: "USER", userId: session.userId },
+        surfaceIds: [surfaceId],
+        payload: { kind: "SURFACE", surfaceSlug, adapter: null, baseLocale: { before: project.declaredBaseLocale, after: project.baseLocale } },
+      });
+    });
   }
   // 나머지 `noop`은 쓸 것이 없다 — 빈 update는 `Project.updatedAt`만 올린다.
 

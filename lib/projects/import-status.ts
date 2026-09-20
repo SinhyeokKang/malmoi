@@ -31,6 +31,14 @@ export const ImportFailureReport = z.strictObject({
   commitSha: z.string().regex(/^[0-9a-f]{40}$/, "commitSha must be 40 lowercase hex characters"),
   commitAt: z.iso.datetime({ offset: true }),
   code: z.enum(REPORTED_IMPORT_FAILURES),
+  /**
+   * 정상 push와 **같은 실행 식별자**다 (logs-rework design §3.3) — 한 실행이 성공 보고와 실패 보고를
+   * 동시에 내지 않으므로, 같은 토큰이 둘 중 하나를 한 건으로 만든다.
+   *
+   * ⚠️ **`strictObject`라 구 서버는 이 필드를 거부한다** — 그래서 전환 순서가 "서버 먼저, 생산자
+   * 나중"이다. 새 생산자를 구 서버에 먼저 연결하면 실패 보고가 통째로 400이 된다.
+   */
+  executionId: z.uuid().optional(),
 });
 
 export type ImportFailureReportType = z.infer<typeof ImportFailureReport>;

@@ -6,6 +6,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor, isAdapterName } from "@/lib/adapters";
 import { templatePaths } from "@/lib/onboarding/confirm";
 import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/ingest";
+import { runTokenFor } from "@/lib/events/payload";
+import { recordEvent, recordRun } from "@/lib/events/record";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
 import { planSurfaceSlug, surfaceOwnership } from "./plan";
@@ -63,8 +65,52 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
     const results = [];
     for (const { item, surfaceId, slug, token, startedAt, payload, result } of additions) {
       await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
+      /**
+       * ⚠️ **소스당 하나다** (결정 13) — 생성 때 붙은 소스와 나중에 추가한 소스가 **같은 모양**으로
+       * 남아야 소스 필터가 둘을 같이 다룬다.
+       */
+      await recordEvent(tx, {
+        projectId: first.projectId,
+        subtype: "surface.added",
+        actor: { kind: "USER", userId: first.userId },
+        surfaceIds: [surfaceId],
+        payload: { kind: "SURFACE", surfaceSlug: slug, adapter: item.format.adapter, baseLocale: { before: null, after: item.baseLocale } },
+      });
       await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, { refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import" });
       results.push({ pathTemplate: item.format.pathTemplate, surfaceSlug: slug, count: result.count, failed: result.failed });
+    }
+
+    /**
+     * 최초 적재 실행 **하나** — 소스별로 행을 복제하지 않고 대상 집합과 소스별 결과를 싣는다
+     * (결정 14 · T5f). 실행 식별자는 첫 표면의 lease 토큰이다.
+     */
+    const runner = additions[0];
+    if (runner !== undefined) {
+      const failed = additions.filter(value => value.result.failed > 0).length;
+      await recordRun(tx, {
+        projectId: first.projectId,
+        subtype: "import.first",
+        actor: { kind: "USER", userId: first.userId },
+        surfaceIds: additions.map(value => value.surfaceId),
+        // 전부 성공이면 `Imported`, 하나라도 부분 실패면 `Partially completed`다 — 숨기지 않는다(불변식 9).
+        result: failed === 0 ? "imported" : "partial",
+        occurredAt: runner.startedAt,
+        finishedAt: new Date(),
+        runToken: runTokenFor({ kind: "import", token: runner.token }),
+        payload: {
+          kind: "IMPORT", source: "first",
+          surfaceSlugs: additions.map(value => value.slug),
+          keys: additions.reduce((sum, value) => sum + value.result.count, 0),
+          pendingEdits: null,
+          surfaces: additions.map(value => ({
+            surfaceSlug: value.slug,
+            status: value.result.failed === 0 ? ("imported" as const) : ("partial" as const),
+            count: value.result.count,
+            reason: null,
+          })),
+          errorCode: null, refusal: null,
+        },
+      });
     }
     return results;
   }, { maxWait: 10_000, timeout: 30_000 });

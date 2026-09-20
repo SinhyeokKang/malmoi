@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/db";
+import { recordCiImport } from "@/lib/events/ci";
 import { classifyFailure } from "@/lib/failure";
+import { logFailure } from "@/lib/github-connect/log";
 import { ImportFailureReport } from "@/lib/projects/import-status";
 import { recordReportedFailure } from "@/lib/projects/import-status-store";
 import { checkArchived, checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
@@ -114,6 +116,29 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
     if (recorded !== "recorded") {
       return NextResponse.json({ error: "stale report" }, { status: 409 });
+    }
+
+    /**
+     * ⚠️ **갱신이 실제로 일어난 뒤에만 사건을 남긴다** — 위 `recorded` 판정이 실제 방어선이고,
+     * 그 앞에서 기록하면 성공한 push를 덮지 못한 낡은 보고가 이력에는 실패로 선다.
+     *
+     * ⚠️ **정상 push와 같은 실행 식별자를 쓴다** (design §3.3) — 한 실행이 성공 보고와 실패 보고를
+     * 동시에 내지 않으므로, 같은 `runToken`이 둘 중 하나를 한 건으로 만든다. 식별자가 없는 구
+     * 생산자는 요청별 값이라 재전달 중복 방지가 보장되지 않는다.
+     */
+    try {
+      await recordCiImport(prisma, {
+        projectId: project.id,
+        pushTokenHash: tokenHash,
+        executionId: parsed.data.executionId ?? randomUUID(),
+        surface: { id: surface.id, slug: surface.slug },
+        result: "failed",
+        errorCode: parsed.data.code,
+        surfaces: [{ surfaceSlug: surface.slug, status: "failed", count: null, reason: parsed.data.code }],
+      });
+    } catch (error) {
+      // 보고 수신은 이미 성공했다 — 여기서 던지면 204가 500이 되고 CI가 원인을 오진한다.
+      logFailure("push-failure-event", error);
     }
 
     /**

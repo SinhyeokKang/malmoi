@@ -1,6 +1,8 @@
 "use server";
 
+import { maskEmail } from "@/lib/auth/email";
 import { decodeUser, decodeInvitation } from "@/lib/credentials/records";
+import { recordEvent } from "@/lib/events/record";
 import { logCaught } from "@/lib/failure";
 
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
@@ -88,6 +90,19 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
 
       await tx.projectMember.create({
         data: { projectId: invitation.projectId, userId, role: invitation.role },
+      });
+      /**
+       * ⚠️ **수락과 초대 발송을 중복 사건으로 만들지 않는다** (design §3.1) — 이것은 "가입했다"는
+       * 별개의 사실이고, 행위자는 **수락한 본인**이다(발송자가 아니다).
+       *
+       * ⚠️ **대상 라벨은 마스킹된 값이다** — 원문 이메일은 사건이 지워지지 않는 테이블에 남으면 안 된다.
+       */
+      await recordEvent(tx, {
+        projectId: invitation.projectId,
+        subtype: "member.joined",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: { kind: "MEMBER", targetLabel: maskEmail(user.email), role: { before: null, after: invitation.role } },
       });
       return true;
     });
