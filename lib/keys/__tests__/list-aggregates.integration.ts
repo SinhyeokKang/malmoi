@@ -15,7 +15,7 @@ import { isUnpublished } from "@/lib/keys/view";
 import { reviewByLocale } from "@/lib/projects/list";
 import { countUnpublished, countUnpublishedBySurface, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
-import { addSurfaceFromSnapshot } from "@/lib/surfaces/create";
+import { addSurfacesFromSnapshot, addSurfaceFromSnapshot } from "@/lib/surfaces/create";
 
 /**
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (ARCHITECTURE §5).
@@ -732,4 +732,44 @@ it("사람 편집이 없으면 저자가 null이고 항목은 남는다", async 
   const [row] = await loadReviewAttention(prisma, "p1");
   expect(row).toMatchObject({ localeCode: "ko", updatedBy: null });
   expect(row?.count).toBe(3);
+});
+
+
+async function multiFixture() {
+  const first = await addFixture();
+  const second = { ...first, format: { ...first.format, pathTemplate: "third/{locale}.json" }, targets: ["third/en.json", "third/ko.json"], blobs: new Map([["third/en.json", '{"old":"Third"}'], ["third/ko.json", '{"old":"Third translation"}']]) };
+  const paths = [...first.paths, ...second.targets];
+  return { projectSlug: "add", inputs: [{ ...first, paths }, { ...second, paths }] };
+}
+it("다중 소스는 한 tx로 생성하고 적재 부분 실패를 그대로 커밋한다", async () => {
+  const input = await multiFixture(); input.inputs[1]!.blobs.delete("third/ko.json");
+  const before = await existingSurface();
+  expect(await addSurfacesFromSnapshot(prisma, input)).toMatchObject([{ surfaceSlug: "second", count: 1, failed: 0 }, { surfaceSlug: "third", count: 1, failed: 1 }]);
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(3);
+  expect(await existingSurface()).toEqual(before);
+});
+it.each(["second-surface", "last-write", "timeout"])("다중 생성의 %s 실패는 모든 신규 자식을 롤백한다", async kind => {
+  const input = await multiFixture(); const before = await existingSurface();
+  const table = kind === "last-write" ? "TranslationSurface" : "TranslationSurface";
+  const condition = kind === "last-write" ? `NEW.slug = 'third' AND NEW."lastCommitSha" IS NOT NULL` : `NEW.slug = 'third'`;
+  const operation = kind === "timeout" ? "PERFORM pg_sleep(31);" : "RAISE EXCEPTION 'injected multi failure';";
+  await pool.query(`CREATE FUNCTION reject_multi() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF ${condition} THEN ${operation} END IF; RETURN NEW; END $$;
+    CREATE TRIGGER reject_multi BEFORE INSERT OR UPDATE ON "${table}" FOR EACH ROW EXECUTE FUNCTION reject_multi()`);
+  await expect(addSurfacesFromSnapshot(prisma, input)).rejects.toThrow();
+  expect(await prisma.translationSurface.count({ where: { projectId: "add", id: { not: "surface-add" } } })).toBe(0);
+  for (const table of ["Locale", "StringKey", "Translation", "KeyRef"]) {
+    const result = await pool.query(`SELECT count(*)::int AS n FROM "${table}" WHERE "projectId"='add' AND "surfaceId" <> 'surface-add'`);
+    expect(result.rows[0].n).toBe(0);
+  }
+  expect(await existingSurface()).toEqual(before);
+}, 45000);
+it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 보존한다", async () => {
+  const input = await multiFixture(); const before = await existingSurface();
+  await expect(addSurfacesFromSnapshot(prisma, { ...input, inputs: [input.inputs[0]!, input.inputs[0]!] })).rejects.toMatchObject({ code: "path-conflict" });
+  const results = await Promise.allSettled([addSurfacesFromSnapshot(prisma, input), addSurfacesFromSnapshot(prisma, input)]);
+  expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+  const failed = results.find(r => r.status === "rejected");
+  expect(failed?.status === "rejected" && failed.reason.code).toBe("path-conflict");
+  expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(3);
+  expect(await existingSurface()).toEqual(before);
 });

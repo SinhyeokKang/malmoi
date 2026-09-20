@@ -47,6 +47,7 @@ const hoisted = vi.hoisted(() => ({
   loadOpenPrUrl: vi.fn(),
   applyPushInTransaction: vi.fn(),
   addSurfaceFromSnapshot: vi.fn(),
+  addSurfacesFromSnapshot: vi.fn(),
   triggerPull: vi.fn(),
   revalidatePath: vi.fn(),
   cookieSet: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: hoisted.loadOpenPrUrl 
 vi.mock("@/lib/surfaces/create", async (original) => ({
   ...(await original<typeof import("@/lib/surfaces/create")>()),
   addSurfaceFromSnapshot: hoisted.addSurfaceFromSnapshot,
+  addSurfacesFromSnapshot: hoisted.addSurfacesFromSnapshot,
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
@@ -102,6 +104,7 @@ vi.mock("next/navigation", () => ({
 const {
   createProject,
   addSurface,
+  addSurfaces,
   detectRepoFormats,
   listRepoBranches,
   loadCandidateSample,
@@ -1782,5 +1785,49 @@ describe("repository import Actions", () => {
   it.each([null, undefined, "https://github.com/acme/web/pull/12", "https://evil.example/acme/web/pull/12"])("PR 삼상태와 URL 검증 %s", async url => {
     hoisted.loadOpenPrUrl.mockResolvedValue(url);
     expect(await checkOpenPullRequest({ slug: "acme" })).toEqual(url === null ? null : url?.startsWith("https://github.com/") ? { number: 12, url } : undefined);
+  });
+});
+
+
+describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
+  const picks = ["a", "b"].map(dir => ({ adapter: "json-catalog", pathTemplate: `${dir}/{locale}.json`, baseLocale: "en" }));
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", repositoryId: "1035512", installationId: "77", baseBranch: "develop" });
+    hoisted.addSurfacesFromSnapshot.mockResolvedValue(picks.map((p, index) => ({ ...p, surfaceSlug: ["a", "b"][index], count: 2, failed: index })));
+  });
+  it("선택한 모든 파일을 한 번씩 읽고 단일 원자적 쓰기로 넘긴다", async () => {
+    const files = ["a/en.json", "a/ko.json", "b/en.json", "b/ko.json"].map(path => ({ path, sha: path, size: 100 }));
+    const r = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) });
+    hoisted.openRepoReader.mockResolvedValue(r);
+    expect(await addSurfaces({ slug: "acme", picks })).toMatchObject({ ok: true, results: [{ count: 2, failed: 0 }, { count: 2, failed: 1 }] });
+    expect(hoisted.addSurfacesFromSnapshot).toHaveBeenCalledTimes(1);
+    expect(r.snapshot).toHaveBeenCalledTimes(1); expect(r.blob).toHaveBeenCalledTimes(4);
+  });
+  it("선택 안의 중복 템플릿은 다운로드와 쓰기 전에 거부한다", async () => {
+    expect(await addSurfaces({ slug: "acme", picks: [picks[0]!, picks[0]!] })).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled(); expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
+  });
+  it.each(["file-count", "total-size", "unknown-size", "actual-size"])("요청 전체 예산 %s를 넘으면 DB 쓰기가 없다", async kind => {
+    const count = kind === "file-count" ? 201 : 6;
+    const files = Array.from({ length: count }, (_, i) => ({ path: `${i < count / 2 ? "a" : "b"}/l${i}.json`, sha: String(i), ...(kind === "unknown-size" ? {} : { size: kind === "total-size" ? 1_800_000 : 100 }) }));
+    const r = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, kind === "actual-size" ? "x".repeat(1_800_000) : CATALOG])) });
+    hoisted.openRepoReader.mockResolvedValue(r);
+    expect(await addSurfaces({ slug: "acme", picks })).toEqual({ ok: false, error: "resource-limit" });
+    expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
+    if (kind !== "actual-size") expect(r.blob).not.toHaveBeenCalled();
+  });
+  it("기본 소스가 ready여도 지정한 awaiting 소스만 적재한다", async () => {
+    const sibling = { ...db.surfaces[0]!, id: "second", slug: "second", lastCommitSha: null };
+    db.surfaces.push(sibling);
+    const before = structuredClone(db.surfaces[0]);
+    expect(await runFirstIngest({ slug: "acme", surfaceSlug: "second" })).toMatchObject({ ok: true });
+    expect(hoisted.ingestFirstSnapshot).toHaveBeenCalledWith(db.prisma, expect.objectContaining({ surfaceId: "second", surfaceSlug: "second" }));
+    expect(db.surfaces[0]).toEqual(before);
+  });
+  it("ready 또는 다른 프로젝트에만 있는 slug는 첫 적재하지 않는다", async () => {
+    expect(await runFirstIngest({ slug: "acme", surfaceSlug: "default" })).toEqual({ ok: false, error: "not-awaiting" });
+    db.surfaces.push({ ...db.surfaces[0]!, id: "foreign", projectId: "p2", slug: "foreign", lastCommitSha: null });
+    expect(await runFirstIngest({ slug: "acme", surfaceSlug: "foreign" })).toEqual({ ok: false, error: "not-found" });
+    expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
   });
 });
