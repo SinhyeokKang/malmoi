@@ -760,8 +760,8 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
   - **step 생산자는 `renderSurfaceWorkflowStep` 하나다.** 파일 전체는 `renderProjectWorkflowYaml`이
     그것을 **활성 표면 수만큼** 이어 붙인다 — 온보딩 ④와 설정 화면이 둘 다 이것을 부른다(표면 하나짜리
-    래퍼가 있었지만 테스트만 불러 2026-09-18에 지웠다 — launch-readiness L4.7). 설정 화면이 이것을 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
-    표면의 step을 다시 볼 자리가 그 화면뿐이고**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
+    래퍼가 있었지만 테스트만 불러 2026-09-18에 지웠다 — launch-readiness L4.7). 설정 화면이 이것을 부른다 — ⚠️ **소스 추가 결과 안내는 전체 새로고침 뒤 사라지므로 비기본
+    표면의 step은 설정의 Workflow 모달에서 다시 보며**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
     `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
   - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
     무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
@@ -1701,7 +1701,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `TranslationSurface.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
   - ⚠️ **접두로는 못 덮는다** (2026-09-11 등재). `/projects/<slug>/settings` + `/projects` 둘만 무효화하면 **Home과 번역 화면이 캐시된 "준비 안 됨"으로 남는다** — 사용자는 방금 "N개 키를 적재했어요"를 읽고 들어가서 빈 화면을 본다. 목록 화면은 `/projects` 접두라 갱신되므로 **증상이 화면마다 갈려** 캐시 문제로 안 보이고 적재 실패로 읽힌다. 이 절의 첫 문장이 말하는 부류 그대로다: 무효화 범위는 경로가 아니라 **"이 값을 보이는 화면 집합"**이고, readiness는 그 집합이 `/projects/<slug>` 서브트리 전체다.
 - `triggerPullAction`(Publish) → `/projects/<slug>` **layout** + `/projects` + `/projects/new`. 되돌려보내기가 바꾸는 것은 `lastPulledAt`·`lastPublishedAt`·`lastPrUrl`·편집 토큰이고, **미전달 배지가 그 토큰 위에 서므로**(§5) 배너·Home 카드·목록 행이 한꺼번에 움직인다.
-- `addSurface`·`runRepositoryImport` → 같은 범위. 표면이 늘거나 리포 값이 덮이면 그 프로젝트의 **모든 화면**의 재료가 바뀐다.
+- `addSurfaces`·`runRepositoryImport` → 같은 범위. 표면이 늘거나 리포 값이 덮이면 그 프로젝트의 **모든 화면**의 재료가 바뀐다.
 - `connectRepository`·`updateRepositorySettings` → `/projects/<slug>/settings` + `/projects/<slug>` **layout**. ⚠️ **2026-09-14까지 이 절은 이 둘을 "설정만 보인다"로 적고 있었고 그것이 틀렸다** — 리포 연결·base 브랜치는 readiness와 `planConnectionHealth`의 입력이라 Home·번역 화면·목록이 함께 읽는다. **좁은 것 하나만 남기면 설정 화면만 초록이 되고 나머지가 캐시된 옛 상태로 남는다**(§0 불변식 11이 경고하는 모양 그대로다).
 - `updateProfileName`·`uploadProfileImage`·`deleteProfileImage`·`unlinkLoginMethod` → `/` **layout**. 셸 헤더의 아바타·이름이 **매 페이지**에 있어 좁힐 수단이 없다 — `disconnectGithub`과 같은 이유다.
 - `/api/push`·`/api/push/failure`(라우트 핸들러 둘) → `/projects/<slug>` **layout** + `/projects`(+`/projects/new`). 외부가 부르는 진입점인데도 무효화가 필요한 이유는 같다: 적재 성공·CI 파싱 실패가 readiness·상태 배지·Home을 한꺼번에 바꾼다.
@@ -2000,6 +2000,19 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
 대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
 실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
 
+### 6.75 프로젝트 메타데이터 (2026-09-20)
+
+`Project.image String?`는 `projects/<projectId>/…` 난수 키를 사용하는 공개 Blob URL을 저장한다. avatar 키 판정을
+넓히지 않고 `projectImageObjectKey`·`planProjectImageDelete`로 접두를 분리한다. 3MB PNG/JPEG를 기존
+sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않는다. 모든 Action은 네트워크 호출 전에
+`project:settings` 인가를 확인한다. 업로드는 tx 밖, Project 행 잠금 뒤 이전 URL 조회·새 URL 저장은 tx 안,
+이전 객체 삭제는 커밋 뒤다. DB 실패는 새 객체만 정리하고 삭제 실패는 스모크의 고아 후보로 남는다.
+
+`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
+번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
+성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 네 reader가 image를 읽는다. Blob 스모크는 avatars와
+projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
+
 ### 6.8 표시 이름의 소유권 (2026-09-13)
 
 `User.name`은 **사용자 소유**이고 `User.email`은 provider 소유다. 이메일을 고칠 수 없는 근거는
@@ -2035,11 +2048,24 @@ A(additive) → Surface writer 배포 → B(제약 교체) 순서다. **B에서 
 마이그레이션은 테이블 잠금 후 null 자식·잘못된 기본 표면에서 중단한다. 기존 Surface 상태를 덮는
 재백필은 새 writer 활성화 이전에만 허용한다. dev는 `/push` 전, prod는 해당 `/merge` 직전에 적용한다.
 
-Add surface는 GitHub snapshot과 파일을 먼저 읽고, Project `FOR UPDATE` 후 멤버십·보관·리포 identity와
-활성 표면의 출력 경로를 다시 검사한다. 경로는 현재 tree와 저장 Locale에서 다음 Publish가 만들 경로를
-함께 센다. Surface 생성과 첫 적재는 같은 callback transaction(30초)에 들어가고, 외부 API는 그 밖이다.
-`applyPushInTransaction`은 이미 열린 연결에서 순서대로 실행하며 중첩 트랜잭션을 만들지 않는다.
-일부 파일 실패는 `partial-import`, 0키·쓰기 실패·예산 초과는 새 표면 전체 rollback이다.
+`addSurfaces`는 여러 후보를 한 요청으로 확정한다. 스냅샷·경로별 blob 합집합 읽기·포맷 준비는
+트랜잭션 밖에서 끝낸다. 요청 전체 200파일·10MB, 파일당 2MB이며 알 수 없는 크기는 읽기 전에 거부하고
+실제 바이트도 다시 잰다. Project `FOR UPDATE` 후 인가·보관·리포 identity·출력 경로를 다시 확인하고
+모든 Surface/Locale/StringKey/Translation/KeyRef 쓰기를 **한 tx**로 확정한다(`maxWait: 10_000`,
+`timeout: 30_000`). 기존 표면과 새 표면끼리의 충돌 모두 전체 rollback이다. 중첩 tx·외부 I/O는 없다.
+
+파일 단위 일부 실패는 불변식 9의 새 소비자다: 유효한 키를 적재하고 표면을 생성하되 `failed > 0`이면
+성공 결과의 tone은 warning이다. 0키·쓰기 실패·timeout은 새 표면 모두 rollback이다. 둘째 표면·마지막
+쓰기·timeout 실패 주입과 동시 경로 충돌을 격리 PG에서 검사한다. **커밋 이후 캐시 갱신 오류를 rollback
+실패로 돌려주지 않는다** — UI가 “아무것도 추가되지 않았다”고 잘못 말하지 않도록 별도로 로깅한다.
+
+소스별 첫 적재 `runFirstIngest({ slug, surfaceSlug? })`는 미지정 시 기본 표면을 유지한다. 지정한 표면도
+프로젝트로 좁히고 SHA가 있으면 `not-awaiting`이다. 형제 표면의 준비 상태가 대상 표면의 재시도를 막지 않는다.
+
+`loadSurfaceCounts`는 활성 표면별 non-orphan 키·언어 수를 쿼리 하나로 읽는다. Translation과 join하지 않아
+곱집합을 만들지 않는다. Darwin arm64·PostgreSQL 17의 1/5표면 fixture(표면당 20,000키·200언어·200,000번역),
+각 5회 새 fixture·ANALYZE 전후 EXPLAIN (ANALYZE, BUFFERS) 최종 실측 최댓값은 각각 8.376ms/40.524ms였다.
+합격선 500ms 이하며 해당 환경·규모의 결과이지 프로덕션 지연 보장은 아니다.
 
 `Project.defaultSurfaceId`는 생성 순환 참조 때문에 nullable을 유지한다. 생성 Action이 Project → Surface →
 기본 포인터를 한 트랜잭션으로 확정한다. **Project id는 randomUUID로 명시한다**: 공유 id를 포함한 nullable
