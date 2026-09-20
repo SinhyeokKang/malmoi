@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -149,7 +149,7 @@ export const buttonClass = cva(
   },
 );
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> } &
   VariantProps<typeof buttonClass> & {
     /**
      * 진행 중 — **스피너만 세우고 라벨은 그대로 둔다** (2026-09-10 사용자 규칙 변경).
