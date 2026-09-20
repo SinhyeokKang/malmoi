@@ -164,15 +164,38 @@ export const routes = {
    * 이것이다: 목록 행 · 사이드바 스위처 · 각 화면의 breadcrumb · 초대 수락. 하나라도 다른 곳을
    * 가리키면 같은 의도가 어디서 눌렀는지에 따라 다른 곳에 착지하고, 그 불일치는 눈에 안 보인다.
    */
-  project: (slug: string): string => `/projects/${slug}`,
+  /**
+   * ⚠️ **`event`를 받는다** (logs-rework 결정 2 · 캔버스 `1h`) — Home의 Recent logs가 **Home 위에서**
+   * 같은 상세를 연다. Logs로 튕겨 보내면 닫았을 때 돌아올 곳이 달라진다.
+   */
+  project: (slug: string, query: { event?: string } = {}): string =>
+    withQuery(`/projects/${slug}`, query),
   locales: (slug: string): string => `/projects/${slug}/locales`,
   members: (slug: string): string => `/projects/${slug}/members`,
   /**
-   * sync 이력 (7단계). **커서는 서버가 만든 값이고 클라이언트 상태가 아니다** — "Older"가 링크
-   * 하나라 뒤로 가기·공유·새로고침이 전부 그냥 된다 (DESIGN §6.68).
+   * 활동 이력 (logs-rework — DESIGN §6.68). **찾는 상태가 전부 URL에 산다** — 필터 다섯 · 검색 ·
+   * 커서 · 열린 이벤트. 새로고침·뒤로가기·공유가 그냥 되고, 클라이언트 상태는 드롭다운 열림뿐이다.
+   *
+   * ⚠️ **`source`·`result`는 다중 선택이라 쉼표로 잇는다** (캔버스 `1m`). 반복 파라미터가 아니라
+   * 쉼표인 이유는 이 생성기의 값이 문자열 하나여야 `entry-points.test.ts`의 키 대조가 성립해서다.
+   *
+   * ⚠️ **필터가 바뀌면 호출부가 `cursor`를 뺀다** — 이전 조합의 커서를 재사용하면 첫 페이지가
+   * 통째로 비거나 중간부터 시작한다 (`filterChanged`가 그 판정을 든다).
    */
-  logs: (slug: string, query: { cursor?: string } = {}): string =>
-    withQuery(`/projects/${slug}/logs`, query),
+  logs: (
+    slug: string,
+    query: {
+      kind?: string;
+      from?: string;
+      to?: string;
+      actor?: string;
+      source?: string;
+      result?: string;
+      q?: string;
+      cursor?: string;
+      event?: string;
+    } = {},
+  ): string => withQuery(`/projects/${slug}/logs`, query),
   settings: (slug: string): string => `/projects/${slug}/settings`,
   invite: (token: string): string => `/invite/${token}`,
   /**

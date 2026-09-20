@@ -22,8 +22,8 @@ function filter(over: Partial<LogFilter> = {}): LogFilter {
     from: null,
     to: null,
     actor: null,
-    source: null,
-    result: null,
+    sources: [],
+    results: [],
     q: null,
     cursor: null,
     event: null,
@@ -39,7 +39,7 @@ describe("parseLogFilter — 기본값", () => {
   it("모르는 종류·결과는 던지지 않고 기본값으로 떨어진다", () => {
     const parsed = parseLogFilter({ kind: "nope", result: "nope" });
     expect(parsed.kind).toBe("all");
-    expect(parsed.result).toBe(null);
+    expect(parsed.results).toEqual([]);
   });
 
   /**
@@ -49,7 +49,7 @@ describe("parseLogFilter — 기본값", () => {
   it("프로토타입 키도 기본값이다 — 배열 includes를 지난다", () => {
     for (const key of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"]) {
       expect(parseLogFilter({ kind: key }).kind, key).toBe("all");
-      expect(parseLogFilter({ result: key }).result, key).toBe(null);
+      expect(parseLogFilter({ result: key }).results, key).toEqual([]);
     }
   });
 
@@ -61,8 +61,19 @@ describe("parseLogFilter — 기본값", () => {
 
   it("결과 아홉을 그대로 읽는다", () => {
     for (const result of ["running", "sent", "nothingToSend", "imported", "deferred", "partial", "superseded", "notStarted", "failed"] as const) {
-      expect(parseLogFilter({ result }).result, result).toBe(result);
+      expect(parseLogFilter({ result }).results, result).toEqual([result]);
     }
+  });
+
+  /** ⚠️ **소스·결과는 다중 선택이다** (캔버스 `1m`) — 쉼표로 이어지고 모르는 값만 조용히 빠진다. */
+  it("소스·결과가 쉼표 목록이고 정렬·중복 제거된다", () => {
+    expect(parseLogFilter({ source: "web,emails,web" }).sources).toEqual(["emails", "web"]);
+    expect(parseLogFilter({ result: "failed,nope,sent" }).results).toEqual(["failed", "sent"]);
+    expect(parseLogFilter({ source: " , ," }).sources).toEqual([]);
+  });
+
+  it("`project-wide`도 소스 값 하나다 — 소스가 없는 사건을 고른다", () => {
+    expect(parseLogFilter({ source: "project-wide,web" }).sources).toEqual(["project-wide", "web"]);
   });
 
   /** ⚠️ 반복 파라미터(`?kind=a&kind=b`)는 Next가 배열로 준다 — 첫 값을 쓴다. */
@@ -81,8 +92,8 @@ describe("parseLogFilter — 기본값", () => {
   });
 
   it("행위자·소스·이벤트 참조는 그대로 싣는다", () => {
-    const parsed = parseLogFilter({ actor: "usr_1", source: "sur_1", event: "evt_1" });
-    expect(parsed).toEqual(filter({ actor: "usr_1", source: "sur_1", event: "evt_1" }));
+    const parsed = parseLogFilter({ actor: "usr_1", source: "web", event: "evt_1" });
+    expect(parsed).toEqual(filter({ actor: "usr_1", sources: ["web"], event: "evt_1" }));
   });
 });
 
@@ -189,8 +200,8 @@ describe("filterChanged — 커서를 버릴지", () => {
     expect(filterChanged(filter(), filter({ kind: "members" }))).toBe(true);
     expect(filterChanged(filter(), filter({ q: "hello" }))).toBe(true);
     expect(filterChanged(filter(), filter({ actor: "usr_1" }))).toBe(true);
-    expect(filterChanged(filter(), filter({ source: "sur_1" }))).toBe(true);
-    expect(filterChanged(filter(), filter({ result: "failed" }))).toBe(true);
+    expect(filterChanged(filter(), filter({ sources: ["web"] }))).toBe(true);
+    expect(filterChanged(filter(), filter({ results: ["failed"] }))).toBe(true);
     expect(filterChanged(filter({ from: "2026-09-01" }), filter({ from: "2026-09-02" }))).toBe(true);
     expect(filterChanged(filter({ to: "2026-09-01" }), filter())).toBe(true);
   });
@@ -199,6 +210,12 @@ describe("filterChanged — 커서를 버릴지", () => {
    * ⚠️ **커서와 열린 이벤트는 좁히는 축이 아니다.** 커서가 바뀌었다고 커서를 버리면 [Older]가
    * 영원히 첫 페이지를 낸다. 상세를 여닫는 것도 목록을 되감지 않는다(리뷰 결정 15).
    */
+  /** 순서만 다른 같은 선택은 같은 조합이다 — URL이 순서를 정하지 않는다. */
+  it("다중 선택의 순서는 조합을 바꾸지 않는다", () => {
+    expect(filterChanged(filter({ sources: ["a", "b"] }), filter({ sources: ["b", "a"] }))).toBe(false);
+    expect(filterChanged(filter({ results: ["sent", "failed"] }), filter({ results: ["failed", "sent"] }))).toBe(false);
+  });
+
   it("커서·열린 이벤트가 바뀌어도 false다", () => {
     const cursor = { occurredAt: new Date("2026-09-10T12:00:00.000Z"), id: "evt_1" };
     expect(filterChanged(filter(), filter({ cursor }))).toBe(false);

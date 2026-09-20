@@ -95,6 +95,9 @@ const CLIENT_LIB_FILES = [
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
   "lib/compare.ts",
+  // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
+  "lib/events/filter.ts",
+  "lib/events/payload.ts",
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
@@ -359,6 +362,8 @@ describe("클라이언트 그래프", () => {
     expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
       "lib/events/view.ts",
       "lib/i18n/index.ts",
+      // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
+      "lib/onboarding/language-name.ts",
       "messages/en.tsx",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);

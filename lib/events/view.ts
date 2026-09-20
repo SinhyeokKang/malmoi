@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
+
 import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { languageName } from "@/lib/onboarding/language-name";
 
 import type { EventCursor } from "./filter";
-import type { EventKind, EventResult } from "./payload";
+import type { EventKind, EventPayload, EventResult } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). `lib/sync/view.ts`와 같은 형이다 —
@@ -120,6 +123,191 @@ export function valueState(value: RecordedValue): ValueView {
   // 코드 포인트로 센다 — 서로게이트 쌍이 두 글자로 세어지면 "보이지 않는 차이"의 수가 틀린다.
   if (value.trim() === "") return { kind: "state", label: m.logs.value.spacesOnly([...value].length) };
   return { kind: "text", text: value };
+}
+
+/**
+ * 글리프 칩의 색 (캔버스 `1a` 근거 카드).
+ *
+ * ⚠️ **배지 톤 셋과 별도 축이다** — 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다.
+ * 색만으로 구별되는 정보는 칩에 싣지 않았다.
+ *
+ * 규칙이 둘이다: **실행은 결과의 색**(성공 green · 보류/부분/거부 amber · 실패 red · 진행 중과
+ * `Nothing to send`는 slate — 보낸 것이 없는 것은 성공이 아니다), **그 외는 종류의 색**.
+ */
+export type GlyphTone = "green" | "amber" | "red" | "slate" | "blue" | "teal" | "purple";
+
+/** lucide 아이콘 이름. **소비자가 `satisfies`로 매핑을 고정한다** — 사전이 아니라 컴포넌트가 든다. */
+export type GlyphIcon =
+  | "languages"
+  | "arrow-down-to-line"
+  | "git-pull-request-arrow"
+  | "file-json-2"
+  | "globe"
+  | "users"
+  | "git-branch"
+  | "key-round"
+  | "archive"
+  | "settings";
+
+const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
+  imported: "green",
+  sent: "green",
+  deferred: "amber",
+  partial: "amber",
+  notStarted: "amber",
+  failed: "red",
+  running: "slate",
+  nothingToSend: "slate",
+  superseded: "slate",
+};
+
+const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
+  TRANSLATION: "blue",
+  SURFACE: "teal",
+  MEMBER: "purple",
+  SETTINGS: "slate",
+  IMPORT: "slate",
+  PUBLISH: "slate",
+};
+
+/**
+ * ⚠️ **방향을 글리프가 함께 말한다** — 내보내기는 `git-pull-request-arrow`, 가져오기는
+ * `arrow-down-to-line`이다. 같은 `SyncRun`에서 나왔다는 사실이 두 방향을 섞을 근거가 되지 않는다.
+ */
+export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtype: string }): {
+  icon: GlyphIcon;
+  tone: GlyphTone;
+} {
+  const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
+  const tone = run && row.result !== null ? RESULT_GLYPH_TONE[row.result] : KIND_GLYPH_TONE[row.kind];
+  return { icon: glyphIcon(row.kind, row.subtype), tone };
+}
+
+function glyphIcon(kind: EventKind, subtype: string): GlyphIcon {
+  switch (kind) {
+    case "TRANSLATION":
+      return "languages";
+    case "IMPORT":
+      return "arrow-down-to-line";
+    case "PUBLISH":
+      return "git-pull-request-arrow";
+    case "SURFACE":
+      // 소스 추가는 **파일 모양**, 기준 언어는 **지구본** — 같은 종류 안에서 무엇이 바뀌었는지 가른다.
+      return subtype.startsWith("surface.baseLocale") ? "globe" : "file-json-2";
+    case "MEMBER":
+      return "users";
+    default:
+      if (subtype === "settings.baseBranchChanged") return "git-branch";
+      if (subtype === "settings.pushTokenRotated") return "key-round";
+      if (subtype === "settings.archived" || subtype === "settings.restored") return "archive";
+      return "settings";
+  }
+}
+
+/**
+ * 행의 문장 (캔버스 §7 — **행위자로 시작한다**).
+ *
+ * ⚠️ **노드를 받아서 쓴다** — 굵은 행위자·mono 키의 **모양**은 컴포넌트가 정하고, 여기는
+ * "어느 하위 종류가 어느 문장인가"만 정한다. 그 매핑이 컴포넌트 안으로 들어가면 갈래 누락을
+ * 잡는 장치가 없어진다.
+ *
+ * ⚠️ **모르는 하위 종류는 던지지 않는다** — 종류 이름으로 떨어진다(읽는 쪽이 폴백을 든다).
+ */
+export function eventSentence(
+  row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null },
+  nodes: { actor: ReactNode; key: ReactNode },
+): ReactNode {
+  const { actor } = nodes;
+  const payload = row.payload;
+  switch (row.kind) {
+    case "TRANSLATION": {
+      const locale = payload?.kind === "TRANSLATION" ? payload.locale : "";
+      const cleared = payload?.kind === "TRANSLATION" && payload.after === "";
+      const language = languageOf(locale);
+      return cleared
+        ? m.logs.sentence.translation.cleared(actor, nodes.key, language)
+        : m.logs.sentence.translation.updated(actor, nodes.key, language);
+    }
+    case "PUBLISH":
+      switch (row.result) {
+        case "running":
+          return m.logs.sentence.publish.running(actor);
+        case "sent":
+          return m.logs.sentence.publish.sent(actor);
+        case "nothingToSend":
+          return m.logs.sentence.publish.nothing(actor);
+        case "notStarted":
+          return m.logs.sentence.publish.notStarted(actor);
+        default:
+          return m.logs.sentence.publish.failed(actor);
+      }
+    case "IMPORT": {
+      const slugs = payload?.kind === "IMPORT" ? payload.surfaceSlugs : [];
+      switch (row.result) {
+        case null:
+          return m.logs.sentence.import.running(actor);
+        case "deferred":
+          return m.logs.sentence.import.deferred(actor, slugs[0] ?? m.logs.none);
+        case "superseded":
+          return m.logs.sentence.import.superseded(actor);
+        case "notStarted":
+          return m.logs.sentence.import.notStarted(actor);
+        case "failed":
+          return m.logs.sentence.import.failed(actor);
+        default:
+          return m.logs.sentence.import.imported(actor, Math.max(slugs.length, 1));
+      }
+    }
+    case "MEMBER": {
+      const target = payload?.kind === "MEMBER" ? payload.targetLabel : m.common.unreadable;
+      if (row.subtype === "member.invited") return m.logs.sentence.member.invited(actor, target);
+      if (row.subtype === "member.joined") return m.logs.sentence.member.joined(actor);
+      if (row.subtype === "member.removed") return m.logs.sentence.member.removed(actor, target);
+      if (row.subtype === "member.invitationRevoked") return m.logs.sentence.member.invitationRevoked(actor);
+      return m.logs.sentence.member.roleChanged(actor, target);
+    }
+    case "SURFACE": {
+      const slug = payload?.kind === "SURFACE" ? payload.surfaceSlug : m.logs.none;
+      return row.subtype.startsWith("surface.baseLocale")
+        ? m.logs.sentence.surface.baseLocale(actor, slug)
+        : m.logs.sentence.surface.added(actor, slug);
+    }
+    default: {
+      // ⚠️ **`Object.hasOwn`을 지난다** — `subtype`은 DB에서 온 자유 문자열이라 `__proto__`가
+      // 값을 돌려주는 자리다 (POSTMORTEM 2026-09-08).
+      const sentence = Object.hasOwn(SETTINGS_SENTENCE, row.subtype) ? SETTINGS_SENTENCE[row.subtype] : undefined;
+      return sentence === undefined
+        ? m.logs.sentence.fallback(actor, m.logs.kinds.settings)
+        : sentence(actor);
+    }
+  }
+}
+
+const SETTINGS_SENTENCE: Record<string, (who: ReactNode) => ReactNode> = {
+  "settings.projectCreated": m.logs.sentence.settings.created,
+  "settings.nameChanged": m.logs.sentence.settings.name,
+  "settings.baseBranchChanged": m.logs.sentence.settings.baseBranch,
+  "settings.repositoryConnected": m.logs.sentence.settings.repository,
+  "settings.pushTokenRotated": m.logs.sentence.settings.pushToken,
+  "settings.imageChanged": m.logs.sentence.settings.image,
+  "settings.imageRemoved": m.logs.sentence.settings.image,
+  "settings.archived": m.logs.sentence.settings.archived,
+  "settings.restored": m.logs.sentence.settings.restored,
+};
+
+/**
+ * 로케일 코드 → 영어 언어 이름. **매핑이 실패하면 코드를 그대로 낸다** (`languageName`의 계약) —
+ * 리포에서 온 임의 문자열이라 실패가 정상 갈래다.
+ */
+function languageOf(code: string): string {
+  return code === "" ? m.logs.none : languageName(code);
+}
+
+/** 거부 여섯의 문장. 모르는 코드는 던지지 않고 폴백이다 (`reasonKey`와 같은 축). */
+export function refusalMessage(code: string | null): string {
+  const reasons: Record<string, string> = m.logs.refusals;
+  const fallback = m.logs.refusals.fallback;
+  return code !== null && Object.hasOwn(reasons, code) ? (reasons[code] ?? fallback) : fallback;
 }
 
 export type DayGroup<T> = { dayKey: string; label: string; rows: T[] };

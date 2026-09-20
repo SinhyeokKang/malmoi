@@ -500,6 +500,12 @@ describe("쿼리 파라미터의 수신자", () => {
      * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 스스로 반복한다.
      */
     "components/projects/search-input.tsx",
+    /**
+     * ⚠️ **Logs의 좁히는 축 전부가 여기서 나간다** (logs-rework T6b) — 필터 다섯·검색·[Clear]가
+     * `routes.logs({ … })`를 부르는 **유일한 발신처**이고, 화면 파일에는 인자 없는 호출만 남는다.
+     * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 또 반복한다.
+     */
+    "components/logs/log-filters.tsx",
   ];
 
   const SOURCES = [

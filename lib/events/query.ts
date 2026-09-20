@@ -6,7 +6,7 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import { m } from "@/lib/i18n";
 
-import { parseDateRange, type EventCursor, type LogFilter } from "./filter";
+import { PROJECT_WIDE, parseDateRange, type EventCursor, type LogFilter } from "./filter";
 import {
   eventKindOf,
   readPayload,
@@ -100,7 +100,7 @@ export async function loadEvents(
 ): Promise<EventPage> {
   const limit = options.limit ?? EVENT_PAGE_SIZE;
   const rows = await prisma.projectEvent.findMany({
-    where: { projectId, ...narrow(filter) },
+    where: { projectId, ...narrow(filter, await surfaceIds(prisma, projectId, filter)) },
     // ⚠️ 정렬 키 둘이 커서 둘과 **같아야 한다** — 하나라도 어긋나면 페이지 경계에서 행이 사라지거나 겹친다.
     orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
     // 한 개 더 읽어 "다음 페이지가 있나"를 조회 하나로 답한다 (기존 관용구).
@@ -231,14 +231,28 @@ function scope(raw: string): SurfaceScope {
   return raw === "sources" || raw === "project-wide" ? raw : "not-recorded";
 }
 
-/** 프로젝트 전역 사건만 보는 소스 필터의 값. 소스 id와 겹칠 수 없는 낱말이다(cuid가 아니다). */
-export const PROJECT_WIDE = "project-wide";
-
 /** 행위자 필터의 특수 값 둘. 사용자 id는 cuid라 이 낱말들과 겹칠 수 없다. */
 export const ACTOR_AUTOMATION = "automation";
 export const ACTOR_REMOVED = "removed";
 
-function narrow(filter: LogFilter): Prisma.ProjectEventWhereInput {
+/**
+ * URL의 소스 **slug**를 인가된 프로젝트 안에서 id로 옮긴다.
+ *
+ * ⚠️ **`projectId`로 좁힌다** — slug는 프로젝트 안에서만 유일하다(`@@unique([projectId, slug])`).
+ * ⚠️ **모르는 slug는 조용히 사라지지 않는다** — 하나도 못 찾으면 아래 `narrow`가 **0건**으로 좁힌다.
+ *   빈 목록을 "필터 없음"으로 되돌리면 지운 소스를 고른 URL이 전체 목록을 보여준다.
+ */
+async function surfaceIds(prisma: PrismaClient, projectId: string, filter: LogFilter): Promise<string[]> {
+  const slugs = filter.sources.filter((value) => value !== PROJECT_WIDE);
+  if (slugs.length === 0) return [];
+  const rows = await prisma.translationSurface.findMany({
+    where: { projectId, slug: { in: slugs } },
+    select: { id: true },
+  });
+  return rows.map((row) => row.id);
+}
+
+function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.ProjectEventWhereInput {
   const where: Prisma.ProjectEventWhereInput = {};
   const and: Prisma.ProjectEventWhereInput[] = [];
 
@@ -265,14 +279,25 @@ function narrow(filter: LogFilter): Prisma.ProjectEventWhereInput {
    * 나오고 C 필터에는 없다 — 행을 소스별로 복제하는 대신 배열이 그 일을 한다. 백필된 Publish는
    * `not-recorded`라 **어느 소스 필터에도, Project-wide에도 안 들어간다**(과거를 채우지 않는다).
    */
-  if (filter.source === PROJECT_WIDE) where.surfaceScope = PROJECT_WIDE;
-  else if (filter.source !== null) where.surfaceIds = { has: filter.source };
+  /**
+   * 다중 선택이라 **OR**다 (캔버스 `1m`). `Project-wide`는 소스가 없는 사건(멤버 · 설정)을 고르는
+   * 항목이고, 그 사건에 **가짜 소스 값을 넣지 않기 때문에** 여기서 따로 집는다.
+   *
+   * ⚠️ **slug를 하나도 못 찾았는데 고르긴 했으면 0건이다** — `hasSome: []`은 Postgres에서 항상
+   * 거짓이라 그 성질이 그대로 맞는다.
+   */
+  if (filter.sources.length > 0) {
+    const parts: Prisma.ProjectEventWhereInput[] = [{ surfaceIds: { hasSome: [...sourceIds] } }];
+    if (filter.sources.includes(PROJECT_WIDE)) parts.push({ surfaceScope: PROJECT_WIDE });
+    and.push({ OR: parts });
+  }
 
   // 검색은 술어 하나다 (결정 3). 대소문자는 `buildSearchText`가 이미 접었다.
   if (filter.q !== null) where.searchText = { contains: filter.q.toLowerCase() };
 
-  const result = resultWhere(filter.result);
-  if (result !== null) and.push(result);
+  if (filter.results.length > 0) {
+    and.push({ OR: filter.results.map((result) => resultWhere(result)) });
+  }
 
   if (filter.cursor !== null) {
     and.push({
@@ -290,8 +315,7 @@ function narrow(filter: LogFilter): Prisma.ProjectEventWhereInput {
  * ⚠️ **Publish의 결과는 컬럼이 아니라 조인에 있다** — `result` 컬럼만 보면 Publish 실행이 결과
  * 필터에서 통째로 빠진다. 저장된 값과 조인한 상태를 **OR로 함께** 본다.
  */
-function resultWhere(result: EventResult | null): Prisma.ProjectEventWhereInput | null {
-  if (result === null) return null;
+function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
   return { OR: [{ result }, { syncRun: { status } }] };

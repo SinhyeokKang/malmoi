@@ -11,8 +11,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
 
-import { parseLogFilter, type LogFilter } from "../filter";
-import { ACTOR_AUTOMATION, ACTOR_REMOVED, PROJECT_WIDE, loadEvent, loadEventActors, loadEvents } from "../query";
+import { PROJECT_WIDE, parseLogFilter, type LogFilter } from "../filter";
+import { ACTOR_AUTOMATION, ACTOR_REMOVED, loadEvent, loadEventActors, loadEvents } from "../query";
 
 /**
  * **활동 스트림이 실제 Postgres에서 같은 행을 내는가** (logs-rework T3c·T3d).
@@ -183,39 +183,39 @@ describe("테넌트 격리 (불변식 5)", () => {
 
   it("다른 프로젝트의 소스로 좁히면 0건이다", async () => {
     await event({ surfaceIds: ["sA"] });
-    expect((await loadEvents(prisma, "p1", base({ source: "sZ" }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, "p1", base({ sources: ["z"] }))).rows).toEqual([]);
   });
 });
 
 describe("소스 필터 — 사건 당시 대상 집합 (결정 14)", () => {
   it("A·B를 처리한 실행이 각 필터에 한 번씩 나오고 C에는 없다", async () => {
     const ref = await event({ kind: "IMPORT", surfaceIds: ["sA", "sB"] });
-    for (const source of ["sA", "sB"]) {
-      const rows = (await loadEvents(prisma, "p1", base({ source }))).rows;
+    for (const source of ["a", "b"]) {
+      const rows = (await loadEvents(prisma, "p1", base({ sources: [source] }))).rows;
       expect(rows.map((row) => row.ref), source).toEqual([ref]);
     }
-    expect((await loadEvents(prisma, "p1", base({ source: "sC" }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, "p1", base({ sources: ["c"] }))).rows).toEqual([]);
   });
 
   it("나중에 소스를 추가해도 과거 실행의 집합은 바뀌지 않는다", async () => {
     const ref = await event({ surfaceIds: ["sA"] });
     await prisma.translationSurface.create({ data: { id: "sD", projectId: "p1", slug: "d" } });
-    expect((await loadEvents(prisma, "p1", base({ source: "sD" }))).rows).toEqual([]);
-    expect((await loadEvents(prisma, "p1", base({ source: "sA" }))).rows.map((row) => row.ref)).toEqual([ref]);
+    expect((await loadEvents(prisma, "p1", base({ sources: ["d"] }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, "p1", base({ sources: ["a"] }))).rows.map((row) => row.ref)).toEqual([ref]);
   });
 
   it("프로젝트 전역 사건만 따로 좁혀진다", async () => {
     const wide = await event({ kind: "MEMBER", surfaceIds: [], surfaceScope: "project-wide" });
     await event({ surfaceIds: ["sA"] });
-    expect((await loadEvents(prisma, "p1", base({ source: PROJECT_WIDE }))).rows.map((row) => row.ref)).toEqual([wide]);
+    expect((await loadEvents(prisma, "p1", base({ sources: [PROJECT_WIDE] }))).rows.map((row) => row.ref)).toEqual([wide]);
   });
 
   /** ⚠️ **백필은 과거 대상 소스를 모른다** — 전체 목록엔 남고 특정 소스·전역 필터엔 안 들어간다. */
   it("백필된 Publish는 전체 목록에만 있다", async () => {
     const ref = await event({ kind: "PUBLISH", surfaceIds: [], surfaceScope: "not-recorded" });
     expect((await loadEvents(prisma, "p1", base())).rows.map((row) => row.ref)).toEqual([ref]);
-    expect((await loadEvents(prisma, "p1", base({ source: "sA" }))).rows).toEqual([]);
-    expect((await loadEvents(prisma, "p1", base({ source: PROJECT_WIDE }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, "p1", base({ sources: ["a"] }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, "p1", base({ sources: [PROJECT_WIDE] }))).rows).toEqual([]);
   });
 });
 
@@ -241,16 +241,16 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
   it("결과 필터가 조인한 Publish도 잡는다", async () => {
     const sent = await publishRun("run-ok", "SUCCEEDED", { occurredAt: new Date(AT.getTime() + 1000) });
     const imported = await event({ kind: "IMPORT", result: "imported" });
-    expect((await loadEvents(prisma, "p1", base({ result: "sent" }))).rows.map((row) => row.ref)).toEqual([sent]);
-    expect((await loadEvents(prisma, "p1", base({ result: "imported" }))).rows.map((row) => row.ref)).toEqual([imported]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["sent"] }))).rows.map((row) => row.ref)).toEqual([sent]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["imported"] }))).rows.map((row) => row.ref)).toEqual([imported]);
   });
 
   it("저장된 결과와 조인한 상태를 함께 본다 — 선행 거부도 실패도 각자 잡힌다", async () => {
     await publishRun("run-fail", "FAILED", { errorCode: "github-error", occurredAt: new Date(AT.getTime() + 1000) });
     const refusal = await event({ kind: "PUBLISH", result: "notStarted", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: "archived" } });
-    const failed = (await loadEvents(prisma, "p1", base({ result: "failed" }))).rows;
+    const failed = (await loadEvents(prisma, "p1", base({ results: ["failed"] }))).rows;
     expect(failed).toHaveLength(1);
-    expect((await loadEvents(prisma, "p1", base({ result: "notStarted" }))).rows.map((row) => row.ref)).toEqual([refusal]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["notStarted"] }))).rows.map((row) => row.ref)).toEqual([refusal]);
   });
 });
 

@@ -28,9 +28,16 @@ export type LogFilter = {
   to: string | null;
   /** 사용자 id · `automation` · `removed`. 해석은 조회가 한다 (결정 8). */
   actor: string | null;
-  /** 소스(`TranslationSurface`)의 id. 사건 당시 대상 집합에 포함되는지로 좁힌다 (결정 14). */
-  source: string | null;
-  result: EventResult | null;
+  /**
+   * 소스 **slug** 여럿 + 특수값 `project-wide` (캔버스 `1m` — 다중 선택). 사건 당시 대상 집합에
+   * 그중 하나라도 있으면 남는다 (결정 14).
+   *
+   * ⚠️ **id가 아니라 slug다** — URL은 사람이 읽고 공유하는 자리이고, 메뉴의 라벨과 같은 값이어야
+   * 무엇을 고른 URL인지 보인다. id 해석은 조회가 한다.
+   */
+  sources: string[];
+  /** 결과 여럿 (다중 선택). **실행에만 적용된다** — 메뉴 머리가 그 사실을 고르기 전에 말한다. */
+  results: EventResult[];
   q: string | null;
   cursor: EventCursor | null;
   /** 열린 이벤트의 공개 참조. **목록 필터와 독립이다** (결정 15). */
@@ -48,12 +55,71 @@ export function parseLogFilter(params: LogSearchParams): LogFilter {
     from: range.from === null ? null : text(params.from),
     to: range.to === null ? null : text(params.to),
     actor: text(params.actor),
-    source: text(params.source),
-    result: oneOf(EVENT_RESULTS, text(params.result)),
+    sources: list(params.source),
+    results: list(params.result).filter((value): value is EventResult =>
+      (EVENT_RESULTS as readonly string[]).includes(value),
+    ),
     q: text(params.q),
     cursor: decodeCursor(text(params.cursor) ?? ""),
     event: text(params.event),
   };
+}
+
+/** 소스가 없는 사건(멤버 · 설정)을 고르는 값. 소스 slug와 겹칠 수 없다 — slug에 `-`는 되지만 이 낱말 전체는 예약이다. */
+export const PROJECT_WIDE = "project-wide";
+
+/**
+ * 다중 선택 축의 URL 표현. **쉼표로 잇고 정렬·중복 제거한다** — 같은 선택이 두 URL로 갈리면
+ * 공유한 주소가 서로 다른 문자열이 되고, 그 차이는 화면에 안 보인다.
+ */
+export function encodeList(values: readonly string[]): string | undefined {
+  const unique = [...new Set(values.filter((value) => value !== ""))].sort();
+  return unique.length === 0 ? undefined : unique.join(",");
+}
+
+function list(value: string | string[] | undefined): string[] {
+  const raw = text(value);
+  if (raw === null) return [];
+  return [...new Set(raw.split(",").map((item) => item.trim()).filter((item) => item !== ""))].sort();
+}
+
+/** 필터 하나를 뗀 뒤의 URL 쿼리. **조립을 화면이 다시 하면 규칙이 두 벌이 된다** (`lib/keys/filters.ts`와 같은 형). */
+export function logsQuery(filter: LogFilter): {
+  kind?: string;
+  from?: string;
+  to?: string;
+  actor?: string;
+  source?: string;
+  result?: string;
+  q?: string;
+  cursor?: string;
+  event?: string;
+} {
+  return {
+    ...(filter.kind === "all" ? {} : { kind: filter.kind }),
+    ...(filter.from === null ? {} : { from: filter.from }),
+    ...(filter.to === null ? {} : { to: filter.to }),
+    ...(filter.actor === null ? {} : { actor: filter.actor }),
+    ...(encodeList(filter.sources) === undefined ? {} : { source: encodeList(filter.sources) }),
+    ...(encodeList(filter.results) === undefined ? {} : { result: encodeList(filter.results) }),
+    ...(filter.q === null ? {} : { q: filter.q }),
+    ...(filter.cursor === null ? {} : { cursor: encodeCursor(filter.cursor) }),
+    ...(filter.event === null ? {} : { event: filter.event }),
+  };
+}
+
+/** 좁히는 축이 하나라도 켜져 있나 — [Clear filters]가 서는 조건이다. */
+export function hasNarrowing(filter: LogFilter): boolean {
+  return filterChanged(EMPTY_FILTER, filter);
+}
+
+const EMPTY_FILTER: LogFilter = {
+  kind: "all", from: null, to: null, actor: null, sources: [], results: [], q: null, cursor: null, event: null,
+};
+
+/** 필터를 전부 뗀 뒤의 쿼리. 커서도 함께 버린다 — 좁힘이 사라지면 이전 페이지의 커서가 뜻을 잃는다. */
+export function clearedLogsQuery(filter: LogFilter): ReturnType<typeof logsQuery> {
+  return logsQuery({ ...EMPTY_FILTER, event: filter.event });
 }
 
 /**
@@ -68,9 +134,9 @@ export function filterChanged(prev: LogFilter, next: LogFilter): boolean {
     prev.from !== next.from ||
     prev.to !== next.to ||
     prev.actor !== next.actor ||
-    prev.source !== next.source ||
-    prev.result !== next.result ||
-    prev.q !== next.q
+    prev.q !== next.q ||
+    encodeList(prev.sources) !== encodeList(next.sources) ||
+    encodeList(prev.results) !== encodeList(next.results)
   );
 }
 
