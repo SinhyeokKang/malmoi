@@ -758,7 +758,8 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
-    archivedBy: (when: string): string => `Archived on ${when}`,
+    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `utcMinute`로 만든 노드를 넘긴다. */
+    archivedBy: (when: ReactNode): ReactNode => <>Archived on {when}</>,
     archived: (when: string): string => `Archived ${when}.`,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
@@ -2088,7 +2089,8 @@ export const en = {
       title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
       upload: "Upload", remove: "Remove",
       caption: "PNG or JPEG, up to 3 MB. Shown in the project list, on Home, and on invites.",
-      addressHelp: (slug: string): string => `Opens at mal-moi.com/projects/${slug}. The address can't be changed later.`,
+      /** ⚠️ **호스트를 말하지 않는다** (launch-readiness L7.5) — 박아 두면 dev·로컬에서도 프로덕션 주소가 보인다. */
+      addressHelp: (slug: string): string => `Opens at /projects/${slug}. The address can't be changed later.`,
       nameHelp: "The display name only. The URL and the repository stay the same.",
       emptyName: "Enter a project name.", longName: "Use 200 characters or fewer.",
       busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",

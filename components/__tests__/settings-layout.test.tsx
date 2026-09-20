@@ -29,3 +29,17 @@ it.each(["/saved.webp", "/replaced.webp", null])("설정 서버 조회가 보낸
   expect(container.querySelector("img")?.getAttribute("src") ?? null).toBe(image);
   expect(state.find).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ image: true }) }));
 });
+
+/**
+ * **보관 일시는 UTC라고 말한다** (launch-readiness L7.1 — `lib/utc-time.ts`·Logs 화면이 정본).
+ * 라벨 없는 로컬 날짜는 보는 사람이 어느 시간대인지 모른다: KST 09-21 08:30에 보관한 사람이
+ * "9/20/2026"을 보면 자기가 어제 보관한 것으로 읽는다. 정확한 값은 `<time dateTime>`이 든다.
+ */
+it("보관 일시가 `<time dateTime>` 안의 UTC 한 줄이다", async () => {
+  state.archived = true;
+  const { container } = await render(await page());
+  const stamp = container.querySelector("time");
+  expect(stamp?.getAttribute("dateTime")).toBe(new Date("2026-09-20").toISOString());
+  expect(stamp?.textContent).toBe("2026-09-20 00:00 UTC");
+  expect(container.textContent).toContain("Archived on 2026-09-20 00:00 UTC");
+});
