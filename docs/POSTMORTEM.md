@@ -2314,3 +2314,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     바닥 버튼이 `disabled`가 되는 모달이다).
   - ⚠️ **`useTransition`의 `isPending`으로 포커스 복귀를 배선할 때는 그것을 의존성에 넣는다.**
     상태를 직접 드는 화면(`pendingId`)과 달리 **커밋 시점을 고를 수 없다**는 것이 이 함정의 전부다.
+
+### 2026-09-20 — 소스 추가 커밋 뒤 캐시 오류가 전체 롤백으로 보고될 수 있었다
+
+- **영역**: `app/(edit)/projects/actions.ts`의 `addSurfaces`
+- **증상**: DB의 다중 소스 추가는 확정됐는데 `revalidatePath` 실패가 쓰기 실패 catch로 들어가면 UI가 “Nothing was added”를 표시한다. 재시도하면 기존 경로 충돌을 만나 최초 결과까지 오해하게 된다.
+- **근본 원인**: 사용자에게 약속하는 원자성 경계는 DB tx인데, 외부 캐시 갱신까지 같은 try/catch로 감싸면 성공 여부의 경계가 커밋 뒤로 늘어난다. 캐시 실패는 커밋된 행을 되돌리지 않는다.
+- **그물**: 커밋된 결과를 돌려준 뒤 revalidatePath가 던지도록 한 회귀 테스트가 잡았다. DB rollback 테스트만으로는 커밋 이후 실패가 보이지 않는다.
+- **재발 방지**: `rg -n 'revalidatePath|catch' 'app/(edit)/projects/actions.ts'`로 실제 점검했다. addSurfaces는 커밋 이후 캐시 실패를 별도 로깅하고 성공 결과를 유지한다. createProject의 캐시는 쓰기 catch 밖이고 runFirstIngest는 finally에 있어 같은 거짓 rollback union은 없었다. 새 all-or-nothing Action은 **커밋 후 후처리 예외 주입**도 검사한다.
