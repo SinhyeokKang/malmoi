@@ -147,3 +147,14 @@ it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 �
   const visualClasses = (tile: HTMLElement | null | undefined) => [...(tile?.classList ?? [])].filter((c) => c.startsWith("bg-") || c.startsWith("rounded")).sort();
   expect(visualClasses(homeTile)).toEqual(visualClasses(listTile));
 });
+
+it.each(["/saved.webp", "/replacement.webp", null])("목록·Home·초대에 최신 프로젝트 이미지 %s를 전달한다", async image => {
+  const { InviteProjectCard } = await import("@/components/invite/project-card");
+  const list = await draw({ image });
+  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
+  const invite = await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={image} />);
+  for (const node of [list, home.container, invite.container]) {
+    expect(node.querySelector("img")?.getAttribute("src") ?? null).toBe(image);
+    expect(node.querySelector("svg.lucide-box") !== null).toBe(image === null);
+  }
+});
