@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -155,18 +155,26 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
 });
 
 /**
- * **소비자 열하나가 여백을 판단하지 않는다** (완료 조건 1).
+ * **소비자 열둘이 여백을 판단하지 않는다** (완료 조건 1).
  *
- * ⚠️ **세는 명령을 실제로 돌려 본문과 맞췄다** — `grep -rln "PanelHeader"`는 13을 내는데
- * `project-archived.tsx`·`project-not-ready.tsx`가 *"`PanelHeader`가 없다"*는 **주석**으로 잡힌다.
- * 그 둘은 소비자가 아니다 (POSTMORTEM 2026-09-14: 세는 명령을 적을 때 그 명령을 돌려 본다).
+ * ⚠️ **세는 명령을 실제로 돌려 본문과 맞췄다** — `grep -rln "PanelHeader"`는 더 많이 내는데
+ * `project-archived.tsx`·`project-not-ready.tsx`가 *"`PanelHeader`가 없다"*는 **주석**으로 잡히고
+ * `content-panel.tsx` 자신도 주석에서 그 이름을 부른다. 그 셋은 소비자가 아니다
+ * (POSTMORTEM 2026-09-14: 세는 명령을 적을 때 그 명령을 돌려 본다).
+ *
+ * ⚠️ **이 목록이 2026-09-20까지 하나 적었다** — PR #43이 열하나로 만들었고, **PR #44가
+ * `projects/[slug]/loading.tsx`를 추가하면서 목록을 안 늘렸다.** 그 파일은 그 뒤로 이 검사를 한 번도
+ * 안 받았다(실해는 없었다 — 열어 보니 padding을 안 넘긴다). 같은 프리미티브의 소비자 수가 틀린 것이
+ * 이번이 **네 번째**다 (POSTMORTEM 2026-09-14 · 2026-09-15).
+ * ⚠️ **`<PanelHeader`를 새로 쓰면 이 배열에 한 줄을 더한다** — 그러지 않으면 새 화면이 검사 밖이다.
  */
-describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
+describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
     "components/translations/header.tsx",
     "components/onboarding/add-surface.tsx",
     "app/(edit)/projects/loading.tsx",
+    "app/(edit)/projects/[slug]/loading.tsx",
     "app/(edit)/projects/[slug]/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
@@ -182,9 +190,10 @@ describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
    * 실제로 구현 중 그 셋이 `16 + 24 = 40`이 됐다 (POSTMORTEM 2026-09-14: 소비자 수가 세 번 틀렸고
    * 빠졌던 하나가 하필 그 변경의 소비자였다).
    *
-   * 세는 명령 (돌려서 맞췄다):
-   * `grep -rn "<PanelHeader" components app | grep -v __tests__` → **11**
-   * `grep -rn "<PanelBody" components app | grep -v __tests__` → **14**
+   * 세는 명령 (2026-09-20에 다시 돌렸다 — 주석의 이름 인용을 빼고 센다):
+   * `grep -rn "<PanelHeader" components app | grep -v __tests__ | grep -v content-panel` → **12**
+   * `grep -rn "<PanelBody" components app | grep -v __tests__ | grep -v content-panel` → **15**
+   * 차이 셋이 아래 `BODY_ONLY`다.
    */
   const BODY_ONLY = [
     "components/project-archived.tsx",
@@ -192,8 +201,30 @@ describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
     "app/(edit)/error.tsx",
   ];
 
-  it("소비자가 열하나 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
-    expect(CONSUMERS).toHaveLength(11);
+  /**
+   * ⚠️ **수만 고정하면 목록이 낡는 것을 못 잡는다** — 실제로 그렇게 낡았다(위 주석). 그래서
+   * **소스를 직접 세어** 목록과 대조한다: 새 소비자가 생기면 목록을 안 고친 그 커밋이 red다.
+   */
+  it("목록이 실제 소비자 전수와 같다 — 새 화면이 검사 밖으로 못 나간다", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(join(ROOT, dir), { withFileTypes: true }).flatMap((entry) => {
+        if (entry.name.startsWith(".") || entry.name === "node_modules" || entry.name === "__tests__") return [];
+        const rel = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) return walk(rel);
+        return entry.name.endsWith(".tsx") ? [rel] : [];
+      });
+    const uses = (tag: string) =>
+      [...walk("app"), ...walk("components")]
+        // ⚠️ 프리미티브 자신은 주석에서 두 이름을 다 부른다 — 소비자가 아니다.
+        .filter((rel) => rel !== "components/shell/content-panel.tsx")
+        .filter((rel) => readFileSync(join(ROOT, rel), "utf8").includes(tag));
+
+    expect(uses("<PanelHeader").sort()).toEqual([...CONSUMERS].sort());
+    expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
+  });
+
+  it("소비자가 열둘 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
+    expect(CONSUMERS).toHaveLength(12);
     expect(BODY_ONLY).toHaveLength(3);
   });
 
