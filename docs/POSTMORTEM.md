@@ -2322,3 +2322,21 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 사용자에게 약속하는 원자성 경계는 DB tx인데, 외부 캐시 갱신까지 같은 try/catch로 감싸면 성공 여부의 경계가 커밋 뒤로 늘어난다. 캐시 실패는 커밋된 행을 되돌리지 않는다.
 - **그물**: 커밋된 결과를 돌려준 뒤 revalidatePath가 던지도록 한 회귀 테스트가 잡았다. DB rollback 테스트만으로는 커밋 이후 실패가 보이지 않는다.
 - **재발 방지**: `rg -n 'revalidatePath|catch' 'app/(edit)/projects/actions.ts'`로 실제 점검했다. addSurfaces는 커밋 이후 캐시 실패를 별도 로깅하고 성공 결과를 유지한다. createProject의 캐시는 쓰기 catch 밖이고 runFirstIngest는 finally에 있어 같은 거짓 rollback union은 없었다. 새 all-or-nothing Action은 **커밋 후 후처리 예외 주입**도 검사한다.
+- 🔁 **재발 (2026-09-20, 같은 날 · 같은 기능의 형제 Action 셋)**: 위 재발 방지의 grep이 **`app/(edit)/projects/actions.ts` 한 파일**이었고, 같은 변경이 `app/(edit)/projects/[slug]/settings/actions.ts`에 만든 `updateProjectName`·`uploadProjectImage`·`deleteProjectImage` 셋이 검사 범위 밖이었다. 셋 다 DB tx가 **커밋된 뒤** `cleanProjectImage` + `revalidatePath("/", "layout")`을 try 밖에서 부르므로, 그것이 던지면 Action이 reject되고 클라이언트 `catch`가 `setError`를 세운다 — 저장된 이름·이미지를 화면이 "실패"로 말하고, 사용자가 업로드를 다시 눌러 **두 번째 Blob 객체**를 만든다. 조치는 `revalidateAfterCommit(scope, projectId)` 하나를 셋이 지나게 한 것이고, 회귀 테스트는 `app/(edit)/__tests__/project-metadata.test.ts`가 `revalidatePath`에 예외를 주입해 `{ ok: true }`를 단언한다.
+  - ⚠️ **"그 파일에서 다 봤다"가 재발 방지가 아니다** — 이 부류의 단위는 파일이 아니라 **"커밋 뒤에 무언가를 더 하는 Server Action"**이다. 같은 기능의 새 Action이 옆 디렉터리에 생기면 앞 항목의 grep은 그것을 영영 안 센다.
+  - ⚠️ **전수 grep이 원본을 찾아냈다**: `for f in $(grep -rl '"use server"' app --include="*.ts"); do grep -n revalidatePath "$f"; done` → **`app/(edit)/account/actions.ts`의 `updateProfileName`·`uploadProfileImage`·`deleteProfileImage` 셋이 글자까지 같은 형이다**(커밋 뒤 `cleanImage` + `revalidatePath` + 결과 union). 프로젝트 쪽이 그 셋을 베껴 쓴 것이라 **원본이 아직 안 고쳐져 있다** — 아바타 업로드가 같은 조건에서 같은 거짓 실패를 낸다. 후속 작업으로 남긴다.
+
+### 2026-09-20 — 화면 하나에 세운 규칙 셋을 새 화면이 다시 어겼고, 그 규칙의 그물이 전부 원래 화면에만 있었다
+
+- **영역**: `messages/en.tsx`(설정 General 문구) · `app/(edit)/projects/[slug]/settings/page.tsx` · `components/projects/project-thumbnail.tsx`·`components/invite/project-card.tsx`·`components/settings/general-card.tsx`
+- **증상**: 설정 재편이 만든 새 화면이 **이미 결정되고 이미 고쳐진 규칙 셋**을 다시 어겼고, 테스트 4,799개가 전부 green이었다.
+  1. 주소 힌트가 `Opens at mal-moi.com/projects/{slug}`로 호스트를 박았다 — launch-readiness **L7.5가 2026-09-18에 같은 문장형에서 지운 값**이다. `dev.mal-moi.com`에서 지금 보고 있는 호스트와 다른 주소를 알려 준다(L7.5 리허설이 기록한 증상과 글자까지 같다).
+  2. 보관 일시가 `toLocaleDateString("en-US", { timeZone: "UTC" })`로 **라벨 없는 날짜**였다 — L7.1이 "절대 시각은 `<time dateTime>` 안의 `… UTC`"로 정한 뒤였다. KST 09-21 08:30에 보관한 사람이 "9/20/2026"을 보고 어제 보관한 것으로 읽는다.
+  3. 새로 만든 `<img>` 셋이 **깨진 URL 폴백 없이** 그려졌다 — `Avatar`가 malmoi#50으로 이미 해결한 부류인데, `image`가 truthy라 `toneFill` 폴백 분기에 못 들어가 Blob이 사라진 프로젝트가 **빈 테두리 상자**로 남는다.
+- **근본 원인**: 셋 다 **결정은 정본에 있었고 그물은 그 결정을 낳은 화면에만 있었다.** ①은 `naming-hint.test.tsx`가 `NamingStep`만 렌더해 재고, ②는 `publish-button`·Logs가 각자 자기 값을 재고, ③은 `avatar.test.tsx`가 `Avatar`만 렌더한다. 그래서 **새 소비자가 생기는 순간 규칙은 남고 검사는 안 따라온다** — 규칙별 검사를 컴포넌트 단위로 묶은 것이 원인이고, 새 화면을 만든 사람의 부주의가 아니다(정본을 읽었어도 "이 규칙에 소비자가 몇인지"는 어디에도 안 적혀 있었다).
+- **그물**: 놓쳤다 — 세 규칙 모두 **자동 검사가 있는데도** 통과했다(각 검사의 렌더 대상에 새 화면이 없었다). 잡은 것은 `/code-review`의 정적 대조뿐이고, ①은 문서(L7.5 태스크)와 코드를 사람이 맞대 본 결과다. 지금은 셋 다 새 화면에서 red→green을 본 테스트가 섰다(`settings-general.test.tsx` 주소·폴백 · `settings-layout.test.tsx` UTC · `project-row.test.tsx` 폴백 3갈래).
+- **재발 방지**: 규칙마다 **전수 grep**을 돌렸고 지금 남은 위반은 0이다.
+  - 호스트: `grep -rn "mal-moi\.com\|vercel\.app" messages app components lib --include="*.ts" --include="*.tsx" | grep -v __tests__ | grep -v origin.ts` → **0건**(`lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`만 남는다 — 그쪽은 판정 입력이라 대상이 아니다).
+  - 절대 시각: `grep -rn "toLocaleDateString\|toLocaleTimeString" app components lib --include="*.ts" --include="*.tsx" | grep -v __tests__` → **0건**. 절대 시각의 생산자는 `lib/utc-time.ts`의 `utcMinute` 하나여야 하고, 이 grep이 그것을 우회한 자리를 센다.
+  - 이미지 폴백: `grep -rn "<img " app components --include="*.tsx" | grep -v __tests__` → **3건**이고 전부 통과다: `components/ui/avatar.tsx`·`components/ui/image-tile.tsx`(둘이 `useImageFallback`을 공유한다) + `components/publish-button.tsx`의 국기(자사 정적 자산이고 매핑이 확인된 것만 그린다 — 외부 URL이 아니라 대상이 아니다). **새 `<img>`는 이 셋 중 하나를 지나거나 여기 근거를 더한다.**
+  - ⚠️ **셋에 공통인 물음은 "이 규칙의 소비자가 몇인가"다.** DESIGN §6.4가 프리미티브마다 소비자 수를 적는 이유와 같다 — 새 화면을 만들 때 규칙을 읽는 것으로는 부족하고, **그 규칙을 재는 검사가 새 화면을 렌더하는지**를 따로 봐야 한다.
