@@ -45,6 +45,7 @@ const ICON_CLASS: Record<NonNullable<VariantProps<typeof alert>["variant"]>, str
 
 export function Alert({
   variant = "info",
+  inset = false,
   title,
   actions,
   onDismiss,
@@ -52,6 +53,7 @@ export function Alert({
   className,
   children,
 }: VariantProps<typeof alert> & {
+  inset?: boolean;
   /** 구두점 없는 문장 조각 (§10). */
   title?: ReactNode;
   /** 최대 둘 (§6.4). */
@@ -81,7 +83,7 @@ export function Alert({
   const tone = variant ?? "info";
   const Icon = ICON[tone];
   return (
-    <div className={cn(alert({ variant }), className)} role={tone === "danger" ? "alert" : role}>
+    <div className={cn(alert({ variant }), inset && "rounded-none border-0 border-t border-divider px-4 py-[13px]", inset && tone === "danger" && "bg-destructive/4", className)} role={tone === "danger" ? "alert" : role}>
       <Icon className={cn("mt-0.5 size-4 shrink-0", ICON_CLASS[tone])} aria-hidden />
       <div className="min-w-0 flex-1 space-y-2">
         {title !== undefined && <p className="text-sm font-medium">{title}</p>}
