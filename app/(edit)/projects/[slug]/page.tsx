@@ -73,6 +73,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
     where: { id: projectId },
     select: {
       name: true,
+      image: true,
       installationId: true,
       repositoryId: true,
       repoOwner: true,

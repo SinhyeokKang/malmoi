@@ -22,6 +22,7 @@ import type { ProjectListRow } from "@/lib/keys/query";
  */
 
 const BASE: ProjectListRow = {
+  image: null,
   slug: "admin-console",
   name: "admin-console",
   role: "OWNER",

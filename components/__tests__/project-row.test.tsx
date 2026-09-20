@@ -29,6 +29,7 @@ import { m } from "@/lib/i18n";
  */
 
 const BASE: ProjectListRow = {
+  image: null,
   slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
   role: "OWNER",

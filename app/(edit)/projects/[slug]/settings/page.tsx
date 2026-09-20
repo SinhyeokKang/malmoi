@@ -66,6 +66,7 @@ export default async function SettingsPage({
     where: { id: projectId },
     select: {
       name: true,
+      image: true,
       repoOwner: true,
       repoName: true,
       installationId: true,

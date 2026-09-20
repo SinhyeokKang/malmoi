@@ -256,6 +256,7 @@ export type ProjectListRow = MembershipRow &
    * 새로 만들어야 하고 그 합성이 판정의 입력이 된다.
    */
   ProjectEvents & {
+  image: string | null;
   repoOwner: string;
   repoName: string;
   /** ⚠️ **상태 배지의 셋째 축이다** — null이면 Publish가 거부된다 (`projectStatus`, PRODUCT §7.5). */
@@ -313,6 +314,7 @@ export async function loadProjectList(
           id: true,
           slug: true,
           name: true,
+          image: true,
           installationId: true,
           surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
           archivedAt: true,
@@ -369,6 +371,7 @@ export async function loadProjectList(
     rows: rows.map((r) => ({
       slug: r.project.slug,
       name: r.project.name,
+      image: r.project.image,
       role: r.role,
       installationId: r.project.installationId,
       surfaces: r.project.surfaces.map(s => ({ archivedAt: s.archivedAt, lastCommitSha: s.lastCommitSha })),
@@ -716,4 +719,15 @@ export async function loadRecentPublishes(
   });
   // `finishedAt`은 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
   return rows.flatMap((row) => (row.finishedAt === null ? [] : [{ at: row.finishedAt, prUrl: row.prUrl, changed: row.changed }]));
+}
+
+/** 같은 활성·비고아 술어로 두 축을 따로 센다. Translation을 조인하면 키 수가 로케일 수만큼 불어난다. */
+export async function loadSurfaceCounts(prisma: PrismaClient, projectId: string): Promise<{ surfaceId: string; keys: number; locales: number }[]> {
+  return prisma.$queryRaw`
+    SELECT s.id AS "surfaceId", COALESCE(k.n, 0)::int AS keys, COALESCE(l.n, 0)::int AS locales
+    FROM "TranslationSurface" s
+    LEFT JOIN (SELECT "surfaceId", count(*) AS n FROM "StringKey" WHERE "projectId" = ${projectId} AND NOT orphaned GROUP BY "surfaceId") k ON k."surfaceId" = s.id
+    LEFT JOIN (SELECT "surfaceId", count(*) AS n FROM "Locale" WHERE "projectId" = ${projectId} AND NOT orphaned GROUP BY "surfaceId") l ON l."surfaceId" = s.id
+    WHERE s."projectId" = ${projectId} AND s."archivedAt" IS NULL
+    ORDER BY s.slug ASC`;
 }
