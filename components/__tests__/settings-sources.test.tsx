@@ -66,3 +66,17 @@ it("수동 확정은 잠기지 않은 같은 경로의 자동 후보 어댑터�
   await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
   expect(actions.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "yaml-catalog", pathTemplate: "app/{locale}.json", baseLocale: "en" }] });
 });
+
+it("추가 중에는 닫기와 모든 입력을 잠그고 완료 뒤 트리거로 돌아간다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.addSurfaces.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<SourcesCard {...props} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(document.querySelectorAll('[role="checkbox"]')[1]!); });
+  await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
+  expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(true);
+  for (const checkbox of document.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')) expect(checkbox.disabled).toBe(true);
+  await act(async () => { resolve({ ok: false, error: "resource-limit" }); });
+  expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(false);
+});
