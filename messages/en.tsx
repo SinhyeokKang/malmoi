@@ -758,6 +758,7 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
+    archivedBy: (when: string): string => `Archived on ${when}`,
     archived: (when: string): string => `Archived ${when}.`,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
@@ -2083,10 +2084,40 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
+    general: {
+      title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
+      upload: "Upload", remove: "Remove",
+      caption: "PNG or JPEG, up to 3 MB. Shown in the project list, on Home, and on invites.",
+      addressHelp: (slug: string): string => `Opens at mal-moi.com/projects/${slug}. The address can't be changed later.`,
+      nameHelp: "The display name only. The URL and the repository stay the same.",
+      emptyName: "Enter a project name.", longName: "Use 200 characters or fewer.",
+      busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",
+    },
+    sources: {
+      title: "Translation sources", add: "Add sources", locked: "Already a source",
+      empty: "No translation sources yet", emptyHelp: "Add locale files from your repository to start translating.",
+      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "Import failed",
+      failedAfter: "Last import failed", retry: "Run first import", rerun: "Re-run the workflow on GitHub.",
+      added: (count: number): string => `${count.toLocaleString("en-US")} translation ${count === 1 ? "source" : "sources"} added.`,
+      yamlReminder: "Update the workflow in your repository to include the new sources.",
+      unknown: "We could not confirm the result. Check the source list before trying again.",
+      nothingAdded: "Nothing was added. Your selection is still here.",
+      description: "Choose locale files from your repository. Existing sources stay selected.",
+      selectHelp: "Select at least one new source to add.",
+    },
+    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", open: "View workflow", stale: "Some sources have not been imported yet. Check that the workflow includes them." },
+    archivedReason: "Restore this project to change its settings.",
+    recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
+    accountLink: "Account settings",
+    installed: "The malmoi app is installed on this repository.",
+    openRepo: "Open on GitHub",
 
     repository: {
+      disconnected: "Disconnected", notConnected: "Not connected", unknown: "Couldn't check the connection",
+      movedHint: "Reconnect to store the new name. Syncs keep working in the meantime.",
+      paused: "Syncs and publishes are paused. Everything already translated is safe.",
       title: "Repository",
-      description: "Where your source strings come from, and where translations go back.",
+      description: "Source strings come from here, and translations go back as pull requests.",
       connect: "Connect",
       reconnect: "Reconnect",
       connectFailed: "We couldn't start the connection. Try again in a moment.",
@@ -2119,7 +2150,7 @@ export const en = {
        */
       fields: {
         branch: "Base branch",
-        branchHelp: "The branch translations are sent back to, and the one CI watches.",
+        branchHelp: "Syncs read this branch, and pull requests open against it.",
         save: "Save",
         /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
